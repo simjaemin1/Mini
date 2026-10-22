@@ -480,7 +480,9 @@ async function runDays(n) {
   const _prL = P6L && P6L.econTick ? P6L.econTick.probe : {};
   const dLast = (_prL.routeCold || 0) - (pr6.routeCold || 0);
   const _mAt = P6L && P6L.econTick.last ? P6L.econTick.last.maxChunkAt : null;
-  ok(!!_mAt && (_mAt !== 'caravan' || dLast === 0), '⑥ ★★가장 큰 조각이 더는 **캐러밴 A\*가 아니다**(캐러밴 꼬리표면 그날 낀 창의 콜드 0)',
+  //   ★[T828] 캐러밴 조각은 속 이름 셋(`caravan_body` · `caravan_fish` · `caravan_sync`)으로 갈렸다 — 셋 = 종전 `caravan`(단언 무변).
+  const _isCar = (s) => s === 'caravan' || s === 'caravan_body' || s === 'caravan_fish' || s === 'caravan_sync';
+  ok(!!_mAt && (!_isCar(_mAt) || dLast === 0), '⑥ ★★가장 큰 조각이 더는 **캐러밴 A\*가 아니다**(캐러밴 꼬리표면 그날 낀 창의 콜드 0)',
     P6L && P6L.econTick.last ? `${P6L.econTick.last.maxChunk}ms(${_mAt}) · 그 창 콜드 ${dLast}` : '?');
 
   // ── ★★[T85 2026-09-03] ⑧ 재개 가능 A* — **정본 시드 세계 전 쌍이 비트 동일** ──────────────

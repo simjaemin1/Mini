@@ -95,6 +95,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 FB.mustBeFree([CPORT, ZPORT], 'e2e-nature');
 const procs = [];
 FB.reapOnExit(procs);   // ★[T773] 내가 띄운 아이만 끝낸다 — 정상 · 예외 · 신호(러너 시간 초과)
+// ★★[T829 2026-10-21] **판마다 빈 세계에서 시작한다** — 존 DB 를 지우고 연다(`e2e-weather` · `e2e-rooms` 와 같은 문법).
+//   종전엔 안 지웠다 → 같은 상자에서 판이 거듭되면 앞 판이 **심어 둔 묘목이 DB 에 남아** 심기① 의 이웃 칸을
+//   판마다 둘씩 메웠다(1 판 r1·r2 → 2 판 r3·r4 → 3 판 r5 · 도토리 ✗). 이웃 여덟 중 심을 수 있는 칸은 다섯이다
+//   (하나는 처음부터 차 있고 · 64px 둘은 `GATHER_RANGE` 밖) ⇒ 같은 DB 셋째 판부터 "이미 뭔가 서 있다" 로 빨강
+//   (T829 실측 — 날짜 · 계절 · T800 무관).
+//   한 판 안의 절들은 여전히 같은 DB 를 함께 쓴다(아래 ★마을 시딩 재사용 그대로).
+for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(ZDB + s); } catch (e) {} }
 function boot(name, file, env) {
   const p = spawn('node', [file], { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], cwd: ROOT });
   p.stdout.on('data', (d) => { const s = d.toString(); if (/server up|Error/i.test(s)) process.stdout.write(`  [${name}] ` + s.slice(0, 120)); });

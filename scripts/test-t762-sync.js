@@ -38,16 +38,16 @@ console.log('\n① 술어 · 읽는 자리');
 
 console.log('\n② ③ 두 문의 차례 · 끔 글자');
 {
-  const blk = /\{ const _cl = state\.world\.caravans\.slice\(\);\n\s+for \(const c of _cl\) add\('caravan', \(\) => _caravanSyncOne\(C\.now, c, C\.car\)\);[^\n]*\n\s+if \(T762_CARAVAN_BODY\) \{ add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}\); add\('caravan', _t762SyncNewJob\(C, new Set\(_cl\)\)\); \}[^\n]*\n\s+else add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}\); \}/g;
+  const blk = /\{ const _cl = state\.world\.caravans\.slice\(\);\n\s+for \(const c of _cl\) add\('caravan', \(\) => _caravanSyncOne\(C\.now, c, C\.car\), 'caravan_sync'\);[^\n]*\n\s+if \(T762_CARAVAN_BODY\) \{ add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}, 'caravan_sync'\); add\('caravan', _t762SyncNewJob\(C, new Set\(_cl\)\), 'caravan_sync'\); \}[^\n]*\n\s+else add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}, 'caravan_sync'\); \}/g;   // ★[T828] 조각 속 이름 `caravan_sync`(값 0)
   const n = (V.match(blk) || []).length;
   ok(n === 2, '② 두 문 모두 — 명부 한 대씩 → 끔: 쓸기 · 켬: 쓸기 → 새 캐러밴 조각(집에 닿은 몸이 자리를 먼저 비운다)', `${n}/2`);
   const perCar = (codeOnly(V).match(/add\('caravan', \(\) => _caravanSyncOne\(/g) || []).length;
   const fromCl = (codeOnly(V).match(/for \(const c of _cl\) add\('caravan', \(\) => _caravanSyncOne\(/g) || []).length;
   ok(perCar === 2 && fromCl === 2, '③ 끔 = 종전 — 한 대씩 조각은 문을 연 명부(`_cl`)만 돈다', `한 대씩 ${perCar} · 명부 ${fromCl}`);
   const extra = (codeOnly(V).match(/_t762SyncNewJob\(/g) || []).length;
-  const guarded = (codeOnly(V).match(/if \(T762_CARAVAN_BODY\) \{ add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}\); add\('caravan', _t762SyncNewJob\(/g) || []).length;
+  const guarded = (codeOnly(V).match(/if \(T762_CARAVAN_BODY\) \{ add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}, 'caravan_sync'\); add\('caravan', _t762SyncNewJob\(/g) || []).length;
   ok(extra === 3 && guarded === 2, '③ 덧 조각은 손잡이 아래에서만 선다(정의 1 · 부름 2 = 둘 다 `if (T762_CARAVAN_BODY)`)', `글자 ${extra} · 손잡이 아래 ${guarded}`);
-  const sweeps = (codeOnly(V).match(/add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}\)/g) || []).length;
+  const sweeps = (codeOnly(V).match(/add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}, 'caravan_sync'\)/g) || []).length;
   ok(sweeps === 4, '③ 쓸기는 문마다 한 번만 선다(켬 갈래 하나 · 끔 갈래 하나 × 두 문)', `쓸기 글자 ${sweeps}`);
 }
 

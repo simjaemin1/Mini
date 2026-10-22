@@ -51,4 +51,44 @@ const init = (prng) => `
 /** 랩 날 d 의 첫 프레임까지 민다 — 돌려주는 값 = 그 프레임 번호 */
 const untilDay = (page, d) => page.evaluate((x) => window.__untilDay(x), d);
 
-module.exports = { FRAME_MS, init, untilDay };
+// ★[T799 → T830 2026-10-21] 헤드리스 칠하기 끔 · 프레임 지문 — 랩 하네스 둘(`test-lab-mining` · `test-lab-psite`)이 같이 쓴다(사본 금지 · 여기 한 자리).
+//   실측(T799 CDP 프로파일 · 하루 726 프레임 ≈ 35~39초): `lifeLoop → draw()` 가 92.6% · 그중 캔버스 **그리기 호출**(fillRect 57.1% 외)이 과반.
+//   ★끄는 것 = 캔버스 2D 의 **그리기 호출만**(픽셀을 칠하는 네이티브 메서드 → 빈 함수). draw() 의 JS 는 그대로 돈다 —
+//     draw 가 상태를 건드리는 곳(`roadLevel` 렌더 조회 = 게으른 감쇠·Set 프룬 · `life/V` 초점 복원 · 마을 렌더 순회)이 있어서
+//     draw 를 통째로 빼면 궤적이 갈릴 수 있다. 랩은 캔버스를 **읽지 않는다**(getImageData·toDataURL·isPointInPath·measureText 0곳)
+//     → 픽셀을 안 칠해도 JS 가 보는 값은 같다. 증명 = `fp`(날마다 프레임 지문)가 `LAB_RENDER=1`(칠함) 판과 바이트 같음.
+//   시계(위 `init`)는 무접촉 · 새 수 0. `LAB_RENDER=1` = 종전 판(칠함) 그대로.
+const RENDER = process.env.LAB_RENDER === '1';
+const NO_PAINT = `
+(() => {
+  const P = CanvasRenderingContext2D.prototype, nop = function () {};
+  for (const k of ['fillRect', 'strokeRect', 'clearRect', 'fill', 'stroke', 'fillText', 'strokeText', 'drawImage', 'putImageData', 'clip'])
+    if (typeof P[k] === 'function') P[k] = nop;
+})();
+`;
+/** 적재 **전에** 심는다(`init` 다음) — `LAB_RENDER=1` 이면 아무것도 안 한다 */
+const noPaint = async (page) => { if (!RENDER) await page.addInitScript(NO_PAINT); };
+const paintTag = () => (RENDER ? '칠함' : '칠하기 끔');
+
+// 프레임 지문 — 지금 프레임의 세계를 글로 펴 FNV-1a 32비트. 숫자는 String() 전 자리(부동소수 끝자리까지).
+//   마을 전부: 날 · 인구 · 주민(px·py·job·state·_mp·work) · 광맥 재고(셀별) · 집(built·builtFloors·player) · econ.land(ore·stone·size)·counts
+//   + 가상시계 · 프레임 번호. 읽기만 한다(세계 무접촉).
+const FP = () => {
+  let h = 0x811c9dc5;
+  const add = (x) => { const t = String(x); for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } h ^= 124; h = Math.imul(h, 0x01000193) >>> 0; };
+  add(window.__frame()); add(window.__vt());
+  for (const v of VILS) {
+    add(v.day); add(v.pop); add(v.agents.length);
+    for (const a of v.agents) { add(a.px); add(a.py); add(a.job); add(a.state); add(a._mp); add(a.work ? a.work.cx + ',' + a.work.cy : '-'); }
+    if (v.oreRich) for (const [k, r] of v.oreRich) { add(k); add(r); }
+    if (v.houses) for (const q of v.houses) { add(q.cx + ',' + q.cy); add(q.built); add(q.builtFloors); add(q.player ? 1 : 0); }
+    if (v.econ) { add(v.econ.land.ore); add(v.econ.land.stone); add(v.econ.land.size); add(JSON.stringify(v.econ.counts || {})); }
+  }
+  return ('00000000' + h.toString(16)).slice(-8);
+};
+/** 지금 프레임의 지문(8자) */
+const fp = (page) => page.evaluate(FP);
+/** 날별 지문 목록을 한 번 더 접은 값(8자) */
+const fold = (list) => { let h = 0x811c9dc5; for (const c of list.join('/')) { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; } return ('00000000' + h.toString(16)).slice(-8); };
+
+module.exports = { FRAME_MS, init, untilDay, noPaint, paintTag, fp, fold };

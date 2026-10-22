@@ -33,7 +33,7 @@ const CPORT = 3171, ZPORT = 3172, DAY_MS = 60000, WINDOWS = 2;
 // ── 계약(순수) — 창 증인 하나 → 어긴 것 목록 ─────────────────────────────────────
 const H_OK = new Set(['xzone', 'econ', 'econ:head', 'life']);
 const V_OK = new Set(['econ:vil', 'pop', 'life', 'life:쉼표']);
-const FLOW = ['econ:trade', 'econ:caravan', 'econ:tail', 'caravan', 'events', 'xzone', 'save'];
+const FLOW = ['econ:trade', 'econ:caravan', 'econ:tail', 'caravan', 'caravan_body', 'caravan_fish', 'caravan_sync', 'events', 'xzone', 'save'];   // ★[T828] 캐러밴 조각 속 이름 셋 = 종전 `caravan`(창 증인은 속 이름을 적는다)
 function windowContract(R) {
   const bad = [];
   if (R.seq !== 'HVT') bad.push(`꼴 ${R.seq}`);

@@ -281,5 +281,47 @@ const child821 = (knob) => {
     'ⓔ 끔 — 무동작(훅 없음 · 물음 0 · 이어 밀기 0 · 종전 글자 — 칸 없는 대형의 지휘 몸은 원점에 바로 놓인다 = T790 끔)', `끔 ${off.far1.arr}걸음`);
 }
 
+// ── ⓕ T832 — 켬 판 결정론: 귀환 몸도 그날 몫(T821 회부 3 · T790 손잡이 안) ─────────────
+//   갈림 첫 자리(T832 §1): 같은 씨 두 판(부하 다름)이 D15 W4 귀환 대형의 걸음 수(259 ↔ 252)에서 갈렸다 — 귀환 몸은 하루 몫 없이 **틱마다** 걸었고
+//   틱 수는 벽시계(부하)를 따른다. 켬이면 귀환 몸도 하루 몫(`_t681Take` — 하루 길이 × TICK_HZ)만큼만 틱에서 걷고, 남은 몫은 하루 마감 첫 자리(`_t681Flush`)가 채운다.
+//   무대: ⓒ 와 같은 귀환(결판 자리 1000,1000 → 길 머리 1100,1000 · 몸 하나) · 하루 몫 = 10초 × 30 = 300걸음.
+//   마감 채우기의 시간 예산(종전 마감 조각 예산)이 걸음마다 끊는 판도 잰다(아이 안에서 `Date.now` 를 부를 때마다 1초씩 민다 — 조각마다 한 걸음 · 'retry').
+console.log('\n[ⓕ] T832 — 켬 판 결정론: 귀환 몸도 그날 몫(아이 프로세스 켬/끔)');
+{
+  const tk = fnBody(CV, 'tickWarBodies'), fl = fnBody(CV, '_t681Flush');
+  ok(/if \(body\.phase === 'return'\) \{ if \(T790_NO_SNAP && T681_ON && body\._t681 && !_t681Take\(body\)\) continue; _warPaceReturn\(body, now, dtMs\); continue; \}/.test(tk)
+    && /if \(T790_NO_SNAP && state\.warBodies\) for \(const body of state\.warBodies\.values\(\)\) \{/.test(fl) && fl.indexOf('_warPaceReturn(body, now, dtMs);') > fl.indexOf('T790_NO_SNAP && state.warBodies')
+    && /body\._t681q\.left--;\s*_warPaceReturn\(body, now, dtMs\);/.test(fl),
+    'ⓕ 정적 — 켬이면 귀환 몸도 틱에서 그날 몫(`_t681Take`)만큼만 걷고 · 남은 몫은 하루 마감 첫 자리(`_t681Flush`)가 채운다 · 끔 = 두 자리 다 종전 글자(틱마다 · 마감 고리 무동작)');
+  const blk = fl.slice(fl.indexOf('T790_NO_SNAP && state.warBodies'));
+  ok(!/[^\w.'D](?:[2-9]|\d{2,})(?:\.\d+)?(?![\w'])/.test(blk) && !/Math\.random/.test(blk), 'ⓕ 정적 — 새 수 0(몫 = 종전 `_t681Quota` · 시간 예산은 종전 마감 예산 그대로 — 끊겨도 몫이 남아 다음 조각에 잇는다)');
+}
+const child832 = (knob) => {
+  const env = Object.assign({}, process.env); if (knob) env.T790_NO_SNAP = '1'; else delete env.T790_NO_SNAP;
+  const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}),WLM=require(${JSON.stringify(path.join(ROOT, 'server', 'war-live.js'))});`
+    + `const players=new Map(),live=WLM.createWarLive({cellPx:32,pxPerM:32,tickHz:30});let calls=0;const sf=live._muStepFollow;live._muStepFollow=function(){calls++;return sf.apply(this,arguments);};`
+    + `const H=V.__p3Bind({warLive:live,world:{day:12},dayMs:10000,deps:{players,moveSpeed:64,npcs:new Set(),broadcast(){}},_warStat:{standoff:0},war:{WARS:[]}});`
+    + `const run=(nTick,flush,cut)=>{players.clear();const p={pid:'s1',x:1000*32,y:1000*32,_muType:'champion'};players.set('s1',p);const atk={name:'A',ccx:900,ccy:1000,dbId:1},def={name:'B',ccx:1100,ccy:1000,dbId:2};`
+    + `const body={w:{id:6,atk,def,marchDays:1,phase:'return'},pts:[{x:900*32,y:1000*32},{x:1100*32,y:1000*32}],prog:0};H.state.warBodies=new Map([[6,body]]);H._warSetupReturn(body,['s1'],false);calls=0;`
+    + `for(let i=0;i<nTick;i++)H.tickWarBodies(1000+i*33);let fr=0;if(flush){const dn=Date.now;let t=dn();if(cut)Date.now=()=>(t+=1000);try{while(H._t681Flush()==='retry'&&fr<1000)fr++;}finally{Date.now=dn;}}`
+    + `return{x:p.x/32,y:p.y/32,calls,fr,left:body._t681q?body._t681q.left:null,walk:body.retGroup&&body.retGroup._t790Walk!=null?body.retGroup._t790Walk:null};};`
+    + `const out={q:Math.round(10000*30/1000),a:run(10,true),b:run(200,true),c:run(0,true),e:run(400,true),r:run(10,true,true),d10:run(10,false),d200:run(200,false)};process.stdout.write(JSON.stringify(out));`;
+  const o = execFileSync(process.execPath, ['-e', js], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+  return JSON.parse(o.slice(o.indexOf('{')));
+};
+{
+  const on = child832(true), off = child832(false), Q = on.q;
+  ok(on.a.calls === Q && on.b.calls === Q && on.c.calls === Q && on.e.calls === Q && on.a.left === 0,
+    'ⓕ 켬 — 그날 걸음 수 = 하루 몫: 틱 10 · 200 · 0 · 400 번 뒤 마감 첫 자리까지 귀환 걸음이 늘 같다(틱이 몫을 넘으면 선다 · 모자라면 마감이 채운다)', `몫 ${Q} · 걸음 ${on.a.calls} · ${on.b.calls} · ${on.c.calls} · ${on.e.calls}`);
+  ok(on.a.x === on.b.x && on.b.x === on.c.x && on.c.x === on.e.x && on.a.y === on.b.y && Math.abs(on.a.x - (1000 + Q * WALK)) < 1e-6,
+    'ⓕ ★켬 — 결정론: 틱 수(벽시계 · 부하)가 달라도 그날 끝 귀환 몸 자리가 비트까지 같다 = 결판 자리 + 몫 × 몸 걸음', `x ${on.a.x.toFixed(4)} · ${on.b.x.toFixed(4)} · ${on.c.x.toFixed(4)} · ${on.e.x.toFixed(4)}`);
+  ok(on.r.fr === Q - 10 && on.r.calls === Q && on.r.left === 0 && on.r.x === on.a.x && on.r.y === on.a.y,
+    'ⓕ ★켬 — 마감 시간 예산이 걸음마다 끊어도(조각마다 한 걸음 뒤 \'retry\' · 다음 조각이 잇는다) 그날 걸음 수 · 몸 자리가 같다 — 남은 몫은 몸에 남는다', `틱 10 · 끊김 ${on.r.fr} · 걸음 ${on.r.calls} · x ${on.r.x.toFixed(4)}`);
+  ok(on.d10.x !== on.d200.x && on.d10.calls === 10 && on.d200.calls === 200,
+    'ⓕ [자명 통과 금지] 마감 채우기를 빼면(틱만) 틱 수가 몸 자리를 가른다 — 종전(틱마다 걷기)이 갈린 그 꼴', `틱만 10 → x ${on.d10.x.toFixed(4)} · 200 → x ${on.d200.x.toFixed(4)}`);
+  ok(off.a.calls === 10 && off.b.calls === 200 && off.c.calls === 0 && off.a.walk === null && off.a.x === 1100 && off.b.x === 1100,
+    'ⓕ 끔 — 종전 글자: 귀환은 틱마다(마감 고리 무동작 · 몫 안 씀) · 칸 없음 = 지휘 몸이 길 머리에 놓인다', `틱 10 · 200 · 0 → 걸음 ${off.a.calls} · ${off.b.calls} · ${off.c.calls}`);
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
 process.exit(fail ? 1 : 0);
