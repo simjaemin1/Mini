@@ -29,7 +29,7 @@
 // ★★[T413 2026-09-26 · ⓛ 간헐 빨강의 뿌리 = 자] 한 절
 //   ⓤ 태어나는 자리의 씨 = 판의 날(벽시계를 밀어도 같은 판) · 전멸 판도 끝을 읽는다 · 미끼 셋(날·옛 규칙·자르기)
 //
-// ★★[T423 2026-09-26 · 군량 = 행위 ⓐ · PM #68] 한 절(손잡이 `T423_RATION_ACT` · 기본 끔)
+// ★★[T423 2026-09-26 · 군량 = 행위 ⓐ · PM #68] 한 절(손잡이 `T423_RATION_ACT` · ★[T861] 기본 켬 — 끈 판은 명시 `=0`)
 //   ⓥ 싣기 = 짐 합 · 하루 경계에 몸이 먹는다(병력 × 하루치) · 거울 = 장부 · 항등(곳간에서 나간 = 먹음 + 내려놓음 + 드랍)
 //     · 결판 무변 · 이중 0(원정군은 마을 식사 명부에서 빠진다) · 되돌림(몸 없으면 장부) · 사기 곡선 · 정적
 //
@@ -1030,7 +1030,7 @@ function armsPart() {
 // ════════════════════════════════════════════════════════════════════════════
 function rationActPart() {
   const prevK = process.env.T423_RATION_ACT;
-  const setK = (on) => { if (on) process.env.T423_RATION_ACT = '1'; else delete process.env.T423_RATION_ACT; };
+  const setK = (on) => { process.env.T423_RATION_ACT = on ? '1' : '0'; };   // ★[T861] 켬 기본 — 끈 판은 명시 `=0`
   const run = (on, o) => { setK(on); try { return runScenario(o); } finally { setK(false); } };
   const near = (a, b, eps) => Math.abs(a - b) <= (eps || 1e-6);
   const ident = (r) => r.book ? (r.book.ledgerEaten + r.book.eaten + r.book.back + r.book.drop + (r.bagLeft || 0)) : NaN;
@@ -1044,6 +1044,9 @@ function rationActPart() {
   const sOff = run(false, S), sOn = run(true, S), aOff = run(false, A), aOn = run(true, A), hOff = run(false, H), hOn = run(true, H);
   ok(!sOff.book && !sOff.onBodies && sOn.onBodies > 0 && sOn.book && near(sOn.book.split, sOn.book.load),
     'ⓥ ★대조 — 끔이면 몸에 안 싣는다 · 켬이면 팩 전부가 몸의 짐(싣기 = 짐 합)', sOn.book ? `짐꾼 ${sOn.onBodies} · 적재 ${sOn.book.load} = 몸에 ${sOn.book.split}` : '짐 없음');
+  const sDef = (() => { delete process.env.T423_RATION_ACT; try { return runScenario(S); } finally { setK(false); } })();   // ★[T861] 켬 기본 — env 없음 판
+  ok(sDef.book && sOn.book && JSON.stringify(sDef.book) === JSON.stringify(sOn.book) && sig(sDef) === sig(sOn) && sDef.onBodies === sOn.onBodies,
+    'ⓥ ★[T861] 켬 기본 — env 없음 = `1`(같은 씨 · 짐 장부 · 끝 · 해시 한 글자 같다) · 끈 판은 명시 `=0`', `짐꾼 ${sDef.onBodies} · 적재 ${sDef.book ? sDef.book.load : '-'}`);
   const perDay = 12 * WarCore.WAR_RATION;   // 픽스처 병력 12
   ok(sOn.book && sOn.book.days.length >= 2 && sOn.book.days.every(d => near(d.eaten, perDay)),
     'ⓥ 하루 경계마다 몸이 먹는다 — 짐꾼 합 = 병력 × 하루치(몸당 = 병력 ÷ 짐꾼)', sOn.book ? sOn.book.days.map(d => `${d.day}:${d.eaten}(${d.bearers}몸)`).join(' · ') : '');
@@ -1090,7 +1093,7 @@ function rationActPart() {
 // ════════════════════════════════════════════════════════════════════════════
 function berryArrowPart() {
   const keep = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT'].map(k => [k, process.env[k]]);
-  const env = (a, b, c) => { const set = (k, v) => { if (v) process.env[k] = '1'; else delete process.env[k]; }; set('T423_RATION_ACT', a); set('T441_FORAGE_MARCH', b); set('T347_FORAGE_ACT', c); };
+  const env = (a, b, c) => { const set = (k, v) => { if (v) process.env[k] = '1'; else if (k === 'T423_RATION_ACT') process.env[k] = '0'; else delete process.env[k]; }; set('T423_RATION_ACT', a); set('T441_FORAGE_MARCH', b); set('T347_FORAGE_ACT', c); };
   const run = (a, b, c, o) => { env(a, b, c); groveReset(); try { return runScenario(o); } finally { env(0, 0, 0); } };
   const HV = SimVillages.__p3Bind({});
   const KC = R('server/kcal.js'), SP = R('server/spoil.js');
@@ -1166,7 +1169,7 @@ function berryArrowPart() {
 function lootActPart() {
   const KEYS = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT', 'T466_LOOT_ACT'];
   const keep = KEYS.map(k => [k, process.env[k]]);
-  const env = (v) => { KEYS.forEach((k, i) => { if (v[i]) process.env[k] = '1'; else delete process.env[k]; }); };
+  const env = (v) => { KEYS.forEach((k, i) => { if (v[i]) process.env[k] = '1'; else if (k === 'T423_RATION_ACT') process.env[k] = '0'; else delete process.env[k]; }); };
   const run = (v, o) => { env(v); groveReset(); try { return runScenario(o); } finally { env([0, 0, 0, 0]); } };
   const sig = (r) => JSON.stringify({ e: r.ended, h: r.posHash, s: r.stat, ph: r.phase, c: r.counts });
   const bkNo = (r) => { const b = Object.assign({}, r.book || {}); for (const k of Object.keys(b)) if (/^loot|^home|^fgLoot/.test(k)) delete b[k]; return JSON.stringify(b); };
@@ -1230,7 +1233,7 @@ function lootActPart() {
 function punitivePart() {
   const KEYS = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT', 'T466_LOOT_ACT', 'T476_PUNITIVE'];
   const keep = KEYS.map(k => [k, process.env[k]]);
-  const env = (v) => { KEYS.forEach((k, i) => { if (v[i]) process.env[k] = '1'; else delete process.env[k]; }); };
+  const env = (v) => { KEYS.forEach((k, i) => { if (v[i]) process.env[k] = '1'; else if (k === 'T423_RATION_ACT') process.env[k] = '0'; else delete process.env[k]; }); };
   const run = (v, o) => { env(v); groveReset(); try { return runScenario(o); } finally { env([0, 0, 0, 0, 0]); } };
   const n3 = (a, b) => Math.abs((a || 0) - (b || 0)) <= 1e-6;
   const O = (den, x) => Object.assign({ seed: 11, viewer: true, untilHome: true, econFood: true, maxTicks: 30 * 60 * 20, den }, x || {});
@@ -1275,7 +1278,7 @@ function punitivePart() {
 function oddsRealPart() {
   const KEYS = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT', 'T466_LOOT_ACT', 'T476_PUNITIVE', 'T502_ODDS_REAL'];
   const keep = KEYS.map(k => [k, process.env[k]]);
-  const env = (v) => { KEYS.forEach((k, i) => { if (v[i]) process.env[k] = '1'; else delete process.env[k]; }); };
+  const env = (v) => { KEYS.forEach((k, i) => { if (v[i]) process.env[k] = '1'; else if (k === 'T423_RATION_ACT') process.env[k] = '0'; else delete process.env[k]; }); };
   const run = (v, o) => { env(v); groveReset(); try { return runScenario(o); } finally { env([0, 0, 0, 0, 0, 0]); } };
   const O = (den) => ({ seed: 11, viewer: true, untilHome: true, econFood: true, maxTicks: 30 * 60 * 20, den });
   say("\n[ⓩ'] 토벌 승산 해부 — 어느 항이 갱을 부풀리나 · 팔 `T502_ODDS_REAL`(갱 = 몸 n · 직업 bandit · 무기 0 · 비축)");
@@ -1317,7 +1320,7 @@ function oddsRealPart() {
 function gangArmsPart() {
   const KEYS = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT', 'T466_LOOT_ACT', 'T476_PUNITIVE', 'T502_ODDS_REAL', 'T521_GANG_ARMS'];
   const keep = KEYS.map(k => [k, process.env[k]]);
-  const env = (v) => { KEYS.forEach((k, i) => { if (v[i]) process.env[k] = '1'; else delete process.env[k]; }); };
+  const env = (v) => { KEYS.forEach((k, i) => { if (v[i]) process.env[k] = '1'; else if (k === 'T423_RATION_ACT') process.env[k] = '0'; else delete process.env[k]; }); };
   const run = (v, o) => { env(v); groveReset(); try { return runScenario(o); } finally { env([0, 0, 0, 0, 0, 0, 0]); } };
   const O = (den) => ({ seed: 11, viewer: true, untilHome: true, econFood: true, maxTicks: 30 * 60 * 20, den });
   const B = R('server/bandits.js');
@@ -1438,7 +1441,7 @@ function marchStallPart() {
 function n3x(a, b) { return Math.abs((a || 0) - (b || 0)) <= 1e-6; }
 function forageMarchPart() {
   const keep = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT'].map(k => [k, process.env[k]]);
-  const env = (a, b, c) => { const set = (k, v) => { if (v) process.env[k] = '1'; else delete process.env[k]; }; set('T423_RATION_ACT', a); set('T441_FORAGE_MARCH', b); set('T347_FORAGE_ACT', c); };
+  const env = (a, b, c) => { const set = (k, v) => { if (v) process.env[k] = '1'; else if (k === 'T423_RATION_ACT') process.env[k] = '0'; else delete process.env[k]; }; set('T423_RATION_ACT', a); set('T441_FORAGE_MARCH', b); set('T347_FORAGE_ACT', c); };
   const run = (a, b, c, o, noReset) => { env(a, b, c); if (!noReset) groveReset(); try { return runScenario(o); } finally { env(0, 0, 0); } };
   //   ★[T458] 결판 서명에서 날마다 거울(`_packRem`)을 뺐다 — 덤불 열매가 이제 식량(berry = fruit)이라 딴 날부터 거울이 **올라간다**(그게 발견).
   //     결판(끝·해시·전이·정산·명부)은 그대로 한 글자 같아야 한다 · 거울은 아래 ⓧ 가 따로 잰다.

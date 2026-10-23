@@ -15,6 +15,9 @@
 //     ③ **행 폴백 픽스처** — 페이로드에 몸을 일부러 안 실어(`E2E_HANDOFF_NO_BODY=1`) central 행
 //        경로를 실제로 밟는다. 밟아 보지 않은 폴백은 "있다고 적혀만 있는 코드"다.
 //     ④ 재접속 후에도 같다 — 도착 존이 빈 몸으로 계정을 덮지 않는다(N.6 의 '영구 소실' 부분)
+//   ★[T868 2026-10-22] 승격 경로(`promote_to_primary` — 실제 클라의 보통 넘기)도 **몸 전부**를 잇는다(손잡이 `T868_PROMOTE_BODY` · '1' 만 켬) —
+//     ① 글자: 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody`)를 부르나 + 미끼(몸 잇는 줄 없는 승격 갈래 = 스칼라만 쓰는 사본)가 문다 ·
+//     ⑦ P 켬 = 승격으로 넘은 몸 · 클라 끊긴 판 행 · 다시 접속이 넘기 전과 비트 같다 · Q 끔 = 도구 2 → 0 → 행 0(종전 결함 증인).
 //   ★[T778 2026-10-18] 순간 로트 켬 기본 — 로트의 정산 칸 `e·t` 는 흐른 시간만큼 자라므로 ⓑ(이어졌나)로 옮겼다 ·
 //     `d·k·n·m·w` 는 ⓐ(비트 동일) 그대로 · 끔 탐침(`T732_MOMENT_LOT=0`) 한 판이 로트 통째 비트 동일(종전 단언)을 잰다.
 //   ★[T823 → T831 2026-10-21] 떠난 몸 껍데기 얼림 **켬 기본**(되돌림 `T823_FREEZE_SHELL=0` — 끔 탐침 E · G) · ⑤ 닫힐 때 저장 자리 경합 —
@@ -311,6 +314,55 @@ async function roundTrip(tag, opt) {   // ★[T823] opt.probe = 넘긴 뒤 떠�
   return { crossed: true, before, beforeCross, after, again, welcomeTools: b.tools, SET_HP, SET_COLD, crossMs: tA - tX, hpW, probe };
 }
 
+// ★★[T868 2026-10-22] 승격 경로 한 판 — 실제 클라의 보통 넘기(`30-n-net.js` "promote existing observer ws"): 넘기 전에 도착 존 **관측 소켓**을
+//   미리 열고 넘기 메시지의 토큰으로 그 소켓을 `promote_to_primary` 로 올린다. 몸의 칸마다 빈 칸이 아닌 값을 앉힌다(도구 둘 · 장비 둘(지게 · 옷 —
+//   입는다 → 슬롯 둘) · kg 원장 · 소속 · 숙련 · 제작이력 · 원석장부 · 이월 · 어획 — `__e2e_give` · `__e2e_body`) — 빈 칸끼리 같음은 자명 통과다.
+//   읽음: 출발 몸 · 넘는 순간 껍데기 · 승격 welcome(받은 HP · 도구) · 도착 몸 · 클라가 승격 소켓을 닫은 뒤 central 행의 몸(도착 존 닫힐 때 저장) · 다시 접속한 몸.
+function openObs(url, onMsg) {
+  return new Promise((res, rej) => {
+    const ws = new WebSocket(url); const st = { ws };
+    ws.on('error', rej); ws.on('open', () => res(st));
+    ws.on('message', (raw) => { let m; try { m = JSON.parse(raw); } catch (e) { return; } if (onMsg) onMsg(m, st); });
+  });
+}
+const LEDGER_FIX = { craftSkill: { toolmaking: 7, mining: 3 }, craftLog: { carrier: { n: 1, q: 5 } }, oreLedger: { iron: 1.25 }, oreCarry: { iron: 0.05 }, fishStats: { caught: 4, maxKg: 2.0, lostMaxKg: 1.5 } };
+async function promoteTrip(tag) {
+  const Z = (await jget(`http://localhost:${CPORT}/zones`)).zones;
+  const han = Z.hanbando, nip = Z.nippon;
+  const NAME = 'bodyP' + tag;   // ⚠게스트 이름은 URL `name=` 을 안 읽는다(roundTrip 주석) — 몸은 존마다 이 하네스의 사람 하나라 이름 없이 집는다
+  let handoffMsg = null, promoted = null;
+  const a = await open(`${han.wsUrl}/?username=&name=${NAME}&color=%23ffffff`, (m) => { if (m.type === 'handoff') handoffMsg = m; });
+  const guestToken = a.welcome.guestToken, pid = a.welcome.playerId;
+  a.ws.send(JSON.stringify({ type: '__e2e_give', items: { pillar: 3, thatch: 7 }, tools: ['axe', 'pickaxe'], kgs: { fish: [2.0, 0.4, 1.1] },
+                             equip: [{ type: 'carrier', lvl: 5 }, { type: 'clothes', lvl: 3 }], quiet: true }));
+  a.ws.send(JSON.stringify(Object.assign({ type: '__e2e_body', member: MEMBER_FIX, quiet: true }, LEDGER_FIX)));
+  await sleep(900);
+  const before = pick0(await jget(`http://localhost:${HPORT}/bodydbg`));
+  const o = await openObs(`${nip.wsUrl}/?observer=1&vx=200&vy=${nip.zoneHeight / 2 | 0}`, (m) => { if (m.type === 'welcome' && m.promoted && !promoted) promoted = m; });
+  const SET_HP = 42, SET_COLD = 0.8;   // 넘는 순간 생명값 · 추위를 알고 있어야 이어졌나를 잰다(roundTrip 과 같은 뜻)
+  const poke = setInterval(() => { try { a.ws.send(JSON.stringify({ type: '__e2e_body', hp: SET_HP, cold: SET_COLD, quiet: true })); } catch (e) {} }, 400);
+  await crossEast(a, han, () => !!handoffMsg);
+  clearInterval(poke);
+  if (!handoffMsg) { try { a.ws.close(); o.ws.close(); } catch (e) {} return { crossed: false }; }
+  const beforeCross = pick0(await jget(`http://localhost:${HPORT}/bodydbg`));   // 넘는 순간 껍데기(켬 기본 — 언다)
+  o.ws.send(JSON.stringify({ type: 'promote_to_primary', token: handoffMsg.token }));
+  for (let i = 0; i < 60 && !promoted; i++) await sleep(50);
+  try { a.ws.close(); } catch (e) {}   // 클라는 옛 주 소켓을 관측으로 내린다 — 이 판은 닫는다(출발 존 껍데기는 ACK 가 이미 내렸다)
+  await sleep(900);
+  const after = pick0(await jget(`http://localhost:${NPORT}/bodydbg`));
+  await sleep(1500);
+  try { o.ws.close(); } catch (e) {}   // 클라 끊김 — 도착 존의 닫힐 때 저장이 이 몸을 central 행에 쓴다(그 행이 다음 접속의 몸이다)
+  await sleep(1200);
+  const row = await rowOf(pid);
+  let rowBody = null; try { rowBody = JSON.parse((row && row.tools_json) || 'null'); } catch (e) {}
+  const c = await open(`${han.wsUrl}/?username=&name=${NAME}&color=%23ffffff${guestToken ? '&guest_token=' + encodeURIComponent(guestToken) : ''}`);
+  await sleep(900);
+  const again = pick0(await jget(`http://localhost:${HPORT}/bodydbg`));
+  try { c.ws.close(); } catch (e) {}
+  return { crossed: true, promoted: !!promoted, before, beforeCross, after, rowBody, again, SET_COLD,
+           hpW: ((promoted || {}).self || {}).hp, welcomeTools: (promoted || {}).toolItems || [] };
+}
+
 (async () => {
   console.log('\n=== 존 핸드오프 — 몸이 새지 않는다 (2존 실서버) ===');
 
@@ -320,6 +372,20 @@ async function roundTrip(tag, opt) {   // ★[T823] opt.probe = 넘긴 뒤 떠�
   ok(/body: E2E_HANDOFF_NO_BODY \? undefined : serializeBody\(player\)/.test(src), '① 핸드오프 페이로드가 **같은 함수**를 쓴다');
   ok((src.match(/parseBody\(/g) || []).length >= 3, '① 복원이 `parseBody` 한 곳에서 온다(정의 + 접속 + 핸드오프)', `${(src.match(/parseBody\(/g) || []).length}회`);
   ok(!/tools_json: JSON\.stringify\(\{/.test(src), '① 저장 경로에 **손으로 쓴 두 번째 직렬화가 없다**');
+  // ★★[T868] 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody` — 출처 순서 페이로드 → central 행 · 복원 `parseBody`)를 부르나.
+  //   승격 갈래 글자를 떼어 본다. 미끼 = 같은 갈래에서 몸 잇는 두 줄만 뺀 사본(스칼라만 쓰는 승격 — main 의 그 꼴) — 그 사본에 검사가 물어야 검사가 뜻이 있다.
+  const cutSrc = (s, a, b) => { const i = s.indexOf(a); if (i < 0) return ''; const j = s.indexOf(b, i + a.length); return s.slice(i, j > i ? j : s.length); };
+  const promoteOf = (s) => cutSrc(s, "msg.type === 'promote_to_primary' && msg.token && pendingHandoffs.has(msg.token)", '\nfunction attachObserverHandlers');
+  const tokenOf = (s) => cutSrc(s, 'if (handoffToken && pendingHandoffs.has(handoffToken)) {', '// source zone에 ACK 전송');
+  const sameBody = (s) => /_handoffBody\(pending, pending\.player_id\)/.test(promoteOf(s)) && /_t868BodyInto\(player, _t868hb\.B\)/.test(promoteOf(s))
+    && /_handoffBody\(pending, playerId\)/.test(tokenOf(s)) && !/parseBody\(/.test(tokenOf(s))
+    && /function _handoffBody\(pending, playerId\) \{\s*const done = \(raw, src\) => \(\{ B: parseBody\(raw \|\| \{\}, \{ vitals: true \}\), src \}\);\s*if \(pending\.body\) return done\(pending\.body, 'payload'\);\s*return central\.getPlayer\(playerId\)/.test(s);
+  ok(sameBody(src) && (src.match(/process\.env\.T868_PROMOTE_BODY/g) || []).length === 1 && /const T868_PROMOTE_BODY = process\.env\.T868_PROMOTE_BODY !== '0';/.test(src),
+    '① ★★[T868] 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody` — 페이로드 → central 행 · `parseBody`)를 부른다 · 손잡이 한 자리(`!== \'0\'` · 켬 기본)');
+  const decoyPromote = promoteOf(src).replace(/_handoffBody\(pending, pending\.player_id\)/g, 'null').replace(/^.*_t868BodyInto\(player, _t868hb\.B\).*$/m, '');
+  const decoySrc = src.replace(promoteOf(src), decoyPromote);
+  ok(promoteOf(src).length > 2000 && decoySrc !== src && !sameBody(decoySrc) && /equipment: \[\], equipSlots: \{\}, craftSkill: \{\}/.test(decoyPromote),
+    '① ★[T868] 미끼 — 몸 잇는 두 줄을 뺀 승격 갈래(스칼라만 쓰는 사본 · main 의 그 꼴)에는 위 검사가 문다(자명 통과 0)', `승격 갈래 ${promoteOf(src).length}자`);
   // ★[T802] ② HP 기준점(`beforeCross` = 떠난 존의 껍데기)이 **찍힌 값**이려면 걷는 내내 hp 를 세우는 픽스처(`poke`)가 찍은 뒤 껍데기에 쓰면 안 된다.
   //   종전엔 썼다 — 400 ms 마다 오는 한 번이 찍은 뒤 닿으면 껍데기만 42 로 내려가 기준이 찍힌 값보다 3~4 낮았다(T802 · 단독 세 판 빨강).
   //   이 하네스가 그 문을 같이 지킨다(문이 풀리면 ② 가 다시 위상에 따라 깜빡인다).
@@ -482,6 +548,44 @@ async function roundTrip(tag, opt) {   // ★[T823] opt.probe = 넘긴 뒤 떠�
     const hp0 = E.probe.s0.vital.hp, hp1 = E.probe.s1.vital.hp, f0 = fishN(E.probe.s0), f1 = fishN(E.probe.s1);
     ok(hp1 > hp0 && f1 === f0 - 1, '★[T823 끔 탐침] 같은 탐침이 껍데기를 바꾼다 — 넘긴 뒤에도 아물고(HP ↑) · 내려놓기가 껍데기에 닿는다(생선 −1 · 도착 몸엔 그대로 — 종전 그대로의 구멍)',
       `HP ${hp0} → ${hp1} · 생선 ${f0} → ${f1} · 도착 ${fishN(E.after)}`);
+  }
+  killAll(); await sleep(4000);
+
+  // ★★[T868] ⑦ 승격 경로가 몸 전부를 잇는다(위 `promoteTrip`) — P = 켬(`T868_PROMOTE_BODY=1`) · Q = 끔(기본 — 종전 결함 증인 · 켬 판의 "같다"가 자명하지 않다는 증인)
+  if (!await startZones(null, { T868_PROMOTE_BODY: '1' })) { console.log('  ✗ T868 켬 기동 실패'); process.exit(1); }
+  const P = await promoteTrip('P');
+  ok(P.crossed && P.promoted, '★[상황 · T868 켬] 관측 소켓을 승격해 넘었다(넘기 메시지 · 승격 welcome)', P.crossed ? `승격 welcome ${P.promoted}` : '넘지 못함');
+  if (P.crossed && P.promoted) {
+    const b0 = P.before || {};
+    ok((b0.toolItems || []).length === 2 && (b0.equipment || []).length === 2 && Object.keys(b0.equipSlots || {}).length >= 2
+      && Object.keys(b0.craftSkill || {}).length === 2 && Object.keys(b0.oreLedger || {}).length === 1 && !!b0.fishStats && fishN(b0) === 3
+      && !!(b0.member && b0.member.vid === MEMBER_FIX.vid),
+      '★[상황 · T868] 출발 몸의 칸마다 빈 칸이 아닌 값이 앉았다(도구 2 · 장비 2 · 슬롯 · 숙련 · 원석장부 · 어획 · kg 원장 3 · 소속) — 빈 칸끼리 같음은 자명 통과',
+      `도구 ${(b0.toolItems || []).length} · 장비 ${(b0.equipment || []).length} · 슬롯 ${JSON.stringify(Object.keys(b0.equipSlots || {}))} · 숙련 ${JSON.stringify(b0.craftSkill)}`);
+    const dEqP = durableKey(P.after) === durableKey(P.before);
+    ok(dEqP, '★★[T868 켬] 승격으로 넘은 몸의 내구 부분이 비트 같다 — 도구 · 장비 · 슬롯 · 숙련 · 제작이력 · 원석장부 · 이월 · 어획 · kg 원장 · 로트(`d·k·n·m·w`) · 소속',
+      dEqP ? '' : `\n      출발 ${durableKey(P.before)}\n      도착 ${durableKey(P.after)}`);
+    ok((P.welcomeTools || []).length === 2, '★[T868 켬] 승격 welcome 도 도구를 싣는다(화면이 아는가)', `${(P.welcomeTools || []).length}개`);
+    ok((softOf(P.beforeCross) || {}).cold >= P.SET_COLD - 0.05 && softNear(softOf(P.after), softOf(P.beforeCross), 0.15),
+      '★[T868 켬] 신체(추위 · 피로 · 부상)가 이어진다(넘는 순간 추위를 세워 뒀다 · 0 으로 안 튄다)', `${JSON.stringify(softOf(P.beforeCross))} → ${JSON.stringify(softOf(P.after))}`);
+    const hpXP = ((P.beforeCross || {}).vital || {}).hp;
+    ok(hpXP < 90 && P.hpW === hpXP, '★[T868 켬] 받은 HP = 넘는 순간 껍데기 HP(최대로 안 튄다 · 깎인 채 이어진다)', `받은 ${P.hpW} · 넘는 순간 ${hpXP}`);
+    const fPP = lotsFlow(P.before, P.after);
+    ok(fPP.n > 0 && !fPP.bad.length, '★[T868 켬] 로트 정산 칸(`e·t`)도 이어진다(흐른 시간만큼만)', `${fPP.n}개 · Δe 최대 ${fPP.deMax.toFixed(6)}${fPP.bad.length ? ' · ' + fPP.bad.join(' | ') : ''}`);
+    const rEqP = durableKey(P.rowBody) === durableKey(P.before);
+    ok(rEqP, '★★[T868 켬] 클라가 끊긴 판 — 도착 존이 닫힐 때 쓴 central 행의 몸이 넘기 전과 비트 같다(도구 그대로 · 영구 소실 0)',
+      rEqP ? `행 도구 ${((P.rowBody || {}).toolItems || []).length}` : `\n      출발 ${durableKey(P.before)}\n      행   ${durableKey(P.rowBody)}`);
+    ok(durableKey(P.again) === durableKey(P.before), '★[T868 켬] 다시 접속한 몸도 넘기 전과 같다', `도구 ${((P.again || {}).toolItems || []).length}`);
+  }
+  killAll(); await sleep(4000);
+  if (!await startZones(null, { T868_PROMOTE_BODY: '0' })) { console.log('  ✗ T868 끔 탐침 기동 실패'); process.exit(1); }   // [PM 착지 10-23] 켬 기본 — 끔 탐침은 `=0`
+  const Q = await promoteTrip('Q');
+  ok(Q.crossed && Q.promoted, '[상황 · T868 끔 탐침] 관측 소켓을 승격해 넘었다', Q.crossed ? `승격 welcome ${Q.promoted}` : '넘지 못함');
+  if (Q.crossed && Q.promoted) {
+    const nT = (b) => ((b || {}).toolItems || []).length;
+    ok(nT(Q.before) === 2 && nT(Q.after) === 0 && nT(Q.rowBody) === 0 && durableKey(Q.after) !== durableKey(Q.before),
+      '★[T868 끔 탐침] 끔이면 승격 몸이 비고 클라가 끊긴 판 행도 비어 영구 소실이다(도구 2 → 0 → 행 0 — 종전 그대로의 결함 · 켬 P 의 "같다"가 자명하지 않다는 증인)',
+      `도구 ${nT(Q.before)} → ${nT(Q.after)} → 행 ${nT(Q.rowBody)} · 받은 HP ${Q.hpW}`);
   }
   killAll(); await sleep(4000);
 

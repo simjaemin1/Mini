@@ -10,7 +10,8 @@
 //   몸(정보): 넘기 전 출발 존 몸 `toolItems` 수 · 승격 뒤 도착 존 살아 있는 몸 `toolItems` 수 · hp.
 //   손잡이: 두 존 모두 `T498_HANDOFF_PAYLOAD`(인자 `--t498 0|1` · 기본 1 — 카드의 조건) · 도착 존 `T866_PROMOTE_SAVE`(인자 `--knob 0|1`).
 //   도착 존 주기 저장은 10분(`SAVE_INTERVAL_MS` — 이미 있는 손잡이) — 0~30초 창을 판 안에서 열어 둔다(창 안의 일을 재는 것 · 창 길이는 재지 않는다).
-// 실행: node scripts/t866-promote-probe.js [--knob 0|1] [--t498 0|1] [--runs N] [--kills M]
+//   ★[T869] `--path token` — 관측 소켓 없이 넘기 토큰으로 새 소켓을 연다(일반 넘기 · 토큰 경로 · `?handoff_token=`) — 같은 읽음 셋으로 두 경로를 한 표에 놓는다(T866 손잡이 켬 · 끔 × 승격 · 토큰).
+// 실행: node scripts/t866-promote-probe.js [--knob 0|1] [--t498 0|1] [--runs N] [--kills M] [--path promote|token]
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -22,7 +23,7 @@ const CPORT = 3010, HPORT = 3020, NPORT = 3021;
 const EDGE_PAD = 400, LAT_STEP = 2048;
 const DDIR = '/tmp/t866-2zone';
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
-const KNOB = arg('--knob', '0'), T498 = arg('--t498', '1'), RUNS = +arg('--runs', '10'), KILLS = +arg('--kills', '3');
+const KNOB = arg('--knob', '0'), T498 = arg('--t498', '1'), RUNS = +arg('--runs', '10'), KILLS = +arg('--kills', '3'), PATH_ = arg('--path', 'promote');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const jget = async (u) => (await (await fetch(u, { signal: AbortSignal.timeout(5000) })).json());
 const procs = {};
@@ -72,7 +73,7 @@ async function one(tag, kill) {
   const before = pick0(await jget(`http://localhost:${HPORT}/bodydbg?name=${encodeURIComponent(NAME)}`));
   // 관측 소켓 — 도착 존 서쪽 끝을 본다(클라가 이웃 존을 미리 보는 그 꼴)
   let promoted = null;
-  const o = await openWs(`${nip.wsUrl}/?observer=1&vx=200&vy=${nip.zoneHeight / 2 | 0}`, (m) => { if (m.type === 'welcome' && m.promoted) promoted = m; });
+  let o = PATH_ === 'token' ? null : await openWs(`${nip.wsUrl}/?observer=1&vx=200&vy=${nip.zoneHeight / 2 | 0}`, (m) => { if (m.type === 'welcome' && m.promoted) promoted = m; });
   // 동쪽 끝으로 옮겨 걷는다(test-handoff-body `crossEast` 와 같은 차례)
   const walk = setInterval(() => { try { a.ws.send(JSON.stringify({ type: 'input', vx: 1, vy: 0 })); } catch (e) {} }, 33);
   for (let i = 0; i < 40 && !handoffMsg; i++) {
@@ -80,9 +81,11 @@ async function one(tag, kill) {
     for (let k = 0; k < 160 && !handoffMsg; k++) await sleep(100);
   }
   clearInterval(walk);
-  if (!handoffMsg) { try { a.ws.close(); o.ws.close(); } catch (e) {} return { tag, crossed: false }; }
+  if (!handoffMsg) { try { a.ws.close(); if (o) o.ws.close(); } catch (e) {} return { tag, crossed: false }; }
   const r0 = await rowOf(pid);   // 넘기 메시지 순간의 행(T498 켬 = 넘기기 전 저장을 안 보냈다)
-  o.ws.send(JSON.stringify({ type: 'promote_to_primary', token: handoffMsg.token }));
+  if (PATH_ === 'token') {   // ★[T869] 토큰 경로 — 새 소켓 · welcome 이 오면 붙은 것(일반 넘기)
+    o = await openWs(`${nip.wsUrl}/?handoff_token=${encodeURIComponent(handoffMsg.token)}`, (m) => { if (m.type === 'welcome') promoted = m; });
+  } else o.ws.send(JSON.stringify({ type: 'promote_to_primary', token: handoffMsg.token }));
   const tP = Date.now();
   for (let i = 0; i < 40 && !promoted; i++) await sleep(50);
   try { a.ws.close(); } catch (e) {}   // 클라는 옛 주 소켓을 관측으로 내린다 — 이 판은 닫는다(출발 존 껍데기는 ACK 로 닫힌다)
@@ -105,7 +108,7 @@ async function one(tag, kill) {
 }
 
 (async () => {
-  console.log(`\n=== T866 승격 경로 접속 저장 탐침 — T498_HANDOFF_PAYLOAD=${T498} · T866_PROMOTE_SAVE=${KNOB} · 판 ${RUNS} + 존 죽임 ${KILLS} ===`);
+  console.log(`\n=== T866 승격 경로 접속 저장 탐침 — 경로 ${PATH_} · T498_HANDOFF_PAYLOAD=${T498} · T866_PROMOTE_SAVE=${KNOB} · 판 ${RUNS} + 존 죽임 ${KILLS} ===`);
   if (!(await startAll())) { console.log('기동 실패'); process.exit(1); }
   const out = [];
   for (let i = 0; i < RUNS; i++) { const r = await one(`c${KNOB}${T498}${i}`, false); out.push(Object.assign({ kind: 'C·A' }, r)); console.log('  ' + JSON.stringify(r)); }
@@ -119,6 +122,6 @@ async function one(tag, kill) {
   console.log(`  C(승격 +1.5초) 행 nippon ${[...ca, ...cb].filter((r) => nip(r.rC)).length}/${ca.length + cb.length} · 로비 nippon ${[...ca, ...cb].filter((r) => r.lobbyC === 'nippon').length}`);
   console.log(`  A(클라 끊김 +1.2초) 행 nippon ${ca.filter((r) => nip(r.rX)).length}/${ca.length} · 로비 nippon ${ca.filter((r) => r.lobbyX === 'nippon').length}`);
   console.log(`  B(도착 존 SIGKILL +1.2초) 행 nippon ${cb.filter((r) => nip(r.rX)).length}/${cb.length} · 로비 nippon ${cb.filter((r) => r.lobbyX === 'nippon').length}`);
-  fs.writeFileSync(`/tmp/t866-probe-k${KNOB}-t${T498}.json`, JSON.stringify(out, null, 1));
+  fs.writeFileSync(`/tmp/t866-probe-${PATH_}-k${KNOB}-t${T498}.json`, JSON.stringify(out, null, 1));
   killAll(); process.exit(0);
 })().catch((e) => { console.log('탐침 실패:', e && e.stack); killAll(); process.exit(1); });
