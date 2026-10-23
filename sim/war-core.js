@@ -830,6 +830,7 @@ function createWar(opts) {
   //   (`bodyEat` = `_warFoodTake` — 싣기와 **같은 문** · 섭식 정본 `consumeFood` 가 품목을 고른다 · 사본 0) → `_packRem` 은
   //   짐 합의 **거울**(일수 = 짐 식량등가 ÷ (병력 × WAR_RATION) · 결단 식 무변) → 귀환 몸이 `_warFoodGive` 로 내려놓는다.
   //   몸이 없는 전쟁(pid 0 · `_warNoArmy`)·몸이 아직 안 선 날은 호스트가 null 을 내고 **종전 장부**로 깎는다(되돌림 문).
+  //   ★[T886] 교전 국면(`phase === 'battle'`)에도 짐이 몸에 실렸으면 같은 하루 경계에 먹는다(종전엔 교전 중 정지 — 짐이 그대로 남고 몸은 어디서도 안 먹었다).
   //   ★새 수 0 — 하루치 = `WAR_RATION` · 몸당 몫 = 병력 ÷ 몸 수(유도) · 짐 상한은 싣는 쪽이 표로만 잰다.
   function _packTick(w, day) {
     if (_rationActOn() && typeof opts.rationEat === 'function' && w._packOnBodies) {
@@ -1171,7 +1172,11 @@ function createWar(opts) {
         _opNpcDecide(w, day);                                           // 공격 결단(assault/siege/withdraw)
         if (w.op === 'assault' && w.phase === 'march') _opResolveEngage(w, day, 'assault');
       }
-      else if (w.phase === 'battle') { /* ★[P2 LOD] 실체 전투(server/war-live) 진행 중 — 상태머신이 판정·되먹임(warResolveBattle 3인자)·귀환 전환 담당. daily 관여 안 함(랩 warDaily 정합). */ }
+      else if (w.phase === 'battle') {   /* ★[P2 LOD] 실체 전투(server/war-live) 진행 중 — 상태머신이 판정·되먹임(warResolveBattle 3인자)·귀환 전환 담당. daily 관여 안 함(랩 warDaily 정합). */
+        //   ★[T886] 교전 날에도 짐이 먹는다(T423 ⓐ 남은 칸) — 짐이 몸에 실린 원정만(`_packOnBodies` · 호스트가 몸 수만큼 준다 · 같은 `_packTick` 문).
+        //     장부 원정(몸 없음 · noArmy)과 손잡이 끔은 종전대로 교전 중 시계를 멈춘다.
+        if (_rationActOn() && w._packOnBodies) _packTick(w, day);
+      }
       else {
         // 귀환 중 — 도착까지도 먹는다. 닿으면 ★[T295 ②] **환급 한 곳**(넷 다 이 문을 지난다) + 징발 해제.
         if (day < w.eta) { _packTick(w, day); continue; }
