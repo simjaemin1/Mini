@@ -380,8 +380,8 @@ async function promoteTrip(tag) {
   const sameBody = (s) => /_handoffBody\(pending, pending\.player_id\)/.test(promoteOf(s)) && /_t868BodyInto\(player, _t868hb\.B\)/.test(promoteOf(s))
     && /_handoffBody\(pending, playerId\)/.test(tokenOf(s)) && !/parseBody\(/.test(tokenOf(s))
     && /function _handoffBody\(pending, playerId\) \{\s*const done = \(raw, src\) => \(\{ B: parseBody\(raw \|\| \{\}, \{ vitals: true \}\), src \}\);\s*if \(pending\.body\) return done\(pending\.body, 'payload'\);\s*return central\.getPlayer\(playerId\)/.test(s);
-  ok(sameBody(src) && (src.match(/process\.env\.T868_PROMOTE_BODY/g) || []).length === 1 && /const T868_PROMOTE_BODY = process\.env\.T868_PROMOTE_BODY === '1';/.test(src),
-    '① ★★[T868] 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody` — 페이로드 → central 행 · `parseBody`)를 부른다 · 손잡이 한 자리(`=== \'1\'`)');
+  ok(sameBody(src) && (src.match(/process\.env\.T868_PROMOTE_BODY/g) || []).length === 1 && /const T868_PROMOTE_BODY = process\.env\.T868_PROMOTE_BODY !== '0';/.test(src),
+    '① ★★[T868] 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody` — 페이로드 → central 행 · `parseBody`)를 부른다 · 손잡이 한 자리(`!== \'0\'` · 켬 기본)');
   const decoyPromote = promoteOf(src).replace(/_handoffBody\(pending, pending\.player_id\)/g, 'null').replace(/^.*_t868BodyInto\(player, _t868hb\.B\).*$/m, '');
   const decoySrc = src.replace(promoteOf(src), decoyPromote);
   ok(promoteOf(src).length > 2000 && decoySrc !== src && !sameBody(decoySrc) && /equipment: \[\], equipSlots: \{\}, craftSkill: \{\}/.test(decoyPromote),
@@ -578,7 +578,7 @@ async function promoteTrip(tag) {
     ok(durableKey(P.again) === durableKey(P.before), '★[T868 켬] 다시 접속한 몸도 넘기 전과 같다', `도구 ${((P.again || {}).toolItems || []).length}`);
   }
   killAll(); await sleep(4000);
-  if (!await startZones()) { console.log('  ✗ T868 끔 탐침 기동 실패'); process.exit(1); }
+  if (!await startZones(null, { T868_PROMOTE_BODY: '0' })) { console.log('  ✗ T868 끔 탐침 기동 실패'); process.exit(1); }   // [PM 착지 10-23] 켬 기본 — 끔 탐침은 `=0`
   const Q = await promoteTrip('Q');
   ok(Q.crossed && Q.promoted, '[상황 · T868 끔 탐침] 관측 소켓을 승격해 넘었다', Q.crossed ? `승격 welcome ${Q.promoted}` : '넘지 못함');
   if (Q.crossed && Q.promoted) {

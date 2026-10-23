@@ -5952,7 +5952,7 @@ const T498_HANDOFF_PAYLOAD = process.env.T498_HANDOFF_PAYLOAD === '1';
 //   부르는 그 한 줄(`savePlayer(player, { last_zone: ZONE_ID, last_x, last_y })`)을 승격 갈래에서도 부른다(새 칸 0 · 새 문 0).
 //   종전: 승격은 행을 안 썼다 — 행 자리는 넘기기 전 저장(출발 존 · 도착 존 입구)이 쥐는데, `T498_HANDOFF_PAYLOAD` 켬이면 그 저장을 **ACK 가 안 올 때만** 보내므로
 //   승격 직후 행은 **출발 존 그대로**다 — 도착 존 첫 주기 저장(0~30초 · 움직였거나 몸이 변했을 때)이나 닫힐 때 저장까지. 그 사이 도착 존이 죽으면(충돌 · kill -9) 다시 접속이 출발 존이다(T831 회부 3 · T866 탐침).
-const T866_PROMOTE_SAVE = process.env.T866_PROMOTE_SAVE === '1';
+const T866_PROMOTE_SAVE = process.env.T866_PROMOTE_SAVE !== '0';   // ★[PM 착지 10-23] 켬 기본(T868 켬 위에서 — 승격도 접속 저장) · 되돌림 `=0`
 // ★[T512] 유령 앞으로 밀기 팔 — 받는 존의 화살 판정이 유령을 그 나이만큼 실린 속도로 민다
 // ★★[T518 2026-09-29 · PM 승격] **기본 켬**(되돌림 `T512_GHOST_EXTRAP=0` = T512 전 바이트 동일). 화살의 정본은 **화살이 나는 존**(= 유령을 받는 존)이다 — `stepArrows` ③ 주석.
 //   ★★[T518] 나이를 **남의 시계 없이** 잰다 — T512 판은 보낸 시각 `t`(보낸 존 시계)를 실었는데, 두 호스트 시계가 1초 어긋나면(받는 쪽이 앞)
@@ -5978,7 +5978,7 @@ const T823_FREEZE_SHELL = process.env.T823_FREEZE_SHELL !== '0';
 //   몸(추위 · 피로 · 부상 · 사기)은 비고 HP 는 최대로. 도착 존이 그 몸을 저장하면 central 행이 덮여 **영구 소실**이었다(도구 2 → 0).
 //   켜면 승격 갈래도 토큰 경로와 **같은 몸 한 자리**(`_handoffBody` — 출처 순서: 페이로드 몸 → 없으면 central 행 · 복원 `parseBody`)를 부르고
 //   그 몸을 일반 접속 몸 리터럴과 같은 칸 · 같은 기본값으로 얹는다(`_t868BodyInto`). 끔 = 승격 갈래가 종전 그대로(같은 줄 · 같은 차례).
-const T868_PROMOTE_BODY = process.env.T868_PROMOTE_BODY === '1';
+const T868_PROMOTE_BODY = process.env.T868_PROMOTE_BODY !== '0';   // ★[PM 착지 10-23] 켬 기본(결함 고침 — 라이브의 보통 넘기가 몸을 잃었다) · 되돌림 `=0`
 const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
 const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
 function _connFailPoint(stage) {
