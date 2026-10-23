@@ -1,0 +1,2614 @@
+{
+ "ruler": "t577-server-run 50 1020,7,42 · VILLAGE_DAY_MS=10000 · WAR_FIXTURE=assault*3 · WAR_FIXTURE_DAY=5 · WAR_FIXTURE_REPEAT=1 · VILLAGE_WAR_LOG=1 · VILLAGE_CARAVAN_MAX=0 · T400_BUILD_ACT=0 · T403_ARMS_LEDGER=1 · 몸 상한 1 · 관찰자 t886-ration-probe",
+ "legend": {
+  "M": "main d3936b81",
+  "N": "가지(T886)"
+ },
+ "identity": "몸에 실은 몫(split) = 몸이 먹음 + 내려놓음(곳간) + 드랍 + 판 끝 몸 짐",
+ "baseline": {
+  "file": "계측/서버기준선_2026-10-23.json",
+  "result": "같음 3/3 · 판 558초 — 400날 안에 결판이 하나도 안 났다(마지막 날 전투 0 · 교전 6 · 3 · 5)"
+ },
+ "runs": {
+  "7": {
+   "M": {
+    "ws": {
+     "decl": 18,
+     "battle": 15,
+     "atkWin": 10,
+     "defWin": 5
+    },
+    "wars": 18,
+    "sum": {
+     "load": 2226,
+     "split": 2067,
+     "eaten": 83,
+     "back": 1045,
+     "drop": 533,
+     "unfed": 0,
+     "hungryDays": 0,
+     "battleDays": 0,
+     "battleBodyDays": 0,
+     "battleEaten": 0,
+     "battleUnfed": 0,
+     "battleHungry": 0,
+     "onLast": 406
+    },
+    "identity": {
+     "split": 2067,
+     "rhs": 2067
+    },
+    "dMax": 0,
+    "eight": {
+     "pop": 1295,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 157,
+     "expand": 0,
+     "board": 163,
+     "toolQ": 2791.8,
+     "preserve": 0,
+     "grain": 4296.7
+    },
+    "list": [
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 10,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 0,
+      "back": 0,
+      "drop": 65,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌8",
+      "def": "농촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 0,
+      "back": 0,
+      "drop": 65,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 0,
+      "back": 0,
+      "drop": 65,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 0,
+      "back": 78,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 20
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 12,
+      "back": 66,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 6,
+      "back": 72,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 91,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 9,
+       "return": 1
+      },
+      "load": 140,
+      "split": 130,
+      "eaten": 0,
+      "back": 0,
+      "drop": 130,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 91,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 91,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 4
+      },
+      "load": 182,
+      "split": 169,
+      "eaten": 0,
+      "back": 169,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 22
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 49,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 42,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 18,
+       "return": 1
+      },
+      "load": 126,
+      "split": 117,
+      "eaten": 9,
+      "back": 108,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 6,
+       "return": 1
+      },
+      "load": 210,
+      "split": 195,
+      "eaten": 0,
+      "back": 195,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 6,
+       "return": 1
+      },
+      "load": 224,
+      "split": 208,
+      "eaten": 0,
+      "back": 0,
+      "drop": 208,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 5
+      },
+      "load": 224,
+      "split": 208,
+      "eaten": 0,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 208,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 1
+      },
+      "load": 168,
+      "split": 156,
+      "eaten": 0,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 156,
+      "dMax": 0
+     }
+    ]
+   },
+   "N": {
+    "ws": {
+     "decl": 18,
+     "battle": 15,
+     "atkWin": 10,
+     "defWin": 5
+    },
+    "wars": 18,
+    "sum": {
+     "load": 2226,
+     "split": 2067,
+     "eaten": 737,
+     "back": 717,
+     "drop": 313,
+     "unfed": 128,
+     "hungryDays": 18,
+     "battleDays": 90,
+     "battleBodyDays": 90,
+     "battleEaten": 696,
+     "battleUnfed": 86,
+     "battleHungry": 12,
+     "onLast": 300
+    },
+    "identity": {
+     "split": 2067,
+     "rhs": 2067
+    },
+    "dMax": 2.842170943040401e-14,
+    "eight": {
+     "pop": 1295,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 157,
+     "expand": 0,
+     "board": 163,
+     "toolQ": 2791.8,
+     "preserve": 0,
+     "grain": 4240.2
+    },
+    "list": [
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 10,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 45,
+      "back": 0,
+      "drop": 20,
+      "unfed": 0,
+      "battleDays": 9,
+      "battleEaten": 45,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌8",
+      "def": "농촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 5,
+      "back": 0,
+      "drop": 60,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 5,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 10,
+      "back": 0,
+      "drop": 55,
+      "unfed": 0,
+      "battleDays": 2,
+      "battleEaten": 10,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 6,
+      "back": 72,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 6,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 20
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 78,
+      "back": 0,
+      "drop": 0,
+      "unfed": 36,
+      "battleDays": 17,
+      "battleEaten": 78,
+      "battleUnfed": 24,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 12,
+      "back": 66,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 6,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 9,
+       "return": 1
+      },
+      "load": 140,
+      "split": 130,
+      "eaten": 80,
+      "back": 0,
+      "drop": 50,
+      "unfed": 0,
+      "battleDays": 8,
+      "battleEaten": 80,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 2.842170943040401e-14
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 14,
+      "back": 77,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 4
+      },
+      "load": 182,
+      "split": 169,
+      "eaten": 39,
+      "back": 130,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 3,
+      "battleEaten": 39,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 22
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 91,
+      "back": 0,
+      "drop": 0,
+      "unfed": 56,
+      "battleDays": 14,
+      "battleEaten": 63,
+      "battleUnfed": 35,
+      "onLast": 0,
+      "dMax": 2.842170943040401e-14
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 18,
+       "return": 1
+      },
+      "load": 126,
+      "split": 117,
+      "eaten": 117,
+      "back": 0,
+      "drop": 0,
+      "unfed": 36,
+      "battleDays": 16,
+      "battleEaten": 117,
+      "battleUnfed": 27,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 6,
+       "return": 1
+      },
+      "load": 210,
+      "split": 195,
+      "eaten": 75,
+      "back": 120,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 5,
+      "battleEaten": 75,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 2.842170943040401e-14
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 6,
+       "return": 1
+      },
+      "load": 224,
+      "split": 208,
+      "eaten": 80,
+      "back": 0,
+      "drop": 128,
+      "unfed": 0,
+      "battleDays": 5,
+      "battleEaten": 80,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 5
+      },
+      "load": 224,
+      "split": 208,
+      "eaten": 64,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 4,
+      "battleEaten": 64,
+      "battleUnfed": 0,
+      "onLast": 144,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 1
+      },
+      "load": 168,
+      "split": 156,
+      "eaten": 0,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 156,
+      "dMax": 0
+     }
+    ]
+   },
+   "json": "다름"
+  },
+  "42": {
+   "M": {
+    "ws": {
+     "decl": 18,
+     "battle": 15,
+     "atkWin": 10,
+     "defWin": 5
+    },
+    "wars": 18,
+    "sum": {
+     "load": 2142,
+     "split": 1989,
+     "eaten": 83,
+     "back": 1045,
+     "drop": 520,
+     "unfed": 0,
+     "hungryDays": 0,
+     "battleDays": 0,
+     "battleBodyDays": 0,
+     "battleEaten": 0,
+     "battleUnfed": 0,
+     "battleHungry": 0,
+     "onLast": 341
+    },
+    "identity": {
+     "split": 1989,
+     "rhs": 1989
+    },
+    "dMax": 1.4210854715202004e-14,
+    "eight": {
+     "pop": 1315,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 160,
+     "expand": 0,
+     "board": 159,
+     "toolQ": 2785.4,
+     "preserve": 0,
+     "grain": 4195.1
+    },
+    "list": [
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 10,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 0,
+      "back": 0,
+      "drop": 65,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌8",
+      "def": "농촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 0,
+      "back": 0,
+      "drop": 65,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 0,
+      "back": 0,
+      "drop": 65,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 0,
+      "back": 78,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 20
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 12,
+      "back": 66,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 6,
+      "back": 72,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 91,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 9
+      },
+      "load": 140,
+      "split": 130,
+      "eaten": 0,
+      "back": 0,
+      "drop": 130,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 91,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 91,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 4
+      },
+      "load": 182,
+      "split": 169,
+      "eaten": 0,
+      "back": 169,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 22
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 49,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 42,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 18
+      },
+      "load": 126,
+      "split": 117,
+      "eaten": 9,
+      "back": 108,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 6,
+       "return": 1
+      },
+      "load": 210,
+      "split": 195,
+      "eaten": 0,
+      "back": 195,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 6,
+       "return": 1
+      },
+      "load": 210,
+      "split": 195,
+      "eaten": 0,
+      "back": 0,
+      "drop": 195,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 5
+      },
+      "load": 210,
+      "split": 195,
+      "eaten": 0,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 195,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 1
+      },
+      "load": 112,
+      "split": 104,
+      "eaten": 0,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 104,
+      "dMax": 0
+     }
+    ]
+   },
+   "N": {
+    "ws": {
+     "decl": 18,
+     "battle": 15,
+     "atkWin": 10,
+     "defWin": 5
+    },
+    "wars": 18,
+    "sum": {
+     "load": 2142,
+     "split": 1989,
+     "eaten": 728,
+     "back": 717,
+     "drop": 305,
+     "unfed": 128,
+     "hungryDays": 18,
+     "battleDays": 90,
+     "battleBodyDays": 90,
+     "battleEaten": 687,
+     "battleUnfed": 86,
+     "battleHungry": 12,
+     "onLast": 239
+    },
+    "identity": {
+     "split": 1989,
+     "rhs": 1989
+    },
+    "dMax": 1.4210854715202004e-14,
+    "eight": {
+     "pop": 1315,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 160,
+     "expand": 0,
+     "board": 159,
+     "toolQ": 2784.1,
+     "preserve": 0,
+     "grain": 4134.6
+    },
+    "list": [
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 10,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 45,
+      "back": 0,
+      "drop": 20,
+      "unfed": 0,
+      "battleDays": 9,
+      "battleEaten": 45,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌8",
+      "def": "농촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 5,
+      "back": 0,
+      "drop": 60,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 5,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 10,
+      "back": 0,
+      "drop": 55,
+      "unfed": 0,
+      "battleDays": 2,
+      "battleEaten": 10,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 6,
+      "back": 72,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 6,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 20
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 78,
+      "back": 0,
+      "drop": 0,
+      "unfed": 36,
+      "battleDays": 17,
+      "battleEaten": 78,
+      "battleUnfed": 24,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 12,
+      "back": 66,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 6,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 9
+      },
+      "load": 140,
+      "split": 130,
+      "eaten": 80,
+      "back": 0,
+      "drop": 50,
+      "unfed": 0,
+      "battleDays": 8,
+      "battleEaten": 80,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 14,
+      "back": 77,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 4
+      },
+      "load": 182,
+      "split": 169,
+      "eaten": 39,
+      "back": 130,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 3,
+      "battleEaten": 39,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 22
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 91,
+      "back": 0,
+      "drop": 0,
+      "unfed": 56,
+      "battleDays": 14,
+      "battleEaten": 63,
+      "battleUnfed": 35,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 18
+      },
+      "load": 126,
+      "split": 117,
+      "eaten": 117,
+      "back": 0,
+      "drop": 0,
+      "unfed": 36,
+      "battleDays": 16,
+      "battleEaten": 117,
+      "battleUnfed": 27,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 6,
+       "return": 1
+      },
+      "load": 210,
+      "split": 195,
+      "eaten": 75,
+      "back": 120,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 5,
+      "battleEaten": 75,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 6,
+       "return": 1
+      },
+      "load": 210,
+      "split": 195,
+      "eaten": 75,
+      "back": 0,
+      "drop": 120,
+      "unfed": 0,
+      "battleDays": 5,
+      "battleEaten": 75,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 5
+      },
+      "load": 210,
+      "split": 195,
+      "eaten": 60,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 4,
+      "battleEaten": 60,
+      "battleUnfed": 0,
+      "onLast": 135,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 1
+      },
+      "load": 112,
+      "split": 104,
+      "eaten": 0,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 104,
+      "dMax": 0
+     }
+    ]
+   },
+   "json": "다름"
+  },
+  "1020": {
+   "M": {
+    "ws": {
+     "decl": 27,
+     "battle": 25,
+     "atkWin": 11,
+     "defWin": 14
+    },
+    "wars": 27,
+    "sum": {
+     "load": 3024,
+     "split": 2808,
+     "eaten": 32,
+     "back": 1112,
+     "drop": 1365,
+     "unfed": 0,
+     "hungryDays": 0,
+     "battleDays": 0,
+     "battleBodyDays": 0,
+     "battleEaten": 0,
+     "battleUnfed": 0,
+     "battleHungry": 0,
+     "onLast": 299
+    },
+    "identity": {
+     "split": 2808,
+     "rhs": 2808
+    },
+    "dMax": 1.4210854715202004e-14,
+    "eight": {
+     "pop": 1318,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 187,
+     "expand": 0,
+     "board": 164,
+     "toolQ": 2766.2,
+     "preserve": 0,
+     "grain": 4287.5
+    },
+    "list": [
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 10,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 0,
+      "back": 0,
+      "drop": 65,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌8",
+      "def": "농촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 0,
+      "back": 0,
+      "drop": 65,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 0,
+      "back": 0,
+      "drop": 65,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 0,
+      "back": 78,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 20
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 12,
+      "back": 66,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 6,
+      "back": 72,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 91,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 9
+      },
+      "load": 140,
+      "split": 130,
+      "eaten": 0,
+      "back": 0,
+      "drop": 130,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 91,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 91,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 4
+      },
+      "load": 182,
+      "split": 169,
+      "eaten": 0,
+      "back": 169,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 4
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3
+      },
+      "load": 112,
+      "split": 104,
+      "eaten": 0,
+      "back": 0,
+      "drop": 104,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 6,
+       "return": 1
+      },
+      "load": 210,
+      "split": 195,
+      "eaten": 0,
+      "back": 195,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 91,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 0,
+      "drop": 91,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 0,
+      "drop": 91,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 224,
+      "split": 208,
+      "eaten": 0,
+      "back": 0,
+      "drop": 208,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 112,
+      "split": 104,
+      "eaten": 0,
+      "back": 0,
+      "drop": 104,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 0,
+      "back": 0,
+      "drop": 78,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 8
+      },
+      "load": 224,
+      "split": 208,
+      "eaten": 0,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 208,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 0,
+      "back": 0,
+      "drop": 78,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 112,
+      "split": 104,
+      "eaten": 0,
+      "back": 0,
+      "drop": 104,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 0,
+      "back": 0,
+      "drop": 78,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3
+      },
+      "load": 112,
+      "split": 104,
+      "eaten": 0,
+      "back": 0,
+      "drop": 104,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 0,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 0,
+      "battleEaten": 0,
+      "battleUnfed": 0,
+      "onLast": 91,
+      "dMax": 0
+     }
+    ]
+   },
+   "N": {
+    "ws": {
+     "decl": 27,
+     "battle": 25,
+     "atkWin": 11,
+     "defWin": 14
+    },
+    "wars": 27,
+    "sum": {
+     "load": 3024,
+     "split": 2808,
+     "eaten": 667,
+     "back": 871,
+     "drop": 1090,
+     "unfed": 36,
+     "hungryDays": 6,
+     "battleDays": 78,
+     "battleBodyDays": 78,
+     "battleEaten": 647,
+     "battleUnfed": 24,
+     "battleHungry": 4,
+     "onLast": 180
+    },
+    "identity": {
+     "split": 2808,
+     "rhs": 2808
+    },
+    "dMax": 2.842170943040401e-14,
+    "eight": {
+     "pop": 1317,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 187,
+     "expand": 0,
+     "board": 163,
+     "toolQ": 2766.6,
+     "preserve": 0,
+     "grain": 4287.8
+    },
+    "list": [
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 10,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 45,
+      "back": 0,
+      "drop": 20,
+      "unfed": 0,
+      "battleDays": 9,
+      "battleEaten": 45,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌8",
+      "def": "농촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 5,
+      "back": 0,
+      "drop": 60,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 5,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 70,
+      "split": 65,
+      "eaten": 10,
+      "back": 0,
+      "drop": 55,
+      "unfed": 0,
+      "battleDays": 2,
+      "battleEaten": 10,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 6,
+      "back": 72,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 6,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 20
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 78,
+      "back": 0,
+      "drop": 0,
+      "unfed": 36,
+      "battleDays": 17,
+      "battleEaten": 78,
+      "battleUnfed": 24,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 12,
+      "back": 66,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 6,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 9
+      },
+      "load": 140,
+      "split": 130,
+      "eaten": 80,
+      "back": 0,
+      "drop": 50,
+      "unfed": 0,
+      "battleDays": 8,
+      "battleEaten": 80,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 2.842170943040401e-14
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 14,
+      "back": 77,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 4
+      },
+      "load": 182,
+      "split": 169,
+      "eaten": 39,
+      "back": 130,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 3,
+      "battleEaten": 39,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 4
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 21,
+      "back": 70,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 2,
+      "battleEaten": 14,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 112,
+      "split": 104,
+      "eaten": 16,
+      "back": 0,
+      "drop": 88,
+      "unfed": 0,
+      "battleDays": 2,
+      "battleEaten": 16,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 6,
+       "return": 1
+      },
+      "load": 210,
+      "split": 195,
+      "eaten": 75,
+      "back": 120,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 5,
+      "battleEaten": 75,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 84,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 14,
+      "back": 0,
+      "drop": 77,
+      "unfed": 0,
+      "battleDays": 2,
+      "battleEaten": 14,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 0,
+      "drop": 84,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "농촌4",
+      "def": "어촌16",
+      "phaseDays": {
+       "battle": 3
+      },
+      "load": 224,
+      "split": 208,
+      "eaten": 32,
+      "back": 0,
+      "drop": 176,
+      "unfed": 0,
+      "battleDays": 2,
+      "battleEaten": 32,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3
+      },
+      "load": 112,
+      "split": 104,
+      "eaten": 16,
+      "back": 0,
+      "drop": 88,
+      "unfed": 0,
+      "battleDays": 2,
+      "battleEaten": 16,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 6,
+      "back": 0,
+      "drop": 72,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 6,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "어촌16",
+      "def": "농촌4",
+      "phaseDays": {
+       "battle": 8
+      },
+      "load": 224,
+      "split": 208,
+      "eaten": 112,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 7,
+      "battleEaten": 112,
+      "battleUnfed": 0,
+      "onLast": 96,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 6,
+      "back": 0,
+      "drop": 72,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 6,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 112,
+      "split": 104,
+      "eaten": 16,
+      "back": 0,
+      "drop": 88,
+      "unfed": 0,
+      "battleDays": 2,
+      "battleEaten": 16,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2,
+       "return": 1
+      },
+      "load": 84,
+      "split": 78,
+      "eaten": 6,
+      "back": 0,
+      "drop": 72,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 6,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 0
+     },
+     {
+      "atk": "어촌13",
+      "def": "농촌20",
+      "phaseDays": {
+       "battle": 3,
+       "return": 1
+      },
+      "load": 112,
+      "split": 104,
+      "eaten": 16,
+      "back": 0,
+      "drop": 88,
+      "unfed": 0,
+      "battleDays": 2,
+      "battleEaten": 16,
+      "battleUnfed": 0,
+      "onLast": 0,
+      "dMax": 1.4210854715202004e-14
+     },
+     {
+      "atk": "농촌8",
+      "def": "어촌8",
+      "phaseDays": {
+       "battle": 2
+      },
+      "load": 98,
+      "split": 91,
+      "eaten": 7,
+      "back": 0,
+      "drop": 0,
+      "unfed": 0,
+      "battleDays": 1,
+      "battleEaten": 7,
+      "battleUnfed": 0,
+      "onLast": 84,
+      "dMax": 0
+     }
+    ]
+   },
+   "json": "다름"
+  }
+ }
+}
