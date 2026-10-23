@@ -4130,6 +4130,15 @@ function computeNpcPath(npc, now) {
   const fl = npc.floor || 0;   // ★스트링 풀링(랩 _smoothWalk 동형): canPass=직선 통행(동일 게이트) · keep=길 칸 앵커
   return PathCore.smoothPath(wp, (ax, ay, bx, by) => straightPathClear(ax, ay, bx, by, fl), { keep: Roads.ENABLED ? _roadKeep : null });
 }
+// ★★[T888 2026-10-23 · 손잡이 `T888_NPC_WALK` — `!== '0'` = 켬 기본 · `=0` = main 바이트] **NPC 걸음 = 플레이어 걸음.**
+//   재민 10-23: "서버에서 NPC 이동속도만 느린데 — 플레이어 이속과 같아야 하는 거 아냐?" ★PM: 같다(랩이 목표 캐논).
+//   랩은 `moveNPC(a, L_WALK × 배속 × dGM)` — 평보 배속이 **1**이다(근무 밖 1 · 근무 평보 1 · 사냥꾼 배속은 그 위에 곱한다 · `lab/마을실험실.html` moveNPC 부르는 줄).
+//   `L_WALK` 2셀/분 = 존 `MOVE_SPEED` 64px/s(2셀/초 — 플레이어 걸음 · 위 상수 주석 "마을실험실 정본과 통일").
+//   서버만 배회 배율이 0.6 이었다(38.4px/s · 1.2m/s) — 이식이 랩보다 얕았다(T491 §2-ⓒ: econ 짐 수 `_t341TripsPerDay` 는 64 로 센다 · 몸은 38.4 로 걸었다).
+//   켜면 배회 배율 = 1(`MOVE_SPEED` 그대로). 도주 2.5 · 사냥꾼 `_huntSpd`(잠행 0.5 · 추적/회수 2 · 속보 1.25 · 조준 정지 0.02)는 **그 위에 그대로 곱한다**(랩 동형).
+//   ⚠새 수 0 — 64 는 존 정본 `MOVE_SPEED` · 배율 1 은 랩 평보 · 0.6 은 종전 글자(끔 갈래).
+const T888_NPC_WALK = process.env.T888_NPC_WALK !== '0';
+const NPC_WALK_MULT = T888_NPC_WALK ? 1 : 0.6;   // 배회(평보) 배율 — `npcStep` 의 기본 배속 · `followNpcPath` 의 기본값 한 자리
 // npc.path를 따라 다음 waypoint 향해 vx/vy 설정. 도착했으면 다음 waypoint로.
 // 반환: true면 path 완료 (목표 도달), false면 진행 중
 function followNpcPath(npc, speedMult) {
@@ -4150,7 +4159,7 @@ function followNpcPath(npc, speedMult) {
     return false;
   }
   const dd = Math.hypot(dx, dy);
-  const speed = MOVE_SPEED * (speedMult || 0.6);
+  const speed = MOVE_SPEED * (speedMult || NPC_WALK_MULT);   // ★[T888] 기본값 = 배회 배율(끔 = 종전 0.6 · 부르는 자리가 늘 0 아닌 수를 넘겨 실제로는 안 탄다)
   npc.vx = (dx / dd) * speed;
   npc.vy = (dy / dd) * speed;
   return false;
@@ -4444,7 +4453,7 @@ function npcStep(npc, dt, now) {
 
   // 목표 방향으로 이동 — A* path 따라가기. path 없으면 새로 계산.
   // path가 만료(목표 바뀜)되거나 너무 오래(>3초) 됐으면 재계산.
-  let speedMult = npc.behavior === 'flee' ? 2.5 : 0.6;   // ★도주=달리기 5m/s(맨몸이라 전투 유닛 돌격보다 빠름 → 추격 어려움, 고증). 배회=1.2
+  let speedMult = npc.behavior === 'flee' ? 2.5 : NPC_WALK_MULT;   // ★도주=달리기 5m/s(맨몸이라 전투 유닛 돌격보다 빠름 → 추격 어려움, 고증). 배회 = ★[T888] 켬 2m/s(플레이어 걸음 · 랩 평보) · 끔 1.2m/s(종전 0.6)
   if (npc.behavior !== 'flee' && npc._huntSpd) speedMult *= npc._huntSpd;   // ★[사냥꾼 완전체] wildlife 두뇌 배속(랩 moveNPC 동형): 잠행 0.5×·추적/회수 2×·속보 1.25×·조준 정지≈0
   // ★[T670 ①] 목표 키 문자열은 목표가 바뀔 때만 짓는다 — 같은 두 수면 같은 글자다(`===` 가 참이면 `|0` 의 입력이 같다 · NaN 은 늘 다시 짓는다).
   if (npc.targetX !== npc._t670TkX || npc.targetY !== npc._t670TkY) { npc._t670TkX = npc.targetX; npc._t670TkY = npc.targetY; npc._t670Tk = `${npc.targetX|0}_${npc.targetY|0}`; }
