@@ -3,6 +3,7 @@
 //   쓰는 법: NODE_OPTIONS="-r $PWD/scripts/t874-fight-probe.js" node scripts/t577-server-run.js 50 1020   (전쟁 자 조건 그대로)
 //   존 아이 프로세스(T577_OUT 있는 본 실)만 잰다 · 판 JSON 곁 `<판>-<시드>.json.t874.json`.
 //   war-live 객체의 문 셋(stepFight · _muStepFollow · _muDefHold)을 감싸 같은 인수 · 같은 반환으로 부르고 그 시간만 더한다(hrtime).
+//   ★[T900] 손잡이 칸 `knob` — 켬 기본이라 `T874_BATTLE_FAST=0` 만 끔(null) · 빈 값 = '기본'(켬) · 다른 글자는 그 글자(켬).
 //   꼴 표본: 교전 30스텝마다(교전 1초) 그 교전의 핸들 · ctx · 병사 전부 · 대형 걸음 30번마다 그 대형의 병사 · 지휘관 — 빠른 꼴 / 사전 수(겹쳐 센다 · 객체 수는 WeakSet 으로 따로).
 'use strict';
 const OUT = process.env.T577_OUT ? process.env.T577_OUT + '.t874.json' : '';
@@ -12,7 +13,7 @@ if (OUT && MAIN) {
   require('v8').setFlagsFromString('--allow-natives-syntax');
   const HFP = new Function('o', 'return %HasFastProperties(o)'), SM = new Function('a', 'b', 'return %HaveSameMap(a, b)');
   let VIL = null, S = null, wrapped = false;
-  const rec = { knob: process.env.T874_BATTLE_FAST || null, fight: { calls: 0, ns: 0, units: 0, alive: 0 }, follow: { calls: 0, ns: 0, units: 0 }, hold: { calls: 0, ns: 0, units: 0 },
+  const rec = { knob: process.env.T874_BATTLE_FAST === '0' ? null : (process.env.T874_BATTLE_FAST || '기본'), fight: { calls: 0, ns: 0, units: 0, alive: 0 }, follow: { calls: 0, ns: 0, units: 0 }, hold: { calls: 0, ns: 0, units: 0 },
     shape: { handle: [0, 0], ctx: [0, 0], unit: [0, 0], gu: [0, 0], cmd: [0, 0] }, objs: { handle: [0, 0], unit: [0, 0], gu: [0, 0] }, fights: 0, days: {},
     unitKeys: {}, unitMaps: [0, 0], guKeys: {}, guMaps: [0, 0] };   // 병사 · 대형 병사 칸 꼴(앞 칸 뒤 이름 줄) · 표본마다 그 교전 병사 · 그 대형 병사들이 쓰는 지도 수(합 · 표본 수)
   const keyTally = (u) => { const k = Object.keys(u).slice(17).join(','); if (rec.unitKeys[k] != null || Object.keys(rec.unitKeys).length < 40) rec.unitKeys[k] = (rec.unitKeys[k] || 0) + 1; };
