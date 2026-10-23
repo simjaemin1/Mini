@@ -6,10 +6,13 @@
 //   ⓐ 교전 병사 — war-live enlist 가 battle-core spawn 리터럴의 데이터 칸 x/y 위에 몸 접근자를 덮는다
 //   ⓑ 대형 병사 — war-live bindGroupUnit 이 몸마다 새 닫힘 접근자를 단다(둘째 몸부터)
 //   ⓒ 핸들 — battle-core _makeHandle 리터럴의 접근자 열둘
-//   켬('1' 만): 접근자를 모두가 같이 쓰는 함수로 · 몸은 숨은 칸(사설 필드)에 · 교전 병사는 같은 칸 · 같은 차례로 다시 지어 그 자리에 · 핸들은 같은 칸 · 같은 함수로 옮긴다.
-//   ① 글자 — 손잡이 '1' 만 · 끔 갈래 = 종전 줄 · 켬 식 = 종전 식(같은 곱셈 · 나눗셈 차례) · 아는 칸 꼴 = battle-core spawn 리터럴
-//   ② 꼴 — 끔은 셋 다 사전(자명 통과 금지) · 켬은 셋 다 빠른 꼴 · 칸 이름 · 차례 · 속성 · 프로토타입 · 반사 키가 끔과 같다(숨은 칸은 안 보인다)
+//   켬('1' 만): 접근자를 모두가 같이 쓰는 함수로 · 몸은 숨은 칸(사설 필드)에 · 교전 병사는 같은 칸 · 같은 값으로 다시 지어 그 자리에(늦게 붙던 칸 열아홉은
+//   같은 이름으로 미리 `undefined` — 지도 하나) · 핸들은 같은 칸 · 같은 함수로 옮긴다.
+//   ① 글자 — 손잡이 '1' 만 · 끔 갈래 = 종전 줄 · 켬 식 = 종전 식(같은 곱셈 · 나눗셈 차례) · 아는 칸 꼴 = battle-core spawn 리터럴 · 미리 둔 칸 열아홉 ·
+//      그 칸을 '있나' 로 묻는 자리 0(미끼 문다) · 교전 병사를 칸 목록으로 훑는 자리 0
+//   ② 꼴 — 끔은 셋 다 사전(자명 통과 금지) · 켬은 셋 다 빠른 꼴 · 교전 병사 새 이름 0 · 값 같음 · 지도 하나 · 대형 병사 · 핸들은 칸 이름 · 차례 · 속성까지 끔과 같다
 //   ③ 값 — 아이 판 둘(끔 · 켬): 대형 행군 → 교전 900틱(존 꼴 — 몸 묶기 · 대형 · 화살 · 정산 입력) · battle-core 독립 판(핸들 접근자로 읽는다) 의 모든 값이 한 글자 같다
+//      (병사 칸은 값만 견준다 — undefined 칸 = 없던 칸)
 // 실행: node scripts/test-battle-fast.js
 'use strict';
 const path = require('path');
@@ -52,6 +55,22 @@ ok(/ux: \{ get\(\) \{ return this\.#p\.x \/ this\.#k; \}, set\(v\) \{ this\.#p\.
   const uk = (WLS.match(/const _T874_UK = '([^']*)';/) || [])[1];
   ok(keys.length === 17 && uk === keys.join(','), '아는 칸 꼴(`_T874_UK`) = battle-core spawn 리터럴 17칸 그대로(어긋나면 켬도 종전 길로 간다)', keys.join(','));
 }
+// 미리 두는 칸 열아홉(켬 — 늦게 붙던 칸 · 같은 이름 · 값 undefined)
+const PRE = ['atk', 'agent', 'ctl', 'gu', '_vx', '_vy', '_px', '_py', '_rPrev', '_ox', '_oy', '_detCd', 'broken', '_dead', '_cpT', '_clear', '_rk', '_wpBlk', '_wpth'];
+{
+  const body = WLS.slice(WLS.indexOf('function _t874Unit(u0, p, k) {'), WLS.indexOf('function _t874Group('));
+  const got = (body.replace(/\/\/.*$/gm, '').match(/\bu\.(\w+) = (?:undefined|hasAtk \? u0\.atk : undefined|ks\.endsWith\(',agent'\) \? u0\.agent : undefined);/g) || []).map((x) => x.match(/u\.(\w+)/)[1]);
+  ok(JSON.stringify(got) === JSON.stringify(PRE), '켬 다시 짓기가 미리 두는 칸 = 늦게 붙던 칸 열아홉(battle-core 열넷 · 존 세계 어댑터 다섯) — 같은 이름 · 같은 차례', got.join(','));
+  const SRC = [['sim', 'battle-core.js'], ['sim', 'war-core.js'], ['server', 'war-live.js'], ['server', 'villages.js'], ['server', 'zone.js']].map(([d, f]) => [f, fs.readFileSync(path.join(ROOT, d, f), 'utf8')]);
+  const presRe = new RegExp("(['\"](" + PRE.join('|') + ")['\"]\\s+in\\b|hasOwnProperty(?:\\.call)?\\([^)]*['\"](" + PRE.join('|') + ")['\"]|Object\\.hasOwn\\([^)]*['\"](" + PRE.join('|') + ")['\"]|Reflect\\.has\\([^)]*['\"](" + PRE.join('|') + ")['\"])");
+  const hits = (srcs) => { const o = []; for (const [f, t] of srcs) t.split('\n').forEach((l, i) => { const c = l.replace(/\/\/.*$/, ''); if (presRe.test(c)) o.push(f + ':' + (i + 1)); }); return o; };
+  const h0 = hits(SRC);
+  ok(h0.length === 0, "★미리 둔 칸을 '있나' 로 묻는 자리 0(`'칸' in` · hasOwnProperty · Object.hasOwn · Reflect.has) — 읽는 자리는 값 꼴뿐이라 undefined = 없던 칸", h0.join(' · ') || 'server · sim 다섯 파일');
+  ok(hits(SRC.concat([['미끼.js', "if ('_dead' in u) x(); if (u.hasOwnProperty('broken')) y();"]])).length === 1, "★미끼 — `'_dead' in u` · `hasOwnProperty('broken')` 꼴을 심으면 문다");
+  const enumRe = /(Object\.(keys|entries|getOwnPropertyNames)\(|JSON\.stringify\(|for \(const \w+ in )[^;]*(ctx\.units|byPid|\bbu\b|\.handle\.units|fight\.ctx)/;
+  const en = []; for (const [f, t] of SRC) t.split('\n').forEach((l, i) => { const c = l.replace(/\/\/.*$/, ''); if (enumRe.test(c)) en.push(f + ':' + (i + 1)); });
+  ok(en.length === 0, '★교전 병사를 칸 목록으로 훑는 자리 0(Object.keys · entries · JSON · for…in — 병사 · 교전 명부 · 핸들)', en.join(' · ') || '0');
+}
 
 // ── ② 꼴 ────────────────────────────────────────────────────────────────────────────────
 console.log('\n② 꼴 — 끔 · 켬(같은 프로세스 · 손잡이는 부를 때마다 읽는다)');
@@ -80,7 +99,21 @@ ok(HFP(ON.f.handle) && cnt(ON.us) === 6 && cnt(ON.gus) === 6 && HFP(ON.f.ctx) &&
 const shape = (o) => JSON.stringify({ keys: Object.keys(o), own: Reflect.ownKeys(o).map(String), names: Object.getOwnPropertyNames(o),
   desc: Object.keys(o).map((k) => { const d = Object.getOwnPropertyDescriptor(o, k); return [k, 'get' in d, 'set' in d && d.set !== undefined, !!d.enumerable, !!d.configurable, d.writable === undefined ? null : d.writable]; }),
   proto: Object.getPrototypeOf(o) === Object.prototype, ext: Object.isExtensible(o) });
-ok(OFF.us.every((u, i) => shape(u) === shape(ON.us[i])), '교전 병사 — 칸 이름 · 차례 · 속성(접근자 x · y · 열거 · 고칠 수 있음) · 프로토타입 · 반사 키가 끔과 같다(숨은 칸은 안 보인다)', Object.keys(ON.us[0]).length + '칸');
+{
+  const SPAWN = (WLS.match(/const _T874_UK = '([^']*)';/) || [])[1].split(','), ALLOW = new Set(SPAWN.concat(PRE));
+  let bad = []; for (let i = 0; i < 6; i++) { const a = OFF.us[i], b = ON.us[i];
+    const ka = Object.keys(a), kb = Object.keys(b);
+    if (!kb.every((k) => ALLOW.has(k))) bad.push(i + ':새 이름');
+    if (!ka.every((k) => kb.includes(k))) bad.push(i + ':끔 칸 빠짐');
+    if (JSON.stringify(kb) !== JSON.stringify(SPAWN.concat(PRE))) bad.push(i + ':켬 차례');
+    const rf = (v) => (v && typeof v === 'object') ? '@' + (v.agent != null ? v.agent : v.pid) : v;   // 다른 판의 객체 = 같은 몸 이름
+    for (const k of kb) if (!Object.is(rf(a[k]), rf(b[k]))) bad.push(i + ':' + k);
+    for (const k of ka) { const da = Object.getOwnPropertyDescriptor(a, k), db = Object.getOwnPropertyDescriptor(b, k); if (('get' in da) !== ('get' in db) || da.enumerable !== db.enumerable || da.configurable !== db.configurable || da.writable !== db.writable) bad.push(i + ':속성 ' + k); }
+    if (Reflect.ownKeys(b).some((k) => typeof k !== 'string') || Object.getPrototypeOf(a) !== Object.getPrototypeOf(b) || Object.getOwnPropertyNames(b).length !== kb.length) bad.push(i + ':반사'); }
+  ok(bad.length === 0, '★교전 병사 — 새 이름 0(켬 칸 = spawn 17 + 늦게 붙던 열아홉) · 끔 칸은 다 있다 · 모든 칸 값이 같다(끔에 없던 칸 = undefined) · 속성(접근자 x · y · 열거 · 고칠 수 있음) · 프로토타입 · 반사 키(숨은 칸 안 보임)', bad.slice(0, 6).join(' · ') || `켬 ${Object.keys(ON.us[0]).length}칸 · 끔 ${Object.keys(OFF.us[0]).length}칸`);
+  const SM = new Function('a', 'b', 'return %HaveSameMap(a, b)');
+  ok(ON.us.every((u) => SM(u, ON.us[0])) && !OFF.us.every((u) => HFP(u)), '★켬 교전 병사 여섯이 지도 하나를 같이 쓴다(품질 갈래 · 파손 · 죽음 차례와 무관 — 교전 스텝 읽기 자리가 한 꼴)');
+}
 ok(OFF.gus.every((g, i) => shape(g) === shape(ON.gus[i])), '대형 병사 — 칸 이름 · 차례 · 속성 · 프로토타입 · 반사 키가 끔과 같다', Object.keys(ON.gus[0]).join(','));
 ok(shape(OFF.f.handle) === shape(ON.f.handle) && ['step', 'setKeys', 'setCmdHeading', 'setPlayerMode', 'addUnits'].every((k) => typeof ON.f.handle[k] === 'function' && !('prototype' in ON.f.handle[k]) === !('prototype' in OFF.f.handle[k])),
   '핸들 — 칸 이름 · 차례 · 속성(접근자 열둘 읽기만 · 메서드 다섯) · 메서드 꼴이 끔과 같다');
@@ -102,7 +135,7 @@ const crypto = require('crypto');
 const BC = require(ROOT + '/sim/battle-core.js'), WLM = require(ROOT + '/server/war-live.js');
 const H = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
 const ref = (v) => (v && typeof v === 'object') ? ('@' + (v.agent != null ? v.agent : v.pid != null ? v.pid : v.id != null ? v.id : 'o')) : (typeof v === 'number' ? (Object.is(v, -0) ? '-0' : String(v)) : v);
-const dump = (o) => Object.keys(o).map((k) => k + '=' + ref(o[k])).join(',');
+const dump = (o) => Object.keys(o).filter((k) => o[k] !== undefined).sort().map((k) => k + '=' + ref(o[k])).join(',');   // 값만(undefined 칸 = 없던 칸) · 이름 차례
 const out = {};
 // (가) 존 꼴 — 대형 행군 → 교전(몸 묶기 · 대형 · 화살 · 사기 · 정산 입력)
 {

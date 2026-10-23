@@ -62,8 +62,15 @@ function _t874Unit(u0, p, k) {
   Object.defineProperty(u, 'y', _T874.D.uy);
   u.hp = u0.hp; u.maxHp = u0.maxHp; u.shp = u0.shp; u.shMax = u0.shMax; u.tgt = u0.tgt; u.st = u0.st; u.cd = u0.cd; u.face = u0.face;
   u._rt = u0._rt; u.mrl = u0.mrl; u.routing = u0.routing; u.form = u0.form;
-  if (hasAtk) u.atk = u0.atk;
-  if (ks.endsWith(',agent')) u.agent = u0.agent;
+  // 늦게 붙던 칸 열아홉을 미리(같은 이름 — 새 이름 0 · 값 `undefined` = 없던 칸과 같은 답: 읽는 자리가 전부 참거짓 · `== null` · `|| 0` 꼴 — test-battle-fast ① 이 문다).
+  //   끔은 병사마다 붙는 차례가 사건(품질 · 파손 · 죽음 · 대형 손 · 존 세계 어댑터의 길 메모)을 따라 갈려도 사전 지도 하나를 같이 쓰지만,
+  //   빠른 꼴은 그 차례마다 지도가 갈려(실측 병사 40 에 지도 6 · 교전 스텝이 끔보다 느렸다) 읽기 자리가 여러 꼴을 본다 — 미리 두면 모두 지도 하나다.
+  //   붙이는 자리: battle-core(spawn 품질 `atk` · addUnits `agent` · trackVel `_vx` `_vy` `_px` `_py` · updateMorale `_rPrev` · stepBattle `_ox` `_oy` `_detCd` `broken` · hurt `_dead`) ·
+  //   이 파일 enlist(`ctl` · `gu`) · 존 세계 어댑터(villages `_warWorld` advance `_cpT` `_clear` `_wpBlk` · `_warPolyWaypoint` `_rk`(셈 키 저장 — 바깥 칸 열둘 뒤 새 칸이면 사전) · `_warPathNext` `_wpth`).
+  u.atk = hasAtk ? u0.atk : undefined; u.agent = ks.endsWith(',agent') ? u0.agent : undefined;
+  u.ctl = undefined; u.gu = undefined; u._vx = undefined; u._vy = undefined; u._px = undefined; u._py = undefined; u._rPrev = undefined;
+  u._ox = undefined; u._oy = undefined; u._detCd = undefined; u.broken = undefined; u._dead = undefined;
+  u._cpT = undefined; u._clear = undefined; u._rk = undefined; u._wpBlk = undefined; u._wpth = undefined;
   return u;
 }
 function _t874Group(gu, p, k, m) {
