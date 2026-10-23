@@ -3457,17 +3457,32 @@ function _t775Place(body, c, outbound, p, now) {
 // 다시 뜬 판의 첫 틱부터 — 장부에 든 캐러밴마다 몸 한 번(차례 = `world.caravans` 차례 · 길이 아직이면 그 자리에서 다음 틱 · 다 돌면 다시 안 돈다)
 //   ⚠길이 아직인 캐러밴('wait')은 줄에 남기고 **다음 캐러밴으로 넘어간다** — 다시 뜬 직후엔 길 파기 자리를 도적 부팅 표본(T640)이 쥐고 있어
 //     한 대가 기다리면 뒤의 (이미 길이 있는) 캐러밴까지 막혔다(이 상자 첫 판: 4분 동안 49대 중 17대). 남은 줄은 다음 틱에 다시 훑는다.
+// ★★[T896 ② 2026-10-23 · 손잡이 `T896_RESUME_ONE`('1' 만 켬 · 끔 = 아래 종전 줄 그대로)] **길을 새로 파야 하는 캐러밴은 한 틱에 한 대만 판다.**
+//   교역로 재개형 A* 는 슬롯이 하나다(`_pathJob` · `_routeResume` — 다른 쌍이 부르면 떠 있는 일을 버리고 새로 판다 · "한 번에 하나").
+//   그런데 이 줄은 'wait' 를 받은 캐러밴 다음 캐러밴도 같은 틱에 부른다(T775 — 길이 이미 있는 뒤 캐러밴이 막히지 않게). 길 캐시가 빈 쌍이 둘 이상 줄에 서면
+//   서로의 일을 번갈아 버린다 — 어느 길도 다 안 파인다(실측 · 60날 세계를 다시 띄운 판: 기다림 47 대 · 몸 6 대에서 25분 그대로 · 틱마다 A* 시작 47 번 ·
+//   공유 예산 넘침 = 틱마다 · 사람 결정 문이 틱마다 잘린다 · 틱 p50 47ms). 켬이면 길 캐시가 빈 캐러밴은 줄 차례로 **첫 한 대만** 부르고(그 한 대가 슬롯을 끝까지 쥔다)
+//   나머지 빈 쌍은 이번 틱엔 부르지 않고 줄에 남긴다. 길이 이미 있는 캐러밴은 종전처럼 같은 틱에 부른다(걷는 길 일은 쌍마다 따로라 슬롯을 안 다툰다).
+//   같은 계약(줄에 남김 = 'wait' 와 같은 자리) · 새 수 0 · 차례는 장부 차례 그대로.
+const T896_RESUME_ONE = process.env.T896_RESUME_ONE === '1';
+function _t896NeedSlot(c) {   // 이 캐러밴의 몸을 세우려면 교역로를 새로 파야 하나(길 캐시에 그 쌍이 없다)
+  const a = state.byEcon.get(c.from), b = state.byEcon.get(c.to);
+  if (!a || !b || !state.routeCache) return false;
+  return state.routeCache.get(_routeKey(a, b).key) === undefined;
+}
 function _t775Resume(now) {
   const R = state._t775 || (state._t775 = { q: null, done: false });
   if (R.done || !state.world || !state.world.caravans) return;
   const bodies = state.caravanBodies;
   if (!R.q) R.q = state.world.caravans.slice();   // 다시 뜬 순간의 장부 차례(그 뒤 새로 뜬 캐러밴은 하루 경계 동기가 맡는다)
   const keep = [];
+  let slotTaken = false;   // ★[T896] 이번 틱에 길을 새로 파는 캐러밴을 이미 한 대 불렀나(켬에서만 본다)
   for (const c of R.q) {
     if (c && c._done && !bodies.has(c.id)) { _probe.t775Lost = (_probe.t775Lost || 0) + 1; continue; }   // 몸을 받기 전에 장부가 끝났다(길이 끝내 안 파였다 — 센다)
     if (!c || c._done || bodies.has(c.id) || !(c.state === 'outbound' || c.state === 'inbound')) continue;
     if (state.xzone && ((c.to && c.to._xz) || (c.from && c.from._xz))) continue;   // 이웃 존 몸은 T533 길이 맡는다
     if (bodies.size >= CARAVAN_BODY_MAX) { _probe.t775Cap = (_probe.t775Cap || 0) + 1; continue; }   // 몸 상한(E2) — 몸 없이 장부만 간다(센다)
+    if (T896_RESUME_ONE) { if (_t896NeedSlot(c)) { if (slotTaken) { keep.push(c); _probe.t896Held = (_probe.t896Held || 0) + 1; continue; } slotTaken = true; } }   // ★[T896] 빈 쌍은 한 틱 한 대
     const r = spawnCaravanBody(c, now);
     if (r === 'wait') { keep.push(c); continue; }   // 길이 아직 — 줄에 남긴다(다음 틱)
     if (r) { _probe.t775Spawned = (_probe.t775Spawned || 0) + 1; if (c.state === 'inbound') _probe.t775Inbound = (_probe.t775Inbound || 0) + 1; }
@@ -6989,7 +7004,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   pathJobs: _probe.pathJobs, pathSliceMax: _probe.pathSliceMax, pathChunkMax: _probe.pathChunkMax, pathDrop: _probe.pathDrop, pathWait: _probe.pathWait, pathStepNodes: PATH_STEP_NODES,
   routePlain: _probe.routePlain | 0, routeRedigPass: _probe.routeRedigPass | 0, routeRedig: _probe.routeRedig | 0, routeRedigChanged: _probe.routeRedigChanged | 0, pathBootWait: _probe.pathBootWait | 0, t714Yield: _probe.t714Yield | 0, t714Due: _probe.t714Due | 0, walkBuilt: _probe.walkBuilt | 0, walkStraight: _probe.walkStraight | 0, walkFar: _probe.walkFar | 0,   // ★[T578]
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
-  ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done) } } : {}),   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
+  ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done), ...(T896_RESUME_ONE ? { held896: _probe.t896Held | 0 } : {}) } } : {}),   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
   t620WfHit: _probe.t620WfHit | 0, t620WfN: _probe.t620WfN | 0, t620WfBad: _probe.t620WfBad | 0, t620Prewarm: _probe.t620Prewarm | 0,
   oreWarm: _probe.oreWarm | 0, oreWarmRows: _probe.oreWarmRows | 0, oreWarmMs: _probe.oreWarmMs | 0, oreAuditN: _probe.oreAuditN | 0, oreAuditBad: _probe.oreAuditBad | 0,   // ★[T620 ②]
