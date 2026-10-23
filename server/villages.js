@@ -3219,6 +3219,9 @@ function getRouteResumable(aVil, bVil, budgetMs) {
 function econDayToMs(econDay) { // econ world.day D의 게임일 경계 절대시각(ms) — 앵커: 현 lastGameDay↔world.day 정렬
   return state.epoch + ((T731_ON && state._t731Anchor != null ? state._t731Anchor : state.lastGameDay) + (econDay - state.world.day)) * state.dayMs;   // ★[T731] 켬 = 창이 열린 순간(동쪽 끝 자정)에 앵커
 }
+// ★[T871] econ 날 D 안에서 흐른 몫 [0, 1] — 그 날 경계(`econDayToMs(D)`)에서 벽시계 몫 · econ 이 다음 날로 넘기 전엔 1 에서 선다(밀린 마감 · 머리 전 한 틱).
+//   캐러밴 몸 보간 둘(`_t661Vis` · `_t681BxVis`)이 쓰던 그 식 그대로(한 함수로 올림 · 값 무변) — 몸 기온 시계(`econDayT` · 손잡이 `T871_ONE_CLOCK`)도 이것을 읽는다.
+function _econDayFrac(now) { return Math.min(1, Math.max(0, (now - econDayToMs(state.world.day)) / Math.max(1, state.dayMs))); }
 // ═══ ★★[T578 ② 2026-10-03] 캐러밴·호위가 **땅 위를 걷는다** — 교역로 노드 사이를 path-core 걸음으로 ═══
 //   T573 이 쟀다: 캐러밴 몸은 교역로 노드열(코스 격자 `DIST_STEP` 칸 = 128px 간격)을 **선형 보간해 그 위에 섰다** —
 //   노드 사이의 물·바위·나무를 아무도 안 봤고(다리 아닌 물 329칸 · 바위 7칸을 밟았다) 4칸 계단이 그대로 길이 됐다.
@@ -3715,7 +3718,7 @@ function _t661Vis(body, now) {
   const T = body._t661;
   if (T.stall) return T.L;
   if (T772_ON && T.leg === 'inbound' && T.t0 != null) return T.path.len * Math.min(1, Math.max(0, (now - T.t0) / Math.max(1, body.arriveAt - T.t0)));   // ★[T772 ①] 장 끝 → econ 도착(장부 `T.L` 을 안 끌어온다 — 그림만)
-  const f = Math.min(1, Math.max(0, (now - econDayToMs(state.world.day)) / Math.max(1, state.dayMs)));
+  const f = _econDayFrac(now);
   return Math.max(T.L, _t661Target(T, state.world.day + f, _t661End(body)));
 }
 
@@ -6792,7 +6795,7 @@ function _t681MarchTo(body, d) {
 }
 function _t681BxVis(r, now) {   // 걷는 몸이 따라갈 자리(보이는 것) — 장부 일정을 그날 벽시계 몫만큼 보간
   if (r.ppd == null) return r.len;
-  const f = Math.min(1, Math.max(0, (now - econDayToMs(state.world.day)) / Math.max(1, state.dayMs)));
+  const f = _econDayFrac(now);
   return Math.min(r.len, Math.max(0, (state.world.day + f - r.d0) * r.ppd));
 }
 function _t681StampPath(body, a, b) {   // 지휘관 선의 답압 — 그날 장부가 지난 구간(표본 SZ/4 · T661 `_t661Stamp` 그 꼴)
@@ -13566,7 +13569,12 @@ function __e2eForceDeed(vid, kind) {
 //     달력이 "3402년 봄 1일" 로 떴다 — 에폭이 먼 과거라 벽시계 일수가 컸던 것이다).
 function econDay() { return (state.world && Number.isFinite(state.world.day)) ? (state.world.day | 0) : null; }
 // ★[T484 ①] 분수 게임일 — econ 의 날 D + 그 날의 경계(`econDayToMs(D)`)에서 흐른 몫. 경계를 넘었는데 econ 이 아직 D 에 있어도 1 을 넘어 **이어진다**(계단 0).
-function econDayT(now) { if (!state.world || !Number.isFinite(state.world.day) || !state.dayMs) return null; const D = state.world.day | 0; return D + (now - econDayToMs(D)) / state.dayMs; }
+//   ★★[T871 2026-10-22 · T856 회부 1 · 손잡이 `T871_ONE_CLOCK`('1' 만 켬 · 끔 = 위 종전 식 그대로 = main 바이트)] **시계 하나 — 몸 기온의 날 = econ 날.**
+//     끔이면 몫이 1 을 넘어 이어진다 — econ 마감이 하루보다 길면(빠른 시계 250ms · 밀린 마감) 몸은 econ 보다 며칠 앞의 기온을 산다(T871 ① 표 · 서버 판 평균 2.5일).
+//     켬이면 몫 = `_econDayFrac`(캐러밴 몸이 이미 쓰는 econ 날 몫 [0, 1] · 사본 0) ⇒ 몸의 날 ∈ [D, D + 1] = econ 이 그 마을 기온을 매긴 그 날.
+//     운영 하루(24분 · 마감 수 초)는 몫이 1 에 닿지 않아 값이 같다(T871 ① 표 — 24분 하루 가상 시계 판).
+const T871_ONE_CLOCK = process.env.T871_ONE_CLOCK === '1';
+function econDayT(now) { if (!state.world || !Number.isFinite(state.world.day) || !state.dayMs) return null; const D = state.world.day | 0; return T871_ONE_CLOCK ? D + _econDayFrac(now) : D + (now - econDayToMs(D)) / state.dayMs; }
 
 // ★★[T728] world 메타 행 — 직렬 · 복원 · 종료 저장(손잡이 `T728_RESTART_KEEP` 켬에서만 불린다 · 위 `T728_KEEP` 주석).
 //   캐러밴은 마을 객체와 상인(econ 주민) 객체를 쥐고 있어 그대로는 직렬이 안 된다 ⇒ 마을은 이름, 상인은 주민 번호로 적고 복원 때 다시 잇는다.
@@ -13785,7 +13793,8 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
-  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT,
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
+ 
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
