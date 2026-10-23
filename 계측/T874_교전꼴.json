@@ -2,12 +2,14 @@
  "card": "T874 교전 유닛 사전 모드 — battle-core 30Hz",
  "date": "2026-10-23",
  "branch": "batch/battle-fast-1023",
- "base": "4bfd6e78(main)",
+ "base": "fe457d71(main) — 둘째 합친 판 ada74493(첫 합친 판 1f1e68cd = main 82be2d6f · 앞 베이스 4bfd6e78 · v1 ~ v3 은 그 위)",
  "knob": "T874_BATTLE_FAST — '1' 만 켬(battle-core _makeHandle 한 자리 · war-live _t874On 술어 하나를 enlist · bindGroupUnit 두 자리)",
  "commits": {
   "v1": "7d98e494 빠른 꼴(같이 쓰는 접근자 + 숨은 칸 · 다시 짓기 · 핸들)",
   "v2": "50a38ee0 교전 병사 늦게 붙던 칸 열아홉 미리",
-  "v3": "84256f49 대형 병사 늦게 붙던 칸 아홉 미리"
+  "v3": "84256f49 대형 병사 늦게 붙던 칸 아홉 미리",
+  "merge": "1f1e68cd main 82be2d6f 합침(T844 · T423 · T846 켬 기본 · T862 · T870 · T871 손잡이)",
+  "merge2": "ada74493 main fe457d71 합침(T862 켬 기본 · T876 · T873 · T881 · T887 — 충돌 0)"
  },
  "why": {
   "hypotheses": {
@@ -1738,6 +1740,959 @@
     ]
    ],
    "allJsonDistinct": 1
+  }
+ },
+ "merged": {
+  "base": "82be2d6f",
+  "baseline": "계측/서버기준선_2026-10-23.json",
+  "chain": [
+   "10:56:51 시작 · 가지 1f1e68cd · 기준선 계측/서버기준선_2026-10-23.json",
+   "11:23:16 H 하네스 끝 17/17 exit=0",
+   "11:31:35 S 켬 기준선 10-23(혼자) exit=0 499s",
+   "11:39:59 D 기본(끔) 기준선 10-23(혼자) exit=0 504s",
+   "11:49:40 W 전쟁 자 W0 ‖ W1 581s",
+   "11:49:41 W 짝 견주기 exit=0",
+   "11:58:19 U X1 exit=0 518s 1/1",
+   "12:06:59 U M1 exit=0 520s 1/1",
+   "12:12:20 다시(재시작 뒤) · 가지 1f1e68cd · U M2 부터",
+   "12:20:59 U M2 exit=0 519s 1/1",
+   "12:29:29 U X2 exit=0 510s 1/1",
+   "12:37:59 U M3 exit=0 510s 1/1",
+   "12:46:29 U X3 exit=0 510s 1/1",
+   "12:54:59 U X4 exit=0 510s 1/1",
+   "13:03:39 U M4 exit=0 520s 1/1",
+   "13:03:39 U 셈 exit=0",
+   "13:03:39 chain5 done"
+  ],
+  "harness": [
+   "def test-battle-fast exit=0 2s === 결과: 24 PASS / 0 FAIL ===",
+   "def test-war-world exit=0 265s 결과: 188 통과 / 0 실패",
+   "on test-war-world exit=0 180s 결과: 188 통과 / 0 실패",
+   "def test-war-nosnap exit=0 3s === 결과: 60 PASS / 0 FAIL ===",
+   "on test-war-nosnap exit=0 2s === 결과: 60 PASS / 0 FAIL ===",
+   "on test-moment-lot exit=0 44s === 107건 중 PASS 107 · FAIL 0 ===",
+   "on test-arms-keep exit=0 0s === 결과: 17 PASS / 0 FAIL ===",
+   "on test-sortie-miss exit=0 1s === 결과: 18 PASS / 0 FAIL ===",
+   "on test-body-exit exit=0 0s === 28건 중 PASS 28 · FAIL 0 ===",
+   "on test-t742-zone exit=0 0s === 11건 중 PASS 11 · FAIL 0 ===",
+   "on test-move-soa exit=0 91s === 결과: 286 PASS / 0 FAIL ===",
+   "on test-forage-act exit=0 17s === 결과: 251 PASS / 0 FAIL ===",
+   "on test-regrow-block exit=0 2s === 결과: 24 PASS / 0 FAIL ===",
+   "on test-vil-fast exit=0 362s === 10 통과 / 0 실패 ===",
+   "on test-econ-fast exit=0 607s === 19 통과 / 0 실패 ===",
+   "def test-harness-lint exit=0 7s === 64건 중 PASS 64 · FAIL 0 ===",
+   "def lab-wiring-check exit=0 2s === 배선 검사: 실패 0 · 경고 1 ==="
+  ],
+  "sbcOnSolo": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-7aLixH ===",
+   "판 모두 499초",
+   "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2512)",
+   "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2784)",
+   "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2725)",
+   "=== 같음 3/3 · 판 499초 ==="
+  ],
+  "sbcDefSolo": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-RFrJGZ ===",
+   "판 모두 504초",
+   "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2512)",
+   "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2784)",
+   "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2725)",
+   "=== 같음 3/3 · 판 504초 ==="
+  ],
+  "war": {
+   "7": {
+    "json": true,
+    "warLog": true,
+    "warLogLines": [
+     391,
+     391
+    ],
+    "pop": [
+     1295,
+     1295
+    ],
+    "trace": [
+     "A W0-7.json.trace.tsv 46850줄(D 50 · B 46 · F 16930 · S 29824) · B 46850줄(F 16930 · S 29824)",
+     "다른 값 0 {} · A 에만 0 · B 에만 0",
+     "갈림 없음",
+     "하루 경계 존 몸 해시 다른 날: 없음"
+    ]
+   },
+   "42": {
+    "json": true,
+    "warLog": true,
+    "warLogLines": [
+     402,
+     402
+    ],
+    "pop": [
+     1313,
+     1313
+    ],
+    "trace": [
+     "A W0-42.json.trace.tsv 46474줄(D 50 · B 49 · F 17014 · S 29361) · B 46474줄(F 17014 · S 29361)",
+     "다른 값 0 {} · A 에만 0 · B 에만 0",
+     "갈림 없음",
+     "하루 경계 존 몸 해시 다른 날: 없음"
+    ]
+   },
+   "1020": {
+    "json": true,
+    "warLog": true,
+    "warLogLines": [
+     444,
+     444
+    ],
+    "pop": [
+     1318,
+     1318
+    ],
+    "trace": [
+     "A W0-1020.json.trace.tsv 45334줄(D 50 · B 65 · F 17996 · S 27223) · B 45334줄(F 17996 · S 27223)",
+     "다른 값 0 {} · A 에만 0 · B 에만 0",
+     "갈림 없음",
+     "하루 경계 존 몸 해시 다른 날: 없음"
+    ]
+   }
+  },
+  "warOrder": {
+   "7": {
+    "lines": [
+     46850,
+     46850
+    ],
+    "sortedSha1": [
+     "78be8ad3cac8",
+     "78be8ad3cac8"
+    ],
+    "keys": [
+     103,
+     103
+    ],
+    "keysDiffer": 0,
+    "dayGroups": 51,
+    "dayGroupsDiffer": 0,
+    "linesMovedByDiff": 267,
+    "sortedSha1How": "JS 정렬(코드 단위) · 줄바꿈 이음 · sha1 12"
+   },
+   "42": {
+    "lines": [
+     46474,
+     46474
+    ],
+    "sortedSha1": [
+     "d1ed15555903",
+     "d1ed15555903"
+    ],
+    "keys": [
+     107,
+     107
+    ],
+    "keysDiffer": 0,
+    "dayGroups": 51,
+    "dayGroupsDiffer": 0,
+    "linesMovedByDiff": 225,
+    "sortedSha1How": "JS 정렬(코드 단위) · 줄바꿈 이음 · sha1 12"
+   },
+   "1020": {
+    "lines": [
+     45334,
+     45334
+    ],
+    "sortedSha1": [
+     "328ac38e38af",
+     "328ac38e38af"
+    ],
+    "keys": [
+     149,
+     149
+    ],
+    "keysDiffer": 0,
+    "dayGroups": 51,
+    "dayGroupsDiffer": 0,
+    "linesMovedByDiff": 239,
+    "sortedSha1How": "JS 정렬(코드 단위) · 줄바꿈 이음 · sha1 12"
+   }
+  },
+  "us": {
+   "runs": {
+    "X1": {
+     "knob": "1",
+     "fightCalls": 24251,
+     "fightUs": 132.89462446909405,
+     "unitStepUs": 8.182548221984128,
+     "unitsPerStep": 16.241227165890066,
+     "followCalls": 21601,
+     "followUs": 93.31762520253692,
+     "followUnitUs": 13.365296525659728,
+     "holdCalls": 4930,
+     "holdUs": 60.32892271805274,
+     "fightMs": 3222.827538,
+     "followMs": 2313.175611,
+     "fights": 32,
+     "shape": {
+      "handle": [
+       809,
+       0
+      ],
+      "ctx": [
+       809,
+       0
+      ],
+      "unit": [
+       13091,
+       0
+      ],
+      "gu": [
+       6778,
+       0
+      ],
+      "cmd": [
+       886,
+       0
+      ]
+     },
+     "objs": {
+      "handle": [
+       32,
+       0
+      ],
+      "unit": [
+       491,
+       0
+      ],
+      "gu": [
+       336,
+       0
+      ]
+     },
+     "json": "sha1:f0b36f8fb830",
+     "pop": 1147,
+     "mapsPerSample": 1,
+     "keyVariants": 1
+    },
+    "M1": {
+     "knob": null,
+     "fightCalls": 24251,
+     "fightUs": 165.37333239866396,
+     "unitStepUs": 10.182317549623477,
+     "unitsPerStep": 16.241227165890066,
+     "followCalls": 21601,
+     "followUs": 99.61883963705384,
+     "followUnitUs": 14.267779836891659,
+     "holdCalls": 4930,
+     "holdUs": 77.94574097363083,
+     "fightMs": 4010.468684,
+     "followMs": 2536.139058,
+     "fights": 32,
+     "shape": {
+      "handle": [
+       0,
+       809
+      ],
+      "ctx": [
+       809,
+       0
+      ],
+      "unit": [
+       0,
+       13101
+      ],
+      "gu": [
+       127,
+       6650
+      ],
+      "cmd": [
+       127,
+       759
+      ]
+     },
+     "objs": {
+      "handle": [
+       0,
+       32
+      ],
+      "unit": [
+       0,
+       491
+      ],
+      "gu": [
+       10,
+       326
+      ]
+     },
+     "json": "sha1:f0b36f8fb830",
+     "pop": 1147,
+     "mapsPerSample": 1,
+     "keyVariants": 14
+    },
+    "M2": {
+     "knob": null,
+     "fightCalls": 24251,
+     "fightUs": 165.8945029070966,
+     "unitStepUs": 10.214406904886433,
+     "unitsPerStep": 16.241227165890066,
+     "followCalls": 21601,
+     "followUs": 98.37483093375306,
+     "followUnitUs": 14.089608294655882,
+     "holdCalls": 4930,
+     "holdUs": 77.8465093306288,
+     "fightMs": 4023.10759,
+     "followMs": 2508.778014,
+     "fights": 32,
+     "shape": {
+      "handle": [
+       0,
+       809
+      ],
+      "ctx": [
+       809,
+       0
+      ],
+      "unit": [
+       0,
+       13078
+      ],
+      "gu": [
+       49,
+       6738
+      ],
+      "cmd": [
+       49,
+       837
+      ]
+     },
+     "objs": {
+      "handle": [
+       0,
+       32
+      ],
+      "unit": [
+       0,
+       491
+      ],
+      "gu": [
+       5,
+       331
+      ]
+     },
+     "json": "sha1:f0b36f8fb830",
+     "pop": 1147,
+     "mapsPerSample": 1,
+     "keyVariants": 14
+    },
+    "X2": {
+     "knob": "1",
+     "fightCalls": 24251,
+     "fightUs": 134.48427767927095,
+     "unitStepUs": 8.280425875805477,
+     "unitsPerStep": 16.241227165890066,
+     "followCalls": 21601,
+     "followUs": 99.63368658858386,
+     "followUnitUs": 14.269906272377668,
+     "holdCalls": 4930,
+     "holdUs": 62.03927342799189,
+     "fightMs": 3261.378218,
+     "followMs": 2458.040882,
+     "fights": 32,
+     "shape": {
+      "handle": [
+       809,
+       0
+      ],
+      "ctx": [
+       809,
+       0
+      ],
+      "unit": [
+       13071,
+       0
+      ],
+      "gu": [
+       6767,
+       0
+      ],
+      "cmd": [
+       886,
+       0
+      ]
+     },
+     "objs": {
+      "handle": [
+       32,
+       0
+      ],
+      "unit": [
+       491,
+       0
+      ],
+      "gu": [
+       328,
+       0
+      ]
+     },
+     "json": "sha1:f0b36f8fb830",
+     "pop": 1147,
+     "mapsPerSample": 1,
+     "keyVariants": 1
+    },
+    "M3": {
+     "knob": null,
+     "fightCalls": 24251,
+     "fightUs": 171.38145115665336,
+     "unitStepUs": 10.552247647677127,
+     "unitsPerStep": 16.241227165890066,
+     "followCalls": 21601,
+     "followUs": 102.17808069070877,
+     "followUnitUs": 14.634323836361226,
+     "holdCalls": 4930,
+     "holdUs": 78.86223164300203,
+     "fightMs": 4156.171572,
+     "followMs": 2595.939523,
+     "fights": 32,
+     "shape": {
+      "handle": [
+       0,
+       809
+      ],
+      "ctx": [
+       809,
+       0
+      ],
+      "unit": [
+       0,
+       13102
+      ],
+      "gu": [
+       37,
+       6743
+      ],
+      "cmd": [
+       37,
+       849
+      ]
+     },
+     "objs": {
+      "handle": [
+       0,
+       32
+      ],
+      "unit": [
+       0,
+       491
+      ],
+      "gu": [
+       7,
+       329
+      ]
+     },
+     "json": "sha1:f0b36f8fb830",
+     "pop": 1147,
+     "mapsPerSample": 1,
+     "keyVariants": 14
+    },
+    "X3": {
+     "knob": "1",
+     "fightCalls": 24251,
+     "fightUs": 124.7701588800462,
+     "unitStepUs": 7.682311047412064,
+     "unitsPerStep": 16.241227165890066,
+     "followCalls": 21601,
+     "followUs": 90.87553654923383,
+     "followUnitUs": 13.015531527648852,
+     "holdCalls": 4930,
+     "holdUs": 54.97246206896552,
+     "fightMs": 3025.801123,
+     "followMs": 2234.016703,
+     "fights": 32,
+     "shape": {
+      "handle": [
+       809,
+       0
+      ],
+      "ctx": [
+       809,
+       0
+      ],
+      "unit": [
+       13093,
+       0
+      ],
+      "gu": [
+       6779,
+       0
+      ],
+      "cmd": [
+       886,
+       0
+      ]
+     },
+     "objs": {
+      "handle": [
+       32,
+       0
+      ],
+      "unit": [
+       491,
+       0
+      ],
+      "gu": [
+       336,
+       0
+      ]
+     },
+     "json": "sha1:f0b36f8fb830",
+     "pop": 1147,
+     "mapsPerSample": 1,
+     "keyVariants": 1
+    },
+    "X4": {
+     "knob": "1",
+     "fightCalls": 24251,
+     "fightUs": 128.90548270174426,
+     "unitStepUs": 7.936929973645859,
+     "unitsPerStep": 16.241227165890066,
+     "followCalls": 21601,
+     "followUs": 95.7217389009768,
+     "followUnitUs": 13.709622609733456,
+     "holdCalls": 4930,
+     "holdUs": 56.678618052738344,
+     "fightMs": 3126.086861,
+     "followMs": 2347.110869,
+     "fights": 32,
+     "shape": {
+      "handle": [
+       809,
+       0
+      ],
+      "ctx": [
+       809,
+       0
+      ],
+      "unit": [
+       13081,
+       0
+      ],
+      "gu": [
+       6778,
+       0
+      ],
+      "cmd": [
+       886,
+       0
+      ]
+     },
+     "objs": {
+      "handle": [
+       32,
+       0
+      ],
+      "unit": [
+       491,
+       0
+      ],
+      "gu": [
+       328,
+       0
+      ]
+     },
+     "json": "sha1:f0b36f8fb830",
+     "pop": 1147,
+     "mapsPerSample": 1,
+     "keyVariants": 1
+    },
+    "M4": {
+     "knob": null,
+     "fightCalls": 24251,
+     "fightUs": 163.22352076203043,
+     "unitStepUs": 10.049949988067008,
+     "unitsPerStep": 16.241227165890066,
+     "followCalls": 21601,
+     "followUs": 103.92373866950604,
+     "followUnitUs": 14.884343449144675,
+     "holdCalls": 4930,
+     "holdUs": 75.04343326572008,
+     "fightMs": 3958.333602,
+     "followMs": 2614.820805,
+     "fights": 32,
+     "shape": {
+      "handle": [
+       0,
+       809
+      ],
+      "ctx": [
+       809,
+       0
+      ],
+      "unit": [
+       0,
+       13087
+      ],
+      "gu": [
+       87,
+       6691
+      ],
+      "cmd": [
+       87,
+       799
+      ]
+     },
+     "objs": {
+      "handle": [
+       0,
+       32
+      ],
+      "unit": [
+       0,
+       491
+      ],
+      "gu": [
+       11,
+       325
+      ]
+     },
+     "json": "sha1:f0b36f8fb830",
+     "pop": 1147,
+     "mapsPerSample": 1,
+     "keyVariants": 14
+    }
+   },
+   "summ": {
+    "fightUs": {
+     "X": {
+      "n": 4,
+      "m": 130.26363593253888,
+      "sd": 4.349666184828586,
+      "min": 124.7701588800462,
+      "max": 134.48427767927095
+     },
+     "M": {
+      "n": 4,
+      "m": 166.4682018061111,
+      "sd": 3.4735113696140583,
+      "min": 163.22352076203043,
+      "max": 171.38145115665336
+     }
+    },
+    "unitStepUs": {
+     "X": {
+      "n": 4,
+      "m": 8.020553779711882,
+      "sd": 0.2678163503533649,
+      "min": 7.682311047412064,
+      "max": 8.280425875805477
+     },
+     "M": {
+      "n": 4,
+      "m": 10.24973052256351,
+      "sd": 0.2138700071204673,
+      "min": 10.049949988067008,
+      "max": 10.552247647677127
+     }
+    },
+    "followUs": {
+     "X": {
+      "n": 4,
+      "m": 94.88714681033284,
+      "sd": 3.7319610032161306,
+      "min": 90.87553654923383,
+      "max": 99.63368658858386
+     },
+     "M": {
+      "n": 4,
+      "m": 101.02387248275542,
+      "sd": 2.4988636693643738,
+      "min": 98.37483093375306,
+      "max": 103.92373866950604
+     }
+    },
+    "followUnitUs": {
+     "X": {
+      "n": 4,
+      "m": 13.590089233854927,
+      "sd": 0.5345053018861664,
+      "min": 13.015531527648852,
+      "max": 14.269906272377668
+     },
+     "M": {
+      "n": 4,
+      "m": 14.46901385426336,
+      "sd": 0.35789652646823833,
+      "min": 14.089608294655882,
+      "max": 14.884343449144675
+     }
+    },
+    "holdUs": {
+     "X": {
+      "n": 4,
+      "m": 58.50481906693712,
+      "sd": 3.2471668608071234,
+      "min": 54.97246206896552,
+      "max": 62.03927342799189
+     },
+     "M": {
+      "n": 4,
+      "m": 77.42447880324544,
+      "sd": 1.651901439383914,
+      "min": 75.04343326572008,
+      "max": 78.86223164300203
+     }
+    },
+    "fightMs": {
+     "X": {
+      "n": 4,
+      "m": 3159.023435,
+      "sd": 105.48375464827815,
+      "min": 3025.801123,
+      "max": 3261.378218
+     },
+     "M": {
+      "n": 4,
+      "m": 4037.020362,
+      "sd": 84.23612422451029,
+      "min": 3958.333602,
+      "max": 4156.171572
+     }
+    },
+    "followMs": {
+     "X": {
+      "n": 4,
+      "m": 2338.08601625,
+      "sd": 92.95441182699102,
+      "min": 2234.016703,
+      "max": 2458.040882
+     },
+     "M": {
+      "n": 4,
+      "m": 2563.91935,
+      "sd": 49.761300758511425,
+      "min": 2508.778014,
+      "max": 2614.820805
+     }
+    }
+   },
+   "pairs": {
+    "fightUs": [
+     -32.47870792956991,
+     -31.410225227825663,
+     -46.61129227660716,
+     -34.31803806028617
+    ],
+    "unitStepUs": [
+     -1.9997693276393491,
+     -1.9339810290809556,
+     -2.8699366002650635,
+     -2.1130200144211484
+    ],
+    "followUs": [
+     -6.301214434516922,
+     1.2588556548307963,
+     -11.30254414147494,
+     -8.201999768529234
+    ],
+    "followUnitUs": [
+     -0.902483311231931,
+     0.18029797772178568,
+     -1.618792308712374,
+     -1.1747208394112185
+    ],
+    "holdUs": [
+     -17.616818255578096,
+     -15.807235902636918,
+     -23.889769574036514,
+     -18.36481521298174
+    ],
+    "fightMs": [
+     -787.6411459999999,
+     -761.7293720000002,
+     -1130.370449,
+     -832.2467409999999
+    ],
+    "followMs": [
+     -222.9634470000001,
+     -50.7371320000002,
+     -361.92282000000023,
+     -267.70993599999974
+    ]
+   },
+   "same": [
+    [
+     "X1·M1",
+     true,
+     true,
+     1147,
+     1147
+    ],
+    [
+     "M2·X2",
+     true,
+     true,
+     1147,
+     1147
+    ],
+    [
+     "M3·X3",
+     true,
+     true,
+     1147,
+     1147
+    ],
+    [
+     "X4·M4",
+     true,
+     true,
+     1147,
+     1147
+    ]
+   ],
+   "allJsonDistinct": 1
+  }
+ },
+ "merged2": {
+  "base": "fe457d71",
+  "head": "ada74493",
+  "baseline": "계측/서버기준선_2026-10-23.json",
+  "note": "둘째 합침 — war-live · battle-core · sim · lab 무변 · µs 는 merged(1f1e68cd) 그대로",
+  "chain": [
+   "13:08:02 시작 · 가지 ada74493 · 기준선 계측/서버기준선_2026-10-23.json",
+   "13:16:44 H 하네스 끝 8/8 exit=0",
+   "13:23:49 S 켬 기준선 10-23(혼자) exit=0 425s",
+   "13:33:19 W 전쟁 자 W0 ‖ W1 570s",
+   "13:33:20 W 짝 견주기 exit=0",
+   "13:33:20 chain6 done"
+  ],
+  "harness": [
+   "def test-battle-fast exit=0 2s === 결과: 24 PASS / 0 FAIL ===",
+   "def test-war-world exit=0 194s 결과: 188 통과 / 0 실패",
+   "on test-war-world exit=0 181s 결과: 188 통과 / 0 실패",
+   "def test-war-nosnap exit=0 2s === 결과: 60 PASS / 0 FAIL ===",
+   "on test-war-nosnap exit=0 3s === 결과: 60 PASS / 0 FAIL ===",
+   "on test-car-fast exit=0 125s === 11 통과 / 0 실패 ===",
+   "def test-harness-lint exit=0 13s === 64건 중 PASS 64 · FAIL 0 ===",
+   "def lab-wiring-check exit=0 2s === 배선 검사: 실패 0 · 경고 1 ==="
+  ],
+  "sbcOnSolo": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-V5x6Zv ===",
+   "판 모두 424초",
+   "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2512)",
+   "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2784)",
+   "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2725)",
+   "=== 같음 3/3 · 판 424초 ==="
+  ],
+  "war": {
+   "7": {
+    "json": true,
+    "warLog": true,
+    "warLogLines": [
+     391,
+     391
+    ],
+    "pop": [
+     1295,
+     1295
+    ],
+    "trace": [
+     "A W0-7.json.trace.tsv 46850줄(D 50 · B 46 · F 16930 · S 29824) · B 46850줄(F 16930 · S 29824)",
+     "다른 값 0 {} · A 에만 0 · B 에만 0",
+     "갈림 없음",
+     "하루 경계 존 몸 해시 다른 날: 없음"
+    ]
+   },
+   "42": {
+    "json": true,
+    "warLog": true,
+    "warLogLines": [
+     402,
+     402
+    ],
+    "pop": [
+     1313,
+     1313
+    ],
+    "trace": [
+     "A W0-42.json.trace.tsv 46474줄(D 50 · B 49 · F 17014 · S 29361) · B 46474줄(F 17014 · S 29361)",
+     "다른 값 0 {} · A 에만 0 · B 에만 0",
+     "갈림 없음",
+     "하루 경계 존 몸 해시 다른 날: 없음"
+    ]
+   },
+   "1020": {
+    "json": true,
+    "warLog": true,
+    "warLogLines": [
+     444,
+     444
+    ],
+    "pop": [
+     1318,
+     1318
+    ],
+    "trace": [
+     "A W0-1020.json.trace.tsv 45334줄(D 50 · B 65 · F 17996 · S 27223) · B 45334줄(F 17996 · S 27223)",
+     "다른 값 0 {} · A 에만 0 · B 에만 0",
+     "갈림 없음",
+     "하루 경계 존 몸 해시 다른 날: 없음"
+    ]
+   }
+  },
+  "warOrder": {
+   "7": {
+    "lines": [
+     46850,
+     46850
+    ],
+    "sortedSha1": [
+     "78be8ad3cac8",
+     "78be8ad3cac8"
+    ],
+    "keys": [
+     103,
+     103
+    ],
+    "keysDiffer": 0,
+    "dayGroups": 51,
+    "dayGroupsDiffer": 0,
+    "linesMovedByDiff": 217,
+    "sortedSha1How": "JS 정렬(코드 단위) · 줄바꿈 이음 · sha1 12"
+   },
+   "42": {
+    "lines": [
+     46474,
+     46474
+    ],
+    "sortedSha1": [
+     "d1ed15555903",
+     "d1ed15555903"
+    ],
+    "keys": [
+     107,
+     107
+    ],
+    "keysDiffer": 0,
+    "dayGroups": 51,
+    "dayGroupsDiffer": 0,
+    "linesMovedByDiff": 666,
+    "sortedSha1How": "JS 정렬(코드 단위) · 줄바꿈 이음 · sha1 12"
+   },
+   "1020": {
+    "lines": [
+     45334,
+     45334
+    ],
+    "sortedSha1": [
+     "328ac38e38af",
+     "328ac38e38af"
+    ],
+    "keys": [
+     149,
+     149
+    ],
+    "keysDiffer": 0,
+    "dayGroups": 51,
+    "dayGroupsDiffer": 0,
+    "linesMovedByDiff": 200,
+    "sortedSha1How": "JS 정렬(코드 단위) · 줄바꿈 이음 · sha1 12"
+   }
   }
  }
 }
