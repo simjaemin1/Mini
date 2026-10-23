@@ -403,7 +403,27 @@ function trackVel(ctx,dt){for(const u of ctx.units){if(u.hp<=0)continue;u._vx=((
 
 // ═══════════ 인스턴스 편의 핸들 ═══════════
 // _makeHandle(ctx) = 인스턴스 편의객체. step(dt)=trackVel+stepBattle 한 틱. getter/setter는 ctx에 위임.
+// ★[T874 2026-10-23] 손잡이 `T874_BATTLE_FAST`('1' 만 켬 · 끔 = 종전 그대로) — 아래 리터럴의 접근자 열둘(`get units()` …)은
+//   리터럴이 먼저 깐 칸 위에 덮여 핸들이 만들어지자마자 사전 모드다(V8 `AccessorsOverwritingNonLast`). 켬이면 같은 리터럴을 지은 뒤
+//   같은 이름 · 같은 차례 · 같은 속성(열거 · 고칠 수 있음 · 읽기만)으로 빠른 꼴 핸들에 옮긴다(`_t874Handle`) — 접근자는 핸들마다 새 닫힘이 아니라
+//   모두가 같이 쓰는 함수 하나(`this.ctx` 를 읽는다 · 핸들의 `ctx` 칸 = 같은 ctx)라 칸이 생길 때 같이 달려 사전으로 안 떨어진다. 메서드 넷 · step 은 같은 함수 그대로.
+const _T874_HG={ get units(){return this.ctx.units;}, get arrows(){return this.ctx.arrows;}, get corpses(){return this.ctx.corpses;},
+  get sides(){return this.ctx.sides;}, get world(){return this.ctx.world;},
+  get result(){return this.ctx.result;}, get tick(){return this.ctx.tick;},
+  get commander(){return this.ctx.commander;}, get cmdHeading(){return this.ctx.cmdHeading;},
+  get terrain(){return this.ctx.terrain;}, get playerMode(){return this.ctx.playerMode;}, get keys(){return this.ctx.keys;} };
+const _T874_HD=Object.getOwnPropertyNames(_T874_HG).map(k=>[k,Object.getOwnPropertyDescriptor(_T874_HG,k)]);
+function _t874Handle(h0){
+  const h={ctx:h0.ctx, step:h0.step};
+  for(const [k,d] of _T874_HD)Object.defineProperty(h,k,d);
+  h.setKeys=h0.setKeys; h.setCmdHeading=h0.setCmdHeading; h.setPlayerMode=h0.setPlayerMode; h.addUnits=h0.addUnits;
+  return h;
+}
 function _makeHandle(ctx){
+  const h0=_makeHandleLit(ctx);
+  return _bcKnob('T874_BATTLE_FAST')==='1'?_t874Handle(h0):h0;
+}
+function _makeHandleLit(ctx){
   return {
     ctx,
     step(dt){ trackVel(ctx,dt); stepBattle(ctx,dt); },

@@ -26,6 +26,54 @@ var BattleCore = (typeof module !== 'undefined' && module.exports && typeof requ
 // ═══════════ 결정론 RNG (랩 _muRng verbatim — xorshift32, Math.random 금지) ═══════════
 function _muRng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
+// ═══════════ ★[T874 2026-10-23] 교전 병사 · 대형 병사 빠른 꼴 — 손잡이 `T874_BATTLE_FAST`('1' 만 켬 · 끔 = 종전 그대로) ═══════════
+//   왜: 몸 자리 묶기(아래 enlist · bindGroupUnit)가 x/y 접근자를 **몸마다 새 닫힘**으로 단다. ⓐ 교전 병사는 battle-core spawn 리터럴이
+//   먼저 깐 데이터 칸 x/y 위에 덮인다(V8 `AccessorsOverwritingNonLast`) ⓑ 대형 병사는 새 칸이지만 둘째 몸부터 접근자 짝이 달라
+//   같은 길을 못 탄다(`TransitionToDifferentAccessor`) ⇒ 둘 다 묶이는 순간 사전 모드 — 교전 스텝(30Hz)이 그 몸들을 걷는다.
+//   켬: 접근자를 **모두가 같이 쓰는 함수 하나**로 달고, 몸(player)과 두 비(px/m · m/셀)는 숨은 칸(사설 필드 — 열거 · `in` · JSON · 반사 밖)에 둔다.
+//   식은 글자 그대로(`p.x / k` · `v * k` · `p.x / k / m` · `v * m * k` — 같은 차례의 같은 곱셈 · 나눗셈 = 같은 값).
+//   교전 병사는 접근자 칸이 생길 때 같이 달리도록 battle-core 가 막 지은 병사(아무도 아직 안 잡았다)를 **같은 칸 · 같은 차례 · 같은 값**의 객체로 다시 짓고
+//   그 자리(ctx.units 끝)에 둔다. 모르는 칸 꼴이면 종전 길(아래 두 줄)로 간다.
+function _t874On() { return typeof process !== 'undefined' && !!process.env && process.env.T874_BATTLE_FAST === '1'; }
+const _T874 = (function () {
+  class O { constructor(o) { return o; } }
+  class B extends O {
+    #p; #k; #m;
+    constructor(o, p, k, m) { super(o); this.#p = p; this.#k = k; this.#m = m; }
+    static d() {
+      return {
+        ux: { get() { return this.#p.x / this.#k; }, set(v) { this.#p.x = v * this.#k; }, enumerable: true, configurable: true },
+        uy: { get() { return this.#p.y / this.#k; }, set(v) { this.#p.y = v * this.#k; }, enumerable: true, configurable: true },
+        gx: { get() { return this.#p.x / this.#k / this.#m; }, set(v) { this.#p.x = v * this.#m * this.#k; }, enumerable: true, configurable: true },
+        gy: { get() { return this.#p.y / this.#k / this.#m; }, set(v) { this.#p.y = v * this.#m * this.#k; }, enumerable: true, configurable: true },
+      };
+    }
+  }
+  return { D: B.d(), stamp(o, p, k, m) { new B(o, p, k, m); return o; } };
+})();
+// battle-core spawn 리터럴 17칸 + addUnits 가 다는 칸(품질 `atk` · `agent`)만 아는 꼴이다 — 그 밖이면 null(종전 길).
+const _T874_UK = 'id,side,type,x,y,hp,maxHp,shp,shMax,tgt,st,cd,face,_rt,mrl,routing,form';
+function _t874Unit(u0, p, k) {
+  const ks = Object.keys(u0).join(',');
+  const hasAtk = ks === _T874_UK + ',atk' || ks === _T874_UK + ',atk,agent';
+  if (!(ks === _T874_UK || ks === _T874_UK + ',agent' || hasAtk)) return null;
+  const u = _T874.stamp({ id: u0.id, side: u0.side, type: u0.type }, p, k, 1);   // 숨은 칸을 먼저(사설 필드는 셈 키 꼴로 붙는다 — 바깥 칸이 열둘을 넘은 뒤면 V8 `TooManyFastProperties`)
+  Object.defineProperty(u, 'x', _T874.D.ux);
+  Object.defineProperty(u, 'y', _T874.D.uy);
+  u.hp = u0.hp; u.maxHp = u0.maxHp; u.shp = u0.shp; u.shMax = u0.shMax; u.tgt = u0.tgt; u.st = u0.st; u.cd = u0.cd; u.face = u0.face;
+  u._rt = u0._rt; u.mrl = u0.mrl; u.routing = u0.routing; u.form = u0.form;
+  if (hasAtk) u.atk = u0.atk;
+  if (ks.endsWith(',agent')) u.agent = u0.agent;
+  return u;
+}
+function _t874Group(gu, p, k, m) {
+  if (Object.prototype.hasOwnProperty.call(gu, 'x') || Object.prototype.hasOwnProperty.call(gu, 'y')) return false;   // 이미 칸이 있으면 종전 길
+  _T874.stamp(gu, p, k, m);
+  Object.defineProperty(gu, 'x', _T874.D.gx);
+  Object.defineProperty(gu, 'y', _T874.D.gy);
+  return true;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // createWarLive(opts)
 //   opts.BC            battle-core (기본 require)
@@ -244,9 +292,13 @@ function createWarLive(opts) {
     if (!ctx.sides[side].form) ctx.sides[side].form = 'line';
     const n = f.handle.addUnits(side, [{ type: gu.type, x: p.x / PX_PER_M, y: p.y / PX_PER_M, agent: gu.pid }], f.quality[side] || null);
     if (!n) return null;
+    const uf = _t874On() ? _t874Unit(ctx.units[ctx.units.length - 1], p, PX_PER_M) : null;   // ★[T874] 켬 — 같은 칸 · 같은 값 빠른 꼴로 다시 지어 그 자리에
+    if (uf) ctx.units[ctx.units.length - 1] = uf;
     const u = ctx.units[ctx.units.length - 1];
-    Object.defineProperty(u, 'x', { get() { return p.x / PX_PER_M; }, set(v) { p.x = v * PX_PER_M; }, enumerable: true, configurable: true });
-    Object.defineProperty(u, 'y', { get() { return p.y / PX_PER_M; }, set(v) { p.y = v * PX_PER_M; }, enumerable: true, configurable: true });
+    if (!uf) {   // 끔(종전) — 접근자를 있던 칸 위에 덮는다
+      Object.defineProperty(u, 'x', { get() { return p.x / PX_PER_M; }, set(v) { p.x = v * PX_PER_M; }, enumerable: true, configurable: true });
+      Object.defineProperty(u, 'y', { get() { return p.y / PX_PER_M; }, set(v) { p.y = v * PX_PER_M; }, enumerable: true, configurable: true });
+    }
     u.face = side === 'A' ? (f.w._heading || 0) : (f.w._heading || 0) + Math.PI;
     u.ctl = true;            // 처음엔 대형이 몬다
     u.gu = gu; gu.bu = u;    // 대형 병사 ↔ 전투 병사(같은 몸 — 위치는 p 하나)
@@ -256,6 +308,7 @@ function createWarLive(opts) {
   // 대형 병사(gu)의 셀 좌표도 같은 player 에 묶는다 — 대형·교전·존이 **한 좌표**를 읽고 쓴다.
   function bindGroupUnit(gu, p) {
     if (!gu || !p || gu._bound) return;
+    if (_t874On() && _t874Group(gu, p, PX_PER_M, M_PER_CELL)) { gu._bound = true; return; }   // ★[T874] 켬 — 같이 쓰는 접근자 · 숨은 칸(같은 칸 · 같은 값)
     Object.defineProperty(gu, 'x', { get() { return p.x / PX_PER_M / M_PER_CELL; }, set(v) { p.x = v * M_PER_CELL * PX_PER_M; }, enumerable: true, configurable: true });
     Object.defineProperty(gu, 'y', { get() { return p.y / PX_PER_M / M_PER_CELL; }, set(v) { p.y = v * M_PER_CELL * PX_PER_M; }, enumerable: true, configurable: true });
     gu._bound = true;
