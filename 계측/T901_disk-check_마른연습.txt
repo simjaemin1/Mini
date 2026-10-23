@@ -1,0 +1,193 @@
+# T901 disk-check 마른 연습(두 호스트 흉내 판 · 한 상자 — 두 호스트 숫자가 같다 · 2026-10-23) — 출력 그대로 · 비밀 0
+
+## --prune(서울: 별칭 seoul 침 · 도쿄: no 침) — .bak 둘은 이 판에 만든 가짜(1 MB · 2 MB · 날짜 08-03 · 08-04)
+== disk-check 2026-10-23 13:54:23 — 서울(seoul) · 도쿄(tokyo) · --prune ==
+[서울(seoul)]
+  디스크(/srv/durango · /) 전체 252.0 GB · 씀 40.2 GB · 남음 3.1 GB
+  도커 자리(/var/lib/docker · /var/lib/docker) 남음 3.1 GB
+  볼륨 central 273.4 KB(DB 273.4 KB)
+  볼륨 hanbando 94.8 MB(DB 93.8 MB)
+  볼륨 nippon 17.3 MB(DB 15.3 MB)
+    .bak 2026-08-03 1.0 MB /srv/durango/hanbando/world-hanbando.db.0803.bak
+    .bak 2026-08-04 2.0 MB /srv/durango/nippon/world-nippon.db.0804.bak
+  .bak 2개 · 3.0 MB(목록만 — 지울지는 재민)
+    _reset 6.8 MB 20261022-120453-nippon
+    _reset 54.3 MB 20261022-120455-hanbando
+    _reset 275.9 KB 20261022-120458-central
+    _reset 108.0 KB 20261022-120809-central-replaced
+    _reset 95.2 MB 20261022-120813-hanbando-replaced
+    _reset 45.2 MB 20261022-120840-nippon-replaced
+  _reset 백업 6벌 · 202.0 MB(목록만 — 지울지는 재민)
+  도커 Images 1.036GB(되찾을 수 있는 몫 368MB (35%))
+  도커 Containers 24.58kB(되찾을 수 있는 몫 24.58kB (100%))
+  도커 Local Volumes 0B(되찾을 수 있는 몫 0B)
+  도커 Build Cache 1.806GB(되찾을 수 있는 몫 770.1MB)
+  매달린 이미지 0개
+    이미지 durango-central:latest 31f3ce253672 475MB (About an hour ago)
+    이미지 durango-central:pre-reset 01101a5ee3e2 468MB (26 hours ago)
+    이미지 durango-central:prev-central dca99fbdbd46 475MB (3 hours ago)
+    이미지 durango-zone:latest dfaf7918d5ac 475MB (About an hour ago)
+    이미지 durango-zone:pre-reset 3e465666bba4 468MB (26 hours ago)
+    이미지 durango-zone:prev-hanbando 99d2e26a572d 475MB (3 hours ago)
+    이미지 durango-zone:prev-nippon 99d2e26a572d 475MB (3 hours ago)
+    이미지 durango-zone:t872-seed f659de97aae9 468MB (26 hours ago)
+    로그 durango-zone-nippon 40.8 KB
+    로그 durango-zone-hanbando 455.0 KB
+    로그 durango-central 2.3 KB
+  컨테이너 로그 합 498.1 KB
+  저널(journald) 0B
+  지울 수 있는 옛 durango 이미지(되돌리기에 안 쓰는 것) 1개:
+    f659de97aae9 468MB durango-zone:t872-seed
+  판정: 빈 자리 3.1 GB ≥ 백업 한 벌 184.3 MB(DB 합 109.4 MB × 1.1 + 64 MB — reset-world.sh 백업 자리 규칙)
+[도쿄(tokyo)]
+  디스크(/srv/durango · /) 전체 252.0 GB · 씀 40.2 GB · 남음 3.1 GB
+  도커 자리(/var/lib/docker · /var/lib/docker) 남음 3.1 GB
+  볼륨 central 273.4 KB(DB 273.4 KB)
+  볼륨 hanbando 94.8 MB(DB 93.8 MB)
+  볼륨 nippon 17.3 MB(DB 15.3 MB)
+    .bak 2026-08-03 1.0 MB /srv/durango/hanbando/world-hanbando.db.0803.bak
+    .bak 2026-08-04 2.0 MB /srv/durango/nippon/world-nippon.db.0804.bak
+  .bak 2개 · 3.0 MB(목록만 — 지울지는 재민)
+    _reset 6.8 MB 20261022-120453-nippon
+    _reset 54.3 MB 20261022-120455-hanbando
+    _reset 275.9 KB 20261022-120458-central
+    _reset 108.0 KB 20261022-120809-central-replaced
+    _reset 95.2 MB 20261022-120813-hanbando-replaced
+    _reset 45.2 MB 20261022-120840-nippon-replaced
+  _reset 백업 6벌 · 202.0 MB(목록만 — 지울지는 재민)
+  도커 Images 1.036GB(되찾을 수 있는 몫 368MB (35%))
+  도커 Containers 24.58kB(되찾을 수 있는 몫 24.58kB (100%))
+  도커 Local Volumes 0B(되찾을 수 있는 몫 0B)
+  도커 Build Cache 1.806GB(되찾을 수 있는 몫 770.1MB)
+  매달린 이미지 0개
+    이미지 durango-central:latest 31f3ce253672 475MB (About an hour ago)
+    이미지 durango-central:pre-reset 01101a5ee3e2 468MB (26 hours ago)
+    이미지 durango-central:prev-central dca99fbdbd46 475MB (3 hours ago)
+    이미지 durango-zone:latest dfaf7918d5ac 475MB (About an hour ago)
+    이미지 durango-zone:pre-reset 3e465666bba4 468MB (26 hours ago)
+    이미지 durango-zone:prev-hanbando 99d2e26a572d 475MB (3 hours ago)
+    이미지 durango-zone:prev-nippon 99d2e26a572d 475MB (3 hours ago)
+    이미지 durango-zone:t872-seed f659de97aae9 468MB (26 hours ago)
+    로그 durango-zone-nippon 40.8 KB
+    로그 durango-zone-hanbando 455.0 KB
+    로그 durango-central 2.3 KB
+  컨테이너 로그 합 498.1 KB
+  저널(journald) 0B
+  지울 수 있는 옛 durango 이미지(되돌리기에 안 쓰는 것) 1개:
+    f659de97aae9 468MB durango-zone:t872-seed
+  판정: 빈 자리 3.1 GB ≥ 백업 한 벌 184.3 MB(DB 합 109.4 MB × 1.1 + 64 MB — reset-world.sh 백업 자리 규칙)
+판정: 두 호스트 모두 빈 자리 ≥ 백업 한 벌
+
+[서울(seoul) 지우기] 지울 것 — 매달린 이미지 · 빌드 캐시(도커가 셈) · 옛 durango 이미지 1개: durango-zone:t872-seed 
+  안 지우는 것 — DB · .bak · _reset · 볼륨 · 컨테이너 · 컨테이너가 쓰는 이미지 · :latest · :prev-<대상> · :pre-reset · durango 밖 이미지
+  지운다. 이 호스트 별칭을 그대로 쳐라(seoul):     지움 durango-zone:t872-seed
+    옛 durango 이미지 태그 1개를 뗐다
+    매달린 이미지: Total reclaimed space: 0B
+    빌드 캐시: Total:	770.1MB
+    지운 뒤 빈 자리 3.8 GB
+
+[도쿄(tokyo) 지우기] 지울 것 — 매달린 이미지 · 빌드 캐시(도커가 셈) · 옛 durango 이미지 1개: durango-zone:t872-seed 
+  안 지우는 것 — DB · .bak · _reset · 볼륨 · 컨테이너 · 컨테이너가 쓰는 이미지 · :latest · :prev-<대상> · :pre-reset · durango 밖 이미지
+  지운다. 이 호스트 별칭을 그대로 쳐라(tokyo):   그만뒀다 — 도쿄 아무것도 안 지웠다
+
+### 앞뒤 — DB · .bak · _reset 파일(inode · 크기 · sha256) diff
+(같다)
+### 앞뒤 — 이미지
+8d7
+< durango-zone:t872-seed f659de97aae9
+
+## 절차서 §8 줄 그대로(runbook 8)
+13:57:32 == 절차서 8 — 초기화_절차서.md 의 줄을 그 글자대로 ==
+13:57:36   [8·1 mac] rc=0 · 4s · 판정: 두 호스트 모두 빈 자리 ≥ 백업 한 벌
+13:57:46   [8·2 mac] rc=0 · 10s ·   (예행 — 라이브 무변 · 서울 git fetch 만)
+13:57:48   [8·3 mac] rc=1 · 2s ·   안 한 것: 서울 재배포 · 도쿄 전부
+13:57:58   [8·4 mac] rc=0 · 10s ·   판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCa
+
+### 8·1 disk-check
+== disk-check 2026-10-23 13:57:32 — 서울(seoul) · 도쿄(tokyo) ==
+[서울(seoul)]
+  디스크(/srv/durango · /) 전체 252.0 GB · 씀 39.5 GB · 남음 3.8 GB
+  도커 자리(/var/lib/docker · /var/lib/docker) 남음 3.8 GB
+  볼륨 central 273.4 KB(DB 273.4 KB)
+  볼륨 hanbando 94.8 MB(DB 93.8 MB)
+  볼륨 nippon 17.3 MB(DB 15.3 MB)
+    .bak 2026-08-03 1.0 MB /srv/durango/hanbando/world-hanbando.db.0803.bak
+    .bak 2026-08-04 2.0 MB /srv/durango/nippon/world-nippon.db.0804.bak
+  .bak 2개 · 3.0 MB(목록만 — 지울지는 재민)
+    _reset 6.8 MB 20261022-120453-nippon
+    _reset 54.3 MB 20261022-120455-hanbando
+    _reset 275.9 KB 20261022-120458-central
+    _reset 108.0 KB 20261022-120809-central-replaced
+    _reset 95.2 MB 20261022-120813-hanbando-replaced
+    _reset 45.2 MB 20261022-120840-nippon-replaced
+  _reset 백업 6벌 · 202.0 MB(목록만 — 지울지는 재민)
+  도커 Images 1.036GB(되찾을 수 있는 몫 368MB (35%))
+  도커 Containers 24.58kB(되찾을 수 있는 몫 0B (0%))
+  도커 Local Volumes 0B(되찾을 수 있는 몫 0B)
+  도커 Build Cache 1.036GB(되찾을 수 있는 몫 0B)
+  매달린 이미지 0개
+    이미지 durango-central:latest 31f3ce253672 475MB (About an hour ago)
+    이미지 durango-central:pre-reset 01101a5ee3e2 468MB (26 hours ago)
+    이미지 durango-central:prev-central dca99fbdbd46 475MB (3 hours ago)
+    이미지 durango-zone:latest dfaf7918d5ac 475MB (About an hour ago)
+    이미지 durango-zone:pre-reset 3e465666bba4 468MB (26 hours ago)
+    이미지 durango-zone:prev-hanbando 99d2e26a572d 475MB (3 hours ago)
+    이미지 durango-zone:prev-nippon 99d2e26a572d 475MB (3 hours ago)
+    로그 durango-zone-nippon 80.8 KB
+    로그 durango-zone-hanbando 925.7 KB
+    로그 durango-central 4.4 KB
+  컨테이너 로그 합 1010.9 KB
+  저널(journald) 0B
+  지울 수 있는 옛 durango 이미지 0개
+  판정: 빈 자리 3.8 GB ≥ 백업 한 벌 184.3 MB(DB 합 109.4 MB × 1.1 + 64 MB — reset-world.sh 백업 자리 규칙)
+[도쿄(tokyo)]
+  디스크(/srv/durango · /) 전체 252.0 GB · 씀 39.5 GB · 남음 3.8 GB
+  도커 자리(/var/lib/docker · /var/lib/docker) 남음 3.8 GB
+  볼륨 central 273.4 KB(DB 273.4 KB)
+  볼륨 hanbando 94.8 MB(DB 93.8 MB)
+  볼륨 nippon 17.3 MB(DB 15.3 MB)
+    .bak 2026-08-03 1.0 MB /srv/durango/hanbando/world-hanbando.db.0803.bak
+    .bak 2026-08-04 2.0 MB /srv/durango/nippon/world-nippon.db.0804.bak
+  .bak 2개 · 3.0 MB(목록만 — 지울지는 재민)
+    _reset 6.8 MB 20261022-120453-nippon
+    _reset 54.3 MB 20261022-120455-hanbando
+    _reset 275.9 KB 20261022-120458-central
+    _reset 108.0 KB 20261022-120809-central-replaced
+    _reset 95.2 MB 20261022-120813-hanbando-replaced
+    _reset 45.2 MB 20261022-120840-nippon-replaced
+  _reset 백업 6벌 · 202.0 MB(목록만 — 지울지는 재민)
+  도커 Images 1.036GB(되찾을 수 있는 몫 368MB (35%))
+  도커 Containers 24.58kB(되찾을 수 있는 몫 0B (0%))
+  도커 Local Volumes 0B(되찾을 수 있는 몫 0B)
+  도커 Build Cache 1.036GB(되찾을 수 있는 몫 0B)
+  매달린 이미지 0개
+    이미지 durango-central:latest 31f3ce253672 475MB (About an hour ago)
+    이미지 durango-central:pre-reset 01101a5ee3e2 468MB (26 hours ago)
+    이미지 durango-central:prev-central dca99fbdbd46 475MB (3 hours ago)
+    이미지 durango-zone:latest dfaf7918d5ac 475MB (About an hour ago)
+    이미지 durango-zone:pre-reset 3e465666bba4 468MB (26 hours ago)
+    이미지 durango-zone:prev-hanbando 99d2e26a572d 475MB (3 hours ago)
+    이미지 durango-zone:prev-nippon 99d2e26a572d 475MB (3 hours ago)
+    로그 durango-zone-nippon 80.8 KB
+    로그 durango-zone-hanbando 925.7 KB
+    로그 durango-central 4.4 KB
+  컨테이너 로그 합 1010.9 KB
+  저널(journald) 0B
+  지울 수 있는 옛 durango 이미지 0개
+  판정: 빈 자리 3.8 GB ≥ 백업 한 벌 184.3 MB(DB 합 109.4 MB × 1.1 + 64 MB — reset-world.sh 백업 자리 규칙)
+판정: 두 호스트 모두 빈 자리 ≥ 백업 한 벌
+
+### live-lag 디스크 줄
+[호스트] 서울(seoul) — vCPU 2 · 부하 0.50 0.50 0.23 · 1초 바쁨 7.3% · steal 0.5% · iowait 0% | 메모리 남음 7053 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 디스크 남음 4010 / 258019 MB(백업 한 벌 184 MB) 
+[호스트] 도쿄(tokyo) — vCPU 2 · 부하 0.50 0.50 0.23 · 1초 바쁨 7.8% · steal 0.5% · iowait 0% | 메모리 남음 7053 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 디스크 남음 4010 / 258019 MB(백업 한 벌 184 MB) 
+
+## T897 고정 보강 — 고정할 이미지가 저장소에 없는 판(흉내 판 한 데몬) — 태그 무변으로 멈춤
+== update-live 2026-10-23 13:58:29 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD a273389adf3d · 도쿄 HEAD e37f4fbd619f · 도쿄 스탬프 e37f4fbd619f · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[①] 서울 git pull --ff-only
+    a273389adf3d → a273389adf3d · a273389adf3d wip T901
+[②] 도쿄 판정: 바뀐 파일 9개 · e37f4fbd..a273389a → 도쿄 존 한다
+[②-고정] 서울 central 뗌 · 한반도 고정 · 도쿄 닛폰 고정(④ 뒤)
+  ✗ 멈췄다 — 서울 hanbando 고정 못 함 — 도는 컨테이너의 이미지가 저장소에 없다(고정할 것이 없다 · 태그 무변)
+  바뀐 것: 없음(라이브 무변)
+  안 한 것: 서울 재배포 · 도쿄 전부

@@ -104,8 +104,8 @@ if [ "$DO_CENTRAL" = 0 ] && [ "$DO_ZONE" = 0 ]; then
 fi
 
 echo "[2/4] docker build"
-if [ "$DO_ZONE" = 1 ]; then docker build -f Dockerfile.zone -t durango-zone .; fi
-if [ "$DO_CENTRAL" = 1 ]; then docker build -f Dockerfile.central -t durango-central .; fi
+if [ "$DO_ZONE" = 1 ]; then docker build -f Dockerfile.zone -t durango-zone --label "durango.commit=$AFTER" .; fi   # ★[T897] 커밋 라벨 — 되돌리기(`:prev`)가 어느 커밋인지 말한다
+if [ "$DO_CENTRAL" = 1 ]; then docker build -f Dockerfile.central -t durango-central --label "durango.commit=$AFTER" .; fi
 
 recreate() {  # recreate <name> <image> <port> <volume>
   local NAME=$1 IMAGE=$2 PORT=$3 VOL=$4

@@ -20,6 +20,10 @@
 #     bash scripts/reset-world.sh <대상> --image         굽기 확인 — 새로 구운 이미지 = 이 레포 checkout 인가(server·sim 바이트 지문 · 커밋 라벨) · 굽힌 정본의 수
 #     bash scripts/reset-world.sh <대상> --check         확인 — /health · 관측자 welcome(달력 · 마을 수) · DB 수(T569 겹친 영토)
 #     bash scripts/reset-world.sh <대상> --live          [T892] 확인에서 DB 수만 뺀 것 — 컨테이너 · env 손잡이 둘 · 관측자 한 줄(달력 · 마을 · 정원) · 안 돌면 rc 1
+#     bash scripts/reset-world.sh <대상> --pin-prev      [T897] 갱신 앞 고정 — 지금 도는 이미지에 `<이미지>:prev-<대상>` 태그(--pin 꼴 · 커밋은 이미지 라벨 `durango.commit`)
+#     bash scripts/reset-world.sh <대상> --drop-prev     [T897] 이 갱신에서 안 바뀌는 대상의 `:prev` 태그를 뗀다(되돌리기가 그 대상을 안 건드리게)
+#     bash scripts/reset-world.sh <대상> --rollback      [T897] `<이미지>:prev-<대상>` 로 다시 띄운다 — 같은 env · 같은 볼륨 · 같은 포트 · **DB 무접촉**(멈춤은 SIGTERM)
+#                                                        · `:prev` 가 없거나 이미 그것으로 돌면 할 일 0(rc 0) · 한 줄 기록 `${UPDATE_ROLLBACK_LOG:-/srv/durango/update-rollback.log}`
 #     bash scripts/reset-world.sh <대상> --restore <백업 폴더>   되돌리기 — 지금 DB 를 옆으로 치우고(안 지운다) 백업을 되놓고
 #                                                        옛 이미지(`<이미지>:pre-reset`)·옛 env 로 다시 띄운다
 #
@@ -50,7 +54,7 @@ F_COMMIT='{{index .Config.Labels "durango.commit"}}'
 
 say() { echo "$*"; }
 die() { echo "  ✗ $*" >&2; exit 1; }
-usage() { sed -n '4,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '4,26p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 TARGET="${1:-}"; [ $# -gt 0 ] && shift
 case "$TARGET" in
@@ -67,6 +71,9 @@ while [ $# -gt 0 ]; do
     --open) MODE=open ;;
     --check) MODE=check ;;
     --live) MODE=live ;;   # [T892] --check 에서 DB 수만 뺀 것(열린 세계 · 관측자 한 줄)
+    --pin-prev) MODE=pinprev ;;   # [T897]
+    --drop-prev) MODE=dropprev ;;   # [T897]
+    --rollback) MODE=rollback ;;   # [T897]
     --image) MODE=image ;;
     --pin) MODE=pin ;;
     --restore) MODE=restore; RESTORE_DIR="${2:-}"; [ $# -gt 1 ] && shift ;;
@@ -110,6 +117,7 @@ load() {   # 컨테이너 정보를 전역으로
     *) IMG_BASE="${IMG_NAME%%:*}" ;;
   esac
   PRE_TAG="$IMG_BASE:pre-reset"
+  PREV_TAG="$IMG_BASE:prev-$TARGET"   # ★[T897] 갱신 되돌리기 한 칸 — 대상마다(한 호스트에 존이 여럿이어도 · 흉내 판처럼 한 데몬에 두 호스트여도 안 섞인다)
   IMG_OK=0; docker image inspect "$IMG_ID" >/dev/null 2>&1 && IMG_OK=1                     # 도는 컨테이너의 이미지가 아직 저장소에 있나
   PRE_ID="$(docker image inspect "$PRE_TAG" --format '{{.Id}}' 2>/dev/null || true)"     # 고정해 둔 옛 이미지(없으면 빈칸)
   HIMG="$IMG_BASE"; docker image inspect "$HIMG" >/dev/null 2>&1 || HIMG="$IMG_ID"         # 손발(reset-world.js)을 돌릴 node — 지금 태그(새 판이면 새 이미지)
@@ -299,6 +307,36 @@ pin)
   if [ "$IMG_OK" = 1 ]; then docker tag "$IMG_ID" "$PRE_TAG"; say "  ✓ $PRE_TAG = $(echo "$IMG_ID" | cut -c8-19)(커밋 $(cur_commit)) — 이제 빌드해도 옛 이미지가 남는다"
   elif [ "$PRE_ID" = "$IMG_ID" ]; then say "  ✓ 이미 고정됨 — $PRE_TAG = $(echo "$IMG_ID" | cut -c8-19)"
   else die "이 컨테이너의 이미지가 저장소에 벌써 없다(빌드가 태그를 옮겼다) — 고정할 것이 없다 · 되돌리기는 옛 DB + 새 이미지로만"; fi
+  ;;
+pinprev)
+  # ★[T897] 갱신 앞 고정 — `--pin` 과 같은 꼴(태그만 · 같은 이미지 id) · 이름만 `:prev-<대상>`(초기화의 `:pre-reset` 과 섞이지 않게 · 대상마다)
+  say "== 갱신 앞 고정 --pin-prev — $TARGET =="
+  [ "$IMG_OK" = 1 ] || die "이 컨테이너의 이미지가 저장소에 없다 — 고정할 것이 없다(갱신을 멈춘다)"
+  docker tag "$IMG_ID" "$PREV_TAG"
+  say "  ✓ $PREV_TAG = $(echo "$IMG_ID" | cut -c8-19)(커밋 $(cur_commit)) — 되돌리기는 이 이미지로"
+  ;;
+dropprev)
+  say "== 고정 떼기 --drop-prev — $TARGET =="
+  if docker image inspect "$PREV_TAG" >/dev/null 2>&1; then
+    docker image rm "$PREV_TAG" >/dev/null 2>&1 && say "  ✓ $PREV_TAG 를 뗐다(이 갱신에서 $TARGET 은 안 바뀐다 — 되돌리기가 안 건드린다)" \
+      || say "  ⚠$PREV_TAG 를 못 뗐다(다른 컨테이너가 쓰는 이미지일 수 있다) — 되돌리기는 지금 이미지와 같으면 건너뛴다"
+  else say "  (고정본 없음 — 할 일 0)"; fi
+  ;;
+rollback)
+  # ★[T897] 갱신 되돌리기 — 이미지만 바로 앞 판으로(DB · 볼륨 무접촉 · env 그대로 · 포트 그대로). `--restore`(초기화 되돌리기 — DB 까지)와 다르다.
+  say "== 갱신 되돌리기 --rollback — $TARGET =="
+  PREV_ID="$(docker image inspect "$PREV_TAG" --format '{{.Id}}' 2>/dev/null || true)"
+  if [ -z "$PREV_ID" ]; then say "  (고정본 $PREV_TAG 없음 — 이 대상은 바로 앞 갱신에서 안 바뀌었다 · 할 일 0)"; exit 0; fi
+  if [ "$PREV_ID" = "$IMG_ID" ] && [ "$STATE" = running ]; then say "  (이미 $PREV_TAG 로 돈다 — 할 일 0)"; exit 0; fi
+  say "  지금 $(echo "$IMG_ID" | cut -c8-19)(커밋 $(cur_commit)) → $PREV_TAG $(echo "$PREV_ID" | cut -c8-19)(커밋 $(commit_of "$PREV_ID")) · 볼륨 $VOL(무접촉) · env 옛 컨테이너 것 그대로"
+  mapfile -t LABELS < <(insp "$F_LABELS" | grep '^durango\.reset\.' || true)   # 이 컨테이너에 붙인 판 표(초기화 상태)만 — 이미지 라벨은 이미지가 다시 싣는다
+  build_env
+  FROM_ID="$IMG_ID"; FROM_C="$(cur_commit)"
+  recreate "$PREV_TAG"
+  RLOG="${UPDATE_ROLLBACK_LOG:-/srv/durango/update-rollback.log}"
+  { printf '%s %s %s → %s · 코드 HEAD %s\n' "$(date -u +%FT%TZ)" "$TARGET" "$(echo "$FROM_ID" | cut -c8-19)($FROM_C)" "$(echo "$PREV_ID" | cut -c8-19)($(commit_of "$PREV_ID"))" "$(git -C "$HERE/.." rev-parse --short=12 HEAD 2>/dev/null || echo -)" >> "$RLOG"; } 2>/dev/null || say "  ⚠기록을 못 남겼다($RLOG)"
+  wait_health "$([ "$KIND" = zone ] && echo "$WAIT_ZONE" || echo "$WAIT_CENTRAL")" || exit 1
+  if [ "$KIND" = zone ]; then live_line; fi
   ;;
 image)
   say "== 굽기 확인 --image — $TARGET (이미지 $IMG_BASE = 이 레포?) =="

@@ -1,0 +1,347 @@
+# T897 갱신 되돌리기 마른 연습(두 호스트 흉내 판 · 2026-10-23) — 출력 그대로(도커 빌드 진행 줄 · 바뀐 파일 목록만 걸렀다 · 비밀 0)
+# ⚠층 지문 `01ba4719c80b` = 빈 출력(이미지가 저장소에서 지워져 못 읽음 — 흉내 판 한 데몬에서 도쿄 빌드가 서울 한반도의 새 이미지를 지운 판 · 보고 §3 ⚠)
+
+## 1차 — 갱신 → 되돌리기 → 되돌리기 한 번 더(✗ — 고친 결함) → 다시 갱신
+## S0-처음 12:39:29
+  durango-central 이미지 dca99fbdbd46 · 층 지문 7632926c56a1 · 커밋  · running durango-central
+  durango-zone-hanbando 이미지 99d2e26a572d · 층 지문 a39b39942340 · 커밋 62580d74bc19 · running durango-zone:prev-hanbando
+  durango-zone-nippon 이미지 99d2e26a572d · 층 지문 a39b39942340 · 커밋 62580d74bc19 · running durango-zone
+  DB 1040874 42332160 /srv/durango/hanbando/world-hanbando.db
+  DB 1837292 3006464 /srv/durango/nippon/world-nippon.db
+  DB 1040870 4096 /srv/durango/central/central.db
+  :prev-central 
+  :prev-hanbando 
+  :prev-nippon 
+  스탬프 서울 82be2d6fbab2 · 도쿄 82be2d6fbab2 · 도쿄 코드 87f58a6e8e90 · 서울 코드 17fc69bba284
+### U1 () rc=0 · 75초
+[②] 도쿄 판정: 바뀐 파일 43개 · 82be2d6f..17fc69bb → 도쿄 존 한다
+      판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+  ✓ 끝 — 서울 17fc69bba284 · 도쿄 17fc69bba284 · 바뀐 것: 서울 재배포(central: 한다 · zone: 한다) → 도쿄 코드 87f58a6e8e90 → 17fc69bba284 → 도쿄 재배포 → 도쿄 스탬프 17fc69bba284
+## S1-갱신뒤 12:40:44
+  durango-central 이미지 87d566fc1e20 · 층 지문 94c726f4ea86 · 커밋 17fc69bba284 · running durango-central
+  durango-zone-hanbando 이미지 e1c3dee54d06 · 층 지문 01ba4719c80b · 커밋  · running durango-zone
+  durango-zone-nippon 이미지 a8f405a54cbb · 층 지문 d7a8ea5f0f63 · 커밋 17fc69bba284 · running durango-zone
+  DB 1040874 42332160 /srv/durango/hanbando/world-hanbando.db
+  DB 1837292 3506176 /srv/durango/nippon/world-nippon.db
+  DB 1040870 4096 /srv/durango/central/central.db
+  :prev-central dca99fbdbd46
+  :prev-hanbando 99d2e26a572d
+  :prev-nippon 99d2e26a572d
+  스탬프 서울 17fc69bba284 · 도쿄 17fc69bba284 · 도쿄 코드 17fc69bba284 · 서울 코드 17fc69bba284
+### R0 (--rollback --dry) rc=0 · 1초
+### R1 (--rollback) rc=0 · 50초
+      판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+  ✓ 되돌림 끝 — 바뀐 것: 서울 central → :prev → 서울 hanbando → :prev → 도쿄 nippon → :prev → 도쿄 코드 → 62580d74bc19 → 서울 스탬프 지움(central  · 한반도 62580d74bc19 — 다음 갱신은 전부) → 도쿄 스탬프 62580d74bc19 · 서울 코드 HEAD 17fc69bba284(그대로 — 기록만)
+## S2-되돌린뒤 12:41:36
+  durango-central 이미지 dca99fbdbd46 · 층 지문 7632926c56a1 · 커밋  · running durango-central:prev-central
+  durango-zone-hanbando 이미지 99d2e26a572d · 층 지문 a39b39942340 · 커밋 62580d74bc19 · running durango-zone:prev-hanbando
+  durango-zone-nippon 이미지 99d2e26a572d · 층 지문 a39b39942340 · 커밋 62580d74bc19 · running durango-zone:prev-nippon
+  DB 1040874 42332160 /srv/durango/hanbando/world-hanbando.db
+  DB 1837292 3543040 /srv/durango/nippon/world-nippon.db
+  DB 1040870 4096 /srv/durango/central/central.db
+  :prev-central dca99fbdbd46
+  :prev-hanbando 99d2e26a572d
+  :prev-nippon 99d2e26a572d
+  스탬프 서울 없음 · 도쿄 62580d74bc19 · 도쿄 코드 62580d74bc19 · 서울 코드 17fc69bba284
+### R2 (--rollback) rc=1 · 2초
+  ✗ 멈췄다 — 도쿄 nippon 되돌리기(rc 1)
+### U2 () rc=0 · 58초
+[②] 도쿄 판정: 바뀐 파일 27개 · 62580d74..17fc69bb → 도쿄 존 한다
+      판정: 문턱 넘은 층 — hanbando@서울 존 틱 p95 51.089ms ≥ 33
+  ✓ 끝 — 서울 17fc69bba284 · 도쿄 17fc69bba284 · 바뀐 것: 서울 재배포(central: 한다 · zone: 한다) → 도쿄 코드 62580d74bc19 → 17fc69bba284 → 도쿄 재배포 → 도쿄 스탬프 17fc69bba284
+## S3-다시갱신뒤 12:42:37
+  durango-central 이미지 fcb57c33e282 · 층 지문 94c726f4ea86 · 커밋 17fc69bba284 · running durango-central
+  durango-zone-hanbando 이미지 af38c2eb1169 · 층 지문 01ba4719c80b · 커밋  · running durango-zone
+  durango-zone-nippon 이미지 490c7164f9e1 · 층 지문 d7a8ea5f0f63 · 커밋 17fc69bba284 · running durango-zone
+  DB 1040874 42565632 /srv/durango/hanbando/world-hanbando.db
+  DB 1837292 3543040 /srv/durango/nippon/world-nippon.db
+  DB 1040870 4096 /srv/durango/central/central.db
+  :prev-central dca99fbdbd46
+  :prev-hanbando 99d2e26a572d
+  :prev-nippon 99d2e26a572d
+  스탬프 서울 17fc69bba284 · 도쿄 17fc69bba284 · 도쿄 코드 17fc69bba284 · 서울 코드 17fc69bba284
+
+### 1차 R2(둘째 되돌리기 — 도쿄 코드 트리가 앞 커밋이라 그 판 reset-world.sh 에 --rollback 이 없었다)
+== update-live 2026-10-23 12:41:37 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD 17fc69bba284 · 도쿄 HEAD 62580d74bc19 · 도쿄 스탬프 62580d74bc19 · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[되돌리기] 대상마다 지금 · :prev(이미지 · 커밋) — DB · 볼륨 무접촉 · env 그대로
+    서울 central  지금 dca99fbdbd46(-) · :prev-central dca99fbdbd46(-) — 이미 그것
+    서울 hanbando 지금 99d2e26a572d(62580d74bc19) · :prev-hanbando 99d2e26a572d(62580d74bc19) — 이미 그것
+    도쿄 nippon   지금 99d2e26a572d(62580d74bc19) · :prev-nippon 99d2e26a572d(62580d74bc19) — 이미 그것
+      (이미 durango-central:prev-central 로 돈다 — 할 일 0)
+      (이미 durango-zone:prev-hanbando 로 돈다 — 할 일 0)
+      ✗ 모르는 인자: --rollback  (bash scripts/reset-world.sh --help)
+  ✗ 멈췄다 — 도쿄 nippon 되돌리기(rc 1)
+  바뀐 것: 없음(라이브 무변)
+  안 한 것: 도쿄 코드 · 스탬프
+
+## 2차(고친 뒤) — 되돌리기 → 한 번 더(할 일 0) → 갱신
+## T0-처음 12:45:37
+  durango-central 이미지 fcb57c33e282 · 층 지문 94c726f4ea86 · 커밋 17fc69bba284 · running durango-central
+  durango-zone-hanbando 이미지 af38c2eb1169 · 층 지문 01ba4719c80b · 커밋  · running durango-zone
+  durango-zone-nippon 이미지 490c7164f9e1 · 층 지문 d7a8ea5f0f63 · 커밋 17fc69bba284 · running durango-zone
+  DB 1040874 43114496 /srv/durango/hanbando/world-hanbando.db
+  DB 1837292 3543040 /srv/durango/nippon/world-nippon.db
+  DB 1040870 4096 /srv/durango/central/central.db
+  :prev-central dca99fbdbd46
+  :prev-hanbando 99d2e26a572d
+  :prev-nippon 99d2e26a572d
+  스탬프 서울 1c0bf72ff3fc · 도쿄 1c0bf72ff3fc · 도쿄 코드 17fc69bba284 · 서울 코드 1c0bf72ff3fc
+### R0 (--rollback --dry) rc=0 · 1초
+### R1 (--rollback) rc=0 · 50초
+      판정: 문턱 넘은 층 — hanbando@서울 존 틱 p95 42.75ms ≥ 33
+  ✓ 되돌림 끝 — 바뀐 것: 서울 central → :prev-central → 서울 hanbando → :prev-hanbando → 도쿄 nippon → :prev-nippon → 도쿄 코드 → 62580d74bc19 → 서울 스탬프 지움(central  · 한반도 62580d74bc19 — 다음 갱신은 전부) → 도쿄 스탬프 62580d74bc19 · 서울 코드 HEAD 1c0bf72ff3fc(그대로 — 기록만)
+## T1-되돌린뒤 12:46:29
+  durango-central 이미지 dca99fbdbd46 · 층 지문 7632926c56a1 · 커밋  · running durango-central:prev-central
+  durango-zone-hanbando 이미지 99d2e26a572d · 층 지문 a39b39942340 · 커밋 62580d74bc19 · running durango-zone:prev-hanbando
+  durango-zone-nippon 이미지 99d2e26a572d · 층 지문 a39b39942340 · 커밋 62580d74bc19 · running durango-zone:prev-nippon
+  DB 1040874 43114496 /srv/durango/hanbando/world-hanbando.db
+  DB 1837292 3543040 /srv/durango/nippon/world-nippon.db
+  DB 1040870 4096 /srv/durango/central/central.db
+  :prev-central dca99fbdbd46
+  :prev-hanbando 99d2e26a572d
+  :prev-nippon 99d2e26a572d
+  스탬프 서울 없음 · 도쿄 62580d74bc19 · 도쿄 코드 62580d74bc19 · 서울 코드 1c0bf72ff3fc
+### R2 (--rollback) rc=0 · 14초
+      판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+  ✓ 되돌림 끝 — 바뀐 것: 없음(되돌릴 것 0) · 서울 코드 HEAD 1c0bf72ff3fc(그대로 — 기록만)
+## T2-다시되돌린뒤 12:46:44
+  durango-central 이미지 dca99fbdbd46 · 층 지문 7632926c56a1 · 커밋  · running durango-central:prev-central
+  durango-zone-hanbando 이미지 99d2e26a572d · 층 지문 a39b39942340 · 커밋 62580d74bc19 · running durango-zone:prev-hanbando
+  durango-zone-nippon 이미지 99d2e26a572d · 층 지문 a39b39942340 · 커밋 62580d74bc19 · running durango-zone:prev-nippon
+  DB 1040874 43114496 /srv/durango/hanbando/world-hanbando.db
+  DB 1837292 3543040 /srv/durango/nippon/world-nippon.db
+  DB 1040870 4096 /srv/durango/central/central.db
+  :prev-central dca99fbdbd46
+  :prev-hanbando 99d2e26a572d
+  :prev-nippon 99d2e26a572d
+  스탬프 서울 없음 · 도쿄 62580d74bc19 · 도쿄 코드 62580d74bc19 · 서울 코드 1c0bf72ff3fc
+### U1 (--dry) rc=0 · 10초
+      판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+### U2 () rc=0 · 57초
+[②] 도쿄 판정: 바뀐 파일 27개 · 62580d74..1c0bf72f → 도쿄 존 한다
+      판정: 문턱 넘은 층 — hanbando@서울 존 틱 p95 38.647ms ≥ 33
+  ✓ 끝 — 서울 1c0bf72ff3fc · 도쿄 1c0bf72ff3fc · 바뀐 것: 서울 재배포(central: 한다 · zone: 한다) → 도쿄 코드 62580d74bc19 → 1c0bf72ff3fc → 도쿄 재배포 → 도쿄 스탬프 1c0bf72ff3fc
+## T3-다시갱신뒤 12:47:52
+  durango-central 이미지 6587e01f642f · 층 지문 94c726f4ea86 · 커밋 1c0bf72ff3fc · running durango-central
+  durango-zone-hanbando 이미지 0c6192e9c239 · 층 지문 01ba4719c80b · 커밋  · running durango-zone
+  durango-zone-nippon 이미지 ae08f1866957 · 층 지문 d7a8ea5f0f63 · 커밋 1c0bf72ff3fc · running durango-zone
+  DB 1040874 43114496 /srv/durango/hanbando/world-hanbando.db
+  DB 1837292 3543040 /srv/durango/nippon/world-nippon.db
+  DB 1040870 4096 /srv/durango/central/central.db
+  :prev-central dca99fbdbd46
+  :prev-hanbando 99d2e26a572d
+  :prev-nippon 99d2e26a572d
+  스탬프 서울 1c0bf72ff3fc · 도쿄 1c0bf72ff3fc · 도쿄 코드 1c0bf72ff3fc · 서울 코드 1c0bf72ff3fc
+
+### 2차 R0 --rollback --dry
+== update-live 2026-10-23 12:45:38 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) · 예행(라이브 무변) ==
+  서울 HEAD 1c0bf72ff3fc · 도쿄 HEAD 17fc69bba284 · 도쿄 스탬프 1c0bf72ff3fc · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[되돌리기] 대상마다 지금 · :prev(이미지 · 커밋) — DB · 볼륨 무접촉 · env 그대로
+    서울 central  지금 fcb57c33e282(17fc69bba284) · :prev-central dca99fbdbd46(-)
+    서울 hanbando 지금 af38c2eb1169(-) · :prev-hanbando 99d2e26a572d(62580d74bc19)
+    도쿄 nippon   지금 490c7164f9e1(17fc69bba284) · :prev-nippon 99d2e26a572d(62580d74bc19)
+  (예행 — 라이브 무변)
+
+### 2차 R1 --rollback
+== update-live 2026-10-23 12:45:39 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD 1c0bf72ff3fc · 도쿄 HEAD 17fc69bba284 · 도쿄 스탬프 1c0bf72ff3fc · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[되돌리기] 대상마다 지금 · :prev(이미지 · 커밋) — DB · 볼륨 무접촉 · env 그대로
+    서울 central  지금 fcb57c33e282(17fc69bba284) · :prev-central dca99fbdbd46(-)
+    서울 hanbando 지금 af38c2eb1169(-) · :prev-hanbando 99d2e26a572d(62580d74bc19)
+    도쿄 nippon   지금 490c7164f9e1(17fc69bba284) · :prev-nippon 99d2e26a572d(62580d74bc19)
+      지금 fcb57c33e282(커밋 17fc69bba284) → durango-central:prev-central dca99fbdbd46(커밋 -) · 볼륨 /srv/durango/central(무접촉) · env 옛 컨테이너 것 그대로
+      [up] durango-central ← durango-central:prev-central (커밋 -)
+      ✅ /health 응답 — 0초
+      지금 af38c2eb1169(커밋 -) → durango-zone:prev-hanbando 99d2e26a572d(커밋 62580d74bc19) · 볼륨 /srv/durango/hanbando(무접촉) · env 옛 컨테이너 것 그대로
+      [up] durango-zone-hanbando ← durango-zone:prev-hanbando (커밋 62580d74bc19)
+      ✅ /health 응답 — 18초
+      hanbando · 달력 1년 10월 31일 (가을) · 마을 50/51(사람 사는 50) · 사람 0 · 정원 150
+      지금 490c7164f9e1(커밋 17fc69bba284) → durango-zone:prev-nippon 99d2e26a572d(커밋 62580d74bc19) · 볼륨 /srv/durango/nippon(무접촉) · env 옛 컨테이너 것 그대로
+      [up] durango-zone-nippon ← durango-zone:prev-nippon (커밋 62580d74bc19)
+      ✅ /health 응답 — 9초
+      nippon · 달력 1년 3월 7일 (봄) · 마을 7/50(사람 사는 7) · 사람 0 · 정원 150
+      컨테이너  durango-central · running · 커밋 - · 포트 3010
+      /health   {"ok":true,"orders":0,"players":3,"uptime":33.841550401}
+      /zones    hanbando=ws://198.51.100.1:3020 nippon=ws://192.0.2.2:3021
+      컨테이너  durango-zone-hanbando · running · 커밋 62580d74bc19 · 포트 3020
+      env       T565_MAP_LIVE= · PLAYER_CAP=150 · 판 
+      hanbando · 달력 1년 10월 31일 (가을) · 마을 50/51(사람 사는 50) · 사람 0 · 정원 150
+      컨테이너  durango-zone-nippon · running · 커밋 62580d74bc19 · 포트 3021
+      env       T565_MAP_LIVE=0 · PLAYER_CAP=150 · 판 
+      nippon · 달력 1년 3월 7일 (봄) · 마을 7/50(사람 사는 7) · 사람 0 · 정원 150
+    도쿄 코드 트리 17fc69bba284 → 62580d74bc19(도는 이미지 커밋 · SYNC_COMMIT)
+      서울(seoul) HEAD 62580d74bc19 · 도쿄(tokyo) HEAD 17fc69bba284
+      차분 — 도쿄 17fc69bba284 → 서울 62580d74bc19(그 사이 커밋 ? 개 · 보내는 것은 서울 HEAD 트리에서 바뀐 객체만)
+    .. 1.6 MB (1640605 B)
+    62580d74bc19 wip T892
+      서울 62580d74bc19 wip T892 (SYNC_COMMIT — 서울 HEAD 아님)
+      도쿄 62580d74bc19 wip T892
+      ✓ 두 줄이 같다
+[되돌리기 ⑦] live-lag
+      [존] hanbando@서울 — 틱 p50 5.627 · p95 42.75 · max 230.214 ms(최근 649틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 21.64 · max 286 ms | 지금 /health 왕복 p95 7.2 · max 14 ms | 사람 0 · 마을 50 · 세계 날 244(1년 10월 31일 (가을)) | 최근 60초 무거운 일 107번(tick 230ms · econ_frame 216ms · save 8ms)
+      [존] nippon@도쿄 — 틱 p50 3.017 · p95 20.843 · max 63.225 ms(최근 300틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 22.64 · max 108.86 ms | 지금 /health 왕복 p95 10.8 · max 13.4 ms | 사람 0 · 마을 7 · 세계 날 6(1년 3월 7일 (봄)) | 최근 60초 무거운 일 16번(tick 63ms · econ_frame 39ms)
+      [central] @서울 — 지금 /health 왕복 p95 7.1 · max 8.2 ms · 계정 3
+      [호스트] 서울(seoul) — vCPU 2 · 부하 1.88 1.26 0.74 · 1초 바쁨 42.3% · steal 2.4% · iowait 0% | 메모리 남음 6839 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 central 1.69% 16MB · hanbando 40.26% 342MB | 다른 무거운 것 없음
+      [호스트] 도쿄(tokyo) — vCPU 2 · 부하 1.88 1.26 0.74 · 1초 바쁨 41.8% · steal 2.4% · iowait 0% | 메모리 남음 6839 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 nippon 3.19% 131MB | 다른 무거운 것 없음
+      [망] 맥 → 호스트 TCP 왕복 — 서울:3010 최소 0.1 · 중앙 0.2 · 최대 0.8 ms(5번) | 서울:3020 최소 0.1 · 중앙 0.2 · 최대 0.2 ms(5번) | 도쿄:3021 최소 0.2 · 중앙 0.3 · 최대 0.5 ms(5번)
+      판정: 문턱 넘은 층 — hanbando@서울 존 틱 p95 42.75ms ≥ 33
+  ✓ 되돌림 끝 — 바뀐 것: 서울 central → :prev-central → 서울 hanbando → :prev-hanbando → 도쿄 nippon → :prev-nippon → 도쿄 코드 → 62580d74bc19 → 서울 스탬프 지움(central  · 한반도 62580d74bc19 — 다음 갱신은 전부) → 도쿄 스탬프 62580d74bc19 · 서울 코드 HEAD 1c0bf72ff3fc(그대로 — 기록만)
+
+### 2차 R2 --rollback(할 일 0)
+== update-live 2026-10-23 12:46:30 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD 1c0bf72ff3fc · 도쿄 HEAD 62580d74bc19 · 도쿄 스탬프 62580d74bc19 · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[되돌리기] 대상마다 지금 · :prev(이미지 · 커밋) — DB · 볼륨 무접촉 · env 그대로
+    서울 central  지금 dca99fbdbd46(-) · :prev-central dca99fbdbd46(-) — 이미 그것
+    서울 hanbando 지금 99d2e26a572d(62580d74bc19) · :prev-hanbando 99d2e26a572d(62580d74bc19) — 이미 그것
+    도쿄 nippon   지금 99d2e26a572d(62580d74bc19) · :prev-nippon 99d2e26a572d(62580d74bc19) — 이미 그것
+    (서울 central — :prev 가 없거나 이미 그것 · 할 일 0)
+    (서울 hanbando — :prev 가 없거나 이미 그것 · 할 일 0)
+    (도쿄 nippon — :prev 가 없거나 이미 그것 · 할 일 0)
+      컨테이너  durango-central · running · 커밋 - · 포트 3010
+      /health   {"ok":true,"orders":0,"players":3,"uptime":50.597435242}
+      /zones    hanbando=ws://198.51.100.1:3020 nippon=ws://192.0.2.2:3021
+      컨테이너  durango-zone-hanbando · running · 커밋 62580d74bc19 · 포트 3020
+      env       T565_MAP_LIVE= · PLAYER_CAP=150 · 판 
+      hanbando · 달력 1년 10월 31일 (가을) · 마을 50/51(사람 사는 50) · 사람 0 · 정원 150
+      컨테이너  durango-zone-nippon · running · 커밋 62580d74bc19 · 포트 3021
+      env       T565_MAP_LIVE=0 · PLAYER_CAP=150 · 판 
+      nippon · 달력 1년 3월 7일 (봄) · 마을 7/50(사람 사는 7) · 사람 0 · 정원 150
+    도쿄 코드 트리 = 도는 이미지 커밋 62580d74bc19 — 그대로
+[되돌리기 ⑦] live-lag
+      [존] hanbando@서울 — 틱 p50 5.289 · p95 22.884 · max 230.214 ms(최근 1104틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 17.53 · max 286 ms | 지금 /health 왕복 p95 7.2 · max 11 ms | 사람 0 · 마을 50 · 세계 날 244(1년 10월 31일 (가을)) | 최근 60초 무거운 일 107번(tick 230ms · econ_frame 216ms · save 8ms)
+      [존] nippon@도쿄 — 틱 p50 0.637 · p95 10.165 · max 63.225 ms(최근 725틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 16.42 · max 108.86 ms | 지금 /health 왕복 p95 5.1 · max 6.3 ms | 사람 0 · 마을 7 · 세계 날 6(1년 3월 7일 (봄)) | 최근 60초 무거운 일 16번(tick 63ms · econ_frame 39ms)
+      [central] @서울 — 지금 /health 왕복 p95 5.7 · max 6.5 ms · 계정 3
+      [호스트] 서울(seoul) — vCPU 2 · 부하 1.69 1.24 0.75 · 1초 바쁨 17.4% · steal 0.5% · iowait 0% | 메모리 남음 6830 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 central 0.01% 16MB · hanbando 16.25% 349MB | 다른 무거운 것 없음
+      [호스트] 도쿄(tokyo) — vCPU 2 · 부하 1.69 1.24 0.75 · 1초 바쁨 16.6% · steal 0.5% · iowait 0% | 메모리 남음 6830 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 nippon 3.05% 134MB | 다른 무거운 것 없음
+      [망] 맥 → 호스트 TCP 왕복 — 서울:3010 최소 0.1 · 중앙 0.2 · 최대 0.2 ms(5번) | 서울:3020 최소 0.2 · 중앙 0.2 · 최대 0.3 ms(5번) | 도쿄:3021 최소 0.2 · 중앙 0.2 · 최대 0.2 ms(5번)
+      판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+  ✓ 되돌림 끝 — 바뀐 것: 없음(되돌릴 것 0) · 서울 코드 HEAD 1c0bf72ff3fc(그대로 — 기록만)
+
+## 절차서 줄 그대로 — runbook 9(되돌리기) → runbook 8(갱신)
+12:49:27 == 절차서 9 — 초기화_절차서.md 의 줄을 그 글자대로 ==
+12:49:29   [9·1 mac] rc=0 · 2s ·   (예행 — 라이브 무변)
+12:50:20   [9·2 mac] rc=0 · 51s ·   ✓ 되돌림 끝 — 바뀐 것: 서울 central → :prev-central → 서울 hanbando → :prev-hanbando → 도쿄 n
+12:50:20 == 절차서 8 — 초기화_절차서.md 의 줄을 그 글자대로 ==
+12:50:30   [8·1 mac] rc=0 · 10s ·   (예행 — 라이브 무변 · 서울 git fetch 만)
+12:51:27   [8·2 mac] rc=0 · 57s ·   ✓ 끝 — 서울 e37f4fbd619f · 도쿄 e37f4fbd619f · 바뀐 것: 서울 재배포(central: 한다 · zone: 한다
+12:51:37   [8·3 mac] rc=0 · 10s ·   판정: 문턱 넘은 층 — hanbando@서울 존 틱 p95 37.922ms ≥ 33
+
+### 9·2
+== update-live 2026-10-23 12:49:29 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD e37f4fbd619f · 도쿄 HEAD 1c0bf72ff3fc · 도쿄 스탬프 1c0bf72ff3fc · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[되돌리기] 대상마다 지금 · :prev(이미지 · 커밋) — DB · 볼륨 무접촉 · env 그대로
+    서울 central  지금 6587e01f642f(1c0bf72ff3fc) · :prev-central dca99fbdbd46(-)
+    서울 hanbando 지금 0c6192e9c239(-) · :prev-hanbando 99d2e26a572d(62580d74bc19)
+    도쿄 nippon   지금 ae08f1866957(1c0bf72ff3fc) · :prev-nippon 99d2e26a572d(62580d74bc19)
+      지금 6587e01f642f(커밋 1c0bf72ff3fc) → durango-central:prev-central dca99fbdbd46(커밋 -) · 볼륨 /srv/durango/central(무접촉) · env 옛 컨테이너 것 그대로
+      [up] durango-central ← durango-central:prev-central (커밋 -)
+      ✅ /health 응답 — 0초
+      지금 0c6192e9c239(커밋 -) → durango-zone:prev-hanbando 99d2e26a572d(커밋 62580d74bc19) · 볼륨 /srv/durango/hanbando(무접촉) · env 옛 컨테이너 것 그대로
+      [up] durango-zone-hanbando ← durango-zone:prev-hanbando (커밋 62580d74bc19)
+      ✅ /health 응답 — 18초
+      hanbando · 달력 1년 11월 1일 (가을) · 마을 50/51(사람 사는 50) · 사람 0 · 정원 150
+      지금 ae08f1866957(커밋 1c0bf72ff3fc) → durango-zone:prev-nippon 99d2e26a572d(커밋 62580d74bc19) · 볼륨 /srv/durango/nippon(무접촉) · env 옛 컨테이너 것 그대로
+      [up] durango-zone-nippon ← durango-zone:prev-nippon (커밋 62580d74bc19)
+      ✅ /health 응답 — 8초
+      nippon · 달력 1년 3월 8일 (봄) · 마을 7/50(사람 사는 7) · 사람 0 · 정원 150
+      컨테이너  durango-central · running · 커밋 - · 포트 3010
+      /health   {"ok":true,"orders":0,"players":3,"uptime":34.262102653}
+      /zones    hanbando=ws://198.51.100.1:3020 nippon=ws://192.0.2.2:3021
+      컨테이너  durango-zone-hanbando · running · 커밋 62580d74bc19 · 포트 3020
+      env       T565_MAP_LIVE= · PLAYER_CAP=150 · 판 
+      hanbando · 달력 1년 11월 1일 (가을) · 마을 50/51(사람 사는 50) · 사람 0 · 정원 150
+      컨테이너  durango-zone-nippon · running · 커밋 62580d74bc19 · 포트 3021
+      env       T565_MAP_LIVE=0 · PLAYER_CAP=150 · 판 
+      nippon · 달력 1년 3월 8일 (봄) · 마을 7/50(사람 사는 7) · 사람 0 · 정원 150
+    도쿄 코드 트리 1c0bf72ff3fc → 62580d74bc19(도는 이미지 커밋 · SYNC_COMMIT)
+      서울(seoul) HEAD 62580d74bc19 · 도쿄(tokyo) HEAD 1c0bf72ff3fc
+      차분 — 도쿄 1c0bf72ff3fc → 서울 62580d74bc19(그 사이 커밋 ? 개 · 보내는 것은 서울 HEAD 트리에서 바뀐 객체만)
+    .. 1.6 MB (1640605 B)
+    62580d74bc19 wip T892
+      서울 62580d74bc19 wip T892 (SYNC_COMMIT — 서울 HEAD 아님)
+      도쿄 62580d74bc19 wip T892
+      ✓ 두 줄이 같다
+[되돌리기 ⑦] live-lag
+      [존] hanbando@서울 — 틱 p50 5.527 · p95 55.825 · max 294.35 ms(최근 621틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 22.82 · max 418.64 ms | 지금 /health 왕복 p95 5.4 · max 7.5 ms | 사람 0 · 마을 50 · 세계 날 245(1년 11월 1일 (가을)) | 최근 60초 무거운 일 105번(tick 294ms · econ_frame 236ms · save 5ms)
+      [존] nippon@도쿄 — 틱 p50 2.651 · p95 16.204 · max 65.578 ms(최근 306틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 24.22 · max 90.96 ms | 지금 /health 왕복 p95 5.8 · max 5.8 ms | 사람 0 · 마을 7 · 세계 날 7(1년 3월 8일 (봄)) | 최근 60초 무거운 일 15번(tick 65ms · econ_frame 31ms)
+      [central] @서울 — 지금 /health 왕복 p95 7.1 · max 9.8 ms · 계정 3
+      [호스트] 서울(seoul) — vCPU 2 · 부하 1.41 1.13 0.80 · 1초 바쁨 41% · steal 2.5% · iowait 0% | 메모리 남음 6822 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 central 1.5% 16MB · hanbando 32.37% 344MB | 다른 무거운 것 없음
+      [호스트] 도쿄(tokyo) — vCPU 2 · 부하 1.41 1.13 0.80 · 1초 바쁨 40.5% · steal 3% · iowait 0% | 메모리 남음 6821 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 nippon 2.99% 165MB | 다른 무거운 것 없음
+      [망] 맥 → 호스트 TCP 왕복 — 서울:3010 최소 0.1 · 중앙 0.2 · 최대 0.8 ms(5번) | 서울:3020 최소 0.2 · 중앙 0.2 · 최대 0.3 ms(5번) | 도쿄:3021 최소 0.1 · 중앙 0.2 · 최대 0.2 ms(5번)
+      판정: 문턱 넘은 층 — hanbando@서울 존 틱 p95 55.825ms ≥ 33
+  ✓ 되돌림 끝 — 바뀐 것: 서울 central → :prev-central → 서울 hanbando → :prev-hanbando → 도쿄 nippon → :prev-nippon → 도쿄 코드 → 62580d74bc19 → 서울 스탬프 지움(central  · 한반도 62580d74bc19 — 다음 갱신은 전부) → 도쿄 스탬프 62580d74bc19 · 서울 코드 HEAD e37f4fbd619f(그대로 — 기록만)
+
+### 8·2
+== update-live 2026-10-23 12:50:30 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD e37f4fbd619f · 도쿄 HEAD 62580d74bc19 · 도쿄 스탬프 62580d74bc19 · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[①] 서울 git pull --ff-only
+    e37f4fbd619f → e37f4fbd619f · e37f4fbd619f wip T897
+[②] 도쿄 판정: 바뀐 파일 28개 · 62580d74..e37f4fbd → 도쿄 존 한다
+[②-고정] 서울 central 고정 · 한반도 고정 · 도쿄 닛폰 고정(④ 뒤)
+      ✓ durango-central:prev-central = dca99fbdbd46(커밋 -) — 되돌리기는 이 이미지로
+      ✓ durango-zone:prev-hanbando = 99d2e26a572d(커밋 62580d74bc19) — 되돌리기는 이 이미지로
+[③] 서울 redeploy-hanbando.sh(자동 판정)
+    [1/4] git pull
+    Already up to date.
+    e37f4fbd wip T897
+    [판정] 기준점을 몰라 전부 한다(첫 실행이거나 스탬프 없음)
+             central: 한다  ·  zone: 한다
+    [2/4] docker build
+    [3/4] 재생성
+      [up] durango-central
+      [up] durango-zone-hanbando
+    durango-zone-hanbando	Up 2 seconds (health: starting)
+    durango-central	Up 5 seconds (health: starting)
+    [4/4] 부팅 대기 — 컨테이너 기동 ≠ 접속 가능. zone /health 가 뜰 때까지 본다.
+      … 15초 경과 · [hanbando] 📦 디버그 public chest 3개 @ (5120,5120) 옆
+      ✅ zone 접속 가능 (존 부팅 18초 · 전체 27초)
+    durango-zone-hanbando	Up 20 seconds (health: starting)
+    durango-central	Up 23 seconds (healthy)
+      컨테이너  durango-central · running · 커밋 e37f4fbd619f · 포트 3010
+      /health   {"ok":true,"orders":0,"players":3,"uptime":23.741108023}
+      /zones    hanbando=ws://198.51.100.1:3020 nippon=ws://192.0.2.2:3021
+      컨테이너  durango-zone-hanbando · running · 커밋 e37f4fbd619f · 포트 3020
+      env       T565_MAP_LIVE= · PLAYER_CAP=150 · 판 
+      hanbando · 달력 1년 11월 1일 (가을) · 마을 50/51(사람 사는 50) · 사람 0 · 정원 150
+[④] sync-tokyo
+      서울(seoul) HEAD e37f4fbd619f · 도쿄(tokyo) HEAD 62580d74bc19
+      차분 — 도쿄 62580d74bc19 → 서울 e37f4fbd619f(그 사이 커밋 ? 개 · 보내는 것은 서울 HEAD 트리에서 바뀐 객체만)
+    .. 1.5 MB (1543217 B)
+    e37f4fbd619f wip T897
+      서울 e37f4fbd619f wip T897
+      도쿄 e37f4fbd619f wip T897
+      ✓ 두 줄이 같다
+      ✓ durango-zone:prev-nippon = 99d2e26a572d(커밋 62580d74bc19) — 되돌리기는 이 이미지로
+[⑤] 도쿄 빌드 · redeploy-light.sh(RUN_ZONES=nippon · CHAR_SPRITE=on T565_MAP_LIVE=0 · 정원 = 옛 컨테이너 값)
+    빌드 ✓ 커밋 e37f4fbd619f
+    [light] 띄울 존(1개): nippon
+    [light] central=198.51.100.1  부팅간격=4s
+      [up] durango-zone-nippon :3021  (다음까지 4s 대기)
+    [light] 준비 대기 — 시딩·부팅이 끝나야 접속 가능. (Ctrl+C 해도 부팅 자체는 백그라운드 계속)
+      [wait] nippon            0s  [nippon] 🏘️ Stage4A 영토: 경계 7/7곳(셀 1466, ≈13KB — welcome 1회) · 원�    [wait] nippon            3s  [nippon] 🏘️ 레거시 디듀프(§4-4 Stage4A): 시뮬 마을과 중복 7곳 스킵 �    [ready] nippon            6s — 접속 가능                                                            
+    === 완료: 1개 존 준비됨(healthy=접속 가능) ===
+    env 이름 — 옛 컨테이너에만: 없음 · 새로 생김: 없음
+      컨테이너  durango-zone-nippon · running · 커밋 e37f4fbd619f · 포트 3021
+      env       T565_MAP_LIVE=0 · PLAYER_CAP=150 · 판 
+      nippon · 달력 1년 3월 8일 (봄) · 마을 7/50(사람 사는 7) · 사람 0 · 정원 150
+[⑦] live-lag
+      [존] hanbando@서울 — 틱 p50 5.174 · p95 62.04 · max 242.279 ms(최근 699틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 21.56 · max 435.16 ms | 지금 /health 왕복 p95 7.3 · max 8.9 ms | 사람 0 · 마을 50 · 세계 날 245(1년 11월 1일 (가을)) | 최근 60초 무거운 일 130번(tick 242ms · econ_frame 193ms · save 23ms)
+      [존] nippon@도쿄 — 틱 p50 2.74 · p95 13.009 · max 41.697 ms(최근 262틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 16.09 · max 81.79 ms | 지금 /health 왕복 p95 10.4 · max 13.4 ms | 사람 0 · 마을 7 · 세계 날 7(1년 3월 8일 (봄)) | 최근 60초 무거운 일 13번(tick 41ms · econ_frame 27ms)
+      [central] @서울 — 지금 /health 왕복 p95 8.6 · max 18.7 ms · 계정 3
+      [호스트] 서울(seoul) — vCPU 2 · 부하 2.44 1.46 0.93 · 1초 바쁨 40.9% · steal 2% · iowait 0% | 메모리 남음 6871 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 central 0.53% 15MB · hanbando 38.31% 301MB | 다른 무거운 것 없음
+      [호스트] 도쿄(tokyo) — vCPU 2 · 부하 2.44 1.46 0.93 · 1초 바쁨 41.3% · steal 2% · iowait 0% | 메모리 남음 6871 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 nippon 6.58% 134MB | 다른 무거운 것 없음
+      [망] 맥 → 호스트 TCP 왕복 — 서울:3010 최소 0.2 · 중앙 0.2 · 최대 0.6 ms(5번) | 서울:3020 최소 0.1 · 중앙 0.2 · 최대 0.2 ms(5번) | 도쿄:3021 최소 0.1 · 중앙 0.2 · 최대 0.2 ms(5번)
+      판정: 문턱 넘은 층 — hanbando@서울 존 틱 p95 62.04ms ≥ 33
+  ✓ 끝 — 서울 e37f4fbd619f · 도쿄 e37f4fbd619f · 바뀐 것: 서울 재배포(central: 한다 · zone: 한다) → 도쿄 코드 62580d74bc19 → e37f4fbd619f → 도쿄 재배포 → 도쿄 스탬프 e37f4fbd619f
+
+## 서울 호스트 기록 /srv/durango/update-rollback.log
+2026-10-23T12:40:49Z central 87d566fc1e20(17fc69bba284) → dca99fbdbd46(-) · 코드 HEAD 17fc69bba284
+2026-10-23T12:40:51Z hanbando e1c3dee54d06(-) → 99d2e26a572d(62580d74bc19) · 코드 HEAD 17fc69bba284
+2026-10-23T12:41:12Z nippon a8f405a54cbb(17fc69bba284) → 99d2e26a572d(62580d74bc19) · 코드 HEAD 17fc69bba284
+2026-10-23T12:45:41Z central fcb57c33e282(17fc69bba284) → dca99fbdbd46(-) · 코드 HEAD 1c0bf72ff3fc
+2026-10-23T12:45:43Z hanbando af38c2eb1169(-) → 99d2e26a572d(62580d74bc19) · 코드 HEAD 1c0bf72ff3fc
+2026-10-23T12:46:05Z nippon 490c7164f9e1(17fc69bba284) → 99d2e26a572d(62580d74bc19) · 코드 HEAD 17fc69bba284
+2026-10-23T12:49:31Z central 6587e01f642f(1c0bf72ff3fc) → dca99fbdbd46(-) · 코드 HEAD e37f4fbd619f
+2026-10-23T12:49:33Z hanbando 0c6192e9c239(-) → 99d2e26a572d(62580d74bc19) · 코드 HEAD e37f4fbd619f
+2026-10-23T12:49:56Z nippon ae08f1866957(1c0bf72ff3fc) → 99d2e26a572d(62580d74bc19) · 코드 HEAD 1c0bf72ff3fc

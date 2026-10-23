@@ -19,6 +19,7 @@
 #            (pong 과 같은 줄을 기다린다 — `lag-capture.sh` 의 q 와 같은 자)
 #   central  `/health` 20번 왕복 · 계정 수
 #   호스트마다 `/proc/loadavg` 부하 · 1초 창 `/proc/stat` 바쁨(user+sys+steal) · steal · 메모리(MemAvailable · 스왑 · 그 1초에 스왑 오감)
+#            · ★[T901] 디스크(볼륨 뿌리 빈 자리 · 백업 한 벌 = 볼륨 DB 합 × 11/10 + 64 MB — reset-world.sh 백업 자리 규칙)
 #            · `docker stats --no-stream` 컨테이너 CPU% · 메모리 · 재시작 수 · 그 1초에 한 코어의 30% 넘게 쓴 **다른** 프로세스(이름만 · 인자는 안 찍는다 — 비밀 0)
 #            · docker build 가 돌고 있나
 #   맥 → 호스트  열린 포트(central 3010 · 존 포트)에 TCP 왕복(`curl` time_connect) 5번 — 핑과 같은 망 길(ICMP 는 막혀 있을 수 있다)
@@ -29,6 +30,7 @@
 #   호스트 CPU 바쁨(user+sys+steal) ≥ 90% 또는 steal ≥ 5%(T486 ⓑ · ⓐ)
 #   다른 프로세스  durango 존 · central 밖 프로세스가 한 코어의 ≥ 30%(T486 ⓔ 의 같은 상자 문턱) · 또는 docker build 가 돈다
 #   메모리     그 1초 창에 스왑을 오갔다(0 이 아니면 — 새 수 아님)
+#   디스크     [T901] 빈 자리 < 백업 한 벌(reset-world.sh 백업 자리 규칙 — 새 수 아님)
 #   망         TCP 왕복 최대 > max(2 × 중앙, 중앙 + 30ms)(T486 "튄 핑") · 또는 닿지 않음
 #   다 아니면  "서버 · 망 층은 문턱 아래" — 렉이 계속 보이면 클라(브라우저 콘솔 `__frameCapture()` · T486)
 #
@@ -42,7 +44,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --watch) WATCH="${2:-0}"; shift 2 || { echo "--watch <초>" >&2; exit 2; } ;;
     --json) JSON=1; shift ;;
-    *) sed -n '2,36p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 2 ;;
+    *) sed -n '2,38p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 2 ;;
   esac
 done
 case "$WATCH" in ''|*[!0-9]*) echo "--watch <초> — 정수" >&2; exit 2 ;; esac
@@ -69,7 +71,12 @@ HEAVY=$(awk -v hz="$HZ" -v me="$$" -v win="$WIN" 'NR==FNR{a[$1]=$2;next} ($1 in 
     rss=$(awk '/^VmRSS:/{print int($2/1024)}' "/proc/$pid/status" 2>/dev/null); printf '{"pid":%s,"cpu":%s,"rssMB":%s,"name":"%s"}\n' "$pid" "$pc" "${rss:-0}" "$(printf '%s' "$lb" | tr -d '"\\' | cut -c1-24)"
   done | paste -sd, -)
 BUILD=false; pgrep -f 'docker(-buildx)? (buildx )?build' >/dev/null 2>&1 && BUILD=true
-printf '{"k":"host","ncpu":%s,"load":"%s","cpu":%s,"mem":%s,"heavy":[%s],"build":%s,"docker":%s}\n' "$NCPU" "$(cut -d' ' -f1-3 /proc/loadavg)" "$CPU" "$MEM" "$HEAVY" "$BUILD" \
+# ★[T901] 디스크 한 줄 — 볼륨 뿌리 빈 자리 · 백업 한 벌(볼륨 DB 합 × 11/10 + 64 MB — reset-world.sh 백업 자리 규칙 · disk-check.sh 와 같은 글자)
+SRV="${DISK_SRV:-/srv/durango}"; read -r DSZ DAV <<<"$(df -PB1 "$SRV" 2>/dev/null | awk 'NR==2{print $2, $4}')"
+DBS="$(find "$SRV" -mindepth 2 -maxdepth 2 -path "$SRV/_reset" -prune -o -type f \( -name '*.db' -o -name '*.db-wal' -o -name '*.db-shm' -o -name '*.db-journal' \) -printf '%s\n' 2>/dev/null | awk '{t+=$1} END{print t+0}')"
+need=$(( DBS * 11 / 10 + 64 * 1024 * 1024 ))
+DISK="$(printf '{"availMB":%d,"sizeMB":%d,"needMB":%d}' $(( ${DAV:-0} / 1048576 )) $(( ${DSZ:-0} / 1048576 )) $(( need / 1048576 )))"
+printf '{"k":"host","ncpu":%s,"load":"%s","cpu":%s,"mem":%s,"disk":%s,"heavy":[%s],"build":%s,"docker":%s}\n' "$NCPU" "$(cut -d' ' -f1-3 /proc/loadavg)" "$CPU" "$MEM" "$DISK" "$HEAVY" "$BUILD" \
   "$(command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 && echo true || echo false)"
 command -v docker >/dev/null 2>&1 || exit 0
 NAMES=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^durango-(central|zone-.+)$' | sort)
@@ -182,14 +189,15 @@ one_round() {
       my @ct = map { sprintf("%s %s%% %sMB%s", ($_->{name} =~ s/^durango-(zone-)?//r), $_->{cpu}, $_->{memMB}, ($_->{restarts} ? " 재시작 $_->{restarts}" : "")) } grep { $_->{k} eq "ctr" && $_->{host} eq $o->{host} } @L;
       my %g; for (grep { $_->{name} ne "zone" && $_->{name} ne "central" } @{ $o->{heavy} || [] }) { $g{$_->{name}}{n}++; $g{$_->{name}}{cpu} += $_->{cpu}; }
       my @other = map { { name => $_ . ($g{$_}{n} > 1 ? " ×$g{$_}{n}" : ""), cpu => $g{$_}{cpu} } } sort { $g{$b}{cpu} <=> $g{$a}{cpu} } keys %g;
-      push @out, sprintf("[호스트] %s(%s) — vCPU %s · 부하 %s · 1초 바쁨 %s%% · steal %s%% · iowait %s%% | 메모리 남음 %s / %s MB · 스왑 %s / %s MB(그 1초 오감 %s) | 컨테이너 %s | 다른 무거운 것 %s%s",
-        $o->{host}, $o->{alias}, $o->{ncpu}, $o->{load}, $c->{busy}, $c->{steal}, $c->{iowait}, $m->{availMB}, $m->{totalMB}, $m->{swapUsedMB}, $m->{swapMB}, $m->{swapIO},
+      push @out, sprintf("[호스트] %s(%s) — vCPU %s · 부하 %s · 1초 바쁨 %s%% · steal %s%% · iowait %s%% | 메모리 남음 %s / %s MB · 스왑 %s / %s MB(그 1초 오감 %s) | 디스크 남음 %s / %s MB(백업 한 벌 %s MB) | 컨테이너 %s | 다른 무거운 것 %s%s",
+        $o->{host}, $o->{alias}, $o->{ncpu}, $o->{load}, $c->{busy}, $c->{steal}, $c->{iowait}, $m->{availMB}, $m->{totalMB}, $m->{swapUsedMB}, $m->{swapMB}, $m->{swapIO}, d(($o->{disk} || {})->{availMB}), d(($o->{disk} || {})->{sizeMB}), d(($o->{disk} || {})->{needMB}),
         (@ct ? join(" · ", @ct) : "없음"), (@other ? join(" · ", map { "$_->{name} $_->{cpu}%" } @other) : "없음"), ($o->{build} ? " | ★docker build 도는 중" : ""));
       fl(2, "$o->{host} 호스트 CPU 바쁨 $c->{busy}% ≥ 90") if $c->{busy} >= 90;
       fl(2, "$o->{host} 호스트 steal $c->{steal}% ≥ 5(가상 머신이 CPU 를 못 받음)") if $c->{steal} >= 5;
       fl(1, "$o->{host} 다른 프로세스 " . join(" · ", map { "$_->{name} $_->{cpu}%" } @other) . "(한 코어의 30% 넘음)") if @other;
       fl(1, "$o->{host} docker build 도는 중") if $o->{build};
       fl(3, "$o->{host} 메모리 — 그 1초에 스왑 오감 $m->{swapIO}쪽") if $m->{swapIO} > 0;
+      fl(3, "$o->{host} 디스크 — 빈 자리 $o->{disk}{availMB} MB < 백업 한 벌 $o->{disk}{needMB} MB(reset-world.sh 백업 자리 규칙)") if $o->{disk} && $o->{disk}{availMB} < $o->{disk}{needMB};
       $busy{$o->{host}} = 1 if $c->{busy} >= 90 || $c->{steal} >= 5;
     }
     my @net;
