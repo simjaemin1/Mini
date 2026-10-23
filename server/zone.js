@@ -5421,6 +5421,7 @@ const server = http.createServer((req, res) => {
     //     ⇒ 수를 새로 짓는 게 아니라 **없는 수를 말하지 않는다**. `villages` 의 `null` 과 같은 뜻이다.
     let _p50 = null;
     try { const _ms = _tickMsStats(false); _p50 = (_ms && _ms.n > 0) ? _ms.p50 : null; } catch (e) { _p50 = null; }
+    const _cal = calendarNow();   // ★[T890] 아래 `day` · `calendar` 칸(같은 함수 — 사본 0)
     res.end(JSON.stringify({
       zone: ZONE_ID,
       players: players.size,
@@ -5432,6 +5433,9 @@ const server = http.createServer((req, res) => {
       claims: claims.size,
       villages: _vilN,          // ★[T319] 사람이 사는 마을 수(정본 목록에서 센다 · 수만)
       tickP50Ms: _p50,          // ★[T319] 존 틱 p50 — `/perf` tick.ms.p50 과 같은 함수
+      // ★[T890 · T887 회부 1] 세계 날 · 달력 글자 — welcome 의 `calendar` 와 **같은 함수**(`calendarNow()` → econ 게임일 · 마을 시뮬 없는 존은 벽시계 파생).
+      //   바깥에서 늘 읽히는 날이 관측자 welcome 뿐이었다(`/perf` 의 econ 마감 날은 부팅 뒤 ≤ 24분 null). 새 계산 0 · 못 읽으면 null.
+      day: _cal ? _cal.day : null, calendar: _cal ? _cal.label : null,
       latency_ms: LATENCY_MS,
       uptime: process.uptime(),
     }));
@@ -5998,7 +6002,8 @@ const T823_FREEZE_SHELL = process.env.T823_FREEZE_SHELL !== '0';
 //   몸(추위 · 피로 · 부상 · 사기)은 비고 HP 는 최대로. 도착 존이 그 몸을 저장하면 central 행이 덮여 **영구 소실**이었다(도구 2 → 0).
 //   켜면 승격 갈래도 토큰 경로와 **같은 몸 한 자리**(`_handoffBody` — 출처 순서: 페이로드 몸 → 없으면 central 행 · 복원 `parseBody`)를 부르고
 //   그 몸을 일반 접속 몸 리터럴과 같은 칸 · 같은 기본값으로 얹는다(★[T873] 일반 접속 리터럴과 **같은 함수** `_bodyInto` — 칸 목록 한 벌). 끔 = 승격 갈래가 종전 그대로(같은 줄 · 같은 차례).
-const T868_PROMOTE_BODY = process.env.T868_PROMOTE_BODY !== '0';   // ★[PM 착지 10-23] 켬 기본(결함 고침 — 라이브의 보통 넘기가 몸을 잃었다) · 되돌림 `=0`
+const T868_PROMOTE_BODY = process.env.T868_PROMOTE_BODY !== '0';
+const T890_TAKEOVER_BODY = process.env.T890_TAKEOVER_BODY !== '0';   // ★[T890] 같은 존 승계도 몸 칸 한 벌(`serializeBody` → `parseBody` → `_bodyInto`) · 켬 기본 · 되돌림 `=0`(승계 자리 주석)   // ★[PM 착지 10-23] 켬 기본(결함 고침 — 라이브의 보통 넘기가 몸을 잃었다) · 되돌림 `=0`
 const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
 const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
 function _connFailPoint(stage) {
@@ -6469,6 +6474,23 @@ async function _acceptConnection(ws, req, C) {
     player.x = _takeover.x; player.y = _takeover.y;
     player.floor = _takeover.floor || 0;
     player.inventory = _takeover.inventory || player.inventory;
+  }
+  // ★★[T890 2026-10-23 · T873 회부 2 · 손잡이 `T890_TAKEOVER_BODY` — 켬 기본(`!== '0'`) · 되돌림 `=0` = 아래 종전 줄 그대로]
+  //   **승계의 몸 칸도 한 벌로.** 종전 승계 목록(셋째 목록)에는 제작이력 · 어획 · 신체(추위 · 피로 · 부상 · 사기) · 최대 HP 가 없어
+  //   그 칸은 **저장본**(central 행)에서 왔다 — 마지막 저장 뒤 산 몸에서 바뀐 값은 사라졌고, 새 소켓이 닫힐 때 그 값으로 행을 덮어 **영구 소실**이었다
+  //   (탐침 `t890-takeover-probe` 끔: 제작이력 · 어획 3/3 잃음 · 신체 0.8 → 0.006 · 행까지).
+  //   켜면 산 몸을 저장 · 넘기기와 **같은 두 함수**로 찍고 되읽어(`serializeBody` → `parseBody(.., {vitals:true})` — 핸드오프 페이로드와 같은 길)
+  //   **같은 얹기 함수**(`_bodyInto`)로 얹는다 — 몸에 칸이 새로 생기면 `serializeBody` · `parseBody` · `_bodyInto` 셋만 받으면 승계도 같이 받는다.
+  //   ⚠보강 둘은 종전 뜻 그대로(덮어쓰기 아님): 기준일(★[T7] — 산 몸이 아직 못 가졌으면 저장본) · 소속(★[T11] — 산 몸에 없으면 저장본).
+  //     기준일은 저장 규칙(`_lastSeenDayToSave`)이 아니라 산 몸의 값 그대로다(종전 승계와 같은 글자 — 부재를 앞당기지 않는다).
+  //   ⚠장착은 종전 그대로 산 몸의 것(`undefined` 면 저장본). 생명값은 산 몸의 `vital`(HP · 최대 HP · 쓰러짐 · 쓰러진 시각) — 종전은 HP · 쓰러짐(켜졌을 때만)만 이었다.
+  if (_takeover && T890_TAKEOVER_BODY) {
+    const _tb = parseBody(serializeBody(_takeover), { vitals: true });
+    _tb.lastSeenDay = Number.isFinite(_takeover.lastSeenDay) ? _takeover.lastSeenDay : player.lastSeenDay;
+    _tb.member = _takeover.member || player.member;
+    _bodyInto(player, _tb, _takeover.equipped !== undefined ? _takeover.equipped : player.equipped);
+  }
+  if (_takeover && !T890_TAKEOVER_BODY) {   // 끔 = 종전 승계 몸 칸 목록(글자 그대로)
     player.toolItems = _takeover.toolItems || player.toolItems;
     player.equipped = _takeover.equipped !== undefined ? _takeover.equipped : player.equipped;
     player.hotkey1 = _takeover.hotkey1 !== undefined ? _takeover.hotkey1 : player.hotkey1;
@@ -6489,12 +6511,14 @@ async function _acceptConnection(ws, req, C) {
     //     무조건 대입하면 그 사람의 부재가 통째로 사라진다(1차 수리가 그렇게 뒤집혔다).
     if (Number.isFinite(_takeover.lastSeenDay)) player.lastSeenDay = _takeover.lastSeenDay;
     if (_takeover.member) player.member = _takeover.member;   // ★[T11] 살아 있던 몸의 소속이 진실이다(보강 — 덮어쓰기 아님)
-    if (_takeover._returnBriefDone) player._returnBriefDone = true;
     if (typeof _takeover.hp === 'number') setHp(player, _takeover.hp, 'takeover');   // ★[T109] welcome 이 곧 self.hp 를 싣는다 — 조용하다
+    if (_takeover.isDown) { player.isDown = true; player.downedAt = _takeover.downedAt; }
+  }
+  if (_takeover) {   // 몸 칸 밖(게이지 · 브리핑 표 · 정해진 깨어남) — 두 판 같은 줄
+    if (_takeover._returnBriefDone) player._returnBriefDone = true;
     if (typeof _takeover.hunger === 'number') player.hunger = _takeover.hunger;
     if (typeof _takeover.thirst === 'number') player.thirst = _takeover.thirst;
     if (typeof _takeover.vp === 'number') player.vp = _takeover.vp;
-    if (_takeover.isDown) { player.isDown = true; player.downedAt = _takeover.downedAt; }
     //   ★★[T563] **정해진 깨어남도 몸을 따라온다.** 종전엔 `isDown`·`downedAt` 만 이어서, 포기(또는 창 소진) 뒤 다시 붙으면
     //     `_deadUntil` 이 0 인 채 창은 이미 지나 있어 다음 틱이 `resolveDowned` 를 **또** 불렀다(짐 두 번 · 시계 되감김 — ⓐ 와 같은 구멍의 다른 문).
     if (_takeover.isDown && _takeover._deadUntil) {
