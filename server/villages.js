@@ -10221,6 +10221,7 @@ const PV_DEPOSIT_MAP = {
   //     `deliverToVillage` 가 `player.inventory.tool` 을 찾다가 **유령 품목**을 만든다.
   //     ⇒ 판단거리로 보고에 A/B 표로 올렸다(지시 §1 "판단거리는 A/B 표로").
   dried_fish: 'dried_fish', dried_fruit: 'dried_fruit', smoked_meat: 'smoked_meat', pickled_veg: 'pickled_veg',
+  dried_oyster: 'dried_oyster', dried_seaweed: 'dried_seaweed',   // ★[T877] 갯벌 말리기 둘 — econ 칸이 섰다(항등)
   salt: 'salt',
   // ★★[T302 2026-09-18 · 재민 캐논 #38 — PM 넣는다] **잡을 수는 있는데 낼 수가 없던 다섯.**
   //   `인계/E-사건장부.md` 15-벽 이 잰 어긋남이다: 촌장이 *"미역이 없다"* 고 말하는데(부족 사건은 난다)

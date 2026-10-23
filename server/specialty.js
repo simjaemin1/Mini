@@ -281,6 +281,12 @@ const RESOURCES = {
   dried_fruit: { ko: '말린 과실',    emoji: '🍇', category: 'preserved', weight: 0.13, baseValue: 3.8, utility: 0.7, contributes: { subsistence: 0.4 }, harvest: 'crafting' },
   smoked_meat: { ko: '훈제육',       emoji: '🥓', category: 'preserved', weight: 0.62, baseValue: 5.4, utility: 0.7, contributes: { subsistence: 0.8 }, harvest: 'crafting' },
   pickled_veg: { ko: '절임',         emoji: '🥬', category: 'preserved', weight: 0.66, baseValue: 3.8, utility: 0.7, contributes: { subsistence: 0.5 }, harvest: 'crafting' },
+  // ★★[T877 2026-10-23 · T860 회부 1] **건굴 · 마른 미역 — econ 칸.** 정본은 spoil(`PRESERVED_ITEMS` · `PRESERVE.dry_oyster/dry_seaweed` — 이름 · 보관일)이고
+  //   여기 수는 **위 넷과 같은 규칙으로 원물에서 유도**했다(새 수 0 — `scripts/test-t877-dry-fix.js` 가 유도식과 대조한다):
+  //     baseValue = 원물값 ÷ 수율 0.4(굴 4 → 10 · 미역 2 → 5) · weight = 원물 kg × 말림 잔량비(`tidal.weightMap` — 굴 0.2 → 0.052 · 미역 0.3 → 0.078)
+  //     · utility 0.7(보존식 넷과 같다) · contributes = 원물의 subsistence(굴 0.3 · 미역 0.4 — 보존은 열량을 늘리지 않는다) · 부패 = `preserved` 자동(0.0002)
+  dried_oyster:  { ko: '건굴',       emoji: '🦪', category: 'preserved', weight: 0.052, baseValue: 10, utility: 0.7, contributes: { subsistence: 0.3 }, harvest: 'crafting' },
+  dried_seaweed: { ko: '마른 미역',  emoji: '🌿', category: 'preserved', weight: 0.078, baseValue: 5,  utility: 0.7, contributes: { subsistence: 0.4 }, harvest: 'crafting' },
   bread:       { ko: '빵',           emoji: '🍞', category: 'goods', weight: 0.5, baseValue: 2,   utility: 0.7, contributes: { subsistence: 0.8 }, harvest: 'crafting' },
 
   // ═══════════════════════════════════════════════════════════════════

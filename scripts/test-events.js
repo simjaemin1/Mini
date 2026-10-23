@@ -2139,8 +2139,8 @@ const mkLedgerGeo = (world, geo, cfg) => {
   ok(ladder.bodyLen > 500 && ladder.headLit,
     '㊽a 전제: `consumeFood` 소스를 실제로 읽었고 머리 넷이 그 안에 글자로 있다(못 읽으면 아래가 자명 통과다)',
     `본문 ${ladder.bodyLen}자`);
-  ok(ladder.list.length === 24,
-    '㊽a2 **식사 사다리는 24종**이다 — 머리 4 + 생곡 3 + 채집 13 + 보존식 4 (정본에서 유도)',
+  ok(ladder.list.length === 26,
+    '㊽a2 **식사 사다리는 26종**이다 — 머리 4 + 생곡 3 + 채집 13 + 보존식 6(★T877 건굴 · 마른 미역) (정본에서 유도)',
     `${ladder.list.length}종`);
 
   // ── ㊽b 다섯이 사다리에도 있고 **표에도 있다**(항등 대응)
