@@ -6290,17 +6290,19 @@ function _warRationEat(w, day) {
   const ctx = _warPackCtx(w), keys = w._packKeys || [], need = (w._packShare || 0) * (state.warCore ? state.warCore.WAR_RATION : 1);
   const bearers = _warBearers(w, body);
   if (_forageMarchOn()) _warForageMarch(w, body, day, bearers);   // ★[T441] 먹기 전에 — 그날 지난 길에서 딴 것도 짐이다
-  let eaten = 0, left = 0; const eatU = {};
+  let eaten = 0, left = 0, unfed = 0, hungry = 0; const eatU = {};
   const _G = _t748G();
   for (const p of bearers) {
     const bag = _warBagView(p, keys);
     const _b0 = _G ? Object.assign({}, bag) : null;
-    eaten += _warEatBySpoil(WC, bag, need, ctx, eatU);   // ★[T458] 상하는 것부터(부패 정본 순서) · 품목마다 같은 문
+    const _e = _warEatBySpoil(WC, bag, need, ctx, eatU);   // ★[T458] 상하는 것부터(부패 정본 순서) · 품목마다 같은 문
+    eaten += _e; if (_e < need) { unfed += need - _e; hungry++; }   // ★[T886] 짐이 모자란 몸 — 마을 밥상으로 안 돌아간다(셈만 · 굶음의 결과는 회부 T886)
     _warBagWrite(p, keys, bag); left += WC.bagFE(bag, ctx);
     if (_b0) for (const k of keys) { const d = (_b0[k] || 0) - (bag[k] || 0); if (d > 1e-12) _G.bagOut(p, k, d); }   // ★[T748] 먹은 몫 — 그 품목의 오래된 것부터(끄면 null)
   }
   const perDay = (w.force || 0) * (state.warCore ? state.warCore.WAR_RATION : 1);
-  const bk = w._rationBook; if (bk) { bk.eaten += eaten; if (w._fgKeys) bk.fgEat = +((bk.fgEat || 0) + _warFgUnits(w, eatU)).toFixed(6); if (bk.days.length < 64) bk.days.push({ day, bearers: bearers.length, eaten: +eaten.toFixed(4), left: +left.toFixed(4) }); }
+  const bk = w._rationBook; if (bk) { bk.eaten += eaten; bk.unfed = (bk.unfed || 0) + unfed; if (hungry) bk.hungryDays = (bk.hungryDays || 0) + hungry; if (w.phase === 'battle') { bk.battleEaten = (bk.battleEaten || 0) + eaten; bk.battleUnfed = (bk.battleUnfed || 0) + unfed; bk.battleDays = (bk.battleDays || 0) + 1; bk.battleBodyDays = (bk.battleBodyDays || 0) + bearers.length; if (hungry) bk.battleHungry = (bk.battleHungry || 0) + hungry; }   // ★[T886] 못 먹은 몫 · 교전 날 먹음(관측 셈)
+    if (w._fgKeys) bk.fgEat = +((bk.fgEat || 0) + _warFgUnits(w, eatU)).toFixed(6); if (bk.days.length < 64) bk.days.push({ day, bearers: bearers.length, eaten: +eaten.toFixed(4), left: +left.toFixed(4) }); }
   // 사기 항 — 오늘 몫이 짐에 있나(짐꾼 병력 기준 · 0~1). 교전 몸이 있으면 그 판의 편 값에 바로 적는다.
   const needNow = bearers.length * need;
   const ration = needNow > 0 ? Math.max(0, Math.min(1, left / needNow)) : 0;

@@ -1050,17 +1050,27 @@ function rationActPart() {
   const perDay = 12 * WarCore.WAR_RATION;   // 픽스처 병력 12
   ok(sOn.book && sOn.book.days.length >= 2 && sOn.book.days.every(d => near(d.eaten, perDay)),
     'ⓥ 하루 경계마다 몸이 먹는다 — 짐꾼 합 = 병력 × 하루치(몸당 = 병력 ÷ 짐꾼)', sOn.book ? sOn.book.days.map(d => `${d.day}:${d.eaten}(${d.bearers}몸)`).join(' · ') : '');
-  ok(series(sOff) === series(sOn) && series(aOff) === series(aOn) && series(hOff) === series(hOn),
-    'ⓥ `_packRem` 은 짐의 거울 — 날마다 장부와 같은 수(결단이 보는 수 무변)', `포위 ${series(sOn)} · 돌격 ${series(aOn)} · 굶주림 ${series(hOn)}`);
+  //   ★[T886] 교전 날에도 짐이 먹는다 — 장부(끔)는 교전 중 시계를 멈추고 짐(켬)은 먹는다 ⇒ 교전 아닌 날은 장부와 같은 수 · 교전 날은 그날 짐의 거울(남은 짐 ÷ (병력 × 하루치))
+  const offB = (r) => (r.packDays || []).filter(d => d.phase !== 'battle').map(d => d.rem).join(',');
+  const mirrorB = (r) => (r.packDays || []).filter(d => d.phase === 'battle').every(d => { const b = r.book && r.book.days.find(x => x.day === d.day); return !!b && near(d.rem, b.left / perDay); });
+  ok(offB(sOff) === offB(sOn) && offB(aOff) === offB(aOn) && offB(hOff) === offB(hOn) && [sOn, aOn, hOn].every(mirrorB),
+    'ⓥ `_packRem` 은 짐의 거울 — 교전 아닌 날은 장부와 같은 수(결단이 보는 수 무변) · ★[T886] 교전 날은 그날 짐의 거울', `포위 ${series(sOn)} · 돌격 ${series(aOn)} · 굶주림 ${series(hOn)} · 장부 돌격 ${series(aOff)}`);
+  const aBat = (aOn.packDays || []).filter(d => d.phase === 'battle').length, aOffBat = (aOff.packDays || []).filter(d => d.phase === 'battle').map(d => d.rem);
+  ok(aBat >= 2 && aOn.book && aOn.book.battleDays >= 1 && aOn.book.battleEaten > 0 && aOn.book.battleBodyDays >= aOn.book.battleDays && aOffBat.length >= 2 && aOffBat.every(x => x === aOffBat[0]),
+    'ⓥ ★[T886] 교전 날에도 짐이 먹는다(같은 하루 경계 · 몸 수만큼) · ★대조 끔(장부)은 교전 중 시계가 선다', aOn.book ? `교전 날 ${aBat} · 먹은 날 ${aOn.book.battleDays} · 짐꾼-날 ${aOn.book.battleBodyDays} · 먹음 ${aOn.book.battleEaten.toFixed(2)} · 장부 ${aOffBat.join(',')}` : '');
+  const hShort = run(true, Object.assign({}, H, { packFood: 12 * WarCore.WAR_RATION / 2 }));   // 같은 포위만 판 · 팩 반나절(병력 12 × 하루치 ÷ 2) — 짐이 바닥나는 날이 서야 아래가 자명 통과가 아니다
+  const hNeed = hShort.book && hShort.onBodies ? hShort.book.days.reduce((a, d) => a + d.bearers, 0) * (12 / hShort.onBodies) * WarCore.WAR_RATION : NaN;
+  ok(hShort.book && hShort.book.unfed > 0 && hShort.book.hungryDays > 0 && near(hShort.book.eaten + hShort.book.unfed, hNeed),
+    'ⓥ ★[T886] 짐이 바닥이면 못 먹은 몫을 센다(먹음 + 못 먹음 = 짐꾼-날 × 몸당 몫 · 마을 밥상으로 안 돌아간다 — 아래 이중 0 대조)', hShort.book ? `먹음 ${hShort.book.eaten.toFixed(2)} + 못 먹은 ${hShort.book.unfed.toFixed(2)} = 짐꾼-날 몫 ${(+hNeed).toFixed(2)} · 굶은 짐꾼-날 ${hShort.book.hungryDays}` : '');
   ok([sOn, aOn, hOn].every(r => r.warDone && near(ident(r), r.book.load)),
     'ⓥ 항등 — 곳간에서 나간 = 몸이 먹음 + 내려놓음 + 드랍(+ 아직 짐) · 세 판', [sOn, aOn, hOn].map(r => `${r.book.load} = ${r.book.eaten}+${r.book.back}+${r.book.drop}+${(r.bagLeft || 0)}`).join(' · '));
   ok(sig(sOff) === sig(sOn) && sig(aOff) === sig(aOn) && sig(hOff) === sig(hOn),
-    'ⓥ 결판 무변 — 같은 씨 끔/켬 끝·해시·전이·정산 한 글자 같다(사기 손잡이 끔)', `${sOn.ended && sOn.ended.why} · ${aOn.ended && aOn.ended.why} · ${hOn.ended && hOn.ended.why}`);
+    'ⓥ 결판 무변 — 같은 씨 끔/켬 끝·해시·전이·정산 한 글자 같다(사기 손잡이 끔)', `${sOn.ended && sOn.ended.why} · ${aOn.ended && aOn.ended.why} · ${hShort.ended && hShort.ended.why}`);
   ok(aOn.book && aOn.book.drop > 0 && aOn.ended && aOn.ended.why === 'rout',
     'ⓥ 전사자의 짐은 몸과 함께 떨어진다(드랍 — 곳간으로 안 돌아온다)', aOn.book ? `드랍 ${aOn.book.drop} · 살아 돌아온 짐 ${aOn.book.back}` : '');
-  const hr = (hOn.packDays || []).map(d => d.ration).filter(x => x != null);
-  ok(hr.length && hr.some(x => x < 1) && hr.every(x => x >= 0 && x <= 1) && hOn.ended && hOn.ended.why === hOff.ended.why,
-    'ⓥ 사기 곡선 — 오늘 몫이 짐에 있나(0~1)를 **매일** 다시 적는다 · 짐이 모자라면 1 아래 · 결단(철수)은 장부와 같다', `ration ${hr.join(',')} · 끝 ${hOn.ended && hOn.ended.why}`);
+  const hr = (hShort.packDays || []).map(d => d.ration).filter(x => x != null);
+  ok(hr.length && hr.some(x => x < 1) && hr.every(x => x >= 0 && x <= 1) && hShort.ended && hShort.ended.why === hOff.ended.why,
+    'ⓥ 사기 곡선 — 오늘 몫이 짐에 있나(0~1)를 **매일** 다시 적는다 · 짐이 모자라면 1 아래 · 결단(철수)은 장부와 같다', `ration ${hr.join(',')} · 끝 ${hShort.ended && hShort.ended.why}`);
   // 이중 0 — 원정군은 마을 식사 명부에서 빠진다(econ 한 줄)
   const eatDay = (on) => {
     setK(on);
