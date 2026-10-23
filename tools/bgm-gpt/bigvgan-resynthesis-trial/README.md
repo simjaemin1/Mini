@@ -116,5 +116,22 @@ announced30MB limit. Four actual model forwards total; model weights unchanged.
 Ten spectral-control and six fixed-level synthetic tests join the original
 thirteen wrapper tests:29pass without reading real recordings/checkpoints or
 instantiating the public model. Game defaults and original source files remain
-unchanged. Reconstruction acceptance on027does not certify this different
-vibrato recording or make the decoder a score-conditioned instrument.
+unchanged. Permission to continue after027/037 was not broad timbral approval
+or acceptance of this different vibrato recording, and does not make the
+decoder a score-conditioned instrument.
+
+## User rejection: 2026-10-23
+
+The user judged the038/039/040 comparison: “이상해.. 대금 소리같지도 않고,
+비브라토도 불안정”. Generated039/040 are rejected, not approved instruments.
+The unchanged-pitch reconstruction039 already loses the required identity;
+the+1 spectral warp cannot be the sole explanation. Verified configuration,
+sample rate, official mel identity, strict checkpoint loading and unchanged
+input bindings did not reveal an implementation error. This does not prove
+that every possible software fault is absent, or identify a unique acoustic
+cause. Approximate pitch movement and finite outputs were insufficient gates.
+
+Do not promote this decoder, smooth the measured vibrato into apparent success,
+or conceal the failure with EQ/source-waveform mixing. Preserve all existing
+artifacts. A separate synthetic full F0-conditioned architecture/device probe
+is in `../sifigan-readiness/`; it is not a new daegeum model or quality result.
