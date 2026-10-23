@@ -10427,6 +10427,11 @@ function _t597ShieldExtra(v) {   // 이 마을 보호막이 SHIELD_DAYS 뒤로 �
 const SHIELD_SOFT_ON = !(typeof process !== 'undefined' && process.env && process.env.SHIELD_SOFT === '0');
 const SHIELD_SOFT_K = (typeof process !== 'undefined' && process.env && process.env.SHIELD_SOFT_K != null)
   ? Number(process.env.SHIELD_SOFT_K) : 0.25;
+// ★★[T858 2026-10-22 · 재민 10-22 "보호막은 없애는 게 바람직하긴 한데"] **보호막을 걷은 세계를 재는 손잡이** `T858_NO_SHIELD`('1' 만 켬 · 없음 · '0' · 빈 값 = 끔 = main 바이트).
+//   켜면 기근 보호막(클램프 · 감쇠 · `T597_SHIELD_RAMP` 펴기 — 갈래 전부)이 안 선다 — 첫날부터 음수 압력이 그대로 아래 죽음 사다리로 간다.
+//   끄는 자리는 `_shieldT` 판정 한 곳이다(켬 = `SHIELD_DAYS` — 보호가 끝난 마을과 같다) · 보호 조건 줄은 한 글자도 안 바뀐다(`test-frontier-iron ③` 계약).
+//   새 수 0 — 쓰는 수는 보호막 그 자체(`SHIELD_DAYS`). 재는 카드라 켜는 건 재민(판정 0 · T858).
+const T858_NO_SHIELD = (typeof process !== 'undefined' && process.env && process.env.T858_NO_SHIELD === '1');
 // ★땅맞춤 초기 부존 배수 — 기본 1(채택값). LANDFIT=0 이면 2026-08-02 채택 **이전 동작**을 정확히 재현한다.
 //   (계수를 임의로 흔들라는 손잡이가 아니라 A/B 재현용이다 — PEACE_W 선례. createVillage 참조.)
 const LANDFIT_K = (typeof process !== 'undefined' && process.env && process.env.LANDFIT != null)
@@ -12751,7 +12756,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   // 보호 잔여 판정 — 기본은 달력(day), SHIELD_AGE 면 **마을 나이**(day − 창설일).
   //   `_bornDay` 가 없으면(옛 DB·랩 초기 마을) 0 → 달력과 동일 = 회귀 무영향.
   //   ★[T597] 펴기는 나이에서 그 마을 몫을 뺀다(= 보호막이 그만큼 늦게 걷힌다) — 아래 보호 조건 줄은 한 글자도 안 바뀐다(`test-frontier-iron ③` 계약).
-  const _shieldT = (SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day) - (T597_SHIELD_RAMP ? _t597ShieldExtra(v) : 0);
+  const _shieldT = T858_NO_SHIELD ? SHIELD_DAYS : (SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day) - (T597_SHIELD_RAMP ? _t597ShieldExtra(v) : 0);   // ★[T858] 켬 = 보호가 끝난 마을(아래 조건이 거짓 — 클램프 · 감쇠 · 펴기 셋 다 안 선다)
   // ★★[2026-08-03d 배치 11 — 필멸 배선] **플레이어가 세운 마을은 보호막을 받지 않는다.**
   //   재민 확정: "플레이어 마을은 망해도 돼". 보호막은 소멸 0 원칙의 장치이고, 그 원칙은
   //   **NPC 가 자기 자리를 못 고르기 때문에** 세운 것이다. 자리를 고른 자에게 365일 무적을 주면
