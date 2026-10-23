@@ -3464,7 +3464,7 @@ function _t775Place(body, c, outbound, p, now) {
 //   공유 예산 넘침 = 틱마다 · 사람 결정 문이 틱마다 잘린다 · 틱 p50 47ms). 켬이면 길 캐시가 빈 캐러밴은 줄 차례로 **첫 한 대만** 부르고(그 한 대가 슬롯을 끝까지 쥔다)
 //   나머지 빈 쌍은 이번 틱엔 부르지 않고 줄에 남긴다. 길이 이미 있는 캐러밴은 종전처럼 같은 틱에 부른다(걷는 길 일은 쌍마다 따로라 슬롯을 안 다툰다).
 //   같은 계약(줄에 남김 = 'wait' 와 같은 자리) · 새 수 0 · 차례는 장부 차례 그대로.
-const T896_RESUME_ONE = process.env.T896_RESUME_ONE === '1';
+const T896_RESUME_ONE = process.env.T896_RESUME_ONE !== '0';   // ★[PM 착지 10-23e] 켬 기본(다시 뜬 판 틱 47.7 → 16.7ms · 주민 결정 문 되살아남 — 라이브는 배포마다 다시 뜬다) · 되돌림 `=0`
 function _t896NeedSlot(c) {   // 이 캐러밴의 몸을 세우려면 교역로를 새로 파야 하나(길 캐시에 그 쌍이 없다)
   const a = state.byEcon.get(c.from), b = state.byEcon.get(c.to);
   if (!a || !b || !state.routeCache) return false;
