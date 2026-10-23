@@ -6,9 +6,9 @@
 //   ⓐ 교전 병사 — war-live enlist 가 battle-core spawn 리터럴의 데이터 칸 x/y 위에 몸 접근자를 덮는다
 //   ⓑ 대형 병사 — war-live bindGroupUnit 이 몸마다 새 닫힘 접근자를 단다(둘째 몸부터)
 //   ⓒ 핸들 — battle-core _makeHandle 리터럴의 접근자 열둘
-//   켬('1' 만): 접근자를 모두가 같이 쓰는 함수로 · 몸은 숨은 칸(사설 필드)에 · 교전 병사는 같은 칸 · 같은 값으로 다시 지어 그 자리에(늦게 붙던 칸 열아홉은
+//   켬(★[T900] 기본 · 끔 탐침 `T874_BATTLE_FAST=0`): 접근자를 모두가 같이 쓰는 함수로 · 몸은 숨은 칸(사설 필드)에 · 교전 병사는 같은 칸 · 같은 값으로 다시 지어 그 자리에(늦게 붙던 칸 열아홉은
 //   같은 이름으로 미리 `undefined` — 지도 하나) · 핸들은 같은 칸 · 같은 함수로 옮긴다.
-//   ① 글자 — 손잡이 '1' 만 · 끔 갈래 = 종전 줄 · 켬 식 = 종전 식(같은 곱셈 · 나눗셈 차례) · 아는 칸 꼴 = battle-core spawn 리터럴 · 미리 둔 칸 열아홉 ·
+//   ① 글자 — 손잡이 켬 기본(`=0` 만 끔 · T900) · 끔 갈래 = 종전 줄 · 켬 식 = 종전 식(같은 곱셈 · 나눗셈 차례) · 아는 칸 꼴 = battle-core spawn 리터럴 · 미리 둔 칸 열아홉 ·
 //      그 칸을 '있나' 로 묻는 자리 0(미끼 문다) · 교전 병사를 칸 목록으로 훑는 자리 0
 //   ② 꼴 — 끔은 셋 다 사전(자명 통과 금지) · 켬은 셋 다 빠른 꼴 · 교전 병사 새 이름 0 · 값 같음 · 지도 하나 · 대형 병사 · 핸들은 칸 이름 · 차례 · 속성까지 끔과 같다
 //   ③ 값 — 아이 판 둘(끔 · 켬): 대형 행군 → 교전 900틱(존 꼴 — 몸 묶기 · 대형 · 화살 · 정산 입력) · battle-core 독립 판(핸들 접근자로 읽는다) 의 모든 값이 한 글자 같다
@@ -31,9 +31,9 @@ console.log('\n=== T874 교전 병사 · 대형 병사 · 핸들 빠른 꼴 = �
 console.log('\n① 글자');
 const BCS = fs.readFileSync(path.join(ROOT, 'sim', 'battle-core.js'), 'utf8');
 const WLS = fs.readFileSync(path.join(ROOT, 'server', 'war-live.js'), 'utf8');
-ok(/return _bcKnob\('T874_BATTLE_FAST'\)==='1'\?_t874Handle\(h0\):h0;/.test(BCS) && (BCS.match(/T874_BATTLE_FAST/g) || []).length === 2, "battle-core 손잡이 — '1' 만 켬 · 읽는 자리 하나(_makeHandle)");
-ok(/function _t874On\(\) \{ return typeof process !== 'undefined' && !!process\.env && process\.env\.T874_BATTLE_FAST === '1'; \}/.test(WLS)
-  && (WLS.replace(/\/\/.*$/gm, '').match(/T874_BATTLE_FAST/g) || []).length === 1 && (WLS.replace(/\/\/.*$/gm, '').match(/_t874On\(\)/g) || []).length === 3, "war-live 손잡이 — '1' 만 켬 · 술어 하나를 두 자리(enlist · bindGroupUnit)가 묻는다");
+ok(/return _bcKnob\('T874_BATTLE_FAST'\)!=='0'\?_t874Handle\(h0\):h0;/.test(BCS) && (BCS.replace(/\/\/.*$/gm, '').match(/T874_BATTLE_FAST/g) || []).length === 1, "battle-core 손잡이 — 켬 기본 · `=0` 만 끔(T900) · 읽는 자리 하나(_makeHandle)");
+ok(/function _t874On\(\) \{ return typeof process !== 'undefined' && !!process\.env && process\.env\.T874_BATTLE_FAST !== '0'; \}/.test(WLS)
+  && (WLS.replace(/\/\/.*$/gm, '').match(/T874_BATTLE_FAST/g) || []).length === 1 && (WLS.replace(/\/\/.*$/gm, '').match(/_t874On\(\)/g) || []).length === 3, "war-live 손잡이 — 켬 기본 · `=0` 만 끔(T900) · 술어 하나를 두 자리(enlist · bindGroupUnit)가 묻는다");
 {
   const lit = BCS.slice(BCS.indexOf('function _makeHandleLit(ctx){'), BCS.indexOf('// createBattle(spec,opts)'));
   const gets = (lit.match(/get (\w+)\(\)\{return ctx\.(\w+);\}/g) || []).map((s) => s.match(/get (\w+)/)[1]);
@@ -82,11 +82,11 @@ const PRE_G = ['slx', 'sly', 'cmd', 'jx', 'jy', 'bu', 'dead', '_dk', '_wpth'];  
 }
 
 // ── ② 꼴 ────────────────────────────────────────────────────────────────────────────────
-console.log('\n② 꼴 — 끔 · 켬(같은 프로세스 · 손잡이는 부를 때마다 읽는다)');
+console.log('\n② 꼴 — 끔(`=0`) · 켬(기본 — 손잡이 없음)(같은 프로세스 · 손잡이는 부를 때마다 읽는다)');
 const BC = require(path.join(ROOT, 'sim', 'battle-core.js'));
 const WLM = require(path.join(ROOT, 'server', 'war-live.js'));
 const build = (on) => {
-  if (on) process.env.T874_BATTLE_FAST = '1'; else delete process.env.T874_BATTLE_FAST;
+  if (on) delete process.env.T874_BATTLE_FAST; else process.env.T874_BATTLE_FAST = '0';   // ★[T900] 켬 = 빈 값(기본) · 끔 = '0'
   const live = WLM.createWarLive({ cellPx: 32, pxPerM: 32, tickHz: 30 });
   const f = live.makeFight({ id: 4, born: 9, atk: { name: 'A' }, def: { name: 'B' }, _heading: 0.3 }, null, { A: { weapQ: 0.7 }, B: null });
   const out = { f, gus: [], us: [] };
@@ -102,6 +102,14 @@ const build = (on) => {
   return out;
 };
 const OFF = build(false), ON = build(true);
+{
+  // ★[T900] 손잡이 뜻 — 빈 값 · '1' · 다른 글자는 켬 · '0' 만 끔(핸들 꼴로 본다 — 끔이면 사전 · 켬이면 빠른 꼴)
+  const hfp = (v) => { if (v === undefined) delete process.env.T874_BATTLE_FAST; else process.env.T874_BATTLE_FAST = v;
+    const f = WLM.createWarLive({ cellPx: 32, pxPerM: 32, tickHz: 30 }).makeFight({ id: 1, born: 1, atk: { name: 'A' }, def: { name: 'B' }, _heading: 0 }, null, { A: null, B: null });
+    delete process.env.T874_BATTLE_FAST; return HFP(f.handle) ? 1 : 0; };
+  const got = [undefined, '1', 'true', '', '0'].map(hfp);
+  ok(JSON.stringify(got) === '[1,1,1,1,0]', "★손잡이 뜻 — 없음 · '1' · 'true' · '' = 켬(빠른 꼴) · '0' 만 끔(사전) — 켬 기본(T900)", got.join(','));
+}
 const cnt = (arr) => arr.reduce((a, o) => a + (HFP(o) ? 1 : 0), 0);
 ok(!HFP(OFF.f.handle) && cnt(OFF.us) === 0 && OFF.gus.slice(1).every((g) => !HFP(g)), '[자명 통과 금지] 끔 — 핸들 · 교전 병사 6 이 다 사전 모드 · 대형 병사는 둘째부터 사전(첫 몸만 새 길을 낸다 — `TransitionToDifferentAccessor`)', `빠른 꼴 ${+HFP(OFF.f.handle)} · ${cnt(OFF.us)}/6 · ${cnt(OFF.gus)}/6`);
 ok(HFP(ON.f.handle) && cnt(ON.us) === 6 && cnt(ON.gus) === 6 && HFP(ON.f.ctx) && HFP(ON.f), '★켬 — 핸들 · 교전 병사 6(품질 칸 atk 갈래 포함) · 대형 병사 6 이 다 빠른 꼴(교전 60틱 뒤)', `빠른 꼴 ${+HFP(ON.f.handle)} · ${cnt(ON.us)}/6 · ${cnt(ON.gus)}/6`);
@@ -145,7 +153,7 @@ ok(shape(OFF.f.handle) === shape(ON.f.handle) && ['step', 'setKeys', 'setCmdHead
 }
 
 // ── ③ 값 — 아이 판 둘 ────────────────────────────────────────────────────────────────────
-console.log('\n③ 값 — 아이 판 둘(끔 · 켬): 존 꼴 교전 · battle-core 독립 판');
+console.log('\n③ 값 — 아이 판 둘(끔 `=0` · 켬 기본): 존 꼴 교전 · battle-core 독립 판');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 't874-'));
 const KID = path.join(TMP, 'kid.js');
 fs.writeFileSync(KID, `'use strict';
@@ -199,7 +207,7 @@ const out = {};
 }
 process.stdout.write(JSON.stringify(out));
 `);
-const kid = (on) => { const env = Object.assign({}, process.env); if (on) env.T874_BATTLE_FAST = '1'; else delete env.T874_BATTLE_FAST;
+const kid = (on) => { const env = Object.assign({}, process.env); if (on) delete env.T874_BATTLE_FAST; else env.T874_BATTLE_FAST = '0';   // ★[T900] 켬 = 기본 · 끔 = '0'
   return JSON.parse(execFileSync(process.execPath, [KID], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'inherit'], maxBuffer: 64 << 20 }).toString()); };
 const K0 = kid(false), K1 = kid(true);
 ok(K0.zone.nEv > 20 && K0.zone.res && K0.zone.arrows + K0.zone.corpses >= 0 && K0.alone.t > 50, '[상황] 두 판이 다 돌았다(교전 사건 · 정산 입력 · 독립 판 끝)', `사건 ${K0.zone.nEv} · 시체 ${K0.zone.corpses} · 독립 ${K0.alone.t}스텝 ${K0.alone.result}`);

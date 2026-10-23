@@ -26,7 +26,7 @@ var BattleCore = (typeof module !== 'undefined' && module.exports && typeof requ
 // ═══════════ 결정론 RNG (랩 _muRng verbatim — xorshift32, Math.random 금지) ═══════════
 function _muRng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
-// ═══════════ ★[T874 2026-10-23] 교전 병사 · 대형 병사 빠른 꼴 — 손잡이 `T874_BATTLE_FAST`('1' 만 켬 · 끔 = 종전 그대로) ═══════════
+// ═══════════ ★[T874 2026-10-23] 교전 병사 · 대형 병사 빠른 꼴 — 손잡이 `T874_BATTLE_FAST`(★T900 켬 기본 · `=0` 끔 = 종전 그대로) ═══════════
 //   왜: 몸 자리 묶기(아래 enlist · bindGroupUnit)가 x/y 접근자를 **몸마다 새 닫힘**으로 단다. ⓐ 교전 병사는 battle-core spawn 리터럴이
 //   먼저 깐 데이터 칸 x/y 위에 덮인다(V8 `AccessorsOverwritingNonLast`) ⓑ 대형 병사는 새 칸이지만 둘째 몸부터 접근자 짝이 달라
 //   같은 길을 못 탄다(`TransitionToDifferentAccessor`) ⇒ 둘 다 묶이는 순간 사전 모드 — 교전 스텝(30Hz)이 그 몸들을 걷는다.
@@ -34,7 +34,8 @@ function _muRng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; 
 //   식은 글자 그대로(`p.x / k` · `v * k` · `p.x / k / m` · `v * m * k` — 같은 차례의 같은 곱셈 · 나눗셈 = 같은 값).
 //   교전 병사는 접근자 칸이 생길 때 같이 달리도록 battle-core 가 막 지은 병사(아무도 아직 안 잡았다)를 **같은 칸 · 같은 차례 · 같은 값**의 객체로 다시 짓고
 //   그 자리(ctx.units 끝)에 둔다. 모르는 칸 꼴이면 종전 길(아래 두 줄)로 간다.
-function _t874On() { return typeof process !== 'undefined' && !!process.env && process.env.T874_BATTLE_FAST === '1'; }
+//   ★★[T900 2026-10-23] **켬 기본**(★PM 10-23 · T874 회부 1) — `!== '0'` · 되돌림 `T874_BATTLE_FAST=0`(= T900 전 바이트 · 끔 갈래 = 종전 줄).
+function _t874On() { return typeof process !== 'undefined' && !!process.env && process.env.T874_BATTLE_FAST !== '0'; }
 const _T874 = (function () {
   class O { constructor(o) { return o; } }
   class B extends O {
