@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // @regress
-// === scripts/test-one-clock.js — 시계 하나: 몸 기온의 날 = econ 날 (T871 · 손잡이 T871_ONE_CLOCK='1' · 없음 = 끔 = main 바이트) ===
+// === scripts/test-one-clock.js — 시계 하나: 몸 기온의 날 = econ 날 (T871 · 손잡이 T871_ONE_CLOCK · T885 켬 기본 · '0' = 끔 = T885 앞 바이트) ===
 //
 // ★왜 [T856 회부 1 · T871 ①] 몸은 존 `gameDayT`(= 생활층 `econDayT`)로 기온을 묻고 econ 은 `world.day` 로 그 마을 기온을 매긴다.
 //   `econDayT` 의 몫은 1 을 넘어 이어져서(T484 "계단 0"), econ 마감이 하루보다 길면 몸이 econ 보다 며칠 앞의 기온을 산다(서버 판 평균 2.5일).
 //   켬이면 몫 = 캐러밴 몸이 이미 쓰는 econ 날 몫 `_econDayFrac`([0, 1] · 한 함수) ⇒ 몸의 날 ∈ [D, D + 1].
 //
-//  ① 손잡이 — '1' 하나만 켬 · 없음 · 'true' = 끔
+//  ① 손잡이 — 켬 기본(T885) · '0' 하나만 끔 · 없음 · '1' · 'true' = 켬
 //  ② 값 — 운영 꼴(몫 < 1)은 끔 = 켬 · 밀린 마감(몫 ≥ 1)은 끔 = 종전 식(1 을 넘음) · 켬 = D + 1 에 선다 · econ 이 넘으면 이어서 간다 · 앵커 앞(몫 < 0)은 켬 = D
 //  ③ 몸 기온 — 켬이면 밀린 판에서도 몸이 묻는 날(floor 또는 끝점)의 econ 하루 기온 = econ 이 그 날 매긴 값
 //  ④ 배선 — 한 함수(`_econDayFrac`)를 캐러밴 보간 둘 · `econDayT` 가 부른다(식 사본 0) · 존 `gameDayT` 는 `econDayT` 를 읽는다
@@ -47,17 +47,18 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const say = (m) => console.log(m);
 const near = (a, b) => Number.isFinite(a) && Math.abs(a - b) < 1e-9;
 
-say('=== 시계 하나 — 몸 기온의 날 = econ 날 (T871 · 손잡이 T871_ONE_CLOCK=1) ===');
-const OFF = sub('clock'), TRUE = sub('clock', 'true'), ON = sub('clock', '1');
+say('=== 시계 하나 — 몸 기온의 날 = econ 날 (T871 · T885 켬 기본 · 되돌림 T871_ONE_CLOCK=0) ===');
+const OFF = sub('clock', '0'), TRUE = sub('clock', 'true'), ON = sub('clock', '1'), DEF = sub('clock');
 
 say('\n① 손잡이');
 const VS = fs.readFileSync(SV('villages.js'), 'utf8');
-ok(/const T871_ONE_CLOCK = process\.env\.T871_ONE_CLOCK === '1';/.test(VS), "① `=== '1'` 하나");
-ok(OFF.on === false && TRUE.on === false && ON.on === true, "① 없음 · 'true' = 끔 · '1' = 켬", JSON.stringify([OFF.on, TRUE.on, ON.on]));
+ok(/const T871_ONE_CLOCK = process\.env\.T871_ONE_CLOCK !== '0';/.test(VS), "① 켬 기본 · 되돌림 `!== '0'` 하나");
+ok(OFF.on === false && TRUE.on === true && ON.on === true && DEF.on === true, "① '0' = 끔 · 없음 · 'true' · '1' = 켬", JSON.stringify([OFF.on, DEF.on, TRUE.on, ON.on]));
+ok(JSON.stringify(DEF) === JSON.stringify(ON), '① 기본(env 없음) = 켬 값 그대로', '');
 
 say('\n② 값 — econDayT');
 ok(near(OFF.ops, 50.4) && near(ON.ops, 50.4) && near(OFF.end, 50.999) && near(ON.end, 50.999), '② 운영 꼴(몫 < 1) — 끔 = 켬(그 날 안 · 같은 값)', `${OFF.ops} · ${ON.ops} · ${OFF.end} · ${ON.end}`);
-ok(near(OFF.lag, 52.5) && near(TRUE.lag, 52.5), '② 끔 — 밀린 마감이면 몫이 1 을 넘는다(종전 식 · econ 날 50 에 몸은 52.5)', `${OFF.lag}`);
+ok(near(OFF.lag, 52.5) && near(TRUE.lag, 51), '② 끔(`=0`) — 밀린 마감이면 몫이 1 을 넘는다(종전 식 · econ 날 50 에 몸은 52.5) · \'true\' 는 켬', `${OFF.lag} · ${TRUE.lag}`);
 ok(near(ON.lag, 51) && ON.lag !== OFF.lag, '② 켬 — 밀린 마감이면 econ 날의 끝(D + 1)에 선다(몸의 날 ∈ [D, D + 1])', `${ON.lag}`);
 ok(near(ON.next, 52) && ON.next >= ON.lag, '② 켬 — econ 이 넘으면 그 날에서 이어 간다(뒤로 안 간다)', `${ON.lag} → ${ON.next}`);
 ok(near(ON.pre, 50) && near(OFF.pre, 49.7), '② 앵커 앞(몫 < 0) — 끔 = 종전(D 아래) · 켬 = D', `${OFF.pre} · ${ON.pre}`);

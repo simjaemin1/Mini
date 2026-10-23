@@ -13569,11 +13569,12 @@ function __e2eForceDeed(vid, kind) {
 //     달력이 "3402년 봄 1일" 로 떴다 — 에폭이 먼 과거라 벽시계 일수가 컸던 것이다).
 function econDay() { return (state.world && Number.isFinite(state.world.day)) ? (state.world.day | 0) : null; }
 // ★[T484 ①] 분수 게임일 — econ 의 날 D + 그 날의 경계(`econDayToMs(D)`)에서 흐른 몫. 경계를 넘었는데 econ 이 아직 D 에 있어도 1 을 넘어 **이어진다**(계단 0).
-//   ★★[T871 2026-10-22 · T856 회부 1 · 손잡이 `T871_ONE_CLOCK`('1' 만 켬 · 끔 = 위 종전 식 그대로 = main 바이트)] **시계 하나 — 몸 기온의 날 = econ 날.**
+//   ★★[T871 2026-10-22 · T856 회부 1 · 손잡이 `T871_ONE_CLOCK`(T885 켬 기본 · `=0` 끔 = 위 종전 식 그대로)] **시계 하나 — 몸 기온의 날 = econ 날.**
 //     끔이면 몫이 1 을 넘어 이어진다 — econ 마감이 하루보다 길면(빠른 시계 250ms · 밀린 마감) 몸은 econ 보다 며칠 앞의 기온을 산다(T871 ① 표 · 서버 판 평균 2.5일).
 //     켬이면 몫 = `_econDayFrac`(캐러밴 몸이 이미 쓰는 econ 날 몫 [0, 1] · 사본 0) ⇒ 몸의 날 ∈ [D, D + 1] = econ 이 그 마을 기온을 매긴 그 날.
 //     운영 하루(24분 · 마감 수 초)는 몫이 1 에 닿지 않아 값이 같다(T871 ① 표 — 24분 하루 가상 시계 판).
-const T871_ONE_CLOCK = process.env.T871_ONE_CLOCK === '1';
+//     ★[T885 2026-10-23 · PM 10-23 — 캐논: 시계 하나] 켬 기본 · 되돌림 `T871_ONE_CLOCK=0`(= T885 앞 바이트) · 끝점 D + 1 그대로.
+const T871_ONE_CLOCK = process.env.T871_ONE_CLOCK !== '0';
 function econDayT(now) { if (!state.world || !Number.isFinite(state.world.day) || !state.dayMs) return null; const D = state.world.day | 0; return T871_ONE_CLOCK ? D + _econDayFrac(now) : D + (now - econDayToMs(D)) / state.dayMs; }
 
 // ★★[T728] world 메타 행 — 직렬 · 복원 · 종료 저장(손잡이 `T728_RESTART_KEEP` 켬에서만 불린다 · 위 `T728_KEEP` 주석).
