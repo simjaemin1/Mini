@@ -109,8 +109,7 @@ async function waitHttp(url, tries = 900) {
   }
   ok(hz.population !== null && hz.population !== undefined && !!hz.cap, `로비에 존이 살아 보인다 — population=${hz.population} cap=${hz.cap}`);
 
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch({ headless: !HEADED, executablePath: require('playwright').chromium.executablePath() });
+  const browser = await require('./e2e-browser').launch({ headless: !HEADED });   // ★[T902] 브라우저 고르기 env 하나 `E2E_BROWSER` — 기본 chromium = 종전 그 launch 그대로 · `webkit` = WebKit 엔진
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
   const perrs = [];

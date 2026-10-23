@@ -141,8 +141,7 @@ function corridor(dir) {
     for (const z of ZIDS) { const r = await ups[z]; ok(r.ok, `ⓔ ${z} 존 기동`, r.ok ? `${(r.ms / 1000).toFixed(1)}s` : r.why); }
   }
 
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch({ headless: !HEADED, executablePath: require('playwright').chromium.executablePath() });
+  const browser = await require('./e2e-browser').launch({ headless: !HEADED });   // ★[T902] 브라우저 고르기 env 하나 `E2E_BROWSER` — 기본 chromium = 종전 그 launch 그대로 · `webkit` = WebKit 엔진
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e.message).slice(0, 160)));
