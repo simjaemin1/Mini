@@ -9095,6 +9095,55 @@ const PRESERVE_YIELD = 0.4;
 //     건어물 0.35kg, 어육 수분 75~80%). 그러니 보존식 1단위는 **신선 1/수율 = 2.5단위**의 열량이다.
 //   이 한 수가 셋을 동시에 정한다: 식단 환산 · K 환산 · 그리고 `baseValue`(원물값 ÷ 수율).
 const PRESERVE_FOOD_FACTOR = 1 / PRESERVE_YIELD;   // 2.5 — 새 수가 아니라 위 수율의 역수다
+// ★★[T17 ② · T860 이 함수로 뺐다 — 글자 그대로] **갈무리 한 걸음** — 요리사 블록(아래 cook 갈래)이 부르던 그 줄이다.
+//   ⓐ **언제 말리나** — 식량이 넉넉할 때만. 그 '넉넉함'의 선도 정본 둘의 곱이다:
+//      `RESERVE_PC.food`(30 = 1인당 목표 재고 = 30일치) × `DAILY_FOOD_CONSUMPTION`(1.0/인·일).
+//      ⇒ *"서른 날치가 넘게 쌓였을 때만 갈무리한다."* 굶주린 마을은 말리지 않는다.
+//   ⓑ **무엇을 말리나** — 오늘 먹을 몫(N×1.0)을 남긴 나머지. 입에 든 걸 빼앗지 않는다.
+//   ⓒ 손 = `budget`(부르는 쪽이 준다 — 요리사 = `jdef.base × skillMul`) · ⓓ 수율 = `PRESERVE_YIELD`.
+//   `cap`(칸 → 상한)이 오면 잉여를 그 칸 상한 안으로 · `unit`(칸 → 식량 환산)이 오면 산출에 곱한다 — 둘 다 null 이면 종전 글자(요리사 · 끔).
+function _preserveSurplus(v, from, budget, addProduce, cap, unit) {
+  const _N = v.npcs.length || 1;
+  if (totalFoodEquivalent(v) > _N * DAILY_FOOD_CONSUMPTION * (RESERVE_PC.food || 30)) {
+    let _pBudget = budget;
+    for (const _fr in from) {
+      if (_pBudget <= 0) break;
+      let _sur = (v.storage[_fr] || 0) - _N * DAILY_FOOD_CONSUMPTION;
+      if (cap) _sur = Math.min(_sur, cap[_fr] || 0);
+      if (!(_sur > 0)) continue;
+      const _take = Math.min(_sur, _pBudget);
+      v.storage[_fr] -= _take; _cons(v, _fr, _take);   // ★flow-EMA — 보존도 수요다
+      addProduce(from[_fr], unit ? _take * PRESERVE_YIELD * unit(_fr) : _take * PRESERVE_YIELD);
+      _pBudget -= _take;
+    }
+  }
+}
+// ★★[T860 2026-10-22 · 세션5 · T847 조사 ⓐⓑ · 재민 10-15 *"갓 잡은 걸로 가공이 안 되는 건 문제"*] **잡은 날 제 손으로 말린다** —
+//   손잡이 하나 `T860_CATCH_DRY`('1' 만 켬 · 끔 = 아래 갈래를 아무도 안 탄다 = main 바이트).
+//   켜면 어부 · 사냥꾼이 그날 잡은 것을 그날 제 손으로 말린다(위 `_preserveSurplus` 그대로 · 사본 0). 새 수 0:
+//     · 손 = 그 몸의 **남는 시간** — 그날 그 몸의 생산이 포만으로 깎인 몫 `1 − 실제/잠재`(여유노동 `_idleFrac` 과 같은 식 ·
+//       생활층 일과의 반일 확률이 읽는 그 정본을 몸 하나로) × 요리사 하루 처리량(`JOBS.cook.base`) × 그 몸의 요리 숙련 배율(`1 + 숙련 × 0.05` — 위 생산식 그대로)
+//     · 칸 상한 = 그날 그 몸이 곳간에 넣은 양(잡은 것만 말린다) · 문턱 ⓐ · 잉여 ⓑ · 수율 ⓓ 는 요리사와 같다
+//     · 산출 열량 보존 — 칸 1단위의 식량 환산(`FORAGE_FOOD_FACTOR` · 생선 · 고기 1)을 곱한다(새우 1 → 건어물 0.4 × 0.35 — 말려도 열량은 그대로 · 생성 0)
+//   잡은 칸 → 보존식은 **spoil 정본 레시피**(`dry_fish` 어종 집합 → 건어물 · `smoke_meat` 날고기 → 훈제육)를 `PV_DEPOSIT_MAP` 대응으로 옮긴 것이다
+//     (사본 검사 — `scripts/test-t860-catch-dry.js` 가 정본과 대조한다). 굴 · 해조는 정본이 제 산출(건굴 · 마른 미역)을 갖는데 econ 에 그 칸이 없어 안 넣는다(회부).
+const T860_ON = (typeof process !== 'undefined' && process.env && process.env.T860_CATCH_DRY === '1');
+const CATCH_FROM = { fisher: { fish: 'dried_fish', salmon: 'dried_fish', shrimp: 'dried_fish', crab: 'dried_fish' }, hunter: { meat: 'smoked_meat' } };
+const _t860Unit = (r) => (FORAGE_FOOD_FACTOR[r] != null ? FORAGE_FOOD_FACTOR[r] : 1);
+function _t860Begin(v, from, potA, actA) {
+  const st = {}; for (const r in from) st[r] = v.storage[r] || 0;
+  return { from, potA, actA, st };
+}
+function _t860Dry(v, npc, b, potA, actA, addProduce) {
+  const dPot = potA - b.potA, dAct = actA - b.actA;
+  const spare = dPot > 0 ? Math.max(0, 1 - dAct / dPot) : 0;
+  if (!(spare > 0)) return;
+  const cap = {}; let any = false;
+  for (const r in b.from) { const c = (v.storage[r] || 0) - b.st[r]; cap[r] = c > 0 ? c : 0; if (c > 0) any = true; }
+  if (!any) return;
+  const budget = JOBS.cook.base * (1 + ((npc.skills && npc.skills.cooking) || 0) * 0.05) * spare;
+  _preserveSurplus(v, b.from, budget, addProduce, cap, _t860Unit);
+}
 // ★[T17 ③] 소금 일상 소비(인구 비례) — 위 소비처 주석의 두 근거가 만나는 값.
 const SALT_DAILY_PC = 0.01;
 // ★[T60 ① 후보ⓑ] 흐름 눈금 손잡이 — 지리 눈금(ⓐⓒ)은 `server/sustain.js` 가 갖는다(사본 금지).
@@ -10324,6 +10373,11 @@ function _t597ShieldExtra(v) {   // 이 마을 보호막이 SHIELD_DAYS 뒤로 �
 const SHIELD_SOFT_ON = !(typeof process !== 'undefined' && process.env && process.env.SHIELD_SOFT === '0');
 const SHIELD_SOFT_K = (typeof process !== 'undefined' && process.env && process.env.SHIELD_SOFT_K != null)
   ? Number(process.env.SHIELD_SOFT_K) : 0.25;
+// ★★[T858 2026-10-22 · 재민 10-22 "보호막은 없애는 게 바람직하긴 한데"] **보호막을 걷은 세계를 재는 손잡이** `T858_NO_SHIELD`('1' 만 켬 · 없음 · '0' · 빈 값 = 끔 = main 바이트).
+//   켜면 기근 보호막(클램프 · 감쇠 · `T597_SHIELD_RAMP` 펴기 — 갈래 전부)이 안 선다 — 첫날부터 음수 압력이 그대로 아래 죽음 사다리로 간다.
+//   끄는 자리는 `_shieldT` 판정 한 곳이다(켬 = `SHIELD_DAYS` — 보호가 끝난 마을과 같다) · 보호 조건 줄은 한 글자도 안 바뀐다(`test-frontier-iron ③` 계약).
+//   새 수 0 — 쓰는 수는 보호막 그 자체(`SHIELD_DAYS`). 재는 카드라 켜는 건 재민(판정 0 · T858).
+const T858_NO_SHIELD = (typeof process !== 'undefined' && process.env && process.env.T858_NO_SHIELD === '1');
 // ★땅맞춤 초기 부존 배수 — 기본 1(채택값). LANDFIT=0 이면 2026-08-02 채택 **이전 동작**을 정확히 재현한다.
 //   (계수를 임의로 흔들라는 손잡이가 아니라 A/B 재현용이다 — PEACE_W 선례. createVillage 참조.)
 const LANDFIT_K = (typeof process !== 'undefined' && process.env && process.env.LANDFIT != null)
@@ -11746,25 +11800,8 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       //       손은 비어 있으니 갈무리는 돈다 — 그래서 이 블록은 위 `if` **밖**이다.
       //     ⓓ 수율 — `PRESERVE_YIELD`(0.4) = `server/spoil.js` 수율식의 하한(위 상수 주석).
       //   ⇒ *"잉여는 어차피 썩는다"*(DECAY)를 *"썩기 전에 말린다"*로 바꾸는 것뿐이다.
-      if (T17_PRESERVE) {
-        const _N = v.npcs.length || 1;
-        // ⓐ **언제 말리나** — 식량이 넉넉할 때만. 그 '넉넉함'의 선도 정본 둘의 곱이다:
-        //    `RESERVE_PC.food`(30 = 1인당 목표 재고 = 30일치) × `DAILY_FOOD_CONSUMPTION`(1.0/인·일).
-        //    ⇒ *"서른 날치가 넘게 쌓였을 때만 갈무리한다."* 굶주린 마을은 말리지 않는다.
-        if (totalFoodEquivalent(v) > _N * DAILY_FOOD_CONSUMPTION * (RESERVE_PC.food || 30)) {
-          let _pBudget = jdef.base * skillMul;
-          for (const _fr in PRESERVE_FROM) {
-            if (_pBudget <= 0) break;
-            // ⓑ **무엇을 말리나** — 오늘 먹을 몫(N×1.0)을 남긴 나머지. 입에 든 걸 빼앗지 않는다.
-            const _sur = (v.storage[_fr] || 0) - _N * DAILY_FOOD_CONSUMPTION;
-            if (!(_sur > 0)) continue;
-            const _take = Math.min(_sur, _pBudget);
-            v.storage[_fr] -= _take; _cons(v, _fr, _take);   // ★flow-EMA — 보존도 수요다
-            addProduce(PRESERVE_FROM[_fr], _take * PRESERVE_YIELD);
-            _pBudget -= _take;
-          }
-        }
-      }
+      //   ★[T860] 그 갈무리 한 걸음은 아래 `_preserveSurplus` 하나다(어부 · 사냥꾼의 잡은 날 말리기가 같은 함수를 부른다 · 사본 0).
+      if (T17_PRESERVE) _preserveSurplus(v, PRESERVE_FROM, jdef.base * skillMul, addProduce, null, null);
     } else if (jdef.produceSpecial === 'mason') {
       // ★S2 석공(masonry) — 석기(간돌 도구) 전담 + 마제석검(돌 무기, 전사용). 도구는 자본재라 *우선* 제작,
       //   도구 충분하면 무기 수요(전사) 있을 때 마제석검 제작. ★활은 석공 소관 아님 — 사냥꾼 자가제작(archery)로 이관(활=목재·뼈·힘줄·깃 재료라 석기 장인 부적합, 아래 사냥꾼 자가 안전망 참조).
@@ -11998,6 +12035,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       //   투입까지 멈추는 게 요점: 아무도 안 쓸 갑옷에 stone·hide·ore를 계속 태우던 게 결함이었다.
       //   (노동은 놀지만 job-switch 재배치 경로가 곧 데려간다 — mason taper와 달리 이 직군엔 잉여 전용처가 없다.)
       if (jdef.stockCap && (v.storage[jdef.output] || 0) >= jdef.stockCap(v)) { continue; }
+      const _t860 = (T860_ON && T17_PRESERVE && CATCH_FROM[npc.currentJob]) ? _t860Begin(v, CATCH_FROM[npc.currentJob], _potA, _actA) : null;   // ★[T860] 잡기 전 곳간 · 잠재/실제(끔 = null)
       for (const [inp, need] of Object.entries(jdef.inputs || {})) {
         _cons(v, inp, Math.min(v.storage[inp] || 0, need));   // ★flow-EMA(실차감분)
         v.storage[inp] = Math.max(0, v.storage[inp] - need);
@@ -12059,6 +12097,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
         // ★[T635 ①] 조개 팔찌감 — 어부 부산물(조개 칸 `oyster` 율 그대로) × 이 마을의 산지 단계(`land.shellBangle` · 켠 판의 바다 마을만)
         if (T635_SHELL_ORNAMENT && npc.currentJob === 'fisher' && v.land && v.land.shellBangle > 0 && _t635ShellItem()) addProduce('shell_bangle', baseAmt * (jdef.byproduct.oyster || 0) * v.land.shellBangle);
       }
+      if (_t860) _t860Dry(v, npc, _t860, _potA, _actA, addProduce);   // ★[T860] 잡은 날 제 손으로 말린다(끔 = 이 줄 무동작)
       workNPC(npc);
     }
   }
@@ -12648,7 +12687,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   // 보호 잔여 판정 — 기본은 달력(day), SHIELD_AGE 면 **마을 나이**(day − 창설일).
   //   `_bornDay` 가 없으면(옛 DB·랩 초기 마을) 0 → 달력과 동일 = 회귀 무영향.
   //   ★[T597] 펴기는 나이에서 그 마을 몫을 뺀다(= 보호막이 그만큼 늦게 걷힌다) — 아래 보호 조건 줄은 한 글자도 안 바뀐다(`test-frontier-iron ③` 계약).
-  const _shieldT = (SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day) - (T597_SHIELD_RAMP ? _t597ShieldExtra(v) : 0);
+  const _shieldT = T858_NO_SHIELD ? SHIELD_DAYS : (SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day) - (T597_SHIELD_RAMP ? _t597ShieldExtra(v) : 0);   // ★[T858] 켬 = 보호가 끝난 마을(아래 조건이 거짓 — 클램프 · 감쇠 · 펴기 셋 다 안 선다)
   // ★★[2026-08-03d 배치 11 — 필멸 배선] **플레이어가 세운 마을은 보호막을 받지 않는다.**
   //   재민 확정: "플레이어 마을은 망해도 돼". 보호막은 소멸 0 원칙의 장치이고, 그 원칙은
   //   **NPC 가 자기 자리를 못 고르기 때문에** 세운 것이다. 자리를 고른 자에게 365일 무적을 주면
@@ -14353,6 +14392,7 @@ function computeVillagePrices(v) {
 }
 
 module.exports = {
+  T860_ON, CATCH_FROM, PRESERVE_FROM, _preserveSurplus, _t860Begin, _t860Dry,   // ★[T860] 잡은 날 말리기 — 손잡이 · 잡은 칸 표(하네스가 spoil 정본과 대조한다 · 사본 0) · 갈무리 한 걸음
   STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,

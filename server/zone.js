@@ -1451,6 +1451,50 @@ function parseBody(raw, opts) {
   return out;
 }
 
+// ★★[T868 2026-10-22] **넘어온 몸 한 자리** — 출처 순서(T47 — 페이로드에 몸이 있으면 페이로드 · 없으면 central 행) + 복원(`parseBody` · 생명값 포함).
+//   토큰 경로(`_acceptConnection`)와 승격 경로(`promote_to_primary` · `T868_PROMOTE_BODY` 켬)가 **같이 부른다** — 복원 코드가 두 벌이면 한 벌이 늙는다(T47 · N.6).
+//   페이로드에 몸이 있으면 **그 자리에서** 돌려준다(동기) — 기다릴 것은 central 행 폴백뿐이라 그때만 Promise 다(토큰 경로의 종전 차례 그대로).
+function _handoffBody(pending, playerId) {
+  const done = (raw, src) => ({ B: parseBody(raw || {}, { vitals: true }), src });
+  if (pending.body) return done(pending.body, 'payload');
+  return central.getPlayer(playerId)
+    .then((row) => (row && row.tools_json) ? done(JSON.parse(row.tools_json), 'central행(폴백)') : done(null, 'payload'))
+    .catch((e) => { console.warn(`[${ZONE_ID}] 핸드오프 몸 폴백 읽기 실패:`, e.message); return done(null, 'payload'); });
+}
+// ★★[T873 2026-10-23 · T868 회부 3] **몸을 사람에 얹는 칸 목록은 여기 하나다.** 복원된 몸(`parseBody` 의 꼴)을 사람 객체에 얹는다.
+//   부르는 자리 둘: 일반 접속 몸 리터럴(`_acceptConnection` — 로그인 · 토큰 · 처음 온 사람 · 펼침 `..._bodyInto({}, _B, equipped)`)과
+//   승격 갈래(`promote_to_primary` · `T868_PROMOTE_BODY` 켬). 종전엔 리터럴의 몸 칸과 `_t868BodyInto` 두 벌이었다 — 몸에 칸이 새로 생기면
+//   둘 다 받아야 했다(T47 "직렬화가 한 함수다"의 남은 틈). 이제 `serializeBody` · `parseBody` · 여기 셋만 받으면 두 길이 같이 받는다.
+//   ★칸 차례 = 종전 일반 접속 리터럴의 차례(도구 → 장착 → 1번 슬롯 → … → 다운 시각) — 리터럴은 펼침이라 그 자리에 그 차례로 꽂힌다(사람 객체 키 차례 종전 그대로).
+//     승격 갈래에서는 이미 있는 칸(장착 · 장비 · 슬롯 · 숙련 · HP)은 제자리에 덮이고 새 칸은 종전 `_t868BodyInto` 와 같은 상대 차례로 붙는다.
+//   ★`equipped` 만 길마다 출처가 달라 부르는 쪽이 정해 넘긴다 — 토큰 · 승격: 몸 → 페이로드 → null · 로그인: 행 칸(`acct.equipped`) · 처음 온 사람: null.
+function _bodyInto(p, B, equipped) {
+  p.toolItems = B.toolItems;      // 14.53: instance 리스트
+  p.equipped = equipped;          // 14.53: toolItemId
+  p.hotkey1 = B.hotkey1;          // 14.53: 1번 슬롯 toolItemId
+  p.equipment = B.equipment;      // 플레이어 아이템: 장비 인스턴스 [{type,q,attrs,dura...}]
+  p.equipSlots = B.equipSlots;    // 슬롯→인스턴스 id (clothes/armor/weapon/tool)
+  p.craftSkill = B.craftSkill;    // 제작 숙련 xp {tailoring,smithing,toolmaking,cooking,mining}
+  p.craftLog = B.craftLog;        // ★[시설 제작창] 제작 이력(횟수·최고 품질) — §8.4 스킬 패널 대기
+  p.oreLedger = B.oreLedger;      // ★[11차] 원석 덩이의 숨은 정체(kg — 선광 때 소비)
+  p.oreCarry = B.oreCarry;        // 선광 소수분 이월(kg)
+  p.fishStats = B.fishStats;      // ★[낚시 v2] 어획 기록 — 재접속·크래시를 넘어 살아남는다
+  p.kgLedger = B.kgLedger;        // ★[무게] 개체 실제 kg — 재접속을 넘어 살아남는다(하네스 ⑦)
+  p.lots = B.lots;                // ★[무게] 식품 취득일 — 나이를 잃으면 로트가 거짓말이 된다
+  p.body = B.body ? { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, ...B.body } : null;   // ★[신체 상태 §7] 빈 칸은 0
+  // ★[T7] 마지막으로 세계를 본 게임일. **null = 처음 온 사람** — 복귀 브리핑은 안 나간다
+  //   (첫 접속에 "0일 만이군" 은 거짓말이고, 첫 인사는 온보딩 몫이다).
+  p.lastSeenDay = B.lastSeenDay;
+  p.member = B.member;            // ★[T11] 마을 소속 — 기여는 온보딩 계량기가, 소속은 여기가 갖는다
+  // ★[T47 · T43] 생명값은 몸에 실려 왔을 때만 잇는다(핸드오프 · 로그인 둘 다 `parseBody(.., {vitals:true})` — 없으면 최대 · 일어선 채).
+  const V = B.vital;
+  p.hp = (V && typeof V.hp === 'number') ? V.hp : PLAYER_MAX_HP;
+  p.maxHp = (V && typeof V.maxHp === 'number') ? V.maxHp : PLAYER_MAX_HP;
+  p.isDown = !!(V && V.isDown);
+  p.downedAt = (V && V.downedAt) || 0;
+  return p;
+}
+
 // ★★[T7 2026-09-01] **아직 전하지 못한 부재는 저장본을 앞당기지 않는다.**
 //   왜: 클라는 입장 직후 소켓을 한 번 갈아 끼운다(`ensurePrimaryConnection` 의 close→connect).
 //   그 사이 첫 접속의 저장이 기준일을 **오늘로** 덮으면, 두 번째 접속은 "부재 0일" 로 태어난다.
@@ -5928,7 +5972,7 @@ const T498_HANDOFF_PAYLOAD = process.env.T498_HANDOFF_PAYLOAD === '1';
 //   부르는 그 한 줄(`savePlayer(player, { last_zone: ZONE_ID, last_x, last_y })`)을 승격 갈래에서도 부른다(새 칸 0 · 새 문 0).
 //   종전: 승격은 행을 안 썼다 — 행 자리는 넘기기 전 저장(출발 존 · 도착 존 입구)이 쥐는데, `T498_HANDOFF_PAYLOAD` 켬이면 그 저장을 **ACK 가 안 올 때만** 보내므로
 //   승격 직후 행은 **출발 존 그대로**다 — 도착 존 첫 주기 저장(0~30초 · 움직였거나 몸이 변했을 때)이나 닫힐 때 저장까지. 그 사이 도착 존이 죽으면(충돌 · kill -9) 다시 접속이 출발 존이다(T831 회부 3 · T866 탐침).
-const T866_PROMOTE_SAVE = process.env.T866_PROMOTE_SAVE === '1';
+const T866_PROMOTE_SAVE = process.env.T866_PROMOTE_SAVE !== '0';   // ★[PM 착지 10-23] 켬 기본(T868 켬 위에서 — 승격도 접속 저장) · 되돌림 `=0`
 // ★[T512] 유령 앞으로 밀기 팔 — 받는 존의 화살 판정이 유령을 그 나이만큼 실린 속도로 민다
 // ★★[T518 2026-09-29 · PM 승격] **기본 켬**(되돌림 `T512_GHOST_EXTRAP=0` = T512 전 바이트 동일). 화살의 정본은 **화살이 나는 존**(= 유령을 받는 존)이다 — `stepArrows` ③ 주석.
 //   ★★[T518] 나이를 **남의 시계 없이** 잰다 — T512 판은 보낸 시각 `t`(보낸 존 시계)를 실었는데, 두 호스트 시계가 1초 어긋나면(받는 쪽이 앞)
@@ -5948,6 +5992,13 @@ const T518_ONE_JUDGE = process.env.T518_ONE_JUDGE !== '0';
 //   ★[T831] 켬 갈래는 껍데기의 **저장**도 이 존의 자리 칸(`last_zone · last_x · last_y`)을 안 쓴다 — 닫힐 때 저장 자리 경합(`savePlayer` 머리 주석).
 //   ★[T843] 받는 존이 몸을 받은 뒤의 껍데기 저장은 몸 칸도 안 쓴다 — 통째로 안 보낸다(`savePlayer` 머리 · 갈래 둘 `_t843Handed`).
 const T823_FREEZE_SHELL = process.env.T823_FREEZE_SHELL !== '0';
+// ★★[T868 2026-10-22 · 손잡이 `T868_PROMOTE_BODY` — '1' 만 켬 · 끔 = main 바이트] **승격 경로도 몸 전부를 잇는다**(T866 회부 1 · ★PM 10-22 결함 · 최우선).
+//   관측 소켓 승격(`promote_to_primary` — 실제 클라는 이웃 존 관측 소켓이 열려 있으면 늘 이 길로 넘는다 · `30-n-net.js`)은 사람을 세울 때
+//   페이로드의 스칼라(인벤 · 허기 · 갈증 · 도구 옛 맵)와 로트(T732)만 썼다 — `toolItems` · 장비 · 슬롯 · 숙련 · 제작이력 · 원석장부 · 어획 · kg원장 · 소속 ·
+//   몸(추위 · 피로 · 부상 · 사기)은 비고 HP 는 최대로. 도착 존이 그 몸을 저장하면 central 행이 덮여 **영구 소실**이었다(도구 2 → 0).
+//   켜면 승격 갈래도 토큰 경로와 **같은 몸 한 자리**(`_handoffBody` — 출처 순서: 페이로드 몸 → 없으면 central 행 · 복원 `parseBody`)를 부르고
+//   그 몸을 일반 접속 몸 리터럴과 같은 칸 · 같은 기본값으로 얹는다(★[T873] 일반 접속 리터럴과 **같은 함수** `_bodyInto` — 칸 목록 한 벌). 끔 = 승격 갈래가 종전 그대로(같은 줄 · 같은 차례).
+const T868_PROMOTE_BODY = process.env.T868_PROMOTE_BODY !== '0';   // ★[PM 착지 10-23] 켬 기본(결함 고침 — 라이브의 보통 넘기가 몸을 잃었다) · 되돌림 `=0`
 const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
 const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
 function _connFailPoint(stage) {
@@ -6052,16 +6103,12 @@ async function _acceptConnection(ws, req, C) {
   const _testInv = {};
   if (process.env.ZONE_TEST_INV) for (const kv of process.env.ZONE_TEST_INV.split(',')) { const [k, v] = kv.split(':'); if (k && +v > 0) _testInv[k.trim()] = +v; }
   let playerId, name, sx, sy, ivx = 0, ivy = 0, inventory = { wood: 0, stone: 0, ..._testInv }, color = '#5a9ae0';
-  let tools = {}, equipped = null;
-  let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}, _loadCraftLog = {}, _loadOreLedger = {}, _loadOreCarry = {}; // 플레이어 아이템(품질·속성·내구·숙련)·원석 정체 장부 복원 버퍼 — tools_json blob piggyback
-  let _loadFishStats = null;   // ★[낚시 v2] 어획 기록(마릿수·최대·놓친 최대) — 같은 blob 에 얹는다
-  let _loadBody = null;        // ★[신체 상태 §7] 추위·피로·부상·사기
-  let _loadKgLedger = null;    // ★[무게] 개체 실제 kg 장부
-  let _loadLots = null;        // ★[무게] 식품 로트(취득일)
-  let _loadLastSeenDay = null; // ★[T7] 마지막으로 세계를 본 게임일 — 복귀 브리핑의 근거
-  let _loadMember = null;      // ★[T11] 마을 소속 — 몸을 따라 존을 넘고 재접속을 넘는다
+  let equipped = null;
+  // ★★[T873] 몸 복원 버퍼 **하나** — `parseBody` 의 꼴 그대로(도구 · 1번 슬롯 · 장비 · 슬롯 · 숙련 · 제작이력 · 원석장부 · 이월 · 어획 · 신체 · kg원장 ·
+  //   로트 · 생명값 · 기준일 · 소속 — tools_json blob piggyback). 종전엔 칸마다 `_load*` 버퍼 · `tools.__toolItems` 감싸개 · `initVital` 이었다.
+  //   기본값 = 빈 몸(처음 온 사람 · central 불가 폴백 — 종전 버퍼 기본값과 같은 값). 사람에 얹는 것은 리터럴의 `_bodyInto` 한 자리다.
+  let _B = parseBody({}, { vitals: true });
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
-  let initVital = null;        // ★[T47] 핸드오프에서만 채워진다 — 존을 넘어도 HP·다운이 이어진다
   let initTribeId = null, initTribeName = null;
   let initFloor = 0;
   // 14.42-a: home (영구 부활 fallback). 게스트면 null로 유지.
@@ -6116,25 +6163,14 @@ async function _acceptConnection(ws, req, C) {
     //     `T498_HANDOFF_PAYLOAD` 켬이면 ACK 가 안 올 때만)과 떠난 몸 껍데기가 닫힐 때 저장(소켓 `close` · 껍데기의 마지막 몸) 중 이 줄이 읽기 전에
     //     닿은 쪽이다(경합 · "정의상 같다"는 그 둘 사이에 껍데기가 안 변할 때만 참 — `T823_FREEZE_SHELL` 켬이면 껍데기가 얼어 둘이 같은 몸이다).
     //   ★[T843] 켬이면 받는 존이 몸을 받은 뒤(이 줄에 닿았다면 늘 그렇다)의 껍데기 저장은 안 나간다(`savePlayer` 머리) — 그 행은 넘기기 전 저장 하나다.
-    let _pendBody = pending.body || null, _bodySrc = 'payload';
-    if (!_pendBody) {
-      try {
-        const _row = await central.getPlayer(playerId);
-        if (_row && _row.tools_json) { _pendBody = JSON.parse(_row.tools_json); _bodySrc = 'central행(폴백)'; }
-      } catch (e) { console.warn(`[${ZONE_ID}] 핸드오프 몸 폴백 읽기 실패:`, e.message); }
-    }
-    {
-      const B = parseBody(_pendBody || {}, { vitals: true });
-      _loadEquipment = B.equipment; _loadEquipSlots = B.equipSlots; _loadCraftSkill = B.craftSkill;
-      _loadCraftLog = B.craftLog; _loadOreLedger = B.oreLedger; _loadOreCarry = B.oreCarry;
-      _loadFishStats = B.fishStats; _loadBody = B.body; _loadKgLedger = B.kgLedger; _loadLots = B.lots;
-      _loadLastSeenDay = B.lastSeenDay;   // ★[T7] 존을 넘어도 부재 기준일은 따라간다(핸드오프는 부재가 아니다)
-      _loadMember = B.member;             // ★[T11] 소속도 같은 몸에 실려 온다
-      equipped = B.equipped || pending.equipped || null;
-      initVital = B.vital;
-      tools = { __toolItems: B.toolItems, __hotkey1: B.hotkey1 };
-    }
-    console.log(`[${ZONE_ID}] ✓ handoff token=${handoffToken.slice(0,8)} consumed (player=${playerId}) — 몸 출처 ${_bodySrc} · 도구 ${(tools.__toolItems || []).length}`);
+    //   ★[T868] 출처 순서 + 복원은 한 자리(`_handoffBody`)다 — 승격 경로(켬)가 같은 것을 부른다. 페이로드에 몸이 있으면 기다림 0(종전 차례).
+    let _hb = _handoffBody(pending, playerId);
+    if (typeof _hb.then === 'function') _hb = await _hb;
+    const _bodySrc = _hb.src;
+    //   ★[T873] 넘어온 몸이 곧 몸 버퍼다 — 기준일(★[T7] 핸드오프는 부재가 아니다) · 소속(★[T11]) · 생명값(★[T47])이 같은 몸에 실려 온다.
+    _B = _hb.B;
+    equipped = _B.equipped || pending.equipped || null;
+    console.log(`[${ZONE_ID}] ✓ handoff token=${handoffToken.slice(0,8)} consumed (player=${playerId}) — 몸 출처 ${_bodySrc} · 도구 ${_B.toolItems.length}`);
     // source zone에 ACK 전송
     if (pending.source_zone && ZONES[pending.source_zone]) {
       const src = ZONES[pending.source_zone];
@@ -6269,18 +6305,9 @@ async function _acceptConnection(ws, req, C) {
       let _bodyRaw = {};
       try { _bodyRaw = acct.tools_json ? JSON.parse(acct.tools_json) : {}; }
       catch (e) { _bodyRaw = {}; }
-      {
-        const B = parseBody(_bodyRaw, { vitals: true });
-        if (B.vital) initVital = B.vital;
-        _loadEquipment = B.equipment; _loadEquipSlots = B.equipSlots; _loadCraftSkill = B.craftSkill;
-        _loadCraftLog = B.craftLog; _loadOreLedger = B.oreLedger; _loadOreCarry = B.oreCarry;
-        _loadFishStats = B.fishStats; _loadBody = B.body; _loadKgLedger = B.kgLedger; _loadLots = B.lots;
-        _loadLastSeenDay = B.lastSeenDay;   // ★[T7] 복귀 브리핑 기준일(게임일)
-        _loadMember = B.member;             // ★[T11] 소속
-        if (B.equipped) equipped = B.equipped;
-        // 저장용: 임시 wrap 객체 — 실제 player.toolItems/hotkey1 은 player 생성 시 풀린다
-        tools = { __toolItems: B.toolItems, __hotkey1: B.hotkey1 };
-      }
+      //   ★[T873] 복원한 몸이 곧 몸 버퍼다(기준일 ★[T7] 복귀 브리핑 · 소속 ★[T11] · 생명값 같은 몸) — 사람에 얹는 것은 리터럴의 `_bodyInto`.
+      _B = parseBody(_bodyRaw, { vitals: true });
+      if (_B.equipped) equipped = _B.equipped;   // (몇 줄 아래 `equipped = acct.equipped || null` 이 늘 덮는다 — 종전 그대로 · 로그인의 장착은 행 칸)
       // ★★★[재민 확정 2026-08-28] **시작 지급 제거됨.** 재민 원문: *"지급 아이템은 없어야 할 거 같은데"*
       //   여기 있던 것: `toolItems.length === 0` 이면 톱·망치·도끼를 하나씩 넣어 줬다.
       //   ★왜 지웠나 — 온보딩 캐논 §9 는 "나루터에서 온 이방인"이 **빈손으로 배고픈 채** 도착한다고 못 박는다.
@@ -6377,7 +6404,7 @@ async function _acceptConnection(ws, req, C) {
     //   어귀(나루터·길목)에 앉는다. 이어하기(last_x/y·home)면 `arriveFor` 가 null 이라 있던 자리 그대로다.
     //   ★[T203] 다섯째 인자 = **세계를 본 적이 있는 날**(T7 정본 · 이 접속이 복원한 그 값).
     //     좌표만으로는 등록 계정의 생애 첫 접속이 '이어하기'로 분류된다(T199 §0-ⓐ #4·#5).
-    const _onbArr = Onboarding.arriveFor(url.searchParams.get('start_vid'), acct, ZONE_ID, playerId, _loadLastSeenDay);
+    const _onbArr = Onboarding.arriveFor(url.searchParams.get('start_vid'), acct, ZONE_ID, playerId, _B.lastSeenDay);
     if (_onbArr) { sx = _onbArr.x; sy = _onbArr.y; const _g = Onboarding.startGauges(); initHunger = _g.hunger; initThirst = _g.thirst; }
     if (_onbArr) _t529Vid = _onbArr.vid;
     // ★★[T520] 손잡이 `T520_ARRIVE_INDOOR`(기본 끔 · 부를 때 읽는다) — 켜면 도착은 그 마을 **공용 쉼터 안**(문간 안쪽 한 칸)이다.
@@ -6402,38 +6429,15 @@ async function _acceptConnection(ws, req, C) {
   for (const k of Object.keys(_testInv)) if (!(k in inventory)) inventory[k] = _testInv[k];
 
   const pid = `p${nextPid++}`;
-  // 14.53: tools 임시 컨테이너에서 toolItems/hotkey1 풀기
-  const _toolItems = (tools && tools.__toolItems) ? tools.__toolItems : (Array.isArray(tools) ? tools : []);
-  const _hotkey1 = (tools && tools.__hotkey1) || null;
   const player = {
     pid, playerId, ws, name, color,
     x: sx, y: sy,
     vx: ivx, vy: ivy,
     inventory,
     tools: {},                  // 옛 호환용 (사용 X)
-    toolItems: _toolItems,      // 14.53: instance 리스트
-    equipped,                   // 14.53: toolItemId
-    hotkey1: _hotkey1,          // 14.53: 1번 슬롯 toolItemId
-    equipment: _loadEquipment,  // 플레이어 아이템: 장비 인스턴스 [{type,q,attrs,dura...}]
-    equipSlots: _loadEquipSlots,// 슬롯→인스턴스 id (clothes/armor/weapon/tool)
-    craftSkill: _loadCraftSkill,// 제작 숙련 xp {tailoring,smithing,toolmaking,cooking,mining}
-    craftLog: _loadCraftLog,    // ★[시설 제작창] 제작 이력(횟수·최고 품질) — §8.4 스킬 패널 대기
-    oreLedger: _loadOreLedger,  // ★[11차] 원석 덩이의 숨은 정체(kg — 선광 때 소비)
-    oreCarry: _loadOreCarry,    // 선광 소수분 이월(kg)
-    fishStats: _loadFishStats,  // ★[낚시 v2] 어획 기록 — 재접속·크래시를 넘어 살아남는다
-    kgLedger: _loadKgLedger,    // ★[무게] 개체 실제 kg — 재접속을 넘어 살아남는다(하네스 ⑦)
-    lots: _loadLots,            // ★[무게] 식품 취득일 — 나이를 잃으면 로트가 거짓말이 된다
-    body: _loadBody ? { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, ..._loadBody } : null,
-    // ★[T7] 마지막으로 세계를 본 게임일. **null = 처음 온 사람** — 복귀 브리핑은 안 나간다
-    //   (첫 접속에 "0일 만이군" 은 거짓말이고, 첫 인사는 온보딩 몫이다).
-    lastSeenDay: _loadLastSeenDay,
-    member: _loadMember,        // ★[T11] 마을 소속 — 기여는 온보딩 계량기가, 소속은 여기가 갖는다
-    // ★[T47] 존을 넘을 때만 생명값을 잇는다(`initVital` 은 핸드오프에서만 채워진다).
-    //   로그아웃 후 재접속의 풀피는 **정책**이라 그대로다 — 죽음 설계(T8) 소관.
-    hp: (initVital && typeof initVital.hp === 'number') ? initVital.hp : PLAYER_MAX_HP,
-    maxHp: (initVital && typeof initVital.maxHp === 'number') ? initVital.maxHp : PLAYER_MAX_HP,
-    isDown: !!(initVital && initVital.isDown),
-    downedAt: (initVital && initVital.downedAt) || 0,
+    // ★★[T873] 몸 칸(도구 · 장착 · 1번 슬롯 · 장비 · 슬롯 · 숙련 · 제작이력 · 원석장부 · 이월 · 어획 · kg원장 · 로트 · 신체 · 기준일 · 소속 · 생명값)은
+    //   **한 자리**(`_bodyInto`)에서 온다 — 승격 갈래(T868 켬)가 같은 함수를 부른다. 펼침이라 이 자리에 종전 리터럴 차례 그대로 꽂힌다.
+    ..._bodyInto({}, _B, equipped),
     hunger: initHunger, thirst: initThirst, vp: initVp,
     // ★★[2026-08-03g 배치 14 ②] **이 신원이 영속인가.** `savePlayer` 가 이걸 본다.
     //   종전 판정은 `playerId.startsWith('anon_')` 하나였는데, 배치 13 뒤로 `anon_` 은 두 종류다:
@@ -6636,6 +6640,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(process.env.T838_WD_AWAKE !== '0' ? { wdAwake: true } : {}),   // [T838 · ★T849 켬 기본 — PM 10-22] 클라 두 감시(pong · 서버 틱)가 **클라가 멈춰 있던 시간**을 서버 침묵으로 안 센다(30-n-net) · 되돌림 `T838_WD_AWAKE=0` 이면 칸이 없다(옛 welcome · 종전 감시)
+      ...(process.env.T870_MT_BAND === '1' ? { mtBand: true } : {}),   // [T870] 클라 산 청크 굽기 예산을 **띠** 단위로(한 판 상한 = 띠 `MT3_BUDGET` 개 · 청크는 여러 판에 걸쳐 완성 · 반쯤 구운 산 0 · 11-r1-mountain) — 기본 끔 · 끔이면 칸이 없다(welcome 바이트 동일) · `1` 켬
       ...(process.env.T813_RMB_PRESS !== '0' ? { rmbPress: true } : {}),   // [T813 · ★T819 켬 기본 — PM 10-20] 우클릭 탭 메뉴는 **누른 순간의 화면**으로 짚는다(46-h-verbs) · 되돌림 `T813_RMB_PRESS=0` 이면 칸이 없다(옛 welcome · 뗄 때의 화면)
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
       ...(VillageKin.ON ? { villageOnly: true } : {}),   // [T787] 길드 = 마을(켬 기본) — 클라 무리 패널이 마을 패널이 된다 · `T785_VILLAGE_ONLY=0` 이면 칸이 없다(옛 길드 패널)
@@ -6947,6 +6952,9 @@ function handlePlayerInput(player, raw) {
     //   앉혀 놓을 수 있어야 한다(그 하네스는 `ENABLE_VILLAGES=0` 이라 정상 경로로는 못 얻는다).
     //   ⚠검사 전용이다: 판정(문턱·직교·한도)은 여기서 안 밟는다 — 그건 `test-membership` 이 잰다.
     if (msg.member !== undefined) player.member = msg.member || null;
+    //   ★[T868] 몸의 장부 칸(숙련 · 제작이력 · 원석장부 · 이월 · 어획)도 세울 수 있게 한다 — 존을 넘는 두 갈래(토큰 · 승격)가 **몸 전부**를 잇는지
+    //     재려면 빈 칸({})이 아닌 값이 있어야 한다(빈 칸끼리 같음은 자명 통과다). 검사 전용 — 정본 길(제작 · 채광 · 낚시)은 각 하네스가 잰다.
+    for (const k of ['craftSkill', 'craftLog', 'oreLedger', 'oreCarry', 'fishStats']) if (msg[k] && typeof msg[k] === 'object') player[k] = msg[k];
     if (msg.quiet !== true) send(player.ws, { type: 'notice', text: `🧪 몸 상태 세움 — ${JSON.stringify(Body.toSave(player))}` });
   }
   else if (E2E_GIVE && msg.type === '__e2e_clock') {
@@ -7903,6 +7911,10 @@ function handleObserverMessage(ws, raw) {
     // === Observer→Primary in-place 승격 ===
     const pending = pendingHandoffs.get(msg.token);
     pendingHandoffs.delete(msg.token);
+    // ★★[T868] 켬 — 몸 한 자리(`_handoffBody` · 토큰 경로와 같은 출처 순서 · `parseBody`)를 먼저 받고 아래를 그 몸으로 돈다.
+    //   끔 = `_t868Go(null)` — 아래 줄이 종전 그대로 같은 차례로 돈다. 켬이고 페이로드에 몸이 있으면 기다림 0(동기) ·
+    //   몸이 없으면(T732 끔 · 몸 안 싣는 픽스처) central 행을 읽은 뒤 돈다(그동안 이 소켓은 관측 그대로).
+    const _t868Go = (_t868hb) => {
     // 중복 player 정리 (한 ws에 두 명 막기)
     for (const [oldPid, p] of players) {
       if (p.playerId === pending.player_id && p.ws !== ws) {
@@ -7942,6 +7954,7 @@ function handleObserverMessage(ws, raw) {
     };
     // ★[T732] 승격도 로트를 잇는다(출발 존이 실은 몸 · `serializeBody` 그 스냅샷) — 없으면 종전(쓸개가 지금으로 적는다 · 근사로 센다)
     if (T732_MOMENT && pending.body) { try { const _B = parseBody(pending.body, {}); if (_B && _B.lots) player.lots = _B.lots; } catch (e) {} }
+    if (_t868hb) _bodyInto(player, _t868hb.B, _t868hb.B.equipped || pending.equipped || null);   // ★[T868] 켬 — 몸 전부(도구 · 장비 · 슬롯 · 숙련 · 제작이력 · 원장 · 어획 · kg · 로트 · 소속 · 신체 · 생명값) · ★[T873] 일반 접속 리터럴과 같은 함수 · 장착 = 토큰 경로와 같은 출처(몸 → 페이로드)
     players.set(pid, player);
     updateActiveChunks();
     if (T866_PROMOTE_SAVE) savePlayer(player, { last_zone: ZONE_ID, last_x: player.x, last_y: player.y });   // ★[T866] 일반 접속의 그 저장(`_acceptConnection` "central에 위치 업데이트") — 위 손잡이 주석
@@ -7983,7 +7996,12 @@ function handleObserverMessage(ws, raw) {
     });
     sendCorpsesInit(ws);
     attachPlayerHandlers(ws, player);
-    console.log(`[${ZONE_ID}] ✨ promote observer→primary ${player.name} token=${msg.token.slice(0,8)} v=(${player.vx},${player.vy})`);
+    console.log(`[${ZONE_ID}] ✨ promote observer→primary ${player.name} token=${msg.token.slice(0,8)} v=(${player.vx},${player.vy})${_t868hb ? ` — 몸 출처 ${_t868hb.src} · 도구 ${(player.toolItems || []).length}` : ''}`);
+    };
+    if (!T868_PROMOTE_BODY) { _t868Go(null); return; }
+    const _t868b = _handoffBody(pending, pending.player_id);
+    if (typeof _t868b.then === 'function') _t868b.then(_t868Go).catch((e) => console.error(`[${ZONE_ID}] ✗ [T868] 승격 몸 잇기 실패:`, e && e.message));
+    else _t868Go(_t868b);
   }
 }
 function attachObserverHandlers(ws) {

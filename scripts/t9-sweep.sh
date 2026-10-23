@@ -11,9 +11,10 @@ TIMEOUT_SEC="${TIMEOUT_SEC:-900}"
 DRAIN_SEC="${DRAIN_SEC:-6}"
 cd "$ROOT"
 
+source "$ROOT/scripts/_mine.sh"   # ★[T853] 이름으로 죽이되 내 netns 의 것만
 drain() {
-  pkill -f "server/zon[e].js" 2>/dev/null || true
-  pkill -f "server/centra[l].js" 2>/dev/null || true
+  kill_mine 'server/zon[e].js'
+  kill_mine 'server/centra[l].js'
   sleep "$DRAIN_SEC"
 }
 

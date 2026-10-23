@@ -32,7 +32,12 @@ const CHROME = process.env.CHROME_PATH || undefined;
 //   ③④ 는 "이 씨 · 이 시계에서 첫 광부가 41~50일에 선다"는 **종전 세계 단언**이다(T684 머리말) — 10-13 T707 켬 기본(f55e4880 · 번들은 process 가 없어 켬)
 //   뒤 기본 판은 60일 안에 광부가 안 선다(T751 §2 · T758 §3). f55e4880 의 "하네스 끔 판 '=0' · 종전 세계 단언은 끔으로 묶음" 꼴로 끔 세계에 묶는다.
 //   켬(기본) 세계로 돌리려면 `LAB_QS=`(빈 값) · 다른 손잡이를 같이 주려면 `LAB_QS='T707_MARKET=0&…'`.
-const LAB_QS = process.env.LAB_QS != null ? process.env.LAB_QS : 'T707_MARKET=0';
+// ★[T852 2026-10-22 ← T830 회부 1] **T792 켬 기본(PM 10-18 · `599df3b9`) 둘도 끔 세계에 묶는다** — `T731_LOCAL_MIDNIGHT=0`(마을 현지 자정 창) · `T761_LOCAL_CLOCKS=0`(풍흉·날씨 굴림을 마을 조각에서 · 몹 밤 · 기온 일교차 현지).
+//   까닭: 랩 env 문(T641)이 `process.env` 를 만들어 주면 엔진 번들의 두 손잡이(`!== '0'` · env 없음 = 켬)가 **켜진다**(env 없는 브라우저 기본은 끔이었다).
+//   그러면 이 씨 · 이 시계의 세계가 바뀌어 17일째(랩 날 137) 지문부터 갈리고 60일 안에 광부가 안 선다(광부 0 · ③④ 빨강 2). 이 하네스의 ③④ 는
+//   "첫 광부가 41~50일에 선다"는 **종전 세계 단언**(T684 머리말 · T758 이 T707 을 끈 것과 같은 꼴)이다 — 켬 세계로 다시 재려면 `LAB_QS=` 로 손잡이를 풀어 준다.
+//   귀속 판(17일 지문 · `02a62e6` 랩 = `d5f85d45`): 둘 다 기본(켬) `8666b775` · `T731=0` 만 `8666b775` · `T761=0` 만 `8666b775` · **둘 다 0 → `d5f85d45`**.
+const LAB_QS = process.env.LAB_QS != null ? process.env.LAB_QS : 'T707_MARKET=0&T731_LOCAL_MIDNIGHT=0&T761_LOCAL_CLOCKS=0';
 const LAB = 'file://' + (process.env.LAB_FILE || path.resolve(__dirname, '..', 'lab', '전쟁실험실.html')) + (LAB_QS ? '?' + LAB_QS : '');
 const SPEED = parseInt(process.env.SPEED || '119', 10);
 const NVIL = 3, POP = parseInt(process.env.POP || '40', 10), SEED = 7;

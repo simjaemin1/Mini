@@ -371,15 +371,28 @@
     _mt3Chunk.clear(); _mt3Sig = ''; return MT3_CV0; };
   // ── 청크 하나를 **반대각선 띠**로 구워 세그먼트 배열로 ────────────────────
   let _mt3BakeMs = 0, _mt3BakeN = 0;             // 굽기 비용 — 짝 비교 프로파일러의 정본 계측기
+  // ★★[T870 2026-10-22] 손잡이 `T870_MT_BAND`(서버 env → welcome `uiCfg.mtBand` · `'1'` 만 켬 · 끔 = 종전 그대로).
+  //   끔 = 예산 `MT3_BUDGET` 이 **한 판에 청크 하나**(띠 전부)다 — 이 상자(소프트웨어 GL · 2코어)에서 청크 하나가 0.94~3.24초라
+  //   그 판 뒤로 하네스의 페이지 부르기가 줄을 섰다(보고/T863 §1 · §3 — 한 번 최대 2~17.5초).
+  //   켬 = **같은 예산 수**를 **띠** 단위로 쓴다 — 한 판에 띠 `MT3_BUDGET` 개(띠 없는 청크는 그 하나로 친다). 청크는 여러 판에 걸쳐
+  //   완성되고, 그동안 이 함수는 null(종전 "아직 안 구운 청크")이라 수집이 그 청크를 건너뛴다 — **반쯤 구운 산은 안 그린다**.
+  //   굽던 상태(필드 · 띠 차례 · 세그먼트 · 병합 캔버스 · 범위 누적)는 `_mt3Jobs` 에 두고, 청크 캐시를 비우는 자리(존 바뀜 ·
+  //   손잡이의 `_mt3Sig = ''` · 파괴 `_mt3Dirty` · 260 상한)에서 같이 비운다. 띠 하나의 일 · 차례 · 그림 무변 · 새 수 0.
+  function t870On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.mtBand === true); }
+  const _mt3Jobs = new Map();                     // ★[T870] "zid_gx_gy" → 굽는 중인 청크(켬일 때만 찬다)
   function _mt3Bake(zid, gx, gy) {
     const key = zid + '_' + gx + '_' + gy;
     const hit = _mt3Chunk.get(key); if (hit) return hit;
     if (_mt3Budget <= 0) return null;              // ★예산 소진 — 이번 프레임엔 안 굽는다
-    _mt3Budget--;
+    const _on = t870On();
+    let J = _on ? _mt3Jobs.get(key) : null;       // ★[T870] 켬 — 굽다 만 청크면 그 자리에서 이어 굽는다
+    if (!_on) _mt3Budget--;
     const _bt0 = performance.now();
-    const F = _mt3Field(zid, gx, gy);
-    const segs = [];
+    if (!J) J = { F: _mt3Field(zid, gx, gy), segs: [], ks: null, i: 0, ms: 0 };
+    const F = J.F;
+    const segs = J.segs;
     if (F) {
+      if (!J.ks) {                                  // ★[T870] 처음 한 번 — 셀 가르기 · 띠 목록 · 병합 캔버스(종전 몸통 그대로)
       const P = MT3_PAD;
       // 이 청크가 그리는 셀 = 자기 몫 8×8 중 **메시 셀**(바위 ∪ 바위에 8-인접).
       //   나눗셈으로 소유를 정하므로 중복도 누락도 구조적으로 불가능하다.
@@ -433,11 +446,18 @@
                 colT: new Int16Array(ubw).fill(32767), colB: new Int16Array(ubw).fill(-32768) };
         }
       }
+      J.ks = [...byK.keys()].sort((a, b) => a - b);
+      Object.assign(J, { mesh, byK, cutK, pat, gpat, U, acc: [Infinity, -Infinity, Infinity, -Infinity, 0, 0, true, []] });
+      }
+      const { mesh, byK, cutK, pat, gpat, U } = J;
       // 픽셀 절단용 — 세그먼트의 깊이·지면·높이 범위와 **되그릴 재료**(같은 순서로 다시 그린다)
-      let bLo = Infinity, bHi = -Infinity, sLo2 = Infinity, sHi2 = -Infinity, hHi2 = 0, hLo2 = 0, glAll = true, recipe = [];
-      for (const k of [...byK.keys()].sort((a, b) => a - b)) {
+      let [bLo, bHi, sLo2, sHi2, hHi2, hLo2, glAll, recipe] = J.acc;   // ★[T870] 병합 판은 띠 사이에 쌓인다 — 판을 넘어 들고 간다
+      while (J.i < J.ks.length) {
+        if (_on && _mt3Budget <= 0) break;            // ★[T870] 켬 — 띠 예산 소진: 다음 판에 이어 굽는다
+        const k = J.ks[J.i++];
         const cells = byK.get(k), cutCells = cutK.get(k) || [];
         if (!cells.length && !cutCells.length) continue;
+        if (_on) _mt3Budget--;                         // ★[T870] 켬 — 띠 하나 = 예산 하나
         if (!U) { bLo = Infinity; bHi = -Infinity; sLo2 = Infinity; sHi2 = -Infinity; hHi2 = 0; hLo2 = 0; glAll = true; recipe = []; }
         let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
         for (const [i, j] of cells) for (const o of [[0,0],[1,0],[1,1],[0,1]]) {
@@ -599,6 +619,8 @@
                     sLo: glAll ? sLo2 : null, sHi: glAll ? sHi2 : null, hHi: glAll ? hHi2 : 0, hLo: glAll ? hLo2 : 0,
                     rec: glAll ? { F, key, x0, y0, bw: BW, bh: BH, bands: recipe } : null });
       }
+      J.acc = [bLo, bHi, sLo2, sHi2, hHi2, hLo2, glAll, recipe];
+      if (J.i < J.ks.length) { J.ms += performance.now() - _bt0; _mt3Jobs.set(key, J); return null; }   // ★[T870] 덜 구웠다 — 이번 판엔 안 그린다
       // ── 병합: 청크 하나를 **세그먼트 한 장**으로 낸다 ─────────────────────
       //   앵커는 **가장 작은 k** — 안 병합 판의 띠와 같은 규칙이라 정렬이 그대로 재현된다
       //   (앵커를 가장 큰 k 로 잡았다가 켬/끔 차이 1062화소를 냈다. 실측이 내 추론을 뒤집었다).
@@ -624,9 +646,11 @@
                     rec: glAll ? { F, key, x0: U.x0, y0: U.y0, bw: U.bw, bh: U.bh, bands: recipe } : null });
       }
     }
-    if (_mt3Chunk.size > 260) _mt3Chunk.clear();
+    if (_on && !(J.ks && J.ks.length)) _mt3Budget--;   // ★[T870] 켬 — 띠 없는 청크(필드 없음 · 메시 0)는 그 하나로 친다(종전 단위)
+    _mt3Jobs.delete(key);
+    if (_mt3Chunk.size > 260) { _mt3Chunk.clear(); _mt3Jobs.clear(); }
     _mt3Chunk.set(key, segs);
-    _mt3BakeMs += performance.now() - _bt0; _mt3BakeN++;
+    _mt3BakeMs += J.ms + performance.now() - _bt0; _mt3BakeN++;
     return segs;
   }
   // 사각형 하나 — 화면 픽셀 기준 적응 분할 + 급경사 변위
@@ -743,9 +767,9 @@
   let _mt3Budget = 0, _mt3Skip = 0, _mt3SkipMax = 0;
   function _mt3Collect(out, cx0, cy0) {
     const zid = primaryZoneId; if (!zid) return 0;
-    if (zid !== _mt3Sig) { _mt3Sig = zid; _mt3Chunk.clear(); }
+    if (zid !== _mt3Sig) { _mt3Sig = zid; _mt3Chunk.clear(); _mt3Jobs.clear(); }   // ★[T870] 굽던 청크도 같이 버린다
     // ★파괴는 **그 근처 청크만** 다시 굽는다. 전부 비우면 곡괭이질 한 번에 화면이 멈춘다.
-    if (_mt3Dirty.size) { for (const k of _mt3Dirty) _mt3Chunk.delete(k); _mt3Dirty.clear(); }
+    if (_mt3Dirty.size) { for (const k of _mt3Dirty) { _mt3Chunk.delete(k); _mt3Jobs.delete(k); } _mt3Dirty.clear(); }
     _mt3Budget = MT3_BUDGET;
     // 카메라의 화면 원점(= toScreen 이 쓰는 것과 같은 식)
     const U0 = cx0 - cy0, V0 = (cx0 + cy0) * 0.5;

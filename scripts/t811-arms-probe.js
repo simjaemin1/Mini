@@ -6,6 +6,7 @@
 //     · 차 = |몸 짐 합 − 장부| 최대(표가 선 원정만) · 마을 거울(`_warArmsOut`) − 그 마을 원정 장부 합 최대
 //   ★[T826] 짐꾼 몸 무게(`weights.kgOfOrDefault` × 손 전부 · `carry.js CAP_KG` 넘은 표본) · 노획(war-core 셈 `lootBody` · 원정 장부 `loot`)
 //   ★판 끝: `state._warStat.t811`(싣기 · 맞춤 · 땅 · 사라짐 · 포로 · 거둠 · 차) · 전쟁 셈 · war-core 로그의 무기 줄
+//   ★[T864] 상한(`CAP_KG`) 넘은 몸마다(누구 · 어느 원정 · 최대 kg · 그때 손 무기 · 몸 짐 몫 · 무기 밖 kg) · 표본 사이 줍기 셈 증분(`picks` — [표본 · 떨어짐 · 공격 줍기 · 방어 줍기 · 땅 · 땅 개수])
 //   ★관찰만 한다 — 세계에 아무것도 안 쓴다.
 'use strict';
 const OUT = process.env.T811_OUT || (process.env.T577_OUT ? process.env.T577_OUT + '.t811.json' : '');
@@ -16,11 +17,13 @@ if (OUT && MAIN) {
   let EV = null, VIL = null;
   const r3 = (x) => (Number.isFinite(x) ? +x.toFixed(3) : null);
   const st = () => { try { return VIL && VIL.__p3Bind ? VIL.__p3Bind({}).state : null; } catch (e) { return null; } };
-  const R = { samples: 0, packed: 0, gapMax: 0, gapAt: null, mirrorGapMax: 0, handMax: 0, kgMax: 0, overCap: 0, bodySamples: 0, wars: {} };
+  const R = { over: {}, picks: [], last857: null, samples: 0, packed: 0, gapMax: 0, gapAt: null, mirrorGapMax: 0, handMax: 0, kgMax: 0, overCap: 0, bodySamples: 0, wars: {} };
   let W8 = null, CAP = null; try { W8 = require(require('path').join(__dirname, '..', 'server', 'weights.js')); } catch (e) {} try { CAP = require(require('path').join(__dirname, '..', 'server', 'carry.js')).CFG.CAP_KG; } catch (e) {}
   const kgOf = (inv) => { let kg = 0; if (W8 && inv) for (const k in inv) { const q = +inv[k] || 0; if (q > 0) kg += q * (W8.kgOfOrDefault ? W8.kgOfOrDefault(k) : 0); } return kg; };
   const sample = (tag) => {
     const S = st(); if (!S || !S.warBodies) return;
+    //   ★[T864] 결판 줍기 셈의 표본 사이 증분(떨어짐 · 공격 줍기 · 방어 줍기 · 땅) — 어느 표본 사이에 어느 길이 돌았나
+    try { const t = S._warStat && S._warStat.t811; if (t) { const c = [t.fall || 0, t.pickA || 0, t.pickB || 0, t.ground || 0, t.groundItems || 0], L = R.last857 || [0, 0, 0, 0, 0]; if (c.some((x, i) => x !== L[i])) R.picks.push([tag].concat(c.map((x, i) => r3(x - L[i])))); R.last857 = c; } } catch (e) {}
     const P = S.deps && S.deps.players;
     for (const [id, b] of S.warBodies) {
       const w = b.w; if (!w || !w._arms) continue;
@@ -30,7 +33,8 @@ if (OUT && MAIN) {
       o.phases[b.phase || '-'] = (o.phases[b.phase || '-'] || 0) + 1; o.last = tag; o.ledgerLast = r3(ledger);
       const M = w._armsPack; if (!M) continue;
       R.packed++; o.packedSamples++;
-      let pack = 0, hand = 0, n = 0; for (const [pid, q] of M) { pack += q || 0; const p = P && P.get(pid); if (p) { n++; hand += (p.inventory && p.inventory.weapon) || 0; const kg = kgOf(p.inventory); R.bodySamples++; if (kg > R.kgMax) R.kgMax = kg; if (CAP != null && kg > CAP) R.overCap++; o.kgMax = Math.max(o.kgMax || 0, kg); } }
+      let pack = 0, hand = 0, n = 0; for (const [pid, q] of M) { pack += q || 0; const p = P && P.get(pid); if (p) { n++; hand += (p.inventory && p.inventory.weapon) || 0; const kg = kgOf(p.inventory); R.bodySamples++; if (kg > R.kgMax) R.kgMax = kg;
+        if (CAP != null && kg > CAP) { const bo = R.over[pid] || (R.over[pid] = { pid, war: id, atk: w.atk && w.atk.name, samples: 0, kgMax: 0 }); bo.samples++; if (kg > bo.kgMax) { bo.kgMax = r3(kg); bo.weapon = r3((p.inventory && p.inventory.weapon) || 0); bo.pack = r3(q || 0); bo.otherKg = r3(kg - kgOf({ weapon: (p.inventory && p.inventory.weapon) || 0 })); bo.at = tag; bo.phase = b.phase || '-'; } } if (CAP != null && kg > CAP) R.overCap++; o.kgMax = Math.max(o.kgMax || 0, kg); } }
       if (w._arms.loot) o.loot = r3(w._arms.loot);
       const gap = Math.abs(pack - ledger);
       o.gapMax = Math.max(o.gapMax, gap); o.handMax = Math.max(o.handMax, hand); o.bearersMax = Math.max(o.bearersMax, n);
@@ -48,7 +52,7 @@ if (OUT && MAIN) {
       fs.writeFileSync(OUT, JSON.stringify({ knobs: { T811_ARMS_BODY: process.env.T811_ARMS_BODY || null, T403_ARMS_LEDGER: process.env.T403_ARMS_LEDGER || null, T826_LOOT_BODY: process.env.T826_LOOT_BODY || null, WAR_FIXTURE: process.env.WAR_FIXTURE || null },
         t811: (S && S._warStat && S._warStat.t811) || null, ws: ws ? { decl: ws.decl, battle: ws.battle, atkWin: ws.atkWin, defWin: ws.defWin, weaponLoot: ws.weaponLoot, lootBody: ws.lootBody == null ? null : r3(ws.lootBody) } : null,
         kgMax: r3(R.kgMax), overCap: R.overCap, bodySamples: R.bodySamples, cap: CAP, inTransitLoot: (() => { try { let s = 0; for (const w of (S && S.war && S.war.WARS) || []) if (w._arms && !w._arms.done && w._arms.loot) s += w._arms.loot; return r3(s); } catch (e) { return null; } })(),
-        samples: R.samples, packed: R.packed, gapMax: R.gapMax, gapAt: R.gapAt, mirrorGapMax: R.mirrorGapMax, handMax: r3(R.handMax), wars: Object.values(R.wars).map((o) => Object.assign({}, o, { gapMax: r3(o.gapMax), handMax: r3(o.handMax) })), log }));
+        samples: R.samples, packed: R.packed, gapMax: R.gapMax, gapAt: R.gapAt, mirrorGapMax: R.mirrorGapMax, handMax: r3(R.handMax), over: Object.values(R.over), picks: R.picks, wars: Object.values(R.wars).map((o) => Object.assign({}, o, { gapMax: r3(o.gapMax), handMax: r3(o.handMax) })), log }));
     } catch (e) {}
   };
   const _load = Module._load;
