@@ -14,8 +14,9 @@ if (OUT && MAIN) {
   let VIL = null, S = null, wrapped = false;
   const rec = { knob: process.env.T874_BATTLE_FAST || null, fight: { calls: 0, ns: 0, units: 0, alive: 0 }, follow: { calls: 0, ns: 0, units: 0 }, hold: { calls: 0, ns: 0, units: 0 },
     shape: { handle: [0, 0], ctx: [0, 0], unit: [0, 0], gu: [0, 0], cmd: [0, 0] }, objs: { handle: [0, 0], unit: [0, 0], gu: [0, 0] }, fights: 0, days: {},
-    unitKeys: {}, unitMaps: [0, 0] };   // 병사 칸 꼴(spawn 17칸 뒤 이름 줄) · 표본마다 그 교전 병사들이 쓰는 지도 수(합 · 표본 수)
+    unitKeys: {}, unitMaps: [0, 0], guKeys: {}, guMaps: [0, 0] };   // 병사 · 대형 병사 칸 꼴(앞 칸 뒤 이름 줄) · 표본마다 그 교전 병사 · 그 대형 병사들이 쓰는 지도 수(합 · 표본 수)
   const keyTally = (u) => { const k = Object.keys(u).slice(17).join(','); if (rec.unitKeys[k] != null || Object.keys(rec.unitKeys).length < 40) rec.unitKeys[k] = (rec.unitKeys[k] || 0) + 1; };
+  const guTally = (u) => { const k = Object.keys(u).slice(4).join(','); if (rec.guKeys[k] != null || Object.keys(rec.guKeys).length < 40) rec.guKeys[k] = (rec.guKeys[k] || 0) + 1; };
   const mapCount = (us) => { const reps = []; for (const u of us) if (!reps.some((r) => SM(r, u))) reps.push(u); return reps.length; };
   const seen = { handle: new WeakSet(), unit: new WeakSet(), gu: new WeakSet() };
   const tally = (k, o) => { if (!o || typeof o !== 'object') return; const f = HFP(o) ? 0 : 1; rec.shape[k][f]++;
@@ -35,11 +36,11 @@ if (OUT && MAIN) {
       return r; };
     const sf = WL._muStepFollow; WL._muStepFollow = function (g) {
       const t0 = now(); const r = sf.apply(this, arguments); const dt = Number(now() - t0);
-      const F = rec.follow; F.calls++; F.ns += dt; if (g && g.units) { F.units += g.units.length; if (F.calls % 30 === 1) { for (const u of g.units) tally('gu', u); tally('cmd', g.commander); } }
+      const F = rec.follow; F.calls++; F.ns += dt; if (g && g.units) { F.units += g.units.length; if (F.calls % 30 === 1) { for (const u of g.units) { tally('gu', u); guTally(u); } tally('cmd', g.commander); if (g.units.length) { rec.guMaps[0] += mapCount(g.units); rec.guMaps[1]++; } } }
       return r; };
     const dh = WL._muDefHold; WL._muDefHold = function (g) {
       const t0 = now(); const r = dh.apply(this, arguments); const dt = Number(now() - t0);
-      const F = rec.hold; F.calls++; F.ns += dt; if (g && g.units) { F.units += g.units.length; if (F.calls % 30 === 1) { for (const u of g.units) tally('gu', u); tally('cmd', g.commander); } }
+      const F = rec.hold; F.calls++; F.ns += dt; if (g && g.units) { F.units += g.units.length; if (F.calls % 30 === 1) { for (const u of g.units) { tally('gu', u); guTally(u); } tally('cmd', g.commander); if (g.units.length) { rec.guMaps[0] += mapCount(g.units); rec.guMaps[1]++; } } }
       return r; };
   };
   const t = setInterval(() => { try { wrap(); } catch (e) {} }, 200); if (t.unref) t.unref();

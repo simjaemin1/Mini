@@ -73,11 +73,18 @@ function _t874Unit(u0, p, k) {
   u._cpT = undefined; u._clear = undefined; u._rk = undefined; u._wpBlk = undefined; u._wpth = undefined;
   return u;
 }
+// 대형 병사도 늦게 붙던 칸 아홉을 같은 이름으로 미리(값 undefined — 읽는 자리가 전부 값 꼴: `u.jx == null` · `u.bu &&` · `!u.dead` · `memo && memo.id` · `u._wpth ||`).
+//   붙이는 자리: 이 파일 buildGroup(`slx` `sly` `cmd` `jx` `jy`) · enlist(`bu`) · villages `_warSyncMeta`(`dead`) · `_polyS` 셈 키 `_dk` · 대형 우회 `_wpth`.
+//   끔은 사전 지도 하나지만 빠른 꼴은 붙는 차례(교전에 든 몸 · 죽은 몸 · 우회한 몸)마다 지도가 갈려 대형 걸음이 여러 꼴을 본다(실측 지킴 걸음이 끔보다 느렸다).
+const _T874_GK = ['slx', 'sly', 'cmd', 'jx', 'jy', 'bu', 'dead', '_dk', '_wpth'];
 function _t874Group(gu, p, k, m) {
   if (Object.prototype.hasOwnProperty.call(gu, 'x') || Object.prototype.hasOwnProperty.call(gu, 'y')) return false;   // 이미 칸이 있으면 종전 길
+  if (_T874_GK.some((n) => Object.prototype.hasOwnProperty.call(gu, n))) return false;   // 늦게 붙던 칸이 벌써 있으면 종전 길(값을 덮지 않는다)
   _T874.stamp(gu, p, k, m);
   Object.defineProperty(gu, 'x', _T874.D.gx);
   Object.defineProperty(gu, 'y', _T874.D.gy);
+  gu._bound = true;
+  gu.slx = undefined; gu.sly = undefined; gu.cmd = undefined; gu.jx = undefined; gu.jy = undefined; gu.bu = undefined; gu.dead = undefined; gu._dk = undefined; gu._wpth = undefined;
   return true;
 }
 
@@ -315,7 +322,7 @@ function createWarLive(opts) {
   // 대형 병사(gu)의 셀 좌표도 같은 player 에 묶는다 — 대형·교전·존이 **한 좌표**를 읽고 쓴다.
   function bindGroupUnit(gu, p) {
     if (!gu || !p || gu._bound) return;
-    if (_t874On() && _t874Group(gu, p, PX_PER_M, M_PER_CELL)) { gu._bound = true; return; }   // ★[T874] 켬 — 같이 쓰는 접근자 · 숨은 칸(같은 칸 · 같은 값)
+    if (_t874On() && _t874Group(gu, p, PX_PER_M, M_PER_CELL)) return;   // ★[T874] 켬 — 같이 쓰는 접근자 · 숨은 칸 · 늦게 붙던 칸 미리(같은 값)
     Object.defineProperty(gu, 'x', { get() { return p.x / PX_PER_M / M_PER_CELL; }, set(v) { p.x = v * M_PER_CELL * PX_PER_M; }, enumerable: true, configurable: true });
     Object.defineProperty(gu, 'y', { get() { return p.y / PX_PER_M / M_PER_CELL; }, set(v) { p.y = v * M_PER_CELL * PX_PER_M; }, enumerable: true, configurable: true });
     gu._bound = true;

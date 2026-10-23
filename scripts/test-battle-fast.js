@@ -44,7 +44,7 @@ ok(/function _t874On\(\) \{ return typeof process !== 'undefined' && !!process\.
 }
 ok(/    if \(!uf\) \{   \/\/ 끔\(종전\)[^\n]*\n      Object\.defineProperty\(u, 'x', \{ get\(\) \{ return p\.x \/ PX_PER_M; \}, set\(v\) \{ p\.x = v \* PX_PER_M; \}, enumerable: true, configurable: true \}\);\n      Object\.defineProperty\(u, 'y', \{ get\(\) \{ return p\.y \/ PX_PER_M; \}, set\(v\) \{ p\.y = v \* PX_PER_M; \}, enumerable: true, configurable: true \}\);\n    \}/.test(WLS),
   'enlist 끔 갈래 = 종전 두 줄(몸 접근자 x · y)');
-ok(/if \(_t874On\(\) && _t874Group\(gu, p, PX_PER_M, M_PER_CELL\)\) \{ gu\._bound = true; return; \}[^\n]*\n    Object\.defineProperty\(gu, 'x', \{ get\(\) \{ return p\.x \/ PX_PER_M \/ M_PER_CELL; \}, set\(v\) \{ p\.x = v \* M_PER_CELL \* PX_PER_M; \}/.test(WLS),
+ok(/if \(_t874On\(\) && _t874Group\(gu, p, PX_PER_M, M_PER_CELL\)\) return;[^\n]*\n    Object\.defineProperty\(gu, 'x', \{ get\(\) \{ return p\.x \/ PX_PER_M \/ M_PER_CELL; \}, set\(v\) \{ p\.x = v \* M_PER_CELL \* PX_PER_M; \}/.test(WLS),
   'bindGroupUnit 끔 갈래 = 종전 줄(켬 갈래는 앞에서 돌아선다)');
 ok(/ux: \{ get\(\) \{ return this\.#p\.x \/ this\.#k; \}, set\(v\) \{ this\.#p\.x = v \* this\.#k; \}/.test(WLS) && /uy: \{ get\(\) \{ return this\.#p\.y \/ this\.#k; \}, set\(v\) \{ this\.#p\.y = v \* this\.#k; \}/.test(WLS)
   && /gx: \{ get\(\) \{ return this\.#p\.x \/ this\.#k \/ this\.#m; \}, set\(v\) \{ this\.#p\.x = v \* this\.#m \* this\.#k; \}/.test(WLS) && /gy: \{ get\(\) \{ return this\.#p\.y \/ this\.#k \/ this\.#m; \}, set\(v\) \{ this\.#p\.y = v \* this\.#m \* this\.#k; \}/.test(WLS),
@@ -57,19 +57,28 @@ ok(/ux: \{ get\(\) \{ return this\.#p\.x \/ this\.#k; \}, set\(v\) \{ this\.#p\.
 }
 // 미리 두는 칸 열아홉(켬 — 늦게 붙던 칸 · 같은 이름 · 값 undefined)
 const PRE = ['atk', 'agent', 'ctl', 'gu', '_vx', '_vy', '_px', '_py', '_rPrev', '_ox', '_oy', '_detCd', 'broken', '_dead', '_cpT', '_clear', '_rk', '_wpBlk', '_wpth'];
+const PRE_G = ['slx', 'sly', 'cmd', 'jx', 'jy', 'bu', 'dead', '_dk', '_wpth'];   // 대형 병사(gu) — 늦게 붙던 칸 아홉
+{
+  const gk = (WLS.match(/const _T874_GK = \[([^\]]*)\];/) || [])[1];
+  const gbody = WLS.slice(WLS.indexOf('function _t874Group('), WLS.indexOf('// ═══', WLS.indexOf('function _t874Group(')));
+  const gset = (gbody.replace(/\/\/.*$/gm, '').match(/\bgu\.(\w+) = undefined;/g) || []).map((x) => x.match(/gu\.(\w+)/)[1]);
+  ok(gk && JSON.stringify(gk.split(',').map((x) => x.trim().replace(/'/g, ''))) === JSON.stringify(PRE_G) && JSON.stringify(gset) === JSON.stringify(PRE_G),
+    '켬 대형 병사가 미리 두는 칸 = 늦게 붙던 칸 아홉(buildGroup 다섯 · enlist · 죽음 · 우회 메모 둘) — 같은 이름 · 같은 차례', gset.join(','));
+}
 {
   const body = WLS.slice(WLS.indexOf('function _t874Unit(u0, p, k) {'), WLS.indexOf('function _t874Group('));
   const got = (body.replace(/\/\/.*$/gm, '').match(/\bu\.(\w+) = (?:undefined|hasAtk \? u0\.atk : undefined|ks\.endsWith\(',agent'\) \? u0\.agent : undefined);/g) || []).map((x) => x.match(/u\.(\w+)/)[1]);
   ok(JSON.stringify(got) === JSON.stringify(PRE), '켬 다시 짓기가 미리 두는 칸 = 늦게 붙던 칸 열아홉(battle-core 열넷 · 존 세계 어댑터 다섯) — 같은 이름 · 같은 차례', got.join(','));
   const SRC = [['sim', 'battle-core.js'], ['sim', 'war-core.js'], ['server', 'war-live.js'], ['server', 'villages.js'], ['server', 'zone.js']].map(([d, f]) => [f, fs.readFileSync(path.join(ROOT, d, f), 'utf8')]);
-  const presRe = new RegExp("(['\"](" + PRE.join('|') + ")['\"]\\s+in\\b|hasOwnProperty(?:\\.call)?\\([^)]*['\"](" + PRE.join('|') + ")['\"]|Object\\.hasOwn\\([^)]*['\"](" + PRE.join('|') + ")['\"]|Reflect\\.has\\([^)]*['\"](" + PRE.join('|') + ")['\"])");
+  const NAMES = [...new Set(PRE.concat(PRE_G))].join('|');
+  const presRe = new RegExp("(['\"](" + NAMES + ")['\"]\\s+in\\b|hasOwnProperty(?:\\.call)?\\([^)]*['\"](" + NAMES + ")['\"]|Object\\.hasOwn\\([^)]*['\"](" + NAMES + ")['\"]|Reflect\\.has\\([^)]*['\"](" + NAMES + ")['\"])");
   const hits = (srcs) => { const o = []; for (const [f, t] of srcs) t.split('\n').forEach((l, i) => { const c = l.replace(/\/\/.*$/, ''); if (presRe.test(c)) o.push(f + ':' + (i + 1)); }); return o; };
   const h0 = hits(SRC);
-  ok(h0.length === 0, "★미리 둔 칸을 '있나' 로 묻는 자리 0(`'칸' in` · hasOwnProperty · Object.hasOwn · Reflect.has) — 읽는 자리는 값 꼴뿐이라 undefined = 없던 칸", h0.join(' · ') || 'server · sim 다섯 파일');
+  ok(h0.length === 0, "★미리 둔 칸(병사 열아홉 · 대형 병사 아홉)을 '있나' 로 묻는 자리 0(`'칸' in` · hasOwnProperty · Object.hasOwn · Reflect.has) — 읽는 자리는 값 꼴뿐이라 undefined = 없던 칸", h0.join(' · ') || 'server · sim 다섯 파일');
   ok(hits(SRC.concat([['미끼.js', "if ('_dead' in u) x(); if (u.hasOwnProperty('broken')) y();"]])).length === 1, "★미끼 — `'_dead' in u` · `hasOwnProperty('broken')` 꼴을 심으면 문다");
-  const enumRe = /(Object\.(keys|entries|getOwnPropertyNames)\(|JSON\.stringify\(|for \(const \w+ in )[^;]*(ctx\.units|byPid|\bbu\b|\.handle\.units|fight\.ctx)/;
+  const enumRe = /(Object\.(keys|entries|getOwnPropertyNames)\(|JSON\.stringify\(|for \(const \w+ in )[^;]*(ctx\.units|byPid|\bbu\b|\.handle\.units|fight\.ctx|g\.units|\bgu\b|retGroup|atkGroup|defGroup)/;
   const en = []; for (const [f, t] of SRC) t.split('\n').forEach((l, i) => { const c = l.replace(/\/\/.*$/, ''); if (enumRe.test(c)) en.push(f + ':' + (i + 1)); });
-  ok(en.length === 0, '★교전 병사를 칸 목록으로 훑는 자리 0(Object.keys · entries · JSON · for…in — 병사 · 교전 명부 · 핸들)', en.join(' · ') || '0');
+  ok(en.length === 0, '★교전 병사 · 대형 병사를 칸 목록으로 훑는 자리 0(Object.keys · entries · JSON · for…in — 병사 · 교전 명부 · 핸들 · 대형)', en.join(' · ') || '0');
 }
 
 // ── ② 꼴 ────────────────────────────────────────────────────────────────────────────────
@@ -114,7 +123,18 @@ const shape = (o) => JSON.stringify({ keys: Object.keys(o), own: Reflect.ownKeys
   const SM = new Function('a', 'b', 'return %HaveSameMap(a, b)');
   ok(ON.us.every((u) => SM(u, ON.us[0])) && !OFF.us.every((u) => HFP(u)), '★켬 교전 병사 여섯이 지도 하나를 같이 쓴다(품질 갈래 · 파손 · 죽음 차례와 무관 — 교전 스텝 읽기 자리가 한 꼴)');
 }
-ok(OFF.gus.every((g, i) => shape(g) === shape(ON.gus[i])), '대형 병사 — 칸 이름 · 차례 · 속성 · 프로토타입 · 반사 키가 끔과 같다', Object.keys(ON.gus[0]).join(','));
+{
+  const GSP = ['type', 'pid', 'x', 'y', '_bound'], GALL = new Set(GSP.concat(PRE_G)), SM2 = new Function('a', 'b', 'return %HaveSameMap(a, b)');
+  const rf = (v) => (v && typeof v === 'object') ? '@' + (v.agent != null ? v.agent : v.pid) : v;
+  const bad = []; for (let i = 0; i < 6; i++) { const a = OFF.gus[i], b = ON.gus[i], ka = Object.keys(a), kb = Object.keys(b);
+    if (!kb.every((k) => GALL.has(k))) bad.push(i + ':새 이름');
+    if (!ka.every((k) => kb.includes(k))) bad.push(i + ':끔 칸 빠짐');
+    if (JSON.stringify(kb) !== JSON.stringify(GSP.concat(PRE_G))) bad.push(i + ':켬 차례');
+    for (const k of kb) if (!Object.is(rf(a[k]), rf(b[k]))) bad.push(i + ':' + k);
+    for (const k of ka) { const da = Object.getOwnPropertyDescriptor(a, k), db = Object.getOwnPropertyDescriptor(b, k); if (('get' in da) !== ('get' in db) || da.enumerable !== db.enumerable || da.configurable !== db.configurable || da.writable !== db.writable) bad.push(i + ':속성 ' + k); }
+    if (Reflect.ownKeys(b).some((k) => typeof k !== 'string') || Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) bad.push(i + ':반사'); }
+  ok(bad.length === 0 && ON.gus.every((g) => SM2(g, ON.gus[0])), '★대형 병사 — 새 이름 0(켬 칸 = 다섯 + 늦게 붙던 아홉) · 끔 칸 다 있음 · 모든 칸 값 같음 · 속성 · 프로토타입 · 반사 키 · 켬 여섯이 지도 하나', bad.slice(0, 6).join(' · ') || `켬 ${Object.keys(ON.gus[0]).length}칸 · 끔 ${Object.keys(OFF.gus[0]).length}칸`);
+}
 ok(shape(OFF.f.handle) === shape(ON.f.handle) && ['step', 'setKeys', 'setCmdHeading', 'setPlayerMode', 'addUnits'].every((k) => typeof ON.f.handle[k] === 'function' && !('prototype' in ON.f.handle[k]) === !('prototype' in OFF.f.handle[k])),
   '핸들 — 칸 이름 · 차례 · 속성(접근자 열둘 읽기만 · 메서드 다섯) · 메서드 꼴이 끔과 같다');
 {
