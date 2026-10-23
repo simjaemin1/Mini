@@ -160,10 +160,26 @@ PINALL=1; [ "$SC$SZ$TZ" = 000 ] && PINALL=0
 if [ "$PINALL" = 0 ]; then say "[②-고정] 바꿀 것 0 — 되돌리기 고정본(:prev)은 그대로(앞 갱신의 것)"
 else
   say "[②-고정] 서울 central $([ "$SC" = 1 ] && echo 고정 || echo 뗌) · 한반도 $([ "$SZ" = 1 ] && echo 고정 || echo 뗌) · 도쿄 닛폰 $([ "$TZ" = 1 ] && echo '고정(④ 뒤)' || echo '뗌(④ 뒤)')"
-  for x in "central $SC" "hanbando $SZ"; do set -- $x
-    out="$(ssh -n "$S" "cd $SD && bash scripts/reset-world.sh $1 $([ "$2" = 1 ] && echo --pin-prev || echo --drop-prev)" 2>&1)"; rc=$?
+  #   ★[T901 마른 연습이 잡음] 고칠 수 있나를 **먼저** 다 본다 — 고정할 대상의 도는 이미지가 저장소에 있어야 한다. 하나라도 없으면 아무 태그도 안 건드리고 멈춘다
+  #     (종전: central 고정본을 먼저 뗀 뒤 한반도 고정이 ✗ 로 멈춰 "바뀐 것: 없음" 이라 찍고도 되돌리기 한 칸을 잃었다).
+  for x in "central $SC durango-central" "hanbando $SZ durango-zone-hanbando"; do set -- $x
+    [ "$2" = 1 ] || continue
+    ssh -n "$S" "docker image inspect \$(docker inspect $3 --format '{{.Image}}') >/dev/null 2>&1" \
+      || stop "서울 $1 고정 못 함 — 도는 컨테이너의 이미지가 저장소에 없다(고정할 것이 없다 · 태그 무변)" "서울 재배포 · 도쿄 전부"
+  done
+  for x in "central $SC" "hanbando $SZ"; do set -- $x   # 고정 먼저 · 떼기 나중
+    [ "$2" = 1 ] || continue
+    out="$(ssh -n "$S" "cd $SD && bash scripts/reset-world.sh $1 --pin-prev" 2>&1)"; rc=$?
     echo "$out" | grep -vE '^== ' | ind
     [ "$rc" = 0 ] || stop "서울 $1 고정(rc $rc)" "서울 재배포 · 도쿄 전부"
+    did "서울 $1 :prev-$1 고정"
+  done
+  for x in "central $SC" "hanbando $SZ"; do set -- $x
+    [ "$2" = 0 ] || continue
+    out="$(ssh -n "$S" "cd $SD && bash scripts/reset-world.sh $1 --drop-prev" 2>&1)"; rc=$?
+    echo "$out" | grep -vE '^== ' | ind
+    [ "$rc" = 0 ] || stop "서울 $1 고정 떼기(rc $rc)" "서울 재배포 · 도쿄 전부"
+    echo "$out" | grep -q '를 뗐다' && did "서울 $1 :prev-$1 뗌"
   done
 fi
 
@@ -193,6 +209,7 @@ if [ "$PINALL" = 1 ]; then
   out="$(ssh -n "$T" "cd $TD && bash scripts/reset-world.sh nippon $([ "$TZ" = 1 ] && echo --pin-prev || echo --drop-prev)" 2>&1)"; rc=$?
   echo "$out" | grep -vE '^== ' | ind
   [ "$rc" = 0 ] || stop "도쿄 nippon 고정(rc $rc)" "도쿄 재배포"
+  [ "$TZ" = 1 ] && did "도쿄 nippon :prev-nippon 고정" || { echo "$out" | grep -q '를 뗐다' && did "도쿄 nippon :prev-nippon 뗌"; }
 fi
 
 # ⑤ 도쿄 재배포(판정이 1 일 때만) — §8 의 env 그대로 · 비밀은 도쿄 셸 env 로만
