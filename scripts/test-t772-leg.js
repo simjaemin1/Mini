@@ -55,9 +55,10 @@ console.log('\n② 끔 = 종전 글자');
 // ── ③ 정본 글자 평가 ─────────────────────────────────────────────────────────────
 function grab(name) {
   const at = V.indexOf(`\nfunction ${name}(`); if (at < 0) throw new Error('없음 ' + name);
+  { const eol = V.indexOf('\n', at + 1), one = V.slice(at, eol); if (/\}\s*$/.test(one) && (one.match(/\{/g) || []).length === (one.match(/\}/g) || []).length) return one + '\n'; }   // ★[PM 10-23] 한 줄 함수(T871 `_econDayFrac`)
   const end = V.indexOf('\n}\n', at); return V.slice(at, end + 3);
 }
-const SRC = ['econDayToMs', 'setBodyPts', 'caravanPointAt', '_t661Path', '_t661End', '_t661Target', '_t661Vis', 'startReturnLeg', 'tickCaravanBodies', '_caravanSyncSweep'].map(grab).join('\n');
+const SRC = ['econDayToMs', '_econDayFrac', 'setBodyPts', 'caravanPointAt', '_t661Path', '_t661End', '_t661Target', '_t661Vis', 'startReturnLeg', 'tickCaravanBodies', '_caravanSyncSweep'].map(grab).join('\n');
 const MS = 64;   // 존 `MOVE_SPEED` 정본(zone.js) — 아래는 그 값을 deps 로 넘긴다
 const zoneMove = +((fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8').match(/const MOVE_SPEED = (\d+);/) || [])[1]);
 function world(on, lenPx) {
