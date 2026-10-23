@@ -6003,7 +6003,7 @@ const T823_FREEZE_SHELL = process.env.T823_FREEZE_SHELL !== '0';
 //   켜면 승격 갈래도 토큰 경로와 **같은 몸 한 자리**(`_handoffBody` — 출처 순서: 페이로드 몸 → 없으면 central 행 · 복원 `parseBody`)를 부르고
 //   그 몸을 일반 접속 몸 리터럴과 같은 칸 · 같은 기본값으로 얹는다(★[T873] 일반 접속 리터럴과 **같은 함수** `_bodyInto` — 칸 목록 한 벌). 끔 = 승격 갈래가 종전 그대로(같은 줄 · 같은 차례).
 const T868_PROMOTE_BODY = process.env.T868_PROMOTE_BODY !== '0';   // ★[PM 착지 10-23] 켬 기본(결함 고침 — 라이브의 보통 넘기가 몸을 잃었다) · 되돌림 `=0`
-const T890_TAKEOVER_BODY = process.env.T890_TAKEOVER_BODY !== '0';   // ★[T890] 같은 존 승계도 몸 칸 한 벌(`serializeBody` → `parseBody` → `_bodyInto`) · 켬 기본 · 되돌림 `=0`(승계 자리 주석)   // ★[PM 착지 10-23] 켬 기본(결함 고침 — 라이브의 보통 넘기가 몸을 잃었다) · 되돌림 `=0`
+const T890_TAKEOVER_BODY = process.env.T890_TAKEOVER_BODY !== '0';   // ★[T890] 같은 존 승계도 몸 칸 한 벌(`serializeBody` → `parseBody` → `_bodyInto`) · 켬 기본 · 되돌림 `=0`(승계 자리 주석)
 const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
 const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
 function _connFailPoint(stage) {
