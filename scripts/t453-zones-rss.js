@@ -30,7 +30,7 @@ const cells = (zid) => Math.round(ZONES[zid].zoneWidth / 32) * Math.round(ZONES[
   const c = spawn(process.execPath, [path.join(ROOT, 'server/central.js')], { cwd: ROOT, stdio: 'ignore',
     env: Object.assign({}, process.env, { PORT: String(BASE), DB_PATH: `${OUTD}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: Z.join(','), CENTRAL_SECRET: SECRET }) });
   kids.push(c);
-  await sleep(3000);
+  { let up = false; for (let i = 0; i < 240 && !up; i++) { try { up = (await fetch(`http://localhost:${BASE}/health`, { signal: AbortSignal.timeout(2000) })).ok; } catch (e) {} if (!up) await sleep(500); } if (!up) { console.error('central 기동 실패'); process.exit(1); } }   // ★[T899] 종전 sleep(3000) — 부팅 시간 가정 → central /health
   const B = {};
   const t00 = Date.now();
   for (let i = 0; i < Z.length; i += GROUP) {

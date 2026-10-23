@@ -113,7 +113,7 @@ function auditZoneMap(zid, png, flip) {
   ok(cUp.ok, 'central 기동', cUp.why);
   const hp = boot('hanbando', 'zone.js', zoneEnv('hanbando', HPORT, DBS[1], { T565_MAP_LIVE: '0' }));
   const np = boot('nippon', 'zone.js', zoneEnv('nippon', NPORT, DBS[2]));
-  const [hUp, nUp] = await Promise.all([FB.waitUp(hp, /zone server up on/, { name: 'hanbando' }), FB.waitUp(np, /zone server up on/, { name: 'nippon' })]);
+  const [hUp, nUp] = await Promise.all([FB.waitUp(hp, /zone server up on/, { name: 'hanbando', capMs: 300000 }), FB.waitUp(np, /zone server up on/, { name: 'nippon', capMs: 300000 })]);   // ★[T899] 존 상한 = 정본 300초(종전 기본 120초 — 2코어 상자 부팅 >100초 가정 밖)
   ok(hUp.ok && nUp.ok, '존 둘 기동(새벌 팔 끔 · 닛폰 팔 켬)', `${hUp.why} · ${nUp.why}`);
   if (!cUp.ok || !hUp.ok || !nUp.ok) { console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`); process.exit(1); }
   const HB = `http://localhost:${HPORT}`, NB = `http://localhost:${NPORT}`;

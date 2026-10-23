@@ -59,7 +59,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   console.log(`=== probe-fishing-shots — 트리 ${TREE} · 어촌1 낚시터(${PX},${PY}) · ${FRAMES}프레임 ===`);
   const wrap = writeWrap();
   boot('central', path.join(HERE, 'server', 'central.js'), { PORT: String(CPORT), PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' }, HERE);
-  await sleep(2500);
+  if (!await waitHttp(`http://localhost:${CPORT}/health`)) { console.error('central 기동 실패'); process.exit(1); }   // ★[T899] 종전 sleep(2500) — 부팅 시간 가정 → central /health(느린 상자에서 존이 central 없이 뜨던 판)
   boot('zone', wrap, {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0',
