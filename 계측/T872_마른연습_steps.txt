@@ -1,0 +1,87 @@
+12:01:43 == 옛 세계 세우기(라이브 흉내) — 옛 커밋 3949ab0f ==
+3949ab0f [PM] 맵 에디터 보기 토글(종류별 보임·이름 · 광맥 이
+12:03:21 [옛] central 0s · 한반도(9-30 사본) 17s · 닛폰(새 DB) 0s
+12:03:21 [옛] 사람: 3/3 가입·손님 · env 이름(central): CENTRAL_SECRET PUBLIC_HOST ZONE_HOSTS ZONE_HOST_NIPPON PATH NODE_VERSION YARN_VERSION NODE_EXTRA_CA_CERTS npm_config_cafile npm_config_https_proxy npm_config_proxy NODE_ENV PORT DB_PATH 
+12:03:21 [옛] 비밀 값이 리허설 로그에 있나: 0
+12:03:28 == 절차서 0 — 초기화_절차서.md 의 줄을 그 글자대로 ==
+  [1 · seoul] cd /opt/Mini && git pull --ff-only && git log --oneline -1
+12:03:30   [0·1 seoul] rc=0 · 2s · d0c39ed4 [PM] 카드 T868~T872 · 족보 674
+  [2 · seoul] (파이프) tar -C /opt -czf - --exclude=node_modules --exclude='*.db*' Mini | tar -C /opt/tokyo -xzf - && cd /opt/tokyo/Mini && git reset -q --hard && git clean -qfd && git log --oneline -1
+12:04:13   [0·2 seoul] rc=0 · 43s · d0c39ed4 [PM] 카드 T868~T872 · 족보 674
+  [3 · seoul] cd /opt/Mini && bash scripts/reset-world.sh central --pin && bash scripts/reset-world.sh hanbando --pin
+12:04:15   [0·3 seoul] rc=0 · 2s ·   ✓ durango-zone:pre-reset = 3e465666bba4(커밋 3949ab0f39f4) — 이제 빌드해도 옛 이미지가 남는다
+  [4 · tokyo] cd /opt/tokyo/Mini && bash scripts/reset-world.sh nippon --pin
+12:04:16   [0·4 tokyo] rc=0 · 1s ·   ✓ durango-zone:pre-reset = 3e465666bba4(커밋 3949ab0f39f4) — 이제 빌드해도 옛 이미지가 남는다
+  [5 · seoul] cd /opt/Mini && docker build -q -f Dockerfile.zone -t durango-zone --label durango.commit=$(git rev-parse HEAD) . && docker build -q -f Dockerfile.central -t durango-central --label durango.commit=$(git rev-parse HEAD) .
+12:04:28   [0·5 seoul] rc=0 · 12s · sha256:25685ab9d4b7835f3c0cbed5c85bc4f7476a13771f21d617820c39b1e3b12d75
+  [6 · tokyo] cd /opt/tokyo/Mini && docker build -q -f Dockerfile.zone -t durango-zone --label durango.commit=$(git rev-parse HEAD) .
+12:04:31   [0·6 tokyo] rc=0 · 3s · sha256:00c31c17eeba7f1c38d095cbf496d09b4e49f2dfbc754ee592b144e607bd8dbe
+  [7 · seoul] cd /opt/Mini && bash scripts/reset-world.sh hanbando --image && bash scripts/reset-world.sh central --image
+12:04:36   [0·7 seoul] rc=0 · 5s ·   정본 hanbando 마을 51 · 광맥 787 · 군락 57 / jungwon_n 마을 25 · 광맥 754 / nippon 마을 50 · 광맥 
+  [8 · tokyo] cd /opt/tokyo/Mini && bash scripts/reset-world.sh nippon --image
+12:04:39   [0·8 tokyo] rc=0 · 2s ·   정본 hanbando 마을 51 · 광맥 787 · 군락 57 / jungwon_n 마을 25 · 광맥 754 / nippon 마을 50 · 광맥 
+  [9 · seoul] cd /opt/Mini && bash scripts/reset-world.sh central && bash scripts/reset-world.sh hanbando
+12:04:43   [0·9 seoul] rc=0 · 4s ·   다음      bash scripts/reset-world.sh hanbando --apply
+  [10 · tokyo] cd /opt/tokyo/Mini && bash scripts/reset-world.sh nippon
+12:04:45   [0·10 tokyo] rc=0 · 2s ·   다음      bash scripts/reset-world.sh nippon --apply
+  [11 · seoul] rm -f /tmp/durango-central.env /tmp/durango-zone-hanbando.env; ls /tmp/*.env 2>/dev/null | wc -l
+12:04:45   [0·11 seoul] rc=0 · 0s · 0
+12:04:51 == 절차서 1 — 초기화_절차서.md 의 줄을 그 글자대로 ==
+  [1 · tokyo] cd /opt/tokyo/Mini && bash scripts/reset-world.sh nippon --apply
+12:04:54   [1·1 tokyo] rc=0 · 3s ·   다음: bash scripts/reset-world.sh nippon --up
+  [2 · seoul] cd /opt/Mini && bash scripts/reset-world.sh hanbando --apply
+12:04:56   [1·2 seoul] rc=0 · 2s ·   다음: bash scripts/reset-world.sh hanbando --up
+12:04:56 == 절차서 3b — 초기화_절차서.md 의 줄을 그 글자대로 ==
+  [1 · seoul] cd /opt/Mini && bash scripts/reset-world.sh central --apply --keep-accounts
+12:04:58   [3b·1 seoul] rc=0 · 2s ·   다음: bash scripts/reset-world.sh central --up
+12:04:58 == 절차서 2b — 초기화_절차서.md 의 줄을 그 글자대로 ==
+  [1 · seoul] (맥 사본) tar -C /srv/durango/_reset -czf - . > /tmp/t587/mac/reset-20261022-seoul.tgz
+12:05:00   [2b·1 seoul] rc=0 · 2s · 13279653 /tmp/t587/mac/reset-20261022-seoul.tgz
+  [2 · tokyo] (맥 사본) tar -C /srv/durango/_reset -czf - . > /tmp/t587/mac/reset-20261022-tokyo.tgz
+12:05:03   [2b·2 tokyo] rc=0 · 3s · 13279653 /tmp/t587/mac/reset-20261022-tokyo.tgz
+12:05:11 == 절차서 4 — 초기화_절차서.md 의 줄을 그 글자대로 ==
+  [1 · seoul] cd /opt/Mini && bash scripts/reset-world.sh central --up
+12:05:15   [4·1 seoul] rc=0 · 3s ·   다음: bash scripts/reset-world.sh central --check
+  [2 · seoul] cd /opt/Mini && bash scripts/reset-world.sh hanbando --up
+12:05:59   [4·2 seoul] rc=0 · 44s ·   다음: bash scripts/reset-world.sh hanbando --check → --open
+  [3 · tokyo] cd /opt/tokyo/Mini && bash scripts/reset-world.sh nippon --up
+12:06:46   [4·3 tokyo] rc=0 · 47s ·   다음: bash scripts/reset-world.sh nippon --check → --open
+12:06:46 == 절차서 5 — 초기화_절차서.md 의 줄을 그 글자대로 ==
+  [1 · seoul] cd /opt/Mini && bash scripts/reset-world.sh central --check && bash scripts/reset-world.sh hanbando --check
+12:06:50   [5·1 seoul] rc=0 · 4s ·   DB world-hanbando.db · 마을 행 51 · 세계 날 0 (1년 3월 1일 (봄)) · 영토 셀 175,950 · 두 마을이 �
+  [2 · tokyo] cd /opt/tokyo/Mini && bash scripts/reset-world.sh nippon --check
+12:06:53   [5·2 tokyo] rc=0 · 3s ·   DB world-nippon.db · 마을 행 36 · 세계 날 0 (1년 3월 1일 (봄)) · 영토 셀 124,200 · 두 마을이 가�
+12:07:00 == 확인 자 ==
+12:07:01 [자] hanbando 관측자: {"kind":"live","zone":"hanbando","calendar":"1년 3월 1일 (봄)","day":0,"villages":51,"populated":51,"candidates":51,"humans":0,"cap":0,"healthVillages":51}
+12:07:02 [자] hanbando DB: {"kind":"zone","file":"world-hanbando.db","villages":51,"maxDay":0,"calendar":"1년 3월 1일 (봄)","terr":175950,"contested":0,"rows":{"buildings":12773,"claims":0,"roads":0,"trade_routes":52,"village_chronicle":0,"village_events":0,"onboarding":0}}
+12:07:03 [자] nippon 관측자: {"kind":"live","zone":"nippon","calendar":"1년 3월 1일 (봄)","day":0,"villages":36,"populated":36,"candidates":50,"humans":0,"cap":0,"healthVillages":36}
+12:07:04 [자] nippon DB: {"kind":"zone","file":"world-nippon.db","villages":36,"maxDay":0,"calendar":"1년 3월 1일 (봄)","terr":124200,"contested":0,"rows":{"buildings":9005,"claims":0,"roads":0,"trade_routes":3,"village_chronicle":0,"village_events":0,"onboarding":0}}
+12:07:04 [자] central DB: {"kind":"central","file":"central.db","players":3,"accounts":2,"guests":1,"placed":0,"carrying":0,"tribes":0,"npcTribes":0,"members":0,"wars":0,"friends":0,"invites":0}
+12:07:04 [자] /zones: "hanbando":{"id":"hanbando","wsUrl":"ws://198.51.100.1:3020" "nippon":{"id":"nippon","wsUrl":"ws://192.0.2.2:3021"
+12:07:04 [자] 옛 계정 로그인(rh_alice): "ok":true "inventory_json":"{}" "last_zone":null "home_zone":null
+12:07:04 == 절차서 6 — 초기화_절차서.md 의 줄을 그 글자대로 ==
+  [1 · seoul] cd /opt/Mini && bash scripts/reset-world.sh hanbando --open
+12:07:35   [6·1 seoul] rc=0 · 31s ·   hanbando · 달력 1년 3월 1일 (봄) · 마을 51/51(사람 사는 51) · 사람 0 · 정원 150
+  [2 · tokyo] cd /opt/tokyo/Mini && bash scripts/reset-world.sh nippon --open
+12:08:01   [6·2 tokyo] rc=0 · 26s ·   nippon · 달력 1년 3월 1일 (봄) · 마을 36/50(사람 사는 36) · 사람 0 · 정원 150
+  [3 · seoul] git -C /opt/Mini rev-parse HEAD > /srv/durango/deployed-hanbando.sha && cat /srv/durango/deployed-hanbando.sha
+12:08:01   [6·3 seoul] rc=0 · 0s · d0c39ed41808d32769831952bb009c408f28e0c1
+12:08:07 == 절차서 7 — 초기화_절차서.md 의 줄을 그 글자대로 ==
+  [1 · tokyo] docker stop -t 30 durango-zone-nippon
+12:08:08   [7·1 tokyo] rc=0 · 1s · durango-zone-nippon
+  [2 · seoul] docker stop -t 30 durango-zone-hanbando
+12:08:08   [7·2 seoul] rc=0 · 0s · durango-zone-hanbando
+  [3 · seoul] cd /opt/Mini && bash scripts/reset-world.sh central --restore "$(ls -d /srv/durango/_reset/*-central | tail -1)"
+12:08:12   [7·3 seoul] rc=0 · 4s ·   다음: bash scripts/reset-world.sh central --check
+  [4 · seoul] cd /opt/Mini && bash scripts/reset-world.sh hanbando --restore "$(ls -d /srv/durango/_reset/*-hanbando | tail -1)"
+12:08:39   [7·4 seoul] rc=0 · 27s ·   다음: bash scripts/reset-world.sh hanbando --check
+  [5 · tokyo] cd /opt/tokyo/Mini && bash scripts/reset-world.sh nippon --restore "$(ls -d /srv/durango/_reset/*-nippon | tail -1)"
+12:08:49   [7·5 tokyo] rc=0 · 10s ·   다음: bash scripts/reset-world.sh nippon --check
+12:08:53 == 확인 자 ==
+12:08:54 [자] hanbando 관측자: {"kind":"live","zone":"hanbando","day":230,"villages":50,"populated":50,"candidates":51,"humans":0,"cap":150,"healthVillages":50}
+12:08:55 [자] hanbando DB: {"kind":"zone","file":"world-hanbando.db","villages":50,"maxDay":230,"calendar":null,"terr":172500,"contested":0,"rows":{"buildings":12553,"claims":0,"roads":1357,"trade_routes":1225,"village_chronicle":2855,"village_events":1953,"onboarding":0}}
+12:08:55 [자] nippon 관측자: {"kind":"live","zone":"nippon","day":0,"villages":7,"populated":7,"candidates":16,"humans":0,"cap":150,"healthVillages":7}
+12:08:56 [자] nippon DB: {"kind":"zone","file":"world-nippon.db","villages":7,"maxDay":0,"calendar":null,"terr":24150,"contested":0,"rows":{"buildings":1664,"claims":0,"roads":0,"trade_routes":21,"village_chronicle":0,"village_events":0,"onboarding":0}}
+12:08:56 [자] central DB: {"kind":"central","file":"central.db","players":3,"accounts":2,"guests":1,"placed":2,"carrying":0,"tribes":0,"npcTribes":0,"members":0,"wars":0,"friends":0,"invites":0}
+12:08:56 [자] /zones: "hanbando":{"id":"hanbando","wsUrl":"ws://198.51.100.1:3020" "nippon":{"id":"nippon","wsUrl":"ws://192.0.2.2:3021"
+12:08:57 [자] 옛 계정 로그인(rh_alice): "ok":true "inventory_json":"{}" "last_zone":"hanbando" "home_zone":"hanbando"
