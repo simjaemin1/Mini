@@ -211,10 +211,18 @@ async function waitHttp(url, tries = 600) {
   {
     await clearNotices(R);
     await R.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [vx, vy]);
-    await sleep(1500);
-    const nz = (await R.evaluate(() => (window.__notices || []).slice(-8))).filter((t) => /텔레포트/.test(t));
-    const m = nz.length ? String(nz[nz.length - 1]).match(/\((-?\d+),\s*(-?\d+)\)/) : null;
-    const a0 = await rawAbs(R);
+    // ★★[T880] 공지를 **1.5초 한 번**만 읽었다 — R 이 바쁜 판엔 그 한 번이 비어 오프셋이 0 으로 남고, 야생 자리를
+    //   절대 좌표로 잡아 서버가 존 끝에 붙였다(T870 §4 · 켬 4/5 — 뒤 절이 통째로 엉뚱한 자리에서 돌았다).
+    //   실측: 그 판들은 알림 프레임이 보낸 뒤 3.2~4.4초에 닿았고, 1.5초 확인 부르기는 그보다 먼저 돌아왔다.
+    //   ⇒ 위 `warp` 의 **서버 권위 도착 꼴** 그대로 — 900ms 마다 · 15번 안에서 다시 읽는다. 서버 권위 위치(`rawAbs`)는
+    //     공지를 본 **다음 판**에 읽는다 — 공지(텔레포트 처리 자리에서 바로 보냄)와 위치(다음 틱이 실어 옴)는 따로 오는 두 소식이다.
+    let m = null, a0 = null;
+    for (let i = 0; i < 15 && !a0; i++) {
+      await sleep(i ? 900 : 1500);
+      if (m) { a0 = await rawAbs(R); break; }
+      const nz = (await R.evaluate(() => (window.__notices || []).slice(-8))).filter((t) => /텔레포트/.test(t));
+      m = nz.length ? String(nz[nz.length - 1]).match(/\((-?\d+),\s*(-?\d+)\)/) : null;
+    }
     if (m && a0) OFF = { x: a0.x - (+m[1]), y: a0.y - (+m[2]) };
     pre(!!m && !!a0, '좌표계를 실측했다(abs − local = 존 오프셋)', `off(${OFF.x},${OFF.y})`);
   }
