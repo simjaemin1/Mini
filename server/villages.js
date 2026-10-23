@@ -585,6 +585,17 @@ function seaDistPx(zoneId, ccx, ccy) {
 // ★[T135] 부존 스캔 반경 — 종전 함수 안의 리터럴 `R = 140` 을 이름으로 올린 것뿐(행동 무변).
 //   나무 층이 "이 마을 생활권 숲이 몇 셀인가"를 되풀이해 적지 않게 한다(사본 0).
 const LAND_SCAN_R = 140;
+// ★★[T856 2026-10-22 · T840 회부 1 · 손잡이 `T856_LAND_ELEV`('1' 만 켬 · 끔 = 이 함수가 아무것도 안 한다 = main 바이트)] **마을 고도를 세운다.**
+//   econ 기온 · 다리 노출(T840) · 장부 정산이 다 읽는 한 칸(`land.elev` · econ `elevKmOf`)을 **존이 econ 에 마을을 넘길 때** 채운다 —
+//   값 = 그 마을 중심에서 존의 지형 정본 `elevKmAt`(몸 기온이 쓰는 그 함수 · 사본 0 · `init` 이 받는다). 랩 · CLI 는 그 함수가 없어 그대로 0.
+//   ⚠오늘의 `elevKmAt` 은 늘 0 이다(산 높이 35m 캐논 · 바위 통행 불가 — zone.js 주석) ⇒ 0 이면 칸을 안 세운다(econ 이 `|| 0` 으로 같은 값을 읽는다 · 저장 바이트 그대로).
+const T856_LAND_ELEV = process.env.T856_LAND_ELEV === '1';
+function _t856LandElev(ev, ccx, ccy) {
+  if (!T856_LAND_ELEV || !ev || !ev.land) return;
+  const f = state.deps && state.deps.elevKmAt; if (typeof f !== 'function') return;
+  let e = 0; try { e = +f({ x: ccx * SZ + SZ / 2, y: ccy * SZ + SZ / 2 }) || 0; } catch (err) { e = 0; }
+  if (e) ev.land.elev = e; else if (Object.prototype.hasOwnProperty.call(ev.land, 'elev')) delete ev.land.elev;
+}
 function extractLandParamsApprox(ta, ccx, ccy, layout) {
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const R = LAND_SCAN_R, STEP = 4;
@@ -2114,6 +2125,7 @@ function foundPlayerVillage(opts) {
     name = `${name} ${k}`;
   }
   const ev = econ.createVillage({ ...lp, initialPop: 0, name, bornDay: day, founder });
+  _t856LandElev(ev, ccx, ccy);   // ★[T856] 마을 고도(끔 = 무동작)
   // ★★[T203 2026-09-12 재민 확정] **창설자 이름을 읽는 칸에 앉힌다.** `zone.js:8554` 가 `founderName` 을
   //   넘기는데 여기서는 **마을 이름 짓는 데만** 썼고(위 `name`), `zone.js:2789` 는 `vil.econ.founderName`
   //   을 읽는다 ⇒ 시작 화면의 창설자 칸은 영영 빈 문자열이었다(T199 §0-ⓐ #19 실측:
@@ -4888,6 +4900,7 @@ function init(deps) {
         { const _fb = (lp && lp.fishSustain != null) ? lp.fishSustain : null; if (_fb != null) ev.land._fishBase = _fb; }
       }
       ev._world = world;
+      _t856LandElev(ev, row.cx, row.cy);   // ★[T856] 마을 고도 — 새로 세운 마을 · 복원한 마을 둘 다(복원한 칸은 지금 지형으로 다시 · 끔 = 무동작)
       // econ 좌표 = 셀×2.5 — 랩(4804행)과 동일 스케일: villageDist·운반비·약탈 확률이 랩 검증 범위에 머묾
       ev.coord = { x: row.cx * 2.5, y: row.cy * 2.5 };
       world.villages.push(ev);
@@ -13744,6 +13757,7 @@ function __rumorProbe() {
 
 module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat,   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
   streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
+  T856_LAND_ELEV, _t856LandElev,   // ★[T856] 마을 고도 — 하네스(`test-land-elev`)가 같은 함수를 부른다(사본 0)
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
   _t347ActItems, _t347PerLoad,   // ★[T347] 걷는 목록·짐당 개체 — 하네스가 표·유도를 옮겨 적지 않게 내준다(사본 금지)
   _lifeLootForage,   // ★[T462] 개체 하나가 내는 걷는 단위 — 자·하네스가 "세는 것 = 따는 것"을 이 함수로 잰다(사본 0)

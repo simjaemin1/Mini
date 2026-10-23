@@ -4786,6 +4786,7 @@ Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Ma
   // ★[T566 추신2] 다져진 길의 오름·내림 — 존이 나무를 걷고(그 셀) 리젠을 막고(둘레) 푼다(끔이면 안 넘긴다 = 길은 종전 그대로)
   onPaved: _T566_ON ? _t566OnPaved : null, onUnpaved: _T566_ON ? _t566OnUnpaved : null });
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
+  elevKmAt,   // ★[T856] 지형 정본 고도(몸 기온이 쓰는 그 함수) — 생활층이 econ 마을 `land.elev` 를 이것으로 채운다(손잡이 `T856_LAND_ELEV` 끔이면 안 읽는다)
   ...(Streams.ON && Streams.load(ZONE_ID) ? { isStreamLocal } : {}),   // ★★[T585] 개울 술어 — 생활층 지형 어댑터가 `ta.isStream` 으로 묻는다(집터·밭·곳간·큰집 마당 · 시딩 `generate`). 끔이면 키 자체가 없다(종전 그대로)
   chiefGreet: (p, vid, by) => { try { Onboarding.sendGreet(p, vid, by); } catch (err) {} },   // ★[T529] 촌장 몸이 곁에 와서 하는 인사 — 문장·메시지는 온보딩 정본
   waterTiles: WATER_TILES,   // ★[T480] 해안선 물타일 정본(위 1155줄) — 마을 세울 때 `seaDistPx` 가 이것을 읽는다(villages 쪽 사본 0)
@@ -5923,6 +5924,11 @@ wss.on('connection', (ws, req) => {
 const E2E_HANDOFF_NO_BODY = (process.env.E2E_GIVE === '1') && process.env.E2E_HANDOFF_NO_BODY === '1';
 // ★[T498] 핸드오프 페이로드 정본 팔 — 켜면 떠나기 전 central 저장을 기다리지 않는다(`fireHandoff` 주석) · 기본 끔 = 종전 바이트 동일
 const T498_HANDOFF_PAYLOAD = process.env.T498_HANDOFF_PAYLOAD === '1';
+// ★[T866 · 손잡이 `T866_PROMOTE_SAVE` '1' 만 켬 · 기본 끔 = 종전 바이트] **승격 경로(`promote_to_primary`)도 접속 저장을 한다** — 일반 접속(토큰 · 계정)이 도착하자마자
+//   부르는 그 한 줄(`savePlayer(player, { last_zone: ZONE_ID, last_x, last_y })`)을 승격 갈래에서도 부른다(새 칸 0 · 새 문 0).
+//   종전: 승격은 행을 안 썼다 — 행 자리는 넘기기 전 저장(출발 존 · 도착 존 입구)이 쥐는데, `T498_HANDOFF_PAYLOAD` 켬이면 그 저장을 **ACK 가 안 올 때만** 보내므로
+//   승격 직후 행은 **출발 존 그대로**다 — 도착 존 첫 주기 저장(0~30초 · 움직였거나 몸이 변했을 때)이나 닫힐 때 저장까지. 그 사이 도착 존이 죽으면(충돌 · kill -9) 다시 접속이 출발 존이다(T831 회부 3 · T866 탐침).
+const T866_PROMOTE_SAVE = process.env.T866_PROMOTE_SAVE === '1';
 // ★[T512] 유령 앞으로 밀기 팔 — 받는 존의 화살 판정이 유령을 그 나이만큼 실린 속도로 민다
 // ★★[T518 2026-09-29 · PM 승격] **기본 켬**(되돌림 `T512_GHOST_EXTRAP=0` = T512 전 바이트 동일). 화살의 정본은 **화살이 나는 존**(= 유령을 받는 존)이다 — `stepArrows` ③ 주석.
 //   ★★[T518] 나이를 **남의 시계 없이** 잰다 — T512 판은 보낸 시각 `t`(보낸 존 시계)를 실었는데, 두 호스트 시계가 1초 어긋나면(받는 쪽이 앞)
@@ -7938,6 +7944,7 @@ function handleObserverMessage(ws, raw) {
     if (T732_MOMENT && pending.body) { try { const _B = parseBody(pending.body, {}); if (_B && _B.lots) player.lots = _B.lots; } catch (e) {} }
     players.set(pid, player);
     updateActiveChunks();
+    if (T866_PROMOTE_SAVE) savePlayer(player, { last_zone: ZONE_ID, last_x: player.x, last_y: player.y });   // ★[T866] 일반 접속의 그 저장(`_acceptConnection` "central에 위치 업데이트") — 위 손잡이 주석
     if (pending.source_zone && ZONES[pending.source_zone]) {
       const src = ZONES[pending.source_zone];
       postJSON(src.host, src.port, '/handoff_ack', { token: msg.token })
