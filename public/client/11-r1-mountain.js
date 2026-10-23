@@ -296,24 +296,62 @@
     //   **표면 전체**를 스냅샷한다 — 1152×1280 을 매번 떠서 호출당 15.3ms 였다(실측 프로파일).
     //   readPixels 는 **읽는 사각형**에만 비례한다. 행 순서만 뒤집어 준다.
     if (rw) {
-      const cw2 = rx1 - rx0, ch2 = ry1 - ry0, need2 = cw2 * ch2 * 4;
-      if (!_mgl.rb || _mgl.rb.length < need2) _mgl.rb = new Uint8Array(need2);
-      gl.readPixels(rx0, bh - ry1, cw2, ch2, gl.RGBA, gl.UNSIGNED_BYTE, _mgl.rb);
-      if (!_mgl.id || _mgl.id.width !== cw2 || _mgl.id.height !== ch2) _mgl.id = g2d.createImageData(cw2, ch2);
-      const D = _mgl.id.data, RB = _mgl.rb, rw4 = cw2 * 4;
-      for (let r = 0; r < ch2; r++) D.set(RB.subarray((ch2 - 1 - r) * rw4, (ch2 - r) * rw4), r * rw4);
-      g2d.putImageData(_mgl.id, rx0, ry0);     // putImageData 는 **덮어쓴다** — 지우기도 겸한다
+      const cw2 = rx1 - rx0, ch2 = ry1 - ry0;
+      g2d.putImageData(_mt3ReadBox(g2d, rx0, ry0, cw2, ch2, bh), rx0, ry0);     // putImageData 는 **덮어쓴다** — 지우기도 겸한다
       _mtP.draw += _p2 - _p1; _mtP.blit += performance.now() - _p2; _mtP.n++;
       _mtP.tri += n / 18; _mtP.cvpx += cw2 * ch2;
+    } else if (t898On()) {
+      //   ★[T898] 켬 — 굽기 옮기기도 **띠 상자만** 읽는다(가리개 갈래와 같은 `_mt3ReadBox`). 옮길 사각형 = clip(병합 판) 또는 띠 전체.
+      //   clip 도 op 도 없으면 띠마다 새 캔버스 통째(굽기 · 되그리기 · 판정기 모두 빈 캔버스에 띠 하나)라 덮어써도 source-over 와 같다 → 바로 putImageData.
+      //   clip(공유 병합 캔버스 · 앞 띠가 이미 있음)이나 op 가 오면 **합성**이라야 한다 — 작은 2D 판(`_mgl.sc`)에 놓고 종전처럼 drawImage 로 얹는다.
+      const cx = clip ? Math.max(0, clip[0]) : 0, cy = clip ? Math.max(0, clip[1]) : 0;
+      const cw = clip ? Math.min(bw - cx, clip[2]) : bw, ch = clip ? Math.min(bh - cy, clip[3]) : bh;
+      if (cw > 0 && ch > 0) {
+        const id = _mt3ReadBox(g2d, cx, cy, cw, ch, bh);
+        if (!clip && !(cut && cut.op)) g2d.putImageData(id, 0, 0);
+        else {
+          if (!_mgl.sc) { _mgl.sc = document.createElement('canvas'); _mgl.sc.width = _mgl.sc.height = 128; _mgl.sg = null; }
+          if (_mgl.sc.width < cw || _mgl.sc.height < ch) {
+            _mgl.sc.width = Math.max(_mgl.sc.width, Math.ceil(cw / 128) * 128);
+            _mgl.sc.height = Math.max(_mgl.sc.height, Math.ceil(ch / 128) * 128); _mgl.sg = null;
+          }
+          if (!_mgl.sg) _mgl.sg = _mgl.sc.getContext('2d');
+          _mgl.sg.putImageData(id, 0, 0);
+          const op0 = g2d.globalCompositeOperation;
+          if (cut && cut.op) g2d.globalCompositeOperation = cut.op;
+          g2d.drawImage(_mgl.sc, 0, 0, cw, ch, cx, cy, cw, ch);
+          if (cut && cut.op) g2d.globalCompositeOperation = op0;
+        }
+      }
+      _mt898.ms += performance.now() - _p2; _mt898.n++; _mt898.px += cw * ch;
     } else {
+      const _p3 = performance.now();
       const op0 = g2d.globalCompositeOperation;
       if (cut && cut.op) g2d.globalCompositeOperation = cut.op;
       if (clip) { const [cx, cy, cw, ch] = clip; if (cw > 0 && ch > 0) g2d.drawImage(_mgl.cv, cx, cy + sy0, cw, ch, cx, cy, cw, ch); }
       else g2d.drawImage(_mgl.cv, 0, sy0, bw, bh, 0, 0, bw, bh);
       if (cut && cut.op) g2d.globalCompositeOperation = op0;
+      _mt898.msOff += performance.now() - _p3; _mt898.nOff++;
     }
     return true;
   }
+  // ★[T898] GL 캔버스의 띠 상자(위에서 잰 행 ry0 부터 ch2 행 · 뷰포트 높이 bh)를 `readPixels` 로 떠 행 순서를 뒤집은 ImageData 로 낸다.
+  //   읽는 값은 **이 사각형**에만 비례한다(drawImage 는 GL 표면 전체를 스냅샷 — T863 §4 #1). 가리개 갈래 · T898 굽기 갈래가 함께 쓴다(사본 0).
+  function _mt3ReadBox(g2d, rx0, ry0, cw2, ch2, bh) {
+    const gl = _mgl.gl, need2 = cw2 * ch2 * 4;
+    if (!_mgl.rb || _mgl.rb.length < need2) _mgl.rb = new Uint8Array(need2);
+    gl.readPixels(rx0, bh - ry0 - ch2, cw2, ch2, gl.RGBA, gl.UNSIGNED_BYTE, _mgl.rb);
+    if (!_mgl.id || _mgl.id.width !== cw2 || _mgl.id.height !== ch2) _mgl.id = g2d.createImageData(cw2, ch2);
+    const D = _mgl.id.data, RB = _mgl.rb, rw4 = cw2 * 4;
+    for (let r = 0; r < ch2; r++) D.set(RB.subarray((ch2 - 1 - r) * rw4, (ch2 - r) * rw4), r * rw4);
+    return _mgl.id;
+  }
+  // ★★[T898 2026-10-23] 손잡이 `T898_MT_READPX`(서버 env → welcome `uiCfg.mtReadPx` · `'1'` 만 켬 · 끔 = 종전 그대로).
+  //   끔 = 산 띠를 굽고 2D 로 옮길 때 GL 캔버스를 `drawImage` — 구현이 GL 표면 통째(1152×1152~1408)를 떠 띠 하나 48~74ms ·
+  //   청크 굽기의 48~57%였다(T863 §4 #1). 켬 = 가리개 갈래처럼 띠 상자만 `readPixels`. 그림 · 차례 · 새 수 0.
+  //   `_mt898` = 옮기기 계량(켬 ms · 호출 · 화소 / 끔 ms · 호출) — 계측 자가 페이지 전역 이름으로 읽는다(그림에 안 닿는다 · 새 window 칸 0).
+  function t898On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.mtReadPx === true); }
+  const _mt898 = { ms: 0, n: 0, px: 0, msOff: 0, nOff: 0 };
   // 시험 손잡이 — 짝 비교 프로파일러/스크린샷이 GPU 판과 캔버스 판을 같은 자리에서 갈아 끼운다
   window.__mt3gl = (v) => { MT3_GL = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_GL; };
   window.__mt3tent = (v) => { MT3_TENT = v | 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_TENT; };
