@@ -1,0 +1,317 @@
+{
+ "card": "T900 T874 켬 기본(교전 유닛 빠른 꼴 · 전쟁 자 3시드 · 기준선)",
+ "date": "2026-10-23",
+ "branch": "batch/battle-fast-on-1023",
+ "base": "fe457d71(main) — T874 가지 batch/battle-fast-1023(1b4784dc · 승인 대기 · 미착지) 위",
+ "commit": "67d2506b 켬 기본(!== '0' · 되돌림 =0)",
+ "cardFile": "지시/지시_T900.md — 카드를 받은 때 origin/main 에 없었다(배치 줄 + 켬 기본 앞 카드 T849 · T861 · T876 틀)",
+ "knob": "T874_BATTLE_FAST — 켬 기본(!== '0') · '0' 만 끔 · 브라우저 랩 window.T874_BATTLE_FAST('0' 만 끔)",
+ "chain": [
+  "14:08:46 시작 · 가지 67d2506b · 기준선 계측/서버기준선_2026-10-23.json",
+  "14:17:29 H 하네스 끝 17/17 exit=0",
+  "14:23:55 S 기본(켬) 기준선 10-23(혼자) exit=0 386s",
+  "14:30:39 Z 끔(=0) 기준선 10-23(혼자) exit=0 403s",
+  "14:40:08 W 전쟁 자 W0(=0) ‖ W1(기본) 569s",
+  "14:40:10 W 짝 견주기 exit=0",
+  "14:42:58 P PD exit=0 168s 1/1",
+  "14:45:48 P PZ exit=0 170s 1/1",
+  "14:45:48 chain done"
+ ],
+ "harness": [
+  "def test-battle-fast exit=0 2s === 결과: 25 PASS / 0 FAIL ===",
+  "def test-war-world exit=0 151s 결과: 188 통과 / 0 실패",
+  "off test-war-world exit=0 240s 결과: 188 통과 / 0 실패",
+  "def test-war-nosnap exit=0 2s === 결과: 60 PASS / 0 FAIL ===",
+  "off test-war-nosnap exit=0 2s === 결과: 60 PASS / 0 FAIL ===",
+  "def test-moment-lot exit=0 33s === 107건 중 PASS 107 · FAIL 0 ===",
+  "def test-arms-keep exit=0 0s === 결과: 17 PASS / 0 FAIL ===",
+  "def test-sortie-miss exit=0 1s === 결과: 18 PASS / 0 FAIL ===",
+  "def test-body-exit exit=0 0s === 28건 중 PASS 28 · FAIL 0 ===",
+  "def test-t742-zone exit=0 0s === 11건 중 PASS 11 · FAIL 0 ===",
+  "def test-move-soa exit=0 71s === 결과: 286 PASS / 0 FAIL ===",
+  "def test-forage-act exit=0 13s === 결과: 251 PASS / 0 FAIL ===",
+  "def test-regrow-block exit=0 2s === 결과: 24 PASS / 0 FAIL ===",
+  "def test-harness-lint exit=0 5s === 64건 중 PASS 64 · FAIL 0 ===",
+  "def lab-wiring-check exit=0 1s === 배선 검사: 실패 0 · 경고 1 ===",
+  "def _battle-join-test exit=0 0s PASS 6/6",
+  "off _battle-join-test exit=0 0s PASS 6/6 · 출력 같음"
+ ],
+ "baseline": {
+  "file": "계측/서버기준선_2026-10-23.json",
+  "defaultOn": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-2aj1t3 ===",
+   "판 모두 386초",
+   "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2512)",
+   "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2784)",
+   "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2725)",
+   "=== 같음 3/3 · 판 386초 ==="
+  ],
+  "off0": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-Wc5bQs ===",
+   "판 모두 402초",
+   "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2512)",
+   "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2784)",
+   "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2725)",
+   "=== 같음 3/3 · 판 402초 ==="
+  ]
+ },
+ "war": {
+  "pair": {
+   "7": {
+    "json": true,
+    "warLog": true,
+    "warLogLines": [
+     391,
+     391
+    ],
+    "pop": [
+     1295,
+     1295
+    ],
+    "trace": [
+     "A W0-7.json.trace.tsv 46850줄(D 50 · B 46 · F 16930 · S 29824) · B 46850줄(F 16930 · S 29824)",
+     "다른 값 0 {} · A 에만 0 · B 에만 0",
+     "갈림 없음",
+     "하루 경계 존 몸 해시 다른 날: 없음"
+    ]
+   },
+   "42": {
+    "json": true,
+    "warLog": true,
+    "warLogLines": [
+     402,
+     402
+    ],
+    "pop": [
+     1313,
+     1313
+    ],
+    "trace": [
+     "A W0-42.json.trace.tsv 46474줄(D 50 · B 49 · F 17014 · S 29361) · B 46474줄(F 17014 · S 29361)",
+     "다른 값 0 {} · A 에만 0 · B 에만 0",
+     "갈림 없음",
+     "하루 경계 존 몸 해시 다른 날: 없음"
+    ]
+   },
+   "1020": {
+    "json": true,
+    "warLog": true,
+    "warLogLines": [
+     444,
+     444
+    ],
+    "pop": [
+     1318,
+     1318
+    ],
+    "trace": [
+     "A W0-1020.json.trace.tsv 45334줄(D 50 · B 65 · F 17996 · S 27223) · B 45334줄(F 17996 · S 27223)",
+     "다른 값 0 {} · A 에만 0 · B 에만 0",
+     "갈림 없음",
+     "하루 경계 존 몸 해시 다른 날: 없음"
+    ]
+   }
+  },
+  "order": {
+   "7": {
+    "lines": [
+     46850,
+     46850
+    ],
+    "sortedSha1": [
+     "78be8ad3cac8",
+     "78be8ad3cac8"
+    ],
+    "keys": [
+     103,
+     103
+    ],
+    "keysDiffer": 0,
+    "dayGroups": 51,
+    "dayGroupsDiffer": 0,
+    "linesMovedByDiff": 517,
+    "runJsonBytesSame": true,
+    "runJsonBytesSameAsT874Off": true,
+    "sortedSha1How": "JS 정렬(코드 단위) · 줄바꿈 이음 · sha1 12"
+   },
+   "42": {
+    "lines": [
+     46474,
+     46474
+    ],
+    "sortedSha1": [
+     "d1ed15555903",
+     "d1ed15555903"
+    ],
+    "keys": [
+     107,
+     107
+    ],
+    "keysDiffer": 0,
+    "dayGroups": 51,
+    "dayGroupsDiffer": 0,
+    "linesMovedByDiff": 268,
+    "runJsonBytesSame": true,
+    "runJsonBytesSameAsT874Off": true,
+    "sortedSha1How": "JS 정렬(코드 단위) · 줄바꿈 이음 · sha1 12"
+   },
+   "1020": {
+    "lines": [
+     45334,
+     45334
+    ],
+    "sortedSha1": [
+     "328ac38e38af",
+     "328ac38e38af"
+    ],
+    "keys": [
+     149,
+     149
+    ],
+    "keysDiffer": 0,
+    "dayGroups": 51,
+    "dayGroupsDiffer": 0,
+    "linesMovedByDiff": 197,
+    "runJsonBytesSame": true,
+    "runJsonBytesSameAsT874Off": true,
+    "sortedSha1How": "JS 정렬(코드 단위) · 줄바꿈 이음 · sha1 12"
+   }
+  },
+  "arms": {
+   "W0": "T874_BATTLE_FAST=0(끔)",
+   "W1": "기본(켬)"
+  }
+ },
+ "probeShort": {
+  "how": "t577 16날 · 1020 · 몸 상한 40 · 전쟁 자 조건 · t874-fight-probe(관찰만)",
+  "PD": {
+   "knob": "기본",
+   "fights": 9,
+   "fightCalls": 5399,
+   "fightUs": 112.67276180774218,
+   "followCalls": 5348,
+   "followUs": 100.69572943156321,
+   "holdCalls": 0,
+   "shape": {
+    "handle": [
+     180,
+     0
+    ],
+    "ctx": [
+     180,
+     0
+    ],
+    "unit": [
+     2080,
+     0
+    ],
+    "gu": [
+     786,
+     0
+    ],
+    "cmd": [
+     179,
+     0
+    ]
+   },
+   "objs": {
+    "handle": [
+     9,
+     0
+    ],
+    "unit": [
+     102,
+     0
+    ],
+    "gu": [
+     60,
+     0
+    ]
+   },
+   "unitMaps": [
+    180,
+    180
+   ],
+   "unitKeyVariants": 1,
+   "guMaps": [
+    179,
+    179
+   ],
+   "guKeyVariants": 1
+  },
+  "PZ": {
+   "knob": null,
+   "fights": 9,
+   "fightCalls": 5399,
+   "fightUs": 140.69596666049267,
+   "followCalls": 5348,
+   "followUs": 118.6355581525804,
+   "holdCalls": 0,
+   "shape": {
+    "handle": [
+     0,
+     180
+    ],
+    "ctx": [
+     180,
+     0
+    ],
+    "unit": [
+     0,
+     2080
+    ],
+    "gu": [
+     10,
+     766
+    ],
+    "cmd": [
+     10,
+     169
+    ]
+   },
+   "objs": {
+    "handle": [
+     0,
+     9
+    ],
+    "unit": [
+     0,
+     102
+    ],
+    "gu": [
+     3,
+     49
+    ]
+   },
+   "unitMaps": [
+    180,
+    180
+   ],
+   "unitKeyVariants": 11,
+   "guMaps": [
+    184,
+    179
+   ],
+   "guKeyVariants": 4
+  },
+  "runJsonSame": true
+ },
+ "labBrowser": {
+  "has": {
+   "BattleCore": true,
+   "knobWindow": "없음"
+  },
+  "alone": {
+   "defaultFast": true,
+   "zeroFast": false,
+   "oneFast": true,
+   "steps": 415,
+   "result": "{\"win\":\"A\"}",
+   "sameDefZero": true,
+   "sameDefOne": true
+  },
+  "errors": [],
+  "lab": "전쟁실험실.html",
+  "at": "2026-10-23T14:47:31.859Z"
+ }
+}
