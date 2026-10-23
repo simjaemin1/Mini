@@ -27,7 +27,7 @@ stale() {
   cleanup
   DB_PATH=/tmp/t10-stale-c.db PORT=3010 PUBLIC_HOST=localhost \
     node --experimental-sqlite server/central.js > /tmp/t10-stale-c.log 2>&1 &
-  sleep 2
+  for i in $(seq 1 240); do curl -sf -m2 "http://localhost:3010/health" >/dev/null 2>&1 && break; sleep 0.5; done   # ★[T899] 종전 `sleep 2` — 부팅 시간 가정 → central /health(느린 상자에서 존이 central 없이 뜨던 판)
   DB_PATH=/tmp/t10-stale-z.db PORT=3020 ZONE_ID=hanbando \
     ENABLE_VILLAGES=0 ENABLE_WILDLIFE=0 ENABLE_BANDITS=0 \
     node --experimental-sqlite server/zone.js > /tmp/t10-stale-z.log 2>&1 &

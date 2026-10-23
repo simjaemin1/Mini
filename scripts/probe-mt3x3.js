@@ -43,7 +43,7 @@ function changedPct(a, b, box) {
 
 (async () => {
   boot('central', path.join(ROOT, 'server', 'central.js'), { PORT: String(CPORT), PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
-  await sleep(2500);
+  if (!await waitHttp(`http://localhost:${CPORT}/health`)) { console.error('central 기동 실패'); process.exit(1); }   // ★[T899] 종전 sleep(2500) — 부팅 시간 가정 → central /health(느린 상자에서 존이 central 없이 뜨던 판)
   boot('zone', '/tmp/zw-3x3.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: '/tmp/m3.db', CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: SITE.cx * 32 + 16, y: SITE.cy * 32 + 16, name: '산' } }) });
   await waitHttp(`http://localhost:${ZPORT}/health`); await sleep(4000);

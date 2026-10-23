@@ -16,7 +16,7 @@ esac
 killport "$ZPORT"; killport "$CPORT"
 cd "$ROOT"
 PORT=$CPORT PUBLIC_HOST=localhost ENABLED_ZONES=hanbando node server/central.js > /tmp/dev-central.log 2>&1 &
-sleep 3
+for i in $(seq 1 240); do curl -sf -m2 "http://localhost:$CPORT/health" >/dev/null 2>&1 && break; sleep 0.5; done   # ★[T899] 종전 `sleep 3` — 부팅 시간 가정 → central /health(느린 상자에서 존이 central 없이 뜨던 판)
 PORT=$ZPORT ZONE_ID=hanbando DB_PATH="$ZDB" CENTRAL_URL="http://localhost:$CPORT" \
   ENABLE_VILLAGES=${ENABLE_VILLAGES:-1} ENABLE_BANDITS=0 node server/zone.js > /tmp/dev-zone.log 2>&1 &
 for i in $(seq 1 150); do curl -sf "http://localhost:$ZPORT/health" >/dev/null 2>&1 && { echo "존 기동 완료 ($i×2초)"; exit 0; }; sleep 2; done

@@ -62,7 +62,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   console.log(`=== probe-nightlife — 하루 ${(DAY_MS / 1000).toFixed(0)}초 · ${TOTAL}초 동안 ${EVERY}초마다 표본 ===`);
   const wrap = writeWrap();
   boot('central', path.join(ROOT, 'server', 'central.js'), { PORT: String(CPORT), PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
-  await sleep(2500);
+  if (!await waitHttp(`http://localhost:${CPORT}/health`)) { console.error('central 기동 실패'); process.exit(1); }   // ★[T899] 종전 sleep(2500) — 부팅 시간 가정 → central /health(느린 상자에서 존이 central 없이 뜨던 판)
   boot('zone', wrap, {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', WORLD_DAY_MS: String(DAY_MS),

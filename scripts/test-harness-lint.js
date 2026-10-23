@@ -810,5 +810,39 @@ console.log('\n⑫ 세계 자리에 `Math.random` 0 [T350]');
   console.log('    접점: decideNpcBehavior · seed-rand.js · seedOf · makeStream · _t340Rng · test-move-soa');
 }
 
+// ── ⑬ **부팅을 시간으로 가정하지 않는다** — 띄운 뒤 첫 기다림이 고정 sleep 인 `@regress` 하네스 0 [T899 2026-10-23] ──
+//   ★왜. ⑩ 은 central 을 `boot()` 로 띄우는 test/e2e 만 센다. PM 착지 10-23b `test-car-fast` 는 존을 `spawn` 으로 띄우고
+//     고정 `sleep(100000)` 을 기다렸다 — 2코어 상자에서 부팅이 100초를 넘자 날 0 에서 저장해 상황 빨강이 됐다(⑩ 밖).
+//   ⇒ `t899-wait-census` 의 자로 **모든 `@regress`** 의 띄우는 자리(spawn · fork · boot · 셸 `node server/… &`)마다 첫 기다림을 본다:
+//     준비 증인(`waitUp` · `/health` · 그 파일이 그것으로 만든 손) · 끝 기다림(스스로 닫히는 판의 `exit`) · 두드림(고리 안의 sleep) 은 통과,
+//     고정 대기(≥ 1초)가 먼저거나 아무것도 없으면 빨강. 존 기동 상한(`waitUp` 의 `capMs`)도 정본 300초 아래면 빨강(기본 120초 = 느린 상자 부팅 가정).
+{
+  console.log('\n⑬ 부팅을 시간으로 가정하지 않는다 [T899]');
+  const C = require('./t899-wait-census');
+  const rows = C.census(SCRIPTS, true);
+  const bad = rows.filter((r) => r.first.kind === 'fixed' || r.first.kind === 'none');
+  ok(rows.length >= 100, '⑬ [전제] `@regress` 의 서버 띄우는 자리가 실제로 여럿이다(0 이면 아래가 자명 통과다)', `${rows.length}자리 · ${new Set(rows.map((r) => r.file)).size}파일`);
+  ok(bad.length === 0, '★★⑬a 서버를 띄운 뒤 **첫 기다림이 준비 증인**이다 — 부팅 시간을 가정한 고정 sleep · 증인 없음 0',
+     bad.map((r) => `${r.file}:${r.spawn}(${r.first.kind}${r.first.ms ? ' ' + r.first.ms + 'ms' : ''})`).join(' '));
+  const shortCap = [];
+  for (const f of fs.readdirSync(SCRIPTS).filter((x) => /\.js$/.test(x))) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    if (!/^\/\/ @regress(\s|$)/m.test(src)) continue;
+    for (const m of src.matchAll(/waitUp\(\s*\w+\s*,\s*\/zone server up[^/]*\/([^\n]*)/g)) {
+      const cap = m[1].match(/capMs:\s*([0-9_]+)/);   // 그 줄 나머지(이름에 괄호 · `${}` 가 들어도)
+      if (!cap || +cap[1].replace(/_/g, '') < 300000) shortCap.push(`${f}(${cap ? cap[1] : '기본'})`);
+    }
+  }
+  ok(shortCap.length === 0, '★⑬b 존 기동 상한 = 정본 300초 이상(기본 120초는 느린 상자의 존 부팅을 가정한다)', shortCap.join(' '));
+  // ★자명 통과 금지 — 같은 자로 미끼 넷을 재면 **각각 다르게** 답한다(글자를 조각내 자기 자신을 안 문다)
+  const S = "const z = spa" + "wn(process.execPath, [path.join(ROOT, 'server', 'zone.js')]);\n";
+  const kinds = [S + "const zx = exit" + "Of(z, 600000);\nawait sle" + "ep(100000);\n", S + "await FB.wait" + "Up(z, /zone server up on/, { capMs: 300000 });\n",
+    S + "z.on('ex" + "it', (c) => resolve(c));\n", S + "const x = 1;\n"].map((src) => (C.scanSrc('bait.js', src)[0] || { first: {} }).first.kind).join(',');
+  ok(kinds === 'fixed,ready,exit,none', '★⑬ 자명 통과 금지 — 고정 sleep(PM 10-23b 전 test-car-fast 꼴 — 끝 약속만 잡고 sleep) · 아이의 입 · 끝 기다림 · 맨몸 미끼를 같은 자로 재면 각각 다르게 답한다', kinds);
+  const K = (k) => rows.filter((r) => r.first.kind === k).length;
+  console.log(`    [표] @regress 띄우는 자리 ${rows.length} — 준비 증인 ${K('ready')} · 끝 기다림 ${K('exit')} · 두드림 ${K('poll')} · 고정 대기 ${K('fixed')} · 증인 없음 ${K('none')}`);
+  console.log('    접점: t899-wait-census · fixture-boot.waitUp · /health · test-car-fast(PM 10-23b)');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

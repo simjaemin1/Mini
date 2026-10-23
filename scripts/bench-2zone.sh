@@ -26,7 +26,7 @@ start() {
   cd "$ROOT"
   DB_PATH="$RUN/data/central.db" PORT=3010 \
     node --experimental-sqlite server/central.js  > "$RUN/central.log" 2>&1 &
-  sleep 2
+  for i in $(seq 1 240); do curl -sf -m2 "http://localhost:3010/health" >/dev/null 2>&1 && break; sleep 0.5; done   # ★[T899] 종전 `sleep 2` — 부팅 시간 가정 → central /health(느린 상자에서 존이 central 없이 뜨던 판)
   # ★출발 존만 시작 인벤을 얹는다. 도착 존에서 이 물건이 보이면 = 핸드오프가 옮긴 것.
   #   E2E_GIVE=1 도 **출발 존에만**. 도착 존에 없으니, 도착 존에서 보이는 물건은
   #   전부 "핸드오프가 옮긴 것"이다(도착 존이 스스로 만들어 줄 방법이 없다).
