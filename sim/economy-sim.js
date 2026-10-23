@@ -515,6 +515,13 @@ function _preserveSurplus(v, from, budget, addProduce, cap, unit) {
 const T860_ON = (typeof process !== 'undefined' && process.env && process.env.T860_CATCH_DRY === '1');
 const CATCH_FROM = { fisher: { fish: 'dried_fish', salmon: 'dried_fish', shrimp: 'dried_fish', crab: 'dried_fish' }, hunter: { meat: 'smoked_meat' } };
 const _t860Unit = (r) => (FORAGE_FOOD_FACTOR[r] != null ? FORAGE_FOOD_FACTOR[r] : 1);
+// ★★[T877 2026-10-23 · T860 회부 4] **요리사 갈무리도 열량을 지킨다** — 손잡이 하나 `T877_DRY_FIX`('1' 만 켬 · 끔 = main 바이트).
+//   종전 요리사 갈무리는 과일 · 남새(식량 환산 0.4)를 수율 0.4 로 말려 보존식 환산 2.5 로 먹였다 — 열량이 2.5 배(생성).
+//   켜면 요리사도 잡은 날 말리기와 **같은 식**(`_t860Unit` — 산출 = 뗀 양 × 수율 × 원물 1단위 식량 환산)을 쓴다(사본 0 · 생선 · 고기는 1 이라 무변).
+//   ★손잡이는 `server/specialty.js` 가 읽는다(`T877_DRY_FIX` — 같은 손잡이가 건굴 · 마른 미역 칸도 세운다 · 읽는 자리 하나). 여기는 그 값을 받는다.
+const T877_ON = (() => { try { return !!require('../server/specialty').T877_ON; } catch (e) { return false; } })();
+// ★★[T877 ②] 켬 = 건굴 · 마른 미역이 보존식(환산 2.5 · 사다리 맨 뒤)이고 어부가 잡은 날 굴 · 해조를 그것으로 말린다(spoil 정본 `dry_oyster` · `dry_seaweed`).
+if (T877_ON) { PRESERVED_FOODS.push('dried_oyster', 'dried_seaweed'); Object.assign(CATCH_FROM.fisher, { oyster: 'dried_oyster', seaweed: 'dried_seaweed' }); }
 function _t860Begin(v, from, potA, actA) {
   const st = {}; for (const r in from) st[r] = v.storage[r] || 0;
   return { from, potA, actA, st };
@@ -3186,7 +3193,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       //     ⓓ 수율 — `PRESERVE_YIELD`(0.4) = `server/spoil.js` 수율식의 하한(위 상수 주석).
       //   ⇒ *"잉여는 어차피 썩는다"*(DECAY)를 *"썩기 전에 말린다"*로 바꾸는 것뿐이다.
       //   ★[T860] 그 갈무리 한 걸음은 아래 `_preserveSurplus` 하나다(어부 · 사냥꾼의 잡은 날 말리기가 같은 함수를 부른다 · 사본 0).
-      if (T17_PRESERVE) _preserveSurplus(v, PRESERVE_FROM, jdef.base * skillMul, addProduce, null, null);
+      if (T17_PRESERVE) _preserveSurplus(v, PRESERVE_FROM, jdef.base * skillMul, addProduce, null, T877_ON ? _t860Unit : null);   // ★[T877] 켬 = 열량 보존(끔 = 종전 글자)
     } else if (jdef.produceSpecial === 'mason') {
       // ★S2 석공(masonry) — 석기(간돌 도구) 전담 + 마제석검(돌 무기, 전사용). 도구는 자본재라 *우선* 제작,
       //   도구 충분하면 무기 수요(전사) 있을 때 마제석검 제작. ★활은 석공 소관 아님 — 사냥꾼 자가제작(archery)로 이관(활=목재·뼈·힘줄·깃 재료라 석기 장인 부적합, 아래 사냥꾼 자가 안전망 참조).
@@ -5777,7 +5784,7 @@ function computeVillagePrices(v) {
 }
 
 module.exports = {
-  T860_ON, CATCH_FROM, PRESERVE_FROM, _preserveSurplus, _t860Begin, _t860Dry,   // ★[T860] 잡은 날 말리기 — 손잡이 · 잡은 칸 표(하네스가 spoil 정본과 대조한다 · 사본 0) · 갈무리 한 걸음
+  T860_ON, CATCH_FROM, PRESERVE_FROM, _preserveSurplus, _t860Begin, _t860Dry, T877_ON, _t860Unit, PRESERVED_FOODS, PRESERVE_YIELD, PRESERVE_FOOD_FACTOR, FORAGE_FOOD_FACTOR,   // ★[T860] 잡은 날 말리기 — 손잡이 · 잡은 칸 표(하네스가 spoil 정본과 대조한다 · 사본 0) · 갈무리 한 걸음
   STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,

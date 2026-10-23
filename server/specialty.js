@@ -984,8 +984,19 @@ function alloyGrade(mix, kind) {
   return +(raw / ref).toFixed(4);
 }
 
+// ★★[T877 2026-10-23 · T860 회부 1] **건굴 · 마른 미역 — econ 칸.** 정본은 spoil(`PRESERVED_ITEMS` · `PRESERVE.dry_oyster/dry_seaweed` — 이름 · 보관일)이고
+//   여기 수는 **위 넷과 같은 규칙으로 원물에서 유도**했다(새 수 0 — `scripts/test-t877-dry-fix.js` 가 유도식과 대조한다):
+//     baseValue = 원물값 ÷ 수율 0.4(굴 4 → 10 · 미역 2 → 5) · weight = 원물 kg × 말림 잔량비(`tidal.weightMap` — 굴 0.2 → 0.052 · 미역 0.3 → 0.078)
+//     · utility 0.7(보존식 넷과 같다) · contributes = 원물의 subsistence(굴 0.3 · 미역 0.4 — 보존은 열량을 늘리지 않는다) · 부패 = `preserved` 자동(0.0002)
+//   ★손잡이 `T877_DRY_FIX`('1' 만 켬 · 끔 = 이 두 칸이 안 선다 = main 바이트 — 곳간 칸이 0 으로라도 서면 서버 기준선 지문이 갈린다) · 읽는 자리는 이 파일 하나(econ 이 아래 `T877_ON` 을 읽는다).
+const T877_ON = (typeof process !== 'undefined' && process.env && process.env.T877_DRY_FIX === '1');
+if (T877_ON) Object.assign(RESOURCES, {
+  dried_oyster:  { ko: '건굴',       emoji: '🦪', category: 'preserved', weight: 0.052, baseValue: 10, utility: 0.7, contributes: { subsistence: 0.3 }, harvest: 'crafting' },
+  dried_seaweed: { ko: '마른 미역',  emoji: '🌿', category: 'preserved', weight: 0.078, baseValue: 5,  utility: 0.7, contributes: { subsistence: 0.4 }, harvest: 'crafting' },
+});
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RESOURCES, _summary, _byHarvest, miningParams, pickMineral, ORE_POOLS,
+  module.exports = { RESOURCES, T877_ON, _summary, _byHarvest, miningParams, pickMineral, ORE_POOLS,
     ORE_K, MINE_SWING_MS, MINE_SWINGS_PER, CHUNK_KG, ORE_REG0, ORE_REG1, oreRegen,
     NPC_MINE_PER_DAY, MINE_HAUL, MINE_HAUL_TRIP, MINE_LABOR, MINE_HAULEFF, haulEff,
     itemWeight, inventoryWeight, CARRY_MAX_KG, EXTRA_WEIGHT,

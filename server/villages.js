@@ -10303,6 +10303,7 @@ const PV_DEPOSIT_MAP = {
   wheat: 'wheat', rice: 'rice', barley: 'barley',
   chestnut: 'chestnut', grape: 'grape', mulberry_fruit: 'mulberry_fruit', acorn: 'acorn',
 };
+if (_spec() && _spec().T877_ON) Object.assign(PV_DEPOSIT_MAP, { dried_oyster: 'dried_oyster', dried_seaweed: 'dried_seaweed' });   // ★[T877] 켬 = 갯벌 말리기 둘에 econ 칸이 섰다(항등 · 끔 = 이 줄 무동작)
 // ★★[T694 2026-10-11 · 손잡이 `T694_GAME_MEAT=1` — 없음 = 끔 = 이 줄이 아무것도 안 한다(`game-meat.js` 를 부르지도 않는다 · main 바이트)] **사냥 고기 넷.**
 //   T647 이 도살 드롭 `meat_game` 을 손에서 먹게 했지만 이 표에 줄이 없어 넣기·꺼내기·거래소·게시판이 안 다뤘다(T647 회부 ④).
 //   · `meat_game` → `meat_game` — econ 에 같은 id 의 재화가 **이미 있다**(`specialty.RESOURCES.meat_game` '사슴·들짐승고기' · 축산 · 사냥)

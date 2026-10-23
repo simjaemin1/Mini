@@ -71,14 +71,14 @@ console.log('\n② 표 — 잡은 칸 → 보존식 = spoil 정본 레시피 × 
   const by = Object.keys((E.JOBS.fisher && E.JOBS.fisher.byproduct) || {}).filter((r) => r !== 'salt');
   const missing = by.filter((r) => !(r in E.CATCH_FROM.fisher));
   const why = missing.map((r) => { const rec = Object.values(Spoil.PRESERVE).find((x) => fromList(x).includes(r)); return [r, rec ? rec.out : null, rec ? (econOf(rec.out) || null) : null, rec ? !!(SP.RESOURCES || {})[rec.out] : null]; });
-  ok(missing.length > 0 && why.every(([, out, eo, inSp]) => out && !eo && !inSp), '② 빠진 칸(굴 · 해조) = 정본 산출(건굴 · 마른 미역)이 econ 곳간 · 품목표에 없다', JSON.stringify(why));
+  ok(missing.length > 0 && why.every(([, out, eo, inSp]) => out && !eo && !inSp), '② 빠진 칸(굴 · 해조) = 정본 산출(건굴 · 마른 미역)이 econ 곳간 · 품목표에 없다(★T877 `T877_DRY_FIX` 끔 — 켜면 칸이 선다 · test-t877)', JSON.stringify(why));
   ok(JSON.stringify(E.PRESERVE_FROM) === JSON.stringify({ fish: 'dried_fish', fruit: 'dried_fruit', meat: 'smoked_meat', vegetable: 'pickled_veg' }), '② 요리사 갈무리 표(PRESERVE_FROM)는 그대로'); }
 
 console.log('\n③ 글자 — 갈무리 한 걸음 = `_preserveSurplus` 하나');
 { const gate = (C.match(/if \(totalFoodEquivalent\(v\) > _N \* DAILY_FOOD_CONSUMPTION \* \(RESERVE_PC\.food \|\| 30\)\) \{/g) || []).length;
   const defs = (C.match(/function _preserveSurplus\(/g) || []).length;
   ok(gate === 1 && defs === 1, '③ 문턱 줄 하나 · 함수 정의 하나(사본 0)', `문턱 ${gate} · 정의 ${defs}`);
-  ok(/if \(T17_PRESERVE\) _preserveSurplus\(v, PRESERVE_FROM, jdef\.base \* skillMul, addProduce, null, null\);/.test(C), '③ 요리사 = 그 함수 · 종전 손(`jdef.base × skillMul`) · 상한 · 환산 없음(종전 글자)');
+  ok(/if \(T17_PRESERVE\) _preserveSurplus\(v, PRESERVE_FROM, jdef\.base \* skillMul, addProduce, null, T877_ON \? _t860Unit : null\);/.test(C), '③ 요리사 = 그 함수 · 종전 손(`jdef.base × skillMul`) · 상한 없음 · 환산은 ★T877 켬일 때만(끔 = 종전 글자)');
   ok(/_preserveSurplus\(v, b\.from, budget, addProduce, cap, _t860Unit\);/.test(C) && /const _t860 = \(T860_ON && T17_PRESERVE && CATCH_FROM\[npc\.currentJob\]\) \?/.test(C) && /if \(_t860\) _t860Dry\(v, npc, _t860, _potA, _actA, addProduce\);/.test(C),
     '③ 잡은 날 말리기 = 같은 함수 · 켬일 때만(끔 = null · 무동작)'); }
 
