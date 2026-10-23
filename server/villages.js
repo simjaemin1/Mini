@@ -173,7 +173,7 @@ const VILLAGE_MAX = Math.max(1, parseInt(process.env.VILLAGE_MAX || '20', 10)); 
 //   T376(답 예 · 몸 2,515 = econ 전부) → T433 켬 팔(규약 다섯 · 낮 p50 22.0 · p95 28.5ms · 36/36 조각 예산 안 · drop 0 · 소멸 0)을 **기본으로** 올린다.
 //   되돌림 = `VILLAGE_NPC_CAP=40`(종전 기본값 그대로 · 테스트 훅은 종전처럼 수를 준다).
 const T846_VIL_FAST = process.env.T846_VIL_FAST !== '0';   // ★[T862 ①] 켬 기본(PM 10-22) · 끔 탐침 `=0` · ★[T846 ②] 마을 객체 빠른 꼴(부팅 뒤 `_bRows` 를 지우지 않고 `null`) — 아래 부팅 줄
-const T862_ECON_FAST = process.env.T862_ECON_FAST === '1';   // ★[T862 ②] 마을 econ 객체 빠른 꼴(곁 칸 · 위협 자국을 `delete` 대신 `undefined`) · '1' 만 켬 — 아래 `_T862_SIDE`
+const T862_ECON_FAST = process.env.T862_ECON_FAST !== '0';   // ★[T876 ①] 켬 기본(PM 10-23) · 끔 탐침 `=0` · ★[T862 ②] 마을 econ 객체 빠른 꼴(곁 칸 · 위협 자국을 `delete` 대신 `undefined`) — 아래 `_T862_SIDE`
 // ★★[T862 ② 2026-10-22] **마을 econ 객체(`vil.econ` — 생활층과 econ 하루가 가장 많이 읽는 객체 · 칸 110~135)를 V8 사전 모드로 내리지 않는다.**
 //   전수 표(보고/T862 §2): 실서버에서 econ 객체를 사전 모드로 내리는 `delete` 는 두 무리다 —
 //     ⓐ 다시 뜬 판의 부팅 복원: 저장 줄에 실린 곁 칸(`_t728*` · `_t740Side` · `_t747Body` · `_t732Lots`)을 제자리로 돌려놓고 `delete` —
@@ -181,6 +181,10 @@ const T862_ECON_FAST = process.env.T862_ECON_FAST === '1';   // ★[T862 ②] �
 //     ⓑ 전쟁이 서면 `_warWriteThreats` 가 걸음마다 지난 위협 자국을 `delete e._warThreat`(새 세계 400날: 날 370 부터 2 → 12/51)
 //   켬이면 지우지 않고 `undefined` 를 놓는다. 읽는 자리가 전부 참거짓 · `|| 0` · `!= null` · `in`(부팅 한 번 문 — 값이 `undefined` 면 곧장 넘어간다) 꼴이라
 //   지운 칸과 같은 답이고, 저장(`serializeEcon`)은 이 칸들이 `undefined` 면 싣지 않는다(종전 저장 줄과 같은 칸 · 같은 차례) — 같은 값 · 새 수 0.
+// ★[T876 ②] econ 캐러밴 빠른 꼴 — 다시 뜬 판의 메타 복원(`_t728Restore`)이 캐러밴 사본을 `Object.assign({}, c)` 로 지었다. 빈 리터럴에 셈 키로 칸 24 개를
+//   붙이면 V8 이 그 사본을 **처음부터 사전 모드**로 짓는다(뒤의 `delete o._t732Cargo` 는 원인이 아니다 — 실측: assign 직후 이미 사전 · 40/40).
+//   켬이면 짐 레코드 칸을 거른 나머지 꼴(`const { _t732Cargo, ...rest } = c`)로 짓는다 — 같은 칸 · 같은 차례 · 같은 값(얕은 사본) · 빠른 꼴. '1' 만 켬.
+const T876_CAR_FAST = process.env.T876_CAR_FAST === '1';
 const _T862_SIDE = new Set(['_t728BaseOre', '_t728Game', '_t728HuntWk', '_t728LtdOwn', '_t728LtdSrv', '_t740Side', '_t747Body', '_t732Lots', '_warThreat']);
 function _t862Drop(o, k) { if (T862_ECON_FAST) o[k] = undefined; else delete o[k]; }
 //   `in` 문(부팅 복원) — 켬이면 `undefined` 칸 = 지운 칸(저장 줄은 JSON 이라 실린 칸이 `undefined` 일 수 없다 ⇒ 끔의 `k in o` 와 같은 답 · 두 번 불러도 같다)
@@ -7732,7 +7736,7 @@ function __p3Bind(mock) {
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
-    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, _warDespawnPid, serializeEcon, restoreEcon,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
+    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
@@ -13703,8 +13707,10 @@ function _t728Restore() {
         for (const u of W.villages) { n = (u.npcs || []).find((x) => x && x.id === id); if (n) return n; } return null; };
       const out = [];
       for (const c of (M.caravans || [])) {
-        const o = Object.assign({}, c); o.from = byName.get(c.from); o.to = byName.get(c.to);
-        const _cg = o._t732Cargo; delete o._t732Cargo;   // ★[T732] 짐 레코드는 캐러밴 칸이 아니다(켬이면 장부로 · 끄면 버린다)
+        let o, _cg;
+        if (T876_CAR_FAST) { const { _t732Cargo, ...rest } = c; o = rest; _cg = _t732Cargo; }   // ★[T876 ②] 칸을 거른 사본(빠른 꼴 · 위 `T876_CAR_FAST` 주석)
+        else { o = Object.assign({}, c); _cg = o._t732Cargo; delete o._t732Cargo; }   // ★[T732] 짐 레코드는 캐러밴 칸이 아니다(켬이면 장부로 · 끄면 버린다)
+        o.from = byName.get(c.from); o.to = byName.get(c.to);
         if (!o.from || !o.to) { R.lost++; continue; }
         if (_cg) { const G = _t732GranMod(); if (G) G.cargoLoad(o, _cg); }   // (시계 없이도 — 짐 레코드를 그 캐러밴에 다시 싣기만)
         o.trader = findNpc(o.from, c.trader);

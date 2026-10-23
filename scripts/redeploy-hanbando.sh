@@ -97,13 +97,19 @@ recreate() {  # recreate <name> <image> <port> <volume>
   if ! docker ps -a --format '{{.Names}}' | grep -q "^${NAME}$"; then
     echo "  [err] ${NAME} 컨테이너 없음 — 최초 생성은 redeploy-zones.sh/redeploy-all.sh 로"; return 1
   fi
-  docker inspect "$NAME" --format '{{range .Config.Env}}{{println .}}{{end}}' \
-    | grep -v -E '^(PATH|NODE_VERSION|YARN_VERSION|NODE_ENV|HOME|HOSTNAME)=' > "/tmp/${NAME}.env"
+  # ★[T887 · 절차서 §1 #24] 옛 env 는 **이 셸의 변수로만** 옮겨 싣는다 — 종전엔 `/tmp/<이름>.env` 파일에 떠서(비밀 값 사본) 안 지웠다.
+  #   `reset-world.sh` recreate() 와 같은 꼴: 줄마다 서브셸에서 export → `docker run -e <이름>`(값은 명령줄·파일·화면에 0 · 넘기는 env 는 같다).
+  local ENVS=()
+  mapfile -t ENVS < <(docker inspect "$NAME" --format '{{range .Config.Env}}{{println .}}{{end}}' \
+    | grep -v -E '^(PATH|NODE_VERSION|YARN_VERSION|NODE_ENV|HOME|HOSTNAME)=' || true)
   docker stop "$NAME" >/dev/null 2>&1 || true   # ★[T728] SIGTERM 먼저 — 존이 진행 중 마감을 끝내고 마을을 저장한 뒤 내린다(기본 정지 시간 안 · 넘기면 SIGKILL · 마지막 경계 저장 그대로)
   docker rm -f "$NAME" >/dev/null
-  docker run -d --name "$NAME" --restart unless-stopped \
-    -p "${PORT}:${PORT}" -v "${VOL}:/data" \
-    --env-file "/tmp/${NAME}.env" "$IMAGE" >/dev/null
+  (
+    a=(); for kv in ${ENVS[@]+"${ENVS[@]}"}; do case "$kv" in *=*) export "$kv"; a+=(-e "${kv%%=*}") ;; esac; done
+    docker run -d --name "$NAME" --restart unless-stopped \
+      -p "${PORT}:${PORT}" -v "${VOL}:/data" \
+      ${a[@]+"${a[@]}"} "$IMAGE" >/dev/null
+  )
   echo "  [up] $NAME"
 }
 
