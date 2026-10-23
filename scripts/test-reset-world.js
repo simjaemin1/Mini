@@ -67,6 +67,7 @@ if (a[0] === 'image' && a[1] === 'inspect') {
   if (f === F.commit) return console.log(S.images[n].commit || '<no value>');
   die('가짜 docker: 모르는 image inspect 꼴 ' + f, 9);
 }
+if (a[0] === 'image' && a[1] === 'rm') { if (!S.images[a[2]]) die('No such image: ' + a[2]); delete S.images[a[2]]; save(); return console.log('Untagged: ' + a[2]); }   // [T897] --drop-prev
 if (a[0] === 'stop') { const c = S.containers[a[a.length - 1]]; if (!c) die('no such container'); c.state = 'exited'; c.stops = (c.stops || 0) + 1; save(); return console.log(a[a.length - 1]); }
 if (a[0] === 'tag') { const n = img(a[1]); if (!n) die('no such image ' + a[1]); S.images[a[2]] = { id: S.images[n].id, commit: S.images[n].commit }; save(); return; }
 if (a[0] === 'logs') return console.log('[fake] 옛 세계 마지막 로그 한 줄');
@@ -340,6 +341,46 @@ const CV = path.join(SRV, 'central'); fs.mkdirSync(CV, { recursive: true });
     const Sx = st(); Sx.containers['durango-zone-hanbando'].state = 'exited'; fs.writeFileSync(STATE, JSON.stringify(Sx));
     const rx = run(['hanbando', '--live']);
     ok(rx.rc !== 0 && /안 돈다/.test(rx.out), '★[T892] `--live` — 존이 안 돌면 rc ≠ 0(멈춤 신호)', `rc=${rx.rc}`); fresh(); }
+
+  // ★★[T897] 갱신 되돌리기 — `--pin-prev` · `--rollback` · `--drop-prev`(이미지만 · DB · 볼륨 무접촉 · 같은 env)
+  console.log('\n⑬ ★[T897] 갱신 되돌리기(이미지만)');
+  {
+    const z9 = fresh(); const A = 'sha256:' + 'a'.repeat(64), Bn = 'sha256:' + 'b'.repeat(64);
+    const RLOG = path.join(TMP, 'rollback.log'); try { fs.unlinkSync(RLOG); } catch (e) {}
+    const E9 = { UPDATE_ROLLBACK_LOG: RLOG };
+    let r9 = run(['hanbando', '--pin-prev'], '', E9);
+    ok(r9.rc === 0 && st().images['durango-zone:prev-hanbando'] && st().images['durango-zone:prev-hanbando'].id === A, '`--pin-prev` — 지금 도는 이미지(a)에 `durango-zone:prev` 태그(같은 id · --pin 꼴)', `rc=${r9.rc}`);
+    //   갱신 흉내: 컨테이너가 새 이미지(b)로 다시 만들어졌다(env 그대로)
+    { const S9 = st(); S9.containers['durango-zone-hanbando'].imageId = Bn; S9.containers['durango-zone-hanbando'].image = 'durango-zone'; fs.writeFileSync(STATE, JSON.stringify(S9)); }
+    const env0 = st().containers['durango-zone-hanbando'].env.slice().sort();
+    const sumsR = Object.fromEntries(['world-hanbando.db', 'world-hanbando.db-wal'].map((f) => [f, sha(path.join(z9.vol, f))]));
+    const inoR = Object.fromEntries(dbFiles(z9.vol).map((f) => [f, fs.statSync(path.join(z9.vol, f)).ino]));
+    const nArgv = st().argv.length;
+    r9 = run(['hanbando', '--rollback'], '', E9);
+    const c9 = st().containers['durango-zone-hanbando'];
+    ok(r9.rc === 0 && c9 && c9.imageId === A && c9.image === 'durango-zone:prev-hanbando' && c9.state === 'running' && c9.data === z9.vol && c9.port === '3020',
+      '★★`--rollback` — `durango-zone:prev`(a) 로 다시 떴다 · 같은 볼륨 · 같은 포트', `rc=${r9.rc} · ${c9 ? c9.image + ' ' + c9.imageId.slice(7, 15) : '컨테이너 없음'}`);
+    ok(JSON.stringify(c9.env.slice().sort()) === JSON.stringify(env0) && !c9.argvEnvValues.length && !st().argv.slice(nArgv).some(leakIn) && !leakIn(r9.out),
+      '★`--rollback` — env 는 옛 컨테이너 것 그대로(비밀 포함 · 값은 셸 env 로만 — 명령줄 · 화면 0)', `env ${c9.env.length}줄`);
+    ok(['world-hanbando.db', 'world-hanbando.db-wal'].every((f) => sha(path.join(z9.vol, f)) === sumsR[f]) && dbFiles(z9.vol).every((f) => fs.statSync(path.join(z9.vol, f)).ino === inoR[f]) && dbFiles(z9.vol).length === 3 && !fs.existsSync(BK),
+      '★★`--rollback` — DB 무접촉(본 · -wal 바이트 같음 · 세 파일 같은 inode · 백업 폴더 안 만듦)');
+    ok(fs.existsSync(RLOG) && /hanbando bbbbbbbbbbbb\(newcommit123\) → aaaaaaaaaaaa\(oldcommit456\)/.test(fs.readFileSync(RLOG, 'utf8')) && !leakIn(fs.readFileSync(RLOG, 'utf8')),
+      '`--rollback` — 한 줄 기록(어느 이미지 · 커밋에서 어디로 · 비밀 0)', fs.existsSync(RLOG) ? fs.readFileSync(RLOG, 'utf8').trim().slice(0, 90) : '없음');
+    const nRun = st().argv.filter((x) => /^run -d/.test(x)).length;
+    r9 = run(['hanbando', '--rollback'], '', E9);
+    ok(r9.rc === 0 && /이미 durango-zone:prev-hanbando 로 돈다/.test(r9.out) && st().argv.filter((x) => /^run -d/.test(x)).length === nRun, '`--rollback` 다시 — 이미 :prev 로 돈다 · 할 일 0(다시 안 만든다)');
+    r9 = run(['hanbando', '--drop-prev'], '', E9);
+    ok(r9.rc === 0 && !st().images['durango-zone:prev-hanbando'], '`--drop-prev` — `:prev` 태그를 뗐다');
+    r9 = run(['hanbando', '--rollback'], '', E9);
+    ok(r9.rc === 0 && /고정본 durango-zone:prev-hanbando 없음/.test(r9.out) && st().argv.filter((x) => /^run -d/.test(x)).length === nRun, '`--rollback` — 고정본이 없으면 할 일 0(그 대상은 앞 갱신에서 안 바뀌었다)');
+    //   미끼 — 되돌리기가 `:prev` 가 아니라 지금 태그로 다시 만드는 사본에는 위 자가 문다(자명 통과 0)
+    fresh(); run(['hanbando', '--pin-prev'], '', E9);
+    { const S9 = st(); S9.containers['durango-zone-hanbando'].imageId = Bn; fs.writeFileSync(STATE, JSON.stringify(S9)); }
+    const bait9 = path.join(TMP, 'bait9.sh'); fs.writeFileSync(bait9, fs.readFileSync(SCRIPT, 'utf8').replace('recreate "$PREV_TAG"', 'recreate "$IMG_BASE"'));
+    r9 = run(['hanbando', '--rollback'], '', E9, bait9);
+    ok(fs.readFileSync(bait9, 'utf8') !== fs.readFileSync(SCRIPT, 'utf8') && st().containers['durango-zone-hanbando'].imageId !== A, '[미끼] 지금 태그로 다시 만드는 사본은 a 로 안 돌아간다 — 위 "a 로 다시 떴다" 가 문다');
+    fresh();
+  }
 
   console.log('\n⑫ ★자명 통과 금지 — 값을 흘리는 미끼 사본');
   const bait = path.join(TMP, 'bait.sh');

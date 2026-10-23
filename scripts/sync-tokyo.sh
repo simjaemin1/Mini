@@ -23,6 +23,7 @@
 #
 # 별칭: 서버는 맥 `~/.ssh/config` 의 `Host seoul` · `Host tokyo`(키가 붙은 별칭)로 부른다 — 10-23 IP 줄은 키가 안 붙어 막혔다.
 #   다른 이름이면 env 로: SYNC_SEOUL=<별칭> SYNC_TOKYO=<별칭>. 코드 자리: SYNC_SEOUL_DIR · SYNC_TOKYO_DIR(기본 /opt/Mini 둘).
+#   [T897] SYNC_COMMIT=<커밋> — 서울 HEAD 대신 그 커밋으로(갱신 되돌리기 · 차분만).
 # ★새 수 0 · 제품 0 — git · ssh · tar · awk · comm · perl(맥 기본)만. 비밀 파일(/root/.durango-secret)은 레포 밖이라 안 건드린다.
 set -euo pipefail
 trap 'echo "  ✗ 멈췄다(줄 $LINENO) — 도쿄 reset 앞에서 멈췄으면 도쿄는 옛 판 그대로다" >&2' ERR
@@ -30,13 +31,15 @@ trap 'echo "  ✗ 멈췄다(줄 $LINENO) — 도쿄 reset 앞에서 멈췄으면
 S="${SYNC_SEOUL:-seoul}"; T="${SYNC_TOKYO:-tokyo}"
 SD="${SYNC_SEOUL_DIR:-/opt/Mini}"; TD="${SYNC_TOKYO_DIR:-/opt/Mini}"
 MODE=diff
-case "${1:-}" in --dry) MODE=dry ;; --full) MODE=full ;; "") ;; *) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
+case "${1:-}" in --dry) MODE=dry ;; --full) MODE=full ;; "") ;; *) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
 say() { echo "$*"; }
 die() { echo "  ✗ $*" >&2; exit 1; }
 # 진행 점 — 표준입력을 그대로 넘기며 1MB 마다 점 하나(표준오류) · 끝에 합계
 dots() { perl -e '$|=1; my ($n,$b)=(0); while (my $r = read(STDIN, $b, 1<<20)) { print $b; $n += $r; print STDERR "."; } printf STDERR " %.1f MB (%d B)\n", $n/1048576, $n;'; }
 
-SH="$(ssh "$S" "cd $SD && git rev-parse HEAD")" || die "서울($S) HEAD 를 못 읽었다"
+# ★[T897] `SYNC_COMMIT=<커밋>` 이면 서울 HEAD 대신 그 커밋으로 맞춘다(갱신 되돌리기 — 도쿄 코드 트리를 돌아간 이미지의 커밋으로 · 서울 이력 안에 있어야 한다 · 폴백 없음)
+if [ -n "${SYNC_COMMIT:-}" ]; then SH="$(ssh "$S" "cd $SD && git rev-parse --verify -q '${SYNC_COMMIT}^{commit}'")" || die "서울($S) 이력에 커밋 ${SYNC_COMMIT} 이 없다"
+else SH="$(ssh "$S" "cd $SD && git rev-parse HEAD")" || die "서울($S) HEAD 를 못 읽었다"; fi
 TH="$(ssh "$T" "cd $TD 2>/dev/null && git rev-parse HEAD 2>/dev/null" || true)"
 say "  서울($S) HEAD ${SH:0:12} · 도쿄($T) HEAD ${TH:0:12}"
 
@@ -66,12 +69,13 @@ if [ "$CHAIN" = 1 ]; then
   ssh "$S" "$PACK" | dots | \
     ssh "$T" "set -e; cd $TD; git index-pack --stdin >/dev/null; m=0; for p in $PAR; do git cat-file -e \$p^{commit} 2>/dev/null || m=1; done; if [ \$m = 1 ]; then grep -qx $SH .git/shallow 2>/dev/null || echo $SH >> .git/shallow; fi; git cat-file -e $SH^{tree}; git reset -q --hard $SH; git clean -qfd; git log --oneline --abbrev=12 -1"
 else
+  [ -n "${SYNC_COMMIT:-}" ] && die "SYNC_COMMIT 판은 차분만 한다(폴백 = 서울 HEAD 얕은 사본이라 그 커밋이 아니다) — 도쿄 HEAD 를 서울이 모르거나 --full"
   [ "$MODE" = full ] && say "  --full — 얕은 사본 통째" || say "  ⚠차분이 이어지지 않는다(서울이 도쿄 HEAD ${TH:0:12} 를 모른다 · 또는 도쿄에 레포가 없다) — 얕은 사본 통째(느리다)"
   if [ "$MODE" = dry ]; then say "  (예행 — 도쿄 무변)"; exit 0; fi
   # 서울: 얕은 사본(커밋 하나) — 작업 트리 + .git 만 · node_modules · DB 없음 · 원격은 떼고 간다(`set-head -d` 먼저 — git 2.43 `remote remove` 가 origin/HEAD 를 빈 가리킴으로 남겨 fsck 가 운다)
   ssh "$S" "set -e; d=\$(mktemp -d /tmp/sync-tokyo-src.XXXXXX); git clone -q --depth 1 file://$SD \$d/Mini; git -C \$d/Mini remote set-head origin -d >/dev/null; git -C \$d/Mini remote remove origin; tar -C \$d/Mini -czf - --exclude=node_modules --exclude='*.db*' .; rm -rf \$d" | dots | \
     ssh "$T" "set -e; d=\$(mktemp -d /tmp/sync-tokyo-in.XXXXXX); tar -C \$d -xzf -; rm -rf $TD.prev; if [ -d $TD ]; then mv $TD $TD.prev; fi; mkdir -p \$(dirname $TD); mv \$d $TD; cd $TD && git reset -q --hard && git clean -qfd && git log --oneline --abbrev=12 -1"
 fi
-say "  서울 $(ssh "$S" "cd $SD && git log --oneline --abbrev=12 -1" | cut -c1-90)"
+say "  서울 $(ssh "$S" "cd $SD && git log --oneline --abbrev=12 -1 $SH" | cut -c1-90)$([ -n "${SYNC_COMMIT:-}" ] && echo ' (SYNC_COMMIT — 서울 HEAD 아님)')"
 say "  도쿄 $(ssh "$T" "cd $TD && git log --oneline --abbrev=12 -1" | cut -c1-90)"
 [ "$(ssh "$T" "cd $TD && git rev-parse HEAD")" = "$SH" ] && say "  ✓ 두 줄이 같다" || die "두 줄이 다르다"

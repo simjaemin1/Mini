@@ -22,6 +22,15 @@
 #        · 옛 컨테이너에만 있던 env **이름**을 찍는다(§8 줄은 env 를 새로 짓는다 — 빠지는 손잡이가 있으면 보인다 · 값 0)
 #   ⑥ `reset-world.sh nippon --live`(관측자 한 줄) → 도쿄 스탬프 = 도쿄 HEAD
 #   ⑦ `live-lag.sh` 판정 한 줄
+#   ★[T897] 고정 — ② 뒤 · ③ 앞: 이 갱신이 다시 띄울 대상만 지금 이미지에 `:prev-<대상>` 태그(`reset-world.sh <대상> --pin-prev` · 서울 central · 한반도 · 도쿄 닛폰은 ④ 뒤 —
+#     도쿄 reset-world.sh 가 새 판이어야 해서) · 안 바뀔 대상은 `:prev` 를 뗀다(`--drop-prev`) · 바꿀 것이 하나도 없는 갱신이면 고정본을 그대로 둔다.
+#
+# 되돌리기(T897) — 갱신이 라이브를 깨면 같은 꼴 한 줄로 **바로 앞 판**(이미지만 · DB 무접촉 · env 그대로):
+#   bash <(ssh seoul cat /opt/Mini/scripts/update-live.sh) --rollback --dry   # 무엇을 되돌릴지만(대상마다 지금 이미지 · `:prev` · 커밋)
+#   bash <(ssh seoul cat /opt/Mini/scripts/update-live.sh) --rollback         # 서울 central → 한반도 → 도쿄 닛폰 `reset-world.sh --rollback`(`:prev` 가 없거나 이미 그것이면 할 일 0)
+#     → 도쿄 코드 트리 = 돌아간 닛폰 이미지의 커밋(`SYNC_COMMIT=<커밋> sync-tokyo` · 서울 `git reset` 은 안 한다 — 서울 HEAD 는 기록만)
+#     → 스탬프: 돌아간 호스트의 스탬프를 그 이미지 커밋으로(모르면 지운다 — 다음 갱신이 전부 한다) → 관측 셋 → live-lag 판정.
+#   ⚠`:prev` 는 한 칸이다 — 되돌린 뒤 다시 되돌리면 할 일 0(더 앞으로 가지 않는다). 다시 앞으로 가려면 갱신 한 줄(스탬프가 지워졌으면 전부 다시 굽는다).
 #
 # 별칭 · 자리: `seoul` · `tokyo`(맥 `~/.ssh/config` — T878) · 다른 이름이면 SYNC_SEOUL= · SYNC_TOKYO= · 코드 자리 SYNC_SEOUL_DIR · SYNC_TOKYO_DIR(기본 /opt/Mini 둘 —
 #   sync-tokyo · live-lag 와 같은 env 를 넘긴다). 도쿄 스탬프 자리 TOKYO_STAMP(기본 /srv/durango/deployed-nippon.sha).
@@ -31,8 +40,8 @@ set -uo pipefail
 S="${SYNC_SEOUL:-seoul}"; T="${SYNC_TOKYO:-tokyo}"
 SD="${SYNC_SEOUL_DIR:-/opt/Mini}"; TD="${SYNC_TOKYO_DIR:-/opt/Mini}"
 TSTAMP="${TOKYO_STAMP:-/srv/durango/deployed-nippon.sha}"
-DRY=0
-case "${1:-}" in --dry) DRY=1 ;; "") ;; *) sed -n '2,33p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 2 ;; esac
+DRY=0; RB=0
+for a in "$@"; do case "$a" in --dry) DRY=1 ;; --rollback) RB=1 ;; *) sed -n '2,37p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 2 ;; esac; done
 export SYNC_SEOUL="$S" SYNC_TOKYO="$T" SYNC_SEOUL_DIR="$SD" SYNC_TOKYO_DIR="$TD" LAG_SEOUL="$S" LAG_TOKYO="$T"
 DONE=""
 say() { echo "$*"; }
@@ -58,7 +67,7 @@ TST="$(ssh -n "$T" "cat $TSTAMP 2>/dev/null" | tr -d ' \r\n' || true)"
 OLD="$(tokyo_old || true)"
 say "  서울 HEAD ${SH0:0:12} · 도쿄 HEAD ${TH0:0:12} · 도쿄 스탬프 ${TST:0:12}$([ -z "$TST" ] && echo '(없음 — 도쿄는 전부 한다)') · 도쿄 옛 존 정원 $(echo "$OLD" | sed -n 's/.*cap=\([^ ]*\).*/\1/p') · central $(echo "$OLD" | sed -n 's/.*host=\([^ ]*\).*/\1/p')"
 
-if [ "$DRY" = 1 ]; then
+if [ "$DRY" = 1 ] && [ "$RB" = 0 ]; then
   say "[예행 ②] 서울 판정(redeploy-hanbando.sh --dry — 받을 판 기준)"
   plan_of 2>&1 | ind
   say "[예행 ②] 도쿄 판정(같은 규칙 · 도쿄 스탬프 기준)"
@@ -73,6 +82,66 @@ if [ "$DRY" = 1 ]; then
   exit 0
 fi
 
+# ── [T897] 되돌리기 ─────────────────────────────────────────────────────────────────────────────
+# 한 대상의 지금 · :prev(이미지 id 12 · 커밋 라벨) — 그 호스트에서(값 0 · id · 커밋만)
+prev_of() {   # prev_of <호스트> <컨테이너> <이미지 이름> <대상>
+  ssh -n "$1" "c=\$(docker inspect $2 --format '{{.Image}}' 2>/dev/null); p=\$(docker image inspect $3:prev-$4 --format '{{.Id}}' 2>/dev/null); cm() { v=\$(docker image inspect \$1 --format '{{index .Config.Labels \"durango.commit\"}}' 2>/dev/null); [ -n \"\$v\" ] && [ \"\$v\" != '<no value>' ] && echo \${v:0:12} || echo -; }; echo \"지금 \${c:7:12}(\$( [ -n \"\$c\" ] && cm \$c || echo -)) · :prev-$4 \${p:7:12}\$( [ -n \"\$p\" ] && echo \"(\$(cm \$p))\" || echo '없음')\$( [ -n \"\$p\" ] && [ \"\$p\" = \"\$c\" ] && echo ' — 이미 그것' )\""
+}
+needs_rb() {   # needs_rb <호스트> <컨테이너> <이미지 이름> <대상> — :prev 가 있고 지금 이미지와 다르면 참(그 호스트 reset-world.sh 를 부를 일이 있다)
+  ssh -n "$1" "c=\$(docker inspect $2 --format '{{.Image}}' 2>/dev/null); p=\$(docker image inspect $3:prev-$4 --format '{{.Id}}' 2>/dev/null); [ -n \"\$p\" ] && [ \"\$p\" != \"\$c\" ]"
+}
+img_commit() {   # img_commit <호스트> <컨테이너> — 지금 도는 이미지의 커밋 라벨(전체 · 없으면 빈칸)
+  ssh -n "$1" "v=\$(docker image inspect \$(docker inspect $2 --format '{{.Image}}') --format '{{index .Config.Labels \"durango.commit\"}}' 2>/dev/null); [ \"\$v\" = '<no value>' ] || echo \$v"
+}
+if [ "$RB" = 1 ]; then
+  say "[되돌리기] 대상마다 지금 · :prev(이미지 · 커밋) — DB · 볼륨 무접촉 · env 그대로"
+  say "    서울 central  $(prev_of "$S" durango-central durango-central central)"
+  say "    서울 hanbando $(prev_of "$S" durango-zone-hanbando durango-zone hanbando)"
+  say "    도쿄 nippon   $(prev_of "$T" durango-zone-nippon durango-zone nippon)"
+  if [ "$DRY" = 1 ]; then say "  (예행 — 라이브 무변)"; exit 0; fi
+  SRB=0; TRB=0
+  #   ★할 일이 있는 대상만 그 호스트의 reset-world.sh 를 부른다 — 되돌린 뒤 도쿄 코드 트리는 앞 커밋이라(그 판 reset-world.sh 에 --rollback 이 없을 수 있다)
+  #     두 번째 되돌리기는 여기서 "할 일 0" 으로 끝나야 한다(마른 연습이 잡았다).
+  for x in "$S central durango-central $SD 서울" "$S hanbando durango-zone $SD 서울" "$T nippon durango-zone $TD 도쿄"; do set -- $x
+    c="durango-$([ "$2" = central ] && echo central || echo "zone-$2")"
+    if ! needs_rb "$1" "$c" "$3" "$2"; then say "    ($5 $2 — :prev 가 없거나 이미 그것 · 할 일 0)"; continue; fi
+    out="$(ssh -n "$1" "cd $4 && bash scripts/reset-world.sh $2 --rollback" 2>&1)"; rc=$?
+    echo "$out" | grep -vE '^== ' | ind
+    [ "$rc" = 0 ] || stop "$5 $2 되돌리기(rc $rc)" "그 뒤 대상 · 도쿄 코드 · 스탬프"
+    if [ "$2" = nippon ]; then TRB=1; else SRB=1; fi; did "$5 $2 → :prev-$2"
+  done
+  #   관측 셋 — 도쿄 코드 트리를 옮기기 **앞**에(옮긴 뒤 그 판 reset-world.sh 에 --live 가 없을 수 있다)
+  for x in "$S central $SD" "$S hanbando $SD" "$T nippon $TD"; do set -- $x
+    out="$(ssh -n "$1" "cd $3 && bash scripts/reset-world.sh $2 --live" 2>&1)"; rc=$?
+    echo "$out" | grep -vE '^== ' | ind
+    { [ "$rc" = 0 ] && ! echo "$out" | grep -q '관측자 줄을 못 읽었다'; } || stop "$2 관측(--live rc $rc)" "도쿄 코드 · 스탬프 · live-lag"
+  done
+  # 도쿄 코드 트리 = 지금 도는 닛폰 이미지의 커밋(서울은 git 을 안 건드린다 — 기록만)
+  TC="$(img_commit "$T" durango-zone-nippon)"; TH="$(ssh -n "$T" "cd $TD && git rev-parse HEAD" 2>/dev/null || true)"
+  if [ -z "$TC" ]; then say "    도쿄 코드 트리 그대로 ${TH:0:12} — 도는 이미지에 커밋 라벨이 없다"
+  elif [ "$TC" = "$TH" ]; then say "    도쿄 코드 트리 = 도는 이미지 커밋 ${TC:0:12} — 그대로"
+  else
+    say "    도쿄 코드 트리 ${TH:0:12} → ${TC:0:12}(도는 이미지 커밋 · SYNC_COMMIT)"
+    SYNC_COMMIT="$TC" bash <(ssh -n "$S" cat "$SD/scripts/sync-tokyo.sh") 2>&1 | ind
+    [ "$(ssh -n "$T" "cd $TD && git rev-parse HEAD" 2>/dev/null)" = "$TC" ] || stop "도쿄 코드 트리를 ${TC:0:12} 로 못 맞췄다" "스탬프 · 관측"
+    did "도쿄 코드 → ${TC:0:12}"
+  fi
+  # 스탬프 — 돌아간 호스트만: 도는 이미지 커밋(서울은 central · 한반도가 같은 커밋일 때만) · 모르면 지운다(다음 갱신이 전부 한다)
+  if [ "$SRB" = 1 ]; then
+    a="$(img_commit "$S" durango-central)"; b="$(img_commit "$S" durango-zone-hanbando)"
+    if [ -n "$a" ] && [ "$a" = "$b" ]; then ssh -n "$S" "echo $a > /srv/durango/deployed-hanbando.sha" && did "서울 스탬프 ${a:0:12}"
+    else ssh -n "$S" "rm -f /srv/durango/deployed-hanbando.sha" && did "서울 스탬프 지움(central ${a:0:12} · 한반도 ${b:0:12} — 다음 갱신은 전부)"; fi
+  fi
+  if [ "$TRB" = 1 ]; then
+    if [ -n "$TC" ]; then ssh -n "$T" "echo $TC > $TSTAMP" && did "도쿄 스탬프 ${TC:0:12}"; else ssh -n "$T" "rm -f $TSTAMP" && did "도쿄 스탬프 지움"; fi
+  fi
+  say "[되돌리기 ⑦] live-lag"
+  bash <(ssh -n "$S" cat "$SD/scripts/live-lag.sh") > "$TMP/lag" 2>&1
+  sed -n '2,$p' "$TMP/lag" | ind
+  say "  ✓ 되돌림 끝 — 바뀐 것: ${DONE:-없음(되돌릴 것 0)} · 서울 코드 HEAD $(ssh -n "$S" "cd $SD && git rev-parse --short=12 HEAD")(그대로 — 기록만)"
+  exit 0
+fi
+
 # ① 서울 코드 받기
 say "[①] 서울 git pull --ff-only"
 SH1="$(ssh -n "$S" "cd $SD && git pull --ff-only -q && git rev-parse HEAD")" || stop "서울 git pull" "서울 재배포 · 도쿄 전부"
@@ -83,6 +152,20 @@ say "    ${SH0:0:12} → ${SH1:0:12} · $(ssh -n "$S" "cd $SD && git log --oneli
 TP="$(plan_of "$TST" 2>&1)"; TZ="$(echo "$TP" | zone_of)"
 [ -n "$TZ" ] || { echo "$TP" | tail -3 | ind; stop "도쿄 판정(redeploy-hanbando.sh --dry)을 못 읽었다" "서울 재배포 · 도쿄 전부"; }
 say "[②] 도쿄 판정: $(echo "$TP" | sed -n 's/^\[판정\] //p') → 도쿄 존 $([ "$TZ" = 1 ] && echo '한다' || echo '건너뛴다')"
+
+# ②-고정 — ★[T897] 이 갱신이 다시 띄울 대상만 `:prev`(되돌리기 한 칸) · 안 바뀔 대상은 뗀다 · 바꿀 것 0 이면 그대로
+SP="$(plan_of 2>&1)"; SC="$(echo "$SP" | sed -n 's/^PLAN central=\([01]\).*/\1/p' | tail -1)"; SZ="$(echo "$SP" | zone_of)"
+[ -n "$SC" ] && [ -n "$SZ" ] || stop "서울 판정(redeploy-hanbando.sh --dry)을 못 읽었다" "서울 재배포 · 도쿄 전부"
+PINALL=1; [ "$SC$SZ$TZ" = 000 ] && PINALL=0
+if [ "$PINALL" = 0 ]; then say "[②-고정] 바꿀 것 0 — 되돌리기 고정본(:prev)은 그대로(앞 갱신의 것)"
+else
+  say "[②-고정] 서울 central $([ "$SC" = 1 ] && echo 고정 || echo 뗌) · 한반도 $([ "$SZ" = 1 ] && echo 고정 || echo 뗌) · 도쿄 닛폰 $([ "$TZ" = 1 ] && echo '고정(④ 뒤)' || echo '뗌(④ 뒤)')"
+  for x in "central $SC" "hanbando $SZ"; do set -- $x
+    out="$(ssh -n "$S" "cd $SD && bash scripts/reset-world.sh $1 $([ "$2" = 1 ] && echo --pin-prev || echo --drop-prev)" 2>&1)"; rc=$?
+    echo "$out" | grep -vE '^== ' | ind
+    [ "$rc" = 0 ] || stop "서울 $1 고정(rc $rc)" "서울 재배포 · 도쿄 전부"
+  done
+fi
 
 # ③ 서울 재배포 + 관측
 say "[③] 서울 redeploy-hanbando.sh(자동 판정)"
@@ -104,6 +187,13 @@ TH1="$(ssh -n "$T" "cd $TD && git rev-parse HEAD" 2>/dev/null || true)"
 #   ★판정 = sync-tokyo 의 끝 줄과 같은 말(두 호스트 HEAD 가 같다) — 이미 같았던 판은 sync-tokyo 가 "받을 것 0" 으로 일찍 끝나 ✓ 줄이 없다(그래서 HEAD 를 직접 견준다)
 { [ "$rc" = 0 ] && [ -n "$TH1" ] && [ "$TH1" = "$SH1" ]; } || stop "sync-tokyo(두 HEAD 가 다르다 · rc $rc — 도쿄 코드는 옛 판 그대로)" "도쿄 재배포"
 [ "$TH1" != "$TH0" ] && did "도쿄 코드 ${TH0:0:12} → ${TH1:0:12}"
+
+# ④-고정 — ★[T897] 도쿄 닛폰(도쿄 reset-world.sh 가 ④ 로 새 판이 된 뒤)
+if [ "$PINALL" = 1 ]; then
+  out="$(ssh -n "$T" "cd $TD && bash scripts/reset-world.sh nippon $([ "$TZ" = 1 ] && echo --pin-prev || echo --drop-prev)" 2>&1)"; rc=$?
+  echo "$out" | grep -vE '^== ' | ind
+  [ "$rc" = 0 ] || stop "도쿄 nippon 고정(rc $rc)" "도쿄 재배포"
+fi
 
 # ⑤ 도쿄 재배포(판정이 1 일 때만) — §8 의 env 그대로 · 비밀은 도쿄 셸 env 로만
 if [ "$TZ" = 1 ]; then
