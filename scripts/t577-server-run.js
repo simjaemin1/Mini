@@ -14,6 +14,7 @@
 //   · `T315_MAPBEDS=0` — 빠른 시계에선 생활층 몸이 집을 못 지어, 켜면 침상이 시딩 12 에 묶이고 인구가 600(=50×12)에서 선다
 //     (도적을 꺼도 굶어 비운다 — 시계의 잡음). 끄면 econ 자기 주거(`housing`)로 큰다 = 라이브가 비던 8월의 세계.
 //   · `VILLAGE_NPC_CAP=1` — 가시 몸만 줄인다(econ 인구는 무제한 · 시뮬 진실). 몸 5천을 30Hz 로 굴리면 빠른 시계를 못 버틴다.
+//     ★[T864] `VILLAGE_NPC_CAP=Infinity` 를 주면 아이 env 에서 그 칸을 뺀다 = 제품 운영 기본(무제한 · villages.js `NPC_CAP_PER_VILLAGE` 의 Infinity · T805 자 꼴).
 //   · 시드 = econ 시드(`createWorldV2({seed})` 한 칸 — t17 이 시드를 바꾸는 그 자리). 지도·소굴·전쟁 시드는 그대로.
 //   ⚠★★[T577 추신 2026-10-03] **이 조건의 왜곡 하나 — 집이 공짜다.** 생활층 집 행위(`T400_BUILD_ACT` 기본 켬)가 서는 마을은
 //     econ 이 집 목재 제약을 크루에게 넘긴다(`economy-sim.js buildActOn` · `_t400Live`). 빠른 시계에선 크루가 걷지 못하고
@@ -100,6 +101,7 @@ function runOne(seed, k) {
       //   ★[T655] 첫 부팅 조각(T640 · 제품 기본 켬)은 이 자에서 끈다 — 하루 250ms 면 표본이 도는 ~4분 동안 수백 날이 지나 도적 데일리를 건너뛴다(T640 회부 ①).
       T640_BOOT_SLICE: '0',
     });
+    if (env.VILLAGE_NPC_CAP === 'Infinity') delete env.VILLAGE_NPC_CAP;   // ★[T864] 몸 상한 운영 기본(무제한)
     const t0 = Date.now();
     const child = spawn(process.execPath, ['-r', path.join(__dirname, 't577-server-hook.js'), path.join(ROOT, 'server', 'zone.js')],
       { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
