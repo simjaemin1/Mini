@@ -9,6 +9,8 @@
 #   bash /opt/Mini/scripts/redeploy-hanbando.sh --all        # 전부(종전 --central 과 같음)
 #   bash /opt/Mini/scripts/redeploy-hanbando.sh --central    # central 강제 포함
 #   bash /opt/Mini/scripts/redeploy-hanbando.sh --zone       # 존 강제 포함
+#   bash /opt/Mini/scripts/redeploy-hanbando.sh --dry        # ★[T892] 예행 — `git fetch` 만 하고 받을 판(upstream)으로 **같은 판정**을 찍는다 · 끝 줄 `PLAN central=0|1 zone=0|1 after=<해시>`
+#                                                              (빌드 · 재생성 · 스탬프 · pull 0 — `update-live.sh` 가 이 줄을 읽는다 · 도쿄 판정은 `STAMP=<도쿄 스탬프 사본>` 으로 같은 규칙)
 #
 # ★★[2026-09-01 재민 "매번 너무 오래 걸린다"] **시간의 거의 전부는 존 재생성이다.**
 #   종전 판은 바뀐 게 `public/client.js` 한 줄이어도 존을 다시 굽고 **재생성**했다.
@@ -29,22 +31,30 @@ STAMP="${STAMP:-/srv/durango/deployed-hanbando.sha}"
 cd "$REPO_DIR"
 
 MODE="${1:-}"
-FORCE_ALL=0; FORCE_CENTRAL=0; FORCE_ZONE=0
+FORCE_ALL=0; FORCE_CENTRAL=0; FORCE_ZONE=0; DRY=0
 case "$MODE" in
+  --dry)     DRY=1 ;;
   --all)     FORCE_ALL=1 ;;
   --central) FORCE_CENTRAL=1 ;;
   --zone)    FORCE_ZONE=1 ;;
   "")        ;;
-  *) echo "모르는 옵션: $MODE  (--all | --central | --zone | 무인자=자동)"; exit 2 ;;
+  *) echo "모르는 옵션: $MODE  (--all | --central | --zone | --dry | 무인자=자동)"; exit 2 ;;
 esac
 
 _T0=$(date +%s)
-echo "[1/4] git pull"
 BEFORE=""
 [ -f "$STAMP" ] && BEFORE="$(tr -d ' \n\r' < "$STAMP" || true)"
+if [ "$DRY" = 1 ]; then
+  echo "[예행] git fetch(받을 판만 본다 — pull · 빌드 · 재생성 · 스탬프 0)"
+  git fetch -q
+  AFTER="$(git rev-parse '@{u}' 2>/dev/null || git rev-parse HEAD)"
+  echo "         지금 HEAD $(git rev-parse --short=12 HEAD) · 받을 판 ${AFTER:0:12}(뒤진 커밋 $(git rev-list --count "HEAD..$AFTER" 2>/dev/null || echo '?')) · 스탬프 ${BEFORE:0:12}"
+else
+echo "[1/4] git pull"
 git pull
 AFTER="$(git rev-parse HEAD)"
 git log --oneline -1
+fi
 
 # ── 무엇을 해야 하나 ──────────────────────────────────────────────────────────
 DO_CENTRAL=1; DO_ZONE=1; WHY="기준점을 몰라 전부 한다(첫 실행이거나 스탬프 없음)"
@@ -81,6 +91,11 @@ if [ -n "${CHANGED:-}" ]; then
 fi
 echo "         central: $([ "$DO_CENTRAL" = 1 ] && echo '한다' || echo '건너뛴다')  ·  zone: $([ "$DO_ZONE" = 1 ] && echo '한다' || echo '★건너뛴다 — 존이 쓰는 파일이 안 바뀌었다')"
 echo
+if [ "$DRY" = 1 ]; then
+  echo "(예행 — 아무것도 안 바꿨다)"
+  echo "PLAN central=$DO_CENTRAL zone=$DO_ZONE after=$AFTER"
+  exit 0
+fi
 
 if [ "$DO_CENTRAL" = 0 ] && [ "$DO_ZONE" = 0 ]; then
   echo "할 일이 없다. ($(( $(date +%s) - _T0 ))초)"

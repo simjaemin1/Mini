@@ -1,0 +1,280 @@
+# T892 update-live 마른 연습(두 호스트 흉내 판 · t587-rehearsal.sh · 2026-10-23) — 출력 그대로(도커 빌드 진행 줄만 걸렀다 · 비밀 0)
+
+## 절차서 §8 줄 그대로(runbook 8)
+11:08:36 == 절차서 8 — 초기화_절차서.md 의 줄을 그 글자대로 ==
+11:08:47   [8·1 mac] rc=0 · 11s ·   (예행 — 라이브 무변 · 서울 git fetch 만)
+11:10:10   [8·2 mac] rc=0 · 83s ·   ✓ 끝 — 서울 62580d74bc19 · 도쿄 62580d74bc19 · 바뀐 것: 서울 재배포 → 도쿄 코드 f848e3309f25 
+11:10:20   [8·3 mac] rc=0 · 10s ·   판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCa
+rc=0
+
+### 8·1 --dry
+== update-live 2026-10-23 11:08:36 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) · 예행(라이브 무변) ==
+  서울 HEAD 62580d74bc19 · 도쿄 HEAD f848e3309f25 · 도쿄 스탬프 (없음 — 도쿄는 전부 한다) · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[예행 ②] 서울 판정(redeploy-hanbando.sh --dry — 받을 판 기준)
+    [예행] git fetch(받을 판만 본다 — pull · 빌드 · 재생성 · 스탬프 0)
+             지금 HEAD 62580d74bc19 · 받을 판 62580d74bc19(뒤진 커밋 0) · 스탬프 82be2d6fbab2
+    [판정] 바뀐 파일 23개 · 82be2d6f..62580d74
+             scripts/live-lag.sh
+             scripts/redeploy-all.sh
+             scripts/redeploy-hanbando.sh
+             scripts/reset-world.sh
+             scripts/t587-rehearsal.sh
+             scripts/t890-takeover-ab.js
+             scripts/t890-takeover-probe.js
+             scripts/test-body.js
+             scripts/test-doors.js
+             scripts/test-handoff-body.js
+             scripts/test-redeploy.js
+             scripts/test-reset-world.js
+             scripts/update-live.sh
+             server/zone.js
+             "\352\263\204\354\270\241/T887_live-lag_\353\247\210\353\245\270\354\227\260\354\212\265.txt"
+             "\352\263\204\354\270\241/T890_\354\212\271\352\263\204\355\203\220\354\271\250.txt"
+             "\353\263\264\352\263\240/T873_2026-10-23.md"
+             "\353\263\264\352\263\240/T887_2026-10-23.md"
+             "\353\263\264\352\263\240/T890_2026-10-23.md"
+             "\354\204\244\352\263\204/\354\264\210\352\270\260\355\231\224_\354\240\210\354\260\250\354\204\234.md"
+             … 외 3개
+             central: 한다  ·  zone: 한다
+    (예행 — 아무것도 안 바꿨다)
+    PLAN central=1 zone=1 after=62580d74bc194aea1711f80c8c0d3292710eac1b
+[예행 ②] 도쿄 판정(같은 규칙 · 도쿄 스탬프 기준)
+    [판정] 기준점을 몰라 전부 한다(첫 실행이거나 스탬프 없음)
+    PLAN central=1 zone=1 after=62580d74bc194aea1711f80c8c0d3292710eac1b
+    → 도쿄 존: 빌드 · 재생성 한다
+[예행 ③] 도쿄 옛 존 env 이름(값 0): ZONE_HOSTS CENTRAL_HOST NODE_EXTRA_CA_CERTS CENTRAL_SECRET npm_config_https_proxy CENTRAL_PORT PLAYER_CAP PORT LATENCY_MS ENABLED_ZONES DB_PATH npm_config_cafile npm_config_proxy ZONE_ID CHAR_SPRITE PATH NODE_VERSION YARN_VERSION NODE_ENV
+[예행 ④] sync-tokyo --dry(서울 지금 HEAD 기준 — 실제 판은 ① 뒤 HEAD)
+      서울(seoul) HEAD 62580d74bc19 · 도쿄(tokyo) HEAD f848e3309f25
+      차분 — 도쿄 f848e3309f25 → 서울 62580d74bc19(그 사이 커밋 ? 개 · 보내는 것은 서울 HEAD 트리에서 바뀐 객체만)
+      크기 3.4 MB (3570251 B) · (예행 — 도쿄 무변)
+[예행 ⑦] 지금 렉 판정(읽기만)
+      판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+  (예행 — 라이브 무변 · 서울 git fetch 만)
+
+### 8·2 갱신(서울 central+존 · 도쿄 존 · 도쿄 스탬프 없음 → 전부)
+== update-live 2026-10-23 11:08:47 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD 62580d74bc19 · 도쿄 HEAD f848e3309f25 · 도쿄 스탬프 (없음 — 도쿄는 전부 한다) · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[①] 서울 git pull --ff-only
+    62580d74bc19 → 62580d74bc19 · 62580d74bc19 wip T892
+[②] 도쿄 판정: 기준점을 몰라 전부 한다(첫 실행이거나 스탬프 없음) → 도쿄 존 한다
+[③] 서울 redeploy-hanbando.sh(자동 판정)
+    [1/4] git pull
+    Already up to date.
+    62580d74 wip T892
+    [판정] 바뀐 파일 23개 · 82be2d6f..62580d74
+             scripts/live-lag.sh
+             scripts/redeploy-all.sh
+             scripts/redeploy-hanbando.sh
+             scripts/reset-world.sh
+             scripts/t587-rehearsal.sh
+             scripts/t890-takeover-ab.js
+             scripts/t890-takeover-probe.js
+             scripts/test-body.js
+             scripts/test-doors.js
+             scripts/test-handoff-body.js
+             scripts/test-redeploy.js
+             scripts/test-reset-world.js
+             scripts/update-live.sh
+             server/zone.js
+             "\352\263\204\354\270\241/T887_live-lag_\353\247\210\353\245\270\354\227\260\354\212\265.txt"
+             "\352\263\204\354\270\241/T890_\354\212\271\352\263\204\355\203\220\354\271\250.txt"
+             "\353\263\264\352\263\240/T873_2026-10-23.md"
+             "\353\263\264\352\263\240/T887_2026-10-23.md"
+             "\353\263\264\352\263\240/T890_2026-10-23.md"
+             "\354\204\244\352\263\204/\354\264\210\352\270\260\355\231\224_\354\240\210\354\260\250\354\204\234.md"
+             … 외 3개
+             central: 한다  ·  zone: 한다
+    [2/4] docker build
+    [3/4] 재생성
+      [up] durango-central
+      [up] durango-zone-hanbando
+    durango-zone-hanbando	Up 2 seconds (health: starting)
+    durango-central	Up 5 seconds (healthy)
+    [4/4] 부팅 대기 — 컨테이너 기동 ≠ 접속 가능. zone /health 가 뜰 때까지 본다.
+      ✅ zone 접속 가능 (존 부팅 14초 · 전체 39초)
+    durango-zone-hanbando	Up 16 seconds (health: starting)
+    durango-central	Up 20 seconds (healthy)
+      컨테이너  durango-central · running · 커밋 - · 포트 3010
+      /health   {"ok":true,"orders":0,"players":3,"uptime":20.58046037}
+      /zones    hanbando=ws://198.51.100.1:3020 nippon=ws://192.0.2.2:3021
+      컨테이너  durango-zone-hanbando · running · 커밋 - · 포트 3020
+      env       T565_MAP_LIVE= · PLAYER_CAP=150 · 판 
+      hanbando · 달력 1년 10월 25일 (가을) · 마을 50/51(사람 사는 50) · 사람 0 · 정원 150
+[④] sync-tokyo
+      서울(seoul) HEAD 62580d74bc19 · 도쿄(tokyo) HEAD f848e3309f25
+      차분 — 도쿄 f848e3309f25 → 서울 62580d74bc19(그 사이 커밋 ? 개 · 보내는 것은 서울 HEAD 트리에서 바뀐 객체만)
+    .... 3.4 MB (3570251 B)
+    62580d74bc19 wip T892
+      서울 62580d74bc19 wip T892
+      도쿄 62580d74bc19 wip T892
+      ✓ 두 줄이 같다
+[⑤] 도쿄 빌드 · redeploy-light.sh(RUN_ZONES=nippon · CHAR_SPRITE=on T565_MAP_LIVE=0 · 정원 = 옛 컨테이너 값)
+    빌드 ✓ 커밋 62580d74bc19
+    [light] 띄울 존(1개): nippon
+    [light] central=198.51.100.1  부팅간격=4s
+      [up] durango-zone-nippon :3021  (다음까지 4s 대기)
+    [light] 준비 대기 — 시딩·부팅이 끝나야 접속 가능. (Ctrl+C 해도 부팅 자체는 백그라운드 계속)
+      [wait] nippon            0s  [nippon] 🏘️ Stage4A 영토: 경계 7/7곳(셀 1466, ≈13KB — welcome 1회) · 원�    [wait] nippon            3s  [nippon] 🧺 [T732] 곳간 로트 장부 — 마을 7곳(저장된 장부 0) · 캐러밴    [ready] nippon            7s — 접속 가능                                                            
+    === 완료: 1개 존 준비됨(healthy=접속 가능) ===
+    env 이름 — 옛 컨테이너에만: 없음 · 새로 생김: T565_MAP_LIVE
+      컨테이너  durango-zone-nippon · running · 커밋 62580d74bc19 · 포트 3021
+      env       T565_MAP_LIVE=0 · PLAYER_CAP=150 · 판 
+      nippon · 달력 1년 3월 1일 (봄) · 마을 7/50(사람 사는 7) · 사람 0 · 정원 150
+[⑦] live-lag
+      [존] hanbando@서울 — 틱 p50 4.261 · p95 9.22 · max 259.253 ms(최근 1186틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 14.53 · max 475 ms | 지금 /health 왕복 p95 5.2 · max 6.4 ms | 사람 0 · 마을 50 · 세계 날 238(1년 10월 25일 (가을)) | 최근 60초 무거운 일 57번(tick 260ms · econ_frame 254ms · save 9ms)
+      [존] nippon@도쿄 — 틱 p50 0.702 · p95 5.581 · max 45.489 ms(최근 255틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 14.36 · max 54.43 ms | 지금 /health 왕복 p95 4.1 · max 8.1 ms | 사람 0 · 마을 7 · 세계 날 0(1년 3월 1일 (봄)) | 최근 60초 무거운 일 2번(tick 45ms · econ_frame 10ms)
+      [central] @서울 — 지금 /health 왕복 p95 4 · max 7.5 ms · 계정 3
+      [호스트] 서울(seoul) — vCPU 2 · 부하 2.73 1.03 0.42 · 1초 바쁨 12.8% · steal 1.5% · iowait 0% | 메모리 남음 6908 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 central 0% 15MB · hanbando 8.23% 321MB | 다른 무거운 것 없음
+      [호스트] 도쿄(tokyo) — vCPU 2 · 부하 2.73 1.03 0.42 · 1초 바쁨 12.8% · steal 1.5% · iowait 0% | 메모리 남음 6908 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 nippon 3.12% 118MB | 다른 무거운 것 없음
+      [망] 맥 → 호스트 TCP 왕복 — 서울:3010 최소 0.2 · 중앙 0.2 · 최대 0.3 ms(5번) | 서울:3020 최소 0.2 · 중앙 0.2 · 최대 0.3 ms(5번) | 도쿄:3021 최소 0.2 · 중앙 0.2 · 최대 1 ms(5번)
+      판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+  ✓ 끝 — 서울 62580d74bc19 · 도쿄 62580d74bc19 · 바뀐 것: 서울 재배포 → 도쿄 코드 f848e3309f25 → 62580d74bc19 → 도쿄 재배포 → 도쿄 스탬프 62580d74bc19
+
+## ⓐ 바로 다시(둘 다 최신)
+== update-live 2026-10-23 11:14:39 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD 62580d74bc19 · 도쿄 HEAD 62580d74bc19 · 도쿄 스탬프 62580d74bc19 · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[①] 서울 git pull --ff-only
+    62580d74bc19 → 62580d74bc19 · 62580d74bc19 wip T892
+[②] 도쿄 판정: 배포된 커밋과 같다 — 바뀐 파일 0 → 도쿄 존 건너뛴다
+[③] 서울 redeploy-hanbando.sh(자동 판정)
+    [1/4] git pull
+    Already up to date.
+    62580d74 wip T892
+    [판정] 배포된 커밋과 같다 — 바뀐 파일 0
+             central: 건너뛴다  ·  zone: ★건너뛴다 — 존이 쓰는 파일이 안 바뀌었다
+    할 일이 없다. (0초)
+      컨테이너  durango-central · running · 커밋 - · 포트 3010
+      /health   {"ok":true,"orders":0,"players":3,"uptime":333.32197185}
+      /zones    hanbando=ws://198.51.100.1:3020 nippon=ws://192.0.2.2:3021
+      컨테이너  durango-zone-hanbando · running · 커밋 - · 포트 3020
+      env       T565_MAP_LIVE= · PLAYER_CAP=150 · 판 
+      hanbando · 달력 1년 10월 25일 (가을) · 마을 50/51(사람 사는 50) · 사람 0 · 정원 150
+[④] sync-tokyo
+      서울(seoul) HEAD 62580d74bc19 · 도쿄(tokyo) HEAD 62580d74bc19
+      같다 — 받을 것 0
+    62580d74bc19 wip T892
+[⑤] 도쿄 존 건너뜀 — 판정: 존이 쓰는 파일이 안 바뀌었다(도쿄 스탬프 62580d74bc19 기준)
+      컨테이너  durango-zone-nippon · running · 커밋 62580d74bc19 · 포트 3021
+      env       T565_MAP_LIVE=0 · PLAYER_CAP=150 · 판 
+      nippon · 달력 1년 3월 1일 (봄) · 마을 7/50(사람 사는 7) · 사람 0 · 정원 150
+[⑦] live-lag
+      [존] hanbando@서울 — 틱 p50 2.127 · p95 3.684 · max 26.251 ms(최근 3000틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 12.27 · max 475 ms | 지금 /health 왕복 p95 4.9 · max 6.4 ms | 사람 0 · 마을 50 · 세계 날 238(1년 10월 25일 (가을)) | 최근 60초 무거운 일 2번(save 6ms · econ_frame 5ms)
+      [존] nippon@도쿄 — 틱 p50 0.369 · p95 0.596 · max 28.114 ms(최근 3000틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 22.23 · max 54.43 ms | 지금 /health 왕복 p95 4.7 · max 6.2 ms | 사람 0 · 마을 7 · 세계 날 0(1년 3월 1일 (봄)) | 최근 60초 무거운 일 1번(econ_frame 6ms)
+      [central] @서울 — 지금 /health 왕복 p95 4.3 · max 5.6 ms · 계정 3
+      [호스트] 서울(seoul) — vCPU 2 · 부하 0.48 0.63 0.41 · 1초 바쁨 13.7% · steal 1% · iowait 0% | 메모리 남음 7046 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 central 0% 16MB · hanbando 7.44% 210MB | 다른 무거운 것 없음
+      [호스트] 도쿄(tokyo) — vCPU 2 · 부하 0.48 0.63 0.41 · 1초 바쁨 13.2% · steal 1% · iowait 0% | 메모리 남음 7046 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 nippon 2.49% 84MB | 다른 무거운 것 없음
+      [망] 맥 → 호스트 TCP 왕복 — 서울:3010 최소 0.2 · 중앙 0.3 · 최대 0.4 ms(5번) | 서울:3020 최소 0.1 · 중앙 0.2 · 최대 0.2 ms(5번) | 도쿄:3021 최소 0.2 · 중앙 0.2 · 최대 0.2 ms(5번)
+      판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+  ✓ 끝 — 서울 62580d74bc19 · 도쿄 62580d74bc19 · 바뀐 것: 서울 재배포
+
+## ⓓ 클라만 바뀐 갱신(public/index.html 한 줄 — 서울 central 만 · 도쿄 존 건너뜀)
+== update-live 2026-10-23 11:15:57 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD eb82bf57dc69 · 도쿄 HEAD 62580d74bc19 · 도쿄 스탬프 eb82bf57dc69 · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[①] 서울 git pull --ff-only
+    eb82bf57dc69 → 87f58a6e8e90 · 87f58a6e8e90 rehearsal: client only
+[②] 도쿄 판정: 바뀐 파일 1개 · eb82bf57..87f58a6e → 도쿄 존 건너뛴다
+[③] 서울 redeploy-hanbando.sh(자동 판정)
+    [1/4] git pull
+    Already up to date.
+    87f58a6e rehearsal: client only
+    [판정] 바뀐 파일 1개 · eb82bf57..87f58a6e
+             public/index.html
+             central: 한다  ·  zone: ★건너뛴다 — 존이 쓰는 파일이 안 바뀌었다
+    [2/4] docker build
+    [3/4] 재생성
+      [up] durango-central
+    durango-central	Up 4 seconds (health: starting)
+    durango-zone-hanbando	Up 7 minutes (healthy)
+      ✅ central 만 재배포 — 존은 안 건드렸다(접속 끊김 없음). 총 24초
+         클라만 바뀐 배포는 이 경로다. 브라우저에서 강력 새로고침(⌘⇧R) 한 번 하면 끝.
+      컨테이너  durango-central · running · 커밋 - · 포트 3010
+      /health   {"ok":true,"orders":0,"players":3,"uptime":4.656338215}
+      /zones    hanbando=ws://198.51.100.1:3020 nippon=ws://192.0.2.2:3021
+      컨테이너  durango-zone-hanbando · running · 커밋 - · 포트 3020
+      env       T565_MAP_LIVE= · PLAYER_CAP=150 · 판 
+      hanbando · 달력 1년 10월 25일 (가을) · 마을 50/51(사람 사는 50) · 사람 0 · 정원 150
+[④] sync-tokyo
+      서울(seoul) HEAD 87f58a6e8e90 · 도쿄(tokyo) HEAD 62580d74bc19
+      차분 — 도쿄 62580d74bc19 → 서울 87f58a6e8e90(그 사이 커밋 ? 개 · 보내는 것은 서울 HEAD 트리에서 바뀐 객체만)
+    . 0.0 MB (43464 B)
+    87f58a6e8e90 rehearsal: client only
+      서울 87f58a6e8e90 rehearsal: client only
+      도쿄 87f58a6e8e90 rehearsal: client only
+      ✓ 두 줄이 같다
+[⑤] 도쿄 존 건너뜀 — 판정: 존이 쓰는 파일이 안 바뀌었다(도쿄 스탬프 eb82bf57dc69 기준)
+      컨테이너  durango-zone-nippon · running · 커밋 62580d74bc19 · 포트 3021
+      env       T565_MAP_LIVE=0 · PLAYER_CAP=150 · 판 
+      nippon · 달력 1년 3월 1일 (봄) · 마을 7/50(사람 사는 7) · 사람 0 · 정원 150
+[⑦] live-lag
+      [존] hanbando@서울 — 틱 p50 2.11 · p95 3.729 · max 16.764 ms(최근 3000틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 12.25 · max 475 ms | 지금 /health 왕복 p95 6.5 · max 7.7 ms | 사람 0 · 마을 50 · 세계 날 238(1년 10월 25일 (가을))
+      [존] nippon@도쿄 — 틱 p50 0.361 · p95 0.56 · max 26.075 ms(최근 3000틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 12.7 · max 54.43 ms | 지금 /health 왕복 p95 6.5 · max 7.8 ms | 사람 0 · 마을 7 · 세계 날 0(1년 3월 1일 (봄))
+      [central] @서울 — 지금 /health 왕복 p95 6.8 · max 7.9 ms · 계정 3
+      [호스트] 서울(seoul) — vCPU 2 · 부하 1.18 0.79 0.49 · 1초 바쁨 10.3% · steal 1% · iowait 0% | 메모리 남음 7011 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 central 1.73% 13MB · hanbando 8.37% 212MB | 다른 무거운 것 없음
+      [호스트] 도쿄(tokyo) — vCPU 2 · 부하 1.18 0.79 0.49 · 1초 바쁨 10.2% · steal 1% · iowait 0% | 메모리 남음 7011 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 nippon 2.43% 87MB | 다른 무거운 것 없음
+      [망] 맥 → 호스트 TCP 왕복 — 서울:3010 최소 0.2 · 중앙 0.2 · 최대 0.3 ms(5번) | 서울:3020 최소 0.2 · 중앙 0.2 · 최대 0.2 ms(5번) | 도쿄:3021 최소 0.2 · 중앙 0.2 · 최대 0.3 ms(5번)
+      판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+  ✓ 끝 — 서울 87f58a6e8e90 · 도쿄 87f58a6e8e90 · 바뀐 것: 서울 코드 eb82bf57dc69 → 87f58a6e8e90 → 서울 재배포(central: 한다 · zone: ★건너뛴다) → 도쿄 코드 62580d74bc19 → 87f58a6e8e90
+
+## ⓑ 도쿄 ssh 막힘 — sync-tokyo 에서 멈춤
+== update-live 2026-10-23 11:16:43 — 서울(seoul:/opt/Mini) → 도쿄(down:/opt/tokyo/Mini) ==
+ssh: connect to host down port 22: Connection refused
+ssh: connect to host down port 22: Connection refused
+ssh: connect to host down port 22: Connection refused
+  서울 HEAD 87f58a6e8e90 · 도쿄 HEAD  · 도쿄 스탬프 (없음 — 도쿄는 전부 한다) · 도쿄 옛 존 정원  · central 
+[①] 서울 git pull --ff-only
+    87f58a6e8e90 → 87f58a6e8e90 · 87f58a6e8e90 rehearsal: client only
+[②] 도쿄 판정: 기준점을 몰라 전부 한다(첫 실행이거나 스탬프 없음) → 도쿄 존 한다
+[③] 서울 redeploy-hanbando.sh(자동 판정)
+    [1/4] git pull
+    Already up to date.
+    87f58a6e rehearsal: client only
+    [판정] 배포된 커밋과 같다 — 바뀐 파일 0
+             central: 건너뛴다  ·  zone: ★건너뛴다 — 존이 쓰는 파일이 안 바뀌었다
+    할 일이 없다. (0초)
+      컨테이너  durango-central · running · 커밋 - · 포트 3010
+      /health   {"ok":true,"orders":0,"players":3,"uptime":27.135037028}
+      /zones    hanbando=ws://198.51.100.1:3020 nippon=ws://192.0.2.2:3021
+      컨테이너  durango-zone-hanbando · running · 커밋 - · 포트 3020
+      env       T565_MAP_LIVE= · PLAYER_CAP=150 · 판 
+      hanbando · 달력 1년 10월 25일 (가을) · 마을 50/51(사람 사는 50) · 사람 0 · 정원 150
+[④] sync-tokyo
+    ssh: connect to host down port 22: Connection refused
+      서울(seoul) HEAD 87f58a6e8e90 · 도쿄(down) HEAD 
+      ⚠차분이 이어지지 않는다(서울이 도쿄 HEAD  를 모른다 · 또는 도쿄에 레포가 없다) — 얕은 사본 통째(느리다)
+    ssh: connect to host down port 22: Connection refused
+    tar: -: Wrote only 2048 of 10240 bytes
+    tar: Child returned status 141
+    tar: Error is not recoverable: exiting now
+      ✗ 멈췄다(줄 73) — 도쿄 reset 앞에서 멈췄으면 도쿄는 옛 판 그대로다
+  ✗ 멈췄다 — sync-tokyo(두 HEAD 가 다르다 · rc 255 — 도쿄 코드는 옛 판 그대로)
+  바뀐 것: 없음(라이브 무변)
+  안 한 것: 도쿄 재배포
+
+## ⓒ 서울 한반도 존이 멈춰 있음 — 서울 관측에서 멈춤(도쿄 무변)
+== update-live 2026-10-23 11:16:57 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD 87f58a6e8e90 · 도쿄 HEAD 87f58a6e8e90 · 도쿄 스탬프 eb82bf57dc69 · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[①] 서울 git pull --ff-only
+    87f58a6e8e90 → da6ab937da9b · da6ab937da9b rehearsal: client only 2
+[②] 도쿄 판정: 바뀐 파일 1개 · eb82bf57..da6ab937 → 도쿄 존 건너뛴다
+[③] 서울 redeploy-hanbando.sh(자동 판정)
+    [1/4] git pull
+    Already up to date.
+    da6ab937 rehearsal: client only 2
+    [판정] 바뀐 파일 1개 · 87f58a6e..da6ab937
+             public/index.html
+             central: 한다  ·  zone: ★건너뛴다 — 존이 쓰는 파일이 안 바뀌었다
+    [2/4] docker build
+    [3/4] 재생성
+      [up] durango-central
+    durango-central	Up 4 seconds (health: starting)
+      ✅ central 만 재배포 — 존은 안 건드렸다(접속 끊김 없음). 총 11초
+         클라만 바뀐 배포는 이 경로다. 브라우저에서 강력 새로고침(⌘⇧R) 한 번 하면 끝.
+      컨테이너  durango-central · running · 커밋 - · 포트 3010
+      /health   {"ok":true,"orders":0,"players":3,"uptime":4.600811963}
+      /zones    hanbando=ws://198.51.100.1:3020 nippon=ws://192.0.2.2:3021
+      컨테이너  durango-zone-hanbando · exited · 커밋 - · 포트 3020
+      env       T565_MAP_LIVE= · PLAYER_CAP=150 · 판 
+      ✗ durango-zone-hanbando 가 안 돈다(exited)
+  ✗ 멈췄다 — 서울 hanbando 관측(--live rc 1)
+  바뀐 것: 서울 코드 87f58a6e8e90 → da6ab937da9b → 서울 재배포(central: 한다 · zone: ★건너뛴다)
+  안 한 것: 도쿄 전부
