@@ -95,8 +95,7 @@ async function waitHttp(url, tries = 600) {
   ok(await (await _zp).ok, 'zone 기동');
   await sleep(6000);
 
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch({ headless: !HEADED, executablePath: require('playwright').chromium.executablePath() });
+  const browser = await require('./e2e-browser').launch({ headless: !HEADED });   // ★[T902] 브라우저 고르기 env 하나 `E2E_BROWSER` — 기본 chromium = 종전 그 launch 그대로 · `webkit` = WebKit 엔진
   const allErrs = [];
   // ★셋째 클라가 초안에서 **안 들어왔다**. 원인은 로비가 존 목록을 받기 전에 버튼을 누른 것 —
   //   둘일 때는 운으로 지나갔고 셋째에서 드러났다. ⇒ 버튼이 **살아 있을 때까지 기다렸다가**

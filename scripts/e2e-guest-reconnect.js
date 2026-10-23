@@ -96,8 +96,7 @@ async function waitHttp(url, tries = 900) {
   }
   ok(hz.population != null && !!hz.cap, `로비에 존이 살아 보인다 — population=${hz.population}`);
 
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch({ headless: !HEADED, executablePath: require('playwright').chromium.executablePath() });
+  const browser = await require('./e2e-browser').launch({ headless: !HEADED });   // ★[T902] 브라우저 고르기 env 하나 `E2E_BROWSER` — 기본 chromium = 종전 그 launch 그대로 · `webkit` = WebKit 엔진
 
   // ── 게스트 입장 헬퍼 — **이름도 비밀번호도 안 넣는다**(그게 게스트다) ──────────
   const enterAsGuest = async (pg) => {
