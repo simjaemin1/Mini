@@ -467,7 +467,7 @@ const DAILY_TOOL_WEAR_PER_OTHER = 0.01;
 //   여기 적는 건 **econ 재화 이름**(플레이어 `berry`=econ `fruit` · `meat_raw`=`meat`)이고,
 //   그 대응도 새로 정하지 않는다 — `PV_DEPOSIT_MAP`(server/villages.js)이 이미 정한 대응 그대로다.
 const PRESERVE_FROM = { fish: 'dried_fish', fruit: 'dried_fruit', meat: 'smoked_meat', vegetable: 'pickled_veg' };
-const PRESERVED_FOODS = ['dried_fish', 'dried_fruit', 'smoked_meat', 'pickled_veg', 'dried_oyster', 'dried_seaweed'];   // ★[T877] 건굴 · 마른 미역(spoil 정본 · 갯벌 말리기) — 같은 규약(맨 뒤 · 환산 2.5)
+const PRESERVED_FOODS = ['dried_fish', 'dried_fruit', 'smoked_meat', 'pickled_veg'];
 // ★수율 — **새 수가 아니다.** `server/spoil.js` 의 산출 수율은 `0.4 + 0.6×신선도` 이고,
 //   여기서 보존하는 것은 **목표 재고를 넘긴 잉여**(= 오래 묵어 신선도가 바닥인 몫)라 그 식의 **하한 0.4** 다.
 //   (플레이어가 싱싱한 걸 말리면 1.0 까지 받는다 — 그건 플레이어 층의 손맛이고 여기서 흉내내지 않는다.)
@@ -513,12 +513,15 @@ function _preserveSurplus(v, from, budget, addProduce, cap, unit) {
 //   잡은 칸 → 보존식은 **spoil 정본 레시피**(`dry_fish` 어종 집합 → 건어물 · `smoke_meat` 날고기 → 훈제육)를 `PV_DEPOSIT_MAP` 대응으로 옮긴 것이다
 //     (사본 검사 — `scripts/test-t860-catch-dry.js` 가 정본과 대조한다). 굴 · 해조는 정본이 제 산출(건굴 · 마른 미역)을 갖는데 econ 에 그 칸이 없어 안 넣는다(회부).
 const T860_ON = (typeof process !== 'undefined' && process.env && process.env.T860_CATCH_DRY === '1');
-const CATCH_FROM = { fisher: { fish: 'dried_fish', salmon: 'dried_fish', shrimp: 'dried_fish', crab: 'dried_fish', oyster: 'dried_oyster', seaweed: 'dried_seaweed' }, hunter: { meat: 'smoked_meat' } };   // ★[T877] 굴 · 해조 — 정본 산출(건굴 · 마른 미역)에 econ 칸이 섰다
+const CATCH_FROM = { fisher: { fish: 'dried_fish', salmon: 'dried_fish', shrimp: 'dried_fish', crab: 'dried_fish' }, hunter: { meat: 'smoked_meat' } };
 const _t860Unit = (r) => (FORAGE_FOOD_FACTOR[r] != null ? FORAGE_FOOD_FACTOR[r] : 1);
-// ★★[T877 2026-10-23 · T860 회부 4] **요리사 갈무리도 열량을 지킨다** — 손잡이 하나 `T877_DRY_KCAL`('1' 만 켬 · 끔 = main 바이트).
+// ★★[T877 2026-10-23 · T860 회부 4] **요리사 갈무리도 열량을 지킨다** — 손잡이 하나 `T877_DRY_FIX`('1' 만 켬 · 끔 = main 바이트).
 //   종전 요리사 갈무리는 과일 · 남새(식량 환산 0.4)를 수율 0.4 로 말려 보존식 환산 2.5 로 먹였다 — 열량이 2.5 배(생성).
 //   켜면 요리사도 잡은 날 말리기와 **같은 식**(`_t860Unit` — 산출 = 뗀 양 × 수율 × 원물 1단위 식량 환산)을 쓴다(사본 0 · 생선 · 고기는 1 이라 무변).
-const T877_ON = (typeof process !== 'undefined' && process.env && process.env.T877_DRY_KCAL === '1');
+//   ★손잡이는 `server/specialty.js` 가 읽는다(`T877_DRY_FIX` — 같은 손잡이가 건굴 · 마른 미역 칸도 세운다 · 읽는 자리 하나). 여기는 그 값을 받는다.
+const T877_ON = (() => { try { return !!require('../server/specialty').T877_ON; } catch (e) { return false; } })();
+// ★★[T877 ②] 켬 = 건굴 · 마른 미역이 보존식(환산 2.5 · 사다리 맨 뒤)이고 어부가 잡은 날 굴 · 해조를 그것으로 말린다(spoil 정본 `dry_oyster` · `dry_seaweed`).
+if (T877_ON) { PRESERVED_FOODS.push('dried_oyster', 'dried_seaweed'); Object.assign(CATCH_FROM.fisher, { oyster: 'dried_oyster', seaweed: 'dried_seaweed' }); }
 function _t860Begin(v, from, potA, actA) {
   const st = {}; for (const r in from) st[r] = v.storage[r] || 0;
   return { from, potA, actA, st };

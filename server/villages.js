@@ -10221,7 +10221,6 @@ const PV_DEPOSIT_MAP = {
   //     `deliverToVillage` 가 `player.inventory.tool` 을 찾다가 **유령 품목**을 만든다.
   //     ⇒ 판단거리로 보고에 A/B 표로 올렸다(지시 §1 "판단거리는 A/B 표로").
   dried_fish: 'dried_fish', dried_fruit: 'dried_fruit', smoked_meat: 'smoked_meat', pickled_veg: 'pickled_veg',
-  dried_oyster: 'dried_oyster', dried_seaweed: 'dried_seaweed',   // ★[T877] 갯벌 말리기 둘 — econ 칸이 섰다(항등)
   salt: 'salt',
   // ★★[T302 2026-09-18 · 재민 캐논 #38 — PM 넣는다] **잡을 수는 있는데 낼 수가 없던 다섯.**
   //   `인계/E-사건장부.md` 15-벽 이 잰 어긋남이다: 촌장이 *"미역이 없다"* 고 말하는데(부족 사건은 난다)
@@ -10262,6 +10261,7 @@ const PV_DEPOSIT_MAP = {
   wheat: 'wheat', rice: 'rice', barley: 'barley',
   chestnut: 'chestnut', grape: 'grape', mulberry_fruit: 'mulberry_fruit', acorn: 'acorn',
 };
+if (_spec() && _spec().T877_ON) Object.assign(PV_DEPOSIT_MAP, { dried_oyster: 'dried_oyster', dried_seaweed: 'dried_seaweed' });   // ★[T877] 켬 = 갯벌 말리기 둘에 econ 칸이 섰다(항등 · 끔 = 이 줄 무동작)
 // ★★[T694 2026-10-11 · 손잡이 `T694_GAME_MEAT=1` — 없음 = 끔 = 이 줄이 아무것도 안 한다(`game-meat.js` 를 부르지도 않는다 · main 바이트)] **사냥 고기 넷.**
 //   T647 이 도살 드롭 `meat_game` 을 손에서 먹게 했지만 이 표에 줄이 없어 넣기·꺼내기·거래소·게시판이 안 다뤘다(T647 회부 ④).
 //   · `meat_game` → `meat_game` — econ 에 같은 id 의 재화가 **이미 있다**(`specialty.RESOURCES.meat_game` '사슴·들짐승고기' · 축산 · 사냥)

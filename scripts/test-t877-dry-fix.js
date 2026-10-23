@@ -3,11 +3,11 @@
 // === scripts/test-t877-dry-fix.js — 요리사 갈무리 열량 보존 · 건굴 · 마른 미역 econ 칸 [T877] ==========================
 //
 // ★왜 [T860 회부 4 · 1] ① 요리사 갈무리는 과일 · 남새(식량 환산 0.4)를 수율 0.4 로 말려 보존식 환산 2.5 로 먹였다 — 열량 2.5 배(생성).
-//   손잡이 하나 `T877_DRY_KCAL`('1' 만 켬 · 끔 = main 바이트) — 켜면 잡은 날 말리기와 같은 식(`_t860Unit`)으로 열량을 지킨다.
+//   손잡이 하나 `T877_DRY_FIX`('1' 만 켬 · 끔 = main 바이트 · 읽는 자리 `server/specialty.js`) — 켜면 잡은 날 말리기와 같은 식(`_t860Unit`)으로 열량을 지키고 ②의 칸 둘이 선다.
 //   ② 건굴(`dried_oyster`) · 마른 미역(`dried_seaweed`)은 spoil 정본에 있고 econ 칸이 없었다 — econ 품목 둘을 원물에서 유도해 세웠다.
 //
 // 재는 것:
-//   ① 술어 — `=== '1'` 만 켬 · 읽는 자리 = `sim/economy-sim.js` 하나 · 끔 탐침 · 요리사 부름 글자(켬 = `_t860Unit` · 끔 = null)
+//   ① 술어 — `=== '1'` 만 켬 · 읽는 자리 = `server/specialty.js` 하나 · 끔 탐침(칸 · 목록 · 표 넷) · 요리사 부름 글자(켬 = `_t860Unit` · 끔 = null)
 //   ② 한 걸음(가짜 마을) — 끔: 과일 1 → 말린 과실 0.4(환산 1.0 — 원물 0.4 의 2.5 배 · 미끼) · 켬: 0.16(환산 0.4 = 원물 그대로) · 생선은 켬 · 끔 같다
 //   ③ 품목 둘 — 이름 · 보관일 = spoil 정본 · 값 = 원물 ÷ 수율 · 무게 = `tidal.weightMap` · 쓸모 = 보존식 넷과 같다 · 기여 = 원물 subsistence ·
 //      부류 `preserved`(부패 자동) · 곳간 대응 항등 · 보존식 목록(환산 2.5 · 사다리 맨 뒤) · 잡은 날 말리기 표(굴 → 건굴 · 해조 → 마른 미역 = 정본 레시피)
@@ -20,6 +20,7 @@ const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
+if (process.env.T877_SUB !== '1') process.env.T877_DRY_FIX = '1';   // ★부모 판은 켬으로 모듈을 싣는다 — ③ 품목 둘 · ④ 표가 켬에서만 선다(아래 ⑤ 아이 판이 끔 바이트를 잰다)
 
 if (process.env.T877_SUB === '1') {
   const _l = console.log; console.log = () => {};
@@ -42,15 +43,17 @@ const near = (a, b) => Math.abs(a - b) < 1e-12;
 
 console.log('\n=== 요리사 갈무리 열량 보존 · 건굴 · 마른 미역 econ 칸 (T877) ===');
 console.log('\n① 술어 · 읽는 자리 · 끔 탐침 · 부름 글자');
-{ const decl = S.match(/const T877_ON = \(typeof process !== 'undefined' && process\.env && process\.env\.T877_DRY_KCAL === '1'\);/g) || [];
+{ const SPS = fs.readFileSync(path.join(ROOT, 'server', 'specialty.js'), 'utf8');
+  const decl = SPS.match(/const T877_ON = \(typeof process !== 'undefined' && process\.env && process\.env\.T877_DRY_FIX === '1'\);/g) || [];
   ok(decl.length === 1, '① 선언 하나 · `=== \'1\'` 만 켬(기본 끔)', `선언 ${decl.length}`);
   const files = []; const walk = (d) => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); const st = fs.statSync(p); if (st.isDirectory()) walk(p); else if (/\.js$/.test(f)) files.push(p); } };
   for (const d of ['server', 'sim', 'public']) walk(path.join(ROOT, d));
-  const readers = files.filter((p) => !/economy-engine\.browser\.js$/.test(p) && codeOnly(fs.readFileSync(p, 'utf8')).includes('T877_DRY_KCAL')).map((p) => path.relative(ROOT, p));
-  ok(readers.length === 1 && readers[0] === path.join('sim', 'economy-sim.js'), '① 읽는 자리 = sim/economy-sim.js 하나(번들은 그 사본)', readers.join(','));
-  const probe = (v) => { const e = Object.assign({}, process.env); delete e.T877_DRY_KCAL; if (v != null) e.T877_DRY_KCAL = v;
-    return execFileSync(process.execPath, ['-e', `console.log(require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'))}).T877_ON)`], { env: e, encoding: 'utf8' }).trim().split('\n').pop(); };
-  ok(probe(null) === 'false' && probe('0') === 'false' && probe('1') === 'true', '① 끔 탐침 — env 없음 · `=0` = 끔 · `=1` = 켬', `${probe(null)} · ${probe('1')}`);
+  const readers = files.filter((p) => !/economy-engine\.browser\.js$/.test(p) && codeOnly(fs.readFileSync(p, 'utf8')).includes('T877_DRY_FIX')).map((p) => path.relative(ROOT, p));
+  ok(readers.length === 1 && readers[0] === path.join('server', 'specialty.js'), '① 읽는 자리 = server/specialty.js 하나(econ · 마을은 그 값을 받는다 · 번들은 사본)', readers.join(','));
+  ok(/const T877_ON = \(\(\) => \{ try \{ return !!require\('\.\.\/server\/specialty'\)\.T877_ON; \}/.test(C), '① econ 은 specialty 의 값을 받는다(같은 손잡이 하나)');
+  const probe = (v) => { const e = Object.assign({}, process.env); delete e.T877_DRY_FIX; if (v != null) e.T877_DRY_FIX = v;
+    return execFileSync(process.execPath, ['-e', `const E=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'))}),SP=require(${JSON.stringify(path.join(ROOT, 'server', 'specialty.js'))});console.log(E.T877_ON+'/'+!!SP.RESOURCES.dried_oyster+'/'+E.PRESERVED_FOODS.length+'/'+('oyster' in E.CATCH_FROM.fisher))`], { env: e, encoding: 'utf8' }).trim().split('\n').pop(); };
+  ok(probe(null) === 'false/false/4/false' && probe('0') === 'false/false/4/false' && probe('1') === 'true/true/6/true', '① 끔 탐침 — env 없음 · `=0` = 끔(칸 · 보존식 목록 · 잡은 날 표 종전) · `=1` = 켬(넷 다)', `${probe(null)} · ${probe('1')}`);
   ok(/if \(T17_PRESERVE\) _preserveSurplus\(v, PRESERVE_FROM, jdef\.base \* skillMul, addProduce, null, T877_ON \? _t860Unit : null\);/.test(C),
     '① 요리사 부름 — 켬 = 잡은 날 말리기와 같은 환산 함수(`_t860Unit` · 사본 0) · 끔 = null(종전 글자)'); }
 
@@ -94,9 +97,9 @@ console.log('\n④ 열량 보존 — 잡은 날 말리기(굴 · 해조)');
   } }
 
 console.log('\n⑤ 세계 — econ v2 · 시드 7 · 마을 다섯 · 200날');
-{ const sub = (env) => { const e = Object.assign({}, process.env, env, { T877_SUB: '1' }); for (const k of ['T877_DRY_KCAL', 'T860_CATCH_DRY']) if (env[k] == null) delete e[k];
+{ const sub = (env) => { const e = Object.assign({}, process.env, env, { T877_SUB: '1' }); for (const k of ['T877_DRY_FIX', 'T860_CATCH_DRY']) if (env[k] == null) delete e[k];   // 부모가 켠 값은 아이에게 안 넘긴다
     return JSON.parse(execFileSync(process.execPath, [__filename], { env: e, stdio: 'pipe', maxBuffer: 64 << 20 }).toString().trim().split('\n').pop()); };
-  const none = sub({}), off = sub({ T877_DRY_KCAL: '0' }), on = sub({ T877_DRY_KCAL: '1' }), both = sub({ T877_DRY_KCAL: '1', T860_CATCH_DRY: '1' }), c860 = sub({ T860_CATCH_DRY: '1' });
+  const none = sub({}), off = sub({ T877_DRY_FIX: '0' }), on = sub({ T877_DRY_FIX: '1' }), both = sub({ T877_DRY_FIX: '1', T860_CATCH_DRY: '1' }), c860 = sub({ T860_CATCH_DRY: '1' });
   ok(none.on === false && off.on === false && on.on === true, '⑤ 전제 — 손잡이가 실제로 읽힌다');
   ok(JSON.stringify(none.out) === JSON.stringify(off.out), '⑤ `=0` 판 = env 없는 판(곳간 전 칸 바이트)');
   //   (이 작은 세계엔 요리사가 서지 않아 켬 · 끔 판이 같다 — 세계 쪽 갈림은 보고 §3 서버 판 띠가 잰다 · 함수 쪽 미끼는 ②)

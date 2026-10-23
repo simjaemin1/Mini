@@ -71,7 +71,7 @@ console.log('\n② 표 — 잡은 칸 → 보존식 = spoil 정본 레시피 × 
   const by = Object.keys((E.JOBS.fisher && E.JOBS.fisher.byproduct) || {}).filter((r) => r !== 'salt');
   const missing = by.filter((r) => !(r in E.CATCH_FROM.fisher));
   const why = missing.map((r) => { const rec = Object.values(Spoil.PRESERVE).find((x) => fromList(x).includes(r)); return [r, rec ? rec.out : null, rec ? (econOf(rec.out) || null) : null, rec ? !!(SP.RESOURCES || {})[rec.out] : null]; });
-  ok(by.length >= 5 && missing.length === 0, '② ★[T877] 어부 부산물(소금 밖)이 다 표에 든다 — 굴 · 해조도(정본 산출 건굴 · 마른 미역에 econ 칸이 섰다)', `${by.join(' · ')} · 빠짐 ${JSON.stringify(why)}`);
+  ok(missing.length > 0 && why.every(([, out, eo, inSp]) => out && !eo && !inSp), '② 빠진 칸(굴 · 해조) = 정본 산출(건굴 · 마른 미역)이 econ 곳간 · 품목표에 없다(★T877 `T877_DRY_FIX` 끔 — 켜면 칸이 선다 · test-t877)', JSON.stringify(why));
   ok(JSON.stringify(E.PRESERVE_FROM) === JSON.stringify({ fish: 'dried_fish', fruit: 'dried_fruit', meat: 'smoked_meat', vegetable: 'pickled_veg' }), '② 요리사 갈무리 표(PRESERVE_FROM)는 그대로'); }
 
 console.log('\n③ 글자 — 갈무리 한 걸음 = `_preserveSurplus` 하나');
