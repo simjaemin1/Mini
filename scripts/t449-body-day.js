@@ -46,7 +46,12 @@ const ENV = { off: Object.assign({ T449_BODY_DAY: '' }, ACTS), on: Object.assign
   it561: Object.assign({ T449_BODY_DAY: '', T561_ROSTER_BODY: '1' }, ACTS),
   //   ★[T561] 수요 문 끈 짝(`T374_DEMAND_STOP=0` — T491 판을 잰 때의 세계 · ★[T544 추신] 지금 기본은 켬) — 걸음 한도가 그대로 드러난다
   offnd: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0' }, ACTS), t561nd: Object.assign({ T449_BODY_DAY: '', T561_ROSTER_BODY: '1', T374_DEMAND_STOP: '0' }, ACTS),
-  ioffnd: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0' }, ACTS), it561nd: Object.assign({ T449_BODY_DAY: '', T561_ROSTER_BODY: '1', T374_DEMAND_STOP: '0' }, ACTS) };
+  ioffnd: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0' }, ACTS), it561nd: Object.assign({ T449_BODY_DAY: '', T561_ROSTER_BODY: '1', T374_DEMAND_STOP: '0' }, ACTS),
+  //   ★[T888] 팔 둘 — 몸 걸음 `T888_NPC_WALK` 켬(기본 · 배회 배율 1 = 64px/s · 플레이어 걸음) · 끔(`=0` · 종전 0.6 = 38.4px/s) · 행위 넷은 위 그대로
+  //     ⚠부르는 쪽 env 에 `T888_NPC_WALK` 가 있으면 `n1` 에 샌다 — 비워서 부른다(`env -u T888_NPC_WALK`)
+  n1: Object.assign({ T449_BODY_DAY: '' }, ACTS), n0: Object.assign({ T449_BODY_DAY: '', T888_NPC_WALK: '0' }, ACTS),
+  //     수요 문 끈 짝(`T374_DEMAND_STOP=0` — T561 의 `offnd` 꼴): 곳간이 차도 몸이 일을 안 멈춘다 ⇒ 걸음 한도가 그대로 드러난다(켬 기본 세계에선 몸이 수요에 묶여 쉰다)
+  n1nd: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0' }, ACTS), n0nd: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0', T888_NPC_WALK: '0' }, ACTS) };
 //   ★[T491] 들여다보기 창 — 기본은 T449 의 그 창 · `T449_PROBE=scripts/t491-probe.js` 면 몸의 하루까지(그 창이 T449 창을 같이 싣는다)
 const PROBE = process.env.T449_PROBE || 'scripts/t449-probe.js';
 const TPL = process.env.T449_TPL || '';
@@ -86,7 +91,15 @@ function boot(tag, env, i) {
   const alive = () => { try { process.kill(z.pid, 0); return true; } catch (e) { return false; } };
   const kill = async () => { clearInterval(pinger); try { ws && ws.close(); } catch (e) {} try { z.kill('SIGINT'); } catch (e) {} await sleep(3000);
     try { z.kill('SIGKILL'); } catch (e) {} try { c.kill('SIGKILL'); } catch (e) {} await sleep(300); };
-  const perf = async () => { const p = await getj('/perf?reset=1'); const t = p && p.tick && p.tick.ms; return t ? { p50: t.p50, p95: t.p95, n: t.n, cut: p.walk ? p.walk.cutTicks : null } : null; };   // 틱 값(팔 사이 벽시계가 같았나 — 읽기만)
+  const perf = async () => { const p = await getj('/perf?reset=1'); const t = p && p.tick && p.tick.ms; return t ? { p50: t.p50, p95: t.p95, n: t.n, cut: p.walk ? p.walk.cutTicks : null,
+    //   ★[T888] 걸음 · 충돌 값도 같이(읽기만 · `/perf` 가 이미 내는 칸) — 걸음 수 · 벽/지형 질의 · 빠진 몸 밀어내기 · 틱 빚
+    walk: p.walk ? { steps: p.walk.steps, wallQ: p.walk.wallQ, terrQ: p.walk.terrQ, eject: p.walk.eject } : null,
+    lagPct: p.tick ? p.tick.lagPct : null, dropN: p.tick ? p.tick.dropN : null,
+    //   ★[T888] 행위 넷의 존 누계(밭 왕복 · 어부 · 나무 · 채집 — `/perf` 의 그 절 그대로 · 끔이면 null)
+    farm: p.farm ? { trips: p.farm.trips, delivered: p.farm.delivered, harvestN: p.farm.harvestN, working: p.farm.working, farmers: p.farm.farmers } : null,
+    fish: p.fish ? { delivered: p.fish.delivered, walkers: p.fish.walkers, hands: p.fish.hands } : null,
+    wood: p.wood ? { delivered: p.wood.delivered, walkers: p.wood.walkers, hands: p.wood.hands, cutDay: p.wood.cutDay } : null,
+    forage: p.forage ? { delivered: p.forage.delivered, walkers: p.forage.walkers, hands: p.forage.hands, pickDay: p.forage.pickDay } : null } : null; };   // 틱 값(팔 사이 벽시계가 같았나 — 읽기만)
   return { tag, z, c, getj, health, observe, probe, alive, kill, perf };
 }
 const tot = (rows, skip) => { const o = { pop: 0, fe: 0, wood: 0, houses: 0, woodBody: 0, forageBody: 0, seen: 0 };
