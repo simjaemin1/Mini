@@ -1,7 +1,7 @@
 'use strict';
 // (@regress 없음 — 러너 밖 · T825 관찰기 · 제품 무변)
 // === scripts/t825-observe.js — T825: 곳간이 바닥인 마을이 먹을 것을 내다 파나(서버 판 자 `t577-server-run.js` 곁 프리로드 · 읽기만) ==========
-//   NODE_OPTIONS="-r $PWD/scripts/t825-observe.js" [T825_FOOD_KEEP=1] [T825_SKIP1=1] node scripts/t577-server-run.js 800 1020,7,42
+//   NODE_OPTIONS="-r $PWD/scripts/t825-observe.js" [T825_FOOD_KEEP=0] [T825_SKIP1=1] node scripts/t577-server-run.js 800 1020,7,42
 //   `T825_SKIP1=1` = T810 ⓩ 꼴 갈림 대조 — 첫 습격 조우 하나만 null(그 뒤 습격 그대로 · 세계가 그날 갈린다 · 손잡이가 아니라 이 프리로드의 갈래).
 //   읽는 창구: econ 계측 훅 `world.onTradeLeg`(T206 — 주입 없으면 비트 동일 · 출발 leg 하나마다) · 장부 `scanDay`(하루 끝).
 //   ⇒ `<판>-<시드>.t825.json`:
@@ -17,7 +17,7 @@ const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const SKIP1 = process.env.T825_SKIP1 === '1';
 const GRAIN = ['rice', 'wheat', 'barley'];
-const rec = { on: process.env.T825_FOOD_KEEP === '1', skip1: SKIP1, skipped: 0, names: null, fw: {}, legs: [], days: [], buys: [], hooked: 0 };
+const rec = { on: process.env.T825_FOOD_KEEP !== '0', skip1: SKIP1, skipped: 0, names: null, fw: {}, legs: [], days: [], buys: [], hooked: 0 };
 const r2 = (x) => Math.round((+x || 0) * 100) / 100;
 const FW = new Map();
 function fw(v, r) {   // 1 단위의 식량 환산(정본 `totalFoodEquivalent` 를 그 품목 1 만 든 곳간에)
