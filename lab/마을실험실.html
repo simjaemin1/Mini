@@ -82,14 +82,15 @@
 //   (예: T602 새 해안 어종 일곱 `T602_NEW_FISH` — 같은 줄이 랩에도 실려 있는데 켤 수가 없었다).
 //   ⇒ URL 의 **대문자 칸**(`전쟁실험실.html?T602_NEW_FISH=1`)을 **그 이름 그대로** env 에 넣는다 — 이름·기본이 서버와 같다
 //     (값을 안 주면 서버도 랩도 코드에 적힌 기본 · 새 수 0 · 사본 0 — 읽는 줄은 번들의 그 줄 하나).
-//   ★대문자 칸이 하나도 없으면 **아무것도 안 한다**(`window.process` 를 안 만든다 = 종전 랩 그대로 · 바이트 같음).
+//   ★[T882 2026-10-23 ← T852 회부 1] 대문자 칸이 하나도 없어도 **빈 env 를 늘 세운다**(`window.process = { env: {} }` · `window.LAB_ENV = {}` = 서버 기본) —
+//     종전엔 칸이 없으면 안 만들었다(= 종전 랩 바이트 같음). 그러면 같은 랩이 쿼리 유무로 두 세계였다: 랩 쪽 읽기(`window.LAB_ENV && …` — 예: `L_T720`)가
+//     쿼리 없이는 꺼지고 붙이면 켜졌다(서버 기본은 켬). 표시·알림은 칸이 있을 때만 그대로.
 //   ★랩 손잡이(`seed`·`pop`·`cropcal`·`stream` 같은 소문자 칸)는 건드리지 않는다 · 배틀 코어 `_bcKnob` 도 같은 env 를 읽는다.
 (function(){try{
-  if(typeof location==='undefined'||!location.search)return;
-  var q=new URLSearchParams(location.search),env={},n=0;
+  var q=new URLSearchParams((typeof location!=='undefined'&&location.search)?location.search:''),env={},n=0;
   q.forEach(function(v,k){if(/^[A-Z][A-Z0-9_]*$/.test(k)){env[k]=v;n++;}});
-  if(!n)return;
-  window.process={env:env}; window.LAB_ENV=env;
+  window.process={env:env}; window.LAB_ENV=env;   // ★[T882] 칸이 없어도 **늘** 세운다(빈 env = 서버 기본) — 쿼리 유무로 세계가 갈리지 않는다
+  if(!n)return;   // 칸이 없으면 표시·알림만 건너뛴다
   var s=Object.keys(env).map(function(k){return k+'='+env[k];}).join(' · ');
   try{console.info('[T641] 서버 env 손잡이 '+n+' — '+s);}catch(e){}
   document.addEventListener('DOMContentLoaded',function(){try{var b=document.createElement('div');b.id='labEnv';b.textContent='env · '+s;

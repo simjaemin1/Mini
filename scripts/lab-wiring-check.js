@@ -817,7 +817,7 @@ console.log('\n[K] 랩 ↔ 서버 대조 — 서버에만 있던 여섯(T599)');
 //   대조표 = `lab/README.md` '랩 ↔ 서버 대조 2차' 절. 이 절은 그 '옮김' 두 줄이 **계속 같은지** 기계로 본다.
 //   ⓐ 문(`▼T641-ENV-DOOR`)이 두 랩에 하나씩 · 번들 시작 표시 **앞**(번들이 처음 실행될 때 env 가 이미 서 있어야 한다) ·
 //      문 본문을 떠서 돌리면 URL **대문자 칸만** env 로 가고(랩 소문자 칸 `seed`·`cropcal` 은 안 샌다) · 칸이 없으면
-//      `window.process` 를 **안 만든다**(= 종전 랩 그대로)
+//      **빈 env 를 늘 세운다**(★[T882] 종전: `window.process` 를 안 만든다 = 쿼리 없는 랩이 다른 세계였다)
 //   ⓑ 번들 shim 이 `root.process` 를 읽는다 · 서버와 같은 손잡이 줄(`T602_NEW_FISH` — server/specialty.js 의 그 줄)이 번들에 실려 있다
 //   ⓒ [자명 통과 금지] 문 정규식을 풀어 소문자도 받게 비틀면 랩 손잡이 칸이 env 로 샌다 — 검사가 문다
 //   ⓓ 작물 철 켬 — 랩 `cropGrowAt`(구운 블록 · `scripts/t594-lab-cropcal.js`) = 서버 `crops.readyDay`(T594_CROP_CAL=1)
@@ -841,7 +841,9 @@ console.log('\n[L] 랩 ↔ 서버 대조 2차 — 서버 env 손잡이 문 · �
   const probe = (code) => {
     const w1 = runDoor(code, '?T602_NEW_FISH=1&seed=7&cropcal=1&PEACE_W=0.3&stream=gorge');
     const w0 = runDoor(code, '?seed=7&cropcal=1'), wE = runDoor(code, '');
-    return { env: w1.process ? JSON.stringify(w1.process.env) : null, none: !('process' in w0) && !('process' in wE) };
+    //   ★[T882] 칸이 없어도(소문자 칸뿐 · 쿼리 없음) **빈 env 를 늘 세운다** — `window.process.env` 와 `window.LAB_ENV` 가 같은 빈 객체(= 서버 기본). 안 만들면(옛 계약) 빨강.
+    const emptyEnv = (w) => !!w.process && !!w.LAB_ENV && w.process.env === w.LAB_ENV && Object.keys(w.process.env).length === 0;
+    return { env: w1.process ? JSON.stringify(w1.process.env) : null, none: emptyEnv(w0) && emptyEnv(wE) };
   };
   const WANT = '{"T602_NEW_FISH":"1","PEACE_W":"0.3"}';
   let door0 = null;
@@ -855,8 +857,8 @@ console.log('\n[L] 랩 ↔ 서버 대조 2차 — 서버 env 손잡이 문 · �
     door0 = door0 || code;
     try {
       const p = probe(code);
-      if (p.env === WANT && p.none) ok(`${f} [T641 ⓐ] 대문자 칸만 같은 이름으로 env(${WANT}) · 소문자 칸(seed·cropcal·stream) 안 샘 · 칸 없으면 window.process 안 만듦`);
-      else bad(`${f} [T641 ⓐ] 문 동작이 다르다 — env ${p.env} · 칸 없음에 process ${p.none ? '안 만듦' : '만듦'}`);
+      if (p.env === WANT && p.none) ok(`${f} [T641 ⓐ] 대문자 칸만 같은 이름으로 env(${WANT}) · 소문자 칸(seed·cropcal·stream) 안 샘 · 칸 없으면 빈 env 를 늘 세움(= 서버 기본 · T882)`);
+      else bad(`${f} [T641 ⓐ] 문 동작이 다르다 — env ${p.env} · 칸 없음에 빈 env ${p.none ? '세움' : '안 세움(옛 계약 — 쿼리 유무로 세계가 갈린다)'}`);
     } catch (e) { bad(`${f} [T641 ⓐ] 문 본문이 돌지 않는다 — ${e.message}`); }
   }
   // ⓐ′ 작물 철 손잡이 — 서버 이름(`?T594_CROP_CAL=`)도 받는다(구운 블록 바로 뒤 한 줄 · 서버 `crops.js` `_num` 과 같은 읽기)
