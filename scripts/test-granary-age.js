@@ -299,7 +299,7 @@ say('\n⑦ 배선 — 문 앞 · 문 뒤 · 전부 손잡이 뒤 · T716 임시 
   ok(!/T716_GRANARY_AGE|_t716Snap|_t716Put|_t716Take|T716_AGE|_t716Lots\s*\|\|/.test(zc), '★⑦ T716 임시 고침 걷음 — 손잡이 · 도우미 셋 · 곁 장부 쓰기가 코드에 없다(곁 장부가 남은 옛 저장은 켬 부팅이 본 장부로 옮긴다)');
   ok(/v\._t716Lots/.test(SRC('granary-lots.js')) && /T716 걷기/.test(SRC('granary-lots.js')), '⑦ 옛 곁 장부(`econ._t716Lots`)가 있으면 그 레코드를 본 장부로 옮긴다(나이 그대로 · 지우지 않는다)');
   const sv = fnOf(VSRC, 'serializeEcon'), rs = fnOf(VSRC, 'restoreEcon');
-  ok(/out\._t732Lots = D/.test(sv) && /_t732Saved\.set\(v, v\._t732Lots\); delete v\._t732Lots;/.test(rs), '⑦ 저장 — 곳간 장부는 곳간 값과 같은 econ 줄에(재기동이 같이 읽는다) · econ 객체엔 칸을 안 남긴다');
+  ok(/out\._t732Lots = D/.test(sv) && /_t732Saved\.set\(v, v\._t732Lots\);? (?:\}\s*)?(?:delete v\._t732Lots;|_t862Drop\(v, '_t732Lots'\);)/.test(rs), '⑦ 저장 — 곳간 장부는 곳간 값과 같은 econ 줄에(재기동이 같이 읽는다) · econ 객체엔 칸을 안 남긴다(T862 이후 `_t862Drop` — 끔 = `delete`)');
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

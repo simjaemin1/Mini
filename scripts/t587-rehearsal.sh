@@ -9,6 +9,7 @@
 #   bash scripts/t587-rehearsal.sh old            옛 세계를 라이브처럼 세운다 — 옛 커밋 이미지 · 서울 9-30 사본 DB(day 3341 · 겹친 영토 38,032) ·
 #                                                  central(ZONE_HOSTS 26 → 서울 · 도쿄 env 한 줄 · 비밀 셋) · 닛폰(light · 새 DB) · 옛 사람(계정·손님)
 #   bash scripts/t587-rehearsal.sh runbook <장>   절차서의 그 장(§)에 있는 `ssh root@<서울|도쿄> …` 줄을 차례로 친다(프롬프트 답은 표에서)
+#                                                  [T878] `ssh seoul|tokyo …`(별칭) 줄 · `sync-tokyo.sh` 맥 줄(ssh 흉내 · 도쿄 자리 /opt/tokyo/Mini)도 친다
 #   bash scripts/t587-rehearsal.sh probe          확인 자 — 달력 · 시딩 · /zones · 겹친 영토(T569) · 경계 왕복(e2e-zone-cross 외부 모드)
 # 실행 전제: dockerd 가 --bip=198.51.100.1/24 로 떠 있다 · /opt/Mini = 리허설 origin(/root/rh/origin.git) 클론 · node:22-alpine 이 상자 CA 를 믿는 판
 set -uo pipefail
@@ -69,13 +70,17 @@ for line in open(doc, encoding='utf-8'):
     if not on: continue
     if s.startswith('```'):
         inblk = not inblk; continue
-    if inblk and s.startswith('ssh '):
+    if inblk and (s.startswith('ssh ') or 'sync-tokyo.sh' in s):
         print(s)
 PY
   while IFS= read -r line; do
     n=$((n + 1))
     local host cmd ans=""
-    case "$line" in *"root@$LIVE_S"*) host=seoul ;; *"root@$LIVE_T"*) host=tokyo ;; *) say "  ? 호스트 모름: $line"; continue ;; esac
+    case "$line" in
+      *sync-tokyo.sh*) host=mac ;;                                              # [T878] 맥 한 줄(별칭 seoul · tokyo 로 ssh)
+      *"root@$LIVE_S"*|"ssh seoul "*|"ssh -t seoul "*) host=seoul ;;
+      *"root@$LIVE_T"*|"ssh tokyo "*|"ssh -t tokyo "*) host=tokyo ;;
+      *) say "  ? 호스트 모름: $line"; continue ;; esac
     [[ "$line" == *"# 답: "* ]] && ans="${line##*# 답: }"
     cmd="$(python3 - "$line" <<'PY'
 import sys, shlex
@@ -92,7 +97,12 @@ else:
 PY
 )"
     local t0; t0=$(date +%s)
-    if [ "$cmd" = PIPE ]; then
+    if [ "$host" = mac ]; then
+      # [T878] `bash <(ssh seoul cat …/sync-tokyo.sh)` — 그 줄 그대로 · ssh 만 이 상자 흉내(별칭 버리고 bash -c) · 도쿄 코드 자리 = /opt/tokyo/Mini
+      mkdir -p "$OUT/fakessh"; printf '%s\n' '#!/usr/bin/env bash' 'while [ "${1#-}" != "$1" ]; do shift; done; shift; exec bash -c "$*"' > "$OUT/fakessh/ssh"; chmod +x "$OUT/fakessh/ssh"
+      echo "  [$n · 맥] $line  (ssh = 이 상자 · SYNC_TOKYO_DIR=/opt/tokyo/Mini)" >> "$OUT/steps.txt"
+      PATH="$OUT/fakessh:$PATH" SYNC_SEOUL_DIR=/opt/Mini SYNC_TOKYO_DIR=/opt/tokyo/Mini bash -c "export PATH; ${line%%  # *}" < /dev/null > "$OUT/line-$sec-$n.log" 2>&1
+    elif [ "$cmd" = PIPE ]; then
       # 서울 → 맥 → 도쿄 파이프(코드 받기) — 두 쪽을 이 상자에서 그대로
       local left right
       left="$(python3 -c "import sys,shlex;p=shlex.split(sys.argv[1].split('  # ')[0]);i=p.index('|');print(p[i-1])" "$line")"

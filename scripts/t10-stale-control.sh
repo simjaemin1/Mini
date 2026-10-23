@@ -21,7 +21,8 @@ trap 'rm -f "$OLD"' EXIT
 git show HEAD:scripts/test-guest-rejoin.js > "$OLD" 2>/dev/null || {
   echo "HEAD 에 옛 판이 없다 — 이미 커밋한 뒤라면 HEAD~1 로 바꿔라"; exit 2; }
 
-cleanup() { pkill -f "server/zon[e].js" 2>/dev/null; pkill -f "server/centra[l].js" 2>/dev/null; sleep 3; }
+source "$(dirname "${BASH_SOURCE[0]}")/_mine.sh"   # ★[T853] 이름으로 죽이되 내 netns 의 것만
+cleanup() { kill_mine 'server/zon[e].js'; kill_mine 'server/centra[l].js'; sleep 3; }
 stale() {
   cleanup
   DB_PATH=/tmp/t10-stale-c.db PORT=3010 PUBLIC_HOST=localhost \

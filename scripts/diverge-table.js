@@ -58,4 +58,28 @@ for (const P of PAIRS) {
     console.log(`| ${nm} | ${f(a.lo)} ~ ${f(a.hi)} · ${f(a.w)} | ${f(b.lo)} ~ ${f(b.hi)} · ${f(b.w)} | ${d > 0 ? '+' : ''}${f(d)} | ${dm > 0 ? '+' : ''}${f(dm)} | ${ov ? '겹침' : '안 겹침'} | ${big ? '예' : '아니오'} |`); }
   OUT.pairs.push({ P, rows });
 }
+// ★[T859 · T842 추신] 굶는 날(출발 마을 곳간 식량 환산 < 인구) 떠난 캐러밴 — 무엇을 내주고 식량을 사 왔나 · 그 뒤 그 마을 도구 · 무기 · 생산(갈래 판 · 3시드 합)
+if (process.argv.includes('--buys')) {
+  console.log('\n## 굶는 마을이 식량을 사 올 때 내준 것(갈래 판 · 3시드 합 · `diverge-ctl` buys)\n');
+  console.log('| 갈래(쓴 판) | 굶는 날 떠난 캐러밴 | 그중 먹을 것을 사 옴 | 사 온 식량 환산 | 내준 것(품목 · 양 — 많은 순) | 식량 한 단위당 내준 값(출발 값 × 양 ÷ 식량 환산) | 한 번마다 그 값 — 중앙값 · 90% · 최대 | 식량 한 단위당 내준 양 | 그 마을 도구 · 무기 · 생산 배율(떠난 날 → 30일 뒤 · 평균) |');
+  console.log('|---|---|---|---|---|---|---|---|---|');
+  OUT.buys = {};
+  //   갈래의 판 가운데 buys 가 선 판(사 온 것이 한 번이라도 적힌 판 — 이 칸이 생기기 전 판은 뺀다)을 다 더한다 · 쓴 판 수를 적는다
+  for (const arm of Object.keys(G).sort()) {
+    const runs = [arm, ...Object.keys(G[arm].ctl).sort().map((c) => `${arm}~${c}`)];
+    let n = 0, nf = 0, feq = 0, val = 0, gq = 0, used = 0; const give = {}; const per = []; const t0 = [0, 0, 0], t1 = [0, 0, 0]; let tn = 0;
+    for (const rn of runs) { const dir = path.join(D, 'run-' + rn);
+    const obs = SEEDS.map((s) => rd(path.join(dir, `base-${s}.dctl.json`)));
+    if (!obs.every((ob) => ob && ob.buys && ob.ver >= 2)) continue; used++;   // ver 2 = 장마당 정산 뒤에 적는 판
+    for (const ob of obs) { const by = new Map(ob.days.map((d) => [d[0], d[1]]));
+      for (const b of ob.buys) { n++; const [d0, fi, , gr, ga, pf, rr, ra, f] = b;
+        if (f > 0 && ra > 0) { nf++; feq += ra * f; val += ga * pf; gq += ga; per.push(ga * pf / (ra * f)); if (gr) { const g = give[gr] || (give[gr] = 0); give[gr] = g + ga; } }
+        const A = by.get(d0), Z = by.get(d0 + 30); if (A && Z && A[fi] && Z[fi] && A[fi].length > 4) { for (let j = 0; j < 3; j++) { t0[j] += A[fi][2 + j]; t1[j] += Z[fi][2 + j]; } tn++; } } } }
+    if (!n) continue;
+    const top = Object.entries(give).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([r, q]) => `${r} ${f(q)}`).join(' · ');
+    per.sort((x, y) => x - y); const q = (p) => per.length ? per[Math.min(per.length - 1, Math.floor(p * per.length))] : 0;
+    OUT.buys[arm] = { n, nf, feq, val, gq, give, t0, t1, tn, used, p50: q(0.5), p90: q(0.9), pmax: per.length ? per[per.length - 1] : 0 };
+    console.log(`| ${arm}(판 ${used}) | ${n} | ${nf} | ${f(feq)} | ${top || '—'} | ${feq > 0 ? (val / feq).toFixed(3) : '—'} | ${per.length ? [q(0.5), q(0.9), per[per.length - 1]].map((x) => x.toFixed(3)).join(' · ') : '—'} | ${feq > 0 ? (gq / feq).toFixed(3) : '—'} | ${tn ? t0.map((x, j) => `${f(x / tn)} → ${f(t1[j] / tn)}`).join(' · ') : '—'} |`);
+  }
+}
 if (JOUT) fs.writeFileSync(JOUT, JSON.stringify(OUT));

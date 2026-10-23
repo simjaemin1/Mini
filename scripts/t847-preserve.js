@@ -16,18 +16,28 @@
 //     T749_OUT=/tmp/d.json T749_LEDGER=1 T789_DISCARD=1 node scripts/t17-metrics.js 800 1020
 // 결정론 — 새 수 0.
 'use strict';
-const OUT = process.env.T847_OUT || '';
+// ★[T860] 서버 판 자(`t577-server-run.js`) 곁에서도 — 아이 존마다 `<판>-<시드>.t847.json`(T577_OUT 곁 · diverge-ctl 과 같은 꼴) · 부패(econ `tickDecay`) 칸도 센다.
+const OUT = process.env.T847_OUT || (process.env.T577_SEED && process.env.T577_OUT ? process.env.T577_OUT.replace(/\.json$/, '') + '.t847.json' : '');
 if (OUT) {
   const Module = require('module'), fs = require('fs'), path = require('path');
   const ROOT = path.join(__dirname, '..');
   const GATE = 'if (totalFoodEquivalent(v) > _N * DAILY_FOOD_CONSUMPTION * (RESERVE_PC.food || 30)) {';
   const STEP = 'v.storage[_fr] -= _take; _cons(v, _fr, _take);';
   const PATCH = [
-    [GATE, 'if (globalThis.__T847_G(v, totalFoodEquivalent(v) > _N * DAILY_FOOD_CONSUMPTION * (RESERVE_PC.food || 30), jdef.base * skillMul)) {'],
-    [STEP, 'globalThis.__T847_P(v, _fr, _take, _sur, _pBudget); ' + STEP],
+    [GATE, 'if (globalThis.__T847_G(v, totalFoodEquivalent(v) > _N * DAILY_FOOD_CONSUMPTION * (RESERVE_PC.food || 30), budget, cap ? 1 : 0)) {'],   // ★[T860] 갈무리가 함수(`_preserveSurplus`)로 갔다 — cap 있음 = 잡은 날 말리기
+    [STEP, 'globalThis.__T847_P(v, _fr, _take, _sur, _pBudget, cap ? 1 : 0); ' + STEP],
   ];
+  const DEC = '    v.storage[r] = s * (1 - rate);\n';   // econ-v2 `tickDecay` 품목 줄(t749-decay 와 같은 자리 — 둘이 같이 실려도 각자 한 번)
   const prev = Module._extensions['.js'];
   Module._extensions['.js'] = function (m, f) {
+    if (path.basename(f) === 'economy-sim-v2.js' && path.basename(path.dirname(f)) === 'sim') {
+      const orig = m._compile;
+      m._compile = function (c, fn) {
+        const n = c.split(DEC).length - 1;
+        if (n !== 1) throw new Error(`t847-preserve: 부패 줄이 ${n}개 — 하나여야 한다`);
+        return orig.call(this, c.replace(DEC, '    if (globalThis.__T847_D) globalThis.__T847_D(v, r, s * rate);\n' + DEC), fn);
+      };
+    }
     if (path.basename(f) === 'economy-sim.js' && path.basename(path.dirname(f)) === 'sim') {
       const orig = m._compile;
       m._compile = function (c, fn) {
@@ -47,18 +57,22 @@ if (OUT) {
   const R = (v) => {
     const k = v && v.name != null ? String(v.name) : null; if (k == null) return null;
     let i = vidx.get(k);
-    if (i == null) { i = rows.length; vidx.set(k, i); rows.push({ name: k, days: 0, cookDays: 0, gateOpen: 0, budget: 0, used: 0, take: {}, sur: {}, rot: {}, rotDays: 0, rotDaysGateOpen: 0, gateOpenToday: 0, rotToday: 0 }); }
+    if (i == null) { i = rows.length; vidx.set(k, i); rows.push({ name: k, days: 0, cookDays: 0, gateOpen: 0, budget: 0, used: 0, take: {}, sur: {}, rot: {}, rotDays: 0, rotDaysGateOpen: 0, gateOpenToday: 0, rotToday: 0, dec: {}, catch: { calls: 0, open: 0, budget: 0, used: 0, take: {} } }); }
     return rows[i];
   };
   let today = new Set();
-  globalThis.__T847_G = function (v, open, budget) {
-    const r = R(v); if (r) { r.cookDays++; if (open) { r.gateOpen++; r.budget += budget; r.gateOpenToday = 1; } }
+  globalThis.__T847_G = function (v, open, budget, isCatch) {
+    const r = R(v); if (!r) return open;
+    if (isCatch) { r.catch.calls++; if (open) { r.catch.open++; r.catch.budget += budget; } return open; }
+    r.cookDays++; if (open) { r.gateOpen++; r.budget += budget; r.gateOpenToday = 1; }
     return open;
   };
-  globalThis.__T847_P = function (v, fr, take, sur, left) {
+  globalThis.__T847_P = function (v, fr, take, sur, left, isCatch) {
     const r = R(v); if (!r) return;
+    if (isCatch) { r.catch.take[fr] = (r.catch.take[fr] || 0) + take; r.catch.used += take; return; }
     r.take[fr] = (r.take[fr] || 0) + take; r.sur[fr] = (r.sur[fr] || 0) + sur; r.used += take;
   };
+  globalThis.__T847_D = function (v, res, x) { const r = R(v); if (r && x > 0) r.dec[res] = (r.dec[res] || 0) + x; };
 
   // 장부 마감 머리 — 그 앞뒤 칸 차이 = 버림
   const G = require(path.join(ROOT, 'server', 'granary-lots.js'));
@@ -81,7 +95,7 @@ if (OUT) {
   process.on('exit', () => {
     try {
       for (const r of rows) { delete r.gateOpenToday; delete r.rotToday; }
-      fs.writeFileSync(OUT, JSON.stringify({ meta: { T789: process.env.T789_DISCARD || '', ledger: process.env.T749_LEDGER || '' }, rows }));
+      fs.writeFileSync(OUT, JSON.stringify({ meta: { T789: process.env.T789_DISCARD || '', ledger: process.env.T749_LEDGER || '', T860: process.env.T860_CATCH_DRY || '', seed: process.env.T577_SEED || '' }, rows }));
     } catch (e) { process.stderr.write('[t847-preserve] 쓰기 실패 ' + e.message + '\n'); }
   });
 }

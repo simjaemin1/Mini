@@ -8,8 +8,10 @@
 #   ⇒ 패턴을 **별도 파일 안에** 가둔다. 부르는 쪽 명령줄엔 `bash scripts/_drain.sh` 만 남는다.
 #
 # 사용: bash scripts/_drain.sh [대기초 기본 6]
+# ★[T853] 이름으로 죽이되 **내 netns 의 것만** — 레인을 가른 상자에서 남의 central·존에 SIGTERM 을 안 보낸다(`_mine.sh`).
 set -u
-pkill -f "server/zon[e].js" 2>/dev/null || true
-pkill -f "server/centra[l].js" 2>/dev/null || true
+source "$(dirname "${BASH_SOURCE[0]}")/_mine.sh"
+kill_mine 'server/zon[e].js'
+kill_mine 'server/centra[l].js'
 sleep "${1:-6}"
 exit 0
