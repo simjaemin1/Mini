@@ -20,6 +20,8 @@
 //     cars   — 새 캐러밴 [날 · 출발 · 도착]
 //     legs   — 먹을 것(식량 환산 > 0 · 식량류 넷 밖) leg [날 · 출발 · 품목 · 단위 · 1단위 식량 값 · 출발 인구 · 싣기 전 곳간 식량 환산] — T825 셈
 //     raids  — 날마다 습격 조우 수(전투 자리 · 단 n > 0) · skip — 건너뛴 사건 [날 · 종류 · n · 출발 · 도착]
+//     ★[T859] days 칸에 [도구 합 · 무기 · 생산 배율] 을 더하고 · buys — 굶는 날 떠난 캐러밴이 사 온 것
+//       [떠난 날 · 출발 · 도착 · 내준 품목 · 양 · 출발 값(pFrom) · 사 온 품목 · 양 · 1단위 식량 값 · 행상 죽음]
 const path = require('path');
 const fs = require('fs');
 if (!process.env.T577_SEED) return;
@@ -33,7 +35,7 @@ const SKIP = SK ? { kind: SK[1], n: +SK[2] } : null;
 const RAID = new Set(['_caravanArrive', 'tickCaravansV2']), SIGHT = new Set(['tickTradeV2Steps']);
 const ECON = new Set(['_caravanArrive', 'tickCaravansV2', 'tickTradeV2Steps', 'netExportValue']);
 const FOODR = new Set(['food', 'fish', 'meat', 'cooked_food']);
-const rec = { arm: ARM, skip: SKIP, skipped: [], names: null, fw: {}, days: [], cars: [], legs: [], raids: {}, hooked: 0, seen: { raid: 0, sight: 0 } };
+const rec = { ver: 2, arm: ARM, skip: SKIP, skipped: [], names: null, fw: {}, days: [], cars: [], legs: [], buys: [], raids: {}, hooked: 0, seen: { raid: 0, sight: 0 } };
 const r2 = (x) => Math.round((+x || 0) * 100) / 100;
 const _hold = { stack: '' };
 function econCaller() {   // 스택을 위로 훑어 처음 만나는 econ 함수 이름
@@ -86,6 +88,7 @@ function arm(world) {
   }
 }
 const seenC = new WeakSet();
+const TRK = new Map();   // 굶는 날(출발 마을 곳간 식량 환산 < 인구) 떠난 캐러밴 → [날 · 출발 · 도착 · 내준 품목 · 양 · 출발 값]
 const mk = Ev.createLedger;
 Ev.createLedger = function () {
   const L = mk.apply(this, arguments);
@@ -97,9 +100,17 @@ Ev.createLedger = function () {
       const V = world.villages;
       if (!rec.names) rec.names = V.map((v) => v.name);
       const row = new Array(rec.names.length).fill(null);
-      for (const v of V) { const i = rec.names.indexOf(v.name); if (i >= 0) row[i] = [(v.npcs || []).length, r2(tfe(v))]; }
+      for (const v of V) { const i = rec.names.indexOf(v.name); if (i >= 0) row[i] = [(v.npcs || []).length, r2(tfe(v)), r2((v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0)), r2(v.storage.weapon), r2(v.lastStats && v.lastStats.production)]; }
       rec.days.push([day | 0, row]);
-      for (const c of world.caravans || []) { if (seenC.has(c)) continue; seenC.add(c); const fi = rec.names.indexOf(c.from && c.from.name), ti = rec.names.indexOf(c.to && c.to.name); if (fi >= 0 && ti >= 0) rec.cars.push([day | 0, fi, ti]); }
+      for (const c of world.caravans || []) {
+        if (!seenC.has(c)) { seenC.add(c); const fi = rec.names.indexOf(c.from && c.from.name), ti = rec.names.indexOf(c.to && c.to.name); if (fi >= 0 && ti >= 0) {
+          rec.cars.push([day | 0, fi, ti]);
+          const fr = row[fi]; if (fr && fr[1] < fr[0]) TRK.set(c, [day | 0, fi, ti, c.giveRes || null, r2(c.giveAmt), +(+c.pFrom_at_depart || 0).toFixed(4)]); } }
+        const t = TRK.get(c);
+        if (t && !t.done && (c._done || (c.state === 'inbound' && !c._t707))) {   // 굶는 날 떠난 캐러밴이 사 온 것(도착 매입 — 장마당(T707)이면 정산 뒤 · 없으면 빈손)
+          t.done = 1; const rr = c._returningRes || null, ra = +c._returningAmt || 0;
+          rec.buys.push([...t, rr, r2(ra), rr ? fw(c.from, rr) : 0, c._done ? 1 : 0]); }
+      }
     } catch (e) { console.error('[dctl] 관측 실패:', e.message); }
     return sd.apply(this, arguments);
   };

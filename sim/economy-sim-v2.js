@@ -42,6 +42,12 @@ function _t825FoodPer(v, r) {   // 품목 1 단위의 식량 환산(정본 `tota
 //   값이 서는 자리 전부가 이 하한 하나를 부른다 — 결정층 값표(`computeShadowPrices` · 도착 매도 · 거래소 · 견적이 이 표를 읽는다) ·
 //   출발 직후 값(`_priceNowV2` · 종전 축약식 둘) · 정산 곡선(`_priceParamsV2` · `_settleParamsV2` — 곡선 바닥을 그 하한으로 올린다). 새 수 0.
 const T842_FOOD_FLOOR = (typeof process !== 'undefined' && process.env && process.env.T842_FOOD_FLOOR === '1');
+// ★★[T859 2026-10-22 · PM 결정 ㄷ · 재민 10-21 "굶으면 식량 가치가 높아야"] **식량 값의 희소도를 굶주림으로** — 손잡이 `T859_FOOD_HUNGER`('1' 만 켬 · 없음 · 다른 값 = 끔 = main 바이트).
+//   `food` 그림자가격의 유효 재고는 `storage.food` 한 칸이었다(T842 뿌리 — 쌀 · 생선을 쌓은 배부른 마을도 `food` 칸이 얇으면 값이 높고, 곳간 0.9일 마을은 그보다 낮았다).
+//   켬: `food` 값의 유효 재고 = 곳간 식량 환산(정본 `v1.totalFoodEquivalent` — 식량류 · 생곡 · 채집 · 보존식 · 작물 전부) · 흐름 선반영(`surplusEMA.food × 30`)은 그대로 더한다.
+//   값이 서는 자리 전부(결정층 `_targetV2` · 정산 종전 식 `_priceParamsV2` · 출발 직후 종전 축약식 둘) · 3사본(번들 · 랩 두 개). 물리 재고(`physical` — 살 수 있는 양)는 `storage.food` 그대로다. 새 수 0.
+const T859_FOOD_HUNGER = (typeof process !== 'undefined' && process.env && process.env.T859_FOOD_HUNGER === '1');
+function _t859Stock(v, r) { return (T859_FOOD_HUNGER && r === 'food') ? (+v1.totalFoodEquivalent(v) || 0) : (v.storage[r] || 0); }   // 값의 재고 칸(끔 = 그 품목 곳간)
 function _t842FloorOf(v, r, pFood) {   // 먹을 것 r 의 값 하한(그 마을 food 값 기준) — food 자신 · 먹을 것 아님 · 끔 = 0
   if (!T842_FOOD_FLOOR || r === 'food' || !(pFood > 0)) return 0;
   const f = _t825FoodPer(v, r);
@@ -703,7 +709,7 @@ function _targetV2(v, r, ctx) {
         && (v.storage.food || 0) / N > 25) {
       target = Math.max(target, N * VARIETY_TARGET_PC);
     }
-    stock = Math.max(0.1, v.storage[r] || 0);
+    stock = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(v, r) : (v.storage[r] || 0));   // ★[T859] 켬 — food 는 곳간 식량 환산
     // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
     //   재고(stock)만 보면 근시안 — 큰 buffer에 가려 적자가 안 보여 교역이 stock에 휘둘림(경제적 오류).
     //   surplusEMA.food = 자체생산−소비(수입 제외) → 구조적 비교우위 적자를 정확히 포착.
@@ -816,7 +822,7 @@ function _priceParamsV2(v, r) {
     target = Math.max(subs * 30, buffer, flowT, derivT);
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
         && (v.storage.food || 0) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
-    stock = Math.max(0.1, v.storage[r] || 0);
+    stock = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(v, r) : (v.storage[r] || 0));   // ★[T859] 켬 — food 는 곳간 식량 환산(결정층과 같은 칸)
     if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
   }
   const maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
@@ -1186,7 +1192,7 @@ function* tickTradeV2Steps(world, day) {
       if (T726_ONE_TARGET) a.prices[cand.res] = _priceNowV2(a.v, cand.res);
       else { const r = cand.res, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
           subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2),
-          tg = Math.max(subs * 30, buf), st = Math.max(0.1, a.v.storage[r] || 0);
+          tg = Math.max(subs * 30, buf), st = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(a.v, r) : (a.v.storage[r] || 0));   // ★[T859]
         a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
       if (T842_FOOD_FLOOR) _t842FloorTable(a.v, a.prices);   // ★[T842] 켬 — 바뀐 값(food 면 하한 전부)에 같은 하한
 
@@ -1243,7 +1249,7 @@ function* tickTradeV2Steps(world, day) {
         if (T726_ONE_TARGET) a.prices[_res2] = _priceNowV2(a.v, _res2);   // ★[T726] 켬 — 첫 품목과 같은 값 문
         else { const r = _res2, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
             subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2),
-            tg = Math.max(subs * 30, buf), st = Math.max(0.1, a.v.storage[r] || 0);
+            tg = Math.max(subs * 30, buf), st = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(a.v, r) : (a.v.storage[r] || 0));   // ★[T859]
           a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
         if (T842_FOOD_FLOOR) _t842FloorTable(a.v, a.prices);   // ★[T842]
       }
