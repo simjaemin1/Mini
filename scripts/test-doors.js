@@ -318,6 +318,14 @@ const call = async (port, meth, p, hdr, body) => {
     // ⓕ6b ★표본 0 이면 `null` — `p50: 0` 은 "틱이 0ms"라는 **없는 말**이다(`/perf` 는 `n` 을 같이 주지만 여기엔 그 칸이 없다)
     ok(/_ms\.n > 0\) \? _ms\.p50 : null/.test(zsrc),
       'ⓕ6b ★표본이 0 이면 `tickP50Ms` 는 `null` 이다 — 없는 수를 말하지 않는다(`villages` 의 null 과 같은 뜻)');
+    // ⓕ11 ★[T890] 세계 날 · 달력 글자 — welcome 과 **같은 함수**(`calendarNow()`)를 읽는다 · 값은 그 날의 정본 달력 글자(`events.calendarOf`)
+    {
+      const Ev = require(path.join(ROOT, 'server', 'events.js'));
+      const dayOk = Number.isInteger(h.day) && h.day >= 0;
+      ok(dayOk && typeof h.calendar === 'string' && h.calendar === Ev.calendarOf(h.day).label
+         && /const _cal = calendarNow\(\);/.test(zsrc) && /day: _cal \? _cal\.day : null, calendar: _cal \? _cal\.label : null/.test(zsrc),
+        'ⓕ11 ★[T890] `/health` 의 세계 날 · 달력 글자 = welcome 과 같은 함수(`calendarNow()`) · 글자 = `calendarOf(day).label` · day=' + JSON.stringify(h.day) + ' calendar=' + JSON.stringify(h.calendar));
+    }
     ok(/clientVillages/.test(zsrc) && /\(v\.pop \| 0\) > 0/.test(zsrc),
       'ⓕ7 ★마을 수도 정본 목록(`SimVillages.clientVillages`)에서 **센다** — 여기서 목록을 다시 만들지 않는다');
     // ⓕ9 ★★값이 **같은 수**다 — 소스 계약만이 아니라 두 문이 같은 순간에 같은 답을 낸다.

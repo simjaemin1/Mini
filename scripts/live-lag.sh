@@ -14,8 +14,8 @@
 #
 # 무엇을 읽나(★읽기만 — 라이브 무변):
 #   존마다   `/perf`(**`reset=1` 없이** — 계측 창을 안 지운다): 틱 본문 ms p50/p95/max(최근 3,000틱 고리) · `lagPct`(세계가 벽시계보다 뒤진 % · 부팅 뒤 누계)
-#            · 틱 빚 버림 수 · 루프 지연 p95/max(부팅 또는 마지막 영점 뒤 누계) · 세계 날(econ 하루 틱) · 최근 60초 무거운 일(사건 링)
-#            `/health`: 사람 수 · 사람이 사는 마을 수 · 그리고 **지금** 루프 대기 = `/health` 20번 왕복(0.05초 간격 · 데우기 한 번 뺌) p95/max
+#            · 틱 빚 버림 수 · 루프 지연 p95/max(부팅 또는 마지막 영점 뒤 누계) · 최근 60초 무거운 일(사건 링)
+#            `/health`: 사람 수 · 사람이 사는 마을 수 · ★[T890] 세계 날 · 달력 글자(welcome 과 같은 함수 · 옛 존이면 `/perf` econ 마감 날) · 그리고 **지금** 루프 대기 = `/health` 20번 왕복(0.05초 간격 · 데우기 한 번 뺌) p95/max
 #            (pong 과 같은 줄을 기다린다 — `lag-capture.sh` 의 q 와 같은 자)
 #   central  `/health` 20번 왕복 · 계정 수
 #   호스트마다 `/proc/loadavg` 부하 · 1초 창 `/proc/stat` 바쁨(user+sys+steal) · steal · 메모리(MemAvailable · 스왑 · 그 1초에 스왑 오감)
@@ -95,7 +95,8 @@ const qq = (a, p) => { const b = a.slice().sort((x, y) => x - y); return b.lengt
   try { await get('/health'); } catch (e) {}   // 데우기 한 번(첫 연결 · fetch 초기화 — 안 센다)
   for (let i = 0; i < 20; i++) { try { const r = await get('/health'); qs.push(r.ms); if (r.j) h = r.j; } catch (e) { fail++; } await new Promise((r) => setTimeout(r, 50)); }
   o.q = { p50: qq(qs, 0.5), p95: qq(qs, 0.95), max: qs.length ? +Math.max(...qs).toFixed(1) : null, fail };
-  if (h) { o.humans = h.humans != null ? h.humans : null; o.players = h.players != null ? h.players : null; o.villages = h.villages != null ? h.villages : null; o.up = h.uptime != null ? Math.round(h.uptime) : null; }
+  if (h) { o.humans = h.humans != null ? h.humans : null; o.players = h.players != null ? h.players : null; o.villages = h.villages != null ? h.villages : null; o.up = h.uptime != null ? Math.round(h.uptime) : null;
+           o.day = h.day != null ? h.day : null; o.cal = h.calendar || null; }   // ★[T890] `/health` 의 세계 날 · 달력 글자(welcome 과 같은 함수) — 없는 판(옛 존)이면 null
   if (KIND === 'zone') {
     try {
       const r = await get('/perf', H); o.perfSt = r.st;
@@ -104,7 +105,7 @@ const qq = (a, p) => { const b = a.slice().sort((x, y) => x - y); return b.lengt
         const m = p.tick.ms || {};
         o.tick = { n: m.n, p50: m.p50, p95: m.p95, max: m.max, lagPct: p.tick.lagPct, drop: p.tick.dropN };
         o.loop = p.loop ? { p95: p.loop.p95, max: p.loop.max, n: p.loop.n } : null;
-        o.day = p.econTick && p.econTick.last && p.econTick.last.day != null ? p.econTick.last.day : null;   // 마지막으로 마감한 econ 하루(부팅 뒤 첫 마감 전이면 null)
+        if (o.day == null && p.econTick && p.econTick.last && p.econTick.last.day != null) o.day = p.econTick.last.day;   // 옛 존(`/health` 에 날 칸 없음) — 마지막으로 마감한 econ 하루(부팅 뒤 첫 마감 전이면 null)
         const now = p.now || Date.now(), ev = (p.events || []).filter((e) => e.t > now - 60000);
         const top = {}; for (const e of ev) top[e.kind] = Math.max(top[e.kind] || 0, e.ms);
         o.ev60 = { n: ev.length, top: Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${Math.round(v)}ms`).join(' · ') };
@@ -166,7 +167,7 @@ one_round() {
       my ($k, $lp, $q) = ($o->{tick}, $o->{loop} || {}, $o->{q} || {});
       push @out, sprintf("[존] %s — 틱 p50 %s · p95 %s · max %s ms(최근 %s틱) · 뒤짐 %s%% · 빚 버림 %s | 루프(누계) p95 %s · max %s ms | 지금 /health 왕복 p95 %s · max %s ms | 사람 %s · 마을 %s · 세계 날 %s%s",
         $h, d($k->{p50}), d($k->{p95}), d($k->{max}), d($k->{n} && $k->{n} > 3000 ? 3000 : $k->{n}), d($k->{lagPct}), d($k->{drop}), d($lp->{p95}), d($lp->{max}), d($q->{p95}), d($q->{max}),
-        d($o->{humans}), d($o->{villages}), (defined $o->{day} ? $o->{day} : "—(첫 마감 전)"), ($o->{ev60} && $o->{ev60}{n} ? " | 최근 60초 무거운 일 $o->{ev60}{n}번(" . $o->{ev60}{top} . ")" : ""));
+        d($o->{humans}), d($o->{villages}), (defined $o->{day} ? $o->{day} . ($o->{cal} ? "($o->{cal})" : "") : "—"), ($o->{ev60} && $o->{ev60}{n} ? " | 최근 60초 무거운 일 $o->{ev60}{n}번(" . $o->{ev60}{top} . ")" : ""));
       fl(6, "$h 존 틱 p95 $k->{p95}ms ≥ 33") if defined $k->{p95} && $k->{p95} >= 33;
       fl(5, "$h 이벤트 루프 지금 왕복 p95 $q->{p95}ms ≥ 50") if defined $q->{p95} && $q->{p95} >= 50;
       fl(5, "$h 이벤트 루프(누계) p95 $lp->{p95}ms ≥ 50") if defined $lp->{p95} && $lp->{p95} >= 50;

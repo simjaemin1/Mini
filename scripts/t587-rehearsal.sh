@@ -61,7 +61,7 @@ stage_runbook() {
   python3 - "$DOC" "$sec" > "$OUT/lines-$$.txt" <<'PY'
 import sys, re
 doc, sec = sys.argv[1], sys.argv[2]
-on = False; inblk = False
+on = False; inblk = False; lang = ''
 for line in open(doc, encoding='utf-8'):
     s = line.rstrip('\n')
     if s.startswith('### '):
@@ -69,8 +69,9 @@ for line in open(doc, encoding='utf-8'):
         continue
     if not on: continue
     if s.startswith('```'):
-        inblk = not inblk; continue
-    if inblk and (s.startswith('ssh ') or s.startswith('bash <(ssh ') or s.startswith('bash scripts/')):
+        inblk = not inblk; lang = s[3:].strip() if inblk else ''; continue
+    # ★[T892] `sh` 묶음만 친다 — 절차서의 `text` 묶음(손 갈래 · 한 단계씩 칠 때 보는 줄)은 마른 연습이 안 친다
+    if inblk and lang == 'sh' and (s.startswith('ssh ') or s.startswith('bash <(ssh ') or s.startswith('bash scripts/')):
         print(s)
 PY
   while IFS= read -r line; do

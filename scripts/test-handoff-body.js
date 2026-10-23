@@ -26,6 +26,8 @@
 //     G 끔 = 종전대로 되돌아감(증인) · I 켬 = 받는 존이 몸을 안 받은 판(준비 응답 전 — 받는 존을 세워 둔다)은 종전대로 나간다(갈래 둘).
 //   ★[T867 2026-10-22] ⑥ T498 켬(`T498_HANDOFF_PAYLOAD=1` · 끔 기본)에서 같은 탐침 — ACK 시한에 떠나는 순간 쥔 행도 T843 술어를 지난다(J 켬 = 안 나감 ·
 //     몸 되돌림 0) · K(T823 끔 `=0`) = 종전대로 쥔 행 · 닫힐 때 저장이 몸 칸을 되돌린다(증인).
+//   ★[T890 2026-10-23] ⑦ 승계 갈래 — 같은 존 산 몸 승계(`_takeover`)도 몸 칸 한 벌(`serializeBody` → `parseBody` → `_bodyInto` · 손잡이 `T890_TAKEOVER_BODY` 켬 기본) —
+//     R 켬 = 저장본보다 새로운 산 몸(제작이력 · 어획 · 신체 · HP)이 승계 · 행까지 이어진다 · S 끔(`=0`) = 저장본으로 되돌아감(종전 결함 증인).
 //   ★상황 선행 assert: 왕복이 **실제로 존 경계를 넘었는지**(handoff 메시지를 받았는지) 먼저 본다.
 //     안 넘었으면 이 하네스는 아무것도 재고 있지 않다.
 //
@@ -363,6 +365,44 @@ async function promoteTrip(tag) {
            hpW: ((promoted || {}).self || {}).hp, welcomeTools: (promoted || {}).toolItems || [] };
 }
 
+// ★★[T890] ⑦ 승계 갈래 — 같은 존 산 몸 승계(`_takeover`: 같은 신원으로 새 소켓 · 옛 세션이 아직 이 존에 서 있다 — 클라 `ensurePrimaryConnection` 의 close→connect).
+//   산 몸에만 값을 세우고(`__e2e_body` — 저장 안 함 · 족보 ㊻) 옛 소켓을 연 채 같은 손님 토큰으로 붙는다 → 새 몸이 산 몸을 잇나 · 새 소켓이 닫힌 뒤 행은.
+//   ★상황 선행: 행이 그 값을 **아직 안 가졌다**(가졌으면 이 판은 아무것도 안 잰다 — 그 사이 주기 저장이 끼면 다시 · 최대 3번).
+const TK_LEDGER = ['craftSkill', 'craftLog', 'oreLedger', 'oreCarry', 'fishStats', 'member'];
+const TK_SOFT = { cold: 0.8, fatigue: 0.6, injury: 0.4, morale: 0.3 }, TK_HP = 42, TK_TOL = 0.05;
+const tkSoft = (b) => (b && b.body) ? { cold: +(b.body.cold || 0), fatigue: +(b.body.fatigue || 0), injury: +(b.body.injury || 0), morale: +(b.body.morale || 0) } : null;
+const tkNear = (x, y) => !!x && !!y && ['cold', 'fatigue', 'injury', 'morale'].every((k) => Math.abs(x[k] - y[k]) <= TK_TOL);
+const tkJ = (x) => JSON.stringify(x === undefined ? null : x);
+async function takeoverTrip(tag) {
+  const Z = (await jget(`http://localhost:${CPORT}/zones`)).zones; const han = Z.hanbando;
+  let last = null;
+  for (let k = 0; k < 3; k++) {
+    const NAME = `tk${tag}${k}`;
+    let kicked = false;
+    const a = await open(`${han.wsUrl}/?username=&name=${NAME}&color=%23ffffff`, (m) => { if (m.type === 'kicked') kicked = true; });
+    const tok = a.welcome.guestToken, pid = a.welcome.playerId;
+    a.ws.send(JSON.stringify({ type: '__e2e_give', items: { pillar: 3 }, tools: ['axe', 'pickaxe'], equip: [{ type: 'carrier', lvl: 5 }], quiet: true }));   // 저장한다(행 = 도구)
+    await sleep(900);
+    a.ws.send(JSON.stringify(Object.assign({ type: '__e2e_body', hp: TK_HP, quiet: true, member: MEMBER_FIX }, TK_SOFT, LEDGER_FIX)));   // 저장 안 한다(산 몸만)
+    await sleep(700);
+    const live = pick0(await jget(`http://localhost:${HPORT}/bodydbg`));
+    let row0 = null; try { row0 = JSON.parse(((await rowOf(pid)) || {}).tools_json || 'null'); } catch (e) {}
+    const stale = TK_LEDGER.every((f) => tkJ((row0 || {})[f]) !== tkJ(live[f])) && !tkNear(tkSoft(row0), tkSoft(live)) && !(row0 && row0.vital && row0.vital.hp === live.vital.hp);
+    const b = await open(`${han.wsUrl}/?username=&name=${NAME}&color=%23ffffff&guest_token=${encodeURIComponent(tok)}`);
+    await sleep(900);
+    const dbg = await jget(`http://localhost:${HPORT}/bodydbg`);
+    const after = pick0(dbg), nPeople = Object.keys(dbg.bodies || {}).length;
+    try { b.ws.close(); } catch (e) {}
+    try { a.ws.close(); } catch (e) {}
+    await sleep(1500);
+    let row1 = null; try { row1 = JSON.parse(((await rowOf(pid)) || {}).tools_json || 'null'); } catch (e) {}
+    last = { stale, tries: k + 1, kicked, samePid: b.welcome.playerId === pid, nPeople, live, after, row0, row1 };
+    if (stale) break;
+  }
+  return last;
+}
+const tkLost = (T, B) => TK_LEDGER.filter((f) => tkJ((B || {})[f]) !== tkJ((T.live || {})[f]));
+
 (async () => {
   console.log('\n=== 존 핸드오프 — 몸이 새지 않는다 (2존 실서버) ===');
 
@@ -614,8 +654,23 @@ async function promoteTrip(tag) {
       rEqP ? `행 도구 ${((P.rowBody || {}).toolItems || []).length}` : `\n      출발 ${durableKey(P.before)}\n      행   ${durableKey(P.rowBody)}`);
     ok(durableKey(P.again) === durableKey(P.before), '★[T868 켬] 다시 접속한 몸도 넘기 전과 같다', `도구 ${((P.again || {}).toolItems || []).length}`);
   }
+  // ★★[T890] ⑦ 승계 갈래 켬(기본 · `T890_TAKEOVER_BODY` 안 줌) — 같은 판에서
+  {
+    const R = await takeoverTrip('R');
+    ok(R.stale && R.kicked && R.samePid && R.nPeople === 1,
+      '★[상황 · T890 켬] 같은 손님 토큰으로 새 소켓 → 옛 세션 승계(옛 소켓 kicked · 같은 playerId · 사람 하나) · 행이 산 몸의 장부 · 신체 · HP 를 아직 안 가졌다(자명 통과 0)',
+      `시도 ${R.tries} · kicked ${R.kicked} · 사람 ${R.nPeople} · 행 신체 ${JSON.stringify(tkSoft(R.row0))} · 산 신체 ${JSON.stringify(tkSoft(R.live))}`);
+    const lostR = tkLost(R, R.after), rowLostR = tkLost(R, R.row1);
+    const hpA = ((R.after || {}).vital || {}).hp, hpL = ((R.live || {}).vital || {}).hp, hp0 = ((R.row0 || {}).vital || {}).hp;
+    ok(R.stale && !lostR.length && tkNear(tkSoft(R.after), tkSoft(R.live)) && hpA !== hp0 && hpA >= hpL
+      && tkJ(((R.after || {}).toolItems || []).map((t) => t.type).sort()) === tkJ(((R.live || {}).toolItems || []).map((t) => t.type).sort()),
+      '★★[T890 켬] 승계한 몸이 산 몸을 잇는다 — 숙련 · 제작이력 · 원석장부 · 이월 · 어획 · 소속 비트 같음 · 신체 넷 이어짐 · HP 저장본으로 안 돌아감 · 도구',
+      `잃은 칸 ${JSON.stringify(lostR)} · 신체 ${JSON.stringify(tkSoft(R.live))} → ${JSON.stringify(tkSoft(R.after))} · HP 산 ${hpL} → ${hpA}(행 ${hp0})`);
+    ok(R.stale && !rowLostR.length && tkNear(tkSoft(R.row1), tkSoft(R.live)),
+      '★★[T890 켬] 새 소켓이 닫힌 뒤 행도 산 몸 그대로(영구 소실 0)', `행 잃은 칸 ${JSON.stringify(rowLostR)} · 행 신체 ${JSON.stringify(tkSoft(R.row1))}`);
+  }
   killAll(); await sleep(4000);
-  if (!await startZones(null, { T868_PROMOTE_BODY: '0' })) { console.log('  ✗ T868 끔 탐침 기동 실패'); process.exit(1); }   // [PM 착지 10-23] 켬 기본 — 끔 탐침은 `=0`
+  if (!await startZones(null, { T868_PROMOTE_BODY: '0', T890_TAKEOVER_BODY: '0' })) { console.log('  ✗ T868 끔 탐침 기동 실패'); process.exit(1); }   // [PM 착지 10-23] 켬 기본 — 끔 탐침은 `=0` · ★[T890] 승계 끔 증인도 이 판(승격 탐침은 승계를 안 밟는다)
   const Q = await promoteTrip('Q');
   ok(Q.crossed && Q.promoted, '[상황 · T868 끔 탐침] 관측 소켓을 승격해 넘었다', Q.crossed ? `승격 welcome ${Q.promoted}` : '넘지 못함');
   if (Q.crossed && Q.promoted) {
@@ -623,6 +678,15 @@ async function promoteTrip(tag) {
     ok(nT(Q.before) === 2 && nT(Q.after) === 0 && nT(Q.rowBody) === 0 && durableKey(Q.after) !== durableKey(Q.before),
       '★[T868 끔 탐침] 끔이면 승격 몸이 비고 클라가 끊긴 판 행도 비어 영구 소실이다(도구 2 → 0 → 행 0 — 종전 그대로의 결함 · 켬 P 의 "같다"가 자명하지 않다는 증인)',
       `도구 ${nT(Q.before)} → ${nT(Q.after)} → 행 ${nT(Q.rowBody)} · 받은 HP ${Q.hpW}`);
+  }
+  // ★★[T890] ⑦ 승계 갈래 끔 증인(`T890_TAKEOVER_BODY=0` — 종전 승계 칸 목록) — 켬 R 의 "잇는다"가 자명하지 않다는 증인
+  {
+    const S = await takeoverTrip('S');
+    ok(S.stale && S.kicked && S.samePid && S.nPeople === 1, '[상황 · T890 끔 탐침] 승계했고 · 행이 산 몸의 값을 아직 안 가졌다', `시도 ${S.tries}`);
+    const lostS = tkLost(S, S.after), rowLostS = tkLost(S, S.row1);
+    ok(S.stale && lostS.includes('craftLog') && lostS.includes('fishStats') && !tkNear(tkSoft(S.after), tkSoft(S.live)) && rowLostS.includes('craftLog'),
+      '★[T890 끔 탐침] 끔이면 승계가 제작이력 · 어획 · 신체를 저장본으로 되돌리고 새 소켓이 닫힐 때 행까지 덮는다(종전 그대로의 결함 · 켬 R 의 증인)',
+      `잃은 칸 ${JSON.stringify(lostS)} · 신체 ${JSON.stringify(tkSoft(S.live))} → ${JSON.stringify(tkSoft(S.after))} · 행 잃은 칸 ${JSON.stringify(rowLostS)}`);
   }
   killAll(); await sleep(4000);
 

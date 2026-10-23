@@ -930,7 +930,7 @@
   const WATER_VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
   const WATER_FS = [
     'precision highp float;',
-    'uniform vec2 uRes; uniform vec2 uCam; uniform float uT;',
+    'uniform vec2 uRes; uniform vec2 uCam; uniform float uT; uniform float uPx;',   // ★[T891] uPx = 화면 한 칸에 GL 한 칸이 덮는 화면 픽셀 수(끔 1 · ½ 해상도 켬 2)
     'uniform sampler2D uLin; uniform sampler2D uMsk; uniform float uFuzz;',
     // ★[재민 2026-08-24 "물방울 같은 것"·"1셀 두께 줄무늬"] 층 분해용 A/B 스위치.
     //   x=반짝임(spec) · y=포말(foam) · z=사인파(s1+s2) · w=잔결 노이즈(sn). 각각 0 이면 그 항만 끈다.
@@ -959,8 +959,8 @@
     'vec2 fuzzW(vec2 p){ if(uFuzz<0.01) return p;',
     '  return p + (vec2(vn(p/8.0,64.0), vn(p/8.0+vec2(37.3,11.9),64.0))-0.5)*uFuzz; }',
     'void main(){',
-    '  float ix = gl_FragCoord.x - uRes.x*0.5 + uCam.x;',
-    '  float sy = (uRes.y-gl_FragCoord.y) - uRes.y*0.5 + uCam.y;',
+    '  float ix = gl_FragCoord.x*uPx - uRes.x*0.5 + uCam.x;',   // ★[T891] GL 칸 → 화면 픽셀(끔 = ×1 · 종전 식 그대로)
+    '  float sy = (uRes.y-gl_FragCoord.y*uPx) - uRes.y*0.5 + uCam.y;',
     // ★수면은 지면보다 uDrop 만큼 내려가 있다 ⇒ 이 화면 행에 보이는 수면점은 iso y-uDrop 의 역변환
     '  float iy = sy - uDrop;',
     '  vec2 w = vec2((2.0*iy+ix)*0.5,(2.0*iy-ix)*0.5);',
@@ -1110,7 +1110,7 @@
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
       const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc);
       gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      for (const u of ['uRes', 'uCam', 'uT', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop', 'uFuzz', 'uDbg', 'uRip', 'uRip1', 'uDith', 'uSnap', 'uDirLin', 'uDirC', 'uPhLeg', 'uDirNear']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
+      for (const u of ['uRes', 'uCam', 'uT', 'uPx', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop', 'uFuzz', 'uDbg', 'uRip', 'uRip1', 'uDith', 'uSnap', 'uDirLin', 'uDirC', 'uPhLeg', 'uDirNear']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
       const mkTex = (filt) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -1126,11 +1126,19 @@
     }
     return _wgl.ok;
   }
+  // ★★[T891 2026-10-23 · 손잡이 `T891_WATER_HALF`(서버 env → welcome `uiCfg.waterHalf` · `'1'` 만 켬 · 끔 = 종전 그대로)]
+  //   **물 셰이더를 가로세로 ½ 로 그리고 2D 에서 늘린다.** 이 층은 판마다 물이 보이는 화면 상자만큼 셰이더를 돈다 —
+  //   소프트웨어 GL(SwiftShader)에서 판당 0.9~1.5초가 몰리는 판이 있고 그동안 클라 주 스레드가 메시지 · 입력을 못 꺼낸다
+  //   (T881 — 텔레포트 알림 2.7초 늦음 · T863 §4 #3). 켜면 GL 칸 수가 ¼ 이다. 셰이더는 GL 칸 하나가 화면 몇 픽셀을 덮는지(`uPx`)만 더 안다 —
+  //   월드 좌표 · 마스크 · 물결 · 물가 굽이 식은 그대로(끔 = `uPx` 1 · 식이 종전과 비트 같다).
+  function _t891Half() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.waterHalf === true); }
   function _drawWaterLayer(ctx2, W2, H2, camX2, camY2, tSec) {
     if (!_waterInit()) return false;
     const gl = _wgl.gl;
-    if (_wgl.cv.width !== W2 || _wgl.cv.height !== H2) { _wgl.cv.width = W2; _wgl.cv.height = H2; }
-    gl.viewport(0, 0, W2, H2);
+    const S = _t891Half() ? 2 : 1;                                    // GL 칸 하나 = 화면 S×S 픽셀(½ 해상도 = 2)
+    const CW = Math.ceil(W2 / S), CH = Math.ceil(H2 / S);
+    if (_wgl.cv.width !== CW || _wgl.cv.height !== CH) { _wgl.cv.width = CW; _wgl.cv.height = CH; }
+    gl.viewport(0, 0, CW, CH);
     // 흐름/수심/마스크 텍스처 — 카메라가 WF_QUANT 셀 이상 움직였을 때만 다시 굽는다
     const wpt = { wx: (2 * camY2 + camX2) / 2, wy: (2 * camY2 - camX2) / 2 };
     const ocx = Math.floor(wpt.wx / 32 / WF_QUANT) * WF_QUANT - (WF_N >> 1);
@@ -1175,10 +1183,13 @@
     const rx0 = Math.max(0, Math.floor(sx0)), ry0 = Math.max(0, Math.floor(sy0));
     const rx1 = Math.min(W2, Math.ceil(sx1)), ry1 = Math.min(H2, Math.ceil(sy1));
     if (rx1 <= rx0 || ry1 <= ry0) return false;   // 화면에 물이 없다 — 셰이더를 아예 안 돌린다
-    const rw = rx1 - rx0, rh = ry1 - ry0;
+    //   ★[T891] 상자를 GL 칸으로 — 끔(S=1)이면 종전 값 그대로. 켬이면 바깥으로 둥글려 물 상자를 다 덮는다.
+    const gx0 = Math.floor(rx0 / S), gy0 = Math.floor(ry0 / S), gx1 = Math.ceil(rx1 / S), gy1 = Math.ceil(ry1 / S);
+    const rw = gx1 - gx0, rh = gy1 - gy0;
     gl.enable(gl.SCISSOR_TEST);
-    gl.scissor(rx0, H2 - ry1, rw, rh);   // GL 원점은 좌하단
+    gl.scissor(gx0, CH - gy1, rw, rh);   // GL 원점은 좌하단
     gl.uniform2f(_wgl.uni.uRes, W2, H2);
+    gl.uniform1f(_wgl.uni.uPx, S);
     gl.uniform2f(_wgl.uni.uCam, camX2, camY2);
     gl.uniform2f(_wgl.uni.uOrig, _wfCache.ox, _wfCache.oy);
     gl.uniform1f(_wgl.uni.uT, tSec);
@@ -1202,8 +1213,8 @@
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.disable(gl.SCISSOR_TEST);
-    ctx2.drawImage(_wgl.cv, rx0, ry0, rw, rh, rx0, ry0, rw, rh);
-    _wfCache.rect = [rx0, ry0, rw, rh];
+    ctx2.drawImage(_wgl.cv, gx0, gy0, rw, rh, gx0 * S, gy0 * S, rw * S, rh * S);   // ★[T891] 켬이면 2D 가 S 배로 늘린다(끔 = 종전 그대로)
+    _wfCache.rect = [gx0 * S, gy0 * S, rw * S, rh * S];
     return true;
   }
   // ★블록 프리즘 단면 — 물에 접한 뭍 셀의 남·동 변에서 WATER_DROP 만큼 수직면.
