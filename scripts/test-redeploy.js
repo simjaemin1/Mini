@@ -28,6 +28,10 @@ fs.mkdirSync(BIN, { recursive: true }); fs.mkdirSync(REPO, { recursive: true });
 fs.writeFileSync(path.join(BIN, 'git'), `#!/bin/sh
 case "$1 $2" in
   "rev-parse HEAD") echo "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"; exit 0 ;;
+  "rev-parse @{u}") echo "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"; exit 0 ;;   # [T892] --dry 의 받을 판
+  "rev-parse --short=12") echo "aaaaaaaaaaaa"; exit 0 ;;
+  "rev-list --count") echo 3; exit 0 ;;
+  "pull ") echo "pull" >> "$FAKE_LOG"; exit 0 ;;   # [T892] 받았나를 센다(--dry 는 0)
   "cat-file -e") [ -n "$FAKE_STAMP_VALID" ] && exit 0 || exit 1 ;;
   "diff --name-only") printf '%s\\n' $FAKE_CHANGED; exit 0 ;;
 esac
@@ -57,7 +61,8 @@ function run(changed, { stamp = true, args = [] } = {}) {
     encoding: 'utf8', env: { ...process.env, PATH: BIN + ':' + process.env.PATH,
       REPO_DIR: path.join(TMP, 'repo'), STAMP, FAKE_STAMP_VALID: stamp ? '1' : '', FAKE_CHANGED: changed, FAKE_LOG: LOG } });
   const built = fs.readFileSync(LOG, 'utf8');
-  return { out, zone: /Dockerfile\.zone/.test(built), central: /Dockerfile\.central/.test(built) };
+  let stampAfter = null; try { stampAfter = fs.readFileSync(STAMP, 'utf8').trim(); } catch (e) {}
+  return { out, zone: /Dockerfile\.zone/.test(built), central: /Dockerfile\.central/.test(built), pulled: /^pull$/m.test(built), stampAfter };
 }
 
 console.log('\n=== 재배포 판정 — 바뀐 파일만큼만 하는가 ===\n① 클라만 바뀌면 존을 안 건드린다');
@@ -93,6 +98,19 @@ r = run('README.md', { args: ['--zone'] });
 ok(r.zone, '`--zone` 은 판정이 "필요 없다"여도 존을 한다');
 try { run('x', { args: ['--오타'] }); ok(false, '모르는 옵션은 거부해야 한다'); }
 catch (e) { ok(true, '모르는 옵션은 조용히 넘어가지 않고 죽는다', 'exit≠0'); }
+
+console.log('\n⑥ ★[T892] 예행 `--dry` — 같은 판정 · 아무것도 안 한다(받기 · 빌드 · 재생성 · 스탬프 0) · 끝 줄 PLAN');
+r = run('server/zone.js');
+ok(r.pulled && r.zone, '[상황] 예행 아닌 판은 받는다(pull 1 · 빌드) — 아래 "pull 0" 이 자명하지 않다는 증인');
+r = run('server/zone.js', { args: ['--dry'] });
+ok(!r.zone && !r.central && !r.pulled && r.stampAfter === 'a'.repeat(40) && /^PLAN central=1 zone=1 after=b{40}$/m.test(r.out) && /central: 한다  ·  zone: 한다/.test(r.out),
+   '`server/zone.js` 예행 → PLAN central=1 zone=1 · 판정 줄은 실제 판과 같은 글자 · 빌드 0 · pull 0 · 스탬프 그대로', `pull ${r.pulled} · 스탬프 ${String(r.stampAfter).slice(0, 8)}`);
+r = run('public/client.js', { args: ['--dry'] });
+ok(/^PLAN central=1 zone=0 /m.test(r.out) && !r.central && !r.zone, '`public/client.js` 예행 → PLAN central=1 zone=0(실제 판 ① 과 같은 판정)');
+r = run('README.md', { args: ['--dry'] });
+ok(/^PLAN central=0 zone=0 /m.test(r.out), '문서만 → PLAN central=0 zone=0(실제 판 ③ 과 같은 판정)');
+r = run('public/client.js', { stamp: false, args: ['--dry'] });
+ok(/^PLAN central=1 zone=1 /m.test(r.out) && r.stampAfter === null, '스탬프 없음 예행 → 전부(PLAN 1 1) · 스탬프를 만들지도 않는다');
 
 fs.rmSync(TMP, { recursive: true, force: true });
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

@@ -19,6 +19,7 @@
 #                                                          — 컨테이너가 쓰고 있어도(마른 연습 실측 `No such image`) ⇒ 고정은 빌드 앞이다
 #     bash scripts/reset-world.sh <대상> --image         굽기 확인 — 새로 구운 이미지 = 이 레포 checkout 인가(server·sim 바이트 지문 · 커밋 라벨) · 굽힌 정본의 수
 #     bash scripts/reset-world.sh <대상> --check         확인 — /health · 관측자 welcome(달력 · 마을 수) · DB 수(T569 겹친 영토)
+#     bash scripts/reset-world.sh <대상> --live          [T892] 확인에서 DB 수만 뺀 것 — 컨테이너 · env 손잡이 둘 · 관측자 한 줄(달력 · 마을 · 정원) · 안 돌면 rc 1
 #     bash scripts/reset-world.sh <대상> --restore <백업 폴더>   되돌리기 — 지금 DB 를 옆으로 치우고(안 지운다) 백업을 되놓고
 #                                                        옛 이미지(`<이미지>:pre-reset`)·옛 env 로 다시 띄운다
 #
@@ -49,7 +50,7 @@ F_COMMIT='{{index .Config.Labels "durango.commit"}}'
 
 say() { echo "$*"; }
 die() { echo "  ✗ $*" >&2; exit 1; }
-usage() { sed -n '4,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '4,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 TARGET="${1:-}"; [ $# -gt 0 ] && shift
 case "$TARGET" in
@@ -65,6 +66,7 @@ while [ $# -gt 0 ]; do
     --up) MODE=up ;;
     --open) MODE=open ;;
     --check) MODE=check ;;
+    --live) MODE=live ;;   # [T892] --check 에서 DB 수만 뺀 것(열린 세계 · 관측자 한 줄)
     --image) MODE=image ;;
     --pin) MODE=pin ;;
     --restore) MODE=restore; RESTORE_DIR="${2:-}"; [ $# -gt 1 ] && shift ;;
@@ -313,8 +315,8 @@ image)
   else say "  ✗ 이미지 ≠ 레포 — 빌드를 다시(코드 받기 뒤 docker build)"; exit 1; fi
   docker run --rm --network none -v "$HELPER:/rw.js:ro" "$IMG_BASE" node --no-warnings /rw.js canon /app
   ;;
-check)
-  say "== 확인 --check — $TARGET =="
+check|live)
+  say "== 확인 --$MODE — $TARGET =="
   say "  컨테이너  $C · $STATE · 커밋 $(cur_commit) · 포트 $HOST_PORT"
   if [ "$KIND" = zone ]; then
     say "  env       T565_MAP_LIVE=$(env_val T565_MAP_LIVE) · PLAYER_CAP=$(env_val PLAYER_CAP) · 판 $(label_of durango.reset.state)"
@@ -323,7 +325,9 @@ check)
     say "  /health   $(curl -s -m 5 "http://127.0.0.1:$HOST_PORT/health" | cut -c1-120)"
     say "  /zones    $(curl -s -m 5 "http://127.0.0.1:$HOST_PORT/zones" | grep -oE '"(hanbando|nippon)":\{"id":"[a-z_]+","wsUrl":"[^"]*"' | sed -E 's/"([a-z_]+)":\{"id":"[a-z_]+","wsUrl":"([^"]*)"/\1=\2/' | paste -sd' ')"
   fi
-  db_line
+  [ "$MODE" = check ] && db_line   # ★[T892] --live 는 DB 를 안 읽는다(열린 세계에서 DB 를 훑지 않는다)
+  [ "$MODE" = live ] && [ "$STATE" != running ] && die "$C 가 안 돈다($STATE)"
+  true
   ;;
 restore)
   say "== 되돌리기 --restore — $TARGET ← $RESTORE_DIR =="

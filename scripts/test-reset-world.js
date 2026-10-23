@@ -330,8 +330,16 @@ const CV = path.join(SRV, 'central'); fs.mkdirSync(CV, { recursive: true });
   ok(uses.every((l) => /SECRET_FILE=\/root\/\.durango-secret$|\[ -e "\$SECRET_FILE" \]|stat -c %a "\$SECRET_FILE"|비밀  /.test(l)), '소스: 비밀 파일 경로는 정의·있나(-e)·권한(stat)·표시에만 — 여는 줄 0', `${uses.length}줄`);
   ok(!sfBefore || (sha(secretFile) === sfBefore.sha && fs.statSync(secretFile).mtimeMs === sfBefore.m), '이 상자의 비밀 파일(있으면) sha·mtime 무변', sfBefore ? '있음' : '없음');
   const allOut = [];
-  for (const args of [['hanbando'], ['central'], ['hanbando', '--check']]) allOut.push(run(args).out);
+  for (const args of [['hanbando'], ['central'], ['hanbando', '--check'], ['hanbando', '--live']]) allOut.push(run(args).out);
   ok(!allOut.some(leakIn) && leakFiles(BK) === 0 && leakFiles(SRV) === 0, '화면·백업 폴더·볼륨 어디에도 비밀 값 0', `백업 파일 중 값 ${leakFiles(BK)}`);
+
+  // ★[T892] --live = --check 에서 DB 수만 뺀 것(열린 세계 · update-live.sh 가 부른다) · 안 돌면 rc ≠ 0
+  { fresh(); const rc0 = run(['hanbando', '--check']), rl = run(['hanbando', '--live']);
+    ok(rl.rc === 0 && /가짜 관측자 줄/.test(rl.out) && /PLAYER_CAP=/.test(rl.out) && /DB world-hanbando|DB 수를 못 셌다/.test(rc0.out) && !/DB world-hanbando|DB 수를 못 셌다|DB .* 없음/.test(rl.out),
+      '★[T892] `--live` 는 컨테이너 · env 손잡이 · 관측자 줄을 찍고 DB 는 안 읽는다(`--check` 는 읽는다 — 자명 통과 0)', `--check DB 줄 ${/DB /.test(rc0.out)} · --live DB 줄 ${/DB /.test(rl.out)}`);
+    const Sx = st(); Sx.containers['durango-zone-hanbando'].state = 'exited'; fs.writeFileSync(STATE, JSON.stringify(Sx));
+    const rx = run(['hanbando', '--live']);
+    ok(rx.rc !== 0 && /안 돈다/.test(rx.out), '★[T892] `--live` — 존이 안 돌면 rc ≠ 0(멈춤 신호)', `rc=${rx.rc}`); fresh(); }
 
   console.log('\n⑫ ★자명 통과 금지 — 값을 흘리는 미끼 사본');
   const bait = path.join(TMP, 'bait.sh');
