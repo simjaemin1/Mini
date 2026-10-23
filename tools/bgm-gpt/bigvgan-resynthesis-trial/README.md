@@ -72,3 +72,49 @@ or reading original data/checkpoints. Neither unit tests nor reconstruction
 metrics approve the2-second transition or daegeum identity: user listening
 remains the quality decision. If this decoder proves useful, a separate
 score→expression/spectrogram model is still needed to create new performances.
+
+## 2026-10-23: fixed spectral +1-semitone control, not F0-only synthesis
+
+`run_spectral_pitch_trial.py` reuses the exact pinned model, code and dependency
+folder; no new installation or training. It reads the SHA-bound original
+`vib39[2,6.8)` source, not a WORLD result, and makes two CPU forwards: unchanged
+pitch and a fixed+1semitone. The latter samples the linear1024-FFT magnitude
+at `output_bin / 2**(1/12)` **before** the same Slaney mel projection and log.
+Time frames are unchanged. This shifts the spectral envelope and noise as well
+as harmonics; the original top band is pushed above Nyquist and lost. It is not
+formant-preserving F0 control, a new score, or learned vibrato placement.
+
+The identity path matches the official mel with max absolute error0. Both
+forwards preserve450frames/115,200samples without output pitch correction,
+alignment search, trimming, source-waveform insertion or post-filtering. The
+actual two-forward run took22.47seconds; source/model/code43bindings were
+unchanged. Auditions038/039/040 are original/unchanged/+1, all4.8s,48kstereo,
+full230,400decoded frames, measured−24.0LUFS and0600. Their gains are separate
+programme-level constants, not AGC.
+
+Independent YIN checks retain the same470/480source-fixed stable frames. The
+unchanged version has100%voicing/±50c agreement; +1has100%voicing and468/470
+within50c of its target (median absolute error11.09c, p9536.56c). Its median
+shift versus unchanged synthesis is98.69c. These establish approximate pitch
+movement, **not preservation of the original vibrato**: same-time source pitch
+contour correlations are only0.612/0.702 and measured residual pitch variation
+increases. These are imperfect estimator proxies, not an auditory verdict.
+
+A single separate exploratory input-level control is retained rather than
+silently replacing the first run. `run_input_level_control.py` applies one
+source-derived constant+19.634dB (peak0.05215→0.5), repeats the same0/+1pair,
+then applies the reciprocal constant to each waveform.0.5is a conservative
+test setting, not the official training normalization target0.95. This run
+took34.98seconds. No framewise gain, normalization of individual notes, or
+further level search occurred. The +1target error improved modestly, but
+unchanged-pitch results partly worsened and contour correlations decreased;
+**input level is not established as the cause or cure of vibrato differences**.
+This arm is not promoted as an improvement. Both runs, reports, saved mels and
+native WAVs remain private. The complete folder is about13MiB, under the
+announced30MB limit. Four actual model forwards total; model weights unchanged.
+
+Ten spectral-control and six fixed-level synthetic tests join the original
+thirteen wrapper tests:29pass without reading real recordings/checkpoints or
+instantiating the public model. Game defaults and original source files remain
+unchanged. Reconstruction acceptance on027does not certify this different
+vibrato recording or make the decoder a score-conditioned instrument.
