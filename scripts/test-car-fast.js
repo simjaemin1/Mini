@@ -5,7 +5,7 @@
 // ★[T876 ②] 다시 뜬 판의 메타 복원(`_t728Restore`)이 길 위 캐러밴 사본을 `Object.assign({}, c)` 로 지었다 — 빈 리터럴에 셈 키로 칸 24 개를 붙이면
 //   V8 이 그 사본을 처음부터 사전 모드로 짓는다(T862 표 ⓒ: 다시 뜬 창 econ 캐러밴 40/40 사전). 켬이면 짐 레코드 칸을 거른 나머지 꼴
 //   (`const { _t732Cargo, ...rest } = c`)로 짓는다.
-//   ① 글자 — 손잡이 '1' 만 켬 · 끔 갈래 = 종전 줄(`Object.assign` · `delete o._t732Cargo`) 그대로 · 켬 갈래 = 나머지 꼴
+//   ① 글자 — 손잡이 켬 기본(`=0` 만 끔 · T889 ①) · 끔 갈래 = 종전 줄(`Object.assign` · `delete o._t732Cargo`) 그대로 · 켬 갈래 = 나머지 꼴
 //   ② 다시 뜬 판 — 실서버 아이 존(빠른 시계 · 캐러밴 켬)을 띄워 길 위 캐러밴이 선 세계를 저장(SIGTERM) → 같은 DB 로 끔 · 켬 나란히 다시 띄움:
 //      부팅 복원 직후(첫 틱 전) 끔 = 캐러밴 전부 사전 모드(자명 통과 금지) · 켬 = 전부 빠른 꼴 · 캐러밴 메타 저장 줄(`_t728Meta` 의 caravans —
 //      칸 · 차례 · 값 · 상대 마을 · 상인) 바이트 같음 · 캐러밴마다 칸 차례 같음 · 마을 저장 줄(`serializeEcon`) 같음
@@ -25,7 +25,7 @@ const ok = (c, m, d) => { if (c) pass++; else fail++; console.log(`  ${c ? '✓'
 console.log('\n=== T876 ② 다시 뜬 판 econ 캐러밴 빠른 꼴 = 종전 값 ===');
 console.log('\n① 글자');
 const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
-ok(/const T876_CAR_FAST = process\.env\.T876_CAR_FAST === '1';/.test(V), "손잡이 — '1' 만 켬");
+ok(/const T876_CAR_FAST = process\.env\.T876_CAR_FAST !== '0';/.test(V), "손잡이 — 켬 기본 · `=0` 만 끔(T889 ①)");
 ok(V.includes("        else { o = Object.assign({}, c); _cg = o._t732Cargo; delete o._t732Cargo; }"), '끔 갈래 = 종전 줄(`Object.assign` · `delete o._t732Cargo`) 그대로');
 ok(V.includes("        if (T876_CAR_FAST) { const { _t732Cargo, ...rest } = c; o = rest; _cg = _t732Cargo; }"), '켬 갈래 = 짐 레코드 칸을 거른 나머지 꼴');
 const VC = V.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');   // 주석 뺀 글자
@@ -59,10 +59,15 @@ const base = 39000 + (process.pid % 400);
 (async () => {
   console.log('\n② 다시 뜬 판 — 캐러밴이 길 위에 선 세계를 저장 → 같은 DB 로 끔 · 켬 다시 띄움');
   const S = path.join(TMP, 'save.db');
-  delete process.env.T876_CAR_FAST;
+  delete process.env.T876_CAR_FAST;   // 저장 판은 손잡이 무관(복원 문을 안 탄다 — 새 세계)
   const z = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env: zoneEnv(S, base), stdio: 'ignore' });
-  const zx = exitOf(z, 600000);
-  await sleep(100000);                                  // 부팅 + 빠른 시계 몇 날(캐러밴이 길에 선다)
+  const zx = exitOf(z, 900000);
+  //   부팅 + 빠른 시계 몇 날(캐러밴이 길에 선다) — ★[T889] 고정 100초 대신 DB 를 읽어 기다린다(부팅 교역로 A* 가 붐비는 기계에선 100초를 넘겼다):
+  //   마을 행의 저장 날이 8 을 넘으면(econ 날이 돌고 캐러밴이 떠났다) SIGTERM — 종료 저장이 마을 행과 메타 행을 한 날로 같이 쓴다(T728 경계 저장).
+  //   상한 10분. 판정 단언은 그대로(아래 [상황] 줄이 메타 캐러밴 · 날을 본다).
+  { const t0 = Date.now();
+    while (Date.now() - t0 < 600000) { await sleep(5000);
+      try { const db = new DatabaseSync(S, { readOnly: true }); const d = db.prepare('select max(day) as d from villages').get(); db.close(); if (d && d.d >= 8) break; } catch (e) {} } }
   try { z.kill('SIGTERM'); } catch (e) {}
   await Promise.race([zx, sleep(30000)]); try { z.kill('SIGKILL'); } catch (e) {} await zx;
   let meta = null, vdays = [];
@@ -72,7 +77,7 @@ const base = 39000 + (process.pid % 400);
   ok(mc >= 10 && meta.anchor && vdays.length === 1 && vdays[0] === (meta.anchor.day | 0), '[상황] 저장된 세계 — 길 위 캐러밴이 메타에 실렸고 메타 날 = 마을 날(복원 문이 캐러밴을 되돌리는 판)', `캐러밴 ${mc} · 메타 날 ${meta && meta.anchor && meta.anchor.day} · 마을 날 ${vdays.join(',')}`);
   const again = (tag, on, k) => { const db = path.join(TMP, tag + '.db'), out = path.join(TMP, tag + '.json');
     for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(S + s, db + s); } catch (e) {} }
-    const env = zoneEnv(db, base + 401 + k, { T876_BOOT_OUT: out, NODE_OPTIONS: `--require ${PROBE}` }); if (on) env.T876_CAR_FAST = '1';
+    const env = zoneEnv(db, base + 401 + k, { T876_BOOT_OUT: out, NODE_OPTIONS: `--require ${PROBE}` }); if (!on) env.T876_CAR_FAST = '0'; else delete env.T876_CAR_FAST;   // ★[T889 ①] 끔 = '0' · 켬 = 빈 값(기본)
     const c = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env, stdio: 'ignore' });
     return exitOf(c, 600000).then(() => readJ(out) || { err: '탐침 없음' }); };
   const [A, B] = await Promise.all([again('off', false, 0), again('on', true, 1)]);   // 나란히 — 부팅의 날 뜀(벽시계)이 두 판에 같게
