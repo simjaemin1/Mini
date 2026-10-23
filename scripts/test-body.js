@@ -297,8 +297,11 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
   //   ⇒ 검사의 뜻은 그대로다("저장되고, 복원된다"). 보는 자리만 그 한 쌍으로 옮긴다.
   ok(/function serializeBody\(p\)[\s\S]{0,900}body: Body\.toSave\(p\)/.test(zsrc),
     '★⑦ 저장 payload 에 몸 상태가 실린다(`serializeBody`)');
-  ok(/function parseBody\([\s\S]{0,1400}out\.body = o\.body/.test(zsrc) && /_loadBody = B\.body/.test(zsrc),
-    '★⑦ 복원 경로도 있다(저장만 하고 안 읽으면 반쪽이다 — `parseBody` → `_loadBody`)');
+  //   ★[T873 2026-10-23] 복원된 몸을 사람에 얹는 칸 목록이 한 자리(`_bodyInto`)로 모였다 — 종전 `_loadBody = B.body` 버퍼 줄의 자리.
+  //     일반 접속 리터럴이 그 함수를 펼치고(`..._bodyInto({}, _B, equipped)`) 승격 갈래(T868 켬)가 같은 함수를 부른다. 뜻은 그대로("복원된다").
+  ok(/function parseBody\([\s\S]{0,1400}out\.body = o\.body/.test(zsrc) && /function _bodyInto\(p, B, equipped\) \{[\s\S]{0,1400}\n  p\.body = B\.body \?/.test(zsrc)
+    && /\.\.\._bodyInto\(\{\}, _B, equipped\)/.test(zsrc),
+    '★⑦ 복원 경로도 있다(저장만 하고 안 읽으면 반쪽이다 — `parseBody` → `_bodyInto` · 일반 접속 리터럴이 펼친다)');
   ok(/tools_json: JSON\.stringify\(serializeBody\(player\)\)/.test(zsrc),
     '★⑦ 그리고 저장은 **그 한 함수만** 쓴다(손으로 쓴 두 번째 직렬화가 없다 — T47)');
 
