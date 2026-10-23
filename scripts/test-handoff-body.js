@@ -377,12 +377,12 @@ async function promoteTrip(tag) {
   const cutSrc = (s, a, b) => { const i = s.indexOf(a); if (i < 0) return ''; const j = s.indexOf(b, i + a.length); return s.slice(i, j > i ? j : s.length); };
   const promoteOf = (s) => cutSrc(s, "msg.type === 'promote_to_primary' && msg.token && pendingHandoffs.has(msg.token)", '\nfunction attachObserverHandlers');
   const tokenOf = (s) => cutSrc(s, 'if (handoffToken && pendingHandoffs.has(handoffToken)) {', '// source zone에 ACK 전송');
-  const sameBody = (s) => /_handoffBody\(pending, pending\.player_id\)/.test(promoteOf(s)) && /_t868BodyInto\(player, _t868hb\.B\)/.test(promoteOf(s))
+  const sameBody = (s) => /_handoffBody\(pending, pending\.player_id\)/.test(promoteOf(s)) && /_bodyInto\(player, _t868hb\.B, /.test(promoteOf(s))
     && /_handoffBody\(pending, playerId\)/.test(tokenOf(s)) && !/parseBody\(/.test(tokenOf(s))
     && /function _handoffBody\(pending, playerId\) \{\s*const done = \(raw, src\) => \(\{ B: parseBody\(raw \|\| \{\}, \{ vitals: true \}\), src \}\);\s*if \(pending\.body\) return done\(pending\.body, 'payload'\);\s*return central\.getPlayer\(playerId\)/.test(s);
   ok(sameBody(src) && (src.match(/process\.env\.T868_PROMOTE_BODY/g) || []).length === 1 && /const T868_PROMOTE_BODY = process\.env\.T868_PROMOTE_BODY === '1';/.test(src),
     '① ★★[T868] 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody` — 페이로드 → central 행 · `parseBody`)를 부른다 · 손잡이 한 자리(`=== \'1\'`)');
-  const decoyPromote = promoteOf(src).replace(/_handoffBody\(pending, pending\.player_id\)/g, 'null').replace(/^.*_t868BodyInto\(player, _t868hb\.B\).*$/m, '');
+  const decoyPromote = promoteOf(src).replace(/_handoffBody\(pending, pending\.player_id\)/g, 'null').replace(/^.*_bodyInto\(player, _t868hb\.B, .*$/m, '');
   const decoySrc = src.replace(promoteOf(src), decoyPromote);
   ok(promoteOf(src).length > 2000 && decoySrc !== src && !sameBody(decoySrc) && /equipment: \[\], equipSlots: \{\}, craftSkill: \{\}/.test(decoyPromote),
     '① ★[T868] 미끼 — 몸 잇는 두 줄을 뺀 승격 갈래(스칼라만 쓰는 사본 · main 의 그 꼴)에는 위 검사가 문다(자명 통과 0)', `승격 갈래 ${promoteOf(src).length}자`);
@@ -552,6 +552,43 @@ async function promoteTrip(tag) {
   killAll(); await sleep(4000);
 
   // ★★[T868] ⑦ 승격 경로가 몸 전부를 잇는다(위 `promoteTrip`) — P = 켬(`T868_PROMOTE_BODY=1`) · Q = 끔(기본 — 종전 결함 증인 · 켬 판의 "같다"가 자명하지 않다는 증인)
+  // ★★[T873] ⑦ P 소스 검사 — 몸을 사람에 얹는 칸 목록이 하나인가(T868 회부 3). 몸 칸 = `parseBody` 가 돌려주는 칸(그 리터럴에서 읽는다 — 새 칸이 생기면
+  //   목록이 저절로 는다 · `vital` 은 사람에선 hp · maxHp · isDown · downedAt). ⓐ 얹는 함수가 하나(`function _bodyInto(` 1 · 옛 `_t868BodyInto` 0 · 신체 빈 칸 0 채움 꼴 1)
+  //   ⓑ 그 함수가 몸 칸 전부를 얹는다 ⓒ 일반 접속 리터럴은 펼침 `..._bodyInto({}, _B, equipped)` 하나 — 그 밖에 몸 칸 키 · `_B` 읽기 0
+  //   ⓓ 승격 갈래는 `_bodyInto(player, _t868hb.B, …)` 를 부르고 그 밖에 몸 칸 쓰기(`player.칸 =`) · `_t868hb.B` 읽기 0(T732 로트 줄 — T868 끔에도 도는 몫 — 만 예외).
+  //   미끼 넷 = 한 쪽에만 칸 더한 사본: 새 칸(`parseBody` 에 더함)을 리터럴에만 · 승격에만, 있는 칸(제작이력)을 리터럴에만 · 승격에만 한 번 더 — 넷 다 물어야 한다.
+  //   옳은 사본(새 칸을 `parseBody` 와 `_bodyInto` 에만)은 지나야 한다(새 칸마다 빨강인 자는 자가 아니다).
+  const VITAL_KEYS = ['hp', 'maxHp', 'isDown', 'downedAt'];
+  const bodyKeysOf = (s) => { const m = /\n  const out = \{([\s\S]*?)\n  \};/.exec(cutSrc(s, 'function parseBody(raw, opts) {', '\n}\n')); return m ? [...m[1].replace(/\/\/[^\n]*/g, '').matchAll(/([A-Za-z_]\w*)\s*:/g)].map((x) => x[1]) : []; };
+  const litOf = (s) => cutSrc(cutSrc(s, 'async function _acceptConnection(', '\nfunction '), '\n  const player = {', '\n  };');
+  const T732_LOTS = /^\s*if \(T732_MOMENT && pending\.body\) \{ try \{ const _B = parseBody\(pending\.body, \{\}\); if \(_B && _B\.lots\) player\.lots = _B\.lots; \} catch \(e\) \{\} \}[ \t]*$/m;
+  const bodyIntoOne = (s) => {
+    const keys = bodyKeysOf(s).filter((k) => k !== 'vital').concat(VITAL_KEYS);
+    const fn = cutSrc(s, '\nfunction _bodyInto(p, B, equipped) {', '\n}\n');
+    const lit = litOf(s).replace(/\/\/[^\n]*/g, ''), litRest = lit.replace('..._bodyInto({}, _B, equipped),', '');
+    const pro = promoteOf(s).replace(/\/\/[^\n]*/g, ''), proRest = pro.replace(T732_LOTS, '').replace(/^.*_bodyInto\(player, _t868hb\.B, .*$/m, '');
+    return keys.length >= 15 && ['toolItems', 'craftLog', 'member', 'downedAt'].every((k) => keys.includes(k))
+      && (s.match(/\bfunction _bodyInto\(/g) || []).length === 1 && !/\b_t868BodyInto\s*\(/.test(s)
+      && (s.match(/\{ cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: \{\}, \.\.\./g) || []).length === 1
+      && keys.every((k) => new RegExp(`\\n\\s*p\\.${k} = `).test(fn))
+      && lit.length > 500 && lit.split('..._bodyInto({}, _B, equipped),').length === 2 && !/\b_B\b/.test(litRest)
+      && !keys.some((k) => new RegExp(`(^|[\\s{,])${k}\\s*[:,]`).test(litRest))
+      && /_bodyInto\(player, _t868hb\.B, /.test(pro) && !/_t868hb\.B\b/.test(proRest)
+      && !keys.some((k) => new RegExp(`\\bplayer\\.${k}\\s*=[^=]`).test(proRest));
+  };
+  const addOut = (s) => s.replace('  const out = {\n    toolItems: [],', '  const out = {\n    wetness: null, toolItems: [],');
+  const proLine = /^(.*_bodyInto\(player, _t868hb\.B, .*)$/m;
+  const decoys873 = [
+    addOut(src).replace('..._bodyInto({}, _B, equipped),', '..._bodyInto({}, _B, equipped),\n    wetness: _B.wetness,'),
+    addOut(src).replace(proLine, '$1\n    if (_t868hb) player.wetness = _t868hb.B.wetness;'),
+    src.replace('..._bodyInto({}, _B, equipped),', '..._bodyInto({}, _B, equipped),\n    craftLog: _B.craftLog,'),
+    src.replace(proLine, '$1\n    if (_t868hb) player.craftLog = _t868hb.B.craftLog;'),
+  ];
+  const right873 = addOut(src).replace('  p.member = B.member;', '  p.member = B.member;\n  p.wetness = B.wetness;');
+  const bit873 = decoys873.filter((d) => d !== src && !bodyIntoOne(d)).length;
+  ok(bodyIntoOne(src) && bit873 === 4 && right873 !== src && right873 !== addOut(src) && bodyIntoOne(right873),
+    '⑦ P ★★[T873] 몸을 사람에 얹는 함수는 하나(`_bodyInto`) — 일반 접속 리터럴 · 승격이 같은 칸 목록을 부른다 · 미끼(한 쪽에만 칸 더한 사본) 넷 다 문다 · 옳은 사본(새 칸을 `_bodyInto` 에만)은 지난다',
+    `몸 칸 ${bodyKeysOf(src).length}(생명값 → ${VITAL_KEYS.length}) · 미끼 ${bit873}/4 · 리터럴 ${litOf(src).length}자`);
   if (!await startZones(null, { T868_PROMOTE_BODY: '1' })) { console.log('  ✗ T868 켬 기동 실패'); process.exit(1); }
   const P = await promoteTrip('P');
   ok(P.crossed && P.promoted, '★[상황 · T868 켬] 관측 소켓을 승격해 넘었다(넘기 메시지 · 승격 welcome)', P.crossed ? `승격 welcome ${P.promoted}` : '넘지 못함');
