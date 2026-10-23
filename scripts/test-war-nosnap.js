@@ -297,7 +297,7 @@ console.log('\n[ⓕ] T832 — 켬 판 결정론: 귀환 몸도 그날 몫(아이
   ok(!/[^\w.'D](?:[2-9]|\d{2,})(?:\.\d+)?(?![\w'])/.test(blk) && !/Math\.random/.test(blk), 'ⓕ 정적 — 새 수 0(몫 = 종전 `_t681Quota` · 시간 예산은 종전 마감 예산 그대로 — 끊겨도 몫이 남아 다음 조각에 잇는다)');
 }
 const child832 = (knob, t844) => {   // knob = T790_NO_SNAP · t844 = T844_RET_QUOTA(끔 판 귀환 몫)
-  const env = Object.assign({}, process.env); if (knob) env.T790_NO_SNAP = '1'; else delete env.T790_NO_SNAP; if (t844) env.T844_RET_QUOTA = '1'; else delete env.T844_RET_QUOTA;
+  const env = Object.assign({}, process.env); if (knob) env.T790_NO_SNAP = '1'; else delete env.T790_NO_SNAP; if (t844 === 'default') delete env.T844_RET_QUOTA; else env.T844_RET_QUOTA = t844 ? '1' : '0';   // ★[T861] 켬 기본 — 끈 판은 명시 `=0` · 'default' = env 없음
   const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}),WLM=require(${JSON.stringify(path.join(ROOT, 'server', 'war-live.js'))});`
     + `const players=new Map(),live=WLM.createWarLive({cellPx:32,pxPerM:32,tickHz:30});let calls=0;const sf=live._muStepFollow;live._muStepFollow=function(){calls++;return sf.apply(this,arguments);};`
     + `const H=V.__p3Bind({warLive:live,world:{day:12},dayMs:10000,deps:{players,moveSpeed:64,npcs:new Set(),broadcast(){}},_warStat:{standoff:0},war:{WARS:[]}});`
@@ -323,18 +323,19 @@ const child832 = (knob, t844) => {   // knob = T790_NO_SNAP · t844 = T844_RET_Q
     'ⓕ 끔 — 종전 글자: 귀환은 틱마다(마감 고리 무동작 · 몫 안 씀) · 칸 없음 = 지휘 몸이 길 머리에 놓인다', `틱 10 · 200 · 0 → 걸음 ${off.a.calls} · ${off.b.calls} · ${off.c.calls}`);
 }
 
-// ── ⓖ T844 — 끔 판 귀환도 그날 몫(손잡이 `T844_RET_QUOTA` · '1' 만 켬 · T832 회부 3) ─────────────
+// ── ⓖ T844 — 끔 판 귀환도 그날 몫(손잡이 `T844_RET_QUOTA` · ★[T861] 켬 기본 — `=0` 만 끔 · T832 회부 3) ─────────────
 //   끔 판은 귀환이 틱마다 걸어, 결판이 마감 안에서 나면 그날 귀환이 0걸음 → 몸이 결판 자리에서 풀렸다(T832 §3-2 · 부하 다른 끔 두 판 D40).
 //   손잡이를 켜면 끔 판 귀환도 T832 와 같은 두 자리(같은 함수 · 술어 `_RET_QUOTA` 하나)로 그날 몫을 걷는다. 끔 판 걸음 꼴(지휘 몸 놓기 · 병사 5칸 붙기)은 그대로 — 바뀌는 것은 걸음 수뿐.
 //   무대: ⓕ 와 같은 귀환 · 몸 둘 판은 병사 하나(s2)를 결판 자리 서쪽 700,1000 에 둔다(슬롯까지 ~400칸 — 끔 걸음 5칸이면 ~80걸음).
 console.log('\n[ⓖ] T844 — 끔 판 귀환도 그날 몫(아이 프로세스 · 손잡이 T844_RET_QUOTA 켬/끔)');
 {
   const n = (CV.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n').match(/\b_RET_QUOTA\b/g) || []).length;   // 주석 밖 글자만
-  ok(/const T844_RET_QUOTA = process\.env\.T844_RET_QUOTA === '1';/.test(CV) && /const _RET_QUOTA = T790_NO_SNAP \|\| T844_RET_QUOTA;/.test(CV) && n === 3,
-    'ⓖ 정적 — 손잡이 하나(\'1\' 만 켬) · 술어 하나 `_RET_QUOTA = T790_NO_SNAP || T844_RET_QUOTA` 를 두 자리(틱 귀환 줄 · 마감 귀환 고리)가 같이 쓴다(사본 0)', `_RET_QUOTA ${n}번(정의 1 · 자리 2)`);
+  ok(/const T844_RET_QUOTA = process\.env\.T844_RET_QUOTA !== '0';/.test(CV) && /const _RET_QUOTA = T790_NO_SNAP \|\| T844_RET_QUOTA;/.test(CV) && n === 3,
+    'ⓖ 정적 — 손잡이 하나(★[T861] 켬 기본 · `=0` 만 끔) · 술어 하나 `_RET_QUOTA = T790_NO_SNAP || T844_RET_QUOTA` 를 두 자리(틱 귀환 줄 · 마감 귀환 고리)가 같이 쓴다(사본 0)', `_RET_QUOTA ${n}번(정의 1 · 자리 2)`);
 }
 {
-  const k = child832(false, true), off = child832(false), Q = k.q;
+  const k = child832(false, true), off = child832(false), dflt = child832(false, 'default'), Q = k.q;
+  ok(JSON.stringify(dflt) === JSON.stringify(k), 'ⓖ ★[T861] 켬 기본 — env 없음 = `1`(아이 판 한 글자 같다 · 끈 판은 명시 `=0`)', `걸음 ${dflt.a.calls} · ${dflt.c.calls} · 병사 x ${dflt.t0.x2.toFixed(4)}`);
   ok(k.a.calls === Q && k.b.calls === Q && k.c.calls === Q && k.e.calls === Q && k.a.left === 0 && k.a.walk === null,
     'ⓖ 끔 + 손잡이 — 그날 귀환 걸음 = 하루 몫: 틱 10 · 200 · 0 · 400 번 뒤 마감 첫 자리까지 늘 같다 · 몸 걸음 칸 없음(끔 걸음 꼴 그대로)', `몫 ${Q} · 걸음 ${k.a.calls} · ${k.b.calls} · ${k.c.calls} · ${k.e.calls}`);
   ok(k.c.x === 1100 && k.a.x === 1100 && off.c.calls === 0 && off.c.x === 1000,
