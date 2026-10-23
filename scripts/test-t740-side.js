@@ -69,9 +69,9 @@ function fakeVil(name, id) {
   ok(!diff.length, `③ 칸 ${P.KEYS.length} 이 저장 순간과 같다(Map · Set 풀어서)`, diff.join(','));
   ok(nv._crop instanceof Map && nv._crop.size === 2 && [...nv._crop.keys()].join('|') === '10,20|11,20', '③ 작물 — 셀 · 심은 날 · 단계 · 차례 그대로(종전: 빈 Map = 재파종)');
   ok(nv._mkt && nv._mkt.at instanceof Map && nv._mkt.cars instanceof Set && nv._mkt.end === v._mkt.end, '③ 장 — 명부(Map) · 선 캐러밴(Set) · 장 끝 시각 그대로');
-  //   ★[T862 ②] 켬(`T862_ECON_FAST=1`)이면 지우지 않고 `undefined` 를 놓는다(econ 객체를 사전 모드로 안 내리려고) — 남는 곁 값이 없다는 뜻은 같다:
+  //   ★[T862 ②] 켬(★[T876 ①] 기본 · 끔 탐침 `T862_ECON_FAST=0`)이면 지우지 않고 `undefined` 를 놓는다(econ 객체를 사전 모드로 안 내리려고) — 남는 곁 값이 없다는 뜻은 같다:
   //     값이 `undefined` 이고(데이터 0) 저장 줄은 그 칸을 안 싣는다(`test-econ-fast` ① · ② 바이트 같음). 끔 갈래는 종전 단언 그대로.
-  ok(process.env.T862_ECON_FAST === '1' ? ev._t740Side === undefined : !('_t740Side' in ev), '③ econ 에 곁 칸이 안 남는다(되돌린 뒤 지운다 · 켬이면 값 `undefined`)');
+  ok(process.env.T862_ECON_FAST !== '0' ? ev._t740Side === undefined : !('_t740Side' in ev), '③ econ 에 곁 칸이 안 남는다(되돌린 뒤 지운다 · 켬이면 값 `undefined`)');
   ok(made.length === 1 && made[0].data.stage === 3 && nv._site && nv._site.stage === 3 && nv._pendSite === null && canon(nv._site.mat) === canon(v._site.mat), '④ 집터 — 저장된 단계(3) · 놓인 자재로 그 자리에 선다(종전: 다음 마감에 단계 1 · 자재 0)', made[0] && JSON.stringify(made[0].data));
   ok(R && R.site === 1 && R.crop === 2 && R.mkt === 1, '③ 되돌림 셈', JSON.stringify(R));
   // 그새 완공(집터 행 없음 → `_pendSite` null) — 안 세운다

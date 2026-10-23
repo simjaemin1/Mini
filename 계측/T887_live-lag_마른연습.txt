@@ -1,0 +1,53 @@
+# T887 live-lag 마른 연습(2026-10-23 · 두 호스트 흉내 한 상자 · 2 vCPU) — 출력 그대로(비밀 0)
+
+## ⓐ 조용한 판 — 절차서 §3 5 줄 그대로(t587-rehearsal.sh runbook 5 · 줄 5·3)
+live-lag 2026-10-23 08:18:02 — 존 틱 · 루프 · 호스트 · 망 (읽기만 · 문턱 = lag-table.js T486)
+  [존] hanbando@서울 — 틱 p50 1.921 · p95 19.306 · max 238.12 ms(최근 2194틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 13.18 · max 304.09 ms | 지금 /health 왕복 p95 4.7 · max 7.9 ms | 사람 0 · 마을 50 · 세계 날 —(첫 마감 전) | 최근 60초 무거운 일 35번(tick 238ms · econ_frame 32ms · save 6ms)
+  [존] nippon@도쿄 — 틱 p50 0.26 · p95 0.462 · max 196.641 ms(최근 3000틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 10.67 · max 255.72 ms | 지금 /health 왕복 p95 5.1 · max 10.9 ms | 사람 0 · 마을 7 · 세계 날 —(첫 마감 전) | 최근 60초 무거운 일 1번(tick 197ms)
+  [central] @서울 — 지금 /health 왕복 p95 4.8 · max 8.7 ms · 계정 3
+  [호스트] 서울(seoul) — vCPU 2 · 부하 0.93 1.16 0.72 · 1초 바쁨 9.8% · steal 0.5% · iowait 0% | 메모리 남음 6776 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 central 0.01% 16MB · hanbando 6.52% 468MB | 다른 무거운 것 없음
+  [호스트] 도쿄(tokyo) — vCPU 2 · 부하 0.93 1.16 0.72 · 1초 바쁨 9.3% · steal 0.5% · iowait 0% | 메모리 남음 6776 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 nippon 5% 81MB | 다른 무거운 것 없음
+  [망] 맥 → 호스트 TCP 왕복 — 서울:3010 최소 0.2 · 중앙 0.2 · 최대 0.2 ms(5번) | 서울:3020 최소 0.2 · 중앙 0.2 · 최대 0.3 ms(5번) | 도쿄:3021 최소 0.2 · 중앙 0.2 · 최대 0.2 ms(5번)
+  판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+
+## ⓑ docker build(--no-cache) 도는 중
+live-lag 2026-10-23 08:10:23 — 존 틱 · 루프 · 호스트 · 망 (읽기만 · 문턱 = lag-table.js T486)
+  [존] hanbando@서울 — 틱 p50 1.836 · p95 2.903 · max 13.797 ms(최근 3000틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 11.74 · max 619.18 ms | 지금 /health 왕복 p95 5.4 · max 12.4 ms | 사람 0 · 마을 50 · 세계 날 —(첫 마감 전)
+  [존] nippon@도쿄 — 틱 p50 0.258 · p95 0.405 · max 14.884 ms(최근 3000틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 10.67 · max 255.72 ms | 지금 /health 왕복 p95 14.2 · max 16.8 ms | 사람 0 · 마을 7 · 세계 날 —(첫 마감 전)
+  [central] @서울 — 지금 /health 왕복 p95 5.4 · max 5.4 ms · 계정 3
+  [호스트] 서울(seoul) — vCPU 2 · 부하 1.73 0.58 0.25 · 1초 바쁨 15.8% · steal 1% · iowait 64.5% | 메모리 남음 7155 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 central 0.55% 45MB · hanbando 7.28% 187MB | 다른 무거운 것 없음 | ★docker build 도는 중
+  [호스트] 도쿄(tokyo) — vCPU 2 · 부하 1.73 0.58 0.25 · 1초 바쁨 16.2% · steal 1% · iowait 64.2% | 메모리 남음 7153 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 nippon 1.42% 66MB | 다른 무거운 것 없음 | ★docker build 도는 중
+  [망] 맥 → 호스트 TCP 왕복 — 서울:3010 최소 0.2 · 중앙 0.2 · 최대 0.2 ms(5번) | 서울:3020 최소 0.2 · 중앙 0.2 · 최대 0.3 ms(5번) | 도쿄:3021 최소 0.2 · 중앙 0.2 · 최대 0.6 ms(5번)
+  판정: 문턱 넘은 층 — 서울 docker build 도는 중 / 도쿄 docker build 도는 중
+
+## ⓒ 한 코어 넘게 도는 셸 넷(nice -10) + build
+live-lag 2026-10-23 08:12:18 — 존 틱 · 루프 · 호스트 · 망 (읽기만 · 문턱 = lag-table.js T486)
+  [존] hanbando@서울 — 틱 p50 1.822 · p95 3.087 · max 26.935 ms(최근 3000틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 11.77 · max 619.18 ms | 지금 /health 왕복 p95 13 · max 16.4 ms | 사람 0 · 마을 50 · 세계 날 —(첫 마감 전) | 최근 60초 무거운 일 1번(save 5ms)
+  [존] nippon@도쿄 — 틱 p50 0.254 · p95 0.369 · max 4.301 ms(최근 3000틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 10.67 · max 255.72 ms | 지금 /health 왕복 p95 10.8 · max 16 ms | 사람 0 · 마을 7 · 세계 날 —(첫 마감 전)
+  [central] @서울 — 지금 /health 왕복 p95 8.2 · max 8.7 ms · 계정 3
+  [호스트] 서울(seoul) — vCPU 2 · 부하 2.23 1.08 0.46 · 1초 바쁨 99.6% · steal 1.2% · iowait 0% | 메모리 남음 7176 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 central 0% 45MB · hanbando 7.94% 189MB | 다른 무거운 것 sh ×4 257% | ★docker build 도는 중
+  [호스트] 도쿄(tokyo) — vCPU 2 · 부하 2.23 1.08 0.46 · 1초 바쁨 99.6% · steal 1.2% · iowait 0% | 메모리 남음 7176 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 nippon 1.45% 67MB | 다른 무거운 것 sh ×4 250% | ★docker build 도는 중
+  [망] 맥 → 호스트 TCP 왕복 — 서울:3010 최소 0.2 · 중앙 11.1 · 최대 36.3 ms(5번) | 서울:3020 최소 0.2 · 중앙 0.2 · 최대 0.2 ms(5번) | 도쿄:3021 최소 0.2 · 중앙 0.2 · 최대 0.3 ms(5번)
+  판정: 문턱 넘은 층 — 서울 다른 프로세스 sh ×4 257%(한 코어의 30% 넘음) / 서울 docker build 도는 중 / 도쿄 다른 프로세스 sh ×4 250%(한 코어의 30% 넘음) / 도쿄 docker build 도는 중 / 서울 호스트 CPU 바쁨 99.6% ≥ 90 / 도쿄 호스트 CPU 바쁨 99.6% ≥ 90
+
+## ⓓ 도쿄 ssh 막힘(LAG_TOKYO=down — 가짜 ssh 가 255)
+live-lag 2026-10-23 08:19:42 — 존 틱 · 루프 · 호스트 · 망 (읽기만 · 문턱 = lag-table.js T486)
+  [호스트] 도쿄(down) — 닿지 않음: ssh: connect to host down port 22: Connection refused
+  [존] hanbando@서울 — 틱 p50 1.704 · p95 19.097 · max 109.819 ms(최근 3000틱) · 뒤짐 0% · 빚 버림 0 | 루프(누계) p95 12.52 · max 304.09 ms | 지금 /health 왕복 p95 13.8 · max 25.4 ms | 사람 0 · 마을 50 · 세계 날 —(첫 마감 전) | 최근 60초 무거운 일 38번(tick 110ms · econ_frame 28ms)
+  [central] @서울 — 지금 /health 왕복 p95 4.2 · max 4.8 ms · 계정 3
+  [호스트] 서울(seoul) — vCPU 2 · 부하 0.68 1.01 0.72 · 1초 바쁨 7.3% · steal 0% · iowait 0% | 메모리 남음 6720 / 8027 MB · 스왑 0 / 0 MB(그 1초 오감 0) | 컨테이너 central 0% 16MB · hanbando 14.27% 558MB | 다른 무거운 것 없음 | ★docker build 도는 중
+  [망] 맥 → 호스트 TCP 왕복 — 서울:3010 최소 0.2 · 중앙 0.2 · 최대 0.2 ms(5번) | 서울:3020 최소 0.2 · 중앙 0.2 · 최대 0.2 ms(5번)
+  판정: 문턱 넘은 층 — 도쿄 호스트 닿지 않음(ssh) / 서울 docker build 도는 중
+
+## ⓔ --json 한 판(줄 수 · 판정)
+rows 11 · 판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+
+## ⓕ redeploy 두 줄 — 앞뒤 컨테이너(env sha256 앞 16자 · 수 · 이미지 · 재시작 · 포트 · 볼륨)
+앞:
+durango-central 94234cb4f1a7aca8 n=14 img=01101a5ee3e2 unless-stopped {"3010/tcp":[{"HostIp":"","HostPort":"3010"}]} /srv/durango/central:/data
+durango-zone-hanbando 0b0db37de5487761 n=20 img=3e465666bba4 unless-stopped {"3020/tcp":[{"HostIp":"","HostPort":"3020"}]} /srv/durango/hanbando:/data
+뒤(redeploy-hanbando.sh --all):
+durango-central 94234cb4f1a7aca8 n=14 img=50a150589aba unless-stopped {"3010/tcp":[{"HostIp":"","HostPort":"3010"}]} /srv/durango/central:/data
+durango-zone-hanbando 0b0db37de5487761 n=20 img=7a68b67d4b85 unless-stopped {"3020/tcp":[{"HostIp":"","HostPort":"3020"}]} /srv/durango/hanbando:/data
+redeploy-all.sh(central 줄 · 26존은 흉내) 앞뒤 central env sha 94234cb4f1a7aca8 = 94234cb4f1a7aca8
+/tmp/*.env 0 · 두 로그에 비밀 값 0

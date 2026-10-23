@@ -5,9 +5,9 @@
 // ★[T862 ②] 마을 econ 객체(`vil.econ` — 생활층과 econ 하루가 가장 많이 읽는 객체 · 칸 110~135)를 V8 사전 모드로 내리던 `delete` 두 무리:
 //   ⓐ 다시 뜬 판의 부팅 복원 — 저장 줄 곁 칸(`_t728*` · `_t740Side` · `_t747Body` · `_t732Lots`)을 제자리로 돌려놓고 `delete` ⇒ 51 마을 전부 사전 모드
 //   ⓑ 전쟁 — `_warWriteThreats` 가 걸음마다 `delete e._warThreat`
-//   켬(`T862_ECON_FAST=1`)이면 지우지 않고 `undefined`(`_t862Drop`) · `in` 문은 `_t862Has`(켬이면 `undefined` 칸 = 없는 칸) · 저장은 그 칸을 안 싣는다.
+//   켬(★[T876 ①] 기본 · 끔 탐침 `T862_ECON_FAST=0`)이면 지우지 않고 `undefined`(`_t862Drop`) · `in` 문은 `_t862Has`(켬이면 `undefined` 칸 = 없는 칸) · 저장은 그 칸을 안 싣는다.
 //   ① 글자 — 그 칸들을 만지는 자리(server/ · sim/ 정본)가 전부 허용 꼴이다(`_t862Drop` · `_t862Has` · 참거짓 · `|| 0` · `!= null` · 저장 줄 `out.<칸> =`).
-//      날 `in` · `=== undefined` · `hasOwnProperty` · 날 `delete` 가 생기면 문다(미끼 둘) · 손잡이 '1' 만 켬 · 끔 갈래 = `delete` · `in`(종전 뜻)
+//      날 `in` · `=== undefined` · `hasOwnProperty` · 날 `delete` 가 생기면 문다(미끼 둘) · 손잡이 켬 기본(`=0` 만 끔 · T876 ①) · 끔 갈래 = `delete` · `in`(종전 뜻)
 //   ② 다시 뜬 판 — 실서버 아이 존 6날(시드 1020)을 저장 → 같은 DB 로 끔 · 켬 다시 띄움:
 //      부팅 복원 직후(첫 틱 전) 끔 = econ 객체 사전 모드(자명 통과 금지) · 켬 = 전부 빠른 꼴 · 저장 줄(`serializeEcon`) 51 줄이 **바이트** 같다(칸 차례까지) ·
 //      이어 날 40 까지 econ 날 지문(곳간 · 사람 · 집 · 금고) · 여덟 수가 한 글자 같다 · 켬 판은 끝까지 빠른 꼴
@@ -56,7 +56,7 @@ const odd = uses.filter((u) => left(u.c));
 ok(uses.length >= 20 && odd.length === 0, '★곁 칸 · 위협 자국을 만지는 자리가 전부 허용 꼴(`_t862Drop` · `_t862Has` · 참거짓 · `|| 0` · `!= null` · 저장 줄)', odd.map((u) => `${u.f}:${u.n} ${u.c.slice(0, 90)}`).join(' · ') || `${uses.length} 줄`);
 ok(left("if ('_t740Side' in e) x();") && left('if (e._t728Game === undefined) y();') && left('delete e._warThreat;'), "★미끼 — 날 `in` · `=== undefined` · 날 `delete` 를 심으면 문다");
 const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
-ok(/const T862_ECON_FAST = process\.env\.T862_ECON_FAST === '1';/.test(V), "손잡이 — '1' 만 켬");
+ok(/const T862_ECON_FAST = process\.env\.T862_ECON_FAST !== '0';/.test(V), "손잡이 — 켬 기본 · `=0` 만 끔(T876 ①)");
 ok(V.includes("function _t862Drop(o, k) { if (T862_ECON_FAST) o[k] = undefined; else delete o[k]; }") && V.includes("function _t862Has(o, k) { return (k in o) && !(T862_ECON_FAST && o[k] === undefined); }"),
   '끔 갈래 = 종전 뜻(`delete o[k]` · `k in o`) 그대로');
 ok(V.includes("    if (T862_ECON_FAST && v[k] === undefined && _T862_SIDE.has(k)) continue;"), '저장 줄 — 켬이면 `undefined` 곁 칸을 안 싣는다(끔 갈래는 그 줄을 안 탄다)');
@@ -93,7 +93,7 @@ Ev.createLedger = function () { const L = mk.apply(this, arguments); const sd = 
 process.on('exit', () => { try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} });
 `);
 const BASE = { VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0' };   // 판 조건 = 서버 기준선 자(T650)
-const knob = (env, on) => { if (on) env.T862_ECON_FAST = '1'; else delete env.T862_ECON_FAST; return env; };
+const knob = (env, on) => { if (on) delete env.T862_ECON_FAST; else env.T862_ECON_FAST = '0'; return env; };   // ★[T876 ①] 켬 = 빈 값(기본) · 끔 = '0'
 const wait = (c, ms) => new Promise((res) => { const k = setTimeout(() => { try { c.kill('SIGKILL'); } catch (e) {} }, ms); c.on('exit', (code) => { clearTimeout(k); res(code); }); });
 const readJ = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
 // 새 세계 판(t577 자) — 끝에 DB 가 남는다

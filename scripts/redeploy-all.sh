@@ -18,16 +18,20 @@ docker build -f Dockerfile.zone -t durango-zone .
 echo "[3/4] central rm + 새 container (새 image 적용)"
 # 주의: docker restart는 새 image 적용 안 함. 옛 container의 옛 filesystem 그대로.
 # 새 client.js / server.js 적용하려면 rm + run 필수.
-# 기존 env (ZONE_HOSTS 등) 보존하기 위해 inspect로 백업 후 --env-file 전달.
+# 기존 env (ZONE_HOSTS 등) 보존 — inspect 로 떠서 **이 셸의 변수로만** 옮겨 싣는다(`docker run -e <이름>`).
+#   ★[T887 · 절차서 §1 #24] 종전엔 `/tmp/central-app.env` 파일(비밀 값 사본)에 떠서 안 지웠다 — `reset-world.sh` recreate() 와 같은 꼴로 바꿈(넘기는 env 는 같다).
 if docker ps -a --format '{{.Names}}' | grep -q '^durango-central$'; then
-  docker inspect durango-central --format '{{range .Config.Env}}{{println .}}{{end}}' \
-    | grep -v -E '^(PATH|NODE_VERSION|YARN_VERSION|NODE_ENV|HOME|HOSTNAME)=' \
-    > /tmp/central-app.env
+  ENVS=()
+  mapfile -t ENVS < <(docker inspect durango-central --format '{{range .Config.Env}}{{println .}}{{end}}' \
+    | grep -v -E '^(PATH|NODE_VERSION|YARN_VERSION|NODE_ENV|HOME|HOSTNAME)=' || true)
   docker rm -f durango-central >/dev/null
-  docker run -d --name durango-central --restart unless-stopped \
-    -p 3010:3010 -v /srv/durango/central:/data \
-    --env-file /tmp/central-app.env \
-    durango-central >/dev/null
+  (
+    a=(); for kv in ${ENVS[@]+"${ENVS[@]}"}; do case "$kv" in *=*) export "$kv"; a+=(-e "${kv%%=*}") ;; esac; done
+    docker run -d --name durango-central --restart unless-stopped \
+      -p 3010:3010 -v /srv/durango/central:/data \
+      ${a[@]+"${a[@]}"} \
+      durango-central >/dev/null
+  )
 else
   echo "  [warn] durango-central 컨테이너 없음 — 수동으로 만들어야 함 (env 정보 모름)"
 fi
