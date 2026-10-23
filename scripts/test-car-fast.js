@@ -62,7 +62,12 @@ const base = 39000 + (process.pid % 400);
   delete process.env.T876_CAR_FAST;
   const z = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env: zoneEnv(S, base), stdio: 'ignore' });
   const zx = exitOf(z, 600000);
-  await sleep(100000);                                  // 부팅 + 빠른 시계 몇 날(캐러밴이 길에 선다)
+  // ★[PM 착지 10-23] 부팅이 느린 상자(2코어 · 부팅 100초+)에선 고정 100초가 날 0 에서 저장했다(캐러밴 0 · 메타 날 null) —
+  //   `/health` 가 선 뒤 빠른 시계 30초(≥ 120 날)를 더 기다린다 · 빠른 상자에선 종전처럼 100초(둘 중 긴 쪽) · 상한 400초.
+  const _t0 = Date.now(); const http = require('http');
+  const up = () => new Promise((r) => { const q = http.get({ host: '127.0.0.1', port: base, path: '/health', timeout: 2000 }, (res) => { res.resume(); r(res.statusCode === 200); }); q.on('error', () => r(false)); q.on('timeout', () => { q.destroy(); r(false); }); });
+  while (Date.now() - _t0 < 400000 && !(await up())) await sleep(2000);
+  await sleep(Math.max(30000, 100000 - (Date.now() - _t0)));   // 부팅 + 빠른 시계 몇 날(캐러밴이 길에 선다)
   try { z.kill('SIGTERM'); } catch (e) {}
   await Promise.race([zx, sleep(30000)]); try { z.kill('SIGKILL'); } catch (e) {} await zx;
   let meta = null, vdays = [];
