@@ -1,0 +1,10 @@
+#!/bin/bash
+# T853 증인 껍데기: central 을 띄우는 node 만 strace 로 신호 보낸 쪽(si_pid)을 적는다. 나머지는 그냥 node.
+REAL=${T853_REAL_NODE:-/opt/node22/bin/node}
+[ -x "$REAL" ] || REAL=$(type -ap node | sed -n 2p)   # 이 껍데기 다음 node
+for a in "$@"; do
+  if [[ "$a" == *server/central.js ]]; then
+    exec strace -f -qq -e trace=none -e signal=SIGTERM,SIGHUP,SIGINT,SIGKILL -o "${LANE_DIR:-/tmp}/central.strace.$$" $REAL "$@"
+  fi
+done
+exec $REAL "$@"
