@@ -146,12 +146,18 @@ function changedPct(a, b, box, thr) {
   //   다 구워지기까지 프레임이 여러 장 든다. 2200ms 가 어떤 날은 충분하고 어떤 날은 모자라
   //   같은 트리에서 |Δ| 34.94 와 1.78 이 번갈아 나왔다(실측).
   //   ⇒ **연속 두 장이 같아질 때까지** 기다린다. 장면 상수가 아니라 성질이다.
+  //   ★★[T880] 그리고 **"다 구웠다"도 같이** — 굽는 중 청크 0 · 구운 수가 지난 확인 그대로.
+  //     띠 예산(`T870_MT_BAND` · 켬 기본)에선 청크 하나가 여러 판에 걸쳐 구워지고 **다 굽기 전엔 그 청크를 안 그린다** —
+  //     그래서 화면이 그대로인 0.7초를 "멈췄다"로 읽고 화소 판정 넷이 빨갰다(T870 §2 · 47/4 · 멈추기까지 700ms).
+  //     읽는 것은 클라가 **이미 세는 두 수**뿐이다(굽는 중 `_mt3Jobs` 의 크기 · 구운 수 `__mtDbg.mt3bakeN`) — 되돌림(`=0`)이면 굽는 중은 늘 0 이다.
+  const bakeSt = () => page.evaluate(() => ({ jobs: (typeof _mt3Jobs !== 'undefined') ? _mt3Jobs.size : 0, n: window.__mtDbg ? window.__mtDbg.mt3bakeN : 0 }));
   const settleShot = async (tag, box, maxMs = 60000) => {
-    let prev = await grab(tag + '-s0'), t = 0, k = 0;
+    let prev = await grab(tag + '-s0'), t = 0, k = 0, b0 = await bakeSt();
     while (t < maxMs) {
       await sleep(700); t += 700; k++;
       const cur = await grab(tag + '-s' + k);
-      if (meanAbsDiff(prev, cur, box) < 0.05) return { img: cur, ms: t };
+      const b1 = await bakeSt(), baked = b1.jobs === 0 && b1.n === b0.n; b0 = b1;
+      if (baked && meanAbsDiff(prev, cur, box) < 0.05) return { img: cur, ms: t };
       prev = cur;
     }
     return { img: prev, ms: t, timeout: true };
