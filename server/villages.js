@@ -183,8 +183,8 @@ const T862_ECON_FAST = process.env.T862_ECON_FAST !== '0';   // ★[T876 ①] �
 //   지운 칸과 같은 답이고, 저장(`serializeEcon`)은 이 칸들이 `undefined` 면 싣지 않는다(종전 저장 줄과 같은 칸 · 같은 차례) — 같은 값 · 새 수 0.
 // ★[T876 ②] econ 캐러밴 빠른 꼴 — 다시 뜬 판의 메타 복원(`_t728Restore`)이 캐러밴 사본을 `Object.assign({}, c)` 로 지었다. 빈 리터럴에 셈 키로 칸 24 개를
 //   붙이면 V8 이 그 사본을 **처음부터 사전 모드**로 짓는다(뒤의 `delete o._t732Cargo` 는 원인이 아니다 — 실측: assign 직후 이미 사전 · 40/40).
-//   켬이면 짐 레코드 칸을 거른 나머지 꼴(`const { _t732Cargo, ...rest } = c`)로 짓는다 — 같은 칸 · 같은 차례 · 같은 값(얕은 사본) · 빠른 꼴. '1' 만 켬.
-const T876_CAR_FAST = process.env.T876_CAR_FAST === '1';
+//   켬이면 짐 레코드 칸을 거른 나머지 꼴(`const { _t732Cargo, ...rest } = c`)로 짓는다 — 같은 칸 · 같은 차례 · 같은 값(얕은 사본) · 빠른 꼴. 켬 기본(T889).
+const T876_CAR_FAST = process.env.T876_CAR_FAST !== '0';   // ★[T889 ①] 켬 기본(PM 10-23 — 라이브는 배포마다 다시 뜬 판) · 끔 탐침 `=0` = 종전 줄(`Object.assign` · `delete`)
 const _T862_SIDE = new Set(['_t728BaseOre', '_t728Game', '_t728HuntWk', '_t728LtdOwn', '_t728LtdSrv', '_t740Side', '_t747Body', '_t732Lots', '_warThreat']);
 function _t862Drop(o, k) { if (T862_ECON_FAST) o[k] = undefined; else delete o[k]; }
 //   `in` 문(부팅 복원) — 켬이면 `undefined` 칸 = 지운 칸(저장 줄은 JSON 이라 실린 칸이 `undefined` 일 수 없다 ⇒ 끔의 `k in o` 와 같은 답 · 두 번 불러도 같다)
