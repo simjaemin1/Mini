@@ -28,6 +28,7 @@
  * @returns {Promise<{ok:boolean, ms:number, why:string, tail:string}>}
  */
 function waitUp(child, re, opts) {
+  track(child);   // ★[T895] 내가 띄운 아이 — 하네스가 어떻게 끝나든 거둔다(아래 `track`)
   const name = (opts && opts.name) || 'server';
   const capMs = (opts && opts.capMs) || 120000;   // 표의 수 — 판정에 안 든다
   const t0 = Date.now();
@@ -74,11 +75,52 @@ function waitUp(child, re, opts) {
 //   (포트를 바꾸지 않는 이유 — central 이 zone-config 포트로 존 헬스를 폴링한다 · 제품 0 이라 그 길을 안 연다.)
 //   · `mustBeFree(ports, name)` — 동기. 하나라도 쥐여 있으면 종료코드 2(러너가 빨강으로 센다) · 아무도 안 건드린다.
 //   · `reapOnExit(procs)` — 내가 띄운 아이(`procs`)만 끝낸다: 정상 종료 · 예외 종료 · SIGINT/SIGTERM/SIGHUP(러너 시간 초과).
+// ★★[T895 2026-10-23] **내가 띄운 서버는 내가 끝날 때 같이 내려간다 — 어떻게 끝나든.** (T773 `reapOnExit` 를 손으로 단 하네스는 11곳뿐이었다)
+//   탐침(`scripts/t895-port-probe.js`): 하네스 76곳이 같은 포트(3010 · 3020)를 쓰는데, 아이를 내리는 꼴은 대개 `process.on('exit')` 의 SIGKILL 하나다.
+//     · 하네스가 **신호로** 죽으면(러너 밖 시간 초과 · 손으로 끊기 · 부모가 pid 로 죽임) 'exit' 가 안 돈다 → central · 존이 **살아남아 포트를 쥔다**(탐침 orphan: 2초 뒤 둘 다 산 채 3910 · 3920 쥠).
+//     · 끝에서 `p.kill()`(SIGTERM)만 하고 곧장 나가면 존은 T728 종료 저장 · 200ms 타이머 뒤에 내려간다(탐침 term: 포트 풀림 263ms) — 바로 다음 판 central 이 `EADDRINUSE`(T824 §곁).
+//     · 이 판이 끝날 때 아직 안 죽은 아이(SIGKILL 을 보냈어도 몸이 내려가기 전)도 같은 줄이다(탐침 kill: 30ms).
+//   ⇒ `waitUp` 이 받은 아이(= 이 하네스가 띄워 기다린 서버 · 83/85 하네스가 서버마다 부른다)를 적어 두고, 하네스가 끝날 때
+//     ① 정상 · 예외 종료('exit') ② SIGINT · SIGTERM · SIGHUP(다른 손이 없으면 — 있으면 그 손이 `process.exit` 하고 ① 이 거둔다) 둘 다에서
+//     **SIGKILL 하고 몸이 내려갈 때까지 기다린다**(`/proc/<pid>/stat` 이 좀비 · 없음 = 소켓 · 포트가 풀렸다 · 상한은 `heldPorts` 와 같은 `REAP_CAP_MS`).
+//   ⚠남의 판은 안 건드린다(T773 그대로) — 이 프로세스가 띄워 `waitUp`(또는 `track`)에 넘긴 아이만. 판 가운데 아이를 내렸다 다시 띄우는 하네스는 무접촉
+//     (거두기는 이 하네스가 끝나는 순간에만 돈다 · 이미 내려간 아이는 건너뛴다). 테스트 서버의 종료 저장은 하네스가 끝난 뒤엔 아무도 안 읽는다.
+const REAP_CAP_MS = 15000;   // 표의 수 — 판정에 안 든다(종전 `heldPorts` 의 듣기 상한을 이름으로 올렸다)
+const _kids = new Set();
+let _reapOn = false;
+const _sab = new Int32Array(new SharedArrayBuffer(4));
+function _pidLive(pid) {   // 리눅스 — 좀비(Z) · 없음 = 몸이 내려가 자원(소켓)을 놓았다 · /proc 이 없으면 기다리지 않는다
+  try { const s = require('fs').readFileSync(`/proc/${pid}/stat`, 'utf8'); const st = s.charAt(s.lastIndexOf(')') + 2); return st !== 'Z' && st !== 'X'; } catch (e) { return false; }
+}
+function reapTracked() {
+  const live = [..._kids].filter((p) => p.exitCode === null && p.signalCode === null);
+  for (const p of live) { try { p.kill('SIGKILL'); } catch (e) {} }
+  const t0 = Date.now();
+  for (const p of live) while (Date.now() - t0 < REAP_CAP_MS && _pidLive(p.pid)) Atomics.wait(_sab, 0, 0, 10);
+  return live.length;
+}
+function track(child) {
+  if (!child || !child.pid || _kids.has(child)) return child;
+  _kids.add(child);
+  child.once('exit', () => _kids.delete(child));
+  if (!_reapOn) {
+    _reapOn = true;
+    process.on('exit', reapTracked);
+    for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+      process.on(sig, function onSig() {
+        if (process.listenerCount(sig) > 1) return;   // 하네스 · `reapOnExit` 의 손이 있다 — 그 손이 끝내고 'exit' 가 거둔다
+        reapTracked();
+        process.exit(128 + ((require('os').constants.signals || {})[sig] || 0));
+      });
+    }
+  }
+  return child;
+}
 function heldPorts(ports) {
   const { spawnSync } = require('child_process');
   // 듣기를 **실제로 해 본다**(`EADDRINUSE` 가 곧 증인) — 서버와 같은 꼴(호스트 없이 listen)이라 v4·v6 어느 쪽이든 잡힌다.
   const src = "const net=require('net');const ps=" + JSON.stringify(ports) + ";(async()=>{const h=[];for(const p of ps){await new Promise((r)=>{const s=net.createServer();s.once('error',(e)=>{if(e.code==='EADDRINUSE')h.push(p);r();});s.listen(p,()=>s.close(()=>r()));});}process.stdout.write(JSON.stringify(h));})();";
-  const r = spawnSync(process.execPath, ['-e', src], { encoding: 'utf8', timeout: 15000 });
+  const r = spawnSync(process.execPath, ['-e', src], { encoding: 'utf8', timeout: REAP_CAP_MS });
   try { return JSON.parse(r.stdout || '[]'); } catch (e) { return []; }
 }
 function mustBeFree(ports, name) {
@@ -97,4 +139,4 @@ function reapOnExit(procs) {
   return reap;
 }
 
-module.exports = { waitUp, heldPorts, mustBeFree, reapOnExit };
+module.exports = { waitUp, heldPorts, mustBeFree, reapOnExit, track, reapTracked };   // ★[T895] track · reapTracked
