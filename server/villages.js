@@ -3921,6 +3921,23 @@ function _caravanSyncOne(now, c, S, budgetMs) {
     }
   }
 }
+// ★[T851 2026-10-22] 캐러밴 동기 한 대씩 조각의 **속 이름 셋**(세는 이름만 · 값 0 · 새 수 0 · 손잡이 0) — T828 `caravan_sync` 안을 가른다.
+//   조각이 돈 **뒤** 그 조각이 한 일을 이미 있는 셈 칸의 증분으로 읽는다(읽기만 · 세계에 0):
+//     `caravan_sync:cold`   교역로 A* 를 **새로 시작**했다(`_probe.pathJobs` 증분 — 재개형 문이 새 일을 세운 그 자리)
+//     `caravan_sync:resume` 새로 시작은 안 했는데 길 · 걸음 길을 **이어 팠다**(`pathWait` 증분 = 아직 · 또는 `routeCold` 증분 = 이 조각에서 완주)
+//     `caravan_sync:spawn`  길 일 없이 **몸을 세웠다**(`spawned` 증분 · 그 조각에서 한 번에 끝난 걸음 길 몫 포함)
+//     그 밖(장부 하루 · 도착 머묾 · 캐시 적중 재라우팅 · 할 일 없음)은 종전 속 이름 `caravan_sync` 그대로.
+//   차례는 위에서부터(새 A* 를 시작한 조각이 그 자리에서 완주 · 스폰까지 했으면 `cold`).
+let _t851Last = null;
+function _t851Sync(C, c) {
+  const j0 = _probe.pathJobs | 0, w0 = _probe.pathWait | 0, k0 = _probe.routeCold | 0, s0 = C.car.spawned | 0;
+  const r = _caravanSyncOne(C.now, c, C.car);
+  _t851Last = (_probe.pathJobs | 0) > j0 ? 'caravan_sync:cold'
+    : ((_probe.pathWait | 0) > w0 || (_probe.routeCold | 0) > k0) ? 'caravan_sync:resume'
+    : (C.car.spawned | 0) > s0 ? 'caravan_sync:spawn' : null;
+  return r;
+}
+function _t851Tag() { return _t851Last; }
 // 쓸기 — `seen` 전량이 모인 뒤에만 옳다(그래서 이 절반은 원자다).
 function _caravanSyncSweep(S) {
   if (T707_ON) _t707Tally();   // ★[T707] 오늘 선 장의 몸 없는 몫을 센다(캐러밴 동기가 다 돈 뒤 · 끔 = 이 줄 무동작)
@@ -7245,7 +7262,7 @@ function _t731Jobs(now, T) {
   C.now = now; C.t731mini = !T.tail; C.t731Opens++;
   const J = [];
   //   ★[T744] 창 꼴 증인 — 조각마다 제 몫(H 머리 · V 마을 · T 꼬리)을 단다: 몫이 바뀌는 첫 조각에서 그때 정산한 마을 수를 적는다(머리 0 · 꼬리 = 다)
-  const addP = (p) => (n, f, sub) => { const g = () => { _t731Mark(W, p, sub || n); return f(); }; J.push(sub ? { n, f: g, s: sub } : { n, f: g }); };
+  const addP = (p) => (n, f, sub, sf) => { const g = () => { _t731Mark(W, p, sub || n); return f(); }; J.push(sub ? (sf ? { n, f: g, s: sub, sf } : { n, f: g, s: sub }) : { n, f: g }); };   // ★[T851] `sf` = 돈 뒤 속 이름(창 증인은 종전 속 이름)
   const add = addP('T'), addH = addP('H'), addV = addP('V');
   const mute = (f) => { const _log = console.log; console.log = () => {}; try { f(); } finally { console.log = _log; } };
   if (T.head) {
@@ -7314,7 +7331,7 @@ function _t731Jobs(now, T) {
     if (T681_ON) add('caravan', () => _t681Day(C.now), 'caravan_body');
     if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true), 'caravan_fish');
     { const _cl = state.world.caravans.slice();
-      for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car), 'caravan_sync');
+      for (const c of _cl) add('caravan', () => _t851Sync(C, c), 'caravan_sync', _t851Tag);
       if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); add('caravan', _t762SyncNewJob(C, new Set(_cl)), 'caravan_sync'); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 이 띄운 캐러밴(위 손잡이 주석 ③)
       else add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); }
     if (T698_BOUNDARY_SLICE) {
@@ -7469,7 +7486,7 @@ function _openDayJobs(now, T) {
               car: _caravanSyncNew(), ore: { v: 0, c: 0 }, chunks: 0, maxChunk: 0, maxChunkAt: '', order: [],
               vils: state.villages.slice() };   // ★목록을 얼린다 — 마감 중 마을이 늘면 그날 순서가 흔들린다
   const J = [];
-  const add = (n, f, sub) => J.push(sub ? { n, f, s: sub } : { n, f });   // ★[T513] `s` = 조각 속 이름(켬일 때만 · `/perf` 칸)
+  const add = (n, f, sub, sf) => J.push(sub ? (sf ? { n, f, s: sub, sf } : { n, f, s: sub }) : { n, f });   // ★[T513] `s` = 조각 속 이름(켬일 때만 · `/perf` 칸) · ★[T851] `sf` = 돈 뒤 속 이름
 
   // ⓪ ★★[T533] 존 경계(팔 켬 + 호스트 — 끔이면 이 줄과 econ 뒤 한 줄 무동작 · 조각 목록 무변): econ **앞** = 지난 경계에 이웃이 민 스텁·기록을 꽂는다.
   if (state.xzone) add('xzone', () => _xzDayIn());
@@ -7552,7 +7569,7 @@ function _openDayJobs(now, T) {
   if (T681_ON) add('caravan', () => _t681Day(C.now), 'caravan_body');   // ★[T681] 몸 장부 하루(전쟁 행군·귀환 · 위협 · 줄어드는 몸) — 캐러밴 동기 바로 앞 정한 자리
   if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true), 'caravan_fish');   // ★[T661] 어장 상한 매기기 — 종전 존 60초 주기(벽시계)를 하루 마감의 정한 자리로(캐러밴 동기 바로 앞 · 재고 회복 시각은 낚시 정본 그대로)
   { const _cl = state.world.caravans.slice();
-    for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car), 'caravan_sync');   // ★[T85] 반환('retry')을 드레인이 본다
+    for (const c of _cl) add('caravan', () => _t851Sync(C, c), 'caravan_sync', _t851Tag);   // ★[T85] 반환('retry')을 드레인이 본다
     if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); add('caravan', _t762SyncNewJob(C, new Set(_cl)), 'caravan_sync'); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 틱이 띄운 캐러밴(위 손잡이 주석 ③ · 끔 = 아래 종전 한 줄)
     else add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); }
 
@@ -7655,8 +7672,9 @@ function _drainTickJobs(now) {
       C.chunks++; C.work = (C.work || 0) + d;
       if (C.order[C.order.length - 1] !== j.n) C.order.push(j.n);   // ★[T1 §3-④] 단계 순서 — 조각내기가 *언제*만 바꿨는지의 증거
       C.stg[j.n] = (C.stg[j.n] || 0) + d;
-      if (j.s) { C.stg[j.s] = (C.stg[j.s] || 0) + d; if (d > (C.stg[j.s + '·max'] || 0)) C.stg[j.s + '·max'] = d; }   // ★[T513] 조각 속 이름(켬일 때만 있다)
-      if (d > C.maxChunk) { C.maxChunk = d; C.maxChunkAt = j.s || j.n; }
+      const js = (j.sf && j.sf()) || j.s;   // ★[T851] 조각이 돈 뒤 제 속 이름을 고르는 조각(캐러밴 동기 한 대씩 — 그 조각이 한 일 · 없으면 종전 속 이름)
+      if (js) { C.stg[js] = (C.stg[js] || 0) + d; if (d > (C.stg[js + '·max'] || 0)) C.stg[js + '·max'] = d; }   // ★[T513] 조각 속 이름(켬일 때만 있다)
+      if (d > C.maxChunk) { C.maxChunk = d; C.maxChunkAt = js || j.n; }
       // ★★[T85] **아직 안 끝난 조각은 제자리로.** 재개 가능 A* 를 쓰는 조각(캐러밴 출발·재라우팅)은
       //   예산만큼만 길을 파고 `'retry'` 를 낸다 ⇒ 같은 자리(맨 앞)에 도로 넣어 **같은 하루 안의
       //   다음 조각**에 이어 간다. 다음 게임일로 미루면 출발일이 밀리고 `travelDays` 규약(T60 ③)이 흔들린다.
