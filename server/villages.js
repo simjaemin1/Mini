@@ -6368,17 +6368,21 @@ function _t906Die(w, body, p, day) {
   return fe || 0;
 }
 // ㄱ — 원정 몸이 다 굶어 죽었다(그 원정의 산 공격 몸 0 — 몸이 없는 병력은 사다리가 없다 · 몸 상한 밖). 원정은 거기서 끝난다(빈 원정이 돌지 않는다 · 추상 0):
-//   교전이 선 원정(`engagedOnce` · 교전 국면)은 판의 끝 식이 다음 틱에 정산한다(`stepFight` — 싸우는 병사 0 → 궤주 · 수비 승 · 종전 문 그대로).
-//   교전 전(행군 · 주둔 · 닿지 못한 전진)이면 **몸 없는 전쟁 문**(`_warNoArmy` — 다음 틱 · war-core 철수 전이와 같은 효과 · 전투 0)으로 끝난다
-//   — 포위 중이었으면 war-core 철수 전이처럼 포위를 먼저 푼다(`_opSetSiege` · 내보낸 함수). 귀환 길이면 원정은 이미 돌아온다(그대로).
-//   새 수 0 · 끔 · ㄴ 에선 안 돈다(굶어 죽음이 없다).
+//   교전 국면에서 교전이 선 원정(`engagedOnce`)은 판의 끝 식이 다음 틱에 정산한다(`stepFight` — 싸우는 병사 0 → 궤주 · 수비 승 · 종전 문).
+//   그 밖(행군 · 주둔 · 대치로 물러난 교전 · 닿지 못한 전진)은 **war-core 철수 전이**를 적는다(`_opTransNPC` withdraw 와 같은 칸 — 포위면 `_opSetSiege` 로 먼저 푼다 · 귀환 시계).
+//   몸 · 교전 정리는 하루 마감 뒤 `_warAfterDaily`(war-core 결단이 전쟁을 끝냈을 때의 그 문)가 한다 — 교전이 있었으면(대치로 물러난 교전도) 그 교전을 정산하고(수비 승 ·
+//   그때까지의 사상이 econ 에 선다) 없으면 조용히 끝낸다. 같은 날 다른 원정의 항복과 안 섞이게 몸의 마지막 작전도 철수로 적는다(`_lastOp`).
+//   귀환 길이면 원정은 이미 돌아온다(그대로). 새 수 0 · 끔 · ㄴ 에선 안 돈다(굶어 죽음이 없다).
 function _t906Live(body) { const P = state.deps.players; for (const pid of (body.pids || [])) { const q = P.get(pid); if (q && (q.hp == null || q.hp > 0)) return true; } return false; }
 function _t906Wipe(w, body, day) {
   const St = _t906Stat(); St.wiped = (St.wiped || 0) + 1;
   const bk = w._rationBook; if (bk) bk.starveWiped = day;
   const f = body.fight, home = w.phase === 'return' || body.phase === 'return', byFight = !home && !!(f && f.engagedOnce && w.phase === 'battle');
-  if (!home && !byFight) { if (state.war && state.war._opSetSiege) state.war._opSetSiege(w, false, day); body.noArmy = true; }   // 귀환 길이면 원정은 이미 돌아온다(그대로)
-  if (state.war && state.war.warLog) state.war.warLog(day, (w.atk && w.atk.name) + ' 원정 몸이 다 굶어 죽었다 — ' + (home ? '귀환 길' : byFight ? '교전이 끝낸다(싸우는 병사 0)' : '몸 없는 전쟁(철수 · 전투 0)'));
+  if (!home && !byFight) {   // war-core 철수 전이 그대로 — 몸 · 교전 정리는 하루 마감 뒤 `_warAfterDaily`(교전이 있었으면 정산 · 없으면 조용히)
+    if (state.war && state.war._opSetSiege) state.war._opSetSiege(w, false, day);
+    w.op = 'withdraw'; w._sortie = false; w.phase = 'return'; w.eta = day + (w.marchDays || 1); body._lastOp = 'withdraw';
+  }
+  if (state.war && state.war.warLog) state.war.warLog(day, (w.atk && w.atk.name) + ' 원정 몸이 다 굶어 죽었다 — ' + (home ? '귀환 길' : byFight ? '교전이 끝낸다(싸우는 병사 0)' : '철수(몸이 없다 · 교전이 있었으면 그 교전을 정산)'));
 }
 function _warRationEat(w, day) {
   const WC = state.war; if (!w || !w._packOnBodies || !WC || !WC.bodyEat) return null;
@@ -7847,7 +7851,7 @@ function __p3Bind(mock) {
     _t476Decide, _t476DenVil,   // ★[T476] 토벌 결단 · 소굴 어댑터 — 하네스가 운영과 같은 결단을 부른다
     _warRationLayDownBody, _warBagDrop, _t476DenRefresh, _t476DenSync,   // ★[T748] 켬 전용 일곱 길 — 하네스(`test-moment-lot` ⑨~)가 **이 함수들**을 그대로 부른다(사본 0)
     _t312Deliver, _t347Deliver, _t544PackPut, _t544PackIn, _t368Hold, _t368Deliver,
-    _warRationEat, _warRationCollect, _warRationLoad, _t906Day, _t906Step, _t906Sat, _t906Mode, _t906Live,   // ★[T906] 원정 몸 굶주림 사다리(하네스가 이 함수들을 그대로 부른다)
+    _warRationEat, _warRationCollect, _warRationLoad, _t906Day, _t906Step, _t906Sat, _t906Mode, _t906Live, _t906Die, _t906Wipe,   // ★[T906] 원정 몸 굶주림 사다리(하네스가 이 함수들을 그대로 부른다)
       // ★[T423] 짐이 먹는다 — 하네스가 **이 함수들**을 war-core 에 건다(운영과 같은 두 훅)   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
   };
 }
