@@ -2861,7 +2861,7 @@ function routeWorldSig(zoneId, terrainAll, zoneCfg, water) {
 //   서명이 갈렸다 — 새 세계 부팅 `world:37c8f6e0…` ↔ 다시 뜬 부팅 `world:164b5610…`(강 · 능선 · 골짜기 세 절만 다르다 · 실측 보고 T910 §1)
 //   ⇒ 첫 재기동이 교역로 1,275 쌍을 통째로 버렸다(T896 회부 2). 켬이면 같은 파일을 **한 번 따로 읽은 사본**(아무도 안 만진다)으로 센다 —
 //   파일 칸(`_bbox` · `_smoothed` · `_tributary` · `_tag` · `_for` 포함)은 하나도 안 뺀다 ⇒ 파일이 바뀐 판(지형 · 골짜기 손질)은 지금처럼 다른 서명 → 버린다.
-const T910_SIG_PURE = process.env.T910_SIG_PURE === '1';
+const T910_SIG_PURE = process.env.T910_SIG_PURE !== '0';   // ★[PM 착지 10-24d] 켬 기본(결함 고침 — 같은 세계 첫 재기동이 길 캐시 1,275 쌍을 버렸다) · 되돌림 `=0`
 let _t910Terr;   // 파일 그대로의 사본(한 번 읽는다 · 부팅 서명 셈에만 쓴다)
 function _t910PureTerrain() {
   if (_t910Terr === undefined) { try { _t910Terr = JSON.parse(require('fs').readFileSync(require.resolve('./hanbando-terrain.json'), 'utf8')); } catch (e) { _t910Terr = null; } }

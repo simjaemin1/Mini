@@ -26,7 +26,7 @@ const ok = (c, m, d) => { if (c) pass++; else fail++; console.log(`  ${c ? '✓'
 console.log('\n=== T910 ② 같은 세계면 같은 교역로 서명 ===');
 console.log('\n① 글자');
 const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
-ok(/const T910_SIG_PURE = process\.env\.T910_SIG_PURE === '1';/.test(V), "손잡이 — '1' 만 켬");
+ok(/const T910_SIG_PURE = process\.env\.T910_SIG_PURE !== '0';/.test(V), "손잡이 — 켬 기본 · `=0` 만 끔(PM 10-24d)");
 ok(V.includes("  if (T910_SIG_PURE) terr = _t910PureTerrain();   // ★[T910] 켬 = 파일 그대로\n  else try { terr = require('./hanbando-terrain.json'); } catch (e) {}"), '끔 갈래 = 종전 줄(같이 쓰는 객체) 그대로 · 켬 = 파일 사본');
 ok(/_t910Terr = JSON\.parse\(require\('fs'\)\.readFileSync\(require\.resolve\('\.\/hanbando-terrain\.json'\), 'utf8'\)\);/.test(V), '켬 사본 = 같은 파일을 그대로 읽는다(칸을 빼는 거르개 0)');
 
@@ -60,7 +60,7 @@ delete process.env.T910_SIG_PURE;
 const rows = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }); const n = d.prepare('select count(*) as n from trade_routes').get().n; d.close(); return n; } catch (e) { return -1; } };
 async function save(tag, on, k) {   // 새 세계 → 저장 날 8 → SIGTERM(종료 저장)
   const db = path.join(TMP, tag + '.db');
-  const z = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env: zoneEnv(db, base + k, Object.assign({ VILLAGE_DAY_MS: '250' }, on ? { T910_SIG_PURE: '1' } : {})), stdio: 'ignore' });
+  const z = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env: zoneEnv(db, base + k, Object.assign({ VILLAGE_DAY_MS: '250' }, on ? {} : { T910_SIG_PURE: '0' })), stdio: 'ignore' });
   const zx = exitOf(z, 900000); const t0 = Date.now();
   while (Date.now() - t0 < 600000) { await sleep(5000); try { const d = new DatabaseSync(db, { readOnly: true }); const r = d.prepare('select max(day) as d from villages').get(); d.close(); if (r && r.d >= 8) break; } catch (e) {} }
   try { z.kill('SIGTERM'); } catch (e) {} await Promise.race([zx, sleep(30000)]); try { z.kill('SIGKILL'); } catch (e) {} await zx;
@@ -69,7 +69,7 @@ async function save(tag, on, k) {   // 새 세계 → 저장 날 8 → SIGTERM(�
 async function again(db, on, k, root) {   // 같은 DB 로 다시 띄워 교역로 캐시 줄(복원 · 폐기)을 읽는다
   const my = db + '.' + k + '.db'; for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(db + s, my + s); } catch (e) {} }
   const log = my + '.log'; const fd = fs.openSync(log, 'w');
-  const c = spawn(process.execPath, [path.join(root || ROOT, 'server', 'zone.js')], { cwd: root || ROOT, env: zoneEnv(my, base + 50 + k, on ? { T910_SIG_PURE: '1' } : {}), stdio: ['ignore', fd, fd] });
+  const c = spawn(process.execPath, [path.join(root || ROOT, 'server', 'zone.js')], { cwd: root || ROOT, env: zoneEnv(my, base + 50 + k, on ? {} : { T910_SIG_PURE: '0' }), stdio: ['ignore', fd, fd] });
   const cx = exitOf(c, 600000); const t0 = Date.now(); let line = '';
   while (Date.now() - t0 < 300000) { await sleep(2000); const t = fs.readFileSync(log, 'utf8'); const m = t.match(/교역로 캐시[^\n]*/); if (m) { line = m[0]; break; } }
   try { c.kill('SIGKILL'); } catch (e) {} await cx;
