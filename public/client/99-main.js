@@ -63,6 +63,7 @@
 // @@moved-end:247
 // @@moved-begin:491
   window.__tickGap = () => (lastTickAt ? Math.round(performance.now() - lastTickAt) : -1);
+  window.__lagReport = _lagReport;   // ★[T913] 렉 보고 한 줄(00-const `_lagReport` · 재민 Safari 콘솔 — 보고/T913 맨 위)
 // @@moved-end:491
 // @@moved-begin:600
   (async () => {
