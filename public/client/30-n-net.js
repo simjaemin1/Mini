@@ -1049,6 +1049,7 @@
       if (c.role === 'primary') {
         if (lastTickAt) lastServerPingMs = now - lastTickAt;
         lastTickAt = now;
+        if (window.__fcOn && window.__fcTick) window.__fcTick.push([now, typeof msg.t === 'number' ? msg.t : null]);   // ★[T913] 프레임 캡처 중에만 — 받아 처리한 때 · 서버가 보낸 때(서버 Date.now)
         if (netStalled) setNetStalled(false);   // ★[정비 배치] 틱이 돌아왔다 = 유령 상태 해제·예측 재개
         // 14.49-c: 계단 z (0~32) — 서버 권위 값을 클라가 부드럽게 따라감
         if (typeof msg.selfZ === 'number') myStairZ = msg.selfZ;
