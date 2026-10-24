@@ -73,9 +73,11 @@ HEAVY=$(awk -v hz="$HZ" -v me="$$" -v win="$WIN" 'NR==FNR{a[$1]=$2;next} ($1 in 
 BUILD=false; pgrep -f 'docker(-buildx)? (buildx )?build' >/dev/null 2>&1 && BUILD=true
 # ★[T901] 디스크 한 줄 — 볼륨 뿌리 빈 자리 · 백업 한 벌(볼륨 DB 합 × 11/10 + 64 MB — reset-world.sh 백업 자리 규칙 · disk-check.sh 와 같은 글자)
 SRV="${DISK_SRV:-/srv/durango}"; read -r DSZ DAV <<<"$(df -PB1 "$SRV" 2>/dev/null | awk 'NR==2{print $2, $4}')"
-DBS="$(find "$SRV" -mindepth 2 -maxdepth 2 -path "$SRV/_reset" -prune -o -type f \( -name '*.db' -o -name '*.db-wal' -o -name '*.db-shm' -o -name '*.db-journal' \) -printf '%s\n' 2>/dev/null | awk '{t+=$1} END{print t+0}')"
+DBS="$(find "$SRV" -mindepth 2 -maxdepth 2 \( -path "$SRV/_reset" -o -path "$SRV/_daily" \) -prune -o -type f \( -name '*.db' -o -name '*.db-wal' -o -name '*.db-shm' -o -name '*.db-journal' \) -printf '%s\n' 2>/dev/null | awk '{t+=$1} END{print t+0}')"
 need=$(( DBS * 11 / 10 + 64 * 1024 * 1024 ))
-DISK="$(printf '{"availMB":%d,"sizeMB":%d,"needMB":%d}' $(( ${DAV:-0} / 1048576 )) $(( ${DSZ:-0} / 1048576 )) $(( need / 1048576 )))"
+# ★[T907] 매일 스냅샷 합(backup-live.sh · 수만 — 판정 밖)
+DAILY="$(du -sb "$SRV/_daily" 2>/dev/null | cut -f1)"
+DISK="$(printf '{"availMB":%d,"sizeMB":%d,"needMB":%d,"dailyMB":%d}' $(( ${DAV:-0} / 1048576 )) $(( ${DSZ:-0} / 1048576 )) $(( need / 1048576 )) $(( ${DAILY:-0} / 1048576 )))"
 printf '{"k":"host","ncpu":%s,"load":"%s","cpu":%s,"mem":%s,"disk":%s,"heavy":[%s],"build":%s,"docker":%s}\n' "$NCPU" "$(cut -d' ' -f1-3 /proc/loadavg)" "$CPU" "$MEM" "$DISK" "$HEAVY" "$BUILD" \
   "$(command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 && echo true || echo false)"
 command -v docker >/dev/null 2>&1 || exit 0
@@ -189,8 +191,8 @@ one_round() {
       my @ct = map { sprintf("%s %s%% %sMB%s", ($_->{name} =~ s/^durango-(zone-)?//r), $_->{cpu}, $_->{memMB}, ($_->{restarts} ? " 재시작 $_->{restarts}" : "")) } grep { $_->{k} eq "ctr" && $_->{host} eq $o->{host} } @L;
       my %g; for (grep { $_->{name} ne "zone" && $_->{name} ne "central" } @{ $o->{heavy} || [] }) { $g{$_->{name}}{n}++; $g{$_->{name}}{cpu} += $_->{cpu}; }
       my @other = map { { name => $_ . ($g{$_}{n} > 1 ? " ×$g{$_}{n}" : ""), cpu => $g{$_}{cpu} } } sort { $g{$b}{cpu} <=> $g{$a}{cpu} } keys %g;
-      push @out, sprintf("[호스트] %s(%s) — vCPU %s · 부하 %s · 1초 바쁨 %s%% · steal %s%% · iowait %s%% | 메모리 남음 %s / %s MB · 스왑 %s / %s MB(그 1초 오감 %s) | 디스크 남음 %s / %s MB(백업 한 벌 %s MB) | 컨테이너 %s | 다른 무거운 것 %s%s",
-        $o->{host}, $o->{alias}, $o->{ncpu}, $o->{load}, $c->{busy}, $c->{steal}, $c->{iowait}, $m->{availMB}, $m->{totalMB}, $m->{swapUsedMB}, $m->{swapMB}, $m->{swapIO}, d(($o->{disk} || {})->{availMB}), d(($o->{disk} || {})->{sizeMB}), d(($o->{disk} || {})->{needMB}),
+      push @out, sprintf("[호스트] %s(%s) — vCPU %s · 부하 %s · 1초 바쁨 %s%% · steal %s%% · iowait %s%% | 메모리 남음 %s / %s MB · 스왑 %s / %s MB(그 1초 오감 %s) | 디스크 남음 %s / %s MB(백업 한 벌 %s MB · 매일 스냅샷 %s MB) | 컨테이너 %s | 다른 무거운 것 %s%s",
+        $o->{host}, $o->{alias}, $o->{ncpu}, $o->{load}, $c->{busy}, $c->{steal}, $c->{iowait}, $m->{availMB}, $m->{totalMB}, $m->{swapUsedMB}, $m->{swapMB}, $m->{swapIO}, d(($o->{disk} || {})->{availMB}), d(($o->{disk} || {})->{sizeMB}), d(($o->{disk} || {})->{needMB}), d(($o->{disk} || {})->{dailyMB}),
         (@ct ? join(" · ", @ct) : "없음"), (@other ? join(" · ", map { "$_->{name} $_->{cpu}%" } @other) : "없음"), ($o->{build} ? " | ★docker build 도는 중" : ""));
       fl(2, "$o->{host} 호스트 CPU 바쁨 $c->{busy}% ≥ 90") if $c->{busy} >= 90;
       fl(2, "$o->{host} 호스트 steal $c->{steal}% ≥ 5(가상 머신이 CPU 를 못 받음)") if $c->{steal} >= 5;

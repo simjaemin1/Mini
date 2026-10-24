@@ -63,7 +63,7 @@ if [ "$DK" = 1 ]; then DR="$(docker info --format '{{.DockerRootDir}}' 2>/dev/nu
   [ "$dmp" != "$MP" ] && echo "L 도커 자리($DR · $dmp) 남음 $(H "$dav")"; fi
 DB=0
 for d in "$SRV"/*/; do
-  b="$(basename "$d")"; [ "$b" = _reset ] && continue
+  b="$(basename "$d")"; case "$b" in _reset|_daily) continue ;; esac
   s="$(du -sb "$d" 2>/dev/null | cut -f1)"; [ "${s:-0}" -gt 4096 ] || continue
   dbs="$(find "$d" -maxdepth 1 -type f \( -name '*.db' -o -name '*.db-wal' -o -name '*.db-shm' -o -name '*.db-journal' \) -printf '%s\n' | awk '{t+=$1} END{print t+0}')"
   DB=$((DB + dbs)); echo "L 볼륨 $b $(H "$s")(DB $(H "$dbs"))"
@@ -76,6 +76,12 @@ if [ -d "$SRV/_reset" ]; then
   while read -r sz p; do [ -n "$p" ] || continue; nr=$((nr + 1)); tr=$((tr + sz)); echo "L   _reset $(H "$sz") $(basename "$p")"; done < <(du -sb "$SRV"/_reset/*/ 2>/dev/null | sort -k2)
 fi
 echo "L _reset 백업 $nr벌 · $(H "$tr")(목록만 — 지울지는 재민)"
+# ★[T907] 매일 스냅샷(backup-live.sh) — 목록 · 크기만(옛것 떼기는 backup-live 의 보관 개수 몫 · 복원이 옮긴 -replaced 는 재민)
+nd=0; td=0
+if [ -d "$SRV/_daily" ]; then
+  while read -r sz p; do [ -n "$p" ] || continue; nd=$((nd + 1)); td=$((td + sz)); echo "L   _daily $(H "$sz") $(basename "$p")"; done < <(du -sb "$SRV"/_daily/*/ 2>/dev/null | sort -k2)
+fi
+echo "L _daily 매일 스냅샷 $nd벌 · $(H "$td")(backup-live.sh — 보관 개수 넘는 옛것은 backup-live 가 뗀다 · 이 줄은 안 지운다)"
 if [ "$DK" = 1 ]; then
   docker system df --format '{{.Type}}|{{.Size}}|{{.Reclaimable}}' 2>/dev/null | while IFS='|' read -r ty sz rc; do echo "L 도커 $ty $sz(되찾을 수 있는 몫 $rc)"; done
   echo "L 매달린 이미지 $(docker images -f dangling=true -q | sort -u | wc -l)개"
@@ -119,7 +125,7 @@ for h in "$S" "$T"; do
   ids="$(awk '/^C /{print $2}' "$TMP/$h" | paste -sd' ' -)"
   say ""
   say "[$lab($h) 지우기] 지울 것 — 매달린 이미지 · 빌드 캐시(도커가 셈) · 옛 durango 이미지 $(echo "$ids" | wc -w | tr -d ' ')개${ids:+: $(awk '/^C /{printf "%s ", $4}' "$TMP/$h")}"
-  say "  안 지우는 것 — DB · .bak · _reset · 볼륨 · 컨테이너 · 컨테이너가 쓰는 이미지 · :latest · :prev-<대상> · :pre-reset · durango 밖 이미지"
+  say "  안 지우는 것 — DB · .bak · _reset · _daily · 볼륨 · 컨테이너 · 컨테이너가 쓰는 이미지 · :latest · :prev-<대상> · :pre-reset · durango 밖 이미지"
   printf '  지운다. 이 호스트 별칭을 그대로 쳐라(%s): ' "$h"; a=""; IFS= read -r a || true
   if [ "$a" != "$h" ]; then say "  그만뒀다 — $lab 아무것도 안 지웠다"; continue; fi
   ssh "$h" bash -s -- prune $ids <<<"$PROBE" 2>&1 | sed 's/^V /  /; s/^/  /'

@@ -1,0 +1,81 @@
+# T907 backup-live.sh — 두 호스트 흉내 판(진짜 도커 · 한 상자 · 서울 198.51.100.1 /opt/Mini · 도쿄 192.0.2.2 /opt/tokyo/Mini) · 2026-10-24 UTC
+# 출력 그대로(경로 /srv/durango/_daily/ 는 줄임) · 비밀 0 — 컨테이너 env 는 DB_PATH 한 칸만 읽는다
+
+## ① 절차서 §3 10 줄 그대로(t587-rehearsal.sh runbook 10)
+  ✓ 설치 — 17 19 * * * cd /opt/Mini && bash scripts/backup-live.sh >> backup.log 2>&1 # durango-backup-live · 호스트 시계 UTC
+  ✓ 설치 — 47 19 * * * cd /opt/tokyo/Mini && bash scripts/backup-live.sh >> backup.log 2>&1 # durango-backup-live · 호스트 시계 UTC
+== 스냅샷 2026-10-24T03:27:51Z — vm · 자리 /srv/durango/_daily · 보관 7 벌 ==
+  ✓ central → 20261024-032751-central · 76.0 KB · 검사 ok · 표 5 · 행 3 · 5ms · sha 50b11c8e2878
+  ✓ hanbando → 20261024-032751-hanbando · 42.9 MB · 검사 ok · 표 22 · 행 286603 · 207ms · sha ff3178762f4a
+  스냅샷 합 42.9 MB · 2벌
+  crontab: 47 19 * * * cd /opt/tokyo/Mini && bash scripts/backup-live.sh >> backup.log 2>&1 # durango-backup-live
+  마지막 스냅샷: 20261024-032751-central 20261024-032751-hanbando
+  기록 끝: 
+(없음)
+== 스냅샷 2026-10-24T03:27:52Z — vm · 자리 /srv/durango/_daily · 보관 7 벌 ==
+  ✓ nippon → 20261024-032752-nippon · 3.5 MB · 검사 ok · 표 21 · 행 34113 · 30ms · sha a5b004568d4f
+  스냅샷 합 46.5 MB · 3벌
+  crontab: 47 19 * * * cd /opt/tokyo/Mini && bash scripts/backup-live.sh >> backup.log 2>&1 # durango-backup-live
+  마지막 스냅샷: 20261024-032751-central 20261024-032751-hanbando 20261024-032752-nippon
+  기록 끝: 
+(없음)
+  (첫 판 `기록 끝:` 줄이 기록이 없을 때 빈 줄 + `(없음)` 두 줄로 찍혔다 — pipefail · 고침. 고친 뒤: 기록 끝: (없음)…)
+  (흉내 판 한계: 한 상자의 root crontab 하나 — 도쿄 줄이 서울 줄을 갈았다 · 라이브는 호스트마다 하나)
+
+## ② cron 이 진짜 친다 — 상자에 cron 을 깔고 2분 뒤 시각으로 --install → 03:30 에 cron 이 친 기록(backup.log) → --uninstall
+  ✓ 설치 — 30 3 * * * cd /opt/Mini && bash scripts/backup-live.sh >> /srv/durango/_daily/backup.log 2>&1 # durango-backup-live · 호스트 시계 UTC
+  [backup.log]
+  == 스냅샷 2026-10-24T03:30:02Z — vm · 자리 /srv/durango/_daily · 보관 7 벌 ==
+  ✓ central → 20261024-033002-central · 76.0 KB · 검사 ok · 표 5 · 행 3 · 5ms · sha 50b11c8e2878
+  ✓ hanbando → 20261024-033002-hanbando · 42.9 MB · 검사 ok · 표 22 · 행 286929 · 213ms · sha 49f36fc199bd
+  ✓ nippon → 20261024-033003-nippon · 3.5 MB · 검사 ok · 표 21 · 행 34131 · 26ms · sha fd1838780543
+  스냅샷 합 93.0 MB · 6벌
+  ✓ 뺐다 — 남은 durango-backup-live 줄 0개      (첫 판은 "✗ crontab 을 못 썼다" — 그 줄 하나뿐인 crontab 을 비울 때 pipefail · 고침 · test-backup-live ⑤ 에 넣음)
+
+## ③ 도는 존 DB 를 쓰는 중에 백업 → 복원
+  == ③ 도는 존 DB 를 쓰는 중에 백업 → 복원 (두 호스트 흉내 · 03:31:39.766) ==
+  -- 쓰기 시작 03:31:39.770 — 존 볼륨 hanbando 에 20초 · 20ms 마다 거래 하나(행 10 · 200 B)
+  -- [서울] 스냅샷 03:31:44.779  (ssh seoul 'cd /opt/Mini && bash scripts/backup-live.sh')
+  == 스냅샷 2026-10-24T03:31:44Z — vm · 자리 /srv/durango/_daily · 보관 7 벌 ==
+    ✓ central → 20261024-033144-central · 76.0 KB · 검사 ok · 표 5 · 행 3 · 8ms · sha 50b11c8e2878
+    ✓ hanbando → 20261024-033145-hanbando · 40.6 MB · 검사 ok · 표 22 · 행 283209 · 176ms · sha 1199bac0c145
+    스냅샷 합 40.7 MB · 2벌
+  -- [도쿄] 스냅샷 03:31:46.195  (ssh tokyo 'cd /opt/Mini && bash scripts/backup-live.sh')
+  == 스냅샷 2026-10-24T03:31:46Z — vm · 자리 /srv/durango/_daily · 보관 7 벌 ==
+    ✓ nippon → 20261024-033146-nippon · 3.5 MB · 검사 ok · 표 21 · 행 34131 · 30ms · sha fd1838780543
+    스냅샷 합 44.2 MB · 3벌
+  -- 스냅샷 끝 03:31:46.843 — 쓰기는 계속
+  -- writer rows 9470 tx 947 total 9470 first 1792812700025 last 1792812720008
+  -- writer end 03:32:00.117
+  -- 스냅샷 20261024-033145-hanbando 안 t907_probe: {"n":2740,"last":1792812705770} · 쓰기 끝난 뒤 존 DB: {"n":9470,"last":1792812720008}
+  -- meta: db=world-hanbando.db taken_at=2026-10-24T03:31:46Z · quick ok · 행 283209 · 176ms · 42582016 B
+  [절차서 §3 11 줄 그대로(runbook 11) — 가장 새 hanbando 사본 = 위 쓰는 중 사본]
+  == 복원 — hanbando ← 20261024-033145-hanbando ==
+    컨테이너 durango-zone-hanbando · 볼륨 /srv/durango/hanbando · DB world-hanbando.db · 스냅샷 2026-10-24T03:31:46Z · 행 283209
+    복원한다(지금 DB 는 옆으로 옮긴다 · 안 지운다). 대상 이름을 그대로 쳐라(hanbando): 
+    [멈춤] durango-zone-hanbando
+    [옮김] 지금 DB → 20261024-033233-hanbando-replaced (world-hanbando.db world-hanbando.db-shm world-hanbando.db-wal)
+    [놓음 ✓] sha256 일치 1199bac0c145
+    [행 ✓] 표마다 행 수 = 스냅샷(합 283209)
+    [켬] durango-zone-hanbando(같은 이미지 · env · 볼륨)
+    ✅ /health — 16초
+  sha 스냅샷 1199bac0c145045f = 놓은 존 DB([놓음 ✓]) · 옮긴 옛 DB(-replaced) def8db9ca987fb5c
+  복원 뒤 존 DB t907_probe 2740(= 사본) · 옮긴 옛 DB t907_probe 9470(= 쓰기 끝) — 사본 시각 뒤 쓴 6,730 행이 빠졌다
+
+## ④ 디스크 줄(T901) — disk-check · live-lag 맥 한 줄(ssh 만 흉내)
+      _daily 76.4 KB 20261024-033144-central
+      _daily 40.6 MB 20261024-033145-hanbando
+      _daily 3.5 MB 20261024-033146-nippon
+    _daily 매일 스냅샷 3벌 · 44.2 MB(backup-live.sh — 보관 개수 넘는 옛것은 backup-live 가 뗀다 · 이 줄은 안 지운다)
+    판정: 빈 자리 3.9 GB ≥ 백업 한 벌 141.3 MB(DB 합 70.3 MB × 1.1 + 64 MB — reset-world.sh 백업 자리 규칙)
+  [live-lag 호스트 줄] 디스크 남음 3952 / 258019 MB(백업 한 벌 141 MB · 매일 스냅샷 44 MB) 
+
+## ⑤ 온라인 백업 걸음 — 같은 쓰기(20ms 마다 거래 · 15초) 아래 node:sqlite backup() 기본 rate 100 ↔ rate -1
+  start 03:21:11.695   (쓰기 03:21:09 ~ 03:21:23.913)
+  rate 100 ms 12149 end 03:21:24.057   ← 쓰기가 멎은 뒤에야 끝 — 다른 연결이 쓸 때마다 처음부터 다시
+  rate -1 ms 137 end 03:21:24.203      ← 한 걸음(한 읽기 거래) — backup-live.sh 가 쓰는 것
+  (첫 판 무거운 쓰기 12초 · 2KB 행 596,550: rate 100 = 12.6초 · 1.2GB — 쓰기 끝난 뒤 끝 · 상자 디스크가 찼다 · 시험 사본은 지웠다)
+  (가벼운 쓰기 아래 rate -1 스냅샷: 191ms · 쓰는 중 · 사본 t907_probe 2,190 / 끝 5,660 → 복원 [놓음 ✓] [행 ✓] /health 17초)
+
+## ⑥ 하네스
+  test-backup-live 21/0 · test-disk-check 14/0 · test-harness-lint 68/0

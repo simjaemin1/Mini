@@ -65,7 +65,7 @@ echo "fake 100000000000 50000000000 \${FAKE_AVAIL:-40000000000} 50% /fake"
 const ID = (c) => 'sha256:' + c.repeat(64);
 function fresh() {
   fs.rmSync(SRV, { recursive: true, force: true });
-  for (const d of ['hanbando', 'nippon', 'central', '_reset/20261023-010203-hanbando']) fs.mkdirSync(path.join(SRV, d), { recursive: true });
+  for (const d of ['hanbando', 'nippon', 'central', '_reset/20261023-010203-hanbando', '_daily/20261024-031408-hanbando']) fs.mkdirSync(path.join(SRV, d), { recursive: true });
   fs.writeFileSync(path.join(SRV, 'hanbando', 'world-hanbando.db'), crypto.randomBytes(300000));
   fs.writeFileSync(path.join(SRV, 'hanbando', 'world-hanbando.db-wal'), crypto.randomBytes(50000));
   fs.writeFileSync(path.join(SRV, 'nippon', 'world-nippon.db'), crypto.randomBytes(100000));
@@ -73,6 +73,7 @@ function fresh() {
   fs.writeFileSync(path.join(SRV, 'hanbando', 'world-hanbando.db.0803.bak'), crypto.randomBytes(70000));
   fs.writeFileSync(path.join(SRV, 'nippon', 'world-nippon.db.0804.bak'), crypto.randomBytes(80000));
   fs.writeFileSync(path.join(SRV, '_reset', '20261023-010203-hanbando', 'world-hanbando.db'), crypto.randomBytes(90000));
+  fs.writeFileSync(path.join(SRV, '_daily', '20261024-031408-hanbando', 'world-hanbando.db'), crypto.randomBytes(110000));   // [T907] 매일 스냅샷
   fs.writeFileSync(STATE, JSON.stringify({ argv: [], removed: [], pruned: [],
     containers: { 'durango-zone-hanbando': { image: ID('a') }, 'durango-central': { image: ID('c') } },
     images: [
@@ -98,6 +99,8 @@ fresh();
 let r = run([]);
 ok(r.rc === 0 && /\.bak 2개/.test(r.out) && /2026-\d\d-\d\d .*world-hanbando\.db\.0803\.bak/.test(r.out) && /_reset 백업 1벌/.test(r.out) && /볼륨 hanbando .*\(DB /.test(r.out),
   '`.bak` 둘 · `_reset` 한 벌 · 볼륨 DB 를 찍는다(목록만)', `rc=${r.rc}`);
+ok(/_daily 매일 스냅샷 1벌/.test(r.out) && /_daily .*20261024-031408-hanbando/.test(r.out) && !/볼륨 _daily/.test(r.out),
+  '[T907] `_daily` 매일 스냅샷은 목록 · 크기로 따로 — 볼륨(DB 합 · 백업 한 벌)에 안 든다');
 const cand = (r.out.split('지울 수 있는 옛 durango 이미지')[1] || '');
 ok(/durango-zone:t872-seed/.test(cand) && /durango-central:old-1022/.test(cand) && !/latest|prev-hanbando|pre-reset|node:22/.test(cand),
   '★지울 후보 = 옛 durango 태그 둘뿐 — 컨테이너 이미지 · :latest · :prev-<대상> · :pre-reset · durango 밖은 빠진다', cand.split('\n').slice(0, 3).join(' | ').trim());
@@ -116,7 +119,7 @@ r = run(['--prune'], 'seoul\n');
 const S1 = st();
 ok(S1.removed.sort().join(' ') === 'durango-central:old-1022 durango-zone:t872-seed' && S1.pruned.join(' ') === 'image builder',
   '★별칭을 바로 치면 — 옛 durango 태그 둘 · 매달린 이미지 · 빌드 캐시만', `${S1.removed.join(' ')} · prune ${S1.pruned.join(' ')}`);
-ok(JSON.stringify(files()) === JSON.stringify(F0) && Object.keys(F0).length === 7, '★DB · .bak · _reset 파일 일곱 바이트 무변(이 카드는 안 지운다)');
+ok(JSON.stringify(files()) === JSON.stringify(F0) && Object.keys(F0).length === 8, '★DB · .bak · _reset · _daily 파일 여덟 바이트 무변(이 카드는 안 지운다)');
 ok(S1.images.every((i) => i.tags.length || ['e', 'f'].includes(i.id.slice(7, 8))) && S1.images.find((i) => i.id === ID('b')).tags.length === 1 && S1.images.find((i) => i.id === ID('d')).tags.length === 1,
   '되돌리기 이미지(:prev-hanbando · :pre-reset) · :latest · node 그대로');
 console.log('\n④ 그 사이 후보가 되돌리기 이미지가 되면');
