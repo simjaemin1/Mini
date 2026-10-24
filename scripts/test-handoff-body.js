@@ -28,6 +28,8 @@
 //     몸 되돌림 0) · K(T823 끔 `=0`) = 종전대로 쥔 행 · 닫힐 때 저장이 몸 칸을 되돌린다(증인).
 //   ★[T890 2026-10-23] ⑦ 승계 갈래 — 같은 존 산 몸 승계(`_takeover`)도 몸 칸 한 벌(`serializeBody` → `parseBody` → `_bodyInto` · 손잡이 `T890_TAKEOVER_BODY` 켬 기본) —
 //     R 켬 = 저장본보다 새로운 산 몸(제작이력 · 어획 · 신체 · HP)이 승계 · 행까지 이어진다 · S 끔(`=0`) = 저장본으로 되돌아감(종전 결함 증인).
+//   ★[T916 2026-10-24] ⑧ central 이 내려간 동안 로그아웃 — 못 닿은 저장을 존 줄에 남겨 다시 보낸다(손잡이 `T916_SAVE_RETRY` 켬 기본) ·
+//     U 켬 = 다시 붙은 몸 · 행이 central 이 없던 동안의 몸을 잇는다 · V 끔(`=0`) = 사라진다(T894 회부 1 증인).
 //   ★상황 선행 assert: 왕복이 **실제로 존 경계를 넘었는지**(handoff 메시지를 받았는지) 먼저 본다.
 //     안 넘었으면 이 하네스는 아무것도 재고 있지 않다.
 //
@@ -402,6 +404,38 @@ async function takeoverTrip(tag) {
   return last;
 }
 const tkLost = (T, B) => TK_LEDGER.filter((f) => tkJ((B || {})[f]) !== tkJ((T.live || {})[f]));
+// ★★[T916] ⑧ central 이 내려간 동안 로그아웃(T894 회부 1 — 영구 소실 길) — 저장 다시 보내기(손잡이 `T916_SAVE_RETRY` 켬 기본).
+//   central 을 내린 뒤 산 몸만 바꾸고(`__e2e_body` · 저장 안 함) 끊는다 → 닫힐 때 저장이 central 에 못 닿는다 → central 을 다시 띄운다 →
+//   같은 손님 토큰으로 다시 붙는다. 다시 붙기 **전** 행 = 내리기 전 몸(줄이 아직 존에 있다 — 상황 선행 · 자명 통과 0).
+async function centralBounce(down) {
+  if (down) { const c = procs.find((x) => x._zid === 'central'); if (c) { await new Promise((r) => { if (c.exitCode !== null) return r(); c.once('exit', r); try { c.kill('SIGTERM'); } catch (e) { r(); } }); procs.splice(procs.indexOf(c), 1); } return true; }
+  const c = boot('central.js', { PORT: String(CPORT), DB_PATH: `${DDIR}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando,nippon' });
+  return (await FB.waitUp(c, /central server up on/, { name: 'central' })).ok;
+}
+async function saveRetryTrip(tag) {
+  const Z = (await jget(`http://localhost:${CPORT}/zones`)).zones; const han = Z.hanbando;
+  const NAME = `sr${tag}`;
+  const a = await open(`${han.wsUrl}/?username=&name=${NAME}&color=%23ffffff`);
+  const tok = a.welcome.guestToken, pid = a.welcome.playerId;
+  a.ws.send(JSON.stringify({ type: '__e2e_give', items: { pillar: 3 }, tools: ['axe', 'pickaxe'], equip: [{ type: 'carrier', lvl: 5 }], quiet: true }));   // 저장한다(행 = 도구)
+  await sleep(900);
+  await centralBounce(true); await sleep(500);
+  a.ws.send(JSON.stringify(Object.assign({ type: '__e2e_body', hp: TK_HP, quiet: true, member: MEMBER_FIX }, TK_SOFT, LEDGER_FIX)));   // central 이 없는 동안 산 몸만 바꾼다
+  await sleep(700);
+  const live = pick0(await jget(`http://localhost:${HPORT}/bodydbg`));
+  try { a.ws.close(); } catch (e) {}
+  await sleep(1500);   // 닫힐 때 저장 — central 이 없다(ECONNREFUSED)
+  const up = await centralBounce(false); await sleep(500);
+  let row0 = null; try { row0 = JSON.parse(((await rowOf(pid)) || {}).tools_json || 'null'); } catch (e) {}
+  const stale = TK_LEDGER.every((f) => tkJ((row0 || {})[f]) !== tkJ(live[f])) && !tkNear(tkSoft(row0), tkSoft(live)) && !(row0 && row0.vital && row0.vital.hp === live.vital.hp);
+  const b = await open(`${han.wsUrl}/?username=&name=${NAME}&color=%23ffffff&guest_token=${encodeURIComponent(tok)}`);
+  await sleep(900);
+  const after = pick0(await jget(`http://localhost:${HPORT}/bodydbg`));
+  try { b.ws.close(); } catch (e) {}
+  await sleep(1500);
+  let row1 = null; try { row1 = JSON.parse(((await rowOf(pid)) || {}).tools_json || 'null'); } catch (e) {}
+  return { up, stale, samePid: b.welcome.playerId === pid, live, after, row0, row1 };
+}
 
 (async () => {
   console.log('\n=== 존 핸드오프 — 몸이 새지 않는다 (2존 실서버) ===');
@@ -669,8 +703,20 @@ const tkLost = (T, B) => TK_LEDGER.filter((f) => tkJ((B || {})[f]) !== tkJ((T.li
     ok(R.stale && !rowLostR.length && tkNear(tkSoft(R.row1), tkSoft(R.live)),
       '★★[T890 켬] 새 소켓이 닫힌 뒤 행도 산 몸 그대로(영구 소실 0)', `행 잃은 칸 ${JSON.stringify(rowLostR)} · 행 신체 ${JSON.stringify(tkSoft(R.row1))}`);
   }
+  // ★★[T916] ⑧ central 이 내려간 동안 로그아웃 켬(기본 · `T916_SAVE_RETRY` 안 줌) — 같은 판에서(central 을 내렸다 다시 띄운다)
+  {
+    const U = await saveRetryTrip('U');
+    ok(U.up && U.stale && U.samePid, '★[상황 · T916 켬] central 을 내린 채 산 몸을 바꾸고 끊었다 → central 다시 뜸 · 다시 붙기 전 행은 바꾼 값을 아직 안 가졌다(줄이 존에 있다 · 자명 통과 0) · 같은 playerId',
+      `central ${U.up} · 행 신체 ${JSON.stringify(tkSoft(U.row0))} · 산 신체 ${JSON.stringify(tkSoft(U.live))}`);
+    const lostU = tkLost(U, U.after), rowLostU = tkLost(U, U.row1);
+    const hpA = ((U.after || {}).vital || {}).hp, hp0 = ((U.row0 || {}).vital || {}).hp;
+    ok(U.stale && !lostU.length && tkNear(tkSoft(U.after), tkSoft(U.live)) && hpA !== hp0,
+      '★★[T916 켬] 다시 붙은 몸이 central 이 없던 동안의 몸을 잇는다 — 숙련 · 제작이력 · 원석장부 · 이월 · 어획 · 소속 비트 같음 · 신체 넷 이어짐 · HP 저장본으로 안 돌아감',
+      `잃은 칸 ${JSON.stringify(lostU)} · 신체 ${JSON.stringify(tkSoft(U.live))} → ${JSON.stringify(tkSoft(U.after))} · HP ${hp0} → ${hpA}`);
+    ok(U.stale && !rowLostU.length && tkNear(tkSoft(U.row1), tkSoft(U.live)), '★★[T916 켬] 끊은 뒤 행도 그 몸(영구 소실 0)', `행 잃은 칸 ${JSON.stringify(rowLostU)}`);
+  }
   killAll(); await sleep(4000);
-  if (!await startZones(null, { T868_PROMOTE_BODY: '0', T890_TAKEOVER_BODY: '0' })) { console.log('  ✗ T868 끔 탐침 기동 실패'); process.exit(1); }   // [PM 착지 10-23] 켬 기본 — 끔 탐침은 `=0` · ★[T890] 승계 끔 증인도 이 판(승격 탐침은 승계를 안 밟는다)
+  if (!await startZones(null, { T868_PROMOTE_BODY: '0', T890_TAKEOVER_BODY: '0', T916_SAVE_RETRY: '0' })) { console.log('  ✗ T868 끔 탐침 기동 실패'); process.exit(1); }   // ★[T916] 저장 다시 보내기 끔 증인(V)도 이 판(승격 · 승계 탐침은 central 을 안 내린다)   // [PM 착지 10-23] 켬 기본 — 끔 탐침은 `=0` · ★[T890] 승계 끔 증인도 이 판(승격 탐침은 승계를 안 밟는다)
   const Q = await promoteTrip('Q');
   ok(Q.crossed && Q.promoted, '[상황 · T868 끔 탐침] 관측 소켓을 승격해 넘었다', Q.crossed ? `승격 welcome ${Q.promoted}` : '넘지 못함');
   if (Q.crossed && Q.promoted) {
@@ -687,6 +733,15 @@ const tkLost = (T, B) => TK_LEDGER.filter((f) => tkJ((B || {})[f]) !== tkJ((T.li
     ok(S.stale && lostS.includes('craftLog') && lostS.includes('fishStats') && !tkNear(tkSoft(S.after), tkSoft(S.live)) && rowLostS.includes('craftLog'),
       '★[T890 끔 탐침] 끔이면 승계가 제작이력 · 어획 · 신체를 저장본으로 되돌리고 새 소켓이 닫힐 때 행까지 덮는다(종전 그대로의 결함 · 켬 R 의 증인)',
       `잃은 칸 ${JSON.stringify(lostS)} · 신체 ${JSON.stringify(tkSoft(S.live))} → ${JSON.stringify(tkSoft(S.after))} · 행 잃은 칸 ${JSON.stringify(rowLostS)}`);
+  }
+  // ★★[T916] ⑧ 끔 증인(`T916_SAVE_RETRY=0` — 종전 글자: 저장 실패는 경고 한 줄) — 켬 U 의 "잇는다"가 자명하지 않다는 증인
+  {
+    const V = await saveRetryTrip('V');
+    ok(V.up && V.stale && V.samePid, '[상황 · T916 끔 탐침] central 을 내린 채 바꾸고 끊었다 · 다시 붙기 전 행은 바꾼 값을 안 가졌다', `central ${V.up}`);
+    const lostV = tkLost(V, V.after), rowLostV = tkLost(V, V.row1);
+    ok(V.stale && lostV.includes('craftSkill') && lostV.includes('fishStats') && !tkNear(tkSoft(V.after), tkSoft(V.live)) && rowLostV.includes('craftSkill'),
+      '★[T916 끔 탐침] 끔이면 central 이 없던 동안의 몸이 사라진다(숙련 · 어획 · 신체 · 행까지 — T894 회부 1 그대로의 결함 · 켬 U 의 증인)',
+      `잃은 칸 ${JSON.stringify(lostV)} · 행 잃은 칸 ${JSON.stringify(rowLostV)}`);
   }
   killAll(); await sleep(4000);
 
