@@ -346,7 +346,7 @@
     for (let r = 0; r < ch2; r++) D.set(RB.subarray((ch2 - 1 - r) * rw4, (ch2 - r) * rw4), r * rw4);
     return _mgl.id;
   }
-  // ★★[T898 2026-10-23] 손잡이 `T898_MT_READPX`(서버 env → welcome `uiCfg.mtReadPx` · `'1'` 만 켬 · 끔 = 종전 그대로).
+  // ★★[T898 2026-10-23 · ★T912 켬 기본 — PM 10-23] 손잡이 `T898_MT_READPX`(서버 env → welcome `uiCfg.mtReadPx` · 되돌림 `=0` 이면 칸이 없다 · 끔 = 종전 그대로).
   //   끔 = 산 띠를 굽고 2D 로 옮길 때 GL 캔버스를 `drawImage` — 구현이 GL 표면 통째(1152×1152~1408)를 떠 띠 하나 48~74ms ·
   //   청크 굽기의 48~57%였다(T863 §4 #1). 켬 = 가리개 갈래처럼 띠 상자만 `readPixels`. 그림 · 차례 · 새 수 0.
   //   `_mt898` = 옮기기 계량(켬 ms · 호출 · 화소 / 끔 ms · 호출) — 계측 자가 페이지 전역 이름으로 읽는다(그림에 안 닿는다 · 새 window 칸 0).

@@ -5,8 +5,7 @@
 //     ① 어촌1 물가에 서서 `uiCfg.waterHalf` 끔 · 켬 — 물 층 상태(`__waterDbg` · GL 캔버스 크기 · 물 상자) + 스크린샷
 //     ② 광산1 에 서서 `uiCfg.mtReadPx` 끔 · 켬 — 산 청크 캐시를 비우고(`__mt3gl(1)`) 다 구운 뒤 산 GL 상태 · 세그먼트 화소 해시 · 옮기기 계량 + 스크린샷
 //   를 남긴다. 페이지 오류 · 콘솔 오류도 같이 적는다.
-//   ★두 손잡이(T891 · T898)는 아직 각 가지에만 있다 — main 에서 돌리면 손잡이 칸을 바꿔도 그림이 그대로다(갈래가 없다).
-//     실험 트리(main + 두 가지 병합 · 커밋 밖)에서 돌린다(보고 §3).
+//   ★두 손잡이(T891 · T898)는 main 에 있고 T912 부터 켬 기본이다 — 이 자는 서버 env 와 무관하게 페이지에서 칸을 끔 · 켬으로 바꿔 잰다.
 // 실행: [E2E_BROWSER=webkit] node scripts/t902-gl-shots.js [--out /tmp/t902/shots]
 'use strict';
 const path = require('path');
