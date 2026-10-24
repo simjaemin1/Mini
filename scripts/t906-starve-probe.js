@@ -31,13 +31,15 @@ if (OUT && MAIN) {
     for (const o of R.wars.values()) if (!(S.war.WARS || []).includes(o.w) && !o.closed) { o.closed = tag; o.day1 = S.world ? S.world.day : null; }
   };
   //   ★결판 · 귀환 줄 — war-core 가 찍는 그 줄(`D<날> 전투 <공> vs <방>[…] → 공격승|방어승 사상 공X·방Y` · `D<날> <공> 귀환 — … 징발 해제 N명`)을 그 순간 살아 있는 원정(이름 짝)에 붙인다(읽기만)
+  //   줄은 하루 마감 뒤 링 버퍼에서 찍힌다(VILLAGE_WAR_LOG — 그때 원정은 이미 목록 밖일 수 있다) ⇒ 본 원정 기록(이름 짝 · 첫 날 ≤ 그 날 ≤ 닫힌 날 + 1) 중 가장 늦게 선 것
+  const pick = (day, atk, def) => { let best = null; for (const o of R.wars.values()) { if (o.atk !== atk || (def && o.def !== def)) continue; if (o.day0 != null && o.day0 > day) continue; if (o.day1 != null && day > o.day1 + 1) continue; if (!best || (o.day0 || 0) >= (best.day0 || 0)) best = o; } return best; };
   const _cl = console.log;
   console.log = function () {
     try { const s = String(arguments[0] || ''); const S = s.indexOf('⚔️ D') >= 0 ? st() : null; if (S && S.war) {
       let m = /⚔️ D(\d+) 전투 (\S+) vs (\S+?)\[[^\]]*\] → (공격승|방어승) 사상 공(\d+)·방(\d+)/.exec(s);
-      if (m) { const w = (S.war.WARS || []).find((x) => x.atk && x.def && x.atk.name === m[2] && x.def.name === m[3]); if (w) { look(S, w, 'b'); R.wars.get(w.id).battles.push({ day: +m[1], win: m[4] === '공격승' ? 'A' : 'B', atkCas: +m[5], defCas: +m[6] }); } }
+      if (m) { const o = pick(+m[1], m[2], m[3]); if (o) o.battles.push({ day: +m[1], win: m[4] === '공격승' ? 'A' : 'B', atkCas: +m[5], defCas: +m[6] }); }
       m = /⚔️ D(\d+) (\S+) 귀환 — (.*?)징발 해제 (\d+)명/.exec(s);
-      if (m) { const w = (S.war.WARS || []).find((x) => x.atk && x.atk.name === m[2]); if (w) { look(S, w, 'h'); R.wars.get(w.id).home.push({ day: +m[1], why: m[3].replace(/ — $/, '').trim(), freed: +m[4] }); } } } } catch (e) {}
+      if (m) { const o = pick(+m[1], m[2], null); if (o) o.home.push({ day: +m[1], why: m[3].replace(/ — $/, '').trim(), freed: +m[4] }); } } } catch (e) {}
     return _cl.apply(this, arguments);
   };
   const dump = () => {
