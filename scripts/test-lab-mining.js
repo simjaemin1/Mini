@@ -78,7 +78,7 @@ const SNAP = () => {
   page.on('console', (m) => { if (m.type() === 'error') cerrs.push(m.text()); });
   await page.addInitScript(INIT('0x9e3779b9'));
   await LC.noPaint(page);   // ★[T799 → T830] 칠하기만 끈다(`LAB_RENDER=1` 이면 칠함)
-  await page.goto(LAB);
+  await LC.gotoLab(page, LAB);   // ★[T909 · T684 회부 4] 적재 마감 없음(시계 정본 한 자리)
   await page.waitForFunction(() => typeof window.lifeToggle === 'function' && typeof VILS !== 'undefined', null, { timeout: 60000 });
 
   const fail = [];

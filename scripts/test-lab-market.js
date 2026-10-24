@@ -84,7 +84,7 @@ async function runOnce(decoy) {
   page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
   page.on('console', (m) => { if (m.type() === 'error') cerrs.push(m.text()); });
   await page.addInitScript(INIT);
-  await page.goto(LAB);
+  await LC.gotoLab(page, LAB);   // ★[T909 · T684 회부 4] 적재 마감 없음(시계 정본 한 자리)
   await page.waitForFunction(() => typeof window.lifeToggle === 'function' && typeof VILS !== 'undefined', null, { timeout: 60000 });
   await page.evaluate(({ nv, pop, seed, sp }) => {
     document.getElementById('nvil').value = String(nv);
