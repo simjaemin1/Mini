@@ -1574,10 +1574,92 @@ function _saveSend(playerId, patch) {
   //   "끝났다"는 뜻이 아니다. 이 수가 0 이 아니면 서버는 **한가하지 않다** — 배경 작업
   //   (교역로 선계산)이 그동안 루프를 잡으면 이 쓰기가 소켓 밖으로 못 나간다.
   //   실제로 그렇게 깨졌다: `e2e-rumor ⑦` 복귀 브리핑이 "부재 0일"(`인계/Z-존서버.md ## T42.`).
+  if (T916_SAVE_RETRY) return _t916Send(playerId, patch);   // ★[T916] 못 닿은 저장은 줄에 남겨 다시 보낸다(아래 · 끔 = 이 줄이 첫 비교에서 빠진다)
   _savesInFlight++;
   return central.updatePlayer(playerId, patch).catch(e =>
     console.warn(`[${process.env.ZONE_ID || 'zone'}] central save 실패 (${playerId}):`, e.message)
   ).finally(() => { _savesInFlight--; _savesDoneAt = Date.now(); });
+}
+// ════════════════════════════════════════════════════════════════
+// ★★[T916 2026-10-24 · T894 회부 1 · ★PM 결정: 결함이므로 켬 기본 · 되돌림 `T916_SAVE_RETRY=0` = 종전 바이트] **central 이 없는 동안의 저장을 잃지 않는다.**
+//   종전: `_saveSend` 가 실패하면 경고 한 줄로 끝났다 — central 이 내려가 있는 동안 로그아웃하면 마지막으로 닿은 저장 뒤 산 몸의 칸이 영구로 사라졌다(T894 탐침 2/2).
+//   ① 줄: 못 닿은 저장(central 에 연결 · 응답 실패 = `updatePlayer` 거절)을 존 로컬 표 `save_queue`(zone-local-db · world_meta 꼴)에 **사람마다 가장 새 것 하나** 남긴다.
+//      차례(`seq`)는 이 존이 저장을 낸 순서다 — 더 새 차례의 저장이 닿거나 줄에 서면 옛 줄은 버린다(표가 옛 차례로 새 줄을 안 덮는다). 재기동해도 표가 남는다.
+//   ② 다시 보내기: 주기 저장의 그 간격(`SAVE_INTERVAL_MS` — 새 수 0)마다 · 저장이 다시 닿기 시작한 순간 · 그 사람이 이 존에 다시 들어올 때(복원 전) — 차례대로.
+//   ③ 덮어쓰기 차례: 다시 보내는 줄은 **조건부 쓰기**다 — 이 존이 마지막으로 central 에 닿게 한 몸 칸(`tools_json`)의 sha1(`base`)을 싣고, central 의 몸 칸이 그 사이
+//      바뀌었으면(다른 존에 먼저 접속해 저장했다 · 같은 존의 더 새 저장이 먼저 닿았다) central 이 안 쓴다(`stale` — server/central.js `if_tools_sha`). 옛 줄이 새 몸을 덮지 않는다.
+//   ④ 종료 flush(SIGTERM)는 200ms 뒤 내려간다 — 그 저장은 보내기 **전에** 줄에 먼저 적고(닿으면 지운다) 다음 부팅이 보낸다(닿았는데 응답을 못 받았으면 ③ 이 거른다).
+const T916_SAVE_RETRY = process.env.T916_SAVE_RETRY !== '0';
+const _t916 = { seq: 0, lastSeq: new Map(), landed: new Map(), base: new Map(), pending: false, flushing: false, ahead: false,
+  stat: { queued: 0, landed: 0, resent: 0, stale: 0, other: 0, failPass: 0, atLoad: 0 } };
+function _t916Sha(s) { return require('crypto').createHash('sha1').update(String(s == null ? '' : s)).digest('hex'); }
+function _t916Put(playerId, seq, patch, base) {
+  try { if (db.saveQueuePut(playerId, seq, JSON.stringify(patch), base, Date.now())) { _t916.pending = true; _t916.stat.queued++; } }
+  catch (e) { console.error(`[${ZONE_ID}] ★[T916] 저장 줄 쓰기 실패 (${playerId}):`, e.message); }
+}
+// 닿은 저장 — 이 차례 이하의 줄을 지우고 몸 칸 기준(base)을 옮긴다(더 새 차례가 이미 닿았으면 기준은 그대로)
+function _t916Landed(playerId, seq, patch) {
+  try { db.saveQueueDel(playerId, seq); } catch (e) {}
+  if (seq > (_t916.landed.get(playerId) || 0)) { _t916.landed.set(playerId, seq); if (patch && patch.tools_json != null) _t916.base.set(playerId, _t916Sha(patch.tools_json)); }
+}
+function _t916Send(playerId, patch) {
+  const seq = ++_t916.seq; _t916.lastSeq.set(playerId, seq);
+  const base = _t916.base.has(playerId) ? _t916.base.get(playerId) : null;
+  if (_t916.ahead) _t916Put(playerId, seq, patch, base);   // ★④ 종료 flush — 보내기 전에 먼저 적는다
+  _savesInFlight++;
+  return central.updatePlayer(playerId, patch).then((r) => {
+    _t916.stat.landed++; _t916Landed(playerId, seq, patch);
+    if (_t916.pending) _t916Flush();   // ★② central 이 돌아왔다 — 남은 줄을 바로 보낸다
+    return r;
+  }, (e) => {
+    console.warn(`[${process.env.ZONE_ID || 'zone'}] central save 실패 (${playerId}):`, e.message, '— ★[T916] 줄에 남김');
+    _t916Put(playerId, seq, patch, base);
+  }).finally(() => { _savesInFlight--; _savesDoneAt = Date.now(); });
+}
+// 줄 하나를 다시 보낸다 → 'ok' | 'stale' | 'other' | 'down'(central 이 아직 없다 — 줄을 둔다)
+async function _t916Resend(row) {
+  let patch = null; try { patch = JSON.parse(row.patch); } catch (e) { patch = null; }
+  if (!patch) { try { db.saveQueueDel(row.player_id, row.seq); } catch (e) {} return 'other'; }
+  const body = row.base != null ? Object.assign({}, patch, { if_tools_sha: row.base }) : patch;
+  let res;
+  _savesInFlight++;
+  try { res = await central.updatePlayer(row.player_id, body); }
+  catch (e) { return 'down'; }
+  finally { _savesInFlight--; _savesDoneAt = Date.now(); }
+  try { db.saveQueueDel(row.player_id, row.seq); } catch (e) {}
+  if (res && res.ok) { _t916.stat.resent++; if (patch.tools_json != null && !((_t916.landed.get(row.player_id) || 0) > row.seq)) _t916.base.set(row.player_id, _t916Sha(patch.tools_json)); console.log(`[${ZONE_ID}] ★[T916] 못 닿았던 저장을 다시 보냈다 (${row.player_id} · 차례 ${row.seq})`); return 'ok'; }
+  if (res && res.reason === 'stale') { _t916.stat.stale++; console.log(`[${ZONE_ID}] ★[T916] 못 닿았던 저장을 버렸다 — central 몸 칸이 그 뒤 바뀌었다 (${row.player_id} · 차례 ${row.seq})`); return 'stale'; }
+  _t916.stat.other++; console.warn(`[${ZONE_ID}] ★[T916] 다시 보낸 저장을 central 이 안 받았다 (${row.player_id}):`, JSON.stringify(res).slice(0, 120)); return 'other';
+}
+// 줄 전체 — 차례대로(낸 순서) · central 이 아직 없으면 이 판은 그친다
+async function _t916Flush() {
+  if (!T916_SAVE_RETRY || _t916.flushing) return;
+  _t916.flushing = true;
+  try {
+    let rows = []; try { rows = db.saveQueueAll(); } catch (e) { rows = []; }
+    for (const row of rows) {
+      if ((_t916.lastSeq.get(row.player_id) || 0) > row.seq) continue;   // 더 새 저장이 날아가는 중 — 그것이 닿으면 이 줄을 지운다
+      if ((await _t916Resend(row)) === 'down') { _t916.stat.failPass++; break; }
+    }
+    let left = 1; try { left = db.saveQueueAll().length; } catch (e) {}
+    _t916.pending = left > 0;
+  } finally { _t916.flushing = false; }
+}
+// ★② 그 사람이 이 존에 다시 들어온다 — 복원 **전에** 그 사람의 줄을 먼저 보내고(조건부) 닿았으면 그 행으로 복원한다 · 몸 칸 기준을 행에서 잡는다
+async function _t916BeforeLoad(acct) {
+  if (!T916_SAVE_RETRY || !acct || !acct.player_id) return acct;
+  const pid = acct.player_id;
+  let row = null; try { row = db.saveQueueGet(pid); } catch (e) { row = null; }
+  if (row) {
+    const r = await _t916Resend(row);
+    if (r === 'ok') { let patch = {}; try { patch = JSON.parse(row.patch) || {}; } catch (e) {} for (const k of Object.keys(patch)) if (patch[k] != null) acct[k] = patch[k]; _t916.stat.atLoad++; }
+  }
+  if (!_t916.base.has(pid) || !_t916.landed.has(pid)) _t916.base.set(pid, _t916Sha(acct.tools_json));
+  return acct;
+}
+if (T916_SAVE_RETRY) {
+  try { for (const r of db.saveQueueAll()) { if (r.seq > _t916.seq) _t916.seq = r.seq; _t916.pending = true; } } catch (e) {}
+  setInterval(() => { if (_t916.pending) _t916Flush(); }, SAVE_INTERVAL_MS);   // ★② 주기 저장의 그 간격(새 수 0)
 }
 // ★[T42-b] 날아가는 central 쓰기 수와 **마지막으로 착지한 시각**. `SimVillages.init` 에 술어로 넘긴다.
 let _savesInFlight = 0, _savesDoneAt = Date.now();   // ★부팅도 '방금 일이 있었다'로 본다(재기동 = 접속이 몰리는 때)
@@ -6289,6 +6371,7 @@ async function _acceptConnection(ws, req, C) {
 
     // ── 공통 복원 — central 행이 있으면 등록 계정이든 영속 게스트든 **같은 경로** ──────────
     if (acct) {
+      if (T916_SAVE_RETRY) acct = await _t916BeforeLoad(acct);   // ★[T916] 이 사람의 못 닿은 저장이 이 존 줄에 있으면 먼저 보내고 그 행으로 복원한다
       playerId = acct.player_id;
       //   ★표시 이름: 등록 계정은 계정 이름. 게스트는 이번에 입력한 이름이 있으면 그것(종전 동작),
       //     없으면 저장된 이름. 소유 판정에 이름을 쓰는 곳은 0곳이다(배치 13 전수 — 배치 14 재실행).
@@ -6673,8 +6756,8 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(process.env.T838_WD_AWAKE !== '0' ? { wdAwake: true } : {}),   // [T838 · ★T849 켬 기본 — PM 10-22] 클라 두 감시(pong · 서버 틱)가 **클라가 멈춰 있던 시간**을 서버 침묵으로 안 센다(30-n-net) · 되돌림 `T838_WD_AWAKE=0` 이면 칸이 없다(옛 welcome · 종전 감시)
-      ...(process.env.T891_WATER_HALF === '1' ? { waterHalf: true } : {}),   // [T891] 클라 물 층 셰이더를 가로세로 ½ 로 그리고 2D 에서 늘린다(10-r1-terrain `_drawWaterLayer` · 소프트웨어 GL 판당 물 층 몰림) — 기본 끔 · 끔이면 칸이 없다(welcome 바이트 동일) · `1` 켬
-      ...(process.env.T898_MT_READPX === '1' ? { mtReadPx: true } : {}),   // [T898] 클라 산 띠 굽기 옮기기를 띠 상자 readPixels 로(T863 §4 #1 · 11-r1-mountain `_mt3ReadBox`) — 기본 끔 · 끔이면 칸이 없다(welcome 바이트 동일) · `1` 켬
+      ...(process.env.T891_WATER_HALF !== '0' ? { waterHalf: true } : {}),   // [T891 · ★T912 켬 기본 — PM 10-23] 클라 물 층 셰이더를 가로세로 ½ 로 그리고 2D 에서 늘린다(10-r1-terrain `_drawWaterLayer` · 소프트웨어 GL 판당 물 층 몰림) · 되돌림 `T891_WATER_HALF=0` 이면 칸이 없다(옛 welcome · 종전 물 층)
+      ...(process.env.T898_MT_READPX !== '0' ? { mtReadPx: true } : {}),   // [T898 · ★T912 켬 기본 — PM 10-23] 클라 산 띠 굽기 옮기기를 띠 상자 readPixels 로(T863 §4 #1 · 11-r1-mountain `_mt3ReadBox`) · 되돌림 `T898_MT_READPX=0` 이면 칸이 없다(옛 welcome · 종전 drawImage 옮기기)
       ...(process.env.T870_MT_BAND !== '0' ? { mtBand: true } : {}),   // [T870 · ★T880 켬 기본 — PM 10-23] 클라 산 청크 굽기 예산을 **띠** 단위로(한 판 상한 = 띠 `MT3_BUDGET` 개 · 청크는 여러 판에 걸쳐 완성 · 반쯤 구운 산 0 · 11-r1-mountain) · 되돌림 `T870_MT_BAND=0` 이면 칸이 없다(옛 welcome · 청크 단위)
       ...(process.env.T813_RMB_PRESS !== '0' ? { rmbPress: true } : {}),   // [T813 · ★T819 켬 기본 — PM 10-20] 우클릭 탭 메뉴는 **누른 순간의 화면**으로 짚는다(46-h-verbs) · 되돌림 `T813_RMB_PRESS=0` 이면 칸이 없다(옛 welcome · 뗄 때의 화면)
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
@@ -12368,6 +12451,7 @@ function __testBind() {
     playerCraftLevel, doShopBuy,
     // ── 주기 저장 비용 실측(2026-08-26) ── 하네스가 저장 건수·누적 ms 를 그대로 읽는다
     _saveStats: () => ({ ..._saveStats, intervalMs: SAVE_INTERVAL_MS }),
+    _t916Stats: () => ({ on: T916_SAVE_RETRY, ..._t916.stat, pending: _t916.pending, queue: (() => { try { return db.saveQueueAll().length; } catch (e) { return -1; } })() }), _t916Flush,   // ★[T916] 못 닿은 저장 줄
     // ── 낚시 v2 E2E(2026-08-26) ── **정본 함수를 그대로 내준다**(하네스가 물리를 다시 짜면 사본이다).
     Fishing, tryFishCast, tryFishStrike, _fishPoll, _castTargetFor, _fishSave, _fishSpeciesFor,
     _t593Pick, _t593Pool, _fishSea,   // ★[T593] 물이 고르는 종 · 그 물·그 철의 풀 · 바다 술어 — 하네스가 같은 함수를 부른다
@@ -15940,6 +16024,7 @@ function _shutdownFlush() {
       }
     }
     let playersSaved = 0;
+    if (T916_SAVE_RETRY) _t916.ahead = true;   // ★[T916] ④ 200ms 뒤 내려간다 — 이 저장들은 보내기 전에 줄에 먼저 적는다(닿으면 지운다 · 다음 부팅이 보낸다)
     for (const p of players.values()) {
       if (!canPersist(p)) continue;   // ★[배치 14 ②] 종료 flush 도 정본 술어 — 영속 게스트를 빠뜨리지 않는다
       // fire-and-forget — process.exit가 곧 따라오니 응답 못 받을 수도 있음

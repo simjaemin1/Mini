@@ -65,7 +65,9 @@ on = False; inblk = False; lang = ''
 for line in open(doc, encoding='utf-8'):
     s = line.rstrip('\n')
     if s.startswith('### '):
-        on = s[4:].strip().startswith(sec)
+        t = s[4:].strip()
+        # [T907] `1` 이 `10` · `11` 장을 물지 않게 — 장 이름 뒤가 숫자면 다른 장(`3` → `3a` 는 종전 그대로)
+        on = t.startswith(sec) and not t[len(sec):len(sec) + 1].isdigit()
         continue
     if not on: continue
     if s.startswith('```'):
@@ -132,8 +134,10 @@ FAKE
       cmd="${cmd//$LIVE_S/$SEOUL}"; cmd="${cmd//$LIVE_T/$TOKYO}"
       if [ "$host" = tokyo ]; then cmd="${cmd//\/opt\/Mini//opt/tokyo/Mini}"; fi
       echo "  [$n · $host] $cmd" >> "$OUT/steps.txt"
-      if [ -n "$ans" ]; then printf '%s\n' ${ans//\// } | bash -c "$cmd" > "$OUT/line-$sec-$n.log" 2>&1
-      else bash -c "$cmd" < /dev/null > "$OUT/line-$sec-$n.log" 2>&1; fi
+      #   [T907] 호스트 몫 컨테이너 이름(한 상자에 두 호스트 — backup-live.sh 가 이 호스트 것만 찍게 · live-lag 맥 줄과 같은 칸)
+      local ln=""; case "$host" in seoul) ln="durango-central durango-zone-hanbando" ;; tokyo) ln="durango-zone-nippon" ;; esac
+      if [ -n "$ans" ]; then printf '%s\n' ${ans//\// } | LAG_NAMES="$ln" bash -c "$cmd" > "$OUT/line-$sec-$n.log" 2>&1
+      else LAG_NAMES="$ln" bash -c "$cmd" < /dev/null > "$OUT/line-$sec-$n.log" 2>&1; fi
     fi
     local rc=$?
     say "  [$sec·$n $host] rc=$rc · $(( $(date +%s) - t0 ))s · $(grep -vE '^\s*$' "$OUT/line-$sec-$n.log" | tail -1 | cut -c1-120)"

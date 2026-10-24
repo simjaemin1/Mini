@@ -3,7 +3,7 @@
 //
 //   이 상자엔 Playwright WebKit 이 없다(`playwright install` 금지). WebKitGTK 의 WebDriver(`WebKitWebDriver` · MiniBrowser)를
 //   W3C WebDriver 로 직접 몬다 — 같은 WebKit 엔진(JavaScriptCore · WebGL)이다(Safari 그 자체는 아니다 · 보고 §2).
-//   존은 `T898_MT_READPX=1` 로 띄운다. 입장 → 광산1 → 다 구운 뒤 켬 · 끔 · 켬(페이지에서 `uiCfg.mtReadPx` + 산 청크 캐시 비우기)마다
+//   존은 기본 env 로 띄운다(★T912 켬 기본 — 종전 `T898_MT_READPX=1`). 입장 → 광산1 → 다 구운 뒤 켬 · 끔 · 켬(페이지에서 `uiCfg.mtReadPx` + 산 청크 캐시 비우기)마다
 //   다 굽기를 기다려 세그먼트 화소 해시 · 스크린샷 · 옮기기 계량(`_mt898`)을 남긴다.
 // 준비(한 번): apt-get install -y webkit2gtk-driver xvfb
 // 실행: node scripts/t898-webkit-check.js [--out /tmp/t898/wk]
@@ -35,7 +35,7 @@ const js = (fn, args) => wd('POST', `/session/${SID}/execute/sync`, { script: `r
   const c = run(process.execPath, [path.join(ROOT, 'server', 'central.js')], { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   const cu = FB.waitUp(c, /central server up on/, { name: 'central' });
   const z = run(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
-    ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1', T898_MT_READPX: '1' });
+    ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1' });
   const zu = FB.waitUp(z, /zone server up on/, { name: 'zone', capMs: 300000 });
   run('Xvfb', [DISP, '-screen', '0', '1280x800x24']);
   await sleep(1500);

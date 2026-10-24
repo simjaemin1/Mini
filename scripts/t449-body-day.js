@@ -51,7 +51,12 @@ const ENV = { off: Object.assign({ T449_BODY_DAY: '' }, ACTS), on: Object.assign
   //     ⚠부르는 쪽 env 에 `T888_NPC_WALK` 가 있으면 `n1` 에 샌다 — 비워서 부른다(`env -u T888_NPC_WALK`)
   n1: Object.assign({ T449_BODY_DAY: '' }, ACTS), n0: Object.assign({ T449_BODY_DAY: '', T888_NPC_WALK: '0' }, ACTS),
   //     수요 문 끈 짝(`T374_DEMAND_STOP=0` — T561 의 `offnd` 꼴): 곳간이 차도 몸이 일을 안 멈춘다 ⇒ 걸음 한도가 그대로 드러난다(켬 기본 세계에선 몸이 수요에 묶여 쉰다)
-  n1nd: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0' }, ACTS), n0nd: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0', T888_NPC_WALK: '0' }, ACTS) };
+  n1nd: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0' }, ACTS), n0nd: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0', T888_NPC_WALK: '0' }, ACTS),
+  //   ★[T904] 팔 넷 — 나무꾼 몸이 빈 셀을 떠난다(`T904_WOOD_NEXT=1` · 끔 = main) × 수요 문(기본 켬 · 끈 짝 `T374_DEMAND_STOP=0`) · 걸음은 main 기본(T888 켬)
+  //     `w1` = main(수요 문 켬 · 끔) · `w1x` = 수요 문 켬 · 켬 · `w0` = 수요 문 끔 · 끔(T888 `n1nd` 꼴) · `w0x` = 수요 문 끔 · 켬 — `T449_PROBE=scripts/t904-probe.js` 로 띄우면 층 표까지
+  //     ⚠부르는 쪽 env 에 `T904_WOOD_NEXT` · `T374_DEMAND_STOP` · `T561_ROSTER_BODY` 가 있으면 끔 팔에 샌다 — 비워서 부른다(`env -u …`)
+  w1: Object.assign({ T449_BODY_DAY: '' }, ACTS), w1x: Object.assign({ T449_BODY_DAY: '', T904_WOOD_NEXT: '1' }, ACTS),
+  w0: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0' }, ACTS), w0x: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0', T904_WOOD_NEXT: '1' }, ACTS) };
 //   ★[T491] 들여다보기 창 — 기본은 T449 의 그 창 · `T449_PROBE=scripts/t491-probe.js` 면 몸의 하루까지(그 창이 T449 창을 같이 싣는다)
 const PROBE = process.env.T449_PROBE || 'scripts/t449-probe.js';
 const TPL = process.env.T449_TPL || '';
@@ -72,7 +77,7 @@ function boot(tag, env, i) {
   const z = spawn(process.execPath, ['-r', path.join(ROOT, PROBE), path.join(ROOT, 'server/zone.js')], { cwd: ROOT, stdio: ['ignore', logf, logf],
     env: Object.assign({}, process.env, { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP), CENTRAL_SECRET: SECRET,
       DB_PATH: zdb, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(REAL_DAY_MS), VILLAGE_WAR_LOG: '0', T449_PROBE_OUT: probeOut,
-      T491_PROBE_OUT: `${TMP}/${tag}.body.json`, T491_TRACE_OUT: `${TMP}/${tag}.trace.jsonl` }, env) });
+      T491_PROBE_OUT: `${TMP}/${tag}.body.json`, T491_TRACE_OUT: `${TMP}/${tag}.trace.jsonl`, T904_PROBE_OUT: `${TMP}/${tag}.t904.json` }, env) });   // ★[T904] 층 창(`t904-probe` 로 띄울 때만 쓴다)
   const getj = async (p) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, { headers: { 'x-zone-secret': SECRET }, signal: AbortSignal.timeout(20000) }); return await r.json(); } catch (e) { return null; } };
   const health = async () => { try { return (await fetch(`http://localhost:${ZP}/health`, { signal: AbortSignal.timeout(5000) })).ok; } catch (e) { return false; } };
   let ws = null, pinger = null;

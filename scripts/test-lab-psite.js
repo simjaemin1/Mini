@@ -90,7 +90,7 @@ async function runOnce(withPlayerSite, prng, decoy) {
   page.on('console', (m) => { if (m.type() === 'error') cerrs.push(m.text()); });
   await page.addInitScript(INIT(prng));
   await LC.noPaint(page);   // ★[T830] 칠하기만 끈다(T799 꼴 · 까닭·증명은 `fixture-lab-clock` 머리말 · `LAB_RENDER=1` 이면 칠함)
-  await page.goto(LAB);
+  await LC.gotoLab(page, LAB);   // ★[T909 · T684 회부 4] 적재 마감 없음(시계 정본 한 자리)
   await page.waitForFunction(() => typeof window.lifeToggle === 'function' && typeof VILS !== 'undefined', null, { timeout: 60000 });
   await page.evaluate(`window.__SNAP = ${SNAP}; true`);   // ★[T649] 표본 자를 페이지 안에 둔다 — 프레임 사이에서 바로 잰다(같은 함수 하나)
   if (decoy) await page.evaluate(DECOY);

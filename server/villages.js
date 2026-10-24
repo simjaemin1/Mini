@@ -3921,6 +3921,23 @@ function _caravanSyncOne(now, c, S, budgetMs) {
     }
   }
 }
+// ★[T851 2026-10-22] 캐러밴 동기 한 대씩 조각의 **속 이름 셋**(세는 이름만 · 값 0 · 새 수 0 · 손잡이 0) — T828 `caravan_sync` 안을 가른다.
+//   조각이 돈 **뒤** 그 조각이 한 일을 이미 있는 셈 칸의 증분으로 읽는다(읽기만 · 세계에 0):
+//     `caravan_sync:cold`   교역로 A* 를 **새로 시작**했다(`_probe.pathJobs` 증분 — 재개형 문이 새 일을 세운 그 자리)
+//     `caravan_sync:resume` 새로 시작은 안 했는데 길 · 걸음 길을 **이어 팠다**(`pathWait` 증분 = 아직 · 또는 `routeCold` 증분 = 이 조각에서 완주)
+//     `caravan_sync:spawn`  길 일 없이 **몸을 세웠다**(`spawned` 증분 · 그 조각에서 한 번에 끝난 걸음 길 몫 포함)
+//     그 밖(장부 하루 · 도착 머묾 · 캐시 적중 재라우팅 · 할 일 없음)은 종전 속 이름 `caravan_sync` 그대로.
+//   차례는 위에서부터(새 A* 를 시작한 조각이 그 자리에서 완주 · 스폰까지 했으면 `cold`).
+let _t851Last = null;
+function _t851Sync(C, c) {
+  const j0 = _probe.pathJobs | 0, w0 = _probe.pathWait | 0, k0 = _probe.routeCold | 0, s0 = C.car.spawned | 0;
+  const r = _caravanSyncOne(C.now, c, C.car);
+  _t851Last = (_probe.pathJobs | 0) > j0 ? 'caravan_sync:cold'
+    : ((_probe.pathWait | 0) > w0 || (_probe.routeCold | 0) > k0) ? 'caravan_sync:resume'
+    : (C.car.spawned | 0) > s0 ? 'caravan_sync:spawn' : null;
+  return r;
+}
+function _t851Tag() { return _t851Last; }
 // 쓸기 — `seen` 전량이 모인 뒤에만 옳다(그래서 이 절반은 원자다).
 function _caravanSyncSweep(S) {
   if (T707_ON) _t707Tally();   // ★[T707] 오늘 선 장의 몸 없는 몫을 센다(캐러밴 동기가 다 돈 뒤 · 끔 = 이 줄 무동작)
@@ -7335,7 +7352,7 @@ function _t731Jobs(now, T) {
   C.now = now; C.t731mini = !T.tail; C.t731Opens++;
   const J = [];
   //   ★[T744] 창 꼴 증인 — 조각마다 제 몫(H 머리 · V 마을 · T 꼬리)을 단다: 몫이 바뀌는 첫 조각에서 그때 정산한 마을 수를 적는다(머리 0 · 꼬리 = 다)
-  const addP = (p) => (n, f, sub) => { const g = () => { _t731Mark(W, p, sub || n); return f(); }; J.push(sub ? { n, f: g, s: sub } : { n, f: g }); };
+  const addP = (p) => (n, f, sub, sf) => { const g = () => { _t731Mark(W, p, sub || n); return f(); }; J.push(sub ? (sf ? { n, f: g, s: sub, sf } : { n, f: g, s: sub }) : { n, f: g }); };   // ★[T851] `sf` = 돈 뒤 속 이름(창 증인은 종전 속 이름)
   const add = addP('T'), addH = addP('H'), addV = addP('V');
   const mute = (f) => { const _log = console.log; console.log = () => {}; try { f(); } finally { console.log = _log; } };
   if (T.head) {
@@ -7404,7 +7421,7 @@ function _t731Jobs(now, T) {
     if (T681_ON) add('caravan', () => _t681Day(C.now), 'caravan_body');
     if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true), 'caravan_fish');
     { const _cl = state.world.caravans.slice();
-      for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car), 'caravan_sync');
+      for (const c of _cl) add('caravan', () => _t851Sync(C, c), 'caravan_sync', _t851Tag);
       if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); add('caravan', _t762SyncNewJob(C, new Set(_cl)), 'caravan_sync'); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 이 띄운 캐러밴(위 손잡이 주석 ③)
       else add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); }
     if (T698_BOUNDARY_SLICE) {
@@ -7559,7 +7576,7 @@ function _openDayJobs(now, T) {
               car: _caravanSyncNew(), ore: { v: 0, c: 0 }, chunks: 0, maxChunk: 0, maxChunkAt: '', order: [],
               vils: state.villages.slice() };   // ★목록을 얼린다 — 마감 중 마을이 늘면 그날 순서가 흔들린다
   const J = [];
-  const add = (n, f, sub) => J.push(sub ? { n, f, s: sub } : { n, f });   // ★[T513] `s` = 조각 속 이름(켬일 때만 · `/perf` 칸)
+  const add = (n, f, sub, sf) => J.push(sub ? (sf ? { n, f, s: sub, sf } : { n, f, s: sub }) : { n, f });   // ★[T513] `s` = 조각 속 이름(켬일 때만 · `/perf` 칸) · ★[T851] `sf` = 돈 뒤 속 이름
 
   // ⓪ ★★[T533] 존 경계(팔 켬 + 호스트 — 끔이면 이 줄과 econ 뒤 한 줄 무동작 · 조각 목록 무변): econ **앞** = 지난 경계에 이웃이 민 스텁·기록을 꽂는다.
   if (state.xzone) add('xzone', () => _xzDayIn());
@@ -7642,7 +7659,7 @@ function _openDayJobs(now, T) {
   if (T681_ON) add('caravan', () => _t681Day(C.now), 'caravan_body');   // ★[T681] 몸 장부 하루(전쟁 행군·귀환 · 위협 · 줄어드는 몸) — 캐러밴 동기 바로 앞 정한 자리
   if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true), 'caravan_fish');   // ★[T661] 어장 상한 매기기 — 종전 존 60초 주기(벽시계)를 하루 마감의 정한 자리로(캐러밴 동기 바로 앞 · 재고 회복 시각은 낚시 정본 그대로)
   { const _cl = state.world.caravans.slice();
-    for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car), 'caravan_sync');   // ★[T85] 반환('retry')을 드레인이 본다
+    for (const c of _cl) add('caravan', () => _t851Sync(C, c), 'caravan_sync', _t851Tag);   // ★[T85] 반환('retry')을 드레인이 본다
     if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); add('caravan', _t762SyncNewJob(C, new Set(_cl)), 'caravan_sync'); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 틱이 띄운 캐러밴(위 손잡이 주석 ③ · 끔 = 아래 종전 한 줄)
     else add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); }
 
@@ -7745,8 +7762,9 @@ function _drainTickJobs(now) {
       C.chunks++; C.work = (C.work || 0) + d;
       if (C.order[C.order.length - 1] !== j.n) C.order.push(j.n);   // ★[T1 §3-④] 단계 순서 — 조각내기가 *언제*만 바꿨는지의 증거
       C.stg[j.n] = (C.stg[j.n] || 0) + d;
-      if (j.s) { C.stg[j.s] = (C.stg[j.s] || 0) + d; if (d > (C.stg[j.s + '·max'] || 0)) C.stg[j.s + '·max'] = d; }   // ★[T513] 조각 속 이름(켬일 때만 있다)
-      if (d > C.maxChunk) { C.maxChunk = d; C.maxChunkAt = j.s || j.n; }
+      const js = (j.sf && j.sf()) || j.s;   // ★[T851] 조각이 돈 뒤 제 속 이름을 고르는 조각(캐러밴 동기 한 대씩 — 그 조각이 한 일 · 없으면 종전 속 이름)
+      if (js) { C.stg[js] = (C.stg[js] || 0) + d; if (d > (C.stg[js + '·max'] || 0)) C.stg[js + '·max'] = d; }   // ★[T513] 조각 속 이름(켬일 때만 있다)
+      if (d > C.maxChunk) { C.maxChunk = d; C.maxChunkAt = js || j.n; }
       // ★★[T85] **아직 안 끝난 조각은 제자리로.** 재개 가능 A* 를 쓰는 조각(캐러밴 출발·재라우팅)은
       //   예산만큼만 길을 파고 `'retry'` 를 낸다 ⇒ 같은 자리(맨 앞)에 도로 넣어 **같은 하루 안의
       //   다음 조각**에 이어 간다. 다음 게임일로 미루면 출발일이 밀리고 `travelDays` 규약(T60 ③)이 흔들린다.
@@ -12007,6 +12025,16 @@ function _t491BodyDay(vil, distPx) {   // 나무꾼 **한 몸**이 하루에 곳
 //         하루를 선 몸은 0그루인데, 옛 XOR(해 질 녘 손)은 그 날을 "아무도 안 걸었다"로 읽어 일괄이 성한 몸 명부 × 걸음 한도를 벴다
 //         (30일 판 · 켬 · 수요 문 끔 — 보고/T561 §3). 몸이 나선 날은 일괄이 안 돈다.
 const T561_ROSTER_BODY = process.env.T561_ROSTER_BODY === '1';
+// ★★[T904 2026-10-24 · 손잡이 `T904_WOOD_NEXT`(기본 **끔** · `=1` 켬 · 끔 = 옛 줄 · main 바이트)] **나무꾼 몸이 빈 셀을 떠난다** — T561 ②(몸의 하루)만 따로 켠다.
+//   T888 수요 문 끈 짝 · T491 §2-ⓑ: 몸은 방금 비운 셀을 하루 캐시 목록에서 해 질 녘까지 다시 고른다(하루 1그루 · 빈 셀 위 `벌목` 라벨 그대로).
+//   랩 `resourceTick` 벌목꾼 줄은 일하던 셀이 바닥나면(`< L_WOODMAX × 0.15`) 다른 숲 셀로 옮긴다 — 그 뜻(고갈되면 떠난다)을 몸 갈래에 세운다.
+//   켜면 T561 의 **몸의 하루 세 자리**만 선다(사본 0 · 같은 함수 · 새 수 0):
+//     ⓐ 빈 셀 건넘(`_t561Standing` — 일괄 절이 셀마다 먼저 묻는 그 peek 문 · 고르는 차례는 몸 갈래의 "가장 가까운" 그대로 · 그날 목록이 다 비면 퇴근)
+//     ⓑ 짐이 차서 사다리에 가면 통나무도 내린다(`_t561Ladder` — 캐논 "귀환하면 곳간에" · 내린 몸은 그날 걸은 몸) · ⓒ 곳간 없는 마을은 회관(같은 두 걸음).
+//   T561 의 나머지 둘은 **안** 선다 — ① 일괄 명부 = 몸(`_t561Crew` · 앓은 날의 일괄 · #86) · ⓓ 현장을 잡아 나선 몸 = 걸은 몸(닿지 못한 날의 일괄 · T561 회부).
+//   ⚠수요 문(`T374_DEMAND_STOP` · 기본 켬)은 손대지 않는다 — 켬 세계에서 몸을 쉬게 하는 것은 수요 문이다(그날 D 를 채우면 퇴근 · 보고/T904 §1).
+const T904_WOOD_NEXT = process.env.T904_WOOD_NEXT === '1';
+const _T561_BODY = T561_ROSTER_BODY || T904_WOOD_NEXT;   // 몸의 하루(ⓐⓑⓒ) — 둘 중 하나면 선다 · ①ⓓ 는 T561 만
 function _t561Fit(p) {   // 그날 나설 수 있는 몸인가 — 스케줄 게이트(`npcLifeTick` 요양 두 줄)의 그 칸·그 문턱
   if (!p || p.isDown) return false;                                           // 쓰러짐
   if (p.hp != null && !(p.hp > 0)) return false;                               // 죽음(NPC 부활 대기)
@@ -12046,7 +12074,7 @@ function _t561Standing(tr, npc, h, first) {
 }
 // ★[T561 ②ⓑ] 곳간 사다리 정산(`_lifeGranStep` ③)에서 부른다 — 통나무를 든 몸만 온다(끄면 첫 줄에서 돌아간다 · 옛 줄 그대로).
 function _t561Ladder(vil, npc, now) {
-  if (!T561_ROSTER_BODY || !vil || !vil.econ) return 0;
+  if (!_T561_BODY || !vil || !vil.econ) return 0;   // ★[T904] T561 켬 또는 T904 켬(몸의 하루 ⓑ) · 끔 = 옛 줄
   const E = _lifeEcon(); if (!E.T325_WOOD_ACT || !E.woodActOn(vil.econ)) return 0;
   const got = _t325Deliver(vil, npc);
   _t561Walked(vil, npc, now);
@@ -12056,7 +12084,7 @@ function _t561Ladder(vil, npc, now) {
 // ★[T561 ②ⓑⓓ] **그날 나선 몸** — 한 몸 한 번(사람 수 · T475 `_t325PreWalked` 규약 · 새 칸 0 — 도장은 몸의 `_t561Wd` 하나).
 //   ⓑ 사다리·회관에서 통나무를 내린 몸 · ⓓ 그날 현장(나무 셀)을 잡아 **나선** 몸 — 닿지 못해(강 건너 · A* 칸 예산) 0그루인 날도
 //   그 몸의 하루는 있었다 ⇒ 일괄이 그 몸 몫으로 걸음 한도를 대신 베지 않는다(캐논 "일괄은 몸을 대신할 뿐 몸보다 많이 내지 않는다").
-//   ⚠켜진 팔만 부른다(부르는 두 자리 모두 `T561_ROSTER_BODY` 뒤) — 끔 = 옛 XOR(해 질 녘 손만).
+//   ⚠켜진 팔만 부른다 — ⓑ 사다리·회관은 `_T561_BODY`(T561 켬 또는 ★[T904] 켬) 뒤 · ⓓ 현장은 `T561_ROSTER_BODY` 뒤 — 끔 = 옛 XOR(해 질 녘 손만).
 function _t561Walked(vil, npc, now) {
   const d = state.dayMs ? _bodyDay(npc, now) : 0;                                                  // 몸의 날(`npcLifeTick` 이 쓰는 그 날 · ★[T720] 켬 = 현지 날)
   if (npc._t561Wd !== d) { npc._t561Wd = d; vil._t325PreWalked = (vil._t325PreWalked | 0) + 1; }
@@ -12603,7 +12631,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         if (d2 < bd) { bd = d2; best = t; }
       }
       //   ★★[T561 ②ⓐ] 켬 — 그 셀에 서 있는 그루가 없으면 다음으로 가까운 셀(같은 순서 · 같은 동점 규칙 · 일괄 절의 그 문) · 끔 = 옛 줄(빈 셀에 선다)
-      if (T561_ROSTER_BODY) { best = _t561Standing(_tr, npc, h, best); if (!best) { npc._t325Site = { none: 1, day }; _lifeGoHome(npc, '휴식'); return true; } }
+      if (_T561_BODY) { best = _t561Standing(_tr, npc, h, best); if (!best) { npc._t325Site = { none: 1, day }; _lifeGoHome(npc, '휴식'); return true; } }   // ★[T904] T904 켬도(몸의 하루 ⓐ)
       npc._t325Site = { cx: best.cx, cy: best.cy, x: best.x, y: best.y, day };
       if (T561_ROSTER_BODY) _t561Walked(vil, npc, now);   // ★[T561 ②ⓓ] 현장으로 나선 몸은 그날 걸은 몸 — 닿지 못해 0그루여도 일괄이 그 몸 몫을 대신 안 벤다
     }
@@ -12638,7 +12666,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (_cap > 0 && _kg >= _cap && _granGo(vil, npc, false)) { npc._jobT = 0; return true; }
     //   ★★[T561 ②ⓒ] 켬 — 곳간이 없는 마을(틀 세계 13/50)은 **회관(마을 중심)**이 그 자리다(T400 이 자재를 꺼내는 폴백 `_t400From` 과 같은 자리) —
     //     짐이 차면 거기로 가서 내린다(`_t561Hall`). 끔 = 옛 줄(곳간이 없으면 짐 상한 없이 해 질 녘까지 든다 — 옛 몸은 1그루에서 멈춰 드러나지 않았다).
-    if (T561_ROSTER_BODY && _cap > 0 && _kg >= _cap && !(vil._granList && vil._granList.length)) { npc._t561Hall = { at: 0 }; npc._jobT = 0; return true; }
+    if (_T561_BODY && _cap > 0 && _kg >= _cap && !(vil._granList && vil._granList.length)) { npc._t561Hall = { at: 0 }; npc._jobT = 0; return true; }   // ★[T904] T904 켬도(몸의 하루 ⓒ)
     return true;
   }
   // ★★★[T724] **치는 순간 손에, 귀환하면 곳간에** — 광부 몸이 제 조의 광맥 셀에서 친다(위 `_t724BodyStep` 머리말).
@@ -14053,7 +14081,8 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
     // ★[T561] 명부가 몸의 그날을 본다 · 몸이 안 멈춘다 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다 · 하네스가 문턱을 다시 적으면 그게 사본이다).
     _t561Probe: { fit: (p) => _t561Fit(p), crew: (vil, job) => _t561Crew(vil, job).map((p) => p.pid), standing: (tr, npc, h, first) => _t561Standing(tr, npc, h, first),
       ladder: (vil, npc, now) => _t561Ladder(vil, npc, now), granStep: (vil, npc, now) => _lifeGranStep(vil, npc, now), life: (npc, now) => npcLifeTick(npc, now),
-      get T561_ROSTER_BODY() { return T561_ROSTER_BODY; }, get SCH_REST_IN() { return SCH_REST_IN; } },
+      get T561_ROSTER_BODY() { return T561_ROSTER_BODY; }, get SCH_REST_IN() { return SCH_REST_IN; },
+      get T904_WOOD_NEXT() { return T904_WOOD_NEXT; }, get bodyDay() { return _T561_BODY; } },   // ★[T904] 몸의 하루(ⓐⓑⓒ)가 섰나 — T561 켬 또는 T904 켬
     // ★[T707] 장마당 하네스용 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다 · 하네스가 명부·자리·장 끝 규칙을 다시 적으면 그게 사본이다)
     _t707Probe: {
       setup: (o) => { const K = ['deps', 'world', 'byEcon', 'byDbId', 'villages', 'caravanBodies', 'dayMs', 'epoch', 'lastGameDay', 'ready', 'zoneId', 'econV2'];
