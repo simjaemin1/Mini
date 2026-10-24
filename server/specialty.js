@@ -988,8 +988,8 @@ function alloyGrade(mix, kind) {
 //   여기 수는 **위 넷과 같은 규칙으로 원물에서 유도**했다(새 수 0 — `scripts/test-t877-dry-fix.js` 가 유도식과 대조한다):
 //     baseValue = 원물값 ÷ 수율 0.4(굴 4 → 10 · 미역 2 → 5) · weight = 원물 kg × 말림 잔량비(`tidal.weightMap` — 굴 0.2 → 0.052 · 미역 0.3 → 0.078)
 //     · utility 0.7(보존식 넷과 같다) · contributes = 원물의 subsistence(굴 0.3 · 미역 0.4 — 보존은 열량을 늘리지 않는다) · 부패 = `preserved` 자동(0.0002)
-//   ★손잡이 `T877_DRY_FIX`('1' 만 켬 · 끔 = 이 두 칸이 안 선다 = main 바이트 — 곳간 칸이 0 으로라도 서면 서버 기준선 지문이 갈린다) · 읽는 자리는 이 파일 하나(econ 이 아래 `T877_ON` 을 읽는다).
-const T877_ON = (typeof process !== 'undefined' && process.env && process.env.T877_DRY_FIX === '1');
+//   ★손잡이 `T877_DRY_FIX`(★T911 켬 기본 · `=0` = 이 두 칸이 안 선다 = 종전 바이트 — 곳간 칸이 0 으로라도 서면 서버 기준선 지문이 갈린다) · 읽는 자리는 이 파일 하나(econ 이 아래 `T877_ON` 을 읽는다).
+const T877_ON = !(typeof process !== 'undefined' && process.env && process.env.T877_DRY_FIX === '0');   // ★[T911 · PM 10-23] 켬 기본(결함 고침 — 열량 생성 0) · 되돌림 `=0` = 종전 바이트
 if (T877_ON) Object.assign(RESOURCES, {
   dried_oyster:  { ko: '건굴',       emoji: '🦪', category: 'preserved', weight: 0.052, baseValue: 10, utility: 0.7, contributes: { subsistence: 0.3 }, harvest: 'crafting' },
   dried_seaweed: { ko: '마른 미역',  emoji: '🌿', category: 'preserved', weight: 0.078, baseValue: 5,  utility: 0.7, contributes: { subsistence: 0.4 }, harvest: 'crafting' },

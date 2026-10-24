@@ -515,7 +515,7 @@ function _preserveSurplus(v, from, budget, addProduce, cap, unit) {
 const T860_ON = (typeof process !== 'undefined' && process.env && process.env.T860_CATCH_DRY === '1');
 const CATCH_FROM = { fisher: { fish: 'dried_fish', salmon: 'dried_fish', shrimp: 'dried_fish', crab: 'dried_fish' }, hunter: { meat: 'smoked_meat' } };
 const _t860Unit = (r) => (FORAGE_FOOD_FACTOR[r] != null ? FORAGE_FOOD_FACTOR[r] : 1);
-// ★★[T877 2026-10-23 · T860 회부 4] **요리사 갈무리도 열량을 지킨다** — 손잡이 하나 `T877_DRY_FIX`('1' 만 켬 · 끔 = main 바이트).
+// ★★[T877 2026-10-23 · T860 회부 4] **요리사 갈무리도 열량을 지킨다** — 손잡이 하나 `T877_DRY_FIX`(★T911 켬 기본 · `=0` = 종전 바이트).
 //   종전 요리사 갈무리는 과일 · 남새(식량 환산 0.4)를 수율 0.4 로 말려 보존식 환산 2.5 로 먹였다 — 열량이 2.5 배(생성).
 //   켜면 요리사도 잡은 날 말리기와 **같은 식**(`_t860Unit` — 산출 = 뗀 양 × 수율 × 원물 1단위 식량 환산)을 쓴다(사본 0 · 생선 · 고기는 1 이라 무변).
 //   ★손잡이는 `server/specialty.js` 가 읽는다(`T877_DRY_FIX` — 같은 손잡이가 건굴 · 마른 미역 칸도 세운다 · 읽는 자리 하나). 여기는 그 값을 받는다.

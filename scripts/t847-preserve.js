@@ -23,9 +23,12 @@ if (OUT) {
   const ROOT = path.join(__dirname, '..');
   const GATE = 'if (totalFoodEquivalent(v) > _N * DAILY_FOOD_CONSUMPTION * (RESERVE_PC.food || 30)) {';
   const STEP = 'v.storage[_fr] -= _take; _cons(v, _fr, _take);';
+  const ADDP = '      addProduce(from[_fr], unit ? _take * PRESERVE_YIELD * unit(_fr) : _take * PRESERVE_YIELD);\n';
   const PATCH = [
     [GATE, 'if (globalThis.__T847_G(v, totalFoodEquivalent(v) > _N * DAILY_FOOD_CONSUMPTION * (RESERVE_PC.food || 30), budget, cap ? 1 : 0)) {'],   // ★[T860] 갈무리가 함수(`_preserveSurplus`)로 갔다 — cap 있음 = 잡은 날 말리기
     [STEP, 'globalThis.__T847_P(v, _fr, _take, _sur, _pBudget, cap ? 1 : 0); ' + STEP],
+    // ★[T911] 열량 항등 — 갈무리 산출 한 걸음의 앞뒤(곳간 + 세곡) 그 칸 차이(읽기만 · 같은 식 그대로 부른다)
+    [ADDP, '{ const __o = from[_fr], __t = (x) => (+v.storage[x] || 0) + (+((v.treasury || {})[x]) || 0), __s0 = __t(__o); ' + ADDP.trim() + ' if (globalThis.__T847_K) globalThis.__T847_K(v, _fr, _take, __o, __t(__o) - __s0, unit ? 1 : 0, cap ? 1 : 0); }\n'],
   ];
   const DEC = '    v.storage[r] = s * (1 - rate);\n';   // econ-v2 `tickDecay` 품목 줄(t749-decay 와 같은 자리 — 둘이 같이 실려도 각자 한 번)
   const prev = Module._extensions['.js'];
@@ -71,6 +74,13 @@ if (OUT) {
     const r = R(v); if (!r) return;
     if (isCatch) { r.catch.take[fr] = (r.catch.take[fr] || 0) + take; r.catch.used += take; return; }
     r.take[fr] = (r.take[fr] || 0) + take; r.sur[fr] = (r.sur[fr] || 0) + sur; r.used += take;
+  };
+  // ★[T911] 열량 항등: 들어간 열량 = 뗀 양 × 그 칸 식량 환산 · 식 산출 = 뗀 양 × 수율 × (환산을 곱했으면 환산) · 실제 = 그 칸 차이 — 셋 다 식량 환산 단위(보존식 × 2.5)
+  let _E = null; const _ee = () => (_E || (_E = require(path.join(ROOT, 'sim', 'economy-sim'))));
+  globalThis.__T847_K = function (v, fr, take, out, delta, unitUsed, isCatch) {
+    const r = R(v); if (!r) return; const E = _ee(); const ff = E.FORAGE_FOOD_FACTOR[fr] != null ? E.FORAGE_FOOD_FACTOR[fr] : 1, PF = E.PRESERVE_FOOD_FACTOR, Y = E.PRESERVE_YIELD;
+    const k = r.kcal || (r.kcal = { cook: { in: 0, formula: 0, actual: 0, n: 0 }, catch: { in: 0, formula: 0, actual: 0, n: 0 } }); const b = isCatch ? k.catch : k.cook;
+    b.in += take * ff; b.formula += take * Y * (unitUsed ? ff : 1) * PF; b.actual += delta * PF; b.n++;
   };
   globalThis.__T847_D = function (v, res, x) { const r = R(v); if (r && x > 0) r.dec[res] = (r.dec[res] || 0) + x; };
 
