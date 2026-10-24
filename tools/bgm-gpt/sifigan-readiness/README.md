@@ -74,3 +74,83 @@ the official discriminator, losses, optimizer and checkpoint resume in a
 bounded run, retaining recording-disjoint evaluation. Only after that can a
 timed daegeum training pilot be justified. Public voice weights and the
 rejected pretrained BigVGAN decoder remain excluded from that path.
+
+## 2026-10-24: actual recordings, official GAN losses and disk-state restore
+
+`prepare_real_features.py` prepares a deliberately small **execution gate**,
+not the final training corpus. It verifies original-file hashes from the
+existing public NGC manifest, decodes native48kHz sus04/vib39 and native44.1kHz
+Arirang002 directly to24kHz (never upsampling old16kHz copies), and preserves
+one4.8s excerpt per file. sus04/vib39 are fit; Arirang002 is a source-file
+holdout which was used in earlier research and is **not blind**. No score or
+performance-generalization claim follows from this split.
+
+The43raw channels are40mel-cepstral coefficients (`pysptk.sp2mc`, order39,
+alpha0.466) and3coded WORLD aperiodicity bands. Harvest uses70..1800Hz/5ms;
+CheapTrick and D4C useFFT2048, D4C threshold0.85. Raw F0 is retained separately
+from interpolated/20Hz-low-pass continuousF0. The final WORLD endpoint alone
+is discarded to align960frames with115,200samples. Unlike the upstream
+extractor's defaults, this adapter uses no causal70Hz high-pass (keeping raw
+target/features aligned), FFT2048 rather than1024, and explicit float64 rather
+than removed `np.float`. Fit-only per-channel population mean/std never uses
+the holdout. Constant-channel scales map to1, not a learned heldout statistic.
+
+Actual preparation took5.55seconds. Voicing estimates were787/960(sus04),
+960/960(vib39),909/960(Arirang002). **The two fit excerpts cover only about
+253..271Hz.** Holdout F0 estimates reach1222Hz, and16.28%of its voiced frames
+have all-bin D4C aperiodicity>=0.999. These are estimator warnings, not proof
+of musical correctness; the fit data are plainly insufficient for a full
+instrument. High-register analysis and wider training coverage remain open.
+
+`train_real_gate.py` uses the full official SiFi-GAN generator and default
+UnivNet discriminator (3resolution+5period heads), unmodified upstream code,
+and batch1×70frames versus the published batch16. All G/D/loss computation is
+MPS float32 with CPU fallback disabled; only excitation phase starts onCPU.
+The residual F0 range is explicitly70..1800Hz rather than clamping at840Hz.
+The gate starts with adversarial-active step1, not the upstream step0 warmup:
+
+- G: `45*mel + residual + 2*feature_matching + adversarial`.
+- D: summed real/fake LSGAN losses across all8heads.
+- Both Adam optimizers: lr2e-4, betas(0.5,0.9), gradient clipping10; official
+  MultiStepLR settings retained. After each G update a fresh G output feeds D.
+
+The actual run completed in24.13seconds: G11,303,652parameters and
+D41,381,552parameters, each updated twice with finite gradients/losses.
+Step1/vib39 took14.16seconds and the warmed step2/sus04 took0.805seconds;
+two different crops are **not a convergence comparison or a reliable
+long-run speed estimate**. The first-step611,753,444-byte private checkpoint
+includes both models, both Adam states, schedulers and CPU/MPS RNG. It was
+loaded with `weights_only=True` and a scoped stdlibCounter allowlist, preserving
+OrderedDict metadata/Counter types. A deliberately perturbed G parameter was
+restored; the complete typed numeric-state digest matched and both Adam
+counters advanced to2after the next step. This is an **in-process disk restore
+and continuation**, not a fresh-process restart/crash-recovery test.
+
+Final observations were563,789,824bytes RSS and2,666,283,008bytes MPS driver
+allocation (not peaks). The new private folder occupies about591MiB, below the
+announced revised1GB limit; initial500MB was raised before writing the full
+resume state. The600second/8GiB conservative memory/12GiB disk-floor guard
+was retained. No generated audio is saved or presented; two updates do not
+train acceptable daegeum timbre or vibrato. Models, original/derived data,
+checkpoint and reports remain outsideGit. Twenty-four SiFi-GAN boundary tests
+(including a tiny CPU state roundtrip, no models) pass.
+
+Use prepared private dependencies: existing Python3.12/Torch2.10/librosa,
+PyWORLD0.3.5 from its read-only environment, and a new separate target for
+[pysptk1.0.1](https://pypi.org/project/pysptk/)(MIT; installed LICENSE retained).
+No existing environment is modified and no public voice weights are used.
+
+```text
+python -B prepare_real_features.py --manifest PRIVATE_NGC_SOURCE_MANIFEST \
+  --output NEW_PRIVATE_FEATURE_DIRECTORY
+PYTHONDONTWRITEBYTECODE=1 PYTORCH_ENABLE_MPS_FALLBACK=0 \
+  python -B train_real_gate.py --upstream PINNED_PRIVATE_CHECKOUT \
+  --manifest PRIVATE_FEATURE_DIRECTORY/manifest.json --output NEW_PRIVATE_GATE
+```
+
+The execution blocker is cleared **for this tiny real batch on this Mac**.
+Next is wider pitch/articulation/phrase coverage with independent heldout
+recordings, feature-quality checks (especially high-register F0/AP), then a
+bounded training pilot and unaltered-pitch heldout reconstruction. Only
+listening can accept daegeum identity; score-to-feature performance generation
+is still a separate stage. No new game BGM is ready.
