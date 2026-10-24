@@ -6367,6 +6367,19 @@ function _t906Die(w, body, p, day) {
   _warDespawnPid(p.pid);
   return fe || 0;
 }
+// ㄱ — 원정 몸이 다 굶어 죽었다(그 원정의 산 공격 몸 0 — 몸이 없는 병력은 사다리가 없다 · 몸 상한 밖). 원정은 거기서 끝난다(빈 원정이 돌지 않는다 · 추상 0):
+//   교전이 선 원정(`engagedOnce` · 교전 국면)은 판의 끝 식이 다음 틱에 정산한다(`stepFight` — 싸우는 병사 0 → 궤주 · 수비 승 · 종전 문 그대로).
+//   교전 전(행군 · 주둔 · 닿지 못한 전진)이면 **몸 없는 전쟁 문**(`_warNoArmy` — 다음 틱 · war-core 철수 전이와 같은 효과 · 전투 0)으로 끝난다
+//   — 포위 중이었으면 war-core 철수 전이처럼 포위를 먼저 푼다(`_opSetSiege` · 내보낸 함수). 귀환 길이면 원정은 이미 돌아온다(그대로).
+//   새 수 0 · 끔 · ㄴ 에선 안 돈다(굶어 죽음이 없다).
+function _t906Live(body) { const P = state.deps.players; for (const pid of (body.pids || [])) { const q = P.get(pid); if (q && (q.hp == null || q.hp > 0)) return true; } return false; }
+function _t906Wipe(w, body, day) {
+  const St = _t906Stat(); St.wiped = (St.wiped || 0) + 1;
+  const bk = w._rationBook; if (bk) bk.starveWiped = day;
+  const f = body.fight, home = w.phase === 'return' || body.phase === 'return', byFight = !home && !!(f && f.engagedOnce && w.phase === 'battle');
+  if (!home && !byFight) { if (state.war && state.war._opSetSiege) state.war._opSetSiege(w, false, day); body.noArmy = true; }   // 귀환 길이면 원정은 이미 돌아온다(그대로)
+  if (state.war && state.war.warLog) state.war.warLog(day, (w.atk && w.atk.name) + ' 원정 몸이 다 굶어 죽었다 — ' + (home ? '귀환 길' : byFight ? '교전이 끝낸다(싸우는 병사 0)' : '몸 없는 전쟁(철수 · 전투 0)'));
+}
 function _warRationEat(w, day) {
   const WC = state.war; if (!w || !w._packOnBodies || !WC || !WC.bodyEat) return null;
   const body = state.warBodies && state.warBodies.get(w.id);
@@ -6386,7 +6399,7 @@ function _warRationEat(w, day) {
     if (_b0) for (const k of keys) { const d = (_b0[k] || 0) - (bag[k] || 0); if (d > 1e-12) _G.bagOut(p, k, d); }   // ★[T748] 먹은 몫 — 그 품목의 오래된 것부터(끄면 null)
   }
   let _t906Alive = bearers.length;
-  if (_t906Dead) { for (const p of _t906Dead) left -= _t906Die(w, body, p, day); _t906Alive -= _t906Dead.length; if (left < 0) left = 0; }   // ★[T906] ㄱ — 그 자리에서 죽는다(짐은 떨어진다)
+  if (_t906Dead) { for (const p of _t906Dead) left -= _t906Die(w, body, p, day); _t906Alive -= _t906Dead.length; if (left < 0) left = 0; if (body && !_t906Live(body)) _t906Wipe(w, body, day); }   // ★[T906] ㄱ — 그 자리에서 죽는다(짐은 떨어진다) · 산 몸이 0 이면 원정이 끝난다
   const perDay = (w.force || 0) * (state.warCore ? state.warCore.WAR_RATION : 1);
   const bk = w._rationBook; if (bk) { bk.eaten += eaten; bk.unfed = (bk.unfed || 0) + unfed; if (hungry) bk.hungryDays = (bk.hungryDays || 0) + hungry; if (w.phase === 'battle') { bk.battleEaten = (bk.battleEaten || 0) + eaten; bk.battleUnfed = (bk.battleUnfed || 0) + unfed; bk.battleDays = (bk.battleDays || 0) + 1; bk.battleBodyDays = (bk.battleBodyDays || 0) + bearers.length; if (hungry) bk.battleHungry = (bk.battleHungry || 0) + hungry; }   // ★[T886] 못 먹은 몫 · 교전 날 먹음(관측 셈)
     if (w._fgKeys) bk.fgEat = +((bk.fgEat || 0) + _warFgUnits(w, eatU)).toFixed(6); if (bk.days.length < 64) bk.days.push({ day, bearers: bearers.length, eaten: +eaten.toFixed(4), left: +left.toFixed(4) }); }
@@ -7834,7 +7847,7 @@ function __p3Bind(mock) {
     _t476Decide, _t476DenVil,   // ★[T476] 토벌 결단 · 소굴 어댑터 — 하네스가 운영과 같은 결단을 부른다
     _warRationLayDownBody, _warBagDrop, _t476DenRefresh, _t476DenSync,   // ★[T748] 켬 전용 일곱 길 — 하네스(`test-moment-lot` ⑨~)가 **이 함수들**을 그대로 부른다(사본 0)
     _t312Deliver, _t347Deliver, _t544PackPut, _t544PackIn, _t368Hold, _t368Deliver,
-    _warRationEat, _warRationCollect, _warRationLoad, _t906Day, _t906Step, _t906Sat, _t906Mode,   // ★[T906] 원정 몸 굶주림 사다리(하네스가 이 함수들을 그대로 부른다)
+    _warRationEat, _warRationCollect, _warRationLoad, _t906Day, _t906Step, _t906Sat, _t906Mode, _t906Live,   // ★[T906] 원정 몸 굶주림 사다리(하네스가 이 함수들을 그대로 부른다)
       // ★[T423] 짐이 먹는다 — 하네스가 **이 함수들**을 war-core 에 건다(운영과 같은 두 훅)   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
   };
 }

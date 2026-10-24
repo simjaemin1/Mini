@@ -1109,6 +1109,13 @@ function rationActPart() {
     ok(ag.t906 && ag.t906.dead >= 1 && ag.t906.econDead === ag.t906.dead && ag.aDown === ag.aDead + ag.t906.dead && a0.aDown === a0.aDead && ag.aStart === ag.aUnits - ag.t906.dead && a0.aStart === a0.aUnits,
       'ⓥ·T906 ㄱ 죽음(교전) — [자명 통과 금지] 교전 중 굶어 죽는 몸이 선다 · 그 단위는 누웠지만 판의 사상 셈(`sides.A.dead` → `warKill`) 밖이다(누운 단위 = 사상 셈 + 굶어 죽음 · ★대조 끔은 누운 단위 = 사상 셈) ⇒ 한 사람은 한 번만 죽는다 · 명부에서도 빠진다(시작 수 = 단위 − 굶어 죽음 — 결판 생존에 안 든다)', ag.t906 ? `굶어 죽음 ${ag.t906.dead} · 누운 ${ag.aDown} = 사상 ${ag.aDead} + ${ag.t906.dead} · 시작 ${ag.aStart} = 단위 ${ag.aUnits} − ${ag.t906.dead} · 끔 누운 ${a0.aDown} = ${a0.aDead} · 끝 ${ag.ended && ag.ended.why}(끔 ${a0.ended && a0.ended.why})` : '');
     ok(ag.warDone && near(ident(ag), ag.book.load), 'ⓥ·T906 ㄱ 항등(교전) — 먹음 + 내려놓음 + 드랍 + 짐 = 곳간에서 나간', `${ag.book.load} = ${ag.book.eaten}+${ag.book.back}+${ag.book.drop}+${(ag.bagLeft || 0)}`);
+    //   (마) 돌격 정책 긴 행군 판 — 팩 반나절 · 행군 8일: 닿기 전에 몸이 다 굶어 죽는다(돌격 정책은 군량이 바닥나도 철수를 안 고른다 — 빈 원정이 돌 자리)
+    const AL = Object.assign({}, A, { packFood: 12 * WarCore.WAR_RATION / 2, marchDays: 8, maxTicks: 30 * 60 * 40 });
+    const w0 = runS(null, null, AL), wg = runS('die', null, AL);
+    ok(wg.t906 && wg.t906.wiped === 1 && wg.t906.dead === wg.onBodies && wg.book.starveWiped != null && wg.ended && wg.ended.why === 'noArmy' && wg.warDone && wg.counts.resolve === 0 && near(ident(wg), wg.book.load)
+      && w0.warDone && w0.counts.resolve >= 1 && w0.ended && w0.ended.why !== 'noArmy' && !w0.t906,
+      'ⓥ·T906 ㄱ 몰사(길) — [자명 통과 금지] 돌격 정책 원정의 몸이 닿기 전에 다 굶어 죽는다 → 몸 없는 전쟁 문(`_warNoArmy` — 철수 전이 · 결판 0)으로 끝난다(빈 원정이 돌지 않는다 · 항등 그대로) · ★대조 끔은 닿아서 결판한다(정산 ≥ 1)',
+      wg.t906 ? `굶어 죽음 ${wg.t906.dead}/${wg.onBodies} · 다 죽은 날 D${wg.book.starveWiped} · 끝 ${wg.ended && wg.ended.why} · 정산 ${wg.counts.resolve}(끔 ${w0.counts.resolve} · 끝 ${w0.ended && w0.ended.why})` : '');
     //   (라) 정적 — 사다리는 Body · kcal 정본 함수(사본 0) · econ 사망은 war-core 한 문(`_warRemoveNpc`) · 손잡이 두 글자만 켠다
     const VS9 = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8'), WC9 = fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8');
     const blk = VS9.slice(VS9.indexOf('function _t906Mode()'), VS9.indexOf('function _warRationEat(w, day)'));
