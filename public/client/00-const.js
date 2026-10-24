@@ -506,11 +506,14 @@ function cropSprite(stage, crop) {
   //      세 몫 중 **가장 큰 것**이 주인이다 · pong 셋이 없으면 클라 막힘이 반을 넘을 때만 "클라" · 아니면 "미상"
   //   ⚠켜져 있는 동안만 두 곳에서 performance.now() 를 한 번 더 읽는다(`window.__fcOn`) — 끄면 종전 그대로.
   //   ⚠Safari 는 뒤 탭에서 rAF 를 멈춘다 — 캡처 동안 탭을 앞에 둔다(가려지면 표에 `hidden` 칸이 선다).
-  window.__frameCapture = (sec = 60) => new Promise((resolve) => {
+  //   ★[T913] `opt.save === false` 면 JSON 을 내려받지 않는다(`__lagReport` 가 쓴다 · 기본 = 종전 그대로 내려받음).
+  //     층에 몸(`_entAcc` · 엔티티 그리기) · HUD(`_hudAcc` · render 밖 겹그림 · 미니맵)를 더했고, 받은 틱(`__fcTick`) · 힙(크롬만)을 같이 적는다.
+  window.__frameCapture = (sec = 60, opt) => new Promise((resolve) => {
     if (window.__fcOn) { console.warn('[frame] 이미 도는 중'); resolve(null); return; }
-    const L = [['tile', '_tileAcc'], ['water', '_waterAcc'], ['mt', '_mtAcc'], ['nat', '_natAcc']];
-    const snap = () => { const o = { r: window.__fcRenderMs, m: window.__fcMsgMs, mn: window.__fcMsgN }; for (const [k, g] of L) o[k] = +(window[g] || 0); return o; };
-    window.__fcRenderMs = 0; window.__fcMsgMs = 0; window.__fcMsgN = 0; window.__fcPong = []; window.__fcOn = true;
+    const L = [['tile', '_tileAcc'], ['water', '_waterAcc'], ['mt', '_mtAcc'], ['nat', '_natAcc'], ['ent', '_entAcc'], ['hud', '_hudAcc']];
+    const PM = (typeof performance !== 'undefined' && performance.memory) ? performance.memory : null;   // 크롬만 — Safari 는 없다(GC 추정 칸이 null)
+    const snap = () => { const o = { r: window.__fcRenderMs, m: window.__fcMsgMs, mn: window.__fcMsgN, heap: PM ? PM.usedJSHeapSize : null }; for (const [k, g] of L) o[k] = +(window[g] || 0); return o; };
+    window.__fcRenderMs = 0; window.__fcMsgMs = 0; window.__fcMsgN = 0; window.__fcPong = []; window.__fcTick = []; window.__fcOn = true;
     const frames = [], hid = [];
     const onVis = () => hid.push({ t: performance.now(), hidden: document.hidden });
     document.addEventListener('visibilitychange', onVis);
@@ -521,6 +524,7 @@ function cropSprite(stage, crop) {
     const finish = () => {
       window.__fcOn = false; document.removeEventListener('visibilitychange', onVis);
       const pong = window.__fcPong.slice(); window.__fcPong = null;
+      const ticks = window.__fcTick.slice(); window.__fcTick = null;
       const dts = frames.map((f) => f.dt), longF = frames.filter((f) => f.dt > 50);
       const rtts = pong.map((p) => p.rtt), rMed = q(rtts, 0.5) || 0;
       //   ★세 몫(핑 하나마다): 클라 막힘 = 그 ping~pong 사이 프레임이 16.7ms 를 넘긴 몫의 합(pong 이 큐에서 기다린 시간의 추정 —
@@ -541,9 +545,18 @@ function cropSprite(stage, crop) {
         view: [innerWidth, innerHeight], zoom: typeof ZOOM !== 'undefined' ? ZOOM : null, zone: typeof primaryZoneId !== 'undefined' ? primaryZoneId : null, hidden: hid,
         frames: { n: frames.length, fps: +(frames.length / sec).toFixed(1), p50: q(dts, 0.5), p95: q(dts, 0.95), p99: q(dts, 0.99), max: q(dts, 1),
           long50: longF.length, long100: frames.filter((f) => f.dt > 100).length,
-          sum: { dt: sumK('dt'), render: sumK('r'), msg: sumK('m'), tile: sumK('tile'), water: sumK('water'), mt: sumK('mt'), nat: sumK('nat') } },
+          sum: { dt: sumK('dt'), render: sumK('r'), msg: sumK('m'), tile: sumK('tile'), water: sumK('water'), mt: sumK('mt'), nat: sumK('nat'), ent: sumK('ent'), hud: sumK('hud') } },
+        //   ★[T913] GC 추정 — 힙(크롬 `performance.memory`)이 앞 판보다 **줄어든** 판 = 그 사이 GC 가 돈 판. 그 판들의 브라우저 몫(dt − render − msg − hud)을 더한다.
+        heap: PM ? (() => { const g = frames.filter((f) => f.gc); return { gcFrames: g.length, gcOther: +g.reduce((a, f) => a + Math.max(0, f.dt - f.r - f.m - f.hud), 0).toFixed(1), gcLong50: g.filter((f) => f.dt > 50).length }; })() : null,
+        //   ★[T913] 받은 틱 — 받아 처리한 간격(클라 시계) · 서버가 보낸 간격(서버 시계 `t`)
+        ticks: (() => { const rcv = [], srv = []; for (let i = 1; i < ticks.length; i++) { rcv.push(ticks[i][0] - ticks[i - 1][0]); if (ticks[i][1] != null && ticks[i - 1][1] != null) srv.push(ticks[i][1] - ticks[i - 1][1]); }
+          const rM = q(rcv, 0.5) || 0, sM = q(srv, 0.5) || 0;
+          const late = (a, m) => a.filter((x) => x > Math.max(2 * m, m + 30));   // 튄 간격 — 위 튄 핑과 같은 문턱
+          const lateMs = (a, m) => +late(a, m).reduce((x, y) => x + (y - m), 0).toFixed(1);   // 늦은 몫 = 그 간격 − 중앙
+          return { n: ticks.length, rcv: { p50: q(rcv, 0.5), p95: q(rcv, 0.95), max: q(rcv, 1), spikes: late(rcv, rM).length, lateMs: lateMs(rcv, rM) },
+                   srv: { p50: q(srv, 0.5), p95: q(srv, 0.95), max: q(srv, 1), spikes: late(srv, sM).length, lateMs: lateMs(srv, sM) } }; })(),
         longFrames: longF.map((f) => ({ t: +(f.t - t0).toFixed(0), dt: +f.dt.toFixed(1), render: +f.r.toFixed(1), msg: +f.m.toFixed(1), msgN: f.mn,
-          tile: +f.tile.toFixed(1), water: +f.water.toFixed(1), mt: +f.mt.toFixed(1), nat: +f.nat.toFixed(1), other: +(f.dt - f.r - f.m).toFixed(1) })),
+          tile: +f.tile.toFixed(1), water: +f.water.toFixed(1), mt: +f.mt.toFixed(1), nat: +f.nat.toFixed(1), ent: +f.ent.toFixed(1), hud: +f.hud.toFixed(1), gc: f.gc ? 1 : 0, other: +(f.dt - f.r - f.m).toFixed(1) })),
         pong: { n: pong.length, split: pong.filter((p) => typeof p.srv === 'number').length, rtt: { p50: q(rtts, 0.5), p95: q(rtts, 0.95), max: q(rtts, 1) },
           net: { p50: q(pong.filter((p) => typeof p.net === 'number').map((p) => p.net), 0.5), p95: q(pong.filter((p) => typeof p.net === 'number').map((p) => p.net), 0.95) },
           srv: { p50: q(pong.filter((p) => typeof p.srv === 'number').map((p) => p.srv), 0.5), p95: q(pong.filter((p) => typeof p.srv === 'number').map((p) => p.srv), 0.95),
@@ -555,7 +568,7 @@ function cropSprite(stage, crop) {
       console.log(`[frame] 프레임 p50 ${out.frames.p50}ms · p95 ${out.frames.p95} · max ${out.frames.max} · 긴 프레임(>50ms) ${out.frames.long50} · 핑 p50 ${out.pong.rtt.p50} · p95 ${out.pong.rtt.p95} · 몫 중앙(클라 ${out.parts.clientBlock.p50} · 서버 ${out.parts.server.p50} · 망 ${out.parts.net.p50}) · 튄 핑 ${spikes.length} = 클라 ${cnt('클라')} · 서버 ${cnt('서버')} · 망 ${cnt('망')} · 미상 ${cnt('미상')}`);
       if (out.longFrames.length) console.table(out.longFrames.slice(0, 30));
       window.__frameCaptureResult = out;
-      try {
+      if (!(opt && opt.save === false)) try {
         const d = new Date(), z = (n) => String(n).padStart(2, '0');
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([JSON.stringify(out)], { type: 'application/json' }));
@@ -566,12 +579,71 @@ function cropSprite(stage, crop) {
     };
     const step = (ts) => {
       const s = snap();
-      if (prevT != null) frames.push({ t: ts, dt: ts - prevT, r: s.r - prev.r, m: s.m - prev.m, mn: s.mn - prev.mn, tile: s.tile - prev.tile, water: s.water - prev.water, mt: s.mt - prev.mt, nat: s.nat - prev.nat });
+      if (prevT != null) frames.push({ t: ts, dt: ts - prevT, r: s.r - prev.r, m: s.m - prev.m, mn: s.mn - prev.mn, tile: s.tile - prev.tile, water: s.water - prev.water, mt: s.mt - prev.mt, nat: s.nat - prev.nat,
+        ent: s.ent - prev.ent, hud: s.hud - prev.hud, gc: s.heap != null && prev.heap != null && s.heap < prev.heap });
       prevT = ts; prev = s;
       if (ts - t0 < sec * 1000) requestAnimationFrame(step); else finish();
     };
     requestAnimationFrame(step);
   });
+  // ★★[T913 2026-10-23] **렉 보고 한 줄** — `__lagReport()`(기본 30초 · 인자 = 초). 재민 기기(맥 Safari · 실제 GPU)에서 콘솔에 친다.
+  //   위 `__frameCapture` 를 그대로 돌리고(내려받기만 끔) 그 결과로 **표 한 장 + 판정 한 줄 + 복사할 글 한 덩이**를 낸다 — 새 계측 0 · 새 수 0
+  //   (문턱은 위 캡처의 것: 긴 프레임 > 50ms · > 100ms · 튄 값 = 중앙의 2배를 넘고 +30ms 넘음).
+  //   층 = 지면 · 물 · 산(굽기 · 수집) · 자연물(수집) · 몸(엔티티 그리기 — 산 띠 · 건물 · 사람 · 짐승) · 그 밖 렌더 · HUD(render 밖 겹그림 · 미니맵) ·
+  //        메시지 처리 · 브라우저 몫(dt − 렌더 − 메시지 − HUD = 그리기 · GC · 타이머 · vsync 대기) · GC 추정(크롬만 · 힙이 준 판).
+  //   판정 = 세 쪽이 **막은 시간(ms)** 중 가장 큰 쪽(같으면 서버 > 클라 > 망 차례 · 모두 100ms 미만이면 렉 없음) — 단위가 같아야 견줄 수 있다:
+  //     클라 = 긴 프레임(> 50ms)마다 (dt − 16.7) 의 합(한 판 16.7ms 를 넘긴 몫 — 위 캡처의 클라 막힘과 같은 셈)
+  //     서버 = 서버가 보낸 틱 간격(서버 시계 `t`)이 튄 것마다 (간격 − 중앙) 의 합 · 망 = 튄 핑 중 망 몫이 가장 큰 것들의 망 몫 합(pong 셋이 있을 때만).
+  //   결과: `__lagReportText`(글) · `__lagReportResult`(값 · `frame` 은 캡처 원본).
+  function _lagReport(sec = 30) {
+    return window.__frameCapture(sec, { save: false }).then((F) => {
+      if (!F) return null;
+      const S = F.frames.sum, dt = S.dt || 1;
+      const restR = Math.max(0, S.render - S.tile - S.water - S.mt - S.nat - S.ent);
+      const brw = Math.max(0, S.dt - S.render - S.msg - S.hud);
+      const rows = [['지면', S.tile], ['물', S.water], ['산(굽기·수집)', S.mt], ['자연물(수집)', S.nat], ['몸(그리기)', S.ent], ['그 밖 렌더', restR],
+                    ['HUD·미니맵', S.hud], ['메시지 처리', S.msg], ['브라우저(그리기·GC·대기)', brw]];
+      const LF = F.longFrames, lsum = (k) => LF.reduce((a, f) => a + (f[k] || 0), 0), ldt = lsum('dt') || 1;
+      const lrow = { '지면': lsum('tile'), '물': lsum('water'), '산(굽기·수집)': lsum('mt'), '자연물(수집)': lsum('nat'), '몸(그리기)': lsum('ent'),
+        '그 밖 렌더': Math.max(0, lsum('render') - lsum('tile') - lsum('water') - lsum('mt') - lsum('nat') - lsum('ent')), 'HUD·미니맵': lsum('hud'),
+        '메시지 처리': lsum('msg'), '브라우저(그리기·GC·대기)': Math.max(0, ldt - lsum('render') - lsum('msg') - lsum('hud')) };
+      const pct = (x, d) => +(100 * x / d).toFixed(1);
+      const table = rows.map(([k, v]) => ({ '층': k, '합 ms': +v.toFixed(0), '프레임당 ms': +(v / Math.max(1, F.frames.n)).toFixed(2), '몫 %': pct(v, dt),
+        '긴 프레임 몫 %': LF.length ? pct(lrow[k], ldt) : null }));
+      const V = F.verdict, T = F.ticks;
+      const ev = { '서버': +(T.srv.lateMs || 0).toFixed(0), '클라': +LF.reduce((a, f) => a + (f.dt - 16.7), 0).toFixed(0),
+                   '망': +F.spikes.filter((x) => x.who === '망').reduce((a, x) => a + (x.net || 0), 0).toFixed(0) };
+      const main = ['서버', '클라', '망'].reduce((a, k) => (ev[k] > ev[a] ? k : a), '서버');
+      const topL = (LF.length ? Object.entries(lrow) : rows).slice().sort((a, b) => b[1] - a[1])[0];
+      const topName = topL ? topL[0] : '-', topPct = topL ? (LF.length ? pct(topL[1], ldt) : pct(topL[1], dt)) : 0;
+      //   렉 없음 = 세 쪽 모두 100ms 미만(위 캡처의 "> 100ms 프레임" 한 장보다 짧다 — 그 문턱을 그대로 쓴다)
+      const quiet = ev['서버'] < 100 && ev['클라'] < 100 && ev['망'] < 100;
+      //   곁 = 주 쪽이 아닌데도 100ms 를 넘게 막은 쪽(예: 물 층이 프레임을 묶는 판에 서버도 멈췄다)
+      const side = quiet ? [] : ['서버', '클라', '망'].filter((k) => k !== main && ev[k] >= 100);
+      const verdict = quiet ? `렉 없음(이 ${sec}초 — 막은 시간 서버 ${ev['서버']}ms · 클라 ${ev['클라']}ms · 망 ${ev['망']}ms · 모두 100ms 미만)`
+        : `${main === '클라' ? `클라 층(${topName} ${topPct}%)` : main}${side.length ? ` · 곁에 ${side.join(' · ')}` : ''} — 막은 시간 서버 ${ev['서버']}ms · 클라 ${ev['클라']}ms · 망 ${ev['망']}ms`
+          + ` (긴 프레임 ${F.frames.long50} · 튄 핑 ${V.spikes} = 클라 ${V.client}/서버 ${V.server}/망 ${V.net}/미상 ${V.unknown} · 서버가 늦게 보낸 틱 ${T.srv.spikes} · 늦게 받은 틱 ${T.rcv.spikes})`;   // 클라 막힘은 긴 프레임 · 서버는 서버 시계 · 망은 pong 셋
+      const ua = (/Version\/[\d.]+.*Safari/.exec(F.ua) || /(Chrome|Firefox|Edg)\/[\d.]+/.exec(F.ua) || [F.ua.slice(0, 40)])[0];
+      const H = F.heap;
+      const txt = [
+        `[렉 보고 · T913] ${F.at} · ${sec}초 · ${ua} · 화면 ${F.view.join('×')} ×${F.dpr} · 확대 ${F.zoom} · 존 ${F.zone}${F.hidden.length ? ' · ⚠탭 가려짐 ' + F.hidden.length + '번' : ''}`,
+        `판정: ${verdict}`,
+        `프레임: ${F.frames.n}판 · ${F.frames.fps}fps · p50 ${F.frames.p50} · p95 ${F.frames.p95} · max ${F.frames.max}ms · >50ms ${F.frames.long50} · >100ms ${F.frames.long100}`,
+        `층(합 ms · 몫 %): ` + table.map((r) => `${r['층']} ${r['합 ms']}(${r['몫 %']}%)`).join(' · '),
+        LF.length ? `긴 프레임(>50ms ${LF.length}판)만 몫 %: ` + table.map((r) => `${r['층']} ${r['긴 프레임 몫 %']}`).join(' · ') : `긴 프레임(>50ms) 0`,
+        H ? `GC 추정(힙이 준 판): ${H.gcFrames}판 · 그 판 브라우저 몫 ${H.gcOther}ms · 그중 긴 프레임 ${H.gcLong50}` : `GC 추정: 이 브라우저는 힙을 안 알려 준다(Safari) — 브라우저 몫에 들어 있다`,
+        `틱: 받음 ${T.n}개 · 간격 p50 ${T.rcv.p50} · p95 ${T.rcv.p95} · max ${T.rcv.max}ms · 늦음 ${T.rcv.spikes} | 서버 보냄 간격 p50 ${T.srv.p50} · p95 ${T.srv.p95} · max ${T.srv.max}ms · 늦음 ${T.srv.spikes}`,
+        `핑: ${F.pong.n}개 · p50 ${F.pong.rtt.p50} · p95 ${F.pong.rtt.p95} · max ${F.pong.rtt.max}ms · 몫 중앙 클라 ${F.parts.clientBlock.p50} · 서버 ${F.parts.server.p50} · 망 ${F.parts.net.p50}`,
+      ].join('\n');
+      const res = { verdict, main: quiet ? null : main, evidence: ev, table, text: txt, frame: F };
+      window.__lagReportText = txt; window.__lagReportResult = res;
+      console.table(table);
+      console.log(txt);
+      console.log('[렉 보고] 위 글을 통째로 복사해 붙여 주면 된다 — 다시 보기: `__lagReportText`');
+      try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => console.log('[렉 보고] 클립보드에도 넣었다'), () => {}); } catch (e) {}
+      return res;
+    });
+  }
 // @@moved:491
   // Phase 14.41: 사망/구조
   let myIsDown = false;

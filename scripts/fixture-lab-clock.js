@@ -68,6 +68,9 @@ const NO_PAINT = `
 `;
 /** 적재 **전에** 심는다(`init` 다음) — `LAB_RENDER=1` 이면 아무것도 안 한다 */
 const noPaint = async (page) => { if (!RENDER) await page.addInitScript(NO_PAINT); };
+//   ★[T909 · T684 회부 4] 적재 — 랩 파일 적재에도 벽시계 마감이 남아 있었다(`page.goto` 기본 30초 · 부하 걸린 상자에서 측정 전에 죽었다).
+//     시계 정본 규약 그대로 마감을 없앤다(`timeout: 0` = 끔 · 수 없음). 적재가 끝났는지는 뒤의 `waitForFunction`(랩 함수가 섰나)이 본다.
+const gotoLab = (page, url) => page.goto(url, { timeout: 0 });
 const paintTag = () => (RENDER ? '칠함' : '칠하기 끔');
 
 // 프레임 지문 — 지금 프레임의 세계를 글로 펴 FNV-1a 32비트. 숫자는 String() 전 자리(부동소수 끝자리까지).
@@ -91,4 +94,4 @@ const fp = (page) => page.evaluate(FP);
 /** 날별 지문 목록을 한 번 더 접은 값(8자) */
 const fold = (list) => { let h = 0x811c9dc5; for (const c of list.join('/')) { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; } return ('00000000' + h.toString(16)).slice(-8); };
 
-module.exports = { FRAME_MS, init, untilDay, noPaint, paintTag, fp, fold };
+module.exports = { FRAME_MS, init, untilDay, noPaint, gotoLab, paintTag, fp, fold };

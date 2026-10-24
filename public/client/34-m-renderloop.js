@@ -1273,6 +1273,7 @@
 
     // === 3) 엔티티 그리기 ===
     _mtStage(ctx, 'C_루프전');
+    const _entT0 = window.__fcOn ? performance.now() : 0;   // ★[T913] 프레임 캡처 중에만 — 엔티티 그리기 몫(산 띠 · 건물 · 사람 · 짐승 · 자연물 그림)
     for (const item of renderables) {
       if (item.wx === undefined) { _gateMissing++; _gateMissKind[item.kind] = (_gateMissKind[item.kind] || 0) + 1; }
       else if (_GATE_FREE[item.kind]) { _gateFree++; }
@@ -1821,6 +1822,7 @@
         ctx.globalAlpha = 1;
       }
     }
+    if (window.__fcOn) window._entAcc = (window._entAcc || 0) + (performance.now() - _entT0);   // ★[T913]
     _mtStage(ctx, 'D_루프후');
     _mtFlushFade(ctx);   // ★흐린 산 한 겹을 여기서 한 번에 덮는다(겹침 누적 방지)
     // ★계측기는 **그린 뒤** 그대로 받아 적는다(사본 금지)

@@ -385,6 +385,7 @@
       window._gAcc = (window._gAcc||0)+_rd; window._gN = (window._gN||0)+1; if (_rd > (window._gMax||0)) window._gMax = _rd;
       if (window._gN >= 30) { if (window._renderDbg) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
         console.log(`[render] avg=${(window._gAcc/window._gN).toFixed(1)}ms tiles=${((window._tileAccDbg||0)/window._gN).toFixed(1)}ms max=${window._gMax.toFixed(0)}ms bld=${_bn}`); } window._gAcc=0; window._gN=0; window._gMax=0; window._tileAccDbg=0; } }
+    const _hudT0 = window.__fcOn ? performance.now() : 0;   // ★[T913] 프레임 캡처 중에만 — render 밖 겹그림 · HUD · 미니맵 몫(끔이면 안 읽힌다)
     drawArrowFx();      // 사냥꾼 화살 비행(서버 arrow_fx)
     drawBuildOverlay(); // 14.51: hover outline
     drawPlacementGhost(); // 14.53-i: placement 시 실루엣 미리보기
@@ -392,6 +393,7 @@
     updateBuildProgressEl(); // 14.51: 3초 progress bar (DOM)
     updateMinimap();
     _t728CalTick();     // ★[T728 ④] 날짜 경계 — 서버가 다음 날짜를 실었을 때만 일한다(끔이면 곧바로 돌아간다)
+    if (window.__fcOn) window._hudAcc = (window._hudAcc || 0) + (performance.now() - _hudT0);   // ★[T913]
     requestAnimationFrame(loop);
   }
   // === 화살 이펙트 ===
