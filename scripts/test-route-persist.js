@@ -483,12 +483,15 @@ async function runDays(n, sink) {
   const P6L = await runDays(_d6 + 1, _seen6);
   const _prL = P6L && P6L.econTick ? P6L.econTick.probe : {};
   const dLast = (_prL.routeCold || 0) - (pr6.routeCold || 0);
+  //   ★[T910 ⓪] 콜드(`routeCold`)는 **다 판 길**만 센다(`_routeStore` — 다 파인 그 자리 · T85). 재개형 일이 슬롯을 서로 버리면(T896 끔의 되살림 줄)
+  //     A* 를 계속 파는데도 콜드는 0 이다 — 이 줄이 그때 자명 통과였다. ⇒ 그 창에 **시작한 교역로 일**(`pathJobs` — 같은 `/perf` 칸 · 새 수 0)도 같이 센다(더 엄하게).
+  const dJobs = (_prL.pathJobs || 0) - (pr6.pathJobs || 0);
   const _mAt = P6L && P6L.econTick.last ? P6L.econTick.last.maxChunkAt : null;
   //   ★[T828] 캐러밴 조각은 속 이름 셋(`caravan_body` · `caravan_fish` · `caravan_sync`)으로 갈렸다 — 셋 = 종전 `caravan`(단언 무변).
   //   ★[T851] `caravan_sync` 안은 다시 셋(`caravan_sync:cold` · `:resume` · `:spawn`) — 넷 다 종전 `caravan_sync`(단언 무변).
   const _isCar = (s) => s === 'caravan' || s === 'caravan_body' || s === 'caravan_fish' || s === 'caravan_sync' || /^caravan_sync:/.test(s || '');
-  ok(!!_mAt && (!_isCar(_mAt) || dLast === 0), '⑥ ★★가장 큰 조각이 더는 **캐러밴 A\*가 아니다**(캐러밴 꼬리표면 그날 낀 창의 콜드 0)',
-    P6L && P6L.econTick.last ? `${P6L.econTick.last.maxChunk}ms(${_mAt}) · 그 창 콜드 ${dLast}` : '?');
+  ok(!!_mAt && (!_isCar(_mAt) || (dLast === 0 && dJobs === 0)), '⑥ ★★가장 큰 조각이 더는 **캐러밴 A\*가 아니다**(캐러밴 꼬리표면 그날 낀 창의 콜드 0 · ★[T910] 시작한 교역로 일도 0)',
+    P6L && P6L.econTick.last ? `${P6L.econTick.last.maxChunk}ms(${_mAt}) · 그 창 콜드 ${dLast} · 교역로 일 시작 ${dJobs}` : '?');
   // ★★[T884 2026-10-23 · ★PM 10-23 ⓑ] **캐러밴 조각 표 — 판정 아님(출력만).** T854 가 이 자리에 세운 한 조각 상한 줄은
   //   오늘 main 12판 중 8판 빨강이었다(넘는 것은 전부 `caravan_sync` · 보고/T854). `caravan_sync` 를 깎는 카드(T851)가 끝날 때까지
   //   ⑥ 은 위 종전 단언 그대로이고, 상한 줄은 **표로만** 남긴다: 선계산 뒤 날마다(`P6a` 다음 날 ~ `P6L` 날) 속 이름 셋

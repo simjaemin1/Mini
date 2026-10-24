@@ -2855,10 +2855,23 @@ function routeWorldSig(zoneId, terrainAll, zoneCfg, water) {
   } else h.update('water=none');
   return h.digest('hex').slice(0, 20);
 }
+// ★★[T910 ② 2026-10-24 · 손잡이 `T910_SIG_PURE`('1' 만 켬 · 끔 = 아래 종전 줄 그대로)] **지형 절은 파일에 적힌 그대로 센다.**
+//   종전엔 `require('./hanbando-terrain.json')` — 존 전체가 같이 쓰는 객체 하나 — 를 셌다. 그런데 `terrain.js` `_isPointInRiver` 가 강 · 능선 · 골짜기
+//   객체에 **처음 물을 때** 런타임 칸을 붙인다(선분 격자 색인 `_segIdx` · 파일에 없던 `_bbox`). 부팅에서 `_routePrime` 앞에 지형을 물은 곳이 있느냐에 따라
+//   서명이 갈렸다 — 새 세계 부팅 `world:37c8f6e0…` ↔ 다시 뜬 부팅 `world:164b5610…`(강 · 능선 · 골짜기 세 절만 다르다 · 실측 보고 T910 §1)
+//   ⇒ 첫 재기동이 교역로 1,275 쌍을 통째로 버렸다(T896 회부 2). 켬이면 같은 파일을 **한 번 따로 읽은 사본**(아무도 안 만진다)으로 센다 —
+//   파일 칸(`_bbox` · `_smoothed` · `_tributary` · `_tag` · `_for` 포함)은 하나도 안 뺀다 ⇒ 파일이 바뀐 판(지형 · 골짜기 손질)은 지금처럼 다른 서명 → 버린다.
+const T910_SIG_PURE = process.env.T910_SIG_PURE === '1';
+let _t910Terr;   // 파일 그대로의 사본(한 번 읽는다 · 부팅 서명 셈에만 쓴다)
+function _t910PureTerrain() {
+  if (_t910Terr === undefined) { try { _t910Terr = JSON.parse(require('fs').readFileSync(require.resolve('./hanbando-terrain.json'), 'utf8')); } catch (e) { _t910Terr = null; } }
+  return _t910Terr;
+}
 function _routeSig() {
   const parts = [];
   let terr = null, zc = null;
-  try { terr = require('./hanbando-terrain.json'); } catch (e) {}
+  if (T910_SIG_PURE) terr = _t910PureTerrain();   // ★[T910] 켬 = 파일 그대로
+  else try { terr = require('./hanbando-terrain.json'); } catch (e) {}
   try { zc = require('./zone-config').ZONES[state.zoneId]; } catch (e) {}
   parts.push('world:' + routeWorldSig(state.zoneId, terr, zc, state.deps && state.deps.waterTiles));
   // ★★[T578 ①] 길 규칙 판(版) — 규칙이 바뀌면 이 글자를 올린다. 옛 판으로 판 길은 서명이 달라 통째로 버리고 다시 판다
@@ -3457,14 +3470,14 @@ function _t775Place(body, c, outbound, p, now) {
 // 다시 뜬 판의 첫 틱부터 — 장부에 든 캐러밴마다 몸 한 번(차례 = `world.caravans` 차례 · 길이 아직이면 그 자리에서 다음 틱 · 다 돌면 다시 안 돈다)
 //   ⚠길이 아직인 캐러밴('wait')은 줄에 남기고 **다음 캐러밴으로 넘어간다** — 다시 뜬 직후엔 길 파기 자리를 도적 부팅 표본(T640)이 쥐고 있어
 //     한 대가 기다리면 뒤의 (이미 길이 있는) 캐러밴까지 막혔다(이 상자 첫 판: 4분 동안 49대 중 17대). 남은 줄은 다음 틱에 다시 훑는다.
-// ★★[T896 ② 2026-10-23 · 손잡이 `T896_RESUME_ONE`('1' 만 켬 · 끔 = 아래 종전 줄 그대로)] **길을 새로 파야 하는 캐러밴은 한 틱에 한 대만 판다.**
+// ★★[T896 ② 2026-10-23 · 손잡이 `T896_RESUME_ONE`(★[T910 ⓪] 켬 기본 · `=0` 끔 = 아래 종전 줄 그대로)] **길을 새로 파야 하는 캐러밴은 한 틱에 한 대만 판다.**
 //   교역로 재개형 A* 는 슬롯이 하나다(`_pathJob` · `_routeResume` — 다른 쌍이 부르면 떠 있는 일을 버리고 새로 판다 · "한 번에 하나").
 //   그런데 이 줄은 'wait' 를 받은 캐러밴 다음 캐러밴도 같은 틱에 부른다(T775 — 길이 이미 있는 뒤 캐러밴이 막히지 않게). 길 캐시가 빈 쌍이 둘 이상 줄에 서면
 //   서로의 일을 번갈아 버린다 — 어느 길도 다 안 파인다(실측 · 60날 세계를 다시 띄운 판: 기다림 47 대 · 몸 6 대에서 25분 그대로 · 틱마다 A* 시작 47 번 ·
 //   공유 예산 넘침 = 틱마다 · 사람 결정 문이 틱마다 잘린다 · 틱 p50 47ms). 켬이면 길 캐시가 빈 캐러밴은 줄 차례로 **첫 한 대만** 부르고(그 한 대가 슬롯을 끝까지 쥔다)
 //   나머지 빈 쌍은 이번 틱엔 부르지 않고 줄에 남긴다. 길이 이미 있는 캐러밴은 종전처럼 같은 틱에 부른다(걷는 길 일은 쌍마다 따로라 슬롯을 안 다툰다).
 //   같은 계약(줄에 남김 = 'wait' 와 같은 자리) · 새 수 0 · 차례는 장부 차례 그대로.
-const T896_RESUME_ONE = process.env.T896_RESUME_ONE === '1';
+const T896_RESUME_ONE = process.env.T896_RESUME_ONE !== '0';   // ★[T910 ⓪] 켬 기본(PM 10-23) · 끔 탐침 `=0` = 종전 줄
 function _t896NeedSlot(c) {   // 이 캐러밴의 몸을 세우려면 교역로를 새로 파야 하나(길 캐시에 그 쌍이 없다)
   const a = state.byEcon.get(c.from), b = state.byEcon.get(c.to);
   if (!a || !b || !state.routeCache) return false;
