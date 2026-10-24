@@ -8,7 +8,7 @@
 //   ③ 그림 — 갈래마다 다 구운 뒤(굽는 중 0 · 구운 수 5초 그대로) `_mt3Chunk` 의 세그먼트마다 화소 해시 + 배치 값.
 //      공통 청크에서 끔↔끔(재현 바닥) · 끔↔켬 다른 청크 수를 낸다(T870 §2 꼴 · 기대 0).
 //   굽기 계량은 이미 있는 `_mt3BakeMs` · `_mt3BakeN`(청크 단위 · 판을 넘은 몫 포함)과 이 카드의 `_mt898`(옮기기) 를 페이지 전역 이름으로 읽는다.
-// 실행: node scripts/t898-mt-probe.js [--env 0|1] [--out /tmp/t898] [--spots 광산1,광산4] [--win 30000]
+// 실행: node scripts/t898-mt-probe.js [--env 0|1](없음 = 서버 기본 · ★T912 켬 기본) [--out /tmp/t898] [--spots 광산1,광산4] [--win 30000]
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -17,7 +17,7 @@ const FB = require('./fixture-boot');
 const FixClock = require('./fixture-clock.js');
 const ROOT = path.join(__dirname, '..');
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
-const ENV = arg('--env', '0'), OUT = arg('--out', '/tmp/t898'), SPOTS = arg('--spots', '광산1,광산4').split(','), WIN = +arg('--win', '30000');
+const ENV = arg('--env', ''), ENVL = ENV === '' ? '기본' : ENV, OUT = arg('--out', '/tmp/t898'), SPOTS = arg('--spots', '광산1,광산4').split(','), WIN = +arg('--win', '30000');
 fs.mkdirSync(OUT, { recursive: true });
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/t898-c-${process.pid}.db`, ZDB = `/tmp/t898-z-${process.pid}.db`;
@@ -31,11 +31,11 @@ const shutdown = () => { for (const p of procs) { try { p.kill('SIGKILL'); } cat
 process.on('exit', shutdown);
 
 (async () => {
-  console.log(`\n=== T898 산 띠 옮기기 readPixels 계측 — 서버 env T898_MT_READPX=${ENV} ===`);
+  console.log(`\n=== T898 산 띠 옮기기 readPixels 계측 — 서버 env T898_MT_READPX=${ENV === '' ? '(없음 · 기본 켬)' : ENV} ===`);   // ★[T912] 기본 = env 를 안 싣는다 · 끔은 `--env 0`
   const c = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   const cu = FB.waitUp(c, /central server up on/, { name: 'central' });
   const z = boot('zone', 'zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
-    ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1', T898_MT_READPX: ENV });
+    ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1', ...(ENV !== '' ? { T898_MT_READPX: ENV } : {}) });
   const zu = FB.waitUp(z, /zone server up on/, { name: 'zone', capMs: 300000 });
   if (!(await cu).ok || !(await zu).ok) { console.log('기동 실패'); process.exit(1); }
   await sleep(3000);
@@ -49,7 +49,7 @@ process.on('exit', shutdown);
   if (!inw.ok) { console.log('입장 실패'); process.exit(1); }
   await sleep(2000);
   const welcome = await page.evaluate(() => !!(uiCfg && uiCfg.mtReadPx));
-  console.log(`  · welcome uiCfg.mtReadPx = ${welcome}(서버 env ${ENV})`);
+  console.log(`  · welcome uiCfg.mtReadPx = ${welcome}(서버 env ${ENVL})`);
   // 판마다 굽기 증분 — rAF 사이 `_mt3BakeMs` 증분 = 그 판 안 굽기 ms
   await page.evaluate(() => {
     window.__t898 = { f: [] };
@@ -113,7 +113,7 @@ process.on('exit', shutdown);
       segs: ks.reduce((s, k) => s + A[k].n, 0), diff: diff.length, diffKeys: diff.slice(0, 8),
       onlyA: Object.keys(A).filter((k) => !(k in B)).length, onlyB: Object.keys(B).filter((k) => !(k in A)).length };
   };
-  const res = { env: ENV, welcome, spots: [] };
+  const res = { env: ENVL, welcome, spots: [] };
   for (const name of SPOTS) {
     const v = rows.find((r) => r.name === name); if (!v) { console.log(`  · ${name} 없음`); continue; }
     const S = { name, v: [v.cx, v.cy] };
@@ -133,10 +133,10 @@ process.on('exit', shutdown);
     S.pix = { offA_offB: cmp(H[0], H[2]), offA_onA: cmp(H[0], H[1]), offB_onB: cmp(H[2], H[3]), onA_onB: cmp(H[1], H[3]) };
     console.log(`  · ${name} 그림: ${JSON.stringify(S.pix)}`);
     res.spots.push(S);
-    fs.writeFileSync(path.join(OUT, `t898-res-env${ENV}.json`), JSON.stringify(res, null, 1));
+    fs.writeFileSync(path.join(OUT, `t898-res-env${ENVL}.json`), JSON.stringify(res, null, 1));
   }
-  await page.screenshot({ path: path.join(OUT, `t898-last-env${ENV}.png`) });
-  fs.writeFileSync(path.join(OUT, `t898-res-env${ENV}.json`), JSON.stringify(res, null, 1));
+  await page.screenshot({ path: path.join(OUT, `t898-last-env${ENVL}.png`) });
+  fs.writeFileSync(path.join(OUT, `t898-res-env${ENVL}.json`), JSON.stringify(res, null, 1));
   console.log('끝');
   await browser.close(); shutdown(); process.exit(0);
 })().catch((e) => { console.log('계측 실패:', e && e.stack); shutdown(); process.exit(1); });

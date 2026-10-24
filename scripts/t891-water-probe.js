@@ -3,13 +3,13 @@
 //
 //   실클라 하나(Chromium · 이 상자 = SwiftShader 소프트웨어 GL)로 **물 있는 마을**에 서서 같은 판 안에서 끔 → 켬 → 끔(ABA) 으로 잰다.
 //   켬/끔은 클라 손잡이 칸(`uiCfg.waterHalf`)을 페이지에서 바꾼다 — 같은 자리 · 같은 세계라야 그림을 견줄 수 있다.
-//   서버 env → welcome 칸이 실제로 실리는지는 판 머리에서 한 번 본다(`--env 1` 이면 welcome 에 칸이 있어야 · 없으면 없어야).
+//   서버 env → welcome 칸이 실제로 실리는지는 판 머리에서 한 번 본다(env 없음 · `--env 1` 이면 칸이 있어야 — ★T912 켬 기본 · `--env 0` 이면 없어야).
 //   잰 것:
 //     · 판당 물 층 ms — 물 GL 캔버스(`_wgl.cv`)를 2D 로 옮기는 `drawImage` 한 번의 시간(소프트웨어 GL 이 셰이더를 실제로 도는 자리 · T881 §1)
 //       + 한 판(rAF 간격) ms · 판 수. 갈래마다 8초.
 //     · 그림 — 물 시간을 멈춘 채(`_t19.freezeT` — 이미 있는 손잡이) 같은 자리 물 상자를 갈래마다 한 장씩 찍어
 //       끔↔끔(잡음 바닥) · 끔↔켬 화소 차(평균 |Δ| · 차 > 24 인 화소 비율)를 낸다. 사람 눈 비교용 PNG 도 남긴다.
-// 실행: node scripts/t891-water-probe.js [--env 0|1] [--out /tmp/t891] [--village 어촌1]
+// 실행: node scripts/t891-water-probe.js [--env 0|1](없음 = 서버 기본 · ★T912 켬 기본) [--out /tmp/t891] [--village 어촌1]
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -18,7 +18,8 @@ const FB = require('./fixture-boot');
 const FixClock = require('./fixture-clock.js');
 const ROOT = path.join(__dirname, '..');
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
-const ENV = arg('--env', '0'), OUT = arg('--out', '/tmp/t891'), WANT = arg('--village', '');
+const ENV = arg('--env', ''), OUT = arg('--out', '/tmp/t891'), WANT = arg('--village', '');   // ★[T912] 기본 = env 를 안 싣는다(서버 기본 = 켬) · 끔은 `--env 0`
+const ENVL = ENV === '' ? '기본' : ENV;
 fs.mkdirSync(OUT, { recursive: true });
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/t891-c-${process.pid}.db`, ZDB = `/tmp/t891-z-${process.pid}.db`;
@@ -32,11 +33,11 @@ const shutdown = () => { for (const p of procs) { try { p.kill('SIGKILL'); } cat
 process.on('exit', shutdown);
 
 (async () => {
-  console.log(`\n=== T891 물 층 ½ 해상도 계측 — 서버 env T891_WATER_HALF=${ENV} ===`);
+  console.log(`\n=== T891 물 층 ½ 해상도 계측 — 서버 env T891_WATER_HALF=${ENV === '' ? '(없음 · 기본 켬)' : ENV} ===`);
   const c = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   const cu = FB.waitUp(c, /central server up on/, { name: 'central' });
   const z = boot('zone', 'zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
-    ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1', T891_WATER_HALF: ENV });
+    ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1', ...(ENV !== '' ? { T891_WATER_HALF: ENV } : {}) });
   const zu = FB.waitUp(z, /zone server up on/, { name: 'zone', capMs: 300000 });
   if (!(await cu).ok || !(await zu).ok) { console.log('기동 실패'); process.exit(1); }
   await sleep(4000);
@@ -50,7 +51,7 @@ process.on('exit', shutdown);
   if (!inw.ok) { console.log('입장 실패'); process.exit(1); }
   await sleep(2000);
   const welcomeHalf = await page.evaluate(() => !!(uiCfg && uiCfg.waterHalf));
-  console.log(`  · welcome uiCfg.waterHalf = ${welcomeHalf}(서버 env ${ENV})`);
+  console.log(`  · welcome uiCfg.waterHalf = ${welcomeHalf}(서버 env ${ENVL})`);
   // 물 있는 마을 — DB 에서 마을을 읽고 차례로 서 본다(물 상자가 가장 큰 곳)
   const { DatabaseSync } = require('node:sqlite');
   const db = new DatabaseSync(ZDB);
@@ -110,7 +111,7 @@ process.on('exit', shutdown);
   };
   const stat = (a) => { if (!a.length) return { n: 0 }; const s = a.slice().sort((x, y) => x - y); const q = (p) => s[Math.min(s.length - 1, Math.floor(p * s.length))]; return { n: a.length, mean: +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(1), p50: +q(0.5).toFixed(1), p90: +q(0.9).toFixed(1), max: +s[s.length - 1].toFixed(1) }; };
   const A = await arm(false, 8000), B = await arm(true, 8000), C = await arm(false, 8000);
-  const res = { env: ENV, welcomeHalf, village: spot.v.name, rect: spot.w.rect,
+  const res = { env: ENVL, welcomeHalf, village: spot.v.name, rect: spot.w.rect,
     off1: { water: stat(A.w), frame: stat(A.f) }, on: { water: stat(B.w), frame: stat(B.f) }, off2: { water: stat(C.w), frame: stat(C.f) } };
   // 그림 — 물 시간을 멈추고 같은 자리 물 상자를 끔 · 끔 · 켬 · 끔으로 한 장씩
   const { PNG } = require('pngjs');
@@ -146,7 +147,7 @@ process.on('exit', shutdown);
   const boxAll = box; const offAll = { offA_offB: diff(s0.f, s1.f), offA_on: diff(s0.f, s2.f), offA_offC: diff(s0.f, s3.f) };
   box.splice(0, 4, ccx, ccy, 400, 240);   // 물가 둘레 400×240 — 물이 실제로 보이는 곳
   res.pic = { wholeRect: offAll, crop: [ccx, ccy, 400, 240], cropDiff: { offA_offB: diff(s0.f, s1.f), offA_on: diff(s0.f, s2.f), offA_offC: diff(s0.f, s3.f) } };
-  fs.writeFileSync(path.join(OUT, `t891-res-env${ENV}.json`), JSON.stringify(res, null, 1));
+  fs.writeFileSync(path.join(OUT, `t891-res-env${ENVL}.json`), JSON.stringify(res, null, 1));
   console.log(JSON.stringify(res, null, 1));
   await browser.close(); shutdown(); process.exit(0);
 })().catch((e) => { console.log('탐침 실패:', e && e.stack); shutdown(); process.exit(1); });

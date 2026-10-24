@@ -1,0 +1,1235 @@
+{
+ "카드": "T912",
+ "자": "scripts/t912-shots.js → scripts/t912-sheet.py",
+ "그림": "문서/T912_켬끔_나란히.png",
+ "브라우저": {
+  "chromium": {
+   "welcome": {
+    "waterHalf": true,
+    "mtReadPx": true,
+    "mtBand": true,
+    "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.0.0 Safari/537.36"
+   },
+   "자리": [
+    {
+     "자리": "어촌1",
+     "물가": true,
+     "칸": [
+      1296,
+      2361
+     ],
+     "서버 위치": {
+      "x": 451216,
+      "y": 125264
+     },
+     "물가 고름": [
+      41232,
+      75280,
+      0.503,
+      9,
+      195
+     ],
+     "견줌": {
+      "mtOffOn": {
+       "common": 24,
+       "same": 24,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "mtOffOff2": {
+       "common": 24,
+       "same": 24,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "scrOffOn": {
+       "meanAbs": 0.12,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "waterOffOn": {
+       "meanAbs": 0.24,
+       "bigPct": 0,
+       "px": 395168,
+       "pxPct": 49.9
+      },
+      "waterOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 395168,
+       "pxPct": 49.9
+      },
+      "waterTiles": [
+       435,
+       435,
+       435
+      ]
+     },
+     "장": [
+      {
+       "tag": "off",
+       "settleMs": 102180,
+       "baked": 24,
+       "perChunk": 347,
+       "moveOn": 1,
+       "moveOff": 376,
+       "segs": 226,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 435
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "on",
+       "settleMs": 38877,
+       "baked": 24,
+       "perChunk": 147,
+       "moveOn": 376,
+       "moveOff": 0,
+       "segs": 226,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 435
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        550,
+        360
+       ],
+       "손잡이": {
+        "waterHalf": true,
+        "mtReadPx": true
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "off2",
+       "settleMs": 94887,
+       "baked": 24,
+       "perChunk": 352,
+       "moveOn": 0,
+       "moveOff": 376,
+       "segs": 226,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 435
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      }
+     ]
+    },
+    {
+     "자리": "어촌2",
+     "물가": true,
+     "칸": [
+      1655,
+      375
+     ],
+     "서버 위치": {
+      "x": 464208,
+      "y": 62288
+     },
+     "물가 고름": [
+      54224,
+      12304,
+      0.308,
+      39,
+      195
+     ],
+     "견줌": {
+      "mtOffOn": {
+       "common": 28,
+       "same": 28,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "mtOffOff2": {
+       "common": 28,
+       "same": 28,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "scrOffOn": {
+       "meanAbs": 0.06,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "waterOffOn": {
+       "meanAbs": 0.21,
+       "bigPct": 0,
+       "px": 235047,
+       "pxPct": 29.7
+      },
+      "waterOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 235047,
+       "pxPct": 29.7
+      },
+      "waterTiles": [
+       249,
+       249,
+       249
+      ]
+     },
+     "장": [
+      {
+       "tag": "off",
+       "settleMs": 11897,
+       "baked": 28,
+       "perChunk": 1,
+       "moveOn": 0,
+       "moveOff": 0,
+       "segs": 0,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 249
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "on",
+       "settleMs": 8392,
+       "baked": 28,
+       "perChunk": 1,
+       "moveOn": 0,
+       "moveOff": 0,
+       "segs": 0,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 249
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        550,
+        360
+       ],
+       "손잡이": {
+        "waterHalf": true,
+        "mtReadPx": true
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "off2",
+       "settleMs": 12137,
+       "baked": 28,
+       "perChunk": 1,
+       "moveOn": 0,
+       "moveOff": 0,
+       "segs": 0,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 249
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      }
+     ]
+    },
+    {
+     "자리": "산1",
+     "물가": false,
+     "칸": [
+      1750,
+      74
+     ],
+     "서버 위치": {
+      "x": 466000,
+      "y": 52368
+     },
+     "물가 고름": null,
+     "견줌": {
+      "mtOffOn": {
+       "common": 30,
+       "same": 30,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "mtOffOff2": {
+       "common": 30,
+       "same": 30,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      }
+     },
+     "장": [
+      {
+       "tag": "off",
+       "settleMs": 37132,
+       "baked": 30,
+       "perChunk": 530,
+       "moveOn": 0,
+       "moveOff": 535,
+       "segs": 354,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "on",
+       "settleMs": 25674,
+       "baked": 30,
+       "perChunk": 195,
+       "moveOn": 534,
+       "moveOff": 0,
+       "segs": 354,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        550,
+        360
+       ],
+       "손잡이": {
+        "waterHalf": true,
+        "mtReadPx": true
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "off2",
+       "settleMs": 35283,
+       "baked": 30,
+       "perChunk": 516,
+       "moveOn": 0,
+       "moveOff": 534,
+       "segs": 354,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      }
+     ]
+    },
+    {
+     "자리": "산2",
+     "물가": false,
+     "칸": [
+      2147,
+      1956
+     ],
+     "서버 위치": {
+      "x": 478704,
+      "y": 112592
+     },
+     "물가 고름": null,
+     "견줌": {
+      "mtOffOn": {
+       "common": 28,
+       "same": 28,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "mtOffOff2": {
+       "common": 28,
+       "same": 28,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      }
+     },
+     "장": [
+      {
+       "tag": "off",
+       "settleMs": 29996,
+       "baked": 28,
+       "perChunk": 535,
+       "moveOn": 0,
+       "moveOff": 484,
+       "segs": 213,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "on",
+       "settleMs": 20398,
+       "baked": 28,
+       "perChunk": 200,
+       "moveOn": 483,
+       "moveOff": 0,
+       "segs": 213,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        550,
+        360
+       ],
+       "손잡이": {
+        "waterHalf": true,
+        "mtReadPx": true
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "off2",
+       "settleMs": 29908,
+       "baked": 28,
+       "perChunk": 528,
+       "moveOn": 0,
+       "moveOff": 483,
+       "segs": 213,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      }
+     ]
+    }
+   ],
+   "오류 수": 46,
+   "pageerror": []
+  },
+  "webkit": {
+   "welcome": {
+    "waterHalf": true,
+    "mtReadPx": true,
+    "mtBand": true,
+    "ua": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/60.5 Safari/605.1.15"
+   },
+   "자리": [
+    {
+     "자리": "어촌1",
+     "물가": true,
+     "칸": [
+      1296,
+      2361
+     ],
+     "서버 위치": {
+      "x": 451216,
+      "y": 125264
+     },
+     "물가 고름": [
+      41232,
+      75280,
+      0.503,
+      9,
+      195
+     ],
+     "견줌": {
+      "mtOffOn": {
+       "common": 24,
+       "same": 24,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "mtOffOff2": {
+       "common": 24,
+       "same": 24,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "scrOffOn": {
+       "meanAbs": 0.28,
+       "bigPct": 0.31,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "scrOffOff2": {
+       "meanAbs": 0.22,
+       "bigPct": 0.32,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "waterOffOn": {
+       "meanAbs": 0.36,
+       "bigPct": 0.34,
+       "px": 395168,
+       "pxPct": 49.9
+      },
+      "waterOffOff2": {
+       "meanAbs": 0.28,
+       "bigPct": 0.42,
+       "px": 395168,
+       "pxPct": 49.9
+      },
+      "waterTiles": [
+       435,
+       435,
+       435
+      ]
+     },
+     "장": [
+      {
+       "tag": "off",
+       "settleMs": 54412,
+       "baked": 24,
+       "perChunk": 296,
+       "moveOn": 1,
+       "moveOff": 376,
+       "segs": 226,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 435
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "on",
+       "settleMs": 30566,
+       "baked": 24,
+       "perChunk": 100,
+       "moveOn": 376,
+       "moveOff": 0,
+       "segs": 226,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 435
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        550,
+        360
+       ],
+       "손잡이": {
+        "waterHalf": true,
+        "mtReadPx": true
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "off2",
+       "settleMs": 50244,
+       "baked": 24,
+       "perChunk": 254,
+       "moveOn": 0,
+       "moveOff": 376,
+       "segs": 226,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 435
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      }
+     ]
+    },
+    {
+     "자리": "어촌2",
+     "물가": true,
+     "칸": [
+      1655,
+      375
+     ],
+     "서버 위치": {
+      "x": 464208,
+      "y": 62288
+     },
+     "물가 고름": [
+      54224,
+      12304,
+      0.308,
+      39,
+      195
+     ],
+     "견줌": {
+      "mtOffOn": {
+       "common": 28,
+       "same": 28,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "mtOffOff2": {
+       "common": 28,
+       "same": 28,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "scrOffOn": {
+       "meanAbs": 0.05,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "waterOffOn": {
+       "meanAbs": 0.15,
+       "bigPct": 0,
+       "px": 235047,
+       "pxPct": 29.7
+      },
+      "waterOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 235047,
+       "pxPct": 29.7
+      },
+      "waterTiles": [
+       249,
+       249,
+       249
+      ]
+     },
+     "장": [
+      {
+       "tag": "off",
+       "settleMs": 8553,
+       "baked": 28,
+       "perChunk": 1,
+       "moveOn": 0,
+       "moveOff": 0,
+       "segs": 0,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 249
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "on",
+       "settleMs": 8386,
+       "baked": 28,
+       "perChunk": 0,
+       "moveOn": 0,
+       "moveOff": 0,
+       "segs": 0,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 249
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        550,
+        360
+       ],
+       "손잡이": {
+        "waterHalf": true,
+        "mtReadPx": true
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "off2",
+       "settleMs": 8416,
+       "baked": 28,
+       "perChunk": 1,
+       "moveOn": 0,
+       "moveOff": 0,
+       "segs": 0,
+       "gl": true,
+       "mcv": [
+        1152,
+        1024
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 249
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": true,
+        "webgl": true
+       }
+      }
+     ]
+    },
+    {
+     "자리": "산1",
+     "물가": false,
+     "칸": [
+      1750,
+      74
+     ],
+     "서버 위치": {
+      "x": 466000,
+      "y": 52368
+     },
+     "물가 고름": null,
+     "견줌": {
+      "mtOffOn": {
+       "common": 30,
+       "same": 30,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "mtOffOff2": {
+       "common": 30,
+       "same": 30,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      }
+     },
+     "장": [
+      {
+       "tag": "off",
+       "settleMs": 38562,
+       "baked": 30,
+       "perChunk": 411,
+       "moveOn": 0,
+       "moveOff": 535,
+       "segs": 354,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "on",
+       "settleMs": 29964,
+       "baked": 30,
+       "perChunk": 148,
+       "moveOn": 534,
+       "moveOff": 0,
+       "segs": 354,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        550,
+        360
+       ],
+       "손잡이": {
+        "waterHalf": true,
+        "mtReadPx": true
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "off2",
+       "settleMs": 37145,
+       "baked": 30,
+       "perChunk": 380,
+       "moveOn": 0,
+       "moveOff": 534,
+       "segs": 354,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      }
+     ]
+    },
+    {
+     "자리": "산2",
+     "물가": false,
+     "칸": [
+      2147,
+      1956
+     ],
+     "서버 위치": {
+      "x": 478704,
+      "y": 112592
+     },
+     "물가 고름": null,
+     "견줌": {
+      "mtOffOn": {
+       "common": 28,
+       "same": 28,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "mtOffOff2": {
+       "common": 28,
+       "same": 28,
+       "diff": 0,
+       "only": 0,
+       "diffKeys": []
+      },
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 792000,
+       "pxPct": 100
+      }
+     },
+     "장": [
+      {
+       "tag": "off",
+       "settleMs": 30956,
+       "baked": 28,
+       "perChunk": 392,
+       "moveOn": 0,
+       "moveOff": 484,
+       "segs": 213,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "on",
+       "settleMs": 22666,
+       "baked": 28,
+       "perChunk": 150,
+       "moveOn": 483,
+       "moveOff": 0,
+       "segs": 213,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        550,
+        360
+       ],
+       "손잡이": {
+        "waterHalf": true,
+        "mtReadPx": true
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      },
+      {
+       "tag": "off2",
+       "settleMs": 29917,
+       "baked": 28,
+       "perChunk": 389,
+       "moveOn": 0,
+       "moveOff": 483,
+       "segs": 213,
+       "gl": true,
+       "mcv": [
+        1152,
+        1408
+       ],
+       "wm": {
+        "cw": 1100,
+        "ch": 720,
+        "n": 0
+       },
+       "dayU": 0.5,
+       "물 GL": [
+        1100,
+        720
+       ],
+       "손잡이": {
+        "waterHalf": false,
+        "mtReadPx": false
+       },
+       "물": {
+        "on": false,
+        "webgl": true
+       }
+      }
+     ]
+    }
+   ],
+   "오류 수": 0,
+   "pageerror": []
+  }
+ }
+}

@@ -3,7 +3,7 @@
 //
 //   이 상자엔 Playwright WebKit 이 없다(`playwright install` 금지). 대신 WebKitGTK 의 WebDriver(`WebKitWebDriver` · MiniBrowser)를
 //   W3C WebDriver 로 직접 몬다 — 같은 WebKit 엔진(JavaScriptCore · WebGL)이다(Safari 그 자체는 아니다 · 보고 §3).
-//   존은 `T891_WATER_HALF=1` 로 띄운다. 입장 → 물 있는 마을 물가로 텔레포트 → 물 층 상태(`__waterDbg` · GL 캔버스 크기 · 물 상자)를 읽고
+//   존은 기본 env 로 띄운다(★T912 켬 기본 — 종전 `T891_WATER_HALF=1`). 입장 → 물 있는 마을 물가로 텔레포트 → 물 층 상태(`__waterDbg` · GL 캔버스 크기 · 물 상자)를 읽고
 //   켬 · 끔(페이지에서 `uiCfg.waterHalf` 를 바꿈) 스크린샷을 남긴다.
 // 준비(한 번): apt-get install -y webkit2gtk-driver xvfb
 // 실행: node scripts/t891-webkit-check.js [--out /tmp/t891/wk]
@@ -35,7 +35,7 @@ const js = (fn, args) => wd('POST', `/session/${SID}/execute/sync`, { script: `r
   const c = run(process.execPath, [path.join(ROOT, 'server', 'central.js')], { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   const cu = FB.waitUp(c, /central server up on/, { name: 'central' });
   const z = run(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
-    ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1', T891_WATER_HALF: '1' });
+    ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1' });
   const zu = FB.waitUp(z, /zone server up on/, { name: 'zone', capMs: 300000 });
   run('Xvfb', [DISP, '-screen', '0', '1280x800x24']);
   await sleep(1500);

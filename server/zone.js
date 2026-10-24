@@ -6756,8 +6756,8 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(process.env.T838_WD_AWAKE !== '0' ? { wdAwake: true } : {}),   // [T838 · ★T849 켬 기본 — PM 10-22] 클라 두 감시(pong · 서버 틱)가 **클라가 멈춰 있던 시간**을 서버 침묵으로 안 센다(30-n-net) · 되돌림 `T838_WD_AWAKE=0` 이면 칸이 없다(옛 welcome · 종전 감시)
-      ...(process.env.T891_WATER_HALF === '1' ? { waterHalf: true } : {}),   // [T891] 클라 물 층 셰이더를 가로세로 ½ 로 그리고 2D 에서 늘린다(10-r1-terrain `_drawWaterLayer` · 소프트웨어 GL 판당 물 층 몰림) — 기본 끔 · 끔이면 칸이 없다(welcome 바이트 동일) · `1` 켬
-      ...(process.env.T898_MT_READPX === '1' ? { mtReadPx: true } : {}),   // [T898] 클라 산 띠 굽기 옮기기를 띠 상자 readPixels 로(T863 §4 #1 · 11-r1-mountain `_mt3ReadBox`) — 기본 끔 · 끔이면 칸이 없다(welcome 바이트 동일) · `1` 켬
+      ...(process.env.T891_WATER_HALF !== '0' ? { waterHalf: true } : {}),   // [T891 · ★T912 켬 기본 — PM 10-23] 클라 물 층 셰이더를 가로세로 ½ 로 그리고 2D 에서 늘린다(10-r1-terrain `_drawWaterLayer` · 소프트웨어 GL 판당 물 층 몰림) · 되돌림 `T891_WATER_HALF=0` 이면 칸이 없다(옛 welcome · 종전 물 층)
+      ...(process.env.T898_MT_READPX !== '0' ? { mtReadPx: true } : {}),   // [T898 · ★T912 켬 기본 — PM 10-23] 클라 산 띠 굽기 옮기기를 띠 상자 readPixels 로(T863 §4 #1 · 11-r1-mountain `_mt3ReadBox`) · 되돌림 `T898_MT_READPX=0` 이면 칸이 없다(옛 welcome · 종전 drawImage 옮기기)
       ...(process.env.T870_MT_BAND !== '0' ? { mtBand: true } : {}),   // [T870 · ★T880 켬 기본 — PM 10-23] 클라 산 청크 굽기 예산을 **띠** 단위로(한 판 상한 = 띠 `MT3_BUDGET` 개 · 청크는 여러 판에 걸쳐 완성 · 반쯤 구운 산 0 · 11-r1-mountain) · 되돌림 `T870_MT_BAND=0` 이면 칸이 없다(옛 welcome · 청크 단위)
       ...(process.env.T813_RMB_PRESS !== '0' ? { rmbPress: true } : {}),   // [T813 · ★T819 켬 기본 — PM 10-20] 우클릭 탭 메뉴는 **누른 순간의 화면**으로 짚는다(46-h-verbs) · 되돌림 `T813_RMB_PRESS=0` 이면 칸이 없다(옛 welcome · 뗄 때의 화면)
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
