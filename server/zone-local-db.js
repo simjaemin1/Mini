@@ -487,6 +487,38 @@ db.exec(`
     updated_at INTEGER NOT NULL
   );
 `);
+// === [T916] 못 닿은 사람 저장 줄 — central 이 내려가 있는 동안의 저장(로그아웃 · 주기 · 종료)을 사람마다 **가장 새 것 하나** 쥔다.
+//   world_meta 관례(행 하나 = 열쇠 하나 · 추가 전용 · CREATE TABLE IF NOT EXISTS — 구DB 안전). 손잡이 `T916_SAVE_RETRY` 끔이면 행 0(아무도 안 쓴다).
+//   seq = 존이 저장을 낸 차례(더 새 저장이 옛것을 덮는다 · 재기동해도 이어진다) · base = 이 존이 마지막으로 central 에 닿게 한 몸 칸의 sha1(다시 보낼 때 central 이 대조).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS save_queue (
+    player_id  TEXT PRIMARY KEY,
+    seq        INTEGER NOT NULL,
+    patch      TEXT NOT NULL,
+    base       TEXT,
+    queued_at  INTEGER NOT NULL
+  );
+`);
+let _stmtSqPut = null, _stmtSqDel = null, _stmtSqAll = null, _stmtSqGet = null;
+// 더 새 차례만 쓴다(옛 차례가 늦게 와도 새 줄을 안 덮는다) — 쓴 행 수(0 = 이미 더 새 줄이 있다)
+function saveQueuePut(playerId, seq, patchJson, base, at) {
+  if (!_stmtSqPut) _stmtSqPut = db.prepare(`INSERT INTO save_queue (player_id, seq, patch, base, queued_at) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(player_id) DO UPDATE SET seq = excluded.seq, patch = excluded.patch, base = excluded.base, queued_at = excluded.queued_at WHERE excluded.seq > save_queue.seq`);
+  return _stmtSqPut.run(playerId, seq, patchJson, base == null ? null : base, at).changes;
+}
+// 그 차례 이하의 줄만 지운다(더 새 줄은 남는다) — 지운 행 수
+function saveQueueDel(playerId, seq) {
+  if (!_stmtSqDel) _stmtSqDel = db.prepare('DELETE FROM save_queue WHERE player_id = ? AND seq <= ?');
+  return _stmtSqDel.run(playerId, seq).changes;
+}
+function saveQueueAll() {
+  if (!_stmtSqAll) _stmtSqAll = db.prepare('SELECT player_id, seq, patch, base, queued_at FROM save_queue ORDER BY seq');
+  return _stmtSqAll.all();
+}
+function saveQueueGet(playerId) {
+  if (!_stmtSqGet) _stmtSqGet = db.prepare('SELECT player_id, seq, patch, base, queued_at FROM save_queue WHERE player_id = ?');
+  return _stmtSqGet.get(playerId) || null;
+}
 // === §16 답압 길(server/roads.js) — 밟힌 셀만(희소·게으른 감쇠), 게임일 1회 dirty 배치 플러시 ===
 // villages/bandit 관례(추가 전용·CREATE TABLE IF NOT EXISTS — 구DB 마이그레이션 안전). ENABLE_ROADS=0이면 행 0.
 db.exec(`
@@ -739,4 +771,6 @@ module.exports = {
   getTradeRoutes, upsertTradeRoute, clearTradeRoutes, countTradeRoutes,
   // [T537] 마을이 짓는 다리 — 진척·완공 영속(villages `_t527*` · 존 부팅 복원)
   getVillageBridges, upsertVillageBridge,
+  // [T916] 못 닿은 사람 저장 줄(zone.js `_saveSend` · 손잡이 `T916_SAVE_RETRY`)
+  saveQueuePut, saveQueueDel, saveQueueAll, saveQueueGet,
 };

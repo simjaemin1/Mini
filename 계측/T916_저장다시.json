@@ -1,0 +1,912 @@
+{
+ "probe": "scripts/t916-save-retry-probe.js 2 (켬) · 2 down_logout,down_zone_restart,down_shutdown,cross_zone --off",
+ "zone": "hanbando(+ nippon cross_zone) · central 3010 · SAVE_INTERVAL_MS 기본 30000",
+ "on": [
+  {
+   "P": "down_logout",
+   "k": 1,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7005
+   },
+   "qAfterLogout": 1,
+   "qEnd": 0,
+   "soft": true,
+   "softV": {
+    "cold": 0.7013,
+    "fatigue": 0.5962,
+    "injury": 0.3991,
+    "morale": 0.2944
+   },
+   "hpV": 60.50266800000002,
+   "hungerV": 37,
+   "thirstV": 41,
+   "ledger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowLedger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowSoft": true,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_logout",
+   "k": 2,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7005
+   },
+   "qAfterLogout": 1,
+   "qEnd": 0,
+   "soft": true,
+   "softV": {
+    "cold": 0.7014,
+    "fatigue": 0.5962,
+    "injury": 0.3991,
+    "morale": 0.2944
+   },
+   "hpV": 60.37696000000002,
+   "hungerV": 37,
+   "thirstV": 41,
+   "ledger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowLedger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowSoft": true,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_periodic",
+   "k": 3,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7005
+   },
+   "qAfterLogout": 1,
+   "qAfterWait": 0,
+   "qEnd": 0,
+   "soft": true,
+   "softV": {
+    "cold": 0.7017,
+    "fatigue": 0.5962,
+    "injury": 0.3991,
+    "morale": 0.2944
+   },
+   "hpV": 60.382416000000035,
+   "hungerV": 37,
+   "thirstV": 41,
+   "perRowLedger": true,
+   "perRowSoft": true,
+   "ledger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowLedger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowSoft": true,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_periodic",
+   "k": 4,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7007
+   },
+   "qAfterLogout": 1,
+   "qAfterWait": 0,
+   "qEnd": 0,
+   "soft": true,
+   "softV": {
+    "cold": 0.7023,
+    "fatigue": 0.5962,
+    "injury": 0.3991,
+    "morale": 0.2944
+   },
+   "hpV": 60.384212,
+   "hungerV": 37,
+   "thirstV": 41,
+   "perRowLedger": true,
+   "perRowSoft": true,
+   "ledger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowLedger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowSoft": true,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_zone_restart",
+   "k": 5,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7009
+   },
+   "qAfterLogout": 1,
+   "qAfterZoneDown": 1,
+   "qEnd": 0,
+   "soft": true,
+   "softV": {
+    "cold": 0.7029,
+    "fatigue": 0.5959,
+    "injury": 0.399,
+    "morale": 0.294
+   },
+   "hpV": 61.86564500000001,
+   "hungerV": 37,
+   "thirstV": 41,
+   "ledger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowLedger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowSoft": true,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_zone_restart",
+   "k": 6,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.701
+   },
+   "qAfterLogout": 1,
+   "qAfterZoneDown": 1,
+   "qEnd": 0,
+   "soft": true,
+   "softV": {
+    "cold": 0.7031,
+    "fatigue": 0.5959,
+    "injury": 0.399,
+    "morale": 0.294
+   },
+   "hpV": 61.947607000000026,
+   "hungerV": 37,
+   "thirstV": 41,
+   "ledger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowLedger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowSoft": true,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_shutdown",
+   "k": 7,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.701
+   },
+   "qAfterDown": 1,
+   "qEnd": 0,
+   "soft": true,
+   "softV": {
+    "cold": 0.7034,
+    "fatigue": 0.5958,
+    "injury": 0.399,
+    "morale": 0.2938
+   },
+   "hpV": 62.48307899999999,
+   "hungerV": 37,
+   "thirstV": 41,
+   "ledger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowLedger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowSoft": true,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_shutdown",
+   "k": 8,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.701
+   },
+   "qAfterDown": 1,
+   "qEnd": 0,
+   "soft": true,
+   "softV": {
+    "cold": 0.7036,
+    "fatigue": 0.5958,
+    "injury": 0.3989,
+    "morale": 0.2937
+   },
+   "hpV": 62.75653599999998,
+   "hungerV": 37,
+   "thirstV": 41,
+   "ledger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowLedger": {
+    "craftSkill": true,
+    "craftLog": true,
+    "oreLedger": true,
+    "oreCarry": true,
+    "fishStats": true,
+    "member": true
+   },
+   "rowSoft": true,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "cross_zone",
+   "k": 9,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7011
+   },
+   "qAfterLogout": 1,
+   "qAfterTrigger": 0,
+   "nipSawOld": true,
+   "rowKeptNip": true,
+   "rowHasOld": false,
+   "nipCraft": {}
+  },
+  {
+   "P": "cross_zone",
+   "k": 10,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7011
+   },
+   "qAfterLogout": 1,
+   "qAfterTrigger": 0,
+   "nipSawOld": true,
+   "rowKeptNip": true,
+   "rowHasOld": false,
+   "nipCraft": {}
+  }
+ ],
+ "off": [
+  {
+   "P": "down_logout",
+   "k": 1,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7012
+   },
+   "qAfterLogout": 0,
+   "qEnd": 0,
+   "soft": false,
+   "softV": {
+    "cold": 0.0189,
+    "fatigue": 0,
+    "injury": 0,
+    "morale": 0
+   },
+   "hpV": 100,
+   "hungerV": 100,
+   "thirstV": 100,
+   "ledger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowLedger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowSoft": false,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_logout",
+   "k": 2,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7012
+   },
+   "qAfterLogout": 0,
+   "qEnd": 0,
+   "soft": false,
+   "softV": {
+    "cold": 0.0165,
+    "fatigue": 0,
+    "injury": 0,
+    "morale": 0
+   },
+   "hpV": 100,
+   "hungerV": 100,
+   "thirstV": 100,
+   "ledger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowLedger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowSoft": false,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_zone_restart",
+   "k": 3,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7012
+   },
+   "qAfterLogout": 0,
+   "qAfterZoneDown": 0,
+   "qEnd": 0,
+   "soft": false,
+   "softV": {
+    "cold": 0.0197,
+    "fatigue": 0,
+    "injury": 0,
+    "morale": 0
+   },
+   "hpV": 100,
+   "hungerV": 100,
+   "thirstV": 100,
+   "ledger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowLedger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowSoft": false,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_zone_restart",
+   "k": 4,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7013
+   },
+   "qAfterLogout": 0,
+   "qAfterZoneDown": 0,
+   "qEnd": 0,
+   "soft": false,
+   "softV": {
+    "cold": 0.0194,
+    "fatigue": 0,
+    "injury": 0,
+    "morale": 0
+   },
+   "hpV": 100,
+   "hungerV": 100,
+   "thirstV": 100,
+   "ledger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowLedger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowSoft": false,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_shutdown",
+   "k": 5,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7014
+   },
+   "qAfterDown": 0,
+   "qEnd": 0,
+   "soft": false,
+   "softV": {
+    "cold": 0.0192,
+    "fatigue": 0,
+    "injury": 0,
+    "morale": 0
+   },
+   "hpV": 100,
+   "hungerV": 100,
+   "thirstV": 100,
+   "ledger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowLedger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowSoft": false,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "down_shutdown",
+   "k": 6,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "samePid": true,
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7014
+   },
+   "qAfterDown": 0,
+   "qEnd": 0,
+   "soft": false,
+   "softV": {
+    "cold": 0.0195,
+    "fatigue": 0,
+    "injury": 0,
+    "morale": 0
+   },
+   "hpV": 100,
+   "hungerV": 100,
+   "thirstV": 100,
+   "ledger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowLedger": {
+    "craftSkill": false,
+    "craftLog": false,
+    "oreLedger": false,
+    "oreCarry": false,
+    "fishStats": false,
+    "member": false
+   },
+   "rowSoft": false,
+   "dur": {
+    "tools": true,
+    "equipped": true,
+    "hotkey1": true,
+    "equipment": true,
+    "equipSlots": true,
+    "kgLedger": true,
+    "lots": true,
+    "inventory": true
+   }
+  },
+  {
+   "P": "cross_zone",
+   "k": 7,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7014
+   },
+   "qAfterLogout": 0,
+   "qAfterTrigger": 0,
+   "nipSawOld": true,
+   "rowKeptNip": true,
+   "rowHasOld": false,
+   "nipCraft": {}
+  },
+  {
+   "P": "cross_zone",
+   "k": 8,
+   "pre": {
+    "ledgerStale": true,
+    "softStale": true,
+    "hpStale": true,
+    "hungerStale": true
+   },
+   "want": {
+    "craftSkill": {
+     "toolmaking": 9,
+     "mining": 4
+    },
+    "cold": 0.7014
+   },
+   "qAfterLogout": 0,
+   "qAfterTrigger": 0,
+   "nipSawOld": true,
+   "rowKeptNip": true,
+   "rowHasOld": false,
+   "nipCraft": {}
+  }
+ ],
+ "crossLog": [
+  "[hanbando] central save 실패 (…): connect ECONNREFUSED 127.0.0.1:3010 — ★[T916] 줄에 남김",
+  "[hanbando] ★[T916] 못 닿았던 저장을 버렸다 — central 몸 칸이 그 뒤 바뀌었다 (… · 차례 6)"
+ ]
+}
