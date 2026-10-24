@@ -795,6 +795,14 @@ function createWar(opts) {
     for (const n of e.npcs) if (n._warPid === pid) return _warDraftUnmark(e, n);
     return false;
   }
+  // ★[T906 2026-10-24] 굶어 죽은 원정 몸(손잡이 `T906_ARMY_STARVE=die` 일 때만 호스트가 부른다) — 그 몸(pid)에 묶인 징발자 **한 사람**의 econ 사망.
+  //   정본 문 `_warRemoveNpc`(warKill 이 부르는 그 함수 · 비워 둔 자리는 안 돌려준다) — 전쟁 정산이 소유(마을 기근 사다리 아님 · 집에 남은 사람이 대신 안 죽는다).
+  //   판의 사상 셈(`sides.dead` → `warKill`)엔 안 들어간다(호스트가 그 몸의 교전 단위를 셈 없이 눕힌다) ⇒ 한 사람은 한 번만 죽는다. 묶임이 없으면 false(아무도 안 죽는다).
+  function warDraftKillPid(vil, pid) {
+    const e = vil && vil.econ; if (!e || !e.npcs || pid == null) return false;
+    for (const n of e.npcs) if (n._warPid === pid) return _warRemoveNpc(e, n);
+    return false;
+  }
   // 전쟁 하나가 끝났다 — 그 전쟁 표식이 붙은 마크를 양쪽에서 거둔다(남은 것 청소 · 두 번 풀어도 무해).
   function warDraftReleaseWar(w) {
     if (!w) return 0; const id = (w.id | 0) || 1; let k = 0;
@@ -1259,6 +1267,7 @@ function createWar(opts) {
     OPS_ON: true, _opNpcDecide, _opCheckSurrender, _opDefenseDaily, _warWalkoverOutcome, _opDoSurrender, _opSetSiege, _opPackLoad, _opPackRefund,
     // ★[T295] 동원의 대가 — 결속(pid 정본) · 군량 환급 한 곳. 호스트(server/villages.js)와 하네스가 이 문만 쓴다.
     warDraftBind, warDraftFill, warDraftReleasePid, warDraftReleaseWar, warDraftCount, warRationRefund,
+    warDraftKillPid,   // ★[T906] 굶어 죽은 원정 몸 — 묶인 징발자 한 사람의 econ 사망(호스트가 손잡이 켤 때만 부른다)
     packSplit, bodyEat, bagFE, rationLayDown, rationActOn: _rationActOn,
     lootGive, lootActOn: _lootActOn, warLog: (day, m) => log(day, m),   // ★[T466] 약탈 = 행위(손잡이 끔 · 끔이면 호스트 훅을 안 부른다)   // ★[T423] 짐이 먹는다(손잡이 끔이면 packSplit 이 null)
     syncArmsMirror: (vil) => _syncArmsToEcon(vil),   // ★[T857] 호스트가 결판 자리에서 장부를 움직인 뒤 거울을 다시 센다(같은 함수 · 사본 0)

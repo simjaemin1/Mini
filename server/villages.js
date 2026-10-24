@@ -6299,6 +6299,72 @@ function _warEatBySpoil(WC, bag, need, ctx, eatU) {
   }
   return got;
 }
+// ════════════════════════════════════════════════════════════════
+// ★★[T906 2026-10-24 · 설계_군량_행위 ⓐ-4 "군대가 굶으면 몸이 죽나" 미리 재기 · T886 회부 1] 손잡이 `T906_ARMY_STARVE`
+//   ('die' = ㄱ · 'mrl' = ㄴ · 그 밖 · 미설정 = 끔 = main 바이트 — 아래 한 줄도 안 돈다).
+//   T886 까지: 짐이 모자란 원정 몸의 못 먹은 몫은 장부 칸(`unfed`)에만 선다. 마을 기근 사다리(`consumeFood` 남은 몫 → 굶주림 항)에 부으면
+//   그 사다리는 마을 하나에 걸리고 징발자를 건너뛰어(T295 ①) **집에 남은 사람이 대신 죽는다** ⇒ 그 길은 안 쓴다.
+//   두 판이 같이 쓰는 것 — **몸의 굶주림 사다리**(server/body.js — 플레이어 몸이 쓰는 그 함수들 · 사본 0 · 새 수 0):
+//     원정 몸마다 허기 게이지 h(0~100)를 전쟁 객체의 표 `w._starve`(pid → 칸 · 몸 필드 0 · 영속 0 — 진행 중 전쟁은 재기동에 안 실린다)에 둔다.
+//     econ 하루 경계(아래 `_warRationEat` — 몸이 제 짐에서 먹는 그 자리)마다 ① 지난 하루를 적분한다 — 게이지 감쇠 `Body.decayStep(h, HUNGER_SEC, ·)`
+//     · 극단 HP `Body.extremeHpRate`(허기 축만 움직인다 — 갈증 · 추위 · 피로 · 부상은 셈 그릇에서 0 · NPC 면제 그대로) — 게임 1분(= 실초 1 · 비율의 단위)마다
+//     ② 오늘 먹은 몫 φ = 먹음 ÷ 몸의 몫만큼 채운다: h += φ × `Kcal.dayHunger()`(하루치 1단위 = 하루 허기 — kcal 캐논 `DAY_KCAL`).
+//     몸 하루 = 운영 하루(`Kcal.DAY_MS_DEFAULT` 24분) — 운영(econ 하루 24분)에선 실초 사다리와 같은 시계 · 빠른 시계 판(전쟁 자 10초 하루)에선 같은 날 수의 뜻(T871 시계 하나 꼴).
+//     짐을 실은 뒤 첫 경계는 먹기만 한다(실은 날의 남은 몫은 안 센다) — 배부르게 떠난다.
+//   ㄱ('die') — 그 몸이 약해지고 죽는다(그 몸 · 그 자리 · 전쟁 정산이 소유):
+//     극단 HP 를 그 몸의 교전 hp 에 같은 비율로 깎는다(`_warSyncMeta` 가 이미 쓰는 hp 비율 문법 — 몸 hp 는 그 거울) → 0 이면 그 자리에서 죽는다:
+//     짐은 그 자리에 떨어지고(`_warBagDrop` — 전사자 짐과 같은 문 · 장부 `drop`) · econ 사망은 war-core `warDraftKillPid`(그 몸에 묶인 징발자 한 사람 · `_warRemoveNpc` 정본 문) ·
+//     몸은 내려간다(`_warDespawnPid`). 교전 단위는 셈 없이 눕는다(`hp 0 · _dead` — 판의 사상 `sides.dead` → `warKill` 에 안 들어간다 ⇒ 한 사람은 한 번만 죽는다).
+//   ㄴ('mrl') — 안 죽는다. 짐꾼 몸마다 그날 먹은 뒤 게이지의 허기 무너짐(Body 회복 배율 곡선 `recoverMult` — 허기 축 · 배부르면 1 · 극단 0 · 몸 정본 곡선)을
+//     평균해 교전 사기 항의 군량 충족도(`sides.A.ration` — T295 ② 그 칸 · 종전엔 짐 잔량 비)로 적는다.
+//     사기 항의 가중치는 `T295_RATION_MRL`(값이 곧 가중치 · 재민 칸 · 새 수 0) — 미설정이면 사기 식이 안 돈다(ㄴ 의 크기는 그 값이 정한다).
+function _t906Mode() { const v = typeof process !== 'undefined' && process.env ? process.env.T906_ARMY_STARVE : null; return (v === 'die' || v === 'mrl') ? v : ''; }   // 부를 때마다 읽는다(하네스가 한 프로세스에서 판을 바꾼다)
+let _BdM = null;
+function _bodyMod() { if (_BdM === null) { try { _BdM = require('./body'); } catch (e) { _BdM = false; } } return _BdM || null; }
+function _t906Stat() { const S = state._warStat || (state._warStat = {}); return S.t906 || (S.t906 = { mode: _t906Mode(), bodyDays: 0, hungryBodyDays: 0, minH: 100, hpLost: 0, dead: 0, econDead: 0, deadDays: [] }); }
+// 지난 하루(몸 하루) — 게이지 감쇠 · 극단 HP 를 게임 1분마다 적분한다(Body 정본 함수 · 사본 0). 반환 = 그 하루의 HP 감소(몸 hp 100 기준).
+function _t906Day(ent) {
+  const B = _bodyMod(), K = _kcal(); if (!B || !K || !K.DAY_MS_DEFAULT) return 0;
+  const T = B.CFG.HUNGER_SEC, n = Math.round(K.DAY_MS_DEFAULT / 1000);
+  const sc = ent.sc || (ent.sc = { hunger: ent.h, thirst: 100 });   // 셈 그릇 — 허기만 움직인다
+  let h = ent.h, L = 0;
+  for (let i = 0; i < n; i++) { const h1 = B.decayStep(h, T, 1); sc.hunger = (h + h1) / 2; L += B.extremeHpRate(sc).rate; h = h1; }
+  ent.h = h; return L;
+}
+// 몸 하나의 하루 경계 — 지난 하루 적분 → 오늘 먹은 몫만큼 채운다. ㄱ 이면 HP 를 깎고 0 이 되면 true(죽음은 부른 쪽이 루프 밖에서 치른다).
+function _t906Step(w, body, p, phi, mode) {
+  const K = _kcal(); if (!K) return false;
+  const tb = w._starve || (w._starve = new Map()), St = _t906Stat();
+  let ent = tb.get(p.pid); if (!ent) { ent = { h: 100, seen: false, min: 100, lost: 0, days: 0, hungry: 0 }; tb.set(p.pid, ent); }
+  let L = 0;
+  if (ent.seen) { L = _t906Day(ent); ent.days++; St.bodyDays++; ent.min = Math.min(ent.min, ent.h); St.minH = Math.min(St.minH, ent.h); }
+  ent.seen = true;
+  const f = Math.max(0, Math.min(1, phi));
+  if (f < 1) { ent.hungry++; St.hungryBodyDays++; }
+  ent.h = Math.min(100, ent.h + f * K.dayHunger());
+  if (mode !== 'die' || !(L > 0)) return false;
+  ent.lost += L; St.hpLost += L;
+  const g = body && body.atkGroup, gu = g && g.units ? g.units.find((u) => u.pid === p.pid) : null, bu = gu && gu.bu, mh = p.maxHp || 100;
+  if (bu) { bu.hp -= (L / mh) * (bu.maxHp || mh); if (bu.hp <= 0) return true; p.hp = Math.max(1, Math.round((bu.hp / Math.max(1, bu.maxHp)) * mh)); return false; }
+  p.hp = (p.hp == null ? mh : p.hp) - L; return p.hp <= 0;
+}
+// ㄴ — 그날 먹은 뒤 게이지의 허기 무너짐(Body 회복 배율 곡선 — 배부르면 1 · 극단 0)
+function _t906Sat(ent) { const B = _bodyMod(); if (!B) return 1; const sc = ent.sc || (ent.sc = { hunger: ent.h, thirst: 100 }); sc.hunger = ent.h; return B.recoverMult(sc); }
+// ㄱ — 굶어 죽은 몸을 그 자리에서 치른다(짐 드랍 · econ 사망 한 사람 · 몸 내림). 반환 = 떨어진 짐(식량등가).
+function _t906Die(w, body, p, day) {
+  const St = _t906Stat(), g = body && body.atkGroup, gu = g && g.units ? g.units.find((u) => u.pid === p.pid) : null, bu = gu && gu.bu;
+  if (bu) { bu.hp = 0; bu._dead = 1; }   // 셈 없이 눕는다(판의 사상 `sides.dead` 밖 — econ 사망은 아래 한 문)
+  if (gu) gu.dead = true;
+  p.hp = 0; p.vx = 0; p.vy = 0;
+  const fe = _warBagDrop(w, p);
+  const vil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
+  const ok = !!(vil && state.war && state.war.warDraftKillPid && state.war.warDraftKillPid(vil, p.pid));
+  St.dead++; if (ok) St.econDead++; if (St.deadDays.length < 64) St.deadDays.push({ day, war: w.id, pid: p.pid, econ: ok });
+  const bk = w._rationBook; if (bk) { bk.starveDead = (bk.starveDead || 0) + 1; if (ok) bk.starveEcon = (bk.starveEcon || 0) + 1; }
+  if (state.war && state.war.warLog) state.war.warLog(day, (w.atk && w.atk.name) + ' 원정 몸이 굶어 죽었다 — ' + p.pid + (ok ? '' : '(묶인 징발자 없음)') + ' · 짐 ' + (+fe || 0).toFixed(2) + ' 그 자리에');
+  _warDespawnPid(p.pid);
+  return fe || 0;
+}
 function _warRationEat(w, day) {
   const WC = state.war; if (!w || !w._packOnBodies || !WC || !WC.bodyEat) return null;
   const body = state.warBodies && state.warBodies.get(w.id);
@@ -6306,6 +6372,7 @@ function _warRationEat(w, day) {
   const bearers = _warBearers(w, body);
   if (_forageMarchOn()) _warForageMarch(w, body, day, bearers);   // ★[T441] 먹기 전에 — 그날 지난 길에서 딴 것도 짐이다
   let eaten = 0, left = 0, unfed = 0, hungry = 0; const eatU = {};
+  let _t906Dead = null; const _m906 = _t906Mode();   // ★[T906] 판(끔 = '') · ㄱ — 오늘 굶어 죽은 몸(루프 밖에서 치른다)
   const _G = _t748G();
   for (const p of bearers) {
     const bag = _warBagView(p, keys);
@@ -6313,14 +6380,18 @@ function _warRationEat(w, day) {
     const _e = _warEatBySpoil(WC, bag, need, ctx, eatU);   // ★[T458] 상하는 것부터(부패 정본 순서) · 품목마다 같은 문
     eaten += _e; if (_e < need) { unfed += need - _e; hungry++; }   // ★[T886] 짐이 모자란 몸 — 마을 밥상으로 안 돌아간다(셈만 · 굶음의 결과는 회부 T886)
     _warBagWrite(p, keys, bag); left += WC.bagFE(bag, ctx);
+    if (_m906 && _t906Step(w, body, p, need > 0 ? _e / need : 1, _m906)) (_t906Dead || (_t906Dead = [])).push(p);   // ★[T906] 몸의 굶주림 사다리(끔이면 안 돈다)
     if (_b0) for (const k of keys) { const d = (_b0[k] || 0) - (bag[k] || 0); if (d > 1e-12) _G.bagOut(p, k, d); }   // ★[T748] 먹은 몫 — 그 품목의 오래된 것부터(끄면 null)
   }
+  let _t906Alive = bearers.length;
+  if (_t906Dead) { for (const p of _t906Dead) left -= _t906Die(w, body, p, day); _t906Alive -= _t906Dead.length; if (left < 0) left = 0; }   // ★[T906] ㄱ — 그 자리에서 죽는다(짐은 떨어진다)
   const perDay = (w.force || 0) * (state.warCore ? state.warCore.WAR_RATION : 1);
   const bk = w._rationBook; if (bk) { bk.eaten += eaten; bk.unfed = (bk.unfed || 0) + unfed; if (hungry) bk.hungryDays = (bk.hungryDays || 0) + hungry; if (w.phase === 'battle') { bk.battleEaten = (bk.battleEaten || 0) + eaten; bk.battleUnfed = (bk.battleUnfed || 0) + unfed; bk.battleDays = (bk.battleDays || 0) + 1; bk.battleBodyDays = (bk.battleBodyDays || 0) + bearers.length; if (hungry) bk.battleHungry = (bk.battleHungry || 0) + hungry; }   // ★[T886] 못 먹은 몫 · 교전 날 먹음(관측 셈)
     if (w._fgKeys) bk.fgEat = +((bk.fgEat || 0) + _warFgUnits(w, eatU)).toFixed(6); if (bk.days.length < 64) bk.days.push({ day, bearers: bearers.length, eaten: +eaten.toFixed(4), left: +left.toFixed(4) }); }
   // 사기 항 — 오늘 몫이 짐에 있나(짐꾼 병력 기준 · 0~1). 교전 몸이 있으면 그 판의 편 값에 바로 적는다.
-  const needNow = bearers.length * need;
-  const ration = needNow > 0 ? Math.max(0, Math.min(1, left / needNow)) : 0;
+  const needNow = (_m906 ? _t906Alive : bearers.length) * need;
+  let ration = needNow > 0 ? Math.max(0, Math.min(1, left / needNow)) : 0;
+  if (_m906 === 'mrl') { const tb = w._starve; let s = 0, n = 0; for (const p of bearers) { const e = tb && tb.get(p.pid); if (e) { s += _t906Sat(e); n++; } } ration = n ? s / n : ration; }   // ★[T906] ㄴ — 허기 무너짐 평균이 군량 충족도
   w._ration = ration;
   if (body && body.fight && body.fight.ctx && body.fight.ctx.sides && body.fight.ctx.sides.A) body.fight.ctx.sides.A.ration = ration;
   return perDay > 0 ? left / perDay : 0;
@@ -7761,7 +7832,8 @@ function __p3Bind(mock) {
     _t476Decide, _t476DenVil,   // ★[T476] 토벌 결단 · 소굴 어댑터 — 하네스가 운영과 같은 결단을 부른다
     _warRationLayDownBody, _warBagDrop, _t476DenRefresh, _t476DenSync,   // ★[T748] 켬 전용 일곱 길 — 하네스(`test-moment-lot` ⑨~)가 **이 함수들**을 그대로 부른다(사본 0)
     _t312Deliver, _t347Deliver, _t544PackPut, _t544PackIn, _t368Hold, _t368Deliver,
-    _warRationEat, _warRationCollect, _warRationLoad,   // ★[T423] 짐이 먹는다 — 하네스가 **이 함수들**을 war-core 에 건다(운영과 같은 두 훅)   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
+    _warRationEat, _warRationCollect, _warRationLoad, _t906Day, _t906Step, _t906Sat, _t906Mode,   // ★[T906] 원정 몸 굶주림 사다리(하네스가 이 함수들을 그대로 부른다)
+      // ★[T423] 짐이 먹는다 — 하네스가 **이 함수들**을 war-core 에 건다(운영과 같은 두 훅)   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
   };
 }
 

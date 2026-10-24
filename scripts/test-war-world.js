@@ -213,7 +213,7 @@ function _run(opts) {
   } else {
     const comp = opts.comp || WarCore.conscript(atk, 'full', {}).composition;   // ★[T458] opts.comp = 궁수 섞인 판(화살 메시지)
     w = { id: opts.warId || 1, atk, def, casus: 'feud', force: 12, warriors: 2, composition: comp, weapQ: 0.5,
-      phase: 'march', op: 'march', eta: world.day + 1, marchDays: 1, born: world.day, _packDays: 12, _packRem: 12 };
+      phase: 'march', op: 'march', eta: world.day + (opts.marchDays || 1), marchDays: opts.marchDays || 1, born: world.day, _packDays: 12, _packRem: 12 };   // ★[T906] opts.marchDays — 긴 행군 판(없으면 종전 1)
     if (sc === 'assault' || sc === 'hitrun') w._opPolicy = 'assault';
     if (sc === 'surrender') { w._opPolicy = 'siege'; def._defPolicy = 'hold'; for (const r of ['food', 'fish', 'meat', 'cooked_food', 'vegetable']) def.econ.storage[r] = 0; }
     if (sc === 'hitrun' || sc === 'assault') def._defPolicy = 'respond';
@@ -227,6 +227,7 @@ function _run(opts) {
     }
     war.WARS.push(w);
   }
+  const _atkPop0 = atk.econ.npcs.length;   // ★[T906] 공격 마을 econ 인구(판 앞) — 굶어 죽음 = econ 사망 한 사람씩인가
 
   const tr = { badSpawn, blockedTicks: 0, treeTicks: 0, fightTicks: 0, engagedAt: -1, standoffAt: -1, reengagedAt: -1, resolveAtStandoff: -1,
     defHomeGap: null, settles: [], hitrun: sc === 'hitrun' ? 'wait' : null, pos: null };
@@ -251,6 +252,7 @@ function _run(opts) {
     }
     const body = H.state.warBodies.get(w.id);
     const f = body && body.fight;
+    if (f && f.ctx && f.ctx.sides && f.ctx.sides.A) { tr.aDead = f.ctx.sides.A.dead; let n = 0; for (const u of f.ctx.units) if (u.side === 'A' && u.hp <= 0) n++; tr.aDown = n; }   // ★[T906] 판의 사상 셈(`sides.A.dead`) · 누운 공격 단위
     if (w._forceSortie && (w.op === 'camp' || w.op === 'siege') && w.phase === 'march' && !tr.sortied) { tr.sortied = t; w._sortie = true; H._warEngage(w, world.day, 'sortie'); }   // 출격 결단(war-core 문턱 대신 하네스가 곧바로)
     if (process.env.WW_DEBUG && f && t % 30 === 0 && sc === 'sortie') { const st = {}; for (const u of f.ctx.units) { if (u.hp <= 0) continue; const k = u.side + (u.ctl ? 'c' : '') + ':' + u.st + (u.routing ? '!' : ''); st[k] = (st[k] || 0) + 1; } const ca = WL.centroid(f, 'A'), cb = WL.centroid(f, 'B'); console.log('dbg', t, f.state, w.phase, JSON.stringify(st), ca && cb ? Math.hypot(ca.x - cb.x, ca.y - cb.y).toFixed(1) : '-', f.adv ? f.adv.side + (f.adv.released ? 'R' : '') : ''); }
     if (f && f.state !== 'form') {
@@ -301,6 +303,9 @@ function _run(opts) {
   tr.book = w._rationBook ? JSON.parse(JSON.stringify(w._rationBook)) : null; tr.onBodies = w._packOnBodies || 0; tr.packLeft = w._packRem;
   { let fe = 0, n = 0; if (w._packKeys) for (const p of players.values()) { if (p._warPackOf !== w.id) continue; const bag = {}; for (const k of w._packKeys) if (p.inventory && p.inventory[k] > 0) bag[k] = p.inventory[k]; fe += war.bagFE(bag, { _world: atk.econ._world }); n++; } tr.bagLeft = fe; tr.bagBearersLeft = n; }
   tr.warDone = !war.WARS.includes(w);
+  tr.atkPop0 = _atkPop0; tr.atkPop = atk.econ.npcs.length;   // ★[T906] 판 끝 econ 인구 · 사다리 셈(손잡이 켤 때만 선다) · 사다리 표(몸마다)
+  tr.t906 = H.state._warStat && H.state._warStat.t906 ? JSON.parse(JSON.stringify(H.state._warStat.t906)) : null;
+  tr.starve = w._starve ? [...w._starve.values()].map(e => ({ h: e.h, min: e.min, lost: e.lost, days: e.days, hungry: e.hungry })) : null;
   { let u = 0; if (w._fgKeys) for (const p of players.values()) { if (p._warPackOf !== w.id || !p.inventory) continue; for (const k of w._fgKeys) u += p.inventory[k] || 0; } tr.fgLeft = u; }
   tr.cutA = (atk._t347Cut || []).length; tr.fgStoreA = { herb: atk.econ.storage.herb || 0, twig: atk.econ.storage.twig || 0 };   // 몸 참조는 판 밖으로 안 나간다(순환 참조)
   tr.bcast = { war: bcast.filter(m => m.type === 'war_battle').length, phases: [...new Set(bcast.filter(m => m.type === 'war_battle').map(m => m.phase))] };
@@ -1071,6 +1076,47 @@ function rationActPart() {
   const hr = (hShort.packDays || []).map(d => d.ration).filter(x => x != null);
   ok(hr.length && hr.some(x => x < 1) && hr.every(x => x >= 0 && x <= 1) && hShort.ended && hShort.ended.why === hOff.ended.why,
     'ⓥ 사기 곡선 — 오늘 몫이 짐에 있나(0~1)를 **매일** 다시 적는다 · 짐이 모자라면 1 아래 · 결단(철수)은 장부와 같다', `ration ${hr.join(',')} · 끝 ${hShort.ended && hShort.ended.why}`);
+  // ★★[T906] 원정이 굶으면 — 손잡이 `T906_ARMY_STARVE`('die' = ㄱ 몸 사다리로 약해지고 죽는다 · 'mrl' = ㄴ 안 죽고 사기 항 · 그 밖 = 끔 = 종전)
+  {
+    say('\n[ⓥ·T906] 원정이 굶으면 — ㄱ 몸의 굶주림 사다리(Body 정본)로 약해지고 그 자리에서 죽는다(econ 사망 한 사람 · 이중 0) · ㄴ 안 죽고 허기 무너짐이 사기 항 입력 · 끔 = 종전');
+    const keep906 = ['T906_ARMY_STARVE', 'T295_RATION_MRL'].map(k => [k, process.env[k]]);
+    const set906 = (v, wt) => { if (v == null) delete process.env.T906_ARMY_STARVE; else process.env.T906_ARMY_STARVE = v; if (wt == null) delete process.env.T295_RATION_MRL; else process.env.T295_RATION_MRL = String(wt); };
+    const runS = (v, wt, o) => { set906(v, wt); try { return run(true, o); } finally { set906(null, null); } };
+    const sig9 = (r) => JSON.stringify({ e: r.ended, h: r.posHash, s: Object.assign({}, r.stat, { t906: undefined }), ph: r.phase, c: r.counts });   // 손잡이 제 셈 칸(t906) 밖
+    const rs = (r) => (r.packDays || []).map(d => d.ration).join(',');
+    const B = require(path.join(ROOT, 'server', 'body.js')), xAt = 100 * (1 - B.extremeAt('hunger'));
+    //   (가) 짧은 판 — hShort 그 판(포위만 · 팩 반나절 · 행군 1일): 끔 · 다른 글자 = 종전
+    const HS = Object.assign({}, H, { packFood: 12 * WarCore.WAR_RATION / 2 });
+    const z0 = runS(null, null, HS), zx = runS('1', null, HS), ms = runS('mrl', null, HS);
+    ok(sig(z0) === sig(hShort) && JSON.stringify(z0.book) === JSON.stringify(hShort.book) && sig(zx) === sig(z0) && JSON.stringify(zx.book) === JSON.stringify(z0.book) && !z0.t906 && !zx.t906 && !z0.starve && !zx.starve && rs(zx) === rs(z0),
+      "ⓥ·T906 끔 — 미설정 · 다른 글자('1')는 종전 판 그대로(끝 · 해시 · 짐 장부 · 사기 곡선 한 글자 같다 · 사다리 표 · 셈 칸이 안 선다)", `끝 ${z0.ended && z0.ended.why} · 못 먹음 ${z0.book ? z0.book.unfed : '-'}`);
+    ok(sig9(ms) === sig9(z0) && JSON.stringify(ms.book) === JSON.stringify(z0.book) && ms.t906 && ms.t906.dead === 0,
+      'ⓥ·T906 ㄴ — 사기 항 가중치(`T295_RATION_MRL`) 미설정이면 판 무변(끝 · 해시 · 짐 장부 — 사기 식이 안 돈다 · ㄴ 의 크기는 그 값이 정한다) · 굶어 죽음 0', `끝 ${ms.ended && ms.ended.why} · ration ${rs(ms)}`);
+    //   (나) 긴 행군 판 — 포위만 · 팩 반나절 · 행군 8일(교전 없이 길에서 굶는다)
+    const HL = Object.assign({}, H, { packFood: 12 * WarCore.WAR_RATION / 2, marchDays: 8 });
+    const l0 = runS(null, null, HL), lg = runS('die', null, HL), lm = runS('mrl', null, HL);
+    ok(lg.starve && lg.starve.length === lg.onBodies && lg.t906 && lg.t906.hungryBodyDays === lg.book.hungryDays && lg.t906.hungryBodyDays > 0 && lg.starve.some(e => e.min < xAt) && lg.t906.hpLost > 0 && !l0.starve,
+      'ⓥ·T906 ㄱ 사다리 — 짐꾼 몸마다 게이지 · 굶은 몸-날 = 장부 `hungryDays` · 극단(허기 ≤ ' + xAt.toFixed(1) + ' — Body 정본 문턱)에 닿은 몸이 HP 를 잃는다 · ★대조 끔은 표가 없다', lg.t906 ? `몸 ${lg.starve.length} · 굶은 몸-날 ${lg.t906.hungryBodyDays} · 최저 ${lg.t906.minH.toFixed(1)} · 잃은 HP ${lg.t906.hpLost.toFixed(1)}` : '');
+    ok(lg.t906 && lg.t906.dead >= 1 && lg.t906.econDead === lg.t906.dead && lg.book.starveDead === lg.t906.dead && l0.atkPop0 - l0.atkPop === 0 && lg.atkPop0 - lg.atkPop === lg.t906.dead,
+      'ⓥ·T906 ㄱ 죽음(길) — [자명 통과 금지] 교전 없이 길에서 굶어 죽는 몸이 선다 · 몸 하나 = econ 사망 한 사람(묶인 징발자 — 전쟁 정산 소유) · 공격 마을 인구가 정확히 그만큼 준다(끔 판 0)', lg.t906 ? `굶어 죽음 ${lg.t906.dead}/${lg.onBodies} · econ ${lg.t906.econDead} · 인구 ${lg.atkPop0} → ${lg.atkPop}(끔 ${l0.atkPop0} → ${l0.atkPop})` : '');
+    ok(lg.warDone && near(ident(lg), lg.book.load) && near(ident(l0), l0.book.load),
+      'ⓥ·T906 ㄱ 항등 — 곳간에서 나간 = 몸이 먹음 + 내려놓음 + 드랍(+ 아직 짐) · 굶어 죽은 몸의 짐은 그 자리에 떨어진다(드랍)', `${lg.book.load} = ${lg.book.eaten}+${lg.book.back}+${lg.book.drop}+${(lg.bagLeft || 0)}`);
+    ok(lm.t906 && lm.t906.dead === 0 && lm.atkPop0 - lm.atkPop === 0 && lm.starve && rs(lm) !== rs(l0) && (lm.packDays || []).every(d => d.ration == null || (d.ration >= 0 && d.ration <= 1)) && (lm.packDays || []).some(d => d.ration != null && d.ration < 0.5) && sig9(lm) === sig9(l0),
+      'ⓥ·T906 ㄴ(길) — 안 죽는다(굶어 죽음 0 · 인구 무변) · 사기 항 입력(ration)이 짐 잔량 비 → 허기 무너짐(Body 회복 배율 곡선)으로 바뀐다 · 가중치 미설정이면 판 무변', `ration ${rs(lm)}`);
+    //   (다) 돌격 판 — 팩 반나절 · 하루 10초(교전이 여러 날에 걸친다 — 전쟁 자와 같은 하루): 교전 중 굶어 죽은 단위는 판의 사상 셈 밖
+    const AS = Object.assign({}, A, { packFood: 12 * WarCore.WAR_RATION / 2, dayMs: 10000 });
+    const a0 = runS(null, null, AS), ag = runS('die', null, AS);
+    ok(ag.t906 && ag.t906.dead >= 1 && ag.t906.econDead === ag.t906.dead && ag.aDown === ag.aDead + ag.t906.dead && a0.aDown === a0.aDead,
+      'ⓥ·T906 ㄱ 죽음(교전) — [자명 통과 금지] 교전 중 굶어 죽는 몸이 선다 · 그 단위는 누웠지만 판의 사상 셈(`sides.A.dead` → `warKill`) 밖이다(누운 단위 = 사상 셈 + 굶어 죽음 · ★대조 끔은 누운 단위 = 사상 셈) ⇒ 한 사람은 한 번만 죽는다', ag.t906 ? `굶어 죽음 ${ag.t906.dead} · 누운 ${ag.aDown} = 사상 ${ag.aDead} + ${ag.t906.dead} · 끔 누운 ${a0.aDown} = ${a0.aDead} · 끝 ${ag.ended && ag.ended.why}(끔 ${a0.ended && a0.ended.why})` : '');
+    ok(ag.warDone && near(ident(ag), ag.book.load), 'ⓥ·T906 ㄱ 항등(교전) — 먹음 + 내려놓음 + 드랍 + 짐 = 곳간에서 나간', `${ag.book.load} = ${ag.book.eaten}+${ag.book.back}+${ag.book.drop}+${(ag.bagLeft || 0)}`);
+    //   (라) 정적 — 사다리는 Body · kcal 정본 함수(사본 0) · econ 사망은 war-core 한 문(`_warRemoveNpc`) · 손잡이 두 글자만 켠다
+    const VS9 = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8'), WC9 = fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8');
+    const blk = VS9.slice(VS9.indexOf('function _t906Mode()'), VS9.indexOf('function _warRationEat(w, day)'));
+    ok(/return \(v === 'die' \|\| v === 'mrl'\) \? v : '';/.test(blk) && /B\.decayStep\(h, T, 1\)/.test(blk) && /B\.extremeHpRate\(sc\)\.rate/.test(blk) && /K\.dayHunger\(\)/.test(blk) && /K\.DAY_MS_DEFAULT/.test(blk) && /B\.recoverMult\(sc\)/.test(blk)
+      && !/\b(2880|1440|4320|0\.45|0\.89)\b/.test(blk.replace(/\/\/.*$/gm, '')) && /function warDraftKillPid\(vil, pid\) \{[^}]*for \(const n of e\.npcs\) if \(n\._warPid === pid\) return _warRemoveNpc\(e, n\);/.test(WC9),
+      "ⓥ·T906 정적 — 손잡이 'die' · 'mrl' 만 · 사다리 = Body(`decayStep` · `extremeHpRate` · `recoverMult`) · kcal(`dayHunger` · `DAY_MS_DEFAULT`) 정본 함수(문턱 · 속도 수 사본 0) · econ 사망 = war-core `_warRemoveNpc` 한 문");
+    for (const [k, v] of keep906) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+  }
   // 이중 0 — 원정군은 마을 식사 명부에서 빠진다(econ 한 줄)
   const eatDay = (on) => {
     setK(on);
