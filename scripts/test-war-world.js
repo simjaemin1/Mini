@@ -252,7 +252,7 @@ function _run(opts) {
     }
     const body = H.state.warBodies.get(w.id);
     const f = body && body.fight;
-    if (f && f.ctx && f.ctx.sides && f.ctx.sides.A) { tr.aDead = f.ctx.sides.A.dead; let n = 0; for (const u of f.ctx.units) if (u.side === 'A' && u.hp <= 0) n++; tr.aDown = n; }   // ★[T906] 판의 사상 셈(`sides.A.dead`) · 누운 공격 단위
+    if (f && f.ctx && f.ctx.sides && f.ctx.sides.A) { tr.aDead = f.ctx.sides.A.dead; tr.aStart = f.ctx.sides.A.start; let n = 0, m = 0; for (const u of f.ctx.units) if (u.side === 'A') { m++; if (u.hp <= 0) n++; } tr.aDown = n; tr.aUnits = m; }   // ★[T906] 판의 사상 셈(`sides.A.dead`) · 누운 공격 단위
     if (w._forceSortie && (w.op === 'camp' || w.op === 'siege') && w.phase === 'march' && !tr.sortied) { tr.sortied = t; w._sortie = true; H._warEngage(w, world.day, 'sortie'); }   // 출격 결단(war-core 문턱 대신 하네스가 곧바로)
     if (process.env.WW_DEBUG && f && t % 30 === 0 && sc === 'sortie') { const st = {}; for (const u of f.ctx.units) { if (u.hp <= 0) continue; const k = u.side + (u.ctl ? 'c' : '') + ':' + u.st + (u.routing ? '!' : ''); st[k] = (st[k] || 0) + 1; } const ca = WL.centroid(f, 'A'), cb = WL.centroid(f, 'B'); console.log('dbg', t, f.state, w.phase, JSON.stringify(st), ca && cb ? Math.hypot(ca.x - cb.x, ca.y - cb.y).toFixed(1) : '-', f.adv ? f.adv.side + (f.adv.released ? 'R' : '') : ''); }
     if (f && f.state !== 'form') {
@@ -1106,8 +1106,8 @@ function rationActPart() {
     //   (다) 돌격 판 — 팩 반나절 · 하루 10초(교전이 여러 날에 걸친다 — 전쟁 자와 같은 하루): 교전 중 굶어 죽은 단위는 판의 사상 셈 밖
     const AS = Object.assign({}, A, { packFood: 12 * WarCore.WAR_RATION / 2, dayMs: 10000 });
     const a0 = runS(null, null, AS), ag = runS('die', null, AS);
-    ok(ag.t906 && ag.t906.dead >= 1 && ag.t906.econDead === ag.t906.dead && ag.aDown === ag.aDead + ag.t906.dead && a0.aDown === a0.aDead,
-      'ⓥ·T906 ㄱ 죽음(교전) — [자명 통과 금지] 교전 중 굶어 죽는 몸이 선다 · 그 단위는 누웠지만 판의 사상 셈(`sides.A.dead` → `warKill`) 밖이다(누운 단위 = 사상 셈 + 굶어 죽음 · ★대조 끔은 누운 단위 = 사상 셈) ⇒ 한 사람은 한 번만 죽는다', ag.t906 ? `굶어 죽음 ${ag.t906.dead} · 누운 ${ag.aDown} = 사상 ${ag.aDead} + ${ag.t906.dead} · 끔 누운 ${a0.aDown} = ${a0.aDead} · 끝 ${ag.ended && ag.ended.why}(끔 ${a0.ended && a0.ended.why})` : '');
+    ok(ag.t906 && ag.t906.dead >= 1 && ag.t906.econDead === ag.t906.dead && ag.aDown === ag.aDead + ag.t906.dead && a0.aDown === a0.aDead && ag.aStart === ag.aUnits - ag.t906.dead && a0.aStart === a0.aUnits,
+      'ⓥ·T906 ㄱ 죽음(교전) — [자명 통과 금지] 교전 중 굶어 죽는 몸이 선다 · 그 단위는 누웠지만 판의 사상 셈(`sides.A.dead` → `warKill`) 밖이다(누운 단위 = 사상 셈 + 굶어 죽음 · ★대조 끔은 누운 단위 = 사상 셈) ⇒ 한 사람은 한 번만 죽는다 · 명부에서도 빠진다(시작 수 = 단위 − 굶어 죽음 — 결판 생존에 안 든다)', ag.t906 ? `굶어 죽음 ${ag.t906.dead} · 누운 ${ag.aDown} = 사상 ${ag.aDead} + ${ag.t906.dead} · 시작 ${ag.aStart} = 단위 ${ag.aUnits} − ${ag.t906.dead} · 끔 누운 ${a0.aDown} = ${a0.aDead} · 끝 ${ag.ended && ag.ended.why}(끔 ${a0.ended && a0.ended.why})` : '');
     ok(ag.warDone && near(ident(ag), ag.book.load), 'ⓥ·T906 ㄱ 항등(교전) — 먹음 + 내려놓음 + 드랍 + 짐 = 곳간에서 나간', `${ag.book.load} = ${ag.book.eaten}+${ag.book.back}+${ag.book.drop}+${(ag.bagLeft || 0)}`);
     //   (라) 정적 — 사다리는 Body · kcal 정본 함수(사본 0) · econ 사망은 war-core 한 문(`_warRemoveNpc`) · 손잡이 두 글자만 켠다
     const VS9 = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8'), WC9 = fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8');

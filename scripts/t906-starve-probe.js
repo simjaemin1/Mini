@@ -4,6 +4,7 @@
 //   ★잰다 — econ 날마다(하루 마감 장부 `scanDay` 앞) · 원정(`S.war.WARS`)마다:
 //     · 국면 날 수 · 산 짐꾼 몸 수(`_warPackOf === w.id` · hp > 0) · 사다리 표 `w._starve`(손잡이 켤 때만 선다 — 몸마다 게이지 · 최저 · 잃은 HP · 굶은 날)
 //     · 장부 칸(T886 `unfed` · `hungryDays` + T906 `starveDead` · `starveEcon`)
+//   ★결판 · 귀환 — war-core 가 찍는 그 줄(전투 → 공격승|방어승 사상 · 귀환 — 징발 해제)을 그 순간 살아 있는 원정에 붙인다(console.log 를 감싸 읽기만)
 //   ★판 끝: 원정마다 위 칸 + 마지막 국면 · 국면마다 마지막으로 본 산 짐꾼(귀환 몸 = 귀환 국면의 값) · 세계 셈(`_warStat.t906` — 손잡이 켤 때만) · 마을 인구(공격 · 방어 econ)
 //   ★관찰만 한다 — 세계에 아무것도 안 쓴다.
 'use strict';
@@ -19,7 +20,7 @@ if (OUT && MAIN) {
   const alive = (S, w) => { const P = S.deps && S.deps.players; let n = 0; if (!P) return 0; for (const [, p] of P) if (p && p._warPackOf === w.id && (p.hp == null || p.hp > 0)) n++; return n; };
   const look = (S, w, tag) => {
     const o = R.wars.get(w.id) || (R.wars.set(w.id, { w, id: w.id, atk: w.atk && w.atk.name, def: w.def && w.def.name, first: tag, phases: {}, bearersMax: 0, alivePhase: {}, phaseLast: null,
-      atkPop0: w.atk && w.atk.econ ? w.atk.econ.npcs.length : null, defPop0: w.def && w.def.econ ? w.def.econ.npcs.length : null }), R.wars.get(w.id));
+      atkPop0: w.atk && w.atk.econ ? w.atk.econ.npcs.length : null, defPop0: w.def && w.def.econ ? w.def.econ.npcs.length : null, day0: S.world ? S.world.day : null, battles: [], home: [] }), R.wars.get(w.id));
     const a = alive(S, w); o.bearersMax = Math.max(o.bearersMax, a);
     if (!o.closed) { o.phaseLast = w.phase || null; o.opLast = w.op || null; if (a > 0) o.alivePhase[w.phase || '-'] = a; }   // 국면마다 마지막으로 본 산 짐꾼(내려놓으면 짐꾼 표식이 풀린다 — 귀환 몸 = 귀환 국면의 마지막 값)
     if (tag[0] === 'd') o.phases[w.phase || '-'] = (o.phases[w.phase || '-'] || 0) + 1;
@@ -27,7 +28,17 @@ if (OUT && MAIN) {
   const sample = (tag) => {
     const S = st(); if (!S || !S.war) return; R.samples++;
     for (const w of (S.war.WARS || [])) look(S, w, tag);
-    for (const o of R.wars.values()) if (!(S.war.WARS || []).includes(o.w) && !o.closed) { o.closed = tag; }
+    for (const o of R.wars.values()) if (!(S.war.WARS || []).includes(o.w) && !o.closed) { o.closed = tag; o.day1 = S.world ? S.world.day : null; }
+  };
+  //   ★결판 · 귀환 줄 — war-core 가 찍는 그 줄(`D<날> 전투 <공> vs <방>[…] → 공격승|방어승 사상 공X·방Y` · `D<날> <공> 귀환 — … 징발 해제 N명`)을 그 순간 살아 있는 원정(이름 짝)에 붙인다(읽기만)
+  const _cl = console.log;
+  console.log = function () {
+    try { const s = String(arguments[0] || ''); const S = s.indexOf('⚔️ D') >= 0 ? st() : null; if (S && S.war) {
+      let m = /⚔️ D(\d+) 전투 (\S+) vs (\S+?)\[[^\]]*\] → (공격승|방어승) 사상 공(\d+)·방(\d+)/.exec(s);
+      if (m) { const w = (S.war.WARS || []).find((x) => x.atk && x.def && x.atk.name === m[2] && x.def.name === m[3]); if (w) { look(S, w, 'b'); R.wars.get(w.id).battles.push({ day: +m[1], win: m[4] === '공격승' ? 'A' : 'B', atkCas: +m[5], defCas: +m[6] }); } }
+      m = /⚔️ D(\d+) (\S+) 귀환 — (.*?)징발 해제 (\d+)명/.exec(s);
+      if (m) { const w = (S.war.WARS || []).find((x) => x.atk && x.atk.name === m[2]); if (w) { look(S, w, 'h'); R.wars.get(w.id).home.push({ day: +m[1], why: m[3].replace(/ — $/, '').trim(), freed: +m[4] }); } } } } catch (e) {}
+    return _cl.apply(this, arguments);
   };
   const dump = () => {
     try {
@@ -36,7 +47,7 @@ if (OUT && MAIN) {
       const t906 = S && S._warStat ? (S._warStat.t906 || null) : null;
       const wars = [...R.wars.values()].map((o) => { const w = o.w, b = w._rationBook || {}, tb = w._starve;
         const bodies = tb ? [...tb.entries()].map(([pid, e]) => ({ pid, h: r3(e.h), min: r3(e.min), lost: r3(e.lost), days: e.days, hungry: e.hungry })) : null;
-        return { id: o.id, atk: o.atk, def: o.def, first: o.first, closed: o.closed || null, phaseDays: o.phases, phaseLast: o.phaseLast, opLast: o.opLast || null, bearersMax: o.bearersMax, alivePhase: o.alivePhase,
+        return { id: o.id, atk: o.atk, def: o.def, first: o.first, closed: o.closed || null, day0: o.day0, day1: o.day1 == null ? null : o.day1, battles: o.battles, home: o.home, phaseDays: o.phases, phaseLast: o.phaseLast, opLast: o.opLast || null, bearersMax: o.bearersMax, alivePhase: o.alivePhase,
           unfed: r3(b.unfed || 0), hungryDays: b.hungryDays || 0, starveDead: b.starveDead || 0, starveEcon: b.starveEcon || 0, drop: r3(b.drop || 0), back: r3(b.back || 0), eaten: r3(b.eaten || 0),
           atkPop0: o.atkPop0, atkPop: w.atk && w.atk.econ ? w.atk.econ.npcs.length : null, defPop0: o.defPop0, defPop: w.def && w.def.econ ? w.def.econ.npcs.length : null, bodies }; });
       const tot = (k) => r3(wars.reduce((a, x) => a + (x[k] || 0), 0));

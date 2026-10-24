@@ -6354,6 +6354,8 @@ function _t906Sat(ent) { const B = _bodyMod(); if (!B) return 1; const sc = ent.
 function _t906Die(w, body, p, day) {
   const St = _t906Stat(), g = body && body.atkGroup, gu = g && g.units ? g.units.find((u) => u.pid === p.pid) : null, bu = gu && gu.bu;
   if (bu) { bu.hp = 0; bu._dead = 1; }   // 셈 없이 눕는다(판의 사상 `sides.dead` 밖 — econ 사망은 아래 한 문)
+  //   그 단위는 판의 명부에서도 빠진다 — 편의 시작 수(`sides.start`)를 하나 덜어 결판 셈의 생존(start − dead)에 안 들게 한다(굶어 죽은 사람이 살아 돌아온 셈 0)
+  const f = body && body.fight, sd = bu && f && f.ctx && f.ctx.sides ? f.ctx.sides[bu.side] : null; if (sd && sd.start > 0) sd.start--;
   if (gu) gu.dead = true;
   p.hp = 0; p.vx = 0; p.vy = 0;
   const fe = _warBagDrop(w, p);
