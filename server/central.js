@@ -1063,6 +1063,12 @@ const server = http.createServer(async (req, res) => {
       const p = stmtGetPlayer.get(id);
       if (!p) return jsonResp(res, 404, { error: 'not found' });
       const data = await readBody(req);
+      //   ★[T916] 다시 보내는 저장(존이 central 이 내려가 있던 동안 못 보낸 줄)은 **조건부 쓰기**다 — 존이 마지막으로 닿게 한 몸 칸(`tools_json`)의 sha1 을
+      //     `if_tools_sha` 로 싣는다. 그 사이 다른 쓰기(다른 존 · 같은 존의 더 새 저장)가 몸 칸을 바꿨으면 옛 줄이 새 몸을 덮지 않게 **안 쓰고** `stale` 을 돌려준다.
+      //     칸이 없는 저장(평시 · 끔인 존)은 이 줄을 안 지난다 — 종전 그대로.
+      if (data.if_tools_sha != null && crypto.createHash('sha1').update(String(p.tools_json == null ? '' : p.tools_json)).digest('hex') !== data.if_tools_sha) {
+        return jsonResp(res, 200, { ok: false, reason: 'stale' });
+      }
       stmtUpdateProfile.run(
         data.wood ?? p.wood,
         data.stone ?? p.stone,
