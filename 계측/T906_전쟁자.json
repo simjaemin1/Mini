@@ -2,7 +2,7 @@
  "card": "T906",
  "date": "2026-10-24",
  "branch": "batch/army-starve-1023",
- "base": "812f6f35(합침 b574eeec · 처음 베이스 4ac2ae12)",
+ "base": "1732d93a(둘째 합침 7310b0ec · 첫 합침 b574eeec = main 812f6f35 · 처음 베이스 4ac2ae12)",
  "ruler": {
   "what": "T577 서버 판 50날 · 하루 10초 · WAR_FIXTURE=assault*3(D5 · 되풀이) · T403_ARMS_LEDGER=1 · VILLAGE_WAR_LOG=1 · VILLAGE_CARAVAN_MAX=0 · T400_BUILD_ACT=0 · VILLAGE_NPC_CAP=1(자 기본) · 관찰자 t886 · t906",
   "seeds": [
@@ -2381,6 +2381,22 @@
    "W1=M1 42": true
   },
   "sameOutsideEnv": "합치기 전 판과 env 칸 밖 18/18 같음(W0↔W1 · G↔G1 · N10↔N1 · N30↔N3 · P30↔P3 · M0↔M1) · 400날 g · a 2/2 같음"
+ },
+ "merged2": {
+  "head": "7310b0ec",
+  "main": "1732d93a",
+  "what": "전쟁 자 9판(M2 main · W2 끔 · G2 ㄱ) · 기준선 10-24 끔",
+  "bytes": "W2 = M2 바이트 3/3 · W2 = W1 · G2 = G1 env 칸 밖 3/3",
+  "baselineA": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-SnpWGe ===",
+   "· 시드 1020 400일 판 620초(종료 0)",
+   "· 시드 7 400일 판 667초(종료 0)",
+   "· 시드 42 400일 판 668초(종료 0)",
+   "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2512)",
+   "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2784)",
+   "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2725)",
+   "=== 같음 3/3 · 판 668초 ==="
+  ]
  },
  "baseline24": {
   "file": "계측/서버기준선_2026-10-24.json",
