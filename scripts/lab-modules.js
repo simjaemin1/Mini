@@ -56,7 +56,8 @@ setTimeout(() => {
   if (wantDiff) {
     let changed = [];
     try {
-      const cmd = baseArg ? `git diff --name-only ${baseArg} -- .` : 'git status --porcelain';
+      //   ★[T909 · T684 회부 5] `core.quotepath=false` — 한글 경로(`lab/전쟁실험실.html`)를 따옴표 · 8진 이스케이프로 감싸면 끝 검사(`.html`)가 빠져 "내 diff 0개"로 보였다(교집합 판정은 그대로 맞았다).
+      const cmd = baseArg ? `git -c core.quotepath=false diff --name-only ${baseArg} -- .` : 'git -c core.quotepath=false status --porcelain';
       const out = execSync(cmd, { cwd: ROOT }).toString();
       changed = baseArg ? out.split('\n').filter(Boolean)
         : out.split('\n').filter(Boolean).map((l) => l.slice(3).trim().replace(/^.* -> /, ''));
