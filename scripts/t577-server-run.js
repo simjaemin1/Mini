@@ -13,6 +13,7 @@
 //   · 빠른 시계 `VILLAGE_DAY_MS=250` — 800일을 판당 7~9분에.
 //   · `T315_MAPBEDS=0` — 빠른 시계에선 생활층 몸이 집을 못 지어, 켜면 침상이 시딩 12 에 묶이고 인구가 600(=50×12)에서 선다
 //     (도적을 꺼도 굶어 비운다 — 시계의 잡음). 끄면 econ 자기 주거(`housing`)로 큰다 = 라이브가 비던 8월의 세계.
+//     ★[T914] 집 행위가 선 판에선 `T315_MAPBEDS=1` + `T627_TRIP_DAY=1` 이 기본이다(아래 T914 줄) — 이 줄은 집 행위 끔 판(`T400_BUILD_ACT=0`)의 기본이다.
 //   · `VILLAGE_NPC_CAP=1` — 가시 몸만 줄인다(econ 인구는 무제한 · 시뮬 진실). 몸 5천을 30Hz 로 굴리면 빠른 시계를 못 버틴다.
 //     ★[T864] `VILLAGE_NPC_CAP=Infinity` 를 주면 아이 env 에서 그 칸을 뺀다 = 제품 운영 기본(무제한 · villages.js `NPC_CAP_PER_VILLAGE` 의 Infinity · T805 자 꼴).
 //   · 시드 = econ 시드(`createWorldV2({seed})` 한 칸 — t17 이 시드를 바꾸는 그 자리). 지도·소굴·전쟁 시드는 그대로.
@@ -20,6 +21,12 @@
 //     econ 이 집 목재 제약을 크루에게 넘긴다(`economy-sim.js buildActOn` · `_t400Live`). 빠른 시계에선 크루가 걷지 못하고
 //     `T315_MAPBEDS=0` 이 지은 침상 상한까지 떼어 econ 주거가 **목재 없이** 는다 ⇒ 작은 마을이 첫해 ~60(t17 ~20)까지 컸다 겨울에 굶는다.
 //     `T400_BUILD_ACT=0` 이면 t17 과 같은 궤적(작은 무리 첫해 최고 21 · 보고/T577_추신 §3). 어느 조건을 기준선으로 둘지는 PM.
+//   ★★[T914 2026-10-24 · T875 회부 1] **그 왜곡을 고쳤다 — 제품 무접촉(아이 env 기본값 둘).** 집 행위가 선 판(`T400_BUILD_ACT` 켬 · 제품 기본)이면 아이에게
+//     `T627_TRIP_DAY=1`(크루 몫을 정본 운영 하루 24분으로 센다 — T627 리허설 시계 ⇒ 크루가 곳간에서 목재를 실제로 꺼내 집을 짓는다)과
+//     `T315_MAPBEDS=1`(지은 침상이 econ 을 묶는다 — 제품 기본 그대로)을 준다 ⇒ econ 주거는 크루가 곳간 목재로 지은 집 안에서만 큰다(라이브와 같은 집 규칙).
+//     T875 판: 첫해 굶어 죽음 6,323 → 216 · 첫해 K 80% 넘긴 마을 150 → 36/153 · 크루가 꺼낸 통나무 0 → 12,231(3시드 · 400날 · 보고/T914).
+//     집 행위가 꺼진 판(서버 기준선 자 `T400_BUILD_ACT=0`)은 종전 그대로다(`T315_MAPBEDS=0` · `T627` 없음 — econ 이 곳간 목재로 짓는다 · 공짜 아님).
+//     부르는 쪽이 준 값이 먼저다. 되돌림(종전 판 자 바이트) = `T627_TRIP_DAY=0 T315_MAPBEDS=0`.
 //   ⚠서버 판은 **바이트 결정론이 아니다**(하루 마감 조각 · 캐러밴 몸 타이밍이 벽시계에 기댄다) — 같은 시드도 판마다 조금 갈린다.
 //     그래서 판정하지 않는다: 이 자의 ok() 는 "판이 끝까지 돌았다 · 시딩이 섰다"뿐이고 수는 **표**다(기준선은 PM 이 착지 때 선언).
 //
@@ -83,6 +90,10 @@ const SEEDS = String(process.argv[3] || '1020,7,42').split(',').map((s) => parse
 const PAR = parseInt(process.env.T577_PAR || '', 10) || Math.max(1, Math.min(3, os.cpus().length));
 const DIR = process.env.T577_DIR || `/tmp/t577-${process.pid}`;
 fs.mkdirSync(DIR, { recursive: true });
+// ★[T914] 집 행위가 선 판인가(제품 기본 켬 · econ 정본과 같은 글자 `!== '0'`) — 그 판이면 크루가 실제로 나르게 아이 env 기본값 둘(머리 주석 T914 줄)
+const HOUSE_ACT = process.env.T400_BUILD_ACT !== '0';
+const KID_MAPBEDS = process.env.T315_MAPBEDS != null ? process.env.T315_MAPBEDS : (HOUSE_ACT ? '1' : '0');
+const KID_TRIPDAY = process.env.T627_TRIP_DAY != null ? process.env.T627_TRIP_DAY : (HOUSE_ACT ? '1' : null);
 // ★[T577 추신] 판 이름 — 판을 가르는 손잡이(후보 · 층 끄기)만 이름에 싣는다(`T577_TAG` 로 덮을 수 있다)
 const TAG = process.env.T577_TAG || Object.keys(process.env).filter((k) => /^(T577_(?!SEED$|DAYS$|OUT$|DIR$|PAR$|TAG$)|VILLAGE_LIFE$|ENABLE_BANDITS$|VILLAGE_CARAVAN_MAX$|T513_DAY_SLICE$|WAR_MINDAY$|T766_[A-Z_]+$)/.test(k)).sort().map((k) => `${k.replace(/^T577_(CAND_)?/, '').toLowerCase()}${process.env[k]}`).join('-') || 'base';
 
@@ -95,7 +106,8 @@ function runOne(seed, k) {
       ZONE_ID: 'hanbando', PORT: String(39100 + ((process.pid + k * 37) % 700)), DB_PATH: db,
       ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
       VILLAGE_DAY_MS: process.env.VILLAGE_DAY_MS || '250',
-      T315_MAPBEDS: process.env.T315_MAPBEDS != null ? process.env.T315_MAPBEDS : '0',
+      T315_MAPBEDS: KID_MAPBEDS,   // ★[T914] 집 행위 켬 판 기본 '1'(지은 침상이 묶는다) · 끔 판 기본 '0'(종전)
+      ...(KID_TRIPDAY != null ? { T627_TRIP_DAY: KID_TRIPDAY } : {}),   // ★[T914] 집 행위 켬 판 기본 '1'(크루 몫 = 정본 운영 하루) · 끔 판은 안 준다(종전)
       VILLAGE_NPC_CAP: process.env.VILLAGE_NPC_CAP || '1',
       T577_SEED: String(seed), T577_DAYS: String(DAYS), T577_OUT: out,
       //   ★[T655] 첫 부팅 조각(T640 · 제품 기본 켬)은 이 자에서 끈다 — 하루 250ms 면 표본이 도는 ~4분 동안 수백 날이 지나 도적 데일리를 건너뛴다(T640 회부 ①).
@@ -118,7 +130,7 @@ function runOne(seed, k) {
 
 (async () => {
   console.log(`\n=== 서버 판 자(T577) — ${DAYS}일 · 시드 ${SEEDS.join('·')} · 판 ${TAG} · 동시 ${PAR} · ${DIR} ===`);
-  console.log(`  조건: VILLAGE_DAY_MS=${process.env.VILLAGE_DAY_MS || '250'} · T315_MAPBEDS=${process.env.T315_MAPBEDS != null ? process.env.T315_MAPBEDS : '0'} · VILLAGE_NPC_CAP=${process.env.VILLAGE_NPC_CAP || '1'} · 도적 ${process.env.ENABLE_BANDITS === '0' ? '끔' : '켬'}`);
+  console.log(`  조건: VILLAGE_DAY_MS=${process.env.VILLAGE_DAY_MS || '250'} · T315_MAPBEDS=${KID_MAPBEDS} · T627_TRIP_DAY=${KID_TRIPDAY != null ? KID_TRIPDAY : '(없음)'} · 집 행위 ${HOUSE_ACT ? '켬' : '끔'} · VILLAGE_NPC_CAP=${process.env.VILLAGE_NPC_CAP || '1'} · 도적 ${process.env.ENABLE_BANDITS === '0' ? '끔' : '켬'}`);
   const res = [];
   const q = SEEDS.map((s, k) => [s, k]);
   await Promise.all(Array.from({ length: Math.min(PAR, q.length) }, async () => {

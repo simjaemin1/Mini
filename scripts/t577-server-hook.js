@@ -56,7 +56,8 @@ function finish(world, L, day) {
   let BX = null; try { const V = require(path.join(ROOT, 'server', 'villages')); BX = V.bodyExitStats ? V.bodyExitStats() : null; } catch (e) { BX = null; }
   const out = {
     seed: SEED || null, days: day, villages: V.length,
-    env: { T315_MAPBEDS: process.env.T315_MAPBEDS || null, VILLAGE_DAY_MS: process.env.VILLAGE_DAY_MS || null,
+    env: { T315_MAPBEDS: process.env.T315_MAPBEDS || null, T627_TRIP_DAY: process.env.T627_TRIP_DAY || null,   // ★[T914] 판 자가 집 행위 켬 판에 주는 두 기본값이 판 JSON 에 남는다
+           VILLAGE_DAY_MS: process.env.VILLAGE_DAY_MS || null,
            VILLAGE_NPC_CAP: process.env.VILLAGE_NPC_CAP || null, ENABLE_BANDITS: process.env.ENABLE_BANDITS || null,
            cand: Object.fromEntries(Object.entries(process.env).filter(([k]) => /^(T577_(?!SEED$|DAYS$|OUT$|DIR$|PAR$|TAG$)|VILLAGE_LIFE$|ENABLE_BANDITS$|VILLAGE_CARAVAN_MAX$|T513_DAY_SLICE$|WAR_MINDAY$|T766_[A-Z_]+$)/.test(k))) },
     eight: { pop, dead, ever, weapQ: +weapQ.toFixed(0), expand, board: S.reqOpened || 0,
