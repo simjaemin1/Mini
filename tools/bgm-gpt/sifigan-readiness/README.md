@@ -354,6 +354,31 @@ solved. The predominantly voiced training gate underrepresents this behavior;
 separate quiet/breath/attack data admission is a future hypothesis to test,
 not a proven sole cause.
 
+### Matched research auditions041–044
+
+`export_corpus_audition.py` loads **no model**. It accepts only the completed
+global1,000 continuation and verifies its two checkpoints, selected original
+files, gate/corpus lineage and reconstruction hashes. NPZs are loaded without
+pickle; both115,200-sample float32arrays must be finite, and each reference
+must be byte-identical to its original corpus prefix. Native24kHz mono FLOAT
+WAV intermediates are round-trip checked byte-exactly, not quantized to PCM16.
+Two separate4.8s original/reconstruction pairs use the existing
+`foundation-model-trial/compare_audio.py` static-LUFS helper. Existing outputs
+are rejected; no original, checkpoint or earlier audition is overwritten.
+Seven synthetic exporter tests plus77SiFi-GAN tests pass; the separate six
+static-comparison tests also pass.
+
+Actual export produced private auditions041/042(deepvib48 original/reconstructed)
+and043/044(Arirang001 original/reconstructed), each48kHz dual-mono AAC192k,
+4.8s/230,400decoded frames and measured−24.0LUFS. Whole-file gains are
++20.0/+11.0/−0.7/−0.1dB; true peaks−12.2/−8.7/−11.2/−14.7dBFS. No EQ,
+AGC, compression, pitch/time edit, phase alignment, source PCM mixing, quiet
+intro crop or muting is applied. Matched global loudness does **not** repair
+the quiet-introduction or within-phrase level defects. Auditions are explicitly
+research intermediates, not approved sound, learned new-score performance or
+new game music. Models/audio/reports remain outsideGit; game defaults are
+unchanged. Credit: **국악기 음원 제공 — 국립국악원 (공공누리 제1유형)**.
+
 The new full checkpoint is611,757,604bytes and inference checkpoint45,317,119
 bytes. Experiment contents before the final JSON were1,441,303,856bytes, below
 the announced2GB cap, with15,058,972,672bytes free at completion. Observed final
