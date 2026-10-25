@@ -30,6 +30,9 @@
 //     R 켬 = 저장본보다 새로운 산 몸(제작이력 · 어획 · 신체 · HP)이 승계 · 행까지 이어진다 · S 끔(`=0`) = 저장본으로 되돌아감(종전 결함 증인).
 //   ★[T916 2026-10-24] ⑧ central 이 내려간 동안 로그아웃 — 못 닿은 저장을 존 줄에 남겨 다시 보낸다(손잡이 `T916_SAVE_RETRY` 켬 기본) ·
 //     U 켬 = 다시 붙은 몸 · 행이 central 이 없던 동안의 몸을 잇는다 · V 끔(`=0`) = 사라진다(T894 회부 1 증인).
+//   ★[T927 2026-10-25] ⑨ 몸 버전 조건부 쓰기(손잡이 `T927_BODY_VER` 켬 기본) — 존은 저장마다 몸 버전을 올려 싣고 central 은 행보다 작은 버전을 안 쓴다(`bodyVerTrip`) ·
+//     ⚠끔 증인 넷(T868 Q · T831/T843 G · H · T867 K)은 `T927_BODY_VER=0` 판에서 돈다 — 켬이면 central 이 그 늦은 옛 저장을 먼저 거절해 그 손잡이의 결함이 안 보인다
+//     (T927 켬 판 실측: 넷 다 행이 안 되돌아갔다 — 증인이 그 손잡이 하나만 재게 판을 가른다 · 단언 글자 무변).
 //   ★상황 선행 assert: 왕복이 **실제로 존 경계를 넘었는지**(handoff 메시지를 받았는지) 먼저 본다.
 //     안 넘었으면 이 하네스는 아무것도 재고 있지 않다.
 //
@@ -436,6 +439,29 @@ async function saveRetryTrip(tag) {
   let row1 = null; try { row1 = JSON.parse(((await rowOf(pid)) || {}).tools_json || 'null'); } catch (e) {}
   return { up, stale, samePid: b.welcome.playerId === pid, live, after, row0, row1 };
 }
+// ★★[T927] ⑨ 몸 버전 조건부 쓰기 — 존은 저장마다 몸 버전(`sv`)을 하나 올려 싣고 · central 은 행보다 작은 몸 버전의 저장을 안 쓴다(`stale`).
+//   손님 하나 저장(지급) → 행의 몸 버전을 읽는다(0 이 아니다 — 존이 실었다 · 상황 선행) → 이 하네스가 central 에 **옛 버전**(행 − 1) · 다른 몸(생선 0) ·
+//   다른 짐(나무 999)으로 직접 쓴다 → 안 쓰여야 한다(행 그대로). 같은 버전 · 같은 몸 칸으로 쓰면 쓰인다(종전대로 — 같으면 쓴다). 끊으면 존의 닫힐 때 저장이
+//   그 위 차례로 쓰인다(존이 이 하네스 쓰기에 막히지 않는다). 넘긴 판(A)의 도착 몸 버전 ≥ 넘는 순간 몸 버전(도착 존이 출발 존 차례 위에서 센다)은 본문이 잰다.
+async function bodyVerTrip() {
+  const Z = (await jget(`http://localhost:${CPORT}/zones`)).zones; const han = Z.hanbando;
+  const a = await open(`${han.wsUrl}/?username=&name=sv927&color=%23ffffff`);
+  const pid = a.welcome.playerId;
+  a.ws.send(JSON.stringify({ type: '__e2e_give', items: { pillar: 3 }, tools: ['axe'], kgs: { fish: [2.0, 0.4] }, quiet: true }));   // 저장한다
+  await sleep(1200);
+  const post = async (body) => { try { return await (await fetch(`http://localhost:${CPORT}/player/${encodeURIComponent(pid)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) })).json(); } catch (e) { return { err: e.message }; } };
+  const r0 = await rowOf(pid); let b0 = null; try { b0 = JSON.parse(r0.tools_json); } catch (e) {}
+  const sv0 = b0 && b0.sv;
+  const old = Object.assign({}, b0, { sv: (+sv0 || 0) - 1, kgLedger: null });
+  const resOld = await post({ tools_json: JSON.stringify(old), wood: 999 });
+  const r1 = await rowOf(pid);
+  const resEq = await post({ tools_json: r0.tools_json, wood: 7 });
+  const r2 = await rowOf(pid);
+  try { a.ws.close(); } catch (e) {}
+  await sleep(1500);
+  const r3 = await rowOf(pid); let b3 = null; try { b3 = JSON.parse(r3.tools_json); } catch (e) {}
+  return { sv0, resOld, resEq, r0, r1, r2, r3, sv3: b3 && b3.sv };
+}
 
 (async () => {
   console.log('\n=== 존 핸드오프 — 몸이 새지 않는다 (2존 실서버) ===');
@@ -715,8 +741,27 @@ async function saveRetryTrip(tag) {
       `잃은 칸 ${JSON.stringify(lostU)} · 신체 ${JSON.stringify(tkSoft(U.live))} → ${JSON.stringify(tkSoft(U.after))} · HP ${hp0} → ${hpA}`);
     ok(U.stale && !rowLostU.length && tkNear(tkSoft(U.row1), tkSoft(U.live)), '★★[T916 켬] 끊은 뒤 행도 그 몸(영구 소실 0)', `행 잃은 칸 ${JSON.stringify(rowLostU)}`);
   }
+  // ★★[T927] ⑨ 몸 버전 조건부 쓰기 켬(기본 · `T927_BODY_VER` 안 줌) — 위 `bodyVerTrip` · 넘긴 판 A 의 몸 버전 이음 · 글자(존 셋 · central 하나)
+  {
+    const csrc = fs.readFileSync(path.join(ROOT, 'server', 'central.js'), 'utf8');
+    ok(/\n  if \(T927_BODY_VER\) player\._saveVer = \(\+player\._saveVer \|\| 0\) \+ 1;/.test(cutSrc(src, '\nfunction _savePatch(', '\n}\n'))
+      && /\n  if \(T927_BODY_VER\) o\.sv = \+p\._saveVer \|\| 0;/.test(cutSrc(src, '\nfunction serializeBody(p) {', '\n}\n'))
+      && /\n  if \(Number\.isFinite\(o\.sv\)\) out\.sv = o\.sv;/.test(cutSrc(src, '\nfunction parseBody(raw, opts) {', '\n}\n'))
+      && /\n  if \(T927_BODY_VER\) p\._saveVer = \+B\.sv \|\| 0;/.test(cutSrc(src, '\nfunction _bodyInto(p, B, equipped) {', '\n}\n'))
+      && /if \(T927_BODY_VER\) \{\s*\n\s*p = stmtGetPlayer\.get\(id\) \|\| p;[\s\S]{0,300}vIn < vRow\) return jsonResp\(res, 200, \{ ok: false, reason: 'stale'/.test(csrc),
+      '⑨ ★[T927] 글자 — 저장마다 몸 버전 하나 올림(`_savePatch`) · 몸이 싣는다(`serializeBody`) · 읽는다(`parseBody`) · 사람에 얹는다(`_bodyInto`) · central 은 몸을 받은 뒤 행을 다시 읽어 작은 버전을 안 쓴다');
+    const A0 = R.beforeCross && R.beforeCross.sv, A1 = R.after && R.after.sv, A2 = R.again && R.again.sv;
+    ok(R.crossed && Number.isFinite(A0) && A0 > 0 && Number.isFinite(A1) && A1 >= A0 && Number.isFinite(A2) && A2 > A1,
+      '⑨ ★[T927 켬] 넘긴 판(A) — 도착 몸 버전이 넘는 순간 몸 버전 위에서 잇는다 · 다시 접속한 몸은 그 위(도착 존 저장 · 행에서 읽음)', `넘는 순간 ${A0} → 도착 ${A1} → 다시 접속 ${A2}`);
+    const W = await bodyVerTrip();
+    ok(Number.isFinite(W.sv0) && W.sv0 > 0, '★[상황 · T927 켬] 존이 저장한 행에 몸 버전이 있다(0 이 아니다 — 아래가 자명 통과가 아니다)', `행 몸 버전 ${W.sv0}`);
+    ok(W.resOld && W.resOld.ok === false && W.resOld.reason === 'stale' && W.resOld.sv === W.sv0 && W.r1.tools_json === W.r0.tools_json && W.r1.wood === W.r0.wood && W.r1.last_seen === W.r0.last_seen,
+      '★★⑨ [T927 켬] 옛 몸 버전(행 − 1)의 저장은 central 이 안 쓴다 — 몸 칸 · 짐 · `last_seen` 그대로(`stale`)', `응답 ${JSON.stringify(W.resOld)} · 나무 ${W.r0.wood} → ${W.r1.wood}`);
+    ok(W.resEq && W.resEq.ok === true && W.r2.wood === 7, '⑨ [T927 켬] 같은 몸 버전의 저장은 종전대로 쓴다(같으면 쓴다 — 버리는 것은 작은 것뿐)', `응답 ${JSON.stringify(W.resEq)} · 나무 ${W.r2.wood}`);
+    ok(Number.isFinite(W.sv3) && W.sv3 > W.sv0 && W.r3.last_seen > W.r2.last_seen, '⑨ [T927 켬] 끊으면 존의 닫힐 때 저장이 그 위 차례로 쓰인다(존은 막히지 않는다)', `몸 버전 ${W.sv0} → ${W.sv3}`);
+  }
   killAll(); await sleep(4000);
-  if (!await startZones(null, { T868_PROMOTE_BODY: '0', T890_TAKEOVER_BODY: '0', T916_SAVE_RETRY: '0' })) { console.log('  ✗ T868 끔 탐침 기동 실패'); process.exit(1); }   // ★[T916] 저장 다시 보내기 끔 증인(V)도 이 판(승격 · 승계 탐침은 central 을 안 내린다)   // [PM 착지 10-23] 켬 기본 — 끔 탐침은 `=0` · ★[T890] 승계 끔 증인도 이 판(승격 탐침은 승계를 안 밟는다)
+  if (!await startZones(null, { T868_PROMOTE_BODY: '0', T890_TAKEOVER_BODY: '0', T916_SAVE_RETRY: '0', T927_BODY_VER: '0' })) { console.log('  ✗ T868 끔 탐침 기동 실패'); process.exit(1); }   // ★[T916] 저장 다시 보내기 끔 증인(V)도 이 판(승격 · 승계 탐침은 central 을 안 내린다)   // [PM 착지 10-23] 켬 기본 — 끔 탐침은 `=0` · ★[T890] 승계 끔 증인도 이 판(승격 탐침은 승계를 안 밟는다)
   const Q = await promoteTrip('Q');
   ok(Q.crossed && Q.promoted, '[상황 · T868 끔 탐침] 관측 소켓을 승격해 넘었다', Q.crossed ? `승격 welcome ${Q.promoted}` : '넘지 못함');
   if (Q.crossed && Q.promoted) {
@@ -771,7 +816,7 @@ async function saveRetryTrip(tag) {
       `행 생선 ${rowFish(RF.r1)} → ${rowFish(RF.r2)} · 도착 존 산 몸 ${fishN(RF.live)}`);
   }
   killAll(); await sleep(4000);
-  if (!await startZones(SECRET_H_CLOSE, { SAVE_INTERVAL_MS: '600000', T823_FREEZE_SHELL: '0' })) { console.log('  ✗ T831 끔 탐침 기동 실패'); process.exit(1); }
+  if (!await startZones(SECRET_H_CLOSE, { SAVE_INTERVAL_MS: '600000', T823_FREEZE_SHELL: '0', T927_BODY_VER: '0' })) { console.log('  ✗ T831 끔 탐침 기동 실패'); process.exit(1); }
   const RG = await closeRace('G');
   ok(RG.crossed && RG.joined && !!RG.live && !!RG.r1 && !!RG.r2, '[상황 · T831 끔 탐침] 넘었고 · 토큰으로 도착 존에 붙어 그 존에 몸이 산다 · 행을 두 번 읽었다', RG.live ? `도착 존 생선 ${fishN(RG.live)}` : '');
   if (RG.crossed && RG.joined && RG.r1 && RG.r2) {
@@ -788,7 +833,7 @@ async function saveRetryTrip(tag) {
   killAll(); await sleep(4000);
   //   H — 주기 저장 문(정보): 끔 판 껍데기는 ACK 시한까지 주기 저장 차례(1초)를 맞는다. 첫 읽음(닫히기 전)이 hanbando 면 그 문이 도착 존 접속 저장 **뒤에**
   //   출발 존을 쓴 것이다(차례의 위상이 도착 존 붙는 시간보다 늦을 때만 — 우연이라 단언하지 않고 센다). 켬 판(F)은 같은 창에서 그 문도 막았다(위 F 의 첫 읽음).
-  if (!await startZones(SECRET_H, { SAVE_INTERVAL_MS: '600000', T823_FREEZE_SHELL: '0' })) { console.log('  ✗ T831 주기 저장 탐침 기동 실패'); process.exit(1); }
+  if (!await startZones(SECRET_H, { SAVE_INTERVAL_MS: '600000', T823_FREEZE_SHELL: '0', T927_BODY_VER: '0' })) { console.log('  ✗ T831 주기 저장 탐침 기동 실패'); process.exit(1); }
   const RH = await closeRace('H');
   ok(RH.crossed && RH.joined && !!RH.r1 && !!RH.r2 && RH.aOpenAtR1, '[상황 · T831 끔 탐침 H] 넘었고 · 도착 존에 붙었고 · 껍데기가 열린 채 첫 행을 읽었다', RH.r1 ? `붙음 ${RH.tJ - RH.tMsg}ms · 첫 읽음 ${RH.tR1 - RH.tMsg}ms` : '');
   if (RH.r1 && RH.r2) console.log(`  · [정보 · T831] 주기 저장 문 — 끔 판 첫 읽음(껍데기 닫히기 전) 행 = ${at(RH.r1)}${RH.r1.last_zone === 'hanbando' ? ' ← 껍데기 주기 저장이 도착 존 접속 저장 뒤에 출발 존을 썼다' : ' (이 판은 차례가 붙기 전이었다)'} · 닫힌 뒤 ${at(RH.r2)}`);
@@ -827,7 +872,7 @@ async function saveRetryTrip(tag) {
       '★[T867 T498 켬] 자리도 도착 존 접속 저장 그대로 · 다시 접속(로비)이 도착 존으로', `${at(RJ.r1)} → ${at(RJ.r2)} · 로비 ${lobby(RJ)}`);
   }
   killAll(); await sleep(4000);
-  if (!await startZones(SECRET_H_CLOSE, { SAVE_INTERVAL_MS: '600000', T498_HANDOFF_PAYLOAD: '1', T823_FREEZE_SHELL: '0' })) { console.log('  ✗ T867 T498 켬 · 끔 탐침 기동 실패'); process.exit(1); }
+  if (!await startZones(SECRET_H_CLOSE, { SAVE_INTERVAL_MS: '600000', T498_HANDOFF_PAYLOAD: '1', T823_FREEZE_SHELL: '0', T927_BODY_VER: '0' })) { console.log('  ✗ T867 T498 켬 · 끔 탐침 기동 실패'); process.exit(1); }
   const RK = await closeRace('K', { rowAtMsg: true });
   ok(RK.crossed && RK.joined && !!RK.live && !!RK.r0 && !!RK.r1 && !!RK.r2 && RK.r0.last_zone === 'hanbando',
     '[상황 · T867 T498 켬 · T823 끔 탐침] 넘었고 · 도착 존에 붙었고 · 넘기 메시지 때 행 = 출발 존(T498 켬)', RK.r0 ? `넘기 메시지 때 ${at(RK.r0)}` : '');

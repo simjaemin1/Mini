@@ -1,0 +1,1287 @@
+{
+ "card": "T927",
+ "made": "2026-10-25",
+ "probe": "node scripts/t927-save-race-probe.js 3 [token,promote,calm] [--off]",
+ "delayMs": 3000,
+ "fields": [
+  "kgLedger",
+  "tools",
+  "lots",
+  "last_zone"
+ ],
+ "on": {
+  "sum": {
+   "token": {
+    "n": 3,
+    "same": 3,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 3,
+     "tools": 3,
+     "lots": 3,
+     "last_zone": 3
+    },
+    "liveStill": 3
+   },
+   "promote": {
+    "n": 3,
+    "same": 3,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 3,
+     "tools": 3,
+     "lots": 3,
+     "last_zone": 3
+    },
+    "liveStill": 3
+   },
+   "calm": {
+    "n": 3,
+    "same": 3,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 3,
+     "tools": 3,
+     "lots": 3,
+     "last_zone": 3
+    },
+    "liveStill": 3
+   }
+  },
+  "sec": 146,
+  "trips": [
+   {
+    "P": "token",
+    "k": 1,
+    "crossed": true,
+    "pid": "anon_VrhmNfMYtJkD",
+    "promoted": null,
+    "joinMs": 439,
+    "dropMs": 739,
+    "atMs": 1148,
+    "nPosts": 11,
+    "nDelayed": 10,
+    "lateAfterAt": 2,
+    "delayedResp": {
+     "{\"ok\":true}": 7,
+     "{\"ok\":false,\"reason\":\"stale\",\"sv\":13}": 1,
+     "{\"ok\":false,\"reason\":\"stale\",\"sv\":15}": 2
+    },
+    "delayedSv": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ],
+    "passSv": [
+     [
+      "nippon",
+      13
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": 15,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "token",
+    "k": 2,
+    "crossed": true,
+    "pid": "anon_PRevnZi_0t-C",
+    "promoted": null,
+    "joinMs": 55,
+    "dropMs": 356,
+    "atMs": 811,
+    "nPosts": 11,
+    "nDelayed": 10,
+    "lateAfterAt": 2,
+    "delayedResp": {
+     "{\"ok\":true}": 7,
+     "{\"ok\":false,\"reason\":\"stale\",\"sv\":13}": 1,
+     "{\"ok\":false,\"reason\":\"stale\",\"sv\":15}": 2
+    },
+    "delayedSv": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ],
+    "passSv": [
+     [
+      "nippon",
+      13
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": 15,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "token",
+    "k": 3,
+    "crossed": true,
+    "pid": "anon_7phioohLgVqM",
+    "promoted": null,
+    "joinMs": 57,
+    "dropMs": 358,
+    "atMs": 764,
+    "nPosts": 11,
+    "nDelayed": 10,
+    "lateAfterAt": 2,
+    "delayedResp": {
+     "{\"ok\":true}": 7,
+     "{\"ok\":false,\"reason\":\"stale\",\"sv\":14}": 1,
+     "{\"ok\":false,\"reason\":\"stale\",\"sv\":15}": 2
+    },
+    "delayedSv": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ],
+    "passSv": [
+     [
+      "nippon",
+      13
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": 15,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "promote",
+    "k": 4,
+    "crossed": true,
+    "pid": "anon_SBD9RoRY_-jg",
+    "promoted": true,
+    "joinMs": 59,
+    "dropMs": 360,
+    "atMs": 764,
+    "nPosts": 11,
+    "nDelayed": 10,
+    "lateAfterAt": 2,
+    "delayedResp": {
+     "{\"ok\":true}": 7,
+     "{\"ok\":false,\"reason\":\"stale\",\"sv\":14}": 1,
+     "{\"ok\":false,\"reason\":\"stale\",\"sv\":15}": 2
+    },
+    "delayedSv": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ],
+    "passSv": [
+     [
+      "nippon",
+      13
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": 15,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "promote",
+    "k": 5,
+    "crossed": true,
+    "pid": "anon_hGgnnKeGWtFY",
+    "promoted": true,
+    "joinMs": 51,
+    "dropMs": 352,
+    "atMs": 759,
+    "nPosts": 11,
+    "nDelayed": 10,
+    "lateAfterAt": 2,
+    "delayedResp": {
+     "{\"ok\":true}": 7,
+     "{\"ok\":false,\"reason\":\"stale\",\"sv\":15}": 3
+    },
+    "delayedSv": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ],
+    "passSv": [
+     [
+      "nippon",
+      13
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": 15,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "promote",
+    "k": 6,
+    "crossed": true,
+    "pid": "anon_HkpDMuantLBZ",
+    "promoted": true,
+    "joinMs": 62,
+    "dropMs": 362,
+    "atMs": 767,
+    "nPosts": 11,
+    "nDelayed": 10,
+    "lateAfterAt": 2,
+    "delayedResp": {
+     "{\"ok\":true}": 7,
+     "{\"ok\":false,\"reason\":\"stale\",\"sv\":15}": 3
+    },
+    "delayedSv": [
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ],
+    "passSv": [
+     [
+      "nippon",
+      13
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": 15,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "calm",
+    "k": 7,
+    "crossed": true,
+    "pid": "anon_wTcD70V0i7ZZ",
+    "promoted": null,
+    "joinMs": 50,
+    "dropMs": 352,
+    "atMs": 760,
+    "nPosts": 11,
+    "nDelayed": 0,
+    "lateAfterAt": 0,
+    "delayedResp": {},
+    "delayedSv": [],
+    "passSv": [
+     [
+      "hanbando",
+      3
+     ],
+     [
+      "hanbando",
+      4
+     ],
+     [
+      "hanbando",
+      5
+     ],
+     [
+      "hanbando",
+      6
+     ],
+     [
+      "hanbando",
+      7
+     ],
+     [
+      "hanbando",
+      8
+     ],
+     [
+      "hanbando",
+      9
+     ],
+     [
+      "hanbando",
+      10
+     ],
+     [
+      "hanbando",
+      11
+     ],
+     [
+      "hanbando",
+      12
+     ],
+     [
+      "nippon",
+      13
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": 15,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "calm",
+    "k": 8,
+    "crossed": true,
+    "pid": "anon_emDWHWFys_eC",
+    "promoted": null,
+    "joinMs": 47,
+    "dropMs": 347,
+    "atMs": 752,
+    "nPosts": 11,
+    "nDelayed": 0,
+    "lateAfterAt": 0,
+    "delayedResp": {},
+    "delayedSv": [],
+    "passSv": [
+     [
+      "hanbando",
+      3
+     ],
+     [
+      "hanbando",
+      4
+     ],
+     [
+      "hanbando",
+      5
+     ],
+     [
+      "hanbando",
+      6
+     ],
+     [
+      "hanbando",
+      7
+     ],
+     [
+      "hanbando",
+      8
+     ],
+     [
+      "hanbando",
+      9
+     ],
+     [
+      "hanbando",
+      10
+     ],
+     [
+      "hanbando",
+      11
+     ],
+     [
+      "hanbando",
+      12
+     ],
+     [
+      "nippon",
+      13
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": 15,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "calm",
+    "k": 9,
+    "crossed": true,
+    "pid": "anon_FYiEz6Z7D99a",
+    "promoted": null,
+    "joinMs": 55,
+    "dropMs": 355,
+    "atMs": 759,
+    "nPosts": 11,
+    "nDelayed": 0,
+    "lateAfterAt": 0,
+    "delayedResp": {},
+    "delayedSv": [],
+    "passSv": [
+     [
+      "hanbando",
+      3
+     ],
+     [
+      "hanbando",
+      4
+     ],
+     [
+      "hanbando",
+      5
+     ],
+     [
+      "hanbando",
+      6
+     ],
+     [
+      "hanbando",
+      7
+     ],
+     [
+      "hanbando",
+      8
+     ],
+     [
+      "hanbando",
+      9
+     ],
+     [
+      "hanbando",
+      10
+     ],
+     [
+      "hanbando",
+      11
+     ],
+     [
+      "hanbando",
+      12
+     ],
+     [
+      "nippon",
+      13
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": 15,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   }
+  ]
+ },
+ "off": {
+  "sum": {
+   "token": {
+    "n": 3,
+    "same": 0,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 0,
+     "tools": 3,
+     "lots": 0,
+     "last_zone": 0
+    },
+    "liveStill": 3
+   },
+   "promote": {
+    "n": 3,
+    "same": 0,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 0,
+     "tools": 3,
+     "lots": 0,
+     "last_zone": 0
+    },
+    "liveStill": 3
+   },
+   "calm": {
+    "n": 3,
+    "same": 3,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 3,
+     "tools": 3,
+     "lots": 3,
+     "last_zone": 3
+    },
+    "liveStill": 3
+   }
+  },
+  "sec": 261,
+  "trips": [
+   {
+    "P": "token",
+    "k": 2,
+    "crossed": true,
+    "pid": "anon_an6XmUFTKHxe",
+    "promoted": null,
+    "joinMs": 49,
+    "dropMs": 351,
+    "atMs": 757,
+    "nPosts": 11,
+    "nDelayed": 10,
+    "lateAfterAt": 2,
+    "delayedResp": {
+     "{\"ok\":true}": 10
+    },
+    "delayedSv": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "passSv": [
+     [
+      "nippon",
+      null
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":1,\"kg\":2,\"d\":1245067},{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "hanbando",
+    "row1Sv": null,
+    "same1": {
+     "kgLedger": false,
+     "tools": true,
+     "lots": false,
+     "last_zone": false
+    },
+    "all1": false,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 2
+   },
+   {
+    "P": "token",
+    "k": 3,
+    "crossed": true,
+    "pid": "anon_F4qCvr8lEjYF",
+    "promoted": null,
+    "joinMs": 54,
+    "dropMs": 354,
+    "atMs": 760,
+    "nPosts": 11,
+    "nDelayed": 10,
+    "lateAfterAt": 3,
+    "delayedResp": {
+     "{\"ok\":true}": 10
+    },
+    "delayedSv": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "passSv": [
+     [
+      "nippon",
+      null
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":1,\"kg\":2,\"d\":1245067},{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "hanbando",
+    "row1Sv": null,
+    "same1": {
+     "kgLedger": false,
+     "tools": true,
+     "lots": false,
+     "last_zone": false
+    },
+    "all1": false,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "token",
+    "k": 5,
+    "crossed": true,
+    "pid": "anon_e4iT71-rucc3",
+    "promoted": null,
+    "joinMs": 58,
+    "dropMs": 359,
+    "atMs": 763,
+    "nPosts": 12,
+    "nDelayed": 11,
+    "lateAfterAt": 3,
+    "delayedResp": {
+     "{\"ok\":true}": 11
+    },
+    "delayedSv": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "passSv": [
+     [
+      "nippon",
+      null
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":1,\"kg\":2,\"d\":1245067},{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "hanbando",
+    "row1Sv": null,
+    "same1": {
+     "kgLedger": false,
+     "tools": true,
+     "lots": false,
+     "last_zone": false
+    },
+    "all1": false,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 2
+   },
+   {
+    "P": "promote",
+    "k": 8,
+    "crossed": true,
+    "pid": "anon_U7JCgQEcCyR1",
+    "promoted": true,
+    "joinMs": 49,
+    "dropMs": 350,
+    "atMs": 754,
+    "nPosts": 12,
+    "nDelayed": 11,
+    "lateAfterAt": 3,
+    "delayedResp": {
+     "{\"ok\":true}": 11
+    },
+    "delayedSv": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "passSv": [
+     [
+      "nippon",
+      null
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":1,\"kg\":2,\"d\":1245067},{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "hanbando",
+    "row1Sv": null,
+    "same1": {
+     "kgLedger": false,
+     "tools": true,
+     "lots": false,
+     "last_zone": false
+    },
+    "all1": false,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 3
+   },
+   {
+    "P": "promote",
+    "k": 11,
+    "crossed": true,
+    "pid": "anon_aywKmo-3J_Hv",
+    "promoted": true,
+    "joinMs": 51,
+    "dropMs": 352,
+    "atMs": 756,
+    "nPosts": 11,
+    "nDelayed": 10,
+    "lateAfterAt": 3,
+    "delayedResp": {
+     "{\"ok\":true}": 10
+    },
+    "delayedSv": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "passSv": [
+     [
+      "nippon",
+      null
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":1,\"kg\":2,\"d\":1245067},{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "hanbando",
+    "row1Sv": null,
+    "same1": {
+     "kgLedger": false,
+     "tools": true,
+     "lots": false,
+     "last_zone": false
+    },
+    "all1": false,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 3
+   },
+   {
+    "P": "promote",
+    "k": 12,
+    "crossed": true,
+    "pid": "anon_xFF5W6XpxhmI",
+    "promoted": true,
+    "joinMs": 50,
+    "dropMs": 350,
+    "atMs": 754,
+    "nPosts": 12,
+    "nDelayed": 11,
+    "lateAfterAt": 3,
+    "delayedResp": {
+     "{\"ok\":true}": 11
+    },
+    "delayedSv": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "passSv": [
+     [
+      "nippon",
+      null
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":1,\"kg\":2,\"d\":1245067},{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "hanbando",
+    "row1Sv": null,
+    "same1": {
+     "kgLedger": false,
+     "tools": true,
+     "lots": false,
+     "last_zone": false
+    },
+    "all1": false,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "calm",
+    "k": 13,
+    "crossed": true,
+    "pid": "anon_Am_FFFHC9f82",
+    "promoted": null,
+    "joinMs": 48,
+    "dropMs": 349,
+    "atMs": 753,
+    "nPosts": 11,
+    "nDelayed": 0,
+    "lateAfterAt": 0,
+    "delayedResp": {},
+    "delayedSv": [],
+    "passSv": [
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "nippon",
+      null
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": null,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "calm",
+    "k": 14,
+    "crossed": true,
+    "pid": "anon_f67hKM8osmvy",
+    "promoted": null,
+    "joinMs": 69,
+    "dropMs": 369,
+    "atMs": 774,
+    "nPosts": 11,
+    "nDelayed": 0,
+    "lateAfterAt": 0,
+    "delayedResp": {},
+    "delayedSv": [],
+    "passSv": [
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "nippon",
+      null
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": null,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   },
+   {
+    "P": "calm",
+    "k": 15,
+    "crossed": true,
+    "pid": "anon_wk5R-t6RoMai",
+    "promoted": null,
+    "joinMs": 44,
+    "dropMs": 345,
+    "atMs": 749,
+    "nPosts": 11,
+    "nDelayed": 0,
+    "lateAfterAt": 0,
+    "delayedResp": {},
+    "delayedSv": [],
+    "passSv": [
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "hanbando",
+      null
+     ],
+     [
+      "nippon",
+      null
+     ]
+    ],
+    "liveFish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Fish": "{\"fish\":[{\"id\":2,\"kg\":0.4,\"d\":1245067},{\"id\":3,\"kg\":1.1,\"d\":1245067}]}",
+    "row1Zone": "nippon",
+    "row1Sv": null,
+    "same1": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all1": true,
+    "liveStill": true,
+    "same2": {
+     "kgLedger": true,
+     "tools": true,
+     "lots": true,
+     "last_zone": true
+    },
+    "all2": true,
+    "tries": 1
+   }
+  ]
+ },
+ "preFix_main": {
+  "note": "고치기 전 main 코드(몸 버전 칸 없음) — 끔과 같은 뜻",
+  "sum": {
+   "token": {
+    "n": 2,
+    "same": 0,
+    "sameAfterClose": 2,
+    "byField": {
+     "kgLedger": 0,
+     "tools": 2,
+     "lots": 0,
+     "last_zone": 0
+    },
+    "liveStill": 2
+   },
+   "promote": {
+    "n": 2,
+    "same": 0,
+    "sameAfterClose": 2,
+    "byField": {
+     "kgLedger": 0,
+     "tools": 2,
+     "lots": 0,
+     "last_zone": 0
+    },
+    "liveStill": 2
+   },
+   "calm": {
+    "n": 3,
+    "same": 3,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 3,
+     "tools": 3,
+     "lots": 3,
+     "last_zone": 3
+    },
+    "liveStill": 3
+   }
+  },
+  "sec": 303
+ }
+}
