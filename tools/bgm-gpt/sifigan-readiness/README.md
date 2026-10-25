@@ -311,3 +311,58 @@ set-derived list order—is tested after the context exits.
 
 This continuation is informed development validation. It is not an untouched
 test set, a best-checkpoint search, or a promise that500more steps fix timbre.
+
+### Actual global1,000 result
+
+The strict parent-final baseline checks passed before any new update. Another
+500G/D updates completed in416.38seconds (training389.60seconds), cumulative
+829.73seconds for both runs, without changing data/features/gain/losses. On the
+same42development windows, fit log-mel L1 fell0.88642→0.71585 and heldout
+2.10983→1.63432. This adaptive development result is not an untouched test or
+proof of convergence. Original500-step files remain preserved.
+
+At unchanged source-only timestamps/support, the two full4.8s clips changed:
+
+| Diagnostic | Deep vibrato,500→1,000 | Arirang001,500→1,000 |
+|---|---|---|
+| generated voiced / source support | 419/821→821/821 | 809/825→811/825 |
+| within50c / source support | 179/821→819/821 | 711/825→802/825 |
+| conditional median absolute error | 65.65c→4.85c | 9.37c→3.63c |
+| conditional95th absolute error | 107.15c→12.27c | 82.41c→24.31c |
+| whole-waveform RMS relative to source | +10.89→+9.42dB | −3.77→−0.67dB |
+| source-fixed level-contour residual RMS after one median offset | 1.73→2.79dB | 2.68→4.24dB |
+
+The pitch improvement is real under this estimator, not a complete sound-quality
+improvement: **level-envelope residuals worsened** in both clips. Deep-vibrato
+detrended contour correlation is0.98295 with all821source-support frames now
+measured; source/generated contour RMS38.27/40.50c and adjacent-frame step
+proxy3.65/4.66c still do not establish naturalness. Arirang retains8YIN-relative
+octave-down frames near the already documented ambiguous harmonic event;
+that count is not8proven synthesis errors. Transitions outside reference pitch
+support, breath/noise quality, daegeum identity and new-score performance remain
+unapproved. No pitch edit, normalization, source PCM mixing or output EQ was
+used to obtain these raw results.
+
+An additional quiet-region audit exposes a concrete failure omitted by the
+source>−60dB level denominator: the first0.000–0.610seconds of deep-vibrato
+contains122source frames at/below−60dBFS. All122generated frames exceed that
+threshold; source/generated median frame RMS is−82.39/−39.72dBFS. This is not
+a claim about what kind of noise is heard, but the original quiet introduction
+is plainly not reconstructed as quiet. The full clip must retain this defect
+in any research audition rather than cropping/muting it or calling breaths
+solved. The predominantly voiced training gate underrepresents this behavior;
+separate quiet/breath/attack data admission is a future hypothesis to test,
+not a proven sole cause.
+
+The new full checkpoint is611,757,604bytes and inference checkpoint45,317,119
+bytes. Experiment contents before the final JSON were1,441,303,856bytes, below
+the announced2GB cap, with15,058,972,672bytes free at completion. Observed final
+RSS101,744,640bytes/MPS driver2,463,956,992bytes are not peak measurements.
+There is no active training process after this bounded pilot.
+
+Read-only corpus-neighborhood diagnosis also found that all821deep-vibrato
+support frames have accepted-fit neighbors within±50c and±3dB. Its frame-RMS
+median−45.35dBFS is quiet (about the1.9th percentile globally,9.3rd near its
+median pitch), but not outside all fit pitch/level coverage. Insufficiently
+learned quiet-level mapping is a hypothesis, not an established cause or proof
+that the representation is sufficient for daegeum identity.
