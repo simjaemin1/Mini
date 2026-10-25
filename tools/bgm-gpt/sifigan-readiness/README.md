@@ -154,3 +154,78 @@ recordings, feature-quality checks (especially high-register F0/AP), then a
 bounded training pilot and unaltered-pitch heldout reconstruction. Only
 listening can accept daegeum identity; score-to-feature performance generation
 is still a separate stage. No new game BGM is ready.
+
+## 2026-10-25: broader corpus and bounded scratch training pilot
+
+`prepare_corpus.py` reads13lossless native originals in full: sustained,
+vibrato, deep-vibrato scales, Taepyeongga/daruchigi, noniro/nira/staccato/
+crescendo, and4Arirang phrases. Their archive ledger labels are retained;
+no new articulation labels are inferred from sound. ALL Arirang phrases are
+one evaluation-only title group, together with a separate deep-vibrato source.
+They were historically inspected and are not blind. Eight native files are
+48kHz and five44.1kHz; no MP3 or old16k feature input is used.
+
+Actual preparation took336.50seconds, preserving975.155seconds from
+975.179043seconds of originals (24.043ms total sub5ms tails only). Thirteen
+NPZs contain raw24k waveform, WORLD F0/cf0/mcep+bap,64ms centered24kHz FFT-YIN
+and RMS, and the unmodified all-bin-D4C-AP>=0.999 flag. The independent YIN
+uses a5ms grid and first CMNDF<0.17 trough;1-CMNDF is an uncalibrated support
+proxy, not a truth label. Source/decoded-PCM duplicates and original changes
+are rejected. Original waveforms/features are never repaired by the gate.
+
+`audit_corpus.py` checks70-frame/350ms windows every35frames. Eligibility
+requires80%source-YIN support>=0.90,95%Harvest agreement within50c on that
+source-fixed support, and less than10%all-bin-AP-one among Harvest-voiced
+frames. There is NO pitch-derivative or vibrato-depth restriction. These
+provisional criteria underrepresent legitimate breath, attack and staccato;
+rejected windows are not declared bad performances. All1,148heldout candidate
+windows, including failures, remain visible in the gate.
+
+The actual fit gate accepted2,097of4,404overlapping windows, whose **unique
+frame union is395.5seconds of772.84seconds raw fit audio**, not733.95seconds
+of unique data. Fit-only pitch-bin counts are476/890/535/196in200–400,
+400–800,800–1200,1200–1800Hz; no70–200Hz window passed. Staccato contributes
+only2windows/0.7unique seconds, daruchigi6windows/2.1seconds. This is not
+comprehensive articulation coverage. Independent union-frame recomputation
+matched the normalizer to1.2e-13, with zero heldout contribution.
+
+AP rejection counts need care: of1,379fit windows with that reason,1,292have
+no Harvest-voiced frame (undefined fraction), versus87with definedAP>=10%.
+Only46high-reference-bin fit windows have that reason. Multiple rejection
+reasons overlap; do not call all AP rejections proven D4C errors. A separate
+amplitude-domain limitation remains:30,313of9,492,000accepted waveform samples
+(0.319%) exceed|1|, maximum1.38687. The official Tanh output cannot reproduce
+those peaks at unchanged gain. This pilot preserves unit gain; it neither
+clips targets nor applies per-note normalization. This fact is not evidence
+that peak handling caused earlier timbral failures.
+
+`train_corpus_pilot.py` starts full G/defaultUnivNet D from scratch with the
+new audited fit-only normalizer, not the earlier two-step checkpoint. Sampling
+balances(case,pitch-bin)groups and chooses random audited windows within them.
+Only bound corpus rows marked fit+accepted can reach the optimizer; protected
+Arirang/deep-vibrato identities and duplicate/split-leaking hashes are checked
+again. There is no automatic CPU fallback, reduced channel count, feature
+flattening, source-waveform insertion or output filtering.
+
+The maximum is500updates,20minutes/8GiB conservative memory/12GiB free disk;
+training soft-stops at1,050seconds to reserve final evaluation/save time. Total
+announced additional storage is2GB. One full resume checkpoint and one small
+G-only checkpoint are saved privately, including fit normalizer and data-gate
+identity. The full state retains both optimizers/schedulers, CPU/MPS and NumPy
+sampler RNG, current group permutation, next position and cycle-boundary rule.
+
+Fixed evaluation uses27fit group representatives and3windows per heldout
+recording (15total), NOT all1,148heldout candidates. Two exact4.8-second clips
+(deep-vibrato and Arirang001) are reconstructed before/after with the same
+excitation seed and no pitch shift. Evaluation preserves training RNG/mode and
+never selects weights or adjusts hyperparameters. `pilot_metrics.py` keeps
+source-only pitch denominators, reports dropouts/octave errors and unchanged-
+time vibrato/level proxies without declaring naturalness. Conditional metrics
+on successfully measured output never hide lost reference frames. Saved NPZs
+are internal diagnostics, not approved auditions or new music.
+
+Code boundaries are covered by42new synthetic tests (6preparation,12audit,
+10metrics,14pilot) plus24earlier readiness tests. No new dependencies or public
+weights are downloaded. Original NGC credit remains required. Successful short
+training would not establish convergence, daegeum identity, stable vibrato or
+score-to-performance generation; only matched listening can approve sound.
