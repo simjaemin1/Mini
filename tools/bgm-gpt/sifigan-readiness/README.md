@@ -229,3 +229,85 @@ Code boundaries are covered by42new synthetic tests (6preparation,12audit,
 weights are downloaded. Original NGC credit remains required. Successful short
 training would not establish convergence, daegeum identity, stable vibrato or
 score-to-performance generation; only matched listening can approve sound.
+
+### Actual first500-update result
+
+The run completed500updates in413.35seconds (training389.81seconds), with
+G/D first-update weight changes verified. On the SAME fixed42short windows,
+fit mean log-mel L1 fell2.29659→0.88642 and development-holdout4.39352→2.10983.
+This is acoustic-loss improvement, not listening approval or convergence.
+All8fit cases were sampled; pitch-bin update counts were111/147/113/129for
+200–400/400–800/800–1200/1200–1800Hz. Staccato/daruchigi were sampled37times
+each despite tiny distinct source coverage, so repetition is not more data.
+
+The fixed full4.8s heldout reconstructions still fail as listening candidates:
+
+- Deep vibrato: source-fixed821frames, generated confident-voiced419/821
+  (51.04%), within50c179/821(21.80%), shared median error+65.65c/p95107.15c.
+  Source-relative whole RMS is+10.89dB and the source-frame step proxy grows
+  3.60→12.24c on shared consecutive pairs. Partial contour correlation does
+  not certify vibrato when half the reference support is lost.
+- Arirang001: source-fixed825frames, coverage809/825(98.06%), within50c
+  711/825(86.18%), median absolute error9.37c/p9582.41c,9octave-down frames.
+  Whole RMS is−3.77dB. The low median hides localized large errors.
+
+Saved-control diagnosis separates failure modes. Deep-vibrato Harvest
+matches821/821source-YIN frames within50c and cf0matches819/821; AP-all-one
+is0on that support. A matching input65c bias therefore does not explain the
+output bias. Arirang has a Harvest≈340Hz/source-YIN≈682Hz disagreement at
+3.810–3.855s, including9frames; its output octave drops must not all be
+attributed to the model without checking timing and the original signal.
+Both pitch estimators remain proxies, not ground truth.
+
+The full611,757,924-byte checkpoint,45,317,183-byte inference checkpoint,
+and4raw reconstruction NPZs were preserved; no AAC audition was made. An
+independent audit verified97hash bindings, another reproduced all diagnostic
+numbers from saved arrays. The experiment folder contained780,835,953bytes
+at that point. End-of-run RSS189,448,192bytes/MPS driver2,589,802,496bytes
+are observations, not peaks.
+
+After inspecting this development feedback, a separately bounded continuation
+may test whether further training reduces the clean-control deep-vibrato
+mismatch. It must preserve the first500run/code/checkpoints, restore the
+entire optimizer/RNG/group-order state and use identical data/features/gain.
+Such adaptive continuation is informed by validation, NOT an untouched
+confirmatory test. Original files and game defaults remain unchanged.
+
+Raw-wave inspection of the ambiguous Arirang45ms event finds a dominant
+~680Hz component but also~1020Hz (about19.8dB below), with raw correlation
+0.9915at~340Hz period versus0.9636at~682Hz period. A strong second harmonic
+and weak340Hz-spaced odd harmonics can support different estimator choices.
+Neither intended musical pitch nor a unique estimator failure is established;
+the original reported YIN-relative octave counts are retained, not relabeled.
+
+### Strict continuation tool
+
+`resume_corpus_pilot.py` is a NEW wrapper; original500-step code, reports,
+models, features and metrics remain frozen. It accepts only the bound completed
+500-step parent and checks35input/code hashes,56official hashes, full-checkpoint
+SHA, saved normalizer and two saved reconstructions. Both models load strictly,
+both optimizers/schedulers are compared with typed numeric-state hashes,
+every Adam counter and both scheduler epochs must equal500. Checkpoint loading
+retains `weights_only=True` with only a scoped stdlibCounter allowlist.
+
+PCG64/CPU/MPS RNG are restored AFTER initialization/load/validation. The saved
+27-group order and next position14 are retained: the next permutation boundary
+is513, not500or540. Before training, identical fixed-window evaluation must
+match the parent's final values, and both full4.8s waveforms must match saved
+parent output (`rtol1e-5,atol1e-6`). Evaluations restore RNG; all three original
+streams are restored again immediately before the first continuation sample.
+There is no changed gain/AP/feature/loss/data selection.
+
+At most500additional updates/global1000 are allowed. A720second guard plus
+parent413.35seconds stays below the cumulative1,200second announcement;
+training soft-stops570seconds into this run for final save/evaluation time.
+The same experiment's existing bytes plus930MB reserve must fit2GB before
+work, and actual final bytes are checked again, without deleting anything.
+New outputs live in a separate fresh folder. The corpus/initial models are
+never overwritten. Eleven additional synthetic tests include sampler
+split-versus-uninterrupted equality through1,000, typed state/Counter checks
+and the cumulative disk budget. Torch allowlist membership—not incidental
+set-derived list order—is tested after the context exits.
+
+This continuation is informed development validation. It is not an untouched
+test set, a best-checkpoint search, or a promise that500more steps fix timbre.
