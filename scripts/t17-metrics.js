@@ -23,7 +23,7 @@
 //
 // 축 손잡이(대조군 — 지시 §3 "①~③ 각각 끈 시드 1개씩"):
 //   T17_TOOL=0 / T17_PRESERVE=0 / T17_SALT=0  → 그 축만 끈다(엔진 쪽 손잡이와 같은 이름)
-//   [T60] T60_FISH2WAY=0  낚시 양방향 끔 · T60_MSY_MODE=legacy|lab|ema|fishv2 · T17_MSY=1 상한 켬
+//   [T60] T60_FISH2WAY=0  낚시 양방향 끔 · T60_MSY_MODE=legacy|lab|ema|fishv2 · T17_MSY=0 상한 끔(★T923 켬 기본 — 서버와 같은 값 · 같은 때 · 엔진 `T17_MSY` 를 읽는다)
 //
 // 실행: node scripts/t17-metrics.js [일수=800] [시드=1020]
 //   T17_JSON=/tmp/x.json  … 표를 JSON 으로도 남긴다(옛/새 비교 표를 손으로 옮겨 적지 않게)
@@ -292,7 +292,7 @@ console.log(`           캐러밴 유통 ${saltTrades}건 · ${saltAmt.toFixed(1
 
 // ── ⓖ MSY A/B (지시 §5 — 표만 낸다. 판정은 재민) ─────────────────────────────
 {
-  const on = process.env.T17_MSY === '1';
+  const on = !!econ.T17_MSY;   // ★[T923] 켬 기본 — 엔진의 손잡이를 읽는다(되돌림 `T17_MSY=0`)
   const fishers = world.villages.reduce((a, v) => a + ((v.counts && v.counts.fisher) || 0), 0);
   let fv = 0, fpop = 0, fstock = 0, fp = 0, fpN = 0, capped = 0;
   for (const v of world.villages) {
@@ -320,7 +320,7 @@ const SUS = R('server/sustain');
   }
   rows.sort((a, b) => b.raw - a.raw);
   const rs = rows.filter((r) => r.ratio != null).map((r) => r.ratio).sort((a, b) => a - b);
-  console.log(`\nⓗ 어장 눈금  모드 **${SUS.MSY_MODE}** · 헤드룸 ${SUS.MSY_HEADROOM} · 상한 스위치 T17_MSY=${process.env.T17_MSY === '1' ? '켬' : '끔'}`);
+  console.log(`\nⓗ 어장 눈금  모드 **${SUS.MSY_MODE}** · 헤드룸 ${SUS.MSY_HEADROOM} · 상한 스위치 T17_MSY=${econ.T17_MSY ? '켬' : '끔'}`);
   console.log(`           어부가 있는 마을 ${rows.length} · 잠재 어획 최대 ${rows[0] ? rows[0].raw : 0} · 중앙 ${rows.length ? rows[Math.floor(rows.length / 2)].raw : 0}`);
   if (rs.length) {
     console.log(`           **상한÷잠재** 최소 ${rs[0]} · 중앙 ${rs[Math.floor(rs.length / 2)]} · 최대 ${rs[rs.length - 1]}   (랩 설계 의도 = 1.5~2)`);
@@ -444,7 +444,7 @@ if (process.env.T17_JSON) {
     preserve: { stock: +presStock.toFixed(1), trades: presTrades, amt: +presAmt.toFixed(1),
                 each: Object.fromEntries(PRESERVED.map((r) => [r, +stockOf(r).toFixed(1)])) },
     msy: (() => {
-      const on = process.env.T17_MSY === '1';
+      const on = !!econ.T17_MSY;   // ★[T923] 켬 기본 — 엔진의 손잡이를 읽는다(되돌림 `T17_MSY=0`)
       let fv = 0, fpop = 0, fstock = 0, fp = 0, fpN = 0, capped = 0;
       const fishers = world.villages.reduce((a, v) => a + ((v.counts && v.counts.fisher) || 0), 0);
       for (const v of world.villages) {
@@ -464,7 +464,7 @@ if (process.env.T17_JSON) {
         if (raw > 0) rows.push({ name: v.name, fishers: (v.counts && v.counts.fisher) || 0, raw: +raw.toFixed(2), cap, ratio: cap != null ? +(cap / raw).toFixed(3) : null });
       }
       const rs = rows.filter((r) => r.ratio != null).map((r) => r.ratio).sort((a, b) => a - b);
-      return { mode: SUS.MSY_MODE, headroom: SUS.MSY_HEADROOM, capOn: process.env.T17_MSY === '1',
+      return { mode: SUS.MSY_MODE, headroom: SUS.MSY_HEADROOM, capOn: !!econ.T17_MSY,
                n: rows.length, ratioMin: rs[0] ?? null, ratioMed: rs.length ? rs[Math.floor(rs.length / 2)] : null,
                ratioMax: rs.length ? rs[rs.length - 1] : null, binding: rs.filter((x) => x < 1).length, rows: rows.slice(0, 20) };
     })(),

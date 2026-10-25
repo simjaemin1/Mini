@@ -21,6 +21,7 @@
 //      nomsy  — **어장 상한을 랩 쪽으로**(카드 목록 밖 — 랩 쪽으로 다 돌린 판이 둘째 날 갈린 자리): 서버는 시딩 때 `land._fishBase` 를 두고 하루 마감마다
 //               `refreshFishSustain` 이 `land.fishSustain`(econ `_fishScale = min(1, fishSustain / 잠재 어획)` 의 상한)을 매긴다. 랩 t17 은 `T17_MSY` 끔이라
 //               그 키가 없다(어획 상한 없음). 이 팔은 econ 마을 land 의 그 두 칸을 늘 비운다(쓰기는 무시하고 센다 — `rec.nomsy`).
+//               ★[T923] 랩도 상한을 거는 뒤(`T17_MSY` 켬 기본)엔 엔진의 시딩 MSY 칸(`v._fishMsySeed`)도 지운다(`rec.nomsySeed`) — 그래야 이 팔이 종전처럼 '상한 없음' 이다.
 const path = require('path');
 const fs = require('fs');
 const A1 = process.argv[1] || '';
@@ -55,6 +56,10 @@ if (LABSEED) rec.labseed = { cache: path.basename(process.env.T875_LABSEED), n: 
     const v = cv.apply(this, arguments);
     if (NOMSY && v && v.land) {   // ④ nomsy — 이 마을 land 의 어장 상한 두 칸을 늘 비운다(쓰기는 센다 · 읽기는 undefined = 랩 t17 의 "키 없음")
       for (const k of ['fishSustain', '_fishBase']) { delete v.land[k]; Object.defineProperty(v.land, k, { get() { return undefined; }, set() { rec.nomsy++; }, enumerable: false, configurable: true }); }
+      // ★[T923] 엔진의 시딩 MSY 칸(`v._fishMsySeed` — `T17_MSY` 켬 기본 · 마을 하루 마감이 상한을 세우는 씨)도 비운다.
+      //   안 비우면 둘째 날부터 상한이 다시 선다 — V2 가 날마다 land 를 사본(`{ ...land }`)으로 바꿔 끼워 위 두 게터(열거 안 됨)는 첫날 뒤 사라지고,
+      //   이 팔이 상한을 막던 것은 사본에 `_fishBase` 가 없어 `refreshFishSustain` 이 빈손으로 돌던 덕이었다(T875 판 그대로 · 보고 T923 §4).
+      if (v._fishMsySeed != null) { delete v._fishMsySeed; rec.nomsySeed = (rec.nomsySeed || 0) + 1; }
     }
     try {
       const land = {}; for (const k of Object.keys(v.land || {})) { const x = v.land[k]; if (typeof x === 'number' || typeof x === 'boolean') land[k] = typeof x === 'number' ? r3(x) : x; }
