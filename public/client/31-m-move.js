@@ -299,6 +299,7 @@
   // === 메인 루프 ===
   let prevT = performance.now();
   function loop() {
+    _ldFrame(false);   // ★[T920] 첫 접속 창에만 일한다(판 간격 → 첫 입력 가능)
     const now = performance.now();
     const dt = Math.min(0.1, (now - prevT) / 1000);
     prevT = now;
@@ -385,6 +386,7 @@
       window._gAcc = (window._gAcc||0)+_rd; window._gN = (window._gN||0)+1; if (_rd > (window._gMax||0)) window._gMax = _rd;
       if (window._gN >= 30) { if (window._renderDbg) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
         console.log(`[render] avg=${(window._gAcc/window._gN).toFixed(1)}ms tiles=${((window._tileAccDbg||0)/window._gN).toFixed(1)}ms max=${window._gMax.toFixed(0)}ms bld=${_bn}`); } window._gAcc=0; window._gN=0; window._gMax=0; window._tileAccDbg=0; } }
+    _ldFrame(true);    // ★[T920] welcome 뒤 첫 render 끝
     const _hudT0 = window.__fcOn ? performance.now() : 0;   // ★[T913] 프레임 캡처 중에만 — render 밖 겹그림 · HUD · 미니맵 몫(끔이면 안 읽힌다)
     drawArrowFx();      // 사냥꾼 화살 비행(서버 arrow_fx)
     drawBuildOverlay(); // 14.51: hover outline

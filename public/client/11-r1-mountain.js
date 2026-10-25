@@ -1809,7 +1809,15 @@
     }
     return false;
   }
+  let _natPending = 0;                   // ★[T920] 켬 — 이번 판 끝에 아직 안 지은 시야 청크 수(계측 · `__natDbg.pending`)
   const _natLastC = [0, 0];              // 이번 프레임 카메라 중심(절대 월드 px) — __shoreProbe 기본값
+  // ★★[T920 2026-10-24] 손잡이 `T920_NAT_BUDGET`(서버 env → welcome `uiCfg.natBudget` · `'1'` 만 켬 · 끔 = 종전 그대로).
+  //   끔 = 시야(반경 `NAT_VIEW_PAD`)의 자연물 청크를 **한 판에 전부** 짓는다 — 첫 접속 첫 그림에서 백여 청크를 한꺼번에 지어
+  //   첫 그림(welcome → 첫 render)의 1위 층이었다(보고/T920 §2 — 크롬 1.2~1.4초 · WebKit 0.9초).
+  //   켬 = 지면 굽기와 **같은 예산** `GT_BAKE_PER_FRAME`(판당 새 청크 수 · 00-const · 새 수 0)으로 나눠 짓는다 — 빠진 청크를 카메라에서
+  //   가까운 차례(청크 체비셰프 거리 · 같으면 위 → 아래 · 왼 → 오른)로 먼저 짓고, 아직 안 지은 청크는 그 판에 그리지 않는다(그 자리는 소품 없이 땅만).
+  //   다 지은 뒤 내는 목록 · 차례는 끔과 같다(내는 고리는 종전 그대로 · 청크 안은 같은 함수 `_natBuildChunk`) — 그림 같음.
+  function t920On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.natBudget === true); }
   function _natCollect(out, cx0, cy0) {
     _natLastC[0] = cx0; _natLastC[1] = cy0;
     if (_t19.natOff || !_natAnchors || _natLoaded < _natWanted || !_natWanted) return [0, 0];
@@ -1818,9 +1826,21 @@
     const r0 = Math.floor((cy0 - R) / 32), r1 = Math.floor((cy0 + R) / 32);
     let nf = 0, np = 0;
     _natLastPr = [];
+    const _bud = t920On();
+    if (_bud) {   // ★[T920] 켬 — 빠진 청크를 가까운 차례로 예산만큼 먼저 짓는다
+      const fk = '_' + (_t19.frFloor || 0), mcx = Math.floor(cx0 / 32 / NAT_CH), mcy = Math.floor(cy0 / 32 / NAT_CH);
+      const miss = [];
+      for (let ccy = Math.floor(r0 / NAT_CH); ccy <= Math.floor(r1 / NAT_CH); ccy++)
+        for (let ccx = Math.floor(c0 / NAT_CH); ccx <= Math.floor(c1 / NAT_CH); ccx++)
+          if (!_natChunk.has(ccx + '_' + ccy + fk)) miss.push([Math.max(Math.abs(ccx - mcx), Math.abs(ccy - mcy)), ccy, ccx]);
+      miss.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
+      for (let i = 0; i < miss.length && i < GT_BAKE_PER_FRAME; i++) _natBuildChunk(miss[i][2], miss[i][1]);
+      _natPending = Math.max(0, miss.length - GT_BAKE_PER_FRAME);
+    } else _natPending = 0;
     for (let ccy = Math.floor(r0 / NAT_CH); ccy <= Math.floor(r1 / NAT_CH); ccy++) {
       for (let ccx = Math.floor(c0 / NAT_CH); ccx <= Math.floor(c1 / NAT_CH); ccx++) {
-        const ch = _natBuildChunk(ccx, ccy);
+        const ch = _bud ? _natChunk.get(ccx + '_' + ccy + '_' + (_t19.frFloor || 0)) : _natBuildChunk(ccx, ccy);
+        if (!ch) continue;   // ★[T920] 켬 — 아직 안 지은 청크
         if (!_t19.fringeOff) for (const f of ch.fr) {
           if (Math.abs(f.x - cx0) > R || Math.abs(f.y - cy0) > R) continue;
           out.push({ z: w2i(f.x, f.y).y, kind: 'natspr', s: f }); nf++;

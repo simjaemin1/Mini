@@ -644,6 +644,106 @@ function cropSprite(stage, crop) {
       return res;
     });
   }
+  // ★★[T920 2026-10-24] **첫 접속 표** — 접속 눌림 → welcome → 첫 그림 → 첫 입력 가능까지 갈래별 ms · 받은 글자(welcome · 갈래별 메시지) ·
+  //   페이지 적재(스크립트 · 그림 · 소리 · json — Resource Timing). 보는 법: 콘솔 `__loadReport()`(T913 `__lagReport` 와 같은 꼴 · 새 수 0).
+  //   표시는 **첫 접속 한 번만** 찍는다(`_ldMark` — 이미 있으면 그대로). 창(눌림 → 첫 입력 가능) 동안만:
+  //     · 받은 메시지를 그 자리에서 풀어 갈래 · 글자 수를 센다(`_ldRx` — 한 번 풀어 그대로 넘긴다 · 두 번 안 푼다)
+  //     · T913 프레임 캡처의 층 계량을 켠다(`__fcOn` — 이미 누가 켰으면 안 건드린다) → 창 안 렌더 · 지면 · 물 · 산 · 자연물 · 몸 · HUD · 메시지 몫
+  //   첫 입력 가능 = 첫 그림(welcome 뒤 첫 render) **다음 판의 머리** — 키 입력을 처음 처리하는 때(31-m-move loop 머리). 층 몫은 눌림 → 여기까지.
+  //   가라앉음 = 그 뒤 **첫 짧은 프레임**(rAF 간격 ≤ 50ms — T913 의 긴 프레임 문턱) · 30초(T913 `__lagReport` 기본 창)를 넘으면 "안 가라앉음"으로 닫는다.
+  //   받은 메시지는 눌림 → 가라앉음(또는 30초)까지 센다 — welcome 뒤 따라오는 청크 · 건물 · 자연물 묶음이 그 안에 든다.
+  const _ld = { at: {}, rx: false, settled: false, types: {}, welcome: null, long: { n: 0, ms: 0, max: 0 }, prevLoop: 0, fcOwn: false, fc0: null, fc: null };
+  function _ldMark(k) { if (_ld.at[k] == null) _ld.at[k] = performance.now(); }
+  function _ldFcSnap() { return { r: window.__fcRenderMs || 0, m: window.__fcMsgMs || 0, mn: window.__fcMsgN || 0, tile: +(window._tileAcc || 0), water: +(window._waterAcc || 0),
+    mt: +(window._mtAcc || 0), nat: +(window._natAcc || 0), ent: +(window._entAcc || 0), hud: +(window._hudAcc || 0) }; }
+  function _ldOpen() {                       // 접속 눌림 — 첫 번만
+    if (_ld.at.click != null) return;
+    _ldMark('click'); _ld.rx = true;
+    if (!window.__fcOn) { window.__fcRenderMs = 0; window.__fcMsgMs = 0; window.__fcMsgN = 0; window.__fcPong = null; window.__fcTick = null; window.__fcOn = true; _ld.fcOwn = true; }
+    _ld.fc0 = _ldFcSnap();
+  }
+  function _ldInput() {                      // 첫 입력 가능 — 층 몫 창을 닫는다
+    _ldMark('input');
+    const a = _ld.fc0 || {}, b = _ldFcSnap(); _ld.fc = {}; for (const k in b) _ld.fc[k] = +(b[k] - (a[k] || 0)).toFixed(1);
+    if (_ld.fcOwn) { window.__fcOn = false; _ld.fcOwn = false; }
+  }
+  function _ldClose(settled) { _ldMark('settle'); _ld.settled = !!settled; _ld.rx = false; }   // 가라앉음(또는 30초) — 창 전체를 닫는다
+  function _ldRx(data) {                     // 창 안 주 소켓 메시지 — 풀어 세고 그대로 돌려준다
+    const t0 = performance.now(); const m = JSON.parse(data); const pm = performance.now() - t0;
+    const k = (m && m.type) || '?', e = _ld.types[k] || (_ld.types[k] = { n: 0, chars: 0, parseMs: 0 });
+    e.n++; e.chars += data.length; e.parseMs += pm;
+    if (k === 'welcome' && !_ld.welcome) { _ld.at.welcomeRx = t0; _ld.welcome = { chars: data.length, parseMs: +pm.toFixed(1) }; }
+    return m;
+  }
+  function _ldFrame(afterRender) {           // 31-m-move loop() — 판마다(창이 열려 있을 때만 일한다)
+    if (!_ld.rx) return;
+    const now = performance.now();
+    if (afterRender) { if (_ld.at.welcomeDone != null && _ld.at.frame1 == null) _ld.at.frame1 = now; return; }
+    const dt = _ld.prevLoop ? now - _ld.prevLoop : 0; _ld.prevLoop = now;
+    if (_ld.at.frame1 == null) return;
+    if (_ld.at.input == null) _ldInput();
+    if (dt > 50) { _ld.long.n++; _ld.long.ms += dt - 16.7; if (dt > _ld.long.max) _ld.long.max = dt; if (now - _ld.at.frame1 > 30000) _ldClose(false); return; }
+    if (dt > 0) _ldClose(true);
+  }
+  function _loadReport() {
+    const at = _ld.at;
+    if (at.click == null) { console.log('[첫 접속] 아직 "들어가기"를 안 눌렀다 — 들어간 뒤 다시 친다'); return Promise.resolve(null); }
+    const wait = () => new Promise((res) => { const iv = setInterval(() => { if (_ld.at.settle != null) { clearInterval(iv); res(); } }, 200); });
+    return (at.settle != null ? Promise.resolve() : (console.log('[첫 접속] 가라앉기를 기다린다(최대 30초)…'), wait())).then(() => {
+      const nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || null;
+      const dcl = nav ? nav.domContentLoadedEventEnd : null, ld = nav ? nav.loadEventEnd : null;
+      const d = (x, y) => (x == null || y == null ? null : +(y - x).toFixed(0));
+      const stages = [
+        ['페이지 적재(문서 → DOMContentLoaded)', 0, dcl], ['페이지 적재(→ load · 그림 · 소리 포함)', dcl, ld],
+        ['인증(/auth)', at.auth0, at.auth1], ['소켓 열기', at.ws, at.open], ['welcome 기다림(서버)', at.open, at.welcomeRx],
+        ['welcome 풀기(JSON)', 0, _ld.welcome ? _ld.welcome.parseMs : null], ['welcome 처리', at.welcomeRx != null && _ld.welcome ? at.welcomeRx + _ld.welcome.parseMs : null, at.welcomeDone],
+        ['첫 그림(welcome 뒤 첫 render)', at.welcomeDone, at.frame1], ['첫 입력 가능(다음 판 머리)', at.frame1, at.input],
+        [_ld.settled ? '가라앉음(첫 짧은 프레임)' : '가라앉음(30초 안에 안 됨)', at.input, at.settle],
+      ].map(([k, x, y]) => ({ '갈래': k, 'ms': d(x, y) }));
+      const total = d(at.click, at.input);
+      const pick = stages.slice(2, 9).filter((r) => r.ms != null).sort((a, b) => b.ms - a.ms)[0] || null;   // 눌림 → 첫 입력 가능 안의 갈래(가라앉음은 따로 적는다)
+      // 창 안 층 몫(T913 계량 — 눌림 → 첫 입력 가능)
+      const F = _ld.fc || {}, restR = Math.max(0, (F.r || 0) - (F.tile || 0) - (F.water || 0) - (F.mt || 0) - (F.nat || 0) - (F.ent || 0));
+      const layers = [['지면', F.tile], ['물', F.water], ['산(굽기·수집)', F.mt], ['자연물(수집)', F.nat], ['몸(그리기)', F.ent], ['그 밖 렌더', restR], ['HUD·미니맵', F.hud], ['메시지 처리', F.m]]
+        .map(([k, v]) => ({ '층': k, 'ms': +(+(v || 0)).toFixed(0) }));
+      const topL = layers.slice().sort((a, b) => b.ms - a.ms)[0];
+      // 받은 메시지(창 안 · 주 소켓)
+      const T = Object.entries(_ld.types).map(([k, e]) => ({ '갈래': k, '개': e.n, '글자': e.chars, '풀기 ms': +e.parseMs.toFixed(1) })).sort((a, b) => b['글자'] - a['글자']);
+      const wsChars = T.reduce((a, r) => a + r['글자'], 0);
+      // 페이지 적재 — Resource Timing(받은 바이트 = transferSize · 없으면 encodedBodySize)
+      const R = (performance.getEntriesByType ? performance.getEntriesByType('resource') : []);
+      const grp = (e) => { const u = e.name.split('?')[0].toLowerCase();
+        if (/\.(ogg|mp3|m4a|wav|aac|flac|opus)$/.test(u) || e.initiatorType === 'audio') return '소리';
+        if (/\.(png|webp|jpg|jpeg|gif|svg)$/.test(u) || e.initiatorType === 'img') return '그림';
+        if (/\.js$/.test(u) || e.initiatorType === 'script') return '스크립트';
+        if (/\.json$/.test(u)) return 'json(지형 · 앵커)';
+        if (/\.css$/.test(u) || e.initiatorType === 'link') return 'css';
+        return '그 밖'; };
+      const G = {};
+      for (const e of R) { const g = grp(e), o = G[g] || (G[g] = { n: 0, bytes: 0, decoded: 0, end: 0, afterClick: 0 });
+        o.n++; o.bytes += e.transferSize || e.encodedBodySize || 0; o.decoded += e.decodedBodySize || 0; if (e.responseEnd > o.end) o.end = e.responseEnd; if (e.responseEnd > at.click) o.afterClick++; }
+      const res = Object.entries(G).map(([k, o]) => ({ '갈래': k, '개': o.n, 'KB(받음)': +(o.bytes / 1024).toFixed(0), 'KB(풀림)': +(o.decoded / 1024).toFixed(0), '마지막 도착 ms': +o.end.toFixed(0), '눌림 뒤 도착': o.afterClick }))
+        .sort((a, b) => b['KB(받음)'] - a['KB(받음)']);
+      const top = T.slice(0, 6).map((r) => `${r['갈래']} ${r['개']}개 ${(r['글자'] / 1024).toFixed(0)}K`).join(' · ');
+      const ua = (/Version\/[\d.]+.*Safari/.exec(navigator.userAgent) || /(Chrome|Firefox|Edg)\/[\d.]+/.exec(navigator.userAgent) || [navigator.userAgent.slice(0, 40)])[0];
+      const verdict = pick ? `1위 ${pick['갈래']} ${pick.ms}ms(눌림 → 첫 입력 ${total}ms 중)` + (/첫 (그림|입력)/.test(pick['갈래']) && topL ? ` · 그 창 안 층 1위 ${topL['층']} ${topL.ms}ms` : '') : '표 없음';
+      const txt = [
+        `[첫 접속 · T920] ${new Date(performance.timeOrigin + at.click).toISOString()} · ${ua} · 화면 ${innerWidth}×${innerHeight} ×${window.devicePixelRatio} · 존 ${typeof primaryZoneId !== 'undefined' ? primaryZoneId : '-'}`,
+        `판정: ${verdict}`,
+        `갈래 ms: ` + stages.map((r) => `${r['갈래']} ${r.ms == null ? '-' : r.ms}`).join(' · '),
+        `눌림 → 첫 입력 ${total}ms · 그 뒤 가라앉기까지 ${d(at.input, at.settle)}ms${_ld.settled ? '' : '(30초 안에 안 가라앉음 — 늘 긴 프레임 · `__lagReport()` 로 볼 것)'} · 첫 그림 뒤 긴 프레임(>50ms) ${_ld.long.n}판 · 막은 ${_ld.long.ms.toFixed(0)}ms · 최대 ${_ld.long.max.toFixed(0)}ms`,
+        `층 ms(눌림 → 첫 입력): ` + layers.map((r) => `${r['층']} ${r.ms}`).join(' · '),
+        `받은 메시지(주 소켓 · 눌림 → 가라앉음): ${T.reduce((a, r) => a + r['개'], 0)}개 ${(wsChars / 1024).toFixed(0)}K글자 — welcome ${_ld.welcome ? (_ld.welcome.chars / 1024).toFixed(0) + 'K' : '-'} · ${top}`,
+        `페이지 적재: ` + res.map((r) => `${r['갈래']} ${r['개']}개 ${r['KB(받음)']}KB(눌림 뒤 ${r['눌림 뒤 도착']})`).join(' · ') + ` · load ${ld == null ? '-' : ld.toFixed(0)}ms · 로비에서 누르기까지 ${ld == null ? '-' : (at.click - ld).toFixed(0)}ms(사람)`,
+      ].join('\n');
+      const out = { verdict, total, settled: !!_ld.settled, stages, layers, long: { n: _ld.long.n, ms: +_ld.long.ms.toFixed(0), max: +_ld.long.max.toFixed(0) }, msgs: T, resources: res, at: Object.assign({}, at), welcome: _ld.welcome, text: txt };
+      window.__loadReportText = txt; window.__loadReportResult = out;
+      console.table(stages); console.table(layers); console.table(res);
+      console.log(txt);
+      console.log('[첫 접속] 위 글을 통째로 복사해 붙여 주면 된다 — `copy(__loadReportText)`');
+      return out;
+    });
+  }
 // @@moved:491
   // Phase 14.41: 사망/구조
   let myIsDown = false;
