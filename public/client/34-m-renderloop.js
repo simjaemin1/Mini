@@ -20,6 +20,7 @@
       if (k >= 1) _warSpec.returning = false;
     }
     _lastCamAbs = { x: _camAbs.x, y: _camAbs.y };   // 트윈 출발점 캡처(관전 진입/복귀 공용)
+    if (t926On()) _cellBkSweep(_camAbs.x, _camAbs.y);   // ★[T926] 켬 — 카메라 자리 칸이 바뀌면 둘레 밖 물 · 바위 칸 캐시를 지운다(00-const · 끔 = 이 줄 무동작)
     // §19 4파: 뷰(카메라) 경도 오프셋 갱신 — 존 폭 대비 0~4.5%(하루 비율). worldPhase()가 로컬 태양시로 소비.
     { const _lz = clientFindZoneAt(_camAbs.x, _camAbs.y); _lonView = _lz ? ((_camAbs.x - _lz.worldOffsetX) / Math.max(1, _lz.zoneWidth)) * 0.045 : 0; }
     // ★[T720] 켬(서버가 `worldClock.lonDay` 를 준다) = 원통 경도 — 카메라 절대 x 의 해 몫(x ÷ 세계 폭 − 0.5 − 해 뜸 · 서버 `zone-config.lonPhaseOff` 와 같은 식 · 존 경계에서 이어진다)

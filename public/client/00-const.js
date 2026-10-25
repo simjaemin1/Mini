@@ -595,6 +595,45 @@ function cropSprite(stage, crop) {
   //     클라 = 긴 프레임(> 50ms)마다 (dt − 16.7) 의 합(한 판 16.7ms 를 넘긴 몫 — 위 캡처의 클라 막힘과 같은 셈)
   //     서버 = 서버가 보낸 틱 간격(서버 시계 `t`)이 튄 것마다 (간격 − 중앙) 의 합 · 망 = 튄 핑 중 망 몫이 가장 큰 것들의 망 몫 합(pong 셋이 있을 때만).
   //   결과: `__lagReportText`(글) · `__lagReportResult`(값 · `frame` 은 캡처 원본).
+  // ★★[T926 2026-10-25] **힙 · 캐시 한 줄** — 위 렉 보고 글 끝에 붙는다(재민이 같은 글에서 본다 · `__lagReportResult.mem` 은 값).
+  //   새 계측 0 · 새 수 0 — 이미 있는 캐시의 크기를 읽기만 한다(T926 1시간 계측 자 `scripts/t926-mem-hour.js` 가 5분마다 읽은 그 칸들):
+  //     JS 힙(크롬 `performance.memory` 쓴 · 잡은 — Safari 는 없다) · DOM 노드 ·
+  //     그림 캐시(값 안의 캔버스 · 이미지 · 비트맵 장 수와 넓이 — 산 청크 `_mt3Chunk` · 산 굽는 중 `_mt3Jobs` · 지면 `_groundTiles` · 나무 스프라이트 `_spriteCache` · 지붕 `_roofBakeCache`) ·
+  //     칸 캐시(수 — 물 `_waterCellCache` · 바위 `_rockCellCache` · 흐름 `_flowCellCache` · 자연물 청크 `_natChunk`) · 안개가 본 칸(`_seenChunks`) · 존 연결마다 개체 · 건물 수.
+  function _memLine() {
+    const isPic = (v) => (typeof HTMLCanvasElement !== 'undefined' && v instanceof HTMLCanvasElement) || (typeof OffscreenCanvas !== 'undefined' && v instanceof OffscreenCanvas)
+      || (typeof ImageBitmap !== 'undefined' && v instanceof ImageBitmap) || (typeof HTMLImageElement !== 'undefined' && v instanceof HTMLImageElement);
+    //   값 안의 그림 — 배열 · Map · 맨 객체만 따라 들어간다(본 것은 다시 안 본다)
+    const pics = (v, acc, seen) => {
+      if (!v || typeof v !== 'object' || seen.has(v)) return; seen.add(v);
+      if (isPic(v)) { acc.n++; acc.px += (v.width | 0) * (v.height | 0); return; }
+      if (Array.isArray(v)) { for (const x of v) pics(x, acc, seen); return; }
+      if (v instanceof Map) { for (const x of v.values()) pics(x, acc, seen); return; }
+      if (Object.getPrototypeOf(v) === Object.prototype) for (const k in v) pics(v[k], acc, seen);
+    };
+    const pic = (m) => { if (!m) return null; const acc = { n: 0, px: 0 }, seen = new Set(); for (const x of m.values()) pics(x, acc, seen); return { size: m.size, n: acc.n, mpx: +(acc.px / 1e6).toFixed(1) }; };
+    const sz = (m) => (m ? m.size : null);
+    const PM = (typeof performance !== 'undefined' && performance.memory) ? performance.memory : null;
+    let seenCells = null, seenChunks = null;
+    try { const sc = window._seenChunks; if (sc instanceof Map) { seenChunks = sc.size; seenCells = 0; for (const v of sc.values()) seenCells += (v && v.size) || 0; } } catch (e) {}
+    const zs = {}; try { for (const [zid, c] of conns) zs[zid] = { role: c.role, resources: sz(c.resources), others: sz(c.others), buildings: sz(c.buildings) }; } catch (e) {}
+    const val = {
+      heap: PM ? { usedMB: +(PM.usedJSHeapSize / 1048576).toFixed(1), totalMB: +(PM.totalJSHeapSize / 1048576).toFixed(1) } : null,
+      dom: document.getElementsByTagName('*').length,
+      pic: { mt3: pic(typeof _mt3Chunk !== 'undefined' ? _mt3Chunk : null), mt3Jobs: pic(typeof _mt3Jobs !== 'undefined' ? _mt3Jobs : null), ground: pic(typeof _groundTiles !== 'undefined' ? _groundTiles : null),
+             sprite: pic(typeof _spriteCache !== 'undefined' ? _spriteCache : null), roof: pic(typeof _roofBakeCache !== 'undefined' ? _roofBakeCache : null) },
+      cell: { water: sz(typeof _waterCellCache !== 'undefined' ? _waterCellCache : null), rock: sz(typeof _rockCellCache !== 'undefined' ? _rockCellCache : null),
+              flow: sz(typeof _flowCellCache !== 'undefined' ? _flowCellCache : null), nat: sz(typeof _natChunk !== 'undefined' ? _natChunk : null) },
+      seen: { chunks: seenChunks, cells: seenCells }, zones: zs };
+    const P = (k, o) => (o ? `${k} ${o.size}(${o.n}장 ${o.mpx}M화소)` : `${k} -`);
+    const n = (x) => (x == null ? '-' : Number(x).toLocaleString('en-US'));
+    const text = `힙·캐시: ` + (val.heap ? `JS 힙 ${val.heap.usedMB}/${val.heap.totalMB}MB` : `JS 힙 -(이 브라우저는 안 알려 준다)`) + ` · DOM ${val.dom}`
+      + ` · 그림 ${P('산', val.pic.mt3)} · ${P('산 굽는 중', val.pic.mt3Jobs)} · ${P('지면', val.pic.ground)} · ${P('나무', val.pic.sprite)} · ${P('지붕', val.pic.roof)}`
+      + ` · 칸 물 ${n(val.cell.water)} · 바위 ${n(val.cell.rock)} · 흐름 ${n(val.cell.flow)} · 자연물 ${n(val.cell.nat)}`
+      + ` · 본 칸 ${n(seenCells)}(${n(seenChunks)}청크)`
+      + Object.entries(zs).map(([z, o]) => ` · ${z} 개체 ${n(o.resources)} · 사람 ${n(o.others)} · 건물 ${n(o.buildings)}`).join('');
+    return { text, val };
+  }
   function _lagReport(sec = 30) {
     return window.__frameCapture(sec, { save: false }).then((F) => {
       if (!F) return null;
@@ -625,6 +664,7 @@ function cropSprite(stage, crop) {
           + ` (긴 프레임 ${F.frames.long50} · 튄 핑 ${V.spikes} = 클라 ${V.client}/서버 ${V.server}/망 ${V.net}/미상 ${V.unknown} · 서버가 늦게 보낸 틱 ${T.srv.spikes} · 늦게 받은 틱 ${T.rcv.spikes})`;   // 클라 막힘은 긴 프레임 · 서버는 서버 시계 · 망은 pong 셋
       const ua = (/Version\/[\d.]+.*Safari/.exec(F.ua) || /(Chrome|Firefox|Edg)\/[\d.]+/.exec(F.ua) || [F.ua.slice(0, 40)])[0];
       const H = F.heap;
+      const MEM = _memLine();   // ★[T926] 캡처가 끝난 그 순간의 힙 · 캐시
       const txt = [
         `[렉 보고 · T913] ${F.at} · ${sec}초 · ${ua} · 화면 ${F.view.join('×')} ×${F.dpr} · 확대 ${F.zoom} · 존 ${F.zone}${F.hidden.length ? ' · ⚠탭 가려짐 ' + F.hidden.length + '번' : ''}`,
         `판정: ${verdict}`,
@@ -634,8 +674,9 @@ function cropSprite(stage, crop) {
         H ? `GC 추정(힙이 준 판): ${H.gcFrames}판 · 그 판 브라우저 몫 ${H.gcOther}ms · 그중 긴 프레임 ${H.gcLong50}` : `GC 추정: 이 브라우저는 힙을 안 알려 준다(Safari) — 브라우저 몫에 들어 있다`,
         `틱: 받음 ${T.n}개 · 간격 p50 ${T.rcv.p50} · p95 ${T.rcv.p95} · max ${T.rcv.max}ms · 늦음 ${T.rcv.spikes} | 서버 보냄 간격 p50 ${T.srv.p50} · p95 ${T.srv.p95} · max ${T.srv.max}ms · 늦음 ${T.srv.spikes}`,
         `핑: ${F.pong.n}개 · p50 ${F.pong.rtt.p50} · p95 ${F.pong.rtt.p95} · max ${F.pong.rtt.max}ms · 몫 중앙 클라 ${F.parts.clientBlock.p50} · 서버 ${F.parts.server.p50} · 망 ${F.parts.net.p50}`,
+        MEM.text,   // ★[T926] 힙 · 캐시 한 줄
       ].join('\n');
-      const res = { verdict, main: quiet ? null : main, evidence: ev, table, text: txt, frame: F };
+      const res = { verdict, main: quiet ? null : main, evidence: ev, table, text: txt, frame: F, mem: MEM.val };
       window.__lagReportText = txt; window.__lagReportResult = res;
       console.table(table);
       console.log(txt);
@@ -836,6 +877,7 @@ function cropSprite(stage, crop) {
     }
     if (_waterCellCache.size > 300000) _waterCellCache.clear(); // 메모리 가드 (~15MB 상한)
     _waterCellCache.set(key, v);
+    if (t926On()) _cellBkPut(z, tx, ty, key, false);   // ★[T926] 켬 — 열쇠를 자리 칸에 적는다(아래 `_cellBkSweep` 가 지운다)
     return v;
   }
   // ★★[T585] 개울 — 존이 구운 1비트 래스터(`GET <존>/streams.bin` · 서버 `server/streams.js isStreamCell` 과 같은 비트 · 사본 0).
@@ -887,7 +929,34 @@ function cropSprite(stage, crop) {
     }
     if (_rockCellCache.size > 300000) _rockCellCache.clear();
     _rockCellCache.set(key, v);
+    if (t926On()) _cellBkPut(z, tx, ty, key, true);    // ★[T926] 켬 — 위 물 칸과 같은 자리 칸 적기
     return v;
+  }
+  // ★★[T926 2026-10-25] 손잡이 `T926_CELL_NEAR`(서버 env → welcome `uiCfg.cellNear` · `'1'` 만 켬 · 끔이면 칸이 없고 아래 두 함수는 불리지도 않는다 = 종전 그대로).
+  //   T926 1시간 계측(scripts/t926-mem-hour.js · 크롬 힙 스냅샷 5 → 60분)에서 JS 힙의 **늘기만 한 몫**의 가장 큰 쪽이 위 물 · 바위 칸 캐시다 —
+  //   문자열 열쇠("zid_tx_ty")가 지나간 자리마다 쌓여 상한 300,000 에 닿을 때까지 남는다(둘이 60분에 30MB · 그 사이 카메라에서 먼 칸이 대부분).
+  //   켬 = 새로 넣은 열쇠를 **자리 칸**(월드 절대 좌표 · 한 변 = 렌더 반경 `NAT_VIEW_PAD`)마다 적어 두고, 카메라가 선 자리 칸이 바뀌면
+  //   카메라 칸과 그 둘레 여덟 칸 밖에 적힌 열쇠를 두 캐시에서 지운다. 값은 지형의 순수 함수라 다시 물으면 같은 값이 나온다(그림 같음).
+  //   새 수 0 — 자리 칸 한 변은 이미 있는 렌더 반경이고, 카메라 칸과 그 이웃 여덟 칸이면 렌더 반경 안 칸은 늘 남는다(옛 상한 · 비우는 자리는 그대로).
+  function t926On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.cellNear === true); }
+  const _cellBk = new Map();      // "bx_by" → { bx, by, w: [물 칸 열쇠…], r: [바위 칸 열쇠…] }
+  let _cellBkCam = '';            // 지난 판 카메라 자리 칸
+  function _cellBkPut(z, tx, ty, key, rock) {
+    const bx = Math.floor((z.worldOffsetX + tx * 32 + 16) / NAT_VIEW_PAD), by = Math.floor(((z.worldOffsetY || 0) + ty * 32 + 16) / NAT_VIEW_PAD);
+    const bk = bx + '_' + by;
+    let b = _cellBk.get(bk); if (!b) { b = { bx, by, w: [], r: [] }; _cellBk.set(bk, b); }
+    (rock ? b.r : b.w).push(key);
+  }
+  function _cellBkSweep(camX, camY) {
+    const cx = Math.floor(camX / NAT_VIEW_PAD), cy = Math.floor(camY / NAT_VIEW_PAD), ck = cx + '_' + cy;
+    if (ck === _cellBkCam) return;
+    _cellBkCam = ck;
+    for (const [k, b] of _cellBk) {
+      if (Math.abs(b.bx - cx) <= 1 && Math.abs(b.by - cy) <= 1) continue;
+      for (const key of b.w) _waterCellCache.delete(key);
+      for (const key of b.r) _rockCellCache.delete(key);
+      _cellBk.delete(k);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
