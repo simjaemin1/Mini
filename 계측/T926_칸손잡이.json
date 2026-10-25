@@ -1,0 +1,518 @@
+{
+ "card": "T926",
+ "what": "T926_CELL_NEAR 켬 · 끔 같은 값 · 같은 그림 — scripts/t926-near-check.js(자리 셋 × 갈래 셋: 끔 · 켬 · 끔둘째) · 칸 값 표 = 자리 둘레 120×120 칸의 isWaterAtAbs · isRockAtAbs · 화면 = 본 캔버스 toDataURL PNG",
+ "runs": {
+  "chromium": {
+   "browser": "chromium",
+   "welcome": "(칸 없음)",
+   "spots": [
+    {
+     "nm": "광산2",
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        2007,
+        218
+       ],
+       "sizesBeforeReturn": {
+        "water": 16620,
+        "rock": 23916,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 16620,
+        "rock": 23916,
+        "bk": 0
+       },
+       "png": "chromium-광산2-off.png",
+       "pngMd5": "66d496a7ff4e900329c750a08be1a8eb"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        2007,
+        218
+       ],
+       "sizesBeforeReturn": {
+        "water": 11220,
+        "rock": 21907,
+        "bk": 18,
+        "spotCached": 0
+       },
+       "sizesAtShot": {
+        "water": 14400,
+        "rock": 14400,
+        "bk": 16
+       },
+       "png": "chromium-광산2-on.png",
+       "pngMd5": "891d36514228c8ffe05044f07e41c3b8"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        2007,
+        218
+       ],
+       "sizesBeforeReturn": {
+        "water": 33600,
+        "rock": 20723,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 33600,
+        "rock": 20723,
+        "bk": 0
+       },
+       "png": "chromium-광산2-off2.png",
+       "pngMd5": "891d36514228c8ffe05044f07e41c3b8"
+      }
+     ],
+     "cmp": {
+      "cellsOffOn": 0,
+      "cellsOffOff2": 0,
+      "cells": 14400,
+      "water": 1289,
+      "rock": 2431,
+      "scrOffOn": {
+       "meanAbs": 0.108,
+       "bigPct": 0.194
+      },
+      "scrOffOff2": {
+       "meanAbs": 0.108,
+       "bigPct": 0.194
+      }
+     }
+    },
+    {
+     "nm": "어촌1",
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        1296,
+        2361
+       ],
+       "sizesBeforeReturn": {
+        "water": 14400,
+        "rock": 14400,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 14400,
+        "rock": 21520,
+        "bk": 0
+       },
+       "png": "chromium-어촌1-off.png",
+       "pngMd5": "902b923f37a29599b2391d4610d4fe9a"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        1296,
+        2361
+       ],
+       "sizesBeforeReturn": {
+        "water": 6400,
+        "rock": 1681,
+        "bk": 6,
+        "spotCached": 0
+       },
+       "sizesAtShot": {
+        "water": 14400,
+        "rock": 14400,
+        "bk": 12
+       },
+       "png": "chromium-어촌1-on.png",
+       "pngMd5": "902b923f37a29599b2391d4610d4fe9a"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        1296,
+        2361
+       ],
+       "sizesBeforeReturn": {
+        "water": 33600,
+        "rock": 19443,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 33600,
+        "rock": 19443,
+        "bk": 0
+       },
+       "png": "chromium-어촌1-off2.png",
+       "pngMd5": "62f1dd73cc34ac1658395222b0aed5ac"
+      }
+     ],
+     "cmp": {
+      "cellsOffOn": 0,
+      "cellsOffOff2": 0,
+      "cells": 14400,
+      "water": 3618,
+      "rock": 3831,
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0
+      },
+      "scrOffOff2": {
+       "meanAbs": 32.045,
+       "bigPct": 35.048
+      }
+     }
+    },
+    {
+     "nm": "산1",
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        1750,
+        74
+       ],
+       "sizesBeforeReturn": {
+        "water": 16414,
+        "rock": 14400,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 16414,
+        "rock": 22960,
+        "bk": 0
+       },
+       "png": "chromium-산1-off.png",
+       "pngMd5": "ceb6db82076d758bf44cc84110fcdb84"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        1750,
+        74
+       ],
+       "sizesBeforeReturn": {
+        "water": 6400,
+        "rock": 1681,
+        "bk": 6,
+        "spotCached": 0
+       },
+       "sizesAtShot": {
+        "water": 14400,
+        "rock": 14400,
+        "bk": 12
+       },
+       "png": "chromium-산1-on.png",
+       "pngMd5": "c5745e97e0e620a4ad8b754b74413085"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        1750,
+        74
+       ],
+       "sizesBeforeReturn": {
+        "water": 33600,
+        "rock": 19443,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 33600,
+        "rock": 19443,
+        "bk": 0
+       },
+       "png": "chromium-산1-off2.png",
+       "pngMd5": "c5745e97e0e620a4ad8b754b74413085"
+      }
+     ],
+     "cmp": {
+      "cellsOffOn": 0,
+      "cellsOffOff2": 0,
+      "cells": 14400,
+      "water": 586,
+      "rock": 5567,
+      "scrOffOn": {
+       "meanAbs": 0.853,
+       "bigPct": 1.172
+      },
+      "scrOffOff2": {
+       "meanAbs": 0.853,
+       "bigPct": 1.172
+      }
+     }
+    }
+   ],
+   "errs": []
+  },
+  "webkit": {
+   "browser": "webkit",
+   "welcome": "(칸 없음)",
+   "spots": [
+    {
+     "nm": "광산2",
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        2007,
+        218
+       ],
+       "sizesBeforeReturn": {
+        "water": 16620,
+        "rock": 23916,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 16620,
+        "rock": 23916,
+        "bk": 0
+       },
+       "png": "webkit-광산2-off.png",
+       "pngMd5": "da686d3b29339d0b29aa722b538390b7"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        2007,
+        218
+       ],
+       "sizesBeforeReturn": {
+        "water": 11220,
+        "rock": 21651,
+        "bk": 18,
+        "spotCached": 0
+       },
+       "sizesAtShot": {
+        "water": 14400,
+        "rock": 14400,
+        "bk": 16
+       },
+       "png": "webkit-광산2-on.png",
+       "pngMd5": "3f977fbb4add2c353b3172e62ed1a9b6"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        2007,
+        218
+       ],
+       "sizesBeforeReturn": {
+        "water": 33600,
+        "rock": 19955,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 33600,
+        "rock": 19955,
+        "bk": 0
+       },
+       "png": "webkit-광산2-off2.png",
+       "pngMd5": "3f977fbb4add2c353b3172e62ed1a9b6"
+      }
+     ],
+     "cmp": {
+      "cellsOffOn": 0,
+      "cellsOffOff2": 0,
+      "cells": 14400,
+      "water": 1289,
+      "rock": 2431,
+      "scrOffOn": {
+       "meanAbs": 0.098,
+       "bigPct": 0.166
+      },
+      "scrOffOff2": {
+       "meanAbs": 0.098,
+       "bigPct": 0.166
+      }
+     }
+    },
+    {
+     "nm": "어촌1",
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        1296,
+        2361
+       ],
+       "sizesBeforeReturn": {
+        "water": 14400,
+        "rock": 15424,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 14400,
+        "rock": 21520,
+        "bk": 0
+       },
+       "png": "webkit-어촌1-off.png",
+       "pngMd5": "60ecca245db643f1c77471b5c7dfbfff"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        1296,
+        2361
+       ],
+       "sizesBeforeReturn": {
+        "water": 6400,
+        "rock": 1681,
+        "bk": 6,
+        "spotCached": 0
+       },
+       "sizesAtShot": {
+        "water": 14400,
+        "rock": 14400,
+        "bk": 12
+       },
+       "png": "webkit-어촌1-on.png",
+       "pngMd5": "60ecca245db643f1c77471b5c7dfbfff"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        1296,
+        2361
+       ],
+       "sizesBeforeReturn": {
+        "water": 33600,
+        "rock": 19443,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 33600,
+        "rock": 19443,
+        "bk": 0
+       },
+       "png": "webkit-어촌1-off2.png",
+       "pngMd5": "60ecca245db643f1c77471b5c7dfbfff"
+      }
+     ],
+     "cmp": {
+      "cellsOffOn": 0,
+      "cellsOffOff2": 0,
+      "cells": 14400,
+      "water": 3618,
+      "rock": 3831,
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0
+      }
+     }
+    },
+    {
+     "nm": "산1",
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        1750,
+        74
+       ],
+       "sizesBeforeReturn": {
+        "water": 16414,
+        "rock": 15040,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 16414,
+        "rock": 22960,
+        "bk": 0
+       },
+       "png": "webkit-산1-off.png",
+       "pngMd5": "9818808f1a7385fc9cc306a60d52e557"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        1750,
+        74
+       ],
+       "sizesBeforeReturn": {
+        "water": 6400,
+        "rock": 1681,
+        "bk": 6,
+        "spotCached": 0
+       },
+       "sizesAtShot": {
+        "water": 14400,
+        "rock": 14400,
+        "bk": 12
+       },
+       "png": "webkit-산1-on.png",
+       "pngMd5": "9818808f1a7385fc9cc306a60d52e557"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        1750,
+        74
+       ],
+       "sizesBeforeReturn": {
+        "water": 33600,
+        "rock": 19443,
+        "bk": 0,
+        "spotCached": 14400
+       },
+       "sizesAtShot": {
+        "water": 33600,
+        "rock": 19443,
+        "bk": 0
+       },
+       "png": "webkit-산1-off2.png",
+       "pngMd5": "9818808f1a7385fc9cc306a60d52e557"
+      }
+     ],
+     "cmp": {
+      "cellsOffOn": 0,
+      "cellsOffOff2": 0,
+      "cells": 14400,
+      "water": 586,
+      "rock": 5567,
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0
+      }
+     }
+    }
+   ],
+   "errs": []
+  }
+ }
+}
