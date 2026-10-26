@@ -323,6 +323,14 @@ const state = {
   ledger: null,
 };
 
+// ★★[T942 2026-10-27 · T930 회부 1] **마을 몸(NPC) HP 의 문 — 존의 HP 문 그 함수**(`setHp(p, v, why)` · T109 "HP 를 바꾸는 문 하나" · deps 로 받는다 · 사본 0).
+//   종전엔 이 파일 아홉 줄이 몸 hp 를 문 밖에서 썼다(요양 회복 · 전쟁 hp 거울 · 포로 · 풀림 · 원정 굶음 둘 · 원정 굶어 죽음 · 줄어드는 몸의 그 자리 죽음(T590) · 다시 뜬 판 복원).
+//   값 · 차례 · 메시지 무변 — 넘기는 값은 늘 0 ~ `maxHp`(NPC `maxHp` 는 스폰 리터럴 `PLAYER_MAX_HP` 하나 · 이 파일은 안 쓴다 · 전투 단위 hp 는 깎이기만 한다)라
+//   문의 깎기가 아무것도 안 깎고 · 같은 값이면 안 쓴다(값은 이미 그 값) · NPC 몸은 소켓이 없고(`ws: null`) 낱말은 방송 낱말이 아니다(요양 = `regen` · 조용한 낱말).
+//   하나만 다르다 — 원정 굶음(T906 'die' 판 · 끔 기본)이 0 밑으로 깎던 잠깐 값은 문이 0 으로 깎는다: 갈림(`<= 0`)은 같고 그 몸은 같은 걸음에서 `_t906Die` 가 0 으로 눕힌다.
+//   전투 단위(`bu` · 교전 `ctx.units`)의 hp 는 몸이 아니라 판의 칸이다(war-live · battle-core 소유) — 이 문 밖. 소스 검사 `scripts/test-npc-hp-door.js`.
+function _setHp(p, v, why) { return state.deps.setHp(p, v, why); }
+
 // 게임 절대일 — zone-config WORLD(worldEpoch=0, dayLengthMs=10분)와 같은 시계 원천(Date.now).
 // isNight/worldPhase와 동일 epoch를 쓰므로 낮밤 주기와 일 경계가 정렬됨.
 function gameDayOf(now) { return Math.floor((now - state.epoch) / state.dayMs); }
@@ -1043,7 +1051,7 @@ function _t747Restore() {
       R.bodies++;
       if (S.simJob != null && b.simJob !== S.simJob) { R.jobMiss++; b.simJob = S.simJob; }   // 같은 자리 = 같은 몸(직업도 그 몸의 것)
       if (Number.isFinite(S.x) && Number.isFinite(S.y)) { b.x = S.x; b.y = S.y; b.targetX = S.x; b.targetY = S.y; b.vx = 0; b.vy = 0; R.moved++; }
-      if (Number.isFinite(S.hp) && S.hp > 0) { b.hp = Math.min(S.hp, b.maxHp || S.hp); if (b.hp < (b.maxHp || 100)) R.hpLow++; }
+      if (Number.isFinite(S.hp) && S.hp > 0) { _setHp(b, Math.min(S.hp, b.maxHp || S.hp), 'restore'); if (b.hp < (b.maxHp || 100)) R.hpLow++; }   // ★[T942] 문으로
       if (S._rest != null) b._rest = S._rest;
       if (S.inventory && typeof S.inventory === 'object') { b.inventory = S.inventory; let any = false; for (const k in S.inventory) if (S.inventory[k] > 0 && k !== 'seed_berry') any = true; if (any) R.hands++; }
       for (const k of ['_t312U', '_t312Kg', '_t368H', '_t368N', '_t717L', '_t733F', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil', '_sh', '_hd', '_half'])
@@ -1388,7 +1396,7 @@ function _bxDie(vil, p, w) {
   _bxQuiet(p);
   p.simCaravan = true;                   // 이동 문도 닫는다(단일 작성자 — 누운 몸은 안 움직인다)
   try { if (state.deps.deathDrop) state.deps.deathDrop(p); } catch (e) {}   // 낙하 — 플레이어 죽음 캐논의 그 문(짐 kg 절반 · 입은 것은 몸에)
-  p.hp = 0;
+  _setHp(p, 0, 'died');   // ★[T942] 문으로(낱말 = 이 몸의 나감 갈래 `died`)
   p.isDown = true; p.downedAt = 0;       // 쓰러진 몸 그림 · 구조 창 0
   p._bxExit = 'died';
   try { broadcast({ type: 'player_down_state', pid: p.pid, isDown: true, why: 'down' }); } catch (e) {}
@@ -5646,7 +5654,7 @@ function _warSyncMeta(g, side, rout) {
     if (p._wpx != null) { let dvx = (p.x - p._wpx) * WL.TICK_HZ, dvy = (p.y - p._wpy) * WL.TICK_HZ; const m = Math.hypot(dvx, dvy); if (m > 400) { dvx = dvx / m * 400; dvy = dvy / m * 400; } p.vx = dvx; p.vy = dvy; }
     p._wpx = p.x; p._wpy = p.y;
     if (bu) {
-      p.hp = bu.hp <= 0 ? 0 : Math.max(1, Math.round((bu.hp / Math.max(1, bu.maxHp)) * (p.maxHp || 100)));   // 전투 hp 비율 → player maxHp(값 환산 · 좌표 아님)
+      _setHp(p, bu.hp <= 0 ? 0 : Math.max(1, Math.round((bu.hp / Math.max(1, bu.maxHp)) * (p.maxHp || 100))), 'war');   // 전투 hp 비율 → player maxHp(값 환산 · 좌표 아님) · ★[T942] 문으로
       if (bu.hp <= 0) { u.dead = true; p.vx = 0; p.vy = 0; }
     }
     p._muType = u.type; p._bt = MTI[u.type] || 0; p._bside = side; p._bcmd = !!u.cmd; p._brout = !!(rout || (bu && bu.routing));
@@ -6108,7 +6116,7 @@ function _warEndFight(body, why, winner) {
       const pid = loserDead.pop(); const p = players.get(pid); if (!p) continue;
       if (w._capResolve.side === 'A') _warBagDrop(w, p);   // ★[T423] 끌려가는 병사의 짐은 전장에 남는다(드랍)
       if (_t811) _t811.field += _t811Fall(w, p);   // ★[T857] 끌려가는 병사의 무기는 결판 자리에 떨어진다(장부 −같은 몫 · 이긴 쪽이 줍는다)
-      p.simCaptive = 1; p._brout = false; p.hp = Math.max(1, Math.round((p.maxHp || 100) * 0.4));
+      p.simCaptive = 1; p._brout = false; _setHp(p, Math.max(1, Math.round((p.maxHp || 100) * 0.4)), 'captive');   // ★[T942] 문으로
       const oldVil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
       if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) { oldVil.npcPids.splice(kk, 1); if (T822_BODY_SEED) _t822Rekey(oldVil, kk); } }
       p.simVillageId = winnerVil.dbId; winnerVil.npcPids.push(pid);
@@ -6193,7 +6201,7 @@ function _warReleasePid(pid) {
   try { const vil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null; if (vil && state.war && state.war.warDraftReleasePid) state.war.warDraftReleasePid(vil, pid); } catch (_) { }
   p._muster = false; p._muType = null; p.simWar = false; p._brout = false; p._bcmd = false; p._bt = undefined; p._bside = undefined;
   p._wpx = undefined; p._wpy = undefined;
-  p.hp = p.maxHp || 100; p.vx = 0; p.vy = 0; npcs.add(pid);
+  _setHp(p, p.maxHp || 100, 'release'); p.vx = 0; p.vy = 0; npcs.add(pid);   // ★[T942] 문으로
 }
 // ════════════════════════════════════════════════════════════════
 // ★★[T423 2026-09-26 · 군량 = 행위 ⓐ · PM #68] **짐이 먹는다** — 설계_군량_행위 §1-ⓐ 그대로.
@@ -6403,8 +6411,8 @@ function _t906Step(w, body, p, phi, mode) {
   if (mode !== 'die' || !(L > 0)) return false;
   ent.lost += L; St.hpLost += L;
   const g = body && body.atkGroup, gu = g && g.units ? g.units.find((u) => u.pid === p.pid) : null, bu = gu && gu.bu, mh = p.maxHp || 100;
-  if (bu) { bu.hp -= (L / mh) * (bu.maxHp || mh); if (bu.hp <= 0) return true; p.hp = Math.max(1, Math.round((bu.hp / Math.max(1, bu.maxHp)) * mh)); return false; }
-  p.hp = (p.hp == null ? mh : p.hp) - L; return p.hp <= 0;
+  if (bu) { bu.hp -= (L / mh) * (bu.maxHp || mh); if (bu.hp <= 0) return true; _setHp(p, Math.max(1, Math.round((bu.hp / Math.max(1, bu.maxHp)) * mh)), 'starve'); return false; }   // ★[T942] 몸 hp 는 문으로(단위 hp 는 판의 칸)
+  _setHp(p, (p.hp == null ? mh : p.hp) - L, 'starve'); return p.hp <= 0;   // ★[T942] 문으로 — 0 밑은 문이 0 으로(갈림 같음 · 그 몸은 `_t906Die` 가 같은 걸음에서 눕힌다)
 }
 // ㄴ — 그날 먹은 뒤 게이지의 허기 무너짐(Body 회복 배율 곡선 — 배부르면 1 · 극단 0)
 function _t906Sat(ent) { const B = _bodyMod(); if (!B) return 1; const sc = ent.sc || (ent.sc = { hunger: ent.h, thirst: 100 }); sc.hunger = ent.h; return B.recoverMult(sc); }
@@ -6415,7 +6423,7 @@ function _t906Die(w, body, p, day) {
   //   그 단위는 판의 명부에서도 빠진다 — 편의 시작 수(`sides.start`)를 하나 덜어 결판 셈의 생존(start − dead)에 안 들게 한다(굶어 죽은 사람이 살아 돌아온 셈 0)
   const f = body && body.fight, sd = bu && f && f.ctx && f.ctx.sides ? f.ctx.sides[bu.side] : null; if (sd && sd.start > 0) sd.start--;
   if (gu) gu.dead = true;
-  p.hp = 0; p.vx = 0; p.vy = 0;
+  _setHp(p, 0, 'starve'); p.vx = 0; p.vy = 0;   // ★[T942] 문으로
   const fe = _warBagDrop(w, p);
   const vil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
   const ok = !!(vil && state.war && state.war.warDraftKillPid && state.war.warDraftKillPid(vil, p.pid));
@@ -12470,7 +12478,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
       let labSum = 0;
       for (const a of _as) {
         const mx = a.maxHp || 100;
-        if (a.hp > 0 && a.hp < mx) { a.hp = Math.min(mx, a.hp + (a._rest ? 18 * _herbMul : 6) * regenMul); if (a.hp >= mx) a._rest = 0; }   // 만피 회복 시 요양 해제(히스테리시스) — 요양만 약재 가속
+        if (a.hp > 0 && a.hp < mx) { _setHp(a, Math.min(mx, a.hp + (a._rest ? 18 * _herbMul : 6) * regenMul), 'regen'); if (a.hp >= mx) a._rest = 0; }   // 만피 회복 시 요양 해제(히스테리시스) — 요양만 약재 가속 · ★[T942] 문으로(조용한 낱말)
         labSum += a._rest ? 0 : (0.6 + 0.4 * Math.max(0, a.hp || 0) / mx);   // 노동력: 요양=0, 부상=0.6~1.0(hp율)
       }
       // ★★[T295 ①] **동원 항(_mobF)을 걷어냈다.** 징발자는 이제 econ 에서 자리를 비우고 생산 루프가 그 사람을

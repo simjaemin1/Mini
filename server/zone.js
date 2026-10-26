@@ -2859,6 +2859,11 @@ TOOL_EFFECTS.crude_axe   = { gatherWoodMult: _crudeOf(TOOL_EFFECTS.axe.gatherWoo
 TOOL_EFFECTS.crude_pick  = { gatherWoodMult: 1, gatherStoneMult: _crudeOf(TOOL_EFFECTS.pickaxe.gatherStoneMult), attackMult: 1.0 };
 TOOL_EFFECTS.crude_blade = { gatherWoodMult: 1, gatherStoneMult: 1, attackMult: _crudeOf(TOOL_EFFECTS.sword.attackMult) };
 const PLAYER_MAX_HP = 100;
+// ★★[T942 2026-10-27] **HP 문(`setHp` · T109)의 낱말 표 둘 — 자리만 여기로**(글자 · 값 그대로). 마을 몸(NPC) HP 도 그 문으로 쓰는데(`SimVillages.init` 의 `setHp`)
+//   다시 뜬 판 몸 복원(`villages._t747Restore` · T747 켬 기본)이 `SimVillages.init(...)` **안에서** 바로 돌아 문을 부른다 — 표가 문 곁(그 init 줄보다 아래)에
+//   서 있으면 `const` 가 아직 없어(TDZ) 정수 hp 가 바뀌는 첫 몸에서 `ReferenceError` → 복원이 거기서 끊긴다(`[T747] 몸 칸 복원 실패`). 표는 init 보다 먼저.
+const HP_PEER = new Set(['damage', 'food', 'dish', 'debug', 'arrow', 'mob', 'player', 'fall', 'extreme', 'wild']);   // 종전에 방송하던 넷 + [T402] `damagePlayer` 출처 앞 낱말(전부 종전 'damage' 였다 — 방송 규약 무변)
+const HP_QUIET = new Set(['regen', 'respawn', 'takeover']);     // 이미 다른 문이 나른다(gauges · player_respawn · welcome)
 const PLAYER_ATTACK_RANGE = 60;
 const PLAYER_ATTACK_DAMAGE = 10;
 const PLAYER_ATTACK_COOLDOWN_MS = 500;
@@ -5006,6 +5011,9 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★★[T590] 줄어드는 몸 — 그 자리에서 죽는 주민이 짐을 떨구는 문(플레이어 죽음 캐논의 낙하 그 함수 · 사본 0) ·
   //   누운 몸이 남는 시간(사람 시신 문법이 없어 짐승 시신의 그 값을 빌린다 — 값은 회부 · 보고/T590).
   deathDrop: (p) => _deathDrop(p), corpseMs: CORPSE_DECAY_MS,
+  // ★★[T942] 몸 HP 문 — 마을 몸(NPC)의 HP 도 사람 문 그 함수(`setHp` · T109 "HP 를 바꾸는 문 하나" · 사본 0)로 쓴다(생활층 요양 · 전쟁 거울 · 포로 · 풀림 ·
+  //   원정 굶음 · 캐러밴 죽음 · 다시 뜬 판 복원). NPC 몸은 소켓이 없고(`ws: null`) 마을 낱말은 방송 낱말(`HP_PEER`)이 아니라 메시지 0 = 종전.
+  setHp,
   t325CutTreeAt: (cx, cy) => _t325CutTreeAt(cx, cy),
   // ★[T325] 전리품 표는 존이 쥔다 — 생활층은 "이 그루가 목재 몇 낱개냐"만 묻는다(사본 0)
   t325LootOf: (r) => lootOfResource(r),
@@ -13192,8 +13200,8 @@ async function isAtWar(guildA, guildB) {
 //   ⚠자연 회복(`regen`)은 **조용하다.** T61 이 초당 하나 나가는 `gauges` 에 hp 를 이미 실어 뒀고
 //     (`§0-ⓑ` · 클라 `30-n-net.js` 가 그 칸을 읽는다), 그게 곧 **1hp 양자화이자 틱 정본**이다.
 //     여기서 또 보내면 초당 열 건이 되는데, 화면이 얻는 것은 0 이다(새 수 0 · 초당 메시지 표는 보고 §2).
-const HP_PEER = new Set(['damage', 'food', 'dish', 'debug', 'arrow', 'mob', 'player', 'fall', 'extreme', 'wild']);   // 종전에 방송하던 넷 + [T402] `damagePlayer` 출처 앞 낱말(전부 종전 'damage' 였다 — 방송 규약 무변)
-const HP_QUIET = new Set(['regen', 'respawn', 'takeover']);     // 이미 다른 문이 나른다(gauges · player_respawn · welcome)
+//   ★[T942] 낱말 표 둘(`HP_PEER` · `HP_QUIET`)은 위 `PLAYER_MAX_HP` 곁에 선다(글자 · 값 그대로 — 자리만) — 마을 몸 HP 도 이 문을 지나고,
+//     그 첫 자리(다시 뜬 판 몸 복원)가 `SimVillages.init(...)` 안에서 이 파일의 표 줄보다 먼저 돈다(TDZ).
 function setHp(p, v, why) {
   const max = p.maxHp || PLAYER_MAX_HP;
   const prev = p.hp;
