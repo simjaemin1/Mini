@@ -523,3 +523,56 @@ median−45.35dBFS is quiet (about the1.9th percentile globally,9.3rd near its
 median pitch), but not outside all fit pitch/level coverage. Insufficiently
 learned quiet-level mapping is a hypothesis, not an established cause or proof
 that the representation is sufficient for daegeum identity.
+
+## Explicit level conditioning, 2026-10-26
+
+The second learned level-head attempt also failed the intended correction.
+`fit_physical_level_head.py` converts mel-cepstra to log-power information,
+then selects between fixed one-energy and five-physical-feature Ridge heads
+using eight recording-disjoint FIT folds. The five-feature candidate won
+fit-only CV (10.84 versus 11.19dB), but its balanced training RMSE was still
+7.48dB. It took3.54CPU seconds, with no Torch/GPU or public model weights.
+Deep-introduction quiet excess remained+10.32dB and loud-envelope residual
+worsened2.793→3.415dB; Arirang worsened4.239→5.289dB. Its float output also
+had20samples at abs>=1 (peak1.0404); it was not clipped or presented as an
+improved audition. Both learned-head failures and the raw1,500-step failure
+remain preserved. `export_volume_head_comparison.py` is a separately tested
+export tool, not evidence that a failed model was approved or auditioned.
+
+`build_level_conditioned_trial.py` therefore tests a different, explicitly
+disclosed contract: the existing complete global1,000 carrier follows an
+externally supplied level curve. In this COPY DIAGNOSTIC ONLY, the condition
+is deliberately extracted from the corresponding reference recording.
+**This uses reference dynamics; it is not learned envelope prediction,
+independent reconstruction generalization, a new score, or learned breath.**
+A new score would need a separately authored/predicted expression curve.
+
+The controller accepts only carrier PCM plus the separate desired-level
+condition. It measures centered20ms RMS on a5ms grid with reflected edges
+and a−100dBFS floor, subtracts carrier level from desired level, limits gain
+to±60dB, applies fixed[.25,.5,.25]log-gain smoothing, and linearly interpolates
+to samples. It changes gain only: no source PCM mixing, hard mute/gate,
+EQ, pitch editing, time warping, model inference, or new training. This IS
+dynamic gain postprocessing, unlike the earlier raw-vocoder trial. Centered
+measurement/smoothing uses future context; zero waveform shift is not zero
+real-time latency. Diagnostics retain the separate64ms source-fixed masks.
+AAC comparisons use only an additional constant LUFS gain per file.
+
+The fixed two-case trial completed in7.08CPU seconds using5,902,250bytes.
+Deep quiet-support frames above−60dBFS fell122→0/122; direct quiet RMS
+difference from source fell+41.268→−.377dB. Loud-support contour residual
+after a single median offset fell2.793→.0943dB, and Arirang4.239→.1362dB.
+These are **tracking of a supplied reference condition**, not prediction
+accuracy on unseen music. Raw peaks were.03684/.34102 with no abs>=1samples.
+Four4.8s AACs all measured−24.0LUFS,48kHz stereo,230,400decoded frames.
+Private auditions045/046 are deep before/conditioned;047/048 are Arirang
+before/conditioned. Native FLOAT WAVs preserve saved NPZ PCM exactly.
+
+Independent read-only audit verified69bound/input/output hashes, exact
+reference/carrier/condition/control arithmetic and native PCM, recomputed
+all raw metric dictionaries, and fully decoded/measured all four AACs.
+The full local SiFiGAN suite now has159passing synthetic/unit tests;
+the unchanged static-display helper has6separate passing tests. This is
+artifact integrity, not a listening approval. Originals, prior checkpoints,
+default game BGM and game playback code remain unchanged. The new-score
+level-expression source and daegeum timbre/articulation remain unresolved.
