@@ -11,6 +11,10 @@
 #   ⚠처음 한 번(서울에 이 파일이 아직 없으면): `ssh seoul 'cd /opt/Mini && git pull --ff-only'` 를 먼저 치거나 맥 레포에서 `bash scripts/update-live.sh`.
 #
 # 차례(어느 단계든 ✗ 면 거기서 멈추고 "바뀐 것 · 안 한 것"을 찍는다):
+#   ⓪ ★[T919] 갱신 앞 — 갱신 직전이 DB 가 가장 위험한 때다(새 코드가 옛 DB 를 처음 연다):
+#        디스크 = `disk-check.sh` 판정(두 호스트 빈 자리 ≥ 백업 한 벌 — T901 · reset-world 규칙 · 새 수 0) 아니면 멈춤(이유 한 줄 · 라이브 무변)
+#        → 스냅샷 = `backup-live.sh` 한 판(T907 · 도는 central · 존 마다 · 라벨 `update-live <앞 커밋> <갱신 커밋>`) — 이 갱신이 다시 띄울 대상이 있는 호스트만
+#          (②-고정과 같은 판정 — 바꿀 것 0 이면 안 뜬다 · 서울 판의 backup-live.sh 를 두 호스트에 그대로 흘린다) · ✗ 면 멈춤
 #   ① 서울 `git pull --ff-only`
 #   ② 할 일 판정 — `redeploy-hanbando.sh --dry` 그대로(같은 규칙 · 사본 0):
 #        서울 = 서울 스탬프(`/srv/durango/deployed-hanbando.sha`) 기준 · 도쿄 = 도쿄 스탬프(`/srv/durango/deployed-nippon.sha`) 사본을 `STAMP=` 로 준 같은 판정의 zone 칸
@@ -30,16 +34,18 @@
 #   bash <(ssh seoul cat /opt/Mini/scripts/update-live.sh) --rollback         # 서울 central → 한반도 → 도쿄 닛폰 `reset-world.sh --rollback`(`:prev` 가 없거나 이미 그것이면 할 일 0)
 #     → 도쿄 코드 트리 = 돌아간 닛폰 이미지의 커밋(`SYNC_COMMIT=<커밋> sync-tokyo` · 서울 `git reset` 은 안 한다 — 서울 HEAD 는 기록만)
 #     → 스탬프: 돌아간 호스트의 스탬프를 그 이미지 커밋으로(모르면 지운다 — 다음 갱신이 전부 한다) → 관측 셋 → live-lag 판정.
+#   ★[T919] 되돌리기는 **이미지만** — DB 는 안 건드린다. 대신 "이 갱신 앞 스냅샷" 자리(대상마다 라벨 `update-live` 인 가장 새 사본 · 시각 · 갱신 커밋)와
+#     되놓기 줄(T907 `backup-live.sh <대상> --restore <그 폴더>` — 재민이 고르는 별도 줄)을 같이 찍는다(`--dry` 도).
 #   ⚠`:prev` 는 한 칸이다 — 되돌린 뒤 다시 되돌리면 할 일 0(더 앞으로 가지 않는다). 다시 앞으로 가려면 갱신 한 줄(스탬프가 지워졌으면 전부 다시 굽는다).
 #
 # 별칭 · 자리: `seoul` · `tokyo`(맥 `~/.ssh/config` — T878) · 다른 이름이면 SYNC_SEOUL= · SYNC_TOKYO= · 코드 자리 SYNC_SEOUL_DIR · SYNC_TOKYO_DIR(기본 /opt/Mini 둘 —
-#   sync-tokyo · live-lag 와 같은 env 를 넘긴다). 도쿄 스탬프 자리 TOKYO_STAMP(기본 /srv/durango/deployed-nippon.sha).
+#   sync-tokyo · live-lag 와 같은 env 를 넘긴다). 도쿄 스탬프 자리 TOKYO_STAMP(기본 /srv/durango/deployed-nippon.sha) · 서울 SEOUL_STAMP(기본 /srv/durango/deployed-hanbando.sha — 되돌리기 · ⓪ 라벨이 읽는다).
 # ★새 수 0 · 제품 0 · 비밀 값 화면 · 파일 0(T887 규약 — 도쿄 비밀은 도쿄 셸 env 로만 · 맥으로 오는 것은 이름 · 수 · 판정뿐).
 set -uo pipefail
 
 S="${SYNC_SEOUL:-seoul}"; T="${SYNC_TOKYO:-tokyo}"
 SD="${SYNC_SEOUL_DIR:-/opt/Mini}"; TD="${SYNC_TOKYO_DIR:-/opt/Mini}"
-TSTAMP="${TOKYO_STAMP:-/srv/durango/deployed-nippon.sha}"
+TSTAMP="${TOKYO_STAMP:-/srv/durango/deployed-nippon.sha}"; SSTAMP="${SEOUL_STAMP:-/srv/durango/deployed-hanbando.sha}"   # [T919] 서울 스탬프 자리도 env(하네스 · 종전 값 그대로)
 DRY=0; RB=0
 for a in "$@"; do case "$a" in --dry) DRY=1 ;; --rollback) RB=1 ;; *) sed -n '2,37p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 2 ;; esac; done
 export SYNC_SEOUL="$S" SYNC_TOKYO="$T" SYNC_SEOUL_DIR="$SD" SYNC_TOKYO_DIR="$TD" LAG_SEOUL="$S" LAG_TOKYO="$T"
@@ -67,11 +73,61 @@ TST="$(ssh -n "$T" "cat $TSTAMP 2>/dev/null" | tr -d ' \r\n' || true)"
 OLD="$(tokyo_old || true)"
 say "  서울 HEAD ${SH0:0:12} · 도쿄 HEAD ${TH0:0:12} · 도쿄 스탬프 ${TST:0:12}$([ -z "$TST" ] && echo '(없음 — 도쿄는 전부 한다)') · 도쿄 옛 존 정원 $(echo "$OLD" | sed -n 's/.*cap=\([^ ]*\).*/\1/p') · central $(echo "$OLD" | sed -n 's/.*host=\([^ ]*\).*/\1/p')"
 
+# ── ⓪ [T919] 갱신 앞 — 디스크 판정 → 스냅샷 ─────────────────────────────────────────────────────────
+#   서울 판의 스크립트를 쓴다(맥 한 줄 꼴 — 도쿄 트리가 옛 판이어도 같은 판) · 비밀 0(값을 안 옮긴다)
+backup_on() {   # backup_on <호스트> <라벨> [--dry] — 서울 판 backup-live.sh 를 그 호스트 bash 에 흘린다
+  ssh -n "$S" cat "$SD/scripts/backup-live.sh" | ssh "$1" "BACKUP_LABEL='$2' bash -s -- ${3:-}"
+}
+last_on() {   # last_on <호스트> <대상> — 그 대상의 가장 새 "갱신 앞" 사본 `폴더<탭>시각<탭>라벨`
+  ssh -n "$S" cat "$SD/scripts/backup-live.sh" | ssh "$1" "bash -s -- --last $2 update-live"
+}
+disk_gate() {   # 두 호스트 판정 — 끝 줄이 "두 호스트 모두" 가 아니면 rc 1 · 찍을 줄은 DGL
+  local out; out="$(bash <(ssh -n "$S" cat "$SD/scripts/disk-check.sh") 2>&1)"
+  DGL="$(echo "$out" | awk '/^\[/{h=$1} /^  판정: /{sub(/^  판정: /,""); print h " " $0} /\] ✗ /{print}')"
+  DGV="$(echo "$out" | sed -n 's/^판정: //p' | tail -1)"
+  [ "$DGV" = '두 호스트 모두 빈 자리 ≥ 백업 한 벌' ]
+}
+if [ "$RB" = 0 ]; then
+  P0S="$(plan_of 2>&1)"; P0TP="$(plan_of "$TST" 2>&1)"
+  P0C="$(echo "$P0S" | sed -n 's/^PLAN central=\([01]\).*/\1/p' | tail -1)"; P0Z="$(echo "$P0S" | zone_of)"; P0T="$(echo "$P0TP" | zone_of)"
+  P0A="$(echo "$P0S" | sed -n 's/^PLAN .*after=\([0-9a-f]*\).*/\1/p' | tail -1)"
+  { [ -n "$P0C" ] && [ -n "$P0Z" ] && [ -n "$P0T" ] && [ -n "$P0A" ]; } || { echo "$P0S" | tail -3 | ind; stop "갱신 앞 판정(redeploy-hanbando.sh --dry)을 못 읽었다" "디스크 · 스냅샷 · 갱신 전부"; }
+  #   라벨 = `update-live <그 호스트에 지금 배포된 커밋(스탬프 · 모르면 -)> <이 갱신이 받을 판>` — 되돌리기가 "이 갱신 앞" 을 이 두 칸으로 찾는다
+  SST="$(ssh -n "$S" "cat $SSTAMP 2>/dev/null" | tr -d ' \r\n' || true)"
+  LABEL_S="update-live ${SST:--} ${P0A}"; LABEL_T="update-live ${TST:--} ${P0A}"
+  SNAP_S=0; SNAP_T=0; [ "$P0C$P0Z" != 00 ] && SNAP_S=1; [ "$P0T" = 1 ] && SNAP_T=1
+  if disk_gate; then DOK=1; else DOK=0; fi
+  say "[⓪ 디스크] $([ "$DOK" = 1 ] && echo ok || echo '✗') — ${DGV:-판정 줄 없음}"; echo "$DGL" | ind
+  if [ "$DRY" = 1 ]; then
+    if [ "$SNAP_S$SNAP_T" = 00 ]; then say "[⓪ 스냅샷] 안 뜬다 — 바꿀 것 0(갱신이 DB 를 새 코드로 열지 않는다 · ②-고정과 같은 판정)"
+    else
+      say "[⓪ 스냅샷] 갱신 ${SST:0:12}${SST:+(서울 스탬프)} · ${TST:0:12}${TST:+(도쿄 스탬프)} → ${P0A:0:12} — $([ "$DOK" = 1 ] || echo '(디스크 ✗ — 실제 판은 여기서 멈춘다) ')뜰 자리:"
+      [ "$SNAP_S" = 1 ] && backup_on "$S" "$LABEL_S" --dry 2>&1 | sed '1s/^/서울 /' | ind
+      [ "$SNAP_T" = 1 ] && backup_on "$T" "$LABEL_T" --dry 2>&1 | sed '1s/^/도쿄 /' | ind
+      [ "$SNAP_S" = 0 ] && say "    서울 — 안 뜬다(central · 한반도 안 바뀜)"; [ "$SNAP_T" = 0 ] && say "    도쿄 — 안 뜬다(닛폰 안 바뀜)"
+    fi
+  else
+    [ "$DOK" = 1 ] || stop "디스크 ✗(위 [⓪ 디스크] 줄) — 갱신 앞 스냅샷이 들어갈 자리를 못 믿는다(\`disk-check.sh --prune\` 뒤 다시 · 절차서 §8)" "스냅샷 · 갱신 전부"
+    if [ "$SNAP_S$SNAP_T" = 00 ]; then say "[⓪ 스냅샷] 안 뜬다 — 바꿀 것 0(②-고정과 같은 판정)"
+    else
+      say "[⓪ 스냅샷] 갱신 앞 사본 — 라벨 서울 '$LABEL_S' · 도쿄 '$LABEL_T'"
+      for x in "$S 서울 $SNAP_S S" "$T 도쿄 $SNAP_T T"; do set -- $x
+        lb="$([ "$4" = S ] && echo "$LABEL_S" || echo "$LABEL_T")"
+        [ "$3" = 1 ] || { say "    $2 — 안 뜬다(이 갱신이 다시 띄울 대상이 없다)"; continue; }
+        backup_on "$1" "$lb" > "$TMP/snap-$2" 2>&1; rc=$?
+        sed "1s/^/$2 /" "$TMP/snap-$2" | ind
+        [ "$rc" = 0 ] || stop "$2 갱신 앞 스냅샷(backup-live rc $rc)" "갱신 전부"
+        did "$2 스냅샷 $(grep -c '^  ✓ ' "$TMP/snap-$2")벌"
+      done
+    fi
+  fi
+fi
+
 if [ "$DRY" = 1 ] && [ "$RB" = 0 ]; then
   say "[예행 ②] 서울 판정(redeploy-hanbando.sh --dry — 받을 판 기준)"
-  plan_of 2>&1 | ind
+  echo "$P0S" | ind
   say "[예행 ②] 도쿄 판정(같은 규칙 · 도쿄 스탬프 기준)"
-  TP="$(plan_of "$TST" 2>&1)"; echo "$TP" | grep -E '^\[판정\]|^PLAN' | ind
+  TP="$P0TP"; echo "$TP" | grep -E '^\[판정\]|^PLAN' | ind
   [ "$(echo "$TP" | zone_of)" = 1 ] && say "    → 도쿄 존: 빌드 · 재생성 한다" || say "    → 도쿄 존: 건너뛴다(존이 쓰는 파일이 안 바뀌었다)"
   say "[예행 ③] 도쿄 옛 존 env 이름(값 0): $(echo "$OLD" | sed -n 's/.*names=//p')"
   say "[예행 ④] sync-tokyo --dry(서울 지금 HEAD 기준 — 실제 판은 ① 뒤 HEAD)"
@@ -98,6 +154,17 @@ if [ "$RB" = 1 ]; then
   say "    서울 central  $(prev_of "$S" durango-central durango-central central)"
   say "    서울 hanbando $(prev_of "$S" durango-zone-hanbando durango-zone hanbando)"
   say "    도쿄 nippon   $(prev_of "$T" durango-zone-nippon durango-zone nippon)"
+  #   ★[T919] 이 갱신 앞 스냅샷 자리 — 찍기만(DB 무접촉). 되놓기는 재민이 고르는 별도 줄(T907 · 절차서 §3 11)
+  say "[되돌리기 · 갱신 앞 스냅샷] DB 는 안 건드린다 — 라이브 DB 도 되돌릴 때만 아래 줄(대상마다 · 재민이 고른다):"
+  for x in "$S central durango-central 서울" "$S hanbando durango-zone-hanbando 서울" "$T nippon durango-zone-nippon 도쿄"; do set -- $x
+    l="$(last_on "$1" "$2" 2>/dev/null)"
+    if [ -z "$l" ]; then say "    $4 $2 — 갱신 앞 사본 없음(라벨 update-live · T919 앞 갱신이거나 그 갱신이 이 대상을 안 바꿨다)"; continue; fi
+    d="$(echo "$l" | cut -f1)"; at="$(echo "$l" | cut -f2)"; to="$(echo "$l" | cut -f3 | awk '{print $3}')"; fr="$(echo "$l" | cut -f3 | awk '{print $2}')"
+    c="$(img_commit "$1" "$3")"
+    if [ -n "$c" ] && [ "$c" = "$to" ]; then m=" = 지금 이미지 커밋(이 갱신)"; elif [ -n "$c" ]; then m=" · 지금 이미지 커밋 ${c:0:12}(그 갱신 커밋과 다르다 — 그 갱신이 이 대상 이미지를 안 바꿨거나 그 뒤 판)"; else m=" · 지금 이미지 커밋 라벨 없음"; fi
+    say "    $4 $2 — $d · $at · 갱신 ${fr:0:12} → ${to:0:12}$m"
+    say "      ssh -t $1 'cd $([ "$4" = 도쿄 ] && echo "$TD" || echo "$SD") && bash scripts/backup-live.sh $2 --restore $d'  # 답: $2"
+  done
   if [ "$DRY" = 1 ]; then say "  (예행 — 라이브 무변)"; exit 0; fi
   SRB=0; TRB=0
   #   ★할 일이 있는 대상만 그 호스트의 reset-world.sh 를 부른다 — 되돌린 뒤 도쿄 코드 트리는 앞 커밋이라(그 판 reset-world.sh 에 --rollback 이 없을 수 있다)
@@ -129,8 +196,8 @@ if [ "$RB" = 1 ]; then
   # 스탬프 — 돌아간 호스트만: 도는 이미지 커밋(서울은 central · 한반도가 같은 커밋일 때만) · 모르면 지운다(다음 갱신이 전부 한다)
   if [ "$SRB" = 1 ]; then
     a="$(img_commit "$S" durango-central)"; b="$(img_commit "$S" durango-zone-hanbando)"
-    if [ -n "$a" ] && [ "$a" = "$b" ]; then ssh -n "$S" "echo $a > /srv/durango/deployed-hanbando.sha" && did "서울 스탬프 ${a:0:12}"
-    else ssh -n "$S" "rm -f /srv/durango/deployed-hanbando.sha" && did "서울 스탬프 지움(central ${a:0:12} · 한반도 ${b:0:12} — 다음 갱신은 전부)"; fi
+    if [ -n "$a" ] && [ "$a" = "$b" ]; then ssh -n "$S" "echo $a > $SSTAMP" && did "서울 스탬프 ${a:0:12}"
+    else ssh -n "$S" "rm -f $SSTAMP" && did "서울 스탬프 지움(central ${a:0:12} · 한반도 ${b:0:12} — 다음 갱신은 전부)"; fi
   fi
   if [ "$TRB" = 1 ]; then
     if [ -n "$TC" ]; then ssh -n "$T" "echo $TC > $TSTAMP" && did "도쿄 스탬프 ${TC:0:12}"; else ssh -n "$T" "rm -f $TSTAMP" && did "도쿄 스탬프 지움"; fi
@@ -138,7 +205,7 @@ if [ "$RB" = 1 ]; then
   say "[되돌리기 ⑦] live-lag"
   bash <(ssh -n "$S" cat "$SD/scripts/live-lag.sh") > "$TMP/lag" 2>&1
   sed -n '2,$p' "$TMP/lag" | ind
-  say "  ✓ 되돌림 끝 — 바뀐 것: ${DONE:-없음(되돌릴 것 0)} · 서울 코드 HEAD $(ssh -n "$S" "cd $SD && git rev-parse --short=12 HEAD")(그대로 — 기록만)"
+  say "  ✓ 되돌림 끝 — 바뀐 것: ${DONE:-없음(되돌릴 것 0)} · 서울 코드 HEAD $(ssh -n "$S" "cd $SD && git rev-parse --short=12 HEAD")(그대로 — 기록만) · DB 그대로(되놓기 줄은 위 [갱신 앞 스냅샷])"
   exit 0
 fi
 
@@ -147,6 +214,8 @@ say "[①] 서울 git pull --ff-only"
 SH1="$(ssh -n "$S" "cd $SD && git pull --ff-only -q && git rev-parse HEAD")" || stop "서울 git pull" "서울 재배포 · 도쿄 전부"
 [ "$SH1" != "$SH0" ] && did "서울 코드 ${SH0:0:12} → ${SH1:0:12}"
 say "    ${SH0:0:12} → ${SH1:0:12} · $(ssh -n "$S" "cd $SD && git log --oneline --abbrev=12 -1" | cut -c1-90)"
+#   ★[T919] ⓪ 의 판정 · 스냅샷 라벨은 받을 판 ${P0A:0:12} 기준이었다 — 그 사이 main 이 움직였으면 사본 라벨 · 뜬 호스트가 이 갱신과 어긋난다 ⇒ 멈춘다(다시 치면 ⓪ 부터 새 판)
+[ "$SH1" = "$P0A" ] || stop "받은 판 ${SH1:0:12} ≠ ⓪ 판정 · 스냅샷 라벨의 판 ${P0A:0:12}(그 사이 main 이 움직였다 — 한 번 더 치면 ⓪ 부터 새 판)" "서울 재배포 · 도쿄 전부"
 
 # ② 판정 — 도쿄(서울 판정은 ③ 의 redeploy-hanbando 가 찍는다)
 TP="$(plan_of "$TST" 2>&1)"; TZ="$(echo "$TP" | zone_of)"
