@@ -189,7 +189,7 @@ console.log('\n[F] sim/economy-engine.browser.js — 번들 신선도');
   //   ④ ★[2026-08-03a] **채택 손잡이는 기본값이 채택값이어야 한다** — 이걸 안 보면 "코드엔 있는데
   //      기본이 OFF"인 채로 채택 보고가 나간다(=랩·서버·회귀가 전부 채택 전 세계를 잰다).
   //      채택분은 `!(env === '0')`(기본 ON), 기각분은 `(env === '1')`(기본 OFF) 꼴이어야 한다.
-  for (const k of ['STONE_NET', 'PRODK_CAP', 'ALLOY_OPP', 'SHIELD_AGE', 'SHIELD_SOFT', 'ORE_MIX_EFF', 'TREASURY_BUY', 'T784_CARGO_AGE', 'T812_CARGO_TEMP', 'T877_DRY_FIX', 'T17_MSY']) {   // ★[T911] 갈무리 열량 보존 · 건굴 · 마른 미역 켬 기본(specialty — 번들에 실린다)   // ★[T795] 캐러밴 짐 늙기 켬 기본
+  for (const k of ['STONE_NET', 'PRODK_CAP', 'ALLOY_OPP', 'SHIELD_AGE', 'SHIELD_SOFT', 'ORE_MIX_EFF', 'TREASURY_BUY', 'T784_CARGO_AGE', 'T812_CARGO_TEMP', 'T877_DRY_FIX', 'T17_MSY', 'T932_SMELT_CONT']) {   // ★[T911] 갈무리 열량 보존 · 건굴 · 마른 미역 켬 기본(specialty — 번들에 실린다)   // ★[T795] 캐러밴 짐 늙기 켬 기본
     const re = new RegExp(`process\\.env\\.${k}\\s*===\\s*'0'`);
     if (re.test(B)) ok(`  채택 손잡이 ${k} 기본 ON (=== '0' 으로 되돌림)`);
     else bad(`  채택 손잡이 ${k} 의 기본값이 채택값이 아니다 — 랩·회귀가 채택 전 세계를 재고 있다`);
