@@ -1146,14 +1146,31 @@ const T815_DRAFT_FAMINE = (typeof process !== 'undefined' && process.env && proc
 //   (새 수 0 — 0.9 는 출생 줄의 그 수 · 셈만 느는 죽음은 `T815_DRAFT_FAMINE` 몫 — 이 손잡이가 켜지면 빚이 −1 아래에 쌓여 있지 않아 그날 압력이 −1 을 넘긴 날만 센다).
 const T924_DEBT_CAP = (typeof process !== 'undefined' && process.env && process.env.T924_DEBT_CAP === '1');
 // ★★[T931 2026-10-26 · T924 회부 2-ⓐ · 재민 10-24 "창고에 식량이 있는데 자유민이 그렇게 빨리 죽어?"]
-//   **식량 자리 K 에도 신뢰 관성** — 손잡이 `T931_SLOTK_EMA`(기본 끔 · 켜는 값 `'1'` 하나뿐 · 끔 = 종전 바이트).
+//   **식량 자리 K 에도 신뢰 관성** — 손잡이 `T931_SLOTK_EMA`(기본 끔 · 켜는 값 `'1'` · `'season'` 둘 · 그 밖 · 미설정 = 끔 = 종전 바이트).
 //   K = min(식량 자리 slotK · 식량 흐름 prodK · 땔감 fuelK)(아래 4) 중 prodK(EMA 0.97 · "날씨 이벤트가 K 를 직접 때려 θ=4 로지스틱이 과잉반응하지 않게")와
 //   fuelK(EMA 0.98 · "K 가 절벽 낙하하지 않게")는 신뢰 관성을 갖는데 slotK 만 계절 땅 배수(v2 `applyLandModifiers` — 겨울 물 0.85 · 사냥감 0.90 · 지력 0.80
 //   · 날씨 · 풍흉)를 **그날 그대로** 받는다(자리 = `jobCapacity` 가 그날 땅으로 센다) ⇒ 12월 1일 K 가 하루에 떨어지고 로지스틱이 곳간과 무관하게 죽인다
 //   (보고 T924 §2-b — 366일~ 곳간 찬 날 죽음 46~87% · K 를 묶은 칸 식량 자리 42~62% · 12~2월 42~67%).
-//   켜면 slotK 가 땔감 K 와 **같은 꼴 · 같은 수**(`0.98 · 0.02` — `_fuelKema` 줄)의 관성을 갖는다(새 수 0). 자리 함수(`totalFoodSlots`)는 그대로 —
-//   K 에 드는 값만 관성이고 자리 수를 쓰는 다른 문(영토 확장 판단 · 직업 자리)은 그날 자리 그대로다.
+//   `'1'` = slotK 가 땔감 K 와 **같은 꼴 · 같은 수**(`0.98 · 0.02` — `_fuelKema` 줄)의 관성을 갖는다(새 수 0 · 값 전체 — 영토가 늘어 자리가 는 날도 관성으로 따라간다).
+//   `'season'` = 같은 꼴 · 같은 수의 관성을 **땅 배수에만** 건다 — v2 `applyLandModifiers` 가 원래 땅(`_origLand`)에 건 배수(계절 · 날씨 · 풍흉)가
+//     자리에 준 몫 f = 그날 땅의 자리 ÷ 원래 땅의 자리(같은 함수 `totalFoodSlots` · 원래 땅의 size 는 그날 size — `restoreLand` 와 같은 규칙)에 관성을 걸고
+//     slotK = 원래 땅의 자리 × 관성 f(영토가 는 날은 그날 바로 · 배수가 없는 판(`_origLand` 없음)은 f = 1 = 끔과 같은 K).
+//   자리 함수(`totalFoodSlots`)는 그대로 — K 에 드는 값만 관성이고 자리 수를 쓰는 다른 문(영토 확장 판단 · 직업 자리)은 그날 자리 그대로다.
 const T931_SLOTK_EMA = (typeof process !== 'undefined' && process.env && process.env.T931_SLOTK_EMA === '1');
+const T931_SLOTK_SEASON = (typeof process !== 'undefined' && process.env && process.env.T931_SLOTK_EMA === 'season');
+//   `'season'` 한 걸음 — K 4) 에서 그날 한 번(마을 틱 안 · 땅 배수가 걸린 채). 원래 땅의 자리는 같은 자리 함수를 원래 땅으로 한 번 더 부른다
+//   (v.land 를 그 자리에서 잠깐 바꿔 끼우고 되돌린다 — 읽기만 · `effectiveLandSize` 메모는 size 열쇠라 같은 값).
+function _t931SeasonSlot(v, raw) {
+  let base = raw;
+  const O = v._origLand, L = v.land;
+  if (O && O !== L) {
+    v.land = Object.assign({}, O, { size: L.size, baseSize: L.baseSize });   // `restoreLand` 와 같은 규칙 — 그날 size · baseSize 를 원래 땅에
+    try { base = totalFoodSlots(v); } finally { v.land = L; }
+  }
+  const f = base > 0 ? raw / base : 1;
+  v._slotKfEma = v._slotKfEma === undefined ? f : 0.98 * v._slotKfEma + 0.02 * f;   // 땔감 K 줄의 꼴 · 수
+  return base * v._slotKfEma;
+}
 // ★★★[T400 2026-09-26] **집도 행위다 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
 //   (아래 두 자리가 전부 이 상수 뒤에 있다: 주거 증축의 자재 단가 · 곳간 출구 `actFromGranary`).
 //   ① 자재의 정본은 **하나**다 — `server/hut-stages.js`(서버 움집 공정 · PM 권고 #61 · 재민 거부권).
@@ -3895,7 +3912,8 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   //    v2 r11: import 포함 — 작은 마을이 외부 거래로 부양되는 진짜 시장 동학 반영.
   const _slotKraw = totalFoodSlots(v);
   // ★[T931] 켬 = 식량 자리 K 에 땔감 K 와 같은 신뢰 관성(아래 `_fuelKema` 줄과 같은 꼴 · 같은 수 0.98 · 0.02 · 첫날 = 그날 자리) — 끔 = 종전(그날 자리 그대로 · 새 칸 0)
-  const slotK = T931_SLOTK_EMA ? (v._slotKema = v._slotKema === undefined ? _slotKraw : 0.98 * v._slotKema + 0.02 * _slotKraw) : _slotKraw;
+  //   `'season'` = 같은 관성을 땅 배수의 몫에만(`_t931SeasonSlot` — 원래 땅의 자리 × 관성 f)
+  const slotK = T931_SLOTK_EMA ? (v._slotKema = v._slotKema === undefined ? _slotKraw : 0.98 * v._slotKema + 0.02 * _slotKraw) : T931_SLOTK_SEASON ? _t931SeasonSlot(v, _slotKraw) : _slotKraw;
   // 외부 import EMA: tradeStats.foodImported 누적을 평균화 (최근 100일치 추정)
   if (v.tradeStats && v._lastImportSnapshot === undefined) {
     v._lastImportSnapshot = 0;
@@ -4052,7 +4070,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   v._fuelKema = v._fuelKema === undefined ? _fuelKraw : 0.98 * v._fuelKema + 0.02 * _fuelKraw;
   const fuelK = v._fuelKema;
   v._kDbg = { slot: +slotK.toFixed(1), prod: +prodK.toFixed(1), fuel: +fuelK.toFixed(1) };   // ★K 분해 노출: "이 마을은 뭐에 막혔나"(경작지·식량흐름·연료) — 진단·UI 근거
-  if (T931_SLOTK_EMA) v._kDbg.slotRaw = +_slotKraw.toFixed(1);   // ★[T931] 켬만 — 관성 앞 그날 자리(진단 · `slot` 은 K 에 든 값)
+  if (T931_SLOTK_EMA || T931_SLOTK_SEASON) v._kDbg.slotRaw = +_slotKraw.toFixed(1);   // ★[T931] 켬만 — 관성 앞 그날 자리(진단 · `slot` 은 K 에 든 값)
   const Kraw = Math.min(slotK, prodK, fuelK);   // ★자연 리비히 min: 식량 자리·식량 흐름·연료 흐름. (옛 K_MAX=110 임의 천장 폐지 — 수준은 지형+MB/MC 확장이 결정)
   const K = Math.max(POP_MIN, Kraw);
 
@@ -5837,7 +5855,7 @@ module.exports = {
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
   T924_DEBT_CAP, _computeVillageStats,   // ★[T924] 빚 손잡이 + 마을 stat 함수(관찰기 `t924-observe` 가 건강 · 행복 항을 가른다 — 읽기만 · 사본 0 · 동작 무변)
-  T931_SLOTK_EMA, totalFoodSlots,   // ★[T931] 식량 자리 K 관성 손잡이 + 자리 함수(하네스 · 관찰기 `t931-observe` 가 그날 자리를 다시 센다 — 읽기만 · 사본 0 · 동작 무변)
+  T931_SLOTK_EMA, T931_SLOTK_SEASON, totalFoodSlots,   // ★[T931] 식량 자리 K 관성 손잡이 + 자리 함수(하네스 · 관찰기 `t931-observe` 가 그날 자리를 다시 센다 — 읽기만 · 사본 0 · 동작 무변)
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
   consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)

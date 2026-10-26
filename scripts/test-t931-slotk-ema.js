@@ -13,8 +13,11 @@
 //      끔 = 겨울 첫날 slot 이 그날 자리로 떨어진다(계단) · 켬 = 첫날 slot 은 어제 값의 98% + 그날 자리의 2% · 90일 동안 계단 몫의 남은 비 ≈ 0.98^일
 //   ⓓ 켬 — K = max(POP_MIN, min(slot, prod, fuel)) 그대로(K 식 무변 — 관성은 slot 칸에만)
 //   ⓔ 자리가 그대로인 판(계절 · 확장 없는 400일)엔 켬 = 끔 — 새 칸 둘(`_slotKema` · `_kDbg.slotRaw`) 빼고 상태 JSON 한 글자 같다
-//   ⓕ 정적 — 손잡이 `=== '1'` 한 자리 · 관성 줄의 수 = `_fuelKema` 줄의 수 · 자리를 쓰는 다른 문(`tryExpandTerritory` 의 `totalFoodSlots(v)` · `jobCapacity`) 글자 무변 ·
+//   ⓕ 정적 — 손잡이 `=== '1'` · `=== 'season'` 한 자리씩 · 관성 줄의 수 = `_fuelKema` 줄의 수 · 자리를 쓰는 다른 문(`tryExpandTerritory` 의 `totalFoodSlots(v)` · `jobCapacity`) 글자 무변 ·
 //      `_kDbg` 줄 글자 무변(`t264-arm` 닻) · 번들 · 랩 둘에 같은 줄
+//   ⓖ `'season'` — 같은 관성을 땅 배수의 몫에만: 날마다 f = 그날 자리 ÷ 원래 땅의 자리(그날 size) · `_slotKfEma` = 0.98 × 어제 + 0.02 × f · slot = 원래 땅의 자리 × 관성 f ·
+//      배수가 없는 판(`_origLand` 없음 — 400일)은 f = 1 → 끔과 같은 마을(새 칸 둘 빼고) · 겨울 첫날 slot > 그날 자리 ·
+//      영토가 는 날(겨울 50일째 size +10 — `tryExpandTerritory` 가 그날 땅의 size 를 바꾸는 꼴)은 원래 땅의 자리가 그날 바로 따라간다(`'1'` 은 관성으로 천천히)
 //
 // 실행: node scripts/test-t931-slotk-ema.js
 'use strict';
@@ -43,19 +46,23 @@ const mode = process.argv[1], W = JSON.parse(process.argv[2]), S = JSON.parse(pr
 const v = v1.createVillage({ initialPop: 20, name: 'p', wood: 0.45 });
 const rows = [];
 const KEYS = ['fertility', 'water', 'game', 'wood', 'stone', 'ore'];
-function day(d, mult) {
-  let orig = null;
-  if (mult) { orig = { ...v.land }; const L = { ...orig }; for (const k of KEYS) L[k] = orig[k] * (mult[k] || 1); v.land = L; }
-  const e0 = v._slotKema;
+//   v2 \`applyLandModifiers\` · \`restoreLand\` 그대로(원래 땅은 \`v._origLand\` · 틱 뒤 size · baseSize 를 원래 땅에 옮기고 지운다)
+function day(d, mult, grow) {
+  if (mult) { if (!v._origLand) v._origLand = { ...v.land }; const orig = v._origLand; const L = { ...orig }; for (const k of KEYS) L[k] = orig[k] * (mult[k] || 1); v.land = L; }
+  if (grow) v.land.size += grow;   // 영토가 는 날(\`tryExpandTerritory\` 가 그날 땅의 size 를 바꾸는 꼴 — 틱 뒤 원래 땅으로 옮겨진다)
+  const e0 = v._slotKema, f0 = v._slotKfEma;
+  let base = null;   // 원래 땅(그날 size)의 자리 — 'season' 검사용(정본 함수를 원래 땅으로 · 틱 앞)
+  if (v._origLand) { const L = v.land; v.land = Object.assign({}, v._origLand, { size: L.size, baseSize: L.baseSize }); base = v1.totalFoodSlots(v); v.land = L; } else base = v1.totalFoodSlots(v);
   v1.tickVillage(v, d);
   const raw = v1.totalFoodSlots(v);   // 그날 땅(계절 배수가 걸린 채)으로 다시 센 자리 — 확장은 K 앞에서 돈다(tickVillage 안 차례)
   const kd = v._kDbg || {}, dp = v._dpDebug || {};
-  rows.push([d, v.npcs.length, v._deathsToday || 0, dp.K, kd.slot, raw, v._slotKema === undefined ? null : v._slotKema, e0 === undefined ? null : e0, kd.prod, kd.fuel, kd.slotRaw === undefined ? null : kd.slotRaw, v.land.size, mult ? 1 : 0]);
-  if (mult) { orig.size = v.land.size; orig.baseSize = v.land.baseSize; v.land = orig; }
+  rows.push([d, v.npcs.length, v._deathsToday || 0, dp.K, kd.slot, raw, v._slotKema === undefined ? null : v._slotKema, e0 === undefined ? null : e0, kd.prod, kd.fuel, kd.slotRaw === undefined ? null : kd.slotRaw, v.land.size, mult ? 1 : 0,
+    base, v._slotKfEma === undefined ? null : v._slotKfEma, f0 === undefined ? null : f0]);
+  if (mult) { v._origLand.size = v.land.size; v._origLand.baseSize = v.land.baseSize; v.land = v._origLand; v._origLand = null; }
 }
 for (let d = 1; d <= 400; d++) day(d, null);
 const st400 = JSON.stringify(v, (k, x) => (typeof x === 'function' || k === '_world') ? undefined : x);
-if (mode === 'season') { for (let d = 401; d <= 490; d++) day(d, W); for (let d = 491; d <= 520; d++) day(d, S); }
+if (mode === 'season') { for (let d = 401; d <= 490; d++) day(d, W, d === 450 ? 10 : 0); for (let d = 491; d <= 520; d++) day(d, S); }
 const st = JSON.stringify(v, (k, x) => (typeof x === 'function' || k === '_world') ? undefined : x);
 console.log(JSON.stringify({ rows, st400, st, popMin: v1.POP_MIN != null ? v1.POP_MIN : null }));
 `;
@@ -65,7 +72,7 @@ function run(env, mode) {
   return JSON.parse(out.trim().split('\n').pop());
 }
 const S = fs.readFileSync(SIM, 'utf8');
-const C = { d: 0, pop: 1, deaths: 2, K: 3, slot: 4, raw: 5, ema: 6, ema0: 7, prod: 8, fuel: 9, slotRaw: 10, size: 11, win: 12 };
+const C = { d: 0, pop: 1, deaths: 2, K: 3, slot: 4, raw: 5, ema: 6, ema0: 7, prod: 8, fuel: 9, slotRaw: 10, size: 11, win: 12, base: 13, fema: 14, fema0: 15 };
 const r1 = (x) => +(+x).toFixed(1);
 const POPMIN = +(/const POP_MIN = ([0-9.]+)/.exec(S) || [])[1];
 //   땔감 K 줄의 관성 수(정본 글자를 읽는다)
@@ -105,7 +112,7 @@ console.log('ⓒ 겨울 계단 — 땅이 겨울 배수로 바뀐 첫날 · 90�
   ok(w0off[C.slot] === r1(w0off[C.raw]), '끔 — 겨울 첫날 slot 이 그날 자리로 떨어진다(계단)', `${pOff[C.slot]} → ${w0off[C.slot]}`);
   ok(w0on[C.ema] === KEEP * pOn[C.ema] + TAKE * w0on[C.raw] && w0on[C.ema] > w0on[C.raw], '켬 — 겨울 첫날 slot = 어제 관성의 98% + 그날 자리의 2%(그날 자리보다 높다)', `${r1(pOn[C.ema])} → ${r1(w0on[C.ema])} (그날 자리 ${w0on[C.raw]})`);
   //   계단 몫의 남은 비 — 자리가 겨울 내내 그대로인 날들(확장 없는 날)엔 (관성 − 자리) / (겨울 앞 관성 − 자리) = 0.98^일
-  const win = on.rows.filter((r) => r[C.win] && r[C.d] <= 490), raw0 = win[0][C.raw], flat = win.every((r) => r[C.raw] === raw0);
+  const win = on.rows.filter((r) => r[C.win] && r[C.d] < 450), raw0 = win[0][C.raw], flat = win.every((r) => r[C.raw] === raw0);   // 영토가 느는 50일째(450) 앞까지
   if (flat) {
     const last = win[win.length - 1], n = last[C.d] - 400, want = Math.pow(KEEP, n), got = (last[C.ema] - raw0) / (pOn[C.ema] - raw0);
     ok(Math.abs(got - want) < 1e-9, `겨울 ${n}일 뒤 계단 몫의 남은 비 = ${KEEP}^${n}`, `${got.toFixed(6)} · ${want.toFixed(6)}`);
@@ -133,9 +140,12 @@ console.log('ⓔ 자리가 그대로인 판(계절 없는 400일) — 켬 = 끔(
 
 console.log('ⓕ 정적');
 {
-  const knob = S.match(/const T931_SLOTK_EMA = [^\n]*/g) || [];
+  const knob = S.match(/const T931_SLOTK_EMA = [^\n]*/g) || [], knobS = S.match(/const T931_SLOTK_SEASON = [^\n]*/g) || [];
   ok(knob.length === 1 && /process\.env\.T931_SLOTK_EMA === '1'\)/.test(knob[0]), '손잡이 `=== \'1\'` 한 자리(기본 끔)', knob[0] ? knob[0].slice(0, 110) : '없음');
-  const line = /const slotK = T931_SLOTK_EMA \? \(v\._slotKema = v\._slotKema === undefined \? _slotKraw : ([0-9.]+) \* v\._slotKema \+ ([0-9.]+) \* _slotKraw\) : _slotKraw;/.exec(S);
+  ok(knobS.length === 1 && /process\.env\.T931_SLOTK_EMA === 'season'\)/.test(knobS[0]), '같은 손잡이 `=== \'season\'` 한 자리(기본 끔)', knobS[0] ? knobS[0].slice(0, 120) : '없음');
+  const sl = /v\._slotKfEma = v\._slotKfEma === undefined \? f : ([0-9.]+) \* v\._slotKfEma \+ ([0-9.]+) \* f;/.exec(S);
+  ok(!!sl && +sl[1] === KEEP && +sl[2] === TAKE, "'season' 관성 줄의 수 = 땔감 K 줄의 수(새 수 0)", sl ? `${sl[1]} · ${sl[2]}` : '줄 없음');
+  const line = /const slotK = T931_SLOTK_EMA \? \(v\._slotKema = v\._slotKema === undefined \? _slotKraw : ([0-9.]+) \* v\._slotKema \+ ([0-9.]+) \* _slotKraw\) : T931_SLOTK_SEASON \? _t931SeasonSlot\(v, _slotKraw\) : _slotKraw;/.exec(S);
   ok(!!line && +line[1] === KEEP && +line[2] === TAKE, '관성 줄의 수 = 땔감 K 줄의 수(새 수 0)', line ? `${line[1]} · ${line[2]}` : '줄 없음');
   ok((S.match(/const _slotKraw = totalFoodSlots\(v\);/g) || []).length === 1, 'K 자리는 정본 자리 함수 그대로(`totalFoodSlots(v)` 한 번)');
   const exp = /function tryExpandTerritory\(v, day\) \{[\s\S]{0,200}?const slotK = totalFoodSlots\(v\);\n  if \(N \/ Math\.max\(1, slotK\) < 0\.85\) return;/.test(S);
@@ -148,6 +158,31 @@ console.log('ⓕ 정적');
     const n = (t.match(/T931_SLOTK_EMA/g) || []).length, has = line && t.includes(line[0]);
     ok(n === srcN && has, `${f} — 같은 줄(손잡이 글자 ${n} · 정본 ${srcN} · 관성 줄 있음)`);
   }
+}
+
+console.log("ⓖ 'season' — 같은 관성을 땅 배수의 몫에만");
+{
+  const se = run({ T931_SLOTK_EMA: 'season' }, 'season');
+  const strip = (s, k) => { const o = JSON.parse(s); delete o[k]; if (o._kDbg) delete o._kDbg.slotRaw; return JSON.stringify(o); };
+  ok(strip(se.st400, '_slotKfEma') === strip(off.st400, '_slotKfEma'), "배수가 없는 400일(`_origLand` 없음 · f = 1) — 'season' = 끔(`_slotKfEma` · `_kDbg.slotRaw` 빼고 한 글자 같다)", `${off.st400.length} B`);
+  ok(se.rows.filter((r) => r[C.d] <= 400).every((r) => r[C.fema] === 1 && r[C.slot] === r1(r[C.raw])), "배수가 없는 날 관성 f = 1 · slot = 그날 자리", '');
+  let bad = 0, badS = 0;
+  for (const r of se.rows.slice(1)) {
+    const f = r[C.base] > 0 ? r[C.raw] / r[C.base] : 1, want = r[C.fema0] === null ? f : KEEP * r[C.fema0] + TAKE * f;
+    if (r[C.fema] !== want) bad++;
+    if (Math.abs(r[C.slot] - r1(r[C.base] * r[C.fema])) > 1e-9) badS++;
+  }
+  ok(bad === 0, `날마다 \`_slotKfEma\` = ${KEEP} × 어제 + ${TAKE} × (그날 자리 ÷ 원래 땅의 자리)`, `틀린 날 ${bad} / ${se.rows.length - 1}`);
+  ok(badS === 0, 'slot(K 에 든 값) = 원래 땅의 자리 × 관성 f', `틀린 날 ${badS}`);
+  const w0 = se.rows.find((r) => r[C.d] === 401);
+  ok(w0[C.raw] < w0[C.base] && w0[C.slot] > w0[C.raw], '겨울 첫날 — 그날 자리 < 원래 땅의 자리 · slot 은 그날 자리보다 높다(관성)', `그날 ${w0[C.raw]} · 원래 ${w0[C.base]} · slot ${w0[C.slot]}`);
+  //   영토가 는 날(450) — 'season' 은 원래 땅의 자리가 그날 바로 따라간다 · '1' 은 관성(0.02 몫)으로
+  const g = (R, d) => R.find((r) => r[C.d] === d);
+  const s49 = g(se.rows, 449), s50 = g(se.rows, 450), o49 = g(on.rows, 449), o50 = g(on.rows, 450), f49 = g(off.rows, 449), f50 = g(off.rows, 450);
+  ok(s50[C.base] > s49[C.base] && f50[C.raw] > f49[C.raw], '영토가 는 날 — 원래 땅의 자리 · 그날 자리가 는다(size +10)', `원래 ${s49[C.base]} → ${s50[C.base]} · 그날(끔) ${f49[C.raw]} → ${f50[C.raw]}`);
+  const jumpS = s50[C.slot] - s49[C.slot], jumpO = o50[C.slot] - o49[C.slot], jumpF = f50[C.slot] - f49[C.slot];
+  ok(jumpS > 0.8 * (s50[C.base] - s49[C.base]) * s50[C.fema] && jumpO < 0.1 * jumpF, "'season' 은 그날 바로(원래 땅 자리의 는 몫 × 관성 f) · '1' 은 관성으로(끔이 는 몫의 0.1 아래)", `'season' +${jumpS.toFixed(2)} · '1' +${jumpO.toFixed(2)} · 끔 +${jumpF.toFixed(2)}`);
+  ok(se.st !== off.st && se.st !== on.st, "'season' 판은 끔 · '1' 과 갈린다(관성이 K 에 닿았다)", '');
 }
 
 console.log(`\n결과: ${pass} 통과 / ${fail} 실패`);

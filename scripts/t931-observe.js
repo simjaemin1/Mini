@@ -25,7 +25,7 @@ const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
 const COLS = ['day', 'pop0', 'pop', 'deaths', 'tfe', 'K', 'slot', 'slotRaw', 'prod', 'fuel', 'logi', 'hunger', 'healthT', 'happyT', 'gated', 'drafted', 'packers'];
 const rec = { where: SERVER ? 'server' : path.basename(A1), knob: { T931_SLOTK_EMA: process.env.T931_SLOTK_EMA != null ? process.env.T931_SLOTK_EMA : null, DCTL_SKIP: process.env.DCTL_SKIP || null },
-  engineKnob: !!V1.T931_SLOTK_EMA, cols: COLS, v: {}, errs: 0, err0: null };
+  engineKnob: V1.T931_SLOTK_EMA ? '1' : V1.T931_SLOTK_SEASON ? 'season' : '', cols: COLS, v: {}, errs: 0, err0: null };
 const r1 = (x) => (x == null || !Number.isFinite(+x)) ? null : Math.round(+x * 10) / 10;
 const r3 = (x) => (x == null || !Number.isFinite(+x)) ? null : Math.round(+x * 1000) / 1000;
 function row(v, day, n0) {
