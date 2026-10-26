@@ -9270,6 +9270,26 @@ function _t860Dry(v, npc, b, potA, actA, addProduce) {
 const SALT_DAILY_PC = 0.01;
 // ★[T60 ① 후보ⓑ] 흐름 눈금 손잡이 — 지리 눈금(ⓐⓒ)은 `server/sustain.js` 가 갖는다(사본 금지).
 const MSY_MODE_EMA = process.env.T60_MSY_MODE === 'ema';
+// ★★[T923 2026-10-24 · ★재민 10-24 ㄱ "서버가 맞다"(판정대기 1번 · T875 회부 2 · 3 · 족보 683)] **어장 MSY 상한 켬 기본** — 손잡이 `T17_MSY`(되돌림 `=0` = 열둘째 판 바이트).
+//   서버는 시딩 때 그 마을 어장 MSY(`extractLandParamsApprox` → `server/sustain.js sustainOf` 의 `fishSustain`)를 `land._fishBase` 로 붙잡고,
+//   하루 마감마다 `refreshFishSustain`(T661 · 첫 마감 = 첫날 econ 뒤)이 `land.fishSustain = 기준 − 결손 환산`(낚시 v2 정본)으로 매긴다
+//   ⇒ 서버 econ 은 **둘째 날부터** 상한을 본다. 랩 자(t17 · t176)는 그 문이 없어 상한이 아예 없었다(T875 `nomsy` 갈래 — 서버만 무는 층).
+//   ⇒ 켬이면 econ 이 **같은 값 · 같은 때**를 스스로 세운다(새 수 0 · 사본 0 — 값은 부르는 쪽이 준 그 정본 값 그대로):
+//     `createVillage` 가 그 마을의 시딩 MSY(`opts.fishSustain`)를 붙잡고(`v._fishMsySeed` · land 밖 · 열거 안 되는 칸 — 저장 줄에 안 실린다), 마을 하루 마감(`fishMsyDayClose` —
+//     V2 `_villageBody` 의 `restoreLand` 뒤 · 계절 배수를 씌운 임시 land 가 아니라 **원래 land** 에)에서 아직 상한이 없으면 그 값으로 세운다
+//     = 결손 0 인 `refreshFishSustain` 과 같은 값(`+(기준 − 0).toFixed(4)` = 소수 둘째 자리 값 그대로) · 같은 날(첫날 econ 은 상한 없이 · 둘째 날부터 문다).
+//     ⚠`tickVillage` 안(끝)에 두면 안 된다 — V2 가 그날 land 를 계절 배수 사본으로 바꿔 끼웠다가 되돌려(`applyLandModifiers` · `restoreLand`) 그 칸이 버려진다
+//       (첫 시도가 그랬다: 물 있는 45마을이 다 시딩 MSY 를 쥐고도 상한 선 마을 0 · 보고 T923 §1). 대장장이 제련 날의 `return` 도 그 끝을 건너뛴다.
+//   ★서버는 무변이다 — 서버의 하루 마감 갱신(`refreshFishSustain`)이 같은 날 그 칸을 곧바로 덮는다(결손이 있으면 그 값 · 없으면 같은 값 · 서버 기준선 3/3 · 보고 T923).
+//     (`T661_CARAVAN_TICK=0` — 종전 벽시계 60초 주기 갈래 — 에선 서버도 둘째 날부터 문다: 종전엔 첫 주기 날이 판마다 달랐다.)
+//   ⚠종전 `T17_MSY=1`(시딩 순간 land 에 꽂아 **첫날부터** 물리던 갈래 · T17 §5 · T60 의 켜 본 표)은 이 꼴로 바뀌었다 —
+//     첫날부터 무는 세계는 서버에 없다(그 꼴로 서버를 돌리면 첫날 17마을이 갈린다 · 보고 T923 §1).
+//   ⚠랩 HTML(마을실험실 · 전쟁실험실)은 제 공간 층(어장 버킷)이 `land.fishSustain` 을 따로 매기고 `extractLandParams` 가 `fishSustain` 을 안 넘겨 이 칸이 안 선다(무변).
+const T17_MSY = !(typeof process !== 'undefined' && process.env && process.env.T17_MSY === '0');
+// ★[T923] 마을 하루 마감 — 아직 상한이 없으면 시딩 MSY 로(위 주석). V2 `_villageBody` 가 `restoreLand` 바로 뒤에 부른다(원래 land · 늘 닿는 자리).
+function fishMsyDayClose(v) {
+  if (T17_MSY && v && v._fishMsySeed != null && v.land && v.land.fishSustain == null) v.land.fishSustain = v._fishMsySeed;
+}
 // ★[T570] 첫 계절의 길이 = 달력 정본(켬: 1년 봄 3~5월 92일 · 끔 `T570_CALENDAR=0`: 옛 경계 90 글자 그대로).
 const MSY_EMA_LOCK_DAYS = (() => { const C = require('../server/calendar'); return C.ON ? C.seasonLen(0) : 90; })();   // econ 계절 경계 — 새 수 아님
 const MSY_HEADROOM = (() => { const v = parseFloat(process.env.T60_MSY_HEADROOM || ''); return (isFinite(v) && v > 0) ? v : 2; })();
@@ -11426,7 +11446,8 @@ function createVillage(opts) {
       //     이 스위치는 **NPC 만 있는 세계**에서도 상한이 서게 하는 것이다.
       //   ⚠끄면 **키 자체를 안 만든다**(값 `undefined` 로 두면 `Object.keys(land)` 가 달라진다 —
       //     직렬화·진단이 그 목록을 본다). 스프레드로 통째로 없앤다.
-      ...(process.env.T17_MSY === '1' && opts.fishSustain != null ? { fishSustain: opts.fishSustain } : {}),
+      //   ★★[T923] 이제 여기서 land 에 꽂지 않는다 — 켬(기본)이면 시딩 MSY 를 land 밖 칸(`v._fishMsySeed` · 이 함수 끝)에 붙잡고
+      //     마을 하루 마감(`fishMsyDayClose`)에서 세운다(서버 `refreshFishSustain` 과 같은 때 — 모듈 머리 `T17_MSY` 주석). 끔(`=0`)이면 종전 그대로 키가 없다.
       // ★[T635] 켠 판에만 서는 칸 둘(끄면 키 자체가 없다 — 위 `fishSustain` 과 같은 이유) — 값은 서버 `extractLandParamsApprox` 가 잰다
       ...(T635_SEA_SPECIES && opts.seaMix ? { seaMix: opts.seaMix } : {}),
       ...(T635_SHELL_ORNAMENT && opts.shellBangle > 0 ? { shellBangle: opts.shellBangle } : {}),
@@ -11561,6 +11582,10 @@ function createVillage(opts) {
   //   ⇒ 소멸(P) 는 **≥1 에 도달한 뒤 0 이 된 마을**만 센다. 아직 아무도 안 온 빈 터는 '소멸'이 아니라
   //     '아직 시작 안 함'이다. NPC 마을은 initN=8 이라 언제나 1 — 기존 판정과 완전히 같다.
   v._everPop = initN > 0 ? 1 : 0;
+  // ★[T923] 어장 시딩 MSY 를 붙잡는다(켬 기본 · land 밖 칸 — `Object.keys(land)` 무변 · 끔이면 칸이 없다 · 모듈 머리 `T17_MSY` 주석)
+  //   **열거 안 되는 칸**이다 — 서버도 같은 `createVillage` 를 부르는데, 저장 줄(`serializeEcon` · `Object.keys`)이 이 칸을 DB 로 퍼 나르면
+  //   서버 `land._fishBase` 의 사본이 저장된다. 열거를 끄면 저장 줄 · JSON 바이트가 종전과 같다(메모리에만 · 다시 뜬 마을은 저장된 `land.fishSustain` 이 이미 있다).
+  if (T17_MSY && opts.fishSustain != null) Object.defineProperty(v, '_fishMsySeed', { value: opts.fishSustain, writable: true, configurable: true, enumerable: false });
   if (T731_LOCAL_MIDNIGHT) _t731StreamInit(v);   // ★[T744] 켬 = 마을 흐름 씨를 **만드는 순간**에 — 그 세계의 씨(`setSeed`)로(첫 틱까지 미루면 그 사이 만든 다른 세계의 씨를 받았다)
   return v;
 }
@@ -14529,6 +14554,7 @@ module.exports = {
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
   T400_BUILD_ACT, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
+  T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
   mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
@@ -16745,6 +16771,7 @@ function tickWorldV2Parts(world) {
       if (useSeason) applyLandModifiers(v, season, world);
       v1.tickVillage(v, world.day);
       if (useSeason) restoreLand(v);
+      if (v1.fishMsyDayClose) v1.fishMsyDayClose(v);   // ★[T923] 어장 MSY 상한 — 마을 하루 마감(원래 land · 서버 `refreshFishSustain` 첫 마감과 같은 때 · 켬 기본 · `T17_MSY=0` 무동작)
       v1.adjustGuildTax(v, world.day);
       tickSubsistence(v, world.day);
       if (world._dbg?.decay !== false) tickDecay(v);

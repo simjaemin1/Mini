@@ -2137,6 +2137,7 @@ function tickWorldV2Parts(world) {
       if (useSeason) applyLandModifiers(v, season, world);
       v1.tickVillage(v, world.day);
       if (useSeason) restoreLand(v);
+      if (v1.fishMsyDayClose) v1.fishMsyDayClose(v);   // ★[T923] 어장 MSY 상한 — 마을 하루 마감(원래 land · 서버 `refreshFishSustain` 첫 마감과 같은 때 · 켬 기본 · `T17_MSY=0` 무동작)
       v1.adjustGuildTax(v, world.day);
       tickSubsistence(v, world.day);
       if (world._dbg?.decay !== false) tickDecay(v);
