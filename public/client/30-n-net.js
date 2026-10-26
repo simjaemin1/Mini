@@ -78,7 +78,8 @@
     const data = await res.json();
     zonesMeta = data.zones;
     marketplaceUrl = data.marketplaceUrl || '';
-    handoffCommit = (typeof data.handoffCommit === 'number' && data.handoffCommit > 0) ? data.handoffCommit : 0;   // ★[T604 추신3] 해안 경계 앞 바다 지킴 폭(서버 정본 · 아래 굽기 전에)
+    handoffCommit = (typeof data.handoffCommit === 'number' && data.handoffCommit > 0) ? data.handoffCommit : 0;
+    if (data.gtPrewarm === true) _gtPrewarm();   // ★[T937] 손잡이 `T937_GT_PREWARM`(central /zones 칸) — 로비에서 지면 굽기 준비 둘을 미리(끔이면 안 탄다)   // ★[T604 추신3] 해안 경계 앞 바다 지킴 폭(서버 정본 · 아래 굽기 전에)
     // Phase 14.46-b-mini: 모든 zone water tiles 사전 계산 (~수만 tiles, ~100ms)
     try { precomputeAllWaterTiles(); } catch (e) { console.warn('water tile compute fail:', e); }
 
