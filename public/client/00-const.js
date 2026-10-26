@@ -774,6 +774,7 @@ function cropSprite(stage, crop) {
         `갈래 ms: ` + stages.map((r) => `${r['갈래']} ${r.ms == null ? '-' : r.ms}`).join(' · '),
         `눌림 → 첫 입력 ${total}ms · 그 뒤 가라앉기까지 ${d(at.input, at.settle)}ms${_ld.settled ? '' : '(30초 안에 안 가라앉음 — 늘 긴 프레임 · `__lagReport()` 로 볼 것)'} · 첫 그림 뒤 긴 프레임(>50ms) ${_ld.long.n}판 · 막은 ${_ld.long.ms.toFixed(0)}ms · 최대 ${_ld.long.max.toFixed(0)}ms`,
         `층 ms(눌림 → 첫 입력): ` + layers.map((r) => `${r['층']} ${r.ms}`).join(' · '),
+        _ld.prewarm ? `지면 준비 데우기(로비 · T937): 맨땅 마스크 ${_ld.prewarm.mask == null ? '못 함' : _ld.prewarm.mask + 'ms'} · 풀 잎 가르기 ${_ld.prewarm.grass == null ? '못 함' : _ld.prewarm.grass + 'ms'}${_ld.prewarm.at != null && at.click != null && _ld.prewarm.at > at.click ? ' (눌림 뒤에 시작)' : ''}` : `지면 준비 데우기: 끔(첫 타일이 한다)`,
         `받은 메시지(주 소켓 · 눌림 → 가라앉음): ${T.reduce((a, r) => a + r['개'], 0)}개 ${(wsChars / 1024).toFixed(0)}K글자 — welcome ${_ld.welcome ? (_ld.welcome.chars / 1024).toFixed(0) + 'K' : '-'} · ${top}`,
         `페이지 적재: ` + res.map((r) => `${r['갈래']} ${r['개']}개 ${r['KB(받음)']}KB(눌림 뒤 ${r['눌림 뒤 도착']})`).join(' · ') + ` · load ${ld == null ? '-' : ld.toFixed(0)}ms · 로비에서 누르기까지 ${ld == null ? '-' : (at.click - ld).toFixed(0)}ms(사람)`,
       ].join('\n');
@@ -1211,6 +1212,24 @@ function cropSprite(stage, crop) {
     }
     g.putImageData(id, 0, 0);
     return (_gtMaskCv = cv);
+  }
+  // ★★[T937 2026-10-26] 손잡이 `T937_GT_PREWARM`(central `/zones` 칸 `gtPrewarm` · `'1'` 만 켬 · 끔 = 종전 그대로).
+  //   첫 접속 첫 그림의 지면 층(T920 회부 2 · 0.5~1.2초) 안 1위는 **첫 타일 한 장**이었다 — 그 장이 한 번짜리 준비 둘을 진다:
+  //   맨땅 마스크 `_gtMask()`(1024×512 화소 값 노이즈 세 옥타브) · 풀 잎 가르기 `_grassSplit()`(풀 텍스처 화소를 채널마다 정렬해 2% 백분위)
+  //   (보고/T937 §2 — 크롬 첫 장 265~442ms 중 둘이 200~315ms). 둘 다 결과를 붙잡아 두는 함수라(두 번째부터 곧바로 돌아간다)
+  //   **언제** 부르든 결과가 같다 — 켬 = 로비에서(welcome 전 · 사람이 이름을 넣고 누르는 동안) 텍스처가 오면 따로따로 한 판씩 부른다.
+  //   그림 · 차례 · 새 수 0. 이미 들어가 첫 타일이 불렀으면 아무 일도 안 한다(붙잡은 값).
+  function _gtPrewarm() {
+    if (_ld.prewarm) return;
+    _ld.prewarm = { at: null, mask: null, grass: null };
+    const go = () => {
+      if (!(GTEX.grass_angled && GTEX.grass_angled.naturalWidth)) { setTimeout(go, 200); return; }   // 풀 텍스처가 올 때까지
+      setTimeout(() => {
+        const t0 = performance.now(); const had = !!_gtMaskCv; _gtMask(); _ld.prewarm.at = t0; _ld.prewarm.mask = had ? 0 : +(performance.now() - t0).toFixed(1);
+        setTimeout(() => { const t1 = performance.now(); const had2 = !!_grassBlade; _grassSplit(); _ld.prewarm.grass = had2 ? 0 : +(performance.now() - t1).toFixed(1); }, 0);
+      }, 0);
+    };
+    go();
   }
   let _gtTmp = null, _gtCov = null;
   function _bakeGroundTile(itx, ity, zlist) {
