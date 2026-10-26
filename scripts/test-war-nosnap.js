@@ -286,6 +286,9 @@ const child821 = (knob) => {
 //   틱 수는 벽시계(부하)를 따른다. 켬이면 귀환 몸도 하루 몫(`_t681Take` — 하루 길이 × TICK_HZ)만큼만 틱에서 걷고, 남은 몫은 하루 마감 첫 자리(`_t681Flush`)가 채운다.
 //   무대: ⓒ 와 같은 귀환(결판 자리 1000,1000 → 길 머리 1100,1000 · 몸 하나) · 하루 몫 = 10초 × 30 = 300걸음.
 //   마감 채우기의 시간 예산(종전 마감 조각 예산)이 걸음마다 끊는 판도 잰다(아이 안에서 `Date.now` 를 부를 때마다 1초씩 민다 — 조각마다 한 걸음 · 'retry').
+//   ★[T915] 끊지 않는 판(`cut` 아님)은 마감 동안 `Date.now` 를 **한 자리에 세운다** — 종전엔 진짜 벽시계였다. 그러면 상자 부하에 따라
+//     마감 예산이 가끔 끊겨 `fr`(끊긴 횟수)이 판마다 0 · 1 · 2 로 갈렸다(묶은 상자 20번 중 8번 · 칸은 `t10.fr` · `t0.fr` 뿐 — 걸음 수 · 자리는 늘 같았다).
+//     ⓖ 첫 줄이 두 아이 판을 `JSON.stringify` 로 통째 견주므로 그 한 칸이 빨강을 냈다. 세운 시계면 끊지 않는 판은 늘 한 번에 끝난다(`fr` 0) — 견줌은 그대로 통째.
 console.log('\n[ⓕ] T832 — 켬 판 결정론: 귀환 몸도 그날 몫(아이 프로세스 켬/끔)');
 {
   const tk = fnBody(CV, 'tickWarBodies'), fl = fnBody(CV, '_t681Flush');
@@ -303,7 +306,7 @@ const child832 = (knob, t844) => {   // knob = T790_NO_SNAP · t844 = T844_RET_Q
     + `const H=V.__p3Bind({warLive:live,world:{day:12},dayMs:10000,deps:{players,moveSpeed:64,npcs:new Set(),broadcast(){}},_warStat:{standoff:0},war:{WARS:[]}});`
     + `const run=(nTick,flush,cut,two)=>{players.clear();const p={pid:'s1',x:1000*32,y:1000*32,_muType:'champion'};players.set('s1',p);const p2={pid:'s2',x:700*32,y:1000*32,_muType:'spear'};if(two)players.set('s2',p2);const atk={name:'A',ccx:900,ccy:1000,dbId:1},def={name:'B',ccx:1100,ccy:1000,dbId:2};`
     + `const body={w:{id:6,atk,def,marchDays:1,phase:'return'},pts:[{x:900*32,y:1000*32},{x:1100*32,y:1000*32}],prog:0};H.state.warBodies=new Map([[6,body]]);H._warSetupReturn(body,two?['s1','s2']:['s1'],false);calls=0;`
-    + `for(let i=0;i<nTick;i++)H.tickWarBodies(1000+i*33);let fr=0;if(flush){const dn=Date.now;let t=dn();if(cut)Date.now=()=>(t+=1000);try{while(H._t681Flush()==='retry'&&fr<1000)fr++;}finally{Date.now=dn;}}`
+    + `for(let i=0;i<nTick;i++)H.tickWarBodies(1000+i*33);let fr=0;if(flush){const dn=Date.now;let t=dn();Date.now=cut?()=>(t+=1000):()=>t;try{while(H._t681Flush()==='retry'&&fr<1000)fr++;}finally{Date.now=dn;}}`
     + `return{x:p.x/32,y:p.y/32,x2:p2.x/32,y2:p2.y/32,calls,fr,left:body._t681q?body._t681q.left:null,walk:body.retGroup&&body.retGroup._t790Walk!=null?body.retGroup._t790Walk:null};};`
     + `const out={q:Math.round(10000*30/1000),a:run(10,true),b:run(200,true),c:run(0,true),e:run(400,true),r:run(10,true,true),d10:run(10,false),d200:run(200,false),t10:run(10,true,false,true),t200:run(200,true,false,true),t0:run(0,true,false,true),u10:run(10,false,false,true),u200:run(200,false,false,true)};process.stdout.write(JSON.stringify(out));`;
   const o = execFileSync(process.execPath, ['-e', js], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
