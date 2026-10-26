@@ -87,6 +87,7 @@ const ROUTES = {
   'zone POST =/handoff_prepare': ['안문', '닫힘'],
   'zone POST =/kick_player': ['안문', '닫힘'],
   'zone POST =/handoff_ack': ['안문', '닫힘'],
+  'zone POST =/flush_player': ['안문', '닫힘'],   // ★[T940] 존↔존 — 그 사람의 마지막 저장이 닿은 뒤 답한다(붙어 있으면 지금 저장하고 내린다 · `kick_player` 와 같은 갈래 · `InternalDoor.isInternal` 겹)
   // ★[T751] 표밖 문 넷을 올렸다(첫 표밖 = T540 `3bbb8735` 09-30 · 야간 6밤). 갈래 · 판정은 **새로 정한 것이 아니다** —
   //   그 문을 낸 카드가 코드에 스스로 적은 것을 옮겼다(정책 바뀌면 그 카드 몫 · PM 확인):
   //   · `/bigmap.png` · `?tile=` — T565 `b607600d` `zone.js` "큰 지도 … (공개 · 지형은 클라도 이미 가진 공개 정보 · CORS *)"

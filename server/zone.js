@@ -1594,11 +1594,20 @@ function _saveSend(playerId, patch) {
   //   "끝났다"는 뜻이 아니다. 이 수가 0 이 아니면 서버는 **한가하지 않다** — 배경 작업
   //   (교역로 선계산)이 그동안 루프를 잡으면 이 쓰기가 소켓 밖으로 못 나간다.
   //   실제로 그렇게 깨졌다: `e2e-rumor ⑦` 복귀 브리핑이 "부재 0일"(`인계/Z-존서버.md ## T42.`).
-  if (T916_SAVE_RETRY) return _t916Send(playerId, patch);   // ★[T916] 못 닿은 저장은 줄에 남겨 다시 보낸다(아래 · 끔 = 이 줄이 첫 비교에서 빠진다)
+  if (T916_SAVE_RETRY) return _t940Track(playerId, _t916Send(playerId, patch));   // ★[T916] 못 닿은 저장은 줄에 남겨 다시 보낸다(아래 · 끔 = 이 줄이 첫 비교에서 빠진다)
   _savesInFlight++;
-  return central.updatePlayer(playerId, patch).then((r) => { _t927Stale(playerId, patch, r); return r; }, e =>
+  return _t940Track(playerId, central.updatePlayer(playerId, patch).then((r) => { _t927Stale(playerId, patch, r); return r; }, e =>
     console.warn(`[${process.env.ZONE_ID || 'zone'}] central save 실패 (${playerId}):`, e.message)
-  ).finally(() => { _savesInFlight--; _savesDoneAt = Date.now(); });
+  ).finally(() => { _savesInFlight--; _savesDoneAt = Date.now(); }));
+}
+// ★[T940] 사람마다 **마지막으로 낸 저장**(날아가는 중이면 그 약속) — 다른 존이 이 사람의 접속을 받기 전에 묻는 `/flush_player` 가 기다린다(아래 T940 블록).
+//   끔 = 적지 않는다(약속은 그대로 돌려준다 — 부르는 쪽 무변).
+const _t940Last = new Map();
+function _t940Track(playerId, pr) {
+  if (!T940_LOGIN_FLUSH || !pr) return pr;
+  _t940Last.set(playerId, pr);
+  pr.finally(() => { if (_t940Last.get(playerId) === pr) _t940Last.delete(playerId); });
+  return pr;
 }
 // ★[T927] central 이 이 저장을 안 썼다 — 행의 몸 버전이 더 새롭다(다른 존이 이 사람을 그 뒤에 저장했다 · 늦게 닿은 옛 저장). 잃는 칸 0(행이 더 새 몸) · 센다.
 const _t927 = { stale: 0 };
@@ -1685,6 +1694,54 @@ async function _t916BeforeLoad(acct) {
   }
   if (!_t916.base.has(pid) || !_t916.landed.has(pid)) _t916.base.set(pid, _t916Sha(acct.tools_json));
   return acct;
+}
+// ════════════════════════════════════════════════════════════════
+// ★★[T940 2026-10-26 · T927 회부 2 · 손잡이 `T940_LOGIN_FLUSH` — 켬 기본(결함) · 되돌림 `=0` = 종전 바이트(묻지 않는다 · 문은 늘 `ok` · 적지 않는다)]
+//   **다른 존에서 막 끊고 온 사람은 그 존의 마지막 저장이 닿은 뒤에 행을 읽는다.**
+//   종전: 존 A 에서 끊고 곧바로 존 B 로 붙으면 B 가 central 행을 읽는 때가 A 의 닫힐 때 저장이 닿기 **전**일 수 있었다(실측: 늦춤 0 판에서도 1~3 ms 차로 2/3 ·
+//   A 저장 3초 늦춤 판 3/3 — 탐침 `t940-stale-read-probe`). B 는 옛 몸으로 태어나고 그 몸의 저장이 A 가 마지막에 바꾼 칸을 덮어 **영구 소실**이었다
+//   (T927 몸 버전으로는 못 가른다 — "늦게 닿은 옛 저장"이 아니라 "늦게 닿기 **전에** 읽은 접속"이다).
+//   ⇒ B: 로그인(토큰 · 승격이 아닌 길 — 그 둘은 몸을 페이로드로 받는다)에서 행의 `last_zone` 이 다른 존이면 그 존 안 문 `/flush_player` 를 부르고(존↔존 `postJSON` ·
+//     시한은 그 함수의 것 — 새 수 0) 답이 오면 행을 **다시 읽는다**. 답이 없으면(옛 판 존 404 · 죽음 · 시한) 읽은 행 그대로(종전).
+//   ⇒ A(`/flush_player`): 그 사람이 아직 이 존에 붙어 있으면 지금 저장하고 그 세션을 내린다(닫힐 때 저장이 B 의 저장 뒤에 덮지 않게 `_supersededBy` — 같은 존
+//     중복 차단과 같은 표식 · 등록 계정은 종전에도 크로스존 `kick_player` 로 내렸다) · 이 존 T916 줄에 그 사람 저장이 있으면 다시 보낸다 · 그 사람의 마지막 저장이
+//     닿을 때까지 기다린 뒤 답한다.
+const T940_LOGIN_FLUSH = process.env.T940_LOGIN_FLUSH !== '0';
+const _t940 = { stat: { asked: 0, reread: 0, fail: 0, served: 0, live: 0 } };
+async function _t940BeforeLoad(acct) {
+  const from = acct && acct.last_zone, z = from && ZONES[from];
+  if (!T940_LOGIN_FLUSH || !acct || !acct.player_id || !z || from === ZONE_ID) return acct;
+  _t940.stat.asked++;
+  try {
+    const r = await postJSON(z.host, z.port, '/flush_player', { player_id: acct.player_id });
+    const row = await central.getPlayer(acct.player_id);
+    if (row) { Object.assign(acct, row); _t940.stat.reread++; }
+    console.log(`[${ZONE_ID}] ★[T940] ${from} 에서 막 온 접속 — 그 존의 마지막 저장을 기다린 뒤 행을 다시 읽었다 (${acct.player_id} · 그 존에 붙어 있던 몸 ${(r && r.live) || 0})`);
+  } catch (e) {
+    _t940.stat.fail++;
+    console.warn(`[${ZONE_ID}] ★[T940] ${from} 에서 저장 확인을 못 받았다(${e.message}) — 읽은 행 그대로 (${acct.player_id})`);
+  }
+  return acct;
+}
+async function _t940Flush(playerId) {
+  let live = 0;
+  if (!T940_LOGIN_FLUSH || !playerId) return live;
+  _t940.stat.served++;
+  for (const [pid, p] of players) {
+    if (p.playerId !== playerId || p._supersededBy) continue;
+    live++; _t940.stat.live++;
+    if (canPersist(p)) savePlayer(p, { last_zone: ZONE_ID, last_x: p.x, last_y: p.y });   // 지금 몸 — 닫힐 때 저장과 같은 줄
+    p._supersededBy = 'xzone';   // 닫힐 때 저장 · 주기 저장이 이 몸을 다시 안 쓴다(몸은 다른 존의 것이 된다)
+    send(p.ws, { type: 'kicked', reason: 'duplicate_login' });
+    const wsToClose = p.ws;
+    players.delete(pid);
+    broadcast({ type: 'player_left', pid });
+    setTimeout(() => { try { wsToClose.close(); } catch (e) {} }, 300);
+  }
+  if (T916_SAVE_RETRY) { let row = null; try { row = db.saveQueueGet(playerId); } catch (e) { row = null; } if (row) await _t916Resend(row); }
+  const pr = _t940Last.get(playerId);
+  if (pr) await pr;
+  return live;
 }
 if (T916_SAVE_RETRY) {
   try { for (const r of db.saveQueueAll()) { if (r.seq > _t916.seq) _t916.seq = r.seq; _t916.pending = true; } } catch (e) {}
@@ -5921,6 +5978,19 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+  // POST /flush_player { player_id } — ★[T940] 존↔존 안 문: 그 사람의 마지막 저장이 central 에 닿은 뒤 답한다(붙어 있으면 지금 저장하고 내린다 · 위 T940 블록)
+  if (req.url === '/flush_player' && req.method === 'POST') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);
+    let body = '';
+    req.on('data', (chunk) => body += chunk);
+    req.on('end', async () => {
+      let pid = null; try { pid = JSON.parse(body).player_id; } catch (e) { pid = null; }
+      let live = 0; try { live = await _t940Flush(pid); } catch (e) { console.warn(`[${ZONE_ID}] ★[T940] flush_player 실패:`, e.message); }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, live }));
+    });
+    return;
+  }
   // === 크로스존 kick — 다른 zone에서 같은 player가 들어왔다는 알림 ===
   // POST /kick_player { player_id }
   if (req.url === '/kick_player' && req.method === 'POST') {
@@ -6400,6 +6470,7 @@ async function _acceptConnection(ws, req, C) {
 
     // ── 공통 복원 — central 행이 있으면 등록 계정이든 영속 게스트든 **같은 경로** ──────────
     if (acct) {
+      if (T940_LOGIN_FLUSH) acct = await _t940BeforeLoad(acct);   // ★[T940] 다른 존에서 막 끊고 왔으면 그 존의 마지막 저장이 닿은 뒤 행을 다시 읽는다
       if (T916_SAVE_RETRY) acct = await _t916BeforeLoad(acct);   // ★[T916] 이 사람의 못 닿은 저장이 이 존 줄에 있으면 먼저 보내고 그 행으로 복원한다
       playerId = acct.player_id;
       //   ★표시 이름: 등록 계정은 계정 이름. 게스트는 이번에 입력한 이름이 있으면 그것(종전 동작),

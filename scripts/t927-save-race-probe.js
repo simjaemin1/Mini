@@ -8,7 +8,8 @@
 //
 // 지연 주입(하네스만 · 서버 코드 0): 출발 존의 `CENTRAL_URL` 을 이 탐침의 프록시로 돌린다. 프록시는 무장한 사람의 `POST /player/:id` 중
 //   **넘기기 저장이 아닌 것**(`last_zone !== 'nippon'` — 주기 · 행동 · 순간이동 저장)을 `DELAY_MS` 늦춰 central 에 넘긴다(넘기기 저장 · 다른 문은 그대로).
-//   central-client 시한(5초) 안이라 존은 "닿았다"고 안다(T916 줄에 안 선다 — 이 탐침은 평시 저장의 차례만 잰다). 도착 존(nippon)은 central 에 바로 붙는다.
+//   central-client 시한(5초) 안이라 존은 "닿았다"고 안다(T916 줄에 안 선다 — 이 탐침은 평시 저장의 차례만 잰다). 도착 존(nippon)은 늦춤 0 프록시로 붙는다
+//   (★[T940] 도착 존 저장이 central 에 닿은 때를 적는다 — 상황 선행 ② 의 바닥).
 //   출발 존 주기 간격 1초(`SAVE_INTERVAL_MS` — 이미 있는 손잡이 · 걷는 내내 주기 저장이 연다) · 도착 존 10분(두 읽음 사이에 도착 존 주기 저장이 안 끼게).
 //
 // 판마다 새 손님 하나 — 출발 존에서 생선 셋(kg 2.0 · 0.4 · 1.1 — 행동 저장 · 무장 전) → 무장 → 경계로 걸어 넘긴다 → 도착 존에 붙자마자 생선 하나 내려놓기
@@ -28,7 +29,7 @@ const FB = require('./fixture-boot');
 const WebSocket = require('ws');
 
 const ROOT = path.join(__dirname, '..');
-const CPORT = 3010, XPORT = 3011, HPORT = 3020, NPORT = 3021;
+const CPORT = 3010, XPORT = 3011, YPORT = 3012, HPORT = 3020, NPORT = 3021;
 const OFF = process.argv.includes('--off');
 const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const N = +(ARGS[0] || 3);
@@ -52,18 +53,19 @@ const KNOB = OFF ? { T927_BODY_VER: '0' } : {};
 
 // ── 지연 프록시(출발 존 → central) ──
 const ARM = new Set();   // 무장한 playerId
-const LOG = [];          // 지나간 `POST /player/:id` — { pid, lz, sv, fish, t, tf, delayed, resp }
+const LOG = [];          // 지나간 `POST /player/:id` — { zone, pid, lz, sv, fish, t, tf, delayed, resp }
 const svOf = (tj) => { try { const o = JSON.parse(tj); return Number.isFinite(o && o.sv) ? o.sv : null; } catch (e) { return null; } };
 const fishOf = (tj) => { try { const o = JSON.parse(tj); const L = (o && o.kgLedger) || {}; return J(L.fish || L); } catch (e) { return null; } };
-const proxy = http.createServer((req, res) => {
+// ★[T940] 프록시 둘 — 출발 존(늦춤 · `XPORT`) · 도착 존(늦춤 0 · `YPORT` — 도착 존 저장이 central 에 **닿은 때**를 적는다: 상황 선행 ②의 바닥).
+const mkProxy = (zone, delayable) => http.createServer((req, res) => {
   const chunks = []; req.on('data', (c) => chunks.push(c));
   req.on('end', () => {
     const buf = Buffer.concat(chunks); let delay = 0, info = null;
     const m = req.method === 'POST' && /^\/player\/([^/?]+)/.exec(req.url || '');
     if (m) {
       let b = {}; try { b = JSON.parse(buf.toString() || '{}'); } catch (e) {}
-      info = { pid: decodeURIComponent(m[1]), lz: b.last_zone == null ? null : b.last_zone, sv: svOf(b.tools_json), fish: b.tools_json != null ? fishOf(b.tools_json) : null, t: Date.now(), tf: 0, delayed: false, resp: null };
-      if (ARM.has(info.pid) && info.lz !== 'nippon') { delay = DELAY_MS; info.delayed = true; }
+      info = { zone, pid: decodeURIComponent(m[1]), lz: b.last_zone == null ? null : b.last_zone, sv: svOf(b.tools_json), fish: b.tools_json != null ? fishOf(b.tools_json) : null, t: Date.now(), tf: 0, delayed: false, resp: null };
+      if (delayable && ARM.has(info.pid) && info.lz !== 'nippon') { delay = DELAY_MS; info.delayed = true; }
       LOG.push(info);
     }
     setTimeout(() => {
@@ -76,6 +78,7 @@ const proxy = http.createServer((req, res) => {
     }, delay);
   });
 });
+const proxy = mkProxy('hanbando', true), proxyN = mkProxy('nippon', false);
 
 const jget = async (u) => (await (await fetch(u, { signal: AbortSignal.timeout(8000) })).json());
 function open(url, onMsg) {
@@ -150,9 +153,13 @@ async function trip(P) {
   // 늦춘 저장이 다 닿을 때까지(+ 여유)
   for (let i = 0; i < 80 && LOG.slice(n0).some((e) => e.pid === pid && e.delayed && !e.tf); i++) await sleep(100);
   await sleep(800);
-  const mine = LOG.slice(n0).filter((e) => e.pid === pid);
+  const mine = LOG.slice(n0).filter((e) => e.pid === pid && e.zone === 'hanbando');   // 출발 존 저장(도착 존 저장은 아래 `nipLast` 만)
   const delayed = mine.filter((e) => e.delayed);
-  const lateAfterAt = tAt ? delayed.filter((e) => e.tf > tAt).length : 0;   // 상황 선행 ② — 도착 존 저장 뒤에 닿은 늦춘 저장 수
+  //   상황 선행 ② — 도착 존의 (넘긴 뒤 · 닫기 전) 마지막 저장이 central 에 닿은 때보다 **늦게** 닿은 늦춘 저장 수.
+  //   ★[T940] 종전엔 ① 의 행 읽기(`tAt`)를 바닥으로 썼다 — 끔 판은 늦춘 저장이 1초마다 행을 되돌려 그 읽기가 잘 안 잡혀(T940 첫 판 끔 3번 다 무효) 도착 존 저장이
+  //   닿은 때를 도착 존 프록시(늦춤 0)에서 직접 적는다(같은 뜻 · 더 곧은 자).
+  const nipLast = Math.max(0, ...LOG.slice(n0).filter((e) => e.zone === 'nippon' && e.pid === pid && e.tf).map((e) => e.tf));
+  const lateAfterAt = nipLast ? delayed.filter((e) => e.tf > nipLast).length : 0;
   const row1 = await rowOf(pid);   // = 도착 존이 이 순간 죽으면 남는 행
   const same1 = sameAs(row1, live);
   const live1 = pick0(await jget(`http://localhost:${NPORT}/bodydbg`));   // 그 사이 도착 존 몸이 그대로인가(견준 몸이 움직이지 않았다)
@@ -175,12 +182,13 @@ async function trip(P) {
 (async () => {
   const t0 = Date.now();
   await new Promise((r) => proxy.listen(XPORT, '127.0.0.1', r));
+  await new Promise((r) => proxyN.listen(YPORT, '127.0.0.1', r));
   const C = boot('central.js', Object.assign({ PORT: String(CPORT), DB_PATH: `${DDIR}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando,nippon' }, KNOB), 'central');
   if (!(await FB.waitUp(C, /central server up on/, { name: 'central' })).ok) throw new Error('central 기동 실패');
   const common = Object.assign({ ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1' }, KNOB);
   const H = boot('zone.js', Object.assign({ PORT: String(HPORT), ZONE_ID: 'hanbando', DB_PATH: `${DDIR}/w-han.db`, CENTRAL_URL: `http://127.0.0.1:${XPORT}`, SAVE_INTERVAL_MS: '1000' }, common), 'zone-han');
   const hp = FB.waitUp(H, /zone server up on/, { name: 'zone', capMs: 300000 });
-  const Nn = boot('zone.js', Object.assign({ PORT: String(NPORT), ZONE_ID: 'nippon', DB_PATH: `${DDIR}/w-nip.db`, CENTRAL_URL: `http://localhost:${CPORT}`, SAVE_INTERVAL_MS: '600000' }, common), 'zone-nip');
+  const Nn = boot('zone.js', Object.assign({ PORT: String(NPORT), ZONE_ID: 'nippon', DB_PATH: `${DDIR}/w-nip.db`, CENTRAL_URL: `http://127.0.0.1:${YPORT}`, SAVE_INTERVAL_MS: '600000' }, common), 'zone-nip');
   const np = FB.waitUp(Nn, /zone server up on/, { name: 'zone', capMs: 300000 });
   if (!(await hp).ok || !(await np).ok) throw new Error('존 기동 실패');
   console.log(`[T927 탐침] ${OFF ? '끔(T927_BODY_VER=0)' : '켬(기본)'} · 판 ${N} · 길 ${PATHS.join(',')} · 지연 ${DELAY_MS}ms · 기동 ${((Date.now() - t0) / 1000).toFixed(0)}s`);
