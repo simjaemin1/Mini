@@ -12,8 +12,10 @@
 //   `--pix` 면 가라앉은 뒤 그림 같음 재료를 뜬다(T937 꼴): 서 있는 칸 둘레 120×120 칸 물 · 바위 값 표 해시 · 구운 지면 타일(바탕 · 잎 층) 화소 해시 ·
 //   자연물 청크 속(술 · 소품 목록) 해시 · 산 청크 세그먼트 화소 해시 — 판끼리 견준다(손잡이 켬 · 끔 · 두 브라우저).
 //   `--spots` 면 그 뒤 자리 셋(산1 · 어촌1 · 광산2 — t926-near-check 의 자리)에 순간이동해 굽기가 가라앉은 뒤 같은 재료를 자리마다 또 뜬다.
+//   `--still` 이면 재료를 뜨기 전에 지면의 움직이는 입력(서버가 보내는 타일 상태 · 마을 날씨)을 대조군 손잡이(`_t19.stateOff` · `wxOff`)로 끈다 —
+//   지면 지문이 바뀌어 타일이 다시 구워지고(34-m-renderloop `_gtKnob`) 그 뒤 타일은 정적 지형 · 물 · 바위 값 · 적설 · 서리만의 함수다(판마다 같은 입력).
 //   손잡이 env 는 이 자를 부른 env 를 central · 존이 물려받는다.
-// 실행: [E2E_BROWSER=webkit] [손잡이 env] node scripts/t947-first-lookup.js [--n 3] [--tail 3] [--stack] [--pix [--spots]] [--out /tmp/t947] [--tag 이름]
+// 실행: [E2E_BROWSER=webkit] [손잡이 env] node scripts/t947-first-lookup.js [--n 3] [--tail 3] [--stack] [--pix [--spots] [--still]] [--out /tmp/t947] [--tag 이름]
 //       견줌: node scripts/t947-first-lookup.js --cmp 가.json 나.json [--cmp-out 견줌.json]   (`--pix` 판 재료끼리 · 아래 견줌 머리말)
 'use strict';
 const path = require('path');
@@ -27,6 +29,7 @@ const OUT = arg('--out', '/tmp/t947'); fs.mkdirSync(OUT, { recursive: true });
 const N = +arg('--n', '3'), TAIL = +arg('--tail', '3');
 const STACK = process.argv.includes('--stack'), PIX = process.argv.includes('--pix');
 const SPOTS = process.argv.includes('--spots');   // `--pix` 뒤 자리 셋(산1 · 어촌1 · 광산2 — t926-near-check 와 같은 자리)에 서서 같은 재료를 한 번 더 뜬다
+const STILL = process.argv.includes('--still');   // `--pix` 앞에 땅의 움직이는 입력(타일 상태 · 마을 날씨 — 대조군 손잡이 `_t19.stateOff` · `wxOff`)을 끄고 지면 타일을 다시 굽게 한다
 const BR = require('./e2e-browser').which();
 const TAG = arg('--tag', BR);
 const CPORT = 3010, ZPORT = 3020;
@@ -99,7 +102,8 @@ const PIXDUMP = () => {
   const nat = {}; for (const [k, ch] of _natChunk) nat[k] = hsStr(JSON.stringify(ch, (kk, v) => (v && typeof v === 'object' && (v instanceof HTMLCanvasElement || v instanceof HTMLImageElement)) ? '[img]' : v));
   const mt = {}; let mtSegs = 0, mtErr = null;   // 산 청크 = 세그먼트 배열(11-r1-mountain `_mt3Chunk.set(key, segs)`) — 세그먼트마다 화소 해시 @ 자리
   try { for (const [k, ch] of _mt3Chunk) { const segs = Array.isArray(ch) ? ch : ((ch && ch.segs) || []); mtSegs += segs.length; mt[k] = segs.length + ':' + segs.map((s) => hsCv(s && (s.img || s.cv)) + '@' + [s.x, s.y, s.ox, s.oy].join(',')).join(';'); } } catch (e) { mtErr = String(e && e.message); }
-  return { at: [c0x, c0y], cells: hsStr(tb), water: [...tb].filter((ch) => ch === '1' || ch === '3').length, rock: [...tb].filter((ch) => ch === '2' || ch === '3').length, tiles, nat, mt, mtSegs, mtErr };
+  const gnd = { kf: (typeof _gtKnob !== 'undefined') ? _gtKnob : null, snow: (typeof _gtSnowNow === 'function') ? _gtSnowNow() : null, frost: (typeof _gtFrostNow === 'function') ? _gtFrostNow() : null };   // 지면 타일 지문(손잡이 · 적설 · 서리)
+  return { at: [c0x, c0y], cells: hsStr(tb), water: [...tb].filter((ch) => ch === '1' || ch === '3').length, rock: [...tb].filter((ch) => ch === '2' || ch === '3').length, tiles, nat, mt, mtSegs, mtErr, gnd };
 };
 
 // ── 견줌(`--cmp 가.json 나.json` — 서버 · 브라우저 0) ───────────────────────────────────────────
@@ -161,8 +165,9 @@ if (process.argv.includes('--cmp')) {
         cache: { water: _waterCellCache.size, rock: _rockCellCache.size }, pos: (() => { const a = window.__getSrvAbs(); return [Math.round(a.x), Math.round(a.y)]; })() };
     });
     if (PIX) {
-      await page.evaluate(() => { try { window.__terrain19.freezeT = 12.25; window.__terrain19.windOff = true; } catch (e) {} return true; });
+      await page.evaluate((still) => { try { window.__terrain19.freezeT = 12.25; window.__terrain19.windOff = true; if (still) { window.__terrain19.stateOff = true; window.__terrain19.wxOff = true; } } catch (e) {} return true; }, STILL);
       await sleep(4000);
+      if (STILL) { let last = '', same = 0; for (let k = 0; k < 60 && same < 3; k++) { await sleep(1000); const n = await page.evaluate(() => _groundTiles.size + ':' + (window.__groundDbg ? window.__groundDbg.baked : 0)); if (n === last) same++; else same = 0; last = n; } }   // 지면 타일이 다 다시 구워질 때까지
       r.pix = await page.evaluate(PIXDUMP);
     }
     if (PIX && SPOTS) {   // 자리 셋 — 순간이동(막힌 칸이면 둘레 가까운 칸부터 · t926-near-check 와 같은 식) → 굽기 가라앉음 → 재료

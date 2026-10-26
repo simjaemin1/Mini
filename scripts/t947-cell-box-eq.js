@@ -58,7 +58,7 @@ function cmpCells(zid, cells, label) {
     if (vr[i] === 2) { sr++; if (ra[i]) { br++; if (ex.length < 8) ex.push({ k: '바위', tx: cells[2 * i], ty: cells[2 * i + 1] }); } } else if (vr[i] !== ra[i]) { br++; if (ex.length < 8) ex.push({ k: '바위(정본 두 번 다름)', tx: cells[2 * i], ty: cells[2 * i + 1] }); }
     w += wa[i]; r += ra[i];
   }
-  const z = res.zones[zid] || (res.zones[zid] = { env: CE.stats(env), parts: [] });
+  const z = res.zones[zid] || (res.zones[zid] = { env: null, parts: [] });
   z.parts.push({ label, cells: n, water: w, rock: r, badW: bw, badR: br, skipW: sw, skipR: sr, msOff: +msOff.toFixed(1), msOn: +msOn.toFixed(1), ex });
   const S = res.total; S.cells += n; S.water += w; S.rock += r; S.badW += bw; S.badR += br; S.skipW += sw; S.skipR += sr; S.msOff += msOff; S.msOn += msOn;
   console.log(`  ${zid.padEnd(10)} ${String(label).padEnd(5)} 칸 ${String(n).padStart(9)} · 물 ${String(w).padStart(8)} · 바위 ${String(r).padStart(8)} · 어긋남 물 ${bw} 바위 ${br} · 거른 칸 물 ${sw} 바위 ${sr} · 노드 ms 끔 ${msOff.toFixed(0)} / 켬 ${msOn.toFixed(0)}`);
@@ -105,6 +105,7 @@ if (FULL.length) {
     cmpCells(zid, cells, '표본');
   }
 }
+for (const zid of Object.keys(res.zones)) res.zones[zid].env = CE.stats(envOf(zid));   // 상자 수는 판 끝 값(선분 격자는 처음 물을 때 짓는다)
 const S = res.total;
 console.log(`\n  합: 칸 ${S.cells} · 물 ${S.water} · 바위 ${S.rock} · 어긋남 물 ${S.badW} · 바위 ${S.badR} → ${S.badW + S.badR === 0 ? '같음' : '다름'} · 거른 칸 물 ${S.skipW} · 바위 ${S.skipR} · 노드 ms 끔 ${S.msOff.toFixed(0)} / 켬 ${S.msOn.toFixed(0)}`);
 for (const [zid, z] of Object.entries(res.zones)) console.log(`  상자 ${zid}: ${JSON.stringify(z.env)}`);
