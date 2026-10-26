@@ -1137,14 +1137,14 @@ const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';
 const T724_MINE_ACT = (typeof process !== 'undefined' && process.env && process.env.T724_MINE_ACT !== '0');   // ★[PM 10-14] 켬 기본(몸이 치는 판에서만 갈림 · 헤드리스 바이트 같음) · 되돌림 `=0`
 const T815_DRAFT_FAMINE = (typeof process !== 'undefined' && process.env && process.env.T815_DRAFT_FAMINE === '1');   // ★[T815] 기본 끔(켜는 값 `'1'` 하나뿐) — 켜면 기근 죽음은 **죽일 몸을 고른 뒤에** 센다(전부 징발 중이면 `break` 앞에서 안 센다). 끔 = 종전 바이트
 // ★★[T924 2026-10-25 · 재민 10-24 "창고에 식량이 쌓여 있을 텐데 자유민이 그렇게 빨리 죽어..?" · PM: (나) 가드로 덮지 않는다]
-//   **몸이 없는 날엔 죽음 빚을 넘기지 않는다** — 손잡이 `T924_DEBT_CAP`(기본 끔 · 켜는 값 `'1'` 하나뿐 · 끔 = 종전 바이트).
+//   **몸이 없는 날엔 죽음 빚을 넘기지 않는다** — 손잡이 `T924_DEBT_CAP`(★[T935] 켬 기본 · 되돌림 `=0` = 종전 바이트).
 //   기근 사망 고리(아래 인구 갱신 6)는 남은 사람이 다 징발 중이면(`oldestIdx < 0`) 멈추는데 누적 압력 `_dPAccum` 은 그대로 남아
 //   날마다 더 쌓인다(그날 dP — 상한 N × POP_MAX_DELTA_PCT · N 에 징발자가 든다). 징발이 풀린 날 고리가 그 빚을 **곳간과 무관하게 한꺼번에** 치른다
 //   (T815 §2 시드 42 농촌21: 555일 곳간 1,395 · 빚 −231 → 34명). 랩 두 판(`마을실험실` · `전쟁실험실`)은 이 고리가 같은 글자인데
 //   econ 주민에 징발 표식을 붙이지 않아(동원 = `_warMobFrac → _laborMul`) 이 갈래에 닿지 않는다 — 빚은 그날그날 치러져 −1 아래로 안 남는다.
 //   켜면 그 갈래에서 출생 쪽 거울(자리가 없으면 `Math.min(_dPAccum, 0.9)`)처럼 `Math.max(_dPAccum, −0.9)` — 못 치른 몫을 다음 날로 넘기지 않는다
 //   (새 수 0 — 0.9 는 출생 줄의 그 수 · 셈만 느는 죽음은 `T815_DRAFT_FAMINE` 몫 — 이 손잡이가 켜지면 빚이 −1 아래에 쌓여 있지 않아 그날 압력이 −1 을 넘긴 날만 센다).
-const T924_DEBT_CAP = (typeof process !== 'undefined' && process.env && process.env.T924_DEBT_CAP === '1');
+const T924_DEBT_CAP = !(typeof process !== 'undefined' && process.env && process.env.T924_DEBT_CAP === '0');   // ★[T935 · PM 10-26 · T924 회부 1] 켬 기본 · 되돌림 `=0`
 // ★★★[T400 2026-09-26] **집도 행위다 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
 //   (아래 두 자리가 전부 이 상수 뒤에 있다: 주거 증축의 자재 단가 · 곳간 출구 `actFromGranary`).
 //   ① 자재의 정본은 **하나**다 — `server/hut-stages.js`(서버 움집 공정 · PM 권고 #61 · 재민 거부권).
