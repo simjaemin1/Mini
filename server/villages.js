@@ -3483,6 +3483,33 @@ function _t896NeedSlot(c) {   // 이 캐러밴의 몸을 세우려면 교역로�
   if (!a || !b || !state.routeCache) return false;
   return state.routeCache.get(_routeKey(a, b).key) === undefined;
 }
+// ★★[T929 2026-10-25 · T910 회부 1 · 손잡이 `T929_RET_RESUME`(★켬 기본 — 결함 고침 · 되돌림 `=0` = 종전 줄 그대로)] **도착 경계의 귀환 길을 동기로 파지 않는다.**
+//   종전: econ 이 도착을 낸 경계(`_caravanSyncOne` 의 inbound 갈래)에서 `_t661Anchor(body, _t661ReturnPts(body), 'inbound')` — `_t661ReturnPts` 는
+//     `getRoute`(동기 문)와 `_walkFor(…, 0)`(한 번에 완주)로 귀환 길을 판다. 그 쌍이 캐시에 없으면(무효화 뒤 · 재라우팅으로 간 마을 — 가는 길로 판 쌍이 아니다)
+//     그 캐러밴 조각 하나가 347~810ms 였다(T910 §3 · `test-route-persist` ⑥ 빨강 · 라이브 틱을 한 번에 0.3~0.8초 묶는다).
+//   켬: 그 갈래에서 몸을 만지기 **전에** 같은 쌍(도착 마을 → 집)을 재개형 문으로 판다 — 교역로 `getRouteResumable`(→ `_routeResume` · T85 비트 동일) 다음
+//     걷는 길 `_walkFor`(예산 · T578 ②) · 둘 다 이 조각에 넘어온 몫(`_pb` — 공유 예산 T687 · 스폰 · 재라우팅과 같은 몫). 아직이면 `'retry'` —
+//     스폰 · 재라우팅과 같은 계약(아무것도 안 만졌다 · 드레인이 같은 자리 맨 앞에 도로 넣는다 · 같은 하루 안의 다음 조각 · 차례 그대로 · T85).
+//     그동안 몸은 종전 그대로 가는 길 끝(도착한 자리)에 서 있다(하루 마감 중엔 몸 틱이 안 돈다 — 새 동작 0). 다 파이면 종전 줄이 캐시에서
+//     **같은 길**을 받는다(같은 쌍 · 같은 문의 답 · 머묾 끝 `lingerUntil` 은 그 하루의 `now`(C.now) — 언제 다 파였든 같은 값).
+//   예산 0(일괄 `syncCaravanBodies` · 조각내기 끔)이면 이 줄을 건너뛴다 — 종전 줄이 그 자리에서 판다(종전과 같은 일).
+//   셈: `t929Wait`(기다린 조각) · `t929Cold`(도착 경계에서 귀환 길을 새로 판 수 — 두 팔 다 센다 · 끔은 종전 동기 A* 의 수) · `t929MsMax`(그 줄 한 번의 가장 긴 ms).
+const T929_RET_RESUME = process.env.T929_RET_RESUME !== '0';
+function _t929RetWait(body, budgetMs) {   // 귀환 길이 아직이면 참(그동안 예산만큼 이어 판다) · 섰거나 못 닿는 쌍이면 거짓(종전 줄이 받는다 — 폴백 포함)
+  const c = body.c;
+  const homeVil = state.byEcon.get(c.from), hereVil = state.byEcon.get(c.to);
+  if (!homeVil || !hereVil) return false;
+  const rr = getRouteResumable(hereVil, homeVil, budgetMs);
+  if (!rr.done) return true;
+  if (!rr.pts) return false;
+  return !_walkFor(hereVil, homeVil, budgetMs).done;
+}
+function _t929Mark() { return { k: _probe.routeCold | 0, w: _probe.walkBuilt | 0, t: Date.now() }; }   // 셈만(세계 0)
+function _t929Note(m) {
+  const d = Date.now() - m.t;
+  if ((_probe.routeCold | 0) > m.k || (_probe.walkBuilt | 0) > m.w) _probe.t929Cold = (_probe.t929Cold | 0) + 1;
+  if (d > (_probe.t929MsMax | 0)) _probe.t929MsMax = d;
+}
 function _t775Resume(now) {
   const R = state._t775 || (state._t775 = { q: null, done: false });
   if (R.done || !state.world || !state.world.caravans) return;
@@ -3891,6 +3918,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
     }
     if (body.phase !== 'outbound') return;
     if (c.state === 'inbound') {
+      if (T929_RET_RESUME && T661_ON && body._t661 && _pb > 0 && _t929RetWait(body, _pb)) { _probe.pathWait++; _probe.t929Wait = (_probe.t929Wait | 0) + 1; return 'retry'; }   // ★★[T929] 귀환 길이 아직 — 몸을 만지기 전(재진입 안전) · 다음 조각에 이어 판다(끔 = 이 줄 무동작)
       // econ 도착 확정(매도 or 빈손 손절) — 실체는 종점 스냅 + 1게임시간 머묾 후 귀환(§5.5b 연출)
       const p = players.get(body.pid);
       const end = caravanPointAt(body, body.len);
@@ -3898,7 +3926,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
       body.prog = body.len;
       body.phase = 'linger';
       body.lingerUntil = now + state.dayMs * CARAVAN_LINGER_DAY_FRAC;
-      if (T661_ON && body._t661) { _t661Anchor(body, _t661ReturnPts(body), 'inbound'); body._t661.L = 0; }   // ★[T661] 돌아가는 구간의 장부는 도착한 이 경계에서 연다(머묾은 보이는 것)
+      if (T661_ON && body._t661) { const _m929 = _t929Mark(); _t661Anchor(body, _t661ReturnPts(body), 'inbound'); body._t661.L = 0; _t929Note(_m929); }   // ★[T929] 앞뒤 셈만 · ★[T661] 돌아가는 구간의 장부는 도착한 이 경계에서 연다(머묾은 보이는 것)
       if (T707_ON) _t707Linger(body, c, p);   // ★[T707] 장 끝까지 머문다 · 남문 앞 마당에 선다(끔 = 이 줄 무동작)
       S.arrived++;
       console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 도착: ${c.from.name}→${c.to.name} ${c.giveRes}${c._abandoned ? ' (빈손 손절)' : ' 매도'} — 1게임시간 머묾 후 귀환`);
@@ -7126,7 +7154,8 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   pathJobs: _probe.pathJobs, pathSliceMax: _probe.pathSliceMax, pathChunkMax: _probe.pathChunkMax, pathDrop: _probe.pathDrop, pathWait: _probe.pathWait, pathStepNodes: PATH_STEP_NODES,
   routePlain: _probe.routePlain | 0, routeRedigPass: _probe.routeRedigPass | 0, routeRedig: _probe.routeRedig | 0, routeRedigChanged: _probe.routeRedigChanged | 0, pathBootWait: _probe.pathBootWait | 0, t714Yield: _probe.t714Yield | 0, t714Due: _probe.t714Due | 0, walkBuilt: _probe.walkBuilt | 0, walkStraight: _probe.walkStraight | 0, walkFar: _probe.walkFar | 0,   // ★[T578]
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
-  ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done), ...(T896_RESUME_ONE ? { held896: _probe.t896Held | 0 } : {}) } } : {}),   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
+  ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done), ...(T896_RESUME_ONE ? { held896: _probe.t896Held | 0 } : {}) } } : {}),
+  t929: { on: T929_RET_RESUME, wait: _probe.t929Wait | 0, cold: _probe.t929Cold | 0, msMax: _probe.t929MsMax | 0 },   // ★[T929] 도착 경계 귀환 길(두 팔 다 선다 — 셈만)   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
   t620WfHit: _probe.t620WfHit | 0, t620WfN: _probe.t620WfN | 0, t620WfBad: _probe.t620WfBad | 0, t620Prewarm: _probe.t620Prewarm | 0,
   oreWarm: _probe.oreWarm | 0, oreWarmRows: _probe.oreWarmRows | 0, oreWarmMs: _probe.oreWarmMs | 0, oreAuditN: _probe.oreAuditN | 0, oreAuditBad: _probe.oreAuditBad | 0,   // ★[T620 ②]
