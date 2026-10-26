@@ -16,6 +16,7 @@
 * ⚠**`lastPongAt` 만 비우면 안 된다** — pong 파수꾼엔 문이 둘이다: ⓐ `lastPongAt` 이 7초보다 낡음 ⓑ `lastPongAt` 없음 + `firstPingAt` 이 15초보다 낡음.
   옛 주 소켓의 `firstPingAt` 은 **처음 주 소켓이 된 때** 값이라 ⓑ 가 대신 끊는다(실측 28/16 · 사유만 바뀜). 파수꾼 문은 무변.
 * 소켓 칸 `_promoteSentAt` 은 승격 welcome 이 **0 으로 지운다**(`promote→welcome gap` 줄) — 승격 시각이 필요한 자는 제 칸에 옮겨 둬라(`e2e-zone-cross` ⓡ 가 그렇게 첫 pong 을 잰다 · 중앙 990ms).
+  * ★[T939 · T902 회부 1 · ★PM 10-26] 옮기는 때는 **대입을 붙잡아서**(연결 객체 칸 `_promoteSentAt` · `lastPongAt` 에 setter) — 10ms 표본으로 보면 승격 창이 그보다 짧은 판(WebKit 20 다리 중 17~19)을 통째로 놓친다. `lastTickWithMyPidAt`(33-m-conn 의 `let`)는 setter 를 못 걸지만 값이 시각이라 표본으로 봐도 수가 같다.
 
 ## T428. ★★2026-09-26 — 이웃 관측 문턱 = 렌더 반경 · ★되돌아오면 새 손님(회부)
 

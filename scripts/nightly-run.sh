@@ -65,6 +65,19 @@ say "===== nightly-run 시작 · TZ=$TZ · base=$(git rev-parse --short HEAD 2>/
 # ★[T760 · T751 회부 6] 이 상자의 판 — 정규식 유니코드 속성(\p{…})은 Node · ICU · Unicode 판을 따른다.
 #   야간 상자만 10-02 밤에 하네스 둘이 같이 돌았다(글자 무변) — 다음엔 이 한 줄로 가른다. 보고가 머리로 옮긴다.
 say "  [판] $(node -p "'node ' + process.version + ' · icu ' + process.versions.icu + ' · unicode ' + process.versions.unicode + ' · v8 ' + process.versions.v8" 2>/dev/null || echo 'node 없음')"
+# ★[T939 · T798 회부 1 · ★PM 10-26] 한글 글꼴 — 상자에 한글을 그리는 글꼴이 없으면 게스트 이름 '여행자'가 대체 글리프로 그려져
+#   화면 글자를 재는 e2e(`e2e-charsprite` ⓔ 글자 서명 43~44 → 12)가 **상자 탓으로** 갈린다. 돌기 전에 한 번 보고, 없으면 넣는다
+#   (apt · root 일 때만 · `NIGHT_NO_FONT=1` 이면 건너뜀). 있음 = `fc-list ':lang=ko'` 가 하나라도 낸다(글꼴 이름이 아니라 한글 덮음으로 센다).
+#   결과는 보고 머리로 가는 로그 한 줄이다 — 판정은 안 바꾼다.
+ko_fonts() { command -v fc-list >/dev/null 2>&1 && fc-list ':lang=ko' family 2>/dev/null | head -3 | tr '\n' ';'; }
+_ko="$(ko_fonts)"
+if [ -z "$_ko" ] && [ -z "${NIGHT_NO_FONT:-}" ] && command -v apt-get >/dev/null 2>&1 && [ "$(id -u)" = 0 ]; then
+  say "  [글꼴] 한글 글꼴 없음 — fonts-noto-cjk 를 넣는다(자세한 줄은 $LOG.font)"
+  { apt-get install -y -q fonts-noto-cjk || { apt-get update -q && apt-get install -y -q fonts-noto-cjk; }; } </dev/null >> "$LOG.font" 2>&1
+  command -v fc-cache >/dev/null 2>&1 && fc-cache -f >/dev/null 2>&1
+  _ko="$(ko_fonts)"
+fi
+say "  [글꼴] 한글(:lang=ko) → ${_ko:-없음 — 한글을 재는 e2e 가 상자 탓으로 갈릴 수 있다(fonts-noto-cjk)}"
 
 # ── 오늘 돌 목록 — **나는 안 만든다**. 분할기에게 묻는다(사본 0).
 #   `auto` 를 두 번 부르지 않는다: 한 번 물어 **글자**를 받고, 돌릴 땐 그 글자로 부른다(날짜가
