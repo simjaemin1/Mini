@@ -127,6 +127,9 @@ function liveOrder(decoy) {
   const stub = (dir, name, body) => fs.writeFileSync(path.join(dir, 'scripts', name), `#!/bin/bash\necho "\${FAKE_HOST:-mac} ${name} $*" >> "$FAKE_LOG"\n${body || ''}\nexit 0\n`, { mode: 0o755 });
   for (const d of [SE, TO]) stub(d, 'reset-world.sh', 'echo "  관측 ok"');
   stub(SE, 'sync-tokyo.sh', 'echo "  ✓ 두 줄이 같다"'); stub(SE, 'live-lag.sh', 'echo "== lag"; echo "  판정 ok"');
+  //   ★[T919 뒤] ⓪ 갱신 앞 — 디스크 판정(끝 줄) · 스냅샷(서울 판을 그 호스트 `bash -s` 에 흘린다)도 부름만 적는 대역
+  stub(SE, 'disk-check.sh', 'echo "[seoul]"; echo "  판정: ok"; echo "판정: 두 호스트 모두 빈 자리 ≥ 백업 한 벌"');
+  stub(SE, 'backup-live.sh', 'echo "  ✓ 대역 사본"');
   stub(TO, 'redeploy-light.sh', 'echo "[light] RUN_ZONES=$RUN_ZONES"');
   let rh = fs.readFileSync(path.join(ROOT, 'scripts', 'redeploy-hanbando.sh'), 'utf8');
   const cL = /^if \[ "\$DO_CENTRAL" = 1 \]; then recreate durango-central .*$/m, zL = /^if \[ "\$DO_ZONE" = 1 \]; then recreate durango-zone-hanbando .*$/m;
@@ -139,7 +142,7 @@ function liveOrder(decoy) {
   let out = '', rc = 0;
   try {
     out = execFileSync('bash', [path.join(SE, 'scripts', 'update-live.sh')], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PATH: LB + ':' + BIN + ':' + process.env.PATH,
-      SYNC_SEOUL: 'seoul', SYNC_TOKYO: 'tokyo', SYNC_SEOUL_DIR: SE, SYNC_TOKYO_DIR: TO, TOKYO_STAMP: TST, REPO_DIR: SE, STAMP: ST,
+      SYNC_SEOUL: 'seoul', SYNC_TOKYO: 'tokyo', SYNC_SEOUL_DIR: SE, SYNC_TOKYO_DIR: TO, TOKYO_STAMP: TST, SEOUL_STAMP: ST, REPO_DIR: SE, STAMP: ST,
       FAKE_STAMP_VALID: '1', FAKE_CHANGED: 'server/central.js server/zone.js', FAKE_LOG: LOGL } });
   } catch (e) { rc = e.status; out = String(e.stdout || '') + String(e.stderr || ''); }
   const log = fs.readFileSync(LOGL, 'utf8').split('\n').filter(Boolean);
