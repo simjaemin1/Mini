@@ -456,6 +456,61 @@ at startup and checked before every update, allowing early final save rather
 than waiting for another hard floor breach. New results use a fresh retry
 folder, without overwriting the aborted attempt or its baseline.
 
+The retry reached global1,500 and saved both complete final4.8s arrays, then
+hit the disk floor again during full-checkpoint serialization at396.23s.
+The112,329,472-byte prefix is **not a valid full checkpoint** and no final
+trainer report was written. Both attempts consumed686.06observed guard
+seconds. Original global1,000models remain complete and unchanged. Artifact
+recovery must not forge a complete training report or fill missing optimizer
+tensors with invented values.
+
+Independent saved-array assessment rejects the new result as a correction:
+deep-vibrato quiet-introduction median falls−39.72→−51.68dBFS, but all122
+source-quiet frames still exceed−60dBFS; direct-sample excess remains+29.38dB
+(previously+41.27). Loud-support envelope residual worsens2.793→5.607dB,
+Arirang4.239→4.385dB. Deep pitch-near50fraction is98.78%(from99.76), Arirang
+96.73%(from97.21). Quiet leakage reduction is not successful level/timbre
+repair. This failed raw result is evidence, not a recommended improved audition.
+
+A separate lightweight CPU experiment therefore keeps the complete global
+1,000carrier and learns source-feature-to-level prediction on fit files only.
+Unlike the raw-vocoder experiment, it explicitly **does apply a learned,
+continuous gain-control/postprocessing layer**. No claim of “no AGC” carries
+over to that separate path. Measured heldout reference envelopes must never be
+copied into its controls, no hard silence gate is allowed, and all source-fixed
+quiet/loud/pitch diagnostics must still be reported. Its role is level
+calibration, not a newly learned instrument identity or new-score performance.
+
+`audit_level_trial_files.py` independently audits the saved orphan arrays,
+without loading any checkpoint, writing audio, or manufacturing a completed
+trainer status. `recover_generator_prefix.py` recovered ONLY the complete
+generator from the truncated local archive: five allowlisted pickle globals
+produce inert descriptors, then complete local stored members are CRC-checked.
+No missing D/Adam storage is fabricated. All288float32generator tensors /
+11,303,652elements were complete, finite, and matched the valid parent's
+names/shapes/strides. The new45,317,439-byte G-only artifact passed a standard
+`weights_only=True` CPU tensor roundtrip; it does NOT provide full training
+resume or a sound-quality approval. The source partial file remains unchanged.
+Three orphan-audit and eight prefix-recovery synthetic tests pass.
+
+The first separate `fit_level_head.py` trial used a fixed43-dimensional
+linear Ridge on all154,568fit frames, balanced by predeclared RMS strata,
+with targets below−100dBFS floored(7,062frames). It took1.92seconds, used no
+Torch/GPU, and kept heldout frames out of fitting/statistics. The runtime
+control uses predicted level minus measured CARRIER level, centered Gaussian
+log-gain smoothing and interpolation; it never receives measured reference
+RMS. This explicitly learned AGC reduced deep-introduction quiet excess to
++7.66dB and quiet median to−75.23dBFS, but loud-contour residual worsened
+2.79→4.39dB, Arirang4.24→4.41dB. Balanced TRAINING RMSE7.30dB also exposes
+underfitting, so it is not recommended as a successful overall volume fix.
+
+A subsequent physical-feature trial is motivated by that fit-only underfit:
+mel-cepstra are converted back to power-envelope information using the pinned
+SPTK transformation ([official conversion documentation](https://pysptk.readthedocs.io/en/latest/generated/pysptk.conversion.mc2sp.html)).
+Candidate selection must use recording-disjoint folds among the8fit files,
+not improve thresholds on the already observed development clips. Earlier
+failed arrays/models remain preserved with their actual failure diagnostics.
+
 The new full checkpoint is611,757,604bytes and inference checkpoint45,317,119
 bytes. Experiment contents before the final JSON were1,441,303,856bytes, below
 the announced2GB cap, with15,058,972,672bytes free at completion. Observed final
