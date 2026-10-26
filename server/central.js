@@ -20,6 +20,9 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+// ★[T927] 몸 버전 조건부 쓰기(`POST /player/:id` 주석) — 켬 기본 · 되돌림 `T927_BODY_VER=0`
+const T927_BODY_VER = process.env.T927_BODY_VER !== '0';
+function _t927Sv(tj) { if (tj == null) return null; try { const o = JSON.parse(tj); return (o && Number.isFinite(o.sv)) ? o.sv : null; } catch (e) { return null; } }
 const { DatabaseSync } = require('node:sqlite');
 const { ZONES, publicZoneMap, HANDOFF_COMMIT } = require('./zone-config');
 const httpClient = require('http');
@@ -1060,9 +1063,19 @@ const server = http.createServer(async (req, res) => {
       //     부르는 쪽은 존 하나뿐이다(클라에 `/player/` POST 가 0곳) ⇒ **안 문으로 옮긴다.**
       if (!isInternal(req)) return jsonResp(res, 401, { ok: false, reason: 'internal_only' });
       const id = decodeURIComponent(req.url.slice('/player/'.length));
-      const p = stmtGetPlayer.get(id);
+      let p = stmtGetPlayer.get(id);
       if (!p) return jsonResp(res, 404, { error: 'not found' });
       const data = await readBody(req);
+      //   ★★[T927 2026-10-25 · 손잡이 `T927_BODY_VER` — 켬 기본(결함) · 되돌림 `=0` = 아래 블록이 첫 비교에서 빠진다(종전 바이트)] **몸 버전 조건부 쓰기.**
+      //     존은 몸(`tools_json`)에 저장 차례 `sv` 를 싣는다(server/zone.js `serializeBody` 위 주석 — 저장마다 하나 올림 · 넘기기 페이로드로 다음 존이 잇는다).
+      //     들어온 몸 버전이 행의 몸 버전보다 **작으면** 안 쓴다(`stale`) — 넘기는 중 출발 존의 늦게 닿은 옛 저장이 도착 존의 새 저장을 덮던 자리(T927 탐침).
+      //     같으면 · 어느 한쪽에 칸이 없으면(옛 행 · 끔 존) 종전대로 쓴다. 행은 몸을 받은 **뒤에** 다시 읽는다 — 위 읽기와 이 쓰기 사이에 `await` 가 있어
+      //     그 사이 닿은 다른 쓰기를 못 보면 두 저장이 서로 옛 행을 견준다(같은 행을 같은 틱에 읽고 쓰는 것은 이 자리 하나 — 아래 쓰기까지 `await` 0).
+      if (T927_BODY_VER) {
+        p = stmtGetPlayer.get(id) || p;
+        const vIn = _t927Sv(data.tools_json);
+        if (vIn != null) { const vRow = _t927Sv(p.tools_json); if (vRow != null && vIn < vRow) return jsonResp(res, 200, { ok: false, reason: 'stale', sv: vRow }); }
+      }
       //   ★[T916] 다시 보내는 저장(존이 central 이 내려가 있던 동안 못 보낸 줄)은 **조건부 쓰기**다 — 존이 마지막으로 닿게 한 몸 칸(`tools_json`)의 sha1 을
       //     `if_tools_sha` 로 싣는다. 그 사이 다른 쓰기(다른 존 · 같은 존의 더 새 저장)가 몸 칸을 바꿨으면 옛 줄이 새 몸을 덮지 않게 **안 쓰고** `stale` 을 돌려준다.
       //     칸이 없는 저장(평시 · 끔인 존)은 이 줄을 안 지난다 — 종전 그대로.

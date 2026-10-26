@@ -1374,8 +1374,16 @@ function canPersist(player) {
 //     셋이 **동시에** 따라간다 — "또 빠진다"가 구조적으로 불가능해진다.
 //
 //   ⚠새 필드를 몸에 더할 자리는 **여기 하나**다. `savePlayer` 나 도착 경로에 직접 쓰지 마라.
+// ★★[T927 2026-10-25 · 손잡이 `T927_BODY_VER` — 켬 기본(결함) · 되돌림 `=0` = 종전 바이트(몸에 `sv` 칸 없음 · 센 것 0)] **몸 버전 — 늦게 닿은 옛 저장이 새 몸을 안 덮는다.**
+//   같은 사람의 저장이 두 존에서 거의 같은 때 central 에 닿는 판(넘기는 중 · 출발 존 주기 저장이 넘기기 **전에** 나갔는데 늦게 닿는다)에서 그 옛 값이
+//   도착 존의 새 저장(접속 저장 · 행동 저장)을 덮었다 — 행의 몸 · 자리가 넘기기 전으로 되돌아갔다(탐침 `t927-save-race-probe` 끔 토큰 · 승격 둘 다).
+//   T843 은 넘긴 **뒤**의 껍데기 저장만 · T916 조건부 쓰기는 줄에서 나온 다시 보내기만 걸렀다 — 이미 날아가던 평시 저장은 둘 다 밖이었다.
+//   ⇒ 몸에 칸 하나(`sv` — 저장 차례 · 단조 증가 · 새 수 0): 저장마다(`_savePatch`) 하나 올리고 몸과 같이 싣는다 — `serializeBody` 가 싣고 `parseBody` 가 읽고
+//     `_bodyInto` 가 사람에 얹으므로 넘기기 페이로드 · 로그인 · 승계 · 승격이 **같은 몸 버전**을 잇는다(도착 존은 출발 존의 마지막 차례 위에서 센다).
+//     central 은 들어온 몸 버전이 행의 몸 버전보다 **작으면** 안 쓴다(`stale` — server/central.js 조건부 쓰기 한 자리). 같으면 종전대로 쓴다.
+const T927_BODY_VER = process.env.T927_BODY_VER !== '0';
 function serializeBody(p) {
-  return {
+  const o = {
     toolItems: p.toolItems || [],
     hotkey1: p.hotkey1 || null,
     equipped: p.equipped || null,
@@ -1403,6 +1411,8 @@ function serializeBody(p) {
     //   죽음 설계(T8)의 소관이라 이 배치가 안 바꿨다 — 그래서 저장은 하되 로그인 복원이 무시한다.
     vital: { hp: p.hp, maxHp: p.maxHp, isDown: !!p.isDown, downedAt: p.downedAt || 0 },
   };
+  if (T927_BODY_VER) o.sv = +p._saveVer || 0;   // ★[T927] 몸 버전(위) — 맨 끝 칸(끔 = 칸 없음 · 종전 바이트)
+  return o;
 }
 // 복원 — 옛 형식(`{axe: 3}`)까지 여기서 흡수한다. 반환값의 키는 `serializeBody` 와 같다.
 //   `opts.vitals` 가 참일 때만 `vital` 을 돌려준다(위 주석 — 로그인은 안 받는다).
@@ -1428,6 +1438,7 @@ function parseBody(raw, opts) {
   if (Number.isFinite(o.lastSeenDay)) out.lastSeenDay = o.lastSeenDay | 0;   // ★[T7]
   if (o.member && typeof o.member === 'object' && o.member.vid != null) out.member = o.member;   // ★[T11] 소속
   if (opts && opts.vitals && o.vital && typeof o.vital === 'object') out.vital = o.vital;
+  if (Number.isFinite(o.sv)) out.sv = o.sv;   // ★[T927] 몸 버전 — 없으면(옛 행 · 끔 존) 칸도 없다
   // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
   if (Array.isArray(o.toolItems)) {
     out.toolItems = o.toolItems;
@@ -1438,7 +1449,7 @@ function parseBody(raw, opts) {
     for (const [tn, val] of Object.entries(o)) {
       if (['hotkey1', 'toolItems', 'equipped', 'equipment', 'equipSlots', 'craftSkill', 'craftLog',
            'oreLedger', 'oreCarry', 'fishStats', 'body', 'kgLedger', 'lots', 'vital',
-           'lastSeenDay', 'member'].includes(tn)) continue;   // ★[T11] 'member' 추가 — 옛 도구 형식으로 오독되면 안 된다
+           'lastSeenDay', 'member', 'sv'].includes(tn)) continue;   // ★[T11] 'member' 추가 — 옛 도구 형식으로 오독되면 안 된다
       const mx = TOOL_MAX_DURABILITY[tn] || 100;
       let d = mx;
       if (typeof val === 'number' && val > 0) d = mx;
@@ -1492,6 +1503,7 @@ function _bodyInto(p, B, equipped) {
   p.maxHp = (V && typeof V.maxHp === 'number') ? V.maxHp : PLAYER_MAX_HP;
   p.isDown = !!(V && V.isDown);
   p.downedAt = (V && V.downedAt) || 0;
+  if (T927_BODY_VER) p._saveVer = +B.sv || 0;   // ★[T927] 몸 버전 — 이 몸의 다음 저장은 이 차례 위에서 센다(끔 = 칸 없음)
   return p;
 }
 
@@ -1548,6 +1560,7 @@ function _savePatch(player, extra = {}) {
   // wood/stone은 별도 컬럼, 나머지 아이템(berry, meat_raw 등)은 inventory_json에
   const inv = player.inventory || {};
   const { wood = 0, stone = 0, ...extInv } = inv;
+  if (T927_BODY_VER) player._saveVer = (+player._saveVer || 0) + 1;   // ★[T927] 저장마다 몸 버전 하나 올림 — 아래 몸 칸(`serializeBody`)이 싣는다(끔 = 이 줄이 첫 비교에서 빠진다)
   const patch = {
     wood, stone,
     inventory_json: JSON.stringify(extInv),
@@ -1576,9 +1589,18 @@ function _saveSend(playerId, patch) {
   //   실제로 그렇게 깨졌다: `e2e-rumor ⑦` 복귀 브리핑이 "부재 0일"(`인계/Z-존서버.md ## T42.`).
   if (T916_SAVE_RETRY) return _t916Send(playerId, patch);   // ★[T916] 못 닿은 저장은 줄에 남겨 다시 보낸다(아래 · 끔 = 이 줄이 첫 비교에서 빠진다)
   _savesInFlight++;
-  return central.updatePlayer(playerId, patch).catch(e =>
+  return central.updatePlayer(playerId, patch).then((r) => { _t927Stale(playerId, patch, r); return r; }, e =>
     console.warn(`[${process.env.ZONE_ID || 'zone'}] central save 실패 (${playerId}):`, e.message)
   ).finally(() => { _savesInFlight--; _savesDoneAt = Date.now(); });
+}
+// ★[T927] central 이 이 저장을 안 썼다 — 행의 몸 버전이 더 새롭다(다른 존이 이 사람을 그 뒤에 저장했다 · 늦게 닿은 옛 저장). 잃는 칸 0(행이 더 새 몸) · 센다.
+const _t927 = { stale: 0 };
+function _t927Stale(playerId, patch, r) {
+  if (!(r && r.ok === false && r.reason === 'stale' && r.sv != null)) return false;
+  _t927.stale++;
+  let sv = null; try { sv = JSON.parse(patch.tools_json).sv; } catch (e) {}
+  console.log(`[${ZONE_ID}] ★[T927] 늦게 닿은 저장을 central 이 안 썼다 — 행 몸 버전 ${r.sv} > 이 저장 ${sv} (${playerId})`);
+  return true;
 }
 // ════════════════════════════════════════════════════════════════
 // ★★[T916 2026-10-24 · T894 회부 1 · ★PM 결정: 결함이므로 켬 기본 · 되돌림 `T916_SAVE_RETRY=0` = 종전 바이트] **central 이 없는 동안의 저장을 잃지 않는다.**
@@ -1608,7 +1630,7 @@ function _t916Send(playerId, patch) {
   if (_t916.ahead) _t916Put(playerId, seq, patch, base);   // ★④ 종료 flush — 보내기 전에 먼저 적는다
   _savesInFlight++;
   return central.updatePlayer(playerId, patch).then((r) => {
-    _t916.stat.landed++; _t916Landed(playerId, seq, patch);
+    _t916.stat.landed++; _t916Landed(playerId, seq, _t927Stale(playerId, patch, r) ? null : patch);   // ★[T927] 안 쓴 저장은 몸 칸 기준(base)을 안 옮긴다(행 몸이 다른 존의 것)
     if (_t916.pending) _t916Flush();   // ★② central 이 돌아왔다 — 남은 줄을 바로 보낸다
     return r;
   }, (e) => {
