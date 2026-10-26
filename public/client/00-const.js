@@ -954,6 +954,24 @@ function cropSprite(stage, crop) {
     }
     try { loadStreams(); } catch (e) {}   // ★[T585] 존 목록이 바뀌면 새 존의 개울도(이미 받은 존은 건너뛴다)
   }
+  // ★★[T947 2026-10-27] 손잡이 `T947_CELL_BOX`(서버 env → welcome `uiCfg.cellBox` · `'1'` 만 켬 · 끔이면 아래 둘은 불리지도 않는다 = 종전 그대로).
+  //   첫 그림 안 물 · 바위 **첫 조회**(칸 캐시에 없던 칸)의 값은 정본 술어(`Terrain.isWaterCellLocal` · `isRockCellLocal`)가 낸다 —
+  //   크롬 · WebKit 세 판씩 물 1,068~2,370칸 · 바위 4,797칸 · 술어 시간 크롬 318~384ms · WebKit 198~279ms(보고/T947 §1 · T937 회부 2 "첫 그림 다음 1위").
+  //   술어는 콜라이더 정본이라 느리다고 고치지 않는다(인계/R1 "하지 말 것") ⇒ **덜 부른다**: 켬 = 정본이 참을 낼 수 있는 곳을 넉넉히 덮는
+  //   상자(`public/cell-env.js` — 호수 기각 상자 · 강 · 능선 선분 상자 · 경계 이웃 것 포함) 밖의 칸은 정본을 안 부르고 거짓으로 둔다.
+  //   상자 안 칸은 정본을 그대로 부른다. 캐시에 넣는 값 · 열쇠 · T926 자리 칸 적기는 끔과 같다(바뀌는 것은 정본을 부르는 수뿐).
+  //   상자는 존마다 그 존 지형 객체(`ZONE_TERRAIN[zid]`)에서 한 번 짓고, 객체가 바뀌면(setHardcoded · zonesMeta) 다시 짓는다.
+  //   격자 칸 한 변 = 배치 20 B 강 구간 색인의 `_segGrid.B`(10-r1-terrain · 새 수 0). 같은 값 증명: `scripts/t947-cell-box-eq.js`(존 칸 전부 · 정본과 견줌).
+  function t947On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.cellBox === true); }
+  const _t947Env = new Map();     // zid → { t: 지은 때의 지형 객체, env }
+  function _t947Maybe(zid, x, y, rock) {   // 거짓 = 정본이 거짓을 낼 칸 · 참 = 모름(정본을 부른다)
+    const T = window.Terrain, CE = window.CellEnv;
+    if (!T || !CE || typeof _segGrid === 'undefined') return true;
+    const t = T.ZONE_TERRAIN[zid]; if (!t) return true;
+    let e = _t947Env.get(zid);
+    if (!e || e.t !== t) { e = { t, env: CE.build(t, _segGrid.B) }; _t947Env.set(zid, e); }
+    return rock ? CE.maybeRock(e.env, x, y) : CE.maybeWater(e.env, x, y);
+  }
   // 절대 좌표에서 물 여부 판정 (콜라이더 + 렌더용)
   // perf fix: 셀 단위 캐시 — 타일 루프가 매 프레임 ~9천 타일 × hardcoded 강 251 세그먼트
   // 점-선분 거리 계산을 반복해서 fps 10까지 떨어지던 문제. 지형은 정적이라 캐시 안전.
@@ -973,7 +991,7 @@ function cropSprite(stage, crop) {
     // Phase 5-2-mini: inland water (강·호수) — terrain.js 동적 검사.
     // cell center로 검사 (시각과 콜라이더 일치).
     else if (window.Terrain) {
-      v = window.Terrain.isWaterCellLocal(z.id, tx * 32 + 16, ty * 32 + 16);
+      v = (t947On() && !_t947Maybe(z.id, tx * 32 + 16, ty * 32 + 16, false)) ? false : window.Terrain.isWaterCellLocal(z.id, tx * 32 + 16, ty * 32 + 16);   // ★[T947] 켬 — 상자 밖 칸은 정본을 안 부른다(답이 거짓으로 정해진 칸 · 아래 `_t947Maybe` 머리말)
     }
     if (_waterCellCache.size > 300000) _waterCellCache.clear(); // 메모리 가드 (~15MB 상한)
     _waterCellCache.set(key, v);
@@ -1025,7 +1043,7 @@ function cropSprite(stage, crop) {
     if (hit !== undefined) return hit;
     let v = false;
     if (window.Terrain && window.Terrain.isRockCellLocal) {
-      v = window.Terrain.isRockCellLocal(z.id, tx * 32 + 16, ty * 32 + 16);
+      v = (t947On() && !_t947Maybe(z.id, tx * 32 + 16, ty * 32 + 16, true)) ? false : window.Terrain.isRockCellLocal(z.id, tx * 32 + 16, ty * 32 + 16);   // ★[T947] 켬 — 능선 상자 밖 칸은 정본을 안 부른다
     }
     if (_rockCellCache.size > 300000) _rockCellCache.clear();
     _rockCellCache.set(key, v);
