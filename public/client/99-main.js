@@ -65,6 +65,7 @@
   window.__tickGap = () => (lastTickAt ? Math.round(performance.now() - lastTickAt) : -1);
   window.__loadReport = _loadReport;   // ★[T920] 첫 접속 표 한 줄(00-const `_loadReport` · 보고/T920 맨 위)
   window.__lagReport = _lagReport;   // ★[T913] 렉 보고 한 줄(00-const `_lagReport` · 재민 Safari 콘솔 — 보고/T913 맨 위)
+  window.__memLine = _memLine;   // ★[T926] 힙 · 캐시 한 줄만 따로(00-const `_memLine` · 렉 보고 글 끝 줄과 같은 것 — 30초 캡처 없이)
 // @@moved-end:491
 // @@moved-begin:600
   (async () => {
