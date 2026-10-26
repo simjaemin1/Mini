@@ -249,18 +249,50 @@ function corridor(dir) {
   console.log(`\n[ⓡ 왕복 — 경계를 ${ROUNDS}번씩 오간다]`);
   const MS = HB.mainSquare ? [HB.worldOffsetX + HB.mainSquare.x, (HB.worldOffsetY || 0) + HB.mainSquare.y] : null;
   const firstPongMs = [];
-  // ★첫 pong 은 **하네스가** 잰다(제품 코드 0): 10ms 마다 주 소켓의 두 칸(`_promoteSentAt` · `lastPongAt`)을 보고
-  //   승격 뒤 처음으로 `lastPongAt` 이 승격 시각을 넘는 순간을 적는다(pong 은 1초 간격이라 10ms 표본이면 첫 것을 안 놓친다).
+  // ★첫 pong 은 **하네스가** 잰다(제품 코드 0): 승격 뒤 처음으로 `lastPongAt` 이 승격 시각을 넘는 순간을 적는다.
   //   ⚠`_promoteSentAt` 은 승격 welcome 이 오면 0 으로 지워진다(`30-n-net` "promote→welcome gap" 줄) — 그래서 하네스가 **제 칸**(`_zxProm`)에 옮겨 둔다.
-  await page.evaluate(() => { window.__zxFP = []; setInterval(() => { try { for (const [zid, c] of conns) {
-      if (c._promoteSentAt && c._zxProm !== c._promoteSentAt) { c._zxProm = c._promoteSentAt; c._zxDone = false; }
-      if (c._zxProm && !c._zxDone && c.lastPongAt && c.lastPongAt > c._zxProm) { window.__zxFP.push([zid, c.lastPongAt - c._zxProm]); c._zxDone = true; } } } catch (e) {} }, 10); });
-  // ★[T453 ⓪] 둘째 파수꾼(고아 — `33-m-conn checkOrphan` · 주 존 틱에 내 pid 가 2초 없음)이 재는 창을 하네스가 잰다:
-  //   승격 → 승격 welcome(`_promoteSentAt` 이 0 으로 지워지는 순간) · 승격 → 새 존 틱에 **내 pid 가 처음** 실린 순간(`lastTickWithMyPidAt` 이 welcome 값에서 바뀜).
-  await page.evaluate(() => { window.__zxTK = []; setInterval(() => { try { for (const [zid, c] of conns) {
-      if (c._promoteSentAt && c._zxP2 !== c._promoteSentAt) { c._zxP2 = c._promoteSentAt; c._zxW = 0; c._zxL0 = 0; c._zxT = false; }
-      if (c._zxP2 && !c._zxW && !c._promoteSentAt) { c._zxW = performance.now(); c._zxL0 = lastTickWithMyPidAt; }
-      if (c._zxP2 && c._zxW && !c._zxT && primaryZoneId === zid && lastTickWithMyPidAt && lastTickWithMyPidAt !== c._zxL0) { window.__zxTK.push([zid, c._zxW - c._zxP2, lastTickWithMyPidAt - c._zxP2]); c._zxT = true; } } } catch (e) {} }, 10); });
+  // ★[T939 · T902 회부 1 · ★PM 10-26] 표본(10ms 폴링)이 아니라 **대입을 붙잡는다** — 연결 객체의 두 칸(`_promoteSentAt` · `lastPongAt`)에
+  //   setter 를 걸어 제품이 쓰는 그 순간에 적는다(값 · 차례는 그대로 — getter 가 같은 값을 돌려준다). 종전 표본기는 승격 창이
+  //   폴링 한 칸(10ms)보다 짧으면 그 다리를 통째로 놓쳤다(WebKit 20 다리 중 17~19 · T902 §2-2). 새 연결 객체는 10ms 마다 훑어 건다
+  //   (승격은 몇 초 묵은 이웃 소켓에서 일어나므로 거는 차례가 늦지 않다). 내 pid 틱(`lastTickWithMyPidAt` · 33-m-conn 의 `let`)은
+  //   setter 를 못 걸지만 **값이 시각**이라 표본이 늦어도 그 수가 그대로다 — 그 칸만 표본으로 본다.
+  await page.evaluate(() => {
+    window.__zxFP = []; window.__zxTK = [];
+    const onProm = (zid, c, v) => {
+      if (v && c._zxProm !== v) { c._zxProm = v; c._zxDone = false; c._zxP2 = v; c._zxW = 0; c._zxL0 = 0; c._zxT = false; }
+      // ★[T453 ⓪] 둘째 파수꾼(고아 — `33-m-conn checkOrphan` · 주 존 틱에 내 pid 가 2초 없음)이 재는 창: 승격 → 승격 welcome(0 으로 지워지는 대입)
+      if (!v && c._zxP2 && !c._zxW) { c._zxW = performance.now(); c._zxL0 = lastTickWithMyPidAt; }
+    };
+    const onPong = (zid, c, v) => { if (c._zxProm && !c._zxDone && v && v > c._zxProm) { window.__zxFP.push([zid, v - c._zxProm]); c._zxDone = true; } };
+    const hook = (zid, c) => {
+      if (!c || c.__zxHook) return;
+      Object.defineProperty(c, '__zxHook', { value: true, enumerable: false });
+      for (const [k, on] of [['_promoteSentAt', onProm], ['lastPongAt', onPong]]) {
+        let v = c[k];
+        Object.defineProperty(c, k, { configurable: true, enumerable: true, get() { return v; }, set(x) { v = x; try { on(zid, c, x); } catch (e) {} } });
+      }
+    };
+    window.__zxHookObj = hook;   // 아래 자명 통과 금지 미끼가 같은 손을 쓴다
+    setInterval(() => { try { for (const [zid, c] of conns) {
+      hook(zid, c);
+      // 승격 → 새 존 틱에 **내 pid 가 처음** 실린 순간(`lastTickWithMyPidAt` 이 welcome 값에서 바뀜 — 값이 시각이라 표본 늦음과 무관)
+      if (c._zxP2 && c._zxW && !c._zxT && primaryZoneId === zid && lastTickWithMyPidAt && lastTickWithMyPidAt !== c._zxL0) { window.__zxTK.push([zid, c._zxW - c._zxP2, lastTickWithMyPidAt - c._zxP2]); c._zxT = true; } } } catch (e) {} }, 10);
+  });
+  // ★자명 통과 금지 — 같은 손을 미끼 객체에 걸고 **한 틱 안에** 섰다 지우기(승격 · 첫 pong · welcome)를 하면 다 잡는다.
+  //   종전 표본 꼴(10ms 에 한 번 보기)로는 같은 미끼에서 0 이다 — 그 줄도 같이 센다.
+  {
+    const bait = await page.evaluate(() => {
+      const zid = '__bait', c = {}, t0 = performance.now();
+      const fp0 = window.__zxFP.length;
+      window.__zxHookObj(zid, c);
+      c._promoteSentAt = t0; c.lastPongAt = 0; c.lastPongAt = t0 + 3; c._promoteSentAt = 0;   // 한 틱 안 — 폴링이 끼어들 틈 없음
+      const got = window.__zxFP.slice(fp0).filter((q) => q[0] === zid);
+      window.__zxFP.splice(fp0);
+      const poll = { saw: !!c._promoteSentAt };   // 종전 표본기가 다음 칸에 봤을 값(이미 0)
+      return { pong: got.length, pongMs: got.length ? got[0][1] : null, welcome: !!c._zxW, pollSawPromote: poll.saw };
+    });
+    ok(bait.pong === 1 && bait.welcome && !bait.pollSawPromote, 'ⓡ5 [전제 · 자명 통과 금지] 대입 붙잡기는 한 틱 안의 승격 · 첫 pong · welcome 을 다 잡는다 — 종전 10ms 표본은 같은 미끼에서 승격을 못 본다', JSON.stringify(bait));
+  }
   const tkAll = [];
   const window_cs = {};
   for (const [tag, C, fwd, back] of [['한반도 ↔ 닛폰', CE, ['s', 'd'], ['w', 'a']], ['한반도 ↔ 중원북', CW, ['w', 'a'], ['s', 'd']]]) {
