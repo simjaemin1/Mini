@@ -1811,7 +1811,7 @@
   }
   let _natPending = 0;                   // ★[T920] 켬 — 이번 판 끝에 아직 안 지은 시야 청크 수(계측 · `__natDbg.pending`)
   const _natLastC = [0, 0];              // 이번 프레임 카메라 중심(절대 월드 px) — __shoreProbe 기본값
-  // ★★[T920 2026-10-24] 손잡이 `T920_NAT_BUDGET`(서버 env → welcome `uiCfg.natBudget` · `'1'` 만 켬 · 끔 = 종전 그대로).
+  // ★★[T920 2026-10-24 · ★T937 켬 기본 — PM 10-26] 손잡이 `T920_NAT_BUDGET`(서버 env → welcome `uiCfg.natBudget` · 켬 기본 · 되돌림 `=0` = 종전 그대로).
   //   끔 = 시야(반경 `NAT_VIEW_PAD`)의 자연물 청크를 **한 판에 전부** 짓는다 — 첫 접속 첫 그림에서 백여 청크를 한꺼번에 지어
   //   첫 그림(welcome → 첫 render)의 1위 층이었다(보고/T920 §2 — 크롬 1.2~1.4초 · WebKit 0.9초).
   //   켬 = 지면 굽기와 **같은 예산** `GT_BAKE_PER_FRAME`(판당 새 청크 수 · 00-const · 새 수 0)으로 나눠 짓는다 — 빠진 청크를 카메라에서

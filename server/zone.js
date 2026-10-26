@@ -6856,7 +6856,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(process.env.T838_WD_AWAKE !== '0' ? { wdAwake: true } : {}),   // [T838 · ★T849 켬 기본 — PM 10-22] 클라 두 감시(pong · 서버 틱)가 **클라가 멈춰 있던 시간**을 서버 침묵으로 안 센다(30-n-net) · 되돌림 `T838_WD_AWAKE=0` 이면 칸이 없다(옛 welcome · 종전 감시)
-      ...(process.env.T920_NAT_BUDGET === '1' ? { natBudget: true } : {}),   // [T920] 클라 자연물 청크를 지면 굽기와 같은 판당 예산(`GT_BAKE_PER_FRAME`)으로 나눠 짓는다(첫 접속 첫 그림 1위 층 · 11-r1-mountain `_natCollect`) — 기본 끔 · 끔이면 칸이 없다(welcome 바이트 동일) · `1` 켬
+      ...(process.env.T920_NAT_BUDGET !== '0' ? { natBudget: true } : {}),   // [T920 · ★T937 켬 기본 — PM 10-26] 클라 자연물 청크를 지면 굽기와 같은 판당 예산(`GT_BAKE_PER_FRAME`)으로 나눠 짓는다(첫 접속 첫 그림 · 11-r1-mountain `_natCollect`) · 되돌림 `T920_NAT_BUDGET=0` 이면 칸이 없다(옛 welcome · 종전 한 판에 전부)
       ...(process.env.T891_WATER_HALF !== '0' ? { waterHalf: true } : {}),   // [T891 · ★T912 켬 기본 — PM 10-23] 클라 물 층 셰이더를 가로세로 ½ 로 그리고 2D 에서 늘린다(10-r1-terrain `_drawWaterLayer` · 소프트웨어 GL 판당 물 층 몰림) · 되돌림 `T891_WATER_HALF=0` 이면 칸이 없다(옛 welcome · 종전 물 층)
       ...(process.env.T898_MT_READPX !== '0' ? { mtReadPx: true } : {}),   // [T898 · ★T912 켬 기본 — PM 10-23] 클라 산 띠 굽기 옮기기를 띠 상자 readPixels 로(T863 §4 #1 · 11-r1-mountain `_mt3ReadBox`) · 되돌림 `T898_MT_READPX=0` 이면 칸이 없다(옛 welcome · 종전 drawImage 옮기기)
       ...(process.env.T926_CELL_NEAR !== '0' ? { cellNear: true } : {}),   // [T926 · ★T936 켬 기본 — PM 10-26] 클라 물 · 바위 칸 캐시를 카메라 둘레 자리 칸(한 변 = 렌더 반경)만 남긴다(00-const `_cellBkSweep` · 지나간 자리 칸이 상한 300,000 까지 쌓이던 것) · 되돌림 `T926_CELL_NEAR=0` 이면 칸이 없다(옛 welcome · 종전 캐시)
