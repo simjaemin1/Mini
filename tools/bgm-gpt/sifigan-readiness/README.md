@@ -379,6 +379,62 @@ research intermediates, not approved sound, learned new-score performance or
 new game music. Models/audio/reports remain outsideGit; game defaults are
 unchanged. Credit: **국악기 음원 제공 — 국립국악원 (공공누리 제1유형)**.
 
+## 2026-10-26: quiet-inclusive level fine-tuning
+
+The user authorized a fix for the quiet-introduction leak and level contour.
+The new experiment preserves all earlier code/models/audio. It does not mute
+the output, crop the defect, automate gain, edit F0/features or mix source PCM.
+Additional training is bounded to1,000updates/20minutes and1GB new storage,
+with the existing8GiB conservative RSS+MPS guard and12GiB free-disk floor.
+
+`prepare_level_windows.py` adds a separate SOURCE-ONLY eligibility policy on
+the SAME corpus, not another normalizer. Original2,097accepted fit voiced
+windows are preserved. Additional finite quiet windows require source whole-
+window RMS<=−60dBFS,80%quiet5ms cells and80%Harvest F0zero. New transition/
+low-support windows check95%Harvest agreement on any independently supported
+YIN subset and AP only on that supported-voiced subset; undefined AP with no
+supported voicing is no longer automatically a rejection. These are measured
+states, not annotated breaths or verified articulation labels. No pitch
+derivative or vibrato-depth gate is introduced.
+
+The actual policy audit accepted3,727unique fit windows: voiced2,097,
+quiet1,358,transition143,aperiodic-low-support129, in113case/state/pitch/level
+groups. The unique fit union is691.6seconds, not3,727×0.35unique seconds.
+Voiced level strata contain80windows below−40dBFS,396between−40and−30,
+and1,621at/above−30. All1,148heldout candidate windows remain evaluation-only.
+All8fit/5protectedheldout source identities, original/gate/corpus hashes and
+the original fit-only43-channel normalizer are checked and preserved.
+
+`train_level_fix.py` strictly restores the global1,000G/D, both Adam states,
+both schedulers and CPU/MPS RNG. Six typed-state digests, every Adam counter
+and scheduler epoch are checked. BEFORE any changed training, the SAME42
+window losses and both complete4.8s outputs must reproduce the parent.
+Sampler seed20261026 is deliberately NEW because this is changed-objective
+fine-tuning, not an identical continuation trajectory. Available categories
+are sampled with nominal weights voiced.60/quiet.20/transition.15/low-support
+.05 (renormalized only if a category is absent), then uniformly by group and
+window. Level strata prevent quiet voiced examples from being lost among
+loud majority windows. Protected recordings cannot enter an optimizer crop.
+
+`level_loss.py` adds mean absolute log-amplitude error on unpadded20/40ms
+mean-square windows at5ms stride, plus one-sided excess on source-quiet
+windows. A smooth additive1e−10power epsilon corresponds to−100dBFS. One
+loss unit is20dB: weights5(level)and2(quiet-excess) mean0.25/0.10perdB,
+experimental fixed values, not a claimed optimum. Both raw and weighted
+terms are logged. The official45mel+residual+2feature-match+adversarial
+losses, optimizer and clip10remain. Official residual loss is not masked
+for unvoiced targets; a zero-waveform/F0 synthetic finite-gradient probe is
+required before the real updates. Data sampling and energy supervision are
+two simultaneous interventions; no causal single-change ablation is claimed.
+
+`level_metrics.py` reports source-fixed quiet intervals, quiet leakage and
+all-frame/loud/mixed/threshold-boundary level contours. Candidate silence
+never removes a source frame. Optional static LUFS compensation requires
+actual supplied measurements; otherwise only an explicitly named whole-RMS
+analysis proxy is available. No diagnostic modifies saved audio or declares
+naturalness. New36synthetic tests (8policy,7loss,13metrics,8trainer) plus
+84earlier tests pass. Model/audio/data/checkpoints remain outsideGit.
+
 The new full checkpoint is611,757,604bytes and inference checkpoint45,317,119
 bytes. Experiment contents before the final JSON were1,441,303,856bytes, below
 the announced2GB cap, with15,058,972,672bytes free at completion. Observed final
