@@ -18,7 +18,7 @@
 //   ③ ★★감사 — 캐시 경로가 재계산과 **비트 동일**
 //   ④ 무효화가 **메모리와 DB 를 둘 다** 비운다(한쪽만 지우면 다음 부팅에 썩은 길이 살아난다)
 //   ⑤ 세계 서명 = 교역로 입력 내용 해시(T619) — mtime·다른 칸은 남고 · 서명이 다르면 통째로 버린다
-//   ⑥ 선계산이 사람 없을 때 완주하고, 그 뒤 경계에서 거의 안 판다 · ★[T884] 그 뒤 캐러밴 조각 표(판정 아님)
+//   ⑥ 선계산이 사람 없을 때 완주하고, 그 뒤 경계에서 거의 안 판다 · ★[T884] 그 뒤 캐러밴 조각 표(판정 아님) · ★[T933] 캐러밴 조각은 ⑦d 식 상한 안(크기 · 속 이름 포함)
 //   ⑦ ★★[T42-b] 선계산이 **루프를 놓아 준다** — 유예(사람이 나간 뒤)와 간격(걸음 사이)이 실제로 지켜진다
 //
 // ★★⑦ 이 왜 생겼나 [T42-b 2026-09-01]
@@ -490,13 +490,22 @@ async function runDays(n, sink) {
   //   ★[T828] 캐러밴 조각은 속 이름 셋(`caravan_body` · `caravan_fish` · `caravan_sync`)으로 갈렸다 — 셋 = 종전 `caravan`(단언 무변).
   //   ★[T851] `caravan_sync` 안은 다시 셋(`caravan_sync:cold` · `:resume` · `:spawn`) — 넷 다 종전 `caravan_sync`(단언 무변).
   const _isCar = (s) => s === 'caravan' || s === 'caravan_body' || s === 'caravan_fish' || s === 'caravan_sync' || /^caravan_sync:/.test(s || '');
-  ok(!!_mAt && (!_isCar(_mAt) || (dLast === 0 && dJobs === 0)), '⑥ ★★가장 큰 조각이 더는 **캐러밴 A\*가 아니다**(캐러밴 꼬리표면 그날 낀 창의 콜드 0 · ★[T910] 시작한 교역로 일도 0)',
-    P6L && P6L.econTick.last ? `${P6L.econTick.last.maxChunk}ms(${_mAt}) · 그 창 콜드 ${dLast} · 교역로 일 시작 ${dJobs}` : '?');
+  //   ★★[T933 2026-10-26 · T929 회부 1 · ★PM 10-26 ⓑ] **⑥ 은 캐러밴 조각의 크기로 본다**(꼬리표 경주 → 크기) — 단언은 아래 ⑥ 표 자리(날마다 칸을 다 읽은 뒤).
+  //     T929 로 도착 귀환 길 동기 A* 가 사라지자 남은 캐러밴 조각은 다 예산 크기(14~25ms)가 됐다. 그러자 종전 셈(그날 가장 큰 조각이 캐러밴 꼬리표 +
+  //     그 창 콜드 · 교역로 일 시작 — T797 · T910)이 다시 T797 의 벽시계 경주가 됐다 — 재개형 일(먼 쌍 새 출발 · 재라우팅 · 귀환)이 그 창에 하나라도 오고
+  //     예산 크기 조각끼리의 경주에서 캐러밴이 이기면 빨강(T929 켬 10판 중 1판 · 20ms 출발 조각 · 보고/T929 §2).
+  //     ⇒ 이 줄이 지키는 것(캐러밴 조각이 A* 를 통째로 판 **큰 조각**)을 크기로 직접 잰다: 선계산 뒤 날마다(`P6a` 다음 날 ~ `P6L` 날 · 아래 ⑥ 표의 그 날들)
+  //       캐러밴 조각 **전부**(속 이름 `caravan_body` · `caravan_fish` · `caravan_sync` · `caravan_sync:*` — T828 · T851 · `stages['<이름>·max']` · T513 칸 ·
+  //       그리고 그날 가장 큰 조각이 캐러밴 꼬리표면 그 값)의 최대가 ⑦d 식 상한(`sliceMs + pathChunkMax + 20` — ⑥ 표가 이미 찍던 값 · 새 수 0) 안이어야 한다.
+  //     더 엄한 쪽: 종전엔 마지막 하루(`P6L` 날)의 **가장 큰** 조각만 봤다 — 이제 선계산 뒤 본 날 전부 · 캐러밴 조각 전부를 본다(동기 A* 가 둘째 날에 와도 문다).
+  //     더 무른 쪽: 상한 안의 재개형 조각(그 창의 콜드 · 일 시작 > 0)은 이제 초록이다 — PM 10-26 ⓑ 가 고른 뜻 그대로(T929 끔 빨강 139 · 182 · 64ms 는 상한 45~48 밖 · 켬 빨강 20ms 는 49 안).
+  //     콜드 · 일 시작은 그 단언 줄에 그대로 찍는다(판정 아님 · 읽는 값 무변).
   // ★★[T884 2026-10-23 · ★PM 10-23 ⓑ] **캐러밴 조각 표 — 판정 아님(출력만).** T854 가 이 자리에 세운 한 조각 상한 줄은
   //   오늘 main 12판 중 8판 빨강이었다(넘는 것은 전부 `caravan_sync` · 보고/T854). `caravan_sync` 를 깎는 카드(T851)가 끝날 때까지
   //   ⑥ 은 위 종전 단언 그대로이고, 상한 줄은 **표로만** 남긴다: 선계산 뒤 날마다(`P6a` 다음 날 ~ `P6L` 날) 속 이름 셋
   //   (`caravan_body` · `caravan_fish` · `caravan_sync` — T828) 각각의 가장 큰 조각(`stages['<이름>·max']` · T513 칸)과
   //   ⑦d 식 상한(`sliceMs + pathChunkMax + 20`) · 64ms(PM 10-22 카드 T854 글자 · 표의 눈금일 뿐) 를 넘은 날. 빨강 0 · `ok` 0.
+  //   ★[T933] 이제 ⑥ 단언이 이 날들 · 이 상한을 쓴다(위 ★[T933] 주석 · 단언은 표 앞 한 덩이) — 표 줄 자체는 그대로 출력만(64ms 눈금 포함).
   {
     if (P6L && P6L.econTick && P6L.econTick.last) _seen6.set(P6L.econTick.last.day, P6L.econTick.last);
     const CAR = ['caravan_body', 'caravan_fish', 'caravan_sync'];
@@ -505,6 +514,8 @@ async function runDays(n, sink) {
     const days = [], miss = [];
     if (_lastDay0 != null && lastL != null) for (let d = _lastDay0 + 1; d <= lastL; d++) (_seen6.has(d) ? days : miss).push(d);
     const best = {}, over64 = [], overCap = [];
+    //   ★[T933] 속 이름 조각(`caravan_sync:cold` · `:resume` · `:spawn` — T851)은 `caravan_sync·max` 에 안 든다(그 조각은 속 이름 칸에만 선다 · 드레인 `js`) — 날마다 그 칸도 읽는다
+    for (const d of days) for (const k of Object.keys(_seen6.get(d).stages || {})) { const m = /^(caravan_sync:.+)·max$/.exec(k); if (m && CAR.indexOf(m[1]) < 0) CAR.push(m[1]); }
     for (const d of days) {
       const st = _seen6.get(d).stages || {};
       for (const s of CAR) {
@@ -513,6 +524,18 @@ async function runDays(n, sink) {
         if (v > 64) over64.push(`day ${d} ${s} ${v}ms`);
         if (v > cap) overCap.push(`day ${d} ${s} ${v}ms`);
       }
+    }
+    // ★★[T933] ⑥ 단언 — 본 날마다 캐러밴 조각 전부(속 이름 포함 · 위 주석)의 최대 ≤ ⑦d 식 상한 · 마지막 하루(`P6L` 날)는 반드시 본 날에 든다 · 캐러밴 칸이 실제로 있다(자명 통과 금지)
+    {
+      let top = { v: -1, at: null, d: null }, nCar = 0;
+      for (const d of days) {
+        const L = _seen6.get(d), st = L.stages || {};
+        for (const k of Object.keys(st)) { const m = /^(.+)·max$/.exec(k); if (!m || !_isCar(m[1])) continue; nCar++; if (st[k] > top.v) top = { v: st[k], at: m[1], d }; }
+        if (L.maxChunkAt && _isCar(L.maxChunkAt) && L.maxChunk > top.v) top = { v: L.maxChunk, at: L.maxChunkAt, d };   // 속 이름 칸이 없는 캐러밴 조각(`caravan`)도 놓치지 않게
+      }
+      ok(!!_mAt && lastL != null && days.indexOf(lastL) >= 0 && nCar > 0 && top.v <= cap,
+        '⑥ ★★캐러밴 조각이 더는 **큰 조각이 아니다**(★[T933] 선계산 뒤 본 날 전부 · 캐러밴 조각 전부 ≤ ⑦d 식 상한 · 속 이름 포함)',
+        `캐러밴 최대 ${top.v}ms(${top.at} · day ${top.d}) · 상한 ${cap}ms · 본 날 ${days.length}(못 본 날 ${miss.length}) · 캐러밴 칸 ${nCar} · 마지막 날 가장 큰 조각 ${P6L && P6L.econTick.last ? P6L.econTick.last.maxChunk : '?'}ms(${_mAt}) · 그 창 콜드 ${dLast} · 교역로 일 시작 ${dJobs}`);
     }
     console.log(`  ⑥ 표(판정 아님) — 선계산 뒤 ${days.length}일(day ${days.length ? days[0] + '~' + days[days.length - 1] : '?'} · 못 본 날 ${miss.length ? miss.join(',') : 0}) 캐러밴 조각 최대:`
       + CAR.map((s) => ` ${s} ${best[s] ? best[s].v + 'ms(day ' + best[s].d + ')' : '0'}`).join(' ·'));
