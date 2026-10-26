@@ -181,7 +181,7 @@ const SAMPLE = (names) => {
   try { for (const [zid, c] of conns) { const o = { role: c.role }; for (const k of Object.keys(c)) { const v = c[k]; if (v instanceof Map || v instanceof Set) o[k] = v.size; else if (Array.isArray(v)) o[k] = v.length; } out.conns[zid] = o; } } catch (e) {}
   out.notices = (window.__notices || []).length;
   try { const C = window.__t926terr; if (C) out.terr = { w: C.w, r: C.r, wMs: Math.round(C.wMs), rMs: Math.round(C.rMs) }; } catch (e) {}   // --terr 누적
-  try { out.knob = { cellNear: (typeof uiCfg !== 'undefined' && uiCfg && 'cellNear' in uiCfg) ? uiCfg.cellNear : null }; } catch (e) {}   // [T926] 손잡이 welcome 값(끔 = null · 칸 없음)
+  try { out.knob = { cellNear: (typeof uiCfg !== 'undefined' && uiCfg && 'cellNear' in uiCfg) ? uiCfg.cellNear : null }; } catch (e) {}   // [T926] 손잡이 welcome 값(★T936 뒤 기본 = true · `T926_CELL_NEAR=0` 이면 null · 칸 없음)
   try { if (typeof _cellBk !== 'undefined') { let w = 0, r = 0; for (const b of _cellBk.values()) { w += b.w.length; r += b.r.length; } out.knob.bk = { n: _cellBk.size, w, r }; } } catch (e) {}   // [T926] 켬 — 자리 칸 수 · 적힌 열쇠 수(물 · 바위)
   try { const sc = window._seenChunks; if (sc instanceof Map) { let cells = 0; for (const v of sc.values()) cells += (v && v.size) || 0; out.seen = { chunks: sc.size, cells }; } } catch (e) {}   // 안개가 본 칸(34-m-renderloop `window._seenChunks`)
   out.heap = (typeof performance !== 'undefined' && performance.memory) ? { used: performance.memory.usedJSHeapSize, total: performance.memory.totalJSHeapSize } : null;
