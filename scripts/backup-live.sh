@@ -15,15 +15,20 @@
 #   bash scripts/backup-live.sh <대상> --restore <스냅샷 폴더>   복원 — 대상 이름을 쳐야 → 컨테이너 멈춤(SIGTERM · 존은 저장하고 내린다)
 #                                                  → 지금 DB 파일을 `<스냅샷 뿌리>/<UTC시각>-<대상>-replaced/` 로 옮기고(**안 지운다**) → 사본을 놓고 sha256 확인
 #                                                  → 같은 컨테이너를 다시 켠다(같은 이미지 · 같은 env · 같은 볼륨) → /health
+#   ★[T919] `update-live.sh` 가 갱신 앞에 부른다:
+#   BACKUP_LABEL='update-live <앞 커밋> <갱신 커밋>' bash scripts/backup-live.sh   그 라벨을 meta(`label=`) · ✓ 줄에 싣는다(글자 [A-Za-z0-9 ._:-] 만)
+#   bash scripts/backup-live.sh --dry              뜰 자리(대상마다 `<시각>-<대상>`) · 지금 DB 크기 · 보관 개수로 뗄 옛것 — 아무것도 안 쓴다
+#   bash scripts/backup-live.sh --last <대상> [라벨 앞머리]   그 대상의 가장 새 사본(라벨이 그 앞머리로 시작하는 것) 한 줄 — `폴더<탭>시각<탭>라벨` · 없으면 rc 1
 #
 # ★온라인 백업 = node:sqlite `backup()`(SQLite 온라인 백업 API — 쓰는 중이어도 한 시점의 일관 사본) · 그 대상 컨테이너의 이미지 안 node 로 돈다
 #   (호스트에 sqlite3 · node 가 없어도 된다 · `reset-world.sh` 의 손발과 같은 꼴 — 이미지 · 볼륨만 빌린다 · 망 끔).
 # ★비밀 0 — 컨테이너 env 는 `DB_PATH` 한 칸만 읽는다(값을 찍는 것은 그 경로뿐). 새 수: 보관 개수 7 은 카드의 임시 값(기존 계측 판 값 없음 — 회부).
 set -uo pipefail
 umask 077
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"   # [T919] `bash -s`(update-live 가 서울 판을 도쿄에 흘린다)면 BASH_SOURCE 가 비어 있다
 ROOT="${BACKUP_DAILY_ROOT:-/srv/durango/_daily}"
 KEEP="${BACKUP_KEEP:-7}"
+LABEL="$(printf '%s' "${BACKUP_LABEL:-}" | tr -cd 'A-Za-z0-9 ._:-' | cut -c1-120)"   # [T919] 갱신 앞 사본 표(비밀 0 — 글자를 거른다)
 TAG='# durango-backup-live'
 say() { echo "$*"; }
 die() { echo "  ✗ $*" >&2; exit 1; }
@@ -81,12 +86,12 @@ snapshot_one() {   # snapshot_one <컨테이너>
   ( cd "$dir" && sha256sum "$base" > SHA256SUMS )
   {
     echo "target=$t"; echo "container=$c"; echo "image_id=$img"; echo "image_commit=$(docker image inspect "$img" --format '{{index .Config.Labels "durango.commit"}}' 2>/dev/null)"
-    echo "volume=$vol"; echo "db=$base"; echo "taken_at=$(date -u +%FT%TZ)"; echo "facts=$out"
+    echo "volume=$vol"; echo "db=$base"; echo "taken_at=$(date -u +%FT%TZ)"; echo "facts=$out"; [ -n "$LABEL" ] && echo "label=$LABEL"
   } > "$dir/meta.txt"
   local q n tb ms; q="$(echo "$out" | sed -n 's/.*"quick":"\([^"]*\)".*/\1/p')"; n="$(echo "$out" | sed -n 's/.*"total":\([0-9]*\).*/\1/p')"
   tb="$(echo "$out" | sed -n 's/.*"tables":\([0-9]*\).*/\1/p')"; ms="$(echo "$out" | sed -n 's/.*"ms":\([0-9]*\).*/\1/p')"
   [ "$q" = ok ] || { say "  ✗ $c — 사본 검사 $q(사본은 남긴다 · $dir)"; return 1; }
-  say "  ✓ $t → $dir · $(H "$(stat -c %s "$dir/$base")") · 검사 ok · 표 $tb · 행 $n · ${ms}ms · sha $(cut -c1-12 "$dir/SHA256SUMS")"
+  say "  ✓ $t → $dir · $(H "$(stat -c %s "$dir/$base")") · 검사 ok · 표 $tb · 행 $n · ${ms}ms · sha $(cut -c1-12 "$dir/SHA256SUMS")${LABEL:+ · 라벨 $LABEL}"
   # 보관 — 이 대상의 스냅샷(뒤에 붙은 -replaced 는 셈 밖)을 새것 KEEP 벌만
   local all k=0 d; all="$(ls -1d "$ROOT"/*-"$t" 2>/dev/null | sort -r)"
   for d in $all; do k=$((k + 1)); [ "$k" -le "$KEEP" ] && continue; rm -rf -- "$d" && say "    · 보관 $KEEP 벌 넘음 — 지움 $(basename "$d")"; done
@@ -99,7 +104,9 @@ case "${1:-}" in
   --install) MODE=install; AT="${2:-}" ;;
   --uninstall) MODE=uninstall ;;
   --status) MODE=status ;;
-  -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  --dry) MODE=dry ;;
+  --last) MODE=last; TARGET="${2:-}"; LPRE="${3:-}"; [ -n "$TARGET" ] || die "--last <대상> [라벨 앞머리]" ;;
+  -h|--help) sed -n '2,/^set -uo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
   *) TARGET="$1"; [ "${2:-}" = --restore ] || die "모르는 인자: $*  (bash scripts/backup-live.sh --help)"; MODE=restore; RDIR="${3:-}" ;;
 esac
 
@@ -111,10 +118,26 @@ snap)
   rc=0; for c in $T; do snapshot_one "$c" || rc=1; done
   say "  스냅샷 합 $(H "$(du -sb "$ROOT" 2>/dev/null | cut -f1)") · $(ls -1d "$ROOT"/*/ 2>/dev/null | wc -l)벌"
   exit $rc ;;
+dry)
+  #   [T919] 뜰 자리만 — 아무것도 안 쓴다(폴더 · 사본 · 보관 떼기 0)
+  say "== 스냅샷 예행 $(date -u +%FT%TZ) — $(hostname) · 자리 $ROOT · 보관 $KEEP 벌${LABEL:+ · 라벨 $LABEL} =="
+  T="$(targets)"; [ -n "$T" ] || die "도는 durango 컨테이너가 없다"
+  ts="$(date -u +%Y%m%d-%H%M%S)"
+  for c in $T; do t="$(tname "$c")"; vol="$(vol_of "$c")"; db="$(db_of "$c")"; base="${db#/data/}"
+    sz=0; for x in "" -wal; do [ -f "$vol/$base$x" ] && sz=$((sz + $(stat -c %s "$vol/$base$x"))); done
+    old="$(ls -1d "$ROOT"/*-"$t" 2>/dev/null | sort -r | tail -n +"$KEEP" | xargs -r -n1 basename | paste -sd' ' -)"
+    say "  · $t → $ROOT/$ts-$t · 지금 DB $(H "$sz") · 보관 $KEEP 벌 넘어 뗄 옛것: ${old:-없음}"
+  done ;;
+last)
+  for d in $(ls -1d "$ROOT"/*-"$TARGET" 2>/dev/null | sort -r); do m="$d/meta.txt"; [ -f "$m" ] || continue
+    l="$(sed -n 's/^label=//p' "$m")"
+    case "$l" in "$LPRE"*) printf '%s\t%s\t%s\n' "$d" "$(sed -n 's/^taken_at=//p' "$m")" "$l"; exit 0 ;; esac
+  done
+  exit 1 ;;
 list)
   for d in $(ls -1d "$ROOT"/*/ 2>/dev/null | sort); do
     m="$d/meta.txt"; [ -f "$m" ] || { say "  $(basename "$d") $(H "$(du -sb "$d" | cut -f1)")"; continue; }
-    say "  $(basename "$d") · $(H "$(du -sb "$d" | cut -f1)") · 행 $(sed -n 's/^facts=.*"total":\([0-9]*\).*/\1/p' "$m") · 커밋 $(sed -n 's/^image_commit=//p' "$m" | cut -c1-12)"
+    say "  $(basename "$d") · $(H "$(du -sb "$d" | cut -f1)") · 행 $(sed -n 's/^facts=.*"total":\([0-9]*\).*/\1/p' "$m") · 커밋 $(sed -n 's/^image_commit=//p' "$m" | cut -c1-12)$(sed -n 's/^label=/ · 라벨 /p' "$m")"
   done ;;
 install)
   command -v crontab >/dev/null 2>&1 || die "crontab 이 없다(이 호스트에 cron 을 먼저 — apt-get install -y cron)"

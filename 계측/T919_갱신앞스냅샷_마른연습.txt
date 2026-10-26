@@ -1,0 +1,134 @@
+# T919 update-live 갱신 앞 디스크 · 스냅샷 — 두 호스트 흉내 판(진짜 도커 · 한 상자 · 서울 198.51.100.1 /opt/Mini · 도쿄 192.0.2.2 /opt/tokyo/Mini) · 2026-10-25 UTC
+# 맥 한 줄 그대로(ssh 만 흉내 — 가짜 ssh · 호스트 몫 이름) · 리허설 origin = 이 가지 + 갱신 흉내 커밋 하나(server/zone.js 주석 한 줄 · 레포 가지 밖) · 출력 그대로(빌드 진행 · 부팅 경과 줄만 걸렀다) · 비밀 0
+
+## A 빈 자리 부족 흉내 — fallocate 로 상자 디스크를 100 MB 만 남김 → ⓪ 에서 멈춤
+/dev/vda        252G   44G  100M 100% /
+== update-live 2026-10-25 03:15:27 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD 02fda993c27c · 도쿄 HEAD e37f4fbd619f · 도쿄 스탬프 e37f4fbd619f · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[⓪ 디스크] ✗ — 서울 빈 자리 100.0 MB < 백업 한 벌 130.7 MB(DB 합 60.6 MB × 1.1 + 64 MB) — 초기화 · 되돌리기 백업이 안 들어간다 / 도쿄 빈 자리 100.0 MB < 백업 한 벌 130.7 MB(DB 합 60.6 MB × 1.1 + 64 MB) — 초기화 · 되돌리기 백업이 안 들어간다
+    [서울(seoul)] 빈 자리 100.0 MB < 백업 한 벌 130.7 MB(DB 합 60.6 MB × 1.1 + 64 MB) — 초기화 · 되돌리기 백업이 안 들어간다
+    [도쿄(tokyo)] 빈 자리 100.0 MB < 백업 한 벌 130.7 MB(DB 합 60.6 MB × 1.1 + 64 MB) — 초기화 · 되돌리기 백업이 안 들어간다
+  ✗ 멈췄다 — 디스크 ✗(위 [⓪ 디스크] 줄) — 갱신 앞 스냅샷이 들어갈 자리를 못 믿는다(`disk-check.sh --prune` 뒤 다시 · 절차서 §8)
+  바뀐 것: 없음(라이브 무변)
+  안 한 것: 스냅샷 · 갱신 전부
+rc=1
+  (뒤: 서울 HEAD 그대로 02fda993 · _daily 사본 수 무변 · 채운 파일 지움)
+
+## D --dry — 두 줄(디스크 판정 · 스냅샷 자리)
+== update-live 2026-10-25 03:11:03 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) · 예행(라이브 무변) ==
+  서울 HEAD 470d8ad1a865 · 도쿄 HEAD 470d8ad1a865 · 도쿄 스탬프 e37f4fbd619f · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[⓪ 디스크] ok — 두 호스트 모두 빈 자리 ≥ 백업 한 벌
+    [서울(seoul)] 빈 자리 3.6 GB ≥ 백업 한 벌 135.3 MB(DB 합 64.8 MB × 1.1 + 64 MB — reset-world.sh 백업 자리 규칙)
+    [도쿄(tokyo)] 빈 자리 3.6 GB ≥ 백업 한 벌 135.3 MB(DB 합 64.8 MB × 1.1 + 64 MB — reset-world.sh 백업 자리 규칙)
+[⓪ 스냅샷] 갱신 e5dec10daded(서울 스탬프) · e37f4fbd619f(도쿄 스탬프) → 02fda993c27c — 뜰 자리:
+    서울 == 스냅샷 예행 2026-10-25T03:11:07Z — vm · 자리 /srv/durango/_daily · 보관 7 벌 · 라벨 update-live e5dec10dadedd016793564efa05948820971e03b 02fda993c27cf68722b425d25c7d47b087cde707 ==
+      · central → /srv/durango/_daily/20261025-031107-central · 지금 DB 241.4 KB · 보관 7 벌 넘어 뗄 옛것: 없음
+      · hanbando → /srv/durango/_daily/20261025-031107-hanbando · 지금 DB 49.2 MB · 보관 7 벌 넘어 뗄 옛것: 없음
+    도쿄 == 스냅샷 예행 2026-10-25T03:11:07Z — vm · 자리 /srv/durango/_daily · 보관 7 벌 · 라벨 update-live e37f4fbd619fdbd95320d1cbbf9df5e7520123e6 02fda993c27cf68722b425d25c7d47b087cde707 ==
+      · nippon → /srv/durango/_daily/20261025-031107-nippon · 지금 DB 15.3 MB · 보관 7 벌 넘어 뗄 옛것: 없음
+[예행 ②] 서울 판정(redeploy-hanbando.sh --dry — 받을 판 기준)
+  … (종전 예행 줄 ②~⑦ 그대로)
+  (예행 — 라이브 무변 · 서울 git fetch 만)
+rc=0
+
+## B 갱신 — ⓪ 스냅샷이 맨 앞 → 종전 차례
+== update-live 2026-10-25 03:11:17 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD 470d8ad1a865 · 도쿄 HEAD 470d8ad1a865 · 도쿄 스탬프 e37f4fbd619f · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[⓪ 디스크] ok — 두 호스트 모두 빈 자리 ≥ 백업 한 벌
+    [서울(seoul)] 빈 자리 3.6 GB ≥ 백업 한 벌 135.3 MB(DB 합 64.8 MB × 1.1 + 64 MB — reset-world.sh 백업 자리 규칙)
+    [도쿄(tokyo)] 빈 자리 3.6 GB ≥ 백업 한 벌 135.3 MB(DB 합 64.8 MB × 1.1 + 64 MB — reset-world.sh 백업 자리 규칙)
+[⓪ 스냅샷] 갱신 앞 사본 — 라벨 서울 'update-live e5dec10dadedd016793564efa05948820971e03b 02fda993c27cf68722b425d25c7d47b087cde707' · 도쿄 'update-live e37f4fbd619fdbd95320d1cbbf9df5e7520123e6 02fda993c27cf68722b425d25c7d47b087cde707'
+    서울 == 스냅샷 2026-10-25T03:11:21Z — vm · 자리 /srv/durango/_daily · 보관 7 벌 ==
+      ✓ central → /srv/durango/_daily/20261025-031121-central · 76.0 KB · 검사 ok · 표 5 · 행 3 · 4ms · sha 50b11c8e2878 · 라벨 update-live e5dec10dadedd016793564efa05948820971e03b 02fda993c27cf68722b425d25c7d47b087cde707
+      ✓ hanbando → /srv/durango/_daily/20261025-031122-hanbando · 40.9 MB · 검사 ok · 표 22 · 행 281090 · 203ms · sha db08b385f80a · 라벨 update-live e5dec10dadedd016793564efa05948820971e03b 02fda993c27cf68722b425d25c7d47b087cde707
+      스냅샷 합 41.0 MB · 2벌
+    도쿄 == 스냅샷 2026-10-25T03:11:22Z — vm · 자리 /srv/durango/_daily · 보관 7 벌 ==
+      ✓ nippon → /srv/durango/_daily/20261025-031123-nippon · 3.5 MB · 검사 ok · 표 22 · 행 34954 · 35ms · sha 153ecd41a002 · 라벨 update-live e37f4fbd619fdbd95320d1cbbf9df5e7520123e6 02fda993c27cf68722b425d25c7d47b087cde707
+      스냅샷 합 44.5 MB · 3벌
+[①] 서울 git pull --ff-only
+    470d8ad1a865 → 02fda993c27c · 02fda993c27c rehearsal T919 — 갱신 흉내(존 파일 한 줄)
+[②] 도쿄 판정: 바뀐 파일 210개 · e37f4fbd..02fda993 → 도쿄 존 한다
+[②-고정] 서울 central 고정 · 한반도 고정 · 도쿄 닛폰 고정(④ 뒤)
+      ✓ durango-central:prev-central = d6216b985bc6(커밋 e5dec10daded) — 되돌리기는 이 이미지로
+      ✓ durango-zone:prev-hanbando = 2cd9d71d9c27(커밋 e5dec10daded) — 되돌리기는 이 이미지로
+[③] 서울 redeploy-hanbando.sh(자동 판정)
+  …
+      판정: 서버 · 망 층은 모두 문턱 아래 — 렉이 계속 보이면 클라 쪽(브라우저 콘솔 __frameCapture() · T486)
+  ✓ 끝 — 서울 02fda993c27c · 도쿄 02fda993c27c · 바뀐 것: 서울 스냅샷 2벌 → 도쿄 스냅샷 1벌 → 서울 코드 470d8ad1a865 → 02fda993c27c → 서울 central :prev-central 고정 → 서울 hanbando :prev-hanbando 고정 → 서울 재배포(central: 한다 · zone: 한다) → 도쿄 코드 470d8ad1a865 → 02fda993c27c → 도쿄 nippon :prev-nippon 고정 → 도쿄 재배포 → 도쿄 스탬프 02fda993c27c
+rc=0
+
+## E 다시 친다(바꿀 것 0) — 스냅샷 안 뜬다
+[⓪ 디스크] ok — 두 호스트 모두 빈 자리 ≥ 백업 한 벌
+[⓪ 스냅샷] 안 뜬다 — 바꿀 것 0(②-고정과 같은 판정)
+[①] 서울 git pull --ff-only
+[②] 도쿄 판정: 배포된 커밋과 같다 — 바뀐 파일 0 → 도쿄 존 건너뛴다
+[②-고정] 바꿀 것 0 — 되돌리기 고정본(:prev)은 그대로(앞 갱신의 것)
+[③] 서울 redeploy-hanbando.sh(자동 판정)
+[④] sync-tokyo
+[⑤] 도쿄 존 건너뜀 — 판정: 존이 쓰는 파일이 안 바뀌었다(도쿄 스탬프 02fda993c27c 기준)
+[⑦] live-lag
+  ✓ 끝 — 서울 02fda993c27c · 도쿄 02fda993c27c · 바뀐 것: 없음(이미 최신)
+rc=0
+
+## C1 --rollback --dry — 갱신 앞 스냅샷 자리 · 되놓기 줄
+== update-live 2026-10-25 03:13:10 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) · 예행(라이브 무변) ==
+  서울 HEAD 02fda993c27c · 도쿄 HEAD 02fda993c27c · 도쿄 스탬프 02fda993c27c · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[되돌리기] 대상마다 지금 · :prev(이미지 · 커밋) — DB · 볼륨 무접촉 · env 그대로
+    서울 central  지금 52c17721b002(02fda993c27c) · :prev-central d6216b985bc6(e5dec10daded)
+    서울 hanbando 지금 8abf77d605e8(-) · :prev-hanbando 2cd9d71d9c27(e5dec10daded)
+    도쿄 nippon   지금 08110f406695(02fda993c27c) · :prev-nippon dfaf7918d5ac(e37f4fbd619f)
+[되돌리기 · 갱신 앞 스냅샷] DB 는 안 건드린다 — 라이브 DB 도 되돌릴 때만 아래 줄(대상마다 · 재민이 고른다):
+    서울 central — /srv/durango/_daily/20261025-031121-central · 2026-10-25T03:11:22Z · 갱신 e5dec10daded → 02fda993c27c = 지금 이미지 커밋(이 갱신)
+      ssh -t seoul 'cd /opt/Mini && bash scripts/backup-live.sh central --restore /srv/durango/_daily/20261025-031121-central'  # 답: central
+    서울 hanbando — /srv/durango/_daily/20261025-031122-hanbando · 2026-10-25T03:11:22Z · 갱신 e5dec10daded → 02fda993c27c · 지금 이미지 커밋 라벨 없음
+      ssh -t seoul 'cd /opt/Mini && bash scripts/backup-live.sh hanbando --restore /srv/durango/_daily/20261025-031122-hanbando'  # 답: hanbando
+    도쿄 nippon — /srv/durango/_daily/20261025-031123-nippon · 2026-10-25T03:11:23Z · 갱신 e37f4fbd619f → 02fda993c27c = 지금 이미지 커밋(이 갱신)
+      ssh -t tokyo 'cd /opt/tokyo/Mini && bash scripts/backup-live.sh nippon --restore /srv/durango/_daily/20261025-031123-nippon'  # 답: nippon
+  (예행 — 라이브 무변)
+rc=0
+
+## C2 --rollback — 이미지만 되돌림 · 같은 자리 찍힘 · DB 그대로
+== update-live 2026-10-25 03:13:11 — 서울(seoul:/opt/Mini) → 도쿄(tokyo:/opt/tokyo/Mini) ==
+  서울 HEAD 02fda993c27c · 도쿄 HEAD 02fda993c27c · 도쿄 스탬프 02fda993c27c · 도쿄 옛 존 정원 150 · central 198.51.100.1
+[되돌리기] 대상마다 지금 · :prev(이미지 · 커밋) — DB · 볼륨 무접촉 · env 그대로
+    서울 central  지금 52c17721b002(02fda993c27c) · :prev-central d6216b985bc6(e5dec10daded)
+    서울 hanbando 지금 8abf77d605e8(-) · :prev-hanbando 2cd9d71d9c27(e5dec10daded)
+    도쿄 nippon   지금 08110f406695(02fda993c27c) · :prev-nippon dfaf7918d5ac(e37f4fbd619f)
+[되돌리기 · 갱신 앞 스냅샷] DB 는 안 건드린다 — 라이브 DB 도 되돌릴 때만 아래 줄(대상마다 · 재민이 고른다):
+    서울 central — /srv/durango/_daily/20261025-031121-central · 2026-10-25T03:11:22Z · 갱신 e5dec10daded → 02fda993c27c = 지금 이미지 커밋(이 갱신)
+      ssh -t seoul 'cd /opt/Mini && bash scripts/backup-live.sh central --restore /srv/durango/_daily/20261025-031121-central'  # 답: central
+    서울 hanbando — /srv/durango/_daily/20261025-031122-hanbando · 2026-10-25T03:11:22Z · 갱신 e5dec10daded → 02fda993c27c · 지금 이미지 커밋 라벨 없음
+      ssh -t seoul 'cd /opt/Mini && bash scripts/backup-live.sh hanbando --restore /srv/durango/_daily/20261025-031122-hanbando'  # 답: hanbando
+    도쿄 nippon — /srv/durango/_daily/20261025-031123-nippon · 2026-10-25T03:11:23Z · 갱신 e37f4fbd619f → 02fda993c27c = 지금 이미지 커밋(이 갱신)
+      ssh -t tokyo 'cd /opt/tokyo/Mini && bash scripts/backup-live.sh nippon --restore /srv/durango/_daily/20261025-031123-nippon'  # 답: nippon
+      지금 52c17721b002(커밋 02fda993c27c) → durango-central:prev-central d6216b985bc6(커밋 e5dec10daded) · 볼륨 /srv/durango/central(무접촉) · env 옛 컨테이너 것 그대로
+  …
+  ✓ 되돌림 끝 — 바뀐 것: 서울 central → :prev-central → 서울 hanbando → :prev-hanbando → 도쿄 nippon → :prev-nippon → 도쿄 코드 → e37f4fbd619f → 서울 스탬프 e5dec10daded → 도쿄 스탬프 e37f4fbd619f · 서울 코드 HEAD 02fda993c27c(그대로 — 기록만) · DB 그대로(되놓기 줄은 위 [갱신 앞 스냅샷])
+rc=0
+  (한반도 '지금 이미지 커밋 라벨 없음' = 흉내 판 한계 — 한 데몬이라 도쿄 빌드가 durango-zone:latest 를 옮겨 서울 한반도 새 이미지의 이름이 떨어졌다 · T897 회부 2)
+
+## R C2 가 찍은 한반도 되놓기 줄을 그 글자대로(답 hanbando)
+  ssh -t seoul 'cd /opt/Mini && bash scripts/backup-live.sh hanbando --restore /srv/durango/_daily/20261025-031122-hanbando'
+== 복원 — hanbando ← 20261025-031122-hanbando ==
+  컨테이너 durango-zone-hanbando · 볼륨 /srv/durango/hanbando · DB world-hanbando.db · 스냅샷 2026-10-25T03:11:22Z · 행 281090
+  복원한다(지금 DB 는 옆으로 옮긴다 · 안 지운다). 대상 이름을 그대로 쳐라(hanbando): 
+  [멈춤] durango-zone-hanbando
+  [옮김] 지금 DB → /srv/durango/_daily/20261025-031425-hanbando-replaced (world-hanbando.db world-hanbando.db-shm world-hanbando.db-wal)
+  [놓음 ✓] sha256 일치 db08b385f80a
+  [행 ✓] 표마다 행 수 = 스냅샷(합 281090)
+  [켬] durango-zone-hanbando(같은 이미지 · env · 볼륨)
+  ✅ /health — 17초
+rc=0
+
+## _daily 뒤(라벨)
+  20261025-031121-central
+  20261025-031122-hanbando
+  20261025-031123-nippon
+  20261025-031425-hanbando-replaced
+  20261025-031121-central update-live e5dec10dadedd016793564efa05948820971e03b 02fda993c27cf68722b425d25c7d47b087cde707
+  20261025-031122-hanbando update-live e5dec10dadedd016793564efa05948820971e03b 02fda993c27cf68722b425d25c7d47b087cde707
+  20261025-031123-nippon update-live e37f4fbd619fdbd95320d1cbbf9df5e7520123e6 02fda993c27cf68722b425d25c7d47b087cde707
+  20261025-031425-hanbando-replaced 
+
+## 하네스
+  test-update-snap 21/0(새) · test-backup-live 26/0(⑦ 다섯 더) · test-disk-check 14/0 · test-harness-lint 68/0

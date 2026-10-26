@@ -11,6 +11,7 @@
 //     ④ 깨진 사본 · 남의 사본은 멈추기 앞에 거절
 //     ⑤ --install · --uninstall · --status — 표 붙은 줄 하나만 · 남의 crontab 줄 그대로
 //     ⑥ 미끼 — sha 확인 줄을 뺀 사본은 깨진 사본을 놓는다(④ 가 문다)
+//     ⑦ [T919] 갱신 앞 사본 — BACKUP_LABEL 이 meta · ✓ 줄에 · 글자 거름 · --dry 는 아무것도 안 쓴다(뗄 옛것은 찍는다) · --last 앞머리 · `bash -s`(서울 판을 흘림)
 'use strict';
 const fs = require('fs'), os = require('os'), path = require('path'), crypto = require('crypto');
 const { execFileSync } = require('child_process');
@@ -162,6 +163,30 @@ const L2 = path.join(SRV, 'hanbando', 'world-hanbando.db'); const pre = sha(L2);
 r = run(['hanbando', '--restore', bad2], 'hanbando\n', {}, BAIT);
 ok(baited !== src && sha(L2) !== pre && st().events.some((x) => /^stop/.test(x)), '[미끼] sha 확인을 뺀 사본은 깨진 사본을 멈추고 놓는다 — ④ 가 문다', `rc=${r.rc}`);
 
+console.log('\n⑦ [T919] 갱신 앞 사본 — 라벨 · --dry · --last · bash -s');
+fresh(); run([]);                                                 // 라벨 없는 매일 사본 한 벌
+const LBL = 'update-live ' + 'a'.repeat(40) + ' ' + 'b'.repeat(40);
+r = run([], '', { BACKUP_LABEL: LBL + "';$(touch /tmp/t919-pwn)`x`" });
+const H7 = snaps('hanbando'); const m7 = fs.readFileSync(path.join(DAILY, H7[H7.length - 1], 'meta.txt'), 'utf8');
+ok(r.rc === 0 && new RegExp('^label=' + LBL + 'touch tmpt919-pwnx$', 'm').test(m7) && !fs.existsSync('/tmp/t919-pwn') && r.out.includes('라벨 ' + LBL),
+  '★라벨이 meta(`label=`) · ✓ 줄에 — 글자 [A-Za-z0-9 ._:-] 밖은 거른다(따옴표 · $ · 역따옴표 0 · 셸에 안 닿는다)', (m7.match(/^label=.*$/m) || [''])[0].slice(0, 60) + '…');
+let before = fs.readdirSync(DAILY).sort().join(' ');
+for (let k = 0; k < 3; k++) run([], '', { BACKUP_KEEP: '9' });
+before = fs.readdirSync(DAILY).sort().join(' ');
+r = run(['--dry'], '', { BACKUP_KEEP: '3', BACKUP_LABEL: LBL });
+const vict = (r.out.match(/hanbando → .* 뗄 옛것: (.*)$/m) || [, ''])[1].trim().split(' ');
+ok(r.rc === 0 && fs.readdirSync(DAILY).sort().join(' ') === before && vict.length === 3 && vict.every((v) => snaps('hanbando').slice(0, 3).includes(v)),
+  '★--dry — 아무것도 안 쓴다(폴더 무변) · 보관 3 이면 다섯 벌 중 옛 셋을 "뗄 옛것" 으로 찍는다', vict.join(' '));
+const runRaw = (args, env) => { try { return { out: execFileSync('bash', ['-c', `bash ${SCRIPT} ${args}`], { encoding: 'utf8', env: Object.assign({}, process.env, { PATH: `${BIN}:${process.env.PATH}`, FAKE_STATE: STATE, BACKUP_DAILY_ROOT: DAILY }, env || {}) }), rc: 0 }; } catch (e) { return { out: String(e.stdout || ''), rc: e.status }; } };
+r = runRaw('--last hanbando update-live');
+const H7b = snaps('hanbando');
+ok(r.rc === 0 && r.out.split('\t')[0] === path.join(DAILY, H7[H7.length - 1]) && r.out.trim().split('\t')[2].startsWith('update-live'),
+  '★--last <대상> update-live — 라벨 붙은 것 중 가장 새 사본(그 뒤 라벨 없는 매일 사본 셋은 건너뛴다)', r.out.split('\t')[0].replace(DAILY, '…'));
+ok(runRaw('--last hanbando').out.split('\t')[0] === path.join(DAILY, H7b[H7b.length - 1]) && runRaw('--last nippon update-live').rc === 1 && runRaw('--last hanbando nosuch').rc === 1,
+  '앞머리 없으면 가장 새 것 · 없는 대상 · 안 맞는 앞머리는 rc 1');
+try { const o = execFileSync('bash', ['-c', `cat ${SCRIPT} | bash -s -- --dry`], { encoding: 'utf8', env: Object.assign({}, process.env, { PATH: `${BIN}:${process.env.PATH}`, FAKE_STATE: STATE, BACKUP_DAILY_ROOT: DAILY }) });
+  ok(/스냅샷 예행/.test(o) && /hanbando →/.test(o), '`cat backup-live.sh | bash -s`(update-live 가 서울 판을 도쿄에 흘리는 꼴)도 돈다 — BASH_SOURCE 빔(마른 연습이 잡음)'); }
+catch (e) { ok(false, '`bash -s` 로 흘린 판', String(e.stderr || e.message).split('\n')[0]); }
 fs.rmSync(TMP, { recursive: true, force: true });
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
