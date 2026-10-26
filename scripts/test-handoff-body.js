@@ -659,6 +659,9 @@ async function bodyVerTrip() {
   //   미끼 넷 = 한 쪽에만 칸 더한 사본: 새 칸(`parseBody` 에 더함)을 리터럴에만 · 승격에만, 있는 칸(제작이력)을 리터럴에만 · 승격에만 한 번 더 — 넷 다 물어야 한다.
   //   옳은 사본(새 칸을 `parseBody` 와 `_bodyInto` 에만)은 지나야 한다(새 칸마다 빨강인 자는 자가 아니다).
   const VITAL_KEYS = ['hp', 'maxHp', 'isDown', 'downedAt'];
+  //   ★[T930] 생명값의 hp 는 **문**(`setHp(p, …)`)으로 얹는다 — T109 "사람 hp 를 쓰는 문은 하나"(`e2e-hp ⓪`)와 이 검사가 같은 줄을 서로 반대로 요구했다
+  //     (T868 · T873 뒤 `e2e-hp ⓪` 빨강). hp 칸만 `p.hp = ` 대신 `setHp(p, ` 줄을 보고 · 그 함수 안 `p.hp =` 는 0 이어야 한다(나머지 칸은 종전 그대로 `p.칸 = `).
+  const putsKey = (fn, k) => (k === 'hp' ? (/\n\s*setHp\(p, /.test(fn) && !/\n\s*p\.hp\s*=[^=]/.test(fn)) : new RegExp(`\\n\\s*p\\.${k} = `).test(fn));
   const bodyKeysOf = (s) => { const m = /\n  const out = \{([\s\S]*?)\n  \};/.exec(cutSrc(s, 'function parseBody(raw, opts) {', '\n}\n')); return m ? [...m[1].replace(/\/\/[^\n]*/g, '').matchAll(/([A-Za-z_]\w*)\s*:/g)].map((x) => x[1]) : []; };
   const litOf = (s) => cutSrc(cutSrc(s, 'async function _acceptConnection(', '\nfunction '), '\n  const player = {', '\n  };');
   const T732_LOTS = /^\s*if \(T732_MOMENT && pending\.body\) \{ try \{ const _B = parseBody\(pending\.body, \{\}\); if \(_B && _B\.lots\) player\.lots = _B\.lots; \} catch \(e\) \{\} \}[ \t]*$/m;
@@ -670,7 +673,7 @@ async function bodyVerTrip() {
     return keys.length >= 15 && ['toolItems', 'craftLog', 'member', 'downedAt'].every((k) => keys.includes(k))
       && (s.match(/\bfunction _bodyInto\(/g) || []).length === 1 && !/\b_t868BodyInto\s*\(/.test(s)
       && (s.match(/\{ cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: \{\}, \.\.\./g) || []).length === 1
-      && keys.every((k) => new RegExp(`\\n\\s*p\\.${k} = `).test(fn))
+      && keys.every((k) => putsKey(fn, k))
       && lit.length > 500 && lit.split('..._bodyInto({}, _B, equipped),').length === 2 && !/\b_B\b/.test(litRest)
       && !keys.some((k) => new RegExp(`(^|[\\s{,])${k}\\s*[:,]`).test(litRest))
       && /_bodyInto\(player, _t868hb\.B, /.test(pro) && !/_t868hb\.B\b/.test(proRest)
@@ -689,6 +692,10 @@ async function bodyVerTrip() {
   ok(bodyIntoOne(src) && bit873 === 4 && right873 !== src && right873 !== addOut(src) && bodyIntoOne(right873),
     '⑦ P ★★[T873] 몸을 사람에 얹는 함수는 하나(`_bodyInto`) — 일반 접속 리터럴 · 승격이 같은 칸 목록을 부른다 · 미끼(한 쪽에만 칸 더한 사본) 넷 다 문다 · 옳은 사본(새 칸을 `_bodyInto` 에만)은 지난다',
     `몸 칸 ${bodyKeysOf(src).length}(생명값 → ${VITAL_KEYS.length}) · 미끼 ${bit873}/4 · 리터럴 ${litOf(src).length}자`);
+  {   // ★[T930] 미끼 — 몸 얹기의 hp 를 옛 직접 대입(`p.hp = …` · T868 이 넣은 그 줄)으로 되돌린 사본은 문다(hp 칸을 문으로만 본다는 것이 자명 통과가 아니다)
+    const oldHp = src.replace("setHp(p, (V && typeof V.hp === 'number') ? V.hp : PLAYER_MAX_HP, 'takeover');", "p.hp = (V && typeof V.hp === 'number') ? V.hp : PLAYER_MAX_HP;");
+    ok(oldHp !== src && !bodyIntoOne(oldHp), '⑦ P ★[T930] 몸 얹기의 hp 는 문(`setHp(p, …)`)으로 — 옛 직접 대입 사본(`p.hp = …`)은 문다', `직접 대입 사본 ${oldHp !== src ? '만듦' : '못 만듦'} · 문다 ${!bodyIntoOne(oldHp)}`);
+  }
   if (!await startZones(null, { T868_PROMOTE_BODY: '1' })) { console.log('  ✗ T868 켬 기동 실패'); process.exit(1); }
   const P = await promoteTrip('P');
   ok(P.crossed && P.promoted, '★[상황 · T868 켬] 관측 소켓을 승격해 넘었다(넘기 메시지 · 승격 welcome)', P.crossed ? `승격 welcome ${P.promoted}` : '넘지 못함');
