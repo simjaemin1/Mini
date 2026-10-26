@@ -17,6 +17,8 @@
 //      넘긴 짐 = 도착 행이 판 짐(약탈 0 · 스텁 쌍엔 길목 갱이 없다) · 돌려보낸 짐 = 도착 행이 산 짐 · 곳간에 든 짐 = 돌려보낸 짐(질량 보존).
 //   ⓔ 'arrive' = 'return'(T525 §4 문법) — 한반도가 넘긴 수 = 닛폰이 돌려보낸 수 + 지금 닛폰에 있는 수(양 방향).
 //   ⓕ 두 존 로그 예외 0.
+//   ⓖ [T952] 받는 존 상인의 머묾 끝 — `T952_XZ_STAY=1` 을 이 자에 주면 두 존에 그대로 넘기고 잰다: 머묾 끝 = 그 마을 장 끝(오늘 장 기록 ·
+//      없으면 도착 날 머리 + 4/24 하루) · 그 끝까지 실제로 머문다. 끔(기본)이면 그 셈 칸이 안 선다(null)는 것만 보고 머묾 끝을 표로 찍는다.
 //
 // 실행: node scripts/e2e-xzone-caravan.js     (env: XZ_DAYMS 마을 하루 ms · 기본 3000 · XZ_WAIT_S 왕복 기다림 상한 · 기본 600)
 'use strict';
@@ -66,6 +68,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
   //   ★팔 `T525_CROSS_ZONE=1` · 마을 켬 · 하루 `XZ_DAYMS` · 캐러밴 몸 상한은 넉넉히(`VILLAGE_CARAVAN_MAX` — 종전 손잡이 · 넘는 캐러밴이 몸을 갖게) · 야생 끔(속도)
   const common = { CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '1', T525_CROSS_ZONE: '1', VILLAGE_DAY_MS: DAYMS, ENABLED_ZONES: ZIDS.join(','),
     VILLAGE_CARAVAN_MAX: '400', ENABLE_WILDLIFE: '0',
+    T952_XZ_STAY: process.env.T952_XZ_STAY || '',   // ★[T952] 이 자에 준 그대로(끔 = 빈 값)
     //   ★[T662] 걸음표 한 벌 파일 자리 — 이 판의 임시 폴더(판마다 처음부터 잰다 = 찬 판을 잰다 · 두 존이 같은 자리를 봐야 한 벌을 나눈다)
     T662_GEO_CACHE_DIR: process.env.T662_GEO_CACHE_DIR || `${DDIR}/geo` };
   const ups = {};
@@ -114,7 +117,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     H = await perf('hanbando'); N = await perf('nippon');
     if (!H || !N) { await sleep(1000); continue; }
     if (!pick) { const o = H.trace.find((t) => t.k === 'out' && t.body && t.at); if (o) pick = o; }
-    for (const b of N.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: N.now, prog: b.prog, len: b.len, nom: b.nomPxMs, dep: b.departAt, pend: b.pending, phase: b.phase }); seenN.set(b.key, L); }
+    for (const b of N.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: N.now, prog: b.prog, len: b.len, nom: b.nomPxMs, dep: b.departAt, pend: b.pending, phase: b.phase, lu: b.lu, t952: b.t952 }); seenN.set(b.key, L); }
     if (pick) {
       const home = H.trace.find((t) => t.k === 'home' && t.id === pick.id);
       if (home) { done = home; break; }
@@ -159,6 +162,34 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     hin ? `닛폰 ${aBackN ? `(${aBackN.x},${aBackN.y})` : '(몸 없음)'} · 한반도 (${aBackH.x},${aBackH.y}) · 차 ${aBackN ? dist(aBackN, aBackH).toFixed(1) : '-'}px · 경계까지 걸음 ${(back && back.walked) || '바로'}` : '한반도 받은 몸 없음');
   ok(!!done && back && done.res === back.res && Math.abs(done.amt - back.amt) < 1e-9, 'ⓓ5 ★★한반도 곳간에 들었다 — econ 귀환 갈래가 돌려보낸 짐 그대로(질량 보존)',
     done ? `#${pick.id} ${done.res}×${(done.amt || 0).toFixed(2)}${done.abandoned ? ' (빈손 귀환)' : ''} · 기다림 ${((Date.now() - tW) / 1000).toFixed(0)}s` : `기다림 ${((Date.now() - tW) / 1000).toFixed(0)}s 안에 안 끝났다`);
+
+  // ── ⓖ [T952] 받는 존 상인의 머묾 끝 ────────────────────────────────────────────
+  {
+    const ON = process.env.T952_XZ_STAY === '1';
+    console.log(`\n[ⓖ T952 — 받는 존(닛폰) 교차 존 상인의 머묾 끝 · ${ON ? '켬' : '끔'}]`);
+    //   머묾은 하루의 1/24 ~ 4/24(이 판 125 ~ 500ms)라 500ms 표본이 놓칠 수 있다 — 머문 몸을 하나 볼 때까지 100ms 로 더 본다(상한 120초 · 값은 안 바꾼다)
+    const lingerS = () => { const a = []; for (const [k, L] of seenN) for (let i = 0; i < L.length; i++) if (L[i].phase === 'linger') a.push({ k, i, s: L[i], next: L.slice(i + 1).find((q) => q.phase !== 'linger') || null }); return a; };
+    const tX = Date.now();
+    while (Date.now() - tX < 120000 && (lingerS().length === 0 || lingerS().every((q) => !q.next))) {
+      const Nn = await perf('nippon'); if (Nn) for (const b of Nn.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: Nn.now, prog: b.prog, len: b.len, phase: b.phase, lu: b.lu, t952: b.t952 }); seenN.set(b.key, L); }
+      await sleep(100);
+    }
+    const S = lingerS(), dm = +DAYMS;
+    const keys = [...new Set(S.map((q) => q.k))];
+    ok(S.length > 0, 'ⓖ0 [전제] 받는 존에서 머무는(phase linger) 교차 존 상인을 실제로 봤다(0 이면 아래가 자명 통과다)', `몸 ${keys.length} · 표본 ${S.length}`);
+    const rows = keys.map((k) => { const q = S.find((x) => x.k === k), t = q.s.t952; return { k, lu: q.s.lu, t952: t, stayMs: t ? q.s.lu - t.at : null, left: q.next ? q.next.t : null }; });
+    if (ON) {
+      const bad = rows.filter((r) => !(r.t952 && r.lu === r.t952.end && (r.t952.joined || Math.abs(r.t952.end - (r.t952.d0 + dm * 4 / 24)) < 1e-6)));
+      ok(rows.length > 0 && bad.length === 0, 'ⓖ1 ★켬 — 머묾 끝 = 그 마을 장 끝(오늘 장 기록의 끝 · 없으면 도착 날 머리 + 4/24 하루 · 새 수 0)', `${rows.length - bad.length}/${rows.length}` + (bad.length ? ` · 어긋남 ${JSON.stringify(bad[0])}` : ''));
+      const gone = rows.filter((r) => r.left != null), early = gone.filter((r) => r.left < r.lu);
+      ok(gone.length > 0 && early.length === 0, 'ⓖ2 ★그 끝까지 머문다 — 머묾이 끝난 첫 표본의 시각 ≥ 머묾 끝(일찍 안 떠난다)', `떠난 몸 ${gone.length} · 일찍 ${early.length}`);
+      const longer = rows.filter((r) => r.stayMs != null && r.stayMs > dm / 24 + 1e-6);
+      ok(longer.length > 0, 'ⓖ3 자명 통과 금지 — 적어도 한 몸은 종전 1게임시간보다 오래 머문다(장 끝이 1시간보다 먼 도착)', `${longer.length}/${rows.length} · 머묾 ${rows.map((r) => r.stayMs == null ? '-' : Math.round(r.stayMs)).join(' · ')}ms(1시간 = ${Math.round(dm / 24)})`);
+    } else {
+      ok(rows.length > 0 && rows.every((r) => r.t952 === null), 'ⓖ1 끔 — T952 셈 칸이 안 선다(무동작 · 머묾은 종전 1게임시간)', `${rows.filter((r) => r.t952 === null).length}/${rows.length}`);
+    }
+    console.log(`  · [표 · T952] 머묾 끝 − 그 몸 첫 머묾 표본: ${rows.map((r) => { const q = S.find((x) => x.k === r.k); return Math.round(r.lu - q.s.t); }).join(' · ')}ms`);
+  }
 
   // ── ⓔ 'arrive' = 'return' ────────────────────────────────────────────────────
   console.log("\n[ⓔ 'arrive' = 'return' (양 방향 · 판 끝 이동 중 포함)]");

@@ -249,6 +249,15 @@ const T681_ON = process.env.T681_WALLCLOCK !== '0';   // ★PM 10-10 켬 기본(
 //   ④ 상인 자리 = 남문 앞 마당(`HALL_YARD_PTS` · 실험실 `_hallYard`) — 귀환 길 앞에 마당 → 큰집 중심 한 토막(보이는 몸과 장부 길이 같은 길).
 const T707_ON = process.env.T707_MARKET !== '0';   // ★[PM 10-13 · 재민 10-12 "켜자"] 켬 기본 · 되돌림 `=0`
 const _t707Stat = { markets: 0, joins: 0, roster: 0, carNoBody: 0, mktNoBody: 0, linger: 0, spawnLinger: 0 };
+// ★★[T952 2026-10-27 · 세션15 · T939 회부 1] 손잡이 `T952_XZ_STAY`('1' 만 켬 · 끔 기본 · 끔 = main 바이트) — **장을 안 여는 교차 존 캐러밴의 머묾**.
+//   교차 존 캐러밴(받는 존의 `c._xzHome` · 팔 `T525_CROSS_ZONE` 켬일 때만 있다)은 econ 이 **도착 순간 정산**한다(`_t707Xz` — `_xzArriveLoop` 가
+//   그 자리의 교역 행 · 돌려보낼 짐 · 짐 레코드로 'return' 기록을 바로 적는다 · 정산을 떠날 때로 미루면 그 기록이 도착 때 없다). 그래서 장 기록
+//   (`vil._mkt.cars`)에 안 들고, 상인 머묾은 종전 1게임시간(`CARAVAN_LINGER_DAY_FRAC`)이었다 — 같은 마을 같은 날의 장은 4게임시간(재민 10-12).
+//   켜면 **머묾만** 장 끝에 맞춘다: 그 마을에 오늘 장 기록이 있으면 그 끝 · 없으면 같은 식(장부 도착 날 머리 + `MKT_LINGER_DAY_FRAC` 4/24 — 새 수 0).
+//   econ 정산 · 교차 존 기록 · 장 명부(주민 모임) · 좌판 방송은 그대로다(장을 열지 않는다). 귀환 출발은 종전 문(`now >= lingerUntil`)이 연다.
+//   ⚠`T707_MARKET=0`(되돌림)이면 무동작 — 장이 없는 세계의 머묾은 종전 그대로.
+const T952_XZ_ON = process.env.T952_XZ_STAY === '1';
+const _t952Stat = { stays: 0, joined: 0 };
 // ★★[T762 2026-10-15 · 세션6] 손잡이 `T762_CARAVAN_BODY`(기본 끔 · `=1` 켬) — 캐러밴 몸 두 자리(T474 켬 판이 드러냈다 · 둘 다 끔에서도 같은 줄):
 //   ① 그날 econ 틱이 띄운 캐러밴도 **그날** 캐러밴 동기에 든다(아래 덧 조각).
 //   ② econ 재라우팅(옛 목적지에 닿아 값 손절)에서 몸이 다시 떠나는 자리 = 옛 길 **끝**(장부 끝까지 답압) — 종전엔 `_t661Day` 가
@@ -3928,6 +3937,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
       body.lingerUntil = now + state.dayMs * CARAVAN_LINGER_DAY_FRAC;
       if (T661_ON && body._t661) { const _m929 = _t929Mark(); _t661Anchor(body, _t661ReturnPts(body), 'inbound'); body._t661.L = 0; _t929Note(_m929); }   // ★[T929] 앞뒤 셈만 · ★[T661] 돌아가는 구간의 장부는 도착한 이 경계에서 연다(머묾은 보이는 것)
       if (T707_ON) _t707Linger(body, c, p);   // ★[T707] 장 끝까지 머문다 · 남문 앞 마당에 선다(끔 = 이 줄 무동작)
+      if (T952_XZ_ON && T707_ON && c._xzHome) _t952XzStay(body, c, now);   // ★[T952] 교차 존 상인의 머묾 = 그 마을 장 끝(끔 = 이 줄 무동작)
       S.arrived++;
       console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 도착: ${c.from.name}→${c.to.name} ${c.giveRes}${c._abandoned ? ' (빈손 손절)' : ' 매도'} — 1게임시간 머묾 후 귀환`);
     } else if (c.to !== body.toV) {
@@ -4344,7 +4354,7 @@ function xzonePerf() {
     const P = state.deps.players.get(b.pid);
     bodies.push({ key: k, phase: b.phase, pending: !!(b.c && b.c._xzPending), handing: !!b._xzHanding, x: P ? Math.round(P.x) : null, y: P ? Math.round(P.y) : null,
       len: Math.round(b.len), prog: Math.round(b.prog), end: b.pts && b.pts.length ? { x: Math.round(b.pts[b.pts.length - 1].x), y: Math.round(b.pts[b.pts.length - 1].y) } : null,
-      departAt: b.departAt, arriveAt: b.arriveAt, nomPxMs: b.nomPxMs });
+      departAt: b.departAt, arriveAt: b.arriveAt, nomPxMs: b.nomPxMs, lu: b.lingerUntil, t952: b._t952 || null });   // ★[T952] 머묾 끝 · 켬 판의 셈(끔 = null)
   }
   const cars = [];
   for (const c of (state.world.caravans || [])) if (c._xzCross || c._xzHome || c.state === 'xzone') {
@@ -4354,7 +4364,7 @@ function xzonePerf() {
   }
   return { zone: state.zoneId, day: state.world.day, g: state.lastGameDay, dayMs: state.dayMs, epoch: state.epoch, peers: X.host.peers, ready: X.core.peersReady(),
     geo: X.host.hs.geo, host: X.host.hs, core: X.core.st, live: X.core.live ? X.core.live() : null, st: X.st, stubs: (X.core.X.stubs || []).map((s) => s.name), retry: X.retry.length,
-    bodies, caravans: cars, trace: X.trace.slice(-200) };
+    bodies, caravans: cars, trace: X.trace.slice(-200), t952: T952_XZ_ON ? Object.assign({}, _t952Stat) : null };
 }
 
 // =============================================================================
@@ -11338,6 +11348,13 @@ function _t707Tally() {   // 오늘 선 장 — 캐러밴 몸이 하나도 없�
     let b = 0; for (const id of r.cars) { if (B && B.has(id)) b++; else _t707Stat.carNoBody++; }
     r.body = b; if (!b) _t707Stat.mktNoBody++;
   }
+}
+function _t952XzStay(body, c, now) {   // ★[T952] 장 기록에 안 드는 교차 존 상인 — 머묾 끝만 장 끝(오늘 장 기록 · 없으면 같은 식)
+  const vil = state.byEcon && state.byEcon.get(c.to), rec = vil && vil._mkt, D = state.world ? (state.world.day | 0) : 0;
+  const d0 = econDayToMs(D), end = (rec && rec.d === D) ? rec.end : d0 + state.dayMs * _lifeVL().MKT_LINGER_DAY_FRAC;
+  body.lingerUntil = end;
+  body._t952 = { at: now, d0, end, joined: !!(rec && rec.d === D) };
+  _t952Stat.stays++; if (body._t952.joined) _t952Stat.joined++;
 }
 function _t707Linger(body, c, p) {   // 상인 머묾 = 장 끝 · 남문 앞 마당(귀환 길 첫 점)에 선다 · 호위는 `_escortMarch` 가 그 자리로(진척 0)
   const vil = state.byEcon && state.byEcon.get(c.to), rec = vil && vil._mkt;
