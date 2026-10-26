@@ -9771,6 +9771,29 @@ const T815_DRAFT_FAMINE = (typeof process !== 'undefined' && process.env && proc
 //   켜면 그 갈래에서 출생 쪽 거울(자리가 없으면 `Math.min(_dPAccum, 0.9)`)처럼 `Math.max(_dPAccum, −0.9)` — 못 치른 몫을 다음 날로 넘기지 않는다
 //   (새 수 0 — 0.9 는 출생 줄의 그 수 · 셈만 느는 죽음은 `T815_DRAFT_FAMINE` 몫 — 이 손잡이가 켜지면 빚이 −1 아래에 쌓여 있지 않아 그날 압력이 −1 을 넘긴 날만 센다).
 const T924_DEBT_CAP = (typeof process !== 'undefined' && process.env && process.env.T924_DEBT_CAP === '1');
+// ★★[T932 2026-10-26 · T923 회부 1] **대장장이가 하루를 다 제련에 쓴 날, 그 마을의 하루가 거기서 끝나던 결함** — 손잡이 `T932_SMELT_CONT`(켬 기본 · 되돌림 `=0` = 열셋째 판 바이트).
+//   `tickVillage` 일하기 루프(`for (const npc of v.npcs)`) 안 대장장이 갈래의 `if (_smeltFrac >= 0.999) { workNPC(npc); return; }` 는
+//   바로 위 주석(끊김① 해소 · 2026-08-01)이 적은 뜻 — "원석이 넘치는 날은 **그 대장장이가** 하루를 다 제련에 쓴다(주조 없음)" — 과 달리
+//   `return` 이라 **마을 하루 전체**가 끝났다: 그 대장장이 뒤 차례 주민의 일 · 루프 뒤 꼬리(① 손으로 들여온 것 장부 · ② 먹기 · 마모 · 품질 EMA ·
+//   ③ prodK · K · stat · ④ 땔감 · 주거 · 인구(출생 · 기근) · ⑤ 직업 전환 · ⑥ 나이)가 그날 안 돌았다(그 마을 사람은 그날 안 먹고 안 늙는다 · 보고 T932 ①).
+//   켬 = `continue` — **그 대장장이만** 오늘 일을 끝낸다(주조 없음 = 종전 그 사람 몫 그대로) · 뒤 차례 주민 · 마을 하루 꼬리는 돈다(같은 루프의 다른 셋 —
+//   교역 원정 · 징발 · 재고 상한 — 이 다 `continue` 인 것과 같은 꼴 · 새 수 0).
+const T932_SMELT_CONT = !(typeof process !== 'undefined' && process.env && process.env.T932_SMELT_CONT === '0');
+// ★[T932 · 계측 전용 · 행동 무관 · 저장 0] 그 갈래가 선 날을 센다 — 모듈 칸(마을 객체에 안 붙인다 — 저장 줄 무변). 관찰기 `scripts/t932-smelt-probe.js` 가 판 끝에 적는다.
+//   days = 선 마을-날(같은 날 둘째 대장장이는 안 센다) · smiths = 선 대장장이-날 · left = 그 대장장이 뒤 차례 주민 · idle = 그중 교역 원정 · 징발이 아닌 사람(끔이면 그날 일을 못 한 사람)
+//   · pop = 그 마을 인구(끔이면 그날 꼬리 — 먹기 · 나이 … — 를 못 탄 사람) · byV · byYear(0 = 1 ~ 365날)
+const t932Stat = { days: 0, smiths: 0, left: 0, idle: 0, pop: 0, byV: Object.create(null), byYear: Object.create(null) };
+const _t932Seen = new WeakMap();   // 마을 → 마지막으로 센 날(같은 마을-날 한 번)
+function _t932Note(v, npc, day) {
+  const S = t932Stat; S.smiths++;
+  if (_t932Seen.get(v) === day) return;
+  _t932Seen.set(v, day);
+  const i = v.npcs.indexOf(npc); let left = 0, idle = 0;
+  for (let k = i + 1; k < v.npcs.length; k++) { const n = v.npcs[k]; left++; if (!(n._tradingUntil && n._tradingUntil > day) && !n._warDraft) idle++; }
+  S.days++; S.left += left; S.idle += idle; S.pop += v.npcs.length;
+  const nm = v.name || '?'; const b = S.byV[nm] || (S.byV[nm] = { days: 0, idle: 0, pop: 0 }); b.days++; b.idle += idle; b.pop += v.npcs.length;
+  const y = Math.floor((day - 1) / 365); S.byYear[y] = (S.byYear[y] || 0) + 1;
+}
 // ★★★[T400 2026-09-26] **집도 행위다 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
 //   (아래 두 자리가 전부 이 상수 뒤에 있다: 주거 증축의 자재 단가 · 곳간 출구 `actFromGranary`).
 //   ① 자재의 정본은 **하나**다 — `server/hut-stages.js`(서버 움집 공정 · PM 권고 #61 · 재민 거부권).
@@ -11951,10 +11974,16 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       //   마을의 대장장이가 **영원히** 제련만 했다(임업2: 300일 무기 0자루 → 새 지도에선 800일 0자루).
       //   이제 제련에 쓴 노동 **비율만큼만** 하루에서 차감하고, 남은 노동으로 주조를 진행한다
       //   (석공 _toolTaper 와 같은 관용). 원석이 넘치는 날은 여전히 하루를 다 제련에 쓴다.
+      //   ★[T932] 그 날도 하루를 다 쓰는 것은 **그 대장장이 하나**다 — 종전 `return` 은 마을 하루 전체를 끝냈다(아래 줄 · 모듈 머리 `T932_SMELT_CONT`).
       const _smeltCap = jdef.base * skillMul * SMELT_PER_LABOR;   // 하루 전부를 쓰면 소화 가능한 양
       const _smelted = _trySmelt(v, jdef.base * skillMul);
       const _smeltFrac = _smeltCap > 0 ? Math.min(1, _smelted / _smeltCap) : 0;
-      if (_smeltFrac >= 0.999) { workNPC(npc); return; }   // 원석이 넘쳐 오늘 하루를 다 썼다
+      if (_smeltFrac >= 0.999) {   // 원석이 넘쳐 오늘 하루를 다 썼다(주조 없음)
+        workNPC(npc);
+        _t932Note(v, npc, day);              // ★[T932] 계측 전용(행동 무관)
+        if (T932_SMELT_CONT) continue;       // ★[T932] 켬 = 이 대장장이만 하루를 끝낸다 — 뒤 차례 주민 · 마을 하루 꼬리는 돈다(모듈 머리 `T932_SMELT_CONT` 주석)
+        return;                              // 끔(`=0`) = 종전 글자(마을 하루 전체가 여기서 끝난다)
+      }
       if (_smeltFrac > 0) amt *= (1 - _smeltFrac);          // 남은 노동으로만 주조
 
       const _melt = _alloyMelt(v);
@@ -14450,6 +14479,7 @@ module.exports = {
   STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
+  T932_SMELT_CONT, t932Stat,   // ★[T932] 제련 날 마을 하루 결함 손잡이(켬 기본) + 계측 칸(관찰기 `t932-smelt-probe` 가 읽는다 — 행동 무관)
   T924_DEBT_CAP, _computeVillageStats,   // ★[T924] 빚 손잡이 + 마을 stat 함수(관찰기 `t924-observe` 가 건강 · 행복 항을 가른다 — 읽기만 · 사본 0 · 동작 무변)
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
   consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)
