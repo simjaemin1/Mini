@@ -1,0 +1,2474 @@
+{
+ "card": "T906",
+ "date": "2026-10-24",
+ "branch": "batch/army-starve-1023",
+ "base": "1732d93a(둘째 합침 7310b0ec · 첫 합침 b574eeec = main 812f6f35 · 처음 베이스 4ac2ae12)",
+ "ruler": {
+  "what": "T577 서버 판 50날 · 하루 10초 · WAR_FIXTURE=assault*3(D5 · 되풀이) · T403_ARMS_LEDGER=1 · VILLAGE_WAR_LOG=1 · VILLAGE_CARAVAN_MAX=0 · T400_BUILD_ACT=0 · VILLAGE_NPC_CAP=1(자 기본) · 관찰자 t886 · t906",
+  "seeds": [
+   1020,
+   7,
+   42
+  ],
+  "heads": {
+   "G": "2d959f47",
+   "W0": "05a8e0c1",
+   "P30": "05a8e0c1",
+   "N10": "52db8330",
+   "N30": "52db8330",
+   "M0": "4ac2ae12(main)",
+   "W0b": "2d959f47",
+   "N30b": "2d959f47"
+  },
+  "headNote": "머리 사이 제품 변경은 ㄱ 죽음 자리만(05a8e0c1 명부 −1 · 2d959f47 몰사 문) — 머리 바꿈 대조 W0b = W0 · N30b = N30 바이트 같음(1020)"
+ },
+ "arms": {
+  "W0": "끔(T906 미설정)",
+  "G": "ㄱ T906_ARMY_STARVE=die",
+  "N10": "ㄴ T906_ARMY_STARVE=mrl · T295_RATION_MRL=0.1",
+  "N30": "ㄴ T906_ARMY_STARVE=mrl · T295_RATION_MRL=0.3",
+  "P30": "참고 끔 + T295_RATION_MRL=0.3(종전 사기 항 · 짐 잔량 비)"
+ },
+ "table": {
+  "W0": {
+   "7": {
+    "decl": 18,
+    "battle": 15,
+    "atkWin": 10,
+    "defWin": 5,
+    "cas": 15,
+    "hungry": 18,
+    "unfed": 128,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 15,
+    "freed": 115,
+    "ledN": 15,
+    "wars": 18,
+    "gap": 0,
+    "pop": 1295,
+    "t906": {}
+   },
+   "42": {
+    "decl": 18,
+    "battle": 15,
+    "atkWin": 10,
+    "defWin": 5,
+    "cas": 15,
+    "hungry": 18,
+    "unfed": 128,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 15,
+    "freed": 114,
+    "ledN": 15,
+    "wars": 18,
+    "gap": 0,
+    "pop": 1315,
+    "t906": {}
+   },
+   "1020": {
+    "decl": 27,
+    "battle": 25,
+    "atkWin": 11,
+    "defWin": 14,
+    "cas": 25,
+    "hungry": 6,
+    "unfed": 36,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 25,
+    "freed": 175,
+    "ledN": 25,
+    "wars": 27,
+    "gap": 0,
+    "pop": 1317,
+    "t906": {}
+   }
+  },
+  "G": {
+   "7": {
+    "decl": 21,
+    "battle": 17,
+    "atkWin": 11,
+    "defWin": 6,
+    "cas": 16,
+    "hungry": 8,
+    "unfed": 53,
+    "dead": 2,
+    "econ": 2,
+    "wiped": 2,
+    "homes": 18,
+    "freed": 136,
+    "ledN": 18,
+    "wars": 21,
+    "gap": 0,
+    "pop": 1293,
+    "t906": {
+     "mode": "die",
+     "bodyDays": 76,
+     "hungryBodyDays": 8,
+     "minH": 0,
+     "hpLost": 175.54722475754454,
+     "dead": 2,
+     "econDead": 2,
+     "deadDays": [
+      {
+       "day": 26,
+       "war": 5,
+       "pid": "p53",
+       "econ": true
+      },
+      {
+       "day": 47,
+       "war": 14,
+       "pid": "p37",
+       "econ": true
+      }
+     ],
+     "wiped": 2
+    }
+   },
+   "42": {
+    "decl": 19,
+    "battle": 15,
+    "atkWin": 10,
+    "defWin": 5,
+    "cas": 14,
+    "hungry": 10,
+    "unfed": 67,
+    "dead": 2,
+    "econ": 2,
+    "wiped": 2,
+    "homes": 16,
+    "freed": 121,
+    "ledN": 16,
+    "wars": 19,
+    "gap": 0,
+    "pop": 1322,
+    "t906": {
+     "mode": "die",
+     "bodyDays": 81,
+     "hungryBodyDays": 10,
+     "minH": 0,
+     "hpLost": 196.65417046964916,
+     "dead": 2,
+     "econDead": 2,
+     "deadDays": [
+      {
+       "day": 26,
+       "war": 5,
+       "pid": "p53",
+       "econ": true
+      },
+      {
+       "day": 47,
+       "war": 14,
+       "pid": "p37",
+       "econ": true
+      }
+     ],
+     "wiped": 2
+    }
+   },
+   "1020": {
+    "decl": 27,
+    "battle": 25,
+    "atkWin": 12,
+    "defWin": 13,
+    "cas": 24,
+    "hungry": 3,
+    "unfed": 18,
+    "dead": 1,
+    "econ": 1,
+    "wiped": 1,
+    "homes": 25,
+    "freed": 178,
+    "ledN": 25,
+    "wars": 27,
+    "gap": 0,
+    "pop": 1327,
+    "t906": {
+     "mode": "die",
+     "bodyDays": 57,
+     "hungryBodyDays": 3,
+     "minH": 0,
+     "hpLost": 54.44027904543844,
+     "dead": 1,
+     "econDead": 1,
+     "deadDays": [
+      {
+       "day": 26,
+       "war": 5,
+       "pid": "p53",
+       "econ": true
+      }
+     ],
+     "wiped": 1
+    }
+   }
+  },
+  "N10": {
+   "7": {
+    "decl": 18,
+    "battle": 15,
+    "atkWin": 9,
+    "defWin": 6,
+    "cas": 14,
+    "hungry": 18,
+    "unfed": 128,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 15,
+    "freed": 115,
+    "ledN": 15,
+    "wars": 18,
+    "gap": 0,
+    "pop": 1296,
+    "t906": {
+     "mode": "mrl",
+     "bodyDays": 85,
+     "hungryBodyDays": 18,
+     "minH": 0,
+     "hpLost": 0,
+     "dead": 0,
+     "econDead": 0,
+     "deadDays": []
+    }
+   },
+   "42": {
+    "decl": 18,
+    "battle": 15,
+    "atkWin": 9,
+    "defWin": 6,
+    "cas": 14,
+    "hungry": 18,
+    "unfed": 128,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 15,
+    "freed": 114,
+    "ledN": 15,
+    "wars": 18,
+    "gap": 0,
+    "pop": 1316,
+    "t906": {
+     "mode": "mrl",
+     "bodyDays": 85,
+     "hungryBodyDays": 18,
+     "minH": 0,
+     "hpLost": 0,
+     "dead": 0,
+     "econDead": 0,
+     "deadDays": []
+    }
+   },
+   "1020": {
+    "decl": 27,
+    "battle": 25,
+    "atkWin": 11,
+    "defWin": 14,
+    "cas": 25,
+    "hungry": 6,
+    "unfed": 36,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 25,
+    "freed": 175,
+    "ledN": 25,
+    "wars": 27,
+    "gap": 0,
+    "pop": 1317,
+    "t906": {
+     "mode": "mrl",
+     "bodyDays": 56,
+     "hungryBodyDays": 6,
+     "minH": 0,
+     "hpLost": 0,
+     "dead": 0,
+     "econDead": 0,
+     "deadDays": []
+    }
+   }
+  },
+  "N30": {
+   "7": {
+    "decl": 19,
+    "battle": 16,
+    "atkWin": 8,
+    "defWin": 8,
+    "cas": 14,
+    "hungry": 12,
+    "unfed": 86,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 16,
+    "freed": 121,
+    "ledN": 16,
+    "wars": 19,
+    "gap": 0,
+    "pop": 1297,
+    "t906": {
+     "mode": "mrl",
+     "bodyDays": 81,
+     "hungryBodyDays": 12,
+     "minH": 0,
+     "hpLost": 0,
+     "dead": 0,
+     "econDead": 0,
+     "deadDays": []
+    }
+   },
+   "42": {
+    "decl": 19,
+    "battle": 16,
+    "atkWin": 8,
+    "defWin": 8,
+    "cas": 14,
+    "hungry": 12,
+    "unfed": 86,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 16,
+    "freed": 120,
+    "ledN": 16,
+    "wars": 19,
+    "gap": 0,
+    "pop": 1323,
+    "t906": {
+     "mode": "mrl",
+     "bodyDays": 81,
+     "hungryBodyDays": 12,
+     "minH": 0,
+     "hpLost": 0,
+     "dead": 0,
+     "econDead": 0,
+     "deadDays": []
+    }
+   },
+   "1020": {
+    "decl": 24,
+    "battle": 21,
+    "atkWin": 10,
+    "defWin": 11,
+    "cas": 19,
+    "hungry": 4,
+    "unfed": 28,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 21,
+    "freed": 150,
+    "ledN": 21,
+    "wars": 24,
+    "gap": 0,
+    "pop": 1324,
+    "t906": {
+     "mode": "mrl",
+     "bodyDays": 67,
+     "hungryBodyDays": 4,
+     "minH": 0,
+     "hpLost": 0,
+     "dead": 0,
+     "econDead": 0,
+     "deadDays": []
+    }
+   }
+  },
+  "P30": {
+   "7": {
+    "decl": 22,
+    "battle": 19,
+    "atkWin": 8,
+    "defWin": 11,
+    "cas": 18,
+    "hungry": 7,
+    "unfed": 49,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 19,
+    "freed": 150,
+    "ledN": 19,
+    "wars": 22,
+    "gap": 0,
+    "pop": 1299,
+    "t906": {}
+   },
+   "42": {
+    "decl": 21,
+    "battle": 18,
+    "atkWin": 6,
+    "defWin": 12,
+    "cas": 17,
+    "hungry": 8,
+    "unfed": 49,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 18,
+    "freed": 129,
+    "ledN": 18,
+    "wars": 21,
+    "gap": 0,
+    "pop": 1325,
+    "t906": {}
+   },
+   "1020": {
+    "decl": 26,
+    "battle": 24,
+    "atkWin": 9,
+    "defWin": 15,
+    "cas": 23,
+    "hungry": 0,
+    "unfed": 0,
+    "dead": 0,
+    "econ": 0,
+    "wiped": 0,
+    "homes": 24,
+    "freed": 169,
+    "ledN": 24,
+    "wars": 26,
+    "gap": 0,
+    "pop": 1316,
+    "t906": {}
+   }
+  }
+ },
+ "starving": [
+  {
+   "seed": 1020,
+   "arm": "W0",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+   ],
+   "hungry": 6,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 29,
+     "win": "공",
+     "atkCas": 0,
+     "defCas": 1,
+     "tac": "공1→1 방1→0",
+     "ticks": 5413,
+     "tail": "격퇴 +조공3년 +노획0.7"
+    }
+   ],
+   "home": {
+    "day": 30,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 1020,
+   "arm": "G",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    23,
+    24,
+    25,
+    26
+   ],
+   "hungry": 3,
+   "dead": 1,
+   "starve": [
+    {
+     "day": 26,
+     "pid": "p53"
+    }
+   ],
+   "battles": [
+    {
+     "day": 26,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공0→0 방1→1",
+     "ticks": 4801,
+     "tail": "격퇴"
+    }
+   ],
+   "home": {
+    "day": 27,
+    "rem": "0",
+    "freed": 5
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 1020,
+   "arm": "N10",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+   ],
+   "hungry": 6,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 29,
+     "win": "공",
+     "atkCas": 0,
+     "defCas": 1,
+     "tac": "공1→1 방1→0",
+     "ticks": 5451,
+     "tail": "격퇴 +조공3년 +노획0.7"
+    }
+   ],
+   "home": {
+    "day": 30,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 1020,
+   "arm": "N30",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    24,
+    25
+   ],
+   "hungry": 2,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 25,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공1→1 방1→1",
+     "ticks": 4541,
+     "tail": "격퇴 +노획0.3"
+    }
+   ],
+   "home": {
+    "day": 26,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 1020,
+   "arm": "N30",
+   "id": 13,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 26,
+   "force": 8,
+   "rationLow": [
+    41,
+    42
+   ],
+   "hungry": 2,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 42,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공1→1 방1→1",
+     "ticks": 4627,
+     "tail": "격퇴 +노획0.3"
+    }
+   ],
+   "home": {
+    "day": 43,
+    "rem": "0",
+    "freed": 8
+   },
+   "ledger": {
+    "load": 112,
+    "book": 8,
+    "ate": 104,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 1020,
+   "arm": "P30",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    23
+   ],
+   "hungry": 0,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 23,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공1→1 방1→1",
+     "ticks": 4027,
+     "tail": "격퇴 +노획0.3"
+    }
+   ],
+   "home": {
+    "day": 24,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 7,
+   "arm": "W0",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+   ],
+   "hungry": 6,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 29,
+     "win": "공",
+     "atkCas": 0,
+     "defCas": 1,
+     "tac": "공1→1 방1→0",
+     "ticks": 5413,
+     "tail": "격퇴 +조공3년 +노획0.7"
+    }
+   ],
+   "home": {
+    "day": 30,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 7,
+   "arm": "W0",
+   "id": 13,
+   "atk": "농촌8",
+   "def": "어촌8",
+   "decl": 28,
+   "force": 7,
+   "rationLow": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+   ],
+   "hungry": 8,
+   "dead": 0,
+   "starve": [],
+   "battles": [],
+   "home": null,
+   "ledger": null
+  },
+  {
+   "seed": 7,
+   "arm": "W0",
+   "id": 14,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 30,
+   "force": 9,
+   "rationLow": [
+    44,
+    45,
+    46,
+    47,
+    48
+   ],
+   "hungry": 4,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 48,
+     "win": "공",
+     "atkCas": 0,
+     "defCas": 1,
+     "tac": "공1→1 방1→0",
+     "ticks": 4986,
+     "tail": "격퇴 +조공3년 +노획0.7"
+    }
+   ],
+   "home": {
+    "day": 49,
+    "rem": "0",
+    "freed": 9
+   },
+   "ledger": {
+    "load": 126,
+    "book": 9,
+    "ate": 117,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 7,
+   "arm": "G",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    23,
+    24,
+    25,
+    26
+   ],
+   "hungry": 3,
+   "dead": 1,
+   "starve": [
+    {
+     "day": 26,
+     "pid": "p53"
+    }
+   ],
+   "battles": [
+    {
+     "day": 26,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공0→0 방1→1",
+     "ticks": 4801,
+     "tail": "격퇴"
+    }
+   ],
+   "home": {
+    "day": 27,
+    "rem": "0",
+    "freed": 5
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 7,
+   "arm": "G",
+   "id": 14,
+   "atk": "농촌8",
+   "def": "어촌8",
+   "decl": 28,
+   "force": 7,
+   "rationLow": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47
+   ],
+   "hungry": 5,
+   "dead": 1,
+   "starve": [
+    {
+     "day": 47,
+     "pid": "p37"
+    }
+   ],
+   "battles": [],
+   "home": {
+    "day": 48,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 98,
+    "book": 7,
+    "ate": 91,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 7,
+   "arm": "N10",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+   ],
+   "hungry": 6,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 29,
+     "win": "공",
+     "atkCas": 0,
+     "defCas": 1,
+     "tac": "공1→1 방1→0",
+     "ticks": 5429,
+     "tail": "격퇴 +조공3년 +노획0.7"
+    }
+   ],
+   "home": {
+    "day": 30,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 7,
+   "arm": "N10",
+   "id": 13,
+   "atk": "농촌8",
+   "def": "어촌8",
+   "decl": 28,
+   "force": 7,
+   "rationLow": [
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+   ],
+   "hungry": 8,
+   "dead": 0,
+   "starve": [],
+   "battles": [],
+   "home": null,
+   "ledger": null
+  },
+  {
+   "seed": 7,
+   "arm": "N10",
+   "id": 14,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 30,
+   "force": 9,
+   "rationLow": [
+    45,
+    46,
+    47,
+    48
+   ],
+   "hungry": 4,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 48,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공1→1 방1→1",
+     "ticks": 5078,
+     "tail": "격퇴 +노획0.3"
+    }
+   ],
+   "home": {
+    "day": 49,
+    "rem": "0",
+    "freed": 9
+   },
+   "ledger": {
+    "load": 126,
+    "book": 9,
+    "ate": 117,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 7,
+   "arm": "N30",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    24,
+    25
+   ],
+   "hungry": 2,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 25,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공1→1 방1→1",
+     "ticks": 4541,
+     "tail": "격퇴 +노획0.3"
+    }
+   ],
+   "home": {
+    "day": 26,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 7,
+   "arm": "N30",
+   "id": 13,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 26,
+   "force": 9,
+   "rationLow": [
+    41,
+    42
+   ],
+   "hungry": 2,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 42,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공1→1 방1→1",
+     "ticks": 4627,
+     "tail": "격퇴 +노획0.3"
+    }
+   ],
+   "home": {
+    "day": 43,
+    "rem": "0",
+    "freed": 9
+   },
+   "ledger": {
+    "load": 126,
+    "book": 9,
+    "ate": 117,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 7,
+   "arm": "N30",
+   "id": 14,
+   "atk": "농촌8",
+   "def": "어촌8",
+   "decl": 28,
+   "force": 7,
+   "rationLow": [
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+   ],
+   "hungry": 8,
+   "dead": 0,
+   "starve": [],
+   "battles": [],
+   "home": null,
+   "ledger": null
+  },
+  {
+   "seed": 7,
+   "arm": "P30",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    23
+   ],
+   "hungry": 0,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 23,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공1→1 방1→1",
+     "ticks": 4027,
+     "tail": "격퇴 +노획0.3"
+    }
+   ],
+   "home": {
+    "day": 24,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 7,
+   "arm": "P30",
+   "id": 14,
+   "atk": "농촌8",
+   "def": "어촌8",
+   "decl": 29,
+   "force": 7,
+   "rationLow": [
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+   ],
+   "hungry": 7,
+   "dead": 0,
+   "starve": [],
+   "battles": [],
+   "home": null,
+   "ledger": null
+  },
+  {
+   "seed": 42,
+   "arm": "W0",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+   ],
+   "hungry": 6,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 29,
+     "win": "공",
+     "atkCas": 0,
+     "defCas": 1,
+     "tac": "공1→1 방1→0",
+     "ticks": 5413,
+     "tail": "격퇴 +조공3년 +노획0.7"
+    }
+   ],
+   "home": {
+    "day": 30,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 42,
+   "arm": "W0",
+   "id": 13,
+   "atk": "농촌8",
+   "def": "어촌8",
+   "decl": 28,
+   "force": 7,
+   "rationLow": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+   ],
+   "hungry": 8,
+   "dead": 0,
+   "starve": [],
+   "battles": [],
+   "home": null,
+   "ledger": null
+  },
+  {
+   "seed": 42,
+   "arm": "W0",
+   "id": 14,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 30,
+   "force": 9,
+   "rationLow": [
+    44,
+    45,
+    46,
+    47,
+    48
+   ],
+   "hungry": 4,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 48,
+     "win": "공",
+     "atkCas": 0,
+     "defCas": 1,
+     "tac": "공1→1 방1→0",
+     "ticks": 4986,
+     "tail": "격퇴 +조공3년 +노획0.7"
+    }
+   ],
+   "home": {
+    "day": 49,
+    "rem": "0",
+    "freed": 9
+   },
+   "ledger": {
+    "load": 126,
+    "book": 9,
+    "ate": 117,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 42,
+   "arm": "G",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    23,
+    24,
+    25,
+    26
+   ],
+   "hungry": 3,
+   "dead": 1,
+   "starve": [
+    {
+     "day": 26,
+     "pid": "p53"
+    }
+   ],
+   "battles": [
+    {
+     "day": 26,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공0→0 방1→1",
+     "ticks": 4801,
+     "tail": "격퇴"
+    }
+   ],
+   "home": {
+    "day": 27,
+    "rem": "0",
+    "freed": 5
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 42,
+   "arm": "G",
+   "id": 14,
+   "atk": "농촌8",
+   "def": "어촌8",
+   "decl": 28,
+   "force": 7,
+   "rationLow": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47
+   ],
+   "hungry": 5,
+   "dead": 1,
+   "starve": [
+    {
+     "day": 47,
+     "pid": "p37"
+    }
+   ],
+   "battles": [],
+   "home": {
+    "day": 48,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 98,
+    "book": 7,
+    "ate": 91,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 42,
+   "arm": "G",
+   "id": 16,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 34,
+   "force": 7,
+   "rationLow": [
+    48,
+    49,
+    50
+   ],
+   "hungry": 2,
+   "dead": 0,
+   "starve": [],
+   "battles": [],
+   "home": null,
+   "ledger": null
+  },
+  {
+   "seed": 42,
+   "arm": "N10",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+   ],
+   "hungry": 6,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 29,
+     "win": "공",
+     "atkCas": 0,
+     "defCas": 1,
+     "tac": "공1→1 방1→0",
+     "ticks": 5429,
+     "tail": "격퇴 +조공3년 +노획0.7"
+    }
+   ],
+   "home": {
+    "day": 30,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 42,
+   "arm": "N10",
+   "id": 13,
+   "atk": "농촌8",
+   "def": "어촌8",
+   "decl": 28,
+   "force": 7,
+   "rationLow": [
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+   ],
+   "hungry": 8,
+   "dead": 0,
+   "starve": [],
+   "battles": [],
+   "home": null,
+   "ledger": null
+  },
+  {
+   "seed": 42,
+   "arm": "N10",
+   "id": 14,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 30,
+   "force": 9,
+   "rationLow": [
+    45,
+    46,
+    47,
+    48
+   ],
+   "hungry": 4,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 48,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공1→1 방1→1",
+     "ticks": 5078,
+     "tail": "격퇴 +노획0.3"
+    }
+   ],
+   "home": {
+    "day": 49,
+    "rem": "0",
+    "freed": 9
+   },
+   "ledger": {
+    "load": 126,
+    "book": 9,
+    "ate": 117,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 42,
+   "arm": "N30",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    24,
+    25
+   ],
+   "hungry": 2,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 25,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공1→1 방1→1",
+     "ticks": 4541,
+     "tail": "격퇴 +노획0.3"
+    }
+   ],
+   "home": {
+    "day": 26,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 42,
+   "arm": "N30",
+   "id": 13,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 26,
+   "force": 9,
+   "rationLow": [
+    41,
+    42
+   ],
+   "hungry": 2,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 42,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공1→1 방1→1",
+     "ticks": 4627,
+     "tail": "격퇴 +노획0.3"
+    }
+   ],
+   "home": {
+    "day": 43,
+    "rem": "0",
+    "freed": 9
+   },
+   "ledger": {
+    "load": 126,
+    "book": 9,
+    "ate": 117,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 42,
+   "arm": "N30",
+   "id": 14,
+   "atk": "농촌8",
+   "def": "어촌8",
+   "decl": 28,
+   "force": 7,
+   "rationLow": [
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+   ],
+   "hungry": 8,
+   "dead": 0,
+   "starve": [],
+   "battles": [],
+   "home": null,
+   "ledger": null
+  },
+  {
+   "seed": 42,
+   "arm": "P30",
+   "id": 5,
+   "atk": "어촌13",
+   "def": "농촌20",
+   "decl": 9,
+   "force": 6,
+   "rationLow": [
+    23
+   ],
+   "hungry": 0,
+   "dead": 0,
+   "starve": [],
+   "battles": [
+    {
+     "day": 23,
+     "win": "방",
+     "atkCas": 0,
+     "defCas": 0,
+     "tac": "공1→1 방1→1",
+     "ticks": 4027,
+     "tail": "격퇴 +노획0.3"
+    }
+   ],
+   "home": {
+    "day": 24,
+    "rem": "0",
+    "freed": 6
+   },
+   "ledger": {
+    "load": 84,
+    "book": 6,
+    "ate": 78,
+    "lay": 0,
+    "drop": 0,
+    "gap": 0
+   }
+  },
+  {
+   "seed": 42,
+   "arm": "P30",
+   "id": 14,
+   "atk": "농촌8",
+   "def": "어촌8",
+   "decl": 29,
+   "force": 7,
+   "rationLow": [
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+   ],
+   "hungry": 8,
+   "dead": 0,
+   "starve": [],
+   "battles": [],
+   "home": null,
+   "ledger": null
+  }
+ ],
+ "bytes": {
+  "W0=M0 1020": true,
+  "W0=M0 7": true,
+  "W0=M0 42": true,
+  "W0b=W0 1020": true,
+  "N30b=N30 1020": true,
+  "W0c=W0 1020": true
+ },
+ "ladder": {
+  "what": "날마다 다 먹던 몸(정상 상태)이 0일에 짐이 줄어 그날부터 먹은 몫 φ — 제품 함수 _t906Day · _t906Sat(Body decayStep · extremeHpRate · recoverMult · kcal dayHunger)",
+  "steady": {
+   "after": 66.35,
+   "before": 16.35
+  },
+  "phi": {
+   "0": {
+    "dead": 5,
+    "hp": [
+     100,
+     100,
+     78.89,
+     45.56,
+     12.22,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "input": [
+     1,
+     0.377,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "low": [
+     16.35,
+     16.35,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "1": {
+    "dead": null,
+    "hp": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     100,
+     100,
+     100,
+     100,
+     100,
+     100,
+     100,
+     100,
+     100,
+     100
+    ],
+    "input": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "low": [
+     16.35,
+     16.35,
+     16.35,
+     16.35,
+     16.35,
+     16.35,
+     16.35,
+     16.35,
+     16.35,
+     16.35,
+     16.35,
+     16.35,
+     16.35,
+     16.35,
+     16.35
+    ]
+   },
+   "0.75": {
+    "dead": null,
+    "hp": [
+     100,
+     100,
+     99.97,
+     99.25,
+     97.83,
+     95.97,
+     93.87,
+     91.65,
+     89.37,
+     87.06,
+     84.74,
+     82.41,
+     80.08,
+     77.74,
+     75.41
+    ],
+    "input": [
+     1,
+     0.9385,
+     0.8778,
+     0.8483,
+     0.8339,
+     0.827,
+     0.8236,
+     0.8219,
+     0.8211,
+     0.8207,
+     0.8205,
+     0.8205,
+     0.8204,
+     0.8204,
+     0.8204
+    ],
+    "low": [
+     16.35,
+     16.35,
+     10.28,
+     7.33,
+     5.89,
+     5.2,
+     4.86,
+     4.69,
+     4.61,
+     4.57,
+     4.55,
+     4.55,
+     4.54,
+     4.54,
+     4.54
+    ]
+   },
+   "0.5": {
+    "dead": 10,
+    "hp": [
+     100,
+     100,
+     97.4,
+     87.4,
+     74.06,
+     60.71,
+     47.36,
+     34.02,
+     20.67,
+     7.32,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "input": [
+     1,
+     0.8135,
+     0.6341,
+     0.55,
+     0.55,
+     0.55,
+     0.55,
+     0.55,
+     0.55,
+     0.55,
+     0.55,
+     0.55,
+     0.55,
+     0.55,
+     0.55
+    ],
+    "low": [
+     16.35,
+     16.35,
+     4.2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "0.25": {
+    "dead": 6,
+    "hp": [
+     100,
+     100,
+     89.73,
+     64.69,
+     39.66,
+     14.63,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "input": [
+     1,
+     0.627,
+     0.3,
+     0.3,
+     0.3,
+     0.3,
+     0.3,
+     0.3,
+     0.3,
+     0.3,
+     0.3,
+     0.3,
+     0.3,
+     0.3,
+     0.3
+    ],
+    "low": [
+     16.35,
+     16.35,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  }
+ },
+ "w400": {
+  "what": "기준선 조건(VILLAGE_CARAVAN_MAX=0 · T400_BUILD_ACT=0 · 하루 250ms) 400날 시드 1020 한 판씩 · VILLAGE_WAR_LOG=1 · 관찰자 t906 — 기준선 ㄱ 첫 갈림 날 383 이 무엇인가",
+  "g": {
+   "ws": {
+    "decl": 8,
+    "battle": 0,
+    "atkWin": 0,
+    "defWin": 0,
+    "cas": 0
+   },
+   "sum": {
+    "unfed": 580,
+    "hungryDays": 33,
+    "starveDead": 6,
+    "starveEcon": 6,
+    "drop": 0,
+    "back": 0,
+    "eaten": 1638
+   },
+   "t906": {
+    "mode": "die",
+    "bodyDays": 108,
+    "hungryBodyDays": 33,
+    "minH": 0,
+    "hpLost": 726.6502039200383,
+    "dead": 6,
+    "econDead": 6,
+    "deadDays": [
+     {
+      "day": 384,
+      "war": 1,
+      "pid": "p9",
+      "econ": true
+     },
+     {
+      "day": 386,
+      "war": 2,
+      "pid": "p37",
+      "econ": true
+     },
+     {
+      "day": 390,
+      "war": 3,
+      "pid": "p13",
+      "econ": true
+     },
+     {
+      "day": 392,
+      "war": 4,
+      "pid": "p23",
+      "econ": true
+     },
+     {
+      "day": 393,
+      "war": 5,
+      "pid": "p16",
+      "econ": true
+     },
+     {
+      "day": 399,
+      "war": 6,
+      "pid": "p11",
+      "econ": true
+     }
+    ],
+    "wiped": 6
+   },
+   "wars": [
+    {
+     "id": 1,
+     "atk": "어촌2",
+     "def": "임업6",
+     "day0": 365,
+     "day1": 385,
+     "phaseDays": {
+      "march": 1,
+      "battle": 18,
+      "return": 1
+     },
+     "hungryDays": 6,
+     "unfed": 35,
+     "starveDead": 1,
+     "starveWiped": 384,
+     "home": [
+      {
+       "day": 385,
+       "why": "군량 잔량 0 곳간 복귀 ·",
+       "freed": 6
+      }
+     ],
+     "battles": []
+    },
+    {
+     "id": 2,
+     "atk": "농촌8",
+     "def": "농촌16",
+     "day0": 367,
+     "day1": 387,
+     "phaseDays": {
+      "march": 1,
+      "battle": 18,
+      "return": 1
+     },
+     "hungryDays": 5,
+     "unfed": 75,
+     "starveDead": 1,
+     "starveWiped": 386,
+     "home": [
+      {
+       "day": 387,
+       "why": "군량 잔량 0 곳간 복귀 ·",
+       "freed": 14
+      }
+     ],
+     "battles": []
+    },
+    {
+     "id": 3,
+     "atk": "농촌1",
+     "def": "어촌5",
+     "day0": 371,
+     "day1": 391,
+     "phaseDays": {
+      "march": 1,
+      "battle": 18,
+      "return": 1
+     },
+     "hungryDays": 6,
+     "unfed": 215,
+     "starveDead": 1,
+     "starveWiped": 390,
+     "home": [
+      {
+       "day": 391,
+       "why": "군량 잔량 0 곳간 복귀 ·",
+       "freed": 42
+      }
+     ],
+     "battles": []
+    },
+    {
+     "id": 4,
+     "atk": "어촌5",
+     "def": "농촌17",
+     "day0": 373,
+     "day1": 393,
+     "phaseDays": {
+      "march": 1,
+      "battle": 18,
+      "return": 1
+     },
+     "hungryDays": 5,
+     "unfed": 25,
+     "starveDead": 1,
+     "starveWiped": 392,
+     "home": [
+      {
+       "day": 393,
+       "why": "군량 잔량 0 곳간 복귀 ·",
+       "freed": 4
+      }
+     ],
+     "battles": []
+    },
+    {
+     "id": 5,
+     "atk": "어촌3",
+     "def": "농촌18",
+     "day0": 374,
+     "day1": 394,
+     "phaseDays": {
+      "march": 1,
+      "battle": 18,
+      "return": 1
+     },
+     "hungryDays": 5,
+     "unfed": 10,
+     "starveDead": 1,
+     "starveWiped": 393,
+     "home": [
+      {
+       "day": 394,
+       "why": "군량 잔량 0 곳간 복귀 ·",
+       "freed": 1
+      }
+     ],
+     "battles": []
+    },
+    {
+     "id": 6,
+     "atk": "임업2",
+     "def": "임업1",
+     "day0": 380,
+     "day1": 400,
+     "phaseDays": {
+      "march": 1,
+      "battle": 18,
+      "return": 1
+     },
+     "hungryDays": 6,
+     "unfed": 220,
+     "starveDead": 1,
+     "starveWiped": 399,
+     "home": [
+      {
+       "day": 400,
+       "why": "군량 잔량 0 곳간 복귀 ·",
+       "freed": 43
+      }
+     ],
+     "battles": []
+    },
+    {
+     "id": 7,
+     "atk": "농촌14",
+     "def": "농촌7",
+     "day0": 399,
+     "day1": null,
+     "phaseDays": {
+      "march": 1,
+      "battle": 1
+     },
+     "hungryDays": 0,
+     "unfed": 0,
+     "starveDead": 0,
+     "starveWiped": null,
+     "home": [],
+     "battles": []
+    },
+    {
+     "id": 8,
+     "atk": "농촌4",
+     "def": "농촌7",
+     "day0": 400,
+     "day1": null,
+     "phaseDays": {
+      "march": 1
+     },
+     "hungryDays": 0,
+     "unfed": 0,
+     "starveDead": 0,
+     "starveWiped": null,
+     "home": [],
+     "battles": []
+    }
+   ]
+  },
+  "a": {
+   "ws": {
+    "decl": 8,
+    "battle": 0,
+    "atkWin": 0,
+    "defWin": 0,
+    "cas": 0
+   },
+   "sum": {
+    "unfed": 1430,
+    "hungryDays": 89,
+    "starveDead": 0,
+    "starveEcon": 0,
+    "drop": 0,
+    "back": 0,
+    "eaten": 1638
+   },
+   "t906": null,
+   "wars": [
+    {
+     "id": 1,
+     "atk": "어촌2",
+     "def": "임업6",
+     "day0": 365,
+     "day1": null,
+     "phaseDays": {
+      "march": 1,
+      "battle": 35
+     },
+     "hungryDays": 22,
+     "unfed": 147,
+     "starveDead": 0,
+     "starveWiped": null,
+     "home": [],
+     "battles": []
+    },
+    {
+     "id": 2,
+     "atk": "농촌8",
+     "def": "농촌16",
+     "day0": 367,
+     "day1": null,
+     "phaseDays": {
+      "march": 1,
+      "battle": 33
+     },
+     "hungryDays": 19,
+     "unfed": 285,
+     "starveDead": 0,
+     "starveWiped": null,
+     "home": [],
+     "battles": []
+    },
+    {
+     "id": 3,
+     "atk": "농촌1",
+     "def": "어촌5",
+     "day0": 371,
+     "day1": null,
+     "phaseDays": {
+      "march": 1,
+      "battle": 29
+     },
+     "hungryDays": 16,
+     "unfed": 645,
+     "starveDead": 0,
+     "starveWiped": null,
+     "home": [],
+     "battles": []
+    },
+    {
+     "id": 4,
+     "atk": "어촌5",
+     "def": "농촌17",
+     "day0": 373,
+     "day1": null,
+     "phaseDays": {
+      "march": 1,
+      "battle": 27
+     },
+     "hungryDays": 13,
+     "unfed": 65,
+     "starveDead": 0,
+     "starveWiped": null,
+     "home": [],
+     "battles": []
+    },
+    {
+     "id": 5,
+     "atk": "어촌3",
+     "def": "농촌18",
+     "day0": 374,
+     "day1": null,
+     "phaseDays": {
+      "march": 1,
+      "battle": 26
+     },
+     "hungryDays": 12,
+     "unfed": 24,
+     "starveDead": 0,
+     "starveWiped": null,
+     "home": [],
+     "battles": []
+    },
+    {
+     "id": 6,
+     "atk": "임업2",
+     "def": "임업1",
+     "day0": 380,
+     "day1": null,
+     "phaseDays": {
+      "march": 1,
+      "battle": 20
+     },
+     "hungryDays": 7,
+     "unfed": 264,
+     "starveDead": 0,
+     "starveWiped": null,
+     "home": [],
+     "battles": []
+    },
+    {
+     "id": 7,
+     "atk": "농촌14",
+     "def": "농촌7",
+     "day0": 399,
+     "day1": null,
+     "phaseDays": {
+      "march": 1,
+      "battle": 1
+     },
+     "hungryDays": 0,
+     "unfed": 0,
+     "starveDead": 0,
+     "starveWiped": null,
+     "home": [],
+     "battles": []
+    },
+    {
+     "id": 8,
+     "atk": "농촌4",
+     "def": "농촌7",
+     "day0": 400,
+     "day1": null,
+     "phaseDays": {
+      "march": 1
+     },
+     "hungryDays": 0,
+     "unfed": 0,
+     "starveDead": 0,
+     "starveWiped": null,
+     "home": [],
+     "battles": []
+    }
+   ]
+  }
+ },
+ "merged": {
+  "what": "main 812f6f35 합친 머리 b574eeec 에서 다시 — 전쟁 자 18판(M1 main · W1 · G1 · N1 · N3 · P3) · 400날 이야기",
+  "head": "b574eeec",
+  "main": "812f6f35",
+  "bytes": {
+   "W1=M1 1020": true,
+   "W1=M1 7": true,
+   "W1=M1 42": true
+  },
+  "sameOutsideEnv": "합치기 전 판과 env 칸 밖 18/18 같음(W0↔W1 · G↔G1 · N10↔N1 · N30↔N3 · P30↔P3 · M0↔M1) · 400날 g · a 2/2 같음"
+ },
+ "merged2": {
+  "head": "7310b0ec",
+  "main": "1732d93a",
+  "what": "전쟁 자 9판(M2 main · W2 끔 · G2 ㄱ) · 기준선 10-24 끔",
+  "bytes": "W2 = M2 바이트 3/3 · W2 = W1 · G2 = G1 env 칸 밖 3/3",
+  "baselineA": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-SnpWGe ===",
+   "· 시드 1020 400일 판 620초(종료 0)",
+   "· 시드 7 400일 판 667초(종료 0)",
+   "· 시드 42 400일 판 668초(종료 0)",
+   "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2512)",
+   "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2784)",
+   "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2725)",
+   "=== 같음 3/3 · 판 668초 ==="
+  ]
+ },
+ "baseline24": {
+  "file": "계측/서버기준선_2026-10-24.json",
+  "head": "b574eeec",
+  "A": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-vwwSn5 ===",
+   "· 시드 1020 400일 판 625초(종료 0)",
+   "· 시드 42 400일 판 668초(종료 0)",
+   "· 시드 7 400일 판 669초(종료 0)",
+   "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2512)",
+   "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2784)",
+   "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2725)",
+   "=== 같음 3/3 · 판 669초 ==="
+  ],
+  "G": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-mCFobl ===",
+   "· 시드 1020 400일 판 648초(종료 0)",
+   "· 시드 7 400일 판 691초(종료 0)",
+   "· 시드 42 400일 판 694초(종료 0)",
+   "✗ 시드 1020: 첫 갈림 = 날 383(econ 383 · 기준선 econ 383) · 마을 1 — 어촌2[st(곳간)·tr(금고)]",
+   "✗ 시드 7: 첫 갈림 = 날 383(econ 383 · 기준선 econ 383) · 마을 1 — 어촌2[st(곳간)·tr(금고)]",
+   "✗ 시드 42: 첫 갈림 = 날 383(econ 383 · 기준선 econ 383) · 마을 1 — 임업2[st(곳간)·tr(금고)]",
+   "=== 다름 3/3 · 판 694초 ==="
+  ],
+  "N30": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-rjPNT4 ===",
+   "· 시드 1020 400일 판 691초(종료 0)",
+   "· 시드 7 400일 판 733초(종료 0)",
+   "· 시드 42 400일 판 739초(종료 0)",
+   "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2512)",
+   "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2784)",
+   "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2725)",
+   "=== 같음 3/3 · 판 739초 ==="
+  ]
+ },
+ "baseline": {
+  "file": "계측/서버기준선_2026-10-23.json",
+  "A": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-wApnEO ===",
+   "· 시드 1020 400일 판 587초(종료 0)",
+   "· 시드 42 400일 판 619초(종료 0)",
+   "· 시드 7 400일 판 619초(종료 0)",
+   "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2512)",
+   "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2784)",
+   "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2725)",
+   "=== 같음 3/3 · 판 619초 ==="
+  ],
+  "G": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-JtZWkP ===",
+   "· 시드 1020 400일 판 679초(종료 0)",
+   "· 시드 42 400일 판 726초(종료 0)",
+   "· 시드 7 400일 판 731초(종료 0)",
+   "✗ 시드 1020: 첫 갈림 = 날 383(econ 383 · 기준선 econ 383) · 마을 1 — 어촌2[st(곳간)·tr(금고)]",
+   "✗ 시드 7: 첫 갈림 = 날 383(econ 383 · 기준선 econ 383) · 마을 1 — 어촌2[st(곳간)·tr(금고)]",
+   "✗ 시드 42: 첫 갈림 = 날 383(econ 383 · 기준선 econ 383) · 마을 1 — 임업2[st(곳간)·tr(금고)]",
+   "=== 다름 3/3 · 판 731초 ==="
+  ],
+  "N30": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-cKqDOL ===",
+   "· 시드 42 400일 판 61초(종료 1)",
+   "· 시드 1020 400일 판 466초(종료 0)",
+   "· 시드 7 400일 판 503초(종료 0)",
+   "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2512)",
+   "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2784)",
+   "✗ 시드 42: 판 실패",
+   "=== 다름 1/3 · 판 503초 ==="
+  ],
+  "N30_42": [
+   "=== 서버 판 기준선 견주기 — 42:400일 · 동시 1 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-zyC5c4 ===",
+   "· 시드 42 400일 판 528초(종료 0)",
+   "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2725)",
+   "=== 같음 1/1 · 판 528초 ==="
+  ]
+ }
+}

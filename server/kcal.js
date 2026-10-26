@@ -235,5 +235,6 @@ function table(dayMs) {
 module.exports = {
   DAY_KCAL, COOKED_FACTOR, KCAL_PER_KG, FOOD_RES,
   kcalPerKg, kcalOf, hungerOf, dayHunger, installCookRecipes,
+  DAY_MS_DEFAULT,   // ★[T906] 몸 하루(운영 하루 24분 · `dayHunger` 기본값) — 원정 몸 사다리가 econ 하루마다 이 하루를 적분한다(수 무변)
   isFoodRes, econUnitsOf, itemsOf, table,
 };
