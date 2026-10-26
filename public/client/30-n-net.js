@@ -224,6 +224,7 @@
     //   ⇒ 이 함수가 사는 `70-lobby.js`(조각 24)가 **반드시 먼저 실려 있다**. 경주 자체가 없어졌다.
     onbLobbyInit();
     document.getElementById('enter').onclick = async () => {
+      _ldOpen();   // ★[T920] 첫 접속 표 — 눌림(첫 번만)
       const inputName = document.getElementById('name').value.trim();
       const inputPw = document.getElementById('password').value;
       // ★★[T363] **제출 때 한 번** — 이름이 이미 있나 · 있다면 어디로 가야 하나.
@@ -234,10 +235,12 @@
       window.__autoZone = null;
       if (inputName && inputPw) {
         try {
+          _ldMark('auth0');   // ★[T920]
           const r = await fetch('/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: inputName, password: inputPw, color: myColor,
               home_zone: sel.value, home_x: null, home_y: null }) });
           const d = await r.json();
+          _ldMark('auth1');   // ★[T920]
           //   ★★[T451 ⓪ 2026-09-27] `missing_home_zone` 은 실패가 아니라 **"새 이름"** 이다 — `/auth` 는 집 좌표 없이는 가입을 못 해
           //     그렇게 답하고(central.js `/auth` 신규 갈래), 가입·**승계**는 ws 인증이 한다(존이 마을광장을 집으로 준다 · zone.js
           //     `promoteGuest`/`authenticate`). T363 뒤 이 답을 로비에 막아 두어 **새 계정·게스트 승계가 로비에서 못 나갔다**
@@ -777,6 +780,7 @@
     }
     const url = `${meta.wsUrl}/?${params.toString()}`;
     const ws = new WebSocket(url);
+    if (role === 'primary' && _ld.rx && _ld.at.ws == null) { _ldMark('ws'); ws.addEventListener('open', () => _ldMark('open'), { once: true }); }   // ★[T920] 첫 접속 창에만
     const c = {
       ws, role, zoneId,
       meta: null,
@@ -803,10 +807,12 @@
     // ★유령 클라 fix: 자기 conn 객체(c)를 같이 넘김. 교체된 옛 소켓이 close 직전 흘리는 잔여 메시지가
     //   zoneId 재조회로 "새 연결"의 상태에 섞여 들어가던 경로 차단(myPid/좌표/엔티티 오염).
     //   ★[T486 ③] 프레임 캡처가 켜져 있을 때만 메시지 처리 시간을 쌓는다(`__frameCapture` · 끔이면 종전 한 줄 그대로).
+    //   ★[T920] 첫 접속 창(눌림 → 첫 입력 가능) 동안 주 소켓 메시지는 `_ldRx` 가 한 번 풀어 갈래 · 글자 수를 적고 그 값을 그대로 넘긴다(두 번 안 푼다).
     ws.onmessage = (ev) => {
-      if (!window.__fcOn) return handleMessage(zoneId, JSON.parse(ev.data), c);
+      const _m = (_ld.rx && c.role === 'primary') ? _ldRx(ev.data) : null;
+      if (!window.__fcOn) return handleMessage(zoneId, _m || JSON.parse(ev.data), c);
       const _t0 = performance.now();
-      try { return handleMessage(zoneId, JSON.parse(ev.data), c); } finally { window.__fcMsgMs += performance.now() - _t0; window.__fcMsgN++; }
+      try { return handleMessage(zoneId, _m || JSON.parse(ev.data), c); } finally { window.__fcMsgMs += performance.now() - _t0; window.__fcMsgN++; }
     };
     ws.onclose = (ev) => {
       if (conns.get(zoneId) === c) conns.delete(zoneId);
@@ -1040,6 +1046,7 @@
       if (c.role === 'primary') { connEverReady = true; connAttempts = 0; connHelloAt = 0; connOutageAt = 0;
         _reconnAt = 0;   // ★백오프 시계도 푼다 — 다음 끊김은 곧바로 한 번 시도한다
         connMark('ready', { reason: '', stage: '', ref: '' }); }
+      if (c.role === 'primary' && _ld.rx) _ldMark('welcomeDone');   // ★[T920] 첫 welcome 처리 끝
       if (typeof _wStart === 'number') {
         const _proc = performance.now() - _wStart;
         if (_proc > 5) console.log('[handoff] welcome 처리 =', _proc.toFixed(0), 'ms');

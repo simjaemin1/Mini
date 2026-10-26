@@ -704,7 +704,7 @@
     _natItems.sort((a, b) => a.z - b.z);
     window._natAcc = (window._natAcc || 0) + (performance.now() - _natT0);
     window.__natDbg = { fringe: _nNat[0], props: _nNat[1], sprites: _natLoaded + '/' + _natWanted,
-                        chunks: _natChunk.size, blocked: _natBlockSet ? _natBlockSet.size : 0,
+                        chunks: _natChunk.size, pending: _natPending, blocked: _natBlockSet ? _natBlockSet.size : 0,
                         trees: _treeSpritesLoaded, treeDraw: { n: _treeDraw.n, h: _treeDraw.h, px: _treeDraw.px, aspect: _treeDraw.aspect } };
 
     for (const c of conns.values()) {
