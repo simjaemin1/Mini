@@ -1,0 +1,1260 @@
+{
+ "card": "T940",
+ "made": "2026-10-26",
+ "probe": "node scripts/t940-stale-read-probe.js 3 [race,calm,live] [--off] [--t927-off]",
+ "delayMs": 3000,
+ "keys": [
+  "craftSkill",
+  "fishStats"
+ ],
+ "fix_on": {
+  "off": false,
+  "t927off": false,
+  "delayMs": 3000,
+  "sum": {
+   "race": {
+    "n": 3,
+    "bGotA": 3,
+    "aKicked": 0,
+    "kept": 3,
+    "lost": 0,
+    "marginMs": {
+     "min": 54,
+     "max": 403
+    },
+    "joinMs": [
+     3416,
+     3058,
+     3064
+    ]
+   },
+   "calm": {
+    "n": 3,
+    "bGotA": 3,
+    "aKicked": 0,
+    "kept": 3,
+    "lost": 0,
+    "marginMs": {
+     "min": 57,
+     "max": 84
+    },
+    "joinMs": [
+     89,
+     74,
+     64
+    ]
+   },
+   "live": {
+    "n": 3,
+    "bGotA": 3,
+    "aKicked": 3,
+    "kept": 3,
+    "lost": 0,
+    "marginMs": {
+     "min": 58,
+     "max": 80
+    },
+    "joinMs": [
+     66,
+     69,
+     88
+    ]
+   }
+  },
+  "trips": [
+   {
+    "P": "race",
+    "k": 1,
+    "pid": "anon_MzSl6Xp0sNl2",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 3416,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 10,
+      "landMs": 3013,
+      "delayed": true,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 403,
+    "bGotA": true,
+    "row1HasA": true,
+    "row2HasA": true,
+    "svB": 4,
+    "sv1": 5,
+    "sv2": 6,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "race",
+    "k": 2,
+    "pid": "anon_lHSH8NGBVTXG",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 3058,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 3,
+      "landMs": 3004,
+      "delayed": true,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 54,
+    "bGotA": true,
+    "row1HasA": true,
+    "row2HasA": true,
+    "svB": 4,
+    "sv1": 5,
+    "sv2": 6,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "race",
+    "k": 3,
+    "pid": "anon_m7MxriurcP9o",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 3064,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 2,
+      "landMs": 3006,
+      "delayed": true,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 58,
+    "bGotA": true,
+    "row1HasA": true,
+    "row2HasA": true,
+    "svB": 4,
+    "sv1": 5,
+    "sv2": 6,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "calm",
+    "k": 4,
+    "pid": "anon_jcr01WhDx1Wq",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 89,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 2,
+      "landMs": 5,
+      "delayed": false,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 84,
+    "bGotA": true,
+    "row1HasA": true,
+    "row2HasA": true,
+    "svB": 4,
+    "sv1": 5,
+    "sv2": 6,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "calm",
+    "k": 5,
+    "pid": "anon_Dsfa7231lSrt",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 74,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 3,
+      "landMs": 5,
+      "delayed": false,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 69,
+    "bGotA": true,
+    "row1HasA": true,
+    "row2HasA": true,
+    "svB": 4,
+    "sv1": 5,
+    "sv2": 6,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "calm",
+    "k": 6,
+    "pid": "anon_mcklJYIRGYPU",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 64,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 2,
+      "landMs": 7,
+      "delayed": false,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 57,
+    "bGotA": true,
+    "row1HasA": true,
+    "row2HasA": true,
+    "svB": 4,
+    "sv1": 5,
+    "sv2": 6,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "live",
+    "k": 7,
+    "pid": "anon_nb2esIHfQkBU",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 66,
+    "aKicked": true,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 5,
+      "landMs": 8,
+      "delayed": false,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 58,
+    "bGotA": true,
+    "row1HasA": true,
+    "row2HasA": true,
+    "svB": 4,
+    "sv1": 5,
+    "sv2": 6,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "live",
+    "k": 8,
+    "pid": "anon_1hKAzig6XHJb",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 69,
+    "aKicked": true,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 6,
+      "landMs": 8,
+      "delayed": false,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 61,
+    "bGotA": true,
+    "row1HasA": true,
+    "row2HasA": true,
+    "svB": 4,
+    "sv1": 5,
+    "sv2": 6,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "live",
+    "k": 9,
+    "pid": "anon_nF5drB5qkP-5",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 88,
+    "aKicked": true,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 6,
+      "landMs": 8,
+      "delayed": false,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 80,
+    "bGotA": true,
+    "row1HasA": true,
+    "row2HasA": true,
+    "svB": 4,
+    "sv1": 5,
+    "sv2": 6,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   }
+  ],
+  "sec": 54
+ },
+ "fix_off": {
+  "off": true,
+  "t927off": false,
+  "delayMs": 3000,
+  "sum": {
+   "race": {
+    "n": 3,
+    "bGotA": 0,
+    "aKicked": 0,
+    "kept": 0,
+    "lost": 3,
+    "marginMs": {
+     "min": -2952,
+     "max": -2546
+    },
+    "joinMs": [
+     470,
+     54,
+     55
+    ]
+   },
+   "calm": {
+    "n": 3,
+    "bGotA": 1,
+    "aKicked": 0,
+    "kept": 1,
+    "lost": 2,
+    "marginMs": {
+     "min": 42,
+     "max": 52
+    },
+    "joinMs": [
+     52,
+     55,
+     56
+    ]
+   },
+   "live": {
+    "n": 3,
+    "bGotA": 0,
+    "aKicked": 0,
+    "kept": 0,
+    "lost": 3,
+    "marginMs": {
+     "min": -1213,
+     "max": -1210
+    },
+    "joinMs": [
+     55,
+     49,
+     60
+    ]
+   }
+  },
+  "trips": [
+   {
+    "P": "race",
+    "k": 1,
+    "pid": "anon_3n8G7J2jI3KP",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 470,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 13,
+      "landMs": 3016,
+      "delayed": true,
+      "resp": "{\"ok\":false,\"reason\":\"stale\",\"sv\":4}"
+     }
+    ],
+    "marginMs": -2546,
+    "bGotA": false,
+    "row1HasA": false,
+    "row2HasA": false,
+    "svB": 3,
+    "sv1": 4,
+    "sv2": 5,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "race",
+    "k": 2,
+    "pid": "anon_mcvnYdC699FN",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 54,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 3,
+      "landMs": 3006,
+      "delayed": true,
+      "resp": "{\"ok\":false,\"reason\":\"stale\",\"sv\":4}"
+     }
+    ],
+    "marginMs": -2952,
+    "bGotA": false,
+    "row1HasA": false,
+    "row2HasA": false,
+    "svB": 3,
+    "sv1": 4,
+    "sv2": 5,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "race",
+    "k": 3,
+    "pid": "anon_yELjkf7QTufX",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 55,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 3,
+      "landMs": 3005,
+      "delayed": true,
+      "resp": "{\"ok\":false,\"reason\":\"stale\",\"sv\":4}"
+     }
+    ],
+    "marginMs": -2950,
+    "bGotA": false,
+    "row1HasA": false,
+    "row2HasA": false,
+    "svB": 3,
+    "sv1": 4,
+    "sv2": 5,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "calm",
+    "k": 4,
+    "pid": "anon_hsRlh2NPpG_i",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 52,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 2,
+      "landMs": 9,
+      "delayed": false,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 43,
+    "bGotA": false,
+    "row1HasA": false,
+    "row2HasA": false,
+    "svB": 3,
+    "sv1": 4,
+    "sv2": 5,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "calm",
+    "k": 5,
+    "pid": "anon_M7jFL7AzzHle",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 55,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 6,
+      "landMs": 13,
+      "delayed": false,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 42,
+    "bGotA": true,
+    "row1HasA": true,
+    "row2HasA": true,
+    "svB": 4,
+    "sv1": 5,
+    "sv2": 6,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "calm",
+    "k": 6,
+    "pid": "anon_SGqfga_Pqmqs",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 56,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 2,
+      "landMs": 4,
+      "delayed": false,
+      "resp": "{\"ok\":true}"
+     }
+    ],
+    "marginMs": 52,
+    "bGotA": false,
+    "row1HasA": false,
+    "row2HasA": false,
+    "svB": 3,
+    "sv1": 4,
+    "sv2": 5,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "live",
+    "k": 7,
+    "pid": "anon_hmufQzx3P_cY",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 55,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 1263,
+      "landMs": 1265,
+      "delayed": false,
+      "resp": "{\"ok\":false,\"reason\":\"stale\",\"sv\":5}"
+     }
+    ],
+    "marginMs": -1210,
+    "bGotA": false,
+    "row1HasA": false,
+    "row2HasA": false,
+    "svB": 3,
+    "sv1": 4,
+    "sv2": 5,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "live",
+    "k": 8,
+    "pid": "anon_s72gmXuYZNC2",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 49,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 1258,
+      "landMs": 1260,
+      "delayed": false,
+      "resp": "{\"ok\":false,\"reason\":\"stale\",\"sv\":5}"
+     }
+    ],
+    "marginMs": -1211,
+    "bGotA": false,
+    "row1HasA": false,
+    "row2HasA": false,
+    "svB": 3,
+    "sv1": 4,
+    "sv2": 5,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   },
+   {
+    "P": "live",
+    "k": 9,
+    "pid": "anon_e5SEam7MeNHt",
+    "samePid": true,
+    "pre": true,
+    "joinMs": 60,
+    "aKicked": false,
+    "aClose": [
+     {
+      "lz": "hanbando",
+      "sv": 3,
+      "sentMs": 1266,
+      "landMs": 1273,
+      "delayed": false,
+      "resp": "{\"ok\":false,\"reason\":\"stale\",\"sv\":5}"
+     }
+    ],
+    "marginMs": -1213,
+    "bGotA": false,
+    "row1HasA": false,
+    "row2HasA": false,
+    "svB": 3,
+    "sv1": 4,
+    "sv2": 5,
+    "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+   }
+  ],
+  "sec": 52
+ },
+ "preFix_main_t927on": {
+  "note": "고치기 전 main(T940 없음) · T927 켬 — 길 race · calm(live 길은 그 뒤에 더함)",
+  "data": {
+   "off": false,
+   "delayMs": 3000,
+   "sum": {
+    "race": {
+     "n": 3,
+     "bGotA": 0,
+     "kept": 0,
+     "lost": 3,
+     "marginMs": {
+      "min": -2929,
+      "max": -2575
+     },
+     "joinMs": [
+      444,
+      114,
+      77
+     ]
+    },
+    "calm": {
+     "n": 3,
+     "bGotA": 1,
+     "kept": 1,
+     "lost": 2,
+     "marginMs": {
+      "min": 54,
+      "max": 59
+     },
+     "joinMs": [
+      59,
+      63,
+      62
+     ]
+    }
+   },
+   "trips": [
+    {
+     "P": "race",
+     "k": 1,
+     "pid": "anon_0mSU0bN3jlde",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 444,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": 3,
+       "sentMs": 16,
+       "landMs": 3019,
+       "delayed": true,
+       "resp": "{\"ok\":false,\"reason\":\"stale\",\"sv\":4}"
+      }
+     ],
+     "marginMs": -2575,
+     "bGotA": false,
+     "row1HasA": false,
+     "row2HasA": false,
+     "svB": 3,
+     "sv1": 4,
+     "sv2": 5,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    },
+    {
+     "P": "race",
+     "k": 2,
+     "pid": "anon_MyZHUbLlTG-b",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 114,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": 3,
+       "sentMs": 4,
+       "landMs": 3014,
+       "delayed": true,
+       "resp": "{\"ok\":false,\"reason\":\"stale\",\"sv\":4}"
+      }
+     ],
+     "marginMs": -2900,
+     "bGotA": false,
+     "row1HasA": false,
+     "row2HasA": false,
+     "svB": 3,
+     "sv1": 4,
+     "sv2": 5,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    },
+    {
+     "P": "race",
+     "k": 3,
+     "pid": "anon_QX8WE3Au7jOd",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 77,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": 3,
+       "sentMs": 4,
+       "landMs": 3006,
+       "delayed": true,
+       "resp": "{\"ok\":false,\"reason\":\"stale\",\"sv\":4}"
+      }
+     ],
+     "marginMs": -2929,
+     "bGotA": false,
+     "row1HasA": false,
+     "row2HasA": false,
+     "svB": 3,
+     "sv1": 4,
+     "sv2": 5,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    },
+    {
+     "P": "calm",
+     "k": 4,
+     "pid": "anon_JBFrcWNlr1N6",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 59,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": 3,
+       "sentMs": 3,
+       "landMs": 5,
+       "delayed": false,
+       "resp": "{\"ok\":true}"
+      }
+     ],
+     "marginMs": 54,
+     "bGotA": false,
+     "row1HasA": false,
+     "row2HasA": false,
+     "svB": 3,
+     "sv1": 4,
+     "sv2": 5,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    },
+    {
+     "P": "calm",
+     "k": 5,
+     "pid": "anon_VlBgog07qq8k",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 63,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": 3,
+       "sentMs": 2,
+       "landMs": 4,
+       "delayed": false,
+       "resp": "{\"ok\":true}"
+      }
+     ],
+     "marginMs": 59,
+     "bGotA": false,
+     "row1HasA": false,
+     "row2HasA": false,
+     "svB": 3,
+     "sv1": 4,
+     "sv2": 5,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    },
+    {
+     "P": "calm",
+     "k": 6,
+     "pid": "anon_7Ta13v_xuxp6",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 62,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": 3,
+       "sentMs": 2,
+       "landMs": 4,
+       "delayed": false,
+       "resp": "{\"ok\":true}"
+      }
+     ],
+     "marginMs": 58,
+     "bGotA": true,
+     "row1HasA": true,
+     "row2HasA": true,
+     "svB": 4,
+     "sv1": 5,
+     "sv2": 6,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    }
+   ],
+   "sec": 41
+  }
+ },
+ "preFix_main_t927off": {
+  "note": "고치기 전 main(T940 없음) · T927 끔(T927_BODY_VER=0)",
+  "data": {
+   "off": true,
+   "delayMs": 3000,
+   "sum": {
+    "race": {
+     "n": 3,
+     "bGotA": 0,
+     "kept": 0,
+     "lost": 3,
+     "marginMs": {
+      "min": -2945,
+      "max": -2504
+     },
+     "joinMs": [
+      516,
+      100,
+      60
+     ]
+    },
+    "calm": {
+     "n": 3,
+     "bGotA": 1,
+     "kept": 1,
+     "lost": 2,
+     "marginMs": {
+      "min": 52,
+      "max": 90
+     },
+     "joinMs": [
+      95,
+      83,
+      57
+     ]
+    }
+   },
+   "trips": [
+    {
+     "P": "race",
+     "k": 1,
+     "pid": "anon_S0rLUimdD88U",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 516,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": null,
+       "sentMs": 16,
+       "landMs": 3020,
+       "delayed": true,
+       "resp": "{\"ok\":true}"
+      }
+     ],
+     "marginMs": -2504,
+     "bGotA": false,
+     "row1HasA": true,
+     "row2HasA": false,
+     "sv1": null,
+     "sv2": null,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    },
+    {
+     "P": "race",
+     "k": 2,
+     "pid": "anon_CLctRVRpAYIZ",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 100,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": null,
+       "sentMs": 3,
+       "landMs": 3005,
+       "delayed": true,
+       "resp": "{\"ok\":true}"
+      }
+     ],
+     "marginMs": -2905,
+     "bGotA": false,
+     "row1HasA": true,
+     "row2HasA": false,
+     "sv1": null,
+     "sv2": null,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    },
+    {
+     "P": "race",
+     "k": 3,
+     "pid": "anon_HirY6YZYWc2j",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 60,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": null,
+       "sentMs": 2,
+       "landMs": 3005,
+       "delayed": true,
+       "resp": "{\"ok\":true}"
+      }
+     ],
+     "marginMs": -2945,
+     "bGotA": false,
+     "row1HasA": true,
+     "row2HasA": false,
+     "sv1": null,
+     "sv2": null,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    },
+    {
+     "P": "calm",
+     "k": 4,
+     "pid": "anon_Z4oAwpKi4Iow",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 95,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": null,
+       "sentMs": 3,
+       "landMs": 5,
+       "delayed": false,
+       "resp": "{\"ok\":true}"
+      }
+     ],
+     "marginMs": 90,
+     "bGotA": false,
+     "row1HasA": false,
+     "row2HasA": false,
+     "sv1": null,
+     "sv2": null,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    },
+    {
+     "P": "calm",
+     "k": 5,
+     "pid": "anon_RHEuJb-mXhmN",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 83,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": null,
+       "sentMs": 4,
+       "landMs": 7,
+       "delayed": false,
+       "resp": "{\"ok\":true}"
+      }
+     ],
+     "marginMs": 76,
+     "bGotA": false,
+     "row1HasA": false,
+     "row2HasA": false,
+     "sv1": null,
+     "sv2": null,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    },
+    {
+     "P": "calm",
+     "k": 6,
+     "pid": "anon_GJheGPR0ObV-",
+     "samePid": true,
+     "pre": true,
+     "joinMs": 57,
+     "aClose": [
+      {
+       "lz": "hanbando",
+       "sv": null,
+       "sentMs": 3,
+       "landMs": 5,
+       "delayed": false,
+       "resp": "{\"ok\":true}"
+      }
+     ],
+     "marginMs": 52,
+     "bGotA": true,
+     "row1HasA": true,
+     "row2HasA": true,
+     "sv1": null,
+     "sv2": null,
+     "fish2": "[{\"id\":2,\"kg\":0.4,\"d\":1245140}]"
+    }
+   ],
+   "sec": 39
+  }
+ },
+ "t927_probe_rerun": {
+  "note": "T927 탐침 상황 선행 ② 를 도착 존 프록시(늦춤 0)가 적은 닿은 때로 곧게 함 — 켬 · 끔 3판씩",
+  "on": {
+   "token": {
+    "n": 3,
+    "same": 3,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 3,
+     "tools": 3,
+     "lots": 3,
+     "last_zone": 3
+    },
+    "liveStill": 3
+   },
+   "promote": {
+    "n": 3,
+    "same": 3,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 3,
+     "tools": 3,
+     "lots": 3,
+     "last_zone": 3
+    },
+    "liveStill": 3
+   },
+   "calm": {
+    "n": 3,
+    "same": 3,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 3,
+     "tools": 3,
+     "lots": 3,
+     "last_zone": 3
+    },
+    "liveStill": 3
+   }
+  },
+  "off": {
+   "token": {
+    "n": 3,
+    "same": 0,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 0,
+     "tools": 3,
+     "lots": 0,
+     "last_zone": 0
+    },
+    "liveStill": 3
+   },
+   "promote": {
+    "n": 3,
+    "same": 0,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 0,
+     "tools": 3,
+     "lots": 0,
+     "last_zone": 0
+    },
+    "liveStill": 3
+   },
+   "calm": {
+    "n": 3,
+    "same": 3,
+    "sameAfterClose": 3,
+    "byField": {
+     "kgLedger": 3,
+     "tools": 3,
+     "lots": 3,
+     "last_zone": 3
+    },
+    "liveStill": 3
+   }
+  }
+ },
+ "t916_probe_T940on": {
+  "note": "t916-save-retry-probe 2 down_logout,cross_zone — T940 켬: 다른 존(nippon) 먼저 접속이 hanbando 의 T916 줄을 먼저 보내게 해 그 몸으로 시작(nipCraft = 줄의 숙련)",
+  "trips": [
+   {
+    "P": "down_logout",
+    "k": 1,
+    "pre": {
+     "ledgerStale": true,
+     "softStale": true,
+     "hpStale": true,
+     "hungerStale": true
+    },
+    "samePid": true,
+    "want": {
+     "craftSkill": {
+      "toolmaking": 9,
+      "mining": 4
+     },
+     "cold": 0.6993
+    },
+    "qAfterLogout": 1,
+    "qEnd": 0,
+    "dur": {
+     "tools": true,
+     "equipped": true,
+     "hotkey1": true,
+     "equipment": true,
+     "equipSlots": true,
+     "kgLedger": true,
+     "lots": true,
+     "inventory": true
+    },
+    "ledger": {
+     "craftSkill": true,
+     "craftLog": true,
+     "oreLedger": true,
+     "oreCarry": true,
+     "fishStats": true,
+     "member": true
+    },
+    "soft": true,
+    "hp": null,
+    "hunger": null,
+    "thirst": null,
+    "rowLedger": {
+     "craftSkill": true,
+     "craftLog": true,
+     "oreLedger": true,
+     "oreCarry": true,
+     "fishStats": true,
+     "member": true
+    },
+    "rowSoft": true,
+    "softV": {
+     "cold": 0.6981,
+     "fatigue": 0.5962,
+     "injury": 0.3991,
+     "morale": 0.2943
+    },
+    "hpV": 60.55691800000003,
+    "downV": false,
+    "hungerV": 37,
+    "thirstV": 41
+   },
+   {
+    "P": "down_logout",
+    "k": 2,
+    "pre": {
+     "ledgerStale": true,
+     "softStale": true,
+     "hpStale": true,
+     "hungerStale": true
+    },
+    "samePid": true,
+    "want": {
+     "craftSkill": {
+      "toolmaking": 9,
+      "mining": 4
+     },
+     "cold": 0.6993
+    },
+    "qAfterLogout": 1,
+    "qEnd": 0,
+    "dur": {
+     "tools": true,
+     "equipped": true,
+     "hotkey1": true,
+     "equipment": true,
+     "equipSlots": true,
+     "kgLedger": true,
+     "lots": true,
+     "inventory": true
+    },
+    "ledger": {
+     "craftSkill": true,
+     "craftLog": true,
+     "oreLedger": true,
+     "oreCarry": true,
+     "fishStats": true,
+     "member": true
+    },
+    "soft": true,
+    "hp": null,
+    "hunger": null,
+    "thirst": null,
+    "rowLedger": {
+     "craftSkill": true,
+     "craftLog": true,
+     "oreLedger": true,
+     "oreCarry": true,
+     "fishStats": true,
+     "member": true
+    },
+    "rowSoft": true,
+    "softV": {
+     "cold": 0.698,
+     "fatigue": 0.5962,
+     "injury": 0.3991,
+     "morale": 0.2944
+    },
+    "hpV": 60.46436900000001,
+    "downV": false,
+    "hungerV": 37,
+    "thirstV": 41
+   },
+   {
+    "P": "cross_zone",
+    "k": 3,
+    "pre": {
+     "ledgerStale": true,
+     "softStale": true,
+     "hpStale": true,
+     "hungerStale": true
+    },
+    "want": {
+     "craftSkill": {
+      "toolmaking": 9,
+      "mining": 4
+     },
+     "cold": 0.6993
+    },
+    "qAfterLogout": 1,
+    "nipSawOld": false,
+    "qAfterTrigger": 0,
+    "rowKeptNip": true,
+    "rowHasOld": true,
+    "nipCraft": {
+     "toolmaking": 9,
+     "mining": 4
+    }
+   },
+   {
+    "P": "cross_zone",
+    "k": 4,
+    "pre": {
+     "ledgerStale": true,
+     "softStale": true,
+     "hpStale": true,
+     "hungerStale": true
+    },
+    "want": {
+     "craftSkill": {
+      "toolmaking": 9,
+      "mining": 4
+     },
+     "cold": 0.6992
+    },
+    "qAfterLogout": 1,
+    "nipSawOld": false,
+    "qAfterTrigger": 0,
+    "rowKeptNip": true,
+    "rowHasOld": true,
+    "nipCraft": {
+     "toolmaking": 9,
+     "mining": 4
+    }
+   }
+  ]
+ }
+}
