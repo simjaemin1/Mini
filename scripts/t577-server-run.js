@@ -27,6 +27,11 @@
 //     T875 판: 첫해 굶어 죽음 6,323 → 216 · 첫해 K 80% 넘긴 마을 150 → 36/153 · 크루가 꺼낸 통나무 0 → 12,231(3시드 · 400날 · 보고/T914).
 //     집 행위가 꺼진 판(서버 기준선 자 `T400_BUILD_ACT=0`)은 종전 그대로다(`T315_MAPBEDS=0` · `T627` 없음 — econ 이 곳간 목재로 짓는다 · 공짜 아님).
 //     부르는 쪽이 준 값이 먼저다. 되돌림(종전 판 자 바이트) = `T627_TRIP_DAY=0 T315_MAPBEDS=0`.
+//   ★★[T941 2026-10-26 · T924 회부 4] **가상 시계 판(`T745_VCLOCK=1`)이면 아이 env `T696_WAL=0` 이 기본이다**(부르는 쪽이 준 값이 먼저 · 되돌림 `T696_WAL=1`).
+//     T696 WAL 체크포인트 일꾼(`zone-local-db.js` · `T696_ROAD_TAIL` 켬 기본)은 틱 사이 빈 시간에 PASSIVE 로 따라잡는데, 가상 시계는 틱 사이 실제 시간이 0 이라
+//     일꾼이 끝내 못 따라잡아 WAL 이 비워지지 않는다(시드마다 ~16 MB/일 — 800날 3시드면 세션 디스크를 넘어 760일께 `ENOSPC` · T924).
+//     `T696_WAL=0` 은 체크포인트를 종전 자리(COMMIT 안 자동 체크포인트)로 되돌릴 뿐 값을 안 바꾼다 — 판 JSON 바이트 같음(보고/T941 §1 · 3시드 400날).
+//     벽시계 판(가상 시계 없음)은 종전 그대로다(일꾼이 따라잡는다).
 //   ⚠서버 판은 **바이트 결정론이 아니다**(하루 마감 조각 · 캐러밴 몸 타이밍이 벽시계에 기댄다) — 같은 시드도 판마다 조금 갈린다.
 //     그래서 판정하지 않는다: 이 자의 ok() 는 "판이 끝까지 돌았다 · 시딩이 섰다"뿐이고 수는 **표**다(기준선은 PM 이 착지 때 선언).
 //
@@ -94,6 +99,9 @@ fs.mkdirSync(DIR, { recursive: true });
 const HOUSE_ACT = process.env.T400_BUILD_ACT !== '0';
 const KID_MAPBEDS = process.env.T315_MAPBEDS != null ? process.env.T315_MAPBEDS : (HOUSE_ACT ? '1' : '0');
 const KID_TRIPDAY = process.env.T627_TRIP_DAY != null ? process.env.T627_TRIP_DAY : (HOUSE_ACT ? '1' : null);
+// ★[T941] 가상 시계 판이면 WAL 일꾼 끔이 기본(머리 주석 T941 줄 · 값 무변) — 부르는 쪽이 준 값이 먼저
+const VCLOCK = process.env.T745_VCLOCK === '1';
+const KID_WAL = process.env.T696_WAL != null ? process.env.T696_WAL : (VCLOCK ? '0' : null);
 // ★[T577 추신] 판 이름 — 판을 가르는 손잡이(후보 · 층 끄기)만 이름에 싣는다(`T577_TAG` 로 덮을 수 있다)
 const TAG = process.env.T577_TAG || Object.keys(process.env).filter((k) => /^(T577_(?!SEED$|DAYS$|OUT$|DIR$|PAR$|TAG$)|VILLAGE_LIFE$|ENABLE_BANDITS$|VILLAGE_CARAVAN_MAX$|T513_DAY_SLICE$|WAR_MINDAY$|T766_[A-Z_]+$)/.test(k)).sort().map((k) => `${k.replace(/^T577_(CAND_)?/, '').toLowerCase()}${process.env[k]}`).join('-') || 'base';
 
@@ -108,6 +116,7 @@ function runOne(seed, k) {
       VILLAGE_DAY_MS: process.env.VILLAGE_DAY_MS || '250',
       T315_MAPBEDS: KID_MAPBEDS,   // ★[T914] 집 행위 켬 판 기본 '1'(지은 침상이 묶는다) · 끔 판 기본 '0'(종전)
       ...(KID_TRIPDAY != null ? { T627_TRIP_DAY: KID_TRIPDAY } : {}),   // ★[T914] 집 행위 켬 판 기본 '1'(크루 몫 = 정본 운영 하루) · 끔 판은 안 준다(종전)
+      ...(KID_WAL != null ? { T696_WAL: KID_WAL } : {}),   // ★[T941] 가상 시계 판 기본 '0'(WAL 일꾼 끔 — 값 무변 · 디스크) · 벽시계 판은 안 준다(종전)
       VILLAGE_NPC_CAP: process.env.VILLAGE_NPC_CAP || '1',
       T577_SEED: String(seed), T577_DAYS: String(DAYS), T577_OUT: out,
       //   ★[T655] 첫 부팅 조각(T640 · 제품 기본 켬)은 이 자에서 끈다 — 하루 250ms 면 표본이 도는 ~4분 동안 수백 날이 지나 도적 데일리를 건너뛴다(T640 회부 ①).
@@ -130,7 +139,7 @@ function runOne(seed, k) {
 
 (async () => {
   console.log(`\n=== 서버 판 자(T577) — ${DAYS}일 · 시드 ${SEEDS.join('·')} · 판 ${TAG} · 동시 ${PAR} · ${DIR} ===`);
-  console.log(`  조건: VILLAGE_DAY_MS=${process.env.VILLAGE_DAY_MS || '250'} · T315_MAPBEDS=${KID_MAPBEDS} · T627_TRIP_DAY=${KID_TRIPDAY != null ? KID_TRIPDAY : '(없음)'} · 집 행위 ${HOUSE_ACT ? '켬' : '끔'} · VILLAGE_NPC_CAP=${process.env.VILLAGE_NPC_CAP || '1'} · 도적 ${process.env.ENABLE_BANDITS === '0' ? '끔' : '켬'}`);
+  console.log(`  조건: VILLAGE_DAY_MS=${process.env.VILLAGE_DAY_MS || '250'} · T315_MAPBEDS=${KID_MAPBEDS} · T627_TRIP_DAY=${KID_TRIPDAY != null ? KID_TRIPDAY : '(없음)'} · 집 행위 ${HOUSE_ACT ? '켬' : '끔'} · 가상 시계 ${VCLOCK ? '켬' : '끔'} · T696_WAL=${KID_WAL != null ? KID_WAL : '(없음)'} · VILLAGE_NPC_CAP=${process.env.VILLAGE_NPC_CAP || '1'} · 도적 ${process.env.ENABLE_BANDITS === '0' ? '끔' : '켬'}`);
   const res = [];
   const q = SEEDS.map((s, k) => [s, k]);
   await Promise.all(Array.from({ length: Math.min(PAR, q.length) }, async () => {
