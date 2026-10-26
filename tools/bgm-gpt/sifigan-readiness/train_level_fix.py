@@ -9,6 +9,7 @@ from collections import Counter, defaultdict
 import json
 import os
 from pathlib import Path
+import shutil
 import socket
 import sys
 import time
@@ -24,6 +25,7 @@ import level_loss
 SAMPLER_SEED = 20261026
 CATEGORY_WEIGHTS = dict(voiced=.60, quiet=.20, transition=.15, aperiodic_low_support=.05)
 MAX_BYTES, RESERVED_BYTES = 1_000_000_000, 800_000_000
+MAX_SECONDS, SOFT_SECONDS = 900, 750  # first aborted attempt used289.83s of the1200s budget
 
 
 def bytes_used(path):
@@ -127,7 +129,7 @@ def run(parent_report, level_gate, upstream, output, steps=1000):
     started = time.monotonic()
     report = dict(schema="mini.sifigan-level-fix.v1", status="started", phase="validate",
         parent_completed_steps=1000, completed_steps=1000, additional_completed_steps=0,
-        requested_additional_steps=steps, max_seconds=1200, soft_training_stop_seconds=1050,
+        requested_additional_steps=steps, max_seconds=MAX_SECONDS, soft_training_stop_seconds=SOFT_SECONDS,
         max_experiment_bytes=MAX_BYTES, sampler_seed=SAMPLER_SEED, category_weights=CATEGORY_WEIGHTS,
         sampler_changed_intentionally=True, normalizer_changed=False, input_gain_changed=False,
         conditioning_or_F0_changed=False, optimizer_or_scheduler_reset=False, trace=[],
@@ -143,7 +145,9 @@ def run(parent_report, level_gate, upstream, output, steps=1000):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "foundation-model-trial"))
     from ace_limits import ResourceGuard, ResourceCaps, GIB
     try:
-        with ResourceGuard(output, ResourceCaps(max_seconds=1200, max_rss_bytes=8 * GIB)) as guard:
+        with ResourceGuard(output, ResourceCaps(max_seconds=MAX_SECONDS, max_rss_bytes=8 * GIB)) as guard:
+            if guard.initial["free_disk_bytes"] < 12 * GIB + RESERVED_BYTES:
+                raise ValueError("free_disk_must_include_checkpoint_reserve_above12GiB")
             upstream = Path(upstream).resolve(strict=True)
             parent, cp, bindings = validate_parent(parent_report, upstream)
             gate_path = Path(level_gate).resolve(strict=True)
@@ -311,8 +315,10 @@ def run(parent_report, level_gate, upstream, output, steps=1000):
             counts, cases = Counter(), Counter()
             tick = time.monotonic()
             for index in range(steps):
-                if time.monotonic() - started > 1050:
+                if time.monotonic() - started > SOFT_SECONDS:
                     report["soft_stop_reason"] = "reserve_evaluation_checkpoint_time"; break
+                if shutil.disk_usage(output).free < 12 * GIB + RESERVED_BYTES:
+                    report["soft_stop_reason"] = "reserve_checkpoint_disk_above12GiB"; break
                 row = sample(rng, groups)
                 counts[row["category"]] += 1; cases[row["case"]] += 1
                 z, c, ds, y, f0 = inputs(row["case"], row["start_frame"])

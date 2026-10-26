@@ -435,6 +435,27 @@ analysis proxy is available. No diagnostic modifies saved audio or declares
 naturalness. New36synthetic tests (8policy,7loss,13metrics,8trainer) plus
 84earlier tests pass. Model/audio/data/checkpoints remain outsideGit.
 
+The first correction attempt was interrupted by the free-disk watchdog after
+289.83seconds, below12GiB free. At least275updates were printed, but the exact
+last update is unknown and **no updated checkpoint survived**; do not count
+that as a completed correction. Both saved parent-baseline clips remain.
+An observed-event abort sidecar is not fabricated training recovery.
+
+Only the GPT-owned ACE experiment's disposable `uv-cache` was removed after
+checking the actual runtime has no links into it. Existing Torch/NumPy/SciPy
+imports were rechecked; original recordings, installed runtimes, every model
+and audition were preserved. The cache is redownloadable, not recoverable from
+Trash. Free space was about13.9GB after removal; system swap was also large,
+but its contribution to the preceding space drop is not causally established.
+
+The retry starts again from the preserved global1,000, not the lost updates,
+with at most500additional updates. Its900second guard plus observed289.83s
+stays below the announced1,200s cumulative compute ceiling; soft time stop is
+750s. An800MB checkpoint reserve ABOVE the unchanged12GiB floor is required
+at startup and checked before every update, allowing early final save rather
+than waiting for another hard floor breach. New results use a fresh retry
+folder, without overwriting the aborted attempt or its baseline.
+
 The new full checkpoint is611,757,604bytes and inference checkpoint45,317,119
 bytes. Experiment contents before the final JSON were1,441,303,856bytes, below
 the announced2GB cap, with15,058,972,672bytes free at completion. Observed final
