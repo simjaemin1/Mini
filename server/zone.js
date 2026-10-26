@@ -1499,7 +1499,14 @@ function _bodyInto(p, B, equipped) {
   p.member = B.member;            // ★[T11] 마을 소속 — 기여는 온보딩 계량기가, 소속은 여기가 갖는다
   // ★[T47 · T43] 생명값은 몸에 실려 왔을 때만 잇는다(핸드오프 · 로그인 둘 다 `parseBody(.., {vitals:true})` — 없으면 최대 · 일어선 채).
   const V = B.vital;
-  p.hp = (V && typeof V.hp === 'number') ? V.hp : PLAYER_MAX_HP;
+  // ★★[T930 2026-10-26 · 야간 러너 10-26 묶음 C `e2e-hp ⓪` 빨강] **넘어온 몸의 HP 도 문 하나(`setHp`)로 쓴다.** T868(승격 경로 몸 잇기 · `7139d7f`)이
+  //   승격 갈래의 몸 얹기(`_t868BodyInto`)에 직접 대입 `p.hp = …` 을 두었고 T873(`7e02403`)이 일반 접속 리터럴(`hp:` 칸)까지 여기로 모아
+  //   로그인 · 토큰 · 승격 세 길이 다 그 줄을 지났다 — 사람 HP 를 문 밖에서 쓰는 자리(T109 — "사람 hp 를 쓰는 문은 하나 · 사본 0"). 낱말은 `'takeover'`(`HP_QUIET` — 조용하다:
+  //   몸이 오는 길마다 welcome · gauges 가 self.hp 를 이미 나른다 · 종전 승계 줄 `setHp(player, _takeover.hp, 'takeover')` 그 낱말 · 새 낱말 0)
+  //   ⇒ 보내는 메시지 0 = 종전과 같다. 값 · 칸 차례 무변 — 문의 깎기(0 ~ `p.maxHp || PLAYER_MAX_HP`)는 저장된 생명값이 늘 그 안이라 아무것도 안 깎고
+  //   (HP 를 쓰는 자리가 전부 이 문 · `PLAYER_MAX_HP` 는 처음부터 100 하나 · `maxHp` 를 쓰는 자리는 아래 한 줄뿐) · 같은 값이면 문이 안 쓴다(값은 이미 그 값) ·
+  //   `hp` 칸은 이 자리에서 처음 생긴다(리터럴 펼침 `..._bodyInto({}, …)` 의 칸 차례 `hp` → `maxHp` 그대로). 세 길 A/B: `scripts/t930-bodyinto-ab.js`.
+  setHp(p, (V && typeof V.hp === 'number') ? V.hp : PLAYER_MAX_HP, 'takeover');
   p.maxHp = (V && typeof V.maxHp === 'number') ? V.maxHp : PLAYER_MAX_HP;
   p.isDown = !!(V && V.isDown);
   p.downedAt = (V && V.downedAt) || 0;
