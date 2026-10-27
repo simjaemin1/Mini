@@ -134,7 +134,7 @@ say('\n④ 이중 차감 0 — 보이는 kill 은 `gameRich` 를 **다시 안 �
     chunkManager: { chunkSize: 512, removeMob: () => {} },
     players: new Map(), mobs: new Map(),
     getActiveChunkKeys: () => [], isPositionActive: () => true,
-    spawnCorpse: () => {}, damagePlayer: () => {}, broadcast: () => {},
+    spawnCorpse: () => {}, damagePlayer: () => {}, broadcast: () => {}, setMobHp: require('./lib-hp-door').makeSetMobHp(),   /* ★[T954] 짐승 HP 문 = 존의 그 문 글자(사본 0) */
     simVillages: () => [], legacyVillages: [], warThreats: () => [],
     //   ⚠주입 규약은 **키 문자열**이다(`zone.js` 가 그렇게 넘긴다) — 여기서도 그대로 흉내낸다
     gameRichAt: (k) => LEDGER.get(String(k)),
@@ -199,7 +199,7 @@ say('\n⑥ 실기 — 뷰 사냥꾼을 진짜로 돌린다(예산 0 / n / 되돌
       chunkManager: { chunkSize: CH, removeMob: () => {}, insertMob: () => {}, updateMobChunk: () => {} },
       players, mobs: new Map(),
       getActiveChunkKeys: () => keys, isPositionActive: () => true,
-      spawnCorpse: () => {}, damagePlayer: () => {}, broadcast: () => {},
+      spawnCorpse: () => {}, damagePlayer: () => {}, broadcast: () => {}, setMobHp: require('./lib-hp-door').makeSetMobHp(),   /* ★[T954] 짐승 HP 문 = 존의 그 문 글자(사본 0) */
       simVillages: () => [], legacyVillages: [], warThreats: () => [],
       gameRichAt: (k) => LED.get(String(k)), gameRichSize: () => LED.size,
       huntBudgetOf: (p) => V.huntVisLeft(p),
