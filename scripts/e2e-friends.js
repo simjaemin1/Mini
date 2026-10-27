@@ -445,46 +445,8 @@ const seen = (C, pid) => C.others.get(pid) || null;
 
   // ── ⑦ 소스 — 1비트가 낱말이 되고, 로비는 다시 세지 않는다 ───────────────
   {
-    const rl = fs.readFileSync(path.join(ROOT, 'public', 'client', '34-m-renderloop.js'), 'utf8');
-    const net = fs.readFileSync(path.join(ROOT, 'public', 'client', '30-n-net.js'), 'utf8');
-    const lob = fs.readFileSync(path.join(ROOT, 'public', 'client', '70-lobby.js'), 'utf8');
-    const cen = fs.readFileSync(path.join(ROOT, 'server', 'central.js'), 'utf8');
-    ok(/o\.fr \? '벗 ' :/.test(rl), '⑦ 이름표 — 서버 1비트가 **낱말 하나**가 된다');
-    ok(!/[\u{1F300}-\u{1FAFF}]/u.test((rl.match(/o\.fr \? [^\n]*/) || [''])[0]), '⑦b 그 낱말에 이모지가 **없다**(화면 규칙 B)');
-    ok(/fr: pp\.fr !== undefined \? pp\.fr : prev\?\.fr/.test(net), '⑦c 클라는 `fr` 을 **받아서 승계**할 뿐 스스로 안 정한다');
-    //   ★주석은 걷어내고 본다 — 설명문이 증거로 오독되면 하네스가 없는 결함을 보고한다(족보 ㊻).
-    const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0). 옛 정규식 판은 `villages.js:20` 의 `// … sim/* …` 에 걸려 파일의 67.9% 를 삼켰다
-    ok(!/isFriend\(|friendsOf\(|friendRequest\(/.test(codeOnly(rl) + codeOnly(net) + codeOnly(lob)),
-      '⑦d ★★클라에 친구 **판정이 없다** — 누가 누구와 친구인지 클라는 모른다');
-    ok(/v\.friendsHere/.test(lob) && !/friendsOf|isFriend|friends\.length/.test(lob), '⑦e 로비는 서버가 센 수를 **그대로** 쓴다(재계산 0)');
-    ok((cen.match(/CREATE TABLE IF NOT EXISTS friends/g) || []).length === 1, '⑦f central 에 친구 표는 **하나**다');
-    ok(!/ALTER TABLE players ADD COLUMN friend/.test(cen), '⑦g 기존 표에 새 컬럼 **0**');
-    // ★자명 통과 금지 — 검사가 실제로 그 파일을 읽었는지
-    ok(rl.length > 1000 && lob.length > 1000 && cen.length > 1000, '⑦h (자명 통과 방지) 네 파일을 실제로 읽었다');
-
-    // ★★[T147] 화살은 **T110 것을 그대로 부른다** — 그리는 함수도, 반경도, 걸음도, 방위도.
-    const zn = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
-    const znCode = codeOnly(zn);
-    ok(/function drawFollowArrow\(\)/.test(rl), '⑦i 전제: 따라가기 화살 함수를 실제로 찾았다(못 찾으면 아래가 자명 통과다)');
-    const fa = rl.slice(rl.indexOf('function drawFollowArrow()'), rl.indexOf('function drawDownedArrows()'));
-    ok(/drawWorldArrow\(/.test(fa), '★★⑦i 따라가기 화살은 **T110 의 그리는 함수를 그대로 부른다**(사본 0)');
-    ok(!/ctx\.(beginPath|moveTo|lineTo|fill)\(/.test(fa), '⑦i2 ★그 함수는 화살을 **다시 그리지 않는다**(붓질 0줄)');
-    //   ★자리가 둘이라 **같이 뜬다** — 한 자리에 밀어 넣으면 외침과 따라가기가 서로를 지운다.
-    ok(/__downedCries/.test(rl) && /__followTarget/.test(rl), '★★⑦j 외침과 따라가기는 **자리가 둘**이다(같이 뜬다)');
-    const frame = rl.slice(rl.indexOf('__downedArrowN'), rl.indexOf('__downedArrowN') + 260);
-    ok(/__followArrowN/.test(frame), '★★⑦j2 그리고 **같은 프레임에서 둘 다** 그린다', JSON.stringify(frame.split('\n')[1] || ''));
-    //   ★반경·걸음·방위에 손으로 적은 수가 없다 — 전부 정본을 부른다
-    const fp = znCode.slice(znCode.indexOf('function _followPayload'), znCode.indexOf('function followChat'));
-    ok(fp.length > 200, '⑦k 전제: 서버 쪽 갱신 함수를 실제로 찾았다', fp.length);
-    ok(/RESCUE_RANGE_PX/.test(fp) && /Rescue\.shoutRange\(\)/.test(fp) && /Rescue\.steps\(/.test(fp),
-       '★★⑦k 반경 둘과 걸음이 **전부 T110/T43 정본에서 온다**');
-    ok(!/[^\w.]\d{2,}[^\w]/.test(fp), '⑦k2 ★그 함수에 **손으로 적은 수가 없다**',
-       JSON.stringify((fp.match(/[^\w.]\d{2,}[^\w]/g) || []).slice(0, 3)));
-    //   ★따라가기가 **알림 축을 안 쓴다** — 초당 한 줄이면 `window.__notices` 규약이 더러워진다
-    ok(!/type: 'notice'/.test(fp), '★★⑦l 갱신은 **알림으로 나가지 않는다**(`__notices` 규약 무변)');
-    ok(/'follow' in msg/.test(net), '⑦m 클라는 `null` 을 **"거두라"로 읽는다**(`in` 검사 · `if (msg.follow)` 아님)');
-    //   ★친구 판정은 여전히 서버다(⑦d 의 짝) — 이름→벗 대응도 클라에 없다
-    ok(!/friendByName/.test(codeOnly(rl) + codeOnly(net) + codeOnly(lob)), '⑦n ★클라에 이름→벗 대응이 **없다**');
+    //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.friends`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+    require('./lib-e2e-src').SECTIONS.friends(ok);
   }
 
   close(A); close(B); close(C3);

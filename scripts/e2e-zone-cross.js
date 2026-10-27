@@ -110,9 +110,8 @@ function corridor(dir) {
 (async () => {
   console.log('\n=== 존 셋이 한 세계로 보이나 · 경계를 걸어서 넘는다 (T428) ===');
   // ── 소스 한 줄 — 이웃 관측 문턱이 화면 반경과 같은 상수다 ───────────────────────
-  const MV = fs.readFileSync(path.join(ROOT, 'public', 'client', '31-m-move.js'), 'utf8');
-  ok(/const PEEK_THRESHOLD = NAT_VIEW_PAD;/.test(MV), 'ⓢ 이웃 관측 문턱 = 렌더 반경 상수(`NAT_VIEW_PAD` 1,500 — 새 수 0)',
-    (MV.match(/const PEEK_THRESHOLD = [^;]+;/) || ['(없음)'])[0]);
+  //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.zoneCross`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+  require('./lib-e2e-src').SECTIONS.zoneCross(ok);
 
   const VE = viewSpot(+1), VW = HAS_W ? viewSpot(-1) : null, CE = corridor(+1), CW = HAS_W ? corridor(-1) : null;
   ok(!!VE && VE.n > 0, 'ⓒ 전제: 동쪽 선 자리 화면 상자의 닛폰 띠에 닛폰 시더 나무가 **있다**(0 이면 ⓐ 가 공짜다)', VE ? `${VE.n}그루 · 한반도 로컬 y ${VE.wy - HB.worldOffsetY}` : '-');

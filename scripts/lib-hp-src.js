@@ -146,4 +146,17 @@ function mobSourceChecks(ok, srcs) {
   return { census: C, wild: ws, calls, wcalls, loud, keep };
 }
 
-module.exports = { ROOT, SPECS, stripComments, strayWrites, readSrcs, hpSourceChecks, hpWriteCensus, mobSourceChecks };
+// ★④ 조용하던 자리 — 구조 · 회복 · 다침이 문을 지난다 · 죽음의 `p.hp = 0` 사본 0(★[T964] `e2e-hp` ④ 를 옮김 · 글자 · 말 무변 · 원문 그대로 본다)
+//   `setHp(.., 'rescue')` 가 자기에게 보내는 유일한 **새** 전송이다. 여기 말고는 안 늘었다.
+function hpDoorCallChecks(ok, srcs) {
+  const code = (srcs || readSrcs()).zone;
+  ok(/setHp\(p, Math\.max\(1, Math\.round\(p\.maxHp \* hpFrac\)\), 'rescue'\)/.test(code),
+     '★★④ 일어나는 자리가 문을 지난다(`rescue`)');
+  ok(/setHp\(p, p\.hp \+ 2 \* dt \* 5 \* _rm, 'regen'\)/.test(code), '★★④ 자연 회복도 문을 지난다(`regen` · 조용)');
+  // ★[T402] 다침의 `why` 는 이제 출처 앞 낱말(arrow·mob·…)이다 — 그 낱말들은 전부 `HP_PEER`(위 ⓪ 이 대조) ⇒ 방송 그대로.
+  ok(/setHp\(p, p\.hp - dmg, String\(source \|\| 'damage'\)\.split\(':'\)\[0\]\)/.test(code),
+     '★★④ 다침도 문을 지난다(`why` = 출처 앞 낱말 · 전부 방송 갈래 — T402)');
+  ok(!/p\.hp = 0;/.test(code), '★★④ 죽음의 `p.hp = 0` 사본은 사라졌다(문이 하한을 누른다)');
+}
+
+module.exports = { ROOT, SPECS, stripComments, strayWrites, readSrcs, hpSourceChecks, hpWriteCensus, mobSourceChecks, hpDoorCallChecks };

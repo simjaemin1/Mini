@@ -183,9 +183,8 @@ process.on('exit', killAll);
 
   // ⓕ 배치 모드 회전 — 우클릭이 회전을 먹는 길이 살아 있나(정적으로 확인 · 배치 진입은 인벤이 필요)
   {
-    const src = fs.readFileSync(path.join(ROOT, 'public', 'client', '30-n-net.js'), 'utf8');
-    ok(/placementMode\.dir/.test(src) && /contextmenu/.test(src),
-       'ⓕ 배치 회전이 `contextmenu` 길에 그대로 있다(캡처가 그 길을 안 먹었다)');
+    //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.aim`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+    require('./lib-e2e-src').SECTIONS.aim(ok);
   }
 
   const bad = errs.filter((e) => !/zones|fetch|json/i.test(e));
