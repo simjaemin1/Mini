@@ -17,6 +17,11 @@
 //       node scripts/t646-anatomy.js table
 //   [T719] --hbr(--hist 와 같이) — 갈래 다섯(결정·생활층·막힘·길·따라가기) 한 번 부름 분포도 · --hist — 한 사람 한 걸음(npcStep) 시간 분포(낮·밤 창마다 · 표에 step: 평균 · p50 · p99 · p99.9 · p99.99 · 최대 · 15 ms 넘음) · T646_PRELOAD=<파일>(존 덧 preload)
 //   T646_DIR=/tmp/t646 · T646_TPL=/tmp/t646/tpl/tpl-t100.db · T646_SLICE_S=30 · T646_SLICES=6 · T646_LEAD_S=150
+//   [T945] --inv — **밤 창 머리에 진짜 무효화 훅 한 번**(`/routedbg?invalidate=1` · 존에 `E2E_GIVE=1` · T933 §3 틀). 밤 창은 econ 하루가 닫힐 때(`econTick.days` 가 오른다)까지
+//     + 한 조각 잰다(종전 조각 수 대신). ⚠econ 하루 경계는 phase 0 이 아니다 — T731(현지 자정 창)이 마을 날을 옮겨 이 틀에선 밤 창 안(phase ≈ 0.72 ~ 0.83)에서
+//     닫히고, 캐러밴 도착은 그 창 꼬리(캐러밴 동기)에 온다 ⇒ 창 머리에서 비운 귀환 쌍이 빈 채로 도착한다(T929 귀환 고침을 다시 뜬 판에서 재는 자리 · 무효화 = 라이브의
+//     벽 · 울타리와 같은 문). 조각마다 도착 · 귀환 출발 · 교역로 A* 줄 수와 `/perf` probe `t929`(누계) · `pathJobs` · `pathWait` · `routeCold` 를 같이 적는다.
+//     없으면 종전 그대로(낮 · 밤 창 둘 · 존 env 무변).
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -456,6 +461,7 @@ function _t791Groups(dir) {
   return { start, end, groups: marks.map((m, i) => [m[0], m[1], i + 1 < marks.length ? marks[i + 1][1] - 1 : end]) };
 }
 async function run(conf, tag, probe) {
+  const INV = process.argv.includes('--inv');   // ★[T945] 경계 창 + 무효화 한 번(머리 주석)
   const out = path.join(DIR, `${tag}.json`);
   if (fs.existsSync(out)) { console.log('있음', out); return; }
   const dir = `/tmp/wt-t646-${tag}`;
@@ -476,7 +482,7 @@ async function run(conf, tag, probe) {
   const PROF = process.argv.includes('--prof') ? path.join(DIR, `prof-${tag}`) : null;   // 기본 끔 — 켜면 존에 V8 CPU 프로파일(10ms 표본 · 자기 시간으로 빈 몫을 찾는다)
   const z = spawn(process.execPath, [...(process.argv.includes('--shape') ? ['--allow-natives-syntax'] : []), ...(PROF ? ['--cpu-prof', '--cpu-prof-interval', '10000', '--cpu-prof-dir', PROF] : []), path.join(dir, 'server/zone.js')], { cwd: dir, stdio: ['ignore', logf, logf],
     env: Object.assign({}, env0, CONF[conf], { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
-      CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY), DB_PATH: DB, VILLAGE_WAR_LOG: '0', T312_FISH_ACT: '1',
+      CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY), DB_PATH: DB, VILLAGE_WAR_LOG: '0', T312_FISH_ACT: '1', ...(INV ? { E2E_GIVE: '1' } : {}),   // ★[T945] `/routedbg` 문(테스트 전용 게이트)
       T646_EVERY: String(SLICE_S * 30), T646_SEGONLY: SEG ? '1' : '', T675_SAB: process.argv.includes('--sab') ? '1' : '', T677_BR: process.argv.includes('--br') ? '1' : '', T719_HIST: process.argv.includes('--hist') ? '1' : '', T719_HBR: process.argv.includes('--hbr') ? '1' : '', T670_AFAIL_OUT: path.join(DIR, `${tag}.afail.json`), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`), T671_TRAP_OUT: process.argv.includes('--trap') ? path.join(DIR, `${tag}.trap.json`) : '', T671_SHAPE_OUT: process.argv.includes('--shape') ? path.join(DIR, `${tag}.shape.jsonl`) : '' }) });
   const getj = async (p) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, { headers: { 'x-zone-secret': SECRET }, signal: AbortSignal.timeout(20000) }); return await r.json(); } catch (e) { return null; } };
   const say = (...a) => console.log(`[${tag}]`, ...a);
@@ -489,12 +495,19 @@ async function run(conf, tag, probe) {
   const ping = setInterval(() => { try { ws.send(JSON.stringify({ type: 'ping', t: Date.now() })); } catch (e) {} }, 5000);
   const phaseNow = async () => { const L = await getj('/lifedbg'); return L && L.phase; };
   const windows = [];
-  for (const [W, lo, hi] of [['day', 0.10, 0.62], ['night', 0.72, 0.97]]) {
-    let ph = null;
+  const WINS = [['day', 0.10, 0.62], ['night', 0.72, 0.97]];
+  let days0 = null;   // ★[T945] 밤 창 머리(무효화 순간)의 `econTick.days`
+  for (const [W, lo, hi] of WINS) {
+    let ph = null, inv = null;
+    const edge = INV && W === 'night';   // ★[T945] 무효화 창
+    {
     for (let i = 0; i < 1000; i++) { ph = await phaseNow(); if (ph != null && ph >= lo && ph <= hi - (SLICES * SLICE_S) / (DAY / 1000)) break; await sleep(5000); }
-    say(W, '창 · phase', ph);
+    if (edge) { const P0 = await getj('/perf'); days0 = P0 && P0.econTick ? P0.econTick.days | 0 : 0; inv = await getj('/routedbg?invalidate=1'); }
+    say(W, '창 · phase', ph, ...(edge ? ['· econ days', days0, '· 무효화', inv && inv.invalidated] : []));
+    }
     const slices = [];
-    for (let k = 0; k < SLICES; k++) {
+    let closed = 0;   // ★[T945] econ 창 — 그 하루가 닫힌 뒤 잰 조각 수(하나 더 재고 끝)
+    for (let k = 0; edge ? (k < 1000 && closed < 2) : k < SLICES; k++) {
       await getj('/perf?reset=1');
       const mt0 = Number(process.hrtime.bigint() / 1000n);   // [T791] 단조 µs(존 표본 토막과 같은 시계)
       const mark = fs.statSync(logp).size;
@@ -504,9 +517,14 @@ async function run(conf, tag, probe) {
       const ana = buf.split('\n').filter((x) => x.startsWith('[T646] ')).map((x) => { try { return JSON.parse(x.slice(7)); } catch (e) { return null; } }).filter(Boolean);
       const t = p && p.tick && p.tick.ms;
       slices.push({ k, mt0, mt1: Number(process.hrtime.bigint() / 1000n), phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, max: t && t.max, ticks: p && p.tick && p.tick.n, npcs: null, ana, t678: (p && p.walk && p.walk.t678) || null });   // [T678] 문 그래프 관측(켬·견줌 판만)
+      if (INV) { const pr = (p && p.econTick && p.econTick.probe) || {}, S = slices[slices.length - 1];   // ★[T945] 캐러밴 셈(줄 수 · probe 누계)
+        S.arr = (buf.match(/캐러밴#\d+ 도착:/g) || []).length; S.ret = (buf.match(/귀환 출발/g) || []).length; S.astar = (buf.match(/교역로 A\*:/g) || []).length;
+        S.t929 = pr.t929 || null; S.pathJobs = pr.pathJobs | 0; S.pathWait = pr.pathWait | 0; S.routeCold = pr.routeCold | 0;
+        if (edge && p && p.econTick && (p.econTick.days | 0) > days0) closed++;
+        if (edge && L && L.phase != null && (L.phase > hi || L.phase < lo)) closed = 2; }   // 밤 창 밖으로 나가면 끝(하루가 창 앞에서 이미 닫혔던 판 — 표에 적는다)
       say(`${W} 조각 ${k} · p50 ${t ? t.p50 : '?'} · p95 ${t ? t.p95 : '?'} · 줄 ${ana.length}`);
     }
-    windows.push({ W, slices });
+    windows.push(Object.assign({ W, slices }, edge ? { inv: !!(inv && inv.invalidated) } : {}));
   }
   clearInterval(ping); try { ws.close(); } catch (e) {}
   if (PROF) { try { z.kill('SIGINT'); } catch (e) {} for (let i = 0; i < 60 && z.exitCode === null; i++) await sleep(1000); }   // 정상 종료라야 프로파일이 써진다
