@@ -5,6 +5,7 @@
 //     서버 판 = <뿌리>/<판>/base-<시드>.t875.json (+ 곁의 base-<시드>.json · T875 관찰기 판이 없으면 T858 관찰기 판 `base-<시드>.t858.json` — 주거 · K · 수입 칸은 비운다)
 //     랩 판 = <뿌리>/<판>/t17-<시드>.t875.json
 //     판 이름에 `~raidN` 이 붙은 판은 그 앞 이름 판의 갈림 대조(띠)다 — 셈마다 띠 = 그 판 + 대조 판들의 최소 ~ 최대(T837 `diverge-table` 과 같은 잣대).
+//     ★[T944] 랩 쪽도 같다 — 랩 판 이름에 `~huntN`(또는 `~` 뒤 무엇이든)이 붙은 판이 그 판의 갈림 대조다(`scripts/lab-diverge-ctl.js` · JSON `labBands`).
 //   셈(3시드 합):
 //     fam365 = 365일 앞 굶어 죽음(`_deathsToday` 합 · 첫해) · fam400 = 365~400일 굶어 죽음
 //     empty = 끝 날 빈 마을(한 번이라도 사람이 있었고 끝 날 0) · empty365 = 그중 첫 빈 날이 365일 앞
@@ -90,6 +91,7 @@ function bandsOf(side) {
   return B;
 }
 const BS = bandsOf(S);
+const LBS = bandsOf(Lb);   // ★[T944] 랩 띠 — 판 X 와 X~huntN(랩 쪽 갈림 대조 자 `scripts/lab-diverge-ctl.js` · 서버 띠와 같은 잣대)
 function pair(x, y) {   // y − x
   const a = S[x], b = S[y]; if (!a || !b) return null;
   const rows = KEYS.map((k) => {
@@ -120,7 +122,7 @@ function seedCmp() {
 }
 const doc = { srv: Object.fromEntries(Object.entries(S).map(([k, v]) => [k, { sum: v.sum, per: Object.fromEntries(Object.entries(v.per).map(([sd, s]) => [sd, Object.assign({}, s, { peakV: undefined, names: undefined, seedSnap: undefined })])) }])),
   lab: Object.fromEntries(Object.entries(Lb).map(([k, v]) => [k, { sum: v.sum, per: Object.fromEntries(Object.entries(v.per).map(([sd, s]) => [sd, Object.assign({}, s, { peakV: undefined, names: undefined, seedSnap: undefined })])) }])),
-  bands: BS, pairs: P, seed: seedCmp() };
+  bands: BS, labBands: LBS, pairs: P, seed: seedCmp() };
 if (OUTJ) fs.writeFileSync(OUTJ, JSON.stringify(doc));
 // 글 표
 const f = (x) => (x == null ? '—' : (Math.abs(x) >= 1000 ? Math.round(x).toLocaleString('en-US') : String(Math.round(x * 10) / 10)));
@@ -129,4 +131,5 @@ console.log('|---|---|---|---|---|---|---|---|---|---|---|');
 for (const [side, X] of [['랩', Lb], ['서버', S]]) for (const [k, v] of Object.entries(X)) { const s = v.sum;
   console.log(`| ${side} ${k}${s.complete ? '' : ' (덜 됨)'} | ${f(s.fam365)} | ${f(s.fam400)} | ${s.empty} (${s.empty365}) | ${f(s.pop100)} · ${f(s.pop365)} · ${f(s.popEnd)} | ${f(s.peak)} | ${f(s.starve)} | ${f(s.over20)} | ${f(s.house365)} | ${f(s.took)} | ${s.raids} |`); }
 for (const [k, b] of Object.entries(BS)) console.log(`띠 ${k}(${b.n}): 첫해 굶어 죽음 ${f(b.by.fam365.lo)}~${f(b.by.fam365.hi)} · 빈 마을 ${b.by.empty.lo}~${b.by.empty.hi} · 끝 인구 ${f(b.by.popEnd.lo)}~${f(b.by.popEnd.hi)}`);
+for (const [k, b] of Object.entries(LBS)) console.log(`랩 띠 ${k}(${b.n}): 첫해 굶어 죽음 ${f(b.by.fam365.lo)}~${f(b.by.fam365.hi)} · 빈 마을 ${b.by.empty.lo}~${b.by.empty.hi} · 끝 인구 ${f(b.by.popEnd.lo)}~${f(b.by.popEnd.hi)}`);
 const sc = doc.seed; if (sc) console.log('시딩 랩 ↔ 서버:', Object.entries(sc).map(([sd, x]) => `${sd} 같음 ${x.same}/${x.lab} · 다름 ${x.diff}`).join(' · '));
