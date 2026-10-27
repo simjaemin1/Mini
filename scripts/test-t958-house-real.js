@@ -12,6 +12,7 @@
 //      ⓐ 켬 — 주거가 오르되 24 를 못 넘는다(스무 날) · 그날 올리고 싶은 몫 > 0 · 목재 차감 0(크루 몫)
 //      ⓑ ★자명 통과 금지 — 끔(env 없음 = 기본) 판은 같은 자로 주거가 24 를 **넘는다**(결함이 실제로 보인다) · `_t958Want` 없음
 //      ⓒ 집 행위가 아닌 마을(`_t400Live` 없음)은 켬 · 끔 같은 값(종전 목재 상한 — 목재 0 이면 0)
+//   ④ [T966] 계획 주거 `_t958Plan` = 끔 세계 주거 궤적 · 나무꾼 안전망 · 영토 목표 두 줄이 켬이면 그 칸을 읽는다
 //   ③ 방아쇠 — `houseSiteWant` 는 인구 ≤ 주거 ≤ 침상(= 지은 칸 × 칸당 침상)이면 **안 선다**(그래서 올리고 싶은 몫을 더해 읽는다) ·
 //      주거 + 올리고 싶은 몫이 침상을 넘으면 선다 · 끔(+ 0)은 종전 인수 그대로
 //
@@ -32,9 +33,9 @@ if (process.env.T958_SUB === '1') {
     const v = econ.createVillage({ ...lp, name: '시험농촌', initialPop: 20 });
     v.housing = 20; v.storage.wood = 0; v.storage.food = 5000;
     if (live) { v._t400Live = true; v._mapBeds = 24; }
-    const hs = [], wants = [], wood = [];
-    for (let d = 1; d <= 20; d++) { econ.tickVillage(v, d); hs.push(+v.housing.toFixed(6)); wants.push(v._t958Want === undefined ? null : +v._t958Want.toFixed(6)); wood.push(+(v.storage.wood || 0).toFixed(6)); }
-    return { hs, wants, wood, max: Math.max(...hs), n: v.npcs.length };
+    const hs = [], wants = [], wood = [], plans = [];
+    for (let d = 1; d <= 20; d++) { econ.tickVillage(v, d); hs.push(+v.housing.toFixed(6)); wants.push(v._t958Want === undefined ? null : +v._t958Want.toFixed(6)); wood.push(+(v.storage.wood || 0).toFixed(6)); plans.push(v._t958Plan === undefined ? null : +v._t958Plan.toFixed(6)); }
+    return { hs, wants, wood, plans, max: Math.max(...hs), n: v.npcs.length };
   };
   const out = { on: econ.T958_HOUSE_REAL, live: runOne(true), dead: runOne(false) };
   console.log = _l; console.log(JSON.stringify(out));
@@ -52,9 +53,9 @@ ok((SRC.match(/process\.env\.T958_HOUSE_REAL/g) || []).length === 1, 'env 를 �
 ok(/^\s+T958_HOUSE_REAL,/m.test(SRC), 'econ 이 내보낸다(서버 방아쇠가 읽는다)');
 ok(!/process\.env\.T958_HOUSE_REAL/.test(VSRC), '서버는 env 를 안 읽는다(econ 값 하나)');
 {
-  const lines = VSRC.split('\n').filter((l) => /_t958Want|T958_HOUSE_REAL/.test(l) && !/^\s*\/\//.test(l));
+  const lines = VSRC.split('\n').filter((l) => /_t958Want/.test(l) && !/^\s*\/\//.test(l));
   ok(lines.length === 1 && /houseSiteWant\(vil\.econ\.npcs\.length, vil\.econ\.housing \+ \(\(_lifeEcon\(\)\.T958_HOUSE_REAL && vil\.econ\._t958Want > 0\) \? vil\.econ\._t958Want : 0\)/.test(lines[0]),
-    '서버가 읽는 자리는 집터 방아쇠 한 줄 — 주거 + 그날 올리고 싶었던 몫(끔 · 없음 = + 0)', `${lines.length}줄`);
+    '`_t958Want` 를 읽는 자리는 집터 방아쇠 한 줄 — 주거 + 그날 올리고 싶었던 몫(끔 · 없음 = + 0)', `${lines.length}줄`);
 }
 ok(/const _t958 = T958_HOUSE_REAL && buildActOn\(v\) && v\._mapBeds !== undefined;/.test(SRC), '닿는 마을 = 집 행위 마을 ∧ 지은 침상을 아는 판(그 밖 = 종전)');
 ok(/if \(_t958\) \{ v\._t958Want = built; built = Math\.min\(built, Math\.max\(0, v\._mapBeds - v\.housing\)\); \}/.test(SRC), '증축 = min(여유노동 몫, 지은 침상 − 주거) · 올리고 싶은 몫을 적는다');
@@ -70,6 +71,17 @@ ok(off.live.max > 24 + 1e-6, 'ⓑ ★끔(기본)은 같은 마을 주거가 24 �
 ok(off.live.wants.every((x) => x === null), 'ⓑ 끔 — `_t958Want` 를 안 적는다(종전 글자)');
 ok(JSON.stringify(on.dead) === JSON.stringify(off.dead), 'ⓒ 집 행위가 아닌 마을은 켬 · 끔 같은 값(종전 목재 상한)', `주거 ${on.dead.max}`);
 ok(on.dead.max <= 20 + 1e-9 && on.dead.wants.every((x) => x === null), 'ⓒ 그 마을은 목재 0 이면 안 오르고 `_t958Want` 도 없다');
+
+console.log('④ [T966] 계획 주거 — 주거를 "앞으로 지을 집"으로 읽던 두 자리');
+ok(JSON.stringify(on.live.plans) === JSON.stringify(off.live.hs), '켬의 계획 주거(`_t958Plan`)는 끔 세계 주거 궤적과 같은 값이다(같은 노후 · 같은 houseDayBuild · 새 수 0)', `끝 ${on.live.plans[19]} = ${off.live.hs[19]}`);
+ok(off.live.plans.every((x) => x === null) && on.dead.plans.every((x) => x === null), '끔 · 집 행위 아닌 마을은 그 칸이 없다(종전)');
+ok(/const _hPick = \(T958_HOUSE_REAL && v\._t958Plan !== undefined\) \? v\._t958Plan : v\.housing;/.test(SRC) && /N >= _hPick \* 0\.95 && \(v\.storage\.wood \|\| 0\) < N \* 2/.test(SRC) && !/N >= v\.housing \* 0\.95/.test(SRC),
+  '나무꾼 안전망은 켬이면 계획 주거를 읽는다(끔 = 주거 그대로 · 옛 글자 `N >= v.housing * 0.95` 는 남지 않는다)');
+{
+  const tl = VSRC.split('\n').filter((l) => /territoryTarget\(/.test(l) && !/^\s*\/\//.test(l));
+  ok(tl.length === 2 && tl.every((l) => /territoryTarget\(land\.size, _t966TerrHousing\(vil\.econ\)\)/.test(l)), '서버 영토 목표 두 줄은 `_t966TerrHousing` 하나를 읽는다', `${tl.length}줄`);
+  ok(/function _t966TerrHousing\(e\) \{ return \(e && _lifeEcon\(\)\.T958_HOUSE_REAL && e\._t958Plan !== undefined\) \? e\._t958Plan : \(\(e && e\.housing\) \|\| 0\); \}/.test(VSRC), '그 함수 = 켬 ∧ 계획 칸이면 계획 · 그 밖 = econ 주거(종전 값)');
+}
 
 console.log('③ 집터 방아쇠');
 const VL = require(path.join(ROOT, 'server', 'village-layout'));

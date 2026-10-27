@@ -12685,6 +12685,10 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   const houseTarget = N * HOUSE_BUFFER;
   const _t958 = T958_HOUSE_REAL && buildActOn(v) && v._mapBeds !== undefined;   // ★[T958] 집 행위 마을 · 지은 침상을 아는 판만(끔 · 그 밖 = 종전)
   if (_t958) v._t958Want = 0;
+  //   ★[T966] 켬이면 econ 이 **계획 주거**도 한 칸에 따로 쥔다(`v._t958Plan`) — 끔 세계의 주거 그 궤적이다(같은 노후 · 같은 `houseDayBuild` · 목재 상한 `Infinity` 그대로 — 새 수 0).
+  //     econ 주거(`housing`)는 지은 침상까지만 오르니, 주거를 "앞으로 지을 집"으로 읽던 두 자리 — 나무꾼 안전망(아래 `pickJob` 줄) · 영토 목표(`villages.js` `territoryTarget`) — 는
+  //     이 칸을 읽는다(보고 T966 ② — 지은 침상을 읽으면 그 둘이 계획과 다른 세계를 만든다).
+  if (_t958) { const _p = (v._t958Plan !== undefined ? v._t958Plan : v.housing / (1 - HOUSE_DECAY)) * (1 - HOUSE_DECAY); v._t958Plan = _p + houseDayBuild({ housing: _p }, N, totalFoodEquivalent(v)); }
   if (v.housing < houseTarget) {
     // ★노동기반 건설: "시간 남는 NPC가 집을 짓는다" — 여유노동이 건설속도를 결정.
     //   식량안보(곳간 여유)일수록 잉여노동 많아 건설 빠름. 쪼들리면 정체(노동을 식량에 다 씀).
@@ -13644,7 +13648,8 @@ function pickDeficitJob_rational(v, world) {
   //     땔감이고(T644 §1) 시딩 곳간은 9~25일에 0 이 되니, 대부분 마을은 **바닥난 뒤에야** 이 줄에 닿는다. 켜면 같은 줄이 이미 있는 신호를
   //     하나 더 읽는다: **남은 날 = 곳간 ÷ 하루 소비 EMA(`_consEMA.wood`) < 30** — 30 은 v2 가 흐름 수요를 재는 바로 그 창
   //     (`flowT = _consEMA × 30` · economy-sim-v2 computeShadowPrices)이다. 새 수 0. 끔이면 이 줄은 종전 그대로(비트 동일).
-  if (((v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2)
+  const _hPick = (T958_HOUSE_REAL && v._t958Plan !== undefined) ? v._t958Plan : v.housing;   // ★[T966] 켬 = 계획 주거(위 `_t958Plan`) · 끔 · 그 칸 없음 = 주거 그대로(종전)
+  if (((v.housing !== undefined && N >= _hPick * 0.95 && (v.storage.wood || 0) < N * 2)
        || (woodEarlyOn() && (woodEarlyMode() === 1 || _t663Birth) && (v.storage.wood || 0) < ((v._consEMA && v._consEMA.wood) || 0) * 30))
       && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
   // ★S1 석재 안전망: 돌은 채집자원 — 돌밭/강가(land.stone 충분) 마을이 석재 부족하면 채집꾼(광부 아님). 집·도구 석재 수요 → 채집. 돌 없으면(stone≤0.25) 안 함(교역 의존).
