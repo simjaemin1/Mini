@@ -6,6 +6,7 @@
 //     `scripts/test-hp-src.js` (브라우저 · 서버 0 · 빠른 상설 `@regress` — 몸 잇기 카드가 돌리는 묶음에도 든다)
 //   검사를 두 벌 두면 사본이고, 문이 바뀔 때 한 벌만 고쳐져 조용히 갈린다(T290 `lib-routes` 와 같은 까닭).
 // ★늘리는 자리: 문 하나 = `SPECS` 한 칸(무엇을 쓰는 줄을 찾나 · 문 안의 그 한 줄 · 남의 것으로 거를 곁 낱말).
+//   ★[T954] 짐승(존 몹) hp 문 `setMobHp` 칸 = `SPECS.mob` · 검사 = `mobSourceChecks`(이름이 사람 · 자원과 겹쳐 곁 낱말 대신 **전수** — 칸 머리 주석).
 //   T942(마을 NPC 몸 hp 한 곳) 뒤에는 그 문의 칸을 `SPECS` 에 더하면 두 하네스가 같이 받는다.
 'use strict';
 const fs = require('fs');
@@ -25,6 +26,26 @@ const SPECS = {
   person: {
     name: '사람 hp', file: 'server/zone.js', door: /function setHp\(p, v, why\)/, doorName: '`setHp(p, v, why)`',
     lhs: /^\s*(?:player|target|entity|p)\.hp\s*(?:=|\+=|-=)[^=]/, inDoor: /^\s*p\.hp = next/, notMine: /mob_damaged|\.mid\b/,
+  },
+  // ★[T954 2026-10-27] 짐승(존 몹 `mobs`) hp — 문 `setMobHp(m, v, why)`(zone.js · 야생은 host 로 받는다 · 사본 0).
+  //   몹을 가리키는 이름이 사람 · 자원과 겹친다(`target` · `best`) ⇒ 곁 낱말로 안 가르고 **전수**로 본다 — 존 소스(주석 걷음)에서 `.hp` 를
+  //   쓰는 줄은 다 넷 중 하나다: 짐승 문 안 한 줄(`m.hp = v;`) · 사람 문 안 한 줄(`p.hp = next;`) · 몸이 아닌 것(자원 셋 · 건물 · 벽 셋 — `others`
+  //   글자 그대로 · 수까지). 새 쓰기 줄은 그것이 무엇이든 빨강이다(문을 지나거나 · 몸이 아니면 이 표에 이름을 올린다).
+  //   야생(wildlife.js) 은 존 몹 그림자(`sh`)만 몸이다 — 랩 몹 · 랩 프록시(`lm` · `pr` · 랩 블록의 한 줄 코드)는 판 소유라 안 본다(T954 ③).
+  mob: {
+    name: '짐승 hp', file: 'server/zone.js', door: /function setMobHp\(m, v, why\)/, doorName: '`setMobHp(m, v, why)`',
+    write: /(?:^|[^\w$.])[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\[[^\]]+\])*\.hp\s*(?:\+\+|--|\+=|-=|=(?!=))/,
+    inDoor: 'm.hp = v;', personDoor: 'p.hp = next;',
+    others: {
+      'if (!(r.hp > 0) || r.hp > r.maxHp) r.hp = r.maxHp;': 1,             // 자원 — 다시 자란 그루(T340 · 재생)
+      'r.hp -= 1;': 1,                                                     // 자원 — NPC 채집
+      'best.hp -= dmg;': 1,                                                // 자원 — 사람 채집(tryGather)
+      'best.data.hp = Math.min(maxHp, (best.data.hp || 0) + 25);': 1,      // 건물 — 고치기
+      'bestWall.data.hp = (bestWall.data.hp ?? maxHp) - atk;': 1,          // 벽 — 부수기
+      'bestWall.data.hp = 0;': 1,                                          // 벽 — 무너짐
+    },
+    wildWrite: /(?:^|[^\w$.])sh\.hp\s*(?:\+\+|--|\+=|-=|=(?!=))/, wildCall: /\bH\.setMobHp\(sh, /,
+    loud: ['arrow', 'feed', 'npc', 'player'], keep: ['feed', 'npc', 'player'], whys: ['arrow', 'feed', 'npc', 'player'], wildWhy: 'wild',
   },
 };
 
@@ -100,4 +121,42 @@ function hpDoorCallChecks(ok, srcs) {
   ok(!/p\.hp = 0;/.test(code), '★★④ 죽음의 `p.hp = 0` 사본은 사라졌다(문이 하한을 누른다)');
 }
 
-module.exports = { ROOT, SPECS, stripComments, strayWrites, readSrcs, hpSourceChecks, hpDoorCallChecks };
+// ★[T954] 존 소스의 `.hp` 쓰기 전수 — 줄마다 넷 중 하나(짐승 문 · 사람 문 · 몸 아닌 것 표 · 그 밖 = 문 밖 쓰기)
+function hpWriteCensus(code, spec) {
+  const M = spec || SPECS.mob;
+  const out = { door: 0, person: 0, others: {}, stray: [] };
+  code.split('\n').forEach((l, i) => {
+    if (!M.write.test(l)) return;
+    const t = l.trim();
+    if (t === M.inDoor) out.door++;
+    else if (t === M.personDoor) out.person++;
+    else if (Object.prototype.hasOwnProperty.call(M.others, t)) out.others[t] = (out.others[t] || 0) + 1;
+    else out.stray.push(`${i + 1}: ${t.slice(0, 140)}`);
+  });
+  return out;
+}
+const setWords = (code, name) => { const m = new RegExp(`const ${name} = new Set\\(\\[([^\\]]*)\\]\\)`).exec(code); return m ? [...m[1].matchAll(/'([a-z]+)'/g)].map((x) => x[1]).sort() : null; };
+// ★[T954] 짐승 hp — `ok(조건, 말, 덧)` 를 부르는 쪽이 준다 · `srcs` 를 주면 그 글자로 잰다(미끼 판)
+function mobSourceChecks(ok, srcs) {
+  const S = srcs || readSrcs();
+  const M = SPECS.mob, code = stripComments(S.zone), wcode = stripComments(S.wildlife || '');
+  ok(M.door.test(code), `★⓪ 전제: ${M.doorName} 가 실재한다`);
+  const C = hpWriteCensus(code, M);
+  const othersOk = Object.keys(M.others).every((k) => (C.others[k] || 0) === M.others[k]);
+  ok(C.stray.length === 0 && C.door === 1 && C.person === 1 && othersOk,
+    '★★짐승 hp 를 **문 밖에서 쓰는 자리가 없다** — 존 소스의 `.hp` 쓰기는 문 안 둘(짐승 `m.hp = v` · 사람 `p.hp = next`) + 몸 아닌 것(자원 셋 · 건물 · 벽 셋)뿐',
+    C.stray.length ? C.stray.join(' | ') : `문 ${C.door} · 사람 문 ${C.person} · 몸 아닌 것 ${Object.values(C.others).reduce((a, b) => a + b, 0)}/${Object.keys(M.others).length}${othersOk ? '' : ' — 표와 수가 다르다 ' + JSON.stringify(C.others)}`);
+  const ws = []; wcode.split('\n').forEach((l, i) => { if (M.wildWrite.test(l)) ws.push(`${i + 1}: ${l.trim().slice(0, 140)}`); });
+  ok(ws.length === 0 && M.wildCall.test(wcode), '★★야생 — 존 몹 그림자(`sh`) hp 는 host 의 그 문으로만 쓴다(직접 쓰기 0 · 랩 몹 · 프록시는 판 소유라 안 본다)',
+    ws.length ? ws.join(' | ') : (M.wildCall.test(wcode) ? '그림자 쓰기 0 · `H.setMobHp(sh, …)` 1' : '`H.setMobHp(sh, …)` 없음'));
+  const loud = setWords(code, 'MOB_HP_LOUD'), keep = setWords(code, 'MOB_HP_KEEP');
+  ok(JSON.stringify(loud) === JSON.stringify(M.loud) && JSON.stringify(keep) === JSON.stringify(M.keep),
+    '★짐승 문의 낱말 표 — 방송(`mob_damaged`) 넷 · 저장 표(`dirty`) 셋 = 종전 자리마다 하던 그대로(늘리지도 줄이지도 않았다)', `방송 ${JSON.stringify(loud)} · 저장 표 ${JSON.stringify(keep)}`);
+  const calls = [...code.matchAll(/(?<!function )\bsetMobHp\(\s*[A-Za-z_$][\w$]*\s*,[^\n]*?,\s*'([a-z]+)'\s*\)/g)].map((x) => x[1]).sort();
+  const wcalls = [...wcode.matchAll(/\bH\.setMobHp\(\s*sh\s*,[^\n]*?,\s*'([a-z]+)'\s*\)/g)].map((x) => x[1]);
+  ok(JSON.stringify(calls) === JSON.stringify(M.whys) && JSON.stringify(wcalls) === JSON.stringify([M.wildWhy]),
+    '★짐승 문을 부르는 자리 다섯 — 존 넷(낱말마다 하나) · 야생 하나(조용한 `wild`)', `존 ${calls.join(' · ')} · 야생 ${wcalls.join(' · ')}`);
+  return { census: C, wild: ws, calls, wcalls, loud, keep };
+}
+
+module.exports = { ROOT, SPECS, stripComments, strayWrites, readSrcs, hpSourceChecks, hpDoorCallChecks, hpWriteCensus, mobSourceChecks };

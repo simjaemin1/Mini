@@ -4,6 +4,8 @@
 //     존 소스에서 네 글자를 떼어 그대로 세운다: `const PLAYER_MAX_HP = …;` · `const HP_PEER = new Set([…]);` · `const HP_QUIET = new Set([…]);` ·
 //     `function setHp(p, v, why) { … return next; }`. 방송 · 보냄은 부르는 쪽이 준다(목 세계의 그것). 글자를 못 찾으면 던진다(조용히 다른 문을 세우지 않는다).
 //   쓰는 법: const { makeSetHp } = require('./lib-hp-door'); deps.setHp = makeSetHp((m) => bcast.push(m), (ws, m) => {});
+//   ★[T954 2026-10-27] 짐승(존 몹) HP 문 `setMobHp` 도 같은 꼴로 — `makeSetMobHp(broadcast)`(떼는 글자 셋: `MOB_HP_KEEP` · `MOB_HP_LOUD` · `function setMobHp(m, v, why) {…}`).
+//     야생 생태를 최소 host 로 돌리는 하네스(`test-hunt-vis` · `test-zone-fauna`)가 host 에 넣는다.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -21,4 +23,11 @@ function doorText(src) {
 function makeSetHp(broadcast, send, src) {
   return new Function('broadcast', 'send', `${doorText(src)}\nreturn setHp;`)(broadcast || (() => {}), send || (() => {}));
 }
-module.exports = { doorText, makeSetHp };
+function mobDoorText(src) {
+  const s = src || fs.readFileSync(ZONE, 'utf8');
+  return [cut(s, 'const MOB_HP_KEEP = new Set([', ']);'), cut(s, 'const MOB_HP_LOUD = new Set([', ']);'), cut(s, 'function setMobHp(m, v, why) {', '\n  return v;\n}')].join('\n');
+}
+function makeSetMobHp(broadcast, src) {
+  return new Function('broadcast', `${mobDoorText(src)}\nreturn setMobHp;`)(broadcast || (() => {}));
+}
+module.exports = { doorText, makeSetHp, mobDoorText, makeSetMobHp };
