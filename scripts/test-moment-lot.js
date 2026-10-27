@@ -743,7 +743,10 @@ say('\n⑨ [T748] 켬 전용 일곱 길 — 로트를 그대로 넘긴다(손잡
 
 say('\n⑩ [T748] 거래소 받기 — 열량 짝(꺼내기 · 게시판 보상과 같은 `kcal.itemsOf`) · 끔 = 종전 1개 = 1단위');
 {
-  const T0 = sub748('trade', {}, true, { T748_TK: '0' }), T1 = sub748('trade', {}, true, { T748_TK: '1' });
+  //   ★[T943 2026-10-27] 이 판의 세계(시드 7 · 마을 5 · 200일)는 `T931_SLOTK_EMA` 켬 기본(`'season'`) **앞** 세계로 둔다(되돌림 `=0` · 단언 무변).
+  //     켬 기본 세계에선 마을0 이 나무 대신 돌 · 밀 대신 고기를 골라 재고 상한에 걸린다(낼 것 6 → 실행 1 · 받을 낱개 30 = 상한 31 아래) —
+  //     아래 '계획 단위 → 낱개' 셈(`avg × 낼 것`)은 상한이 안 걸린 판의 식이라 그 판엔 안 맞는다(보고 T943 §6 · 회부).
+  const T0 = sub748('trade', {}, true, { T748_TK: '0', T931_SLOTK_EMA: '0' }), T1 = sub748('trade', {}, true, { T748_TK: '1', T931_SLOTK_EMA: '0' });
   const a = (T0.trade || {}), b = (T1.trade || {});
   ok(!T0.err && !T1.err && a.res && a.res === b.res && a.give === b.give && a.kcal > 0 && Math.abs(a.kcal - a.DAY) > 1, '⑩ [상황] 두 판 — 낱개 열량이 하루치와 다른 식량을 받는다(같은 것을 내고)', `${a.give} → ${a.res}(${a.kcal}kcal · 하루치 ${a.DAY})`);
   const A0 = a.a || {}, A1 = b.a || {};
