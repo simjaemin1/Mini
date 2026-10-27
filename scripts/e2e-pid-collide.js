@@ -30,13 +30,8 @@ function ok(cond, label, detail) {
 
 (async () => {
   console.log('=== e2e-pid-collide — 관전 연결의 같은 pid 가 나로 읽히나 (T397 ①) ===\n');
-  const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
-  // 전제 둘 — 서버가 정말 그렇게 하나(철자가 아니라 꼴로)
-  ok(/const pid = `p\$\{nextPid\+\+\}`/.test(zsrc) && /let nextPid = 1;/.test(zsrc),
-     '전제 ① pid 는 존 프로세스마다 1 부터 센다(`let nextPid = 1` · `p${nextPid++}`)');
-  const bc = zsrc.slice(zsrc.indexOf('function broadcast(obj)'), zsrc.indexOf('function broadcast(obj)') + 400);
-  ok(/for \(const ws of observers\.keys\(\)\) rawSend\(ws, str\)/.test(bc),
-     '전제 ② `broadcast` 는 관전자에게도 보낸다(`observers.keys()`)');
+  //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.pidCollide`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+  require('./lib-e2e-src').SECTIONS.pidCollide(ok);
 
   const http = require('http');
   const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4' };

@@ -365,43 +365,8 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
 
   // ── ⑥ 소스 — 표 하나·컬럼 둘 · 사람이 쓴 문장은 그리는 쪽이 막는다 ──────
   {
-    const cen = fs.readFileSync(path.join(ROOT, 'server', 'central.js'), 'utf8');
-    const lob = fs.readFileSync(path.join(ROOT, 'public', 'client', '70-lobby.js'), 'utf8');
-    const nt = fs.readFileSync(path.join(ROOT, 'server', 'notice.js'), 'utf8');
-    const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0). 옛 정규식 판은 `villages.js:20` 의 `// … sim/* …` 에 걸려 파일의 67.9% 를 삼켰다
-    ok((cen.match(/CREATE TABLE IF NOT EXISTS tribe_invites/g) || []).length === 1, '⑥ central 에 새 표는 **하나**다');
-    //   ⚠`codeOnly` 를 안 쓴다 — 블록 주석 지우개가 문자열 안의 `/*` 를 만나면 그 뒤를 통째로 먹는다
-    //     (초안이 그래서 0건을 봤다). 여기서 세는 것은 **SQL 문**이라 원문 그대로가 맞다.
-    const added = (cen.match(/ALTER TABLE tribes ADD COLUMN (\w+)/g) || []).map((x) => x.split(' ').pop());
-    ok(added.includes('join_mode') && added.includes('intro'), '⑥b 새 컬럼 **둘**이 있다', added.join(' '));
-    //   ★[T159 2026-09-07] 일곱 → **여덟**. `granary_open` 하나를 더했다. 이 줄은 손으로 세는 자리라
-    //     늘 때마다 고쳐야 하고, **고치는 그 행위가 곧 "컬럼을 늘렸다"는 자백**이다(그게 이 검사의 뜻이다).
-    ok(added.length === 8, '⑥b2 ★`tribes` 의 컬럼 증설은 **여덟**이다(T128 일곱 + T159 하나) — 하나 더 늘면 여기가 빨개진다', added.length);
-    ok(/onbEsc\(v\.intro\)/.test(lob), '⑥c ★사람이 쓴 문장은 **그리는 쪽이 막는다**(꺾쇠 이스케이프)');
-    ok(!/slice\(0, ?60\)|substring\(0, ?60\)/.test(codeOnly(lob)), '⑥d ★길이 상한을 로비가 **다시 자르지 않는다**(사본 0)');
-    ok(/'guild'/.test(codeOnly(nt)) && (codeOnly(nt).match(/KINDS = \[/g) || []).length === 1, '⑥e 알림 종류 표는 **하나**이고 거기에 `guild` 가 있다');
-    ok(cen.length > 1000 && lob.length > 1000 && nt.length > 500, '⑥f (자명 통과 방지) 세 파일을 실제로 읽었다');
-    // ★[T139] 알림함이 **아무것도 안 늘렸다** — 표도 컬럼도(⑥b2 가 컬럼을, 여기서 표를 센다).
-    const tables = (cen.match(/CREATE TABLE IF NOT EXISTS (\w+)/g) || []).map((x) => x.split(' ').pop());
-    ok(tables.length >= 5 && new Set(tables).size === tables.length,
-       '⑥g 전제: central 의 표를 실제로 세었다(중복 0)', `${tables.length}개: ${tables.join(' ')}`);
-    ok(!tables.some((t2) => /inbox|pending|call/i.test(t2)),
-       '★⑥g2 부름 알림함은 **새 표를 안 만들었다** — 있는 두 표를 읽기만 한다', tables.join(' '));
-    // ★접는 수를 zone 이 **손으로 안 적었다** — 정본에서 읽는다
-    const zn = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
-    const hook = zn.slice(zn.indexOf('Friends.pendingLines'), zn.indexOf('Friends.pendingLines') + 1200);
-    ok(hook.length > 200, '⑥h 전제: welcome 훅을 실제로 찾았다(못 찾으면 아래가 자명 통과다)', hook.length);
-    ok(/Notice\.NOTICE_MAX/.test(hook), '★★⑥h2 접는 수는 **정본에서 읽는다**(`Notice.NOTICE_MAX` · 새 수 0)');
-    ok(!/[^\w.]3[^\w]/.test(hook.replace(/\/\/.*$/gm, '')), '⑥h3 ★그 훅에 **수 3이 손으로 적혀 있지 않다**');
-    // ★"○○이 청했다"·"[△△]이 부른다" 문장은 **한 자리**다 — 그 자리에서 하는 말과 밀린 말이 같아야 한다
-    const fj = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'friends.js'), 'utf8'));
-    const gj = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'guild.js'), 'utf8'));
-    //   ⚠**받는 쪽 문장**만 센다. 청한 쪽에게 하는 말("…에게 벗이 되자고 청했다")은 다른 문장이라
-    //     그것까지 세면 초록이 될 길이 없다(초안이 여기서 2를 봤다).
-    ok((fj.match(/이\(가\) 벗이 되자고 청했다/g) || []).length === 1, '★⑥i 친구 청함 문장은 **한 자리**다(`askedLine`)',
-       (fj.match(/이\(가\) 벗이 되자고 청했다/g) || []).length);
-    ok((gj.match(/자네를 부른다/g) || []).length === 1, '★⑥i2 길드 부름 문장도 **한 자리**다(`calledLine`)',
-       (gj.match(/자네를 부른다/g) || []).length);
+    //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.guild`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+    require('./lib-e2e-src').SECTIONS.guild(ok);
   }
 
   // ── ⑦ [T159] 마을 소속 · 곳간 — ★[T779] 꺼내기는 촌장만(소속은 곳간 열쇠가 아니다) ─────────────────────
