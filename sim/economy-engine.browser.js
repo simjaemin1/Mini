@@ -9772,7 +9772,8 @@ const T815_DRAFT_FAMINE = (typeof process !== 'undefined' && process.env && proc
 //   (새 수 0 — 0.9 는 출생 줄의 그 수 · 셈만 느는 죽음은 `T815_DRAFT_FAMINE` 몫 — 이 손잡이가 켜지면 빚이 −1 아래에 쌓여 있지 않아 그날 압력이 −1 을 넘긴 날만 센다).
 const T924_DEBT_CAP = (typeof process !== 'undefined' && process.env && process.env.T924_DEBT_CAP === '1');
 // ★★[T931 2026-10-26 · T924 회부 2-ⓐ · 재민 10-24 "창고에 식량이 있는데 자유민이 그렇게 빨리 죽어?"]
-//   **식량 자리 K 에도 신뢰 관성** — 손잡이 `T931_SLOTK_EMA`(기본 끔 · 켜는 값 `'1'` · `'season'` 둘 · 그 밖 · 미설정 = 끔 = 종전 바이트).
+//   **식량 자리 K 에도 신뢰 관성** — 손잡이 `T931_SLOTK_EMA`(★[T943] **켬 기본 = `'season'`** · 되돌림 `'0'` = 끔 = 종전 바이트 · `'1'` = 값 전체 · 그 밖 · 미설정 = `'season'` · 브라우저 랩 = `'season'`).
+//   ★[T943 2026-10-27 · PM 결정 — T931 회부 1 = `'season'`(카드 글자 "계절 배수에"의 꼴 · 서버 띠 그날 굶주림 0 인 죽음 −45% · 랩 −23%)] T931 보고 §7 · T943 보고.
 //   K = min(식량 자리 slotK · 식량 흐름 prodK · 땔감 fuelK)(아래 4) 중 prodK(EMA 0.97 · "날씨 이벤트가 K 를 직접 때려 θ=4 로지스틱이 과잉반응하지 않게")와
 //   fuelK(EMA 0.98 · "K 가 절벽 낙하하지 않게")는 신뢰 관성을 갖는데 slotK 만 계절 땅 배수(v2 `applyLandModifiers` — 겨울 물 0.85 · 사냥감 0.90 · 지력 0.80
 //   · 날씨 · 풍흉)를 **그날 그대로** 받는다(자리 = `jobCapacity` 가 그날 땅으로 센다) ⇒ 12월 1일 K 가 하루에 떨어지고 로지스틱이 곳간과 무관하게 죽인다
@@ -9782,8 +9783,9 @@ const T924_DEBT_CAP = (typeof process !== 'undefined' && process.env && process.
 //     자리에 준 몫 f = 그날 땅의 자리 ÷ 원래 땅의 자리(같은 함수 `totalFoodSlots` · 원래 땅의 size 는 그날 size — `restoreLand` 와 같은 규칙)에 관성을 걸고
 //     slotK = 원래 땅의 자리 × 관성 f(영토가 는 날은 그날 바로 · 배수가 없는 판(`_origLand` 없음)은 f = 1 = 끔과 같은 K).
 //   자리 함수(`totalFoodSlots`)는 그대로 — K 에 드는 값만 관성이고 자리 수를 쓰는 다른 문(영토 확장 판단 · 직업 자리)은 그날 자리 그대로다.
-const T931_SLOTK_EMA = (typeof process !== 'undefined' && process.env && process.env.T931_SLOTK_EMA === '1');
-const T931_SLOTK_SEASON = (typeof process !== 'undefined' && process.env && process.env.T931_SLOTK_EMA === 'season');
+const T931_SLOTK_OFF = (typeof process !== 'undefined' && process.env && process.env.T931_SLOTK_EMA === '0');   // ★[T943] 되돌림 `=0` = 종전(T931 앞) 바이트
+const T931_SLOTK_EMA = !T931_SLOTK_OFF && (typeof process !== 'undefined' && process.env && process.env.T931_SLOTK_EMA === '1');   // `'1'` = 값 전체(남김)
+const T931_SLOTK_SEASON = !T931_SLOTK_OFF && !T931_SLOTK_EMA;   // ★[T943] 켬 기본 — 미설정 · 그 밖 · 브라우저(`process` 없음) = `'season'`
 //   `'season'` 한 걸음 — K 4) 에서 그날 한 번(마을 틱 안 · 땅 배수가 걸린 채). 원래 땅의 자리는 같은 자리 함수를 원래 땅으로 한 번 더 부른다
 //   (v.land 를 그 자리에서 잠깐 바꿔 끼우고 되돌린다 — 읽기만 · `effectiveLandSize` 메모는 size 열쇠라 같은 값).
 function _t931SeasonSlot(v, raw) {
