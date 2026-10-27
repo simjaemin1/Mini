@@ -25,7 +25,12 @@
 //       안개가 본 칸(`window._seenChunks` — 청크 수 · 칸 수)
 //   손잡이(env)는 그대로 존에 건넨다 — 켬 · 끔 견줌은 같은 대본을 env 만 바꿔 두 번 돈다.
 //   --terr 면 지형 칸 셈(`Terrain.isWaterCellLocal` · `isRockCellLocal` — 물 · 바위 칸 캐시에 없을 때만 불린다) 수와 시간을 바퀴마다 누적으로 적는다(`terr`).
-// 실행: [E2E_BROWSER=webkit] node scripts/t926-mem-hour.js [--min 60] [--every 5] [--snap 5,60] [--mdump] [--terr] [--out /tmp/t926] [--tag cr-off]
+//   ★[T970] --own 이면 바퀴 끝마다(크롬 = 강제 GC · memory-infra 덤프 뒤 · WebKit = 표본 뒤) 살아 있는 캔버스(갈고리가 WeakRef 로 쥔 것)를
+//     **붙든 이름**으로 가른다(`own`) — 이름 = 클라 맨 위 바인딩(public/client/*.js 의 두 칸 들여쓰기 const · let · var — 이름 있는 캐시 · 배열이 먼저)
+//     · window 칸 · DOM. 이름에서 Map(열쇠 · 값) · Set · 배열 · 객체 칸 · 2D/GL 문맥의 `.canvas` 를 깊이 --own-depth(기본 7)까지 따라가
+//     처음 닿은 이름에 귀속한다(이름 차례 = 위 순서 · 앞 이름이 이긴다). 아무 이름에서도 안 닿은 것은 만든 곳(함수 둘 · `안<밖`) · 나이(만든 뒤 1분 ·
+//     5분 · 그 위)로 센다. 함수 닫힘(클로저) 안에서만 붙든 것은 이 길로 안 보인다(그 몫은 "이름 없음" 에 남는다).
+// 실행: [E2E_BROWSER=webkit] node scripts/t926-mem-hour.js [--min 60] [--every 5] [--snap 5,60] [--mdump] [--terr] [--own] [--out /tmp/t926] [--tag cr-off]
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -41,9 +46,11 @@ const CS = CH.CHUNK_SIZE;
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const MIN = +arg('--min', '60'), EVERY = +arg('--every', '5');
 const OUT = arg('--out', '/tmp/t926'); fs.mkdirSync(OUT, { recursive: true });
-const SNAPS = String(arg('--snap', '5,60')).split(',').filter(Boolean).map(Number);
+const SNAPS = String(arg('--snap', '5,60')).split(',').filter(Boolean).map(Number).filter(Number.isFinite);   // [T970] `--snap none` = 스냅샷 없음
 const MDUMP = process.argv.includes('--mdump');   // 크롬만 — 바퀴 끝마다 memory-infra 덤프(프로세스 · 할당자별 크기)
 const TERR = process.argv.includes('--terr');     // 지형 칸 셈(`Terrain.isWaterCellLocal` · `isRockCellLocal` — 칸 캐시가 없을 때만 불린다)을 세고 잰다(T926 ② 켬이 더 하는 일)
+const OWNF = process.argv.includes('--own');      // [T970] 살아 있는 캔버스를 붙든 이름으로 가른다(머리말 ★T970)
+const OWN_DEPTH = +arg('--own-depth', '7');
 const BR = require('./e2e-browser').which();
 const TAG = arg('--tag', BR);
 const CPORT = 3010;
@@ -110,19 +117,22 @@ function exploreSpot(i) {
 // ── 페이지 갈고리 — 입장 앞에 건다(두 브라우저 같은 길 · evaluate) ─────────────────────────────────────────
 const INSTR = () => {
   if (window.__t926) return true;
-  const M = window.__t926 = { addN: 0, remN: 0, byType: {}, cvN: 0, cvRefs: [], cvSite: {}, imgN: 0, imgRefs: [], fr: [], lastT: 0 };
+  const M = window.__t926 = { addN: 0, remN: 0, byType: {}, cvN: 0, cvRefs: [], cvSite: {}, imgN: 0, imgRefs: [], fr: [], lastT: 0, cvMeta: new WeakMap() };
   //   캔버스를 만든 자리(부른 함수 이름 · 스택 둘째 줄) — 만든 수를 귀속한다
   const site = () => { const L = String(new Error().stack || '').split('\n'); const l = (/^Error/.test(L[0]) ? L[3] : L[2]) || ''; const m = l.match(/at (?:new )?([\w$.<>]+)/) || l.match(/^([\w$.<>]*)@/); return (m && m[1]) || '?'; };
+  //   [T970] 만든 곳 함수 둘(`안<밖`) — 붙든 이름이 없는 캔버스를 가를 때 쓴다(만든 수 `cvSite` 는 종전 그대로 함수 하나)
+  const site2 = () => { const L = String(new Error().stack || '').split('\n'); const b = /^Error/.test(L[0]) ? 3 : 2; const nm = (l) => { const m = (l || '').match(/at (?:new )?([\w$.<>]+)/) || (l || '').match(/^([\w$.<>]*)@/); return (m && m[1]) || '?'; }; return nm(L[b]) + '<' + nm(L[b + 1]); };
+  const meta = (c) => { try { M.cvMeta.set(c, { s: site2(), t: performance.now() }); } catch (e) {} };
   const ET = EventTarget.prototype, _add = ET.addEventListener, _rem = ET.removeEventListener;
   ET.addEventListener = function (t, f, o) { M.addN++; M.byType[t] = (M.byType[t] || 0) + 1; return _add.call(this, t, f, o); };
   ET.removeEventListener = function (t, f, o) { M.remN++; M.byType[t] = (M.byType[t] || 0) - 1; return _rem.call(this, t, f, o); };
   const _ce = Document.prototype.createElement;
   Document.prototype.createElement = function (n, o) {
     const e = _ce.call(this, n, o); const t = String(n).toLowerCase();
-    if (t === 'canvas') { M.cvN++; M.cvRefs.push(new WeakRef(e)); const k = site(); M.cvSite[k] = (M.cvSite[k] || 0) + 1; } else if (t === 'img') { M.imgN++; M.imgRefs.push(new WeakRef(e)); }
+    if (t === 'canvas') { M.cvN++; M.cvRefs.push(new WeakRef(e)); const k = site(); M.cvSite[k] = (M.cvSite[k] || 0) + 1; meta(e); } else if (t === 'img') { M.imgN++; M.imgRefs.push(new WeakRef(e)); }
     return e;
   };
-  if (typeof OffscreenCanvas === 'function') { const OC = OffscreenCanvas; const W = function (w, h) { const c = new OC(w, h); M.cvN++; M.cvRefs.push(new WeakRef(c)); return c; }; W.prototype = OC.prototype; window.OffscreenCanvas = W; }
+  if (typeof OffscreenCanvas === 'function') { const OC = OffscreenCanvas; const W = function (w, h) { const c = new OC(w, h); M.cvN++; M.cvRefs.push(new WeakRef(c)); meta(c); return c; }; W.prototype = OC.prototype; window.OffscreenCanvas = W; }
   const OI = window.Image; const WI = function (w, h) { const i = arguments.length >= 2 ? new OI(w, h) : arguments.length === 1 ? new OI(w) : new OI(); M.imgN++; M.imgRefs.push(new WeakRef(i)); return i; };
   WI.prototype = OI.prototype; window.Image = WI;
   const loop = (t) => { if (M.lastT) M.fr.push(t - M.lastT); M.lastT = t; requestAnimationFrame(loop); };
@@ -182,12 +192,75 @@ const SAMPLE = (names) => {
   out.notices = (window.__notices || []).length;
   try { const C = window.__t926terr; if (C) out.terr = { w: C.w, r: C.r, wMs: Math.round(C.wMs), rMs: Math.round(C.rMs) }; } catch (e) {}   // --terr 누적
   try { out.knob = { cellNear: (typeof uiCfg !== 'undefined' && uiCfg && 'cellNear' in uiCfg) ? uiCfg.cellNear : null }; } catch (e) {}   // [T926] 손잡이 welcome 값(★T936 뒤 기본 = true · `T926_CELL_NEAR=0` 이면 null · 칸 없음)
+  try { out.knob.cutNear = ('cutNear' in uiCfg) ? uiCfg.cutNear : null; if (typeof _mtCutNearN !== 'undefined') out.knob.cutNearN = _mtCutNearN; if (typeof _mtCutHold !== 'undefined') out.knob.cutHold = _mtCutHold.length; } catch (e) {}   // [T970] 손잡이 welcome 값 · 놓은 띠 수 · 붙든 띠 수
   try { if (typeof _cellBk !== 'undefined') { let w = 0, r = 0; for (const b of _cellBk.values()) { w += b.w.length; r += b.r.length; } out.knob.bk = { n: _cellBk.size, w, r }; } } catch (e) {}   // [T926] 켬 — 자리 칸 수 · 적힌 열쇠 수(물 · 바위)
   try { const sc = window._seenChunks; if (sc instanceof Map) { let cells = 0; for (const v of sc.values()) cells += (v && v.size) || 0; out.seen = { chunks: sc.size, cells }; } } catch (e) {}   // 안개가 본 칸(34-m-renderloop `window._seenChunks`)
   out.heap = (typeof performance !== 'undefined' && performance.memory) ? { used: performance.memory.usedJSHeapSize, total: performance.memory.totalJSHeapSize } : null;
   try { const p = window.__getSrvAbs ? window.__getSrvAbs() : null; out.pos = p ? [Math.round(p.x), Math.round(p.y)] : null; } catch (e) {}
   try { out.zone = window.__getPrimaryZoneId ? window.__getPrimaryZoneId() : null; } catch (e) {}
   return out;
+};
+// [T970] 클라 맨 위 바인딩 이름 — public/client/*.js 의 두 칸 들여쓰기 `const|let|var`(쪼갠 한 파일 · 맨 위 = 두 칸) · 깊이 0 쉼표로 가른 조각마다 맨 앞 이름
+//   + 클라가 `window.X =` 로 거는 칸 이름. 이름 차례 = 이름 있는 캐시(CACHE_NAMES) → 배열(ARRAY_NAMES) → 나머지 바인딩(글자 차례) → window 칸(글자 차례).
+function ownRoots() {
+  const dir = path.join(ROOT, 'public', 'client'), top = new Set(), win = new Set();
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.js')).sort()) {
+    const src = fs.readFileSync(path.join(dir, f), 'utf8');
+    for (const line of src.split('\n')) {
+      const m = line.match(/^  (?:const|let|var)\s+(.*)$/);
+      if (m) {
+        let d = 0, cur = ''; const parts = [];
+        for (const ch of m[1]) { if ('([{'.includes(ch)) d++; else if (')]}'.includes(ch)) d--; if (d === 0 && ch === ';') break; if (d === 0 && ch === ',') { parts.push(cur); cur = ''; } else cur += ch; }
+        parts.push(cur);
+        for (const p of parts) { const n = p.trim().match(/^([A-Za-z_$][\w$]*)\s*(=|$)/); if (n) top.add(n[1]); }
+      }
+      for (const w of line.matchAll(/window\.([A-Za-z_$][\w$]*)\s*=(?!=)/g)) win.add(w[1]);
+    }
+  }
+  const first = CACHE_NAMES.concat(ARRAY_NAMES);
+  const rest = [...top].filter((n) => !first.includes(n)).sort();
+  return { names: first.concat(rest), win: [...win].filter((n) => !first.includes(n) && !top.has(n)).sort() };
+}
+const OWN = (a) => {
+  const M = window.__t926; const t0 = performance.now();
+  const live = []; for (const r of M.cvRefs) { const c = r.deref(); if (c) live.push(c); }
+  const isCv = (v) => (typeof HTMLCanvasElement !== 'undefined' && v instanceof HTMLCanvasElement) || (typeof OffscreenCanvas !== 'undefined' && v instanceof OffscreenCanvas);
+  const ctxCv = (v) => { try { if ((typeof CanvasRenderingContext2D !== 'undefined' && v instanceof CanvasRenderingContext2D) || (typeof WebGLRenderingContext !== 'undefined' && v instanceof WebGLRenderingContext)
+    || (typeof WebGL2RenderingContext !== 'undefined' && v instanceof WebGL2RenderingContext) || (typeof OffscreenCanvasRenderingContext2D !== 'undefined' && v instanceof OffscreenCanvasRenderingContext2D)) return v.canvas || null; } catch (e) {} return undefined; };
+  const host = (v) => (typeof Node !== 'undefined' && v instanceof Node) || v === window || (typeof Window !== 'undefined' && v instanceof Window) || ArrayBuffer.isView(v) || v instanceof ArrayBuffer
+    || (typeof WebSocket !== 'undefined' && v instanceof WebSocket) || v instanceof Promise || (typeof AudioNode !== 'undefined' && v instanceof AudioNode) || (typeof AudioBuffer !== 'undefined' && v instanceof AudioBuffer)
+    || (typeof ImageBitmap !== 'undefined' && v instanceof ImageBitmap) || (typeof ImageData !== 'undefined' && v instanceof ImageData) || (typeof WeakRef !== 'undefined' && v instanceof WeakRef);
+  const owner = new Map(), depthAt = new Map(); let visits = 0, budget = a.budget;
+  const walk = (v, d, root) => {
+    if (!v || (typeof v !== 'object' && typeof v !== 'function') || budget <= 0) return;
+    if (typeof v === 'function') return;                       // 닫힘 안은 못 본다
+    const pd = depthAt.get(v); if (pd !== undefined && pd <= d) return;
+    depthAt.set(v, d); visits++; budget--;
+    if (isCv(v)) { if (!owner.has(v)) owner.set(v, root); return; }
+    const cc = ctxCv(v); if (cc !== undefined) { if (cc) walk(cc, d + 1, root); return; }
+    if (d >= a.depth || host(v)) return;
+    if (v instanceof Map) { for (const [k, x] of v) { if (k && typeof k === 'object') walk(k, d + 1, root); walk(x, d + 1, root); } return; }
+    if (v instanceof Set || Array.isArray(v)) { for (const x of v) walk(x, d + 1, root); return; }
+    if (v instanceof WeakMap || v instanceof WeakSet) return;
+    let ks; try { ks = Object.keys(v); } catch (e) { return; }
+    for (const k of ks) { let x; try { x = v[k]; } catch (e) { continue; } walk(x, d + 1, root); }
+  };
+  for (const c of document.getElementsByTagName('canvas')) if (!owner.has(c)) owner.set(c, '(DOM)');
+  const miss = [];
+  for (const n of a.names) { let v; try { v = (new Function('return ' + n))(); } catch (e) { miss.push(n); continue; } walk(v, 0, n); }
+  for (const n of a.win) { let v; try { v = window[n]; } catch (e) { continue; } walk(v, 0, 'window.' + n); }
+  const by = {}, unk = {}, now = performance.now();
+  let px = 0;
+  for (const c of live) {
+    const p = (c.width | 0) * (c.height | 0); px += p;
+    const o = owner.get(c);
+    if (o) { const b = by[o] = by[o] || [0, 0]; b[0]++; b[1] += p; continue; }
+    const m = M.cvMeta.get(c) || { s: '?', t: now }, age = (now - m.t) / 60000, u = unk[m.s] = unk[m.s] || [0, 0, 0, 0, 0];
+    u[0]++; u[1] += p; u[age < 1 ? 2 : age < 5 ? 3 : 4]++;
+  }
+  const sum = (o) => Object.values(o).reduce((s, v) => [s[0] + v[0], s[1] + v[1]], [0, 0]);
+  return { live: live.length, px, held: sum(by), unheld: sum(unk), by: Object.entries(by).sort((x, y) => y[1][1] - x[1][1]).map(([k, v]) => [k, v[0], v[1]]),
+    unk: Object.entries(unk).sort((x, y) => y[1][1] - x[1][1]).map(([k, v]) => [k].concat(v)), visits, budgetLeft: budget, missN: miss.length, ms: Math.round(performance.now() - t0) };
 };
 // 프로세스 RSS(kB) — ps 한 번 · 종류별 합
 function rss() {
@@ -265,7 +338,7 @@ async function memDump(cdp) {
   await sleep(3000);
   const z0 = await page.evaluate(() => (window.__getPrimaryZoneId ? window.__getPrimaryZoneId() : null));
   if (z0 !== 'hanbando') { console.log(`입장 존이 ${z0} — 한반도가 아니다`); process.exit(1); }
-  const welcome = await page.evaluate(() => { const o = {}; for (const k of Object.keys(uiCfg || {})) if (/^(waterHalf|mtReadPx|mtBand|t926)/.test(k)) o[k] = uiCfg[k]; return { ui: o, ua: navigator.userAgent }; });
+  const welcome = await page.evaluate(() => { const o = {}; for (const k of Object.keys(uiCfg || {})) if (/^(waterHalf|mtReadPx|mtBand|t926|cutNear)/.test(k)) o[k] = uiCfg[k]; return { ui: o, ua: navigator.userAgent }; });
   console.log(`  · welcome ${JSON.stringify(welcome)}`);
   // 결정론 고정 — 비 0 · 해 몫 한낮(1초마다 다시 세움)
   await page.waitForFunction(() => typeof window.__rainForce === 'function', { timeout: 60000 }).catch(() => {});
@@ -308,6 +381,8 @@ async function memDump(cdp) {
   };
   const feed = () => page.evaluate(() => { window.__sendPrimary({ type: '__e2e_body', hunger: 100, thirst: 100, quiet: true }); return true; });
 
+  const OWNA = OWNF ? Object.assign(ownRoots(), { depth: OWN_DEPTH, budget: 5e6 }) : null;   // [T970] 붙든 이름 목록(바인딩 · window 칸)
+  if (OWNA) console.log(`  · [T970] 붙든 이름 — 바인딩 ${OWNA.names.length} · window 칸 ${OWNA.win.length} · 깊이 ${OWN_DEPTH}`);
   const samples = [];
   const outF = path.join(OUT, `${TAG}-samples.jsonl`); fs.writeFileSync(outF, '');
   const tStart = Date.now();
@@ -321,6 +396,7 @@ async function memDump(cdp) {
       await cdp.send('HeapProfiler.collectGarbage');
       const m1 = Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((m) => [m.name, m.value]));
       if (MDUMP) { try { row.mdump = await memDump(cdp); } catch (e) { row.mdump = { err: String(e).slice(0, 120) }; } }
+      if (OWNF) row.own = await page.evaluate(OWN, OWNA).catch((e) => ({ err: String(e).slice(0, 160) }));   // [T970] 강제 GC · 덤프 뒤
       row.cdp = { usedPre: m0.JSHeapUsedSize, totalPre: m0.JSHeapTotalSize, usedGC: m1.JSHeapUsedSize, totalGC: m1.JSHeapTotalSize, nodes: m1.Nodes, listeners: m1.JSEventListeners,
         docs: m1.Documents, frames: m1.Frames, layoutObjects: m1.LayoutObjects };
       if (SNAPS.some((m) => Math.abs(m - k * EVERY) < 1e-6)) {
@@ -330,7 +406,7 @@ async function memDump(cdp) {
         await new Promise((r) => ws.end(r));
         row.snap = { file: f, bytes: fs.statSync(f).size, ms: Date.now() - t1 };
       }
-    }
+    } else if (OWNF) row.own = await page.evaluate(OWN, OWNA).catch((e) => ({ err: String(e).slice(0, 160) }));   // [T970] WebKit — 강제 GC 길 없음(표본 뒤 그대로)
     samples.push(row); fs.appendFileSync(outF, JSON.stringify(row) + '\n');
     const mb = (b) => (b == null ? '-' : (b / 1048576).toFixed(1));
     const big = Object.entries(row.cache).filter(([, v]) => v[0] > 0).sort((x, y) => (y[1][2] - x[1][2]) || (y[1][0] - x[1][0])).slice(0, 6).map(([n, v]) => `${n} ${v[0]}${v[1] ? `/${v[1]}장 ${(v[2] / 1e6).toFixed(1)}M화소` : ''}`).join(' · ');
@@ -338,6 +414,12 @@ async function memDump(cdp) {
       (row.cdp ? `힙 ${mb(row.cdp.usedPre)}→GC ${mb(row.cdp.usedGC)}MB · 노드 ${row.cdp.nodes} · 리스너 ${row.cdp.listeners} · ` : '') +
       `DOM ${row.dom.nodes} · 리스너(갈고리) ${row.lis.net} · 캔버스 만든 ${row.cv.made} 산 ${row.cv.live} ${(row.cv.livePx / 1e6).toFixed(1)}M화소 · RSS ${JSON.stringify(row.rss)}${row.snap ? ` · 스냅샷 ${mb(row.snap.bytes)}MB ${row.snap.ms}ms` : ''}`);
     console.log(`       캐시: ${big}`);
+    if (row.own) {
+      const O = row.own, M6 = (v) => (v / 1e6).toFixed(2);
+      if (O.err) console.log(`       붙든 이름: 실패 ${O.err}`);
+      else console.log(`       붙든 이름(산 ${O.live}장 ${M6(O.px)}M화소 · 이름 ${O.held[0]}장 ${M6(O.held[1])} · 이름 없음 ${O.unheld[0]}장 ${M6(O.unheld[1])} · ${O.ms}ms · 방문 ${O.visits}): ` +
+        O.by.slice(0, 8).map((b) => `${b[0]} ${b[1]}/${M6(b[2])}`).join(' · ') + (O.unk.length ? ` ‖ 없음: ${O.unk.slice(0, 4).map((u) => `${u[0]} ${u[1]}/${M6(u[2])}(1분 ${u[3]}·5분 ${u[4]}·그 위 ${u[5]})`).join(' · ')}` : ''));
+    }
   };
   await feed();
   await warpL(HOME.cx * 32 + 16, HOME.cy * 32 + 16); await sleep(5000);
