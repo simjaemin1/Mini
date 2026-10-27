@@ -32,6 +32,7 @@ const OUT = SERVER ? (process.env.T577_OUT ? process.env.T577_OUT.replace(/\.jso
 if (!OUT) return;
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
+const DD = require('./lib-day-deaths'); DD.install(V1);   // ★[T963] 그날 죽음 정본 — `_deadTot` 틱 앞뒤 차(`_deathsToday` 는 빈 마을 · 제련 날 끔 갈래에 전날 값이 남는다 · 사본 0)
 const V2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const ARMS = new Set(String(process.env.T875_ARM || '').split(',').map((s) => s.trim()).filter(Boolean));
@@ -128,7 +129,7 @@ function snap(world, day) {
   rec.rows.push([day, V.map((v) => {
     let tfe = 0; try { tfe = V1.totalFoodEquivalent(v); } catch (e) { tfe = -1; }
     const ts = v.tradeStats || {};
-    return [(v.npcs || []).length, r1(tfe), v._deathsToday || 0, r3(v._shieldAte), r1(v.housing), v._mapBeds != null ? r1(v._mapBeds) : -1,
+    return [(v.npcs || []).length, r1(tfe), DD.deathsToday(v), r3(v._shieldAte), r1(v.housing), v._mapBeds != null ? r1(v._mapBeds) : -1,
       v._dpDebug ? r1(v._dpDebug.K) : -1, r1(v.storage && v.storage.wood), r3(v.surplusEMA && v.surplusEMA.food), r1(ts.foodImported), ts.caravansSent || 0];
   })]);
 }
