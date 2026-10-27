@@ -18,6 +18,7 @@ const OUT = SERVER ? (process.env.T577_OUT ? process.env.T577_OUT.replace(/\.jso
 if (!OUT) return;
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
+const DD = require('./lib-day-deaths'); DD.install(V1);   // ★[T963] 그날 죽음 정본 — `_deadTot` 틱 앞뒤 차(`_deathsToday` 는 빈 마을 · 제련 날 끔 갈래에 전날 값이 남는다 · 사본 0)
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const rec = { where: SERVER ? 'server' : path.basename(A1), knob: { T858_NO_SHIELD: process.env.T858_NO_SHIELD || null }, names: null, rows: [],
   cols: ['pop', 'tfe', 'deathsToday', 'shieldAte', 'drafted', 'free'] };
@@ -41,7 +42,7 @@ function snap(world, day) {
     const N = (v.npcs || []).length;
     let dr = 0; for (const n of (v.npcs || [])) if (n && n._warDraft) dr++;
     let tfe = 0; try { tfe = V1.totalFoodEquivalent(v); } catch (e) { tfe = -1; }
-    return [N, r2(tfe), v._deathsToday || 0, r4(v._shieldAte), dr, N - dr];
+    return [N, r2(tfe), DD.deathsToday(v), r4(v._shieldAte), dr, N - dr];
   })]);
 }
 process.on('exit', () => { try { fs.mkdirSync(path.dirname(OUT), { recursive: true }); fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) { /* 관측 실패는 판을 안 건드린다 */ } });

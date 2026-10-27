@@ -16,6 +16,7 @@ const OUT = process.env.T845_OUT || (process.env.T577_OUT ? process.env.T577_OUT
 if (!OUT) return;
 const SRV = path.dirname(path.resolve(process.argv[1])), ROOT = path.dirname(SRV);
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
+const DD = require('./lib-day-deaths'); DD.install(V1);   // ★[T963] 그날 죽음 정본 — `_deadTot` 틱 앞뒤 차(`_deathsToday` 는 빈 마을 · 제련 날 끔 갈래에 전날 값이 남는다 · 사본 0)
 const Ev = require(path.join(SRV, 'events'));
 const FOOD_JOBS = ['farmer', 'fisher', 'hunter', 'gatherer', 'forager'];
 const rec = { knob: { T423_RATION_ACT: process.env.T423_RATION_ACT || null }, names: null, rows: [], packs: [], wars: [],
@@ -56,7 +57,7 @@ function snap(world, day) {
       if (w && w.atk === v) { atk++; if (w.battle) atkB++; } else if (w && w.def === v) def++;
     }
     const N = (v.npcs || []).length;
-    return [N, r2(tfe), r2(eaten), dr, atk, def, pk, pk ? N - pk : N, N - dr, cap, v._deathsToday || 0, r2(v._dPAccum), r2(D.hunger), FOOD_JOBS.reduce((s, j) => s + Math.round(C[j] || 0), 0), atkB];   // 자유민 = N − 징발(T815 표와 같은 잣대 · 포로는 따로 센다)
+    return [N, r2(tfe), r2(eaten), dr, atk, def, pk, pk ? N - pk : N, N - dr, cap, DD.deathsToday(v), r2(v._dPAccum), r2(D.hunger), FOOD_JOBS.reduce((s, j) => s + Math.round(C[j] || 0), 0), atkB];   // 자유민 = N − 징발(T815 표와 같은 잣대 · 포로는 따로 센다)
   })]);
 }
 process.on('exit', () => { try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) { /* 관측 실패는 판을 안 건드린다 */ } });

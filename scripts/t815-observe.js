@@ -14,6 +14,7 @@ if (!process.env.T577_SEED) return;
 const OUT = process.env.T815_OUT || (process.env.T577_OUT ? process.env.T577_OUT.replace(/\.json$/, '') + '.t815.json' : '');
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
+const DD = require('./lib-day-deaths'); DD.install(V1);   // ★[T963] 그날 죽음 정본 — `_deadTot` 틱 앞뒤 차(`_deathsToday` 는 빈 마을 · 제련 날 끔 갈래에 전날 값이 남는다 · 사본 0)
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const FOOD_JOBS = ['farmer', 'fisher', 'hunter', 'gatherer', 'forager'];
 const rec = { names: null, rows: [], cols: ['pop', 'tfe', 'eaten', 'deathsToday', 'deadTot', 'dPAccum', 'drafted', 'packers', 'free', 'K', 'logi', 'hunger', 'health', 'happy', 'prestige', 'dP', 'prodK', 'surplusFood', 'foodWorkers'] };
@@ -37,7 +38,7 @@ function snap(world, day) {
     let tfe = 0; try { tfe = V1.totalFoodEquivalent(v); } catch (e) { tfe = -1; }
     let dr = 0, pk = 0; for (const n of (v.npcs || [])) { if (n._warDraft) { dr++; if (n._warPack) pk++; } }
     const N = (v.npcs || []).length;
-    return [N, r2(tfe), r2(eaten), v._deathsToday || 0, v._deadTot || 0, r2(v._dPAccum), dr, pk, N - dr,
+    return [N, r2(tfe), r2(eaten), DD.deathsToday(v), v._deadTot || 0, r2(v._dPAccum), dr, pk, N - dr,
       D.K, D.logi, D.hunger, D.health, D.happy, D.prestige, D.dP,
       v._kDbg ? v._kDbg.prod : null, r2(v.surplusEMA && v.surplusEMA.food), FOOD_JOBS.reduce((s, j) => s + Math.round(C[j] || 0), 0)];
   })]);

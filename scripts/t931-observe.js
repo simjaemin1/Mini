@@ -26,25 +26,25 @@ const OUT = SERVER ? (process.env.T931_OUT || (process.env.T577_OUT ? process.en
 if (!OUT) return;
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
+const DD = require('./lib-day-deaths'); DD.install(V1);   // ★[T963] 그날 죽음 정본 — `_deadTot` 틱 앞뒤 차(`_deathsToday` 는 빈 마을 · 제련 날 끔 갈래에 전날 값이 남는다 · 사본 0)
 const COLS = ['day', 'pop0', 'pop', 'deaths', 'tfe', 'K', 'slot', 'slotRaw', 'prod', 'fuel', 'logi', 'hunger', 'healthT', 'happyT', 'gated', 'drafted', 'packers'];
 const rec = { where: SERVER ? 'server' : path.basename(A1), knob: { T931_SLOTK_EMA: process.env.T931_SLOTK_EMA != null ? process.env.T931_SLOTK_EMA : null, DCTL_SKIP: process.env.DCTL_SKIP || null },
   engineKnob: V1.T931_SLOTK_EMA ? '1' : V1.T931_SLOTK_SEASON ? 'season' : '', deathsSrc: 'deadTot', cols: COLS, v: {}, errs: 0, err0: null };
 const r1 = (x) => (x == null || !Number.isFinite(+x)) ? null : Math.round(+x * 10) / 10;
 const r3 = (x) => (x == null || !Number.isFinite(+x)) ? null : Math.round(+x * 1000) / 1000;
-function row(v, day, n0, d0) {
+function row(v, day, n0) {
   const D = v._dpDebug || {}, k = v._kDbg || {};
   let dr = 0, pk = 0; for (const n of (v.npcs || [])) if (n._warDraft) { dr++; if (n._warPack) pk++; }
   let tfe = -1; try { tfe = V1.totalFoodEquivalent(v); } catch (e) { tfe = -1; }
   let raw = null; try { raw = typeof V1.totalFoodSlots === 'function' ? V1.totalFoodSlots(v) : null; } catch (e) { raw = null; }
-  const R = [day, n0, (v.npcs || []).length, (+v._deadTot || 0) - d0, r1(tfe), D.K, k.slot, raw, k.prod, k.fuel, D.logi, D.hunger, D.health, D.happy, D.gated ? 1 : 0, dr, pk];
+  const R = [day, n0, (v.npcs || []).length, DD.deathsToday(v), r1(tfe), D.K, k.slot, raw, k.prod, k.fuel, D.logi, D.hunger, D.health, D.happy, D.gated ? 1 : 0, dr, pk];
   (rec.v[v.name] || (rec.v[v.name] = [])).push(R);
 }
 const _tick = V1.tickVillage;
 V1.tickVillage = function (v, day) {
   const n0 = (v && v.npcs) ? v.npcs.length : 0;
-  const d0 = (v && +v._deadTot) || 0;   // ★[T943] 틱 앞 죽음 누계(읽기만)
   const r = _tick.apply(this, arguments);
-  try { row(v, day | 0, n0, d0); } catch (e) { rec.errs++; if (!rec.err0) rec.err0 = String(e && e.stack || e).slice(0, 400); }
+  try { row(v, day | 0, n0); } catch (e) { rec.errs++; if (!rec.err0) rec.err0 = String(e && e.stack || e).slice(0, 400); }
   return r;
 };
 process.on('exit', () => { if (OUT) try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) { /* 관측 실패는 판을 안 건드린다 */ } });

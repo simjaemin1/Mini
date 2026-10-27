@@ -14,6 +14,7 @@
 const path = require('path');
 const fs = require('fs');
 const { chromium } = require('playwright');
+const DD = require('./lib-day-deaths');   // ★[T963] 그날 죽음 정본 — 쪽 안 엔진은 틱을 못 감싸서 하루 한 번 읽는 자리에서 `_deadTot` 차(`dayDelta` · 같은 함수를 쪽으로 넘긴다)
 const ROOT = path.join(__dirname, '..');
 const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 ? argv[i + 1] : d; };
@@ -35,7 +36,8 @@ async function runSeed(browser, seed) {
   await page.addInitScript(INIT(seed));
   await page.goto('file://' + FILE, { waitUntil: 'load', timeout: 600000 });
   const t0 = Date.now();
-  const r = await page.evaluate(({ seed, nvil, pop, days, fastSpeed }) => {
+  const r = await page.evaluate(({ seed, nvil, pop, days, fastSpeed, ddSrc }) => {
+    const dayDelta = new Function('return (' + ddSrc + ')')();   // ★[T963] `lib-day-deaths.dayDelta` 그대로(사본 0)
     if (nvil != null) document.getElementById('nvil').value = String(nvil);
     if (pop != null) document.getElementById('pop').value = String(pop);
     document.getElementById('seed').value = String(seed);
@@ -47,13 +49,14 @@ async function runSeed(browser, seed) {
     const rows = {}, wars = {}; let frames = 0, lastD = null, recDays = 0;
     const tfeOf = (e) => { try { return EconEngine.totalFoodEquivalent(e); } catch (_) { return null; } };
     const d0 = ECON_WORLD ? ECON_WORLD.day : 0;
+    const ddLast = new Map(); for (const V of VILS) if (V.econ) ddLast.set(V.name, +V.econ._deadTot || 0);   // ★[T963] 시작 누계
     while (ECON_WORLD && ECON_WORLD.day < d0 + days && frames < 3000000) {
       const q = window.__rafQ.splice(0); const now = window.__adv(16.667); for (const cb of q) cb(now); frames++;
       const d = ECON_WORLD.day;
       if (d === lastD) continue; lastD = d; recDays++;
       for (const V of VILS) {
         const e = V.econ; if (!e) continue; const D = e._dpDebug || {}, S = e.lastStats || {};
-        (rows[V.name] || (rows[V.name] = [])).push([d, e.npcs.length, r3(e._dPAccum), e._deathsToday || 0, e._deadTot || 0, r3(tfeOf(e)), r3(e._warMobFrac || 0), e._warMobUntil || 0,
+        (rows[V.name] || (rows[V.name] = [])).push([d, e.npcs.length, r3(e._dPAccum), dayDelta(ddLast, V.name, e), e._deadTot || 0, r3(tfeOf(e)), r3(e._warMobFrac || 0), e._warMobUntil || 0,
           D.logi, D.hunger, D.health, D.happy, D.dP, r3(S.health), r3(S.happiness), r3(e._fuelCov), S.foodGroups, D.K, e._kDbg ? e._kDbg.slot : null, e._kDbg ? e._kDbg.prod : null, e._kDbg ? e._kDbg.fuel : null, D.prestige]);
       }
       const seen = new Set();
@@ -66,7 +69,7 @@ async function runSeed(browser, seed) {
     }
     const C = { WAR_MARCH: typeof WAR_MARCH !== 'undefined' ? WAR_MARCH : null, WAR_RANGE: typeof WAR_RANGE !== 'undefined' ? WAR_RANGE : null, WAR_MIN_DAY: typeof WAR_MIN_DAY !== 'undefined' ? WAR_MIN_DAY : null, L_START: typeof L_START !== 'undefined' ? L_START : null };
     return { frames, recDays, d0, d1: ECON_WORLD ? ECON_WORLD.day : null, cols: ['day', 'pop', 'a1', 'deathsToday', 'deadTot', 'tfe', 'mobFrac', 'mobUntil', 'logi', 'hunger', 'healthT', 'happyT', 'dP', 'health', 'happiness', 'fuelCov', 'foodGroups', 'K', 'kSlot', 'kProd', 'kFuel', 'prestigeT'], rows, wars, C, nv: VILS.length, roles: VILS.map((v) => v.role) };
-  }, { seed, nvil: NVIL, pop: POP, days: DAYS, fastSpeed: FAST_SPEED });
+  }, { seed, nvil: NVIL, pop: POP, days: DAYS, fastSpeed: FAST_SPEED, ddSrc: DD.dayDelta.toString() });
   r.errs = errs.length; r.err0 = errs[0] || null; r.ms = Date.now() - t0;
   await page.close();
   return r;
