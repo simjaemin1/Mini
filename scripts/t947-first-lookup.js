@@ -15,6 +15,8 @@
 //   `--still` 이면 재료를 뜨기 전에 지면의 움직이는 입력(서버가 보내는 타일 상태 · 마을 날씨)을 대조군 손잡이(`_t19.stateOff` · `wxOff`)로 끈다 —
 //   지면 지문이 바뀌어 타일이 다시 구워지고(34-m-renderloop `_gtKnob`) 그 뒤 타일은 정적 지형 · 물 · 바위 값 · 적설 · 서리만의 함수다(판마다 같은 입력).
 //   손잡이 env 는 이 자를 부른 env 를 central · 존이 물려받는다.
+//   ★[T961] 손잡이 `T947_CELL_BOX` 는 켬 기본이다(끔 판 = `T947_CELL_BOX=0`). 상자(`window.CellEnv`)의 짓기 · 묻기 몫(때 갈래별)과
+//   첫 그림 끝 상자 수(지은 피처 상자 · 선분 격자)를 함께 센다 · `--pix` 재료에 걸음 예측 막힘 표(11-r1-mountain `isTerrainBlockedAtAbs` — 120×120 칸 가운데)도 뜬다.
 // 실행: [E2E_BROWSER=webkit] [손잡이 env] node scripts/t947-first-lookup.js [--n 3] [--tail 3] [--stack] [--pix [--spots] [--still]] [--out /tmp/t947] [--tag 이름]
 //       견줌: node scripts/t947-first-lookup.js --cmp 가.json 나.json [--cmp-out 견줌.json]   (`--pix` 판 재료끼리 · 아래 견줌 머리말)
 'use strict';
@@ -47,7 +49,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { killAll(); proc
 // ── 페이지 갈고리(로비에서 건다) ─────────────────────────────────────────────────────────────
 const HOOK = (stack) => {
   if (window.__t947) return true;
-  const M = window.__t947 = { stack, ph: {}, callers: {}, depth: 0 };
+  const M = window.__t947 = { stack, ph: {}, callers: {}, depth: 0, ce: {}, ceSnap: null };
   const phase = () => { const a = (typeof _ld !== 'undefined' && _ld) ? _ld.at : {}; return a.welcomeDone == null ? 'pre' : a.frame1 == null ? 'first' : a.input == null ? 'f1in' : 'after'; };
   const P = (p) => M.ph[p] || (M.ph[p] = { wN: 0, wMiss: 0, wMs: 0, rN: 0, rMiss: 0, rMs: 0, tW: 0, tWms: 0, tR: 0, tRms: 0 });
   const site = () => {   // 이 자 밖 첫 client 줄 — "함수 @파일:줄"
@@ -83,8 +85,21 @@ const HOOK = (stack) => {
     T.isRockCellLocal = function () { const t0 = performance.now(); const r = oR.apply(this, arguments); const o = P(phase()); o.tR++; o.tRms += performance.now() - t0; return r; };
     T.__t947 = true; return true;
   };
+  const wrapCE = () => {   // ★[T961] 상자(public/cell-env.js) — 짓기 · 묻기 시간(때 갈래별 · 선분 격자는 묻기 안에서 처음 지어진다) · 첫 그림 끝 상자 수
+    const C = window.CellEnv; if (!C || C.__t947) return !!(C && C.__t947);
+    const oB = C.build, oW = C.maybeWater, oR = C.maybeRock, oS = C.stats;
+    const Q = (p) => M.ce[p] || (M.ce[p] = { bN: 0, bMs: 0, wN: 0, wMs: 0, rN: 0, rMs: 0 });
+    const snap = (p) => {   // 첫 그림 뒤 첫 부름 **앞** — 그때까지 지은 상자 = 첫 그림 안에서 지은 상자
+      if (p === 'pre' || p === 'first' || M.ceSnap) return;
+      try { const o = {}; for (const [z, e] of _t947Env) o[z] = oS(e.env); M.ceSnap = o; } catch (e) { M.ceSnap = { err: String(e && e.message) }; }
+    };
+    const W = (o, k) => function () { const p = phase(); snap(p); const t0 = performance.now(); const r = o.apply(this, arguments); const q = Q(p); q[k + 'N']++; q[k + 'Ms'] += performance.now() - t0; return r; };
+    C.build = W(oB, 'b'); C.maybeWater = W(oW, 'w'); C.maybeRock = W(oR, 'r');
+    C.__t947 = true; return true;
+  };
   wrapAbs('isWaterAtAbs', 'w'); wrapAbs('isRockAtAbs', 'r');
   if (!wrapTerr()) { const id = setInterval(() => { if (wrapTerr()) clearInterval(id); }, 50); }
+  if (!wrapCE()) { const id = setInterval(() => { if (wrapCE()) clearInterval(id); }, 50); }
   return true;
 };
 // ── 그림 같음 재료(가라앉은 뒤) ─────────────────────────────────────────────────────────────
@@ -102,8 +117,10 @@ const PIXDUMP = () => {
   const nat = {}; for (const [k, ch] of _natChunk) nat[k] = hsStr(JSON.stringify(ch, (kk, v) => (v && typeof v === 'object' && (v instanceof HTMLCanvasElement || v instanceof HTMLImageElement)) ? '[img]' : v));
   const mt = {}; let mtSegs = 0, mtErr = null;   // 산 청크 = 세그먼트 배열(11-r1-mountain `_mt3Chunk.set(key, segs)`) — 세그먼트마다 화소 해시 @ 자리
   try { for (const [k, ch] of _mt3Chunk) { const segs = Array.isArray(ch) ? ch : ((ch && ch.segs) || []); mtSegs += segs.length; mt[k] = segs.length + ':' + segs.map((s) => hsCv(s && (s.img || s.cv)) + '@' + [s.x, s.y, s.ox, s.oy].join(',')).join(';'); } } catch (e) { mtErr = String(e && e.message); }
+  let bk = '', blkN = 0;   // ★[T961] 걸음 예측 막힘 표(11-r1-mountain `isTerrainBlockedAtAbs` = 바위 ∨ 도랑 ∨ (물 ∧ ¬다리)) — 같은 120×120 칸 가운데
+  if (typeof isTerrainBlockedAtAbs === 'function') for (let dy = -60; dy < 60; dy++) for (let dx = -60; dx < 60; dx++) { const b = isTerrainBlockedAtAbs((c0x + dx) * 32 + 16, (c0y + dy) * 32 + 16) ? 1 : 0; bk += b; blkN += b; }
   const gnd = { kf: (typeof _gtKnob !== 'undefined') ? _gtKnob : null, snow: (typeof _gtSnowNow === 'function') ? _gtSnowNow() : null, frost: (typeof _gtFrostNow === 'function') ? _gtFrostNow() : null };   // 지면 타일 지문(손잡이 · 적설 · 서리)
-  return { at: [c0x, c0y], cells: hsStr(tb), water: [...tb].filter((ch) => ch === '1' || ch === '3').length, rock: [...tb].filter((ch) => ch === '2' || ch === '3').length, tiles, nat, mt, mtSegs, mtErr, gnd };
+  return { at: [c0x, c0y], cells: hsStr(tb), water: [...tb].filter((ch) => ch === '1' || ch === '3').length, rock: [...tb].filter((ch) => ch === '2' || ch === '3').length, blk: bk ? hsStr(bk) : null, blkN, tiles, nat, mt, mtSegs, mtErr, gnd };
 };
 
 // ── 견줌(`--cmp 가.json 나.json` — 서버 · 브라우저 0) ───────────────────────────────────────────
@@ -113,19 +130,19 @@ if (process.argv.includes('--cmp')) {
   const i = process.argv.indexOf('--cmp'), fa = process.argv[i + 1], fb = process.argv[i + 2];
   const A = JSON.parse(fs.readFileSync(fa, 'utf8')), B = JSON.parse(fs.readFileSync(fb, 'utf8'));
   const cmpMap = (a, b) => { let same = 0, diff = 0; for (const k of Object.keys(a || {})) { if (!(k in (b || {}))) continue; if (a[k] === b[k]) same++; else diff++; } return { same, diff }; };
-  const pair = (x, y) => ({ cells: x.cells === y.cells && x.at.join() === y.at.join(), tiles: cmpMap(x.tiles, y.tiles), nat: cmpMap(x.nat, y.nat), mt: cmpMap(x.mt, y.mt) });
-  const fmt = (p) => `${p.places ? '자리 ' + p.places + ' · ' : ''}칸 표 ${p.cells ? '같음' : '다름'} · 지면 타일 같음 ${p.tiles.same} 다름 ${p.tiles.diff} · 자연물 청크 같음 ${p.nat.same} 다름 ${p.nat.diff} · 산 청크 같음 ${p.mt.same} 다름 ${p.mt.diff}`;
+  const pair = (x, y) => ({ cells: x.cells === y.cells && x.at.join() === y.at.join(), blk: x.blk === y.blk, tiles: cmpMap(x.tiles, y.tiles), nat: cmpMap(x.nat, y.nat), mt: cmpMap(x.mt, y.mt) });   // blk = 걸음 예측 막힘 표(★T961 · 옛 판 재료엔 없다 — 둘 다 없으면 같음)
+  const fmt = (p) => `${p.places ? '자리 ' + p.places + ' · ' : ''}칸 표 ${p.cells ? '같음' : '다름'} · 막힘 표 ${p.blk ? '같음' : '다름'} · 지면 타일 같음 ${p.tiles.same} 다름 ${p.tiles.diff} · 자연물 청크 같음 ${p.nat.same} 다름 ${p.nat.diff} · 산 청크 같음 ${p.mt.same} 다름 ${p.mt.diff}`;
   const out = { a: fa, b: fb, floorA: [], floorB: [], cross: [] };
   const pa = A.runs.filter((r) => r.pix), pb = B.runs.filter((r) => r.pix);
   //   자리 셋(`--spots`)이 있으면 판의 재료 = 들어선 자리 + 자리마다 — 한 짝의 견줌은 그 합(자리 이름이 같은 것끼리)
   const pairAll = (x, y) => { const L = [pair(x.pix, y.pix)]; for (const nm of Object.keys(x.spots || {})) if (y.spots && y.spots[nm]) L.push(Object.assign(pair(x.spots[nm], y.spots[nm]), { nm })); 
     const sum = (f) => L.reduce((a, p) => ({ same: a.same + p[f].same, diff: a.diff + p[f].diff }), { same: 0, diff: 0 });
-    return { cells: L.every((p) => p.cells), tiles: sum('tiles'), nat: sum('nat'), mt: sum('mt'), places: L.length }; };
+    return { cells: L.every((p) => p.cells), blk: L.every((p) => p.blk), tiles: sum('tiles'), nat: sum('nat'), mt: sum('mt'), places: L.length }; };
   console.log(`\n=== T947 그림 같음 견줌 — 가 ${A.tag}(${pa.length}판) · 나 ${B.tag}(${pb.length}판) ===`);
   for (let x = 0; x < pa.length; x++) for (let y = x + 1; y < pa.length; y++) { const p = pairAll(pa[x], pa[y]); out.floorA.push(p); console.log(`  바닥 가${x + 1}·가${y + 1}: ${fmt(p)}`); }
   for (let x = 0; x < pb.length; x++) for (let y = x + 1; y < pb.length; y++) { const p = pairAll(pb[x], pb[y]); out.floorB.push(p); console.log(`  바닥 나${x + 1}·나${y + 1}: ${fmt(p)}`); }
   for (let x = 0; x < pa.length; x++) for (let y = 0; y < pb.length; y++) { const p = pairAll(pa[x], pb[y]); out.cross.push(p); console.log(`  가로 가${x + 1}·나${y + 1}: ${fmt(p)}`); }
-  const bad = (L) => L.filter((p) => !p.cells || p.tiles.diff || p.nat.diff || p.mt.diff).length;
+  const bad = (L) => L.filter((p) => !p.cells || !p.blk || p.tiles.diff || p.nat.diff || p.mt.diff).length;
   console.log(`  → 다른 짝: 바닥 가 ${bad(out.floorA)}/${out.floorA.length} · 바닥 나 ${bad(out.floorB)}/${out.floorB.length} · 가로 ${bad(out.cross)}/${out.cross.length}`);
   const o = arg('--cmp-out', ''); if (o) fs.writeFileSync(o, JSON.stringify(out, null, 1));
   process.exit(0);
@@ -162,7 +179,9 @@ if (process.argv.includes('--cmp')) {
         knob: { cellNear: (typeof uiCfg !== 'undefined' && uiCfg && 'cellNear' in uiCfg) ? uiCfg.cellNear : null, natBudget: (typeof uiCfg !== 'undefined' && uiCfg && 'natBudget' in uiCfg) ? uiCfg.natBudget : null,
           cellBox: (typeof uiCfg !== 'undefined' && uiCfg && 'cellBox' in uiCfg) ? uiCfg.cellBox : null,
           cellBoxEnv: (() => { try { const o = {}; for (const [z, e] of _t947Env) o[z] = window.CellEnv.stats(e.env); return o; } catch (e) { return null; } })() },   // ★[T947] 켬이면 지은 존 상자(상자 수 · 격자 칸)
-        cache: { water: _waterCellCache.size, rock: _rockCellCache.size }, pos: (() => { const a = window.__getSrvAbs(); return [Math.round(a.x), Math.round(a.y)]; })() };
+        cache: { water: _waterCellCache.size, rock: _rockCellCache.size }, pos: (() => { const a = window.__getSrvAbs(); return [Math.round(a.x), Math.round(a.y)]; })(),
+        ce: (() => { const o = {}; for (const [k, q] of Object.entries(M.ce || {})) { const z = {}; for (const [kk, v] of Object.entries(q)) z[kk] = rd(v); o[k] = z; } return o; })(), ceSnap: M.ceSnap,   // ★[T961] 상자 몫
+        marks: (() => { const o = {}; for (const [k, v] of Object.entries(at)) if (typeof v === 'number') o[k] = rd(v - at.click); return o; })() };   // ★[T961] `_ld.at` — 눌림 기준 ms(인증 · 소켓 · welcome 기다림 · 처리 · 첫 그림)
     });
     if (PIX) {
       await page.evaluate((still) => { try { window.__terrain19.freezeT = 12.25; window.__terrain19.windOff = true; if (still) { window.__terrain19.stateOff = true; window.__terrain19.wxOff = true; } } catch (e) {} return true; }, STILL);
@@ -197,8 +216,12 @@ if (process.argv.includes('--cmp')) {
     console.log(`\n--- ${i + 1} --- 첫 그림 ${r.firstMs}ms · 눌림 → 첫 입력 ${r.clickToInput}ms · 층 ${JSON.stringify(r.fc)} · 손잡이 ${JSON.stringify(r.knob)} · 데우기 ${JSON.stringify(r.prewarm)}`);
     for (const p of ['pre', 'first', 'f1in', 'after']) { const o = r.ph[p]; if (!o) continue;
       console.log(`   ${p.padEnd(5)} 물 ${o.wN}회(첫 ${o.wMiss}) ${o.wMs}ms · 바위 ${o.rN}회(첫 ${o.rMiss}) ${o.rMs}ms · 지형 물 ${o.tW}회 ${o.tWms}ms · 지형 바위 ${o.tR}회 ${o.tRms}ms(그 안 물 셈 포함)`); }
+    if (r.ce && Object.keys(r.ce).length) for (const p of ['pre', 'first', 'f1in', 'after']) { const q = r.ce[p]; if (!q) continue;
+      console.log(`   상자 ${p.padEnd(5)} 짓기 ${q.bN}회 ${q.bMs}ms · 물 묻기 ${q.wN}회 ${q.wMs}ms · 바위 묻기 ${q.rN}회 ${q.rMs}ms`); }
+    if (r.ceSnap) console.log(`   첫 그림 끝 상자: ${JSON.stringify(r.ceSnap)}`);
+    if (r.marks) console.log(`   때(눌림 기준 ms): ${JSON.stringify(r.marks)}`);
     if (STACK) for (const x of r.callers.filter((q) => q.p === 'first').slice(0, 14)) console.log(`   [첫 그림 · ${x.kind === 'w' ? '물' : '바위'}] ${x.where} — 첫 조회 ${x.n}칸 ${x.ms}ms`);
-    const pl = (q) => `칸 ${q.cells}(물 ${q.water} · 바위 ${q.rock}) @${q.at} · 지면 타일 ${Object.keys(q.tiles).length} · 자연물 청크 ${Object.keys(q.nat).length} · 산 청크 ${Object.keys(q.mt).length}(세그먼트 ${q.mtSegs}${q.mtErr ? ' · 오류 ' + q.mtErr : ''})`;
+    const pl = (q) => `칸 ${q.cells}(물 ${q.water} · 바위 ${q.rock}) · 막힘 ${q.blk}(${q.blkN}) @${q.at} · 지면 타일 ${Object.keys(q.tiles).length} · 자연물 청크 ${Object.keys(q.nat).length} · 산 청크 ${Object.keys(q.mt).length}(세그먼트 ${q.mtSegs}${q.mtErr ? ' · 오류 ' + q.mtErr : ''})`;
     if (PIX) console.log(`   그림 재료: ${pl(r.pix)}`);
     if (r.spots) for (const [nm, q] of Object.entries(r.spots)) console.log(`   그림 재료 ${nm}: ${pl(q)}`);
     runs.push(r);
