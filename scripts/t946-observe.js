@@ -9,7 +9,9 @@
 //   ② 날마다(장부 `scanDay` · econ 하루 끝 · `T946_DAYS` 앞까지 · 기본 150): 마을마다 한 줄 —
 //      인구 · 그날 굶어 죽음 · 보호막이 지운 압력 · 곳간 식량(`storage.food`) · 식량 환산(`totalFoodEquivalent`) · 식량 흐름 EMA ·
 //      그날 흐름(산출 − 먹을 몫 = econ 의 `dailySurplus` — EMA 두 날 값에서 econ 의 그 식 `EMA = 0.95·EMA₋₁ + 0.05·흐름` 을 뒤집어 읽는다 · 사본 0) ·
-//      받은 식량 누계(`tradeStats.foodImported` · 100날 창마다 0 으로 돌아간다) · 낸 캐러밴 누계 · 농부 · 어부 · 사냥꾼 · 채집 수 · hunger 칸 · 남은 빚.
+//      받은 식량 누계(`tradeStats.foodImported` · 100날 창마다 0 으로 돌아간다) · 낸 캐러밴 누계 · 농부 · 어부 · 사냥꾼 · 채집 수 · hunger 칸 · 남은 빚 ·
+//      K · logi 칸(`_dpDebug`) · K 분해(`_kDbg` — 식량 자리 slot · 식량 흐름 prod · 연료 fuel) · 주거(`housing`) · 맵 침상(`_mapBeds` — 서버 `T315_MAPBEDS` 가 심는 칸 · 랩은 없음 = null).
+//   ③ 캐러밴(`world.caravans` · 같은 날 장부 자리): 처음 본 날 머리 + 상태 · 귀환 화물이 바뀐 날마다 한 줄(`rec.car` · 열쇠 = `<id>:<보낸 마을>`).
 //   ⚠흐름은 EMA 의 산수 역이다 — 부동소수 끝자리만 다를 수 있다(값은 소수 셋째 자리로 적는다).
 const path = require('path');
 const fs = require('fs');
@@ -30,8 +32,9 @@ const rec = {
     .map((k) => [k, process.env[k] != null ? process.env[k] : null])),
   econ: { T100_FIELD_YIELD: !!V1.T100_FIELD_YIELD, seedFoodDays0: typeof V1.seedFoodDays === 'function' ? V1.seedFoodDays(0) : null, DAILY_FOOD_CONSUMPTION: V1.DAILY_FOOD_CONSUMPTION },
   born: {},
-  cols: ['pop', 'deaths', 'shieldAte', 'food', 'tfe', 'foodEMA', 'flow', 'foodImp', 'sent', 'farmer', 'fisher', 'hunter', 'forager', 'hunger', 'accum'],
+  cols: ['pop', 'deaths', 'shieldAte', 'food', 'tfe', 'foodEMA', 'flow', 'foodImp', 'sent', 'farmer', 'fisher', 'hunter', 'forager', 'hunger', 'accum', 'K', 'logi', 'Kslot', 'Kprod', 'Kfuel', 'housing', 'beds'],
   names: null, rows: [],
+  car: {},   // ③ 캐러밴 — 처음 본 날 머리(누가 · 어디로 · 무엇을 · 얼마 · 무엇을 받아 올지 · 날짜) + 상태가 바뀐 날마다 한 줄(그날 · 상태 · 싣고 오는 품목 · 양 · 끝남 · 버림)
 };
 const mkV = V1.createVillage;
 V1.createVillage = function (opts) {
@@ -63,7 +66,7 @@ function snap(world, day) {
   for (const v of V) if (rec.names.indexOf(v.name) < 0) rec.names.push(v.name);
   const row = new Array(rec.names.length).fill(null);
   for (const v of V) {
-    const i = rec.names.indexOf(v.name), d = v._dpDebug || {};
+    const i = rec.names.indexOf(v.name), d = v._dpDebug || {}, kd = v._kDbg || {};
     if (!rec.born[v.name]) rec.born[v.name] = { restored: true, firstSeen: day };
     let tfe = 0; try { tfe = V1.totalFoodEquivalent(v); } catch (e) { tfe = -1; }
     const ema = +(v.surplusEMA && v.surplusEMA.food) || 0;
@@ -72,8 +75,18 @@ function snap(world, day) {
     const C = v.counts || {};
     row[i] = [(v.npcs || []).length, v._deathsToday || 0, r3(v._shieldAte), r3(v.storage && v.storage.food), r3(tfe), r3(ema), r3((ema - 0.95 * pe) / 0.05),
       r3(v.tradeStats && v.tradeStats.foodImported), (v.tradeStats && v.tradeStats.caravansSent) || 0,
-      C.farmer || 0, C.fisher || 0, C.hunter || 0, C.forager || 0, r3(d.hunger), r3(v._dPAccum)];
+      C.farmer || 0, C.fisher || 0, C.hunter || 0, C.forager || 0, r3(d.hunger), r3(v._dPAccum),
+      r3(d.K), r3(d.logi), r3(kd.slot), r3(kd.prod), r3(kd.fuel), r3(v.housing), v._mapBeds != null ? r3(v._mapBeds) : null];
   }
   rec.rows.push([day, row]);
+  for (const c of (world.caravans || [])) {
+    if (!c || !c.from) continue;
+    const k = `${c.id}:${c.from.name}`;
+    let e = rec.car[k];
+    if (!e) e = rec.car[k] = { from: c.from.name, to: c.to && c.to.name, give: c.giveRes, giveAmt: r3(c.giveAmt), give2: c.giveRes2 || null, giveAmt2: r3(c.giveAmt2),
+      ret: c.returnRes || null, depart: c.departDay, arrive: c.arriveDay, back: c.returnArriveDay, travel: c.travelDays, seen: day, ev: [] };
+    const st = [c.state, c._returningRes || null, r3(c._returningAmt), c._returningRes2 || null, r3(c._returningAmt2), !!c._done, !!c._abandoned, c.arriveDay, c.returnArriveDay].join('|');
+    if (e._st !== st) { e._st = st; e.ev.push([day, c.state, c._returningRes || null, r3(c._returningAmt), c._returningRes2 || null, r3(c._returningAmt2), c._done ? 1 : 0, c._abandoned ? 1 : 0, c.arriveDay, c.returnArriveDay]); }
+  }
 }
-process.on('exit', () => { try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} });
+process.on('exit', () => { try { for (const e of Object.values(rec.car)) delete e._st; fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} });
