@@ -11,12 +11,20 @@
 //     bind = 366일~ 죽음의 K 를 묶은 칸(K 에 든 식량 자리 · 식량 흐름 · 땔감 중 가장 작은 칸) · step = 366일~ 죽음 중 그날 자리(관성 앞)가 전날보다 준 날
 //     pop400 · popEnd = 그날 인구 합 · empty = 끝 날 빈 마을(한 번이라도 사람이 있었고 끝 날 0) · month = 366일~ 죽음 달별
 //   띠(서버) = 그 갈래의 판 넷(갈래 판 + 대조 셋) 최소 ~ 최대 — T837 `diverge-table` 과 같은 잣대(겹침 · 갈래 판끼리 차 · 차 > 큰 띠 폭)
+//   ★[T943 2026-10-27] 그날 죽음 칸 바로잡기 — 옛 관찰기(T931 판 · `deathsSrc` 없음)는 틱 뒤 `_deathsToday` 를 적었다. 그 칸은 틱이 기근 고리 앞
+//     `v._deathsToday = 0` 줄까지 닿아야 다시 선다 — 빈 마을(틱 첫 줄 `if (v.npcs.length === 0) return;`) · T932 끔 판(열셋째 판까지)의 제련 날 `return` 은
+//     전날 값이 남아 없는 죽음을 날마다 다시 셌다. 이 표는 죽음을 이렇게 센다(`fix` 에 옛 셈 · 고친 셈 · 바꾼 줄 수):
+//       고친 관찰기(`deathsSrc: 'deadTot'` — 틱 앞뒤 `_deadTot` 차) = 그대로
+//       서버 판 = 판 JSON `rows` 의 마을 × 날 `_deadTot`(정본 판 자 칸 · 누계) 증분 — 판 끝 `deadTot` 와 맞는지 `fix.end` 로 본다
+//       옛 랩 판 = 틱 머리 인구 0 인 줄은 0 · `--stale same`(T932 끔 판) 이면 틱 뒤 인구 = 틱 머리 · 죽음 · econ 칸 여덟이 전날 줄과 똑같은 줄(틱이 econ 칸 앞에서 끝난 날)도 0
+//       (두 잣대를 서버 판 60개의 `_deadTot` 증분에 대 봤다 — 열넷째 판 24개는 인구 0 줄만 지우면 마을 × 날 다 같다 · 열셋째 판 36개는 `same` 까지 지우면 다 같다)
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const CAL = require(path.join(__dirname, '..', 'server', 'calendar.js'));
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
-const SRV = arg('--srv', null), LAB = arg('--lab', null), OUTJ = arg('--json', null);
+const SRV = arg('--srv', null), LAB = arg('--lab', null), OUTJ = arg('--json', null), STALE = arg('--stale', 'n0');
+const ECON = ['K', 'slot', 'prod', 'fuel', 'logi', 'hunger', 'healthT', 'happyT'];
 const SEEDS = [1020, 7, 42];
 const J = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
 const MO = new Map();
@@ -25,19 +33,29 @@ const KEYS = [['dAll', '죽음 전부'], ['fam365', '첫해(365일 앞) 죽음']
   ['h0', '366일~ 그날 굶주림 0 인 죽음'], ['full', '366일~ 곳간 찬 날 죽음'], ['step', '366일~ 그날 자리가 준 날 죽음'], ['bSlot', '366일~ K = 식량 자리'], ['bProd', '366일~ K = 식량 흐름'], ['bFuel', '366일~ K = 땔감'],
   ['pop400', '400날 인구'], ['popEnd', '끝 날 인구'], ['empty', '끝 날 빈 마을'], ['expand', '확장 셀(판 끝 누계)'], ['dissolved', '해체(서버 도적 층 · 판 끝)'], ['days', '날']];
 
-function perRun(o) {
+function perRun(o, rj) {
   if (!o || !o.v || !o.cols) return null;
   const C = {}; o.cols.forEach((k, i) => { C[k] = i; });
   const s = { dAll: 0, fam365: 0, d366: 0, bAll: 0, b365: 0, expand: 0, dissolved: 0, win: 0, dec: 0, winAll: 0, h0: 0, full: 0, step: 0, bSlot: 0, bProd: 0, bFuel: 0, pop400: 0, popEnd: 0, empty: 0, days: 0, month: {}, monthAll: {}, vil: 0,
     fh0: 0, fh0b: { slot: 0, prod: 0, fuel: 0 }, fh0d: { '10~30': 0, '30~100': 0, '100~': 0 }, fh0w: 0 };
+  //   ★[T943] 그날 죽음의 출처(머리 주석) — 서버 판 JSON 의 마을 × 날 `_deadTot`
+  const DT = (o.deathsSrc !== 'deadTot' && rj && Array.isArray(rj.rows) && Array.isArray(rj.names)) ? new Map(rj.names.map((n, i) => [n, new Map(rj.rows.map((x) => [x[0], x[3][i]]))])) : null;
+  const SRC = o.deathsSrc === 'deadTot' ? 'deadTot' : DT ? 'hook' : STALE === 'same' ? 'n0same' : 'n0';
+  s.fix = { src: SRC, raw: 0, used: 0, rows: 0, end: (rj && rj.deadTot != null) ? rj.deadTot : null };
   let maxDay = 0;
   for (const rows of Object.values(o.v)) for (const r of rows) if (r[C.day] > maxDay) maxDay = r[C.day];
   s.days = maxDay;
   for (const [name, rows] of Object.entries(o.v)) {
     s.vil++;
-    let had = false, prevRaw = null, p400 = null, last = null;
+    let had = false, prevRaw = null, p400 = null, last = null, prev = null;
+    const M = DT ? DT.get(name) : null;
     for (const r of rows) {
-      const d = r[C.day], dd = r[C.deaths] || 0, n0 = r[C.pop0];
+      const d = r[C.day], n0 = r[C.pop0], d0 = r[C.deaths] || 0;
+      const dd = SRC === 'deadTot' ? d0
+        : (M && M.has(d)) ? M.get(d) - (M.get(d - 1) || 0)
+        : (n0 === 0 || (SRC === 'n0same' && prev && r[C.pop] === n0 && d0 === (prev[C.deaths] || 0) && ECON.every((k) => r[C[k]] === prev[C[k]]))) ? 0 : d0;
+      s.fix.raw += d0; s.fix.used += dd; if (dd !== d0) s.fix.rows++;
+      prev = r;
       if (r[C.pop] > 0 || n0 > 0) had = true;
       { const b = r[C.pop] - n0 + dd; if (b > 0) { s.bAll += b; if (d < 365) s.b365 += b; } }   // 틱 안 출생(틱 안에서 인구를 바꾸는 것은 출생 · 기근 죽음 둘뿐)
       const raw = r[C.slotRaw];
@@ -75,7 +93,10 @@ function perRun(o) {
 const sum = (list) => {
   const t = {}; for (const [k] of KEYS) t[k] = 0; t.winAll = 0; t.month = {}; t.monthAll = {}; t.days = 0; t.n = 0;
   t.fh0 = 0; t.fh0w = 0; t.fh0b = { slot: 0, prod: 0, fuel: 0 }; t.fh0d = { '10~30': 0, '30~100': 0, '100~': 0 };
+  t.fix = { src: [], raw: 0, used: 0, rows: 0, endEq: 0, endN: 0 };
   for (const s of list) { if (!s) continue; t.n++; for (const [k] of KEYS) if (k !== 'days') t[k] += s[k]; t.winAll += s.winAll; t.days = Math.max(t.days, s.days);
+    if (!t.fix.src.includes(s.fix.src)) t.fix.src.push(s.fix.src); t.fix.raw += s.fix.raw; t.fix.used += s.fix.used; t.fix.rows += s.fix.rows;
+    if (s.fix.end != null) { t.fix.endN++; if (s.fix.end === s.fix.used) t.fix.endEq++; }
     t.fh0 += s.fh0; t.fh0w += s.fh0w; for (const k in s.fh0b) t.fh0b[k] += s.fh0b[k]; for (const k in s.fh0d) t.fh0d[k] += s.fh0d[k];
     for (const m in s.month) t.month[m] = (t.month[m] || 0) + s.month[m]; for (const m in s.monthAll) t.monthAll[m] = (t.monthAll[m] || 0) + s.monthAll[m]; }
   return t;
@@ -92,10 +113,11 @@ if (SRV) {
     const [arm, ctl] = x.slice(4).split('~');
     const seeds = {};
     for (const sd of SEEDS) {
-      const s = perRun(J(path.join(p, `base-${sd}.t931.json`)));
+      const rj = J(path.join(p, `base-${sd}.json`));
+      const s = perRun(J(path.join(p, `base-${sd}.t931.json`)), rj);
       //   인구 · 빈 마을은 판 자의 정본 칸으로 바꿔 적는다 — 400날 = 갈림 대조 장부(`dctl.days` · 장부 하루 끝) · 끝 날 = 판 JSON 여덟 수 · 빈 마을 = 판 JSON `empty`
       if (s) {
-        const dc = J(path.join(p, `base-${sd}.dctl.json`)), rj = J(path.join(p, `base-${sd}.json`));
+        const dc = J(path.join(p, `base-${sd}.dctl.json`));
         const d4 = dc && dc.days ? dc.days.find((x) => x[0] === 400) : null;
         if (d4) s.pop400 = d4[1].reduce((a, c) => a + (c[0] || 0), 0);
         if (rj && rj.eight) { s.popEnd = rj.eight.pop; s.expand = rj.eight.expand || 0; if (rj.empty != null) s.empty = rj.empty; if (rj.dissolved != null) s.dissolved = rj.dissolved; }
@@ -158,6 +180,12 @@ if (SRV) {
   for (const a of arms) { const r = runs[a].find((x) => x.ctl == null && x.tot.n === 3); if (!r) continue; const T = r.tot;
     P(`| ${a} | ${nf(T.fh0)} | ${pc(T.fh0, T.d366)} | ${nf(T.fh0b.slot)} · ${nf(T.fh0b.prod)} · ${nf(T.fh0b.fuel)} | ${nf(T.fh0d['10~30'])} · ${nf(T.fh0d['30~100'])} · ${nf(T.fh0d['100~'])} | ${pc(T.fh0w, T.fh0)} |`); }
   P('');
+  P('★[T943] 그날 죽음 칸 — 판마다 출처 · 관찰기 옛 셈(틱 뒤 `_deathsToday`) → 이 표의 셈 · 바꾼 마을 × 날 줄 · 판 끝 `deadTot`(판 JSON) 와 같은 판:');
+  P('');
+  P('| 판(갈래 · 대조) | 출처 | 옛 셈 | 이 표 | 바꾼 줄 | 판 끝 deadTot 같음 |');
+  P('|---|---|---:|---:|---:|---:|');
+  for (const a of arms) for (const r of runs[a]) { const F = r.tot.fix; P(`| ${a}${r.ctl ? ' ~' + r.ctl : ''} | ${F.src.join(' · ')} | ${nf(F.raw)} | ${nf(F.used)} | ${nf(F.rows)} | ${F.endEq}/${F.endN} |`); }
+  P('');
 }
 
 if (LAB) {
@@ -166,7 +194,7 @@ if (LAB) {
   for (const r of ['t17', 't176']) for (const [a] of ARMS) {
     const seeds = {};
     for (const sd of SEEDS) {
-      const s = perRun(J(path.join(LAB, `${r}-${a}-${sd}.t931.json`))), rj = J(path.join(LAB, `${r}-${a}-${sd}.json`));
+      const s = perRun(J(path.join(LAB, `${r}-${a}-${sd}.t931.json`)), null), rj = J(path.join(LAB, `${r}-${a}-${sd}.json`));
       if (s && rj && rj.base) { s.popEnd = rj.base.pop; s.empty = rj.base.dead; s.expand = rj.base.expand; }   // 끝 날 인구 · 소멸 · 확장 셀 = 랩 자 판 JSON(여덟 수 `base`)
       seeds[sd] = s;
     }
@@ -211,6 +239,12 @@ if (LAB) {
   P('| 갈래 | ' + MS.map((m) => `${m}월`).join(' | ') + ' |');
   P('|---|' + MS.map(() => '---:|').join(''));
   for (const [a, nm] of ARMS) { const T = lab.t17[a].tot; if (T.n === 3) P(`| ${nm} | ${MS.map((m) => nf(T.month[m] || 0)).join(' | ')} |`); }
+  P('');
+  P(`★[T943] 그날 죽음 칸 — 자 · 갈래마다 출처(\`--stale ${STALE}\`) · 관찰기 옛 셈 → 이 표의 셈 · 바꾼 마을 × 날 줄:`);
+  P('');
+  P('| 자 · 갈래 | 출처 | 옛 셈 | 이 표 | 바꾼 줄 |');
+  P('|---|---|---:|---:|---:|');
+  for (const [r, a, nm] of cols) { const F = lab[r][a].tot.fix; P(`| ${nm} | ${F.src.join(' · ')} | ${nf(F.raw)} | ${nf(F.used)} | ${nf(F.rows)} |`); }
   P('');
 }
 if (OUTJ) fs.writeFileSync(OUTJ, JSON.stringify(out, null, 1) + '\n');

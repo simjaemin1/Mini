@@ -1,19 +1,21 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// === scripts/test-t931-slotk-ema.js — 식량 자리 K 에도 신뢰 관성(T931 ①) ===
+// === scripts/test-t931-slotk-ema.js — 식량 자리 K 에도 신뢰 관성(T931 ① · ★T943 `'season'` 켬 기본) ===
 //
 // ★[T931 2026-10-26 · T924 회부 2-ⓐ · 재민 10-24 "창고에 식량이 있는데 자유민이 그렇게 빨리 죽어?"]
 //   K = min(식량 자리 slotK · 식량 흐름 prodK · 땔감 fuelK) 중 prodK(EMA 0.97) · fuelK(EMA 0.98)는 신뢰 관성을 갖는데 slotK 만 계절 땅 배수
 //   (v2 `applyLandModifiers` — `SEASON_MULT.winter`)를 그날 그대로 받아 12월 1일 K 가 하루에 떨어진다(보고 T924 §2-b).
-//   손잡이 `T931_SLOTK_EMA`(켜는 값 `'1'` 하나 · 끔 = 종전 바이트): 켜면 K 에 드는 slotK 가 땔감 K 와 같은 꼴 · 같은 수(0.98 · 0.02)의 관성을 갖는다.
+//   손잡이 `T931_SLOTK_EMA` — ★[T943] 켬 기본 = `'season'`(미설정 · 그 밖 · 브라우저) · 되돌림 `'0'` = 끔 = 종전 바이트 · `'1'` = 값 전체(남김):
+//     켜면 K 에 드는 slotK 가 땔감 K 와 같은 꼴 · 같은 수(0.98 · 0.02)의 관성을 갖는다(`'1'` 값 전체 · `'season'` 땅 배수 몫만).
 // 재는 것 (손잡이는 모듈 상수라 팔마다 아이 프로세스 · 포트 0 · 서버 안 띄움)
-//   ⓐ 끔 = 종전 — 손잡이 없음 · '0' · '' 셋이 마을 상태 JSON 한 글자도 안 갈린다 · 새 칸 0(`_slotKema` · `_kDbg.slotRaw` 없음) · `_kDbg.slot` = 그날 자리(`totalFoodSlots`)
+//   ⓐ 끔(`'0'`) = 종전 — 새 칸 0(`_slotKema` · `_slotKfEma` · `_kDbg.slotRaw` 없음) · `_kDbg.slot` = 그날 자리(`totalFoodSlots`) ·
+//      ★[T943] 켬 기본 짝: 손잡이 없음 · `''` · `'x'`(그 밖) 셋 = `'season'` 판과 마을 상태 JSON 한 글자 같다 · `'0'` 판과는 갈린다
 //   ⓑ 켬 — 첫날 관성 = 그날 자리(늦음 0) · 날마다 `_slotKema` = 0.98 × 어제 + 0.02 × 그날 자리(땔감 K 줄의 그 수 — 정본 글자를 읽는다) · `_kDbg.slot` = 그 값 · `slotRaw` = 그날 자리
 //   ⓒ 겨울 계단 — v2 글자에서 읽은 `SEASON_MULT.winter`(물 · 사냥감 · 지력 …)로 `applyLandModifiers` 꼴 그대로 땅을 바꿔 90일:
 //      끔 = 겨울 첫날 slot 이 그날 자리로 떨어진다(계단) · 켬 = 첫날 slot 은 어제 값의 98% + 그날 자리의 2% · 90일 동안 계단 몫의 남은 비 ≈ 0.98^일
 //   ⓓ 켬 — K = max(POP_MIN, min(slot, prod, fuel)) 그대로(K 식 무변 — 관성은 slot 칸에만)
 //   ⓔ 자리가 그대로인 판(계절 · 확장 없는 400일)엔 켬 = 끔 — 새 칸 둘(`_slotKema` · `_kDbg.slotRaw`) 빼고 상태 JSON 한 글자 같다
-//   ⓕ 정적 — 손잡이 `=== '1'` · `=== 'season'` 한 자리씩 · 관성 줄의 수 = `_fuelKema` 줄의 수 · 자리를 쓰는 다른 문(`tryExpandTerritory` 의 `totalFoodSlots(v)` · `jobCapacity`) 글자 무변 ·
+//   ⓕ 정적 — 되돌림 `=== '0'` · `'1'` · 켬 기본(`!OFF && !EMA`) 한 자리씩 · 랩 배선 ④ 채택 손잡이 표에 이름 · 관성 줄의 수 = `_fuelKema` 줄의 수 · 자리를 쓰는 다른 문(`tryExpandTerritory` 의 `totalFoodSlots(v)` · `jobCapacity`) 글자 무변 ·
 //      `_kDbg` 줄 글자 무변(`t264-arm` 닻) · 번들 · 랩 둘에 같은 줄
 //   ⓖ `'season'` — 같은 관성을 땅 배수의 몫에만: 날마다 f = 그날 자리 ÷ 원래 땅의 자리(그날 size) · `_slotKfEma` = 0.98 × 어제 + 0.02 × f · slot = 원래 땅의 자리 × 관성 f ·
 //      배수가 없는 판(`_origLand` 없음 — 400일)은 f = 1 → 끔과 같은 마을(새 칸 둘 빼고) · 겨울 첫날 slot > 그날 자리 ·
@@ -83,11 +85,13 @@ console.log(`(겨울 배수 ${JSON.stringify(WINTER)} · 봄 ${JSON.stringify(SP
 ok(WINTER && WINTER.water < 1 && WINTER.game < 1 && SPRING, 'v2 `SEASON_MULT` 겨울 · 봄 줄을 글자에서 읽었다');
 ok(Number.isFinite(KEEP) && Number.isFinite(TAKE) && Math.abs(KEEP + TAKE - 1) < 1e-12, '땔감 K 관성 줄(`_fuelKema`)의 두 수를 글자에서 읽었다(합 1)', `${KEEP} · ${TAKE}`);
 
-console.log('ⓐ 끔 = 종전 — 손잡이 없음 · \'0\' · \'\' (400일 + 겨울 90일 + 봄 30일)');
-const off = run({}, 'season'), off0 = run({ T931_SLOTK_EMA: '0' }, 'season'), offE = run({ T931_SLOTK_EMA: '' }, 'season');
-ok(off.st === off0.st && off.st === offE.st, '셋이 마을 상태 JSON 한 글자도 안 갈린다', `${off.st.length} B`);
-ok(!/"_slotKema"/.test(off.st) && !/"slotRaw"/.test(off.st), '끔 — 새 칸 0(`_slotKema` · `_kDbg.slotRaw` 없음)');
-ok(off.rows.every((r) => r[C.slot] === r1(r[C.raw]) && r[C.ema] === null && r[C.slotRaw] === null), '끔 — 날마다 `_kDbg.slot` = 그날 자리(`totalFoodSlots`) 그대로', `${off.rows.length}날`);
+console.log('ⓐ 끔(\'0\') = 종전 · 켬 기본 짝 — 손잡이 없음 · \'\' · \'x\' = \'season\' (400일 + 겨울 90일 + 봄 30일)');
+const off = run({ T931_SLOTK_EMA: '0' }, 'season');
+ok(!/"_slotKema"/.test(off.st) && !/"_slotKfEma"/.test(off.st) && !/"slotRaw"/.test(off.st), "끔('0') — 새 칸 0(`_slotKema` · `_slotKfEma` · `_kDbg.slotRaw` 없음)");
+ok(off.rows.every((r) => r[C.slot] === r1(r[C.raw]) && r[C.ema] === null && r[C.fema] === null && r[C.slotRaw] === null), "끔('0') — 날마다 `_kDbg.slot` = 그날 자리(`totalFoodSlots`) 그대로", `${off.rows.length}날`);
+const def = run({}, 'season'), defE = run({ T931_SLOTK_EMA: '' }, 'season'), defX = run({ T931_SLOTK_EMA: 'x' }, 'season'), seA = run({ T931_SLOTK_EMA: 'season' }, 'season');
+ok(def.st === seA.st && defE.st === seA.st && defX.st === seA.st, "★[T943] 켬 기본 — 손잡이 없음 · '' · 'x' 셋이 'season' 판과 마을 상태 JSON 한 글자 같다", `${seA.st.length} B`);
+ok(def.st !== off.st, "켬 기본 판은 끔('0') 판과 갈린다(되돌림이 산다)", '');
 
 console.log('ⓑ 켬 — 첫날 = 그날 자리 · 날마다 0.98 × 어제 + 0.02 × 그날 자리');
 const on = run({ T931_SLOTK_EMA: '1' }, 'season');
@@ -140,9 +144,12 @@ console.log('ⓔ 자리가 그대로인 판(계절 없는 400일) — 켬 = 끔(
 
 console.log('ⓕ 정적');
 {
-  const knob = S.match(/const T931_SLOTK_EMA = [^\n]*/g) || [], knobS = S.match(/const T931_SLOTK_SEASON = [^\n]*/g) || [];
-  ok(knob.length === 1 && /process\.env\.T931_SLOTK_EMA === '1'\)/.test(knob[0]), '손잡이 `=== \'1\'` 한 자리(기본 끔)', knob[0] ? knob[0].slice(0, 110) : '없음');
-  ok(knobS.length === 1 && /process\.env\.T931_SLOTK_EMA === 'season'\)/.test(knobS[0]), '같은 손잡이 `=== \'season\'` 한 자리(기본 끔)', knobS[0] ? knobS[0].slice(0, 120) : '없음');
+  const knobO = S.match(/const T931_SLOTK_OFF = [^\n]*/g) || [], knob = S.match(/const T931_SLOTK_EMA = [^\n]*/g) || [], knobS = S.match(/const T931_SLOTK_SEASON = [^\n]*/g) || [];
+  ok(knobO.length === 1 && /process\.env\.T931_SLOTK_EMA === '0'\)/.test(knobO[0]), "★[T943] 되돌림 `=== '0'` 한 자리(끔 = 종전 바이트)", knobO[0] ? knobO[0].slice(0, 110) : '없음');
+  ok(knob.length === 1 && /^const T931_SLOTK_EMA = !T931_SLOTK_OFF && \(.*process\.env\.T931_SLOTK_EMA === '1'\);/.test(knob[0]), "`'1'` = 값 전체 한 자리(끔이 먼저)", knob[0] ? knob[0].slice(0, 110) : '없음');
+  ok(knobS.length === 1 && /^const T931_SLOTK_SEASON = !T931_SLOTK_OFF && !T931_SLOTK_EMA;/.test(knobS[0]), "★[T943] 켬 기본 = `'season'`(끔도 `'1'` 도 아니면 — 미설정 · 그 밖 · 브라우저)", knobS[0] ? knobS[0].slice(0, 120) : '없음');
+  let W = ''; try { W = fs.readFileSync(path.join(ROOT, 'scripts', 'lab-wiring-check.js'), 'utf8'); } catch (e) { W = ''; }
+  ok(/'T931_SLOTK_EMA'\]\) \{/.test(W), '랩 배선 ④ 채택 손잡이 표에 `T931_SLOTK_EMA`(채택분은 `=== \'0\'` 되돌림 꼴 — 배선 검사가 번들 글자로 본다)');
   const sl = /v\._slotKfEma = v\._slotKfEma === undefined \? f : ([0-9.]+) \* v\._slotKfEma \+ ([0-9.]+) \* f;/.exec(S);
   ok(!!sl && +sl[1] === KEEP && +sl[2] === TAKE, "'season' 관성 줄의 수 = 땔감 K 줄의 수(새 수 0)", sl ? `${sl[1]} · ${sl[2]}` : '줄 없음');
   const line = /const slotK = T931_SLOTK_EMA \? \(v\._slotKema = v\._slotKema === undefined \? _slotKraw : ([0-9.]+) \* v\._slotKema \+ ([0-9.]+) \* _slotKraw\) : T931_SLOTK_SEASON \? _t931SeasonSlot\(v, _slotKraw\) : _slotKraw;/.exec(S);
