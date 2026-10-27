@@ -44,6 +44,7 @@ function world(M, econs) {
       tribeId: q.villageId || null, npcHomeX: q.npcHomeX, npcHomeY: q.npcHomeY, npcWorkX: q.npcWorkX, npcWorkY: q.npcWorkY }; players.set(id, p); npcs.add(id); return p; },
     bump: (k) => { n += k; },   // 마을 몸 밖에서 계수기를 쓰는 몸(캐러밴 · 도적 · 손님) 흉내 — 번호에 틈을 낸다
     isTerrainBlockedLocal: () => false, moveSpeed: 64, corpseMs: 300000, deathDrop: () => 0,
+    setHp: require('./lib-hp-door').makeSetHp((m) => bcast.push(m)),   // ★[T942] 마을 몸 HP 문 = 존의 그 문(존 소스 글자 그대로 · 사본 0)
   };
   const vils = NAMES.map((name, i) => {
     const e = econs ? econs[i] : M.econ.createVillage({ fertility: 1, water: 1, stone: 1, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: 6 + i * 2, name });

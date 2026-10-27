@@ -40,6 +40,7 @@ function world(n, opts) {
     isTerrainBlockedLocal: () => false,
     moveSpeed: MOVE, corpseMs: CORPSE_MS,
     deathDrop: (p) => { drops.push(p.pid); return 0; },
+    setHp: require('./lib-hp-door').makeSetHp((m) => bcast.push(m)),   // ★[T942] 마을 몸 HP 문 = 존의 그 문(존 소스 글자 그대로 · 사본 0)
   };
   const e = econ.createVillage({ fertility: 1, water: 1, stone: 1, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: n, name: '목촌' });
   const C = { cx: 200, cy: 200 };
