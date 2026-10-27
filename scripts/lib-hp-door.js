@@ -6,6 +6,7 @@
 //   쓰는 법: const { makeSetHp } = require('./lib-hp-door'); deps.setHp = makeSetHp((m) => bcast.push(m), (ws, m) => {});
 //   ★[T954 2026-10-27] 짐승(존 몹) HP 문 `setMobHp` 도 같은 꼴로 — `makeSetMobHp(broadcast)`(떼는 글자 셋: `MOB_HP_KEEP` · `MOB_HP_LOUD` · `function setMobHp(m, v, why) {…}`).
 //     야생 생태를 최소 host 로 돌리는 하네스(`test-hunt-vis` · `test-zone-fauna`)가 host 에 넣는다.
+//   ★[T967 2026-10-27] 짐승 문이 손잡이 `T967_MOB_HP`(켬 기본 · `=0` 되돌림)를 읽는다 — 그 선언 한 줄(`const T967_MOB_HP = …;`)도 같이 뗀다(env 는 이 하네스 프로세스의 것).
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -25,7 +26,8 @@ function makeSetHp(broadcast, send, src) {
 }
 function mobDoorText(src) {
   const s = src || fs.readFileSync(ZONE, 'utf8');
-  return [cut(s, 'const MOB_HP_KEEP = new Set([', ']);'), cut(s, 'const MOB_HP_LOUD = new Set([', ']);'), cut(s, 'function setMobHp(m, v, why) {', '\n  return v;\n}')].join('\n');
+  return [cut(s, 'const T967_MOB_HP = ', ';'), cut(s, 'const MOB_HP_KEEP = new Set([', ']);'), cut(s, 'const MOB_HP_LOUD = new Set([', ']);'),
+    cut(s, 'function setMobHp(m, v, why) {', '\n  return v;\n}')].join('\n');
 }
 function makeSetMobHp(broadcast, src) {
   return new Function('broadcast', `${mobDoorText(src)}\nreturn setMobHp;`)(broadcast || (() => {}));
