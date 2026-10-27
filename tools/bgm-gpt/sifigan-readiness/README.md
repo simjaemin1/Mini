@@ -576,3 +576,40 @@ the unchanged static-display helper has6separate passing tests. This is
 artifact integrity, not a listening approval. Originals, prior checkpoints,
 default game BGM and game playback code remain unchanged. The new-score
 level-expression source and daegeum timbre/articulation remain unresolved.
+
+## Timbre representation roundtrip, 2026-10-28
+
+The global1,000 model is an early scratch pilot, not evidence that adequate
+training has failed. Its batch1×8,400samples gives350seconds of cumulative
+cropped-target exposure. The pinned official default specifies500,000updates
+and batch16 with the same crop length:8,000times that nominal exposure, not
+a prescription for how many steps this instrument requires. The500→1,000
+development losses were still falling. No clear input/loss implementation
+mismatch was found in this scoped read-only review. Both insufficient
+training and limited accepted attack/quiet coverage remain hypotheses,
+not an established single cause of the mechanical timbre.
+
+The next bounded, CPU-only diagnostic separates compression effects within
+WORLD from the neural decoder without retraining. It reanalyses the entire
+two bound native recordings in the original corpus context, verifies the
+saved conditioning prefix, then renders the same first960frames using:
+
+- full1025-bin power SP + full1025-bin AP;
+- saved40mcep-expanded power SP + full AP;
+- full SP + saved3BAP-expanded AP;
+- saved40mcep-expanded SP + saved3BAP-expanded AP.
+
+All four branches share raw Harvest F0 including zeros,24k/5ms/FFT2048 and
+D4C.85. They do not replace rawF0 with the neural excitation's interpolated
+cf0. SPTK `mc2sp` returns power directly; WORLD owns the amplitude-relative
+BAP/AP decoding. The saved float32 feature roundtrip is intentional. Original
+phase/noise waveform is not preserved; WORLD is not a neural quality upper
+bound. A full-versus-compact comparison cannot prove that43features preserve
+every perceptual detail or establish new-score performance.
+
+`timbre_metrics.py` uses source-only64ms RMS support, with quiet/all-frame
+counts retained and no candidate/F0 exclusions. Magnitude-shape normalization
+is analysis only; band-energy sums double interior real-FFT power bins but
+not DC/Nyquist. SP errors use10log10(power), AP errors20log10(amplitude).
+These are descriptive diagnostics, not waveform RMSE, instrument-identity
+scores, naturalness thresholds, or listening approvals.
