@@ -6859,9 +6859,26 @@ function _warAfterDaily(surrBefore) {
 // ── ★★[T681] 장부 — 손잡이 켬일 때만 부른다 ──
 // 전쟁 몸 하루 몫(걸음 수) = 하루 길이 × 존 틱 Hz(교전 스텝 dt = 1/틱 Hz 그 값 · 새 수 0). 정본 시계 24분이면 43,200 = 그날 틱 수와 같다.
 function _t681Quota() { const WL = state.warLive; return Math.max(1, Math.round((state.dayMs || 0) * ((WL && WL.TICK_HZ) || 30) / 1000)); }
+// ★★[T941 2026-10-26 · **판 자 시험 전용** 손잡이 `T941_BATTLE_DAY` 기본 끔 · 끔 = main 바이트(이 줄들이 안 닿는다) — 제품은 이미 운영 시계라 켤 일이 없다]
+//   판 자(하루 250ms)는 전쟁 몸 하루 몫이 `_t681Quota()` = 8 걸음(몸 0.27초)이라 교전 하루가 운영 하루(43,200 걸음 · 몸 1,440초)의 1/5,760 이다(T924 회부 3).
+//   켜면 **교전 국면(`w.phase === 'battle'`)인 몸만** 그날 몫을 정본 운영 하루(`zone-config WORLD.dayLengthMs` × 틱 Hz — T627 `_tripDayMs` 와 같은 자리 · 새 수 0)로 센다.
+//   그날 이미 쓴 몫은 하루 비율로 옮긴다(판 몫 남은 비 × 운영 몫) — 교전에 든 날은 그날 남은 비만큼 · 다음 날부터 하루 전부. 국면이 교전을 벗어나면 되돌려 옮긴다.
+//   틱이 못 쓴 몫은 하루 마감 첫 자리(`_t681Flush` — 종전 그 고리)가 채운다. 행군 · 귀환 몫은 그대로(장부가 옮긴다 — T681 · T832).
+const T941_BATTLE_DAY = process.env.T941_BATTLE_DAY === '1';
+function _t941BattleQuota() { const WL = state.warLive; const W = require('./zone-config').WORLD; return Math.max(1, Math.round(((W && W.dayLengthMs) || state.dayMs || 0) * ((WL && WL.TICK_HZ) || 30) / 1000)); }
+function _t941Q(body) {   // 켬일 때만 부른다 — 그날 몫(교전이면 운영 하루 몫으로 옮긴다)
+  const d = state.world.day | 0;
+  let q = body._t681q;
+  if (!q || q.day !== d) q = body._t681q = { day: d, left: _t681Quota() };
+  const inBattle = !!(body.w && body.w.phase === 'battle' && body.phase !== 'return');
+  if (inBattle && !q.b) { q.b = 1; q.left = Math.round(q.left / _t681Quota() * _t941BattleQuota()); }
+  else if (!inBattle && q.b) { q.b = 0; q.left = Math.round(q.left / _t941BattleQuota() * _t681Quota()); }
+  return q;
+}
 function _t681Take(body) {
   const d = state.world.day | 0;
   let q = body._t681q;
+  if (T941_BATTLE_DAY) q = _t941Q(body);
   if (!q || q.day !== d) q = body._t681q = { day: d, left: _t681Quota() };
   if (q.left <= 0) return false;
   q.left--;
@@ -6883,7 +6900,7 @@ function _t681Flush() {
     const body = state.warBodies && state.warBodies.get(w.id); if (!body || body.phase === 'return' || body.noArmy) continue;
     const d = state.world.day | 0;
     if (!body._t681q || body._t681q.day !== d) body._t681q = { day: d, left: _t681Quota() };   // 그날 틱이 한 번도 안 걸었다 — 몫 전부
-    while (body._t681q.left > 0) {
+    while ((T941_BATTLE_DAY ? _t941Q(body) : body._t681q).left > 0) {   // ★[T941] 켬 = 교전이면 운영 하루 몫(끔 = 종전 글자)
       body._t681q.left--;
       const C = { fighting: 0 };
       _warTickOne(w, body, now, dtMs, C);
@@ -6896,6 +6913,7 @@ function _t681Flush() {
     if (body.phase !== 'return' || !body._t681 || !body.retGroup) continue;
     const d = state.world.day | 0;
     if (!body._t681q || body._t681q.day !== d) body._t681q = { day: d, left: _t681Quota() };   // 그날 틱이 한 번도 안 걸었다 — 몫 전부
+    if (T941_BATTLE_DAY) _t941Q(body);   // ★[T941] 켬 — 교전에서 막 귀환에 든 날은 남은 몫을 판 몫으로 되돌려 옮긴다(끔 = 무동작)
     while (body._t681q.left > 0) {
       body._t681q.left--;
       _warPaceReturn(body, now, dtMs);
