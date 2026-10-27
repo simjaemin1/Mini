@@ -1,0 +1,688 @@
+{
+ "card": "T970 ② — T970_CUT_NEAR 켬 · 끔 같은 그림",
+ "what": "scripts/t970-cut-near-check.js(크롬 · WebKit) — 가르기 자리(산에 가려 걸친 띠가 갈리는 자리)마다 끔 · 켬(먼 곳 셋 돌고 옴) · 끔둘째(같은 걸음). cmp: scr* = 화면 PNG(본 캔버스) 견줌(meanAbs · bigPct · 다른 화소 수 · 바이트 같음) · cs* = 붙든 띠 가르기 조각 화소 해시(청크 열쇠#띠 차례) 같음 수. PNG 는 커밋 밖.",
+ "browsers": {
+  "chromium": {
+   "browser": "chromium",
+   "welcome": "(칸 없음)",
+   "spots": [
+    {
+     "nm": "산",
+     "spot": {
+      "at": [
+       2147,
+       1956
+      ],
+      "from": [
+       2147,
+       1956
+      ],
+      "occ": 165,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 0,
+        "built": 0,
+        "split": 5,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 0,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-off.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        2147,
+        1956
+       ],
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 0,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-on.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 0,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-off2.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0.002,
+       "bigPct": 0.003,
+       "px": 45,
+       "bytesSame": false
+      },
+      "scrOffOff2": {
+       "meanAbs": 0.002,
+       "bigPct": 0.003,
+       "px": 45,
+       "bytesSame": false
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    },
+    {
+     "nm": "바위1112_2408",
+     "spot": {
+      "at": [
+       1108,
+       2404
+      ],
+      "from": [
+       1108,
+       2404
+      ],
+      "occ": 76,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:4792c468",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:32ab14f7",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:c9dc6de1",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:bcb05454",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-바위1112_2408-off.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        1108,
+        2404
+       ],
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 0,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:4792c468",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:32ab14f7",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:c9dc6de1",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:bcb05454",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-바위1112_2408-on.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 0,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:4792c468",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:32ab14f7",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:c9dc6de1",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:bcb05454",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-바위1112_2408-off2.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    }
+   ],
+   "errs": []
+  },
+  "webkit": {
+   "browser": "webkit",
+   "welcome": "(칸 없음)",
+   "spots": [
+    {
+     "nm": "산",
+     "spot": {
+      "at": [
+       2147,
+       1956
+      ],
+      "from": [
+       2147,
+       1956
+      ],
+      "occ": 165,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 0,
+        "built": 0,
+        "split": 5,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 0,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:6d17266c",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:a22dfc",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2b7e27b4",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-산-off.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        2147,
+        1956
+       ],
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 0,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:6d17266c",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:a22dfc",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2b7e27b4",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-산-on.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 0,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:6d17266c",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:a22dfc",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2b7e27b4",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-산-off2.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    },
+    {
+     "nm": "바위1112_2408",
+     "spot": {
+      "at": [
+       1108,
+       2404
+      ],
+      "from": [
+       1108,
+       2404
+      ],
+      "occ": 76,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:e8fa8fcc",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:4a825b56",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:b1eb354b",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:e1653e95",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-바위1112_2408-off.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        1108,
+        2404
+       ],
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 0,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:e8fa8fcc",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:4a825b56",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:b1eb354b",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:e1653e95",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-바위1112_2408-on.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 0,
+        "hs": {}
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:e8fa8fcc",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:4a825b56",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:b1eb354b",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:e1653e95",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-바위1112_2408-off2.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    }
+   ],
+   "errs": []
+  }
+ }
+}
