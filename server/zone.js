@@ -3236,6 +3236,21 @@ function spawnOneResource() {
   console.log(`[${ZONE_ID}] DB에서 claim ${rows.length}개 로드`);
 }
 
+// ★★[T954 2026-10-27 · T942 회부 ①] **짐승(존 몹 `mobs`) HP 의 문 하나** — `setMobHp(m, v, why)`. 사람 · 마을 몸 문(`setHp`)과 같은 꼴(쓰기 한 줄 + 낱말로 가르는 알림).
+//   종전엔 다섯 자리가 몹 hp 를 제각각 썼다 — NPC 가 싸우는 늑대(`'npc'` · npcStep) · 길들인 짐승 먹이(`'feed'` · tryFeed) · 화살(`'arrow'` · stepArrows) ·
+//   사람 공격(`'player'` · tryAttack) · 야생 랩 → 존 몹 그림자 동기(`'wild'` · wildlife.js — host 로 받는다 · 사본 0).
+//   값은 **부르는 쪽 식 그대로**다 — 하한 · 상한이 자리마다 다르다(0 밑 그대로 · maxHp 깎기 · 0 · 1) · 그 갈래는 회부(모으면 방송 hp · 죽음 판이 갈린다).
+//   문이 갖는 것 = 종전 자리마다 하던 그 일을 그 차례로: 쓰기 → 저장 표(`dirty`) → `mob_damaged` 방송. 표 둘은 종전 그대로의 갈래다
+//   (화살은 저장 표를 안 세웠고 · 그림자 동기는 표도 방송도 없었다 — 회부). 새 수 0 · 새 메시지 0.
+const MOB_HP_KEEP = new Set(['npc', 'feed', 'player']);             // 종전에 저장 표(`dirty`)를 세우던 셋
+const MOB_HP_LOUD = new Set(['npc', 'feed', 'arrow', 'player']);    // 종전에 `mob_damaged` 를 방송하던 넷
+function setMobHp(m, v, why) {
+  m.hp = v;
+  if (MOB_HP_KEEP.has(why)) m.dirty = true;
+  if (MOB_HP_LOUD.has(why)) broadcast({ type: 'mob_damaged', mid: m.mid, hp: m.hp });
+  return v;
+}
+
 // === Mob spawn — DB에 영속화 (위치/HP는 주기적 저장) ===
 function spawnMob(type, opts = {}) {
   const def = MOB_DEFS[type];
@@ -4616,9 +4631,7 @@ function npcStep(npc, dt, now) {
       if (now - npc.lastAttackAt > 1000) {
         npc.lastAttackAt = now;
         const dmg = 8;
-        target.hp -= dmg;
-        target.dirty = true;
-        broadcast({ type: 'mob_damaged', mid: target.mid, hp: target.hp });
+        setMobHp(target, target.hp - dmg, 'npc');   // ★[T954] 문으로(쓰기 · 저장 표 · 방송 — 종전 세 줄 그 차례)
         // 늑대 공격당하면 어그로 — 이미 NPC 향해있을 거. 팩 전파도.
         if (!target.tameOwner) {
           target.aggroTarget = npc.pid;
@@ -5160,6 +5173,7 @@ Wildlife.init({
   isTerrainBlockedLocal, isRockTileLocal, terrainMod: _terrain,
   getActiveChunkKeys: () => activeChunkKeys, isPositionActive,
   spawnCorpse, damagePlayer, broadcast, WORLD,
+  setMobHp,   // ★[T954] 짐승 HP 문 — 랩 → 존 몹 그림자 동기가 이 문으로 쓴다(사본 0)
   simVillages: () => SimVillages.clientVillages(), legacyVillages: VILLAGES,
   // ★[T146] 몹 마릿수가 **마을 사냥터 개체군**을 따라 서게 — 정본은 `villages.js` 하나다(사본 0).
   gameRichAt: (k) => { const ci = String(k).indexOf(','); return ci < 0 ? undefined
@@ -7422,9 +7436,7 @@ function tryFeed(player) {
   player.inventory[def.tameFood] -= 1;
   if (best.tameOwner === player.playerId) {
     // 이미 내 동물 — hp 회복만
-    best.hp = Math.min(best.maxHp, best.hp + 5);
-    best.dirty = true;
-    broadcast({ type: 'mob_damaged', mid: best.mid, hp: best.hp });
+    setMobHp(best, Math.min(best.maxHp, best.hp + 5), 'feed');   // ★[T954] 문으로(상한 maxHp 는 이 자리 식 그대로)
     send(player.ws, { type: 'notice', text: `${best.type} HP +5` });
   } else {
     best.tameProgress = (best.tameProgress || 0) + 1;
@@ -12552,6 +12564,7 @@ function __testBind() {
     mineOreCell, trySortOre, minedCells, ITEM_LABEL_SERVER,
     // ── 길들이기 시대 게이트 E2E(test-tame.js) ── 실서버 mobs/MOB_DEFS 와 실제 tryFeed 를 그대로 쓴다
     mobs, MOB_DEFS, tryFeed, qtMobs: () => qtMobs,
+    setMobHp, MOB_HP_KEEP, MOB_HP_LOUD, tryAttack, tryRangedAttack, stepArrows, npcStep,   // ★[T954] 짐승 HP 문 하네스(`test-mob-hp-door` · 내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
     spawnCorpse, butcherCorpse, corpses,
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
@@ -12971,8 +12984,7 @@ function stepArrows(dt) {
     // 2) 자기 zone mob
     if (!hit) for (const m of mobs.values()) {
       if (Math.hypot(m.x - a.x, m.y - a.y) < ARROW_HIT_R) {
-        m.hp = Math.max(0, m.hp - a.dmg);
-        broadcast({ type: 'mob_damaged', mid: m.mid, hp: m.hp });
+        setMobHp(m, Math.max(0, m.hp - a.dmg), 'arrow');   // ★[T954] 문으로(하한 0 은 이 자리 식 그대로 · 저장 표는 종전처럼 안 세운다)
         // §4-4 wildlife 브리지: 화살 피격 — 랩 hp 동기 + 놀람/반격(사수가 이 존 플레이어면 반격 표적)
         if (m.isWild) Wildlife.onMobHit(m, a.dmg, players.get(a.ownerPid) || null);
         if (m.hp <= 0) { spawnCorpse(m, a.ownerId); chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid }); }
@@ -13082,9 +13094,7 @@ async function tryAttack(player) {
       send(player.ws, { type: 'notice', text: '내가 길들인 동물은 공격하지 않음' });
       return;
     }
-    bestMob.hp -= atk;
-    bestMob.dirty = true;
-    broadcast({ type: 'mob_damaged', mid: bestMob.mid, hp: bestMob.hp });
+    setMobHp(bestMob, bestMob.hp - atk, 'player');   // ★[T954] 문으로(쓰기 · 저장 표 · 방송 — 종전 세 줄 그 차례)
     // §4-4 wildlife 브리지: 본체 hp(×10 스케일)→랩 hp 동기 + 피격 반응(놀람 도주/멧돼지·늑대 반격 돌진)
     if (bestMob.isWild) {
       Wildlife.onMobHit(bestMob, atk, player);
