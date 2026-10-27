@@ -9,6 +9,7 @@
 //   잡힌 줄이 그 줄), 몹 한 줄(`mob_damaged` 를 방송하는 곁)을 끼운 사본은 안 잡혀야 한다(거름망이 사람만 본다).
 // ★[T964] ④(구조 · 회복 · 다침이 문을 지난다 · `e2e-hp` ④)도 같은 꼴로 들었다(`hpDoorCallChecks` + 미끼 둘).
 // ★늘리기: 문이 하나 더 생기면(T942 마을 NPC 몸 hp) `lib-hp-src.js` `SPECS` 에 칸을 더하고 여기 같은 꼴 절 하나 — 그 칸의 미끼도 같이.
+//   ★[T973] 마을 NPC 몸 hp(T942) — ⑤ 절(`npcSourceChecks` · `test-npc-hp-door` ⓪ ~ ④ 와 같은 함수) · 미끼 넷. hp 문 셋의 소스 검사가 여기 한 자리다.
 //   ★[T954] 짐승(존 몹) hp 문 `setMobHp` — ② 절(`mobSourceChecks` · 전수) · ③ 미끼 다섯.
 //
 // 실행: node scripts/test-hp-src.js
@@ -104,6 +105,40 @@ ok(real.wildlife.split(MANCHOR).length === 2, `[상황] 야생 미끼 자리(\`$
   const decoy = Object.assign({}, real, { zone: real.zone.replace("const MOB_HP_LOUD = new Set(['npc', 'feed', 'arrow', 'player']);", "const MOB_HP_LOUD = new Set(['npc', 'feed', 'player']);") });
   const q = quiet(); L.mobSourceChecks(q.ok, decoy);
   ok(decoy.zone !== real.zone && q.bad.length === 1, '③ 낱말 표를 바꾼 사본(방송에서 `arrow` 를 뺌 — 화살 피해가 조용해진다)은 잡힌다', `빨강 ${q.bad.length}`);
+}
+
+// ── ★[T973] 마을 NPC 몸 hp — T942 문(`villages _setHp` → 존 `setHp`) · 같은 함수 `npcSourceChecks`(`test-npc-hp-door` ⓪ ~ ④ 가 부르는 그것) ──
+console.log('\n⑤ 마을 NPC 몸 hp — 문 하나(T942 · `test-npc-hp-door` 와 같은 함수)');
+ok(real.villages.length > 100000, '[상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)', `villages ${real.villages.length}`);
+L.npcSourceChecks(ok, real);
+console.log('\n⑤ 미끼 — 마을 NPC 몸 hp');
+{
+  const REL = "_setHp(p, p.maxHp || 100, 'release');", OLD = 'p.hp = p.maxHp || 100;';
+  ok(real.villages.split(REL).length === 2, '[상황] 풀림의 그 부름이 진짜 소스에 한 번 있다');
+  const decoy = Object.assign({}, real, { villages: real.villages.replace(REL, OLD) });
+  const q = quiet(); const r = L.npcSourceChecks(q.ok, decoy);
+  ok(q.bad.some((m) => /마을 몸 hp 를 \*\*직접 쓰는 자리가 없다/.test(m)) && r.strays.out.length === 1 && r.strays.out[0].includes(OLD),
+    '★★⑤ 풀림을 옛 직접 대입(`p.hp = p.maxHp || 100`)으로 되돌린 사본은 잡힌다 — 잡힌 줄이 그 줄', `빨강 ${q.bad.length} · ${r.strays.out.join(' | ')}`);
+  // 줄 주석을 먼저 걷는 까닭의 증인 — 블록부터 걷는 `stripComments`(사람 · 짐승 칸)로 보면 villages 의 `// … sim/* …` 가 거짓 블록을 열어 이 줄을 삼킨다
+  ok(L.npcStrays(L.stripComments(decoy.villages)).out.length === 0, '⑤ 증인 — 블록 주석부터 걷으면(`stripComments`) 같은 사본을 **놓친다**(그래서 이 칸은 `stripLineFirst`)',
+    `줄 ${real.villages.split('\n').length} → 블록 먼저 ${L.stripComments(real.villages).split('\n').length}`);
+}
+{
+  const decoy = Object.assign({}, real, { villages: real.villages.replace("_setHp(p, p.maxHp || 100, 'release');", "_setHp(p, p.maxHp || 100, 'damage');") });
+  const q = quiet(); L.npcSourceChecks(q.ok, decoy);
+  ok(decoy.villages !== real.villages && q.bad.length === 2 && /낱말 일곱/.test(q.bad[0]) && /HP_PEER/.test(q.bad[1]),
+    '★★⑤ 마을 몸 낱말을 방송 낱말(`damage`)로 바꾼 사본은 잡힌다(낱말 표 · 방송 겹침 둘)', `빨강 ${q.bad.length}`);
+}
+{
+  const decoy = Object.assign({}, real, { zone: real.zone.replace('\n  setHp,\n', '\n') });
+  const q = quiet(); L.npcSourceChecks(q.ok, decoy);
+  ok(decoy.zone !== real.zone && q.bad.length === 1 && /deps 가 존의 문/.test(q.bad[0]), '★★⑤ 존이 마을에 문을 안 넘기는 사본(`SimVillages.init` deps 에서 `setHp` 뺌)은 잡힌다', `빨강 ${q.bad.length}`);
+}
+{
+  const FWD = L.SPECS.npc.fwd;
+  const decoy = Object.assign({}, real, { villages: real.villages.replace(FWD, FWD + '\n// p.hp = 0;   옛 줄(주석)\n/* b.hp += 5; */') });
+  const q = quiet(); L.npcSourceChecks(q.ok, decoy);
+  ok(decoy.villages !== real.villages && q.bad.length === 0, '⑤ 주석에 적은 옛 줄(줄 · 블록)은 안 잡힌다(거짓 빨강 0)', `빨강 ${q.bad.length}`);
 }
 
 console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);
