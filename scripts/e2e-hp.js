@@ -56,60 +56,8 @@ async function waitHttp(url, tries = 600) {
 
   // ── ⓪ 소스 — **문이 하나인가**(하네스를 띄우기 전에 답이 나오는 절) ─────────────
   console.log('\n⓪ 소스 — hp 를 쓰는 문이 하나다');
-  {
-    const src = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
-    // 주석을 걷어낸 뒤 본다 — 주석에 옛 코드를 적어 두는 카드라 그대로 세면 거짓 빨강이 난다.
-    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
-      .map((l) => { const i = l.indexOf('//'); return i >= 0 ? l.slice(0, i) : l; }).join('\n');
-    ok(/function setHp\(p, v, why\)/.test(code), '★⓪ 전제: `setHp(p, v, why)` 가 실재한다');
-    // ★사람의 hp 를 **직접** 쓰는 자리 — `setHp` 안의 한 줄(`p.hp = next`)만 남아야 한다.
-    //   ⚠몹·자원·건물의 hp 는 이 카드 소관이 아니다(문은 **사람** hp 의 문이다). 이름만으로는
-    //     사람과 몹을 못 가르므로(`target` 은 두 곳 다 쓴다) **바로 곁에 무엇을 방송하는지**로 가른다:
-    //     `mob_damaged` 를 내는 줄은 몹이다. 그렇게 걸러도 남는 것이 있으면 그건 사람이고, 사본이다.
-    const lines = code.split('\n');
-    const stray = [];
-    lines.forEach((l, i) => {
-      if (!/^\s*(?:player|target|entity|p)\.hp\s*(?:=|\+=|-=)[^=]/.test(l)) return;
-      if (/^\s*p\.hp = next/.test(l)) return;                                   // 문 안의 그 한 줄
-      const near = lines.slice(Math.max(0, i - 2), i + 4).join(' ');
-      if (/mob_damaged|\.mid\b/.test(near)) return;                             // 몹이다(방송이 말한다)
-      stray.push(`${i + 1}: ${l.trim()}`);
-    });
-    ok(stray.length === 0, '★★⓪ 사람 hp 를 **직접 쓰는 자리가 없다**(문 하나 · 사본 0)',
-       stray.length ? stray.join(' | ') : '남은 것은 `p.hp = next` 하나뿐');
-    // ★자명 통과 금지 — 한 줄을 되살리면 잡는가(몹 걸러내기가 사람까지 먹지 않는다)
-    {
-      const probe = ['function f() {', '  player.hp = Math.max(0, player.hp - 3);', '}'];
-      const hit = probe.filter((l, i) => /^\s*(?:player|target|entity|p)\.hp\s*(?:=|\+=|-=)[^=]/.test(l)
-        && !/mob_damaged|\.mid\b/.test(probe.slice(Math.max(0, i - 2), i + 4).join(' ')));
-      ok(hit.length === 1, '★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다');
-      const mobProbe = ['  target.hp -= dmg;', '  broadcast({ type: \'mob_damaged\', mid: target.mid });'];
-      ok(mobProbe.filter((l, i) => /^\s*(?:player|target|entity|p)\.hp\s*(?:=|\+=|-=)[^=]/.test(l)
-        && !/mob_damaged|\.mid\b/.test(mobProbe.slice(Math.max(0, i - 2), i + 4).join(' '))).length === 0,
-        '★⓪ 그리고 몹 한 줄은 **안** 잡는다(거름망이 사람만 본다)');
-    }
-    // ★남에게 가는 규약 — 방송하는 `why` 는 종전 넷 그대로다(늘리지도 줄이지도 않았다)
-    const m = code.match(/const HP_PEER = new Set\(\[([^\]]*)\]\)/);
-    const peers = m ? [...m[1].matchAll(/'([a-z]+)'/g)].map((x) => x[1]).sort() : [];
-    // ★[T402] `damagePlayer` 가 이제 `why` 로 출처 앞 낱말(arrow·mob·…)을 보낸다 — 전부 **종전엔 'damage'** 였던 피해다.
-    //   그래서 규약 무변의 뜻은 "종전 넷 + 그 낱말들 **만**" 이다. 그 낱말은 손으로 적지 않고 **호출부에서 긁는다**.
-    const srcWords = new Set([...code.matchAll(/damagePlayer\([^,]+,[^,]+,\s*[`']([a-z]+)[:`']/g)].map((x) => x[1]));
-    try { const wl = fs.readFileSync(path.join(ROOT, 'server', 'wildlife.js'), 'utf8');
-          for (const x of wl.matchAll(/damagePlayer\([^,]+,[^,]+,\s*'([a-z]+):/g)) srcWords.add(x[1]); } catch (e) {}
-    const want = [...new Set(['damage', 'debug', 'dish', 'food', ...srcWords])].sort();
-    ok(srcWords.size >= 5 && JSON.stringify(peers) === JSON.stringify(want),
-       '★★⓪ 방송하는 갈래는 **종전 넷 + 피해 출처 낱말**뿐이다(종전에 `damage` 로 방송되던 것만 · 남의 규약 무변)',
-       `${JSON.stringify(peers)} · 출처 ${[...srcWords].sort().join(',')}`);
-    // ★[T131] 창구는 **하나**다 — `hp_changed` 말고 hp 전용 타입을 또 만들지 않았다.
-    ok(!/type:\s*'hp_update'|type:\s*'player_damaged'/.test(code),
-       '★★⓪ hp 창구는 하나(`hp_changed`) — 옛 이름도 새 타입도 없다');
-    // ★클라 접점 — `hp_changed` 핸들러가 자기 hp 를 세운다(T131 개명 전 이름은 `player_damaged`)
-    const net = fs.readFileSync(path.join(ROOT, 'public', 'client', '30-n-net.js'), 'utf8');
-    ok(/msg\.type === 'hp_changed'/.test(net) && /msg\.pid === myPid.*myHp = msg\.hp/s.test(net),
-       '★★⓪ 클라는 **이미** 그 메시지로 자기 hp 를 세운다(클라 접점 0)');
-    ok(/typeof msg\.hp === 'number'.*myHp = msg\.hp/s.test(net),
-       '★⓪ 그리고 `gauges` 의 hp 칸도 이미 읽는다(T61 — 자연 회복이 실리는 통로)');
-  }
+  //   ★[T953] 검사 몸통은 `scripts/lib-hp-src.js`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-hp-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+  require('./lib-hp-src').hpSourceChecks(ok);
 
   const _central = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
