@@ -1302,8 +1302,12 @@ console.log('\n⑲ ★★[T457] 전쟁 병사 몸 — `tick` 의 hp 모서리');
   ok(/hp:\s*o\.hp/.test(me) && new RegExp(`if \\(o\\._muster\\) \\{ e\\.${WB._mark} =`).test(me),
      '⑲b ★서버 `makeEntry` — 몸마다 `hp` 를 싣고, 표의 표식 칸(`_mark`)은 **동원된 병사(`_muster`)에만** 싣는다', `_mark ${WB._mark}`);
   const sync = vsrc.slice(vsrc.indexOf('function _warSyncMeta('), vsrc.indexOf('function _warSyncMeta(') + 1500);
-  ok(/p\.hp = bu\.hp <= 0 \? 0/.test(sync) && !/setHp\(|hp_changed/.test(sync),
-     '⑲b2 ★병사끼리의 타격은 `_warSyncMeta` 가 몸 hp 에 **바로** 적는다(`setHp`·`hp_changed` 0) — 그래서 `tick` 을 읽어야 한다');
+  // ★[PM 10-27 · T942 뒤] 몸 hp 는 이제 문(`_setHp(…, 'war')`)으로 적는다 — 뜻(병사끼리 타격은 `hp_changed` 를 안 낸다)은 그대로:
+  //   낱말 'war' 는 방송 묶음(`HP_PEER`) 밖이고 NPC 몸은 소켓(`p.ws`)이 없어 문이 아무것도 안 보낸다 → 클라는 여전히 `tick` 을 읽어야 한다.
+  const peerM = zsrc.match(/const HP_PEER = new Set\(\[([^\]]*)\]\)/);
+  const peer = peerM ? peerM[1] : '';
+  ok(/_setHp\(p, bu\.hp <= 0 \? 0[^\n]*'war'\)/.test(sync) && !/hp_changed/.test(sync) && !!peerM && !/'war'/.test(peer),
+     '⑲b2 ★병사끼리의 타격은 `_warSyncMeta` 가 몸 hp 를 문(`_setHp` · 낱말 `war`)으로 적고 `hp_changed` 는 0(`war` ∉ HP_PEER · NPC 소켓 없음) — 그래서 `tick` 을 읽어야 한다');
   // ⑲c 층 — 직전 값은 명부(`c.others`)에서 · 내 pid 는 안 본다 · 줄었을 때만
   const tb = layerCode.slice(layerCode.indexOf("t === 'tick'"), layerCode.indexOf("t === 'tick'") + 1200);
   ok(/_sfxMan\.warBody/.test(tb) && /c\.others\.get\(pp\.pid\)/.test(tb) && /pp\.hp < was\.hp/.test(tb) && /pp\.pid === meP/.test(tb),
