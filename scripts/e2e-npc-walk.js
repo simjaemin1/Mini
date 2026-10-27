@@ -178,9 +178,8 @@ async function arm(tag, knob) {
 (async () => {
   console.log('\n=== 마을 NPC 걸음 = 플레이어 걸음 실클라 E2E (T888 · Chromium · 서버 권위 좌표) ===');
   ok(MOVE_SPEED > 0 && MULT_ON > 0 && MULT_OFF > 0, '기대 걸음을 소스에서 읽었다 — `MOVE_SPEED` · `NPC_WALK_MULT`(켬 · 끔)', `MOVE_SPEED ${MOVE_SPEED} · 켬 ×${MULT_ON} · 끔 ×${MULT_OFF}`);
-  ok((ZSRC.match(/process\.env\.T888_NPC_WALK/g) || []).length === 1 && /\nconst T888_NPC_WALK = process\.env\.T888_NPC_WALK !== '0';/.test(ZSRC)
-    && /MOVE_SPEED \* \(speedMult \|\| NPC_WALK_MULT\)/.test(ZSRC) && /let speedMult = npc\.behavior === 'flee' \? 2\.5 : NPC_WALK_MULT;/.test(ZSRC),
-    '손잡이 한 자리(`!== \'0\'` = 켬 기본) · 배회 배율 한 글자를 두 자리(`npcStep` 기본 배속 · `followNpcPath` 기본값)가 같이 쓴다');
+  //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.npcWalk`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+  require('./lib-e2e-src').SECTIONS.npcWalk(ok);
   const ON = await arm('on', null);
   const OFF = await arm('off', '0');
   const expOn = MOVE_SPEED * MULT_ON, expOff = MOVE_SPEED * MULT_OFF;

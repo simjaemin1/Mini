@@ -7,6 +7,7 @@
 //   ⇒ 같은 검사를 브라우저 없이 상설 러너에 세운다. 검사 몸통은 `scripts/lib-hp-src.js` **한 벌**이고 `e2e-hp` ⓪ 도 그것을 부른다(사본 0).
 // ★자명 통과 금지: 같은 함수를 **미끼 소스**에도 돌린다 — 진짜 `server/zone.js` 에 직접 대입 한 줄을 되살린 사본은 잡혀야 하고(빨강 하나 ·
 //   잡힌 줄이 그 줄), 몹 한 줄(`mob_damaged` 를 방송하는 곁)을 끼운 사본은 안 잡혀야 한다(거름망이 사람만 본다).
+// ★[T964] ④(구조 · 회복 · 다침이 문을 지난다 · `e2e-hp` ④)도 같은 꼴로 들었다(`hpDoorCallChecks` + 미끼 둘).
 // ★늘리기: 문이 하나 더 생기면(T942 마을 NPC 몸 hp) `lib-hp-src.js` `SPECS` 에 칸을 더하고 여기 같은 꼴 절 하나 — 그 칸의 미끼도 같이.
 //
 // 실행: node scripts/test-hp-src.js
@@ -51,6 +52,19 @@ ok(real.zone.split(ANCHOR).length === 2, `[상황] 미끼를 끼울 자리(\`${A
   const decoy = Object.assign({}, real, { zone: real.zone.replace(ANCHOR, '// ' + ANCHOR.replace('{', '') + '\n' + ANCHOR + '\n  // p.hp = 0;   옛 줄(주석)') });
   const q = quiet(); L.hpSourceChecks(q.ok, decoy);
   ok(q.bad.length === 0, '① 주석에 적은 옛 줄은 안 잡힌다(주석을 걷어낸 뒤 본다 — 거짓 빨강 0)', `빨강 ${q.bad.length}`);
+}
+
+// ── ④ 조용하던 자리 — 구조 · 회복 · 다침이 문을 지난다(★[T964] `e2e-hp` ④ 를 옮김 · 같은 함수 `hpDoorCallChecks`) ──
+console.log('\n④ 진짜 소스 — 구조 · 회복 · 다침이 문을 지난다 · `p.hp = 0` 사본 0');
+L.hpDoorCallChecks(ok, real);
+console.log('\n④ 미끼 — 회복이 문을 비켜 가거나 · 죽음의 `p.hp = 0` 이 되살아난 사본은 잡힌다');
+{
+  const REGEN = "setHp(p, p.hp + 2 * dt * 5 * _rm, 'regen')";
+  ok(real.zone.split(REGEN).length === 2, '[상황] 회복 걸음의 그 부름이 진짜 소스에 한 번 있다');
+  const q = quiet(); L.hpDoorCallChecks(q.ok, Object.assign({}, real, { zone: real.zone.replace(REGEN, '(p.hp = p.hp + 2 * dt * 5 * _rm)') }));
+  ok(q.bad.length === 1 && /자연 회복도 문을 지난다/.test(q.bad[0]), '★★④ 회복이 문을 비켜 간 사본은 잡힌다(빨강 하나 · 그 줄)', `빨강 ${q.bad.length}`);
+  const q2 = quiet(); L.hpDoorCallChecks(q2.ok, Object.assign({}, real, { zone: real.zone.replace(ANCHOR, ANCHOR + '\n  if (p.isDown) p.hp = 0;') }));
+  ok(q2.bad.length === 1 && /p\.hp = 0/.test(q2.bad[0]), '★★④ 죽음의 `p.hp = 0` 을 되살린 사본은 잡힌다', `빨강 ${q2.bad.length}`);
 }
 
 console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);
