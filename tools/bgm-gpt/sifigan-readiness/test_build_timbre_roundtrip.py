@@ -197,12 +197,16 @@ class TimbreRoundtripTests(unittest.TestCase):
             manifest = corpus / "manifest.json"; manifest.write_text(json.dumps(dict(files=rows)))
             bindings[str(manifest)] = trial.saved.sha256(manifest)
             output = root / "roundtrip"
-            with patch.object(trial.saved, "PRIVATE_ROOT", root), patch.object(trial, "ResourceGuard", FakeGuard), \
+            # Whole-suite neighbours may import torch. This synthetic fixture
+            # models a fresh standalone process; do not weaken the real guard.
+            with patch.dict(trial.sys.modules), \
+                 patch.object(trial.saved, "PRIVATE_ROOT", root), patch.object(trial, "ResourceGuard", FakeGuard), \
                  patch.object(trial.saved, "validate_inputs", return_value=(dict(input_bindings=bindings.copy()), selected, bindings.copy(), {})), \
                  patch.object(trial.prepare_corpus, "decode", return_value=wave), \
                  patch.object(trial, "analyse_full", side_effect=lambda x: trial_analysis(x)), \
                  patch.object(trial, "invert_compact", side_effect=lambda x: original_invert(x, FakeWorld(), FakeSptk())), \
                  patch.object(trial, "synthesize_branches", side_effect=lambda *args: original_synth(*args, world=FakeWorld())):
+                trial.sys.modules.pop("torch", None)
                 result = trial.build(parent, output)
             self.assertEqual(result["status"], "roundtrip_diagnostic_complete_not_perceptually_approved")
             self.assertTrue(result["inputs_unchanged"])

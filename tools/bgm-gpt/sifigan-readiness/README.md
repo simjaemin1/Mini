@@ -613,3 +613,46 @@ is analysis only; band-energy sums double interior real-FFT power bins but
 not DC/Nyquist. SP errors use10log10(power), AP errors20log10(amplitude).
 These are descriptive diagnostics, not waveform RMSE, instrument-identity
 scores, naturalness thresholds, or listening approvals.
+
+The actual two-case raw diagnostic completed in49.83wall/47.87CPU seconds,
+using34,571,654bytes. Full-source reanalysis matched rawF0, cf0,43features,
+decoded and reference PCM prefixes bit-for-bit for both cases. No learned
+model was loaded. Observed final RSS785,367,040bytes is not a peak reading.
+Every branch returned115,200finite float32 samples without padding/trimming
+or saturation; parameter-control hashes remained unchanged.
+
+On the ORIGINAL source mask, direct mean normalized-magnitude L2 distance
+from full to compact WORLD was.018747deep/.015809Arirang (p95.03476/.02940).
+This direct comparison was independently computed, not inferred merely
+from two similar distances to the original. AP-only differences were around
+3e-9; SP compression had nonzero mean absolute power-envelope errors of
+1.656/1.078dB. Source-to-full spectral distances were.14485/.17997;
+source-to-saved-neural were.24784/.45236. These observations weaken a
+catastrophic43-feature-compression explanation for THESE excerpts/metrics,
+but do not prove perceptual sufficiency, a single cause of the neural errors,
+or that longer training must solve them. WORLD and neural excitation differ.
+
+`export_timbre_roundtrip.py` made a fixed four-way Arirang001 copy diagnostic:
+original049, full WORLD050, compact WORLD051, saved1,000-step SiFiGAN052.
+All three generated listening copies receive the SAME explicit reference-derived
+20ms RMS condition from the prior controller, then one constant display gain.
+Thus these are NOT raw-vocoder auditions, learned expression, new music or
+source-independent performance. The original itself receives no dynamic
+controller; no original PCM is mixed into generated audio.052 is byte-identical
+to the earlier048AAC and is explicitly labelled an existing baseline.
+
+The export took4.32seconds/3,887,304bytes, giving38,458,958experiment bytes
+before small private audition copies/metadata, all below the50MB ceiling.
+All four4.8s AACs are48k stereo,230,400decoded frames,−24.0LUFS; true peaks
+original/full/compact/neural are−11.2/−11.7/−11.7/−12.7dBFS. Their native
+FLOAT WAVs and controlled PCM match saved arrays exactly.
+
+Independent audit verified52raw input bindings, all saved/inverted controls,
+both parameter dictionaries, all12raw timbre/pitch/level metric sets,59export
+bindings, all3gain controllers and full AAC decodes. It performed no new
+WORLD synthesis, model run or source reanalysis.179local suite tests and the
+separate6static-comparison tests pass. The initial whole-suite failure was
+a synthetic fixture seeing Torch imported by neighbouring tests; only test
+isolation changed, not the standalone no-Torch safety check. Originals,
+models, earlier auditions and game defaults remain unchanged. Perceptual
+judgment and a sufficiently trained raw neural reconstruction remain open.
