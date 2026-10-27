@@ -12424,7 +12424,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   //   (랩 세 줄과 같은 규칙 · 사본 0). 서버 움집은 단층이라 완공 층수 = `_houseCells.length`
   //   (레이아웃 MAX_FLOORS=1 · T212 실측 50마을 전부 층합=채수). 집터 슬롯은 하나(`vil._site`).
   const _wantSite = T219_HOUSE_TRIGGER
-    ? _lifeVL().houseSiteWant(vil.econ.npcs.length, vil.econ.housing, vil._houseCells.length, vil._site ? 1 : 0)
+    ? _lifeVL().houseSiteWant(vil.econ.npcs.length, vil.econ.housing + ((_lifeEcon().T958_HOUSE_REAL && vil.econ._t958Want > 0) ? vil.econ._t958Want : 0), vil._houseCells.length, vil._site ? 1 : 0)   // ★[T958] 켬 = econ 주거가 지은 침상에 묶이니 그날 올리고 싶었던 몫(`_t958Want`)을 더해 읽는다(끔 · 없음 = + 0 = 종전)
     : (vil.econ.npcs.length > cap * 0.92);
   if (!vil._site && _wantSite) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
   _sub('site');
