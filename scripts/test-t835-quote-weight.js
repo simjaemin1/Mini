@@ -17,6 +17,9 @@
 //
 // 실행: node scripts/test-t835-quote-weight.js   (존 안 띄움 · 약 3분)
 'use strict';
+// ★[PM 10-27 · land1028] 픽스처 세계는 `T931_SLOTK_EMA` 켬 기본(`'season'` · 열다섯째 판) **앞** 세계로 돈다(되돌림 `=0` · 단언 무변) —
+//   열다섯째 판 곳간에선 ⓓ(받을 양 주문) 켬 갈래가 끔과 갈렸다(켬 넘침 79 · 끔 4) → T965 가 결함인지 가른다(T943 이 test-lab-stone · test-moment-lot 에 한 것과 같은 꼴).
+process.env.T931_SLOTK_EMA = '0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
