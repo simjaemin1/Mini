@@ -15,6 +15,7 @@ if (OUT) {
   const path = require('path'), fs = require('fs');
   const ROOT = process.cwd();
   const V2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
+  const DD = require(path.join(__dirname, 'lib-day-deaths')); DD.install(require(path.join(ROOT, 'sim', 'economy-sim')));   // ★[T963] 그날 죽음 정본(`_deadTot` 틱 앞뒤 차 · 사본 0)
   const W = require(path.join(ROOT, 'server', 'weights'));
   const SP = require(path.join(ROOT, 'server', 'specialty')).RESOURCES;
   const ZONE = process.env.T17_ZONE && !String(process.env.T17_ZONE).includes('+') ? process.env.T17_ZONE : 'hanbando';
@@ -41,7 +42,7 @@ if (OUT) {
         const a = V(v.name), N = (v.npcs && v.npcs.length) || 0; zp += N;
         if (st.days === 1 || st.days % 50 === 0 || st.days >= DAYS) a.pop.push([st.days, N]);
         if (N < a.minPop) a.minPop = N;
-        a.deaths += v._deathsToday || 0;
+        a.deaths += DD.deathsToday(v);
         const d = v._dpDebug; if (d) { for (const k of Object.keys(a.terms)) a.terms[k] += +d[k] || 0; if (d.gated) a.gated++; a.K += +d.K || 0; a.housing = d.housing; }
         const kd = v._kDbg; if (kd) { a.kSlot += kd.slot || 0; a.kProd += kd.prod || 0; a.kFuel += kd.fuel || 0; }
         const s = v.lastStats; if (s) { a.hap += s.happiness || 0; a.hea += s.health || 0; a.pre += s.prestige || 0; }
