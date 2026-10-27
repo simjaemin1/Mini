@@ -59,6 +59,8 @@ function pdiff(fa, fb) {
   await sleep(3000);
   const welcome = await page.evaluate(() => ('cellNear' in uiCfg ? uiCfg.cellNear : '(칸 없음)'));
   console.log(`  · welcome cellNear = ${welcome}(존 env ${process.env.T926_CELL_NEAR == null ? '없음' : process.env.T926_CELL_NEAR})`);
+  const cellBox = await page.evaluate(() => ('cellBox' in uiCfg ? uiCfg.cellBox : '(칸 없음)'));   // ★[T947] 상자 거름 손잡이 — 켜고 돌리면 아래 견줌이 그 위에서 선다(칸 값 표 해시를 끔 판과 견준다)
+  console.log(`  · welcome cellBox = ${cellBox}(존 env ${process.env.T947_CELL_BOX == null ? '없음' : process.env.T947_CELL_BOX})`);
   await page.waitForFunction(() => typeof window.__rainForce === 'function', { timeout: 60000 }).catch(() => {});
   await page.evaluate(() => {
     window.__terrain19.freezeT = 12.25; window.__terrain19.windOff = true; if (window.__rainForce) window.__rainForce({ precip: 0 });
@@ -89,7 +91,8 @@ function pdiff(fa, fb) {
     if (n === last && /:0:0$/.test(n)) same++; else same = 0; last = n; } await sleep(1500); };
   const SPOTS = [['광산2', V('광산2')], ['어촌1', V('어촌1')], ['산1', { cx: 1750, cy: 74 }]].filter(([, v]) => v);
   const FAR = ['광산7', '어촌2', '광산5'].map(V).filter(Boolean);
-  const res = { browser: BR, welcome, spots: [] };
+  const res = { browser: BR, welcome, cellBox, spots: [] };
+  const hsT = (t) => { let h = 0x811c9dc5; for (let q = 0; q < t.length; q++) h = Math.imul(h ^ t.charCodeAt(q), 16777619) >>> 0; return h.toString(16); };   // ★[T947] 칸 값 표 해시(판끼리 · 손잡이끼리 견줌)
   for (const [nm, v] of SPOTS) {
     const S = { nm, runs: [] };
     for (const [tag, on] of [['off', false], ['on', true], ['off2', false]]) {
@@ -104,7 +107,7 @@ function pdiff(fa, fb) {
       const tb = await cellTable();
       const f = await grab(path.join(OUT, `${BR}-${nm}-${tag}.png`));
       const after = await sizes();
-      S.runs.push({ tag, on, at, sizesBeforeReturn: before, sizesAtShot: after, table: tb, shot: f });
+      S.runs.push({ tag, on, at, sizesBeforeReturn: before, sizesAtShot: after, table: tb, tableHash: hsT(tb), shot: f });
       console.log(`  · ${nm} ${tag}: 자리 ${JSON.stringify(at)} · 돌아오기 앞 캐시 물 ${before.water} 바위 ${before.rock} 자리칸 ${before.bk} · 자리 둘레 120×120 칸 중 캐시에 남은 물 칸 ${before.spotCached} · 찍을 때 물 ${after.water} 바위 ${after.rock} 자리칸 ${after.bk}`);
     }
     const [r0, r1, r2] = S.runs;
@@ -114,7 +117,7 @@ function pdiff(fa, fb) {
       scrOffOn: pdiff(r0.shot, r1.shot), scrOffOff2: pdiff(r0.shot, r2.shot) };
     for (const r of S.runs) delete r.table;
     res.spots.push(S);
-    console.log(`  · ${nm} 견줌: ${JSON.stringify(S.cmp)}`);
+    console.log(`  · ${nm} 견줌: ${JSON.stringify(S.cmp)} · 칸 값 표 해시 ${S.runs.map((r) => r.tableHash).join(' / ')}`);
   }
   res.errs = errs;
   fs.writeFileSync(path.join(OUT, `${BR}-near.json`), JSON.stringify(res, null, 1));
