@@ -108,6 +108,7 @@ function _run(opts) {
     anyViewerNear: () => !!opts.viewer,
     isPositionActive: () => !!opts.viewer,
     isBlockedByWall: () => false,
+    setHp: require('./lib-hp-door').makeSetHp((m) => bcast.push(m)),   // ★[T942] 마을 몸 HP 문 = 존의 그 문(존 소스 글자 그대로 · 사본 0)
     isTerrainBlockedLocal: (px, py) => { const k = cellKey(px, py); return ROCK.has(k) || WATER.has(k); },
     isWaterTileLocal: (px, py) => WATER.has(cellKey(px, py)),
     tickHz: 30,
