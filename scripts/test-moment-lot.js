@@ -289,7 +289,7 @@ if (process.env.T732_SUB === 't748') {
       const TK = process.env.T748_TK === '1' ? K : undefined;   // 부모가 두 판(종전 · 열량 짝)을 같은 세계로 돌린다
       const fresh = () => {   // 판마다 같은 세계(결정론 · 앞 교환이 값을 움직이지 않게)
         const world = econV2.createWorldV2({ seed: 7, villageCount: 5, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
-        for (let d = 0; d < 200; d++) econV2.tickWorldV2(world);
+        for (let d = 0; d < 250; d++) econV2.tickWorldV2(world);   // ★[T955] 200 → 250날(⑩ 머리 주석)
         const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap: VV.playerVillageDepositMap() });
         L.prime(world);
         return { L, vil: { name: '랩마을0', ccx: 100, ccy: 100, dbId: 0, econ: world.villages[0] } };
@@ -743,10 +743,11 @@ say('\n⑨ [T748] 켬 전용 일곱 길 — 로트를 그대로 넘긴다(손잡
 
 say('\n⑩ [T748] 거래소 받기 — 열량 짝(꺼내기 · 게시판 보상과 같은 `kcal.itemsOf`) · 끔 = 종전 1개 = 1단위');
 {
-  //   ★[T943 2026-10-27] 이 판의 세계(시드 7 · 마을 5 · 200일)는 `T931_SLOTK_EMA` 켬 기본(`'season'`) **앞** 세계로 둔다(되돌림 `=0` · 단언 무변).
-  //     켬 기본 세계에선 마을0 이 나무 대신 돌 · 밀 대신 고기를 골라 재고 상한에 걸린다(낼 것 6 → 실행 1 · 받을 낱개 30 = 상한 31 아래) —
-  //     아래 '계획 단위 → 낱개' 셈(`avg × 낼 것`)은 상한이 안 걸린 판의 식이라 그 판엔 안 맞는다(보고 T943 §6 · 회부).
-  const T0 = sub748('trade', {}, true, { T748_TK: '0', T931_SLOTK_EMA: '0' }), T1 = sub748('trade', {}, true, { T748_TK: '1', T931_SLOTK_EMA: '0' });
+  //   ★[T955 2026-10-27] 열다섯째 판(`T931_SLOTK_EMA` 켬 기본) 세계 그대로 돈다 — T943 의 `=0` 묶음을 지웠다(단언 무변). 픽스처 날만 다시 골랐다(`fresh` 200 → 250날).
+  //     '계획 단위 → 낱개' 셈(`avg × 낼 것`)은 낼 것 6 이 재고 상한에 안 걸린 판의 식이다 — 시드 7 · 마을 5 의 200날은 켬 기본 세계에서 마을0 이
+  //     돌을 내고 고기를 받아 상한에 걸린다(낼 것 6 → 실행 1). 둘레 날(100 ~ 300)에서 상한이 걸리는 날은 두 세계가 서로 다르다 — 250날은
+  //     두 세계(켬 기본 · 되돌림 `=0`) 다 안 걸리고 245 · 255날도 두 세계 다 선다(보고 T955 §1 · 둘레 표 `계측/T955_픽스처둘레_2026-10-27.json`).
+  const T0 = sub748('trade', {}, true, { T748_TK: '0' }), T1 = sub748('trade', {}, true, { T748_TK: '1' });
   const a = (T0.trade || {}), b = (T1.trade || {});
   ok(!T0.err && !T1.err && a.res && a.res === b.res && a.give === b.give && a.kcal > 0 && Math.abs(a.kcal - a.DAY) > 1, '⑩ [상황] 두 판 — 낱개 열량이 하루치와 다른 식량을 받는다(같은 것을 내고)', `${a.give} → ${a.res}(${a.kcal}kcal · 하루치 ${a.DAY})`);
   const A0 = a.a || {}, A1 = b.a || {};
