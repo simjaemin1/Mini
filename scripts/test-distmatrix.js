@@ -140,5 +140,29 @@ say('\n[⑥ ★[T957] 조각으로 민 셈 = 한 번에 센 셈]');
   ok(!!m && m.length === N && diff === 0, `★★조각으로 민 셈이 전쌍과 **완전히 같다** — 불일치 ${diff}칸`);
 }
 
+// ── ⑦ ★[T968] 마감 밖에서 다 센 셈은 주입 앞에서 선다(`hold`) — 주입은 하루 마감 ⑪ 이 한다 ──────────────
+say('\n[⑦ ★[T968] 다 센 셈은 주입 앞에서 선다 · 이어 밀면 같은 주입]');
+{
+  const fs = require('fs');
+  const V = fs.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8');
+  ok(/const T968_DIST_BG = process\.env\.T968_DIST_BG !== '0';/.test(V), '손잡이 — 켬 기본 · `=0` 만 끔(T957 그대로)');
+  ok((V.match(/if \(!TB\.out\(TICK_SLICE_MS, 'dist'\)\) try \{ _t968DistBg\(\); \} catch \(e\) \{\}/g) || []).length === 2, '마감 밖 두 자리(결정 문 뒤 · 종전 자리) 다 교역로 다시 파기 다음 차례');
+  ok(/function _t968DistBg\(\) \{\n  if \(!T957_DIST_SLICE \|\| !T968_DIST_BG \|\| state\.tickJobs\) return;/.test(V), '마감 중엔 안 민다 · T957 끔이면 안 선다');
+  const w = mkWorld(N);
+  P._distProbe.setup(ta, ZONE, w, econ);
+  quiet = true; const _l = console.log; console.log = () => {};
+  const g = P._distProbe.gen('hold', { hold: true });
+  let y = 0, r;
+  for (;;) { r = g.next(); if (r.done || r.value === '_ready') break; y++; }
+  const before = w._distMatrix;
+  const r2 = g.next();
+  console.log = _l; quiet = false;
+  ok(r.value === '_ready' && !r.done, `[상황] 다 셌을 때 주입 앞에서 섰다(양보 ${y}번 뒤 '_ready')`);
+  ok(before === undefined, '★주입 앞에서 선 동안 세계 행렬은 그대로다(옛 행렬 — 여기선 없음)');
+  const m = w._distMatrix;
+  let diff = 0; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (!m || m[i][j] !== full.mat[i][j]) diff++;
+  ok(r2.done && !!m && diff === 0, `★★이어 밀면 주입 — 전쌍과 완전히 같다(불일치 ${diff}칸)`);
+}
+
 say(`\n=== 거리행렬 하네스: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
 process.exit(fail ? 1 : 0);
