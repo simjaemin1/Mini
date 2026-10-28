@@ -3242,11 +3242,20 @@ function spawnOneResource() {
 //   값은 **부르는 쪽 식 그대로**다 — 하한 · 상한이 자리마다 다르다(0 밑 그대로 · maxHp 깎기 · 0 · 1) · 그 갈래는 회부(모으면 방송 hp · 죽음 판이 갈린다).
 //   문이 갖는 것 = 종전 자리마다 하던 그 일을 그 차례로: 쓰기 → 저장 표(`dirty`) → `mob_damaged` 방송. 표 둘은 종전 그대로의 갈래다
 //   (화살은 저장 표를 안 세웠고 · 그림자 동기는 표도 방송도 없었다 — 회부). 새 수 0 · 새 메시지 0.
+// ★★[T967 2026-10-27 · T954 회부 1 · 2 · ★PM 결함 둘] 손잡이 `T967_MOB_HP`(켬 기본 · 되돌림 `=0` = T954 문 · 종전 주기 저장 글자 그대로):
+//   ① 화살 피해도 저장 표(`dirty`)를 세운다 — 문 안 한 줄(낱말 표 `MOB_HP_KEEP` 는 종전 셋 그대로 둔다).
+//   ② 죽음 하한 0 — 0 밑으로 가던 두 갈래(`npc` 늑대 −8 · `player` 사람 공격 −10)가 문 안에서 한 번 0 에서 멈춘다(방송 hp 도 0).
+//      죽음 판(`hp <= 0` → 지움 · 사체 · 다시 낳기)과 그 차례는 그대로다. 화살(0) · 그림자(1) · 먹이(maxHp)는 자리 식이 이미 0 위라 이 줄이 안 건드린다.
+//   ③ 주기 저장(아래 `saveDirtyMobs` · 10초)이 **실제로 적는다** — 종전 글자 `db.db.transaction(…)` 은 node:sqlite `DatabaseSync` 에 없는 함수라
+//      (3e03fabb 2026-06-25 부터) 매번 TypeError 를 그 catch 가 삼켜 **한 마리도 안 적었다**(저장 표가 영영 안 내려간다). 켬 = T728 꼴 `BEGIN IMMEDIATE … COMMIT`.
+//      ① 은 ③ 없이는 아무 일도 안 한다(표를 세워도 적는 이가 없다) — 그래서 한 손잡이다.
+const T967_MOB_HP = process.env.T967_MOB_HP !== '0';
 const MOB_HP_KEEP = new Set(['npc', 'feed', 'player']);             // 종전에 저장 표(`dirty`)를 세우던 셋
 const MOB_HP_LOUD = new Set(['npc', 'feed', 'arrow', 'player']);    // 종전에 `mob_damaged` 를 방송하던 넷
 function setMobHp(m, v, why) {
+  if (T967_MOB_HP && v < 0) v = 0;                                                   // ★[T967 ②] 죽음 하한 0(문 안 한 번)
   m.hp = v;
-  if (MOB_HP_KEEP.has(why)) m.dirty = true;
+  if (MOB_HP_KEEP.has(why) || (T967_MOB_HP && why === 'arrow')) m.dirty = true;     // ★[T967 ①] 화살도 저장 표
   if (MOB_HP_LOUD.has(why)) broadcast({ type: 'mob_damaged', mid: m.mid, hp: m.hp });
   return v;
 }
@@ -4768,19 +4777,40 @@ function npcStep(npc, dt, now) {
 }
 
 // 주기적으로 mob 위치/HP 저장 (10초 간격) — dirty 플래그 켜진 것만
-setInterval(() => {
+// ★[T967 ③] 이름을 붙였다(`saveDirtyMobs` — 하네스가 진짜 그 함수를 부른다 · `__testBind`). 끔(`T967_MOB_HP=0`) = 종전 글자 그대로(적지 못하는 길).
+function saveDirtyMobs() {
   let saved = 0;
-  // 트랜잭션으로 묶어 1회 fsync (이전: dirty마다 개별 동기 쓰기 → 이벤트루프 수십~수백ms 블록 = 틱 지연 = 클라 텔포)
-  try {
-    const txn = db.db.transaction(() => {
-      for (const m of mobs.values()) {
-        if (m.dirty && m.dbId) { db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName); saved++; m.dirty = false; }
-      }
-    });
-    txn();
-  } catch (e) { /* lock 잡혔으면 다음 라운드 */ }
+  if (T967_MOB_HP) {
+    // ★[T967 ③] node:sqlite 의 트랜잭션 = `BEGIN IMMEDIATE … COMMIT`(zone-local-db `saveVillagesAndMeta` · T728 꼴) — 한 번에 적고 COMMIT 뒤에 표를 내린다
+    //   (실패 = 표 그대로 · 다음 라운드). 적는 칸은 종전 글자 그대로(x · y · hp · 주인 · 주인 이름).
+    const rows = [];
+    for (const m of mobs.values()) if (m.dirty && m.dbId) rows.push(m);
+    if (rows.length) {
+      try {
+        db.db.exec('BEGIN IMMEDIATE');
+        try {
+          for (const m of rows) db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName);
+          db.db.exec('COMMIT');
+        } catch (e) { try { db.db.exec('ROLLBACK'); } catch (x) {} throw e; }
+        for (const m of rows) m.dirty = false;
+        saved = rows.length;
+      } catch (e) { /* lock 잡혔으면 다음 라운드 — 표는 그대로 */ }
+    }
+  } else {
+    // 트랜잭션으로 묶어 1회 fsync (이전: dirty마다 개별 동기 쓰기 → 이벤트루프 수십~수백ms 블록 = 틱 지연 = 클라 텔포)
+    try {
+      const txn = db.db.transaction(() => {
+        for (const m of mobs.values()) {
+          if (m.dirty && m.dbId) { db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName); saved++; m.dirty = false; }
+        }
+      });
+      txn();
+    } catch (e) { /* lock 잡혔으면 다음 라운드 */ }
+  }
   if (saved > 0) console.log(`[${ZONE_ID}] mob 상태 저장 ${saved}건 (txn)`);
-}, 10000);
+  return saved;
+}
+setInterval(saveDirtyMobs, 10000);
 
 // === Phase 14.43: 좀비 ws 청소 ===
 // 클라가 백그라운드 freeze + NAT timeout으로 TCP 죽었는데 close 이벤트는 안 떠서
@@ -12565,6 +12595,7 @@ function __testBind() {
     // ── 길들이기 시대 게이트 E2E(test-tame.js) ── 실서버 mobs/MOB_DEFS 와 실제 tryFeed 를 그대로 쓴다
     mobs, MOB_DEFS, tryFeed, qtMobs: () => qtMobs,
     setMobHp, MOB_HP_KEEP, MOB_HP_LOUD, tryAttack, tryRangedAttack, stepArrows, npcStep,   // ★[T954] 짐승 HP 문 하네스(`test-mob-hp-door` · 내보내기만)
+    T967_MOB_HP, spawnMob, saveDirtyMobs,   // ★[T967] 짐승 hp 재기동 하네스(`test-mob-hp-restart` — DB 행이 있는 몹 · 진짜 주기 저장 · 내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
     spawnCorpse, butcherCorpse, corpses,
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
@@ -12984,7 +13015,7 @@ function stepArrows(dt) {
     // 2) 자기 zone mob
     if (!hit) for (const m of mobs.values()) {
       if (Math.hypot(m.x - a.x, m.y - a.y) < ARROW_HIT_R) {
-        setMobHp(m, Math.max(0, m.hp - a.dmg), 'arrow');   // ★[T954] 문으로(하한 0 은 이 자리 식 그대로 · 저장 표는 종전처럼 안 세운다)
+        setMobHp(m, Math.max(0, m.hp - a.dmg), 'arrow');   // ★[T954] 문으로(하한 0 은 이 자리 식 그대로 · 저장 표는 ★[T967] 켬이면 문이 세운다 · 끔 = 종전처럼 안 세운다)
         // §4-4 wildlife 브리지: 화살 피격 — 랩 hp 동기 + 놀람/반격(사수가 이 존 플레이어면 반격 표적)
         if (m.isWild) Wildlife.onMobHit(m, a.dmg, players.get(a.ownerPid) || null);
         if (m.hp <= 0) { spawnCorpse(m, a.ownerId); chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid }); }

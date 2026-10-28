@@ -11,6 +11,9 @@
 //     ④ 길들인 짐승 먹이(`tryFeed`) — +5 · maxHp 상한 · 저장 표 · 방송 · 알림
 //     ⑤ 야생 — 존이 야생에 넘긴 host 의 문이 이 문이다(야생 tick 의 그림자 동기 = 조용한 `wild` · 하한 1)
 //   ①~④ 의 `[관찰]` 줄은 문 앞 트리(main)에서도 같은 글자로 나와야 한다(T954 보고 §3 A/B — 그 판에선 ⓪ · ⑤ 만 문이 없어 빨갛다).
+//   ★[T967 2026-10-27 · ★PM 결함 둘] 손잡이 `T967_MOB_HP`(켬 기본 · `=0` 되돌림): 켬 = 화살도 저장 표(`dirty`) · 죽음 하한 0(문 안 한 번 — 0 밑 갈래
+//     `npc` · `player` 가 0 에서 멈추고 방송 hp 도 0) · 끔 = T954 문 그대로. 이 프로세스는 제 판(env)대로 재고, 부모(env 없음 = 켬)는 끝에 자기를
+//     `T967_MOB_HP=0` 자식으로 한 번 더 돌려 끔 판을 본다 — 끔 판의 `[관찰]` 줄 넷은 T954 의 그 글자와 같아야 한다(종전 그대로).
 // 실행: node scripts/test-mob-hp-door.js   (실서버를 임시 DB · 임시 포트로 한 프로세스에 띄운다 — 라이브 무접촉)
 'use strict';
 const path = require('path');
@@ -31,6 +34,9 @@ console.log = () => {}; console.warn = () => {}; console.error = () => {};
 const Zone = require(path.join(ROOT, 'server', 'zone.js'));
 console.log = _log; console.warn = _warn; console.error = _err;
 const H = Zone.__testBind();
+const ON = process.env.T967_MOB_HP !== '0';   // ★[T967] 이 프로세스의 판(env 없음 = 켬)
+const CHILD = process.env.T967_DOOR_CHILD === '1';
+const exp = (v) => (ON ? Math.max(0, v) : v);   // ★[T967] 켬 = 죽음 하한 0(문 안) · 끔 = 값 그대로
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; _log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 const seen = (m) => _log(`  [관찰] ${m}`);
@@ -56,26 +62,33 @@ function placeMob(type, x, y, hp) {
 }
 const typeWith = (pred) => Object.keys(H.MOB_DEFS).find((k) => pred(H.MOB_DEFS[k]));
 
-_log('\n=== 짐승(존 몹) HP 를 쓰는 문 — T954 ===');
+_log(`\n=== 짐승(존 몹) HP 를 쓰는 문 — T954 · T967(${ON ? '켬' : '끔 =0'}) ===`);
+ok(H.T967_MOB_HP === ON, `★[T967] 손잡이 \`T967_MOB_HP\` 가 env 대로 선다(없음 = 켬 · \`=0\` = 끔)`, `존 ${H.T967_MOB_HP} · env ${process.env.T967_MOB_HP == null ? '없음' : process.env.T967_MOB_HP}`);
 
-_log('\n⓪ 문 자체(`setMobHp`) — 값 그대로 · 저장 표 · 방송은 낱말 표대로');
+_log('\n⓪ 문 자체(`setMobHp`) — 값(켬: 0 밑은 0) · 저장 표 · 방송은 낱말 표대로');
 if (typeof H.setMobHp !== 'function') ok(false, '★⓪ 문 `setMobHp` 가 하네스 문(`__testBind`)에 있다', '없음 — 문 앞 트리');
 else {
   const WHYS = ['npc', 'feed', 'arrow', 'player', 'wild'];
-  const KEEP = new Set(['npc', 'feed', 'player']), LOUD = new Set(['npc', 'feed', 'arrow', 'player']);
+  const KEEP = new Set(ON ? ['npc', 'feed', 'arrow', 'player'] : ['npc', 'feed', 'player']), LOUD = new Set(['npc', 'feed', 'arrow', 'player']);   // ★[T967] 켬 = 화살도 저장 표
   let n = 0, same = 0, keepOk = 0, loudOk = 0;
   for (const why of WHYS) for (const prev of [0, 7, 30]) for (const v of [-3, 0, 0.5, 12, 999]) {
     const m = { mid: `t954d${n}`, hp: prev, maxHp: 30, dirty: false };
     const k0 = msgs.length;
     H.setMobHp(m, v, why); n++;
     const got = msgs.slice(k0).filter((o) => o.mid === m.mid);
-    if (m.hp === v) same++;
+    if (Object.is(m.hp, exp(v))) same++;
     if (m.dirty === KEEP.has(why)) keepOk++;
-    if (LOUD.has(why) ? (got.length === 1 && got[0].type === 'mob_damaged' && got[0].hp === v) : got.length === 0) loudOk++;
+    if (LOUD.has(why) ? (got.length === 1 && got[0].type === 'mob_damaged' && Object.is(got[0].hp, exp(v))) : got.length === 0) loudOk++;
   }
-  ok(same === n, '★★⓪ 값은 부르는 쪽 식 그대로 — 문은 깎지 않는다(0 밑 · 0 · 소수 · maxHp 위 다 그 값)', `${same}/${n}`);
-  ok(keepOk === n, '★⓪ 저장 표(`dirty`)는 npc · feed · player 만(종전 자리 그대로 — 화살 · 그림자는 안 세웠다)', `${keepOk}/${n}`);
-  ok(loudOk === n, '★⓪ `mob_damaged` 방송은 npc · feed · arrow · player 만 · hp = 쓴 값 한 건(그림자 동기 `wild` 는 조용하다)', `${loudOk}/${n}`);
+  if (ON) {
+    ok(same === n, '★★⓪ [T967 켬] 값은 부르는 쪽 식 그대로이되 0 밑은 0 — 문 안에서 한 번(0 · 소수 · maxHp 위는 그 값 · 상한은 자리 식)', `${same}/${n}`);
+    ok(keepOk === n, '★⓪ [T967 켬] 저장 표(`dirty`)는 npc · feed · arrow · player(화살도 — ★PM 결함) · 그림자 `wild` 는 안 세운다', `${keepOk}/${n}`);
+    ok(loudOk === n, '★⓪ `mob_damaged` 방송은 npc · feed · arrow · player 만 · hp = 쓴 값(0 밑은 0) 한 건 — 0 밑 방송 0(그림자 동기 `wild` 는 조용하다)', `${loudOk}/${n}`);
+  } else {
+    ok(same === n, '★★⓪ [끔] 값은 부르는 쪽 식 그대로 — 문은 깎지 않는다(0 밑 · 0 · 소수 · maxHp 위 다 그 값 · T954)', `${same}/${n}`);
+    ok(keepOk === n, '★⓪ [끔] 저장 표(`dirty`)는 npc · feed · player 만(T954 · 화살 · 그림자는 안 세웠다)', `${keepOk}/${n}`);
+    ok(loudOk === n, '★⓪ [끔] `mob_damaged` 방송은 npc · feed · arrow · player 만 · hp = 쓴 값 한 건(그림자 동기 `wild` 는 조용하다)', `${loudOk}/${n}`);
+  }
   ok(H.MOB_HP_KEEP instanceof Set && H.MOB_HP_LOUD instanceof Set && [...H.MOB_HP_KEEP].sort().join() === 'feed,npc,player' && [...H.MOB_HP_LOUD].sort().join() === 'arrow,feed,npc,player',
     '★⓪ 존의 낱말 표 = 위 견줌의 표(하네스가 손으로 적은 표와 존 표가 같다)', `${[...(H.MOB_HP_KEEP || [])].join(',')} / ${[...(H.MOB_HP_LOUD || [])].join(',')}`);
 }
@@ -90,8 +103,13 @@ _log('\n① 사람 공격(`tryAttack`)');
   for (let i = 0; i < 3 && H.mobs.has(m.mid); i++) { p.lastAttackAt = 0; H.tryAttack(p); hs.push(m.hp); }
   const ms = mobMsgs(m.mid), corpse = [...(H.corpses ? H.corpses.values() : [])].some((c) => c && c.mobType === m.type && Math.abs(c.x - m.x) < 1 && Math.abs(c.y - m.y) < 1);
   seen(`사람 공격 ${prey} hp 15 → ${hs.join(' → ')} · 방송 ${ms.join(',')} · 저장 표 ${m.dirty} · 사체 ${corpse} · 몹 남음 ${H.mobs.has(m.mid)}`);
-  ok(hs[0] === 5 && hs[1] === -5 && hs.length === 2, '★★① 10씩 깎이고 0 밑을 그대로 둔다(종전 식 `hp -= atk` — 하한 없음)', hs.join(' → '));
-  ok(ms.join(',') === '5,-5,removed' && m.dirty === true, '★① 방송 hp = 그 값(0 밑 그대로) · 저장 표 · 0 이하에서 `mob_removed`', ms.join(','));
+  if (ON) {
+    ok(hs[0] === 5 && hs[1] === 0 && hs.length === 2, '★★① [T967 켬] 10씩 깎이고 0 에서 멈춘다(자리 식 `hp − atk` 은 그대로 · 문이 0 밑을 0 으로)', hs.join(' → '));
+    ok(ms.join(',') === '5,0,removed' && m.dirty === true, '★① [T967 켬] 방송 hp = 그 값(0 밑 방송 0) · 저장 표 · 0 에서 `mob_removed`(죽음 판 `hp <= 0` 그대로)', ms.join(','));
+  } else {
+    ok(hs[0] === 5 && hs[1] === -5 && hs.length === 2, '★★① [끔] 10씩 깎이고 0 밑을 그대로 둔다(종전 식 `hp -= atk` — 하한 없음)', hs.join(' → '));
+    ok(ms.join(',') === '5,-5,removed' && m.dirty === true, '★① [끔] 방송 hp = 그 값(0 밑 그대로) · 저장 표 · 0 이하에서 `mob_removed`', ms.join(','));
+  }
   ok(corpse && !H.mobs.has(m.mid), '① 0 이하에서 사체가 서고 몹이 빠진다(죽음 차례 그대로)');
 }
 
@@ -109,7 +127,8 @@ _log('\n② 화살(`tryRangedAttack` → `stepArrows`)');
   const ms = mobMsgs(m.mid), corpse = [...(H.corpses ? H.corpses.values() : [])].some((c) => c && c.mobType === m.type && Math.abs(c.x - m.x) < 1 && Math.abs(c.y - m.y) < 1);
   seen(`화살 ${prey} hp 30 → ${hs.join(' → ')} · 방송 ${ms.join(',')} · 저장 표 ${m.dirty} · 사체 ${corpse} · 몹 남음 ${H.mobs.has(m.mid)}`);
   ok(hs[0] === 5 && hs[1] === 0 && hs.length === 2, '★★② 25씩 깎이고 0 에서 멈춘다(종전 식 `max(0, hp − dmg)` — 하한 0)', hs.join(' → '));
-  ok(ms.join(',') === '5,0,removed' && m.dirty === false, '★② 방송 hp = 그 값 · 저장 표는 **안** 세운다(종전 화살 자리 그대로 — 회부) · 0 에서 `mob_removed`', `${ms.join(',')} · dirty ${m.dirty}`);
+  if (ON) ok(ms.join(',') === '5,0,removed' && m.dirty === true, '★② [T967 켬] 방송 hp = 그 값 · 저장 표를 **세운다**(★PM 결함 — 화살만 맞은 몹도 주기 저장이 적는다) · 0 에서 `mob_removed`', `${ms.join(',')} · dirty ${m.dirty}`);
+  else ok(ms.join(',') === '5,0,removed' && m.dirty === false, '★② [끔] 방송 hp = 그 값 · 저장 표는 **안** 세운다(T954 화살 자리 그대로) · 0 에서 `mob_removed`', `${ms.join(',')} · dirty ${m.dirty}`);
   ok(corpse && !H.mobs.has(m.mid), '② 0 에서 사체가 서고 몹이 빠진다');
 }
 
@@ -123,8 +142,13 @@ _log('\n③ NPC 가 싸우는 늑대(`npcStep`)');
   for (let i = 0; i < 6 && H.mobs.has(w.mid); i++) { now += 1001; H.npcStep(npc, 1 / 30, now); hs.push(w.hp); }
   const ms = mobMsgs(w.mid);
   seen(`NPC 대 늑대 hp 20 → ${hs.join(' → ')} · 방송 ${ms.join(',')} · 저장 표 ${w.dirty} · 몹 남음 ${H.mobs.has(w.mid)} · NPC ${npc.behavior}`);
-  ok(hs.slice(0, 3).join() === '12,4,-4' && !H.mobs.has(w.mid), '★★③ 8씩 깎이고 0 밑을 그대로 둔다(종전 식 `hp -= 8`) · 0 이하에서 지운다', hs.join(' → '));
-  ok(ms.join(',') === '12,4,-4,removed' && w.dirty === true, '★③ 방송 hp = 그 값 · 저장 표 · 0 이하에서 `mob_removed`(죽음 차례 그대로)', ms.join(','));
+  if (ON) {
+    ok(hs.slice(0, 3).join() === '12,4,0' && !H.mobs.has(w.mid), '★★③ [T967 켬] 8씩 깎이고 0 에서 멈춘다(문이 0 밑을 0 으로) · 0 에서 지운다', hs.join(' → '));
+    ok(ms.join(',') === '12,4,0,removed' && w.dirty === true, '★③ [T967 켬] 방송 hp = 그 값(0 밑 방송 0) · 저장 표 · 0 에서 `mob_removed`(죽음 차례 그대로)', ms.join(','));
+  } else {
+    ok(hs.slice(0, 3).join() === '12,4,-4' && !H.mobs.has(w.mid), '★★③ [끔] 8씩 깎이고 0 밑을 그대로 둔다(종전 식 `hp -= 8`) · 0 이하에서 지운다', hs.join(' → '));
+    ok(ms.join(',') === '12,4,-4,removed' && w.dirty === true, '★③ [끔] 방송 hp = 그 값 · 저장 표 · 0 이하에서 `mob_removed`(죽음 차례 그대로)', ms.join(','));
+  }
 }
 
 _log('\n④ 길들인 짐승 먹이(`tryFeed`)');
@@ -186,6 +210,25 @@ _log('\n⑤ 야생 — 존이 넘긴 host 의 문');
   const ws = calls.filter((c) => c[0] === 'wild');
   ok(!!door && shadows > 0 && ws.length > 0 && calls.every((c) => c[0] === 'wild') && ws.every((c) => c[1] >= 1) && msgs.length === k0,
     '★★⑤ 야생 tick 의 그림자 동기가 그 문을 지난다 — 낱말 `wild` 만 · 값 ≥ 1(하한 1 은 그 식) · 방송 0', door ? `그림자 ${shadows} · 문 ${ws.length}번 · 방송 ${msgs.length - k0}` : '문 없음 — 문 앞 트리');
+}
+if (!CHILD) {
+  _log('\n⑥ [T967] 끔 판(`T967_MOB_HP=0` 자식 — 이 하네스 그대로 한 번 더) — T954 문 그대로인가');
+  //   끔 판의 `[관찰]` 줄 넷 = T954 가 잰 그 글자(T954 보고 §2-2 · 문 앞 트리와도 같았던 줄) — 종전 그대로의 증거
+  const T954_SEEN = [
+    '사람 공격 wolf hp 15 → 5 → -5 · 방송 5,-5,removed · 저장 표 true · 사체 true · 몹 남음 false',
+    '화살 wolf hp 30 → 5 → 0 · 방송 5,0,removed · 저장 표 false · 사체 true · 몹 남음 false',
+    'NPC 대 늑대 hp 20 → 12 → 4 → -4 · 방송 12,4,-4,removed · 저장 표 true · 몹 남음 false · NPC wander',
+    '먹이 camel_domestic(maxHp 80) 길듦 true · maxHp−3 → 80 · maxHp−9 → 76 · 방송 80,76 · 저장 표 true · 알림 camel_domestic HP +5',
+  ];
+  const { spawnSync } = require('child_process');
+  const r = spawnSync(process.execPath, [__filename], { encoding: 'utf8', timeout: 120000,
+    env: Object.assign({}, process.env, { T967_MOB_HP: '0', T967_DOOR_CHILD: '1', PORT: String(38600 + (process.pid % 90)) }) });
+  const out = String(r.stdout || '');
+  const got = out.split('\n').filter((l) => /\[관찰\]/.test(l)).map((l) => l.replace(/^\s*\[관찰\]\s*/, ''));
+  const tail = (out.match(/=== (\d+)건 중 PASS (\d+) · FAIL (\d+) ===/) || []);
+  ok(r.status === 0 && tail[3] === '0' && Number(tail[2]) > 0, '★⑥ 끔 자식이 제 판 검사를 다 통과한다(끔 = T954 문 — 값 그대로 · 화살 저장 표 없음 · 0 밑 방송)', tail[0] || `종료 ${r.status}`);
+  ok(got.length === 4 && got.every((l, i) => l === T954_SEEN[i]), '★★⑥ 끔 판의 `[관찰]` 줄 넷이 T954 의 그 글자와 같다(되돌림 `=0` = 종전 그대로)', got.length === 4 ? '넷 같음' : `줄 ${got.length}`);
+  if (!(got.length === 4 && got.every((l, i) => l === T954_SEEN[i]))) for (const l of got) _log(`    끔: ${l}`);
 }
 _log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 try { for (const f of [TMP, TMP + '-wal', TMP + '-shm']) fs.unlinkSync(f); } catch (e) {}
