@@ -22,6 +22,7 @@
 //     닫히고, 캐러밴 도착은 그 창 꼬리(캐러밴 동기)에 온다 ⇒ 창 머리에서 비운 귀환 쌍이 빈 채로 도착한다(T929 귀환 고침을 다시 뜬 판에서 재는 자리 · 무효화 = 라이브의
 //     벽 · 울타리와 같은 문). 조각마다 도착 · 귀환 출발 · 교역로 A* 줄 수와 `/perf` probe `t929`(누계) · `pathJobs` · `pathWait` · `routeCold` 를 같이 적는다.
 //     없으면 종전 그대로(낮 · 밤 창 둘 · 존 env 무변).
+//   [T968] --inv-day — 무효화를 **낮 창 머리**에 부른다(라이브의 흔한 꼴 — 마감 한참 앞의 벽 · 울타리). 밤 창은 --inv 와 같이 하루가 닫힐 때까지 잰다.
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -461,7 +462,8 @@ function _t791Groups(dir) {
   return { start, end, groups: marks.map((m, i) => [m[0], m[1], i + 1 < marks.length ? marks[i + 1][1] - 1 : end]) };
 }
 async function run(conf, tag, probe) {
-  const INV = process.argv.includes('--inv');   // ★[T945] 경계 창 + 무효화 한 번(머리 주석)
+  const INV = process.argv.includes('--inv') || process.argv.includes('--inv-day');   // ★[T945] 경계 창 + 무효화 한 번(머리 주석)
+  const INV_W = process.argv.includes('--inv-day') ? 'day' : 'night';   // ★[T968] `--inv-day` = 무효화를 낮 창 머리에(밤 창은 그대로 하루가 닫힐 때까지)
   const out = path.join(DIR, `${tag}.json`);
   if (fs.existsSync(out)) { console.log('있음', out); return; }
   const dir = `/tmp/wt-t646-${tag}`;
@@ -499,11 +501,13 @@ async function run(conf, tag, probe) {
   let days0 = null;   // ★[T945] 밤 창 머리(무효화 순간)의 `econTick.days`
   for (const [W, lo, hi] of WINS) {
     let ph = null, inv = null;
-    const edge = INV && W === 'night';   // ★[T945] 무효화 창
+    const edge = INV && W === 'night';   // ★[T945] 하루가 닫힐 때까지 재는 창
+    const invHere = INV && W === INV_W;   // ★[T968] 무효화를 부르는 창(기본 밤 · `--inv-day` 낮)
     {
     for (let i = 0; i < 1000; i++) { ph = await phaseNow(); if (ph != null && ph >= lo && ph <= hi - (SLICES * SLICE_S) / (DAY / 1000)) break; await sleep(5000); }
-    if (edge) { const P0 = await getj('/perf'); days0 = P0 && P0.econTick ? P0.econTick.days | 0 : 0; inv = await getj('/routedbg?invalidate=1'); }
-    say(W, '창 · phase', ph, ...(edge ? ['· econ days', days0, '· 무효화', inv && inv.invalidated] : []));
+    if (edge) { const P0 = await getj('/perf'); days0 = P0 && P0.econTick ? P0.econTick.days | 0 : 0; }
+    if (invHere) inv = await getj('/routedbg?invalidate=1');
+    say(W, '창 · phase', ph, ...(edge ? ['· econ days', days0] : []), ...(invHere ? ['· 무효화', inv && inv.invalidated] : []));
     }
     const slices = [];
     let closed = 0;   // ★[T945] econ 창 — 그 하루가 닫힌 뒤 잰 조각 수(하나 더 재고 끝)
@@ -520,11 +524,12 @@ async function run(conf, tag, probe) {
       if (INV) { const pr = (p && p.econTick && p.econTick.probe) || {}, S = slices[slices.length - 1];   // ★[T945] 캐러밴 셈(줄 수 · probe 누계)
         S.arr = (buf.match(/캐러밴#\d+ 도착:/g) || []).length; S.ret = (buf.match(/귀환 출발/g) || []).length; S.astar = (buf.match(/교역로 A\*:/g) || []).length;
         S.t929 = pr.t929 || null; S.pathJobs = pr.pathJobs | 0; S.pathWait = pr.pathWait | 0; S.routeCold = pr.routeCold | 0;
+        S.t957 = pr.t957 || null; S.t968 = pr.t968 || null;   // ★[T968] 거리행렬 조각 · 마감 밖 셈 · 몸 틱 쉰 틱 · 줄 선 장부 요청(누계)
         if (edge && p && p.econTick && (p.econTick.days | 0) > days0) closed++;
         if (edge && L && L.phase != null && (L.phase > hi || L.phase < lo)) closed = 2; }   // 밤 창 밖으로 나가면 끝(하루가 창 앞에서 이미 닫혔던 판 — 표에 적는다)
       say(`${W} 조각 ${k} · p50 ${t ? t.p50 : '?'} · p95 ${t ? t.p95 : '?'} · 줄 ${ana.length}`);
     }
-    windows.push(Object.assign({ W, slices }, edge ? { inv: !!(inv && inv.invalidated) } : {}));
+    windows.push(Object.assign({ W, slices }, invHere ? { inv: !!(inv && inv.invalidated) } : {}));
   }
   clearInterval(ping); try { ws.close(); } catch (e) {}
   if (PROF) { try { z.kill('SIGINT'); } catch (e) {} for (let i = 0; i < 60 && z.exitCode === null; i++) await sleep(1000); }   // 정상 종료라야 프로파일이 써진다
