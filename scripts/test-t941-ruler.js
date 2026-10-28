@@ -8,8 +8,8 @@
 //     ① 가상 시계 판(`T745_VCLOCK=1`) — 아이 `T696_WAL=0`(WAL 일꾼 끔 — 값 무변 · 디스크 · 보고/T941 §1)
 //     ② 부르는 쪽이 준 값이 먼저 — `T696_WAL=1` 이면 1
 //     ③ 벽시계 판 — 아이 env 에 `T696_WAL` 을 안 싣는다(종전 그대로)
-//     ④ `T941_BATTLE_DAY` — 제품 손잡이는 `=== '1'` 하나(끔 기본 · 끔 = main 바이트) · 판 자는 그 이름을 아이에게 안 싣는다(부르는 쪽 env 그대로만)
-//     ⑤ 미끼 — KID_WAL 줄을 뺀 판 자 사본은 ① 에서 T696_WAL 을 안 싣는다(① 이 문다)
+//     ④ `T941_BATTLE_DAY` — 제품 손잡이는 `=== '1'` 하나(끔 기본 · 끔 = main 바이트) · ★[T959] 판 자는 아이에게 `1` 을 기본으로 싣는다(부르는 값 먼저 · 되돌림 `=0`)
+//     ⑤ 미끼 — KID_WAL 줄을 뺀 판 자 사본은 ① 에서 T696_WAL 을 안 싣는다(① 이 문다) · ★[T959] T941 줄을 뺀 사본은 ④ 에서 기본을 안 싣는다
 'use strict';
 // ── 프리로드 갈래(아이 바꿔 치기) ──
 if (process.env.T941_CAPTURE && require.main !== module) {
@@ -43,17 +43,20 @@ k = kidEnv({ T745_VCLOCK: '1', T696_WAL: '1' });
 ok(k && k.T696_WAL === '1', '② 부르는 쪽이 준 T696_WAL=1 이 먼저', JSON.stringify(k));
 k = kidEnv({});
 ok(k && k.T696_WAL === null && k.T745_VCLOCK === null, '③ 벽시계 판 → T696_WAL 을 안 싣는다(종전)', JSON.stringify(k));
-k = kidEnv({ T745_VCLOCK: '1', T941_BATTLE_DAY: '1' });
-ok(k && k.T941_BATTLE_DAY === '1', '④-a T941_BATTLE_DAY 는 부르는 쪽 env 그대로만 간다(시험판)', JSON.stringify(k));
+k = kidEnv({ T745_VCLOCK: '1', T941_BATTLE_DAY: '0' });
+ok(k && k.T941_BATTLE_DAY === '0', '④-a [T959] 부르는 쪽이 준 T941_BATTLE_DAY=0(되돌림 — T959 전 판 자)이 먼저', JSON.stringify(k));
 k = kidEnv({ T745_VCLOCK: '1' });
 const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
-ok(k && k.T941_BATTLE_DAY === null && /const T941_BATTLE_DAY = process\.env\.T941_BATTLE_DAY === '1';/.test(V)
+ok(k && k.T941_BATTLE_DAY === '1' && kidEnv({}).T941_BATTLE_DAY === '1' && /const T941_BATTLE_DAY = process\.env\.T941_BATTLE_DAY === '1';/.test(V)
   && /function _t681Quota\(\) \{ const WL = state\.warLive; return Math\.max\(1, Math\.round\(\(state\.dayMs \|\| 0\) \* \(\(WL && WL\.TICK_HZ\) \|\| 30\) \/ 1000\)\); \}/.test(V),
-  '★④-b 판 자 기본은 T941 끔(아이에 안 싣는다) · 제품 손잡이 `=== \'1\'` 하나 · 판 몫 식(`_t681Quota`) 글자 그대로');
+  '★④-b [T959] 판 자 기본은 T941 켬(가상 시계 · 벽시계 판 둘 다 아이에 `1`) · 제품 손잡이 `=== \'1\'` 하나(제품 기본 끔) · 판 몫 식(`_t681Quota`) 글자 그대로');
 const src = fs.readFileSync(RULER, 'utf8'); const bait = src.split('\n').filter((l) => !/KID_WAL != null \? \{ T696_WAL/.test(l)).join('\n');
 const BAIT = path.join(ROOT, 'scripts', '.t941-bait.js'); fs.writeFileSync(BAIT, bait);
 k = kidEnv({ T745_VCLOCK: '1' }, BAIT); fs.rmSync(BAIT, { force: true });
 ok(bait !== src && k && k.T696_WAL === null, '[미끼] KID_WAL 줄을 뺀 판 자는 가상 시계 판에도 T696_WAL 을 안 싣는다 — ① 이 문다', JSON.stringify(k));
+const bait2 = src.split('\n').filter((l) => !/T941_BATTLE_DAY: KID_BATTLE/.test(l)).join('\n');
+fs.writeFileSync(BAIT, bait2); k = kidEnv({ T745_VCLOCK: '1' }, BAIT); fs.rmSync(BAIT, { force: true });
+ok(bait2 !== src && k && k.T941_BATTLE_DAY === null, '[미끼 · T959] T941 줄을 뺀 판 자는 기본을 안 싣는다 — ④-b 가 문다', JSON.stringify(k));
 fs.rmSync(TMP, { recursive: true, force: true });
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
