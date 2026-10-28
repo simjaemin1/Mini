@@ -7438,6 +7438,7 @@ function _t731Jobs(now, T) {
     if (T681_ON) addH('econ', () => _t681Flush());
     W.P = state.econV2.tickWorldV2Parts(state.world);   // econ 정본 조각 한 벌(`tickWorldV2` 가 부르는 그것 — 조각 손잡이와 무관하게 켬 판은 조각으로만 간다)
     addH('econ', () => { _econDayFixture(); mute(() => W.P.head()); W.headDone = true; }, 'econ:head');   // ★[T755] 머리 뒤 ~ 꼬리 = 전쟁 몸 쉼(onGameTick)
+    if (state.deps.dayBandits) addH('bandit', () => { try { state.deps.dayBandits(); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T986] 도적 하루 실패:`, e.message); } });   // ★[T986] 켬 — 도적 하루 = 날을 올린 머리 바로 뒤(마을 조각 앞 · `bandits.js dayTick` 머리 주석 · 끔 = 존 틱이 부른다)
     addH('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
   }
   const _popOne = (vil) => {
@@ -7677,6 +7678,7 @@ function _openDayJobs(now, T) {
     } finally { console.log = _log; }
     _econDayAfter();
   });
+  if (state.deps.dayBandits) add('bandit', () => { try { state.deps.dayBandits(); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T986] 도적 하루 실패:`, e.message); } });   // ★[T986] 켬 — 종전 마감은 econ 1일 틱(날을 올린 그 조각) 바로 뒤
   // ⓪' ★★[T533] econ **뒤** = 나간 기록(경계 칸에 선 몸을 민다) · 경계 마을 스냅(끔이면 무동작).
   if (state.xzone) add('xzone', () => _xzDayOut());
 
