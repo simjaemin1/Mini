@@ -656,3 +656,33 @@ a synthetic fixture seeing Torch imported by neighbouring tests; only test
 isolation changed, not the standalone no-Torch safety check. Originals,
 models, earlier auditions and game defaults remain unchanged. Perceptual
 judgment and a sufficiently trained raw neural reconstruction remain open.
+
+## Same-recipe training-duration extension, 2026-10-28
+
+The user rejected052 (the same waveform as048). It remains historical evidence,
+not an approved candidate. Approval of050/051 is not inferred. The next test
+changes only update count: `extend_corpus_training.py` restores the complete
+global1,000 G/D/Adam/schedulers plus CPU/MPS/PCG64 RNG and original27-group
+order/cursor, then requests at most2,000additional updates. Data gate2097,
+accepted-fit statistics,43features, input gain, F0/AP, architecture and all
+losses remain unchanged. A42-window baseline and two4.8s reconstructions must
+reproduce the parent's final results before the first new update.
+
+This MPS-only pilot is bounded to2,100seconds/1.5GB for the entire fresh
+experiment folder, with an8GiB conservative RSS+driver cap and the unchanged
+12GiB free-disk floor. Each update also checks1GB above that floor as save
+reserve. Atomic progress and independent generator snapshots every500new
+updates preserve recovery evidence. Final generator and raw renders precede
+the larger full checkpoint. CRC/SHA plus a safe `weights_only` CPU roundtrip
+must verify every typed state, RNG, sampler, counter and normalizer before
+`full_resume_available=True`; otherwise a completed generator-only trial is
+explicitly not full-resumable. No original or prior checkpoint is overwritten.
+
+At global3,000, batch1×.35s still gives only1,050seconds of sampled-target
+exposure with overlap/repeats, not full-scale convergence. This voiced-only
+gate does not newly teach breathing/rests. Fixed end-step inspection is
+development validation, not blind evaluation or best-of-many model selection.
+`export_extended_training.py` keeps raw evidence unchanged and creates
+original-reference/new-model pairs only. Generated listening copies receive
+the same explicitly disclosed reference-level controller as046/048; this
+is not learned envelope prediction, new music, or a naturalness approval.
