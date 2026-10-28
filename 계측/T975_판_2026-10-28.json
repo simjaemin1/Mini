@@ -1,0 +1,2879 @@
+{
+ "card": "T975",
+ "date": "2026-10-28",
+ "branch": "batch/mob-db-1028",
+ "base": "main 241e4407 + origin/batch/mob-hp-bounds-1028(T967 b4dac1fc · 그 밑 T954 3b350e04 · 미착지) 합침 8f80b2fa",
+ "knob": {
+  "name": "T975_MOB_DB",
+  "default": "ON(!== '0')",
+  "revert": "=0 = 종전 글자",
+  "zone.js": {
+   "decl": 3257,
+   "arrowDelete": 13029,
+   "flushSix": 16186,
+   "flushFourOff": 16187
+  }
+ },
+ "trees": {
+  "mx": "8f80b2fa + origin/batch/food-keep-on-2-1028(T960 f8ac0f8a · 열여섯째 판 · 충돌 0 · 잴 때만)",
+  "bx": "mx + 이 가지 글자(T975)",
+  "mxh": "mx + 이 가지 하네스(test-mob-hp-restart)만 — T975 앞 존을 재려고"
+ },
+ "restart_harness": {
+  "bx": {
+   "pass": "=== 20건 중 PASS 20 · FAIL 0 ===",
+   "lines": [
+    "  ✓ [상황] 판 여섯 다 섰다(자식 hit · boot 결과 · 하네스 문 `saveDirtyMobs` · `spawnMob`)  off-kill ㅇ · off-term ㅇ · on-kill ㅇ · on-term ㅇ · on-kill-d0 ㅇ · on-term-d0 ㅇ",
+    "  ✓ [상황] 손잡이가 판대로 섰다(T967 끔 = false · 켬 = true · T975 는 `-d0` 판만 끔)  off-kill false/true · off-term false/true · on-kill true/true · on-term true/true · on-kill-d0 true/false · on-term-d0 true/false",
+    "  ✓ [상황] A 가 화살 한 대에 실제로 맞았다(조용한 자리 · hp 줄고 방송 한 건 · 안 죽음)  moose 100 → 75",
+    "  ✓ [상황] B(대조)가 사람 공격에 맞았고 저장 표를 세웠다(종전에도 세우던 갈래)  100 → 90",
+    "  ✓ [상황] T 가 길들었고(진짜 `tryFeed`) 저장 표를 세웠다  camel_domestic 주인 t967_5",
+    "  ✓ ★① 화살만 맞은 A 의 저장 표 — 끔 안 세움 · 켬 세움(★PM 결함 ①)  끔 false · 켬 true",
+    "  ✓ ★★① 주기 저장 함수 — 끔은 한 마리도 못 적는다(표가 안 내려간다 · 종전 글자) · 켬은 표 세운 몹을 적고 표를 내린다  끔 0건(B 표 true) · 켬 3건(A · B 표 false · false)",
+    "  [관찰] 끔: A 100 → 맞음 75 → 다시 뜸 100 · B 100 → 90 → 100",
+    "  [관찰] 켬: A 100 → 맞음 75 → 다시 뜸 75 · B 100 → 90 → 90",
+    "  ✓ ★★② 켬 — 화살만 맞은 A 의 hp 가 맞은 값으로 돌아온다(DB 행 · 다시 뜬 몹)  75",
+    "  ✓ ★② 켬 — B(사람 공격)도 맞은 값으로 돌아온다  90",
+    "  ✓ ★★③ 끔 — A 는 맞기 전 값으로 돌아온다(결함 재현 — ② 가 자명 통과가 아니다)  100",
+    "  ✓ ★③ 끔 — B 도 맞기 전 값(종전 주기 저장은 갈래를 가리지 않고 한 마리도 못 적었다 — 화살만의 일이 아니었다)  100",
+    "  [관찰] 끔: A → 다시 뜸 75(맞은 값 75) · 켬: A → 75(맞은 값 75)",
+    "  ✓ ★④ SIGTERM 이면 끔 · 켬 다 남는다 — 종료 flush 가 표와 상관없이 몹 전부를 적는다(결함은 SIGKILL 창에만 · 이 하네스가 SIGKILL 을 재는 까닭)",
+    "  [관찰] 끔: D(hp 15 · 사람 공격) 5 → -5 · 방송 5,-5 · 켬: 5 → 0 · 방송 5,0",
+    "  ✓ ★★⑤ 켬 — hit 판의 `mob_damaged` hp 가 0 밑으로 안 간다(D 는 5 → 0 에서 멈추고 죽는다 · 죽음 차례 그대로)  최소 0 · 방송 5건",
+    "  ✓ ★⑤ 끔 — 같은 판에서 0 밑 방송이 난다(−5 · 위 검사가 문다)  최소 -5",
+    "  [관찰] off-kill 행 없음 · off-term 행 없음 · on-kill 행 없음 · on-term 행 없음 · on-kill-d0 되살아남 hp 20 · on-term-d0 되살아남 hp 20",
+    "  ✓ [상황] 판마다 C 가 화살 한 대에 실제로 죽었다(맞고 · 존 몹에서 빠짐)",
+    "  ✓ ★★⑥ T975 켬 — 화살로 죽인 C 의 DB 행이 없다(같은 삭제 문 · SIGKILL · SIGTERM · T967 켬 · 끔 다) — 다시 뜬 뒤 안 되살아난다  off-kill 행 없음 · off-term 행 없음 · on-kill 행 없음 · on-term 행 없음",
+    "  ✓ ★⑥ T975 끔 — 같은 판에서 C 가 hp 20 으로 되살아난다(결함 재현 — 위가 자명 통과가 아니다)  되살아남 hp 20 · 되살아남 hp 20",
+    "  [관찰] T(camel_domestic · 주인 t967_5) 다시 뜬 뒤 주인 칸: off-kill NULL · off-term t967_5 · on-kill t967_5 · on-term t967_5 · on-kill-d0 t967_5 · on-term-d0 NULL",
+    "  ✓ ★★⑦ T975 켬 · SIGTERM — 종료 flush 가 주인 칸을 그대로 넘겨 길들임이 남는다(DB 행 · 다시 뜬 몹 · T967 켬 · 끔 다)  t967_5 · t967_5",
+    "  ✓ ★⑦ T975 끔 · SIGTERM — 같은 판에서 주인 칸이 NULL(종전 flush 넷만 — 주기 저장이 적어 둔 주인까지 지운다 · 결함 재현)  NULL",
+    "  ✓ ⑦ SIGKILL(종료 flush 없음)은 주기 저장의 몫 — T967 켬이면 T975 와 상관없이 남는다  t967_5 · t967_5",
+    "  [관찰] T967 끔 · SIGKILL 은 NULL — 주기 저장이 죽어 주인 칸이 DB 에 닿은 적이 없다(T967 의 몫)",
+    "  [관찰] 켬 주기 저장 한 번 — 몹 전부 표(302마리) 1.0ms · 다시 뜬 존 몹 302"
+   ]
+  },
+  "mx_T967판": {
+   "pass": "=== 14건 중 PASS 14 · FAIL 0 ===",
+   "lines": [
+    "  ✓ [상황] 판 넷 다 섰다(자식 hit · boot 결과 · 하네스 문 `saveDirtyMobs` · `spawnMob`)  off-kill ㅇ · off-term ㅇ · on-kill ㅇ · on-term ㅇ",
+    "  ✓ [상황] 손잡이가 판대로 섰다(끔 = false · 켬 = true)  off-kill false · off-term false · on-kill true · on-term true",
+    "  ✓ [상황] A 가 화살 한 대에 실제로 맞았다(조용한 자리 · hp 줄고 방송 한 건 · 안 죽음)  moose 100 → 75",
+    "  ✓ [상황] B(대조)가 사람 공격에 맞았고 저장 표를 세웠다(종전에도 세우던 갈래)  100 → 90",
+    "  ✓ [상황] T 가 길들었고(진짜 `tryFeed`) 저장 표를 세웠다  camel_domestic 주인 t967_5",
+    "  ✓ ★① 화살만 맞은 A 의 저장 표 — 끔 안 세움 · 켬 세움(★PM 결함 ①)  끔 false · 켬 true",
+    "  ✓ ★★① 주기 저장 함수 — 끔은 한 마리도 못 적는다(표가 안 내려간다 · 종전 글자) · 켬은 표 세운 몹을 적고 표를 내린다  끔 0건(B 표 true) · 켬 3건(A · B 표 false · false)",
+    "  [관찰] 끔: A 100 → 맞음 75 → 다시 뜸 100 · B 100 → 90 → 100",
+    "  [관찰] 켬: A 100 → 맞음 75 → 다시 뜸 75 · B 100 → 90 → 90",
+    "  ✓ ★★② 켬 — 화살만 맞은 A 의 hp 가 맞은 값으로 돌아온다(DB 행 · 다시 뜬 몹)  75",
+    "  ✓ ★② 켬 — B(사람 공격)도 맞은 값으로 돌아온다  90",
+    "  ✓ ★★③ 끔 — A 는 맞기 전 값으로 돌아온다(결함 재현 — ② 가 자명 통과가 아니다)  100",
+    "  ✓ ★③ 끔 — B 도 맞기 전 값(종전 주기 저장은 갈래를 가리지 않고 한 마리도 못 적었다 — 화살만의 일이 아니었다)  100",
+    "  [관찰] 끔: A → 다시 뜸 75(맞은 값 75) · 켬: A → 75(맞은 값 75)",
+    "  ✓ ★④ SIGTERM 이면 끔 · 켬 다 남는다 — 종료 flush 가 표와 상관없이 몹 전부를 적는다(결함은 SIGKILL 창에만 · 이 하네스가 SIGKILL 을 재는 까닭)",
+    "  [관찰] 끔: D(hp 15 · 사람 공격) 5 → -5 · 방송 5,-5 · 켬: 5 → 0 · 방송 5,0",
+    "  ✓ ★★⑤ 켬 — hit 판의 `mob_damaged` hp 가 0 밑으로 안 간다(D 는 5 → 0 에서 멈추고 죽는다 · 죽음 차례 그대로)  최소 0 · 방송 5건",
+    "  ✓ ★⑤ 끔 — 같은 판에서 0 밑 방송이 난다(−5 · 위 검사가 문다)  최소 -5",
+    "[관찰] 카드 밖 — 회부 감",
+    "  [관찰] C(hp 20 · 화살로 죽임 — 화살 죽음 길엔 `db.deleteMob` 이 없다): off-kill 되살아남 hp 20 · off-term 되살아남 hp 20 · on-kill 되살아남 hp 20 · on-term 되살아남 hp 20",
+    "  [관찰] T(camel_domestic 길들임 · 주인 t967_5) 다시 뜬 뒤 주인 칸: off-kill NULL · off-term NULL · on-kill t967_5 · on-term NULL",
+    "  [관찰] 켬 주기 저장 한 번 — 몹 전부 표(303마리) 0.7ms · 다시 뜬 존 몹 303"
+   ]
+  },
+  "mxh_T975앞": {
+   "pass": "=== 20건 중 PASS 17 · FAIL 3 ===",
+   "lines": [
+    "  ✓ [상황] 판 여섯 다 섰다(자식 hit · boot 결과 · 하네스 문 `saveDirtyMobs` · `spawnMob`)  off-kill ㅇ · off-term ㅇ · on-kill ㅇ · on-term ㅇ · on-kill-d0 ㅇ · on-term-d0 ㅇ",
+    "  ✗ [상황] 손잡이가 판대로 섰다(T967 끔 = false · 켬 = true · T975 는 `-d0` 판만 끔)  off-kill false/undefined · off-term false/undefined · on-kill true/undefined · on-term true/undefined · on-kill-d0 true/undefined · on-term-d0 true/undefined",
+    "  ✓ [상황] A 가 화살 한 대에 실제로 맞았다(조용한 자리 · hp 줄고 방송 한 건 · 안 죽음)  moose 100 → 75",
+    "  ✓ [상황] B(대조)가 사람 공격에 맞았고 저장 표를 세웠다(종전에도 세우던 갈래)  100 → 90",
+    "  ✓ [상황] T 가 길들었고(진짜 `tryFeed`) 저장 표를 세웠다  camel_domestic 주인 t967_5",
+    "  ✓ ★① 화살만 맞은 A 의 저장 표 — 끔 안 세움 · 켬 세움(★PM 결함 ①)  끔 false · 켬 true",
+    "  ✓ ★★① 주기 저장 함수 — 끔은 한 마리도 못 적는다(표가 안 내려간다 · 종전 글자) · 켬은 표 세운 몹을 적고 표를 내린다  끔 0건(B 표 true) · 켬 3건(A · B 표 false · false)",
+    "  [관찰] 끔: A 100 → 맞음 75 → 다시 뜸 100 · B 100 → 90 → 100",
+    "  [관찰] 켬: A 100 → 맞음 75 → 다시 뜸 75 · B 100 → 90 → 90",
+    "  ✓ ★★② 켬 — 화살만 맞은 A 의 hp 가 맞은 값으로 돌아온다(DB 행 · 다시 뜬 몹)  75",
+    "  ✓ ★② 켬 — B(사람 공격)도 맞은 값으로 돌아온다  90",
+    "  ✓ ★★③ 끔 — A 는 맞기 전 값으로 돌아온다(결함 재현 — ② 가 자명 통과가 아니다)  100",
+    "  ✓ ★③ 끔 — B 도 맞기 전 값(종전 주기 저장은 갈래를 가리지 않고 한 마리도 못 적었다 — 화살만의 일이 아니었다)  100",
+    "  [관찰] 끔: A → 다시 뜸 75(맞은 값 75) · 켬: A → 75(맞은 값 75)",
+    "  ✓ ★④ SIGTERM 이면 끔 · 켬 다 남는다 — 종료 flush 가 표와 상관없이 몹 전부를 적는다(결함은 SIGKILL 창에만 · 이 하네스가 SIGKILL 을 재는 까닭)",
+    "  [관찰] 끔: D(hp 15 · 사람 공격) 5 → -5 · 방송 5,-5 · 켬: 5 → 0 · 방송 5,0",
+    "  ✓ ★★⑤ 켬 — hit 판의 `mob_damaged` hp 가 0 밑으로 안 간다(D 는 5 → 0 에서 멈추고 죽는다 · 죽음 차례 그대로)  최소 0 · 방송 5건",
+    "  ✓ ★⑤ 끔 — 같은 판에서 0 밑 방송이 난다(−5 · 위 검사가 문다)  최소 -5",
+    "  [관찰] off-kill 되살아남 hp 20 · off-term 되살아남 hp 20 · on-kill 되살아남 hp 20 · on-term 되살아남 hp 20 · on-kill-d0 되살아남 hp 20 · on-term-d0 되살아남 hp 20",
+    "  ✓ [상황] 판마다 C 가 화살 한 대에 실제로 죽었다(맞고 · 존 몹에서 빠짐)",
+    "  ✗ ★★⑥ T975 켬 — 화살로 죽인 C 의 DB 행이 없다(같은 삭제 문 · SIGKILL · SIGTERM · T967 켬 · 끔 다) — 다시 뜬 뒤 안 되살아난다  off-kill 되살아남 hp 20 · off-term 되살아남 hp 20 · on-kill 되살아남 hp 20 · on-term 되살아남 hp 20",
+    "  ✓ ★⑥ T975 끔 — 같은 판에서 C 가 hp 20 으로 되살아난다(결함 재현 — 위가 자명 통과가 아니다)  되살아남 hp 20 · 되살아남 hp 20",
+    "  [관찰] T(camel_domestic · 주인 t967_5) 다시 뜬 뒤 주인 칸: off-kill NULL · off-term NULL · on-kill t967_5 · on-term NULL · on-kill-d0 t967_5 · on-term-d0 NULL",
+    "  ✗ ★★⑦ T975 켬 · SIGTERM — 종료 flush 가 주인 칸을 그대로 넘겨 길들임이 남는다(DB 행 · 다시 뜬 몹 · T967 켬 · 끔 다)  NULL · NULL",
+    "  ✓ ★⑦ T975 끔 · SIGTERM — 같은 판에서 주인 칸이 NULL(종전 flush 넷만 — 주기 저장이 적어 둔 주인까지 지운다 · 결함 재현)  NULL",
+    "  ✓ ⑦ SIGKILL(종료 flush 없음)은 주기 저장의 몫 — T967 켬이면 T975 와 상관없이 남는다  t967_5 · t967_5",
+    "  [관찰] T967 끔 · SIGKILL 은 NULL — 주기 저장이 죽어 주인 칸이 DB 에 닿은 적이 없다(T967 의 몫)",
+    "  [관찰] 켬 주기 저장 한 번 — 몹 전부 표(303마리) 0.6ms · 다시 뜬 존 몹 303"
+   ]
+  }
+ },
+ "grep": {
+  "calls_vs_params": {
+   "calls": [
+    {
+     "file": "bandits.js",
+     "line": 675,
+     "fn": "upsertBanditState",
+     "mod": "zone",
+     "n": 3,
+     "np": 3,
+     "text": "S.db.upsertBanditState(S.zoneId, JSON.stringify({ seq: S.seq, denSeq: S.denSeq, dens: S.DENS, gangs, stats: { ...S.stats, log: undefined }, ..._walk }), day)"
+    },
+    {
+     "file": "bandits.js",
+     "line": 773,
+     "fn": "getBanditState",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "S.db.getBanditState(host.zoneId)"
+    },
+    {
+     "file": "claims.js",
+     "line": 149,
+     "fn": "updateClaimState",
+     "mod": "zone",
+     "n": 4,
+     "np": 4,
+     "text": "db.updateClaimState(c.dbId, state, heldBy || null, t)"
+    },
+    {
+     "file": "claims.js",
+     "line": 256,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "claims.js",
+     "line": 268,
+     "fn": "updateClaimOwner",
+     "mod": "zone",
+     "n": 7,
+     "np": 7,
+     "text": "db.updateClaimOwner(c.dbId, player.playerId, player.name, 'personal', 'active', null, now)"
+    },
+    {
+     "file": "marketplace.js",
+     "line": 85,
+     "fn": "getPlayer",
+     "mod": "central",
+     "n": 1,
+     "np": 1,
+     "text": "db.getPlayer(sellOrder.player_id)"
+    },
+    {
+     "file": "marketplace.js",
+     "line": 86,
+     "fn": "getPlayer",
+     "mod": "central",
+     "n": 1,
+     "np": 1,
+     "text": "db.getPlayer(buyOrder.player_id)"
+    },
+    {
+     "file": "marketplace.js",
+     "line": 90,
+     "fn": "updateInventory",
+     "mod": "central",
+     "n": 3,
+     "np": 3,
+     "text": "db.updateInventory(seller.player_id, inv.wood, inv.stone)"
+    },
+    {
+     "file": "marketplace.js",
+     "line": 95,
+     "fn": "updateInventory",
+     "mod": "central",
+     "n": 3,
+     "np": 3,
+     "text": "db.updateInventory(buyer.player_id, inv.wood, inv.stone)"
+    },
+    {
+     "file": "marketplace.js",
+     "line": 122,
+     "fn": "getPlayer",
+     "mod": "central",
+     "n": 1,
+     "np": 1,
+     "text": "db.getPlayer(playerId)"
+    },
+    {
+     "file": "marketplace.js",
+     "line": 128,
+     "fn": "updateInventory",
+     "mod": "central",
+     "n": 3,
+     "np": 3,
+     "text": "db.updateInventory(playerId, inv.wood, inv.stone)"
+    },
+    {
+     "file": "marketplace.js",
+     "line": 134,
+     "fn": "updateInventory",
+     "mod": "central",
+     "n": 3,
+     "np": 3,
+     "text": "db.updateInventory(playerId, inv.wood, inv.stone)"
+    },
+    {
+     "file": "marketplace.js",
+     "line": 154,
+     "fn": "getPlayer",
+     "mod": "central",
+     "n": 1,
+     "np": 1,
+     "text": "db.getPlayer(playerId)"
+    },
+    {
+     "file": "marketplace.js",
+     "line": 159,
+     "fn": "updateInventory",
+     "mod": "central",
+     "n": 3,
+     "np": 3,
+     "text": "db.updateInventory(playerId, inv.wood, inv.stone)"
+    },
+    {
+     "file": "roads.js",
+     "line": 409,
+     "fn": "upsertRoadCell",
+     "mod": "zone",
+     "n": 4,
+     "np": 4,
+     "text": "db.upsertRoadCell(S.zoneId, k, v, d)"
+    },
+    {
+     "file": "roads.js",
+     "line": 410,
+     "fn": "deleteRoadCell",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.deleteRoadCell(S.zoneId, k)"
+    },
+    {
+     "file": "roads.js",
+     "line": 449,
+     "fn": "upsertRoadCell",
+     "mod": "zone",
+     "n": 4,
+     "np": 4,
+     "text": "db.upsertRoadCell(S.zoneId, k, v, d)"
+    },
+    {
+     "file": "roads.js",
+     "line": 449,
+     "fn": "deleteRoadCell",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.deleteRoadCell(S.zoneId, k)"
+    },
+    {
+     "file": "roads.js",
+     "line": 514,
+     "fn": "getRoadCells",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "S.db.getRoadCells(S.zoneId)"
+    },
+    {
+     "file": "soil.js",
+     "line": 145,
+     "fn": "upsertSoilCell",
+     "mod": "zone",
+     "n": 5,
+     "np": 5,
+     "text": "db.upsertSoilCell(S.zoneId, k, r.v, r.d, r.geo)"
+    },
+    {
+     "file": "soil.js",
+     "line": 146,
+     "fn": "deleteSoilCell",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.deleteSoilCell(S.zoneId, k)"
+    },
+    {
+     "file": "soil.js",
+     "line": 179,
+     "fn": "getSoilCells",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "S.db.getSoilCells(S.zoneId)"
+    },
+    {
+     "file": "vein-batch.js",
+     "line": 30,
+     "fn": "upsertMinedCell",
+     "mod": "zone",
+     "n": 5,
+     "np": 5,
+     "text": "db.upsertMinedCell(key, rec.s, rec.t, rec.w, rec.kg || 0)"
+    },
+    {
+     "file": "vein-batch.js",
+     "line": 31,
+     "fn": "deleteMinedCell",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteMinedCell(key)"
+    },
+    {
+     "file": "vein-batch.js",
+     "line": 49,
+     "fn": "upsertMinedCell",
+     "mod": "zone",
+     "n": 5,
+     "np": 5,
+     "text": "db.upsertMinedCell(key, rec.s, rec.t, rec.w, rec.kg || 0)"
+    },
+    {
+     "file": "vein-batch.js",
+     "line": 49,
+     "fn": "deleteMinedCell",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteMinedCell(key)"
+    },
+    {
+     "file": "villages.js",
+     "line": 1666,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'wall', owner_id: ownerId, owner_name: ownerName, x: cx * SZ, y: cy * SZ, data: JSON.stringify({ side, floor: f }), village_id: vilDbId })"
+    },
+    {
+     "file": "villages.js",
+     "line": 1667,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'floor', owner_id: ownerId, owner_name: ownerName, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: JSON.stringify({ floor: f }), village_id: vilDbId })"
+    },
+    {
+     "file": "villages.js",
+     "line": 1684,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'wall', owner_id: ownerId, owner_name: ownerName, x: cx * SZ, y: cy * SZ, data: JSON.stringify(Object.assign({ side, floor: 0 }, tag || {})), village_id: vilDbId })"
+    },
+    {
+     "file": "villages.js",
+     "line": 1685,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'floor', owner_id: ownerId, owner_name: ownerName, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: JSON.stringify(Object.assign({ floor: 0 }, tag || {})), village_id: vilDbId"
+    },
+    {
+     "file": "villages.js",
+     "line": 1789,
+     "fn": "getVillageFarmInCellRect",
+     "mod": "zone",
+     "n": 4,
+     "np": 4,
+     "text": "state.db.getVillageFarmInCellRect(Math.floor(x0 / SZ), Math.ceil(x1 / SZ), Math.floor(y0 / SZ), Math.ceil(y1 / SZ))"
+    },
+    {
+     "file": "villages.js",
+     "line": 2027,
+     "fn": "insertVillage",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillage({ zone: state.zoneId, name: vName, cx: c.ccx, cy: c.ccy, population: 0, econ_state: null, day: 0, })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2031,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'hall', cx: c.ccx, cy: c.ccy, floors: 1, data: JSON.stringify(_lab ? { typeLabel: layout.type, dock: layout.dock || null, land: lp, seedType: hv.type"
+    },
+    {
+     "file": "villages.js",
+     "line": 2038,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'house', cx: h.cx, cy: h.cy, floors: h.floors || 1, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2039,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'farmland', cx: f.cx, cy: f.cy, floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2040,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'dryfield', cx: f.cx, cy: f.cy, floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2052,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'yard', cx: x, cy: y, floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2057,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'garden', cx: x, cy: y, floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2064,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'plaza', cx: x, cy: y, floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2068,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'granary', cx: g.cx, cy: g.cy, floors: 1, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2075,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'terr', cx: c2[0], cy: c2[1], floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2076,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'nongzone', cx: z2.cx, cy: z2.cy, floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2183,
+     "fn": "insertVillage",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillage({ zone: state.zoneId, name, cx: ccx, cy: ccy, population: 0, econ_state: serializeEcon(ev), day })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2191,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'hall', cx: ccx, cy: ccy, floors: 1, data: JSON.stringify(_hallObj), })"
+    },
+    {
+     "file": "villages.js",
+     "line": 2195,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertVillageBuilding({ village_id: dbId, type: 'terr', cx: c[0], cy: c[1], floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 3061,
+     "fn": "upsertTradeRoute",
+     "mod": "zone",
+     "n": 4,
+     "np": 4,
+     "text": "state.db.upsertTradeRoute(state.zoneId, key, state._routeSig || (state._routeSig = _routeSig()), JSON.stringify(r.pts))"
+    },
+    {
+     "file": "villages.js",
+     "line": 3107,
+     "fn": "getTradeRoutes",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "state.db.getTradeRoutes(state.zoneId, sig)"
+    },
+    {
+     "file": "villages.js",
+     "line": 3108,
+     "fn": "countTradeRoutes",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.countTradeRoutes(state.zoneId)"
+    },
+    {
+     "file": "villages.js",
+     "line": 3110,
+     "fn": "clearTradeRoutes",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.clearTradeRoutes(state.zoneId)"
+    },
+    {
+     "file": "villages.js",
+     "line": 3156,
+     "fn": "countTradeRoutes",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.countTradeRoutes(state.zoneId)"
+    },
+    {
+     "file": "villages.js",
+     "line": 3212,
+     "fn": "upsertTradeRoute",
+     "mod": "zone",
+     "n": 4,
+     "np": 4,
+     "text": "state.db.upsertTradeRoute(state.zoneId, key, state._routeSig || (state._routeSig = _routeSig()), pts ? JSON.stringify(pts) : null)"
+    },
+    {
+     "file": "villages.js",
+     "line": 4866,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'terr', cx: ax, cy: ay, floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 4929,
+     "fn": "clearTradeRoutes",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.clearTradeRoutes(state.zoneId)"
+    },
+    {
+     "file": "villages.js",
+     "line": 4971,
+     "fn": "getVillagesByZone",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.getVillagesByZone(ZONE_ID)"
+    },
+    {
+     "file": "villages.js",
+     "line": 4975,
+     "fn": "getVillagesByZone",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.getVillagesByZone(ZONE_ID)"
+    },
+    {
+     "file": "villages.js",
+     "line": 5028,
+     "fn": "getVillageStructAll",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.getVillageStructAll(row.id)"
+    },
+    {
+     "file": "villages.js",
+     "line": 5028,
+     "fn": "getVillageBuildings",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.getVillageBuildings(row.id)"
+    },
+    {
+     "file": "villages.js",
+     "line": 5034,
+     "fn": "getVillageFarthest",
+     "mod": "zone",
+     "n": 3,
+     "np": 3,
+     "text": "db.getVillageFarthest(row.id, row.cx, row.cy)"
+    },
+    {
+     "file": "villages.js",
+     "line": 5035,
+     "fn": "eachVillageCell",
+     "mod": "zone",
+     "n": 3,
+     "np": 3,
+     "text": "db.eachVillageCell(row.id, 'farm', (cx, cy, ty) => { if (ty === 'farmland') { farmN++; farmSet.add(cx + ',' + cy); } else { dryN++; farmSet.add(cx + ',' + cy); drySet.add(cx + ',' + cy); } })"
+    },
+    {
+     "file": "villages.js",
+     "line": 5039,
+     "fn": "eachVillageCell",
+     "mod": "zone",
+     "n": 3,
+     "np": 3,
+     "text": "db.eachVillageCell(row.id, 'nongzone', (cx, cy) => { potSet.add(cx + ',' + cy); })"
+    },
+    {
+     "file": "villages.js",
+     "line": 5040,
+     "fn": "eachVillageCell",
+     "mod": "zone",
+     "n": 3,
+     "np": 3,
+     "text": "db.eachVillageCell(row.id, 'terr', (cx, cy) => { terrSet.add(cx + ',' + cy); })"
+    },
+    {
+     "file": "villages.js",
+     "line": 5090,
+     "fn": "getTerrContestOwners",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.getTerrContestOwners()"
+    },
+    {
+     "file": "villages.js",
+     "line": 5238,
+     "fn": "updateVillageState",
+     "mod": "zone",
+     "n": 4,
+     "np": 4,
+     "text": "db.updateVillageState(vil.dbId, serializeEcon(vil.econ), vil.econ.npcs.length, world.day)"
+    },
+    {
+     "file": "villages.js",
+     "line": 5681,
+     "fn": "getVillageStructRows",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.getVillageStructRows(vil.dbId)"
+    },
+    {
+     "file": "villages.js",
+     "line": 5681,
+     "fn": "getVillageBuildings",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.getVillageBuildings(vil.dbId)"
+    },
+    {
+     "file": "villages.js",
+     "line": 7265,
+     "fn": "updateVillageState",
+     "mod": "zone",
+     "n": 4,
+     "np": 4,
+     "text": "state.db.updateVillageState(vil.dbId, serializeEcon(vil.econ), vil.econ.npcs.length, state.world.day)"
+    },
+    {
+     "file": "villages.js",
+     "line": 8685,
+     "fn": "eachVillageCell",
+     "mod": "zone",
+     "n": 3,
+     "np": 3,
+     "text": "state.db.eachVillageCell(vil.dbId, 'other', (cx, cy) => { block.add(cx + ',' + cy); })"
+    },
+    {
+     "file": "villages.js",
+     "line": 10210,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.insertVillageBuilding({ village_id: vil.dbId, type, cx, cy, floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 10394,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'psitework', cx: x, cy: y, floors: 0, data: JSON.stringify({ owner: ownerId }) })"
+    },
+    {
+     "file": "villages.js",
+     "line": 10676,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'shelter', cx: c.cx, cy: c.cy, floors: 1, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 10925,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'housesite', cx: x, cy: y, floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 10945,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "state.db.updateBuildingData(s2.bo.dbId, JSON.stringify(s2.bo.data))"
+    },
+    {
+     "file": "villages.js",
+     "line": 11080,
+     "fn": "deleteBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.deleteBuilding(s2.bo.dbId)"
+    },
+    {
+     "file": "villages.js",
+     "line": 11087,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.insertVillageBuilding({ village_id: vil.dbId, type: isP ? 'phouse' : 'house', cx, cy, floors: 1, data: isP ? JSON.stringify({ owner: ownerId }) : null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 11095,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.insertVillageBuilding({ village_id: vil.dbId, type: isG ? 'garden' : 'yard', cx: x, cy: y, floors: 0, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 11538,
+     "fn": "getVillageBridges",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.getVillageBridges(state.zoneId)"
+    },
+    {
+     "file": "villages.js",
+     "line": 11550,
+     "fn": "upsertVillageBridge",
+     "mod": "zone",
+     "n": 6,
+     "np": 6,
+     "text": "state.db.upsertVillageBridge(state.zoneId, site.i, _t527Sig(site), JSON.stringify({ v: site.v, span: site.span, cells: site.cells, stage: site.stage, mat: site.mat, adv: site.adv, sum: site.sum, added"
+    },
+    {
+     "file": "villages.js",
+     "line": 11677,
+     "fn": "insertVillageBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'granary', cx, cy, floors: 1, data: null })"
+    },
+    {
+     "file": "villages.js",
+     "line": 13029,
+     "fn": "updateVillageBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "state.db.updateVillageBuildingData(row, json)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13153,
+     "fn": "insertVillageEvent",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "state.db.insertVillageEvent(zone, e)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13155,
+     "fn": "insertVillageChronicle",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "state.db.insertVillageChronicle(zone, e)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13158,
+     "fn": "upsertVillageRequest",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "state.db.upsertVillageRequest(zone, r)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13159,
+     "fn": "deleteVillageRequest",
+     "mod": "zone",
+     "n": 3,
+     "np": 3,
+     "text": "state.db.deleteVillageRequest(zone, r.vid, r.item)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13166,
+     "fn": "getVillageEventsSince",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "state.db.getVillageEventsSince(zone, since)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13175,
+     "fn": "pruneVillageEvents",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "state.db.pruneVillageEvents(zone, since)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13183,
+     "fn": "getVillageChronicle",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.getVillageChronicle(zone)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13185,
+     "fn": "countVillageChronicle",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.countVillageChronicle(zone)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13192,
+     "fn": "getVillageRequests",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.getVillageRequests(zone)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13195,
+     "fn": "deleteVillageRequest",
+     "mod": "zone",
+     "n": 3,
+     "np": 3,
+     "text": "state.db.deleteVillageRequest(zone, r.vid, r.item)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13271,
+     "fn": "pruneVillageEvents",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "state.db.pruneVillageEvents(state.zoneId, state.world.day - state.ledger.cfg.KEEP_DAYS)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13431,
+     "fn": "upsertVillageRequest",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "state.db.upsertVillageRequest(state.zoneId, r.req)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13432,
+     "fn": "deleteVillageRequest",
+     "mod": "zone",
+     "n": 3,
+     "np": 3,
+     "text": "state.db.deleteVillageRequest(state.zoneId, r.req.vid, r.req.item)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13869,
+     "fn": "upsertWorldMeta",
+     "mod": "zone",
+     "n": 3,
+     "np": 3,
+     "text": "state.db.upsertWorldMeta(state.zoneId, _t728Meta(), state.world.day | 0)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13916,
+     "fn": "getWorldMeta",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "state.db.getWorldMeta(state.zoneId)"
+    },
+    {
+     "file": "villages.js",
+     "line": 13982,
+     "fn": "saveVillagesAndMeta",
+     "mod": "zone",
+     "n": 4,
+     "np": 4,
+     "text": "state.db.saveVillagesAndMeta(rows, state.zoneId, _t728Meta(), state.world.day | 0)"
+    },
+    {
+     "file": "zone.js",
+     "line": 164,
+     "fn": "deletePickedSeed",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deletePickedSeed(seedKey)"
+    },
+    {
+     "file": "zone.js",
+     "line": 177,
+     "fn": "promoteHarvestedDays",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.promoteHarvestedDays(today)"
+    },
+    {
+     "file": "zone.js",
+     "line": 198,
+     "fn": "insertHarvestedSeed",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.insertHarvestedSeed(seedKey, d)"
+    },
+    {
+     "file": "zone.js",
+     "line": 223,
+     "fn": "deleteResource",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteResource(r.dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 583,
+     "fn": "deleteHarvestedSeed",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteHarvestedSeed(seedKey)"
+    },
+    {
+     "file": "zone.js",
+     "line": 653,
+     "fn": "upsertPickedSeed",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.upsertPickedSeed(k, JSON.stringify(next))"
+    },
+    {
+     "file": "zone.js",
+     "line": 788,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(dbId, JSON.stringify(nd))"
+    },
+    {
+     "file": "zone.js",
+     "line": 796,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(dbId, JSON.stringify(d))"
+    },
+    {
+     "file": "zone.js",
+     "line": 805,
+     "fn": "getBuildingsInRect",
+     "mod": "zone",
+     "n": 4,
+     "np": 4,
+     "text": "db.getBuildingsInRect(x0, y0, x1, y1)"
+    },
+    {
+     "file": "zone.js",
+     "line": 1635,
+     "fn": "saveQueuePut",
+     "mod": "zone",
+     "n": 5,
+     "np": 5,
+     "text": "db.saveQueuePut(playerId, seq, JSON.stringify(patch), base, Date.now())"
+    },
+    {
+     "file": "zone.js",
+     "line": 1640,
+     "fn": "saveQueueDel",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.saveQueueDel(playerId, seq)"
+    },
+    {
+     "file": "zone.js",
+     "line": 1660,
+     "fn": "saveQueueDel",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.saveQueueDel(row.player_id, row.seq)"
+    },
+    {
+     "file": "zone.js",
+     "line": 1667,
+     "fn": "saveQueueDel",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.saveQueueDel(row.player_id, row.seq)"
+    },
+    {
+     "file": "zone.js",
+     "line": 1677,
+     "fn": "saveQueueAll",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.saveQueueAll()"
+    },
+    {
+     "file": "zone.js",
+     "line": 1682,
+     "fn": "saveQueueAll",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.saveQueueAll()"
+    },
+    {
+     "file": "zone.js",
+     "line": 1690,
+     "fn": "saveQueueGet",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.saveQueueGet(pid)"
+    },
+    {
+     "file": "zone.js",
+     "line": 1741,
+     "fn": "saveQueueGet",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.saveQueueGet(playerId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 1747,
+     "fn": "saveQueueAll",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.saveQueueAll()"
+    },
+    {
+     "file": "zone.js",
+     "line": 2355,
+     "fn": "getVillageBridges",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.getVillageBridges(ZONE_ID)"
+    },
+    {
+     "file": "zone.js",
+     "line": 3159,
+     "fn": "insertResource",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertResource({ type, x, y, hp: maxHp, max_hp: maxHp })"
+    },
+    {
+     "file": "zone.js",
+     "line": 3179,
+     "fn": "getResources",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.getResources()"
+    },
+    {
+     "file": "zone.js",
+     "line": 3185,
+     "fn": "getAllHarvestedSeeds",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.getAllHarvestedSeeds()"
+    },
+    {
+     "file": "zone.js",
+     "line": 3208,
+     "fn": "getAllPickedSeeds",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.getAllPickedSeeds()"
+    },
+    {
+     "file": "zone.js",
+     "line": 3215,
+     "fn": "getClaims",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.getClaims()"
+    },
+    {
+     "file": "zone.js",
+     "line": 3287,
+     "fn": "insertMob",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertMob({ type, x, y, hp, max_hp: def.maxHp })"
+    },
+    {
+     "file": "zone.js",
+     "line": 3309,
+     "fn": "getMobs",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.getMobs()"
+    },
+    {
+     "file": "zone.js",
+     "line": 3541,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'wall', owner_id: npcId, owner_name: name, x: wx, y: wy, data: JSON.stringify(data) })"
+    },
+    {
+     "file": "zone.js",
+     "line": 3547,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type, owner_id: npcId, owner_name: name, x: bx, y: by, data: JSON.stringify(data) })"
+    },
+    {
+     "file": "zone.js",
+     "line": 3766,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'wall', owner_id: ownerId, owner_name: ownerName, x: cx * SZ, y: cy * SZ, data: JSON.stringify({ side, floor: f }) })"
+    },
+    {
+     "file": "zone.js",
+     "line": 3767,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'floor', owner_id: ownerId, owner_name: ownerName, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: JSON.stringify({ floor: f }) })"
+    },
+    {
+     "file": "zone.js",
+     "line": 3795,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'farmland', owner_id: `npc_farm_${ZONE_ID}_${vIdx}`, owner_name: `${village.name} 농지`, x: gx, y: gy, data: JSON.stringify(data) })"
+    },
+    {
+     "file": "zone.js",
+     "line": 4655,
+     "fn": "deleteMob",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteMob(target.dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 4720,
+     "fn": "updateResourceHp",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateResourceHp(r.dbId, r.hp)"
+    },
+    {
+     "file": "zone.js",
+     "line": 4748,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'farmland', owner_id: npc.playerId, owner_name: npc.name, x: gx, y: gy, data: JSON.stringify(data) })"
+    },
+    {
+     "file": "zone.js",
+     "line": 4775,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 4797,
+     "fn": "updateMobState",
+     "mod": "zone",
+     "n": 6,
+     "np": 6,
+     "text": "db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName)"
+    },
+    {
+     "file": "zone.js",
+     "line": 4809,
+     "fn": "updateMobState",
+     "mod": "zone",
+     "n": 6,
+     "np": 6,
+     "text": "db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName)"
+    },
+    {
+     "file": "zone.js",
+     "line": 5273,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'chest', owner_id: 'public', owner_name: '공용 상자', x: cdef.x, y: cdef.y, data: JSON.stringify(cdef.data), })"
+    },
+    {
+     "file": "zone.js",
+     "line": 5364,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(dbId, json)"
+    },
+    {
+     "file": "zone.js",
+     "line": 7596,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(d))"
+    },
+    {
+     "file": "zone.js",
+     "line": 7635,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 7769,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(best.dbId, JSON.stringify(best.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 8480,
+     "fn": "deleteBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteBuilding(b.dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 8491,
+     "fn": "deleteBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteBuilding(cb.dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 8521,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 9342,
+     "fn": "getAllMinedCells",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.getAllMinedCells()"
+    },
+    {
+     "file": "zone.js",
+     "line": 9397,
+     "fn": "deleteMinedCell",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteMinedCell(key)"
+    },
+    {
+     "file": "zone.js",
+     "line": 9400,
+     "fn": "upsertMinedCell",
+     "mod": "zone",
+     "n": 5,
+     "np": 5,
+     "text": "db.upsertMinedCell(key, rec.s, rec.t, rec.w, rec.kg || 0)"
+    },
+    {
+     "file": "zone.js",
+     "line": 9451,
+     "fn": "getAllFishCells",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.getAllFishCells()"
+    },
+    {
+     "file": "zone.js",
+     "line": 9456,
+     "fn": "deleteFishCell",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteFishCell(key)"
+    },
+    {
+     "file": "zone.js",
+     "line": 9457,
+     "fn": "upsertFishCell",
+     "mod": "zone",
+     "n": 3,
+     "np": 3,
+     "text": "db.upsertFishCell(key, r.s, r.t)"
+    },
+    {
+     "file": "zone.js",
+     "line": 9469,
+     "fn": "deleteFishCell",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteFishCell(key)"
+    },
+    {
+     "file": "zone.js",
+     "line": 9876,
+     "fn": "deleteMinedCell",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteMinedCell(key)"
+    },
+    {
+     "file": "zone.js",
+     "line": 9945,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 10206,
+     "fn": "insertResource",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertResource({ type: 'sapling', x: px, y: py, hp: RESOURCE_HP_TABLE.sapling, max_hp: RESOURCE_HP_TABLE.sapling, planted_day: day, species })"
+    },
+    {
+     "file": "zone.js",
+     "line": 10565,
+     "fn": "updateResourceHp",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateResourceHp(best.dbId, best.hp)"
+    },
+    {
+     "file": "zone.js",
+     "line": 10736,
+     "fn": "insertClaim",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertClaim({ owner_id: player.playerId, owner_name: player.name, x: cx, y: cy, w: SZ, h: SZ, kind, guild_tribe_id: kind === 'guild' ? player.tribeId : null, state: 'active', held_by: null, })"
+    },
+    {
+     "file": "zone.js",
+     "line": 10768,
+     "fn": "deleteClaim",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteClaim(c.dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 11071,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(best.dbId, JSON.stringify(best.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 11326,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type, owner_id: player.playerId, owner_name: player.name, x: wx, y: wy, data: JSON.stringify(initData) })"
+    },
+    {
+     "file": "zone.js",
+     "line": 11414,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type, owner_id: player.playerId, owner_name: player.name, x: gx, y: gy, data: JSON.stringify(dataWithFloor), })"
+    },
+    {
+     "file": "zone.js",
+     "line": 11432,
+     "fn": "deleteBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteBuilding(dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 11458,
+     "fn": "deleteBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteBuilding(dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 11470,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'floor', owner_id: player.playerId, owner_name: player.name, x: autoFx, y: autoFy, data: JSON.stringify(floorData), })"
+    },
+    {
+     "file": "zone.js",
+     "line": 11482,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(dbId, JSON.stringify(building.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 11500,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type, owner_id: ownerId, owner_name: ownerName, x, y, data: JSON.stringify(data) })"
+    },
+    {
+     "file": "zone.js",
+     "line": 11592,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 11598,
+     "fn": "deleteBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteBuilding(b.dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 11792,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 11797,
+     "fn": "deleteBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteBuilding(b.dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 11930,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(done.dbId, JSON.stringify(done.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 11977,
+     "fn": "deleteBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteBuilding(done.dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 12480,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 12499,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 12536,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 12558,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 12615,
+     "fn": "saveQueueAll",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.saveQueueAll()"
+    },
+    {
+     "file": "zone.js",
+     "line": 12776,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 12852,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 12969,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(b.dbId, JSON.stringify(b.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 13029,
+     "fn": "deleteMob",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteMob(m.dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 13160,
+     "fn": "deleteMob",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.deleteMob(bestMob.dbId)"
+    },
+    {
+     "file": "zone.js",
+     "line": 13247,
+     "fn": "updateBuildingData",
+     "mod": "zone",
+     "n": 2,
+     "np": 2,
+     "text": "db.updateBuildingData(bestWall.dbId, JSON.stringify(bestWall.data))"
+    },
+    {
+     "file": "zone.js",
+     "line": 13615,
+     "fn": "getBuildingsInRect",
+     "mod": "zone",
+     "n": 4,
+     "np": 4,
+     "text": "db.getBuildingsInRect(px - M, py - M, px + M, py + M)"
+    },
+    {
+     "file": "zone.js",
+     "line": 14743,
+     "fn": "walTick",
+     "mod": "zone",
+     "n": 0,
+     "np": 0,
+     "text": "db.walTick()"
+    },
+    {
+     "file": "zone.js",
+     "line": 16186,
+     "fn": "updateMobState",
+     "mod": "zone",
+     "n": 6,
+     "np": 6,
+     "text": "db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName)"
+    },
+    {
+     "file": "zone.js",
+     "line": 16187,
+     "fn": "updateMobState",
+     "mod": "zone",
+     "n": 4,
+     "np": 6,
+     "text": "db.updateMobState(m.dbId, m.x, m.y, m.hp)"
+    },
+    {
+     "file": "zone.js",
+     "line": 16424,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type, owner_id: ownerId, owner_name: ownerName, x, y, data: JSON.stringify(data), })"
+    },
+    {
+     "file": "zone.js",
+     "line": 16972,
+     "fn": "insertBuilding",
+     "mod": "zone",
+     "n": 1,
+     "np": 1,
+     "text": "db.insertBuilding({ type: 'chest', owner_id: `village_${village.name}`, owner_name: `${village.name} 거래소`, x: cx, y: cy, data: JSON.stringify(chestData), })"
+    }
+   ],
+   "short": [
+    {
+     "file": "zone.js",
+     "line": 16187,
+     "fn": "updateMobState",
+     "mod": "zone",
+     "n": 4,
+     "np": 6,
+     "text": "db.updateMobState(m.dbId, m.x, m.y, m.hp)"
+    }
+   ]
+  },
+  "sql_placeholders": {
+   "bad": [
+    {
+     "file": "zone-local-db.js",
+     "stmt": "stmtVbFar",
+     "line": 739,
+     "q": 10,
+     "named": 0,
+     "n": 3,
+     "kind": "all",
+     "sql": "SELECT cx, cy FROM village_buildings WHERE village_id = ?1 AND ((cx - ?2) * (cx - ?2) + (cy - ?3) * (cy - ?3)) = (SELECT MAX((cx - ?2) * (cx - ?2) + (cy - ?3) *",
+     "call": "stmtVbFar.all(villageId, ccx, ccy)"
+    }
+   ],
+   "over": [
+    {
+     "file": "zone-local-db.js",
+     "stmt": "st",
+     "line": 729,
+     "q": 0,
+     "named": 0,
+     "n": 1,
+     "kind": "iterate",
+     "sql": "PRAGMA wal_checkpoint(PASSIVE)",
+     "call": "st.iterate(villageId)"
+    }
+   ]
+  },
+  "sql_rows_n": 206,
+  "removal_sites": [
+   {
+    "file": "zone.js",
+    "line": 163,
+    "ent": "pickedSeeds",
+    "arg": "seedKey",
+    "db_delete_near": [
+     "deletePickedSeed"
+    ],
+    "persisted": true,
+    "src": "if (!seedKey || !pickedSeeds.size || !pickedSeeds.delete(seedKey)) return;"
+   },
+   {
+    "file": "zone.js",
+    "line": 219,
+    "ent": "resources",
+    "arg": "r.id",
+    "db_delete_near": [
+     "deleteResource"
+    ],
+    "persisted": true,
+    "src": "resources.delete(r.id);"
+   },
+   {
+    "file": "zone.js",
+    "line": 579,
+    "ent": "harvestedSeeds",
+    "arg": "seedKey",
+    "db_delete_near": [
+     "deleteHarvestedSeed"
+    ],
+    "persisted": true,
+    "src": "harvestedSeeds.delete(seedKey);"
+   },
+   {
+    "file": "zone.js",
+    "line": 897,
+    "ent": "buildings",
+    "arg": "b.id",
+    "db_delete_near": [],
+    "persisted": true,
+    "src": "buildings.delete(b.id);"
+   },
+   {
+    "file": "zone.js",
+    "line": 929,
+    "ent": "resources",
+    "arg": "r.id",
+    "db_delete_near": [],
+    "persisted": true,
+    "src": "resources.delete(r.id);"
+   },
+   {
+    "file": "zone.js",
+    "line": 2480,
+    "ent": "corpses",
+    "arg": "cid",
+    "db_delete_near": [],
+    "persisted": false,
+    "src": "corpses.delete(cid);"
+   },
+   {
+    "file": "zone.js",
+    "line": 2496,
+    "ent": "corpses",
+    "arg": "cid",
+    "db_delete_near": [],
+    "persisted": false,
+    "src": "corpses.delete(cid);"
+   },
+   {
+    "file": "zone.js",
+    "line": 3644,
+    "ent": "claims",
+    "arg": "id",
+    "db_delete_near": [],
+    "persisted": true,
+    "src": "claims.delete(id);"
+   },
+   {
+    "file": "zone.js",
+    "line": 4657,
+    "ent": "mobs",
+    "arg": "target.mid",
+    "db_delete_near": [
+     "deleteMob"
+    ],
+    "persisted": true,
+    "src": "mobs.delete(target.mid);"
+   },
+   {
+    "file": "zone.js",
+    "line": 5236,
+    "ent": "buildings",
+    "arg": "id",
+    "db_delete_near": [],
+    "persisted": true,
+    "src": "if (b.ownerId === 'debug_room') { buildings.delete(id); if (chunkManager.removeBuilding) chunkManager.removeBuilding(b); }"
+   },
+   {
+    "file": "zone.js",
+    "line": 5247,
+    "ent": "buildings",
+    "arg": "id",
+    "db_delete_near": [],
+    "persisted": true,
+    "src": "buildings.delete(id);"
+   },
+   {
+    "file": "zone.js",
+    "line": 8478,
+    "ent": "buildings",
+    "arg": "buildingId",
+    "db_delete_near": [
+     "deleteBuilding"
+    ],
+    "persisted": true,
+    "src": "buildings.delete(buildingId);"
+   },
+   {
+    "file": "zone.js",
+    "line": 8489,
+    "ent": "buildings",
+    "arg": "cid",
+    "db_delete_near": [
+     "deleteBuilding"
+    ],
+    "persisted": true,
+    "src": "buildings.delete(cid);"
+   },
+   {
+    "file": "zone.js",
+    "line": 9397,
+    "ent": "minedCells",
+    "arg": "key",
+    "db_delete_near": [
+     "deleteMinedCell",
+     "vein"
+    ],
+    "persisted": true,
+    "src": "if (rec.s >= Specialty.ORE_K && rec.w <= 0 && !(rec.kg > 0)) { minedCells.delete(key); if (_vein && !now) { _vein.mark(key); return; } try { db.deleteMinedCell(key); } ca"
+   },
+   {
+    "file": "zone.js",
+    "line": 9456,
+    "ent": "fishCells",
+    "arg": "key",
+    "db_delete_near": [
+     "deleteFishCell"
+    ],
+    "persisted": true,
+    "src": "if (r.s >= Fishing.CFG.CELL_K) { Fishing.fishCells.delete(key); try { db.deleteFishCell(key); } catch (e) {} return; }"
+   },
+   {
+    "file": "zone.js",
+    "line": 9469,
+    "ent": "fishCells",
+    "arg": "key",
+    "db_delete_near": [
+     "deleteFishCell"
+    ],
+    "persisted": true,
+    "src": "if (rec.s >= Fishing.CFG.CELL_K - 1e-4) { Fishing.fishCells.delete(key); try { db.deleteFishCell(key); } catch (e) {} pruned++; }"
+   },
+   {
+    "file": "zone.js",
+    "line": 9876,
+    "ent": "minedCells",
+    "arg": "key",
+    "db_delete_near": [
+     "deleteMinedCell"
+    ],
+    "persisted": true,
+    "src": "if (rec.s >= Specialty.ORE_K && (rec.w || 0) <= 0 && !(rec.kg > 0)) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } }"
+   },
+   {
+    "file": "zone.js",
+    "line": 10623,
+    "ent": "claims",
+    "arg": "id",
+    "db_delete_near": [],
+    "persisted": true,
+    "src": "claims.delete(id);"
+   },
+   {
+    "file": "zone.js",
+    "line": 10769,
+    "ent": "claims",
+    "arg": "claimId",
+    "db_delete_near": [
+     "deleteClaim"
+    ],
+    "persisted": true,
+    "src": "claims.delete(claimId);"
+   },
+   {
+    "file": "zone.js",
+    "line": 11091,
+    "ent": "groundItems",
+    "arg": "gid",
+    "db_delete_near": [],
+    "persisted": false,
+    "src": "groundItems.delete(gid);"
+   },
+   {
+    "file": "zone.js",
+    "line": 11105,
+    "ent": "groundItems",
+    "arg": "gid",
+    "db_delete_near": [],
+    "persisted": false,
+    "src": "groundItems.delete(gid);"
+   },
+   {
+    "file": "zone.js",
+    "line": 11129,
+    "ent": "groundItems",
+    "arg": "gid",
+    "db_delete_near": [],
+    "persisted": false,
+    "src": "groundItems.delete(gid);"
+   },
+   {
+    "file": "zone.js",
+    "line": 11213,
+    "ent": "groundItems",
+    "arg": "gid",
+    "db_delete_near": [],
+    "persisted": false,
+    "src": "groundItems.delete(gid);"
+   },
+   {
+    "file": "zone.js",
+    "line": 11430,
+    "ent": "buildings",
+    "arg": "id",
+    "db_delete_near": [
+     "deleteBuilding"
+    ],
+    "persisted": true,
+    "src": "buildings.delete(id);"
+   },
+   {
+    "file": "zone.js",
+    "line": 11456,
+    "ent": "buildings",
+    "arg": "id",
+    "db_delete_near": [
+     "deleteBuilding"
+    ],
+    "persisted": true,
+    "src": "buildings.delete(id);"
+   },
+   {
+    "file": "zone.js",
+    "line": 11598,
+    "ent": "buildings",
+    "arg": "b.id",
+    "db_delete_near": [
+     "deleteBuilding"
+    ],
+    "persisted": true,
+    "src": "buildings.delete(b.id); if (chunkManager.removeBuilding) chunkManager.removeBuilding(b); db.deleteBuilding(b.dbId);"
+   },
+   {
+    "file": "zone.js",
+    "line": 11797,
+    "ent": "buildings",
+    "arg": "b.id",
+    "db_delete_near": [
+     "deleteBuilding"
+    ],
+    "persisted": true,
+    "src": "buildings.delete(b.id); if (chunkManager.removeBuilding) chunkManager.removeBuilding(b); db.deleteBuilding(b.dbId);"
+   },
+   {
+    "file": "zone.js",
+    "line": 11978,
+    "ent": "buildings",
+    "arg": "done.id",
+    "db_delete_near": [
+     "deleteBuilding"
+    ],
+    "persisted": true,
+    "src": "buildings.delete(done.id);"
+   },
+   {
+    "file": "zone.js",
+    "line": 13030,
+    "ent": "mobs",
+    "arg": "m.mid",
+    "db_delete_near": [
+     "deleteMob"
+    ],
+    "persisted": true,
+    "src": "chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid });"
+   },
+   {
+    "file": "zone.js",
+    "line": 13162,
+    "ent": "mobs",
+    "arg": "bestMob.mid",
+    "db_delete_near": [
+     "deleteMob"
+    ],
+    "persisted": true,
+    "src": "mobs.delete(bestMob.mid);"
+   },
+   {
+    "file": "zone.js",
+    "line": 16253,
+    "ent": "claims",
+    "arg": "id",
+    "db_delete_near": [],
+    "persisted": true,
+    "src": "if (c.ownerPid?.startsWith('village_')) { claims.delete(id); broadcast({ type: 'claim_removed', id }); }"
+   },
+   {
+    "file": "zone.js",
+    "line": 16257,
+    "ent": "buildings",
+    "arg": "id",
+    "db_delete_near": [],
+    "persisted": true,
+    "src": "buildings.delete(id);"
+   },
+   {
+    "file": "villages.js",
+    "line": 11080,
+    "ent": "buildings",
+    "arg": "s2.bo.id",
+    "db_delete_near": [
+     "deleteBuilding"
+    ],
+    "persisted": true,
+    "src": "if (s2.bo) { try { state.db.deleteBuilding(s2.bo.dbId); } catch (e) {} if (dp.buildings) dp.buildings.delete(s2.bo.id); try { if (dp.chunkManager && dp.chunkManager.remov"
+   },
+   {
+    "file": "wildlife.js",
+    "line": 582,
+    "ent": "mobs",
+    "arg": "sh.mid",
+    "db_delete_near": [],
+    "persisted": true,
+    "src": "H.mobs.delete(sh.mid); H.chunkManager.removeMob(sh);"
+   },
+   {
+    "file": "wildlife.js",
+    "line": 729,
+    "ent": "mobs",
+    "arg": "sh.mid",
+    "db_delete_near": [],
+    "persisted": true,
+    "src": "if (lm.hp <= 0) { _extKill(lm); if (H.mobs.has(sh.mid)) { H.mobs.delete(sh.mid); H.chunkManager.removeMob(sh); H.broadcast({ type: 'mob_removed', mid: sh.mid }); } }"
+   },
+   {
+    "file": "wildlife.js",
+    "line": 816,
+    "ent": "mobs",
+    "arg": "mid",
+    "db_delete_near": [],
+    "persisted": true,
+    "src": "if (H.mobs.has(mid)) { H.mobs.delete(mid); H.chunkManager.removeMob(sh); H.broadcast({ type: 'mob_removed', mid }); }"
+   }
+  ]
+ },
+ "harness_ab": {
+  "e2e-aim": {
+   "M": "=== PASS 15 / FAIL 0 ===",
+   "B": "=== PASS 15 / FAIL 0 ===",
+   "verdict_lines": {
+    "M": 15,
+    "B": 15,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "e2e-hp": {
+   "M": "=== 26건 중 PASS 26 · FAIL 0 ===",
+   "B": "=== 26건 중 PASS 26 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 26,
+    "B": 26,
+    "diff": 6,
+    "ex": [
+     [
+      "✓ ★① 그리고 화면이 깎인 값을 말한다  화면 43",
+      "✓ ★① 그리고 화면이 깎인 값을 말한다  화면 45"
+     ],
+     [
+      "✓ ★★② 아무것도 안 눌러도 **화면 hp 가 <t> 안에 오른다**(회복이 실린다)  34 → [34,57,57,81,91,100]",
+      "✓ ★★② 아무것도 안 눌러도 **화면 hp 가 <t> 안에 오른다**(회복이 실린다)  42 → [42,62,72,83,83,89]"
+     ],
+     [
+      "✓ ★② 화면 숫자 = 클라가 든 서버 값(굳은 그림 아님 · 한 프레임 차 허용)  100 vs 100",
+      "✓ ★② 화면 숫자 = 클라가 든 서버 값(굳은 그림 아님 · 한 프레임 차 허용)  89 vs 89"
+     ],
+     [
+      "✓ ★★③ `gauges` 는 **초당 한 건**이다 — 그게 hp 양자화의 틱 정본이다  1.17건/초",
+      "✓ ★★③ `gauges` 는 **초당 한 건**이다 — 그게 hp 양자화의 틱 정본이다  1.33건/초"
+     ]
+    ]
+   }
+  },
+  "test-audio": {
+   "M": "=== PASS 208 / FAIL 0 ===",
+   "B": "=== PASS 208 / FAIL 0 ===",
+   "verdict_lines": {
+    "M": 208,
+    "B": 208,
+    "diff": 2,
+    "ex": [
+     [
+      "✓ ⑦f ★★자 검증 — `carry` 실은 전송을 **한 줄짜리·여러 줄짜리 둘 다** 집어낸다(옛 자는 여러 줄을 못 봤다)  한 줄 7871 · 여러 줄 15434",
+      "✓ ⑦f ★★자 검증 — `carry` 실은 전송을 **한 줄짜리·여러 줄짜리 둘 다** 집어낸다(옛 자는 여러 줄을 못 봤다)  한 줄 7876 · 여러 줄 15444"
+     ],
+     [
+      "✓ ⑦g ★`gauges` 중 `carry` 를 싣는 자리는 **둘**이다(`doEat` · 초당 게이지 틱). 이 수가 변하면 먹기 판별을 다시 본다  zone.js:7871 zone.js:15434",
+      "✓ ⑦g ★`gauges` 중 `carry` 를 싣는 자리는 **둘**이다(`doEat` · 초당 게이지 틱). 이 수가 변하면 먹기 판별을 다시 본다  zone.js:7876 zone.js:15444"
+     ]
+    ]
+   }
+  },
+  "test-body": {
+   "M": "=== 324건 중 PASS 324 · FAIL 0 ===",
+   "B": "=== 324건 중 PASS 324 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 324,
+    "B": 324,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-doors": {
+   "M": "=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+   "B": "=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+   "verdict_lines": {
+    "M": 45,
+    "B": 45,
+    "diff": 4,
+    "ex": [
+     [
+      "✓ ⓕ1 ★칸 둘이 바깥 판에 있다 — `/perf` 는 안 문이라 이 둘만 여기로 낸다 · villages=null tickP50Ms=0.265",
+      "✓ ⓕ1 ★칸 둘이 바깥 판에 있다 — `/perf` 는 안 문이라 이 둘만 여기로 낸다 · villages=null tickP50Ms=0.254"
+     ],
+     [
+      "✓ ⓕ3 `tickP50Ms` 는 수이거나 `null` · 0.265",
+      "✓ ⓕ3 `tickP50Ms` 는 수이거나 `null` · 0.254"
+     ],
+     [
+      "✓ ⓕ9 ★★`/perf` tick.ms.p50 과 `/health` tickP50Ms 이 **같은 답**이다(표본 0 이면 둘 다 \"없다\") · n=83 · 0.265 vs 0.265 · 고요한 판 3번째",
+      "✓ ⓕ9 ★★`/perf` tick.ms.p50 과 `/health` tickP50Ms 이 **같은 답**이다(표본 0 이면 둘 다 \"없다\") · n=80 · 0.254 vs 0.254 · 고요한 판 1번째"
+     ],
+     [
+      "✓ ⓕ9b ★`/health` 를 부른 뒤에도 틱 히스토그램이 **안 지워진다** · n 83 → 84",
+      "✓ ⓕ9b ★`/health` 를 부른 뒤에도 틱 히스토그램이 **안 지워진다** · n 80 → 80"
+     ]
+    ]
+   }
+  },
+  "test-downed": {
+   "M": "=== 180건 중 PASS 180 · FAIL 0 ===",
+   "B": "=== 180건 중 PASS 180 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 180,
+    "B": 180,
+    "diff": 3,
+    "ex": [
+     [
+      "✓ ★★⑦ **저장본에 쓰러짐이 실린다**(`serializeBody.vital` — T47 이 이미 실어 뒀다)  {\"hp\":0,\"maxHp\":100,\"isDown\":true,\"downedAt\":1793150342782}",
+      "✓ ★★⑦ **저장본에 쓰러짐이 실린다**(`serializeBody.vital` — T47 이 이미 실어 뒀다)  {\"hp\":0,\"maxHp\":100,\"isDown\":true,\"downedAt\":1793150342906}"
+     ],
+     [
+      "✓ ★★⑱ 깨어날 몸의 허기·갈증이 **극단 밖**이다(문턱은 T44 표에서 유도 — 리터럴 0)  허기 49.9693 · 갈증 13",
+      "✓ ★★⑱ 깨어날 몸의 허기·갈증이 **극단 밖**이다(문턱은 T44 표에서 유도 — 리터럴 0)  허기 49.96915 · 갈증 13"
+     ],
+     [
+      "✓ ★★㉒ⓑ 두 번째 누름이 **시계를 되감지 않는다**(깨어날 시각 그대로)  1793150525442.1995 → 1793150525442.1995",
+      "✓ ★★㉒ⓑ 두 번째 누름이 **시계를 되감지 않는다**(깨어날 시각 그대로)  1793150526597.1995 → 1793150526597.1995"
+     ]
+    ]
+   }
+  },
+  "test-drop-kg": {
+   "M": "=== 51건 중 PASS 51 · FAIL 0 ===",
+   "B": "=== 51건 중 PASS 51 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 51,
+    "B": 51,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-food-keep": {
+   "M": "=== 10건 중 PASS 10 · FAIL 0 ===",
+   "B": "=== 10건 중 PASS 10 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 10,
+    "B": 10,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-game-meat": {
+   "M": "=== 54건 중 PASS 54 · FAIL 0 ===",
+   "B": "=== 54건 중 PASS 54 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 54,
+    "B": 54,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-harness-lint": {
+   "M": "=== 68건 중 PASS 68 · FAIL 0 ===",
+   "B": "=== 68건 중 PASS 68 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 68,
+    "B": 68,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-hp-src": {
+   "M": "=== 25 통과 / 0 실패 ===",
+   "B": "=== 25 통과 / 0 실패 ===",
+   "verdict_lines": {
+    "M": 25,
+    "B": 25,
+    "diff": 3,
+    "ex": [
+     [
+      "✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 965153 · net 96685 · wildlife 82378",
+      "✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 966078 · net 96685 · wildlife 82378"
+     ],
+     [
+      "✓ ★★① 문 밖 직접 대입 한 줄(`p.hp = …` · 회복 걸음에 되살림)은 잡힌다 — 빨강 하나 · 잡힌 줄이 그 줄  빨강 1 · 15382: p.hp = Math.min(p.maxHp, p.hp + 1);",
+      "✓ ★★① 문 밖 직접 대입 한 줄(`p.hp = …` · 회복 걸음에 되살림)은 잡힌다 — 빨강 하나 · 잡힌 줄이 그 줄  빨강 1 · 15392: p.hp = Math.min(p.maxHp, p.hp + 1);"
+     ],
+     [
+      "✓ ★★③ 옛 직접 대입(사람 공격 `bestMob.hp -= atk` · 저장 표 · 방송 세 줄)을 되살린 사본은 잡힌다 — 잡힌 줄이 그 줄  빨강 2 · 13115: bestMob.hp -= atk;",
+      "✓ ★★③ 옛 직접 대입(사람 공격 `bestMob.hp -= atk` · 저장 표 · 방송 세 줄)을 되살린 사본은 잡힌다 — 잡힌 줄이 그 줄  빨강 2 · 13125: bestMob.hp -= atk;"
+     ]
+    ]
+   }
+  },
+  "test-hunt-port": {
+   "M": "=== 78건 중 PASS 78 · FAIL 0 ===",
+   "B": "=== 78건 중 PASS 78 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 78,
+    "B": 78,
+    "diff": 1,
+    "ex": [
+     [
+      "✓ ★★⑦' 하루에 다 안 짓는다(예산에서 끊는다)  <t> · 커서 dy=-68",
+      "✓ ★★⑦' 하루에 다 안 짓는다(예산에서 끊는다)  <t> · 커서 dy=-80"
+     ]
+    ]
+   }
+  },
+  "test-hunt-vis.r1": {
+   "M": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "B": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 32,
+    "B": 32,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-hunt-vis.r2": {
+   "M": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "B": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 32,
+    "B": 32,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-lab-hunt": {
+   "M": "=== 62건 중 PASS 62 · FAIL 0 ===",
+   "B": "=== 62건 중 PASS 62 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 0,
+    "B": 0,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-mob-hp-door": {
+   "M": "=== 19건 중 PASS 19 · FAIL 0 ===",
+   "B": "=== 19건 중 PASS 19 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 23,
+    "B": 23,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-mob-hp-restart": {
+   "M": "=== 14건 중 PASS 14 · FAIL 0 ===",
+   "B": "=== 20건 중 PASS 20 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 22,
+    "B": 28,
+    "diff": 12,
+    "ex": [
+     [
+      "✓ [상황] 판 넷 다 섰다(자식 hit · boot 결과 · 하네스 문 `saveDirtyMobs` · `spawnMob`)  off-kill ㅇ · off-term ㅇ · on-kill ㅇ · on-term ㅇ",
+      "✓ [상황] 판 여섯 다 섰다(자식 hit · boot 결과 · 하네스 문 `saveDirtyMobs` · `spawnMob`)  off-kill ㅇ · off-term ㅇ · on-kill ㅇ · on-term ㅇ · on-kill-d0 ㅇ · on-term-d0 ㅇ"
+     ],
+     [
+      "✓ [상황] 손잡이가 판대로 섰다(끔 = false · 켬 = true)  off-kill false · off-term false · on-kill true · on-term true",
+      "✓ [상황] 손잡이가 판대로 섰다(T967 끔 = false · 켬 = true · T975 는 `-d0` 판만 끔)  off-kill false/true · off-term false/true · on-kill true/true · on-term true/true · on-kill-d0 true/false · on-term-d0 true/false"
+     ],
+     [
+      "[관찰] 카드 밖 — 회부 감",
+      "[관찰] off-kill 행 없음 · off-term 행 없음 · on-kill 행 없음 · on-term 행 없음 · on-kill-d0 되살아남 hp 20 · on-term-d0 되살아남 hp 20"
+     ],
+     [
+      "[관찰] C(hp 20 · 화살로 죽임 — 화살 죽음 길엔 `db.deleteMob` 이 없다): off-kill 되살아남 hp 20 · off-term 되살아남 hp 20 · on-kill 되살아남 hp 20 · on-term 되살아남 hp 20",
+      "✓ [상황] 판마다 C 가 화살 한 대에 실제로 죽었다(맞고 · 존 몹에서 빠짐)"
+     ]
+    ]
+   }
+  },
+  "test-npc-hp-door": {
+   "M": "=== 21건 중 PASS 21 · FAIL 0 ===",
+   "B": "=== 21건 중 PASS 21 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 21,
+    "B": 21,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-tame": {
+   "M": "=== 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+   "B": "=== 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+   "verdict_lines": {
+    "M": 11,
+    "B": 11,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-zone-fauna": {
+   "M": "=== 38건 중 PASS 38 · FAIL 0 ===",
+   "B": "=== 38건 중 PASS 38 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 38,
+    "B": 38,
+    "diff": 0,
+    "ex": []
+   }
+  }
+ },
+ "server_baseline": {
+  "on": {
+   "baseline": "계측/서버기준선_2026-10-28_T960.json(열여섯째 판 · T960 가지)",
+   "env": "(없음 = 켬)",
+   "log": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 2 · 교역로 캐시 <tmp> · 판 <tmp> ===",
+    "  · 시드 1020 400일 판 280초(종료 0)",
+    "  · 시드 7 400일 판 309초(종료 0)",
+    "  · 시드 42 400일 판 257초(종료 0)",
+    "  판 모두 538초",
+    "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2483)",
+    "  ○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2623)",
+    "  ○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2565)",
+    "=== 같음 3/3 · 판 538초 ==="
+   ],
+   "observer": {
+    "sbc-1020": {
+     "n_days": 401,
+     "days_hash": "00ff8a6e4cbe",
+     "last": [
+      400,
+      54,
+      "736ec7507b8d",
+      5400,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 2154,
+       "write": 0,
+       "same": 2154,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-42": {
+     "n_days": 401,
+     "days_hash": "be4750ec7294",
+     "last": [
+      400,
+      57,
+      "8f7b1e83a873",
+      5700,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 1298,
+       "write": 0,
+       "same": 1298,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 1,
+       "write": 0,
+       "same": 1,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-7": {
+     "n_days": 401,
+     "days_hash": "6740aab8f682",
+     "last": [
+      400,
+      51,
+      "3777e0d46ce7",
+      5100,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 2034,
+       "write": 0,
+       "same": 2034,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    }
+   }
+  },
+  "off": {
+   "baseline": "계측/서버기준선_2026-10-28_T960.json(열여섯째 판 · T960 가지)",
+   "env": "T975_MOB_DB=0",
+   "log": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 2 · 교역로 캐시 <tmp> · 판 <tmp> ===",
+    "  · 시드 1020 400일 판 265초(종료 0)",
+    "  · 시드 7 400일 판 295초(종료 0)",
+    "  · 시드 42 400일 판 261초(종료 0)",
+    "  판 모두 526초",
+    "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2483)",
+    "  ○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2623)",
+    "  ○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2565)",
+    "=== 같음 3/3 · 판 526초 ==="
+   ],
+   "observer": {
+    "sbc-1020": {
+     "n_days": 401,
+     "days_hash": "00ff8a6e4cbe",
+     "last": [
+      400,
+      54,
+      "736ec7507b8d",
+      5400,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 2154,
+       "write": 0,
+       "same": 2154,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-42": {
+     "n_days": 401,
+     "days_hash": "be4750ec7294",
+     "last": [
+      400,
+      57,
+      "8f7b1e83a873",
+      5700,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 1298,
+       "write": 0,
+       "same": 1298,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 1,
+       "write": 0,
+       "same": 1,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-7": {
+     "n_days": 401,
+     "days_hash": "6740aab8f682",
+     "last": [
+      400,
+      51,
+      "3777e0d46ce7",
+      5100,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 2034,
+       "write": 0,
+       "same": 2034,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    }
+   }
+  },
+  "observer_same_on_off": {
+   "sbc-1020": true,
+   "sbc-42": true,
+   "sbc-7": true
+  }
+ },
+ "virtual_clock": {
+  "cond": "t942-restore-ab --make bx --stop 40 --days 1 · 켬 ↔ 끔(T975_MOB_DB=0)",
+  "cmp": {
+   "base_days": {
+    "n": [
+     41,
+     41
+    ],
+    "same": true,
+    "first_diff": null,
+    "last_M": [
+     40,
+     695,
+     "f3d3e7e04c77",
+     69500,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "last_B": [
+     40,
+     695,
+     "f3d3e7e04c77",
+     69500,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "mob": [
+     [
+      449,
+      15536
+     ]
+    ]
+   },
+   "rs_days": {
+    "n": [
+     2,
+     2
+    ],
+    "same": true,
+    "first_diff": null,
+    "last_M": [
+     41,
+     667,
+     "8590eff77b2c",
+     59784.297877,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "last_B": [
+     41,
+     667,
+     "8590eff77b2c",
+     59784.297877,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "mob": [
+     [
+      449,
+      15536
+     ]
+    ]
+   },
+   "base_cnt": {
+    "same": true,
+    "M": {}
+   },
+   "rs_cnt": {
+    "same": true,
+    "M": {
+     "restore": {
+      "n": 612,
+      "write": 245,
+      "same": 367,
+      "lo": 0,
+      "hi": 0,
+      "nan": 0
+     },
+     "regen": {
+      "n": 245,
+      "write": 245,
+      "same": 0,
+      "lo": 0,
+      "hi": 0,
+      "nan": 0
+     }
+    }
+   },
+   "base_mobcnt": {
+    "same": true,
+    "M": {}
+   },
+   "rs_mobcnt": {
+    "same": true,
+    "M": {}
+   },
+   "probe_base": {
+    "same": true
+   },
+   "probe_rs": {
+    "same": true
+   },
+   "t747": {
+    "same": true,
+    "M": [
+     "  off: 저장본 몸 612 · 37 로 122 · 99.5 로 123",
+     "  off: <t>초(종료 0) · T747 몸 칸 되돌림 — 마을 51 · 몸 612 · 손 든 몸 0 · 진행 작업 이음 0 · 풂 0 · 직업 다시 맞춤 173 · 남은 손 0 · 지문 init:526620d29959 41:8590eff77b2c",
+     "     문 셈 restore 612(바뀜 245 · 같음 367 · 0밑 0 · 위 0) · regen 245(바뀜 245 · 같음 0 · 0밑 0 · 위 0)"
+    ],
+    "B": [
+     "  on: 저장본 몸 612 · 37 로 122 · 99.5 로 123",
+     "  on: <t>초(종료 0) · T747 몸 칸 되돌림 — 마을 51 · 몸 612 · 손 든 몸 0 · 진행 작업 이음 0 · 풂 0 · 직업 다시 맞춤 173 · 남은 손 0 · 지문 init:526620d29959 41:8590eff77b2c",
+     "     문 셈 restore 612(바뀜 245 · 같음 367 · 0밑 0 · 위 0) · regen 245(바뀜 245 · 같음 0 · 0밑 0 · 위 0)"
+    ]
+   }
+  }
+ },
+ "boards": [
+  "E_test-mob-hp-restart rc=1 14s 01:15:20 === 20건 중 PASS 17 · FAIL 3 ===",
+  "RUNA_START 01:15:35",
+  "H_M_test-mob-hp-restart rc=0 11s 01:15:46 === 14건 중 PASS 14 · FAIL 0 ===",
+  "H_M_test-mob-hp-door rc=0 5s 01:15:51 === 19건 중 PASS 19 · FAIL 0 ===",
+  "H_B_test-mob-hp-restart rc=0 17s 01:15:52 === 20건 중 PASS 20 · FAIL 0 ===",
+  "H_M_test-tame rc=0 2s 01:15:54 === 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+  "H_B_test-mob-hp-door rc=0 4s 01:15:55 === 19건 중 PASS 19 · FAIL 0 ===",
+  "H_B_test-tame rc=0 1s 01:15:55 === 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+  "H_M_test-hunt-port rc=0 1s 01:15:56 === 78건 중 PASS 78 · FAIL 0 ===",
+  "H_B_test-hunt-port rc=0 1s 01:15:56 === 78건 중 PASS 78 · FAIL 0 ===",
+  "H_M_test-lab-hunt rc=0 1s 01:15:57 === 62건 중 PASS 62 · FAIL 0 ===",
+  "H_B_test-lab-hunt rc=0 0s 01:15:57 === 62건 중 PASS 62 · FAIL 0 ===",
+  "H_M_test-zone-fauna rc=0 49s 01:16:46 === 38건 중 PASS 38 · FAIL 0 ===",
+  "H_B_test-zone-fauna rc=0 49s 01:16:46 === 38건 중 PASS 38 · FAIL 0 ===",
+  "H_B_test-game-meat rc=0 8s 01:16:54 === 54건 중 PASS 54 · FAIL 0 ===",
+  "H_M_test-game-meat rc=0 8s 01:16:54 === 54건 중 PASS 54 · FAIL 0 ===",
+  "H_B_test-drop-kg rc=0 6s 01:17:00 === 51건 중 PASS 51 · FAIL 0 ===",
+  "H_M_test-drop-kg rc=0 6s 01:17:00 === 51건 중 PASS 51 · FAIL 0 ===",
+  "H_B_test-audio rc=0 2s 01:17:03 === PASS 208 / FAIL 0 ===",
+  "H_M_test-audio rc=0 3s 01:17:03 === PASS 208 / FAIL 0 ===",
+  "H_M_test-hp-src rc=0 0s 01:17:03 === 25 통과 / 0 실패 ===",
+  "H_B_test-hp-src rc=0 0s 01:17:03 === 25 통과 / 0 실패 ===",
+  "H_M_test-npc-hp-door rc=0 0s 01:17:03 === 21건 중 PASS 21 · FAIL 0 ===",
+  "H_B_test-npc-hp-door rc=0 0s 01:17:03 === 21건 중 PASS 21 · FAIL 0 ===",
+  "H_M_test-harness-lint rc=0 7s 01:17:10 === 68건 중 PASS 68 · FAIL 0 ===",
+  "H_B_test-harness-lint rc=0 8s 01:17:11 === 68건 중 PASS 68 · FAIL 0 ===",
+  "H_M_test-body rc=0 7s 01:17:17 === 324건 중 PASS 324 · FAIL 0 ===",
+  "H_B_test-body rc=0 7s 01:17:18 === 324건 중 PASS 324 · FAIL 0 ===",
+  "H_M_test-downed rc=0 289s 01:22:06 === 180건 중 PASS 180 · FAIL 0 ===",
+  "H_B_test-downed rc=0 289s 01:22:07 === 180건 중 PASS 180 · FAIL 0 ===",
+  "H_M_test-doors rc=0 5s 01:22:11 === 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+  "H_B_test-doors rc=0 5s 01:22:12 === 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+  "H_M_test-food-keep rc=0 9s 01:22:20 === 10건 중 PASS 10 · FAIL 0 ===",
+  "H_B_test-food-keep rc=0 9s 01:22:21 === 10건 중 PASS 10 · FAIL 0 ===",
+  "H_M_e2e-hp rc=0 104s 01:24:04 === 26건 중 PASS 26 · FAIL 0 ===",
+  "H_B_e2e-hp rc=0 104s 01:24:05 === 26건 중 PASS 26 · FAIL 0 ===",
+  "H_B_e2e-aim rc=0 57s 01:25:02 === PASS 15 / FAIL 0 ===",
+  "H_M_e2e-aim rc=0 58s 01:25:02 === PASS 15 / FAIL 0 ===",
+  "H_M_test-hunt-vis.r1 rc=0 46s 01:25:48 === 32건 중 PASS 32 · FAIL 0 ===",
+  "H_B_test-hunt-vis.r1 rc=0 46s 01:26:34 === 32건 중 PASS 32 · FAIL 0 ===",
+  "H_M_test-hunt-vis.r2 rc=0 45s 01:27:19 === 32건 중 PASS 32 · FAIL 0 ===",
+  "H_B_test-hunt-vis.r2 rc=0 44s 01:28:03 === 32건 중 PASS 32 · FAIL 0 ===",
+  "RUNA_H 01:28:03",
+  "vc_off rc=0 129s 01:30:12",
+  "vc_on rc=0 130s 01:30:13",
+  "sbc_on rc=0 537s 01:39:10 === 같음 3/3 · 판 538초 ===",
+  "sbc_off rc=0 526s 01:47:57 === 같음 3/3 · 판 526초 ===",
+  "RUNA_DONE 01:47:58"
+ ]
+}
