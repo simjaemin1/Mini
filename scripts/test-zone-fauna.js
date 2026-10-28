@@ -46,7 +46,7 @@ if (SUB === 'wild') {
     isTerrainBlockedLocal: () => false, isRockTileLocal: () => false, terrainMod: { getForestMultiplier: () => 2 },
     chunkManager: { chunkSize: CH, removeMob: () => {}, insertMob: () => {}, updateMobChunk: () => {} },
     players: new Map(), mobs, getActiveChunkKeys: () => keys, isPositionActive: () => true,
-    spawnCorpse: () => {}, damagePlayer: () => {}, broadcast: () => {}, simVillages: () => [], legacyVillages: [], warThreats: () => [],
+    spawnCorpse: () => {}, damagePlayer: () => {}, broadcast: () => {}, setMobHp: require('./lib-hp-door').makeSetMobHp(),   /* ★[T954] 짐승 HP 문 = 존의 그 문 글자(사본 0) */ simVillages: () => [], legacyVillages: [], warThreats: () => [],
     gameRichAt: (k) => LED.get(String(k)), gameRichSize: () => LED.size });
   const S = W._debug.S;
   let t = 60000;

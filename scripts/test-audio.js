@@ -1277,8 +1277,11 @@ console.log('\n⑱ ★★[T417] 동물 · 제작 완료 · 반경');
   const sp = Object.keys(man.mobs || {}).filter((k) => !k.startsWith('_'));
   ok(sp.length >= 7 && sp.every((k) => A[k]), '⑱b `mobs` 표의 종이 전부 `server/animals.js` 에 있다(새 종 0)', sp.join(' '));
   // ⑱c 짐승 사건 — 맞음은 hp 가 **줄 때만**(먹여 회복 `tryFeed` 도 같은 메시지)
-  ok(/function tryFeed[\s\S]{0,1500}type: 'mob_damaged'/.test(zsrc) && /msg\.hp < m\.hp/.test(layerCode),
-     '⑱c ★`mob_damaged` 는 먹여 회복에도 나간다 — 층은 직전 hp 보다 **줄 때만** 운다');
+  //   ★[T954] 몹 hp 를 쓰는 다섯 자리가 문 하나(`setMobHp(m, v, why)`)로 모였다 — `mob_damaged` 방송은 이제 그 문 안 한 줄이고 `tryFeed` 는
+  //     낱말 `'feed'` 로 그 문을 부른다. 같은 뜻을 세 글자로 본다: tryFeed 가 `'feed'` 로 문을 부른다 · `'feed'` 가 방송 낱말 표에 있다 · 문이 그 표로 방송한다.
+  ok(/function tryFeed[\s\S]{0,1500}setMobHp\([^\n]*'feed'\)/.test(zsrc) && /const MOB_HP_LOUD = new Set\(\[[^\]]*'feed'[^\]]*\]\)/.test(zsrc)
+     && /function setMobHp\(m, v, why\) \{[\s\S]{0,300}if \(MOB_HP_LOUD\.has\(why\)\) broadcast\(\{ type: 'mob_damaged'/.test(zsrc) && /msg\.hp < m\.hp/.test(layerCode),
+     '⑱c ★`mob_damaged` 는 먹여 회복에도 나간다(짐승 HP 문 · 낱말 `feed` — T954) — 층은 직전 hp 보다 **줄 때만** 운다');
   const ME = man.mobEvents || {};
   ok(KEYS[ME.hurt] && KEYS[ME.death] && ME.tamedCall === true, '⑱c2 `mobEvents` 의 키가 표에 있다(맞음·죽음 · 길들임 = 종 울음)', `${ME.hurt} · ${ME.death}`);
   // ⑱d 제작 완료 — 서버 한 줄(`doCraftCollect` 안 · 받은 게 있을 때) · 맡김은 낱말 없음
