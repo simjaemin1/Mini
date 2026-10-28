@@ -6025,6 +6025,14 @@ function _warGroupCentroid(g) { let x = 0, y = 0, n = 0; for (const u of g.units
 //   새 수 0 · 새 손잡이 하나 · 칸 둘(몸 `_t771C0` = 출격 시작의 접촉 수 · 전쟁 `_sortieMiss`).
 //   ★[T781 2026-10-18] 켬 기본(결함 고침 — PM) · 되돌림 `T771_SORTIE_MISS=0`(= 종전 글자 그대로).
 const T771_SORTIE_MISS = process.env.T771_SORTIE_MISS !== '0';   // ★[T781 10-18] 켬 기본 · 되돌림 `=0`
+// ★★[T956 2026-10-27 · T941 회부 2] **돌격 헛걸음도 결단에 돌려준다** — 손잡이 `T956_ASSAULT_MISS`(기본 끔 · 켜는 값 `'1'` 하나 · 끔 = 종전 글자 그대로).
+//   T771 의 거울: 공격 돌격(`_warEngage` 'assault' — 공격 쪽이 나선다 · 방어는 holder)이 **접촉 한 번 없이** 대치로 끝나면(`_warToStandoff`),
+//   그 사실(몸 층)을 전쟁에 남긴다(`w._assaultMiss` = 그날). war-core 가 이튿날 결단(`_opNpcDecide`)에서 **돌격 줄을 뺀 같은 표**로 고른다(포위 · 철수 — 새 수 0).
+//   ★왜(보고 T956 §2 · 서버 판 자 시드 1020 400날 `WAR_MINDAY=100` `T941_BATTLE_DAY=1`): 열다섯째 판 전쟁 22 중 일곱이 69 ~ 181날 날마다 돌격 → 접촉 0 → 대치를 되풀이했다 · 몸 상한 무제한 판도 같은 꼴
+//     (대치 수 = 날 수 · 출격 0 — T771 칸은 방어 출격만 본다). war-core 결단은 그날 돌격을 "판이 난 전투"로 셈한다(옛 headless — 돌격 = 결판)인데
+//     몸 층에선 닿지 못한 돌격이 대치로 끝나 진으로 돌아온다 ⇒ 이튿날 같은 승산으로 또 돌격 · 짐이 바닥나도 도박 돌격 줄(승산 ≥ `WAR_GAMBLE_ODDS`)이 또 돌격 ⇒ 끝이 없다.
+//   새 수 0 · 새 손잡이 하나 · 칸 둘(몸 `_t956C0` = 돌격 시작의 접촉 수 · 전쟁 `_assaultMiss`).
+const T956_ASSAULT_MISS = process.env.T956_ASSAULT_MISS === '1';
 // ── 교전 계기 — war-core onEngage(assault·sortie 결단)에서 부른다 ──
 //   true = 실체가 맡았다(w.phase='battle' — war-core 훅 계약). 군대 몸이 없으면(징발 0) 철수 처리(아래 _warNoArmy).
 function _warEngage(w, day, why) {
@@ -6039,6 +6047,7 @@ function _warEngage(w, day, why) {
   const side = (why === 'sortie' && body.defGroup) ? 'B' : 'A';
   f.holder = side === 'A' ? 'B' : 'A';
   if (T771_SORTIE_MISS) body._t771C0 = side === 'B' ? (f.contacts | 0) : null;   // ★[T771] 방어 출격이 시작될 때의 접촉 수(대치 때 그대로면 헛걸음)
+  if (T956_ASSAULT_MISS) body._t956C0 = side === 'A' ? (f.contacts | 0) : null;   // ★[T956] 공격 돌격이 시작될 때의 접촉 수(대치 때 그대로면 헛걸음)
   state.warLive.orderAdvance(f, side);
   state.warLive.setSideCtl(f, side, true);   // 먼저 행군로 위를 대형으로 걷는다 — 곧은 길이 열리고 교전 거리에 들면 풀린다(_warAdvanceMarch)
   f.adv = { side, released: false, s: null };
@@ -6065,6 +6074,7 @@ function _warToStandoff(body) {
   if (body.defGroup) { WL.regroup(body.defGroup); if (!body.defGroup.holdPt) body.defGroup.holdPt = { cx: body.defGroup.cmd.cx, cy: body.defGroup.cmd.cy }; }
   body.mode = 'camp';
   if (T771_SORTIE_MISS && body._t771C0 != null) { if (!f || (f.contacts | 0) === body._t771C0) w._sortieMiss = state.world.day; body._t771C0 = null; }   // ★[T771] 출격이 접촉 없이 끝났다 — 그날을 전쟁에 남긴다
+  if (T956_ASSAULT_MISS && body._t956C0 != null) { if (!f || (f.contacts | 0) === body._t956C0) w._assaultMiss = state.world.day; body._t956C0 = null; }   // ★[T956] 돌격이 접촉 없이 끝났다 — 그날을 전쟁에 남긴다
   w.phase = 'march'; w.op = 'camp'; w._sortie = false;
   state._warStat.standoff++;
   if (f) f.standoffs = (f.standoffs || 0) + 1;
