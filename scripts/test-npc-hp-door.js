@@ -9,6 +9,7 @@
 //     ③ 문을 부르는 자리 아홉 · 낱말 일곱(방송 낱말 `HP_PEER` 과 겹침 0 · 요양은 조용한 낱말 `regen`)
 //     ④ 존 배선 — `SimVillages.init` 이 문을 넘긴다 · 낱말 표 둘이 그 init 보다 위(다시 뜬 판 몸 복원이 init 안에서 문을 부른다 — TDZ) · 미끼
 //     ⑤ 실행(존 없이 · `__p3Bind` 목 세계 · 문은 **존 소스의 글자 그대로** 떼어 세운다) — 풀림 · 원정 굶음(ㄱ 판)이 문을 지나 값 · 메시지가 그대로인가
+//   ★[T973] ⓪ ~ ④ 는 `lib-hp-src.js` `npcSourceChecks` 를 부른다(hp 문 셋의 소스 검사 한 벌 · `test-hp-src` ⑤ 와 같은 함수).
 // 실행: node scripts/test-npc-hp-door.js
 'use strict';
 const path = require('path');
@@ -18,66 +19,13 @@ let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 const ZSRC = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 const VSRC = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
-// 주석을 걷는다(주석에 옛 줄을 적어 두는 카드라 그대로 세면 거짓 빨강). ⚠줄 주석을 **먼저** 걷는다 — 이 파일엔 `// … sim/* …` 줄이 있어
-//   블록 주석부터 걷으면 그 `/*` 가 거짓 블록을 열어 코드 수천 줄을 삼킨다(e2e-hp ⓪ 의 차례는 zone.js 에선 무해 · 여기선 아니다). 블록은 줄바꿈만 남겨 줄 번호를 지킨다.
-const strip = (src) => src.split('\n').map((l) => { const i = l.indexOf('//'); return i >= 0 ? l.slice(0, i) : l; }).join('\n').replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ''));
-const UNIT = new Set(['bu', 'A[i]']);   // 전투 단위(몸이 아니라 판의 칸 — `gu.bu` · 교전 `ctx.units`)
-// 몸 hp 를 직접 쓰는 자리 — `X.hp =` · `+=` · `-=` · `X['hp'] =` 중 전투 단위가 아닌 것
-function strays(src) {
-  const code = strip(src), out = [], units = [];
-  code.split('\n').forEach((l, i) => {
-    for (const m of l.matchAll(/([A-Za-z_$][\w$]*(?:\[[^\]]+\])?)\s*(?:\.hp|\[\s*['"]hp['"]\s*\])\s*(?:=|\+=|-=)(?!=)/g)) {
-      (UNIT.has(m[1]) ? units : out).push(`${i + 1}: ${l.trim().slice(0, 120)}`);
-    }
-  });
-  return { out, units };
-}
-const doorCalls = (src) => [...strip(src).matchAll(/(?<!function )\b_setHp\(\s*([A-Za-z_$][\w$]*)\s*,[^\n]*?,\s*'([a-z]+)'\s*\)\s*;/g)].map((m) => ({ who: m[1], why: m[2] }));
-const setOf = (src, name) => { const m = new RegExp(`const ${name} = new Set\\(\\[([^\\]]*)\\]\\)`).exec(src); return m ? (m[1].match(/'([^']+)'/g) || []).map((s) => s.slice(1, -1)) : null; };
+// ★[T973] ⓪ ~ ④(소스만 보는 절)의 몸통은 `scripts/lib-hp-src.js` `npcSourceChecks`(칸 `SPECS.npc`) 한 벌로 옮겼다 — 이 하네스와
+//   `test-hp-src` ⑤(미끼 판)가 같은 함수를 부른다(사본 0 · 글자 · 말 무변). ⑤ 실행만 여기 제 것이다.
+const L = require('./lib-hp-src');
+const WANT = L.SPECS.npc.whys;
 
 console.log('\n=== 마을 몸(NPC) HP 를 쓰는 문 — T942 ===');
-console.log('\n⓪ 전제');
-const FWD = 'function _setHp(p, v, why) { return state.deps.setHp(p, v, why); }';
-ok(/\nfunction setHp\(p, v, why\) \{/.test(ZSRC), '★⓪ 존의 문 `setHp(p, v, why)` 가 실재한다');
-ok(VSRC.split(FWD).length === 2 && (VSRC.match(/\bfunction _setHp\(/g) || []).length === 1,
-  '★⓪ 마을의 넘김은 한 줄 — deps 의 문을 **그대로** 부른다(값 · 깎기 · 알림을 마을이 따로 갖지 않는다 · 사본 0)');
-ok(!/\bconst HP_(PEER|QUIET)\b/.test(VSRC) && !/\bfunction setHp\(/.test(VSRC), '★⓪ 마을 층에 문 사본 0(낱말 표 · 깎기 함수가 없다)');
-
-console.log('\n① 소스 — 마을 층에서 몸 hp 를 직접 쓰는 자리');
-const S0 = strays(VSRC);
-ok(S0.out.length === 0, '★★① 마을 몸 hp 를 **직접 쓰는 자리가 없다**(문 하나 · 사본 0)', S0.out.length ? S0.out.join(' | ') : `남은 \`.hp\` 쓰기 ${S0.units.length}줄은 전투 단위뿐`);
-ok(S0.units.length >= 1, '★① 전투 단위 줄은 남아 있다(판의 칸 — 걸러내기가 실제로 무는 대상이 있다)', S0.units.map((u) => u.split(':')[0]).join(' · '));
-
-console.log('\n② 자명 통과 금지');
-{
-  const back = VSRC.replace("_setHp(p, 0, 'died');", 'p.hp = 0;');
-  ok(back !== VSRC && strays(back).out.length === 1, '★② 옛 직접 대입 한 줄(줄어드는 몸의 그 자리 죽음 `p.hp = 0`)을 되살린 사본은 잡힌다', strays(back).out.join(' | '));
-  const body2 = VSRC.replace(FWD, FWD + '\nfunction _t942Bait(b) { b.hp += 5; b[\'hp\'] = 1; }');
-  ok(strays(body2).out.length === 2, '★② `+=` · `[\'hp\']` 꼴도 잡힌다');
-  const unit2 = VSRC.replace(FWD, FWD + '\nfunction _t942Bait(bu) { bu.hp = 1; }');
-  ok(strays(unit2).out.length === 0 && strays(unit2).units.length === S0.units.length + 1, '★② 그리고 전투 단위 줄은 **안** 잡는다(거름망이 몸만 본다)');
-}
-
-console.log('\n③ 문을 부르는 자리');
-const PEER = setOf(ZSRC, 'HP_PEER'), QUIET = setOf(ZSRC, 'HP_QUIET');
-const calls = doorCalls(VSRC), whys = [...new Set(calls.map((c) => c.why))].sort();
-const WANT = ['captive', 'died', 'regen', 'release', 'restore', 'starve', 'war'];
-ok(calls.length === 9, '★③ 문을 부르는 자리 아홉(요양 · 전쟁 거울 · 포로 · 풀림 · 원정 굶음 둘 · 원정 굶어 죽음 · 그 자리 죽음 · 다시 뜬 판 복원)', `${calls.length} — ${calls.map((c) => c.why).join(' · ')}`);
-ok(JSON.stringify(whys) === JSON.stringify(WANT), '★③ 낱말 일곱 — 자리마다 그 일의 이름', whys.join(' · '));
-ok(!!PEER && PEER.length > 0 && whys.every((w) => !PEER.includes(w)), '★★③ 방송 낱말(`HP_PEER`)과 겹침 0 — 마을 몸 hp 는 방송되지 않는다(종전 그대로)', PEER ? `HP_PEER ${PEER.join(',')}` : '표 못 읽음');
-ok(!!QUIET && QUIET.includes('regen'), '★③ 요양 회복은 조용한 낱말(`regen` — 사람 자연 회복과 같은 뜻 · 같은 낱말)');
-
-console.log('\n④ 존 배선 — 문을 넘긴다 · 표는 init 보다 먼저');
-const initAt = (s) => s.indexOf('\nSimVillages.init({');
-const initTxt = (() => { const a = initAt(ZSRC); const b = ZSRC.indexOf('});', a); return a >= 0 && b > a ? ZSRC.slice(a, b) : ''; })();
-ok(/\n  setHp,\n/.test(initTxt), '★④ `SimVillages.init` 의 deps 가 존의 문 `setHp` 를 넘긴다');
-const orderOk = (s) => { const i = initAt(s), p = s.indexOf('\nconst HP_PEER = '), q = s.indexOf('\nconst HP_QUIET = '), mx = s.indexOf('\nconst PLAYER_MAX_HP = '); return i > 0 && p > mx && q > mx && p < i && q < i; };
-ok(orderOk(ZSRC), '★★④ 낱말 표 둘이 `SimVillages.init(...)` 보다 위 — init 안에서 도는 몸 복원(T747)이 문을 불러도 TDZ 0');
-{
-  const lines = ZSRC.split('\n'), pl = lines.find((l) => l.startsWith('const HP_PEER = ')), ql = lines.find((l) => l.startsWith('const HP_QUIET = '));
-  const late = ZSRC.replace('\n' + pl + '\n' + ql + '\n', '\n').replace('\nfunction setHp(p, v, why) {', '\n' + pl + '\n' + ql + '\nfunction setHp(p, v, why) {');
-  ok(late !== ZSRC && !orderOk(late), '★④ 미끼 — 표를 문 곁(init 아래)으로 되돌린 사본은 잡힌다');
-}
+L.npcSourceChecks(ok, { zone: ZSRC, villages: VSRC }, console.log);
 
 console.log('\n⑤ 실행 — 존 소스의 문 글자 그대로 · 마을 함수 그대로(존 없이)');
 const msgs = [], calls5 = [];
