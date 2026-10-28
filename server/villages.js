@@ -7506,6 +7506,7 @@ function _t731Jobs(now, T) {
       let g = null;
       add('events', () => { try { if (!g) g = _scanEventsSteps(); if (!g.next().done) return 'retry'; } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
     } else add('events', () => { try { _scanEventsDaily(); } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
+    if (state.deps.dayShelter) add('events', () => { try { state.deps.dayShelter(state.world.day | 0); } catch (e) { console.error(`[${state.zoneId}] 🛖 [T969] 쉼터 백필 실패:`, e.message); } });   // ★[T969] 켬 — 쉼터 백필 = econ 날 자리(존이 넘길 때만 · 끔 = 무동작)
     add('save', () => { state.saveQueue = V.slice(); });
     add('dist', () => {
       if (!state.distDirty) return;
@@ -7746,6 +7747,7 @@ function _openDayJobs(now, T) {
     let g = null;
     add('events', () => { try { if (!g) g = _scanEventsSteps(); if (!g.next().done) return 'retry'; } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
   } else add('events', () => { try { _scanEventsDaily(); } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
+  if (state.deps.dayShelter) add('events', () => { try { state.deps.dayShelter(state.world.day | 0); } catch (e) { console.error(`[${state.zoneId}] 🛖 [T969] 쉼터 백필 실패:`, e.message); } });   // ★[T969] 켬 — 쉼터 백필 = econ 날 자리(존이 넘길 때만 · 끔 = 무동작)
 
   // ⑨ 저장 큐 — 다음 틱부터 1마을/틱(종전 그대로).
   add('save', () => { state.saveQueue = C.vils.slice(); });
