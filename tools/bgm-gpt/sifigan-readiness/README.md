@@ -728,3 +728,42 @@ and fully decoded all four internal reference/new AACs. Only the two new
 candidates are copied to053/054. This audit imported no Torch and executed
 no model/GPU. Original sources, the rejected052, and game defaults remain
 preserved; no quality adoption or deployment is made.
+
+## Fixed-pitch control gate, 2026-10-29
+
+The user reports audible but tolerable noise in053/054 and asks to continue.
+This is permission to continue research, not adoption of game assets. A
+read-only exploratory harmonic-band comparison finds different noise/timbre
+errors across the two excerpts; neither a uniform hiss diagnosis nor blanket
+low-pass filtering is justified. Source breath/cheong sound is not a noise
+ground-truth label.
+
+`render_pitch_control.py` reuses the global3,000 generator without training.
+It first reproduces both saved4.8s baselines byte-for-byte, then applies the
+official constant F0-factor design: sourceF0 and continuousF0 are multiplied
+by2^(1/12), with the original zero mask retained. The new continuousF0 drives
+BOTH the official excitation and all four pitch-dependent dilation inputs.
+40mcep+3BAP, fit normalizer, gain, crop timing, sine/noise amplitudes and model
+weights stay fixed. CPU excitation RNG is restored per variant, while the
+next case receives the unchanged baseline RNG stream. No waveform pitch
+shifter or weight-normalization removal is substituted.
+
+This is a full constant+100cent transposition borrowing original articulation
+and spectral/AP features, NOT new-score generation or learned expression.
+Original-positivecf0 continues in source-unvoiced regions; no new rests,
+attacks, learned breath or voicing control are introduced. A virtual target
+of source-YIN×2^(1/12) is an estimator proxy, not transposed reference PCM.
+Source-only confidence/level masks retain candidate dropouts in denominators.
+Baseline-to-shifted measurements separately report actual pitch movement.
+
+Inference is limited to300seconds/50MB fresh output,8GiB conservativeRSS+MPS
+and12GiB free disk. Existing originals/models are read-only. Complete input,
+model and pinned-upstream hashes, raw controls, normalized features, raw PCM,
+per-case RNG hashes and numeric diagnostics are retained privately. Baseline
+mismatch blocks the shifted candidate rather than silently using tolerance.
+
+`export_pitch_control.py` loads no model. It applies the SAME disclosed
+reference-derived20ms/3tap RMS controller to baseline and shifted carriers,
+then the frozen static-LUFS comparator. No denoising, EQ, source-PCM mix or
+new learned amplitude model is used. Original sources, former auditions,
+game playback/defaultBGM and main remain unchanged.
