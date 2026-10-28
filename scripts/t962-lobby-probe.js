@@ -6,8 +6,8 @@
 //   시작 화면 · 아이콘 · 지면 데우기)과 겹친 ms. 남은 몫 = "표시 없음"(스크립트 평가 · 배치 · 그림 해독 · GC).
 //   크롬은 덧붙여 성능 추적(devtools.timeline)으로 RunTask > 50ms 마다 맨 위 사건(EvaluateScript · EventDispatch load · Layout …)을 적는다(--trace).
 //   `--hash` = 마을 그림 캔버스 여덟 장 + 방 지붕 한 장의 화소 해시(T962 ② 값 같음 증명) — 다 구워질 때까지 기다린다.
-//   손잡이는 주소창 한 칸이다(`--q T962_VIL_SLICE=1` · 서버 무접촉).
-// 실행: [E2E_BROWSER=webkit] [손잡이 env] node scripts/t962-lobby-probe.js [--n 3] [--lobby 8] [--out /tmp/t962] [--tag 이름] [--trace] [--hash] [--q T962_VIL_SLICE=1]
+//   손잡이는 central env 다(★T982 — `T962_VIL_SLICE=0` 을 얹어 부르면 끔 · 이 자를 부른 env 를 central 이 물려받는다). `--q` 는 주소창 덧붙임(남김).
+// 실행: [E2E_BROWSER=webkit] [손잡이 env] node scripts/t962-lobby-probe.js [--n 3] [--lobby 8] [--out /tmp/t962] [--tag 이름] [--trace] [--hash] [--enter] [--q 주소창]
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -24,7 +24,8 @@ const BR = BRW.which();
 const TAG = arg('--tag', BR);
 const TRACE = has('--trace') && BR === 'chromium';
 const HASH = has('--hash');
-const Q = arg('--q', '');   // 주소창 손잡이(예: T962_VIL_SLICE=1)
+const ENTER = has('--enter');
+const Q = arg('--q', '');   // 주소창 덧붙임(T962 때 손잡이였다 · T982 부터 central env)
 const CPORT = 3010, ZPORT = 3020;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
@@ -69,7 +70,16 @@ function traceTasks(file) {                 // 크롬 추적 — 렌더러 주 �
     const tfile = path.join(OUT, `t962-trace-${TAG}-${i + 1}.json`);
     if (TRACE) await browser.startTracing(page, { path: tfile, categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8'] });
     await page.goto(`http://localhost:${CPORT}/${Q ? '?' + Q : ''}`, { waitUntil: 'domcontentloaded' });
-    await sleep(LOBBY * 1000);   // ★로비 동안 페이지를 안 건드린다(waitForFunction 은 자 스크립트를 페이지 안에서 컴파일해 크롬에서 180~330ms 긴 작업을 하나 더 낸다 — 실측)
+    let ent = null;
+    if (ENTER) {   // ★[T982] 빠른 누름 — 단추가 켜지는 대로 누르고 들어가 마을 그림이 주 존에 붙기 전에 다 됐는지(`_vilFinish`) 본다
+      for (let k = 0; k < 600 && !(await page.evaluate(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); })); k++) await sleep(50);
+      const en = await page.$('#enter'); if (en) await en.click();
+      const inw = await require('./fixture-clock.js').waitInWorld(page, { timeoutMs: 240000 });
+      for (let k = 0; k < 60 && !(await page.evaluate(() => _ld.at.frame1 != null)); k++) await sleep(250);
+      ent = await page.evaluate(() => ({ inWorld: true, click: _ld.at.click && +_ld.at.click.toFixed(0), ws: _ld.at.ws && +_ld.at.ws.toFixed(0), frame1: _ld.at.frame1 && +_ld.at.frame1.toFixed(0),
+        vilDone: _lob.mk.vilDone && +_lob.mk.vilDone.toFixed(0), vil: _lob.vil || null, artAll: !!(_tileYardC && _tilePlazaC && _tileHutC && _wallNC && _wallEC && _bakeRoofFn && _hutRoofC && _hallRoofC && _granC) }));
+      ent.inWorld = inw.ok;
+    } else await sleep(LOBBY * 1000);   // ★로비 동안 페이지를 안 건드린다(waitForFunction 은 자 스크립트를 페이지 안에서 컴파일해 크롬에서 180~330ms 긴 작업을 하나 더 낸다 — 실측)
     if (TRACE) await browser.stopTracing();
     const r = await page.evaluate(() => _lobTable());
     let pix = null;
@@ -82,13 +92,14 @@ function traceTasks(file) {                 // 크롬 추적 — 렌더러 주 �
           gran: hs(_granC), room: hs(room), anchors: [_hutRoofC._ox, _hutRoofC._oy, _hallRoofC._ox, _hallRoofC._oy, _granC._ox, _granC._oy, room && room._ox, room && room._oy].join(',') };
       });
     }
-    r.pix = pix;
+    r.pix = pix; r.enter = ent;
     if (TRACE) { r.trace = traceTasks(tfile); try { fs.unlinkSync(tfile); } catch (e) {} }
     console.log(`\n--- ${i + 1} --- 로비 ${r.span}ms · >50ms ${r.n}판 · 합 ${r.sum}ms · 최대 ${r.max}ms · 1위 ${r.rank[0] ? r.rank[0].n + ' ' + r.rank[0].ms : '-'} · 때 ${JSON.stringify(r.mk)}${r.vil ? ' · 굽기 ' + JSON.stringify(r.vil) : ''}`);
     for (const b of r.blocks) console.log(`   @${String(b.at).padStart(5)} ${String(b.ms).padStart(5)}ms  ${b.who.map((w) => w.n + ' ' + w.ms).join(' · ')}`);
     console.log(`   일: ${r.steps.map((s) => s.n.replace(/\(.*\)/, '') + ' ' + s.ms.toFixed(0)).join(' · ')}`);
     if (r.trace) for (const t of r.trace) console.log(`   [추적] @${t.at} ${t.ms}ms(GC ${t.gc}) ${t.top.map((x) => x.n + ' ' + x.ms).join(' | ')}`);
     if (pix) console.log(`   해시 ${JSON.stringify(pix)}`);
+    if (ent) console.log(`   빠른 누름 ${JSON.stringify(ent)}`);
     runs.push(r);
     fs.writeFileSync(path.join(OUT, `t962-lobby-${TAG}.json`), JSON.stringify({ browser: BR, tag: TAG, runs }, null, 1));
     await browser.close(); await sleep(1500);

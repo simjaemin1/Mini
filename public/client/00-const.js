@@ -729,7 +729,11 @@ function cropSprite(stage, crop) {
     const steps = S.map((s) => ({ n: s.n, at: +s.at.toFixed(0), ms: +s.ms.toFixed(1) })).sort((x, y) => y.ms - x.ms);
     const sum = blocks.reduce((a, b) => a + b.ms, 0), max = blocks.reduce((a, b) => Math.max(a, b.ms), 0);
     const mk = {}; for (const k in _lob.mk) mk[k] = +_lob.mk[k].toFixed(0);
-    return { span: +(end - _lob.t0).toFixed(0), n: blocks.length, sum, max, blocks, rank, steps, mk, vil: _lob.vil || null };
+    // ★[T982 ②] 첫 배치(스크립트 앞) 견줌 재료 — 문서 받음 · 첫 스크립트 시작(00-const) · 첫 그림(FCP) · DOMContentLoaded (상자 크롬 추적의 첫 Layout 판과 맥 Safari 를 견준다)
+    const nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || null;
+    const fcpE = (performance.getEntriesByType && performance.getEntriesByType('paint').find((e) => e.name === 'first-contentful-paint')) || null;
+    const first = { resp: nav ? +nav.responseEnd.toFixed(0) : null, script0: +_lob.t0.toFixed(0), fcp: fcpE ? +fcpE.startTime.toFixed(0) : null, dcl: nav && nav.domContentLoadedEventStart ? +nav.domContentLoadedEventStart.toFixed(0) : null };
+    return { span: +(end - _lob.t0).toFixed(0), n: blocks.length, sum, max, blocks, rank, steps, mk, first, vil: _lob.vil || null };
   }
   function _lobLines() {
     const L = _lobTable(), top = L.blocks.slice().sort((a, b) => b.ms - a.ms).slice(0, 6);
@@ -737,6 +741,7 @@ function cropSprite(stage, crop) {
       `로비 막힘(T962 · 뜸 → 눌림 ${L.span}ms${_lob.end == null ? ' · 아직 로비' : ''}): >50ms ${L.n}판 · 합 ${L.sum}ms · 최대 ${L.max}ms · 1위 ${L.rank[0] ? L.rank[0].n + ' ' + L.rank[0].ms + 'ms' : '-'}${L.vil ? ` · 마을 그림 굽기 ${L.vil}` : ''}`,
       `로비 막힌 판(큰 순): ` + (top.length ? top.map((b) => `@${b.at} ${b.ms}ms[${b.who.map((w) => w.n + ' ' + w.ms).join(' · ')}]`).join(' / ') : '없음'),
       `로비 일 ms: ` + L.steps.slice(0, 10).map((s) => `${s.n} ${s.ms.toFixed(0)}`).join(' · '),
+      `첫 배치(스크립트 앞 · T982): 문서 받음 ${L.first.resp == null ? '-' : L.first.resp}ms → 첫 스크립트 ${L.first.script0}ms · 첫 그림(FCP) ${L.first.fcp == null ? '-' : L.first.fcp}ms · DOMContentLoaded ${L.first.dcl == null ? '-' : L.first.dcl}ms`,
     ];
   }
   function _ldFcSnap() { return { r: window.__fcRenderMs || 0, m: window.__fcMsgMs || 0, mn: window.__fcMsgN || 0, tile: +(window._tileAcc || 0), water: +(window._waterAcc || 0),
