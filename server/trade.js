@@ -268,13 +268,32 @@ function _giver(D, inventory, giveRes, unitsOf) {
     return w;
   };
   const units = (w) => { let u = 0; for (const [it, n] of Object.entries(w)) u += unitsOf ? Number(unitsOf(it, n)) || n : n; return u; };
-  return { playerItems, have, pick, units };
+  //   ★[T965] c 개의 단위(가진 것 너머는 첫 개체 단위로 잇는다 — 실행은 거기서 "없다") — 견적의 `_gAt` 식을 이리 올렸다(견적 · 실행이 같은 함수 · 값 무변)
+  const at = (c) => (c <= have ? units(pick(c)) : units(pick(have)) + (c - have) * ((have >= 1 ? units(pick(1)) : 0) || 1));
+  return { playerItems, have, pick, units, at };
 }
 function _trimToCap(econV2, v, giveRes, takeRes, n0, unitsAt, capped, maxGive, perItem, cap) {
   const n = (capped && perItem > 0) ? Math.min(n0, Math.floor(maxGive / perItem)) : n0;
   const u = unitsAt(n);
   const pl = u > 0 ? planSliced(econV2, v, giveRes, takeRes, u, cap) : { took: 0 };
   return { n, u, took: pl.took };
+}
+// ★★[T965 2026-10-28 · 세션2 · land1028 게이트 `test-t835-quote-weight` ⓓ 빨강] **받을 양 주문의 올림 걸음은 고른 그 개체들의 단위로 연속해 아래 마지막 낱개에서 출발한다** —
+//   손잡이 하나 `T965_WANT_START`(켬 기본 · 되돌림 `=0` = 종전 바이트).
+//   결함: 올림 걸음(`_climbToWant`)은 위로만 걷는다 — "한 칸 아래에서 출발해 닿는 첫 정수까지"가 최소가 되려면 출발점이 최소 낱개 **아래**여야 한다.
+//     견적의 켬 갈래(T835)는 단위를 고른 그 개체들(`_gAt`)로 재면서도 출발점은 `⌊연속해 ÷ 첫 개체 단위⌋` 였다 — 정본 순서로 고르면 뒤 아이템이 앞 것보다
+//     무거울 수 있고(익힌 음식 — 생선 0.9 단위 뒤에 고기 3.0 단위) 그때 출발점이 최소보다 **위**에서 시작해 내려오지 못한다 → 받을 양보다 많이 내고
+//     (열다섯째 판 시드 7 · 마을 5 · 200날 · 마을3 익힌 음식 → 나무 21: 최소 10개 · 견적 20 에서 출발 → 상한 절삭으로 12 · 실행 11 = 견적 ≠ 실행 · 넘침),
+//     실행은 견적의 낱개에서 출발해 위로만 걸어 같이 넘친다(끔 견적 — 한 개짜리 어림 — 에서 출발해도 같다).
+//   켜면 두 자리(견적의 켬 갈래 · 실행의 받을 양 주문)가 출발점을 **단위가 연속해를 안 넘는 마지막 낱개**(아래 `_countAtOrBelow` — 고른 그 개체들의
+//     단위 함수에 정수 이분 탐색 · 단위는 낱개를 더할수록 는다)로 잡는다 — 무게가 고르면 종전 출발점과 같은 수다. 걸음 · 절삭 · 값 셈은 그대로(새 수 0).
+const T965_ON = !(typeof process !== 'undefined' && process.env && process.env.T965_WANT_START === '0');   // ★[T965] 켬 기본 · 되돌림 `=0`
+function _countAtOrBelow(gu, unitsAt, maxN) {   // 단위(`unitsAt(c)`)가 연속해 `gu` 를 안 넘는 마지막 낱개 c(0 ~ maxN) — 0 낱개 = 0 단위
+  let lo = 0, hi = 1;
+  while (hi < maxN && unitsAt(hi) <= gu) { lo = hi; hi = Math.min(maxN, hi * 2); }
+  if (unitsAt(hi) <= gu) return hi;
+  while (hi - lo > 1) { const mid = Math.floor((lo + hi) / 2); if (unitsAt(mid) <= gu) lo = mid; else hi = mid; }
+  return lo;
 }
 function _climbToWant(n0, want, unitsAt, takeAt, maxN) {
   let n = Math.max(CFG.MIN_GIVE, n0);
@@ -318,7 +337,7 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   //   ★[T835] 켬 + 호스트가 낼 사람 인벤(`opts.inventory`)을 넘겼으면 낼 단위 = **고른 그 개체들**(`_giver` · 실행과 같은 함수) — 개수는 `opts.giveCount`.
   const _G = (T835_ON && opts && opts.inventory) ? _giver(ledger.deliverable, opts.inventory, giveRes, (typeof opts.unitsOf === 'function') ? opts.unitsOf : null) : null;
   const _gN = (_G && Number(opts.giveCount) >= 1 && _G.have >= Math.floor(Number(opts.giveCount))) ? Math.floor(Number(opts.giveCount)) : 0;
-  const _gAt = _G ? ((c) => (c <= _G.have ? _G.units(_G.pick(c)) : _G.units(_G.pick(_G.have)) + (c - _G.have) * ((_G.have >= 1 ? _G.units(_G.pick(1)) : 0) || 1))) : null;   // c 개의 단위(가진 것 너머는 첫 개체 단위로 잇는다 — 실행은 거기서 "없다")
+  const _gAt = _G ? _G.at : null;   // c 개의 단위(가진 것 너머는 첫 개체 단위로 잇는다 — 실행은 거기서 "없다") · ★[T965] 식은 `_giver` 의 `at`(값 무변)
   const q = _gN ? _gAt(_gN) : Math.max(0, Number(giveQty) || 0);
   // 한계비율(첫 조각) — 표시용. 실제 수령량은 아래 planSliced 가 곡선을 따라 낸다.
   const ratio = (pA * (1 - s)) / (pB * (1 + s));
@@ -380,7 +399,7 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
       //   (엡실론 눈대중은 답이 아니다). ⇒ **한 칸 아래에서 출발해 위 `_climbToWant` 로 올라간다.**
       const _takeAt = (u) => { const t = planSliced(econV2, v, giveRes, takeRes, Math.max(0, u), cap).took; return conv ? conv.items(t).items : Math.floor(t); };
       const _uAt = _G ? _gAt : ((c) => c * perItem);   // ★[T835] 켬 = 올림 걸음의 자도 고른 그 개체들(실행의 `_climbToWant` 와 같은 자)
-      const n = _climbToWant(Math.floor(gu / perItem), want, _uAt, _takeAt, Infinity);
+      const n = _climbToWant((T965_ON && _G) ? _countAtOrBelow(gu, _uAt, Infinity) : Math.floor(gu / perItem), want, _uAt, _takeAt, Infinity);   // ★[T965] 켬 = 고른 그 개체들의 단위로 연속해 아래 마지막 낱개에서(끔 = 첫 개체 단위로 나눈 출발점)
       out.giveNeeded = n;
       out.giveNeededUnits = +gu.toFixed(6);
       out.takeAtNeeded = _takeAt(_uAt(n));
@@ -438,10 +457,11 @@ function exchange(a) {
     }
     // ★견적의 `giveNeeded` 에서 출발해, **고른 그 개체들의 실제 무게**로 다시 재며 올라간다.
     //   걸음은 견적과 **같은 함수**다(`_climbToWant`) — 자만 어림에서 실측으로 바뀐다.
-    q0 = _climbToWant(qw.giveNeeded, wantTake,
-      (c) => _units(_pick(c)),
-      (u) => _takeN(planSliced(econV2, v, giveRes, takeRes, u, (qw.capU != null) ? qw.capU : qw.cap).took),
-      have);
+    const _tw = (u) => _takeN(planSliced(econV2, v, giveRes, takeRes, u, (qw.capU != null) ? qw.capU : qw.cap).took);
+    //   ★[T965] 켬 = 견적 낱개가 아니라 연속해(`giveNeededUnits`) 아래 마지막 낱개에서 출발해 고른 그 개체들(`G.at` — 가진 것 너머는 첫 개체 단위로 이음)로 오른다
+    //     — 가진 것보다 많이 닿아야 하면 아래 "그만큼 없다"가 그 낱개 수로 말한다(끔 = 종전 글자 · 견적 낱개에서 · 가진 것까지)
+    q0 = T965_ON ? _climbToWant(_countAtOrBelow(qw.giveNeededUnits, G.at, Infinity), wantTake, G.at, _tw, Infinity)
+      : _climbToWant(qw.giveNeeded, wantTake, (c) => _units(_pick(c)), _tw, have);
   } else {
     q0 = Math.max(0, Math.floor(Number(a.giveQty) || 0));       // ★플레이어가 내는 건 **개수**다
   }
@@ -511,4 +531,4 @@ function exchange(a) {
            stockAfter: +v.storage[takeRes].toFixed(3), ...(conv ? { takeUnits: spend } : {}) };   // ★[T748] 켬이면 나간 단위도
 }
 
-module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON, T835_ON };
+module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON, T835_ON, T965_ON };

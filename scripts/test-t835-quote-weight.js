@@ -17,9 +17,9 @@
 //
 // 실행: node scripts/test-t835-quote-weight.js   (존 안 띄움 · 약 3분)
 'use strict';
-// ★[PM 10-27 · land1028] 픽스처 세계는 `T931_SLOTK_EMA` 켬 기본(`'season'` · 열다섯째 판) **앞** 세계로 돈다(되돌림 `=0` · 단언 무변) —
-//   열다섯째 판 곳간에선 ⓓ(받을 양 주문) 켬 갈래가 끔과 갈렸다(켬 넘침 79 · 끔 4) → T965 가 결함인지 가른다(T943 이 test-lab-stone · test-moment-lot 에 한 것과 같은 꼴).
-process.env.T931_SLOTK_EMA = '0';
+// ★[T965 2026-10-28] 열다섯째 판(`T931_SLOTK_EMA` 켬 기본) 세계 그대로 돈다 — PM 10-27(land1028)의 `=0` 묶음을 지웠다(단언 · 픽스처 무변).
+//   그 세계에서 ⓓ 가 갈린 것(켬 넘침 79 · 견적 ≠ 실행 2/960 · 켬 ≠ 끔 실행 81)은 결함이었다 — 받을 양 주문의 올림 걸음이 최소 낱개 **위**에서 출발해
+//   내려오지 못했다(정본 순서로 고르면 뒤 아이템이 첫 개체보다 무겁다 · `server/trade.js` `T965_WANT_START` · 보고 T965). 고친 뒤 두 세계 16/16.
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
