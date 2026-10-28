@@ -389,6 +389,31 @@ function upsertPickedSeed(key, taken) { _picked().up.run(key, taken); }
 function getAllPickedSeeds() { return _picked().all.all(); }
 function deletePickedSeed(key) { if (!key) return 0; try { return _picked().del.run(key).changes || 0; } catch (e) { return 0; } }
 
+// === ★★[T978 2026-10-28] 덜 벤 시드 자연물의 남은 hp ================================
+//   `picked_seeds`(T495) · `fish_cells` · `mined_cells` 와 **같은 문법**: 온전한 개체는 적지 않는다(암묵적 온전) → 표가 작다.
+//   type = 그 hp 를 받은 개체의 종(나무 · 바위 · 광맥 …) — 같은 시드 키가 다른 단계(그루터기 · 묘목)로 다시 서면 그 줄은 안 맞는다.
+//   ★표는 **처음 부를 때** 짓는다 — 손잡이(`T978_SEED_HP` 켬 기본)를 끄면(`=0`) 존이 이 문을 한 번도 안 부르므로 DB 가 한 바이트도 안 바뀐다.
+let _seedHpStmts = null;
+function _seedHp() {
+  if (_seedHpStmts) return _seedHpStmts;
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS seed_hp (
+      seed_key  TEXT PRIMARY KEY,
+      type      TEXT NOT NULL,
+      hp        REAL NOT NULL
+    );
+  `);
+  _seedHpStmts = {
+    up: db.prepare('INSERT INTO seed_hp (seed_key, type, hp) VALUES (?, ?, ?) ON CONFLICT(seed_key) DO UPDATE SET type=excluded.type, hp=excluded.hp'),
+    all: db.prepare('SELECT seed_key, type, hp FROM seed_hp'),
+    del: db.prepare('DELETE FROM seed_hp WHERE seed_key = ?'),
+  };
+  return _seedHpStmts;
+}
+function upsertSeedHp(key, type, hp) { _seedHp().up.run(key, type, hp); }
+function getAllSeedHp() { return _seedHp().all.all(); }
+function deleteSeedHp(key) { if (!key) return 0; try { return _seedHp().del.run(key).changes || 0; } catch (e) { return 0; } }
+
 // === §4-4 Stage 1: NPC 마을 시뮬 (server/villages.js) — 추가 전용 스키마 ===
 // 기존 테이블 불변. CREATE TABLE IF NOT EXISTS라 구DB에도 마이그레이션 안전.
 //   villages: 마을 1행 = econ 인스턴스 1개. econ_state = tickVillage 재개에 필요한 전체
@@ -751,6 +776,7 @@ module.exports = {
   insertHarvestedSeed, getAllHarvestedSeeds, promoteHarvestedDays, deleteHarvestedSeed,   // ★[T341] 재생 — 벤 기록을 지우는 문
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   upsertFishCell, getAllFishCells, deleteFishCell,
+  upsertSeedHp, getAllSeedHp, deleteSeedHp,   // ★[T978] 덜 벤 시드 자연물의 남은 hp(켠 팔만 · 표는 처음 쓸 때)
   upsertPickedSeed, getAllPickedSeeds, deletePickedSeed,   // ★[T495] 부분 수확 — 개체에 남은 단위(켠 팔만 · 표는 처음 쓸 때)
   // §4-4 마을 시뮬 (villages.js)
   getWorldMeta, upsertWorldMeta, saveVillagesAndMeta,   // ★[T728]
