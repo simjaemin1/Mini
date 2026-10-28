@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress
-// === scripts/test-food-keep.js — 굶는 마을은 먹을 것을 내다 팔지 않는다(T825 · 손잡이 `T825_FOOD_KEEP`='1' · 없음 = 끔 = main 바이트 · ★[T928] 하한 = 하루치) ===
+// === scripts/test-food-keep.js — 굶는 마을은 먹을 것을 내다 팔지 않는다(T825 · 손잡이 `T825_FOOD_KEEP` · ★[T935] 켬 기본 · 되돌림 `=0` · ★[T928] 하한 = 하루치) ===
 //
 // ★왜 [T796 회부 4 · T825] 잉여 셈(`economy-sim-v2.js` 발주 후보)은 식량류 넷(food · fish · meat · cooked_food)만 식량 하한(36일치)으로 본다.
 //   생곡(쌀 · 밀 · 보리)은 곳간 식량 환산(`totalFoodEquivalent`)에 드는데 "그 외: 15일치" 줄로 잡혀, 하루치도 안 남은 마을이 쌀을 실어 보냈다.
@@ -11,7 +11,7 @@
 //   ① 굶는 마을(식량류 0 · 쌀만 · 곳간 식량 환산 < 하루치) — 끔은 먹을 것을 싣는다(상황 assert · 자명 통과 금지) · 켬은 먹을 것 0
 //   ② 1 ~ 36일치 마을(식량류 0 · 쌀 · 곳간 약 7일치) — ★켬도 판다(36일 하한으로 되돌아가면 문다) · 실은 뒤 곳간 ≥ 하루치
 //      그 마을은 켬 · 끔 같은 수를 싣는다(하루치 위에선 손잡이가 안 닿는다 · F = 배부른 마을은 세계를 채우는 이웃으로만)
-//   ③ 세계 전체 — 켬이면 어느 마을도 먹을 것을 싣다가 하루치 밑으로 안 내려간다 · 손잡이 값('1' 만 켬)
+//   ③ 세계 전체 — 켬이면 어느 마을도 먹을 것을 싣다가 하루치 밑으로 안 내려간다 · 손잡이 값(★[T935] 없음 = 켬 · '0' 만 끔)
 // 실행: node scripts/test-food-keep.js
 'use strict';
 const path = require('path');
@@ -28,7 +28,7 @@ if (process.env.T825_SUB === '1') {
   const legs = [];
   world.onTradeLeg = (o) => { const v = world.villages[o.vid]; legs.push({ day: o.day, from: o.from, res: o.res, units: o.units, f: fw(o.res), tfe: V1.totalFoodEquivalent(v), N: v.npcs.length }); };
   const S = world.villages[0], F = world.villages[1], M = world.villages[2];
-  const out = { on: process.env.T825_FOOD_KEEP === '1', riceF: fw('rice'), S: S.name, F: F.name, M: M.name, days: 0 };
+  const out = { on: process.env.T825_FOOD_KEEP !== '0', riceF: fw('rice'), S: S.name, F: F.name, M: M.name, days: 0 };
   //   ★교역 바로 앞에 곳간을 맞춘다 — 하루치 문턱은 그날 생산(밀 · 연어 …)이 들어온 뒤의 곳간을 본다(`tickWorldV2` 와 같은 순서 · `tickWorldV2Parts`)
   //   S: 식량류 0 · 먹을 것은 쌀 인구 × 1.3(0.94일치 — 굶는 날) / M: 식량류 0 · 쌀 인구 × 10(7.2일치) / F: 식량류 36일치 + 1할 · 쌀 인구 × 5
   const setStores = () => { for (const v of [S, F, M]) { for (const r of Object.keys(v.storage)) if (fw(r) > 0) v.storage[r] = 0; }
@@ -49,7 +49,7 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const sub = (env) => { const e = Object.assign({}, process.env, env, { T825_SUB: '1' }); delete e.NODE_OPTIONS; if (!('T825_FOOD_KEEP' in env)) delete e.T825_FOOD_KEEP;
   const t = execFileSync(process.execPath, [__filename], { env: e, stdio: 'pipe', maxBuffer: 64 << 20 }).toString().trim(); return JSON.parse(t.split('\n').filter((l) => l.startsWith('{')).pop()); };
 console.log('\n=== T825 — 굶는 마을은 먹을 것을 내다 팔지 않는다(하한 = 하루치) ===');
-const OFF = sub({}), ON = sub({ T825_FOOD_KEEP: '1' }), KNOB = sub({ T825_FOOD_KEEP: 'true' });
+const OFF = sub({ T825_FOOD_KEEP: '0' }), ON = sub({}), KNOB = sub({ T825_FOOD_KEEP: 'true' });   // ★[T935] 켬 기본
 const edible = (L, who) => L.legs.filter((l) => l.from === who && l.f > 0);
 const DAY = (l) => l.N * 1;   // 하루치(`SUBSISTENCE_PER_NPC.food` = 1 · 그 마을 인구)
 console.log('\n① 굶는 마을(곳간 < 하루치)');
@@ -68,7 +68,7 @@ console.log('\n③ 세계 전체 · 손잡이');
   const offLow = ed(OFF).filter((l) => l.tfe < DAY(l) - 1e-6), onLow = ed(ON).filter((l) => l.tfe < DAY(l) - 1e-6);
   ok(offLow.length > 0, '상황 — 끔에선 세계 전체에 하루치 밑으로 내려가며 실은 먹을 것 leg 가 있다', `${offLow.length} · ${[...new Set(offLow.map((l) => l.res))].join(' ')}`);
   ok(onLow.length === 0 && ed(ON).length > 0, '★켬 — 세계 전체 먹을 것 leg 가 하나도 하루치 밑으로 안 내려간다(그리고 먹을 것 leg 는 남아 있다)', `${onLow.length} / ${ed(ON).length}`); }
-ok(OFF.on === false && ON.on === true, "'1' 만 켬 — 없음 = 끔");
-ok(JSON.stringify(KNOB.legs) === JSON.stringify(OFF.legs), "다른 값('true')은 끔 — leg 줄 글자 그대로");
+ok(OFF.on === false && ON.on === true, "★[T935] 없음 = 켬 — '0' 만 끔");
+ok(JSON.stringify(KNOB.legs) === JSON.stringify(ON.legs), "다른 값('true')은 켬 — leg 줄 글자 그대로(되돌림은 '0' 하나)");
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
