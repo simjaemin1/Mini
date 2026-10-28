@@ -18,14 +18,14 @@
 const v1 = require('./economy-sim');
 // ★[T180] 되돌림 — 끄면 종전(굶는 마을도 돌을 판다) **비트 동일**. 채택값은 ON(한 줄 결함 수리).
 const T180_STONE_EXPORT = !(typeof process !== 'undefined' && process.env && process.env.T180_STONE_EXPORT === '0');
-// ★★[T825 2026-10-20 · T796 회부 4] **곳간이 바닥인 마을은 먹을 것을 내다 팔지 않는다** — 손잡이 `T825_FOOD_KEEP`('1' 만 켬 · 없음 · 다른 값 = 끔 = main 바이트 · ★[T928] 하한 = 하루치).
+// ★★[T825 2026-10-20 · T796 회부 4] **곳간이 바닥인 마을은 먹을 것을 내다 팔지 않는다** — 손잡이 `T825_FOOD_KEEP`(★[T935] 켬 기본 · 되돌림 `=0` · ★[T928] 하한 = 하루치).
 //   아래 잉여 셈은 식량류 넷(`FOODR` — food · fish · meat · cooked_food)만 식량 하한(36일치 = `target × 1.2`)으로 본다.
 //   생곡(쌀 · 밀 · 보리 — 도정 수율 0.72) · 채집 · 보존식 · 작물은 **식량 환산에 드는데**(`v1.totalFoodEquivalent` — 곳간 · K · 사다리가 먹는다)
 //   "그 외: 15일치" 줄로 잡혀, 하루치도 안 남은 마을이 쌀을 실어 보냈다(T796 · 3시드 800일 굶는 날 수출 식량 환산 1,700 ~ 2,500).
 //   켬: 그런 품목의 잉여 = 곳간 식량 환산이 **하루치**(`SUBSISTENCE_PER_NPC.food × N` — 그 마을 하루 먹는 양 · 굶는 날 선)를 넘는 몫까지(그 품목 단위로) · 넘는 몫이 없으면 후보가 아니다.
 //   ★[T928 · T905 ㄴ] 처음엔 식량류 `keep`(36일치)을 하한으로 썼다 — 1 ~ 36일치 마을(농촌 · 어촌)의 교역이 막혀 굶는 마을로 가는 캐러밴이 줄고 굶는 마을-날이 늘었다(T905 · +2,408 띠 밖). 하루치로 좁혔다.
 //   품목 하나의 식량 값은 `v1.totalFoodEquivalent` 를 그 품목 1 만 든 곳간에 물어 얻는다(사본 0 · 새 수 0).
-const T825_FOOD_KEEP = (typeof process !== 'undefined' && process.env && process.env.T825_FOOD_KEEP === '1');   // ★[T928] '1' 만 켬 — 켬 기본은 회부(T928 판 띠 밖 나빠짐 · 보고 T928)
+const T825_FOOD_KEEP = !(typeof process !== 'undefined' && process.env && process.env.T825_FOOD_KEEP === '0');   // ★[T935 · PM 10-26 · T928 회부 1 ㄱ] 켬 기본 · 되돌림 `=0`(랩 = 번들 shim 빈 env = 켬 · 서버와 같다)
 const _t825FW = new Map();
 function _t825FoodPer(v, r) {   // 품목 1 단위의 식량 환산(정본 `totalFoodEquivalent` 그대로 · 세계가 주입한 작물 표는 그 마을의 `_world` 로)
   const k = r + '|' + ((v && v._world) ? 'w' : '-');
