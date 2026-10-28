@@ -1,4 +1,5 @@
 // @@split:99-main — 최상위 실행문 — 뒤 참조 26개(원문 순서)
+  _lobWatch();   // ★[T962] 로비 막힘 자 — 맨 앞(00-const `_lobWatch` · `__loadReport()` 맨 위 "로비" 줄)
 // @@moved-begin:199
   window.__moveDbg = () => ({
     model: _moveParams.model, vx: myVel.vx, vy: myVel.vy,
@@ -74,6 +75,7 @@
       if (!r.ok) return;
       const all = await r.json();
       if (!window.Terrain || !window.Terrain.setHardcoded) return;
+      const tH = performance.now();   // ★[T962] 로비 일 표
       for (const [zid, data] of Object.entries(all)) window.Terrain.setHardcoded(zid, data);
       // ★[배치 19 B] 물 흐름의 정본 = 이 rivers path 다(상류→하류 순서). terrain.js 는 이걸
       //   `window.Terrain` 으로 내보내지 않으므로(_getHardcoded 는 서버 전용 export) **여기서**
@@ -86,6 +88,7 @@
       _rockCellCache.clear();
       _groundTiles.clear();   // ★[배치 19] 지면 베이크는 지형 파생물 — 같은 지점에서 함께 버린다
       if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
+      _lobStep('지형 넣기(setHardcoded · 캐시 비움)', tH);
       console.log('[terrain] 전체 hardcoded 선로딩:', Object.keys(all).join(','));
     } catch (e) { console.warn('[terrain] preload 실패:', e.message); }
   })();
@@ -125,11 +128,13 @@
         const ra = await fetch('/assets/mountains/mountain_alpha.json');
         if (ra.ok) {
           const j = await ra.json(); const N = j.n || 64;
+          const tA = performance.now();   // ★[T962] 로비 일 표
           for (const k in j.a) {
             const bin = atob(j.a[k]), u = new Uint8Array(bin.length);
             for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
             _mtAlphaMap.set(k, { N, a: u });
           }
+          _lobStep('산 알파 지도 풀기(atob)', tA);
           console.log('[mt] 알파 지도 정본', Object.keys(j.a).length, '종');
         }
       } catch (e) { }
@@ -170,7 +175,9 @@
   (function _loadVilTex() {
     try {
       const th = new Image(), ea = new Image(), wl = new Image(); let n = 0;
-      const done = () => { if (++n === 3) { try { _bakeVilArt(th, ea, wl); } catch (e) { console.warn('[vilart] bake 실패 — 폴백 렌더 유지', e); } } };
+      const done = () => { if (++n === 3) { const t0 = _lob.mk.vilTex = performance.now();
+        if (T962_VIL_SLICE) { _bakeVilArtSliced(th, ea, wl, (st) => { _lob.vil = `쪼갬(T962) ${st.n}판 · 합 ${st.ms.toFixed(0)}ms · 판 최대 ${st.max.toFixed(0)}ms · 벽시계 ${st.wall.toFixed(0)}ms`; }); return; }   // ★[T962] 손잡이 켬 = 판당 예산으로 나눠 굽는다(20-r2 `_bakeVilArtSliced` · 값 같음)
+        try { _bakeVilArt(th, ea, wl); } catch (e) { console.warn('[vilart] bake 실패 — 폴백 렌더 유지', e); } _lobStep('마을 그림 굽기(_bakeVilArt)', t0); } };
       th.onload = done; ea.onload = done; wl.onload = done; th.src = TEX_THATCH_URL; ea.src = TEX_EARTH_URL; wl.src = TEX_WALL_URL;
     } catch (e) { /* 폴백: 기존 단색 렌더 */ }
   })();
@@ -193,7 +200,7 @@
       el.insertAdjacentHTML('afterbegin', uiIcon(el.dataset.ico, px));
     }
   }
-  paintIcons(document);
+  { const tI = performance.now(); paintIcons(document); _lobStep('아이콘 그리기(paintIcons)', tI); }
   // ★[T68] 대상 위 동사 메뉴 — 우클릭 배선(`46-h-verbs.js`). 최상위 실행문은 이 파일 몫이다(T0-b).
   bindVerbMenu();
   // ★★[T82 ⓪ · 재민 승인] `boot()` 은 여기서 부른다. 종전엔 `50-i-panel.js`(조각 20) 최상위 문이 불렀고,

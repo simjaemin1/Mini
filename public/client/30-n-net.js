@@ -76,12 +76,13 @@
   async function boot() {
     const res = await fetch('/zones');
     const data = await res.json();
+    _lob.mk.zones = performance.now();   // ★[T962] 때 표시
     zonesMeta = data.zones;
     marketplaceUrl = data.marketplaceUrl || '';
     handoffCommit = (typeof data.handoffCommit === 'number' && data.handoffCommit > 0) ? data.handoffCommit : 0;
     if (data.gtPrewarm === true) _gtPrewarm();   // ★[T937] 손잡이 `T937_GT_PREWARM`(central /zones 칸) — 로비에서 지면 굽기 준비 둘을 미리(끔이면 안 탄다)   // ★[T604 추신3] 해안 경계 앞 바다 지킴 폭(서버 정본 · 아래 굽기 전에)
     // Phase 14.46-b-mini: 모든 zone water tiles 사전 계산 (~수만 tiles, ~100ms)
-    try { precomputeAllWaterTiles(); } catch (e) { console.warn('water tile compute fail:', e); }
+    { const tW = performance.now(); try { precomputeAllWaterTiles(); } catch (e) { console.warn('water tile compute fail:', e); } _lobStep('물 타일 미리 셈(precomputeAllWaterTiles)', tW); }   // ★[T962] 로비 일 표
 
     // 2D 그리드 월드 크기 계산
     worldWidth = 0;
@@ -149,7 +150,7 @@
       return liveN;
     }
     const enterBtn = document.getElementById('enter');
-    refreshZoneOptions();
+    { const tZ = performance.now(); refreshZoneOptions(); _lobStep('존 목록(refreshZoneOptions)', tZ); }
     // 짧은 폴링(15초) — 존이 살아나면 자동으로 선택 가능해진다. 실패는 조용히 무시(로비가 깨지면 안 됨).
     setInterval(async () => {
       try {
@@ -223,7 +224,7 @@
     // ★★[T82 ⓪ · 재민 승인] T68 이 여기 둔 **임시 지연 두 줄을 지웠다.** 근본 수리가 왔기 때문이다:
     //   `boot()` 을 부르는 자리가 `50-i-panel.js`(조각 20) 최상위 문 → **`99-main.js`**(조각 25) 로 옮겼다.
     //   ⇒ 이 함수가 사는 `70-lobby.js`(조각 24)가 **반드시 먼저 실려 있다**. 경주 자체가 없어졌다.
-    onbLobbyInit();
+    { const tO = performance.now(); onbLobbyInit(); _lobStep('시작 화면(onbLobbyInit)', tO); }
     document.getElementById('enter').onclick = async () => {
       _ldOpen();   // ★[T920] 첫 접속 표 — 눌림(첫 번만)
       const inputName = document.getElementById('name').value.trim();

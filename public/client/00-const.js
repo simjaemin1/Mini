@@ -695,6 +695,50 @@ function cropSprite(stage, crop) {
   //   받은 메시지는 눌림 → 가라앉음(또는 30초)까지 센다 — welcome 뒤 따라오는 청크 · 건물 · 자연물 묶음이 그 안에 든다.
   const _ld = { at: {}, rx: false, settled: false, types: {}, welcome: null, long: { n: 0, ms: 0, max: 0 }, prevLoop: 0, fcOwn: false, fc0: null, fc: null };
   function _ldMark(k) { if (_ld.at[k] == null) _ld.at[k] = performance.now(); }
+  // ★★[T962 2026-10-27] **로비 막힘 표** — 로비(페이지 뜸 → "들어가기" 눌림 · 최대 30초) 동안 주 스레드가 50ms 넘게 막힌 판과,
+  //   알려진 로비 일(굽기 · 풀기 · 넣기 · 셈)마다 [시작 · ms] 를 적어 막힌 판마다 **누가 몇 ms** 졌는지 붙인다(`__loadReport()` 맨 위 "로비" 줄 · 새 수 0).
+  //   막힘 = 16ms 마다 다시 거는 setTimeout 의 실제 간격이 50ms 를 넘은 판(T948 자와 같은 꼴 — longtask 관찰자는 Safari 에 없다 · 숨은 탭은 안 센다).
+  //   99-main 앞(스크립트 평가)은 이 자가 아직 안 돌 때다 — "스크립트 실행(00 → 99)" 한 줄로 따로 적는다(사이 내려받기 포함).
+  const _lob = { t0: performance.now(), steps: [], blocks: [], prev: 0, on: false, end: null, mk: {} };   // mk = 때 표시(/zones 받음 · 마을 텍스처 셋 다 옴)
+  function _lobStep(n, t0) { if (_lob.steps.length < 64) _lob.steps.push({ n, at: t0, ms: performance.now() - t0 }); }
+  function _lobWatch() {                     // 99-main 이 한 번 부른다
+    if (_lob.on) return;
+    _lob.on = true; _lobStep('스크립트 실행(00-const → 99-main · 사이 내려받기 포함)', _lob.t0);
+    _lob.prev = performance.now();
+    const tick = () => {                     // 눌림 뒤 몫은 안 센다(눌림 처리 · 들어가기는 첫 접속 표 몫) — 눌림을 품은 판은 눌림까지만
+      const now = performance.now(), c = _ld.at.click, end = c != null && c < now ? Math.max(c, _lob.prev) : now, gap = end - _lob.prev;
+      if (gap > 50 && !document.hidden && _lob.blocks.length < 64) _lob.blocks.push({ at: _lob.prev, ms: gap });
+      _lob.prev = now;
+      if (c != null || now - _lob.t0 > 30000) { _lob.end = end; return; }
+      setTimeout(tick, 16);
+    };
+    setTimeout(tick, 16);
+  }
+  function _lobTable() {                     // 막힌 판마다 겹친 로비 일(겹친 ms) · 남은 몫 = 표시 없음(스크립트 · 배치 · 해독 · GC)
+    const end = _lob.end != null ? _lob.end : performance.now();
+    const S = _lob.steps.filter((s) => s.ms >= 1);
+    const blocks = _lob.blocks.map((b) => {
+      const who = []; let got = 0;
+      for (const s of S) { const ov = Math.min(b.at + b.ms, s.at + s.ms) - Math.max(b.at, s.at); if (ov >= 1) { who.push({ n: s.n, ms: +ov.toFixed(0) }); got += ov; } }
+      if (b.ms - got >= 5) who.push({ n: '표시 없음', ms: +(b.ms - got).toFixed(0) });
+      who.sort((x, y) => y.ms - x.ms);
+      return { at: +b.at.toFixed(0), ms: +b.ms.toFixed(0), who };
+    });
+    const by = {}; for (const b of blocks) for (const w of b.who) by[w.n] = (by[w.n] || 0) + w.ms;
+    const rank = Object.entries(by).map(([n, ms]) => ({ n, ms })).sort((x, y) => y.ms - x.ms);
+    const steps = S.map((s) => ({ n: s.n, at: +s.at.toFixed(0), ms: +s.ms.toFixed(1) })).sort((x, y) => y.ms - x.ms);
+    const sum = blocks.reduce((a, b) => a + b.ms, 0), max = blocks.reduce((a, b) => Math.max(a, b.ms), 0);
+    const mk = {}; for (const k in _lob.mk) mk[k] = +_lob.mk[k].toFixed(0);
+    return { span: +(end - _lob.t0).toFixed(0), n: blocks.length, sum, max, blocks, rank, steps, mk, vil: _lob.vil || null };
+  }
+  function _lobLines() {
+    const L = _lobTable(), top = L.blocks.slice().sort((a, b) => b.ms - a.ms).slice(0, 6);
+    return [
+      `로비 막힘(T962 · 뜸 → 눌림 ${L.span}ms${_lob.end == null ? ' · 아직 로비' : ''}): >50ms ${L.n}판 · 합 ${L.sum}ms · 최대 ${L.max}ms · 1위 ${L.rank[0] ? L.rank[0].n + ' ' + L.rank[0].ms + 'ms' : '-'}${L.vil ? ` · 마을 그림 굽기 ${L.vil}` : ''}`,
+      `로비 막힌 판(큰 순): ` + (top.length ? top.map((b) => `@${b.at} ${b.ms}ms[${b.who.map((w) => w.n + ' ' + w.ms).join(' · ')}]`).join(' / ') : '없음'),
+      `로비 일 ms: ` + L.steps.slice(0, 10).map((s) => `${s.n} ${s.ms.toFixed(0)}`).join(' · '),
+    ];
+  }
   function _ldFcSnap() { return { r: window.__fcRenderMs || 0, m: window.__fcMsgMs || 0, mn: window.__fcMsgN || 0, tile: +(window._tileAcc || 0), water: +(window._waterAcc || 0),
     mt: +(window._mtAcc || 0), nat: +(window._natAcc || 0), ent: +(window._entAcc || 0), hud: +(window._hudAcc || 0) }; }
   function _ldOpen() {                       // 접속 눌림 — 첫 번만
@@ -728,7 +772,12 @@ function cropSprite(stage, crop) {
   }
   function _loadReport() {
     const at = _ld.at;
-    if (at.click == null) { console.log('[첫 접속] 아직 "들어가기"를 안 눌렀다 — 들어간 뒤 다시 친다'); return Promise.resolve(null); }
+    if (at.click == null) {   // ★[T962] 눌리기 전 = 로비 줄만
+      const txt = [`[로비 · T962] ${navigator.userAgent.slice(0, 80)}`].concat(_lobLines()).join('\n');
+      window.__loadReportText = txt; window.__loadReportResult = { lobby: _lobTable(), text: txt };
+      console.log(txt); console.log('[첫 접속] 아직 "들어가기"를 안 눌렀다 — 위는 로비 줄만 · 들어간 뒤 다시 치면 첫 접속 표가 붙는다');
+      return Promise.resolve(window.__loadReportResult);
+    }
     const wait = () => new Promise((res) => { const iv = setInterval(() => { if (_ld.at.settle != null) { clearInterval(iv); res(); } }, 200); });
     return (at.settle != null ? Promise.resolve() : (console.log('[첫 접속] 가라앉기를 기다린다(최대 30초)…'), wait())).then(() => {
       const nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || null;
@@ -771,14 +820,15 @@ function cropSprite(stage, crop) {
       const txt = [
         `[첫 접속 · T920] ${new Date(performance.timeOrigin + at.click).toISOString()} · ${ua} · 화면 ${innerWidth}×${innerHeight} ×${window.devicePixelRatio} · 존 ${typeof primaryZoneId !== 'undefined' ? primaryZoneId : '-'}`,
         `판정: ${verdict}`,
+      ].concat(_lobLines(), [
         `갈래 ms: ` + stages.map((r) => `${r['갈래']} ${r.ms == null ? '-' : r.ms}`).join(' · '),
         `눌림 → 첫 입력 ${total}ms · 그 뒤 가라앉기까지 ${d(at.input, at.settle)}ms${_ld.settled ? '' : '(30초 안에 안 가라앉음 — 늘 긴 프레임 · `__lagReport()` 로 볼 것)'} · 첫 그림 뒤 긴 프레임(>50ms) ${_ld.long.n}판 · 막은 ${_ld.long.ms.toFixed(0)}ms · 최대 ${_ld.long.max.toFixed(0)}ms`,
         `층 ms(눌림 → 첫 입력): ` + layers.map((r) => `${r['층']} ${r.ms}`).join(' · '),
         _ld.prewarm ? `지면 준비 데우기(로비 · T937): 맨땅 마스크 ${_ld.prewarm.mask == null ? '못 함' : _ld.prewarm.mask + 'ms'} · 풀 잎 가르기 ${_ld.prewarm.grass == null ? '못 함' : _ld.prewarm.grass + 'ms'}${_ld.prewarm.at != null && at.click != null && _ld.prewarm.at > at.click ? ' (눌림 뒤에 시작)' : ''}` : `지면 준비 데우기: 끔(첫 타일이 한다)`,
         `받은 메시지(주 소켓 · 눌림 → 가라앉음): ${T.reduce((a, r) => a + r['개'], 0)}개 ${(wsChars / 1024).toFixed(0)}K글자 — welcome ${_ld.welcome ? (_ld.welcome.chars / 1024).toFixed(0) + 'K' : '-'} · ${top}`,
         `페이지 적재: ` + res.map((r) => `${r['갈래']} ${r['개']}개 ${r['KB(받음)']}KB(눌림 뒤 ${r['눌림 뒤 도착']})`).join(' · ') + ` · load ${ld == null ? '-' : ld.toFixed(0)}ms · 로비에서 누르기까지 ${ld == null ? '-' : (at.click - ld).toFixed(0)}ms(사람)`,
-      ].join('\n');
-      const out = { verdict, total, settled: !!_ld.settled, stages, layers, long: { n: _ld.long.n, ms: +_ld.long.ms.toFixed(0), max: +_ld.long.max.toFixed(0) }, msgs: T, resources: res, at: Object.assign({}, at), welcome: _ld.welcome, text: txt };
+      ]).join('\n');
+      const out = { verdict, total, settled: !!_ld.settled, lobby: _lobTable(), stages, layers, long: { n: _ld.long.n, ms: +_ld.long.ms.toFixed(0), max: +_ld.long.max.toFixed(0) }, msgs: T, resources: res, at: Object.assign({}, at), welcome: _ld.welcome, text: txt };
       window.__loadReportText = txt; window.__loadReportResult = out;
       console.table(stages); console.table(layers); console.table(res);
       console.log(txt);
@@ -1243,8 +1293,8 @@ function cropSprite(stage, crop) {
     const go = () => {
       if (!(GTEX.grass_angled && GTEX.grass_angled.naturalWidth)) { setTimeout(go, 200); return; }   // 풀 텍스처가 올 때까지
       setTimeout(() => {
-        const t0 = performance.now(); const had = !!_gtMaskCv; _gtMask(); _ld.prewarm.at = t0; _ld.prewarm.mask = had ? 0 : +(performance.now() - t0).toFixed(1);
-        setTimeout(() => { const t1 = performance.now(); const had2 = !!_grassBlade; _grassSplit(); _ld.prewarm.grass = had2 ? 0 : +(performance.now() - t1).toFixed(1); }, 0);
+        const t0 = performance.now(); const had = !!_gtMaskCv; _gtMask(); _ld.prewarm.at = t0; _ld.prewarm.mask = had ? 0 : +(performance.now() - t0).toFixed(1); _lobStep('지면 데우기 · 맨땅 마스크(T937)', t0);
+        setTimeout(() => { const t1 = performance.now(); const had2 = !!_grassBlade; _grassSplit(); _ld.prewarm.grass = had2 ? 0 : +(performance.now() - t1).toFixed(1); _lobStep('지면 데우기 · 풀 잎 가르기(T937)', t1); }, 0);
       }, 0);
     };
     go();
