@@ -767,3 +767,39 @@ reference-derived20ms/3tap RMS controller to baseline and shifted carriers,
 then the frozen static-LUFS comparator. No denoising, EQ, source-PCM mix or
 new learned amplitude model is used. Original sources, former auditions,
 game playback/defaultBGM and main remain unchanged.
+
+The actual raw run completed in7.691seconds with four model forwards and
+zero optimizer updates. Both baselines exactly reproduced the global3,000
+arrays. The saved CPU RNG hashes also chain from deep's post-baseline to
+Arirang's pre-baseline state. A separate read-only auditor verified56inputs,
+56upstream hashes, all18saved array hashes, source/corpus correspondence,
+normalization and exact float32-factor controls without importing Torch.
+Independent fixed-source pitch diagnostic recomputation matched the records.
+
+Raw baseline-to-shifted median movement is100.9427c on821/821source-supported
+deep frames and100.1003c on811/825Arirang frames. Median absolute deviation
+from100c is1.0925/.5271c, p95 deviation15.0252/3.1813c. Source-target near50
+fractions stay819/821 and802/825. Deep's source-contour detrended correlation
+is.98715; Arirang retains14unmeasured frames and known transition/octave
+ambiguities. These are pitch-estimator observations, not daegeum-identity,
+vibrato naturalness, noise improvement or full score-performance approvals.
+
+The actual export completed in5.254seconds. Its baseline AACs are SHA-identical
+to053/054, proving that the display/controller route has not changed. Only the
+NEW+100c candidates are copied to private auditions055deep/056Arirang. All four
+internal AACs decode to230,400frames at48kHz stereo and4.8s. New candidates both
+measure−24.0LUFS with true peaks−11.2/−13.6dBFS. They are not denoised: the same
+explicit source-derived envelope controller is retained, with raw evidence
+unchanged and original PCM never mixed into output.
+
+The independent export audit verified62input bindings and21files totaling
+4,269,508bytes. Its independent20ms/3tap arithmetic reproduced both conditions,
+four gain-control sets, all four controlled PCM arrays/native WAVs and1,246
+diagnostic leaves (1e-12tolerance). It fully decoded and remeasured all AACs
+with the fixed ebur128 protocol. Source/model files remain unchanged; auditors
+imported no Torch, ran no model/GPU and modified no files. Raw plus export
+regular files total7,495,138bytes before small audit notes/audition copies,
+below50MB. The local suite has208passing tests plus6separate static-comparison
+helper tests. Actual raw/export processes ended normally; no training runs
+in the background. Noise, new-score spectral/articulation generation and
+listening-quality adoption remain open.
