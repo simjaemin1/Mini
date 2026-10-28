@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// === scripts/test-mob-hp-restart.js — 짐승(존 몹) hp 가 재기동을 건너나(T967 ② · 실서버 · 자식 프로세스 · 몇십 초) ===============
+// === scripts/test-mob-hp-restart.js — 짐승(존 몹) hp · DB 행이 재기동을 건너나(T967 ② · T975 ② · 실서버 · 자식 프로세스 · 몇십 초) =====
 //
 // ★왜 [T954 회부 2 · ★PM 결함] "화살만 맞은 몹은 주기 저장이 그 hp 를 안 적는다(재기동 뒤 되살아남)". 재 보니 더 넓다 — 종전 주기 저장(10초)은
 //   **한 마리도 못 적었다**: 그 글자 `db.db.transaction(…)` 은 node:sqlite `DatabaseSync` 에 없는 함수라 매번 TypeError 를 그 catch 가 삼켰다
 //   (3e03fabb 2026-06-25 부터). 그래서 SIGKILL(메모리 부족 · docker kill · 호스트 재부팅) 재기동이면 화살뿐 아니라 사람 공격 · NPC 피해도
 //   다 잃고, SIGTERM 재기동은 종료 flush(`_shutdownFlush`)가 몹 전부를 적어 손잡이를 꺼도 남는다(자명 통과의 길 — 그래서 SIGKILL 창을 잰다).
 //   T967(손잡이 `T967_MOB_HP` · 켬 기본 · `=0` 되돌림): ① 화살도 저장 표 · ② 죽음 하한 0(문 안) · ③ 주기 저장이 실제로 적는다(`BEGIN IMMEDIATE … COMMIT`).
+//   ★[T975 · T967 회부 2 · 3 · ★PM 결함 둘] 손잡이 `T975_MOB_DB`(켬 기본 · `=0` 되돌림): ① 화살 죽음 길도 같은 삭제 문(`db.deleteMob`) — 종전엔 행이 남아
+//     재기동마다 되살아났다 · ② 종료 flush 가 주인 칸 둘을 그대로 넘긴다 — 종전엔 넷만 넘겨 우아한 종료마다 길들임이 NULL 이 됐다.
+//     판 둘을 더 돈다(T967 켬 · `T975_MOB_DB=0` × SIGKILL · SIGTERM) — ⑥ 화살로 죽인 C · ⑦ 길들인 T 를 끔 빨강 · 켬 초록으로 본다.
 //
-// 판 = 손잡이(끔 `=0` · 켬 env 없음) × 내리는 꼴(SIGKILL · SIGTERM). 판마다 자식 둘(이 파일을 자식 모드로):
+// 판 = T967 손잡이(끔 `=0` · 켬 env 없음) × 내리는 꼴(SIGKILL · SIGTERM) 넷(T975 는 기본 켬) + T975 끔 둘(T967 켬). 판마다 자식 둘(이 파일을 자식 모드로):
 //   ⓐ hit  — 임시 DB · 임시 포트로 존을 한 프로세스에 띄운다(마을 · 야생 · 도적 · 길 끔 — 몹은 존 부팅이 낳은 그대로). DB 행이 있는 몹(`spawnMob`)을
 //            조용한 자리(둘레 400px 에 다른 몹 0)에 세운다: A 화살 한 대만(죽지 않게) · B 사람 공격 한 번(대조 — 종전에도 저장 표를 세우던 갈래) ·
 //            C 화살로 죽임 · D 사람 공격으로 죽임(0 밑 방송) · T 길들인 짐승(진짜 `tryFeed` — 주인 칸).
@@ -21,7 +24,9 @@
 //   ③ ★★끔 · SIGKILL — A · B 가 맞기 전 값으로 돌아온다(결함 재현 — 켬 초록이 자명 통과가 아니다)
 //   ④ ★SIGTERM — 끔 · 켬 다 A 가 맞은 값으로 돌아온다(종료 flush 가 몹 전부를 적는다 — 결함은 SIGKILL 창에만 있다)
 //   ⑤ ★★방송 값 0 밑 0 — 켬 판 hit 의 `mob_damaged` hp 최소 0(D 가 0 에서 멈춘다) · 끔 판은 0 밑(그 검사가 문다)
-//   [관찰] C(화살로 죽인 몹 — 화살 죽음 길엔 `db.deleteMob` 이 없다) · T(길들인 짐승 주인 칸 — 종료 flush 는 주인 칸을 안 넘긴다) · 켬 저장 한 번의 시간
+//   ⑥ ★★[T975] 화살로 죽인 C — T975 켬(판 넷)은 다시 뜬 뒤 행이 없다 · T975 끔(판 둘)은 hp 20 으로 되살아난다(결함 재현)
+//   ⑦ ★★[T975] 길들인 T 주인 칸 — SIGTERM: T975 켬(T967 켬 · 끔 다)은 남는다 · T975 끔은 NULL(결함 재현) · SIGKILL 은 주기 저장의 몫(T967)
+//   [관찰] 켬 주기 저장 한 번의 시간
 // 실행: node scripts/test-mob-hp-restart.js   (임시 DB · 임시 포트 · 라이브 무접촉)
 'use strict';
 const path = require('path');
@@ -40,7 +45,7 @@ function child() {
   console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(path.join(ROOT, 'server', 'zone.js'));
   const H = Zone.__testBind();
-  const res = { mode: MODE, knob: H.T967_MOB_HP, hasSave: typeof H.saveDirtyMobs === 'function', hasSpawn: typeof H.spawnMob === 'function' };
+  const res = { mode: MODE, knob: H.T967_MOB_HP, knob975: H.T975_MOB_DB, hasSave: typeof H.saveDirtyMobs === 'function', hasSpawn: typeof H.spawnMob === 'function' };
   const done = (sig) => { fs.writeFileSync(OUT, JSON.stringify(res)); process.kill(process.pid, sig); };
   if (!res.hasSave || !res.hasSpawn) { res.err = '하네스 문(`saveDirtyMobs` · `spawnMob`) 없음 — T967 앞 트리'; fs.writeFileSync(OUT, JSON.stringify(res)); process.exit(0); }
   if (MODE === 'boot') {
@@ -126,20 +131,22 @@ function child() {
   return done(process.env.T967_RS_END === 'term' ? 'SIGTERM' : 'SIGKILL');
 }
 
-// ───────────────────────────────────────── 부모: 판 넷 ─────────────────────────────────────────
+// ───────────────────────────────────────── 부모: 판 여섯 ─────────────────────────────────────────
 function parent() {
   const { spawnSync } = require('child_process');
   let pass = 0, fail = 0;
   const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
   const seen = (m) => console.log(`  [관찰] ${m}`);
   const TMPD = fs.mkdtempSync('/tmp/t967-rs-');
-  const PORT0 = 38200 + (process.pid % 12) * 8;   // 판 넷 × 자식 둘 = 여덟 자리(다른 하네스가 안 쓰는 띠)
+  const PORT0 = 38200 + (process.pid % 8) * 12;   // 판 여섯 × 자식 둘 = 열두 자리(다른 하네스가 안 쓰는 띠)
   let port = PORT0;
-  function run(board, end) {
-    const db = path.join(TMPD, `${board}-${end}.db`), o1 = path.join(TMPD, `${board}-${end}-hit.json`), o2 = path.join(TMPD, `${board}-${end}-boot.json`);
+  function run(board, end, d975) {
+    const key = `${board}-${end}${d975 ? '-d0' : ''}`;
+    const db = path.join(TMPD, `${key}.db`), o1 = path.join(TMPD, `${key}-hit.json`), o2 = path.join(TMPD, `${key}-boot.json`);
     const base = Object.assign({}, process.env);
-    delete base.T967_MOB_HP; delete base.NODE_OPTIONS;
+    delete base.T967_MOB_HP; delete base.T975_MOB_DB; delete base.NODE_OPTIONS;
     if (board === 'off') base.T967_MOB_HP = '0';
+    if (d975) base.T975_MOB_DB = '0';   // ★[T975] 끔 판(종전 글자)
     const go = (mode, out, extra) => spawnSync(process.execPath, [__filename], { encoding: 'utf8', timeout: 120000,
       env: Object.assign({}, base, { T967_RS_MODE: mode, T967_RS_DB: db, T967_RS_OUT: out, T967_RS_END: end, PORT: String(port++) }, extra || {}) });
     const r1 = go('hit', o1);
@@ -150,19 +157,22 @@ function parent() {
     let boot = null; try { boot = JSON.parse(fs.readFileSync(o2, 'utf8')); } catch (e) {}
     return { hit, boot, sig: r1.signal, sig2: r2.signal, err: boot ? null : `boot 자식 결과 없음(종료 ${r2.status} · 신호 ${r2.signal})` };
   }
-  console.log('\n=== 짐승(존 몹) hp 가 재기동을 건너나 — T967 ②(손잡이 `T967_MOB_HP` 끔 · 켬 × SIGKILL · SIGTERM) ===');
+  console.log('\n=== 짐승(존 몹) hp · DB 행이 재기동을 건너나 — T967 ②(`T967_MOB_HP` 끔 · 켬 × SIGKILL · SIGTERM) · T975 ②(`T975_MOB_DB` 끔 판 둘) ===');
   const R = {};
-  for (const board of ['off', 'on']) for (const end of ['kill', 'term']) R[`${board}-${end}`] = run(board, end);
+  for (const board of ['off', 'on']) for (const end of ['kill', 'term']) R[`${board}-${end}`] = run(board, end, false);
+  for (const end of ['kill', 'term']) R[`on-${end}-d0`] = run('on', end, true);   // ★[T975] T967 켬 · T975 끔
   const K = (k) => R[k] || {};
   const allOk = Object.values(R).every((r) => r && !r.err);
   if (!allOk) for (const [k, r] of Object.entries(R)) if (r.err) console.log(`  · ${k}: ${r.err}`);
-  ok(allOk, '[상황] 판 넷 다 섰다(자식 hit · boot 결과 · 하네스 문 `saveDirtyMobs` · `spawnMob`)', Object.entries(R).map(([k, r]) => `${k} ${r.err ? '없음' : 'ㅇ'}`).join(' · '));
+  ok(allOk, '[상황] 판 여섯 다 섰다(자식 hit · boot 결과 · 하네스 문 `saveDirtyMobs` · `spawnMob`)', Object.entries(R).map(([k, r]) => `${k} ${r.err ? '없음' : 'ㅇ'}`).join(' · '));
   if (!allOk) { console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`); try { fs.rmSync(TMPD, { recursive: true, force: true }); } catch (e) {} process.exit(1); }
 
   console.log('\n① 상황 — 맞았고 · 저장 함수가 불렸다(아니면 아래가 자명 통과다)');
   const h = (k) => K(k).hit, b = (k) => K(k).boot;
-  const KEYS = Object.keys(R);
-  ok(KEYS.every((k) => h(k).knob === (k.startsWith('on'))), '[상황] 손잡이가 판대로 섰다(끔 = false · 켬 = true)', KEYS.map((k) => `${k} ${h(k).knob}`).join(' · '));
+  const KEYS = ['off-kill', 'off-term', 'on-kill', 'on-term'];   // T967 판 넷(T975 기본 켬)
+  const ALL = Object.keys(R);
+  ok(ALL.every((k) => h(k).knob === (k.startsWith('on')) && h(k).knob975 === !k.endsWith('-d0')), '[상황] 손잡이가 판대로 섰다(T967 끔 = false · 켬 = true · T975 는 `-d0` 판만 끔)',
+    ALL.map((k) => `${k} ${h(k).knob}/${h(k).knob975}`).join(' · '));
   ok(KEYS.every((k) => h(k).spots >= 5 && h(k).A.hit && h(k).A.post < h(k).A.pre && h(k).A.bc.length === 1), '[상황] A 가 화살 한 대에 실제로 맞았다(조용한 자리 · hp 줄고 방송 한 건 · 안 죽음)',
     `${h('on-kill').A.type} ${h('on-kill').A.pre} → ${h('on-kill').A.post}`);
   ok(KEYS.every((k) => h(k).B.post < h(k).B.pre && h(k).B.dirty === true), '[상황] B(대조)가 사람 공격에 맞았고 저장 표를 세웠다(종전에도 세우던 갈래)', `${h('on-kill').B.pre} → ${h('on-kill').B.post}`);
@@ -195,11 +205,21 @@ function parent() {
     '★★⑤ 켬 — hit 판의 `mob_damaged` hp 가 0 밑으로 안 간다(D 는 5 → 0 에서 멈추고 죽는다 · 죽음 차례 그대로)', `최소 ${mn('on-kill')} · 방송 ${h('on-kill').allBc.length}건`);
   ok(['off-kill', 'off-term'].every((k) => mn(k) < 0 && h(k).D.bc.join() === '5,-5'), '★⑤ 끔 — 같은 판에서 0 밑 방송이 난다(−5 · 위 검사가 문다)', `최소 ${mn('off-kill')}`);
 
-  console.log('\n[관찰] 카드 밖 — 회부 감');
-  const cAll = KEYS.map((k) => `${k} ${ga(k, 'C').live ? '되살아남 hp ' + ga(k, 'C').live.hp : '없음'}`).join(' · ');
-  seen(`C(hp 20 · 화살로 죽임 — 화살 죽음 길엔 \`db.deleteMob\` 이 없다): ${cAll}`);
-  const tAll = KEYS.map((k) => `${k} ${ga(k, 'T').row ? (ga(k, 'T').row.owner || 'NULL') : '행 없음'}`).join(' · ');
-  seen(`T(${h('on-kill').T.type} 길들임 · 주인 ${h('on-kill').T.owner}) 다시 뜬 뒤 주인 칸: ${tAll}`);
+  console.log('\n⑥ [T975] 화살로 죽인 몹 C(hp 20 · 화살 25) — 죽음이 DB 에 닿나');
+  const cOf = (k) => (ga(k, 'C').live ? `되살아남 hp ${ga(k, 'C').live.hp}` : (ga(k, 'C').row ? `행 hp ${ga(k, 'C').row.hp}` : '행 없음'));
+  seen(ALL.map((k) => `${k} ${cOf(k)}`).join(' · '));
+  ok(ALL.every((k) => h(k).C.hit && h(k).C.gone), '[상황] 판마다 C 가 화살 한 대에 실제로 죽었다(맞고 · 존 몹에서 빠짐)');
+  ok(KEYS.every((k) => !ga(k, 'C').row && !ga(k, 'C').live), '★★⑥ T975 켬 — 화살로 죽인 C 의 DB 행이 없다(같은 삭제 문 · SIGKILL · SIGTERM · T967 켬 · 끔 다) — 다시 뜬 뒤 안 되살아난다', KEYS.map((k) => `${k} ${cOf(k)}`).join(' · '));
+  ok(['on-kill-d0', 'on-term-d0'].every((k) => ga(k, 'C').live && ga(k, 'C').live.hp === 20), '★⑥ T975 끔 — 같은 판에서 C 가 hp 20 으로 되살아난다(결함 재현 — 위가 자명 통과가 아니다)', `${cOf('on-kill-d0')} · ${cOf('on-term-d0')}`);
+
+  console.log('\n⑦ [T975] 길들인 짐승 T — 주인 칸이 재기동을 건너나');
+  const own = (k) => (ga(k, 'T').row ? (ga(k, 'T').row.owner || 'NULL') : '행 없음');
+  seen(`T(${h('on-kill').T.type} · 주인 ${h('on-kill').T.owner}) 다시 뜬 뒤 주인 칸: ` + ALL.map((k) => `${k} ${own(k)}`).join(' · '));
+  const kept = (k) => ga(k, 'T').row && ga(k, 'T').row.owner === h(k).T.owner && ga(k, 'T').live && ga(k, 'T').live.owner === h(k).T.owner;
+  ok(kept('on-term') && kept('off-term'), '★★⑦ T975 켬 · SIGTERM — 종료 flush 가 주인 칸을 그대로 넘겨 길들임이 남는다(DB 행 · 다시 뜬 몹 · T967 켬 · 끔 다)', `${own('on-term')} · ${own('off-term')}`);
+  ok(own('on-term-d0') === 'NULL', '★⑦ T975 끔 · SIGTERM — 같은 판에서 주인 칸이 NULL(종전 flush 넷만 — 주기 저장이 적어 둔 주인까지 지운다 · 결함 재현)', own('on-term-d0'));
+  ok(kept('on-kill') && kept('on-kill-d0'), '⑦ SIGKILL(종료 flush 없음)은 주기 저장의 몫 — T967 켬이면 T975 와 상관없이 남는다', `${own('on-kill')} · ${own('on-kill-d0')}`);
+  seen(`T967 끔 · SIGKILL 은 ${own('off-kill')} — 주기 저장이 죽어 주인 칸이 DB 에 닿은 적이 없다(T967 의 몫)`);
   const sa = b('on-kill').saveAll;
   if (sa) seen(`켬 주기 저장 한 번 — 몹 전부 표(${sa.n}마리) ${sa.ms.toFixed(1)}ms · 다시 뜬 존 몹 ${b('on-kill').mobs}`);
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);

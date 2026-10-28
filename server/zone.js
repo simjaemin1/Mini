@@ -3250,6 +3250,11 @@ function spawnOneResource() {
 //      (3e03fabb 2026-06-25 부터) 매번 TypeError 를 그 catch 가 삼켜 **한 마리도 안 적었다**(저장 표가 영영 안 내려간다). 켬 = T728 꼴 `BEGIN IMMEDIATE … COMMIT`.
 //      ① 은 ③ 없이는 아무 일도 안 한다(표를 세워도 적는 이가 없다) — 그래서 한 손잡이다.
 const T967_MOB_HP = process.env.T967_MOB_HP !== '0';
+// ★★[T975 2026-10-28 · T967 회부 2 · 3 · ★PM 결함 둘] 손잡이 `T975_MOB_DB`(켬 기본 · 되돌림 `=0` = 종전 글자 그대로) — 존 몹 DB 행의 두 구멍:
+//   ① 화살 죽음 길(`stepArrows`)도 같은 삭제 문(`db.deleteMob` — 사람 공격 · NPC 죽음 길의 그 글자)을 지난다 · 종전엔 행이 남아 재기동마다 되살아났다.
+//   ② 종료 flush(`_shutdownFlush`)가 주인 칸 둘(`tameOwner` · `tameOwnerName`)을 그대로 넘긴다 · 종전엔 넷만 넘겨 `updateMobState` 가 `|| null` 로 NULL 을 썼다
+//      (우아한 종료마다 길들임이 풀렸다). 주기 저장(`saveDirtyMobs`)은 이미 여섯을 넘긴다(종전 글자).
+const T975_MOB_DB = process.env.T975_MOB_DB !== '0';
 const MOB_HP_KEEP = new Set(['npc', 'feed', 'player']);             // 종전에 저장 표(`dirty`)를 세우던 셋
 const MOB_HP_LOUD = new Set(['npc', 'feed', 'arrow', 'player']);    // 종전에 `mob_damaged` 를 방송하던 넷
 function setMobHp(m, v, why) {
@@ -12596,6 +12601,7 @@ function __testBind() {
     mobs, MOB_DEFS, tryFeed, qtMobs: () => qtMobs,
     setMobHp, MOB_HP_KEEP, MOB_HP_LOUD, tryAttack, tryRangedAttack, stepArrows, npcStep,   // ★[T954] 짐승 HP 문 하네스(`test-mob-hp-door` · 내보내기만)
     T967_MOB_HP, spawnMob, saveDirtyMobs,   // ★[T967] 짐승 hp 재기동 하네스(`test-mob-hp-restart` — DB 행이 있는 몹 · 진짜 주기 저장 · 내보내기만)
+    T975_MOB_DB,   // ★[T975] 같은 하네스가 판을 읽는다(내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
     spawnCorpse, butcherCorpse, corpses,
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
@@ -13018,7 +13024,11 @@ function stepArrows(dt) {
         setMobHp(m, Math.max(0, m.hp - a.dmg), 'arrow');   // ★[T954] 문으로(하한 0 은 이 자리 식 그대로 · 저장 표는 ★[T967] 켬이면 문이 세운다 · 끔 = 종전처럼 안 세운다)
         // §4-4 wildlife 브리지: 화살 피격 — 랩 hp 동기 + 놀람/반격(사수가 이 존 플레이어면 반격 표적)
         if (m.isWild) Wildlife.onMobHit(m, a.dmg, players.get(a.ownerPid) || null);
-        if (m.hp <= 0) { spawnCorpse(m, a.ownerId); chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid }); }
+        if (m.hp <= 0) {
+          spawnCorpse(m, a.ownerId);
+          if (T975_MOB_DB && m.dbId) { try { db.deleteMob(m.dbId); } catch (e) {} }   // ★[T975 ①] 화살 죽음도 같은 삭제 문(사람 공격 · NPC 죽음 길 그 글자) · 끔 = 행이 남는다(종전)
+          chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid });
+        }
         hit = true; break;
       }
     }
@@ -16172,7 +16182,11 @@ function _shutdownFlush() {
     let mobsSaved = 0;
     for (const m of mobs.values()) {
       if (m.dbId) {
-        try { db.updateMobState(m.dbId, m.x, m.y, m.hp); mobsSaved++; } catch (e) {}
+        try {
+          if (T975_MOB_DB) db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName);   // ★[T975 ②] 주인 칸 둘도 그대로(주기 저장과 같은 여섯)
+          else db.updateMobState(m.dbId, m.x, m.y, m.hp);   // 끔 = 종전 글자(넷 — 주인 칸이 NULL 로)
+          mobsSaved++;
+        } catch (e) {}
       }
     }
     let playersSaved = 0;
