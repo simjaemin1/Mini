@@ -1,0 +1,286 @@
+{
+ "card": "T965",
+ "made": "2026-10-28",
+ "world": "열다섯째 판 = main a9190f9e(land1028) · 열넷째 판 = 같은 트리 T931_SLOTK_EMA=0",
+ "harness": "scripts/test-t835-quote-weight.js 아이 판 글자 그대로(시드 7 · 마을 5 · 200날 · 낼 것 cooked_food · meat_game × 받을 것 여섯 × 받을 양 1 2 3 5 8 13 21 34 × 열량 짝 끔/켬 = 960) · 갈래 T835_QUOTE_WEIGHT 0/1",
+ "rowCols": "[마을 · 열량짝 · 짝 · 받을 양 · 견적 낼 낱개 · 견적 받을 양 · 실행 됨 · 실행 낸 · 실행 받은 · 최소(1 = 하나 적으면 못 닿음 · 0 = 넘침)]",
+ "before": {
+  "w15": {
+   "wrows": 960,
+   "done": 325,
+   "quoteNeExecOn": 2,
+   "quoteNeExecOff": 480,
+   "execOnNeOff": 81,
+   "overOn": 79,
+   "overOff": 4,
+   "exOverOn": [
+    [
+     0,
+     0,
+     "cooked_food>stone",
+     34,
+     4,
+     52,
+     1,
+     4,
+     52,
+     0
+    ],
+    [
+     0,
+     0,
+     "cooked_food>food",
+     8,
+     5,
+     15,
+     1,
+     5,
+     15,
+     0
+    ],
+    [
+     0,
+     0,
+     "cooked_food>food",
+     13,
+     8,
+     23,
+     1,
+     8,
+     23,
+     0
+    ]
+   ],
+   "exLie": [
+    [
+     3,
+     0,
+     "cooked_food>wood",
+     21,
+     12,
+     24,
+     1,
+     11,
+     23,
+     0
+    ],
+    [
+     3,
+     1,
+     "cooked_food>wood",
+     21,
+     12,
+     24,
+     1,
+     11,
+     23,
+     0
+    ]
+   ]
+  },
+  "w14": {
+   "wrows": 960,
+   "done": 128,
+   "quoteNeExecOn": 0,
+   "quoteNeExecOff": 520,
+   "execOnNeOff": 0,
+   "overOn": 0,
+   "overOff": 0,
+   "exOverOn": [],
+   "exLie": []
+  }
+ },
+ "after": {
+  "w15": {
+   "wrows": 960,
+   "done": 325,
+   "quoteNeExecOn": 0,
+   "quoteNeExecOff": 480,
+   "execOnNeOff": 0,
+   "overOn": 0,
+   "overOff": 4,
+   "exOverOn": [],
+   "exLie": []
+  },
+  "w14": {
+   "wrows": 960,
+   "done": 128,
+   "quoteNeExecOn": 0,
+   "quoteNeExecOff": 520,
+   "execOnNeOff": 0,
+   "overOn": 0,
+   "overOff": 0,
+   "exOverOn": [],
+   "exLie": []
+  }
+ },
+ "revertBytes": {
+  "15/T835=0": true,
+  "15/T835=1": true,
+  "14/T835=0": true,
+  "14/T835=1": true,
+  "note": "T965_WANT_START=0 판 = 고치기 전 판(아이 판 JSON 바이트)"
+ },
+ "after14EqBefore": {
+  "T835=0": true,
+  "T835=1": true,
+  "note": "열넷째 판은 켬 판도 고치기 전과 바이트 같다(넘침이 없던 세계)"
+ },
+ "repro": {
+  "row": [
+   3,
+   0,
+   "cooked_food>wood",
+   21,
+   12,
+   24,
+   1,
+   11,
+   23,
+   0
+  ],
+  "items": "정본 순서 fish_cooked(W0 0.6 · 가진 2) → meat_cooked(W0 2.0 · 가진 5) → berry_jam(1.4) → food_cooked(1.6) …(하네스 unitsOf — 아이템마다 기준 무게 · 낱개마다 앞이 무겁다)",
+  "unitsByCount": [
+   [
+    1,
+    0.9
+   ],
+   [
+    2,
+    1.65
+   ],
+   [
+    3,
+    4.65
+   ],
+   [
+    4,
+    7.15
+   ],
+   [
+    5,
+    9.4833
+   ],
+   [
+    6,
+    11.7333
+   ],
+   [
+    7,
+    13.9333
+   ],
+   [
+    8,
+    16.0333
+   ],
+   [
+    9,
+    17.7833
+   ],
+   [
+    10,
+    19.4166
+   ],
+   [
+    11,
+    20.9916
+   ],
+   [
+    12,
+    22.5316
+   ]
+  ],
+  "takeByCount": "낱개 9 → 20 · 10 → 21 · 11 → 23 · 12 → 23(상한 절삭 11)",
+  "gu": 18.65773,
+  "cap": 24,
+  "maxGive": 22,
+  "before": {
+   "start": "⌊18.65773 ÷ 0.9(첫 개체 단위)⌋ = 20",
+   "quote": "20 에서 출발 · 닿음 → 20 · 단위 34.4 > 상한 → 절삭 ⌊22 ÷ (34.4 / 20)⌋ = 12 · 받을 양 24(절삭 셈이 단위 상한까지 받는다)",
+   "exec": "견적 12 에서 출발(위로만) · 단위 22.53 > 22 → 절삭 ⌊22 ÷ 1.878⌋ = 11 · 받은 23",
+   "minimal": 10
+  },
+  "after": {
+   "start": "단위 ≤ 18.65773 인 마지막 낱개 = 9(17.78)",
+   "quote": {
+    "giveNeeded": 10,
+    "takeAtNeeded": 21
+   },
+   "exec": {
+    "give": 10,
+    "take": 21
+   }
+  }
+ },
+ "changedRows15": {
+  "note": "열다섯째 판 받을 양 주문 960줄 중 고치기 전 → 뒤 바뀐 줄(실행 됨 · 낸 · 받은) — 끔 갈래(T835=0)도 실행이 바뀐다(실행의 출발점은 T835 와 무관한 연속해 giveNeededUnits 에서)",
+  "T835on": {
+   "rows": 79,
+   "giveBefore": 1026,
+   "giveAfter": 605,
+   "takeBefore": 2289,
+   "takeAfter": 1479,
+   "wantSum": 1366,
+   "maxExtraItems": 28,
+   "worse": 0,
+   "quoteChanged": 79,
+   "doneBefore": 325,
+   "doneAfter": 325
+  },
+  "T835off": {
+   "rows": 85,
+   "giveDown": 83,
+   "giveBefore": 1109,
+   "giveAfter": 617,
+   "takeBefore": 2374,
+   "takeAfter": 1417,
+   "wantSum": 1288,
+   "maxExtraItems": 29,
+   "failToOk": 2,
+   "worse": 0,
+   "quoteChanged": 0,
+   "doneBefore": 323,
+   "doneAfter": 325,
+   "failToOkRow": {
+    "row": [
+     0,
+     0,
+     "cooked_food>wood",
+     3
+    ],
+    "before": "견적 낱개 8(한 개짜리 어림 · 6.488066 ÷ 0.9)에서 출발 → 8개 16.03 단위가 상한(낼 단위 6)에 닿아 평균 단위 2.004 로 절삭 ⌊6 ÷ 2.004⌋ = 2개(가벼운 생선 둘 1.65 단위) → 받을 0 → \"그 양으론 한 개도 못 바꾼다 — 더 내야 한다\"",
+    "after": "연속해 6.488066 아래 마지막 낱개 3(4.65 단위)에서 출발 → 상한 절삭 → 3개 → 나무 2(상한 · 받을 양 3 에 못 미침 = 마을이 내줄 수 있는 몫)"
+   }
+  },
+  "offOverRows": "끔 넘침 4 = 고치기 전후 같은 네 줄([1,0|1,cooked_food>food,5,2,5,1,3,13,0] · [4,0|1,cooked_food>stone,21,2,21,1,3,50,0]) — 끔 갈래의 \"하나 적게\" 마른 견적이 한 개짜리 어림(첫 개체 단위 × 개수)으로 재서 나는 수다 · 같은 줄의 실행은 켬 갈래와 한 자리도 안 다르고 켬 갈래(고른 그 개체들로 잼)는 그 줄이 최소(1)다"
+ },
+ "why14": {
+  "note": "열넷째 판에서 안 보인 까닭 — 받을 양 주문이 첫 아이템(생선 · 인벤 2개 · 가벼운 것) 너머까지 낼 줄(실행 낸 낱개 ≥ 3)",
+  "w14": {
+   "done": 128,
+   "giveGe3": 2
+  },
+  "w15": {
+   "done": 325,
+   "giveGe3": 121
+  }
+ },
+ "serverBaseline": {
+  "ruler": "scripts/server-baseline-check.js 계측/서버기준선_2026-10-27_T943.json(main 최신 · land1029 의 _T959 판은 아직 main 에 없다)",
+  "env": "켬 기본(T931 · T932 · T965 env 없음)",
+  "result": "같음 3/3 — 1020 · 7 · 42 400날 날 지문 · 판 JSON · 여덟 수(인구 2,429 · 2,784 · 2,507)",
+  "sec": 457
+ },
+ "harnessResults": {
+  "test-t835-quote-weight": {
+   "w15": "16/16",
+   "w14": "16/16",
+   "w15_T965off": "13/16(빨강 셋 = PM land1028 게이트의 셋 그대로)"
+  },
+  "test-t965-want-start": "15/15 두 세계(켬 기본 · T931_SLOTK_EMA=0 — 0날 세계라 출력 한 글자 같다) · 끔 미끼 넘침 63 · 켬 0 · 견적 ≠ 실행 0/180 · 그만큼 없다 82판 · 고른 짐 켬=끔 180줄",
+  "tradeSet": "10/10(test-trade 68 · test-t807-quote-exec 15 · test-moment-lot 107 · test-granary-age 31 · test-granary-item 42 · test-granary-rot 28 · test-preserve 70 · test-salt 73 · test-t965-want-start 15 · test-harness-lint 68)",
+  "e2e-trade": "55/55",
+  "wiring": "실패 0 · 경고 1(main 쪽 그대로 — world._warSeq · world._warStats [H] 표)",
+  "test-weight": "64/64(거래소 실행 E2E · 낼 양 주문)"
+ }
+}
