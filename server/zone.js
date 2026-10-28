@@ -163,6 +163,30 @@ function _t495Forget(seedKey) {
   if (!seedKey || !pickedSeeds.size || !pickedSeeds.delete(seedKey)) return;
   try { db.deletePickedSeed(seedKey); } catch (e) {}
 }
+// ★★★[T978 2026-10-28 · T917 회부 3 · 손잡이 `T978_SEED_HP` 켬 기본 · 되돌림 `=0`] **덜 벤 시드 자연물의 남은 hp.**
+//   시드 개체(`s_*` — 청크가 씨로 낳는 나무 · 바위 · 광맥 · 덤불 · 운철 …)는 DB 행이 없다(`dbId` 없음) ⇒ 몇 번 친 몫(`r.hp`)이
+//   `updateResourceHp`(행 있는 개체만) 를 못 타고 **메모리에만** 있었다 — 재기동하면, 그리고 청크가 꺼졌다 켜져도(개체를 다시 낳는다) 온전해진다.
+//   ⇒ 벤 장부(`harvestedSeeds`) · 부분 수확 장부(`pickedSeeds` · T495)와 **같은 문법**의 셋째 장부: 시드 키 → [종, 남은 hp].
+//     ⓐ 친 순간 적는다(두 자리 — 플레이어 채집 · NPC 채집 · DB 개체의 `updateResourceHp` 와 같은 자리) ·
+//     ⓑ 청크가 개체를 낳을 때(`activateChunk`) 같은 종이면 그 hp 로 선다(더 크게는 안 선다 — 낳은 hp 가 상한) ·
+//     ⓒ 벤 장부로 가거나(`_markHarvested`) 되살면(`_t341UnharvestBody`) 지운다(다음에 설 때는 온전하다 — T495 와 같은 두 자리).
+//   ★온전한 개체는 안 적는다(표가 작다) · 새 수 0 · 끄면 장부를 짓지도 읽지도 않는다(DB 표도 안 생긴다 = 끔 비트 동일).
+const _t978On = () => process.env.T978_SEED_HP !== '0';
+const seedHp = new Map();   // seedKey → [종, 남은 hp]
+function _t978Note(r) {
+  if (!_t978On() || !r || !r.isSeed || !r.seedKey || r.dbId) return;
+  seedHp.set(r.seedKey, [r.type, r.hp]);
+  try { db.upsertSeedHp(r.seedKey, r.type, r.hp); } catch (e) {}
+}
+function _t978Forget(seedKey) {
+  if (!seedKey || !seedHp.size || !seedHp.delete(seedKey)) return;
+  try { db.deleteSeedHp(seedKey); } catch (e) {}
+}
+function _t978Apply(r) {
+  if (!seedHp.size || !r || !r.seedKey) return;
+  const e = seedHp.get(r.seedKey);
+  if (e && e[0] === r.type && e[1] > 0 && e[1] < r.hp) r.hp = e[1];
+}
 let _harvestPromotePending = 0;
 // ★★[T122] 옛 행 승격 — **한 번**만, 그리고 게임 시계가 선 뒤에(첫 청크 활성화 시점).
 //   벤 날 = **승격일**이다: 지금부터 자라기 시작한다(즉시 성목이 되지 않는다).
@@ -192,6 +216,7 @@ function _markHarvested(seedKey, x, y) {
   if (!harvestedSeeds.has(seedKey)) _t566LedVer++;   // ★[T566] 장부 키 집합이 바뀌었다(새 키) — 장부가 든 청크 표를 다음에 다시 센다
   harvestedSeeds.set(seedKey, Number.isFinite(d) ? Math.floor(d) : -1);
   _t495Forget(seedKey);   // ★[T495] 빈 개체는 벤 장부로 — 남은 단위 줄은 지운다(장부가 비어 있으면 아무 일도 안 한다)
+  _t978Forget(seedKey);   // ★[T978] 벤 개체의 남은 hp 줄도 지운다(다시 설 때는 온전하다)
   _farBump(seedKey);   // ★[T380] 원경 캐시 무효화 — **장부가 바뀐 청크만**(문 하나를 지나므로 새는 길이 없다)
   _ringBump(seedKey, x, y);   // ★[T440] 청크 판 — 그 씨를 낳은 청크의 그 셀만(같은 문 · 새는 길이 없다)
   if (!Number.isFinite(d)) _harvestPromotePending = 1;
@@ -579,6 +604,7 @@ function _t341UnharvestBody(seedKey) {
   harvestedSeeds.delete(seedKey);
   _t566LedVer++;   // ★[T566] 장부 키 집합이 바뀌었다
   _t495Forget(seedKey);   // ★[T495] 되살아난 개체는 온전하다(방어 · 빈 개체는 이미 줄이 없다)
+  _t978Forget(seedKey);   // ★[T978] 같은 이유
   _ringBump(seedKey);   // ★[T440] 청크 판 — 자리를 모른다(키만 온다) ⇒ 그 씨를 낳은 청크 판을 버린다
   try { db.deleteHarvestedSeed(seedKey); } catch (e) {}
   return 1;
@@ -864,6 +890,7 @@ function activateChunk(cx, cy) {
     if (resources.has(r.id)) continue;             // ★[T317] 이미 선 개체(이웃이 먼저 켜졌다) — 두 번 안 놓는다
     if (isTerrainBlockedLocal(r.x, r.y)) continue; // 바다 위 자원 차단
     _fruitStamp(r);                 // ★[T170] 스폰 방송에 `fruitNow` 한 비트가 실린다(볼 때 정산 — 여기가 "볼 때")
+    _t978Apply(r);                  // ★[T978] 덜 벤 개체는 남은 hp 로 선다(장부가 비면 아무 일도 안 한다)
     resources.set(r.id, r);
     chunkManager.insertResource(r);
     spawned.push(r);
@@ -3208,6 +3235,12 @@ function spawnOneResource() {
     try { for (const row of db.getAllPickedSeeds()) { if (harvestedSeeds.has(row.seed_key)) continue; let t = null; try { t = JSON.parse(row.taken); } catch (e) { t = null; } if (t && typeof t === 'object') { pickedSeeds.set(row.seed_key, t); _pk++; } } } catch (e) {}
     console.log(`[${ZONE_ID}] ★[T495] 부분 수확 개체 ${_pk}개 로드(남은 단위를 들고 서 있다)`);
   }
+  // ★★[T978] 덜 벤 시드 자연물 — **켠 팔만** 읽는다(끔 = 표를 짓지도 읽지도 않는다). 벤 장부에 있는 키는 버린다(벤 장부가 이긴다 · T495 와 같은 규약).
+  if (_t978On()) {
+    let _sh = 0; const _t0 = Date.now();
+    try { for (const row of db.getAllSeedHp()) { if (harvestedSeeds.has(row.seed_key)) continue; if (!(row.hp > 0)) continue; seedHp.set(row.seed_key, [row.type, row.hp]); _sh++; } } catch (e) {}
+    console.log(`[${ZONE_ID}] ★[T978] 덜 벤 시드 자연물 ${_sh}개 로드(${Date.now() - _t0}ms · 남은 hp 로 선다)`);
+  }
 }
 
 // === DB에서 자기 zone의 claims 로드 ===
@@ -4691,6 +4724,7 @@ function npcStep(npc, dt, now) {
           _takeResourceEntity(r, true);     // ★[T325] 빼는 여섯 줄을 **문 하나**로 모았다(아래 정의 · 행동 무변)
         } else {
           if (r.dbId) db.updateResourceHp(r.dbId, r.hp);
+          else _t978Note(r);   // ★[T978] 시드 개체(행 없음)는 남은 hp 장부로
           broadcast({ type: 'resource_update', id: r.id, hp: r.hp });
         }
         npc.gatherTarget = null;
@@ -10516,6 +10550,7 @@ function gatherResource(player, best) {
     savePlayer(player);
   } else {
     if (best.dbId) db.updateResourceHp(best.dbId, best.hp);
+    else _t978Note(best);   // ★[T978] 시드 개체(행 없음)는 남은 hp 장부로
     broadcast({ type: 'resource_update', id: best.id, hp: best.hp });
   }
 }
@@ -12622,6 +12657,8 @@ function __testBind() {
     T696, _t696Blocked, _t696Prebuild, _t696Pre, _ringCacheRaw, _ringBuild,   // ★[T696] 술어 차례 · 원시 판 미리 짓기(하네스가 같은 값을 잰다)
     // ★[T495] 부분 수확 — 하네스가 **문 그대로** 두드린다(단위로 따기 · 남은 전리품 · 장부 · 군락 색인 · 통째 따기 · 플레이어 채집)
     _t495PickAt, _t495RestOf, _t495Rest, pickedSeeds, _t347GrovesAtCell, _t347PickAt, gatherResource,
+    // ★[T978] 덜 벤 시드 자연물 장부 — 하네스(`test-seed-hp`)가 **문 그대로** 본다
+    seedHp, _t978On, activateChunk,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
     RECIPES, TOOL_EFFECTS, TOOL_MAX_DURABILITY, EQUIPMENT_RECIPES, CRUDE_EFF_FRAC, CRUDE_DURA_FRAC,
     doCraft, doEquip, tryForage, Forage, _forageCtx, lootOfResource, getEquippedTool, consumeEquippedDurability,
