@@ -5114,6 +5114,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   //     벤 자리·묘목은 안 막고, 재생하면 다시 막는다.
   treeCellBlocked: warTreeCellBlocked,
   dayShelter: process.env.T969_SHELTER_DAY === '1' ? (d) => _t969ShelterDay(d) : null,   // ★[T969] 켬 — 쉼터 백필을 econ 날 자리(하루 마감)에서(아래 · 끔 = 안 넘긴다)
+  dayBandits: process.env.T986_BANDIT_DAY === '1' ? () => Bandits.dayTick() : null,   // ★[T986] 켬 — 도적 하루를 econ 날 자리(하루 마감 — 날을 올린 econ 머리 바로 뒤)에서(`bandits.js dayTick` 머리 주석 · 끔 = 안 넘긴다 · 존 틱이 종전대로 부른다)
   ioBusy, ioQuietMs,   // ★[T42-b] 배경 작업이 '한가한가'를 판단할 때 **날아가는 쓰기**도 본다
   clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
   // ★[T19 2026-09-02] 마을이 **하나 늘었다**는 통지. 온보딩이 그 마을의 도착 지점을 그때 굽는다

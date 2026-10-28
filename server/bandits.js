@@ -805,6 +805,7 @@ function _bindRest(host, day0) {
 //   ⚠그 사이 도적은 없다 — 새 세계는 원래 단 0 · 결성은 `BDT_MIN_DAY` 뒤(기본 365일)라 econ 쪽 위험(`banditRouteRisk`)도 종전과 같이 0 이다.
 //   ★★[T655 2026-10-05 · PM 결정(위임)] **켬이 기본**이다 — 손잡이 없음 = 켬 · `T640_BOOT_SLICE=0` = 종전(부팅 안에서 한 번에).
 //     빠른 시계 자(`t577-server-run` · 하루 250ms)는 자 안에서 `=0` 을 박는다(표본이 도는 동안 수백 날이 지나 도적 데일리를 건너뛴다 — T640 회부 ①).
+const T986_BANDIT_DAY = typeof process !== 'undefined' && !!process.env && process.env.T986_BANDIT_DAY === '1';   // ★[T986] 끔 기본 — `dayTick` 머리 주석
 const T640_BOOT_SLICE = typeof process !== 'undefined' && !!process.env && process.env.T640_BOOT_SLICE !== '0';
 function _bootSliceBegin(host) {
   host.routeBootFreeze(true);
@@ -874,7 +875,23 @@ function onGameTick() {
     if (S._bindTried === 1 || S._bindTried % 300 === 0) { try { bindHost(); } catch (_) { } }
     if (!S.ready) return;
   }
-  const day = S.host.world.day;
+  if (T986_BANDIT_DAY) return;   // ★[T986] 켬 — 하루는 하루 마감의 정한 자리(`dayTick` · villages 날을 올린 econ 머리 바로 뒤)에서 돈다(아래)
+  _dayRun(S.host.world.day);
+}
+// ★★[T986 2026-10-28 · T969 회부 2] 손잡이 `T986_BANDIT_DAY`(끔 기본 · `'1'` 켬 · 끔 = 종전 글자 — 위 줄이 안 닿고 하루 몸통은 같은 함수).
+//   벽시계 판자에서 도적 하루는 존 틱(`onGameTick` — `world.day` 가 바뀐 첫 틱)이 불렀다. 그런데 하루 마감은 현지 자정 창(T731)이라
+//   머리(날 +1) 뒤 마을마다 제 조각을 돌고, 조각은 틱 몫(`TICK_SLICE_MS` · T687)으로 끊긴다 ⇒ 도적 하루가 **마을 결산 몇 곳 뒤에** 끼어드는지가
+//   벽시계(밀림 · 부하)에 달렸다. 가상 시계는 몫이 안 닳아 늘 같은 자리 — 그래서 두 시계 판의 절망 이탈 · 해체 · 약탈이 다른 날에 났다
+//   (800날 판 자 · 시드 7 임업6 이탈 벽 D516 ↔ 가 D518 · 시드 1020 어촌9 D527 ↔ D523 · 보고 T986 §2).
+//   ⇒ 켜면 같은 몸통(`_dayRun`)을 **econ 날 자리**에서 부른다 — villages 하루 마감의 조각 하나(`deps.dayBandits`):
+//     현지 자정 창이면 날을 올린 econ 머리(`econ:head`) **바로 뒤 · 마을 조각 앞** · 종전 마감이면 econ 1일 틱 조각 바로 뒤.
+//     이 줄 머리 주석("villages econ 틱이 world.day를 민 직후")의 그 자리를 조각 차례로 박은 것이다(가상 시계 종전 판은 머리 틱에 든 마을 몇 곳 뒤였다).
+//     그날(`world.day`)에 한 번 · 새 수 0.
+function dayTick() {
+  if (!ENABLED || !T986_BANDIT_DAY || S._boot || !S.ready) return;   // 부팅 표본 · 결합 전이면 그날은 건너뛴다(틱 쪽이 결합을 잇는다)
+  _dayRun(S.host.world.day);
+}
+function _dayRun(day) {
   if (day === S.lastDay) return; // 게임일 경계에서만(villages econ 틱이 world.day를 민 직후)
   S.lastDay = day;
   try {
@@ -892,7 +909,7 @@ function onGameTick() {
   }
 }
 
-module.exports = { init, onGameTick, clientCamps, stats: () => S.stats, incomingFood, t766On: () => T766_INCOMING, armsHeld, ARMS_RES, lotsBoot, gangs: () => S.GANGS,
+module.exports = { init, onGameTick, dayTick, t986: () => ({ on: T986_BANDIT_DAY, lastDay: S.lastDay }), clientCamps, stats: () => S.stats, incomingFood, t766On: () => T766_INCOMING, armsHeld, ARMS_RES, lotsBoot, gangs: () => S.GANGS,
   t765: () => ({ on: T577_WALK, road: S.WALK.length, rows: (S.t765Rows || []).map((r) => Object.assign({}, r)) }),   // ★[T765] 길 위 장부 증인(관측 자 `t765-obs` · 하네스)
   // ★[T765] 하네스 문 — 운영 함수 그대로(사본 0): 호스트 · 저장소를 꽂고 해체 걷기 · 닿기 · 저장 · 복원을 부른다
   _t765Probe: { setHost: (h, db) => { const k = { host: S.host, db: S.db }; S.host = h; if (db !== undefined) S.db = db; return k; }, walk: (vil, day) => _t577Walk(vil, day), arrive: (day) => _t765Arrive(day),
