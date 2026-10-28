@@ -4761,10 +4761,12 @@ function _terrCap(vil) {
   return Math.ceil(pop * (VL.LAND_NEED + (T579_CAP_HOUSE === '1' ? VL.LOT_PER_HEAD : 0)));
 }
 //   상한이 지금 영토를 묶고 있나(계측 전용 — 집터 빈손을 "상한 탓"으로 가르는 데만 쓴다 · 판정 0)
+// ★[T966] 영토 목표가 읽는 주거 — `T958_HOUSE_REAL` 켬이면 econ 계획 주거(`_t958Plan` · econ 이 끔 세계 궤적 그대로 쥔 칸) · 끔 · 그 칸 없음 = econ 주거 그대로(종전 글자 · 같은 값)
+function _t966TerrHousing(e) { return (e && _lifeEcon().T958_HOUSE_REAL && e._t958Plan !== undefined) ? e._t958Plan : ((e && e.housing) || 0); }
 function _terrCapBound(vil) {
   if (!T538_TERR_CAP || !vil || !vil.econ || vil.econ.founder || !vil._terrSet) return false;
   const land = vil.econ.land; if (!land || !land.size) return false;
-  const tt = _lifeVL().territoryTarget(land.size, vil.econ.housing || 0), target = T230_TERR_HOUSING ? tt.target : tt.econ, cap = _terrCap(vil);
+  const tt = _lifeVL().territoryTarget(land.size, _t966TerrHousing(vil.econ)), target = T230_TERR_HOUSING ? tt.target : tt.econ, cap = _terrCap(vil);
   return cap < target && vil._terrSet.size >= cap;
 }
 // ★★[T569 2026-10-02 · 재민 "어촌2랑 임업6이 겹쳐 있다 · 인접하면 상대 영토로는 확장 못 하고 반대쪽으로 자라겠지?"] **마을 땅은 한 마을 것.**
@@ -4819,7 +4821,7 @@ function _t569Resolve(owners) {
 function _terrGrow(vil) {
   if (!state.ta || !vil || !vil._terrSet || !vil._terrSet.size) return 0;
   const land = vil.econ && vil.econ.land; if (!land || !land.size) return 0;
-  const _tt = _lifeVL().territoryTarget(land.size, (vil.econ && vil.econ.housing) || 0);
+  const _tt = _lifeVL().territoryTarget(land.size, _t966TerrHousing(vil.econ));
   let target = T230_TERR_HOUSING ? _tt.target : _tt.econ;
   if (T538_TERR_CAP && !vil.econ.founder) target = Math.min(target, _terrCap(vil));   // ★[T559 ⓪] 유저 마을은 상한 밖 · ★[T579] 상한 = 인구 × (밭 + 집 부지)
   if (vil._terrSet.size >= target) return 0;
@@ -12559,7 +12561,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   //   (랩 세 줄과 같은 규칙 · 사본 0). 서버 움집은 단층이라 완공 층수 = `_houseCells.length`
   //   (레이아웃 MAX_FLOORS=1 · T212 실측 50마을 전부 층합=채수). 집터 슬롯은 하나(`vil._site`).
   const _wantSite = T219_HOUSE_TRIGGER
-    ? _lifeVL().houseSiteWant(vil.econ.npcs.length, vil.econ.housing, vil._houseCells.length, vil._site ? 1 : 0)
+    ? _lifeVL().houseSiteWant(vil.econ.npcs.length, vil.econ.housing + ((_lifeEcon().T958_HOUSE_REAL && vil.econ._t958Want > 0) ? vil.econ._t958Want : 0), vil._houseCells.length, vil._site ? 1 : 0)   // ★[T958] 켬 = econ 주거가 지은 침상에 묶이니 그날 올리고 싶었던 몫(`_t958Want`)을 더해 읽는다(끔 · 없음 = + 0 = 종전)
     : (vil.econ.npcs.length > cap * 0.92);
   if (!vil._site && _wantSite) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
   _sub('site');

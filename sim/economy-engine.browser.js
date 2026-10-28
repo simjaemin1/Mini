@@ -9807,6 +9807,17 @@ function _t931SeasonSlot(v, raw) {
 //   켬 = `continue` — **그 대장장이만** 오늘 일을 끝낸다(주조 없음 = 종전 그 사람 몫 그대로) · 뒤 차례 주민 · 마을 하루 꼬리는 돈다(같은 루프의 다른 셋 —
 //   교역 원정 · 징발 · 재고 상한 — 이 다 `continue` 인 것과 같은 꼴 · 새 수 0).
 const T932_SMELT_CONT = !(typeof process !== 'undefined' && process.env && process.env.T932_SMELT_CONT === '0');
+// ★★[T958 2026-10-28 · T946 회부 2 · 세션5] **집 행위 마을의 econ 주거는 크루가 실제로 지은 침상까지만 오른다** — 손잡이 `T958_HOUSE_REAL`(★[T966] 끔 기본 · 켜는 값 `'1'` · 끔 = 종전 바이트).
+//   T400 은 집 짓는 마을(`buildActOn` — 서버가 `_t400Live` 를 심은 마을)에서 econ 주거의 목재 상한을 `Infinity` 로 두었다(차감은 크루가 진다).
+//   그래서 econ 주거(`housing`)와 크루가 지은 집(맵 침상 `_mapBeds` = 완공 움집 칸 × 칸당 침상)이 따로 논다(보고 T958 ① — 90날 3시드:
+//   econ 증축의 80 % 가 크루가 목재를 안 꺼낸 날이다 · 주거 > 침상 마을-날 2,439~2,547 · 주거 < 침상인데 게이트가 막은 마을-날 382~431).
+//   켬 = 그 마을의 하루 증축을 `min(여유노동 몫 houseDayBuild, 지은 침상 − 주거)` 로 묶는다 ⇒ econ 주거는 지은 침상을 못 넘는다(넘은 몫은 지은 집이 아니다) ·
+//     지은 침상 밑으로 노후된 만큼은 다시 채운다(그 집은 서 있다). 목재 차감은 종전대로 크루가 진다(econ 은 안 뺀다 — 이중 차감 0).
+//   ⚠집터 방아쇠(`village-layout.houseSiteWant` — 목표 칸 = ⌈max(인구, 주거) ÷ 칸당 침상⌉ > 지은 칸)는 주거가 침상을 못 넘으면 영영 안 선다(인구 ≤ 주거 ≤ 침상).
+//     그래서 켬이면 econ 이 그날 **올리고 싶었던 몫**(같은 함수 `houseDayBuild` — 새 수 0)을 `v._t958Want` 에 적고, 방아쇠(서버 한 줄)가 주거 + 그 몫을 읽는다
+//     (랩에서 econ 주거가 오르면 집이 따라 서는 그 순서 — 오르고 싶은 날에만 집터가 선다).
+//   켬 · 끔 다 집 행위가 아닌 마을(랩 · 서버 기준선 자 `T400_BUILD_ACT=0` · `_mapBeds` 없는 판)은 한 글자도 안 닿는다(종전 목재 상한 · 차감).
+const T958_HOUSE_REAL = (typeof process !== 'undefined' && process.env && process.env.T958_HOUSE_REAL === '1');   // ★[T966 · PM 10-28] 끔 기본(켜는 값 `'1'` 하나 · 끔 = main 바이트) — 켬 판 띠 두 셈이 띠 밖(T958 §2-2)
 // ★[T932 · 계측 전용 · 행동 무관 · 저장 0] 그 갈래가 선 날을 센다 — 모듈 칸(마을 객체에 안 붙인다 — 저장 줄 무변). 관찰기 `scripts/t932-smelt-probe.js` 가 판 끝에 적는다.
 //   days = 선 마을-날(같은 날 둘째 대장장이는 안 센다) · smiths = 선 대장장이-날 · left = 그 대장장이 뒤 차례 주민 · idle = 그중 교역 원정 · 징발이 아닌 사람(끔이면 그날 일을 못 한 사람)
 //   · pop = 그 마을 인구(끔이면 그날 꼬리 — 먹기 · 나이 … — 를 못 탄 사람) · byV · byYear(0 = 1 ~ 365날)
@@ -12672,6 +12683,12 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   if (v.housing === undefined) v.housing = N;
   v.housing *= (1 - HOUSE_DECAY);   // 노후화
   const houseTarget = N * HOUSE_BUFFER;
+  const _t958 = T958_HOUSE_REAL && buildActOn(v) && v._mapBeds !== undefined;   // ★[T958] 집 행위 마을 · 지은 침상을 아는 판만(끔 · 그 밖 = 종전)
+  if (_t958) v._t958Want = 0;
+  //   ★[T966] 켬이면 econ 이 **계획 주거**도 한 칸에 따로 쥔다(`v._t958Plan`) — 끔 세계의 주거 그 궤적이다(같은 노후 · 같은 `houseDayBuild` · 목재 상한 `Infinity` 그대로 — 새 수 0).
+  //     econ 주거(`housing`)는 지은 침상까지만 오르니, 주거를 "앞으로 지을 집"으로 읽던 두 자리 — 나무꾼 안전망(아래 `pickJob` 줄) · 영토 목표(`villages.js` `territoryTarget`) — 는
+  //     이 칸을 읽는다(보고 T966 ② — 지은 침상을 읽으면 그 둘이 계획과 다른 세계를 만든다).
+  if (_t958) { const _p = (v._t958Plan !== undefined ? v._t958Plan : v.housing / (1 - HOUSE_DECAY)) * (1 - HOUSE_DECAY); v._t958Plan = _p + houseDayBuild({ housing: _p }, N, totalFoodEquivalent(v)); }
   if (v.housing < houseTarget) {
     // ★노동기반 건설: "시간 남는 NPC가 집을 짓는다" — 여유노동이 건설속도를 결정.
     //   식량안보(곳간 여유)일수록 잉여노동 많아 건설 빠름. 쪼들리면 정체(노동을 식량에 다 씀).
@@ -12681,6 +12698,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     const _HS = T400_BUILD_ACT ? houseCostPerCap('stone') : HOUSE_STONE;
     const _live = buildActOn(v);   // ★[T400] 크루가 곳간에서 실제로 꺼내 가는 마을 — 목재 제약·차감은 그 행위가 진다
     let built = Math.min(houseDayBuild(v, N, _fe), _live ? Infinity : (v.storage.wood || 0) / _HW);   // 목재 필수 + 여유노동 제약(★[T488] 여유노동 몫은 `houseDayBuild` 한 함수 — 숯가마의 집 몫이 같은 함수를 부른다 · min 은 묶는 순서와 무관 = 비트 동일)
+    if (_t958) { v._t958Want = built; built = Math.min(built, Math.max(0, v._mapBeds - v.housing)); }   // ★[T958] 올리고 싶은 몫은 적고(방아쇠) · 오르는 몫은 지은 침상까지
     if (built > 0) {
       // ★석재 준-필수: 석재 충분하면 정상 건축, 없으면 30%만(주춧돌·구들 없는 임시 가옥). 강한 석재 수요 → 광산 교역 유발.
       const stoneNeed = built * _HS;
@@ -13630,7 +13648,8 @@ function pickDeficitJob_rational(v, world) {
   //     땔감이고(T644 §1) 시딩 곳간은 9~25일에 0 이 되니, 대부분 마을은 **바닥난 뒤에야** 이 줄에 닿는다. 켜면 같은 줄이 이미 있는 신호를
   //     하나 더 읽는다: **남은 날 = 곳간 ÷ 하루 소비 EMA(`_consEMA.wood`) < 30** — 30 은 v2 가 흐름 수요를 재는 바로 그 창
   //     (`flowT = _consEMA × 30` · economy-sim-v2 computeShadowPrices)이다. 새 수 0. 끔이면 이 줄은 종전 그대로(비트 동일).
-  if (((v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2)
+  const _hPick = (T958_HOUSE_REAL && v._t958Plan !== undefined) ? v._t958Plan : v.housing;   // ★[T966] 켬 = 계획 주거(위 `_t958Plan`) · 끔 · 그 칸 없음 = 주거 그대로(종전)
+  if (((v.housing !== undefined && N >= _hPick * 0.95 && (v.storage.wood || 0) < N * 2)
        || (woodEarlyOn() && (woodEarlyMode() === 1 || _t663Birth) && (v.storage.wood || 0) < ((v._consEMA && v._consEMA.wood) || 0) * 30))
       && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
   // ★S1 석재 안전망: 돌은 채집자원 — 돌밭/강가(land.stone 충분) 마을이 석재 부족하면 채집꾼(광부 아님). 집·도구 석재 수요 → 채집. 돌 없으면(stone≤0.25) 안 함(교역 의존).
@@ -14511,6 +14530,7 @@ module.exports = {
   STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
+  T958_HOUSE_REAL,   // ★[T958] 집 행위 마을 econ 주거 = 지은 침상까지(★[T966] 끔 기본 · `'1'` 켬) — 방아쇠(서버 `villages.js`)가 읽는다
   T932_SMELT_CONT, t932Stat,   // ★[T932] 제련 날 마을 하루 결함 손잡이(켬 기본) + 계측 칸(관찰기 `t932-smelt-probe` 가 읽는다 — 행동 무관)
   T924_DEBT_CAP, _computeVillageStats,   // ★[T924] 빚 손잡이 + 마을 stat 함수(관찰기 `t924-observe` 가 건강 · 행복 항을 가른다 — 읽기만 · 사본 0 · 동작 무변)
   T931_SLOTK_EMA, T931_SLOTK_SEASON, totalFoodSlots,   // ★[T931] 식량 자리 K 관성 손잡이 + 자리 함수(하네스 · 관찰기 `t931-observe` 가 그날 자리를 다시 센다 — 읽기만 · 사본 0 · 동작 무변)
