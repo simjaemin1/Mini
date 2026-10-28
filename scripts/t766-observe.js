@@ -22,6 +22,8 @@ if (!process.env.T577_SEED) return;   // 부모 러너 — 아무것도 안 한�
 const OUT = process.env.T766_OBS_OUT || (process.env.T577_OUT ? process.env.T577_OUT.replace(/\.json$/, '') + '.t766.json' : '');
 const RAID_OFF = process.env.T766_RAID_OFF === '1';
 const ROOT = path.join(__dirname, '..');
+const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
+const DD = require('./lib-day-deaths'); DD.install(V1);   // ★[T963] 그날 죽음 정본 — `_deadTot` 틱 앞뒤 차(`_deathsToday` 는 빈 마을 · 제련 날 끔 갈래에 전날 값이 남는다 · 사본 0)
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const B = require(path.join(ROOT, 'server', 'bandits'));
 const rec = { names: null, raidOff: RAID_OFF, rows: [], stats: null };
@@ -47,7 +49,7 @@ function snap(world, day) {
     const fe = (St.food || 0) + (St.fish || 0) + (St.meat || 0) + (St.cooked_food || 0);
     const T = v.tradeStats || {};
     return [(v.npcs || []).length, r1(fe), r1(B.incomingFood(world, v)), v._banditized ? 1 : 0, v._bdtFall || 0, v._bdtPeak || 0,
-      v._deathsToday || 0, v._deadTot || 0, T.tradersKilled || 0, r1(T.cargoLost)];
+      DD.deathsToday(v), v._deadTot || 0, T.tradersKilled || 0, r1(T.cargoLost)];
   })]);
 }
 process.on('exit', () => {

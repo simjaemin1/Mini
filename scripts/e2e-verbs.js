@@ -58,11 +58,8 @@ async function waitHttp(url, tries = 600) {
   //     검사기를 두 벌로 만들면 규칙이 갈린다(사본 금지). 여기서는 **화면에 실제로 그려진 글자**를
   //     본다(아래 ② — 플레이어에게 닿는 것은 그쪽이다).
   {
-    const src = fs.readFileSync(path.join(ROOT, 'public', 'client', '46-h-verbs.js'), 'utf8');
-    ok(/function pickAt\(/.test(src) && /function verbsFor\(/.test(src),
-       '★⓪ 전제: `pickAt`·`verbsFor` 가 그 파일에 실재한다');
-    const idx = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-    ok(/client\/46-h-verbs\.js/.test(idx), '★⓪ 전제: `index.html` 이 그 조각을 싣는다');
+    //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.verbs0`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+    require('./lib-e2e-src').SECTIONS.verbs0(ok);
   }
 
   const _central = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
@@ -913,18 +910,8 @@ async function waitHttp(url, tries = 600) {
   // ── ⑩ ★[T82 ⓪] 빚 셋 — 소스로 잰다 ───────────────────────────────────────
   console.log('\n⑩ ★[T82 ⓪] boot() 한 자리 · 진단 훅 0 · 메뉴 테두리 --line');
   {
-    const rd = (f) => fs.readFileSync(path.join(ROOT, 'public', 'client', f), 'utf8');
-    const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
-      .map((l) => { const i = l.indexOf('//'); return i >= 0 ? l.slice(0, i) : l; }).join('\n');
-    const main = strip(rd('99-main.js')), panel = strip(rd('50-i-panel.js')), net = strip(rd('30-n-net.js'));
-    ok(/^\s*boot\(\);/m.test(main), '★★⑩ `boot()` 은 **`99-main.js`** 에서 불린다(T0-b)');
-    ok(!/^\s*boot\(\);/m.test(panel), '★★⑩ `50-i-panel.js` 최상위의 `boot();` 는 **없다**');
-    ok(!/setTimeout\([^)]*onbLobbyInit/.test(net), '★⑩ T68 이 두었던 **임시 지연 두 줄이 사라졌다**');
-    const verbs = strip(rd('46-h-verbs.js'));
-    ok(!/__rmbDbg/.test(verbs), '★★⑩ 진단 훅 `__rmbDbg` 가 제품 코드에 **없다**(T57 규약)');
-    ok(/border:1px solid var\(--line\)/.test(strip(rd('44-h-hud.js'))), '★⑩ 메뉴 테두리가 `--line` 이다(먹선)');
-    // ★자명 통과 금지 — 이 검사기가 되살린 코드를 잡는가
-    ok(/__rmbDbg/.test("window.__rmbDbg = { tap: true };"), '★⑩ 자명 통과 금지 — 훅을 되살린 소스는 잡힌다');
+    //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.verbs10`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+    require('./lib-e2e-src').SECTIONS.verbs10(ok);
   }
 
   // ── ⑪ ★★[T90] 그 말이 **서버에서 왔다** — 클라엔 표가 없다 ─────────────────

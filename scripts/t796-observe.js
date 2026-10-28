@@ -28,6 +28,7 @@ const RISK_OFF = process.env.T796_RISK_OFF === '1', GANG_OFF = process.env.T796_
 const RAID_CALLERS = new Set(['_caravanArrive', 'tickCaravansV2']);
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
+const DD = require('./lib-day-deaths'); DD.install(V1);   // ★[T963] 그날 죽음 정본 — `_deadTot` 틱 앞뒤 차(`_deathsToday` 는 빈 마을 · 제련 날 끔 갈래에 전날 값이 남는다 · 사본 0)
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const B = require(path.join(ROOT, 'server', 'bandits'));
 const FOOD_JOBS = ['farmer', 'fisher', 'hunter', 'gatherer', 'forager'];
@@ -83,7 +84,7 @@ function snap(world, day) {
     let eaten = 0; for (const k in (v._foodEaten || {})) eaten += +v._foodEaten[k] || 0;
     let tfe = 0; try { tfe = V1.totalFoodEquivalent(v); } catch (e) { tfe = -1; }
     let inc = 0; try { inc = B.incomingFood(world, v); } catch (e) { inc = -1; }
-    return [(v.npcs || []).length, r2(tfe), r2(eaten), v._deathsToday || 0, r2(v.surplusEMA && v.surplusEMA.food),
+    return [(v.npcs || []).length, r2(tfe), r2(eaten), DD.deathsToday(v), r2(v.surplusEMA && v.surplusEMA.food),
       v._kDbg ? v._kDbg.prod : null, r2(v.lastStats && v.lastStats.production), r2(v._banditRisk), r2(inc),
       r2(T.foodImported), T.caravansSent || 0, r2(T.cargoSent), T.caravansRaided || 0, r2(T.cargoLost), T.tradersKilled || 0, T.banditsRepelled || 0,
       FOOD_JOBS.map((j) => Math.round(C[j] || 0))];

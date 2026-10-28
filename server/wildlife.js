@@ -792,7 +792,7 @@ function tick(now) {
     lm._sx = lm.px; lm._sy = lm.py;
     const rl = Math.hypot(dxp, dyp), rSpd = rl * H.TICK_HZ;
     sh.vx = rl > 1e-9 ? (dxp / rl) * rSpd * 32 : 0; sh.vy = rl > 1e-9 ? (dyp / rl) * rSpd * 32 : 0;   // px/s(클라 facing)
-    sh.hp = Math.max(1, Math.round(lm.hp * HP_SCALE)); lm._lsh = sh.hp;
+    H.setMobHp(sh, Math.max(1, Math.round(lm.hp * HP_SCALE)), 'wild'); lm._lsh = sh.hp;   // ★[T954] 존 몹 hp 는 존의 짐승 HP 문으로(조용한 낱말 · 하한 1 은 이 식 그대로)
     H.chunkManager.updateMobChunk(sh);
     liveSet.add(lm);
     // 계측: 상태 전이(도주·돌진) + 종별 최고 실측 속도(검증: 🦌 질주 ≈13m/s=416px/s). <60 가드=텔레포트성 잡값 배제

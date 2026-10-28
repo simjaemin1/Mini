@@ -154,8 +154,10 @@
   })();
 // @@moved:5153
   function _texPix(img) { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.drawImage(img, 0, 0, 64, 64); return g.getImageData(0, 0, 64, 64).data; }
-  function _bakeVilArt(thImg, eaImg, wlImg) {
-    const tp = _texPix(thImg), ep = _texPix(eaImg), wp = _texPix(wlImg);
+  function* _vilArtGen(thImg, eaImg, wlImg) {
+    const tp = _texPix(thImg); yield;   // ★[T962] 쪼갬 자리 — 텍스처 셋은 첫 drawImage 에서 풀린다(data: URL · 장마다 한 판)
+    const ep = _texPix(eaImg); yield;
+    const wp = _texPix(wlImg); yield;
     const CWD = 64, CHT = 32;   // 실셀 다이아(등각 정본: 인접 중심 (±32,±16) — 점묘 32×16의 2배)
     const mkTile = (pix, shade, alpha) => {
       const c = document.createElement('canvas'); c.width = CWD; c.height = CHT;
@@ -169,9 +171,9 @@
       }
       g.putImageData(im, 0, 0); return c;
     };
-    _tileYardC = mkTile(ep, 0.92, 235);
-    _tilePlazaC = mkTile(ep, 1.06, 235);
-    _tileHutC = mkTile(ep, 0.70, 255);   // 움집 실내 다짐흙(어둑한 반수혈 바닥 — 컷어웨이 시)
+    const yardC = mkTile(ep, 0.92, 235); yield;
+    const plazaC = mkTile(ep, 1.06, 235); yield;
+    const hutC = mkTile(ep, 0.70, 255); yield;   // 움집 실내 다짐흙(어둑한 반수혈 바닥 — 컷어웨이 시)
     // ── 벽 유닛 텍스처 스트립(통나무 굴립주 — 생성 텍스처) 32×WALL_HEIGHT: N면(양지)·E면(그늘).
     //    벽 렌더가 전단(shear) 변환으로 평행사변형에 그대로 씌움 — 전 벽 유닛(움집·큰집·곳간·플레이어) 공용.
     const mkStrip = (shade) => {
@@ -183,12 +185,12 @@
       }
       g2.putImageData(im2, 0, 0); return c2;
     };
-    _wallNC = mkStrip(1.0);
-    _wallEC = mkStrip(0.74);
+    const wallNC = mkStrip(1.0); yield;
+    const wallEC = mkStrip(0.74); yield;
     // ── 맞배 이엉 지붕 베이크(제너릭) — ★지붕은 벽(64px) '위에' 얹힌다[사용자 확정: 유닛 문법 우선].
     //    처마=정확 벽고 64[사용자 지적]·용마루=처마+반깊이×물매(움집 물매 19.2px/셀을 전 건물 공통 — 같은 이엉 구조 고증).
     //    DI/DJ=발자국+오버행 0.5셀×2. 움집(6×4)→7×5·용마루 112, 큰집(8×8)→9×9·용마루 150(동일 물매).
-    const _bakeRoof = (DI, DJ, EAVE, HMAX) => {
+    const _bakeRoofG = function* (DI, DJ, EAVE, HMAX) {   // ★[T962] 생성기 — 한 판에 다 돌리면(`_vilDrain`) 종전과 같다
       const jc = DJ / 2, SL = (HMAX - EAVE) / jc;
       const W2 = (DI + DJ) * 32, H2 = (DI + DJ) * 16 + HMAX + 4;
       const c = document.createElement('canvas'); c.width = W2; c.height = H2;
@@ -206,6 +208,7 @@
           if (j > DJ - 0.3 || j < 0.3) sh *= 0.87;         // 처마단
           const t3 = tw(i, j, sh); put(X, Y, t3[0], t3[1], t3[2]);
         }
+        yield;   // ★[T962] 쪼갬 자리(한 줄 i 마다 — 차례 · 값 그대로)
       }
       for (let k = 0; k <= 6; k++) {   // 동측 합각면(그늘 수직 — 벽 상단(WALL_HEIGHT)까지만: 그 아래는 벽 유닛의 몫)
         const i = DI - k * 0.01;
@@ -213,6 +216,7 @@
           const h = hgt(j), gh = h - WALL_HEIGHT, X = ((i - j) * 32 + sx0) | 0, Yt = ((i + j) * 16 + HMAX - h) | 0;
           for (let yy = 0; yy < gh; yy++) { const t3 = tw(i * 3, yy / Math.max(1, gh), 0.5); put(X, Yt + yy, t3[0], t3[1], t3[2]); }
         }
+        yield;
       }
       g.putImageData(im, 0, 0);
       c._ox = sx0; c._oy = HMAX;   // drawImage 앵커: 지붕 로컬 원점 iso 위치에서 (-_ox,-_oy)
@@ -220,12 +224,13 @@
     };
     // ★[2026-08-04d 배치 18 ②] 임의 크기 지붕이 필요해졌다(플레이어 방은 크기가 제각각).
     //   같은 베이크 함수를 밖으로 내보낸다 — **새 지붕 화법을 만들지 않는다**(사본 금지).
-    _bakeRoofFn = _bakeRoof;
-    _hutRoofC = _bakeRoof(7, 5, WALL_HEIGHT, WALL_HEIGHT + 48);
-    _hallRoofC = _bakeRoof(9, 9, WALL_HEIGHT, WALL_HEIGHT + 86);   // ★큰집(8×8 회관): 반깊이 4.5셀 × 물매 19.2 = +86 — 마을 중심의 웅장한 이엉 맞배
+    const roofFn = (DI, DJ, EAVE, HMAX) => _vilDrain(_bakeRoofG(DI, DJ, EAVE, HMAX));   // 방 지붕은 그 자리에서 한 판에(종전 그대로)
+    const hutRoofC = yield* _bakeRoofG(7, 5, WALL_HEIGHT, WALL_HEIGHT + 48);
+    const hallRoofC = yield* _bakeRoofG(9, 9, WALL_HEIGHT, WALL_HEIGHT + 86);   // ★큰집(8×8 회관): 반깊이 4.5셀 × 물매 19.2 = +86 — 마을 중심의 웅장한 이엉 맞배
     // ── ★고상곳간 통짜(송국리 정본: 굴립주 기둥 위 들린 밀폐 창고 + 사다리) — 벽 유닛 문법 대신 1장 스프라이트.
     //    구성: 기둥층 24px(통나무 세로·그늘) + 판벽 몸체 40px(N 1.0·E 0.74 — 벽 셰이드 문법) = 처마 64(전 건물 처마선 통일) + 이엉 맞배(물매 동형).
     //    실물 벽·바닥 행(data.gran)은 시각만 억제 — 콜라이더·밀폐는 불변. 컷어웨이 없음(문 없는 밀폐 — 반출입은 사다리).
+    let granC = null;
     {
       const DI = 6, DJ = 4, STILT = 24, BODY = 40, EAVE = STILT + BODY, HMAX = EAVE + Math.round((DJ / 2) * 19.2);   // 발자국 5×3+오버행
       const jc = DJ / 2, SL = (HMAX - EAVE) / jc;
@@ -247,44 +252,72 @@
           put(X0 + xx, Y0 - yy, t3[0], t3[1], t3[2]);
         }
       }
+      yield;
       // 들린 바닥 밑면 그늘(발자국 다이아 — 기둥 사이로 보이는 어둠)
-      for (let i = b0; i <= b1i; i += 0.02) for (let j = b0; j <= b1j; j += 0.02) {
+      for (let i = b0; i <= b1i; i += 0.02) { for (let j = b0; j <= b1j; j += 0.02) {
         const [X, Y] = px(i, j); const i2 = (Y * W2 + X) * 4;
         if (d[i2 + 3] === 0) put(X, Y, 14, 11, 8, 200);
-      }
+      } yield; }
       // ② 판벽 몸체(N면=i축 벽·양지 / E면=j축 벽·그늘) — 통나무 가로결, 상단은 STILT+BODY까지
       for (let i = b0; i <= b1i; i += 0.01) {   // N면(북벽은 안 보임 — 남면이 화면 정면): 남변 j=b1j
         const [X, Y] = px(i, b1j);
         for (let yy = STILT; yy < EAVE; yy++) { const t3 = twp(i * 64, (EAVE - yy) * 1.6, wp, 1.0); put(X, Y - yy, t3[0], t3[1], t3[2]); }
       }
+      yield;
       for (let j = b0; j <= b1j; j += 0.01) {   // E면: 동변 i=b1i
         const [X, Y] = px(b1i, j);
         for (let yy = STILT; yy < EAVE; yy++) { const t3 = twp(j * 64, (EAVE - yy) * 1.6, wp, 0.74); put(X, Y - yy, t3[0], t3[1], t3[2]); }
       }
+      yield;
       // ③ 사다리(남면 중앙 — 지면→몸체): 세로 2줄 + 가로장
       { const [LX, LY] = px(DI / 2 + 0.35, b1j);
         for (let yy = 0; yy <= EAVE - 10; yy++) { put(LX - 3, LY - yy + 2, 150, 118, 70); put(LX + 3, LY - yy + 2, 150, 118, 70); if (yy % 6 === 3) for (let xx = -2; xx <= 2; xx++) put(LX + xx, LY - yy + 2, 172, 138, 86); } }
       // ④ 이엉 맞배 지붕(물매 동형·오버행 0.5셀=로컬 [0..DI]×[0..DJ])
       const hgt = (j) => HMAX - Math.abs(j - jc) * SL;
-      for (let i = 0; i <= DI; i += 0.01) for (let j = 0; j <= DJ; j += 0.01) {
+      for (let i = 0; i <= DI; i += 0.01) { for (let j = 0; j <= DJ; j += 0.01) {
         const south = j > jc, h = hgt(j);
         const X = ((i - j) * 32 + sx0) | 0, Y = ((i + j) * 16 + HMAX - h) | 0;
         let sh = south ? 0.84 : 1.0;
         if (Math.abs(j - jc) < 0.09) sh = 0.62;
         if (j > DJ - 0.3 || j < 0.3) sh *= 0.87;
         const t3 = twp(i * 64, j * 64, tp, sh); put(X, Y, t3[0], t3[1], t3[2]);
-      }
+      } yield; }
       for (let k = 0; k <= 6; k++) {   // 동측 합각(처마→몸체 상단)
         const i = DI - k * 0.01;
         for (let j = 0; j <= DJ; j += 0.01) {
           const h = hgt(j), gh = h - EAVE, X = ((i - j) * 32 + sx0) | 0, Yt = ((i + j) * 16 + HMAX - h) | 0;
           for (let yy = 0; yy < gh; yy++) { const t3 = twp(i * 192, yy * 2, tp, 0.5); put(X, Yt + yy, t3[0], t3[1], t3[2]); }
         }
+        yield;
       }
       g.putImageData(im, 0, 0);
       c._ox = sx0; c._oy = HMAX;
-      _granC = c;
+      granC = c;
     }
+    // ★[T962] 붙잡는 자리는 맨 끝 한 곳 — 쪼개 돌려도 반쯤 구운 그림이 안 보인다(다 되거나 · 아직 없거나). 한 판에 돌리면 종전과 같다.
+    _tileYardC = yardC; _tilePlazaC = plazaC; _tileHutC = hutC; _wallNC = wallNC; _wallEC = wallEC;
+    _bakeRoofFn = roofFn; _hutRoofC = hutRoofC; _hallRoofC = hallRoofC; _granC = granC;
+  }
+  // ★★[T962 2026-10-27] 로비 막힘 1위 = 마을 그림 굽기(크롬 341~492ms · 그 안 GC 186~455ms — 보고/T962 §1).
+  //   굽기는 생성기 하나다(`_vilArtGen` — 사본 0). 끔(기본) = `_bakeVilArt` 가 한 판에 다 돌린다(종전 그대로 · 값 · 차례 같음).
+  //   켬(주소창 `?T962_VIL_SLICE=1` · 서버 무접촉 — T522 처럼 주소창 한 칸) = `_bakeVilArtSliced` 가 판당 예산(`T962_VIL_BUDGET_MS`)만큼씩
+  //   setTimeout 판으로 나눠 돌린다. 쪼갬 자리는 그림 줄 사이(yield)뿐이라 화소 · 차례가 같다 — 해시 증명은 보고/T962 §2.
+  //   ⚠/zones 칸이 아닌 까닭: 텍스처(data: URL 셋)는 99-main 에서 곧바로 오고(로비 ~0.5초) /zones 는 그 뒤다(1.1~1.9초 · 실측) — 칸이 오기 전에 굽기가 끝난다.
+  function _vilDrain(gen) { let r; do { r = gen.next(); } while (!r.done); return r.value; }
+  function _bakeVilArt(thImg, eaImg, wlImg) { _vilDrain(_vilArtGen(thImg, eaImg, wlImg)); }
+  const T962_VIL_SLICE = (() => { try { return new URLSearchParams(location.search).get('T962_VIL_SLICE') === '1'; } catch (e) { return false; } })();
+  const T962_VIL_BUDGET_MS = 8;
+  function _bakeVilArtSliced(thImg, eaImg, wlImg, onDone) {
+    const g = _vilArtGen(thImg, eaImg, wlImg); const st = { n: 0, ms: 0, max: 0, t0: performance.now() };
+    const step = () => {
+      const t0 = performance.now(); let r;
+      try { do { r = g.next(); } while (!r.done && performance.now() - t0 < T962_VIL_BUDGET_MS); }
+      catch (e) { console.warn('[vilart] bake 실패 — 폴백 렌더 유지', e); r = { done: true }; }
+      const ms = performance.now() - t0; st.n++; st.ms += ms; if (ms > st.max) st.max = ms;
+      if (ms >= 16) _lobStep('마을 그림 굽기 · 한 판(쪼갬 · T962)', t0);   // 예산을 넘긴 판만 로비 일 표에(줄 하나가 예산보다 길 때)
+      if (r.done) { st.wall = performance.now() - st.t0; if (onDone) onDone(st); } else setTimeout(step, 0);
+    };
+    setTimeout(step, 0);
   }
   function clCellOf(x, y) { return { cx: Math.floor(x / CL_BUILDING_SIZE), cy: Math.floor(y / CL_BUILDING_SIZE) }; }
   // 14.51: 3초 progress 작업 시작 (place 또는 dismantle)

@@ -200,7 +200,8 @@ console.log('\n[F] sim/economy-engine.browser.js — 번들 신선도');
 //   ④ 표와 같은 뜻이다 — 채택분은 `=== '0'` 이 되돌림인 꼴(기본 ON). 번들에 안 실리는 서버 파일이라 그 파일 글자를 본다.
 console.log('\n[A3] 서버 채택 손잡이');
 for (const [f, k] of [['server/trade.js', 'T807_QUOTE_TRIM'],   // ★[T817] 거래소 견적 = 실행 켬 기본
-                      ['server/trade.js', 'T835_QUOTE_WEIGHT']]) {   // ★[T847] 견적 무게 = 고른 그 개체들 켬 기본
+                      ['server/trade.js', 'T835_QUOTE_WEIGHT'],   // ★[T847] 견적 무게 = 고른 그 개체들 켬 기본
+                      ['server/trade.js', 'T965_WANT_START']]) {   // ★[T965] 받을 양 주문의 올림 출발 = 연속해 아래 마지막 낱개 켬 기본
   const re = new RegExp(`process\\.env\\.${k}\\s*===\\s*'0'`);
   if (re.test(rd(f))) ok(`  채택 손잡이 ${k} 기본 ON (=== '0' 으로 되돌림 · ${f})`);
   else bad(`  채택 손잡이 ${k} 의 기본값이 채택값이 아니다 (${f})`);

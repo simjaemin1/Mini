@@ -1,0 +1,1478 @@
+{
+ "card": "T955",
+ "made": "2026-10-27",
+ "tree": "batch/fixture-15-1028 6a19c1d4(main eddf9603 + T943)",
+ "grep": [
+  "process.env.X = '0'",
+  "env.X = '0'",
+  "X: '0'",
+  "X=0(셸 · 쿼리 글자)"
+ ],
+ "scope": "scripts/test-*.js 217 — 주석 줄 뺌",
+ "counts": {
+  "lines": 577,
+  "files": 127,
+  "knobs": 148,
+  "isolationLines": 272,
+  "pairs": 193
+ },
+ "W": [
+  {
+   "f": "test-lab-stone.js",
+   "sec": "⑨ (파일 머리)",
+   "knobs": [
+    "T931_SLOTK_EMA"
+   ],
+   "since": "T943 (2026-10-27 · 34a6b26e)",
+   "why": "켬 기본 세계에선 ⑨ \"늘어난 폭 2배 이상\"이 ×2.30 → ×1.33",
+   "now": "T955 ① 에서 풂(씨 909 → 908)",
+   "lines": [
+    27
+   ]
+  },
+  {
+   "f": "test-moment-lot.js",
+   "sec": "⑩",
+   "knobs": [
+    "T931_SLOTK_EMA"
+   ],
+   "since": "T943 (2026-10-27 · 34a6b26e)",
+   "why": "켬 기본 세계에선 마을0 이 돌을 내고 고기를 받아 재고 상한에 걸린다(낼 것 6 → 실행 1)",
+   "now": "T955 ① 에서 풂(200 → 250날)",
+   "lines": [
+    749
+   ]
+  },
+  {
+   "f": "test-lab-mining.js",
+   "sec": "③④ (랩 쿼리 LAB_QS)",
+   "knobs": [
+    "T707_MARKET",
+    "T731_LOCAL_MIDNIGHT",
+    "T761_LOCAL_CLOCKS"
+   ],
+   "since": "T758 (10-15 · T707) · T852 (2026-10-22 · 3bdad1e8 · T731 · T761)",
+   "why": "\"첫 광부가 41~50일에 선다\"는 종전 세계 단언 — 켬 세계는 17일째 지문부터 갈리고 60일 안에 광부가 안 선다(③④ 빨강 2)",
+   "now": "남김(회부)",
+   "lines": [
+    43
+   ]
+  },
+  {
+   "f": "test-site-memo.js",
+   "sec": "PINS (씨앗 · 팔 모두)",
+   "knobs": [
+    "T230_TERR_HOUSING",
+    "T219_HOUSE_TRIGGER",
+    "T315_HOUSE_GAP",
+    "T400_BUILD_ACT"
+   ],
+   "since": "T342 · T298 · T326 · T751 (2026-10-15 · 6ea70977)",
+   "why": "기억(T41)이 태어난 세계에 묶는다 — 방아쇠 · 간격 · 영토 주거 · 집 행위가 켬 기본이 된 뒤 그 세계가 사라졌다(연속 6밤 빨강의 주인 등)",
+   "now": "남김(회부)",
+   "lines": [
+    49
+   ]
+  },
+  {
+   "f": "test-terr-persist.js",
+   "sec": "전제 ①",
+   "knobs": [
+    "T538_TERR_CAP"
+   ],
+   "since": "T569 (2026-10-03 · 5ea726ec)",
+   "why": "NPC 영토 상한 켬 기본 뒤 새 세계 영토가 한 칸도 안 자라 전제 ①(자란 마을)이 main 에서 빨갰다 — 상한을 끈 판에서 잰다",
+   "now": "남김(회부)",
+   "lines": [
+    94
+   ]
+  },
+  {
+   "f": "test-recut.js",
+   "sec": "--grow 자식",
+   "knobs": [
+    "T566_REGROW_BLOCK",
+    "T538_TERR_CAP"
+   ],
+   "since": "T566 · T751 (2026-10-15 · 0fdaab78)",
+   "why": "켬이면 영토 안 재생 0 · 영토 상한 켬 기본 뒤 영토가 안 자란다 — 이 절의 전제(다시 선 그루 · 자라는 날)가 없다",
+   "now": "남김(회부)",
+   "lines": [
+    282
+   ]
+  },
+  {
+   "f": "test-resume-one.js",
+   "sec": "빈 쌍 판",
+   "knobs": [
+    "T910_SIG_PURE"
+   ],
+   "since": "PM 착지 10-24d (2026-10-24 · 9ea0b4a7)",
+   "why": "T910 켬 기본이면 다시 뜬 판이 길 캐시를 지켜 빈 쌍이 안 선다 — 재는 상황을 =0 으로 세운다(두 팔 같게 · 단언 무변)",
+   "now": "남김(회부)",
+   "lines": [
+    59
+   ]
+  },
+  {
+   "f": "test-build-act.js",
+   "sec": "①~⑥ (파일 머리) — 경계",
+   "knobs": [
+    "T400_BUILD_ACT",
+    "T497_HUT_COST"
+   ],
+   "since": "T537 추신2 ⓐ (2026-09-30 · 5e8092e7)",
+   "why": "①~⑥ 은 되돌림 판(끔 · 표 22)을 기준으로 계약을 잰다 — 새 기본값 자체는 ⑨(켬 판도 같은 파일에 있다)",
+   "now": "경계 — 되돌림 판 계약이 대상이라 적어 두었다",
+   "lines": [
+    27,
+    242,
+    244,
+    245,
+    260,
+    261,
+    275,
+    276,
+    277,
+    278
+   ]
+  }
+ ],
+ "S": [
+  {
+   "f": "test-farm-act.js",
+   "knobs": [
+    "T720_LON_DAY",
+    "T374_DEMAND_STOP"
+   ],
+   "why": "수요 문 · 경계 일괄(T720) 켬 기본 — 이 판은 끈 갈래(수요 문 없는 일괄)를 잰다",
+   "lines": [
+    36,
+    330
+   ]
+  },
+  {
+   "f": "test-wood-act.js",
+   "knobs": [
+    "T720_LON_DAY",
+    "T717_WOOD_HAND",
+    "T374_DEMAND_STOP"
+   ],
+   "why": "이 하네스는 T720 · T717 끈 갈래(경계 일괄 · 손 비움) · 수요 문 없는 한도식을 잰다",
+   "lines": [
+    32,
+    497,
+    592,
+    642
+   ]
+  },
+  {
+   "f": "test-forage-act.js",
+   "knobs": [
+    "T720_LON_DAY",
+    "T724_MINE_ACT",
+    "T374_DEMAND_STOP"
+   ],
+   "why": "이 하네스는 T720 · T724 끈 갈래(경계 일괄 손 → 곳간) · 수요 문 끔 판을 잰다",
+   "lines": [
+    36,
+    437,
+    526,
+    548,
+    1042,
+    1218,
+    1254
+   ]
+  }
+ ],
+ "rest": [
+  {
+   "f": "test-battle-fast.js",
+   "knob": "T874_BATTLE_FAST",
+   "lines": [
+    89,
+    210
+   ]
+  },
+  {
+   "f": "test-bigmap-cells.js",
+   "knob": "T565_MAP_LIVE",
+   "lines": [
+    114
+   ]
+  },
+  {
+   "f": "test-body-seed-restart.js",
+   "knob": "T822_BODY_SEED",
+   "lines": [
+    83,
+    84,
+    176,
+    195
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "WEATHER_DEV_C",
+   "lines": [
+    503
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "WEATHER_AMP_NOISE",
+   "lines": [
+    503
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "BODY_EXTREME_HP_HUNGER",
+   "lines": [
+    1225
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "BODY_EXTREME_HP_THIRST",
+   "lines": [
+    1225
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "BODY_EXTREME_HP_COLD",
+   "lines": [
+    1225
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "BODY_HEAT_THIRST_W",
+   "lines": [
+    1354
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "LOSS",
+   "lines": [
+    1525
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "T105_WET",
+   "lines": [
+    1533,
+    1542
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "T114_COVER",
+   "lines": [
+    1739,
+    1741
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "BODY_COVER_MAX",
+   "lines": [
+    1744
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "T508_DECAY_EXP",
+   "lines": [
+    1797
+   ]
+  },
+  {
+   "f": "test-body.js",
+   "knob": "T508_CLO",
+   "lines": [
+    1797
+   ]
+  },
+  {
+   "f": "test-bridge-act.js",
+   "knob": "T400_BUILD_ACT",
+   "lines": [
+    85
+   ]
+  },
+  {
+   "f": "test-calendar.js",
+   "knob": "T570_CALENDAR",
+   "lines": [
+    215,
+    221
+   ]
+  },
+  {
+   "f": "test-cand-walk.js",
+   "knob": "T681_WALLCLOCK",
+   "lines": [
+    258,
+    260
+   ]
+  },
+  {
+   "f": "test-car-fast.js",
+   "knob": "T315_MAPBEDS",
+   "lines": [
+    53
+   ]
+  },
+  {
+   "f": "test-car-fast.js",
+   "knob": "T640_BOOT_SLICE",
+   "lines": [
+    53
+   ]
+  },
+  {
+   "f": "test-car-fast.js",
+   "knob": "T876_CAR_FAST",
+   "lines": [
+    80
+   ]
+  },
+  {
+   "f": "test-cargo-age.js",
+   "knob": "T812_CARGO_TEMP",
+   "lines": [
+    181,
+    220,
+    226
+   ]
+  },
+  {
+   "f": "test-cargo-age.js",
+   "knob": "T840_LEG_ELEV",
+   "lines": [
+    262
+   ]
+  },
+  {
+   "f": "test-cell-memo.js",
+   "knob": "T818_CELL_MEMO",
+   "lines": [
+    59
+   ]
+  },
+  {
+   "f": "test-charsheet.js",
+   "knob": "T96_INK",
+   "lines": [
+    509
+   ]
+  },
+  {
+   "f": "test-charsheet.js",
+   "knob": "T96_CEL",
+   "lines": [
+    509
+   ]
+  },
+  {
+   "f": "test-clothes.js",
+   "knob": "T516_WARMTH_CLO",
+   "lines": [
+    47,
+    211
+   ]
+  },
+  {
+   "f": "test-coll-grid.js",
+   "knob": "T421_SPATIAL_INC",
+   "lines": [
+    48
+   ]
+  },
+  {
+   "f": "test-crop-cal.js",
+   "knob": "T594_CROP_CAL",
+   "lines": [
+    57,
+    59,
+    120,
+    121,
+    154,
+    225
+   ]
+  },
+  {
+   "f": "test-crop-cal.js",
+   "knob": "T570_CALENDAR",
+   "lines": [
+    146
+   ]
+  },
+  {
+   "f": "test-crops.js",
+   "knob": "T594_CROP_CAL",
+   "lines": [
+    207,
+    822
+   ]
+  },
+  {
+   "f": "test-crops.js",
+   "knob": "T99_VERNAL",
+   "lines": [
+    822
+   ]
+  },
+  {
+   "f": "test-crops.js",
+   "knob": "T99_CARE_PAUSE",
+   "lines": [
+    822,
+    839
+   ]
+  },
+  {
+   "f": "test-crops.js",
+   "knob": "T99_PERENNIAL_DORMANT",
+   "lines": [
+    822,
+    832
+   ]
+  },
+  {
+   "f": "test-donate.js",
+   "knob": "T769_DONATE",
+   "lines": [
+    196
+   ]
+  },
+  {
+   "f": "test-downed.js",
+   "knob": "T88_WAKE_DIST",
+   "lines": [
+    1192,
+    1196
+   ]
+  },
+  {
+   "f": "test-downed.js",
+   "knob": "T88_MEAL",
+   "lines": [
+    1207,
+    1214
+   ]
+  },
+  {
+   "f": "test-downed.js",
+   "knob": "T121_DOORDB",
+   "lines": [
+    1378,
+    1391
+   ]
+  },
+  {
+   "f": "test-draft-famine.js",
+   "knob": "T815_DRAFT_FAMINE",
+   "lines": [
+    86
+   ]
+  },
+  {
+   "f": "test-drop-kg.js",
+   "knob": "T636_DROP_KG",
+   "lines": [
+    162,
+    228
+   ]
+  },
+  {
+   "f": "test-drop-kg.js",
+   "knob": "T732_MOMENT_LOT",
+   "lines": [
+    229,
+    247
+   ]
+  },
+  {
+   "f": "test-dusk-stamp.js",
+   "knob": "T743_DUSK_STAMP",
+   "lines": [
+    39
+   ]
+  },
+  {
+   "f": "test-dusk-stamp.js",
+   "knob": "T490_FORAGE_REACH",
+   "lines": [
+    40
+   ]
+  },
+  {
+   "f": "test-dusk-stamp.js",
+   "knob": "T717_WOOD_HAND",
+   "lines": [
+    94
+   ]
+  },
+  {
+   "f": "test-dusk-stamp.js",
+   "knob": "T720_LON_DAY",
+   "lines": [
+    159
+   ]
+  },
+  {
+   "f": "test-econ-diet.js",
+   "knob": "T86_DIET",
+   "lines": [
+    162
+   ]
+  },
+  {
+   "f": "test-econ-fast.js",
+   "knob": "T400_BUILD_ACT",
+   "lines": [
+    95
+   ]
+  },
+  {
+   "f": "test-econ-fast.js",
+   "knob": "T862_ECON_FAST",
+   "lines": [
+    96
+   ]
+  },
+  {
+   "f": "test-econ-fast.js",
+   "knob": "T315_MAPBEDS",
+   "lines": [
+    113
+   ]
+  },
+  {
+   "f": "test-econ-fast.js",
+   "knob": "T640_BOOT_SLICE",
+   "lines": [
+    113
+   ]
+  },
+  {
+   "f": "test-econ-fieldyield.js",
+   "knob": "T100_FIELD_YIELD",
+   "lines": [
+    181,
+    184
+   ]
+  },
+  {
+   "f": "test-econ-fieldyield.js",
+   "knob": "T300_BUILD_CAP",
+   "lines": [
+    668
+   ]
+  },
+  {
+   "f": "test-econ-rawgrain.js",
+   "knob": "T73_RAWGRAIN",
+   "lines": [
+    138
+   ]
+  },
+  {
+   "f": "test-events.js",
+   "knob": "T489_RUMOR_SPLIT",
+   "lines": [
+    634
+   ]
+  },
+  {
+   "f": "test-events.js",
+   "knob": "T127_BLUR",
+   "lines": [
+    1833,
+    1837
+   ]
+  },
+  {
+   "f": "test-events.js",
+   "knob": "T133_FRESH",
+   "lines": [
+    1968,
+    1970,
+    2094,
+    2096
+   ]
+  },
+  {
+   "f": "test-farm-act.js",
+   "knob": "T774_ACTIVE_COL",
+   "lines": [
+    243
+   ]
+  },
+  {
+   "f": "test-farm-act.js",
+   "knob": "T368_FARM_ACT",
+   "lines": [
+    281
+   ]
+  },
+  {
+   "f": "test-farm-life.js",
+   "knob": "T112_RAIN",
+   "lines": [
+    238,
+    239
+   ]
+  },
+  {
+   "f": "test-fell-loot.js",
+   "knob": "T733_FELL_LOOT",
+   "lines": [
+    44
+   ]
+  },
+  {
+   "f": "test-fell-loot.js",
+   "knob": "T490_FORAGE_REACH",
+   "lines": [
+    45
+   ]
+  },
+  {
+   "f": "test-fell-loot.js",
+   "knob": "T720_LON_DAY",
+   "lines": [
+    181,
+    215
+   ]
+  },
+  {
+   "f": "test-fish-act.js",
+   "knob": "T602_SEA_TABLE",
+   "lines": [
+    306
+   ]
+  },
+  {
+   "f": "test-fish-act.js",
+   "knob": "T593_SEA",
+   "lines": [
+    318,
+    323
+   ]
+  },
+  {
+   "f": "test-fishing.js",
+   "knob": "T602_GRADE",
+   "lines": [
+    616,
+    617
+   ]
+  },
+  {
+   "f": "test-fishing.js",
+   "knob": "T602_SEA_TABLE",
+   "lines": [
+    644
+   ]
+  },
+  {
+   "f": "test-food-sick.js",
+   "knob": "T732_MOMENT_LOT",
+   "lines": [
+    167,
+    232
+   ]
+  },
+  {
+   "f": "test-forage-act.js",
+   "knob": "T347_FORAGE_ACT",
+   "lines": [
+    935
+   ]
+  },
+  {
+   "f": "test-forage-act.js",
+   "knob": "T325_WOOD_ACT",
+   "lines": [
+    935
+   ]
+  },
+  {
+   "f": "test-forage-act.js",
+   "knob": "T490_FORAGE_REACH",
+   "lines": [
+    991,
+    1254
+   ]
+  },
+  {
+   "f": "test-forage-act.js",
+   "knob": "T495_PARTIAL_PICK",
+   "lines": [
+    1067
+   ]
+  },
+  {
+   "f": "test-game-meat.js",
+   "knob": "T694_GAME_MEAT",
+   "lines": [
+    156
+   ]
+  },
+  {
+   "f": "test-game-meat.js",
+   "knob": "T636_DROP_KG",
+   "lines": [
+    168,
+    169
+   ]
+  },
+  {
+   "f": "test-game-meat.js",
+   "knob": "T732_MOMENT_LOT",
+   "lines": [
+    225,
+    234
+   ]
+  },
+  {
+   "f": "test-granary-age.js",
+   "knob": "T732_MOMENT_LOT",
+   "lines": [
+    202
+   ]
+  },
+  {
+   "f": "test-granary-item.js",
+   "knob": "T732_MOMENT_LOT",
+   "lines": [
+    348
+   ]
+  },
+  {
+   "f": "test-guest-identity.js",
+   "knob": "GUEST_TOKEN_GRACE_MS",
+   "lines": [
+    396
+   ]
+  },
+  {
+   "f": "test-hall-units.js",
+   "knob": "T732_MOMENT_LOT",
+   "lines": [
+    164,
+    219
+   ]
+  },
+  {
+   "f": "test-handoff-body.js",
+   "knob": "T732_MOMENT_LOT",
+   "lines": [
+    619
+   ]
+  },
+  {
+   "f": "test-handoff-body.js",
+   "knob": "T823_FREEZE_SHELL",
+   "lines": [
+    644,
+    826,
+    843,
+    882
+   ]
+  },
+  {
+   "f": "test-handoff-body.js",
+   "knob": "T868_PROMOTE_BODY",
+   "lines": [
+    771
+   ]
+  },
+  {
+   "f": "test-handoff-body.js",
+   "knob": "T890_TAKEOVER_BODY",
+   "lines": [
+    771
+   ]
+  },
+  {
+   "f": "test-handoff-body.js",
+   "knob": "T916_SAVE_RETRY",
+   "lines": [
+    771
+   ]
+  },
+  {
+   "f": "test-handoff-body.js",
+   "knob": "T927_BODY_VER",
+   "lines": [
+    771,
+    826,
+    843,
+    882
+   ]
+  },
+  {
+   "f": "test-hunt-port.js",
+   "knob": "T146_BAND",
+   "lines": [
+    340,
+    346
+   ]
+  },
+  {
+   "f": "test-hunt-port.js",
+   "knob": "T146_GAME",
+   "lines": [
+    372,
+    376
+   ]
+  },
+  {
+   "f": "test-hunt-port.js",
+   "knob": "T146_GAMER",
+   "lines": [
+    410
+   ]
+  },
+  {
+   "f": "test-hunt-vis.js",
+   "knob": "T158_LEDGER_VIS",
+   "lines": [
+    156,
+    160,
+    216
+   ]
+  },
+  {
+   "f": "test-lab-alloc.js",
+   "knob": "L_ALLOC_REAL",
+   "lines": [
+    85,
+    86,
+    238
+   ]
+  },
+  {
+   "f": "test-lab-happywork.js",
+   "knob": "L_HAPPY_FLOOR1",
+   "lines": [
+    57,
+    69,
+    210,
+    219
+   ]
+  },
+  {
+   "f": "test-lab-happywork.js",
+   "knob": "L_HAPPYWORK",
+   "lines": [
+    140,
+    251,
+    253
+   ]
+  },
+  {
+   "f": "test-local-midnight-window.js",
+   "knob": "VILLAGE_ROUTE_WARM",
+   "lines": [
+    103
+   ]
+  },
+  {
+   "f": "test-local-midnight.js",
+   "knob": "T731_LOCAL_MIDNIGHT",
+   "lines": [
+    69,
+    70
+   ]
+  },
+  {
+   "f": "test-mining.js",
+   "knob": "T574_REGION",
+   "lines": [
+    228
+   ]
+  },
+  {
+   "f": "test-moment-lot.js",
+   "knob": "T748_TK",
+   "lines": [
+    749
+   ]
+  },
+  {
+   "f": "test-move-soa.js",
+   "knob": "T427_SITE_REACH",
+   "lines": [
+    1432
+   ]
+  },
+  {
+   "f": "test-move-soa.js",
+   "knob": "T489_RUMOR_SPLIT",
+   "lines": [
+    2174,
+    2179
+   ]
+  },
+  {
+   "f": "test-nightly.js",
+   "knob": "DRAIN_SEC",
+   "lines": [
+    171
+   ]
+  },
+  {
+   "f": "test-no-shield.js",
+   "knob": "T858_NO_SHIELD",
+   "lines": [
+    61
+   ]
+  },
+  {
+   "f": "test-one-target.js",
+   "knob": "T726_ONE_TARGET",
+   "lines": [
+    100,
+    101
+   ]
+  },
+  {
+   "f": "test-oremix.js",
+   "knob": "ORE_MIX_EFF",
+   "lines": [
+    89,
+    91
+   ]
+  },
+  {
+   "f": "test-preserve-carry.js",
+   "knob": "T767_PRESERVE_CARRY",
+   "lines": [
+    151,
+    152
+   ]
+  },
+  {
+   "f": "test-preserve-carry.js",
+   "knob": "T732_MOMENT_LOT",
+   "lines": [
+    151,
+    153
+   ]
+  },
+  {
+   "f": "test-preserve.js",
+   "knob": "T732_MOMENT_LOT",
+   "lines": [
+    557,
+    560
+   ]
+  },
+  {
+   "f": "test-psite-server.js",
+   "knob": "T219_HOUSE_TRIGGER",
+   "lines": [
+    225
+   ]
+  },
+  {
+   "f": "test-psite-server.js",
+   "knob": "T230_TERR_HOUSING",
+   "lines": [
+    225
+   ]
+  },
+  {
+   "f": "test-psite-server.js",
+   "knob": "T315_HOUSE_GAP",
+   "lines": [
+    397
+   ]
+  },
+  {
+   "f": "test-psite-server.js",
+   "knob": "T315_MAPBEDS",
+   "lines": [
+    397
+   ]
+  },
+  {
+   "f": "test-region-profiles.js",
+   "knob": "T574_REGION",
+   "lines": [
+    28,
+    51
+   ]
+  },
+  {
+   "f": "test-regrow.js",
+   "knob": "T122_REGROW",
+   "lines": [
+    192,
+    194
+   ]
+  },
+  {
+   "f": "test-regrow.js",
+   "knob": "T122_STUMP_Y",
+   "lines": [
+    197,
+    202
+   ]
+  },
+  {
+   "f": "test-regrow.js",
+   "knob": "T122_TREE_Y",
+   "lines": [
+    202
+   ]
+  },
+  {
+   "f": "test-regrow.js",
+   "knob": "T124_PLANT",
+   "lines": [
+    524,
+    526
+   ]
+  },
+  {
+   "f": "test-reset-world.js",
+   "knob": "T565_MAP_LIVE",
+   "lines": [
+    219
+   ]
+  },
+  {
+   "f": "test-reset-world.js",
+   "knob": "PLAYER_CAP",
+   "lines": [
+    219
+   ]
+  },
+  {
+   "f": "test-resume-one.js",
+   "knob": "T315_MAPBEDS",
+   "lines": [
+    37
+   ]
+  },
+  {
+   "f": "test-resume-one.js",
+   "knob": "T640_BOOT_SLICE",
+   "lines": [
+    37
+   ]
+  },
+  {
+   "f": "test-resume-one.js",
+   "knob": "T896_RESUME_ONE",
+   "lines": [
+    59
+   ]
+  },
+  {
+   "f": "test-return-resume.js",
+   "knob": "T315_MAPBEDS",
+   "lines": [
+    40
+   ]
+  },
+  {
+   "f": "test-return-resume.js",
+   "knob": "T640_BOOT_SLICE",
+   "lines": [
+    40
+   ]
+  },
+  {
+   "f": "test-return-resume.js",
+   "knob": "VILLAGE_ROUTE_WARM",
+   "lines": [
+    40
+   ]
+  },
+  {
+   "f": "test-return-resume.js",
+   "knob": "T929_RET_RESUME",
+   "lines": [
+    51
+   ]
+  },
+  {
+   "f": "test-road-day.js",
+   "knob": "T713_FLUSH_END",
+   "lines": [
+    166
+   ]
+  },
+  {
+   "f": "test-road-tail.js",
+   "knob": "VILLAGE_WAR_LOG",
+   "lines": [
+    64
+   ]
+  },
+  {
+   "f": "test-route-sig.js",
+   "knob": "T315_MAPBEDS",
+   "lines": [
+    55
+   ]
+  },
+  {
+   "f": "test-route-sig.js",
+   "knob": "T640_BOOT_SLICE",
+   "lines": [
+    55
+   ]
+  },
+  {
+   "f": "test-route-sig.js",
+   "knob": "T910_SIG_PURE",
+   "lines": [
+    63,
+    72
+   ]
+  },
+  {
+   "f": "test-seed-reserve.js",
+   "knob": "T692_SEED_RESERVE",
+   "lines": [
+    130
+   ]
+  },
+  {
+   "f": "test-seed-reserve.js",
+   "knob": "LANDFIT",
+   "lines": [
+    150
+   ]
+  },
+  {
+   "f": "test-segindex.js",
+   "knob": "TERRAIN_SEG_INDEX",
+   "lines": [
+    93
+   ]
+  },
+  {
+   "f": "test-server-market.js",
+   "knob": "T707_MARKET",
+   "lines": [
+    221
+   ]
+  },
+  {
+   "f": "test-site-memo.js",
+   "knob": "LIFE_SITE_MEMO",
+   "lines": [
+    173
+   ]
+  },
+  {
+   "f": "test-smelt-return.js",
+   "knob": "T932_SMELT_CONT",
+   "lines": [
+    88
+   ]
+  },
+  {
+   "f": "test-spoil2.js",
+   "knob": "T732_MOMENT_LOT",
+   "lines": [
+    316,
+    319
+   ]
+  },
+  {
+   "f": "test-stone-real.js",
+   "knob": "T443_SMELT_FUEL",
+   "lines": [
+    123,
+    124,
+    177
+   ]
+  },
+  {
+   "f": "test-stone-real.js",
+   "knob": "T452_KILN_ACT",
+   "lines": [
+    148,
+    149,
+    177
+   ]
+  },
+  {
+   "f": "test-stone-real.js",
+   "knob": "T400_BUILD_ACT",
+   "lines": [
+    204
+   ]
+  },
+  {
+   "f": "test-streams.js",
+   "knob": "T585_STREAMS",
+   "lines": [
+    234,
+    237
+   ]
+  },
+  {
+   "f": "test-streams.js",
+   "knob": "T588_COAST",
+   "lines": [
+    244
+   ]
+  },
+  {
+   "f": "test-streams.js",
+   "knob": "T601_RULER_STREAMS",
+   "lines": [
+    261,
+    263
+   ]
+  },
+  {
+   "f": "test-t742-zone.js",
+   "knob": "T742_ZONE_KEEP",
+   "lines": [
+    18
+   ]
+  },
+  {
+   "f": "test-t772-leg.js",
+   "knob": "T772_LEG_FROM_LINGER",
+   "lines": [
+    38
+   ]
+  },
+  {
+   "f": "test-t772-leg.js",
+   "knob": "T775_CARAVAN_RESUME",
+   "lines": [
+    39
+   ]
+  },
+  {
+   "f": "test-t807-quote-exec.js",
+   "knob": "T807_QUOTE_TRIM",
+   "lines": [
+    85,
+    97
+   ]
+  },
+  {
+   "f": "test-t835-quote-weight.js",
+   "knob": "T835_QUOTE_WEIGHT",
+   "lines": [
+    105
+   ]
+  },
+  {
+   "f": "test-t860-catch-dry.js",
+   "knob": "T877_DRY_FIX",
+   "lines": [
+    75
+   ]
+  },
+  {
+   "f": "test-t860-catch-dry.js",
+   "knob": "T860_CATCH_DRY",
+   "lines": [
+    120
+   ]
+  },
+  {
+   "f": "test-t877-dry-fix.js",
+   "knob": "T877_DRY_FIX",
+   "lines": [
+    102
+   ]
+  },
+  {
+   "f": "test-t924-debt-cap.js",
+   "knob": "T924_DEBT_CAP",
+   "lines": [
+    107
+   ]
+  },
+  {
+   "f": "test-t931-slotk-ema.js",
+   "knob": "T931_SLOTK_EMA",
+   "lines": [
+    89
+   ]
+  },
+  {
+   "f": "test-terr-overlap.js",
+   "knob": "T569_OVERLAP",
+   "lines": [
+    94,
+    97,
+    112
+   ]
+  },
+  {
+   "f": "test-terr-persist.js",
+   "knob": "T230_TERR_HOUSING",
+   "lines": [
+    137,
+    143
+   ]
+  },
+  {
+   "f": "test-terrain-memo.js",
+   "knob": "TERRAIN_TILE_CACHE",
+   "lines": [
+    90
+   ]
+  },
+  {
+   "f": "test-tick-slicer.js",
+   "knob": "VILLAGE_ROUTE_WARM",
+   "lines": [
+    85
+   ]
+  },
+  {
+   "f": "test-tick-slicer.js",
+   "knob": "T513_DAY_SLICE",
+   "lines": [
+    307,
+    396
+   ]
+  },
+  {
+   "f": "test-tick-slicer.js",
+   "knob": "T523_LIFE_SLICE",
+   "lines": [
+    310,
+    432
+   ]
+  },
+  {
+   "f": "test-trees.js",
+   "knob": "T135_TREES",
+   "lines": [
+    156,
+    160,
+    165,
+    171,
+    255,
+    257
+   ]
+  },
+  {
+   "f": "test-trees.js",
+   "knob": "T135_SCATTER",
+   "lines": [
+    205
+   ]
+  },
+  {
+   "f": "test-trees.js",
+   "knob": "T135_FOREST_MEAN",
+   "lines": [
+    233,
+    235
+   ]
+  },
+  {
+   "f": "test-update-snap.js",
+   "knob": "FAKE_TZ",
+   "lines": [
+    114,
+    125,
+    129,
+    168
+   ]
+  },
+  {
+   "f": "test-update-snap.js",
+   "knob": "FAKE_SC",
+   "lines": [
+    122,
+    129
+   ]
+  },
+  {
+   "f": "test-update-snap.js",
+   "knob": "FAKE_SZ",
+   "lines": [
+    122,
+    125,
+    129
+   ]
+  },
+  {
+   "f": "test-valuechain.js",
+   "knob": "TREASURY_BUY",
+   "lines": [
+    296,
+    298
+   ]
+  },
+  {
+   "f": "test-vern-num.js",
+   "knob": "T834_VERN_NUM",
+   "lines": [
+    47
+   ]
+  },
+  {
+   "f": "test-vil-fast.js",
+   "knob": "T400_BUILD_ACT",
+   "lines": [
+    72
+   ]
+  },
+  {
+   "f": "test-weight.js",
+   "knob": "T732_MOMENT_LOT",
+   "lines": [
+    339,
+    342
+   ]
+  },
+  {
+   "f": "test-well.js",
+   "knob": "T509_WELL",
+   "lines": [
+    18,
+    84,
+    86
+   ]
+  },
+  {
+   "f": "test-wood-flow.js",
+   "knob": "T659_WOOD_FLOW",
+   "lines": [
+    72,
+    73
+   ]
+  },
+  {
+   "f": "test-wood-step1.js",
+   "knob": "T717_WOOD_HAND",
+   "lines": [
+    72
+   ]
+  },
+  {
+   "f": "test-zone-fauna.js",
+   "knob": "T622_ZONE_FAUNA",
+   "lines": [
+    171
+   ]
+  }
+ ],
+ "restNote": "그 밖 = 손잡이 자신의 끔 판(끔/켬 짝 · 되돌림 바이트 · 끔 탐침) · 돌연변이 · 대조 팔 · 판 자 조건(서버 기준선 자 T650 VILLAGE_CARAVAN_MAX=0 · T400_BUILD_ACT=0 · 빠른 서버 판 T315_MAPBEDS=0 · T640_BOOT_SLICE=0) · 분리(VILLAGE_ROUTE_WARM 등)"
+}

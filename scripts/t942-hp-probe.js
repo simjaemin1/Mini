@@ -7,6 +7,8 @@
 //       (`pid:hp:isDown` · pid 차례) sha1 앞 12자리 · 몸 수 · hp 합 — 두 트리(문 앞 main ↔ 문 뒤 가지)의 몸 hp 가 날마다 같은가.
 //     · 문이 있는 트리(마을 deps 에 `setHp` 가 있다 — T942)면 그 deps 의 문을 같은 인수 · 같은 반환으로 감싸 낱말마다 셈:
 //       부름 · 실제로 바뀜 · 같은 값이라 안 씀 · 0 밑(문이 0 으로 깎는다) · maxHp 위(문이 깎는다) · NaN — 깎기가 몇 번 무는지가 곧 "값이 갈릴 수 있었던 자리" 수다.
+//   ★[T954 2026-10-27] 짐승(존 몹) — 같은 날마다 존 몹 전부(`mid:type:hp` · mid 차례 · 마을 deps 의 `mobs`) 지문 · 몹 수 · hp 합을 같은 줄 뒤에 싣고,
+//     야생 host 에 짐승 HP 문(`setMobHp`)이 있으면 그 문도 같은 인수 · 같은 반환으로 감싸 낱말마다 센다(`mobCnt` — 존 안 자리 넷은 존 안 함수라 못 센다).
 //   ★관찰만 한다 — 몸 · 세계 값을 안 쓴다(마을 `init` 을 감싸 deps 의 문 하나만 같은 함수로 넘기는 덮개를 씌운다 · 장부 `createLedger` 만 감싼다).
 'use strict';
 const OUT0 = process.env.T577_OUT || '';
@@ -16,16 +18,19 @@ if (OUT0 && MAIN) {
   const OUT = path.join(process.env.T942_DIR || path.dirname(OUT0), (process.env.T942_TAG ? process.env.T942_TAG + '-' : '') + path.basename(OUT0) + '.t942.json');
   const H12 = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 12);
   let VIL = null, DEPS = null, door = false;
-  const cnt = {}, days = [];
+  const cnt = {}, days = [], mobCnt = {}; let mobDoor = false;
   const sample = (world) => {
     const P = DEPS && DEPS.players; if (!P) return;
     const rows = [];
     let sum = 0;
     for (const [pid, p] of P) { if (!p || !p.isNpc) continue; rows.push(`${pid}:${p.hp}:${p.isDown ? 1 : 0}`); if (Number.isFinite(p.hp)) sum += p.hp; }
     rows.sort();
-    days.push([world && world.day != null ? world.day : days.length, rows.length, H12(rows.join('|')), Math.round(sum * 1e6) / 1e6]);
+    const M = DEPS && DEPS.mobs, mr = []; let ms = 0;   // ★[T954] 존 몹
+    if (M && typeof M.values === 'function') for (const m of M.values()) { if (!m) continue; mr.push(`${m.mid}:${m.type}:${m.hp}`); if (Number.isFinite(m.hp)) ms += m.hp; }
+    mr.sort();
+    days.push([world && world.day != null ? world.day : days.length, rows.length, H12(rows.join('|')), Math.round(sum * 1e6) / 1e6, mr.length, H12(mr.join('|')), Math.round(ms * 1e6) / 1e6]);
   };
-  const dump = () => { try { fs.writeFileSync(OUT, JSON.stringify({ at: Date.now(), door, cnt, days })); } catch (e) {} };
+  const dump = () => { try { fs.writeFileSync(OUT, JSON.stringify({ at: Date.now(), door, cnt, mobDoor, mobCnt, days })); } catch (e) {} };
   const _load = Module._load;
   Module._load = function () {
     const m = _load.apply(this, arguments);
@@ -33,6 +38,22 @@ if (OUT0 && MAIN) {
       if (m && typeof m.createLedger === 'function' && !m.__t942s) {
         m.__t942s = true; const mk = m.createLedger;
         m.createLedger = function () { const L = mk.apply(this, arguments); const sd = L.scanDay; L.scanDay = function (world) { try { sample(world); } catch (e) {} return sd.apply(this, arguments); }; return L; };
+      }
+      if (m && !m.__t954w && typeof m.onMobHit === 'function' && typeof m.init === 'function' && typeof m.tick === 'function') {   // ★[T954] 야생 모듈
+        m.__t954w = true; const wi0 = m.init;
+        m.init = function (host) {
+          if (host && typeof host.setMobHp === 'function') {
+            mobDoor = true; const D2 = host.setMobHp;
+            host.setMobHp = function (mob, v, why) {
+              const c = mobCnt[why] || (mobCnt[why] = { n: 0, write: 0, same: 0 });
+              const prev = mob ? mob.hp : undefined; c.n++;
+              const r = D2.apply(this, arguments);
+              if (mob && mob.hp !== prev) c.write++; else c.same++;
+              return r;
+            };
+          }
+          return wi0.apply(this, arguments);
+        };
       }
       if (m && !VIL && m.__p3Bind && typeof m.villageOfCell === 'function' && typeof m.init === 'function') {
         VIL = m; const init0 = m.init;
