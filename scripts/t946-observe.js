@@ -24,6 +24,7 @@ if (!OUT) return;
 const DAYS = +(process.env.T946_DAYS || 150);
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
+const DD = require('./lib-day-deaths'); DD.install(V1);   // ★[T963 · T972] 그날 죽음 정본 — `_deadTot` 틱 앞뒤 차(`_deathsToday` 는 빈 마을 · 제련 날 끔 갈래에 전날 값이 남는다 · 사본 0)
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const r3 = (x) => Math.round((+x || 0) * 1e3) / 1e3;
 const rec = {
@@ -73,7 +74,7 @@ function snap(world, day) {
     const pe = prevEMA.has(v.name) ? prevEMA.get(v.name) : 0;   // createVillage 의 surplusEMA.food 는 0 에서 선다
     prevEMA.set(v.name, ema);
     const C = v.counts || {};
-    row[i] = [(v.npcs || []).length, v._deathsToday || 0, r3(v._shieldAte), r3(v.storage && v.storage.food), r3(tfe), r3(ema), r3((ema - 0.95 * pe) / 0.05),
+    row[i] = [(v.npcs || []).length, DD.deathsToday(v), r3(v._shieldAte), r3(v.storage && v.storage.food), r3(tfe), r3(ema), r3((ema - 0.95 * pe) / 0.05),
       r3(v.tradeStats && v.tradeStats.foodImported), (v.tradeStats && v.tradeStats.caravansSent) || 0,
       C.farmer || 0, C.fisher || 0, C.hunter || 0, C.forager || 0, r3(d.hunger), r3(v._dPAccum),
       r3(d.K), r3(d.logi), r3(kd.slot), r3(kd.prod), r3(kd.fuel), r3(v.housing), v._mapBeds != null ? r3(v._mapBeds) : null];
