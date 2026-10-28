@@ -686,3 +686,45 @@ development validation, not blind evaluation or best-of-many model selection.
 original-reference/new-model pairs only. Generated listening copies receive
 the same explicitly disclosed reference-level controller as046/048; this
 is not learned envelope prediction, new music, or a naturalness approval.
+
+The actual extension completed all2,000additional updates, reaching global
+3,000 in1,322.16seconds (22.04minutes), below35minutes. Baseline arrays were
+byte-identical to global1,000 before updates. Fixed42-window logmel L1 changed
+fit.71585→.61661 and development-heldout1.63432→1.21913 (25.4%lower, NOT a
+listening score). Four45,317,183-byte G snapshots and the611,757,604-byte full
+checkpoint survived. Full ZIP/typed CPU roundtrip passed; full-resume SHA is
+`94129fa1db43d3f6f42c5b1e891eb035a1def91faff4292b717f968a066fb46c`.
+Train-folder files total796,675,796bytes, leaving ample room under1.5GB.
+Final observed RSS845,398,016/MPS-driver2,455,568,384bytes are not peaks;
+free disk was14,585,724,928bytes. No training remains active afterward.
+
+Raw spectral changes are modest: original-mask normalized-magnitude L2 mean
+deep.24784→.24399, Arirang.45236→.43813. Deep cosine similarity even changes
+slightly downward(.959135→.958944); these diagnostics do not certify a large
+timbre improvement. Pitch-near50 fractions stay819/821 and802/825; median
+absolute pitch errors improve4.85→2.64c and3.63→2.89c. Arirang loud-envelope
+residual improves4.239→2.040dB, deep2.793→2.664dB. All122deep source-quiet
+frames still exceed−60dBFS: raw source-relative excess falls41.27→35.82dB,
+but quiet/breath reproduction remains unsolved.
+
+New private auditions053deep/054Arirang contain ONLY the global3,000 neural
+output with the explicitly supplied reference-level control. Both are4.8s,
+48k stereo AAC192k/230,400decoded frames. Measured LUFS is−24.0/−24.1,
+true peak−11.7/−13.1dBFS. Export retains original-reference pairs privately;
+old052 is not presented as a new candidate. Raw arrays remain unchanged.
+
+Independent read-only raw audit verified47inputs,56pinned upstream files,
+all five checkpoint SHA/ZIP records, exact source/baseline PCM, and1,118
+recomputed raw pitch/level leaves. It did not import Torch or load models.
+The full local suite had193passing tests before the frozen actual run;
+the unchanged static comparison helper's6tests were separately rechecked.
+Instrument identity and naturalness await listening; longer training remains
+only one tested variable, not an established complete solution.
+
+The independent export audit verified57bindings and19files/5,937,423bytes,
+reconstructed all reference conditions/gain controls/native PCM exactly,
+recomputed raw/controlled diagnostics and the separate spectral comparison,
+and fully decoded all four internal reference/new AACs. Only the two new
+candidates are copied to053/054. This audit imported no Torch and executed
+no model/GPU. Original sources, the rejected052, and game defaults remain
+preserved; no quality adoption or deployment is made.
