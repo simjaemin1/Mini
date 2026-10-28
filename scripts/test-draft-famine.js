@@ -51,7 +51,7 @@ if (mode === 'release') {   // 묶인 채 3일 → 징발이 한꺼번에 풀리
 console.log(JSON.stringify({ start, tot0, drafted0: start - keepFree, rows }));
 `;
 function run(env, keepFree, mode) {
-  const e = Object.assign({}, process.env); delete e.T815_DRAFT_FAMINE; Object.assign(e, env);
+  const e = Object.assign({}, process.env); delete e.T815_DRAFT_FAMINE; e.T924_DEBT_CAP = '0'; Object.assign(e, env);   // ★[T935] T924 켬 기본 뒤 — 이 하네스는 빚이 쌓이는 세계(T924 끔)의 T815 를 잰다 · 둘을 함께 켠 판은 `test-t924-debt-cap` ⓔ
   const out = execFileSync(process.execPath, ['-e', CHILD, String(keepFree), mode || 'run'], { env: e, encoding: 'utf8', maxBuffer: 1 << 26 });
   return JSON.parse(out.trim().split('\n').pop());
 }
