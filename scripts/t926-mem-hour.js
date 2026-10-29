@@ -193,6 +193,8 @@ const SAMPLE = (names) => {
   try { const C = window.__t926terr; if (C) out.terr = { w: C.w, r: C.r, wMs: Math.round(C.wMs), rMs: Math.round(C.rMs) }; } catch (e) {}   // --terr 누적
   try { out.knob = { cellNear: (typeof uiCfg !== 'undefined' && uiCfg && 'cellNear' in uiCfg) ? uiCfg.cellNear : null }; } catch (e) {}   // [T926] 손잡이 welcome 값(★T936 뒤 기본 = true · `T926_CELL_NEAR=0` 이면 null · 칸 없음)
   try { out.knob.cutNear = ('cutNear' in uiCfg) ? uiCfg.cutNear : null; if (typeof _mtCutNearN !== 'undefined') out.knob.cutNearN = _mtCutNearN; if (typeof _mtCutHold !== 'undefined') out.knob.cutHold = _mtCutHold.length; } catch (e) {}   // [T970] 손잡이 welcome 값 · 놓은 띠 수 · 붙든 띠 수
+  try { out.knob.mtNear = ('mtNear' in uiCfg) ? uiCfg.mtNear : null; if (typeof _mtNearJobN !== 'undefined') { out.knob.mtNearJobN = _mtNearJobN; out.knob.mtNearCvN = _mtNearCvN; }
+    if (typeof _mt3Jobs !== 'undefined') out.knob.jobs = _mt3Jobs.size; if (typeof _mtMaskCv !== 'undefined') out.knob.boards = [_mtMaskCv ? _mtMaskCv.width * _mtMaskCv.height : 0, _mtStripCv ? _mtStripCv.width * _mtStripCv.height : 0]; } catch (e) {}   // [T981] 손잡이 welcome 값 · 버린 굽던 청크 · 되돌린 판 수 · 굽는 중 청크 수 · 가르기 판 둘 넓이
   try { if (typeof _cellBk !== 'undefined') { let w = 0, r = 0; for (const b of _cellBk.values()) { w += b.w.length; r += b.r.length; } out.knob.bk = { n: _cellBk.size, w, r }; } } catch (e) {}   // [T926] 켬 — 자리 칸 수 · 적힌 열쇠 수(물 · 바위)
   try { const sc = window._seenChunks; if (sc instanceof Map) { let cells = 0; for (const v of sc.values()) cells += (v && v.size) || 0; out.seen = { chunks: sc.size, cells }; } } catch (e) {}   // 안개가 본 칸(34-m-renderloop `window._seenChunks`)
   out.heap = (typeof performance !== 'undefined' && performance.memory) ? { used: performance.memory.usedJSHeapSize, total: performance.memory.totalJSHeapSize } : null;
@@ -338,7 +340,7 @@ async function memDump(cdp) {
   await sleep(3000);
   const z0 = await page.evaluate(() => (window.__getPrimaryZoneId ? window.__getPrimaryZoneId() : null));
   if (z0 !== 'hanbando') { console.log(`입장 존이 ${z0} — 한반도가 아니다`); process.exit(1); }
-  const welcome = await page.evaluate(() => { const o = {}; for (const k of Object.keys(uiCfg || {})) if (/^(waterHalf|mtReadPx|mtBand|t926|cutNear)/.test(k)) o[k] = uiCfg[k]; return { ui: o, ua: navigator.userAgent }; });
+  const welcome = await page.evaluate(() => { const o = {}; for (const k of Object.keys(uiCfg || {})) if (/^(waterHalf|mtReadPx|mtBand|t926|cutNear|mtNear)/.test(k)) o[k] = uiCfg[k]; return { ui: o, ua: navigator.userAgent }; });
   console.log(`  · welcome ${JSON.stringify(welcome)}`);
   // 결정론 고정 — 비 0 · 해 몫 한낮(1초마다 다시 세움)
   await page.waitForFunction(() => typeof window.__rainForce === 'function', { timeout: 60000 }).catch(() => {});
