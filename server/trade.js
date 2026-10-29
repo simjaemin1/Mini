@@ -321,6 +321,41 @@ function _giveForTake(econV2, v, giveRes, takeRes, want, cap, hi0) {
 //     견적이 `wantCapped = false` 라 클라 받을 양 축(`50-i-panel.js` `renderTradePanel`)은 경고도 '내야 할' 줄도 안 그리고 '바꾼다' 단추만 꺼진다 — 까닭 0.
 //   켜면 끝 줄이 절삭이 `true` 를 놓은 판만 건너뛴다(그 밖은 종전처럼 false). 낱개 · 받을 양 · 절삭 · 값 · 실행은 그대로다(새 수 0).
 const T976_ON = !(typeof process !== 'undefined' && process.env && process.env.T976_WANT_CAPPED === '0');   // ★[T976] 켬 기본 · 되돌림 `=0`
+// ★★[T988 2026-10-28 · 세션2 · T976 회부 1 · 2] **거래가 안 서는 판의 말은 그 판의 참이다** — 손잡이 하나 `T988_TRADE_WORDS`(켬 기본 · 되돌림 `=0` = 종전 바이트).
+//   결함(말만 · 값 무변): 실행 거절 말이 판을 잘못 갈랐다 —
+//     ⓐ 받을 양 주문에서 T835 절삭이 낱개 0 을 낸 판(받을 양 ≤ 상한)도 "… N개를 못 내준다 — 지금 내줄 수 있는 건 N까지다"(받을 양 > 상한의 말) ·
+//        화면도 T976 경고 "마을이 지금 내줄 수 있는 X은(는) N까지다" — 받을 양이 N 보다 작은데 상한을 까닭으로 댔다.
+//     ⓑ 낼 양 축은 `maxGive < 1` 일 때만 "… 한 개 값이 … 전부(N)보다 비싸다 — 못 치른다" · 그 밖은 늘 "그 양으론 한 개도 못 바꾼다 — 더 내야 한다" —
+//        `maxGive`(상한을 다 사는 낼 단위의 내림)가 1 이상인데 낱개 하나가 그보다 무겁거나 절삭에 깎인 판은 더 내도 안 된다(거꾸로).
+//     ⓒ 받을 양 주문이 절삭돼 받을 양에 못 닿는 판(받을 < 받을 양)에 화면이 "X W 받으려면 — 내야 할 G n (낱개라 올림 …)" — 그 n 으로는 W 에 못 닿는다.
+//   켜면 거절 말은 아래 `_whyNot` 하나가 낸다(견적 · 실행 같은 함수 · 말은 종전 낱말 그대로 — 새 말투 0):
+//     상한 0 → "마을에 X이(가) 남아 있지 않다" · 낼 것 한 개(고른 첫 개체)를 마을이 다 못 받는다(그 한 개의 조각 계획이 상한에 닿는다) → "… 한 개 값이 … 전부(N)보다 비싸다 —
+//     이 마을은 지금 그 값을 못 치른다" · 더 내면 선다(아래 `_moreWorks`) → "그 양으론 한 개도 못 바꾼다 — 더 내야 한다" · 그 밖 →
+//     "그 양으론 한 개도 못 바꾼다"(종전 말의 앞 토막 — 그 양으로는 거래가 안 선다는 말이라 거절 판엔 늘 참이다).
+//   "더 내야 한다" 의 참(`_moreWorks` · 읽기만 · 실행과 같은 식): 낸 낱개가 상한 절삭에 안 걸렸고 · 가진 것 안에서 상한 절삭이 안 걸리는 마지막 낱개 n* 이
+//     낸 낱개보다 많고 · n* 를 내면 한 개라도 받는다(낱개를 더할수록 단위가 늘고 상한 걸림은 그 단위의 조각 계획이 정한다 — 이분 탐색).
+//     상한 1 판(곳간 재고 4 이상 8 미만 · `STOCK_FRAC` 0.25)처럼 낱개 하나는 상한을 다 사는 단위보다 가볍지만 둘은 넘는 판은 n* 도 한 개를 못 받는다 — "더 내야 한다" 는 거기서 거짓이다.
+//     그 밖(절삭에 걸린 판 · n* 도 못 받는 판 · 더 가진 것이 없는 판)은 앞 토막이다 — 더 내서 서는 길이 절삭 뒤에만 있어도 앞 토막은 참이다("더 내라" 를 말하지 않는다).
+//     견적은 낼 사람 인벤이 와서(T835 켬) 그만큼 가졌을 때만 가진 것 안에서 · 인벤이 없으면(T835 끔 · 랩) 그 낱개 자(`perItem`)로 `maxGive + 1` 단위가 되는 낱개까지.
+//   견적은 거절할 판에 그 말을 `why` 로 싣고(받을 양 축 절삭 0 판 · 낼 양 축 받을 낱개 0 판) 받을 양이 절삭돼 못 닿는 판엔 `wantShort` 를 싣는다 —
+//     클라는 그 칸이 오면 그 말 · 낼 양 축의 그 줄("G n X t" · "마을이 내줄 수 있는 건 N까지 — n개만 받는다")을 그린다(칸이 없으면 종전 글자 그대로).
+const T988_ON = !(typeof process !== 'undefined' && process.env && process.env.T988_TRADE_WORDS === '0');   // ★[T988] 켬 기본 · 되돌림 `=0`
+function _moreWorks(econV2, v, giveRes, takeRes, n0, maxN, unitsAt, capU, takeN) {   // ★[T988] 낸 낱개 n0 보다 많이(maxN 까지) 내면 한 개라도 받나 — 상한 절삭 안 걸리는 마지막 낱개 n* 로(읽기만)
+  const free = (c) => { const u = unitsAt(c); return u > 0 && planSliced(econV2, v, giveRes, takeRes, u, capU).gave >= u - 1e-9; };   // 그 낱개는 상한 절삭에 안 걸린다
+  if (!(maxN > n0) || !free(n0 + 1)) return false;
+  let lo = n0 + 1, hi = maxN;
+  if (free(hi)) lo = hi;
+  while (hi - lo > 1) { const mid = Math.floor((lo + hi) / 2); if (free(mid)) lo = mid; else hi = mid; }
+  return takeN(planSliced(econV2, v, giveRes, takeRes, unitsAt(lo), capU).took) > 0;
+}
+function _whyNot(econV2, v, giveRes, takeRes, capShow, capU, u1, more) {   // ★[T988] 거래가 안 서는 판의 말 하나(견적 · 실행 같은 함수 · 읽기만)
+  if (capShow <= 0) return `마을에 ${Events.koRes(takeRes)}이(가) 남아 있지 않다`;
+  if (u1 > 0 && planSliced(econV2, v, giveRes, takeRes, u1, capU).gave < u1 - 1e-9) {
+    return `${Events.koRes(giveRes)} 한 개 값이 마을이 내줄 수 있는 `
+      + `${Events.koRes(takeRes)} 전부(${capShow})보다 비싸다 — 이 마을은 지금 그 값을 못 치른다`;
+  }
+  return more ? '그 양으론 한 개도 못 바꾼다 — 더 내야 한다' : '그 양으론 한 개도 못 바꾼다';
+}
 function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   const v = vil.econ;
   if (giveRes === takeRes) return { err: '같은 물건끼리는 바꿀 게 없다' };
@@ -414,10 +449,27 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
         if (pn.gave < un - 1e-9) {
           const tr = _trimToCap(econV2, v, giveRes, takeRes, n, _uAt, true, maxGive, un / n, cap);
           out.giveNeeded = tr.n; out.takeAtNeeded = conv ? conv.items(tr.took).items : Math.floor(tr.took); out.wantTrimmed = true;
-          if (!(tr.n > 0) || !(out.takeAtNeeded > 0)) { out.giveNeeded = null; out.takeAtNeeded = null; out.wantCapped = true; }   // 낱개 하나 값이 내줄 수 있는 몫보다 크다 — 실행은 못 한다
+          if (T988_ON && tr.n > 0 && out.takeAtNeeded > 0 && out.takeAtNeeded < want) out.wantShort = true;   // ★[T988] 절삭돼 받을 양에 못 닿는다 — 화면은 낼 양 축의 그 줄로
+          if (!(tr.n > 0) || !(out.takeAtNeeded > 0)) {   // 낱개 하나 값이 내줄 수 있는 몫보다 크다 — 실행은 못 한다
+            if (T988_ON) out.why = _whyNot(econV2, v, giveRes, takeRes, out.cap, cap, _uAt(1), false);   // ★[T988] 실행이 거절할 그 말(같은 함수 · 받을 양 축은 "더 내야 한다" 를 안 한다)
+            out.giveNeeded = null; out.takeAtNeeded = null; out.wantCapped = true;
+          }
         }
       }
       if (!(T976_ON && out.wantCapped === true)) out.wantCapped = false;   // ★[T976] 켬 = 위 T835 절삭이 놓은 true(낱개 0 — 실행이 못 하는 판)는 그대로 · 끔 = 종전(늘 false 로 덮는다)
+    }
+  }
+  //   ★[T988] 낼 양 축 — 실행이 거절할 판(낼 낱개 0 · 받을 낱개 0)이면 견적도 실행과 같은 말을 싣는다(끔 = 칸 없음)
+  if (T988_ON && !(want > 0)) {
+    const g = (out.giveUsed != null) ? out.giveUsed : (q > 0 ? (_gN || 1) : 0);
+    if (!(g > 0) || !(out.take > 0)) {
+      const u1 = _G ? (_G.have >= 1 ? _gAt(1) : 0) : ((opts && Number(opts.perItem) > 0) ? Number(opts.perItem) : q);
+      const per = (opts && Number(opts.perItem) > 0) ? Number(opts.perItem) : 1, _tN = (t) => (conv ? conv.items(t).items : Math.floor(t));
+      //   더 내면 서나 — 인벤이 오면 가진 것 안에서(그만큼 가졌을 때만) · 없으면(T835 끔 · 랩) 그 낱개 자로 `maxGive + 1` 단위가 되는 낱개까지
+      //     (그 너머에서만 서는 판 — 견적 상계가 참 경계에 못 닿아 `maxGive` 가 작은 판 — 은 앞 토막으로 남는다 · 앞 토막은 참이다)
+      const more = !out.capped && g > 0 && (_G ? (_gN > 0 && _moreWorks(econV2, v, giveRes, takeRes, _gN, _G.have, _gAt, cap, _tN))
+        : _moreWorks(econV2, v, giveRes, takeRes, Math.floor(q / per + 1e-9), Math.ceil((maxGive + 1) / per), (c) => c * per, cap, _tN));
+      out.why = _whyNot(econV2, v, giveRes, takeRes, out.cap, cap, u1, more);
     }
   }
   return out;
@@ -458,6 +510,7 @@ function exchange(a) {
     const qw = quote(ledger, econV2, vil, vid, giveRes, takeRes, per1, Object.assign(conv ? { want: wantTake, perItem: per1, takeKcal: a.takeKcal } : { want: wantTake, perItem: per1 }, _gw));
     if (qw.err) return { ok: false, err: qw.err };
     if (!(qw.giveNeeded > 0)) {
+      if (T988_ON && qw.why) return { ok: false, err: qw.why };   // ★[T988] 절삭 0 판 — 견적이 실은 그 말(받을 양 ≤ 상한이라 아래 말은 거짓)
       return { ok: false, err: `마을이 ${Events.koRes(takeRes)} ${wantTake}개를 못 내준다`
         + ` — 지금 내줄 수 있는 건 ${qw.cap}까지다` };
     }
@@ -506,6 +559,10 @@ function exchange(a) {
     //   실제로는 **덜 내야** 하는(혹은 아예 못 하는) 상황이었다 — 원인이 정반대였다.
     //   재고 0 인 품목은 그림자가격이 폭발해서(낚시 배치에서 본 그 현상) 생선 한 마리가
     //   마을의 나무 전량보다 비싸진다. 그때 옳은 말은 "**마을이 값을 못 치른다**"이다.
+    if (T988_ON) {   // ★[T988] 그 판의 참 말(아래 셋은 끔 = 종전 글자) — "더 내야 한다" 는 낼 양 주문이 절삭에 안 걸렸고 가진 것 안에서 더 내면 설 때만
+      const more = !(wantTake > 0) && !qt.capped && give > 0 && _moreWorks(econV2, v, giveRes, takeRes, q0, have, G.at, capU, _takeN);
+      return { ok: false, err: _whyNot(econV2, v, giveRes, takeRes, qt.cap, capU, _units(_pick(1)), more) };
+    }
     if (qt.cap <= 0) return { ok: false, err: `마을에 ${Events.koRes(takeRes)}이(가) 남아 있지 않다` };
     if (qt.maxGive < 1) {
       return { ok: false, err: `${Events.koRes(giveRes)} 한 개 값이 마을이 내줄 수 있는 `
@@ -537,4 +594,4 @@ function exchange(a) {
            stockAfter: +v.storage[takeRes].toFixed(3), ...(conv ? { takeUnits: spend } : {}) };   // ★[T748] 켬이면 나간 단위도
 }
 
-module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON, T835_ON, T965_ON, T976_ON };
+module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON, T835_ON, T965_ON, T976_ON, T988_ON };
