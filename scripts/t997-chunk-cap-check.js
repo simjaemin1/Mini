@@ -18,13 +18,15 @@
 //         북끝(칸 y 1344)에서 남끝(3200)으로 — 산이 화면에 있는 채 상한에 닿는 길 · 상한 비우기 `--caps`(기본 3)번 · `--walk-min`(기본 15)분 중 먼저.
 //      260 상한 비우기가 나면 그 자리에 서서 다 구울 때까지 판마다 적고 다 구운 뒤 화면을 떠 그 비우기의 판 화면과 견준 뒤 다시 걷는다.
 //   견줌 = 비우기마다 앞 판 그린 산 띠 · 비운 판 · 다음 판 · 0 인 판 수 · 앞 판의 반 아래인 판 수 · 앞 판 수로 돌아오기까지 판 수 · 시간 · 화면 |Δ|(다 구운 뒤 ↔ 판들)
-//     · 걷는 동안 여느 판(비우기 뒤 돌아오기까지 밖)에서 그린 띠가 바로 앞 30판 가운데값의 반 아래로 떨어진 판 수(걸음 끝 새 청크 · 창을 떠난 청크 몫 — 바닥).
+//     · 걷는 동안 여느 판(비우기 뒤 선 채 다 구운 창 · 길 첫 자리 워프 밖)에서 그린 띠가 바로 앞 30판 가운데값의 반 아래로 떨어진 판 수(걸음 끝 새 청크 ·
+//       창을 떠난 청크 몫 — 바닥) · 그 가운데 카메라 뜀(막힌 걸음을 건너뛴 뒤 걸음 하나보다 먼 걸음 — 워프 꼴) 뒤로 다 구운 판이 없던 것은 따로 센다.
+//   걸음 열마다 `heldLog` — [길 · 분 · 걸음 · 청크 수 · 장 수 · 넓이 · 굽는 중 · 서버 칸 · 그린 띠 · 렌더러(웹 프로세스) RSS MB(ps)].
 //   결정론 고정 — 물 · 바람 시각(`__terrain19.freezeT` · `windOff`) · 비 0 · 해 몫 한낮(1초마다) · 같은 자리 · 같은 길.
 // 실행: [E2E_BROWSER=webkit] node scripts/t997-chunk-cap-check.js [--out /tmp/t997/cap] [--caps 3] [--walk-min 15]
 'use strict';
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const FB = require('./fixture-boot');
 const FixClock = require('./fixture-clock.js');
 const ROOT = path.join(__dirname, '..');
@@ -36,6 +38,14 @@ const BR = require('./e2e-browser').which();
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/t997c-c-${process.pid}.db`, ZDB = `/tmp/t997c-z-${process.pid}.db`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 렌더러(웹 프로세스) RSS MB — ps 한 번(t926-mem-hour `rss()` 와 같은 가름)
+function rendRss() {
+  let txt = ''; try { txt = execFileSync('ps', ['-eo', 'pid=,rss=,args='], { encoding: 'utf8', maxBuffer: 16 << 20 }); } catch (e) { return null; }
+  let kb = 0;
+  for (const line of txt.split('\n')) { const m = line.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/); if (!m) continue;
+    if (/WebKitWebProcess/.test(m[3]) || (/\/chrome-linux\/chrome( |$)|headless_shell/.test(m[3]) && /--type=renderer/.test(m[3]))) kb += +m[2]; }
+  return kb ? Math.round(kb / 1024) : null;
+}
 const procs = [];
 function boot(file, env) {
   const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], { cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'] });
@@ -140,13 +150,15 @@ const HOOK = () => {
   // 캐시가 든 것 — 청크 수 · 띠 수 · 띠 캔버스 장 수 · 넓이(같은 캔버스는 한 번)
   const held = () => page.evaluate(() => { const seen = new Set(); let px = 0, segs = 0; for (const a of _mt3Chunk.values()) if (Array.isArray(a)) for (const sg of a) { segs++; if (sg && sg.img && !seen.has(sg.img)) { seen.add(sg.img); px += sg.img.width * sg.img.height; } }
     return { size: _mt3Chunk.size, segs, cvN: seen.size, px, jobs: _mt3Jobs.size }; });
-  // 비우기 하나 — 그 판 앞뒤 판 줄로 센다(c0 = 비운 뒤 첫 판 · pre = 그 앞 판 그린 띠)
-  //   back = 그린 띠가 앞 판 수(pre)에 닿은 첫 판(c0 에서 센 판 수) · backS = 다 구운 뒤 수(endSegs)에 닿은 첫 판 · zero · low = back 앞에서 0 인 판 · 앞 판의 반 아래인 판
-  const windowStats = (c0, pre, endFr) => {
+  // 비우기 하나 — 그 판 앞뒤 판 줄로 센다. c0 = 비운 판(상한 = 그 판 `_mt3Collect` 도중에 비워 앞쪽 청크는 이미 실렸다 · ⓐ = 판 사이에 비워 c0 = 비운 다음 판) ·
+  //   c1 = 빈 캐시로 처음부터 그린 판(상한 = c0 + 1 · ⓐ = c0) · pre = 비우기 앞 판 그린 띠.
+  //   back = c1 부터 그린 띠가 pre 에 닿은 첫 판(c0 에서 센 판 수) · backS = 다 구운 뒤 수(endSegs)에 닿은 첫 판 · zero · low = c1 ~ back 앞에서 0 인 판 · pre 의 반 아래인 판
+  const windowStats = (c0, c1, pre, endFr) => {
     const rs = ROWS.filter((r) => r[F_FR] >= c0 && r[F_FR] <= endFr);
     const endSegs = rs.length ? rs[rs.length - 1][F_SEG] : null, t0 = rs.length ? rs[0][F_T] : null;
     let zero = 0, low = 0, back = null, backMs = null, backS = null, backSMs = null;
     for (const r of rs) {
+      if (r[F_FR] < c1) continue;
       if (back == null) { if (r[F_SEG] === 0) zero++; if (r[F_SEG] < pre * 0.5) low++; if (r[F_SEG] >= pre) { back = r[F_FR] - c0; backMs = r[F_T] - t0; } }
       if (backS == null && endSegs != null && r[F_SEG] >= endSegs) { backS = r[F_FR] - c0; backSMs = r[F_T] - t0; }
     }
@@ -168,7 +180,7 @@ const HOOK = () => {
   const stA = await settle(); await pull();
   const fB = await grab(path.join(OUT, `${BR}-ctl-B.png`));
   const endA = ROWS.length ? ROWS[ROWS.length - 1][F_FR] : frA;
-  const wA = windowStats(frA + 1, preA, endA);
+  const wA = windowStats(frA + 1, frA + 1, preA, endA);
   const g1 = GRABS['ctl1@' + (frA + 1)], g10 = GRABS['ctl10@' + (frA + 10)];
   res.ctl = { at, heldBefore: hA, pre: preA, settle: stA, win: wA, cmp: { A_B: pdiff(fA, fB), A_next: g1 && g1.file ? pdiff(fA, g1.file) : null, A_10: g10 && g10.file ? pdiff(fA, g10.file) : null },
     grabs: { next: g1 ? { f: g1.f, cam: g1.cam, segs: g1.segs } : null, ten: g10 ? { f: g10.f, cam: g10.cam, segs: g10.segs } : null }, shots: [fA, fB] };
@@ -223,7 +235,7 @@ const HOOK = () => {
       await sleep(1000);
       await pull();
       if (Date.now() - lastFeed > 60000) { await feed(); lastFeed = Date.now(); }
-      if (W.steps - lastHeld >= 10) { lastHeld = W.steps; const h = await held(); res.heldLog.push([name, +((Date.now() - t0) / 60000).toFixed(2), W.steps, h.size, h.cvN, h.px, h.jobs, await srvCell(), (ROWS.length ? ROWS[ROWS.length - 1][F_SEG] : null)]); }
+      if (W.steps - lastHeld >= 10) { lastHeld = W.steps; const h = await held(); res.heldLog.push([name, +((Date.now() - t0) / 60000).toFixed(2), W.steps, h.size, h.cvN, h.px, h.jobs, await srvCell(), (ROWS.length ? ROWS[ROWS.length - 1][F_SEG] : null), rendRss()]); }
       const newCaps = CLEARS.filter((e) => e.src === 'cap' && !capDone.has(e.fr));
       for (const ev of newCaps) {
         capDone.add(ev.fr); W.caps++;
@@ -233,11 +245,11 @@ const HOOK = () => {
         const st = await settle(); await pull();
         const fS = await grab(path.join(OUT, `${BR}-cap${res.caps.length + 1}-settled.png`));
         const endFr = ROWS.length ? ROWS[ROWS.length - 1][F_FR] : c0;
-        const w = windowStats(c0, pre, endFr); capWin.push([c0, endFr]);
+        const w = windowStats(c0, c0 + 1, pre, endFr); capWin.push([c0, endFr]);
         const gs = ['cap0', 'cap1', 'cap10'].map((t, i) => GRABS[`${t}@${c0 + [0, 1, 10][i]}`]);
         const cmp = {}; const lab = ['비운판', '다음판', '열하나째판'];
         gs.forEach((g, i) => { cmp[lab[i]] = g && g.file ? Object.assign(pdiff(g.file, fS), { cam: g.cam, segs: g.segs, file: g.file }) : null; });
-        const hS = await held();
+        const hS = await held(); hS.rssMB = rendRss();
         const rec = { k: res.caps.length + 1, route: name, atMin: +((Date.now() - t0) / 60000).toFixed(2), step: W.steps, cell: prevCell, leg: li, clear: ev, pre, settle: st, win: w, settledSegs: w.endSegs, settledCam: w.endCam, cmp, heldAfter: hS, shot: fS };
         res.caps.push(rec);
         console.log(`  · ${name} 상한 비우기 ${rec.k} — ${rec.atMin}분 · 걸음 ${rec.step} · 칸 ${JSON.stringify(prevCell)} · 비우기 앞 ${ev.size}청크 ${ev.segs}띠 ${ev.cvN}장 ${(ev.px / 1e6).toFixed(2)}M화소 · ` +
@@ -260,20 +272,30 @@ const HOOK = () => {
     const excl = capWin.slice();
     for (const ev of CLEARS) if (ev.src !== 'cap' && ev.fr >= frW0) excl.push([ev.fr + 1, ev.fr + 601]);
     const walkRows = ROWS.filter((r) => r[F_FR] >= frW0);
-    let n = 0, flag = 0, flagEx = []; const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
+    //   카메라 뜀 — 판 사이 카메라가 걸음 하나(길 2칸 + 양끝 둘레 3칸 = 8칸 · 256px)보다 멀리 옮긴 판(막힌 걸음을 건너뛴 뒤 다음 걸음 — 워프 꼴).
+    //   다 구운 판 = 굽는 중 0 · 산 굽기 수가 30판 앞과 같다. 반 아래 판은 마지막 뜀 뒤로 다 구운 판이 한 번도 없었으면 `dropHalfAfterJump` 로 따로 센다
+    //   (뜀이 데려간 자리의 안 구운 청크 — T870 띠 예산의 새 청크와 같은 길 · 비우기와 무관).
+    const JUMP = (2 + 2 * 3) * 32, jumpI = [], jumps = [], settled = new Array(walkRows.length).fill(false);
+    for (let i = 1; i < walkRows.length; i++) { const a = walkRows[i - 1], b = walkRows[i];
+      if (a[F_CX] != null && b[F_CX] != null) { const d = Math.hypot(b[F_CX] - a[F_CX], b[F_CY] - a[F_CY]); if (d > JUMP) { jumpI.push(i); jumps.push([b[F_FR], Math.round(d)]); } }
+      if (i >= 30 && b[F_JOB] === 0 && b[F_BAKE] === walkRows[i - 30][F_BAKE]) settled[i] = true; }
+    let n = 0, flag = 0, flagJ = 0, flagEx = []; const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
     for (let i = 30; i < walkRows.length; i++) {
       const fr = walkRows[i][F_FR]; if (excl.some(([a, b]) => fr >= a && fr <= b)) continue;
       const m = med(walkRows.slice(i - 30, i).map((r) => r[F_SEG])); if (m < 10) continue;
-      n++; if (walkRows[i][F_SEG] < m * 0.5) { flag++; if (flagEx.length < 12) flagEx.push([fr, walkRows[i][F_SEG], m]); }
+      n++; if (walkRows[i][F_SEG] < m * 0.5) {
+        let j = -1; for (const k of jumpI) if (k <= i) j = k;
+        let after = j >= 0; if (after) for (let k = j; k <= i; k++) if (settled[k]) { after = false; break; }
+        if (after) flagJ++; else { flag++; if (flagEx.length < 12) flagEx.push([fr, walkRows[i][F_SEG], m]); } }
     }
     const segs = walkRows.map((r) => r[F_SEG]), dts = []; for (let i = 1; i < walkRows.length; i++) dts.push(walkRows[i][F_T] - walkRows[i - 1][F_T]);
-    res.normal = { frames: n, dropHalf: flag, ex: flagEx, allFrames: walkRows.length, segMax: segs.length ? Math.max(...segs) : null, dtMed: dts.length ? med(dts) : null };
+    res.normal = { frames: n, dropHalf: flag, dropHalfAfterJump: flagJ, jumps, ex: flagEx, allFrames: walkRows.length, segMax: segs.length ? Math.max(...segs) : null, dtMed: dts.length ? med(dts) : null };
   }
   res.errs = errs;
   fs.writeFileSync(path.join(OUT, `${BR}-chunkcap.json`), JSON.stringify(res, null, 1));
   fs.writeFileSync(path.join(OUT, `${BR}-chunkcap-rows.json`), JSON.stringify({ cols: ['판', 'ms', '그린띠', '청크', '굽는중', '굽기수', 'camx', 'camy'], rows: ROWS, clears: CLEARS }));
   console.log(`  · 걷기 ${res.walk.line.min} + ${res.walk.ridge.min}분 · 상한 비우기 ${res.caps.length}(그린 띠 앞 판 > 0 인 것 ${res.caps.filter((r) => r.pre > 0).length}) · 그 밖 비우기 ${res.other.length}(${res.other.map((e) => e.src).join(',')}) · ` +
-    `여느 판 ${res.normal.frames} 중 반 아래 ${res.normal.dropHalf} · 판 간격 가운데 ${res.normal.dtMed}ms`);
+    `여느 판 ${res.normal.frames} 중 반 아래 ${res.normal.dropHalf}(카메라 뜀 ${res.normal.jumps.length}번 바로 뒤 ${res.normal.dropHalfAfterJump} 따로) · 판 간격 가운데 ${res.normal.dtMed}ms`);
   console.log(`  · 오류 ${errs.length} · → ${path.join(OUT, `${BR}-chunkcap.json`)}`);
   await browser.close(); process.exit(0);
 })().catch((e) => { console.log('실패:', e && e.stack); process.exit(1); });
