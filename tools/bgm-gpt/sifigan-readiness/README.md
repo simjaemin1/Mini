@@ -838,3 +838,39 @@ before AND after the explicit level controller. The725steady frames split
 145/188/188/204across the four notes. No candidate-selected exclusion or
 phase/time search is used. Virtual targets are source-YIN×framewise factor;
 YIN's64ms window cannot certify a20ms acoustic transition or naturalness.
+
+The actual raw run completed three forwards in9.870seconds and reproduced
+the global3,000 baseline byte-for-byte. Both variants track all725steady
+source-supported frames, with723within50c of the source-derived virtual target.
+Median baseline-relative steady offsets are0/201.374/500.515/201.133c for STEP
+and0/201.264/500.559/201.040c for centered20ms. Thus the specified within-phrase
+note changes are observed, not merely a whole-clip transposition.
+
+Transitions remain explicitly uncertain: on96source-supported boundary
+frames, STEP has10unmeasured frames and77within50c;20ms has5unmeasured and79
+within50c. Their conditional boundaryp95absolute errors are72.60/67.88c.
+These windows remain reported in raw diagnostics with peak/RMS/chunk-level
+observations; they are not hidden by the steady result or declared artifact-free.
+
+Export completed in9.460seconds. Both NEW4.8s AACs are48kHz stereo with
+230,400decoded frames,−24.0LUFS and−11.7dBFS true peak. Only the NEW STEP057
+and centered20ms058are presented; the unchanged baseline is retained privately
+as controlled PCM/WAV. Controlled diagnostics preserve the same821/725/96
+source counts, steady coverage725/725and boundary missing counts10/5. Whole
+near50counts change slightly to800/801after the explicit controller. This
+is descriptive analysis, not a naturalness/cheong sound/learned attack approval.
+No optimizer updates, new weights, PCM joins, EQ or denoising were performed.
+
+The independent raw audit verified57input and56pinned-upstream hashes, exact
+corpus/baseline/control/statistics correspondence and1,162recomputed metric
+nodes. A separate export audit verified62input bindings and14output files,
+independently reproduced the original level condition and all three carrier
+controllers/native WAVs, then recomputed3,161raw/copied/controlled metric leaves
+including boundary levels to1e-12. Both AACs were fully decoded and measured
+with fixed ebur128. Auditors imported no Torch and ran no model/GPU or writes.
+Raw files total2,118,074bytes and export3,212,067bytes:5,330,141before small
+private audit/audition copies, far below50MB. The full local suite has225
+passing tests and the unchanged static-display helper has6separate tests.
+Both actual processes ended normally, and nothing trains in the background.
+Game defaults/runtime and originals remain unchanged; listening adoption is
+still tentative and is not inferred for the new four-note pair.
