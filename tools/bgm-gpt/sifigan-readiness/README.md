@@ -803,3 +803,38 @@ below50MB. The local suite has208passing tests plus6separate static-comparison
 helper tests. Actual raw/export processes ended normally; no training runs
 in the background. Noise, new-score spectral/articulation generation and
 listening-quality adoption remain open.
+
+## Four-note offset pattern, 2026-10-29
+
+The user's tentative “일단 괜찮은 듯..?” on055/056 permits the next research
+gate, not final quality/game adoption. The next experiment changes pitch
+within the4.8s deep-vibrato excerpt rather than transposing an entire clip.
+Original-articulation/40mcep+3BAP/RMS and vibrato are still borrowed; only the
+four-note offset pattern is authored. This is not a newly learned score,
+breathing/reattack expression model or finished BGM.
+
+The fixed relative pattern is0/+2/+5/+2semitones. Boundary midpoints are
+1.50/2.60/3.70s (frames300/520/740 on the existing200Hz grid). Two variants
+share the identical pattern: frame-step offsets and centered20ms quintic
+minimum-jerk log-frequency transitions. The latter uses five samples from
+b−2throughb+2; the boundary is the transition midpoint, not its start.
+No second F0 low-pass filter, longer interpolation, new rest or amplitude
+dip is inserted. Original positivecf0×framewise pitch factor feeds both
+excitation and all four dilations; original-zero rawF0 remains zero.
+
+The global3,000 deep baseline must first reproduce byte-for-byte; each of
+the two variants receives its exact pre-baseline CPU excitation RNG state.
+All original/normalizer/weight files stay unchanged. Three generator forwards
+and zero optimizer updates are planned within300seconds/50MB for the complete
+fresh experiment,8GiB conservativeRSS+MPS and12GiB free disk. The static-LUFS
+comparison uses the same explicitly supplied original RMS condition for all
+carriers. No waveform pitch shifting, PCM joining/mixing, EQ or denoising.
+
+Full evaluation retains all821original-source support frames. A separately
+reported steady set removes only the fixed half-open boundary regions
+[b−16,b+16), i.e.[1.42,1.58),[2.52,2.68),[3.62,3.78)s. The96boundary frames
+are never discarded: they get separate tracking/dropout/level diagnostics,
+before AND after the explicit level controller. The725steady frames split
+145/188/188/204across the four notes. No candidate-selected exclusion or
+phase/time search is used. Virtual targets are source-YIN×framewise factor;
+YIN's64ms window cannot certify a20ms acoustic transition or naturalness.
