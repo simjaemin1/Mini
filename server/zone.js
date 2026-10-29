@@ -5011,6 +5011,13 @@ function clearTreesInCells(cellKeys, onlyNew) {
   return cleared + ledger;
 }
 const _simNow = () => { try { return (SimVillages.dayNow && SimVillages.dayNow()) || Date.now(); } catch (e) { return Date.now(); } };
+// ★★[T990 2026-10-28 · 손잡이 `T990_ECON_DAY`(위 길의 날과 같은 손잡이 · 제품 끔 기본 · 판 자 기본 켬)] NPC 광맥 장부의 시각 = econ 날의 경계(날 × 하루 길이).
+//   NPC 채굴(`oreStockAt` · `oreConsumeAt`)은 하루 마감 조각에서만 돈다 — 그 시각(`_simNow` = 마감이 선 틱의 벽시계)은 빠른 판 자에서 econ 이 밀린 만큼 늘어나
+//   광맥 리젠 적분(`_oreRec` — 날 = ms ÷ 24분)이 판 빠르기(부하)에 달렸다(벽시계 판 · 가상 시계 판이 400날 안 광산 마을 곳간 · 금고에서 갈린 자리 · 보고/T990 §3).
+//   켜면 그 시각을 econ 날에서 낸다(`SimVillages.econDay()` × 판 하루 길이 — 같은 날 안에선 한 순간 · 판마다 같은 값). 사람 채광(손님)은 종전 그대로 지금이다 —
+//   판 자엔 손님이 없다(라이브에서 켜면 두 시계가 한 장부에 섞인다 — 회부). 새 수 0.
+const _t990OreDayMs = parseInt(process.env.VILLAGE_DAY_MS || '', 10) || ((WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
+const _npcOreNow = () => { if (process.env.T990_ECON_DAY === '1') { let d = null; try { d = SimVillages.econDay ? SimVillages.econDay() : null; } catch (e) { d = null; } if (Number.isFinite(d)) return d * _t990OreDayMs; } return _simNow(); };
 // ★★[T295 후속] 전쟁이 쓰는 나무 술어 — **청크 한 판을 통째로 캐시**한다.
 //   칸마다 묻는 길(`treeBlockerAt`)은 한 칸에 이웃 9청크를 다시 낳아 **27.5µs/칸**이다(실측).
 //   전장 한 판이 1,500~3,600칸을 물으면 교전 틱에 그대로 얹힌다(실측: 존 틱 p95 8.5 → 54.5ms).
@@ -5054,6 +5061,12 @@ function warTreeCellBlocked(cellX, cellY) {
 Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast,
   // ★[T566 추신2] 다져진 길의 오름·내림 — 존이 나무를 걷고(그 셀) 리젠을 막고(둘레) 푼다(끔이면 안 넘긴다 = 길은 종전 그대로)
   onPaved: _T566_ON ? _t566OnPaved : null, onUnpaved: _T566_ON ? _t566OnUnpaved : null });
+// ★★[T990 2026-10-28 · T986 회부 2 · 손잡이 `T990_ECON_DAY` — 제품 끔 기본(`'1'` 만 켬 · 끔 = main 바이트) · 판 자(t577)는 아이에 `1` 을 기본으로 싣는다]
+//   길의 날(`roads.js dayNow` — 답압 감쇠 · 코스 등급 · 하루 재구축)을 econ 날로 — 빠른 판 자에선 벽시계 날(250ms)이 econ 날보다 몇 배 빨리 가서(econ 이 밀린 만큼)
+//   벽시계 판 길이 가상 시계 판보다 빨리 풀렸고, 행군로(길 할인)가 갈려 전쟁 정산이 두 시계에서 갈렸다(보고/T990 §3 · 집 행위 켬 800날 시드 1020 날 747).
+//   같은 손잡이가 NPC 광맥 장부 시각도 econ 날로 낸다(`_npcOreNow` · 위 `_simNow` 곁 · 15분 벽시계 정리 쉼).
+//   라이브는 길 날 = 운영 하루라 켤 일이 없다(그리고 DB 길 줄의 날 · 광맥 줄의 시각이 절대값이라 켜려면 옮김이 든다 — 회부). 새 수 0.
+if (process.env.T990_ECON_DAY === '1' && Roads.setEconDay) Roads.setEconDay(() => (SimVillages.econDay ? SimVillages.econDay() : null));
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
   elevKmAt,   // ★[T856] 지형 정본 고도(몸 기온이 쓰는 그 함수) — 생활층이 econ 마을 `land.elev` 를 이것으로 채운다(손잡이 `T856_LAND_ELEV` 끔이면 안 읽는다)
   ...(Streams.ON && Streams.load(ZONE_ID) ? { isStreamLocal } : {}),   // ★★[T585] 개울 술어 — 생활층 지형 어댑터가 `ta.isStream` 으로 묻는다(집터·밭·곳간·큰집 마당 · 시딩 `generate`). 끔이면 키 자체가 없다(종전 그대로)
@@ -5075,7 +5088,8 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   //     벤 자리·묘목은 안 막고, 재생하면 다시 막는다.
   treeCellBlocked: warTreeCellBlocked,
   dayShelter: process.env.T969_SHELTER_DAY !== '0' ? (d) => _t969ShelterDay(d) : null,   // ★[T969] 켬 — 쉼터 백필을 econ 날 자리(하루 마감)에서(아래 · 끔 = 안 넘긴다) · ★[T974 10-28] 켬 기본 · 되돌림 `=0`
-  dayBandits: process.env.T986_BANDIT_DAY === '1' ? () => Bandits.dayTick() : null,   // ★[T986] 켬 — 도적 하루를 econ 날 자리(하루 마감 — 날을 올린 econ 머리 바로 뒤)에서(`bandits.js dayTick` 머리 주석 · 끔 = 안 넘긴다 · 존 틱이 종전대로 부른다)
+  dayRoads: process.env.T990_ECON_DAY === '1' ? () => Roads.dayTick() : null,   // ★[T990] 켬 — 길의 하루를 econ 날 자리(날을 올린 econ 머리 바로 뒤 · 도적 하루 앞)에서(`roads.js dayTick` 머리 주석 · 끔 = 안 넘긴다 · 틱이 종전대로 정한다)
+  dayBandits: process.env.T986_BANDIT_DAY !== '0' ? () => Bandits.dayTick() : null,   // ★[T986] 켬 — 도적 하루를 econ 날 자리(하루 마감 — 날을 올린 econ 머리 바로 뒤)에서(`bandits.js dayTick` 머리 주석 · 끔 = 안 넘긴다 · 존 틱이 종전대로 부른다) · ★[T990 10-28] 켬 기본 · 되돌림 `=0`
   ioBusy, ioQuietMs,   // ★[T42-b] 배경 작업이 '한가한가'를 판단할 때 **날아가는 쓰기**도 본다
   clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
   // ★[T19 2026-09-02] 마을이 **하나 늘었다**는 통지. 온보딩이 그 마을의 도착 지점을 그때 굽는다
@@ -5095,10 +5109,10 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   //     조각내기 전엔 하루 전체가 한 순간이었다. 그대로 `Date.now()` 를 읽으면 광맥 재생 적분이
   //     '조각이 몇 번째로 돌았나'에 따라 달라져, 쪼갠 것만으로 세계가 갈린다(실측 — `test-tick-slicer ⑧`).
   //     마감 밖(플레이어 채광)에선 그냥 지금이다.
-  oreStockAt: (cx, cy) => { const now = _simNow(); const r = _oreRec(cx + '_' + cy, now); return r.s; },
+  oreStockAt: (cx, cy) => { const now = _npcOreNow(); const r = _oreRec(cx + '_' + cy, now); return r.s; },   // ★[T990] 켬 = econ 날 시각(위 `_npcOreNow` · 끔 = `_simNow` 종전 글자)
   oreConsumeAt: (cx, cy, amount) => {
     if (!(amount > 0)) return 0;
-    const now = _simNow(), key = cx + '_' + cy, rec = _oreRec(key, now);
+    const now = _npcOreNow(), key = cx + '_' + cy, rec = _oreRec(key, now);   // ★[T990] 켬 = econ 날 시각
     const got = Math.min(amount, Math.max(0, rec.s));
     if (got <= 0) { if (!rec.fresh) { _oreSaveNpc++; _oreSave(key, rec); } return 0; }
     rec.s -= got; _oreSaveNpc++; _oreSave(key, rec); return got;
@@ -9886,6 +9900,7 @@ function trySortOre(player) {
 // 주기적 정리 (15분) — 만땅 회복된 셀 레코드 제거. minedCells만 순회(파인 셀, 한정적)라 가벼움.
 setInterval(() => {
   if (minedCells.size === 0) return;
+  if (process.env.T990_ECON_DAY === '1') return;   // ★[T990] 켬 — 장부 시각이 econ 날이다(`_npcOreNow`) · 벽시계 15분 주기가 끼면 판 빠르기에 달린다 · 리젠은 읽을 때 닫힌 해로 적분하니(`_oreRec`) 안 지워도 같은 값
   const now = Date.now();
   for (const [key, rec] of minedCells) {
     const days = (now - rec.t) / _ORE_DAY_MS;
