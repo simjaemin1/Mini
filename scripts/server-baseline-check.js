@@ -185,7 +185,8 @@ if (MAKE) {
   for (const s of SEEDS) { const o = R.out[s]; if (!o) { console.log(`  ✗ 시드 ${s} 판 실패`); process.exit(2); } seeds[s] = { eight: o.eight, dissolved: o.dissolved, empty: o.empty, runHash: o.runHash, names: o.names, days: o.days };
     if (SIDE) { if (!o.side) { console.log(`  ✗ 시드 ${s} 마을 칸 지문 없음`); process.exit(2); } seeds[s].side = o.side; } }
   let head = ''; try { head = require('child_process').execSync('git rev-parse --short=8 HEAD', { cwd: ROOT, encoding: 'utf8' }).trim(); } catch (e) {}
-  const doc = { made: new Date().toISOString().slice(0, 10), head, days: DAYS, seeds: SEEDS, cond: COND, clock: 'VILLAGE_DAY_MS=250(t577 기본)' + (VCLOCK ? ' · 가상 시계(T745 --vclock)' : ''), sec: R.sec,
+  const doc = { made: new Date().toISOString().slice(0, 10), head, days: DAYS, seeds: SEEDS, cond: COND, clock: 'VILLAGE_DAY_MS=250(t577 기본)' + (VCLOCK ? ' · 가상 시계(T745 --vclock)' : '')
+      + ` · 교전 몫 T941_BATTLE_DAY=${process.env.T941_BATTLE_DAY != null ? process.env.T941_BATTLE_DAY : '1(t577 기본 · T959)'}`, sec: R.sec,   // ★[T959] 판 자 기본이 바뀐 자리 — 기준선에 적는다(기록만)
     how: `node scripts/server-baseline-check.js --make ${MAKE} --days ${DAYS} --seeds ${SEEDS.join(',')}${VCLOCK ? ' --vclock' : ''}${VCLOCK && !SIDE ? ' --side off' : ''}`,
     note: '날 지문 = [scanDay 날 · econ world.day · 그날 전체 sha1 12 · 마을마다 칸 넷(st·pp·hs·tr) sha1 4자리씩]'
       + (SIDE ? ' · 마을 칸 지문(side) = [날 · 그날 전체 sha1 12 · 칸마다 sha1 8(차례 = keys)] — 칸 = 서버 마을 칸(Map · Set 풀어서 · 마을 51 의 6자 해시를 이은 줄 · t740-side-hook)' : ''),

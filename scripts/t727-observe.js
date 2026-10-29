@@ -18,6 +18,7 @@ if (!process.env.T577_SEED && process.env.T727_LAB !== '1') return;   // 부모 
 const OUT = process.env.T727_OUT || '';
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
+const DD = require('./lib-day-deaths'); DD.install(V1);   // ★[T963] 그날 죽음 정본 — `_deadTot` 틱 앞뒤 차(`_deathsToday` 는 빈 마을 · 제련 날 끔 갈래에 전날 값이 남는다 · 사본 0)
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const FOOD = { food: 1, fish: 1, meat: 1, cooked_food: 1 };
 const rec = { names: null, rows: [], trades: [], settle: [] };
@@ -47,7 +48,7 @@ function snap(world, day) {
     const fe = (St.food || 0) + (St.fish || 0) + (St.meat || 0) + (St.cooked_food || 0);
     let tfe = 0; try { tfe = V1.totalFoodEquivalent(v); } catch (e) { tfe = -1; }
     return [(v.npcs || []).length, r2(fe), r2(tfe), r2(v.surplusEMA && v.surplusEMA.food), r2(v.lastStats && v.lastStats.happiness),
-      v._bdtFall || 0, r2(v._bdtCri), v._deathsToday || 0, v._deadTot || 0, v._banditized ? 1 : 0, r2(v.housing),
+      v._bdtFall || 0, r2(v._bdtCri), DD.deathsToday(v), v._deadTot || 0, v._banditized ? 1 : 0, r2(v.housing),
       pend[i][0], r2(pend[i][1]), r2(back[i])];
   })]);
   // 교역 기록 — 처음 보는 줄만(장부는 5000 줄에서 앞을 자른다 · 하루 수십 줄이라 안 놓친다)

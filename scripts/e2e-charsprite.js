@@ -350,16 +350,8 @@ if (require.main === module) (async () => {
   //     (낚싯대라는 품목이 없다). 곡괭이도 망치도 검도 전부 **도끼로 그려지고 있었다.**
   //   ★표는 **소스에서 읽는다**(하네스가 표를 베끼지 않는다 — T13 규약 그대로).
   {
-    const src = fs.readFileSync(path.join(ROOT, 'public', 'client', '40-r2-sprites.js'), 'utf8');
-    const m = /const PLAYER_TOOL_LAYER = \{([\s\S]*?)\};/.exec(src);
-    ok(!!m, '★[T134] 도구 표를 소스에서 읽었다 (하네스에 표 사본 0)', m ? '' : '정규식 불일치(표가 옮겨졌나)');
-    const tbl = {};
-    if (m) for (const mm of m[1].matchAll(/(\w+)\s*:\s*'([\w_]+)'/g)) tbl[mm[1]] = mm[2];
-    // ★주석에 옛 줄을 **인용해 남겨 뒀다**(왜 갈렸는지가 거기 있다) — 그래서 주석을 걷고 **코드만** 본다.
-    const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0). 옛 정규식 판은 `villages.js:20` 의 `// … sim/* …` 에 걸려 파일의 67.9% 를 삼켰다
-    const charSrc = codeOnly(fs.readFileSync(path.join(ROOT, 'public', 'client', '42-r2-char.js'), 'utf8'));
-    ok(!/rod\|fish\|낚/.test(charSrc), '★[T134] 옛 정규식이 **코드에서** 없어졌다 (표로 갈렸다)');
-    ok(/PLAYER_TOOL_LAYER\[t\]/.test(charSrc), '★[T134] 층 함수가 그 표를 부른다');
+    //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.charsprite`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변). 표(`tbl`)는 그 함수가 돌려준다.
+    const { tbl } = require('./lib-e2e-src').SECTIONS.charsprite(ok);
     // 지급 → 장착 → 층. 표가 시키는 그 층이 나와야 한다.
     for (const kind of ['hammer', 'pickaxe']) {
       const want = tbl[kind];

@@ -1277,8 +1277,11 @@ console.log('\n⑱ ★★[T417] 동물 · 제작 완료 · 반경');
   const sp = Object.keys(man.mobs || {}).filter((k) => !k.startsWith('_'));
   ok(sp.length >= 7 && sp.every((k) => A[k]), '⑱b `mobs` 표의 종이 전부 `server/animals.js` 에 있다(새 종 0)', sp.join(' '));
   // ⑱c 짐승 사건 — 맞음은 hp 가 **줄 때만**(먹여 회복 `tryFeed` 도 같은 메시지)
-  ok(/function tryFeed[\s\S]{0,1500}type: 'mob_damaged'/.test(zsrc) && /msg\.hp < m\.hp/.test(layerCode),
-     '⑱c ★`mob_damaged` 는 먹여 회복에도 나간다 — 층은 직전 hp 보다 **줄 때만** 운다');
+  //   ★[T954] 몹 hp 를 쓰는 다섯 자리가 문 하나(`setMobHp(m, v, why)`)로 모였다 — `mob_damaged` 방송은 이제 그 문 안 한 줄이고 `tryFeed` 는
+  //     낱말 `'feed'` 로 그 문을 부른다. 같은 뜻을 세 글자로 본다: tryFeed 가 `'feed'` 로 문을 부른다 · `'feed'` 가 방송 낱말 표에 있다 · 문이 그 표로 방송한다.
+  ok(/function tryFeed[\s\S]{0,1500}setMobHp\([^\n]*'feed'\)/.test(zsrc) && /const MOB_HP_LOUD = new Set\(\[[^\]]*'feed'[^\]]*\]\)/.test(zsrc)
+     && /function setMobHp\(m, v, why\) \{[\s\S]{0,300}if \(MOB_HP_LOUD\.has\(why\)\) broadcast\(\{ type: 'mob_damaged'/.test(zsrc) && /msg\.hp < m\.hp/.test(layerCode),
+     '⑱c ★`mob_damaged` 는 먹여 회복에도 나간다(짐승 HP 문 · 낱말 `feed` — T954) — 층은 직전 hp 보다 **줄 때만** 운다');
   const ME = man.mobEvents || {};
   ok(KEYS[ME.hurt] && KEYS[ME.death] && ME.tamedCall === true, '⑱c2 `mobEvents` 의 키가 표에 있다(맞음·죽음 · 길들임 = 종 울음)', `${ME.hurt} · ${ME.death}`);
   // ⑱d 제작 완료 — 서버 한 줄(`doCraftCollect` 안 · 받은 게 있을 때) · 맡김은 낱말 없음
@@ -1302,12 +1305,13 @@ console.log('\n⑲ ★★[T457] 전쟁 병사 몸 — `tick` 의 hp 모서리');
   ok(/hp:\s*o\.hp/.test(me) && new RegExp(`if \\(o\\._muster\\) \\{ e\\.${WB._mark} =`).test(me),
      '⑲b ★서버 `makeEntry` — 몸마다 `hp` 를 싣고, 표의 표식 칸(`_mark`)은 **동원된 병사(`_muster`)에만** 싣는다', `_mark ${WB._mark}`);
   const sync = vsrc.slice(vsrc.indexOf('function _warSyncMeta('), vsrc.indexOf('function _warSyncMeta(') + 1500);
-  // ★[PM 10-27 · T942 뒤] 몸 hp 는 이제 문(`_setHp(…, 'war')`)으로 적는다 — 뜻(병사끼리 타격은 `hp_changed` 를 안 낸다)은 그대로:
-  //   낱말 'war' 는 방송 묶음(`HP_PEER`) 밖이고 NPC 몸은 소켓(`p.ws`)이 없어 문이 아무것도 안 보낸다 → 클라는 여전히 `tick` 을 읽어야 한다.
-  const peerM = zsrc.match(/const HP_PEER = new Set\(\[([^\]]*)\]\)/);
-  const peer = peerM ? peerM[1] : '';
-  ok(/_setHp\(p, bu\.hp <= 0 \? 0[^\n]*'war'\)/.test(sync) && !/hp_changed/.test(sync) && !!peerM && !/'war'/.test(peer),
-     '⑲b2 ★병사끼리의 타격은 `_warSyncMeta` 가 몸 hp 를 문(`_setHp` · 낱말 `war`)으로 적고 `hp_changed` 는 0(`war` ∉ HP_PEER · NPC 소켓 없음) — 그래서 `tick` 을 읽어야 한다');
+  //   ★[T942 → T954] 마을 몸 hp 도 존의 HP 문(`setHp` · deps — villages `_setHp`)으로 쓴다 — `_warSyncMeta` 는 낱말 `'war'` 로 그 문을 부른다.
+  //     뜻은 그대로다: `'war'` 는 방송 낱말(`HP_PEER`)이 아니고 NPC 몸은 소켓이 없어(`spawnNpc` 리터럴 `ws: null`) 병사끼리의 타격에 `hp_changed` 는 0 —
+  //     그래서 층은 `tick` 을 읽어야 한다. 종전 글자(직접 대입)를 보던 검사를 그 세 글자로 본다(T942 가지 단독이면 이 줄이 빨갰다 — T954 가 고침).
+  const _peer = (zsrc.match(/const HP_PEER = new Set\(\[([^\]]*)\]\)/) || [, ''])[1];
+  ok(/_setHp\(p, bu\.hp <= 0 \? 0 : [^\n]*'war'\)/.test(sync) && !/hp_changed/.test(sync) && _peer.length > 0 && !/'war'/.test(_peer)
+     && /function spawnNpc\([\s\S]{0,4000}ws: null/.test(zsrc),
+     '⑲b2 ★병사끼리의 타격은 `_warSyncMeta` 가 몸 hp 에 문(`war` — 방송 낱말 아님 · NPC 소켓 없음)으로 적는다(`hp_changed` 0) — 그래서 `tick` 을 읽어야 한다');
   // ⑲c 층 — 직전 값은 명부(`c.others`)에서 · 내 pid 는 안 본다 · 줄었을 때만
   const tb = layerCode.slice(layerCode.indexOf("t === 'tick'"), layerCode.indexOf("t === 'tick'") + 1200);
   ok(/_sfxMan\.warBody/.test(tb) && /c\.others\.get\(pp\.pid\)/.test(tb) && /pp\.hp < was\.hp/.test(tb) && /pp\.pid === meP/.test(tb),

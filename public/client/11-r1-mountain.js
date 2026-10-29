@@ -829,6 +829,7 @@
     const jHi = Math.min(Math.ceil((sHi - dLo) / 2), Math.ceil(cy0 / 32 + cap));
     let n = 0;
     const cand = [];
+    const _cnK = (_mtCutHold.length && t970On()) ? new Set() : null;   // ★[T970] 켬 — 이번 판 수집 창 청크 열쇠(가르기 붙듦 쓸기 · 붙든 띠가 없으면 안 만든다)
     for (let gy = Math.floor(jLo / MT3_CH); gy <= Math.floor(jHi / MT3_CH); gy++)
       for (let gx = Math.floor(iLo / MT3_CH); gx <= Math.floor(iHi / MT3_CH); gx++) {
         // 청크의 (i−j)·(i+j) 구간이 화면 구간과 안 겹치면 아예 굽지 않는다
@@ -836,6 +837,7 @@
         if (i0 - j1 > dHi || i1 - j0 < dLo) continue;
         if (i0 + j0 > sHi || i1 + j1 < sLo) continue;
         const segs = _mt3Bake(zid, gx, gy);
+        if (_cnK) _cnK.add(zid + '_' + gx + '_' + gy);
         if (!segs) { needsRedraw = true; continue; }   // 아직 안 구운 청크 — 다음 프레임에
         for (const sg of segs) {
           // ★띠는 **구운 사각형**으로 자른다. 앵커가 화면 밖이어도 몸통이 걸칠 수 있다
@@ -849,6 +851,7 @@
                       sx: Math.round(l + W * 0.5), sy: Math.round(t + H * 0.5) });
         }
       }
+    if (_cnK) _mtCutHoldSweep(_cnK);   // ★[T970] 켬 — 창 밖 · 낡은 띠의 가르기 조각을 놓는다(아래 `_mtCutHold` 머리말)
     n = _mt3Cull(out, cand);
     return n;
   }
@@ -1124,6 +1127,25 @@
   window.__mt3RectsGet = () => _mt3Rects;
   let _mtMaskCv = null, _mtMaskG = null, _mtStripCv = null, _mtStripG = null;
   const _mtCutHold = [];
+  // ★★[T970 2026-10-28] 손잡이 `T970_CUT_NEAR`(서버 env → welcome `uiCfg.cutNear` · 기본 끔 = 칸이 없고 아래 쓸기는 불리지도 않는다 · 끔 = 종전 그대로).
+  //   끔 = 가르기 붙듦(`_mtCutHold`)은 가르기 조각(`sg._cs`)을 만든 띠를 64장까지 들고(넘으면 48장으로 깎는다) 그 띠가 청크 캐시에서 빠져도
+  //     (존 바뀜 · 260 상한 · 파괴 `_mt3Dirty`) · 카메라가 멀리 가도 그대로 붙든다 — 낡은 띠의 굽힌 캔버스(`sg.img`)와 조각이 시간을 따라 쌓였다
+  //     (보고/T970 ① — 1시간 대본에서 살아 있는 캔버스 넓이를 늘린 1위).
+  //   켬 = 산 수집(`_mt3Collect`)이 끝날 때마다 붙든 띠 가운데 **이번 판 수집 창에 든 청크의 지금 띠**가 아닌 것을 64 넘김과 같은 문법으로 놓는다
+  //     (`_cs = null` · `rec.mcache = null` · 붙듦에서 뺀다) — 카메라 둘레 = 이번 판 수집 창(있는 창 그대로) · 상한 = 종전 64/48 그대로.
+  //     그 띠가 다시 걸치면 종전 캐시 빗나감과 같은 길(`_mt3CutMask` → `_mt3CutBlit`)로 다시 만든다 — 그림 같음 · 새 수 0.
+  //   `_mtCutNearN` = 놓은 띠 수(계측 자가 페이지 전역 이름으로 읽는다 · 그림에 안 닿는다 · 새 window 칸 0).
+  function t970On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.cutNear === true); }
+  let _mtCutNearN = 0;
+  function _mtCutHoldSweep(keys) {
+    let w = 0;
+    for (let i = 0; i < _mtCutHold.length; i++) {
+      const q = _mtCutHold[i], k = q.rec ? q.rec.key : null, cur = (k != null && keys.has(k)) ? _mt3Chunk.get(k) : null;
+      if (cur && cur.indexOf(q) >= 0) { _mtCutHold[w++] = q; continue; }
+      q._cs = null; if (q.rec) q.rec.mcache = null; _mtCutNearN++;
+    }
+    _mtCutHold.length = w;
+  }
   const _mtP = { draw: 0, blit: 0, strip: 0, rect: 0, n: 0, tri: 0, cvpx: 0, rows: 0 };
   window.__mtCutProf = (reset) => { const o = { ..._mtP }; if (reset) for (const k in _mtP) _mtP[k] = 0; return o; };
   // ★이 띠가 **흐림 대상인가** — 그리는 쪽·세는 쪽이 이 술어 하나를 쓴다(사본 금지).

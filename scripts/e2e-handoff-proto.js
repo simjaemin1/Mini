@@ -117,9 +117,8 @@ async function runCase(tag, envOf, chromium, C) {
 (async () => {
   console.log('\n=== 경계에서 말없이 튕기지 않는다 · 인계 규약 판 (T564) ===');
   // 소스 — 판 칸 · 응답 코드 검사가 자리에 있다(글자 넷)
-  const Z = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
-  ok(/const HANDOFF_PROTO = /.test(Z) && /proto: HANDOFF_PROTO,/.test(Z) && /ok: true, proto: HANDOFF_PROTO/.test(Z), 'ⓢ0 인계 규약 판 — 요청 · 응답에 칸 하나씩(`HANDOFF_PROTO`)');
-  ok(/if \(res\.statusCode >= 400\)/.test(Z), 'ⓢ0 존↔존 `postJSON` 이 응답 코드를 본다(404 를 성공으로 안 읽는다)');
+  //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.handoffProto`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+  require('./lib-e2e-src').SECTIONS.handoffProto(ok);
   const C = corridor();
   ok(!!C, 'ⓒ 전제: 동쪽 경계에 걸을 길이 있다', C ? `한반도 로컬 y ${C.wy - HB.worldOffsetY}` : '-');
   for (const port of [3010].concat(ZIDS.map((z) => ZONES[z].port))) if (!await portFree(port)) { ok(false, `포트 ${port} 가 비어 있다`); process.exit(1); }

@@ -21,10 +21,10 @@
 'use strict';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/t163-st-${process.pid}.db`;
-// ★[T943 2026-10-27] 픽스처 세계는 `T931_SLOTK_EMA` 켬 기본(`'season'` — 식량 자리 K 관성) **앞** 세계로 돈다(되돌림 `=0` · 하네스 단언 무변).
-//   켬 기본 세계에선 ⑨ "늘어난 폭 2배 이상"이 ×2.30 → ×1.33 이다 — 문은 그대로 돈다(돌 귀환 건수는 는다 · 주입 판은 다른 세계 · 글럿 게이트 그대로)
-//   · 픽스처 세계의 인구 · 캐러밴이 관성으로 달라져 폭이 준다. 2배 문턱은 이 픽스처에 맞춘 수라 세계를 묶는다(보고 T943 §6 · 회부 — 켬 기본 세계로 다시 맞출지는 PM).
-process.env.T931_SLOTK_EMA = '0';
+// ★[T955 2026-10-27] 열다섯째 판(`T931_SLOTK_EMA` 켬 기본 `'season'`) 세계 그대로 돈다 — T943 의 `=0` 묶음을 지웠다(단언 무변 · 자명 통과 금지 미끼 그대로).
+//   ⑨ 픽스처 씨만 다시 골랐다(909 → 908 · 아래 `mkTrade`) — 909 는 켬 기본 세계에서 "늘어난 폭 2배 이상"이 ×1.33(되돌림 `=0` ×2.30)이다.
+//   둘레 씨 900 ~ 910(300날) 의 폭: 켬 기본 11 중 8 이 2배 이상(×1.33 ~ ×9.37 · 가운데 ×2.82) · 되돌림 11 중 10(×1.41 ~ ×7.82 · 가운데 ×4.22) —
+//   908 은 ⑨ 일곱 줄이 두 세계 다 선다(켬 ×9.37 · 되돌림 ×4.41 · 보고 T955 §1 · 둘레 표 `계측/T955_픽스처둘레_2026-10-27.json`).
 // ★[T727 2026-10-13] T707_MARKET 켬 기본 세계 그대로 돈다 — PM 10-13 의 끔(`=0`) 묶음을 지웠다.
 //   ⑨ 는 귀환 화물을 **정해지는 자리**에서 센다: 끔 = 도착(그날 `caravans` 조각) · 켬 = 떠날 때 정산(다음 날 `head` 의 `settleMarketsV2`).
 //   켬 세계에서 가까운 마을(이동 1일)은 정산(머리)과 귀환 닫기(같은 날 `caravans`)가 한 틱 안이라, 틱 끝에만 세면 화물이 늘 0 으로 보였다.
@@ -212,7 +212,7 @@ console.log('\n⑨ 되돌림(T173) — 문을 안 열면 비트 동일 · 열면
 //     돌이 곳간에 쌓이고(실측 396~1,248) 그러면 엔진의 글럿 게이트가 문을 막아 **자명 통과**가 된다.
 //     실지도 36마을이 800일 중 절반을 `돌<0.2` 로 사는 그 상태를 여기서 강제로 만든다.
 const mkTrade = (inject, starve) => {
-  const w = econV2.createWorldV2({ seed: 909, villageCount: 0, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
+  const w = econV2.createWorldV2({ seed: 908, villageCount: 0, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });   // ★[T955] 씨 909 → 908(머리 주석)
   w.villages = []; w.events = []; w.caravans = [];
   if (inject) w.returnPullFn = (from, to, cur) => (cur === 'stone' ? null : 'stone');
   const LP = [{ stone: LV.FLOOR.stone, name: '바닥' }, { stone: 2.5, name: '산촌' }];

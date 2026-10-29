@@ -19,7 +19,7 @@
 //     바꿔야 한다 — 같은 값 자 `scripts/t947-cell-box-eq.js`(존 칸 전부 · 정본과 견줌)가 그 갈림을 잡는다.
 //   ⚠자료에 수 아닌 값 · 유한하지 않은 상자(폭 Infinity 등)가 하나라도 있으면 그 갈래(물 · 바위)는 **늘 "모름"**(정본을 부른다) — 값이 갈릴 틈을 두지 않는다.
 //
-// 쓰는 법(클라 00-const `isWaterAtAbs` · `isRockAtAbs` — 손잡이 `T947_CELL_BOX` 켬일 때만):
+// 쓰는 법(클라 00-const `isWaterAtAbs` · `isRockAtAbs` — 손잡이 `T947_CELL_BOX` 켬일 때만 · ★T961 켬 기본 · 되돌림 `=0`):
 //   const env = CellEnv.build(Terrain.ZONE_TERRAIN[zid], B);   // 지형 객체가 바뀌면 다시 짓는다
 //   CellEnv.maybeWater(env, lx, ly) === false  ⇒  isWaterCellLocal(zid, lx, ly) === false   (참이면 정본을 부른다)
 //   CellEnv.maybeRock(env, lx, ly)  === false  ⇒  isRockCellLocal(zid, lx, ly)  === false

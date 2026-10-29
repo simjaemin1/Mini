@@ -4833,10 +4833,12 @@ function _terrCap(vil) {
   return Math.ceil(pop * (VL.LAND_NEED + (T579_CAP_HOUSE === '1' ? VL.LOT_PER_HEAD : 0)));
 }
 //   상한이 지금 영토를 묶고 있나(계측 전용 — 집터 빈손을 "상한 탓"으로 가르는 데만 쓴다 · 판정 0)
+// ★[T966] 영토 목표가 읽는 주거 — `T958_HOUSE_REAL` 켬이면 econ 계획 주거(`_t958Plan` · econ 이 끔 세계 궤적 그대로 쥔 칸) · 끔 · 그 칸 없음 = econ 주거 그대로(종전 글자 · 같은 값)
+function _t966TerrHousing(e) { return (e && _lifeEcon().T958_HOUSE_REAL && e._t958Plan !== undefined) ? e._t958Plan : ((e && e.housing) || 0); }
 function _terrCapBound(vil) {
   if (!T538_TERR_CAP || !vil || !vil.econ || vil.econ.founder || !vil._terrSet) return false;
   const land = vil.econ.land; if (!land || !land.size) return false;
-  const tt = _lifeVL().territoryTarget(land.size, vil.econ.housing || 0), target = T230_TERR_HOUSING ? tt.target : tt.econ, cap = _terrCap(vil);
+  const tt = _lifeVL().territoryTarget(land.size, _t966TerrHousing(vil.econ)), target = T230_TERR_HOUSING ? tt.target : tt.econ, cap = _terrCap(vil);
   return cap < target && vil._terrSet.size >= cap;
 }
 // ★★[T569 2026-10-02 · 재민 "어촌2랑 임업6이 겹쳐 있다 · 인접하면 상대 영토로는 확장 못 하고 반대쪽으로 자라겠지?"] **마을 땅은 한 마을 것.**
@@ -4891,7 +4893,7 @@ function _t569Resolve(owners) {
 function _terrGrow(vil) {
   if (!state.ta || !vil || !vil._terrSet || !vil._terrSet.size) return 0;
   const land = vil.econ && vil.econ.land; if (!land || !land.size) return 0;
-  const _tt = _lifeVL().territoryTarget(land.size, (vil.econ && vil.econ.housing) || 0);
+  const _tt = _lifeVL().territoryTarget(land.size, _t966TerrHousing(vil.econ));
   let target = T230_TERR_HOUSING ? _tt.target : _tt.econ;
   if (T538_TERR_CAP && !vil.econ.founder) target = Math.min(target, _terrCap(vil));   // ★[T559 ⓪] 유저 마을은 상한 밖 · ★[T579] 상한 = 인구 × (밭 + 집 부지)
   if (vil._terrSet.size >= target) return 0;
@@ -6097,6 +6099,14 @@ function _warGroupCentroid(g) { let x = 0, y = 0, n = 0; for (const u of g.units
 //   새 수 0 · 새 손잡이 하나 · 칸 둘(몸 `_t771C0` = 출격 시작의 접촉 수 · 전쟁 `_sortieMiss`).
 //   ★[T781 2026-10-18] 켬 기본(결함 고침 — PM) · 되돌림 `T771_SORTIE_MISS=0`(= 종전 글자 그대로).
 const T771_SORTIE_MISS = process.env.T771_SORTIE_MISS !== '0';   // ★[T781 10-18] 켬 기본 · 되돌림 `=0`
+// ★★[T956 2026-10-27 · T941 회부 2] **돌격 헛걸음도 결단에 돌려준다** — 손잡이 `T956_ASSAULT_MISS`(기본 끔 · 켜는 값 `'1'` 하나 · 끔 = 종전 글자 그대로).
+//   T771 의 거울: 공격 돌격(`_warEngage` 'assault' — 공격 쪽이 나선다 · 방어는 holder)이 **접촉 한 번 없이** 대치로 끝나면(`_warToStandoff`),
+//   그 사실(몸 층)을 전쟁에 남긴다(`w._assaultMiss` = 그날). war-core 가 이튿날 결단(`_opNpcDecide`)에서 **돌격 줄을 뺀 같은 표**로 고른다(포위 · 철수 — 새 수 0).
+//   ★왜(보고 T956 §2 · 서버 판 자 시드 1020 400날 `WAR_MINDAY=100` `T941_BATTLE_DAY=1`): 열다섯째 판 전쟁 22 중 일곱이 69 ~ 181날 날마다 돌격 → 접촉 0 → 대치를 되풀이했다 · 몸 상한 무제한 판도 같은 꼴
+//     (대치 수 = 날 수 · 출격 0 — T771 칸은 방어 출격만 본다). war-core 결단은 그날 돌격을 "판이 난 전투"로 셈한다(옛 headless — 돌격 = 결판)인데
+//     몸 층에선 닿지 못한 돌격이 대치로 끝나 진으로 돌아온다 ⇒ 이튿날 같은 승산으로 또 돌격 · 짐이 바닥나도 도박 돌격 줄(승산 ≥ `WAR_GAMBLE_ODDS`)이 또 돌격 ⇒ 끝이 없다.
+//   새 수 0 · 새 손잡이 하나 · 칸 둘(몸 `_t956C0` = 돌격 시작의 접촉 수 · 전쟁 `_assaultMiss`).
+const T956_ASSAULT_MISS = process.env.T956_ASSAULT_MISS === '1';
 // ── 교전 계기 — war-core onEngage(assault·sortie 결단)에서 부른다 ──
 //   true = 실체가 맡았다(w.phase='battle' — war-core 훅 계약). 군대 몸이 없으면(징발 0) 철수 처리(아래 _warNoArmy).
 function _warEngage(w, day, why) {
@@ -6111,6 +6121,7 @@ function _warEngage(w, day, why) {
   const side = (why === 'sortie' && body.defGroup) ? 'B' : 'A';
   f.holder = side === 'A' ? 'B' : 'A';
   if (T771_SORTIE_MISS) body._t771C0 = side === 'B' ? (f.contacts | 0) : null;   // ★[T771] 방어 출격이 시작될 때의 접촉 수(대치 때 그대로면 헛걸음)
+  if (T956_ASSAULT_MISS) body._t956C0 = side === 'A' ? (f.contacts | 0) : null;   // ★[T956] 공격 돌격이 시작될 때의 접촉 수(대치 때 그대로면 헛걸음)
   state.warLive.orderAdvance(f, side);
   state.warLive.setSideCtl(f, side, true);   // 먼저 행군로 위를 대형으로 걷는다 — 곧은 길이 열리고 교전 거리에 들면 풀린다(_warAdvanceMarch)
   f.adv = { side, released: false, s: null };
@@ -6137,6 +6148,7 @@ function _warToStandoff(body) {
   if (body.defGroup) { WL.regroup(body.defGroup); if (!body.defGroup.holdPt) body.defGroup.holdPt = { cx: body.defGroup.cmd.cx, cy: body.defGroup.cmd.cy }; }
   body.mode = 'camp';
   if (T771_SORTIE_MISS && body._t771C0 != null) { if (!f || (f.contacts | 0) === body._t771C0) w._sortieMiss = state.world.day; body._t771C0 = null; }   // ★[T771] 출격이 접촉 없이 끝났다 — 그날을 전쟁에 남긴다
+  if (T956_ASSAULT_MISS && body._t956C0 != null) { if (!f || (f.contacts | 0) === body._t956C0) w._assaultMiss = state.world.day; body._t956C0 = null; }   // ★[T956] 돌격이 접촉 없이 끝났다 — 그날을 전쟁에 남긴다
   w.phase = 'march'; w.op = 'camp'; w._sortie = false;
   state._warStat.standoff++;
   if (f) f.standoffs = (f.standoffs || 0) + 1;
@@ -7275,7 +7287,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
   ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done), ...(T896_RESUME_ONE ? { held896: _probe.t896Held | 0 } : {}) } } : {}),
   t929: { on: T929_RET_RESUME, wait: _probe.t929Wait | 0, cold: _probe.t929Cold | 0, msMax: _probe.t929MsMax | 0 },
-  t968: { on: T968_DIST_BG, bgSlices: _probe.t968BgSlices | 0, bgMs: _probe.t968BgMs | 0, bgSliceMax: _probe.t968BgSliceMax | 0, ready: _probe.t968Ready | 0, readyAtClose: _probe.t968ReadyAtClose | 0, closeSlices: _probe.t968CloseSlices | 0, frozen: _probe.t968Frozen | 0, waitQ: _probe.t968WaitQ | 0 },   // ★[T968] 셈만
+  t968: { on: T968_DIST_BG, bgSlices: _probe.t968BgSlices | 0, bgMs: _probe.t968BgMs | 0, bgSliceMax: _probe.t968BgSliceMax | 0, ready: _probe.t968Ready | 0, readyClose: _probe.t968ReadyClose | 0, closeSlices: _probe.t968CloseSlices | 0, frozen: _probe.t968Frozen | 0, waitQ: _probe.t968WaitQ | 0 },   // ★[T968] 셈만
   t977: { same: T977_DIST_SAME, probe: T977_PROBE, runs: _t977.runs },   // ★[T977] 재는 판 전용 셈(끔 = 빈 목록)
   t957: { on: T957_DIST_SLICE, runs: _probe.t957Runs | 0, slices: _probe.t957Slices | 0, sliceMax: _probe.t957SliceMax | 0, workMax: _probe.t957WorkMax | 0, restart: _probe.t957Restart | 0, busy: !!_t957Dist },   // ★[T957] 거리행렬 조각(셈만)   // ★[T929] 도착 경계 귀환 길(두 팔 다 선다 — 셈만)   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
@@ -7592,6 +7604,7 @@ function _t731Jobs(now, T) {
       let g = null;
       add('events', () => { try { if (!g) g = _scanEventsSteps(); if (!g.next().done) return 'retry'; } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
     } else add('events', () => { try { _scanEventsDaily(); } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
+    if (state.deps.dayShelter) add('events', () => { try { state.deps.dayShelter(state.world.day | 0); } catch (e) { console.error(`[${state.zoneId}] 🛖 [T969] 쉼터 백필 실패:`, e.message); } });   // ★[T969] 켬 — 쉼터 백필 = econ 날 자리(존이 넘길 때만 · 끔 = 무동작)
     add('save', () => { state.saveQueue = V.slice(); });
     add('dist', () => {
       if (T957_DIST_SLICE) return _t957DistStage();   // ★[T957] 켬 = 조각 몫만큼씩(아래 손잡이 주석) · 끔 = 아래 종전 줄
@@ -7833,6 +7846,7 @@ function _openDayJobs(now, T) {
     let g = null;
     add('events', () => { try { if (!g) g = _scanEventsSteps(); if (!g.next().done) return 'retry'; } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
   } else add('events', () => { try { _scanEventsDaily(); } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
+  if (state.deps.dayShelter) add('events', () => { try { state.deps.dayShelter(state.world.day | 0); } catch (e) { console.error(`[${state.zoneId}] 🛖 [T969] 쉼터 백필 실패:`, e.message); } });   // ★[T969] 켬 — 쉼터 백필 = econ 날 자리(존이 넘길 때만 · 끔 = 무동작)
 
   // ⑨ 저장 큐 — 다음 틱부터 1마을/틱(종전 그대로).
   add('save', () => { state.saveQueue = C.vils.slice(); });
@@ -7884,7 +7898,7 @@ function _t957Take() {   // `distDirty` 를 받아 일을 (다시) 세운다 —
 function _t957DistStage() {
   _t957Take();
   const J = _t957Dist; if (!J) return;
-  if (J.ready) _probe.t968ReadyAtClose = (_probe.t968ReadyAtClose | 0) + 1;   // ★[T968] 마감 밖에서 다 셌다 — 주입만
+  if (J.ready) _probe.t968ReadyClose = (_probe.t968ReadyClose | 0) + 1;   // ★[T968] 마감 밖에서 다 셌다 — 주입만
   const B = TB.slice(TICK_SLICE_MS), t0 = Date.now();
   _t977SliceBeg();   // ★[T977] 재는 판 전용(끔 = 무동작)
   try {
@@ -12624,7 +12638,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   //   (랩 세 줄과 같은 규칙 · 사본 0). 서버 움집은 단층이라 완공 층수 = `_houseCells.length`
   //   (레이아웃 MAX_FLOORS=1 · T212 실측 50마을 전부 층합=채수). 집터 슬롯은 하나(`vil._site`).
   const _wantSite = T219_HOUSE_TRIGGER
-    ? _lifeVL().houseSiteWant(vil.econ.npcs.length, vil.econ.housing, vil._houseCells.length, vil._site ? 1 : 0)
+    ? _lifeVL().houseSiteWant(vil.econ.npcs.length, vil.econ.housing + ((_lifeEcon().T958_HOUSE_REAL && vil.econ._t958Want > 0) ? vil.econ._t958Want : 0), vil._houseCells.length, vil._site ? 1 : 0)   // ★[T958] 켬 = econ 주거가 지은 침상에 묶이니 그날 올리고 싶었던 몫(`_t958Want`)을 더해 읽는다(끔 · 없음 = + 0 = 종전)
     : (vil.econ.npcs.length > cap * 0.92);
   if (!vil._site && _wantSite) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
   _sub('site');

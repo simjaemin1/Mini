@@ -958,6 +958,13 @@ function createWar(opts) {
     // ★[포로 EU] 돌격만 포로를 낳는다 — 기대 포로 가치만큼 돌격 문턱 소폭 완화(상한 0.05). WAR_CAP_EU=0(3파 전)이면 0.
     const _capB = Math.min(0.05, (D && D.npcs ? D.npcs.length : 0) * WAR_CAS_BASE * WAR_CAP_FRAC * WAR_CAP_EU / 800);
     if (w._opPolicy === 'siege') { if (pack < WAR_PACK_CRIT) _opTransNPC(w, 'withdraw', day, '군량 소진(봉쇄 전용 정책)'); else _opTransNPC(w, 'siege', day, '정책'); return; }
+    // ★[T956] 돌격 헛걸음 — 몸 층이 남긴 사실(`_assaultMiss` — 어제 돌격이 접촉 없이 대치 · 호스트 손잡이 `T956_ASSAULT_MISS` 켬에서만 선다)이면
+    //   오늘 결단은 **돌격 줄을 뺀 같은 표**다(군량 임계 → 철수 · 소모전 우위 → 포위 · 그 밖 → 철수 — 새 수 0). 칸은 한 번 쓰고 지운다. 칸이 없으면 이 줄은 안 돈다(끔 = 종전 비트).
+    if (w._assaultMiss != null) { const md = w._assaultMiss; delete w._assaultMiss;
+      if (pack < WAR_PACK_CRIT) _opTransNPC(w, 'withdraw', day, '군량 ' + pack.toFixed(1) + '일·D' + md + ' 돌격이 닿지 못했다');
+      else if (pack > defFoodEst + 1) _opTransNPC(w, 'siege', day, '소모전 우위 — 군량 ' + pack.toFixed(0) + '일 > 추정 곳간 ' + defFoodEst.toFixed(0) + '일·D' + md + ' 돌격이 닿지 못했다');
+      else _opTransNPC(w, 'withdraw', day, '승산 ' + (pWin * 100 | 0) + '%·소모전 열세·D' + md + ' 돌격이 닿지 못했다');
+      return; }
     if (pack < WAR_PACK_CRIT) { if (pWin >= WAR_GAMBLE_ODDS) _opTransNPC(w, 'assault', day, '군량 ' + pack.toFixed(1) + '일 — 도박 승산 ' + (pWin * 100 | 0) + '%'); else _opTransNPC(w, 'withdraw', day, '군량 ' + pack.toFixed(1) + '일·승산 ' + (pWin * 100 | 0) + '%'); return; }
     if (pWin >= WAR_ASSAULT_ODDS - _capB) { _opTransNPC(w, 'assault', day, '승산 ' + (pWin * 100 | 0) + '%' + (_capB > 0 ? '(+포로 기대)' : '')); return; }
     if (pack > defFoodEst + 1) { _opTransNPC(w, 'siege', day, '소모전 우위 — 군량 ' + pack.toFixed(0) + '일 > 추정 곳간 ' + defFoodEst.toFixed(0) + '일'); return; }

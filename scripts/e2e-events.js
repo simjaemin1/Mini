@@ -607,27 +607,8 @@ async function waitHttp(url, tries = 900) {
     //   ★소스로 잰다: 화면 픽셀로는 "이모지가 하나 섞였다"를 절대 못 잡는다.
     //   ★⓪의 빚 두 줄(`51-s-side.js` 쉼터 버튼)도 여기서 같이 잡힌다 — 같은 규칙, 같은 자리.
     {
-      const fsx = require('fs');
-      const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => {
-        let q = null, out = '';
-        for (let i = 0; i < l.length; i++) {
-          const c = l[i], n = l[i + 1];
-          if (q) { out += c; if (c === '\\') { out += n || ''; i++; continue; } if (c === q) q = null; continue; }
-          if (c === '"' || c === "'" || c === '`') { q = c; out += c; continue; }
-          if (c === '/' && n === '/') break;
-          out += c;
-        }
-        return out;
-      }).join('\n');
-      const EMO = /\p{Extended_Pictographic}/u;
-      const COL = /#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d/;
-      for (const f of ['public/client/47-s-board.js', 'public/client/51-s-side.js']) {
-        const src = strip(fsx.readFileSync(path.join(ROOT, f), 'utf8'));
-        ok(!EMO.test(src), `★★⑤-c ${f.split('/').pop()} — 이모지 0(T66)`);
-        ok(!COL.test(src), `★★⑤-c ${f.split('/').pop()} — 인라인 색 0(값은 style.css 토큰 하나)`);
-      }
-      ok(EMO.test("h += '\u{1F6D6} 쉼터';"), '★⑤-c 자명 통과 금지 — 이모지 한 줄을 되살린 소스는 잡힌다');
-      ok(COL.test("background:#2b3a4a"), '★⑤-c 자명 통과 금지 — 인라인 hex 한 줄을 되살리면 잡힌다');
+      //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.events`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+      require('./lib-e2e-src').SECTIONS.events(ok);
     }
   }
 

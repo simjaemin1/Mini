@@ -20,6 +20,7 @@ if (!process.env.T577_SEED) return;
 const OUT = process.env.T924_OUT || (process.env.T577_OUT ? process.env.T577_OUT.replace(/\.json$/, '') + '.t924.json' : '');
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
+const DD = require('./lib-day-deaths'); DD.install(V1);   // ★[T963] 그날 죽음 정본 — `_deadTot` 틱 앞뒤 차(`_deathsToday` 는 빈 마을 · 제련 날 끔 갈래에 전날 값이 남는다 · 사본 0)
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const CVS = V1._computeVillageStats;
 const FOOD_JOBS = ['farmer', 'fisher', 'hunter', 'gatherer', 'forager'];
@@ -72,10 +73,10 @@ function row(v, day, a0, n0) {
     chk = (Math.abs((sp.full.health || 0) - (S.health || 0)) + Math.abs((sp.full.happiness || 0) - (S.happiness || 0)) > 1e-9) ? 1 : 0;
     if (chk) rec.chkBad++;
     if (pk > 0) { const se = stat(v, Math.max(1, NS - pk), {}); he = se.health; pe = se.happiness; } else { he = sp.full.health; pe = sp.full.happiness; }
-    if (dr > 0 || (v._deathsToday || 0) > 0 || (+v._dPAccum || 0) <= -1 || day % 10 === 0) it = items(v, NS, sp.full);
+    if (dr > 0 || DD.deathsToday(v) > 0 || (+v._dPAccum || 0) <= -1 || day % 10 === 0) it = items(v, NS, sp.full);
   }
   const k = v._kDbg || {};
-  const R = [day, N, n0, N - dr, dr, pk, r3(a0), r3(v._dPAccum), v._deathsToday || 0, v._deadTot || 0, r3(tfe), r3(eaten),
+  const R = [day, N, n0, N - dr, dr, pk, r3(a0), r3(v._dPAccum), DD.deathsToday(v), v._deadTot || 0, r3(tfe), r3(eaten),
     D.K, D.logi, D.hunger, D.health, D.happy, D.prestige, D.dP, D.gated ? 1 : 0,
     r3(S.happiness), r3(S.health), S.foodGroups, r3(S.leisure), r3(S.fuelCov), r3(S.clothCov), r3(v._coldStress),
     sp ? r3(sp.h[0]) : null, sp ? r3(sp.h[1]) : null, sp ? r3(sp.h[2]) : null, sp ? r3(sp.h[3]) : null, sp ? r3(sp.h[4]) : null,

@@ -211,14 +211,8 @@ async function waitHttp(url, tries = 600) {
   //   ★`setHp(.., 'rescue')` 가 자기에게 보내는 유일한 **새** 전송이다. 여기 말고는 안 늘었다.
   console.log('\n④ 조용하던 자리 — 소스로 잰다');
   {
-    const code = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
-    ok(/setHp\(p, Math\.max\(1, Math\.round\(p\.maxHp \* hpFrac\)\), 'rescue'\)/.test(code),
-       '★★④ 일어나는 자리가 문을 지난다(`rescue`)');
-    ok(/setHp\(p, p\.hp \+ 2 \* dt \* 5 \* _rm, 'regen'\)/.test(code), '★★④ 자연 회복도 문을 지난다(`regen` · 조용)');
-    // ★[T402] 다침의 `why` 는 이제 출처 앞 낱말(arrow·mob·…)이다 — 그 낱말들은 전부 `HP_PEER`(위 ⓪ 이 대조) ⇒ 방송 그대로.
-    ok(/setHp\(p, p\.hp - dmg, String\(source \|\| 'damage'\)\.split\(':'\)\[0\]\)/.test(code),
-       '★★④ 다침도 문을 지난다(`why` = 출처 앞 낱말 · 전부 방송 갈래 — T402)');
-    ok(!/p\.hp = 0;/.test(code), '★★④ 죽음의 `p.hp = 0` 사본은 사라졌다(문이 하한을 누른다)');
+    //   ★[T964] 검사 몸통은 `scripts/lib-hp-src.js` `hpDoorCallChecks`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-hp-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
+    require('./lib-hp-src').hpDoorCallChecks(ok);
   }
 
   // ── ⑤ 재접속 — welcome 의 hp 가 서버 정본과 같다 ──────────────────────────
