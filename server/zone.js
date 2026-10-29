@@ -3304,6 +3304,21 @@ function spawnMob(type, opts = {}) {
   chunkManager.insertMob(m);
   return m;
 }
+// ★★[T987 2026-10-28 · T975 회부 1 · ★PM 결함] **몹 죽음 길 셋의 다시 낳기 문 하나** — `respawnMobLater(m)` · 손잡이 `T987_MOB_RESPAWN`(켬 기본 · 되돌림 `=0` = 종전 글자 그대로).
+//   죽음 길 셋 = NPC(`npcStep`) · 화살(`stepArrows`) · 사람 공격(`tryAttack`). 규칙은 종전 두 길의 글자 그대로: 야생 그림자(`isWild` — 개체 수는 랩 생태가 쥔다) 빼고 ·
+//   `HOSTILES_ON` 이거나 순한 종이면 15초 뒤 같은 종을 하나 낳고(`spawnMob` — 자리는 그 함수의 굴림) `mob_spawn` 을 방송한다.
+//   종전: 화살 길엔 다시 낳기가 없었다(화살로 사냥할수록 몹이 줄었다) · NPC 길은 야생 그림자를 안 걸렀다(늑대 그림자를 잡으면 DB 늑대가 섰다) · 사람 공격 길은 걸렀다.
+//   방송 칸은 NPC 길 글자(`tameOwner: null` · `tameOwnerName: null` 까지 — 새 몹은 주인이 없다 · 클라 `mob_spawn` 은 두 꼴을 같게 읽는다).
+const T987_MOB_RESPAWN = process.env.T987_MOB_RESPAWN !== '0';
+function respawnMobLater(m) {
+  if (m.isWild || !(HOSTILES_ON || !(ANIMALS[m.type] && ANIMALS[m.type].aggressive))) return false;
+  const respawnType = m.type;
+  setTimeout(() => {
+    const n = spawnMob(respawnType);
+    broadcast({ type: 'mob_spawn', mob: { mid: n.mid, type: n.type, x: n.x, y: n.y, hp: n.hp, maxHp: n.maxHp, tameOwner: null, tameOwnerName: null } });
+  }, 15000);
+  return true;
+}
 {
   // DB에서 기존 mob 로드 — 없으면 바이옴별 신규 스폰
   const existing = db.getMobs();
@@ -4657,11 +4672,14 @@ function npcStep(npc, dt, now) {
           mobs.delete(target.mid);
           broadcast({ type: 'mob_removed', mid: target.mid });
           // 일정 시간 후 같은 종 리스폰
-          const respawnType = target.type;
-          if (HOSTILES_ON || !(ANIMALS[respawnType] && ANIMALS[respawnType].aggressive)) setTimeout(() => {
-            const m = spawnMob(respawnType);
-            broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: null, tameOwnerName: null } });
-          }, 15000);
+          if (T987_MOB_RESPAWN) respawnMobLater(target);   // ★[T987] 죽음 길 셋 한 문(야생 그림자 뺌)
+          else {   // 끔 = 종전 글자
+            const respawnType = target.type;
+            if (HOSTILES_ON || !(ANIMALS[respawnType] && ANIMALS[respawnType].aggressive)) setTimeout(() => {
+              const m = spawnMob(respawnType);
+              broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: null, tameOwnerName: null } });
+            }, 15000);
+          }
           npc.fightTarget = null;
           npc.behavior = 'wander';
           npc.nextDecisionAt = 0;
@@ -12622,6 +12640,7 @@ function __testBind() {
     setMobHp, MOB_HP_KEEP, MOB_HP_LOUD, tryAttack, tryRangedAttack, stepArrows, npcStep,   // ★[T954] 짐승 HP 문 하네스(`test-mob-hp-door` · 내보내기만)
     T967_MOB_HP, spawnMob, saveDirtyMobs,   // ★[T967] 짐승 hp 재기동 하네스(`test-mob-hp-restart` — DB 행이 있는 몹 · 진짜 주기 저장 · 내보내기만)
     T975_MOB_DB,   // ★[T975] 같은 하네스가 판을 읽는다(내보내기만)
+    T987_MOB_RESPAWN, respawnMobLater,   // ★[T987] 다시 낳기 하네스(`test-mob-respawn` · 내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
     spawnCorpse, butcherCorpse, corpses,
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
@@ -13048,6 +13067,7 @@ function stepArrows(dt) {
           spawnCorpse(m, a.ownerId);
           if (T975_MOB_DB && m.dbId) { try { db.deleteMob(m.dbId); } catch (e) {} }   // ★[T975 ①] 화살 죽음도 같은 삭제 문(사람 공격 · NPC 죽음 길 그 글자) · 끔 = 행이 남는다(종전)
           chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid });
+          if (T987_MOB_RESPAWN) respawnMobLater(m);   // ★[T987] 화살 죽음도 같은 다시 낳기 문 · 끔 = 다시 낳기 없음(종전)
         }
         hit = true; break;
       }
@@ -13182,7 +13202,8 @@ async function tryAttack(player) {
       mobs.delete(bestMob.mid);
       broadcast({ type: 'mob_removed', mid: bestMob.mid });
       // 일정 시간 후 리스폰 — §4-4 wildlife 몹은 제외(개체수는 랩 생태(updateMobs 스폰 target)가 관리)
-      if (!bestMob.isWild && (HOSTILES_ON || !(ANIMALS[bestMob.type] && ANIMALS[bestMob.type].aggressive))) {
+      if (T987_MOB_RESPAWN) respawnMobLater(bestMob);   // ★[T987] 죽음 길 셋 한 문 · 끔 = 아래 종전 글자
+      else if (!bestMob.isWild && (HOSTILES_ON || !(ANIMALS[bestMob.type] && ANIMALS[bestMob.type].aggressive))) {
         const respawnType = bestMob.type;
         setTimeout(() => {
           const m = spawnMob(respawnType);
