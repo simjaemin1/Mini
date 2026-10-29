@@ -315,6 +315,12 @@ function _giveForTake(econV2, v, giveRes, takeRes, want, cap, hi0) {
   return hi;
 }
 
+// ★★[T976 2026-10-28 · 세션2 · T965 회부 1] **받을 양 견적의 `wantCapped` 는 상한 절삭이 놓은 그대로 둔다** — 손잡이 하나 `T976_WANT_CAPPED`(켬 기본 · 되돌림 `=0` = 종전 바이트).
+//   결함: 받을 양 갈래 끝 줄 `out.wantCapped = false;`(T69 · 09-03)가 T835 상한 절삭(10-21)이 놓은 `true` 를 곧바로 덮었다. 그 판은 마을이 지금 내줄 몫 전부(`cap`)가
+//     낼 것 한 개 값에 못 미쳐 절삭이 낱개 0 을 낸 판이다(`giveNeeded` · `takeAtNeeded` = null · 실행은 "… 못 내준다 — 지금 내줄 수 있는 건 N까지다"로 거절).
+//     견적이 `wantCapped = false` 라 클라 받을 양 축(`50-i-panel.js` `renderTradePanel`)은 경고도 '내야 할' 줄도 안 그리고 '바꾼다' 단추만 꺼진다 — 까닭 0.
+//   켜면 끝 줄이 절삭이 `true` 를 놓은 판만 건너뛴다(그 밖은 종전처럼 false). 낱개 · 받을 양 · 절삭 · 값 · 실행은 그대로다(새 수 0).
+const T976_ON = !(typeof process !== 'undefined' && process.env && process.env.T976_WANT_CAPPED === '0');   // ★[T976] 켬 기본 · 되돌림 `=0`
 function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   const v = vil.econ;
   if (giveRes === takeRes) return { err: '같은 물건끼리는 바꿀 게 없다' };
@@ -411,7 +417,7 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
           if (!(tr.n > 0) || !(out.takeAtNeeded > 0)) { out.giveNeeded = null; out.takeAtNeeded = null; out.wantCapped = true; }   // 낱개 하나 값이 내줄 수 있는 몫보다 크다 — 실행은 못 한다
         }
       }
-      out.wantCapped = false;
+      if (!(T976_ON && out.wantCapped === true)) out.wantCapped = false;   // ★[T976] 켬 = 위 T835 절삭이 놓은 true(낱개 0 — 실행이 못 하는 판)는 그대로 · 끔 = 종전(늘 false 로 덮는다)
     }
   }
   return out;
@@ -531,4 +537,4 @@ function exchange(a) {
            stockAfter: +v.storage[takeRes].toFixed(3), ...(conv ? { takeUnits: spend } : {}) };   // ★[T748] 켬이면 나간 단위도
 }
 
-module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON, T835_ON, T965_ON };
+module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON, T835_ON, T965_ON, T976_ON };
