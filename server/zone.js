@@ -5074,7 +5074,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   //   ⚠벤 나무 장부(`harvestedSeeds`)와 게임일을 **청크가 켜질 때 쓰는 그 인자 그대로** 넘긴다(사본 0) —
   //     벤 자리·묘목은 안 막고, 재생하면 다시 막는다.
   treeCellBlocked: warTreeCellBlocked,
-  dayShelter: process.env.T969_SHELTER_DAY === '1' ? (d) => _t969ShelterDay(d) : null,   // ★[T969] 켬 — 쉼터 백필을 econ 날 자리(하루 마감)에서(아래 · 끔 = 안 넘긴다)
+  dayShelter: process.env.T969_SHELTER_DAY !== '0' ? (d) => _t969ShelterDay(d) : null,   // ★[T969] 켬 — 쉼터 백필을 econ 날 자리(하루 마감)에서(아래 · 끔 = 안 넘긴다) · ★[T974 10-28] 켬 기본 · 되돌림 `=0`
   ioBusy, ioQuietMs,   // ★[T42-b] 배경 작업이 '한가한가'를 판단할 때 **날아가는 쓰기**도 본다
   clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
   // ★[T19 2026-09-02] 마을이 **하나 늘었다**는 통지. 온보딩이 그 마을의 도착 지점을 그때 굽는다
@@ -5592,7 +5592,8 @@ function _shelterBackfill() {
 //   (시드 42 날 372 전쟁 2 · 1 대 1 궁수 · 177 걸음째 시야 칸 (184,1693) — 가상 시계 판엔 그 자리에 집, 벽시계 판엔 쉼터가 옆 자리를 먼저 잡았다).
 //   켜면 같은 백필을 **econ 날 자리**(하루 마감 · 사건 장부 뒤 — villages `dayShelter`)에서 부른다 — 첫 판 = 그 몇 초를 하루 길이로 나눈 날(올림),
 //   다음 판 = `SHELTER_BACKFILL_MS` 를 하루 길이로 나눈 날마다(올림) · 판 수 상한 20(종전 그대로). 새 수 0 — 같은 두 시간 · 같은 상한을 하루 길이로 옮긴 것.
-const T969_SHELTER_DAY = process.env.T969_SHELTER_DAY === '1';
+//   ★[T974 2026-10-28] 켬 기본(PM · 열일곱째 판 — 벽시계 판 = 가상 시계 판) · 되돌림 `T969_SHELTER_DAY=0`(= 종전 글자 · 위 init `dayShelter` 줄도 같은 글자).
+const T969_SHELTER_DAY = process.env.T969_SHELTER_DAY !== '0';   // ★[T974 10-28] 켬 기본 · 되돌림 `=0`
 const _t969Sh = { next: null };
 function _t969ShelterDay(day) {
   const dms = parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs;
