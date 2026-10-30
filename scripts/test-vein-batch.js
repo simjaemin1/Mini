@@ -9,6 +9,7 @@
 //      ★자명 통과 금지(test-save-periodic 꼴 A/B): 모아 쓰기 팔에서 마지막 저장 뒤에 **실제로 친 것이 있어야** 잃는 몫이 0 보다 크다 — 그것을 먼저 확인한다.
 //   ④ 바로 쓰기(`now` — 플레이어 1타가 덩이를 떨군 순간)는 저장 없이도 그 셀이 DB 에 있다.
 //   ⑤ 다 회복된 셀(메모리에서 지운 셀)은 저장 때 DB 행도 지운다 · 쓰기가 실패하면 더러운 셀을 잃지 않고 다음 저장에 쓴다.
+//   ⑥ [T1007] 존 부팅 지문 로그 줄(`_t735Boot`)이 손잡이 선언(`!== '0'` 켬 기본)과 같은 글자로 선다(로그만 — 값 무변).
 // 실행: node scripts/test-vein-batch.js
 'use strict';
 const path = require('path');
@@ -99,6 +100,15 @@ console.log('\n⑤ 지운 셀 · 쓰기 실패');
   const m2 = new Map([['1_1', { s: 900, t: 1, w: 0, kg: 0 }]]), V2 = VB.create({ db: bad, map: m2 });
   V2.mark('1_1'); const r1 = V2.flush('period');
   ok(r1 === -1 && V2.size() === 1 && V2.stats().fail === 1, '쓰기가 실패하면 더러운 셀을 그대로 둔다(다음 저장에 다시)'); }
+
+console.log('\n⑥ (T1007) 부팅 지문 로그 줄의 켬 글자 = 손잡이 켬 글자(로그만 · 값 무변)');
+{ const Z = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8').split('\n');
+  const bootL = Z.filter((l) => /_t735Boot\s*=\s*true/.test(l)), declL = Z.filter((l) => /^const T735_VEIN_BATCH\s*=/.test(l));
+  const cond = (l) => { const m = /process\.env\.T735_VEIN_BATCH\s*(===|!==)\s*'([^']*)'/.exec(l || ''); return m ? m[1] + " '" + m[2] + "'" : null; };
+  ok(bootL.length === 1 && declL.length === 1, '부팅 지문 줄 하나 · 손잡이 선언 줄 하나를 찾았다(자명 통과 금지)', `${bootL.length} · ${declL.length}`);
+  ok(cond(declL[0]) === "!== '0'", '손잡이는 켬 기본(`!== \'0\'` · PM 10-14)', cond(declL[0]));
+  ok(cond(bootL[0]) === cond(declL[0]), '부팅 지문 줄이 손잡이와 같은 글자로 선다 — 기본(미설정)에서도 지문을 적는다', cond(bootL[0]));
+  ok(cond("    if (process.env.T735_VEIN_BATCH === '1') { _t735Boot = true; }") !== cond(declL[0]), '대조 — 옛 글자(`=== \'1\'`)면 위가 빨강이다(자가 가른다)'); }
 
 rm(FA); rm(FB);
 console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===`);

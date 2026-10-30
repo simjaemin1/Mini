@@ -9450,7 +9450,7 @@ let _t735Boot = false;
       minedCells.set(r.cell_key, { s, t: r.last_t, w, kg: r.kgsum || 0 });
     }
     if (minedCells.size) console.log(`[${ZONE_ID}] 광맥 파인 셀 ${minedCells.size}개 로드` + (migrated ? ` (구 번영도 ${migrated}개 → 재고 비율 이행)` : ''));
-    if (process.env.T735_VEIN_BATCH === '1') { _t735Boot = true; }   // ★[T735] 부팅 지문은 아래 `_veinDigest` 가 선 뒤에 적는다(함수 선언 차례)
+    if (process.env.T735_VEIN_BATCH !== '0') { _t735Boot = true; }   // ★[T735] 부팅 지문은 아래 `_veinDigest` 가 선 뒤에 적는다(함수 선언 차례) · ★[T1007] 켬 기본(아래 `T735_VEIN_BATCH` 와 같은 글자 · 로그만 · 값 무변)
   } catch (e) { console.log(`[${ZONE_ID}] mined_cells 로드 실패: ${e.message}`); }
 }
 // [배치 20 B] 동적 토양치 — minedCells 적재 **뒤에** 띄운다(채굴 거울 씨앗이 그걸 읽는다).
@@ -9504,7 +9504,7 @@ function _oreSave(key, rec, now) {
   if (_vein) { if (now) { try { _vein.now(key); } catch (e) { } } else _vein.mark(key); return; }
   try { db.upsertMinedCell(key, rec.s, rec.t, rec.w, rec.kg || 0); } catch (e) { }
 }
-// ★★[T735] 광맥 장부 모아 쓰기 — 손잡이 `T735_VEIN_BATCH=1`(기본 끔 = `_vein` null · 종전 그대로). 정본 `server/vein-batch.js` 머리말.
+// ★★[T735] 광맥 장부 모아 쓰기 — 손잡이 `T735_VEIN_BATCH`(★PM 10-14 켬 기본 · 되돌림 `=0` = `_vein` null · 종전 그대로 · T735 발급 땐 `=1` 만 켬). 정본 `server/vein-batch.js` 머리말.
 //   언제 쓰나: 사람 주기 저장의 그 간격(`SAVE_INTERVAL_MS` — 새 수 0) · 종료 flush(`_shutdownFlush` 머리 — T728 경계 저장 뒤).
 const T735_VEIN_BATCH = process.env.T735_VEIN_BATCH !== '0';   // ★[PM 10-14] 켬 기본(같은 값 · DB 만 모아 쓰기) · 되돌림 `=0`
 const _vein = T735_VEIN_BATCH ? require('./vein-batch').create({ db, map: minedCells }) : null;
