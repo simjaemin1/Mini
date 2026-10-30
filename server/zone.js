@@ -2057,6 +2057,7 @@ function refreshDitchCells() {
     const flat = SimVillages.ditchCells ? SimVillages.ditchCells() : [];
     for (let i = 0; i + 1 < flat.length; i += 2) DITCH_CELLS.add(_cellKey(flat[i], flat[i + 1]));   // ★[T333] 정수 키
   } catch (e) { console.error(`[${ZONE_ID}] 🏰 도랑 콜라이더 적재 실패:`, e.message); }
+  try { if (SimVillages.distBasisRefresh) SimVillages.distBasisRefresh(); } catch (e) {}   // ★[T996] 막힘이 바뀌었다 — 거리행렬 바탕을 지금 격자로 다시 세운다(켬 · 마감 밖 · 주입 0)
   return DITCH_CELLS.size;
 }
 function ditchPayload() {                 // welcome 페이로드(flat [cx,cy,…]) — 다리와 같은 규약
