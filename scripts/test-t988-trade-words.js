@@ -23,6 +23,9 @@
 // 실행: node scripts/test-t988-trade-words.js   (존 안 띄움 · 아이 판 둘(나란히) · 약 5분)
 //       [T988_DUMP=<폴더>] — 아이 판 출력(켬 · 끔)을 그 폴더에 on.json · off.json 으로 남긴다(계측용 · 판정 무변)
 'use strict';
+// ★[T999 2026-10-30] 이 하네스는 T988 말을 종전 상한 절삭 판에서 잰다(④ 절삭 판 · ⑤ 상한 1 판이 그 절삭이 만든 판이다) — `T999_TRADE_CAP` 은 끈 판에서 돈다(되돌림 `=0` · 단언 무변).
+//   켬 판(상한의 마지막 한 개도 판다)의 말 참은 `test-t999-trade-cap` ⓖ · ⑤ 가 잰다.
+process.env.T999_TRADE_CAP = '0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync, spawn } = require('child_process');

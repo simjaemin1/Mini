@@ -18,6 +18,9 @@
 //
 // 실행: node scripts/test-t807-quote-exec.js   (존 안 띄움 · 약 3분)
 'use strict';
+// ★[T999 2026-10-30] 이 하네스는 T807 이 견적만 고쳤다(실행은 켬 = 끔)를 종전 상한 절삭 판에서 잰다 — `T999_TRADE_CAP` 은 끈 판에서 돈다(되돌림 `=0` · 단언 무변).
+//   T999 켬은 상한 절삭 함수(`_trimToCap` — T807 켬 갈래만 지난다)의 값을 고쳐 T807 켬 · 끔 실행이 갈린다(설계 — T807 끔이면 종전 실행 글자) · 켬 판은 `test-t999-trade-cap` 이 잰다.
+process.env.T999_TRADE_CAP = '0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
@@ -75,7 +78,8 @@ console.log('\n① 술어 · 읽는 자리');
 
 console.log('\n② 끔 = 종전 글자');
 { ok(/if \(T807_ON && out\.capped\) \{/.test(C), '② 견적의 절삭은 켬 · 상한에 닿을 때만');
-  ok(/if \(T807_ON\) \{[^]*?_trimToCap\(econV2, v, giveRes, takeRes, q0, \(c\) => _units\(_pick\(c\)\), qt\.capped, qt\.maxGive, perItem, capU\)/.test(C), '② 실행의 절삭 = 같은 함수(`_trimToCap`) · 고른 그 개체들의 실제 무게');
+  //   ★[T999] 실행 절삭 부름에 받을 낱개 함수 한 칸(`_takeN`)만 더 허락(그 밖 글자 그대로)
+  ok(/if \(T807_ON\) \{[^]*?_trimToCap\(econV2, v, giveRes, takeRes, q0, \(c\) => _units\(_pick\(c\)\), qt\.capped, qt\.maxGive, perItem, capU(?:, _takeN)?\)/.test(C), '② 실행의 절삭 = 같은 함수(`_trimToCap`) · 고른 그 개체들의 실제 무게');
   ok(/\} else \{\s*if \(qt\.capped && perItem > 0\) give = Math\.min\(q0, Math\.floor\(qt\.maxGive \/ perItem\)\);\s*wantW = _pick\(give\);/.test(C), '② 끔 갈래 = 종전 실행 글자 그대로');
   const uses = (C.match(/_trimToCap\(/g) || []).length;
   ok(uses === 4, '② 절삭 함수 — 정의 하나 · 부름 셋(견적 · 실행 · ★T835 받을 양 견적) · 사본 0', `${uses}`); }
