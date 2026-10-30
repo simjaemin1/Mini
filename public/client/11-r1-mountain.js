@@ -829,7 +829,8 @@
     const jHi = Math.min(Math.ceil((sHi - dLo) / 2), Math.ceil(cy0 / 32 + cap));
     let n = 0;
     const cand = [];
-    const _cnK = (_mtCutHold.length && t970On()) ? new Set() : null;   // ★[T970] 켬 — 이번 판 수집 창 청크 열쇠(가르기 붙듦 쓸기 · 붙든 띠가 없으면 안 만든다)
+    const _cnOn = !!(_mtCutHold.length && t970On()), _t981 = t981On();
+    const _cnK = (_cnOn || (_t981 && _mt3Jobs.size)) ? new Set() : null;   // ★[T970 · T981] 켬 — 이번 판 수집 창 청크 열쇠(가르기 붙듦 · 굽다 만 청크 쓸기 · 쓸 것이 없으면 안 만든다)
     for (let gy = Math.floor(jLo / MT3_CH); gy <= Math.floor(jHi / MT3_CH); gy++)
       for (let gx = Math.floor(iLo / MT3_CH); gx <= Math.floor(iHi / MT3_CH); gx++) {
         // 청크의 (i−j)·(i+j) 구간이 화면 구간과 안 겹치면 아예 굽지 않는다
@@ -851,7 +852,8 @@
                       sx: Math.round(l + W * 0.5), sy: Math.round(t + H * 0.5) });
         }
       }
-    if (_cnK) _mtCutHoldSweep(_cnK);   // ★[T970] 켬 — 창 밖 · 낡은 띠의 가르기 조각을 놓는다(아래 `_mtCutHold` 머리말)
+    if (_cnOn) _mtCutHoldSweep(_cnK);   // ★[T970] 켬 — 창 밖 · 낡은 띠의 가르기 조각을 놓는다(아래 `_mtCutHold` 머리말)
+    if (_t981) _mtNearSweep(_cnK);      // ★[T981] 켬 — 창 밖 굽다 만 청크를 버리고 · 붙듦이 비었으면 가르기 판 둘을 처음 크기로(아래 머리말)
     n = _mt3Cull(out, cand);
     return n;
   }
@@ -1127,7 +1129,7 @@
   window.__mt3RectsGet = () => _mt3Rects;
   let _mtMaskCv = null, _mtMaskG = null, _mtStripCv = null, _mtStripG = null;
   const _mtCutHold = [];
-  // ★★[T970 2026-10-28] 손잡이 `T970_CUT_NEAR`(서버 env → welcome `uiCfg.cutNear` · 기본 끔 = 칸이 없고 아래 쓸기는 불리지도 않는다 · 끔 = 종전 그대로).
+  // ★★[T970 2026-10-28 · ★T981 켬 기본 — PM 10-28] 손잡이 `T970_CUT_NEAR`(서버 env → welcome `uiCfg.cutNear` · 기본 칸 있음(켬) · 되돌림 `=0` 이면 칸이 없고 아래 쓸기는 불리지도 않는다 = 종전 그대로).
   //   끔 = 가르기 붙듦(`_mtCutHold`)은 가르기 조각(`sg._cs`)을 만든 띠를 64장까지 들고(넘으면 48장으로 깎는다) 그 띠가 청크 캐시에서 빠져도
   //     (존 바뀜 · 260 상한 · 파괴 `_mt3Dirty`) · 카메라가 멀리 가도 그대로 붙든다 — 낡은 띠의 굽힌 캔버스(`sg.img`)와 조각이 시간을 따라 쌓였다
   //     (보고/T970 ① — 1시간 대본에서 살아 있는 캔버스 넓이를 늘린 1위).
@@ -1145,6 +1147,23 @@
       q._cs = null; if (q.rec) q.rec.mcache = null; _mtCutNearN++;
     }
     _mtCutHold.length = w;
+  }
+  // ★★[T981 2026-10-28 · ★T997 켬 기본 — PM 10-29] 손잡이 `T981_MT_NEAR`(서버 env → welcome `uiCfg.mtNear` · 기본 칸 있음(켬) · 되돌림 `=0` 이면 칸이 없고 아래 쓸기는 불리지도 않는다 = 종전 그대로).
+  //   T970 회부 2 — T970 켬 판에 남은 오름 둘을 같은 꼴(카메라 둘레 = 이번 판 산 수집 창)로(보고/T981):
+  //   ① 굽다 만 청크(`_mt3Jobs` · T870 띠 예산) — 끔 = 창을 떠난 청크의 굽던 띠(띠 캔버스 · 병합 캔버스)가 존 바뀜 · 260 상한 · 파괴 때까지 남는다.
+  //      켬 = 수집 끝에 이번 판 창에서 안 부른 청크의 굽던 일을 버린다(`_mt3Jobs.delete` — 존 바뀜 · 파괴 때와 같은 문법).
+  //      다시 창에 들면 처음부터 굽는다(같은 필드 · 같은 띠 차례 — 같은 그림 · 반쯤 구운 청크는 종전처럼 안 그린다).
+  //   ② 가르기 판 둘(`_mtMaskCv` · `_mtStripCv`) — 끔 = 쓴 가장 큰 띠 · 조각 크기(128 배수)를 기억하고 줄지 않는다.
+  //      켬 = 수집 끝에 가르기 붙듦이 비었으면(카메라 둘레에 가른 띠 없음 — 존 넘기 뒤 T970 쓸기가 비운 때 포함) 두 판을 만들 때 크기(128)로 되돌린다.
+  //      판은 쓸 때마다 쓰는 사각형만 새로 그리고 그 사각형만 옮기므로(가리개 `putImageData` · 띠 판 `clearRect`) 다음 가르기가 종전 문법으로 다시 키운다 — 그림 같음 · 새 수 0.
+  //   `_mtNearJobN` · `_mtNearCvN` = 버린 굽던 청크 수 · 되돌린 판 수(계측 자가 페이지 전역 이름으로 읽는다 · 그림에 안 닿는다 · 새 window 칸 0).
+  function t981On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.mtNear === true); }
+  let _mtNearJobN = 0, _mtNearCvN = 0;
+  function _mtNearSweep(keys) {
+    if (keys && _mt3Jobs.size) for (const k of _mt3Jobs.keys()) if (!keys.has(k)) { _mt3Jobs.delete(k); _mtNearJobN++; }
+    if (_mtCutHold.length) return;
+    if (_mtMaskCv && (_mtMaskCv.width > 128 || _mtMaskCv.height > 128)) { _mtMaskCv.width = _mtMaskCv.height = 128; _mtMaskG = null; _mtNearCvN++; }
+    if (_mtStripCv && (_mtStripCv.width > 128 || _mtStripCv.height > 128)) { _mtStripCv.width = _mtStripCv.height = 128; _mtStripG = null; _mtNearCvN++; }
   }
   const _mtP = { draw: 0, blit: 0, strip: 0, rect: 0, n: 0, tri: 0, cvpx: 0, rows: 0 };
   window.__mtCutProf = (reset) => { const o = { ..._mtP }; if (reset) for (const k in _mtP) _mtP[k] = 0; return o; };

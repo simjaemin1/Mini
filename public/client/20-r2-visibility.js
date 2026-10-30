@@ -298,26 +298,48 @@
     _tileYardC = yardC; _tilePlazaC = plazaC; _tileHutC = hutC; _wallNC = wallNC; _wallEC = wallEC;
     _bakeRoofFn = roofFn; _hutRoofC = hutRoofC; _hallRoofC = hallRoofC; _granC = granC;
   }
-  // ★★[T962 2026-10-27] 로비 막힘 1위 = 마을 그림 굽기(크롬 341~492ms · 그 안 GC 186~455ms — 보고/T962 §1).
-  //   굽기는 생성기 하나다(`_vilArtGen` — 사본 0). 끔(기본) = `_bakeVilArt` 가 한 판에 다 돌린다(종전 그대로 · 값 · 차례 같음).
-  //   켬(주소창 `?T962_VIL_SLICE=1` · 서버 무접촉 — T522 처럼 주소창 한 칸) = `_bakeVilArtSliced` 가 판당 예산(`T962_VIL_BUDGET_MS`)만큼씩
-  //   setTimeout 판으로 나눠 돌린다. 쪼갬 자리는 그림 줄 사이(yield)뿐이라 화소 · 차례가 같다 — 해시 증명은 보고/T962 §2.
-  //   ⚠/zones 칸이 아닌 까닭: 텍스처(data: URL 셋)는 99-main 에서 곧바로 오고(로비 ~0.5초) /zones 는 그 뒤다(1.1~1.9초 · 실측) — 칸이 오기 전에 굽기가 끝난다.
+  // ★★[T962 2026-10-27] 로비 막힘 1위 = 마을 그림 굽기(크롬 196~958ms · 그 안 GC 92~201ms — 보고/T962 §1).
+  //   굽기는 생성기 하나다(`_vilArtGen` — 사본 0). 한 판에 다 = `_bakeVilArt`(`_vilDrain`) · 나눠 = `_bakeVilArtSliced`(판당 `T962_VIL_BUDGET_MS`).
+  //   쪼갬 자리는 그림 줄 사이(yield)뿐이라 화소 · 차례가 같다 — 해시 증명은 보고/T962 §2.
+  // ★★[T982 2026-10-28 · PM 결정 — T962 회부 1] **켬 기본** · 손잡이는 central `/zones` 칸 `vilSlice`(T937 꼴 · `T962_VIL_SLICE !== '0'` · 되돌림 `=0` = 칸 없음 = 한 판에).
+  //   텍스처(data: URL 셋)는 /zones 보다 먼저 온다(T962 실측 0.35~1.1초 vs 0.6~2.0초) — 셋 다 오면 칸을 기다린다(`_vilTexReady`) ·
+  //   /zones 가 오면(`_vilCfg` · 30-n-net `boot()`) 그 칸대로 굽는다. 그래서 되돌림 `=0` 도 종전 꼴(한 판에 다)이고, 때만 /zones 뒤로 간다.
+  //   주 존에 붙을 때(`connect` primary) 아직 굽는 중이면 남은 것을 그 자리에서 다 굽는다(`_vilFinish`) — 세계 첫 그림 전에 아홉 장이 다 있다(main 과 같은 그림).
   function _vilDrain(gen) { let r; do { r = gen.next(); } while (!r.done); return r.value; }
   function _bakeVilArt(thImg, eaImg, wlImg) { _vilDrain(_vilArtGen(thImg, eaImg, wlImg)); }
-  const T962_VIL_SLICE = (() => { try { return new URLSearchParams(location.search).get('T962_VIL_SLICE') === '1'; } catch (e) { return false; } })();
   const T962_VIL_BUDGET_MS = 8;
+  let _vilOn = null, _vilTex = null, _vilRun = null;   // /zones 칸(null = 아직) · 칸을 기다리는 텍스처 셋 · 나눠 굽는 중인 판
+  function _vilTexReady(th, ea, wl) { _vilTex = [th, ea, wl]; if (_vilOn !== null) _vilStart(); }
+  function _vilCfg(on) { if (_vilOn !== null) return; _vilOn = !!on; if (_vilTex) _vilStart(); }   // 첫 /zones 한 번만
+  function _vilStart() {
+    const [th, ea, wl] = _vilTex; _vilTex = null;
+    const t0 = _lob.mk.vilGo = performance.now();
+    if (_vilOn) { _bakeVilArtSliced(th, ea, wl, (st) => { _lob.mk.vilDone = performance.now(); _lob.vil = `쪼갬(T962) ${st.n}판 · 합 ${st.ms.toFixed(0)}ms · 판 최대 ${st.max.toFixed(0)}ms · 벽시계 ${st.wall.toFixed(0)}ms${st.drain != null ? ` · 붙을 때 남은 것 ${st.drain.toFixed(0)}ms` : ''}`; }); return; }
+    try { _bakeVilArt(th, ea, wl); } catch (e) { console.warn('[vilart] bake 실패 — 폴백 렌더 유지', e); }
+    _lobStep('마을 그림 굽기(_bakeVilArt)', t0); _lob.mk.vilDone = performance.now();
+  }
   function _bakeVilArtSliced(thImg, eaImg, wlImg, onDone) {
-    const g = _vilArtGen(thImg, eaImg, wlImg); const st = { n: 0, ms: 0, max: 0, t0: performance.now() };
+    const R = _vilRun = { g: _vilArtGen(thImg, eaImg, wlImg), st: { n: 0, ms: 0, max: 0, t0: performance.now() }, onDone };
+    const st = R.st;
     const step = () => {
+      if (_vilRun !== R) return;   // `_vilFinish` 가 다 구웠다
       const t0 = performance.now(); let r;
-      try { do { r = g.next(); } while (!r.done && performance.now() - t0 < T962_VIL_BUDGET_MS); }
+      try { do { r = R.g.next(); } while (!r.done && performance.now() - t0 < T962_VIL_BUDGET_MS); }
       catch (e) { console.warn('[vilart] bake 실패 — 폴백 렌더 유지', e); r = { done: true }; }
       const ms = performance.now() - t0; st.n++; st.ms += ms; if (ms > st.max) st.max = ms;
       if (ms >= 16) _lobStep('마을 그림 굽기 · 한 판(쪼갬 · T962)', t0);   // 예산을 넘긴 판만 로비 일 표에(줄 하나가 예산보다 길 때)
-      if (r.done) { st.wall = performance.now() - st.t0; if (onDone) onDone(st); } else setTimeout(step, 0);
+      if (r.done) { _vilRun = null; st.wall = performance.now() - st.t0; if (onDone) onDone(st); } else setTimeout(step, 0);
     };
     setTimeout(step, 0);
+  }
+  function _vilFinish() {                    // 30-n-net `connect`(primary) — 남은 것을 한 판에(이미 다 됐으면 아무 일 0)
+    if (_vilTex) { if (_vilOn === null) _vilOn = false; _vilStart(); }   // (/zones 없이 붙는 판 — 종전처럼 한 판에)
+    const R = _vilRun; if (!R) return;
+    _vilRun = null; const t0 = performance.now();
+    try { _vilDrain(R.g); } catch (e) { console.warn('[vilart] bake 실패 — 폴백 렌더 유지', e); }
+    const ms = performance.now() - t0; R.st.n++; R.st.ms += ms; R.st.drain = ms; R.st.wall = performance.now() - R.st.t0;
+    _lobStep('마을 그림 굽기 · 붙을 때 남은 것(T982)', t0);
+    if (R.onDone) R.onDone(R.st);
   }
   function clCellOf(x, y) { return { cx: Math.floor(x / CL_BUILDING_SIZE), cy: Math.floor(y / CL_BUILDING_SIZE) }; }
   // 14.51: 3초 progress 작업 시작 (place 또는 dismantle)

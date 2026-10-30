@@ -64,6 +64,41 @@ const run = (world, reason, opts) => {
   return { mat: world._distMatrix, ms: Date.now() - t0 };
 };
 
+// ── [T977] 딸린 프로세스(켬 갈래 · ⑧ 이 부른다) ──────────────────────────────────
+if (process.argv[2] === '--t977') {
+  const enc = (m) => m.map((r) => r.map((d) => (isFinite(d) ? d : null)));
+  const cap = (fn) => { const L = []; const _l = console.log; console.log = (...a) => L.push(a.join(' ')); try { fn(); } finally { console.log = _l; } return L.join('\n'); };
+  const out = {};
+  const w1 = mkWorld(N); P._distProbe.setup(ta, ZONE, w1, econ);
+  cap(() => P._distProbe.compute('t977-1'));
+  out.m1 = enc(w1._distMatrix); out.basis1 = !!P._distProbe.basis;
+  P._distProbe.blkReset();
+  const w2 = mkWorld(N); P._distProbe.setup(ta, ZONE, w2, econ);
+  let y = 0; const L2 = cap(() => { const g = P._distProbe.gen('t977-2'); while (!g.next().done) y++; });
+  out.m2 = enc(w2._distMatrix); out.y2 = y; out.tag2 = /같은 격자 · BFS 0/.test(L2);
+  // 격자를 바꾼다 — 마을 0 코스 노드 둘레(반경 8 노드 — 스냅 구제 반경 너머)를 막는 술어 ⇒ 마을 0 쌍이 다 도달 불능이 된다
+  const D = P._distProbe.DIST_STEP, c0 = coords[0], gx0 = Math.round(c0.x / 2.5 / D), gy0 = Math.round(c0.y / 2.5 / D);
+  const isBlocked2 = (x, y) => (Math.abs(Math.floor(Math.floor(x / SZ) / D) - gx0) <= 8 && Math.abs(Math.floor(Math.floor(y / SZ) / D) - gy0) <= 8) || isBlocked(x, y);   // 술어는 존 좌표(px)를 받는다
+  const ta2 = P.makeTerrainAdapter(T, ZONE, { isTerrainBlockedLocal: isBlocked2, isWaterTileLocal: isWater });
+  P._distProbe.blkReset();
+  const w3 = mkWorld(N); P._distProbe.setup(ta2, ZONE, w3, econ);
+  const L3 = cap(() => P._distProbe.compute('t977-3'));
+  const m3 = enc(w3._distMatrix); out.tag3 = /같은 격자 · BFS 0/.test(L3);
+  P._distProbe.blkReset(); P._distProbe.basisReset();
+  const w3b = mkWorld(N); P._distProbe.setup(ta2, ZONE, w3b, econ); cap(() => P._distProbe.compute('t977-3b'));
+  const m3b = enc(w3b._distMatrix), dif = (a, b) => { let d = 0; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (a[i][j] !== b[i][j]) d++; return d; };
+  out.d3 = dif(m3, out.m2); out.e3 = dif(m3, m3b);
+  // 마을 좌표가 다르다(마을 0 을 한 칸 옮김) — 바탕(ta2 · 좌표 그대로) 뒤
+  P._distProbe.blkReset();
+  const mv = (n) => ({ villages: mkWorld(n).villages.map((v, i) => (i ? v : { name: v.name, coord: { x: v.coord.x + 2.5, y: v.coord.y } })) });
+  const w4 = mv(N); P._distProbe.setup(ta2, ZONE, w4, econ); const L4 = cap(() => P._distProbe.compute('t977-4'));
+  P._distProbe.blkReset(); P._distProbe.basisReset();
+  const w4b = mv(N); P._distProbe.setup(ta2, ZONE, w4b, econ); cap(() => P._distProbe.compute('t977-4b'));
+  out.tag4 = /같은 격자 · BFS 0/.test(L4); out.e4 = dif(enc(w4._distMatrix), enc(w4b._distMatrix));
+  _log('T977JSON ' + JSON.stringify(out));
+  process.exit(0);
+}
+
 // ── ① 전쌍(기준) ─────────────────────────────────────────────────────────────
 say('\n[① 전쌍 계산 — 기준]');
 const full = run(mkWorld(N), 'full');
@@ -162,6 +197,30 @@ say('\n[⑦ ★[T968] 다 센 셈은 주입 앞에서 선다 · 이어 밀면 �
   const m = w._distMatrix;
   let diff = 0; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (!m || m[i][j] !== full.mat[i][j]) diff++;
   ok(r2.done && !!m && diff === 0, `★★이어 밀면 주입 — 전쌍과 완전히 같다(불일치 ${diff}칸)`);
+}
+
+// ── ⑧ ★[T977] 같은 격자면 BFS 0 — 바탕 행렬 = 다시 센 행렬(바이트) · 격자가 바뀌면 종전 BFS ───────────────
+//   손잡이는 모듈을 읽을 때 정해지므로 켬 갈래는 **딸린 프로세스**(`T977_DIST_SAME=1` · 이 파일 `--t977`)가 돌고, 여기(끔)서 센 전쌍과 견준다.
+say('\n[⑧ ★[T977] 같은 격자면 BFS 0 · 바탕 = 다시 센 셈 · 바뀌면 종전 BFS]');
+{
+  const fs = require('fs');
+  const V = fs.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8');
+  ok(/const T977_DIST_SAME = process\.env\.T977_DIST_SAME === '1';/.test(V), '손잡이 — 끔 기본 · `=1` 만 켬');
+  ok(P._distProbe.basis == null, '★끔이면 바탕을 안 만든다(위 ①~⑦ 셈 뒤에도 없음)');
+  const { spawnSync } = require('child_process');
+  const c = spawnSync(process.execPath, [__filename, '--t977'], { env: Object.assign({}, process.env, { T977_DIST_SAME: '1' }), encoding: 'utf8', maxBuffer: 1 << 26 });
+  let J = null; try { J = JSON.parse((c.stdout || '').split('\n').filter((l) => l.startsWith('T977JSON '))[0].slice(9)); } catch (e) {}
+  ok(c.status === 0 && !!J, `딸린 프로세스(켬) 끝 — 종료 ${c.status}`);
+  if (J) {
+    const enc = (m) => m.map((r) => r.map((d) => (isFinite(d) ? d : null)));
+    const F = enc(full.mat), eq = (a, b) => { let d = 0; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (a[i][j] !== b[i][j]) d++; return d; };
+    ok(J.basis1 && eq(J.m1, F) === 0, `[켬] 처음 셈(바탕 없음)이 끔 전쌍과 같다(불일치 ${eq(J.m1, F)}칸) · 바탕을 만들었다`);
+    ok(J.tag2 && J.y2 > 0, `[상황] 무효화(메모 비움) 뒤 같은 격자 — 확인만 했다(로그 '같은 격자 · BFS 0' · 양보 ${J.y2}번)`);
+    ok(eq(J.m2, F) === 0, `★★같은 격자 셈 = 끔 전쌍 — 바이트 동일(불일치 ${eq(J.m2, F)}칸)`);
+    ok(J.d3 > 0 && !J.tag3, `[상황] 격자를 바꿨다(마을 0 둘레 반경 8 노드 막음 — 행렬이 ${J.d3}칸 달라진다) · 같은 격자 문을 안 탔다`);
+    ok(J.e3 === 0, `★★격자가 바뀌면 종전 BFS — 바탕 없이 센 셈과 같다(불일치 ${J.e3}칸)`);
+    ok(!J.tag4 && J.e4 === 0, `★마을 좌표가 다르면 같은 격자 문을 안 탄다 · 바탕 없이 센 셈과 같다(불일치 ${J.e4}칸)`);
+  }
 }
 
 say(`\n=== 거리행렬 하네스: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);

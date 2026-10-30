@@ -1,0 +1,300 @@
+{
+ "card": "T976",
+ "made": "2026-10-28",
+ "tree": "가지 batch/want-capped-1028 = main 241e4407 + T960 f8ac0f8a(열여섯째 판 · 카드 캐논) + T965 4af4bee9(같은 견적 갈래 · 같은 ① 표)",
+ "one": {
+  "what": "받을 양 견적 끝 줄 `out.wantCapped = false;`(T69 · 09-03)가 T835 상한 절삭(10-21)이 놓은 true 를 덮었다 — 절삭 낱개 0 판(마을이 내줄 몫 전부가 낼 것 한 개 값에 못 미친다)",
+  "probe": "test-t835-quote-weight 아이 판 세계 · 짐 그대로(시드 7 · 마을 5 · 200날 · L.prime · 낼 것 cooked_food · meat_game × 받을 것 여섯 × 받을 양 1 2 3 5 8 13 21 34 × 열량 짝 끔/켬 = 받을 양 주문 960 줄) · 견적 칸 전부 + 실행 말",
+  "before": {
+   "rows": 960,
+   "trimZero": 333,
+   "silent": 333,
+   "wantCappedTrue": 302,
+   "maxGive0": 317,
+   "maxGiveGe1": 16,
+   "wantLeCap": 333,
+   "execRefuse": 333,
+   "example": {
+    "vi": 0,
+    "tk": 0,
+    "pair": "cooked_food>fish",
+    "want": 1,
+    "err": null,
+    "cap": 15,
+    "maxGive": 0,
+    "gn": null,
+    "gnu": 0.009473,
+    "tan": null,
+    "wt": true,
+    "wc": false,
+    "xok": 0,
+    "xerr": "마을이 생선 1개를 못 내준다 — 지금 내줄 수 있는 건 15까지다",
+    "xg": null,
+    "xt": null
+   }
+  },
+  "after": {
+   "trimZeroWantCappedTrue": 333,
+   "silent": 0,
+   "sameRows": 627,
+   "onlyWantCappedDiffers": 333,
+   "otherDiff": 0
+  },
+  "revertEqBefore": true,
+  "execErrNEqQuoteCap": true,
+  "client": {
+   "off": "거래 줄: \"한 개당 278.908792\" 하나 · 경고 0 · \"내야 할\" 줄 0 · 바꾼다 단추 꺼짐(test-t976 0날 판 마을0 익힌 음식→나무 · cap 12 · maxGive 0)",
+   "on": "거래 줄: \"마을이 지금 내줄 수 있는 나무은(는) 12까지다\" + \"한 개당 278.908792\" · 단추 꺼짐(같은 판) · 나머지 글자 같다"
+  },
+  "giveAxisNote": {
+   "what": "같은 무거운 짐 판 낼 양 축(1개) 실행 말(정보 · 이 카드 안 고침)",
+   "day0": "30 판 다 maxGive 0 — \"… 한 개 값이 마을이 내줄 수 있는 … 전부(N)보다 비싸다 — 이 마을은 지금 그 값을 못 치른다\"",
+   "day200": {
+    "그 양으론 한 개도 못 바꾼다 — 더 내야 한다": {
+     "n": 19,
+     "maxGive": [
+      1,
+      2,
+      4,
+      6,
+      7,
+      18,
+      22,
+      24,
+      71,
+      76
+     ]
+    },
+    "ok": {
+     "n": 4,
+     "maxGive": [
+      312,
+      356,
+      964,
+      2416
+     ]
+    },
+    "X 한 개 값이 마을이 내줄 수 있는 X 전부(N)보다 비싸다 — 이 마을은 지금 그 값을 못 치른다": {
+     "n": 5,
+     "maxGive": [
+      0
+     ]
+    },
+    "사슴·들짐승X 한 개 값이 마을이 내줄 수 있는 X 전부(N)보다 비싸다 — 이 마을은 지금 그 값을 못 치른다": {
+     "n": 20,
+     "maxGive": [
+      0
+     ]
+    }
+   }
+  }
+ },
+ "two": {
+  "rowsBefore": 138,
+  "rowsAfter": 130,
+  "names": 130,
+  "histCells": 7,
+  "oldRows": 8,
+  "rebuiltEqOld": true,
+  "headDupLinesRemoved": [
+   "[T909 증분] 두 번째",
+   "[T916 증분] 두 번째"
+  ],
+  "knobs": [
+   {
+    "name": "T838_WD_AWAKE",
+    "keptLine": 168,
+    "keptDef": "ON",
+    "keptLoc": "server/zone.js:6666",
+    "keptCard": "T838 회부 1(PM · 켬 기본?) → T849(가지 `batch/wd-on-1022`",
+    "olds": [
+     {
+      "line": 175,
+      "def": "OFF",
+      "loc": "server/zone.js:6601",
+      "card": "T838 회부 1(PM · 켬 기본?)",
+      "diffCols": [
+       "읽는 자리",
+       "기본값",
+       "켤 조건",
+       "상태",
+       "카드 역표"
+      ]
+     },
+     {
+      "line": 176,
+      "def": "ON",
+      "loc": "server/zone.js:6601",
+      "card": "T849(가지 `batch/wd-on-1022` · 커밋 `147ad59",
+      "diffCols": [
+       "읽는 자리",
+       "켤 조건",
+       "상태",
+       "카드 역표"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "T870_MT_BAND",
+    "keptLine": 178,
+    "keptDef": "ON",
+    "keptLoc": "server/zone.js:6668",
+    "keptCard": "T880(가지 `batch/mt-band-on-1023` · 커밋 `f2606b06` · ",
+    "olds": [
+     {
+      "line": 177,
+      "def": "OFF",
+      "loc": "server/zone.js:6630",
+      "card": "T870 회부 1(PM · 켤지)",
+      "diffCols": [
+       "읽는 자리",
+       "기본값",
+       "켤 조건",
+       "상태",
+       "카드 역표"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "T924_DEBT_CAP",
+    "keptLine": 184,
+    "keptDef": "ON",
+    "keptLoc": "sim/economy-sim.js:1147(거울 4210)",
+    "keptCard": "T960(승인 대기 · PM 10-26 T924 회부 1)",
+    "olds": [
+     {
+      "line": 183,
+      "def": "OFF",
+      "loc": "sim/economy-sim.js:1127(거울 4124)",
+      "card": "T924(가지 `batch/food-death-1024` · 승인 대기 ",
+      "diffCols": [
+       "읽는 자리",
+       "착지",
+       "기본값",
+       "켬 3시드",
+       "켤 조건",
+       "상태",
+       "카드 역표"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "T926_CELL_NEAR",
+    "keptLine": 189,
+    "keptDef": "ON",
+    "keptLoc": "server/zone.js:6784",
+    "keptCard": "T936(가지 `batch/cell-near-on-1026` · ★PM 10-26 T926",
+    "olds": [
+     {
+      "line": 190,
+      "def": "OFF",
+      "loc": "server/zone.js:6761",
+      "card": "T926 회부(PM · 켤지)",
+      "diffCols": [
+       "읽는 자리",
+       "착지",
+       "기본값",
+       "켬 3시드",
+       "켤 조건",
+       "상태",
+       "카드 역표"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "T931_SLOTK_EMA",
+    "keptLine": 198,
+    "keptDef": "ON",
+    "keptLoc": "sim/economy-sim.js:1160(되돌림 T931_SLOTK_O",
+    "keptCard": "T931(발급) → T943(켬 기본 · ★PM 10-27 · 승인 대기)",
+    "olds": [
+     {
+      "line": 193,
+      "def": "OFF",
+      "loc": "sim/economy-sim.js:1159('season' 1160 · ",
+      "card": "T931(가지 `batch/food-k-inertia-1026` · 승인",
+      "diffCols": [
+       "읽는 자리",
+       "착지",
+       "기본값",
+       "켬 3시드",
+       "켤 조건",
+       "상태",
+       "카드 역표"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "T932_SMELT_CONT",
+    "keptLine": 194,
+    "keptDef": "ON",
+    "keptLoc": "sim/economy-sim.js:1155(갈래 3358)",
+    "keptCard": "T932(★PM 10-26 카드 · T923 회부 1 · 결함 고침)",
+    "olds": [
+     {
+      "line": 199,
+      "def": "ON",
+      "loc": "sim/economy-sim.js:1155(갈래 3358)",
+      "card": "T932(★PM 10-26 카드 · T923 회부 1 · 결함 고침)",
+      "diffCols": []
+     }
+    ]
+   },
+   {
+    "name": "T937_GT_PREWARM",
+    "keptLine": 195,
+    "keptDef": "ON",
+    "keptLoc": "server/central.js:791(/zones 응답)",
+    "keptCard": "T948(가지 `batch/gt-prewarm-on-1027` · ★PM 10-27 T93",
+    "olds": [
+     {
+      "line": 192,
+      "def": "OFF",
+      "loc": "server/central.js(/zones 응답)",
+      "card": "T937 회부(PM · 켤지 — 그림 같음이면 켬 기본 후보)",
+      "diffCols": [
+       "읽는 자리",
+       "착지",
+       "기본값",
+       "켬 3시드",
+       "켤 조건",
+       "상태",
+       "카드 역표"
+      ]
+     }
+    ]
+   }
+  ],
+  "t883": "행 130 · 이름 130 · 중복 이름 0 · 표 ≠ 코드 글자 1(T931_SLOTK_EMA 섞임 — 세 줄 매개변수라 t883 판독기가 못 가른다 · 표 ON = 코드 켬 기본 season)"
+ },
+ "three": {
+  "cmd": "node scripts/t976-knob-count.js",
+  "main241e4407": "① 표 손잡이 128(행 135 · 겹친 이름 6) · 기본 켬 56 · 끔 54 · 매개변수 18 · 못 읽음 0 · 읽는 자리 server 85 · sim 43 · public 0 · 그 밖 0 | 코드 env T###_ 이름 270 · 그중 표에 없음 145 · 표에 있고 코드 env 0 3(코드는 이 가지 트리)",
+  "mergedBefore": "① 표 손잡이 130(행 138 · 겹친 이름 7) · 기본 켬 58 · 끔 54 · 매개변수 18 …(겹친 이름은 표에서 먼저 나온 행으로 셈)",
+  "after": "① 표 손잡이 131(행 131 · 겹친 이름 0) · 기본 켬 63 · 끔 50 · 매개변수 18 · 못 읽음 0 · 읽는 자리 server 87 · sim 44 · public 0 · 그 밖 0 | 코드 env T###_ 이름 270 · 그중 표에 없음 142 · 표에 있고 코드 env 0 3",
+  "t547": "102 · 켬 33 · 끔 51 · 매개변수 18(T547 때 수)"
+ },
+ "serverBaseline": {
+  "ruler": "scripts/server-baseline-check.js 계측/서버기준선_2026-10-28_T960.json(열여섯째 판 후보 · T960 가지 · land1029 의 _2026-10-28.json 은 아직 main 에 없다)",
+  "env": "켬 기본(env 없음)",
+  "result": "같음 3/3 — 1020 · 7 · 42 400날 날 지문 · 판 JSON · 여덟 수(인구 2,483 · 2,623 · 2,565)",
+  "sec": 924
+ },
+ "harnessResults": {
+  "test-t976-want-capped": "17/17 열여섯째 판 · 17/17 T825_FOOD_KEEP=0 T924_DEBT_CAP=0(0날 세계)",
+  "test-t835-quote-weight": "16/16 열여섯째 판(받을 양 주문 견적 = 실행 0/960 · 켬 넘침 0 · 끔 넘침 4)",
+  "test-t965-want-start": "15/15",
+  "tradeSet": "11/11(test-trade 68 · test-t807-quote-exec 15 · test-moment-lot 107 · test-granary-age 31 · test-granary-item 42 · test-granary-rot 28 · test-preserve 70 · test-salt 73 · test-weight 64 · test-harness-lint 68 · e2e-trade 55)",
+  "wiring": "실패 0 · 경고 1(main 쪽 world._warSeq · world._warStats) · A3 T976_WANT_CAPPED ✅"
+ },
+ "worldBands16": {
+  "src": "보고/T960_2026-10-28.md §3(이 카드는 다시 안 돌렸다)",
+  "server": "T837 띠 800날 인구 12,844 ~ 13,369 · 빈 마을 1 ~ 5 · 첫해 굶어 죽음 143 ~ 411 · 굶는 마을-날 678 ~ 1,251",
+  "lab": "T944 자 띠 800날 인구 15,490 ~ 16,342 · 소멸 0 ~ 3"
+ }
+}
