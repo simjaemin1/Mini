@@ -272,7 +272,29 @@ function _giver(D, inventory, giveRes, unitsOf) {
   const at = (c) => (c <= have ? units(pick(c)) : units(pick(have)) + (c - have) * ((have >= 1 ? units(pick(1)) : 0) || 1));
   return { playerItems, have, pick, units, at };
 }
-function _trimToCap(econV2, v, giveRes, takeRes, n0, unitsAt, capped, maxGive, perItem, cap) {
+// ★★[T999 2026-10-30 · 세션2 · T988 회부 1 · 2] **상한의 마지막 한 개도 판다 · 상한 탐색은 상한에 닿을 때까지 넓힌다** — 손잡이 하나 `T999_TRADE_CAP`(켬 기본 · 되돌림 `=0` = 종전 바이트).
+//   결함 ① 상한 절삭(아래 `_trimToCap`)은 낼 낱개를 `⌊maxGive ÷ 평균 단위⌋` 로 깎았다. `maxGive = ⌊T⌋`(T = 마을이 내줄 몫 전부를 사는 낼 단위)라
+//     깎인 낱개의 단위는 늘 T 아래다 — 받는 몫이 상한에 못 닿는다(상한 N 이면 많아야 N − 1 · 상한 1 판은 어느 양으로도 한 개를 못 받는다).
+//   결함 ② 상한 이분 탐색(견적 `hiCap` · `maxGive`)의 첫 상계 `⌈cap ÷ 첫 조각 비율⌉ × 4` 가 T 보다 작으면 넓히지 않아 `maxGive` 가 작게 끝났다
+//     (한 개를 낼수록 값이 나빠지는 짝 — 익힌 음식 → 곡식).
+//   켜면 ① 상한에 닿은 주문(`capped`)은 낸 그대로 받을 양(상한까지)을 받는 **가장 적은 낱개**로 깎는다(이분 탐색 · 받을 낱개는 낱개를 더할수록 안 준다) —
+//     넘는 몫은 마지막 낱개의 조각뿐이다(캐논 ② 올림 · ③ 넘치는 소수는 거래소 몫과 같은 꼴). 낼 것 한 개를 마을이 다 못 받는 판(한 개 넘침)은 종전 절삭 그대로다
+//     (그 판은 거절 — "… 한 개 값이 … 전부(N)보다 비싸다 — 이 마을은 지금 그 값을 못 치른다").
+//     ② 상한 탐색은 받을 양 올림의 연속해와 같은 함수(`_giveForTake` — 받을 양 = 상한 · 상계가 못 닿으면 두 배씩 넓힌다)로 — 첫 상계가 닿는 판은 종전과 한 자리도 안 다르다.
+//   견적 · 실행이 같은 함수를 지난다(T807 · T835 · T965 견적 = 실행 그대로) · 새 수 0. ① 은 이 함수를 지나는 T807 켬 갈래에서만 선다(T807 끔이면 종전 실행 글자).
+const T999_ON = !(typeof process !== 'undefined' && process.env && process.env.T999_TRADE_CAP === '0');   // ★[T999] 켬 기본 · 되돌림 `=0`
+function _trimToCap(econV2, v, giveRes, takeRes, n0, unitsAt, capped, maxGive, perItem, cap, takeN) {
+  if (T999_ON && capped && n0 >= 1 && typeof takeN === 'function') {   // ★[T999] 상한에 닿은 주문 — 받을 양 그대로 가장 적게 내는 낱개(한 개 넘침은 아래 종전 절삭)
+    const u1 = unitsAt(1);
+    if (u1 > 0 && planSliced(econV2, v, giveRes, takeRes, u1, cap).gave >= u1 - 1e-9) {   // 낼 것 한 개는 마을이 다 받는다
+      const tk = (c) => takeN(planSliced(econV2, v, giveRes, takeRes, unitsAt(c), cap).took);
+      const top = tk(n0);   // 낸 그대로 받을 양(상한에 닿았으니 상한 전부)
+      let lo = 0, hi = n0;
+      while (hi - lo > 1) { const mid = Math.floor((lo + hi) / 2); if (tk(mid) >= top) hi = mid; else lo = mid; }
+      const u = unitsAt(hi);
+      return { n: hi, u, took: planSliced(econV2, v, giveRes, takeRes, u, cap).took };
+    }
+  }
   const n = (capped && perItem > 0) ? Math.min(n0, Math.floor(maxGive / perItem)) : n0;
   const u = unitsAt(n);
   const pl = u > 0 ? planSliced(econV2, v, giveRes, takeRes, u, cap) : { took: 0 };
@@ -342,7 +364,9 @@ const T976_ON = !(typeof process !== 'undefined' && process.env && process.env.T
 const T988_ON = !(typeof process !== 'undefined' && process.env && process.env.T988_TRADE_WORDS === '0');   // ★[T988] 켬 기본 · 되돌림 `=0`
 function _moreWorks(econV2, v, giveRes, takeRes, n0, maxN, unitsAt, capU, takeN) {   // ★[T988] 낸 낱개 n0 보다 많이(maxN 까지) 내면 한 개라도 받나 — 상한 절삭 안 걸리는 마지막 낱개 n* 로(읽기만)
   const free = (c) => { const u = unitsAt(c); return u > 0 && planSliced(econV2, v, giveRes, takeRes, u, capU).gave >= u - 1e-9; };   // 그 낱개는 상한 절삭에 안 걸린다
-  if (!(maxN > n0) || !free(n0 + 1)) return false;
+  if (!(maxN > n0)) return false;
+  if (T999_ON && !free(maxN)) return true;   // ★[T999] 가진 것 안에 상한에 닿는 낱개가 있다 — 절삭이 상한까지 판다(한 개 넘침은 `_whyNot` 이 먼저 가른다)
+  if (!free(n0 + 1)) return false;
   let lo = n0 + 1, hi = maxN;
   if (free(hi)) lo = hi;
   while (hi - lo > 1) { const mid = Math.floor((lo + hi) / 2); if (free(mid)) lo = mid; else hi = mid; }
@@ -384,10 +408,12 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   const ratio = (pA * (1 - s)) / (pB * (1 + s));
   const plan = q > 0 ? planSliced(econV2, v, giveRes, takeRes, q, cap) : { gave: 0, took: 0 };
   const conv = (opts && opts.takeKcal) ? _takeConv(opts.takeKcal, ledger.deliverable.toEcon.get(takeRes)) : null;   // ★[T748] 받는 쪽 열량 짝(끔 = null)
+  const _tkN = (t) => (conv ? conv.items(t).items : Math.floor(t));   // ★[T999] 받을 단위 → 받을 낱개(아래 `take` 와 같은 식 · 상한 절삭이 받을 양을 견준다)
   const take = conv ? conv.items(plan.took).items : Math.floor(plan.took);
   // 상한을 다 쓰는 최대 낼 양 — 이분 탐색(곡선이라 나눗셈으로 못 낸다). 표시·절삭에 쓴다.
   let lo = 0, hi = Math.max(1, Math.ceil(cap / Math.max(1e-9, ratio)) * 4);
-  for (let i = 0; i < 24; i++) {
+  if (T999_ON) hi = _giveForTake(econV2, v, giveRes, takeRes, cap, cap, hi);   // ★[T999] 상한 전부를 받을 양으로 한 연속해 — 첫 상계가 못 닿으면 넓힌다(닿는 판은 아래 종전 걸음과 같은 수)
+  else for (let i = 0; i < 24; i++) {
     const mid = (lo + hi) / 2;
     const pl = planSliced(econV2, v, giveRes, takeRes, mid, cap);
     if (pl.took >= cap - 1e-9) hi = mid; else lo = mid;
@@ -414,7 +440,7 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   if (_gN) out.giveUnitsPicked = +q.toFixed(3);   // ★[T835] 켬 = 견적이 잰 낼 단위(고른 그 개체들)
   if (T807_ON && out.capped) {   // ★[T807] 상한에 닿았다 — 실행과 같은 절삭(`_trimToCap`)으로 받을 양을 다시 낸다(끔 = 이 줄 무동작)
     const per = _gN ? q / _gN : ((opts && Number(opts.perItem) > 0) ? Number(opts.perItem) : 1);   // ★[T835] 켬 = 실행의 평균 단위/개(고른 그 개체들 ÷ 개수)
-    const tr = _trimToCap(econV2, v, giveRes, takeRes, _gN || Math.floor(q / per + 1e-9), _gN ? _gAt : ((c) => c * per), true, maxGive, per, cap);
+    const tr = _trimToCap(econV2, v, giveRes, takeRes, _gN || Math.floor(q / per + 1e-9), _gN ? _gAt : ((c) => c * per), true, maxGive, per, cap, _tkN);
     out.take = conv ? conv.items(tr.took).items : Math.floor(tr.took);
     out.giveUsed = tr.n; out.giveUsedUnits = +tr.u.toFixed(3);
   }
@@ -447,7 +473,7 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
       if (T835_ON) {   // ★[T835] 받을 양 주문도 실행과 같은 상한 절삭 — 낱개 n 이 상한에 닿으면 실행은 낼 양을 깎는다(`_trimToCap` · 끔 = 이 줄 무동작)
         const un = _uAt(n), pn = un > 0 ? planSliced(econV2, v, giveRes, takeRes, un, cap) : { gave: 0 };
         if (pn.gave < un - 1e-9) {
-          const tr = _trimToCap(econV2, v, giveRes, takeRes, n, _uAt, true, maxGive, un / n, cap);
+          const tr = _trimToCap(econV2, v, giveRes, takeRes, n, _uAt, true, maxGive, un / n, cap, _tkN);
           out.giveNeeded = tr.n; out.takeAtNeeded = conv ? conv.items(tr.took).items : Math.floor(tr.took); out.wantTrimmed = true;
           if (T988_ON && tr.n > 0 && out.takeAtNeeded > 0 && out.takeAtNeeded < want) out.wantShort = true;   // ★[T988] 절삭돼 받을 양에 못 닿는다 — 화면은 낼 양 축의 그 줄로
           if (!(tr.n > 0) || !(out.takeAtNeeded > 0)) {   // 낱개 하나 값이 내줄 수 있는 몫보다 크다 — 실행은 못 한다
@@ -541,9 +567,10 @@ function exchange(a) {
   // 물리 상한 — 넘치면 **거절이 아니라 절삭**이다(살 수 있는 만큼은 산다).
   //   ★수량은 견적과 **같은 조각 계획**에서 나온다(견적과 실행이 다른 수를 쓰면 그게 보이지 않는 손이다).
   //   ★상한은 **단위**로 걸리므로 개수로 되돌린다(평균 단위/개로 나눈 뒤 내림 — 넘치게 주지 않는다).
+  //     ★[T999] 켬이면 상한 전부를 받는 가장 적은 낱개(넘는 몫은 마지막 낱개의 조각 · 한 개 넘침은 이 내림 그대로 — `_trimToCap` 머리).
   let give = q0, wantW, giveUnits, pl;
   if (T807_ON) {   // ★[T807] 견적과 같은 절삭 함수(실행은 고른 그 개체들의 실제 무게로 — `unitsAt`)
-    const tr = _trimToCap(econV2, v, giveRes, takeRes, q0, (c) => _units(_pick(c)), qt.capped, qt.maxGive, perItem, capU);
+    const tr = _trimToCap(econV2, v, giveRes, takeRes, q0, (c) => _units(_pick(c)), qt.capped, qt.maxGive, perItem, capU, _takeN);
     give = tr.n; wantW = _pick(give); giveUnits = tr.u; pl = { took: tr.took };
   } else {
   if (qt.capped && perItem > 0) give = Math.min(q0, Math.floor(qt.maxGive / perItem));
@@ -594,4 +621,4 @@ function exchange(a) {
            stockAfter: +v.storage[takeRes].toFixed(3), ...(conv ? { takeUnits: spend } : {}) };   // ★[T748] 켬이면 나간 단위도
 }
 
-module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON, T835_ON, T965_ON, T976_ON, T988_ON };
+module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON, T835_ON, T965_ON, T976_ON, T988_ON, T999_ON };

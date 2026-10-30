@@ -203,7 +203,8 @@ for (const [f, k] of [['server/trade.js', 'T807_QUOTE_TRIM'],   // ★[T817] 거
                       ['server/trade.js', 'T835_QUOTE_WEIGHT'],   // ★[T847] 견적 무게 = 고른 그 개체들 켬 기본
                       ['server/trade.js', 'T965_WANT_START'],   // ★[T965] 받을 양 주문의 올림 출발 = 연속해 아래 마지막 낱개 켬 기본
                       ['server/trade.js', 'T976_WANT_CAPPED'],   // ★[T976] 받을 양 견적 끝 줄이 상한 절삭의 wantCapped=true 를 안 덮는다 켬 기본
-                      ['server/trade.js', 'T988_TRADE_WORDS']]) {   // ★[T988] 거래가 안 서는 판의 말 = 그 판의 참(종전 낱말) 켬 기본
+                      ['server/trade.js', 'T988_TRADE_WORDS'],   // ★[T988] 거래가 안 서는 판의 말 = 그 판의 참(종전 낱말) 켬 기본
+                      ['server/trade.js', 'T999_TRADE_CAP']]) {   // ★[T999] 상한의 마지막 한 개도 판다 · 상한 탐색은 상한에 닿을 때까지 켬 기본
   const re = new RegExp(`process\\.env\\.${k}\\s*===\\s*'0'`);
   if (re.test(rd(f))) ok(`  채택 손잡이 ${k} 기본 ON (=== '0' 으로 되돌림 · ${f})`);
   else bad(`  채택 손잡이 ${k} 의 기본값이 채택값이 아니다 (${f})`);
