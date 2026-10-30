@@ -789,6 +789,7 @@ const server = http.createServer(async (req, res) => {
         zones,
         central: `${PUBLIC_HOST}:${PORT}`,
         ...(process.env.T937_GT_PREWARM !== '0' ? { gtPrewarm: true } : {}),   // [T937 · ★T948 켬 기본 — PM 10-27] 클라가 **로비에서** 지면 굽기의 한 번짜리 준비 둘(맨땅 마스크 `_gtMask` · 풀 잎 가르기 `_grassSplit`)을 미리 한다(첫 그림에서 뺀다 · 00-const `_gtPrewarm`) · 되돌림 `T937_GT_PREWARM=0` 이면 칸이 없다(옛 /zones · 첫 타일이 한다) · ★welcome 이 아니라 /zones 인 까닭: 로비는 welcome 전이다
+        ...(process.env.T991_GT_SLICE === '1' ? { gtSlice: true } : {}),   // [T991] 로비 지면 데우기 둘(`gtPrewarm`)을 판당 8ms 로 쪼갠다(00-const `_gtPrewarmSliced` · 생성기 `_gtMaskGen` · `_grassSplitGen` · 값 같음) — 기본 끔 · 끔이면 칸이 없다(/zones 바이트 동일) · `1` 켬
         handoffCommit: HANDOFF_COMMIT,   // ★[T604 추신3] 핸드오프 겹침 띠(px) — 클라 해안 평행이동의 경계 앞 바다 지킴이 읽는다(서버 chunk.js 와 같은 수 · 박힌 수 0)
       });
     }

@@ -824,7 +824,7 @@ function cropSprite(stage, crop) {
         `갈래 ms: ` + stages.map((r) => `${r['갈래']} ${r.ms == null ? '-' : r.ms}`).join(' · '),
         `눌림 → 첫 입력 ${total}ms · 그 뒤 가라앉기까지 ${d(at.input, at.settle)}ms${_ld.settled ? '' : '(30초 안에 안 가라앉음 — 늘 긴 프레임 · `__lagReport()` 로 볼 것)'} · 첫 그림 뒤 긴 프레임(>50ms) ${_ld.long.n}판 · 막은 ${_ld.long.ms.toFixed(0)}ms · 최대 ${_ld.long.max.toFixed(0)}ms`,
         `층 ms(눌림 → 첫 입력): ` + layers.map((r) => `${r['층']} ${r.ms}`).join(' · '),
-        _ld.prewarm ? `지면 준비 데우기(로비 · T937): 맨땅 마스크 ${_ld.prewarm.mask == null ? '못 함' : _ld.prewarm.mask + 'ms'} · 풀 잎 가르기 ${_ld.prewarm.grass == null ? '못 함' : _ld.prewarm.grass + 'ms'}${_ld.prewarm.at != null && at.click != null && _ld.prewarm.at > at.click ? ' (눌림 뒤에 시작)' : ''}` : `지면 준비 데우기: 끔(첫 타일이 한다)`,
+        _ld.prewarm ? `지면 준비 데우기(로비 · T937): 맨땅 마스크 ${_ld.prewarm.mask == null ? '못 함' : _ld.prewarm.mask + 'ms'} · 풀 잎 가르기 ${_ld.prewarm.grass == null ? '못 함' : _ld.prewarm.grass + 'ms'}${_ld.prewarm.slice ? ` · 쪼갬(T991) ${_ld.prewarm.slice.n}판 · 판 최대 ${_ld.prewarm.slice.max}ms · 벽시계 ${_ld.prewarm.slice.wall == null ? '아직' : _ld.prewarm.slice.wall + 'ms'}` : ''}${_ld.prewarm.at != null && at.click != null && _ld.prewarm.at > at.click ? ' (눌림 뒤에 시작)' : ''}` : `지면 준비 데우기: 끔(첫 타일이 한다)`,
         `받은 메시지(주 소켓 · 눌림 → 가라앉음): ${T.reduce((a, r) => a + r['개'], 0)}개 ${(wsChars / 1024).toFixed(0)}K글자 — welcome ${_ld.welcome ? (_ld.welcome.chars / 1024).toFixed(0) + 'K' : '-'} · ${top}`,
         `페이지 적재: ` + res.map((r) => `${r['갈래']} ${r['개']}개 ${r['KB(받음)']}KB(눌림 뒤 ${r['눌림 뒤 도착']})`).join(' · ') + ` · load ${ld == null ? '-' : ld.toFixed(0)}ms · 로비에서 누르기까지 ${ld == null ? '-' : (at.click - ld).toFixed(0)}ms(사람)`,
       ]).join('\n');
@@ -1222,40 +1222,50 @@ function cropSprite(stage, crop) {
   //       옛 수치는 격리·첫 blit 측정으로 보인다. 이 파일의 ms/f 주석은 그렇게 못 믿는다.
   //   ★`windOff` 면 ① 단계가 **종전대로 선명한 텍스처**를 깐다 = 픽셀 단위로 옛 그림(대조군).
   let _grassFlat = null, _grassBlade = null;
-  function _grassSplit() {
-    if (_grassBlade) return true;
-    const src = GTEX.grass_angled;
-    if (!src || !src.naturalWidth) return false;
+  // ★[T991] 몸은 생성기 하나(`_grassSplitGen` — 사본 0) · `_grassSplit` = 한 판에 다(`_vilDrain` · 20-r2) · 로비 데우기 켬(`T991_GT_SLICE`)이면 판당 예산으로.
+  //   ⚠백분위는 정렬 대신 **도수표**로 뽑는다 — 화소 값은 0~255 정수라 "정렬한 뒤 [⌊n·0.02⌋] 번째" 와
+  //     "누적 도수가 ⌊n·0.02⌋ 를 처음 넘는 값" 은 같은 수다(순서 통계 · 항등). 정렬은 한 판에 끝나야 해서 쪼갤 수 없었다(채널마다 13만 개).
+  function* _grassSplitGen(src) {
     const w = src.naturalWidth, h = src.naturalHeight;
     const t = document.createElement('canvas'); t.width = w; t.height = h;
     const tg = t.getContext('2d', { willReadFrequently: true });
     tg.drawImage(src, 0, 0);
     const im = tg.getImageData(0, 0, w, h), d = im.data;
+    yield;
     // 평탄색 = **어두운 쪽**(잎 사이 그늘). 잎 = tex − 평탄색 ≥ 0 이어야 가산 합성이 성립한다.
     //   백분위로 뽑는다(고정 상수는 텍스처를 갈아 끼우면 깨진다).
-    const ch = [[], [], []];
-    for (let i = 0; i < d.length; i += 4) { ch[0].push(d[i]); ch[1].push(d[i + 1]); ch[2].push(d[i + 2]); }
+    const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
+    const ROW = w * 4;
+    for (let i = 0; i < d.length; i += 4) { hist[0][d[i]]++; hist[1][d[i + 1]]++; hist[2][d[i + 2]]++; if ((i + 4) % (ROW * 16) === 0) yield; }
     //   ★백분위 2% — 실측으로 골랐다. 옛 그림과의 |Δ|>10 픽셀: 6% → 4,221 · **2% → 3,694** · 0.5% → 4,116.
     //     (0.5% 가 더 나빴다는 건 남은 오차가 `max(0,tex−flat)` **잘림**이 아니라는 뜻이다 —
     //      진짜 출처는 상태 레이어의 투과율을 두 알파로 **근사**한 것이다. §보고 참조.)
-    const flat = ch.map((a3) => { a3.sort((x, y) => x - y); return a3[Math.floor(a3.length * 0.02)]; });
+    const k = Math.floor((d.length / 4) * 0.02);
+    const flat = hist.map((hc) => { let c = 0; for (let v = 0; v < 256; v++) { c += hc[v]; if (c > k) return v; } return 255; });
+    yield;
     for (let i = 0; i < d.length; i += 4) {
       d[i] = Math.max(0, d[i] - flat[0]);
       d[i + 1] = Math.max(0, d[i + 1] - flat[1]);
       d[i + 2] = Math.max(0, d[i + 2] - flat[2]);
       d[i + 3] = 255;
+      if ((i + 4) % (ROW * 16) === 0) yield;
     }
     tg.putImageData(im, 0, 0);
-    _grassBlade = t;
-    _grassFlat = 'rgb(' + flat[0] + ',' + flat[1] + ',' + flat[2] + ')';
+    return { t, flat };
+  }
+  function _grassSplitSet(r) { if (_grassBlade) return; _grassBlade = r.t; _grassFlat = 'rgb(' + r.flat[0] + ',' + r.flat[1] + ',' + r.flat[2] + ')'; }   // 붙잡는 자리 하나(먼저 다 된 쪽이 붙는다 · 같은 값)
+  function _grassSplit() {
+    if (_grassBlade) return true;
+    const src = GTEX.grass_angled;
+    if (!src || !src.naturalWidth) return false;
+    _grassSplitSet(_vilDrain(_grassSplitGen(src)));
     return true;
   }
   // 맨땅 뙈기 마스크 — ★셀 격자가 아니라 **저주파 노이즈**로 뿌린다.
   //   셀마다 변주 타일을 고르면 다이아몬드 격자무늬가 그대로 드러난다(타일 게임의 흔한 실패).
   //   주기 마스크라 타일 경계에서도 이어진다.
   let _gtMaskCv = null;
-  function _gtMask() {
-    if (_gtMaskCv) return _gtMaskCv;
+  function* _gtMaskGen() {   // ★[T991] 생성기 — 한 줄(y)마다 쪼갬 자리 · 한 판에 다 돌리면(`_gtMask`) 종전과 같다
     const cv = document.createElement('canvas'); cv.width = GT_MASK_W; cv.height = GT_MASK_H;
     const g = cv.getContext('2d'); const id = g.createImageData(GT_MASK_W, GT_MASK_H);
     const NG = 32;   // 주기 격자 — 마스크 크기의 약수여야 감았을 때 이어진다
@@ -1268,7 +1278,7 @@ function cropSprite(stage, crop) {
       const a = lat[j0 * NG + i0], b = lat[j0 * NG + i1], c = lat[j1 * NG + i0], d = lat[j1 * NG + i1];
       return a + (b - a) * su + (c - a) * sv + (a - b - c + d) * su * sv;
     };
-    for (let y = 0; y < GT_MASK_H; y++) for (let x = 0; x < GT_MASK_W; x++) {
+    for (let y = 0; y < GT_MASK_H; y++) { for (let x = 0; x < GT_MASK_W; x++) {
       // 두 옥타브 — 큰 뙈기 + 잘게 부서진 가장자리("맨땅 뙈기는 잘게")
       // ★3옥타브 — 1패스(2옥타브·문턱 0.56)는 뙈기가 크고 뭉툭했다. 재민 지시 "맨땅 뙈기는 잘게".
       const n = vn(x / GT_MASK_W * NG, y / GT_MASK_H * NG) * 0.56
@@ -1277,27 +1287,57 @@ function cropSprite(stage, crop) {
       const a = Math.max(0, Math.min(1, (n - 0.615) * 6.0));   // 문턱 — 대부분 풀, 일부만 맨땅
       const i = (y * GT_MASK_W + x) * 4;
       id.data[i] = 255; id.data[i + 1] = 255; id.data[i + 2] = 255; id.data[i + 3] = (a * 255) | 0;
-    }
+    } yield; }
     g.putImageData(id, 0, 0);
-    return (_gtMaskCv = cv);
+    return cv;
   }
+  function _gtMask() { if (!_gtMaskCv) _gtMaskCv = _vilDrain(_gtMaskGen()); return _gtMaskCv; }
   // ★★[T937 2026-10-26 · ★T948 켬 기본 — PM 10-27] 손잡이 `T937_GT_PREWARM`(central `/zones` 칸 `gtPrewarm` · 켬 기본 · 되돌림 `=0` = 종전 그대로).
   //   첫 접속 첫 그림의 지면 층(T920 회부 2 · 0.5~1.2초) 안 1위는 **첫 타일 한 장**이었다 — 그 장이 한 번짜리 준비 둘을 진다:
   //   맨땅 마스크 `_gtMask()`(1024×512 화소 값 노이즈 세 옥타브) · 풀 잎 가르기 `_grassSplit()`(풀 텍스처 화소를 채널마다 정렬해 2% 백분위)
   //   (보고/T937 §2 — 크롬 첫 장 265~442ms 중 둘이 200~315ms). 둘 다 결과를 붙잡아 두는 함수라(두 번째부터 곧바로 돌아간다)
   //   **언제** 부르든 결과가 같다 — 켬 = 로비에서(welcome 전 · 사람이 이름을 넣고 누르는 동안) 텍스처가 오면 따로따로 한 판씩 부른다.
   //   그림 · 차례 · 새 수 0. 이미 들어가 첫 타일이 불렀으면 아무 일도 안 한다(붙잡은 값).
-  function _gtPrewarm() {
+  // ★★[T991 2026-10-29] 손잡이 `T991_GT_SLICE`(central `/zones` 칸 `gtSlice` · `'1'` 만 켬 · 끔 = 위 T937 그대로 — 둘을 한 판씩).
+  //   T962 마을 그림을 쪼갠 뒤 로비 새 1위가 이 데우기 두 판이다(크롬 맨땅 마스크 109~136 · 풀 잎 가르기 126~223ms — 보고/T982 §3).
+  //   켬 = 같은 생성기 둘(`_gtMaskGen` · `_grassSplitGen`)을 판당 `T962_VIL_BUDGET_MS`(8ms · 20-r2)만큼씩 setTimeout 판으로 나눠 돌린다(T962 꼴).
+  //   붙잡는 자리는 맨 끝 한 곳씩이다 — 중간에 첫 타일이 부르면(`_gtMask` · `_grassSplit`) 그쪽이 한 판에 다 하고, 이쪽은 다음 판에 멈춘다(같은 값).
+  function _gtPrewarm(slice) {
     if (_ld.prewarm) return;
     _ld.prewarm = { at: null, mask: null, grass: null };
     const go = () => {
       if (!(GTEX.grass_angled && GTEX.grass_angled.naturalWidth)) { setTimeout(go, 200); return; }   // 풀 텍스처가 올 때까지
+      if (slice) { _gtPrewarmSliced(); return; }
       setTimeout(() => {
         const t0 = performance.now(); const had = !!_gtMaskCv; _gtMask(); _ld.prewarm.at = t0; _ld.prewarm.mask = had ? 0 : +(performance.now() - t0).toFixed(1); _lobStep('지면 데우기 · 맨땅 마스크(T937)', t0);
         setTimeout(() => { const t1 = performance.now(); const had2 = !!_grassBlade; _grassSplit(); _ld.prewarm.grass = had2 ? 0 : +(performance.now() - t1).toFixed(1); _lobStep('지면 데우기 · 풀 잎 가르기(T937)', t1); }, 0);
       }, 0);
     };
     go();
+  }
+  function _gtPrewarmSliced() {              // [T991] 켬 — 마스크 다음 잎 · 판마다 예산 · 일 합(ms)은 `_ld.prewarm.mask` · `.grass`, 판 수 · 판 최대는 `.slice`
+    const P = _ld.prewarm; P.slice = { n: 0, max: 0, t0: performance.now(), wall: null };
+    const jobs = [
+      { k: 'mask', name: '맨땅 마스크', done: () => !!_gtMaskCv, gen: () => _gtMaskGen(), set: (v) => { if (!_gtMaskCv) _gtMaskCv = v; } },
+      { k: 'grass', name: '풀 잎 가르기', done: () => !!_grassBlade, gen: () => _grassSplitGen(GTEX.grass_angled), set: (v) => _grassSplitSet(v) },
+    ];
+    let j = 0, g = null;
+    const step = () => {
+      const t0 = performance.now(); if (P.at == null) P.at = t0;
+      while (j < jobs.length && performance.now() - t0 < T962_VIL_BUDGET_MS) {
+        const J = jobs[j];
+        if (!g) { if (J.done()) { if (P[J.k] == null) P[J.k] = 0; j++; continue; } g = J.gen(); if (P[J.k] == null) P[J.k] = 0; }
+        if (J.done()) { g = null; j++; continue; }   // 첫 타일이 먼저 다 했다(같은 값) — 멈춘다
+        const ts = performance.now(); let r;
+        do { r = g.next(); } while (!r.done && performance.now() - t0 < T962_VIL_BUDGET_MS);
+        P[J.k] = +(P[J.k] + performance.now() - ts).toFixed(1);
+        if (r.done) { J.set(r.value); g = null; j++; }
+      }
+      const ms = performance.now() - t0; P.slice.n++; if (ms > P.slice.max) P.slice.max = +ms.toFixed(1);
+      if (ms >= 16) _lobStep('지면 데우기 · 한 판(쪼갬 · T991)', t0);   // 예산을 넘긴 판만 로비 일 표에
+      if (j < jobs.length) setTimeout(step, 0); else P.slice.wall = +(performance.now() - P.slice.t0).toFixed(0);
+    };
+    setTimeout(step, 0);
   }
   let _gtTmp = null, _gtCov = null;
   function _bakeGroundTile(itx, ity, zlist) {
