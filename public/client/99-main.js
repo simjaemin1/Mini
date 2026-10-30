@@ -175,9 +175,7 @@
   (function _loadVilTex() {
     try {
       const th = new Image(), ea = new Image(), wl = new Image(); let n = 0;
-      const done = () => { if (++n === 3) { const t0 = _lob.mk.vilTex = performance.now();
-        if (T962_VIL_SLICE) { _bakeVilArtSliced(th, ea, wl, (st) => { _lob.vil = `쪼갬(T962) ${st.n}판 · 합 ${st.ms.toFixed(0)}ms · 판 최대 ${st.max.toFixed(0)}ms · 벽시계 ${st.wall.toFixed(0)}ms`; }); return; }   // ★[T962] 손잡이 켬 = 판당 예산으로 나눠 굽는다(20-r2 `_bakeVilArtSliced` · 값 같음)
-        try { _bakeVilArt(th, ea, wl); } catch (e) { console.warn('[vilart] bake 실패 — 폴백 렌더 유지', e); } _lobStep('마을 그림 굽기(_bakeVilArt)', t0); } };
+      const done = () => { if (++n === 3) { _lob.mk.vilTex = performance.now(); _vilTexReady(th, ea, wl); } };   // ★[T982] 셋 다 오면 /zones 칸(`vilSlice`)을 기다려 굽는다(20-r2 `_vilTexReady` · 켬 = 나눠 · 끔 = 한 판에)
       th.onload = done; ea.onload = done; wl.onload = done; th.src = TEX_THATCH_URL; ea.src = TEX_EARTH_URL; wl.src = TEX_WALL_URL;
     } catch (e) { /* 폴백: 기존 단색 렌더 */ }
   })();

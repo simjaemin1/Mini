@@ -46,6 +46,7 @@ const SPECS = {
       'best.data.hp = Math.min(maxHp, (best.data.hp || 0) + 25);': 1,      // 건물 — 고치기
       'bestWall.data.hp = (bestWall.data.hp ?? maxHp) - atk;': 1,          // 벽 — 부수기
       'bestWall.data.hp = 0;': 1,                                          // 벽 — 무너짐
+      'if (e && e[0] === r.type && e[1] > 0 && e[1] < r.hp) r.hp = e[1];': 1,   // 자원 — 시드 개체 벤 hp 되살림(T978 `seed_hp` 장부 · PM 10-30 표에 더함)
     },
     wildWrite: /(?:^|[^\w$.])sh\.hp\s*(?:\+\+|--|\+=|-=|=(?!=))/, wildCall: /\bH\.setMobHp\(sh, /,
     loud: ['arrow', 'feed', 'npc', 'player'], keep: ['feed', 'npc', 'player'], whys: ['arrow', 'feed', 'npc', 'player'], wildWhy: 'wild',

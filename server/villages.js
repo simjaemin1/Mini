@@ -963,6 +963,14 @@ const _serializeWarned = new Set();
 //     ⓓ world 메타 행 하나(`world_meta`): econ 난수 상태 · 다음 주민 번호 · 다음 마을 번호 · 길 위 캐러밴(이름과 주민 번호로 다시 잇는다)과 번호 계수기 · 앵커.
 //   새 수 0 · 새 몸 필드 0. 값은 바뀌지 않는다(돌고 있는 동안은 끔과 같은 글자 · 저장 줄과 복원 문만 다르다).
 const T728_KEEP = process.env.T728_RESTART_KEEP !== '0';   // ★[PM 10-14] 켬 기본 · 되돌림 `=0`
+// ★★[T983 2026-10-30 · T917 회부 1 · ★PM 결함] **사람 ↔ 곳간 거래는 곳간 행도 그 순간에 남긴다** — 손잡이 `T983_GRANARY_SAVE`(켬 기본 · 되돌림 `=0`).
+//   곳간 재고 · 곳간 로트 · 마을 econ 은 하루 마감(실시간 24분)에만 저장됐다(`add('save')` → 틱마다 한 마을 `updateVillageState`).
+//   사람은 행동마다 저장되므로 거래 뒤 마감 전에 존이 죽으면 곳간만 거래 전으로 돌아가고 사람은 받은 것을 가진다 → 그만큼 생성(T917 run3 3/5).
+//   켜면 그 마을 행 하나를 **마감과 같은 줄**(`updateVillageState(dbId, serializeEcon(econ), 인구, 날)`)로 거래 순간에 쓴다(SQLite 동기 · 사람 저장 HTTP 보다 먼저).
+//   ⚠마감이 도는 중(`state.tickJobs`)이면 쓰지 않는다 — 그 마감의 저장 줄(`add('save')` → `saveQueue`)이 이 마을을 곧 쓴다(반쯤 정산된 econ 을 남기지 않는다 · T728 종료 저장이 마감을 기다리는 것과 같은 뜻).
+//   끔 = 이 함수가 아무것도 안 한다(종전 바이트).
+const T983_GRANARY_SAVE = process.env.T983_GRANARY_SAVE !== '0';
+const _t983Stat = { n: 0, skipClose: 0, miss: 0, err: 0, ms: 0, maxMs: 0, bytes: 0, maxBytes: 0 };
 const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheDay', 'dailyProductionBuf']);
 // ★★[T740 2026-10-14] **재기동이 잃는 메모리 전용 마을 칸** — 손잡이 `T740_SIDE_KEEP`(★기본 끔 · `=1` 켬 · 끔 = 종전 글자 그대로).
 //   서버 마을 객체(`state.villages[i]`)의 칸 중 저장(마을 행 · 메타 행 · 마을 건물 행)을 안 거치는데 **값에 닿는** 것을 마을 행 곁 칸 하나(`_t740Side`)에 싣는다
@@ -2510,6 +2518,64 @@ function _gateTradePotential(all, ta, foodFn, floor) {
 // ★★[T957 2026-10-28 · T945 회부 1] 몸통은 발생기(`_distMatrixGen`)다 — 이 동기 문은 그것을 한 번에 다 돌린다(같은 줄 · 같은 답 · 사본 0).
 //   발생기는 소스 BFS 사이와 BFS 안 노드 `PATH_STEP_NODES`(교역로 재개형과 같은 알갱이) 개마다 한 번 양보만 한다 — 양보는 아무것도 안 바꾼다(행렬 주입은 맨 끝 한 번).
 //   하루 마감 ⑪ 단계는 손잡이 `T957_DIST_SLICE` 켬이면 그 발생기를 조각 몫만큼씩 민다(아래 `_t957DistStage`).
+// ★★[T977 2026-10-28 · T957 회부 2 · T968 다음] **같은 격자면 다시 안 센다**(손잡이 `T977_DIST_SAME` · ★끔 기본 — `=1` 만 켬 · 켬 기본 후보 회부).
+//   거리행렬의 입력은 코스 격자 열림(`coarseOpen` — 바위 · 환호 · 물 · 다리) · 마을 좌표뿐이다(T598 갈래 끔일 때). 벽 · 울타리는 이 술어에 없다(변 점유 · `zone.js` `_terrBlocked0`).
+//   ⇒ 라이브 무효화(사람 벽 · 울타리)는 지금 **같은 답을 1,275쌍 BFS 로 다시 낸다**. 켬: 다 센 행렬마다 그때 메모(`_distBlk` 판정한 칸 전부) · 마을 좌표 · 행렬을 바탕으로 둔다.
+//     다음 전쌍 재계산(증분 아님)은 먼저 **바탕이 판정한 칸을 전부 지금 술어로 다시 판정**한다(메모에 그대로 채운다 — BFS 가 채울 값과 같다).
+//     칸 하나라도 다르거나 마을 좌표 · 수가 다르면 종전 BFS 그대로 · 다 같으면 BFS 를 건너뛰고 바탕 행렬 사본을 같은 자리에 주입한다.
+//   ★같은 까닭(완전): 바탕의 쌍 값마다 Dial 이 낸 증서가 있다 — (ㄱ) 그 비용의 길이 판정한 칸 위에 있고 (ㄴ) 한 끝에서 그 비용 아래 노드와 그 이웃이 다 판정됐다
+//     (판정 안 한 칸은 더 짧은 길을 못 만든다). 판정한 칸이 다 같으면 두 증서가 지금 술어에서도 서므로 최단 비용이 같다 = 같은 수(`(c/10)·DIST_STEP·2.5`) · 바이트 동일.
+//     T598 갈래(`T598_ROUTE_COST` · `T598_ROUTE_EDGE` — 집채 · 벽이 배수에 든다)면 이 문을 안 쓴다(종전 그대로).
+//   양보 알갱이는 BFS 와 같은 `PATH_STEP_NODES` 칸이다(새 수 0). 끔 = 바탕을 안 만든다 · 이 줄들 무동작.
+const T977_DIST_SAME = process.env.T977_DIST_SAME === '1';
+const _t977Same = (B, villages, n) => !!B && B.blk.length === n && B.coords.length === villages.length && villages.every((v, i) => v.coord.x === B.coords[i][0] && v.coord.y === B.coords[i][1]);
+// ★[T977] 재는 판 전용 셈(`T977_PROBE=1` · 안 주면 무동작 · 제품 값 무접촉) — 늘어난 몫의 귀속: 조각 머리(조각 벽 − 몸통) · 찬 머리(조각 첫 알갱이의 노드당 시간) · 지형 판정 · GC.
+const T977_PROBE = process.env.T977_PROBE === '1';
+const _t977 = { cur: null, last: null, coldNext: false, slice: null, gc: [], obs: null, runs: [] };
+const _t977hr = () => Number(process.hrtime.bigint());
+function _t977Begin(reason) {
+  if (!_t977.obs) { try { const { PerformanceObserver } = require('perf_hooks'); _t977.obs = new PerformanceObserver((l) => { for (const e of l.getEntries()) if (_t977.gc.length < 50000) _t977.gc.push([e.startTime, e.duration]); }); _t977.obs.observe({ entryTypes: ['gc'] }); } catch (e) { _t977.obs = 1; } }
+  const self = !_t977.slice; if (self) _t977SliceBeg();   // 동기 문(조각 한 번) — 조각 머리를 스스로 연다
+  return (_t977.cur = { self, reason: reason || '부팅', segN: 0, coldN: 0, coldNs: 0, coldPops: 0, warmN: 0, warmNs: 0, warmPops: 0, pops: 0, sampN: 0, sampNs: 0, verN: 0, same: null, slices: 0, sliceNs: 0, iv: [], sT: _t977hr(), sP: 0 });
+}
+function _t977Seg(R) { const ns = _t977hr() - R.sT, p = R.pops - R.sP; R.segN++; if (_t977.coldNext) { _t977.coldNext = false; R.coldN++; R.coldNs += ns; R.coldPops += p; } else { R.warmN++; R.warmNs += ns; R.warmPops += p; } }
+function _t977Go(R) { R.sT = _t977hr(); R.sP = R.pops; }
+function _t977Samp(R, ta, gx, gy) { const a = _t977hr(); const v = coarseOpen(ta, gx, gy); R.sampNs += _t977hr() - a; R.sampN++; return v; }
+function _t977End(R) { _t977Seg(R); _t977.last = R; _t977.cur = null; if (R.self) _t977SliceEnd(); }
+function _t977SliceBeg() { if (!T977_PROBE) return; _t977.coldNext = true; _t977.slice = [_t977hr(), require('perf_hooks').performance.now()]; }
+function _t977SliceEnd() {
+  if (!T977_PROBE || !_t977.slice) return;
+  const R = _t977.cur || _t977.last, [a, p] = _t977.slice; _t977.slice = null; _t977.coldNext = false;
+  if (!R) return;
+  R.slices++; R.sliceNs += _t977hr() - a; if (R.iv.length < 20000) R.iv.push([p, require('perf_hooks').performance.now()]);
+  if (R !== _t977.last) return;
+  _t977.last = null;
+  _t977Report(R, '끝');
+}
+function _t977Hash(mat) { const t = JSON.stringify(mat.map((r) => r.map((d) => (isFinite(d) ? d : null)))); let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); }
+function _t977Report(R, at) {   // at = '끝'(주입 뒤) | '다 셈'(주입 앞에서 선 순간 — 지금 조각은 여기까지)
+  const open = at !== '끝' && _t977.slice ? _t977hr() - _t977.slice[0] : 0, iv = open ? R.iv.concat([[_t977.slice[1], require('perf_hooks').performance.now()]]) : R.iv;
+  let gcMs = 0, gcN = 0; for (const [gs, gd] of _t977.gc) for (const [x, y] of iv) { const o = Math.min(gs + gd, y) - Math.max(gs, x); if (o > 0) { gcMs += o; gcN++; } }
+  const ms = (ns) => +(ns / 1e6).toFixed(1), seg = R.coldNs + R.warmNs, sl = R.sliceNs + open;
+  const S = { at, hash: R.hash || null, reason: R.reason, slices: R.slices + (open ? 1 : 0), sliceMs: ms(sl), segMs: ms(seg), headMs: ms(sl - seg), coldN: R.coldN, coldMs: ms(R.coldNs), coldPops: R.coldPops, warmN: R.warmN, warmMs: ms(R.warmNs), warmPops: R.warmPops,
+    nsPerPopCold: R.coldPops ? Math.round(R.coldNs / R.coldPops) : null, nsPerPopWarm: R.warmPops ? Math.round(R.warmNs / R.warmPops) : null, pops: R.pops, sampN: R.sampN, sampMs: ms(R.sampNs), verN: R.verN, same: R.same, gcMs: +gcMs.toFixed(1), gcN };
+  if (_t977.runs.length < 20) _t977.runs.push(S);
+  console.log(`[${state.zoneId}] [T977] 거리행렬 일 쪼개 보기 ${JSON.stringify(S)}`);
+  //   GC 항목은 뒤늦게 온다(관측자 콜백) — 동기 셈(부팅 · 한 번에)은 위 셈에 안 잡힌다 ⇒ 2초 뒤 같은 구간으로 한 번 더 센다
+  if (at === '끝') setTimeout(() => { let g2 = 0, n2 = 0; for (const [gs, gd] of _t977.gc) for (const [x, y] of iv) { const o = Math.min(gs + gd, y) - Math.max(gs, x); if (o > 0) { g2 += o; n2++; } }
+    console.log(`[${state.zoneId}] [T977] 거리행렬 일 쪼개 보기 ${JSON.stringify({ at: 'GC', reason: R.reason, hash: S.hash, gcMs: +g2.toFixed(1), gcN: n2 })}`); }, 2000);
+}
+// ★[T977] 같은 격자 확인 — 바탕이 판정한 칸을 지금 술어(`isBlk` — 메모를 채운다)로 다시 판정 · `PATH_STEP_NODES` 칸마다 양보 · 다르면 그 자리에서 거짓
+function* _t977Verify(B0, isBlk, gw, _pr) {
+  let n = 0;
+  for (let i = 0; i < B0.length; i++) {
+    if (!B0[i]) continue;
+    if (_pr) _pr.verN++;
+    if ((isBlk(i % gw, (i / gw) | 0) ? 2 : 1) !== B0[i]) return false;
+    if (++n >= PATH_STEP_NODES) { n = 0; if (_pr) _t977Seg(_pr); yield; if (_pr) _t977Go(_pr); }
+  }
+  return true;
+}
 function computeAndInjectDistMatrix(reason, opts) {
   const g = _distMatrixGen(reason, opts);
   while (!g.next().done) { /* 동기 문 — 양보를 그 자리에서 잇는다 */ }
@@ -2520,6 +2586,7 @@ function* _distMatrixGen(reason, opts) {
   const villages = world.villages;
   const M = villages.length;
   const t0 = Date.now();
+  const _pr = T977_PROBE ? _t977Begin(reason) : null;   // ★[T977] 재는 판 전용
   const cellsW = Math.ceil(ZONE.zoneWidth / SZ), cellsH = Math.ceil(ZONE.zoneHeight / SZ);
   const gw = Math.ceil(cellsW / DIST_STEP), gh = Math.ceil(cellsH / DIST_STEP);
   const half = DIST_STEP >> 1;
@@ -2540,7 +2607,7 @@ function* _distMatrixGen(reason, opts) {
   const isBlk = (gx, gy) => {
     if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return true;
     const i = gy * gw + gx;
-    if (blk[i] === 0) { sampled++; const v = coarseOpen(ta, gx, gy); if (v === 2) bridgeSaved++; blk[i] = v ? 1 : 2; }
+    if (blk[i] === 0) { sampled++; const v = _pr ? _t977Samp(_pr, ta, gx, gy) : coarseOpen(ta, gx, gy); if (v === 2) bridgeSaved++; blk[i] = v ? 1 : 2; }
     return blk[i] === 2;
   };
   // 마을 → 코스 노드. 중심 코스 셀이 차단이면 근방 반경 6노드(=24셀) 나선 스냅(findOpenCenter와 같은 구제).
@@ -2558,15 +2625,24 @@ function* _distMatrixGen(reason, opts) {
   const _wantK = (opts && opts.incrementalFrom != null) ? opts.incrementalFrom : -1;
   const _prev = (_wantK > 0 && world._distMatrix && world._distMatrix.length === _wantK
                  && world._distMatrix[0] && world._distMatrix[0].length === _wantK) ? world._distMatrix : null;
+  // ★[T977] 같은 격자 확인(위 손잡이 주석) — 바탕이 판정한 칸을 지금 술어로 다시 판정 · 다 같으면 BFS 0
+  let _same = null;
+  if (T977_DIST_SAME && !_prev && _wantK < 0 && !(T598_ROUTE_COST || T598_ROUTE_EDGE) && _t977Same(state._distBasis, villages, blk.length)) {
+    if (yield* _t977Verify(state._distBasis.blk, isBlk, gw, _pr)) _same = state._distBasis.mat;   // 확인 고리는 따로 둔 발생기(BFS 발생기 몸통은 끔과 같게 · 한 몸에 둔 판 N1 ~ N4 는 BFS 노드당 시간이 컸다 · 보고 T977 §3)
+    if (_pr) _pr.same = !!_same;
+  }
   const INCR = _prev ? _wantK : -1;
   const mat = []; for (let i = 0; i < M; i++) { const row = new Array(M).fill(Infinity); row[i] = 0; mat.push(row); }
   if (_prev) for (let i = 0; i < INCR; i++) for (let j = 0; j < INCR; j++) mat[i][j] = _prev[i][j];
+  if (_same) for (let i = 0; i < M; i++) for (let j = 0; j < M; j++) mat[i][j] = _same[i][j];   // ★[T977] 같은 격자 — 바탕 행렬 사본(아래 BFS 0)
   const dist = new Int32Array(gw * gh);
   if (T598_ROUTE_COST || T598_ROUTE_EDGE) _t598Arrays(gw, gh);
   const DIRS = [[1, 0, 10], [-1, 0, 10], [0, 1, 10], [0, -1, 10], [1, 1, 14], [1, -1, 14], [-1, 1, 14], [-1, -1, 14]];
   let _srcRuns = 0, _pops = 0;   // ★[T957] 양보 알갱이 셈(노드 `PATH_STEP_NODES` 개마다 한 번)
-  for (let s = (_prev ? INCR : 0); s < M; s++) {
+  for (let s = (_same ? M : (_prev ? INCR : 0)); s < M; s++) {
+    if (_pr) _t977Seg(_pr);
     yield;   // ★[T957] 소스 사이
+    if (_pr) _t977Go(_pr);
     if (srcNode[s] < 0) continue;
     // 타깃 선정. 전쌍 모드: 뒤 인덱스만(쌍 대칭 — 앞 인덱스와의 쌍은 그쪽 소스가 이미 채움).
     //   증분 모드(s ≥ INCR): **기존 마을 전부**(j < INCR) + 자기 뒤 새 마을(j > s).
@@ -2587,7 +2663,8 @@ function* _distMatrixGen(reason, opts) {
       for (let h = 0; h < q.length; h++) {
         const i = q[h];
         if (dist[i] !== c) continue; // stale 항목(더 짧은 경로로 이미 확정) — lazy 삭제
-        if (++_pops >= PATH_STEP_NODES) { _pops = 0; yield; }   // ★[T957] 노드 사이(이 노드는 아직 안 폈다 — 이어 가면 같은 자리부터)
+        if (_pr) _pr.pops++;
+        if (++_pops >= PATH_STEP_NODES) { _pops = 0; if (_pr) _t977Seg(_pr); yield; if (_pr) _t977Go(_pr); }   // ★[T957] 노드 사이(이 노드는 아직 안 폈다 — 이어 가면 같은 자리부터)
         const tg = nodeToTargets.get(i);
         if (tg) {
           const d = (c / 10) * DIST_STEP * 2.5;
@@ -2611,7 +2688,9 @@ function* _distMatrixGen(reason, opts) {
     }
   }
   // ★[T968] 다 셌다 — `hold` 면 주입 앞에서 한 번 더 선다(`'_ready'` · 하루 마감 ⑪ 이 이어 주입한다 · 주입 자리가 종전과 같다)
-  if (opts && opts.hold) yield '_ready';
+  if (_pr) _pr.hash = _t977Hash(mat);
+  if (opts && opts.hold) { if (_pr) { _t977Seg(_pr); _t977Report(_pr, '다 셈'); } yield '_ready'; if (_pr) _t977Go(_pr); }
+  if (T977_DIST_SAME) state._distBasis = { coords: villages.map((v) => [v.coord.x, v.coord.y]), mat: mat.map((r) => r.slice()), blk: blk.slice() };   // ★[T977] 바탕(주입 앞 사본)
   // 주입 + 로그(유클리드 대비 증가율 — 강·산 우회가 잡히면 일부 쌍이 1.0×보다 커야 함)
   state.econ.setDistMatrix(world, mat);
   //   ★[T598 자] 거리행렬을 파일로 남긴다(`T598_DIST_DUMP=<경로>` · 재는 판 전용 · 안 주면 이 줄 무동작) — 끔/켬 운송비 바뀐 쌍을 센다.
@@ -2627,8 +2706,9 @@ function* _distMatrixGen(reason, opts) {
     const r = d / Math.max(1, eu);
     pairs++; sumR += r; if (r > maxR) maxR = r; if (r > 1.02) longer++; if (d > maxD) maxD = d;
   }
-  console.log(`[${state.zoneId}] 🏘️ 교역 BFS 거리행렬${reason ? `(${reason})` : ''}${_prev ? `[증분 ${INCR}→${M} · 소스 ${_srcRuns}회]` : ''}: ${M}마을 ${pairs + unreach}쌍 ${Date.now() - t0}ms (그리드 ${gw}×${gh}·step ${DIST_STEP}셀·지형판정 ${sampled}·다리구제 ${bridgeSaved}) — 유클리드 대비 평균 ×${pairs ? (sumR / pairs).toFixed(2) : '-'} 최대 ×${maxR.toFixed(2)} 우회쌍(>1.02배) ${longer} · 최장 ${maxD.toFixed(0)} · 도달불능 ${unreach}쌍`);
+  console.log(`[${state.zoneId}] 🏘️ 교역 BFS 거리행렬${reason ? `(${reason})` : ''}${_prev ? `[증분 ${INCR}→${M} · 소스 ${_srcRuns}회]` : ''}${_same ? '[★T977 같은 격자 · BFS 0]' : ''}: ${M}마을 ${pairs + unreach}쌍 ${Date.now() - t0}ms (그리드 ${gw}×${gh}·step ${DIST_STEP}셀·지형판정 ${sampled}·다리구제 ${bridgeSaved}) — 유클리드 대비 평균 ×${pairs ? (sumR / pairs).toFixed(2) : '-'} 최대 ×${maxR.toFixed(2)} 우회쌍(>1.02배) ${longer} · 최장 ${maxD.toFixed(0)} · 도달불능 ${unreach}쌍`);
   if (M > 1 && pairs === 0) console.warn(`[${state.zoneId}] 🏘️ ⚠ 전 마을 상호 고립(BFS 도달 불능) — 지형 병리: 교역 전무 예상`);
+  if (_pr) _t977End(_pr);   // ★[T977] 재는 판 전용
 }
 
 // =============================================================================
@@ -7217,6 +7297,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done), ...(T896_RESUME_ONE ? { held896: _probe.t896Held | 0 } : {}) } } : {}),
   t929: { on: T929_RET_RESUME, wait: _probe.t929Wait | 0, cold: _probe.t929Cold | 0, msMax: _probe.t929MsMax | 0 },
   t968: { on: T968_DIST_BG, bgSlices: _probe.t968BgSlices | 0, bgMs: _probe.t968BgMs | 0, bgSliceMax: _probe.t968BgSliceMax | 0, ready: _probe.t968Ready | 0, readyClose: _probe.t968ReadyClose | 0, closeSlices: _probe.t968CloseSlices | 0, frozen: _probe.t968Frozen | 0, waitQ: _probe.t968WaitQ | 0 },   // ★[T968] 셈만
+  t977: { same: T977_DIST_SAME, probe: T977_PROBE, runs: _t977.runs },   // ★[T977] 재는 판 전용 셈(끔 = 빈 목록)
   t957: { on: T957_DIST_SLICE, runs: _probe.t957Runs | 0, slices: _probe.t957Slices | 0, sliceMax: _probe.t957SliceMax | 0, workMax: _probe.t957WorkMax | 0, restart: _probe.t957Restart | 0, busy: !!_t957Dist },   // ★[T957] 거리행렬 조각(셈만)   // ★[T929] 도착 경계 귀환 길(두 팔 다 선다 — 셈만)   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
   t620WfHit: _probe.t620WfHit | 0, t620WfN: _probe.t620WfN | 0, t620WfBad: _probe.t620WfBad | 0, t620Prewarm: _probe.t620Prewarm | 0,
@@ -7244,7 +7325,8 @@ function tickPerf() {
   return { days: R.length, last: _tickPerf.last, probe: probeStats(),
            maxChunk: mc, maxChunkAt: mcAt, frameMax: fm,   // ★[T42-b] 창 전체(위 주석)
            total: R.length ? { p50: q(tot, 0.5), p95: q(tot, 0.95), max: Math.max(...tot) } : null, stages,
-           ...(T690_DAY_PHASE ? { t690: Object.assign({ pend: (state._t690 && state._t690.list.length) || 0 }, _t690Stat) } : {}) };   // ★[T690] 켬 판만 칸이 선다
+           ...(T690_DAY_PHASE ? { t690: Object.assign({ pend: (state._t690 && state._t690.list.length) || 0 }, _t690Stat) } : {}),
+           ...(T983_GRANARY_SAVE ? { t983: Object.assign({}, _t983Stat, { ms: +_t983Stat.ms.toFixed(3), maxMs: +_t983Stat.maxMs.toFixed(3) }) } : {}) };   // ★[T983] 켬 판만 칸이 선다   // ★[T690] 켬 판만 칸이 선다
 }
 
 // =============================================================================
@@ -7832,11 +7914,13 @@ function _t957DistStage() {
   const J = _t957Dist; if (!J) return;
   if (J.ready) _probe.t968ReadyClose = (_probe.t968ReadyClose | 0) + 1;   // ★[T968] 마감 밖에서 다 셌다 — 주입만
   const B = TB.slice(TICK_SLICE_MS), t0 = Date.now();
+  _t977SliceBeg();   // ★[T977] 재는 판 전용(끔 = 무동작)
   try {
     for (;;) {
       const r = J.g.next();
       if (r.value === '_ready') { J.ready = true; continue; }   // ★[T968] ⑪ 자리 — 바로 이어 주입
       if (r.done || (B > 0 && Date.now() - t0 >= B)) {
+        _t977SliceEnd();
         const d = Date.now() - t0; J.workMs += d; J.slices++; if (d > (_probe.t957SliceMax | 0)) _probe.t957SliceMax = d;
         _probe.t968CloseSlices = (_probe.t968CloseSlices | 0) + 1;
         if (!r.done) return 'retry';
@@ -7853,11 +7937,13 @@ function _t968DistBg() {
   const J = _t957Dist; if (!J || J.ready) return;
   const B = TB.slice(TICK_SLICE_MS); if (!(B > 0)) return;
   const t0 = Date.now();
+  _t977SliceBeg();   // ★[T977] 재는 판 전용(끔 = 무동작)
   try {
     for (;;) {
       const r = J.g.next();
       const stop = r.value === '_ready' || r.done || Date.now() - t0 >= B;
       if (stop) {
+        _t977SliceEnd();
         const d = Date.now() - t0; J.workMs += d; J.slices++; _probe.t968BgSlices = (_probe.t968BgSlices | 0) + 1; _probe.t968BgMs = (_probe.t968BgMs | 0) + d; if (d > (_probe.t968BgSliceMax | 0)) _probe.t968BgSliceMax = d;
         if (r.value === '_ready') { J.ready = true; _probe.t968Ready = (_probe.t968Ready | 0) + 1; }
         else if (r.done) _t957Dist = null;   // (방어) hold 없는 일 — 이미 주입됐다
@@ -10847,6 +10933,26 @@ function cropAtCell(cx, cy) {
   return e ? e.c : null;
 }
 function villageByDbId(dbId) { return (state.byDbId && state.byDbId.get(dbId | 0)) || null; }
+// ★[T983] 거래 순간 곳간 행 저장 — 부르는 자리(zone.js): 곳간 넣기 · 기부 · 거래소 · 납품 · 촌장 꺼내기 · 철기 위세품 팔기. 인자 = 마을 객체 · dbId · 마을 이름 중 하나.
+function t983Save(v) {
+  if (!T983_GRANARY_SAVE) return false;
+  if (!state.ready || !state.db || !state.db.updateVillageState) { _t983Stat.miss++; return false; }
+  let vil = null;
+  if (v && typeof v === 'object') vil = v.econ ? v : (state.byEcon && state.byEcon.get(v)) || null;
+  else if (typeof v === 'number') vil = villageByDbId(v);
+  else if (typeof v === 'string') vil = (state.villages || []).find((x) => x.name === v) || null;
+  if (!vil || !vil.econ || vil.dbId == null) { _t983Stat.miss++; return false; }
+  if (state.tickJobs) { _t983Stat.skipClose++; return false; }
+  const t0 = process.hrtime.bigint();
+  try {
+    const js = serializeEcon(vil.econ);
+    state.db.updateVillageState(vil.dbId, js, vil.econ.npcs.length, state.world.day);
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    _t983Stat.n++; _t983Stat.ms += ms; if (ms > _t983Stat.maxMs) _t983Stat.maxMs = ms;
+    _t983Stat.bytes += js.length; if (js.length > _t983Stat.maxBytes) _t983Stat.maxBytes = js.length;
+    return true;
+  } catch (e) { _t983Stat.err++; console.error(`[${state.zoneId}] 🏘️ [T983] 거래 순간 곳간 저장 실패(마감 저장이 뒤에 쓴다):`, e.message); return false; }
+}
 
 // 회관 셀(정확히 중심) → 그 마을. 플레이어가 세운 마을만 돌려준다(NPC 마을 회관은 이 UI 대상이 아니다).
 function playerVillageAt(ccx, ccy) {
@@ -14119,6 +14225,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   _actDay, _actTake,   // ★[T334] 예산 장부 몸통(어부 전용 — T341 이 나무에서 걷어냈다) — 하네스가 규칙을 옮겨 적지 않게 내준다
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
+  t983Save, t983On: () => T983_GRANARY_SAVE,   // ★[T983] 거래 순간 곳간 행 저장
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
@@ -14340,6 +14447,9 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
       gen: (reason, opts) => _distMatrixGen(reason, opts),   // ★[T957] 하네스가 한 양보씩 민다(`test-distmatrix` ⑥)
       setup: (ta, ZONE, world, econ) => { state._distCtx = { ta, ZONE }; state.world = world; state.econ = econ; },
       get DIST_STEP() { return DIST_STEP; },
+      blkReset: () => { if (state._distBlk) state._distBlk.fill(0); },   // ★[T977] 무효화 훅의 그 한 줄(`invalidateTradeDistances` · 코스 격자 메모만)
+      basisReset: () => { state._distBasis = null; },   // ★[T977] 하네스 — 바탕 없이 센 셈(기준)
+      get basis() { return state._distBasis; },
     },
     // ★[T533 2026-09-30] 두 존 합친 격자의 교역로 — `server/xzone-geo.js` 가 경계 칸·두 구간 길을 낸다.
     //   정본 A\*(`computeRoutePts`) 그대로(사본 0) · `_distProbe.setup` 이 꽂은 어댑터 위에서 · reset = 격자 캐시·재개 슬롯 비움.

@@ -268,7 +268,18 @@ function pickRiverSpot() {
     window.__terrain19.freezeT = 100; return true;
   });
   ok(froze, '★전제 — 시계를 얼렸다(물결이 서야 찌를 잰다)');
+  // ★★[T979 2026-10-28] 하늘과 바람은 **대조군 앞에서** 끈다 — 대조군(A·B)과 판정 판(C)은 같은 조건이어야 한다.
+  //   종전(T104)은 이 두 줄을 A·B 를 찍은 **뒤**(C 앞)에 두었다. 비·눈 층은 `freezeT` 가 아니라 실제 시각(`performance.now`)으로
+  //   흐르므로(`37-r1-weather drawWeather` — 얼린 화면에서도 빗줄기가 떨어진다) 그날 하늘에 비가 있으면 A·B 가 빗줄기만큼 갈렸다.
+  //   하늘의 비는 벽시계 날(24분)의 결정론 해시(`weather.precipAt` · 날의 약 30%)라 **그 판이 비 오는 날에 걸리면 빨강**이었다
+  //   (실측: 약한 비 0.05 → 329px · 굵은 비 0.36 → 2,060px — 야간 263~338px · 1,114~2,411px 와 같은 자리 · 보고/T979 §1).
+  //   ⚠같은 어긋남이 ⑦ 쪽도 부풀렸다 — B 엔 빗줄기 · C 엔 없음 ⇒ `diff(B, C)` 에 비가 섞였다(찌 없이도 통과할 수 있었다).
+  //   문턱(60 · ×3 · 300)은 그대로다 — 조건을 맞췄을 뿐 하네스를 느슨하게 하지 않았다.
+  await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 });
+    if (window.__terrain19) window.__terrain19.windOff = true; }).catch(() => {});
   await sleep(1200);
+  const rainA = await page.evaluate(() => (typeof window.__rainDbg === 'function' ? window.__rainDbg() : null));
+  ok(!!(rainA && rainA.on === false && rainA.n === 0), '★전제 — 대조군 앞에서 비·눈 층이 꺼졌다(그린 줄기 0)', rainA ? JSON.stringify({ on: rainA.on, n: rainA.n }) : 'X');
   const shotA = path.join(SHOTS, 'fi-06-nofloat-a.png');
   const shotB = path.join(SHOTS, 'fi-07-nofloat-b.png');
   const shotC = path.join(SHOTS, 'fi-08-float.png');
@@ -280,9 +291,7 @@ function pickRiverSpot() {
   for (let i = 0; i < 40 && !waited; i++) { await sleep(60); const q = await page.evaluate(() => window.__fishState || null); if (q && (q.state === 'wait' || q.state === 'bite')) waited = q; }
   // ★[T104 · T98 §4-c 문법] 화소를 재기 전에 **하늘과 바람을 끈다** — 재는 대상을 바꾸는 게 아니라
   //   잡음을 걷는 것이다(비/눈은 프레임마다 화소를 흔들고, 풀 흔들림도 같은 일을 한다).
-  //   T98 이 11개에 넣은 그 두 줄인데 이 파일은 빠져 있었다 — `@pixel` 표를 세우며 드러났다.
-  await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); 
-    if (window.__terrain19) window.__terrain19.windOff = true; }).catch(() => {});
+  //   ★[T979] 그 두 줄은 이제 **대조군 앞**(위 · 얼린 직후)에 있다 — A · B · C 가 같은 조건이다.
   await page.screenshot({ path: shotC });
   ok(!!waited, '★전제 — 화소 판정용 던지기가 성립했다', waited ? waited.state : 'X');
   {
@@ -310,6 +319,17 @@ function pickRiverSpot() {
     ok(withF.n > Math.max(120, base.n * 3),
       `★★⑦ 던지면 화면이 **실제로 달라진다** = 찌가 그려진다 (${withF.n}px > 바닥 ${base.n}px × 3)`);
     ok(dc < 300, `★★⑦ 그 변화가 **내 앞 물 위**에 있다(중앙에서 ${Math.round(dc)}px < 300)`);
+    // ★[T979 미끼] 대조군이 **문다** — 같은 얼린 화면에 비를 켜면(진단 훅 · 강도 0.3) 두 장이 문턱을 넘어 갈린다.
+    //   = 위 대조군 0px 은 "얼린 화면에서도 비는 흐른다"를 못 보는 자가 아니라, 비를 **껐기에** 선 값이다(자명 통과 금지).
+    await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0.3 }); }).catch(() => {});
+    await sleep(600);
+    const shotD = path.join(SHOTS, 'fi-09-rain-a.png'), shotE = path.join(SHOTS, 'fi-10-rain-b.png');
+    await page.screenshot({ path: shotD }); await sleep(500);
+    await page.screenshot({ path: shotE });
+    shots.push(shotD, shotE);
+    const rainOn = diff(rd(shotD), rd(shotE));
+    ok(rainOn.n >= 60, `[미끼 · T979] 얼린 화면에 비를 켜면 대조군 문턱을 넘는다 (${rainOn.n}px ≥ 60) = 대조군이 비를 본다`);
+    await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce(null); }).catch(() => {});
   }
   await page.evaluate(() => { if (window.__terrain19) window.__terrain19.freezeT = 0; });
 
