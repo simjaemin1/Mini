@@ -1191,7 +1191,8 @@ const T932_SMELT_CONT = !(typeof process !== 'undefined' && process.env && proce
 //     그래서 켬이면 econ 이 그날 **올리고 싶었던 몫**(같은 함수 `houseDayBuild` — 새 수 0)을 `v._t958Want` 에 적고, 방아쇠(서버 한 줄)가 주거 + 그 몫을 읽는다
 //     (랩에서 econ 주거가 오르면 집이 따라 서는 그 순서 — 오르고 싶은 날에만 집터가 선다).
 //   켬 · 끔 다 집 행위가 아닌 마을(랩 · 서버 기준선 자 `T400_BUILD_ACT=0` · `_mapBeds` 없는 판)은 한 글자도 안 닿는다(종전 목재 상한 · 차감).
-const T958_HOUSE_REAL = (typeof process !== 'undefined' && process.env && process.env.T958_HOUSE_REAL === '1');   // ★[T966 · PM 10-28] 끔 기본(켜는 값 `'1'` 하나 · 끔 = main 바이트) — 켬 판 띠 두 셈이 띠 밖(T958 §2-2)
+//   ★[T974 2026-10-28] 켬 기본(PM · 열일곱째 판 — T966 두 자리가 계획 주거 `_t958Plan` 을 읽는 판) · 되돌림 `T958_HOUSE_REAL=0`(= 종전 바이트) · 랩(브라우저 · 번들 shim 빈 env)도 켬.
+const T958_HOUSE_REAL = !(typeof process !== 'undefined' && process.env && process.env.T958_HOUSE_REAL === '0');   // ★[T974 · PM 10-28] 켬 기본 · 되돌림 `=0`(★[T966] 끔 기본이던 글자 `=== '1'`)
 // ★[T932 · 계측 전용 · 행동 무관 · 저장 0] 그 갈래가 선 날을 센다 — 모듈 칸(마을 객체에 안 붙인다 — 저장 줄 무변). 관찰기 `scripts/t932-smelt-probe.js` 가 판 끝에 적는다.
 //   days = 선 마을-날(같은 날 둘째 대장장이는 안 센다) · smiths = 선 대장장이-날 · left = 그 대장장이 뒤 차례 주민 · idle = 그중 교역 원정 · 징발이 아닌 사람(끔이면 그날 일을 못 한 사람)
 //   · pop = 그 마을 인구(끔이면 그날 꼬리 — 먹기 · 나이 … — 를 못 탄 사람) · byV · byYear(0 = 1 ~ 365날)
@@ -5904,7 +5905,7 @@ module.exports = {
   STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
-  T958_HOUSE_REAL,   // ★[T958] 집 행위 마을 econ 주거 = 지은 침상까지(★[T966] 끔 기본 · `'1'` 켬) — 방아쇠(서버 `villages.js`)가 읽는다
+  T958_HOUSE_REAL,   // ★[T958] 집 행위 마을 econ 주거 = 지은 침상까지(★[T974] 켬 기본 · `=0` 되돌림 · ★[T966] 끔 기본이던 글자) — 방아쇠(서버 `villages.js`)가 읽는다
   T932_SMELT_CONT, t932Stat,   // ★[T932] 제련 날 마을 하루 결함 손잡이(켬 기본) + 계측 칸(관찰기 `t932-smelt-probe` 가 읽는다 — 행동 무관)
   T924_DEBT_CAP, _computeVillageStats,   // ★[T924] 빚 손잡이 + 마을 stat 함수(관찰기 `t924-observe` 가 건강 · 행복 항을 가른다 — 읽기만 · 사본 0 · 동작 무변)
   T931_SLOTK_EMA, T931_SLOTK_SEASON, totalFoodSlots,   // ★[T931] 식량 자리 K 관성 손잡이 + 자리 함수(하네스 · 관찰기 `t931-observe` 가 그날 자리를 다시 센다 — 읽기만 · 사본 0 · 동작 무변)
