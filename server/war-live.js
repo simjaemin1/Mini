@@ -36,6 +36,15 @@ function _muRng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; 
 //   그 자리(ctx.units 끝)에 둔다. 모르는 칸 꼴이면 종전 길(아래 두 줄)로 간다.
 //   ★★[T900 2026-10-23] **켬 기본**(★PM 10-23 · T874 회부 1) — `!== '0'` · 되돌림 `T874_BATTLE_FAST=0`(= T900 전 바이트 · 끔 갈래 = 종전 줄).
 function _t874On() { return typeof process !== 'undefined' && !!process.env && process.env.T874_BATTLE_FAST !== '0'; }
+// ═══════════ ★[T995 2026-10-29 · T956 회부 3 ㉡ ㉢] 시험 손잡이 둘 — 끔 기본 · 켜는 값 '1' 하나 · 끔 = 종전 글자 ═══════════
+//   ㉡ `T995_CONTACT_REACH` — 접촉(stepFight)은 'shoot' 이거나 **손이 닿는 거리 안**의 'melee' 만 센다(손 = 그 병종 `reach` — battle-core 가 치는 그 문턱 · 겨눈 적 `u.tgt` 와의 거리).
+//       종전: 'melee' 는 거리와 무관하게 접촉이다 — 탄 없는 사수 둘이 3.5m 에서 물러섬 ↔ 다가섬(battle-core 원거리 절)을 하는 동안 걸음마다 접촉이 서
+//       대치(접촉 · 진척 없는 `standoffSec`)가 끝내 안 선다(보고 T956 §2-3 ⓑ · 존은 시간 상한이 없다).
+//   ㉢ `T995_DRY_STANDOFF` — 맞붙은(engaged) 동안 **산 병사 hp 합이 한 번도 안 준 채** `standoffSec`(종전 대치 문턱 그대로)을 넘으면 대치.
+//       칸 둘은 교전 객체에만(`f._t995Hp` 그 걸음 hp 합 · `f._t995HitT` 마지막으로 준 때 — 맞붙기 앞 걸음은 그때로 둔다) · 저장 줄 · 몸 무변.
+//   새 수 0(`reach` · `standoffSec` 그대로).
+function _t995On(k) { return typeof process !== 'undefined' && !!process.env && process.env[k] === '1'; }
+const T995_CONTACT_REACH = _t995On('T995_CONTACT_REACH'), T995_DRY_STANDOFF = _t995On('T995_DRY_STANDOFF');
 const _T874 = (function () {
   class O { constructor(o) { return o; } }
   class B extends O {
@@ -136,6 +145,7 @@ function createWarLive(opts) {
   //   = MELEE_ENG_R / (그 교전 본대 행군 속도 — battle-core _cen.march, 본대 최저 spd). 창방패 1.5 m/s → 8.7초.
   //   값 후보(재민): ① 이 유도식(기본) ② 사기 수렴 3/M_RATE(2.1초) ③ 궁수 재장전 cd(8.0초) — 보고 §0-ⓒ 표.
   function standoffSec(f) { const c = f.ctx._cen; const m = Math.min(c.A.march || 2.2, c.B.march || 2.2); return MELEE_ENG_R / Math.max(0.1, m); }
+  function _t995InReach(u) { const e = u.tgt, D = BC.UNITS[u.type]; return !!(e && e.hp > 0 && D && Math.hypot(e.x - u.x, e.y - u.y) < D.reach); }   // ★[T995 ㉡] 겨눈 적이 손 안
 
   // ═══════════ 대형 (랩 _mu* verbatim · 좌표 = 존 셀) ═══════════
   function _muAssignSlots(units, form) {
@@ -346,7 +356,7 @@ function createWarLive(opts) {
     const ev = { contact: false, standoff: false, rout: null };
     if (f.state === 'form') return ev;
     // 접촉 = battle-core 타격 판정 상태(근접 사거리 안 'melee' · 사거리 안 'shoot')
-    for (const u of ctx.units) { if (u.hp > 0 && !u.ctl && (u.st === 'melee' || u.st === 'shoot')) { ev.contact = true; break; } }
+    for (const u of ctx.units) { if (u.hp > 0 && !u.ctl && (u.st === 'shoot' || (u.st === 'melee' && (!T995_CONTACT_REACH || _t995InReach(u))))) { ev.contact = true; break; } }   // ★[T995 ㉡] 켬 = 'melee' 는 손 안일 때만
     if (ev.contact) { f.contactT = f.t; if (f.state !== 'engaged') { f.state = 'engaged'; f.engagedOnce = true; f.contacts++; setSideCtl(f, 'A', false); setSideCtl(f, 'B', false); } }
     // 전진 진척(본대 간격이 1m 이상 줄면 진척) — 막혀서 못 붙는 전진도 대치로 떨어진다
     const ca = centroid(f, 'A'), cb = centroid(f, 'B');
@@ -360,9 +370,15 @@ function createWarLive(opts) {
       else if (b.fighting === 0 && a.fighting > 0) ev.rout = 'B';
       else if (a.fighting === 0 && b.fighting === 0) ev.rout = (a.alive > b.alive) ? 'B' : 'A';
     }
+    if (T995_DRY_STANDOFF) {   // ★[T995 ㉢] 산 병사 hp 합 — 맞붙은 동안 준 마지막 때(맞붙기 앞 걸음은 그때로 둔다)
+      let hp = 0; for (const u of ctx.units) if (u.hp > 0) hp += u.hp;
+      if (f.state !== 'engaged' || f._t995Hp === undefined || hp < f._t995Hp) f._t995HitT = f.t;
+      f._t995Hp = hp;
+    }
     if (!ev.rout) {
       const last = Math.max(f.contactT, f.gapT);
       if (f.t - last > standoffSec(f)) { toStandoff(f); ev.standoff = true; }
+      else if (T995_DRY_STANDOFF && f.state === 'engaged' && f.t - Math.max(f._t995HitT, f.gapT) > standoffSec(f)) { toStandoff(f); ev.standoff = true; }   // ★[T995 ㉢] 피해 없는 맞붙음 → 대치
     }
     return ev;
   }
