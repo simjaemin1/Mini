@@ -6106,7 +6106,8 @@ const T771_SORTIE_MISS = process.env.T771_SORTIE_MISS !== '0';   // ★[T781 10-
 //     (대치 수 = 날 수 · 출격 0 — T771 칸은 방어 출격만 본다). war-core 결단은 그날 돌격을 "판이 난 전투"로 셈한다(옛 headless — 돌격 = 결판)인데
 //     몸 층에선 닿지 못한 돌격이 대치로 끝나 진으로 돌아온다 ⇒ 이튿날 같은 승산으로 또 돌격 · 짐이 바닥나도 도박 돌격 줄(승산 ≥ `WAR_GAMBLE_ODDS`)이 또 돌격 ⇒ 끝이 없다.
 //   새 수 0 · 새 손잡이 하나 · 칸 둘(몸 `_t956C0` = 돌격 시작의 접촉 수 · 전쟁 `_assaultMiss`).
-const T956_ASSAULT_MISS = process.env.T956_ASSAULT_MISS === '1';
+//   ★[T974 2026-10-28] 켬 기본(결함 고침 — PM · 열일곱째 판) · 되돌림 `T956_ASSAULT_MISS=0`(= 종전 글자 그대로).
+const T956_ASSAULT_MISS = process.env.T956_ASSAULT_MISS !== '0';   // ★[T974 10-28] 켬 기본 · 되돌림 `=0`
 // ── 교전 계기 — war-core onEngage(assault·sortie 결단)에서 부른다 ──
 //   true = 실체가 맡았다(w.phase='battle' — war-core 훅 계약). 군대 몸이 없으면(징발 0) 철수 처리(아래 _warNoArmy).
 function _warEngage(w, day, why) {
