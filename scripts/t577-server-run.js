@@ -36,6 +36,12 @@
 //     판 자 하루(250ms)의 전쟁 몸 몫은 8 걸음(몸 0.267초)이라 교전 하루가 운영 하루(43,200 걸음 · 1,440초)의 1/5,400 이었다 — 교전이 몇 달 가는 세계(T924 회부 3 · T941 §2).
 //     켜면 교전 국면 몸만 그날 몫을 운영 하루로 센다(`villages.js _t941Q` — 행군 · 귀환 · 생활층은 판 몫 그대로). 제품 기본은 끔 그대로다(라이브는 이미 운영 하루).
 //     서버 기준선 자(`server-baseline-check.js`)는 이 자를 부르니 같은 기본을 탄다(가상 시계 판 · 벽시계 판 둘 다).
+//   ★★[T990 2026-10-28 · T986 회부 2 · ★PM 판 자 결정론 = 가상 시계 = 벽시계] **아이 env `T990_ECON_DAY=1` 이 기본이다**(길의 날 · NPC 광맥 시각 = econ 날)(부르는 쪽이 준 값이 먼저 · 되돌림 `T990_ECON_DAY=0`).
+//     길의 날(`roads.js dayNow` — 답압 감쇠 · 코스 등급 · 하루 재구축)은 벽시계 날(`VILLAGE_DAY_MS` 250ms)이라 벽시계 판에선 econ 이 밀린 만큼(한 econ 날 ≈ 2초) 길이 8배쯤 빨리 풀렸다.
+//     가상 시계 판은 길의 날 ≈ econ 날이라 길이 섰고(등급 칸) — 행군로(`computeRoutePts` 길 할인)가 갈려 집 행위 켬 800날 시드 1020 날 747 전쟁 50 의 진 자리 · 정산이 두 시계에서 갈렸다(보고/T990 §3).
+//     같은 꼴 둘째 — NPC 광맥 장부 시각(`zone.js oreStockAt` · `oreConsumeAt` 이 읽는 마감 벽시계)도 판 빠르기에 달려 광산 마을 곳간 · 금고가 날 379 에서 판마다 갈렸다(보고/T990 §3-②).
+//     켜면 길의 날 = econ 날(`roads.setEconDay` · 하루는 하루 마감 `dayRoads` 자리) · NPC 광맥 시각 = econ 날 × 하루 길이(15분 벽시계 정리 쉼). 제품 기본은 끔 그대로다
+//     (라이브는 길 날 · 광맥 시각 = 운영 하루 · DB 의 날 · 시각 줄이 절대값이라 기준을 바꾸면 옮김이 든다 — 회부).
 //   ⚠서버 판은 **바이트 결정론이 아니다**(하루 마감 조각 · 캐러밴 몸 타이밍이 벽시계에 기댄다) — 같은 시드도 판마다 조금 갈린다.
 //     그래서 판정하지 않는다: 이 자의 ok() 는 "판이 끝까지 돌았다 · 시딩이 섰다"뿐이고 수는 **표**다(기준선은 PM 이 착지 때 선언).
 //
@@ -108,6 +114,8 @@ const VCLOCK = process.env.T745_VCLOCK === '1';
 const KID_WAL = process.env.T696_WAL != null ? process.env.T696_WAL : (VCLOCK ? '0' : null);
 // ★[T959] 교전 몫 = 운영 하루(길 1)가 판 자 기본 — 부르는 쪽이 준 값이 먼저(되돌림 `=0`)
 const KID_BATTLE = process.env.T941_BATTLE_DAY != null ? process.env.T941_BATTLE_DAY : '1';
+// ★[T990] 길의 날 · NPC 광맥 시각 = econ 날이 판 자 기본 — 부르는 쪽이 준 값이 먼저(되돌림 `=0`)
+const KID_ECON = process.env.T990_ECON_DAY != null ? process.env.T990_ECON_DAY : '1';
 // ★[T577 추신] 판 이름 — 판을 가르는 손잡이(후보 · 층 끄기)만 이름에 싣는다(`T577_TAG` 로 덮을 수 있다)
 const TAG = process.env.T577_TAG || Object.keys(process.env).filter((k) => /^(T577_(?!SEED$|DAYS$|OUT$|DIR$|PAR$|TAG$)|VILLAGE_LIFE$|ENABLE_BANDITS$|VILLAGE_CARAVAN_MAX$|T513_DAY_SLICE$|WAR_MINDAY$|T766_[A-Z_]+$)/.test(k)).sort().map((k) => `${k.replace(/^T577_(CAND_)?/, '').toLowerCase()}${process.env[k]}`).join('-') || 'base';
 
@@ -124,6 +132,7 @@ function runOne(seed, k) {
       ...(KID_TRIPDAY != null ? { T627_TRIP_DAY: KID_TRIPDAY } : {}),   // ★[T914] 집 행위 켬 판 기본 '1'(크루 몫 = 정본 운영 하루) · 끔 판은 안 준다(종전)
       ...(KID_WAL != null ? { T696_WAL: KID_WAL } : {}),   // ★[T941] 가상 시계 판 기본 '0'(WAL 일꾼 끔 — 값 무변 · 디스크) · 벽시계 판은 안 준다(종전)
       T941_BATTLE_DAY: KID_BATTLE,   // ★[T959] 판 자 기본 '1'(교전 국면 몸만 운영 하루 몫) · 되돌림 '0' = T959 전 판 자
+      T990_ECON_DAY: KID_ECON,   // ★[T990] 판 자 기본 '1'(길의 날 · NPC 광맥 시각 = econ 날) · 되돌림 '0' = T990 전 판 자
       VILLAGE_NPC_CAP: process.env.VILLAGE_NPC_CAP || '1',
       T577_SEED: String(seed), T577_DAYS: String(DAYS), T577_OUT: out,
       //   ★[T655] 첫 부팅 조각(T640 · 제품 기본 켬)은 이 자에서 끈다 — 하루 250ms 면 표본이 도는 ~4분 동안 수백 날이 지나 도적 데일리를 건너뛴다(T640 회부 ①).
@@ -146,7 +155,7 @@ function runOne(seed, k) {
 
 (async () => {
   console.log(`\n=== 서버 판 자(T577) — ${DAYS}일 · 시드 ${SEEDS.join('·')} · 판 ${TAG} · 동시 ${PAR} · ${DIR} ===`);
-  console.log(`  조건: VILLAGE_DAY_MS=${process.env.VILLAGE_DAY_MS || '250'} · T315_MAPBEDS=${KID_MAPBEDS} · T627_TRIP_DAY=${KID_TRIPDAY != null ? KID_TRIPDAY : '(없음)'} · 집 행위 ${HOUSE_ACT ? '켬' : '끔'} · 가상 시계 ${VCLOCK ? '켬' : '끔'} · T696_WAL=${KID_WAL != null ? KID_WAL : '(없음)'} · T941_BATTLE_DAY=${KID_BATTLE} · VILLAGE_NPC_CAP=${process.env.VILLAGE_NPC_CAP || '1'} · 도적 ${process.env.ENABLE_BANDITS === '0' ? '끔' : '켬'}`);
+  console.log(`  조건: VILLAGE_DAY_MS=${process.env.VILLAGE_DAY_MS || '250'} · T315_MAPBEDS=${KID_MAPBEDS} · T627_TRIP_DAY=${KID_TRIPDAY != null ? KID_TRIPDAY : '(없음)'} · 집 행위 ${HOUSE_ACT ? '켬' : '끔'} · 가상 시계 ${VCLOCK ? '켬' : '끔'} · T696_WAL=${KID_WAL != null ? KID_WAL : '(없음)'} · T941_BATTLE_DAY=${KID_BATTLE} · T990_ECON_DAY=${KID_ECON} · VILLAGE_NPC_CAP=${process.env.VILLAGE_NPC_CAP || '1'} · 도적 ${process.env.ENABLE_BANDITS === '0' ? '끔' : '켬'}`);
   const res = [];
   const q = SEEDS.map((s, k) => [s, k]);
   await Promise.all(Array.from({ length: Math.min(PAR, q.length) }, async () => {

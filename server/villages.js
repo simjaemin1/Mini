@@ -6034,7 +6034,8 @@ const T771_SORTIE_MISS = process.env.T771_SORTIE_MISS !== '0';   // ★[T781 10-
 //     (대치 수 = 날 수 · 출격 0 — T771 칸은 방어 출격만 본다). war-core 결단은 그날 돌격을 "판이 난 전투"로 셈한다(옛 headless — 돌격 = 결판)인데
 //     몸 층에선 닿지 못한 돌격이 대치로 끝나 진으로 돌아온다 ⇒ 이튿날 같은 승산으로 또 돌격 · 짐이 바닥나도 도박 돌격 줄(승산 ≥ `WAR_GAMBLE_ODDS`)이 또 돌격 ⇒ 끝이 없다.
 //   새 수 0 · 새 손잡이 하나 · 칸 둘(몸 `_t956C0` = 돌격 시작의 접촉 수 · 전쟁 `_assaultMiss`).
-const T956_ASSAULT_MISS = process.env.T956_ASSAULT_MISS === '1';
+//   ★[T974 2026-10-28] 켬 기본(결함 고침 — PM · 열일곱째 판) · 되돌림 `T956_ASSAULT_MISS=0`(= 종전 글자 그대로).
+const T956_ASSAULT_MISS = process.env.T956_ASSAULT_MISS !== '0';   // ★[T974 10-28] 켬 기본 · 되돌림 `=0`
 // ── 교전 계기 — war-core onEngage(assault·sortie 결단)에서 부른다 ──
 //   true = 실체가 맡았다(w.phase='battle' — war-core 훅 계약). 군대 몸이 없으면(징발 0) 철수 처리(아래 _warNoArmy).
 function _warEngage(w, day, why) {
@@ -7463,6 +7464,8 @@ function _t731Jobs(now, T) {
     if (T681_ON) addH('econ', () => _t681Flush());
     W.P = state.econV2.tickWorldV2Parts(state.world);   // econ 정본 조각 한 벌(`tickWorldV2` 가 부르는 그것 — 조각 손잡이와 무관하게 켬 판은 조각으로만 간다)
     addH('econ', () => { _econDayFixture(); mute(() => W.P.head()); W.headDone = true; }, 'econ:head');   // ★[T755] 머리 뒤 ~ 꼬리 = 전쟁 몸 쉼(onGameTick)
+    if (state.deps.dayRoads) addH('roads', () => { try { state.deps.dayRoads(); } catch (e) { console.error(`[${state.zoneId}] 🛤️ [T990] 길 하루 실패:`, e.message); } });   // ★[T990] 켬 — 길의 하루 = 날을 올린 머리 바로 뒤(도적 하루 앞 · `roads.js dayTick` 머리 주석 · 끔 = 존 틱이 정한다)
+    if (state.deps.dayBandits) addH('bandit', () => { try { state.deps.dayBandits(); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T986] 도적 하루 실패:`, e.message); } });   // ★[T986] 켬 — 도적 하루 = 날을 올린 머리 바로 뒤(마을 조각 앞 · `bandits.js dayTick` 머리 주석 · 끔 = 존 틱이 부른다)
     addH('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
   }
   const _popOne = (vil) => {
@@ -7703,6 +7706,8 @@ function _openDayJobs(now, T) {
     } finally { console.log = _log; }
     _econDayAfter();
   });
+  if (state.deps.dayRoads) add('roads', () => { try { state.deps.dayRoads(); } catch (e) { console.error(`[${state.zoneId}] 🛤️ [T990] 길 하루 실패:`, e.message); } });   // ★[T990] 켬 — 종전 마감은 econ 1일 틱(날을 올린 그 조각) 바로 뒤(도적 하루 앞)
+  if (state.deps.dayBandits) add('bandit', () => { try { state.deps.dayBandits(); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T986] 도적 하루 실패:`, e.message); } });   // ★[T986] 켬 — 종전 마감은 econ 1일 틱(날을 올린 그 조각) 바로 뒤
   // ⓪' ★★[T533] econ **뒤** = 나간 기록(경계 칸에 선 몸을 민다) · 경계 마을 스냅(끔이면 무동작).
   if (state.xzone) add('xzone', () => _xzDayOut());
 
