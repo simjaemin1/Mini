@@ -139,14 +139,17 @@ function diff(a, b, box) {
   //   ⇒ 제품이 스스로 세는 수(`__mtDbg.mt3bakeN`·`mt3chunks`)가 **멈출 때까지** 기다린다.
   //   ⚠두 단계로 기다린다: ⓐ 움직이기 **시작**할 때까지(부수기가 큐에 들어가기 전에 "멈춰 있다"고
   //     속지 않게) · ⓑ 그 뒤 **연속 3회 그대로**일 때까지. 상한은 표에만 — 걸리면 이름을 붙여 돌려준다.
-  const mtdbg = () => pg.evaluate(() => ({ bn: window.__mtDbg.mt3bakeN, ch: window.__mtDbg.mt3chunks }));
+  //   ★★[T971] **굽는 중 청크(`_mt3Jobs`)도 같이** — 띠 예산(`T870_MT_BAND` · T880 켬 기본)에선 청크 하나가 여러 판에 걸쳐 구워지고 **다 굽기 전엔 그 청크를 안 그린다**
+  //     (구운 수 · 청크 수는 그동안 안 움직인다). 그래서 "3번 그대로"가 덜 구운 그림을 '가라앉았다'로 읽어 P4(덮개) · P6b · P6c 가 빨갰다(T880 회부 1 · 켬 8/11 · `T870_MT_BAND=0` 11/11).
+  //     e2e-mountain 이 T880 에서 이미 건 같은 자("다 구웠다" = 굽는 중 0 + 구운 수 그대로) — 읽는 것은 클라가 **이미 세는 수**(`_mt3Jobs` 크기)뿐 · 판정문 · 문턱 무변 · 되돌림(`=0`)이면 굽는 중은 늘 0.
+  const mtdbg = () => pg.evaluate(() => ({ bn: window.__mtDbg.mt3bakeN, ch: window.__mtDbg.mt3chunks, jb: (typeof _mt3Jobs !== 'undefined') ? _mt3Jobs.size : 0 }));
   const settle = async (capMs = 90000, startCapMs = 2500) => {
     const t0 = Date.now();
     let prev = await mtdbg(); const base = prev;
     let moved = false;
     while (Date.now() - t0 < startCapMs) {                      // ⓐ 시작을 기다린다
       const cur = await mtdbg();
-      if (cur.bn !== base.bn || cur.ch !== base.ch) { moved = true; prev = cur; break; }
+      if (cur.bn !== base.bn || cur.ch !== base.ch || cur.jb !== base.jb) { moved = true; prev = cur; break; }
       await sleep(50);
     }
     let same = 0, baked = 0;
@@ -154,7 +157,7 @@ function diff(a, b, box) {
       await sleep(70);
       const cur = await mtdbg();
       baked += cur.bn - prev.bn;
-      same = (cur.bn === prev.bn && cur.ch === prev.ch) ? same + 1 : 0;
+      same = (cur.bn === prev.bn && cur.ch === prev.ch && cur.jb === 0) ? same + 1 : 0;   // ★[T971] 굽는 중 0
       prev = cur;
       if (same >= 3) break;
     }
