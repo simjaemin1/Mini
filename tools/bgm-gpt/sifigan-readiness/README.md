@@ -874,3 +874,35 @@ passing tests and the unchanged static-display helper has6separate tests.
 Both actual processes ended normally, and nothing trains in the background.
 Game defaults/runtime and originals remain unchanged; listening adoption is
 still tentative and is not inferred for the new four-note pair.
+
+## Authored leading rest after intro-noise feedback, 2026-10-31
+
+The user reports severe starting noise in057/058 and asks to continue. Two
+read-only analyses find the first1s identical across the two variants at raw,
+level-controlled and decoded-AAC stages, so the STEP/20ms difference is not
+the cause of this shared intro. The source has a short impulse around.435958s
+(peak−50.819dBFS); the explicit20ms RMS controller follows its level trajectory
+over the neural carrier. Raw pre-tone residual energy is overwhelmingly below
+1kHz, unlike the source's broader background noise. This is a plausible path
+for an audible low-frequency pulse, not a proof of the sole perceived cause.
+The controller attenuates raw audio throughout this intro; saying it amplifies
+the raw waveform would be false. Programme display gain is separately+20.1dB.
+
+Fixed0..0.6s RMS is−81.147source/−45.176raw/−81.612controlled and−81.637dBFS
+for AAC after removing static gain. Codec residual is about−114.64dBFS, weak
+evidence for AAC as the primary source. Source Harvest first becomes positive
+at.580s and source-YIN support at.635s, neither an annotated true note onset.
+
+The next treatment is an explicitly authored leading-rest envelope, NOT new
+ML, learned breathing, a general denoiser or a repaired raw generator. Native
+controlled PCM is muted before sample13,080(.545s), multiplied by a quintic
+0→1amplitude transition over13,080..13,800inclusive(30ms), and left byte-exact
+from13,800(.575s) onward. The same operation applies to STEP and20ms variants;
+the four-note timing, pitch/vibrato, later transitions and original/model
+files remain unchanged. No source PCM mix, EQ, time shift or model call.
+
+Both new auditions use fixed4.8s48k stereo AAC and static-LUFS matching. The
+native suffix byte-exact claim does not extend to re-encoded AAC samples.
+Diagnostics retain the original-source821frame mask and separately inspect
+the edited intro, impulse region and unchanged voiced region. The fresh
+experiment is limited to300seconds/20MB,2GiB RSS and12GiB free disk.
