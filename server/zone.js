@@ -3359,6 +3359,12 @@ function respawnMobLater(m) {
   }, 15000);
   return true;
 }
+// ★★[T998 2026-10-30 · T987 회부 3] 손잡이 `T998_NPC_WILD_SYNC`(켬 기본 · 되돌림 `=0` = 종전 글자 그대로) — **NPC 가 죽인 야생 그림자도 랩에 그 자리에서**:
+//   NPC 죽음 길(`npcStep`)이 사람 공격 · 화살 길의 그 랩 동기 문(`Wildlife.onMobHit` — 존 hp → 랩 hp · 0 이하면 랩 `_extKill`)을 지난다(사본 0).
+//   종전엔 이 길만 그 문을 안 불러 랩 몸이 **같은 틱 뒤쪽의 야생 틱**(`Wildlife.tick` ④ 외부 피해 폴링 보정 — "onMobHit 미경유 경로 방어")에서야 죽었다
+//   (npcStep 은 틱 앞쪽 · 야생 틱은 뒤쪽 — 그 사이 랩 늑대는 hp > 0 으로 산다 · 활성 청크가 없으면 야생 틱이 ④ 앞에서 돌아가 랩이 다시 돌 때까지).
+//   죽음만이다 — 안 죽는 NPC 타격은 종전대로 폴링 보정이 랩 hp 를 맞춘다(사람 공격 길의 놀람 · 반격 돌진을 NPC 에도 줄지는 회부 — 싸움 판이 바뀐다).
+const T998_NPC_WILD_SYNC = process.env.T998_NPC_WILD_SYNC !== '0';
 {
   // DB에서 기존 mob 로드 — 없으면 바이옴별 신규 스폰
   const existing = db.getMobs();
@@ -4701,6 +4707,7 @@ function npcStep(npc, dt, now) {
         npc.lastAttackAt = now;
         const dmg = 8;
         setMobHp(target, target.hp - dmg, 'npc');   // ★[T954] 문으로(쓰기 · 저장 표 · 방송 — 종전 세 줄 그 차례)
+        if (T998_NPC_WILD_SYNC && target.isWild && target.hp <= 0) Wildlife.onMobHit(target, dmg, npc);   // ★[T998] 죽인 야생 그림자 — 랩에도 그 자리에서(사람 공격 · 화살 길 그 문 · 그 차례: 랩 → DB → 지움 → 다시 낳기)
         // 늑대 공격당하면 어그로 — 이미 NPC 향해있을 거. 팩 전파도.
         if (!target.tameOwner) {
           target.aggroTarget = npc.pid;
@@ -12706,6 +12713,7 @@ function __testBind() {
     T967_MOB_HP, spawnMob, saveDirtyMobs,   // ★[T967] 짐승 hp 재기동 하네스(`test-mob-hp-restart` — DB 행이 있는 몹 · 진짜 주기 저장 · 내보내기만)
     T975_MOB_DB,   // ★[T975] 같은 하네스가 판을 읽는다(내보내기만)
     T987_MOB_RESPAWN, respawnMobLater,   // ★[T987] 다시 낳기 하네스(`test-mob-respawn` · 내보내기만)
+    T998_NPC_WILD_SYNC,   // ★[T998] 랩 동기 하네스(`test-npc-wild-sync` · 내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
     spawnCorpse, butcherCorpse, corpses,
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
