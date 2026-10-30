@@ -11,7 +11,7 @@
 //     ④ `T941_BATTLE_DAY` — 제품 손잡이는 `=== '1'` 하나(끔 기본 · 끔 = main 바이트) · ★[T959] 판 자는 아이에게 `1` 을 기본으로 싣는다(부르는 값 먼저 · 되돌림 `=0`)
 //     ⑤ 미끼 — KID_WAL 줄을 뺀 판 자 사본은 ① 에서 T696_WAL 을 안 싣는다(① 이 문다) · ★[T959] T941 줄을 뺀 사본은 ④ 에서 기본을 안 싣는다
 //     ⑥ ★[T990] `T990_ECON_DAY` — 판 자는 아이에게 `1` 을 기본으로 싣는다(벽시계 · 가상 시계 판 둘 다 · 부르는 값 먼저 · 되돌림 `=0`) ·
-//        제품 손잡이는 `=== '1'` 하나(zone · 끔 기본 = main 바이트) · 미끼: T990 줄을 뺀 사본은 기본을 안 싣는다
+//        ★[T1001] 제품도 켬 기본(zone 상수 `!== '0'` 하나 · 되돌림 `=0`) · 미끼: T990 줄을 뺀 사본은 기본을 안 싣는다(판 자는 그래도 제품 기본 켬을 탄다 — 이 줄은 '부르는 값 먼저' 자리를 지킨다)
 'use strict';
 // ── 프리로드 갈래(아이 바꿔 치기) ──
 if (process.env.T941_CAPTURE && require.main !== module) {
@@ -63,13 +63,13 @@ ok(bait2 !== src && k && k.T941_BATTLE_DAY === null, '[미끼 · T959] T941 줄�
   const Z = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'), Rd = fs.readFileSync(path.join(ROOT, 'server', 'roads.js'), 'utf8');
   const a = kidEnv({ T745_VCLOCK: '1' }), b = kidEnv({}), c = kidEnv({ T990_ECON_DAY: '0' });
   ok(a && b && c && a.T990_ECON_DAY === '1' && b.T990_ECON_DAY === '1' && c.T990_ECON_DAY === '0'
-    && /if \(process\.env\.T990_ECON_DAY === '1' && Roads\.setEconDay\) Roads\.setEconDay\(/.test(Z)
+    && /const T990_ECON_DAY = process\.env\.T990_ECON_DAY !== '0';/.test(Z) && /if \(T990_ECON_DAY && Roads\.setEconDay\) Roads\.setEconDay\(/.test(Z)
     && /const day = _t990Day \? S\.lastDay : Math\.floor\(\(now - S\.epoch\) \/ S\.dayMs\);/.test(Rd)
-    && /dayRoads: process\.env\.T990_ECON_DAY === '1' \? \(\) => Roads\.dayTick\(\) : null,/.test(Z)
+    && /dayRoads: T990_ECON_DAY \? \(\) => Roads\.dayTick\(\) : null,/.test(Z)
     && (fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8').match(/if \(state\.deps\.dayRoads\) add/g) || []).length === 2
-    && /const _npcOreNow = \(\) => \{ if \(process\.env\.T990_ECON_DAY === '1'\)/.test(Z) && (Z.match(/= _npcOreNow\(\)/g) || []).length === 2
-    && /if \(process\.env\.T990_ECON_DAY === '1'\) return;   \/\/ ★\[T990\] 켬 — 장부 시각이 econ 날이다/.test(Z),
-    '★⑥ [T990] 판 자 기본 T990_ECON_DAY=1(가상 시계 · 벽시계 판 둘 다) · 부르는 값 먼저(`=0` 되돌림) · 제품 손잡이 `=== \'1\'` 하나(zone) · 길의 하루는 하루 마감 두 자리(`dayRoads` — 날을 올린 econ 머리 바로 뒤 · 틱은 묶음만) · NPC 광맥 시각 두 자리 = econ 날(15분 정리 쉼)', JSON.stringify([a && a.T990_ECON_DAY, b && b.T990_ECON_DAY, c && c.T990_ECON_DAY]));
+    && /const _npcOreNow = \(\) => \{ if \(T990_ECON_DAY\)/.test(Z) && (Z.match(/= _npcOreNow\(\)/g) || []).length === 3
+    && /\n  if \(T990_ECON_DAY\) \{\n    const now = _npcOreNow\(\);/.test(Z),
+    '★⑥ [T990] 판 자 기본 T990_ECON_DAY=1(가상 시계 · 벽시계 판 둘 다) · 부르는 값 먼저(`=0` 되돌림) · ★[T1001] 제품도 켬 기본(`!== \'0\'` zone 상수 하나) · 길의 하루는 하루 마감 두 자리(`dayRoads` — 날을 올린 econ 머리 바로 뒤 · 틱은 묶음만) · NPC 광맥 시각 두 자리 = econ 날(15분 정리 쉼)', JSON.stringify([a && a.T990_ECON_DAY, b && b.T990_ECON_DAY, c && c.T990_ECON_DAY]));
   const bait3 = src.split('\n').filter((l) => !/T990_ECON_DAY: KID_ECON/.test(l)).join('\n');
   fs.writeFileSync(BAIT, bait3); const k3 = kidEnv({ T745_VCLOCK: '1' }, BAIT); fs.rmSync(BAIT, { force: true });
   ok(bait3 !== src && k3 && k3.T990_ECON_DAY === null, '[미끼 · T990] T990 줄을 뺀 판 자는 기본을 안 싣는다 — ⑥ 이 문다', JSON.stringify(k3));

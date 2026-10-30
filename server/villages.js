@@ -2518,7 +2518,7 @@ function _gateTradePotential(all, ta, foodFn, floor) {
 // ★★[T957 2026-10-28 · T945 회부 1] 몸통은 발생기(`_distMatrixGen`)다 — 이 동기 문은 그것을 한 번에 다 돌린다(같은 줄 · 같은 답 · 사본 0).
 //   발생기는 소스 BFS 사이와 BFS 안 노드 `PATH_STEP_NODES`(교역로 재개형과 같은 알갱이) 개마다 한 번 양보만 한다 — 양보는 아무것도 안 바꾼다(행렬 주입은 맨 끝 한 번).
 //   하루 마감 ⑪ 단계는 손잡이 `T957_DIST_SLICE` 켬이면 그 발생기를 조각 몫만큼씩 민다(아래 `_t957DistStage`).
-// ★★[T977 2026-10-28 · T957 회부 2 · T968 다음] **같은 격자면 다시 안 센다**(손잡이 `T977_DIST_SAME` · ★끔 기본 — `=1` 만 켬 · 켬 기본 후보 회부).
+// ★★[T977 2026-10-28 · T957 회부 2 · T968 다음] **같은 격자면 다시 안 센다**(손잡이 `T977_DIST_SAME` · ★T996 켬 기본 — `=0` 만 끔 · ★PM 10-29 T977 회부 3).
 //   거리행렬의 입력은 코스 격자 열림(`coarseOpen` — 바위 · 환호 · 물 · 다리) · 마을 좌표뿐이다(T598 갈래 끔일 때). 벽 · 울타리는 이 술어에 없다(변 점유 · `zone.js` `_terrBlocked0`).
 //   ⇒ 라이브 무효화(사람 벽 · 울타리)는 지금 **같은 답을 1,275쌍 BFS 로 다시 낸다**. 켬: 다 센 행렬마다 그때 메모(`_distBlk` 판정한 칸 전부) · 마을 좌표 · 행렬을 바탕으로 둔다.
 //     다음 전쌍 재계산(증분 아님)은 먼저 **바탕이 판정한 칸을 전부 지금 술어로 다시 판정**한다(메모에 그대로 채운다 — BFS 가 채울 값과 같다).
@@ -2527,7 +2527,20 @@ function _gateTradePotential(all, ta, foodFn, floor) {
 //     (판정 안 한 칸은 더 짧은 길을 못 만든다). 판정한 칸이 다 같으면 두 증서가 지금 술어에서도 서므로 최단 비용이 같다 = 같은 수(`(c/10)·DIST_STEP·2.5`) · 바이트 동일.
 //     T598 갈래(`T598_ROUTE_COST` · `T598_ROUTE_EDGE` — 집채 · 벽이 배수에 든다)면 이 문을 안 쓴다(종전 그대로).
 //   양보 알갱이는 BFS 와 같은 `PATH_STEP_NODES` 칸이다(새 수 0). 끔 = 바탕을 안 만든다 · 이 줄들 무동작.
-const T977_DIST_SAME = process.env.T977_DIST_SAME === '1';
+//   ★[T996 · T977 회부 2] 부팅 셈은 `SimVillages.init` 안(환호 콜라이더 적재 앞)이라 그 바탕은 적재 뒤 격자와 칸이 다르다 ⇒ 첫 무효화가 BFS 를 다 돌았다.
+//     같은 손잡이 아래: 환호 적재 직후(`zone.js` `refreshDitchCells` 끝 → `distBasisRefresh`) **바탕만 다시 세운다** — 같은 발생기를 `basisOnly` 로 ·
+//     마감 밖 자리(T968 · 진짜 다시 세기가 없을 때만 · 공유 예산 남은 몫)에서 민다. 메모는 **제 것**(공유 `_distBlk` 무접촉 — 증분 · 다음 셈이 보는 메모가 종전과 같다) ·
+//     주입 0 · 세계 행렬 무접촉 · 덤프 0. 끝나면 바탕만 바꾼다(지금 격자 · 그때 마을 좌표 · 그 행렬). 바탕은 쓸 때 다시 판정되므로(위 증서) 어느 순간에 세웠든 맞다.
+//     진짜 다시 세기(`_t957Take`)가 서면 이 일은 버린다(그 셈이 바탕을 세운다). T957 · T968 끔이면 안 선다(종전 — 첫 무효화가 BFS).
+const T977_DIST_SAME = process.env.T977_DIST_SAME !== '0';
+let _t996Job = null;   // ★[T996] 바탕만 다시 세우는 일 { g, slices, ms }
+function distBasisRefresh() {
+  if (!T977_DIST_SAME || !T957_DIST_SLICE || !T968_DIST_BG || T598_ROUTE_COST || T598_ROUTE_EDGE) return false;
+  if (!state._distBasis || !state._distCtx || !state.world) return false;
+  _t996Job = { g: _distMatrixGen('바탕 다시 세움', { basisOnly: true }), slices: 0, ms: 0 };
+  _probe.t996Start = (_probe.t996Start | 0) + 1;
+  return true;
+}
 const _t977Same = (B, villages, n) => !!B && B.blk.length === n && B.coords.length === villages.length && villages.every((v, i) => v.coord.x === B.coords[i][0] && v.coord.y === B.coords[i][1]);
 // ★[T977] 재는 판 전용 셈(`T977_PROBE=1` · 안 주면 무동작 · 제품 값 무접촉) — 늘어난 몫의 귀속: 조각 머리(조각 벽 − 몸통) · 찬 머리(조각 첫 알갱이의 노드당 시간) · 지형 판정 · GC.
 const T977_PROBE = process.env.T977_PROBE === '1';
@@ -2601,8 +2614,9 @@ function* _distMatrixGen(reason, opts) {
   //     (`state._route.blk.fill(0)` 가 이미 그 선례다 — 새 기구가 아니라 같은 계약을 한 줄 더 쓴 것).
   //     그 훅은 zone.js 의 벽·울타리 설치/철거/파괴 네 지점이 전부 부르고 있다(코스 격자를 바꾸는 건 그것뿐).
   //   ★부팅 때 전쌍 계산이 이 격자를 이미 채우므로, 건립 시엔 BFS 만 남는다.
-  if (!state._distBlk || state._distBlk.length !== gw * gh) state._distBlk = new Int8Array(gw * gh);
-  const blk = state._distBlk;
+  const _basisOnly = !!(opts && opts.basisOnly);   // ★[T996] 바탕만 — 메모는 제 것(공유 메모 무접촉)
+  if (!_basisOnly && (!state._distBlk || state._distBlk.length !== gw * gh)) state._distBlk = new Int8Array(gw * gh);
+  const blk = _basisOnly ? new Int8Array(gw * gh) : state._distBlk;
   let sampled = 0, bridgeSaved = 0;
   const isBlk = (gx, gy) => {
     if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return true;
@@ -2689,6 +2703,13 @@ function* _distMatrixGen(reason, opts) {
   }
   // ★[T968] 다 셌다 — `hold` 면 주입 앞에서 한 번 더 선다(`'_ready'` · 하루 마감 ⑪ 이 이어 주입한다 · 주입 자리가 종전과 같다)
   if (_pr) _pr.hash = _t977Hash(mat);
+  if (_basisOnly) {   // ★[T996] 바탕만 바꾸고 끝(주입 · 덤프 · 소문 캐시 · 세계 행렬 무접촉)
+    state._distBasis = { coords: villages.map((v) => [v.coord.x, v.coord.y]), mat: mat.map((r) => r.slice()), blk: blk.slice() };
+    _probe.t996Done = (_probe.t996Done | 0) + 1; if (_same) _probe.t996Same = (_probe.t996Same | 0) + 1; _probe.t996Ms = Date.now() - t0;
+    console.log(`[${state.zoneId}] 🏘️ [T996] 거리행렬 바탕 다시 세움: ${M}마을 ${_same ? '같은 격자(BFS 0)' : `BFS ${_srcRuns}소스`} · 판정 ${sampled}칸 · ${Date.now() - t0}ms(주입 0 · 공유 메모 무접촉)`);
+    if (_pr) _t977End(_pr);
+    return;
+  }
   if (opts && opts.hold) { if (_pr) { _t977Seg(_pr); _t977Report(_pr, '다 셈'); } yield '_ready'; if (_pr) _t977Go(_pr); }
   if (T977_DIST_SAME) state._distBasis = { coords: villages.map((v) => [v.coord.x, v.coord.y]), mat: mat.map((r) => r.slice()), blk: blk.slice() };   // ★[T977] 바탕(주입 앞 사본)
   // 주입 + 로그(유클리드 대비 증가율 — 강·산 우회가 잡히면 일부 쌍이 1.0×보다 커야 함)
@@ -7297,7 +7318,8 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done), ...(T896_RESUME_ONE ? { held896: _probe.t896Held | 0 } : {}) } } : {}),
   t929: { on: T929_RET_RESUME, wait: _probe.t929Wait | 0, cold: _probe.t929Cold | 0, msMax: _probe.t929MsMax | 0 },
   t968: { on: T968_DIST_BG, bgSlices: _probe.t968BgSlices | 0, bgMs: _probe.t968BgMs | 0, bgSliceMax: _probe.t968BgSliceMax | 0, ready: _probe.t968Ready | 0, readyClose: _probe.t968ReadyClose | 0, closeSlices: _probe.t968CloseSlices | 0, frozen: _probe.t968Frozen | 0, waitQ: _probe.t968WaitQ | 0 },   // ★[T968] 셈만
-  t977: { same: T977_DIST_SAME, probe: T977_PROBE, runs: _t977.runs },   // ★[T977] 재는 판 전용 셈(끔 = 빈 목록)
+  t977: { same: T977_DIST_SAME, probe: T977_PROBE, runs: _t977.runs },
+  t996: { start: _probe.t996Start | 0, done: _probe.t996Done | 0, same: _probe.t996Same | 0, drop: _probe.t996Drop | 0, slices: _probe.t996Slices | 0, work: _probe.t996Work | 0, sliceMax: _probe.t996SliceMax | 0, ms: _probe.t996Ms | 0, busy: !!_t996Job },   // ★[T996] 바탕 다시 세움(셈만)   // ★[T977] 재는 판 전용 셈(끔 = 빈 목록)
   t957: { on: T957_DIST_SLICE, runs: _probe.t957Runs | 0, slices: _probe.t957Slices | 0, sliceMax: _probe.t957SliceMax | 0, workMax: _probe.t957WorkMax | 0, restart: _probe.t957Restart | 0, busy: !!_t957Dist },   // ★[T957] 거리행렬 조각(셈만)   // ★[T929] 도착 경계 귀환 길(두 팔 다 선다 — 셈만)   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
   t620WfHit: _probe.t620WfHit | 0, t620WfN: _probe.t620WfN | 0, t620WfBad: _probe.t620WfBad | 0, t620Prewarm: _probe.t620Prewarm | 0,
@@ -7907,6 +7929,7 @@ function _t957Take() {   // `distDirty` 를 받아 일을 (다시) 세운다 —
   let _k = state._distIncrFrom; state._distIncrFrom = -1;
   if (_t957Dist) { _probe.t957Restart = (_probe.t957Restart | 0) + 1; if (_t957Dist.full) _k = -1; }
   const _o = (_k > 0) ? { incrementalFrom: _k } : undefined;
+  if (_t996Job) { _t996Job = null; _probe.t996Drop = (_probe.t996Drop | 0) + 1; }   // ★[T996] 진짜 다시 세기가 바탕을 세운다
   _t957Dist = { g: _distMatrixGen('무효화 재계산', T968_DIST_BG ? Object.assign({ hold: true }, _o || {}) : _o), full: !(_k > 0), slices: 0, workMs: 0, ready: false };
 }
 function _t957DistStage() {
@@ -7934,7 +7957,9 @@ function _t957DistStage() {
 function _t968DistBg() {
   if (!T957_DIST_SLICE || !T968_DIST_BG || state.tickJobs) return;
   _t957Take();
-  const J = _t957Dist; if (!J || J.ready) return;
+  const J = _t957Dist;
+  if (!J) { if (_t996Job) _t996Step(); return; }   // ★[T996] 진짜 일이 없을 때만 바탕 일
+  if (J.ready) return;
   const B = TB.slice(TICK_SLICE_MS); if (!(B > 0)) return;
   const t0 = Date.now();
   _t977SliceBeg();   // ★[T977] 재는 판 전용(끔 = 무동작)
@@ -7951,6 +7976,23 @@ function _t968DistBg() {
       }
     }
   } catch (e) { _t957Dist = null; console.error(`[${state.zoneId}] 🏘️ BFS 거리행렬 재계산 실패(기존 행렬 유지):`, e.message); }
+}
+// ★[T996] 바탕 일 한 걸음 — 위와 같은 몫 · 같은 알갱이
+function _t996Step() {
+  const J = _t996Job, B = TB.slice(TICK_SLICE_MS); if (!(B > 0)) return;
+  const t0 = Date.now();
+  _t977SliceBeg();
+  try {
+    for (;;) {
+      const r = J.g.next();
+      if (r.done || Date.now() - t0 >= B) {
+        _t977SliceEnd();
+        const d = Date.now() - t0; J.ms += d; J.slices++; _probe.t996Slices = (_probe.t996Slices | 0) + 1; _probe.t996Work = (_probe.t996Work | 0) + d; if (d > (_probe.t996SliceMax | 0)) _probe.t996SliceMax = d;
+        if (r.done) _t996Job = null;
+        return;
+      }
+    }
+  } catch (e) { _t996Job = null; console.error(`[${state.zoneId}] 🏘️ [T996] 거리행렬 바탕 다시 세움 실패(바탕 그대로):`, e.message); }
 }
 // 마감 — 요약 로그 + 계측 적재 + 대기 큐 방류.
 function _closeDay(C) {
@@ -14235,6 +14277,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
   xzoneReceive, xzonePerf,   // ★[T533] 존 경계 — `/handoff_prepare` 의 `kind`(caravan·snap) 받는 문 · `/perf` 의 `xzone` 칸(끔이면 null)
+  distBasisRefresh,   // ★[T996] zone.js `refreshDitchCells` 끝 — 환호 적재 뒤 거리행렬 바탕 다시 세움(켬 · 마감 밖 일)
   villagesBusy, villageWait, villageBookWait,   // ★[T792] 사람 장부 문(창 안 = 바로)   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
   dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게
   routeDebug,   // ★[T42] 교역로 캐시 관측·감사 — zone.js `/routedbg` 가 E2E_GIVE 로 게이트
@@ -14450,6 +14493,9 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
       blkReset: () => { if (state._distBlk) state._distBlk.fill(0); },   // ★[T977] 무효화 훅의 그 한 줄(`invalidateTradeDistances` · 코스 격자 메모만)
       basisReset: () => { state._distBasis = null; },   // ★[T977] 하네스 — 바탕 없이 센 셈(기준)
       get basis() { return state._distBasis; },
+      basisRefresh: () => distBasisRefresh(),   // ★[T996] 환호 적재 뒤 바탕 다시 세움 — 일만 세운다
+      basisRun: () => { const J = _t996Job; if (!J) return null; let n = 0; for (;;) { const r = J.g.next(); if (r.done) break; n++; } _t996Job = null; return n; },   // ★[T996] 하네스 — 한 번에 민다(양보 수)
+      get blkMemo() { return state._distBlk; },
     },
     // ★[T533 2026-09-30] 두 존 합친 격자의 교역로 — `server/xzone-geo.js` 가 경계 칸·두 구간 길을 낸다.
     //   정본 A\*(`computeRoutePts`) 그대로(사본 0) · `_distProbe.setup` 이 꽂은 어댑터 위에서 · reset = 격자 캐시·재개 슬롯 비움.

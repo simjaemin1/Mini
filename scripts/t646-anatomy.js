@@ -526,7 +526,7 @@ async function run(conf, tag, probe) {
         S.arr = (buf.match(/캐러밴#\d+ 도착:/g) || []).length; S.ret = (buf.match(/귀환 출발/g) || []).length; S.astar = (buf.match(/교역로 A\*:/g) || []).length;
         S.t929 = pr.t929 || null; S.pathJobs = pr.pathJobs | 0; S.pathWait = pr.pathWait | 0; S.routeCold = pr.routeCold | 0;
         S.t957 = pr.t957 || null; S.t968 = pr.t968 || null;   // ★[T968] 거리행렬 조각 · 마감 밖 셈 · 몸 틱 쉰 틱 · 줄 선 장부 요청(누계)
-        S.t977 = _t977Lines(buf);   // ★[T977] 거리행렬 일 쪼개 보기 줄(존 `T977_PROBE=1` 일 때만 · 없으면 빈 목록)
+        S.t977 = _t977Lines(buf); S.t996 = pr.t996 || null;   // ★[T996] 바탕 다시 세움(누계)   // ★[T977] 거리행렬 일 쪼개 보기 줄(존 `T977_PROBE=1` 일 때만 · 없으면 빈 목록)
         if (edge && p && p.econTick && (p.econTick.days | 0) > days0) closed++;
         if (edge && L && L.phase != null && (L.phase > hi || L.phase < lo)) closed = 2; }   // 밤 창 밖으로 나가면 끝(하루가 창 앞에서 이미 닫혔던 판 — 표에 적는다)
       say(`${W} 조각 ${k} · p50 ${t ? t.p50 : '?'} · p95 ${t ? t.p95 : '?'} · 줄 ${ana.length}`);
@@ -544,7 +544,7 @@ async function run(conf, tag, probe) {
       const p = await getj('/perf'), L = await getj('/lifedbg'), buf = fs.readFileSync(logp).subarray(mark).toString('utf8');
       const t = p && p.tick && p.tick.ms, pr = (p && p.econTick && p.econTick.probe) || {};
       slices.push({ k, mt0, mt1: Number(process.hrtime.bigint() / 1000n), phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, max: t && t.max, ticks: p && p.tick && p.tick.n,
-        pathJobs: pr.pathJobs | 0, t957: pr.t957 || null, t968: pr.t968 || null, t977: _t977Lines(buf) });
+        pathJobs: pr.pathJobs | 0, t957: pr.t957 || null, t968: pr.t968 || null, t977: _t977Lines(buf), t996: pr.t996 || null });
       say(`after 조각 ${k} · p50 ${t ? t.p50 : '?'} · p95 ${t ? t.p95 : '?'}`);
     }
     windows.push({ W: 'after', inv: !!(inv && inv.invalidated), slices });
