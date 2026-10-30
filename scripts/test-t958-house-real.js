@@ -3,14 +3,14 @@
 // === scripts/test-t958-house-real.js — 집 행위 마을 econ 주거는 크루가 지은 침상까지만 [T958] ======================
 //
 // ★왜 [T946 회부 2 → T958] 집 짓는 마을(`buildActOn` — 서버가 `_t400Live` 를 심은 마을)은 econ 주거의 목재 상한이 `Infinity` 다(차감은 크루).
-//   그래서 econ 주거가 크루가 지은 집(맵 침상 `_mapBeds`)과 따로 오른다(보고 T958 ①). 손잡이 `T958_HOUSE_REAL`(★[T966] 끔 기본 · 켜는 값 `'1'` · 끔 = 종전 글자)이
+//   그래서 econ 주거가 크루가 지은 집(맵 침상 `_mapBeds`)과 따로 오른다(보고 T958 ①). 손잡이 `T958_HOUSE_REAL`(★[T974] 켬 기본 · 되돌림 `=0` = 종전 글자 · ★[T966] 끔 기본이던 글자 `=== '1'`)이
 //   하루 증축을 `min(여유노동 몫, 지은 침상 − 주거)` 로 묶고, 그날 올리고 싶었던 몫을 `_t958Want` 에 적는다(집터 방아쇠가 읽는다).
 //
 // 재는 것:
-//   ① 술어 — econ `T958_HOUSE_REAL` 는 `(… === '1')`(★[T966] 끔 기본) · env 를 읽는 자리 하나 · 내보냄 · 서버는 방아쇠 한 줄에서만 그 값과 `_t958Want` 를 읽는다
-//   ② 한 마을 하루(가짜 마을 · 존 안 띄움 · 아이 판 — 켬 `=1` · 끔 = env 없음): 인구 20 · 주거 20 · 목재 0 · 침상 24
+//   ① 술어 — econ `T958_HOUSE_REAL` 는 `!(… === '0')`(★[T974] 켬 기본) · env 를 읽는 자리 하나 · 내보냄 · 서버는 방아쇠 한 줄에서만 그 값과 `_t958Want` 를 읽는다
+//   ② 한 마을 하루(가짜 마을 · 존 안 띄움 · 아이 판 — 켬 = env 없음(기본) · 그 밖 값 `=1` · 끔 = `=0`): 인구 20 · 주거 20 · 목재 0 · 침상 24
 //      ⓐ 켬 — 주거가 오르되 24 를 못 넘는다(스무 날) · 그날 올리고 싶은 몫 > 0 · 목재 차감 0(크루 몫)
-//      ⓑ ★자명 통과 금지 — 끔(env 없음 = 기본) 판은 같은 자로 주거가 24 를 **넘는다**(결함이 실제로 보인다) · `_t958Want` 없음
+//      ⓑ ★자명 통과 금지 — 끔(`=0` — 되돌림) 판은 같은 자로 주거가 24 를 **넘는다**(결함이 실제로 보인다) · `_t958Want` 없음
 //      ⓒ 집 행위가 아닌 마을(`_t400Live` 없음)은 켬 · 끔 같은 값(종전 목재 상한 — 목재 0 이면 0)
 //   ④ [T966] 계획 주거 `_t958Plan` = 끔 세계 주거 궤적 · 나무꾼 안전망 · 영토 목표 두 줄이 켬이면 그 칸을 읽는다
 //   ③ 방아쇠 — `houseSiteWant` 는 인구 ≤ 주거 ≤ 침상(= 지은 칸 × 칸당 침상)이면 **안 선다**(그래서 올리고 싶은 몫을 더해 읽는다) ·
@@ -48,7 +48,7 @@ const SRC = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
 const VSRC = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
 
 console.log('① 술어');
-ok(/const T958_HOUSE_REAL = \(typeof process !== 'undefined' && process\.env && process\.env\.T958_HOUSE_REAL === '1'\);/.test(SRC), '`T958_HOUSE_REAL` 는 `(… === \'1\')` — ★[T966] 끔 기본 · 켜는 값 `1` 하나');
+ok(/const T958_HOUSE_REAL = !\(typeof process !== 'undefined' && process\.env && process\.env\.T958_HOUSE_REAL === '0'\);/.test(SRC), '`T958_HOUSE_REAL` 는 `!(… === \'0\')` — ★[T974] 켬 기본 · 되돌림 `0` 하나(랩 · 브라우저 빈 env 도 켬)');
 ok((SRC.match(/process\.env\.T958_HOUSE_REAL/g) || []).length === 1, 'env 를 읽는 자리 하나(econ 모듈 머리)', (SRC.match(/process\.env\.T958_HOUSE_REAL/g) || []).length);
 ok(/^\s+T958_HOUSE_REAL,/m.test(SRC), 'econ 이 내보낸다(서버 방아쇠가 읽는다)');
 ok(!/process\.env\.T958_HOUSE_REAL/.test(VSRC), '서버는 env 를 안 읽는다(econ 값 하나)');
@@ -61,13 +61,15 @@ ok(/const _t958 = T958_HOUSE_REAL && buildActOn\(v\) && v\._mapBeds !== undefine
 ok(/if \(_t958\) \{ v\._t958Want = built; built = Math\.min\(built, Math\.max\(0, v\._mapBeds - v\.housing\)\); \}/.test(SRC), '증축 = min(여유노동 몫, 지은 침상 − 주거) · 올리고 싶은 몫을 적는다');
 
 console.log('② 한 마을 스무 날(아이 판 둘)');
-const sub = (env) => JSON.parse(execFileSync(process.execPath, [__filename], { env: { ...process.env, T958_SUB: '1', ...env }, encoding: 'utf8' }).trim().split('\n').pop());
-const on = sub({ T958_HOUSE_REAL: '1' }), off = sub({ T958_HOUSE_REAL: '' });
-ok(on.on === true && off.on === false, '아이 판 손잡이 — `=1` = 켬 · env 없음 = 끔(기본)', `${on.on} · ${off.on}`);
+const sub = (env) => { const E = { ...process.env, T958_SUB: '1' }; delete E.T958_HOUSE_REAL; Object.assign(E, env);   // ★[T974] env 없음 = 바깥 env 를 안 물려받는 미설정(기본)
+  return JSON.parse(execFileSync(process.execPath, [__filename], { env: E, encoding: 'utf8' }).trim().split('\n').pop()); };
+const on = sub({}), off = sub({ T958_HOUSE_REAL: '0' }), on1 = sub({ T958_HOUSE_REAL: '1' });
+ok(on.on === true && off.on === false, '아이 판 손잡이 — env 없음 = 켬(★[T974] 기본) · `=0` = 끔(되돌림)', `${on.on} · ${off.on}`);
+ok(on1.on === true && JSON.stringify(on1.live) === JSON.stringify(on.live) && JSON.stringify(on1.dead) === JSON.stringify(on.dead), '그 밖 값(`=1`)도 켬 — 기본 판과 같은 값(끄는 값은 `0` 하나)', `${on1.on}`);
 ok(on.live.max <= 24 + 1e-9 && on.live.max > 20, 'ⓐ 켬 — 주거가 오르되 지은 침상 24 를 못 넘는다', `최대 ${on.live.max}`);
 ok(on.live.wants.some((x) => x > 0), 'ⓐ 켬 — 그날 올리고 싶었던 몫 > 0 이 적힌다(방아쇠가 읽는다)', `${on.live.wants.filter((x) => x > 0).length}/20날`);
 ok(on.live.wood.every((x) => x === 0), 'ⓐ 켬 — econ 이 목재를 안 뺀다(크루 몫 · 목재 0 에서 시작해 0 그대로)');
-ok(off.live.max > 24 + 1e-6, 'ⓑ ★끔(기본)은 같은 마을 주거가 24 를 넘는다(목재 0 인데 — 결함이 보인다)', `최대 ${off.live.max}`);
+ok(off.live.max > 24 + 1e-6, 'ⓑ ★끔(`=0` — 되돌림)은 같은 마을 주거가 24 를 넘는다(목재 0 인데 — 결함이 보인다)', `최대 ${off.live.max}`);
 ok(off.live.wants.every((x) => x === null), 'ⓑ 끔 — `_t958Want` 를 안 적는다(종전 글자)');
 ok(JSON.stringify(on.dead) === JSON.stringify(off.dead), 'ⓒ 집 행위가 아닌 마을은 켬 · 끔 같은 값(종전 목재 상한)', `주거 ${on.dead.max}`);
 ok(on.dead.max <= 20 + 1e-9 && on.dead.wants.every((x) => x === null), 'ⓒ 그 마을은 목재 0 이면 안 오르고 `_t958Want` 도 없다');
