@@ -1,0 +1,12179 @@
+{
+ "card": "T997 ③ 클라 메모리 마감 표(T926 → T997 · 1시간)",
+ "what": "scripts/t926-mem-hour.js(T926 대본) 1시간 판 요약 — T926(계측/T926_1시간.json) · T970(T970_캔버스) · T981(T981_캔버스) · T997(이 판). close = 5분 · 60분 · 35~60분 평균(렌더러 · 웹 프로세스 RSS MB(ps) · JS 힙 GC 뒤 MB · memory-infra canvas MB · 살아 있는 캔버스 넓이 M화소 · p95 평균 · 프레임 수) · 바퀴 안 꼭대기(--peak). T997 판 = --min 60 --every 5 --snap none --mdump(크롬) --own --peak. sameBox = 같은 상자(이 컨테이너 · 같은 날)에서 T926 트리(main 1732d93a + 이 계측 자) · T997 트리 10분씩(--snap none) 프레임.",
+ "close": {
+  "chromium": [
+   {
+    "run": "T926 cr-h1",
+    "tree": "main 1732d93a · 손잡이 없음 · 스냅샷 5·30·60",
+    "rss5": 751,
+    "rss60": 1063,
+    "rssAvg": 966.0,
+    "heap5": 19.8,
+    "heap60": 52.4,
+    "heapAvg": 45.4,
+    "cv5": null,
+    "cv60": null,
+    "cvAvg": null,
+    "px5": 46.2,
+    "px60": 50.6,
+    "pxAvg": 50.1,
+    "live60": 255,
+    "p95Avg": 59.8,
+    "frames": 135365,
+    "peakPx": null,
+    "peakSize": null,
+    "peakCv": null,
+    "caps": null,
+    "capPx": null,
+    "zone": null,
+    "lapPeakPx": null
+   },
+   {
+    "run": "T926 cr-ns",
+    "tree": "T926 가지 끔(= main) · 스냅샷 없음 · memory-infra",
+    "rss5": 746,
+    "rss60": 864,
+    "rssAvg": 857.3,
+    "heap5": 20.0,
+    "heap60": 51.7,
+    "heapAvg": 46.5,
+    "cv5": 155.7,
+    "cv60": 203.2,
+    "cvAvg": 196.5,
+    "px5": 41.0,
+    "px60": 53.5,
+    "pxAvg": 51.7,
+    "live60": 266,
+    "p95Avg": 72.2,
+    "frames": 121831,
+    "peakPx": null,
+    "peakSize": null,
+    "peakCv": null,
+    "caps": null,
+    "capPx": null,
+    "zone": null,
+    "lapPeakPx": null
+   },
+   {
+    "run": "T926 cr-on",
+    "tree": "T926_CELL_NEAR=1 · 스냅샷 5·30·60",
+    "rss5": 751,
+    "rss60": 826,
+    "rssAvg": 833.0,
+    "heap5": 17.2,
+    "heap60": 24.7,
+    "heapAvg": 23.7,
+    "cv5": 159.4,
+    "cv60": 172.5,
+    "cvAvg": 172.8,
+    "px5": 42.0,
+    "px60": 45.4,
+    "pxAvg": 45.5,
+    "live60": 241,
+    "p95Avg": 69.4,
+    "frames": 126433,
+    "peakPx": null,
+    "peakSize": null,
+    "peakCv": null,
+    "caps": null,
+    "capPx": null,
+    "zone": null,
+    "lapPeakPx": null
+   },
+   {
+    "run": "T970 cr-base",
+    "tree": "main a9190f9e(T926 켬 기본 · T947 끔) · 스냅샷 없음",
+    "rss5": 721.3,
+    "rss60": 861.2,
+    "rssAvg": 843.9,
+    "heap5": 18.2,
+    "heap60": 25,
+    "heapAvg": 24.0,
+    "cv5": 153.3,
+    "cv60": 175.4,
+    "cvAvg": 171.3,
+    "px5": 39.7,
+    "px60": 45.6,
+    "pxAvg": 44.5,
+    "live60": 244,
+    "p95Avg": 83.3,
+    "frames": 98570,
+    "peakPx": null,
+    "peakSize": null,
+    "peakCv": null,
+    "caps": null,
+    "capPx": null,
+    "zone": null,
+    "lapPeakPx": null
+   },
+   {
+    "run": "T970 cr-on",
+    "tree": "같은 트리 · T970_CUT_NEAR=1",
+    "rss5": 765.7,
+    "rss60": 835.7,
+    "rssAvg": 836.2,
+    "heap5": 18,
+    "heap60": 25.2,
+    "heapAvg": 24.0,
+    "cv5": 147.1,
+    "cv60": 161.8,
+    "cvAvg": 157.5,
+    "px5": 38.8,
+    "px60": 42.6,
+    "pxAvg": 41.5,
+    "live60": 230,
+    "p95Avg": 86.1,
+    "frames": 92076,
+    "peakPx": null,
+    "peakSize": null,
+    "peakCv": null,
+    "caps": null,
+    "capPx": null,
+    "zone": null,
+    "lapPeakPx": null
+   },
+   {
+    "run": "T981 cr-off",
+    "tree": "main 241e4407 + T960 + T970(켬 기본) · T981 끔",
+    "rss5": 781,
+    "rss60": 836.6,
+    "rssAvg": 826.0,
+    "heap5": 18,
+    "heap60": 25.2,
+    "heapAvg": 23.7,
+    "cv5": 156,
+    "cv60": 159.2,
+    "cvAvg": 162.6,
+    "px5": 40.5,
+    "px60": 41.3,
+    "pxAvg": 42.2,
+    "live60": 222,
+    "p95Avg": 77.8,
+    "frames": 104772,
+    "peakPx": null,
+    "peakSize": null,
+    "peakCv": null,
+    "caps": null,
+    "capPx": null,
+    "zone": null,
+    "lapPeakPx": null
+   },
+   {
+    "run": "T981 cr-on",
+    "tree": "같은 트리 · T981_MT_NEAR=1",
+    "rss5": 704.5,
+    "rss60": 840.3,
+    "rssAvg": 798.2,
+    "heap5": 18.6,
+    "heap60": 23.8,
+    "heapAvg": 23.9,
+    "cv5": 135.1,
+    "cv60": 135.1,
+    "cvAvg": 133.8,
+    "px5": 35.6,
+    "px60": 35.7,
+    "pxAvg": 35.3,
+    "live60": 212,
+    "p95Avg": 72.3,
+    "frames": 105501,
+    "peakPx": null,
+    "peakSize": null,
+    "peakCv": null,
+    "caps": null,
+    "capPx": null,
+    "zone": null,
+    "lapPeakPx": null
+   },
+   {
+    "run": "T997 cr-t997",
+    "tree": "T997 가지 기본(T926 · T947 · T970 · T981 켬 기본 · 열일곱째 판)",
+    "rss5": 765.7,
+    "rss60": 802.7,
+    "rssAvg": 800.9,
+    "heap5": 18.5,
+    "heap60": 25.7,
+    "heapAvg": 24.8,
+    "cv5": 134,
+    "cv60": 131.1,
+    "cvAvg": 134.4,
+    "px5": 35.3,
+    "px60": 34.6,
+    "pxAvg": 35.5,
+    "live60": 204,
+    "p95Avg": 73.6,
+    "frames": 103820,
+    "peakPx": 148545700,
+    "peakSize": 212,
+    "peakCv": 694,
+    "caps": 0,
+    "capPx": [],
+    "zone": 24,
+    "lapPeakPx": [
+     4494460,
+     134338420,
+     143101300,
+     144352100,
+     144352100,
+     134870840,
+     144352100,
+     134870840,
+     143101300,
+     134870840,
+     144352100,
+     134870840,
+     148545700
+    ]
+   }
+  ],
+  "webkit": [
+   {
+    "run": "T926 wk-h1",
+    "tree": "main 1732d93a · 손잡이 없음",
+    "rss5": 935,
+    "rss60": 1063,
+    "rssAvg": 1037.7,
+    "heap5": null,
+    "heap60": null,
+    "heapAvg": null,
+    "cv5": null,
+    "cv60": null,
+    "cvAvg": null,
+    "px5": 56.4,
+    "px60": 90.2,
+    "pxAvg": 89.1,
+    "live60": 370,
+    "p95Avg": 54.3,
+    "frames": 115321,
+    "peakPx": null,
+    "peakSize": null,
+    "peakCv": null,
+    "caps": null,
+    "capPx": null,
+    "zone": null,
+    "lapPeakPx": null
+   },
+   {
+    "run": "T926 wk-off2",
+    "tree": "T926 가지 끔",
+    "rss5": 998,
+    "rss60": 1063,
+    "rssAvg": 1036.3,
+    "heap5": null,
+    "heap60": null,
+    "heapAvg": null,
+    "cv5": null,
+    "cv60": null,
+    "cvAvg": null,
+    "px5": 51.3,
+    "px60": 90.4,
+    "pxAvg": 86.7,
+    "live60": 363,
+    "p95Avg": 60.5,
+    "frames": 101725,
+    "peakPx": null,
+    "peakSize": null,
+    "peakCv": null,
+    "caps": null,
+    "capPx": null,
+    "zone": null,
+    "lapPeakPx": null
+   },
+   {
+    "run": "T926 wk-on",
+    "tree": "T926_CELL_NEAR=1",
+    "rss5": 973,
+    "rss60": 980,
+    "rssAvg": 973.3,
+    "heap5": null,
+    "heap60": null,
+    "heapAvg": null,
+    "cv5": null,
+    "cv60": null,
+    "cvAvg": null,
+    "px5": 53.7,
+    "px60": 90.1,
+    "pxAvg": 85.8,
+    "live60": 359,
+    "p95Avg": 61.6,
+    "frames": 99064,
+    "peakPx": null,
+    "peakSize": null,
+    "peakCv": null,
+    "caps": null,
+    "capPx": null,
+    "zone": null,
+    "lapPeakPx": null
+   },
+   {
+    "run": "T997 wk-t997",
+    "tree": "T997 가지 기본(T926 · T947 · T970 · T981 켬 기본 · 열일곱째 판)",
+    "rss5": 909.4,
+    "rss60": 783.5,
+    "rssAvg": 887.0,
+    "heap5": null,
+    "heap60": null,
+    "heapAvg": null,
+    "cv5": null,
+    "cv60": null,
+    "cvAvg": null,
+    "px5": 36.1,
+    "px60": 36.1,
+    "pxAvg": 36.1,
+    "live60": 215,
+    "p95Avg": 73.7,
+    "frames": 79081,
+    "peakPx": 152746008,
+    "peakSize": 214,
+    "peakCv": 681,
+    "caps": 0,
+    "capPx": [],
+    "zone": 24,
+    "lapPeakPx": [
+     4494460,
+     146067204,
+     145396524,
+     151495208,
+     152746008,
+     145396524,
+     151495208,
+     134945508,
+     134065708,
+     144004744,
+     134945508,
+     134945508,
+     133341728
+    ]
+   }
+  ]
+ },
+ "runs": {
+  "cr-t997": {
+   "browser": "chromium",
+   "min": 60,
+   "knobs": [],
+   "welcome": {
+    "ui": {
+     "waterHalf": true,
+     "mtReadPx": true,
+     "mtBand": true,
+     "cutNear": true,
+     "mtNear": true
+    },
+    "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.0.0 Safari/537.36"
+   },
+   "errs": [
+    "console.error: Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "samples": [
+    {
+     "k": 0,
+     "atMin": 0.11,
+     "zone": "hanbando",
+     "frame": {
+      "n": 808,
+      "p50": 16.7,
+      "p95": 83.3,
+      "max": 916.7,
+      "sumMs": 23132
+     },
+     "live": 105,
+     "px": 13738605,
+     "held": [
+      105,
+      13738605
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_groundTiles": [
+       48,
+       6291456
+      ],
+      "_mt3Chunk": [
+       47,
+       4494460
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_mgl": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 55.2,
+     "px4MB": 52.4,
+     "rendRssMB": 465.3,
+     "rend": {
+      "malloc": 126.7,
+      "partition_alloc": 62.1,
+      "v8": 15.6,
+      "blink_gc": 6.3,
+      "cc": 9.1,
+      "discardable": 12,
+      "gpu": 9.1,
+      "shared_memory": 37.6
+     },
+     "gpuProc": {
+      "malloc": 105.3,
+      "gpu": 24.3,
+      "shared_memory": 26.3
+     },
+     "cdp": {
+      "usedGC": 15.2,
+      "nodes": 1716,
+      "listeners": 832
+     },
+     "made": 105,
+     "site": [
+      [
+       "_bakeGroundTile",
+       50
+      ],
+      [
+       "_mt3Bake",
+       47
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       0,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       12100,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       1,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       22139,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       24,
+       48,
+       6291456
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       2216,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       54,
+       47,
+       4494460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       40704,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       324,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       850,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       82,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       127,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       127,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       2,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       2,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       0,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       0,
+       0,
+       0
+      ],
+      "_cellBk": [
+       21,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 969,
+      "_entBoxes": 0,
+      "_ntLines": 1,
+      "_sfxTap": 0,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 0,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 0,
+      "mtNearCvN": 0,
+      "jobs": 0,
+      "boards": [
+       0,
+       0
+      ],
+      "bk": {
+       "n": 21,
+       "w": 12100,
+       "r": 22139
+      }
+     },
+     "own": {
+      "visits": 90304,
+      "ms": 81,
+      "missN": 142,
+      "budgetLeft": 4909696
+     },
+     "mtPeak": {
+      "maxPx": 4494460,
+      "maxSize": 54,
+      "maxCv": 47,
+      "caps": [],
+      "zone": 0,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 35,
+      "cells": 2491
+     }
+    },
+    {
+     "k": 1,
+     "atMin": 5,
+     "zone": "hanbando",
+     "frame": {
+      "n": 8767,
+      "p50": 33.3,
+      "p95": 83.3,
+      "max": 266.7,
+      "sumMs": 293572
+     },
+     "live": 210,
+     "px": 35335373,
+     "held": [
+      210,
+      35335373
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       76,
+       9961472
+      ],
+      "_mgl": [
+       2,
+       2359296
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 134,
+     "px4MB": 134.8,
+     "rendRssMB": 765.7,
+     "rend": {
+      "malloc": 206.2,
+      "partition_alloc": 68.8,
+      "v8": 19,
+      "blink_gc": 11.7,
+      "cc": 31.9,
+      "discardable": 32,
+      "gpu": 23.1,
+      "shared_memory": 74.6
+     },
+     "gpuProc": {
+      "malloc": 112.4,
+      "gpu": 44.8,
+      "shared_memory": 43.2
+     },
+     "cdp": {
+      "usedGC": 18.5,
+      "nodes": 1803,
+      "listeners": 832
+     },
+     "made": 1353,
+     "site": [
+      [
+       "_mt3Bake",
+       1001
+      ],
+      [
+       "_bakeGroundTile",
+       342
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       12100,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       22139,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       38,
+       76,
+       9961472
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       7944,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       13824,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       377,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       82,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       127,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       127,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       3,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       21,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2277,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 0,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 3,
+      "mtNearCvN": 0,
+      "jobs": 0,
+      "boards": [
+       0,
+       0
+      ],
+      "bk": {
+       "n": 21,
+       "w": 12100,
+       "r": 22139
+      }
+     },
+     "own": {
+      "visits": 119375,
+      "ms": 102,
+      "missN": 142,
+      "budgetLeft": 4880625
+     },
+     "mtPeak": {
+      "maxPx": 134338420,
+      "maxSize": 212,
+      "maxCv": 638,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 299,
+      "cells": 49335
+     }
+    },
+    {
+     "k": 2,
+     "atMin": 10,
+     "zone": "hanbando",
+     "frame": {
+      "n": 8148,
+      "p50": 33.3,
+      "p95": 83.3,
+      "max": 250.1,
+      "sumMs": 300005
+     },
+     "live": 210,
+     "px": 35630285,
+     "held": [
+      210,
+      35630285
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       76,
+       9961472
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 135.1,
+     "px4MB": 135.9,
+     "rendRssMB": 744.4,
+     "rend": {
+      "malloc": 207.7,
+      "partition_alloc": 71.7,
+      "v8": 22.1,
+      "blink_gc": 13.4,
+      "cc": 8.8,
+      "discardable": 28,
+      "gpu": 23.1,
+      "shared_memory": 70.6
+     },
+     "gpuProc": {
+      "malloc": 112.4,
+      "gpu": 44.9,
+      "shared_memory": 43.3
+     },
+     "cdp": {
+      "usedGC": 21.2,
+      "nodes": 1824,
+      "listeners": 832
+     },
+     "made": 2564,
+     "site": [
+      [
+       "_mt3Bake",
+       1922
+      ],
+      [
+       "_bakeGroundTile",
+       632
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       38,
+       76,
+       9961472
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       9990,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       43264,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1334,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       1000,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       1351,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       1351,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       1,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       4,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 0,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2424,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 0,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 6,
+      "mtNearCvN": 0,
+      "jobs": 0,
+      "boards": [
+       0,
+       0
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 135165,
+      "ms": 124,
+      "missN": 142,
+      "budgetLeft": 4864835
+     },
+     "mtPeak": {
+      "maxPx": 143101300,
+      "maxSize": 183,
+      "maxCv": 670,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 380,
+      "cells": 65959
+     }
+    },
+    {
+     "k": 3,
+     "atMin": 15,
+     "zone": "hanbando",
+     "frame": {
+      "n": 8059,
+      "p50": 33.3,
+      "p95": 83.3,
+      "max": 250.1,
+      "sumMs": 300005
+     },
+     "live": 212,
+     "px": 35663053,
+     "held": [
+      212,
+      35663053
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       76,
+       9961472
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 135.1,
+     "px4MB": 136,
+     "rendRssMB": 721.1,
+     "rend": {
+      "malloc": 208.2,
+      "partition_alloc": 72,
+      "v8": 21.5,
+      "blink_gc": 14.3,
+      "cc": 11.4,
+      "discardable": 28,
+      "gpu": 23.1,
+      "shared_memory": 70.6
+     },
+     "gpuProc": {
+      "malloc": 112.4,
+      "gpu": 44.8,
+      "shared_memory": 43.2
+     },
+     "cdp": {
+      "usedGC": 20.3,
+      "nodes": 1803,
+      "listeners": 832
+     },
+     "made": 3793,
+     "site": [
+      [
+       "_mt3Bake",
+       2868
+      ],
+      [
+       "_bakeGroundTile",
+       912
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       38,
+       76,
+       9961472
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       11242,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       17584,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1634,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       928,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       1255,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       1255,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       4,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2436,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 1,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 9,
+      "mtNearCvN": 2,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 137889,
+      "ms": 155,
+      "missN": 142,
+      "budgetLeft": 4862111
+     },
+     "mtPeak": {
+      "maxPx": 144352100,
+      "maxSize": 189,
+      "maxCv": 671,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 461,
+      "cells": 80869
+     }
+    },
+    {
+     "k": 4,
+     "atMin": 20,
+     "zone": "hanbando",
+     "frame": {
+      "n": 7491,
+      "p50": 33.3,
+      "p95": 83.4,
+      "max": 283.3,
+      "sumMs": 300005
+     },
+     "live": 212,
+     "px": 35663053,
+     "held": [
+      212,
+      35663053
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       76,
+       9961472
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 135.1,
+     "px4MB": 136,
+     "rendRssMB": 734.8,
+     "rend": {
+      "malloc": 210.9,
+      "partition_alloc": 72.4,
+      "v8": 22.9,
+      "blink_gc": 15.1,
+      "cc": 7.7,
+      "discardable": 28,
+      "gpu": 23.1,
+      "shared_memory": 70.6
+     },
+     "gpuProc": {
+      "malloc": 112.4,
+      "gpu": 44.8,
+      "shared_memory": 43.2
+     },
+     "cdp": {
+      "usedGC": 21.8,
+      "nodes": 1805,
+      "listeners": 832
+     },
+     "made": 5018,
+     "site": [
+      [
+       "_mt3Bake",
+       3792
+      ],
+      [
+       "_bakeGroundTile",
+       1212
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_mt3CutDraw",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       38,
+       76,
+       9961472
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       12599,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       43264,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1907,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       928,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       1255,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       1255,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       4,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2436,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 2,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 12,
+      "mtNearCvN": 4,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 141205,
+      "ms": 136,
+      "missN": 142,
+      "budgetLeft": 4858795
+     },
+     "mtPeak": {
+      "maxPx": 144352100,
+      "maxSize": 193,
+      "maxCv": 671,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 531,
+      "cells": 96140
+     }
+    },
+    {
+     "k": 5,
+     "atMin": 25,
+     "zone": "hanbando",
+     "frame": {
+      "n": 7507,
+      "p50": 33.3,
+      "p95": 83.3,
+      "max": 233.3,
+      "sumMs": 299988
+     },
+     "live": 204,
+     "px": 34614477,
+     "held": [
+      204,
+      34614477
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       68,
+       8912896
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 131.1,
+     "px4MB": 132,
+     "rendRssMB": 743.7,
+     "rend": {
+      "malloc": 203.3,
+      "partition_alloc": 74.4,
+      "v8": 23,
+      "blink_gc": 15.7,
+      "cc": 10.4,
+      "discardable": 28,
+      "gpu": 23.1,
+      "shared_memory": 70.6
+     },
+     "gpuProc": {
+      "malloc": 112.4,
+      "gpu": 44.8,
+      "shared_memory": 43.2
+     },
+     "cdp": {
+      "usedGC": 22.7,
+      "nodes": 1797,
+      "listeners": 832
+     },
+     "made": 6216,
+     "site": [
+      [
+       "_mt3Bake",
+       4704
+      ],
+      [
+       "_bakeGroundTile",
+       1498
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_mt3CutDraw",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       34,
+       68,
+       8912896
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       16669,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       21248,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       2274,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       928,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       1255,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       1255,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       5,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2463,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 2,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 17,
+      "mtNearCvN": 4,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 147863,
+      "ms": 133,
+      "missN": 142,
+      "budgetLeft": 4852137
+     },
+     "mtPeak": {
+      "maxPx": 134870840,
+      "maxSize": 190,
+      "maxCv": 619,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 628,
+      "cells": 114323
+     }
+    },
+    {
+     "k": 6,
+     "atMin": 30,
+     "zone": "hanbando",
+     "frame": {
+      "n": 9633,
+      "p50": 33.3,
+      "p95": 66.7,
+      "max": 266.6,
+      "sumMs": 300005
+     },
+     "live": 212,
+     "px": 35663053,
+     "held": [
+      212,
+      35663053
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       76,
+       9961472
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 135.1,
+     "px4MB": 136,
+     "rendRssMB": 766.4,
+     "rend": {
+      "malloc": 208.5,
+      "partition_alloc": 74.7,
+      "v8": 22.8,
+      "blink_gc": 16.7,
+      "cc": 12.2,
+      "discardable": 28,
+      "gpu": 23.1,
+      "shared_memory": 70.4
+     },
+     "gpuProc": {
+      "malloc": 112.4,
+      "gpu": 44.7,
+      "shared_memory": 43.1
+     },
+     "cdp": {
+      "usedGC": 21.8,
+      "nodes": 1805,
+      "listeners": 832
+     },
+     "made": 7431,
+     "site": [
+      [
+       "_mt3Bake",
+       5638
+      ],
+      [
+       "_bakeGroundTile",
+       1778
+      ],
+      [
+       "_mt3CutDraw",
+       3
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       12100,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       22139,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       38,
+       76,
+       9961472
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       16669,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       43264,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       676,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       928,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       1255,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       1255,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       5,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       21,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 0,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2463,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 3,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 20,
+      "mtNearCvN": 6,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 21,
+       "w": 12100,
+       "r": 22139
+      }
+     },
+     "own": {
+      "visits": 136413,
+      "ms": 139,
+      "missN": 142,
+      "budgetLeft": 4863587
+     },
+     "mtPeak": {
+      "maxPx": 144352100,
+      "maxSize": 192,
+      "maxCv": 671,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 699,
+      "cells": 129152
+     }
+    },
+    {
+     "k": 7,
+     "atMin": 35,
+     "zone": "hanbando",
+     "frame": {
+      "n": 9062,
+      "p50": 33.3,
+      "p95": 66.7,
+      "max": 300,
+      "sumMs": 300005
+     },
+     "live": 212,
+     "px": 35663053,
+     "held": [
+      212,
+      35663053
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       76,
+       9961472
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 135.1,
+     "px4MB": 136,
+     "rendRssMB": 819.3,
+     "rend": {
+      "malloc": 210.3,
+      "partition_alloc": 75,
+      "v8": 24.6,
+      "blink_gc": 17.4,
+      "cc": 10.5,
+      "discardable": 28,
+      "gpu": 23.1,
+      "shared_memory": 70.6
+     },
+     "gpuProc": {
+      "malloc": 112.4,
+      "gpu": 44.8,
+      "shared_memory": 43.2
+     },
+     "cdp": {
+      "usedGC": 23.9,
+      "nodes": 1826,
+      "listeners": 832
+     },
+     "made": 8627,
+     "site": [
+      [
+       "_mt3Bake",
+       6539
+      ],
+      [
+       "_bakeGroundTile",
+       2072
+      ],
+      [
+       "_mt3CutDraw",
+       4
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       38,
+       76,
+       9961472
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       16669,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       19968,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1522,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       1828,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       2455,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       2455,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       5,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2892,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 4,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 25,
+      "mtNearCvN": 8,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 158382,
+      "ms": 137,
+      "missN": 142,
+      "budgetLeft": 4841618
+     },
+     "mtPeak": {
+      "maxPx": 134870840,
+      "maxSize": 190,
+      "maxCv": 619,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 771,
+      "cells": 142712
+     }
+    },
+    {
+     "k": 8,
+     "atMin": 40,
+     "zone": "hanbando",
+     "frame": {
+      "n": 8642,
+      "p50": 33.3,
+      "p95": 66.7,
+      "max": 316.7,
+      "sumMs": 300005
+     },
+     "live": 212,
+     "px": 35663053,
+     "held": [
+      212,
+      35663053
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       76,
+       9961472
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 135.1,
+     "px4MB": 136,
+     "rendRssMB": 814.6,
+     "rend": {
+      "malloc": 207.5,
+      "partition_alloc": 75.4,
+      "v8": 26.5,
+      "blink_gc": 18.4,
+      "cc": 8.7,
+      "discardable": 28,
+      "gpu": 23.1,
+      "shared_memory": 70.6
+     },
+     "gpuProc": {
+      "malloc": 112.4,
+      "gpu": 44.8,
+      "shared_memory": 43.2
+     },
+     "cdp": {
+      "usedGC": 24.8,
+      "nodes": 1822,
+      "listeners": 832
+     },
+     "made": 9837,
+     "site": [
+      [
+       "_mt3Bake",
+       7460
+      ],
+      [
+       "_bakeGroundTile",
+       2360
+      ],
+      [
+       "_mt3CutDraw",
+       5
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       38,
+       76,
+       9961472
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       17275,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       43264,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1783,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       1774,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       2383,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       2383,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       5,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2892,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 5,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 28,
+      "mtNearCvN": 10,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 159364,
+      "ms": 210,
+      "missN": 142,
+      "budgetLeft": 4840636
+     },
+     "mtPeak": {
+      "maxPx": 143101300,
+      "maxSize": 191,
+      "maxCv": 670,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 844,
+      "cells": 157852
+     }
+    },
+    {
+     "k": 9,
+     "atMin": 45,
+     "zone": "hanbando",
+     "frame": {
+      "n": 9067,
+      "p50": 33.3,
+      "p95": 66.7,
+      "max": 333.3,
+      "sumMs": 299988
+     },
+     "live": 212,
+     "px": 35663053,
+     "held": [
+      212,
+      35663053
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       76,
+       9961472
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 135.1,
+     "px4MB": 136,
+     "rendRssMB": 772.8,
+     "rend": {
+      "malloc": 210.8,
+      "partition_alloc": 75.3,
+      "v8": 25.5,
+      "blink_gc": 19,
+      "cc": 10.6,
+      "discardable": 28,
+      "gpu": 23.1,
+      "shared_memory": 70.6
+     },
+     "gpuProc": {
+      "malloc": 112.5,
+      "gpu": 44.8,
+      "shared_memory": 43.2
+     },
+     "cdp": {
+      "usedGC": 24.7,
+      "nodes": 1826,
+      "listeners": 832
+     },
+     "made": 11023,
+     "site": [
+      [
+       "_mt3Bake",
+       8367
+      ],
+      [
+       "_bakeGroundTile",
+       2638
+      ],
+      [
+       "_mt3CutDraw",
+       6
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       38,
+       76,
+       9961472
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       17275,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       17632,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       2043,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       1774,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       2383,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       2383,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       5,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2892,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 6,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 33,
+      "mtNearCvN": 12,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 160727,
+      "ms": 214,
+      "missN": 142,
+      "budgetLeft": 4839273
+     },
+     "mtPeak": {
+      "maxPx": 134870840,
+      "maxSize": 190,
+      "maxCv": 619,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 918,
+      "cells": 173133
+     }
+    },
+    {
+     "k": 10,
+     "atMin": 50,
+     "zone": "hanbando",
+     "frame": {
+      "n": 9214,
+      "p50": 33.3,
+      "p95": 66.7,
+      "max": 266.8,
+      "sumMs": 299988
+     },
+     "live": 212,
+     "px": 35663053,
+     "held": [
+      212,
+      35663053
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       76,
+       9961472
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 135.1,
+     "px4MB": 136,
+     "rendRssMB": 791,
+     "rend": {
+      "malloc": 211.3,
+      "partition_alloc": 75.7,
+      "v8": 26.6,
+      "blink_gc": 19.6,
+      "cc": 31.6,
+      "discardable": 36,
+      "gpu": 23.1,
+      "shared_memory": 78.6
+     },
+     "gpuProc": {
+      "malloc": 112.4,
+      "gpu": 44.8,
+      "shared_memory": 43.2
+     },
+     "cdp": {
+      "usedGC": 25.5,
+      "nodes": 1805,
+      "listeners": 832
+     },
+     "made": 12250,
+     "site": [
+      [
+       "_mt3Bake",
+       9303
+      ],
+      [
+       "_bakeGroundTile",
+       2928
+      ],
+      [
+       "_mt3CutDraw",
+       7
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       38,
+       76,
+       9961472
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       17275,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       43264,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       2316,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       1774,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       2383,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       2383,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       5,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2892,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 7,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 36,
+      "mtNearCvN": 14,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 162104,
+      "ms": 181,
+      "missN": 142,
+      "budgetLeft": 4837896
+     },
+     "mtPeak": {
+      "maxPx": 144352100,
+      "maxSize": 193,
+      "maxCv": 671,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 984,
+      "cells": 186108
+     }
+    },
+    {
+     "k": 11,
+     "atMin": 55,
+     "zone": "hanbando",
+     "frame": {
+      "n": 8790,
+      "p50": 33.3,
+      "p95": 66.7,
+      "max": 250,
+      "sumMs": 300021
+     },
+     "live": 212,
+     "px": 35663053,
+     "held": [
+      212,
+      35663053
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       76,
+       9961472
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 135.1,
+     "px4MB": 136,
+     "rendRssMB": 805.3,
+     "rend": {
+      "malloc": 211.7,
+      "partition_alloc": 76.1,
+      "v8": 25.1,
+      "blink_gc": 20.5,
+      "cc": 18.2,
+      "discardable": 36,
+      "gpu": 23.1,
+      "shared_memory": 78.6
+     },
+     "gpuProc": {
+      "malloc": 112.4,
+      "gpu": 44.8,
+      "shared_memory": 43.2
+     },
+     "cdp": {
+      "usedGC": 24.1,
+      "nodes": 1826,
+      "listeners": 832
+     },
+     "made": 13457,
+     "site": [
+      [
+       "_mt3Bake",
+       10212
+      ],
+      [
+       "_bakeGroundTile",
+       3224
+      ],
+      [
+       "_mt3CutDraw",
+       9
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       12100,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       22139,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       38,
+       76,
+       9961472
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       17276,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       17632,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       676,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       1774,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       2383,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       2383,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       5,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       21,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2892,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 9,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 41,
+      "mtNearCvN": 18,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 21,
+       "w": 12100,
+       "r": 22139
+      }
+     },
+     "own": {
+      "visits": 153501,
+      "ms": 148,
+      "missN": 142,
+      "budgetLeft": 4846499
+     },
+     "mtPeak": {
+      "maxPx": 134870840,
+      "maxSize": 190,
+      "maxCv": 619,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 1039,
+      "cells": 191426
+     }
+    },
+    {
+     "k": 12,
+     "atMin": 60,
+     "zone": "hanbando",
+     "frame": {
+      "n": 9440,
+      "p50": 33.3,
+      "p95": 66.7,
+      "max": 266.6,
+      "sumMs": 299988
+     },
+     "live": 204,
+     "px": 34614477,
+     "held": [
+      204,
+      34614477
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       122,
+       19794204
+      ],
+      "_groundTiles": [
+       68,
+       8912896
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_gtMaskCv": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_grassBlade": [
+       1,
+       131072
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": 131.1,
+     "px4MB": 132,
+     "rendRssMB": 802.7,
+     "rend": {
+      "malloc": 206.6,
+      "partition_alloc": 76.2,
+      "v8": 26.6,
+      "blink_gc": 21,
+      "cc": 10.4,
+      "discardable": 32,
+      "gpu": 23.1,
+      "shared_memory": 74.6
+     },
+     "gpuProc": {
+      "malloc": 112.4,
+      "gpu": 44.8,
+      "shared_memory": 43.2
+     },
+     "cdp": {
+      "usedGC": 25.7,
+      "nodes": 1795,
+      "listeners": 832
+     },
+     "made": 14681,
+     "site": [
+      [
+       "_mt3Bake",
+       11163
+      ],
+      [
+       "_bakeGroundTile",
+       3496
+      ],
+      [
+       "_mt3CutDraw",
+       10
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_gtMask",
+       1
+      ],
+      [
+       "_grassSplit",
+       1
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       34,
+       68,
+       8912896
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       17276,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       39,
+       122,
+       19794204
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       43264,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1497,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       1756,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       2359,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       2359,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       5,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       1,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       1,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 0,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2895,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 7,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 10,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 44,
+      "mtNearCvN": 20,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 158194,
+      "ms": 193,
+      "missN": 142,
+      "budgetLeft": 4841806
+     },
+     "mtPeak": {
+      "maxPx": 148545700,
+      "maxSize": 192,
+      "maxCv": 694,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 1118,
+      "cells": 204555
+     }
+    }
+   ],
+   "byName": [
+    {
+     "name": "_mgl",
+     "n5": 2,
+     "px5": 2359296,
+     "n60": 2,
+     "px60": 2654208,
+     "max": 2654208,
+     "maxAt": 10,
+     "d": 294912
+    },
+    {
+     "name": "_mtMaskCv",
+     "n5": 0,
+     "px5": 0,
+     "n60": 1,
+     "px60": 16384,
+     "max": 16384,
+     "maxAt": 15,
+     "d": 16384
+    },
+    {
+     "name": "_mtStripCv",
+     "n5": 0,
+     "px5": 0,
+     "n60": 1,
+     "px60": 16384,
+     "max": 16384,
+     "maxAt": 15,
+     "d": 16384
+    },
+    {
+     "name": "_mt3Chunk",
+     "n5": 122,
+     "px5": 19794204,
+     "n60": 122,
+     "px60": 19794204,
+     "max": 19794204,
+     "maxAt": 5,
+     "d": 0
+    },
+    {
+     "name": "window._shadowMask",
+     "n5": 1,
+     "px5": 1041344,
+     "n60": 1,
+     "px60": 1041344,
+     "max": 1041344,
+     "maxAt": 0.11,
+     "d": 0
+    },
+    {
+     "name": "_mtFadeCv",
+     "n5": 1,
+     "px5": 792000,
+     "n60": 1,
+     "px60": 792000,
+     "max": 792000,
+     "maxAt": 5,
+     "d": 0
+    },
+    {
+     "name": "_gtMaskCv",
+     "n5": 1,
+     "px5": 524288,
+     "n60": 1,
+     "px60": 524288,
+     "max": 524288,
+     "maxAt": 0.11,
+     "d": 0
+    },
+    {
+     "name": "_wgl",
+     "n5": 1,
+     "px5": 198000,
+     "n60": 1,
+     "px60": 198000,
+     "max": 198000,
+     "maxAt": 0.11,
+     "d": 0
+    },
+    {
+     "name": "_grassBlade",
+     "n5": 1,
+     "px5": 131072,
+     "n60": 1,
+     "px60": 131072,
+     "max": 131072,
+     "maxAt": 0.11,
+     "d": 0
+    },
+    {
+     "name": "_gtCov",
+     "n5": 1,
+     "px5": 131072,
+     "n60": 1,
+     "px60": 131072,
+     "max": 131072,
+     "maxAt": 0.11,
+     "d": 0
+    },
+    {
+     "name": "_gtTmp",
+     "n5": 1,
+     "px5": 131072,
+     "n60": 1,
+     "px60": 131072,
+     "max": 131072,
+     "maxAt": 0.11,
+     "d": 0
+    },
+    {
+     "name": "_shTmp",
+     "n5": 1,
+     "px5": 131072,
+     "n60": 1,
+     "px60": 131072,
+     "max": 131072,
+     "maxAt": 0.11,
+     "d": 0
+    },
+    {
+     "name": "_shMaskCache",
+     "n5": 1,
+     "px5": 131072,
+     "n60": 1,
+     "px60": 131072,
+     "max": 131072,
+     "maxAt": 0.11,
+     "d": 0
+    },
+    {
+     "name": "window._fogGridCv",
+     "n5": 1,
+     "px5": 9409,
+     "n60": 1,
+     "px60": 9409,
+     "max": 9409,
+     "maxAt": 0.11,
+     "d": 0
+    },
+    {
+     "name": "_groundTiles",
+     "n5": 76,
+     "px5": 9961472,
+     "n60": 68,
+     "px60": 8912896,
+     "max": 9961472,
+     "maxAt": 5,
+     "d": -1048576
+    }
+   ],
+   "tree": "가지 batch/mt-near-on-1029(main 525a2bb2 + three-on-1028(T974 · 열일곱째 판) + cut-near-on-1028(T981) · T981 켬 기본)",
+   "knob": "기본(env 없음 · welcome {\"waterHalf\": true, \"mtReadPx\": true, \"mtBand\": true, \"cutNear\": true, \"mtNear\": true})"
+  },
+  "wk-t997": {
+   "browser": "webkit",
+   "min": 60,
+   "knobs": [],
+   "welcome": {
+    "ui": {
+     "waterHalf": true,
+     "mtReadPx": true,
+     "mtBand": true,
+     "cutNear": true,
+     "mtNear": true
+    },
+    "ua": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/60.5 Safari/605.1.15"
+   },
+   "errs": [],
+   "samples": [
+    {
+     "k": 0,
+     "atMin": 0.1,
+     "zone": "hanbando",
+     "frame": {
+      "n": 812,
+      "p50": 16,
+      "p95": 71,
+      "max": 879,
+      "sumMs": 21596
+     },
+     "live": 103,
+     "px": 13083245,
+     "held": [
+      103,
+      13083245
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_groundTiles": [
+       48,
+       6291456
+      ],
+      "_mt3Chunk": [
+       47,
+       4494460
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mgl": [
+       1,
+       524288
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 49.9,
+     "rendRssMB": 557.5,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 103,
+     "site": [
+      [
+       "_bakeGroundTile",
+       50
+      ],
+      [
+       "_mt3Bake",
+       47
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       0,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       12100,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       1,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       22139,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       24,
+       48,
+       6291456
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       2216,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       54,
+       47,
+       4494460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       40704,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       325,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       850,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       82,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       127,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       127,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       2,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       2,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       0,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       0,
+       0,
+       0
+      ],
+      "_cellBk": [
+       21,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 969,
+      "_entBoxes": 0,
+      "_ntLines": 1,
+      "_sfxTap": 0,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 0,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 0,
+      "mtNearCvN": 0,
+      "jobs": 0,
+      "boards": [
+       0,
+       0
+      ],
+      "bk": {
+       "n": 21,
+       "w": 12100,
+       "r": 22139
+      }
+     },
+     "own": {
+      "visits": 90291,
+      "ms": 139,
+      "missN": 142,
+      "budgetLeft": 4909709
+     },
+     "mtPeak": {
+      "maxPx": 4494460,
+      "maxSize": 54,
+      "maxCv": 47,
+      "caps": [],
+      "zone": 0,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 35,
+      "cells": 2491
+     }
+    },
+    {
+     "k": 1,
+     "atMin": 5,
+     "zone": "hanbando",
+     "frame": {
+      "n": 7263,
+      "p50": 36,
+      "p95": 69,
+      "max": 255,
+      "sumMs": 293975
+     },
+     "live": 215,
+     "px": 36115669,
+     "held": [
+      215,
+      36115669
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       117,
+       19591460
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 137.8,
+     "rendRssMB": 909.4,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 1496,
+     "site": [
+      [
+       "_mt3Bake",
+       1122
+      ],
+      [
+       "_bakeGroundTile",
+       348
+      ],
+      [
+       "_mt3CutDraw",
+       16
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       12100,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       22139,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       7942,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       36,
+       117,
+       19591460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       18432,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       418,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       82,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       127,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       127,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       4,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       21,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2283,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 10,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 9,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 3,
+      "mtNearCvN": 2,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 21,
+       "w": 12100,
+       "r": 22139
+      }
+     },
+     "own": {
+      "visits": 119501,
+      "ms": 139,
+      "missN": 142,
+      "budgetLeft": 4880499
+     },
+     "mtPeak": {
+      "maxPx": 146067204,
+      "maxSize": 214,
+      "maxCv": 668,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 288,
+      "cells": 48646
+     }
+    },
+    {
+     "k": 2,
+     "atMin": 10,
+     "zone": "hanbando",
+     "frame": {
+      "n": 6991,
+      "p50": 39,
+      "p95": 70,
+      "max": 250,
+      "sumMs": 300010
+     },
+     "live": 215,
+     "px": 36115669,
+     "held": [
+      215,
+      36115669
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       117,
+       19591460
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 137.8,
+     "rendRssMB": 922.2,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 2779,
+     "site": [
+      [
+       "_mt3Bake",
+       2108
+      ],
+      [
+       "_bakeGroundTile",
+       628
+      ],
+      [
+       "_mt3CutDraw",
+       33
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       9991,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       36,
+       117,
+       19591460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       47616,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1361,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       82,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       127,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       127,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       5,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2283,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 10,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 19,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 6,
+      "mtNearCvN": 6,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 128105,
+      "ms": 181,
+      "missN": 142,
+      "budgetLeft": 4871895
+     },
+     "mtPeak": {
+      "maxPx": 145396524,
+      "maxSize": 183,
+      "maxCv": 648,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 369,
+      "cells": 65188
+     }
+    },
+    {
+     "k": 3,
+     "atMin": 15,
+     "zone": "hanbando",
+     "frame": {
+      "n": 7188,
+      "p50": 38,
+      "p95": 67,
+      "max": 253,
+      "sumMs": 299975
+     },
+     "live": 240,
+     "px": 42471781,
+     "held": [
+      240,
+      42471781
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       142,
+       25947572
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 162,
+     "rendRssMB": 967.8,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 4063,
+     "site": [
+      [
+       "_mt3Bake",
+       3105
+      ],
+      [
+       "_bakeGroundTile",
+       898
+      ],
+      [
+       "_mt3CutDraw",
+       50
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       11242,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       37,
+       142,
+       25947572
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       34560,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1662,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       82,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       127,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       127,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       5,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2283,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 10,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 29,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 8,
+      "mtNearCvN": 10,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 132032,
+      "ms": 190,
+      "missN": 142,
+      "budgetLeft": 4867968
+     },
+     "mtPeak": {
+      "maxPx": 151495208,
+      "maxSize": 190,
+      "maxCv": 680,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 471,
+      "cells": 85109
+     }
+    },
+    {
+     "k": 4,
+     "atMin": 20,
+     "zone": "hanbando",
+     "frame": {
+      "n": 6613,
+      "p50": 42,
+      "p95": 69,
+      "max": 264,
+      "sumMs": 300024
+     },
+     "live": 215,
+     "px": 36115669,
+     "held": [
+      215,
+      36115669
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       117,
+       19591460
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 137.8,
+     "rendRssMB": 964.8,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 5356,
+     "site": [
+      [
+       "_mt3Bake",
+       4081
+      ],
+      [
+       "_bakeGroundTile",
+       1198
+      ],
+      [
+       "_mt3CutDraw",
+       67
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       12599,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       36,
+       117,
+       19591460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       19023,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1935,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       82,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       127,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       127,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       5,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 2,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2286,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 10,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 39,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 12,
+      "mtNearCvN": 14,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 135146,
+      "ms": 215,
+      "missN": 142,
+      "budgetLeft": 4864854
+     },
+     "mtPeak": {
+      "maxPx": 152746008,
+      "maxSize": 195,
+      "maxCv": 681,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 541,
+      "cells": 100377
+     }
+    },
+    {
+     "k": 5,
+     "atMin": 25,
+     "zone": "hanbando",
+     "frame": {
+      "n": 6266,
+      "p50": 45,
+      "p95": 74,
+      "max": 321,
+      "sumMs": 299990
+     },
+     "live": 215,
+     "px": 36115669,
+     "held": [
+      215,
+      36115669
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       117,
+       19591460
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 137.8,
+     "rendRssMB": 1017.7,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 6628,
+     "site": [
+      [
+       "_mt3Bake",
+       5066
+      ],
+      [
+       "_bakeGroundTile",
+       1472
+      ],
+      [
+       "_mt3CutDraw",
+       80
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       16445,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       36,
+       117,
+       19591460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       55808,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       2289,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       946,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       1279,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       1279,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       6,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2430,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 10,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 47,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 16,
+      "mtNearCvN": 16,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 147965,
+      "ms": 211,
+      "missN": 142,
+      "budgetLeft": 4852035
+     },
+     "mtPeak": {
+      "maxPx": 145396524,
+      "maxSize": 191,
+      "maxCv": 648,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 631,
+      "cells": 117513
+     }
+    },
+    {
+     "k": 6,
+     "atMin": 30,
+     "zone": "hanbando",
+     "frame": {
+      "n": 6996,
+      "p50": 40,
+      "p95": 69,
+      "max": 264,
+      "sumMs": 299988
+     },
+     "live": 215,
+     "px": 36115669,
+     "held": [
+      215,
+      36115669
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       117,
+       19591460
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 137.8,
+     "rendRssMB": 964.8,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 7902,
+     "site": [
+      [
+       "_mt3Bake",
+       6053
+      ],
+      [
+       "_bakeGroundTile",
+       1742
+      ],
+      [
+       "_mt3CutDraw",
+       97
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       12100,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       22139,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       16445,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       36,
+       117,
+       19591460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       38381,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       718,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       946,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       1279,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       1279,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       6,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       21,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2433,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 17,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 57,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 19,
+      "mtNearCvN": 20,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 21,
+       "w": 12100,
+       "r": 22139
+      }
+     },
+     "own": {
+      "visits": 136538,
+      "ms": 272,
+      "missN": 142,
+      "budgetLeft": 4863462
+     },
+     "mtPeak": {
+      "maxPx": 151495208,
+      "maxSize": 193,
+      "maxCv": 680,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 736,
+      "cells": 138275
+     }
+    },
+    {
+     "k": 7,
+     "atMin": 35,
+     "zone": "hanbando",
+     "frame": {
+      "n": 6647,
+      "p50": 42,
+      "p95": 75,
+      "max": 321,
+      "sumMs": 299993
+     },
+     "live": 215,
+     "px": 36115669,
+     "held": [
+      215,
+      36115669
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       117,
+       19591460
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 137.8,
+     "rendRssMB": 1016.7,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 9152,
+     "site": [
+      [
+       "_mt3Bake",
+       7011
+      ],
+      [
+       "_bakeGroundTile",
+       2018
+      ],
+      [
+       "_mt3CutDraw",
+       113
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       16445,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       36,
+       117,
+       19591460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       18432,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1538,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       946,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       1279,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       1279,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       6,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2430,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 20,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 67,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 24,
+      "mtNearCvN": 24,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 141152,
+      "ms": 292,
+      "missN": 142,
+      "budgetLeft": 4858848
+     },
+     "mtPeak": {
+      "maxPx": 134945508,
+      "maxSize": 189,
+      "maxCv": 616,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 808,
+      "cells": 151830
+     }
+    },
+    {
+     "k": 8,
+     "atMin": 40,
+     "zone": "hanbando",
+     "frame": {
+      "n": 6556,
+      "p50": 42,
+      "p95": 77,
+      "max": 340,
+      "sumMs": 300029
+     },
+     "live": 215,
+     "px": 36115669,
+     "held": [
+      215,
+      36115669
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       117,
+       19591460
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 137.8,
+     "rendRssMB": 982.1,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 10400,
+     "site": [
+      [
+       "_mt3Bake",
+       7955
+      ],
+      [
+       "_bakeGroundTile",
+       2306
+      ],
+      [
+       "_mt3CutDraw",
+       129
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       17049,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       36,
+       117,
+       19591460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       47616,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1798,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       946,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       1279,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       1279,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       6,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2430,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 20,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 76,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 28,
+      "mtNearCvN": 26,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 143388,
+      "ms": 231,
+      "missN": 142,
+      "budgetLeft": 4856612
+     },
+     "mtPeak": {
+      "maxPx": 134065708,
+      "maxSize": 188,
+      "maxCv": 615,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 881,
+      "cells": 166848
+     }
+    },
+    {
+     "k": 9,
+     "atMin": 45,
+     "zone": "hanbando",
+     "frame": {
+      "n": 6405,
+      "p50": 43,
+      "p95": 76,
+      "max": 334,
+      "sumMs": 299990
+     },
+     "live": 215,
+     "px": 36115669,
+     "held": [
+      215,
+      36115669
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       117,
+       19591460
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 137.8,
+     "rendRssMB": 785.8,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 11639,
+     "site": [
+      [
+       "_mt3Bake",
+       8911
+      ],
+      [
+       "_bakeGroundTile",
+       2574
+      ],
+      [
+       "_mt3CutDraw",
+       144
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       17049,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       36,
+       117,
+       19591460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       21440,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       2058,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       1702,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       2287,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       2287,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       6,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2886,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 20,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 85,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 32,
+      "mtNearCvN": 28,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 159245,
+      "ms": 182,
+      "missN": 142,
+      "budgetLeft": 4840755
+     },
+     "mtPeak": {
+      "maxPx": 144004744,
+      "maxSize": 189,
+      "maxCv": 646,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 951,
+      "cells": 180926
+     }
+    },
+    {
+     "k": 10,
+     "atMin": 50,
+     "zone": "hanbando",
+     "frame": {
+      "n": 6154,
+      "p50": 45,
+      "p95": 78,
+      "max": 265,
+      "sumMs": 300042
+     },
+     "live": 215,
+     "px": 36115669,
+     "held": [
+      215,
+      36115669
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       117,
+       19591460
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 137.8,
+     "rendRssMB": 1000.8,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 12889,
+     "site": [
+      [
+       "_mt3Bake",
+       9866
+      ],
+      [
+       "_bakeGroundTile",
+       2854
+      ],
+      [
+       "_mt3CutDraw",
+       159
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       17049,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       36,
+       117,
+       19591460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       47648,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       2331,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       1810,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       2431,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       2431,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       6,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 2,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2886,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 20,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 94,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 36,
+      "mtNearCvN": 30,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 162345,
+      "ms": 265,
+      "missN": 142,
+      "budgetLeft": 4837655
+     },
+     "mtPeak": {
+      "maxPx": 134945508,
+      "maxSize": 190,
+      "maxCv": 616,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 1017,
+      "cells": 193908
+     }
+    },
+    {
+     "k": 11,
+     "atMin": 55,
+     "zone": "hanbando",
+     "frame": {
+      "n": 5976,
+      "p50": 46,
+      "p95": 79,
+      "max": 314,
+      "sumMs": 299969
+     },
+     "live": 215,
+     "px": 36115669,
+     "held": [
+      215,
+      36115669
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       117,
+       19591460
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 137.8,
+     "rendRssMB": 752.9,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 14121,
+     "site": [
+      [
+       "_mt3Bake",
+       10807
+      ],
+      [
+       "_bakeGroundTile",
+       3130
+      ],
+      [
+       "_mt3CutDraw",
+       174
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       12100,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       22139,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       17049,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       36,
+       117,
+       19591460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       31232,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       717,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       1810,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       2431,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       2431,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       6,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       21,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2886,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 20,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 103,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 41,
+      "mtNearCvN": 32,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 21,
+       "w": 12100,
+       "r": 22139
+      }
+     },
+     "own": {
+      "visits": 153666,
+      "ms": 196,
+      "missN": 142,
+      "budgetLeft": 4846334
+     },
+     "mtPeak": {
+      "maxPx": 134945508,
+      "maxSize": 189,
+      "maxCv": 616,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 1083,
+      "cells": 203410
+     }
+    },
+    {
+     "k": 12,
+     "atMin": 60,
+     "zone": "hanbando",
+     "frame": {
+      "n": 6026,
+      "p50": 46,
+      "p95": 81,
+      "max": 295,
+      "sumMs": 299984
+     },
+     "live": 215,
+     "px": 36115669,
+     "held": [
+      215,
+      36115669
+     ],
+     "unheld": [
+      0,
+      0
+     ],
+     "by": {
+      "_mt3Chunk": [
+       117,
+       19591460
+      ],
+      "_groundTiles": [
+       86,
+       11272192
+      ],
+      "_mgl": [
+       2,
+       2654208
+      ],
+      "window._shadowMask": [
+       1,
+       1041344
+      ],
+      "_mtFadeCv": [
+       1,
+       792000
+      ],
+      "_wgl": [
+       1,
+       198000
+      ],
+      "_gtCov": [
+       1,
+       131072
+      ],
+      "_gtTmp": [
+       1,
+       131072
+      ],
+      "_shTmp": [
+       1,
+       131072
+      ],
+      "_shMaskCache": [
+       1,
+       131072
+      ],
+      "_mtMaskCv": [
+       1,
+       16384
+      ],
+      "_mtStripCv": [
+       1,
+       16384
+      ],
+      "window._fogGridCv": [
+       1,
+       9409
+      ]
+     },
+     "unk": [],
+     "cvMB": null,
+     "px4MB": 137.8,
+     "rendRssMB": 783.5,
+     "rend": {},
+     "gpuProc": {},
+     "cdp": null,
+     "made": 15320,
+     "site": [
+      [
+       "_mt3Bake",
+       11731
+      ],
+      [
+       "_bakeGroundTile",
+       3390
+      ],
+      [
+       "_mt3CutDraw",
+       189
+      ],
+      [
+       "render",
+       2
+      ],
+      [
+       "_waterInit",
+       1
+      ],
+      [
+       "_shoreMarginBake",
+       1
+      ],
+      [
+       "_shBladeMask",
+       1
+      ],
+      [
+       "_mt3GlInit",
+       1
+      ],
+      [
+       "_mt3GlDraw",
+       1
+      ],
+      [
+       "_mtFadeLayer",
+       1
+      ]
+     ],
+     "cache": {
+      "_tintBlendCache": [
+       1,
+       0,
+       0
+      ],
+      "_waterCellCache": [
+       6400,
+       0,
+       0
+      ],
+      "_terrainAppliedZones": [
+       2,
+       0,
+       0
+      ],
+      "_streamZ": [
+       2,
+       0,
+       0
+      ],
+      "_rockCellCache": [
+       21504,
+       0,
+       0
+      ],
+      "_groundTiles": [
+       43,
+       86,
+       11272192
+      ],
+      "_shoreTiles": [
+       0,
+       0,
+       0
+      ],
+      "_flowCellCache": [
+       17049,
+       0,
+       0
+      ],
+      "_flowCellOld": [
+       0,
+       0,
+       0
+      ],
+      "_mtSegCache": [
+       0,
+       0,
+       0
+      ],
+      "_mtDestroyed": [
+       0,
+       0,
+       0
+      ],
+      "_mtChunk": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Chunk": [
+       36,
+       117,
+       19591460
+      ],
+      "_mt3Dirty": [
+       0,
+       0,
+       0
+      ],
+      "_mt3RockC": [
+       0,
+       0,
+       0
+      ],
+      "_mt3Rock0C": [
+       9984,
+       0,
+       0
+      ],
+      "_mt3Jobs": [
+       0,
+       0,
+       0
+      ],
+      "_mtTint": [
+       0,
+       0,
+       0
+      ],
+      "_mtAlphaMap": [
+       88,
+       0,
+       0
+      ],
+      "_natChunk": [
+       1525,
+       0,
+       0
+      ],
+      "_bridgeAbs": [
+       1594,
+       0,
+       0
+      ],
+      "_ditchAbs": [
+       698,
+       0,
+       0
+      ],
+      "_roofBakeCache": [
+       0,
+       0,
+       0
+      ],
+      "_roomRectCache": [
+       0,
+       0,
+       0
+      ],
+      "clWallCellMap": [
+       1792,
+       0,
+       0
+      ],
+      "cellRoomCache": [
+       0,
+       0,
+       0
+      ],
+      "srvRooms": [
+       0,
+       0,
+       0
+      ],
+      "clFloorCellMap": [
+       2407,
+       0,
+       0
+      ],
+      "clFenceCellMap": [
+       0,
+       0,
+       0
+      ],
+      "clMaxFloorMap": [
+       2407,
+       0,
+       0
+      ],
+      "clStairCellCache": [
+       0,
+       0,
+       0
+      ],
+      "speechBubbles": [
+       0,
+       0,
+       0
+      ],
+      "villageBubbles": [
+       0,
+       0,
+       0
+      ],
+      "evBriefedDay": [
+       5,
+       0,
+       0
+      ],
+      "conns": [
+       1,
+       0,
+       0
+      ],
+      "warBattles": [
+       0,
+       0,
+       0
+      ],
+      "downStates": [
+       0,
+       0,
+       0
+      ],
+      "_centralWait": [
+       0,
+       0,
+       0
+      ],
+      "_lastCloseAt": [
+       1,
+       0,
+       0
+      ],
+      "_farStore": [
+       0,
+       0,
+       0
+      ],
+      "_farSeenAt": [
+       0,
+       0,
+       0
+      ],
+      "_spriteCache": [
+       31,
+       31,
+       9136149
+      ],
+      "_charImg": [
+       0,
+       0,
+       0
+      ],
+      "_charAnim": [
+       0,
+       0,
+       0
+      ],
+      "_carriedBy": [
+       0,
+       0,
+       0
+      ],
+      "_sfxBuf": [
+       6,
+       0,
+       0
+      ],
+      "_sfxLive": [
+       2,
+       0,
+       0
+      ],
+      "_sfxLoops": [
+       0,
+       0,
+       0
+      ],
+      "_sfxLast": [
+       2,
+       0,
+       0
+      ],
+      "_cellBk": [
+       18,
+       0,
+       0
+      ]
+     },
+     "arr": {
+      "chatLog": 0,
+      "_arrowFx": 0,
+      "pendingInputs": 1,
+      "_mtSplitSegs": 0,
+      "_mtCutHold": 0,
+      "_natLastPr": 19,
+      "_gateDrawn": 2886,
+      "_entBoxes": 0,
+      "_ntLines": 0,
+      "_sfxTap": 20,
+      "hoverList": 0,
+      "TREE_SPRITES": 12
+     },
+     "knob": {
+      "cellNear": true,
+      "cutNear": true,
+      "cutNearN": 112,
+      "cutHold": 0,
+      "mtNear": true,
+      "mtNearJobN": 45,
+      "mtNearCvN": 34,
+      "jobs": 0,
+      "boards": [
+       16384,
+       16384
+      ],
+      "bk": {
+       "n": 18,
+       "w": 6400,
+       "r": 21504
+      }
+     },
+     "own": {
+      "visits": 158173,
+      "ms": 240,
+      "missN": 142,
+      "budgetLeft": 4841827
+     },
+     "mtPeak": {
+      "maxPx": 133341728,
+      "maxSize": 186,
+      "maxCv": 614,
+      "caps": [],
+      "zone": 2,
+      "other": 0
+     },
+     "seen": {
+      "chunks": 1153,
+      "cells": 215893
+     }
+    }
+   ],
+   "byName": [
+    {
+     "name": "_mt3Chunk",
+     "n5": 117,
+     "px5": 19591460,
+     "n60": 117,
+     "px60": 19591460,
+     "max": 25947572,
+     "maxAt": 15,
+     "d": 0
+    },
+    {
+     "name": "_groundTiles",
+     "n5": 86,
+     "px5": 11272192,
+     "n60": 86,
+     "px60": 11272192,
+     "max": 11272192,
+     "maxAt": 5,
+     "d": 0
+    },
+    {
+     "name": "_mgl",
+     "n5": 2,
+     "px5": 2654208,
+     "n60": 2,
+     "px60": 2654208,
+     "max": 2654208,
+     "maxAt": 5,
+     "d": 0
+    },
+    {
+     "name": "window._shadowMask",
+     "n5": 1,
+     "px5": 1041344,
+     "n60": 1,
+     "px60": 1041344,
+     "max": 1041344,
+     "maxAt": 0.1,
+     "d": 0
+    },
+    {
+     "name": "_mtFadeCv",
+     "n5": 1,
+     "px5": 792000,
+     "n60": 1,
+     "px60": 792000,
+     "max": 792000,
+     "maxAt": 5,
+     "d": 0
+    },
+    {
+     "name": "_wgl",
+     "n5": 1,
+     "px5": 198000,
+     "n60": 1,
+     "px60": 198000,
+     "max": 198000,
+     "maxAt": 0.1,
+     "d": 0
+    },
+    {
+     "name": "_gtCov",
+     "n5": 1,
+     "px5": 131072,
+     "n60": 1,
+     "px60": 131072,
+     "max": 131072,
+     "maxAt": 0.1,
+     "d": 0
+    },
+    {
+     "name": "_gtTmp",
+     "n5": 1,
+     "px5": 131072,
+     "n60": 1,
+     "px60": 131072,
+     "max": 131072,
+     "maxAt": 0.1,
+     "d": 0
+    },
+    {
+     "name": "_shTmp",
+     "n5": 1,
+     "px5": 131072,
+     "n60": 1,
+     "px60": 131072,
+     "max": 131072,
+     "maxAt": 0.1,
+     "d": 0
+    },
+    {
+     "name": "_shMaskCache",
+     "n5": 1,
+     "px5": 131072,
+     "n60": 1,
+     "px60": 131072,
+     "max": 131072,
+     "maxAt": 0.1,
+     "d": 0
+    },
+    {
+     "name": "_mtMaskCv",
+     "n5": 1,
+     "px5": 16384,
+     "n60": 1,
+     "px60": 16384,
+     "max": 16384,
+     "maxAt": 5,
+     "d": 0
+    },
+    {
+     "name": "_mtStripCv",
+     "n5": 1,
+     "px5": 16384,
+     "n60": 1,
+     "px60": 16384,
+     "max": 16384,
+     "maxAt": 5,
+     "d": 0
+    },
+    {
+     "name": "window._fogGridCv",
+     "n5": 1,
+     "px5": 9409,
+     "n60": 1,
+     "px60": 9409,
+     "max": 9409,
+     "maxAt": 0.1,
+     "d": 0
+    }
+   ],
+   "tree": "가지 batch/mt-near-on-1029(main 525a2bb2 + three-on-1028(T974 · 열일곱째 판) + cut-near-on-1028(T981) · T981 켬 기본)",
+   "knob": "기본(env 없음 · welcome {\"waterHalf\": true, \"mtReadPx\": true, \"mtBand\": true, \"cutNear\": true, \"mtNear\": true})"
+  }
+ },
+ "sameBox": {
+  "cr-926": [
+   {
+    "atMin": 0.11,
+    "frame": {
+     "n": 882,
+     "p50": 16.7,
+     "p95": 50,
+     "max": 2000,
+     "sumMs": 23466
+    },
+    "rssMB": 463.0,
+    "heapGC": 18.1
+   },
+   {
+    "atMin": 5,
+    "frame": {
+     "n": 9218,
+     "p50": 33.2,
+     "p95": 83.3,
+     "max": 1416.6,
+     "sumMs": 293472
+    },
+    "rssMB": 739.9,
+    "heapGC": 19.0
+   },
+   {
+    "atMin": 10,
+    "frame": {
+     "n": 8227,
+     "p50": 33.3,
+     "p95": 83.3,
+     "max": 1316.7,
+     "sumMs": 300005
+    },
+    "rssMB": 798.7,
+    "heapGC": 32.7
+   }
+  ],
+  "cr-997": [
+   {
+    "atMin": 0.1,
+    "frame": {
+     "n": 819,
+     "p50": 16.7,
+     "p95": 66.7,
+     "max": 800,
+     "sumMs": 22266
+    },
+    "rssMB": 474.1,
+    "heapGC": 15.5
+   },
+   {
+    "atMin": 5,
+    "frame": {
+     "n": 9216,
+     "p50": 33.2,
+     "p95": 83.3,
+     "max": 233.4,
+     "sumMs": 293888
+    },
+    "rssMB": 735.4,
+    "heapGC": 17.7
+   },
+   {
+    "atMin": 10,
+    "frame": {
+     "n": 8068,
+     "p50": 33.3,
+     "p95": 83.3,
+     "max": 283.3,
+     "sumMs": 299988
+    },
+    "rssMB": 773.1,
+    "heapGC": 20.7
+   }
+  ]
+ }
+}
