@@ -20,6 +20,9 @@
 //
 // 실행: node scripts/test-t976-want-capped.js   (존 안 띄움 · 아이 판 둘 · 약 1분)
 'use strict';
+// ★[T988 2026-10-28] 이 하네스는 T976 의 칸(`wantCapped`)과 그 칸이 부르는 종전 말을 잰다 — 말을 고친 `T988_TRADE_WORDS` 는 끈 판에서 돈다(되돌림 `=0` · 단언 무변).
+//   켬 판의 말(절삭 0 판은 "… 한 개 값이 … 전부(N)보다 비싸다 — 이 마을은 지금 그 값을 못 치른다" 등)은 `test-t988-trade-words` 가 잰다.
+process.env.T988_TRADE_WORDS = '0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
@@ -81,9 +84,11 @@ const P = fs.readFileSync(path.join(ROOT, 'public', 'client', '50-i-panel.js'), 
 const panelSrc = (P.match(/function renderTradePanel[^]*?\n  \}\n/) || [''])[0];
 { ok((C.match(/if \(!\(T976_ON && out\.wantCapped === true\)\) out\.wantCapped = false;/g) || []).length === 1, '② 받을 양 갈래 끝 줄 = 손잡이 갈래 하나');
   ok((C.match(/out\.wantCapped = false/g) || []).length === 1, '② `out.wantCapped = false` 는 그 줄 하나(맨 줄 사본 0)');
-  ok((C.match(/out\.wantCapped = true/g) || []).length === 2 && /if \(!\(tr\.n > 0\) \|\| !\(out\.takeAtNeeded > 0\)\) \{ out\.giveNeeded = null; out\.takeAtNeeded = null; out\.wantCapped = true; \}/.test(C),
+  //   ★[T988] 절삭 0 자리는 T988 이 그 판의 말(`why`) 한 줄을 그 안에 더했다 — 그 한 줄 말고는 같은 글자(세 칸 null · true)를 그대로 본다
+  ok((C.match(/out\.wantCapped = true/g) || []).length === 2 && /if \(!\(tr\.n > 0\) \|\| !\(out\.takeAtNeeded > 0\)\) \{\s*(?:if \(T988_ON\) out\.why = _whyNot\([^;\n]*\);\s*)?out\.giveNeeded = null; out\.takeAtNeeded = null; out\.wantCapped = true;\s*\}/.test(C),
     '② `true` 를 놓는 자리 둘 그대로(받을 양 > 상한 · T835 절삭 낱개 0)');
-  ok(panelSrc.length > 500 && /if \(trQuote\.wantCapped\) h \+= `<div class="tr-warn">마을이 지금 내줄 수 있는 \$\{tk\}은\(는\) \$\{trQuote\.cap\}까지다<\/div>`;/.test(panelSrc),
+  //   ★[T988] 경고 글자는 견적이 그 판의 말(`why`)을 실으면 그 말 · 없으면 T976 글자 그대로(`why ||` 한 겹만 허락)
+  ok(panelSrc.length > 500 && /if \(trQuote\.wantCapped\) h \+= `<div class="tr-warn">(?:\$\{trQuote\.why \|\| `)?마을이 지금 내줄 수 있는 \$\{tk\}은\(는\) \$\{trQuote\.cap\}까지다(?:`\})?<\/div>`;/.test(panelSrc),
     '② 클라 받을 양 축이 그 칸을 읽어 경고를 그린다(`renderTradePanel` · 손잡이는 안 읽는다)', `${panelSrc.length}자`); }
 
 const sub = (env) => JSON.parse(execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, env, { T976_SUB: '1' }), stdio: 'pipe', maxBuffer: 64 << 20 }).toString().trim().split('\n').pop());
