@@ -22,6 +22,9 @@ const _log = console.log;
 let quiet = true;
 console.log = (...a) => { if (!quiet) _log(...a); };
 console.warn = () => {};
+// ★[T996] `T977_DIST_SAME` 켬 기본 — ①~⑦ 은 **BFS 셈**을 재는 검사라 이 프로세스는 끔 갈래로 돈다(env 를 안 줬을 때만 · 켬 갈래는 ⑧ 딸린 프로세스).
+//   손잡이는 모듈을 읽을 때 정해지므로 require 앞에 둔다. `--t977-default` 딸린 프로세스는 env 를 지운 채(= 제품 기본) 돈다.
+if (!(process.argv[2] || '').startsWith('--t977') && process.env.T977_DIST_SAME == null) process.env.T977_DIST_SAME = '0';
 const { ZONES } = R('server/zone-config');
 const T = R('server/terrain'); if (T.setZonesMeta) T.setZonesMeta(ZONES);
 const econ = R('sim/economy-sim');
@@ -65,6 +68,12 @@ const run = (world, reason, opts) => {
 };
 
 // ── [T977] 딸린 프로세스(켬 갈래 · ⑧ 이 부른다) ──────────────────────────────────
+if (process.argv[2] === '--t977-default') {   // ★[T996] 제품 기본(env 없음) — 셈 한 번 뒤 바탕이 서나
+  const w = mkWorld(3); P._distProbe.setup(ta, ZONE, w, econ);
+  const _l = console.log; console.log = () => {}; P._distProbe.compute('t996-default'); console.log = _l;
+  _log('T996DEF ' + JSON.stringify({ env: process.env.T977_DIST_SAME == null ? null : process.env.T977_DIST_SAME, basis: !!P._distProbe.basis }));
+  process.exit(0);
+}
 if (process.argv[2] === '--t977') {
   const enc = (m) => m.map((r) => r.map((d) => (isFinite(d) ? d : null)));
   const cap = (fn) => { const L = []; const _l = console.log; console.log = (...a) => L.push(a.join(' ')); try { fn(); } finally { console.log = _l; } return L.join('\n'); };
@@ -95,6 +104,22 @@ if (process.argv[2] === '--t977') {
   P._distProbe.blkReset(); P._distProbe.basisReset();
   const w4b = mv(N); P._distProbe.setup(ta2, ZONE, w4b, econ); cap(() => P._distProbe.compute('t977-4b'));
   out.tag4 = /같은 격자 · BFS 0/.test(L4); out.e4 = dif(enc(w4._distMatrix), enc(w4b._distMatrix));
+  // ── [T996] 환호 적재 뒤 바탕 다시 세움 — 격자 A 에서 센 바탕 → 술어가 B 로 바뀜(환호 적재 흉내 · 무효화 없음) → 바탕만 다시 세움 → 무효화 → 같은 격자
+  P._distProbe.blkReset(); P._distProbe.basisReset();
+  out.gate0 = P._distProbe.basisRefresh();   // 바탕 없으면 안 선다
+  const wA = mkWorld(N); P._distProbe.setup(ta, ZONE, wA, econ); cap(() => P._distProbe.compute('t996-A'));
+  const bA = P._distProbe.basis.blk;
+  const wB = mkWorld(N); P._distProbe.setup(ta2, ZONE, wB, econ);
+  const memo0 = Buffer.from(P._distProbe.blkMemo);
+  out.gate1 = P._distProbe.basisRefresh();
+  let n5 = 0; const L5 = cap(() => { n5 = P._distProbe.basisRun(); });
+  out.n5 = n5; out.tag5bfs = /바탕 다시 세움: .*BFS \d+소스/.test(L5); out.inj5 = wB._distMatrix !== undefined;
+  out.memo5 = Buffer.compare(memo0, Buffer.from(P._distProbe.blkMemo)) === 0;
+  const bB = P._distProbe.basis.blk; let bd = 0; for (let i = 0; i < bB.length; i++) if (bB[i] !== bA[i]) bd++; out.bd5 = bd;
+  P._distProbe.blkReset();   // 무효화
+  const wC = mkWorld(N); P._distProbe.setup(ta2, ZONE, wC, econ); const L6 = cap(() => P._distProbe.compute('t996-C'));
+  out.tag6 = /같은 격자 · BFS 0/.test(L6); out.e6 = dif(enc(wC._distMatrix), m3b);
+  out.gate7 = P._distProbe.basisRefresh(); const L7 = cap(() => P._distProbe.basisRun()); out.tag7 = /바탕 다시 세움: .*같은 격자\(BFS 0\)/.test(L7);
   _log('T977JSON ' + JSON.stringify(out));
   process.exit(0);
 }
@@ -201,13 +226,18 @@ say('\n[⑦ ★[T968] 다 센 셈은 주입 앞에서 선다 · 이어 밀면 �
 
 // ── ⑧ ★[T977] 같은 격자면 BFS 0 — 바탕 행렬 = 다시 센 행렬(바이트) · 격자가 바뀌면 종전 BFS ───────────────
 //   손잡이는 모듈을 읽을 때 정해지므로 켬 갈래는 **딸린 프로세스**(`T977_DIST_SAME=1` · 이 파일 `--t977`)가 돌고, 여기(끔)서 센 전쌍과 견준다.
-say('\n[⑧ ★[T977] 같은 격자면 BFS 0 · 바탕 = 다시 센 셈 · 바뀌면 종전 BFS]');
+say('\n[⑧ ★[T977 · T996] 같은 격자면 BFS 0 · 바탕 = 다시 센 셈 · 바뀌면 종전 BFS · 환호 적재 뒤 바탕 다시 세움]');
 {
   const fs = require('fs');
   const V = fs.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8');
-  ok(/const T977_DIST_SAME = process\.env\.T977_DIST_SAME === '1';/.test(V), '손잡이 — 끔 기본 · `=1` 만 켬');
-  ok(P._distProbe.basis == null, '★끔이면 바탕을 안 만든다(위 ①~⑦ 셈 뒤에도 없음)');
+  ok(/const T977_DIST_SAME = process\.env\.T977_DIST_SAME !== '0';/.test(V), '손잡이 — ★T996 켬 기본 · `=0` 만 끔');
+  ok(process.env.T977_DIST_SAME === '0' && P._distProbe.basis == null, '★끔이면 바탕을 안 만든다(위 ①~⑦ 셈 뒤에도 없음 · 이 프로세스 = 끔 갈래)');
   const { spawnSync } = require('child_process');
+  { const e = Object.assign({}, process.env); delete e.T977_DIST_SAME;
+    const d = spawnSync(process.execPath, [__filename, '--t977-default'], { env: e, encoding: 'utf8' });
+    let D = null; try { D = JSON.parse((d.stdout || '').split('\n').filter((l) => l.startsWith('T996DEF '))[0].slice(8)); } catch (x) {}
+    ok(!!D && D.env === null && D.basis === true, `★제품 기본(env 없음)이 켬 — 셈 뒤 바탕이 선다(${JSON.stringify(D)})`); }
+  ok(/try \{ if \(SimVillages\.distBasisRefresh\) SimVillages\.distBasisRefresh\(\); \} catch \(e\) \{\}/.test(fs.readFileSync(path.join(__dirname, '..', 'server', 'zone.js'), 'utf8')), '[T996] 환호 적재(`refreshDitchCells`) 끝에서 바탕 다시 세움을 부른다');
   const c = spawnSync(process.execPath, [__filename, '--t977'], { env: Object.assign({}, process.env, { T977_DIST_SAME: '1' }), encoding: 'utf8', maxBuffer: 1 << 26 });
   let J = null; try { J = JSON.parse((c.stdout || '').split('\n').filter((l) => l.startsWith('T977JSON '))[0].slice(9)); } catch (e) {}
   ok(c.status === 0 && !!J, `딸린 프로세스(켬) 끝 — 종료 ${c.status}`);
@@ -220,6 +250,11 @@ say('\n[⑧ ★[T977] 같은 격자면 BFS 0 · 바탕 = 다시 센 셈 · 바�
     ok(J.d3 > 0 && !J.tag3, `[상황] 격자를 바꿨다(마을 0 둘레 반경 8 노드 막음 — 행렬이 ${J.d3}칸 달라진다) · 같은 격자 문을 안 탔다`);
     ok(J.e3 === 0, `★★격자가 바뀌면 종전 BFS — 바탕 없이 센 셈과 같다(불일치 ${J.e3}칸)`);
     ok(!J.tag4 && J.e4 === 0, `★마을 좌표가 다르면 같은 격자 문을 안 탄다 · 바탕 없이 센 셈과 같다(불일치 ${J.e4}칸)`);
+    ok(J.gate0 === false && J.gate1 === true, `[T996] 바탕이 없으면 다시 세움이 안 선다 · 있으면 선다(${J.gate0} · ${J.gate1})`);
+    ok(J.tag5bfs && J.n5 > 0 && J.bd5 > 0, `[상황] 술어가 바뀐 뒤(무효화 없음) 바탕을 BFS 로 다시 세웠다 — 양보 ${J.n5}번 · 바탕 메모가 ${J.bd5}칸 바뀜`);
+    ok(!J.inj5 && J.memo5, '★다시 세움은 주입 0(세계 행렬 그대로) · 공유 메모 무접촉(바이트 같음)');
+    ok(J.tag6 && J.e6 === 0, `★★그다음 무효화는 같은 격자(BFS 0) — 바뀐 격자에서 바탕 없이 센 셈과 같다(불일치 ${J.e6}칸)`);
+    ok(J.gate7 && J.tag7, '[T996] 격자가 그대로면 다시 세움도 확인만(BFS 0)');
   }
 }
 
