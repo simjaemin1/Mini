@@ -1138,8 +1138,12 @@ function itemKo(k) {
       const wantAxis = (trAxis === 'want' && trQuote.want > 0);
       if (wantAxis) {
         // 이 수는 전부 **서버가 낸 것**이다(여기서 비율로 다시 나누면 그게 사본이다).
-        if (trQuote.wantCapped) h += `<div class="tr-warn">마을이 지금 내줄 수 있는 ${tk}은(는) ${trQuote.cap}까지다</div>`;
-        else if (trQuote.giveNeeded > 0) {
+        //   ★[T988] 서버가 그 판의 말(`why` · `wantShort`)을 실어 보내면 그 말을 그린다 — 칸이 없으면(서버 `T988_TRADE_WORDS=0`) 종전 글자 그대로.
+        if (trQuote.wantCapped) h += `<div class="tr-warn">${trQuote.why || `마을이 지금 내줄 수 있는 ${tk}은(는) ${trQuote.cap}까지다`}</div>`;
+        else if (trQuote.giveNeeded > 0 && trQuote.wantShort) {   // ★[T988] 절삭돼 받을 양에 못 닿는다 — 낼 양 축의 그 두 줄(실제로 낼 · 받을 것)
+          h += `<div class="tr-line">${gk} <b>${trQuote.giveNeeded}</b> ${tk} <b>${trQuote.takeAtNeeded}</b></div>`;
+          h += `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.giveNeeded}개만 받는다</div>`;
+        } else if (trQuote.giveNeeded > 0) {
           h += `<div class="tr-line">${tk} <b>${trQuote.want}</b> 받으려면 — 내야 할 ${gk} <b>${trQuote.giveNeeded}</b>`
             + `<span class="bd-dim"> (낱개라 올림 · 그러면 ${tk} ${trQuote.takeAtNeeded})</span></div>`;
         }
@@ -1149,7 +1153,8 @@ function itemKo(k) {
       h += `<div class="tr-line">한 개당 ${trQuote.ratio}${trQuote.avgRatio && Math.abs(trQuote.avgRatio - trQuote.ratio) > 1e-4
         ? ` · 이 물량 평균 <b>${trQuote.avgRatio}</b>(많이 낼수록 값이 나빠진다)` : ''}</div>`;
       // ★상한 경고는 **낼 양 축의 말**이다 — 받을 양 축에선 위 `wantCapped` 가 그 자리를 맡는다.
-      if (!wantAxis && trQuote.capped) h += `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.giveUsed != null ? trQuote.giveUsed : trQuote.maxGive}개만 받는다</div>`;   // ★[T807] 켬 = 실행이 실제로 받을 낱개(`giveUsed`) · 끔 = 칸 없음 = 종전
+      if (!wantAxis && trQuote.why) h += `<div class="tr-warn">${trQuote.why}</div>`;   // ★[T988] 실행이 거절할 판 — 실행과 같은 말(칸이 없으면 아래 종전 줄)
+      else if (!wantAxis && trQuote.capped) h += `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.giveUsed != null ? trQuote.giveUsed : trQuote.maxGive}개만 받는다</div>`;   // ★[T807] 켬 = 실행이 실제로 받을 낱개(`giveUsed`) · 끔 = 칸 없음 = 종전
       // ★★[무게 배치] **용량 초과 경고** — 막지는 않는다(과적은 플레이어 선택이다).
       //   넘치게 사서 뒤뚱거리며 나르는 것도 플레이라, 화면은 사실만 말하고 결정은 사람이 한다.
       //   ★[T69] 재는 수량도 **축이 말하는 그 거래**의 것이라야 한다.

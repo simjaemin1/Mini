@@ -222,7 +222,9 @@ async function arm(label, sliceMs, extraEnv) {
   const CANON0 = ['econ', 'pop', 'terr', 'ore', 'wx', 'bcast', 'caravan', 'events', 'save', 'life', 'dist'];
   //   ★[T744] 켬 판 정본 = 창 꼴 — 머리(econ · 생활층 계측 비움) → 마을마다(econ · 인구 · 생활층 — 마을 수만큼) → 꼬리(끔 정본에서 인구 · 생활층을 뺀 차례 + 창 닫음).
   //     차례 자체(머리 · 마을 · 꼬리의 뜻)는 `test-local-midnight-window` 가 문다 — 여기선 끔 정본에서 유도한 글자 그대로를 본다(사본 0 · 새 수 0).
-  const CANON = T731 ? ['econ', 'life', ...[].concat(...Array.from({ length: b.villages }, () => ['econ', 'pop', 'life'])), ...CANON0.filter((x) => x !== 'pop' && x !== 'life'), 't731'] : CANON0;
+  // ★[PM 10-30 · T986 켬 기본(T990)] 도적 하루는 econ 머리 바로 뒤 단계 'bandit'(설계 자리 · 되돌림 `T986_BANDIT_DAY=0` 이면 없다)
+  const _BD = [...(process.env.T990_ECON_DAY !== '0' ? ['roads'] : []), ...(process.env.T986_BANDIT_DAY !== '0' ? ['bandit'] : [])];   // ★[PM · T1001] 길의 하루는 도적 하루 앞
+  const CANON = T731 ? ['econ', ..._BD, 'life', ...[].concat(...Array.from({ length: b.villages }, () => ['econ', 'pop', 'life'])), ...CANON0.filter((x) => x !== 'pop' && x !== 'life'), 't731'] : ['econ', ..._BD, ...CANON0.slice(1)];
   ok(JSON.stringify(b.order) === JSON.stringify(CANON), '④ 단계 순서가 정본과 같다', JSON.stringify(b.order));
   ok(JSON.stringify(a.order) === JSON.stringify(b.order), '④ 대조군과 조각내기의 순서가 같다', '');
 

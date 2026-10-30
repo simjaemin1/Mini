@@ -17272,6 +17272,11 @@ module.exports = {
 //   존(server/villages.js)은 buildArmies 를 부르지 않는다 — 병사 위치는 존 좌표(셀 = m) 그대로이고,
 //   장애물·시야·궤주 방향은 ctx.world 어댑터(존의 술어)가 답한다. 어댑터 없음 = 빈 들판(독립 실행 종전 동작).
 const DEPLOY_W=130, DEPLOY_H=130;        // 표준 배치 폭(전투실험실과 동일 — 독립 실행 전용)
+// ★[T995 2026-10-29 · T956 회부 3 ㉠ · 시험 손잡이 · 끔 기본 · 켜는 값 '1' 하나 · 끔 = 종전 글자] 사수의 3.5m 물러섬은 **탄이 있을 때만**.
+//   종전: 사수는 적이 3.5m 안이면 탄이 있든 없든 반걸음 물러선다(아래 원거리 절 첫 줄) — 탄 없는 사수는 그 밖(15m 안)에선 다가서므로
+//   탄 없는 사수 둘이 3.5m 에서 물러섬 ↔ 다가섬을 되풀이해 손(1.2m)이 한 번도 안 닿는다(보고 T956 §2-3 ⓑ · 존은 시간 상한이 없다).
+//   켬: 탄이 없으면 그 물러섬 줄을 건너뛰고 탄 없는 절(15m 안 다가섬 · 손 닿으면 친다)로 간다. 새 수 0(3.5 · 15 · reach 그대로).
+const T995_BACK_AMMO=(typeof process!=='undefined'&&process.env&&process.env.T995_BACK_AMMO==='1');
 
 // ═══════════ 병종 정의 (전투실험실 UNITS 복사) ═══════════
 const UNITS={
@@ -17546,7 +17551,7 @@ function stepBattle(ctx,dt){
     if(D.ranged>0){
       const ak=D.ammo||'arrows';   // 탄약 재고 키: 궁수=arrows, 투석병=stones
       const ammo=ctx.sides[u.side][ak]>0;
-      if(d<3.5){
+      if(d<3.5&&(ammo||!T995_BACK_AMMO)){   // ★[T995 ㉠] 켬 = 탄이 있을 때만 물러선다(끔 = 종전 — 탄과 무관)
         u.st='melee'; const bd=Math.hypot(e.x-u.x,e.y-u.y)||1;
         u.x+=(u.x-e.x)/bd*D.spd*0.5*fSpd*dt; u.y+=(u.y-e.y)/bd*D.spd*0.5*fSpd*dt;
         if(d<D.reach && u.cd<=0){u.cd=D.cd; if(ctx.rng()<mf)hurt(ctx,e,uMAtk,u.x,u.y,'melee',D.shBrk);} sep(ctx,u,dt); continue;

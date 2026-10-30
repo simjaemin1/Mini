@@ -31,7 +31,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const CPORT = 3171, ZPORT = 3172, DAY_MS = 60000, WINDOWS = 2;
 
 // ── 계약(순수) — 창 증인 하나 → 어긴 것 목록 ─────────────────────────────────────
-const H_OK = new Set(['xzone', 'econ', 'econ:head', 'life']);
+const H_OK = new Set(['xzone', 'econ', 'econ:head', 'life', 'bandit', 'roads']);   // ★[PM 10-30 · T986 켬 기본(T990) · T990_ECON_DAY 켬 기본(T1001) — 길의 하루 'roads' 도 같은 자리] 도적 하루는 설계대로 '날을 올린 econ 머리 바로 뒤'(머리 조각 · 마을 정산 앞) — 계약 ②(머리 = 정산 0)는 그대로 문다
 const V_OK = new Set(['econ:vil', 'pop', 'life', 'life:쉼표']);
 const FLOW = ['econ:trade', 'econ:caravan', 'econ:tail', 'caravan', 'caravan_body', 'caravan_fish', 'caravan_sync', 'events', 'xzone', 'save'];   // ★[T828] 캐러밴 조각 속 이름 셋 = 종전 `caravan`(창 증인은 속 이름을 적는다)
 function windowContract(R) {

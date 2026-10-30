@@ -1,0 +1,306 @@
+{
+ "card": "T999",
+ "made": "2026-10-30",
+ "branch": "batch/trade-cap-1030",
+ "base": "bce5481a",
+ "merged": {
+  "ruler-house-1028(T990)": "933e4e8b",
+  "trade-words-1028(T988 · T976 포함)": "494a6fda"
+ },
+ "knob": {
+  "name": "T999_TRADE_CAP",
+  "default": "ON",
+  "off": "=== '0'",
+  "reader": "server/trade.js"
+ },
+ "world": "열일곱째 판 + T986 도적 하루 켬(ruler-house 합침) · test-t835-quote-weight 아이 판 세계(시드 7 · 마을 5 · 200날) · 짐 그대로(T988 하네스 꼴)",
+ "defect1": {
+  "giveTarget": {
+   "what": "낼 양 — 견적 capped · 한 개 넘침 아님 · 가진 것 안",
+   "rows": 172,
+   "offShort": 172,
+   "offBreakdown": {
+    "덜 받음 1": 19,
+    "거절": 26,
+    "덜 받음 17": 16,
+    "덜 받음 45": 18,
+    "덜 받음 44": 16,
+    "덜 받음 67": 2,
+    "덜 받음 2": 6,
+    "덜 받음 36": 16,
+    "덜 받음 20": 16,
+    "덜 받음 12": 16,
+    "덜 받음 42": 2,
+    "덜 받음 3": 1,
+    "덜 받음 13": 18
+   },
+   "onFull": 172,
+   "examples": [
+    {
+     "vi": 0,
+     "tk": 0,
+     "pair": "cooked_food>wood",
+     "axis": "give",
+     "n": 4,
+     "cap": 3,
+     "off": {
+      "ok": 1,
+      "give": 3,
+      "take": 2,
+      "giveUnits": 4.65
+     },
+     "on": {
+      "ok": 1,
+      "give": 4,
+      "take": 3,
+      "giveUnits": 7.15
+     }
+    },
+    {
+     "vi": 0,
+     "tk": 0,
+     "pair": "cooked_food>wood",
+     "axis": "give",
+     "n": 5,
+     "cap": 3,
+     "off": {
+      "ok": 1,
+      "give": 3,
+      "take": 2,
+      "giveUnits": 4.65
+     },
+     "on": {
+      "ok": 1,
+      "give": 4,
+      "take": 3,
+      "giveUnits": 7.15
+     }
+    },
+    {
+     "vi": 0,
+     "tk": 0,
+     "pair": "cooked_food>wood",
+     "axis": "give",
+     "n": 6,
+     "cap": 3,
+     "off": {
+      "ok": 1,
+      "give": 3,
+      "take": 2,
+      "giveUnits": 4.65
+     },
+     "on": {
+      "ok": 1,
+      "give": 4,
+      "take": 3,
+      "giveUnits": 7.15
+     }
+    },
+    {
+     "vi": 0,
+     "tk": 0,
+     "pair": "cooked_food>wood",
+     "axis": "give",
+     "n": 7,
+     "cap": 3,
+     "off": {
+      "ok": 1,
+      "give": 3,
+      "take": 2,
+      "giveUnits": 4.65
+     },
+     "on": {
+      "ok": 1,
+      "give": 4,
+      "take": 3,
+      "giveUnits": 7.15
+     }
+    }
+   ]
+  },
+  "wantTarget": {
+   "what": "받을 양 — 받을 양 ≤ 상한 · 한 개 넘침 아님 · 가진 것 전부면 닿는다",
+   "rows": 277,
+   "offShort": 6,
+   "onReach": 277,
+   "examples": [
+    {
+     "vi": 0,
+     "tk": 0,
+     "pair": "cooked_food>wood",
+     "axis": "want",
+     "n": 3,
+     "cap": 3,
+     "off": {
+      "ok": 1,
+      "give": 3,
+      "take": 2,
+      "giveUnits": 4.65
+     },
+     "on": {
+      "ok": 1,
+      "give": 4,
+      "take": 3,
+      "giveUnits": 7.15
+     }
+    },
+    {
+     "vi": 0,
+     "tk": 1,
+     "pair": "cooked_food>wood",
+     "axis": "want",
+     "n": 3,
+     "cap": 3,
+     "off": {
+      "ok": 1,
+      "give": 3,
+      "take": 2,
+      "giveUnits": 4.65
+     },
+     "on": {
+      "ok": 1,
+      "give": 4,
+      "take": 3,
+      "giveUnits": 7.15
+     }
+    },
+    {
+     "vi": 4,
+     "tk": 0,
+     "pair": "cooked_food>fish",
+     "axis": "want",
+     "n": 2,
+     "cap": 2,
+     "off": {
+      "ok": 1,
+      "give": 1,
+      "take": 1,
+      "giveUnits": 0.9
+     },
+     "on": {
+      "ok": 1,
+      "give": 2,
+      "take": 2,
+      "giveUnits": 1.65
+     }
+    }
+   ]
+  },
+  "overpayFracOfLastItem": {
+   "what": "켬 · 열량 짝 끔 낼 양 과녁 줄 — (낸 단위 − T) ÷ 마지막 낱개 단위",
+   "rows": 86,
+   "min": 0.261,
+   "p50": 0.705,
+   "p90": 0.95,
+   "max": 0.963
+  },
+  "cap1": {
+   "what": "⑤ 상한 1 판(받을 것 곳간 재고만 1.5 ÷ STOCK_FRAC · 낱개 = T × 0.6 · 가진 것 30)",
+   "pairs": 60,
+   "off": {
+    "refusedAll": true,
+    "giveOneNoMoreWorks": true
+   },
+   "on": {
+    "give2": true,
+    "want1": true,
+    "give1Word": [
+     "그 양으론 한 개도 못 바꾼다 — 더 내야 한다"
+    ]
+   }
+  }
+ },
+ "defect2": {
+  "what": "짝마다 참 경계 T(짐 없는 견적 capped 경계 · 두 배 걸음 + 이분 40) vs 견적 maxGive",
+  "pairs": 48,
+  "offShort": [
+   {
+    "vi": 0,
+    "pair": "cooked_food>food",
+    "cap": 169,
+    "T": 602.279889,
+    "maxGiveOff": 356,
+    "maxGiveOn": 602
+   },
+   {
+    "vi": 1,
+    "pair": "cooked_food>food",
+    "cap": 1769,
+    "T": 3876.480062,
+    "maxGiveOff": 2416,
+    "maxGiveOn": 3876
+   },
+   {
+    "vi": 3,
+    "pair": "cooked_food>food",
+    "cap": 199,
+    "T": 1793.954841,
+    "maxGiveOff": 964,
+    "maxGiveOn": 1793
+   },
+   {
+    "vi": 4,
+    "pair": "cooked_food>food",
+    "cap": 188,
+    "T": 628.322889,
+    "maxGiveOff": 312,
+    "maxGiveOn": 628
+   }
+  ],
+  "onAllFloorT": true
+ },
+ "revert": {
+  "what": "되돌림 `=0` = 고치기 전 트리와 같은가(재현 탐침 · 2,400 줄 + 짝 60)",
+  "offEqualsBefore": true,
+  "onDefectRows": 0,
+  "beforeDefectRows": 178
+ },
+ "determinism": {
+  "onHarnessVsSeparate": true,
+  "offHarnessVsSeparate": true,
+  "rows": 2580
+ },
+ "harness": {
+  "t999": "=== 22건 중 PASS 22 · FAIL 0 ===",
+  "t988": "=== 22건 중 PASS 22 · FAIL 0 ===",
+  "t976": "=== 17건 중 PASS 17 · FAIL 0 ===",
+  "t835": "=== 16건 중 PASS 16 · FAIL 0 ===",
+  "t965": "=== 15건 중 PASS 15 · FAIL 0 ===",
+  "wiring": "=== 배선 검사: 실패 0 · 경고 1 ===",
+  "wiringWarn": [
+   "⚠ 서버가 세계에 다는 것이 늘었다: world._warSeq · world._warStats — [H] 표를 갱신해라"
+  ],
+  "regress": {
+   "summary": "통과 10: test-trade.js test-moment-lot.js test-granary-age.js test-granary-item.js test-granary-rot.js test-preserve.js test-salt.js test-weight.js test-harness-lint.js e2e-trade.js",
+   "failed": "실패 1: test-t807-quote-exec.js(rc=1)",
+   "lines": [
+    "=== 68건 중 PASS 68 · FAIL 0 ===",
+    "=== 15건 중 PASS 14 · FAIL 1 ===",
+    "=== 15건 중 PASS 14 · FAIL 1 ===",
+    "=== 107건 중 PASS 107 · FAIL 0 ===",
+    "=== 31건 중 PASS 31 · FAIL 0 ===",
+    "=== 42건 중 PASS 42 · FAIL 0 ===",
+    "=== 28건 중 PASS 28 · FAIL 0 ===",
+    "=== 결과: 70 PASS / 0 FAIL ===",
+    "=== 결과: 73 PASS / 0 FAIL ===",
+    "=== 결과: 73 PASS / 0 FAIL ===",
+    "=== 64건 중 PASS 64 · FAIL 0 ===",
+    "=== 68건 중 PASS 68 · FAIL 0 ===",
+    "=== 55건 중 PASS 55 · FAIL 0 ==="
+   ],
+   "t807PinnedRerun": {
+    "note": "첫 묶음 판에서 test-t807 ⓒ(T807 켬 · 끔 실행 같다) 빨강 — T999 켬이 T807 켬 갈래의 절삭 값을 고친다(설계) → T999 끈 판에 고정 · 다시 돌림",
+    "result": "=== 15건 중 PASS 15 · FAIL 0 ==="
+   }
+  },
+  "serverBaseline": {
+   "file": "계측/서버기준선_2026-10-28_T990.json",
+   "seeds": [
+    "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2488)",
+    "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2713)",
+    "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2599)"
+   ],
+   "summary": "=== 같음 3/3 · 판 368초 ==="
+  }
+ }
+}

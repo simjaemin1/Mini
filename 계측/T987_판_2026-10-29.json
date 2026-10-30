@@ -1,0 +1,930 @@
+{
+ "card": "T987",
+ "date": "2026-10-29",
+ "branch": "batch/arrow-respawn-1028",
+ "base": "main 74791ae8(열여섯째 판 · land1029) + origin/batch/mob-db-1028(T975 ce8f22a9 · 미착지) 합침 53602d2e",
+ "knob": {
+  "name": "T987_MOB_RESPAWN",
+  "default": "ON(!== '0')",
+  "revert": "=0 = 종전 글자",
+  "zone.js": {
+   "decl": 3312,
+   "door": 3313,
+   "npc": 4675,
+   "arrow": 13070,
+   "player": 13205
+  }
+ },
+ "trees": {
+  "mx": "53602d2e — main + T975(T987 앞)",
+  "bx": "mx + 이 가지 글자(T987)",
+  "mxh": "mx + 이 가지 하네스(test-mob-respawn)만"
+ },
+ "death_paths": {
+  "zone": {
+   "npcStep": 4669,
+   "stepArrows": 13066,
+   "tryAttack": 13195
+  },
+  "not_lethal": {
+   "tryFeed(+5)": 7512,
+   "wildlife 동기(>=1)": "wildlife.js 795"
+  },
+  "lab_side_shadow_removals": {
+   "lab death _dropShadow": "wildlife.js 781",
+   "poll kill": "wildlife.js 729",
+   "hide": "wildlife.js 786",
+   "T622 fauna": "wildlife.js 753",
+   "despawn": "wildlife.js 816"
+  },
+  "none": {
+   "trap": "grep 0",
+   "fall": "zone.js _fallStepM 15349 — 몹 hp 쓰기 0",
+   "starve": "몹 허기 칸 0"
+  }
+ },
+ "respawn_harness": {
+  "bx": {
+   "pass": "=== 16건 중 PASS 16 · FAIL 0 ===",
+   "lines": [
+    "  ✓ [상황] 판 넷 다 섰다(자식 결과)  on-meek ㅇ · on-hostile ㅇ · off-meek ㅇ · off-hostile ㅇ",
+    "  ✓ ★ 다시 낳기 문 `respawnMobLater` 가 있다(세 길이 부를 한 함수 · 없으면 T987 앞 트리 — 아래 표는 그래도 잰다)  on-meek ㅇ · on-hostile ㅇ · off-meek ㅇ · off-hostile ㅇ",
+    "  ✓ [상황] 손잡이 · HOSTILES_ON 이 판대로 섰다  on-meek true/false · on-hostile true/true · off-meek false/false · off-hostile false/true",
+    "  ✓ [상황] 판마다 몹 열둘이 다 죽었다(죽음 길 셋 × 몹 넷 · 진짜 함수)  reindeer_wild · wolf · 야생 그림자 둘",
+    "  [관찰] on-meek: npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0",
+    "  [관찰] on-hostile: npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=1 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0",
+    "  [관찰] off-meek: npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=1 npc:wildFierce=0 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0",
+    "  [관찰] off-hostile: npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=1 npc:wildFierce=1 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★★② on-meek — 다시 낳기 표가 한 규칙 그대로 · 걸린 타이머는 다 15000ms(종전 두 길의 그 수)  npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★② on-meek — 세 길(NPC · 화살 · 사람 공격)이 몹마다 같은 답(사본 0 — 한 함수)",
+    "  ✓ ★★② on-hostile — 다시 낳기 표가 한 규칙 그대로 · 걸린 타이머는 다 15000ms(종전 두 길의 그 수)  npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=1 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★② on-hostile — 세 길(NPC · 화살 · 사람 공격)이 몹마다 같은 답(사본 0 — 한 함수)",
+    "  ✓ ★③ 끔 — 화살 죽음은 다시 낳기 0(종전 — 결함 재현)",
+    "  ✓ ★★③ 켬 — 화살 죽음도 다시 낳기 1 · 15000ms",
+    "  [관찰] 켬 화살 reindeer_wild → 선 몹 [{\"type\":\"reindeer_wild\",\"dbId\":true,\"wild\":false}] · 방송 [{\"type\":\"reindeer_wild\",\"owner\":\"null\",\"ownerName\":\"null\"}]",
+    "  ✓ ★★③ 켬 — 그 타이머가 같은 종 하나를 세우고(DB 행 · 야생 아님) `mob_spawn` 을 낸다(주인 칸 null — NPC 길 글자)",
+    "  ✓ ③ 켬 — 걸린 타이머 전부(세 길 · 두 판)가 같은 종 하나 · `mob_spawn` 하나  9개",
+    "  ✓ ★④ off-meek — 화살 0 · NPC 는 야생 그림자도 낳음 · 사람 공격은 거름(종전 두 글자)  npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=1 npc:wildFierce=0 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★④ off-hostile — 화살 0 · NPC 는 야생 그림자도 낳음 · 사람 공격은 거름(종전 두 글자)  npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=1 npc:wildFierce=1 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★④ 끔 · HOSTILES_ON — NPC 가 잡은 늑대 그림자에 DB 늑대가 다시 선다(종전 두 길이 갈린 자리 — 켬은 ⑤)",
+    "  ✓ ★⑤ 켬 — 야생 그림자 열둘(세 길 × 두 종 × 두 판)은 다시 낳기 0(개체 수는 랩 생태가 쥔다)"
+   ]
+  },
+  "wt": {
+   "pass": "=== 16건 중 PASS 16 · FAIL 0 ===",
+   "lines": [
+    "  ✓ [상황] 판 넷 다 섰다(자식 결과)  on-meek ㅇ · on-hostile ㅇ · off-meek ㅇ · off-hostile ㅇ",
+    "  ✓ ★ 다시 낳기 문 `respawnMobLater` 가 있다(세 길이 부를 한 함수 · 없으면 T987 앞 트리 — 아래 표는 그래도 잰다)  on-meek ㅇ · on-hostile ㅇ · off-meek ㅇ · off-hostile ㅇ",
+    "  ✓ [상황] 손잡이 · HOSTILES_ON 이 판대로 섰다  on-meek true/false · on-hostile true/true · off-meek false/false · off-hostile false/true",
+    "  ✓ [상황] 판마다 몹 열둘이 다 죽었다(죽음 길 셋 × 몹 넷 · 진짜 함수)  reindeer_wild · wolf · 야생 그림자 둘",
+    "  [관찰] on-meek: npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0",
+    "  [관찰] on-hostile: npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=1 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0",
+    "  [관찰] off-meek: npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=1 npc:wildFierce=0 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0",
+    "  [관찰] off-hostile: npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=1 npc:wildFierce=1 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★★② on-meek — 다시 낳기 표가 한 규칙 그대로 · 걸린 타이머는 다 15000ms(종전 두 길의 그 수)  npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★② on-meek — 세 길(NPC · 화살 · 사람 공격)이 몹마다 같은 답(사본 0 — 한 함수)",
+    "  ✓ ★★② on-hostile — 다시 낳기 표가 한 규칙 그대로 · 걸린 타이머는 다 15000ms(종전 두 길의 그 수)  npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=1 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★② on-hostile — 세 길(NPC · 화살 · 사람 공격)이 몹마다 같은 답(사본 0 — 한 함수)",
+    "  ✓ ★③ 끔 — 화살 죽음은 다시 낳기 0(종전 — 결함 재현)",
+    "  ✓ ★★③ 켬 — 화살 죽음도 다시 낳기 1 · 15000ms",
+    "  [관찰] 켬 화살 reindeer_wild → 선 몹 [{\"type\":\"reindeer_wild\",\"dbId\":true,\"wild\":false}] · 방송 [{\"type\":\"reindeer_wild\",\"owner\":\"null\",\"ownerName\":\"null\"}]",
+    "  ✓ ★★③ 켬 — 그 타이머가 같은 종 하나를 세우고(DB 행 · 야생 아님) `mob_spawn` 을 낸다(주인 칸 null — NPC 길 글자)",
+    "  ✓ ③ 켬 — 걸린 타이머 전부(세 길 · 두 판)가 같은 종 하나 · `mob_spawn` 하나  9개",
+    "  ✓ ★④ off-meek — 화살 0 · NPC 는 야생 그림자도 낳음 · 사람 공격은 거름(종전 두 글자)  npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=1 npc:wildFierce=0 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★④ off-hostile — 화살 0 · NPC 는 야생 그림자도 낳음 · 사람 공격은 거름(종전 두 글자)  npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=1 npc:wildFierce=1 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★④ 끔 · HOSTILES_ON — NPC 가 잡은 늑대 그림자에 DB 늑대가 다시 선다(종전 두 길이 갈린 자리 — 켬은 ⑤)",
+    "  ✓ ★⑤ 켬 — 야생 그림자 열둘(세 길 × 두 종 × 두 판)은 다시 낳기 0(개체 수는 랩 생태가 쥔다)"
+   ]
+  },
+  "mxh_T987앞": {
+   "pass": "=== 16건 중 PASS 7 · FAIL 9 ===",
+   "lines": [
+    "  ✓ [상황] 판 넷 다 섰다(자식 결과)  on-meek ㅇ · on-hostile ㅇ · off-meek ㅇ · off-hostile ㅇ",
+    "  ✗ ★ 다시 낳기 문 `respawnMobLater` 가 있다(세 길이 부를 한 함수 · 없으면 T987 앞 트리 — 아래 표는 그래도 잰다)  on-meek 없음 · on-hostile 없음 · off-meek 없음 · off-hostile 없음",
+    "  ✗ [상황] 손잡이 · HOSTILES_ON 이 판대로 섰다  on-meek undefined/false · on-hostile undefined/true · off-meek undefined/false · off-hostile undefined/true",
+    "  ✓ [상황] 판마다 몹 열둘이 다 죽었다(죽음 길 셋 × 몹 넷 · 진짜 함수)  reindeer_wild · wolf · 야생 그림자 둘",
+    "  [관찰] on-meek: npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=1 npc:wildFierce=0 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0",
+    "  [관찰] on-hostile: npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=1 npc:wildFierce=1 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0",
+    "  [관찰] off-meek: npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=1 npc:wildFierce=0 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0",
+    "  [관찰] off-hostile: npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=1 npc:wildFierce=1 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0",
+    "  ✗ ★★② on-meek — 다시 낳기 표가 한 규칙 그대로 · 걸린 타이머는 다 15000ms(종전 두 길의 그 수)  npc:wildMeek=15000 arrow:dbMeek=",
+    "  ✗ ★② on-meek — 세 길(NPC · 화살 · 사람 공격)이 몹마다 같은 답(사본 0 — 한 함수)",
+    "  ✗ ★★② on-hostile — 다시 낳기 표가 한 규칙 그대로 · 걸린 타이머는 다 15000ms(종전 두 길의 그 수)  npc:wildMeek=15000 npc:wildFierce=15000 arrow:dbMeek= arrow:dbFierce=",
+    "  ✗ ★② on-hostile — 세 길(NPC · 화살 · 사람 공격)이 몹마다 같은 답(사본 0 — 한 함수)",
+    "  ✓ ★③ 끔 — 화살 죽음은 다시 낳기 0(종전 — 결함 재현)",
+    "  ✗ ★★③ 켬 — 화살 죽음도 다시 낳기 1 · 15000ms",
+    "  [관찰] 켬 화살 — 걸린 타이머 없음",
+    "  ✗ ★★③ 켬 — 그 타이머가 같은 종 하나를 세우고(DB 행 · 야생 아님) `mob_spawn` 을 낸다(주인 칸 null — NPC 길 글자)",
+    "  ✓ ③ 켬 — 걸린 타이머 전부(세 길 · 두 판)가 같은 종 하나 · `mob_spawn` 하나  9개",
+    "  ✓ ★④ off-meek — 화살 0 · NPC 는 야생 그림자도 낳음 · 사람 공격은 거름(종전 두 글자)  npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=1 npc:wildFierce=0 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★④ off-hostile — 화살 0 · NPC 는 야생 그림자도 낳음 · 사람 공격은 거름(종전 두 글자)  npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=1 npc:wildFierce=1 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0",
+    "  ✓ ★④ 끔 · HOSTILES_ON — NPC 가 잡은 늑대 그림자에 DB 늑대가 다시 선다(종전 두 길이 갈린 자리 — 켬은 ⑤)",
+    "  ✗ ★⑤ 켬 — 야생 그림자 열둘(세 길 × 두 종 × 두 판)은 다시 낳기 0(개체 수는 랩 생태가 쥔다)"
+   ]
+  }
+ },
+ "harness_ab": {
+  "e2e-aim": {
+   "M": "=== PASS 15 / FAIL 0 ===",
+   "B": "=== PASS 15 / FAIL 0 ===",
+   "verdict_lines": {
+    "M": 15,
+    "B": 15,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "e2e-hp": {
+   "M": "=== 26건 중 PASS 25 · FAIL 1 ===",
+   "B": "=== 26건 중 PASS 25 · FAIL 1 ===",
+   "verdict_lines": {
+    "M": 26,
+    "B": 26,
+    "diff": 5,
+    "ex": [
+     [
+      "✗ ★① 그리고 화면이 깎인 값을 말한다  화면 77",
+      "✗ ★① 그리고 화면이 깎인 값을 말한다  화면 68"
+     ],
+     [
+      "✓ ★★② 아무것도 안 눌러도 **화면 hp 가 <t> 안에 오른다**(회복이 실린다)  35 → [60,72,96,100,100,100]",
+      "✓ ★★② 아무것도 안 눌러도 **화면 hp 가 <t> 안에 오른다**(회복이 실린다)  30 → [34,60,100,100,100,100]"
+     ],
+     [
+      "✓ ★★③ `gauges` 는 **초당 한 건**이다 — 그게 hp 양자화의 틱 정본이다  1.33건/초",
+      "✓ ★★③ `gauges` 는 **초당 한 건**이다 — 그게 hp 양자화의 틱 정본이다  1.50건/초"
+     ],
+     [
+      "✓ ★③ (상황) 그 <t> 동안 실제로 아물었다 — 아니면 위가 자명 통과다  화면 100",
+      "✓ ★③ (상황) 그 <t> 동안 실제로 아물었다 — 아니면 위가 자명 통과다  화면 84"
+     ]
+    ]
+   }
+  },
+  "e2e-hp.r2": {
+   "M": "=== 26건 중 PASS 26 · FAIL 0 ===",
+   "B": "=== 26건 중 PASS 26 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 26,
+    "B": 26,
+    "diff": 5,
+    "ex": [
+     [
+      "✓ ★① 그리고 화면이 깎인 값을 말한다  화면 42",
+      "✓ ★① 그리고 화면이 깎인 값을 말한다  화면 40"
+     ],
+     [
+      "✓ ★★② 아무것도 안 눌러도 **화면 hp 가 <t> 안에 오른다**(회복이 실린다)  40 → [50,50,71,71,81,91]",
+      "✓ ★★② 아무것도 안 눌러도 **화면 hp 가 <t> 안에 오른다**(회복이 실린다)  34 → [44,54,64,64,74,85]"
+     ],
+     [
+      "✓ ★② 화면 숫자 = 클라가 든 서버 값(굳은 그림 아님 · 한 프레임 차 허용)  100 vs 100",
+      "✓ ★② 화면 숫자 = 클라가 든 서버 값(굳은 그림 아님 · 한 프레임 차 허용)  85 vs 85"
+     ],
+     [
+      "✓ ★③ (상황) 그 <t> 동안 실제로 아물었다 — 아니면 위가 자명 통과다  화면 88",
+      "✓ ★③ (상황) 그 <t> 동안 실제로 아물었다 — 아니면 위가 자명 통과다  화면 82"
+     ]
+    ]
+   }
+  },
+  "test-audio": {
+   "M": "=== PASS 208 / FAIL 0 ===",
+   "B": "=== PASS 208 / FAIL 0 ===",
+   "verdict_lines": {
+    "M": 208,
+    "B": 208,
+    "diff": 2,
+    "ex": [
+     [
+      "✓ ⑦f ★★자 검증 — `carry` 실은 전송을 **한 줄짜리·여러 줄짜리 둘 다** 집어낸다(옛 자는 여러 줄을 못 봤다)  한 줄 7896 · 여러 줄 15464",
+      "✓ ⑦f ★★자 검증 — `carry` 실은 전송을 **한 줄짜리·여러 줄짜리 둘 다** 집어낸다(옛 자는 여러 줄을 못 봤다)  한 줄 7914 · 여러 줄 15485"
+     ],
+     [
+      "✓ ⑦g ★`gauges` 중 `carry` 를 싣는 자리는 **둘**이다(`doEat` · 초당 게이지 틱). 이 수가 변하면 먹기 판별을 다시 본다  zone.js:7896 zone.js:15464",
+      "✓ ⑦g ★`gauges` 중 `carry` 를 싣는 자리는 **둘**이다(`doEat` · 초당 게이지 틱). 이 수가 변하면 먹기 판별을 다시 본다  zone.js:7914 zone.js:15485"
+     ]
+    ]
+   }
+  },
+  "test-body": {
+   "M": "=== 324건 중 PASS 324 · FAIL 0 ===",
+   "B": "=== 324건 중 PASS 324 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 324,
+    "B": 324,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-doors": {
+   "M": "=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+   "B": "=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+   "verdict_lines": {
+    "M": 45,
+    "B": 45,
+    "diff": 4,
+    "ex": [
+     [
+      "✓ ⓕ1 ★칸 둘이 바깥 판에 있다 — `/perf` 는 안 문이라 이 둘만 여기로 낸다 · villages=null tickP50Ms=0.419",
+      "✓ ⓕ1 ★칸 둘이 바깥 판에 있다 — `/perf` 는 안 문이라 이 둘만 여기로 낸다 · villages=null tickP50Ms=0.444"
+     ],
+     [
+      "✓ ⓕ3 `tickP50Ms` 는 수이거나 `null` · 0.419",
+      "✓ ⓕ3 `tickP50Ms` 는 수이거나 `null` · 0.444"
+     ],
+     [
+      "✓ ⓕ9 ★★`/perf` tick.ms.p50 과 `/health` tickP50Ms 이 **같은 답**이다(표본 0 이면 둘 다 \"없다\") · n=153 · 0.412 vs 0.412 · 고요한 판 9번째",
+      "✓ ⓕ9 ★★`/perf` tick.ms.p50 과 `/health` tickP50Ms 이 **같은 답**이다(표본 0 이면 둘 다 \"없다\") · n=158 · 0.442 vs 0.442 · 고요한 판 1번째"
+     ],
+     [
+      "✓ ⓕ9b ★`/health` 를 부른 뒤에도 틱 히스토그램이 **안 지워진다** · n 153 → 154",
+      "✓ ⓕ9b ★`/health` 를 부른 뒤에도 틱 히스토그램이 **안 지워진다** · n 158 → 159"
+     ]
+    ]
+   }
+  },
+  "test-downed": {
+   "M": "=== 180건 중 PASS 180 · FAIL 0 ===",
+   "B": "=== 180건 중 PASS 180 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 180,
+    "B": 180,
+    "diff": 2,
+    "ex": [
+     [
+      "✓ ★★⑦ **저장본에 쓰러짐이 실린다**(`serializeBody.vital` — T47 이 이미 실어 뒀다)  {\"hp\":0,\"maxHp\":100,\"isDown\":true,\"downedAt\":1793251115518}",
+      "✓ ★★⑦ **저장본에 쓰러짐이 실린다**(`serializeBody.vital` — T47 이 이미 실어 뒀다)  {\"hp\":0,\"maxHp\":100,\"isDown\":true,\"downedAt\":1793251115774}"
+     ],
+     [
+      "✓ ★★㉒ⓑ 두 번째 누름이 **시계를 되감지 않는다**(깨어날 시각 그대로)  1793251298512.1995 → 1793251298512.1995",
+      "✓ ★★㉒ⓑ 두 번째 누름이 **시계를 되감지 않는다**(깨어날 시각 그대로)  1793251298768.1995 → 1793251298768.1995"
+     ]
+    ]
+   }
+  },
+  "test-drop-kg": {
+   "M": "=== 51건 중 PASS 51 · FAIL 0 ===",
+   "B": "=== 51건 중 PASS 51 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 51,
+    "B": 51,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-food-keep": {
+   "M": "=== 10건 중 PASS 10 · FAIL 0 ===",
+   "B": "=== 10건 중 PASS 10 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 10,
+    "B": 10,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-game-meat": {
+   "M": "=== 54건 중 PASS 54 · FAIL 0 ===",
+   "B": "=== 54건 중 PASS 54 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 54,
+    "B": 54,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-harness-lint": {
+   "M": "=== 68건 중 PASS 68 · FAIL 0 ===",
+   "B": "=== 68건 중 PASS 68 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 68,
+    "B": 68,
+    "diff": 6,
+    "ex": [
+     [
+      "✓ ① 전제: 하네스를 실제로 여럿 읽었다(빈 목록이면 아래가 자명 통과다)  298파일",
+      "✓ ① 전제: 하네스를 실제로 여럿 읽었다(빈 목록이면 아래가 자명 통과다)  299파일"
+     ],
+     [
+      "✓ ①b ★전부 **파싱됐다** — 못 읽은 파일이 조용히 면제되지 않는다  298/298",
+      "✓ ①b ★전부 **파싱됐다** — 못 읽은 파일이 조용히 면제되지 않는다  299/299"
+     ],
+     [
+      "✓ ② ★판정 자리에 이모지 0 (정규식 · 술어 인자 · 셀렉터 · 비교 · ok() 조건)  293파일",
+      "✓ ② ★판정 자리에 이모지 0 (정규식 · 술어 인자 · 셀렉터 · 비교 · ok() 조건)  294파일"
+     ],
+     [
+      "✓ ★★⑦a **`codeOnly` 정의는 정본 하나뿐**(나머지 스물넷은 `require` 호출) — 사본이 생기면 여기가 빨개진다  956파일 훑음 · 사본 0",
+      "✓ ★★⑦a **`codeOnly` 정의는 정본 하나뿐**(나머지 스물넷은 `require` 호출) — 사본이 생기면 여기가 빨개진다  957파일 훑음 · 사본 0"
+     ]
+    ]
+   }
+  },
+  "test-hp-src": {
+   "M": "=== 54 통과 / 0 실패 ===",
+   "B": "=== 54 통과 / 0 실패 ===",
+   "verdict_lines": {
+    "M": 54,
+    "B": 54,
+    "diff": 3,
+    "ex": [
+     [
+      "✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 967993 · net 96995 · wildlife 82378",
+      "✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 969481 · net 96995 · wildlife 82378"
+     ],
+     [
+      "✓ ★★① 문 밖 직접 대입 한 줄(`p.hp = …` · 회복 걸음에 되살림)은 잡힌다 — 빨강 하나 · 잡힌 줄이 그 줄  빨강 1 · 15412: p.hp = Math.min(p.maxHp, p.hp + 1);",
+      "✓ ★★① 문 밖 직접 대입 한 줄(`p.hp = …` · 회복 걸음에 되살림)은 잡힌다 — 빨강 하나 · 잡힌 줄이 그 줄  빨강 1 · 15433: p.hp = Math.min(p.maxHp, p.hp + 1);"
+     ],
+     [
+      "✓ ★★③ 옛 직접 대입(사람 공격 `bestMob.hp -= atk` · 저장 표 · 방송 세 줄)을 되살린 사본은 잡힌다 — 잡힌 줄이 그 줄  빨강 2 · 13145: bestMob.hp -= atk;",
+      "✓ ★★③ 옛 직접 대입(사람 공격 `bestMob.hp -= atk` · 저장 표 · 방송 세 줄)을 되살린 사본은 잡힌다 — 잡힌 줄이 그 줄  빨강 2 · 13165: bestMob.hp -= atk;"
+     ]
+    ]
+   }
+  },
+  "test-hunt-port": {
+   "M": "=== 78건 중 PASS 78 · FAIL 0 ===",
+   "B": "=== 78건 중 PASS 78 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 78,
+    "B": 78,
+    "diff": 1,
+    "ex": [
+     [
+      "✓ ★★⑦' 하루에 다 안 짓는다(예산에서 끊는다)  <t> · 커서 dy=-76",
+      "✓ ★★⑦' 하루에 다 안 짓는다(예산에서 끊는다)  <t> · 커서 dy=-90"
+     ]
+    ]
+   }
+  },
+  "test-hunt-vis.r1": {
+   "M": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "B": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 32,
+    "B": 32,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-hunt-vis.r2": {
+   "M": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "B": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 32,
+    "B": 32,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-lab-hunt": {
+   "M": "=== 62건 중 PASS 62 · FAIL 0 ===",
+   "B": "=== 62건 중 PASS 62 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 0,
+    "B": 0,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-mob-hp-door": {
+   "M": "=== 19건 중 PASS 19 · FAIL 0 ===",
+   "B": "=== 19건 중 PASS 19 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 23,
+    "B": 23,
+    "diff": 1,
+    "ex": [
+     [
+      "✓ ★★⑤ 야생 tick 의 그림자 동기가 그 문을 지난다 — 낱말 `wild` 만 · 값 ≥ 1(하한 1 은 그 식) · 방송 0  그림자 50 · 문 30000번 · 방송 0",
+      "✓ ★★⑤ 야생 tick 의 그림자 동기가 그 문을 지난다 — 낱말 `wild` 만 · 값 ≥ 1(하한 1 은 그 식) · 방송 0  그림자 52 · 문 31196번 · 방송 0"
+     ]
+    ]
+   }
+  },
+  "test-mob-hp-door.r2": {
+   "M": "=== 19건 중 PASS 19 · FAIL 0 ===",
+   "B": "=== 19건 중 PASS 19 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 23,
+    "B": 23,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-mob-hp-restart": {
+   "M": "=== 20건 중 PASS 20 · FAIL 0 ===",
+   "B": "=== 20건 중 PASS 20 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 28,
+    "B": 28,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-npc-hp-door": {
+   "M": "=== 21건 중 PASS 21 · FAIL 0 ===",
+   "B": "=== 21건 중 PASS 21 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 21,
+    "B": 21,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-tame": {
+   "M": "=== 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+   "B": "=== 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+   "verdict_lines": {
+    "M": 11,
+    "B": 11,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-zone-fauna": {
+   "M": "=== 38건 중 PASS 38 · FAIL 0 ===",
+   "B": "=== 38건 중 PASS 38 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 38,
+    "B": 38,
+    "diff": 0,
+    "ex": []
+   }
+  }
+ },
+ "server_baseline": {
+  "on": {
+   "baseline": "계측/서버기준선_2026-10-28.json(main 최신 · land1029 · T959 판 자)",
+   "env": "(없음 = 켬)",
+   "log": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 2 · 교역로 캐시 <tmp> · 판 <tmp> ===",
+    "  · 시드 1020 400일 판 451초(종료 0)",
+    "  · 시드 7 400일 판 503초(종료 0)",
+    "  · 시드 42 400일 판 428초(종료 0)",
+    "  판 모두 879초",
+    "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2508)",
+    "  ○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2631)",
+    "  ○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2599)",
+    "=== 같음 3/3 · 판 879초 ==="
+   ],
+   "observer": {
+    "sbc-1020": {
+     "n_days": 401,
+     "days_hash": "feb656f4d2ee",
+     "last": [
+      400,
+      54,
+      "4ed29cb2ca5c",
+      5400,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 13443,
+       "write": 23,
+       "same": 13420,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 6,
+       "write": 2,
+       "same": 4,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "regen": {
+       "n": 1,
+       "write": 1,
+       "same": 0,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-42": {
+     "n_days": 401,
+     "days_hash": "d37c27210541",
+     "last": [
+      400,
+      60,
+      "4711fe0959b8",
+      5967.306926,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 28722,
+       "write": 28,
+       "same": 28694,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 3,
+       "write": 2,
+       "same": 1,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "regen": {
+       "n": 19,
+       "write": 19,
+       "same": 0,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-7": {
+     "n_days": 401,
+     "days_hash": "b6fa1e0a5f89",
+     "last": [
+      400,
+      51,
+      "8cf963ec8406",
+      5100,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 114036,
+       "write": 18,
+       "same": 114018,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 3,
+       "write": 2,
+       "same": 1,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    }
+   }
+  },
+  "off": {
+   "baseline": "계측/서버기준선_2026-10-28.json(main 최신 · land1029 · T959 판 자)",
+   "env": "T987_MOB_RESPAWN=0",
+   "log": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 2 · 교역로 캐시 <tmp> · 판 <tmp> ===",
+    "  · 시드 1020 400일 판 465초(종료 0)",
+    "  · 시드 7 400일 판 522초(종료 0)",
+    "  · 시드 42 400일 판 460초(종료 0)",
+    "  판 모두 925초",
+    "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2508)",
+    "  ○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2631)",
+    "  ○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2599)",
+    "=== 같음 3/3 · 판 925초 ==="
+   ],
+   "observer": {
+    "sbc-1020": {
+     "n_days": 401,
+     "days_hash": "feb656f4d2ee",
+     "last": [
+      400,
+      54,
+      "4ed29cb2ca5c",
+      5400,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 13443,
+       "write": 23,
+       "same": 13420,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 6,
+       "write": 2,
+       "same": 4,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "regen": {
+       "n": 1,
+       "write": 1,
+       "same": 0,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-42": {
+     "n_days": 401,
+     "days_hash": "d37c27210541",
+     "last": [
+      400,
+      60,
+      "4711fe0959b8",
+      5967.306926,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 28722,
+       "write": 28,
+       "same": 28694,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 3,
+       "write": 2,
+       "same": 1,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "regen": {
+       "n": 19,
+       "write": 19,
+       "same": 0,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-7": {
+     "n_days": 401,
+     "days_hash": "b6fa1e0a5f89",
+     "last": [
+      400,
+      51,
+      "8cf963ec8406",
+      5100,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 114036,
+       "write": 18,
+       "same": 114018,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 3,
+       "write": 2,
+       "same": 1,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    }
+   }
+  },
+  "observer_same_on_off": {
+   "sbc-1020": true,
+   "sbc-42": true,
+   "sbc-7": true
+  }
+ },
+ "virtual_clock": {
+  "cond": "t942-restore-ab --make bx --stop 40 --days 1 · 켬 ↔ 끔(T987_MOB_RESPAWN=0)",
+  "cmp": {
+   "base_days": {
+    "n": [
+     41,
+     41
+    ],
+    "same": true,
+    "first_diff": null,
+    "last_M": [
+     40,
+     695,
+     "f3d3e7e04c77",
+     69500,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "last_B": [
+     40,
+     695,
+     "f3d3e7e04c77",
+     69500,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "mob": [
+     [
+      449,
+      15536
+     ]
+    ]
+   },
+   "rs_days": {
+    "n": [
+     2,
+     2
+    ],
+    "same": true,
+    "first_diff": null,
+    "last_M": [
+     41,
+     667,
+     "8590eff77b2c",
+     59784.297877,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "last_B": [
+     41,
+     667,
+     "8590eff77b2c",
+     59784.297877,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "mob": [
+     [
+      449,
+      15536
+     ]
+    ]
+   },
+   "base_cnt": {
+    "same": true,
+    "M": {}
+   },
+   "rs_cnt": {
+    "same": true,
+    "M": {
+     "restore": {
+      "n": 612,
+      "write": 245,
+      "same": 367,
+      "lo": 0,
+      "hi": 0,
+      "nan": 0
+     },
+     "regen": {
+      "n": 245,
+      "write": 245,
+      "same": 0,
+      "lo": 0,
+      "hi": 0,
+      "nan": 0
+     }
+    }
+   },
+   "base_mobcnt": {
+    "same": true,
+    "M": {}
+   },
+   "rs_mobcnt": {
+    "same": true,
+    "M": {}
+   },
+   "probe_base": {
+    "same": true
+   },
+   "probe_rs": {
+    "same": true
+   },
+   "t747": {
+    "same": true,
+    "M": [
+     "  off: 저장본 몸 612 · 37 로 122 · 99.5 로 123",
+     "  off: <t>초(종료 0) · T747 몸 칸 되돌림 — 마을 51 · 몸 612 · 손 든 몸 0 · 진행 작업 이음 0 · 풂 0 · 직업 다시 맞춤 173 · 남은 손 0 · 지문 init:526620d29959 41:8590eff77b2c",
+     "     문 셈 restore 612(바뀜 245 · 같음 367 · 0밑 0 · 위 0) · regen 245(바뀜 245 · 같음 0 · 0밑 0 · 위 0)"
+    ],
+    "B": [
+     "  on: 저장본 몸 612 · 37 로 122 · 99.5 로 123",
+     "  on: <t>초(종료 0) · T747 몸 칸 되돌림 — 마을 51 · 몸 612 · 손 든 몸 0 · 진행 작업 이음 0 · 풂 0 · 직업 다시 맞춤 173 · 남은 손 0 · 지문 init:526620d29959 41:8590eff77b2c",
+     "     문 셈 restore 612(바뀜 245 · 같음 367 · 0밑 0 · 위 0) · regen 245(바뀜 245 · 같음 0 · 0밑 0 · 위 0)"
+    ]
+   }
+  }
+ },
+ "boards": [
+  "E_test-mob-respawn rc=1 7s 05:12:50 === 1건 중 PASS 0 · FAIL 1 ===",
+  "E_test-mob-respawn rc=1 7s 05:13:15 === 16건 중 PASS 7 · FAIL 9 ===",
+  "Q_W_test-mob-respawn rc=0 7s 05:13:22 === 16건 중 PASS 16 · FAIL 0 ===",
+  "RUNA_START 05:13:41",
+  "H_B_test-mob-hp-restart rc=0 27s 05:14:08 === 20건 중 PASS 20 · FAIL 0 ===",
+  "H_M_test-mob-hp-restart rc=0 28s 05:14:09 === 20건 중 PASS 20 · FAIL 0 ===",
+  "H_M_test-mob-hp-door rc=0 7s 05:14:15 === 19건 중 PASS 19 · FAIL 0 ===",
+  "H_B_test-mob-hp-door rc=0 7s 05:14:16 === 19건 중 PASS 19 · FAIL 0 ===",
+  "H_M_test-tame rc=0 3s 05:14:18 === 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+  "H_B_test-tame rc=0 2s 05:14:18 === 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+  "H_M_test-hunt-port rc=0 1s 05:14:19 === 78건 중 PASS 78 · FAIL 0 ===",
+  "H_M_test-lab-hunt rc=0 1s 05:14:20 === 62건 중 PASS 62 · FAIL 0 ===",
+  "H_B_test-hunt-port rc=0 2s 05:14:20 === 78건 중 PASS 78 · FAIL 0 ===",
+  "H_B_test-lab-hunt rc=0 0s 05:14:20 === 62건 중 PASS 62 · FAIL 0 ===",
+  "H_M_test-zone-fauna rc=0 83s 05:15:43 === 38건 중 PASS 38 · FAIL 0 ===",
+  "H_B_test-zone-fauna rc=0 86s 05:15:46 === 38건 중 PASS 38 · FAIL 0 ===",
+  "H_M_test-game-meat rc=0 11s 05:15:54 === 54건 중 PASS 54 · FAIL 0 ===",
+  "H_B_test-game-meat rc=0 10s 05:15:56 === 54건 중 PASS 54 · FAIL 0 ===",
+  "H_M_test-drop-kg rc=0 10s 05:16:04 === 51건 중 PASS 51 · FAIL 0 ===",
+  "H_B_test-drop-kg rc=0 10s 05:16:06 === 51건 중 PASS 51 · FAIL 0 ===",
+  "H_M_test-audio rc=0 3s 05:16:07 === PASS 208 / FAIL 0 ===",
+  "H_M_test-hp-src rc=0 2s 05:16:09 === 54 통과 / 0 실패 ===",
+  "H_B_test-audio rc=0 3s 05:16:09 === PASS 208 / FAIL 0 ===",
+  "H_M_test-npc-hp-door rc=0 1s 05:16:10 === 21건 중 PASS 21 · FAIL 0 ===",
+  "H_B_test-npc-hp-door rc=0 0s 05:16:10 === 21건 중 PASS 21 · FAIL 0 ===",
+  "H_B_test-hp-src rc=0 2s 05:16:11 === 54 통과 / 0 실패 ===",
+  "H_M_test-harness-lint rc=0 12s 05:16:22 === 68건 중 PASS 68 · FAIL 0 ===",
+  "H_B_test-harness-lint rc=0 11s 05:16:22 === 68건 중 PASS 68 · FAIL 0 ===",
+  "H_M_test-body rc=0 12s 05:16:34 === 324건 중 PASS 324 · FAIL 0 ===",
+  "H_B_test-body rc=0 12s 05:16:34 === 324건 중 PASS 324 · FAIL 0 ===",
+  "H_M_test-downed rc=0 305s 05:21:39 === 180건 중 PASS 180 · FAIL 0 ===",
+  "H_B_test-downed rc=0 305s 05:21:39 === 180건 중 PASS 180 · FAIL 0 ===",
+  "H_M_test-doors rc=0 10s 05:21:49 === 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+  "H_B_test-doors rc=0 10s 05:21:49 === 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+  "H_M_test-food-keep rc=0 14s 05:22:03 === 10건 중 PASS 10 · FAIL 0 ===",
+  "H_B_test-food-keep rc=0 14s 05:22:03 === 10건 중 PASS 10 · FAIL 0 ===",
+  "H_M_e2e-hp rc=1 185s 05:25:08 === 26건 중 PASS 25 · FAIL 1 ===",
+  "H_B_e2e-hp rc=1 185s 05:25:08 === 26건 중 PASS 25 · FAIL 1 ===",
+  "H_B_e2e-aim rc=0 61s 05:26:09 === PASS 15 / FAIL 0 ===",
+  "H_M_e2e-aim rc=0 75s 05:26:23 === PASS 15 / FAIL 0 ===",
+  "H_B_test-mob-respawn rc=0 7s 05:26:31 === 16건 중 PASS 16 · FAIL 0 ===",
+  "H_M_test-hunt-vis.r1 rc=0 79s 05:27:50 === 32건 중 PASS 32 · FAIL 0 ===",
+  "H_B_test-hunt-vis.r1 rc=0 84s 05:29:14 === 32건 중 PASS 32 · FAIL 0 ===",
+  "H_M_test-hunt-vis.r2 rc=0 82s 05:30:36 === 32건 중 PASS 32 · FAIL 0 ===",
+  "H_B_test-hunt-vis.r2 rc=0 82s 05:31:58 === 32건 중 PASS 32 · FAIL 0 ===",
+  "RUNA_H 05:31:58",
+  "vc_on rc=0 234s 05:35:52",
+  "vc_off rc=0 236s 05:35:54",
+  "sbc_on rc=0 879s 05:50:33 === 같음 3/3 · 판 879초 ===",
+  "sbc_off rc=0 925s 06:05:59 === 같음 3/3 · 판 925초 ===",
+  "RUNA_DONE 06:06:00",
+  "H_M_test-mob-hp-door.r2 rc=0 5s 06:07:12 === 19건 중 PASS 19 · FAIL 0 ===",
+  "H_B_test-mob-hp-door.r2 rc=0 5s 06:07:17 === 19건 중 PASS 19 · FAIL 0 ===",
+  "H_M_e2e-hp.r2 rc=0 115s 06:09:18 === 26건 중 PASS 26 · FAIL 0 ===",
+  "H_B_e2e-hp.r2 rc=0 100s 06:11:04 === 26건 중 PASS 26 · FAIL 0 ==="
+ ]
+}

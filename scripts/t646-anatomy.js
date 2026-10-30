@@ -23,6 +23,7 @@
 //     벽 · 울타리와 같은 문). 조각마다 도착 · 귀환 출발 · 교역로 A* 줄 수와 `/perf` probe `t929`(누계) · `pathJobs` · `pathWait` · `routeCold` 를 같이 적는다.
 //     없으면 종전 그대로(낮 · 밤 창 둘 · 존 env 무변).
 //   [T968] --inv-day — 무효화를 **낮 창 머리**에 부른다(라이브의 흔한 꼴 — 마감 한참 앞의 벽 · 울타리). 밤 창은 --inv 와 같이 하루가 닫힐 때까지 잰다.
+//   [T977] --inv-after — 밤 창(하루가 닫힘) 뒤 무효화 한 번 더 · 조각 둘(`after` 창) — 부팅 행렬 다음이 아닌 **둘째 다시 세기**. 조각마다 존 `[T977]` 줄(`T977_PROBE=1`)도 적는다.
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -525,11 +526,28 @@ async function run(conf, tag, probe) {
         S.arr = (buf.match(/캐러밴#\d+ 도착:/g) || []).length; S.ret = (buf.match(/귀환 출발/g) || []).length; S.astar = (buf.match(/교역로 A\*:/g) || []).length;
         S.t929 = pr.t929 || null; S.pathJobs = pr.pathJobs | 0; S.pathWait = pr.pathWait | 0; S.routeCold = pr.routeCold | 0;
         S.t957 = pr.t957 || null; S.t968 = pr.t968 || null;   // ★[T968] 거리행렬 조각 · 마감 밖 셈 · 몸 틱 쉰 틱 · 줄 선 장부 요청(누계)
+        S.t977 = _t977Lines(buf); S.t996 = pr.t996 || null;   // ★[T996] 바탕 다시 세움(누계)   // ★[T977] 거리행렬 일 쪼개 보기 줄(존 `T977_PROBE=1` 일 때만 · 없으면 빈 목록)
         if (edge && p && p.econTick && (p.econTick.days | 0) > days0) closed++;
         if (edge && L && L.phase != null && (L.phase > hi || L.phase < lo)) closed = 2; }   // 밤 창 밖으로 나가면 끝(하루가 창 앞에서 이미 닫혔던 판 — 표에 적는다)
       say(`${W} 조각 ${k} · p50 ${t ? t.p50 : '?'} · p95 ${t ? t.p95 : '?'} · 줄 ${ana.length}`);
     }
     windows.push(Object.assign({ W, slices }, invHere ? { inv: !!(inv && inv.invalidated) } : {}));
+  }
+  if (process.argv.includes('--inv-after')) {   // ★[T977] 하루가 닫힌 뒤 무효화 한 번 더 — 첫 무효화(부팅 행렬 다음)가 아닌 **둘째 다시 세기**를 잰다 · 조각 둘
+    const inv = await getj('/routedbg?invalidate=1');
+    say('after 창 · 무효화', inv && inv.invalidated);
+    const slices = [];
+    for (let k = 0; k < 2; k++) {
+      await getj('/perf?reset=1');
+      const mt0 = Number(process.hrtime.bigint() / 1000n), mark = fs.statSync(logp).size;
+      await sleep(SLICE_S * 1000);
+      const p = await getj('/perf'), L = await getj('/lifedbg'), buf = fs.readFileSync(logp).subarray(mark).toString('utf8');
+      const t = p && p.tick && p.tick.ms, pr = (p && p.econTick && p.econTick.probe) || {};
+      slices.push({ k, mt0, mt1: Number(process.hrtime.bigint() / 1000n), phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, max: t && t.max, ticks: p && p.tick && p.tick.n,
+        pathJobs: pr.pathJobs | 0, t957: pr.t957 || null, t968: pr.t968 || null, t977: _t977Lines(buf), t996: pr.t996 || null });
+      say(`after 조각 ${k} · p50 ${t ? t.p50 : '?'} · p95 ${t ? t.p95 : '?'}`);
+    }
+    windows.push({ W: 'after', inv: !!(inv && inv.invalidated), slices });
   }
   clearInterval(ping); try { ws.close(); } catch (e) {}
   if (PROF) { try { z.kill('SIGINT'); } catch (e) {} for (let i = 0; i < 60 && z.exitCode === null; i++) await sleep(1000); }   // 정상 종료라야 프로파일이 써진다
@@ -539,6 +557,8 @@ async function run(conf, tag, probe) {
   fs.writeFileSync(out, JSON.stringify({ conf, tag, probe, ref: REF, seg: SEG, lines: LINES ? { file: LINES, groups: LG } : null, at: new Date().toISOString(), wallS: Math.round((Date.now() - t0) / 1000), windows }));
   say('끝', Math.round((Date.now() - t0) / 1000), 's');
 }
+
+function _t977Lines(buf) { return buf.split('\n').filter((x) => x.includes('[T977] ')).map((x) => { try { return JSON.parse(x.slice(x.indexOf('{'))); } catch (e) { return null; } }).filter(Boolean); }   // ★[T977]
 
 // ── 표 ──────────────────────────────────────────────────────────────────────
 function table() {

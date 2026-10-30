@@ -1,0 +1,3581 @@
+{
+ "card": "T981 ①② 같은 그림 — T970_CUT_NEAR 다시 · T981_MT_NEAR",
+ "what": "scripts/t970-cut-near-check.js(크롬 · WebKit · 가르기 자리 둘). cutnear = ① 기본 갈래(갈래가 cutNear 를 지우고 세운다). cutnear-mtnear-half = ② --knob mtNear --half(굽다 만 청크 걸음 · 그린 산 띠 해시 seg*). cmp: scr* = 화면 PNG 견줌 · cs* = 가르기 조각 해시 · seg* = 이번 판 그린 산 띠 해시(같음 · 다름 · 한쪽만). 계수(jobN · cvN)는 판 안 누적. PNG 는 커밋 밖.",
+ "runs": {
+  "chromium-cutnear": {
+   "browser": "chromium",
+   "knob": "cutNear",
+   "half": false,
+   "welcome": {
+    "cutNear": true,
+    "mtNear": "(칸 없음)"
+   },
+   "spots": [
+    {
+     "nm": "산",
+     "spot": {
+      "at": [
+       2147,
+       1956
+      ],
+      "from": [
+       2147,
+       1956
+      ],
+      "occ": 165,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 0,
+        "built": 0,
+        "split": 5,
+        "hs": {},
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 0,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-off.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 2,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 2,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-on.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-off2.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    },
+    {
+     "nm": "바위1112_2408",
+     "spot": {
+      "at": [
+       1108,
+       2404
+      ],
+      "from": [
+       1108,
+       2404
+      ],
+      "occ": 76,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {},
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:4792c468",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:32ab14f7",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:c9dc6de1",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:bcb05454",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-바위1112_2408-off.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:4792c468",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:32ab14f7",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:c9dc6de1",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:bcb05454",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-바위1112_2408-on.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:4792c468",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:32ab14f7",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:c9dc6de1",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:bcb05454",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-바위1112_2408-off2.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    }
+   ],
+   "errs": []
+  },
+  "chromium-cutnear-mtnear-half": {
+   "browser": "chromium",
+   "knob": "mtNear",
+   "half": true,
+   "welcome": {
+    "cutNear": true,
+    "mtNear": "(칸 없음)"
+   },
+   "spots": [
+    {
+     "nm": "산",
+     "spot": {
+      "at": [
+       2147,
+       1956
+      ],
+      "from": [
+       2147,
+       1956
+      ],
+      "occ": 165,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 3,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 2,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 84,
+        "px": 23420828,
+        "hs": {
+         "hanbando_934_218#0": "100x95:ad1e39a",
+         "hanbando_934_218#1": "100x138:9347c3f7",
+         "hanbando_934_218#2": "100x154:ad92a80f",
+         "hanbando_935_218#13": "932x559:b9432b4e",
+         "hanbando_934_218#3": "100x163:a92ff783",
+         "hanbando_935_218#14": "996x544:5bf12389",
+         "hanbando_935_218#15": "1060x562:a29087ca",
+         "hanbando_934_219#0": "100x167:835dd86c",
+         "hanbando_934_219#1": "100x167:ef16ce20",
+         "hanbando_935_219#0": "1060x801:df8eb0bd",
+         "hanbando_934_219#2": "100x166:7ee06a61",
+         "hanbando_934_219#3": "100x165:a4b77e0c",
+         "hanbando_934_219#4": "100x165:2716d70f",
+         "hanbando_934_219#5": "100x165:1d6c565e",
+         "hanbando_934_219#6": "100x165:9cb36894",
+         "hanbando_934_219#7": "100x165:ce7305db",
+         "hanbando_934_219#8": "100x164:ee0fa4b4",
+         "hanbando_934_219#9": "100x163:8a6b2f",
+         "hanbando_934_219#10": "100x163:ab82aa7b",
+         "hanbando_934_219#11": "100x162:3a8fc20d",
+         "hanbando_934_219#12": "100x160:a3d02029",
+         "hanbando_934_219#13": "100x158:272e97a4",
+         "hanbando_934_219#14": "100x155:cf802120",
+         "hanbando_934_219#15": "100x152:82c12055",
+         "hanbando_934_220#0": "100x148:d2eda807",
+         "hanbando_936_219#0": "1060x577:c43dd642",
+         "hanbando_934_220#1": "164x146:7983e283",
+         "hanbando_935_220#0": "1060x872:73b9de2c",
+         "hanbando_934_220#2": "164x166:9dd0ddbe",
+         "hanbando_934_220#3": "164x209:78048c48",
+         "hanbando_934_220#4": "164x225:6b1d7870",
+         "hanbando_934_220#5": "164x236:1316f445",
+         "hanbando_934_220#6": "164x238:26caebce",
+         "hanbando_934_220#7": "164x237:1fd08f94",
+         "hanbando_934_220#8": "164x235:174c55c7",
+         "hanbando_934_220#9": "164x234:ac76c7d4",
+         "hanbando_934_220#10": "164x232:1ed8fbb4",
+         "hanbando_934_220#11": "164x230:577435b5",
+         "hanbando_934_220#12": "164x229:76c4980f",
+         "hanbando_934_220#13": "164x228:828ad14f",
+         "hanbando_934_220#14": "164x228:943e033e",
+         "hanbando_934_220#15": "100x167:2d5dbbf5",
+         "hanbando_934_221#1": "164x228:41cf4d9",
+         "hanbando_936_220#0": "1060x939:ed7513bb",
+         "hanbando_935_221#0": "1060x811:a1a1513d",
+         "hanbando_936_221#0": "1060x811:515cf9db",
+         "hanbando_935_222#0": "1060x963:266fd5d4",
+         "hanbando_937_220#13": "612x766:684d8b84",
+         "hanbando_937_220#14": "612x747:b61ffd8f",
+         "hanbando_937_220#15": "612x734:dc396d40",
+         "hanbando_937_220#16": "548x656:b535f2a6",
+         "hanbando_937_221#0": "100x194:4f8a5ef3",
+         "hanbando_936_222#0": "1060x1014:8c29ff94",
+         "hanbando_937_220#17": "484x572:35c465cc",
+         "hanbando_937_221#1": "164x254:91faf356",
+         "hanbando_937_221#2": "228x312:1669d38b",
+         "hanbando_937_221#3": "292x372:624e4c8e",
+         "hanbando_937_221#4": "356x441:53cdf6e6",
+         "hanbando_937_221#5": "420x521:a7fc6e8b",
+         "hanbando_937_221#6": "484x597:24f1758c",
+         "hanbando_937_221#7": "548x679:8bb69209",
+         "hanbando_937_221#8": "612x730:fd1b63b7",
+         "hanbando_937_221#9": "612x738:292d7dc3",
+         "hanbando_937_221#10": "612x756:e148523c",
+         "hanbando_937_221#11": "612x781:bc9e0e29",
+         "hanbando_937_221#12": "612x804:d138c0b3",
+         "hanbando_937_221#13": "612x823:ebf795e0",
+         "hanbando_937_221#14": "612x842:779bd249",
+         "hanbando_937_221#15": "612x861:5191dd55",
+         "hanbando_937_221#16": "548x783:92a92a53",
+         "hanbando_937_222#0": "100x174:1245151e",
+         "hanbando_936_223#0": "1060x1194:a3fab2d",
+         "hanbando_937_222#1": "164x286:5badc0e7",
+         "hanbando_937_222#2": "228x404:e59ac002",
+         "hanbando_937_222#3": "292x520:1914c779",
+         "hanbando_937_222#4": "356x631:2aa2dd0d",
+         "hanbando_937_222#5": "420x743:7fa35b44",
+         "hanbando_937_222#6": "484x840:c7ba848b",
+         "hanbando_937_222#7": "548x950:18e99e04",
+         "hanbando_937_222#8": "612x1018:81107ca9",
+         "hanbando_937_222#9": "612x1015:ae0777c4",
+         "hanbando_937_222#10": "612x1002:ba9acdb9",
+         "hanbando_937_222#11": "612x982:cfa3e2b6",
+         "hanbando_937_222#12": "612x960:2329831e"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-off-mtnear-half.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 1,
+        "jobN": 2,
+        "cvN": 2,
+        "boards": [
+         16384,
+         16384
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 0,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 84,
+        "px": 23420828,
+        "hs": {
+         "hanbando_934_218#0": "100x95:ad1e39a",
+         "hanbando_934_218#1": "100x138:9347c3f7",
+         "hanbando_934_218#2": "100x154:ad92a80f",
+         "hanbando_935_218#13": "932x559:b9432b4e",
+         "hanbando_934_218#3": "100x163:a92ff783",
+         "hanbando_935_218#14": "996x544:5bf12389",
+         "hanbando_935_218#15": "1060x562:a29087ca",
+         "hanbando_934_219#0": "100x167:835dd86c",
+         "hanbando_934_219#1": "100x167:ef16ce20",
+         "hanbando_935_219#0": "1060x801:df8eb0bd",
+         "hanbando_934_219#2": "100x166:7ee06a61",
+         "hanbando_934_219#3": "100x165:a4b77e0c",
+         "hanbando_934_219#4": "100x165:2716d70f",
+         "hanbando_934_219#5": "100x165:1d6c565e",
+         "hanbando_934_219#6": "100x165:9cb36894",
+         "hanbando_934_219#7": "100x165:ce7305db",
+         "hanbando_934_219#8": "100x164:ee0fa4b4",
+         "hanbando_934_219#9": "100x163:8a6b2f",
+         "hanbando_934_219#10": "100x163:ab82aa7b",
+         "hanbando_934_219#11": "100x162:3a8fc20d",
+         "hanbando_934_219#12": "100x160:a3d02029",
+         "hanbando_934_219#13": "100x158:272e97a4",
+         "hanbando_934_219#14": "100x155:cf802120",
+         "hanbando_934_219#15": "100x152:82c12055",
+         "hanbando_934_220#0": "100x148:d2eda807",
+         "hanbando_936_219#0": "1060x577:c43dd642",
+         "hanbando_934_220#1": "164x146:7983e283",
+         "hanbando_935_220#0": "1060x872:73b9de2c",
+         "hanbando_934_220#2": "164x166:9dd0ddbe",
+         "hanbando_934_220#3": "164x209:78048c48",
+         "hanbando_934_220#4": "164x225:6b1d7870",
+         "hanbando_934_220#5": "164x236:1316f445",
+         "hanbando_934_220#6": "164x238:26caebce",
+         "hanbando_934_220#7": "164x237:1fd08f94",
+         "hanbando_934_220#8": "164x235:174c55c7",
+         "hanbando_934_220#9": "164x234:ac76c7d4",
+         "hanbando_934_220#10": "164x232:1ed8fbb4",
+         "hanbando_934_220#11": "164x230:577435b5",
+         "hanbando_934_220#12": "164x229:76c4980f",
+         "hanbando_934_220#13": "164x228:828ad14f",
+         "hanbando_934_220#14": "164x228:943e033e",
+         "hanbando_934_220#15": "100x167:2d5dbbf5",
+         "hanbando_934_221#1": "164x228:41cf4d9",
+         "hanbando_936_220#0": "1060x939:ed7513bb",
+         "hanbando_935_221#0": "1060x811:a1a1513d",
+         "hanbando_936_221#0": "1060x811:515cf9db",
+         "hanbando_935_222#0": "1060x963:266fd5d4",
+         "hanbando_937_220#13": "612x766:684d8b84",
+         "hanbando_937_220#14": "612x747:b61ffd8f",
+         "hanbando_937_220#15": "612x734:dc396d40",
+         "hanbando_937_220#16": "548x656:b535f2a6",
+         "hanbando_937_221#0": "100x194:4f8a5ef3",
+         "hanbando_936_222#0": "1060x1014:8c29ff94",
+         "hanbando_937_220#17": "484x572:35c465cc",
+         "hanbando_937_221#1": "164x254:91faf356",
+         "hanbando_937_221#2": "228x312:1669d38b",
+         "hanbando_937_221#3": "292x372:624e4c8e",
+         "hanbando_937_221#4": "356x441:53cdf6e6",
+         "hanbando_937_221#5": "420x521:a7fc6e8b",
+         "hanbando_937_221#6": "484x597:24f1758c",
+         "hanbando_937_221#7": "548x679:8bb69209",
+         "hanbando_937_221#8": "612x730:fd1b63b7",
+         "hanbando_937_221#9": "612x738:292d7dc3",
+         "hanbando_937_221#10": "612x756:e148523c",
+         "hanbando_937_221#11": "612x781:bc9e0e29",
+         "hanbando_937_221#12": "612x804:d138c0b3",
+         "hanbando_937_221#13": "612x823:ebf795e0",
+         "hanbando_937_221#14": "612x842:779bd249",
+         "hanbando_937_221#15": "612x861:5191dd55",
+         "hanbando_937_221#16": "548x783:92a92a53",
+         "hanbando_937_222#0": "100x174:1245151e",
+         "hanbando_936_223#0": "1060x1194:a3fab2d",
+         "hanbando_937_222#1": "164x286:5badc0e7",
+         "hanbando_937_222#2": "228x404:e59ac002",
+         "hanbando_937_222#3": "292x520:1914c779",
+         "hanbando_937_222#4": "356x631:2aa2dd0d",
+         "hanbando_937_222#5": "420x743:7fa35b44",
+         "hanbando_937_222#6": "484x840:c7ba848b",
+         "hanbando_937_222#7": "548x950:18e99e04",
+         "hanbando_937_222#8": "612x1018:81107ca9",
+         "hanbando_937_222#9": "612x1015:ae0777c4",
+         "hanbando_937_222#10": "612x1002:ba9acdb9",
+         "hanbando_937_222#11": "612x982:cfa3e2b6",
+         "hanbando_937_222#12": "612x960:2329831e"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-on-mtnear-half.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 15,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 3,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 15,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 2,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 84,
+        "px": 23420828,
+        "hs": {
+         "hanbando_934_218#0": "100x95:ad1e39a",
+         "hanbando_934_218#1": "100x138:9347c3f7",
+         "hanbando_934_218#2": "100x154:ad92a80f",
+         "hanbando_935_218#13": "932x559:b9432b4e",
+         "hanbando_934_218#3": "100x163:a92ff783",
+         "hanbando_935_218#14": "996x544:5bf12389",
+         "hanbando_935_218#15": "1060x562:a29087ca",
+         "hanbando_934_219#0": "100x167:835dd86c",
+         "hanbando_934_219#1": "100x167:ef16ce20",
+         "hanbando_935_219#0": "1060x801:df8eb0bd",
+         "hanbando_934_219#2": "100x166:7ee06a61",
+         "hanbando_934_219#3": "100x165:a4b77e0c",
+         "hanbando_934_219#4": "100x165:2716d70f",
+         "hanbando_934_219#5": "100x165:1d6c565e",
+         "hanbando_934_219#6": "100x165:9cb36894",
+         "hanbando_934_219#7": "100x165:ce7305db",
+         "hanbando_934_219#8": "100x164:ee0fa4b4",
+         "hanbando_934_219#9": "100x163:8a6b2f",
+         "hanbando_934_219#10": "100x163:ab82aa7b",
+         "hanbando_934_219#11": "100x162:3a8fc20d",
+         "hanbando_934_219#12": "100x160:a3d02029",
+         "hanbando_934_219#13": "100x158:272e97a4",
+         "hanbando_934_219#14": "100x155:cf802120",
+         "hanbando_934_219#15": "100x152:82c12055",
+         "hanbando_934_220#0": "100x148:d2eda807",
+         "hanbando_936_219#0": "1060x577:c43dd642",
+         "hanbando_934_220#1": "164x146:7983e283",
+         "hanbando_935_220#0": "1060x872:73b9de2c",
+         "hanbando_934_220#2": "164x166:9dd0ddbe",
+         "hanbando_934_220#3": "164x209:78048c48",
+         "hanbando_934_220#4": "164x225:6b1d7870",
+         "hanbando_934_220#5": "164x236:1316f445",
+         "hanbando_934_220#6": "164x238:26caebce",
+         "hanbando_934_220#7": "164x237:1fd08f94",
+         "hanbando_934_220#8": "164x235:174c55c7",
+         "hanbando_934_220#9": "164x234:ac76c7d4",
+         "hanbando_934_220#10": "164x232:1ed8fbb4",
+         "hanbando_934_220#11": "164x230:577435b5",
+         "hanbando_934_220#12": "164x229:76c4980f",
+         "hanbando_934_220#13": "164x228:828ad14f",
+         "hanbando_934_220#14": "164x228:943e033e",
+         "hanbando_934_220#15": "100x167:2d5dbbf5",
+         "hanbando_934_221#1": "164x228:41cf4d9",
+         "hanbando_936_220#0": "1060x939:ed7513bb",
+         "hanbando_935_221#0": "1060x811:a1a1513d",
+         "hanbando_936_221#0": "1060x811:515cf9db",
+         "hanbando_935_222#0": "1060x963:266fd5d4",
+         "hanbando_937_220#13": "612x766:684d8b84",
+         "hanbando_937_220#14": "612x747:b61ffd8f",
+         "hanbando_937_220#15": "612x734:dc396d40",
+         "hanbando_937_220#16": "548x656:b535f2a6",
+         "hanbando_937_221#0": "100x194:4f8a5ef3",
+         "hanbando_936_222#0": "1060x1014:8c29ff94",
+         "hanbando_937_220#17": "484x572:35c465cc",
+         "hanbando_937_221#1": "164x254:91faf356",
+         "hanbando_937_221#2": "228x312:1669d38b",
+         "hanbando_937_221#3": "292x372:624e4c8e",
+         "hanbando_937_221#4": "356x441:53cdf6e6",
+         "hanbando_937_221#5": "420x521:a7fc6e8b",
+         "hanbando_937_221#6": "484x597:24f1758c",
+         "hanbando_937_221#7": "548x679:8bb69209",
+         "hanbando_937_221#8": "612x730:fd1b63b7",
+         "hanbando_937_221#9": "612x738:292d7dc3",
+         "hanbando_937_221#10": "612x756:e148523c",
+         "hanbando_937_221#11": "612x781:bc9e0e29",
+         "hanbando_937_221#12": "612x804:d138c0b3",
+         "hanbando_937_221#13": "612x823:ebf795e0",
+         "hanbando_937_221#14": "612x842:779bd249",
+         "hanbando_937_221#15": "612x861:5191dd55",
+         "hanbando_937_221#16": "548x783:92a92a53",
+         "hanbando_937_222#0": "100x174:1245151e",
+         "hanbando_936_223#0": "1060x1194:a3fab2d",
+         "hanbando_937_222#1": "164x286:5badc0e7",
+         "hanbando_937_222#2": "228x404:e59ac002",
+         "hanbando_937_222#3": "292x520:1914c779",
+         "hanbando_937_222#4": "356x631:2aa2dd0d",
+         "hanbando_937_222#5": "420x743:7fa35b44",
+         "hanbando_937_222#6": "484x840:c7ba848b",
+         "hanbando_937_222#7": "548x950:18e99e04",
+         "hanbando_937_222#8": "612x1018:81107ca9",
+         "hanbando_937_222#9": "612x1015:ae0777c4",
+         "hanbando_937_222#10": "612x1002:ba9acdb9",
+         "hanbando_937_222#11": "612x982:cfa3e2b6",
+         "hanbando_937_222#12": "612x960:2329831e"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-off2-mtnear-half.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "segOffOn": {
+       "same": 84,
+       "diff": 0,
+       "only": 0
+      },
+      "segOffOff2": {
+       "same": 84,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    },
+    {
+     "nm": "바위1112_2408",
+     "spot": {
+      "at": [
+       1108,
+       2404
+      ],
+      "from": [
+       1108,
+       2404
+      ],
+      "occ": 76,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 25,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 3,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 25,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:4792c468",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:32ab14f7",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:c9dc6de1",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:bcb05454",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 2,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 109,
+        "px": 28545416,
+        "hs": {
+         "hanbando_868_247#15": "100x122:84a58094",
+         "hanbando_869_247#0": "100x120:ed111cf6",
+         "hanbando_869_247#1": "100x119:902711d8",
+         "hanbando_869_248#0": "1060x837:e1e8d3b6",
+         "hanbando_869_247#2": "100x117:6cdfd35b",
+         "hanbando_869_247#3": "100x116:6709282a",
+         "hanbando_869_247#4": "100x115:41a7ccb6",
+         "hanbando_869_247#5": "100x115:1cd0e8a4",
+         "hanbando_869_247#6": "100x114:e152494c",
+         "hanbando_869_247#7": "100x114:5a921b66",
+         "hanbando_869_247#8": "164x114:226206d3",
+         "hanbando_869_247#9": "164x124:b761ccd2",
+         "hanbando_869_247#10": "164x151:8aa1e430",
+         "hanbando_869_247#11": "164x167:e7086fbd",
+         "hanbando_869_247#12": "164x176:95a37a85",
+         "hanbando_869_247#13": "164x180:1a990095",
+         "hanbando_869_247#14": "164x182:b7979193",
+         "hanbando_869_247#15": "100x140:b2607c25",
+         "hanbando_870_247#0": "100x116:5fd8e9e6",
+         "hanbando_870_247#1": "164x185:d3ef722a",
+         "hanbando_870_247#2": "164x186:c3c57aea",
+         "hanbando_870_248#0": "100x130:dced0941",
+         "hanbando_870_247#3": "164x185:c84f5a2a",
+         "hanbando_870_248#1": "164x194:45126582",
+         "hanbando_870_247#4": "164x176:43b6df27",
+         "hanbando_870_248#2": "228x258:a55a1a6a",
+         "hanbando_870_247#5": "164x174:d16f5285",
+         "hanbando_870_248#3": "292x322:483602d6",
+         "hanbando_870_247#6": "100x126:405f9ea4",
+         "hanbando_870_248#4": "356x414:d3de8a9",
+         "hanbando_870_248#5": "420x484:8fedac3d",
+         "hanbando_870_248#6": "420x501:ac330648",
+         "hanbando_870_247#7": "164x88:df8066fe",
+         "hanbando_870_248#7": "420x517:8fe8173e",
+         "hanbando_870_247#8": "228x119:381109c3",
+         "hanbando_870_248#8": "420x533:d5844df4",
+         "hanbando_870_247#9": "228x156:ae0f1548",
+         "hanbando_870_248#9": "676x552:71a558bb",
+         "hanbando_870_247#10": "228x191:18192650",
+         "hanbando_870_248#10": "740x572:2cf97f90",
+         "hanbando_870_247#11": "228x219:306c184f",
+         "hanbando_870_248#11": "804x591:bce4d58d",
+         "hanbando_870_247#12": "228x235:4f36933f",
+         "hanbando_870_248#12": "868x608:894805d3",
+         "hanbando_870_247#13": "164x206:6fca3912",
+         "hanbando_871_247#0": "100x116:55c6a6c7",
+         "hanbando_870_248#13": "932x624:a153dbfb",
+         "hanbando_870_247#14": "100x139:d3eb5d4e",
+         "hanbando_871_247#1": "164x186:d29e5479",
+         "hanbando_870_248#14": "996x638:dd8e8fdb",
+         "hanbando_871_247#2": "228x249:fbc8e622",
+         "hanbando_870_248#15": "1060x649:5f45569d",
+         "hanbando_871_247#3": "228x245:be25dda4",
+         "hanbando_870_248#16": "996x568:308cc138",
+         "hanbando_871_248#0": "1060x568:96b77acb",
+         "hanbando_870_249#0": "100x181:9a2ba668",
+         "hanbando_871_247#4": "228x240:f650bb6a",
+         "hanbando_870_248#17": "932x477:38ed3a74",
+         "hanbando_870_249#1": "164x272:2d0100c7",
+         "hanbando_871_247#5": "228x237:3510aee3",
+         "hanbando_870_248#18": "868x503:b5da656",
+         "hanbando_870_249#2": "228x371:779d7db",
+         "hanbando_870_248#19": "804x519:eac8f689",
+         "hanbando_870_249#3": "292x461:66e45770",
+         "hanbando_870_248#20": "740x534:ff3d7d3d",
+         "hanbando_870_249#4": "356x575:ea4d4a72",
+         "hanbando_870_248#21": "420x515:9b61d724",
+         "hanbando_870_249#5": "420x653:3ec7b582",
+         "hanbando_870_248#22": "420x511:aad372fb",
+         "hanbando_870_249#6": "420x657:c9d66f82",
+         "hanbando_870_248#23": "420x513:4c099dc3",
+         "hanbando_870_249#7": "420x661:ff8ba5cd",
+         "hanbando_870_248#24": "420x519:9f18516",
+         "hanbando_870_249#8": "420x660:63bf209c",
+         "hanbando_870_248#25": "420x524:5c884db",
+         "hanbando_870_249#9": "420x654:cc08dc86",
+         "hanbando_870_248#26": "356x459:618baae7",
+         "hanbando_870_249#10": "740x643:1b2e6d6a",
+         "hanbando_870_248#27": "292x355:415b3d27",
+         "hanbando_870_249#11": "804x639:8bbed734",
+         "hanbando_870_248#28": "228x274:b437c9c3",
+         "hanbando_870_249#12": "868x656:f3302c9a",
+         "hanbando_870_248#29": "164x188:6d125092",
+         "hanbando_870_249#13": "932x672:632b2d1f",
+         "hanbando_870_248#30": "100x119:baecc1a3",
+         "hanbando_870_249#14": "996x687:cdb72419",
+         "hanbando_870_249#15": "1060x689:2af93cb7",
+         "hanbando_872_248#0": "1060x690:c1aee8d0",
+         "hanbando_870_249#16": "996x606:8b1ee83",
+         "hanbando_871_249#0": "1060x537:b4d4449e",
+         "hanbando_870_249#17": "932x633:f3b1c22c",
+         "hanbando_870_249#18": "868x649:571e7660",
+         "hanbando_870_249#19": "804x660:813cc558",
+         "hanbando_870_249#20": "740x663:d5395667",
+         "hanbando_870_249#21": "676x663:741b2d67",
+         "hanbando_870_249#22": "420x650:dd18165b",
+         "hanbando_870_249#23": "420x661:afe9507",
+         "hanbando_870_249#24": "420x675:62fec25e",
+         "hanbando_870_249#25": "420x684:a10acff7",
+         "hanbando_870_249#26": "356x648:b2827de0",
+         "hanbando_870_249#27": "292x540:e5896af4",
+         "hanbando_870_249#28": "228x419:6ac79dd",
+         "hanbando_870_249#29": "164x306:1163452c",
+         "hanbando_870_249#30": "100x185:eec16fc9",
+         "hanbando_872_249#0": "1060x617:27f3f603",
+         "hanbando_871_250#0": "1060x1027:f1eabfb0",
+         "hanbando_873_249#0": "1060x860:f92c8fad",
+         "hanbando_872_250#0": "1060x1474:33f927a0",
+         "hanbando_873_250#0": "1060x1458:d60d6a15"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-바위1112_2408-off-mtnear-half.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 30,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 1,
+        "jobN": 5,
+        "cvN": 4,
+        "boards": [
+         16384,
+         16384
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 30,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:4792c468",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:32ab14f7",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:c9dc6de1",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:bcb05454",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 0,
+        "jobN": 6,
+        "cvN": 4,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 109,
+        "px": 28545416,
+        "hs": {
+         "hanbando_868_247#15": "100x122:84a58094",
+         "hanbando_869_247#0": "100x120:ed111cf6",
+         "hanbando_869_247#1": "100x119:902711d8",
+         "hanbando_869_248#0": "1060x837:e1e8d3b6",
+         "hanbando_869_247#2": "100x117:6cdfd35b",
+         "hanbando_869_247#3": "100x116:6709282a",
+         "hanbando_869_247#4": "100x115:41a7ccb6",
+         "hanbando_869_247#5": "100x115:1cd0e8a4",
+         "hanbando_869_247#6": "100x114:e152494c",
+         "hanbando_869_247#7": "100x114:5a921b66",
+         "hanbando_869_247#8": "164x114:226206d3",
+         "hanbando_869_247#9": "164x124:b761ccd2",
+         "hanbando_869_247#10": "164x151:8aa1e430",
+         "hanbando_869_247#11": "164x167:e7086fbd",
+         "hanbando_869_247#12": "164x176:95a37a85",
+         "hanbando_869_247#13": "164x180:1a990095",
+         "hanbando_869_247#14": "164x182:b7979193",
+         "hanbando_869_247#15": "100x140:b2607c25",
+         "hanbando_870_247#0": "100x116:5fd8e9e6",
+         "hanbando_870_247#1": "164x185:d3ef722a",
+         "hanbando_870_247#2": "164x186:c3c57aea",
+         "hanbando_870_248#0": "100x130:dced0941",
+         "hanbando_870_247#3": "164x185:c84f5a2a",
+         "hanbando_870_248#1": "164x194:45126582",
+         "hanbando_870_247#4": "164x176:43b6df27",
+         "hanbando_870_248#2": "228x258:a55a1a6a",
+         "hanbando_870_247#5": "164x174:d16f5285",
+         "hanbando_870_248#3": "292x322:483602d6",
+         "hanbando_870_247#6": "100x126:405f9ea4",
+         "hanbando_870_248#4": "356x414:d3de8a9",
+         "hanbando_870_248#5": "420x484:8fedac3d",
+         "hanbando_870_248#6": "420x501:ac330648",
+         "hanbando_870_247#7": "164x88:df8066fe",
+         "hanbando_870_248#7": "420x517:8fe8173e",
+         "hanbando_870_247#8": "228x119:381109c3",
+         "hanbando_870_248#8": "420x533:d5844df4",
+         "hanbando_870_247#9": "228x156:ae0f1548",
+         "hanbando_870_248#9": "676x552:71a558bb",
+         "hanbando_870_247#10": "228x191:18192650",
+         "hanbando_870_248#10": "740x572:2cf97f90",
+         "hanbando_870_247#11": "228x219:306c184f",
+         "hanbando_870_248#11": "804x591:bce4d58d",
+         "hanbando_870_247#12": "228x235:4f36933f",
+         "hanbando_870_248#12": "868x608:894805d3",
+         "hanbando_870_247#13": "164x206:6fca3912",
+         "hanbando_871_247#0": "100x116:55c6a6c7",
+         "hanbando_870_248#13": "932x624:a153dbfb",
+         "hanbando_870_247#14": "100x139:d3eb5d4e",
+         "hanbando_871_247#1": "164x186:d29e5479",
+         "hanbando_870_248#14": "996x638:dd8e8fdb",
+         "hanbando_871_247#2": "228x249:fbc8e622",
+         "hanbando_870_248#15": "1060x649:5f45569d",
+         "hanbando_871_247#3": "228x245:be25dda4",
+         "hanbando_870_248#16": "996x568:308cc138",
+         "hanbando_871_248#0": "1060x568:96b77acb",
+         "hanbando_870_249#0": "100x181:9a2ba668",
+         "hanbando_871_247#4": "228x240:f650bb6a",
+         "hanbando_870_248#17": "932x477:38ed3a74",
+         "hanbando_870_249#1": "164x272:2d0100c7",
+         "hanbando_871_247#5": "228x237:3510aee3",
+         "hanbando_870_248#18": "868x503:b5da656",
+         "hanbando_870_249#2": "228x371:779d7db",
+         "hanbando_870_248#19": "804x519:eac8f689",
+         "hanbando_870_249#3": "292x461:66e45770",
+         "hanbando_870_248#20": "740x534:ff3d7d3d",
+         "hanbando_870_249#4": "356x575:ea4d4a72",
+         "hanbando_870_248#21": "420x515:9b61d724",
+         "hanbando_870_249#5": "420x653:3ec7b582",
+         "hanbando_870_248#22": "420x511:aad372fb",
+         "hanbando_870_249#6": "420x657:c9d66f82",
+         "hanbando_870_248#23": "420x513:4c099dc3",
+         "hanbando_870_249#7": "420x661:ff8ba5cd",
+         "hanbando_870_248#24": "420x519:9f18516",
+         "hanbando_870_249#8": "420x660:63bf209c",
+         "hanbando_870_248#25": "420x524:5c884db",
+         "hanbando_870_249#9": "420x654:cc08dc86",
+         "hanbando_870_248#26": "356x459:618baae7",
+         "hanbando_870_249#10": "740x643:1b2e6d6a",
+         "hanbando_870_248#27": "292x355:415b3d27",
+         "hanbando_870_249#11": "804x639:8bbed734",
+         "hanbando_870_248#28": "228x274:b437c9c3",
+         "hanbando_870_249#12": "868x656:f3302c9a",
+         "hanbando_870_248#29": "164x188:6d125092",
+         "hanbando_870_249#13": "932x672:632b2d1f",
+         "hanbando_870_248#30": "100x119:baecc1a3",
+         "hanbando_870_249#14": "996x687:cdb72419",
+         "hanbando_870_249#15": "1060x689:2af93cb7",
+         "hanbando_872_248#0": "1060x690:c1aee8d0",
+         "hanbando_870_249#16": "996x606:8b1ee83",
+         "hanbando_871_249#0": "1060x537:b4d4449e",
+         "hanbando_870_249#17": "932x633:f3b1c22c",
+         "hanbando_870_249#18": "868x649:571e7660",
+         "hanbando_870_249#19": "804x660:813cc558",
+         "hanbando_870_249#20": "740x663:d5395667",
+         "hanbando_870_249#21": "676x663:741b2d67",
+         "hanbando_870_249#22": "420x650:dd18165b",
+         "hanbando_870_249#23": "420x661:afe9507",
+         "hanbando_870_249#24": "420x675:62fec25e",
+         "hanbando_870_249#25": "420x684:a10acff7",
+         "hanbando_870_249#26": "356x648:b2827de0",
+         "hanbando_870_249#27": "292x540:e5896af4",
+         "hanbando_870_249#28": "228x419:6ac79dd",
+         "hanbando_870_249#29": "164x306:1163452c",
+         "hanbando_870_249#30": "100x185:eec16fc9",
+         "hanbando_872_249#0": "1060x617:27f3f603",
+         "hanbando_871_250#0": "1060x1027:f1eabfb0",
+         "hanbando_873_249#0": "1060x860:f92c8fad",
+         "hanbando_872_250#0": "1060x1474:33f927a0",
+         "hanbando_873_250#0": "1060x1458:d60d6a15"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-바위1112_2408-on-mtnear-half.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 35,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 3,
+        "jobN": 6,
+        "cvN": 4,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 35,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:4792c468",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:32ab14f7",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:c9dc6de1",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:bcb05454",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 2,
+        "jobN": 6,
+        "cvN": 4,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 109,
+        "px": 28545416,
+        "hs": {
+         "hanbando_868_247#15": "100x122:84a58094",
+         "hanbando_869_247#0": "100x120:ed111cf6",
+         "hanbando_869_247#1": "100x119:902711d8",
+         "hanbando_869_248#0": "1060x837:e1e8d3b6",
+         "hanbando_869_247#2": "100x117:6cdfd35b",
+         "hanbando_869_247#3": "100x116:6709282a",
+         "hanbando_869_247#4": "100x115:41a7ccb6",
+         "hanbando_869_247#5": "100x115:1cd0e8a4",
+         "hanbando_869_247#6": "100x114:e152494c",
+         "hanbando_869_247#7": "100x114:5a921b66",
+         "hanbando_869_247#8": "164x114:226206d3",
+         "hanbando_869_247#9": "164x124:b761ccd2",
+         "hanbando_869_247#10": "164x151:8aa1e430",
+         "hanbando_869_247#11": "164x167:e7086fbd",
+         "hanbando_869_247#12": "164x176:95a37a85",
+         "hanbando_869_247#13": "164x180:1a990095",
+         "hanbando_869_247#14": "164x182:b7979193",
+         "hanbando_869_247#15": "100x140:b2607c25",
+         "hanbando_870_247#0": "100x116:5fd8e9e6",
+         "hanbando_870_247#1": "164x185:d3ef722a",
+         "hanbando_870_247#2": "164x186:c3c57aea",
+         "hanbando_870_248#0": "100x130:dced0941",
+         "hanbando_870_247#3": "164x185:c84f5a2a",
+         "hanbando_870_248#1": "164x194:45126582",
+         "hanbando_870_247#4": "164x176:43b6df27",
+         "hanbando_870_248#2": "228x258:a55a1a6a",
+         "hanbando_870_247#5": "164x174:d16f5285",
+         "hanbando_870_248#3": "292x322:483602d6",
+         "hanbando_870_247#6": "100x126:405f9ea4",
+         "hanbando_870_248#4": "356x414:d3de8a9",
+         "hanbando_870_248#5": "420x484:8fedac3d",
+         "hanbando_870_248#6": "420x501:ac330648",
+         "hanbando_870_247#7": "164x88:df8066fe",
+         "hanbando_870_248#7": "420x517:8fe8173e",
+         "hanbando_870_247#8": "228x119:381109c3",
+         "hanbando_870_248#8": "420x533:d5844df4",
+         "hanbando_870_247#9": "228x156:ae0f1548",
+         "hanbando_870_248#9": "676x552:71a558bb",
+         "hanbando_870_247#10": "228x191:18192650",
+         "hanbando_870_248#10": "740x572:2cf97f90",
+         "hanbando_870_247#11": "228x219:306c184f",
+         "hanbando_870_248#11": "804x591:bce4d58d",
+         "hanbando_870_247#12": "228x235:4f36933f",
+         "hanbando_870_248#12": "868x608:894805d3",
+         "hanbando_870_247#13": "164x206:6fca3912",
+         "hanbando_871_247#0": "100x116:55c6a6c7",
+         "hanbando_870_248#13": "932x624:a153dbfb",
+         "hanbando_870_247#14": "100x139:d3eb5d4e",
+         "hanbando_871_247#1": "164x186:d29e5479",
+         "hanbando_870_248#14": "996x638:dd8e8fdb",
+         "hanbando_871_247#2": "228x249:fbc8e622",
+         "hanbando_870_248#15": "1060x649:5f45569d",
+         "hanbando_871_247#3": "228x245:be25dda4",
+         "hanbando_870_248#16": "996x568:308cc138",
+         "hanbando_871_248#0": "1060x568:96b77acb",
+         "hanbando_870_249#0": "100x181:9a2ba668",
+         "hanbando_871_247#4": "228x240:f650bb6a",
+         "hanbando_870_248#17": "932x477:38ed3a74",
+         "hanbando_870_249#1": "164x272:2d0100c7",
+         "hanbando_871_247#5": "228x237:3510aee3",
+         "hanbando_870_248#18": "868x503:b5da656",
+         "hanbando_870_249#2": "228x371:779d7db",
+         "hanbando_870_248#19": "804x519:eac8f689",
+         "hanbando_870_249#3": "292x461:66e45770",
+         "hanbando_870_248#20": "740x534:ff3d7d3d",
+         "hanbando_870_249#4": "356x575:ea4d4a72",
+         "hanbando_870_248#21": "420x515:9b61d724",
+         "hanbando_870_249#5": "420x653:3ec7b582",
+         "hanbando_870_248#22": "420x511:aad372fb",
+         "hanbando_870_249#6": "420x657:c9d66f82",
+         "hanbando_870_248#23": "420x513:4c099dc3",
+         "hanbando_870_249#7": "420x661:ff8ba5cd",
+         "hanbando_870_248#24": "420x519:9f18516",
+         "hanbando_870_249#8": "420x660:63bf209c",
+         "hanbando_870_248#25": "420x524:5c884db",
+         "hanbando_870_249#9": "420x654:cc08dc86",
+         "hanbando_870_248#26": "356x459:618baae7",
+         "hanbando_870_249#10": "740x643:1b2e6d6a",
+         "hanbando_870_248#27": "292x355:415b3d27",
+         "hanbando_870_249#11": "804x639:8bbed734",
+         "hanbando_870_248#28": "228x274:b437c9c3",
+         "hanbando_870_249#12": "868x656:f3302c9a",
+         "hanbando_870_248#29": "164x188:6d125092",
+         "hanbando_870_249#13": "932x672:632b2d1f",
+         "hanbando_870_248#30": "100x119:baecc1a3",
+         "hanbando_870_249#14": "996x687:cdb72419",
+         "hanbando_870_249#15": "1060x689:2af93cb7",
+         "hanbando_872_248#0": "1060x690:c1aee8d0",
+         "hanbando_870_249#16": "996x606:8b1ee83",
+         "hanbando_871_249#0": "1060x537:b4d4449e",
+         "hanbando_870_249#17": "932x633:f3b1c22c",
+         "hanbando_870_249#18": "868x649:571e7660",
+         "hanbando_870_249#19": "804x660:813cc558",
+         "hanbando_870_249#20": "740x663:d5395667",
+         "hanbando_870_249#21": "676x663:741b2d67",
+         "hanbando_870_249#22": "420x650:dd18165b",
+         "hanbando_870_249#23": "420x661:afe9507",
+         "hanbando_870_249#24": "420x675:62fec25e",
+         "hanbando_870_249#25": "420x684:a10acff7",
+         "hanbando_870_249#26": "356x648:b2827de0",
+         "hanbando_870_249#27": "292x540:e5896af4",
+         "hanbando_870_249#28": "228x419:6ac79dd",
+         "hanbando_870_249#29": "164x306:1163452c",
+         "hanbando_870_249#30": "100x185:eec16fc9",
+         "hanbando_872_249#0": "1060x617:27f3f603",
+         "hanbando_871_250#0": "1060x1027:f1eabfb0",
+         "hanbando_873_249#0": "1060x860:f92c8fad",
+         "hanbando_872_250#0": "1060x1474:33f927a0",
+         "hanbando_873_250#0": "1060x1458:d60d6a15"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-바위1112_2408-off2-mtnear-half.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "segOffOn": {
+       "same": 109,
+       "diff": 0,
+       "only": 0
+      },
+      "segOffOff2": {
+       "same": 109,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    }
+   ],
+   "errs": []
+  },
+  "webkit-cutnear": {
+   "browser": "webkit",
+   "knob": "cutNear",
+   "half": false,
+   "welcome": {
+    "cutNear": true,
+    "mtNear": "(칸 없음)"
+   },
+   "spots": [
+    {
+     "nm": "산",
+     "spot": {
+      "at": [
+       2147,
+       1956
+      ],
+      "from": [
+       2147,
+       1956
+      ],
+      "occ": 165,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 0,
+        "built": 0,
+        "split": 5,
+        "hs": {},
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 0,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:6d17266c",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:a22dfc",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2b7e27b4",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-산-off.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 2,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:6d17266c",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:a22dfc",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2b7e27b4",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 2,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-산-on.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:6d17266c",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:a22dfc",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2b7e27b4",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-산-off2.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    },
+    {
+     "nm": "바위1112_2408",
+     "spot": {
+      "at": [
+       1108,
+       2404
+      ],
+      "from": [
+       1108,
+       2404
+      ],
+      "occ": 76,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {},
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:e8fa8fcc",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:4a825b56",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:b1eb354b",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:e1653e95",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-바위1112_2408-off.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:e8fa8fcc",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:4a825b56",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:b1eb354b",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:e1653e95",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-바위1112_2408-on.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": null,
+       "beforeReturn": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:e8fa8fcc",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:4a825b56",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:b1eb354b",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:e1653e95",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 0,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": null,
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-바위1112_2408-off2.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    }
+   ],
+   "errs": []
+  },
+  "webkit-cutnear-mtnear-half": {
+   "browser": "webkit",
+   "knob": "mtNear",
+   "half": true,
+   "welcome": {
+    "cutNear": true,
+    "mtNear": "(칸 없음)"
+   },
+   "spots": [
+    {
+     "nm": "산",
+     "spot": {
+      "at": [
+       2147,
+       1956
+      ],
+      "from": [
+       2147,
+       1956
+      ],
+      "occ": 165,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 3,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:6d17266c",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:a22dfc",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2b7e27b4",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 2,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 84,
+        "px": 23420828,
+        "hs": {
+         "hanbando_934_218#0": "100x95:52c5d535",
+         "hanbando_934_218#1": "100x138:2ac78536",
+         "hanbando_934_218#2": "100x154:cb897d52",
+         "hanbando_935_218#13": "932x559:c64fa62b",
+         "hanbando_934_218#3": "100x163:dbd92531",
+         "hanbando_935_218#14": "996x544:fd04e0ce",
+         "hanbando_935_218#15": "1060x562:d712e9af",
+         "hanbando_934_219#0": "100x167:cab7a3",
+         "hanbando_934_219#1": "100x167:dfa90d7e",
+         "hanbando_935_219#0": "1060x801:33d3a47",
+         "hanbando_934_219#2": "100x166:80a4eea9",
+         "hanbando_934_219#3": "100x165:da5a540",
+         "hanbando_934_219#4": "100x165:6c1f7cd3",
+         "hanbando_934_219#5": "100x165:62cca869",
+         "hanbando_934_219#6": "100x165:e8506d55",
+         "hanbando_934_219#7": "100x165:9578c41a",
+         "hanbando_934_219#8": "100x164:b4152ecf",
+         "hanbando_934_219#9": "100x163:ab5086a7",
+         "hanbando_934_219#10": "100x163:43542007",
+         "hanbando_934_219#11": "100x162:8f460f23",
+         "hanbando_934_219#12": "100x160:841b086d",
+         "hanbando_934_219#13": "100x158:3cf46555",
+         "hanbando_934_219#14": "100x155:15c0c34c",
+         "hanbando_934_219#15": "100x152:32042971",
+         "hanbando_934_220#0": "100x148:29f6902",
+         "hanbando_936_219#0": "1060x577:b6847157",
+         "hanbando_934_220#1": "164x146:1067b31b",
+         "hanbando_935_220#0": "1060x872:fe20bb9c",
+         "hanbando_934_220#2": "164x166:a750e7a5",
+         "hanbando_934_220#3": "164x209:ecc1039b",
+         "hanbando_934_220#4": "164x225:62558f49",
+         "hanbando_934_220#5": "164x236:d9d4ea98",
+         "hanbando_934_220#6": "164x238:d8f68871",
+         "hanbando_934_220#7": "164x237:34f3ea21",
+         "hanbando_934_220#8": "164x235:7fe985f4",
+         "hanbando_934_220#9": "164x234:42199a49",
+         "hanbando_934_220#10": "164x232:83d25b9a",
+         "hanbando_934_220#11": "164x230:f8ba12eb",
+         "hanbando_934_220#12": "164x229:f4b644a1",
+         "hanbando_934_220#13": "164x228:f717de7f",
+         "hanbando_934_220#14": "164x228:da1c8a77",
+         "hanbando_934_220#15": "100x167:2cab6880",
+         "hanbando_934_221#1": "164x228:55358aa0",
+         "hanbando_936_220#0": "1060x939:34f9f276",
+         "hanbando_935_221#0": "1060x811:a787e6d1",
+         "hanbando_936_221#0": "1060x811:b08109e5",
+         "hanbando_935_222#0": "1060x963:2ab6ec9f",
+         "hanbando_937_220#13": "612x766:90db1256",
+         "hanbando_937_220#14": "612x747:650fb3fb",
+         "hanbando_937_220#15": "612x734:2ccd059e",
+         "hanbando_937_220#16": "548x656:5dfb194e",
+         "hanbando_937_221#0": "100x194:99ad87fd",
+         "hanbando_936_222#0": "1060x1014:5695e1f3",
+         "hanbando_937_220#17": "484x572:cc751733",
+         "hanbando_937_221#1": "164x254:540b27d5",
+         "hanbando_937_221#2": "228x312:63670822",
+         "hanbando_937_221#3": "292x372:6a593976",
+         "hanbando_937_221#4": "356x441:42dabaa8",
+         "hanbando_937_221#5": "420x521:e9b674c7",
+         "hanbando_937_221#6": "484x597:f449baf4",
+         "hanbando_937_221#7": "548x679:4c211a0a",
+         "hanbando_937_221#8": "612x730:5c1c7896",
+         "hanbando_937_221#9": "612x738:f152698",
+         "hanbando_937_221#10": "612x756:418f46a3",
+         "hanbando_937_221#11": "612x781:c99c2282",
+         "hanbando_937_221#12": "612x804:d51f9209",
+         "hanbando_937_221#13": "612x823:3b581048",
+         "hanbando_937_221#14": "612x842:8b337047",
+         "hanbando_937_221#15": "612x861:7cedb72a",
+         "hanbando_937_221#16": "548x783:375a6bfe",
+         "hanbando_937_222#0": "100x174:2fea344b",
+         "hanbando_936_223#0": "1060x1194:ca306cc3",
+         "hanbando_937_222#1": "164x286:f81807c2",
+         "hanbando_937_222#2": "228x404:35dd9097",
+         "hanbando_937_222#3": "292x520:c2dfd8da",
+         "hanbando_937_222#4": "356x631:74596443",
+         "hanbando_937_222#5": "420x743:17f270",
+         "hanbando_937_222#6": "484x840:7e02a28d",
+         "hanbando_937_222#7": "548x950:85fe3eaa",
+         "hanbando_937_222#8": "612x1018:293fed2e",
+         "hanbando_937_222#9": "612x1015:6d911630",
+         "hanbando_937_222#10": "612x1002:5e78970c",
+         "hanbando_937_222#11": "612x982:95e0067d",
+         "hanbando_937_222#12": "612x960:d56570e6"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-산-off-mtnear-half.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 1,
+        "jobN": 2,
+        "cvN": 2,
+        "boards": [
+         16384,
+         16384
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:6d17266c",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:a22dfc",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2b7e27b4",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 0,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 84,
+        "px": 23420828,
+        "hs": {
+         "hanbando_934_218#0": "100x95:52c5d535",
+         "hanbando_934_218#1": "100x138:2ac78536",
+         "hanbando_934_218#2": "100x154:cb897d52",
+         "hanbando_935_218#13": "932x559:c64fa62b",
+         "hanbando_934_218#3": "100x163:dbd92531",
+         "hanbando_935_218#14": "996x544:fd04e0ce",
+         "hanbando_935_218#15": "1060x562:d712e9af",
+         "hanbando_934_219#0": "100x167:cab7a3",
+         "hanbando_934_219#1": "100x167:dfa90d7e",
+         "hanbando_935_219#0": "1060x801:33d3a47",
+         "hanbando_934_219#2": "100x166:80a4eea9",
+         "hanbando_934_219#3": "100x165:da5a540",
+         "hanbando_934_219#4": "100x165:6c1f7cd3",
+         "hanbando_934_219#5": "100x165:62cca869",
+         "hanbando_934_219#6": "100x165:e8506d55",
+         "hanbando_934_219#7": "100x165:9578c41a",
+         "hanbando_934_219#8": "100x164:b4152ecf",
+         "hanbando_934_219#9": "100x163:ab5086a7",
+         "hanbando_934_219#10": "100x163:43542007",
+         "hanbando_934_219#11": "100x162:8f460f23",
+         "hanbando_934_219#12": "100x160:841b086d",
+         "hanbando_934_219#13": "100x158:3cf46555",
+         "hanbando_934_219#14": "100x155:15c0c34c",
+         "hanbando_934_219#15": "100x152:32042971",
+         "hanbando_934_220#0": "100x148:29f6902",
+         "hanbando_936_219#0": "1060x577:b6847157",
+         "hanbando_934_220#1": "164x146:1067b31b",
+         "hanbando_935_220#0": "1060x872:fe20bb9c",
+         "hanbando_934_220#2": "164x166:a750e7a5",
+         "hanbando_934_220#3": "164x209:ecc1039b",
+         "hanbando_934_220#4": "164x225:62558f49",
+         "hanbando_934_220#5": "164x236:d9d4ea98",
+         "hanbando_934_220#6": "164x238:d8f68871",
+         "hanbando_934_220#7": "164x237:34f3ea21",
+         "hanbando_934_220#8": "164x235:7fe985f4",
+         "hanbando_934_220#9": "164x234:42199a49",
+         "hanbando_934_220#10": "164x232:83d25b9a",
+         "hanbando_934_220#11": "164x230:f8ba12eb",
+         "hanbando_934_220#12": "164x229:f4b644a1",
+         "hanbando_934_220#13": "164x228:f717de7f",
+         "hanbando_934_220#14": "164x228:da1c8a77",
+         "hanbando_934_220#15": "100x167:2cab6880",
+         "hanbando_934_221#1": "164x228:55358aa0",
+         "hanbando_936_220#0": "1060x939:34f9f276",
+         "hanbando_935_221#0": "1060x811:a787e6d1",
+         "hanbando_936_221#0": "1060x811:b08109e5",
+         "hanbando_935_222#0": "1060x963:2ab6ec9f",
+         "hanbando_937_220#13": "612x766:90db1256",
+         "hanbando_937_220#14": "612x747:650fb3fb",
+         "hanbando_937_220#15": "612x734:2ccd059e",
+         "hanbando_937_220#16": "548x656:5dfb194e",
+         "hanbando_937_221#0": "100x194:99ad87fd",
+         "hanbando_936_222#0": "1060x1014:5695e1f3",
+         "hanbando_937_220#17": "484x572:cc751733",
+         "hanbando_937_221#1": "164x254:540b27d5",
+         "hanbando_937_221#2": "228x312:63670822",
+         "hanbando_937_221#3": "292x372:6a593976",
+         "hanbando_937_221#4": "356x441:42dabaa8",
+         "hanbando_937_221#5": "420x521:e9b674c7",
+         "hanbando_937_221#6": "484x597:f449baf4",
+         "hanbando_937_221#7": "548x679:4c211a0a",
+         "hanbando_937_221#8": "612x730:5c1c7896",
+         "hanbando_937_221#9": "612x738:f152698",
+         "hanbando_937_221#10": "612x756:418f46a3",
+         "hanbando_937_221#11": "612x781:c99c2282",
+         "hanbando_937_221#12": "612x804:d51f9209",
+         "hanbando_937_221#13": "612x823:3b581048",
+         "hanbando_937_221#14": "612x842:8b337047",
+         "hanbando_937_221#15": "612x861:7cedb72a",
+         "hanbando_937_221#16": "548x783:375a6bfe",
+         "hanbando_937_222#0": "100x174:2fea344b",
+         "hanbando_936_223#0": "1060x1194:ca306cc3",
+         "hanbando_937_222#1": "164x286:f81807c2",
+         "hanbando_937_222#2": "228x404:35dd9097",
+         "hanbando_937_222#3": "292x520:c2dfd8da",
+         "hanbando_937_222#4": "356x631:74596443",
+         "hanbando_937_222#5": "420x743:17f270",
+         "hanbando_937_222#6": "484x840:7e02a28d",
+         "hanbando_937_222#7": "548x950:85fe3eaa",
+         "hanbando_937_222#8": "612x1018:293fed2e",
+         "hanbando_937_222#9": "612x1015:6d911630",
+         "hanbando_937_222#10": "612x1002:5e78970c",
+         "hanbando_937_222#11": "612x982:95e0067d",
+         "hanbando_937_222#12": "612x960:d56570e6"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-산-on-mtnear-half.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 15,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 3,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 15,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:6d17266c",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:a22dfc",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2b7e27b4",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 2,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 84,
+        "px": 23420828,
+        "hs": {
+         "hanbando_934_218#0": "100x95:52c5d535",
+         "hanbando_934_218#1": "100x138:2ac78536",
+         "hanbando_934_218#2": "100x154:cb897d52",
+         "hanbando_935_218#13": "932x559:c64fa62b",
+         "hanbando_934_218#3": "100x163:dbd92531",
+         "hanbando_935_218#14": "996x544:fd04e0ce",
+         "hanbando_935_218#15": "1060x562:d712e9af",
+         "hanbando_934_219#0": "100x167:cab7a3",
+         "hanbando_934_219#1": "100x167:dfa90d7e",
+         "hanbando_935_219#0": "1060x801:33d3a47",
+         "hanbando_934_219#2": "100x166:80a4eea9",
+         "hanbando_934_219#3": "100x165:da5a540",
+         "hanbando_934_219#4": "100x165:6c1f7cd3",
+         "hanbando_934_219#5": "100x165:62cca869",
+         "hanbando_934_219#6": "100x165:e8506d55",
+         "hanbando_934_219#7": "100x165:9578c41a",
+         "hanbando_934_219#8": "100x164:b4152ecf",
+         "hanbando_934_219#9": "100x163:ab5086a7",
+         "hanbando_934_219#10": "100x163:43542007",
+         "hanbando_934_219#11": "100x162:8f460f23",
+         "hanbando_934_219#12": "100x160:841b086d",
+         "hanbando_934_219#13": "100x158:3cf46555",
+         "hanbando_934_219#14": "100x155:15c0c34c",
+         "hanbando_934_219#15": "100x152:32042971",
+         "hanbando_934_220#0": "100x148:29f6902",
+         "hanbando_936_219#0": "1060x577:b6847157",
+         "hanbando_934_220#1": "164x146:1067b31b",
+         "hanbando_935_220#0": "1060x872:fe20bb9c",
+         "hanbando_934_220#2": "164x166:a750e7a5",
+         "hanbando_934_220#3": "164x209:ecc1039b",
+         "hanbando_934_220#4": "164x225:62558f49",
+         "hanbando_934_220#5": "164x236:d9d4ea98",
+         "hanbando_934_220#6": "164x238:d8f68871",
+         "hanbando_934_220#7": "164x237:34f3ea21",
+         "hanbando_934_220#8": "164x235:7fe985f4",
+         "hanbando_934_220#9": "164x234:42199a49",
+         "hanbando_934_220#10": "164x232:83d25b9a",
+         "hanbando_934_220#11": "164x230:f8ba12eb",
+         "hanbando_934_220#12": "164x229:f4b644a1",
+         "hanbando_934_220#13": "164x228:f717de7f",
+         "hanbando_934_220#14": "164x228:da1c8a77",
+         "hanbando_934_220#15": "100x167:2cab6880",
+         "hanbando_934_221#1": "164x228:55358aa0",
+         "hanbando_936_220#0": "1060x939:34f9f276",
+         "hanbando_935_221#0": "1060x811:a787e6d1",
+         "hanbando_936_221#0": "1060x811:b08109e5",
+         "hanbando_935_222#0": "1060x963:2ab6ec9f",
+         "hanbando_937_220#13": "612x766:90db1256",
+         "hanbando_937_220#14": "612x747:650fb3fb",
+         "hanbando_937_220#15": "612x734:2ccd059e",
+         "hanbando_937_220#16": "548x656:5dfb194e",
+         "hanbando_937_221#0": "100x194:99ad87fd",
+         "hanbando_936_222#0": "1060x1014:5695e1f3",
+         "hanbando_937_220#17": "484x572:cc751733",
+         "hanbando_937_221#1": "164x254:540b27d5",
+         "hanbando_937_221#2": "228x312:63670822",
+         "hanbando_937_221#3": "292x372:6a593976",
+         "hanbando_937_221#4": "356x441:42dabaa8",
+         "hanbando_937_221#5": "420x521:e9b674c7",
+         "hanbando_937_221#6": "484x597:f449baf4",
+         "hanbando_937_221#7": "548x679:4c211a0a",
+         "hanbando_937_221#8": "612x730:5c1c7896",
+         "hanbando_937_221#9": "612x738:f152698",
+         "hanbando_937_221#10": "612x756:418f46a3",
+         "hanbando_937_221#11": "612x781:c99c2282",
+         "hanbando_937_221#12": "612x804:d51f9209",
+         "hanbando_937_221#13": "612x823:3b581048",
+         "hanbando_937_221#14": "612x842:8b337047",
+         "hanbando_937_221#15": "612x861:7cedb72a",
+         "hanbando_937_221#16": "548x783:375a6bfe",
+         "hanbando_937_222#0": "100x174:2fea344b",
+         "hanbando_936_223#0": "1060x1194:ca306cc3",
+         "hanbando_937_222#1": "164x286:f81807c2",
+         "hanbando_937_222#2": "228x404:35dd9097",
+         "hanbando_937_222#3": "292x520:c2dfd8da",
+         "hanbando_937_222#4": "356x631:74596443",
+         "hanbando_937_222#5": "420x743:17f270",
+         "hanbando_937_222#6": "484x840:7e02a28d",
+         "hanbando_937_222#7": "548x950:85fe3eaa",
+         "hanbando_937_222#8": "612x1018:293fed2e",
+         "hanbando_937_222#9": "612x1015:6d911630",
+         "hanbando_937_222#10": "612x1002:5e78970c",
+         "hanbando_937_222#11": "612x982:95e0067d",
+         "hanbando_937_222#12": "612x960:d56570e6"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-산-off2-mtnear-half.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "segOffOn": {
+       "same": 84,
+       "diff": 0,
+       "only": 0
+      },
+      "segOffOff2": {
+       "same": 84,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    },
+    {
+     "nm": "바위1112_2408",
+     "spot": {
+      "at": [
+       1108,
+       2404
+      ],
+      "from": [
+       1108,
+       2404
+      ],
+      "occ": 76,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 25,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 3,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 25,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:e8fa8fcc",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:4a825b56",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:b1eb354b",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:e1653e95",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 2,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 109,
+        "px": 28545416,
+        "hs": {
+         "hanbando_868_247#15": "100x122:3221ba05",
+         "hanbando_869_247#0": "100x120:9f24f02b",
+         "hanbando_869_247#1": "100x119:db3dfc03",
+         "hanbando_869_248#0": "1060x837:af943517",
+         "hanbando_869_247#2": "100x117:605eb1b7",
+         "hanbando_869_247#3": "100x116:d69f2004",
+         "hanbando_869_247#4": "100x115:85510ad1",
+         "hanbando_869_247#5": "100x115:f813c6b2",
+         "hanbando_869_247#6": "100x114:9bad9a1b",
+         "hanbando_869_247#7": "100x114:b510d389",
+         "hanbando_869_247#8": "164x114:ceb7c9ee",
+         "hanbando_869_247#9": "164x124:43228cb0",
+         "hanbando_869_247#10": "164x151:3a94b17b",
+         "hanbando_869_247#11": "164x167:573d78cc",
+         "hanbando_869_247#12": "164x176:cbe45afd",
+         "hanbando_869_247#13": "164x180:3d1e8ea9",
+         "hanbando_869_247#14": "164x182:5f50bf6e",
+         "hanbando_869_247#15": "100x140:ac05e477",
+         "hanbando_870_247#0": "100x116:b72bdfc4",
+         "hanbando_870_247#1": "164x185:6b083b4a",
+         "hanbando_870_247#2": "164x186:83d4d13d",
+         "hanbando_870_248#0": "100x130:c621190c",
+         "hanbando_870_247#3": "164x185:fe774060",
+         "hanbando_870_248#1": "164x194:f762fdad",
+         "hanbando_870_247#4": "164x176:766c2bdf",
+         "hanbando_870_248#2": "228x258:511797ff",
+         "hanbando_870_247#5": "164x174:d18c37da",
+         "hanbando_870_248#3": "292x322:cd50ae87",
+         "hanbando_870_247#6": "100x126:9b8ae61e",
+         "hanbando_870_248#4": "356x414:552844fa",
+         "hanbando_870_248#5": "420x484:b98583b5",
+         "hanbando_870_248#6": "420x501:fc0645cd",
+         "hanbando_870_247#7": "164x88:197cd588",
+         "hanbando_870_248#7": "420x517:ddb30318",
+         "hanbando_870_247#8": "228x119:bec32cd",
+         "hanbando_870_248#8": "420x533:fcc9b040",
+         "hanbando_870_247#9": "228x156:946c46ca",
+         "hanbando_870_248#9": "676x552:3e4b774",
+         "hanbando_870_247#10": "228x191:2f478a62",
+         "hanbando_870_248#10": "740x572:61273cda",
+         "hanbando_870_247#11": "228x219:a1b52faf",
+         "hanbando_870_248#11": "804x591:ce431626",
+         "hanbando_870_247#12": "228x235:b06cfa45",
+         "hanbando_870_248#12": "868x608:9f7bd479",
+         "hanbando_870_247#13": "164x206:dabdba1f",
+         "hanbando_871_247#0": "100x116:3990deab",
+         "hanbando_870_248#13": "932x624:1bd0179e",
+         "hanbando_870_247#14": "100x139:3a6c3591",
+         "hanbando_871_247#1": "164x186:30076fac",
+         "hanbando_870_248#14": "996x638:4b291849",
+         "hanbando_871_247#2": "228x249:b0180b7f",
+         "hanbando_870_248#15": "1060x649:7f443813",
+         "hanbando_871_247#3": "228x245:d3253fd",
+         "hanbando_870_248#16": "996x568:8fce2c55",
+         "hanbando_871_248#0": "1060x568:c19424f7",
+         "hanbando_870_249#0": "100x181:62d2c0fe",
+         "hanbando_871_247#4": "228x240:ad82ea78",
+         "hanbando_870_248#17": "932x477:c5a40394",
+         "hanbando_870_249#1": "164x272:15c8b56e",
+         "hanbando_871_247#5": "228x237:3752a6f6",
+         "hanbando_870_248#18": "868x503:cbe59ff5",
+         "hanbando_870_249#2": "228x371:ba5614e5",
+         "hanbando_870_248#19": "804x519:c4c8ca64",
+         "hanbando_870_249#3": "292x461:d5110b9a",
+         "hanbando_870_248#20": "740x534:f6d92ab4",
+         "hanbando_870_249#4": "356x575:f4d4d6fc",
+         "hanbando_870_248#21": "420x515:c26d19ac",
+         "hanbando_870_249#5": "420x653:70c72c3f",
+         "hanbando_870_248#22": "420x511:87949f41",
+         "hanbando_870_249#6": "420x657:bc441537",
+         "hanbando_870_248#23": "420x513:48ac2ca0",
+         "hanbando_870_249#7": "420x661:4548c1ec",
+         "hanbando_870_248#24": "420x519:99bb5c32",
+         "hanbando_870_249#8": "420x660:417049a2",
+         "hanbando_870_248#25": "420x524:6d77539f",
+         "hanbando_870_249#9": "420x654:42b0ea",
+         "hanbando_870_248#26": "356x459:ac7ef1ac",
+         "hanbando_870_249#10": "740x643:5586066b",
+         "hanbando_870_248#27": "292x355:f656db9a",
+         "hanbando_870_249#11": "804x639:cc0ee2b4",
+         "hanbando_870_248#28": "228x274:3490e36d",
+         "hanbando_870_249#12": "868x656:b418e325",
+         "hanbando_870_248#29": "164x188:25011153",
+         "hanbando_870_249#13": "932x672:7bda05bb",
+         "hanbando_870_248#30": "100x119:c797a2fc",
+         "hanbando_870_249#14": "996x687:78ef5fa0",
+         "hanbando_870_249#15": "1060x689:d1794c61",
+         "hanbando_872_248#0": "1060x690:6d8c8afe",
+         "hanbando_870_249#16": "996x606:87c49105",
+         "hanbando_871_249#0": "1060x537:71e8d759",
+         "hanbando_870_249#17": "932x633:c7537635",
+         "hanbando_870_249#18": "868x649:607998ce",
+         "hanbando_870_249#19": "804x660:f124c2ff",
+         "hanbando_870_249#20": "740x663:62b144b9",
+         "hanbando_870_249#21": "676x663:e72aee86",
+         "hanbando_870_249#22": "420x650:f9f1839f",
+         "hanbando_870_249#23": "420x661:149926de",
+         "hanbando_870_249#24": "420x675:f1345c48",
+         "hanbando_870_249#25": "420x684:c54b4f5c",
+         "hanbando_870_249#26": "356x648:c91b063c",
+         "hanbando_870_249#27": "292x540:b7f72d49",
+         "hanbando_870_249#28": "228x419:b5321c30",
+         "hanbando_870_249#29": "164x306:ed9fa0d9",
+         "hanbando_870_249#30": "100x185:859bbe07",
+         "hanbando_872_249#0": "1060x617:ad2d8b81",
+         "hanbando_871_250#0": "1060x1027:c27df887",
+         "hanbando_873_249#0": "1060x860:a85b9e02",
+         "hanbando_872_250#0": "1060x1474:a5c04c52",
+         "hanbando_873_250#0": "1060x1458:9827ad04"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-바위1112_2408-off-mtnear-half.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 30,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 1,
+        "jobN": 5,
+        "cvN": 4,
+        "boards": [
+         16384,
+         16384
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 30,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:e8fa8fcc",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:4a825b56",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:b1eb354b",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:e1653e95",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 0,
+        "jobN": 6,
+        "cvN": 4,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 109,
+        "px": 28545416,
+        "hs": {
+         "hanbando_868_247#15": "100x122:3221ba05",
+         "hanbando_869_247#0": "100x120:9f24f02b",
+         "hanbando_869_247#1": "100x119:db3dfc03",
+         "hanbando_869_248#0": "1060x837:af943517",
+         "hanbando_869_247#2": "100x117:605eb1b7",
+         "hanbando_869_247#3": "100x116:d69f2004",
+         "hanbando_869_247#4": "100x115:85510ad1",
+         "hanbando_869_247#5": "100x115:f813c6b2",
+         "hanbando_869_247#6": "100x114:9bad9a1b",
+         "hanbando_869_247#7": "100x114:b510d389",
+         "hanbando_869_247#8": "164x114:ceb7c9ee",
+         "hanbando_869_247#9": "164x124:43228cb0",
+         "hanbando_869_247#10": "164x151:3a94b17b",
+         "hanbando_869_247#11": "164x167:573d78cc",
+         "hanbando_869_247#12": "164x176:cbe45afd",
+         "hanbando_869_247#13": "164x180:3d1e8ea9",
+         "hanbando_869_247#14": "164x182:5f50bf6e",
+         "hanbando_869_247#15": "100x140:ac05e477",
+         "hanbando_870_247#0": "100x116:b72bdfc4",
+         "hanbando_870_247#1": "164x185:6b083b4a",
+         "hanbando_870_247#2": "164x186:83d4d13d",
+         "hanbando_870_248#0": "100x130:c621190c",
+         "hanbando_870_247#3": "164x185:fe774060",
+         "hanbando_870_248#1": "164x194:f762fdad",
+         "hanbando_870_247#4": "164x176:766c2bdf",
+         "hanbando_870_248#2": "228x258:511797ff",
+         "hanbando_870_247#5": "164x174:d18c37da",
+         "hanbando_870_248#3": "292x322:cd50ae87",
+         "hanbando_870_247#6": "100x126:9b8ae61e",
+         "hanbando_870_248#4": "356x414:552844fa",
+         "hanbando_870_248#5": "420x484:b98583b5",
+         "hanbando_870_248#6": "420x501:fc0645cd",
+         "hanbando_870_247#7": "164x88:197cd588",
+         "hanbando_870_248#7": "420x517:ddb30318",
+         "hanbando_870_247#8": "228x119:bec32cd",
+         "hanbando_870_248#8": "420x533:fcc9b040",
+         "hanbando_870_247#9": "228x156:946c46ca",
+         "hanbando_870_248#9": "676x552:3e4b774",
+         "hanbando_870_247#10": "228x191:2f478a62",
+         "hanbando_870_248#10": "740x572:61273cda",
+         "hanbando_870_247#11": "228x219:a1b52faf",
+         "hanbando_870_248#11": "804x591:ce431626",
+         "hanbando_870_247#12": "228x235:b06cfa45",
+         "hanbando_870_248#12": "868x608:9f7bd479",
+         "hanbando_870_247#13": "164x206:dabdba1f",
+         "hanbando_871_247#0": "100x116:3990deab",
+         "hanbando_870_248#13": "932x624:1bd0179e",
+         "hanbando_870_247#14": "100x139:3a6c3591",
+         "hanbando_871_247#1": "164x186:30076fac",
+         "hanbando_870_248#14": "996x638:4b291849",
+         "hanbando_871_247#2": "228x249:b0180b7f",
+         "hanbando_870_248#15": "1060x649:7f443813",
+         "hanbando_871_247#3": "228x245:d3253fd",
+         "hanbando_870_248#16": "996x568:8fce2c55",
+         "hanbando_871_248#0": "1060x568:c19424f7",
+         "hanbando_870_249#0": "100x181:62d2c0fe",
+         "hanbando_871_247#4": "228x240:ad82ea78",
+         "hanbando_870_248#17": "932x477:c5a40394",
+         "hanbando_870_249#1": "164x272:15c8b56e",
+         "hanbando_871_247#5": "228x237:3752a6f6",
+         "hanbando_870_248#18": "868x503:cbe59ff5",
+         "hanbando_870_249#2": "228x371:ba5614e5",
+         "hanbando_870_248#19": "804x519:c4c8ca64",
+         "hanbando_870_249#3": "292x461:d5110b9a",
+         "hanbando_870_248#20": "740x534:f6d92ab4",
+         "hanbando_870_249#4": "356x575:f4d4d6fc",
+         "hanbando_870_248#21": "420x515:c26d19ac",
+         "hanbando_870_249#5": "420x653:70c72c3f",
+         "hanbando_870_248#22": "420x511:87949f41",
+         "hanbando_870_249#6": "420x657:bc441537",
+         "hanbando_870_248#23": "420x513:48ac2ca0",
+         "hanbando_870_249#7": "420x661:4548c1ec",
+         "hanbando_870_248#24": "420x519:99bb5c32",
+         "hanbando_870_249#8": "420x660:417049a2",
+         "hanbando_870_248#25": "420x524:6d77539f",
+         "hanbando_870_249#9": "420x654:42b0ea",
+         "hanbando_870_248#26": "356x459:ac7ef1ac",
+         "hanbando_870_249#10": "740x643:5586066b",
+         "hanbando_870_248#27": "292x355:f656db9a",
+         "hanbando_870_249#11": "804x639:cc0ee2b4",
+         "hanbando_870_248#28": "228x274:3490e36d",
+         "hanbando_870_249#12": "868x656:b418e325",
+         "hanbando_870_248#29": "164x188:25011153",
+         "hanbando_870_249#13": "932x672:7bda05bb",
+         "hanbando_870_248#30": "100x119:c797a2fc",
+         "hanbando_870_249#14": "996x687:78ef5fa0",
+         "hanbando_870_249#15": "1060x689:d1794c61",
+         "hanbando_872_248#0": "1060x690:6d8c8afe",
+         "hanbando_870_249#16": "996x606:87c49105",
+         "hanbando_871_249#0": "1060x537:71e8d759",
+         "hanbando_870_249#17": "932x633:c7537635",
+         "hanbando_870_249#18": "868x649:607998ce",
+         "hanbando_870_249#19": "804x660:f124c2ff",
+         "hanbando_870_249#20": "740x663:62b144b9",
+         "hanbando_870_249#21": "676x663:e72aee86",
+         "hanbando_870_249#22": "420x650:f9f1839f",
+         "hanbando_870_249#23": "420x661:149926de",
+         "hanbando_870_249#24": "420x675:f1345c48",
+         "hanbando_870_249#25": "420x684:c54b4f5c",
+         "hanbando_870_249#26": "356x648:c91b063c",
+         "hanbando_870_249#27": "292x540:b7f72d49",
+         "hanbando_870_249#28": "228x419:b5321c30",
+         "hanbando_870_249#29": "164x306:ed9fa0d9",
+         "hanbando_870_249#30": "100x185:859bbe07",
+         "hanbando_872_249#0": "1060x617:ad2d8b81",
+         "hanbando_871_250#0": "1060x1027:c27df887",
+         "hanbando_873_249#0": "1060x860:a85b9e02",
+         "hanbando_872_250#0": "1060x1474:a5c04c52",
+         "hanbando_873_250#0": "1060x1458:9827ad04"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-바위1112_2408-on-mtnear-half.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        1108,
+        2404
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 35,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 3,
+        "jobN": 6,
+        "cvN": 4,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 992880,
+        "cs": 5,
+        "csPx": 832393,
+        "stale": 0,
+        "near": 35,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_869_248#0": "1025:766:286224:54:820:18:1043:e8fa8fcc",
+         "hanbando_870_247#1": "129:100:286224:68:168:18:147:4a825b56",
+         "hanbando_870_247#2": "129:115:286224:54:169:18:147:b1eb354b",
+         "hanbando_870_248#0": "65:58:286224:54:112:18:83:e1653e95",
+         "hanbando_870_248#1": "129:122:286224:55:177:18:147:f02912e5"
+        },
+        "jobs": 2,
+        "jobN": 6,
+        "cvN": 4,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 109,
+        "px": 28545416,
+        "hs": {
+         "hanbando_868_247#15": "100x122:3221ba05",
+         "hanbando_869_247#0": "100x120:9f24f02b",
+         "hanbando_869_247#1": "100x119:db3dfc03",
+         "hanbando_869_248#0": "1060x837:af943517",
+         "hanbando_869_247#2": "100x117:605eb1b7",
+         "hanbando_869_247#3": "100x116:d69f2004",
+         "hanbando_869_247#4": "100x115:85510ad1",
+         "hanbando_869_247#5": "100x115:f813c6b2",
+         "hanbando_869_247#6": "100x114:9bad9a1b",
+         "hanbando_869_247#7": "100x114:b510d389",
+         "hanbando_869_247#8": "164x114:ceb7c9ee",
+         "hanbando_869_247#9": "164x124:43228cb0",
+         "hanbando_869_247#10": "164x151:3a94b17b",
+         "hanbando_869_247#11": "164x167:573d78cc",
+         "hanbando_869_247#12": "164x176:cbe45afd",
+         "hanbando_869_247#13": "164x180:3d1e8ea9",
+         "hanbando_869_247#14": "164x182:5f50bf6e",
+         "hanbando_869_247#15": "100x140:ac05e477",
+         "hanbando_870_247#0": "100x116:b72bdfc4",
+         "hanbando_870_247#1": "164x185:6b083b4a",
+         "hanbando_870_247#2": "164x186:83d4d13d",
+         "hanbando_870_248#0": "100x130:c621190c",
+         "hanbando_870_247#3": "164x185:fe774060",
+         "hanbando_870_248#1": "164x194:f762fdad",
+         "hanbando_870_247#4": "164x176:766c2bdf",
+         "hanbando_870_248#2": "228x258:511797ff",
+         "hanbando_870_247#5": "164x174:d18c37da",
+         "hanbando_870_248#3": "292x322:cd50ae87",
+         "hanbando_870_247#6": "100x126:9b8ae61e",
+         "hanbando_870_248#4": "356x414:552844fa",
+         "hanbando_870_248#5": "420x484:b98583b5",
+         "hanbando_870_248#6": "420x501:fc0645cd",
+         "hanbando_870_247#7": "164x88:197cd588",
+         "hanbando_870_248#7": "420x517:ddb30318",
+         "hanbando_870_247#8": "228x119:bec32cd",
+         "hanbando_870_248#8": "420x533:fcc9b040",
+         "hanbando_870_247#9": "228x156:946c46ca",
+         "hanbando_870_248#9": "676x552:3e4b774",
+         "hanbando_870_247#10": "228x191:2f478a62",
+         "hanbando_870_248#10": "740x572:61273cda",
+         "hanbando_870_247#11": "228x219:a1b52faf",
+         "hanbando_870_248#11": "804x591:ce431626",
+         "hanbando_870_247#12": "228x235:b06cfa45",
+         "hanbando_870_248#12": "868x608:9f7bd479",
+         "hanbando_870_247#13": "164x206:dabdba1f",
+         "hanbando_871_247#0": "100x116:3990deab",
+         "hanbando_870_248#13": "932x624:1bd0179e",
+         "hanbando_870_247#14": "100x139:3a6c3591",
+         "hanbando_871_247#1": "164x186:30076fac",
+         "hanbando_870_248#14": "996x638:4b291849",
+         "hanbando_871_247#2": "228x249:b0180b7f",
+         "hanbando_870_248#15": "1060x649:7f443813",
+         "hanbando_871_247#3": "228x245:d3253fd",
+         "hanbando_870_248#16": "996x568:8fce2c55",
+         "hanbando_871_248#0": "1060x568:c19424f7",
+         "hanbando_870_249#0": "100x181:62d2c0fe",
+         "hanbando_871_247#4": "228x240:ad82ea78",
+         "hanbando_870_248#17": "932x477:c5a40394",
+         "hanbando_870_249#1": "164x272:15c8b56e",
+         "hanbando_871_247#5": "228x237:3752a6f6",
+         "hanbando_870_248#18": "868x503:cbe59ff5",
+         "hanbando_870_249#2": "228x371:ba5614e5",
+         "hanbando_870_248#19": "804x519:c4c8ca64",
+         "hanbando_870_249#3": "292x461:d5110b9a",
+         "hanbando_870_248#20": "740x534:f6d92ab4",
+         "hanbando_870_249#4": "356x575:f4d4d6fc",
+         "hanbando_870_248#21": "420x515:c26d19ac",
+         "hanbando_870_249#5": "420x653:70c72c3f",
+         "hanbando_870_248#22": "420x511:87949f41",
+         "hanbando_870_249#6": "420x657:bc441537",
+         "hanbando_870_248#23": "420x513:48ac2ca0",
+         "hanbando_870_249#7": "420x661:4548c1ec",
+         "hanbando_870_248#24": "420x519:99bb5c32",
+         "hanbando_870_249#8": "420x660:417049a2",
+         "hanbando_870_248#25": "420x524:6d77539f",
+         "hanbando_870_249#9": "420x654:42b0ea",
+         "hanbando_870_248#26": "356x459:ac7ef1ac",
+         "hanbando_870_249#10": "740x643:5586066b",
+         "hanbando_870_248#27": "292x355:f656db9a",
+         "hanbando_870_249#11": "804x639:cc0ee2b4",
+         "hanbando_870_248#28": "228x274:3490e36d",
+         "hanbando_870_249#12": "868x656:b418e325",
+         "hanbando_870_248#29": "164x188:25011153",
+         "hanbando_870_249#13": "932x672:7bda05bb",
+         "hanbando_870_248#30": "100x119:c797a2fc",
+         "hanbando_870_249#14": "996x687:78ef5fa0",
+         "hanbando_870_249#15": "1060x689:d1794c61",
+         "hanbando_872_248#0": "1060x690:6d8c8afe",
+         "hanbando_870_249#16": "996x606:87c49105",
+         "hanbando_871_249#0": "1060x537:71e8d759",
+         "hanbando_870_249#17": "932x633:c7537635",
+         "hanbando_870_249#18": "868x649:607998ce",
+         "hanbando_870_249#19": "804x660:f124c2ff",
+         "hanbando_870_249#20": "740x663:62b144b9",
+         "hanbando_870_249#21": "676x663:e72aee86",
+         "hanbando_870_249#22": "420x650:f9f1839f",
+         "hanbando_870_249#23": "420x661:149926de",
+         "hanbando_870_249#24": "420x675:f1345c48",
+         "hanbando_870_249#25": "420x684:c54b4f5c",
+         "hanbando_870_249#26": "356x648:c91b063c",
+         "hanbando_870_249#27": "292x540:b7f72d49",
+         "hanbando_870_249#28": "228x419:b5321c30",
+         "hanbando_870_249#29": "164x306:ed9fa0d9",
+         "hanbando_870_249#30": "100x185:859bbe07",
+         "hanbando_872_249#0": "1060x617:ad2d8b81",
+         "hanbando_871_250#0": "1060x1027:c27df887",
+         "hanbando_873_249#0": "1060x860:a85b9e02",
+         "hanbando_872_250#0": "1060x1474:a5c04c52",
+         "hanbando_873_250#0": "1060x1458:9827ad04"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "webkit-바위1112_2408-off2-mtnear-half.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "segOffOn": {
+       "same": 109,
+       "diff": 0,
+       "only": 0
+      },
+      "segOffOff2": {
+       "same": 109,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    }
+   ],
+   "errs": []
+  },
+  "post-merge-chromium-cutnear-mtnear-half": {
+   "browser": "chromium",
+   "knob": "mtNear",
+   "half": true,
+   "welcome": {
+    "cutNear": true,
+    "mtNear": "(칸 없음)"
+   },
+   "spots": [
+    {
+     "nm": "산",
+     "spot": {
+      "at": [
+       2147,
+       1956
+      ],
+      "from": [
+       2147,
+       1956
+      ],
+      "occ": 165,
+      "split": 5
+     },
+     "runs": [
+      {
+       "tag": "off",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 3,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 5,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 2,
+        "jobN": 0,
+        "cvN": 0,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 84,
+        "px": 23420828,
+        "hs": {
+         "hanbando_934_218#0": "100x95:ad1e39a",
+         "hanbando_934_218#1": "100x138:9347c3f7",
+         "hanbando_934_218#2": "100x154:ad92a80f",
+         "hanbando_935_218#13": "932x559:b9432b4e",
+         "hanbando_934_218#3": "100x163:a92ff783",
+         "hanbando_935_218#14": "996x544:5bf12389",
+         "hanbando_935_218#15": "1060x562:a29087ca",
+         "hanbando_934_219#0": "100x167:835dd86c",
+         "hanbando_934_219#1": "100x167:ef16ce20",
+         "hanbando_935_219#0": "1060x801:df8eb0bd",
+         "hanbando_934_219#2": "100x166:7ee06a61",
+         "hanbando_934_219#3": "100x165:a4b77e0c",
+         "hanbando_934_219#4": "100x165:2716d70f",
+         "hanbando_934_219#5": "100x165:1d6c565e",
+         "hanbando_934_219#6": "100x165:9cb36894",
+         "hanbando_934_219#7": "100x165:ce7305db",
+         "hanbando_934_219#8": "100x164:ee0fa4b4",
+         "hanbando_934_219#9": "100x163:8a6b2f",
+         "hanbando_934_219#10": "100x163:ab82aa7b",
+         "hanbando_934_219#11": "100x162:3a8fc20d",
+         "hanbando_934_219#12": "100x160:a3d02029",
+         "hanbando_934_219#13": "100x158:272e97a4",
+         "hanbando_934_219#14": "100x155:cf802120",
+         "hanbando_934_219#15": "100x152:82c12055",
+         "hanbando_934_220#0": "100x148:d2eda807",
+         "hanbando_936_219#0": "1060x577:c43dd642",
+         "hanbando_934_220#1": "164x146:7983e283",
+         "hanbando_935_220#0": "1060x872:73b9de2c",
+         "hanbando_934_220#2": "164x166:9dd0ddbe",
+         "hanbando_934_220#3": "164x209:78048c48",
+         "hanbando_934_220#4": "164x225:6b1d7870",
+         "hanbando_934_220#5": "164x236:1316f445",
+         "hanbando_934_220#6": "164x238:26caebce",
+         "hanbando_934_220#7": "164x237:1fd08f94",
+         "hanbando_934_220#8": "164x235:174c55c7",
+         "hanbando_934_220#9": "164x234:ac76c7d4",
+         "hanbando_934_220#10": "164x232:1ed8fbb4",
+         "hanbando_934_220#11": "164x230:577435b5",
+         "hanbando_934_220#12": "164x229:76c4980f",
+         "hanbando_934_220#13": "164x228:828ad14f",
+         "hanbando_934_220#14": "164x228:943e033e",
+         "hanbando_934_220#15": "100x167:2d5dbbf5",
+         "hanbando_934_221#1": "164x228:41cf4d9",
+         "hanbando_936_220#0": "1060x939:ed7513bb",
+         "hanbando_935_221#0": "1060x811:a1a1513d",
+         "hanbando_936_221#0": "1060x811:515cf9db",
+         "hanbando_935_222#0": "1060x963:266fd5d4",
+         "hanbando_937_220#13": "612x766:684d8b84",
+         "hanbando_937_220#14": "612x747:b61ffd8f",
+         "hanbando_937_220#15": "612x734:dc396d40",
+         "hanbando_937_220#16": "548x656:b535f2a6",
+         "hanbando_937_221#0": "100x194:4f8a5ef3",
+         "hanbando_936_222#0": "1060x1014:8c29ff94",
+         "hanbando_937_220#17": "484x572:35c465cc",
+         "hanbando_937_221#1": "164x254:91faf356",
+         "hanbando_937_221#2": "228x312:1669d38b",
+         "hanbando_937_221#3": "292x372:624e4c8e",
+         "hanbando_937_221#4": "356x441:53cdf6e6",
+         "hanbando_937_221#5": "420x521:a7fc6e8b",
+         "hanbando_937_221#6": "484x597:24f1758c",
+         "hanbando_937_221#7": "548x679:8bb69209",
+         "hanbando_937_221#8": "612x730:fd1b63b7",
+         "hanbando_937_221#9": "612x738:292d7dc3",
+         "hanbando_937_221#10": "612x756:e148523c",
+         "hanbando_937_221#11": "612x781:bc9e0e29",
+         "hanbando_937_221#12": "612x804:d138c0b3",
+         "hanbando_937_221#13": "612x823:ebf795e0",
+         "hanbando_937_221#14": "612x842:779bd249",
+         "hanbando_937_221#15": "612x861:5191dd55",
+         "hanbando_937_221#16": "548x783:92a92a53",
+         "hanbando_937_222#0": "100x174:1245151e",
+         "hanbando_936_223#0": "1060x1194:a3fab2d",
+         "hanbando_937_222#1": "164x286:5badc0e7",
+         "hanbando_937_222#2": "228x404:e59ac002",
+         "hanbando_937_222#3": "292x520:1914c779",
+         "hanbando_937_222#4": "356x631:2aa2dd0d",
+         "hanbando_937_222#5": "420x743:7fa35b44",
+         "hanbando_937_222#6": "484x840:c7ba848b",
+         "hanbando_937_222#7": "548x950:18e99e04",
+         "hanbando_937_222#8": "612x1018:81107ca9",
+         "hanbando_937_222#9": "612x1015:ae0777c4",
+         "hanbando_937_222#10": "612x1002:ba9acdb9",
+         "hanbando_937_222#11": "612x982:cfa3e2b6",
+         "hanbando_937_222#12": "612x960:2329831e"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-off-mtnear-half.png"
+      },
+      {
+       "tag": "on",
+       "on": true,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 1,
+        "jobN": 2,
+        "cvN": 2,
+        "boards": [
+         16384,
+         16384
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 10,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 0,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 84,
+        "px": 23420828,
+        "hs": {
+         "hanbando_934_218#0": "100x95:ad1e39a",
+         "hanbando_934_218#1": "100x138:9347c3f7",
+         "hanbando_934_218#2": "100x154:ad92a80f",
+         "hanbando_935_218#13": "932x559:b9432b4e",
+         "hanbando_934_218#3": "100x163:a92ff783",
+         "hanbando_935_218#14": "996x544:5bf12389",
+         "hanbando_935_218#15": "1060x562:a29087ca",
+         "hanbando_934_219#0": "100x167:835dd86c",
+         "hanbando_934_219#1": "100x167:ef16ce20",
+         "hanbando_935_219#0": "1060x801:df8eb0bd",
+         "hanbando_934_219#2": "100x166:7ee06a61",
+         "hanbando_934_219#3": "100x165:a4b77e0c",
+         "hanbando_934_219#4": "100x165:2716d70f",
+         "hanbando_934_219#5": "100x165:1d6c565e",
+         "hanbando_934_219#6": "100x165:9cb36894",
+         "hanbando_934_219#7": "100x165:ce7305db",
+         "hanbando_934_219#8": "100x164:ee0fa4b4",
+         "hanbando_934_219#9": "100x163:8a6b2f",
+         "hanbando_934_219#10": "100x163:ab82aa7b",
+         "hanbando_934_219#11": "100x162:3a8fc20d",
+         "hanbando_934_219#12": "100x160:a3d02029",
+         "hanbando_934_219#13": "100x158:272e97a4",
+         "hanbando_934_219#14": "100x155:cf802120",
+         "hanbando_934_219#15": "100x152:82c12055",
+         "hanbando_934_220#0": "100x148:d2eda807",
+         "hanbando_936_219#0": "1060x577:c43dd642",
+         "hanbando_934_220#1": "164x146:7983e283",
+         "hanbando_935_220#0": "1060x872:73b9de2c",
+         "hanbando_934_220#2": "164x166:9dd0ddbe",
+         "hanbando_934_220#3": "164x209:78048c48",
+         "hanbando_934_220#4": "164x225:6b1d7870",
+         "hanbando_934_220#5": "164x236:1316f445",
+         "hanbando_934_220#6": "164x238:26caebce",
+         "hanbando_934_220#7": "164x237:1fd08f94",
+         "hanbando_934_220#8": "164x235:174c55c7",
+         "hanbando_934_220#9": "164x234:ac76c7d4",
+         "hanbando_934_220#10": "164x232:1ed8fbb4",
+         "hanbando_934_220#11": "164x230:577435b5",
+         "hanbando_934_220#12": "164x229:76c4980f",
+         "hanbando_934_220#13": "164x228:828ad14f",
+         "hanbando_934_220#14": "164x228:943e033e",
+         "hanbando_934_220#15": "100x167:2d5dbbf5",
+         "hanbando_934_221#1": "164x228:41cf4d9",
+         "hanbando_936_220#0": "1060x939:ed7513bb",
+         "hanbando_935_221#0": "1060x811:a1a1513d",
+         "hanbando_936_221#0": "1060x811:515cf9db",
+         "hanbando_935_222#0": "1060x963:266fd5d4",
+         "hanbando_937_220#13": "612x766:684d8b84",
+         "hanbando_937_220#14": "612x747:b61ffd8f",
+         "hanbando_937_220#15": "612x734:dc396d40",
+         "hanbando_937_220#16": "548x656:b535f2a6",
+         "hanbando_937_221#0": "100x194:4f8a5ef3",
+         "hanbando_936_222#0": "1060x1014:8c29ff94",
+         "hanbando_937_220#17": "484x572:35c465cc",
+         "hanbando_937_221#1": "164x254:91faf356",
+         "hanbando_937_221#2": "228x312:1669d38b",
+         "hanbando_937_221#3": "292x372:624e4c8e",
+         "hanbando_937_221#4": "356x441:53cdf6e6",
+         "hanbando_937_221#5": "420x521:a7fc6e8b",
+         "hanbando_937_221#6": "484x597:24f1758c",
+         "hanbando_937_221#7": "548x679:8bb69209",
+         "hanbando_937_221#8": "612x730:fd1b63b7",
+         "hanbando_937_221#9": "612x738:292d7dc3",
+         "hanbando_937_221#10": "612x756:e148523c",
+         "hanbando_937_221#11": "612x781:bc9e0e29",
+         "hanbando_937_221#12": "612x804:d138c0b3",
+         "hanbando_937_221#13": "612x823:ebf795e0",
+         "hanbando_937_221#14": "612x842:779bd249",
+         "hanbando_937_221#15": "612x861:5191dd55",
+         "hanbando_937_221#16": "548x783:92a92a53",
+         "hanbando_937_222#0": "100x174:1245151e",
+         "hanbando_936_223#0": "1060x1194:a3fab2d",
+         "hanbando_937_222#1": "164x286:5badc0e7",
+         "hanbando_937_222#2": "228x404:e59ac002",
+         "hanbando_937_222#3": "292x520:1914c779",
+         "hanbando_937_222#4": "356x631:2aa2dd0d",
+         "hanbando_937_222#5": "420x743:7fa35b44",
+         "hanbando_937_222#6": "484x840:c7ba848b",
+         "hanbando_937_222#7": "548x950:18e99e04",
+         "hanbando_937_222#8": "612x1018:81107ca9",
+         "hanbando_937_222#9": "612x1015:ae0777c4",
+         "hanbando_937_222#10": "612x1002:ba9acdb9",
+         "hanbando_937_222#11": "612x982:cfa3e2b6",
+         "hanbando_937_222#12": "612x960:2329831e"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-on-mtnear-half.png"
+      },
+      {
+       "tag": "off2",
+       "on": false,
+       "at": [
+        2147,
+        1956
+       ],
+       "leave": {
+        "arrived": true,
+        "jobsAtLeave": 1
+       },
+       "beforeReturn": {
+        "hold": 0,
+        "imgPx": 0,
+        "cs": 0,
+        "csPx": 0,
+        "stale": 0,
+        "near": 15,
+        "built": 0,
+        "split": 0,
+        "hs": {},
+        "jobs": 3,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "atShot": {
+        "hold": 5,
+        "imgPx": 2415000,
+        "cs": 5,
+        "csPx": 1991580,
+        "stale": 0,
+        "near": 15,
+        "built": 0,
+        "split": 5,
+        "hs": {
+         "hanbando_935_219#0": "1025:729:295680:54:783:18:1043:12ce6e2f",
+         "hanbando_934_219#15": "65:65:295680:70:135:18:83:234e9d22",
+         "hanbando_934_220#0": "65:77:295680:54:131:18:83:2d48bc91",
+         "hanbando_936_219#0": "1025:505:295680:54:559:18:1043:ed63e695",
+         "hanbando_935_220#0": "1025:700:295680:54:754:18:1043:c016ae85"
+        },
+        "jobs": 1,
+        "jobN": 3,
+        "cvN": 2,
+        "boards": [
+         1032192,
+         884736
+        ]
+       },
+       "segs": {
+        "n": 84,
+        "px": 23420828,
+        "hs": {
+         "hanbando_934_218#0": "100x95:ad1e39a",
+         "hanbando_934_218#1": "100x138:9347c3f7",
+         "hanbando_934_218#2": "100x154:ad92a80f",
+         "hanbando_935_218#13": "932x559:b9432b4e",
+         "hanbando_934_218#3": "100x163:a92ff783",
+         "hanbando_935_218#14": "996x544:5bf12389",
+         "hanbando_935_218#15": "1060x562:a29087ca",
+         "hanbando_934_219#0": "100x167:835dd86c",
+         "hanbando_934_219#1": "100x167:ef16ce20",
+         "hanbando_935_219#0": "1060x801:df8eb0bd",
+         "hanbando_934_219#2": "100x166:7ee06a61",
+         "hanbando_934_219#3": "100x165:a4b77e0c",
+         "hanbando_934_219#4": "100x165:2716d70f",
+         "hanbando_934_219#5": "100x165:1d6c565e",
+         "hanbando_934_219#6": "100x165:9cb36894",
+         "hanbando_934_219#7": "100x165:ce7305db",
+         "hanbando_934_219#8": "100x164:ee0fa4b4",
+         "hanbando_934_219#9": "100x163:8a6b2f",
+         "hanbando_934_219#10": "100x163:ab82aa7b",
+         "hanbando_934_219#11": "100x162:3a8fc20d",
+         "hanbando_934_219#12": "100x160:a3d02029",
+         "hanbando_934_219#13": "100x158:272e97a4",
+         "hanbando_934_219#14": "100x155:cf802120",
+         "hanbando_934_219#15": "100x152:82c12055",
+         "hanbando_934_220#0": "100x148:d2eda807",
+         "hanbando_936_219#0": "1060x577:c43dd642",
+         "hanbando_934_220#1": "164x146:7983e283",
+         "hanbando_935_220#0": "1060x872:73b9de2c",
+         "hanbando_934_220#2": "164x166:9dd0ddbe",
+         "hanbando_934_220#3": "164x209:78048c48",
+         "hanbando_934_220#4": "164x225:6b1d7870",
+         "hanbando_934_220#5": "164x236:1316f445",
+         "hanbando_934_220#6": "164x238:26caebce",
+         "hanbando_934_220#7": "164x237:1fd08f94",
+         "hanbando_934_220#8": "164x235:174c55c7",
+         "hanbando_934_220#9": "164x234:ac76c7d4",
+         "hanbando_934_220#10": "164x232:1ed8fbb4",
+         "hanbando_934_220#11": "164x230:577435b5",
+         "hanbando_934_220#12": "164x229:76c4980f",
+         "hanbando_934_220#13": "164x228:828ad14f",
+         "hanbando_934_220#14": "164x228:943e033e",
+         "hanbando_934_220#15": "100x167:2d5dbbf5",
+         "hanbando_934_221#1": "164x228:41cf4d9",
+         "hanbando_936_220#0": "1060x939:ed7513bb",
+         "hanbando_935_221#0": "1060x811:a1a1513d",
+         "hanbando_936_221#0": "1060x811:515cf9db",
+         "hanbando_935_222#0": "1060x963:266fd5d4",
+         "hanbando_937_220#13": "612x766:684d8b84",
+         "hanbando_937_220#14": "612x747:b61ffd8f",
+         "hanbando_937_220#15": "612x734:dc396d40",
+         "hanbando_937_220#16": "548x656:b535f2a6",
+         "hanbando_937_221#0": "100x194:4f8a5ef3",
+         "hanbando_936_222#0": "1060x1014:8c29ff94",
+         "hanbando_937_220#17": "484x572:35c465cc",
+         "hanbando_937_221#1": "164x254:91faf356",
+         "hanbando_937_221#2": "228x312:1669d38b",
+         "hanbando_937_221#3": "292x372:624e4c8e",
+         "hanbando_937_221#4": "356x441:53cdf6e6",
+         "hanbando_937_221#5": "420x521:a7fc6e8b",
+         "hanbando_937_221#6": "484x597:24f1758c",
+         "hanbando_937_221#7": "548x679:8bb69209",
+         "hanbando_937_221#8": "612x730:fd1b63b7",
+         "hanbando_937_221#9": "612x738:292d7dc3",
+         "hanbando_937_221#10": "612x756:e148523c",
+         "hanbando_937_221#11": "612x781:bc9e0e29",
+         "hanbando_937_221#12": "612x804:d138c0b3",
+         "hanbando_937_221#13": "612x823:ebf795e0",
+         "hanbando_937_221#14": "612x842:779bd249",
+         "hanbando_937_221#15": "612x861:5191dd55",
+         "hanbando_937_221#16": "548x783:92a92a53",
+         "hanbando_937_222#0": "100x174:1245151e",
+         "hanbando_936_223#0": "1060x1194:a3fab2d",
+         "hanbando_937_222#1": "164x286:5badc0e7",
+         "hanbando_937_222#2": "228x404:e59ac002",
+         "hanbando_937_222#3": "292x520:1914c779",
+         "hanbando_937_222#4": "356x631:2aa2dd0d",
+         "hanbando_937_222#5": "420x743:7fa35b44",
+         "hanbando_937_222#6": "484x840:c7ba848b",
+         "hanbando_937_222#7": "548x950:18e99e04",
+         "hanbando_937_222#8": "612x1018:81107ca9",
+         "hanbando_937_222#9": "612x1015:ae0777c4",
+         "hanbando_937_222#10": "612x1002:ba9acdb9",
+         "hanbando_937_222#11": "612x982:cfa3e2b6",
+         "hanbando_937_222#12": "612x960:2329831e"
+        }
+       },
+       "stillBuilt": 0,
+       "stillNear": 0,
+       "down": false,
+       "shot": "chromium-산-off2-mtnear-half.png"
+      }
+     ],
+     "cmp": {
+      "scrOffOn": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOffOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "scrOnOff2": {
+       "meanAbs": 0,
+       "bigPct": 0,
+       "px": 0,
+       "bytesSame": true
+      },
+      "csOffOn": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "csOffOff2": {
+       "same": 5,
+       "diff": 0,
+       "only": 0
+      },
+      "segOffOn": {
+       "same": 84,
+       "diff": 0,
+       "only": 0
+      },
+      "segOffOff2": {
+       "same": 84,
+       "diff": 0,
+       "only": 0
+      }
+     }
+    }
+   ],
+   "errs": []
+  }
+ }
+}

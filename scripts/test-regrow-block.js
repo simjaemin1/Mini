@@ -29,6 +29,9 @@
 //   (내부) --w40 <db> <out.json> <on|off> [nocap]  ·  --reboot <db> <out.json> <clockDay> [심은 나무 JSON]  ·  --seoul <db> <out.json> <on|off>
 //   ⓔ 의 팔(`nocap`)은 NPC 영토 상한(T538 · T559 ⓪)을 끈다 — 상한이 켜진 40일 판은 영토가 한 칸도 안 자란다(50/50 멎은 마을)
 'use strict';
+// ★[PM 10-30 · land1031] 이 하네스는 벽시계를 밀어 길의 날을 넘긴다 — `T990_ECON_DAY` 켬 기본(T1001 · 길의 날 = econ 날)에선 그 손이 안 닿는다.
+//   단언은 날의 원천과 무관(풀림 · 장부 벤 날 · 그루터기)이라 벽시계 날 세계로 묶는다(되돌림 짝 · 단언 무변) — econ 날로 미는 꼴은 T1013 몫.
+if (process.env.T990_ECON_DAY == null) process.env.T990_ECON_DAY = '0';
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

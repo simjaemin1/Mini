@@ -72,6 +72,13 @@ const HOSTILES_ON = process.env.ENABLE_WILDLIFE !== '0';
 //     아니면 낡은 좌표 덮어쓰기가 뒷문으로 부활한다(그 갈래를 `test-guest-rejoin` 이 밟는다).
 const SAVE_INTERVAL_MS = Math.max(1000, parseInt(process.env.SAVE_INTERVAL_MS || '', 10) || 30000);
 const SAVE_MOVE_EPS = 2;   // 이만큼도 안 움직였으면 쓸 게 없다(px)
+// ★★[T989 2026-10-29 · T917 회부 2 · 손잡이 `T989_CHUNK_SAVE` — ★[T1000] 켬 기본 · 되돌림 `=0` = 종전 바이트] **청크를 넘으면 그 틱에 저장한다.**
+//   주기 저장(30초)만 쓰는 몸 연속 칸은 SIGKILL 이면 마지막 저장 뒤 30초까지 되돌아간다 — 잰 값(보고 T989 ① · `scripts/t989-window.js`):
+//   자리 걷기 최대 58.7m · 달리기 147.7m(텔레포트처럼 보인다) · 허기 ≤ 2.4 · 갈증 ≤ 5.2(100 중) · 추위 ≤ 16.9%p(겨울 밤).
+//   켜면 사람이 선 청크(`chunkManager.chunkSize` 한 변 — 세계가 활성 · 비활성을 가르는 그 칸 · 새 수 0)가 마지막 주기 저장 자리의 청크와 다르면
+//   그 사람 차례의 틱에 **바로** 저장하고 다음 주기 저장 시각을 거기서 다시 센다(저장 = 청크 넘음 ∨ 30초 · 둘이 겹쳐 쓰지 않는다).
+//   ⇒ 자리 되돌림 ≤ 청크 한 변 남짓 · 저장 횟수는 움직이는 사람만 는다(걷기 ~3.7 · 달리기 ~9 /분 ↔ 종전 2). 몸 버전(T927)이 늦게 닿은 옛 저장을 거른다.
+const T989_CHUNK_SAVE = process.env.T989_CHUNK_SAVE !== '0';   // ★[T1000 · PM 10-30] 켬 기본 · 되돌림 `=0` = 종전 바이트
 // ★[T779 2026-10-18] 겨울나기(T20 `server/winter.js`)는 걷었다 — 여기 있던 납품 훅 한 줄(양 적립)도 같이 걷었다.
 const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
 const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(손잡이 `T687_SHARED_BUDGET` · 끔 = 문마다 제 예산 그대로)
@@ -163,6 +170,30 @@ function _t495Forget(seedKey) {
   if (!seedKey || !pickedSeeds.size || !pickedSeeds.delete(seedKey)) return;
   try { db.deletePickedSeed(seedKey); } catch (e) {}
 }
+// ★★★[T978 2026-10-28 · T917 회부 3 · 손잡이 `T978_SEED_HP` 켬 기본 · 되돌림 `=0`] **덜 벤 시드 자연물의 남은 hp.**
+//   시드 개체(`s_*` — 청크가 씨로 낳는 나무 · 바위 · 광맥 · 덤불 · 운철 …)는 DB 행이 없다(`dbId` 없음) ⇒ 몇 번 친 몫(`r.hp`)이
+//   `updateResourceHp`(행 있는 개체만) 를 못 타고 **메모리에만** 있었다 — 재기동하면, 그리고 청크가 꺼졌다 켜져도(개체를 다시 낳는다) 온전해진다.
+//   ⇒ 벤 장부(`harvestedSeeds`) · 부분 수확 장부(`pickedSeeds` · T495)와 **같은 문법**의 셋째 장부: 시드 키 → [종, 남은 hp].
+//     ⓐ 친 순간 적는다(두 자리 — 플레이어 채집 · NPC 채집 · DB 개체의 `updateResourceHp` 와 같은 자리) ·
+//     ⓑ 청크가 개체를 낳을 때(`activateChunk`) 같은 종이면 그 hp 로 선다(더 크게는 안 선다 — 낳은 hp 가 상한) ·
+//     ⓒ 벤 장부로 가거나(`_markHarvested`) 되살면(`_t341UnharvestBody`) 지운다(다음에 설 때는 온전하다 — T495 와 같은 두 자리).
+//   ★온전한 개체는 안 적는다(표가 작다) · 새 수 0 · 끄면 장부를 짓지도 읽지도 않는다(DB 표도 안 생긴다 = 끔 비트 동일).
+const _t978On = () => process.env.T978_SEED_HP !== '0';
+const seedHp = new Map();   // seedKey → [종, 남은 hp]
+function _t978Note(r) {
+  if (!_t978On() || !r || !r.isSeed || !r.seedKey || r.dbId) return;
+  seedHp.set(r.seedKey, [r.type, r.hp]);
+  try { db.upsertSeedHp(r.seedKey, r.type, r.hp); } catch (e) {}
+}
+function _t978Forget(seedKey) {
+  if (!seedKey || !seedHp.size || !seedHp.delete(seedKey)) return;
+  try { db.deleteSeedHp(seedKey); } catch (e) {}
+}
+function _t978Apply(r) {
+  if (!seedHp.size || !r || !r.seedKey) return;
+  const e = seedHp.get(r.seedKey);
+  if (e && e[0] === r.type && e[1] > 0 && e[1] < r.hp) r.hp = e[1];
+}
 let _harvestPromotePending = 0;
 // ★★[T122] 옛 행 승격 — **한 번**만, 그리고 게임 시계가 선 뒤에(첫 청크 활성화 시점).
 //   벤 날 = **승격일**이다: 지금부터 자라기 시작한다(즉시 성목이 되지 않는다).
@@ -192,6 +223,7 @@ function _markHarvested(seedKey, x, y) {
   if (!harvestedSeeds.has(seedKey)) _t566LedVer++;   // ★[T566] 장부 키 집합이 바뀌었다(새 키) — 장부가 든 청크 표를 다음에 다시 센다
   harvestedSeeds.set(seedKey, Number.isFinite(d) ? Math.floor(d) : -1);
   _t495Forget(seedKey);   // ★[T495] 빈 개체는 벤 장부로 — 남은 단위 줄은 지운다(장부가 비어 있으면 아무 일도 안 한다)
+  _t978Forget(seedKey);   // ★[T978] 벤 개체의 남은 hp 줄도 지운다(다시 설 때는 온전하다)
   _farBump(seedKey);   // ★[T380] 원경 캐시 무효화 — **장부가 바뀐 청크만**(문 하나를 지나므로 새는 길이 없다)
   _ringBump(seedKey, x, y);   // ★[T440] 청크 판 — 그 씨를 낳은 청크의 그 셀만(같은 문 · 새는 길이 없다)
   if (!Number.isFinite(d)) _harvestPromotePending = 1;
@@ -579,6 +611,7 @@ function _t341UnharvestBody(seedKey) {
   harvestedSeeds.delete(seedKey);
   _t566LedVer++;   // ★[T566] 장부 키 집합이 바뀌었다
   _t495Forget(seedKey);   // ★[T495] 되살아난 개체는 온전하다(방어 · 빈 개체는 이미 줄이 없다)
+  _t978Forget(seedKey);   // ★[T978] 같은 이유
   _ringBump(seedKey);   // ★[T440] 청크 판 — 자리를 모른다(키만 온다) ⇒ 그 씨를 낳은 청크 판을 버린다
   try { db.deleteHarvestedSeed(seedKey); } catch (e) {}
   return 1;
@@ -864,6 +897,7 @@ function activateChunk(cx, cy) {
     if (resources.has(r.id)) continue;             // ★[T317] 이미 선 개체(이웃이 먼저 켜졌다) — 두 번 안 놓는다
     if (isTerrainBlockedLocal(r.x, r.y)) continue; // 바다 위 자원 차단
     _fruitStamp(r);                 // ★[T170] 스폰 방송에 `fruitNow` 한 비트가 실린다(볼 때 정산 — 여기가 "볼 때")
+    _t978Apply(r);                  // ★[T978] 덜 벤 개체는 남은 hp 로 선다(장부가 비면 아무 일도 안 한다)
     resources.set(r.id, r);
     chunkManager.insertResource(r);
     spawned.push(r);
@@ -2023,6 +2057,7 @@ function refreshDitchCells() {
     const flat = SimVillages.ditchCells ? SimVillages.ditchCells() : [];
     for (let i = 0; i + 1 < flat.length; i += 2) DITCH_CELLS.add(_cellKey(flat[i], flat[i + 1]));   // ★[T333] 정수 키
   } catch (e) { console.error(`[${ZONE_ID}] 🏰 도랑 콜라이더 적재 실패:`, e.message); }
+  try { if (SimVillages.distBasisRefresh) SimVillages.distBasisRefresh(); } catch (e) {}   // ★[T996] 막힘이 바뀌었다 — 거리행렬 바탕을 지금 격자로 다시 세운다(켬 · 마감 밖 · 주입 0)
   return DITCH_CELLS.size;
 }
 function ditchPayload() {                 // welcome 페이로드(flat [cx,cy,…]) — 다리와 같은 규약
@@ -3208,6 +3243,12 @@ function spawnOneResource() {
     try { for (const row of db.getAllPickedSeeds()) { if (harvestedSeeds.has(row.seed_key)) continue; let t = null; try { t = JSON.parse(row.taken); } catch (e) { t = null; } if (t && typeof t === 'object') { pickedSeeds.set(row.seed_key, t); _pk++; } } } catch (e) {}
     console.log(`[${ZONE_ID}] ★[T495] 부분 수확 개체 ${_pk}개 로드(남은 단위를 들고 서 있다)`);
   }
+  // ★★[T978] 덜 벤 시드 자연물 — **켠 팔만** 읽는다(끔 = 표를 짓지도 읽지도 않는다). 벤 장부에 있는 키는 버린다(벤 장부가 이긴다 · T495 와 같은 규약).
+  if (_t978On()) {
+    let _sh = 0; const _t0 = Date.now();
+    try { for (const row of db.getAllSeedHp()) { if (harvestedSeeds.has(row.seed_key)) continue; if (!(row.hp > 0)) continue; seedHp.set(row.seed_key, [row.type, row.hp]); _sh++; } } catch (e) {}
+    console.log(`[${ZONE_ID}] ★[T978] 덜 벤 시드 자연물 ${_sh}개 로드(${Date.now() - _t0}ms · 남은 hp 로 선다)`);
+  }
 }
 
 // === DB에서 자기 zone의 claims 로드 ===
@@ -3250,6 +3291,11 @@ function spawnOneResource() {
 //      (3e03fabb 2026-06-25 부터) 매번 TypeError 를 그 catch 가 삼켜 **한 마리도 안 적었다**(저장 표가 영영 안 내려간다). 켬 = T728 꼴 `BEGIN IMMEDIATE … COMMIT`.
 //      ① 은 ③ 없이는 아무 일도 안 한다(표를 세워도 적는 이가 없다) — 그래서 한 손잡이다.
 const T967_MOB_HP = process.env.T967_MOB_HP !== '0';
+// ★★[T975 2026-10-28 · T967 회부 2 · 3 · ★PM 결함 둘] 손잡이 `T975_MOB_DB`(켬 기본 · 되돌림 `=0` = 종전 글자 그대로) — 존 몹 DB 행의 두 구멍:
+//   ① 화살 죽음 길(`stepArrows`)도 같은 삭제 문(`db.deleteMob` — 사람 공격 · NPC 죽음 길의 그 글자)을 지난다 · 종전엔 행이 남아 재기동마다 되살아났다.
+//   ② 종료 flush(`_shutdownFlush`)가 주인 칸 둘(`tameOwner` · `tameOwnerName`)을 그대로 넘긴다 · 종전엔 넷만 넘겨 `updateMobState` 가 `|| null` 로 NULL 을 썼다
+//      (우아한 종료마다 길들임이 풀렸다). 주기 저장(`saveDirtyMobs`)은 이미 여섯을 넘긴다(종전 글자).
+const T975_MOB_DB = process.env.T975_MOB_DB !== '0';
 const MOB_HP_KEEP = new Set(['npc', 'feed', 'player']);             // 종전에 저장 표(`dirty`)를 세우던 셋
 const MOB_HP_LOUD = new Set(['npc', 'feed', 'arrow', 'player']);    // 종전에 `mob_damaged` 를 방송하던 넷
 function setMobHp(m, v, why) {
@@ -3299,6 +3345,27 @@ function spawnMob(type, opts = {}) {
   chunkManager.insertMob(m);
   return m;
 }
+// ★★[T987 2026-10-28 · T975 회부 1 · ★PM 결함] **몹 죽음 길 셋의 다시 낳기 문 하나** — `respawnMobLater(m)` · 손잡이 `T987_MOB_RESPAWN`(켬 기본 · 되돌림 `=0` = 종전 글자 그대로).
+//   죽음 길 셋 = NPC(`npcStep`) · 화살(`stepArrows`) · 사람 공격(`tryAttack`). 규칙은 종전 두 길의 글자 그대로: 야생 그림자(`isWild` — 개체 수는 랩 생태가 쥔다) 빼고 ·
+//   `HOSTILES_ON` 이거나 순한 종이면 15초 뒤 같은 종을 하나 낳고(`spawnMob` — 자리는 그 함수의 굴림) `mob_spawn` 을 방송한다.
+//   종전: 화살 길엔 다시 낳기가 없었다(화살로 사냥할수록 몹이 줄었다) · NPC 길은 야생 그림자를 안 걸렀다(늑대 그림자를 잡으면 DB 늑대가 섰다) · 사람 공격 길은 걸렀다.
+//   방송 칸은 NPC 길 글자(`tameOwner: null` · `tameOwnerName: null` 까지 — 새 몹은 주인이 없다 · 클라 `mob_spawn` 은 두 꼴을 같게 읽는다).
+const T987_MOB_RESPAWN = process.env.T987_MOB_RESPAWN !== '0';
+function respawnMobLater(m) {
+  if (m.isWild || !(HOSTILES_ON || !(ANIMALS[m.type] && ANIMALS[m.type].aggressive))) return false;
+  const respawnType = m.type;
+  setTimeout(() => {
+    const n = spawnMob(respawnType);
+    broadcast({ type: 'mob_spawn', mob: { mid: n.mid, type: n.type, x: n.x, y: n.y, hp: n.hp, maxHp: n.maxHp, tameOwner: null, tameOwnerName: null } });
+  }, 15000);
+  return true;
+}
+// ★★[T998 2026-10-30 · T987 회부 3] 손잡이 `T998_NPC_WILD_SYNC`(켬 기본 · 되돌림 `=0` = 종전 글자 그대로) — **NPC 가 죽인 야생 그림자도 랩에 그 자리에서**:
+//   NPC 죽음 길(`npcStep`)이 사람 공격 · 화살 길의 그 랩 동기 문(`Wildlife.onMobHit` — 존 hp → 랩 hp · 0 이하면 랩 `_extKill`)을 지난다(사본 0).
+//   종전엔 이 길만 그 문을 안 불러 랩 몸이 **같은 틱 뒤쪽의 야생 틱**(`Wildlife.tick` ④ 외부 피해 폴링 보정 — "onMobHit 미경유 경로 방어")에서야 죽었다
+//   (npcStep 은 틱 앞쪽 · 야생 틱은 뒤쪽 — 그 사이 랩 늑대는 hp > 0 으로 산다 · 활성 청크가 없으면 야생 틱이 ④ 앞에서 돌아가 랩이 다시 돌 때까지).
+//   죽음만이다 — 안 죽는 NPC 타격은 종전대로 폴링 보정이 랩 hp 를 맞춘다(사람 공격 길의 놀람 · 반격 돌진을 NPC 에도 줄지는 회부 — 싸움 판이 바뀐다).
+const T998_NPC_WILD_SYNC = process.env.T998_NPC_WILD_SYNC !== '0';
 {
   // DB에서 기존 mob 로드 — 없으면 바이옴별 신규 스폰
   const existing = db.getMobs();
@@ -4641,6 +4708,7 @@ function npcStep(npc, dt, now) {
         npc.lastAttackAt = now;
         const dmg = 8;
         setMobHp(target, target.hp - dmg, 'npc');   // ★[T954] 문으로(쓰기 · 저장 표 · 방송 — 종전 세 줄 그 차례)
+        if (T998_NPC_WILD_SYNC && target.isWild && target.hp <= 0) Wildlife.onMobHit(target, dmg, npc);   // ★[T998] 죽인 야생 그림자 — 랩에도 그 자리에서(사람 공격 · 화살 길 그 문 · 그 차례: 랩 → DB → 지움 → 다시 낳기)
         // 늑대 공격당하면 어그로 — 이미 NPC 향해있을 거. 팩 전파도.
         if (!target.tameOwner) {
           target.aggroTarget = npc.pid;
@@ -4652,11 +4720,14 @@ function npcStep(npc, dt, now) {
           mobs.delete(target.mid);
           broadcast({ type: 'mob_removed', mid: target.mid });
           // 일정 시간 후 같은 종 리스폰
-          const respawnType = target.type;
-          if (HOSTILES_ON || !(ANIMALS[respawnType] && ANIMALS[respawnType].aggressive)) setTimeout(() => {
-            const m = spawnMob(respawnType);
-            broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: null, tameOwnerName: null } });
-          }, 15000);
+          if (T987_MOB_RESPAWN) respawnMobLater(target);   // ★[T987] 죽음 길 셋 한 문(야생 그림자 뺌)
+          else {   // 끔 = 종전 글자
+            const respawnType = target.type;
+            if (HOSTILES_ON || !(ANIMALS[respawnType] && ANIMALS[respawnType].aggressive)) setTimeout(() => {
+              const m = spawnMob(respawnType);
+              broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: null, tameOwnerName: null } });
+            }, 15000);
+          }
           npc.fightTarget = null;
           npc.behavior = 'wander';
           npc.nextDecisionAt = 0;
@@ -4713,6 +4784,7 @@ function npcStep(npc, dt, now) {
           _takeResourceEntity(r, true);     // ★[T325] 빼는 여섯 줄을 **문 하나**로 모았다(아래 정의 · 행동 무변)
         } else {
           if (r.dbId) db.updateResourceHp(r.dbId, r.hp);
+          else _t978Note(r);   // ★[T978] 시드 개체(행 없음)는 남은 hp 장부로
           broadcast({ type: 'resource_update', id: r.id, hp: r.hp });
         }
         npc.gatherTarget = null;
@@ -5011,13 +5083,17 @@ function clearTreesInCells(cellKeys, onlyNew) {
   return cleared + ledger;
 }
 const _simNow = () => { try { return (SimVillages.dayNow && SimVillages.dayNow()) || Date.now(); } catch (e) { return Date.now(); } };
-// ★★[T990 2026-10-28 · 손잡이 `T990_ECON_DAY`(위 길의 날과 같은 손잡이 · 제품 끔 기본 · 판 자 기본 켬)] NPC 광맥 장부의 시각 = econ 날의 경계(날 × 하루 길이).
+// ★★[T990 2026-10-28 · 손잡이 `T990_ECON_DAY`(아래 길의 날과 같은 손잡이)] NPC 광맥 장부의 시각 = econ 날의 경계(날 × 하루 길이).
 //   NPC 채굴(`oreStockAt` · `oreConsumeAt`)은 하루 마감 조각에서만 돈다 — 그 시각(`_simNow` = 마감이 선 틱의 벽시계)은 빠른 판 자에서 econ 이 밀린 만큼 늘어나
 //   광맥 리젠 적분(`_oreRec` — 날 = ms ÷ 24분)이 판 빠르기(부하)에 달렸다(벽시계 판 · 가상 시계 판이 400날 안 광산 마을 곳간 · 금고에서 갈린 자리 · 보고/T990 §3).
-//   켜면 그 시각을 econ 날에서 낸다(`SimVillages.econDay()` × 판 하루 길이 — 같은 날 안에선 한 순간 · 판마다 같은 값). 사람 채광(손님)은 종전 그대로 지금이다 —
-//   판 자엔 손님이 없다(라이브에서 켜면 두 시계가 한 장부에 섞인다 — 회부). 새 수 0.
+//   켜면 그 시각을 econ 날에서 낸다(`SimVillages.econDay()` × 하루 길이 — 같은 날 안에선 한 순간 · 판마다 같은 값).
+// ★★[T1001 2026-10-30 · ★PM 켬 기본 · 되돌림 `T990_ECON_DAY=0`] **부팅 때 한 번 벽시계에 맞춘다**(맞춤 몫 = 그 순간 벽시계 − econ 날 × 하루 길이 · 길의 날도 같은 꼴).
+//   리젠 · 감쇠는 차이만 읽으니(`_oreRec` 날 = (지금 − t) ÷ 24분) 맞춤 몫은 판 값에 안 닿는다(판 자 바이트 같음) — 라이브 DB 의 광맥 줄 `t`(벽시계 ms)와 길 줄 `d`(벽시계 날)가
+//   켠 뒤에도 같은 축에 이어진다(옮김 0 · 재기동마다 다시 맞춘다 = 꺼진 사이 흐른 날은 그때 한 번에 적분). 돌고 있는 동안은 econ 날을 따른다. 사람 채광은 종전 그대로 지금(벽시계)이다. 새 수 0.
+const T990_ECON_DAY = process.env.T990_ECON_DAY !== '0';   // ★[T1001 10-30] 켬 기본 · 되돌림 `=0`
 const _t990OreDayMs = parseInt(process.env.VILLAGE_DAY_MS || '', 10) || ((WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
-const _npcOreNow = () => { if (process.env.T990_ECON_DAY === '1') { let d = null; try { d = SimVillages.econDay ? SimVillages.econDay() : null; } catch (e) { d = null; } if (Number.isFinite(d)) return d * _t990OreDayMs; } return _simNow(); };
+let _t1001OreOff = null;   // 맞춤 몫(ms) — 첫 econ 날이 선 순간 한 번
+const _npcOreNow = () => { if (T990_ECON_DAY) { let d = null; try { d = SimVillages.econDay ? SimVillages.econDay() : null; } catch (e) { d = null; } if (Number.isFinite(d)) { if (_t1001OreOff === null) _t1001OreOff = Date.now() - d * _t990OreDayMs; return d * _t990OreDayMs + _t1001OreOff; } } return _simNow(); };
 // ★★[T295 후속] 전쟁이 쓰는 나무 술어 — **청크 한 판을 통째로 캐시**한다.
 //   칸마다 묻는 길(`treeBlockerAt`)은 한 칸에 이웃 9청크를 다시 낳아 **27.5µs/칸**이다(실측).
 //   전장 한 판이 1,500~3,600칸을 물으면 교전 틱에 그대로 얹힌다(실측: 존 틱 p95 8.5 → 54.5ms).
@@ -5061,12 +5137,16 @@ function warTreeCellBlocked(cellX, cellY) {
 Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast,
   // ★[T566 추신2] 다져진 길의 오름·내림 — 존이 나무를 걷고(그 셀) 리젠을 막고(둘레) 푼다(끔이면 안 넘긴다 = 길은 종전 그대로)
   onPaved: _T566_ON ? _t566OnPaved : null, onUnpaved: _T566_ON ? _t566OnUnpaved : null });
-// ★★[T990 2026-10-28 · T986 회부 2 · 손잡이 `T990_ECON_DAY` — 제품 끔 기본(`'1'` 만 켬 · 끔 = main 바이트) · 판 자(t577)는 아이에 `1` 을 기본으로 싣는다]
+// ★★[T990 2026-10-28 · T986 회부 2 · 손잡이 `T990_ECON_DAY` — ★T1001 켬 기본(되돌림 `=0` · 끔 = T1001 전 main 글자) · 판 자(t577)도 아이에 `1` 을 싣는다]
 //   길의 날(`roads.js dayNow` — 답압 감쇠 · 코스 등급 · 하루 재구축)을 econ 날로 — 빠른 판 자에선 벽시계 날(250ms)이 econ 날보다 몇 배 빨리 가서(econ 이 밀린 만큼)
 //   벽시계 판 길이 가상 시계 판보다 빨리 풀렸고, 행군로(길 할인)가 갈려 전쟁 정산이 두 시계에서 갈렸다(보고/T990 §3 · 집 행위 켬 800날 시드 1020 날 747).
 //   같은 손잡이가 NPC 광맥 장부 시각도 econ 날로 낸다(`_npcOreNow` · 위 `_simNow` 곁 · 15분 벽시계 정리 쉼).
-//   라이브는 길 날 = 운영 하루라 켤 일이 없다(그리고 DB 길 줄의 날 · 광맥 줄의 시각이 절대값이라 켜려면 옮김이 든다 — 회부). 새 수 0.
-if (process.env.T990_ECON_DAY === '1' && Roads.setEconDay) Roads.setEconDay(() => (SimVillages.econDay ? SimVillages.econDay() : null));
+//   라이브: 길 줄의 날 · 광맥 줄의 시각이 절대값이라 ★[T1001] 부팅 때 한 번 벽시계에 맞춘다(아래 · 위 `_npcOreNow`) — 옮김 0. 새 수 0.
+//   ★[T1001 2026-10-30] 켬 기본(위 `T990_ECON_DAY` 상수) · 부팅 때 한 번 벽시계 날에 맞춘다(맞춤 몫 = 그 순간 벽시계 날 − econ 날 · 감쇠는 차이만 읽는다 — 판 값 무변 · 라이브 길 줄 `d` 와 같은 축).
+const _t1001RoadDayMs = parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs;   // `Roads.init` 에 넘긴 그 하루 길이
+let _t1001RoadOff = null;
+if (T990_ECON_DAY && Roads.setEconDay) Roads.setEconDay(() => { const d = SimVillages.econDay ? SimVillages.econDay() : null; if (!Number.isFinite(d)) return null;
+  if (_t1001RoadOff === null) _t1001RoadOff = Math.floor((Date.now() - (WORLD.worldEpoch || 0)) / _t1001RoadDayMs) - d; return d + _t1001RoadOff; });
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
   elevKmAt,   // ★[T856] 지형 정본 고도(몸 기온이 쓰는 그 함수) — 생활층이 econ 마을 `land.elev` 를 이것으로 채운다(손잡이 `T856_LAND_ELEV` 끔이면 안 읽는다)
   ...(Streams.ON && Streams.load(ZONE_ID) ? { isStreamLocal } : {}),   // ★★[T585] 개울 술어 — 생활층 지형 어댑터가 `ta.isStream` 으로 묻는다(집터·밭·곳간·큰집 마당 · 시딩 `generate`). 끔이면 키 자체가 없다(종전 그대로)
@@ -5088,7 +5168,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   //     벤 자리·묘목은 안 막고, 재생하면 다시 막는다.
   treeCellBlocked: warTreeCellBlocked,
   dayShelter: process.env.T969_SHELTER_DAY !== '0' ? (d) => _t969ShelterDay(d) : null,   // ★[T969] 켬 — 쉼터 백필을 econ 날 자리(하루 마감)에서(아래 · 끔 = 안 넘긴다) · ★[T974 10-28] 켬 기본 · 되돌림 `=0`
-  dayRoads: process.env.T990_ECON_DAY === '1' ? () => Roads.dayTick() : null,   // ★[T990] 켬 — 길의 하루를 econ 날 자리(날을 올린 econ 머리 바로 뒤 · 도적 하루 앞)에서(`roads.js dayTick` 머리 주석 · 끔 = 안 넘긴다 · 틱이 종전대로 정한다)
+  dayRoads: T990_ECON_DAY ? () => Roads.dayTick() : null,   // ★[T990] 켬 — 길의 하루를 econ 날 자리(날을 올린 econ 머리 바로 뒤 · 도적 하루 앞)에서(`roads.js dayTick` 머리 주석 · 끔 = 안 넘긴다 · 틱이 종전대로 정한다)
   dayBandits: process.env.T986_BANDIT_DAY !== '0' ? () => Bandits.dayTick() : null,   // ★[T986] 켬 — 도적 하루를 econ 날 자리(하루 마감 — 날을 올린 econ 머리 바로 뒤)에서(`bandits.js dayTick` 머리 주석 · 끔 = 안 넘긴다 · 존 틱이 종전대로 부른다) · ★[T990 10-28] 켬 기본 · 되돌림 `=0`
   ioBusy, ioQuietMs,   // ★[T42-b] 배경 작업이 '한가한가'를 판단할 때 **날아가는 쓰기**도 본다
   clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
@@ -6962,7 +7042,8 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T870_MT_BAND !== '0' ? { mtBand: true } : {}),   // [T870 · ★T880 켬 기본 — PM 10-23] 클라 산 청크 굽기 예산을 **띠** 단위로(한 판 상한 = 띠 `MT3_BUDGET` 개 · 청크는 여러 판에 걸쳐 완성 · 반쯤 구운 산 0 · 11-r1-mountain) · 되돌림 `T870_MT_BAND=0` 이면 칸이 없다(옛 welcome · 청크 단위)
       ...(process.env.T813_RMB_PRESS !== '0' ? { rmbPress: true } : {}),   // [T813 · ★T819 켬 기본 — PM 10-20] 우클릭 탭 메뉴는 **누른 순간의 화면**으로 짚는다(46-h-verbs) · 되돌림 `T813_RMB_PRESS=0` 이면 칸이 없다(옛 welcome · 뗄 때의 화면)
       ...(process.env.T947_CELL_BOX !== '0' ? { cellBox: true } : {}),   // [T947 · ★T961 켬 기본 — PM 10-27] 클라 물 · 바위 칸 첫 조회 — 정본 술어가 거짓을 낼 칸(물 · 능선 피처 상자 밖)은 정본을 안 부른다(public/cell-env.js · 00-const `isWaterAtAbs` · `isRockAtAbs` · 값 같음 · 첫 그림 다음 1위) · 되돌림 `T947_CELL_BOX=0` 이면 칸이 없다(옛 welcome · 칸마다 정본)
-      ...(process.env.T970_CUT_NEAR === '1' ? { cutNear: true } : {}),   // [T970] 클라 산 가르기 붙듦(`_mtCutHold` — 가르기 조각을 만든 띠)을 카메라 둘레(이번 판 산 수집 창의 청크 · 그 청크의 지금 띠)만 남긴다(11-r1-mountain `_mtCutHoldSweep` · 낡은 띠 캔버스와 조각이 존 넘기 · 산 둘레 걸음을 따라 쌓이던 것 · 다시 걸치면 종전 캐시 빗나감 길로 다시 만든다) — 기본 끔(칸 없음 · 종전 그대로)
+      ...(process.env.T970_CUT_NEAR !== '0' ? { cutNear: true } : {}),   // [T970 · ★T981 켬 기본 — PM 10-28] 클라 산 가르기 붙듦(`_mtCutHold` — 가르기 조각을 만든 띠)을 카메라 둘레(이번 판 산 수집 창의 청크 · 그 청크의 지금 띠)만 남긴다(11-r1-mountain `_mtCutHoldSweep` · 상한 64/48 그대로) · 되돌림 `T970_CUT_NEAR=0` 이면 칸이 없다(옛 welcome · 종전 붙듦)
+      ...(process.env.T981_MT_NEAR !== '0' ? { mtNear: true } : {}),   // [T981 · ★T997 켬 기본 — PM 10-29] 클라 산 굽다 만 청크(`_mt3Jobs`)를 이번 판 산 수집 창 것만 남기고 · 가르기 붙듦이 비면 가르기 판 둘(`_mtMaskCv` · `_mtStripCv`)을 만들 때 크기로 되돌린다(11-r1-mountain `_mtNearSweep` · T970 회부 2) · 되돌림 `T981_MT_NEAR=0` 이면 칸이 없다(옛 welcome · 종전 그대로)
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
       ...(VillageKin.ON ? { villageOnly: true } : {}),   // [T787] 길드 = 마을(켬 기본) — 클라 무리 패널이 마을 패널이 된다 · `T785_VILLAGE_ONLY=0` 이면 칸이 없다(옛 길드 패널)
       ...(process.env.T839_SITE_EXIT !== '0' ? { siteExit: true } : {}),   // [T839 · ★T850 켬 기본 — PM 10-22] 터를 놓으면 건축 모드를 끈다(다섯 터 · 클라 `30-n-net.js`) — 되돌림 `T839_SITE_EXIT=0` 이면 칸이 없다(옛 welcome · 건축 모드가 남는다)
@@ -9276,6 +9357,7 @@ function doSellIronRelic(player, id) {
   send(player.ws, { type: 'notice',
     text: `🗡️ ${r.village}에 철기를 넘겼다 — ${parts.join(' · ') || '(대금 없음)'}  · 이 마을 철기 ${r.relics}점` });
   console.log(`[${ZONE_ID}] 🗡️ ${player.name} → ${r.village} 철제 위세품 판매 (값 ${r.price} · 대금가치 ${r.paidValue})`);
+  if (SimVillages.t983Save) SimVillages.t983Save(r.village);   // ★[T983] 대금이 나간 곳간 행도 이 순간에(이름으로 찾는다 · 끔 = 무동작)
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
@@ -9388,7 +9470,7 @@ let _t735Boot = false;
       minedCells.set(r.cell_key, { s, t: r.last_t, w, kg: r.kgsum || 0 });
     }
     if (minedCells.size) console.log(`[${ZONE_ID}] 광맥 파인 셀 ${minedCells.size}개 로드` + (migrated ? ` (구 번영도 ${migrated}개 → 재고 비율 이행)` : ''));
-    if (process.env.T735_VEIN_BATCH === '1') { _t735Boot = true; }   // ★[T735] 부팅 지문은 아래 `_veinDigest` 가 선 뒤에 적는다(함수 선언 차례)
+    if (process.env.T735_VEIN_BATCH !== '0') { _t735Boot = true; }   // ★[T735] 부팅 지문은 아래 `_veinDigest` 가 선 뒤에 적는다(함수 선언 차례) · ★[T1007] 켬 기본(아래 `T735_VEIN_BATCH` 와 같은 글자 · 로그만 · 값 무변)
   } catch (e) { console.log(`[${ZONE_ID}] mined_cells 로드 실패: ${e.message}`); }
 }
 // [배치 20 B] 동적 토양치 — minedCells 적재 **뒤에** 띄운다(채굴 거울 씨앗이 그걸 읽는다).
@@ -9442,7 +9524,7 @@ function _oreSave(key, rec, now) {
   if (_vein) { if (now) { try { _vein.now(key); } catch (e) { } } else _vein.mark(key); return; }
   try { db.upsertMinedCell(key, rec.s, rec.t, rec.w, rec.kg || 0); } catch (e) { }
 }
-// ★★[T735] 광맥 장부 모아 쓰기 — 손잡이 `T735_VEIN_BATCH=1`(기본 끔 = `_vein` null · 종전 그대로). 정본 `server/vein-batch.js` 머리말.
+// ★★[T735] 광맥 장부 모아 쓰기 — 손잡이 `T735_VEIN_BATCH`(★PM 10-14 켬 기본 · 되돌림 `=0` = `_vein` null · 종전 그대로 · T735 발급 땐 `=1` 만 켬). 정본 `server/vein-batch.js` 머리말.
 //   언제 쓰나: 사람 주기 저장의 그 간격(`SAVE_INTERVAL_MS` — 새 수 0) · 종료 flush(`_shutdownFlush` 머리 — T728 경계 저장 뒤).
 const T735_VEIN_BATCH = process.env.T735_VEIN_BATCH !== '0';   // ★[PM 10-14] 켬 기본(같은 값 · DB 만 모아 쓰기) · 되돌림 `=0`
 const _vein = T735_VEIN_BATCH ? require('./vein-batch').create({ db, map: minedCells }) : null;
@@ -9912,7 +9994,17 @@ function trySortOre(player) {
 // 주기적 정리 (15분) — 만땅 회복된 셀 레코드 제거. minedCells만 순회(파인 셀, 한정적)라 가벼움.
 setInterval(() => {
   if (minedCells.size === 0) return;
-  if (process.env.T990_ECON_DAY === '1') return;   // ★[T990] 켬 — 장부 시각이 econ 날이다(`_npcOreNow`) · 벽시계 15분 주기가 끼면 판 빠르기에 달린다 · 리젠은 읽을 때 닫힌 해로 적분하니(`_oreRec`) 안 지워도 같은 값
+  //   ★[T990 · T1001] 켬 — 장부 시각이 econ 날이다(`_npcOreNow`). 벽시계 15분 주기가 장부를 고치면(리젠 적분을 쪼개 `t` 를 옮긴다) 판 빠르기에 달린다 ⇒
+  //     켬이면 **읽기만** 한다: 그 econ 시각에 이미 만땅인 셀만 지운다(리젠은 늘기만 하니 다음 NPC 읽기도 만땅 — 지운 셀 = 새 셀 그 값 · 값 무변). 끔 = 종전 글자.
+  if (T990_ECON_DAY) {
+    const now = _npcOreNow();
+    for (const [key, rec] of minedCells) {
+      const days = (now - rec.t) / _ORE_DAY_MS;
+      const s = days > 0 ? Specialty.oreRegen(rec.s, days) : rec.s;
+      if (s >= Specialty.ORE_K && (rec.w || 0) <= 0 && !(rec.kg > 0)) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } }
+    }
+    return;
+  }
   const now = Date.now();
   for (const [key, rec] of minedCells) {
     const days = (now - rec.t) / _ORE_DAY_MS;
@@ -10607,6 +10699,7 @@ function gatherResource(player, best) {
     savePlayer(player);
   } else {
     if (best.dbId) db.updateResourceHp(best.dbId, best.hp);
+    else _t978Note(best);   // ★[T978] 시드 개체(행 없음)는 남은 hp 장부로
     broadcast({ type: 'resource_update', id: best.id, hp: best.hp });
   }
 }
@@ -12151,6 +12244,7 @@ function tryVillageDeposit(player, buildingId, want, _donVil) {
   finally { _t732DoorEnd(_d732, player, !!(r && r.ok), vil, _uo); }   // ★[T732] 낸 로트를 곳간 장부에 그 나이째(던져도 문은 닫는다 · 끄면 무동작)
   if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
   if (T725_HALL) { for (const [it, n] of Object.entries(r.taken || {})) Carry.takeKg(player, it, n); Carry.reconcile(player, player.inventory); }   // ★[T725 ①] 낸 개체를 장부에서 뺀다
+  if (SimVillages.t983Save) SimVillages.t983Save(vil);   // ★[T983] 곳간 행도 이 순간에(사람 저장보다 먼저 · 끔 = 무동작)
   savePlayer(player);
   sendInventory(player);
   const kv = Object.entries(r.taken).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
@@ -12361,6 +12455,7 @@ function _memberLine(player, vid) {
 function tryVillageWithdraw(player, vid, res, qty) {
   const fin = (r) => {
     if (!r || !r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${(r && r.err) || '곳간을 열지 못했다'}` }); return r; }
+    if (SimVillages.t983Save) SimVillages.t983Save(vid | 0);   // ★[T983] 곳간 행도 이 순간에(사람 저장 `_afterWithdraw` 보다 먼저 · 끔 = 무동작)
     _afterWithdraw(player, r);
     return r;
   };
@@ -12465,6 +12560,7 @@ function tryVillageTradeExec(player, vid, giveRes, takeRes, qty, want, numeraire
   // ★내준 개체를 장부에서 **실제로 뺀다** — 위 환산은 `peekKg`(보기)였다. 안 빼면 무게가 안 준다.
   for (const [it, n] of Object.entries(r.gaveItems || {})) Carry.takeKg(player, it, n);
   Carry.reconcile(player, player.inventory);
+  if (SimVillages.t983Save) SimVillages.t983Save(vid | 0);   // ★[T983] 곳간 행도 이 순간에(사람 저장보다 먼저 · 끔 = 무동작)
   savePlayer(player);
   sendInventory(player);
   const gave = Object.entries(r.gaveItems || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
@@ -12488,6 +12584,7 @@ function tryVillageDeliver(player, vid, item, want) {
   if (r.err) { send(player.ws, { type: 'notice', text: `📋 ${r.err}` }); return; }
   for (const [it, n] of Object.entries(r.taken || {})) Carry.takeKg(player, it, n);   // ★납품한 개체를 장부에서 뺀다
   Carry.reconcile(player, player.inventory);
+  if (SimVillages.t983Save) SimVillages.t983Save(vid | 0);   // ★[T983] 곳간 행도 이 순간에(사람 저장보다 먼저 · 끔 = 무동작)
   savePlayer(player);
   sendInventory(player);
   const gave = Object.entries(r.taken || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
@@ -12645,6 +12742,9 @@ function __testBind() {
     mobs, MOB_DEFS, tryFeed, qtMobs: () => qtMobs,
     setMobHp, MOB_HP_KEEP, MOB_HP_LOUD, tryAttack, tryRangedAttack, stepArrows, npcStep,   // ★[T954] 짐승 HP 문 하네스(`test-mob-hp-door` · 내보내기만)
     T967_MOB_HP, spawnMob, saveDirtyMobs,   // ★[T967] 짐승 hp 재기동 하네스(`test-mob-hp-restart` — DB 행이 있는 몹 · 진짜 주기 저장 · 내보내기만)
+    T975_MOB_DB,   // ★[T975] 같은 하네스가 판을 읽는다(내보내기만)
+    T987_MOB_RESPAWN, respawnMobLater,   // ★[T987] 다시 낳기 하네스(`test-mob-respawn` · 내보내기만)
+    T998_NPC_WILD_SYNC,   // ★[T998] 랩 동기 하네스(`test-npc-wild-sync` · 내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
     spawnCorpse, butcherCorpse, corpses,
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
@@ -12655,6 +12755,7 @@ function __testBind() {
     playerCraftLevel, doShopBuy,
     // ── 주기 저장 비용 실측(2026-08-26) ── 하네스가 저장 건수·누적 ms 를 그대로 읽는다
     _saveStats: () => ({ ..._saveStats, intervalMs: SAVE_INTERVAL_MS }),
+    chunkManager,   // ★[T989] 청크 한 변 — 하네스(`test-t989-chunk-save`)가 경계를 세계에 묻는다
     _t916Stats: () => ({ on: T916_SAVE_RETRY, ..._t916.stat, pending: _t916.pending, queue: (() => { try { return db.saveQueueAll().length; } catch (e) { return -1; } })() }), _t916Flush,   // ★[T916] 못 닿은 저장 줄
     // ── 낚시 v2 E2E(2026-08-26) ── **정본 함수를 그대로 내준다**(하네스가 물리를 다시 짜면 사본이다).
     Fishing, tryFishCast, tryFishStrike, _fishPoll, _castTargetFor, _fishSave, _fishSpeciesFor,
@@ -12715,6 +12816,8 @@ function __testBind() {
     T696, _t696Blocked, _t696Prebuild, _t696Pre, _ringCacheRaw, _ringBuild,   // ★[T696] 술어 차례 · 원시 판 미리 짓기(하네스가 같은 값을 잰다)
     // ★[T495] 부분 수확 — 하네스가 **문 그대로** 두드린다(단위로 따기 · 남은 전리품 · 장부 · 군락 색인 · 통째 따기 · 플레이어 채집)
     _t495PickAt, _t495RestOf, _t495Rest, pickedSeeds, _t347GrovesAtCell, _t347PickAt, gatherResource,
+    // ★[T978] 덜 벤 시드 자연물 장부 — 하네스(`test-seed-hp`)가 **문 그대로** 본다
+    seedHp, _t978On, activateChunk,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
     RECIPES, TOOL_EFFECTS, TOOL_MAX_DURABILITY, EQUIPMENT_RECIPES, CRUDE_EFF_FRAC, CRUDE_DURA_FRAC,
     doCraft, doEquip, tryForage, Forage, _forageCtx, lootOfResource, getEquippedTool, consumeEquippedDurability,
@@ -13067,7 +13170,12 @@ function stepArrows(dt) {
         setMobHp(m, Math.max(0, m.hp - a.dmg), 'arrow');   // ★[T954] 문으로(하한 0 은 이 자리 식 그대로 · 저장 표는 ★[T967] 켬이면 문이 세운다 · 끔 = 종전처럼 안 세운다)
         // §4-4 wildlife 브리지: 화살 피격 — 랩 hp 동기 + 놀람/반격(사수가 이 존 플레이어면 반격 표적)
         if (m.isWild) Wildlife.onMobHit(m, a.dmg, players.get(a.ownerPid) || null);
-        if (m.hp <= 0) { spawnCorpse(m, a.ownerId); chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid }); }
+        if (m.hp <= 0) {
+          spawnCorpse(m, a.ownerId);
+          if (T975_MOB_DB && m.dbId) { try { db.deleteMob(m.dbId); } catch (e) {} }   // ★[T975 ①] 화살 죽음도 같은 삭제 문(사람 공격 · NPC 죽음 길 그 글자) · 끔 = 행이 남는다(종전)
+          chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid });
+          if (T987_MOB_RESPAWN) respawnMobLater(m);   // ★[T987] 화살 죽음도 같은 다시 낳기 문 · 끔 = 다시 낳기 없음(종전)
+        }
         hit = true; break;
       }
     }
@@ -13201,7 +13309,8 @@ async function tryAttack(player) {
       mobs.delete(bestMob.mid);
       broadcast({ type: 'mob_removed', mid: bestMob.mid });
       // 일정 시간 후 리스폰 — §4-4 wildlife 몹은 제외(개체수는 랩 생태(updateMobs 스폰 target)가 관리)
-      if (!bestMob.isWild && (HOSTILES_ON || !(ANIMALS[bestMob.type] && ANIMALS[bestMob.type].aggressive))) {
+      if (T987_MOB_RESPAWN) respawnMobLater(bestMob);   // ★[T987] 죽음 길 셋 한 문 · 끔 = 아래 종전 글자
+      else if (!bestMob.isWild && (HOSTILES_ON || !(ANIMALS[bestMob.type] && ANIMALS[bestMob.type].aggressive))) {
         const respawnType = bestMob.type;
         setTimeout(() => {
           const m = spawnMob(respawnType);
@@ -15903,6 +16012,7 @@ function _fishPollOne(p, now) {   // 종전 `_fishPoll` 고리 몸통 글자 그
 }
 
 // 주기 저장 — 틱당 최대 1명(분산). 대상: 살아 있는 세션 · 영속 신원 · **실제로 움직인** 사람.
+function _t989Chunk(x, y) { const cs = chunkManager.chunkSize; return Math.floor(x / cs) + ',' + Math.floor(y / cs); }   // ★[T989] 그 자리의 청크 열쇠(세계의 청크 한 변 그대로)
 let _saveCursor = 0;
 const _saveStats = { saved: 0, skippedClean: 0, skippedSuperseded: 0, ms: 0 };
 function _periodicSave(now) {
@@ -15920,8 +16030,10 @@ function _periodicSave(now) {
       p._savedX = p.x; p._savedY = p.y; p._savedBody = Body.snapshot(p);
       continue;
     }
-    if (now < p._nextSaveAt) continue;
+    const _t989 = T989_CHUNK_SAVE && p._savedX !== undefined && _t989Chunk(p.x, p.y) !== _t989Chunk(p._savedX, p._savedY);   // ★[T989] 청크를 넘었다(끔 = 늘 거짓)
+    if (!_t989 && now < p._nextSaveAt) continue;
     p._nextSaveAt = now + SAVE_INTERVAL_MS;
+    if (_t989) _saveStats.chunk = (_saveStats.chunk || 0) + 1;   // ★[T989] 계측 칸(끔이면 안 생긴다)
     // ★[신체 상태 §7] 판정에 **몸 상태 변화**를 더한다. 종전엔 '움직였나'만 봤는데,
     //   그러면 **가만히 앉아 회복한 사람**의 상태가 크래시에 통째로 날아간다(주기 저장의 뜻이 반쪽이 된다).
     const _moved = !(Math.abs(p.x - (p._savedX || 0)) < SAVE_MOVE_EPS && Math.abs(p.y - (p._savedY || 0)) < SAVE_MOVE_EPS);
@@ -16221,7 +16333,11 @@ function _shutdownFlush() {
     let mobsSaved = 0;
     for (const m of mobs.values()) {
       if (m.dbId) {
-        try { db.updateMobState(m.dbId, m.x, m.y, m.hp); mobsSaved++; } catch (e) {}
+        try {
+          if (T975_MOB_DB) db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName);   // ★[T975 ②] 주인 칸 둘도 그대로(주기 저장과 같은 여섯)
+          else db.updateMobState(m.dbId, m.x, m.y, m.hp);   // 끔 = 종전 글자(넷 — 주인 칸이 NULL 로)
+          mobsSaved++;
+        } catch (e) {}
       }
     }
     let playersSaved = 0;

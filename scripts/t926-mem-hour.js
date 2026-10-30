@@ -30,7 +30,10 @@
 //     · window 칸 · DOM. 이름에서 Map(열쇠 · 값) · Set · 배열 · 객체 칸 · 2D/GL 문맥의 `.canvas` 를 깊이 --own-depth(기본 7)까지 따라가
 //     처음 닿은 이름에 귀속한다(이름 차례 = 위 순서 · 앞 이름이 이긴다). 아무 이름에서도 안 닿은 것은 만든 곳(함수 둘 · `안<밖`) · 나이(만든 뒤 1분 ·
 //     5분 · 그 위)로 센다. 함수 닫힘(클로저) 안에서만 붙든 것은 이 길로 안 보인다(그 몫은 "이름 없음" 에 남는다).
-// 실행: [E2E_BROWSER=webkit] node scripts/t926-mem-hour.js [--min 60] [--every 5] [--snap 5,60] [--mdump] [--terr] [--own] [--out /tmp/t926] [--tag cr-off]
+//   ★[T997] --peak 이면 입장 뒤 산 청크 캐시(`_mt3Chunk`) 갈고리를 건다(그림 무접촉 — 적기만 한다): 그 객체의 `clear` 를 감싸 부른 자리를 호출 더미로 가르고
+//     (`_mt3Bake` = 260 상한 · `_mt3Collect` = 존 바뀜 · 그 밖) 비우기 앞 청크 수 · 띠 캔버스 장 수 · 넓이(같은 캔버스는 한 번)를 적고, 2초마다 같은 셈으로 최댓값을 든다.
+//     바퀴 끝 표본에 `mtPeak`(그 바퀴 최대 넓이 · 청크 수 · 장 수 · 상한 비우기마다 [청크 · 장 · 넓이] · 존 바뀜 · 그 밖 비우기 수)을 싣고 비운다 — 바퀴 끝 표본(광산2 · 존 넘기 뒤)이 못 보는 바퀴 안 꼭대기.
+// 실행: [E2E_BROWSER=webkit] node scripts/t926-mem-hour.js [--min 60] [--every 5] [--snap 5,60] [--mdump] [--terr] [--own] [--peak] [--out /tmp/t926] [--tag cr-off]
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -50,6 +53,7 @@ const SNAPS = String(arg('--snap', '5,60')).split(',').filter(Boolean).map(Numbe
 const MDUMP = process.argv.includes('--mdump');   // 크롬만 — 바퀴 끝마다 memory-infra 덤프(프로세스 · 할당자별 크기)
 const TERR = process.argv.includes('--terr');     // 지형 칸 셈(`Terrain.isWaterCellLocal` · `isRockCellLocal` — 칸 캐시가 없을 때만 불린다)을 세고 잰다(T926 ② 켬이 더 하는 일)
 const OWNF = process.argv.includes('--own');      // [T970] 살아 있는 캔버스를 붙든 이름으로 가른다(머리말 ★T970)
+const PEAK = process.argv.includes('--peak');     // [T997] 바퀴 안 산 청크 캐시 꼭대기 · 상한 비우기(머리말 ★T997)
 const OWN_DEPTH = +arg('--own-depth', '7');
 const BR = require('./e2e-browser').which();
 const TAG = arg('--tag', BR);
@@ -158,6 +162,22 @@ const CACHE_NAMES = ['_tintBlendCache', '_waterCellCache', '_terrainAppliedZones
   'speechBubbles', 'villageBubbles', 'evBriefedDay', 'conns', 'warBattles', 'downStates', '_centralWait', '_lastCloseAt', '_farStore', '_farSeenAt', '_spriteCache',
   '_charImg', '_charAnim', '_carriedBy', '_sfxBuf', '_sfxLive', '_sfxLoops', '_sfxLast', '_zmap', '_tiles', '_live', 'waterTiles', '_cellBk'];
 const ARRAY_NAMES = ['chatLog', '_arrowFx', 'pendingInputs', '_mtSplitSegs', '_mtCutHold', '_natLastPr', '_gateDrawn', '_entBoxes', '_ntLines', '_sfxTap', 'hoverList', 'TREE_SPRITES'];
+// [T997] 산 청크 캐시 갈고리 — 비우기 자리 · 꼭대기(머리말 ★T997)
+const PEAKHOOK = () => {
+  if (window.__t997pk) return true;
+  if (typeof _mt3Chunk === 'undefined') return false;
+  const P = window.__t997pk = { maxPx: 0, maxSize: 0, maxCv: 0, caps: [], zone: 0, other: 0 };
+  const px = (m) => { const seen = new Set(); let t = 0; for (const a of m.values()) if (Array.isArray(a)) for (const sg of a) if (sg && sg.img && !seen.has(sg.img)) { seen.add(sg.img); t += sg.img.width * sg.img.height; } return [t, seen.size]; };
+  const up = (m) => { const [t, n] = px(m); if (t > P.maxPx) P.maxPx = t; if (m.size > P.maxSize) P.maxSize = m.size; if (n > P.maxCv) P.maxCv = n; return [t, n]; };
+  const C = _mt3Chunk;
+  C.clear = function () {
+    const st = String((new Error()).stack || ''); const src = /_mt3Bake/.test(st) ? 'cap' : /_mt3Collect/.test(st) ? 'zone' : 'other';
+    const [t, n] = up(this); if (src === 'cap') P.caps.push([this.size, n, t]); else P[src]++;
+    return Map.prototype.clear.call(this);
+  };
+  setInterval(() => { try { up(_mt3Chunk); } catch (e) {} }, 2000);
+  return true;
+};
 const SAMPLE = (names) => {
   const M = window.__t926; const out = {};
   const a = M.fr.splice(0); const s = a.slice().sort((x, y) => x - y);
@@ -193,6 +213,9 @@ const SAMPLE = (names) => {
   try { const C = window.__t926terr; if (C) out.terr = { w: C.w, r: C.r, wMs: Math.round(C.wMs), rMs: Math.round(C.rMs) }; } catch (e) {}   // --terr 누적
   try { out.knob = { cellNear: (typeof uiCfg !== 'undefined' && uiCfg && 'cellNear' in uiCfg) ? uiCfg.cellNear : null }; } catch (e) {}   // [T926] 손잡이 welcome 값(★T936 뒤 기본 = true · `T926_CELL_NEAR=0` 이면 null · 칸 없음)
   try { out.knob.cutNear = ('cutNear' in uiCfg) ? uiCfg.cutNear : null; if (typeof _mtCutNearN !== 'undefined') out.knob.cutNearN = _mtCutNearN; if (typeof _mtCutHold !== 'undefined') out.knob.cutHold = _mtCutHold.length; } catch (e) {}   // [T970] 손잡이 welcome 값 · 놓은 띠 수 · 붙든 띠 수
+  try { out.knob.mtNear = ('mtNear' in uiCfg) ? uiCfg.mtNear : null; if (typeof _mtNearJobN !== 'undefined') { out.knob.mtNearJobN = _mtNearJobN; out.knob.mtNearCvN = _mtNearCvN; }
+    if (typeof _mt3Jobs !== 'undefined') out.knob.jobs = _mt3Jobs.size; if (typeof _mtMaskCv !== 'undefined') out.knob.boards = [_mtMaskCv ? _mtMaskCv.width * _mtMaskCv.height : 0, _mtStripCv ? _mtStripCv.width * _mtStripCv.height : 0]; } catch (e) {}   // [T981] 손잡이 welcome 값 · 버린 굽던 청크 · 되돌린 판 수 · 굽는 중 청크 수 · 가르기 판 둘 넓이
+  try { const P = window.__t997pk; if (P) { out.mtPeak = { maxPx: P.maxPx, maxSize: P.maxSize, maxCv: P.maxCv, caps: P.caps.splice(0), zone: P.zone, other: P.other }; P.maxPx = P.maxSize = P.maxCv = 0; P.zone = P.other = 0; } } catch (e) {}   // [T997] --peak — 그 바퀴 산 청크 캐시 꼭대기 · 비우기
   try { if (typeof _cellBk !== 'undefined') { let w = 0, r = 0; for (const b of _cellBk.values()) { w += b.w.length; r += b.r.length; } out.knob.bk = { n: _cellBk.size, w, r }; } } catch (e) {}   // [T926] 켬 — 자리 칸 수 · 적힌 열쇠 수(물 · 바위)
   try { const sc = window._seenChunks; if (sc instanceof Map) { let cells = 0; for (const v of sc.values()) cells += (v && v.size) || 0; out.seen = { chunks: sc.size, cells }; } } catch (e) {}   // 안개가 본 칸(34-m-renderloop `window._seenChunks`)
   out.heap = (typeof performance !== 'undefined' && performance.memory) ? { used: performance.memory.usedJSHeapSize, total: performance.memory.totalJSHeapSize } : null;
@@ -338,8 +361,9 @@ async function memDump(cdp) {
   await sleep(3000);
   const z0 = await page.evaluate(() => (window.__getPrimaryZoneId ? window.__getPrimaryZoneId() : null));
   if (z0 !== 'hanbando') { console.log(`입장 존이 ${z0} — 한반도가 아니다`); process.exit(1); }
-  const welcome = await page.evaluate(() => { const o = {}; for (const k of Object.keys(uiCfg || {})) if (/^(waterHalf|mtReadPx|mtBand|t926|cutNear)/.test(k)) o[k] = uiCfg[k]; return { ui: o, ua: navigator.userAgent }; });
+  const welcome = await page.evaluate(() => { const o = {}; for (const k of Object.keys(uiCfg || {})) if (/^(waterHalf|mtReadPx|mtBand|t926|cutNear|mtNear)/.test(k)) o[k] = uiCfg[k]; return { ui: o, ua: navigator.userAgent }; });
   console.log(`  · welcome ${JSON.stringify(welcome)}`);
+  if (PEAK) console.log(`  · [T997] 산 청크 캐시 갈고리 ${await page.evaluate(PEAKHOOK)}`);
   // 결정론 고정 — 비 0 · 해 몫 한낮(1초마다 다시 세움)
   await page.waitForFunction(() => typeof window.__rainForce === 'function', { timeout: 60000 }).catch(() => {});
   await page.evaluate(() => {
@@ -414,6 +438,7 @@ async function memDump(cdp) {
       (row.cdp ? `힙 ${mb(row.cdp.usedPre)}→GC ${mb(row.cdp.usedGC)}MB · 노드 ${row.cdp.nodes} · 리스너 ${row.cdp.listeners} · ` : '') +
       `DOM ${row.dom.nodes} · 리스너(갈고리) ${row.lis.net} · 캔버스 만든 ${row.cv.made} 산 ${row.cv.live} ${(row.cv.livePx / 1e6).toFixed(1)}M화소 · RSS ${JSON.stringify(row.rss)}${row.snap ? ` · 스냅샷 ${mb(row.snap.bytes)}MB ${row.snap.ms}ms` : ''}`);
     console.log(`       캐시: ${big}`);
+    if (row.mtPeak) { const P = row.mtPeak; console.log(`       [T997] 바퀴 안 산 청크 캐시 꼭대기 ${P.maxSize}청크 · ${P.maxCv}장 · ${(P.maxPx / 1e6).toFixed(1)}M화소 · 상한 비우기 ${P.caps.length}${P.caps.length ? ' [' + P.caps.map((c) => `${c[0]}청크 ${c[1]}장 ${(c[2] / 1e6).toFixed(1)}M`).join(' · ') + ']' : ''} · 존 바뀜 ${P.zone} · 그 밖 ${P.other}`); }
     if (row.own) {
       const O = row.own, M6 = (v) => (v / 1e6).toFixed(2);
       if (O.err) console.log(`       붙든 이름: 실패 ${O.err}`);

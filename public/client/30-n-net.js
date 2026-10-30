@@ -80,7 +80,8 @@
     zonesMeta = data.zones;
     marketplaceUrl = data.marketplaceUrl || '';
     handoffCommit = (typeof data.handoffCommit === 'number' && data.handoffCommit > 0) ? data.handoffCommit : 0;
-    if (data.gtPrewarm === true) _gtPrewarm();   // ★[T937] 손잡이 `T937_GT_PREWARM`(central /zones 칸) — 로비에서 지면 굽기 준비 둘을 미리(끔이면 안 탄다)   // ★[T604 추신3] 해안 경계 앞 바다 지킴 폭(서버 정본 · 아래 굽기 전에)
+    _vilCfg(data.vilSlice === true);   // ★[T982] 손잡이 `T962_VIL_SLICE`(central /zones 칸 · 켬 기본) — 기다리던 마을 그림 굽기를 그 칸대로 시작한다(20-r2 `_vilCfg`)
+    if (data.gtPrewarm === true) _gtPrewarm(data.gtSlice === true);   // ★[T991] `gtSlice` 칸(손잡이 `T991_GT_SLICE` · 끔 기본)이면 데우기 둘을 판당 예산으로 쪼갠다   // ★[T937] 손잡이 `T937_GT_PREWARM`(central /zones 칸) — 로비에서 지면 굽기 준비 둘을 미리(끔이면 안 탄다)   // ★[T604 추신3] 해안 경계 앞 바다 지킴 폭(서버 정본 · 아래 굽기 전에)
     // Phase 14.46-b-mini: 모든 zone water tiles 사전 계산 (~수만 tiles, ~100ms)
     { const tW = performance.now(); try { precomputeAllWaterTiles(); } catch (e) { console.warn('water tile compute fail:', e); } _lobStep('물 타일 미리 셈(precomputeAllWaterTiles)', tW); }   // ★[T962] 로비 일 표
 
@@ -739,6 +740,7 @@
 
   // === 연결 관리 ===
   function connect(zoneId, role, transfer) {
+    if (role === 'primary') _vilFinish();   // ★[T982] 주 존에 붙을 때 마을 그림이 아직 나눠 굽는 중이면 남은 것을 다(세계 첫 그림 전에 아홉 장 · 20-r2)
     const existing = conns.get(zoneId);
     if (existing) {
       // ★유령 클라 fix: 살아있는(CONNECTING/OPEN) 엔트리만 재사용. CLOSING/CLOSED 엔트리를 재사용하면

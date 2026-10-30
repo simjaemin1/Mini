@@ -4,7 +4,7 @@
 //
 // 새 착지 뒤 한 줄:
 //   git fetch origin main '+refs/heads/batch/*:refs/remotes/origin/batch/*' && node scripts/t950-board-sync.js 840 999 origin/main --apply
-//   (--apply 없이 돌리면 표만 낸다 · `--md` 는 보고에 붙일 markdown 표)
+//   (--apply 없이 돌리면 표만 낸다 · `--md` 는 보고에 붙일 markdown 표 · `--since 2026-10-01` = 10-15 앞 카드 · T985)
 //
 // 규칙(전부 글자 · git):
 //   완료 해시 = 카드의 `[승인 대기 · T###` 커밋 중 main 에 든 것 가운데 **가장 이른 착지 닻 → 같은 닻이면 작성일 → 같으면 history 순서**의 첫 커밋(8자).
@@ -18,6 +18,8 @@ const root = path.join(__dirname, '..');
 const args = process.argv.slice(2);
 const flag = f => { const i = args.indexOf(f); if (i >= 0) { args.splice(i, 1); return true; } return false; };
 const APPLY = flag('--apply'), MD = flag('--md');
+// ★[T985] `--since YYYY-MM-DD` — 닻 · 카드 커밋을 찾는 창의 앞 끝(기본 2026-10-15 = T950 그대로). T709 ~ T816 처럼 10-15 앞에 커밋이 있는 카드는 더 이른 날을 준다.
+const SINCE = (() => { const i = args.indexOf('--since'); if (i < 0) return '2026-10-15'; const v = args[i + 1]; args.splice(i, 2); if (!/^\d{4}-\d\d-\d\d$/.test(v || '')) throw new Error('--since YYYY-MM-DD'); return v; })();
 const FROM = +(args[0] || 840), TO = +(args[1] || 999), REF = args[2] || 'origin/main';
 const BOARD = path.join(root, '지시/_태스크보드_v1.md');
 const sh = c => execSync(c, { cwd: root, encoding: 'utf8', maxBuffer: 1 << 28 }).trim();
@@ -31,10 +33,14 @@ lines.forEach((l, i) => {
   board[+m[1]] = { i, c };
 });
 // 2. 착지 닻(시간순)
-const anchors = sh(`git log ${REF} --since=2026-10-15 --format='%H|%ct|%ad|%s' --date=format:%m-%d`).split('\n').filter(Boolean)
+// ★[T1006] 착지 가지 이름 — 새 꼴 `landNNNN[a-z]`(10-19 ~) + 옛 꼴 `land-1011` · `land2-1011` · `land9-1012` · `land10-1014c`(10-11 ~ 10-18 · `Merge … into <이름>` 에만).
+//   옛 꼴을 닻으로 안 보면 10-19 앞 카드가 다 첫 새 꼴 닻(land1019)으로 잡혔다(T992 회부 2). PM 커밋 제목의 꼬리표는 새 꼴만 본다(그 무렵 PM 제목엔 옛 이름이 없다).
+const LAND_NAME = /(land\d*-\d{4}[a-z]*|land\d{4}[a-z]*)/;
+const MERGE_LAND = /^Merge .* into (land\d*-\d{4}[a-z]*|land\d{4}[a-z]*)\s*$/;
+const anchors = sh(`git log ${REF} --since=${SINCE} --format='%H|%ct|%ad|%s' --date=format:%m-%d`).split('\n').filter(Boolean)
   .map(x => { const [h, ct, d, ...s] = x.split('|'); return { h, ct: +ct, d, subj: s.join('|') }; })
-  .filter(c => /^Merge .* into (land\d{4}[a-z]*)\s*$/.test(c.subj) || (/^\[PM[^\]]*\]/.test(c.subj) && /\bland\d{4}[a-z]*\b/.test(c.subj)))
-  .map(c => ({ ...c, tag: (c.subj.match(/(land\d{4}[a-z]*)/) || [])[1] }))
+  .filter(c => MERGE_LAND.test(c.subj) || (/^\[PM[^\]]*\]/.test(c.subj) && /\bland\d{4}[a-z]*\b/.test(c.subj)))
+  .map(c => ({ ...c, tag: (c.subj.match(MERGE_LAND) || c.subj.match(/(land\d{4}[a-z]*)/) || [])[1] }))
   .sort((x, y) => x.ct - y.ct || (x.h < y.h ? -1 : 1));
 const tagRank = {}; anchors.forEach((a, i) => { if (!(a.tag in tagRank)) tagRank[a.tag] = i; });
 const tagDate = {};   // PM 착지 커밋 제목의 "착지 MM-DD" 우선
@@ -54,7 +60,7 @@ const landOf = new Map();
   }
 }
 // 4. 카드 커밋
-const tagged = sh(`git log --all --since=2026-10-15 --format='%H|%ct|%s' --grep='승인 대기 · T'`).split('\n').filter(Boolean)
+const tagged = sh(`git log --all --since=${SINCE} --format='%H|%ct|%s' --grep='승인 대기 · T'`).split('\n').filter(Boolean)
   .map(x => { const [h, ct, ...s] = x.split('|'); return { h, ct: +ct, subj: s.join('|') }; });
 const byCard = {};
 for (const c of tagged) {
@@ -67,7 +73,7 @@ for (let n = FROM; n <= TO; n++) {
   const b = board[n]; if (!b) continue;
   const status = b.c[4].trim(), hashCell = b.c[7].trim();
   const bstate = /^착지/.test(status) ? '착지' : /^대기/.test(status) ? '대기' : /^보류/.test(status) ? '보류' : status.slice(0, 6);
-  const btag = (status.match(/(land\d{4}[a-z]*)/) || [])[1];
+  const btag = (status.match(LAND_NAME) || [])[1];
   const cs = byCard[n] || [];
   const inMain = cs.filter(c => mainIdx.has(c.h)), out = cs.filter(c => !mainIdx.has(c.h));
   let first = null, land = null, fallback = false;
