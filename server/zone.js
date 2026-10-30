@@ -72,13 +72,13 @@ const HOSTILES_ON = process.env.ENABLE_WILDLIFE !== '0';
 //     아니면 낡은 좌표 덮어쓰기가 뒷문으로 부활한다(그 갈래를 `test-guest-rejoin` 이 밟는다).
 const SAVE_INTERVAL_MS = Math.max(1000, parseInt(process.env.SAVE_INTERVAL_MS || '', 10) || 30000);
 const SAVE_MOVE_EPS = 2;   // 이만큼도 안 움직였으면 쓸 게 없다(px)
-// ★★[T989 2026-10-29 · T917 회부 2 · 손잡이 `T989_CHUNK_SAVE` — ★끔 기본(켜는 값 `'1'` 하나 · 끔 = 종전 바이트)] **청크를 넘으면 그 틱에 저장한다.**
+// ★★[T989 2026-10-29 · T917 회부 2 · 손잡이 `T989_CHUNK_SAVE` — ★[T1000] 켬 기본 · 되돌림 `=0` = 종전 바이트] **청크를 넘으면 그 틱에 저장한다.**
 //   주기 저장(30초)만 쓰는 몸 연속 칸은 SIGKILL 이면 마지막 저장 뒤 30초까지 되돌아간다 — 잰 값(보고 T989 ① · `scripts/t989-window.js`):
 //   자리 걷기 최대 58.7m · 달리기 147.7m(텔레포트처럼 보인다) · 허기 ≤ 2.4 · 갈증 ≤ 5.2(100 중) · 추위 ≤ 16.9%p(겨울 밤).
 //   켜면 사람이 선 청크(`chunkManager.chunkSize` 한 변 — 세계가 활성 · 비활성을 가르는 그 칸 · 새 수 0)가 마지막 주기 저장 자리의 청크와 다르면
 //   그 사람 차례의 틱에 **바로** 저장하고 다음 주기 저장 시각을 거기서 다시 센다(저장 = 청크 넘음 ∨ 30초 · 둘이 겹쳐 쓰지 않는다).
 //   ⇒ 자리 되돌림 ≤ 청크 한 변 남짓 · 저장 횟수는 움직이는 사람만 는다(걷기 ~3.7 · 달리기 ~9 /분 ↔ 종전 2). 몸 버전(T927)이 늦게 닿은 옛 저장을 거른다.
-const T989_CHUNK_SAVE = process.env.T989_CHUNK_SAVE === '1';
+const T989_CHUNK_SAVE = process.env.T989_CHUNK_SAVE !== '0';   // ★[T1000 · PM 10-30] 켬 기본 · 되돌림 `=0` = 종전 바이트
 // ★[T779 2026-10-18] 겨울나기(T20 `server/winter.js`)는 걷었다 — 여기 있던 납품 훅 한 줄(양 적립)도 같이 걷었다.
 const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
 const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(손잡이 `T687_SHARED_BUDGET` · 끔 = 문마다 제 예산 그대로)
