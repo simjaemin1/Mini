@@ -84,12 +84,18 @@ function traceTasks(file) {                 // 크롬 추적 — 렌더러 주 �
     const r = await page.evaluate(() => _lobTable());
     let pix = null;
     if (HASH) {
-      for (let k = 0; k < 120 && !(await page.evaluate(() => typeof _granC !== 'undefined' && !!_granC)); k++) await sleep(250);
+      for (let k = 0; k < 120 && !(await page.evaluate(() => typeof _granC !== 'undefined' && !!_granC && (!_ld.prewarm || (!!_gtMaskCv && !!_grassBlade)))); k++) await sleep(250);
       pix = await page.evaluate(() => {
         const hs = (cv) => { if (!cv || !cv.width) return null; const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let h = 0x811c9dc5; for (let q = 0; q < d.length; q++) { h ^= d[q]; h = Math.imul(h, 16777619) >>> 0; } return cv.width + 'x' + cv.height + ':' + h.toString(16); };
         const room = _bakeRoofFn ? _bakeRoofFn(5, 4, WALL_HEIGHT, WALL_HEIGHT + Math.round((4 / 2) * 19.2)) : null;
         return { yard: hs(_tileYardC), plaza: hs(_tilePlazaC), hutFloor: hs(_tileHutC), wallN: hs(_wallNC), wallE: hs(_wallEC), hutRoof: hs(_hutRoofC), hallRoof: hs(_hallRoofC),
-          gran: hs(_granC), room: hs(room), anchors: [_hutRoofC._ox, _hutRoofC._oy, _hallRoofC._ox, _hallRoofC._oy, _granC._ox, _granC._oy, room && room._ox, room && room._oy].join(',') };
+          gran: hs(_granC), room: hs(room), anchors: [_hutRoofC._ox, _hutRoofC._oy, _hallRoofC._ox, _hallRoofC._oy, _granC._ox, _granC._oy, room && room._ox, room && room._oy].join(','),
+          // ★[T991] 지면 데우기 둘 — 맨땅 마스크 · 풀 잎 · 평탄색 + 평탄색을 **정렬로** 다시 뽑은 값(T937 앞 꼴 — 도수표와 같아야 한다)
+          gtMask: hs(_gtMaskCv), gtBlade: hs(_grassBlade), gtFlat: _grassFlat, gtFlatSort: (() => { const src = GTEX.grass_angled; if (!src || !src.naturalWidth) return null;
+            const c = document.createElement('canvas'); c.width = src.naturalWidth; c.height = src.naturalHeight; const g = c.getContext('2d'); g.drawImage(src, 0, 0); const d = g.getImageData(0, 0, c.width, c.height).data;
+            const ch = [[], [], []]; for (let i = 0; i < d.length; i += 4) { ch[0].push(d[i]); ch[1].push(d[i + 1]); ch[2].push(d[i + 2]); }
+            const f = ch.map((a3) => { a3.sort((x, y) => x - y); return a3[Math.floor(a3.length * 0.02)]; }); return 'rgb(' + f.join(',') + ')'; })(),
+          prewarm: _ld.prewarm || null };
       });
     }
     r.pix = pix; r.enter = ent;
