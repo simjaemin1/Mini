@@ -1,0 +1,25 @@
+# T983 곳간 거래 순간 저장 — SIGKILL 탐침 판 자료(클라우드 상자 · main 41e1da72 위 가지)
+
+## off
+[T983 탐침] T983_GRANARY_SAVE=0 · 판 3 · 마감 안 낀 판 · 마을 농촌1
+{"k":1,"close":false,"deal":{"take":"food","stock0":360,"stock1":324},"stockA":360,"kept":false,"dayT":0,"dayK":0,"closed":false,"killMs":28,"invLive":{"wood":0,"stone":0,"fish":2,"food":36},"invA":{"wood":0,"stone":0,"fish":2,"food":36},"personKept":true,"created":36,"t983":null}
+{"k":2,"close":false,"deal":{"take":"food","stock0":360,"stock1":324},"stockA":360,"kept":false,"dayT":0,"dayK":0,"closed":false,"killMs":29,"invLive":{"wood":0,"stone":0,"fish":2,"food":36},"invA":{"wood":0,"stone":0,"fish":2,"food":36},"personKept":true,"created":36,"t983":null}
+{"k":3,"close":false,"deal":{"take":"food","stock0":360,"stock1":324},"stockA":360,"kept":false,"dayT":0,"dayK":0,"closed":false,"killMs":59,"invLive":{"wood":0,"stone":0,"fish":2,"food":36},"invA":{"wood":0,"stone":0,"fish":2,"food":36},"personKept":true,"created":36,"t983":null}
+[T983 합] 재는 판 3/3 · 곳간 남음 0 · 되돌아감 3 · 생성(되돌아간 판에서 사람이 가진 받은 몫) 108 · 사람 짐 남음 3
+
+## on
+[T983 탐침] T983_GRANARY_SAVE=(기본) · 판 3 · 마감 안 낀 판 · 마을 농촌1
+{"k":1,"close":false,"deal":{"take":"food","stock0":360,"stock1":324},"stockA":324,"kept":true,"dayT":0,"dayK":0,"closed":false,"killMs":51,"invLive":{"wood":0,"stone":0,"fish":2,"food":36},"invA":{"wood":0,"stone":0,"fish":2,"food":36},"personKept":true,"created":0,"t983":{"n":1,"skipClose":0,"miss":0,"err":0,"ms":1.152,"maxMs":1.152,"bytes":9876,"maxBytes":9876}}
+{"k":2,"close":false,"deal":{"take":"food","stock0":324,"stock1":317},"stockA":317,"kept":true,"dayT":0,"dayK":0,"closed":false,"killMs":31,"invLive":{"wood":0,"stone":0,"fish":2,"food":7},"invA":{"wood":0,"stone":0,"fish":2,"food":7},"personKept":true,"created":0,"t983":{"n":1,"skipClose":0,"miss":0,"err":0,"ms":0.936,"maxMs":0.936,"bytes":9985,"maxBytes":9985}}
+{"k":3,"close":false,"deal":{"take":"food","stock0":317,"stock1":314},"stockA":314,"kept":true,"dayT":0,"dayK":0,"closed":false,"killMs":46,"invLive":{"wood":0,"stone":0,"fish":2,"food":3},"invA":{"wood":0,"stone":0,"fish":2,"food":3},"personKept":true,"created":0,"t983":{"n":1,"skipClose":0,"miss":0,"err":0,"ms":4.99,"maxMs":4.99,"bytes":10094,"maxBytes":10094}}
+[T983 합] 재는 판 3/3 · 곳간 남음 3 · 되돌아감 0 · 생성(되돌아간 판에서 사람이 가진 받은 몫) 0 · 사람 짐 남음 3
+
+## on_close
+[T983 탐침] T983_GRANARY_SAVE=(기본) · 판 1 · 마감 낀 판 · 마을 농촌1
+{"k":1,"close":true,"deal":{"take":"food","stock0":360,"stock1":324},"stockA":324,"kept":true,"dayT":0,"dayK":1,"closed":true,"killMs":853647,"invLive":{"wood":0,"stone":0,"fish":2,"food":36},"invA":{"wood":0,"stone":0,"fish":2,"food":36},"personKept":true,"created":0,"t983":{"n":1,"skipClose":0,"miss":0,"err":0,"ms":1.42,"maxMs":1.42,"bytes":9877,"maxBytes":9877}}
+[T983 합] 재는 판 1/1 · 곳간 남음 1 · 되돌아감 0 · 생성(되돌아간 판에서 사람이 가진 받은 몫) 0 · 사람 짐 남음 1
+
+## off_close
+[T983 탐침] T983_GRANARY_SAVE=0 · 판 1 · 마감 낀 판 · 마을 농촌1
+{"k":1,"close":true,"deal":{"take":"food","stock0":359.64,"stock1":324.64},"stockA":324.05,"kept":true,"dayT":2,"dayK":3,"closed":true,"killMs":1409564,"invLive":{"wood":0,"stone":0,"fish":2,"food":35},"invA":{"wood":0,"stone":0,"fish":2,"food":35},"personKept":true,"created":0,"t983":null}
+[T983 합] 재는 판 1/1 · 곳간 남음 1 · 되돌아감 0 · 생성(되돌아간 판에서 사람이 가진 받은 몫) 0 · 사람 짐 남음 1
