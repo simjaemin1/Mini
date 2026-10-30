@@ -1,0 +1,40 @@
+{
+ "note": "T1008 랩 · t17 800일 · 3시드 · 판 = on(기본 — ㉠ T995_BACK_AMMO 켬 · 열여덟째 판) · off(T995_BACK_AMMO=0 — 열일곱째 판 + T986 · T990) · sha = 판 JSON(T17_JSON) sha256 앞 8자(T960 · T974 · T995 표와 같은 잣대) · `T17_JSON=… node scripts/t17-metrics.js 800 <시드>` · 가지 efde31d3(worktree)",
+ "ref": {
+  "T974 on/t17 · T995 off/a": {
+   "1020": "f040ef0e",
+   "7": "c4dcc11c",
+   "42": "12211a82"
+  }
+ },
+ "boards": {
+  "on/t17": {
+   "1020": {
+    "sha": "f040ef0e",
+    "sec": 325
+   },
+   "7": {
+    "sha": "c4dcc11c",
+    "sec": 326
+   },
+   "42": {
+    "sha": "12211a82",
+    "sec": 246
+   }
+  },
+  "off/t17": {
+   "1020": {
+    "sha": "f040ef0e",
+    "sec": 245
+   },
+   "7": {
+    "sha": "c4dcc11c",
+    "sec": 178
+   },
+   "42": {
+    "sha": "12211a82",
+    "sec": 178
+   }
+  }
+ }
+}
