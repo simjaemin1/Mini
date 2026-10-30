@@ -1,0 +1,40 @@
+{
+ "note": "T995 랩 · t17 800일 · 3시드 · 판 = off(손잡이 셋 끔 — 가지 1a74b35c worktree) · a(㉠ T995_BACK_AMMO=1 — 랩이 부르는 battle-core 도 같은 글자) · sha = 판 JSON(T17_JSON) sha256 앞 8자(T960 · T974 표와 같은 잣대) · `T17_JSON=… node scripts/t17-metrics.js 800 <시드>` · ㉡ ㉢ 는 server/war-live.js(서버만)라 랩에 없다",
+ "ref": {
+  "T974 on/t17": {
+   "1020": "f040ef0e",
+   "7": "c4dcc11c",
+   "42": "12211a82"
+  }
+ },
+ "boards": {
+  "off/t17": {
+   "1020": {
+    "sha": "f040ef0e",
+    "sec": 185
+   },
+   "7": {
+    "sha": "c4dcc11c",
+    "sec": 183
+   },
+   "42": {
+    "sha": "12211a82",
+    "sec": 179
+   }
+  },
+  "a/t17": {
+   "1020": {
+    "sha": "f040ef0e",
+    "sec": 173
+   },
+   "7": {
+    "sha": "c4dcc11c",
+    "sec": 165
+   },
+   "42": {
+    "sha": "12211a82",
+    "sec": 170
+   }
+  }
+ }
+}
