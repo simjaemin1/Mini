@@ -5011,13 +5011,17 @@ function clearTreesInCells(cellKeys, onlyNew) {
   return cleared + ledger;
 }
 const _simNow = () => { try { return (SimVillages.dayNow && SimVillages.dayNow()) || Date.now(); } catch (e) { return Date.now(); } };
-// ★★[T990 2026-10-28 · 손잡이 `T990_ECON_DAY`(위 길의 날과 같은 손잡이 · 제품 끔 기본 · 판 자 기본 켬)] NPC 광맥 장부의 시각 = econ 날의 경계(날 × 하루 길이).
+// ★★[T990 2026-10-28 · 손잡이 `T990_ECON_DAY`(아래 길의 날과 같은 손잡이)] NPC 광맥 장부의 시각 = econ 날의 경계(날 × 하루 길이).
 //   NPC 채굴(`oreStockAt` · `oreConsumeAt`)은 하루 마감 조각에서만 돈다 — 그 시각(`_simNow` = 마감이 선 틱의 벽시계)은 빠른 판 자에서 econ 이 밀린 만큼 늘어나
 //   광맥 리젠 적분(`_oreRec` — 날 = ms ÷ 24분)이 판 빠르기(부하)에 달렸다(벽시계 판 · 가상 시계 판이 400날 안 광산 마을 곳간 · 금고에서 갈린 자리 · 보고/T990 §3).
-//   켜면 그 시각을 econ 날에서 낸다(`SimVillages.econDay()` × 판 하루 길이 — 같은 날 안에선 한 순간 · 판마다 같은 값). 사람 채광(손님)은 종전 그대로 지금이다 —
-//   판 자엔 손님이 없다(라이브에서 켜면 두 시계가 한 장부에 섞인다 — 회부). 새 수 0.
+//   켜면 그 시각을 econ 날에서 낸다(`SimVillages.econDay()` × 하루 길이 — 같은 날 안에선 한 순간 · 판마다 같은 값).
+// ★★[T1001 2026-10-30 · ★PM 켬 기본 · 되돌림 `T990_ECON_DAY=0`] **부팅 때 한 번 벽시계에 맞춘다**(맞춤 몫 = 그 순간 벽시계 − econ 날 × 하루 길이 · 길의 날도 같은 꼴).
+//   리젠 · 감쇠는 차이만 읽으니(`_oreRec` 날 = (지금 − t) ÷ 24분) 맞춤 몫은 판 값에 안 닿는다(판 자 바이트 같음) — 라이브 DB 의 광맥 줄 `t`(벽시계 ms)와 길 줄 `d`(벽시계 날)가
+//   켠 뒤에도 같은 축에 이어진다(옮김 0 · 재기동마다 다시 맞춘다 = 꺼진 사이 흐른 날은 그때 한 번에 적분). 돌고 있는 동안은 econ 날을 따른다. 사람 채광은 종전 그대로 지금(벽시계)이다. 새 수 0.
+const T990_ECON_DAY = process.env.T990_ECON_DAY !== '0';   // ★[T1001 10-30] 켬 기본 · 되돌림 `=0`
 const _t990OreDayMs = parseInt(process.env.VILLAGE_DAY_MS || '', 10) || ((WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
-const _npcOreNow = () => { if (process.env.T990_ECON_DAY === '1') { let d = null; try { d = SimVillages.econDay ? SimVillages.econDay() : null; } catch (e) { d = null; } if (Number.isFinite(d)) return d * _t990OreDayMs; } return _simNow(); };
+let _t1001OreOff = null;   // 맞춤 몫(ms) — 첫 econ 날이 선 순간 한 번
+const _npcOreNow = () => { if (T990_ECON_DAY) { let d = null; try { d = SimVillages.econDay ? SimVillages.econDay() : null; } catch (e) { d = null; } if (Number.isFinite(d)) { if (_t1001OreOff === null) _t1001OreOff = Date.now() - d * _t990OreDayMs; return d * _t990OreDayMs + _t1001OreOff; } } return _simNow(); };
 // ★★[T295 후속] 전쟁이 쓰는 나무 술어 — **청크 한 판을 통째로 캐시**한다.
 //   칸마다 묻는 길(`treeBlockerAt`)은 한 칸에 이웃 9청크를 다시 낳아 **27.5µs/칸**이다(실측).
 //   전장 한 판이 1,500~3,600칸을 물으면 교전 틱에 그대로 얹힌다(실측: 존 틱 p95 8.5 → 54.5ms).
@@ -5061,12 +5065,16 @@ function warTreeCellBlocked(cellX, cellY) {
 Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast,
   // ★[T566 추신2] 다져진 길의 오름·내림 — 존이 나무를 걷고(그 셀) 리젠을 막고(둘레) 푼다(끔이면 안 넘긴다 = 길은 종전 그대로)
   onPaved: _T566_ON ? _t566OnPaved : null, onUnpaved: _T566_ON ? _t566OnUnpaved : null });
-// ★★[T990 2026-10-28 · T986 회부 2 · 손잡이 `T990_ECON_DAY` — 제품 끔 기본(`'1'` 만 켬 · 끔 = main 바이트) · 판 자(t577)는 아이에 `1` 을 기본으로 싣는다]
+// ★★[T990 2026-10-28 · T986 회부 2 · 손잡이 `T990_ECON_DAY` — ★T1001 켬 기본(되돌림 `=0` · 끔 = T1001 전 main 글자) · 판 자(t577)도 아이에 `1` 을 싣는다]
 //   길의 날(`roads.js dayNow` — 답압 감쇠 · 코스 등급 · 하루 재구축)을 econ 날로 — 빠른 판 자에선 벽시계 날(250ms)이 econ 날보다 몇 배 빨리 가서(econ 이 밀린 만큼)
 //   벽시계 판 길이 가상 시계 판보다 빨리 풀렸고, 행군로(길 할인)가 갈려 전쟁 정산이 두 시계에서 갈렸다(보고/T990 §3 · 집 행위 켬 800날 시드 1020 날 747).
 //   같은 손잡이가 NPC 광맥 장부 시각도 econ 날로 낸다(`_npcOreNow` · 위 `_simNow` 곁 · 15분 벽시계 정리 쉼).
-//   라이브는 길 날 = 운영 하루라 켤 일이 없다(그리고 DB 길 줄의 날 · 광맥 줄의 시각이 절대값이라 켜려면 옮김이 든다 — 회부). 새 수 0.
-if (process.env.T990_ECON_DAY === '1' && Roads.setEconDay) Roads.setEconDay(() => (SimVillages.econDay ? SimVillages.econDay() : null));
+//   라이브: 길 줄의 날 · 광맥 줄의 시각이 절대값이라 ★[T1001] 부팅 때 한 번 벽시계에 맞춘다(아래 · 위 `_npcOreNow`) — 옮김 0. 새 수 0.
+//   ★[T1001 2026-10-30] 켬 기본(위 `T990_ECON_DAY` 상수) · 부팅 때 한 번 벽시계 날에 맞춘다(맞춤 몫 = 그 순간 벽시계 날 − econ 날 · 감쇠는 차이만 읽는다 — 판 값 무변 · 라이브 길 줄 `d` 와 같은 축).
+const _t1001RoadDayMs = parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs;   // `Roads.init` 에 넘긴 그 하루 길이
+let _t1001RoadOff = null;
+if (T990_ECON_DAY && Roads.setEconDay) Roads.setEconDay(() => { const d = SimVillages.econDay ? SimVillages.econDay() : null; if (!Number.isFinite(d)) return null;
+  if (_t1001RoadOff === null) _t1001RoadOff = Math.floor((Date.now() - (WORLD.worldEpoch || 0)) / _t1001RoadDayMs) - d; return d + _t1001RoadOff; });
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
   elevKmAt,   // ★[T856] 지형 정본 고도(몸 기온이 쓰는 그 함수) — 생활층이 econ 마을 `land.elev` 를 이것으로 채운다(손잡이 `T856_LAND_ELEV` 끔이면 안 읽는다)
   ...(Streams.ON && Streams.load(ZONE_ID) ? { isStreamLocal } : {}),   // ★★[T585] 개울 술어 — 생활층 지형 어댑터가 `ta.isStream` 으로 묻는다(집터·밭·곳간·큰집 마당 · 시딩 `generate`). 끔이면 키 자체가 없다(종전 그대로)
@@ -5088,7 +5096,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   //     벤 자리·묘목은 안 막고, 재생하면 다시 막는다.
   treeCellBlocked: warTreeCellBlocked,
   dayShelter: process.env.T969_SHELTER_DAY !== '0' ? (d) => _t969ShelterDay(d) : null,   // ★[T969] 켬 — 쉼터 백필을 econ 날 자리(하루 마감)에서(아래 · 끔 = 안 넘긴다) · ★[T974 10-28] 켬 기본 · 되돌림 `=0`
-  dayRoads: process.env.T990_ECON_DAY === '1' ? () => Roads.dayTick() : null,   // ★[T990] 켬 — 길의 하루를 econ 날 자리(날을 올린 econ 머리 바로 뒤 · 도적 하루 앞)에서(`roads.js dayTick` 머리 주석 · 끔 = 안 넘긴다 · 틱이 종전대로 정한다)
+  dayRoads: T990_ECON_DAY ? () => Roads.dayTick() : null,   // ★[T990] 켬 — 길의 하루를 econ 날 자리(날을 올린 econ 머리 바로 뒤 · 도적 하루 앞)에서(`roads.js dayTick` 머리 주석 · 끔 = 안 넘긴다 · 틱이 종전대로 정한다)
   dayBandits: process.env.T986_BANDIT_DAY !== '0' ? () => Bandits.dayTick() : null,   // ★[T986] 켬 — 도적 하루를 econ 날 자리(하루 마감 — 날을 올린 econ 머리 바로 뒤)에서(`bandits.js dayTick` 머리 주석 · 끔 = 안 넘긴다 · 존 틱이 종전대로 부른다) · ★[T990 10-28] 켬 기본 · 되돌림 `=0`
   ioBusy, ioQuietMs,   // ★[T42-b] 배경 작업이 '한가한가'를 판단할 때 **날아가는 쓰기**도 본다
   clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
@@ -9900,7 +9908,17 @@ function trySortOre(player) {
 // 주기적 정리 (15분) — 만땅 회복된 셀 레코드 제거. minedCells만 순회(파인 셀, 한정적)라 가벼움.
 setInterval(() => {
   if (minedCells.size === 0) return;
-  if (process.env.T990_ECON_DAY === '1') return;   // ★[T990] 켬 — 장부 시각이 econ 날이다(`_npcOreNow`) · 벽시계 15분 주기가 끼면 판 빠르기에 달린다 · 리젠은 읽을 때 닫힌 해로 적분하니(`_oreRec`) 안 지워도 같은 값
+  //   ★[T990 · T1001] 켬 — 장부 시각이 econ 날이다(`_npcOreNow`). 벽시계 15분 주기가 장부를 고치면(리젠 적분을 쪼개 `t` 를 옮긴다) 판 빠르기에 달린다 ⇒
+  //     켬이면 **읽기만** 한다: 그 econ 시각에 이미 만땅인 셀만 지운다(리젠은 늘기만 하니 다음 NPC 읽기도 만땅 — 지운 셀 = 새 셀 그 값 · 값 무변). 끔 = 종전 글자.
+  if (T990_ECON_DAY) {
+    const now = _npcOreNow();
+    for (const [key, rec] of minedCells) {
+      const days = (now - rec.t) / _ORE_DAY_MS;
+      const s = days > 0 ? Specialty.oreRegen(rec.s, days) : rec.s;
+      if (s >= Specialty.ORE_K && (rec.w || 0) <= 0 && !(rec.kg > 0)) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } }
+    }
+    return;
+  }
   const now = Date.now();
   for (const [key, rec] of minedCells) {
     const days = (now - rec.t) / _ORE_DAY_MS;
