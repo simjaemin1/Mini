@@ -296,6 +296,12 @@ async function waitHttp(url, tries = 600) {
      bothDown ? '' : `A hp${await hpOf(A)} ${JSON.stringify(await bodyOf(A))} · C hp${await hpOf(C)} ${JSON.stringify(await bodyOf(C))}`);
   await R.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { meat_cooked: 3 } }));
   await sleep(1200);
+  // ★[T949] 1.2초는 **최소**다 — 묶은 상자에선 준 고기가 R 의 짐(클라 \`inventory\`)에 그보다 늦게 닿아, ② 메뉴가
+  //   "먹이기 — 먹일 것이 없다"로 서고 ③ 하위 목록 · 먹였다 · A 허기가 함께 빨갰다(고치기 전 묶은 상자 12판 중 1 · 고친 뒤 판 하나).
+  //   짐에 고기가 보일 때까지 **기다린다**(상한 15초 = 안전망 · ②③ 판정 그대로).
+  for (let t0 = Date.now(); Date.now() - t0 < 15000; await sleep(300)) {
+    if (await R.evaluate(() => ((typeof inventory !== 'undefined' && inventory && inventory.meat_cooked) || 0) > 0)) break;
+  }
   const aPid = await pidOf(A), cPid = await pidOf(C);
   pre(!!aPid && !!cPid && aPid !== cPid, '두 사람의 pid 가 갈린다', `${aPid} / ${cPid}`);
 
@@ -441,6 +447,13 @@ async function waitHttp(url, tries = 600) {
   ok(!!sub && sub.some((t) => /×\d/.test(t)), '★③ 그 목록은 **가진 수량**까지 말한다', JSON.stringify(sub));
   await R.evaluate(() => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[0]) _m.children[0].click(); });
   await sleep(1800);
+  // ★[T949] 1.8초는 **최소**다 — 묶은 상자(바쁜 셸 넷)에선 서버 답(알림)과 A 의 몸 값이 그보다 늦게 왔다("먹였다" [] · A +0.0).
+  //   위 `menuWithin` 과 같은 문법: 판정 조건(알림 · A 허기 오름)이 설 때까지 **기다린다**(상한 15초 = 안전망 · 판정은 아래 `ok` 그대로).
+  //   C(미끼)는 기다린다고 오르지 않는다 — 더 오래 보면 ★★★ 줄은 오히려 더 엄하다.
+  for (let t0 = Date.now(); Date.now() - t0 < 15000; await sleep(300)) {
+    const _rn = await notices(R), _a = await bodyOf(A);
+    if (_rn.some((t) => /먹였다/.test(t)) && _a && aBefore && (_a.hunger - aBefore.hunger) > 1) break;
+  }
 
   const rn = await notices(R);
   ok(rn.some((t) => /먹였다/.test(t)), '★★③ 서버가 **먹였다**고 답한다', JSON.stringify(rn.slice(-2)));
@@ -513,6 +526,11 @@ async function waitHttp(url, tries = 600) {
     await sleep(900);
     await R.evaluate(() => window.__sendPrimary({ type: 'drop_item', item: 'wood', amount: 1 }));
     await sleep(1500);
+    // ★[T949] 1.5초는 **최소**다 — 묶은 상자에선 바닥 물건 방송이 그보다 늦게 클라에 닿았다(야간 10-25 "바닥에 물건이 실제로 하나 있다 null").
+    //   바닥 물건이 R 의 묶음에 보일 때까지 **기다린다**(상한 15초 = 안전망 · 아래 경계 판정은 그대로).
+    for (let t0 = Date.now(); Date.now() - t0 < 15000; await sleep(300)) {
+      if (await R.evaluate(() => { for (const c of conns.values()) if (c.meta && c.groundItems && c.groundItems.size) return true; return false; })) break;
+    }
     const probe = await R.evaluate(() => {
       let gi = null, ox = 0, oy = 0;
       for (const c of conns.values()) {
@@ -656,7 +674,15 @@ async function waitHttp(url, tries = 600) {
         } else {
           // 다 캐서 저절로 멎었다 — 그것도 계약이다(§0-ⓑ: "다 캐면 저절로 멎는다").
           ok(true, '★⑧ 다 캐서 **저절로 멎었다**(토글 대신 이 갈래가 성립)', JSON.stringify(l2));
-          ok(!(l2 || []).some((t2) => /멈추기/.test(t2)), '★⑧ 멎은 뒤엔 메뉴가 "멈추기"라고 안 한다', JSON.stringify(l2));
+          // ★[T949] \`l2\` 는 **멎기 전에** 열린 메뉴일 수 있다 — 메뉴를 읽은 순간과 \`stillOn\` 을 읽은 순간 사이에 마지막 한 타가 끝나면
+          //   "멈추기"가 적힌 메뉴(그때는 옳은 말)를 "멎은 뒤"로 읽는다(묶은 상자 · 고친 뒤 판 하나 ["벌목 멈추기", …]).
+          //   ⇒ 멎은 것을 본 **뒤에** 메뉴를 한 번 더 연다(같은 정본 \`tapUntilMenu\` · 상한 5초 · 다 캐여 대상이 없으면 종전처럼 null).
+          let l3 = l2;
+          if ((l2 || []).some((t2) => /멈추기/.test(t2))) {
+            await R.evaluate(() => { if (typeof hideContextMenu === 'function') hideContextMenu(); });
+            l3 = (await tapUntilMenu(rPt, 5000)).labels;
+          }
+          ok(!(l3 || []).some((t2) => /멈추기/.test(t2)), '★⑧ 멎은 뒤엔 메뉴가 "멈추기"라고 안 한다', JSON.stringify(l3));
         }
       }
     }
@@ -1183,6 +1209,11 @@ async function waitHttp(url, tries = 600) {
       if (lab2 && lab2.length === 2) {
         await R.evaluate(() => { const m = document.getElementById('ctxMenu'); if (m) m.children[1].click(); });
         await sleep(1800);
+        // ★[T949] 1.8초는 **최소**다 — 묶은 상자에선 시세 답(\`__tradeBoard\`)이 그보다 늦게 왔다("서버에 시세를 물었다 false").
+        //   탭이 열리고 시세 답이 올 때까지 **기다린다**(상한 15초 = 안전망 · 아래 판정 그대로).
+        for (let t0 = Date.now(); Date.now() - t0 < 15000; await sleep(300)) {
+          if (await R.evaluate(() => { const p = document.getElementById('sidePanel'); return !!(p && p.classList.contains('open')) && !!window.__tradeBoard; })) break;
+        }
         const side = await R.evaluate(() => {
           const p = document.getElementById('sidePanel');
           return { open: !!(p && p.classList.contains('open')),
@@ -1202,6 +1233,9 @@ async function waitHttp(url, tries = 600) {
       //   ⇒ 게이트(260)만 넉넉히 넘고 AOI 안에는 남는 자리로 간다: 마을 중심에서 400px.
       await warp(R, vsel.cx * 32 + 16 + 400, vsel.cy * 32 + 16, 8, 120);
       await sleep(1800);
+      // ★[T949] 1.8초는 **최소**다 — 묶은 상자에선 게이트 답(\`__evNearVid\`)이 그보다 늦게 바뀌었다("게이트 밖 4" — 옮긴 뒤에도 앞 마을 값).
+      //   게이트 밖 답이 올 때까지 **기다린다**(상한 15초 = 안전망 · 못 벗어났으면 아래 줄은 그대로 빨갛다).
+      for (let t0 = Date.now(); Date.now() - t0 < 15000 && (await R.evaluate(() => window.__evNearVid)) != null; ) await sleep(300);
       const outGate = await R.evaluate(() => window.__evNearVid);
       pre(outGate == null, '마을에서 벗어났다(게이트 밖)', String(outGate));
       if (outGate == null) {

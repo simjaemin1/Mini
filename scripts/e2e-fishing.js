@@ -182,6 +182,7 @@ function pickRiverSpot() {
   const invBefore = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
   await page.keyboard.press('Shift+KeyF');
   let stWait = null, bit = null, tBite = 0, tPress = 0;
+  const tCast = Date.now();
   for (let i = 0; i < 400; i++) {
     const s2 = await page.evaluate(() => window.__fishState || null);
     if (s2 && s2.state === 'wait' && !stWait) stWait = s2;
@@ -191,7 +192,9 @@ function pickRiverSpot() {
       tPress = Date.now();
       break;
     }
-    if (i > 30 && !stWait) break;
+    // ★[T949] 종전 "31번 물어 안 던져졌으면 그만"(≈1.6초 · 빠른 상자 기준)은 묶은 상자에서 서버 답보다 짧았다(고친 뒤 판 하나가 ② 넷 빨강 — 던짐 null).
+    //   기다림 상한을 **시간**(10초 = 안전망)으로 — 던져지면 그 순간부터 종전 그대로(입질 · 챔질 창 판정 무변).
+    if (!stWait && Date.now() - tCast > 10000) break;
     await sleep(50);
   }
   let caught = null;
@@ -268,6 +271,14 @@ function pickRiverSpot() {
     window.__terrain19.freezeT = 100; return true;
   });
   ok(froze, '★전제 — 시계를 얼렸다(물결이 서야 찌를 잰다)');
+  // ★[T104 · T98 §4-c 문법] 화소를 재기 전에 **하늘과 바람을 끈다** — 재는 대상을 바꾸는 게 아니라
+  //   잡음을 걷는 것이다(비/눈은 프레임마다 화소를 흔들고, 풀 흔들림도 같은 일을 한다).
+  //   T98 이 11개에 넣은 그 두 줄인데 이 파일은 빠져 있었다 — `@pixel` 표를 세우며 드러났다.
+  //   ★[T949] **대조군(A · B) 앞에서 끈다** — 종전엔 C 바로 앞에서만 꺼서, 그 시각 존 날씨(벽시계 게임 시각)가 비면
+  //     대조군 두 장에 빗줄기가 남아 1,525~1,665px 가 됐다(묶은 상자 20판 중 비 오는 시각의 판 · 야간 10-25 319px).
+  //     같은 두 줄을 앞으로 옮겼을 뿐이다 — 세 장이 같은 하늘 · 같은 풀(종전 C 만 `windOff` 텍스처)이 되고, 문턱 · 판정 상자는 그대로.
+  await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 });
+    if (window.__terrain19) window.__terrain19.windOff = true; }).catch(() => {});
   await sleep(1200);
   const shotA = path.join(SHOTS, 'fi-06-nofloat-a.png');
   const shotB = path.join(SHOTS, 'fi-07-nofloat-b.png');
@@ -278,12 +289,7 @@ function pickRiverSpot() {
   await page.keyboard.press('Shift+KeyF');
   let waited = null;
   for (let i = 0; i < 40 && !waited; i++) { await sleep(60); const q = await page.evaluate(() => window.__fishState || null); if (q && (q.state === 'wait' || q.state === 'bite')) waited = q; }
-  // ★[T104 · T98 §4-c 문법] 화소를 재기 전에 **하늘과 바람을 끈다** — 재는 대상을 바꾸는 게 아니라
-  //   잡음을 걷는 것이다(비/눈은 프레임마다 화소를 흔들고, 풀 흔들림도 같은 일을 한다).
-  //   T98 이 11개에 넣은 그 두 줄인데 이 파일은 빠져 있었다 — `@pixel` 표를 세우며 드러났다.
-  await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); 
-    if (window.__terrain19) window.__terrain19.windOff = true; }).catch(() => {});
-  await page.screenshot({ path: shotC });
+  await page.screenshot({ path: shotC });   // ★[T949] 하늘 · 바람은 대조군 앞에서 이미 껐다(아래 `froze` 다음 줄 — 세 장이 같은 조건)
   ok(!!waited, '★전제 — 화소 판정용 던지기가 성립했다', waited ? waited.state : 'X');
   {
     const PNG = require('pngjs').PNG;
