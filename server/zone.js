@@ -72,6 +72,13 @@ const HOSTILES_ON = process.env.ENABLE_WILDLIFE !== '0';
 //     아니면 낡은 좌표 덮어쓰기가 뒷문으로 부활한다(그 갈래를 `test-guest-rejoin` 이 밟는다).
 const SAVE_INTERVAL_MS = Math.max(1000, parseInt(process.env.SAVE_INTERVAL_MS || '', 10) || 30000);
 const SAVE_MOVE_EPS = 2;   // 이만큼도 안 움직였으면 쓸 게 없다(px)
+// ★★[T989 2026-10-29 · T917 회부 2 · 손잡이 `T989_CHUNK_SAVE` — ★끔 기본(켜는 값 `'1'` 하나 · 끔 = 종전 바이트)] **청크를 넘으면 그 틱에 저장한다.**
+//   주기 저장(30초)만 쓰는 몸 연속 칸은 SIGKILL 이면 마지막 저장 뒤 30초까지 되돌아간다 — 잰 값(보고 T989 ① · `scripts/t989-window.js`):
+//   자리 걷기 최대 58.7m · 달리기 147.7m(텔레포트처럼 보인다) · 허기 ≤ 2.4 · 갈증 ≤ 5.2(100 중) · 추위 ≤ 16.9%p(겨울 밤).
+//   켜면 사람이 선 청크(`chunkManager.chunkSize` 한 변 — 세계가 활성 · 비활성을 가르는 그 칸 · 새 수 0)가 마지막 주기 저장 자리의 청크와 다르면
+//   그 사람 차례의 틱에 **바로** 저장하고 다음 주기 저장 시각을 거기서 다시 센다(저장 = 청크 넘음 ∨ 30초 · 둘이 겹쳐 쓰지 않는다).
+//   ⇒ 자리 되돌림 ≤ 청크 한 변 남짓 · 저장 횟수는 움직이는 사람만 는다(걷기 ~3.7 · 달리기 ~9 /분 ↔ 종전 2). 몸 버전(T927)이 늦게 닿은 옛 저장을 거른다.
+const T989_CHUNK_SAVE = process.env.T989_CHUNK_SAVE === '1';
 // ★[T779 2026-10-18] 겨울나기(T20 `server/winter.js`)는 걷었다 — 여기 있던 납품 훅 한 줄(양 적립)도 같이 걷었다.
 const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
 const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(손잡이 `T687_SHARED_BUDGET` · 끔 = 문마다 제 예산 그대로)
@@ -12643,6 +12650,7 @@ function __testBind() {
     playerCraftLevel, doShopBuy,
     // ── 주기 저장 비용 실측(2026-08-26) ── 하네스가 저장 건수·누적 ms 를 그대로 읽는다
     _saveStats: () => ({ ..._saveStats, intervalMs: SAVE_INTERVAL_MS }),
+    chunkManager,   // ★[T989] 청크 한 변 — 하네스(`test-t989-chunk-save`)가 경계를 세계에 묻는다
     _t916Stats: () => ({ on: T916_SAVE_RETRY, ..._t916.stat, pending: _t916.pending, queue: (() => { try { return db.saveQueueAll().length; } catch (e) { return -1; } })() }), _t916Flush,   // ★[T916] 못 닿은 저장 줄
     // ── 낚시 v2 E2E(2026-08-26) ── **정본 함수를 그대로 내준다**(하네스가 물리를 다시 짜면 사본이다).
     Fishing, tryFishCast, tryFishStrike, _fishPoll, _castTargetFor, _fishSave, _fishSpeciesFor,
@@ -15891,6 +15899,7 @@ function _fishPollOne(p, now) {   // 종전 `_fishPoll` 고리 몸통 글자 그
 }
 
 // 주기 저장 — 틱당 최대 1명(분산). 대상: 살아 있는 세션 · 영속 신원 · **실제로 움직인** 사람.
+function _t989Chunk(x, y) { const cs = chunkManager.chunkSize; return Math.floor(x / cs) + ',' + Math.floor(y / cs); }   // ★[T989] 그 자리의 청크 열쇠(세계의 청크 한 변 그대로)
 let _saveCursor = 0;
 const _saveStats = { saved: 0, skippedClean: 0, skippedSuperseded: 0, ms: 0 };
 function _periodicSave(now) {
@@ -15908,8 +15917,10 @@ function _periodicSave(now) {
       p._savedX = p.x; p._savedY = p.y; p._savedBody = Body.snapshot(p);
       continue;
     }
-    if (now < p._nextSaveAt) continue;
+    const _t989 = T989_CHUNK_SAVE && p._savedX !== undefined && _t989Chunk(p.x, p.y) !== _t989Chunk(p._savedX, p._savedY);   // ★[T989] 청크를 넘었다(끔 = 늘 거짓)
+    if (!_t989 && now < p._nextSaveAt) continue;
     p._nextSaveAt = now + SAVE_INTERVAL_MS;
+    if (_t989) _saveStats.chunk = (_saveStats.chunk || 0) + 1;   // ★[T989] 계측 칸(끔이면 안 생긴다)
     // ★[신체 상태 §7] 판정에 **몸 상태 변화**를 더한다. 종전엔 '움직였나'만 봤는데,
     //   그러면 **가만히 앉아 회복한 사람**의 상태가 크래시에 통째로 날아간다(주기 저장의 뜻이 반쪽이 된다).
     const _moved = !(Math.abs(p.x - (p._savedX || 0)) < SAVE_MOVE_EPS && Math.abs(p.y - (p._savedY || 0)) < SAVE_MOVE_EPS);
