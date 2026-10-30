@@ -805,7 +805,7 @@ function _bindRest(host, day0) {
 //   ⚠그 사이 도적은 없다 — 새 세계는 원래 단 0 · 결성은 `BDT_MIN_DAY` 뒤(기본 365일)라 econ 쪽 위험(`banditRouteRisk`)도 종전과 같이 0 이다.
 //   ★★[T655 2026-10-05 · PM 결정(위임)] **켬이 기본**이다 — 손잡이 없음 = 켬 · `T640_BOOT_SLICE=0` = 종전(부팅 안에서 한 번에).
 //     빠른 시계 자(`t577-server-run` · 하루 250ms)는 자 안에서 `=0` 을 박는다(표본이 도는 동안 수백 날이 지나 도적 데일리를 건너뛴다 — T640 회부 ①).
-const T986_BANDIT_DAY = typeof process !== 'undefined' && !!process.env && process.env.T986_BANDIT_DAY === '1';   // ★[T986] 끔 기본 — `dayTick` 머리 주석
+const T986_BANDIT_DAY = typeof process !== 'undefined' && !!process.env && process.env.T986_BANDIT_DAY !== '0';   // ★[T986] `dayTick` 머리 주석 · ★[T990 10-28] 켬 기본(PM — 판 자 벽시계 = 가상 시계 · T969 와 같이) · 되돌림 `=0`
 const T640_BOOT_SLICE = typeof process !== 'undefined' && !!process.env && process.env.T640_BOOT_SLICE !== '0';
 function _bootSliceBegin(host) {
   host.routeBootFreeze(true);
@@ -879,6 +879,7 @@ function onGameTick() {
   _dayRun(S.host.world.day);
 }
 // ★★[T986 2026-10-28 · T969 회부 2] 손잡이 `T986_BANDIT_DAY`(끔 기본 · `'1'` 켬 · 끔 = 종전 글자 — 위 줄이 안 닿고 하루 몸통은 같은 함수).
+//   ★[T990 2026-10-28] 켬 기본으로 뒤집음(PM · T986 회부 1 — T974 의 T969 켬 기본과 같은 판) · 되돌림 `T986_BANDIT_DAY=0`(= 종전 글자 · zone deps `dayBandits` 줄도 같은 글자).
 //   벽시계 판자에서 도적 하루는 존 틱(`onGameTick` — `world.day` 가 바뀐 첫 틱)이 불렀다. 그런데 하루 마감은 현지 자정 창(T731)이라
 //   머리(날 +1) 뒤 마을마다 제 조각을 돌고, 조각은 틱 몫(`TICK_SLICE_MS` · T687)으로 끊긴다 ⇒ 도적 하루가 **마을 결산 몇 곳 뒤에** 끼어드는지가
 //   벽시계(밀림 · 부하)에 달렸다. 가상 시계는 몫이 안 닳아 늘 같은 자리 — 그래서 두 시계 판의 절망 이탈 · 해체 · 약탈이 다른 날에 났다
