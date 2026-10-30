@@ -72,7 +72,11 @@ const S = {
   bootUnpaved: [],   // 저장 땐 v ≥ T2 였는데 꺼진 사이 감쇠로 등급 2 아래가 된 셀(부팅이 안다 · 풀린 날은 부르는 쪽이 정한다)
 };
 
-function dayNow() { return Math.floor((Date.now() - S.epoch) / S.dayMs); }
+// ★[T990 2026-10-28] 길의 날 = econ 날 — 부르는 쪽(존 · 손잡이 `T990_ECON_DAY` 켬)이 econ 날 함수를 넘기면 스탬프 · 감쇠 · 하루 재구축이 그 날을 본다.
+//   안 넘기면(끔 · 제품 기본) 종전 벽시계 날 글자 그대로 · 함수가 날을 못 내면(econ 세계 전 부팅) 벽시계 날로 떨어진다.
+let _t990Day = null;
+function setEconDay(fn) { _t990Day = (typeof fn === 'function') ? fn : null; }
+function dayNow() { if (_t990Day) { let d = null; try { d = _t990Day(); } catch (e) { d = null; } if (Number.isFinite(d)) return d; } return Math.floor((Date.now() - S.epoch) / S.dayMs); }
 function kOf(cx, cy) { return cy * S.cellsW + cx; }
 
 function _get(k, t) { // 접근 시 게으른 감쇠 + 소멸 프룬(랩 _roadGet verbatim)
@@ -532,12 +536,16 @@ function init(deps) { // deps: { zoneId, cellsW, cellsH, epoch, dayMs, broadcast
 }
 function onGameTick(now) {
   if (!S.ready) return;
-  const day = Math.floor((now - S.epoch) / S.dayMs);
+  //   ★[T990] 켬(econ 날 함수가 넘어왔다)이면 날 바뀜은 틱이 아니라 하루 마감의 정한 자리(`dayTick` — 날을 올린 econ 머리 바로 뒤)가 정한다 — 틱은 묶음만.
+  const day = _t990Day ? S.lastDay : Math.floor((now - S.epoch) / S.dayMs);
   if (day === S.lastDay) {   // ★[T630] 얼린 행을 틱마다 한 묶음
     if (_fl && !(T688_ON && _villagesBusy()) && !TB.out(_sliceMs(), 'roads')) { try { _flushStep(TB.slice(_sliceMs())); } catch (e) { } }
     else if (_t713Q && !TB.out(_sliceMs(), 'roads')) { try { _t713Apply(TB.slice(_sliceMs())); } catch (e) { } }   // ★[T713] 묶음이 없는 틱에 `S.sent` 고침 남은 몫   // ★[T688 ⓑ] 마을 하루 마감이 도는 틱엔 쉰다 · ★[T687] 켬 = 이 틱 남은 몫 · 없으면 다음 틱
     return;
   }
+  _dayRoll(day);
+}
+function _dayRoll(day) {   // 하루 몸통 — 종전 `onGameTick` 끝 블록 글자 그대로(★[T990] 옮김 · 끔이면 위 틱 길만 부른다)
   S.lastDay = day;
   try {
     _t688Rebuild(day);   // ★[T688] 끔 = 종전 `_rebuildCoarse(day)` 그대로
@@ -546,8 +554,16 @@ function onGameTick(now) {
     S.stats.stamped = 0;
   } catch (e) { console.error(`[${S.zoneId}] 🛤️ 답압 길 데일리 실패:`, e.message); }
 }
+// ★[T990] 켬 — 길의 하루(감쇠 · 코스 재구축 · 저장 묶음)를 econ 날 자리에서 — villages 하루 마감의 조각 하나(`deps.dayRoads` · 날을 올린 econ 머리 바로 뒤).
+//   틱이 날 바뀜을 보면(종전) 그 틱이 마을 결산 몇 곳 뒤에 오느냐가 벽시계에 달린다(T986 도적 하루와 같은 꼴) — 그래서 자리를 박는다. 그날에 한 번 · 새 수 0.
+function dayTick() {
+  if (!S.ready || !_t990Day) return;
+  const day = dayNow();
+  if (day === S.lastDay) return;
+  _dayRoll(day);
+}
 
 // ★[T566] 다져진 길 셀 수 · 키(읽기만 — 존의 부팅 걷기 · 자)
 function pavedCount() { return S.ready ? S.paved.size : 0; }
 function pavedKeys() { return S.ready ? [...S.paved] : []; }
-module.exports = { roadDayPerf, retouchCell, unpaveSoonKeys, init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
+module.exports = { setEconDay, dayTick, roadDayPerf, retouchCell, unpaveSoonKeys, init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
