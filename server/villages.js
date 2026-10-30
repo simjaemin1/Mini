@@ -963,6 +963,14 @@ const _serializeWarned = new Set();
 //     ⓓ world 메타 행 하나(`world_meta`): econ 난수 상태 · 다음 주민 번호 · 다음 마을 번호 · 길 위 캐러밴(이름과 주민 번호로 다시 잇는다)과 번호 계수기 · 앵커.
 //   새 수 0 · 새 몸 필드 0. 값은 바뀌지 않는다(돌고 있는 동안은 끔과 같은 글자 · 저장 줄과 복원 문만 다르다).
 const T728_KEEP = process.env.T728_RESTART_KEEP !== '0';   // ★[PM 10-14] 켬 기본 · 되돌림 `=0`
+// ★★[T983 2026-10-30 · T917 회부 1 · ★PM 결함] **사람 ↔ 곳간 거래는 곳간 행도 그 순간에 남긴다** — 손잡이 `T983_GRANARY_SAVE`(켬 기본 · 되돌림 `=0`).
+//   곳간 재고 · 곳간 로트 · 마을 econ 은 하루 마감(실시간 24분)에만 저장됐다(`add('save')` → 틱마다 한 마을 `updateVillageState`).
+//   사람은 행동마다 저장되므로 거래 뒤 마감 전에 존이 죽으면 곳간만 거래 전으로 돌아가고 사람은 받은 것을 가진다 → 그만큼 생성(T917 run3 3/5).
+//   켜면 그 마을 행 하나를 **마감과 같은 줄**(`updateVillageState(dbId, serializeEcon(econ), 인구, 날)`)로 거래 순간에 쓴다(SQLite 동기 · 사람 저장 HTTP 보다 먼저).
+//   ⚠마감이 도는 중(`state.tickJobs`)이면 쓰지 않는다 — 그 마감의 저장 줄(`add('save')` → `saveQueue`)이 이 마을을 곧 쓴다(반쯤 정산된 econ 을 남기지 않는다 · T728 종료 저장이 마감을 기다리는 것과 같은 뜻).
+//   끔 = 이 함수가 아무것도 안 한다(종전 바이트).
+const T983_GRANARY_SAVE = process.env.T983_GRANARY_SAVE !== '0';
+const _t983Stat = { n: 0, skipClose: 0, miss: 0, err: 0, ms: 0, maxMs: 0, bytes: 0, maxBytes: 0 };
 const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheDay', 'dailyProductionBuf']);
 // ★★[T740 2026-10-14] **재기동이 잃는 메모리 전용 마을 칸** — 손잡이 `T740_SIDE_KEEP`(★기본 끔 · `=1` 켬 · 끔 = 종전 글자 그대로).
 //   서버 마을 객체(`state.villages[i]`)의 칸 중 저장(마을 행 · 메타 행 · 마을 건물 행)을 안 거치는데 **값에 닿는** 것을 마을 행 곁 칸 하나(`_t740Side`)에 싣는다
@@ -7317,7 +7325,8 @@ function tickPerf() {
   return { days: R.length, last: _tickPerf.last, probe: probeStats(),
            maxChunk: mc, maxChunkAt: mcAt, frameMax: fm,   // ★[T42-b] 창 전체(위 주석)
            total: R.length ? { p50: q(tot, 0.5), p95: q(tot, 0.95), max: Math.max(...tot) } : null, stages,
-           ...(T690_DAY_PHASE ? { t690: Object.assign({ pend: (state._t690 && state._t690.list.length) || 0 }, _t690Stat) } : {}) };   // ★[T690] 켬 판만 칸이 선다
+           ...(T690_DAY_PHASE ? { t690: Object.assign({ pend: (state._t690 && state._t690.list.length) || 0 }, _t690Stat) } : {}),
+           ...(T983_GRANARY_SAVE ? { t983: Object.assign({}, _t983Stat, { ms: +_t983Stat.ms.toFixed(3), maxMs: +_t983Stat.maxMs.toFixed(3) }) } : {}) };   // ★[T983] 켬 판만 칸이 선다   // ★[T690] 켬 판만 칸이 선다
 }
 
 // =============================================================================
@@ -10922,6 +10931,26 @@ function cropAtCell(cx, cy) {
   return e ? e.c : null;
 }
 function villageByDbId(dbId) { return (state.byDbId && state.byDbId.get(dbId | 0)) || null; }
+// ★[T983] 거래 순간 곳간 행 저장 — 부르는 자리(zone.js): 곳간 넣기 · 기부 · 거래소 · 납품 · 촌장 꺼내기 · 철기 위세품 팔기. 인자 = 마을 객체 · dbId · 마을 이름 중 하나.
+function t983Save(v) {
+  if (!T983_GRANARY_SAVE) return false;
+  if (!state.ready || !state.db || !state.db.updateVillageState) { _t983Stat.miss++; return false; }
+  let vil = null;
+  if (v && typeof v === 'object') vil = v.econ ? v : (state.byEcon && state.byEcon.get(v)) || null;
+  else if (typeof v === 'number') vil = villageByDbId(v);
+  else if (typeof v === 'string') vil = (state.villages || []).find((x) => x.name === v) || null;
+  if (!vil || !vil.econ || vil.dbId == null) { _t983Stat.miss++; return false; }
+  if (state.tickJobs) { _t983Stat.skipClose++; return false; }
+  const t0 = process.hrtime.bigint();
+  try {
+    const js = serializeEcon(vil.econ);
+    state.db.updateVillageState(vil.dbId, js, vil.econ.npcs.length, state.world.day);
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    _t983Stat.n++; _t983Stat.ms += ms; if (ms > _t983Stat.maxMs) _t983Stat.maxMs = ms;
+    _t983Stat.bytes += js.length; if (js.length > _t983Stat.maxBytes) _t983Stat.maxBytes = js.length;
+    return true;
+  } catch (e) { _t983Stat.err++; console.error(`[${state.zoneId}] 🏘️ [T983] 거래 순간 곳간 저장 실패(마감 저장이 뒤에 쓴다):`, e.message); return false; }
+}
 
 // 회관 셀(정확히 중심) → 그 마을. 플레이어가 세운 마을만 돌려준다(NPC 마을 회관은 이 UI 대상이 아니다).
 function playerVillageAt(ccx, ccy) {
@@ -14194,6 +14223,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   _actDay, _actTake,   // ★[T334] 예산 장부 몸통(어부 전용 — T341 이 나무에서 걷어냈다) — 하네스가 규칙을 옮겨 적지 않게 내준다
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
+  t983Save, t983On: () => T983_GRANARY_SAVE,   // ★[T983] 거래 순간 곳간 행 저장
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)

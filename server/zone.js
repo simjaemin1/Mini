@@ -9290,6 +9290,7 @@ function doSellIronRelic(player, id) {
   send(player.ws, { type: 'notice',
     text: `🗡️ ${r.village}에 철기를 넘겼다 — ${parts.join(' · ') || '(대금 없음)'}  · 이 마을 철기 ${r.relics}점` });
   console.log(`[${ZONE_ID}] 🗡️ ${player.name} → ${r.village} 철제 위세품 판매 (값 ${r.price} · 대금가치 ${r.paidValue})`);
+  if (SimVillages.t983Save) SimVillages.t983Save(r.village);   // ★[T983] 대금이 나간 곳간 행도 이 순간에(이름으로 찾는다 · 끔 = 무동작)
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
@@ -12165,6 +12166,7 @@ function tryVillageDeposit(player, buildingId, want, _donVil) {
   finally { _t732DoorEnd(_d732, player, !!(r && r.ok), vil, _uo); }   // ★[T732] 낸 로트를 곳간 장부에 그 나이째(던져도 문은 닫는다 · 끄면 무동작)
   if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
   if (T725_HALL) { for (const [it, n] of Object.entries(r.taken || {})) Carry.takeKg(player, it, n); Carry.reconcile(player, player.inventory); }   // ★[T725 ①] 낸 개체를 장부에서 뺀다
+  if (SimVillages.t983Save) SimVillages.t983Save(vil);   // ★[T983] 곳간 행도 이 순간에(사람 저장보다 먼저 · 끔 = 무동작)
   savePlayer(player);
   sendInventory(player);
   const kv = Object.entries(r.taken).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
@@ -12375,6 +12377,7 @@ function _memberLine(player, vid) {
 function tryVillageWithdraw(player, vid, res, qty) {
   const fin = (r) => {
     if (!r || !r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${(r && r.err) || '곳간을 열지 못했다'}` }); return r; }
+    if (SimVillages.t983Save) SimVillages.t983Save(vid | 0);   // ★[T983] 곳간 행도 이 순간에(사람 저장 `_afterWithdraw` 보다 먼저 · 끔 = 무동작)
     _afterWithdraw(player, r);
     return r;
   };
@@ -12479,6 +12482,7 @@ function tryVillageTradeExec(player, vid, giveRes, takeRes, qty, want, numeraire
   // ★내준 개체를 장부에서 **실제로 뺀다** — 위 환산은 `peekKg`(보기)였다. 안 빼면 무게가 안 준다.
   for (const [it, n] of Object.entries(r.gaveItems || {})) Carry.takeKg(player, it, n);
   Carry.reconcile(player, player.inventory);
+  if (SimVillages.t983Save) SimVillages.t983Save(vid | 0);   // ★[T983] 곳간 행도 이 순간에(사람 저장보다 먼저 · 끔 = 무동작)
   savePlayer(player);
   sendInventory(player);
   const gave = Object.entries(r.gaveItems || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
@@ -12502,6 +12506,7 @@ function tryVillageDeliver(player, vid, item, want) {
   if (r.err) { send(player.ws, { type: 'notice', text: `📋 ${r.err}` }); return; }
   for (const [it, n] of Object.entries(r.taken || {})) Carry.takeKg(player, it, n);   // ★납품한 개체를 장부에서 뺀다
   Carry.reconcile(player, player.inventory);
+  if (SimVillages.t983Save) SimVillages.t983Save(vid | 0);   // ★[T983] 곳간 행도 이 순간에(사람 저장보다 먼저 · 끔 = 무동작)
   savePlayer(player);
   sendInventory(player);
   const gave = Object.entries(r.taken || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
