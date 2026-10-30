@@ -5,7 +5,7 @@ import json, sys
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-plt.rcParams['font.family'] = ['Noto Sans CJK KR', 'NanumGothic', 'DejaVu Sans']
+plt.rcParams['font.family'] = ['Noto Sans CJK KR', 'DejaVu Sans']
 J = json.load(open(sys.argv[1]))
 seeds = [s for s in ['1020', '7', '42'] if s in J['seeds']]
 fig, axes = plt.subplots(len(seeds), 1, figsize=(11, 3.2 * len(seeds)), sharex=True)

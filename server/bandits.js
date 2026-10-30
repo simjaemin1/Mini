@@ -51,7 +51,7 @@ const FG = 4;   // 교역로 거리장 해상도(셀) — villages DIST_STEP과 
 const BDT_CONV = 0.4, BDT_GMIN = 3, BDT_GMAX = 8;              // 소멸 전환: 잔존 40%(3~8명)
 const BDT_CRI_HAP = 0.32, BDT_CRI_FOOD = 10;                   // 위기일: 행복<0.32 && 식량<인구×10일치
 const BDT_DIS_FALL = 5, BDT_DIS_FOOD = 3;                      // 해체: 순감 5일+ && 식량<3일치 && 잔존≤min(20,피크×0.55)
-const BDT_MIN_DAY = parseInt(process.env.BANDIT_MINDAY || '', 10) || 365; // 정착 보호기(BANDIT_MINDAY는 테스트 전용)
+const BDT_MIN_DAY = parseInt(process.env.BANDIT_MINDAY || '', 10) || 365; // 정착 보호기(BANDIT_MINDAY는 테스트 전용) — ★[T984] 막는 것은 **마을 쪽 두 문**(해체 → 도적화 · 절망 이탈)뿐이다. 소굴 재결성(부팅 뒤 30~60일 · `BDT_DEN_CD0~1`)과 그 단의 길목 습격 · 행상 피살은 안 막는다(첫해에도 난다 — T951 · T984)
 const BDT_EXO_D = 15, BDT_EXO_GAP = 30;                        // 절망 이탈: 양동이 15+ → 30일마다 1명
 const BDT_UPKEEP = 0.5, BDT_STARVE = 10, BDT_CAP = 60;         // 일 소비 0.5/명·스톡0 10일→아사·비축 상한 60/명
 const BDT_RT_R = 30, BDT_RT_X = 0.15, BDT_RAID_R = 450;                          // 교역로 30셀=길목(배치 점수) · ★BDT_RAID_R=450 약탈 사정거리(소굴서 원정 — 위험인지 발주가 흡수). 토벌 BDT_SUP_R=400 초과 → 원거리 소굴은 호위로 관리
@@ -75,7 +75,7 @@ const FIXTURE = process.env.BANDIT_FIXTURE || '';
 const T577_WALK = process.env.T577_CAND_WALK === '1';
 const T577_RAMP = process.env.T577_RAMP !== '0';   // ★[T577 추신] 기본 켬
 function _t577Hash(name) { let h = 0; const s = String(name || ''); for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0; return h >>> 0; }
-function _bdtOpenDay(vil) {   // 이 마을의 보호기가 끝나는 날(끔이면 모두 BDT_MIN_DAY — 종전)
+function _bdtOpenDay(vil) {   // 이 마을의 보호기가 끝나는 날(끔이면 모두 BDT_MIN_DAY — 종전) · ★[T984] 이 날부터 그 마을이 해체 · 절망 이탈 문을 탄다(소굴 습격은 이 날과 무관)
   if (!T577_RAMP) return BDT_MIN_DAY;
   return BDT_MIN_DAY + Math.floor(denRng(_t577Hash(vil && vil.name) % 100003, 577) * BDT_MIN_DAY);
 }
@@ -802,7 +802,9 @@ function _bindRest(host, day0) {
 //     마을 하루 조각과 같은 그 예산)만큼 같은 순서(i<j · 유한 쌍)로 판다 — 문은 재개형(`routeSampleStep` → `getRouteResumable` · T85 비트 동일).
 //   ★얼린 길: 판이 도는 동안 교역로 A* 는 부팅 순간 코스 지도(`roads.frozenView`)를 본다 — 그 사이 사람이 와서 칸이 등급을 받아도
 //     종전(부팅 순간 한 번에 판 길)과 같은 바이트다. 끝나면 얼림을 풀고 `denScan` · 훅 · 저장 · 실체를 **부팅 날 그대로** 잇는다.
-//   ⚠그 사이 도적은 없다 — 새 세계는 원래 단 0 · 결성은 `BDT_MIN_DAY` 뒤(기본 365일)라 econ 쪽 위험(`banditRouteRisk`)도 종전과 같이 0 이다.
+//   ⚠그 사이 도적은 없다 — 새 세계는 원래 단 0 · 소굴이 아직 안 섰으니(표본이 끝나야 `denScan`) 재결성도 없고 econ 쪽 위험(`banditRouteRisk`)도 종전과 같이 0 이다.
+//     ★[T984 정정] 종전 글자 "결성은 `BDT_MIN_DAY` 뒤(기본 365일)"는 틀렸다 — `BDT_MIN_DAY` 는 마을의 해체 · 절망 이탈 문만 닫는다. 소굴 단은 소굴이 선 뒤
+//       `BDT_DEN_CD0~1`(30~60일) 카운트다운으로 서고 첫해부터 길목을 턴다(T951 · T984 실측). 빠른 시계 자는 이 조각을 `=0` 으로 끄므로 소굴은 부팅 날 선다.
 //   ★★[T655 2026-10-05 · PM 결정(위임)] **켬이 기본**이다 — 손잡이 없음 = 켬 · `T640_BOOT_SLICE=0` = 종전(부팅 안에서 한 번에).
 //     빠른 시계 자(`t577-server-run` · 하루 250ms)는 자 안에서 `=0` 을 박는다(표본이 도는 동안 수백 날이 지나 도적 데일리를 건너뛴다 — T640 회부 ①).
 const T640_BOOT_SLICE = typeof process !== 'undefined' && !!process.env && process.env.T640_BOOT_SLICE !== '0';

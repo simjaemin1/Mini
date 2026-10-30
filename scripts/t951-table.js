@@ -20,7 +20,10 @@ const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
 function bdtOpen() {
   const f = path.join(ROOT, 'server', 'bandits.js');
   const m = new Module(f, module); m.filename = f; m.paths = Module._nodeModulePaths(path.dirname(f));
-  m._compile(fs.readFileSync(f, 'utf8') + '\n;module.exports.__t951Open = _bdtOpenDay; module.exports.__t951Min = BDT_MIN_DAY;', f);
+  //   ★[T984 정정] `denRng` 의 씨 `S.denSeed` 는 운영에서 `init(host)` 가 `host.seed`(= 존 설정 `villageSeed` · 한반도 1020)로 놓는다 — 원문만 컴파일하면 씨가 비어
+//     보호기 끝 날이 운영과 달랐다(T951 표의 '도적 보호기 끝' 열이 그 값이었다). 같은 문(존 설정 → `(seed >>> 0) || 1`)으로 놓고 부른다.
+  const zs = (() => { const Z = require(path.join(ROOT, 'server', 'zone-config')); const z = (Z.ZONES || Z.zones || Z).hanbando || (Z.getZone && Z.getZone('hanbando')); return (z && z.villageSeed) || 1020; })();
+  m._compile(fs.readFileSync(f, 'utf8') + '\n;S.denSeed = (' + zs + ' >>> 0) || 1; module.exports.__t951Open = _bdtOpenDay; module.exports.__t951Min = BDT_MIN_DAY;', f);
   return { open: m.exports.__t951Open, min: m.exports.__t951Min };
 }
 const BO = bdtOpen();
