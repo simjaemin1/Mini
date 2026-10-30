@@ -906,3 +906,34 @@ native suffix byte-exact claim does not extend to re-encoded AAC samples.
 Diagnostics retain the original-source821frame mask and separately inspect
 the edited intro, impulse region and unchanged voiced region. The fresh
 experiment is limited to300seconds/20MB,2GiB RSS and12GiB free disk.
+
+`suppress_pattern_intro.py` and8synthetic tests were frozen before the actual
+run. The full local suite passes233tests. The actual CPU-only treatment
+completed in12.365seconds, with zero model calls/optimizer steps/new weights.
+Both native copies are exactly silent in0..0.5s and the original impulse
+region. Their0.575s-and-later PCM is byte-identical to the old controlled
+carriers, and original-source821supported YIN/periodicity/RMS arrays are also
+byte-identical before/after. This verifies the scoped edit, not learned quiet
+control or a global listening-quality pass.
+
+New private auditions059STEP/060centered20ms are each4.8s48k stereo AAC192k,
+230,400decoded frames,−24.0LUFS and−11.7dBFS true peak. Static gain stays+20.1dB
+for both, the same as057/058. The old files, their raw neural outputs and
+models remain preserved. Final observed RSS109,936,640bytes/MPS-driver0 and
+free disk16,304,549,888bytes are single observations, not peak measurements.
+The process ended normally; no training or background audio rendering runs.
+
+Independent native-file audit verified74inputs, independently reproduced the
+old three RMS controllers and new gain/PCM/WAVs, recomputed268interval nodes,
+and confirmed the original-source821supported arrays and suffix exactly.
+The separate AAC audit fully decoded both copies and measured delivered
+stereo per-channel quiet RMS: old0..0.5s−64.074dBFS and0.4..0.48s−60.459dBFS
+become exact digital silence in both new AACs. Earlier inverse-gain AAC
+diagnostics used a mono-downmix profile and must not be numerically mixed
+with these delivered-stereo per-channel values. Re-encoded suffixes are NOT
+byte-identical: old/new suffix difference RMS is−81.23/−81.32dBFS.
+Auditors imported no Torch, executed no model/GPU and wrote no files. Whole
+experiment files were4,899,855bytes before small audit/public-copy additions,
+within20MB. The frozen static-display helper also passes6separate tests.
+These observations establish a scoped authored-rest edit, not broad denoising
+success, learned quiet articulation or final listening-quality adoption.
