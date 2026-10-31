@@ -6190,6 +6190,7 @@ function _warEnsureDefense(body, sortie) {   // sortie=true — 출격 결단: �
   const d = _warDraftPids(w.def, comp, seed, w.id); if (!d) return;   // 주민 0 → 무저항(돌격이 목표에 닿으면 war-core walkover)
   const th = Math.atan2(ac.cy - dc.cy, ac.cx - dc.cx), so = scram ? WAR_SCRAM_STANDOFF : WL.WAR_DEF_STANDOFF;
   const rally = { cx: dc.cx + Math.cos(th) * so, cy: dc.cy + Math.sin(th) * so };
+  if (T1019_UNTRAP) { const c = _warStandNear(rally.cx, rally.cy); if (c) { rally.cx = c.cx; rally.cy = c.cy; } }   // ★[T1019 ⓒ] 켬 — 포진점이 막힌 칸이면 설 수 있는 가장 가까운 칸(못 찾으면 그 자리)
   const g = WL.buildGroup(d.units, comp.form, rally, th, seed); if (!g) return;
   _t790Mark(g);   // ★[T790] 켬 — 방어 대형도 몸 걸음(긴급 소집은 슬롯 놓기를 안 거친다 · 끔 = 무동작)
   g.holdPt = { cx: rally.cx, cy: rally.cy };
@@ -6224,6 +6225,24 @@ const T771_SORTIE_MISS = process.env.T771_SORTIE_MISS !== '0';   // ★[T781 10-
 //   새 수 0 · 새 손잡이 하나 · 칸 둘(몸 `_t956C0` = 돌격 시작의 접촉 수 · 전쟁 `_assaultMiss`).
 //   ★[T974 2026-10-28] 켬 기본(결함 고침 — PM · 열일곱째 판) · 되돌림 `T956_ASSAULT_MISS=0`(= 종전 글자 그대로).
 const T956_ASSAULT_MISS = process.env.T956_ASSAULT_MISS !== '0';   // ★[T974 10-28] 켬 기본 · 되돌림 `=0`
+// ★★[T1019 2026-10-31 · T1008 회부 2 ⓓ · ★PM] **헛 돌격 = 상대 hp 를 못 깎은 돌격** — 손잡이 `T1019_ASSAULT_HP`(끔 기본 · 켜는 값 `'1'` 하나 · 끔 = 종전 글자).
+//   T956 칸(위)은 "접촉 0 인 돌격"만 헛걸음으로 본다. 그런데 사거리 끝에서 화살 한 대(접촉 1 ~ 2 걸음)가 오가고 아무도 안 다친 돌격이
+//     날마다 같은 표로 되풀이됐다(보고 T1008 §3 ⓓ — 켬 판 넷 112날 · 되풀이 15 묶음 · 가장 긴 11날) — 접촉이 서 T956 칸이 안 선다.
+//   켬: 대치로 끝난 공격 돌격이 **방어 병사 hp 합을 못 줄였으면**(돌격 시작 hp — 그 뒤 든 병사는 다 찬 hp · 죽은 몸 = 0) 같은 칸(`w._assaultMiss`)을 세운다 —
+//     war-core 결단은 이튿날 돌격 줄을 뺀 같은 표(T956 그대로). 문턱 대신 hp 합 변화(새 수 0) · 칸 하나(몸 `_t1019H0` = 돌격 시작의 방어 병사 hp).
+//   T956 칸을 넓히는 줄이라 `T956_ASSAULT_MISS=0` 이면 안 돈다.
+const T1019_ASSAULT_HP = process.env.T1019_ASSAULT_HP === '1';
+// ★★[T1019 2026-10-31 · T1008 회부 1 ⓒ] **방어 포진점이 막힌 칸에 안 선다** — 손잡이 `T1019_UNTRAP`(켬 기본 후보 · 되돌림 `=0` · war-live 마중 · battle-core 클램프와 같은 손잡이 하나).
+//   지휘 몸은 대형 원점(포진점에서 시작)에 놓인다 — 포진점(회관 앞 12칸 · 45칸)이 집 발자국 · 나무 · 물 칸이면 그 몸이 그 칸 안에서 시작한다.
+//   켬: 포진점이 막혔으면 설 수 있는 가장 가까운 칸(`_warStandNear` — T541 ⓑ 나선 · 술어 `_warBlockedCell`) · 못 찾으면 종전 자리. 새 수 0.
+const T1019_UNTRAP = process.env.T1019_UNTRAP !== '0';
+function _t1019HpRef(f) { const H = new Map(); for (const u of f.ctx.units) if (u.side === 'B') H.set(u, Math.max(0, u.hp)); return H; }   // ★[T1019 ⓓ] 돌격 시작 — 방어 병사마다 hp
+function _t1019NoHurt(f, H0) {   // ★[T1019 ⓓ] 돌격 동안 방어 병사 hp 합이 안 줄었나(시작 hp · 그 뒤 든 병사는 다 찬 hp(battle-core spawn = maxHp) · 지금 hp(죽은 몸 = 0))
+  if (!f || !H0) return false;
+  let s0 = 0, s1 = 0;
+  for (const u of f.ctx.units) { if (u.side !== 'B') continue; s0 += H0.has(u) ? H0.get(u) : (u.maxHp || 0); s1 += Math.max(0, u.hp); }
+  return s1 >= s0;
+}
 // ── 교전 계기 — war-core onEngage(assault·sortie 결단)에서 부른다 ──
 //   true = 실체가 맡았다(w.phase='battle' — war-core 훅 계약). 군대 몸이 없으면(징발 0) 철수 처리(아래 _warNoArmy).
 function _warEngage(w, day, why) {
@@ -6239,6 +6258,7 @@ function _warEngage(w, day, why) {
   f.holder = side === 'A' ? 'B' : 'A';
   if (T771_SORTIE_MISS) body._t771C0 = side === 'B' ? (f.contacts | 0) : null;   // ★[T771] 방어 출격이 시작될 때의 접촉 수(대치 때 그대로면 헛걸음)
   if (T956_ASSAULT_MISS) body._t956C0 = side === 'A' ? (f.contacts | 0) : null;   // ★[T956] 공격 돌격이 시작될 때의 접촉 수(대치 때 그대로면 헛걸음)
+  if (T956_ASSAULT_MISS && T1019_ASSAULT_HP) body._t1019H0 = side === 'A' ? _t1019HpRef(f) : null;   // ★[T1019 ⓓ] 켬 — 공격 돌격이 시작될 때의 방어 병사 hp(대치 때 합이 안 줄었으면 헛걸음)
   state.warLive.orderAdvance(f, side);
   state.warLive.setSideCtl(f, side, true);   // 먼저 행군로 위를 대형으로 걷는다 — 곧은 길이 열리고 교전 거리에 들면 풀린다(_warAdvanceMarch)
   f.adv = { side, released: false, s: null };
@@ -6265,7 +6285,9 @@ function _warToStandoff(body) {
   if (body.defGroup) { WL.regroup(body.defGroup); if (!body.defGroup.holdPt) body.defGroup.holdPt = { cx: body.defGroup.cmd.cx, cy: body.defGroup.cmd.cy }; }
   body.mode = 'camp';
   if (T771_SORTIE_MISS && body._t771C0 != null) { if (!f || (f.contacts | 0) === body._t771C0) w._sortieMiss = state.world.day; body._t771C0 = null; }   // ★[T771] 출격이 접촉 없이 끝났다 — 그날을 전쟁에 남긴다
+  if (T1019_ASSAULT_HP && T956_ASSAULT_MISS && body._t956C0 != null && _t1019NoHurt(f, body._t1019H0)) w._assaultMiss = state.world.day;   // ★[T1019 ⓓ] 켬 — 방어 병사 hp 합을 못 줄인 돌격도 같은 칸(아래 T956 줄은 글자 그대로)
   if (T956_ASSAULT_MISS && body._t956C0 != null) { if (!f || (f.contacts | 0) === body._t956C0) w._assaultMiss = state.world.day; body._t956C0 = null; }   // ★[T956] 돌격이 접촉 없이 끝났다 — 그날을 전쟁에 남긴다
+  if (T1019_ASSAULT_HP) body._t1019H0 = null;
   w.phase = 'march'; w.op = 'camp'; w._sortie = false;
   state._warStat.standoff++;
   if (f) f.standoffs = (f.standoffs || 0) + 1;
@@ -8254,6 +8276,7 @@ function __p3Bind(mock) {
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
     _t681Day, _t681Flush, T681_ON, T703_MARCH,   // ★[T703] T681 켬(기본) 판의 하루 경계 두 자리 — 하네스가 운영 하루 마감과 같은 차례(econ 앞 `_t681Flush` · 캐러밴 앞 `_t681Day`)로 부른다(값 무변 · 내보내기만)
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
+    T1019_UNTRAP, T1019_ASSAULT_HP, _t1019HpRef, _t1019NoHurt,   // ★[T1019] 하네스(`test-t1019-untrap`)가 운영과 같은 문을 부른다(내보내기만)
     banditHost, _t841Sh,   // ★[T841] 도적 몸 신원 문(호스트 `bodySh`) — 하네스(`test-body-seed-other`)가 운영과 같은 호스트를 도적 층에 꽂는다(내보내기만)
     T811_ARMS_BODY, _warArmsLoad, _warArmsCollect, _warArmsUnload, _t811Fall, _t857Pick, _t811Sync, _t811Stat,   // ★[T811] 무기 몸 짐 — 하네스(`test-arms-body`)가 운영과 같은 문을 부른다(내보내기만)
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
