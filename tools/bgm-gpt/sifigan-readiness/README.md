@@ -937,3 +937,56 @@ experiment files were4,899,855bytes before small audit/public-copy additions,
 within20MB. The frozen static-display helper also passes6separate tests.
 These observations establish a scoped authored-rest edit, not broad denoising
 success, learned quiet articulation or final listening-quality adoption.
+
+## Authored eight-bar melody experiment, 2026-10-31
+
+The next request is to continue, not an adoption of059/060. This experiment
+uses the existing authorial `new-arirang-score/new_ari_8bar_r1.json`:19.2s,
+28notes and four written rests. Its interval sequence and rhythm are retained
+but all pitches are explicitly lowered one octave, G3–E4(196–330Hz), to stay
+closer to the training carrier. This is a new register test, not evidence that
+the generator reproduces every register naturally.
+
+Simply assigning new F0 to the source's first19.2s would import long source
+silences into written notes. Instead, only the clean sustained1.2–6.0s source
+conditioning is reused. Its43features and median-centered log-F0 residual
+repeat with an80ms phase offset, placing the four conditioning wraps inside
+the written rests. There are no PCM joins or source-waveform mixing. Each
+candidate is one continuous19.2s neural forward. The residual contains source
+pitch drift as well as ornament; calling it a separately learned vibrato model
+would be inaccurate.
+
+Two declared expression hypotheses are compared: borrowed pitch microcurve
+throughout sounding notes, versus delayed microcurve only on notes at least
+0.8s long. The latter waits0.30s, rises over0.15s and tapers over the final0.12s.
+Neither policy is an expert-approved traditional ornament rule or a newly
+trained performance predictor. They supersede the original score's vibrato-OFF
+draft only for this separately labelled consumer experiment.
+
+Absolute note targets use joint nearest5ms edge quantization, with the error
+reported against exact24kHz sample timing. Adjacent notes have explicitly
+authored20ms log-pitch transitions. Native amplitude uses40ms breath-starts
+and pre-rest releases, a10ms-down/20ms-up rearticulation notch, and exact zero
+inside written rests. A constant−40dBFS target is first applied through the
+existing20ms RMS controller, then the authored gate is multiplied. These are
+transparent synthesis controls, NOT learned breath/tongue/noise prediction.
+The old0.575s intro cut must not be reused: the first written note starts at0.
+
+The unchanged global3,000 generator must reproduce its old4.8s baseline
+byte-for-byte before two long forwards with identical initial CPU excitation
+RNG. Official float64 CPU excitation, float32 MPS transfer, four matching
+F0-dependent dilation inputs,43-channel statistics and pinned upstream stay
+unchanged. No optimizer updates, new weights, installations, external audio
+uploads, game defaults or runtime changes are involved.
+
+There is no performed reference recording of this authored score. Diagnostics
+therefore compare known control F0 with candidate YIN on fixed written-note
+denominators, reporting missing frames rather than selecting only successful
+output. Steady and boundary scopes remain separate;64ms YIN cannot certify
+20ms acoustic transitions. Exact native-rest silence does not imply that all
+AAC samples in those rests are exact zero. The combined new-file budget is
+50MB, with a10minute combined computation allowance,8GiB conservative
+RSS+MPS-driver cap for inference and at least12GiB free disk. Each disposable
+process also has a600second hard watchdog; combined elapsed time is checked
+separately. Neither metrics nor a successful render constitute listening
+approval.
