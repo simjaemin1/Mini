@@ -2562,10 +2562,16 @@ function _gateTradePotential(all, ta, foodFn, floor) {
 //     진짜 다시 세기(`_t957Take`)가 서면 이 일은 버린다(그 셈이 바탕을 세운다). T957 · T968 끔이면 안 선다(종전 — 첫 무효화가 BFS).
 const T977_DIST_SAME = process.env.T977_DIST_SAME !== '0';
 let _t996Job = null;   // ★[T996] 바탕만 다시 세우는 일 { g, slices, ms }
+// ★★[T1011 2026-10-31 · T996 회부 2 · 3 · 손잡이 `T1011_BASIS_LAZY`(끔 기본 — `=1` 만 켬 · 켬 기본 후보 회부)] **바탕 다시 세움을 첫 무효화까지 미룬다.**
+//   T996: 환호 적재 뒤 바탕을 BFS 로 다시 세웠다(부팅 직후 마감 밖 7.7초 일). 무효화가 끝내 안 서면 헛일이다(라이브 사람 벽 · 울타리는 드물다 — T957 §1).
+//   켬: 같은 자리 같은 일을 **확인만** 한다(`verifyOnly` — 옛 바탕 칸을 지금 술어로 · 제 메모 · `PATH_STEP_NODES` 알갱이). 같으면 바탕 그대로(첫 무효화 BFS 0).
+//     다르면 BFS 를 안 돌고 **바탕을 내려놓는다**(null) ⇒ 첫 무효화는 확인 없이 BFS 한 번(그 셈이 지금 격자 바탕을 세운다 · T977 그대로) · 그 뒤는 BFS 0.
+//   값: 바탕은 쓸 때 다시 판정되므로(T977 증서) 있든 없든 행렬은 같다 · 주입 0 · 공유 메모 무접촉(T996 과 같다). 끔 = T996 그대로.
+const T1011_BASIS_LAZY = process.env.T1011_BASIS_LAZY === '1';
 function distBasisRefresh() {
   if (!T977_DIST_SAME || !T957_DIST_SLICE || !T968_DIST_BG || T598_ROUTE_COST || T598_ROUTE_EDGE) return false;
   if (!state._distBasis || !state._distCtx || !state.world) return false;
-  _t996Job = { g: _distMatrixGen('바탕 다시 세움', { basisOnly: true }), slices: 0, ms: 0 };
+  _t996Job = { g: _distMatrixGen(T1011_BASIS_LAZY ? '바탕 확인' : '바탕 다시 세움', T1011_BASIS_LAZY ? { basisOnly: true, verifyOnly: true } : { basisOnly: true }), slices: 0, ms: 0 };
   _probe.t996Start = (_probe.t996Start | 0) + 1;
   return true;
 }
@@ -2672,6 +2678,13 @@ function* _distMatrixGen(reason, opts) {
   if (T977_DIST_SAME && !_prev && _wantK < 0 && !(T598_ROUTE_COST || T598_ROUTE_EDGE) && _t977Same(state._distBasis, villages, blk.length)) {
     if (yield* _t977Verify(state._distBasis.blk, isBlk, gw, _pr)) _same = state._distBasis.mat;   // 확인 고리는 따로 둔 발생기(BFS 발생기 몸통은 끔과 같게 · 한 몸에 둔 판 N1 ~ N4 는 BFS 노드당 시간이 컸다 · 보고 T977 §3)
     if (_pr) _pr.same = !!_same;
+  }
+  if (_basisOnly && opts.verifyOnly && !_same) {   // ★[T1011] 미룸 — 확인이 갈렸다: BFS 0 · 바탕을 내려놓는다(첫 무효화가 한 번 센다)
+    state._distBasis = null;
+    _probe.t1011Drop = (_probe.t1011Drop | 0) + 1;
+    console.log(`[${state.zoneId}] 🏘️ [T1011] 거리행렬 바탕 확인: 격자가 다르다(판정 ${sampled}칸 · ${Date.now() - t0}ms) — 바탕을 내려놓는다(BFS 0 · 첫 무효화가 한 번 센다)`);
+    if (_pr) _t977End(_pr);
+    return;
   }
   const INCR = _prev ? _wantK : -1;
   const mat = []; for (let i = 0; i < M; i++) { const row = new Array(M).fill(Infinity); row[i] = 0; mat.push(row); }
@@ -7376,6 +7389,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   t1026: { on: T1026_SLOT_KEEP, start: Object.assign({}, _t1026.start), yield: Object.assign({}, _t1026.yield), drop: Object.assign({}, _t1026.drop), held: _pathJob ? (_pathJob.door || '?') : null },   // ★[T1026] 문마다 일 시작 · 기다림 · 버림(셈만)
   t968: { on: T968_DIST_BG, bgSlices: _probe.t968BgSlices | 0, bgMs: _probe.t968BgMs | 0, bgSliceMax: _probe.t968BgSliceMax | 0, ready: _probe.t968Ready | 0, readyClose: _probe.t968ReadyClose | 0, closeSlices: _probe.t968CloseSlices | 0, frozen: _probe.t968Frozen | 0, waitQ: _probe.t968WaitQ | 0 },   // ★[T968] 셈만
   t977: { same: T977_DIST_SAME, probe: T977_PROBE, runs: _t977.runs },
+  t1011: { lazy: T1011_BASIS_LAZY, drop: _probe.t1011Drop | 0 },   // ★[T1011] 바탕 확인만(셈만)
   t996: { start: _probe.t996Start | 0, done: _probe.t996Done | 0, same: _probe.t996Same | 0, drop: _probe.t996Drop | 0, slices: _probe.t996Slices | 0, work: _probe.t996Work | 0, sliceMax: _probe.t996SliceMax | 0, ms: _probe.t996Ms | 0, busy: !!_t996Job },   // ★[T996] 바탕 다시 세움(셈만)   // ★[T977] 재는 판 전용 셈(끔 = 빈 목록)
   t957: { on: T957_DIST_SLICE, runs: _probe.t957Runs | 0, slices: _probe.t957Slices | 0, sliceMax: _probe.t957SliceMax | 0, workMax: _probe.t957WorkMax | 0, restart: _probe.t957Restart | 0, busy: !!_t957Dist },   // ★[T957] 거리행렬 조각(셈만)   // ★[T929] 도착 경계 귀환 길(두 팔 다 선다 — 셈만)   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
