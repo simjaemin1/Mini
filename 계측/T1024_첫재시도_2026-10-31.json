@@ -1,0 +1,1462 @@
+{
+ "카드": "T1024",
+ "날": "2026-10-31",
+ "바탕": "main 9c1f1e8 + origin/batch/flake-two-1030 87cf810",
+ "상자": "taskset -c 0,1 + 파이썬 바쁜 고리 셋(같은 두 코어) · 판은 차례로 하나씩",
+ "e2e_conn_상자": [
+  {
+   "arm": "on",
+   "run": 1,
+   "rc": 0,
+   "sec": 184,
+   "gapMs": 15205,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 2,
+   "rc": 0,
+   "sec": 182,
+   "gapMs": 15201,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 3,
+   "rc": 0,
+   "sec": 182,
+   "gapMs": 15208,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 4,
+   "rc": 0,
+   "sec": 174,
+   "gapMs": 15200,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 5,
+   "rc": 0,
+   "sec": 194,
+   "gapMs": 15200,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 6,
+   "rc": 0,
+   "sec": 174,
+   "gapMs": 15192,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 7,
+   "rc": 0,
+   "sec": 184,
+   "gapMs": 15177,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 8,
+   "rc": 0,
+   "sec": 186,
+   "gapMs": 15190,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 9,
+   "rc": 0,
+   "sec": 193,
+   "gapMs": 15213,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 10,
+   "rc": 0,
+   "sec": 196,
+   "gapMs": 15175,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 11,
+   "rc": 0,
+   "sec": 191,
+   "gapMs": 15192,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 12,
+   "rc": 0,
+   "sec": 191,
+   "gapMs": 15210,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 13,
+   "rc": 0,
+   "sec": 195,
+   "gapMs": 15201,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 14,
+   "rc": 0,
+   "sec": 186,
+   "gapMs": 15192,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 15,
+   "rc": 0,
+   "sec": 178,
+   "gapMs": 15188,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 16,
+   "rc": 0,
+   "sec": 182,
+   "gapMs": 15189,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 17,
+   "rc": 0,
+   "sec": 180,
+   "gapMs": 15178,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 18,
+   "rc": 0,
+   "sec": 182,
+   "gapMs": 15162,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 19,
+   "rc": 0,
+   "sec": 185,
+   "gapMs": 15185,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "on",
+   "run": 20,
+   "rc": 0,
+   "sec": 177,
+   "gapMs": 15187,
+   "attempt": 2,
+   "pass": 45,
+   "fail": 0
+  },
+  {
+   "arm": "off",
+   "run": 1,
+   "rc": 1,
+   "sec": 173,
+   "gapMs": 157,
+   "attempt": 2,
+   "pass": 44,
+   "fail": 1
+  },
+  {
+   "arm": "off",
+   "run": 2,
+   "rc": 1,
+   "sec": 167,
+   "gapMs": 192,
+   "attempt": 2,
+   "pass": 44,
+   "fail": 1
+  },
+  {
+   "arm": "off",
+   "run": 3,
+   "rc": 1,
+   "sec": 169,
+   "gapMs": 199,
+   "attempt": 2,
+   "pass": 44,
+   "fail": 1
+  },
+  {
+   "arm": "off",
+   "run": 4,
+   "rc": 1,
+   "sec": 172,
+   "gapMs": 181,
+   "attempt": 2,
+   "pass": 44,
+   "fail": 1
+  },
+  {
+   "arm": "off",
+   "run": 5,
+   "rc": 1,
+   "sec": 168,
+   "gapMs": 161,
+   "attempt": 2,
+   "pass": 44,
+   "fail": 1
+  }
+ ],
+ "재기동표": {
+  "설명": "scripts/t1024-restart-wait.js 0,10,30 · 존 3020 · 홀로(다른 e2e 없음) · 판마다 두 번",
+  "판": {
+   "켬_a": {
+    "knob": true,
+    "clientFirstWait": true,
+    "firstEnterMs": 669,
+    "rows": [
+     {
+      "D": 0,
+      "exitMs": 259,
+      "lostMs": 1416,
+      "zoneBootMs": 2824,
+      "downToUpMs": 4243,
+      "upToReadyMs": 696,
+      "downToReadyMs": 4939,
+      "tries": 3,
+      "marks": [
+       [
+        13237,
+        "connecting",
+        ""
+       ],
+       [
+        14254,
+        "connecting",
+        ""
+       ],
+       [
+        16254,
+        "connecting",
+        ""
+       ],
+       [
+        16285,
+        "entering",
+        ""
+       ],
+       [
+        16615,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        375,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1381,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1383,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        2399,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        2401,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        4398,
+        "[recover] primary 재연결 hanbando"
+       ]
+      ]
+     },
+     {
+      "D": 10,
+      "exitMs": 231,
+      "lostMs": 1379,
+      "zoneBootMs": 2887,
+      "downToUpMs": 13122,
+      "upToReadyMs": 3693,
+      "downToReadyMs": 16815,
+      "tries": 5,
+      "marks": [
+       [
+        18454,
+        "connecting",
+        ""
+       ],
+       [
+        19470,
+        "connecting",
+        ""
+       ],
+       [
+        21487,
+        "connecting",
+        ""
+       ],
+       [
+        25504,
+        "connecting",
+        ""
+       ],
+       [
+        33520,
+        "connecting",
+        ""
+       ],
+       [
+        33523,
+        "entering",
+        ""
+       ],
+       [
+        33797,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        330,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1327,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1329,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        2343,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        2346,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        4360,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        4362,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        6075,
+        "[recover] ★서버 틱 5.8초간 없음 — 유령 클라. 예측 정지"
+       ],
+       [
+        8376,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        8379,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        11075,
+        "[recover] ★서버 틱 10.8초 — 소켓 강제 close · 재연결"
+       ],
+       [
+        16392,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        16815,
+        "[recover] 서버 틱 복구 — 예측 재개"
+       ]
+      ]
+     },
+     {
+      "D": 30,
+      "exitMs": 219,
+      "lostMs": 1369,
+      "zoneBootMs": 2697,
+      "downToUpMs": 32921,
+      "upToReadyMs": 13998,
+      "downToReadyMs": 46919,
+      "tries": 7,
+      "marks": [
+       [
+        35470,
+        "connecting",
+        ""
+       ],
+       [
+        36487,
+        "connecting",
+        ""
+       ],
+       [
+        38503,
+        "connecting",
+        ""
+       ],
+       [
+        42519,
+        "connecting",
+        ""
+       ],
+       [
+        50520,
+        "connecting",
+        ""
+       ],
+       [
+        65535,
+        "connecting",
+        ""
+       ],
+       [
+        80551,
+        "connecting",
+        ""
+       ],
+       [
+        80555,
+        "entering",
+        ""
+       ],
+       [
+        80852,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        296,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1306,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1310,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        2321,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        2323,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        4338,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        4341,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        6036,
+        "[recover] ★서버 틱 5.7초간 없음 — 유령 클라. 예측 정지"
+       ],
+       [
+        8354,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        8356,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        11036,
+        "[recover] ★서버 틱 10.7초 — 소켓 강제 close · 재연결"
+       ],
+       [
+        16355,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        16358,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        31371,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        31373,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        46387,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        46919,
+        "[recover] 서버 틱 복구 — 예측 재개"
+       ]
+      ]
+     }
+    ]
+   },
+   "켬_b": {
+    "knob": true,
+    "clientFirstWait": true,
+    "firstEnterMs": 689,
+    "rows": [
+     {
+      "D": 0,
+      "exitMs": 224,
+      "lostMs": 1379,
+      "zoneBootMs": 2782,
+      "downToUpMs": 4164,
+      "upToReadyMs": 562,
+      "downToReadyMs": 4726,
+      "tries": 3,
+      "marks": [
+       [
+        13166,
+        "connecting",
+        ""
+       ],
+       [
+        14166,
+        "connecting",
+        ""
+       ],
+       [
+        16182,
+        "connecting",
+        ""
+       ],
+       [
+        16204,
+        "entering",
+        ""
+       ],
+       [
+        16504,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        333,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1348,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1350,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        2349,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        2351,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        4364,
+        "[recover] primary 재연결 hanbando"
+       ]
+      ]
+     },
+     {
+      "D": 10,
+      "exitMs": 233,
+      "lostMs": 1395,
+      "zoneBootMs": 2456,
+      "downToUpMs": 12695,
+      "upToReadyMs": 4115,
+      "downToReadyMs": 16810,
+      "tries": 5,
+      "marks": [
+       [
+        18165,
+        "connecting",
+        ""
+       ],
+       [
+        19165,
+        "connecting",
+        ""
+       ],
+       [
+        21165,
+        "connecting",
+        ""
+       ],
+       [
+        25182,
+        "connecting",
+        ""
+       ],
+       [
+        33198,
+        "connecting",
+        ""
+       ],
+       [
+        33202,
+        "entering",
+        ""
+       ],
+       [
+        33460,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        343,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1355,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1356,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        2354,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        2356,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        4354,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        4357,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        5434,
+        "[recover] ★서버 틱 5.2초간 없음 — 유령 클라. 예측 정지"
+       ],
+       [
+        8371,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        8375,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        10434,
+        "[recover] ★서버 틱 10.2초 — 소켓 강제 close · 재연결"
+       ],
+       [
+        16388,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        16809,
+        "[recover] 서버 틱 복구 — 예측 재개"
+       ]
+      ]
+     },
+     {
+      "D": 30,
+      "exitMs": 226,
+      "lostMs": 1370,
+      "zoneBootMs": 2621,
+      "downToUpMs": 32851,
+      "upToReadyMs": 13979,
+      "downToReadyMs": 46830,
+      "tries": 7,
+      "marks": [
+       [
+        35181,
+        "connecting",
+        ""
+       ],
+       [
+        36198,
+        "connecting",
+        ""
+       ],
+       [
+        38198,
+        "connecting",
+        ""
+       ],
+       [
+        42198,
+        "connecting",
+        ""
+       ],
+       [
+        50214,
+        "connecting",
+        ""
+       ],
+       [
+        65230,
+        "connecting",
+        ""
+       ],
+       [
+        80246,
+        "connecting",
+        ""
+       ],
+       [
+        80250,
+        "entering",
+        ""
+       ],
+       [
+        80515,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        326,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1335,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1338,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        2352,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        2353,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        4352,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        4354,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        5399,
+        "[recover] ★서버 틱 5.1초간 없음 — 유령 클라. 예측 정지"
+       ],
+       [
+        8352,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        8356,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        10399,
+        "[recover] ★서버 틱 10.1초 — 소켓 강제 close · 재연결"
+       ],
+       [
+        16368,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        16370,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        31386,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        31386,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        46400,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        46831,
+        "[recover] 서버 틱 복구 — 예측 재개"
+       ]
+      ]
+     }
+    ]
+   },
+   "끔_a": {
+    "knob": false,
+    "clientFirstWait": false,
+    "firstEnterMs": 672,
+    "rows": [
+     {
+      "D": 0,
+      "exitMs": 250,
+      "lostMs": 435,
+      "zoneBootMs": 2557,
+      "downToUpMs": 2995,
+      "upToReadyMs": 853,
+      "downToReadyMs": 3848,
+      "tries": 3,
+      "marks": [
+       [
+        12230,
+        "connecting",
+        ""
+       ],
+       [
+        13243,
+        "connecting",
+        ""
+       ],
+       [
+        15259,
+        "connecting",
+        ""
+       ],
+       [
+        15268,
+        "entering",
+        ""
+       ],
+       [
+        15578,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        333,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        335,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        339,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1348,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1350,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        3365,
+        "[recover] primary 재연결 hanbando"
+       ]
+      ]
+     },
+     {
+      "D": 10,
+      "exitMs": 229,
+      "lostMs": 356,
+      "zoneBootMs": 2658,
+      "downToUpMs": 12891,
+      "upToReadyMs": 2969,
+      "downToReadyMs": 15860,
+      "tries": 5,
+      "marks": [
+       [
+        16326,
+        "connecting",
+        ""
+       ],
+       [
+        17342,
+        "connecting",
+        ""
+       ],
+       [
+        19359,
+        "connecting",
+        ""
+       ],
+       [
+        23376,
+        "connecting",
+        ""
+       ],
+       [
+        31392,
+        "connecting",
+        ""
+       ],
+       [
+        31398,
+        "entering",
+        ""
+       ],
+       [
+        31704,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        313,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        314,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        315,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1330,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1331,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        3346,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        3349,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        6232,
+        "[recover] ★서버 틱 5.9초간 없음 — 유령 클라. 예측 정지"
+       ],
+       [
+        7362,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        7367,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        11233,
+        "[recover] ★서버 틱 10.9초 — 소켓 강제 close · 재연결"
+       ],
+       [
+        15379,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        15859,
+        "[recover] 서버 틱 복구 — 예측 재개"
+       ]
+      ]
+     },
+     {
+      "D": 30,
+      "exitMs": 221,
+      "lostMs": 407,
+      "zoneBootMs": 2950,
+      "downToUpMs": 33175,
+      "upToReadyMs": 12723,
+      "downToReadyMs": 45898,
+      "tries": 7,
+      "marks": [
+       [
+        32393,
+        "connecting",
+        ""
+       ],
+       [
+        33409,
+        "connecting",
+        ""
+       ],
+       [
+        35425,
+        "connecting",
+        ""
+       ],
+       [
+        39442,
+        "connecting",
+        ""
+       ],
+       [
+        47459,
+        "connecting",
+        ""
+       ],
+       [
+        62474,
+        "connecting",
+        ""
+       ],
+       [
+        77474,
+        "connecting",
+        ""
+       ],
+       [
+        77480,
+        "entering",
+        ""
+       ],
+       [
+        77774,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        297,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        298,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        304,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1312,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1314,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        3329,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        3331,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        6148,
+        "[recover] ★서버 틱 5.9초간 없음 — 유령 클라. 예측 정지"
+       ],
+       [
+        7346,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        7348,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        11148,
+        "[recover] ★서버 틱 10.9초 — 소켓 강제 close · 재연결"
+       ],
+       [
+        15363,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        15366,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        30380,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        30382,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        45378,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        45898,
+        "[recover] 서버 틱 복구 — 예측 재개"
+       ]
+      ]
+     }
+    ]
+   },
+   "끔_b": {
+    "knob": false,
+    "clientFirstWait": false,
+    "firstEnterMs": 649,
+    "rows": [
+     {
+      "D": 0,
+      "exitMs": 231,
+      "lostMs": 379,
+      "zoneBootMs": 2741,
+      "downToUpMs": 3123,
+      "upToReadyMs": 808,
+      "downToReadyMs": 3931,
+      "tries": 3,
+      "marks": [
+       [
+        12222,
+        "connecting",
+        ""
+       ],
+       [
+        13235,
+        "connecting",
+        ""
+       ],
+       [
+        15251,
+        "connecting",
+        ""
+       ],
+       [
+        15277,
+        "entering",
+        ""
+       ],
+       [
+        15604,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        362,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        362,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        365,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1376,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1377,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        3392,
+        "[recover] primary 재연결 hanbando"
+       ]
+      ]
+     },
+     {
+      "D": 10,
+      "exitMs": 226,
+      "lostMs": 377,
+      "zoneBootMs": 2743,
+      "downToUpMs": 12974,
+      "upToReadyMs": 2899,
+      "downToReadyMs": 15873,
+      "tries": 5,
+      "marks": [
+       [
+        16414,
+        "connecting",
+        ""
+       ],
+       [
+        17418,
+        "connecting",
+        ""
+       ],
+       [
+        19434,
+        "connecting",
+        ""
+       ],
+       [
+        23451,
+        "connecting",
+        ""
+       ],
+       [
+        31467,
+        "connecting",
+        ""
+       ],
+       [
+        31472,
+        "entering",
+        ""
+       ],
+       [
+        31750,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        357,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        357,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        364,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1361,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1366,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        3377,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        3380,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        6217,
+        "[recover] ★서버 틱 5.9초간 없음 — 유령 클라. 예측 정지"
+       ],
+       [
+        7394,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        7397,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        11216,
+        "[recover] ★서버 틱 10.9초 — 소켓 강제 close · 재연결"
+       ],
+       [
+        15410,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        15863,
+        "[recover] 서버 틱 복구 — 예측 재개"
+       ]
+      ]
+     },
+     {
+      "D": 30,
+      "exitMs": 219,
+      "lostMs": 378,
+      "zoneBootMs": 2452,
+      "downToUpMs": 32675,
+      "upToReadyMs": 13237,
+      "downToReadyMs": 45912,
+      "tries": 7,
+      "marks": [
+       [
+        32492,
+        "connecting",
+        ""
+       ],
+       [
+        33501,
+        "connecting",
+        ""
+       ],
+       [
+        35517,
+        "connecting",
+        ""
+       ],
+       [
+        39534,
+        "connecting",
+        ""
+       ],
+       [
+        47550,
+        "connecting",
+        ""
+       ],
+       [
+        62566,
+        "connecting",
+        ""
+       ],
+       [
+        77582,
+        "connecting",
+        ""
+       ],
+       [
+        77588,
+        "entering",
+        ""
+       ],
+       [
+        77890,
+        "ready",
+        ""
+       ]
+      ],
+      "console": [
+       [
+        351,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        351,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        354,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        1360,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        1361,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        3376,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        3379,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        6132,
+        "[recover] ★서버 틱 5.9초간 없음 — 유령 클라. 예측 정지"
+       ],
+       [
+        7392,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        7394,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        11132,
+        "[recover] ★서버 틱 10.9초 — 소켓 강제 close · 재연결"
+       ],
+       [
+        15408,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        15411,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        30426,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        30431,
+        "[ws] close hanbando role=primary code=1006 reason=(empty) wasClean=false"
+       ],
+       [
+        45441,
+        "[recover] primary 재연결 hanbando"
+       ],
+       [
+        45912,
+        "[recover] 서버 틱 복구 — 예측 재개"
+       ]
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "실클라_하네스_켬": [
+  "e2e-handoff-proto rc=0 sec=113",
+  "e2e-trade rc=0 sec=103",
+  "e2e-zone-cross rc=0 sec=741",
+  "HDONE"
+ ],
+ "버린판": "첫 재기동 판 둘(rw · rw2)은 도구 존이 3120 이라 클라가 3020 에 있던 옆 e2e-conn 존에 붙었다 — 버림(보고 §3-1)"
+}
