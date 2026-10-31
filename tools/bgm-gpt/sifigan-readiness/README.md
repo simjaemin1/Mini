@@ -1079,3 +1079,30 @@ Pre-quality range review also finds that the source Arirang cf0 spans275–673Hz
 supported frames,389are above that earlier maximum. Thus this remains a valid
 same-performance A/B, but includes a stronger fixed-template register stress
 and cannot directly quantify or uniquely explain the063/064rejection.
+
+Actual inference completed three forwards in10.829s, reproducing both old
+baselines exactly. Export completed in10.772s; combined21.601s is within300s.
+Original065/A066/B067are4.8s48k stereo AAC192k with230,400decoded frames and
+−24.0/−24.1/−24.0LUFS. A066is byte-identical to old054(SHA0cbc5dfc…95db78),
+not a newly improved model. Source PCM, pitch/time, same pre-A/B noise,
+fit statistics and global3,000 weights remain unchanged.
+
+Original-fixed pitch support is825frames and spectral support960frames;
+source-quiet support is0, so this excerpt does not test quiet-rest suppression.
+After the explicit RMS controller, A/Bnear50counts are806/805of825 with10
+missing measurements each. Pre-wrap near50is787of806for both. Raw spectral
+shape distance to the source is.438128/.476258; controlled is.430382/.464618.
+Direct controlled A/Bdistance on the SAME original960frame mask is.091506.
+The fixed pre-wrap distances are.424493/.459555, so their difference is not
+confined to the last wrap. These quantities are not naturalness/identity
+scores, fractions of the063failure, or proof of one exclusive failure cause.
+
+Independent read-only audits verified57raw input hashes and56official files,
+all12saved arrays, historical baselines/RNG order, then63export bindings,
+the RMS/gain/native PCM arithmetic and1,384diagnostic values to1e-12. All three
+AACs were fully decoded and measured. The local suite passes263tests and the
+unchanged display helper separately passes6. Outputs and original/model
+evidence remain private; no optimizer updates, packages, source PCM mixing,
+game runtime/default changes or background training occurred. The candidate
+comparison still needs user listening; actual-source reconstruction quality
+and missing score-conditioned acoustics both remain unresolved.
