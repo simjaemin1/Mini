@@ -2495,6 +2495,17 @@ const GHOST_TTL_MS = 1500;      // 이 시간 넘게 갱신 안 된 ghost 제거
 const corpses = new Map();      // cid -> { cid, mobType, x, y, drops, spawnTime, killerPid }
 let nextCorpseId = 1;
 const CORPSE_DECAY_MS = 5 * 60 * 1000;  // 5분 후 부패
+// ★★[T1025 2026-10-31 · T1005 회부 4] 손잡이 `T1025_EV_CORPSE`(켬 기본 · 되돌림 `=0` · 정본 머리말 villages.js `T1025_EV_CORPSE`).
+//   사체는 메모리 전용이다 — 사람이 잡은 들짐승을 잡은 순간 사냥터 장부(`huntKillAt` → T1005 틱 끝 행)에서 빼면 도살 전에 존이 죽을 때 사냥감 한 마리가 사라졌다(보고/T1005 §2 3′).
+//   켬 = 잡은 순간엔 사체에 자리(`huntAt`)만 적고, 장부는 사체가 끝날 때(도살 · 부패) 뺀다 ⇒ 도살 전에 죽으면 사체 · 장부 둘 다 잡기 전 그대로(한 마리 = 한 마리).
+//   끔 = 잡은 순간 뺀다(종전 글자).
+const T1025_EV_CORPSE = process.env.T1025_EV_CORPSE !== '0';
+const _t1025Corpse = { deferred: 0, butchered: 0, rotted: 0 };
+function _t1025CorpseEnd(c, how) {
+  if (!c || !c.huntAt) return;
+  _t1025Corpse[how]++;
+  try { SimVillages.huntKillAt(c.huntAt.x, c.huntAt.y); } catch (e) {}
+}
 
 function spawnCorpse(mob, killerPid) {
   const cid = `c${nextCorpseId++}`;
@@ -2531,6 +2542,7 @@ function butcherCorpse(player, cid) {
   const koName = def?.ko || corpse.mobType;
   sendInventory(player);
   send(player.ws, { type: 'notice', text: `${koName} 도살 +${parts.join(', ')}` });
+  _t1025CorpseEnd(corpse, 'butchered');   // ★[T1025] 켬 — 잡을 때 미룬 사냥터 장부 한 마리(T1005 이 틱 끝 행 · 끔 = `huntAt` 없음 · 무동작)
   savePlayer(player);
   corpses.delete(cid);
   broadcast({ type: 'corpse_removed', cid });
@@ -2548,6 +2560,7 @@ setInterval(() => {
   const now = Date.now();
   for (const [cid, c] of corpses) {
     if (now - c.spawnTime > CORPSE_DECAY_MS) {
+      _t1025CorpseEnd(c, 'rotted');   // ★[T1025] 켬 — 도살 없이 썩어도 그 짐승은 죽었다(장부 한 마리)
       corpses.delete(cid);
       broadcast({ type: 'corpse_removed', cid });
     }
@@ -12771,7 +12784,7 @@ function __testBind() {
     T987_MOB_RESPAWN, respawnMobLater,   // ★[T987] 다시 낳기 하네스(`test-mob-respawn` · 내보내기만)
     T998_NPC_WILD_SYNC,   // ★[T998] 랩 동기 하네스(`test-npc-wild-sync` · 내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
-    spawnCorpse, butcherCorpse, corpses,
+    spawnCorpse, butcherCorpse, corpses, t1025Corpse: _t1025Corpse,   // ★[T1025] 사체 장부 미룸 셈(탐침이 읽는다)
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
     SMELT_BASE_MS, SMELT_MIN_MS, KILN_BURN_MS, KILN_BATCH_MS_PER, _smeltDurationMs, _jobProgress,
     // ── 조업 **페이싱** 실측(2026-08-02f ②) ── 단조까지 이어야 사슬 한 바퀴의 실시간이 나온다
@@ -13312,7 +13325,7 @@ async function tryAttack(player) {
     if (bestMob.isWild) {
       Wildlife.onMobHit(bestMob, atk, player);
       // ★[T146] 플레이어가 잡았으면 **마을 장부에서도 한 마리 준다**(§0-ⓒ) — 새 수 0(잡은 것이 곧 그 수).
-      if (bestMob.hp <= 0) { try { SimVillages.huntKillAt(bestMob.x, bestMob.y); } catch (e) {} }
+      if (bestMob.hp <= 0) { if (T1025_EV_CORPSE) bestMob._t1025Hunt = true; else try { SimVillages.huntKillAt(bestMob.x, bestMob.y); } catch (e) {} }   // ★[T1025] 켬 = 사체가 끝날 때(아래 `spawnCorpse` 뒤 · `_t1025CorpseEnd`)
     }
     // 늑대는 공격당하면 즉시 어그로 — 단 길든 mob은 어그로 안 가짐. 팩 동료도 같이 어그로.
     if (bestMob.type === 'wolf' && !bestMob.tameOwner) {
@@ -13326,7 +13339,8 @@ async function tryAttack(player) {
     }
     if (bestMob.hp <= 0) {
       // Phase 5-7: 사체 entity 생성 (즉시 인벤 X. 도살 액션 필요).
-      spawnCorpse(bestMob, player.playerId);
+      const _cp = spawnCorpse(bestMob, player.playerId);
+      if (bestMob._t1025Hunt && _cp) { _cp.huntAt = { x: bestMob.x, y: bestMob.y }; _t1025Corpse.deferred++; }   // ★[T1025] 사냥터 장부 한 마리는 이 사체가 끝날 때
       send(player.ws, { type: 'notice', text: `${ANIMALS[bestMob.type]?.ko || bestMob.type} 사냥 — 사체 도살 (E)` });
       // DB + chunk에서 mob 제거
       if (bestMob.dbId) { try { db.deleteMob(bestMob.dbId); } catch (e) {} }
