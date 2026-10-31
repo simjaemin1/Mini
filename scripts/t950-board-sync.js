@@ -5,6 +5,7 @@
 // 새 착지 뒤 한 줄:
 //   git fetch origin main '+refs/heads/batch/*:refs/remotes/origin/batch/*' && node scripts/t950-board-sync.js 840 999 origin/main --apply
 //   (--apply 없이 돌리면 표만 낸다 · `--md` 는 보고에 붙일 markdown 표 · `--since 2026-10-01` = 10-15 앞 카드 · T985)
+//   남은 옛 행(T1015): node scripts/t950-board-sync.js 1 839 origin/main --since 2026-05-01 --rest --apply && node scripts/t992-board-oldstatus.js 1 816 origin/main --apply
 //
 // 규칙(전부 글자 · git):
 //   완료 해시 = 카드의 `[승인 대기 · T###` 커밋 중 main 에 든 것 가운데 **가장 이른 착지 닻 → 같은 닻이면 작성일 → 같으면 history 순서**의 첫 커밋(8자).
@@ -18,6 +19,9 @@ const root = path.join(__dirname, '..');
 const args = process.argv.slice(2);
 const flag = f => { const i = args.indexOf(f); if (i >= 0) { args.splice(i, 1); return true; } return false; };
 const APPLY = flag('--apply'), MD = flag('--md');
+// ★[T1015] `--rest` — 남은 옛 행 셋(T1006 회부 1 · 3 · ★PM): ⓐ 해시 칸이 카드 번호면 비고 머리로(T985 꼴) · ⓑ 해시 칸이 해시 꼴인데 main 의 커밋이 하나도 없으면(되얹기 앞 가지 커밋 · 저장소에 없는 해시) · 자리표 `(land)` 면 T950 규칙의 첫 착지 커밋으로(날 · 세션 같은 다른 글은 그대로) ·
+//   ⓒ 해시 칸이 비었고 T950 규칙으로 못 찾으면 상태 글 괄호 머리의 해시(main 의 커밋 · 여럿이면 가장 이른 것)를 해시 칸으로 옮기고 상태 글에서 뗀다. 같은 카드의 겹친 행도 다 본다.
+const REST = flag('--rest');
 // ★[T985] `--since YYYY-MM-DD` — 닻 · 카드 커밋을 찾는 창의 앞 끝(기본 2026-10-15 = T950 그대로). T709 ~ T816 처럼 10-15 앞에 커밋이 있는 카드는 더 이른 날을 준다.
 const SINCE = (() => { const i = args.indexOf('--since'); if (i < 0) return '2026-10-15'; const v = args[i + 1]; args.splice(i, 2); if (!/^\d{4}-\d\d-\d\d$/.test(v || '')) throw new Error('--since YYYY-MM-DD'); return v; })();
 const FROM = +(args[0] || 840), TO = +(args[1] || 999), REF = args[2] || 'origin/main';
@@ -100,11 +104,47 @@ for (let n = FROM; n <= TO; n++) {
     if (touched) { lines[b.i] = c.join('|'); changes.push(n); }
   }
 }
-if (APPLY) { fs.writeFileSync(BOARD, lines.join('\n')); console.error(`보드 고침 ${changes.length}행`); }
-if (MD) {
+// ★[T1015] --rest
+const rest = [];
+if (REST) {
+  const firstOf = {}; rows.forEach(r => { if (r.first && !r.fallback) firstOf[r.n] = r.first; });
+  const inMainCommit = t => { if (!/^[0-9a-f]{7,40}$/.test(t)) return null; try { const h = sh(`git rev-parse -q --verify ${t}^{commit}`); return mainIdx.has(h) ? h : null; } catch (e) { return null; } };
+  lines.forEach((l, i) => {
+    const m = l.match(/^\| T(\d+) \|/); if (!m) return;
+    const n = +m[1]; if (n < FROM || n > TO) return;
+    const c = l.split('|'); if (c.length < 10) return;
+    const old = { hash: c[7].trim(), note: c[8].trim(), status: c[4].trim() };
+    let hash = old.hash, note = old.note, status = old.status; const why = [];
+    if (/^T\d+([ ·,]+T\d+)*$/.test(hash)) { note = note.startsWith(hash) ? note : (note && note !== '—' ? `${hash} · ${note}` : hash); hash = '—'; why.push('ⓐ 출처 카드 → 비고 머리'); }
+    {   // ⓑ 칸이 해시 꼴(괄호 · `·` `+` 로 이은 여럿 포함)인데 main 의 커밋이 하나도 없으면 · 자리표 `(land)` — 날 · 세션 같은 다른 글(옛 칸 배치 행)은 안 건드린다
+      const toks = hash.replace(/^\((.*)\)$/, '$1').split(/[+·, /]+/).filter(Boolean);
+      const hexy = toks.length && toks.every(t => /^[0-9a-f]{7,40}$/.test(t));
+      if (firstOf[n] && (hash === '(land)' || (hexy && !toks.some(inMainCommit)))) { why.push(`ⓑ ${hash} → ${firstOf[n].slice(0, 8)}`); hash = firstOf[n].slice(0, 8); }
+    }
+    if ((hash === '—' || hash === '') && !firstOf[n]) {
+      const sm = status.match(/^(\*\*완료·main\()([0-9a-f]{7,40}(?:[+·, /]+[0-9a-f]{7,40})*)\s*(?:·\s*)?(.*)(\)\*\*)$/);
+      if (sm) {
+        const ts = sm[2].split(/[+·, /]+/).map(t => [t, inMainCommit(t)]).filter(x => x[1]);
+        if (ts.length) {
+          ts.sort((x, y) => mainIdx.get(y[1]) - mainIdx.get(x[1]));   // 가장 이른(rev-list 뒤쪽) 것
+          hash = ts[0][1].slice(0, 8); status = sm[3] ? `${sm[1]}${sm[3]}${sm[4]}` : '**완료·main**';
+          why.push(`ⓒ 상태 글 해시 ${sm[2]} → 해시 칸 ${hash}`);
+        }
+      }
+    }
+    if (!why.length) return;
+    rest.push({ n, i, why: why.join(' · '), before: old, after: { hash, note, status } });
+    if (APPLY) { c[4] = ' ' + status + ' '; c[7] = ' ' + hash + ' '; c[8] = ' ' + note + ' '; lines[i] = c.join('|'); }
+  });
+}
+if (APPLY) { fs.writeFileSync(BOARD, lines.join('\n')); console.error(`보드 고침 ${changes.length}행` + (REST ? ` · --rest ${rest.length}행` : '')); }
+if (MD && REST) {
+  console.log('| 카드 | 고침 | 해시 칸(전 → 뒤) | 상태(뒤) |\n|---|---|---|---|');
+  for (const r of rest) console.log(`| T${r.n} | ${r.why} | ${r.before.hash} → ${r.after.hash} | ${r.after.status.slice(0, 60)} |`);
+} else if (MD) {
   console.log('| 카드 | 보드 상태(전) | 완료 해시 | 첫 착지 닻 | 판정 |\n|---|---|---|---|---|');
   for (const r of rows) console.log(`| T${r.n} | ${r.status} | ${r.first ? '`' + r.first.slice(0, 8) + '`' + (r.fallback ? '(착지 커밋)' : '') : '—'} | ${r.land || '-'} | ${r.note} |`);
 } else {
   const sum = {}; rows.forEach(r => { const k = r.note.replace(/\d+/g, '#'); sum[k] = (sum[k] || 0) + 1; });
-  console.log(JSON.stringify({ ref: REF, main: sh(`git rev-parse --short ${REF}`), anchors: anchors.length, rows: rows.length, sum, hashFilled: rows.filter(r => r.first).length, statusChanges: rows.filter(r => r.newStatus).map(r => `T${r.n}: ${r.status} → ${r.newStatus}`) }, null, 1));
+  console.log(JSON.stringify({ ref: REF, ...(REST ? { rest: rest.map(r => `T${r.n}: ${r.why}`) } : {}), main: sh(`git rev-parse --short ${REF}`), anchors: anchors.length, rows: rows.length, sum, hashFilled: rows.filter(r => r.first).length, statusChanges: rows.filter(r => r.newStatus).map(r => `T${r.n}: ${r.status} → ${r.newStatus}`) }, null, 1));
 }
