@@ -547,6 +547,15 @@ if (require.main === module) (async () => {
     //   (실측: 대조군 빈 땅이 어떤 판에선 어두운 픽셀 1767 이 나왔다 — 땅이 어두웠을 뿐이다).
     //   ⇒ **글자의 서명**을 센다: 이름표는 흰 글자 + 검은 외곽선이라 **밝은 픽셀 바로 옆에
     //     어두운 픽셀**이 있다. 지면·하늘·지붕엔 그런 자리가 거의 없다. 구조를 재는 자다.
+    // ★★[T1021 2026-10-31] 화소를 읽기 **전에** A 의 하늘과 바람을 끈다 — 아래 ⓙ·ⓚ 가 B 에 거는 그 두 줄(T98)이 A 엔 없었다.
+    //   빗줄기는 "밝은 줄 바로 옆 어두운 땅" — 이 자가 세는 **글자 서명과 같은 꼴**이라, 비 오는 날이면 두 띠(머리 위 · 빈 땅 대조군)에
+    //   하늘이 섞였다(비 날 흉내 실측: 이 `getImageData` 순간 줄기 360). 두 띠는 한 프레임이라 서로 같은 조건이지만, 재는 대상이 아닌
+    //   층이 대조군을 들어 올리거나(빨강) 머리 띠를 채워(자명 통과) 판을 흔든다. A 는 오래전에 월드에 들어와 손잡이가 있다 — 판정문 · 문턱 무변.
+    await A.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 });
+      if (window.__terrain19) window.__terrain19.windOff = true; });
+    await sleep(600);
+    { const r = await A.evaluate(() => (typeof window.__rainDbg === 'function' ? window.__rainDbg() : null));
+      ok(!!(r && r.on === false && r.n === 0), '★전제 [T1021] — ⓔ 를 읽기 전에 A 의 비·눈 층이 꺼졌다(그린 줄기 0)', r ? JSON.stringify({ on: r.on, n: r.n }) : 'X'); }
     const bands = await A.evaluate(() => {
       const cv = document.getElementById('canvas');
       const g = cv.getContext('2d');
