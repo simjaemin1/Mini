@@ -27,7 +27,10 @@ const { spawn } = require('child_process');
 const FB = require('./fixture-boot');
 
 const ROOT = path.join(__dirname, '..');
-const CPORT = 3110, ZPORT = 3120;
+// ★포트 — 한반도의 공개 wsUrl 포트는 `zone-config.js` 에 3020 으로 박혀 있다(central `/zones` 가 그대로 낸다 · 존 PORT env 와 무관).
+//   존을 다른 포트에 띄우면 클라는 3020 에 있는 **남의 존**에 붙는다(첫 판들이 옆 `e2e-conn` 의 던지는 존에 붙었다 — 버림).
+//   ⇒ 존은 3020 · central 은 3010(e2e-conn 과 같다) — **다른 e2e 하네스와 같이 돌리지 마라**.
+const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/t1024-c-${process.pid}.db`, ZDB = `/tmp/t1024-z-${process.pid}.db`;
 const DS = (process.argv[2] || '0,10,30,60').split(',').map(Number);
 const OUT = process.argv[3] || null;
