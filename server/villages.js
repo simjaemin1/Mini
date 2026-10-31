@@ -258,6 +258,11 @@ const _t707Stat = { markets: 0, joins: 0, roster: 0, carNoBody: 0, mktNoBody: 0,
 //   ⚠`T707_MARKET=0`(되돌림)이면 무동작 — 장이 없는 세계의 머묾은 종전 그대로.
 const T952_XZ_ON = process.env.T952_XZ_STAY === '1';
 const _t952Stat = { stays: 0, joined: 0 };
+// ★★[T1030 2026-10-31 · T952 회부 2 ㄱ] 손잡이 `T1030_XZ_MARKET` — **econ 이 정본**(`sim/economy-sim-v2.js` · '1' 만 켬 · 팔 `T525_CROSS_ZONE` 켬일 때만 선다 · 끔 = main 바이트).
+//   켜면 받는 존 econ 이 교차 존 캐러밴도 장 갈래로 치른다(`c._mktD` → 아래 `_t707Open` 이 장 기록 · 명부를 그대로 연다 · 상인 머묾 = 장 끝).
+//   서버 몫 둘: ⓐ 재기동 메타(T728)가 이웃 존이 낀 캐러밴을 **스텁째** 싣고 되돌린다(종전 = 이름으로 적어 다시 뜨면 못 이었다 — 받는 존의 장 · 집 존의 'xzone' 이 사라졌다)
+//   ⓑ `/perf` 교차 존 덤프에 장 칸(`mkt` · `mk` · `rowDay`) — 켬일 때만.
+function _t1030On() { return !!(state.econV2 && state.econV2.T1030_XZ_MARKET); }
 // ★★[T762 2026-10-15 · 세션6] 손잡이 `T762_CARAVAN_BODY`(기본 끔 · `=1` 켬) — 캐러밴 몸 두 자리(T474 켬 판이 드러냈다 · 둘 다 끔에서도 같은 줄):
 //   ① 그날 econ 틱이 띄운 캐러밴도 **그날** 캐러밴 동기에 든다(아래 덧 조각).
 //   ② econ 재라우팅(옛 목적지에 닿아 값 손절)에서 몸이 다시 떠나는 자리 = 옛 길 **끝**(장부 끝까지 답압) — 종전엔 `_t661Day` 가
@@ -4124,6 +4129,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
       if (T661_ON && body._t661) { const _m929 = _t929Mark(); _t661Anchor(body, _t661ReturnPts(body), 'inbound'); body._t661.L = 0; _t929Note(_m929); }   // ★[T929] 앞뒤 셈만 · ★[T661] 돌아가는 구간의 장부는 도착한 이 경계에서 연다(머묾은 보이는 것)
       if (T707_ON) _t707Linger(body, c, p);   // ★[T707] 장 끝까지 머문다 · 남문 앞 마당에 선다(끔 = 이 줄 무동작)
       if (T952_XZ_ON && T707_ON && c._xzHome) _t952XzStay(body, c, now);   // ★[T952] 교차 존 상인의 머묾 = 그 마을 장 끝(끔 = 이 줄 무동작)
+      if (T707_ON && c._xzHome && _t1030On()) body._t1030 = { at: now };   // ★[T1030] 켬만 — 머묾을 연 시각(덤프 · 하네스 ⓘ 가 머묾 길이를 잰다 · 값 무변)
       S.arrived++;
       console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 도착: ${c.from.name}→${c.to.name} ${c.giveRes}${c._abandoned ? ' (빈손 손절)' : ' 매도'} — 1게임시간 머묾 후 귀환`);
     } else if (c.to !== body.toV) {
@@ -4431,7 +4437,8 @@ function _xzAfterSend(r, key, ok, why, answered, tries) {
       X.st.crossReturn++;
       if (r.row && !r.abandoned && !r.traderDead && !r.row.rerouted) X.st.soldOk++;   // 경계 교역 성사(이 존이 팔고 산 것 — T525 §4 '도착 존이 판 것')
       _xzTrace('back', { id: r.id, toZone: r.toZone, lastTo: r.lastTo, res: r.returningRes, amt: r.returningAmt, res2: r.returningRes2 || null, amt2: r.returningAmt2 || 0,
-        abandoned: !!r.abandoned, traderDead: !!r.traderDead, sold: r.row && r.row.sent ? r.row.sent : null, bought: r.row && r.row.bought ? r.row.bought : null, remain: r.remain, at, body: !!body, walked });
+        abandoned: !!r.abandoned, traderDead: !!r.traderDead, sold: r.row && r.row.sent ? r.row.sent : null, bought: r.row && r.row.bought ? r.row.bought : null, remain: r.remain, at, body: !!body, walked,
+        ...(_t1030On() ? { rowDay: r.row ? r.row.day : null } : {}) });   // ★[T1030] 켬만 — 그 교역 행의 날(정산한 날)
     }
     return;
   }
@@ -4540,13 +4547,15 @@ function xzonePerf() {
     const P = state.deps.players.get(b.pid);
     bodies.push({ key: k, phase: b.phase, pending: !!(b.c && b.c._xzPending), handing: !!b._xzHanding, x: P ? Math.round(P.x) : null, y: P ? Math.round(P.y) : null,
       len: Math.round(b.len), prog: Math.round(b.prog), end: b.pts && b.pts.length ? { x: Math.round(b.pts[b.pts.length - 1].x), y: Math.round(b.pts[b.pts.length - 1].y) } : null,
-      departAt: b.departAt, arriveAt: b.arriveAt, nomPxMs: b.nomPxMs, lu: b.lingerUntil, t952: b._t952 || null });   // ★[T952] 머묾 끝 · 켬 판의 셈(끔 = null)
+      departAt: b.departAt, arriveAt: b.arriveAt, nomPxMs: b.nomPxMs, lu: b.lingerUntil, t952: b._t952 || null,   // ★[T952] 머묾 끝 · 켬 판의 셈(끔 = null)
+      ...(_t1030On() ? { mk: (() => { const v = b.c && state.byEcon && state.byEcon.get(b.c.to), r = v && v._mkt; return (r && r.cars.has(k)) ? { d: r.d, end: r.end, at: r.at.size, vil: v.name, ls: b._t1030 ? b._t1030.at : null } : null; })() } : {}) });   // ★[T1030] 켬만 — 그 몸이 든 장 기록(날 · 끝 · 명부 수)
   }
   const cars = [];
   for (const c of (state.world.caravans || [])) if (c._xzCross || c._xzHome || c.state === 'xzone') {
     cars.push({ id: c.id, state: c.state, from: c.from && c.from.name, to: c.to && c.to.name, toZone: c.to && c.to._xz ? c.to.zone : null, home: c._xzHome || null,
       res: c.giveRes, amt: c.giveAmt, ret: c._returningRes || null, retAmt: c._returningAmt || 0,
-      depart: c.departDay, arrive: c.arriveDay, back: c.returnArriveDay, cross: c._xzCross ? c._xzCross.day : null, xback: c._xzBack ? c._xzBack.day : null });
+      depart: c.departDay, arrive: c.arriveDay, back: c.returnArriveDay, cross: c._xzCross ? c._xzCross.day : null, xback: c._xzBack ? c._xzBack.day : null,
+      ...(_t1030On() ? { mkt: c._t707 ? c._t707.d : null, mktD: c._mktD == null ? null : c._mktD, row: !!c._xzRow } : {}) });   // ★[T1030] 켬만 — 정산 전 장(찍은 날) · 장이 선 날 · 'return' 이 실을 행
   }
   return { zone: state.zoneId, day: state.world.day, g: state.lastGameDay, dayMs: state.dayMs, epoch: state.epoch, peers: X.host.peers, ready: X.core.peersReady(),
     geo: X.host.hs.geo, host: X.host.hs, core: X.core.st, live: X.core.live ? X.core.live() : null, st: X.st, stubs: (X.core.X.stubs || []).map((s) => s.name), retry: X.retry.length,
@@ -14243,7 +14252,7 @@ function _t728Meta() {
     const o = {};
     for (const k of Object.keys(c)) {
       const x = c[k];
-      if (k === 'from' || k === 'to') o[k] = x ? x.name : null;
+      if (k === 'from' || k === 'to') o[k] = x ? ((x._xz && _t1030On()) ? Object.assign({}, x) : x.name) : null;   // ★[T1030] 켬 = 이웃 존 스텁은 스텁째(질의 캐시 · JSON 칸만 · 끔 = 종전 이름)
       else if (k === 'trader') o[k] = (x && x.id != null) ? x.id : null;
       else { try { JSON.stringify(x); o[k] = x; } catch (e) { if (!_t728Stat.dropKeys.includes(k)) _t728Stat.dropKeys.push(k); } }
     }
@@ -14324,6 +14333,7 @@ function _t728Restore() {
         if (T876_CAR_FAST) { const { _t732Cargo, ...rest } = c; o = rest; _cg = _t732Cargo; }   // ★[T876 ②] 칸을 거른 사본(빠른 꼴 · 위 `T876_CAR_FAST` 주석)
         else { o = Object.assign({}, c); _cg = o._t732Cargo; delete o._t732Cargo; }   // ★[T732] 짐 레코드는 캐러밴 칸이 아니다(켬이면 장부로 · 끄면 버린다)
         o.from = byName.get(c.from); o.to = byName.get(c.to);
+        if (_t1030On()) { if (c.from && typeof c.from === 'object' && c.from._xz) o.from = c.from; if (c.to && typeof c.to === 'object' && c.to._xz) o.to = c.to; }   // ★[T1030] 스텁째 실은 것은 그대로(끔 = 이 줄 무동작)
         if (!o.from || !o.to) { R.lost++; continue; }
         if (_cg) { const G = _t732GranMod(); if (G) G.cargoLoad(o, _cg); }   // (시계 없이도 — 짐 레코드를 그 캐러밴에 다시 싣기만)
         o.trader = findNpc(o.from, c.trader);

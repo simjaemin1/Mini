@@ -273,6 +273,8 @@ if (process.env.T732_SUB === 't748') {
       V2._xzProbe.arrive(WB, JSON.parse(JSON.stringify(m)), WB.day);
       const cB = WB.caravans.find((x) => String(x.id).indexOf('xz:') === 0);
       V2._xzProbe.arriveLoop(WB, cB, WB.day);
+      //   ★[T1030] 켬(`T1030_XZ_MARKET=1`)이면 받는 존이 장을 연다 — 'return' 은 정산 뒤다: econ 이 그다음 하는 둘(다음 틱 머리 정산 · 귀환 갈래의 'return')을 같은 함수로 부른다(끔 = 이 줄 무동작)
+      if (cB._t707) { V2.settleMarketsV2(WB); V2._xzProbe.handBack(WB, cB, WB.day, cB._xzRow || null, cB._xzBack.remain); }
       const r = JSON.parse(JSON.stringify(WB.xzone.out[0] || null));
       const bLed = out.on ? recs(GL.ledger(vB, 'food')).filter((x) => x[0] === kA) : null;
       V2._xzProbe.ret(WA, r, WA.day);
