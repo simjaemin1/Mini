@@ -627,11 +627,25 @@ async function bodyVerTrip() {
   //   끔 세계는 같은 날 안에서 정산이 안 일어나므로 **종전 단언 그대로**(로트 통째 · `e·t` 까지) 비트 동일이어야 하고,
   //   레코드에 얻은 순간 `k` 가 없어야 한다(손잡이가 먹었다). 켬 판의 ②가 정산 칸을 ⓑ 로 옮긴 것이 끔의 비트 동일을 가리지 않는다는 증인이다.
   if (!await startZones(null, { T732_MOMENT_LOT: '0' })) { console.log('  ✗ 끔 탐침 기동 실패'); process.exit(1); }
-  const C = await roundTrip('C');
+  // ★★[T1002 2026-10-31] **"같은 날 안에서"가 이 판의 상황 선행이다**(위 주석) — 판 도중 게임일이 바뀌면 날 로트가 그 경계에서 정산해
+  //   `e·t` 가 정당하게 바뀐다(T1002 고친 판 50판 중 1판 — 출발 로트 t 1245424 · e 0 → 도착 t 1245425 · e 0.318728).
+  //   두 존 `/health` 의 `day`(달력 정본 `calendarNow` · 이 하네스는 마을 끔이라 벽시계 하루 = `VILLAGE_DAY_MS` 기본 24분)를 판 앞뒤로 읽어
+  //   바뀌었으면 새 사람으로 다시 — 최대 3번(⑦ · ⑧ 과 같은 꼴 · 판정 무변). 같은 날 안의 정산(결함)은 앞뒤 날이 같으니 그대로 잡는다.
+  const dayOf = async (port) => { try { const h = await jget(`http://localhost:${port}/health`); return h ? h.day : null; } catch (e) { return null; } };
+  const daysNow = async () => `${await dayOf(HPORT)}/${await dayOf(NPORT)}`;
+  let C = null, cTries = 0, cDays = '';
+  for (let k = 0; k < 3; k++) {
+    const d0 = await daysNow();
+    C = await roundTrip(k ? `C${k}` : 'C');
+    const d1 = await daysNow();
+    cTries = k + 1; cDays = d0 === d1 ? d0 : `${d0} → ${d1}`;
+    if (d0 === d1) break;
+  }
   const recsC = Object.values(((C || {}).before || {}).lots || {}).flat();
   const cEq = !!C.crossed && recsC.length > 0 && !recsC.some((l) => l.k !== undefined) && durableKey(C.after, true) === durableKey(C.before, true);
   ok(cEq, "★[T778 끔 탐침 '0'] 날 로트 세계 — 도착한 몸이 로트 **통째(`e·t` 까지)** 비트 동일 · 레코드에 `k` 없음(종전 단언 그대로)",
-    cEq ? `${recsC.length}개` : `\n      넘음 ${!!C.crossed} · 로트 ${recsC.length} · k ${recsC.filter((l) => l.k !== undefined).length}\n      출발 ${durableKey(C.before, true)}\n      도착 ${durableKey(C.after, true)}`);
+    (cEq ? `${recsC.length}개` : `\n      넘음 ${!!C.crossed} · 로트 ${recsC.length} · k ${recsC.filter((l) => l.k !== undefined).length}\n      출발 ${durableKey(C.before, true)}\n      도착 ${durableKey(C.after, true)}`)
+      + ` · 시도 ${cTries} · 게임일(H/N) ${cDays}`);
   killAll(); await sleep(4000);
 
   // ★★[T823] 떠난 몸 껍데기를 얼린다 — 켬 판(D · ★T831 켬 기본 — 손잡이 없음) · 끔 탐침(E · 같은 탐침 · 두 존 `T823_FREEZE_SHELL=0`)
