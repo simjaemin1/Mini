@@ -415,29 +415,39 @@ async function centralBounce(down) {
   const c = boot('central.js', { PORT: String(CPORT), DB_PATH: `${DDIR}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando,nippon' });
   return (await FB.waitUp(c, /central server up on/, { name: 'central' })).ok;
 }
+//   ★★[T1002 2026-10-30] **상황 선행이 안 서면 다시 — 최대 3번**(⑦ `takeoverTrip` 과 같은 꼴 · 판정 무변).
+//   central 이 다시 뜬 뒤 이 하네스가 행을 읽기(뜬 뒤 500ms 잠 + 읽기 = 0.51~0.54초) 전에 존의 주기 다시 보내기(`_t916Flush` —
+//   `SAVE_INTERVAL_MS` 마다 · 제품의 정당한 길)가 먼저 닿으면 행이 이미 새 몸이라 이 판은 "다시 붙을 때 보낸다"를 못 잰다 —
+//   종전엔 그 판의 ★[상황] · ★★다시 붙은 몸 · ★★끊은 뒤 행 세 줄이 **잃은 칸 0** 인 채 같이 빨개졌다(진단 — 주기를 1초로 당긴 20번 중 3번 ·
+//   기본 30초 80번 0번 · 보고/T1002). 그때는 새 사람으로 처음부터 다시 선다. 세 번 다 안 서면 ★[상황]이 시도 수와 함께 빨개진다(조용한 초록 0).
 async function saveRetryTrip(tag) {
   const Z = (await jget(`http://localhost:${CPORT}/zones`)).zones; const han = Z.hanbando;
-  const NAME = `sr${tag}`;
-  const a = await open(`${han.wsUrl}/?username=&name=${NAME}&color=%23ffffff`);
-  const tok = a.welcome.guestToken, pid = a.welcome.playerId;
-  a.ws.send(JSON.stringify({ type: '__e2e_give', items: { pillar: 3 }, tools: ['axe', 'pickaxe'], equip: [{ type: 'carrier', lvl: 5 }], quiet: true }));   // 저장한다(행 = 도구)
-  await sleep(900);
-  await centralBounce(true); await sleep(500);
-  a.ws.send(JSON.stringify(Object.assign({ type: '__e2e_body', hp: TK_HP, quiet: true, member: MEMBER_FIX }, TK_SOFT, LEDGER_FIX)));   // central 이 없는 동안 산 몸만 바꾼다
-  await sleep(700);
-  const live = pick0(await jget(`http://localhost:${HPORT}/bodydbg`));
-  try { a.ws.close(); } catch (e) {}
-  await sleep(1500);   // 닫힐 때 저장 — central 이 없다(ECONNREFUSED)
-  const up = await centralBounce(false); await sleep(500);
-  let row0 = null; try { row0 = JSON.parse(((await rowOf(pid)) || {}).tools_json || 'null'); } catch (e) {}
-  const stale = TK_LEDGER.every((f) => tkJ((row0 || {})[f]) !== tkJ(live[f])) && !tkNear(tkSoft(row0), tkSoft(live)) && !(row0 && row0.vital && row0.vital.hp === live.vital.hp);
-  const b = await open(`${han.wsUrl}/?username=&name=${NAME}&color=%23ffffff&guest_token=${encodeURIComponent(tok)}`);
-  await sleep(900);
-  const after = pick0(await jget(`http://localhost:${HPORT}/bodydbg`));
-  try { b.ws.close(); } catch (e) {}
-  await sleep(1500);
-  let row1 = null; try { row1 = JSON.parse(((await rowOf(pid)) || {}).tools_json || 'null'); } catch (e) {}
-  return { up, stale, samePid: b.welcome.playerId === pid, live, after, row0, row1 };
+  let last = null;
+  for (let k = 0; k < 3; k++) {
+    const NAME = `sr${tag}${k}`;
+    const a = await open(`${han.wsUrl}/?username=&name=${NAME}&color=%23ffffff`);
+    const tok = a.welcome.guestToken, pid = a.welcome.playerId;
+    a.ws.send(JSON.stringify({ type: '__e2e_give', items: { pillar: 3 }, tools: ['axe', 'pickaxe'], equip: [{ type: 'carrier', lvl: 5 }], quiet: true }));   // 저장한다(행 = 도구)
+    await sleep(900);
+    await centralBounce(true); await sleep(500);
+    a.ws.send(JSON.stringify(Object.assign({ type: '__e2e_body', hp: TK_HP, quiet: true, member: MEMBER_FIX }, TK_SOFT, LEDGER_FIX)));   // central 이 없는 동안 산 몸만 바꾼다
+    await sleep(700);
+    const live = pick0(await jget(`http://localhost:${HPORT}/bodydbg`));
+    try { a.ws.close(); } catch (e) {}
+    await sleep(1500);   // 닫힐 때 저장 — central 이 없다(ECONNREFUSED)
+    const up = await centralBounce(false); await sleep(500);
+    let row0 = null; try { row0 = JSON.parse(((await rowOf(pid)) || {}).tools_json || 'null'); } catch (e) {}
+    const stale = TK_LEDGER.every((f) => tkJ((row0 || {})[f]) !== tkJ(live[f])) && !tkNear(tkSoft(row0), tkSoft(live)) && !(row0 && row0.vital && row0.vital.hp === live.vital.hp);
+    const b = await open(`${han.wsUrl}/?username=&name=${NAME}&color=%23ffffff&guest_token=${encodeURIComponent(tok)}`);
+    await sleep(900);
+    const after = pick0(await jget(`http://localhost:${HPORT}/bodydbg`));
+    try { b.ws.close(); } catch (e) {}
+    await sleep(1500);
+    let row1 = null; try { row1 = JSON.parse(((await rowOf(pid)) || {}).tools_json || 'null'); } catch (e) {}
+    last = { up, stale, tries: k + 1, samePid: b.welcome.playerId === pid, live, after, row0, row1 };
+    if (stale) break;
+  }
+  return last;
 }
 // ★★[T927] ⑨ 몸 버전 조건부 쓰기 — 존은 저장마다 몸 버전(`sv`)을 하나 올려 싣고 · central 은 행보다 작은 몸 버전의 저장을 안 쓴다(`stale`).
 //   손님 하나 저장(지급) → 행의 몸 버전을 읽는다(0 이 아니다 — 존이 실었다 · 상황 선행) → 이 하네스가 central 에 **옛 버전**(행 − 1) · 다른 몸(생선 0) ·
@@ -617,11 +627,25 @@ async function bodyVerTrip() {
   //   끔 세계는 같은 날 안에서 정산이 안 일어나므로 **종전 단언 그대로**(로트 통째 · `e·t` 까지) 비트 동일이어야 하고,
   //   레코드에 얻은 순간 `k` 가 없어야 한다(손잡이가 먹었다). 켬 판의 ②가 정산 칸을 ⓑ 로 옮긴 것이 끔의 비트 동일을 가리지 않는다는 증인이다.
   if (!await startZones(null, { T732_MOMENT_LOT: '0' })) { console.log('  ✗ 끔 탐침 기동 실패'); process.exit(1); }
-  const C = await roundTrip('C');
+  // ★★[T1002 2026-10-31] **"같은 날 안에서"가 이 판의 상황 선행이다**(위 주석) — 판 도중 게임일이 바뀌면 날 로트가 그 경계에서 정산해
+  //   `e·t` 가 정당하게 바뀐다(T1002 고친 판 50판 중 1판 — 출발 로트 t 1245424 · e 0 → 도착 t 1245425 · e 0.318728).
+  //   두 존 `/health` 의 `day`(달력 정본 `calendarNow` · 이 하네스는 마을 끔이라 벽시계 하루 = `VILLAGE_DAY_MS` 기본 24분)를 판 앞뒤로 읽어
+  //   바뀌었으면 새 사람으로 다시 — 최대 3번(⑦ · ⑧ 과 같은 꼴 · 판정 무변). 같은 날 안의 정산(결함)은 앞뒤 날이 같으니 그대로 잡는다.
+  const dayOf = async (port) => { try { const h = await jget(`http://localhost:${port}/health`); return h ? h.day : null; } catch (e) { return null; } };
+  const daysNow = async () => `${await dayOf(HPORT)}/${await dayOf(NPORT)}`;
+  let C = null, cTries = 0, cDays = '';
+  for (let k = 0; k < 3; k++) {
+    const d0 = await daysNow();
+    C = await roundTrip(k ? `C${k}` : 'C');
+    const d1 = await daysNow();
+    cTries = k + 1; cDays = d0 === d1 ? d0 : `${d0} → ${d1}`;
+    if (d0 === d1) break;
+  }
   const recsC = Object.values(((C || {}).before || {}).lots || {}).flat();
   const cEq = !!C.crossed && recsC.length > 0 && !recsC.some((l) => l.k !== undefined) && durableKey(C.after, true) === durableKey(C.before, true);
   ok(cEq, "★[T778 끔 탐침 '0'] 날 로트 세계 — 도착한 몸이 로트 **통째(`e·t` 까지)** 비트 동일 · 레코드에 `k` 없음(종전 단언 그대로)",
-    cEq ? `${recsC.length}개` : `\n      넘음 ${!!C.crossed} · 로트 ${recsC.length} · k ${recsC.filter((l) => l.k !== undefined).length}\n      출발 ${durableKey(C.before, true)}\n      도착 ${durableKey(C.after, true)}`);
+    (cEq ? `${recsC.length}개` : `\n      넘음 ${!!C.crossed} · 로트 ${recsC.length} · k ${recsC.filter((l) => l.k !== undefined).length}\n      출발 ${durableKey(C.before, true)}\n      도착 ${durableKey(C.after, true)}`)
+      + ` · 시도 ${cTries} · 게임일(H/N) ${cDays}`);
   killAll(); await sleep(4000);
 
   // ★★[T823] 떠난 몸 껍데기를 얼린다 — 켬 판(D · ★T831 켬 기본 — 손잡이 없음) · 끔 탐침(E · 같은 탐침 · 두 존 `T823_FREEZE_SHELL=0`)
@@ -740,7 +764,7 @@ async function bodyVerTrip() {
   {
     const U = await saveRetryTrip('U');
     ok(U.up && U.stale && U.samePid, '★[상황 · T916 켬] central 을 내린 채 산 몸을 바꾸고 끊었다 → central 다시 뜸 · 다시 붙기 전 행은 바꾼 값을 아직 안 가졌다(줄이 존에 있다 · 자명 통과 0) · 같은 playerId',
-      `central ${U.up} · 행 신체 ${JSON.stringify(tkSoft(U.row0))} · 산 신체 ${JSON.stringify(tkSoft(U.live))}`);
+      `central ${U.up} · 시도 ${U.tries} · 행 신체 ${JSON.stringify(tkSoft(U.row0))} · 산 신체 ${JSON.stringify(tkSoft(U.live))}`);
     const lostU = tkLost(U, U.after), rowLostU = tkLost(U, U.row1);
     const hpA = ((U.after || {}).vital || {}).hp, hp0 = ((U.row0 || {}).vital || {}).hp;
     ok(U.stale && !lostU.length && tkNear(tkSoft(U.after), tkSoft(U.live)) && hpA !== hp0,
@@ -789,7 +813,7 @@ async function bodyVerTrip() {
   // ★★[T916] ⑧ 끔 증인(`T916_SAVE_RETRY=0` — 종전 글자: 저장 실패는 경고 한 줄) — 켬 U 의 "잇는다"가 자명하지 않다는 증인
   {
     const V = await saveRetryTrip('V');
-    ok(V.up && V.stale && V.samePid, '[상황 · T916 끔 탐침] central 을 내린 채 바꾸고 끊었다 · 다시 붙기 전 행은 바꾼 값을 안 가졌다', `central ${V.up}`);
+    ok(V.up && V.stale && V.samePid, '[상황 · T916 끔 탐침] central 을 내린 채 바꾸고 끊었다 · 다시 붙기 전 행은 바꾼 값을 안 가졌다', `central ${V.up} · 시도 ${V.tries}`);
     const lostV = tkLost(V, V.after), rowLostV = tkLost(V, V.row1);
     ok(V.stale && lostV.includes('craftSkill') && lostV.includes('fishStats') && !tkNear(tkSoft(V.after), tkSoft(V.live)) && rowLostV.includes('craftSkill'),
       '★[T916 끔 탐침] 끔이면 central 이 없던 동안의 몸이 사라진다(숙련 · 어획 · 신체 · 행까지 — T894 회부 1 그대로의 결함 · 켬 U 의 증인)',
