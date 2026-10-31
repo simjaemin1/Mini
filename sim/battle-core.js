@@ -19,6 +19,12 @@ const DEPLOY_W=130, DEPLOY_H=130;        // 표준 배치 폭(전투실험실과
 //   켬: 탄이 없으면 그 물러섬 줄을 건너뛰고 탄 없는 절(15m 안 다가섬 · 손 닿으면 친다)로 간다. 새 수 0(3.5 · 15 · reach 그대로).
 //   ★[T1008] 켬 기본 — 노드(서버 · 하네스)는 env 가 `'0'` 일 때만 끔 · 브라우저(전쟁실험실 인라인 — env 없음) = 켬.
 const T995_BACK_AMMO=!(typeof process!=='undefined'&&process.env&&process.env.T995_BACK_AMMO==='0');   // ★[T1008 10-30] 켬 기본 · 되돌림 `=0`
+// ★★[T1019 2026-10-31 · T1008 회부 1 ⓒ] **막힌 칸 안에 선 몸은 걸어 나온다** — 손잡이 `T1019_UNTRAP`(켬 기본 후보 · 되돌림 `=0` = 종전 글자 · 서버 war-live · villages 와 같은 손잡이 하나).
+//   종전: 아래 몸 클램프(sep 끝)는 새 자리가 막혔으면 축별로 미끄러지고 둘 다 막히면 **이전 자리**로 되돌린다 — 이전 자리도 막힌 칸이면(대형 원점이 건물 발자국에 섰다 ·
+//     집 안에 있던 몸이 징발됐다 · 그 뒤 지은 집) 한 걸음이 칸보다 작아 칸 안 다음 점은 늘 막힘이라 **영원히 못 나온다**(T295 후속 · T541 ⓑ · T790 주석의 그 덫 · 보고 T1008 ⓒ 401날 전쟁).
+//   켬: 이전 자리가 막힌 칸이면 클램프를 건너뛴다(걸음은 그대로 — 밖으로 나오면 그다음 걸음부터 종전 클램프). war-live T790 `inBlk`(걷는 대형 몸)와 같은 규칙 · 새 수 0.
+//   노드(서버 · 하네스)는 env 가 `'0'` 일 때만 끔 · 브라우저(전쟁실험실 인라인 — env 없음) = 켬(랩은 ctx.world 가 없어 클램프 줄 자체가 안 돈다 — 무변).
+const T1019_UNTRAP=!(typeof process!=='undefined'&&process.env&&process.env.T1019_UNTRAP==='0');   // ★[T1019 10-31] 켬 기본 후보 · 되돌림 `=0`
 
 // ═══════════ 병종 정의 (전투실험실 UNITS 복사) ═══════════
 const UNITS={
@@ -364,7 +370,7 @@ function sep(ctx,u,dt){let sx=0,sy=0,n=0,hxx=0,hyy=0,hn=0; const bx=Math.floor(u
       if(d<SEP_CORE){hxx+=dx/d*(SEP_CORE-d)*0.5;hyy+=dy/d*(SEP_CORE-d)*0.5;hn++;}}}}   // ★[몸 하한] 지름 0.5m 침범 위치보정 누적(1.0m 소프트 간격과 별개 층)
   if(n){u.x+=sx/n*1.0*dt; u.y+=sy/n*1.0*dt;}
   if(hn){const hl=Math.hypot(hxx,hyy); if(hl>1e-9){const hk=Math.min(1,Math.max(1.0*dt,0.08)/hl); u.x+=hxx*hk; u.y+=hyy*hk;}}   // 몸 겹침 해소 — dt 무관 최소 0.08m/스텝(압착에도 관통 불가), 나무·건물 클램프가 뒤에서 지형 보정
-  if(ctx.world&&u._ox!=null&&ctx.world.blocked(u.x,u.y)){   // ★[T284] 몸 클램프 — 존의 장애물(지형·건물 행). 축별로 미끄러지고, 둘 다 막히면 제자리
+  if(ctx.world&&u._ox!=null&&ctx.world.blocked(u.x,u.y)&&!(T1019_UNTRAP&&ctx.world.blocked(u._ox,u._oy))){   // ★[T284] 몸 클램프 — 존의 장애물(지형·건물 행). 축별로 미끄러지고, 둘 다 막히면 제자리 · ★[T1019] 켬 = 이전 자리도 막혔으면(갇힌 몸) 안 묶는다 — 걸어 나온다
     const nx=u.x, ny=u.y;
     if(!ctx.world.blocked(nx,u._oy)){u.y=u._oy;}
     else if(!ctx.world.blocked(u._ox,ny)){u.x=u._ox;}
