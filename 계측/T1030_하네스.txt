@@ -1,0 +1,25 @@
+# T1030 하네스 — 끔(손잡이 없음) · 켬(T525_CROSS_ZONE=1 T1030_XZ_MARKET=1) · 끝 줄
+off test-events: === 305건 중 PASS 305 · FAIL 0 ===
+on test-events: === 305건 중 PASS 305 · FAIL 0 ===
+off test-cargo-age: === 44건 중 PASS 44 · FAIL 0 ===
+on test-cargo-age: === 44건 중 PASS 44 · FAIL 0 ===
+off test-server-market: === 28건 중 PASS 28 · FAIL 0 ===
+on test-server-market: === 28건 중 PASS 28 · FAIL 0 ===
+off test-t762-sync: === 결과: 14 PASS / 0 FAIL ===
+on test-t762-sync: === 결과: 14 PASS / 0 FAIL ===
+off test-harness-lint: === 68건 중 PASS 68 · FAIL 0 ===
+on test-harness-lint: === 68건 중 PASS 68 · FAIL 0 ===
+off test-car-fast: === 11 통과 / 0 실패 ===
+on test-car-fast: === 11 통과 / 0 실패 ===
+off test-carrier: === 54건 중 PASS 54 · FAIL 0 ===
+on test-carrier: === 54건 중 PASS 54 · FAIL 0 ===
+off test-local-midnight-window: === 12건 중 PASS 12 · FAIL 0 ===
+on test-local-midnight-window: === 12건 중 PASS 12 · FAIL 0 ===
+off test-t772-leg: === 17건 중 PASS 17 · FAIL 0 ===
+on test-t772-leg: === 17건 중 PASS 17 · FAIL 0 ===
+off test-moment-lot(하네스 고친 뒤): === 107건 중 PASS 107 · FAIL 0 ===
+on test-moment-lot(하네스 고친 뒤): === 107건 중 PASS 107 · FAIL 0 ===
+on test-moment-lot(고치기 전 — 손잡이 켬 T1030 만 · 아이 판이 팔을 켠다): 104건 중 PASS 103 · FAIL 1 — ⑨ [상황] 존 경계 캐러밴 TypeError: Cannot read properties of null (reading 'id') ('return' 이 도착 자리에 없다 — 이 카드가 옮긴 계약)
+번들 --check: [check] 회귀검증 8 일치 / 0 불일치 ✅
+[inline] 마을실험실.html: 최신 ✅
+[inline] 전쟁실험실.html: 최신 ✅
