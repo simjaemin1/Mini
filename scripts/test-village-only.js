@@ -408,7 +408,9 @@ async function found(C, base, centers) {
   //   C18 — 이방인 받기 활동 셈("촌장이 N일째 안 온다")이 묻는 사람 = **촌장**(승계된 B) · 창설자 A 가 아니다
   phase = 'scan';
   await jget(`${ZON}/welcomedbg?scan=1`); await sleep(500);
-  const sc = calls.filter((c) => c.phase === 'scan' && /^\/player\//.test(c.u)).map((c) => decodeURIComponent(c.u.split('?')[0].slice(8)));
+  //   ★[T971] **묻는 것(GET)만 센다** — 활동 셈이 central 에 하는 일은 `getPlayer` = `GET /player/:id` 다. `POST /player/:id` 는 존의 **저장**(`updatePlayer` · 주기 저장 30초 · 행동 뒤 저장)인데
+  //   이 창(보내고 1.5초)에 접속 중인 사람의 저장이 들어오면 '묻는 사람'으로 잘못 셌다(20판 중 1판 · `["kinB","kinC","kinA"]` · 나머지 19판 `["kinB","kinC"]`). 판정문 · 문턱 무변 — 셈에서 저장을 뺄 뿐이다.
+  const sc = calls.filter((c) => c.phase === 'scan' && c.m === 'GET' && /^\/player\//.test(c.u)).map((c) => decodeURIComponent(c.u.split('?')[0].slice(8)));
   ok(sc.includes(String(B.playerId)) && !sc.includes(String(A.playerId)), 'Ⓣ12 [C18] 활동 셈이 묻는 사람 = 지금 촌장(B) · 창설자(A) 아님', JSON.stringify(sc));
   ok(tribeCalls('scan').length === 0, 'Ⓣ13 [C18] 그 셈도 central tribe·war 0', JSON.stringify(tribeCalls('scan').map((c) => c.u)));
   phase = 'on';

@@ -454,8 +454,8 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
     return false;
   };
   const settleMt = async (PG, maxMs) => { let prev = null, same = 0; const t0 = Date.now();   // 청크 굽기가 멎을 때까지(e2e-mtcut 의 그 안정 대기)
-    while (Date.now() - t0 < maxMs) { const st = await PG.evaluate(() => { const d = window.__mtDbg || {}; const c = window.__mtCutN(); return [d.mt3chunks | 0, d.mt3segs | 0, c.split | 0].join(','); });
-      if (st === prev) { if (++same >= 3) return; } else { same = 0; prev = st; } await sleep(600); } };
+    while (Date.now() - t0 < maxMs) { const st = await PG.evaluate(() => { const d = window.__mtDbg || {}; const c = window.__mtCutN(); return [d.mt3chunks | 0, d.mt3segs | 0, c.split | 0, (typeof _mt3Jobs !== 'undefined') ? _mt3Jobs.size : 0, d.mt3bakeN | 0].join(','); });   // ★[T971] 굽는 중 청크 · 구운 수도 같이 — 띠 예산(T880 켬 기본)에선 청크 하나가 여러 판에 걸쳐 구워지고 다 굽기 전엔 안 그린다(e2e-mountain 이 T880 에서 건 같은 자 · 되돌림 `=0` 이면 굽는 중 늘 0)
+      if (st === prev && /,0,\d+$/.test(st)) { if (++same >= 3) return; } else { same = 0; prev = st; } await sleep(600); } };
   const hereOcc = (PG) => PG.evaluate(() => { const a = window.__getMyAbs(); const r = window.__mtOccAt(a.x, a.y); return { n: r ? r.n : 0, split: window.__mtCutN().split | 0 }; });
   const findSpot = async (PG) => {
     const off = await offOf(PG);
@@ -481,7 +481,11 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
   };
   const occOf = async (PG, label, spot) => {
     if (!spot) spot = await findSpot(PG);
-    else { await tpTo(PG, await offOf(PG), spot.x, spot.y); await PG.evaluate(() => { window.__mtFadeCut(1); window.__mtFadePlane(0); }); await settleMt(PG, 20000); }
+    else { await tpTo(PG, await offOf(PG), spot.x, spot.y); await PG.evaluate(() => { window.__mtFadeCut(1); window.__mtFadePlane(0); }); await settleMt(PG, 20000);
+      //   ★[T971] 새 쪽(덮개 판)은 방금 연 쪽이라 알려 준 자리의 산을 **처음부터** 굽는다 — 띠 예산(T880 켬 기본)에선 몇 판에 걸리고, 그동안 `__mtOccAt` 은 0 이다(안 그린 청크는 안 센다).
+      //   그 [상황] 이 서야 아래 가림 잣대가 의미가 있으니 **그 조건**을 기다린다(덮는 산 ≥ 1 · 상한 30초 — 상한에 걸리면 이름을 붙여 표에 남긴다 · 판정문 · 문턱 무변).
+      const t0 = Date.now(); let hh = await hereOcc(PG); while (hh.n === 0 && Date.now() - t0 < 30000) { await sleep(300); hh = await hereOcc(PG); }
+      console.log(`  [상황] ${label} 판 — 알려 준 자리의 덮는 산이 서기까지 ${Date.now() - t0}ms (덮는 산 ${hh.n}${hh.n === 0 ? ' — ★상한 30초까지 안 섰다' : ''}) · 판정 아님`); }
     if (!spot) return { spot: null, out: {} };
     const here = await hereOcc(PG);
     const box = await PG.evaluate(() => { const l = window.__char3d.lastDraw; return l ? [Math.round(l.x), Math.round(l.y)] : null; });
