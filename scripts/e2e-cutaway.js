@@ -179,12 +179,21 @@ function boxDiff(a, b, x0, y0, x1, y1) {
     // ★[T104 · T98 §4-c 문법] 화소를 재기 전에 **하늘과 바람을 끈다** — 재는 대상을 바꾸는 게 아니라
     //   잡음을 걷는 것이다(비/눈은 프레임마다 화소를 흔들고, 풀 흔들림도 같은 일을 한다).
     //   T98 이 11개에 넣은 그 두 줄인데 이 파일은 빠져 있었다 — `@pixel` 표를 세우며 드러났다.
-    await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); 
+    //   ★★[T1021 2026-10-31] **손잡이가 생긴 뒤에** 끈다 — `__rainForce` 는 첫 월드 프레임의 `drawWeather → wxHooks()`
+    //     (`37-r1-weather.js`)에서야 생긴다. 종전엔 이 줄이 `#enter` 를 누른 **직후**라 손잡이가 아직 없어 `typeof` 가드에 걸려
+    //     **조용히 헛돌았다** — 비 오는 날이면 밖 화면(outside)만 빗줄기를 받고 안 화면(inside)은 지붕 아래라 안 받아서,
+    //     지붕 상자 · 대조 상자(`dCtrl`) · 이엉 몫이 비만큼 갈렸다(비 날 흉내 실측: outside 찍는 순간 줄기 443 · inside 0).
+    //     e2e-blizzard · e2e-char3d 가 이미 쓰는 그 기다림(`waitForFunction`)을 같은 자리에 둔다 — 판정문 · 문턱 무변.
+    await page.waitForFunction(() => typeof window.__rainForce === 'function', null, { timeout: 45000 }).catch(() => {});
+    await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 });
       if (window.__terrain19) window.__terrain19.windOff = true; }).catch(() => {});
     const shotT0 = Date.now();
     for (let i = 0; i < 45 && !(await page.evaluate(() => !!window.__cutawayDbg).catch(() => false)); i++) await sleep(1000);
     while (Date.now() - shotT0 < 44000) await sleep(1000);
     const dbg = await page.evaluate(() => window.__cutawayDbg || null).catch(() => null);
+    //   ★[T1021] 전제 — 찍는 순간 비·눈 층이 꺼져 있다(그린 줄기 0). 안 꺼졌으면 두 화면의 차이에 하늘이 섞인다.
+    const rainS = await page.evaluate(() => (typeof window.__rainDbg === 'function' ? window.__rainDbg() : null)).catch(() => null);
+    ok(!!(rainS && rainS.on === false && rainS.n === 0), `★전제 (${tag}) — 찍는 순간 비·눈 층이 꺼져 있다(그린 줄기 0)` + (rainS ? ` ${JSON.stringify({ on: rainS.on, n: rainS.n })}` : ' X'));
     const shotP = `${SHOTS}/${tag}.png`;
     await page.screenshot({ path: shotP });
     shots[tag] = { dbg, png: PNG.sync.read(fs.readFileSync(shotP)), path: shotP };
