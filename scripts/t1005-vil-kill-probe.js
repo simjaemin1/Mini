@@ -16,7 +16,9 @@
 //   자리 찾기(물가 선 칸 · 사냥 밴드 안 몹 · 집터 후보 칸)도 이 읽기로 한다 — **행동은 하나도 이 길로 안 한다**(전부 위 클라 메시지).
 //   죽은 뒤에는 존 DB(`w-han.db`)의 마을 행(`econ_state`)을 직접 읽는다 = 다시 뜨면 읽힐 바로 그 값.
 //
-// 쓰는 법: node scripts/t1005-vil-kill-probe.js <meal|fish|hunt|house> <판 수> [close] [--now]
+// 쓰는 법: node scripts/t1005-vil-kill-probe.js <meal|fish|hunt|house|trade> <판 수> [close] [--now] [--raw] [--term] [--restarts=K]
+//   ★[T1023] 창 `phouse` = 완공된 의뢰 집 픽스처(존이 내려간 사이 `village_buildings` 'phouse' 행 하나 — 행동 아님) → 다시 뜨기만 `<판 수>` 번 · 뜰 때마다 그 사람 소유 벽 · 바닥 행 수
+//   ★[T1023] `--term` = SIGTERM(종료 저장 문) · `--restarts=K` = 집터 창에서 행동 한 번 뒤 같은 신호로 K 번 다시 뜨기(뜰 때마다 의뢰 집터 행) · 손잡이 `T1023_PSITE_KEEP=0` = 끔
 //   손잡이는 env 그대로(`T1005_VIL_SAVE=0` = 끔 · 종전).
 'use strict';
 const path = require('path');
@@ -27,15 +29,18 @@ const WebSocket = require('ws');
 
 const ROOT = path.join(__dirname, '..');
 const WIN = process.argv[2];
-const _WI = ['meal', 'fish', 'hunt', 'house', 'trade'].indexOf(WIN);
-const _OFF = process.env.T1005_VIL_SAVE === '0';
-const CPORT = 3110 + _WI * 100 + (_OFF ? 50 : 0), HPORT = 3120 + _WI * 100 + (_OFF ? 50 : 0);   // 창 · 손잡이마다 다른 포트 — 여덟을 같이 돌릴 수 있게
+const _WI = ['meal', 'fish', 'hunt', 'house', 'trade', 'phouse'].indexOf(WIN);
+const _OFF = process.env.T1005_VIL_SAVE === '0', _OFF23 = process.env.T1023_PSITE_KEEP === '0';
+const _PO = (_OFF ? 50 : 0) + (_OFF23 ? 25 : 0) + (process.argv.includes('--term') ? 4 : 0);   // 창 · 손잡이 · 신호마다 다른 포트 — 같이 돌릴 수 있게
+const CPORT = 3110 + _WI * 100 + _PO, HPORT = 3120 + _WI * 100 + _PO;   // 창 · 손잡이마다 다른 포트 — 여덟을 같이 돌릴 수 있게
 const N = +(process.argv[3] || 3);
 const CLOSE = process.argv.includes('close');
 const NOW = process.argv.includes('--now');
 const RAW = process.argv.includes('--raw');   // 사냥 창 — 도살 없이(사체만 남은 채) 죽인다
-if (!['meal', 'fish', 'hunt', 'house', 'trade'].includes(WIN)) { console.error('창: meal | fish | hunt | house | trade'); process.exit(2); }
-const DDIR = `/tmp/t1005-probe-${WIN}-${_OFF ? 'off' : 'on'}${process.argv.includes('close') ? '-close' : ''}`;
+if (!['meal', 'fish', 'hunt', 'house', 'trade', 'phouse'].includes(WIN)) { console.error('창: meal | fish | hunt | house | trade | phouse'); process.exit(2); }
+const SIG = process.argv.includes('--term') ? 'SIGTERM' : 'SIGKILL';   // ★[T1023] 죽이는 신호(SIGTERM = 종료 저장 문 · T728)
+const RESTARTS = Math.max(1, +((process.argv.find((x) => x.startsWith('--restarts=')) || '=1').split('=')[1]) || 1);   // ★[T1023] 한 판 안 다시 뜨기 횟수(행동 한 번 뒤 같은 신호로 거듭)
+const DDIR = `/tmp/t1005-probe-${WIN}-${_OFF ? 'off' : 'on'}${_OFF23 ? '-t1023off' : ''}${process.argv.includes('close') ? '-close' : ''}${SIG === 'SIGTERM' ? '-term' : ''}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let C = null, Z = null, nLog = 0, SQ = null;
 function boot(file, env, tag) {
@@ -231,7 +236,7 @@ async function trip() {
     await sleep(8000);
   }
   const dayK = await dayNow();
-  await downP(Z, 'SIGKILL'); Z = null; await close(a);
+  await downP(Z, SIG); Z = null; await close(a);
   const killMs = Date.now() - tT;
   const dbK = dbRead();
   await sleep(1000); await upZ(); await sleep(3000);
@@ -265,6 +270,13 @@ async function trip() {
     out.kept = !!(dbK.psite && memK && memK.psite && dbK.psite.cx === memK.psite.cx && dbK.psite.cy === memK.psite.cy);
     out.created = dbA.hutSites - dbK.hutSites;   // 다시 뜬 뒤 의뢰 집터 건물 행 − 죽은 순간(같은 자리 둘째 집터 = 생성)
     out.boKept = !!(memA && memA.psite && memK && memK.psite && memA.psite.bo === memK.psite.bo);
+    //   ★[T1023] 같은 신호로 더 다시 뜨기 — 뜰 때마다 의뢰 집터 행 수 · 붙든 건물 번호
+    out.restarts = [{ n: 1, huts: dbA.hutIds, bo: memA && memA.psite ? memA.psite.bo : null }];
+    for (let i = 2; i <= RESTARTS; i++) {
+      await sleep(1500); await downP(Z, SIG); Z = null; await sleep(1000); await upZ(); await sleep(3000);
+      const mi = await look({}), di = dbRead(); out.restarts.push({ n: i, huts: di.hutIds, bo: mi && mi.psite ? mi.psite.bo : null });
+    }
+    out.extraRows = out.restarts[out.restarts.length - 1].huts.length - dbK.hutSites;   // 마지막 뜬 뒤 의뢰 집터 행 − 의뢰 순간(겹쳐 선 행)
   }
   return out;
 }
@@ -320,6 +332,17 @@ setInterval(()=>{ const a=D+'/ask'; if(!fs.existsSync(a)) return; let q={}; try{
     await close(sc);
     if (M.length) { M.sort((p, q) => Math.hypot(p.x - SQ.x, p.y - SQ.y) - Math.hypot(q.x - SQ.x, q.y - SQ.y)); SQ = { x: Math.round(M[0].x), y: Math.round(M[0].y) }; }
     console.log(`[T1005 탐침] 사냥 광장 = 밴드 안 몹 ${M.length} 중 회관에서 가장 가까운 것(${M[0] ? M[0].type : '—'}) 자리 ${SQ.x},${SQ.y}`);
+  }
+  if (WIN === 'phouse') {   // ★[T1023 ③] 완공된 의뢰 집(`phouse`) — 부팅이 벽 · 바닥을 사람 소유로 다시 세운다(부팅 지우기 `npc_%` 를 안 탄다)
+    //   ★픽스처(행동 아님 · 보고에 적는다): 존이 내려간 사이 `_lifeCompleteHouse` 가 쓰는 그 행(`village_buildings` type 'phouse' · data.owner)을 하나 넣는다.
+    //     완공까지 크루가 며칠 지어야 해서 클라로는 못 닿는다. 그 뒤로는 다시 뜨기만 한다(신호 `SIG`) — 뜰 때마다 그 사람 소유 벽 · 바닥 행을 센다.
+    await downP(Z, 'SIGTERM'); Z = null;
+    const OW = 'guest_t1023_phouse', db2 = new (require('node:sqlite').DatabaseSync)(`${DDIR}/w-han.db`);
+    db2.prepare("INSERT INTO village_buildings (village_id, type, cx, cy, floors, data, created_at) VALUES (?, 'phouse', ?, ?, 1, ?, ?)").run(VID, v.cx + 30, v.cy + 30, JSON.stringify({ owner: OW }), Date.now()); db2.close();
+    const cnt = () => { const d = new (require('node:sqlite').DatabaseSync)(`${DDIR}/w-han.db`); try { return d.prepare("SELECT type, COUNT(*) AS n FROM buildings WHERE owner_id = ? GROUP BY type ORDER BY type").all(OW).map((r) => `${r.type} ${r.n}`).join(' · ') || '0'; } finally { d.close(); } };
+    console.log(`[T1023 탐침 · phouse] 신호 ${SIG} · 의뢰 집 행 하나(픽스처 · 마을 ${v.name} · 칸 ${v.cx + 30},${v.cy + 30} · 주인 ${OW})`);
+    for (let i = 1; i <= N; i++) { await upZ(); await sleep(3000); console.log(JSON.stringify({ boot: i, rows: cnt() })); await downP(Z, SIG); Z = null; await sleep(1000); }
+    process.exit(0);
   }
   await downP(Z, 'SIGTERM'); Z = null; await upZ(); await sleep(3000);
   console.log(`[T1005 탐침] 창 ${WIN} · T1005_VIL_SAVE=${process.env.T1005_VIL_SAVE === undefined ? '(기본)' : process.env.T1005_VIL_SAVE} · 판 ${N} · ${CLOSE ? '마감 낀 판' : '마감 안 낀 판'}${NOW ? ' · 사람 저장 안 기다림' : ''} · 마을 ${v.name} · 광장 ${SQ.x},${SQ.y}`);
