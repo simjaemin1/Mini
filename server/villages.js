@@ -979,6 +979,13 @@ const _t983Stat = { n: 0, skipClose: 0, miss: 0, err: 0, ms: 0, maxMs: 0, bytes:
 //   ⚠마감이 도는 중(`state.tickJobs`)이면 안 쓰고 표로 미룬다 — 마감이 끝난 첫 틱 꼬리에 쓴다(반쯤 정산된 econ 을 남기지 않는다 · T983 과 같은 뜻).
 //   끔 = 표도 쓰기도 없다(종전 바이트).
 const T1005_VIL_SAVE = process.env.T1005_VIL_SAVE !== '0';
+// ★★[T1023 2026-10-31 · T1005 회부 2 · 3 · ★PM 결함] **의뢰 집터 — 다시 뜰 때 둘째 행 0 · 의뢰 문은 사람도 그 순간 저장** — 손잡이 `T1023_PSITE_KEEP`(켬 기본 · 되돌림 `=0`).
+//   ⓐ 부팅 복원(아래 '플레이어 의뢰 집터 복원')은 곁 칸의 건물 번호를 메모리(`deps.buildings`)에서만 찾았다 — 건물은 청크가 켜질 때 올라오므로(zone.js 게으른 적재)
+//      부팅 그 순간엔 늘 없다 · 곁 칸이 없는 행(마감 전 의뢰)은 찾지도 않았다 ⇒ 매 부팅 같은 자리에 새 `hut_site` 행. 옛 행은 사람 소유라 부팅 지우기(`npc_%`)를 안 탄다.
+//      켜면 그 자리(종전 새 행과 같은 x · y)의 의뢰 집터 행(`psite: 1`)을 DB 에서 잇는다(`deps.adoptBuildRow` · 가장 오래된 행). 없을 때만 종전대로 새 행.
+//   ⓑ 의뢰 문(zone.js `tryRequestVillageHouse`)은 차감 뒤 사람을 저장하지 않았다 → 켜면 마을 행(T1005) 다음 `savePlayer`(T983 차례).
+//   끔 = 두 자리 다 종전 글자.
+const T1023_PSITE_KEEP = process.env.T1023_PSITE_KEEP !== '0';
 const _t1005Stat = { n: 0, now: 0, mark: 0, flush: 0, skipClose: 0, miss: 0, err: 0, ms: 0, maxMs: 0, bytes: 0, maxBytes: 0, by: {} };
 const _t1005Dirty = new Set();
 const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheDay', 'dailyProductionBuf']);
@@ -5302,7 +5309,8 @@ function init(deps) {
         let ow = null; try { ow = (JSON.parse(r.data || '{}') || {}).owner || null; } catch (e) {}
         //   ★[T740] 켬 — 저장된 단계로 · 플레이어 소유 집터 행은 부팅 지우기(`npc_%`)를 안 타 살아 있다 ⇒ 그 행을 다시 쥔다(새 행 0 — 종전은 같은 자리에 둘째 집터가 섰다)
         const sv = T740_SIDE ? _t740SavedPsite(vil, r) : null, st0 = sv ? Math.max(1, sv.stage | 0) : 1;
-        const old = sv && sv.bo != null && deps.buildings ? deps.buildings.get('b' + sv.bo) : null;
+        let old = sv && sv.bo != null && deps.buildings ? deps.buildings.get('b' + sv.bo) : null;
+        if (T1023_PSITE_KEEP && !(old && old.type === 'hut_site') && deps.adoptBuildRow) old = deps.adoptBuildRow('hut_site', (r.cx - 2.5) * SZ, (r.cy - 3.5) * SZ, (d) => !!(d && d.psite === 1));   // ★[T1023 ⓐ] 그 자리의 옛 행을 잇는다(위 손잡이 주석)
         const bo = (old && old.type === 'hut_site') ? old : deps.liveBuildRow ? deps.liveBuildRow('hut_site', (r.cx - 2.5) * SZ, (r.cy - 3.5) * SZ,
           { stage: st0, x0: r.cx - 5, y0: r.cy - 5, x1: r.cx + 0, y1: r.cy - 2, owner: ow, psite: 1 }, ow || `npc_simvil_${vil.dbId}`, '의뢰 움집터', null) : null;
         vil._psite = { cx: r.cx, cy: r.cy, stage: st0, bo, player: 1, owner: ow, ownerName: '의뢰 움집' };
@@ -14304,6 +14312,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
   t983Save, t983On: () => T983_GRANARY_SAVE,   // ★[T983] 거래 순간 곳간 행 저장
+  t1023On: () => T1023_PSITE_KEEP,   // ★[T1023] 의뢰 집터 행 잇기 · 의뢰 문 사람 저장
   t1005Save, t1005Mark, t1005Flush, t1005On: () => T1005_VIL_SAVE,   // ★[T1005] 구제 한 끼 · 집터 의뢰(순간) · 낚시(틱 끝 묶음) · 사냥은 `huntKillAt` 안에서
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,

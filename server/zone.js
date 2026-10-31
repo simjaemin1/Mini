@@ -830,6 +830,38 @@ function _promoteLegacyFarm(d, dbId, type) {
   }
   return d;
 }
+// DB 건물 행 하나 → 메모리 건물(id 'b'+dbId) · 색인에 꽂는다 — 청크 적재(아래)와 부팅 복원의 행 잇기(T1023 `_adoptBuildRow`)가 같은 문.
+function _rowToBuilding(row) {
+  const id = `b${row.id}`;
+  const parsed = _promoteLegacyFarm(row.data ? JSON.parse(row.data) : null, row.id, row.type);   // ★[T108] 옛 벽시계 밭 승격
+  const floor = (parsed && typeof parsed.floor === 'number') ? parsed.floor : 0;
+  const b = {
+    id, dbId: row.id,
+    type: row.type,
+    ownerId: row.owner_id,
+    ownerName: row.owner_name,
+    x: row.x, y: row.y,
+    data: parsed,
+    floor,
+  };
+  buildings.set(id, b);
+  chunkManager.insertBuilding(b); // b._chunkKey 셋 (insertBuilding 내부)
+  return b;
+}
+// ★[T1023] 부팅 복원 — 그 자리(x · y 정확히)에 이미 있는 건물 행을 잇는다(청크가 아직 안 켜져 메모리에 없을 수 있다 · 위 게으른 적재).
+//   `pred(data, row)` 가 참인 행 중 가장 오래된 것(가장 작은 rowid) · 이미 메모리에 있으면 그 객체. 없으면 null(부르는 쪽이 종전대로 새 행).
+function _adoptBuildRow(type, x, y, pred) {
+  let rows; try { rows = db.getBuildingsInRect(x, y, x + 1e-6, y + 1e-6); } catch (e) { return null; }
+  let best = null;
+  for (const row of rows) {
+    if (row.type !== type || row.x !== x || row.y !== y) continue;
+    let d = null; try { d = row.data ? JSON.parse(row.data) : null; } catch (e) { d = null; }
+    if (pred && !pred(d, row)) continue;
+    if (!best || row.id < best.id) best = row;
+  }
+  if (!best) return null;
+  return buildings.get(`b${best.id}`) || _rowToBuilding(best);
+}
 function materializeBuildingsInChunk(cx, cy) {
   const cs = chunkManager.chunkSize;
   const x0 = cx * cs, x1 = (cx + 1) * cs;
@@ -840,19 +872,7 @@ function materializeBuildingsInChunk(cx, cy) {
   for (const row of rows) {
     const id = `b${row.id}`;
     if (buildings.has(id)) continue; // 이미 메모리에 있음(플레이어 방금 건축 등) — 중복 방지
-    const parsed = _promoteLegacyFarm(row.data ? JSON.parse(row.data) : null, row.id, row.type);   // ★[T108] 옛 벽시계 밭 승격
-    const floor = (parsed && typeof parsed.floor === 'number') ? parsed.floor : 0;
-    const b = {
-      id, dbId: row.id,
-      type: row.type,
-      ownerId: row.owner_id,
-      ownerName: row.owner_name,
-      x: row.x, y: row.y,
-      data: parsed,
-      floor,
-    };
-    buildings.set(id, b);
-    chunkManager.insertBuilding(b); // b._chunkKey 셋 (insertBuilding 내부)
+    _rowToBuilding(row);
     if (row.type === 'stair') stairAdded = true;
   }
   if (_promotedFarms > _promotedLogged) {   // ★[T108] 로그 한 줄 — 승격은 조용히 지나가면 안 된다
@@ -5204,6 +5224,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   mineDepthCost: (f) => require('./specialty').mineDepthCost(f),
   mineDepthP: (f) => require('./specialty').mineDepthP(f),   // ★NPC도 같은 깊이 보정을 받는다(축이 하나다)
   mineChunkKg: (lvl) => require('./specialty').mineChunkKg(lvl),   // ★const Specialty 선언(3400+)보다 앞이라 TDZ — require 캐시로 우회
+  adoptBuildRow: _adoptBuildRow,   // ★[T1023] 부팅 복원이 이미 있는 행을 잇는 문(손잡이 `T1023_PSITE_KEEP` 켬에서만 불린다)
   liveBuildRow: _liveBuildRow, buildings, chunkManager,   // ★[생활 층 ③] 신축 크루의 라이브 실체화 경로(플레이어 완공과 동일 헬퍼 — 발명 금지)
   worldPhase, dayPhaseRatio: WORLD.dayPhaseRatio, mobs, qtResources: () => qtResources,
   // ★[T325] 나무꾼 행위 — 문 둘만 넘긴다(색인은 존이 쥐고, 생활층은 묻고 벤다 · 사본 0)
@@ -11693,6 +11714,7 @@ function tryRequestVillageHouse(player, atX, atY) {
   if (!r || r.err) { send(player.ws, { type: 'notice', text: `의뢰 불가 — ${(r && r.err) || '알 수 없음'}` }); return; }
   for (const [it, amt] of Object.entries(PSITE_COST)) consumeItem(player, it, amt);   // ★자리 확정 뒤 차감(실패 시 재료가 사라지지 않게) · [원장 승격]
   if (SimVillages.t1005Save) SimVillages.t1005Save(vil, 'house');   // ★[T1005] 의뢰 집터(곁 칸 psite · 건물 번호 · 잠재 농지)도 그 행에 이 순간(끔 = 무동작)
+  if (SimVillages.t1023On && SimVillages.t1023On()) savePlayer(player);   // ★[T1023] 선납 차감도 이 순간 — 마을 행 다음 사람 저장(T983 차례 · 끔 = 종전: 주기 저장까지)
   sendInventory(player);
   const costStr = Object.entries(PSITE_COST).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${v}`).join(' · ');
   send(player.ws, { type: 'notice', text: `🏠 ${vil.name} 크루에게 집 짓기를 의뢰했다 (${costStr} 선납) — 마을 일이 없을 때 지어 준다` });
