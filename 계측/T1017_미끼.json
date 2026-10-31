@@ -1,0 +1,965 @@
+{
+ "카드": "T1017",
+ "세션": 8,
+ "날짜": "2026-10-31",
+ "대본": "scripts/test-t1000-chunk-restart.js",
+ "트리": {
+  "n": "고친 하네스 — 가지 batch/chunk-bait-1031 (잰 커밋 8de0a981 · main 445d2e45 위로 옮긴 22ec5951 과 코드 같음)",
+  "o": "종전 하네스 — main 9c1f1e8d (작업 트리 밖 사본 · 제품 같음)"
+ },
+ "상자": {
+  "solo": "2코어 컨테이너 · 판 하나씩 차례로",
+  "load": "같은 상자 + 파이썬 바쁜 고리 셋(busy.py)을 판 내내 같이 세움 — T1002 와 같은 상자"
+ },
+ "칸": {
+  "rc": "0 = 판정 6/6(고친) · 4/4(종전) 초록",
+  "sec": "한 판 벽시계 초",
+  "ran": "달린 거리 px(달리기 시작 자리 ↔ 죽기 직전 서버 권위 자리)",
+  "back": "되돌림 px(죽기 직전 자리 ↔ 재기동 뒤 되살아난 자리)",
+  "crossed": "청크 경계 수",
+  "waitGiveMs": "기준 저장이 central 행에 닿기까지",
+  "waitSaveMs": "달리기 앞 주기 저장이 central 행에 닿기까지",
+  "runMs": "달리기",
+  "writes": "달리는 동안 central 행 last_seen 이 바뀐 수"
+ },
+ "합친_트리_확인": {
+  "트리": "22ec5951(main 445d2e45 위)",
+  "상자": "solo",
+  "rc": 0,
+  "sec": 75,
+  "on": {
+   "ran": 2051,
+   "crossed": 2,
+   "back": 296,
+   "waitGiveMs": 24,
+   "waitSaveMs": 18207,
+   "runMs": 13029,
+   "writes": 2
+  },
+  "off": {
+   "ran": 2051,
+   "crossed": 2,
+   "back": 2056,
+   "waitGiveMs": 127,
+   "waitSaveMs": 16929,
+   "runMs": 13020,
+   "writes": 0
+  }
+ },
+ "판": {
+  "종전·홀로": {
+   "summary": {
+    "n": 10,
+    "green": 9,
+    "sec_med": 55.0,
+    "sec_min": 55,
+    "sec_max": 56,
+    "on_back_min": 216,
+    "on_back_max": 227,
+    "off_back_min": 349,
+    "off_back_max": 3171,
+    "off_bait_red": 1,
+    "on_over": 0
+   },
+   "runs": [
+    {
+     "i": 1,
+     "rc": 1,
+     "sec": 55,
+     "result": "=== 통과 3 · 실패 1 ===",
+     "fails": [
+      "✗ ★끔(`=0`) — 되돌림 > 청크 한 변(종전 — 마지막 저장 = 기준 저장 자리)  349px"
+     ],
+     "on": {
+      "ran": 3171,
+      "crossed": 3,
+      "back": 227
+     },
+     "off": {
+      "ran": 3165,
+      "crossed": 3,
+      "back": 349
+     }
+    },
+    {
+     "i": 2,
+     "rc": 0,
+     "sec": 55,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3165,
+      "crossed": 3,
+      "back": 221
+     },
+     "off": {
+      "ran": 3165,
+      "crossed": 3,
+      "back": 3165
+     }
+    },
+    {
+     "i": 3,
+     "rc": 0,
+     "sec": 56,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3160,
+      "crossed": 3,
+      "back": 216
+     },
+     "off": {
+      "ran": 3171,
+      "crossed": 3,
+      "back": 3075
+     }
+    },
+    {
+     "i": 4,
+     "rc": 0,
+     "sec": 55,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3165,
+      "crossed": 3,
+      "back": 221
+     },
+     "off": {
+      "ran": 3171,
+      "crossed": 3,
+      "back": 3171
+     }
+    },
+    {
+     "i": 5,
+     "rc": 0,
+     "sec": 55,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3165,
+      "crossed": 3,
+      "back": 221
+     },
+     "off": {
+      "ran": 3165,
+      "crossed": 3,
+      "back": 1725
+     }
+    },
+    {
+     "i": 6,
+     "rc": 0,
+     "sec": 55,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3165,
+      "crossed": 3,
+      "back": 221
+     },
+     "off": {
+      "ran": 3171,
+      "crossed": 3,
+      "back": 2787
+     }
+    },
+    {
+     "i": 7,
+     "rc": 0,
+     "sec": 55,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3165,
+      "crossed": 3,
+      "back": 221
+     },
+     "off": {
+      "ran": 3165,
+      "crossed": 3,
+      "back": 2525
+     }
+    },
+    {
+     "i": 8,
+     "rc": 0,
+     "sec": 55,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3171,
+      "crossed": 3,
+      "back": 227
+     },
+     "off": {
+      "ran": 3171,
+      "crossed": 3,
+      "back": 1699
+     }
+    },
+    {
+     "i": 9,
+     "rc": 0,
+     "sec": 55,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3165,
+      "crossed": 3,
+      "back": 221
+     },
+     "off": {
+      "ran": 3133,
+      "crossed": 3,
+      "back": 3133
+     }
+    },
+    {
+     "i": 10,
+     "rc": 0,
+     "sec": 55,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3165,
+      "crossed": 3,
+      "back": 221
+     },
+     "off": {
+      "ran": 3171,
+      "crossed": 3,
+      "back": 2883
+     }
+    }
+   ]
+  },
+  "고친·홀로": {
+   "summary": {
+    "n": 10,
+    "green": 10,
+    "sec_med": 71.5,
+    "sec_min": 44,
+    "sec_max": 87,
+    "on_back_min": 296,
+    "on_back_max": 301,
+    "off_back_min": 2056,
+    "off_back_max": 2056,
+    "off_bait_red": 0,
+    "on_over": 0
+   },
+   "runs": [
+    {
+     "i": 1,
+     "rc": 0,
+     "sec": 69,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 145,
+      "waitSaveMs": 2672,
+      "runMs": 13054,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 113,
+      "waitSaveMs": 26217,
+      "runMs": 13035,
+      "writes": 0
+     }
+    },
+    {
+     "i": 2,
+     "rc": 0,
+     "sec": 87,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 137,
+      "waitSaveMs": 29389,
+      "runMs": 13038,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 206,
+      "waitSaveMs": 16218,
+      "runMs": 13063,
+      "writes": 0
+     }
+    },
+    {
+     "i": 3,
+     "rc": 0,
+     "sec": 44,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 161,
+      "waitSaveMs": 624,
+      "runMs": 13081,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 211,
+      "waitSaveMs": 3169,
+      "runMs": 13046,
+      "writes": 0
+     }
+    },
+    {
+     "i": 4,
+     "rc": 0,
+     "sec": 71,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 131,
+      "waitSaveMs": 29282,
+      "runMs": 13064,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 212,
+      "waitSaveMs": 820,
+      "runMs": 13068,
+      "writes": 0
+     }
+    },
+    {
+     "i": 5,
+     "rc": 0,
+     "sec": 67,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 133,
+      "waitSaveMs": 16856,
+      "runMs": 13069,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 109,
+      "waitSaveMs": 9181,
+      "runMs": 13076,
+      "writes": 0
+     }
+    },
+    {
+     "i": 6,
+     "rc": 0,
+     "sec": 73,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2056,
+      "crossed": 2,
+      "back": 301,
+      "waitGiveMs": 136,
+      "waitSaveMs": 8204,
+      "runMs": 13107,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 107,
+      "waitSaveMs": 24492,
+      "runMs": 13081,
+      "writes": 0
+     }
+    },
+    {
+     "i": 7,
+     "rc": 0,
+     "sec": 77,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 133,
+      "waitSaveMs": 17983,
+      "runMs": 13075,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 104,
+      "waitSaveMs": 17550,
+      "runMs": 13066,
+      "writes": 0
+     }
+    },
+    {
+     "i": 8,
+     "rc": 0,
+     "sec": 80,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 132,
+      "waitSaveMs": 10109,
+      "runMs": 13044,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 115,
+      "waitSaveMs": 29866,
+      "runMs": 13078,
+      "writes": 0
+     }
+    },
+    {
+     "i": 9,
+     "rc": 0,
+     "sec": 72,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 152,
+      "waitSaveMs": 19195,
+      "runMs": 13030,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 208,
+      "waitSaveMs": 12244,
+      "runMs": 13036,
+      "writes": 0
+     }
+    },
+    {
+     "i": 10,
+     "rc": 0,
+     "sec": 70,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 135,
+      "waitSaveMs": 20947,
+      "runMs": 13014,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 207,
+      "waitSaveMs": 8381,
+      "runMs": 13028,
+      "writes": 0
+     }
+    }
+   ]
+  },
+  "종전·묶은상자": {
+   "summary": {
+    "n": 10,
+    "green": 8,
+    "sec_med": 61.0,
+    "sec_min": 60,
+    "sec_max": 62,
+    "on_back_min": 184,
+    "on_back_max": 200,
+    "off_back_min": 413,
+    "off_back_max": 3144,
+    "off_bait_red": 2,
+    "on_over": 0
+   },
+   "runs": [
+    {
+     "i": 1,
+     "rc": 0,
+     "sec": 61,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3133,
+      "crossed": 3,
+      "back": 189
+     },
+     "off": {
+      "ran": 3133,
+      "crossed": 3,
+      "back": 2557
+     }
+    },
+    {
+     "i": 2,
+     "rc": 0,
+     "sec": 60,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3139,
+      "crossed": 3,
+      "back": 195
+     },
+     "off": {
+      "ran": 3144,
+      "crossed": 3,
+      "back": 3144
+     }
+    },
+    {
+     "i": 3,
+     "rc": 0,
+     "sec": 61,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3128,
+      "crossed": 3,
+      "back": 184
+     },
+     "off": {
+      "ran": 3139,
+      "crossed": 3,
+      "back": 2851
+     }
+    },
+    {
+     "i": 4,
+     "rc": 1,
+     "sec": 61,
+     "result": "=== 통과 3 · 실패 1 ===",
+     "fails": [
+      "✗ ★끔(`=0`) — 되돌림 > 청크 한 변(종전 — 마지막 저장 = 기준 저장 자리)  797px"
+     ],
+     "on": {
+      "ran": 3133,
+      "crossed": 3,
+      "back": 189
+     },
+     "off": {
+      "ran": 3133,
+      "crossed": 3,
+      "back": 797
+     }
+    },
+    {
+     "i": 5,
+     "rc": 0,
+     "sec": 62,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3144,
+      "crossed": 3,
+      "back": 200
+     },
+     "off": {
+      "ran": 3139,
+      "crossed": 3,
+      "back": 3139
+     }
+    },
+    {
+     "i": 6,
+     "rc": 0,
+     "sec": 61,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3144,
+      "crossed": 3,
+      "back": 200
+     },
+     "off": {
+      "ran": 3139,
+      "crossed": 3,
+      "back": 1251
+     }
+    },
+    {
+     "i": 7,
+     "rc": 0,
+     "sec": 61,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3128,
+      "crossed": 3,
+      "back": 184
+     },
+     "off": {
+      "ran": 3139,
+      "crossed": 3,
+      "back": 3139
+     }
+    },
+    {
+     "i": 8,
+     "rc": 0,
+     "sec": 62,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3133,
+      "crossed": 3,
+      "back": 189
+     },
+     "off": {
+      "ran": 3139,
+      "crossed": 3,
+      "back": 3139
+     }
+    },
+    {
+     "i": 9,
+     "rc": 0,
+     "sec": 61,
+     "result": "=== 통과 4 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 3144,
+      "crossed": 3,
+      "back": 200
+     },
+     "off": {
+      "ran": 3139,
+      "crossed": 3,
+      "back": 1443
+     }
+    },
+    {
+     "i": 10,
+     "rc": 1,
+     "sec": 61,
+     "result": "=== 통과 3 · 실패 1 ===",
+     "fails": [
+      "✗ ★끔(`=0`) — 되돌림 > 청크 한 변(종전 — 마지막 저장 = 기준 저장 자리)  413px"
+     ],
+     "on": {
+      "ran": 3139,
+      "crossed": 3,
+      "back": 195
+     },
+     "off": {
+      "ran": 3133,
+      "crossed": 3,
+      "back": 413
+     }
+    }
+   ]
+  },
+  "고친·묶은상자": {
+   "summary": {
+    "n": 10,
+    "green": 10,
+    "sec_med": 85.0,
+    "sec_min": 49,
+    "sec_max": 103,
+    "on_back_min": 296,
+    "on_back_max": 296,
+    "off_back_min": 2056,
+    "off_back_max": 2056,
+    "off_bait_red": 0,
+    "on_over": 0
+   },
+   "runs": [
+    {
+     "i": 1,
+     "rc": 0,
+     "sec": 73,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 300,
+      "waitSaveMs": 1571,
+      "runMs": 13239,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 331,
+      "waitSaveMs": 23722,
+      "runMs": 13159,
+      "writes": 0
+     }
+    },
+    {
+     "i": 2,
+     "rc": 0,
+     "sec": 64,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 292,
+      "waitSaveMs": 15240,
+      "runMs": 13172,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 222,
+      "waitSaveMs": 1657,
+      "runMs": 13155,
+      "writes": 0
+     }
+    },
+    {
+     "i": 3,
+     "rc": 0,
+     "sec": 93,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 317,
+      "waitSaveMs": 23051,
+      "runMs": 13188,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 232,
+      "waitSaveMs": 24139,
+      "runMs": 13160,
+      "writes": 0
+     }
+    },
+    {
+     "i": 4,
+     "rc": 0,
+     "sec": 96,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 305,
+      "waitSaveMs": 27267,
+      "runMs": 13143,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 224,
+      "waitSaveMs": 21685,
+      "runMs": 13136,
+      "writes": 0
+     }
+    },
+    {
+     "i": 5,
+     "rc": 0,
+     "sec": 49,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 284,
+      "waitSaveMs": 628,
+      "runMs": 13208,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 358,
+      "waitSaveMs": 416,
+      "runMs": 13141,
+      "writes": 0
+     }
+    },
+    {
+     "i": 6,
+     "rc": 0,
+     "sec": 93,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 205,
+      "waitSaveMs": 22744,
+      "runMs": 13172,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 325,
+      "waitSaveMs": 22193,
+      "runMs": 13151,
+      "writes": 0
+     }
+    },
+    {
+     "i": 7,
+     "rc": 0,
+     "sec": 62,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 67,
+      "waitSaveMs": 7116,
+      "runMs": 13172,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 105,
+      "waitSaveMs": 8207,
+      "runMs": 13177,
+      "writes": 0
+     }
+    },
+    {
+     "i": 8,
+     "rc": 0,
+     "sec": 81,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 310,
+      "waitSaveMs": 12748,
+      "runMs": 13224,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 333,
+      "waitSaveMs": 21394,
+      "runMs": 13217,
+      "writes": 0
+     }
+    },
+    {
+     "i": 9,
+     "rc": 0,
+     "sec": 103,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 289,
+      "waitSaveMs": 29715,
+      "runMs": 13206,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 220,
+      "waitSaveMs": 26045,
+      "runMs": 13160,
+      "writes": 0
+     }
+    },
+    {
+     "i": 10,
+     "rc": 0,
+     "sec": 89,
+     "result": "=== 통과 6 · 실패 0 ===",
+     "fails": [],
+     "on": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 296,
+      "waitGiveMs": 303,
+      "waitSaveMs": 19167,
+      "runMs": 13184,
+      "writes": 2
+     },
+     "off": {
+      "ran": 2051,
+      "crossed": 2,
+      "back": 2056,
+      "waitGiveMs": 328,
+      "waitSaveMs": 22138,
+      "runMs": 13180,
+      "writes": 0
+     }
+    }
+   ]
+  }
+ }
+}
