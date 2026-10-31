@@ -971,6 +971,16 @@ const T728_KEEP = process.env.T728_RESTART_KEEP !== '0';   // ★[PM 10-14] 켬 
 //   끔 = 이 함수가 아무것도 안 한다(종전 바이트).
 const T983_GRANARY_SAVE = process.env.T983_GRANARY_SAVE !== '0';
 const _t983Stat = { n: 0, skipClose: 0, miss: 0, err: 0, ms: 0, maxMs: 0, bytes: 0, maxBytes: 0 };
+// ★★[T1005 2026-10-31 · T983 회부 1 · ★PM 결함] **곳간 문과 같은 창 — 사람 행동이 바꾼 마을 칸도 그 행에 남긴다** — 손잡이 `T1005_VIL_SAVE`(켬 기본 · 되돌림 `=0`).
+//   T983 표 여섯 중 마을 행(`serializeEcon`)에 실리는 칸 넷을 이 손잡이가 닫는다(둘은 행 밖 — 작물 = 사람 밭 건물 행에 이미 바로 · 사건 장부 = 모듈 대기 줄 `_evRescues` · 보고/T1005 §2):
+//     · 구제 한 끼(`_villageMeal` → `playerVillageWithdraw` · 곳간 food) · 집터 의뢰(`lifeRequestPlayerSite` · 곁 칸 `_t740Side` 의 `psite`(건물 번호) · `_potSet`) — 드물다 → 그 순간 한 번(`t1005Save`).
+//     · 낚시(`_fishLand` → `refreshFishSustain` · `land.fishSustain`) · 사냥(`huntKillAt` · 곁 칸 `_t728Game`) — 잦다 → 표만 하고(`t1005Mark`) 그 틱 끝에 마을 하나 한 번(`t1005Flush` · zone 틱 꼬리).
+//   쓰는 줄은 T983 과 같은 몸통(`_vilRowSave` — 마감 저장 줄 그대로 · 사본 0 · 새 칸 0).
+//   ⚠마감이 도는 중(`state.tickJobs`)이면 안 쓰고 표로 미룬다 — 마감이 끝난 첫 틱 꼬리에 쓴다(반쯤 정산된 econ 을 남기지 않는다 · T983 과 같은 뜻).
+//   끔 = 표도 쓰기도 없다(종전 바이트).
+const T1005_VIL_SAVE = process.env.T1005_VIL_SAVE !== '0';
+const _t1005Stat = { n: 0, now: 0, mark: 0, flush: 0, skipClose: 0, miss: 0, err: 0, ms: 0, maxMs: 0, bytes: 0, maxBytes: 0, by: {} };
+const _t1005Dirty = new Set();
 const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheDay', 'dailyProductionBuf']);
 // ★★[T740 2026-10-14] **재기동이 잃는 메모리 전용 마을 칸** — 손잡이 `T740_SIDE_KEEP`(★기본 끔 · `=1` 켬 · 끔 = 종전 글자 그대로).
 //   서버 마을 객체(`state.villages[i]`)의 칸 중 저장(마을 행 · 메타 행 · 마을 건물 행)을 안 거치는데 **값에 닿는** 것을 마을 행 곁 칸 하나(`_t740Side`)에 싣는다
@@ -7348,7 +7358,8 @@ function tickPerf() {
            maxChunk: mc, maxChunkAt: mcAt, frameMax: fm,   // ★[T42-b] 창 전체(위 주석)
            total: R.length ? { p50: q(tot, 0.5), p95: q(tot, 0.95), max: Math.max(...tot) } : null, stages,
            ...(T690_DAY_PHASE ? { t690: Object.assign({ pend: (state._t690 && state._t690.list.length) || 0 }, _t690Stat) } : {}),
-           ...(T983_GRANARY_SAVE ? { t983: Object.assign({}, _t983Stat, { ms: +_t983Stat.ms.toFixed(3), maxMs: +_t983Stat.maxMs.toFixed(3) }) } : {}) };   // ★[T983] 켬 판만 칸이 선다   // ★[T690] 켬 판만 칸이 선다
+           ...(T983_GRANARY_SAVE ? { t983: Object.assign({}, _t983Stat, { ms: +_t983Stat.ms.toFixed(3), maxMs: +_t983Stat.maxMs.toFixed(3) }) } : {}),
+           ...(T1005_VIL_SAVE ? { t1005: Object.assign({}, _t1005Stat, { ms: +_t1005Stat.ms.toFixed(3), maxMs: +_t1005Stat.maxMs.toFixed(3), by: Object.assign({}, _t1005Stat.by), pend: _t1005Dirty.size }) } : {}) };   // ★[T1005] 켬 판만 칸이 선다   // ★[T983] 켬 판만 칸이 선다   // ★[T690] 켬 판만 칸이 선다
 }
 
 // =============================================================================
@@ -10978,22 +10989,46 @@ function villageByDbId(dbId) { return (state.byDbId && state.byDbId.get(dbId | 0
 // ★[T983] 거래 순간 곳간 행 저장 — 부르는 자리(zone.js): 곳간 넣기 · 기부 · 거래소 · 납품 · 촌장 꺼내기 · 철기 위세품 팔기. 인자 = 마을 객체 · dbId · 마을 이름 중 하나.
 function t983Save(v) {
   if (!T983_GRANARY_SAVE) return false;
-  if (!state.ready || !state.db || !state.db.updateVillageState) { _t983Stat.miss++; return false; }
+  return _vilRowSave(v, _t983Stat, null);
+}
+// ★[T983 · T1005] 마을 행 한 줄 쓰기 몸통 — 셈 칸(`S`)만 갈린다. `mark` 가 있으면 마감 중엔 표로 미룬다(T1005 · 끔 판엔 안 온다).
+function _vilRowSave(v, S, mark) {
+  if (!state.ready || !state.db || !state.db.updateVillageState) { S.miss++; return false; }
   let vil = null;
   if (v && typeof v === 'object') vil = v.econ ? v : (state.byEcon && state.byEcon.get(v)) || null;
   else if (typeof v === 'number') vil = villageByDbId(v);
   else if (typeof v === 'string') vil = (state.villages || []).find((x) => x.name === v) || null;
-  if (!vil || !vil.econ || vil.dbId == null) { _t983Stat.miss++; return false; }
-  if (state.tickJobs) { _t983Stat.skipClose++; return false; }
+  if (!vil || !vil.econ || vil.dbId == null) { S.miss++; return false; }
+  if (state.tickJobs) { S.skipClose++; if (mark) mark.add(vil); return false; }
   const t0 = process.hrtime.bigint();
   try {
     const js = serializeEcon(vil.econ);
     state.db.updateVillageState(vil.dbId, js, vil.econ.npcs.length, state.world.day);
     const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-    _t983Stat.n++; _t983Stat.ms += ms; if (ms > _t983Stat.maxMs) _t983Stat.maxMs = ms;
-    _t983Stat.bytes += js.length; if (js.length > _t983Stat.maxBytes) _t983Stat.maxBytes = js.length;
+    S.n++; S.ms += ms; if (ms > S.maxMs) S.maxMs = ms;
+    S.bytes += js.length; if (js.length > S.maxBytes) S.maxBytes = js.length;
     return true;
-  } catch (e) { _t983Stat.err++; console.error(`[${state.zoneId}] 🏘️ [T983] 거래 순간 곳간 저장 실패(마감 저장이 뒤에 쓴다):`, e.message); return false; }
+  } catch (e) { S.err++; console.error(S === _t983Stat ? `[${state.zoneId}] 🏘️ [T983] 거래 순간 곳간 저장 실패(마감 저장이 뒤에 쓴다):` : `[${state.zoneId}] 🏘️ [T1005] 순간 마을 행 저장 실패(마감 저장이 뒤에 쓴다):`, e.message); return false; }
+}
+// ★[T1005] 드문 행동 — 그 순간 한 번(구제 한 끼 · 집터 의뢰). `why` 는 셈 이름만.
+function t1005Save(v, why) {
+  if (!T1005_VIL_SAVE) return false;
+  _t1005Stat.now++; _t1005Stat.by[why] = (_t1005Stat.by[why] | 0) + 1;
+  return _vilRowSave(v, _t1005Stat, _t1005Dirty);
+}
+// ★[T1005] 잦은 행동 — 표만(낚시 · 사냥). 같은 틱 안 몇 번이든 그 틱 끝 한 번(`t1005Flush`).
+function t1005Mark(vil, why) {
+  if (!T1005_VIL_SAVE || !vil) return;
+  _t1005Stat.mark++; _t1005Stat.by[why] = (_t1005Stat.by[why] | 0) + 1;
+  _t1005Dirty.add(vil);
+}
+// ★[T1005] 틱 꼬리(zone.js 게임 루프 끝) — 표한 마을마다 한 줄. 마감 중이면 표를 남겨 둔다(끝난 첫 틱에 쓴다).
+function t1005Flush() {
+  if (!T1005_VIL_SAVE || !_t1005Dirty.size || state.tickJobs) return 0;
+  const L = [..._t1005Dirty]; _t1005Dirty.clear();
+  let n = 0; for (const vil of L) if (_vilRowSave(vil, _t1005Stat, _t1005Dirty)) n++;
+  _t1005Stat.flush++;
+  return n;
 }
 
 // 회관 셀(정확히 중심) → 그 마을. 플레이어가 세운 마을만 돌려준다(NPC 마을 회관은 이 UI 대상이 아니다).
@@ -12130,6 +12165,7 @@ function huntKillAt(px, py) {
     const k = _gameKey(v, cx, cy); if (k === null) continue;   // 표본 격자로 맞춘다(위 `_gameKey` — 사본 0)
     const g = m.get(k); if (!(g > 0)) continue;
     m.set(k, Math.max(0, g - 1));               // ★한 마리 = 1 개체(새 수 0 — 잡은 것이 곧 그 수다)
+    t1005Mark(v, 'hunt');                       // ★[T1005] 사냥터 장부(곁 칸 `_t728Game`)도 이 틱 끝에 행으로(끔 = 무동작)
     return 1; }
   return 0;
 }
@@ -14268,6 +14304,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
   t983Save, t983On: () => T983_GRANARY_SAVE,   // ★[T983] 거래 순간 곳간 행 저장
+  t1005Save, t1005Mark, t1005Flush, t1005On: () => T1005_VIL_SAVE,   // ★[T1005] 구제 한 끼 · 집터 의뢰(순간) · 낚시(틱 끝 묶음) · 사냥은 `huntKillAt` 안에서
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
