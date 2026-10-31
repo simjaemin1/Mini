@@ -12370,9 +12370,20 @@ function* _huntHuntersSteps(vil, players, day) {
  *   전부 랩 `lifeDayAll` 의 그 줄들이다(라인은 위 머리말).
  */
 function _lifeGameDay(vil, day) { const g = _lifeGameDaySteps(vil, day); while (!g.next().done); }   // ★[T523] 정본 몸통은 아래 발생기(쉼표 = 사냥꾼 한 명)
+// ★★[T1013 2026-10-31 · 손잡이 `T1013_BAND_DAY` — 끔 기본(`'1'` 만 켬 · 끔 = main 글자) · 판 자(t577)는 아이에 `1` 을 싣는다] **사냥터 짓기를 그날 안에 끝낸다.**
+//   `_huntBandBuild` 는 마을 하루치 벽시계 몫(`T146_BUILD_MS` 20ms)이 바닥나면 커서를 남기고 **내일** 잇는다 — 다 짓는 날이 CPU 에 달린다(결과형 · T986 전수 표 5).
+//   가상 시계 판은 한 콜백 안에서 시계가 안 흘러 몫이 안 닳으니 첫날 다 짓는다. 벽시계 판은 부하가 크면 큰 마을 띠가 다음 날로 넘어가 사냥꾼 차감 ·
+//   14일 `land.game` 갱신이 판마다 달라졌다(`--house` 800날 부하 판 시드 1020 날 771 임업1 · 보고/T1013 §2).
+//   켜면 몫이 바닥나도 내일로 미루지 않고 **쉼표(yield)** 를 두고 같은 날 이어 짓는다 — 마감 조각(T687)이 나눠 돌고, 조각 없는 부르는 쪽(`_lifeGameDay`)은 한 번에 돈다.
+//   지은 띠 · 셀 차례는 끊는 자리와 무관하다(줄 커서 그대로) ⇒ 첫날 다 짓는 가상 시계 판과 같은 답. 새 수 0.
+const T1013_BAND_DAY = process.env.T1013_BAND_DAY === '1';
+const _t1013Stat = { short: 0, resume: 0, carry: 0 };   // 계측 전용 — 몫이 바닥난 마을-날 · 같은 날 이어 지은 번 · 내일로 넘긴 마을-날
 function* _lifeGameDaySteps(vil, day) {
   if (_t146() === 0) return;
-  const m = _huntBandBuild(vil);
+  let m = _huntBandBuild(vil);
+  if (!m && vil._gameScan) _t1013Stat.short++;
+  if (!m && T1013_BAND_DAY) while (!m && vil._gameScan) { _t1013Stat.resume++; yield; m = _huntBandBuild(vil); }   // ★[T1013] 켬 — 몫이 바닥나면 쉼표 뒤 같은 날 이어 짓는다(끔 = 내일)
+  if (!m && vil._gameScan) _t1013Stat.carry++;
   if (!m) return;
   if (T687_ON) yield;   // ★[T687] 쉼표 — 밴드 짓기 뒤(쉰 시간은 부르는 쪽이 뺀다)
   //   ① 사냥꾼 하루치 차감 — 정본 하나(하루 틱도 하네스도 이 문으로 들어온다)
@@ -14424,7 +14435,7 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat,   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
+module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat),   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
   streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   T856_LAND_ELEV, _t856LandElev,   // ★[T856] 마을 고도 — 하네스(`test-land-elev`)가 같은 함수를 부른다(사본 0)
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
