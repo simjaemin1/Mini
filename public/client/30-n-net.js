@@ -80,6 +80,7 @@
     zonesMeta = data.zones;
     marketplaceUrl = data.marketplaceUrl || '';
     handoffCommit = (typeof data.handoffCommit === 'number' && data.handoffCommit > 0) ? data.handoffCommit : 0;
+    _firstWait = data.firstWait === true;   // ★[T1024] 손잡이 `T1024_FIRST_WAIT`(central /zones 칸 · 켬 기본) — 첫 재시도도 백오프 간격을 기다린다(33-m-conn `ensurePrimaryConnection`)
     _vilCfg(data.vilSlice === true);   // ★[T982] 손잡이 `T962_VIL_SLICE`(central /zones 칸 · 켬 기본) — 기다리던 마을 그림 굽기를 그 칸대로 시작한다(20-r2 `_vilCfg`)
     if (data.gtPrewarm === true) _gtPrewarm(data.gtSlice === true);   // ★[T991] `gtSlice` 칸(손잡이 `T991_GT_SLICE` · 끔 기본)이면 데우기 둘을 판당 예산으로 쪼갠다   // ★[T937] 손잡이 `T937_GT_PREWARM`(central /zones 칸) — 로비에서 지면 굽기 준비 둘을 미리(끔이면 안 탄다)   // ★[T604 추신3] 해안 경계 앞 바다 지킴 폭(서버 정본 · 아래 굽기 전에)
     // Phase 14.46-b-mini: 모든 zone water tiles 사전 계산 (~수만 tiles, ~100ms)
@@ -1048,7 +1049,7 @@
       }
       // ★[접속 진단] 여기까지 왔으면 **들어간 것**이다. 배너를 걷고 시도 횟수를 0으로.
       if (c.role === 'primary') { connEverReady = true; connAttempts = 0; connHelloAt = 0; connOutageAt = 0;
-        _reconnAt = 0;   // ★백오프 시계도 푼다 — 다음 끊김은 곧바로 한 번 시도한다
+        _reconnAt = 0;   // ★백오프 시계도 푼다 — 다음 끊김은 곧바로 한 번 시도한다(★[T1024] 켬이면 끊김을 본 순간부터 첫 간격 1초 뒤 · 33-m-conn)
         connMark('ready', { reason: '', stage: '', ref: '' }); }
       if (c.role === 'primary' && _ld.rx) _ldMark('welcomeDone');   // ★[T920] 첫 welcome 처리 끝
       if (typeof _wStart === 'number') {

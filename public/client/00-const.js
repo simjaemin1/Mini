@@ -425,6 +425,7 @@ function cropSprite(stage, crop) {
   //   **6번째 시도인데 "0초 경과"** 가 떴다 — 영원히 노랑에 머물러 "오래됐다"를 말할 수가 없었다.
   let connOutageAt = 0;
   let _reconnAt = 0;             // 재연결 백오프 시계(성공하면 푼다)
+  let _firstWait = false;        // ★[T1024] central `/zones` 칸 `firstWait`(손잡이 `T1024_FIRST_WAIT` · 켬 기본) — 첫 재시도도 백오프 간격을 기다린다(33-m-conn)
   let connReason = '', connStage = '', connRef = '';
   function connMark(phase, extra) {
     connPhase = phase;
