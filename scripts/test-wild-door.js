@@ -144,6 +144,7 @@ function parent() {
     const env = Object.assign({}, process.env, { T1009_WD_MODE: 'run', T1009_WD_DB: db, T1009_WD_OUT: out, PORT: String(port++) });
     delete env.T1009_WILD_DOOR; delete env.T998_NPC_WILD_SYNC; delete env.T146_GAME; delete env.NODE_OPTIONS;
     if (knob === 'off') env.T1009_WILD_DOOR = '0';
+    if (env.T1025_EV_CORPSE == null) env.T1025_EV_CORPSE = '0';   // ★[PM land1034] T1025 켬이면 장부는 잡은 순간이 아니라 사체가 끝날 때(도살 · 부패) — 이 하네스는 잡은 순간 판(T1009 글자)을 쥔다 · T1025 켬 판은 T1032 가 넓힌다
     const r = spawnSync(process.execPath, [__filename], { encoding: 'utf8', timeout: 120000, env });
     try { R[knob] = JSON.parse(fs.readFileSync(out, 'utf8')); } catch (e) { R[knob] = { err: `결과 없음(종료 ${r.status} · 신호 ${r.signal})` }; }
   }
