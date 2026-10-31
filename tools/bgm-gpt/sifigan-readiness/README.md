@@ -1003,3 +1003,30 @@ RSS+MPS-driver cap for inference and at least12GiB free disk. Each disposable
 process also has a600second hard watchdog; combined elapsed time is checked
 separately. Neither metrics nor a successful render constitute listening
 approval.
+
+The first, retained−12diagnostic took10.037s for three forwards and7.792s
+for export. Its register problem was caught before presentation; private061/062
+are NOT the selected pair. The corrected−7run uses the same original score
+SHA9a51bf90…aa42a7c and the same global3,000 generator. It completed its
+source-exact baseline plus two continuous19.2s forwards in8.570s, then
+exported in7.543s. Actual prescribed F0 spans250.144–451.659Hz. Code and tests
+were committed/pushed as ee3082c7 before this second run. The final local suite
+passes250tests; the frozen display helper separately passes6tests.
+
+For corrected native output, both candidates measure every2,624fixed steady
+frame within50c of its known control. Median absolute steady errors are
+2.921/0.890c. All3,520sounding frames remain in the denominator: near50counts
+are3,395/3,397, and the896boundary frames retain56missing measurements in
+each candidate, with771/773within50c. This is not an acoustic articulation or
+naturalness pass. All28notes are represented individually. Four exact native
+rests total38,400samples. No source-YIN mask selects the new score frames.
+
+Selected private auditions063(all borrowed microcurve) and064(delayed long-note
+microcurve) are both19.2s48k stereo AAC192k,921,600decoded frames,−24.0LUFS,
+with+17.1dB constant display gain and−19.3/−19.4dBFS true peak. The central
+four rest regions are decoded and checked separately. Neither source PCM
+nor the old source quiet-intro envelope is mixed back. Across both register
+attempts, actual render/export time is33.941s; combined new files remain below
+50MB. All processes ended normally, with zero optimizer updates/new weights.
+Originals, previous auditions, score, game runtime/defaults and main remain
+unchanged. Sound/timbre and musical adoption still require user listening.
