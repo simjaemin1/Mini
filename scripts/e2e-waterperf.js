@@ -93,6 +93,13 @@ const BOX = [40, 260, 1360, 860];
   const _zone = boot('zone', '/tmp/zone-wrap-wp.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0',   // ★e2e-terrain 과 같게 — 이걸 끄면 mainSquare 스폰이 안 먹어 엉뚱한 마을에서 시작한다(1패스에서 물 0% 로 잡혔다)
+    // ★★[T1020 2026-10-31] **T947 칸 상자는 끈다** — 바람 · 하늘을 끈 것과 같은 자리다(재는 층 격리 · 문턱 무변).
+    //   T961(10-27 · 착지 `feebce2`)이 `T947_CELL_BOX` 를 켬 기본으로 하자 대조군(`slowFlow` = 창 전체 16,384칸을 묻는다)의
+    //   상자 밖 칸이 정본 술어를 안 부르게 됐다. 그러면 대조군은 더 이상 "수리 전과 같은 비용"이 아니다 —
+    //   실측(이 상자 · 2판씩): 착지 앞 대조 230~247ms · 착지 뒤 126~154ms · 수리본은 앞뒤 31~39ms 그대로.
+    //   이 하네스가 재는 것은 배치 20 B 수리(색인 · 재사용 · 예산)이지 T947 이 아니다(T947 은 제 자 `t947-first-lookup` 이 잰다).
+    //   상자는 값을 안 바꾼다(`t947-cell-box-eq`) ⇒ ⓓ 그림 판정에도 영향 없다. 격리가 섰는지는 아래 welcome 칸으로 확인한다.
+    T947_CELL_BOX: '0',
     WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: SITE.cx * 32 + 16, y: SITE.cy * 32 + 16, name: '물가렉' } }),
   });
   // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
@@ -176,6 +183,9 @@ const BOX = [40, 260, 1360, 860];
   ok(d0.webgl === true && d0.on === true, 'WebGL 물 레이어가 켜져 있다');
   ok(d0.segs > 1000, `강 구간을 실제로 읽었다 (${d0.segs})`);
   ok(d0.segGrid > 100, `★공간 색인이 실제로 만들어졌다 (칸 ${d0.segGrid})`);
+  // ★[T1020] 격리 증인 — 존이 welcome 에 cellBox 를 안 실었다(실렸으면 대조군이 상자 몫만큼 싸져 아래 배율이 T947 을 같이 잰다)
+  const _box = await page.evaluate(() => (window.__uiCfg ? window.__uiCfg().cellBox : null));
+  ok(_box !== true, `★T947 칸 상자가 꺼져 있다 — 대조군이 수리 전 비용 그대로다 (welcome cellBox ${_box})`);
 
   // 스폰이 항상 물가는 아니다 — 물이 화면에 들어올 때까지 걸어간다(시험의 전제 조건이지 판정 완화가 아니다).
   let wp = 0;
