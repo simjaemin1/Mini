@@ -72,7 +72,18 @@ const st6 = (o) => { if (!o || typeof o !== 'object') return R6(o); const r = {}
 const rec = { days: [], dictMax: 0, dictLast: 0, warDays: 0, threatDays: 0, boot: null };
 const Vm = require(path.join(ROOT, 'server', 'villages'));
 const init0 = Vm.init;
-Vm.init = function () { const r = init0.apply(this, arguments);   // 부팅 복원 직후 · 첫 틱 전(관찰만)
+// ★[T949] 다시 뜬 판의 부팅 시계 — 저장 DB 에 T728 메타 행(앵커)이 있으면 부팅(\`init\`) 동안만 \`Date.now\` 를 **앵커의 벽시계 날 경계에 세운다**.
+//   T728 ⑥ 은 econ 날을 "앵커 날 + (지금 벽시계 날 − 앵커 벽시계 날 g)"로 뛴다(멈춘 동안은 버린다 — 캐논). 끔 · 켬 두 판은 같은 DB 를 **다른 순간**에 띄우므로
+//   메타 행이 있으면(상자가 느려 저장 큐가 비는 날이 생긴 판) 두 판이 서로 다른 날로 뛰었다(묶은 상자 · 첫 날 306 ↔ 322 · 야간 10-26 첫 갈림 날 64).
+//   세운 시계(= epoch + g × 하루)면 지난 벽시계 날이 0 이라 두 판 다 안 뛴다 — 메타 행이 없는 판(빠른 상자 · 종전 초록 판)과 같은 "저장한 날에서 바로 이어 돈다".
+//   메타 행이 없으면 아무것도 안 한다 = 종전 글자. 부팅이 끝나면 시계는 진짜로 돌아간다(첫 틱부터 종전).
+let _bootAt = null;
+try { const SQ = require(path.join(ROOT, 'node_modules', 'better-sqlite3')); const db = new SQ(process.env.DB_PATH, { readonly: true, fileMustExist: true });
+  const m = db.prepare('SELECT data FROM world_meta WHERE zone = ?').get(process.env.ZONE_ID); db.close();
+  const a = m && JSON.parse(m.data).anchor; if (a && Number.isFinite(a.g) && a.dayMs > 0) _bootAt = (a.epoch || 0) + a.g * a.dayMs; } catch (e) {}
+rec.bootAt = _bootAt;
+Vm.init = function () { const _dn = Date.now; if (_bootAt != null) Date.now = () => _bootAt;
+  let r; try { r = init0.apply(this, arguments); } finally { Date.now = _dn; }   // 부팅 복원 직후 · 첫 틱 전(관찰만)
   try { const B = Vm.__p3Bind({}); const b = { n: 0, dict: 0, ser: [] };
     for (const vil of B.state.villages || []) { const e = vil.econ; if (!e) continue; b.n++; if (!HFP(e)) b.dict++; b.ser.push(crypto.createHash('sha1').update(B.serializeEcon(e)).digest('hex')); }
     rec.boot = b; } catch (e) { rec.err = String(e && e.message); }
