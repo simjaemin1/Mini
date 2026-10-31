@@ -1139,3 +1139,37 @@ No new score, source PCM mixture, public voice weights, paid service, package
 installation, original-audio upload, game/default change or main push is part
 of this experiment. Private source credit remains:
 국악기 음원 제공 — 국립국악원 (공공누리 제1유형).
+
+### Actual launch: resource abort before any new update
+
+The frozen runner/tests were committed and pushed as f15fef94. Existing263tests,
+eight new continuation tests and six display-helper tests passed before the
+actual launch. Independent review also checked the staged recovery arithmetic,
+sampler continuity and full-state restoration contract. This is not a quality
+approval or proof that the current machine has enough runtime resources.
+
+The actual launch ended with watchdog exit124 after6.653s while initializing
+the models, BEFORE baseline evaluation or any additional optimizer update.
+Free disk fell from13,837,090,816to12,762,845,184bytes, below the unchanged
+12GiB floor. The abort observation was592,969,728bytes RSS and1,141,342,208bytes
+MPS-driver allocation; these are observations, not peaks. The new experiment
+then contained only one40,646-byte progress file, showing `phase=validate`,
+global3,000/additional0, no traces or snapshots. No new trained checkpoint,
+reconstruction or listening candidate exists. A hard watchdog exit skips the
+producer's `finally`, so no completed training report is implied by that file.
+
+The system's subsequent swap observation was15,360MiB allocated and14,682.88MiB
+used, but no pre-launch swap value was captured. Thus system-wide free-space
+loss is established, not a claim that swap alone explains every lost byte.
+The initial save reservation did not cover this system-wide initialization
+growth. Do not blindly retry merely because that reservation later passes.
+Keep old evidence and the full3,000-step parent unchanged; do not reduce the
+floor, delete system swap, terminate unrelated apps, or export old audio as new.
+
+Next requires the user to save work and restart the Mac, followed by fresh
+disk/memory measurements; alternatively create substantial additional space
+(5GB is a conservative action target, not a mathematical minimum or completion
+guarantee). A future launch must use a NEW output directory and account for
+initialization/OS temporary-memory headroom as well as checkpoint saves. The
+failed attempt remains private evidence. No automatic retry is running and
+the experiment has not demonstrated whether more training improves timbre.
