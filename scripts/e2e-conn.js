@@ -123,6 +123,7 @@ const ZENV = (extra) => Object.assign({
   // ★★[T1002] **한 장으로 읽는다** — 상태 · 배너 글자 · 단추 · 주 소켓 · 귀의 열을 **한 evaluate** 에서.
   //   종전 ② 는 상태(`conn`)를 읽은 뒤 단추와 글자를 **따로** 읽었다 — 그 사이 상태가 바뀌면 다른 순간의 글자를 물었다
   //   (확정 오류 c1 이 닫히자마자 첫 재시도는 바로 붙는다 · `33-m-conn.js` `_reconnAt` 0 — 그 `connecting` 의 글자).
+  //   ★[T1024] 이제 첫 재시도도 간격을 기다린다(`T1024_FIRST_WAIT` 켬 기본) — 한 장으로 읽기는 그대로 둔다(되돌림 `=0` 판도 같은 자).
   const snap = (page) => page.evaluate(() => {
     const s = window.__connState();
     const ws = window.__primaryWs ? window.__primaryWs() : null;
@@ -226,6 +227,26 @@ const ZENV = (extra) => Object.assign({
        fl.flips.length ? `되돌림 ${fl.flips.length}번 — ${[...new Set(fl.flips)].join(' · ')}`
          : (fl.err.size ? `확정 오류 ${fl.err.size}접속(${[...fl.err].join(' · ')}) · 찌르기 ${c.poke} · 되돌림 0` : '귀가 확정 오류를 못 적었다'));
     ok(zoneLog.join('').includes('접속 처리 실패'), '★② 서버 로그에 스택이 남았다(종전엔 아무것도 안 남았다)');
+    // ★★[T1024 2026-10-31 · T1002 회부 4] 닫힌 확정 오류 배너는 **다음 시도까지** 선다 — 그 틈이 클라 자신의 재시도 간격보다 짧으면
+    //   첫 재시도가 간격 없이 붙은 것이다(종전 160~186ms = 닫힘 150ms + 그림 틀 한 번 — 사람이 못 읽는다 · 보고/T1002 §4).
+    //   간격 수는 하네스에 베끼지 않고 **확정 오류인 이 순간 페이지에서** 읽는다(`_reconnectDelayMs()` · 사본 0).
+    //   틈 = 귀의 열에서 **첫** `error` 시각 → 그 뒤 첫 `connecting` 시각(= 첫 재시도). 되돌림 `T1024_FIRST_WAIT=0` 이면 이 줄이 빨개야 한다(끔 증인).
+    {
+      const want = await page.evaluate(() => (typeof _reconnectDelayMs === 'function' && window.__connState().phase === 'error') ? _reconnectDelayMs() : null);
+      const rN = await waitFor(async () => page.evaluate(() => {
+        const L = window.__t1002ConnLog || []; let te = null, ref = '';
+        for (const [t, ph, rf] of L) {
+          if (te == null) { if (ph === 'error') { te = t; ref = rf; } }
+          else if (ph === 'connecting') return { gap: t - te, ref, att: window.__connState().attempts };
+        }
+        return null;
+      }));
+      const g = rN.v;
+      console.log(`    [상황] 첫 확정 오류(${g ? g.ref : '—'}) → 첫 재시도 ${g ? g.gap + 'ms' : (rN.timedOut ? '상한까지 안 왔다' : '—')} · 그때 시도 ${g ? g.att : '—'}번째 · 클라 간격 ${want}ms`);
+      ok(!!g && Number.isFinite(want) && want > 0 && g.gap >= want,
+         '★★② [T1024] 닫힌 확정 오류는 **다음 시도까지 클라의 재시도 간격만큼** 선다 — 첫 재시도도 간격을 기다린다(사람이 읽는다)',
+         g ? `틈 ${g.gap}ms · 간격 ${want}ms` : `${rN.timedOut ? '상한까지 다음 시도가 안 왔다' : '귀가 확정 오류를 못 적었다'} · 간격 ${want}`);
+    }
     ok(!(await inWorld(page)), '(상황) 실제로 못 들어갔다 — 자명 통과가 아니다');
     await snapOf(page, 'conn-02-error');
     await page.close();

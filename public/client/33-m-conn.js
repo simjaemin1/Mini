@@ -18,6 +18,12 @@
     const pm = zonesMeta[primaryZoneId];
     if (!pm) return;
     const now = performance.now();
+    // ★★[T1024 2026-10-31 · T1002 회부 4] **첫 재시도도 같은 간격 규칙이다** — 손잡이 `T1024_FIRST_WAIT`(central `/zones` 칸 `firstWait` · `!== '0'` 켬 기본 · 되돌림 `=0` = 종전).
+    //   종전엔 `_reconnAt` 이 0(처음 · welcome 뒤 풀림)이면 간격을 안 보고 곧바로 붙었다 — 확정 오류(c1)가 닫히자마자(150ms + 그림 틀 한 번)
+    //   첫 재시도 c2 가 `connecting` 으로 덮어, 닫힌 확정 오류 배너가 사람이 못 읽는 틈만 섰다(보고/T1002 §4 · 160~186ms). 위 머리말의
+    //   "확정 오류면 처음부터 상한 간격"과 달랐다. 켬 = 끊긴 주 소켓을 **처음 본 이 프레임**에 시계를 세우고 돌아간다 —
+    //   그 뒤는 둘째부터와 같은 `_reconnectDelayMs()`(확정 오류 15초 · 아니면 1·2·4·8·15초 · 기존 수 · 새 수 0).
+    if (!_reconnAt && _firstWait) { _reconnAt = now; return; }
     if (_reconnAt && now - _reconnAt < _reconnectDelayMs()) return;
     _reconnAt = now;
     // ★유령 클라 fix: 옛 소켓을 확실히 닫고 지운다(닫지 않고 지우면 잔여 메시지가 새 conn으로 샌다).
