@@ -1106,3 +1106,36 @@ evidence remain private; no optimizer updates, packages, source PCM mixing,
 game runtime/default changes or background training occurred. The candidate
 comparison still needs user listening; actual-source reconstruction quality
 and missing score-conditioned acoustics both remain unresolved.
+
+## Reconstruction-first continuation authorized, 2026-11-01
+
+The user reports that the model still sounds very different from original065.
+Actual-feature066 was the old global3,000 reconstruction, byte-identical to054;
+it was a reproduced diagnostic baseline, not new training or an improvement.
+Do not expand authored melodies while presenting pitch accuracy as timbre
+approval. Acoustic representation and decoder training remain possible causes;
+the earlier ablation did not isolate one exclusive failure mechanism.
+
+The next authorized experiment actually continues the complete global3,000
+state for up to3,000 additional G/D updates (global6,000 target). Data, accepted
+fit crops, all43input channels, normalizer, architecture, losses, optimizers,
+schedulers and sampler policy stay unchanged. All saved numeric/RNG/sampler
+states must restore exactly. The same42development evaluation windows and
+two4.8s raw source reconstructions must reproduce the old baseline before any
+new update. Previously inspected heldout sources are not blind tests.
+
+The announced ceiling is45minutes of computation and900MB of all-new experiment
+files, keeping at least12GiB free disk. Final full-state space is reserved before
+updates; at most two generator-only recovery snapshots are planned. Existing
+recordings, checkpoints and auditions must not be deleted or overwritten to
+meet this ceiling. An early resource stop must report the actual step count
+and never imply that the target was reached. New outputs, if produced, will
+compare the SAME performance against the original and old3,000 baseline, with
+identical explicit reference-RMS control and static listening-level settings.
+Raw neural output stays preserved. More training is a testable hypothesis,
+not a promise of better daegeum identity, naturalness, or convergence.
+
+No new score, source PCM mixture, public voice weights, paid service, package
+installation, original-audio upload, game/default change or main push is part
+of this experiment. Private source credit remains:
+국악기 음원 제공 — 국립국악원 (공공누리 제1유형).
