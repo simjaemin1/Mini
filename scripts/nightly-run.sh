@@ -78,6 +78,12 @@ if [ -z "$_ko" ] && [ -z "${NIGHT_NO_FONT:-}" ] && command -v apt-get >/dev/null
   _ko="$(ko_fonts)"
 fi
 say "  [글꼴] 한글(:lang=ko) → ${_ko:-없음 — 한글을 재는 e2e 가 상자 탓으로 갈릴 수 있다(fonts-noto-cjk)}"
+# ★[T1029 · T971 회부 1] 파이썬 의존 — `test-map-editor` 층 데이터 대조(`editor-layers-bake.py --check`)가 python3 · numpy · PIL(Pillow)을 부르고,
+#   PNG 바이트는 zlib 판을 따른다(T971: 상자 넷 다 numpy 2.5.3 · PIL 12.3.0 인데 야간만 "다르다"). 돌기 전에 판을 한 줄로 남긴다 —
+#   없으면 `[상황]`(그 하네스가 대조를 건너뛴다 · 빨강 아님). 넣지 않는다(설치 0) · 판정은 안 바꾼다. 보고가 머리로 옮긴다.
+_dep="$(python3 -c 'import sys, zlib, numpy, PIL; print("python " + sys.version.split()[0] + " · numpy " + numpy.__version__ + " · PIL " + PIL.__version__ + " · zlib " + zlib.ZLIB_RUNTIME_VERSION)' 2>&1 </dev/null)"
+if [ $? -eq 0 ]; then say "  [의존] $_dep"
+else say "  [의존] [상황] python3 · numpy · PIL 중 없는 것이 있다 — $(printf '%s' "${_dep:-python3 없음}" | tail -1 | cut -c1-120) · test-map-editor 층 데이터 대조는 건너뛴다"; fi
 
 # ── 오늘 돌 목록 — **나는 안 만든다**. 분할기에게 묻는다(사본 0).
 #   `auto` 를 두 번 부르지 않는다: 한 번 물어 **글자**를 받고, 돌릴 땐 그 글자로 부른다(날짜가
