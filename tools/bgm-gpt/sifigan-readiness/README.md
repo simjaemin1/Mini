@@ -1030,3 +1030,52 @@ attempts, actual render/export time is33.941s; combined new files remain below
 50MB. All processes ended normally, with zero optimizer updates/new weights.
 Originals, previous auditions, score, game runtime/defaults and main remain
 unchanged. Sound/timbre and musical adoption still require user listening.
+
+## Same-performance conditioning ablation after063/064rejection, 2026-10-31
+
+The user rejects063/064. They remain preserved evidence, not adopted music.
+The next authorized test holds the ORIGINAL arirang001first4.8s cf0, timing,
+global3,000 generator, normalizer and excitation noise fixed. A uses its real
+time-varying43-channel acoustic features; B replaces ONLY those43features with
+the exact deepvib stable-template index map used by063/064:
+`240+((arange(960)+16)%960)`. The original source F0 is not transposed, composed
+or shifted. No newly authored score, attack gate, old0.575s intro cut, source
+PCM mix, new training, weights, external model or packages are involved.
+
+Before B is rendered, the source-exact deepvib48baseline and arirang001A
+baseline must both reproduce global3,000 PCM byte-for-byte in their original
+case/RNG order. B resets to the pre-A CPU noise state and does not consume a
+different noise realization. There are exactly three neural forwards.
+
+A and B each receive the SAME explicitly supplied source20ms RMS condition
+through the frozen gain controller. This is not learned envelope prediction.
+The original comparison reference receives no dynamic control. All three
+auditions have the same4.8s duration and static-LUFS display target. A can be
+identical to the historical054; it is labelled a reproduced diagnostic
+baseline, NOT new training or an improved model. Only B's feature replacement
+is a new counterfactual. None is a newly generated composition.
+
+Pitch uses the original source-only supported denominator, with candidate
+missing frames retained. Spectral diagnostics instead use source-only64ms
+RMS support without pitch/candidate exclusion; quiet and all-frame results
+remain visible. The template wraps at4.72s, potentially inside a sounding
+note in this source rather than a written rest. The declared4.64–4.8s window
+and a fixed pre-wrap scope are reported separately without removing frames
+from the primary full-clip results. These are descriptive diagnostics, not
+instrument identity, naturalness or the duration of an acoustic transition.
+
+A/B differences test this particular template substitution. They do not by
+themselves identify spectral envelope versus AP, register, articulation or
+every other cause, and do not prove a large learned performance model is the
+only remedy. Poor A would prioritize acoustic representation/decoder
+reproduction; acceptable A but poor B would prioritize dynamic acoustic
+conditioning rather than more written melodies. This is a listening decision,
+not one derived solely from spectral distance. Resources are bounded to300s
+combined inference/export,20MB all-new files,8GiB conservative RSS+MPS-driver
+for inference,2GiB export RSS and at least12GiB free disk.
+
+Pre-quality range review also finds that the source Arirang cf0 spans275–673Hz
+(median416Hz), whereas063/064controls span250–452Hz. Of the source's825pitch-
+supported frames,389are above that earlier maximum. Thus this remains a valid
+same-performance A/B, but includes a stronger fixed-template register stress
+and cannot directly quantify or uniquely explain the063/064rejection.
