@@ -1,0 +1,134 @@
+{
+ "note": "T1008 전쟁 자 3시드(T942 · T906 자) — `t577-server-run.js 50 1020,7,42` · VILLAGE_DAY_MS=10000 · WAR_FIXTURE='assault*3' · WAR_FIXTURE_DAY=5 · WAR_FIXTURE_REPEAT=1 · VILLAGE_WAR_LOG=1 · VILLAGE_CARAVAN_MAX=0 · T400_BUILD_ACT=0 · T403_ARMS_LEDGER=1 · 몸 상한 1(자 기본) · 두 갈래 여섯 판 같이 · on = 기본(㉠ 켬) · off = T995_BACK_AMMO=0 · 칸: 마지막 전쟁 요약 줄(누계) · 전쟁 줄 = ⚔️ 줄(요약 · [몸] 표본 뺌 · 앞 [존] 뺌) 수 · sha1 · 판 JSON = env · days 칸 뺀 sha1(server-baseline-check 와 같은 잣대)",
+ "env": {
+  "on": [
+   "T400_BUILD_ACT=0",
+   "T403_ARMS_LEDGER=1",
+   "T577_DIR=/tmp/t1008/war/on",
+   "T577_PAR=3",
+   "T577_TAG=war",
+   "VILLAGE_CARAVAN_MAX=0",
+   "VILLAGE_DAY_MS=10000",
+   "VILLAGE_WAR_LOG=1",
+   "WAR_FIXTURE=assault*3",
+   "WAR_FIXTURE_DAY=5",
+   "WAR_FIXTURE_REPEAT=1"
+  ],
+  "off": [
+   "T400_BUILD_ACT=0",
+   "T403_ARMS_LEDGER=1",
+   "T577_DIR=/tmp/t1008/war/off",
+   "T577_PAR=3",
+   "T577_TAG=war",
+   "T995_BACK_AMMO=0",
+   "VILLAGE_CARAVAN_MAX=0",
+   "VILLAGE_DAY_MS=10000",
+   "VILLAGE_WAR_LOG=1",
+   "WAR_FIXTURE=assault*3",
+   "WAR_FIXTURE_DAY=5",
+   "WAR_FIXTURE_REPEAT=1"
+  ]
+ },
+ "sec": {
+  "on": 601,
+  "off": 601
+ },
+ "rows": {
+  "on/1020": {
+   "last": [
+    "49",
+    "41",
+    "39",
+    "24",
+    "15",
+    "39",
+    "39"
+   ],
+   "wl": 562,
+   "wsha": "8c9da1c86d57",
+   "sha": "d2fd350ed4b1",
+   "pop": 1340,
+   "days": 50
+  },
+  "on/7": {
+   "last": [
+    "49",
+    "39",
+    "37",
+    "22",
+    "15",
+    "37",
+    "37"
+   ],
+   "wl": 551,
+   "wsha": "db5d7a31cd69",
+   "sha": "7611a07f1398",
+   "pop": 1370,
+   "days": 50
+  },
+  "on/42": {
+   "last": [
+    "49",
+    "53",
+    "52",
+    "21",
+    "31",
+    "51",
+    "52"
+   ],
+   "wl": 600,
+   "wsha": "a17c4d8f7704",
+   "sha": "c739ec1b958a",
+   "pop": 1311,
+   "days": 50
+  },
+  "off/1020": {
+   "last": [
+    "49",
+    "41",
+    "39",
+    "24",
+    "15",
+    "39",
+    "39"
+   ],
+   "wl": 562,
+   "wsha": "8c9da1c86d57",
+   "sha": "d2fd350ed4b1",
+   "pop": 1340,
+   "days": 50
+  },
+  "off/7": {
+   "last": [
+    "49",
+    "39",
+    "37",
+    "22",
+    "15",
+    "37",
+    "37"
+   ],
+   "wl": 551,
+   "wsha": "db5d7a31cd69",
+   "sha": "7611a07f1398",
+   "pop": 1370,
+   "days": 50
+  },
+  "off/42": {
+   "last": [
+    "49",
+    "53",
+    "52",
+    "21",
+    "31",
+    "51",
+    "52"
+   ],
+   "wl": 600,
+   "wsha": "a17c4d8f7704",
+   "sha": "c739ec1b958a",
+   "pop": 1311,
+   "days": 50
+  }
+ }
+}

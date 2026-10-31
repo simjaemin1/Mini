@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다
-// === scripts/test-t995-dry-dance.js — 탄 없는 사수 둘의 3.5m 춤(T956 ⓑ)과 시험 손잡이 셋(T995 · 끔 기본 · 켜는 값 '1' 하나) ==========
+// === scripts/test-t995-dry-dance.js — 탄 없는 사수 둘의 3.5m 춤(T956 ⓑ)과 손잡이 셋(T995 발급 · ★T1008 ㉠ 켬 기본 · ㉡ ㉢ 시험 손잡이 끔 기본) ==========
+//   ★[T1008 2026-10-30 · 재민 ㉠] `T995_BACK_AMMO` 켬 기본(`!(… === '0')` · 되돌림 `=0` · 브라우저 = 켬) — 이 판의 끔 증인은 ㉠ `=0` 이다.
 //
 // ★왜 [지시 T995 · T956 회부 3] 열일곱째 판(돌격 헛걸음 켬)에 남은 긴 전쟁은 교전 국면이 날마다 이어지고 대치 · 철수가 없다.
 //   몸 층에선 탄 없는 사수 둘이 3.5m 에서 물러섬(battle-core 원거리 절 첫 줄 — 탄과 무관) ↔ 다가섬(탄 없는 절 — 15m 안)을 되풀이해
@@ -9,9 +10,10 @@
 //     ㉠ `T995_BACK_AMMO`(battle-core) — 3.5m 물러섬은 탄이 있을 때만
 //     ㉡ `T995_CONTACT_REACH`(war-live) — 접촉은 'shoot' 이거나 손 안의 'melee' 만
 //     ㉢ `T995_DRY_STANDOFF`(war-live) — 맞붙은 동안 hp 합이 한 번도 안 준 채 `standoffSec` 를 넘으면 대치
-//   지키는 것: ⓐ 정적(손잡이 셋 · `=== '1'` · env 자리 · 새 수 0) · ⓑ 한 교전(war-live 정본 · battle-core 정본 · 존 안 띄움 · 아이 판 — 손잡이는 모듈을 싣는 순간 읽는다)
-//     ★끔(미설정 · `=0`) = 춤(hp 그대로 · 걸음마다 접촉 · 대치 0 · 두 몸 3.4 ~ 3.6m) — 자명 통과 금지의 증인 · ㉠ 켬 = 손이 닿아 hp 가 준다 ·
-//     ㉡ 켬 = 접촉 0 · 대치가 선다 · ㉢ 켬 = 맞붙은 뒤 대치가 선다 · ★탄이 있는 사수(대조)는 손잡이 셋 다 켜도 끔과 같은 걸음이다.
+//   지키는 것: ⓐ 정적(㉠ `!(… === '0')` 켬 기본 · ㉡ ㉢ `=== '1'` 끔 기본 · env 자리 · 새 수 0) · ⓑ 한 교전(war-live 정본 · battle-core 정본 · 존 안 띄움 · 아이 판 — 손잡이는 모듈을 싣는 순간 읽는다)
+//     ★끔(㉠ `=0` · ㉡ ㉢ 미설정 — 셋 다 `=0` 도 같은 걸음) = 춤(hp 그대로 · 걸음마다 접촉 · 대치 0 · 두 몸 3.4 ~ 3.6m) — 자명 통과 금지의 증인 ·
+//     ★㉠ 켬(미설정 = 켬 기본 · `'1'` 도 같은 걸음) = 손이 닿아 hp 가 준다 · ㉡ 켬(㉠ 끔 위) = 접촉 0 · 대치가 선다 · ㉢ 켬(㉠ 끔 위) = 맞붙은 뒤 대치가 선다 ·
+//     ★탄이 있는 사수(대조)는 셋 다 끔 · 셋 다 켬 · 기본이 같은 걸음이다.
 // 실행: node scripts/test-t995-dry-dance.js
 'use strict';
 const path = require('path');
@@ -53,12 +55,13 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const codeOf = (s) => s.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
 const BCS = fs.readFileSync(path.join(ROOT, 'sim', 'battle-core.js'), 'utf8'), CB = codeOf(BCS);
 const WLS = fs.readFileSync(path.join(ROOT, 'server', 'war-live.js'), 'utf8'), CW = codeOf(WLS);
-console.log('\n=== 탄 없는 사수 둘의 3.5m 춤 · 시험 손잡이 셋(T995) ===');
+console.log('\n=== 탄 없는 사수 둘의 3.5m 춤 · 손잡이 셋(T995 · ★T1008 ㉠ 켬 기본) ===');
 
 // ── ⓐ 정적 ──────────────────────────────────────────────────────────────────
-console.log('\n[ⓐ] 정적 — 손잡이 셋 · 끔 기본 · 새 수 0');
-ok(/const T995_BACK_AMMO=\(typeof process!=='undefined'&&process\.env&&process\.env\.T995_BACK_AMMO==='1'\);/.test(CB) && (CB.match(/T995_BACK_AMMO/g) || []).length === 3,
-  "ⓐ ㉠ battle-core — `=== '1'` 한 자리(끔 기본) · 읽는 줄 하나", (CB.match(/T995_BACK_AMMO/g) || []).length);
+console.log('\n[ⓐ] 정적 — 손잡이 셋 · ㉠ 켬 기본 · ㉡ ㉢ 끔 기본 · 새 수 0');
+ok(/const T995_BACK_AMMO=!\(typeof process!=='undefined'&&process\.env&&process\.env\.T995_BACK_AMMO==='0'\);/.test(CB) && (CB.match(/T995_BACK_AMMO/g) || []).length === 3
+  && !/T995_BACK_AMMO==='1'/.test(CB),
+  "ⓐ ㉠ battle-core — `!(… === '0')` 한 자리(★T1008 켬 기본 · 되돌림 `=0` · 브라우저 = 켬) · 읽는 줄 하나", (CB.match(/T995_BACK_AMMO/g) || []).length);
 ok(/if\(d<3\.5&&\(ammo\|\|!T995_BACK_AMMO\)\)\{\s*\n\s+u\.st='melee'; const bd=Math\.hypot\(e\.x-u\.x,e\.y-u\.y\)\|\|1;/.test(CB), 'ⓐ ㉠ 물러섬 줄 — 켬이면 탄이 있을 때만(3.5 그대로 · 끔 = `d<3.5` 종전 뜻)');
 ok(/function _t995On\(k\) \{ return typeof process !== 'undefined' && !!process\.env && process\.env\[k\] === '1'; \}/.test(CW)
   && /const T995_CONTACT_REACH = _t995On\('T995_CONTACT_REACH'\), T995_DRY_STANDOFF = _t995On\('T995_DRY_STANDOFF'\);/.test(CW), "ⓐ ㉡ ㉢ war-live — `=== '1'` 한 문(끔 기본)");
@@ -76,21 +79,23 @@ ok(/else if \(T995_DRY_STANDOFF && f\.state === 'engaged' && f\.t - Math\.max\(f
 
 // ── ⓑ 한 교전(아이 판) ──────────────────────────────────────────────────────────
 console.log('\n[ⓑ] 한 교전 — 궁수 ↔ 투석병 · 6m · 2분');
+const strip0 = (o) => JSON.stringify(Object.assign({}, o, { knobs: null }));
 const sub = (env) => { const E = Object.assign({}, process.env, { T995_SUB: '1' }); for (const k of KNOBS.concat(['T995_AMMO'])) delete E[k]; Object.assign(E, env);
   const out = execFileSync(process.execPath, [__filename], { cwd: ROOT, env: E, stdio: ['ignore', 'pipe', 'ignore'] }).toString(); return JSON.parse(out.slice(out.indexOf('{'))); };
-const OFF = sub({}), OFF0 = sub({ T995_BACK_AMMO: '0', T995_CONTACT_REACH: '0', T995_DRY_STANDOFF: '0' });
+const OFF = sub({ T995_BACK_AMMO: '0' }), OFF0 = sub({ T995_BACK_AMMO: '0', T995_CONTACT_REACH: '0', T995_DRY_STANDOFF: '0' });
 ok(OFF.hp1[0] === OFF.hp0[0] && OFF.hp1[1] === OFF.hp0[1] && OFF.so === 0 && !OFF.rout && OFF.cSteps > 3000 && OFF.minD > 3 && OFF.maxD < 4,
-  '★끔(미설정) — 춤: hp 그대로 · 걸음마다 접촉 · 대치 0 · 두 몸 3 ~ 4m(자명 통과 금지의 증인)', JSON.stringify({ hp: OFF.hp1, c: OFF.cSteps, so: OFF.so, d: [OFF.minD, OFF.maxD] }));
-ok(JSON.stringify(OFF0) === JSON.stringify(Object.assign({}, OFF, { knobs: OFF0.knobs })), "★끔(`=0` 셋) = 미설정과 같은 걸음(켜는 값은 `'1'` 하나)");
-const A = sub({ T995_BACK_AMMO: '1' });
-ok((A.hp1[0] < A.hp0[0] || A.hp1[1] < A.hp0[1]) && A.minD < 1.2, '㉠ 켬 — 탄 없는 사수가 손이 닿게 다가서 hp 가 준다', JSON.stringify({ hp: A.hp1, d: A.minD, rout: A.rout, so: A.so }));
-const B = sub({ T995_CONTACT_REACH: '1' });
-ok(B.cSteps === 0 && B.so >= 1 && B.hp1[0] === B.hp0[0] && B.hp1[1] === B.hp0[1], '㉡ 켬 — 춤은 그대로지만 접촉 0 · 대치가 선다(진척 · 접촉 없는 `standoffSec`)', JSON.stringify({ c: B.cSteps, so: B.so, first: B.firstSo }));
-const C = sub({ T995_DRY_STANDOFF: '1' });
-ok(C.cSteps > 0 && C.so >= 1 && C.contacts >= 1 && C.hp1[0] === C.hp0[0] && C.hp1[1] === C.hp0[1], '㉢ 켬 — 맞붙은(접촉) 뒤 피해 없이 문턱을 넘어 대치가 선다', JSON.stringify({ c: C.cSteps, so: C.so, first: C.firstSo, contacts: C.contacts }));
-const K0 = sub({ T995_AMMO: '1' }), K1 = sub({ T995_AMMO: '1', T995_BACK_AMMO: '1', T995_CONTACT_REACH: '1', T995_DRY_STANDOFF: '1' });
-const strip = (o) => JSON.stringify(Object.assign({}, o, { knobs: null }));
-ok(strip(K0) === strip(K1), '★대조 — 탄이 있는 사수(쏘며 맞는 판)는 손잡이 셋 다 켜도 끔과 같은 걸음', JSON.stringify({ hp: K0.hp1, ammo: K0.ammo, rout: K0.rout }));
+  '★끔(㉠ `=0` · ㉡ ㉢ 미설정) — 춤: hp 그대로 · 걸음마다 접촉 · 대치 0 · 두 몸 3 ~ 4m(자명 통과 금지의 증인)', JSON.stringify({ hp: OFF.hp1, c: OFF.cSteps, so: OFF.so, d: [OFF.minD, OFF.maxD] }));
+ok(JSON.stringify(OFF0) === JSON.stringify(Object.assign({}, OFF, { knobs: OFF0.knobs })), "★끔(`=0` 셋) = ㉠ `=0` 판과 같은 걸음(㉡ ㉢ 켜는 값은 `'1'` 하나)");
+const A = sub({}), A1 = sub({ T995_BACK_AMMO: '1' });
+ok((A.hp1[0] < A.hp0[0] || A.hp1[1] < A.hp0[1]) && A.minD < 1.2, '★㉠ 켬(미설정 = 켬 기본) — 탄 없는 사수가 손이 닿게 다가서 hp 가 준다', JSON.stringify({ hp: A.hp1, d: A.minD, rout: A.rout, so: A.so }));
+ok(strip0(A1) === strip0(A) && strip0(A) !== strip0(OFF), "㉠ `'1'` = 미설정과 같은 걸음 · 끔(`=0`)과는 다른 걸음");
+const B = sub({ T995_BACK_AMMO: '0', T995_CONTACT_REACH: '1' });
+ok(B.cSteps === 0 && B.so >= 1 && B.hp1[0] === B.hp0[0] && B.hp1[1] === B.hp0[1], '㉡ 켬(㉠ `=0` 위) — 춤은 그대로지만 접촉 0 · 대치가 선다(진척 · 접촉 없는 `standoffSec`)', JSON.stringify({ c: B.cSteps, so: B.so, first: B.firstSo }));
+const C = sub({ T995_BACK_AMMO: '0', T995_DRY_STANDOFF: '1' });
+ok(C.cSteps > 0 && C.so >= 1 && C.contacts >= 1 && C.hp1[0] === C.hp0[0] && C.hp1[1] === C.hp0[1], '㉢ 켬(㉠ `=0` 위) — 맞붙은(접촉) 뒤 피해 없이 문턱을 넘어 대치가 선다', JSON.stringify({ c: C.cSteps, so: C.so, first: C.firstSo, contacts: C.contacts }));
+const K0 = sub({ T995_AMMO: '1', T995_BACK_AMMO: '0' }), K1 = sub({ T995_AMMO: '1', T995_BACK_AMMO: '1', T995_CONTACT_REACH: '1', T995_DRY_STANDOFF: '1' }), KD = sub({ T995_AMMO: '1' });
+const strip = strip0;
+ok(strip(K0) === strip(K1) && strip(KD) === strip(K0), '★대조 — 탄이 있는 사수(쏘며 맞는 판)는 셋 다 끔 · 셋 다 켬 · 기본이 같은 걸음', JSON.stringify({ hp: K0.hp1, ammo: K0.ammo, rout: K0.rout }));
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
 process.exit(fail ? 1 : 0);

@@ -9,7 +9,7 @@
 //     서버: NODE_OPTIONS="… -r $PWD/scripts/t980-observe.js" node scripts/t577-server-run.js 800 1020,7,42   (판 JSON 곁 `<판>-<시드>.t980.json`)
 //     랩:   T980_OUT=<파일> NODE_OPTIONS="-r $PWD/scripts/t980-observe.js" node scripts/t17-metrics.js 800 1020
 //   칸(마을 × 날 · 틱 뒤): day · N(틱 뒤 인구) · wood(곳간 목재) · wImp(`_woodImportEMA`) · lWood(`land.wood`) · wSus(`land.woodSustain` · 없으면 null) ·
-//     cold(`_coldStress`) · fuelK(`_fuelKema` — K 에 든 땔감 K) · fuelCov(`_fuelCov` — 그날 연료 충당) · lj(벌목꾼 수 · `npc.job`) · fImp(`_importEMA` — 식량 수입 EMA) · size(`land.size`)
+//     cold(`_coldStress`) · fuelK(`_fuelKema` — K 에 든 땔감 K) · fuelCov(`_fuelCov` — 그날 연료 충당) · lj(벌목꾼 수 · `npc.currentJob` — ★T994 고침) · fImp(`_importEMA` — 식량 수입 EMA) · size(`land.size`)
 //   ⚠읽기만 — 마을 칸에 쓰지 않는다(RNG · 캐시 무접촉).
 const path = require('path');
 const fs = require('fs');
@@ -27,7 +27,7 @@ const _tick = V1.tickVillage;
 V1.tickVillage = function (v, day) {
   const r = _tick.apply(this, arguments);
   try {
-    let lj = 0; for (const n of (v.npcs || [])) if (n.job === 'lumberjack') lj++;
+    let lj = 0; for (const n of (v.npcs || [])) if (n.currentJob === 'lumberjack') lj++;   // ★[T994] econ 이 읽는 칸은 `currentJob`(T980 판은 `job` 을 읽어 늘 0 이었다)
     const L = v.land || {}, S = v.storage || {};
     (rec.v[v.name] || (rec.v[v.name] = [])).push([day | 0, (v.npcs || []).length, r2(S.wood || 0), r2(v._woodImportEMA), r2(L.wood), L.woodSustain != null ? r2(L.woodSustain) : null,
       r2(v._coldStress || 0), r2(v._fuelKema), r2(v._fuelCov), lj, r2(v._importEMA), r2(L.size)]);

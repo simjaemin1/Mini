@@ -70,6 +70,23 @@ txt = json.dumps(out, ensure_ascii=False, separators=(',', ':'))
 if '--check' in sys.argv:   # 낡음 자 — 정본(지형 json · 개울 래스터 · 해안)이 바뀌었는데 층을 안 다시 구웠나
     cur = open('lab/map-editor-layers.json', encoding='utf8').read() if os.path.exists('lab/map-editor-layers.json') else ''
     print('[editor-layers] 정본과 같다' if cur == txt else '[editor-layers] **정본과 다르다** — python3 scripts/editor-layers-bake.py → node scripts/build-map-editor.js ~/Mini/map-editor.html')
+    if cur != txt:   # [T971] 어디가 다른지 — 판정은 안 바꾼다(바이트 같음이 문턱 그대로) · 줄만 더 찍는다
+        try:
+            A = json.loads(cur) if cur else {}; B = json.loads(txt)
+            def pix(d):
+                return np.array(Image.open(io.BytesIO(base64.b64decode(d.split(',', 1)[1]))).convert('RGBA'))
+            def walk(a, b, path):
+                if isinstance(b, dict) and isinstance(a, dict):
+                    for k in sorted(set(a) | set(b)): walk(a.get(k), b.get(k), path + [str(k)])
+                elif a != b:
+                    if isinstance(b, str) and isinstance(a, str) and b.startswith('data:image/png') and a.startswith('data:image/png'):
+                        same = np.array_equal(pix(a), pix(b))
+                        print('[editor-layers] 다른 자리: %s — PNG 바이트 다름 · 화소 %s (%dB ↔ %dB)' % ('.'.join(path), '같음(인코더 차이)' if same else '**다름**', len(a), len(b)))
+                    else:
+                        print('[editor-layers] 다른 자리: %s — 값 다름' % '.'.join(path))
+            walk(A, B, [])
+        except Exception as e:
+            print('[editor-layers] 다른 자리 못 찾음: %r' % (e,))
     sys.exit(0 if cur == txt else 1)
 open('lab/map-editor-layers.json', 'w', encoding='utf8').write(txt)
 print('→ lab/map-editor-layers.json', os.path.getsize('lab/map-editor-layers.json'), 'B')

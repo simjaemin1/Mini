@@ -287,8 +287,16 @@ const _seen = {};
   console.log('\n[ⓘ 보기 층(T793) — 광맥 종류별 · 자잘 광맥 · 개울 · 갯벌]');
   {
     const LJ = JSON.parse(fs.readFileSync(path.join(LAB, 'map-editor-layers.json'), 'utf8'));
-    let fresh = 0; try { execFileSync('python3', [path.join(__dirname, 'editor-layers-bake.py'), '--check'], { stdio: 'ignore' }); fresh = 1; } catch (e) { fresh = 0; }
-    ok(fresh === 1, '층 데이터(lab/map-editor-layers.json) = 정본에서 지금 다시 구운 것과 같다(editor-layers-bake.py --check)');
+    // ★[T971] 상자에 의존(python3 · numpy · PIL)이 없는 것 ≠ 정본과 다른 것 — 앞은 '건너뜀'([상황] 줄 · 빨강 아님 · 초록으로 세지도 않음) · 뒤만 빨강
+    //   야간 상자 의존 한 줄: python3 · numpy · Pillow(PIL) · node · fonts-noto-cjk(한글 글꼴 · nightly-run.sh 가 넣음) · (점검 `python3 -c "import numpy, PIL"`)
+    let dep = ''; try { execFileSync('python3', ['-c', 'import numpy, PIL'], { stdio: 'pipe' }); } catch (e) { dep = (e.code === 'ENOENT') ? 'python3' : String((e.stderr || '').toString().trim().split('\n').pop() || e.message).slice(0, 120); }
+    if (dep) {
+      console.log('  [상황] 층 데이터 낡음 대조(editor-layers-bake.py --check) 건너뜀 — 이 상자에 의존이 없다(' + dep + ') · 정본과 다르다는 뜻이 아님 · 야간 상자 의존: python3 · numpy · Pillow(PIL) · node · fonts-noto-cjk');
+    } else {
+      let fresh = 0, out = ''; try { out = execFileSync('python3', [path.join(__dirname, 'editor-layers-bake.py'), '--check'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); fresh = 1; } catch (e) { fresh = 0; out = String(e.stdout || '') + String(e.stderr || ''); }
+      const why = out.split('\n').filter((l) => /\[editor-layers\]|Error|Traceback/.test(l)).slice(0, 6).join(' / ');
+      ok(fresh === 1, '층 데이터(lab/map-editor-layers.json) = 정본에서 지금 다시 구운 것과 같다(editor-layers-bake.py --check)', fresh === 1 ? '' : why);
+    }
     const lines = fs.readFileSync(inline, 'utf8').split('\n').filter((l) => /\/\/ @inline-layers/.test(l));
     ok(lines.length === 1 && lines[0].startsWith('let LAYERS_BAKED = {'), '맥 사본에 보기 층 박음 줄 하나(`@inline-layers`)', lines.length + '줄');
     // 기대 셈 = 지형 json(정본) 한반도 ores 를 직접 센 것
