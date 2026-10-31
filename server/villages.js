@@ -2544,18 +2544,18 @@ function distBasisRefresh() {
 const _t977Same = (B, villages, n) => !!B && B.blk.length === n && B.coords.length === villages.length && villages.every((v, i) => v.coord.x === B.coords[i][0] && v.coord.y === B.coords[i][1]);
 // ★[T977] 재는 판 전용 셈(`T977_PROBE=1` · 안 주면 무동작 · 제품 값 무접촉) — 늘어난 몫의 귀속: 조각 머리(조각 벽 − 몸통) · 찬 머리(조각 첫 알갱이의 노드당 시간) · 지형 판정 · GC.
 const T977_PROBE = process.env.T977_PROBE === '1';
-const _t977 = { cur: null, last: null, coldNext: false, slice: null, gc: [], obs: null, runs: [] };
+const _t977 = { cur: null, last: null, coldNext: false, slice: null, gc: [], obs: null, runs: [], gi: 0 };   // ★[T1027] gi = 지금 조각 안 몇째 알갱이인가(조각 머리에서 0)
 const _t977hr = () => Number(process.hrtime.bigint());
 function _t977Begin(reason) {
   if (!_t977.obs) { try { const { PerformanceObserver } = require('perf_hooks'); _t977.obs = new PerformanceObserver((l) => { for (const e of l.getEntries()) if (_t977.gc.length < 50000) _t977.gc.push([e.startTime, e.duration]); }); _t977.obs.observe({ entryTypes: ['gc'] }); } catch (e) { _t977.obs = 1; } }
   const self = !_t977.slice; if (self) _t977SliceBeg();   // 동기 문(조각 한 번) — 조각 머리를 스스로 연다
-  return (_t977.cur = { self, reason: reason || '부팅', segN: 0, coldN: 0, coldNs: 0, coldPops: 0, warmN: 0, warmNs: 0, warmPops: 0, pops: 0, sampN: 0, sampNs: 0, verN: 0, same: null, slices: 0, sliceNs: 0, iv: [], sT: _t977hr(), sP: 0 });
+  return (_t977.cur = { self, reason: reason || '부팅', gb: new Array(12).fill(0), gp: new Array(12).fill(0), segN: 0, coldN: 0, coldNs: 0, coldPops: 0, warmN: 0, warmNs: 0, warmPops: 0, pops: 0, sampN: 0, sampNs: 0, verN: 0, same: null, slices: 0, sliceNs: 0, iv: [], sT: _t977hr(), sP: 0 });
 }
-function _t977Seg(R) { const ns = _t977hr() - R.sT, p = R.pops - R.sP; R.segN++; if (_t977.coldNext) { _t977.coldNext = false; R.coldN++; R.coldNs += ns; R.coldPops += p; } else { R.warmN++; R.warmNs += ns; R.warmPops += p; } }
+function _t977Seg(R) { const ns = _t977hr() - R.sT, p = R.pops - R.sP; R.segN++; { const g = _t977.gi++, b = g === 0 ? 0 : Math.min(11, 1 + Math.floor(Math.log2(g))); R.gb[b] += ns; R.gp[b] += p; }   /* ★[T1027] 조각 안 자리별(알갱이 0 · 1 · 2~3 · 4~7 … · 1024~) 노드당 시간 */ if (_t977.coldNext) { _t977.coldNext = false; R.coldN++; R.coldNs += ns; R.coldPops += p; } else { R.warmN++; R.warmNs += ns; R.warmPops += p; } }
 function _t977Go(R) { R.sT = _t977hr(); R.sP = R.pops; }
 function _t977Samp(R, ta, gx, gy) { const a = _t977hr(); const v = coarseOpen(ta, gx, gy); R.sampNs += _t977hr() - a; R.sampN++; return v; }
 function _t977End(R) { _t977Seg(R); _t977.last = R; _t977.cur = null; if (R.self) _t977SliceEnd(); }
-function _t977SliceBeg() { if (!T977_PROBE) return; _t977.coldNext = true; _t977.slice = [_t977hr(), require('perf_hooks').performance.now()]; }
+function _t977SliceBeg() { if (!T977_PROBE) return; _t977.coldNext = true; _t977.gi = 0; _t977.slice = [_t977hr(), require('perf_hooks').performance.now()]; }
 function _t977SliceEnd() {
   if (!T977_PROBE || !_t977.slice) return;
   const R = _t977.cur || _t977.last, [a, p] = _t977.slice; _t977.slice = null; _t977.coldNext = false;
@@ -2571,7 +2571,7 @@ function _t977Report(R, at) {   // at = '끝'(주입 뒤) | '다 셈'(주입 앞
   let gcMs = 0, gcN = 0; for (const [gs, gd] of _t977.gc) for (const [x, y] of iv) { const o = Math.min(gs + gd, y) - Math.max(gs, x); if (o > 0) { gcMs += o; gcN++; } }
   const ms = (ns) => +(ns / 1e6).toFixed(1), seg = R.coldNs + R.warmNs, sl = R.sliceNs + open;
   const S = { at, hash: R.hash || null, reason: R.reason, slices: R.slices + (open ? 1 : 0), sliceMs: ms(sl), segMs: ms(seg), headMs: ms(sl - seg), coldN: R.coldN, coldMs: ms(R.coldNs), coldPops: R.coldPops, warmN: R.warmN, warmMs: ms(R.warmNs), warmPops: R.warmPops,
-    nsPerPopCold: R.coldPops ? Math.round(R.coldNs / R.coldPops) : null, nsPerPopWarm: R.warmPops ? Math.round(R.warmNs / R.warmPops) : null, pops: R.pops, sampN: R.sampN, sampMs: ms(R.sampNs), verN: R.verN, same: R.same, gcMs: +gcMs.toFixed(1), gcN };
+    nsPerPopCold: R.coldPops ? Math.round(R.coldNs / R.coldPops) : null, nsPerPopWarm: R.warmPops ? Math.round(R.warmNs / R.warmPops) : null, pops: R.pops, byGrain: R.gb.map((ns, b) => (R.gp[b] ? [R.gp[b], Math.round(ns / R.gp[b])] : null)), sampN: R.sampN, sampMs: ms(R.sampNs), verN: R.verN, same: R.same, gcMs: +gcMs.toFixed(1), gcN };
   if (_t977.runs.length < 20) _t977.runs.push(S);
   console.log(`[${state.zoneId}] [T977] 거리행렬 일 쪼개 보기 ${JSON.stringify(S)}`);
   //   GC 항목은 뒤늦게 온다(관측자 콜백) — 동기 셈(부팅 · 한 번에)은 위 셈에 안 잡힌다 ⇒ 2초 뒤 같은 구간으로 한 번 더 센다
