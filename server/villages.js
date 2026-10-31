@@ -185,7 +185,7 @@ const T862_ECON_FAST = process.env.T862_ECON_FAST !== '0';   // ★[T876 ①] �
 //   붙이면 V8 이 그 사본을 **처음부터 사전 모드**로 짓는다(뒤의 `delete o._t732Cargo` 는 원인이 아니다 — 실측: assign 직후 이미 사전 · 40/40).
 //   켬이면 짐 레코드 칸을 거른 나머지 꼴(`const { _t732Cargo, ...rest } = c`)로 짓는다 — 같은 칸 · 같은 차례 · 같은 값(얕은 사본) · 빠른 꼴. 켬 기본(T889).
 const T876_CAR_FAST = process.env.T876_CAR_FAST !== '0';   // ★[T889 ①] 켬 기본(PM 10-23 — 라이브는 배포마다 다시 뜬 판) · 끔 탐침 `=0` = 종전 줄(`Object.assign` · `delete`)
-const _T862_SIDE = new Set(['_t728BaseOre', '_t728Game', '_t728HuntWk', '_t728LtdOwn', '_t728LtdSrv', '_t740Side', '_t747Body', '_t732Lots', '_warThreat']);
+const _T862_SIDE = new Set(['_t728BaseOre', '_t728Game', '_t728HuntWk', '_t728LtdOwn', '_t728LtdSrv', '_t740Side', '_t747Body', '_t732Lots', '_warThreat', '_t1025Ev']);
 function _t862Drop(o, k) { if (T862_ECON_FAST) o[k] = undefined; else delete o[k]; }
 //   `in` 문(부팅 복원) — 켬이면 `undefined` 칸 = 지운 칸(저장 줄은 JSON 이라 실린 칸이 `undefined` 일 수 없다 ⇒ 끔의 `k in o` 와 같은 답 · 두 번 불러도 같다)
 function _t862Has(o, k) { return (k in o) && !(T862_ECON_FAST && o[k] === undefined); }
@@ -971,6 +971,26 @@ const T728_KEEP = process.env.T728_RESTART_KEEP !== '0';   // ★[PM 10-14] 켬 
 //   끔 = 이 함수가 아무것도 안 한다(종전 바이트).
 const T983_GRANARY_SAVE = process.env.T983_GRANARY_SAVE !== '0';
 const _t983Stat = { n: 0, skipClose: 0, miss: 0, err: 0, ms: 0, maxMs: 0, bytes: 0, maxBytes: 0 };
+// ★★[T1005 2026-10-31 · T983 회부 1 · ★PM 결함] **곳간 문과 같은 창 — 사람 행동이 바꾼 마을 칸도 그 행에 남긴다** — 손잡이 `T1005_VIL_SAVE`(켬 기본 · 되돌림 `=0`).
+//   T983 표 여섯 중 마을 행(`serializeEcon`)에 실리는 칸 넷을 이 손잡이가 닫는다(둘은 행 밖 — 작물 = 사람 밭 건물 행에 이미 바로 · 사건 장부 = 모듈 대기 줄 `_evRescues` · 보고/T1005 §2):
+//     · 구제 한 끼(`_villageMeal` → `playerVillageWithdraw` · 곳간 food) · 집터 의뢰(`lifeRequestPlayerSite` · 곁 칸 `_t740Side` 의 `psite`(건물 번호) · `_potSet`) — 드물다 → 그 순간 한 번(`t1005Save`).
+//     · 낚시(`_fishLand` → `refreshFishSustain` · `land.fishSustain`) · 사냥(`huntKillAt` · 곁 칸 `_t728Game`) — 잦다 → 표만 하고(`t1005Mark`) 그 틱 끝에 마을 하나 한 번(`t1005Flush` · zone 틱 꼬리).
+//   쓰는 줄은 T983 과 같은 몸통(`_vilRowSave` — 마감 저장 줄 그대로 · 사본 0 · 새 칸 0).
+//   ⚠마감이 도는 중(`state.tickJobs`)이면 안 쓰고 표로 미룬다 — 마감이 끝난 첫 틱 꼬리에 쓴다(반쯤 정산된 econ 을 남기지 않는다 · T983 과 같은 뜻).
+//   끔 = 표도 쓰기도 없다(종전 바이트).
+const T1005_VIL_SAVE = process.env.T1005_VIL_SAVE !== '0';
+const _t1005Stat = { n: 0, now: 0, mark: 0, flush: 0, skipClose: 0, miss: 0, err: 0, ms: 0, maxMs: 0, bytes: 0, maxBytes: 0, by: {} };
+const _t1005Dirty = new Set();
+// ★★[T1025 2026-10-31 · T1005 회부 1 · 4] **하루 마감 전 사라지는 사건 장부 줄 · 도살 전 사체** — 손잡이 `T1025_EV_CORPSE`(켬 기본 · 되돌림 `=0`).
+//   ① 사건 대기 줄 셋(`_evRescues` 구제 · `_evBuilds` 완공 · `_evStarved` 굶음 — 아래 13500 언저리)은 모듈 메모리에만 살다가 하루 마감 장부가 가져간다.
+//      일 자체(사람 저장 · 건물 행 · econ 죽음 셈)는 그 자리에서 남는데 줄만 사라졌다(보고/T1005 §2 · 3/3 · 3/3) — 셋 다 "일" 유형이라 연대기(영구)에 닿는 줄이다.
+//      켬 = 줄이 설 때 그 마을 행 곁 칸 `_t1025Ev`(T728 곁 칸 문법 · 새 표 0)에 싣고 같은 틱 끝에 쓴다(T1005 표 `t1005Mark` · T1005 끔이면 그 순간 `_vilRowSave`).
+//      장부가 가져간 순간 그 마을들을 다시 표한다(옛 줄이 행에 남아 다시 뜨면 두 번 서지 않게 — 마감 중이면 끝난 첫 틱 꼬리).
+//      부팅 = 곁 칸을 대기 줄로 되돌리고 지운다(`_t1025Restore`). 캐러밴 지연은 몸(`body.delayedDays`)과 함께 메타 행으로 되돌아가 줄만 잃는 꼴이 아니다(보고/T1025 §0).
+//   ② 사체(zone.js `corpses` · 메모리 전용) — 켬 = 사람이 잡은 들짐승의 사냥터 장부 한 마리(`huntKillAt`)를 잡은 순간이 아니라 도살 · 부패 때 뺀다(zone.js `tryAttack` · `butcherCorpse`).
+//   끔 = 곁 칸도 표도 없다(종전 바이트 — 켬으로 적은 행의 곁 칸은 부팅이 지운다).
+const T1025_EV_CORPSE = process.env.T1025_EV_CORPSE !== '0';
+const _t1025Stat = { n: 0, skipClose: 0, miss: 0, err: 0, ms: 0, maxMs: 0, bytes: 0, maxBytes: 0, noted: 0, consumed: 0, restored: 0, packed: 0 };
 const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheDay', 'dailyProductionBuf']);
 // ★★[T740 2026-10-14] **재기동이 잃는 메모리 전용 마을 칸** — 손잡이 `T740_SIDE_KEEP`(★기본 끔 · `=1` 켬 · 끔 = 종전 글자 그대로).
 //   서버 마을 객체(`state.villages[i]`)의 칸 중 저장(마을 행 · 메타 행 · 마을 건물 행)을 안 거치는데 **값에 닿는** 것을 마을 행 곁 칸 하나(`_t740Side`)에 싣는다
@@ -1171,6 +1191,7 @@ function serializeEcon(v) {
   }
   if (T740_SIDE) { const vil = state.byEcon && state.byEcon.get(v); if (vil) out._t740Side = _t740Pack(vil); }
   if (T747_BODY) { const vil = state.byEcon && state.byEcon.get(v); if (vil) { const B = _t747Pack(vil); if (B) out._t747Body = B; } }   // ★[T747] 몸 칸(위 `T747_BODY` 주석 · 복원 `_t747Restore`)   // ★[T740] 메모리 전용 마을 칸(위 `T740_SIDE` 주석 · 복원 `_t740Restore`)
+  if (T1025_EV_CORPSE) { const vil = state.byEcon && state.byEcon.get(v); const P = vil && _t1025Pack(vil.dbId); if (P) out._t1025Ev = P; }   // ★[T1025] 그 마을의 사건 대기 줄(위 `T1025_EV_CORPSE` 주석)
   if (_ltd.has(v)) out.lastTradeDay = _ltd.get(v);   // ★[T577 ④] 저장 줄에서만(위 주석)
   if (_T732_ON) { const G = _t732Gran(); const D = G && G.dump(v); if (D) out._t732Lots = D; }   // ★[T732] 곳간 로트 장부 — 곳간 값과 같은 줄에(같은 순간 · 재기동이 같이 읽는다)
   out.history = (v.history || []).slice(-50);
@@ -5374,6 +5395,8 @@ function init(deps) {
     if (T728_KEEP) { try { _t728Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T728] 재기동 영속 복원 실패(종전대로 계속):`, e.message); } }
     if (T740_SIDE) { try { _t740Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T740] 마을 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t740Side')) _t862Drop(v.econ, '_t740Side');   // ★[T740] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(다음 켬이 묵은 칸을 되돌리지 않게 · main 행엔 이 칸이 없어 무동작)
+    if (T1025_EV_CORPSE) { try { _t1025Restore(); } catch (e) { console.error(`[${ZONE_ID}] 📜 [T1025] 사건 대기 줄 복원 실패(빈 줄로 계속):`, e.message); } }
+    else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t1025Ev')) _t862Drop(v.econ, '_t1025Ev');   // ★[T1025] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다
     if (T747_BODY) { try { _t747Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T747] 몸 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t747Body')) _t862Drop(v.econ, '_t747Body');   // ★[T747] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(main 행엔 이 칸이 없어 무동작)
     if (T822_BODY_SEED) _t833Boot();   // ★[T833] 되살림(T728 메타 · T747 몸 칸) 뒤 — 명부 자리 열쇠로 한 번(같은 판 씨 · 같은 자리면 되살린 값 그대로)
@@ -7348,7 +7371,9 @@ function tickPerf() {
            maxChunk: mc, maxChunkAt: mcAt, frameMax: fm,   // ★[T42-b] 창 전체(위 주석)
            total: R.length ? { p50: q(tot, 0.5), p95: q(tot, 0.95), max: Math.max(...tot) } : null, stages,
            ...(T690_DAY_PHASE ? { t690: Object.assign({ pend: (state._t690 && state._t690.list.length) || 0 }, _t690Stat) } : {}),
-           ...(T983_GRANARY_SAVE ? { t983: Object.assign({}, _t983Stat, { ms: +_t983Stat.ms.toFixed(3), maxMs: +_t983Stat.maxMs.toFixed(3) }) } : {}) };   // ★[T983] 켬 판만 칸이 선다   // ★[T690] 켬 판만 칸이 선다
+           ...(T983_GRANARY_SAVE ? { t983: Object.assign({}, _t983Stat, { ms: +_t983Stat.ms.toFixed(3), maxMs: +_t983Stat.maxMs.toFixed(3) }) } : {}),
+           ...(T1005_VIL_SAVE ? { t1005: Object.assign({}, _t1005Stat, { ms: +_t1005Stat.ms.toFixed(3), maxMs: +_t1005Stat.maxMs.toFixed(3), by: Object.assign({}, _t1005Stat.by), pend: _t1005Dirty.size }) } : {}),
+           ...(T1025_EV_CORPSE ? { t1025: Object.assign({}, _t1025Stat, { ms: +_t1025Stat.ms.toFixed(3), maxMs: +_t1025Stat.maxMs.toFixed(3), pend: _evRescues.length + _evBuilds.length + _evStarved.length }) } : {}) };   // ★[T1005] 켬 판만 칸이 선다   // ★[T983] 켬 판만 칸이 선다   // ★[T690] 켬 판만 칸이 선다
 }
 
 // =============================================================================
@@ -10978,22 +11003,46 @@ function villageByDbId(dbId) { return (state.byDbId && state.byDbId.get(dbId | 0
 // ★[T983] 거래 순간 곳간 행 저장 — 부르는 자리(zone.js): 곳간 넣기 · 기부 · 거래소 · 납품 · 촌장 꺼내기 · 철기 위세품 팔기. 인자 = 마을 객체 · dbId · 마을 이름 중 하나.
 function t983Save(v) {
   if (!T983_GRANARY_SAVE) return false;
-  if (!state.ready || !state.db || !state.db.updateVillageState) { _t983Stat.miss++; return false; }
+  return _vilRowSave(v, _t983Stat, null);
+}
+// ★[T983 · T1005] 마을 행 한 줄 쓰기 몸통 — 셈 칸(`S`)만 갈린다. `mark` 가 있으면 마감 중엔 표로 미룬다(T1005 · 끔 판엔 안 온다).
+function _vilRowSave(v, S, mark) {
+  if (!state.ready || !state.db || !state.db.updateVillageState) { S.miss++; return false; }
   let vil = null;
   if (v && typeof v === 'object') vil = v.econ ? v : (state.byEcon && state.byEcon.get(v)) || null;
   else if (typeof v === 'number') vil = villageByDbId(v);
   else if (typeof v === 'string') vil = (state.villages || []).find((x) => x.name === v) || null;
-  if (!vil || !vil.econ || vil.dbId == null) { _t983Stat.miss++; return false; }
-  if (state.tickJobs) { _t983Stat.skipClose++; return false; }
+  if (!vil || !vil.econ || vil.dbId == null) { S.miss++; return false; }
+  if (state.tickJobs) { S.skipClose++; if (mark) mark.add(vil); return false; }
   const t0 = process.hrtime.bigint();
   try {
     const js = serializeEcon(vil.econ);
     state.db.updateVillageState(vil.dbId, js, vil.econ.npcs.length, state.world.day);
     const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-    _t983Stat.n++; _t983Stat.ms += ms; if (ms > _t983Stat.maxMs) _t983Stat.maxMs = ms;
-    _t983Stat.bytes += js.length; if (js.length > _t983Stat.maxBytes) _t983Stat.maxBytes = js.length;
+    S.n++; S.ms += ms; if (ms > S.maxMs) S.maxMs = ms;
+    S.bytes += js.length; if (js.length > S.maxBytes) S.maxBytes = js.length;
     return true;
-  } catch (e) { _t983Stat.err++; console.error(`[${state.zoneId}] 🏘️ [T983] 거래 순간 곳간 저장 실패(마감 저장이 뒤에 쓴다):`, e.message); return false; }
+  } catch (e) { S.err++; console.error(S === _t983Stat ? `[${state.zoneId}] 🏘️ [T983] 거래 순간 곳간 저장 실패(마감 저장이 뒤에 쓴다):` : `[${state.zoneId}] 🏘️ [T1005] 순간 마을 행 저장 실패(마감 저장이 뒤에 쓴다):`, e.message); return false; }
+}
+// ★[T1005] 드문 행동 — 그 순간 한 번(구제 한 끼 · 집터 의뢰). `why` 는 셈 이름만.
+function t1005Save(v, why) {
+  if (!T1005_VIL_SAVE) return false;
+  _t1005Stat.now++; _t1005Stat.by[why] = (_t1005Stat.by[why] | 0) + 1;
+  return _vilRowSave(v, _t1005Stat, _t1005Dirty);
+}
+// ★[T1005] 잦은 행동 — 표만(낚시 · 사냥). 같은 틱 안 몇 번이든 그 틱 끝 한 번(`t1005Flush`).
+function t1005Mark(vil, why) {
+  if (!T1005_VIL_SAVE || !vil) return;
+  _t1005Stat.mark++; _t1005Stat.by[why] = (_t1005Stat.by[why] | 0) + 1;
+  _t1005Dirty.add(vil);
+}
+// ★[T1005] 틱 꼬리(zone.js 게임 루프 끝) — 표한 마을마다 한 줄. 마감 중이면 표를 남겨 둔다(끝난 첫 틱에 쓴다).
+function t1005Flush() {
+  if (!T1005_VIL_SAVE || !_t1005Dirty.size || state.tickJobs) return 0;
+  const L = [..._t1005Dirty]; _t1005Dirty.clear();
+  let n = 0; for (const vil of L) if (_vilRowSave(vil, _t1005Stat, _t1005Dirty)) n++;
+  _t1005Stat.flush++;
+  return n;
 }
 
 // 회관 셀(정확히 중심) → 그 마을. 플레이어가 세운 마을만 돌려준다(NPC 마을 회관은 이 UI 대상이 아니다).
@@ -12130,6 +12179,7 @@ function huntKillAt(px, py) {
     const k = _gameKey(v, cx, cy); if (k === null) continue;   // 표본 격자로 맞춘다(위 `_gameKey` — 사본 0)
     const g = m.get(k); if (!(g > 0)) continue;
     m.set(k, Math.max(0, g - 1));               // ★한 마리 = 1 개체(새 수 0 — 잡은 것이 곧 그 수다)
+    t1005Mark(v, 'hunt');                       // ★[T1005] 사냥터 장부(곁 칸 `_t728Game`)도 이 틱 끝에 행으로(끔 = 무동작)
     return 1; }
   return 0;
 }
@@ -13473,9 +13523,9 @@ function _caravanDelaysToday() {
 const _evBuilds = [];
 function noteVillageBuilt(vil, kind) {
   if (!vil || vil.dbId == null) return;
-  if (_evBuilds.length < 256) _evBuilds.push({ vid: vil.dbId | 0, kind });
+  if (_evBuilds.length < 256) { _evBuilds.push({ vid: vil.dbId | 0, kind }); _t1025Note(vil); }
 }
-function _buildsToday() { const out = _evBuilds.slice(); _evBuilds.length = 0; return out; }
+function _buildsToday() { const out = _evBuilds.slice(); _evBuilds.length = 0; _t1025Took(out); return out; }
 
 // ★★[T119 2026-09-05] **구조** — 완공과 **같은 자리·같은 문법**이다. 장부는 쓰러짐을 모른다;
 //   살아난 그 순간을 `zone.js` 가 여기 한 줄 남기고 하루 경계에 장부가 가져간다.
@@ -13484,9 +13534,9 @@ function _buildsToday() { const out = _evBuilds.slice(); _evBuilds.length = 0; r
 const _evRescues = [];
 function noteRescue(vid, by, magRemain) {
   if (vid == null) return;
-  if (_evRescues.length < 256) _evRescues.push({ vid: vid | 0, by: by || 'village', mag: +magRemain || 0.01 });
+  if (_evRescues.length < 256) { _evRescues.push({ vid: vid | 0, by: by || 'village', mag: +magRemain || 0.01 }); _t1025Note(vid); }
 }
-function _rescuesToday() { const out = _evRescues.slice(); _evRescues.length = 0; return out; }
+function _rescuesToday() { const out = _evRescues.slice(); _evRescues.length = 0; _t1025Took(out); return out; }
 
 // ★★[T590 2026-10-03] **굶어 죽음** — 구조와 **같은 자리·같은 문법**이다. 장부는 굶음도 죽음도 모른다;
 //   몸 층이 기근 날(`villageFamine`) 그 자리에서 죽은 몸을 여기 한 줄 남기고 하루 경계에 장부가 가져간다.
@@ -13494,9 +13544,54 @@ function _rescuesToday() { const out = _evRescues.slice(); _evRescues.length = 0
 const _evStarved = [];
 function noteStarved(vil) {
   if (!vil || vil.dbId == null) return;
-  if (_evStarved.length < 256) _evStarved.push({ vid: vil.dbId | 0 });
+  if (_evStarved.length < 256) { _evStarved.push({ vid: vil.dbId | 0 }); _t1025Note(vil); }
 }
-function _starvedToday() { const out = _evStarved.slice(); _evStarved.length = 0; return out; }
+function _starvedToday() { const out = _evStarved.slice(); _evStarved.length = 0; _t1025Took(out); return out; }
+// ★★[T1025] 사건 대기 줄 → 마을 행 곁 칸(위 `T1025_EV_CORPSE` 머리말). 끔 = 셋 다 무동작.
+//   줄이 선 마을 행을 쓴다 — T1005 켬이면 그 틱 끝 묶음(`t1005Mark`), 끔이면 그 순간(같은 몸통 `_vilRowSave` · 마감 중이면 마감 저장 줄이 쓴다).
+function _t1025Note(v) {
+  if (!T1025_EV_CORPSE) return;
+  const vil = (v && typeof v === 'object') ? v : villageByDbId(v);
+  if (!vil) { _t1025Stat.miss++; return; }
+  _t1025Stat.noted++;
+  if (T1005_VIL_SAVE) t1005Mark(vil, 'ev'); else _vilRowSave(vil, _t1025Stat, null);
+}
+// 장부가 가져간 줄의 마을들 — 행에 남은 옛 줄을 지우러 다시 쓴다(다시 뜨면 두 번 서지 않게).
+function _t1025Took(out) {
+  if (!T1025_EV_CORPSE || !out.length) return;
+  _t1025Stat.consumed += out.length;
+  const seen = new Set();
+  for (const e of out) if (!seen.has(e.vid)) { seen.add(e.vid); _t1025Note(e.vid); }
+}
+// 그 마을(dbId)의 대기 줄 — 없으면 null(칸이 안 선다). r = [누가, 남은 창] · b = 완공 종류 · s = 굶은 몸 수.
+function _t1025Pack(vid) {
+  if (vid == null) return null;
+  const r = [], b = []; let s2 = 0;
+  for (const e of _evRescues) if (e.vid === vid) r.push([e.by, e.mag]);
+  for (const e of _evBuilds) if (e.vid === vid) b.push(e.kind);
+  for (const e of _evStarved) if (e.vid === vid) s2++;
+  if (!r.length && !b.length && !s2) return null;
+  _t1025Stat.packed++;
+  return { r, b, s: s2 };
+}
+// 부팅 — 곁 칸을 대기 줄로 되돌리고 지운다(T740 복원 바로 뒤 · 같은 문법).
+function _t1025Restore() {
+  const R = { villages: 0, r: 0, b: 0, s: 0 };
+  for (const vil of state.villages) {
+    const e = vil.econ; if (!e || !_t862Has(e, '_t1025Ev')) continue;
+    const P = e._t1025Ev; _t862Drop(e, '_t1025Ev');
+    if (!P || typeof P !== 'object' || vil.dbId == null) continue;
+    R.villages++;
+    const vid = vil.dbId | 0;
+    for (const x of (P.r || [])) if (_evRescues.length < 256) { _evRescues.push({ vid, by: x[0] || 'village', mag: +x[1] || 0.01 }); R.r++; }
+    for (const k of (P.b || [])) if (_evBuilds.length < 256) { _evBuilds.push({ vid, kind: k }); R.b++; }
+    for (let i = 0; i < (P.s | 0); i++) if (_evStarved.length < 256) { _evStarved.push({ vid }); R.s++; }
+  }
+  _t1025Stat.restored = R.r + R.b + R.s;
+  console.log(`[${state.zoneId}] 📜 [T1025] 사건 대기 줄 되돌림 — 마을 ${R.villages} · 구조 ${R.r} · 완공 ${R.b} · 굶음 ${R.s}`);
+  return R;
+}
+function t1025Pending(vid) { return { r: _evRescues.filter((e) => e.vid === vid).length, b: _evBuilds.filter((e) => e.vid === vid).length, s: _evStarved.filter((e) => e.vid === vid).length }; }
 
 function _scanEventsDaily() { const g = _scanEventsSteps(); while (!g.next().done); }   // ★[T698] 몸통은 아래 발생기 하나(끔 = 끝까지 한 번에 · 종전 그대로)
 function* _scanEventsSteps() {
@@ -14268,6 +14363,8 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
   t983Save, t983On: () => T983_GRANARY_SAVE,   // ★[T983] 거래 순간 곳간 행 저장
+  t1005Save, t1005Mark, t1005Flush, t1005On: () => T1005_VIL_SAVE,   // ★[T1005] 구제 한 끼 · 집터 의뢰(순간) · 낚시(틱 끝 묶음) · 사냥은 `huntKillAt` 안에서
+  t1025On: () => T1025_EV_CORPSE, t1025Pending, noteVillageBuilt, noteStarved,   // ★[T1025] 사건 대기 줄 곁 칸 · 사체 장부 미룸(zone.js) · 탐침(`t1005-vil-kill-probe ev`)이 줄을 읽고 완공 · 굶음 줄을 세운다(행동 대신 · 관측 손)
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)

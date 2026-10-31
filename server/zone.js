@@ -2475,6 +2475,17 @@ const GHOST_TTL_MS = 1500;      // 이 시간 넘게 갱신 안 된 ghost 제거
 const corpses = new Map();      // cid -> { cid, mobType, x, y, drops, spawnTime, killerPid }
 let nextCorpseId = 1;
 const CORPSE_DECAY_MS = 5 * 60 * 1000;  // 5분 후 부패
+// ★★[T1025 2026-10-31 · T1005 회부 4] 손잡이 `T1025_EV_CORPSE`(켬 기본 · 되돌림 `=0` · 정본 머리말 villages.js `T1025_EV_CORPSE`).
+//   사체는 메모리 전용이다 — 사람이 잡은 들짐승을 잡은 순간 사냥터 장부(`huntKillAt` → T1005 틱 끝 행)에서 빼면 도살 전에 존이 죽을 때 사냥감 한 마리가 사라졌다(보고/T1005 §2 3′).
+//   켬 = 잡은 순간엔 사체에 자리(`huntAt`)만 적고, 장부는 사체가 끝날 때(도살 · 부패) 뺀다 ⇒ 도살 전에 죽으면 사체 · 장부 둘 다 잡기 전 그대로(한 마리 = 한 마리).
+//   끔 = 잡은 순간 뺀다(종전 글자).
+const T1025_EV_CORPSE = process.env.T1025_EV_CORPSE !== '0';
+const _t1025Corpse = { deferred: 0, butchered: 0, rotted: 0 };
+function _t1025CorpseEnd(c, how) {
+  if (!c || !c.huntAt) return;
+  _t1025Corpse[how]++;
+  try { SimVillages.huntKillAt(c.huntAt.x, c.huntAt.y); } catch (e) {}
+}
 
 function spawnCorpse(mob, killerPid) {
   const cid = `c${nextCorpseId++}`;
@@ -2511,6 +2522,7 @@ function butcherCorpse(player, cid) {
   const koName = def?.ko || corpse.mobType;
   sendInventory(player);
   send(player.ws, { type: 'notice', text: `${koName} 도살 +${parts.join(', ')}` });
+  _t1025CorpseEnd(corpse, 'butchered');   // ★[T1025] 켬 — 잡을 때 미룬 사냥터 장부 한 마리(T1005 이 틱 끝 행 · 끔 = `huntAt` 없음 · 무동작)
   savePlayer(player);
   corpses.delete(cid);
   broadcast({ type: 'corpse_removed', cid });
@@ -2528,6 +2540,7 @@ setInterval(() => {
   const now = Date.now();
   for (const [cid, c] of corpses) {
     if (now - c.spawnTime > CORPSE_DECAY_MS) {
+      _t1025CorpseEnd(c, 'rotted');   // ★[T1025] 켬 — 도살 없이 썩어도 그 짐승은 죽었다(장부 한 마리)
       corpses.delete(cid);
       broadcast({ type: 'corpse_removed', cid });
     }
@@ -9762,6 +9775,7 @@ function _fishLand(player, f, now) {
   try {
     const vil = SimVillages.waterVillageAt ? SimVillages.waterVillageAt(f.x, f.y) : null;
     if (vil) vinfo = SimVillages.refreshFishSustain(vil, now);
+    if (vinfo && SimVillages.t1005Mark) SimVillages.t1005Mark(vil, 'fish');   // ★[T1005] 다시 매긴 어장 상한 — 이 틱 끝에 그 마을 행 한 번(끔 = 무동작)
   } catch (e) {}
   sendInventory(player);
   const big = gotKg >= Fishing.CFG.BIG_KG;
@@ -11691,6 +11705,7 @@ function tryRequestVillageHouse(player, atX, atY) {
   const r = SimVillages.lifeRequestPlayerSite(vil, cx, cy, player.playerId, `${player.name}의 의뢰 움집`);
   if (!r || r.err) { send(player.ws, { type: 'notice', text: `의뢰 불가 — ${(r && r.err) || '알 수 없음'}` }); return; }
   for (const [it, amt] of Object.entries(PSITE_COST)) consumeItem(player, it, amt);   // ★자리 확정 뒤 차감(실패 시 재료가 사라지지 않게) · [원장 승격]
+  if (SimVillages.t1005Save) SimVillages.t1005Save(vil, 'house');   // ★[T1005] 의뢰 집터(곁 칸 psite · 건물 번호 · 잠재 농지)도 그 행에 이 순간(끔 = 무동작)
   sendInventory(player);
   const costStr = Object.entries(PSITE_COST).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${v}`).join(' · ');
   send(player.ws, { type: 'notice', text: `🏠 ${vil.name} 크루에게 집 짓기를 의뢰했다 (${costStr} 선납) — 마을 일이 없을 때 지어 준다` });
@@ -12734,7 +12749,7 @@ function __testBind() {
     T987_MOB_RESPAWN, respawnMobLater,   // ★[T987] 다시 낳기 하네스(`test-mob-respawn` · 내보내기만)
     T998_NPC_WILD_SYNC,   // ★[T998] 랩 동기 하네스(`test-npc-wild-sync` · 내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
-    spawnCorpse, butcherCorpse, corpses,
+    spawnCorpse, butcherCorpse, corpses, t1025Corpse: _t1025Corpse,   // ★[T1025] 사체 장부 미룸 셈(탐침이 읽는다)
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
     SMELT_BASE_MS, SMELT_MIN_MS, KILN_BURN_MS, KILN_BATCH_MS_PER, _smeltDurationMs, _jobProgress,
     // ── 조업 **페이싱** 실측(2026-08-02f ②) ── 단조까지 이어야 사슬 한 바퀴의 실시간이 나온다
@@ -13275,7 +13290,7 @@ async function tryAttack(player) {
     if (bestMob.isWild) {
       Wildlife.onMobHit(bestMob, atk, player);
       // ★[T146] 플레이어가 잡았으면 **마을 장부에서도 한 마리 준다**(§0-ⓒ) — 새 수 0(잡은 것이 곧 그 수).
-      if (bestMob.hp <= 0) { try { SimVillages.huntKillAt(bestMob.x, bestMob.y); } catch (e) {} }
+      if (bestMob.hp <= 0) { if (T1025_EV_CORPSE) bestMob._t1025Hunt = true; else try { SimVillages.huntKillAt(bestMob.x, bestMob.y); } catch (e) {} }   // ★[T1025] 켬 = 사체가 끝날 때(아래 `spawnCorpse` 뒤 · `_t1025CorpseEnd`)
     }
     // 늑대는 공격당하면 즉시 어그로 — 단 길든 mob은 어그로 안 가짐. 팩 동료도 같이 어그로.
     if (bestMob.type === 'wolf' && !bestMob.tameOwner) {
@@ -13289,7 +13304,8 @@ async function tryAttack(player) {
     }
     if (bestMob.hp <= 0) {
       // Phase 5-7: 사체 entity 생성 (즉시 인벤 X. 도살 액션 필요).
-      spawnCorpse(bestMob, player.playerId);
+      const _cp = spawnCorpse(bestMob, player.playerId);
+      if (bestMob._t1025Hunt && _cp) { _cp.huntAt = { x: bestMob.x, y: bestMob.y }; _t1025Corpse.deferred++; }   // ★[T1025] 사냥터 장부 한 마리는 이 사체가 끝날 때
       send(player.ws, { type: 'notice', text: `${ANIMALS[bestMob.type]?.ko || bestMob.type} 사냥 — 사체 도살 (E)` });
       // DB + chunk에서 mob 제거
       if (bestMob.dbId) { try { db.deleteMob(bestMob.dbId); } catch (e) {} }
@@ -13972,6 +13988,7 @@ function _villageMeal(p, vid) {
   let r = null;
   try { r = T732_MOMENT ? _t732Wrap(p, () => SimVillages.playerVillageWithdraw(vil, p.inventory, 'food', 1)) : SimVillages.playerVillageWithdraw(vil, p.inventory, 'food', 1); } catch (e) { r = null; }   // ★[T732] 곳간 나이째(끄면 종전 그대로)
   if (!r || !r.ok) return { fed: false, empty: true, err: r && r.err };
+  if (SimVillages.t1005Save) SimVillages.t1005Save(vil, 'meal');   // ★[T1005] 곳간이 낸 한 끼도 그 행에 이 순간(끔 = 무동작)
   try { doEat(p, r.item, r.qty, p); } catch (e) {}              // ★먹임 정본(T56 먹이기와 같은 함수)
   // ★★**극단 축을 벗어나는 만큼만.** 문턱은 T44 표에서 유도한다(`Body.extremeAt` — 리터럴 금지),
   //   여유는 그 **바로 위 첫 정수 눈금**이다(게이지는 정수로 보인다 — 새 계수가 아니라 눈금이다).
@@ -14895,6 +14912,7 @@ setInterval(() => {
       // 입력 타임아웃 정리만 (NPC AI·이동·broadcast 모두 skip)
     }
     if (SimVillages.deferLate) SimVillages.deferLate(now);   // ★[T695] 결정 문이 없는 틱(잠든 존)도 마감은 잇는다
+    if (SimVillages.t1005Flush) SimVillages.t1005Flush();   // ★[T1005] 잠든 틱에도 남은 표(마감 뒤로 미룬 몫) — 아래 꼬리와 같은 줄
     TB.end();   // ★[T687]
     return;
   }
@@ -15954,6 +15972,7 @@ setInterval(() => {
   // ★[RTT 상관 계측] 틱 전체가 예산(33ms)을 넘긴 순간도 남긴다 — 원인이 위 둘이 아닐 수도 있다.
   // ★★[T43] 쓰러짐 사슬 — 업고 걷기 · 붙들기 진행 · 창 소진 · 깨어남(내부에서 1초에 한 번만 돈다).
   tickDowned(now);
+  if (SimVillages.t1005Flush) SimVillages.t1005Flush();   // ★[T1005] 이 틱에 표한 마을(낚시 · 사냥) — 마을마다 한 줄(끔 · 빈 표 = 무동작)
   if (T719_REACH_PRE_Z) { const _h7 = process.hrtime(_tickHr0), _el = _h7[0] * 1e3 + _h7[1] / 1e6; if (_el < 10) SimVillages.t719ReachPre(Math.min(2, 10 - _el)); }
   if (T750_CAST_SLICE_Z) { const _h8 = process.hrtime(_tickHr0), _el8 = _h8[0] * 1e3 + _h8[1] / 1e6; if (_el8 < 10) SimVillages.t750CastPre(Math.min(2, 10 - _el8)); }   // ★[T750] 남는 시간에 어부 던질 칸의 지형 자리 미리(villages.js `t750CastPre` · 끔이면 이 줄만 거친다)   // ★[T719] 남는 시간에 닿는 칸 집합 미리(villages.js `t719ReachPre` 머리 · 끔이면 이 줄만 거친다)
   { const _tot = Date.now() - now; if (_tot >= 33) perfMark('tick', _tot); }
