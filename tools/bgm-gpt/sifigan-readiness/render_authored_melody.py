@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Global3000 renders an explicit19.2s score, borrowing a clean timbre loop.
 
-The score is lowered one octave. Timing, rests, reattacks and microcurve rules
+The score is lowered by7or12 semitones. Timing, rests, reattacks and microcurve rules
 are authored here, NOT learned breath/sigim or source-envelope copying.
 One source-exact baseline + two continuous forwards; raw output is ungated.
 """
@@ -32,7 +32,9 @@ def smootherstep(value):
     return np.clip(10 * u ** 3 - 15 * u ** 4 + 6 * u ** 5, 0., 1.)
 
 
-def parse_score(score):
+def parse_score(score, transpose_semitones=-12):
+    if type(transpose_semitones) is not int or transpose_semitones not in (-12, -7):
+        raise ValueError("explicit_minus12_or_minus7_register_only")
     if (score.get("schema") != "mini.bgm-gpt.original-variation.v1" or score.get("bar_count") != 8
             or score.get("duration_seconds") != 19.2 or score.get("beats_per_bar") != 3
             or score.get("sobak_per_beat") != 3 or not np.isclose(score.get("sobak_seconds", 0), 4 / 15, rtol=0, atol=1e-15)
@@ -63,7 +65,7 @@ def parse_score(score):
                 original_start_seconds=original_start, original_end_seconds=original_end,
                 quantization_start_error_seconds=start * HOP / RATE - original_start,
                 quantization_end_error_seconds=end * HOP / RATE - original_end,
-                original_midi=midi, transposed_midi=None if rest else midi - 12,
+                original_midi=midi, transposed_midi=None if rest else midi + transpose_semitones,
                 articulation=articulation, duration_sobak=duration, duration_seconds=float(Fraction(duration * 4, 15))))
             note += not rest
             cursor = onset + duration
@@ -99,8 +101,8 @@ def authored_gate(events):
     return gate
 
 
-def build_controls(score, source_cf0, source_features, mean, scale):
-    events = parse_score(score)
+def build_controls(score, source_cf0, source_features, mean, scale, transpose_semitones=-12):
+    events = parse_score(score, transpose_semitones)
     if (source_cf0.dtype != np.float32 or source_cf0.ndim != 1 or len(source_cf0) < 1200
             or source_features.dtype != np.float32 or source_features.shape != (len(source_cf0), 43)
             or not np.isfinite(source_cf0).all() or not np.isfinite(source_features).all()
@@ -195,7 +197,9 @@ def write_raw_wav(path, wave):
     return dict(file=Path(path).name, sha256=lineage.saved.sha256(path), PCM_sha256=prior.pcm_sha(wave), rate=RATE, samples=SAMPLES)
 
 
-def run(upstream, parent_training, training_path, score_path, output):
+def run(upstream, parent_training, training_path, score_path, output, transpose_semitones=-12):
+    if type(transpose_semitones) is not int or transpose_semitones not in (-12, -7):
+        raise ValueError("explicit_minus12_or_minus7_register_only")
     base.require_mps_environment()
     output, root = Path(output), PRIVATE_ROOT.resolve(strict=True)
     if not output.is_absolute() or output.is_symlink() or output.exists() or output.resolve() == root or not output.resolve().is_relative_to(root):
@@ -210,7 +214,8 @@ def run(upstream, parent_training, training_path, score_path, output):
         normalizer_unchanged=True, generator_weights_unchanged=True, automatic_CPU_fallback=False,
         source_PCM_mixed_into_output=False, denoising=False, EQ=False, waveform_pitch_shift=False, quality_approved=False,
         source_credit=lineage.saved.CREDIT, baseline_reproduced=False, seed=prior.SEED + 2,
-        score_transposition_semitones=-12, template_source_frames=[240, 1200], template_phase_offset_frames=16,
+        score_transposition_semitones=transpose_semitones, template_source_frames=[240, 1200], template_phase_offset_frames=16,
+        register_policy="minus7_correction_after_reliable_source_range_audit" if transpose_semitones == -7 else "historical_minus12_register_diagnostic",
         clean_feature_loop_still_borrowed=True, legacy_B0_B1_policy_reused=False, old575ms_intro_cut_applied=False,
         max_seconds=600, max_output_bytes=MAX_BYTES, max_conservative_rss_plus_MPS_bytes=8 * GIB, min_free_disk_bytes=12 * GIB)
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "foundation-model-trial"))
@@ -237,7 +242,7 @@ def run(upstream, parent_training, training_path, score_path, output):
                 mean, scale = archive["mean"].copy(), archive["scale"].copy()
             with np.load(item["corpus_npz_path"], allow_pickle=False) as archive:
                 cf0, features = archive["cf0"].copy(), archive["features"].copy()
-            arrays, events = build_controls(score, cf0, features, mean, scale)
+            arrays, events = build_controls(score, cf0, features, mean, scale, transpose_semitones)
             baseline_features = prior.normalize_features(features[:960], mean, scale)
             for path in (Path(__file__).resolve(), Path(prior.__file__).resolve(), Path(lineage.__file__).resolve(),
                     Path(lineage.saved.__file__).resolve(), Path(base.__file__).resolve(),
@@ -331,7 +336,8 @@ if __name__ == "__main__":
     parser.add_argument("--parent-training", type=Path, required=True)
     parser.add_argument("--training", type=Path, required=True)
     parser.add_argument("--score", type=Path, required=True)
+    parser.add_argument("--transpose-semitones", type=int, choices=(-12, -7), default=-12)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    result = run(args.upstream, args.parent_training, args.training, args.score, args.output)
+    result = run(args.upstream, args.parent_training, args.training, args.score, args.output, args.transpose_semitones)
     print(json.dumps(dict(status=result["status"], forward_calls=result["forward_calls"], quality_approved=False)))

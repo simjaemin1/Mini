@@ -947,6 +947,19 @@ but all pitches are explicitly lowered one octave, G3–E4(196–330Hz), to stay
 closer to the training carrier. This is a new register test, not evidence that
 the generator reproduces every register naturally.
 
+**Register correction before user delivery:** the−12semitone version is a
+retained diagnostic, not the selected listening pair. Across all13source
+corpora, source YIN/periodicity/RMS support additionally agreeing with Harvest
+within50c yields no supported frames below250Hz. Thus its G3/A3 targets are
+outside this source evidence; proximity to one carrier is not enough to call
+a register idiomatic. The deliverable pair instead lowers the SAME original
+score by7semitones, C4–A4(261.6–440Hz nominal). This does not prove every
+instrument's physical range or register-dependent timbre fidelity. The first
+diagnostic is reproducible at commit94bfc218; reports/audio stay immutable.
+The small version2code change exposes only−12/−7 as explicit options and
+records/regenerates the selected value. Original-source/model/code lineage
+and all other controls remain unchanged.
+
 Simply assigning new F0 to the source's first19.2s would import long source
 silences into written notes. Instead, only the clean sustained1.2–6.0s source
 conditioning is reused. Its43features and median-centered log-F0 residual

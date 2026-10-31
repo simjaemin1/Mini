@@ -179,6 +179,30 @@ class AuthoredMelodyTests(unittest.TestCase):
             with patch.object(melody.shutil, "disk_usage", return_value=type("Disk", (), {"free": 0})()), self.assertRaises(RuntimeError):
                 melody.capacity(folder)
 
+    def test_minus7_register_only_shifts_pitch_five_semitones_from_historical_minus12(self):
+        old, old_events = melody.build_controls(synthetic_score(), *controls())
+        new, new_events = melody.build_controls(synthetic_score(), *controls(), transpose_semitones=-7)
+        factor = 2 ** (5 / 12)
+        for key in ("gate", "sounding_mask", "rest_mask", "steady_mask", "template_index_map", "note_index",
+                "features", "normalized_features", "borrowed_microcurve_cents",
+                "microcurve_envelope_all_microcurve", "microcurve_envelope_late_long_microcurve"):
+            self.assertEqual(old[key].tobytes(), new[key].tobytes())
+        np.testing.assert_allclose(new["center_hz"], old["center_hz"] * factor, rtol=1e-14)
+        for variant in melody.VARIANTS:
+            np.testing.assert_allclose(new["target_hz_" + variant], old["target_hz_" + variant] * factor, rtol=2e-7)
+        for before, after in zip(old_events, new_events):
+            if not before["rest"]:
+                self.assertEqual(after["transposed_midi"], before["transposed_midi"] + 5)
+            for key in set(before) - {"transposed_midi"}:
+                self.assertEqual(before[key], after[key])
+
+    def test_nonfrozen_register_parameter_rejected(self):
+        for value in (-5, 0, -12., True, None):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "minus12_or_minus7"):
+                melody.parse_score(synthetic_score(), value)
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "minus12_or_minus7"):
+                melody.build_controls(synthetic_score(), *controls(), transpose_semitones=value)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,7 +13,7 @@ import export_authored_melody as exporter
 from test_build_level_conditioned_trial import FakeGuard
 
 
-def fixture(root):
+def fixture(root, transpose=-12):
     raw = root / "raw"
     raw.mkdir()
     training = root / "training.json"
@@ -31,7 +31,7 @@ def fixture(root):
         a, b, rest = i * 120, (i + 1) * 120, i % 8 == 7
         events.append(dict(index=i, rest=rest, note_index=-1 if rest else number,
             start_frame=a, end_frame=b, start_sample=a * 120, end_sample=b * 120,
-            original_midi=None if rest else 72, transposed_midi=None if rest else 60,
+            original_midi=None if rest else 72, transposed_midi=None if rest else 72 + transpose,
             articulation="breath_rest" if rest else "breath_start" if i % 8 == 0 else "slur"))
         if rest:
             gate[a * 120:b * 120] = 0
@@ -41,14 +41,15 @@ def fixture(root):
                 u = np.arange(961, dtype=np.float64) / 960
                 gate[a * 120:a * 120 + 961] = 10 * u ** 3 - 15 * u ** 4 + 6 * u ** 5
             number += 1
-    controls = dict(gate=gate, center_hz=np.full(3840, 261.625565, np.float64),
+    center = 440 * 2 ** ((72 + transpose - 69) / 12.)
+    controls = dict(gate=gate, center_hz=np.full(3840, center, np.float64),
         sounding_mask=sounding, rest_mask=~sounding, steady_mask=steady,
         template_index_map=((np.arange(3840) + 16) % 960 + 240).astype(np.int64),
         borrowed_microcurve_cents=np.zeros(3840, np.float64),
         features=np.zeros((3840, 43), np.float32), normalized_features=np.zeros((3840, 43), np.float32),
         note_index=noteindex)
     for index, variant in enumerate(exporter.VARIANTS):
-        controls["target_hz_" + variant] = np.full(3840, 261.625565 + index * 2, np.float32)
+        controls["target_hz_" + variant] = np.full(3840, center + index * 2, np.float32)
         controls["microcurve_envelope_" + variant] = np.full(3840, float(index == 0), np.float64)
     controlfile = raw / "controls.npz"
     np.savez_compressed(controlfile, **controls)
@@ -63,6 +64,7 @@ def fixture(root):
         status="authored_melody_raw_rendered_not_perceptually_approved", phase="complete", completed_steps=3000,
         baseline_reproduced=True, forward_calls=3, inputs_unchanged=True, frames=3840, samples=460800,
         sample_rate=24000, hop_size=120, variants=list(exporter.VARIANTS), checkpoints=checkpoints,
+        score_transposition_semitones=transpose,
         authored_eight_bar_score_render=True, score_path=str(score), score_sha256=exporter.saved.sha256(score),
         input_bindings={str(training): exporter.saved.sha256(training)}, score_events=events,
         controls=dict(file=controlfile.name, sha256=exporter.saved.sha256(controlfile),
@@ -84,7 +86,11 @@ def fixture(root):
     validated = (dict(completed_steps=3000, data_gate=str(gatefile)),
         [dict(case="deepvib48", reference=reference, generated=baseline, corpus_npz_path=str(corpus))],
         {str(gatefile): exporter.saved.sha256(gatefile)}, checkpoints)
-    fake = SimpleNamespace(build_controls=lambda *_: (controls, events))
+    def rebuild(*_, transpose_semitones):
+        if transpose_semitones != transpose:
+            raise AssertionError("exporter must propagate the bound raw transposition")
+        return controls, events
+    fake = SimpleNamespace(build_controls=rebuild)
     return root / "unused_parent.json", training, path, report, controls, waves, validated, fake
 
 
@@ -119,10 +125,21 @@ class AuthoredMelodyExportTests(unittest.TestCase):
                     patch.object(exporter.importlib, "import_module", return_value=fake):
                 for key, value in (("status", "started"), ("completed_steps", 2999), ("forward_calls", 2),
                         ("training", True), ("authored_gate_applied_to_raw", True), ("quality_approved", True),
-                        ("source_PCM_mixed_into_output", True), ("inputs_unchanged", False)):
+                        ("source_PCM_mixed_into_output", True), ("inputs_unchanged", False),
+                        ("score_transposition_semitones", -8), ("score_transposition_semitones", -7.0)):
                     path.write_text(json.dumps({**report, key: value}))
                     with self.subTest(key=key), self.assertRaises(ValueError):
                         exporter.validate_inputs(parent, training, path)
+
+    def test_minus7_register_propagates_into_bound_control_rebuild(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent, training, path, _, _, _, validated, fake = fixture(Path(directory).resolve(), transpose=-7)
+            with patch.object(exporter.extended, "validate_inputs", return_value=validated), \
+                    patch.object(exporter.importlib, "import_module", return_value=fake):
+                report, controls, events, _, _, _ = exporter.validate_inputs(parent, training, path)
+            self.assertEqual(report["score_transposition_semitones"], -7)
+            self.assertEqual(events[0]["transposed_midi"], 65)
+            self.assertAlmostEqual(float(controls["center_hz"][0]), 349.2282314330039)
 
     def test_rehashed_mask_target_gate_feature_and_baseline_tamper_rejected(self):
         for key in ("sounding_mask", "target_hz_all_microcurve", "gate", "features", "normalized_features"):

@@ -135,6 +135,9 @@ def validate_inputs(parent_path, training_path, raw_path):
             or report.get("sample_rate") != RATE or report.get("hop_size") != HOP
             or report.get("variants") != list(VARIANTS) or report.get("checkpoints") != checkpoints):
         raise ValueError("completed_bound_authored19p2_raw_required")
+    transpose = report.get("score_transposition_semitones")
+    if type(transpose) is not int or transpose not in (-12, -7):
+        raise ValueError("versioned_score_transposition_minus12_or_minus7_required")
     for flag in ("training", "weights_written", "output_postprocessing", "authored_gate_applied_to_raw",
                  "source_PCM_mixed_into_output", "quality_approved", "new_learned_performance"):
         if report.get(flag) is not False:
@@ -205,7 +208,7 @@ def validate_inputs(parent_path, training_path, raw_path):
     saved.bound(stats_path, gate["stats_sha256"], bindings)
     with np.load(source["corpus_npz_path"], allow_pickle=False) as original, np.load(stats_path, allow_pickle=False) as stats:
         rebuilt = producer.build_controls(json.loads(score_path.read_text()), original["cf0"],
-            original["features"], stats["mean"], stats["scale"])
+            original["features"], stats["mean"], stats["scale"], transpose_semitones=transpose)
     rebuilt_controls, rebuilt_events = rebuilt[0], rebuilt[1]
     if (set(rebuilt_controls) != set(controls) or rebuilt_events != events
             or any(controls[key].tobytes() != value.tobytes() for key, value in rebuilt_controls.items())):
@@ -332,13 +335,14 @@ def export(parent_path, training_path, raw_path, output, compare_fn=None, decode
                 authored_attack_release_reattack_and_four_rest_gate=True, old575ms_cut_used=False,
                 EQ=False, denoising=False, waveform_pitch_shift=False, quality_approved=False,
                 borrowed_microcurve_NOT_pure_vibrato=True, learned_breath_attack_or_sigim=False,
-                source_credit=saved.CREDIT, variants=list(VARIANTS), seconds=SECONDS, source_score_transposition_semitones=-12,
+                source_credit=saved.CREDIT, variants=list(VARIANTS), seconds=SECONDS,
+                source_score_transposition_semitones=raw["score_transposition_semitones"],
                 input_bindings=bindings, checkpoints=checkpoints, condition=condition,
                 score_events=events, carriers=carriers, outputs=outputs,
                 comparison_path=str(comparison_path), comparison_sha256=saved.sha256(comparison_path),
                 inputs_unchanged=True, whole_experiment_bytes_before_report=capacity(output),
                 elapsed_seconds=time.monotonic() - started, resources=guard.snapshot(),
-                caveats=["19.2s authored eight-bar score transposed down12semitones; not new model training.",
+                caveats=[f"19.2s authored eight-bar score transposed {raw['score_transposition_semitones']:+d} semitones; not new model training.",
                     "A clean source spectral/microcurve template is cycled as controls; no source PCM is mixed or spliced.",
                     "Explicit constant−40dBFS carrier control and authored gate replace borrowed source RMS.",
                     "Breath/rest/reattack envelopes are authored amplitude edits, not newly learned articulation.",
