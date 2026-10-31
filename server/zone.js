@@ -9762,6 +9762,7 @@ function _fishLand(player, f, now) {
   try {
     const vil = SimVillages.waterVillageAt ? SimVillages.waterVillageAt(f.x, f.y) : null;
     if (vil) vinfo = SimVillages.refreshFishSustain(vil, now);
+    if (vinfo && SimVillages.t1005Mark) SimVillages.t1005Mark(vil, 'fish');   // ★[T1005] 다시 매긴 어장 상한 — 이 틱 끝에 그 마을 행 한 번(끔 = 무동작)
   } catch (e) {}
   sendInventory(player);
   const big = gotKg >= Fishing.CFG.BIG_KG;
@@ -11691,6 +11692,7 @@ function tryRequestVillageHouse(player, atX, atY) {
   const r = SimVillages.lifeRequestPlayerSite(vil, cx, cy, player.playerId, `${player.name}의 의뢰 움집`);
   if (!r || r.err) { send(player.ws, { type: 'notice', text: `의뢰 불가 — ${(r && r.err) || '알 수 없음'}` }); return; }
   for (const [it, amt] of Object.entries(PSITE_COST)) consumeItem(player, it, amt);   // ★자리 확정 뒤 차감(실패 시 재료가 사라지지 않게) · [원장 승격]
+  if (SimVillages.t1005Save) SimVillages.t1005Save(vil, 'house');   // ★[T1005] 의뢰 집터(곁 칸 psite · 건물 번호 · 잠재 농지)도 그 행에 이 순간(끔 = 무동작)
   sendInventory(player);
   const costStr = Object.entries(PSITE_COST).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${v}`).join(' · ');
   send(player.ws, { type: 'notice', text: `🏠 ${vil.name} 크루에게 집 짓기를 의뢰했다 (${costStr} 선납) — 마을 일이 없을 때 지어 준다` });
@@ -13972,6 +13974,7 @@ function _villageMeal(p, vid) {
   let r = null;
   try { r = T732_MOMENT ? _t732Wrap(p, () => SimVillages.playerVillageWithdraw(vil, p.inventory, 'food', 1)) : SimVillages.playerVillageWithdraw(vil, p.inventory, 'food', 1); } catch (e) { r = null; }   // ★[T732] 곳간 나이째(끄면 종전 그대로)
   if (!r || !r.ok) return { fed: false, empty: true, err: r && r.err };
+  if (SimVillages.t1005Save) SimVillages.t1005Save(vil, 'meal');   // ★[T1005] 곳간이 낸 한 끼도 그 행에 이 순간(끔 = 무동작)
   try { doEat(p, r.item, r.qty, p); } catch (e) {}              // ★먹임 정본(T56 먹이기와 같은 함수)
   // ★★**극단 축을 벗어나는 만큼만.** 문턱은 T44 표에서 유도한다(`Body.extremeAt` — 리터럴 금지),
   //   여유는 그 **바로 위 첫 정수 눈금**이다(게이지는 정수로 보인다 — 새 계수가 아니라 눈금이다).
@@ -14895,6 +14898,7 @@ setInterval(() => {
       // 입력 타임아웃 정리만 (NPC AI·이동·broadcast 모두 skip)
     }
     if (SimVillages.deferLate) SimVillages.deferLate(now);   // ★[T695] 결정 문이 없는 틱(잠든 존)도 마감은 잇는다
+    if (SimVillages.t1005Flush) SimVillages.t1005Flush();   // ★[T1005] 잠든 틱에도 남은 표(마감 뒤로 미룬 몫) — 아래 꼬리와 같은 줄
     TB.end();   // ★[T687]
     return;
   }
@@ -15954,6 +15958,7 @@ setInterval(() => {
   // ★[RTT 상관 계측] 틱 전체가 예산(33ms)을 넘긴 순간도 남긴다 — 원인이 위 둘이 아닐 수도 있다.
   // ★★[T43] 쓰러짐 사슬 — 업고 걷기 · 붙들기 진행 · 창 소진 · 깨어남(내부에서 1초에 한 번만 돈다).
   tickDowned(now);
+  if (SimVillages.t1005Flush) SimVillages.t1005Flush();   // ★[T1005] 이 틱에 표한 마을(낚시 · 사냥) — 마을마다 한 줄(끔 · 빈 표 = 무동작)
   if (T719_REACH_PRE_Z) { const _h7 = process.hrtime(_tickHr0), _el = _h7[0] * 1e3 + _h7[1] / 1e6; if (_el < 10) SimVillages.t719ReachPre(Math.min(2, 10 - _el)); }
   if (T750_CAST_SLICE_Z) { const _h8 = process.hrtime(_tickHr0), _el8 = _h8[0] * 1e3 + _h8[1] / 1e6; if (_el8 < 10) SimVillages.t750CastPre(Math.min(2, 10 - _el8)); }   // ★[T750] 남는 시간에 어부 던질 칸의 지형 자리 미리(villages.js `t750CastPre` · 끔이면 이 줄만 거친다)   // ★[T719] 남는 시간에 닿는 칸 집합 미리(villages.js `t719ReachPre` 머리 · 끔이면 이 줄만 거친다)
   { const _tot = Date.now() - now; if (_tot >= 33) perfMark('tick', _tot); }
