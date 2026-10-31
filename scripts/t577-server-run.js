@@ -42,6 +42,9 @@
 //     같은 꼴 둘째 — NPC 광맥 장부 시각(`zone.js oreStockAt` · `oreConsumeAt` 이 읽는 마감 벽시계)도 판 빠르기에 달려 광산 마을 곳간 · 금고가 날 379 에서 판마다 갈렸다(보고/T990 §3-②).
 //     켜면 길의 날 = econ 날(`roads.setEconDay` · 하루는 하루 마감 `dayRoads` 자리) · NPC 광맥 시각 = econ 날 × 하루 길이(15분 정리는 읽기만).
 //     ★[T1001 2026-10-30] 제품도 켬 기본(zone 상수 `!== '0'` · 부팅 때 한 번 벽시계에 맞춘다 — 라이브 DB 줄과 같은 축 · 옮김 0). 이 줄은 '부르는 값 먼저' 자리로 남는다(`=0` 이면 끔 판).
+//   ★★[T1013 2026-10-31 · 판 자 결정론 마감] **아이 env `T1013_BAND_DAY=1` 이 기본이다**(부르는 값 먼저 · 되돌림 `=0` · 제품 끔 기본).
+//     사냥터 짓기(`villages.js _huntBandBuild`)는 마을 하루치 벽시계 몫(20ms)이 바닥나면 내일 잇는다 — 부하가 크면 큰 마을 띠가 다음 날로 넘어가
+//     사냥꾼 차감 · 14일 `land.game` 이 판마다 달랐다(`--house` 800날 부하 판 시드 1020 날 771 임업1). 켜면 쉼표 뒤 같은 날 이어 짓는다(가상 시계 판과 같은 답).
 //   ⚠서버 판은 **바이트 결정론이 아니다**(하루 마감 조각 · 캐러밴 몸 타이밍이 벽시계에 기댄다) — 같은 시드도 판마다 조금 갈린다.
 //     그래서 판정하지 않는다: 이 자의 ok() 는 "판이 끝까지 돌았다 · 시딩이 섰다"뿐이고 수는 **표**다(기준선은 PM 이 착지 때 선언).
 //
@@ -114,6 +117,8 @@ const VCLOCK = process.env.T745_VCLOCK === '1';
 const KID_WAL = process.env.T696_WAL != null ? process.env.T696_WAL : (VCLOCK ? '0' : null);
 // ★[T959] 교전 몫 = 운영 하루(길 1)가 판 자 기본 — 부르는 쪽이 준 값이 먼저(되돌림 `=0`)
 const KID_BATTLE = process.env.T941_BATTLE_DAY != null ? process.env.T941_BATTLE_DAY : '1';
+// ★[T1013] 사냥터 짓기 그날 안에(몫이 바닥나도 쉼표 뒤 같은 날) — 판 자 기본 · 부르는 쪽이 준 값이 먼저(되돌림 `=0`)
+const KID_BAND = process.env.T1013_BAND_DAY != null ? process.env.T1013_BAND_DAY : '1';
 // ★[T990] 길의 날 · NPC 광맥 시각 = econ 날이 판 자 기본 — 부르는 쪽이 준 값이 먼저(되돌림 `=0`)
 const KID_ECON = process.env.T990_ECON_DAY != null ? process.env.T990_ECON_DAY : '1';
 // ★[T577 추신] 판 이름 — 판을 가르는 손잡이(후보 · 층 끄기)만 이름에 싣는다(`T577_TAG` 로 덮을 수 있다)
@@ -132,6 +137,7 @@ function runOne(seed, k) {
       ...(KID_TRIPDAY != null ? { T627_TRIP_DAY: KID_TRIPDAY } : {}),   // ★[T914] 집 행위 켬 판 기본 '1'(크루 몫 = 정본 운영 하루) · 끔 판은 안 준다(종전)
       ...(KID_WAL != null ? { T696_WAL: KID_WAL } : {}),   // ★[T941] 가상 시계 판 기본 '0'(WAL 일꾼 끔 — 값 무변 · 디스크) · 벽시계 판은 안 준다(종전)
       T941_BATTLE_DAY: KID_BATTLE,   // ★[T959] 판 자 기본 '1'(교전 국면 몸만 운영 하루 몫) · 되돌림 '0' = T959 전 판 자
+      T1013_BAND_DAY: KID_BAND,   // ★[T1013] 판 자 기본 '1'(사냥터 짓기 그날 안에) · 되돌림 '0' = T1013 전 판 자
       T990_ECON_DAY: KID_ECON,   // ★[T990] 판 자 기본 '1'(길의 날 · NPC 광맥 시각 = econ 날) · 되돌림 '0' = T990 전 판 자
       VILLAGE_NPC_CAP: process.env.VILLAGE_NPC_CAP || '1',
       T577_SEED: String(seed), T577_DAYS: String(DAYS), T577_OUT: out,
@@ -155,7 +161,7 @@ function runOne(seed, k) {
 
 (async () => {
   console.log(`\n=== 서버 판 자(T577) — ${DAYS}일 · 시드 ${SEEDS.join('·')} · 판 ${TAG} · 동시 ${PAR} · ${DIR} ===`);
-  console.log(`  조건: VILLAGE_DAY_MS=${process.env.VILLAGE_DAY_MS || '250'} · T315_MAPBEDS=${KID_MAPBEDS} · T627_TRIP_DAY=${KID_TRIPDAY != null ? KID_TRIPDAY : '(없음)'} · 집 행위 ${HOUSE_ACT ? '켬' : '끔'} · 가상 시계 ${VCLOCK ? '켬' : '끔'} · T696_WAL=${KID_WAL != null ? KID_WAL : '(없음)'} · T941_BATTLE_DAY=${KID_BATTLE} · T990_ECON_DAY=${KID_ECON} · VILLAGE_NPC_CAP=${process.env.VILLAGE_NPC_CAP || '1'} · 도적 ${process.env.ENABLE_BANDITS === '0' ? '끔' : '켬'}`);
+  console.log(`  조건: VILLAGE_DAY_MS=${process.env.VILLAGE_DAY_MS || '250'} · T315_MAPBEDS=${KID_MAPBEDS} · T627_TRIP_DAY=${KID_TRIPDAY != null ? KID_TRIPDAY : '(없음)'} · 집 행위 ${HOUSE_ACT ? '켬' : '끔'} · 가상 시계 ${VCLOCK ? '켬' : '끔'} · T696_WAL=${KID_WAL != null ? KID_WAL : '(없음)'} · T941_BATTLE_DAY=${KID_BATTLE} · T990_ECON_DAY=${KID_ECON} · T1013_BAND_DAY=${KID_BAND} · VILLAGE_NPC_CAP=${process.env.VILLAGE_NPC_CAP || '1'} · 도적 ${process.env.ENABLE_BANDITS === '0' ? '끔' : '켬'}`);
   const res = [];
   const q = SEEDS.map((s, k) => [s, k]);
   await Promise.all(Array.from({ length: Math.min(PAR, q.length) }, async () => {
