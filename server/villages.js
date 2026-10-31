@@ -2544,6 +2544,11 @@ function distBasisRefresh() {
 const _t977Same = (B, villages, n) => !!B && B.blk.length === n && B.coords.length === villages.length && villages.every((v, i) => v.coord.x === B.coords[i][0] && v.coord.y === B.coords[i][1]);
 // ★[T977] 재는 판 전용 셈(`T977_PROBE=1` · 안 주면 무동작 · 제품 값 무접촉) — 늘어난 몫의 귀속: 조각 머리(조각 벽 − 몸통) · 찬 머리(조각 첫 알갱이의 노드당 시간) · 지형 판정 · GC.
 const T977_PROBE = process.env.T977_PROBE === '1';
+// ★[T1027] 재는 판 전용 셈(`T1027_PROBE=1` · 안 주면 무동작 · 제품 값 무접촉) — 조각 안/밖 노드당 시간 표(③): A* `pathStep`(교역로 재개형 · T617 먼 길) 노드당 ns · 생활층 쉼표 한 걸음 ns.
+//   30초마다 `[T1027]` 한 줄(그 창 누계 · 줄을 찍고 비운다). 시계는 hrtime 둘(부름 앞뒤) — 부름마다 수십 ns 몫이 같이 들어간다(두 팔 같음).
+const T1027_PROBE = process.env.T1027_PROBE === '1';
+const _t1027 = { a: { ns: 0, pops: 0, n: 0 }, f: { ns: 0, pops: 0, n: 0 }, l: { ns: 0, n: 0 } };
+if (T1027_PROBE) setInterval(() => { const A = _t1027; console.log(`[${state.zoneId}] [T1027] 조각 노드당 ${JSON.stringify({ astar: A.a, far: A.f, life: A.l, nsPerPop: A.a.pops ? Math.round(A.a.ns / A.a.pops) : null, farNsPerPop: A.f.pops ? Math.round(A.f.ns / A.f.pops) : null, lifeNsPerStep: A.l.n ? Math.round(A.l.ns / A.l.n) : null })}`); _t1027.a = { ns: 0, pops: 0, n: 0 }; _t1027.f = { ns: 0, pops: 0, n: 0 }; _t1027.l = { ns: 0, n: 0 }; }, 30000).unref();
 const _t977 = { cur: null, last: null, coldNext: false, slice: null, gc: [], obs: null, runs: [], gi: 0 };   // ★[T1027] gi = 지금 조각 안 몇째 알갱이인가(조각 머리에서 0)
 const _t977hr = () => Number(process.hrtime.bigint());
 function _t977Begin(reason) {
@@ -2932,7 +2937,9 @@ function _routeResume(key, x0, y0, x1, y1, budgetMs) {
   };
   for (;;) {
     const c0 = Date.now();
+    const _q0 = T1027_PROBE ? process.hrtime.bigint() : 0n, _p0 = T1027_PROBE ? (J.S.pops | 0) : 0;   // ★[T1027] 재는 판 전용
     const r = PathCore.pathStep(J.S, budgetMs > 0 ? PATH_STEP_NODES : 0);
+    if (T1027_PROBE) { _t1027.a.ns += Number(process.hrtime.bigint() - _q0); _t1027.a.pops += (J.S.pops | 0) - _p0; _t1027.a.n++; }
     { const el = Date.now() - c0; if (el > _probe.pathChunkMax) _probe.pathChunkMax = el; }   // 알갱이 하나의 최악(계측)
     if (r.done && !r.path && _routePlainRetry(J)) {   // ★[T578] 상한에 걸렸다 — 같은 슬롯에서 종전 규칙으로 이어 판다
       const J2 = _routeBegin(x0, y0, x1, y1, null, true);   // ⚠`_routeBegin` 머리가 세워 둔 일을 버린다 — 이 일은 같은 일의 이음이라 되돌려 놓는다
@@ -3456,7 +3463,9 @@ function _walkResume(key, coarse, budgetMs) {
       }
       if (J.farS) {
         for (;;) {
-          const r = PathCore.pathStep(J.farS, PATH_STEP_NODES);   // ★[T617 ①] 512 → 교역로 재개형과 같은 알갱이(32) — 512 한 걸음이 최대 40~52ms 였다(나무 술어가 청크를 낳는 칸). 양보는 반복 사이에서만(path-core 보증 · 같은 길)
+          const _q0 = T1027_PROBE ? process.hrtime.bigint() : 0n, _p0 = T1027_PROBE ? (J.farS.pops | 0) : 0;   // ★[T1027] 재는 판 전용
+          const r = PathCore.pathStep(J.farS, PATH_STEP_NODES);
+          if (T1027_PROBE) { _t1027.f.ns += Number(process.hrtime.bigint() - _q0); _t1027.f.pops += (J.farS.pops | 0) - _p0; _t1027.f.n++; }   // ★[T617 ①] 512 → 교역로 재개형과 같은 알갱이(32) — 512 한 걸음이 최대 40~52ms 였다(나무 술어가 청크를 낳는 칸). 양보는 반복 사이에서만(path-core 보증 · 같은 길)
           if (r.done) { seg = r.path; J.farS = null; (state._walkSegFar || (state._walkSegFar = new Map())).set(sk, seg || null); if (seg) J.far++; break; }
           if (over()) return { done: false };
         }
@@ -7770,7 +7779,10 @@ function _lifeDayJobs(vils, add) {
     add('life', () => {
       try {
         if (!g) g = _lifeDailySteps(vil); else _t523Pause += Date.now() - at;
-        if (g.next().done) return;
+        const _q0 = T1027_PROBE ? process.hrtime.bigint() : 0n;   // ★[T1027] 재는 판 전용(쉼표 한 걸음)
+        const _gd = g.next().done;
+        if (T1027_PROBE) { _t1027.l.ns += Number(process.hrtime.bigint() - _q0); _t1027.l.n++; }
+        if (_gd) return;
         at = Date.now(); return 'retry';
       } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); }
     }, 'life:쉼표');
