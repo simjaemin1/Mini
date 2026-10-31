@@ -19,13 +19,16 @@
 //   ⑤ 판 — 같은 세계 · 상한 1 판(받을 것 곳간 재고만 상한이 1 이 되게 · 짝마다 되돌림 · 낱개 하나 = 상한을 다 사는 단위의 0.6 — 한 개는 다 받지만 그 한 개로는
 //      받을 것 한 개에 못 닿고 둘은 절삭이 하나로 깎는다) · 낼 양 1 · 받을 양 1 — 미끼(끔) 두 축 다 거짓 · 켬 두 축 다 "그 양으론 한 개도 못 바꾼다"
 //      (낸 한 개가 절삭에 안 걸린 판도 "더 내야 한다" 의 참은 `_moreWorks` 가 가른다 — 곳간 재고 4 이상 8 미만이면 실제로 상한 1 판이다)
+//   ★[T1010] ③ ④ ⑤ 는 두 세계에서 돈다 — 켬 기본(`T999_TRADE_CAP=1` · T976 · T988 · T999 다 켬) · 되돌림 짝(`T999_TRADE_CAP=0` — T999 전 종전 절삭 판 · 종전 단언 그대로).
+//      켬 기본 세계의 참 값 · 말: 받을 양이 절삭돼 못 닿는 판 0(T999 ① — `wantShort` 갈래는 되돌림 짝이 잰다) · 미끼 거짓 꼴 셋(넷째 "받으려면 — 내야 할" 꼴은 판이 없다) ·
+//      ④ 판은 두 축 다 선다(상한 전부 · 견적 = 실행 · 거절 말 0) · ⑤ 판은 낼 양 1 이 "… — 더 내야 한다"(참 — 2 개면 선다) · 받을 양 1 이 선다(낸 2 · 받은 1) ·
+//      ⑤ 미끼(끔)는 `maxGive` 0 짝의 "한 개 값이 전부보다 비싸다"(한 개는 다 받는다 — 거짓)
 //
-// 실행: node scripts/test-t988-trade-words.js   (존 안 띄움 · 아이 판 둘(나란히) · 약 5분)
-//       [T988_DUMP=<폴더>] — 아이 판 출력(켬 · 끔)을 그 폴더에 on.json · off.json 으로 남긴다(계측용 · 판정 무변)
+// 실행: node scripts/test-t988-trade-words.js   (존 안 띄움 · 아이 판 넷(세계 둘 × 켬 · 끔 · 세계마다 나란히) · 약 13분)
+//       [T988_DUMP=<폴더>] — 아이 판 출력(켬 · 끔)을 그 폴더에 on.json · off.json(켬 기본 세계) · on-cap0.json · off-cap0.json(되돌림 짝)으로 남긴다(계측용 · 판정 무변)
 'use strict';
-// ★[T999 2026-10-30] 이 하네스는 T988 말을 종전 상한 절삭 판에서 잰다(④ 절삭 판 · ⑤ 상한 1 판이 그 절삭이 만든 판이다) — `T999_TRADE_CAP` 은 끈 판에서 돈다(되돌림 `=0` · 단언 무변).
-//   켬 판(상한의 마지막 한 개도 판다)의 말 참은 `test-t999-trade-cap` ⓖ · ⑤ 가 잰다.
-process.env.T999_TRADE_CAP = '0';
+// ★[T1010 2026-10-31 · T999 회부 4] 켬 기본 세계로 — 종전(T999 · 10-30)은 이 하네스를 `T999_TRADE_CAP` 끈 판 하나에서 돌렸다(켬 기본 세계를 안 봤다).
+//   이제 ③ ④ ⑤ 는 켬 기본 세계(T999 켬 — 그 세계의 참 말 · 값으로)와 되돌림 짝(`=0` — 종전 절삭 판 · 종전 단언 한 글자 그대로) 둘 다 잰다(단언 무름 0).
 const path = require('path');
 const fs = require('fs');
 const { execFileSync, spawn } = require('child_process');
@@ -143,7 +146,7 @@ if (process.env.T988_SUB) {   // ── 아이 판 ──
     }
   }
   console.log = _l;
-  process.stdout.write(JSON.stringify({ on: Trade.T988_ON, out }) + '\n', () => process.exit(0));   // 큰 출력 — 파이프에 다 흘려보낸 뒤 끝낸다(곧장 exit 하면 잘린다)
+  process.stdout.write(JSON.stringify({ on: Trade.T988_ON, cap: Trade.T999_ON, out }) + '\n', () => process.exit(0));   // 큰 출력 — 파이프에 다 흘려보낸 뒤 끝낸다(곧장 exit 하면 잘린다)
   return;
 }
 
@@ -189,8 +192,8 @@ console.log('\n② 글자 — 말 함수 하나 · 부르는 자리 · 종전 �
   ok(giveLine && shortLine && capWarn && shortWarn && /trQuote\.wantShort/.test(CP) && /\$\{trQuote\.why \|\| `마을이 지금 내줄 수 있는 \$\{tk\}은\(는\) \$\{trQuote\.cap\}까지다`\}/.test(CP) && /if \(!wantAxis && trQuote\.why\)/.test(CP),
     '② 클라 — `why` 가 오면 그 말 · `wantShort` 면 낼 양 축의 두 줄 글자 그대로(칸이 없으면 종전 글자)', `${panelSrc.length}자`); }
 
-const sub = (mode, v) => new Promise((res, rej) => {
-  const e = Object.assign({}, process.env, { T988_SUB: mode, T988_TRADE_WORDS: v });
+const sub = (mode, v, env) => new Promise((res, rej) => {
+  const e = Object.assign({}, process.env, env || {}, { T988_SUB: mode, T988_TRADE_WORDS: v });
   const p = spawn(process.execPath, [__filename], { env: e, stdio: ['ignore', 'pipe', 'pipe'] }); let o = '';
   p.stdout.setEncoding('utf8');   // 조각 경계에 걸린 한글 바이트를 잇는다(조각마다 글자로 풀면 깨진다)
   p.stdout.on('data', (b) => { o += b; }); p.stderr.on('data', () => {});
@@ -236,23 +239,34 @@ function lies(r) {
   }
   return L;
 }
+//   ★[T1010] 세계 둘 — 켬 기본(T999 켬 — 상한의 마지막 한 개도 판다) · 되돌림 짝(T999 끔 — 종전 절삭 판 · 종전 단언 그대로)
+const WORLDS = [
+  { name: '켬 기본 — T976 · T988 · T999 켬', env: { T999_TRADE_CAP: '1' }, cap: true, tag: '' },
+  { name: '되돌림 짝 — `T999_TRADE_CAP=0`(종전 절삭 판 · 종전 단언 그대로)', env: { T999_TRADE_CAP: '0' }, cap: false, tag: '-cap0' },
+];
 (async () => {
-  console.log('\n③ 판 — T835 아이 판 세계 · 짐 그대로 · 두 축 2,400 줄(켬 · 끔 나란히) · 줄마다 견적 · 실행 · 화면 · 참');
-  const [ON, OFF] = await Promise.all([sub('grid', '1'), sub('grid', '0')]);
+ for (const W of WORLDS) {
+  console.log(`\n③ 판 [${W.name}] — T835 아이 판 세계 · 짐 그대로 · 두 축 2,400 줄(켬 · 끔 나란히) · 줄마다 견적 · 실행 · 화면 · 참`);
+  const [ON, OFF] = await Promise.all([sub('grid', '1', W.env), sub('grid', '0', W.env)]);
   if (process.env.T988_DUMP) { fs.mkdirSync(process.env.T988_DUMP, { recursive: true });   // 계측용 — 아이 판 출력 그대로(판정에 안 쓴다)
-    fs.writeFileSync(path.join(process.env.T988_DUMP, 'on.json'), JSON.stringify(ON) + '\n'); fs.writeFileSync(path.join(process.env.T988_DUMP, 'off.json'), JSON.stringify(OFF) + '\n'); }
+    fs.writeFileSync(path.join(process.env.T988_DUMP, `on${W.tag}.json`), JSON.stringify(ON) + '\n'); fs.writeFileSync(path.join(process.env.T988_DUMP, `off${W.tag}.json`), JSON.stringify(OFF) + '\n'); }
   const on = { on: ON.on, out: ON.out.filter((r) => !r.cut && !r.cap1) }, off = { on: OFF.on, out: OFF.out.filter((r) => !r.cut && !r.cap1) };
   const cOn = { out: ON.out.filter((r) => r.cut) }, cOff = { out: OFF.out.filter((r) => r.cut) };
   const kOn = { out: ON.out.filter((r) => r.cap1) }, kOff = { out: OFF.out.filter((r) => r.cap1) };
-  ok(on.on === true && off.on === false && on.out.length === off.out.length && on.out.length === 2400, '③ 전제 — 손잡이가 실제로 읽힌다 · 두 판 줄 수 같다(1,440 + 960)', `${on.out.length} 줄`);
-  const refuse = on.out.filter((r) => !r.q.err && !r.x.ok);
-  ok(refuse.filter((r) => r.axis === 'want').length >= 100 && refuse.filter((r) => r.axis === 'give').length >= 100 && on.out.some((r) => r.short),
-    '③ 전제 — 거절 판이 두 축에 넉넉하고 받을 양이 절삭돼 못 닿는 판도 있다(자명 통과 금지)', `거절 받을 양 ${refuse.filter((r) => r.axis === 'want').length} · 낼 양 ${refuse.filter((r) => r.axis === 'give').length} · 못 닿음 ${on.out.filter((r) => r.short).length}`);
+  ok(on.on === true && off.on === false && ON.cap === W.cap && OFF.cap === W.cap && on.out.length === off.out.length && on.out.length === 2400, '③ 전제 — 손잡이가 실제로 읽힌다(이 세계의 T999) · 두 판 줄 수 같다(1,440 + 960)', `${on.out.length} 줄 · T999 ${ON.cap}`);
+  const refuse = on.out.filter((r) => !r.q.err && !r.x.ok), nShort = on.out.filter((r) => r.short).length;
+  if (!W.cap) ok(refuse.filter((r) => r.axis === 'want').length >= 100 && refuse.filter((r) => r.axis === 'give').length >= 100 && on.out.some((r) => r.short),
+    '③ 전제 — 거절 판이 두 축에 넉넉하고 받을 양이 절삭돼 못 닿는 판도 있다(자명 통과 금지)', `거절 받을 양 ${refuse.filter((r) => r.axis === 'want').length} · 낼 양 ${refuse.filter((r) => r.axis === 'give').length} · 못 닿음 ${nShort}`);
+  //   ★[T1010] 켬 기본 세계 — T999 ① 이 받을 양 축 절삭을 받을 양 그대로 두어(올림 걸음이 낸 낱개가 이미 최소) 받을 양이 절삭돼 못 닿는 판이 없다 — `wantShort` 갈래 말은 되돌림 짝이 잰다
+  else ok(refuse.filter((r) => r.axis === 'want').length >= 100 && refuse.filter((r) => r.axis === 'give').length >= 100 && nShort === 0,
+    '③ 전제 — 거절 판이 두 축에 넉넉하다(자명 통과 금지) · 받을 양이 절삭돼 못 닿는 판은 0(T999 ① — `wantShort` 갈래는 되돌림 짝이 잰다)', `거절 받을 양 ${refuse.filter((r) => r.axis === 'want').length} · 낼 양 ${refuse.filter((r) => r.axis === 'give').length} · 못 닿음 ${nShort}`);
   const lOff = off.out.map((r) => ({ r, l: lies(r) })).filter((z) => z.l.length), lOn = on.out.map((r) => ({ r, l: lies(r) })).filter((z) => z.l.length);
   const kinds = (Z) => { const o = {}; for (const z of Z) for (const w of z.l) o[w] = (o[w] || 0) + 1; return o; };
   const ko = kinds(lOff);
-  ok(lOff.length > 0 && ko['실행 "못 내준다 — N까지" 인데 받을 양 ≤ N'] > 0 && ko['화면 "내줄 수 있는 X은(는) N까지다" 인데 받을 양 ≤ N'] > 0 && ko['실행 "더 내야 한다" 인데 더 내도 안 된다'] > 0 && ko['화면 "받으려면 — 내야 할" 인데 받을 양에 못 닿는다'] > 0,
-    'ⓐ 미끼(끔) — 거짓 줄이 있다(네 꼴 다)', `${lOff.length} 줄 · ${JSON.stringify(ko)}`);
+  const K4 = ['실행 "못 내준다 — N까지" 인데 받을 양 ≤ N', '화면 "내줄 수 있는 X은(는) N까지다" 인데 받을 양 ≤ N', '실행 "더 내야 한다" 인데 더 내도 안 된다', '화면 "받으려면 — 내야 할" 인데 받을 양에 못 닿는다'];
+  if (!W.cap) ok(lOff.length > 0 && ko[K4[0]] > 0 && ko[K4[1]] > 0 && ko[K4[2]] > 0 && ko[K4[3]] > 0, 'ⓐ 미끼(끔) — 거짓 줄이 있다(네 꼴 다)', `${lOff.length} 줄 · ${JSON.stringify(ko)}`);
+  else ok(lOff.length > 0 && ko[K4[0]] > 0 && ko[K4[1]] > 0 && ko[K4[2]] > 0 && !(ko[K4[3]] > 0),
+    'ⓐ 미끼(끔) — 거짓 줄이 있다(세 꼴 · 넷째 "받으려면 — 내야 할" 꼴은 이 세계에 판이 없다 — 받을 양이 절삭돼 못 닿는 판 0)', `${lOff.length} 줄 · ${JSON.stringify(ko)}`);
   ok(lOn.length === 0, '★★ⓑ 켬 — 거짓 줄 0(두 축 · 화면 · 실행)', lOn.length ? `${lOn.length} · 예 ${JSON.stringify({ r: [lOn[0].r.axis, lOn[0].r.vi, lOn[0].r.tk, lOn[0].r.pair, lOn[0].r.n], l: lOn[0].l, x: lOn[0].r.x, sc: lOn[0].r.sc.lines })}` : '2,400 줄');
   //   ⓒ 견적이 실은 거절 말 — 실행이 그 거절 문에 닿으면 한 글자 같다(같은 함수) · 실행은 그 앞 문(가진 것 모자람 — 견적은 모른다)에서 먼저 거절할 수 있다
   const why = on.out.filter((r) => r.why), sameW = why.filter((r) => !r.x.ok && r.x.err === r.why), invW = why.filter((r) => !r.x.ok && (E3.test(r.x.err) || E3g.test(r.x.err)));
@@ -265,20 +279,44 @@ function lies(r) {
   const msgs = []; for (const r of on.out) { if (r.q.err) continue; if (r.x.err) msgs.push(r.x.err); if (r.sc) for (const l of r.sc.lines) if (l[0] === 'tr-warn') msgs.push(l[1]); }
   const novel = [...new Set(msgs.filter((s) => !/^받으면 /.test(s) && !OLD.some((re) => re.test(s))))];
   ok(novel.length === 0, 'ⓔ 켬 말은 다 종전 낱말(새 말투 0)', novel.length ? novel.slice(0, 3).join(' / ') : `${new Set(msgs).size} 가지`);
-  console.log('\n④ 판 — 같은 세계 · 절삭이 깎지만 한 개 넘침은 아닌 짐(낱개 하나 = (maxGive + 다 사는 단위) ÷ 2 · 낼 양 = 다 사는 단위를 넘는 개수 · 받을 양 = 상한 전부)');
-  ok(cOn.out.length >= 4 && cOn.out.every((r) => !r.oneOver && !r.x.ok), '④ 전제 — 그 판이 선다 · 한 개 넘침 아님 · 두 축 다 거절', `${cOn.out.length} 줄`);
-  ok(cOff.out.filter((r) => r.axis === 'give').some((r) => E6.test(r.x.err || '')), '④ 미끼(끔) — 낼 양 축이 "더 내야 한다"(더 내도 짐이 다 무거워 안 된다)');
-  ok(cOn.out.every((r) => E6a.test(r.x.err || '') && (r.why == null || r.why === r.x.err)) && cOn.out.every((r) => lies(Object.assign({}, r, { cf: null })).length === 0),
-    '★④ 켬 — 두 축 다 "그 양으론 한 개도 못 바꾼다"(한 개 넘침이라 우기지 않는다 · 거짓 0)', cOn.out[0] ? cOn.out[0].x.err : '-');
-  console.log('\n⑤ 판 — 같은 세계 · 상한 1 판(받을 것 곳간 재고만 상한 1 · 판 뒤 되돌림) · 낱개 하나 = 상한을 다 사는 단위의 0.6 · 낼 양 1 · 받을 양 1');
-  ok(kOn.out.length >= 4 && kOn.out.length === kOff.out.length && kOn.out.every((r) => !r.q.err && r.q.cap === 1 && !r.oneOver && !r.x.ok),
-    '⑤ 전제 — 그 판이 선다 · 상한 1 · 한 개 넘침 아님(마을이 한 개를 다 받는다) · 두 축 다 거절', `${kOn.out.length} 줄 · 짝 ${kOn.out.length / 2}`);
+  console.log(`\n④ 판 [${W.name}] — 같은 세계 · 절삭이 깎지만 한 개 넘침은 아닌 짐(낱개 하나 = (maxGive + 다 사는 단위) ÷ 2 · 낼 양 = 다 사는 단위를 넘는 개수 · 받을 양 = 상한 전부)`);
+  if (!W.cap) {
+    ok(cOn.out.length >= 4 && cOn.out.every((r) => !r.oneOver && !r.x.ok), '④ 전제 — 그 판이 선다 · 한 개 넘침 아님 · 두 축 다 거절', `${cOn.out.length} 줄`);
+    ok(cOff.out.filter((r) => r.axis === 'give').some((r) => E6.test(r.x.err || '')), '④ 미끼(끔) — 낼 양 축이 "더 내야 한다"(더 내도 짐이 다 무거워 안 된다)');
+    ok(cOn.out.every((r) => E6a.test(r.x.err || '') && (r.why == null || r.why === r.x.err)) && cOn.out.every((r) => lies(Object.assign({}, r, { cf: null })).length === 0),
+      '★④ 켬 — 두 축 다 "그 양으론 한 개도 못 바꾼다"(한 개 넘침이라 우기지 않는다 · 거짓 0)', cOn.out[0] ? cOn.out[0].x.err : '-');
+  } else {
+    //   ★[T1010] 켬 기본 세계 — 그 판은 T999 ① 이 상한 전부를 판다(한 개는 마을이 다 받는다 · 둘이면 상한을 넘는다) — T988 의 말이 걸릴 거절 판이 아니다
+    ok(cOn.out.length >= 4 && cOn.out.length === cOff.out.length && cOn.out.every((r) => !r.oneOver), '④ 전제 — 그 판이 선다 · 한 개 넘침 아님', `${cOn.out.length} 줄`);
+    ok(cOff.out.every((r) => r.x.ok), '④ 끔(T988 말 끔)도 두 축 다 선다 — 거절 말이 걸릴 판이 아니다(T999 ①)', `${cOff.out.filter((r) => r.x.ok).length}/${cOff.out.length}`);
+    const full = (r) => r.x.ok && r.why == null && !r.short && lies(r).length === 0
+      && (r.axis === 'give' ? (r.x.take === r.q.cap && r.q.take === r.x.take && r.q.giveUsed === r.x.give) : (r.x.take >= r.n && r.q.giveNeeded === r.x.give && r.q.takeAtNeeded === r.x.take));
+    ok(cOn.out.every(full), '★④ 켬 — 두 축 다 선다 — 상한 전부를 받는다(낼 양 축 받을 = 상한 · 받을 양 축 받을 양 = 상한) · 견적 = 실행 · 말 칸 없음 · 거짓 0',
+      cOn.out[0] ? `${cOn.out.filter(full).length}/${cOn.out.length} · 예 낼 양 ${cOn.out[0].n} → 낸 ${cOn.out[0].x.give} · 받은 ${cOn.out[0].x.take}(상한 ${cOn.out[0].q.cap})` : '-');
+  }
+  console.log(`\n⑤ 판 [${W.name}] — 같은 세계 · 상한 1 판(받을 것 곳간 재고만 상한 1 · 판 뒤 되돌림) · 낱개 하나 = 상한을 다 사는 단위의 0.6 · 낼 양 1 · 받을 양 1`);
   const kG = kOff.out.filter((r) => r.axis === 'give'), kW = kOff.out.filter((r) => r.axis === 'want');
-  ok(kOff.out.every((r) => lies(r).length > 0) && kG.every((r) => E6.test(r.x.err || '') || E5.test(r.x.err || '')) && kW.every((r) => E1.test(r.x.err || '')),
-    '⑤ 미끼(끔) — 두 축 다 거짓 — 낼 양 축 "더 내야 한다"(더 내도 절삭이 하나로 깎는다) · `maxGive` 0 이면 "한 개 값이 전부보다 비싸다"(한 개는 다 받는다) · 받을 양 축 "못 내준다 — 1까지"(받을 양 1)',
-    `${kOff.out.filter((r) => lies(r).length > 0).length} 줄 · 낼 양 ${[...new Set(kG.map((r) => (E6.test(r.x.err || '') ? '더 내야 한다' : '한 개 값이 비싸다')))].join(' · ')}`);
-  ok(kOn.out.every((r) => E6a.test(r.x.err || '') && r.why === r.x.err && lies(r).length === 0),
-    '★⑤ 켬 — 두 축 다 "그 양으론 한 개도 못 바꾼다"(견적 = 실행 · 거짓 0 — 낸 한 개가 절삭에 안 걸려도 "더 내야 한다" 라 하지 않는다)', kOn.out[0] ? kOn.out[0].x.err : '-');
+  if (!W.cap) {
+    ok(kOn.out.length >= 4 && kOn.out.length === kOff.out.length && kOn.out.every((r) => !r.q.err && r.q.cap === 1 && !r.oneOver && !r.x.ok),
+      '⑤ 전제 — 그 판이 선다 · 상한 1 · 한 개 넘침 아님(마을이 한 개를 다 받는다) · 두 축 다 거절', `${kOn.out.length} 줄 · 짝 ${kOn.out.length / 2}`);
+    ok(kOff.out.every((r) => lies(r).length > 0) && kG.every((r) => E6.test(r.x.err || '') || E5.test(r.x.err || '')) && kW.every((r) => E1.test(r.x.err || '')),
+      '⑤ 미끼(끔) — 두 축 다 거짓 — 낼 양 축 "더 내야 한다"(더 내도 절삭이 하나로 깎는다) · `maxGive` 0 이면 "한 개 값이 전부보다 비싸다"(한 개는 다 받는다) · 받을 양 축 "못 내준다 — 1까지"(받을 양 1)',
+      `${kOff.out.filter((r) => lies(r).length > 0).length} 줄 · 낼 양 ${[...new Set(kG.map((r) => (E6.test(r.x.err || '') ? '더 내야 한다' : '한 개 값이 비싸다')))].join(' · ')}`);
+    ok(kOn.out.every((r) => E6a.test(r.x.err || '') && r.why === r.x.err && lies(r).length === 0),
+      '★⑤ 켬 — 두 축 다 "그 양으론 한 개도 못 바꾼다"(견적 = 실행 · 거짓 0 — 낸 한 개가 절삭에 안 걸려도 "더 내야 한다" 라 하지 않는다)', kOn.out[0] ? kOn.out[0].x.err : '-');
+  } else {
+    //   ★[T1010] 켬 기본 세계 — 받을 양 1 은 선다(낸 2 · 받은 1 — T999 ①) · 낼 양 1 은 그 한 개로 받을 것 한 개에 못 닿고 2 개면 선다 — "더 내야 한다" 가 참이다
+    ok(kOn.out.length >= 4 && kOn.out.length === kOff.out.length && kOn.out.every((r) => !r.q.err && r.q.cap === 1 && !r.oneOver),
+      '⑤ 전제 — 그 판이 선다 · 상한 1 · 한 개 넘침 아님(마을이 한 개를 다 받는다)', `${kOn.out.length} 줄 · 짝 ${kOn.out.length / 2}`);
+    const e5 = kG.filter((r) => r.maxGive < 1);
+    ok(kW.every((r) => r.x.ok && r.x.give === 2 && r.x.take === 1) && kG.every((r) => !r.x.ok && (r.maxGive >= 1 ? (E6.test(r.x.err || '') && r.cf === 2) : (E5.test(r.x.err || '') && lies(r).length > 0))) && e5.length > 0,
+      '⑤ 미끼(끔) — 낼 양 축 `maxGive` 0 짝은 "한 개 값이 전부보다 비싸다"(거짓 — 한 개는 다 받는다) · `maxGive` ≥ 1 짝의 "더 내야 한다" 는 이 세계에선 참(2 개면 선다) · 받을 양 1 은 선다(낸 2 · 받은 1)',
+      `거짓 ${kOff.out.filter((r) => lies(r).length > 0).length} 줄(비싸다 ${e5.length}) · 더 내야 한다(참) ${kG.length - e5.length} · 받을 양 섬 ${kW.filter((r) => r.x.ok).length}/${kW.length}`);
+    const g1 = kOn.out.filter((r) => r.axis === 'give'), w1 = kOn.out.filter((r) => r.axis === 'want');
+    ok(g1.every((r) => !r.x.ok && E6.test(r.x.err || '') && r.why === r.x.err && r.cf === 2) && w1.every((r) => r.x.ok && r.x.give === 2 && r.x.take === 1 && r.q.giveNeeded === 2 && r.q.takeAtNeeded === 1) && kOn.out.every((r) => lies(r).length === 0),
+      '★⑤ 켬 — 낼 양 1 은 "그 양으론 한 개도 못 바꾼다 — 더 내야 한다"(참 — 2 개면 선다 · 견적 = 실행 말) · 받을 양 1 은 선다(낸 2 · 받은 1 · 견적 = 실행) · 거짓 0', g1[0] ? g1[0].x.err : '-');
+  }
+ }
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.log('  ✗ ' + (e && e.message)); process.exit(1); });

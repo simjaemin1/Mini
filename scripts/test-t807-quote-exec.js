@@ -13,17 +13,19 @@
 //      ⓐ 미끼(끔) — 상한에 닿은 판에서 견적 ≠ 실행이 있다(자명 통과 금지)
 //      ⓑ ★켬 — 견적의 받을 양 = 실행이 준 양 · 견적의 `giveUsed` = 실행이 낸 낱개 · 실행이 못 하면 견적도 0
 //      ⓒ 켬 — 상한에 닿은 판이 실제로 있다 · 실행 결과(낸 · 받은 · 곳간)는 끔과 한 자리도 안 다르다(고친 것은 견적뿐)
+//         ★[T1010] 켬 기본 세계(T999 켬)에서는 T999 ① 줄(상한에 닿음 · 한 개 넘침 아님 — 절삭 함수의 T999 갈래는 T807 켬 갈래만 지난다)만 갈리고
+//         그 줄은 켬 실행이 상한 전부를 받는다(끔보다 덜 받는 줄 0) · 그 밖 줄은 한 자리도 안 다르다
 //      ⓓ 켬 — 상한에 안 닿은 판의 견적은 끔과 같다
 //      ⓔ 켬 — 무거운 물건(1개 = 2.25단위) 판도 견적 = 실행
+//   ★[T1010] ③ · ⓔ 는 두 세계에서 돈다 — 켬 기본(`T999_TRADE_CAP=1` · T807 · T835 · T999 다 켬) · 되돌림 짝(`T999_TRADE_CAP=0` — T999 전 종전 절삭 판 · 종전 단언 그대로)
 //
-// 실행: node scripts/test-t807-quote-exec.js   (존 안 띄움 · 약 3분)
+// 실행: node scripts/test-t807-quote-exec.js   (존 안 띄움 · 아이 판 여덟(세계 둘 × 짐 둘 × 켬 · 끔 — 켬 · 끔은 나란히) · 약 5분)
 'use strict';
-// ★[T999 2026-10-30] 이 하네스는 T807 이 견적만 고쳤다(실행은 켬 = 끔)를 종전 상한 절삭 판에서 잰다 — `T999_TRADE_CAP` 은 끈 판에서 돈다(되돌림 `=0` · 단언 무변).
-//   T999 켬은 상한 절삭 함수(`_trimToCap` — T807 켬 갈래만 지난다)의 값을 고쳐 T807 켬 · 끔 실행이 갈린다(설계 — T807 끔이면 종전 실행 글자) · 켬 판은 `test-t999-trade-cap` 이 잰다.
-process.env.T999_TRADE_CAP = '0';
+// ★[T1010 2026-10-31 · T999 회부 3 · 4] 켬 기본 세계로 — 종전(T999 · 10-30)은 이 하네스를 `T999_TRADE_CAP` 끈 판 하나에서 돌렸다(켬 기본 세계를 안 봤다).
+//   이제 ③ · ⓔ 는 켬 기본 세계(T999 켬 — ★ⓒ 는 그 세계의 참 값으로)와 되돌림 짝(`=0` — 종전 절삭 판 · 종전 단언 한 글자 그대로) 둘 다 잰다(단언 무름 0).
 const path = require('path');
 const fs = require('fs');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 
 if (process.env.T807_SUB === '1') {   // ── 아이 판: 세계 하나 · 판마다 곳간을 되돌린다 ──
@@ -42,6 +44,8 @@ if (process.env.T807_SUB === '1') {   // ── 아이 판: 세계 하나 · 판
     ['salt', 'food'], ['meat_game', 'food'], ['fruit', 'wood']]   /* ★[T817] 값진 것 → 흔한 것 짝 셋 — 낱개 하나가 상한의 큰 몫을 사는 판(깎음이 나는 쪽 · 켬 기본 세계에서 깎음 0 이던 표본) */) {
     const gItem = D.toEcon.get(give), tItem = D.toEcon.get(take); if (!gItem || !tItem) continue;
     const vil = { name: '랩마을' + vi, ccx: 100, ccy: 100, dbId: vi, econ: world.villages[vi] }, v = vil.econ;
+    //   ★[T1010] 한 개 넘침 — 낼 것 한 개(PER 단위)를 마을이 다 못 받는 판(짐 없는 견적의 `capped` · 마른 견적) · T999 ① 은 그 판에 안 선다(종전 절삭)
+    const q1 = Trade.quote(L, econV2, vil, vi, give, take, PER, tk ? { takeKcal: tk } : {}), oneOver = (q1 && !q1.err && q1.capped) ? 1 : 0;
     for (let qty = 1; qty <= 12; qty++) {
       const snap = JSON.stringify(v.storage), inv = { [gItem]: 400 };
       const opts = tk ? { want: 0, perItem: PER, takeKcal: tk } : { want: 0, perItem: PER };
@@ -50,11 +54,12 @@ if (process.env.T807_SUB === '1') {   // ── 아이 판: 세계 하나 · 판
       const x = Trade.exchange(Object.assign({ ledger: L, econV2, vil, vid: vi, inventory: inv, giveRes: give, takeRes: take, giveQty: qty, want: 0, unitsOf, deposit: V.playerVillageDeposit }, tk ? { takeKcal: tk } : {}));
       const dSpent = +(s0 - (+v.storage[take] || 0)).toFixed(4);
       const S = JSON.parse(snap); for (const k of Object.keys(v.storage)) if (!(k in S)) delete v.storage[k]; Object.assign(v.storage, S);
-      rows.push([vi, tk ? 1 : 0, give + '>' + take, qty, q.err ? null : q.take, q.capped ? 1 : 0, q.giveUsed == null ? null : q.giveUsed, x.ok ? 1 : 0, x.ok ? x.give : null, x.ok ? x.take : null, dSpent]);
+      rows.push([vi, tk ? 1 : 0, give + '>' + take, qty, q.err ? null : q.take, q.capped ? 1 : 0, q.giveUsed == null ? null : q.giveUsed, x.ok ? 1 : 0, x.ok ? x.give : null, x.ok ? x.take : null, dSpent, oneOver, q.err ? null : q.cap]);
     }
   }
-  console.log = _l; console.log(JSON.stringify({ on: Trade.T807_ON, rows }));
-  process.exit(0);
+  console.log = _l;
+  process.stdout.write(JSON.stringify({ on: Trade.T807_ON, cap: Trade.T999_ON, rows }) + '\n', () => process.exit(0));   // ★[T1010] 나란히 받는다 — 파이프에 다 흘려보낸 뒤 끝낸다
+  return;
 }
 
 let pass = 0, fail = 0;
@@ -84,24 +89,51 @@ console.log('\n② 끔 = 종전 글자');
   const uses = (C.match(/_trimToCap\(/g) || []).length;
   ok(uses === 4, '② 절삭 함수 — 정의 하나 · 부름 셋(견적 · 실행 · ★T835 받을 양 견적) · 사본 0', `${uses}`); }
 
-const sub = (env) => JSON.parse(execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, env, { T807_SUB: '1' }), stdio: 'pipe', maxBuffer: 64 << 20 }).toString().trim().split('\n').pop());
-console.log('\n③ 같은 곳간 · 같은 순간 — 마을 다섯 · 짝 아홉 · 낼 양 1~12 · 열량 짝 끔/켬');
-{ const off = sub({ T807_QUOTE_TRIM: '0' }), on = sub({ T807_QUOTE_TRIM: '1' });
-  //   행 = [마을 · 열량짝 · 짝 · 낼 양 · 견적 받을 · 견적 상한 · 견적 giveUsed · 실행 됨 · 실행 낸 · 실행 받은 · 곳간 나감]
+//   ★[T1010] 아이 판은 켬 · 끔 둘씩 나란히(세계 둘 × 짐 둘 = 여덟 판 — 줄 글자 · 판정 무변)
+const sub = (env) => new Promise((res, rej) => {
+  const p = spawn(process.execPath, [__filename], { env: Object.assign({}, process.env, env, { T807_SUB: '1' }), stdio: ['ignore', 'pipe', 'pipe'] }); let o = '';
+  p.stdout.setEncoding('utf8'); p.stdout.on('data', (b) => { o += b; }); p.stderr.on('data', () => {});
+  p.on('exit', (c) => { try { res(JSON.parse(o.trim().split('\n').pop())); } catch (err) { rej(new Error(`아이 판 ${JSON.stringify(env)} 종료 ${c}`)); } });
+});
+//   ★[T1010] 세계 둘 — 켬 기본(T999 켬 — 상한의 마지막 한 개도 판다) · 되돌림 짝(T999 끔 — 종전 절삭 판 · 종전 단언 그대로)
+const WORLDS = [
+  { name: '켬 기본 — T807 · T835 · T999 켬', env: { T999_TRADE_CAP: '1' }, cap: true },
+  { name: '되돌림 짝 — `T999_TRADE_CAP=0`(종전 절삭 판 · 종전 단언 그대로)', env: { T999_TRADE_CAP: '0' }, cap: false },
+];
+(async () => {
+for (const W of WORLDS) {
+console.log(`\n③ [${W.name}] 같은 곳간 · 같은 순간 — 마을 다섯 · 짝 아홉 · 낼 양 1~12 · 열량 짝 끔/켬`);
+{ const [off, on] = await Promise.all([sub(Object.assign({ T807_QUOTE_TRIM: '0' }, W.env)), sub(Object.assign({ T807_QUOTE_TRIM: '1' }, W.env))]);
+  //   행 = [마을 · 열량짝 · 짝 · 낼 양 · 견적 받을 · 견적 상한 · 견적 giveUsed · 실행 됨 · 실행 낸 · 실행 받은 · 곳간 나감 · ★[T1010] 한 개 넘침 · 견적 cap]
   const lie = (r) => (r[4] == null ? false : (r[7] ? (r[4] !== r[9] || (r[6] != null && r[6] !== r[8])) : r[4] > 0));
   const offBad = off.rows.filter(lie), onBad = on.rows.filter(lie), capped = on.rows.filter((r) => r[5]);
-  ok(off.on === false && on.on === true, '③ 전제 — 손잡이가 실제로 읽힌다(아이 판 둘)', `${off.on} · ${on.on}`);
+  ok(off.on === false && on.on === true && off.cap === W.cap && on.cap === W.cap, '③ 전제 — 손잡이가 실제로 읽힌다(아이 판 둘 · 이 세계의 T999)', `${off.on} · ${on.on} · T999 ${on.cap}`);
   ok(offBad.length > 0 && offBad.every((r) => r[5] === 1), 'ⓐ 미끼(끔) — 견적 ≠ 실행이 있다 · 모두 상한에 닿은 판', `${offBad.length}/${off.rows.length} · 예 ${JSON.stringify(offBad[0])}`);
   ok(onBad.length === 0, '★★ⓑ 켬 — 견적 받을 양 = 실행이 준 양 · giveUsed = 실행이 낸 낱개 · 실행이 못 하면 견적 0', `${onBad.length}/${on.rows.length}${onBad.length ? ' · 예 ' + JSON.stringify(onBad[0]) : ''}`);
   ok(capped.length > 30 && capped.some((r) => r[7] && r[8] < r[3]), 'ⓒ 상한에 닿은 판이 실제로 있다(자명 통과 금지) · 그중 낱개를 깎아 바꾼 판', `${capped.length} · 깎음 ${capped.filter((r) => r[7] && r[8] < r[3]).length}`);
   const ex = (r) => JSON.stringify([r[7], r[8], r[9], r[10]]);
-  ok(on.rows.length === off.rows.length && on.rows.every((r, i) => ex(r) === ex(off.rows[i])), '★ⓒ 켬 — 실행(됨 · 낸 · 받은 · 곳간 나감)은 끔과 한 자리도 안 다르다 — 고친 것은 견적뿐');
+  if (!W.cap) ok(on.rows.length === off.rows.length && on.rows.every((r, i) => ex(r) === ex(off.rows[i])), '★ⓒ 켬 — 실행(됨 · 낸 · 받은 · 곳간 나감)은 끔과 한 자리도 안 다르다 — 고친 것은 견적뿐');
+  else {
+    //   ★[T1010] 켬 기본 세계의 참 값 — T999 ① 은 절삭 함수의 T999 갈래(T807 켬 갈래만 지난다)라 T807 켬 · 끔 실행은 T999 ① 줄(상한에 닿음 · 한 개 넘침 아님)에서만 갈린다
+    //     (끔 갈래는 종전 실행 글자 — 낱개를 `⌊maxGive ÷ 평균 단위⌋` 로 깎는다) · 그 줄은 켬 실행이 상한 전부(견적 `cap` — 열량 짝이면 받을 낱개)를 받는다
+    const t999 = (r) => r[5] === 1 && r[11] === 0;
+    const dif = on.rows.map((r, i) => i).filter((i) => ex(on.rows[i]) !== ex(off.rows[i]));
+    ok(on.rows.length === off.rows.length && dif.length > 0 && dif.every((i) => t999(on.rows[i]) && t999(off.rows[i])),
+      '★ⓒ 켬 — 실행(됨 · 낸 · 받은 · 곳간 나감)은 끔과 T999 ① 줄(상한에 닿음 · 한 개 넘침 아님)만 다르다 · 그 밖 줄은 한 자리도 안 다르다 — T807 이 고친 것은 견적뿐',
+      `갈린 ${dif.length} 줄 / T999 ① 줄 ${on.rows.filter(t999).length} / ${on.rows.length}`);
+    const full = on.rows.map((r, i) => i).filter((i) => t999(on.rows[i]));
+    const short = full.filter((i) => { const r = on.rows[i], o = off.rows[i]; return !(r[7] === 1 && r[9] === Math.floor(r[12]) && r[9] >= (o[7] ? o[9] : 0)); });
+    ok(full.length > 0 && short.length === 0, '★ⓒ 켬 — 그 줄은 켬 실행이 상한 전부를 받는다(T999 의 값 · 끔보다 덜 받는 줄 0)',
+      `${full.length} 줄 · 끔이 덜 받던 줄 ${full.filter((i) => !(off.rows[i][7] && off.rows[i][9] >= on.rows[i][9])).length}${short.length ? ' · 어긋남 ' + short.length + ' · 예 ' + JSON.stringify([on.rows[short[0]], off.rows[short[0]]]) : ''}`);
+  }
   ok(on.rows.every((r, i) => r[5] || r[4] === off.rows[i][4]), 'ⓓ 켬 — 상한에 안 닿은 판의 견적은 끔과 같다'); }
-console.log('\nⓔ 무거운 물건(1개 = 2.25단위)');
-{ const off = sub({ T807_QUOTE_TRIM: '0', T807_PER: '2.25' }), on = sub({ T807_QUOTE_TRIM: '1', T807_PER: '2.25' });
+console.log(`\nⓔ [${W.name}] 무거운 물건(1개 = 2.25단위)`);
+{ const [off, on] = await Promise.all([sub(Object.assign({ T807_QUOTE_TRIM: '0', T807_PER: '2.25' }, W.env)), sub(Object.assign({ T807_QUOTE_TRIM: '1', T807_PER: '2.25' }, W.env))]);
   const lie = (r) => (r[4] == null ? false : (r[7] ? (r[4] !== r[9] || (r[6] != null && r[6] !== r[8])) : r[4] > 0));
   ok(off.rows.filter(lie).length > 0, 'ⓔ 미끼(끔) — 무거운 물건 판에도 견적 ≠ 실행이 있다', `${off.rows.filter(lie).length}/${off.rows.length}`);
   ok(on.rows.filter(lie).length === 0 && on.rows.filter((r) => r[5]).length > 0, '★ⓔ 켬 — 무거운 물건 판도 견적 = 실행(상한 판 포함)', `${on.rows.filter(lie).length} · 상한 ${on.rows.filter((r) => r[5]).length}`); }
+}
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);
+})().catch((e) => { console.log('  ✗ ' + (e && e.message)); process.exit(1); });
