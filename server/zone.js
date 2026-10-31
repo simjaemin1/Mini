@@ -6270,6 +6270,13 @@ const wss = new WebSocket.Server({ server });
 let _connSeq = 0;
 // 마감액 — env 로 조절한다(하네스가 짧게 줄여 검사한다).
 const CONN_DEADLINE_MS = parseInt(process.env.CONN_DEADLINE_MS || '30000', 10) || 30000;
+// ★★[T1002 2026-10-30 · 손잡이 `T1002_ERR_QUIET` — 켬 기본(결함 고침) · 되돌림 `=0` = 종전 바이트] **확정 오류를 보낸 접속은 더 답하지 않는다.**
+//   종전: `conn_error` 를 보내고 150ms 뒤 닫는데, 그 사이 닿은 ping 에 조기 핸들러(아래 ②)가 `pong{stage}` 를 답했다 — 클라 pong 갈래는
+//   `connPhase !== 'ready'` 면 `connMark('entering')` 을 부르므로 **확정 오류가 "받았고 처리 중"으로 되돌아갔다**(배너 · 재시도 간격 15초 → 지수 간격).
+//   실측(T1002 · 바쁜 고리 셋 · 코어 둘 · 진단 사본 6판): 5판에서 `error` 10~71ms 뒤 같은 ref 의 pong 이 `entering` 으로 되돌렸다.
+//   야간 10-30 `e2e-conn` ②(문구 = 입장 처리 중 · 59초 · ref c8) · 09-18 ②(24초 · ref c5)가 그 꼴이다(보고/T1002).
+//   켜면 던졌거나 시간 초과로 끊는 접속(`C.failed`)엔 pong 을 안 보낸다 — 새 수 0 · 정상 접속 · 입장 처리 중 pong 은 그대로.
+const T1002_ERR_QUIET = process.env.T1002_ERR_QUIET !== '0';
 // ★반쯤 등록된 몸을 치운다 — 안 치우면 서버에 **아무도 조종하지 않는 유령**이 남고,
 //   그 pid 가 틱에 계속 실려 남들 화면에 서 있는다(인원수·PLAYER_CAP 도 갉아먹는다).
 function _connCleanupHalf(C) {
@@ -6294,7 +6301,10 @@ wss.on('connection', (ws, req) => {
   ws.on('message', (raw) => {
     if (ws.__ready) return;
     let m; try { m = JSON.parse(raw.toString()); } catch (e) { return; }
-    if (m && m.type === 'ping') { try { ws.send(JSON.stringify({ type: 'pong', t: m.t, stage: C.stage, ref: C.ref })); } catch (e) {} }
+    if (m && m.type === 'ping') {
+      if (T1002_ERR_QUIET && C.failed) return;   // ★[T1002] 확정 오류를 보낸 접속 — 단계 pong 이 오류를 "처리 중"으로 되돌리지 않게
+      try { ws.send(JSON.stringify({ type: 'pong', t: m.t, stage: C.stage, ref: C.ref })); } catch (e) {}
+    }
   });
   // ④ **마감액** — try/catch 가 못 잡는 반쪽을 막는다.
   //   던지는 실패는 ③이 잡는다. 그런데 `await` 가 **영영 안 돌아오면** 던지지도 않는다
@@ -6304,6 +6314,7 @@ wss.on('connection', (ws, req) => {
     if (ws.__ready) return;
     console.error(`[${ZONE_ID}] ✗✗ 접속 처리 시간 초과 ref=${C.ref} stage=${C.stage} (${CONN_DEADLINE_MS}ms)`);
     _connCleanupHalf(C);
+    C.failed = true;   // ★[T1002] 이 접속은 끝났다 — 닫히기까지 pong 을 안 보낸다(켬)
     try { ws.send(JSON.stringify({ type: 'conn_error', ref: C.ref, stage: C.stage,
       msg: `입장 처리 시간 초과(${Math.round(CONN_DEADLINE_MS / 1000)}초) — 단계 ${C.stage} 에서 멈췄다` })); } catch (_) {}
     setTimeout(() => { try { ws.close(4002, 'conn_timeout'); } catch (_) {} }, 150);
@@ -6316,6 +6327,7 @@ wss.on('connection', (ws, req) => {
     const msg = String((e && e.message) || e).slice(0, 200);
     console.error(`[${ZONE_ID}] ✗✗ 접속 처리 실패 ref=${C.ref} stage=${C.stage}: ${msg}\n${(e && e.stack) || ''}`);
     _connCleanupHalf(C);
+    C.failed = true;   // ★[T1002] 이 접속은 끝났다 — 닫히기까지 pong 을 안 보낸다(켬)
     try { ws.send(JSON.stringify({ type: 'conn_error', ref: C.ref, stage: C.stage, msg })); } catch (_) {}
     setTimeout(() => { try { ws.close(4001, 'conn_error'); } catch (_) {} }, 150);
   });
@@ -9762,6 +9774,7 @@ function _fishLand(player, f, now) {
   try {
     const vil = SimVillages.waterVillageAt ? SimVillages.waterVillageAt(f.x, f.y) : null;
     if (vil) vinfo = SimVillages.refreshFishSustain(vil, now);
+    if (vinfo && SimVillages.t1005Mark) SimVillages.t1005Mark(vil, 'fish');   // ★[T1005] 다시 매긴 어장 상한 — 이 틱 끝에 그 마을 행 한 번(끔 = 무동작)
   } catch (e) {}
   sendInventory(player);
   const big = gotKg >= Fishing.CFG.BIG_KG;
@@ -11691,6 +11704,7 @@ function tryRequestVillageHouse(player, atX, atY) {
   const r = SimVillages.lifeRequestPlayerSite(vil, cx, cy, player.playerId, `${player.name}의 의뢰 움집`);
   if (!r || r.err) { send(player.ws, { type: 'notice', text: `의뢰 불가 — ${(r && r.err) || '알 수 없음'}` }); return; }
   for (const [it, amt] of Object.entries(PSITE_COST)) consumeItem(player, it, amt);   // ★자리 확정 뒤 차감(실패 시 재료가 사라지지 않게) · [원장 승격]
+  if (SimVillages.t1005Save) SimVillages.t1005Save(vil, 'house');   // ★[T1005] 의뢰 집터(곁 칸 psite · 건물 번호 · 잠재 농지)도 그 행에 이 순간(끔 = 무동작)
   sendInventory(player);
   const costStr = Object.entries(PSITE_COST).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${v}`).join(' · ');
   send(player.ws, { type: 'notice', text: `🏠 ${vil.name} 크루에게 집 짓기를 의뢰했다 (${costStr} 선납) — 마을 일이 없을 때 지어 준다` });
@@ -13972,6 +13986,7 @@ function _villageMeal(p, vid) {
   let r = null;
   try { r = T732_MOMENT ? _t732Wrap(p, () => SimVillages.playerVillageWithdraw(vil, p.inventory, 'food', 1)) : SimVillages.playerVillageWithdraw(vil, p.inventory, 'food', 1); } catch (e) { r = null; }   // ★[T732] 곳간 나이째(끄면 종전 그대로)
   if (!r || !r.ok) return { fed: false, empty: true, err: r && r.err };
+  if (SimVillages.t1005Save) SimVillages.t1005Save(vil, 'meal');   // ★[T1005] 곳간이 낸 한 끼도 그 행에 이 순간(끔 = 무동작)
   try { doEat(p, r.item, r.qty, p); } catch (e) {}              // ★먹임 정본(T56 먹이기와 같은 함수)
   // ★★**극단 축을 벗어나는 만큼만.** 문턱은 T44 표에서 유도한다(`Body.extremeAt` — 리터럴 금지),
   //   여유는 그 **바로 위 첫 정수 눈금**이다(게이지는 정수로 보인다 — 새 계수가 아니라 눈금이다).
@@ -14895,6 +14910,7 @@ setInterval(() => {
       // 입력 타임아웃 정리만 (NPC AI·이동·broadcast 모두 skip)
     }
     if (SimVillages.deferLate) SimVillages.deferLate(now);   // ★[T695] 결정 문이 없는 틱(잠든 존)도 마감은 잇는다
+    if (SimVillages.t1005Flush) SimVillages.t1005Flush();   // ★[T1005] 잠든 틱에도 남은 표(마감 뒤로 미룬 몫) — 아래 꼬리와 같은 줄
     TB.end();   // ★[T687]
     return;
   }
@@ -15954,6 +15970,7 @@ setInterval(() => {
   // ★[RTT 상관 계측] 틱 전체가 예산(33ms)을 넘긴 순간도 남긴다 — 원인이 위 둘이 아닐 수도 있다.
   // ★★[T43] 쓰러짐 사슬 — 업고 걷기 · 붙들기 진행 · 창 소진 · 깨어남(내부에서 1초에 한 번만 돈다).
   tickDowned(now);
+  if (SimVillages.t1005Flush) SimVillages.t1005Flush();   // ★[T1005] 이 틱에 표한 마을(낚시 · 사냥) — 마을마다 한 줄(끔 · 빈 표 = 무동작)
   if (T719_REACH_PRE_Z) { const _h7 = process.hrtime(_tickHr0), _el = _h7[0] * 1e3 + _h7[1] / 1e6; if (_el < 10) SimVillages.t719ReachPre(Math.min(2, 10 - _el)); }
   if (T750_CAST_SLICE_Z) { const _h8 = process.hrtime(_tickHr0), _el8 = _h8[0] * 1e3 + _h8[1] / 1e6; if (_el8 < 10) SimVillages.t750CastPre(Math.min(2, 10 - _el8)); }   // ★[T750] 남는 시간에 어부 던질 칸의 지형 자리 미리(villages.js `t750CastPre` · 끔이면 이 줄만 거친다)   // ★[T719] 남는 시간에 닿는 칸 집합 미리(villages.js `t719ReachPre` 머리 · 끔이면 이 줄만 거친다)
   { const _tot = Date.now() - now; if (_tot >= 33) perfMark('tick', _tot); }
