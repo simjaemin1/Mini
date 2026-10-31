@@ -219,24 +219,31 @@ async function runOnce(withPlayerSite, prng, decoy) {
   //    층수 A/B 비교는 잡음에 묻힌다(집터 하나가 늘면 벌채·잠재농지·난수 스트림이 전부 갈라진다).
   //    빼앗겼는지 여부는 **상한 포화**로 직접 본다: 상한을 채운 날엔 크루를 더 붙여도 진척이 0이므로,
   //    그 잉여를 플레이어에게 돌린 것은 마을에서 아무것도 뺏지 않은 것이다.
-  const capStat = (run) => {
+  // ★[T1004 · PM ⓐ ← T938] ⑧ 의 분모 = **의뢰 집이 서 있는 날**(그날 마감에 미완공 의뢰 집 줄 `bld.p` 가 있는 날)의 마을 집터만.
+  //   ⑧ 이 지키는 인과(`pickBuildSite` — 의뢰 집이 미완공일 때만 "마을 집터 정원 먼저 · 잉여만 의뢰 집")는 그 날에만 적용된다.
+  //   의뢰 집이 없거나 완공된 날은 옛 "미완공 최근접" 한 줄이라 의뢰 집과 무관한 쏠림 미달이 난다(T938 §1-2 · 의뢰 집 없는 12판 6/248) — 그 날을 세면
+  //   ⑧ 이 지키지 않는 것 때문에 빨개진다. 미끼(⑧ⓜ)는 **같은 좁힌 자**로 잰다(T938 §1-4: B 3/3 · 미끼 0/3 — 좁혀도 문다 · 자명 통과 아님).
+  //   창 전부(옛 자)는 표로만 찍는다(단언 아님).
+  const capStat = (run, standOnly) => {
     let crewed = 0, sat = 0, sumInc = 0;
     for (const [, s] of run.series) {
       if (!s.bld) continue;
+      if (standOnly && !((s.bld.p || []).length > 0)) continue;
       for (const r of (s.bld.v || [])) { if (r.crew > 0) { crewed++; sumInc += r.inc; if (r.inc >= r.cap - 1e-6) sat++; } }
     }
     return { crewed, sat, mean: crewed ? +(sumInc / crewed).toFixed(4) : 0 };
   };
-  const sat8 = (c) => c.crewed > 0 && c.sat === c.crewed;   // ⑧ 의 자 — 아래 미끼도 **같은 자**로 잰다
-  const ca = capStat(A), cb = capStat(B);
-  console.log(`  마을 집터 '크루 붙은 날' 하루 상한 포화율 — A ${ca.sat}/${ca.crewed}(평균 진척 ${ca.mean}) · B ${cb.sat}/${cb.crewed}(평균 진척 ${cb.mean}) · 상한 0.35`);
+  const sat8 = (c) => c.crewed > 0 && c.sat === c.crewed;   // ⑧ 의 자 — 아래 미끼도 **같은 자**로 잰다(crewed 0 = 빨강 · 자명 통과 금지)
+  const ca = capStat(A), cbAll = capStat(B), cb = capStat(B, true);
+  console.log(`  (표) 창 전부 — 마을 집터 '크루 붙은 날' 하루 상한 포화율 — A ${ca.sat}/${ca.crewed}(평균 진척 ${ca.mean}) · B ${cbAll.sat}/${cbAll.crewed}(평균 진척 ${cbAll.mean}) · 상한 0.35`);
+  console.log(`  ⑧ 의 자(의뢰 집이 서 있는 날만) — B ${cb.sat}/${cb.crewed}(평균 진척 ${cb.mean})`);
   chk(sat8(cb),
-    `⑧ 마을 집터는 크루가 붙은 날 **전부** 하루 상한을 채웠다 — B ${cb.sat}/${cb.crewed}일 (여유 크루만 빌려줬다는 인과 증거)`);
+    `⑧ 의뢰 집이 서 있는 날, 마을 집터는 크루가 붙은 날 **전부** 하루 상한을 채웠다 — B ${cb.sat}/${cb.crewed}일 (여유 크루만 빌려줬다는 인과 증거)`);
   // ★[T649] 자명 통과 금지 — 지키는 대상(마을 집터가 먼저)을 **일부러 깬** 판에서는 같은 자가 빨개야 한다.
   //   B 와 같은 판(같은 난수 · 같은 지정 프레임)에 미끼만 얹는다. 크루가 붙은 날이 남아 있어야(crewed>0) 빨강이 "포화를 못 채웠다"는 뜻이다.
   const D = await runOnce(true, undefined, true);
-  const cd = capStat(D);
-  console.log(`  [미끼 B′] 의뢰 집이 서 있는 동안 마을 집터엔 먼저 붙은 한 사람만 — 지정 (${D.placed.cx},${D.placed.cy}) 프레임 ${D.placeFrame} · 포화 ${cd.sat}/${cd.crewed}(평균 진척 ${cd.mean})`);
+  const cd = capStat(D, true), cdAll = capStat(D);
+  console.log(`  [미끼 B′] 의뢰 집이 서 있는 동안 마을 집터엔 먼저 붙은 한 사람만 — 지정 (${D.placed.cx},${D.placed.cy}) 프레임 ${D.placeFrame} · 포화(서 있는 날) ${cd.sat}/${cd.crewed}(평균 진척 ${cd.mean}) · (표) 창 전부 ${cdAll.sat}/${cdAll.crewed}`);
   chk(cd.crewed > 0 && !sat8(cd),
     `⑧ⓜ 자명 통과 금지 — 예비 크루를 일부러 빼앗은 미끼 판은 같은 자로 **빨강** — B′ ${cd.sat}/${cd.crewed}일 (크루 붙은 날 ${cd.crewed} 중 ${cd.crewed - cd.sat}일 상한 미달)`);
 

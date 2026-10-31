@@ -78,8 +78,10 @@ say('\n④ 끔 = 아무도 안 부른다');
   const E = codeOnly(fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8'));
   ok(/function useVillageStream\(v\) \{ if \(!T731_LOCAL_MIDNIGHT\) return;/.test(E), 'econ — 마을 흐름 문은 끔이면 첫 줄에서 돌아간다');
   const L = codeOnly(fs.readFileSync(path.join(ROOT, 'lab', '전쟁실험실.html'), 'utf8'));
-  ok(/const L_T731=\(typeof window!=='undefined'&&window\.LAB_ENV&&window\.LAB_ENV\.T731_LOCAL_MIDNIGHT==='1'/.test(L) && /if\(L_T731\)_t731Step\(/.test(L) && /if\(L_T731\)\{_t731Step\(/.test(L),
-    '랩 — URL env 칸이 있어야 켜진다 · 프레임 · 헤드리스 하루 둘 다 손잡이 뒤'); }
+  // ★[T1004] 랩도 서버 기본(T792 · `!== '0'`)과 같다 — 칸 없음 = 켬 · `?T731_LOCAL_MIDNIGHT=0` = 끔(재민 09-03 "랩 = 서버와 같아야").
+  //   옛 글자(`==='1'` = 칸이 있어야 켜짐)가 돌아오면 빨강이다 — 단언은 그대로 둘(정의 줄 · 두 부르는 자리), 글자만 새 세계로.
+  ok(/const L_T731=\(typeof window!=='undefined'&&window\.LAB_ENV&&window\.LAB_ENV\.T731_LOCAL_MIDNIGHT!=='0'/.test(L) && !/LAB_ENV\.T731_LOCAL_MIDNIGHT==='1'/.test(L) && /if\(L_T731\)_t731Step\(/.test(L) && /if\(L_T731\)\{_t731Step\(/.test(L),
+    '랩 — 서버 기본과 같다(칸 없음 = 켬 · `=0` 만 끔) · 프레임 · 헤드리스 하루 둘 다 손잡이 뒤'); }
 
 say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

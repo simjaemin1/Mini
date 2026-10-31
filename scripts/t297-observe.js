@@ -86,8 +86,19 @@ const HOOK = () => {
   };
   snap(window.__t297.stock0);
   const _orig = window.lifeDayAll;
+  // ★[T1004] 날 기록 한 자리 — 종전 래퍼 몸 그대로 함수로 뺐다(글자 무변 · 끔 세계 바이트 같음).
+  let _inAll = 0;
   window.lifeDayAll = function () {
-    const out = _orig.apply(this, arguments);
+    let out; _inAll++; try { out = _orig.apply(this, arguments); } finally { _inAll--; }
+    rec();
+    return out;
+  };
+  // ★[T1004] 켬 세계(랩 `L_T731` = 서버 기본 · `!== '0'`)의 프레임 고리는 `lifeDayAll` 을 안 거치고 `_t731Step` 이 마을마다 제 자정에 돌린 뒤
+  //   `_lifeDayTail` 로 하루를 닫는다 → 그 꼬리에서 같은 기록을 한다. `lifeDayAll` 안에서 부른 꼬리(끔 · 헤드리스 켬)는 위 래퍼가 센다(두 번 세기 0).
+  //   (종전: 켬 관찰 판은 날 셈이 0 에 머물러 1시간 마감까지 돌았다 — T938 §2-4 "끝나지 않음"의 까닭)
+  const _tail = window._lifeDayTail;
+  window._lifeDayTail = function () { const out = _tail.apply(this, arguments); if (!_inAll) rec(); return out; };
+  function rec() {
     const A = window.__t297;
     for (const vil of VILS) {
       const e = vil.econ; if (!e) continue;
@@ -105,8 +116,7 @@ const HOOK = () => {
       q.land = { water: e.land.water, fertility: e.land.fertility, wood: e.land.wood, ore: e.land.ore, game: e.land.game, stone: e.land.stone };
     }
     A.days++;
-    return out;
-  };
+  }
   window.__t297snapN = () => { snap(window.__t297.stockN); return window.__t297; };
 };
 
