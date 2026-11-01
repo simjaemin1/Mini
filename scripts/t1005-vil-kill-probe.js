@@ -38,8 +38,9 @@ const WIN = process.argv[2];
 const _WI = ['meal', 'fish', 'hunt', 'house', 'trade', 'phouse', 'ev', 'caravan'].indexOf(WIN);
 const _OFF = process.env.T1005_VIL_SAVE === '0', _OFF23 = process.env.T1023_PSITE_KEEP === '0';
 const _OFF25 = process.env.T1025_EV_CORPSE === '0';   // ★[T1025] 끔 판 — 포트 · 자리를 따로
+const _SLOT = Math.max(0, Math.min(3, +process.env.T1034_PROBE_SLOT || 0));   // ★[T1034] 같은 창 · 같은 손잡이 판을 나란히(마감 낀 판 둘 — 포트 · 자리를 따로)
 const _OFF34 = process.env.T1034_CARAVAN_KEEP === '0', BLOCK0 = process.argv.includes('--block') || process.argv.includes('--isolate');   // ★[T1034] 끔 판 · 가상 차단 판(포트를 따로)
-const _PO = (_OFF ? 50 : 0) + (_OFF23 ? 25 : 0) + (_OFF25 ? 12 : 0) + (process.argv.includes('--term') ? 4 : 0) + (_OFF34 ? 2 : 0) + (BLOCK0 ? 1 : 0);   // 창 · 손잡이 · 신호마다 다른 포트 — 같이 돌릴 수 있게
+const _PO = (_OFF ? 50 : 0) + (_OFF23 ? 25 : 0) + (_OFF25 ? 12 : 0) + (process.argv.includes('--term') ? 4 : 0) + (_OFF34 ? 2 : 0) + (BLOCK0 ? 1 : 0) + _SLOT * 8;   // 창 · 손잡이 · 신호마다 다른 포트 — 같이 돌릴 수 있게
 const CPORT = 3110 + _WI * 100 + _PO, HPORT = 3120 + _WI * 100 + _PO;   // 창 · 손잡이마다 다른 포트 — 여덟을 같이 돌릴 수 있게
 const N = +(process.argv[3] || 3);
 const CLOSE = process.argv.includes('close');
@@ -51,7 +52,7 @@ let MEASURE = false;   // ★[T1034] 지금 띄우는 존이 재는 판인가(--
 if (!['meal', 'fish', 'hunt', 'house', 'trade', 'phouse', 'ev', 'caravan'].includes(WIN)) { console.error('창: meal | fish | hunt | house | trade | phouse | ev | caravan'); process.exit(2); }
 const SIG = process.argv.includes('--term') ? 'SIGTERM' : 'SIGKILL';   // ★[T1023] 죽이는 신호(SIGTERM = 종료 저장 문 · T728)
 const RESTARTS = Math.max(1, +((process.argv.find((x) => x.startsWith('--restarts=')) || '=1').split('=')[1]) || 1);   // ★[T1023] 한 판 안 다시 뜨기 횟수(행동 한 번 뒤 같은 신호로 거듭)
-const DDIR = `/tmp/t1005-probe-${WIN}-${_OFF ? 'off' : 'on'}${_OFF34 ? '-c0' : ''}${BLOCK ? '-block' + BLOCK : ''}${_OFF23 ? '-t1023off' : ''}${_OFF25 ? '-e0' : ''}${process.argv.includes('close') ? '-close' : ''}${SIG === 'SIGTERM' ? '-term' : ''}${RAW ? '-raw' : ''}${ROT ? '-rot' : ''}`;
+const DDIR = `/tmp/t1005-probe-${WIN}-${_OFF ? 'off' : 'on'}${_OFF34 ? '-c0' : ''}${BLOCK ? '-block' + BLOCK : ''}${_OFF23 ? '-t1023off' : ''}${_OFF25 ? '-e0' : ''}${process.argv.includes('close') ? '-close' : ''}${SIG === 'SIGTERM' ? '-term' : ''}${RAW ? '-raw' : ''}${ROT ? '-rot' : ''}${_SLOT ? '-s' + _SLOT : ''}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let C = null, Z = null, nLog = 0, SQ = null;
 function boot(file, env, tag) {
@@ -318,11 +319,13 @@ async function trip() {
       const exp = kb.T && memK.car.dayMs ? kb.T.ppd / memK.car.dayMs * (gapMs || 0) : null;   // 장부 속도(하루 px)로 그 사이 갈 몫
       rows.push({ id: k.id, gone: !a2, noBody: !!a2 && !ab, sched: a2 ? (a2.arr !== k.arr || a2.ret !== k.ret || a2.st !== k.st || a2.ab !== k.ab) : null,
         k: { st: k.st, arr: k.arr, ret: k.ret, amt: k.amt, ph: kb.phase, dd: kb.dd, L: kb.T && +kb.T.L.toFixed(1), len: kb.T && +kb.T.len.toFixed(1), stall: kb.T && kb.T.stall, x: kb.x, y: kb.y, linger: kb.linger },
-        a: a2 ? { st: a2.st, arr: a2.arr, ret: a2.ret, amt: a2.amt, ph: ab && ab.phase, dd: ab && ab.dd, L: ab && ab.T && +ab.T.L.toFixed(1), len: ab && ab.T && +ab.T.len.toFixed(1), x: ab && ab.x, y: ab && ab.y } : null,
+        a: a2 ? { st: a2.st, arr: a2.arr, ret: a2.ret, amt: a2.amt, ph: ab && ab.phase, dd: ab && ab.dd, L: ab && ab.T && +ab.T.L.toFixed(1), len: ab && ab.T && +ab.T.len.toFixed(1), x: ab && ab.x, y: ab && ab.y, linger: ab && ab.linger } : null,
+        lgDrift: (ab && kb.linger != null && ab.linger != null) ? ab.linger - kb.linger : null,   // 머묾 끝 시각이 다시 뜬 뒤 밀렸나(ms)
         moved: (ab && kb.x != null && ab.x != null) ? +Math.hypot(ab.x - kb.x, ab.y - kb.y).toFixed(1) : null, expMove: exp != null ? +exp.toFixed(1) : null,
         ddLost: ab ? (kb.dd | 0) - (ab.dd | 0) : null, phase: ab ? ab.phase !== kb.phase : null });
     }
-    const bad = (r) => r.gone || r.noBody || r.sched || r.phase || r.ddLost || !(r.moved != null && r.moved <= (r.expMove || 0) + 64);
+    const bad = (r) => r.gone || r.noBody || r.sched || r.phase || r.ddLost || (r.lgDrift != null && Math.abs(r.lgDrift) > 1000) || !(r.moved != null && r.moved <= (r.expMove || 0) + 64);
+    out.statK = memK && memK.car && memK.car.stat; out.statA = memA && memA.car && memA.car.stat;   // ★[T1034] 켬 판 셈(끔 = 손잡이만)
     out.cars = rows; out.gapMs = gapMs; out.metaK = dbK.meta;
     out.created = 0; out.lostN = rows.filter(bad).length;
     out.kept = rows.length > 0 && out.lostN === 0;
@@ -367,7 +370,7 @@ function look(q){ H=H||Zm.__testBind(); const V=H.SimVillages; const vil=V.villa
   const o={day:V.dayInfo?undefined:undefined, food:+(+((e.storage||{}).food)||0).toFixed(6), fishSustain:L.fishSustain, fishBase:L._fishBase, gameSum:+gs.toFixed(6), gameN:gn,
     psite:vil._psite?{cx:vil._psite.cx,cy:vil._psite.cy,stage:vil._psite.stage,bo:vil._psite.bo?vil._psite.bo.dbId:null}:null, potN:vil._potSet?vil._potSet.size:null, hutSites:huts, ccx:vil.ccx, ccy:vil.ccy,
     pend:V.t1025Pending?V.t1025Pending(VID):null, corpse:H.t1025Corpse?Object.assign({},H.t1025Corpse):null};
-  if(q.car){ o.car=V.t1034Peek?V.t1034Peek():null; if(o.car){ o.car.at=Date.now(); o.car.dayMs=+process.env.VILLAGE_DAY_MS||1440000; } }   // ★[T1034] 캐러밴 장부 · 몸(읽기만)
+  if(q.car){ o.car=V.t1034Peek?V.t1034Peek():null; if(o.car){ o.car.at=Date.now(); o.car.dayMs=+process.env.VILLAGE_DAY_MS||1440000; o.car.stat=V.t1034Stat?V.t1034Stat():null; } }   // ★[T1034] 캐러밴 장부 · 몸(읽기만)
   if(q.note){ V.noteVillageBuilt(vil,'house'); V.noteStarved(vil); o.noted=true; }   // ★[T1025] ev 창 — 관측 손(완공 · 굶음 줄을 세운다 · 머리말)
   if(q.spot){ const R=H.Fishing.CFG.REACH_PX, out=[]; for(let r=1;r<=70&&out.length<1;r++) for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){ if(Math.max(Math.abs(dx),Math.abs(dy))!==r) continue;
       const px=(vil.ccx+dx)*32+16, py=(vil.ccy+dy)*32+16; if(H.isWaterTileLocal(px,py)||H.isTerrainBlockedLocal(px,py)) continue;

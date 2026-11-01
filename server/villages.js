@@ -3666,7 +3666,7 @@ function _t775Put(body, p, path, at) {
 //     부팅 = 같은 날 메타일 때만(T728 캐러밴 규약 그대로) 칸을 쥐고, T775 가 몸을 세운 바로 뒤 그 몸에 덮는다(`_t1034Apply` — 같은 길일 때만).
 //   끔 = 표도 칸도 없다(종전 바이트). 몸 없는 판(서버 기준선 · `VILLAGE_CARAVAN_MAX=0`)에선 칸이 안 선다.
 const T1034_KEEP = process.env.T1034_CARAVAN_KEEP !== '0';
-const _t1034Stat = { mark: 0, flush: 0, skipClose: 0, packed: 0, held: 0, applied: 0, miss: 0, err: 0, ms: 0, maxMs: 0, by: {} };
+const _t1034Stat = { mark: 0, flush: 0, skipClose: 0, waitQ: 0, clock: 0, packed: 0, held: 0, applied: 0, miss: 0, err: 0, ms: 0, maxMs: 0, by: {} };
 let _t1034Dirty = false;
 function _t1034Mark(why) {
   if (!T1034_KEEP) return;
@@ -3676,6 +3676,9 @@ function _t1034Mark(why) {
 function t1034Flush() {
   if (!T1034_KEEP || !_t1034Dirty || !T728_KEEP) return 0;
   if (state.tickJobs) { _t1034Stat.skipClose++; return 0; }
+  //   마감 뒤 마을 행이 아직 덜 적혔다(저장 큐) — 지금 메타 행을 쓰면 메타 날(N+1) ≠ 마을 행 날(N) 이 되어 부팅이 캐러밴 되돌림을 통째로 건너뛴다(T728 같은 날 규약).
+  //   큐가 비는 틱에 T728 이 같은 줄(곁 칸 포함)을 쓴다 — 표는 거기서 지운다(`_t728SaveMeta`).
+  if (state.saveQueue && state.saveQueue.length) { _t1034Stat.waitQ++; return 0; }
   if (!state.ready || !state.db || !state.db.upsertWorldMeta || !state.world) return 0;
   _t1034Dirty = false;
   const t0 = process.hrtime.bigint();
@@ -3692,7 +3695,9 @@ function _t1034Pack() {
     const T = body._t661;
     b[String(id)] = { ph: body.phase, dd: body.delayedDays | 0, seen: body._evSeenDelay | 0, rf: body.repairFailN | 0, lg: Number.isFinite(body.lingerUntil) ? body.lingerUntil : null,
       da: body.departAt, aa: body.arriveAt, ppd: body.pxPerDay, nom: body.nomPxMs,
-      T: T ? { L: T.L, len: T.path.len, D0: T.D0, leg: T.leg, ppd: T.ppd, st: !!T.stall, day: T.day, t0: T.t0 == null ? null : T.t0 } : null };
+      T: T ? { L: T.L, len: T.path.len, D0: T.D0, leg: T.leg, ppd: T.ppd, st: !!T.stall, day: T.day, t0: T.t0 == null ? null : T.t0,
+        //   돌아가는 구간은 길 점도 싣는다 — 고립 귀환(걸어온 역경로)과 도착 경계 귀환 길(`_t661ReturnPts`)은 T775 가 다시 파는 길(도착 마을 → 집)과 다르다
+        ...(T.leg === 'inbound' && T.path.pts ? { P: T.path.pts.map((q) => [q.x, q.y]) } : {}) } : null };
   }
   if (state._t1034Saved) for (const [k, v] of state._t1034Saved) if (!(k in b)) { b[k] = v; _t1034Stat.held++; }
   if (!Object.keys(b).length) return null;
@@ -3704,18 +3709,28 @@ function _t1034Apply(body, now) {
   const k = body && String(body.id), S = k && state._t1034Saved && state._t1034Saved.get(k);
   if (!S) return;
   state._t1034Saved.delete(k);
-  const T = body._t661;
   body.delayedDays = S.dd | 0; body._evSeenDelay = S.seen | 0; body.repairFailN = S.rf | 0;
+  const spawnPh = body.phase;   // T775 가 세운 단계(가는 길 · 귀환 · T707 장 마당 머묾)
+  //   돌아가는 구간 — 실은 길 점으로 장부 길을 다시 건다(같은 길 · 같은 자리). 가는 몸으로 섰는데(T775) 실은 칸이 귀환이면 단계가 안 맞다 — 덮지 않는다
+  if (T661_ON && S.T && S.T.leg === 'inbound' && Array.isArray(S.T.P) && S.T.P.length >= 2 && (spawnPh === 'inbound' || spawnPh === 'linger')) {
+    const pts = S.T.P.map((a) => ({ x: a[0], y: a[1] }));
+    body._t661 = { path: _t661Path(pts), L: 0, D0: S.T.D0, leg: 'inbound', ppd: S.T.ppd, stall: false, day: S.T.day };
+    if (S.ph === 'inbound') setBodyPts(body, body._t661.path.pts);   // 걷는 몸 = 그 길(머묾 몸은 귀환 출발이 `startReturnLeg` 에서 건다 · 종전 그대로)
+  }
+  const T = body._t661;
   if (!T || !S.T || S.T.leg !== T.leg || !(Math.abs(S.T.len - T.path.len) < 1)) { _t1034Stat.miss++; return; }
   T.L = S.T.L; T.D0 = S.T.D0; T.ppd = S.T.ppd; T.stall = !!S.T.st; T.day = S.T.day;
   if (S.T.t0 != null) T.t0 = S.T.t0;
-  if (S.ph === 'linger' && body.phase === 'inbound') { body.phase = 'linger'; body.lingerUntil = S.lg; }
+  if (S.ph === 'linger') { body.phase = 'linger'; body.lingerUntil = S.lg; }
+  else if (S.ph === 'inbound' && spawnPh === 'linger') { body.phase = 'inbound'; body.lingerUntil = S.lg; }   // 장 마당 몸으로 섰지만 이미 걷던 몸
   if (Number.isFinite(S.da)) body.departAt = S.da;
   if (Number.isFinite(S.aa)) body.arriveAt = S.aa;
   if (Number.isFinite(S.ppd)) body.pxPerDay = S.ppd;
   if (Number.isFinite(S.nom)) body.nomPxMs = S.nom;
-  const at = body.phase === 'linger' ? 0 : (T.stall ? T.L : _t661Vis(body, now));   // 머묾 = 귀환 길 머리(도착 자리 · T707 마당) · 막힘 = 장부 자리 · 그 밖 = 보이는 자리
-  _t775Put(body, state.deps.players.get(body.pid), T.path, at);
+  if (!(body.phase === 'linger' && spawnPh === 'linger')) {   // 장 마당에 선 머묾 몸은 그 자리 그대로(T707 마당)
+    const at = body.phase === 'linger' ? 0 : (T.stall ? T.L : _t661Vis(body, now));   // 머묾 = 귀환 길 머리(도착 자리) · 막힘 = 장부 자리 · 그 밖 = 보이는 자리
+    _t775Put(body, state.deps.players.get(body.pid), T.path, at);
+  }
   _t1034Stat.applied++;
 }
 // 다시 뜬 판의 첫 틱부터 — 장부에 든 캐러밴마다 몸 한 번(차례 = `world.caravans` 차례 · 길이 아직이면 그 자리에서 다음 틱 · 다 돌면 다시 안 돈다)
@@ -4071,7 +4086,7 @@ function tickCaravanBodies(now) {
     if (CARAVAN_BLOCKTEST && !state._blockTested && body.phase === 'outbound' && body.prog > body.len * 0.25) {
       state._blockTested = true;
       console.log(`[${state.zoneId}] 🐂 [BLOCKTEST=${CARAVAN_BLOCKTEST}] 캐러밴#${c.id} 강제 차단 시뮬 (prog ${Math.round(body.prog)}/${Math.round(body.len)}px)`);
-      if (CARAVAN_BLOCKTEST === 2) { isolateCaravanReturn(body, p, now); }
+      if (CARAVAN_BLOCKTEST === 2) { isolateCaravanReturn(body, p, now); if (T661_ON && body._t661 && body.phase === 'inbound') _t661Anchor(body, body.pts, 'inbound'); }   // ★[T1034] 장부 판 = 운영 고립(`_t661Day`)과 같이 장부를 돌아서는 구간에 다시 건다(종전 = 옛 가는 길 장부에 몸이 선 채 · 시험 훅만)
       else {
         const ahead = caravanPointAt(body, body.prog + 160);
         body._testObstacle = { x: ahead.x, y: ahead.y, r: 100 };
@@ -7481,7 +7496,9 @@ function tickPerf() {
            ...(T690_DAY_PHASE ? { t690: Object.assign({ pend: (state._t690 && state._t690.list.length) || 0 }, _t690Stat) } : {}),
            ...(T983_GRANARY_SAVE ? { t983: Object.assign({}, _t983Stat, { ms: +_t983Stat.ms.toFixed(3), maxMs: +_t983Stat.maxMs.toFixed(3) }) } : {}),
            ...(T1005_VIL_SAVE ? { t1005: Object.assign({}, _t1005Stat, { ms: +_t1005Stat.ms.toFixed(3), maxMs: +_t1005Stat.maxMs.toFixed(3), by: Object.assign({}, _t1005Stat.by), pend: _t1005Dirty.size }) } : {}),
-           ...(T1025_EV_CORPSE ? { t1025: Object.assign({}, _t1025Stat, { ms: +_t1025Stat.ms.toFixed(3), maxMs: +_t1025Stat.maxMs.toFixed(3), pend: _evRescues.length + _evBuilds.length + _evStarved.length }) } : {}) };   // ★[T1005] 켬 판만 칸이 선다   // ★[T983] 켬 판만 칸이 선다   // ★[T690] 켬 판만 칸이 선다
+           ...(T1025_EV_CORPSE ? { t1025: Object.assign({}, _t1025Stat, { ms: +_t1025Stat.ms.toFixed(3), maxMs: +_t1025Stat.maxMs.toFixed(3), pend: _evRescues.length + _evBuilds.length + _evStarved.length }) } : {}),
+           t1034car: t1034Peek(),   // ★[T1034] 캐러밴 장부 · 몸(읽기만 · 켬 · 끔 둘 다 — 하네스가 끔 대조도 같은 칸으로 본다)
+           ...(T1034_KEEP ? { t1034: Object.assign({}, _t1034Stat, { by: Object.assign({}, _t1034Stat.by), ms: +_t1034Stat.ms.toFixed(3), maxMs: +_t1034Stat.maxMs.toFixed(3), dirty: _t1034Dirty }) } : {}) };   // ★[T1005] 켬 판만 칸이 선다   // ★[T983] 켬 판만 칸이 선다   // ★[T690] 켬 판만 칸이 선다
 }
 
 // =============================================================================
@@ -14333,6 +14350,7 @@ const _t728Stat = { metaSaves: 0, restored: null, shutdown: null, dropKeys: [] }
 function _t728SaveMeta() {
   if (!state.db || !state.db.upsertWorldMeta || !state.world) return;
   state.db.upsertWorldMeta(state.zoneId, _t728Meta(), state.world.day | 0); _t728Stat.metaSaves++;
+  if (T1034_KEEP) _t1034Dirty = false;   // ★[T1034] 같은 줄이 몸 칸도 실었다
 }
 // ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔) — 끄면 이 함수를 안 부른다] **곳간 로트 장부를 econ 마을에 붙인다**(부팅 한 번).
 //   저장된 장부(`serializeEcon` 의 `_t732Lots` — 복원 문이 econ 객체에서 떼어 둔 것)가 있으면 그것을, 없으면 지금 곳간 값을
@@ -14405,7 +14423,11 @@ function _t728Restore() {
         out.push(o);
       }
       W.caravans = out; W._caravanIdCounter = M.caravanId | 0; R.caravans = out.length;
-      if (T1034_KEEP && M.t1034 && M.t1034.b) { state._t1034Saved = new Map(Object.entries(M.t1034.b)); R.t1034 = state._t1034Saved.size; }   // ★[T1034] 몸 칸 — T775 가 몸을 세울 때 덮는다(같은 날 메타만)
+      if (T1034_KEEP && M.t1034 && M.t1034.b) {
+        //   몸 칸의 벽시계 값(머묾 끝 · 도착 시각 · 귀환 보간 시작)과 하루 px 은 시계(하루 길이 · epoch)가 같을 때만 뜻이 같다 — 다르면 안 쥔다(T775 자리 그대로)
+        if (M.anchor && M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch) { state._t1034Saved = new Map(Object.entries(M.t1034.b)); R.t1034 = state._t1034Saved.size; }
+        else { _t1034Stat.clock++; R.t1034 = 'clock'; }
+      }   // ★[T1034] 몸 칸 — T775 가 몸을 세울 때 덮는다(같은 날 메타만)
       R.meta = true;
     } else R.why = `메타 날 ${R.day} ≠ econ 날 ${W.day | 0} — 번호만 앞으로(난수 · 캐러밴은 종전대로)`;
   }
