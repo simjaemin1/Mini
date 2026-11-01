@@ -10,6 +10,19 @@
 * 아님: `--single-threaded-gc` 274~334(그대로) · `--trace-opt/--trace-deopt` + 시계 줄 — 발생기는 다시 세기 +0.35초부터 BFS 끝(+20.4초 · `다 셈`)까지 TurboFan 코드였다(그 뒤 탈최적화는 T968 `hold` 꼬리 · 일 끝난 뒤).
 * 같은 꼴(작게): A* 교역로 재개형 +5~24% · 생활층 쉼표 +10~16%(`T1027_PROBE=1` · `VILLAGE_TICK_SLICE_MS=0` 대조 · 판 둘씩).
 * 재는 셈 둘(`T977_PROBE` · `T1027_PROBE`)은 `=1` 일 때만 돈다. `scripts/t646-anatomy.js` 에 `T1027_ZFLAGS`(존 덧 V8 깃발).
+## T1048. ★★2026-11-01 — **서울 한반도 env 의 `ZONE_HOST_NIPPON` 을 뺀 길 = `redeploy-light.sh`(T538 재배포 줄)** · 이어 싣기 · update-live 끝 `[⑧] 경계` (승인 대기 · 보고/T1048_2026-11-01.md)
+
+* 재민 11-01 "닛폰(으)로 못 넘어간다 — 저쪽 서버가 연결을 받지 않는다" = `_t564HandoffWhy` 거절 갈래. 한반도 env 에 키가 없으면 `hostFromEnv` 가 `ZONE_HOSTS[nippon]`(= `CENTRAL_IP` 서울) → 서울:3021 닫힘 → ECONNREFUSED 다.
+* 빼는 길: `scripts/redeploy-light.sh:66-72`(origin/main)는 env 를 고정 목록으로 새로 짓는다. 키는 `EXTRA_ENV` 로만 실린다. T538 `766bae81` 이 서울 재배포를 `RUN_ZONES=hanbando bash scripts/redeploy-light.sh` 로 적었다(아래 T538 절 줄 끝 ⚠).
+  * 그 뒤 `redeploy-hanbando.sh` · `reset-world.sh` · `update-live.sh` 는 env 를 옮겨 싣는다 — 빠진 채로 이어진다.
+  * `redeploy-zones/-all/-hanbando-5` 도 새로 짓지만 서울에 닛폰을 같이 띄운다(거절 꼴 아님 · 회부).
+  * 레포로는 쳤다는 증명이 없다 — 지문(env 이름 `CHAR_SPRITE` · `NODE_OPTIONS` · 10-23 `_reset/*-hanbando/meta.txt` `env_names`)이 보고 §5 다.
+* 고침: `redeploy-light` 가 옛 컨테이너의 `ZONE_HOST_*` 를 **이어 싣는다**(`EXTRA_ENV` 가 이긴다 · 옛 컨테이너 없으면 종전 바이트 · 화면엔 `[이어 싣기] … ZONE_HOST_NIPPON` 이름만).
+* 확인 줄: `update-live.sh` 끝 `[⑧] 경계` — 서울 한반도 env 에 `ZONE_HOST_<도쿄 존>` 이 있고, **존 컨테이너 안에서** `zone-config.js` 정본 주소의 `/health` 가 200 이면 ✓. 아니면 ✗ 하고 멈춘다(rc 1). `--dry` 도 찍는다. 값 · 비밀 0.
+  * `✓ 경계 서울 한반도 → nippon: env ZONE_HOST_NIPPON 있음 · 주소 = 도쿄 ssh 주소 · :3021/health 200 · 27ms`
+  * 키 없이 `ZONE_HOSTS` 로만 닿아도 ✗(새로 짓는 재배포 한 번이면 서울로 돌아간다).
+* 자: `scripts/test-xhost-env.js`(신설 · @regress) **17/0** · `--against origin/main` **8/9**(빨강) · `test-redeploy` 21/0(가짜 docker 에 `exec` · 도쿄 `ps -a` · 한반도 키) · `test-redeploy-light` 11/0.
+* 되넣기(쓰기 · 재민이 고른다)는 보고 §5 끝 한 줄 — 같은 이미지 id · 볼륨 · 포트 · 옛 env 에 키 한 줄(`108.160.135.177` · `/tmp` 파일 0).
 
 ## T533. ★★2026-09-30 — **캐러밴이 존을 넘는다** — 경계 호스트 · `/handoff_prepare` 의 `kind` · 몸 경계 칸 이어 걷기(팔 `T525_CROSS_ZONE` 기본 끔 · 승인 대기 · 보고/T533_2026-09-30.md)
 
@@ -59,7 +72,7 @@
 * `_terrGrow` 영토 행은 마을 하나 = `SAVEPOINT` 하나다(추신 2 ⓐ). 첫날 하루 끝 디스크 79 → 19MB.
 * 하루 경계 뒤 틱 합 +52~64% 의 주인은 `zone.js` 틱 본문이다(모듈 함수 +35ms/분). 표본으로 이름이 선 것은 공간 색인 **전수 재구축** 0 → 12/분 · 틱 본문 자기 몫 · GC 다(추신 2 ⓑ · 회부).
 * 중복 2행(마을 45 dryfield)은 원인이 아니다. `scripts/t538-dedupe.js <db>` 로 지운다(`.bak` 먼저 · 멱등 · 재민 손 · 존 부팅은 안 부른다).
-* 서울 재배포: `RUN_ZONES=hanbando bash scripts/redeploy-light.sh` — 힙 옵션 없이 뜨는지가 게이트다.
+* 서울 재배포: `RUN_ZONES=hanbando bash scripts/redeploy-light.sh` — 힙 옵션 없이 뜨는지가 게이트다. ⚠[T1048] 이 줄은 서울 한반도 env 를 새로 지어 `ZONE_HOST_NIPPON` · `CHAR_SPRITE` 를 뺐다(→ 한반도 → 닛폰 ECONNREFUSED · 이제 redeploy-light 가 `ZONE_HOST_*` 는 이어 싣는다 · 서울은 `redeploy-hanbando.sh` 로)
 * ★추신 3 ⓑ(#54): 몸 상한 기본 **무제한**(되돌림 `VILLAGE_NPC_CAP=40`). 서울 사본 몸 9,760 · 틱 p50 ~7 · p95 ~10ms · drop 0 · heap 376MB.
   * ⚠부팅 뒤 첫 하루 마감 한 조각 **7.8초**(`life:쉼표`) · 둘째 5.7초 · 셋째부터 ≤173ms(`=40` 은 첫날 619ms) — 생활층 첫날 해부 전엔 배포 첫 두 경계에 멈춤이 한 번씩 있다.
 

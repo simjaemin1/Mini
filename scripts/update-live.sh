@@ -26,6 +26,8 @@
 #        · 옛 컨테이너에만 있던 env **이름**을 찍는다(§8 줄은 env 를 새로 짓는다 — 빠지는 손잡이가 있으면 보인다 · 값 0)
 #   ⑥ `reset-world.sh nippon --live`(관측자 한 줄) → 도쿄 스탬프 = 도쿄 HEAD
 #   ⑦ `live-lag.sh` 판정 한 줄
+#   ⑧ ★[T1048] 경계 한 줄(읽기만 · env 값 0) — 서울 한반도 컨테이너 env 에 `ZONE_HOST_<도쿄 존>` 이 **있고** 그 존이 보는 주소의 `/health` 가 **존 안에서** 닿는가
+#        (도쿄 존 = 도쿄 `durango-zone-*` · 없으면 nippon) · 하나라도 ✗ 면 멈춤(갱신은 끝났다 — 경계만 막힌 것) · `--dry` 도 찍는다(멈추지 않는다)
 #   ★[T897] 고정 — ② 뒤 · ③ 앞: 이 갱신이 다시 띄울 대상만 지금 이미지에 `:prev-<대상>` 태그(`reset-world.sh <대상> --pin-prev` · 서울 central · 한반도 · 도쿄 닛폰은 ④ 뒤 —
 #     도쿄 reset-world.sh 가 새 판이어야 해서) · 안 바뀔 대상은 `:prev` 를 뗀다(`--drop-prev`) · 바꿀 것이 하나도 없는 갱신이면 고정본을 그대로 둔다.
 #
@@ -47,7 +49,7 @@ S="${SYNC_SEOUL:-seoul}"; T="${SYNC_TOKYO:-tokyo}"
 SD="${SYNC_SEOUL_DIR:-/opt/Mini}"; TD="${SYNC_TOKYO_DIR:-/opt/Mini}"
 TSTAMP="${TOKYO_STAMP:-/srv/durango/deployed-nippon.sha}"; SSTAMP="${SEOUL_STAMP:-/srv/durango/deployed-hanbando.sha}"   # [T919] 서울 스탬프 자리도 env(하네스 · 종전 값 그대로)
 DRY=0; RB=0
-for a in "$@"; do case "$a" in --dry) DRY=1 ;; --rollback) RB=1 ;; *) sed -n '2,37p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 2 ;; esac; done
+for a in "$@"; do case "$a" in --dry) DRY=1 ;; --rollback) RB=1 ;; *) sed -n '2,39p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 2 ;; esac; done
 export SYNC_SEOUL="$S" SYNC_TOKYO="$T" SYNC_SEOUL_DIR="$SD" SYNC_TOKYO_DIR="$TD" LAG_SEOUL="$S" LAG_TOKYO="$T"
 DONE=""
 say() { echo "$*"; }
@@ -64,6 +66,35 @@ plan_of() {
 }
 zone_of() { sed -n 's/^PLAN .*zone=\([01]\).*/\1/p' | tail -1; }
 # 도쿄 옛 존 컨테이너 — 비밀 아닌 칸 둘(값) + env **이름**(값 0). 도쿄 셸에서 뽑는다.
+# ★[T1048] 경계 확인 — 서울 한반도 존이 다른 호스트(도쿄) 이웃 존에 닿나. 읽기만 · env **값** 0 · 비밀 0 · 쓰기 라우트 0(GET /health 만).
+#   재민 11-01 "닛폰(으)로 못 넘어간다 — 저쪽 서버가 연결을 받지 않는다" = 한반도 env 에서 `ZONE_HOST_NIPPON` 이 빠져 `ZONE_HOSTS[nippon]`(서울):3021 로 간 ECONNREFUSED.
+#   env 를 옮겨 싣는 재배포(redeploy-hanbando · reset-world)는 빠진 줄을 되살리지도 않는다 ⇒ 갱신 끝마다 이 줄이 본다.
+#   주소는 존 정본(`server/zone-config.js` `hostFromEnv` — ZONE_HOST_<ID> > ZONE_HOSTS > PUBLIC_HOST > localhost)에게 **존 컨테이너 안에서** 묻는다(사본 0 · 존 프로세스와 같은 길).
+#   찍는 것: 키 있음/없음 · 주소가 도쿄 ssh 주소와 같은가(값 0) · 포트 · /health 코드 또는 오류 이름(ECONNREFUSED · ETIMEDOUT …) · ms.
+xhost_check() {
+  local ids ta
+  ids="$(ssh -n "$T" "docker ps -a --format '{{.Names}}'" 2>/dev/null | sed -n 's/^durango-zone-//p' | tr '\n' ' ')"
+  [ -n "${ids// /}" ] || ids=nippon
+  ta="$(ssh -G "$T" 2>/dev/null | awk '$1=="hostname"{print $2; exit}')"
+  ssh "$S" bash -s -- "${ta:--}" $ids <<'XHOST'
+ta="$1"; shift; [ "$ta" = - ] && ta=""
+C=durango-zone-hanbando; bad=0
+JS='const [id,ta]=process.argv.slice(1);let Z;try{Z=require("./server/zone-config.js").ZONES}catch(e){console.log("no 존 표를 못 읽었다");process.exit(0)}
+const t=Z[id];if(!t){console.log("no 이 존 표(ENABLED_ZONES)에 "+id+" 없음");process.exit(0)}
+const same=ta?(t.host===ta?"주소 = 도쿄 ssh 주소":"주소 ≠ 도쿄 ssh 주소"):"도쿄 ssh 주소 모름";const t0=Date.now();
+const q=require("http").get({host:t.host,port:t.port,path:"/health",timeout:5000},(r)=>{r.resume();console.log((r.statusCode===200?"ok ":"no ")+same+" · :"+t.port+"/health "+r.statusCode+" · "+(Date.now()-t0)+"ms")});
+q.on("timeout",()=>q.destroy(Object.assign(new Error("timeout"),{code:"ETIMEDOUT"})));q.on("error",(e)=>console.log("no "+same+" · :"+t.port+" "+(e.code||e.message)+" · "+(Date.now()-t0)+"ms"));'
+for id in "$@"; do
+  K="ZONE_HOST_$(printf %s "$id" | tr '[:lower:]' '[:upper:]')"
+  n="$(docker inspect "$C" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep -c "^$K=" || true)"
+  r="$(docker exec "$C" node -e "$JS" "$id" "$ta" 2>&1 | tail -1)"
+  case "$r" in "ok "*) st=ok; d="${r#ok }" ;; "no "*) st=no; d="${r#no }" ;; *) st=no; d="존 안에서 못 물었다: $(printf %s "$r" | cut -c1-100)" ;; esac
+  if [ "${n:-0}" -ge 1 ]; then kp="env $K 있음"; else kp="env $K 없음"; fi
+  if [ "${n:-0}" -ge 1 ] && [ "$st" = ok ]; then echo "✓ 경계 서울 한반도 → $id: $kp · $d"; else echo "✗ 경계 서울 한반도 → $id: $kp · $d"; bad=1; fi
+done
+exit $bad
+XHOST
+}
 tokyo_old() { ssh -n "$T" "docker inspect durango-zone-nippon --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | awk -F= 'NF{n=n (n?\" \":\"\") \$1} /^PLAYER_CAP=/{c=substr(\$0,12)} /^CENTRAL_HOST=/{h=substr(\$0,14)} END{printf \"cap=%s host=%s names=%s\n\", c, h, n}'"; }
 
 say "== update-live $(date '+%Y-%m-%d %H:%M:%S') — 서울($S:$SD) → 도쿄($T:$TD)$([ "$DRY" = 1 ] && echo ' · 예행(라이브 무변)') =="
@@ -134,6 +165,8 @@ if [ "$DRY" = 1 ] && [ "$RB" = 0 ]; then
   bash <(ssh -n "$S" cat "$SD/scripts/sync-tokyo.sh") --dry 2>&1 | ind
   say "[예행 ⑦] 지금 렉 판정(읽기만)"
   bash <(ssh -n "$S" cat "$SD/scripts/live-lag.sh") 2>&1 | tail -1 | ind
+  say "[예행 ⑧] 경계 — 서울 한반도 → 도쿄 존(읽기만 · env 값 0 · 실제 판은 ✗ 면 끝에서 멈춘다)"
+  xhost_check 2>&1 | ind
   say "  (예행 — 라이브 무변 · 서울 git fetch 만)"
   exit 0
 fi
@@ -294,7 +327,7 @@ OLDN="$(E | sed 's/=.*//' | grep -v '^$' | sort -u)"
 docker build -q -f Dockerfile.zone -t durango-zone --label "durango.commit=$(git rev-parse HEAD)" . >/dev/null
 echo "빌드 ✓ 커밋 $(git rev-parse --short=12 HEAD)"
 export CENTRAL_SECRET="$(cat /root/.durango-secret)"
-env ${CAP:+PLAYER_CAP=$CAP} CENTRAL_IP="$CIP" RUN_ZONES=nippon EXTRA_ENV="CHAR_SPRITE=on T565_MAP_LIVE=0" bash scripts/redeploy-light.sh | grep -E '^\[light\]|\[up\]|\[ready\]|\[FAIL\]|\[timeout\]|=== 완료' | sed 's/\r//'
+env ${CAP:+PLAYER_CAP=$CAP} CENTRAL_IP="$CIP" RUN_ZONES=nippon EXTRA_ENV="CHAR_SPRITE=on T565_MAP_LIVE=0" bash scripts/redeploy-light.sh | grep -E '^\[light\]|\[이어 싣기\]|\[up\]|\[ready\]|\[FAIL\]|\[timeout\]|=== 완료' | sed 's/\r//'
 unset CENTRAL_SECRET
 NEWN="$(E | sed 's/=.*//' | grep -v '^$' | sort -u)"
 GONE="$(comm -23 <(echo "$OLDN") <(echo "$NEWN") | paste -sd' ' -)"; ADDN="$(comm -13 <(echo "$OLDN") <(echo "$NEWN") | paste -sd' ' -)"
@@ -316,4 +349,10 @@ if [ "$TZ" = 1 ]; then ssh -n "$T" "git -C $TD rev-parse HEAD > $TSTAMP" && did 
 say "[⑦] live-lag"
 bash <(ssh -n "$S" cat "$SD/scripts/live-lag.sh") > "$TMP/lag" 2>&1
 sed -n '2,$p' "$TMP/lag" | ind
+
+# ⑧ ★[T1048] 경계 — 서울 한반도 → 도쿄 존(읽기만 · env 값 0). ✗ 면 멈춘다(갱신은 끝났다 · 넘기만 막혀 있다)
+say "[⑧] 경계 — 서울 한반도 → 도쿄 존(env 키 있음 · 존 안에서 /health 닿음)"
+XL="$(xhost_check 2>&1)"; xrc=$?
+echo "$XL" | ind
+[ "$xrc" = 0 ] || stop "경계 ✗(위 [⑧] 줄) — 한반도가 도쿄 존에 못 넘긴다(사람 눈엔 '…(으)로 못 넘어간다 — <까닭>')" "없음 — 갱신은 다 됐다 · 남은 것은 서울 한반도 env 키 · 도쿄 포트(보고/T1048 §5 재민 손)"
 say "  ✓ 끝 — 서울 ${SH1:0:12} · 도쿄 ${TH1:0:12} · 바뀐 것: ${DONE:-없음(이미 최신)}"
