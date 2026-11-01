@@ -101,14 +101,15 @@ function topFn() {
   for (const ln of String(_sh.stack).split('\n').slice(1)) { if (/t1049-observe/.test(ln)) continue; const m = /at (?:Object\.|Array\.)?([A-Za-z_$][\w$.]*)/.exec(ln); if (m) return m[1]; return ln.trim().slice(3, 60); }
   return '?';
 }
-function trapStone(name, e) {
-  const st = e.storage; if (!st || st.__t1049s) return;
-  let val = st.stone;
-  Object.defineProperty(st, '__t1049s', { value: 1, enumerable: false, configurable: true, writable: true });
-  Object.defineProperty(st, 'stone', { enumerable: true, configurable: true,
+function trapStone(name, e) { for (const it of ['stone', 'tool']) trapItem(name, e, it); }
+function trapItem(name, e, it) {
+  const st = e.storage; const tag = '__t1049s_' + it; if (!st || st[tag]) return;
+  let val = st[it];
+  Object.defineProperty(st, tag, { value: 1, enumerable: false, configurable: true, writable: true });
+  Object.defineProperty(st, it, { enumerable: true, configurable: true,
     get() { return val; },
-    set(x) { try { if (+x < +val) { const f = topFn(), d = (+val || 0) - (+x || 0); const o = rec.stoneOut[name] || (rec.stoneOut[name] = {}); o[f] = (o[f] || 0) + d;
-      if (curDay <= 400) { const L = rec.stoneOutDay[name] || (rec.stoneOutDay[name] = []); L.push([curDay, f, Math.round(d * 1000) / 1000]); } } } catch (z) {} val = x; } });
+    set(x) { try { if (+x < +val) { const f = topFn(), d = (+val || 0) - (+x || 0); const key = it === 'stone' ? name : name + '#' + it; const o = rec.stoneOut[key] || (rec.stoneOut[key] = {}); o[f] = (o[f] || 0) + d;
+      if (curDay <= 400) { const L = rec.stoneOutDay[key] || (rec.stoneOutDay[key] = []); L.push([curDay, f, Math.round(d * 1000) / 1000]); } } } catch (z) {} val = x; } });
 }
 const byName = new Map();
 const prevSet = new Map();      // 마을 → 어제 명부 객체
