@@ -43,10 +43,11 @@ case "$1" in
   build) echo "$*" >> "$FAKE_LOG" ;;
   stop|rm|run) [ -n "$FAKE_HOST" ] && echo "$FAKE_HOST docker $*" >> "$FAKE_LOG" ;;   # ★[T940] ⑦ 재생성 차례(호스트 · 무엇을) — ⑦ 판만 FAKE_HOST 를 준다(①~⑥ 기록 무변)
   ps) case "$*" in
-        *-a*) printf 'durango-central\ndurango-zone-hanbando\n' ;;   # recreate() 의 존재 확인용(이름만)
+        *-a*) if [ "$FAKE_HOST" = tokyo ]; then echo durango-zone-nippon; else printf 'durango-central\ndurango-zone-hanbando\n'; fi ;;   # recreate() 의 존재 확인용(이름만) · [T1048] 도쿄 = 닛폰(⑧ 경계 줄이 도쿄 존 이름을 읽는다)
         *)    printf 'durango-central\tUp 1 second\ndurango-zone-hanbando\tUp 1 second\n' ;;
       esac ;;
-  inspect) case "$*" in *nippon*) printf 'CENTRAL_HOST=10.0.0.1\nPLAYER_CAP=50\nPORT=3021\n' ;; *) echo "PORT=3010" ;; esac ;;   # [T940] 도쿄 옛 존 칸(update-live ⑤ 가 읽는다)
+  inspect) case "$*" in *nippon*) printf 'CENTRAL_HOST=10.0.0.1\nPLAYER_CAP=50\nPORT=3021\n' ;; *durango-zone-hanbando*Config.Env*) printf 'PORT=3020\nZONE_HOST_NIPPON=203.0.113.9\n' ;; *) echo "PORT=3010" ;; esac ;;   # [T940] 도쿄 옛 존 칸(update-live ⑤ 가 읽는다) · [T1048] 한반도 env 에 이웃 주소 키(⑧ 경계 줄)
+  exec) echo "ok 대역 · :3021/health 200 · 1ms" ;;   # [T1048] ⑧ 경계 줄 — 존 안에서 이웃 /health(이 판은 대역 답 · 진짜 길은 test-xhost-env)
 esac
 exit 0
 `, { mode: 0o755 });
