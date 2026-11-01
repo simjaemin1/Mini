@@ -7,10 +7,10 @@
 //       ⓐ 떠나는 캐러밴의 수출 후보(`tickTradeV2Steps` · T180 줄 곁) · ⓑ 도착한 캐러밴이 대금으로 사 가는 귀환 화물(`_caravanTrade` — 파는 쪽 유보 없이 `> 1` 이면 판다).
 //   재는 것:
 //     ① 바닥 수 — sim v1 `STONE_FLOOR_LAND` 가 정본 `server/livelihood.js` `FLOOR.stone` 과 같다(sim 은 server 를 못 실어 이름 하나로 묶었다 · 사본 갈림 0).
-//     ② 손잡이 — 켬이 기본 · `=0` 이면 끔(종전 바이트).
+//     ② 손잡이 — 끔이 기본(종전 바이트) · `=1` 이면 켬. (판 자 대조에서 해체가 안 줄어 켬 기본 후보에서 내렸다 — 보고 T1049 §3)
 //     ③ 세계(v2 · 5마을 · 300날) — 마을 하나를 돌 바닥으로 두고 곳간에 돌 400 을 넣는다. 그 마을 곳간 돌이 줄 때 부른 자리를 접근자로 센다(값 무변).
 //        ★켬: 교역 두 문(`tickTradeV2Steps` · `_caravanTrade`)으로 나간 돌 = 0.
-//        ★★자명 통과 금지 — 끔(`=0`)에선 같은 세계에서 그 두 문으로 돌이 **나간다**(> 0). 안 나가면 이 세계는 아무것도 안 잰다.
+//        ★★자명 통과 금지 — 끔(기본)에선 같은 세계에서 그 두 문으로 돌이 **나간다**(> 0). 안 나가면 이 세계는 아무것도 안 잰다.
 //        ★바닥 아닌 마을의 돌 교역은 켬에서도 그대로 산다(손잡이가 돌 교역 전체를 끄는 게 아니다) — 켬 판에서 다른 마을의 돌이 교역 문으로 나간 양 > 0.
 //        (`tickCaravansV2` 로 줄어드는 돌은 받은 귀환 화물의 교역세 3% 다 — 제 곳간 돌을 파는 문이 아니라 들여온 돌에서 떼는 몫이라 안 센다.)
 //     ④ 랩 번들 — 번들(`sim/economy-engine.browser.js`)이 같은 문(`_t1049Floor`)과 바닥 수를 싣는다(랩 = 서버 규칙).
@@ -56,14 +56,14 @@ console.log('\n① 바닥 수');
 }
 
 console.log('\n② 손잡이');
-const on = kid({ T1049_FLOOR_STONE: '' }), off = kid({ T1049_FLOOR_STONE: '0' });
-ok(on.on === true, '★켬이 기본(env 없음)', on.on);
-ok(off.on === false, '★`T1049_FLOOR_STONE=0` 이면 끔', off.on);
+const on = kid({ T1049_FLOOR_STONE: '1' }), off = kid({ T1049_FLOOR_STONE: '' });
+ok(off.on === false, '★끔이 기본(env 없음 — 종전 바이트)', off.on);
+ok(on.on === true, '★`T1049_FLOOR_STONE=1` 이면 켬', on.on);
 
 console.log('\n③ 세계 — 돌 바닥 마을 하나(곳간 돌 400) · 300날');
 console.log(`    [상황] 끔: 바닥 마을 돌이 교역 문으로 ${off.floor.toFixed(1)} 나감 · 다른 마을 ${off.others.toFixed(1)} · 바닥 마을 끝 돌 ${off.floorStone} · 문별 ${JSON.stringify(Object.fromEntries(Object.entries(off.by).map(([k, x]) => [k, +x.toFixed(1)])))}`);
 console.log(`    [상황] 켬: 바닥 마을 돌이 교역 문으로 ${on.floor.toFixed(1)} 나감 · 다른 마을 ${on.others.toFixed(1)} · 바닥 마을 끝 돌 ${on.floorStone} · 문별 ${JSON.stringify(Object.fromEntries(Object.entries(on.by).map(([k, x]) => [k, +x.toFixed(1)])))}`);
-ok(off.floor > 0, '★★자명 통과 금지 — 끔에선 같은 세계에서 바닥 마을 돌이 교역 문(수출 · 귀환 화물)으로 나간다', off.floor.toFixed(2));
+ok(off.floor > 0, '★★자명 통과 금지 — 끔(기본)에선 같은 세계에서 바닥 마을 돌이 교역 문(수출 · 귀환 화물)으로 나간다', off.floor.toFixed(2));
 ok(on.floor === 0, '★★켬 — 바닥 마을 돌은 교역 문으로 0 나간다(수출 · 귀환 화물 둘 다)', on.floor.toFixed(2));
 ok(on.others > 0, '★켬에서도 바닥 아닌 마을의 돌 교역은 산다(돌 교역 전체를 끈 게 아니다)', on.others.toFixed(2));
 

@@ -14758,8 +14758,8 @@ const T180_STONE_EXPORT = !(typeof process !== 'undefined' && process.env && pro
 //     ⚠이 손잡이는 그 새는 문만 막는다 — 나머지(제 살림 돌 소비 > 바닥 채집 · K 넘침)는 손잡이 밖이다(보고 T1049 회부).
 //   바닥 마을은 돌을 다시 못 채운다(채집 상한 0.225/인·일 · T152) — 판 돌은 도구 재료였다. 돌이 0 이 되면 석공이 멈추고 도구가 닳아
 //   맨손(0.25×)이 되고 곡 산출이 1/5 로 떨어져 두 번째 겨울에 굶는다(보고 T1049 §1). 도구는 이미 자본재로 묶여 있다(CAPITAL) — 그 재료가 안 묶여 있었다.
-//   켬 기본 후보 · 되돌림 `=0` = 종전 바이트(이 줄 무동작).
-const T1049_FLOOR_STONE = !(typeof process !== 'undefined' && process.env && process.env.T1049_FLOOR_STONE === '0');
+//   끔 = 종전 바이트(이 줄 무동작).
+const T1049_FLOOR_STONE = (typeof process !== 'undefined' && process.env && process.env.T1049_FLOOR_STONE === '1');   // 기본 끔 · 켬 = '1' — 판 자 대조(보고 T1049 §3)에서 해체가 안 줄어 켬 기본 후보에서 내렸다
 //   두 문을 같이 막는다 — ⓐ 떠나는 캐러밴 수출 후보(아래 `stock < STONE_NET_STOCK` 곁) · ⓑ 도착한 캐러밴이 대금으로 사 가는 귀환 화물(`_caravanTrade` — 파는 쪽 유보 없이 `> 1` 이면 다 판다).
 const _t1049Floor = (r, vil) => T1049_FLOOR_STONE && r === 'stone' && !!vil && ((vil.land && vil.land.stone) || 0) <= v1.STONE_FLOOR_LAND;
 // ★★[T825 2026-10-20 · T796 회부 4] **곳간이 바닥인 마을은 먹을 것을 내다 팔지 않는다** — 손잡이 `T825_FOOD_KEEP`(★[T935] 켬 기본 · 되돌림 `=0` · ★[T928] 하한 = 하루치).
