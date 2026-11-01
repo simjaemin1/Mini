@@ -10282,6 +10282,14 @@ const T932_SMELT_CONT = !(typeof process !== 'undefined' && process.env && proce
 //   켬 · 끔 다 집 행위가 아닌 마을(랩 · 서버 기준선 자 `T400_BUILD_ACT=0` · `_mapBeds` 없는 판)은 한 글자도 안 닿는다(종전 목재 상한 · 차감).
 //   ★[T974 2026-10-28] 켬 기본(PM · 열일곱째 판 — T966 두 자리가 계획 주거 `_t958Plan` 을 읽는 판) · 되돌림 `T958_HOUSE_REAL=0`(= 종전 바이트) · 랩(브라우저 · 번들 shim 빈 env)도 켬.
 const T958_HOUSE_REAL = !(typeof process !== 'undefined' && process.env && process.env.T958_HOUSE_REAL === '0');   // ★[T974 · PM 10-28] 켬 기본 · 되돌림 `=0`(★[T966] 끔 기본이던 글자 `=== '1'`)
+// ★★[T1054 2026-11-01 · T1047 ② · PM "짓는 것은 목재가 든다 · 같은 규칙"] **집 행위 마을의 노후 메움도 곳간 목재를 쓴다** — 손잡이 `T1054_DECAY_WOOD`(★끔 기본 · 켜는 값 `'1'` · 끔 = 종전 바이트 — 켬 기본 후보였으나 판 자 띠에서 첫해 기근이 커져 회부).
+//   T958 마을(집 행위 · 지은 침상을 아는 판 — 서버 · 랩 T1050)은 econ 주거가 지은 침상까지만 오르고 목재 상한이 `Infinity` 다(차감은 크루가 진다).
+//   그래서 노후(`HOUSE_DECAY`)로 줄어든 주거가 침상 밑에서 **목재 없이** 다시 찼다(보고 T1047 ② — 서버 첫해 노후 메움 3,095 · 목재 0).
+//   켬 = 침상과 주거의 틈을 둘로 가른다: ⓐ 크루가 새로 지은 침상(이미 크루가 목재를 냈다 — 종전대로 목재 없이 찬다) ·
+//   ⓑ 노후로 닳은 몫(`v._t1054Wear` — 날마다 그날 노후분을 더하고 틈을 넘지 않게 묶는다). 오늘 오르는 몫은 ⓐ 를 먼저 채우고,
+//   ⓑ 를 채우는 몫(수리)은 곳간 목재가 있는 만큼만 오르고 econ 단가(`houseCostPerCap('wood')` — 크루 한 채 목재 ÷ 정원 · 랩 econ 이 쓰는 그 값)로 뺀다(새 수 0).
+//   T958 밖 마을(랩 종전 · 서버 기준선 자 `T400_BUILD_ACT=0`)은 한 글자도 안 닿는다(그 마을은 이미 노후 메움에 목재를 낸다).
+const T1054_DECAY_WOOD = (typeof process !== 'undefined' && process.env && process.env.T1054_DECAY_WOOD === '1');   // ★[T1054 판] 끔 기본(켜는 값 '1' · 끔 = 종전 바이트) — 켠 판 띠에서 첫해 기근이 커지고 인구 90 · 365 띠가 아래로 빠졌다(보고 T1054 ③ · 회부 1)
 // ★[T932 · 계측 전용 · 행동 무관 · 저장 0] 그 갈래가 선 날을 센다 — 모듈 칸(마을 객체에 안 붙인다 — 저장 줄 무변). 관찰기 `scripts/t932-smelt-probe.js` 가 판 끝에 적는다.
 //   days = 선 마을-날(같은 날 둘째 대장장이는 안 센다) · smiths = 선 대장장이-날 · left = 그 대장장이 뒤 차례 주민 · idle = 그중 교역 원정 · 징발이 아닌 사람(끔이면 그날 일을 못 한 사람)
 //   · pop = 그 마을 인구(끔이면 그날 꼬리 — 먹기 · 나이 … — 를 못 탄 사람) · byV · byYear(0 = 1 ~ 365날)
@@ -13241,10 +13249,13 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
 
   // ★주거 증축: 집이 인구보다 모자라면 목재(필수)·석재(있으면)로 지음. 노후화로 지속 보수.
   if (v.housing === undefined) v.housing = N;
+  const _h0 = v.housing;   // ★[T1054] 노후 앞 주거(그날 닳은 몫 = 이 값 × `HOUSE_DECAY` · 끔이면 안 읽는다)
   v.housing *= (1 - HOUSE_DECAY);   // 노후화
   const houseTarget = N * HOUSE_BUFFER;
   const _t958 = T958_HOUSE_REAL && buildActOn(v) && v._mapBeds !== undefined;   // ★[T958] 집 행위 마을 · 지은 침상을 아는 판만(끔 · 그 밖 = 종전)
   if (_t958) v._t958Want = 0;
+  const _t1054 = _t958 && T1054_DECAY_WOOD;   // ★[T1054] 닳은 몫 = 어제까지 못 고친 몫 + 오늘 노후분 · 침상과 주거의 틈을 넘지 않는다
+  if (_t1054) v._t1054Wear = Math.min((v._t1054Wear || 0) + _h0 * HOUSE_DECAY, Math.max(0, v._mapBeds - v.housing));
   //   ★[T966] 켬이면 econ 이 **계획 주거**도 한 칸에 따로 쥔다(`v._t958Plan`) — 끔 세계의 주거 그 궤적이다(같은 노후 · 같은 `houseDayBuild` · 목재 상한 `Infinity` 그대로 — 새 수 0).
   //     econ 주거(`housing`)는 지은 침상까지만 오르니, 주거를 "앞으로 지을 집"으로 읽던 두 자리 — 나무꾼 안전망(아래 `pickJob` 줄) · 영토 목표(`villages.js` `territoryTarget`) — 는
   //     이 칸을 읽는다(보고 T966 ② — 지은 침상을 읽으면 그 둘이 계획과 다른 세계를 만든다).
@@ -13259,6 +13270,9 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     const _live = buildActOn(v);   // ★[T400] 크루가 곳간에서 실제로 꺼내 가는 마을 — 목재 제약·차감은 그 행위가 진다
     let built = Math.min(houseDayBuild(v, N, _fe), _live ? Infinity : (v.storage.wood || 0) / _HW);   // 목재 필수 + 여유노동 제약(★[T488] 여유노동 몫은 `houseDayBuild` 한 함수 — 숯가마의 집 몫이 같은 함수를 부른다 · min 은 묶는 순서와 무관 = 비트 동일)
     if (_t958) { v._t958Want = built; built = Math.min(built, Math.max(0, v._mapBeds - v.housing)); }   // ★[T958] 올리고 싶은 몫은 적고(방아쇠) · 오르는 몫은 지은 침상까지
+    //   ★[T1054] 틈 = 새 침상(목재 없이 — 크루가 냈다) + 닳은 몫(수리 — 곳간 목재가 있는 만큼). 오늘 오르는 몫은 새 침상을 먼저 채운다.
+    const _t1054Free = _t1054 ? Math.max(0, Math.max(0, v._mapBeds - v.housing) - v._t1054Wear) : 0;
+    if (_t1054) built = Math.min(built, _t1054Free + (v.storage.wood || 0) / _HW);
     if (built > 0) {
       // ★석재 준-필수: 석재 충분하면 정상 건축, 없으면 30%만(주춧돌·구들 없는 임시 가옥). 강한 석재 수요 → 광산 교역 유발.
       const stoneNeed = built * _HS;
@@ -13270,6 +13284,10 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       if (!_live) {
         v.storage.wood -= built * _HW;
         _cons(v, 'wood', built * _HW);   // ★flow-EMA(주거 목재)
+      }
+      if (_t1054) {   // ★[T1054] 수리 몫(새 침상을 넘어 오른 몫) — 곳간 목재를 econ 단가로 뺀다 · 닳은 몫이 그만큼 준다
+        const _rep = Math.max(0, built - _t1054Free);
+        if (_rep > 0) { v.storage.wood = Math.max(0, (v.storage.wood || 0) - _rep * _HW); _cons(v, 'wood', _rep * _HW); v._t1054Wear = Math.max(0, v._t1054Wear - _rep); }
       }
       // ★유령 박멸(§9): 자갈 기초 — 기초·구들 채움(석재 수요의 ≤절반)은 채집 자갈이 하급 대체(PEBBLE_STONE_EQ). 석재 실절약.
       const _needS = built * _HS;
@@ -15104,7 +15122,7 @@ module.exports = {
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
   T1050_LAB_HOUSE, crewPerLoad, houseCrewDay, labHouseAttach, labHouseDay, labHouseWorldDay,   // ★[T1050] 집 크루 하루 정본(서버 생활층 · 랩 몸 없는 마을이 같은 함수) · 손잡이
-  T400_BUILD_ACT, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
+  T400_BUILD_ACT, T1054_DECAY_WOOD, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
   mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT,
