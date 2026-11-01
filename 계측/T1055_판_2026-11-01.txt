@@ -1,0 +1,94 @@
+# T1055 판 — 시간 · PASS · 결정론 확인 (2026-11-01 · 기계 4코어 · 동시 서버 판 하나(3시드 병렬) + 랩 판 하나)
+
+## 서버 판 자 (node scripts/t577-server-run.js 90 1020,7,42 · NODE_OPTIONS=-r diverge-ctl -r t875-observe -r t1055-observe -r t1012-observe)
+main(첫 판 · 관찰기 낮 초/목재 수입 칸 전) real 6m9s PASS 9 · FAIL 0 — 인구 90 1,723 / 1,659 / 1,668
+(아래 첫 묶음 = 첫 줄 판 · main · raid1 은 관찰기 칸을 더한 뒤 둘째 묶음에서 다시 돌렸고 표는 둘째 판이다)
+raid1 exit=0 369s PASS 9 · FAIL 0
+raid2 exit=0 340s PASS 9 · FAIL 0
+raid3 exit=0 326s PASS 9 · FAIL 0
+house exit=0 306s PASS 9 · FAIL 0
+nolife exit=0 254s PASS 9 · FAIL 0
+main exit=0 317s PASS 9 · FAIL 0
+raid1 exit=0 306s PASS 9 · FAIL 0
+cap2 exit=0 333s PASS 9 · FAIL 0
+capinf exit=0 378s PASS 9 · FAIL 0
+-- main: 조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=1 · T627_TRIP_DAY=1 · 집 행위 켬 · 가상 시계 끔 · T696_WAL=(없음) · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=1 · 도적 켬
+-- raid1: 조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=1 · T627_TRIP_DAY=1 · 집 행위 켬 · 가상 시계 끔 · T696_WAL=(없음) · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=1 · 도적 켬
+-- raid2: 조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=1 · T627_TRIP_DAY=1 · 집 행위 켬 · 가상 시계 끔 · T696_WAL=(없음) · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=1 · 도적 켬
+-- raid3: 조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=1 · T627_TRIP_DAY=1 · 집 행위 켬 · 가상 시계 끔 · T696_WAL=(없음) · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=1 · 도적 켬
+-- house: 조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=0 · T627_TRIP_DAY=1 · 집 행위 켬 · 가상 시계 끔 · T696_WAL=(없음) · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=1 · 도적 켬
+-- nolife: 조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=1 · T627_TRIP_DAY=1 · 집 행위 켬 · 가상 시계 끔 · T696_WAL=(없음) · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=1 · 도적 켬
+-- cap2: 조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=1 · T627_TRIP_DAY=1 · 집 행위 켬 · 가상 시계 끔 · T696_WAL=(없음) · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=2 · 도적 켬
+-- capinf: 조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=1 · T627_TRIP_DAY=1 · 집 행위 켬 · 가상 시계 끔 · T696_WAL=(없음) · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=Infinity · 도적 켬
+
+## raid 대조가 건너뛴 사건(diverge-ctl skipped)
+raid1 1020 [[54,"raid",1,"농촌5","광산3"]] 습격 조우 5
+raid1 7 [[50,"raid",1,"어촌14","광산1"]] 습격 조우 7
+raid1 42 [[66,"raid",1,"임업1","광산7"]] 습격 조우 6
+raid2 1020 [[55,"raid",2,"어촌6","어촌1"]] 습격 조우 4
+raid2 7 [[52,"raid",2,"어촌6","광산5"]] 습격 조우 6
+raid2 42 [[74,"raid",2,"광산1","임업1"]] 습격 조우 6
+raid3 1020 [[71,"raid",3,"어촌6","광산5"]] 습격 조우 5
+raid3 7 [[54,"raid",3,"광산1","임업1"]] 습격 조우 4
+raid3 42 [[78,"raid",3,"어촌6","광산1"]] 습격 조우 4
+
+## t875 ③ 크루 곳간 출구(90날 · 꺼낸 목재)
+main 1020 arm null {"calls":2249,"took":{"wood":1943.042}}
+main 7 arm null {"calls":2331,"took":{"wood":1818.953}}
+main 42 arm null {"calls":2365,"took":{"wood":1865.514}}
+house 1020 arm nolive {"calls":1002,"took":{"wood":2113.658}}
+house 7 arm nolive {"calls":928,"took":{"wood":2023.417}}
+house 42 arm nolive {"calls":1028,"took":{"wood":1976.917}}
+nolife 1020 arm null {"calls":0,"took":{}}
+nolife 7 arm null {"calls":0,"took":{}}
+nolife 42 arm null {"calls":0,"took":{}}
+cap2 1020 arm null {"calls":2318,"took":{"wood":1953.835}}
+cap2 7 arm null {"calls":2388,"took":{"wood":1878.991}}
+cap2 42 arm null {"calls":2421,"took":{"wood":1957.471}}
+capinf 1020 arm null {"calls":2316,"took":{"wood":1951.225}}
+capinf 7 arm null {"calls":2409,"took":{"wood":1854.136}}
+capinf 42 arm null {"calls":2427,"took":{"wood":1946.562}}
+
+## 랩 자 (node scripts/t17-metrics.js 90 <시드> · LAB_SEEDCACHE · -r t1055-arm -r lab-diverge-ctl -r t1055-observe -r t1012-observe)
+on h 1020 exit=0 17s
+on h 7 exit=0 15s
+on h 42 exit=0 16s
+on hunt1 1020 exit=0 16s
+on hunt1 7 exit=0 16s
+on hunt1 42 exit=0 16s
+on hunt2 1020 exit=0 15s
+on hunt2 7 exit=0 14s
+on hunt2 42 exit=0 15s
+on hunt3 1020 exit=0 15s
+on hunt3 7 exit=0 15s
+on hunt3 42 exit=0 16s
+off h 1020 exit=0 14s
+off h 7 exit=0 16s
+off h 42 exit=0 15s
+off hunt1 1020 exit=0 14s
+off hunt1 7 exit=0 16s
+off hunt1 42 exit=0 15s
+off hunt2 1020 exit=0 16s
+off hunt2 7 exit=0 13s
+off hunt2 42 exit=0 14s
+off hunt3 1020 exit=0 16s
+off hunt3 7 exit=0 16s
+off hunt3 42 exit=0 17s
+crew1 h 1020 exit=0 16s
+crew1 h 7 exit=0 17s
+crew1 h 42 exit=0 17s
+crew1 hunt1 1020 exit=0 16s
+crew1 hunt1 7 exit=0 17s
+crew1 hunt1 42 exit=0 16s
+crew1 hunt2 1020 exit=0 14s
+crew1 hunt2 7 exit=0 13s
+crew1 hunt2 42 exit=0 16s
+crew1 hunt3 1020 exit=0 15s
+crew1 hunt3 7 exit=0 14s
+crew1 hunt3 42 exit=0 14s
+eu · eucrew1 h × 3시드 exit 0 (T1047_LAB_DIST=0)
+
+## 랩 결정론
+on · crew1 24판을 다시 돌린 t1012 관찰기 JSON: 24/24 바이트 같음
+VILLAGE_NPC_CAP=1 만 준 랩 1020(팔 없음) t1055 · T17_JSON 둘 다 on-h-1020 과 바이트 같음
+eu h = T1050 보고 켬 h 인구 90 1,692 / 1,726 / 1,627 (같음)
