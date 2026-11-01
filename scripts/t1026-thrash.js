@@ -77,7 +77,7 @@ fs.mkdirSync(OUT, { recursive: true });
     const buf = fs.readFileSync(logp).subarray(mark).toString('utf8');
     const S = { k, phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, max: t && t.max, ticks: p && p.tick && p.tick.n,
       pathJobs: pr.pathJobs | 0, pathDrop: pr.pathDrop | 0, routeCold: pr.routeCold | 0, pathWait: pr.pathWait | 0,
-      t775: pr.t775 || null, t1026: pr.t1026 || null, warmLeft: R && R.warmLeft, mem: R && R.mem,
+      t775: pr.t775 || null, t1026: pr.t1026 || null, t1061: pr.t1061 || null, warmLeft: R && R.warmLeft, mem: R && R.mem,
       astar: (buf.match(/교역로 A\*:/g) || []).length, arr: (buf.match(/캐러밴#\d+ 도착:/g) || []).length };
     slices.push(S);
     say(`조각 ${k} · phase ${S.phase != null ? (+S.phase).toFixed(3) : '?'} · 시작 ${S.pathJobs - head.base.pathJobs} · 버림 ${S.pathDrop - head.base.pathDrop} · 다 판 ${S.routeCold - head.base.routeCold} · 캐시 ${S.mem} · 줄 ${S.t775 ? S.t775.wait : '?'} · 몸 ${S.t775 ? S.t775.spawned : '?'} · 선계산 남음 ${S.warmLeft} · p50 ${t ? t.p50 : '?'} · p95 ${t ? t.p95 : '?'}`);
