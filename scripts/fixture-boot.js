@@ -139,4 +139,33 @@ function reapOnExit(procs) {
   return reap;
 }
 
-module.exports = { waitUp, heldPorts, mustBeFree, reapOnExit, track, reapTracked };   // ★[T895] track · reapTracked
+// ★★[T1033 2026-11-01] **빈 포트 받기 · 내 아이가 내려갈 때까지 기다리기** — 고정 포트와 벽시계 잠 대신 조건(카드 T1033 ③).
+//   · `freePort()` — 커널이 고른 빈 포트(`listen(0)` → 그 번호 → 닫고 돌려준다). 번호를 지어내지 않는다(새 수 0 · `e2e-browser` 의 그 꼴).
+//     닫은 뒤 아이가 잡기 전 틈에 남이 집으면 아이가 `EADDRINUSE` 로 죽고 `waitUp` 이 이름을 붙인다(조용한 빨강 0).
+//   · `stopKids(procs, sig)` — 내가 띄운 아이를 신호로 내리고 **아이의 'exit' 를 받을 때까지** 기다린다 — 몸이 내려가면 듣던 포트도 풀린다.
+//     종전 `killAll(); await sleep(4000)`(포트 반납 4초 · 벽시계)의 자리다. 상한은 그물(`REAP_CAP_MS` · 판정에 안 든다) — 걸리면 아직 산 아이 수를 돌려준다.
+//   · `waitFree(ports)` — 남이 쥔 포트(앞 판의 몸이 아직 내려가는 중)가 풀릴 때까지 기다린다(상한 `REAP_CAP_MS`). 못 풀리면 쥔 포트를 돌려준다
+//     — 부르는 쪽이 `mustBeFree` 그대로 이름을 붙여 끝낸다(남의 판은 안 죽인다 · T773).
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const s = require('net').createServer();
+    s.once('error', reject);
+    s.listen(0, () => { const p = s.address().port; s.close(() => resolve(p)); });
+  });
+}
+function stopKids(procs, sig) {
+  const live = procs.filter((p) => p && p.exitCode === null && p.signalCode === null);
+  return Promise.all(live.map((p) => new Promise((res) => {
+    const to = setTimeout(() => res(false), REAP_CAP_MS);
+    p.once('exit', () => { clearTimeout(to); res(true); });
+    try { p.kill(sig || 'SIGKILL'); } catch (e) { clearTimeout(to); res(p.exitCode !== null || p.signalCode !== null); }
+  }))).then((r) => r.filter((x) => !x).length);
+}
+async function waitFree(ports) {
+  const t0 = Date.now();
+  let h = heldPorts(ports);
+  while (h.length && Date.now() - t0 < REAP_CAP_MS) { await new Promise((r) => setTimeout(r, 100)); h = heldPorts(ports); }
+  return { held: h, ms: Date.now() - t0 };
+}
+
+module.exports = { waitUp, heldPorts, mustBeFree, reapOnExit, track, reapTracked, freePort, stopKids, waitFree };   // ★[T895] track · reapTracked · ★[T1033] freePort · stopKids · waitFree

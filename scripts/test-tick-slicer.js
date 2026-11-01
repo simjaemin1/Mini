@@ -52,6 +52,8 @@ function boot(file, env) {
 }
 function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
 process.on('exit', killAll);
+// ★[T1033] 팔 끝 — 내 아이를 내리고 그 몸이 내려갈 때까지(조건 · `FB.stopKids`) · 종전 `killAll()` + 4초 잠
+async function down() { await FB.stopKids(procs); procs.length = 0; await FB.waitFree([CPORT, ZPORT]); }   // ★[T1033] 몸이 내려갔고(exit) 포트가 실제로 풀렸다(bind 로 확인)
 async function waitHttp(u, n = 600) { for (let i = 0; i < n; i++) { try { const r = await fetch(u, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
 const cp = (src, dst) => { for (const sfx of ['', '-wal', '-shm']) { try { fs.copyFileSync(src + sfx, dst + sfx); } catch (e) { try { fs.unlinkSync(dst + sfx); } catch (e2) {} } } };
 
@@ -67,7 +69,7 @@ async function arm(label, sliceMs, extraEnv) {
   //   ⚠듣기는 **띄운 그 틱에** 시작한다 — `await` 만 아래로 내린다(표식은 ~120ms 뒤에 찍힌다).
   const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
   const _up = await _upP;
-  if (!_up.ok) { console.log(`  ★${_up.why}`); killAll(); return null; }
+  if (!_up.ok) { console.log(`  ★${_up.why}`); await down(); return null; }
   const _zone = boot('zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     VILLAGE_DAY_MS: String(DAY_MS), ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
@@ -92,7 +94,7 @@ async function arm(label, sliceMs, extraEnv) {
   //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
   //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
   const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
-  if (!await (await _zp).ok) { killAll(); return null; }
+  { const _zu = await _zp; if (!_zu.ok) { console.log(`  ★${_zu.why}`); await down(); return null; } }   // ★[T1033] 존이 못 떴으면 그 사유를 찍는다(종전 조용히 null)
   await sleep(1500);
   await fetch(`http://localhost:${ZPORT}/perf?reset=1`);   // ★창을 열기 직전에 루프 히스토그램 영점
   let j = null;
@@ -121,14 +123,18 @@ async function arm(label, sliceMs, extraEnv) {
     //   진단 한 줄 — 팔이 몇 일 행으로 섰나(전제가 빨가면 여기부터 본다)
     console.log(`  · [${label}] 마을 행 날 ${last ? `${last.lo}~${last.hi} · ${last.n}곳` : '—'}${STOP_AT != null ? ` (목표 ${STOP_AT})` : ''}`);
   }
-  killAll();
-  await sleep(4000);   // 포트 반납(직전 배치의 교훈 — 연속 부팅은 바인드에 실패한다)
+  // ★★[T1033] 포트 반납 = **내 아이가 내려갔다**(아이의 'exit' — 몸이 내려가면 듣던 포트도 풀린다 · `FB.stopKids`) · 종전 4초 잠(벽시계)
+  //   상한은 그물(`REAP_CAP_MS`) — 그래도 산 아이가 있으면 다음 팔의 `waitUp` 이 `EADDRINUSE` 로 이름을 붙인다(조용한 빨강 0).
+  await down();
   return j;
 }
 
 (async () => {
   console.log('\n=== 일틱 조각내기 구조 검사 (짝 비교 · 같은 DB 스냅샷) ===');
   // 씨앗 DB — 없으면 한 번 만들어 둔다(그 뒤로는 재사용). 절차는 공용 정본이 갖고 있다.
+  // ★[T1033] 머리 — 앞 판(러너의 앞 하네스)의 몸이 아직 3010 · 3020 을 쥐고 내려가는 중이면 풀릴 때까지 기다린다(조건 · 상한 `REAP_CAP_MS` 그물)
+  //   못 풀리면 그대로 간다 — 첫 부팅의 `waitUp` 이 `EADDRINUSE` 로 이름을 붙인다(남의 판은 안 죽인다 · T773)
+  { const wf = await FB.waitFree([CPORT, ZPORT]); if (wf.ms > 200 || wf.held.length) console.log(`  · [T1033] 포트 ${[CPORT, ZPORT].join('·')} — ${wf.held.length ? '아직 쥐임 ' + wf.held.join('·') : '풀림'} (${wf.ms}ms 기다림)`); }
   { const r = await ensureSeed();
     if (!r.ok) { console.log(`  ✗ 씨앗 준비 실패 — ${r.why}`); process.exit(1); } }
   //   ★[T665] 씨앗 날 — 모든 팔이 여기서 출발해 씨앗 날 + DAYS 에서 선다(`slicer-day-stop.js`)
@@ -320,6 +326,10 @@ async function arm(label, sliceMs, extraEnv) {
     return { same, diff, skip };
   };
   try {
+    // ★★[T1033] A/A 팔(aa)도 부팅 · 수확됐다 — 종전엔 이 팔만 [전제] 가 없었다(되돌림 팔 둘은 ⑨ · ⑩ [전제]). 못 떴으면 `/tmp/slicer-aa-z.db` 는
+    //   팔 머리에서 깐 **씨앗 사본**이라 A/A · 바닥 쌍이 '같은 날 마을 0곳'으로 빨개지고 ⑧ 의 판정으로 오독된다(부팅 · 포트가 ⑧ 로 보인다).
+    ok(!!(C2 && C2.econTick && C2.econTick.last && C2.econTick.days >= DAYS), '⑧ [전제] A/A 팔(aa)이 부팅 · 수확됐다(아니면 아래 A/A · 바닥 쌍은 씨앗 사본을 잰다)',
+      C2 && C2.econTick && C2.econTick.last ? `${C2.econTick.last.day}일 · ${C2.econTick.days}일 마감` : '없음');
     ok(a.day === b.day, '⑧ [전제] 두 팔이 **같은 날**까지 돌았다', `대조군 day ${a.day} · 조각내기 day ${b.day}`);
     const AA = cnt('/tmp/slicer-head-z.db', '/tmp/slicer-aa-z.db');    // 같은 설정 두 판 = 원래 있던 발산
     const AB = cnt('/tmp/slicer-base-z.db', '/tmp/slicer-head-z.db');  // 끈 뽑음 ↔ 조각내기

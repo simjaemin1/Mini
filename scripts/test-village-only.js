@@ -26,10 +26,15 @@ const { DatabaseSync } = require('node:sqlite');
 const ROOT = path.join(__dirname, '..');
 // ⚠두 존은 **제 정본 포트**(zone-config hanbando 3020 · nippon 3021)여야 한다 — 존 넘김은 존→존 직통이다
 //   (`/handoff_prepare` → 받는 존의 config 포트 · `/handoff_ack` → 보낸 존의 config 포트 · test-handoff-body 와 같은 판).
-const CPORT = 3251, PPORT = 3252, ZPORT = 3020, NPORT = 3021;
+//   ★★[T1033 2026-11-01] central · 세는 문은 **빈 포트를 받는다**(`FB.freePort` · 세는 문 `listen(0)` — 커널이 고른 번호 · 종전 고정 3251 · 3252).
+//     존 둘만 정본 포트다(위 — 제품 길 · 포트를 바꾸지 않는다). 그 둘은 앞 판의 몸이 아직 내려가는 중이면 **풀릴 때까지 기다리고**(`FB.waitFree` · 조건)
+//     못 풀리면 종전 그대로 이름을 붙여 끝낸다(`mustBeFree` · 남의 판은 안 죽인다 · T773). 받는 자리는 아래 본문 머리(기동 직전).
+const ZPORT = 3020, NPORT = 3021;
+let CPORT = 0, PPORT = 0;
 const CDB = `/tmp/tvo-central-${process.pid}.db`, ZDB = `/tmp/tvo-zone-${process.pid}.db`, NDB = `/tmp/tvo-nip-${process.pid}.db`;
 for (const f of [CDB, ZDB, NDB]) for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} }
-FB.mustBeFree([CPORT, PPORT, ZPORT, NPORT], 'test-village-only');
+// ★[T1033] 운영 주기 저장 간격(`server/zone.js` `SAVE_INTERVAL_MS` 기본 — T1017 과 같은 수) — 행 · 몸 기다림의 그물에만 쓴다(판정에 안 든다 · 새 수 0)
+const SAVE_MS = 30000;
 
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined ? `  ${extra}` : '')); };
@@ -42,7 +47,10 @@ function boot(name, file, env) {
     cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'],
   });
   p._name = name;
-  p.stdout.on('data', (b) => { const s = String(b); if (/up on|마을 시뮬 준비|\[T785\]/.test(s)) process.stdout.write(`  [${name}] ${s.trim().split('\n').filter((l) => /up on|마을 시뮬 준비|\[T785\]/.test(l)).join(' | ').slice(0, 220)}\n`); });
+  p._t785Mig = null;   // ★[T1033] 이 아이가 제 입으로 찍은 부팅 이행 줄(`zone.js` "[T785] 마을 칸 이행 — 옮김 N · 못 물음 M" — 이행이 끝난 뒤 찍는다)
+  p.stdout.on('data', (b) => { const s = String(b);
+    if (p._t785Mig == null) { const m = /\[T785\] 마을 칸 이행 — 옮김 (\d+) · 못 물음 (\d+)/.exec(s); if (m) p._t785Mig = { done: +m[1], fail: +m[2] }; }
+    if (/up on|마을 시뮬 준비|\[T785\]/.test(s)) process.stdout.write(`  [${name}] ${s.trim().split('\n').filter((l) => /up on|마을 시뮬 준비|\[T785\]/.test(l)).join(' | ').slice(0, 220)}\n`); });
   p.stderr.on('data', () => {});
   procs.push(p);
   return p;
@@ -74,7 +82,19 @@ const jget = async (u) => { try { const r = await fetch(u, { signal: AbortSignal
 const jpost = async (u, body) => {
   try { const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return await r.json(); } catch (e) { return null; }
 };
-const CEN = `http://localhost:${CPORT}`, ZON = `http://localhost:${ZPORT}`, NIP = `http://localhost:${NPORT}`;
+let CEN = null;   // ★[T1033] central 포트를 받은 뒤 정한다(본문 머리)
+const ZON = `http://localhost:${ZPORT}`, NIP = `http://localhost:${NPORT}`;
+// ★★[T1033] 조건 대기 — 세계가 말할 때까지(종전 벽시계 잠 · 상한은 그물 · 걸리면 부르는 쪽 [상황] 이 이름을 댄다 · T1017 꼴)
+async function waitFor(fn, capMs) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < capMs) { const v = await fn(); if (v) return { v, ms: Date.now() - t0 }; await sleep(100); }
+  return { v: null, ms: Date.now() - t0, timedOut: true };
+}
+//   central 행(안 문 · 하네스가 central 에 직접 — 세는 문을 안 지나 셈에 안 든다) · 행 몸(`tools_json` = `serializeBody`)의 소속
+const rowOf = async (playerId) => { const d = await jget(`${CEN}/player/${encodeURIComponent(playerId)}`); return d && d.player ? d.player : null; };
+const rowMember = (r) => { try { const b = JSON.parse((r && r.tools_json) || 'null'); return b && b.member ? b.member : null; } catch (e) { return null; } };
+//   존 몸의 소속(`/bodydbg` — 몸의 정본 그대로)이 술어를 만족할 때까지
+const bodyWait = (name, at, pred) => waitFor(async () => { const b = await bodyOf(name, at); return (b && pred(b)) ? b : null; }, SAVE_MS);
 
 // `token` 이 있으면 핸드오프 도착(`?handoff_token=` · nippon) — 없으면 계정 접속(hanbando).
 function connect(username, token) {
@@ -97,7 +117,8 @@ function connect(username, token) {
 }
 const snd = (C, o) => { try { C.ws.send(JSON.stringify(o)); } catch (e) {} };
 const chat = (C, text) => snd(C, { type: 'chat', text });
-const close = async (C) => { try { clearInterval(C.beat); C.ws.close(); } catch (e) {} await sleep(300); };
+//   ★[T1033] 닫힘 핸드셰이크가 끝날 때까지(소켓 'close' — 존이 그 닫힘을 받았다) · 종전 0.3초 잠 · 상한 = `sayWait` 기본과 같은 5초(그물)
+const close = async (C) => { try { clearInterval(C.beat); C.ws.close(); } catch (e) {} await waitFor(async () => C.closed || null, 5000); };
 const lastN = (C, n) => JSON.stringify(C.notices.slice(-(n || 1)));
 async function sayWait(C, text, re, ms) {
   C.notices.length = 0; C.kinds.length = 0;
@@ -200,10 +221,14 @@ async function found(C, base, centers) {
 
 (async () => {
   console.log('\n=== 마을이 유일한 무리 — T785 (창설 · 가입 · 촌장 · 곳간 문 · 소개 · 이행 · 재기동 · 존 넘김 · central 0) ===\n');
+  // ★★[T1033] 포트 — 존 둘(정본 포트)은 앞 판 몸이 아직 쥐고 있으면 풀릴 때까지 기다린다(조건) · 못 풀리면 이름을 붙여 끝(T773 그대로)
+  //   central · 세는 문은 빈 포트를 받는다(종전 고정 3251 · 3252 — 위 머리 주석)
+  { const wf = await FB.waitFree([ZPORT, NPORT]); if (wf.held.length) FB.mustBeFree([ZPORT, NPORT], 'test-village-only'); }
+  CPORT = await FB.freePort(); CEN = `http://localhost:${CPORT}`;
   const central = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando,nippon' });
   const _cu = FB.waitUp(central, /central server up on/, { name: 'central' });
-  await new Promise((r) => proxy.listen(PPORT, r));
-  ok((await _cu).ok, '⓪ central 기동 · 세는 문 :' + PPORT);
+  await new Promise((r) => proxy.listen(0, r)); PPORT = proxy.address().port;
+  ok((await _cu).ok, '⓪ central 기동 · 세는 문 :' + PPORT, `central :${CPORT}`);
 
   // ══ ① 끔 — 옛 판을 깐다 ══════════════════════════════════════════════════════════════
   phase = 'boot1';
@@ -243,7 +268,10 @@ async function found(C, base, centers) {
     '①h ★끔 — 회관 행 = 종전 그대로(길드 실음 · T785 칸 0 — main 바이트)', JSON.stringify(hd1 && Object.keys(hd1)));
   const fb1 = await bodyOf('kinA');
   ok(!!(fb1 && fb1.member && (fb1.member.vid | 0) === (VID | 0)), '①i 끔 — 세운 사람은 제 마을 사람(T197 창설 = 소속)', JSON.stringify(fb1 && fb1.member));
-  await close(A); await sleep(1500);
+  await close(A);
+  // ★★[T1033] 존을 내리기 전 — A 의 소속이 central 행에 닿았다(행 몸 `member` · 서버 권위) · 종전 1.5초 잠(닫힘 저장이 닿기를 벽시계로 바랐다)
+  const rA = await waitFor(async () => { const r = await rowOf(A.playerId); const m = rowMember(r); return (m && (m.vid | 0) === (VID | 0)) ? r : null; }, 2 * SAVE_MS);
+  ok(!!rA.v, '①j [상황] 존을 내리기 전 A 의 소속이 central 행에 닿았다(행 몸 `member` — 아니면 ③ 은 재기동이 아니라 저장 경합을 잰다)', `${rA.ms}ms`);
   await stop(zone);
 
   // ══ ② 켬 — 이행 ═════════════════════════════════════════════════════════════════════
@@ -269,8 +297,9 @@ async function found(C, base, centers) {
   A = await connect('kinA');
   const B = await connect('kinB');
   const Cc = await connect('kinC');
-  await sleep(1500);
-  const ab = await bodyOf('kinA');
+  // ★[T1033] 다시 붙은 A 의 몸 — 존이 행에서 되살린 몸(`/bodydbg`)에 소속이 보일 때까지(종전 1.5초 잠 · 상한은 그물 · 값은 아래 ③ 이 그대로 묻는다)
+  const abW = await bodyWait('kinA', ZON, (b) => !!b.member);
+  const ab = abW.v || await bodyOf('kinA');
   ok(!!(ab && ab.member && (ab.member.vid | 0) === (VID | 0)), '③ 켬 — 다시 붙어도 A 는 그 마을 사람(몸 `member` · 도착 길)', JSON.stringify(ab && ab.member));
   ok(await sayWait(Cc, '/수락', /부른 마을이 없다/), '③a 부름이 없으면 `/수락` 은 아무것도 안 한다', lastN(Cc));
   B.notices.length = 0;
@@ -417,7 +446,10 @@ async function found(C, base, centers) {
 
   const on1 = tribeCalls('on');
   ok(on1.length === 0, '⑨ ★★켬 판 내내 central `/tribe…` · `/war…` 호출 0', `${on1.length} — ${JSON.stringify(on1.slice(0, 5).map((c) => `${c.m} ${c.u}`))} · central 전체 ${calls.filter((c) => c.phase === 'on').length}건`);
-  await close(A); await close(B); await close(Cc); await sleep(2000);
+  await close(A); await close(B); await close(Cc);
+  // ★★[T1033] 존을 내리기 전 — 재기동 뒤 다시 붙을 B(촌장)의 소속이 central 행에 닿았다(행 몸 `member`) · 종전 2초 잠
+  const rB = await waitFor(async () => { const r = await rowOf(B.playerId); const m = rowMember(r); return (m && (m.vid | 0) === (VID | 0)) ? r : null; }, 2 * SAVE_MS);
+  ok(!!rB.v, '⑨a [상황] 존을 내리기 전 B 의 소속이 central 행에 닿았다(행 몸 `member` — 아니면 ⑪ 은 재기동이 아니라 저장 경합을 잰다)', `${rB.ms}ms`);
   await stop(zone);
 
   // ══ ③ 켬 — 재기동 같은 값 · 이행 0 · 다시 붙기 ═══════════════════════════════════════════
@@ -425,7 +457,10 @@ async function found(C, base, centers) {
   const _nipUp = bootNippon();   // 이웃 존(존 넘김 도착지)도 같이 띄운다 — 띄우는 그 틱에 듣는다
   ok(await bootZone(true), '⓪ 존 기동(켬 · 두 번째)');
   ok(await _nipUp, '⓪ 이웃 존 nippon 기동(켬 · 마을 0 — 존 넘김 도착지)');
-  await sleep(3000);
+  // ★★[T1033] 두 번째 켬 부팅의 이행이 끝났다 — 존이 제 입으로 찍는 줄(`[T785] 마을 칸 이행` · 이행이 끝난 뒤 찍는다) · 종전 3초 잠
+  //   (이행 전에 읽으면 ⑩b "물은 수 0" 이 자명 통과다) · 상한 = ② 이행 기다림과 같은 60 × 1초(그물)
+  const mg3 = await waitFor(async () => zone._t785Mig, 60 * 1000);
+  ok(!!mg3.v, '⑩ [상황] 두 번째 켬 부팅의 이행이 돌았다(존 로그 `[T785] 마을 칸 이행` — 아니면 ⑩b 물은 수 0 은 자명 통과)', mg3.v ? `${mg3.ms}ms · 옮김 ${mg3.v.done} · 못 물음 ${mg3.v.fail}` : `${mg3.ms}ms`);
   const K3 = await kinOf(VID);
   ok(!!K3 && K3.chief === B.playerId && K3.granaryOpen === true && K3.joinMode === 'open' && K3.intro === '새 물레 소리' && K3.t785,
     '⑩ ★재기동 — 마을 칸 같은 값(촌장 B · 곳간 문 칸 · 문 열림 · 소개)', JSON.stringify(K3 && { c: K3.chief, g: K3.granaryOpen, j: K3.joinMode, i: K3.intro }));
@@ -442,8 +477,8 @@ async function found(C, base, centers) {
   ok(tribeCalls('boot3').length === 0, '⑩c 두 번째 켬 부팅(두 존) — central tribe·war 0', JSON.stringify(tribeCalls('boot3').map((c) => c.u)));
   phase = 'on2';
   const B2 = await connect('kinB');
-  await sleep(1500);
-  const bb3 = await bodyOf('kinB');
+  const bb3W = await bodyWait('kinB', ZON, (b) => !!b.member);   // ★[T1033] 종전 1.5초 잠(값은 아래 ⑪ 이 그대로 묻는다)
+  const bb3 = bb3W.v || await bodyOf('kinB');
   ok(!!(bb3 && bb3.member && (bb3.member.vid | 0) === (VID | 0)), '⑪ ★재기동 뒤 다시 붙어도 B 는 그 마을 사람(몸이 소속을 싣는다)', JSON.stringify(bb3 && bb3.member));
   ok(await sayWait(B2, '/촌장', /촌장 — kinB/), '⑪a 촌장 칸이 사람을 안다', lastN(B2));
   ok(tribeCalls('on2').length === 0, '⑪b 다시 붙기 — central tribe·war 0', JSON.stringify(tribeCalls('on2').map((c) => c.u)));
@@ -467,15 +502,21 @@ async function found(C, base, centers) {
   if (hoff && hoff.token) {
     await close(B2);
     const BN = await connect('kinB', hoff.token);
-    await sleep(1200);
-    const bn = await bodyOf('kinB', NIP);
+    const bnW = await bodyWait('kinB', NIP, (b) => !!b.member);   // ★[T1033] 종전 1.2초 잠(값은 아래 ⑫a 가 그대로 묻는다)
+    const bn = bnW.v || await bodyOf('kinB', NIP);
     ok(!!(bn && bb3 && JSON.stringify(bn.member) === JSON.stringify(bb3.member)), '⑫a ★★소속이 몸에 실려 존을 넘었다(nippon 의 몸 `member` = 넘기 전 그대로)', JSON.stringify(bn && bn.member));
     ok(await sayWait(BN, '/촌장', /이 존의 마을 사람이 아니다/), '⑫b 남의 존에선 그 마을 문이 안 열린다(마을은 존 것 · 소속은 몸 것)', lastN(BN));
-    await sleep(1500);   // 도착 존이 몸을 central 에 적을 시간
-    await close(BN); await sleep(1500);
+    // ★★[T1033] 도착 존(nippon)이 몸을 central 에 적었다(행 `last_zone` = nippon · 행 몸 소속 = 넘기 전 그대로) · 종전 1.5초 잠("도착 존이 몸을 central 에 적을 시간")
+    const rN = await waitFor(async () => { const r = await rowOf(B.playerId); return (r && r.last_zone === 'nippon' && bb3 && JSON.stringify(rowMember(r)) === JSON.stringify(bb3.member)) ? r : null; }, 2 * SAVE_MS);
+    ok(!!rN.v, '⑫ [상황] 도착 존(nippon)이 몸을 central 행에 적었다(행 last_zone · 행 몸 소속 — 아니면 ⑫c 는 존 넘김이 아니라 저장 경합을 잰다)', `${rN.ms}ms`);
+    const tCl = Date.now();
+    await close(BN);
+    //   ★[T1033] 끊은 뒤 nippon 의 닫힘 저장이 central 행에 닿았다(행 `last_seen`(central 이 쓴 시각) ≥ 끊은 때) · 종전 1.5초 잠
+    const rN2 = await waitFor(async () => { const r = await rowOf(B.playerId); return (r && Number(r.last_seen) >= tCl) ? r : null; }, 2 * SAVE_MS);
+    ok(!!rN2.v, '⑫ [상황] 끊은 뒤 nippon 의 닫힘 저장이 central 행에 닿았다(행 last_seen ≥ 끊은 때 — 돌아오는 접속이 그 몸을 읽는다)', `${rN2.ms}ms`);
     const B3 = await connect('kinB');
-    await sleep(1500);
-    const bb4 = await bodyOf('kinB');
+    const bb4W = await bodyWait('kinB', ZON, (b) => !!b.member);   // ★[T1033] 종전 1.5초 잠(값은 아래 ⑫c 가 그대로 묻는다)
+    const bb4 = bb4W.v || await bodyOf('kinB');
     ok(!!(bb4 && bb3 && JSON.stringify(bb4.member) === JSON.stringify(bb3.member)), '⑫c ★돌아와도 소속 그대로(nippon 이 적은 몸 → hanbando 접속)', JSON.stringify(bb4 && bb4.member));
     ok(await sayWait(B3, '/촌장', /촌장 — kinB/), '⑫d ★돌아온 촌장은 여전히 촌장(마을 칸이 사람을 안다)', lastN(B3));
     ok(await sayWait(B3, '/마을 초대제', /부름을 받아야/), '⑫e 돌아온 촌장이 촌장 문(가입 문)을 만진다', lastN(B3));
