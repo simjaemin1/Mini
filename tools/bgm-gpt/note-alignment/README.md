@@ -77,3 +77,47 @@ python -B -m unittest discover -s tools/bgm-gpt/note-alignment -p 'test_*.py'
 
 The prepared reader must use the existing private dependency environment.
 No package installation, download, deletion or audio conversion is necessary.
+
+## Actual six-case triage, 2026-11-01
+
+The fixed six TRAIN sources total122.8453125seconds. The read-only audit section
+completed in2.572s, excluding process imports, with zeroTorch/GPU/model/optimizer
+or audio-render operations. All127nominal notes paired structurally; this still
+does not certify acoustic note boundaries, solo instrumentation or expression
+labels. The30synthetic tests passed, and independent reading verified selection,
+clock units, fixed denominators and safe archive handling before execution.
+
+Five of six MIDI end-of-track times extend well beyond their last note-off.
+Consequently a rough file-duration mismatch alone is not a reason to time-stretch
+the recording or reject its note timing. Within the fixed coarse affine grid,
+all six best scales were1; four retained zerooffset and two preferred+50ms.
+The comparison retained11,165source-supported frames out of12,282total frames.
+These are same-clip fits, not heldout accuracy or precise onset measurements.
+No timing map or source audio was edited and no pair was approved for training.
+
+The first pretty-printed private report was reserialized through JavaScript,
+rounding one TAR nanosecond timestamp above2^53 by129ns. Independent auditors
+caught this. It remains preserved as transfer-error evidence, NOT the canonical
+report. A separate exact report was saved directly from the original producer
+stdout without numeric conversion; its TAR identity and all selected MIDI
+payloads match the source. No producer/source change or rerender was necessary.
+The exact report and correction note remain private, outsideGit. Future report
+transfers must preserve raw JSON text or encode oversized integers as strings.
+
+## Complete TRAIN-only nominal score inventory
+
+`build_note_inventory.py` applies the SAME frozen parser to all216existing TRAIN
+filenames, preserving their15song groups and excluding all34heldout files.
+This extension reads only MIDI members, NOT any WAV header/payload/feature.
+It preserves parser failures as cases, every nominal note in a13-column compact
+table, and the parser's metadata/warnings through shared fields plus overrides.
+It does not mean that all216recordings have passed the six-case acoustic audit.
+Prepared WAV hashes are manifest declarations, explicitly NOT newly reverified
+in this metadata-only phase. Neither notes nor recordings are retimed.
+
+The private stdout inventory is capped at1MB so that it and the six-case report,
+including preserved transfer-error evidence, stay within the announced2MB
+additional-results budget. TAR identity integers are decimal strings to avoid
+JavaScript's2^53limit. No model, audio render, extraction, installation or
+original-file mutation is involved. Structural nominal-score eligibility is
+reported separately from acoustic alignment; automatic training approval is0.
