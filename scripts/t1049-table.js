@@ -2,7 +2,8 @@
 'use strict';
 // (@regress 없음 — 러너 밖 · T1049 표 기계 · 판 JSON(`*.t1049.json`)만 읽는다)
 // === scripts/t1049-table.js — 해체 마을 하나하나: 피크 → 굶기 시작 → 해체 =========================================
-//   쓰는 법: node scripts/t1049-table.js <판.t1049.json …> [--json out.json] [--vil 이름] [--all]
+//   쓰는 법: node scripts/t1049-table.js <판.t1049.json …> [--json out.json] [--vil 이름] [--all] [--short]
+//     --short = 마을 하나 한 줄(보고서 표 밑감 · 돌 바닥 여부 · 굶기 앞 창의 도구 배수 · 돌 · 사람당 산출/먹음 · K/인구 · 수출입 · 전쟁·조공·징집)
 //   해체 마을마다(랩 판이면 굶어 죽은 사람이 난 마을마다):
 //     피크 날(해체 앞 인구 최대 · 처음 그 값) · 굶기 시작한 날(피크 뒤 처음 인구식 굶주림 항 < 0 — `villageFamine` 정본 판정) · 해체 날
 //     피크 창(피크 앞 30날) ↔ 굶기 앞 창(굶기 시작 앞 30날)의 사람당 하루 산출(갈래 넷) · 먹음 · 수입 · 수출 · 잃은 짐 · 징집 몫 · 조공 · 전쟁 · K 셋
@@ -60,6 +61,16 @@ for (const f of files) {
       balPeakToStarve: S != null ? bal(P, S) : bal(P, t.D), gone, bornAfterPeak: born };
     out.push(o);
   }
+}
+// 돌 바닥 마을(land.stone = 바닥 0.25) — 씨 1020·7·42 랩 판 T152 표(전수 시딩 · 세 씨 같은 36곳)에서 옮긴 이름. 서버도 같은 존 시딩이다.
+const FLOOR = new Set('농촌1,농촌2,농촌3,농촌4,농촌5,농촌6,농촌7,농촌8,농촌9,농촌10,농촌11,농촌12,농촌13,농촌14,농촌15,농촌16,농촌17,농촌18,농촌19,농촌20,농촌21,농촌22,어촌2,어촌3,어촌5,어촌6,어촌7,어촌8,어촌10,어촌11,어촌12,어촌13,어촌15,어촌16,임업3,임업6'.split(','));
+if (args.includes('--short')) {
+  console.log('판\t마을\t바닥\t피크→굶기→끝\t도구배수(피크→굶기앞)\t돌(피크→굶기앞)\t산출/먹음(굶기앞)\tK/인구(굶기앞)\t수입·수출(굶기앞·날)\t전쟁·조공·징집');
+  for (const o of out) { const a = o.atPeak || {}, b = o.preStarve || o.starveToEnd || {};
+    console.log([o.run, o.v, FLOOR.has(o.v) ? '바닥' : '-', `D${o.peakDay}→D${o.starveDay ?? '-'}→D${o.endDay}`, `${a.tBoost}→${b.tBoost}`, `${a.stone}→${b.stone}`,
+      `${b.prodPH}/${b.eatPH}`, b.n ? r1(b.K / b.n) : '-', `${b.imp}·${b.exp}`, `${b.warDays || 0}·${b.tribDays || 0}·${b.draftFrac || 0}`].join('\t')); }
+  if (JOUT) fs.writeFileSync(JOUT, JSON.stringify(out, null, 1));
+  process.exit(0);
 }
 for (const o of out) {
   const a = o.atPeak || {}, b = o.preStarve || {};
