@@ -295,7 +295,16 @@ const _seen = {};
     } else {
       let fresh = 0, out = ''; try { out = execFileSync('python3', [path.join(__dirname, 'editor-layers-bake.py'), '--check'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); fresh = 1; } catch (e) { fresh = 0; out = String(e.stdout || '') + String(e.stderr || ''); }
       const why = out.split('\n').filter((l) => /\[editor-layers\]|Error|Traceback/.test(l)).slice(0, 6).join(' / ');
-      ok(fresh === 1, '층 데이터(lab/map-editor-layers.json) = 정본에서 지금 다시 구운 것과 같다(editor-layers-bake.py --check)', fresh === 1 ? '' : why);
+      ok(fresh === 1, '층 데이터(lab/map-editor-layers.json) = 정본에서 지금 다시 구운 것과 같다(editor-layers-bake.py --check · ★T1051 PNG 는 풀어낸 화소로 견준다)', fresh === 1 ? '' : why);
+      // ★[T1051 · PM 11-01] 바이트만 다르고 화소가 같으면(상자 zlib · Pillow 판 차) 통과 + `[상황]` 한 줄 — 화소가 하나라도 다르면 위가 빨강 그대로
+      const enc = out.split('\n').find((l) => /\[상황\] 인코더 차이/.test(l));
+      if (enc) console.log('  [상황] 층 데이터 PNG 인코더 차이(화소 같음) — ' + enc.replace(/^.*\[상황\] 인코더 차이\(화소 같음\) — /, '') + ' · 야간 상자 [의존] 줄과 같이 본다');
+      // 자명 통과 금지 — 같은 대조기에 미끼 셋(바이트만 다른 판 · 화소 한 칸 · 셈 한 칸)을 넣으면 ⓐ 만 통과한다(굽기 0 · 1초)
+      let st = ''; try { st = execFileSync('python3', [path.join(__dirname, 'editor-layers-bake.py'), '--selftest'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); } catch (e) { st = String(e.stdout || '') + String(e.stderr || ''); }
+      const sl = (k) => (st.split('\n').find((l) => l.startsWith(`[selftest] ${k} → `)) || '');
+      ok(/ → 2 · .*\[상황\] 인코더 차이\(화소 같음\)/.test(sl('encoder')), '★미끼 ⓐ 화소 같고 PNG 바이트만 다름 → **통과**([상황] 인코더 차이)', sl('encoder').slice(0, 80));
+      ok(/ → 1 · .*정본과 다르다/.test(sl('pixel')) && /화소 \*\*다름\*\*/.test(st), '★자명 통과 금지 — 미끼 ⓑ 화소 **한 칸** 바꿈 → **빨강**(화소 다름)', sl('pixel').slice(0, 60));
+      ok(/ → 1 · .*정본과 다르다/.test(sl('value')), '미끼 ⓒ PNG 밖 셈 한 칸 → 빨강(값 다름 · 글자 그대로 견준다)', sl('value').slice(0, 60));
     }
     const lines = fs.readFileSync(inline, 'utf8').split('\n').filter((l) => /\/\/ @inline-layers/.test(l));
     ok(lines.length === 1 && lines[0].startsWith('let LAYERS_BAKED = {'), '맥 사본에 보기 층 박음 줄 하나(`@inline-layers`)', lines.length + '줄');
