@@ -18,6 +18,12 @@
 const v1 = require('./economy-sim');
 // ★[T180] 되돌림 — 끄면 종전(굶는 마을도 돌을 판다) **비트 동일**. 채택값은 ON(한 줄 결함 수리).
 const T180_STONE_EXPORT = !(typeof process !== 'undefined' && process.env && process.env.T180_STONE_EXPORT === '0');
+// ★[T1049 · ★재민 11-01 "처음 마을들은 터지면 안 된다"] 손잡이 `T1049_FLOOR_STONE` — 돌 바닥 마을(land.stone ≤ 바닥 · 바위 지형 0)은 **제 돌을 안 판다**.
+//   T1049 실측: 해체 · 소멸 마을은 다 돌 바닥이고, 처음 곳간 돌(≈190)을 교역으로 판다(랩 1020 농촌10 D1~75 에 100 · 판 전체 154).
+//   바닥 마을은 돌을 다시 못 채운다(채집 상한 0.225/인·일 · T152) — 판 돌은 도구 재료였다. 돌이 0 이 되면 석공이 멈추고 도구가 닳아
+//   맨손(0.25×)이 되고 곡 산출이 1/5 로 떨어져 두 번째 겨울에 굶는다(보고 T1049 §1). 도구는 이미 자본재로 묶여 있다(CAPITAL) — 그 재료가 안 묶여 있었다.
+//   켬 기본 후보 · 되돌림 `=0` = 종전 바이트(이 줄 무동작).
+const T1049_FLOOR_STONE = (typeof process !== 'undefined' && process.env && process.env.T1049_FLOOR_STONE === '1');   // ⚠[T1049 재는 동안] 켬 = '1' (판 자 대조가 끝나면 켬 기본으로 뒤집는다)
 // ★★[T825 2026-10-20 · T796 회부 4] **곳간이 바닥인 마을은 먹을 것을 내다 팔지 않는다** — 손잡이 `T825_FOOD_KEEP`(★[T935] 켬 기본 · 되돌림 `=0` · ★[T928] 하한 = 하루치).
 //   아래 잉여 셈은 식량류 넷(`FOODR` — food · fish · meat · cooked_food)만 식량 하한(36일치 = `target × 1.2`)으로 본다.
 //   생곡(쌀 · 밀 · 보리 — 도정 수율 0.72) · 채집 · 보존식 · 작물은 **식량 환산에 드는데**(`v1.totalFoodEquivalent` — 곳간 · K · 사다리가 먹는다)
@@ -1041,6 +1047,7 @@ function* tickTradeV2Steps(world, day) {
         //   ⇒ 돌 수출 후보는 **안전망 문턱 위**일 때만. 수는 v1 정본에서 읽는다(사본 0 · 새 수 0).
         //   되돌림 `T180_STONE_EXPORT=0` → 종전 비트 동일.
         if (r === 'stone' && T180_STONE_EXPORT && stock < v1.STONE_NET_STOCK) continue;
+        if (r === 'stone' && T1049_FLOOR_STONE && (a.v.land && a.v.land.stone || 0) <= v1.STONE_FLOOR_LAND) continue;   // ★[T1049] 돌 바닥 마을은 제 돌을 안 판다(위 손잡이 주석)
         if (T825_FOOD_KEEP && !FOODR[r] && stock > thresh) {   // ★[T825 · T928] 켬 — 먹을 것은 곳간 식량이 하루치를 넘는 몫까지만
           const _f = _t825FoodPer(a.v, r);
           if (_f > 0) {

@@ -1924,6 +1924,10 @@ const STONE_NET_ON = !(typeof process !== 'undefined' && process.env && process.
 //   (실측: 바닥 36마을이 800일에 8,110~11,947 단위를 수출한다). 그 게이트가 이 수를 읽어야 하는데
 //   저쪽에 다시 적으면 그게 사본이다. **수는 여기 하나뿐이다**(`test-lab-stone` 이 대조한다).
 const STONE_NET_STOCK = 0.2;
+// ★[T1049] 돌 바닥 — `server/livelihood.js` `FLOOR.stone`(바위 지형이 전혀 없는 마을의 land.stone · 정본 0.25)와 같은 값이다.
+//   sim 은 server 를 못 싣는다(번들 규약) — 이 파일은 그 값을 STONE_NET 문(위 1915 · 4993 · 5032 의 `0.2499`/`0.25`)에 글자로 써 왔다.
+//   이름 하나로 묶어 v2 수출 문이 읽는다(새 수 0 · 하네스 `test-floor-stone` 가 livelihood 정본과 같은지 본다).
+const STONE_FLOOR_LAND = 0.25;
 // ═══ ★★부얼타운(광산촌) 판정 — **단일 정의**. 시딩(villages.js)도 이 함수를 부른다(사본 금지) ═══
 //   ⚠1차 시도의 실패에서 배운 것: "식량 부양력이 하한 미달"만으로 잡으면 **너무 많이 잡힌다.**
 //     선별된 마을 20곳 중 절반 가까이가 부양력 1.3~2.0 구간이라, 거기에 식량을 얹고 농사 탈출구를
@@ -5903,6 +5907,7 @@ function computeVillagePrices(v) {
 module.exports = {
   T860_ON, CATCH_FROM, PRESERVE_FROM, _preserveSurplus, _t860Begin, _t860Dry, T877_ON, _t860Unit, PRESERVED_FOODS, PRESERVE_YIELD, PRESERVE_FOOD_FACTOR, FORAGE_FOOD_FACTOR,   // ★[T860] 잡은 날 말리기 — 손잡이 · 잡은 칸 표(하네스가 spoil 정본과 대조한다 · 사본 0) · 갈무리 한 걸음
   STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
+  STONE_FLOOR_LAND,   // ★[T1049] 돌 바닥(livelihood FLOOR.stone) — v2 수출 게이트가 읽는다(사본 0)
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
   T958_HOUSE_REAL,   // ★[T958] 집 행위 마을 econ 주거 = 지은 침상까지(★[T974] 켬 기본 · `=0` 되돌림 · ★[T966] 끔 기본이던 글자) — 방아쇠(서버 `villages.js`)가 읽는다

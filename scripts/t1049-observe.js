@@ -90,6 +90,26 @@ function tBoost(e) {
   const ni = Math.min(deps, st.iron_tool || 0), nb = Math.min(deps - ni, st.bronze_tool || 0), ns = Math.min(deps - ni - nb, st.tool || 0), nn = deps - ni - nb - ns;
   return (ni * 1.8 + nb * 1.4 + ns * q + nn * 0.25) / deps;
 }
+// ★[T1049 · 돌 덫] `T1049_STONE_TRACE=1` 이면 곳간 `stone` 칸을 접근자로 바꿔, 줄어들 때마다 부른 함수 이름(스택 머리 — 이 파일 밖 첫 칸)으로 양을 적는다.
+//   값은 그대로다(읽으면 넣은 값 · 쓰면 그 값). 곳간 객체가 바뀌면 그날 다시 단다. 랩 판(빠름)에서만 쓰려고 둔 문이다.
+const STONE_TRACE = process.env.T1049_STONE_TRACE === '1';
+rec.stoneOut = {};   // 마을 → { 함수: 양 } (판 전체 · 날 창은 stoneOutDay)
+rec.stoneOutDay = {};   // 마을 → [[날, 함수, 양] …] (D≤400 만)
+const _sh = { stack: '' };
+function topFn() {
+  const L = Error.stackTraceLimit; Error.stackTraceLimit = 6; Error.captureStackTrace(_sh, topFn); Error.stackTraceLimit = L;
+  for (const ln of String(_sh.stack).split('\n').slice(1)) { if (/t1049-observe/.test(ln)) continue; const m = /at (?:Object\.|Array\.)?([A-Za-z_$][\w$.]*)/.exec(ln); if (m) return m[1]; return ln.trim().slice(3, 60); }
+  return '?';
+}
+function trapStone(name, e) {
+  const st = e.storage; if (!st || st.__t1049s) return;
+  let val = st.stone;
+  Object.defineProperty(st, '__t1049s', { value: 1, enumerable: false, configurable: true, writable: true });
+  Object.defineProperty(st, 'stone', { enumerable: true, configurable: true,
+    get() { return val; },
+    set(x) { try { if (+x < +val) { const f = topFn(), d = (+val || 0) - (+x || 0); const o = rec.stoneOut[name] || (rec.stoneOut[name] = {}); o[f] = (o[f] || 0) + d;
+      if (curDay <= 400) { const L = rec.stoneOutDay[name] || (rec.stoneOutDay[name] = []); L.push([curDay, f, Math.round(d * 1000) / 1000]); } } } catch (z) {} val = x; } });
+}
 const byName = new Map();
 const prevSet = new Map();      // 마을 → 어제 명부 객체
 const homeOf = new WeakMap();   // 사람 객체 → 처음 본 마을
@@ -103,6 +123,7 @@ function snap(host, day) {
     const name = vil.name; byName.set(name, vil);
     if (!rec.vil[name]) { rec.vil[name] = []; rec.jobs[name] = []; }
     wrapArr(e.npcs, name);
+    if (STONE_TRACE) trapStone(name, e);
     const now = new Set(e.npcs), prev = prevSet.get(name) || new Set();
     let born = 0, inn = 0, outn = 0;
     for (const x of now) if (!prev.has(x)) { if (homeOf.has(x) && homeOf.get(x) !== name) inn++; else if (!homeOf.has(x)) born++; homeOf.set(x, homeOf.get(x) || name); }
