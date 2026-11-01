@@ -403,7 +403,8 @@ setInterval(()=>{ const a=D+'/ask'; if(!fs.existsSync(a)) return; let q={}; try{
     WARM = false;
     //   --isolate = 고르기 한 번 — 운영 하루로 훅 없이 띄워 T775 줄과 현지 자정 창(따라잡기 마감 · 시계가 2초 하루에서 바뀌었다)이 닫힐 때까지 → SIGTERM.
     //     안 하면 재는 판이 부팅 따라잡기 창 안에서 고립을 보고(창 안 = 마감 몫 · T728 · 하루 중 문이 아니다) 그 창이 닫히기 전에 죽는다.
-    if (BLOCK === '2') { await downP(Z, 'SIGTERM'); Z = null; await upZ(); const ts = Date.now(); let G = null;
+    //     마감 안 낀 판도 같다 — 데우기 메타 행은 2초 하루 시계라 켬 판이 몸 칸을 안 쥔다(시계 가드) · 운영 시계 메타 행 위에서 재야 한다(마감 낀 판은 그 마감이 쓴다).
+    if (BLOCK === '2' || !process.argv.includes('close')) { await downP(Z, 'SIGTERM'); Z = null; await upZ(); const ts = Date.now(); let G = null;
       for (let i = 0; i < 600; i++) { await sleep(1000); G = await look({ car: true }); if (G && G.car && G.car.t775 && G.car.t775.done && !G.car.w731) break; }
       await sleep(2000); console.log(`[T1034 탐침] 고르기 ${Math.round((Date.now() - ts) / 1000)}초 · 창 ${G && G.car ? G.car.w731 : '—'} · 날 ${G && G.car ? G.car.day : '—'}`); }
   }
