@@ -29,7 +29,7 @@ const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));   // 정본 식(같
 const FOOD = ['food', 'fish', 'meat', 'cooked_food', ...Object.keys(E.FORAGE_FOOD_FACTOR || {}), ...(E.RAW_GRAINS || [])];
 const FE4 = ['food', 'fish', 'meat', 'cooked_food'];   // bandits.js 해체 자 `fe`(원문 네 칸)
 const COLS = ['d', 'n', 'fe', 'fe4', 'prod', 'eat', 'K', 'logi', 'hunger', 'health', 'happy', 'dP', 'kSlot', 'kProd', 'kFuel',
-  'imp', 'exp', 'lost', 'tk', 'trib', 'draft', 'pack', 'war', 'fall', 'cri', 'peak', 'hp', 'hap', 'dead', 'born', 'inn', 'outn', 'tre', 'pGrain', 'pFish', 'pMeat', 'pForage', 'tool', 'stone', 'deps', 'toolQ', 'tBoost'];
+  'imp', 'exp', 'lost', 'tk', 'trib', 'draft', 'pack', 'war', 'fall', 'cri', 'peak', 'hp', 'hap', 'dead', 'born', 'inn', 'outn', 'tre', 'pGrain', 'pFish', 'pMeat', 'pForage', 'tool', 'stone', 'deps', 'toolQ', 'tBoost', 'sProd', 'sCons', 'tMade', 'wMade'];
 const G_GRAIN = ['food', 'cooked_food', ...(E.RAW_GRAINS || [])], G_FORAGE = Object.keys(E.FORAGE_FOOD_FACTOR || {});   // 산출 갈래(농사 · 어로 · 사냥 · 채집) — 원 칸 그대로(등가 계수 안 곱함)
 const rec = { ver: 1, cols: COLS, food: FOOD, seed: +(process.env.T577_SEED || process.argv[3] || 0), lab: LAB, knob: Object.fromEntries(['T858_NO_SHIELD', 'VILLAGE_NPC_CAP', 'T577_CAND_WALK', 'DCTL_SKIP', 'VILLAGE_DAY_MS'].map((k) => [k, process.env[k] != null ? process.env[k] : null])),
   vil: {}, gone: {}, jobs: {}, dis: [], lastDay: null, hooked: 0, errs: [] };
@@ -120,7 +120,10 @@ function snap(host, day) {
       (e._warTribOut || []).length, draft, pack, atWar(world, e), e._bdtFall | 0, r2(e._bdtCri), e._bdtPeak | 0, r2(st.health), r2(st.happiness),
       e._deadTot | 0, born, inn, outn, r2(e.treasury && e.treasury.food),
       r2(sumFood(e.dailyProductionBuf, G_GRAIN)), r2(sumFood(e.dailyProductionBuf, ['fish'])), r2(sumFood(e.dailyProductionBuf, ['meat'])), r2(sumFood(e.dailyProductionBuf, G_FORAGE)),
-      r2(e.storage && e.storage.tool), r2(e.storage && e.storage.stone), e._toolDeps | 0, r2(e._toolQ), r2(tBoost(e))];
+      r2(e.storage && e.storage.tool), r2(e.storage && e.storage.stone), e._toolDeps | 0, r2(e._toolQ), r2(tBoost(e)),
+      r2(e.dailyProductionBuf && e.dailyProductionBuf.stone), r2(e._consDay && e._consDay.stone),   // 돌 산출 · 돌 실소비(`_cons` — 유지 · 주거 · 생계)
+      r2((+e._stoneToolMade || 0) - (c0.tm || 0)), r2((+e._stoneWeaponMade || 0) - (c0.wm || 0))];   // 그날 석기 · 마제석검(누계 차)
+    c1.tm = +e._stoneToolMade || 0; c1.wm = +e._stoneWeaponMade || 0;
     rec.vil[name].push(row);
     if (day % 5 === 0) rec.jobs[name].push([day, Object.assign({}, e.counts || {})]);
   }
