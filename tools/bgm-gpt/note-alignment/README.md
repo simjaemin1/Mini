@@ -127,3 +127,22 @@ TAR identity integers are decimal strings to avoid
 JavaScript's2^53limit. No model, audio render, extraction, installation or
 original-file mutation is involved. Structural nominal-score eligibility is
 reported separately from acoustic alignment; automatic training approval is0.
+
+The packed actual inventory was completed after commit 2a9f0af7: 216 TRAIN MIDI
+members across 15 song groups contain 7,151 note-ons, all structurally paired.
+There are 206 nominal-score candidates; the other 10 cases retain all notes and
+warnings (nine with 11 overlap regions in total, one with a zero-duration note).
+These may be legitimate notation and are not automatically deleted as errors.
+No WAV header/payload/feature or heldout payload was read in this inventory.
+
+The final inventory section took 0.352 s, excluding process imports. Its private
+package is 264,045 bytes; bounded decompression yields 1,094,427 bytes with matching
+SHA. Independent standard-library decoding verified those sizes/hashes, all
+seven input bindings, exact string-encoded TAR identity, 216 member CRC/SHA values,
+and complete reconstruction of the compact parser output. A separate SMF decoder
+with rational tempo arithmetic independently matched all 7,151 notes. The full
+directory including preserved transfer-error evidence is below 2 MB. The fresh
+local suite passes 38 synthetic tests. Models, original/source audio, previous
+auditions, game runtime/defaults and main are unchanged. These results prepare
+future note-level alignment; they do not improve the neural timbre or establish
+learned breath, reattack or vibrato control.
