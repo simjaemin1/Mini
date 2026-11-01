@@ -38,7 +38,7 @@ const WIN = process.argv[2];
 const _WI = ['meal', 'fish', 'hunt', 'house', 'trade', 'phouse', 'ev', 'caravan'].indexOf(WIN);
 const _OFF = process.env.T1005_VIL_SAVE === '0', _OFF23 = process.env.T1023_PSITE_KEEP === '0';
 const _OFF25 = process.env.T1025_EV_CORPSE === '0';   // ★[T1025] 끔 판 — 포트 · 자리를 따로
-const _OFF34 = process.env.T1034_CARAVAN_KEEP === '0', BLOCK0 = process.argv.includes('--block');   // ★[T1034] 끔 판 · 가상 차단 판(포트를 따로)
+const _OFF34 = process.env.T1034_CARAVAN_KEEP === '0', BLOCK0 = process.argv.includes('--block') || process.argv.includes('--isolate');   // ★[T1034] 끔 판 · 가상 차단 판(포트를 따로)
 const _PO = (_OFF ? 50 : 0) + (_OFF23 ? 25 : 0) + (_OFF25 ? 12 : 0) + (process.argv.includes('--term') ? 4 : 0) + (_OFF34 ? 2 : 0) + (BLOCK0 ? 1 : 0);   // 창 · 손잡이 · 신호마다 다른 포트 — 같이 돌릴 수 있게
 const CPORT = 3110 + _WI * 100 + _PO, HPORT = 3120 + _WI * 100 + _PO;   // 창 · 손잡이마다 다른 포트 — 여덟을 같이 돌릴 수 있게
 const N = +(process.argv[3] || 3);
@@ -46,12 +46,12 @@ const CLOSE = process.argv.includes('close');
 const NOW = process.argv.includes('--now');
 const RAW = process.argv.includes('--raw');   // 사냥 창 — 도살 없이(사체만 남은 채) 죽인다
 const ROT = process.argv.includes('--rot');   // ★[T1025] 사냥 창 — 도살 없이 사체가 썩은 뒤 죽인다
-const BLOCK = process.argv.includes('--block');   // ★[T1034] 캐러밴 창 — 재는 판에만 가상 차단 1회(정본 시험 훅)
+const BLOCK = process.argv.includes('--block') ? '1' : (process.argv.includes('--isolate') ? '2' : '');   // ★[T1034] 캐러밴 창 — 재는 판에만 정본 시험 훅 1회(1 = 가상 차단 → 재경로 · 2 = 강제 고립 → 화물 보존 귀환)
 let MEASURE = false;   // ★[T1034] 지금 띄우는 존이 재는 판인가(--block 훅은 그 판에만 · 다시 뜬 판엔 안 건다)
 if (!['meal', 'fish', 'hunt', 'house', 'trade', 'phouse', 'ev', 'caravan'].includes(WIN)) { console.error('창: meal | fish | hunt | house | trade | phouse | ev | caravan'); process.exit(2); }
 const SIG = process.argv.includes('--term') ? 'SIGTERM' : 'SIGKILL';   // ★[T1023] 죽이는 신호(SIGTERM = 종료 저장 문 · T728)
 const RESTARTS = Math.max(1, +((process.argv.find((x) => x.startsWith('--restarts=')) || '=1').split('=')[1]) || 1);   // ★[T1023] 한 판 안 다시 뜨기 횟수(행동 한 번 뒤 같은 신호로 거듭)
-const DDIR = `/tmp/t1005-probe-${WIN}-${_OFF ? 'off' : 'on'}${_OFF34 ? '-c0' : ''}${BLOCK ? '-block' : ''}${_OFF23 ? '-t1023off' : ''}${_OFF25 ? '-e0' : ''}${process.argv.includes('close') ? '-close' : ''}${SIG === 'SIGTERM' ? '-term' : ''}${RAW ? '-raw' : ''}${ROT ? '-rot' : ''}`;
+const DDIR = `/tmp/t1005-probe-${WIN}-${_OFF ? 'off' : 'on'}${_OFF34 ? '-c0' : ''}${BLOCK ? '-block' + BLOCK : ''}${_OFF23 ? '-t1023off' : ''}${_OFF25 ? '-e0' : ''}${process.argv.includes('close') ? '-close' : ''}${SIG === 'SIGTERM' ? '-term' : ''}${RAW ? '-raw' : ''}${ROT ? '-rot' : ''}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let C = null, Z = null, nLog = 0, SQ = null;
 function boot(file, env, tag) {
@@ -64,7 +64,7 @@ const WRAP = `${DDIR}/zone-wrap.js`;
 const VID = 1;
 const ZENV = () => ({ PORT: String(HPORT), ZONE_ID: 'hanbando', DB_PATH: `${DDIR}/w-han.db`, E2E_GIVE: '1', CENTRAL_URL: `http://localhost:${CPORT}`,
   ENABLE_VILLAGES: '1', VILLAGE_MAX: WIN === 'caravan' ? (process.env.T1034_PROBE_VMAX || '6') : '2', ENABLE_BANDITS: '0', ENABLE_WILDLIFE: WIN === 'hunt' ? '1' : '0',   // ★[T1034] 캐러밴 창은 마을 여섯(교역 쌍이 서게)
-  ...(WIN === 'caravan' && BLOCK && MEASURE ? { VILLAGE_CARAVAN_BLOCKTEST: '1' } : {}),   // T917 · T983 탐침과 같은 손잡이(사냥 창만 야생 켬)
+  ...(WIN === 'caravan' && BLOCK && MEASURE ? { VILLAGE_CARAVAN_BLOCKTEST: BLOCK } : {}),   // T917 · T983 탐침과 같은 손잡이(사냥 창만 야생 켬)
   ...(WIN === 'meal' ? { DOWN_RESCUE_WINDOW_MS: '3000' } : {}),   // 구조 창 시간만 줄인다(test-downed 와 같은 값 · 사슬은 그대로)
   PROBE_DIR: DDIR, PROBE_VID: String(VID),
   WRAP_ZONE_PATCH: SQ ? JSON.stringify({ mainSquare: { x: SQ.x, y: SQ.y, name: '탐침 광장' } }) : '{}' });
@@ -263,14 +263,15 @@ async function trip() {
   if ((WIN === 'meal' || WIN === 'house') && !NOW && !CLOSE) await sleep(SAVE_WAIT);   // 사람 쪽이 한 번 저장된 뒤(운영 하루 24분이면 거의 언제나 그렇다)
   const invLive = rowInv(await rowOf(pid)); const rowLive = await rowOf(pid);
   let P = null; try { P = (await jget(`http://localhost:${HPORT}/perf`)).econTick; } catch (e) {}
-  const memK = await look({ timing: true, car: WIN === 'caravan' });   // ★[T1034] 캐러밴 창은 장부 · 몸도
+  let memK = await look({ timing: true, car: WIN === 'caravan' });   // ★[T1034] 캐러밴 창은 장부 · 몸도
   const gap = memK && h0 != null ? gapOf(memK.tm, pid, h0) : null;
   if (CLOSE) {   // 날이 바뀐 뒤(`/health` = 창 머리) · ★T731 현지 자정 창 — 마을마다 제 자정에 닫힌다(동 → 서 · 수십 초 퍼짐) ⇒ 창 꼬리(econ 날 줄)가 찍힐 때까지 · 마감 저장 줄이 다 돌 몫
     const zlog = `${DDIR}/zone-${nLog}.log`, nDay = () => { try { return (fs.readFileSync(zlog, 'utf8').match(/마을 econ day \d+:/g) || []).length; } catch (e) { return 0; } };
     const n0 = nDay();
     for (let i = 0; i < 900 && (await dayNow()) === dayT; i++) await sleep(2000);
     for (let i = 0; i < 300 && nDay() === n0; i++) await sleep(2000);
-    await sleep(8000);
+    await sleep(+(process.env.T1034_PROBE_AFTER || 8) * 1000);   // ★[T1034] 마감 꼬리 뒤 몇 초에 죽이나(캐러밴 머묾 창 = 1게임시간 · 운영 하루 60초)
+    if (WIN === 'caravan') memK = await look({ timing: true, car: true });   // ★[T1034] 죽기 직전(마감 뒤) 장부 · 몸
   }
   const dayK = await dayNow();
   await downP(Z, SIG); Z = null; await close(a);
@@ -390,7 +391,9 @@ setInterval(()=>{ const a=D+'/ask'; if(!fs.existsSync(a)) return; let q={}; try{
   if (WIN === 'house') { const hx = +(process.env.T1005_PROBE_HX || 20); SQ = { x: (v.cx + hx) * 32 + 16, y: v.cy * 32 + 16 }; }   // 회관 마당(r<HALL_CLEAR) 밖 · 의뢰 사거리(400px) 안 후보가 있게(판마다 세계가 달라 자리가 막히면 `T1005_PROBE_HX` 로 옆 칸)
   if (WIN === 'caravan') {   // ★[T1034] 데우기 — 짧은 하루로 캐러밴이 길에 설 때까지 → SIGTERM(종료 저장 · 메타 행) → 운영 하루로 다시(재는 판)
     await downP(Z, 'SIGTERM'); Z = null; WARM = true; await upZ(); const tw = Date.now(); let L = null;
-    for (let i = 0; i < 300; i++) { await sleep(2000); L = await look({ car: true }); if (L && L.car && L.car.cars.filter((c) => c.st === 'outbound' || c.st === 'inbound').length >= 2) break; }
+    const _arr = process.env.T1034_PROBE_ARRIVE === '1';   // 다음 마감에 도착하는 가는 캐러밴이 설 때까지(마감 낀 판 · 머묾 창을 잰다)
+    for (let i = 0; i < 600; i++) { await sleep(_arr ? 500 : 2000); L = await look({ car: true }); if (!L || !L.car) continue;
+      if (_arr ? L.car.cars.some((c) => c.st === 'outbound' && c.arr === L.car.day + 1) : L.car.cars.filter((c) => c.st === 'outbound' || c.st === 'inbound').length >= 2) break; }
     console.log(`[T1034 탐침] 캐러밴 데우기 ${Math.round((Date.now() - tw) / 1000)}초 · 길 위 ${L && L.car ? L.car.cars.length : 0}대 · 날 ${L && L.car ? L.car.day : '—'}`);
     WARM = false;
   }
