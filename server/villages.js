@@ -3698,8 +3698,9 @@ function _t1034Pack() {
     b[String(id)] = { ph: body.phase, dd: body.delayedDays | 0, seen: body._evSeenDelay | 0, rf: body.repairFailN | 0, lg: Number.isFinite(body.lingerUntil) ? body.lingerUntil : null,
       da: body.departAt, aa: body.arriveAt, ppd: body.pxPerDay, nom: body.nomPxMs,
       T: T ? { L: T.L, len: T.path.len, D0: T.D0, leg: T.leg, ppd: T.ppd, st: !!T.stall, day: T.day, t0: T.t0 == null ? null : T.t0,
-        //   돌아가는 구간은 길 점도 싣는다 — 고립 귀환(걸어온 역경로)과 도착 경계 귀환 길(`_t661ReturnPts`)은 T775 가 다시 파는 길(도착 마을 → 집)과 다르다
-        ...(T.leg === 'inbound' && T.path.pts ? { P: T.path.pts.map((q) => [q.x, q.y]) } : {}) } : null };
+        //   길 점도 싣는다 — 다시 뜬 판이 길을 다시 파면 다른 길이 나온다(답압 · 길 무게가 그새 바뀌었다 — 가는 길 57,484 → 57,409px · 몸 최대 370px 튐 · 보고/T1034 §1),
+        //   고립 귀환(걸어온 역경로)과 도착 경계 귀환 길(`_t661ReturnPts`)은 T775 가 파는 길(도착 마을 → 집)과 아예 다르다. 몸은 걷던 그 길에 다시 선다.
+        ...(T.path.pts ? { P: T.path.pts.map((q) => [q.x, q.y]) } : {}) } : null };
   }
   if (state._t1034Saved) for (const [k, v] of state._t1034Saved) if (!(k in b)) { b[k] = v; _t1034Stat.held++; }
   if (!Object.keys(b).length) return null;
@@ -3713,11 +3714,12 @@ function _t1034Apply(body, now) {
   state._t1034Saved.delete(k);
   body.delayedDays = S.dd | 0; body._evSeenDelay = S.seen | 0; body.repairFailN = S.rf | 0;
   const spawnPh = body.phase;   // T775 가 세운 단계(가는 길 · 귀환 · T707 장 마당 머묾)
-  //   돌아가는 구간 — 실은 길 점으로 장부 길을 다시 건다(같은 길 · 같은 자리). 가는 몸으로 섰는데(T775) 실은 칸이 귀환이면 단계가 안 맞다 — 덮지 않는다
-  if (T661_ON && S.T && S.T.leg === 'inbound' && Array.isArray(S.T.P) && S.T.P.length >= 2 && (spawnPh === 'inbound' || spawnPh === 'linger')) {
+  //   실은 길 점으로 장부 길을 다시 건다(같은 길 · 같은 자리). 구간이 안 맞으면(가는 몸으로 섰는데 실은 칸이 귀환 · 그 반대) 덮지 않는다
+  const legOk = S.T && (S.T.leg === 'outbound' ? spawnPh === 'outbound' : (spawnPh === 'inbound' || spawnPh === 'linger'));
+  if (T661_ON && legOk && Array.isArray(S.T.P) && S.T.P.length >= 2) {
     const pts = S.T.P.map((a) => ({ x: a[0], y: a[1] }));
-    body._t661 = { path: _t661Path(pts), L: 0, D0: S.T.D0, leg: 'inbound', ppd: S.T.ppd, stall: false, day: S.T.day };
-    if (S.ph === 'inbound') setBodyPts(body, body._t661.path.pts);   // 걷는 몸 = 그 길(머묾 몸은 귀환 출발이 `startReturnLeg` 에서 건다 · 종전 그대로)
+    body._t661 = { path: _t661Path(pts), L: 0, D0: S.T.D0, leg: S.T.leg, ppd: S.T.ppd, stall: false, day: S.T.day };
+    if (S.ph === 'outbound' || S.ph === 'inbound') setBodyPts(body, body._t661.path.pts);   // 걷는 몸 = 그 길(머묾 몸은 귀환 출발이 `startReturnLeg` 에서 건다 · 종전 그대로)
   }
   const T = body._t661;
   if (!T || !S.T || S.T.leg !== T.leg || !(Math.abs(S.T.len - T.path.len) < 1)) { _t1034Stat.miss++; return; }
