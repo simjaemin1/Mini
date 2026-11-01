@@ -19,7 +19,7 @@ Module._load = function (request) {
     //   ★[T665] 200ms 타이머로 보면 **조각 0 팔(base · base2)이 하루씩 넘쳤다** — 조각 0 은 마감을 한 프레임에 다 하고, 그 마감이 하루(5초)보다 길면
     //   바로 다음 프레임이 그다음 날을 연다(타이머가 끼기 전). ⇒ 존이 매 프레임 부르는 `onGameTick` 을 감싸 **부르기 직전**에 본다:
     //   econ 날이 목표에 닿았으면 얼린다 — 얼림 검사는 그 함수 안에서 마감 조각이 다 빠진 뒤·새 날을 열기 전에 있으니 목표 + 1 일은 열릴 수 없다.
-    let d0 = null, done = false, st = null;
+    let d0 = null, done = false, st = null, doneAll = false;   // ★[T1033] doneAll — '마감 · 저장 끝' 한 번
     const _tick = m.onGameTick;
     m.onGameTick = function (now) {
       if (!done) {
@@ -30,7 +30,17 @@ Module._load = function (request) {
           if (st.world.day >= target && !st.dayFreeze) { m.__e2eDayFreeze(true); done = true; console.log(`[slicer-day-stop] 날 얼림 — world.day ${st.world.day} · 목표 ${target}`); }
         }
       }
-      return _tick.apply(this, arguments);
+      const r = _tick.apply(this, arguments);
+      //   ★★[T1033 2026-11-01] **그날이 다 적혔다**는 존의 제 말 — 얼린 뒤 열린 창이 닫혔고(`_t731` 없음 · 얼림은 남은 마을을 몰아 닫는다) · 마감 일이 없고(`tickJobs`) ·
+      //     저장 줄이 비었다(`saveQueue` — 마감 꼬리의 'save' 가 채운 마을 행을 틱마다 하나씩 다 썼다). 한 번만 찍는다(읽기만 · 값 무변).
+      //   왜: 하네스는 "마을 행이 다 목표 날"을 다 적힌 증인으로 썼다. 그런데 행의 날 칸은 **쓰는 순간의 world.day** 라, 앞날 마감의 저장 줄이 도는 도중
+      //     날이 넘어가면 앞날 값이 목표 날 글자로 먼저 적히고(앞 줄) 목표 날 마감이 같은 행을 다시 쓴다(뒤 줄 · 탐침 T1033 §2 — 마을 51 중 50 이 두 번 ·
+      //     값이 바뀐 마을 셋 중 하나가 식량 +27.55). 하네스가 앞 줄과 뒤 줄 사이에 끄면(0.5초 폴링 · 벽시계) 그 마을만 앞 줄 값이 남아 팔 하나가 식량 ~28 벗어난다.
+      if (done && !doneAll && st && st.dayFreeze && !st._t731 && !st.tickJobs && !(st.saveQueue && st.saveQueue.length)) {
+        doneAll = true;
+        console.log(`[slicer-day-stop] 마감 · 저장 끝 — world.day ${st.world.day} · 창 없음 · 마감 일 없음 · 저장 줄 0`);
+      }
+      return r;
     };
   }
   return m;

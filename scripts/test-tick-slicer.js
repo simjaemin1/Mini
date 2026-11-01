@@ -47,7 +47,8 @@ function boot(file, env) {
   const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], {
     cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'],
   });
-  p.stdout.on('data', () => {}); p.stderr.on('data', () => {});
+  p._doneAll = null;   // ★[T1033] 존이 제 입으로 찍는 '마감 · 저장 끝' 줄(`slicer-day-stop.js`) — 그 줄을 받은 시각
+  p.stdout.on('data', (b) => { if (p._doneAll == null && /\[slicer-day-stop\] 마감 · 저장 끝/.test(String(b))) p._doneAll = Date.now(); }); p.stderr.on('data', () => {});
   procs.push(p); return p;
 }
 function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
@@ -109,6 +110,13 @@ async function arm(label, sliceMs, extraEnv) {
   //   ⚠계측(`j`)은 **위에서 이미 떴다** — 이 대기 구간은 판정 창 밖이다.
   //   ★[T665] 날이 얼었으니(`slicer-day-stop.js`) 마을 행이 **다 같은 날**로 저장될 때까지 기다렸다 끈다(종전: 하루 둘을 더 흘리고 끝 —
   //     끄는 순간 팔마다 저장된 날이 갈려 같은 날 마을이 0~4곳만 남는 판이 있었다). 상한은 종전 대기의 다섯 배(배수가 못 끝나면 그대로 끄고 전제가 말한다).
+  //   ★★[T1033 2026-11-01] **다 적혔다의 증인 = 존의 제 말**('마감 · 저장 끝' — `slicer-day-stop.js` 가 존 안에서 본다: 얼림 · 창 없음 · 마감 일 없음 · 저장 줄 0).
+  //     종전 증인("마을 행이 다 목표 날")은 앞날 저장 줄이 날이 넘어간 뒤 목표 날 글자로 먼저 적히는 판에서 **뒤 줄이 도는 도중**에 섰다 —
+  //     그때 끄면(0.5초 폴링의 벽시계) 그 줄에서 값이 바뀐 마을만 앞 줄 값이 남아 팔 하나가 식량 ~28 벗어났다(⑧ 빨강 · 보고 T1033 §2).
+  //     아래 행 날 기다림은 그대로 둔다(같은 상한 · 그 줄이 섰으면 곧바로 선다). 상한 = 종전 대기의 다섯 배(같은 수 · 그물) — 걸리면 ⑧ [전제] 가 이름을 댄다.
+  { const _u0 = Date.now(), _ucap = (DAY_MS * 2 + 1000) * 5;
+    while (_zone._doneAll == null && Date.now() - _u0 < _ucap && _zone.exitCode === null) await sleep(100);
+    if (j) j._t1033 = _zone._doneAll != null ? { ok: true, ms: _zone._doneAll - _u0 } : { ok: false, ms: Date.now() - _u0 }; }
   { const { DatabaseSync } = require('node:sqlite');
     const until = Date.now() + (DAY_MS * 2 + 1000) * 5;
     let last = null;
@@ -330,6 +338,11 @@ async function arm(label, sliceMs, extraEnv) {
     //   팔 머리에서 깐 **씨앗 사본**이라 A/A · 바닥 쌍이 '같은 날 마을 0곳'으로 빨개지고 ⑧ 의 판정으로 오독된다(부팅 · 포트가 ⑧ 로 보인다).
     ok(!!(C2 && C2.econTick && C2.econTick.last && C2.econTick.days >= DAYS), '⑧ [전제] A/A 팔(aa)이 부팅 · 수확됐다(아니면 아래 A/A · 바닥 쌍은 씨앗 사본을 잰다)',
       C2 && C2.econTick && C2.econTick.last ? `${C2.econTick.last.day}일 · ${C2.econTick.days}일 마감` : '없음');
+    // ★★[T1033] 여섯 팔 모두 존이 '마감 · 저장 끝'을 말한 뒤 껐다 — 아니면 같은 날 행에 앞 줄(앞날 마감의 저장) 값이 남을 수 있다(그 마을만 팔마다 갈린다 · 보고 T1033 §2)
+    { const AR = [['base', A], ['head', B], ['base2', A2], ['aa', C2], ['day0', D2], ['life0', L2]];
+      const bad = AR.filter(([, x]) => !(x && x._t1033 && x._t1033.ok)).map(([n, x]) => `${n}${x && x._t1033 ? ' ' + x._t1033.ms + 'ms' : ''}`);
+      ok(bad.length === 0, '⑧ [전제] 여섯 팔 모두 존이 \'마감 · 저장 끝\'을 말한 뒤 껐다(서버 권위 — 아니면 같은 날 행에 앞 줄 값이 남는다)',
+        bad.length ? `못 들은 팔 ${bad.join(' · ')}` : AR.map(([n, x]) => `${n} ${x._t1033.ms}ms`).join(' · ')); }
     ok(a.day === b.day, '⑧ [전제] 두 팔이 **같은 날**까지 돌았다', `대조군 day ${a.day} · 조각내기 day ${b.day}`);
     const AA = cnt('/tmp/slicer-head-z.db', '/tmp/slicer-aa-z.db');    // 같은 설정 두 판 = 원래 있던 발산
     const AB = cnt('/tmp/slicer-base-z.db', '/tmp/slicer-head-z.db');  // 끈 뽑음 ↔ 조각내기
