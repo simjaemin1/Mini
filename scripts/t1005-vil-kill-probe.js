@@ -221,9 +221,11 @@ async function actCaravan(a) {   // ★[T1034] 행동 없음 — 몸이 선 길 
   let m0 = null;
   for (let i = 0; i < 120; i++) { m0 = await look({ car: true }); if (m0 && m0.car && m0.car.cars.some((c) => c.body)) break; await sleep(1000); }
   await sleep(W);
+  //   --isolate = 고립 훅(가는 길 25% 넘은 첫 몸)이 실제로 걸릴 때까지(10분 안) · 그 뒤 3초(켬 = 틱 끝 메타 행 · 끔 = 같은 벽시계) — 안 걸린 판은 고립 창을 못 잰다
+  if (BLOCK === '2') { for (let i = 0; i < 600; i++) { const L = await look({ car: true }); if (L && L.car && L.car.cars.some((c) => c.st === 'inbound' && c.ab && c.body)) break; await sleep(1000); } await sleep(3000); }
   const m1 = await look({ car: true });
   const n = m1 && m1.car ? m1.car.cars.filter((c) => c.body).length : 0;
-  return { ok: n > 0, m0, m1, act: { bodies: n, cars: m1 && m1.car ? m1.car.cars.length : 0, waitSec: Math.round((Date.now() - t0) / 1000) } };
+  return { ok: n > 0, m0, m1, act: { iso: m1 && m1.car ? m1.car.cars.filter((c) => c.st === 'inbound' && c.ab).map((c) => c.id) : null, bodies: n, cars: m1 && m1.car ? m1.car.cars.length : 0, waitSec: Math.round((Date.now() - t0) / 1000) } };
 }
 async function actTrade(a) {   // T983 문(거래소) — 회부 2 창(곳간 행 → 사람 저장) 재기용 · 행동은 T983 탐침 그대로
   const m0 = await look({});
