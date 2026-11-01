@@ -28,6 +28,7 @@ function run(tag, skip) {
   for (const k of ['LDCTL_SKIP', 'LDCTL_OUT', 'T17_JSON', 'T176_JSON', 'LAB_SEEDCACHE', 'NODE_OPTIONS', 'T875_OUT']) delete env[k];
   Object.assign(env, { T17_JSON: path.join(TMP, `${tag}.json`), LAB_SEEDCACHE: path.join(TMP, `${tag}.seedcache.json`), NODE_OPTIONS: `--require ${path.join(__dirname, 'lab-diverge-ctl.js')}` });
   if (skip != null) env.LDCTL_SKIP = skip;
+  if (env.T1047_LAB_DIST == null) env.T1047_LAB_DIST = '0';   // ★[PM land1036] T1047 랩 지형 거리 켬 판에선 시드 1020 30 · 60날 모두 비킨 판 하나가 끔 판과 바이트 같다(그 사냥 몫이 세계로 안 번짐) — 이 하네스는 자(문 · 사건 고르기)를 쥐므로 종전 직선 세계로 묶는다 · 켬 세계의 자는 T1058
   execFileSync(process.execPath, [path.join(__dirname, 't17-metrics.js'), DAYS, SEED], { cwd: ROOT, env, stdio: 'ignore', timeout: 600000 });
   const J = fs.readFileSync(path.join(TMP, `${tag}.json`));
   const lf = path.join(TMP, `${tag}.ldctl.json`);
