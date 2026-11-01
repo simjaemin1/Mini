@@ -33,7 +33,7 @@ ok(V.includes("    if (r === true && T1034_KEEP && state._t1034Saved) _t1034Appl
 ok(['ret', 'iso', 'rf', 'push'].every((w) => V.includes(`_t1034Mark('${w}')`)) && (V.match(/_t1034Mark\('ret'\)/g) || []).length === 2, '표 자리 다섯 — 귀환 출발 둘(장부 켬 · 끔 갈래) · 고립 · 재경로 실패 · 지연');
 ok(/\.\.\.\(T1034_KEEP \? \(\(\) => \{ const P = _t1034Pack\(\); return P \? \{ t1034: P \} : \{\}; \}\)\(\) : \{\}\)/.test(V), '메타 행 칸 — 몸이 없으면 칸이 안 선다 · 끔 = 칸 없음');
 ok((Z.match(/SimVillages\.t1034Flush\(\)/g) || []).length === 2, '틱 꼬리 두 자리(잠든 틱 · 도는 틱) — T1005 줄 옆');
-ok(V.includes("if (state.saveQueue && state.saveQueue.length) { _t1034Stat.waitQ++; return 0; }"), '틱 끝 저장 = 마을 행이 다 적힌 뒤만(메타 날 ≠ 마을 행 날 금지 — T728 같은 날 규약)');
+ok(V.includes("if (state.saveQueue && state.saveQueue.length) { _t1034Stat.waitQ++; return 0; }") && V.includes("if (state._t731) { _t1034Stat.waitW++; return 0; }"), '틱 끝 저장 = 마을 행이 다 적힌 뒤만(저장 큐 · 현지 자정 창 — 메타 날 ≠ 마을 행 날 금지 · T728 같은 날 규약)');
 ok(V.includes("if (M.anchor && M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch) { state._t1034Saved"), '몸 칸 쥐기 = 시계(하루 길이 · epoch)가 같을 때만(벽시계 값의 뜻이 같다)');
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 't1034-'));

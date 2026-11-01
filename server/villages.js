@@ -3666,7 +3666,7 @@ function _t775Put(body, p, path, at) {
 //     부팅 = 같은 날 메타일 때만(T728 캐러밴 규약 그대로) 칸을 쥐고, T775 가 몸을 세운 바로 뒤 그 몸에 덮는다(`_t1034Apply` — 같은 길일 때만).
 //   끔 = 표도 칸도 없다(종전 바이트). 몸 없는 판(서버 기준선 · `VILLAGE_CARAVAN_MAX=0`)에선 칸이 안 선다.
 const T1034_KEEP = process.env.T1034_CARAVAN_KEEP !== '0';
-const _t1034Stat = { mark: 0, flush: 0, skipClose: 0, waitQ: 0, clock: 0, packed: 0, held: 0, applied: 0, miss: 0, err: 0, ms: 0, maxMs: 0, by: {} };
+const _t1034Stat = { mark: 0, flush: 0, skipClose: 0, waitQ: 0, waitW: 0, clock: 0, packed: 0, held: 0, applied: 0, miss: 0, err: 0, ms: 0, maxMs: 0, by: {} };
 let _t1034Dirty = false;
 function _t1034Mark(why) {
   if (!T1034_KEEP) return;
@@ -3679,6 +3679,8 @@ function t1034Flush() {
   //   마감 뒤 마을 행이 아직 덜 적혔다(저장 큐) — 지금 메타 행을 쓰면 메타 날(N+1) ≠ 마을 행 날(N) 이 되어 부팅이 캐러밴 되돌림을 통째로 건너뛴다(T728 같은 날 규약).
   //   큐가 비는 틱에 T728 이 같은 줄(곁 칸 포함)을 쓴다 — 표는 거기서 지운다(`_t728SaveMeta`).
   if (state.saveQueue && state.saveQueue.length) { _t1034Stat.waitQ++; return 0; }
+  //   현지 자정 창(T731 · 동 → 서로 마을마다 정산)이 열려 있다 — econ 날은 이미 N+1 인데 아직 안 넘은 마을 행은 N 이다(같은 뜻 · 창이 닫히고 저장 큐가 빈 틱에 T728 이 쓴다)
+  if (state._t731) { _t1034Stat.waitW++; return 0; }
   if (!state.ready || !state.db || !state.db.upsertWorldMeta || !state.world) return 0;
   _t1034Dirty = false;
   const t0 = process.hrtime.bigint();

@@ -40,7 +40,7 @@ const _OFF = process.env.T1005_VIL_SAVE === '0', _OFF23 = process.env.T1023_PSIT
 const _OFF25 = process.env.T1025_EV_CORPSE === '0';   // ★[T1025] 끔 판 — 포트 · 자리를 따로
 const _SLOT = Math.max(0, Math.min(3, +process.env.T1034_PROBE_SLOT || 0));   // ★[T1034] 같은 창 · 같은 손잡이 판을 나란히(마감 낀 판 둘 — 포트 · 자리를 따로)
 const _OFF34 = process.env.T1034_CARAVAN_KEEP === '0', BLOCK0 = process.argv.includes('--block') || process.argv.includes('--isolate');   // ★[T1034] 끔 판 · 가상 차단 판(포트를 따로)
-const _PO = (_OFF ? 50 : 0) + (_OFF23 ? 25 : 0) + (_OFF25 ? 12 : 0) + (process.argv.includes('--term') ? 4 : 0) + (_OFF34 ? 2 : 0) + (BLOCK0 ? 1 : 0) + _SLOT * 8;   // 창 · 손잡이 · 신호마다 다른 포트 — 같이 돌릴 수 있게
+const _PO = (_OFF ? 50 : 0) + (_OFF23 ? 25 : 0) + (_OFF25 ? 12 : 0) + (process.argv.includes('--term') ? 4 : 0) + (_OFF34 ? 2 : 0) + (BLOCK0 ? 1 : 0) + _SLOT * 30;   // ★[T1034] 슬롯 30 칸 — 존 포트 = 중앙 + 10 이라 오프셋 차가 10 이면 부딪친다(0..3 · 30..33)   // 창 · 손잡이 · 신호마다 다른 포트 — 같이 돌릴 수 있게
 const CPORT = 3110 + _WI * 100 + _PO, HPORT = 3120 + _WI * 100 + _PO;   // 창 · 손잡이마다 다른 포트 — 여덟을 같이 돌릴 수 있게
 const N = +(process.argv[3] || 3);
 const CLOSE = process.argv.includes('close');
