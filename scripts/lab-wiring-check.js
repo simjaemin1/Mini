@@ -1006,5 +1006,31 @@ console.log('\n[M] 랩 밭 겨울 휴면 — 서버 T99 ②③ 술어를 번들�
   }
 }
 
+// ── N: 집 크루 하루 — 정본 하나(T1050) ────────────────────────────────────────────
+//   ★[T1050 2026-11-01 · ★재민 11-01 "서버 집 규칙이 정본"] 집 크루 하루(곳간 → 손 → 왕복 → 집터 · 단계)는 econ `houseCrewDay` 한 벌이다.
+//   서버 `_t400BuildDay` 는 그것을 부르기만 하고(몸통 사본 0), 랩 자 둘(t17 · t176)은 몸 없는 마을을 `labHouseAttach` 로 붙여 econ 이 같은 함수를 부른다.
+console.log('\n[N] 집 크루 하루 — 정본 하나(T1050)');
+{
+  const ESRC = rd('sim/economy-sim.js'), V2SRC = rd('sim/economy-sim-v2.js');
+  const fnB = (src, name) => { const i = src.indexOf('function ' + name + '('); if (i < 0) return null; let d = 0; for (let j = src.indexOf('{', i); j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}') { d--; if (!d) return src.slice(i, j + 1); } } return null; };
+  const core = fnB(ESRC, 'houseCrewDay'), bd = fnB(LIVE, '_t400BuildDay');
+  const LOOP = /module\.exports\.actFromGranary\(v, k, want\)/;
+  if (core && LOOP.test(core)) ok('ⓐ econ `houseCrewDay` 가 곳간 출구를 내보낸 칸으로 부른다(관찰기가 감싸는 그 칸)'); else bad('ⓐ econ `houseCrewDay` 몸통을 못 찾았다');
+  const calls = (bd || '').match(/E\.houseCrewDay\(/g) || [];
+  if (bd && calls.length === 1 && !/actFromGranary/.test(bd)) ok('ⓑ 서버 `_t400BuildDay` 는 `E.houseCrewDay` 를 한 번 부르기만 한다(곳간 출구 · 단계 셈 사본 0)');
+  else bad(`ⓑ 서버 \`_t400BuildDay\` 에 크루 몸통 사본(부름 ${calls.length} · 곳간 출구 ${/actFromGranary/.test(bd || '') ? '있음' : '없음'})`);
+  const tail = (V2SRC.match(/labHouseWorldDay\(world\)/g) || []).length;
+  if (tail === 1) ok('ⓒ 하루 끝(`tickWorldV2Parts.tail`) 한 자리가 붙인 마을의 집 하루를 부른다'); else bad(`ⓒ v2 꼬리 부름 ${tail}`);
+  for (const f of ['scripts/t17-metrics.js', 'scripts/t176-ab.js']) {
+    const S = rd(f);
+    if (/econ\.labHouseAttach\(ev, s\.layout\.houses\.length, \{ crew: P\._t400Probe\.LIFE_CREW, pday: P\._t400Probe\.LIFE_STAGE_PDAY \}\)/.test(S)) ok(`ⓓ ${f} — 시딩 집 칸 · 서버 크루 두 수로 붙인다(사본 0)`);
+    else bad(`ⓓ ${f} — \`labHouseAttach\` 문이 없다(랩 자가 종전 셈 주거로 돈다)`);
+  }
+  // 자명 통과 금지 — 서버 쪽에 몸통 사본을 되살린 글은 ⓑ 가 문다
+  const mut = bd ? bd.replace('E.houseCrewDay(', 'E.actFromGranary(vil.econ, k, want); E.houseCrewDay(') : '';
+  const bite = !!mut && /actFromGranary/.test(mut);
+  if (bite) ok('ⓔ [자명 통과 금지] 서버 몸통에 곳간 출구를 되살린 사본은 ⓑ 가 문다'); else bad('ⓔ [자명 통과 금지] 비틀어도 같은 답');
+}
+
 console.log(`\n=== 배선 검사: 실패 ${fail} · 경고 ${warn} ===`);
 process.exit(fail ? 1 : 0);

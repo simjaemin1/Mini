@@ -308,6 +308,10 @@ for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };
   world.villages.push(ev);
+  // ★★[T1050] 서버 집 규칙(크루가 곳간 목재로 짓고 지은 침상이 주거를 묶는다)을 몸 없는 이 자에도 — 시딩 집 칸 = `layout.houses`(서버 `_houseCells` 시딩과 같은 칸).
+  //   붙이는 문 · 하루 · 크루 함수는 econ 정본(`labHouseAttach` · `labHouseWorldDay` · `houseCrewDay`) — 이 자는 칸 수와 서버 크루 두 수만 준다(사본 0). `T1050_LAB_HOUSE=0` = 안 붙인다 = 종전 바이트.
+  if (s.layout && s.layout.houses) econ.labHouseAttach(ev, s.layout.houses.length, { crew: P._t400Probe.LIFE_CREW, pday: P._t400Probe.LIFE_STAGE_PDAY });   // 두 수 = 서버 정본(`villages.js` 그 두 상수)
+  else if (econ.T1050_LAB_HOUSE) console.log(`  ⚠[T1050] 캐시에 layout.houses 가 없다(${s.name}) — 그 마을은 종전 셈 주거로 돈다`);
 }
 world.day = 0;
 
