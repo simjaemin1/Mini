@@ -3697,7 +3697,7 @@ function _t1034Pack() {
     const T = body._t661;
     b[String(id)] = { ph: body.phase, dd: body.delayedDays | 0, seen: body._evSeenDelay | 0, rf: body.repairFailN | 0, lg: Number.isFinite(body.lingerUntil) ? body.lingerUntil : null,
       da: body.departAt, aa: body.arriveAt, ppd: body.pxPerDay, nom: body.nomPxMs, pg: body.prog, at: Date.now(),
-      T: T ? { L: T.L, len: T.path.len, D0: T.D0, leg: T.leg, ppd: T.ppd, st: !!T.stall, day: T.day, t0: T.t0 == null ? null : T.t0,
+      T: T ? { L: T.L, len: T.path.len, D0: T.D0, leg: T.leg, ppd: T.ppd, st: !!T.stall, day: T.day, t0: (T772_ON && T.t0 != null) ? T.t0 : null,   // 귀환 보간 시작(T772 켬 판만 · 끔 = 칸이 늘 null)
         //   길 점도 싣는다 — 다시 뜬 판이 길을 다시 파면 다른 길이 나온다(답압 · 길 무게가 그새 바뀌었다 — 가는 길 57,484 → 57,409px · 몸 최대 370px 튐 · 보고/T1034 §1),
         //   고립 귀환(걸어온 역경로)과 도착 경계 귀환 길(`_t661ReturnPts`)은 T775 가 파는 길(도착 마을 → 집)과 아예 다르다. 몸은 걷던 그 길에 다시 선다.
         ...(T.path.pts ? { P: T.path.pts.map((q) => [q.x, q.y]) } : {}) } : null };
@@ -3724,7 +3724,7 @@ function _t1034Apply(body, now) {
   const T = body._t661;
   if (!T || !S.T || S.T.leg !== T.leg || !(Math.abs(S.T.len - T.path.len) < 1)) { _t1034Stat.miss++; return; }
   T.L = S.T.L; T.D0 = S.T.D0; T.ppd = S.T.ppd; T.stall = !!S.T.st; T.day = S.T.day;
-  if (S.T.t0 != null) T.t0 = S.T.t0;
+  if (T772_ON && S.T.t0 != null) T.t0 = S.T.t0;   // T772 켬 판만(끔 = 보간이 없다)
   if (S.ph === 'linger') { body.phase = 'linger'; body.lingerUntil = S.lg; }
   else if (S.ph === 'inbound' && spawnPh === 'linger') { body.phase = 'inbound'; body.lingerUntil = S.lg; }   // 장 마당 몸으로 섰지만 이미 걷던 몸
   if (Number.isFinite(S.da)) body.departAt = S.da;
@@ -13735,7 +13735,7 @@ function t1034Peek() {
     out.cars.push({ id: c.id, st: c.state, from: c.from && c.from.name, to: c.to && c.to.name, dep: c.departDay, arr: c.arriveDay, ret: c.returnArriveDay,
       res: c.giveRes, amt: c.giveAmt, ab: !!c._abandoned, done: !!c._done, td: c.travelDays,
       body: b ? { phase: b.phase, prog: b.prog, len: b.len, dd: b.delayedDays | 0, seen: b._evSeenDelay | 0, rf: b.repairFailN | 0, linger: b.lingerUntil || null, arriveAt: b.arriveAt,
-        x: pl ? pl.x : null, y: pl ? pl.y : null, T: T ? { L: T.L, len: T.path.len, D0: T.D0, leg: T.leg, ppd: T.ppd, stall: !!T.stall, day: T.day, t0: T.t0 == null ? null : T.t0 } : null } : null });
+        x: pl ? pl.x : null, y: pl ? pl.y : null, T: T ? { L: T.L, len: T.path.len, D0: T.D0, leg: T.leg, ppd: T.ppd, stall: !!T.stall, day: T.day, t0: (T772_ON && T.t0 != null) ? T.t0 : null } : null } : null });   // t0 = T772 켬 판만
   }
   return out;
 }

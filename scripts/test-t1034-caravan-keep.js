@@ -72,7 +72,6 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
     const db = copy('iso-' + tag, S6), port = base + 20 + k * 2, env = Object.assign({ VILLAGE_DAY_MS: '360000' }, off ? { T1034_CARAVAN_KEEP: '0' } : {});
     let z = up(db, port, Object.assign({ VILLAGE_CARAVAN_BLOCKTEST: '2' }, env));
     const K = await until(async () => { const C = await car(port); const c = C && C.t775 && C.t775.done && C.cars.find((x) => x.st === 'inbound' && x.ab && x.body); return c ? { C, c } : null; }, 300000, 250);
-    if (K) ok(!K.C.w731, `[상황] ${tag} — 고립이 하루 중(현지 자정 창 밖)에 섰다`, `창 ${K.C.w731}`);
     //   켬 = 틱 끝 메타 행이 그 귀환을 실을 때까지 · 끔 = 같은 벽시계만큼(5초 — 끔은 마감 전엔 메타 행을 안 쓴다)
     if (K) await until(async () => { const m = metaOf(db); const r = m && (m.caravans || []).find((x) => x.id === K.c.id); return off ? null : (r && r.state === 'inbound' ? 1 : null); }, 5000, 200);
     const K2 = K ? await car(port) : null;
@@ -82,9 +81,12 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
     z = up(db, port + 1, env);
     const A = await until(async () => { const C = await car(port + 1); if (!C || !C.t775 || !C.t775.done) return null; return { C, c: C.cars.find((x) => x.id === K.c.id) || null }; }, 300000, 500);
     try { z.c.kill('SIGKILL'); } catch (e) {} await z.x;
-    return { tag, K: { C: K2, c: k2 }, A };
+    return { tag, K: { C: K2, c: k2, win: !!(K.C.w731 || K2.w731) }, A };   // win = 고립 순간 또는 죽기 직전에 창이 열려 있었다
   };
-  const ion = await iso('on', false, 0), ioff = await iso('off', true, 1);
+  //   고립이 다음 마감의 현지 자정 창 안에 서면(6분 하루 · 창 약 25초) 그 판은 하루 중 창이 아니다(창 끝 T728 이 쓴다) — 같은 사본으로 다시(3번까지 · 시도 수를 적는다)
+  const iso3 = async (tag, off, k) => { let R = null, n = 0; for (n = 1; n <= 3; n++) { R = await iso(tag, off, k); if (!(R.K && R.K.win)) break; console.log(`  · ${tag} — ${n}번째 판 고립이 창 안(다시)`); } R.tries = n; return R; };
+  const ion = await iso3('on', false, 0), ioff = await iso3('off', true, 1);
+  for (const R of [ion, ioff]) ok(!!(R.K && R.K.C) && !R.K.win, `[상황] ${R.tag} — 고립이 하루 중(현지 자정 창 밖)에 섰고 죽을 때까지 창이 안 열렸다`, R.K && R.K.C ? `창 ${R.K.win} · ${R.tries}번째 판` : '—');
   for (const R of [ion, ioff]) ok(!!(R.K && R.K.c && R.A && R.A.c), `[상황] ${R.tag} — 하루 중 고립 귀환이 섰고 · 다시 뜬 판이 그 캐러밴을 세웠다`, R.K && R.K.c ? `#${R.K.c.id} 귀환 날 ${R.K.c.ret} · 날 ${R.K.C.day}` : '고립 못 봄');
   { const k = ion.K && ion.K.c, a = ion.A && ion.A.c;
     ok(!!(k && a) && a.st === 'inbound' && a.ab === true && a.ret === k.ret && a.arr === k.arr, '★★켬 — 다시 뜬 장부가 귀환 그대로(상태 · 귀환 날 · 버림 표)', k && a ? `${k.st}/${k.ret} → ${a.st}/${a.ret}` : '—');
