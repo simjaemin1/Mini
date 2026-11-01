@@ -2495,6 +2495,17 @@ const GHOST_TTL_MS = 1500;      // 이 시간 넘게 갱신 안 된 ghost 제거
 const corpses = new Map();      // cid -> { cid, mobType, x, y, drops, spawnTime, killerPid }
 let nextCorpseId = 1;
 const CORPSE_DECAY_MS = 5 * 60 * 1000;  // 5분 후 부패
+// ★★[T1025 2026-10-31 · T1005 회부 4] 손잡이 `T1025_EV_CORPSE`(켬 기본 · 되돌림 `=0` · 정본 머리말 villages.js `T1025_EV_CORPSE`).
+//   사체는 메모리 전용이다 — 사람이 잡은 들짐승을 잡은 순간 사냥터 장부(`huntKillAt` → T1005 틱 끝 행)에서 빼면 도살 전에 존이 죽을 때 사냥감 한 마리가 사라졌다(보고/T1005 §2 3′).
+//   켬 = 잡은 순간엔 사체에 자리(`huntAt`)만 적고, 장부는 사체가 끝날 때(도살 · 부패) 뺀다 ⇒ 도살 전에 죽으면 사체 · 장부 둘 다 잡기 전 그대로(한 마리 = 한 마리).
+//   끔 = 잡은 순간 뺀다(종전 글자).
+const T1025_EV_CORPSE = process.env.T1025_EV_CORPSE !== '0';
+const _t1025Corpse = { deferred: 0, butchered: 0, rotted: 0 };
+function _t1025CorpseEnd(c, how) {
+  if (!c || !c.huntAt) return;
+  _t1025Corpse[how]++;
+  try { SimVillages.huntKillAt(c.huntAt.x, c.huntAt.y); } catch (e) {}
+}
 
 function spawnCorpse(mob, killerPid) {
   const cid = `c${nextCorpseId++}`;
@@ -2531,6 +2542,7 @@ function butcherCorpse(player, cid) {
   const koName = def?.ko || corpse.mobType;
   sendInventory(player);
   send(player.ws, { type: 'notice', text: `${koName} 도살 +${parts.join(', ')}` });
+  _t1025CorpseEnd(corpse, 'butchered');   // ★[T1025] 켬 — 잡을 때 미룬 사냥터 장부 한 마리(T1005 이 틱 끝 행 · 끔 = `huntAt` 없음 · 무동작)
   savePlayer(player);
   corpses.delete(cid);
   broadcast({ type: 'corpse_removed', cid });
@@ -2548,6 +2560,7 @@ setInterval(() => {
   const now = Date.now();
   for (const [cid, c] of corpses) {
     if (now - c.spawnTime > CORPSE_DECAY_MS) {
+      _t1025CorpseEnd(c, 'rotted');   // ★[T1025] 켬 — 도살 없이 썩어도 그 짐승은 죽었다(장부 한 마리)
       corpses.delete(cid);
       broadcast({ type: 'corpse_removed', cid });
     }
@@ -3384,8 +3397,19 @@ function respawnMobLater(m) {
 //   NPC 죽음 길(`npcStep`)이 사람 공격 · 화살 길의 그 랩 동기 문(`Wildlife.onMobHit` — 존 hp → 랩 hp · 0 이하면 랩 `_extKill`)을 지난다(사본 0).
 //   종전엔 이 길만 그 문을 안 불러 랩 몸이 **같은 틱 뒤쪽의 야생 틱**(`Wildlife.tick` ④ 외부 피해 폴링 보정 — "onMobHit 미경유 경로 방어")에서야 죽었다
 //   (npcStep 은 틱 앞쪽 · 야생 틱은 뒤쪽 — 그 사이 랩 늑대는 hp > 0 으로 산다 · 활성 청크가 없으면 야생 틱이 ④ 앞에서 돌아가 랩이 다시 돌 때까지).
-//   죽음만이다 — 안 죽는 NPC 타격은 종전대로 폴링 보정이 랩 hp 를 맞춘다(사람 공격 길의 놀람 · 반격 돌진을 NPC 에도 줄지는 회부 — 싸움 판이 바뀐다).
+//   죽음만이다 — 안 죽는 NPC 타격은 종전대로 폴링 보정이 랩 hp 를 맞춘다(사람 공격 길의 놀람 · 반격 돌진을 NPC 에도 줄지는 회부 — 싸움 판이 바뀐다) → ★T1009 가 닫았다(아래 `T1009_WILD_DOOR` — 안 죽는 타격도 같은 문).
 const T998_NPC_WILD_SYNC = process.env.T998_NPC_WILD_SYNC !== '0';
+// ★★[T1009 2026-10-31 · T998 회부 1 · 2 · ★PM 결함 "같은 몸 · 같은 규칙"] 손잡이 `T1009_WILD_DOOR`(켬 기본 · 되돌림 `=0` = 종전 글자 그대로) — **야생 그림자를 맞히는 문 하나** `wildHit`:
+//   랩 동기(`Wildlife.onMobHit` — 존 hp → 랩 hp · 놀람 · 반격 돌진 굴림 · 0 이하면 랩 `_extKill`) + 플레이어가 잡았으면 마을 장부에서 한 마리(`SimVillages.huntKillAt` · T146 §0-ⓒ).
+//   부르는 자리 셋: 사람 공격(`tryAttack` — 종전 두 줄을 이 문으로 옮겼다 · 글자 · 차례 그대로 · 손잡이와 무관) · 화살(`stepArrows` — 켬 = 화살로 잡아도 장부 −1 ·
+//   화살은 `tryRangedAttack` 하나가 낸다 = 늘 플레이어 · 끔 = 랩 동기만(종전)) · NPC 타격(`npcStep` — 켬 = 안 죽는 타격도 이 문(놀람 · 반격 굴림) · 죽이는 타격은 T998 손잡이 ·
+//   끔 = 죽일 때만(종전)). NPC 길은 장부를 안 건드린다 — 사냥꾼 장부 몫은 마을 하루 틱의 하루치(villages.js)이고 뷰 사냥은 그 예산의 연출이다(T158 · 종전 그대로).
+const T1009_WILD_DOOR = process.env.T1009_WILD_DOOR !== '0';
+function wildHit(m, dmg, attacker, ledger) {
+  Wildlife.onMobHit(m, dmg, attacker);
+  // ★[T146] 플레이어가 잡았으면 **마을 장부에서도 한 마리 준다**(§0-ⓒ) — 새 수 0(잡은 것이 곧 그 수).
+  if (ledger && m.hp <= 0) { if (T1025_EV_CORPSE) m._t1025Hunt = true; else try { SimVillages.huntKillAt(m.x, m.y); } catch (e) {} }   // ★[T1025 × T1009 · PM land1034] 켬 = 사체가 끝날 때(부르는 자리의 `spawnCorpse` 뒤 `huntAt` · `_t1025CorpseEnd`) — 사람 공격 · 화살 같은 길
+}
 {
   // DB에서 기존 mob 로드 — 없으면 바이옴별 신규 스폰
   const existing = db.getMobs();
@@ -4728,7 +4752,7 @@ function npcStep(npc, dt, now) {
         npc.lastAttackAt = now;
         const dmg = 8;
         setMobHp(target, target.hp - dmg, 'npc');   // ★[T954] 문으로(쓰기 · 저장 표 · 방송 — 종전 세 줄 그 차례)
-        if (T998_NPC_WILD_SYNC && target.isWild && target.hp <= 0) Wildlife.onMobHit(target, dmg, npc);   // ★[T998] 죽인 야생 그림자 — 랩에도 그 자리에서(사람 공격 · 화살 길 그 문 · 그 차례: 랩 → DB → 지움 → 다시 낳기)
+        if (target.isWild && (target.hp <= 0 ? T998_NPC_WILD_SYNC : T1009_WILD_DOOR)) wildHit(target, dmg, npc, false);   // ★[T998] 죽인 그림자 · ★[T1009] 안 죽는 타격도 — 사람 공격 · 화살 길 그 문(놀람 · 반격 굴림 · 장부 0 — 사냥꾼 장부는 하루치) · 끔 = 그 카드 앞 글자
         // 늑대 공격당하면 어그로 — 이미 NPC 향해있을 거. 팩 전파도.
         if (!target.tameOwner) {
           target.aggroTarget = npc.pid;
@@ -6291,6 +6315,13 @@ const wss = new WebSocket.Server({ server });
 let _connSeq = 0;
 // 마감액 — env 로 조절한다(하네스가 짧게 줄여 검사한다).
 const CONN_DEADLINE_MS = parseInt(process.env.CONN_DEADLINE_MS || '30000', 10) || 30000;
+// ★★[T1002 2026-10-30 · 손잡이 `T1002_ERR_QUIET` — 켬 기본(결함 고침) · 되돌림 `=0` = 종전 바이트] **확정 오류를 보낸 접속은 더 답하지 않는다.**
+//   종전: `conn_error` 를 보내고 150ms 뒤 닫는데, 그 사이 닿은 ping 에 조기 핸들러(아래 ②)가 `pong{stage}` 를 답했다 — 클라 pong 갈래는
+//   `connPhase !== 'ready'` 면 `connMark('entering')` 을 부르므로 **확정 오류가 "받았고 처리 중"으로 되돌아갔다**(배너 · 재시도 간격 15초 → 지수 간격).
+//   실측(T1002 · 바쁜 고리 셋 · 코어 둘 · 진단 사본 6판): 5판에서 `error` 10~71ms 뒤 같은 ref 의 pong 이 `entering` 으로 되돌렸다.
+//   야간 10-30 `e2e-conn` ②(문구 = 입장 처리 중 · 59초 · ref c8) · 09-18 ②(24초 · ref c5)가 그 꼴이다(보고/T1002).
+//   켜면 던졌거나 시간 초과로 끊는 접속(`C.failed`)엔 pong 을 안 보낸다 — 새 수 0 · 정상 접속 · 입장 처리 중 pong 은 그대로.
+const T1002_ERR_QUIET = process.env.T1002_ERR_QUIET !== '0';
 // ★반쯤 등록된 몸을 치운다 — 안 치우면 서버에 **아무도 조종하지 않는 유령**이 남고,
 //   그 pid 가 틱에 계속 실려 남들 화면에 서 있는다(인원수·PLAYER_CAP 도 갉아먹는다).
 function _connCleanupHalf(C) {
@@ -6315,7 +6346,10 @@ wss.on('connection', (ws, req) => {
   ws.on('message', (raw) => {
     if (ws.__ready) return;
     let m; try { m = JSON.parse(raw.toString()); } catch (e) { return; }
-    if (m && m.type === 'ping') { try { ws.send(JSON.stringify({ type: 'pong', t: m.t, stage: C.stage, ref: C.ref })); } catch (e) {} }
+    if (m && m.type === 'ping') {
+      if (T1002_ERR_QUIET && C.failed) return;   // ★[T1002] 확정 오류를 보낸 접속 — 단계 pong 이 오류를 "처리 중"으로 되돌리지 않게
+      try { ws.send(JSON.stringify({ type: 'pong', t: m.t, stage: C.stage, ref: C.ref })); } catch (e) {}
+    }
   });
   // ④ **마감액** — try/catch 가 못 잡는 반쪽을 막는다.
   //   던지는 실패는 ③이 잡는다. 그런데 `await` 가 **영영 안 돌아오면** 던지지도 않는다
@@ -6325,6 +6359,7 @@ wss.on('connection', (ws, req) => {
     if (ws.__ready) return;
     console.error(`[${ZONE_ID}] ✗✗ 접속 처리 시간 초과 ref=${C.ref} stage=${C.stage} (${CONN_DEADLINE_MS}ms)`);
     _connCleanupHalf(C);
+    C.failed = true;   // ★[T1002] 이 접속은 끝났다 — 닫히기까지 pong 을 안 보낸다(켬)
     try { ws.send(JSON.stringify({ type: 'conn_error', ref: C.ref, stage: C.stage,
       msg: `입장 처리 시간 초과(${Math.round(CONN_DEADLINE_MS / 1000)}초) — 단계 ${C.stage} 에서 멈췄다` })); } catch (_) {}
     setTimeout(() => { try { ws.close(4002, 'conn_timeout'); } catch (_) {} }, 150);
@@ -6337,6 +6372,7 @@ wss.on('connection', (ws, req) => {
     const msg = String((e && e.message) || e).slice(0, 200);
     console.error(`[${ZONE_ID}] ✗✗ 접속 처리 실패 ref=${C.ref} stage=${C.stage}: ${msg}\n${(e && e.stack) || ''}`);
     _connCleanupHalf(C);
+    C.failed = true;   // ★[T1002] 이 접속은 끝났다 — 닫히기까지 pong 을 안 보낸다(켬)
     try { ws.send(JSON.stringify({ type: 'conn_error', ref: C.ref, stage: C.stage, msg })); } catch (_) {}
     setTimeout(() => { try { ws.close(4001, 'conn_error'); } catch (_) {} }, 150);
   });
@@ -7051,6 +7087,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T870_MT_BAND !== '0' ? { mtBand: true } : {}),   // [T870 · ★T880 켬 기본 — PM 10-23] 클라 산 청크 굽기 예산을 **띠** 단위로(한 판 상한 = 띠 `MT3_BUDGET` 개 · 청크는 여러 판에 걸쳐 완성 · 반쯤 구운 산 0 · 11-r1-mountain) · 되돌림 `T870_MT_BAND=0` 이면 칸이 없다(옛 welcome · 청크 단위)
       ...(process.env.T813_RMB_PRESS !== '0' ? { rmbPress: true } : {}),   // [T813 · ★T819 켬 기본 — PM 10-20] 우클릭 탭 메뉴는 **누른 순간의 화면**으로 짚는다(46-h-verbs) · 되돌림 `T813_RMB_PRESS=0` 이면 칸이 없다(옛 welcome · 뗄 때의 화면)
       ...(process.env.T947_CELL_BOX !== '0' ? { cellBox: true } : {}),   // [T947 · ★T961 켬 기본 — PM 10-27] 클라 물 · 바위 칸 첫 조회 — 정본 술어가 거짓을 낼 칸(물 · 능선 피처 상자 밖)은 정본을 안 부른다(public/cell-env.js · 00-const `isWaterAtAbs` · `isRockAtAbs` · 값 같음 · 첫 그림 다음 1위) · 되돌림 `T947_CELL_BOX=0` 이면 칸이 없다(옛 welcome · 칸마다 정본)
+      ...(process.env.T1020_STOP_MENU !== '0' ? { stopMenu: true } : {}),   // [T1020 · 켬 기본 후보] 맥락 메뉴의 "… 멈추기" 줄은 **누를 때도 멈추기만** 한다(46-h-verbs · 메뉴를 연 뒤 반복이 저절로 멎었으면 새로 시작하지 않는다) · 되돌림 `T1020_STOP_MENU=0` 이면 칸이 없다(옛 토글)
       ...(process.env.T970_CUT_NEAR !== '0' ? { cutNear: true } : {}),   // [T970 · ★T981 켬 기본 — PM 10-28] 클라 산 가르기 붙듦(`_mtCutHold` — 가르기 조각을 만든 띠)을 카메라 둘레(이번 판 산 수집 창의 청크 · 그 청크의 지금 띠)만 남긴다(11-r1-mountain `_mtCutHoldSweep` · 상한 64/48 그대로) · 되돌림 `T970_CUT_NEAR=0` 이면 칸이 없다(옛 welcome · 종전 붙듦)
       ...(process.env.T981_MT_NEAR !== '0' ? { mtNear: true } : {}),   // [T981 · ★T997 켬 기본 — PM 10-29] 클라 산 굽다 만 청크(`_mt3Jobs`)를 이번 판 산 수집 창 것만 남기고 · 가르기 붙듦이 비면 가르기 판 둘(`_mtMaskCv` · `_mtStripCv`)을 만들 때 크기로 되돌린다(11-r1-mountain `_mtNearSweep` · T970 회부 2) · 되돌림 `T981_MT_NEAR=0` 이면 칸이 없다(옛 welcome · 종전 그대로)
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
@@ -12757,8 +12794,9 @@ function __testBind() {
     T975_MOB_DB,   // ★[T975] 같은 하네스가 판을 읽는다(내보내기만)
     T987_MOB_RESPAWN, respawnMobLater,   // ★[T987] 다시 낳기 하네스(`test-mob-respawn` · 내보내기만)
     T998_NPC_WILD_SYNC,   // ★[T998] 랩 동기 하네스(`test-npc-wild-sync` · 내보내기만)
+    T1009_WILD_DOOR,   // ★[T1009] 야생 그림자 문 하네스(`test-wild-door` · 내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
-    spawnCorpse, butcherCorpse, corpses,
+    spawnCorpse, butcherCorpse, corpses, t1025Corpse: _t1025Corpse,   // ★[T1025] 사체 장부 미룸 셈(탐침이 읽는다)
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
     SMELT_BASE_MS, SMELT_MIN_MS, KILN_BURN_MS, KILN_BATCH_MS_PER, _smeltDurationMs, _jobProgress,
     // ── 조업 **페이싱** 실측(2026-08-02f ②) ── 단조까지 이어야 사슬 한 바퀴의 실시간이 나온다
@@ -13181,9 +13219,10 @@ function stepArrows(dt) {
       if (Math.hypot(m.x - a.x, m.y - a.y) < ARROW_HIT_R) {
         setMobHp(m, Math.max(0, m.hp - a.dmg), 'arrow');   // ★[T954] 문으로(하한 0 은 이 자리 식 그대로 · 저장 표는 ★[T967] 켬이면 문이 세운다 · 끔 = 종전처럼 안 세운다)
         // §4-4 wildlife 브리지: 화살 피격 — 랩 hp 동기 + 놀람/반격(사수가 이 존 플레이어면 반격 표적)
-        if (m.isWild) Wildlife.onMobHit(m, a.dmg, players.get(a.ownerPid) || null);
+        if (m.isWild) wildHit(m, a.dmg, players.get(a.ownerPid) || null, T1009_WILD_DOOR);   // ★[T1009] 같은 문 — 켬 = 화살로 잡아도 마을 장부 −1(사람 공격 길 그 줄) · 끔 = 랩 동기만(종전)
         if (m.hp <= 0) {
-          spawnCorpse(m, a.ownerId);
+          const _cpA = spawnCorpse(m, a.ownerId);
+          if (m._t1025Hunt && _cpA) { _cpA.huntAt = { x: m.x, y: m.y }; _t1025Corpse.deferred++; }   // ★[T1025 × T1009 · PM land1034] 화살로 잡은 사체도 끝날 때 장부 한 마리(잡은 순간 −1 과 두 번 0)
           if (T975_MOB_DB && m.dbId) { try { db.deleteMob(m.dbId); } catch (e) {} }   // ★[T975 ①] 화살 죽음도 같은 삭제 문(사람 공격 · NPC 죽음 길 그 글자) · 끔 = 행이 남는다(종전)
           chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid });
           if (T987_MOB_RESPAWN) respawnMobLater(m);   // ★[T987] 화살 죽음도 같은 다시 낳기 문 · 끔 = 다시 낳기 없음(종전)
@@ -13296,11 +13335,7 @@ async function tryAttack(player) {
     }
     setMobHp(bestMob, bestMob.hp - atk, 'player');   // ★[T954] 문으로(쓰기 · 저장 표 · 방송 — 종전 세 줄 그 차례)
     // §4-4 wildlife 브리지: 본체 hp(×10 스케일)→랩 hp 동기 + 피격 반응(놀람 도주/멧돼지·늑대 반격 돌진)
-    if (bestMob.isWild) {
-      Wildlife.onMobHit(bestMob, atk, player);
-      // ★[T146] 플레이어가 잡았으면 **마을 장부에서도 한 마리 준다**(§0-ⓒ) — 새 수 0(잡은 것이 곧 그 수).
-      if (bestMob.hp <= 0) { try { SimVillages.huntKillAt(bestMob.x, bestMob.y); } catch (e) {} }
-    }
+    if (bestMob.isWild) wildHit(bestMob, atk, player, true);   // ★[T1009] 야생 그림자 문 하나(종전 두 줄 — 랩 동기 · 잡았으면 장부 −1 — 그 글자 · 그 차례 · 손잡이와 무관)
     // 늑대는 공격당하면 즉시 어그로 — 단 길든 mob은 어그로 안 가짐. 팩 동료도 같이 어그로.
     if (bestMob.type === 'wolf' && !bestMob.tameOwner) {
       bestMob.aggroTarget = player.pid;
@@ -13313,7 +13348,8 @@ async function tryAttack(player) {
     }
     if (bestMob.hp <= 0) {
       // Phase 5-7: 사체 entity 생성 (즉시 인벤 X. 도살 액션 필요).
-      spawnCorpse(bestMob, player.playerId);
+      const _cp = spawnCorpse(bestMob, player.playerId);
+      if (bestMob._t1025Hunt && _cp) { _cp.huntAt = { x: bestMob.x, y: bestMob.y }; _t1025Corpse.deferred++; }   // ★[T1025] 사냥터 장부 한 마리는 이 사체가 끝날 때
       send(player.ws, { type: 'notice', text: `${ANIMALS[bestMob.type]?.ko || bestMob.type} 사냥 — 사체 도살 (E)` });
       // DB + chunk에서 mob 제거
       if (bestMob.dbId) { try { db.deleteMob(bestMob.dbId); } catch (e) {} }

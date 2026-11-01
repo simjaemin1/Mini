@@ -16,6 +16,8 @@
 //   이 하네스가 재는 것: 그 침묵이 **사라졌는가**, 그리고 화면이 **두 종류를 구분해 말하는가**.
 //     ⓐ 정상 → 배너 없음  ⓑ 서버가 던짐 → 빨강 "확정 오류" + 사유·단계·ref + 새로고침 단추
 //     ⓒ 서버가 조용함 → 노랑 "기다리는 중" → 오래되면 빨강  ⓓ 재시도 간격이 늘어난다(백오프)
+//     ⓔ [T1002] 확정 오류는 **그 접속이 닫힐 때까지** 확정 오류다 — 같은 접속의 단계 pong 이 "입장 처리 중"으로 되돌리지 않는다
+//        (② · ②-b · 상태 갈아타기를 적는 귀 `enter(page, { watch: true })` · 판정은 닫힌 뒤 한 장 `snap` 에서)
 //
 // ★★자명 통과 금지: ⓑ는 **일부러 던지게** 해서(E2E_CONN_FAIL) 실패를 만들어 검사한다.
 //   실패를 못 만들면 "잡는다"는 판정은 아무것도 증명하지 않는다.
@@ -86,12 +88,68 @@ const ZENV = (extra) => Object.assign({
   const browser = await chromium.launch({ headless: !HEADED, executablePath: require('playwright').chromium.executablePath() });
   const snapOf = async (page, n) => { const f = path.join(SHOTS, n + '.png'); await page.screenshot({ path: f }); shots.push(f); return f; };
   const conn = (page) => page.evaluate(() => window.__connState());
-  const enter = async (page) => {
+  // ★★[T1002 2026-10-30] `watch` = **상태 갈아타기를 적는 귀** — 클라가 `connMark` 를 부를 때마다 그 뒤의 [시각, 상태, ref] 를 남긴다.
+  //   로비에서 들어가기 **전에** 붙인다(첫 시도부터 다 적는다). `connMark` 는 최상위 함수 선언이라(00-const.js) 전역 이름을 감싸면
+  //   다른 조각의 부름도 모두 여기를 지난다. 재는 것: 확정 오류(`error`)를 받은 접속(ref)이 그 뒤 **같은 ref** 로 `entering` 이 되는가
+  //   (야간 10-30 ② — 확정 오류 뒤 닿은 같은 접속의 단계 pong 이 `entering` 으로 되돌렸다 · 보고/T1002).
+  //   ★**찌르기** — 확정 오류를 받은 그 순간 같은 소켓(아직 열려 있다 · 서버는 150ms 뒤 닫는다)에 ping 하나를 보낸다.
+  //     클라의 1초 ping 이 마침 그 창에 걸린 경우를 **매 시도마다** 세운다 — 되돌림이 우연(창에 ping 이 걸렸나)이 아니라
+  //     서버가 그 ping 에 답하느냐로만 갈린다(E2E_CONN_FAIL 이 던짐을 일부러 만들듯 · 자명 통과 0).
+  const enter = async (page, opt) => {
     await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
     await sleep(2200);
+    if (opt && opt.watch) {
+      await page.evaluate(() => {
+        const log = window.__t1002ConnLog = [];
+        window.__t1002Poke = 0;
+        const orig = window.connMark;
+        if (typeof orig !== 'function') return;   // 귀가 안 붙으면 열이 빈다 — 아래 판정이 "못 적었다"로 빨개진다(자명 통과 0)
+        window.connMark = function (phase) {
+          const r = orig.apply(this, arguments);
+          const s = window.__connState();
+          log.push([Math.round(performance.now()), s.phase, s.ref || '']);
+          if (phase === 'error') {
+            const ws = window.__primaryWs ? window.__primaryWs() : null;
+            if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify({ type: 'ping', t: performance.now() })); window.__t1002Poke++; } catch (e) {} }
+          }
+          return r;
+        };
+      });
+    }
     // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
     const b = await page.$('#enter');
     if (b) await b.click();
+  };
+  // ★★[T1002] **한 장으로 읽는다** — 상태 · 배너 글자 · 단추 · 주 소켓 · 귀의 열을 **한 evaluate** 에서.
+  //   종전 ② 는 상태(`conn`)를 읽은 뒤 단추와 글자를 **따로** 읽었다 — 그 사이 상태가 바뀌면 다른 순간의 글자를 물었다
+  //   (확정 오류 c1 이 닫히자마자 첫 재시도는 바로 붙는다 · `33-m-conn.js` `_reconnAt` 0 — 그 `connecting` 의 글자).
+  //   ★[T1024] 이제 첫 재시도도 간격을 기다린다(`T1024_FIRST_WAIT` 켬 기본) — 한 장으로 읽기는 그대로 둔다(되돌림 `=0` 판도 같은 자).
+  const snap = (page) => page.evaluate(() => {
+    const s = window.__connState();
+    const ws = window.__primaryWs ? window.__primaryWs() : null;
+    const el = document.getElementById('netLost'), b = document.querySelector('#netLost .nl-reload');
+    return Object.assign({}, s, {
+      closed: !ws || ws.readyState === 3,
+      btn: b ? !b.hidden : false,
+      txt: el ? (el.innerText || '') : '',
+      log: (window.__t1002ConnLog || []).slice(),
+      poke: window.__t1002Poke | 0,
+    });
+  });
+  // 귀의 열에서 — 확정 오류를 받은 접속(ref) · 그 뒤 같은 ref 로 `entering` 이 된 자리(되돌림).
+  const flipsOf = (log) => {
+    const err = new Set(), flips = [];
+    for (const [, ph, ref] of log) {
+      if (ph === 'error' && ref) err.add(ref);
+      else if (ph === 'entering' && ref && err.has(ref)) flips.push(ref);
+    }
+    return { err, flips };
+  };
+  // 귀의 열을 갈아타기 한 줄로 — 잇단 같은 칸은 하나로(표 · 판정 아님)
+  const seqOf = (log) => {
+    const out = [];
+    for (const [, ph, ref] of log) { const s = ref ? `${ph} ${ref}` : ph; if (out[out.length - 1] !== s) out.push(s); }
+    return out.join(' > ');
   };
   // ★`__getMyAbs()` 를 입장 게이트로 쓰면 안 된다 — `{x:0,y:0}` 로 시작해 **언제나 truthy** 다
   //   (기존 하네스 다수가 이 자명 통과를 쓰고 있다 — 회부에 적었다).
@@ -134,7 +192,7 @@ const ZENV = (extra) => Object.assign({
     _zp = FB.waitUp(zone, /zone server up on/, { name: 'zone', capMs: 300000 });
     ok((await _zp).ok, '(상황) 던지는 zone 기동');
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-    await enter(page);
+    await enter(page, { watch: true });
     // ★★★[T322 2026-09-19] **예산형을 조건 대기로 바꾼다**(족보 ⑩ · T314 ⓒ-3 이 든 실례가 이 줄이다).
     //   종전: `for (i<60) { … sleep(400) }` = **24초 예산**. 판정문엔 상수가 없어 어떤 자에도 안 걸리는데,
     //   예산이 다 되면 그 다음 `ok` 가 빨개진다 — 09-18 야간 보고의 "24초 경과" 가 그 수다.
@@ -144,20 +202,51 @@ const ZENV = (extra) => Object.assign({
     const thrown = await waitFor(async () => zoneLog.join('').includes('접속 처리 실패') || null);
     ok(!thrown.timedOut, '★★② [순서 ⓐ] **서버가 실제로 던졌다**(서버 로그가 증인)',
        thrown.timedOut ? `${(CAP / 1000) | 0}초 동안 서버 로그에 "접속 처리 실패" 가 안 떴다 — 클라 문제가 아니다` : `${thrown.ms}ms 만에`);
+    // ★★[T1002 2026-10-30] 기다릴 것은 "error 를 한 번 본 순간"이 아니라 **재려는 그 상태** — 확정 오류이고 **그 접속이 닫혔다**
+    //   (닫힌 뒤엔 그 접속의 말이 더 안 온다 · 확정 오류는 다음 시도까지 그대로 선다). 아래 판정은 모두 **이 한 장**(`c`)에서 읽는다 —
+    //   종전엔 `error` 를 본 뒤 단추 · 글자를 따로 읽어, 그 사이 같은 접속의 pong 이 `entering` 으로 되돌린 글자를 물었다
+    //   (야간 10-30 "입장 처리를 못 끝내고 있다 · 59초 · ref c8" · 09-18 "24초 · ref c5" · 보고/T1002).
     let c = null;
-    const got = await waitFor(async () => { c = await conn(page); return c.phase === 'error' ? c : null; });
-    console.log(`    [상황] 서버가 던지기까지 ${thrown.ms}ms · 그 뒤 클라가 알기까지 ${got.ms}ms (상한 ${(CAP / 1000) | 0}초 · 판정 아님)`);
+    const got = await waitFor(async () => { c = await snap(page); return (c.phase === 'error' && c.closed) ? c : null; });
+    console.log(`    [상황] 서버가 던지기까지 ${thrown.ms}ms · 그 뒤 확정 오류에 그 접속이 닫히기까지 ${got.ms}ms (상한 ${(CAP / 1000) | 0}초 · 판정 아님)`);
+    console.log(`    [상황] 귀 ${c ? c.log.length : 0}번 · 찌르기 ${c ? c.poke : 0}번 — ${c ? seqOf(c.log).slice(-260) : ''}`);
     ok(c && c.phase === 'error', '★★② [순서 ⓑ] 클라가 **확정 오류**를 받았다(침묵이 아니다)',
-       c && c.phase ? c.phase : (got.timedOut ? '상한까지 안 왔다' : ''));
+       c && c.phase ? `${c.phase}${c.closed ? '' : ' · 소켓 열림'}${got.timedOut ? ' — 상한까지 닫힌 확정 오류가 안 섰다' : ''}` : (got.timedOut ? '상한까지 안 왔다' : ''));
     ok(!!(c && /일부러 던진다/.test(c.reason)), '★★② 사유가 그대로 전달된다', c && c.reason);
     ok(c && c.stage === 'welcome', '★② **어느 단계**에서 깨졌는지 화면이 안다', c && c.stage);
     ok(!!(c && c.ref), '★② 서버 로그와 맞출 ref 가 있다', c && c.ref);
     ok(c && c.hard === true && c.state === 'error', '★★② 배너가 **빨강(기다려도 안 된다)** 이다', c && `${c.state}/hard=${c.hard}`);
-    const btn = await page.evaluate(() => { const b = document.querySelector('#netLost .nl-reload'); return b ? !b.hidden : false; });
-    ok(btn, '★② 새로고침 단추가 떠 있다 — 사용자가 할 일이 있다');
-    const txt = await page.evaluate(() => (document.getElementById('netLost') || {}).innerText || '');
+    ok(!!(c && c.btn), '★② 새로고침 단추가 떠 있다 — 사용자가 할 일이 있다');
+    const txt = (c && c.txt) || '';
     ok(/기다려도/.test(txt), '★★② 문구가 **기다림이 소용없음**을 명시한다', txt.replace(/\n/g, ' / ').slice(0, 110));
+    // ★★[T1002] 확정 오류는 **그 접속이 끝날 때까지** 확정 오류다 — 같은 접속(ref)의 단계 pong 이 "입장 처리 중"으로 되돌리면
+    //   배너는 기다리라고 말하고(위 문구) 재시도 간격도 15초에서 지수 간격으로 바뀐다. 귀의 열 전체를 본다(이 한 장 앞의 모든 시도).
+    const fl = flipsOf((c && c.log) || []);
+    ok(!got.timedOut && fl.err.size > 0 && c.poke > 0 && fl.flips.length === 0,
+       '★★② [T1002] 확정 오류를 받은 접속(ref)이 닫히기까지 **"입장 처리 중"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)',
+       fl.flips.length ? `되돌림 ${fl.flips.length}번 — ${[...new Set(fl.flips)].join(' · ')}`
+         : (fl.err.size ? `확정 오류 ${fl.err.size}접속(${[...fl.err].join(' · ')}) · 찌르기 ${c.poke} · 되돌림 0` : '귀가 확정 오류를 못 적었다'));
     ok(zoneLog.join('').includes('접속 처리 실패'), '★② 서버 로그에 스택이 남았다(종전엔 아무것도 안 남았다)');
+    // ★★[T1024 2026-10-31 · T1002 회부 4] 닫힌 확정 오류 배너는 **다음 시도까지** 선다 — 그 틈이 클라 자신의 재시도 간격보다 짧으면
+    //   첫 재시도가 간격 없이 붙은 것이다(종전 160~186ms = 닫힘 150ms + 그림 틀 한 번 — 사람이 못 읽는다 · 보고/T1002 §4).
+    //   간격 수는 하네스에 베끼지 않고 **확정 오류인 이 순간 페이지에서** 읽는다(`_reconnectDelayMs()` · 사본 0).
+    //   틈 = 귀의 열에서 **첫** `error` 시각 → 그 뒤 첫 `connecting` 시각(= 첫 재시도). 되돌림 `T1024_FIRST_WAIT=0` 이면 이 줄이 빨개야 한다(끔 증인).
+    {
+      const want = await page.evaluate(() => (typeof _reconnectDelayMs === 'function' && window.__connState().phase === 'error') ? _reconnectDelayMs() : null);
+      const rN = await waitFor(async () => page.evaluate(() => {
+        const L = window.__t1002ConnLog || []; let te = null, ref = '';
+        for (const [t, ph, rf] of L) {
+          if (te == null) { if (ph === 'error') { te = t; ref = rf; } }
+          else if (ph === 'connecting') return { gap: t - te, ref, att: window.__connState().attempts };
+        }
+        return null;
+      }));
+      const g = rN.v;
+      console.log(`    [상황] 첫 확정 오류(${g ? g.ref : '—'}) → 첫 재시도 ${g ? g.gap + 'ms' : (rN.timedOut ? '상한까지 안 왔다' : '—')} · 그때 시도 ${g ? g.att : '—'}번째 · 클라 간격 ${want}ms`);
+      ok(!!g && Number.isFinite(want) && want > 0 && g.gap >= want,
+         '★★② [T1024] 닫힌 확정 오류는 **다음 시도까지 클라의 재시도 간격만큼** 선다 — 첫 재시도도 간격을 기다린다(사람이 읽는다)',
+         g ? `틈 ${g.gap}ms · 간격 ${want}ms` : `${rN.timedOut ? '상한까지 다음 시도가 안 왔다' : '귀가 확정 오류를 못 적었다'} · 간격 ${want}`);
+    }
     ok(!(await inWorld(page)), '(상황) 실제로 못 들어갔다 — 자명 통과가 아니다');
     await snapOf(page, 'conn-02-error');
     await page.close();
@@ -171,7 +260,7 @@ const ZENV = (extra) => Object.assign({
     _zp = FB.waitUp(zone, /zone server up on/, { name: 'zone', capMs: 300000 });
     ok((await _zp).ok, '(상황) 멈추는 zone 기동');
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-    await enter(page);
+    await enter(page, { watch: true });
     // 마감액 전: pong 은 오는데(=서버는 살아 있다) welcome 이 없다 → "입장 처리 중"
     // ★★[T338 2026-09-20] 맹목 **3초 잠**을 조건 대기로. 마감액이 6000ms 인데 3000ms 를 자고 읽었으니
     //   여유가 3초뿐이었다 — 2코어 야간에선 잠+왕복이 6초를 넘어 `phase` 가 이미 `error` 가 되고,
@@ -193,11 +282,18 @@ const ZENV = (extra) => Object.assign({
     ok(c.hard === false, '★②-b 아직은 노랑(기다릴 만하다)', `${c.state}/hard=${c.hard}`);
     // 마감액 후: 서버가 스스로 끊고 이름을 붙인다
     // ★[T338] 예산형(40×400ms = 16초) → 조건 대기.
-    const rErr = await waitFor(async () => { c = await conn(page); return c.phase === 'error' ? c : null; });
+    // ★★[T1002] ② 와 같은 상태를 기다린다 — 확정 오류이고 그 접속이 닫혔다(한 장 · 마감액 갈래의 되돌림도 같은 귀로 본다).
+    const rErr = await waitFor(async () => { c = await snap(page); return (c.phase === 'error' && c.closed) ? c : null; });
     ok(c.phase === 'error', '★★②-b 마감액이 **안 끝나는 실패**를 끊었다(try/catch 로는 못 잡는 갈래)',
-      `${c.phase}${rErr.timedOut ? ` — ${(CAP / 1000) | 0}초 동안 안 끊었다` : ` (${rErr.ms}ms 만에 · 마감액 ${DL}ms)`}`);
+      `${c.phase}${rErr.timedOut ? ` — ${(CAP / 1000) | 0}초 동안 닫힌 확정 오류가 안 섰다` : ` (${rErr.ms}ms 만에 · 마감액 ${DL}ms)`}`);
     ok(/시간 초과/.test(c.reason || ''), '★★②-b 사유가 "시간 초과"라고 말한다', c.reason);
     ok(/welcome/.test(c.reason || '') || c.stage === 'welcome', '★②-b 멈춘 단계가 사유에 있다', c.reason);
+    console.log(`    [상황] 귀 ${(c.log || []).length}번 · 찌르기 ${c.poke | 0}번 — ${seqOf(c.log || []).slice(-260)}`);
+    const fl2 = flipsOf(c.log || []);
+    ok(!rErr.timedOut && fl2.err.size > 0 && c.poke > 0 && fl2.flips.length === 0,
+       '★★②-b [T1002] 시간 초과로 끊긴 접속(ref)도 닫히기까지 **"입장 처리 중"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)',
+       fl2.flips.length ? `되돌림 ${fl2.flips.length}번 — ${[...new Set(fl2.flips)].join(' · ')}`
+         : (fl2.err.size ? `확정 오류 ${fl2.err.size}접속(${[...fl2.err].join(' · ')}) · 찌르기 ${c.poke} · 되돌림 0` : '귀가 확정 오류를 못 적었다'));
     ok(zoneLog.join('').includes('시간 초과'), '★②-b 서버 로그에도 남았다');
     ok(!(await inWorld(page)), '(상황) 실제로 못 들어갔다');
     await snapOf(page, 'conn-02b-timeout');

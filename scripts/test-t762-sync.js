@@ -91,7 +91,7 @@ console.log('\n⑥ ② 재라우팅 자리');
   const gate = /const _t762End = T762_CARAVAN_BODY && T661_ON && body\._t661 && body\._t661\.leg === 'outbound';/.test(C);
   const pos = /caravanPointAt\(body\._t661\.path, _t762End \? body\._t661\.path\.len : body\._t661\.L, \{ segIdx: 0 \}\)/.test(C);
   ok(gate && pos, '⑥ 켬이면 다시 떠나는 자리 = 옛 길 끝 · 끔이면 종전 장부 자리(`body._t661.L`) — 한 식 두 갈래');
-  const i0 = C.indexOf('const rr2 = getRouteResumable(oldToVil, newToVil, _pb);'), i1 = C.indexOf('if (_t762End && body._t661.L < body._t661.path.len) { _t661Stamp(body, body._t661.L, body._t661.path.len); body._t661.L = body._t661.path.len; }'), i2 = C.indexOf('setBodyPts(body, pts);', i1);
+  const i0 = C.indexOf("const rr2 = _t1026Door('reroute', () => getRouteResumable(oldToVil, newToVil, _pb));")   /* ★[PM land1034] T1026 꼬리표(값 무변) */, i1 = C.indexOf('if (_t762End && body._t661.L < body._t661.path.len) { _t661Stamp(body, body._t661.L, body._t661.path.len); body._t661.L = body._t661.path.len; }'), i2 = C.indexOf('setBodyPts(body, pts);', i1);
   ok(i0 > 0 && i1 > i0 && i2 > i1, '⑥ 남은 구간 답압은 길이 다 파인 뒤(`retry` 갈래 뒤) · 몸 길을 바꾸기 앞 — 재진입해도 두 번 안 찍는다', `${i0} < ${i1} < ${i2}`);
 }
 

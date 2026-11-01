@@ -185,7 +185,7 @@ const T862_ECON_FAST = process.env.T862_ECON_FAST !== '0';   // ★[T876 ①] �
 //   붙이면 V8 이 그 사본을 **처음부터 사전 모드**로 짓는다(뒤의 `delete o._t732Cargo` 는 원인이 아니다 — 실측: assign 직후 이미 사전 · 40/40).
 //   켬이면 짐 레코드 칸을 거른 나머지 꼴(`const { _t732Cargo, ...rest } = c`)로 짓는다 — 같은 칸 · 같은 차례 · 같은 값(얕은 사본) · 빠른 꼴. 켬 기본(T889).
 const T876_CAR_FAST = process.env.T876_CAR_FAST !== '0';   // ★[T889 ①] 켬 기본(PM 10-23 — 라이브는 배포마다 다시 뜬 판) · 끔 탐침 `=0` = 종전 줄(`Object.assign` · `delete`)
-const _T862_SIDE = new Set(['_t728BaseOre', '_t728Game', '_t728HuntWk', '_t728LtdOwn', '_t728LtdSrv', '_t740Side', '_t747Body', '_t732Lots', '_warThreat']);
+const _T862_SIDE = new Set(['_t728BaseOre', '_t728Game', '_t728HuntWk', '_t728LtdOwn', '_t728LtdSrv', '_t740Side', '_t747Body', '_t732Lots', '_warThreat', '_t1025Ev']);
 function _t862Drop(o, k) { if (T862_ECON_FAST) o[k] = undefined; else delete o[k]; }
 //   `in` 문(부팅 복원) — 켬이면 `undefined` 칸 = 지운 칸(저장 줄은 JSON 이라 실린 칸이 `undefined` 일 수 없다 ⇒ 끔의 `k in o` 와 같은 답 · 두 번 불러도 같다)
 function _t862Has(o, k) { return (k in o) && !(T862_ECON_FAST && o[k] === undefined); }
@@ -993,6 +993,16 @@ const T1005_VIL_SAVE = process.env.T1005_VIL_SAVE !== '0';
 const T1023_PSITE_KEEP = process.env.T1023_PSITE_KEEP !== '0';
 const _t1005Stat = { n: 0, now: 0, mark: 0, flush: 0, skipClose: 0, miss: 0, err: 0, ms: 0, maxMs: 0, bytes: 0, maxBytes: 0, by: {} };
 const _t1005Dirty = new Set();
+// ★★[T1025 2026-10-31 · T1005 회부 1 · 4] **하루 마감 전 사라지는 사건 장부 줄 · 도살 전 사체** — 손잡이 `T1025_EV_CORPSE`(켬 기본 · 되돌림 `=0`).
+//   ① 사건 대기 줄 셋(`_evRescues` 구제 · `_evBuilds` 완공 · `_evStarved` 굶음 — 아래 13500 언저리)은 모듈 메모리에만 살다가 하루 마감 장부가 가져간다.
+//      일 자체(사람 저장 · 건물 행 · econ 죽음 셈)는 그 자리에서 남는데 줄만 사라졌다(보고/T1005 §2 · 3/3 · 3/3) — 셋 다 "일" 유형이라 연대기(영구)에 닿는 줄이다.
+//      켬 = 줄이 설 때 그 마을 행 곁 칸 `_t1025Ev`(T728 곁 칸 문법 · 새 표 0)에 싣고 같은 틱 끝에 쓴다(T1005 표 `t1005Mark` · T1005 끔이면 그 순간 `_vilRowSave`).
+//      장부가 가져간 순간 그 마을들을 다시 표한다(옛 줄이 행에 남아 다시 뜨면 두 번 서지 않게 — 마감 중이면 끝난 첫 틱 꼬리).
+//      부팅 = 곁 칸을 대기 줄로 되돌리고 지운다(`_t1025Restore`). 캐러밴 지연은 몸(`body.delayedDays`)과 함께 메타 행으로 되돌아가 줄만 잃는 꼴이 아니다(보고/T1025 §0).
+//   ② 사체(zone.js `corpses` · 메모리 전용) — 켬 = 사람이 잡은 들짐승의 사냥터 장부 한 마리(`huntKillAt`)를 잡은 순간이 아니라 도살 · 부패 때 뺀다(zone.js `tryAttack` · `butcherCorpse`).
+//   끔 = 곁 칸도 표도 없다(종전 바이트 — 켬으로 적은 행의 곁 칸은 부팅이 지운다).
+const T1025_EV_CORPSE = process.env.T1025_EV_CORPSE !== '0';
+const _t1025Stat = { n: 0, skipClose: 0, miss: 0, err: 0, ms: 0, maxMs: 0, bytes: 0, maxBytes: 0, noted: 0, consumed: 0, restored: 0, packed: 0 };
 const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheDay', 'dailyProductionBuf']);
 // ★★[T740 2026-10-14] **재기동이 잃는 메모리 전용 마을 칸** — 손잡이 `T740_SIDE_KEEP`(★기본 끔 · `=1` 켬 · 끔 = 종전 글자 그대로).
 //   서버 마을 객체(`state.villages[i]`)의 칸 중 저장(마을 행 · 메타 행 · 마을 건물 행)을 안 거치는데 **값에 닿는** 것을 마을 행 곁 칸 하나(`_t740Side`)에 싣는다
@@ -1193,6 +1203,7 @@ function serializeEcon(v) {
   }
   if (T740_SIDE) { const vil = state.byEcon && state.byEcon.get(v); if (vil) out._t740Side = _t740Pack(vil); }
   if (T747_BODY) { const vil = state.byEcon && state.byEcon.get(v); if (vil) { const B = _t747Pack(vil); if (B) out._t747Body = B; } }   // ★[T747] 몸 칸(위 `T747_BODY` 주석 · 복원 `_t747Restore`)   // ★[T740] 메모리 전용 마을 칸(위 `T740_SIDE` 주석 · 복원 `_t740Restore`)
+  if (T1025_EV_CORPSE) { const vil = state.byEcon && state.byEcon.get(v); const P = vil && _t1025Pack(vil.dbId); if (P) out._t1025Ev = P; }   // ★[T1025] 그 마을의 사건 대기 줄(위 `T1025_EV_CORPSE` 주석)
   if (_ltd.has(v)) out.lastTradeDay = _ltd.get(v);   // ★[T577 ④] 저장 줄에서만(위 주석)
   if (_T732_ON) { const G = _t732Gran(); const D = G && G.dump(v); if (D) out._t732Lots = D; }   // ★[T732] 곳간 로트 장부 — 곳간 값과 같은 줄에(같은 순간 · 재기동이 같이 읽는다)
   out.history = (v.history || []).slice(-50);
@@ -2795,6 +2806,25 @@ function ensureRouteGrid() {
 //        따뜻할 때 32노드 ≈ 0.03ms ⇒ 16ms 예산에 시계 500번 ≈ 15µs(예산의 0.1%). 실측이 그렇게 말한다.
 const PATH_STEP_NODES = 32;
 let _pathJob = null;   // { key, S, x0, y0, x1, y1, gw, half, workMs, sliceMax }
+// ═══ ★★[T1026 2026-10-31 · T945 §4 · 회부 2 · 손잡이 `T1026_SLOT_KEEP`(★켬 기본 — 결함 고침 · 되돌림 `=0` = 종전 줄 그대로)] 쥐고 있는 일은 버리지 않는다 ═══
+//   종전: 슬롯(`_pathJob`)에 다른 쌍의 일이 떠 있으면 새로 부른 문이 **늘** 그 일을 버리고 제 쌍을 처음부터 판다(부팅 표본 T655 만 예외).
+//     다시 뜬 직후(되살림 줄 T775 에 길 없는 캐러밴이 남은 때) 무효화가 오면 되살림 줄(`_t775Resume` — 빈 쌍 한 틱 한 대 · T896)과
+//     선계산(`_routeWarmStep` — 무효화가 다시 세운 줄)이 **같은 틱 안에서** 서로 다른 쌍으로 슬롯을 부르며 서로의 일을 버렸다 — 어느 쪽도 못 끝낸다
+//     (T945 §4: 15분에 일 시작 13,548 · 버림이 시작과 거의 같다 · 다 판 쌍 13 에서 멈춤 · 공유 예산을 틱마다 다 쓴다). 라이브에선 갱신(재기동) 직후
+//     벽 · 울타리 하나가 그 15분 동안 캐러밴 길을 막는다.
+//   켬: 떠 있는 일을 **주인이 바로 앞 틱(또는 이 틱)에 이어 팠으면** 다른 쌍을 부른 문은 그 일을 버리지 않고 기다린다(`{ done: false }` — 길이 아직인
+//     때와 같은 답 · 부른 쪽 계약 그대로: 캐러밴 'wait' · 'retry' · 선계산은 줄에서 안 뺀다). 주인이 끝내면 슬롯이 비고, 그다음 부른 문이 연다(번갈아).
+//     주인이 앞 틱에 안 부른 일(마감에 얼었다 · 그 문이 그 쌍을 놓았다)은 종전대로 버린다 — 버려진 일이 슬롯을 쥐고 남지 않는다. 새 수 0(틱 하나 = T655 의 "한 틱 비켜 준다").
+//   ★동기 문(`_routeBegin` 머리 — 전쟁 · 귀환 폴백 · 감사)은 그대로 버린다(scratch 가 하나라 버려야 맞는 길이 나온다 · T85).
+//   ★답은 같다 — 어느 문이 먼저 파든 같은 쌍은 같은 문의 같은 답이다(T85 비트 동일). 바뀌는 것은 **누가 언제 슬롯을 쓰나**뿐이다.
+//   셈(두 팔 다 · 세계 0): 문마다 일 시작 · 기다림 · 버림(`버린 문>새 문`) — `/perf` probe `t1026`.
+const T1026_SLOT_KEEP = process.env.T1026_SLOT_KEEP !== '0';
+let _t1026Seq = 0;          // 마을 틱 차례(onGameTick 머리에서 오른다)
+let _pathDoor = 'sync';     // 지금 슬롯을 부르는 문(꼬리표 — 셈과 '누구의 일' 표식만 · 기본 = 하루 마감 캐러밴 동기 · 동기 문)
+const _t1026 = { start: {}, yield: {}, drop: {} };
+function _t1026Note(kind, door) { const o = _t1026[kind]; o[door] = (o[door] | 0) + 1; }
+function _t1026Drop(from, to, d) { const k = `${from || '?'}>${to || '?'}`; _t1026.drop[k] = (_t1026.drop[k] | 0) + d; }
+function _t1026Door(door, fn) { const prev = _pathDoor; _pathDoor = door; try { return fn(); } finally { _pathDoor = prev; } }   // 꼬리표를 달고 부른다(값 무변)
 //   ★[T364 ②] `extraBlk(gx,gy)` — **코스 노드 하나를 더 막는 술어**(선택). 전쟁 행군로가 숲을 보게 하려고
 //     넣었다: 탐색 본체·격자·스냅·비용은 한 글자도 안 바뀌고, `isBlk` 가 OR 하나를 더 볼 뿐이다(사본 0).
 //     미주입(교역·캐러밴·감사)이면 **종전 경로 그대로**다.
@@ -2838,6 +2868,7 @@ function _routeBegin(x0, y0, x1, y1, extraBlk, plain) {
   //   ⇒ **어떤 문으로든** 새 탐색이 시작되면 세워 둔 것을 버린다. 동기 문(전쟁·귀환 폴백·감사)이
   //     30Hz 로 끼어들 수 있으므로, 이 한 줄이 없으면 재개형이 **조용히 틀린 길**을 낸다.
   //   ⚠버려도 안전하다 — 완주 전에는 캐시에도 DB 에도 아무것도 안 들어간다.
+  if (_pathJob) _t1026Drop(_pathJob.door, 'begin', 1);   // ★[T1026] 셈만(아래 버리는 줄은 글자 그대로 — test-route-persist ⑩)
   if (_pathJob) { _probe.pathDrop++; _pathJob = null; }
   const R = ensureRouteGrid();
   if (!R) return null;
@@ -2935,14 +2966,19 @@ function _routeResume(key, x0, y0, x1, y1, budgetMs) {
     //   ★★[T655] 떠 있는 일이 **부팅 표본**(T640 · `routeSampleStep` 이 단 표식)이면 버리지 않고 기다린다 — 버리면 표본이 그 쌍을 처음부터 다시 판다
     //     (빠른 시계 실측: 양보 3,608 · 일 84 → 216초). 표본은 그 쌍을 끝낸 뒤 한 틱 비켜 준다(`_routeBootWait`) — 서로 버리지 않고 번갈아.
     if (_pathJob.boot) { state._routeBootWait = true; state._t714Wait = true; _probe.pathBootWait = (_probe.pathBootWait || 0) + 1; return { done: false }; }
+    //   ★★[T1026] 떠 있는 일을 **주인이 바로 앞 틱에도 이어 팠으면**(지금 쥐고 있는 일) 버리지 않고 이 문이 기다린다 — 위 T655 의 그 계약을 문 전부로.
+    //     주인이 안 부른 일(앞 틱에 손이 안 간 일 — 마감에 얼었거나 · 그 문이 그 쌍을 놓았다)은 종전대로 버린다(버려진 일이 슬롯을 영영 쥐지 않게).
+    if (T1026_SLOT_KEEP && _pathJob.seq >= _t1026Seq - 1) { _t1026Note('yield', _pathDoor); return { done: false }; }
+    _t1026Drop(_pathJob.door, _pathDoor, 1);
     _probe.pathDrop++; _pathJob = null;   // ★한 번에 하나
   }
   if (!_pathJob) {
     const J = _routeBegin(x0, y0, x1, y1);
     if (!J) return { done: true, pts: null, workMs: 0, sliceMax: 0, slices: 0 };
-    J.key = key; _pathJob = J; _probe.pathJobs++;
+    J.key = key; J.door = _pathDoor; _pathJob = J; _probe.pathJobs++; _t1026Note('start', _pathDoor);
   }
   const J = _pathJob;
+  J.seq = _t1026Seq;   // ★[T1026] 이 틱에 이 일을 이어 팠다(위 '쥐고 있는 일' 술어가 읽는다 · 셈만이 아니라 끔에서도 값만 적는다 — 끔은 안 읽는다)
   const t0 = Date.now();
   const close = (done, path) => {
     const d = Date.now() - t0;
@@ -2958,7 +2994,7 @@ function _routeResume(key, x0, y0, x1, y1, budgetMs) {
     { const el = Date.now() - c0; if (el > _probe.pathChunkMax) _probe.pathChunkMax = el; }   // 알갱이 하나의 최악(계측)
     if (r.done && !r.path && _routePlainRetry(J)) {   // ★[T578] 상한에 걸렸다 — 같은 슬롯에서 종전 규칙으로 이어 판다
       const J2 = _routeBegin(x0, y0, x1, y1, null, true);   // ⚠`_routeBegin` 머리가 세워 둔 일을 버린다 — 이 일은 같은 일의 이음이라 되돌려 놓는다
-      _pathJob = J; _probe.pathDrop--;
+      _pathJob = J; _probe.pathDrop--; _t1026Drop(J.door, 'begin', -1);
       if (!J2) { _pathJob = null; return close(true, null); }
       J.S = J2.S; J.plain = true;
       continue;
@@ -3129,7 +3165,7 @@ function _routeWarmStep() {
   //     ⇒ 쌍 하나를 파는 동안은 프레임마다 한 조각씩(16ms), 쌍과 쌍 사이에는 종전대로 250ms 쉰다.
   const pair = q[0];
   let fin = true;
-  try { fin = getRouteResumable(pair[0], pair[1], TB.slice(TICK_SLICE_MS)).done; } catch (e) { fin = true; }   // ★[T687] 켬 = 이 틱 남은 몫(T85 비트 동일)
+  try { fin = _t1026Door('warm', () => getRouteResumable(pair[0], pair[1], TB.slice(TICK_SLICE_MS))).done; } catch (e) { fin = true; }   // ★[T687] 켬 = 이 틱 남은 몫(T85 비트 동일)
   if (!fin) return;                  // 아직 이 쌍을 파는 중 — 다음 프레임에 이어 간다(큐에서 안 뺀다)
   q.shift();
   state._routeWarmAt = Date.now();   // ★걸음이 **끝난 뒤**부터 재다 — 2.4초짜리 뒤에도 진짜로 쉬게
@@ -3180,7 +3216,7 @@ function _routeRedigStep() {
   const key = state.routeRedigQ[0];
   const ids = key.split('_'), A = state.byDbId.get(+ids[0]), B = state.byDbId.get(+ids[1]);
   if (!A || !B) { state.routeRedigQ.shift(); return; }
-  const r = _routeResume('redig:' + key, A.ccx * SZ + SZ / 2, A.ccy * SZ + SZ / 2, B.ccx * SZ + SZ / 2, B.ccy * SZ + SZ / 2, TB.slice(TICK_SLICE_MS));   // ★[T687]
+  const r = _t1026Door('redig', () => _routeResume('redig:' + key, A.ccx * SZ + SZ / 2, A.ccy * SZ + SZ / 2, B.ccx * SZ + SZ / 2, B.ccy * SZ + SZ / 2, TB.slice(TICK_SLICE_MS)));   // ★[T687]
   if (!r.done) return;
   state.routeRedigQ.shift();
   state._routeWarmAt = Date.now();
@@ -3650,7 +3686,7 @@ function _t929RetWait(body, budgetMs) {   // 귀환 길이 아직이면 참(그�
   const c = body.c;
   const homeVil = state.byEcon.get(c.from), hereVil = state.byEcon.get(c.to);
   if (!homeVil || !hereVil) return false;
-  const rr = getRouteResumable(hereVil, homeVil, budgetMs);
+  const rr = _t1026Door('ret929', () => getRouteResumable(hereVil, homeVil, budgetMs));
   if (!rr.done) return true;
   if (!rr.pts) return false;
   return !_walkFor(hereVil, homeVil, budgetMs).done;
@@ -3674,7 +3710,7 @@ function _t775Resume(now) {
     if (state.xzone && ((c.to && c.to._xz) || (c.from && c.from._xz))) continue;   // 이웃 존 몸은 T533 길이 맡는다
     if (bodies.size >= CARAVAN_BODY_MAX) { _probe.t775Cap = (_probe.t775Cap || 0) + 1; continue; }   // 몸 상한(E2) — 몸 없이 장부만 간다(센다)
     if (T896_RESUME_ONE) { if (_t896NeedSlot(c)) { if (slotTaken) { keep.push(c); _probe.t896Held = (_probe.t896Held || 0) + 1; continue; } slotTaken = true; } }   // ★[T896] 빈 쌍은 한 틱 한 대
-    const r = spawnCaravanBody(c, now);
+    const r = _t1026Door('resume775', () => spawnCaravanBody(c, now));   // ★[T1026] 꼬리표(값 무변)
     if (r === 'wait') { keep.push(c); continue; }   // 길이 아직 — 줄에 남긴다(다음 틱)
     if (r) { _probe.t775Spawned = (_probe.t775Spawned || 0) + 1; if (c.state === 'inbound') _probe.t775Inbound = (_probe.t775Inbound || 0) + 1; }
   }
@@ -4095,7 +4131,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
       //     (두 마을 다 데운 쌍이라). 그래도 **최악**을 예산 안에 두려면 이 문이어야 한다.
       let pts = null;
       if (oldToVil && newToVil) {
-        const rr2 = getRouteResumable(oldToVil, newToVil, _pb);
+        const rr2 = _t1026Door('reroute', () => getRouteResumable(oldToVil, newToVil, _pb));
         if (!rr2.done) { _probe.pathWait++; return 'retry'; }
         pts = rr2.pts;
       }
@@ -5401,6 +5437,8 @@ function init(deps) {
     if (T728_KEEP) { try { _t728Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T728] 재기동 영속 복원 실패(종전대로 계속):`, e.message); } }
     if (T740_SIDE) { try { _t740Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T740] 마을 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t740Side')) _t862Drop(v.econ, '_t740Side');   // ★[T740] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(다음 켬이 묵은 칸을 되돌리지 않게 · main 행엔 이 칸이 없어 무동작)
+    if (T1025_EV_CORPSE) { try { _t1025Restore(); } catch (e) { console.error(`[${ZONE_ID}] 📜 [T1025] 사건 대기 줄 복원 실패(빈 줄로 계속):`, e.message); } }
+    else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t1025Ev')) _t862Drop(v.econ, '_t1025Ev');   // ★[T1025] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다
     if (T747_BODY) { try { _t747Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T747] 몸 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t747Body')) _t862Drop(v.econ, '_t747Body');   // ★[T747] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(main 행엔 이 칸이 없어 무동작)
     if (T822_BODY_SEED) _t833Boot();   // ★[T833] 되살림(T728 메타 · T747 몸 칸) 뒤 — 명부 자리 열쇠로 한 번(같은 판 씨 · 같은 자리면 되살린 값 그대로)
@@ -7344,6 +7382,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
   ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done), ...(T896_RESUME_ONE ? { held896: _probe.t896Held | 0 } : {}) } } : {}),
   t929: { on: T929_RET_RESUME, wait: _probe.t929Wait | 0, cold: _probe.t929Cold | 0, msMax: _probe.t929MsMax | 0 },
+  t1026: { on: T1026_SLOT_KEEP, start: Object.assign({}, _t1026.start), yield: Object.assign({}, _t1026.yield), drop: Object.assign({}, _t1026.drop), held: _pathJob ? (_pathJob.door || '?') : null },   // ★[T1026] 문마다 일 시작 · 기다림 · 버림(셈만)
   t968: { on: T968_DIST_BG, bgSlices: _probe.t968BgSlices | 0, bgMs: _probe.t968BgMs | 0, bgSliceMax: _probe.t968BgSliceMax | 0, ready: _probe.t968Ready | 0, readyClose: _probe.t968ReadyClose | 0, closeSlices: _probe.t968CloseSlices | 0, frozen: _probe.t968Frozen | 0, waitQ: _probe.t968WaitQ | 0 },   // ★[T968] 셈만
   t977: { same: T977_DIST_SAME, probe: T977_PROBE, runs: _t977.runs },
   t996: { start: _probe.t996Start | 0, done: _probe.t996Done | 0, same: _probe.t996Same | 0, drop: _probe.t996Drop | 0, slices: _probe.t996Slices | 0, work: _probe.t996Work | 0, sliceMax: _probe.t996SliceMax | 0, ms: _probe.t996Ms | 0, busy: !!_t996Job },   // ★[T996] 바탕 다시 세움(셈만)   // ★[T977] 재는 판 전용 셈(끔 = 빈 목록)
@@ -7376,7 +7415,8 @@ function tickPerf() {
            total: R.length ? { p50: q(tot, 0.5), p95: q(tot, 0.95), max: Math.max(...tot) } : null, stages,
            ...(T690_DAY_PHASE ? { t690: Object.assign({ pend: (state._t690 && state._t690.list.length) || 0 }, _t690Stat) } : {}),
            ...(T983_GRANARY_SAVE ? { t983: Object.assign({}, _t983Stat, { ms: +_t983Stat.ms.toFixed(3), maxMs: +_t983Stat.maxMs.toFixed(3) }) } : {}),
-           ...(T1005_VIL_SAVE ? { t1005: Object.assign({}, _t1005Stat, { ms: +_t1005Stat.ms.toFixed(3), maxMs: +_t1005Stat.maxMs.toFixed(3), by: Object.assign({}, _t1005Stat.by), pend: _t1005Dirty.size }) } : {}) };   // ★[T1005] 켬 판만 칸이 선다   // ★[T983] 켬 판만 칸이 선다   // ★[T690] 켬 판만 칸이 선다
+           ...(T1005_VIL_SAVE ? { t1005: Object.assign({}, _t1005Stat, { ms: +_t1005Stat.ms.toFixed(3), maxMs: +_t1005Stat.maxMs.toFixed(3), by: Object.assign({}, _t1005Stat.by), pend: _t1005Dirty.size }) } : {}),
+           ...(T1025_EV_CORPSE ? { t1025: Object.assign({}, _t1025Stat, { ms: +_t1025Stat.ms.toFixed(3), maxMs: +_t1025Stat.maxMs.toFixed(3), pend: _evRescues.length + _evBuilds.length + _evStarved.length }) } : {}) };   // ★[T1005] 켬 판만 칸이 선다   // ★[T983] 켬 판만 칸이 선다   // ★[T690] 켬 판만 칸이 선다
 }
 
 // =============================================================================
@@ -7385,6 +7425,7 @@ function tickPerf() {
 // =============================================================================
 function onGameTick(now) {
   if (!state.ready) return; // 플래그 off·비대상 존·init 실패 전부 여기서 차단
+  _t1026Seq++;   // ★[T1026] 마을 틱 차례(슬롯 '쥐고 있는 일' 술어 · 값만)
   if (_t732BootWait) { try { _t732Boot(); } catch (e) { _t732BootWait = false; console.error(`[${state.zoneId}] 🧺 [T732] 곳간 로트 장부 붙이기 실패(장부 없이 계속):`, e.message); } }   // ★[T732] 미룬 붙이기(끄면 늘 거짓)
   if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();   // ★[T620 ②] 광맥 셀 미리 굽기(배경 · 한 번)
   // ★★[T1 2026-09-01] **마감 중에는 실체 30Hz 를 멈춘다.**
@@ -8227,7 +8268,7 @@ function routeSampleStep(A, B, budgetMs) {
   if (_pathJob && _pathJob.key !== key && miss) return { done: false, busy: true };
   //   ★[T655] 새 쌍을 열려는데 표본 일 때문에 기다린 문(캐러밴)이 있었다 — 한 틱 비켜 준다(그 문이 다음 조각에 자기 일을 연다)
   if (!_pathJob && miss && state._routeBootWait) { state._routeBootWait = false; return { done: false, busy: true }; }
-  const r = getRouteResumable(A, B, budgetMs);
+  const r = _t1026Door('boot', () => getRouteResumable(A, B, budgetMs));
   if (_pathJob && _pathJob.key === key) _pathJob.boot = true;   // 이 일은 부팅 표본의 것 — 다른 문이 와도 버리지 않는다(위 `_routeResume`)
   return r;
 }
@@ -13526,9 +13567,9 @@ function _caravanDelaysToday() {
 const _evBuilds = [];
 function noteVillageBuilt(vil, kind) {
   if (!vil || vil.dbId == null) return;
-  if (_evBuilds.length < 256) _evBuilds.push({ vid: vil.dbId | 0, kind });
+  if (_evBuilds.length < 256) { _evBuilds.push({ vid: vil.dbId | 0, kind }); _t1025Note(vil); }
 }
-function _buildsToday() { const out = _evBuilds.slice(); _evBuilds.length = 0; return out; }
+function _buildsToday() { const out = _evBuilds.slice(); _evBuilds.length = 0; _t1025Took(out); return out; }
 
 // ★★[T119 2026-09-05] **구조** — 완공과 **같은 자리·같은 문법**이다. 장부는 쓰러짐을 모른다;
 //   살아난 그 순간을 `zone.js` 가 여기 한 줄 남기고 하루 경계에 장부가 가져간다.
@@ -13537,9 +13578,9 @@ function _buildsToday() { const out = _evBuilds.slice(); _evBuilds.length = 0; r
 const _evRescues = [];
 function noteRescue(vid, by, magRemain) {
   if (vid == null) return;
-  if (_evRescues.length < 256) _evRescues.push({ vid: vid | 0, by: by || 'village', mag: +magRemain || 0.01 });
+  if (_evRescues.length < 256) { _evRescues.push({ vid: vid | 0, by: by || 'village', mag: +magRemain || 0.01 }); _t1025Note(vid); }
 }
-function _rescuesToday() { const out = _evRescues.slice(); _evRescues.length = 0; return out; }
+function _rescuesToday() { const out = _evRescues.slice(); _evRescues.length = 0; _t1025Took(out); return out; }
 
 // ★★[T590 2026-10-03] **굶어 죽음** — 구조와 **같은 자리·같은 문법**이다. 장부는 굶음도 죽음도 모른다;
 //   몸 층이 기근 날(`villageFamine`) 그 자리에서 죽은 몸을 여기 한 줄 남기고 하루 경계에 장부가 가져간다.
@@ -13547,9 +13588,54 @@ function _rescuesToday() { const out = _evRescues.slice(); _evRescues.length = 0
 const _evStarved = [];
 function noteStarved(vil) {
   if (!vil || vil.dbId == null) return;
-  if (_evStarved.length < 256) _evStarved.push({ vid: vil.dbId | 0 });
+  if (_evStarved.length < 256) { _evStarved.push({ vid: vil.dbId | 0 }); _t1025Note(vil); }
 }
-function _starvedToday() { const out = _evStarved.slice(); _evStarved.length = 0; return out; }
+function _starvedToday() { const out = _evStarved.slice(); _evStarved.length = 0; _t1025Took(out); return out; }
+// ★★[T1025] 사건 대기 줄 → 마을 행 곁 칸(위 `T1025_EV_CORPSE` 머리말). 끔 = 셋 다 무동작.
+//   줄이 선 마을 행을 쓴다 — T1005 켬이면 그 틱 끝 묶음(`t1005Mark`), 끔이면 그 순간(같은 몸통 `_vilRowSave` · 마감 중이면 마감 저장 줄이 쓴다).
+function _t1025Note(v) {
+  if (!T1025_EV_CORPSE) return;
+  const vil = (v && typeof v === 'object') ? v : villageByDbId(v);
+  if (!vil) { _t1025Stat.miss++; return; }
+  _t1025Stat.noted++;
+  if (T1005_VIL_SAVE) t1005Mark(vil, 'ev'); else _vilRowSave(vil, _t1025Stat, null);
+}
+// 장부가 가져간 줄의 마을들 — 행에 남은 옛 줄을 지우러 다시 쓴다(다시 뜨면 두 번 서지 않게).
+function _t1025Took(out) {
+  if (!T1025_EV_CORPSE || !out.length) return;
+  _t1025Stat.consumed += out.length;
+  const seen = new Set();
+  for (const e of out) if (!seen.has(e.vid)) { seen.add(e.vid); _t1025Note(e.vid); }
+}
+// 그 마을(dbId)의 대기 줄 — 없으면 null(칸이 안 선다). r = [누가, 남은 창] · b = 완공 종류 · s = 굶은 몸 수.
+function _t1025Pack(vid) {
+  if (vid == null) return null;
+  const r = [], b = []; let s2 = 0;
+  for (const e of _evRescues) if (e.vid === vid) r.push([e.by, e.mag]);
+  for (const e of _evBuilds) if (e.vid === vid) b.push(e.kind);
+  for (const e of _evStarved) if (e.vid === vid) s2++;
+  if (!r.length && !b.length && !s2) return null;
+  _t1025Stat.packed++;
+  return { r, b, s: s2 };
+}
+// 부팅 — 곁 칸을 대기 줄로 되돌리고 지운다(T740 복원 바로 뒤 · 같은 문법).
+function _t1025Restore() {
+  const R = { villages: 0, r: 0, b: 0, s: 0 };
+  for (const vil of state.villages) {
+    const e = vil.econ; if (!e || !_t862Has(e, '_t1025Ev')) continue;
+    const P = e._t1025Ev; _t862Drop(e, '_t1025Ev');
+    if (!P || typeof P !== 'object' || vil.dbId == null) continue;
+    R.villages++;
+    const vid = vil.dbId | 0;
+    for (const x of (P.r || [])) if (_evRescues.length < 256) { _evRescues.push({ vid, by: x[0] || 'village', mag: +x[1] || 0.01 }); R.r++; }
+    for (const k of (P.b || [])) if (_evBuilds.length < 256) { _evBuilds.push({ vid, kind: k }); R.b++; }
+    for (let i = 0; i < (P.s | 0); i++) if (_evStarved.length < 256) { _evStarved.push({ vid }); R.s++; }
+  }
+  _t1025Stat.restored = R.r + R.b + R.s;
+  console.log(`[${state.zoneId}] 📜 [T1025] 사건 대기 줄 되돌림 — 마을 ${R.villages} · 구조 ${R.r} · 완공 ${R.b} · 굶음 ${R.s}`);
+  return R;
+}
+function t1025Pending(vid) { return { r: _evRescues.filter((e) => e.vid === vid).length, b: _evBuilds.filter((e) => e.vid === vid).length, s: _evStarved.filter((e) => e.vid === vid).length }; }
 
 function _scanEventsDaily() { const g = _scanEventsSteps(); while (!g.next().done); }   // ★[T698] 몸통은 아래 발생기 하나(끔 = 끝까지 한 번에 · 종전 그대로)
 function* _scanEventsSteps() {
@@ -14324,6 +14410,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   t983Save, t983On: () => T983_GRANARY_SAVE,   // ★[T983] 거래 순간 곳간 행 저장
   t1023On: () => T1023_PSITE_KEEP,   // ★[T1023] 의뢰 집터 행 잇기 · 의뢰 문 사람 저장
   t1005Save, t1005Mark, t1005Flush, t1005On: () => T1005_VIL_SAVE,   // ★[T1005] 구제 한 끼 · 집터 의뢰(순간) · 낚시(틱 끝 묶음) · 사냥은 `huntKillAt` 안에서
+  t1025On: () => T1025_EV_CORPSE, t1025Pending, noteVillageBuilt, noteStarved,   // ★[T1025] 사건 대기 줄 곁 칸 · 사체 장부 미룸(zone.js) · 탐침(`t1005-vil-kill-probe ev`)이 줄을 읽고 완공 · 굶음 줄을 세운다(행동 대신 · 관측 손)
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)

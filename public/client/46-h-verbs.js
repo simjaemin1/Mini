@@ -190,7 +190,12 @@
       //   멀면 **서버가** 거절한다(거리 게이트는 종전 `GATHER_RANGE` 그대로 · 새 예외 0).
       //   ★[§0-ⓑ 판정 유지] 한 번 = 반복 시작(채굴 60타). E 키와 **같은 타이머**를 쓴다.
       const on = !!window.__eRepeat;
-      out.push({ label: on ? `${word} 멈추기` : word, send: () => toggleGatherLoop(t.id) });
+      // ★★[T1020] 손잡이 `T1020_STOP_MENU`(서버 env → welcome `uiCfg.stopMenu` · 켬 기본 후보 · 되돌림 `=0` = 칸 없음 = 아래 토글 그대로).
+      //   글자는 메뉴를 **연 순간** 정해지는데 누른 뒤 하는 일(`toggleGatherLoop`)은 **누른 순간** 정해진다. 연 뒤 반복이 다 캐서 저절로 멎으면
+      //   "벌목 멈추기"를 누른 사람에게 반복이 **새로 선다**(e2e-verbs ⑧ 묶은 상자 20판 중 2 · 보고/T949 회부 1 · 보고/T1020 §2).
+      //   켬 = "멈추기" 줄은 멈추기만 한다(이미 멎었으면 할 일 없음 · 같은 알림). 시작 줄(`word`)은 종전 그대로 토글.
+      const stopOnly = on && !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.stopMenu === true);
+      out.push({ label: on ? `${word} 멈추기` : word, send: stopOnly ? () => { stopGatherLoop(); showNotice('멈췄다'); } : () => toggleGatherLoop(t.id) });
       // ★★[T135] **베는 것과 따는 것은 다른 일이다.** 열매가 실제로 달린 나무에만 두 번째 동사가 뜬다.
       //   ⚠클라는 "무엇이 열매나무인가"를 모른다 — 서버가 개체에 `fruitKo`(달린 열매 이름)를 실어 줄 때만
       //     뜬다. 종 목록을 여기 적으면 그게 또 사본이다(T90 이 지운 그 표의 재발).

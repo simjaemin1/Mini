@@ -95,10 +95,22 @@ const HOOK = () => {
     return r;
   };
   const _orig = window.lifeDayAll;
+  const snapCalls = () => { const b = {}; for (const vil of VILS) { const e = vil.econ; if (e) b[vil.name] = { calls: V(vil.name).hiCalls, ret: V(vil.name).hiRetSum }; } return b; };
+  // ★[T1004] 날 기록 한 자리 — 종전 래퍼 몸 그대로 함수로 뺐다(글자 무변 · 끔 세계 바이트 같음).
+  let _inAll = 0, _since = null;
   window.lifeDayAll = function () {
-    const before = {};
-    for (const vil of VILS) { const e = vil.econ; if (e) before[vil.name] = { calls: V(vil.name).hiCalls, ret: V(vil.name).hiRetSum }; }
-    const out = _orig.apply(this, arguments);
+    const before = snapCalls();
+    let out; _inAll++; try { out = _orig.apply(this, arguments); } finally { _inAll--; }
+    rec(before); _since = snapCalls();
+    return out;
+  };
+  // ★[T1004] 켬 세계(랩 `L_T731` = 서버 기본 · `!== '0'`)의 프레임 고리는 `lifeDayAll` 을 안 거치고 `_t731Step` 이 마을마다 제 자정에 돌린 뒤
+  //   `_lifeDayTail` 로 하루를 닫는다 → 그 꼬리에서 같은 기록을 한다. 그날 사냥 호출 수(`calls`)는 **지난 닫힘부터** 센다(마을 자정이 프레임마다 흩어진다).
+  //   `lifeDayAll` 안에서 부른 꼬리(끔 · 헤드리스 켬)는 위 래퍼가 센다(두 번 세기 0).
+  //   (종전: 켬 관찰 판은 날 셈이 0 에 머물러 1시간 마감까지 돌았다 — T938 §2-4 "끝나지 않음"의 까닭)
+  const _tail = window._lifeDayTail;
+  window._lifeDayTail = function () { const out = _tail.apply(this, arguments); if (!_inAll) { rec(_since || {}); _since = snapCalls(); } return out; };
+  function rec(before) {
     const A = window.__t311;
     for (const vil of VILS) {
       const e = vil.econ; if (!e) continue;
@@ -159,8 +171,7 @@ const HOOK = () => {
       });
     }
     A.days++;
-    return out;
-  };
+  }
   // ★집 진척 상수는 **랩이 갖는다** — 여기서 짓지 않고 읽어만 둔다(사본 0)
   window.__t311.K = {
     L_BUILDRATE: (typeof L_BUILDRATE !== 'undefined') ? L_BUILDRATE : null,
