@@ -1275,6 +1275,7 @@
     // === 3) 엔티티 그리기 ===
     _mtStage(ctx, 'C_루프전');
     const _entT0 = window.__fcOn ? performance.now() : 0;   // ★[T913] 프레임 캡처 중에만 — 엔티티 그리기 몫(산 띠 · 건물 · 사람 · 짐승 · 자연물 그림)
+    const _peopleNow = [];   // ★[T1059] 이 프레임에 그린 사람(그리는 차례 그대로) — 루프 뒤 `_lastPeopleDrawn`
     for (const item of renderables) {
       if (item.wx === undefined) { _gateMissing++; _gateMissKind[item.kind] = (_gateMissKind[item.kind] || 0) + 1; }
       else if (_GATE_FREE[item.kind]) { _gateFree++; }
@@ -1628,6 +1629,7 @@
           vis *= entityVisibility(item.ax, item.ay, d);
           if (vis < 0.05) continue;
         }
+        _peopleNow.push(item);   // ★[T1059] 여기까지 온 사람은 그린다(안개 · 위층 · 시야 문 뒤) — 고르기가 보는 그 목록
         ctx.globalAlpha = vis;
         // Phase 14.35+14.37: 본인은 키입력/lastAttack/facing, 다른 player는 vx/vy/lastAttackAt
         const now = performance.now();
@@ -1824,6 +1826,7 @@
       }
     }
     if (window.__fcOn) window._entAcc = (window._entAcc || 0) + (performance.now() - _entT0);   // ★[T913]
+    _lastPeopleDrawn = _peopleNow;   // ★[T1059] 다 그린 뒤에 건다(덜 그린 목록을 보이지 않는다)
     _mtStage(ctx, 'D_루프후');
     _mtFlushFade(ctx);   // ★흐린 산 한 겹을 여기서 한 번에 덮는다(겹침 누적 방지)
     // ★계측기는 **그린 뒤** 그대로 받아 적는다(사본 금지)

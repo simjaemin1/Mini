@@ -395,6 +395,10 @@ function cropSprite(stage, crop) {
   window.__aimDbg = () => ({ aiming: _aiming, x: _aimLookX, y: _aimLookY,
                              maskAx: window._shadowMaskAx || 0, maskAy: window._shadowMaskAy || 0 });
   let _lastCamIso = null;                // 직전 프레임 카메라 iso 원점 — 커서→월드 투영이 이걸 쓴다
+  // ★[T1059] 직전 프레임에 **그린** 사람들(나 포함) — 렌더 목록의 그 항목 그대로(`wx`·`wy` = 그린 자리 · `z` = 그리는 차례의 정렬 키).
+  //   안개 · 위층 · 시야로 안 그린 사람은 없다. 고르기(46-h-verbs `pickAt`)가 겹친 사람 중 "그림에서 위에 그려진 사람"을 이 `z` 로 가린다(정본 = 렌더 · 셈 사본 0).
+  //   프레임마다 새 배열이라 붙잡아 둔 값은 그대로다(`_lastCamIso` 와 같은 꼴 · T813 누른 순간).
+  let _lastPeopleDrawn = null;
   let _aimDirX = 1, _aimDirY = 0;        // 조준 월드 방향(정규화)
   let _aimT = 0;                         // 이징용 직전 프레임 시각
   // Phase 14.40: Shift 달리기

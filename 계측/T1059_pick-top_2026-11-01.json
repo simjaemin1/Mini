@@ -1,0 +1,397 @@
+{
+ "card": "T1059",
+ "made": "2026-11-01",
+ "branch": "batch/pick-top-1101",
+ "base": "7704bcaa",
+ "box": "묶은 상자 = 이 2코어 컨테이너 + 바쁜 고리 셋(`while [ -e flag ]; do for ((i=0;i<200000;i++)); do :; done; done` × 3 · T1035 와 같은 상자)",
+ "pickTop": {
+  "what": "e2e-pick-top — 겹친 쓰러진 둘(R 명부 첫 사람 · 위에 그려진 사람) 위 우클릭 → 먹이기 → 허기 오름(켬 · 끔 같은 판)",
+  "runs": [
+   {"f":"r-solo-1","sec":140,"res":"14/0","reds":[],"first":"p410","top":"p411","on":{"p410":0,"p411":34.3},"off":{"p410":34.1,"p411":0}},
+   {"f":"r-solo-2","sec":127,"res":"14/0","reds":[],"first":"p410","top":"p411","on":{"p410":0,"p411":34.3},"off":{"p410":34.2,"p411":0}},
+   {"f":"r-solo-3","sec":128,"res":"14/0","reds":[],"first":"p410","top":"p411","on":{"p410":0,"p411":34.3},"off":{"p410":34.2,"p411":0}},
+   {"f":"r-box-1","sec":174,"res":"14/0","reds":[],"first":"p410","top":"p411","on":{"p410":0,"p411":34.2},"off":{"p410":34.1,"p411":0}},
+   {"f":"r-box-2","sec":184,"res":"14/0","reds":[],"first":"p410","top":"p411","on":{"p410":0,"p411":34.2},"off":{"p410":34.2,"p411":0}},
+   {"f":"r-box-3","sec":188,"res":"14/0","reds":[],"first":"p410","top":"p411","on":{"p410":0,"p411":34.2},"off":{"p410":34.1,"p411":0}}
+  ]
+ },
+ "verbs": {
+  "what": "e2e-verbs(main 하네스 그대로 · 이 가지 제품) — waits = [마을, 잡음, 번, 잠든 번, 초, 가장 가까이 온 px, 해 몫 처음, 끝]",
+  "runs": [
+   {"f":"x-solo-1","sec":396,"res":"77/0","reds":[],"ph0":0.886,"caught":"광산2 196px @0.008 · 잠든 번 63","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,81,63,138.1,"196","0.912","0.008"]]},
+   {"f":"x-solo-2","sec":240,"res":"77/0","reds":[],"ph0":0.143,"caught":"광산2 194px @0.173","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,3,0,5.2,"194","0.169","0.173"]]},
+   {"f":"x-solo-3","sec":236,"res":"77/0","reds":[],"ph0":0.308,"caught":"광산2 197px @0.34","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,7,0,7.8,"197","0.334","0.34"]]},
+   {"f":"x-solo-4","sec":316,"res":"77/0","reds":[],"ph0":0.532,"caught":"광산7 174px @0.558","menuOwner":["루나🤖→아라🤖"],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산7",true,5,0,5.3,"174","0.554","0.558"]]},
+   {"f":"x-solo-5","sec":658,"res":"77/0","reds":[],"ph0":0.709,"caught":"광산2 187px @0.011 · 잠든 번 223","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,236,223,400.6,"187","0.733","0.011"]]},
+   {"f":"x-solo-6","sec":311,"res":"77/0","reds":[],"ph0":0.16,"caught":"광산2 174px @0.202","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,5,0,6.3,"174","0.197","0.202"]]},
+   {"f":"x-solo-7","sec":231,"res":"77/0","reds":[],"ph0":0.358,"caught":"광산2 168px @0.391","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,9,0,11.8,"168","0.382","0.391"]]},
+   {"f":"x-solo-8","sec":275,"res":"77/0","reds":[],"ph0":0.529,"caught":"광산7 194px @0.562","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산7",true,5,0,7.6,"194","0.557","0.562"]]},
+   {"f":"x-solo-9","sec":605,"res":"77/0","reds":[],"ph0":0.723,"caught":"광산2 186px @0.002 · 잠든 번 229","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,241,229,368,"186","0.747","0.002"]]},
+   {"f":"x-solo-10","sec":328,"res":"77/0","reds":[],"ph0":0.188,"caught":"광산2 192px @0.224","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,10,0,15.5,"192","0.214","0.224"]]},
+   {"f":"x-box-1","sec":312,"res":"77/0","reds":[],"ph0":0.412,"caught":"광산2 167px @0.446","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,7,0,9.9,"167","0.439","0.446"]]},
+   {"f":"x-box-2","sec":284,"res":"77/0","reds":[],"ph0":0.607,"caught":"광산2 178px @0.639","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,4,0,3.5,"178","0.636","0.639"]]},
+   {"f":"x-box-3","sec":522,"res":"77/0","reds":[],"ph0":0.841,"caught":"광산2 189px @0.006 · 잠든 번 128","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,146,128,196.1,"189","0.87","0.006"]]},
+   {"f":"x-box-4","sec":306,"res":"77/0","reds":[],"ph0":0.162,"caught":"광산2 189px @0.2","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,9,0,12.4,"189","0.192","0.2"]]},
+   {"f":"x-box-5","sec":367,"res":"77/0","reds":[],"ph0":0.432,"caught":"광산2 156px @0.466","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,6,0,6,"156","0.462","0.466"]]},
+   {"f":"x-box-6","sec":280,"res":"77/0","reds":[],"ph0":0.635,"caught":"광산7 199px @0.667","menuOwner":["루나🤖→베가🤖"],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산7",true,5,0,6.3,"199","0.662","0.667"]]},
+   {"f":"x-box-7","sec":489,"res":"77/0","reds":[],"ph0":0.835,"caught":"광산2 195px @0.006 · 잠든 번 123","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,146,123,200.2,"195","0.867","0.006"]]},
+   {"f":"x-box-8","sec":314,"res":"77/0","reds":[],"ph0":0.183,"caught":"광산2 179px @0.224","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,10,0,13.6,"179","0.215","0.224"]]},
+   {"f":"x-box-9","sec":308,"res":"77/0","reds":[],"ph0":0.411,"caught":"광산7 192px @0.441","menuOwner":["루나🤖→아라🤖"],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산7",true,6,0,6.6,"192","0.436","0.441"]]},
+   {"f":"x-box-10","sec":813,"res":"77/0","reds":[],"ph0":0.644,"caught":"광산2 177px @0.005 · 잠든 번 345","menuOwner":[],"downMenu":true,"fedTarget":true,"selfMenu":true,"waits":[["광산2",true,364,345,479.7,"177","0.672","0.005"]]}
+  ]
+ },
+ "earlier": {
+  "what": "41c74d6a 위 판(첫 글자 pt · v · 고친 글자 q · w) — runs.log 줄 그대로",
+  "lines": [
+   "pt solo 1 exit 0 135s red 0 15:33 === 14건 중 PASS 14 · FAIL 0 ===",
+   "pt solo 2 exit 0 147s red 0 15:35 === 14건 중 PASS 14 · FAIL 0 ===",
+   "pt solo 3 exit 0 130s red 0 15:37 === 14건 중 PASS 14 · FAIL 0 ===",
+   "pt box 1 exit 0 161s red 0 15:40 === 14건 중 PASS 14 · FAIL 0 ===",
+   "pt box 2 exit 0 185s red 0 15:43 === 14건 중 PASS 14 · FAIL 0 ===",
+   "pt box 3 exit 0 181s red 0 15:46 === 14건 중 PASS 14 · FAIL 0 ===",
+   "v solo 1 exit 1 365s red 9 15:52 === 76건 중 PASS 67 · FAIL 9 ===",
+   "v solo 2 exit 1 609s red 9 16:02 === 76건 중 PASS 67 · FAIL 9 ===",
+   "v solo 3 exit 1 0s red 0 16:02 ",
+   "v solo 4 exit 1 0s red 0 16:02 ",
+   "v solo 5 exit 1 0s red 0 16:02 ",
+   "v solo 6 exit 1 0s red 0 16:02 ",
+   "v solo 7 exit 1 0s red 0 16:02 ",
+   "v solo 8 exit 1 0s red 0 16:02 ",
+   "v solo 9 exit 1 0s red 0 16:02 ",
+   "v solo 10 exit 1 0s red 0 16:02 ",
+   "v box 1 exit 1 1s red 0 16:02 ",
+   "v box 2 exit 1 0s red 0 16:02 ",
+   "v box 3 exit 1 0s red 0 16:02 ",
+   "v box 4 exit 1 0s red 0 16:02 ",
+   "v box 5 exit 1 0s red 0 16:02 ",
+   "v box 6 exit 1 0s red 0 16:02 ",
+   "v box 7 exit 1 0s red 0 16:02 ",
+   "v box 8 exit 1 0s red 0 16:02 ",
+   "v box 9 exit 1 1s red 0 16:02 ",
+   "v box 10 exit 1 0s red 0 16:02 ",
+   "q solo 1 exit 0 128s red 0 16:05 === 14건 중 PASS 14 · FAIL 0 ===",
+   "q solo 2 exit 0 145s red 0 16:07 === 14건 중 PASS 14 · FAIL 0 ===",
+   "q solo 3 exit 0 129s red 0 16:09 === 14건 중 PASS 14 · FAIL 0 ===",
+   "q box 1 exit 0 186s red 0 16:12 === 14건 중 PASS 14 · FAIL 0 ===",
+   "q box 2 exit 0 189s red 0 16:15 === 14건 중 PASS 14 · FAIL 0 ===",
+   "q box 3 exit 0 180s red 0 16:18 === 14건 중 PASS 14 · FAIL 0 ===",
+   "w solo 1 exit 0 341s red 0 16:24 === 77건 중 PASS 77 · FAIL 0 ==="
+  ]
+ },
+ "units": [
+  {
+   "n": "test-t1059-pick-top",
+   "r": "44/44",
+   "sec": 1
+  },
+  {
+   "n": "test-client-globals",
+   "r": "26/26",
+   "sec": 0
+  },
+  {
+   "n": "test-e2e-src",
+   "r": "76/76",
+   "sec": 1
+  },
+  {
+   "n": "test-harness-lint",
+   "r": "68/68",
+   "sec": 7
+  },
+  {
+   "n": "test-nightly",
+   "r": "58/58",
+   "sec": 10
+  },
+  {
+   "n": "test-audio",
+   "r": "208/208",
+   "sec": 5
+  },
+  {
+   "n": "test-building-anchor",
+   "r": "43/43",
+   "sec": 1
+  },
+  {
+   "n": "test-coast-shape",
+   "r": "47/47",
+   "sec": 138
+  },
+  {
+   "n": "test-crops-world",
+   "r": "46/46",
+   "sec": 0
+  },
+  {
+   "n": "test-crops",
+   "r": "170/170",
+   "sec": 2
+  },
+  {
+   "n": "test-itemlabel",
+   "r": "58/58",
+   "sec": 1
+  },
+  {
+   "n": "test-lon-day",
+   "r": "22/22",
+   "sec": 0
+  },
+  {
+   "n": "test-regrow",
+   "r": "100/100",
+   "sec": 16
+  },
+  {
+   "n": "test-snow",
+   "r": "43/43",
+   "sec": 0
+  },
+  {
+   "n": "test-streams",
+   "r": "54/54",
+   "sec": 22
+  },
+  {
+   "n": "test-trees",
+   "r": "91/91",
+   "sec": 1
+  },
+  {
+   "n": "test-well-art",
+   "r": "33/33",
+   "sec": 1
+  },
+  {
+   "n": "test-well",
+   "r": "32/32",
+   "sec": 2
+  },
+  {
+   "n": "test-winter-fx",
+   "r": "61/61",
+   "sec": 2
+  },
+  {
+   "n": "test-charsheet",
+   "r": "192/192",
+   "sec": 11
+  },
+  {
+   "n": "test-handoff-body",
+   "r": "94/94",
+   "sec": 320
+  },
+  {
+   "n": "test-village-only",
+   "r": "101/101",
+   "sec": 86
+  }
+ ],
+ "unitOnMain": {
+  "tree": "7704bcaa(커밋 안 한 임시 나무)",
+  "res": "test-t1059-pick-top exit 1 0s === 44건 중 PASS 27 · FAIL 17 === @7704bcaa",
+  "reds": [
+   "★★켬 — **그림에서 위에 그려진 사람**(p2 · 가까운 p1 이 아니다)  [\"player\",\"p1\"]",
+   "켬 — 돌려주는 대상은 **명부의 그 사람**(자리 · obj · npc — 동사 · 이름 · 쓰러짐은 명부가 정본)  [4998,5998,true]",
+   "★켬 — 같은 z 면 **누른 점에서 가까운** 사람(pb)",
+   "★켬 — **위에 그려진 나**(보이는 것 = 누른 것)  [\"player\",\"p1\"]",
+   "★켬 — **그린 사람(pv)이 안 그린 사람 위**(보이는 것 = 누른 것 · 자리로 다시 셈하지 않는다)  [\"player\",\"ph\"]",
+   "★★켬 — **위에 그려진 사람**(p2)에게 묻는다  p1",
+   "★켬 · T813 켬 — **누른 순간**에 그려져 있던 그대로(p2 · 원점과 사람이 같은 프레임)  p1",
+   "돌연변이 글자를 세웠다(제품 글자에 세 자리가 하나씩 있고 다 바꿨다)  [0,0,0]",
+   "00-const — `_lastPeopleDrawn` 한 자리(최상위 let)",
+   "대입은 렌더 한 자리 · 고르기는 읽기만",
+   "렌더 — 사람 갈래에서 위층 · 시야 문 **뒤**, 그리기 **앞**에 목록에 싣는다(안 그린 사람은 없다)  [112,447,-1,491]",
+   "렌더 — 프레임마다 새 목록 · 그리기 고리 **뒤**에 건다",
+   "고르기 — 키는 그린 목록의 `r.z`(렌더 식 사본 0)",
+   "고르기 — 상자는 종전 `PICK_PLAYER_HALF`(18) 그대로 · 새 수 0",
+   "클라 손잡이 — welcome `uiCfg.pickTop === true` 일 때만",
+   "서버 손잡이 — `T1059_PICK_TOP` 켬 기본 후보 · `=0` 이면 welcome 칸 없음(옛 welcome)",
+   "우클릭 — 누른 순간의 그린 목록(T813 켬) · 커서 이름표는 직전 프레임(같은 `pickAt`)"
+  ]
+ },
+ "probe": {
+  "what": "마을 한복판(광산2 · 광산7 중심 = 회관 칸)에서 화면 안 NPC 가 그 프레임 렌더 목록에 있었나 — 0.7초마다 · 실클라 하나 · 이 가지 위(커밋 안 한 재기) · night = 중심만 40번씩 · day = 중심 · 회관 밖 224px(남 · 동 · 서) 15번씩",
+  "night": {
+   "at": "2026-11-01T19:53:53.029Z",
+   "sum": {
+    "n": 80,
+    "nearestNotDrawn": 80,
+    "nearestOff18": 0,
+    "nearestOffMax": 0,
+    "allOn": 320,
+    "allNotDrawn": 320,
+    "movingOff": [],
+    "listNull": 0,
+    "meIn": 80,
+    "npcDrawnMax": 0,
+    "evZero": 320,
+    "coneZero": 0,
+    "evPos": 0
+   },
+   "byVillage": {
+    "광산2": {
+     "samples": 40,
+     "npcOn": 160,
+     "drawn": 0,
+     "evZero": 160,
+     "coneZero": 0,
+     "dMin": 408,
+     "dMax": 495
+    },
+    "광산7": {
+     "samples": 40,
+     "npcOn": 160,
+     "drawn": 0,
+     "evZero": 160,
+     "coneZero": 0,
+     "dMin": 358,
+     "dMax": 436
+    }
+   }
+  },
+  "day": {
+   "at": "2026-11-01T20:03:05.430Z",
+   "sum": {
+    "n": 79,
+    "nearestNotDrawn": 51,
+    "nearestOff18": 0,
+    "nearestOffMax": 8,
+    "allOn": 438,
+    "allNotDrawn": 359,
+    "movingOff": [
+     7,
+     6,
+     7,
+     6,
+     3,
+     3,
+     4,
+     5,
+     5,
+     4,
+     3,
+     3,
+     4,
+     4,
+     4,
+     5,
+     5,
+     4,
+     2,
+     2,
+     2,
+     5,
+     6,
+     2,
+     3,
+     3,
+     6,
+     5,
+     4,
+     5,
+     5,
+     4,
+     4,
+     4,
+     3,
+     4,
+     4,
+     7,
+     2,
+     3,
+     5,
+     1,
+     5,
+     5,
+     8,
+     4,
+     5,
+     4,
+     4,
+     3,
+     2,
+     4,
+     3,
+     6,
+     5,
+     4,
+     3,
+     1,
+     3,
+     2,
+     3,
+     2,
+     2,
+     2,
+     2
+    ],
+    "listNull": 0,
+    "meIn": 79,
+    "npcDrawnMax": 4,
+    "evZero": 357,
+    "coneZero": 167,
+    "evPos": 79
+   },
+   "byStance": {
+    "광산2 중심(회관)": {
+     "samples": 15,
+     "npcOn": 98,
+     "drawn": 0,
+     "evZero": 98,
+     "coneZero": 35,
+     "dMin": 118,
+     "dMax": 535
+    },
+    "광산2 남 224": {
+     "samples": 4,
+     "npcOn": 11,
+     "drawn": 4,
+     "evZero": 7,
+     "coneZero": 7,
+     "dMin": 294,
+     "dMax": 452
+    },
+    "광산7 중심(회관)": {
+     "samples": 15,
+     "npcOn": 99,
+     "drawn": 0,
+     "evZero": 99,
+     "coneZero": 45,
+     "dMin": 140,
+     "dMax": 469
+    },
+    "광산7 남 224": {
+     "samples": 15,
+     "npcOn": 75,
+     "drawn": 51,
+     "evZero": 22,
+     "coneZero": 19,
+     "dMin": 35,
+     "dMax": 342
+    },
+    "광산7 동 224": {
+     "samples": 15,
+     "npcOn": 68,
+     "drawn": 14,
+     "evZero": 54,
+     "coneZero": 49,
+     "dMin": 15,
+     "dMax": 586
+    },
+    "광산7 서 224": {
+     "samples": 15,
+     "npcOn": 87,
+     "drawn": 10,
+     "evZero": 77,
+     "coneZero": 12,
+     "dMin": 82,
+     "dMax": 502
+    }
+   }
+  }
+ }
+}

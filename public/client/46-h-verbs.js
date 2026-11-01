@@ -29,12 +29,53 @@
   // 자연물 네모는 **그 자연물의 크기를 따라간다**(`r.r` = 나무 4~20 · 렌더가 쓰는 그 값).
   //   작은 덤불이 안 눌리고 큰 나무가 좁게 눌리는 걸 막는다. 바닥 16 · 천장 28(상자 20 언저리).
   const natureHalf = (r) => Math.max(16, Math.min(28, (r && r.r ? r.r : 12) + 8));
+  // ★★[T1059 2026-11-01 · PM 판정 = 제품 결함] 손잡이 `T1059_PICK_TOP`(서버 env → welcome `uiCfg.pickTop` · 켬 기본 후보 · 되돌림 `=0` = 칸 없음 = 종전 그대로).
+  //   종전 사람 층은 `others` 차례로 ±18 상자 안 **첫** 사람을 냈다 — 가장 가까운 사람도, 그림에서 위에 그려진 사람도 아니다.
+  //   사람이 겹친 자리(마을 한복판 · 장 · 몰려 걷는 어부)에서 누른 사람과 다른 사람에게 말이 갔다(보고/T1035 §1 · 야간 10-31 "⑬ 말풍선 null").
+  //   켬 = 상자(±`PICK_PLAYER_HALF` · 명부 자리 — **종전 그 상자 그대로**) 안의 사람(남 · 나) 가운데
+  //     **그리는 차례가 가장 뒤**(그 프레임 렌더 목록 `_lastPeopleDrawn` 의 정렬 키 `z` 가 가장 큰 = 화면 아래쪽 = 위에 그려진) 사람 →
+  //     `z` 가 같으면 **누른 점에서 가장 가까운** 사람. 그 프레임에 안 그린 사람(시야 뒤 · 안개 · 지붕 밑 · 위층)은 그린 사람 **밑**이다
+  //     (겹치면 그린 사람 · 혼자면 종전처럼 잡힌다 — 안 보이는 사람을 아예 빼는 것은 이 카드 밖 · 보고/T1059 회부).
+  //     상자 · 반경 · 동사 · 다른 층(자연물 · 물건 · 터 · 상자) 0 변 · 새 수 0. 키는 렌더가 정렬에 쓴 `z` 를 **읽기만** 한다(식 사본 0).
+  //   그린 목록은 우클릭이 **누른 순간**의 것을 쓴다(T813 이 원점을 붙잡는 그 자리 — 원점과 그리는 차례가 같은 프레임) · 없으면 직전 프레임.
+  function t1059On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.pickTop === true); }
+  function _t1059PickPerson(wx, wy, drawn) {
+    const zOf = new Map();
+    for (const r of drawn) zOf.set(r.pid, r.z);   // 그 프레임의 그리는 차례 키(남 = pid · 나 = myPid)
+    let best = null;
+    const take = (t) => {
+      const z = zOf.has(t.id) ? zOf.get(t.id) : -Infinity;   // 안 그린 사람은 그린 사람 밑
+      const d = Math.hypot(t.absX - wx, t.absY - wy);
+      if (!best || z > best.z || (z === best.z && d < best.d)) best = { t, z, d };
+    };
+    for (const c of conns.values()) {
+      if (!c.meta || !c.others) continue;
+      const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+      for (const o of c.others.values()) {
+        const absX = ox + o.x, absY = oy + o.y;
+        if (Math.abs(absX - wx) <= PICK_PLAYER_HALF && Math.abs(absY - wy) <= PICK_PLAYER_HALF) {
+          take({ kind: 'player', id: o.pid, obj: o, absX, absY, down: !!downStates.get(o.pid), npc: !!o.npc });
+        }
+      }
+    }
+    if (Math.abs(myAbsPredicted.x - wx) <= PICK_PLAYER_HALF && Math.abs(myAbsPredicted.y - wy) <= PICK_PLAYER_HALF) {
+      take({ kind: 'me', id: myPid, obj: null, absX: myAbsPredicted.x, absY: myAbsPredicted.y });
+    }
+    return best ? best.t : null;
+  }
   function pickAt(wx, wy, opts) {
     // ⓪ **우클릭 층** — 사람 · 나 · 자연물. 좌클릭 사슬엔 셋 다 **없다**(종전 무변).
     //   ★[T82] T68 의 `{players:true}` 를 `{live:true}` 로 넓혔다 — 같은 뜻(우클릭이 보는 층까지)이고,
     //     이름이 "사람"이면 자연물이 들어온 지금 거짓말이 된다.
     if (opts && opts.live) {
-      for (const c of conns.values()) {
+      // ★[T1059] 켬 — 사람 · 나는 **한 줄 세움**으로 가린다(아래 종전 두 고리 — `others` 첫 사람 · 상자에 남이 없을 때만 나 — 를 대신한다).
+      //   목록이 없으면(첫 프레임 전) 종전 그대로. 상자 안에 사람이 없으면 종전처럼 자연물 층으로 흐른다.
+      const _drawn = t1059On() ? (opts.drawn || _lastPeopleDrawn) : null;
+      if (_drawn) {
+        const p = _t1059PickPerson(wx, wy, _drawn);
+        if (p) return p;
+      }
+      if (!_drawn) for (const c of conns.values()) {
         if (!c.meta || !c.others) continue;
         const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
         for (const o of c.others.values()) {
@@ -46,7 +87,8 @@
         }
       }
       // 나 자신 — `others` 에 내가 없다(서버가 남만 보낸다). 화면의 나는 예측 위치에 서 있다.
-      if (Math.abs(myAbsPredicted.x - wx) <= PICK_PLAYER_HALF
+      //   ★[T1059] 켬이면 나도 위 한 줄 세움에 남과 같이 섰다(나도 렌더 목록에 그려진다) — 같은 규칙으로 가렸다.
+      if (!_drawn && Math.abs(myAbsPredicted.x - wx) <= PICK_PLAYER_HALF
           && Math.abs(myAbsPredicted.y - wy) <= PICK_PLAYER_HALF) {
         return { kind: 'me', id: myPid, obj: null, absX: myAbsPredicted.x, absY: myAbsPredicted.y };
       }
@@ -361,6 +403,7 @@
   //   조준 · 밀기 · 홀드 문턱 · 메뉴 글자 · 다른 짚기 자리(커서 이름표 · 조준선) 0 변 — 탭 메뉴가 짚는 원점 하나만 바뀐다.
   function t813On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.rmbPress === true); }
   let _rmbCam = null;                    // 끔 = 늘 null(종전 그대로)
+  let _rmbPeople = null;                 // ★[T1059] 누른 순간에 그려져 있던 사람들(T813 켬일 때 원점과 같이 붙잡는다 · 끔 = null → 뗄 때의 직전 프레임)
   let _lastMenuX = 0, _lastMenuY = 0;
   function bindVerbMenu() {
     const cv = canvas;
@@ -369,6 +412,7 @@
       if (e.button !== 2) return;
       _rmbAt = performance.now(); _rmbX = e.clientX; _rmbY = e.clientY;
       _rmbCam = t813On() ? _lastCamIso : null;   // ★[T813] 누른 순간의 원점(같은 입력 차례 — 아직 이 누름의 밀기가 안 그려졌다)
+      _rmbPeople = t813On() ? _lastPeopleDrawn : null;   // ★[T1059] 그 원점으로 그린 그 프레임의 사람들(원점과 사람이 같은 화면)
     });
     // ★★[T507] 커서 이름표 — 커서 밑(`pickAt` · 우클릭과 같은 층)의 이름 한 낱말. 새 패널 0 · 화면 규칙 B(먹선).
     cv.addEventListener('mousemove', (e) => verbTagMove(e));
@@ -386,7 +430,7 @@
       const px = (e.clientX - rect.left) * (cv.width / rect.width);
       const py = (e.clientY - rect.top) * (cv.height / rect.height);
       const w = screenToWorldAbs(px, py, _rmbCam);   // ★[T813] 끔 = `_rmbCam` null → 종전 그대로(직전 프레임 원점)
-      const t = pickAt(w.wx, w.wy, { live: true });
+      const t = pickAt(w.wx, w.wy, { live: true, drawn: _rmbPeople });   // ★[T1059] 끔(`pickTop` 없음)이면 `drawn` 은 안 읽힌다
       // ★★[T507] **물 칸**이면 메뉴를 서버의 답으로 짓는다 — 민물이냐 짠물이냐는 서버 술어(`isSeaTileLocal`)가 가른다.
       //   클라의 `isWaterAtAbs` 는 "물이냐"(그리기용 거울)까지만 묻는다 — 짠물 판정을 여기 옮겨 적지 않는다.
       if (t && t.kind === 'ground' && t507On() && ((typeof isWaterAtAbs === 'function' && isWaterAtAbs(t.absX, t.absY)) || (typeof isWellAtAbs === 'function' && isWellAtAbs(t.absX, t.absY)) || (typeof isStreamAtAbs === 'function' && isStreamAtAbs(t.absX, t.absY)))) {   // ★[T585] 개울 칸도 물 메뉴   // ★[T557] 우물 칸도 물 메뉴(서버 `look` 이 민물이라 답한다)
