@@ -142,6 +142,10 @@ for (const s of seeds) {
   world.villages.push(ev);
 }
 world.day = 0;
+// ★★[T1047 2026-11-01 · T1012 카드 감 4 · PM "추상 금지 — 랩도 같은 지형 거리"] 교역 거리 = 서버 존이 econ 에 넣는 **그 행렬**(지형 최단거리 · 정본 `computeAndInjectDistMatrix`).
+//   손잡이 `T1047_LAB_DIST`(랩 기본 켬 후보 · `=0` = 직선 = 종전 바이트) · 몸통은 `scripts/lib-lab-dist.js` 한 벌(두 랩 자가 같은 함수 · 사본 0).
+//   ⚠생활층 문(`_clearProbe` · `_cropProbe`)을 열기 **전**에 부른다 — 정본 문이 모듈 칸을 잠깐 빌렸다 비운다.
+const _t1047 = require('./lib-lab-dist').inject({ P, T, ZONE, deps: _t601.deps, sig: _t601.sig, world, econ, cache: _SEEDCACHE });
 // ★★[T100 2026-09-05 · 손잡이 없으면 무변] **개간 관측** — 이 계측기는 여태 `ENABLE_VILLAGES=0` 이라
 //   생활층 개간이 안 돌았다. econ 이 밭을 안 봤을 땐 무해했지만(T86 까지), 밭이 밑변이 되면
 //   **밭이 시딩값에 얼어붙은 세계**를 재게 된다(라이브는 개간이 돈다). `T100_CLEAR=1` 이면 정본
