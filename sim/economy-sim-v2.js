@@ -2525,6 +2525,7 @@ module.exports = {
   _xzProbe: { handOff: _xzHandOff, arrive: _xzArrive, arriveLoop: _xzArriveLoop, handBack: _xzHandBack, ret: _xzReturn },   // ★[T748] 존 경계 짐 레코드 — 하네스가 **이 함수들**을 그대로 부른다(사본 0 · 값 무변)
   setLotHook,   // ★[T732] 곳간 로트 장부 훅(서버 켬일 때만 꽂는다 · 랩·CLI 는 안 꽂는다 = 무동작)
   T784_CARGO_AGE, _t784Probe: { F: _t784F, arrive: _t784Arrive },
+  T1049_FLOOR_STONE,   // ★[T1049] 돌 바닥 마을은 제 돌을 안 판다(하네스 `test-floor-stone` 가 읽는다)
   T812_CARGO_TEMP, _t812Probe: { exp: _t812Exp },
   T840_LEG_ELEV, elevKmOf: _elevKmOf,   // ★[T840] 다리 고도 — 장부(`granary-lots.unload`)가 같은 함수를 부른다(사본 0)   // ★[T812] 길 위 노출 — 하네스가 이 함수를 그대로 부른다(사본 0)   // ★[T784] 짐 늙음 — 하네스가 **이 두 함수**를 그대로 부른다(사본 0 · 값 무변)
 };
