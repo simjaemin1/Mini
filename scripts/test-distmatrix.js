@@ -114,12 +114,15 @@ if (process.argv[2] === '--t977') {
   out.gate1 = P._distProbe.basisRefresh();
   let n5 = 0; const L5 = cap(() => { n5 = P._distProbe.basisRun(); });
   out.n5 = n5; out.tag5bfs = /바탕 다시 세움: .*BFS \d+소스/.test(L5); out.inj5 = wB._distMatrix !== undefined;
+  out.tag5drop = /\[T1011\] 거리행렬 바탕 확인: 격자가 다르다/.test(L5); out.basis5 = !!P._distProbe.basis;   // ★[T1011] 미룸 갈래
   out.memo5 = Buffer.compare(memo0, Buffer.from(P._distProbe.blkMemo)) === 0;
-  const bB = P._distProbe.basis.blk; let bd = 0; for (let i = 0; i < bB.length; i++) if (bB[i] !== bA[i]) bd++; out.bd5 = bd;
+  const bB = P._distProbe.basis ? P._distProbe.basis.blk : bA; let bd = 0; for (let i = 0; i < bB.length; i++) if (bB[i] !== bA[i]) bd++; out.bd5 = bd;
   P._distProbe.blkReset();   // 무효화
   const wC = mkWorld(N); P._distProbe.setup(ta2, ZONE, wC, econ); const L6 = cap(() => P._distProbe.compute('t996-C'));
   out.tag6 = /같은 격자 · BFS 0/.test(L6); out.e6 = dif(enc(wC._distMatrix), m3b);
   out.gate7 = P._distProbe.basisRefresh(); const L7 = cap(() => P._distProbe.basisRun()); out.tag7 = /바탕 다시 세움: .*같은 격자\(BFS 0\)/.test(L7);
+  P._distProbe.blkReset(); const wD = mkWorld(N); P._distProbe.setup(ta2, ZONE, wD, econ); const L8 = cap(() => P._distProbe.compute('t1011-D'));   // 또 무효화
+  out.tag8 = /같은 격자 · BFS 0/.test(L8); out.e8 = dif(enc(wD._distMatrix), m3b);
   _log('T977JSON ' + JSON.stringify(out));
   process.exit(0);
 }
@@ -226,7 +229,7 @@ say('\n[⑦ ★[T968] 다 센 셈은 주입 앞에서 선다 · 이어 밀면 �
 
 // ── ⑧ ★[T977] 같은 격자면 BFS 0 — 바탕 행렬 = 다시 센 행렬(바이트) · 격자가 바뀌면 종전 BFS ───────────────
 //   손잡이는 모듈을 읽을 때 정해지므로 켬 갈래는 **딸린 프로세스**(`T977_DIST_SAME=1` · 이 파일 `--t977`)가 돌고, 여기(끔)서 센 전쌍과 견준다.
-say('\n[⑧ ★[T977 · T996] 같은 격자면 BFS 0 · 바탕 = 다시 센 셈 · 바뀌면 종전 BFS · 환호 적재 뒤 바탕 다시 세움]');
+say('\n[⑧ ★[T977 · T996 · T1011] 같은 격자면 BFS 0 · 바탕 = 다시 센 셈 · 바뀌면 종전 BFS · 환호 적재 뒤 바탕 다시 세움 / 미룸]');
 {
   const fs = require('fs');
   const V = fs.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8');
@@ -254,7 +257,21 @@ say('\n[⑧ ★[T977 · T996] 같은 격자면 BFS 0 · 바탕 = 다시 센 셈 
     ok(J.tag5bfs && J.n5 > 0 && J.bd5 > 0, `[상황] 술어가 바뀐 뒤(무효화 없음) 바탕을 BFS 로 다시 세웠다 — 양보 ${J.n5}번 · 바탕 메모가 ${J.bd5}칸 바뀜`);
     ok(!J.inj5 && J.memo5, '★다시 세움은 주입 0(세계 행렬 그대로) · 공유 메모 무접촉(바이트 같음)');
     ok(J.tag6 && J.e6 === 0, `★★그다음 무효화는 같은 격자(BFS 0) — 바뀐 격자에서 바탕 없이 센 셈과 같다(불일치 ${J.e6}칸)`);
+    ok(J.tag8 && J.e8 === 0, `★또 무효화도 같은 격자(BFS 0) — 전쌍과 같다(불일치 ${J.e8}칸)`);
     ok(J.gate7 && J.tag7, '[T996] 격자가 그대로면 다시 세움도 확인만(BFS 0)');
+    ok(!J.tag5drop && J.basis5, '[T1011] 끔(기본)이면 미룸 갈래를 안 탄다 — 바탕을 다시 세웠다');
+  }
+  // ── [T1011] 미룸 갈래(`T1011_BASIS_LAZY=1`) — 같은 딸린 프로세스 시나리오를 켬으로
+  const c2 = spawnSync(process.execPath, [__filename, '--t977'], { env: Object.assign({}, process.env, { T977_DIST_SAME: '1', T1011_BASIS_LAZY: '1' }), encoding: 'utf8', maxBuffer: 1 << 26 });
+  let K = null; try { K = JSON.parse((c2.stdout || '').split('\n').filter((l) => l.startsWith('T977JSON '))[0].slice(9)); } catch (e) {}
+  ok(/const T1011_BASIS_LAZY = process\.env\.T1011_BASIS_LAZY === '1';/.test(V), '[T1011] 손잡이 — 끔 기본 · `=1` 만 켬');
+  ok(c2.status === 0 && !!K, `[T1011] 딸린 프로세스(미룸) 끝 — 종료 ${c2.status}`);
+  if (K) {
+    ok(K.gate1 && K.tag5drop && !K.tag5bfs && K.n5 > 0, `[T1011 · 상황] 술어가 바뀐 뒤 확인만 했다 — 갈려서 BFS 없이 바탕을 내려놓음(양보 ${K.n5}번)`);
+    ok(!K.basis5 && !K.inj5 && K.memo5, '★[T1011] 내려놓은 뒤 바탕 0 · 주입 0 · 공유 메모 무접촉');
+    ok(!K.tag6 && K.e6 === 0, `★★[T1011] 첫 무효화는 BFS 한 번 — 바뀐 격자 전쌍과 같다(불일치 ${K.e6}칸)`);
+    ok(K.gate7 && K.tag7, '[T1011] 격자가 그대로면 확인만 · 바탕 그대로(BFS 0)');
+    ok(K.tag8 && K.e8 === 0, `★★[T1011] 그다음 무효화는 같은 격자(BFS 0) — 전쌍과 같다(불일치 ${K.e8}칸)`);
   }
 }
 
