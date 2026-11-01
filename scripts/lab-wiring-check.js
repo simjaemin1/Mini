@@ -189,7 +189,7 @@ console.log('\n[F] sim/economy-engine.browser.js — 번들 신선도');
   //   ④ ★[2026-08-03a] **채택 손잡이는 기본값이 채택값이어야 한다** — 이걸 안 보면 "코드엔 있는데
   //      기본이 OFF"인 채로 채택 보고가 나간다(=랩·서버·회귀가 전부 채택 전 세계를 잰다).
   //      채택분은 `!(env === '0')`(기본 ON), 기각분은 `(env === '1')`(기본 OFF) 꼴이어야 한다.
-  for (const k of ['STONE_NET', 'PRODK_CAP', 'ALLOY_OPP', 'SHIELD_AGE', 'SHIELD_SOFT', 'ORE_MIX_EFF', 'TREASURY_BUY', 'T784_CARGO_AGE', 'T812_CARGO_TEMP', 'T877_DRY_FIX', 'T17_MSY', 'T932_SMELT_CONT', 'T825_FOOD_KEEP', 'T924_DEBT_CAP', 'T958_HOUSE_REAL', 'T931_SLOTK_EMA']) {   // ★[T974] 집 행위 마을 econ 주거 = 지은 침상 · 두 자리 계획 주거 켬 기본(되돌림 `=0` · `T931_SLOTK_EMA` 는 끝 — test-t931 ⓕ)   // ★[T911] 갈무리 열량 보존 · 건굴 · 마른 미역 켬 기본(specialty — 번들에 실린다)   // ★[T795] 캐러밴 짐 늙기 켬 기본   // ★[T943] 식량 자리 K 관성 'season' 켬 기본(되돌림 `=0`)
+  for (const k of ['STONE_NET', 'PRODK_CAP', 'ALLOY_OPP', 'SHIELD_AGE', 'SHIELD_SOFT', 'ORE_MIX_EFF', 'TREASURY_BUY', 'T784_CARGO_AGE', 'T812_CARGO_TEMP', 'T877_DRY_FIX', 'T17_MSY', 'T932_SMELT_CONT', 'T825_FOOD_KEEP', 'T924_DEBT_CAP', 'T958_HOUSE_REAL', 'T931_SLOTK_EMA', 'T1049_FLOOR_STONE']) {   // ★[T1049] 돌 바닥 마을은 제 돌을 안 판다 켬 기본 후보(되돌림 `=0` · 승인 대기)   // ★[T974] 집 행위 마을 econ 주거 = 지은 침상 · 두 자리 계획 주거 켬 기본(되돌림 `=0` · `T931_SLOTK_EMA` 는 끝 — test-t931 ⓕ)   // ★[T911] 갈무리 열량 보존 · 건굴 · 마른 미역 켬 기본(specialty — 번들에 실린다)   // ★[T795] 캐러밴 짐 늙기 켬 기본   // ★[T943] 식량 자리 K 관성 'season' 켬 기본(되돌림 `=0`)
     const re = new RegExp(`process\\.env\\.${k}\\s*===\\s*'0'`);
     if (re.test(B)) ok(`  채택 손잡이 ${k} 기본 ON (=== '0' 으로 되돌림)`);
     else bad(`  채택 손잡이 ${k} 의 기본값이 채택값이 아니다 — 랩·회귀가 채택 전 세계를 재고 있다`);
