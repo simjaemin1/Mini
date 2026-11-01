@@ -263,7 +263,7 @@ async function trip() {
   if ((WIN === 'meal' || WIN === 'house') && !NOW && !CLOSE) await sleep(SAVE_WAIT);   // 사람 쪽이 한 번 저장된 뒤(운영 하루 24분이면 거의 언제나 그렇다)
   const invLive = rowInv(await rowOf(pid)); const rowLive = await rowOf(pid);
   let P = null; try { P = (await jget(`http://localhost:${HPORT}/perf`)).econTick; } catch (e) {}
-  const memK = await look({ timing: true });
+  const memK = await look({ timing: true, car: WIN === 'caravan' });   // ★[T1034] 캐러밴 창은 장부 · 몸도
   const gap = memK && h0 != null ? gapOf(memK.tm, pid, h0) : null;
   if (CLOSE) {   // 날이 바뀐 뒤(`/health` = 창 머리) · ★T731 현지 자정 창 — 마을마다 제 자정에 닫힌다(동 → 서 · 수십 초 퍼짐) ⇒ 창 꼬리(econ 날 줄)가 찍힐 때까지 · 마감 저장 줄이 다 돌 몫
     const zlog = `${DDIR}/zone-${nLog}.log`, nDay = () => { try { return (fs.readFileSync(zlog, 'utf8').match(/마을 econ day \d+:/g) || []).length; } catch (e) { return 0; } };
