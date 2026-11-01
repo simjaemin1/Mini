@@ -3696,13 +3696,13 @@ function _t1034Pack() {
     if (body._xz) continue;
     const T = body._t661;
     b[String(id)] = { ph: body.phase, dd: body.delayedDays | 0, seen: body._evSeenDelay | 0, rf: body.repairFailN | 0, lg: Number.isFinite(body.lingerUntil) ? body.lingerUntil : null,
-      da: body.departAt, aa: body.arriveAt, ppd: body.pxPerDay, nom: body.nomPxMs,
+      da: body.departAt, aa: body.arriveAt, ppd: body.pxPerDay, nom: body.nomPxMs, pg: body.prog, at: Date.now(),
       T: T ? { L: T.L, len: T.path.len, D0: T.D0, leg: T.leg, ppd: T.ppd, st: !!T.stall, day: T.day, t0: T.t0 == null ? null : T.t0,
         //   길 점도 싣는다 — 다시 뜬 판이 길을 다시 파면 다른 길이 나온다(답압 · 길 무게가 그새 바뀌었다 — 가는 길 57,484 → 57,409px · 몸 최대 370px 튐 · 보고/T1034 §1),
         //   고립 귀환(걸어온 역경로)과 도착 경계 귀환 길(`_t661ReturnPts`)은 T775 가 파는 길(도착 마을 → 집)과 아예 다르다. 몸은 걷던 그 길에 다시 선다.
         ...(T.path.pts ? { P: T.path.pts.map((q) => [q.x, q.y]) } : {}) } : null };
   }
-  if (state._t1034Saved) for (const [k, v] of state._t1034Saved) if (!(k in b)) { b[k] = v; _t1034Stat.held++; }
+  if (state._t1034Saved && !(state._t775 && state._t775.done)) for (const [k, v] of state._t1034Saved) if (!(k in b)) { b[k] = v; _t1034Stat.held++; }   // T775 줄이 끝나면 몸을 못 받은 칸은 버린다(끝난 캐러밴 칸이 줄곧 따라 실리지 않게)
   if (!Object.keys(b).length) return null;
   _t1034Stat.packed++;
   return { b };
@@ -3732,7 +3732,12 @@ function _t1034Apply(body, now) {
   if (Number.isFinite(S.ppd)) body.pxPerDay = S.ppd;
   if (Number.isFinite(S.nom)) body.nomPxMs = S.nom;
   if (!(body.phase === 'linger' && spawnPh === 'linger')) {   // 장 마당에 선 머묾 몸은 그 자리 그대로(T707 마당)
-    const at = body.phase === 'linger' ? 0 : (T.stall ? T.L : _t661Vis(body, now));   // 머묾 = 귀환 길 머리(도착 자리) · 막힘 = 장부 자리 · 그 밖 = 보이는 자리
+    let at = body.phase === 'linger' ? 0 : (T.stall ? T.L : _t661Vis(body, now));   // 머묾 = 귀환 길 머리(도착 자리) · 막힘 = 장부 자리 · 그 밖 = 보이는 자리
+    //   보이는 자리보다 뒤에 있던 몸(쫓아가는 중 — 고립 귀환 · 귀환 걸음 상한)은 실은 자리에서 그 뒤 걸음 상한만큼까지만(틱 판과 같은 상한 · 더 앞으로 뛰지 않는다)
+    if (body.phase !== 'linger' && Number.isFinite(S.pg) && Number.isFinite(S.at)) {
+      const cap = (T772_ON && T.leg === 'inbound' && state.deps.moveSpeed > 0) ? state.deps.moveSpeed / 1000 : body.nomPxMs * 4;
+      at = Math.min(at, S.pg + Math.max(0, cap) * Math.max(0, now - S.at));
+    }
     _t775Put(body, state.deps.players.get(body.pid), T.path, at);
   }
   _t1034Stat.applied++;
@@ -3799,7 +3804,7 @@ function _t775Resume(now) {
     if (r === true && T1034_KEEP && state._t1034Saved) _t1034Apply(bodies.get(c.id), now);   // ★[T1034] 쥔 몸 칸을 덮는다(끔 = 칸이 없다)
   }
   R.q = keep;
-  if (!keep.length) R.done = true;
+  if (!keep.length) { R.done = true; if (state._t1034Saved) state._t1034Saved = null; }   // ★[T1034] 몸을 못 받은 칸은 여기서 버린다
 }
 function spawnCaravanBody(c, now, budgetMs) {
   if (state.xzone && ((c.to && c.to._xz) || (c.from && c.from._xz))) return _xzSpawnBody(c, now);   // ★★[T533] 이웃 존이 낀 캐러밴(팔 켬 + 호스트 — 끔이면 이 줄 무동작)
