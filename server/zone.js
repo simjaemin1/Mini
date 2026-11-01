@@ -3403,12 +3403,25 @@ const T998_NPC_WILD_SYNC = process.env.T998_NPC_WILD_SYNC !== '0';
 //   랩 동기(`Wildlife.onMobHit` — 존 hp → 랩 hp · 놀람 · 반격 돌진 굴림 · 0 이하면 랩 `_extKill`) + 플레이어가 잡았으면 마을 장부에서 한 마리(`SimVillages.huntKillAt` · T146 §0-ⓒ).
 //   부르는 자리 셋: 사람 공격(`tryAttack` — 종전 두 줄을 이 문으로 옮겼다 · 글자 · 차례 그대로 · 손잡이와 무관) · 화살(`stepArrows` — 켬 = 화살로 잡아도 장부 −1 ·
 //   화살은 `tryRangedAttack` 하나가 낸다 = 늘 플레이어 · 끔 = 랩 동기만(종전)) · NPC 타격(`npcStep` — 켬 = 안 죽는 타격도 이 문(놀람 · 반격 굴림) · 죽이는 타격은 T998 손잡이 ·
-//   끔 = 죽일 때만(종전)). NPC 길은 장부를 안 건드린다 — 사냥꾼 장부 몫은 마을 하루 틱의 하루치(villages.js)이고 뷰 사냥은 그 예산의 연출이다(T158 · 종전 그대로).
+//   끔 = 죽일 때만(종전)). NPC 길은 장부를 안 건드린다 — 사냥꾼 장부 몫은 마을 하루 틱의 하루치(villages.js)이고 뷰 사냥은 그 예산의 연출이다(T158 · 종전 그대로) → ★T1032: 사냥꾼 아닌 NPC 의 잡음은 장부 몫 · NPC 잡음도 존 사체(아래 `T1032_NPC_KILL`).
 const T1009_WILD_DOOR = process.env.T1009_WILD_DOOR !== '0';
 function wildHit(m, dmg, attacker, ledger) {
   Wildlife.onMobHit(m, dmg, attacker);
   // ★[T146] 플레이어가 잡았으면 **마을 장부에서도 한 마리 준다**(§0-ⓒ) — 새 수 0(잡은 것이 곧 그 수).
   if (ledger && m.hp <= 0) { if (T1025_EV_CORPSE) m._t1025Hunt = true; else try { SimVillages.huntKillAt(m.x, m.y); } catch (e) {} }   // ★[T1025 × T1009 · PM land1034] 켬 = 사체가 끝날 때(부르는 자리의 `spawnCorpse` 뒤 `huntAt` · `_t1025CorpseEnd`) — 사람 공격 · 화살 같은 길
+}
+// ★★[T1032 2026-11-01 · T1009 회부 1 · 2 · ★PM 판정 "같은 몸 · 같은 규칙"] 손잡이 `T1032_NPC_KILL`(켬 기본 · 되돌림 `=0` = T1009 판 그대로) —
+//   **NPC 가 잡아도 사람이 잡은 것과 같은 일**: 존 사체(`killCorpse` — 야생 그림자 · DB 몹 둘 다 · 사람 공격 · 화살 길 그 문) + 야생 그림자면 마을 장부 몫
+//   (`wildHit` 의 그 칸 — T1025 켬 = 사체에 자리 `huntAt` 만 적고 도살 · 부패 때 −1 · 끔 = 잡은 순간 −1). 단 사냥꾼 NPC 는 장부 0 — 그 몫은 마을 하루 틱
+//   하루치가 이미 뺐다(T158 · 두 번 깎지 않는다). 사냥꾼 판별 = 그 하루치 고리가 고르는 술어 그 글자(villages.js `_huntHuntersSteps` — `p.simJob !== 'hunter'`
+//   면 건너뜀 · 새 수 0 · 두 자리 글자가 같은지는 `test-wild-door` 가 쥔다). 끔 = NPC 잡음은 사체 0 · 장부 0(T1009 판).
+const T1032_NPC_KILL = process.env.T1032_NPC_KILL !== '0';
+// ★[T1032] 잡은 짐승의 존 사체 문 하나 — `spawnCorpse` + (T1025 켬 · 장부 몫이 섰으면) 사체에 자리(`huntAt` — 도살 · 부패 때 `_t1025CorpseEnd` 가 뺀다).
+//   부르는 자리 셋: 사람 공격 · 화살(T1025 × T1009 land1034 의 두 줄을 이 문으로 옮겼다 · 글자 · 차례 그대로 · 손잡이와 무관) · NPC 잡음(켬).
+function killCorpse(m, killerPid) {
+  const c = spawnCorpse(m, killerPid);
+  if (m._t1025Hunt && c) { c.huntAt = { x: m.x, y: m.y }; _t1025Corpse.deferred++; }
+  return c;
 }
 {
   // DB에서 기존 mob 로드 — 없으면 바이옴별 신규 스폰
@@ -4752,13 +4765,14 @@ function npcStep(npc, dt, now) {
         npc.lastAttackAt = now;
         const dmg = 8;
         setMobHp(target, target.hp - dmg, 'npc');   // ★[T954] 문으로(쓰기 · 저장 표 · 방송 — 종전 세 줄 그 차례)
-        if (target.isWild && (target.hp <= 0 ? T998_NPC_WILD_SYNC : T1009_WILD_DOOR)) wildHit(target, dmg, npc, false);   // ★[T998] 죽인 그림자 · ★[T1009] 안 죽는 타격도 — 사람 공격 · 화살 길 그 문(놀람 · 반격 굴림 · 장부 0 — 사냥꾼 장부는 하루치) · 끔 = 그 카드 앞 글자
+        if (target.isWild && (target.hp <= 0 ? T998_NPC_WILD_SYNC : T1009_WILD_DOOR)) wildHit(target, dmg, npc, T1032_NPC_KILL && npc.simJob !== 'hunter');   // ★[T998] 죽인 그림자 · ★[T1009] 안 죽는 타격도 — 사람 공격 · 화살 길 그 문(놀람 · 반격 굴림 · 장부 0 — 사냥꾼 장부는 하루치) · 끔 = 그 카드 앞 글자
         // 늑대 공격당하면 어그로 — 이미 NPC 향해있을 거. 팩 전파도.
         if (!target.tameOwner) {
           target.aggroTarget = npc.pid;
           if (target.type === 'wolf') aggroPackmates(target, npc.pid);
         }
         if (target.hp <= 0) {
+          if (T1032_NPC_KILL) killCorpse(target, npc.playerId);   // ★[T1032] NPC 가 잡아도 존 사체(사람 공격 길 그 차례 — 사체 → DB 삭제 → 지움 → 다시 낳기) · 야생이면 장부 몫은 위 문이 세웠다 · 끔 = 사체 0(T1009 판)
           if (target.dbId) { try { db.deleteMob(target.dbId); } catch (e) {} }
           chunkManager.removeMob(target);
           mobs.delete(target.mid);
@@ -12795,6 +12809,7 @@ function __testBind() {
     T987_MOB_RESPAWN, respawnMobLater,   // ★[T987] 다시 낳기 하네스(`test-mob-respawn` · 내보내기만)
     T998_NPC_WILD_SYNC,   // ★[T998] 랩 동기 하네스(`test-npc-wild-sync` · 내보내기만)
     T1009_WILD_DOOR,   // ★[T1009] 야생 그림자 문 하네스(`test-wild-door` · 내보내기만)
+    T1032_NPC_KILL, T1025_EV_CORPSE,   // ★[T1032] 같은 하네스가 판을 읽는다(내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
     spawnCorpse, butcherCorpse, corpses, t1025Corpse: _t1025Corpse,   // ★[T1025] 사체 장부 미룸 셈(탐침이 읽는다)
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
@@ -13221,8 +13236,7 @@ function stepArrows(dt) {
         // §4-4 wildlife 브리지: 화살 피격 — 랩 hp 동기 + 놀람/반격(사수가 이 존 플레이어면 반격 표적)
         if (m.isWild) wildHit(m, a.dmg, players.get(a.ownerPid) || null, T1009_WILD_DOOR);   // ★[T1009] 같은 문 — 켬 = 화살로 잡아도 마을 장부 −1(사람 공격 길 그 줄) · 끔 = 랩 동기만(종전)
         if (m.hp <= 0) {
-          const _cpA = spawnCorpse(m, a.ownerId);
-          if (m._t1025Hunt && _cpA) { _cpA.huntAt = { x: m.x, y: m.y }; _t1025Corpse.deferred++; }   // ★[T1025 × T1009 · PM land1034] 화살로 잡은 사체도 끝날 때 장부 한 마리(잡은 순간 −1 과 두 번 0)
+          killCorpse(m, a.ownerId);   // ★[T1032] 사체 문 하나(T1025 × T1009 land1034 두 줄 — 화살로 잡은 사체도 끝날 때 장부 한 마리 · 잡은 순간 −1 과 두 번 0 · 글자 · 차례 그대로)
           if (T975_MOB_DB && m.dbId) { try { db.deleteMob(m.dbId); } catch (e) {} }   // ★[T975 ①] 화살 죽음도 같은 삭제 문(사람 공격 · NPC 죽음 길 그 글자) · 끔 = 행이 남는다(종전)
           chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid });
           if (T987_MOB_RESPAWN) respawnMobLater(m);   // ★[T987] 화살 죽음도 같은 다시 낳기 문 · 끔 = 다시 낳기 없음(종전)
@@ -13348,8 +13362,7 @@ async function tryAttack(player) {
     }
     if (bestMob.hp <= 0) {
       // Phase 5-7: 사체 entity 생성 (즉시 인벤 X. 도살 액션 필요).
-      const _cp = spawnCorpse(bestMob, player.playerId);
-      if (bestMob._t1025Hunt && _cp) { _cp.huntAt = { x: bestMob.x, y: bestMob.y }; _t1025Corpse.deferred++; }   // ★[T1025] 사냥터 장부 한 마리는 이 사체가 끝날 때
+      killCorpse(bestMob, player.playerId);   // ★[T1032] 사체 문 하나(T1025 두 줄 — 사냥터 장부 한 마리는 이 사체가 끝날 때 · 글자 · 차례 그대로)
       send(player.ws, { type: 'notice', text: `${ANIMALS[bestMob.type]?.ko || bestMob.type} 사냥 — 사체 도살 (E)` });
       // DB + chunk에서 mob 제거
       if (bestMob.dbId) { try { db.deleteMob(bestMob.dbId); } catch (e) {} }

@@ -1,0 +1,1041 @@
+{
+ "card": "T1032",
+ "date": "2026-11-01",
+ "branch": "batch/npc-kill-1031",
+ "base": "main 5285fef0(land1034 · T1009 · T1025 · T998 착지 · 열여덟째 판)",
+ "knob": {
+  "name": "T1032_NPC_KILL",
+  "default": "ON(!== '0')",
+  "revert": "=0 = T1009 판 그대로",
+  "zone.js": {
+   "decl": 3418,
+   "door killCorpse": 3421,
+   "npc ledger flag": 4768,
+   "npc corpse": 4775,
+   "arrow corpse": 13239,
+   "player corpse": 13365,
+   "__testBind": 12812
+  },
+  "npc_ledger": "wildHit(target, dmg, npc, T1032_NPC_KILL && npc.simJob !== 'hunter')",
+  "hunter_predicate": "villages.js _huntHuntersSteps — if (!p || p.simJob !== 'hunter') continue;"
+ },
+ "trees": {
+  "mx": "5285fef0 = origin/main — T1032 앞",
+  "bx": "mx + 이 가지 zone.js 차이 + 넓힌 하네스",
+  "mxh": "mx + 넓힌 하네스만",
+  "bxo": "mx + zone.js 차이(옛 하네스 그대로)"
+ },
+ "boards": [
+  "E_test-wild-door rc=1 9s 01:43:25 === 26건 중 PASS 18 · FAIL 8 ===",
+  "Q_B_test-wild-door rc=0 9s 01:43:34 === 26건 중 PASS 26 · FAIL 0 ===",
+  "O0_test-wild-door rc=0 4s 01:43:38 === 13건 중 PASS 13 · FAIL 0 ===",
+  "O1_test-wild-door rc=1 4s 01:43:42 === 13건 중 PASS 12 · FAIL 1 ===",
+  "RUNA_START 01:45:14",
+  "H_M_test-npc-wild-sync rc=0 5s 01:45:19 === 10건 중 PASS 10 · FAIL 0 ===",
+  "H_B_test-npc-wild-sync rc=0 5s 01:45:19 === 10건 중 PASS 10 · FAIL 0 ===",
+  "H_B_test-mob-respawn rc=0 6s 01:45:25 === 16건 중 PASS 16 · FAIL 0 ===",
+  "H_M_test-mob-respawn rc=0 6s 01:45:25 === 16건 중 PASS 16 · FAIL 0 ===",
+  "H_M_test-mob-hp-restart rc=0 20s 01:45:45 === 20건 중 PASS 20 · FAIL 0 ===",
+  "H_B_test-mob-hp-restart rc=0 22s 01:45:47 === 20건 중 PASS 20 · FAIL 0 ===",
+  "H_M_test-mob-hp-door rc=0 5s 01:45:50 === 19건 중 PASS 19 · FAIL 0 ===",
+  "H_M_test-tame rc=0 2s 01:45:52 === 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+  "H_B_test-mob-hp-door rc=0 5s 01:45:52 === 19건 중 PASS 19 · FAIL 0 ===",
+  "H_M_test-hunt-port rc=0 1s 01:45:53 === 78건 중 PASS 78 · FAIL 0 ===",
+  "H_B_test-tame rc=0 2s 01:45:54 === 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+  "H_M_test-lab-hunt rc=0 0s 01:45:54 === 62건 중 PASS 62 · FAIL 0 ===",
+  "H_B_test-hunt-port rc=0 1s 01:45:54 === 78건 중 PASS 78 · FAIL 0 ===",
+  "H_B_test-lab-hunt rc=0 1s 01:45:55 === 62건 중 PASS 62 · FAIL 0 ===",
+  "H_M_test-zone-fauna rc=0 59s 01:46:53 === 38건 중 PASS 38 · FAIL 0 ===",
+  "H_B_test-zone-fauna rc=0 59s 01:46:54 === 38건 중 PASS 38 · FAIL 0 ===",
+  "H_M_test-game-meat rc=0 9s 01:47:02 === 54건 중 PASS 54 · FAIL 0 ===",
+  "H_B_test-game-meat rc=0 9s 01:47:03 === 54건 중 PASS 54 · FAIL 0 ===",
+  "H_M_test-drop-kg rc=0 8s 01:47:10 === 51건 중 PASS 51 · FAIL 0 ===",
+  "H_B_test-drop-kg rc=0 7s 01:47:10 === 51건 중 PASS 51 · FAIL 0 ===",
+  "H_M_test-audio rc=0 6s 01:47:16 === PASS 208 / FAIL 0 ===",
+  "H_B_test-audio rc=0 6s 01:47:16 === PASS 208 / FAIL 0 ===",
+  "H_M_test-hp-src rc=0 1s 01:47:17 === 54 통과 / 0 실패 ===",
+  "H_B_test-hp-src rc=0 1s 01:47:17 === 54 통과 / 0 실패 ===",
+  "H_B_test-npc-hp-door rc=0 0s 01:47:17 === 21건 중 PASS 21 · FAIL 0 ===",
+  "H_M_test-npc-hp-door rc=0 0s 01:47:17 === 21건 중 PASS 21 · FAIL 0 ===",
+  "H_M_test-harness-lint rc=0 9s 01:47:26 === 68건 중 PASS 68 · FAIL 0 ===",
+  "H_B_test-harness-lint rc=0 9s 01:47:26 === 68건 중 PASS 68 · FAIL 0 ===",
+  "H_M_test-body rc=0 9s 01:47:35 === 324건 중 PASS 324 · FAIL 0 ===",
+  "H_B_test-body rc=0 10s 01:47:36 === 324건 중 PASS 324 · FAIL 0 ===",
+  "H_M_test-downed rc=0 334s 01:53:09 === 180건 중 PASS 180 · FAIL 0 ===",
+  "H_B_test-downed rc=0 334s 01:53:10 === 180건 중 PASS 180 · FAIL 0 ===",
+  "H_M_test-doors rc=0 6s 01:53:15 === 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+  "H_B_test-doors rc=0 7s 01:53:17 === 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+  "H_M_test-food-keep rc=0 11s 01:53:26 === 10건 중 PASS 10 · FAIL 0 ===",
+  "H_B_test-food-keep rc=0 10s 01:53:27 === 10건 중 PASS 10 · FAIL 0 ===",
+  "H_B_e2e-hp rc=0 110s 01:55:17 === 26건 중 PASS 26 · FAIL 0 ===",
+  "H_M_e2e-hp rc=0 116s 01:55:22 === 26건 중 PASS 26 · FAIL 0 ===",
+  "H_M_e2e-aim rc=0 65s 01:56:22 === PASS 15 / FAIL 0 ===",
+  "H_B_e2e-aim rc=0 63s 01:56:25 === PASS 15 / FAIL 0 ===",
+  "H_B_test-wild-door rc=0 10s 01:56:35 === 26건 중 PASS 26 · FAIL 0 ===",
+  "H_M_test-hunt-vis.r1 rc=0 57s 01:57:32 === 32건 중 PASS 32 · FAIL 0 ===",
+  "H_B_test-hunt-vis.r1 rc=0 59s 01:58:31 === 32건 중 PASS 32 · FAIL 0 ===",
+  "H_M_test-hunt-vis.r2 rc=0 55s 01:59:26 === 32건 중 PASS 32 · FAIL 0 ===",
+  "H_B_test-hunt-vis.r2 rc=0 55s 02:00:21 === 32건 중 PASS 32 · FAIL 0 ===",
+  "RUNA_H 02:00:21",
+  "Q_W_test-wild-door rc=0 13s 02:00:49 === 26건 중 PASS 26 · FAIL 0 ===",
+  "Q_W_test-npc-wild-sync rc=0 5s 02:00:54 === 10건 중 PASS 10 · FAIL 0 ===",
+  "Q_W_test-harness-lint rc=0 8s 02:01:02 === 68건 중 PASS 68 · FAIL 0 ===",
+  "Q_W_test-lab-hunt rc=0 1s 02:01:03 === 62건 중 PASS 62 · FAIL 0 ===",
+  "Q_W_test-hunt-port rc=0 1s 02:01:04 === 78건 중 PASS 78 · FAIL 0 ===",
+  "Q_W_test-drop-kg rc=0 7s 02:01:11 === 51건 중 PASS 51 · FAIL 0 ===",
+  "Q_W_test-game-meat rc=0 8s 02:01:19 === 54건 중 PASS 54 · FAIL 0 ===",
+  "vc_off rc=0 197s 02:03:38",
+  "vc_on rc=0 197s 02:03:38",
+  "M0_test-wild-door rc=0 5s 02:05:37 === 13건 중 PASS 13 · FAIL 0 ===",
+  "sbc_on rc=0 620s 02:13:58 === 같음 3/3 · 판 620초 ===",
+  "sbc_off rc=0 630s 02:24:29 === 같음 3/3 · 판 629초 ===",
+  "RUNA_DONE 02:24:30"
+ ],
+ "kill_table": {
+  "player_wild": "랩 · 장부 −1 한 번(T1025) · 사체 · 다시 낳기 0",
+  "player_db": "사체 · DB 삭제 · 다시 낳기",
+  "arrow_wild": "랩 · 장부 −1 한 번 · 사체",
+  "arrow_db": "사체 · DB 삭제(T975) · 다시 낳기(T987)",
+  "npc_wild_nonhunter": "랩(T998) · 켬 장부 −1 한 번 · 켬 사체 · 끔 0 · 0",
+  "npc_wild_hunter": "랩 · 장부 0(T158) · 켬 사체",
+  "npc_db": "켬 사체 · DB 삭제 · 다시 낳기",
+  "lab_death": "랩 사인 · 장부 0 · 존 사체(wildlife.js 782 · 자리 없음)"
+ },
+ "door_harness": {
+  "bx": {
+   "pass": "=== 26건 중 PASS 26 · FAIL 0 ===",
+   "lines": [
+    "  ✓ [상황] 판 다섯 다 섰다(자식 결과)  on ㅇ · off ㅇ · k1 ㅇ · k1c0 ㅇ · k0c1 ㅇ",
+    "  ✓ [상황] 손잡이가 판대로 섰다(T998 은 두 판 다 켬 기본) · 존의 야생 인스턴스가 켜졌다  켬 true · 끔 false · T998 true/true",
+    "  ✓ [상황] 판 여섯 × 둘 다 늑대 그림자가 섰다(isWild · DB 행 없음)  12/12",
+    "  ✓ [상황] 장부를 꽂았다(셀마다 50) · 맞힘이 존 hp 를 깎았다(NPC 8 · 사람 10 · 화살 25 — 안 죽음)  NPC 32 · 사람 30 · 화살 15",
+    "  [관찰] npcHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 (없음) · 굴림 0 · 랩 {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null} · 장부 50→50 · 존 사체 0",
+    "  [관찰] meleeHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1 | 끔 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 1",
+    "  [관찰] meleeKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1 | 끔 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1",
+    "  [관찰] npcKill: 켬 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 0 | 끔 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 0",
+    "  ✓ ★★② 켬 — 안 죽는 NPC 타격이 그 자리에서 랩 문을 지난다: 놀람(`fcd` 20 · `pause` 0) · hp 동기(3.2) · 반격 굴림 한 번 → NPC 프록시로 돌진  {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 굴림 1",
+    "  ✓ ★② 켬 — 사람 공격(대조 · 같은 판)이 같은 반응이다(놀람 · hp 동기 3 · 반격 굴림 한 번 → 사람 프록시) — NPC 길이 같은 규칙  {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 굴림 1",
+    "  ✓ ★★② 끔 — 안 죽는 NPC 타격은 그 자리에서 랩에 아무것도 안 한다(문 0 · 굴림 0 · hp 4 그대로 · 놀람 0) — 위가 자명 통과가 아니다  {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★② 끔 — 다음 야생 틱 ④ 폴링 보정이 hp(3.2)만 맞춘다 — 반격 돌진은 끝내 없다(종전 갈림)  {\"st\":\"flee\",\"hp\":3.2,\"fcd\":19.966666666666665,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★★③ 켬 — 화살로 잡으면 장부 −1(50 → 49) · 차례 = 랩 → 장부 → 지움(사람 공격 길 그 차례)  50 → 49 → 49 · lab → ledger → removed",
+    "  ✓ ★★③ 끔 — 화살로 잡아도 장부 그대로(50 · 종전) — 위가 자명 통과가 아니다  50 → 50 → 50 · lab → removed",
+    "  ✓ ★④ 사람 공격으로 잡으면 두 판 다 장부 −1 · 랩 → 장부 → 지움(종전 두 줄이 문으로 옮겨도 글자 · 차례 그대로)  lab → ledger → removed | lab → ledger → removed",
+    "  ✓ ★④ NPC 가 잡으면 두 판 다 장부 0 · 랩 → 지움(T998 켬 · T1032 끔 판 = T1009 글자 — 켬 판은 ⑦ · ⑧)  lab → removed | lab → removed",
+    "  [관찰] 존 사체(잡은 판 · 켬 | 끔): 사람 공격 1 | 1 · 화살 1 | 1 · NPC 0 | 0 — T1032 끔 판: NPC 죽음 길은 사체를 안 낸다(종전 · 랩엔 사체 corpsed 1 — T1009 회부 1 → T1032 ⑥)",
+    "  ✓ ★⑤ 안 죽는 화살(hp 1.5) · 사람 공격(hp 3)은 두 판 다 랩 문 · 놀람 · hp 동기  화살 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 사람 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"}",
+    "  ✓ [상황] 판 넷이 손잡이대로 섰다(T1032 × T1025 · T1009 · T998 켬) · 잡는 판 다섯이 다 섰다  k1 true/true · k1c0 true/false · k0c1 false/true · on false/false",
+    "  ✓ [상황] 잡은 짐승이 다 존에서 빠졌다 · 그림자 넷(장부 50) · DB 늑대 하나(DB 행 있음)",
+    "  [관찰] k1: arrowKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | meleeKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | npcKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | hunterKill 차례 lab→corpse→removed · 사체 1 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 corpse→dbDelete→removed→respawn · 사체 1 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] k1c0: arrowKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | meleeKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | npcKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | hunterKill 차례 lab→corpse→removed · 사체 1 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 corpse→dbDelete→removed→respawn · 사체 1 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] k0c1: arrowKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | meleeKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] on: arrowKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | meleeKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0",
+    "  ✓ ★★⑥ 켬 — NPC 가 잡으면 존 사체가 선다(야생 그림자 · 사냥꾼 · DB 늑대 다 · 도살하면 사라진다)  k1 1·1·1 · k1c0 1·1·1",
+    "  ✓ ★⑥ 켬 — 차례가 사람 공격으로 잡은 판과 같다(랩 → [장부] → 사체 → 지움 · DB 몹 = 사체 → DB 삭제 → 지움 → 다시 낳기)  k1c0 NPC lab,ledger,corpse,removed = 사람 lab,ledger,corpse,removed · k1 NPC lab,corpse,removed = 사람 lab,corpse,removed · DB corpse,dbDelete,removed,respawn",
+    "  ✓ ★★⑥ 끔 — NPC 잡음은 존 사체 0(T1009 판 · 랩 → 지움) · 같은 판 사람 공격 · 화살 잡음은 사체 1 — 위가 자명 통과가 아니다  k0c1 lab,removed · DB dbDelete,removed,respawn",
+    "  ✓ ★★⑦ 켬 · T1025 끔 — 잡은 순간 −1(50 → 49) · 도살 때 더 안 준다(49)  50 → 49 → 49",
+    "  ✓ ★★⑦ 켬 · T1025 켬 — 잡을 땐 그대로(50 · 사체에 자리) · 도살 때 −1(49 · 미룸 1 · 도살 1) — 사람 공격 · 화살과 같은 T1025 길  50 → 50 → 49 · 미룸 1 · 도살 1",
+    "  ✓ ★★⑦ 끔 — 사냥꾼 아닌 NPC 가 잡아도 장부 0(T1009 판) — 위가 자명 통과가 아니다  k0c1 50 → 50 → 50 · on 50 → 50 → 50",
+    "  ✓ ★★⑧ 사냥꾼 NPC(`simJob` hunter)가 잡으면 네 판 다 장부 0 — 켬 판도 사체에 자리가 없다(도살 뒤도 50)  k1 50→50→50 · k1c0 50→50→50 · k0c1 50→50→50 · on 50→50→50",
+    "  ✓ ★★⑨ 사람 공격 · 화살 · (켬) NPC — T1025 켬 판 = 50 → 50 → 49(도살 때) · 끔 판 = 50 → 49 → 49(잡을 때) · 48 은 어디에도 없다  meleeKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→49 / on 50→49→49 | arrowKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→49 / on 50→49→49 | npcKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→50 / on 50→50→50",
+    "  ✓ ★⑨ 화살로 잡은 사체도 T1025 길(켬 판 미룸 1 · 도살 1 · 도살 때 장부 한 번) — T1009 의 잡은 순간 −1 과 엇갈림 0",
+    "  [관찰] 잡는 판 굴림(arrowKill/meleeKill/npcKill/hunterKill/dbKill): k1 1/1/1/1/0 · k1c0 1/1/1/1/0 · k0c1 1/1/1/1/0 · on 1/1/1/1/0 · 도살 굴림 0/0/0/0",
+    "  ✓ ★⑩ 같은 T1025 판끼리 T1032 켬 ↔ 끔 잡음 굴림이 같다 · 도살 굴림 0 — 사체 · 장부 칸은 흐름을 안 건드린다  k1 1/1/1/1/0 = k0c1 1/1/1/1/0 · k1c0 1/1/1/1/0 = on 1/1/1/1/0",
+    "  ✓ ★⑪ 하루치 고리(villages.js `_huntHuntersSteps`)가 고르는 술어 `simJob !== 'hunter'` 와 존 NPC 줄의 장부 칸이 같은 글자다(새 수 0)  하루치 true · 존 true"
+   ]
+  },
+  "bx_quick": {
+   "pass": "=== 26건 중 PASS 26 · FAIL 0 ===",
+   "lines": [
+    "  ✓ [상황] 판 다섯 다 섰다(자식 결과)  on ㅇ · off ㅇ · k1 ㅇ · k1c0 ㅇ · k0c1 ㅇ",
+    "  ✓ [상황] 손잡이가 판대로 섰다(T998 은 두 판 다 켬 기본) · 존의 야생 인스턴스가 켜졌다  켬 true · 끔 false · T998 true/true",
+    "  ✓ [상황] 판 여섯 × 둘 다 늑대 그림자가 섰다(isWild · DB 행 없음)  12/12",
+    "  ✓ [상황] 장부를 꽂았다(셀마다 50) · 맞힘이 존 hp 를 깎았다(NPC 8 · 사람 10 · 화살 25 — 안 죽음)  NPC 32 · 사람 30 · 화살 15",
+    "  [관찰] npcHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 (없음) · 굴림 0 · 랩 {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null} · 장부 50→50 · 존 사체 0",
+    "  [관찰] meleeHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1 | 끔 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 1",
+    "  [관찰] meleeKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1 | 끔 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1",
+    "  [관찰] npcKill: 켬 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 0 | 끔 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 0",
+    "  ✓ ★★② 켬 — 안 죽는 NPC 타격이 그 자리에서 랩 문을 지난다: 놀람(`fcd` 20 · `pause` 0) · hp 동기(3.2) · 반격 굴림 한 번 → NPC 프록시로 돌진  {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 굴림 1",
+    "  ✓ ★② 켬 — 사람 공격(대조 · 같은 판)이 같은 반응이다(놀람 · hp 동기 3 · 반격 굴림 한 번 → 사람 프록시) — NPC 길이 같은 규칙  {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 굴림 1",
+    "  ✓ ★★② 끔 — 안 죽는 NPC 타격은 그 자리에서 랩에 아무것도 안 한다(문 0 · 굴림 0 · hp 4 그대로 · 놀람 0) — 위가 자명 통과가 아니다  {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★② 끔 — 다음 야생 틱 ④ 폴링 보정이 hp(3.2)만 맞춘다 — 반격 돌진은 끝내 없다(종전 갈림)  {\"st\":\"flee\",\"hp\":3.2,\"fcd\":19.966666666666665,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★★③ 켬 — 화살로 잡으면 장부 −1(50 → 49) · 차례 = 랩 → 장부 → 지움(사람 공격 길 그 차례)  50 → 49 → 49 · lab → ledger → removed",
+    "  ✓ ★★③ 끔 — 화살로 잡아도 장부 그대로(50 · 종전) — 위가 자명 통과가 아니다  50 → 50 → 50 · lab → removed",
+    "  ✓ ★④ 사람 공격으로 잡으면 두 판 다 장부 −1 · 랩 → 장부 → 지움(종전 두 줄이 문으로 옮겨도 글자 · 차례 그대로)  lab → ledger → removed | lab → ledger → removed",
+    "  ✓ ★④ NPC 가 잡으면 두 판 다 장부 0 · 랩 → 지움(T998 켬 · T1032 끔 판 = T1009 글자 — 켬 판은 ⑦ · ⑧)  lab → removed | lab → removed",
+    "  [관찰] 존 사체(잡은 판 · 켬 | 끔): 사람 공격 1 | 1 · 화살 1 | 1 · NPC 0 | 0 — T1032 끔 판: NPC 죽음 길은 사체를 안 낸다(종전 · 랩엔 사체 corpsed 1 — T1009 회부 1 → T1032 ⑥)",
+    "  ✓ ★⑤ 안 죽는 화살(hp 1.5) · 사람 공격(hp 3)은 두 판 다 랩 문 · 놀람 · hp 동기  화살 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 사람 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"}",
+    "  ✓ [상황] 판 넷이 손잡이대로 섰다(T1032 × T1025 · T1009 · T998 켬) · 잡는 판 다섯이 다 섰다  k1 true/true · k1c0 true/false · k0c1 false/true · on false/false",
+    "  ✓ [상황] 잡은 짐승이 다 존에서 빠졌다 · 그림자 넷(장부 50) · DB 늑대 하나(DB 행 있음)",
+    "  [관찰] k1: arrowKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | meleeKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | npcKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | hunterKill 차례 lab→corpse→removed · 사체 1 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 corpse→dbDelete→removed→respawn · 사체 1 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] k1c0: arrowKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | meleeKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | npcKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | hunterKill 차례 lab→corpse→removed · 사체 1 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 corpse→dbDelete→removed→respawn · 사체 1 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] k0c1: arrowKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | meleeKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] on: arrowKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | meleeKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0",
+    "  ✓ ★★⑥ 켬 — NPC 가 잡으면 존 사체가 선다(야생 그림자 · 사냥꾼 · DB 늑대 다 · 도살하면 사라진다)  k1 1·1·1 · k1c0 1·1·1",
+    "  ✓ ★⑥ 켬 — 차례가 사람 공격으로 잡은 판과 같다(랩 → [장부] → 사체 → 지움 · DB 몹 = 사체 → DB 삭제 → 지움 → 다시 낳기)  k1c0 NPC lab,ledger,corpse,removed = 사람 lab,ledger,corpse,removed · k1 NPC lab,corpse,removed = 사람 lab,corpse,removed · DB corpse,dbDelete,removed,respawn",
+    "  ✓ ★★⑥ 끔 — NPC 잡음은 존 사체 0(T1009 판 · 랩 → 지움) · 같은 판 사람 공격 · 화살 잡음은 사체 1 — 위가 자명 통과가 아니다  k0c1 lab,removed · DB dbDelete,removed,respawn",
+    "  ✓ ★★⑦ 켬 · T1025 끔 — 잡은 순간 −1(50 → 49) · 도살 때 더 안 준다(49)  50 → 49 → 49",
+    "  ✓ ★★⑦ 켬 · T1025 켬 — 잡을 땐 그대로(50 · 사체에 자리) · 도살 때 −1(49 · 미룸 1 · 도살 1) — 사람 공격 · 화살과 같은 T1025 길  50 → 50 → 49 · 미룸 1 · 도살 1",
+    "  ✓ ★★⑦ 끔 — 사냥꾼 아닌 NPC 가 잡아도 장부 0(T1009 판) — 위가 자명 통과가 아니다  k0c1 50 → 50 → 50 · on 50 → 50 → 50",
+    "  ✓ ★★⑧ 사냥꾼 NPC(`simJob` hunter)가 잡으면 네 판 다 장부 0 — 켬 판도 사체에 자리가 없다(도살 뒤도 50)  k1 50→50→50 · k1c0 50→50→50 · k0c1 50→50→50 · on 50→50→50",
+    "  ✓ ★★⑨ 사람 공격 · 화살 · (켬) NPC — T1025 켬 판 = 50 → 50 → 49(도살 때) · 끔 판 = 50 → 49 → 49(잡을 때) · 48 은 어디에도 없다  meleeKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→49 / on 50→49→49 | arrowKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→49 / on 50→49→49 | npcKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→50 / on 50→50→50",
+    "  ✓ ★⑨ 화살로 잡은 사체도 T1025 길(켬 판 미룸 1 · 도살 1 · 도살 때 장부 한 번) — T1009 의 잡은 순간 −1 과 엇갈림 0",
+    "  [관찰] 잡는 판 굴림(arrowKill/meleeKill/npcKill/hunterKill/dbKill): k1 1/1/1/1/0 · k1c0 1/1/1/1/0 · k0c1 1/1/1/1/0 · on 1/1/1/1/0 · 도살 굴림 0/0/0/0",
+    "  ✓ ★⑩ 같은 T1025 판끼리 T1032 켬 ↔ 끔 잡음 굴림이 같다 · 도살 굴림 0 — 사체 · 장부 칸은 흐름을 안 건드린다  k1 1/1/1/1/0 = k0c1 1/1/1/1/0 · k1c0 1/1/1/1/0 = on 1/1/1/1/0",
+    "  ✓ ★⑪ 하루치 고리(villages.js `_huntHuntersSteps`)가 고르는 술어 `simJob !== 'hunter'` 와 존 NPC 줄의 장부 칸이 같은 글자다(새 수 0)  하루치 true · 존 true"
+   ]
+  },
+  "wt": {
+   "pass": "=== 26건 중 PASS 26 · FAIL 0 ===",
+   "lines": [
+    "  ✓ [상황] 판 다섯 다 섰다(자식 결과)  on ㅇ · off ㅇ · k1 ㅇ · k1c0 ㅇ · k0c1 ㅇ",
+    "  ✓ [상황] 손잡이가 판대로 섰다(T998 은 두 판 다 켬 기본) · 존의 야생 인스턴스가 켜졌다  켬 true · 끔 false · T998 true/true",
+    "  ✓ [상황] 판 여섯 × 둘 다 늑대 그림자가 섰다(isWild · DB 행 없음)  12/12",
+    "  ✓ [상황] 장부를 꽂았다(셀마다 50) · 맞힘이 존 hp 를 깎았다(NPC 8 · 사람 10 · 화살 25 — 안 죽음)  NPC 32 · 사람 30 · 화살 15",
+    "  [관찰] npcHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 (없음) · 굴림 0 · 랩 {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null} · 장부 50→50 · 존 사체 0",
+    "  [관찰] meleeHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1 | 끔 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 1",
+    "  [관찰] meleeKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1 | 끔 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1",
+    "  [관찰] npcKill: 켬 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 0 | 끔 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 0",
+    "  ✓ ★★② 켬 — 안 죽는 NPC 타격이 그 자리에서 랩 문을 지난다: 놀람(`fcd` 20 · `pause` 0) · hp 동기(3.2) · 반격 굴림 한 번 → NPC 프록시로 돌진  {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 굴림 1",
+    "  ✓ ★② 켬 — 사람 공격(대조 · 같은 판)이 같은 반응이다(놀람 · hp 동기 3 · 반격 굴림 한 번 → 사람 프록시) — NPC 길이 같은 규칙  {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 굴림 1",
+    "  ✓ ★★② 끔 — 안 죽는 NPC 타격은 그 자리에서 랩에 아무것도 안 한다(문 0 · 굴림 0 · hp 4 그대로 · 놀람 0) — 위가 자명 통과가 아니다  {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★② 끔 — 다음 야생 틱 ④ 폴링 보정이 hp(3.2)만 맞춘다 — 반격 돌진은 끝내 없다(종전 갈림)  {\"st\":\"flee\",\"hp\":3.2,\"fcd\":19.966666666666665,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★★③ 켬 — 화살로 잡으면 장부 −1(50 → 49) · 차례 = 랩 → 장부 → 지움(사람 공격 길 그 차례)  50 → 49 → 49 · lab → ledger → removed",
+    "  ✓ ★★③ 끔 — 화살로 잡아도 장부 그대로(50 · 종전) — 위가 자명 통과가 아니다  50 → 50 → 50 · lab → removed",
+    "  ✓ ★④ 사람 공격으로 잡으면 두 판 다 장부 −1 · 랩 → 장부 → 지움(종전 두 줄이 문으로 옮겨도 글자 · 차례 그대로)  lab → ledger → removed | lab → ledger → removed",
+    "  ✓ ★④ NPC 가 잡으면 두 판 다 장부 0 · 랩 → 지움(T998 켬 · T1032 끔 판 = T1009 글자 — 켬 판은 ⑦ · ⑧)  lab → removed | lab → removed",
+    "  [관찰] 존 사체(잡은 판 · 켬 | 끔): 사람 공격 1 | 1 · 화살 1 | 1 · NPC 0 | 0 — T1032 끔 판: NPC 죽음 길은 사체를 안 낸다(종전 · 랩엔 사체 corpsed 1 — T1009 회부 1 → T1032 ⑥)",
+    "  ✓ ★⑤ 안 죽는 화살(hp 1.5) · 사람 공격(hp 3)은 두 판 다 랩 문 · 놀람 · hp 동기  화살 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 사람 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"}",
+    "  ✓ [상황] 판 넷이 손잡이대로 섰다(T1032 × T1025 · T1009 · T998 켬) · 잡는 판 다섯이 다 섰다  k1 true/true · k1c0 true/false · k0c1 false/true · on false/false",
+    "  ✓ [상황] 잡은 짐승이 다 존에서 빠졌다 · 그림자 넷(장부 50) · DB 늑대 하나(DB 행 있음)",
+    "  [관찰] k1: arrowKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | meleeKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | npcKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | hunterKill 차례 lab→corpse→removed · 사체 1 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 corpse→dbDelete→removed→respawn · 사체 1 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] k1c0: arrowKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | meleeKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | npcKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | hunterKill 차례 lab→corpse→removed · 사체 1 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 corpse→dbDelete→removed→respawn · 사체 1 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] k0c1: arrowKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | meleeKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] on: arrowKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | meleeKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0",
+    "  ✓ ★★⑥ 켬 — NPC 가 잡으면 존 사체가 선다(야생 그림자 · 사냥꾼 · DB 늑대 다 · 도살하면 사라진다)  k1 1·1·1 · k1c0 1·1·1",
+    "  ✓ ★⑥ 켬 — 차례가 사람 공격으로 잡은 판과 같다(랩 → [장부] → 사체 → 지움 · DB 몹 = 사체 → DB 삭제 → 지움 → 다시 낳기)  k1c0 NPC lab,ledger,corpse,removed = 사람 lab,ledger,corpse,removed · k1 NPC lab,corpse,removed = 사람 lab,corpse,removed · DB corpse,dbDelete,removed,respawn",
+    "  ✓ ★★⑥ 끔 — NPC 잡음은 존 사체 0(T1009 판 · 랩 → 지움) · 같은 판 사람 공격 · 화살 잡음은 사체 1 — 위가 자명 통과가 아니다  k0c1 lab,removed · DB dbDelete,removed,respawn",
+    "  ✓ ★★⑦ 켬 · T1025 끔 — 잡은 순간 −1(50 → 49) · 도살 때 더 안 준다(49)  50 → 49 → 49",
+    "  ✓ ★★⑦ 켬 · T1025 켬 — 잡을 땐 그대로(50 · 사체에 자리) · 도살 때 −1(49 · 미룸 1 · 도살 1) — 사람 공격 · 화살과 같은 T1025 길  50 → 50 → 49 · 미룸 1 · 도살 1",
+    "  ✓ ★★⑦ 끔 — 사냥꾼 아닌 NPC 가 잡아도 장부 0(T1009 판) — 위가 자명 통과가 아니다  k0c1 50 → 50 → 50 · on 50 → 50 → 50",
+    "  ✓ ★★⑧ 사냥꾼 NPC(`simJob` hunter)가 잡으면 네 판 다 장부 0 — 켬 판도 사체에 자리가 없다(도살 뒤도 50)  k1 50→50→50 · k1c0 50→50→50 · k0c1 50→50→50 · on 50→50→50",
+    "  ✓ ★★⑨ 사람 공격 · 화살 · (켬) NPC — T1025 켬 판 = 50 → 50 → 49(도살 때) · 끔 판 = 50 → 49 → 49(잡을 때) · 48 은 어디에도 없다  meleeKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→49 / on 50→49→49 | arrowKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→49 / on 50→49→49 | npcKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→50 / on 50→50→50",
+    "  ✓ ★⑨ 화살로 잡은 사체도 T1025 길(켬 판 미룸 1 · 도살 1 · 도살 때 장부 한 번) — T1009 의 잡은 순간 −1 과 엇갈림 0",
+    "  [관찰] 잡는 판 굴림(arrowKill/meleeKill/npcKill/hunterKill/dbKill): k1 1/1/1/1/0 · k1c0 1/1/1/1/0 · k0c1 1/1/1/1/0 · on 1/1/1/1/0 · 도살 굴림 0/0/0/0",
+    "  ✓ ★⑩ 같은 T1025 판끼리 T1032 켬 ↔ 끔 잡음 굴림이 같다 · 도살 굴림 0 — 사체 · 장부 칸은 흐름을 안 건드린다  k1 1/1/1/1/0 = k0c1 1/1/1/1/0 · k1c0 1/1/1/1/0 = on 1/1/1/1/0",
+    "  ✓ ★⑪ 하루치 고리(villages.js `_huntHuntersSteps`)가 고르는 술어 `simJob !== 'hunter'` 와 존 NPC 줄의 장부 칸이 같은 글자다(새 수 0)  하루치 true · 존 true"
+   ]
+  },
+  "mxh_T1032앞": {
+   "pass": "=== 26건 중 PASS 18 · FAIL 8 ===",
+   "lines": [
+    "  ✓ [상황] 판 다섯 다 섰다(자식 결과)  on ㅇ · off ㅇ · k1 ㅇ · k1c0 ㅇ · k0c1 ㅇ",
+    "  ✓ [상황] 손잡이가 판대로 섰다(T998 은 두 판 다 켬 기본) · 존의 야생 인스턴스가 켜졌다  켬 true · 끔 false · T998 true/true",
+    "  ✓ [상황] 판 여섯 × 둘 다 늑대 그림자가 섰다(isWild · DB 행 없음)  12/12",
+    "  ✓ [상황] 장부를 꽂았다(셀마다 50) · 맞힘이 존 hp 를 깎았다(NPC 8 · 사람 10 · 화살 25 — 안 죽음)  NPC 32 · 사람 30 · 화살 15",
+    "  [관찰] npcHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 (없음) · 굴림 0 · 랩 {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null} · 장부 50→50 · 존 사체 0",
+    "  [관찰] meleeHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1 | 끔 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 1",
+    "  [관찰] meleeKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1 | 끔 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49→49 · 존 사체 1",
+    "  [관찰] npcKill: 켬 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 0 | 끔 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50→50 · 존 사체 0",
+    "  ✓ ★★② 켬 — 안 죽는 NPC 타격이 그 자리에서 랩 문을 지난다: 놀람(`fcd` 20 · `pause` 0) · hp 동기(3.2) · 반격 굴림 한 번 → NPC 프록시로 돌진  {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 굴림 1",
+    "  ✓ ★② 켬 — 사람 공격(대조 · 같은 판)이 같은 반응이다(놀람 · hp 동기 3 · 반격 굴림 한 번 → 사람 프록시) — NPC 길이 같은 규칙  {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 굴림 1",
+    "  ✓ ★★② 끔 — 안 죽는 NPC 타격은 그 자리에서 랩에 아무것도 안 한다(문 0 · 굴림 0 · hp 4 그대로 · 놀람 0) — 위가 자명 통과가 아니다  {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★② 끔 — 다음 야생 틱 ④ 폴링 보정이 hp(3.2)만 맞춘다 — 반격 돌진은 끝내 없다(종전 갈림)  {\"st\":\"flee\",\"hp\":3.2,\"fcd\":19.966666666666665,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★★③ 켬 — 화살로 잡으면 장부 −1(50 → 49) · 차례 = 랩 → 장부 → 지움(사람 공격 길 그 차례)  50 → 49 → 49 · lab → ledger → removed",
+    "  ✓ ★★③ 끔 — 화살로 잡아도 장부 그대로(50 · 종전) — 위가 자명 통과가 아니다  50 → 50 → 50 · lab → removed",
+    "  ✓ ★④ 사람 공격으로 잡으면 두 판 다 장부 −1 · 랩 → 장부 → 지움(종전 두 줄이 문으로 옮겨도 글자 · 차례 그대로)  lab → ledger → removed | lab → ledger → removed",
+    "  ✓ ★④ NPC 가 잡으면 두 판 다 장부 0 · 랩 → 지움(T998 켬 · T1032 끔 판 = T1009 글자 — 켬 판은 ⑦ · ⑧)  lab → removed | lab → removed",
+    "  [관찰] 존 사체(잡은 판 · 켬 | 끔): 사람 공격 1 | 1 · 화살 1 | 1 · NPC 0 | 0 — T1032 끔 판: NPC 죽음 길은 사체를 안 낸다(종전 · 랩엔 사체 corpsed 1 — T1009 회부 1 → T1032 ⑥)",
+    "  ✓ ★⑤ 안 죽는 화살(hp 1.5) · 사람 공격(hp 3)은 두 판 다 랩 문 · 놀람 · hp 동기  화살 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 사람 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"}",
+    "  ✗ [상황] 판 넷이 손잡이대로 섰다(T1032 × T1025 · T1009 · T998 켬) · 잡는 판 다섯이 다 섰다  k1 undefined/undefined · k1c0 undefined/undefined · k0c1 undefined/undefined · on undefined/undefined",
+    "  ✓ [상황] 잡은 짐승이 다 존에서 빠졌다 · 그림자 넷(장부 50) · DB 늑대 하나(DB 행 있음)",
+    "  [관찰] k1: arrowKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | meleeKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] k1c0: arrowKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | meleeKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] k0c1: arrowKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | meleeKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0",
+    "  [관찰] on: arrowKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | meleeKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0",
+    "  ✗ ★★⑥ 켬 — NPC 가 잡으면 존 사체가 선다(야생 그림자 · 사냥꾼 · DB 늑대 다 · 도살하면 사라진다)  k1 0·0·0 · k1c0 0·0·0",
+    "  ✗ ★⑥ 켬 — 차례가 사람 공격으로 잡은 판과 같다(랩 → [장부] → 사체 → 지움 · DB 몹 = 사체 → DB 삭제 → 지움 → 다시 낳기)  k1c0 NPC lab,removed = 사람 lab,ledger,corpse,removed · k1 NPC lab,removed = 사람 lab,corpse,removed · DB dbDelete,removed,respawn",
+    "  ✓ ★★⑥ 끔 — NPC 잡음은 존 사체 0(T1009 판 · 랩 → 지움) · 같은 판 사람 공격 · 화살 잡음은 사체 1 — 위가 자명 통과가 아니다  k0c1 lab,removed · DB dbDelete,removed,respawn",
+    "  ✗ ★★⑦ 켬 · T1025 끔 — 잡은 순간 −1(50 → 49) · 도살 때 더 안 준다(49)  50 → 50 → 50",
+    "  ✗ ★★⑦ 켬 · T1025 켬 — 잡을 땐 그대로(50 · 사체에 자리) · 도살 때 −1(49 · 미룸 1 · 도살 1) — 사람 공격 · 화살과 같은 T1025 길  50 → 50 → 50 · 미룸 0 · 도살 0",
+    "  ✓ ★★⑦ 끔 — 사냥꾼 아닌 NPC 가 잡아도 장부 0(T1009 판) — 위가 자명 통과가 아니다  k0c1 50 → 50 → 50 · on 50 → 50 → 50",
+    "  ✗ ★★⑧ 사냥꾼 NPC(`simJob` hunter)가 잡으면 네 판 다 장부 0 — 켬 판도 사체에 자리가 없다(도살 뒤도 50)  k1 50→50→50 · k1c0 50→50→50 · k0c1 50→50→50 · on 50→50→50",
+    "  ✗ ★★⑨ 사람 공격 · 화살 · (켬) NPC — T1025 켬 판 = 50 → 50 → 49(도살 때) · 끔 판 = 50 → 49 → 49(잡을 때) · 48 은 어디에도 없다  meleeKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→49 / on 50→49→49 | arrowKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→49 / on 50→49→49 | npcKill k1 50→50→50 / k1c0 50→50→50 / k0c1 50→50→50 / on 50→50→50",
+    "  ✓ ★⑨ 화살로 잡은 사체도 T1025 길(켬 판 미룸 1 · 도살 1 · 도살 때 장부 한 번) — T1009 의 잡은 순간 −1 과 엇갈림 0",
+    "  [관찰] 잡는 판 굴림(arrowKill/meleeKill/npcKill/hunterKill/dbKill): k1 1/1/1/1/0 · k1c0 1/1/1/1/0 · k0c1 1/1/1/1/0 · on 1/1/1/1/0 · 도살 굴림 0/0/0/0",
+    "  ✓ ★⑩ 같은 T1025 판끼리 T1032 켬 ↔ 끔 잡음 굴림이 같다 · 도살 굴림 0 — 사체 · 장부 칸은 흐름을 안 건드린다  k1 1/1/1/1/0 = k0c1 1/1/1/1/0 · k1c0 1/1/1/1/0 = on 1/1/1/1/0",
+    "  ✗ ★⑪ 하루치 고리(villages.js `_huntHuntersSteps`)가 고르는 술어 `simJob !== 'hunter'` 와 존 NPC 줄의 장부 칸이 같은 글자다(새 수 0)  하루치 true · 존 false"
+   ]
+  },
+  "old_harness_on_bx_T1032=0": {
+   "pass": "=== 13건 중 PASS 13 · FAIL 0 ===",
+   "lines": [
+    "  ✓ [상황] 판 둘 다 섰다(자식 결과)  on ㅇ · off ㅇ",
+    "  ✓ [상황] 손잡이가 판대로 섰다(T998 은 두 판 다 켬 기본) · 존의 야생 인스턴스가 켜졌다  켬 true · 끔 false · T998 true/true",
+    "  ✓ [상황] 판 여섯 × 둘 다 늑대 그림자가 섰다(isWild · DB 행 없음)  12/12",
+    "  ✓ [상황] 장부를 꽂았다(셀마다 50) · 맞힘이 존 hp 를 깎았다(NPC 8 · 사람 10 · 화살 25 — 안 죽음)  NPC 32 · 사람 30 · 화살 15",
+    "  [관찰] npcHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 (없음) · 굴림 0 · 랩 {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null} · 장부 50→50 · 존 사체 0",
+    "  [관찰] meleeHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49 · 존 사체 1 | 끔 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50 · 존 사체 1",
+    "  [관찰] meleeKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49 · 존 사체 1 | 끔 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49 · 존 사체 1",
+    "  [관찰] npcKill: 켬 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50 · 존 사체 0 | 끔 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50 · 존 사체 0",
+    "  ✓ ★★② 켬 — 안 죽는 NPC 타격이 그 자리에서 랩 문을 지난다: 놀람(`fcd` 20 · `pause` 0) · hp 동기(3.2) · 반격 굴림 한 번 → NPC 프록시로 돌진  {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 굴림 1",
+    "  ✓ ★② 켬 — 사람 공격(대조 · 같은 판)이 같은 반응이다(놀람 · hp 동기 3 · 반격 굴림 한 번 → 사람 프록시) — NPC 길이 같은 규칙  {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 굴림 1",
+    "  ✓ ★★② 끔 — 안 죽는 NPC 타격은 그 자리에서 랩에 아무것도 안 한다(문 0 · 굴림 0 · hp 4 그대로 · 놀람 0) — 위가 자명 통과가 아니다  {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★② 끔 — 다음 야생 틱 ④ 폴링 보정이 hp(3.2)만 맞춘다 — 반격 돌진은 끝내 없다(종전 갈림)  {\"st\":\"flee\",\"hp\":3.2,\"fcd\":19.966666666666665,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★★③ 켬 — 화살로 잡으면 장부 −1(50 → 49) · 차례 = 랩 → 장부 → 지움(사람 공격 길 그 차례)  50 → 49 · lab → ledger → removed",
+    "  ✓ ★★③ 끔 — 화살로 잡아도 장부 그대로(50 · 종전) — 위가 자명 통과가 아니다  50 → 50 · lab → removed",
+    "  ✓ ★④ 사람 공격으로 잡으면 두 판 다 장부 −1 · 랩 → 장부 → 지움(종전 두 줄이 문으로 옮겨도 글자 · 차례 그대로)  lab → ledger → removed | lab → ledger → removed",
+    "  ✓ ★④ NPC 가 잡으면 두 판 다 장부 0 · 랩 → 지움(T998 켬 · 사냥꾼 장부 몫은 하루치 `huntTakeAt` — T158)  lab → removed | lab → removed",
+    "  [관찰] 존 사체(잡은 판 · 켬 | 끔): 사람 공격 1 | 1 · 화살 1 | 1 · NPC 0 | 0 — NPC 죽음 길은 사체를 안 낸다(종전 · 랩엔 사체 corpsed 1 — 회부)",
+    "  ✓ ★⑤ 안 죽는 화살(hp 1.5) · 사람 공격(hp 3)은 두 판 다 랩 문 · 놀람 · hp 동기  화살 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 사람 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"}"
+   ]
+  },
+  "old_harness_on_bx_default": {
+   "pass": "=== 13건 중 PASS 12 · FAIL 1 ===",
+   "lines": [
+    "  ✓ [상황] 판 둘 다 섰다(자식 결과)  on ㅇ · off ㅇ",
+    "  ✓ [상황] 손잡이가 판대로 섰다(T998 은 두 판 다 켬 기본) · 존의 야생 인스턴스가 켜졌다  켬 true · 끔 false · T998 true/true",
+    "  ✓ [상황] 판 여섯 × 둘 다 늑대 그림자가 섰다(isWild · DB 행 없음)  12/12",
+    "  ✓ [상황] 장부를 꽂았다(셀마다 50) · 맞힘이 존 hp 를 깎았다(NPC 8 · 사람 10 · 화살 25 — 안 죽음)  NPC 32 · 사람 30 · 화살 15",
+    "  [관찰] npcHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 (없음) · 굴림 0 · 랩 {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null} · 장부 50→50 · 존 사체 0",
+    "  [관찰] meleeHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowHit: 켬 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 장부 50→50 · 존 사체 0",
+    "  [관찰] arrowKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49 · 존 사체 1 | 끔 차례 lab → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→50 · 존 사체 1",
+    "  [관찰] meleeKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49 · 존 사체 1 | 끔 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49 · 존 사체 1",
+    "  [관찰] npcKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49 · 존 사체 1 | 끔 차례 lab → ledger → removed · 굴림 1 · 랩 {\"st\":\"dead\",\"hp\":0,\"fcd\":0,\"pause\":5,\"corpsed\":1,\"link\":false,\"tgt\":null} · 장부 50→49 · 존 사체 1",
+    "  ✓ ★★② 켬 — 안 죽는 NPC 타격이 그 자리에서 랩 문을 지난다: 놀람(`fcd` 20 · `pause` 0) · hp 동기(3.2) · 반격 굴림 한 번 → NPC 프록시로 돌진  {\"st\":\"charge\",\"hp\":3.2,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_npcHit\"} · 굴림 1",
+    "  ✓ ★② 켬 — 사람 공격(대조 · 같은 판)이 같은 반응이다(놀람 · hp 동기 3 · 반격 굴림 한 번 → 사람 프록시) — NPC 길이 같은 규칙  {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"} · 굴림 1",
+    "  ✓ ★★② 끔 — 안 죽는 NPC 타격은 그 자리에서 랩에 아무것도 안 한다(문 0 · 굴림 0 · hp 4 그대로 · 놀람 0) — 위가 자명 통과가 아니다  {\"st\":\"flee\",\"hp\":4,\"fcd\":0,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★② 끔 — 다음 야생 틱 ④ 폴링 보정이 hp(3.2)만 맞춘다 — 반격 돌진은 끝내 없다(종전 갈림)  {\"st\":\"flee\",\"hp\":3.2,\"fcd\":19.966666666666665,\"pause\":5,\"corpsed\":0,\"link\":true,\"tgt\":null}",
+    "  ✓ ★★③ 켬 — 화살로 잡으면 장부 −1(50 → 49) · 차례 = 랩 → 장부 → 지움(사람 공격 길 그 차례)  50 → 49 · lab → ledger → removed",
+    "  ✓ ★★③ 끔 — 화살로 잡아도 장부 그대로(50 · 종전) — 위가 자명 통과가 아니다  50 → 50 · lab → removed",
+    "  ✓ ★④ 사람 공격으로 잡으면 두 판 다 장부 −1 · 랩 → 장부 → 지움(종전 두 줄이 문으로 옮겨도 글자 · 차례 그대로)  lab → ledger → removed | lab → ledger → removed",
+    "  ✗ ★④ NPC 가 잡으면 두 판 다 장부 0 · 랩 → 지움(T998 켬 · 사냥꾼 장부 몫은 하루치 `huntTakeAt` — T158)  lab → ledger → removed | lab → ledger → removed",
+    "  [관찰] 존 사체(잡은 판 · 켬 | 끔): 사람 공격 1 | 1 · 화살 1 | 1 · NPC 1 | 1 — NPC 죽음 길은 사체를 안 낸다(종전 · 랩엔 사체 corpsed 1 — 회부)",
+    "  ✓ ★⑤ 안 죽는 화살(hp 1.5) · 사람 공격(hp 3)은 두 판 다 랩 문 · 놀람 · hp 동기  화살 {\"st\":\"charge\",\"hp\":1.5,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_arrowHit\"} · 사람 {\"st\":\"charge\",\"hp\":3,\"fcd\":20,\"pause\":0,\"corpsed\":0,\"link\":true,\"tgt\":\"t1009_meleeHit\"}"
+   ]
+  }
+ },
+ "harness_ab": {
+  "e2e-aim": {
+   "M": "=== PASS 15 / FAIL 0 ===",
+   "B": "=== PASS 15 / FAIL 0 ===",
+   "verdict_lines": {
+    "M": 15,
+    "B": 15,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "e2e-hp": {
+   "M": "=== 26건 중 PASS 26 · FAIL 0 ===",
+   "B": "=== 26건 중 PASS 26 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 26,
+    "B": 26,
+    "diff": 6,
+    "ex": [
+     [
+      "✓ ★① 그리고 화면이 깎인 값을 말한다  화면 42",
+      "✓ ★① 그리고 화면이 깎인 값을 말한다  화면 57"
+     ],
+     [
+      "✓ ★★② 아무것도 안 눌러도 **화면 hp 가 <t> 안에 오른다**(회복이 실린다)  38 → [49,59,69,90,100,100]",
+      "✓ ★★② 아무것도 안 눌러도 **화면 hp 가 <t> 안에 오른다**(회복이 실린다)  43 → [54,54,66,77,86,94]"
+     ],
+     [
+      "✓ ★② 화면 숫자 = 클라가 든 서버 값(굳은 그림 아님 · 한 프레임 차 허용)  100 vs 100",
+      "✓ ★② 화면 숫자 = 클라가 든 서버 값(굳은 그림 아님 · 한 프레임 차 허용)  94 vs 94"
+     ],
+     [
+      "✓ ★★③ `gauges` 는 **초당 한 건**이다 — 그게 hp 양자화의 틱 정본이다  1.50건/초",
+      "✓ ★★③ `gauges` 는 **초당 한 건**이다 — 그게 hp 양자화의 틱 정본이다  1.33건/초"
+     ]
+    ]
+   }
+  },
+  "test-audio": {
+   "M": "=== PASS 208 / FAIL 0 ===",
+   "B": "=== PASS 208 / FAIL 0 ===",
+   "verdict_lines": {
+    "M": 208,
+    "B": 208,
+    "diff": 2,
+    "ex": [
+     [
+      "✓ ⑦f ★★자 검증 — `carry` 실은 전송을 **한 줄짜리·여러 줄짜리 둘 다** 집어낸다(옛 자는 여러 줄을 못 봤다)  한 줄 8046 · 여러 줄 15642",
+      "✓ ⑦f ★★자 검증 — `carry` 실은 전송을 **한 줄짜리·여러 줄짜리 둘 다** 집어낸다(옛 자는 여러 줄을 못 봤다)  한 줄 8060 · 여러 줄 15655"
+     ],
+     [
+      "✓ ⑦g ★`gauges` 중 `carry` 를 싣는 자리는 **둘**이다(`doEat` · 초당 게이지 틱). 이 수가 변하면 먹기 판별을 다시 본다  zone.js:8046 zone.js:15642",
+      "✓ ⑦g ★`gauges` 중 `carry` 를 싣는 자리는 **둘**이다(`doEat` · 초당 게이지 틱). 이 수가 변하면 먹기 판별을 다시 본다  zone.js:8060 zone.js:15655"
+     ]
+    ]
+   }
+  },
+  "test-body": {
+   "M": "=== 324건 중 PASS 324 · FAIL 0 ===",
+   "B": "=== 324건 중 PASS 324 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 324,
+    "B": 324,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-doors": {
+   "M": "=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+   "B": "=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===",
+   "verdict_lines": {
+    "M": 45,
+    "B": 45,
+    "diff": 4,
+    "ex": [
+     [
+      "✓ ⓕ1 ★칸 둘이 바깥 판에 있다 — `/perf` 는 안 문이라 이 둘만 여기로 낸다 · villages=null tickP50Ms=0.297",
+      "✓ ⓕ1 ★칸 둘이 바깥 판에 있다 — `/perf` 는 안 문이라 이 둘만 여기로 낸다 · villages=null tickP50Ms=0.319"
+     ],
+     [
+      "✓ ⓕ3 `tickP50Ms` 는 수이거나 `null` · 0.297",
+      "✓ ⓕ3 `tickP50Ms` 는 수이거나 `null` · 0.319"
+     ],
+     [
+      "✓ ⓕ9 ★★`/perf` tick.ms.p50 과 `/health` tickP50Ms 이 **같은 답**이다(표본 0 이면 둘 다 \"없다\") · n=96 · 0.294 vs 0.294 · 고요한 판 2번째",
+      "✓ ⓕ9 ★★`/perf` tick.ms.p50 과 `/health` tickP50Ms 이 **같은 답**이다(표본 0 이면 둘 다 \"없다\") · n=105 · 0.318 vs 0.318 · 고요한 판 3번째"
+     ],
+     [
+      "✓ ⓕ9b ★`/health` 를 부른 뒤에도 틱 히스토그램이 **안 지워진다** · n 96 → 96",
+      "✓ ⓕ9b ★`/health` 를 부른 뒤에도 틱 히스토그램이 **안 지워진다** · n 105 → 106"
+     ]
+    ]
+   }
+  },
+  "test-downed": {
+   "M": "=== 180건 중 PASS 180 · FAIL 0 ===",
+   "B": "=== 180건 중 PASS 180 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 180,
+    "B": 180,
+    "diff": 2,
+    "ex": [
+     [
+      "✓ ★★⑦ **저장본에 쓰러짐이 실린다**(`serializeBody.vital` — T47 이 이미 실어 뒀다)  {\"hp\":0,\"maxHp\":100,\"isDown\":true,\"downedAt\":1793497784791}",
+      "✓ ★★⑦ **저장본에 쓰러짐이 실린다**(`serializeBody.vital` — T47 이 이미 실어 뒀다)  {\"hp\":0,\"maxHp\":100,\"isDown\":true,\"downedAt\":1793497785677}"
+     ],
+     [
+      "✓ ★★㉒ⓑ 두 번째 누름이 **시계를 되감지 않는다**(깨어날 시각 그대로)  1793497988745.1995 → 1793497988745.1995",
+      "✓ ★★㉒ⓑ 두 번째 누름이 **시계를 되감지 않는다**(깨어날 시각 그대로)  1793497989579.1995 → 1793497989579.1995"
+     ]
+    ]
+   }
+  },
+  "test-drop-kg": {
+   "M": "=== 51건 중 PASS 51 · FAIL 0 ===",
+   "B": "=== 51건 중 PASS 51 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 51,
+    "B": 51,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-food-keep": {
+   "M": "=== 10건 중 PASS 10 · FAIL 0 ===",
+   "B": "=== 10건 중 PASS 10 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 10,
+    "B": 10,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-game-meat": {
+   "M": "=== 54건 중 PASS 54 · FAIL 0 ===",
+   "B": "=== 54건 중 PASS 54 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 54,
+    "B": 54,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-harness-lint": {
+   "M": "=== 68건 중 PASS 68 · FAIL 0 ===",
+   "B": "=== 68건 중 PASS 68 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 68,
+    "B": 68,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-hp-src": {
+   "M": "=== 54 통과 / 0 실패 ===",
+   "B": "=== 54 통과 / 0 실패 ===",
+   "verdict_lines": {
+    "M": 54,
+    "B": 54,
+    "diff": 3,
+    "ex": [
+     [
+      "✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 984242 · net 97559 · wildlife 82378",
+      "✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 985447 · net 97559 · wildlife 82378"
+     ],
+     [
+      "✓ ★★① 문 밖 직접 대입 한 줄(`p.hp = …` · 회복 걸음에 되살림)은 잡힌다 — 빨강 하나 · 잡힌 줄이 그 줄  빨강 1 · 15590: p.hp = Math.min(p.maxHp, p.hp + 1);",
+      "✓ ★★① 문 밖 직접 대입 한 줄(`p.hp = …` · 회복 걸음에 되살림)은 잡힌다 — 빨강 하나 · 잡힌 줄이 그 줄  빨강 1 · 15603: p.hp = Math.min(p.maxHp, p.hp + 1);"
+     ],
+     [
+      "✓ ★★③ 옛 직접 대입(사람 공격 `bestMob.hp -= atk` · 저장 표 · 방송 세 줄)을 되살린 사본은 잡힌다 — 잡힌 줄이 그 줄  빨강 2 · 13323: bestMob.hp -= atk;",
+      "✓ ★★③ 옛 직접 대입(사람 공격 `bestMob.hp -= atk` · 저장 표 · 방송 세 줄)을 되살린 사본은 잡힌다 — 잡힌 줄이 그 줄  빨강 2 · 13337: bestMob.hp -= atk;"
+     ]
+    ]
+   }
+  },
+  "test-hunt-port": {
+   "M": "=== 78건 중 PASS 78 · FAIL 0 ===",
+   "B": "=== 78건 중 PASS 78 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 78,
+    "B": 78,
+    "diff": 2,
+    "ex": [
+     [
+      "✓ ★★⑦' 하루에 다 안 짓는다(예산에서 끊는다)  <t> · 커서 dy=-74",
+      "✓ ★★⑦' 하루에 다 안 짓는다(예산에서 끊는다)  <t> · 커서 dy=-84"
+     ],
+     [
+      "✓ ★★⑦' 며칠 이어 붙이면 **결국 다 짓는다**  4일 · 12028셀",
+      "✓ ★★⑦' 며칠 이어 붙이면 **결국 다 짓는다**  5일 · 12028셀"
+     ]
+    ]
+   }
+  },
+  "test-hunt-vis.r1": {
+   "M": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "B": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 32,
+    "B": 32,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-hunt-vis.r2": {
+   "M": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "B": "=== 32건 중 PASS 32 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 32,
+    "B": 32,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-lab-hunt": {
+   "M": "=== 62건 중 PASS 62 · FAIL 0 ===",
+   "B": "=== 62건 중 PASS 62 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 0,
+    "B": 0,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-mob-hp-door": {
+   "M": "=== 19건 중 PASS 19 · FAIL 0 ===",
+   "B": "=== 19건 중 PASS 19 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 23,
+    "B": 23,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-mob-hp-restart": {
+   "M": "=== 20건 중 PASS 20 · FAIL 0 ===",
+   "B": "=== 20건 중 PASS 20 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 28,
+    "B": 28,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-mob-respawn": {
+   "M": "=== 16건 중 PASS 16 · FAIL 0 ===",
+   "B": "=== 16건 중 PASS 16 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 21,
+    "B": 21,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-npc-hp-door": {
+   "M": "=== 21건 중 PASS 21 · FAIL 0 ===",
+   "B": "=== 21건 중 PASS 21 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 21,
+    "B": 21,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-npc-wild-sync": {
+   "M": "=== 10건 중 PASS 10 · FAIL 0 ===",
+   "B": "=== 10건 중 PASS 10 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 14,
+    "B": 14,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-tame": {
+   "M": "=== 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+   "B": "=== 길들이기 게이트: 11 통과 / 0 실패 ✅ ===",
+   "verdict_lines": {
+    "M": 11,
+    "B": 11,
+    "diff": 0,
+    "ex": []
+   }
+  },
+  "test-zone-fauna": {
+   "M": "=== 38건 중 PASS 38 · FAIL 0 ===",
+   "B": "=== 38건 중 PASS 38 · FAIL 0 ===",
+   "verdict_lines": {
+    "M": 38,
+    "B": 38,
+    "diff": 0,
+    "ex": []
+   }
+  }
+ },
+ "server_baseline": {
+  "on": {
+   "baseline": "계측/서버기준선_2026-10-31.json(main 최신 · 머리 43f787e9 · T959 판 자 · 400날 · 시드 1020 · 7 · 42)",
+   "env": "(없음 = 켬)",
+   "log": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 집 행위 끔 · 동시 2 · 교역로 캐시 <tmp> · 판 <tmp> ===",
+    "  · 시드 1020 400일 판 308초(종료 0)",
+    "  · 시드 7 400일 판 339초(종료 0)",
+    "  · 시드 42 400일 판 313초(종료 0)",
+    "  판 모두 620초",
+    "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2488)",
+    "  ○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2713)",
+    "  ○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2599)",
+    "=== 같음 3/3 · 판 620초 ==="
+   ],
+   "observer": {
+    "sbc-1020": {
+     "n_days": 401,
+     "days_hash": "789442704603",
+     "last": [
+      400,
+      54,
+      "9a5139815711",
+      5400,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 11251,
+       "write": 22,
+       "same": 11229,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 6,
+       "write": 1,
+       "same": 5,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobCnt": {},
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-42": {
+     "n_days": 401,
+     "days_hash": "fe7d8c2976a1",
+     "last": [
+      400,
+      60,
+      "50f008cb0ecb",
+      6000,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 10940,
+       "write": 11,
+       "same": 10929,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 5,
+       "write": 3,
+       "same": 2,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "regen": {
+       "n": 3,
+       "write": 3,
+       "same": 0,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobCnt": {},
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-7": {
+     "n_days": 401,
+     "days_hash": "b6fa1e0a5f89",
+     "last": [
+      400,
+      51,
+      "8cf963ec8406",
+      5100,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 9654,
+       "write": 18,
+       "same": 9636,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 7,
+       "write": 2,
+       "same": 5,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobCnt": {},
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    }
+   }
+  },
+  "off": {
+   "baseline": "계측/서버기준선_2026-10-31.json(main 최신 · 머리 43f787e9 · T959 판 자 · 400날 · 시드 1020 · 7 · 42)",
+   "env": "T1032_NPC_KILL=0",
+   "log": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 집 행위 끔 · 동시 2 · 교역로 캐시 <tmp> · 판 <tmp> ===",
+    "  · 시드 1020 400일 판 323초(종료 0)",
+    "  · 시드 7 400일 판 361초(종료 0)",
+    "  · 시드 42 400일 판 306초(종료 0)",
+    "  판 모두 629초",
+    "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2488)",
+    "  ○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2713)",
+    "  ○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2599)",
+    "=== 같음 3/3 · 판 629초 ==="
+   ],
+   "observer": {
+    "sbc-1020": {
+     "n_days": 401,
+     "days_hash": "789442704603",
+     "last": [
+      400,
+      54,
+      "9a5139815711",
+      5400,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 11251,
+       "write": 22,
+       "same": 11229,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 6,
+       "write": 1,
+       "same": 5,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobCnt": {},
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-42": {
+     "n_days": 401,
+     "days_hash": "fe7d8c2976a1",
+     "last": [
+      400,
+      60,
+      "50f008cb0ecb",
+      6000,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 10940,
+       "write": 11,
+       "same": 10929,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 5,
+       "write": 3,
+       "same": 2,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "regen": {
+       "n": 3,
+       "write": 3,
+       "same": 0,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobCnt": {},
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    },
+    "sbc-7": {
+     "n_days": 401,
+     "days_hash": "b6fa1e0a5f89",
+     "last": [
+      400,
+      51,
+      "8cf963ec8406",
+      5100,
+      449,
+      "9e7ab7676731",
+      15536
+     ],
+     "cnt": {
+      "war": {
+       "n": 9654,
+       "write": 18,
+       "same": 9636,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      },
+      "release": {
+       "n": 7,
+       "write": 2,
+       "same": 5,
+       "lo": 0,
+       "hi": 0,
+       "nan": 0
+      }
+     },
+     "mobCnt": {},
+     "mobs": [
+      [
+       449,
+       15536
+      ]
+     ]
+    }
+   }
+  },
+  "observer_same_on_off": {
+   "sbc-1020": true,
+   "sbc-42": true,
+   "sbc-7": true
+  }
+ },
+ "virtual_clock": {
+  "cond": "t942-restore-ab --make bx --stop 40 --days 1 · 켬 ↔ 끔(T1032_NPC_KILL=0)",
+  "cmp": {
+   "base_days": {
+    "n": [
+     41,
+     41
+    ],
+    "same": true,
+    "first_diff": null,
+    "last_M": [
+     40,
+     695,
+     "f3d3e7e04c77",
+     69500,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "last_B": [
+     40,
+     695,
+     "f3d3e7e04c77",
+     69500,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "mob": [
+     [
+      449,
+      15536
+     ]
+    ]
+   },
+   "rs_days": {
+    "n": [
+     2,
+     2
+    ],
+    "same": true,
+    "first_diff": null,
+    "last_M": [
+     41,
+     667,
+     "8590eff77b2c",
+     59784.297877,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "last_B": [
+     41,
+     667,
+     "8590eff77b2c",
+     59784.297877,
+     449,
+     "9e7ab7676731",
+     15536
+    ],
+    "mob": [
+     [
+      449,
+      15536
+     ]
+    ]
+   },
+   "base_cnt": {
+    "same": true,
+    "M": {}
+   },
+   "rs_cnt": {
+    "same": true,
+    "M": {
+     "restore": {
+      "n": 612,
+      "write": 245,
+      "same": 367,
+      "lo": 0,
+      "hi": 0,
+      "nan": 0
+     },
+     "regen": {
+      "n": 245,
+      "write": 245,
+      "same": 0,
+      "lo": 0,
+      "hi": 0,
+      "nan": 0
+     }
+    }
+   },
+   "base_mobcnt": {
+    "same": true,
+    "M": {}
+   },
+   "rs_mobcnt": {
+    "same": true,
+    "M": {}
+   },
+   "probe_base": {
+    "same": true
+   },
+   "probe_rs": {
+    "same": true
+   },
+   "t747": {
+    "same": true,
+    "M": [
+     "  off: 저장본 몸 612 · 37 로 122 · 99.5 로 123",
+     "  off: <t>초(종료 0) · T747 몸 칸 되돌림 — 마을 51 · 몸 612 · 손 든 몸 0 · 진행 작업 이음 0 · 풂 0 · 직업 다시 맞춤 173 · 남은 손 0 · 지문 init:526620d29959 41:8590eff77b2c",
+     "     문 셈 restore 612(바뀜 245 · 같음 367 · 0밑 0 · 위 0) · regen 245(바뀜 245 · 같음 0 · 0밑 0 · 위 0)"
+    ],
+    "B": [
+     "  on: 저장본 몸 612 · 37 로 122 · 99.5 로 123",
+     "  on: <t>초(종료 0) · T747 몸 칸 되돌림 — 마을 51 · 몸 612 · 손 든 몸 0 · 진행 작업 이음 0 · 풂 0 · 직업 다시 맞춤 173 · 남은 손 0 · 지문 init:526620d29959 41:8590eff77b2c",
+     "     문 셈 restore 612(바뀜 245 · 같음 367 · 0밑 0 · 위 0) · regen 245(바뀜 245 · 같음 0 · 0밑 0 · 위 0)"
+    ]
+   }
+  }
+ },
+ "world_bands": {
+  "server_T837": "인계/공통.md §3(T1028) — 열여덟째 판 T1008 켬 판 넷: 판 끝 인구 14,671 ~ 15,196 · 빈 마을 0 · 첫해 굶어 죽음 94 ~ 256 · 굶는 마을-날 349 ~ 815 · 30날+ 0 ~ 1 · 징발 마을-날 528 ~ 1,468",
+  "lab_T944": "인계/공통.md §3 — T960 랩 켬 띠: 인구 15,490 ~ 16,342 · 소멸 0 ~ 3 (랩 sim/ 은 server/zone.js 를 안 부른다)",
+  "why_not_rerun": "서버 기준선 켬 · 끔 같음 · 판에 NPC 잡음 0(존 몹 hp 쓰기 0) — 띠 판도 같은 판 자에 같은 세계"
+ },
+ "knob_tables": {
+  "t883": {
+   "mx": "행 879 · 이름 324 · 표 ≠ 코드 25 · 코드 env 301 · 표에 없음 5",
+   "wt": "행 880 · 이름 325 · 표 ≠ 코드 25 · 코드 env 302 · 표에 없음 5"
+  }
+ }
+}
