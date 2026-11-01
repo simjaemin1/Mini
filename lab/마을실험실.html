@@ -9923,6 +9923,13 @@ const T932_SMELT_CONT = !(typeof process !== 'undefined' && process.env && proce
 //   켬 · 끔 다 집 행위가 아닌 마을(랩 · 서버 기준선 자 `T400_BUILD_ACT=0` · `_mapBeds` 없는 판)은 한 글자도 안 닿는다(종전 목재 상한 · 차감).
 //   ★[T974 2026-10-28] 켬 기본(PM · 열일곱째 판 — T966 두 자리가 계획 주거 `_t958Plan` 을 읽는 판) · 되돌림 `T958_HOUSE_REAL=0`(= 종전 바이트) · 랩(브라우저 · 번들 shim 빈 env)도 켬.
 const T958_HOUSE_REAL = !(typeof process !== 'undefined' && process.env && process.env.T958_HOUSE_REAL === '0');   // ★[T974 · PM 10-28] 켬 기본 · 되돌림 `=0`(★[T966] 끔 기본이던 글자 `=== '1'`)
+// ★★[T1046 2026-11-01 · T1018 회부 1] 손잡이 `T1046_WOOD_SHARE`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 글자 — 판 자 띠에서 첫해 기근이 서버 띠 밖이라 켬 기본으로 안 냈다 · 보고 T1046) — **나무꾼 안전망이 출생 문과 같은 주거 상한을 읽는다.**
+//   주거 목재 안전망(`pickDeficitJob_rational` — 인구 ≥ 읽는 주거 × 0.95 · 곳간 목재 < 인구 × 2 → 나무꾼)은 랩에서 econ 주거를 읽는다 —
+//   목재로 짓는 주거라 "집이 차서 출생이 막혔고 지을 목재가 없다"는 신호다(랩 출생 고르기의 나무꾼 절반이 이 줄 · 보고 T1046 ①).
+//   집 행위 마을(서버)은 T966 뒤 이 줄이 계획 주거(`_t958Plan` — 목재 없이 오르는 칸)를 읽어 한 번도 안 선다(출생 고르기 0 · 랩 6.5%).
+//   켜면 그 줄이 출생 문(`tickVillage` 출생 줄 `_hcap` — econ 주거 ∧ 지은 침상 `_mapBeds`)과 **같은 상한**을 읽는다(같은 식 · 새 수 0).
+//   랩 · 집 행위 아닌 마을은 지은 침상 칸이 없어 상한 = econ 주거 = 종전 그대로다(바이트 같음).
+const T1046_WOOD_SHARE = (typeof process !== 'undefined' && process.env && process.env.T1046_WOOD_SHARE === '1');
 // ★[T932 · 계측 전용 · 행동 무관 · 저장 0] 그 갈래가 선 날을 센다 — 모듈 칸(마을 객체에 안 붙인다 — 저장 줄 무변). 관찰기 `scripts/t932-smelt-probe.js` 가 판 끝에 적는다.
 //   days = 선 마을-날(같은 날 둘째 대장장이는 안 센다) · smiths = 선 대장장이-날 · left = 그 대장장이 뒤 차례 주민 · idle = 그중 교역 원정 · 징발이 아닌 사람(끔이면 그날 일을 못 한 사람)
 //   · pop = 그 마을 인구(끔이면 그날 꼬리 — 먹기 · 나이 … — 를 못 탄 사람) · byV · byYear(0 = 1 ~ 365날)
@@ -13753,7 +13760,9 @@ function pickDeficitJob_rational(v, world) {
   //     땔감이고(T644 §1) 시딩 곳간은 9~25일에 0 이 되니, 대부분 마을은 **바닥난 뒤에야** 이 줄에 닿는다. 켜면 같은 줄이 이미 있는 신호를
   //     하나 더 읽는다: **남은 날 = 곳간 ÷ 하루 소비 EMA(`_consEMA.wood`) < 30** — 30 은 v2 가 흐름 수요를 재는 바로 그 창
   //     (`flowT = _consEMA × 30` · economy-sim-v2 computeShadowPrices)이다. 새 수 0. 끔이면 이 줄은 종전 그대로(비트 동일).
-  const _hPick = (T958_HOUSE_REAL && v._t958Plan !== undefined) ? v._t958Plan : v.housing;   // ★[T966] 켬 = 계획 주거(위 `_t958Plan`) · 끔 · 그 칸 없음 = 주거 그대로(종전)
+  const _hPick = T1046_WOOD_SHARE
+    ? Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity)   // ★[T1046] 켬 = 출생 문 `_hcap` 과 같은 상한(econ 주거 ∧ 지은 침상)
+    : (T958_HOUSE_REAL && v._t958Plan !== undefined) ? v._t958Plan : v.housing;   // ★[T966] 켬 = 계획 주거(위 `_t958Plan`) · 끔 · 그 칸 없음 = 주거 그대로(종전)
   if (((v.housing !== undefined && N >= _hPick * 0.95 && (v.storage.wood || 0) < N * 2)
        || (woodEarlyOn() && (woodEarlyMode() === 1 || _t663Birth) && (v.storage.wood || 0) < ((v._consEMA && v._consEMA.wood) || 0) * 30))
       && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
@@ -14636,6 +14645,7 @@ module.exports = {
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
   T958_HOUSE_REAL,   // ★[T958] 집 행위 마을 econ 주거 = 지은 침상까지(★[T974] 켬 기본 · `=0` 되돌림 · ★[T966] 끔 기본이던 글자) — 방아쇠(서버 `villages.js`)가 읽는다
+  T1046_WOOD_SHARE,   // ★[T1046] 나무꾼 안전망 = 출생 문과 같은 주거 상한(끔 기본 · `'1'` 켬)
   T932_SMELT_CONT, t932Stat,   // ★[T932] 제련 날 마을 하루 결함 손잡이(켬 기본) + 계측 칸(관찰기 `t932-smelt-probe` 가 읽는다 — 행동 무관)
   T924_DEBT_CAP, _computeVillageStats,   // ★[T924] 빚 손잡이 + 마을 stat 함수(관찰기 `t924-observe` 가 건강 · 행복 항을 가른다 — 읽기만 · 사본 0 · 동작 무변)
   T931_SLOTK_EMA, T931_SLOTK_SEASON, totalFoodSlots,   // ★[T931] 식량 자리 K 관성 손잡이 + 자리 함수(하네스 · 관찰기 `t931-observe` 가 그날 자리를 다시 센다 — 읽기만 · 사본 0 · 동작 무변)

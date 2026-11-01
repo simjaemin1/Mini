@@ -77,8 +77,8 @@ ok(on.dead.max <= 20 + 1e-9 && on.dead.wants.every((x) => x === null), 'ⓒ 그 
 console.log('④ [T966] 계획 주거 — 주거를 "앞으로 지을 집"으로 읽던 두 자리');
 ok(JSON.stringify(on.live.plans) === JSON.stringify(off.live.hs), '켬의 계획 주거(`_t958Plan`)는 끔 세계 주거 궤적과 같은 값이다(같은 노후 · 같은 houseDayBuild · 새 수 0)', `끝 ${on.live.plans[19]} = ${off.live.hs[19]}`);
 ok(off.live.plans.every((x) => x === null) && on.dead.plans.every((x) => x === null), '끔 · 집 행위 아닌 마을은 그 칸이 없다(종전)');
-ok(/const _hPick = \(T958_HOUSE_REAL && v\._t958Plan !== undefined\) \? v\._t958Plan : v\.housing;/.test(SRC) && /N >= _hPick \* 0\.95 && \(v\.storage\.wood \|\| 0\) < N \* 2/.test(SRC) && !/N >= v\.housing \* 0\.95/.test(SRC),
-  '나무꾼 안전망은 켬이면 계획 주거를 읽는다(끔 = 주거 그대로 · 옛 글자 `N >= v.housing * 0.95` 는 남지 않는다)');
+ok(/: \(T958_HOUSE_REAL && v\._t958Plan !== undefined\) \? v\._t958Plan : v\.housing;   \/\/ ★\[T966\]/.test(SRC) && /const _hPick = T1046_WOOD_SHARE\n/.test(SRC) && /N >= _hPick \* 0\.95 && \(v\.storage\.wood \|\| 0\) < N \* 2/.test(SRC) && !/N >= v\.housing \* 0\.95/.test(SRC),
+  '나무꾼 안전망은 켬이면 계획 주거를 읽는다(끔 = 주거 그대로 · 옛 글자 `N >= v.housing * 0.95` 는 남지 않는다 · ★[T1046] 그 갈래는 `T1046_WOOD_SHARE` 끔(기본)일 때 — `=1` 이면 출생 문 상한)');
 {
   const tl = VSRC.split('\n').filter((l) => /territoryTarget\(/.test(l) && !/^\s*\/\//.test(l));
   ok(tl.length === 2 && tl.every((l) => /territoryTarget\(land\.size, _t966TerrHousing\(vil\.econ\)\)/.test(l)), '서버 영토 목표 두 줄은 `_t966TerrHousing` 하나를 읽는다', `${tl.length}줄`);

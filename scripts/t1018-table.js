@@ -103,14 +103,15 @@ for (const k of ['win', 'base']) {
   for (const [lbl, list] of runs) { const A = merge(list, k); const v = COLS.map(([, f]) => f(A)); out[k][lbl] = v; P(`| ${lbl} | ${v.map((x, i) => fx(x, COLS[i][2])).join(' | ')} |`); }
   // 띠
   const band = (pref) => COLS.map((c, i) => { const xs = Object.entries(out[k]).filter(([n]) => n.startsWith(pref)).map(([, v]) => v[i]).filter((x) => x != null && Number.isFinite(x)); return xs.length ? [Math.min(...xs), Math.max(...xs)] : null; });
-  const sb = band('서버 s'), nb = band('서버 n'), lb = band('랩 ');
+  const KN = process.env.T1018_KNOB_ARM || 'n';   // ★[T1046] 손잡이 갈래 띠 이름(기본 n — T1018 · T1046 은 k)
+  const sb = band('서버 s'), nb = band('서버 ' + KN), lb = band('랩 ');
   const bandRow = (B) => B.map((b, i) => b ? `${fx(b[0], COLS[i][2])} ~ ${fx(b[1], COLS[i][2])}` : '—').join(' | ');
   const ovRow = (A, B) => A.map((b, i) => b && B[i] ? (b[0] <= B[i][1] && B[i][0] <= b[1] ? '겹침' : '**안 겹침**') : '—').join(' | ');
   P(`| **서버 띠(s · s~raid)** | ${bandRow(sb)} |`);
-  if (nb.some((b) => b)) P(`| **서버 띠(n · n~raid — 손잡이 켬)** | ${bandRow(nb)} |`);
+  if (nb.some((b) => b)) P(`| **서버 띠(${KN} · ${KN}~raid — 손잡이 켬)** | ${bandRow(nb)} |`);
   P(`| **랩 띠** | ${bandRow(lb)} |`);
   P(`| 겹침 s ↔ 랩 | ${ovRow(sb, lb)} |`);
-  if (nb.some((b) => b)) { P(`| 겹침 n ↔ 랩 | ${ovRow(nb, lb)} |`); P(`| 겹침 n ↔ s | ${ovRow(nb, sb)} |`); }
+  if (nb.some((b) => b)) { P(`| 겹침 ${KN} ↔ 랩 | ${ovRow(nb, lb)} |`); P(`| 겹침 ${KN} ↔ s | ${ovRow(nb, sb)} |`); }
   out[k].band = { srv: sb, knob: nb, lab: lb };
   P('');
 }
