@@ -9,11 +9,13 @@
 // ★결정적이다 — 같은 로그를 넣으면 **바이트가 같은** 마크다운이 나온다.
 //   그래서 이 파일 안에 `Date.now()` · `new Date()`(인자 없는) · 난수 · 파일 시각 읽기가 **하나도 없다**.
 //   시각은 전부 로그 줄머리의 도장에서 온다(`nightly-run.sh` 가 줄마다 찍는다).
+//   ★[T1038] 지난 밤 보고들(`--prev-dir`)도 **입력**이다(§1b 연속 초록 셈) — 같은 로그 + 같은 보고 칸 → 같은 바이트.
 //   ⚠`scripts/test-nightly-report.js` 가 픽스처 둘로 이것을 검사한다(자명 통과 금지 줄 포함).
 //
 // 쓰는 법:
 //   node scripts/nightly-report.js --reds <로그>                 # 빨간 하네스 이름만 한 줄씩(러너가 쓴다)
 //   node scripts/nightly-report.js --log <로그> --base <커밋> --out 보고/야간러너_<날짜>.md
+//   node scripts/nightly-report.js --streaks <날짜> [--known <목록>] [--prev-dir 보고]   # [T1038] 그 밤까지 보고만 읽어 §1b 상시 점검 표
 //   (옵션) --retry <로그.retry>  기본은 `<로그>.retry` · --known <목록>  기본은 scripts/nightly-known.txt
 'use strict';
 const fs = require('fs');
@@ -105,7 +107,7 @@ if (process.argv.includes('--reds')) {
 
 // ── 보고 ─────────────────────────────────────────────────────────────────────
 const LOG = argOf('--log');
-if (!LOG || !fs.existsSync(LOG)) {
+if (!process.argv.includes('--streaks') && (!LOG || !fs.existsSync(LOG))) {   // ★[T1038] `--streaks` 는 로그 없이 보고만 읽는다
   console.error('쓰는 법: node scripts/nightly-report.js --log <로그> --base <커밋> --out <보고.md>');
   process.exit(2);
 }
@@ -146,6 +148,90 @@ function prevNight(day, dir) {
   return { file, rows, why: sawTable ? null : '직전 밤 보고에서 실패 표를 못 찾았다(꼴이 다르다)' };
 }
 
+// ── [T1038 · PM 10-31 판정] **상시 줄마다 연속 초록 밤 수** — 지난 밤 보고들을 거슬러 읽어 센다 ──────────
+//   규칙(PM): 고침 커밋이 없어도 **연속 초록 10밤** 이상인 상시 줄은 목록에서 뺀다(더 엄해진다). 기계는 **세고 표시만** 한다(판정 0 ·
+//   빼는 손은 PM 카드). 센 수 = 그 하네스가 **돈 밤** 중 끝에서부터 이어진 초록 밤 수(안 돈 밤 = 묶음 밖 · 건너뛴다 · 끊지 않는다).
+//   밤 하나의 상태는 그 보고의 §1 실패 표(빨강) · §5 통과 덩이(초록)에서만 읽는다. 둘 다 못 읽는 꼴의 보고를 만나면 거기서 멈추고
+//   "여기까지 읽음" 이라고 말한다(조용히 이어 세지 않는다 — "안 쟀는데 초록"이 되기 때문).
+const STREAK_MIN = 10;
+function nightFiles(dir, upto) {   // upto 날짜 **앞**의 밤들 · 새 것부터
+  let fs_ = [];
+  try { fs_ = fs.readdirSync(dir); } catch (e) { return []; }
+  return fs_.map((f) => /^야간러너_(\d{4}-\d{2}-\d{2})\.md$/.exec(f)).filter((m) => m && m[1] < upto).map((m) => ({ day: m[1], file: path.join(dir, m[0]) }))
+    .sort((a, b) => (a.day < b.day ? 1 : -1));
+}
+function nightStatus(file) {   // → { red:Set, green:Set, partial } · 못 읽으면 null
+  //   partial = 실패 표는 있는데 §5 통과 덩이가 없다(손으로 쓴 밤 — 10-28 꼴). 그 밤은 빨강만 믿고 나머지 이름은 **건너뛴다**(세지도 끊지도 않는다).
+  const L = fs.readFileSync(file, 'utf8').split('\n');
+  const red = new Set(), green = new Set();
+  let sec = '', inCode = false, sawTable = false, sawPass = false;
+  for (const line of L) {
+    if (/^## /.test(line)) { sec = line; inCode = false; if (/^## 1\. /.test(line)) sawTable = true; continue; }
+    const m = /^\|\s*\*{0,2}`([^`]+)`\*{0,2}\s*\|/.exec(line.trim());
+    if (m && !/^## [2-9]/.test(sec)) { red.add(base(m[1])); sawTable = true; }
+    if (/^## 5\. 통과/.test(sec)) {
+      if (/^```/.test(line)) { inCode = !inCode; continue; }
+      if (inCode) { for (const n of line.trim().split(/\s+/).filter(Boolean)) green.add(base(n)); sawPass = true; }
+    }
+  }
+  if (!sawTable && !sawPass) return null;
+  return { red, green, partial: !sawPass };
+}
+// 이 밤(tonight: 이름 → 'g' | 'r' | 없음)부터 거슬러 센다 → { n, color: 'g'|'r'|null, until: 멈춘 날 · skipped: 건너뛴 손 보고 날들 }
+function runStreak(name, tonight, files) {
+  const nm = base(name);
+  let color = tonight(nm) || null, n = color ? 1 : 0, until = null;
+  const skipped = [];
+  for (const f of files) {
+    const st = nightStatus(f.file);
+    if (!st) { until = f.day; break; }
+    const c = st.red.has(nm) ? 'r' : (st.green.has(nm) ? 'g' : null);
+    if (!c) { if (st.partial) skipped.push(f.day); continue; }   // 안 돌았거나(묶음 밖) · 손 보고라 모른다 — 건너뛴다
+    if (!color) { color = c; n = 1; continue; }
+    if (c !== color) break;
+    n += 1;
+  }
+  return { n, color, until, skipped };
+}
+// §1b 표 — 상시 줄마다 연속 초록 · 상시 밖 연속 빨강(2밤 이상)
+function checkTable(knownMap, tonight, files, outsideReds) {
+  const out = [], marks = { drop: 0, raise: 0 };
+  out.push(`## 1b. 상시 목록 점검 (T1038 규칙 — 상시 줄이 연속 초록 **${STREAK_MIN}밤**이면 뺄 차례 · 상시 밖 2밤 이상 빨강은 올릴지 · 카드)`);
+  out.push('');
+  const rows = [];
+  for (const [nm, k] of knownMap) {
+    const r = runStreak(nm, tonight, files);
+    const cnt = r.color === 'g' ? `초록 **${r.n}밤**` : r.color === 'r' ? `빨강 **${r.n}밤**(초록 0)` : '돈 밤 없음';
+    const mark = r.color === 'g' && r.n >= STREAK_MIN ? (marks.drop++, `**뺄 차례**(T1038 규칙 · ${STREAK_MIN}밤 · 빼는 손은 PM 카드)`) : '—';
+    const note = (r.until ? ` · ${r.until} 보고에서 멈춤(꼴을 못 읽음)` : '') + (r.skipped.length ? ` · 손 보고 ${r.skipped.join(' · ')} 건너뜀(통과 줄 없음)` : '');
+    rows.push(`| \`${nm}\` | 상시(${cell(k.why)}) | ${cnt}${note} | ${mark} |`);
+  }
+  for (const o of outsideReds) {
+    marks.raise++;
+    rows.push(`| \`${base(o.name)}\` | 상시 밖 | 빨강 **${o.n}밤** | **상시 올릴지 · 카드**(PM) |`);
+  }
+  if (!rows.length) out.push(`상시 줄 **0** · 상시 밖 2밤 이상 빨강 **0**.`);
+  else { out.push('| 하네스 | 목록 | 연속(돈 밤만 · 안 돈 밤은 건너뜀) | 표시 |'); out.push('|---|---|---|---|'); out.push(...rows); }
+  return { lines: out, marks };
+}
+// ── --streaks <날짜> : 로그 없이 **그 밤 보고까지** 읽어 §1b 표만 낸다(지난 밤에 규칙을 대 보는 자리 · T1038 ③) ──
+if (process.argv.includes('--streaks')) {
+  const day = argOf('--streaks', '');
+  const dir = argOf('--prev-dir', path.join(ROOT, '보고'));
+  const kn = readKnown(argOf('--known', KNOWN_DEFAULT));
+  const me = path.join(dir, `야간러너_${day}.md`);
+  const st = fs.existsSync(me) ? nightStatus(me) : null;
+  if (!st) { console.error(`그 밤 보고를 못 읽었다(${me})`); process.exit(2); }
+  const files = nightFiles(dir, day);
+  const tonight = (nm) => (st.red.has(nm) ? 'r' : st.green.has(nm) ? 'g' : null);
+  // 상시 밖 빨강의 연속 수는 **그 밤 보고 §1 의 "연속 n밤" 칸 그대로**(보고기가 낸 수 · 직전 밤 하나씩 이은 수 — §1 과 같은 자)
+  const outs = [];
+  for (const line of fs.readFileSync(me, 'utf8').split('\n')) { const m = PREV_ROW.exec(line.trim()); if (m && !kn.has(base(m[1])) && +m[2] >= 2) outs.push({ name: m[1], n: +m[2] }); }
+  const t = checkTable(kn, tonight, files, outs);
+  process.stdout.write(`# ${day} 밤 · 상시 목록 \`${path.relative(ROOT, argOf('--known', KNOWN_DEFAULT))}\` · 보고 ${files.length + 1}장\n\n` + t.lines.join('\n') + '\n');
+  process.exit(0);
+}
+
 const lines = readRun(LOG);
 const head = lines.map(split1);
 const T0 = head.length ? head[0].t : null;
@@ -182,6 +268,10 @@ const outside = reds.filter((b) => !known.has(base(b.name)));
 const PREVDIR = argOf('--prev-dir', OUT ? path.dirname(path.resolve(ROOT, OUT)) : path.join(ROOT, '보고'));
 const prev = prevNight(T0 ? T0.slice(0, 10) : '', PREVDIR);
 const streak = (n) => (prev.rows.get(base(n)) || 0) + 1;
+// ★[T1038] §1b 상시 점검 — 이 밤 로그(돈 것 · 초록/빨강)에서 시작해 지난 밤 보고들을 거슬러 센다(판정 0 · 표시만)
+const CHK = checkTable(known, (nm) => { const x = seen.get(nm); return x && x.ok === true ? 'g' : x && x.ok === false ? 'r' : null; },
+  nightFiles(PREVDIR, T0 ? T0.slice(0, 10) : ''),
+  prev.why ? [] : reds.filter((b) => !known.has(base(b.name)) && streak(b.name) >= 2).map((b) => ({ name: b.name, n: streak(b.name) })));
 
 const L = [];
 L.push(`# 보고 — 야간 러너 ${T0 ? T0.slice(0, 10) : '?'} (${T0 ? T0.slice(-5) : '?'})`);
@@ -194,6 +284,7 @@ L.push(`· 상자 판 ${VER ? `\`${VER}\`` : '**로그에 없다**(T760 앞 러�
 // ★[T1029] 상자 의존 — 러너가 찍은 `[의존]` 한 줄(python · numpy · PIL · zlib 판 · 없으면 `[상황]`)을 그대로 옮긴다(옛 로그엔 없다 — 없다고 적는다)
 const DEP = (lines.map((l) => split1(l).s).find((s) => /^\s*\[의존\] /.test(s)) || '').replace(/^\s*\[의존\] /, '');
 L.push(`· 상자 의존 ${DEP ? (/^\[상황\]/.test(DEP) ? `**${DEP}**` : `\`${DEP}\``) : '**로그에 없다**(T1029 앞 러너)'}`);
+L.push(`· 상시 점검(§1b · T1038) — 뺄 차례 **${CHK.marks.drop}** · 상시 올릴지 **${CHK.marks.raise}** · 상시 줄 ${known.size}`);
 L.push(`· 이 문서는 \`scripts/nightly-report.js\` 가 로그만 읽어 냈다 — **모델 판단 0** · 같은 로그면 바이트가 같다`);
 L.push(`· 로그 \`${LOG}\` · 단독 재실행 \`${RETRY}\` · 상시 목록 \`${path.relative(ROOT, argOf('--known', KNOWN_DEFAULT))}\``);
 L.push(`· 직전 밤 ${prev.why ? `**못 읽었다** (${prev.why})` : `\`${path.relative(ROOT, prev.file)}\` — 빨강 ${prev.rows.size}종`} · "연속 n밤"은 **세기만** 한 수다(판정 0)`);
@@ -230,6 +321,9 @@ if (reds.length === 0) {
       : '연속 2밤 이상인데 상시 목록에 없는 것 **0건**.');
   }
 }
+L.push('');
+
+L.push(...CHK.lines);
 L.push('');
 
 if (cut.length) {

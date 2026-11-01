@@ -272,5 +272,43 @@ console.log('\n=== ⑩ [T1029] 상자 의존 한 줄 · `[editor-layers]` 귀속
   ok(/\[의존\] /.test(dT) && dT !== dF, '러너 — 이 상자 그대로면 `[의존]` 한 줄이 선다(자명 통과 금지 — 가짜 python 판과 다른 글자)', dT.slice(25, 110));
 }
 
+console.log('\n=== ⑪ [T1038] §1b 상시 점검 — 상시 줄 연속 초록 10밤이면 "뺄 차례" · 상시 밖 2밤 빨강은 "올릴지 · 카드" ===');
+{
+  // 지난 밤 보고 픽스처 — 09-01 ~ 09-13 · `A` 는 09-03 빨강 뒤 초록(09-07 · 09-08 은 안 돎 · 09-10 은 손 보고) · `B` 는 이 밤 빨강 · `C` 는 상시 밖 빨강 둘째 밤
+  const dir = path.join(TMP, 'streak');
+  fs.mkdirSync(dir, { recursive: true });
+  const rep = (reds, greens) => ['# 보고', '', '## 1. 실패 표', '',
+    ...(reds.length ? ['| 하네스 | 연속 | 첫 판 | 소요 | 단독 재실행 | 귀속 |', '|---|---|---|---|---|---|', ...reds.map((n) => `| \`${n}\` | 연속 **1밤** | RC=1 | 1분 | — | x |`)] : ['빨강 **0종**.']),
+    '', `## 5. 통과 ${greens.length}종`, '', '```', greens.join('  '), '```', ''].join('\n');
+  const day = (d) => path.join(dir, `야간러너_2026-09-${String(d).padStart(2, '0')}.md`);
+  fs.writeFileSync(day(1), '이 꼴은 못 읽는다\n');                       // ★못 읽는 꼴 — 여기서 멈춘다
+  fs.writeFileSync(day(2), rep([], ['A', 'B']));
+  fs.writeFileSync(day(3), rep(['A'], ['B']));                             // A 마지막 빨강
+  for (const d of [4, 5, 6, 9, 11, 12]) fs.writeFileSync(day(d), rep([], ['A', 'B']));
+  for (const d of [7, 8]) fs.writeFileSync(day(d), rep([], ['B']));       // A 안 돎(묶음 밖) — 건너뛴다
+  fs.writeFileSync(day(10), ['# 손 보고', '', '| 하네스 | 묶음 판 |', '|---|---|', '| `X` | RC=1 |', ''].join('\n'));   // 통과 줄 없는 손 보고
+  fs.writeFileSync(day(13), rep(['C'], ['A', 'B']));
+  const LIST = ['A.js', 'B.js', 'C.js'];
+  const lg = [L(4, 0, '===== nightly-run 시작 · TZ=Asia/Seoul · base=deadbeef ====='), L(4, 0, '  [오늘] 묶음 A · 3종'), L(4, 0, `  [목록] ${LIST.join(' ')} `),
+    ...block(4, 1, 'A.js', true, []), ...block(4, 3, 'B.js', false, ['① 틀렸다']), ...block(4, 5, 'C.js', false, ['② 틀렸다']), L(4, 7, '===== 본 판 끝 =====')].join('\n') + '\n';
+  const fl = path.join(TMP, 'st.log'); fs.writeFileSync(fl, lg); fs.writeFileSync(fl + '.retry', '');
+  const kn = path.join(TMP, 'known3.txt');
+  fs.writeFileSync(kn, 'A.js | 기계 의존 | 픽스처\nB.js | 기계 의존 | 픽스처\n');
+  const R = run(['--log', fl, '--base', 'x', '--known', kn, '--prev-dir', dir]);
+  const row = (n) => (R.split('\n').find((l) => l.startsWith(`| \`${n}\` | `) && /목록|상시/.test(l) && !/연속 \*\*/.test(l)) || '');
+  ok(/초록 \*\*8밤\*\*/.test(row('A')), '★상시 줄 연속 초록 = **돈 밤**만 거슬러 센다(안 돈 09-07 · 09-08 건너뜀 · 09-03 빨강에서 멈춤)', row('A').slice(0, 90));
+  ok(/손 보고 2026-09-10 건너뜀/.test(row('A')), '통과 줄 없는 손 보고(09-10)는 건너뛰었다고 말한다');
+  ok(!/뺄 차례/.test(row('A')), '★자명 통과 금지 — 8밤은 **뺄 차례가 아니다**(10밤 문턱)');
+  ok(/빨강 \*\*1밤\*\*\(초록 0\)/.test(row('B')) && !/뺄 차례/.test(row('B')), '이 밤 빨간 상시 줄은 초록 0 · 표시 없음');
+  ok(/\| `C` \| 상시 밖 \| 빨강 \*\*2밤\*\* \| \*\*상시 올릴지 · 카드\*\*/.test(R), '★상시 밖 2밤 빨강 → **상시 올릴지 · 카드**');
+  ok(/· 상시 점검\(§1b · T1038\) — 뺄 차례 \*\*0\*\* · 상시 올릴지 \*\*1\*\* · 상시 줄 2/.test(R), '머리 한 줄에 셈이 선다');
+  // 09-14 ~ 09-16 셋 더 초록이면(이 밤 로그 대신 보고 · 09-04 ~ 09-16 의 돈 밤 10) → 뺄 차례
+  for (const d of [14, 15, 16]) fs.writeFileSync(path.join(dir, `야간러너_2026-09-${d}.md`), rep([], ['A', 'B']));
+  const S = run(['--streaks', '2026-09-16', '--known', kn, '--prev-dir', dir]);
+  ok(/\| `A` \| 상시\(기계 의존\) \| 초록 \*\*10밤\*\*.*\*\*뺄 차례\*\*\(T1038 규칙 · 10밤/.test(S), '★`--streaks` — 로그 없이 그 밤 보고까지 읽어 **10밤 → 뺄 차례**', (S.split('\n').find((l) => l.startsWith('| `A`')) || '').slice(0, 90));
+  ok(/\| `B` \| 상시\(기계 의존\) \| 초록 \*\*1\d밤\*\* · 2026-09-01 보고에서 멈춤/.test(S), '★못 읽는 꼴의 보고에서 **멈췄다고 말한다**(조용히 이어 세지 않는다)', (S.split('\n').find((l) => l.startsWith('| `B`')) || '').slice(0, 100));
+  ok(run(['--log', fl, '--base', 'x', '--known', kn, '--prev-dir', dir]) === run(['--log', fl, '--base', 'x', '--known', kn, '--prev-dir', dir]), '같은 로그 + 같은 보고 칸 → 같은 바이트');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail === 0 ? 0 : 1);
