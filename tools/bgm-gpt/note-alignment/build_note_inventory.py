@@ -9,13 +9,19 @@ import sys
 sys.dont_write_bytecode = True
 
 from collections import Counter
+import base64
+import hashlib
 import json
 from pathlib import Path
 import time
+import zlib
 
 import audit_note_pairs as audit
 
 MAX_REPORT_BYTES = 1_000_000
+MAX_DECODED_BYTES = 8_000_000
+DECODED_SCHEMA = "mini.private-TRAIN-nominal-note-inventory.v1"
+PACKED_SCHEMA = "mini.private-TRAIN-nominal-note-inventory-packed.v1"
 NOTE_COLUMNS = ["start_tick", "end_tick", "start_seconds", "end_seconds", "track", "channel", "pitch",
     "velocity", "status", "release_velocity", "note_index", "duration_seconds", "note_off_kind"]
 SHARED_KEYS = ("schema", "status", "tempo_policy", "time_integration", "note_pairing_policy", "limits",
@@ -46,10 +52,47 @@ def compact_notes(parsed):
 
 
 def encoded_report(report):
-    payload = json.dumps(report, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+    if not isinstance(report, dict) or report.get("schema") != DECODED_SCHEMA:
+        raise ValueError("complete_nominal_inventory_schema_required")
+    decoded = json.dumps(report, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode()
+    if len(decoded) > MAX_DECODED_BYTES:
+        raise ValueError("eight_MB_decoded_inventory_limit_no_notes_dropped")
+    envelope = dict(schema=PACKED_SCHEMA, decoded_schema=DECODED_SCHEMA, decoded_bytes=len(decoded),
+        decoded_sha256=hashlib.sha256(decoded).hexdigest(), compression="zlib/base64",
+        payload_base64=base64.b64encode(zlib.compress(decoded)).decode("ascii"))
+    payload = json.dumps(envelope, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
     if len(payload.encode()) + 1 > MAX_REPORT_BYTES:  # final stdout newline
-        raise ValueError("one_MB_complete_nominal_note_inventory_limit_no_notes_dropped")
+        raise ValueError("one_MB_packed_inventory_limit_no_notes_dropped")
     return payload
+
+
+def decode_report(payload):
+    """Bounded lossless decoder; no data/file/model access or silent truncation."""
+    if not isinstance(payload, str) or len(payload.encode()) > MAX_REPORT_BYTES:
+        raise ValueError("bounded_one_MB_packed_JSON_string_required")
+    envelope = json.loads(payload)
+    keys = {"schema", "decoded_schema", "decoded_bytes", "decoded_sha256", "compression", "payload_base64"}
+    if (not isinstance(envelope, dict) or set(envelope) != keys or envelope.get("schema") != PACKED_SCHEMA
+            or envelope.get("decoded_schema") != DECODED_SCHEMA or envelope.get("compression") != "zlib/base64"
+            or type(envelope.get("decoded_bytes")) is not int or not 0 < envelope["decoded_bytes"] <= MAX_DECODED_BYTES
+            or not isinstance(envelope.get("decoded_sha256"), str) or len(envelope["decoded_sha256"]) != 64
+            or not isinstance(envelope.get("payload_base64"), str)):
+        raise ValueError("exact_bounded_packed_inventory_envelope_required")
+    try:
+        compressed = base64.b64decode(envelope["payload_base64"], validate=True)
+        decoder = zlib.decompressobj()
+        decoded = decoder.decompress(compressed, MAX_DECODED_BYTES + 1)
+    except (ValueError, zlib.error) as error:
+        raise ValueError("valid_base64_zlib_inventory_required") from error
+    if (len(decoded) > MAX_DECODED_BYTES or decoder.unconsumed_tail or not decoder.eof or decoder.unused_data
+            or len(decoded) != envelope["decoded_bytes"]):
+        raise ValueError("complete_zlib_stream_without_trailing_data_and_exact_decoded_size_required")
+    if hashlib.sha256(decoded).hexdigest() != envelope["decoded_sha256"]:
+        raise ValueError("decoded_inventory_SHA256_mismatch")
+    report = json.loads(decoded)
+    if not isinstance(report, dict) or report.get("schema") != DECODED_SCHEMA:
+        raise ValueError("decoded_nominal_inventory_schema_required")
+    return report
 
 
 def build(prepared_manifest, split_path, source_tar):
@@ -121,7 +164,9 @@ def build(prepared_manifest, split_path, source_tar):
             aligned_training_pairs_approved=0, acoustic_alignment_validated=False, training_accepted=False,
             existing_split_changed=False, audio_or_model_loaded=False, Torch_imported=False, GPU_used=False,
             optimizer_updates=0, output_files_written=0, original_files_modified=False,
-            max_report_bytes=MAX_REPORT_BYTES, elapsed_seconds=time.monotonic() - budget.started,
+            max_report_bytes=MAX_REPORT_BYTES, max_report_bytes_applies_to_packed_stdout_envelope=True,
+            max_decoded_report_bytes=MAX_DECODED_BYTES, lossless_report_compression="zlib/base64",
+            elapsed_seconds=time.monotonic() - budget.started,
             limits=["Nominal MIDI note events are not synchronized acoustic training labels or verified solo daegeum.",
                 "All notes/tracks/channels, unmatched events, pedal/bends/controllers, tempo/meta and warnings are retained.",
                 "End-of-track duration includes possible trailing silence; duration difference alone is not tempo evidence.",

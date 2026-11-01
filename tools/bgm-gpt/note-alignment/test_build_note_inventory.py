@@ -1,10 +1,12 @@
 """Synthetic TRAIN inventory tests; no real archive, WAV, model or GPU."""
 import copy
+import base64
 import hashlib
 import json
 from pathlib import Path
 import tempfile
 import unittest
+import zlib
 from unittest.mock import patch
 
 import build_note_inventory as inventory
@@ -100,11 +102,61 @@ class NoteInventoryTests(unittest.TestCase):
             self.assertEqual(report["aligned_training_pairs_approved"], 0)
             self.assertEqual({path: path.read_bytes() for path in root.iterdir()}, before)
             self.assertLess(len(inventory.encoded_report(report).encode()), 1_000_000)
+            self.assertEqual(inventory.decode_report(inventory.encoded_report(report)), report)
             self.assertTrue(all(isinstance(value, str) for value in report["source_tar_identity_before_after"].values()))
 
     def test_complete_report_size_refuses_instead_of_dropping_notes(self):
+        report = dict(schema=inventory.DECODED_SCHEMA, notes=[[1, 2, 3]])
         with patch.object(inventory, "MAX_REPORT_BYTES", 8), self.assertRaisesRegex(ValueError, "no_notes_dropped"):
-            inventory.encoded_report({"notes": [[1, 2, 3]]})
+            inventory.encoded_report(report)
+        with patch.object(inventory, "MAX_DECODED_BYTES", 8), self.assertRaisesRegex(ValueError, "no_notes_dropped"):
+            inventory.encoded_report(report)
+
+    def test_lossless_pack_roundtrip_all_fields_unicode_zero_None_large_timestamp(self):
+        report = dict(schema=inventory.DECODED_SCHEMA, note_columns=inventory.NOTE_COLUMNS,
+            note_rows=[[0, None, 0., None, 0, 0, 60, 0, "unmatched_note_on", None, 0, None, None]],
+            metadata={"원래": "악보", "bool": False, "mtime_ns": 1793800000000000129},
+            nested=[{"pedal": 0, "bend": 8192, "warnings": []}])
+        payload = inventory.encoded_report(report)
+        envelope = json.loads(payload)
+        self.assertEqual(envelope["schema"], inventory.PACKED_SCHEMA)
+        self.assertEqual(envelope["compression"], "zlib/base64")
+        self.assertEqual(inventory.decode_report(payload + "\n"), report)
+        raw = zlib.decompress(base64.b64decode(envelope["payload_base64"], validate=True))
+        self.assertEqual(envelope["decoded_bytes"], len(raw))
+        self.assertEqual(envelope["decoded_sha256"], hashlib.sha256(raw).hexdigest())
+
+    def test_bad_envelope_SHA_base64_zlib_truncation_trailing_and_schema_rejected(self):
+        original = json.loads(inventory.encoded_report(dict(schema=inventory.DECODED_SCHEMA, notes=[])))
+        compressed = base64.b64decode(original["payload_base64"])
+        changes = [("schema", "wrong"), ("decoded_schema", "wrong"), ("compression", "wrong"),
+            ("decoded_bytes", True), ("decoded_bytes", 8_000_001), ("decoded_sha256", "0" * 64),
+            ("payload_base64", "%%%"), ("payload_base64", base64.b64encode(b"bad zlib").decode()),
+            ("payload_base64", base64.b64encode(compressed[:-1]).decode()),
+            ("payload_base64", base64.b64encode(compressed + b"trailing").decode()),
+            ("payload_base64", base64.b64encode(compressed + compressed).decode())]
+        for key, value in changes:
+            with self.subTest(key=key, value=str(value)[:20]), self.assertRaises(ValueError):
+                inventory.decode_report(json.dumps({**original, key: value}))
+        raw = b'{"schema":"wrong"}'
+        changed = {**original, "decoded_bytes": len(raw), "decoded_sha256": hashlib.sha256(raw).hexdigest(),
+            "payload_base64": base64.b64encode(zlib.compress(raw)).decode()}
+        with self.assertRaisesRegex(ValueError, "decoded_nominal"):
+            inventory.decode_report(json.dumps(changed))
+
+    def test_expansion_bounded_before_full_decompress_and_stdout_limit_includes_newline(self):
+        raw = b"x" * 10001
+        envelope = dict(schema=inventory.PACKED_SCHEMA, decoded_schema=inventory.DECODED_SCHEMA,
+            decoded_bytes=1000, decoded_sha256=hashlib.sha256(raw).hexdigest(), compression="zlib/base64",
+            payload_base64=base64.b64encode(zlib.compress(raw)).decode())
+        with patch.object(inventory, "MAX_DECODED_BYTES", 1000), self.assertRaisesRegex(ValueError, "complete_zlib"):
+            inventory.decode_report(json.dumps(envelope))
+        report = dict(schema=inventory.DECODED_SCHEMA, notes=[])
+        payload = inventory.encoded_report(report)
+        with patch.object(inventory, "MAX_REPORT_BYTES", len(payload.encode())), self.assertRaisesRegex(ValueError, "no_notes_dropped"):
+            inventory.encoded_report(report)
+        with patch.object(inventory, "MAX_REPORT_BYTES", 8), self.assertRaisesRegex(ValueError, "bounded_one_MB"):
+            inventory.decode_report(payload)
 
 
 if __name__ == "__main__":

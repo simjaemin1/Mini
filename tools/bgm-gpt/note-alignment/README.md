@@ -117,7 +117,13 @@ in this metadata-only phase. Neither notes nor recordings are retimed.
 
 The private stdout inventory is capped at1MB so that it and the six-case report,
 including preserved transfer-error evidence, stay within the announced2MB
-additional-results budget. TAR identity integers are decimal strings to avoid
+additional-results budget. The first full uncompressed inventory hit that cap
+and was refused before any inventory emission; no notes were dropped. Its
+representation was changed to a LOSSLESS zlib/Base64 JSON envelope, with raw
+size/schema/SHA verification and a bounded decoder. The stored/stdout envelope
+including its final newline still has the SAME1MB cap. Decoded JSON is bounded
+separately to8MB in memory, not written as a new large disk artifact.
+TAR identity integers are decimal strings to avoid
 JavaScript's2^53limit. No model, audio render, extraction, installation or
 original-file mutation is involved. Structural nominal-score eligibility is
 reported separately from acoustic alignment; automatic training approval is0.
