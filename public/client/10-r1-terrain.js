@@ -941,6 +941,7 @@
     //     그래서 CPU 가 주기를 512/스케일 로 계산해 넣는다. 스케일은 512 의 약수만 쓴다.
     'uniform vec3 uRip; uniform vec3 uRip1; uniform float uDith; uniform float uSnap; uniform float uDirLin; uniform vec2 uDirC; uniform float uPhLeg; uniform float uDirNear;',
     'uniform vec2 uOrig; uniform float uN; uniform float uDrop;',
+    'uniform float uPre;',   // ★[T1052] 1 = 마른 자리 먼저 거르기(손잡이 `T1052_WATER_CHEAP` · 0 = 종전 그대로)
     // ★★값 노이즈는 **주기 노이즈**여야 한다. 이유가 두 개다:
     //   ⓐ 월드 좌표가 수만 px 이라 `fract(sin(dot(p,·)))` 의 인자가 1e7 급이 되면 float 정밀도가
     //      무너져 해시가 뭉개진다 — 1패스 실화면에서 물이 **잔물결도 반짝임도 없는 뿌연 판**이었다.
@@ -975,6 +976,13 @@
     //     셀 단위)은 그대로 두고 **바깥 윤곽만** 굽힌다. 손잡이 `edgeFuzz` 로 0 을 주면 옛 그림이다.
     '  vec2 uv = cellUV(w);',
     '  if(uv.x<0.0||uv.y<0.0||uv.x>1.0||uv.y>1.0) discard;',
+    // ★★[T1052 2026-11-01] **마른 자리 먼저 거르기**(uPre=1 · 손잡이 `T1052_WATER_CHEAP`). 아래 피복률 cov 는 네 탭이 모두 마르면 0 이고 곧 discard 다.
+    //   네 탭 자리 = w + 탭(축마다 ≤1.6px) + fuzzW 흔들림(축마다 ±uFuzz/2 미만) ⇒ 모두 w 둘레 반 변 R = 1.6 + uFuzz/2 + 1(여유) 네모 안이다.
+    //   R < 16 이면 그 네모는 축마다 칸을 둘까지만 걸치고(NEAREST · clamp · 단조), 네 모서리 칸이 곧 그 칸들이다 ⇒ 네 모서리가 다 마르면
+    //   어느 탭도 젖을 수 없다 = 종전 식도 cov 0 · discard. 같은 화소(꺼낸 값 같음) — 마른 화소에서 탭 여덟 · 값 노이즈 열여섯을 안 돈다.
+    "  if(uPre>0.5 && uFuzz<26.0){ float R=1.6+0.5*uFuzz+1.0;",
+    "    if(texture2D(uMsk,cellUV(w+vec2(-R,-R))).a<0.5 && texture2D(uMsk,cellUV(w+vec2(R,-R))).a<0.5 &&",
+    "       texture2D(uMsk,cellUV(w+vec2(-R,R))).a<0.5 && texture2D(uMsk,cellUV(w+vec2(R,R))).a<0.5) discard; }",
     // ★굽이만으로는 부족했다 — **경계가 여전히 1px 만에 뚝 끊긴다**(딱딱한 discard).
     //   그래서 4탭으로 **피복률**을 낸다: 굽힌 자리 주변 네 점 중 몇 개가 물인가.
     //   ⇒ 경계가 0/0.25/0.5/0.75/1 로 부드러워진다 = 자로 그은 선이 아니라 젖어드는 가장자리.
@@ -1110,7 +1118,7 @@
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
       const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc);
       gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      for (const u of ['uRes', 'uCam', 'uT', 'uPx', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop', 'uFuzz', 'uDbg', 'uRip', 'uRip1', 'uDith', 'uSnap', 'uDirLin', 'uDirC', 'uPhLeg', 'uDirNear']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
+      for (const u of ['uRes', 'uCam', 'uT', 'uPx', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop', 'uFuzz', 'uDbg', 'uRip', 'uRip1', 'uDith', 'uSnap', 'uDirLin', 'uDirC', 'uPhLeg', 'uDirNear', 'uPre']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
       const mkTex = (filt) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -1131,6 +1139,21 @@
   //   소프트웨어 GL(SwiftShader)에서 판당 0.9~1.5초가 몰리는 판이 있고 그동안 클라 주 스레드가 메시지 · 입력을 못 꺼낸다
   //   (T881 — 텔레포트 알림 2.7초 늦음 · T863 §4 #3). 켜면 GL 칸 수가 ¼ 이다. 셰이더는 GL 칸 하나가 화면 몇 픽셀을 덮는지(`uPx`)만 더 안다 —
   //   월드 좌표 · 마스크 · 물결 · 물가 굽이 식은 그대로(끔 = `uPx` 1 · 식이 종전과 비트 같다).
+  // ★★[T1052 2026-11-01] 손잡이 `T1052_WATER_CHEAP`(서버 env → welcome `uiCfg.waterCheap` · `'1'` 만 켬 · 끔 = 칸 없음 = 종전 그대로).
+  //   물 층은 물 상자 화면만큼 판마다 셰이더를 돈다(T1045 — WebKit 첫 입력 뒤 긴 프레임의 40~44%). 상자 안 뭍 화소도 탭 여덟 · 값 노이즈 열여섯을 돌고서야 버린다.
+  //   켜면 셰이더 머리에서 네 모서리 마스크만 보고 마른 화소를 먼저 버린다(같은 화소 — 위 WATER_FS ★T1052 주석). 그림 · 차례 · 새 수 0.
+  function _t1052Cheap() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.waterCheap === true); }
+  function _t1052WetOnScreen(W2, H2, camX2, camY2) {   // 화면에 걸칠 수 있는 마스크 칸 중 젖은 칸이 있나(셰이더가 읽는 자리를 다 덮는 네모 + 한 칸 여유)
+    const M = _wfCache.msk, N = WF_N, ox = _wfCache.ox, oy = _wfCache.oy;
+    const ix0 = camX2 - W2 / 2, ix1 = camX2 + W2 / 2, sy0 = camY2 - H2 / 2, sy1 = camY2 + H2 / 2;
+    let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+    for (const ix of [ix0, ix1]) for (const iy of [sy0 - WATER_DROP, sy1]) { const wx = (2 * iy + ix) / 2, wy = (2 * iy - ix) / 2;
+      if (wx < a0) a0 = wx; if (wx > a1) a1 = wx; if (wy < b0) b0 = wy; if (wy > b1) b1 = wy; }
+    const i0 = Math.max(0, Math.floor(a0 / 32) - ox - 1), i1 = Math.min(N - 1, Math.floor(a1 / 32) - ox + 1);
+    const j0 = Math.max(0, Math.floor(b0 / 32) - oy - 1), j1 = Math.min(N - 1, Math.floor(b1 / 32) - oy + 1);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (M[(j * N + i) * 4 + 3] >= 128) return true;
+    return false;
+  }
   function _t891Half() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.waterHalf === true); }
   function _drawWaterLayer(ctx2, W2, H2, camX2, camY2, tSec) {
     if (!_waterInit()) return false;
@@ -1162,6 +1185,7 @@
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, _wgl.texM);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, WF_N, WF_N, 0, gl.RGBA, gl.UNSIGNED_BYTE, t.msk);
       _wfCache.key = key; _wfCache.ox = ocx; _wfCache.oy = ocy; _wfCache.bbox = t.bbox;
+      _wfCache.msk = t.msk;   // ★[T1052] 마스크 CPU 사본(올린 것과 같은 배열) — 화면 안 물 칸 셈(`_t1052WetOnScreen`)
       _wfCache.pending = (t.pending || 0) > 0;
       window.__wfPendN = t.pending || 0;
     }
@@ -1186,6 +1210,9 @@
     //   ★[T891] 상자를 GL 칸으로 — 끔(S=1)이면 종전 값 그대로. 켬이면 바깥으로 둥글려 물 상자를 다 덮는다.
     const gx0 = Math.floor(rx0 / S), gy0 = Math.floor(ry0 / S), gx1 = Math.ceil(rx1 / S), gy1 = Math.ceil(ry1 / S);
     const rw = gx1 - gx0, rh = gy1 - gy0;
+    // ★★[T1052] 손잡이 켬 — 화면(물 내림 · 지면 자리 · 탭 · 굽이 + 한 칸 여유)에 젖은 마스크 칸이 하나도 없으면 셰이더의 모든 화소가 discard 다
+    //   ⇒ GL 캔버스는 투명뿐이고 2D 에 옮겨도 화소가 안 바뀐다(source-over · 미리 곱한 0). 그리기 · 옮기기를 건너뛰고 종전처럼 true(프리즘 · 물가 술은 그대로)를 낸다.
+    if (_t1052Cheap() && _wfCache.msk && !_t1052WetOnScreen(W2, H2, camX2, camY2)) { _wfCache.rect = [gx0 * S, gy0 * S, rw * S, rh * S]; return true; }
     gl.enable(gl.SCISSOR_TEST);
     gl.scissor(gx0, CH - gy1, rw, rh);   // GL 원점은 좌하단
     gl.uniform2f(_wgl.uni.uRes, W2, H2);
@@ -1195,6 +1222,7 @@
     gl.uniform1f(_wgl.uni.uT, tSec);
     //   ★물가선 굽이 폭(월드 px). 0 이면 셀 경계 그대로 = 옛 그림(대조군).
     gl.uniform1f(_wgl.uni.uFuzz, _t19.edgeFuzz == null ? WATER_EDGE_FUZZ : _t19.edgeFuzz);
+    gl.uniform1f(_wgl.uni.uPre, _t1052Cheap() ? 1 : 0);   // ★[T1052] 마른 자리 먼저 거르기(같은 화소 · 끔 = 0 = 종전)
     gl.uniform4f(_wgl.uni.uDbg, _t19.specOff ? 0 : 1, _t19.foamOff ? 0 : 1,
                 (_t19.waveOff || _t19.sineOff) ? 0 : 1,
                 (_t19.waveOff || _t19.ripOff) ? 0 : (_t19.ripAmp == null ? WATER_RIP_AMP : _t19.ripAmp));
