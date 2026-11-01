@@ -199,10 +199,27 @@ async function runDays(n, sink) {
     `다시 판 물려받은 쌍 ${pr2.routeColdPrimed}/${R2boot.primed}`);
 
   // ── ④ 무효화가 둘 다 비우는가(진짜 훅을 부른다) ─────────────────────────
-  const before = await jget(`http://localhost:${ZPORT}/routedbg`);
-  const inv = await jget(`http://localhost:${ZPORT}/routedbg?invalidate=1`);
-  const after = await jget(`http://localhost:${ZPORT}/routedbg`);
+  //   ★★[T1033] 무효화 → 다시 읽기 사이에 **서버가 새 길을 적었으면**(`/perf` 셈 — 콜드 완주 `routeCold` · 다시 파기 `routeRedigChanged` · 서버 권위)
+  //     뒤 읽기의 0 아닌 수는 무효화를 잰 것이 아니다 — 캐러밴이 그 사이 새로 판 길이다(고친 트리 묶은 상자 2/10 "102 → 1" · "98 → 1" · 야간 10-18 "85 → 2").
+  //     종전 꼴은 세 요청을 잇달아 보내고 그 사이를 벽시계에 맡겼다. 이제 창마다 서버 셈을 앞뒤로 읽는다:
+  //       · 뒤 읽기가 둘 다 0 이면 그 창으로 잰다(무효화가 비웠고 그 뒤 새로 든 것도 없다 — 셈이 0 이 아니어도 무효화 앞뒤 몫이라 상관없다).
+  //       · 0 이 아닌데 그 창에 새로 적은 길이 0 이면 그 창으로 잰다(새 길 탓이 아니다 — 아래 두 줄이 그대로 빨갛다 · 무는 힘 그대로).
+  //       · 0 이 아닌데 새로 적은 길이 있으면 무효화를 다시 하고 다시 읽는다(최대 3번 · T1002 ⑧ U 의 꼴 · 판정 줄 · 문턱 무변). 셋 다 그러면 마지막 창으로 잰다.
+  let before = null, after = null, _wrote = null; const _w4 = [];
+  for (let k = 0; k < 3; k++) {
+    const _p0 = ((await jget(`http://localhost:${ZPORT}/perf`)).econTick || {}).probe || {};
+    const b = await jget(`http://localhost:${ZPORT}/routedbg`);
+    await jget(`http://localhost:${ZPORT}/routedbg?invalidate=1`);
+    const a = await jget(`http://localhost:${ZPORT}/routedbg`);
+    const _p1 = ((await jget(`http://localhost:${ZPORT}/perf`)).econTick || {}).probe || {};
+    const wrote = ((_p1.routeCold | 0) - (_p0.routeCold | 0)) + ((_p1.routeRedigChanged | 0) - (_p0.routeRedigChanged | 0));
+    if (!before) before = b;
+    after = a; _wrote = wrote; _w4.push(`${a.mem}/${a.db}(새 길 ${wrote})`);
+    if ((a.mem === 0 && a.db === 0) || wrote === 0) break;
+  }
   ok(before.mem > 0 && before.db > 0, '④ [상황] 무효화 전에 캐시가 실제로 차 있다', `메모리 ${before.mem} · DB ${before.db}`);
+  ok((after.mem === 0 && after.db === 0) || _wrote === 0, '④ [상황] 잰 창이 캐러밴에 안 물들었다(뒤 읽기가 비었거나 · 그 창에 서버가 새로 적은 길 0 — 콜드 완주 · 다시 파기 셈)',
+    `창 ${_w4.length} · 뒤 읽기 메모리/DB(새로 적은 길) ${_w4.join(' · ')}`);
   ok(after.mem === 0, '④ 무효화가 **메모리**를 비운다', `${before.mem} → ${after.mem}`);
   ok(after.db === 0, '④ ★★무효화가 **DB 도** 비운다(한쪽만 지우면 다음 부팅에 썩은 길이 살아난다)', `${before.db} → ${after.db}`);
   await down();
