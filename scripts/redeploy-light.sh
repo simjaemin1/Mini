@@ -15,6 +15,8 @@
 #     CENTRAL_SECRET=… (이 셸 env 에 있으면) → 컨테이너에 `-e CENTRAL_SECRET` 으로 **이름만** 넘긴다(값은 명령줄·로그에 안 남는다).
 #       호스트가 갈리면 안 문(존↔central · 존↔존)이 사설 주소 폴백을 못 쓴다 — 비밀이 양쪽에 있어야 한다(`internal-door.js`).
 #     EXTRA_ENV="CHAR_SPRITE=on ZONE_HOST_HANBANDO=…" → 낱말마다 `-e` 한 개(서울 존 컨테이너가 이어받는 손잡이를 여기서도 같게).
+#   ★[T1048 2026-11-01] 옛 컨테이너(같은 이름)에 `ZONE_HOST_<ID>`(이웃 존 다른 호스트 주소)가 있으면 **이어 싣는다** — 서울 한반도의 `ZONE_HOST_NIPPON` 이
+#     이 스크립트 한 번에 빠져 한반도 → 닛폰이 서울:3021(닫힘) = ECONNREFUSED 였다. EXTRA_ENV 가 이긴다 · 옛 컨테이너가 없으면 종전 그대로(`test-xhost-env` Ⓐ).
 set -euo pipefail
 CENTRAL_IP="${CENTRAL_IP:-141.164.35.114}"
 PLAYER_CAP="${PLAYER_CAP:-150}"
@@ -61,6 +63,16 @@ for ID in $RUN_ZONES; do
   XE=()
   [ -n "${CENTRAL_SECRET:-}" ] && XE+=(-e CENTRAL_SECRET)
   for KV in ${EXTRA_ENV:-}; do XE+=(-e "$KV"); done
+  # ★[T1048 2026-11-01] 이웃 존 주소 `ZONE_HOST_<ID>` 는 **옛 컨테이너에서 이어 싣는다** — 이 스크립트는 env 를 새로 짓는다(`ZONE_HOSTS` 26존 = CENTRAL_IP).
+  #   T485 가 서울 한반도에 손으로 넣은 `ZONE_HOST_NIPPON`(도쿄)이 `RUN_ZONES=hanbando bash scripts/redeploy-light.sh`(T538 재배포 줄) 한 번에 빠지면
+  #   한반도 → 닛폰 넘기가 `ZONE_HOSTS[nippon]` = 서울:3021(닫힘)로 가서 ECONNREFUSED("저쪽 서버가 연결을 받지 않는다")다. 그 뒤 재배포는 env 를 옮겨 실어 빠진 채로 이어진다.
+  #   EXTRA_ENV 에 같은 이름이 있으면 EXTRA_ENV 가 이긴다 · 옛 컨테이너가 없거나 그 줄이 없으면 종전과 한 글자도 같다(`test-redeploy-light` ⓐ) · 값은 안 찍는다(이름만).
+  CARRY=()
+  while IFS= read -r KV; do
+    case " ${EXTRA_ENV:-} " in *" ${KV%%=*}="*) continue ;; esac
+    CARRY+=("${KV%%=*}"); XE+=(-e "$KV")
+  done < <(docker inspect "durango-zone-$ID" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep -E '^ZONE_HOST_[A-Z0-9_]+=' || true)
+  [ "${#CARRY[@]}" -gt 0 ] && echo "  [이어 싣기] durango-zone-$ID ← 옛 컨테이너 ${CARRY[*]}(값은 안 찍는다)"
   docker stop "durango-zone-$ID" >/dev/null 2>&1 || true   # ★[T728] SIGTERM 먼저 — 존이 진행 중 마감을 끝내고 마을을 저장한 뒤 내린다(기본 정지 시간 안 · 넘기면 SIGKILL · 마지막 경계 저장 그대로)
   docker rm -f "durango-zone-$ID" >/dev/null 2>&1 || true
   docker run -d --name "durango-zone-$ID" --restart unless-stopped \
