@@ -160,6 +160,7 @@ let T1;
   ok(walk.every((pid) => { const p = T.players.get(pid); return p && p.simCaravan === true && !T.npcs.has(pid) && p._bxExit === 'walk'; }), '① 걷는 몸 — 존 이동 루프 밖 · AI 끔 · 걸어 나감 표식(캐러밴 몸 문법 · T590 `_bxWalk` 그대로)');
   ok(T.players.size === ids0.size && [...T.players.keys()].every((id) => ids0.has(id)), '① 몸 수 그대로 — 거둠 0 · 새 몸 0');
   ok(new Set(L.map((w) => w.len)).size === 1, '① ★장부 길이는 다섯 다 같다(몸 자리 다섯이 달라도 — econ 이 몸 자리에 기대지 않는다 = 결정론)');
+  T1.age0 = L.map((w) => w.npc && w.npc.age); T1.npcs0 = L.map((w) => w.npc);   // ★[T1049 ④] 떠날 때 나이(③ 에서 걸은 날만큼 늙었나)
   const rows = B.t765().rows;
   ok(rows.length === 1 && rows[0].n === 5 && rows[0].bodied === 5 && rows[0].eta === d0 + Math.ceil((ROUTE_LEN - 0.5) / (MOVE / 1000 * DAY_MS)), '① 증인 줄 — 사람 5 · 몸 5 · 닿는 날', JSON.stringify(rows[0]));
 }
@@ -207,6 +208,11 @@ let T1;
   const ids0 = new Set(T.players.keys()), n0 = T.other.npcPids.length;
   for (let k = 0; k < 3; k++) T.H.syncVillagePop(T.other, 2);
   ok(T.players.size === ids0.size && [...T.players.keys()].every((id) => ids0.has(id)) && T.other.npcPids.length === n0, '③ ★생성 0 — 하루 마감이 받는 마을에 새 몸을 세우지 않는다(몸 = econ 9)', `${T.other.npcPids.length}`);
+  {   // ★[T1049 ④] 길 위에서도 늙는다 — econ 하루 늙기(1/365)를 걸은 날 수만큼 · 자명 통과 금지: 걸은 날 > 0 이고 떠날 때 나이가 수다
+    const r0 = B.t765().rows[0], days = r0 && r0.day1 != null ? r0.day1 - r0.d0 : 0;
+    const okAge = T.npcs0.every((npc, i) => Number.isFinite(T.age0[i]) && Math.abs(npc.age - (T.age0[i] + days / 365)) < 1e-9);
+    ok(days > 0 && okAge, '③ ★길 위에서도 늙는다 — 닿은 날 나이 = 떠날 때 나이 + 걸은 날 ÷ 365(econ 하루 늙기 그 수 · 장부 안 날이 안 빠진다)', `걸은 ${days}날 · ${T.age0.map((a) => a.toFixed(3)).join(',')} → ${T.npcs0.map((n) => n.age.toFixed(3)).join(',')}`);
+  }
   const st = V.t765Stat();
   ok(st.depart === 5 && st.bodied === 5 && st.joined === 5 && st.noBody === 0, '③ 증인 — 떠남 5 · 몸 5 · 붙음 5', JSON.stringify({ depart: st.depart, bodied: st.bodied, joined: st.joined }));
 }
