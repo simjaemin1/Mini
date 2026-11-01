@@ -522,6 +522,10 @@
         hoverBuildingId = hoverList[hoverIndex];
       }
     }, { passive: false });
+    // ★[PM 11-01 · 재민 실기 "땅바닥 우클릭에 브라우저 목록이 뜬다"] 캔버스 위에 겹친 층(이름표 · 3D 몸 · 안개 · 알림 등)이 우클릭을 받으면
+    //   캔버스 막기를 안 지나 브라우저 메뉴가 떴다. 게임 화면 전체에서 막는다 — 글 칸(input · textarea · 편집 칸)만 브라우저 메뉴를 둔다(복사 · 붙여넣기).
+    //   preventDefault 만 한다(전파는 그대로) — 캔버스 회전 · 메뉴 · 단축키 손은 종전대로 돈다.
+    { const _g = document.getElementById('game'); if (_g) _g.addEventListener('contextmenu', (e) => { const t = e.target; if (t && t.closest && t.closest('input, textarea, [contenteditable="true"]')) return; e.preventDefault(); }); }
     // 14.51: 우클릭 = placement 회전 (wall/door = N/E, fence = NS/EW, stair = N/E/S/W). 기본 우클릭 메뉴 차단.
     canvas.addEventListener('contextmenu', (e) => {
       e.preventDefault();
