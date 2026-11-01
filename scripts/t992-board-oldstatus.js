@@ -17,9 +17,10 @@
 //               ★[T1006] `main` 닻은 F 의 커미터 날(main 에 바로 든 날 — T277 커밋 09-14 · 커미터 09-18 = 옛 상태 "09-18 착지").
 //   새 상태   = `착지(MM-DD <닻>)` + 옛 괄호의 날 뒤 꼬리(` · 켬` 등)는 그대로 붙인다.
 //               옛 꼴 셋(T1006): `**완료·main**` · `**완료·main**(…)` · `**완료·main(…)**` — 괄호 안이 날로 열지 않으면 괄호 안 전부가 꼬리.
-//   안 옮김   = 카드의 `[승인 대기 · T###` 커밋 중 main 밖이 있는 행(main 을 가지에 합친 커밋은 빼고 센다 — T1006) ·
-//               되얹어 main 에 든 커밋(제목 · 작성 시각이 같은 main 커밋이 있다)도 빼고 센다 — T1006 ·
-//               해시 칸이 비었거나 main 밖인 행 · 옛 꼴이 아닌 행.
+//   main 밖   = 카드의 `[승인 대기 · T###` 커밋 중 main 밖에 남은 것. main 을 가지에 합친 커밋 · 되얹어 main 에 든 커밋
+//               (제목 · 작성 시각이 같은 main 커밋이 있다)은 빼고 센다(T1006).
+//               ★[T1015 · ★PM] main 밖이 있어도 해시 칸이 main 의 커밋이면 옮기고 `착지(MM-DD <닻> · main 밖 N(내용은 <해시 칸>) …)`.
+//   안 옮김   = main 밖이 있는데 해시 칸이 main 의 커밋이 아닌 행 · 해시 칸이 비었거나 main 밖인 행 · 옛 꼴이 아닌 행.
 const { execSync } = require('child_process'), fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..');
 const args = process.argv.slice(2);
@@ -71,7 +72,9 @@ lines.forEach((l, i) => {
   const oldDate = dm ? dm[1] : null, tail = dm ? dm[2].replace(/^\s*착지(?=\s|$)/, '') : (inner ? ' · ' + inner : '');
   const r = { n, i, c, status, hash, oldDate, tail, newStatus: null, note: '' };
   const out = (byCard[n] || []).filter(h => { if (mainSet.has(h) || mainMerge(h)) return false; try { return !rebased(h); } catch (e) { return true; } });
-  if (out.length) { r.note = `안 옮김 — 가지 main 밖 ${out.length}`; rows.push(r); return; }
+  // ★[T1015 · ★PM] 가지 main 밖 커밋이 있어도 해시 칸이 main 의 커밋이면 옮기고 그 몫을 `main 밖 N(내용은 <해시 칸>)` 으로 적는다(T1006 회부 1)
+  if (out.length && !(/^[0-9a-f]{7,40}$/.test(hash) && mainSet.has(sh(`git rev-parse -q --verify ${hash}^{commit}`)))) { r.note = `안 옮김 — 가지 main 밖 ${out.length} · 해시 칸이 main 커밋 아님`; rows.push(r); return; }
+  if (out.length) r.out = out.map(h => h.slice(0, 8));
   if (!/^[0-9a-f]{7,40}$/.test(hash)) { r.note = '안 옮김 — 해시 칸 빔'; rows.push(r); return; }
   let k = introIdx(hash);
   if (k < 0) {   // ★[T1006] 해시 칸이 되얹기 앞 가지 커밋이면 main 의 짝(제목 · 작성 시각 같음)으로 착지 커밋을 찾는다 — 해시 칸은 그대로 둔다
@@ -86,7 +89,7 @@ lines.forEach((l, i) => {
   }
   if (anchor === 'main') { date = F.cd; delete r.pm; }   // ★[T1006] main 에 바로 든 커밋 — 그 커밋이 main 에 든 날(커미터 날 · 되얹기 · 옮겨 담기 때 그날로 선다)
   r.F = F.h.slice(0, 8); r.Fsubj = F.subj; r.anchor = anchor; r.date = date;
-  r.newStatus = `착지(${date} ${anchor}${r.tail})`;
+  r.newStatus = `착지(${date} ${anchor}${r.out ? ` · main 밖 ${r.out.length}(내용은 ${hash.slice(0, 8)})` : ''}${r.tail})`;
   r.note = !r.oldDate ? '옮김 · 옛 날 없음' : date === r.oldDate ? '옮김' : `옮김 · 날 ${r.oldDate} → ${date}`;
   if (r.twin) r.note += ` · 해시 칸 = 되얹기 앞 커밋(main 짝 ${r.twin})`;
   rows.push(r);

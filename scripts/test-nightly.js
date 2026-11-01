@@ -242,5 +242,35 @@ console.log('\n=== ⑦ 묶음 기계 마른 판 — 세 밤이면 e2e 가 **한 
   ok(!!today.g, '★자명 통과 금지 — `NIGHT_DATE` 없이도 묶음이 선다(기본 동작 무변)', `오늘→${today.g}`);
 }
 
+console.log('\n=== ⑩ [T1029] 상자 의존 한 줄 · `[editor-layers]` 귀속 줄 ===');
+{
+  // ★러너가 찍은 `[의존]` 줄을 보고 머리로 옮긴다 — 없으면(옛 로그) "로그에 없다" · `[상황]` 이면 굵게
+  const head = (dep) => [L(4, 0, '===== nightly-run 시작 · TZ=Asia/Seoul · base=deadbeef ====='), ...(dep ? [L(4, 0, `  [의존] ${dep}`)] : []),
+    L(4, 0, '  [오늘] 묶음 A · 1종'), L(4, 0, '  [목록] test-map-editor.js ')];
+  const elLog = (dep, mark) => [...head(dep), ...block(4, 1, 'test-map-editor.js', false,
+    ['층 데이터(lab/map-editor-layers.json) = 정본에서 지금 다시 구운 것과 같다(editor-layers-bake.py --check)  ' + mark]), L(4, 3, '===== 본 판 끝 =====')].join('\n') + '\n';
+  const go = (txt, i) => { const f = path.join(TMP, `el${i}.log`); fs.writeFileSync(f, txt); fs.writeFileSync(f + '.retry', ''); return run(['--log', f, '--base', 'x', '--known', known]); };
+  const E1 = go(elLog('python 3.13.0 · numpy 2.5.3 · PIL 12.3.0 · zlib 1.3', '[editor-layers] 다른 자리: hanbando.png — PNG 바이트 다름 · 화소 같음(인코더 차이) (10B ↔ 11B)'), 1);
+  ok(/· 상자 의존 `python 3\.13\.0 · numpy 2\.5\.3 · PIL 12\.3\.0 · zlib 1\.3`/.test(E1), '★`[의존]` 줄을 보고 머리 **상자 의존** 칸으로 옮긴다');
+  ok(/\[editor-layers\] 귀속: \*\*상자 인코더\(zlib\) 차\*\*/.test(E1), '★`화소 같음(인코더 차이)` 줄 → **상자 인코더 차** 귀속');
+  const E2 = go(elLog('[상황] python3 · numpy · PIL 중 없는 것이 있다 — ModuleNotFoundError', '[editor-layers] 다른 자리: ores.minor — 값 다름'), 2);
+  ok(/· 상자 의존 \*\*\[상황\] python3/.test(E2), '`[상황]` 줄은 **굵게** 옮긴다');
+  ok(/\[editor-layers\] 귀속: \*\*층 데이터가 정본과 다르다\*\*/.test(E2), '★`값 다름` 줄 → **층 데이터 다시 굽기** 귀속(자명 통과 금지 — 앞 판과 다른 답)');
+  const E3 = go(elLog('', '[editor-layers] 다른 자리 못 찾음: x'), 3);
+  ok(/· 상자 의존 \*\*로그에 없다\*\*\(T1029 앞 러너\)/.test(E3) && !/\[editor-layers\] 귀속: \*\*(상자|층)/.test(E3), '옛 로그(`[의존]` 없음) → "로그에 없다" · 못 찾음 줄은 둘 어느 쪽도 아니다');
+  ok(!/\[editor-layers\] 귀속/.test(B), '★`[editor-layers]` 줄이 없는 보고엔 귀속 줄이 **안** 선다');
+  // 러너가 실제로 `[의존]` 한 줄을 찍는가 — 예행(`NIGHT_DRY`)으로 목록만 뽑고 선다(서버 0) · 가짜 python3 면 `[상황]`
+  const dry = (extraPath) => { const LP = path.join(TMP, `dep${extraPath ? 'F' : 'T'}`, 'r.log'); fs.mkdirSync(path.dirname(LP), { recursive: true });
+    execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-run.sh')], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+      env: Object.assign({}, process.env, { LOG: LP, NIGHT_LIST: 'test-calendar.js', NIGHT_DRY: '1', NIGHT_NO_FONT: '1' }, extraPath ? { PATH: extraPath + ':' + process.env.PATH } : {}) });
+    return (fs.readFileSync(LP, 'utf8').split('\n').find((l) => / \[의존\] /.test(l)) || ''); };
+  const fake = path.join(TMP, 'fakebin'); fs.mkdirSync(fake, { recursive: true });
+  fs.writeFileSync(path.join(fake, 'python3'), '#!/bin/sh\necho "ModuleNotFoundError: No module named numpy" >&2\nexit 1\n', { mode: 0o755 });
+  const dF = dry(fake);
+  ok(/\[의존\] \[상황\] python3 · numpy · PIL 중 없는 것이 있다 — ModuleNotFoundError/.test(dF), '★러너 — 의존이 없으면 `[의존] [상황] …` 한 줄(설치 0 · 판정 무변)', dF.slice(25, 110));
+  const dT = dry('');
+  ok(/\[의존\] /.test(dT) && dT !== dF, '러너 — 이 상자 그대로면 `[의존]` 한 줄이 선다(자명 통과 금지 — 가짜 python 판과 다른 글자)', dT.slice(25, 110));
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail === 0 ? 0 : 1);

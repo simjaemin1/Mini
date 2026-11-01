@@ -191,6 +191,9 @@ L.push(`· 오늘 묶음 **${which}** · 목록 **${listed.length}종** · 돈 �
 // ★[T760] 상자의 판 — 러너가 시작 줄 뒤에 찍은 `[판]` 한 줄을 그대로 옮긴다(옛 로그엔 없다 — 없다고 적는다)
 const VER = (lines.map((l) => split1(l).s).find((s) => /^\s*\[판\] /.test(s)) || '').replace(/^\s*\[판\] /, '');
 L.push(`· 상자 판 ${VER ? `\`${VER}\`` : '**로그에 없다**(T760 앞 러너)'}`);
+// ★[T1029] 상자 의존 — 러너가 찍은 `[의존]` 한 줄(python · numpy · PIL · zlib 판 · 없으면 `[상황]`)을 그대로 옮긴다(옛 로그엔 없다 — 없다고 적는다)
+const DEP = (lines.map((l) => split1(l).s).find((s) => /^\s*\[의존\] /.test(s)) || '').replace(/^\s*\[의존\] /, '');
+L.push(`· 상자 의존 ${DEP ? (/^\[상황\]/.test(DEP) ? `**${DEP}**` : `\`${DEP}\``) : '**로그에 없다**(T1029 앞 러너)'}`);
 L.push(`· 이 문서는 \`scripts/nightly-report.js\` 가 로그만 읽어 냈다 — **모델 판단 0** · 같은 로그면 바이트가 같다`);
 L.push(`· 로그 \`${LOG}\` · 단독 재실행 \`${RETRY}\` · 상시 목록 \`${path.relative(ROOT, argOf('--known', KNOWN_DEFAULT))}\``);
 L.push(`· 직전 밤 ${prev.why ? `**못 읽었다** (${prev.why})` : `\`${path.relative(ROOT, prev.file)}\` — 빨강 ${prev.rows.size}종`} · "연속 n밤"은 **세기만** 한 수다(판정 0)`);
@@ -256,6 +259,13 @@ if (outside.length === 0) {
     for (const m of b.marks.slice(0, 3)) L.push(`  * ${cell(m)}`);
     const r = retryOf.get(base(b.name));
     if (r) L.push(`  * 단독 재실행: ${r.ok ? '**초록**' : '여전히 빨강'} (${cell(r.verdict)})`);
+    // ★[T1029 · T971 회부 1] `test-map-editor` 층 데이터 대조가 남긴 `[editor-layers] 다른 자리` 줄 — 그 글자로 귀속을 가른다(판정 0 · 글자 대응만)
+    const el = b.marks.find((m) => /\[editor-layers\] 다른 자리/.test(m));
+    if (el) L.push(/화소 같음\(인코더 차이\)/.test(el)
+      ? '  * [editor-layers] 귀속: **상자 인코더(zlib) 차** — 화소는 정본과 같다 · 층 데이터 대조를 화소 비교로 바꿀지는 PM 몫(T971 회부 1)'
+      : /값 다름|화소 \*\*다름\*\*/.test(el)
+        ? '  * [editor-layers] 귀속: **층 데이터가 정본과 다르다** — `python3 scripts/editor-layers-bake.py` 다시 굽기 · 지형 정본을 바꾼 카드(T971 회부 1)'
+        : '  * [editor-layers] 귀속: **다른 자리 못 찾음** — 줄 글자 그대로 본다(T971 회부 1)');
     L.push(`  * 귀속 찾는 법: \`git log -3 -- scripts/${base(b.name)}.js\` 와 그 하네스가 무는 제품 파일`);
   }
 }

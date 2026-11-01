@@ -1,0 +1,6061 @@
+{
+ "card": "T1002",
+ "made": "2026-10-30 ~ 2026-10-31(UTC)",
+ "box": "2코어 컨테이너 · 파이썬 바쁜 고리 셋(busy.py · 판 내내) · 판은 차례로 하나씩",
+ "trees": {
+  "base": "363f390e — main bce5481a + ruler-house 933e4e8b(작업 트리 밖 사본 · 하네스 · 제품 무변)",
+  "ⓐ": "d911c6a0 — 고침(합치기 전)",
+  "ⓑ": "02722e2f — main land1031 474ee48d 합침(충돌 0)",
+  "ⓒ": "7fdc4e5e — ⓑ + T778 끔 탐침 상황 선행(끝 트리 코드 · server/zone.js · scripts/e2e-conn.js 는 ⓑ 와 바이트 같다)"
+ },
+ "baseline": {
+  "conn": {
+   "summary": {
+    "n": 20,
+    "red": 0,
+    "sec_min": 153,
+    "sec_med": 162.5,
+    "sec_max": 176
+   },
+   "runs": [
+    {
+     "i": 1,
+     "rc": 0,
+     "sec": 163,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c1",
+     "wait2_ms": 13,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c1 / 새로고침"
+    },
+    {
+     "i": 2,
+     "rc": 0,
+     "sec": 169,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c1",
+     "wait2_ms": 4,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c1 / 새로고침"
+    },
+    {
+     "i": 3,
+     "rc": 0,
+     "sec": 163,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c2",
+     "wait2_ms": 206,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+    },
+    {
+     "i": 4,
+     "rc": 0,
+     "sec": 168,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c1",
+     "wait2_ms": 5,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c1 / 새로고침"
+    },
+    {
+     "i": 5,
+     "rc": 0,
+     "sec": 160,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c2",
+     "wait2_ms": 212,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+    },
+    {
+     "i": 6,
+     "rc": 0,
+     "sec": 170,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c2",
+     "wait2_ms": 211,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+    },
+    {
+     "i": 7,
+     "rc": 0,
+     "sec": 161,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c2",
+     "wait2_ms": 421,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+    },
+    {
+     "i": 8,
+     "rc": 0,
+     "sec": 161,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c2",
+     "wait2_ms": 210,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+    },
+    {
+     "i": 9,
+     "rc": 0,
+     "sec": 165,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c2",
+     "wait2_ms": 216,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+    },
+    {
+     "i": 10,
+     "rc": 0,
+     "sec": 160,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c2",
+     "wait2_ms": 218,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+    },
+    {
+     "i": 11,
+     "rc": 0,
+     "sec": 160,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c1",
+     "wait2_ms": 3,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c1 / 새로고침"
+    },
+    {
+     "i": 12,
+     "rc": 0,
+     "sec": 153,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c1",
+     "wait2_ms": 8,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c1 / 새로고침"
+    },
+    {
+     "i": 13,
+     "rc": 0,
+     "sec": 162,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c1",
+     "wait2_ms": 3,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c1 / 새로고침"
+    },
+    {
+     "i": 14,
+     "rc": 0,
+     "sec": 162,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c2",
+     "wait2_ms": 211,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+    },
+    {
+     "i": 15,
+     "rc": 0,
+     "sec": 165,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c1",
+     "wait2_ms": 9,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c1 / 새로고침"
+    },
+    {
+     "i": 16,
+     "rc": 0,
+     "sec": 161,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c2",
+     "wait2_ms": 207,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+    },
+    {
+     "i": 17,
+     "rc": 0,
+     "sec": 162,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c2",
+     "wait2_ms": 212,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+    },
+    {
+     "i": 18,
+     "rc": 0,
+     "sec": 163,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c2",
+     "wait2_ms": 205,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+    },
+    {
+     "i": 19,
+     "rc": 0,
+     "sec": 176,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c1",
+     "wait2_ms": 3,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c1 / 새로고침"
+    },
+    {
+     "i": 20,
+     "rc": 0,
+     "sec": 164,
+     "result": "=== 통과 42 · 실패 0 ===",
+     "fails": [],
+     "ref2": "c1",
+     "wait2_ms": 3,
+     "ear": [],
+     "t1002_extra": [],
+     "text2": "/        /       서버에 들어가지 못했다 — 기다려도 해결되지 않는다원인: [E2E] 일부러 던진다 · 단계 welcome · ref c1 /       새로고침 /"
+    }
+   ]
+  },
+  "hb": {
+   "summary": {
+    "n": 20,
+    "red": 0,
+    "sec_min": 370,
+    "sec_med": 373.0,
+    "sec_max": 379
+   },
+   "runs": [
+    {
+     "i": 1,
+     "rc": 0,
+     "sec": 374,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0006,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.8,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 2,
+     "rc": 0,
+     "sec": 373,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0008,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.801,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 3,
+     "rc": 0,
+     "sec": 370,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0004,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.8002,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2989
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 4,
+     "rc": 0,
+     "sec": 371,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0003,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.7994,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 5,
+     "rc": 0,
+     "sec": 378,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0005,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.8002,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 6,
+     "rc": 0,
+     "sec": 374,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0008,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.8011,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 7,
+     "rc": 0,
+     "sec": 376,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0004,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.8001,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 8,
+     "rc": 0,
+     "sec": 373,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0003,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.7993,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 9,
+     "rc": 0,
+     "sec": 374,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0005,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.8005,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 10,
+     "rc": 0,
+     "sec": 375,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0005,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.8012,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 11,
+     "rc": 0,
+     "sec": 372,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0007,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.7998,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 12,
+     "rc": 0,
+     "sec": 372,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0003,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.7993,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 13,
+     "rc": 0,
+     "sec": 372,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0006,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.8007,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 14,
+     "rc": 0,
+     "sec": 372,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0006,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.8011,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2989
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 15,
+     "rc": 0,
+     "sec": 373,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0007,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.7996,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 16,
+     "rc": 0,
+     "sec": 371,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0006,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.7994,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 17,
+     "rc": 0,
+     "sec": 374,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0006,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.801,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 18,
+     "rc": 0,
+     "sec": 374,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0007,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.8011,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 19,
+     "rc": 0,
+     "sec": 379,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0004,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.7994,
+       "fatigue": 0.5993,
+       "injury": 0.3998,
+       "morale": 0.2989
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    },
+    {
+     "i": 20,
+     "rc": 0,
+     "sec": 371,
+     "result": "=== 94 통과 / 0 실패 ===",
+     "fails": [],
+     "U": {
+      "up": "true",
+      "tries": null,
+      "row0_soft": {
+       "cold": 0.0004,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "live_soft": {
+       "cold": 0.7995,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      }
+     },
+     "V": {
+      "up": "을",
+      "tries": null
+     }
+    }
+   ]
+  }
+ },
+ "diag_conn": {
+  "note": "진단 사본(② 만 · connMark 귀 — [시각 ms, 상태, 단계, 사유, ref, 부른 자리]) · 옛 서버",
+  "runs": [
+   {
+    "i": 1,
+    "rc": 0,
+    "result": "=== 통과 18 · 실패 0 ===",
+    "connMark": [
+     [
+      3418,
+      "connecting",
+      "",
+      "",
+      "",
+      "30-n-net.js?v=5h0:807:7"
+     ],
+     [
+      3594,
+      "entering",
+      "accepted",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1693:9"
+     ],
+     [
+      3652,
+      "error",
+      "welcome",
+      "[E2E] 일부러 던진다",
+      "c1",
+      "30-n-net.js?v=5h0:1698:33"
+     ],
+     [
+      3711,
+      "entering",
+      "welcome",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1724:9"
+     ],
+     [
+      3838,
+      "connecting",
+      "",
+      "",
+      "",
+      "30-n-net.js?v=5h0:807:7"
+     ],
+     [
+      3870,
+      "entering",
+      "accepted",
+      "",
+      "c2",
+      "30-n-net.js?v=5h0:1693:9"
+     ],
+     [
+      3923,
+      "error",
+      "welcome",
+      "[E2E] 일부러 던진다",
+      "c2",
+      "30-n-net.js?v=5h0:1698:33"
+     ]
+    ]
+   },
+   {
+    "i": 2,
+    "rc": 0,
+    "result": "=== 통과 18 · 실패 0 ===",
+    "connMark": [
+     [
+      3599,
+      "connecting",
+      "",
+      "",
+      "",
+      "30-n-net.js?v=5h0:807:7"
+     ],
+     [
+      3770,
+      "entering",
+      "accepted",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1693:9"
+     ],
+     [
+      3799,
+      "entering",
+      "accepted",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1724:9"
+     ],
+     [
+      3868,
+      "error",
+      "welcome",
+      "[E2E] 일부러 던진다",
+      "c1",
+      "30-n-net.js?v=5h0:1698:33"
+     ]
+    ]
+   },
+   {
+    "i": 3,
+    "rc": 0,
+    "result": "=== 통과 18 · 실패 0 ===",
+    "connMark": [
+     [
+      3391,
+      "connecting",
+      "",
+      "",
+      "",
+      "30-n-net.js?v=5h0:807:7"
+     ],
+     [
+      3552,
+      "entering",
+      "accepted",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1693:9"
+     ],
+     [
+      3705,
+      "error",
+      "welcome",
+      "[E2E] 일부러 던진다",
+      "c1",
+      "30-n-net.js?v=5h0:1698:33"
+     ],
+     [
+      3715,
+      "entering",
+      "welcome",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1724:9"
+     ],
+     [
+      3887,
+      "connecting",
+      "",
+      "",
+      "",
+      "30-n-net.js?v=5h0:807:7"
+     ],
+     [
+      3903,
+      "entering",
+      "accepted",
+      "",
+      "c2",
+      "30-n-net.js?v=5h0:1693:9"
+     ],
+     [
+      3952,
+      "error",
+      "welcome",
+      "[E2E] 일부러 던진다",
+      "c2",
+      "30-n-net.js?v=5h0:1698:33"
+     ]
+    ]
+   },
+   {
+    "i": 4,
+    "rc": 0,
+    "result": "=== 통과 18 · 실패 0 ===",
+    "connMark": [
+     [
+      3331,
+      "connecting",
+      "",
+      "",
+      "",
+      "30-n-net.js?v=5h0:807:7"
+     ],
+     [
+      3473,
+      "entering",
+      "accepted",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1693:9"
+     ],
+     [
+      3554,
+      "error",
+      "welcome",
+      "[E2E] 일부러 던진다",
+      "c1",
+      "30-n-net.js?v=5h0:1698:33"
+     ],
+     [
+      3625,
+      "entering",
+      "welcome",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1724:9"
+     ],
+     [
+      3714,
+      "connecting",
+      "",
+      "",
+      "",
+      "30-n-net.js?v=5h0:807:7"
+     ],
+     [
+      3755,
+      "entering",
+      "accepted",
+      "",
+      "c2",
+      "30-n-net.js?v=5h0:1693:9"
+     ],
+     [
+      3825,
+      "error",
+      "welcome",
+      "[E2E] 일부러 던진다",
+      "c2",
+      "30-n-net.js?v=5h0:1698:33"
+     ]
+    ]
+   },
+   {
+    "i": 5,
+    "rc": 0,
+    "result": "=== 통과 18 · 실패 0 ===",
+    "connMark": [
+     [
+      3434,
+      "connecting",
+      "",
+      "",
+      "",
+      "30-n-net.js?v=5h0:807:7"
+     ],
+     [
+      3578,
+      "entering",
+      "accepted",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1693:9"
+     ],
+     [
+      3678,
+      "error",
+      "welcome",
+      "[E2E] 일부러 던진다",
+      "c1",
+      "30-n-net.js?v=5h0:1698:33"
+     ],
+     [
+      3695,
+      "entering",
+      "welcome",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1724:9"
+     ],
+     [
+      3838,
+      "connecting",
+      "",
+      "",
+      "",
+      "30-n-net.js?v=5h0:807:7"
+     ],
+     [
+      3862,
+      "entering",
+      "accepted",
+      "",
+      "c2",
+      "30-n-net.js?v=5h0:1693:9"
+     ],
+     [
+      3908,
+      "error",
+      "welcome",
+      "[E2E] 일부러 던진다",
+      "c2",
+      "30-n-net.js?v=5h0:1698:33"
+     ]
+    ]
+   },
+   {
+    "i": 6,
+    "rc": 0,
+    "result": "=== 통과 18 · 실패 0 ===",
+    "connMark": [
+     [
+      3416,
+      "connecting",
+      "",
+      "",
+      "",
+      "30-n-net.js?v=5h0:807:7"
+     ],
+     [
+      3544,
+      "entering",
+      "accepted",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1693:9"
+     ],
+     [
+      3756,
+      "error",
+      "welcome",
+      "[E2E] 일부러 던진다",
+      "c1",
+      "30-n-net.js?v=5h0:1698:33"
+     ],
+     [
+      3783,
+      "entering",
+      "welcome",
+      "",
+      "c1",
+      "30-n-net.js?v=5h0:1724:9"
+     ],
+     [
+      3927,
+      "connecting",
+      "",
+      "",
+      "",
+      "30-n-net.js?v=5h0:807:7"
+     ],
+     [
+      3954,
+      "entering",
+      "accepted",
+      "",
+      "c2",
+      "30-n-net.js?v=5h0:1693:9"
+     ],
+     [
+      4006,
+      "error",
+      "welcome",
+      "[E2E] 일부러 던진다",
+      "c2",
+      "30-n-net.js?v=5h0:1698:33"
+     ]
+    ]
+   }
+  ]
+ },
+ "diag_hb": {
+  "note": "진단 사본(⑧ U 만 되풀이 · 한 번 = 새 사람 하나 · 다시 서기 없는 종전 판)",
+  "forced_1s": {
+   "tag": "dg-hbF",
+   "trips": 20,
+   "A_stale_false": 3,
+   "B_lost_with_stale": 0,
+   "paths": {
+    "주기(접속 전)": 3,
+    "접속 때": 17
+   },
+   "tRow0": {
+    "min": 505,
+    "p50": 518,
+    "max": 536
+   },
+   "tB": {
+    "min": 2980,
+    "p50": 3024,
+    "max": 3079
+   },
+   "A_rows": [
+    [
+     1,
+     1,
+     0,
+     0,
+     "주기(접속 전)",
+     "저장실패>저장실패>저장실패>다시보냄>B접속"
+    ],
+    [
+     1,
+     2,
+     0,
+     0,
+     "주기(접속 전)",
+     "저장실패>저장실패>저장실패>다시보냄>B접속"
+    ],
+    [
+     1,
+     3,
+     0,
+     0,
+     "주기(접속 전)",
+     "저장실패>저장실패>다시보냄>B접속"
+    ]
+   ],
+   "B_rows": []
+  },
+  "natural_30s": {
+   "tag": "dg-hbN",
+   "trips": 80,
+   "A_stale_false": 0,
+   "B_lost_with_stale": 0,
+   "paths": {
+    "접속 때": 80
+   },
+   "tRow0": {
+    "min": 508,
+    "p50": 518,
+    "max": 533
+   },
+   "tB": {
+    "min": 2977,
+    "p50": 3005,
+    "max": 3110
+   },
+   "A_rows": [],
+   "B_rows": []
+  }
+ },
+ "smoke_conn": {
+  "summary": {
+   "n": 1,
+   "red": 0,
+   "sec_min": 170,
+   "sec_med": 170,
+   "sec_max": 170
+  },
+  "runs": [
+   {
+    "i": 1,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 417,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   }
+  ]
+ },
+ "off_conn": {
+  "note": "T1002_ERR_QUIET=0 · 고친 하네스(귀 + 찌르기)",
+  "summary": {
+   "n": 6,
+   "red": 6,
+   "sec_min": 387,
+   "sec_med": 396.5,
+   "sec_max": 412
+  },
+  "runs": [
+   {
+    "i": 1,
+    "rc": 1,
+    "sec": 387,
+    "result": "=== 통과 38 · 실패 6 ===",
+    "fails": [
+     "✗ ★★② [순서 ⓑ] 클라가 **확정 오류**를 받았다(침묵이 아니다)  entering — 상한까지 닫힌 확정 오류가 안 섰다",
+     "✗ ★★② 문구가 **기다림이 소용없음**을 명시한다  서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침",
+     "✗ ★★② [T1002] 확정 오류를 받은 접속(ref)이 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 13번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "✗ ★★②-b 마감액이 **안 끝나는 실패**를 끊었다(try/catch 로는 못 잡는 갈래)  entering — 120초 동안 닫힌 확정 오류가 안 섰다",
+     "✗ ★★②-b 사유가 \"시간 초과\"라고 말한다  서버 응답 6초 없음",
+     "✗ ★★②-b [T1002] 시간 초과로 끊긴 접속(ref)도 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 11번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "ref2": "c12",
+    "wait2_ms": 120014,
+    "ear": [
+     {
+      "n": 49,
+      "poke": 12,
+      "seq": "ting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11 > error c11 > entering c11 > connecting > entering c12 > error c12 > entering c12"
+     },
+     {
+      "n": 106,
+      "poke": 10,
+      "seq": "rror c6 > entering c6 > connecting > entering c7 > error c7 > entering c7 > connecting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11"
+     }
+    ],
+    "t1002_extra": [
+     "되돌림 13번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "되돌림 11번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "text2": "서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침"
+   },
+   {
+    "i": 2,
+    "rc": 1,
+    "sec": 396,
+    "result": "=== 통과 38 · 실패 6 ===",
+    "fails": [
+     "✗ ★★② [순서 ⓑ] 클라가 **확정 오류**를 받았다(침묵이 아니다)  entering — 상한까지 닫힌 확정 오류가 안 섰다",
+     "✗ ★★② 문구가 **기다림이 소용없음**을 명시한다  서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침",
+     "✗ ★★② [T1002] 확정 오류를 받은 접속(ref)이 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 21번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "✗ ★★②-b 마감액이 **안 끝나는 실패**를 끊었다(try/catch 로는 못 잡는 갈래)  entering — 120초 동안 닫힌 확정 오류가 안 섰다",
+     "✗ ★★②-b 사유가 \"시간 초과\"라고 말한다  서버 응답 6초 없음",
+     "✗ ★★②-b [T1002] 시간 초과로 끊긴 접속(ref)도 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 10번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "ref2": "c12",
+    "wait2_ms": 120173,
+    "ear": [
+     {
+      "n": 58,
+      "poke": 12,
+      "seq": "ting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11 > error c11 > entering c11 > connecting > entering c12 > error c12 > entering c12"
+     },
+     {
+      "n": 105,
+      "poke": 10,
+      "seq": "rror c6 > entering c6 > connecting > entering c7 > error c7 > entering c7 > connecting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11"
+     }
+    ],
+    "t1002_extra": [
+     "되돌림 21번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "되돌림 10번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "text2": "서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침"
+   },
+   {
+    "i": 3,
+    "rc": 1,
+    "sec": 395,
+    "result": "=== 통과 38 · 실패 6 ===",
+    "fails": [
+     "✗ ★★② [순서 ⓑ] 클라가 **확정 오류**를 받았다(침묵이 아니다)  entering — 상한까지 닫힌 확정 오류가 안 섰다",
+     "✗ ★★② 문구가 **기다림이 소용없음**을 명시한다  서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침",
+     "✗ ★★② [T1002] 확정 오류를 받은 접속(ref)이 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 12번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "✗ ★★②-b 마감액이 **안 끝나는 실패**를 끊었다(try/catch 로는 못 잡는 갈래)  entering — 120초 동안 닫힌 확정 오류가 안 섰다",
+     "✗ ★★②-b 사유가 \"시간 초과\"라고 말한다  서버 응답 6초 없음",
+     "✗ ★★②-b [T1002] 시간 초과로 끊긴 접속(ref)도 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 10번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "ref2": "c12",
+    "wait2_ms": 120060,
+    "ear": [
+     {
+      "n": 48,
+      "poke": 12,
+      "seq": "ting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11 > error c11 > entering c11 > connecting > entering c12 > error c12 > entering c12"
+     },
+     {
+      "n": 106,
+      "poke": 10,
+      "seq": "rror c6 > entering c6 > connecting > entering c7 > error c7 > entering c7 > connecting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11"
+     }
+    ],
+    "t1002_extra": [
+     "되돌림 12번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "되돌림 10번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "text2": "서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침"
+   },
+   {
+    "i": 4,
+    "rc": 1,
+    "sec": 397,
+    "result": "=== 통과 38 · 실패 6 ===",
+    "fails": [
+     "✗ ★★② [순서 ⓑ] 클라가 **확정 오류**를 받았다(침묵이 아니다)  entering — 상한까지 닫힌 확정 오류가 안 섰다",
+     "✗ ★★② 문구가 **기다림이 소용없음**을 명시한다  서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침",
+     "✗ ★★② [T1002] 확정 오류를 받은 접속(ref)이 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 13번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "✗ ★★②-b 마감액이 **안 끝나는 실패**를 끊었다(try/catch 로는 못 잡는 갈래)  entering — 120초 동안 닫힌 확정 오류가 안 섰다",
+     "✗ ★★②-b 사유가 \"시간 초과\"라고 말한다  서버 응답 6초 없음",
+     "✗ ★★②-b [T1002] 시간 초과로 끊긴 접속(ref)도 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 11번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "ref2": "c12",
+    "wait2_ms": 120042,
+    "ear": [
+     {
+      "n": 49,
+      "poke": 12,
+      "seq": "ting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11 > error c11 > entering c11 > connecting > entering c12 > error c12 > entering c12"
+     },
+     {
+      "n": 106,
+      "poke": 10,
+      "seq": "rror c6 > entering c6 > connecting > entering c7 > error c7 > entering c7 > connecting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11"
+     }
+    ],
+    "t1002_extra": [
+     "되돌림 13번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "되돌림 11번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "text2": "서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침"
+   },
+   {
+    "i": 5,
+    "rc": 1,
+    "sec": 410,
+    "result": "=== 통과 38 · 실패 6 ===",
+    "fails": [
+     "✗ ★★② [순서 ⓑ] 클라가 **확정 오류**를 받았다(침묵이 아니다)  entering — 상한까지 닫힌 확정 오류가 안 섰다",
+     "✗ ★★② 문구가 **기다림이 소용없음**을 명시한다  서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침",
+     "✗ ★★② [T1002] 확정 오류를 받은 접속(ref)이 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 13번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "✗ ★★②-b 마감액이 **안 끝나는 실패**를 끊었다(try/catch 로는 못 잡는 갈래)  entering — 120초 동안 닫힌 확정 오류가 안 섰다",
+     "✗ ★★②-b 사유가 \"시간 초과\"라고 말한다  서버 응답 6초 없음",
+     "✗ ★★②-b [T1002] 시간 초과로 끊긴 접속(ref)도 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 11번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "ref2": "c12",
+    "wait2_ms": 120193,
+    "ear": [
+     {
+      "n": 49,
+      "poke": 12,
+      "seq": "ting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11 > error c11 > entering c11 > connecting > entering c12 > error c12 > entering c12"
+     },
+     {
+      "n": 106,
+      "poke": 10,
+      "seq": "rror c6 > entering c6 > connecting > entering c7 > error c7 > entering c7 > connecting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11"
+     }
+    ],
+    "t1002_extra": [
+     "되돌림 13번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "되돌림 11번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "text2": "서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침"
+   },
+   {
+    "i": 6,
+    "rc": 1,
+    "sec": 412,
+    "result": "=== 통과 38 · 실패 6 ===",
+    "fails": [
+     "✗ ★★② [순서 ⓑ] 클라가 **확정 오류**를 받았다(침묵이 아니다)  entering — 상한까지 닫힌 확정 오류가 안 섰다",
+     "✗ ★★② 문구가 **기다림이 소용없음**을 명시한다  서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침",
+     "✗ ★★② [T1002] 확정 오류를 받은 접속(ref)이 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 12번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "✗ ★★②-b 마감액이 **안 끝나는 실패**를 끊었다(try/catch 로는 못 잡는 갈래)  entering — 120초 동안 닫힌 확정 오류가 안 섰다",
+     "✗ ★★②-b 사유가 \"시간 초과\"라고 말한다  서버 응답 6초 없음",
+     "✗ ★★②-b [T1002] 시간 초과로 끊긴 접속(ref)도 닫히기까지 **\"입장 처리 중\"으로 되돌아가지 않는다**(그 순간 찌른 ping 에도)  되돌림 11번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "ref2": "c12",
+    "wait2_ms": 120077,
+    "ear": [
+     {
+      "n": 49,
+      "poke": 12,
+      "seq": "ting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11 > error c11 > entering c11 > connecting > entering c12 > error c12 > entering c12"
+     },
+     {
+      "n": 107,
+      "poke": 10,
+      "seq": "rror c6 > entering c6 > connecting > entering c7 > error c7 > entering c7 > connecting > entering c8 > error c8 > entering c8 > connecting > entering c9 > error c9 > entering c9 > connecting > entering c10 > error c10 > entering c10 > connecting > entering c11"
+     }
+    ],
+    "t1002_extra": [
+     "되돌림 12번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10 · c11 · c12",
+     "되돌림 11번 — c1 · c2 · c3 · c4 · c5 · c6 · c7 · c8 · c9 · c10"
+    ],
+    "text2": "서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다 / 120초 경과 · 단계 welcome · ref c12 / 새로고침"
+   }
+  ]
+ },
+ "p50_conn": {
+  "tree": "ⓐ d911c6a0",
+  "summary": {
+   "n": 50,
+   "red": 0,
+   "sec_min": 164,
+   "sec_med": 169.0,
+   "sec_max": 174
+  },
+  "runs": [
+   {
+    "i": 1,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 426,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 2,
+    "rc": 0,
+    "sec": 171,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 431,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 3,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 433,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 4,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 427,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 5,
+    "rc": 0,
+    "sec": 164,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 416,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 9,
+      "poke": 1,
+      "seq": "connecting > entering c1 > error c1"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 1접속(c1) · 찌르기 1 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 6,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 419,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 7,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 424,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 8,
+    "rc": 0,
+    "sec": 171,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 431,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 9,
+    "rc": 0,
+    "sec": 174,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 429,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 10,
+    "rc": 0,
+    "sec": 165,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 431,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 9,
+      "poke": 1,
+      "seq": "connecting > entering c1 > error c1"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 1접속(c1) · 찌르기 1 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 11,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 426,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 12,
+    "rc": 0,
+    "sec": 172,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 415,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 13,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 427,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 17,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 14,
+    "rc": 0,
+    "sec": 172,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 418,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 15,
+    "rc": 0,
+    "sec": 171,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 436,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 16,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 418,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 17,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 435,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 18,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 418,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 19,
+    "rc": 0,
+    "sec": 165,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 428,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 20,
+    "rc": 0,
+    "sec": 171,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 421,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 19,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 21,
+    "rc": 0,
+    "sec": 171,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 414,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 22,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 422,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 23,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 424,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 24,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 409,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 25,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 416,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 26,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 430,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 27,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 422,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 28,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 424,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 29,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 427,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 30,
+    "rc": 0,
+    "sec": 171,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 416,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 31,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 429,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 32,
+    "rc": 0,
+    "sec": 167,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 422,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 33,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 415,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 34,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 435,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 35,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 418,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 36,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 413,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 37,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 454,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 38,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 416,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 39,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 421,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 40,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 426,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 41,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 426,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 42,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 428,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 43,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 432,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 44,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 423,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 45,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 430,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 46,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 433,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 47,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 414,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 48,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 416,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 49,
+    "rc": 0,
+    "sec": 167,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 422,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 50,
+    "rc": 0,
+    "sec": 167,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 413,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   }
+  ]
+ },
+ "p50_hb": {
+  "tree": "ⓐ d911c6a0 · 1판 뒤 멈춤(main 이 land1031 로 옮김)",
+  "summary": {
+   "n": 1,
+   "red": 0,
+   "sec_min": 371,
+   "sec_med": 371,
+   "sec_max": 371
+  },
+  "runs": [
+   {
+    "i": 1,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0007,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8011,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   }
+  ]
+ },
+ "merged_conn": {
+  "tree": "ⓑ 02722e2f(main land1031 합침)",
+  "summary": {
+   "n": 20,
+   "red": 0,
+   "sec_min": 161,
+   "sec_med": 168.0,
+   "sec_max": 175
+  },
+  "runs": [
+   {
+    "i": 1,
+    "rc": 0,
+    "sec": 175,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 429,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 2,
+    "rc": 0,
+    "sec": 167,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 434,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 3,
+    "rc": 0,
+    "sec": 166,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 419,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 4,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 422,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 5,
+    "rc": 0,
+    "sec": 166,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 422,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 6,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 426,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 7,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 437,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 8,
+    "rc": 0,
+    "sec": 170,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 648,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 9,
+    "rc": 0,
+    "sec": 161,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 471,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 9,
+      "poke": 1,
+      "seq": "connecting > entering c1 > error c1"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 1접속(c1) · 찌르기 1 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 10,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 627,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 11,
+    "rc": 0,
+    "sec": 167,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 428,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 12,
+    "rc": 0,
+    "sec": 167,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 423,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 19,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 13,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 419,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 14,
+    "rc": 0,
+    "sec": 168,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 428,
+    "ear": [
+     {
+      "n": 7,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 15,
+    "rc": 0,
+    "sec": 166,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 424,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 16,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 422,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 17,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 420,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 18,
+    "rc": 0,
+    "sec": 167,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 419,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 19,
+    "rc": 0,
+    "sec": 169,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 411,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   },
+   {
+    "i": 20,
+    "rc": 0,
+    "sec": 167,
+    "result": "=== 통과 44 · 실패 0 ===",
+    "fails": [],
+    "ref2": "c2",
+    "wait2_ms": 424,
+    "ear": [
+     {
+      "n": 6,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     },
+     {
+      "n": 18,
+      "poke": 2,
+      "seq": "connecting > entering c1 > error c1 > connecting > entering c2 > error c2"
+     }
+    ],
+    "t1002_extra": [
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0",
+     "확정 오류 2접속(c1 · c2) · 찌르기 2 · 되돌림 0"
+    ],
+    "text2": "서버에 들어가지 못했다 — 기다려도 해결되지 않는다 / 원인: [E2E] 일부러 던진다 · 단계 welcome · ref c2 / 새로고침"
+   }
+  ]
+ },
+ "merged_hb": {
+  "tree": "ⓑ 02722e2f · 34판 뒤 멈춤(33판째 T778 끔 탐침 하루 경계 → 고침)",
+  "summary": {
+   "n": 34,
+   "red": 1,
+   "sec_min": 368,
+   "sec_med": 371.0,
+   "sec_max": 377
+  },
+  "runs": [
+   {
+    "i": 1,
+    "rc": 0,
+    "sec": 375,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8014,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 2,
+    "rc": 0,
+    "sec": 374,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0008,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8008,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 3,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7996,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 4,
+    "rc": 0,
+    "sec": 375,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8004,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 5,
+    "rc": 0,
+    "sec": 374,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0008,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8015,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 6,
+    "rc": 0,
+    "sec": 373,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8006,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 7,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7996,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 8,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8006,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 9,
+    "rc": 0,
+    "sec": 369,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8016,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 10,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8005,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 11,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7996,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 12,
+    "rc": 0,
+    "sec": 373,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0007,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8008,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 13,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0009,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8016,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 14,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8003,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 15,
+    "rc": 0,
+    "sec": 369,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7997,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 16,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0007,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8011,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 17,
+    "rc": 0,
+    "sec": 370,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0007,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8016,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 18,
+    "rc": 0,
+    "sec": 368,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8002,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 19,
+    "rc": 0,
+    "sec": 377,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 2,
+     "row0_soft": {
+      "cold": 0.0003,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7998,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 20,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.001,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8012,
+      "fatigue": 0.5993,
+      "injury": 0.3998,
+      "morale": 0.2989
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 21,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8015,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 22,
+    "rc": 0,
+    "sec": 368,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0007,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 23,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 24,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0007,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8014,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 25,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0009,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 26,
+    "rc": 0,
+    "sec": 373,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7999,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 27,
+    "rc": 0,
+    "sec": 370,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8001,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 28,
+    "rc": 0,
+    "sec": 370,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0007,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8015,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 29,
+    "rc": 0,
+    "sec": 370,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.001,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8011,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 30,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7999,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 31,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8003,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 32,
+    "rc": 0,
+    "sec": 370,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.001,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8015,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 33,
+    "rc": 1,
+    "sec": 372,
+    "result": "=== 93 통과 / 1 실패 ===",
+    "fails": [
+     "✗ ★[T778 끔 탐침 '0'] 날 로트 세계 — 도착한 몸이 로트 **통째(`e·t` 까지)** 비트 동일 · 레코드에 `k` 없음(종전 단언 그대로)"
+    ],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0009,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8009,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   },
+   {
+    "i": 34,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7999,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    }
+   }
+  ]
+ },
+ "final_hb": {
+  "tree": "ⓒ 7fdc4e5e(끝 트리 코드) · 37판째 뒤 컨테이너 재시작 — 38판째(끊긴 판 f50-hb-38.killed.log)부터 같은 트리 · 같은 상자로 다시",
+  "summary": {
+   "n": 50,
+   "red": 0,
+   "sec_min": 356,
+   "sec_med": 371.0,
+   "sec_max": 375
+  },
+  "runs": [
+   {
+    "i": 1,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245425/1245425"
+    }
+   },
+   {
+    "i": 2,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8011,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245425/1245425"
+    }
+   },
+   {
+    "i": 3,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0003,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245426/1245426"
+    }
+   },
+   {
+    "i": 4,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8003,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245426/1245426"
+    }
+   },
+   {
+    "i": 5,
+    "rc": 0,
+    "sec": 370,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245426/1245426"
+    }
+   },
+   {
+    "i": 6,
+    "rc": 0,
+    "sec": 375,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8009,
+      "fatigue": 0.5993,
+      "injury": 0.3998,
+      "morale": 0.2989
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245426/1245426"
+    }
+   },
+   {
+    "i": 7,
+    "rc": 0,
+    "sec": 370,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245427/1245427"
+    }
+   },
+   {
+    "i": 8,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0008,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8004,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245427/1245427"
+    }
+   },
+   {
+    "i": 9,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245427/1245427"
+    }
+   },
+   {
+    "i": 10,
+    "rc": 0,
+    "sec": 373,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8008,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245428/1245428"
+    }
+   },
+   {
+    "i": 11,
+    "rc": 0,
+    "sec": 374,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0007,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245428/1245428"
+    }
+   },
+   {
+    "i": 12,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8006,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245428/1245428"
+    }
+   },
+   {
+    "i": 13,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0008,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245428/1245428"
+    }
+   },
+   {
+    "i": 14,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8007,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245429/1245429"
+    }
+   },
+   {
+    "i": 15,
+    "rc": 0,
+    "sec": 373,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245429/1245429"
+    }
+   },
+   {
+    "i": 16,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8007,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245429/1245429"
+    }
+   },
+   {
+    "i": 17,
+    "rc": 0,
+    "sec": 370,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0008,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245429/1245429"
+    }
+   },
+   {
+    "i": 18,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8005,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245430/1245430"
+    }
+   },
+   {
+    "i": 19,
+    "rc": 0,
+    "sec": 373,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0003,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7999,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245430/1245430"
+    }
+   },
+   {
+    "i": 20,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8008,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245430/1245430"
+    }
+   },
+   {
+    "i": 21,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5993,
+      "injury": 0.3998,
+      "morale": 0.2989
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245430/1245430"
+    }
+   },
+   {
+    "i": 22,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8003,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245431/1245431"
+    }
+   },
+   {
+    "i": 23,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7999,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2989
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245431/1245431"
+    }
+   },
+   {
+    "i": 24,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.801,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245431/1245431"
+    }
+   },
+   {
+    "i": 25,
+    "rc": 0,
+    "sec": 370,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245431/1245431"
+    }
+   },
+   {
+    "i": 26,
+    "rc": 0,
+    "sec": 373,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0008,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8001,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245432/1245432"
+    }
+   },
+   {
+    "i": 27,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7999,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245432/1245432"
+    }
+   },
+   {
+    "i": 28,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8011,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245432/1245432"
+    }
+   },
+   {
+    "i": 29,
+    "rc": 0,
+    "sec": 372,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8012,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245432/1245432"
+    }
+   },
+   {
+    "i": 30,
+    "rc": 0,
+    "sec": 374,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7999,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245433/1245433"
+    }
+   },
+   {
+    "i": 31,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245433/1245433"
+    }
+   },
+   {
+    "i": 32,
+    "rc": 0,
+    "sec": 373,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0007,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8012,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245433/1245433"
+    }
+   },
+   {
+    "i": 33,
+    "rc": 0,
+    "sec": 371,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0009,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.801,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245433/1245433"
+    }
+   },
+   {
+    "i": 34,
+    "rc": 0,
+    "sec": 374,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7998,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245434/1245434"
+    }
+   },
+   {
+    "i": 35,
+    "rc": 0,
+    "sec": 373,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8001,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245434/1245434"
+    }
+   },
+   {
+    "i": 36,
+    "rc": 0,
+    "sec": 370,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0008,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2989
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245434/1245434"
+    }
+   },
+   {
+    "i": 37,
+    "rc": 0,
+    "sec": 367,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8009,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245434/1245434"
+    }
+   },
+   {
+    "i": 38,
+    "rc": 0,
+    "sec": 362,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7997,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245435/1245435"
+    }
+   },
+   {
+    "i": 39,
+    "rc": 0,
+    "sec": 363,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 2,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.801,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245435/1245435"
+    }
+   },
+   {
+    "i": 40,
+    "rc": 0,
+    "sec": 357,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0008,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245435/1245435"
+    }
+   },
+   {
+    "i": 41,
+    "rc": 0,
+    "sec": 362,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 2,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245436/1245436"
+    }
+   },
+   {
+    "i": 42,
+    "rc": 0,
+    "sec": 362,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 2,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7998,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245436/1245436"
+    }
+   },
+   {
+    "i": 43,
+    "rc": 0,
+    "sec": 366,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 2,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8011,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245436/1245436"
+    }
+   },
+   {
+    "i": 44,
+    "rc": 0,
+    "sec": 357,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245436/1245436"
+    }
+   },
+   {
+    "i": 45,
+    "rc": 0,
+    "sec": 362,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 2,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245437/1245437"
+    }
+   },
+   {
+    "i": 46,
+    "rc": 0,
+    "sec": 356,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7998,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245437/1245437"
+    }
+   },
+   {
+    "i": 47,
+    "rc": 0,
+    "sec": 361,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0005,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8011,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245437/1245437"
+    }
+   },
+   {
+    "i": 48,
+    "rc": 0,
+    "sec": 356,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 1,
+     "row0_soft": {
+      "cold": 0.0006,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8013,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245437/1245437"
+    }
+   },
+   {
+    "i": 49,
+    "rc": 0,
+    "sec": 365,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 2,
+     "row0_soft": {
+      "cold": 0.0004,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.8,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245438/1245438"
+    }
+   },
+   {
+    "i": 50,
+    "rc": 0,
+    "sec": 363,
+    "result": "=== 94 통과 / 0 실패 ===",
+    "fails": [],
+    "U": {
+     "up": "true",
+     "tries": 2,
+     "row0_soft": {
+      "cold": 0.0003,
+      "fatigue": 0,
+      "injury": 0,
+      "morale": 0
+     },
+     "live_soft": {
+      "cold": 0.7998,
+      "fatigue": 0.5992,
+      "injury": 0.3998,
+      "morale": 0.2988
+     }
+    },
+    "V": {
+     "up": "을",
+     "tries": null
+    },
+    "T778": {
+     "tries": 1,
+     "days": "1245438/1245438"
+    }
+   }
+  ]
+ },
+ "diag_hb_final": {
+  "note": "진단 사본 2(끝 트리 하네스 + ⑧ U 시도마다 줄 · U 판 존 로그 사본 · U 판 뒤 멈춤) · 재시작 뒤 상자 · 묶은 상자",
+  "runs": [
+   {
+    "i": 1,
+    "rc": 0,
+    "result": "=== 61 통과 / 0 실패 ===",
+    "tries": [
+     {
+      "k": 1,
+      "name": "srU0",
+      "pid": "anon_Hfe3MWzzSrYc",
+      "stale": true,
+      "row0_read_ms": 518,
+      "row0_soft": {
+       "cold": 0.0006,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "row0_sv": "3",
+      "zone_order": "저장실패>B접속>다시보냄"
+     }
+    ],
+    "zone_log": "/tmp/t1002/ulog-8038.log"
+   },
+   {
+    "i": 2,
+    "rc": 0,
+    "result": "=== 61 통과 / 0 실패 ===",
+    "tries": [
+     {
+      "k": 1,
+      "name": "srU0",
+      "pid": "anon_rfHc_ItR8U3M",
+      "stale": false,
+      "row0_read_ms": 506,
+      "row0_soft": {
+       "cold": 0.8014,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      },
+      "row0_sv": "4",
+      "zone_order": "저장실패>다시보냄>B접속"
+     },
+     {
+      "k": 2,
+      "name": "srU1",
+      "pid": "anon_9MhOk2LeN48T",
+      "stale": true,
+      "row0_read_ms": 512,
+      "row0_soft": {
+       "cold": 0.0006,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "row0_sv": "3",
+      "zone_order": "저장실패>저장실패>B접속>다시보냄"
+     }
+    ],
+    "zone_log": "/tmp/t1002/ulog-8312.log"
+   },
+   {
+    "i": 3,
+    "rc": 0,
+    "result": "=== 61 통과 / 0 실패 ===",
+    "tries": [
+     {
+      "k": 1,
+      "name": "srU0",
+      "pid": "anon_WLnYO2am3uyv",
+      "stale": false,
+      "row0_read_ms": 504,
+      "row0_soft": {
+       "cold": 0.8009,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      },
+      "row0_sv": "5",
+      "zone_order": "저장실패>저장실패>다시보냄>B접속"
+     },
+     {
+      "k": 2,
+      "name": "srU1",
+      "pid": "anon_jeckuXy9CkTH",
+      "stale": true,
+      "row0_read_ms": 516,
+      "row0_soft": {
+       "cold": 0.0006,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "row0_sv": "3",
+      "zone_order": "저장실패>B접속>다시보냄"
+     }
+    ],
+    "zone_log": "/tmp/t1002/ulog-8594.log"
+   },
+   {
+    "i": 4,
+    "rc": 0,
+    "result": "=== 61 통과 / 0 실패 ===",
+    "tries": [
+     {
+      "k": 1,
+      "name": "srU0",
+      "pid": "anon_sA6O1eKWDDKE",
+      "stale": false,
+      "row0_read_ms": 502,
+      "row0_soft": {
+       "cold": 0.8002,
+       "fatigue": 0.5992,
+       "injury": 0.3998,
+       "morale": 0.2988
+      },
+      "row0_sv": "4",
+      "zone_order": "저장실패>다시보냄>B접속"
+     },
+     {
+      "k": 2,
+      "name": "srU1",
+      "pid": "anon_TmCQ8KtdoM7S",
+      "stale": true,
+      "row0_read_ms": 518,
+      "row0_soft": {
+       "cold": 0.0004,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "row0_sv": "3",
+      "zone_order": "저장실패>B접속>다시보냄"
+     }
+    ],
+    "zone_log": "/tmp/t1002/ulog-8866.log"
+   },
+   {
+    "i": 5,
+    "rc": 0,
+    "result": "=== 61 통과 / 0 실패 ===",
+    "tries": [
+     {
+      "k": 1,
+      "name": "srU0",
+      "pid": "anon_BHnQ-7i9RA8J",
+      "stale": true,
+      "row0_read_ms": 540,
+      "row0_soft": {
+       "cold": 0.0003,
+       "fatigue": 0,
+       "injury": 0,
+       "morale": 0
+      },
+      "row0_sv": "3",
+      "zone_order": "저장실패>B접속>다시보냄"
+     }
+    ],
+    "zone_log": "/tmp/t1002/ulog-9135.log"
+   }
+  ]
+ },
+ "server_baseline": {
+  "default": {
+   "file": "계측/서버기준선_2026-10-31.json",
+   "plan": "1020:400,7:60,42:60",
+   "result": "같음 3/3",
+   "sec": 252,
+   "pop1020": 2488
+  },
+  "house": {
+   "file": "계측/서버기준선_2026-10-30_T1001_house.json",
+   "plan": "1020:400,7:60,42:60",
+   "flag": "--house",
+   "result": "같음 3/3",
+   "sec": 421,
+   "pop1020": 2778
+  }
+ },
+ "knob": {
+  "t976_knob_count": "① 표 손잡이 318 → 319 · 기본 켬 164 → 165 · 코드 env 이름 중 표에 없음 4 → 3(T977_PROBE · T978_SEED_HP · T983_GRANARY_SAVE)",
+  "t883_knob_compare": "main 474ee48d ↔ 끝 트리 — 숫자를 뺀 글자 같음(332줄) · 새 갈림 0"
+ },
+ "lint": {
+  "test-harness-lint": "68/0",
+  "test-client-globals": "26/0",
+  "build-econ-bundle --check": "8 일치",
+  "inline-engine --check": "두 랩 최신"
+ }
+}
