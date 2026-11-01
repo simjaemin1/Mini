@@ -13626,6 +13626,19 @@ function _t1025Restore() {
   console.log(`[${state.zoneId}] 📜 [T1025] 사건 대기 줄 되돌림 — 마을 ${R.villages} · 구조 ${R.r} · 완공 ${R.b} · 굶음 ${R.s}`);
   return R;
 }
+// ★[T1034] 읽기만(세계 0) — 탐침 · 하네스가 캐러밴 장부와 몸을 본다(`world.caravans` 차례 · 몸이 없으면 body null).
+function t1034Peek() {
+  const W = state.world, B = state.caravanBodies, P = state.deps && state.deps.players;
+  const out = { day: W ? W.day | 0 : null, t775: state._t775 ? { done: !!state._t775.done, q: state._t775.q ? state._t775.q.length : null } : null, cars: [] };
+  for (const c of ((W && W.caravans) || [])) {
+    const b = B && B.get(c.id), pl = b && P && P.get(b.pid), T = b && b._t661;
+    out.cars.push({ id: c.id, st: c.state, from: c.from && c.from.name, to: c.to && c.to.name, dep: c.departDay, arr: c.arriveDay, ret: c.returnArriveDay,
+      res: c.giveRes, amt: c.giveAmt, ab: !!c._abandoned, done: !!c._done, td: c.travelDays,
+      body: b ? { phase: b.phase, prog: b.prog, len: b.len, dd: b.delayedDays | 0, seen: b._evSeenDelay | 0, rf: b.repairFailN | 0, linger: b.lingerUntil || null, arriveAt: b.arriveAt,
+        x: pl ? pl.x : null, y: pl ? pl.y : null, T: T ? { L: T.L, len: T.path.len, D0: T.D0, leg: T.leg, ppd: T.ppd, stall: !!T.stall, day: T.day, t0: T.t0 == null ? null : T.t0 } : null } : null });
+  }
+  return out;
+}
 function t1025Pending(vid) { return { r: _evRescues.filter((e) => e.vid === vid).length, b: _evBuilds.filter((e) => e.vid === vid).length, s: _evStarved.filter((e) => e.vid === vid).length }; }
 
 function _scanEventsDaily() { const g = _scanEventsSteps(); while (!g.next().done); }   // ★[T698] 몸통은 아래 발생기 하나(끔 = 끝까지 한 번에 · 종전 그대로)
@@ -14400,6 +14413,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   t983Save, t983On: () => T983_GRANARY_SAVE,   // ★[T983] 거래 순간 곳간 행 저장
   t1023On: () => T1023_PSITE_KEEP,   // ★[T1023] 의뢰 집터 행 잇기 · 의뢰 문 사람 저장
   t1005Save, t1005Mark, t1005Flush, t1005On: () => T1005_VIL_SAVE,   // ★[T1005] 구제 한 끼 · 집터 의뢰(순간) · 낚시(틱 끝 묶음) · 사냥은 `huntKillAt` 안에서
+  t1034Peek,   // ★[T1034] 캐러밴 장부 · 몸 읽기만(탐침 `t1005-vil-kill-probe caravan` · 하네스)
   t1025On: () => T1025_EV_CORPSE, t1025Pending, noteVillageBuilt, noteStarved,   // ★[T1025] 사건 대기 줄 곁 칸 · 사체 장부 미룸(zone.js) · 탐침(`t1005-vil-kill-probe ev`)이 줄을 읽고 완공 · 굶음 줄을 세운다(행동 대신 · 관측 손)
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,

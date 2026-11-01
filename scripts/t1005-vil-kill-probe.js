@@ -22,6 +22,9 @@
 //   ev    — ★[T1025] 완공 · 굶음 사건 줄(`noteVillageBuilt` · `noteStarved`)을 **래퍼가 세운다**(관측 손 — 생활층 완공 · 기근 몸은 탐침 시간 안에 안 선다) → 같은 틱 끝 →
 //           죽이고 행 곁 칸(`_t1025Ev`) · 다시 뜬 뒤 대기 줄(`t1025Pending`)을 본다. 구제 줄은 meal 창이 정본 문으로 세운다.
 //   손잡이는 env 그대로(`T1005_VIL_SAVE=0` = 끔 · 종전 · ★[T1025] `T1025_EV_CORPSE=0` = 끔).
+//   caravan — ★[T1034] 길 위 캐러밴(장부 `world.caravans` · 실체 몸) — 데우기(짧은 하루 · 캐러밴이 길에 설 때까지) → 운영 하루로 다시 → 몸이 선 뒤
+//           `T1034_PROBE_WAIT` 초(기본 30) → 죽임 → 다시 띄워 T775 몸 세우기가 끝날 때까지 → 캐러밴마다 장부 칸 · 몸 칸 · 자리를 견준다.
+//           `--block` = 재는 판에만 정본 시험 훅 `VILLAGE_CARAVAN_BLOCKTEST=1`(가상 장애물 1회 → `caravanBlockedResponse` → 재경로 · 지연 · villages.js 헤더 주석).
 //   ★[T1025] `--rot` — 사냥 창에서 도살 없이 사체가 썩을 때까지(5분 + 청소 30초) 기다린 뒤 죽인다(부패 갈래 장부).
 'use strict';
 const path = require('path');
@@ -32,20 +35,23 @@ const WebSocket = require('ws');
 
 const ROOT = path.join(__dirname, '..');
 const WIN = process.argv[2];
-const _WI = ['meal', 'fish', 'hunt', 'house', 'trade', 'phouse', 'ev'].indexOf(WIN);
+const _WI = ['meal', 'fish', 'hunt', 'house', 'trade', 'phouse', 'ev', 'caravan'].indexOf(WIN);
 const _OFF = process.env.T1005_VIL_SAVE === '0', _OFF23 = process.env.T1023_PSITE_KEEP === '0';
 const _OFF25 = process.env.T1025_EV_CORPSE === '0';   // ★[T1025] 끔 판 — 포트 · 자리를 따로
-const _PO = (_OFF ? 50 : 0) + (_OFF23 ? 25 : 0) + (_OFF25 ? 12 : 0) + (process.argv.includes('--term') ? 4 : 0);   // 창 · 손잡이 · 신호마다 다른 포트 — 같이 돌릴 수 있게
+const _OFF34 = process.env.T1034_CARAVAN_KEEP === '0', BLOCK0 = process.argv.includes('--block');   // ★[T1034] 끔 판 · 가상 차단 판(포트를 따로)
+const _PO = (_OFF ? 50 : 0) + (_OFF23 ? 25 : 0) + (_OFF25 ? 12 : 0) + (process.argv.includes('--term') ? 4 : 0) + (_OFF34 ? 2 : 0) + (BLOCK0 ? 1 : 0);   // 창 · 손잡이 · 신호마다 다른 포트 — 같이 돌릴 수 있게
 const CPORT = 3110 + _WI * 100 + _PO, HPORT = 3120 + _WI * 100 + _PO;   // 창 · 손잡이마다 다른 포트 — 여덟을 같이 돌릴 수 있게
 const N = +(process.argv[3] || 3);
 const CLOSE = process.argv.includes('close');
 const NOW = process.argv.includes('--now');
 const RAW = process.argv.includes('--raw');   // 사냥 창 — 도살 없이(사체만 남은 채) 죽인다
 const ROT = process.argv.includes('--rot');   // ★[T1025] 사냥 창 — 도살 없이 사체가 썩은 뒤 죽인다
-if (!['meal', 'fish', 'hunt', 'house', 'trade', 'phouse', 'ev'].includes(WIN)) { console.error('창: meal | fish | hunt | house | trade | phouse | ev'); process.exit(2); }
+const BLOCK = process.argv.includes('--block');   // ★[T1034] 캐러밴 창 — 재는 판에만 가상 차단 1회(정본 시험 훅)
+let MEASURE = false;   // ★[T1034] 지금 띄우는 존이 재는 판인가(--block 훅은 그 판에만 · 다시 뜬 판엔 안 건다)
+if (!['meal', 'fish', 'hunt', 'house', 'trade', 'phouse', 'ev', 'caravan'].includes(WIN)) { console.error('창: meal | fish | hunt | house | trade | phouse | ev | caravan'); process.exit(2); }
 const SIG = process.argv.includes('--term') ? 'SIGTERM' : 'SIGKILL';   // ★[T1023] 죽이는 신호(SIGTERM = 종료 저장 문 · T728)
 const RESTARTS = Math.max(1, +((process.argv.find((x) => x.startsWith('--restarts=')) || '=1').split('=')[1]) || 1);   // ★[T1023] 한 판 안 다시 뜨기 횟수(행동 한 번 뒤 같은 신호로 거듭)
-const DDIR = `/tmp/t1005-probe-${WIN}-${_OFF ? 'off' : 'on'}${_OFF23 ? '-t1023off' : ''}${_OFF25 ? '-e0' : ''}${process.argv.includes('close') ? '-close' : ''}${SIG === 'SIGTERM' ? '-term' : ''}${RAW ? '-raw' : ''}${ROT ? '-rot' : ''}`;
+const DDIR = `/tmp/t1005-probe-${WIN}-${_OFF ? 'off' : 'on'}${_OFF34 ? '-c0' : ''}${BLOCK ? '-block' : ''}${_OFF23 ? '-t1023off' : ''}${_OFF25 ? '-e0' : ''}${process.argv.includes('close') ? '-close' : ''}${SIG === 'SIGTERM' ? '-term' : ''}${RAW ? '-raw' : ''}${ROT ? '-rot' : ''}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let C = null, Z = null, nLog = 0, SQ = null;
 function boot(file, env, tag) {
@@ -57,7 +63,8 @@ process.on('exit', () => { for (const p of [C, Z]) { try { if (p) p.kill('SIGKIL
 const WRAP = `${DDIR}/zone-wrap.js`;
 const VID = 1;
 const ZENV = () => ({ PORT: String(HPORT), ZONE_ID: 'hanbando', DB_PATH: `${DDIR}/w-han.db`, E2E_GIVE: '1', CENTRAL_URL: `http://localhost:${CPORT}`,
-  ENABLE_VILLAGES: '1', VILLAGE_MAX: '2', ENABLE_BANDITS: '0', ENABLE_WILDLIFE: WIN === 'hunt' ? '1' : '0',   // T917 · T983 탐침과 같은 손잡이(사냥 창만 야생 켬)
+  ENABLE_VILLAGES: '1', VILLAGE_MAX: WIN === 'caravan' ? (process.env.T1034_PROBE_VMAX || '6') : '2', ENABLE_BANDITS: '0', ENABLE_WILDLIFE: WIN === 'hunt' ? '1' : '0',   // ★[T1034] 캐러밴 창은 마을 여섯(교역 쌍이 서게)
+  ...(WIN === 'caravan' && BLOCK && MEASURE ? { VILLAGE_CARAVAN_BLOCKTEST: '1' } : {}),   // T917 · T983 탐침과 같은 손잡이(사냥 창만 야생 켬)
   ...(WIN === 'meal' ? { DOWN_RESCUE_WINDOW_MS: '3000' } : {}),   // 구조 창 시간만 줄인다(test-downed 와 같은 값 · 사슬은 그대로)
   PROBE_DIR: DDIR, PROBE_VID: String(VID),
   WRAP_ZONE_PATCH: SQ ? JSON.stringify({ mainSquare: { x: SQ.x, y: SQ.y, name: '탐침 광장' } }) : '{}' });
@@ -91,7 +98,9 @@ function dbRead() {
       gameSum: gSum != null ? +gSum.toFixed(6) : null, psite: S && S.psite ? S.psite : null, potN: pot, hutSites: huts.length, hutIds: huts.map((b) => b.id), psitework: psw,
       rescueEv: (ev.find((x) => x.type === 'RESCUED') || {}).n || 0,
       t1025Ev: EV ? { r: (EV.r || []).length, b: (EV.b || []).length, s: EV.s | 0 } : null,   // ★[T1025] 행 곁 칸의 사건 대기 줄(구조 · 완공 · 굶음)
-      evRows: Object.fromEntries(ev.map((x) => [x.type, x.n])), fishCells: db.prepare('SELECT COUNT(*) AS n, SUM(stock) AS s FROM fish_cells').get() };
+      evRows: Object.fromEntries(ev.map((x) => [x.type, x.n])),
+      meta: (() => { try { const m = db.prepare('SELECT data, day FROM world_meta LIMIT 1').get(); if (!m) return null; const M = JSON.parse(m.data); return { day: m.day, cars: (M.caravans || []).map((c) => [c.id, c.state, c.arriveDay, c.returnArriveDay]), t1034: M.t1034 ? Object.keys(M.t1034.b || {}).length : null }; } catch (e) { return { err: e.message }; } })(),   // ★[T1034] 메타 행의 캐러밴(다시 뜨면 읽힐 장부)
+      fishCells: db.prepare('SELECT COUNT(*) AS n, SUM(stock) AS s FROM fish_cells').get() };
   } finally { db.close(); }
 }
 function open(qs) {
@@ -206,6 +215,15 @@ async function actEv(a) {   // ★[T1025] 완공 · 굶음 줄 하나씩 — 래
   const m1 = await look({});
   return { ok: !!(L && L.noted), m0, m1, act: { noted: L && L.noted, pend0: m0 && m0.pend, pend1: m1 && m1.pend } };
 }
+async function actCaravan(a) {   // ★[T1034] 행동 없음 — 몸이 선 길 위 캐러밴을 기다려 본다(--block 이면 그 사이 정본 가상 차단 1회)
+  const W = +(process.env.T1034_PROBE_WAIT || 30) * 1000, t0 = Date.now();
+  let m0 = null;
+  for (let i = 0; i < 120; i++) { m0 = await look({ car: true }); if (m0 && m0.car && m0.car.cars.some((c) => c.body)) break; await sleep(1000); }
+  await sleep(W);
+  const m1 = await look({ car: true });
+  const n = m1 && m1.car ? m1.car.cars.filter((c) => c.body).length : 0;
+  return { ok: n > 0, m0, m1, act: { bodies: n, cars: m1 && m1.car ? m1.car.cars.length : 0, waitSec: Math.round((Date.now() - t0) / 1000) } };
+}
 async function actTrade(a) {   // T983 문(거래소) — 회부 2 창(곳간 행 → 사람 저장) 재기용 · 행동은 T983 탐침 그대로
   const m0 = await look({});
   send(a, { type: '__e2e_give', kgs: { fish: [1.7, 1.2, 0.9] }, quiet: true }); await sleep(1200);
@@ -238,6 +256,7 @@ async function trip() {
   else if (WIN === 'hunt') r = await actHunt(a);
   else if (WIN === 'trade') r = await actTrade(a);
   else if (WIN === 'ev') r = await actEv(a);
+  else if (WIN === 'caravan') r = await actCaravan(a);
   else r = await actHouse(a);
   if (!r.ok) { await close(a); return { k, err: `행동 성사 0 — ${(a.notices.slice(-1)[0] || '').slice(0, 80)}`, act: r.act }; }
   const dayT = await dayNow(); const tT = Date.now();
@@ -257,8 +276,9 @@ async function trip() {
   await downP(Z, SIG); Z = null; await close(a);
   const killMs = Date.now() - tT;
   const dbK = dbRead();
-  await sleep(1000); await upZ(); await sleep(3000);
-  const memA = await look({}); const dbA = dbRead();
+  await sleep(1000); MEASURE = false; await upZ(); await sleep(3000);
+  if (WIN === 'caravan') { for (let i = 0; i < 240; i++) { const L = await look({ car: true }); if (L && L.car && L.car.t775 && L.car.t775.done) break; await sleep(1000); } }   // ★[T1034] T775 몸 세우기가 끝날 때까지
+  const memA = await look(WIN === 'caravan' ? { car: true } : {}); const dbA = dbRead();
   const foodA = WIN === 'meal' ? await stockRead(k, 'food') : null;
   const b = await open(`username=&name=${nm}&color=%23ffffff&guest_token=${encodeURIComponent(tok)}`); await sleep(1000);
   const rowA = await rowOf(pid); const invA = rowInv(rowA); await close(b);
@@ -287,6 +307,24 @@ async function trip() {
     out.corpse = memK && memK.corpse;
   } else if (WIN === 'trade') {
     out.kept = dbK.food != null && r.act && r.act.take === 'food' ? dbK.food < r.m0.food : null;
+  } else if (WIN === 'caravan') {   // ★[T1034] 캐러밴마다 — 죽기 전(memK) ↔ 다시 뜬 뒤(memA)
+    const K = (memK && memK.car && memK.car.cars) || [], A = new Map(((memA && memA.car && memA.car.cars) || []).map((c) => [c.id, c]));
+    const gapMs = (memA && memA.car && memK && memK.car) ? memA.car.at - memK.car.at : null;
+    const rows = [];
+    for (const k of K) {
+      if (!k.body) continue;
+      const a2 = A.get(k.id), kb = k.body, ab = a2 && a2.body;
+      const exp = kb.T && memK.car.dayMs ? kb.T.ppd / memK.car.dayMs * (gapMs || 0) : null;   // 장부 속도(하루 px)로 그 사이 갈 몫
+      rows.push({ id: k.id, gone: !a2, noBody: !!a2 && !ab, sched: a2 ? (a2.arr !== k.arr || a2.ret !== k.ret || a2.st !== k.st || a2.ab !== k.ab) : null,
+        k: { st: k.st, arr: k.arr, ret: k.ret, amt: k.amt, ph: kb.phase, dd: kb.dd, L: kb.T && +kb.T.L.toFixed(1), len: kb.T && +kb.T.len.toFixed(1), stall: kb.T && kb.T.stall, x: kb.x, y: kb.y, linger: kb.linger },
+        a: a2 ? { st: a2.st, arr: a2.arr, ret: a2.ret, amt: a2.amt, ph: ab && ab.phase, dd: ab && ab.dd, L: ab && ab.T && +ab.T.L.toFixed(1), len: ab && ab.T && +ab.T.len.toFixed(1), x: ab && ab.x, y: ab && ab.y } : null,
+        moved: (ab && kb.x != null && ab.x != null) ? +Math.hypot(ab.x - kb.x, ab.y - kb.y).toFixed(1) : null, expMove: exp != null ? +exp.toFixed(1) : null,
+        ddLost: ab ? (kb.dd | 0) - (ab.dd | 0) : null, phase: ab ? ab.phase !== kb.phase : null });
+    }
+    const bad = (r) => r.gone || r.noBody || r.sched || r.phase || r.ddLost || !(r.moved != null && r.moved <= (r.expMove || 0) + 64);
+    out.cars = rows; out.gapMs = gapMs; out.metaK = dbK.meta;
+    out.created = 0; out.lostN = rows.filter(bad).length;
+    out.kept = rows.length > 0 && out.lostN === 0;
   } else if (WIN === 'ev') {   // ★[T1025] 행 곁 칸 · 다시 뜬 뒤 대기 줄
     out.t1025 = { rowEv: dbK.t1025Ev, pendLive: memK && memK.pend, pendAfter: memA && memA.pend };
     out.kept = !!(memA && memA.pend && memK && memK.pend && memA.pend.b === memK.pend.b && memA.pend.s === memK.pend.s);
@@ -328,6 +366,7 @@ function look(q){ H=H||Zm.__testBind(); const V=H.SimVillages; const vil=V.villa
   const o={day:V.dayInfo?undefined:undefined, food:+(+((e.storage||{}).food)||0).toFixed(6), fishSustain:L.fishSustain, fishBase:L._fishBase, gameSum:+gs.toFixed(6), gameN:gn,
     psite:vil._psite?{cx:vil._psite.cx,cy:vil._psite.cy,stage:vil._psite.stage,bo:vil._psite.bo?vil._psite.bo.dbId:null}:null, potN:vil._potSet?vil._potSet.size:null, hutSites:huts, ccx:vil.ccx, ccy:vil.ccy,
     pend:V.t1025Pending?V.t1025Pending(VID):null, corpse:H.t1025Corpse?Object.assign({},H.t1025Corpse):null};
+  if(q.car){ o.car=V.t1034Peek?V.t1034Peek():null; if(o.car){ o.car.at=Date.now(); o.car.dayMs=+process.env.VILLAGE_DAY_MS||1440000; } }   // ★[T1034] 캐러밴 장부 · 몸(읽기만)
   if(q.note){ V.noteVillageBuilt(vil,'house'); V.noteStarved(vil); o.noted=true; }   // ★[T1025] ev 창 — 관측 손(완공 · 굶음 줄을 세운다 · 머리말)
   if(q.spot){ const R=H.Fishing.CFG.REACH_PX, out=[]; for(let r=1;r<=70&&out.length<1;r++) for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){ if(Math.max(Math.abs(dx),Math.abs(dy))!==r) continue;
       const px=(vil.ccx+dx)*32+16, py=(vil.ccy+dy)*32+16; if(H.isWaterTileLocal(px,py)||H.isTerrainBlockedLocal(px,py)) continue;
@@ -349,6 +388,12 @@ setInterval(()=>{ const a=D+'/ask'; if(!fs.existsSync(a)) return; let q={}; try{
   SQ = { x: v.cx * 32 + 16, y: v.cy * 32 + 16 };
   if (WIN === 'fish') { const L = await look({ spot: true }); if (!L || !L.spot) throw new Error('물가 선 칸 없음(마을 1 · 어장 상한 있는 물)'); SQ = { x: L.spot.x, y: L.spot.y }; }
   if (WIN === 'house') { const hx = +(process.env.T1005_PROBE_HX || 20); SQ = { x: (v.cx + hx) * 32 + 16, y: v.cy * 32 + 16 }; }   // 회관 마당(r<HALL_CLEAR) 밖 · 의뢰 사거리(400px) 안 후보가 있게(판마다 세계가 달라 자리가 막히면 `T1005_PROBE_HX` 로 옆 칸)
+  if (WIN === 'caravan') {   // ★[T1034] 데우기 — 짧은 하루로 캐러밴이 길에 설 때까지 → SIGTERM(종료 저장 · 메타 행) → 운영 하루로 다시(재는 판)
+    await downP(Z, 'SIGTERM'); Z = null; WARM = true; await upZ(); const tw = Date.now(); let L = null;
+    for (let i = 0; i < 300; i++) { await sleep(2000); L = await look({ car: true }); if (L && L.car && L.car.cars.filter((c) => c.st === 'outbound' || c.st === 'inbound').length >= 2) break; }
+    console.log(`[T1034 탐침] 캐러밴 데우기 ${Math.round((Date.now() - tw) / 1000)}초 · 길 위 ${L && L.car ? L.car.cars.length : 0}대 · 날 ${L && L.car ? L.car.day : '—'}`);
+    WARM = false;
+  }
   if (WIN === 'hunt') {   // 데우기 — 사냥터 밴드 · 밴드 안 야생 몹이 설 때까지(짧은 하루) → SIGTERM(종료 저장 · T728 곁 칸 `_t728Game`) → 운영 하루로 다시
     await downP(Z, 'SIGTERM'); Z = null; WARM = true; await upZ(); const tw = Date.now(); let L = null;
     for (let i = 0; i < 300; i++) { await sleep(2000); L = await look({ mobs: true }); if (L && L.gameN > 0) break; }   // 밴드만(야생 몹 그림자는 사람이 있어야 선다 — 재는 판에서 찾는다)
@@ -373,7 +418,7 @@ setInterval(()=>{ const a=D+'/ask'; if(!fs.existsSync(a)) return; let q={}; try{
     for (let i = 1; i <= N; i++) { await upZ(); await sleep(3000); console.log(JSON.stringify({ boot: i, rows: cnt() })); await downP(Z, SIG); Z = null; await sleep(1000); }
     process.exit(0);
   }
-  await downP(Z, 'SIGTERM'); Z = null; await upZ(); await sleep(3000);
+  await downP(Z, 'SIGTERM'); Z = null; MEASURE = true; await upZ(); await sleep(3000);
   console.log(`[T1005 탐침] 창 ${WIN} · T1025_EV_CORPSE=${process.env.T1025_EV_CORPSE === undefined ? '(기본)' : process.env.T1025_EV_CORPSE} · T1005_VIL_SAVE=${process.env.T1005_VIL_SAVE === undefined ? '(기본)' : process.env.T1005_VIL_SAVE} · 판 ${N} · ${CLOSE ? '마감 낀 판' : '마감 안 낀 판'}${NOW ? ' · 사람 저장 안 기다림' : ''} · 마을 ${v.name} · 광장 ${SQ.x},${SQ.y}`);
   const R = [];
   for (let i = 0; i < N; i++) { let r; try { r = await trip(); } catch (e) { r = { err: e.message }; if (!Z) await upZ().catch(() => {}); } R.push(r); console.log(JSON.stringify(r)); }
