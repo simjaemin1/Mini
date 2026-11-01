@@ -2140,6 +2140,9 @@ function tickWorldV2Parts(world) {
         if (v.history.length > 500) v.history.splice(0, v.history.length - 500);
       }
       if (world.tradeLog.length > 5000) world.tradeLog.splice(0, world.tradeLog.length - 5000);
+      // ★★[T1050] 몸 없는 랩 마을의 집 — 서버 생활층이 econ 틱 **뒤** 하는 집 네 줄(침상 · 방아쇠 · 크루 하루 · 완공)을 같은 차례로(econ 정본 `labHouseWorldDay`).
+      //   `labHouseAttach` 로 붙인 마을만 돈다(서버 마을 · 안 붙인 자 · 랩 HTML = 무동작 · 손잡이 `T1050_LAB_HOUSE=0` = 무동작 = 종전 바이트).
+      if (v1.labHouseWorldDay) v1.labHouseWorldDay(world);
     },
   });
   return P;

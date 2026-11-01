@@ -1,0 +1,93 @@
+# T1050 하네스 — 마지막 코드 · 켬 기본(T1050_LAB_HOUSE 미설정)
+## run-regress.sh 지정 (1차)
+##### test-build-act.js #####
+  ✓ RC=0
+##### test-t958-house-real.js #####
+=== 통과 24 · 실패 0 ===
+  ✓ RC=0
+##### test-headless-parity.js #####
+  ✓ RC=0
+##### test-psite-server.js #####
+  ✓ ⓒ-2 (전제) 그 마을에 **완공집이 있다** — 2채(0채면 아래가 0 === 0 자명 통과다)
+  ✓ RC=0
+##### test-site-memo.js #####
+=== 23 통과 / 0 실패 ===
+=== 23 통과 / 0 실패 ===
+  ✓ RC=0
+##### test-bridge-act.js #####
+  ✓ RC=0
+##### test-farm-act.js #####
+=== 결과: 78 PASS / 0 FAIL ===
+=== 결과: 78 PASS / 0 FAIL ===
+  ✓ RC=0
+##### test-wood-act.js #####
+=== 결과: 157 PASS / 1 FAIL ===
+=== 결과: 157 PASS / 1 FAIL ===
+  ✗ RC=1 · 결과줄 160개 → **실패로 센다**
+##### test-harness-lint.js #####
+=== 68건 중 PASS 68 · FAIL 0 ===
+  ✓ RC=0
+##### test-lab-diverge-ctl.js #####
+=== 11건 중 PASS 11 · FAIL 0 ===
+  ✓ RC=0
+##### test-lab-happywork.js #####
+=== 결과: 59 PASS / 0 FAIL ===
+=== 결과: 59 PASS / 0 FAIL ===
+  ✓ RC=0
+##### test-lab-stone.js #####
+=== T299 둘째 화물 기본 끔(정정) 포함: 통과 132 · 실패 0 ===
+  ✓ RC=0
+=== 러너 요약 ===
+  통과 11: test-build-act.js test-t958-house-real.js test-headless-parity.js test-psite-server.js test-site-memo.js test-bridge-act.js test-farm-act.js test-harness-lint.js test-lab-diverge-ctl.js test-lab-happywork.js test-lab-stone.js
+  실패 1: test-wood-act.js(rc=1)
+## test-wood-act ⑪ 첫 판 빨강(157/1) → 서버가 한 짐 함수를 넘기게 고친 뒤 (2차)
+##### test-wood-act.js #####
+=== 결과: 158 PASS / 0 FAIL ===
+=== 결과: 158 PASS / 0 FAIL ===
+  ✓ RC=0
+##### test-build-act.js #####
+  ✓ RC=0
+##### test-t958-house-real.js #####
+=== 통과 24 · 실패 0 ===
+  ✓ RC=0
+=== 러너 요약 ===
+  통과 3: test-wood-act.js test-build-act.js test-t958-house-real.js
+  실패 0: 없음
+## run-regress.sh 지정 (3차 — 크루 짐 · 곳간 출구를 쓰는 하네스)
+##### test-dusk-stamp.js #####
+  ✓ RC=0
+##### test-fell-loot.js #####
+  ✓ RC=0
+##### test-forage-act.js #####
+  ✓ RC=0
+##### test-terr-overlap.js #####
+  ✓ RC=0
+##### test-wood-step1.js #####
+  ✓ RC=0
+##### test-granary-add.js #####
+  ✓ RC=0
+##### test-granary-haul.js #####
+  ✓ RC=0
+##### test-events.js #####
+  ✓ RC=0
+##### test-cargo-age.js #####
+  ✓ RC=0
+=== 러너 요약 ===
+  통과 9: test-dusk-stamp.js test-fell-loot.js test-forage-act.js test-terr-overlap.js test-wood-step1.js test-granary-add.js test-granary-haul.js test-events.js test-cargo-age.js
+  실패 0: 없음
+## 랩 브라우저 하네스(전쟁실험실 · playwright · 직접 실행)
+  test-lab-hunt: === 62건 중 PASS 62 · FAIL 0 === (test-lab-hunt rc=0 sec=1)
+  test-lab-trees: === test-lab-trees: 52 PASS / 0 FAIL === (test-lab-trees rc=0 sec=18)
+  test-lab-wood: === 36건 중 PASS 36 · FAIL 0 === (test-lab-wood rc=0 sec=0)
+  test-lab-alloc: === 결과: 54 PASS / 0 FAIL === (test-lab-alloc rc=0 sec=101)
+  test-lab-market: 결과: PASS (test-lab-market rc=0 sec=241)
+  test-lab-mining: 결과: PASS (test-lab-mining rc=0 sec=1402)
+  test-lab-psite: 결과: PASS (test-lab-psite rc=0 sec=966)
+## test-harness-lint (관찰기 더한 뒤 다시)
+  === 68건 중 PASS 68 · FAIL 0 ===
+## lab-wiring-check
+=== 배선 검사: 실패 0 · 경고 1 ===
+## 번들 · 인라인
+[check] 회귀검증 16 일치 / 0 불일치 ✅
+[inline] 마을실험실.html: 최신 ✅
+[inline] 전쟁실험실.html: 최신 ✅

@@ -1327,6 +1327,102 @@ function actFromGranary(v, item, units) {
   _cons(v, item, take);
   return take;
 }
+// ══ ★★[T1050 2026-11-01 · ★재민 11-01 "서버 집 규칙이 정본"] 집 크루 하루 — 정본 한 벌(서버 생활층 · 랩이 같은 함수) ══════════════
+//   서버 `villages.js _t400BuildDay` 의 몸통(곳간 → 손 → 왕복 → 집터 `mat` → 자재 · 시공이 차면 그 순간 단계)을 **글자 그대로** 여기로 옮겼다.
+//   서버는 몸(명부 앞 `LIFE_CREW` 명) · 걸음(`_t341TripsPerDay`) · 단계 올림(`_lifeAdvanceSite`)을 넘기고, 랩(몸 없는 마을 · 아래 `labHouseDay`)은
+//   일꾼 날수(크루 `min(LIFE_CREW, 인구)` · 손만 있는 자리)를 넘긴다. 자재 · 짐 · 시공 · 곳간 출구는 한 줄도 안 갈린다(사본 0 · 새 수 0).
+//   곳간 출구는 **내보낸 칸**(`module.exports.actFromGranary`)으로 부른다 — 관찰기(t875 · t958 · t479)가 그 칸을 감싸 크루가 꺼낸 몫을 센다(종전 서버 `E.actFromGranary` 와 같은 칸).
+let _carryMod;
+function _carryCfgMod() { if (_carryMod === undefined) { try { _carryMod = require('../server/carry'); } catch (e) { _carryMod = null; } } return _carryMod; }
+//   한 짐 = ⌊CAP_KG ÷ kgOf(item)⌋(최소 1) — 서버 `_t400PerLoad` 를 옮겼다(그 함수는 이제 이것을 부른다 · 통나무 25 ÷ 3 = 8).
+function crewPerLoad(item) {
+  const cc = _carryCfgMod(), W = _weightsMod();
+  const cap = (cc && cc.CFG && cc.CFG.CAP_KG) || 0;
+  const kg = (W && W.kgOf) ? (W.kgOf(item) || 0) : 0;
+  if (!(cap > 0) || !(kg > 0)) return 1;
+  const n = Math.floor(cap / kg);
+  return n > 0 ? n : 1;
+}
+//   s2 = 집터 `{ stage, mat }` · crew = 손(`inventory`)을 가진 크루 배열 · labor = 오늘 시공 단계 수(크루 × `LIFE_STAGE_PDAY` — 두 수는 서버 `villages.js` 정본 · 부르는 쪽이 준다) ·
+//   tripsEach = 한 사람 하루 왕복 상한 · perLoad(item) = 한 짐(서버 = `_t400PerLoad` · 랩 = `crewPerLoad` — 앞의 것이 뒤의 것을 부른다 · 같은 수) · roundS = 한 왕복 걸음초(계측) ·
+//   dbg = 그날 계측 칸(trips · took · placed · adv · stall · walkS 를 더한다) · advance() = 단계 하나 올림 → 집터가 아직 서 있으면 true(완공 · 사라짐 = false)
+function houseCrewDay(v, s2, crew, labor, tripsEach, perLoad, roundS, dbg, advance) {
+  const left = crew.map(() => tripsEach);
+  let rr = 0, alive = true;
+  if (!s2.mat) s2.mat = {};
+  while (alive && labor > 0) {
+    const need = hutEconStage((s2.stage | 0)) || {};
+    // ⓐ 모자란 자재를 나른다 — 짐 하나씩(곳간 → 손 → 걸음 → 집터)
+    let short = false;
+    for (const k of Object.keys(need)) {
+      while ((s2.mat[k] || 0) < need[k]) {
+        let ci = -1;
+        for (let q = 0; q < crew.length; q++) { const i = (rr + q) % crew.length; if (left[i] > 0) { ci = i; break; } }
+        if (ci < 0) { short = true; break; }                         // 오늘 걸음을 다 썼다
+        //   ★짐은 **꽉 채워** 든다 — 이 단계 모자란 몫이 아니라 **이 집에 남은 몫**까지(T361 §ⓑ). 남은 몫도 표에서 읽는다(사본 0).
+        let rem = 0; for (let i = (s2.stage | 0); i < hutStageCount(); i++) rem += ((hutEconStage(i) || {})[k] || 0);
+        const want = Math.min(perLoad(k), rem - (s2.mat[k] || 0));
+        const took = module.exports.actFromGranary(v, k, want);      // ★곳간 → 손(econ 정본 한 함수 · `actToGranary` 의 역)
+        if (!(took > 0)) { short = true; dbg.stall = 1; break; }     // 곳간이 비었다 — 기다린다(그게 세계다)
+        const c = crew[ci];
+        if (!c.inventory) c.inventory = {};
+        c.inventory[k] = (c.inventory[k] || 0) + took;               // 손에 든다
+        left[ci]--; rr = ci + 1; dbg.trips++; dbg.took += took; dbg.walkS += roundS;
+        c.inventory[k] = Math.max(0, (c.inventory[k] || 0) - took);  // 집터에 놓는다(손은 빈다 — 날을 넘겨 들고 있지 않다)
+        s2.mat[k] = (s2.mat[k] || 0) + took; dbg.placed += took;
+      }
+      if (short) break;
+    }
+    if (short) break;
+    // ⓑ 자재가 찼다 — 시공(한 사람 하루 `LIFE_STAGE_PDAY`)이 남아 있으면 **이 순간** 단계가 오른다
+    for (const k of Object.keys(need)) s2.mat[k] = (s2.mat[k] || 0) - need[k];
+    labor--; dbg.adv++;
+    alive = advance();
+  }
+  return dbg;
+}
+// ★★[T1050] **몸 없는 랩 마을의 집** — 손잡이 `T1050_LAB_HOUSE`(랩 기본 켬 후보 · `=0` = 종전 셈 주거 = 바이트 같음 · 브라우저 shim 빈 env = 켬).
+//   서버 생활층이 econ 틱 **뒤** 마을마다 하는 집 네 줄을 같은 차례로 한다(서버 `villages.js` 하루 생활층 · 기본 손잡이 그대로):
+//     ① 침상(T315 `_mapBedsOf`) = 지은 집 칸 × `HOUSE_CAP_PER_FLOOR`(움집 단층) → econ `_mapBeds`
+//     ② 방아쇠(T219 · T958) = `houseSiteWant(인구, 주거 + 그날 올리고 싶던 몫 _t958Want, 지은 칸, 집터 유무)` → 집터 `{ stage: 1 }`(서버 `_lifeAddHouseSite` 가 세우는 그 단계)
+//     ③ 크루 하루(T400 `_t400BuildDay`) = `_t400Live` 를 적고(econ 이 집 목재를 추상 차감하지 않는다 · 주거 = 지은 침상까지 · T958) 위 `houseCrewDay` 를 부른다
+//        크루 = 명부 앞 `min(LIFE_CREW, 인구)` 명의 **일꾼 날수**(랩엔 몸이 없다 — 손만 있는 자리) · 시공 = 크루 × `LIFE_STAGE_PDAY` · 왕복 상한 = 없음(랩엔 곳간 · 집터 자리가 없다 —
+//        서버 판 낮엔 한 사람 하루 중앙 43왕복 ↔ 한 채 2짐이라 서버에서도 묶지 않는다 · 보고 T400 §ⓒ · T1050 ①)
+//     ④ 완공(`_lifeAdvanceSite` → `_lifeCompleteHouse`) = 단계가 공정 끝(`hutStageCount()` — 서버 글자 `stage <= 3` 의 그 수)을 넘으면 집 칸 +1 · 집터 없음
+//   ⚠땅이 없는 자리 — 서버 `_lifeAddHouseSite` 는 영토 칸 · 물 · 농지 거름으로 집터를 못 찾으면 안 세운다(정지 마을). 랩 t17 엔 영토 칸이 없어 늘 선다(보고 T1050 §1 회부).
+//   붙이는 문은 `labHouseAttach(v, 시딩 집 칸, { crew: LIFE_CREW, pday: LIFE_STAGE_PDAY })` 하나 — 자 t17 · t176 이 `layout.houses` 칸 수(서버 `_houseCells` 시딩과 같은 칸)와
+//     서버 정본 두 수(`villages.js` 의 그 두 상수 · `__labProbe._t400Probe.LIFE_CREW` · `.LIFE_STAGE_PDAY` 로 읽는다 — 사본 0)를 준다. 안 붙인 마을(서버 · 다른 자 · 랩 HTML)은 한 글자도 안 닿는다.
+const T1050_LAB_HOUSE = !(typeof process !== 'undefined' && process.env && process.env.T1050_LAB_HOUSE === '0');
+function labHouseAttach(v, cells0, life) {
+  if (!T1050_LAB_HOUSE || !T400_BUILD_ACT || !v || !life || !(life.crew > 0) || !(life.pday > 0)) return false;
+  v._t1050 = { cells: (cells0 | 0), site: null, crew: life.crew, pday: life.pday, sum: { days: 0, crewDays: 0, trips: 0, took: 0, adv: 0, stallDays: 0, built: 0 } };
+  return true;
+}
+function labHouseDay(v) {
+  const H = v && v._t1050;
+  if (!H || !T1050_LAB_HOUSE || !T400_BUILD_ACT) return null;
+  const L = _villageLayoutMod(); if (!L) return null;
+  const N = (v.npcs && v.npcs.length) || 0;
+  v._mapBeds = H.cells * L.HOUSE_CAP_PER_FLOOR;                                                         // ① 침상
+  if (!H.site && L.houseSiteWant(N, v.housing + ((T958_HOUSE_REAL && v._t958Want > 0) ? v._t958Want : 0), H.cells, H.site ? 1 : 0)) H.site = { stage: 1 };   // ② 방아쇠 → 집터
+  v._t400Live = true;                                                                                    // ③ 크루 하루(서버 `_t400BuildDay` 머리 그 줄)
+  const dbg = { crew: 0, trips: 0, perTrip: 0, took: 0, placed: 0, adv: 0, stall: 0, walkS: 0 };
+  const s2 = H.site; if (!s2) return dbg;
+  const n = Math.min(H.crew, N); if (!n) return dbg;
+  const crew = []; for (let i = 0; i < n; i++) crew.push({ inventory: {} });
+  dbg.crew = n; dbg.perTrip = Infinity;
+  houseCrewDay(v, s2, crew, n * H.pday, Infinity, crewPerLoad, 0, dbg, () => {
+    s2.stage++;
+    if (s2.stage < hutStageCount()) return true;                                                         // ④ 완공 — 서버 `stage <= 3` 그 경계
+    H.cells++; H.site = null; H.sum.built++; return false;
+  });
+  const U = H.sum; U.days++; U.crewDays += dbg.crew; U.trips += dbg.trips; U.took += dbg.took; U.adv += dbg.adv; U.stallDays += dbg.stall;
+  return dbg;
+}
+function labHouseWorldDay(world) {   // 하루 끝(econ 틱 뒤 — 서버 생활층 차례) · 붙인 마을만
+  if (!T1050_LAB_HOUSE || !T400_BUILD_ACT || !world || !world.villages) return;
+  for (const v of world.villages) if (v && v._t1050) labHouseDay(v);
+}
 // ★★★[T374 2026-09-23] **채취는 수요가 멈춘다 — 기본 끔**(★[T544 추신] 2026-09-30 기본 켬 · 아래).
 //   설계_생산_실체 ⓓ 는 *"옮긴 첫날 하루 합 = 수식 · 그 뒤로는 실체가 내는 만큼(강이 멀면 덜 잡는다)"* 이라
 //   적었다. 그 문장엔 **반대쪽 절반**이 빠져 있었다: 실체가 **더** 낼 수 있어도 마을은 **쓸 만큼만** 딴다.
@@ -5918,6 +6014,7 @@ module.exports = {
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
+  T1050_LAB_HOUSE, crewPerLoad, houseCrewDay, labHouseAttach, labHouseDay, labHouseWorldDay,   // ★[T1050] 집 크루 하루 정본(서버 생활층 · 랩 몸 없는 마을이 같은 함수) · 손잡이
   T400_BUILD_ACT, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)

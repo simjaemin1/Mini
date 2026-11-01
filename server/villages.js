@@ -11354,12 +11354,7 @@ function _t400Crew(vil) {   // 명부 순서 앞 min(LIFE_CREW, 인구) — 헤�
   return out;
 }
 function _t400PerLoad(item) {   // 한 짐 = ⌊CAP_KG ÷ kgOf(item)⌋(최소 1) — 통나무면 `_t341TreesPerLoad(1)` 과 같은 수(하네스가 대조)
-  const cc = _carryCfg(), W = _weights();
-  const cap = (cc && cc.CFG && cc.CFG.CAP_KG) || 0;
-  const kg = (W && W.kgOf) ? (W.kgOf(item) || 0) : 0;
-  if (!(cap > 0) || !(kg > 0)) return 1;
-  const n = Math.floor(cap / kg);
-  return n > 0 ? n : 1;
+  return _lifeEcon().crewPerLoad(item);   // ★[T1050] 몸통은 econ 정본(`crewPerLoad` — 같은 두 모듈 · 같은 식 · 집 크루 하루가 econ 으로 옮겨 가 랩도 같은 짐을 든다)
 }
 function _t400From(vil, s2) {   // 꺼내는 자리 = 집터에 가장 가까운 곳간 사다리(없으면 회관 — 마을 중심)
   const sx = (s2.cx - 2.5) * SZ, sy = (s2.cy - 0.5) * SZ;
@@ -11386,41 +11381,14 @@ function _t400BuildDay(vil) {
   const tripsEach = _t341TripsPerDay(vil, F.d, 1);   // 한 사람 하루 왕복 상한 — 걸음이 정한다(나무꾼과 같은 식)
   dbg.perTrip = tripsEach;
   dbg.dayS = +((_tripDayMs() * ((state.deps && state.deps.dayPhaseRatio) || 0) / 1000) * crew.length).toFixed(3);   // ★[T627] 왕복 상한과 같은 낮 초
-  const left = crew.map(() => tripsEach);
-  let labor = crew.length * LIFE_STAGE_PDAY, rr = 0;
-  if (!s2.mat) s2.mat = {};
-  while (vil._site === s2 && labor > 0) {
-    const need = E.hutEconStage((s2.stage | 0)) || {};
-    // ⓐ 모자란 자재를 나른다 — 짐 하나씩(곳간 → 손 → 걸음 → 집터)
-    let short = false;
-    for (const k of Object.keys(need)) {
-      while ((s2.mat[k] || 0) < need[k]) {
-        let ci = -1;
-        for (let q = 0; q < crew.length; q++) { const i = (rr + q) % crew.length; if (left[i] > 0) { ci = i; break; } }
-        if (ci < 0) { short = true; break; }                         // 오늘 걸음을 다 썼다
-        //   ★짐은 **꽉 채워** 든다 — 이 단계 모자란 몫이 아니라 **이 집에 남은 몫**까지(통나무 22 = 8·8·6 = 3짐 · T361 §ⓑ).
-        //     남은 몫도 표에서 읽는다(`hutEconStage(i)` 의 i ≥ 지금 단계 합 · 사본 0).
-        let rem = 0; for (let i = (s2.stage | 0); i < E.hutStageCount(); i++) rem += ((E.hutEconStage(i) || {})[k] || 0);
-        const want = Math.min(_t400PerLoad(k), rem - (s2.mat[k] || 0));
-        const took = E.actFromGranary(vil.econ, k, want);            // ★곳간 → 손(econ 정본 한 함수 · `actToGranary` 의 역)
-        if (!(took > 0)) { short = true; dbg.stall = 1; break; }     // 곳간이 비었다 — 기다린다(그게 세계다)
-        const c = crew[ci];
-        if (!c.inventory) c.inventory = {};
-        c.inventory[k] = (c.inventory[k] || 0) + took;               // 손에 든다
-        left[ci]--; rr = ci + 1; dbg.trips++; dbg.took += took; dbg.walkS += roundS;
-        c.inventory[k] = Math.max(0, (c.inventory[k] || 0) - took);  // 집터에 놓는다(손은 빈다 — 날을 넘겨 들고 있지 않다)
-        s2.mat[k] = (s2.mat[k] || 0) + took; dbg.placed += took;
-      }
-      if (short) break;
-    }
-    if (short) break;
-    // ⓑ 자재가 찼다 — 시공(한 사람 하루 `LIFE_STAGE_PDAY`)이 남아 있으면 **이 순간** 단계가 오른다
-    for (const k of Object.keys(need)) s2.mat[k] = (s2.mat[k] || 0) - need[k];
-    labor--; dbg.adv++;
+  // ★★[T1050] 몸통(곳간 → 손 → 왕복 → 집터 · 자재와 시공이 차면 그 순간 단계)은 econ 정본 `houseCrewDay` 한 벌이다 — 글자 그대로 옮겼다(사본 0).
+  //   이 줄은 몸 · 걸음 · 단계 올림만 넘긴다. 랩(몸 없는 마을 `labHouseDay`)이 같은 함수에 일꾼 날수를 넘긴다.
+  E.houseCrewDay(vil.econ, s2, crew, crew.length * LIFE_STAGE_PDAY, tripsEach, (k) => _t400PerLoad(k), roundS, dbg, () => {   // 짐 수 · 한 짐 = 몸 크루 두 함수(T491 몸 하루와 같은 둘)
     (vil._t400Log || (vil._t400Log = [])).push(day + ':' + (s2.stage | 0));   // ④ 단계 시각(관측자 게이트 대조)
     if (vil._t400Log.length > 400) vil._t400Log.splice(0, vil._t400Log.length - 400);
     _lifeAdvanceSite(vil);
-  }
+    return vil._site === s2;
+  });
   dbg.walkS = +dbg.walkS.toFixed(3);
   // ★[계측 전용] 누계 — `/lifedbg` 의 `t400` 칸(③ 등가 표: 걸음이 먹는 낮 · 누가 지었나). 회계 아님.
   const S = vil._t400Sum || (vil._t400Sum = { days: 0, crewDays: 0, walkS: 0, dayS: 0, trips: 0, took: 0, adv: 0, stallDays: 0, jobs: {} });

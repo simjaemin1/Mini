@@ -1,0 +1,56 @@
+# T1050 바이트 · 같은 세계 확인
+## ① 끔(T1050_LAB_HOUSE=0) = HEAD 477260f4(이 카드 앞) — t17 800날 판 JSON · t1012 관찰기 JSON cmp
+  시드 1020 판 JSON 같음
+  시드 1020 관찰기 같음
+  시드 7 판 JSON 같음
+  시드 7 관찰기 같음
+  시드 42 판 JSON 같음
+  시드 42 관찰기 같음
+## ② t176 = t17(같은 손잡이) — 관찰기 날마다 줄 · 끝 표본
+  켬 시드 1020 날마다 같음 · 끝 같음
+  켬 시드 7 날마다 같음 · 끝 같음
+  켬 시드 42 날마다 같음 · 끝 같음
+  끔 시드 1020 날마다 같음 · 끝 같음
+  끔 시드 7 날마다 같음 · 끝 같음
+  끔 시드 42 날마다 같음 · 끝 같음
+## ③ 마지막 코드(짐 함수를 인자로 넘김) = 띠 판 코드 — 켬 t17 400날 관찰기 날마다 줄 400 · 표본 89 · 364
+  시드 1020 같음 (400날)
+  시드 7 같음 (400날)
+  시드 42 같음 (400날)
+## 판 시간(초)
+  t176 t176on t 42 rc=0 sec=421
+  t176 t176on t 1020 rc=0 sec=455
+  t176 t176off t 1020 rc=0 sec=556
+  t176 t176on t 7 rc=0 sec=583
+  t17 on h 1020 rc=0 sec=148
+  t17 on h 7 rc=0 sec=144
+  t17 on h 42 rc=0 sec=122
+  t17 on h1 1020 rc=0 sec=131
+  t17 on h1 7 rc=0 sec=140
+  t17 on h1 42 rc=0 sec=120
+  obs 7 rc=0
+  obs 1020 rc=0
+  obs 42 rc=0
+  t176 t176off t 42 rc=0 sec=609
+  t176 t176off t 7 rc=0 sec=674
+  t17 on h2 1020 rc=0 sec=146
+  t17 on h2 7 rc=0 sec=142
+  t17 on h2 42 rc=0 sec=106
+  t17 on h3 1020 rc=0 sec=122
+  t17 on h3 7 rc=0 sec=115
+  t17 on h3 42 rc=0 sec=118
+  t17 off h 1020 rc=0 sec=107
+  t17 off h 7 rc=0 sec=110
+  t17 off h 42 rc=0 sec=109
+  t17 off h1 1020 rc=0 sec=103
+  t17 off h1 7 rc=0 sec=111
+  t17 off h1 42 rc=0 sec=104
+  t17 off h2 1020 rc=0 sec=110
+  t17 off h2 7 rc=0 sec=113
+  t17 off h2 42 rc=0 sec=113
+  t17 off h3 1020 rc=0 sec=114
+  t17 off h3 7 rc=0 sec=105
+  t17 off h3 42 rc=0 sec=111
+  t17 head h 1020 rc=0 sec=99
+  t17 head h 7 rc=0 sec=94
+  t17 head h 42 rc=0 sec=95

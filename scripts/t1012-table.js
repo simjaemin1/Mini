@@ -44,8 +44,11 @@ function measure(files) {   // 판 하나(시드 셋) → 셈
   m._n = ok;
   return m;
 }
-const srvRuns = srvDirs.map((d) => [path.basename(d), measure(SEEDS.map((s) => path.join(d, `base-${s}.t1012.json`)))]).filter(([, m]) => m);
-const labRuns = (labPre || '').split(',').filter((x) => x !== undefined).map((p) => [`lab:${p || '기본'}`, measure(SEEDS.map((s) => path.join(labRoot, `${p}${p ? '-' : '-'}${s}.t1012.json`.replace(/^-/, '')))) ]).filter(([, m]) => m);
+// ★[T1050] `--srvjson <표 기계 JSON>` = 그 JSON 의 서버 띠 셈(`srv`)을 그대로 쓴다(서버 판을 다시 안 돌린다 — 랩만 바뀐 카드 · 셈 식은 이 파일 그대로 낸 값).
+const SRVJSON = get('--srvjson');
+const srvRuns = SRVJSON ? ((J(SRVJSON) || {}).srv || []) : srvDirs.map((d) => [path.basename(d), measure(SEEDS.map((s) => path.join(d, `base-${s}.t1012.json`)))]).filter(([, m]) => m);
+const LABJSON = get('--labjson');   // ★[T1050] 같은 꼴 — 그 JSON 의 랩 띠 셈(`lab`)을 그대로(앞 판 표를 다시 낼 때)
+const labRuns = LABJSON ? ((J(LABJSON) || {}).lab || []) : (labPre || '').split(',').filter((x) => x !== undefined).map((p) => [`lab:${p || '기본'}`, measure(SEEDS.map((s) => path.join(labRoot, `${p}${p ? '-' : '-'}${s}.t1012.json`.replace(/^-/, '')))) ]).filter(([, m]) => m);
 const armRuns = arms.map(([n, ds]) => [n, ds.map((d) => measure(SEEDS.map((s) => path.join(d, `base-${s}.t1012.json`)))).filter(Boolean)]);
 const keys = [...new Set([...srvRuns, ...labRuns].flatMap(([, m]) => Object.keys(m)).filter((k) => !k.startsWith('_')))];
 const band = (runs, k) => { const v = runs.map(([, m]) => m[k] || 0); return [Math.min(...v), Math.max(...v)]; };
@@ -61,6 +64,7 @@ for (const k of keys) {
   rows.push({ k, s, l, overlap, gap, ratio, gapOverWidth: wide ? gap / wide : (gap ? Infinity : 0), arms: armRuns.map(([n, ms]) => [n, ms.map((m) => m[k] || 0)]) });
 }
 rows.sort((a, b) => (a.overlap - b.overlap) || (b.gapOverWidth - a.gapOverWidth));
+console.log(`\n안 겹침 ${rows.filter((r) => !r.overlap).length} / 셈 ${rows.length}`);   // ★[T1050] 겹침 수 한 줄(셈은 위 그대로)
 console.log(`\n서버 판 ${srvRuns.map(([n, m]) => `${n}(${m._n}/3)`).join(' · ')} ↔ 랩 판 ${labRuns.map(([n, m]) => `${n}(${m._n}/3)`).join(' · ')}`);
 console.log(`\n| 셈(3시드 합) | 서버 띠 | 랩 띠 | 겹침 | 서버 ÷ 랩(띠 가운데) | 틈 ÷ 큰 띠 폭 |${armRuns.map(([n]) => ` ${n} |`).join('')}`);
 console.log(`|---|---|---|---|---:|---:|${armRuns.map(() => '---|').join('')}`);
