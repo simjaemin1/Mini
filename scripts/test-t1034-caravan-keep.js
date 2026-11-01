@@ -46,14 +46,17 @@ const perf = (port) => new Promise((res) => { const q = http.get({ host: '127.0.
 const car = async (port) => { const t = Date.now(); const p = await perf(port); return p && p.econTick && p.econTick.t1034car ? Object.assign(p.econTick.t1034car, { at: t }) : null; };   // at = 물은 벽시계(옮김 몫)
 const base = 39000 + (process.pid % 400);
 delete process.env.T1034_CARAVAN_KEEP;
-const up = (db, port, extra) => { const c = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env: zoneEnv(db, port, extra), stdio: 'ignore' }); return { c, x: exitOf(c, 1500000) }; };
 const until = async (fn, ms, every) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = await fn(); if (v) return v; await sleep(every || 1000); } return null; };
+const health = (port) => new Promise((res) => { const q = http.get({ host: '127.0.0.1', port, path: '/health', timeout: 5000 }, (r) => { r.resume(); res(r.statusCode === 200); }); q.on('error', () => res(false)); q.on('timeout', () => { q.destroy(); res(false); }); });
+//   ★[T899 · 하네스 린트 ⑬a] 띄운 뒤 첫 기다림 = 준비 증인(`/health`) — 부팅 길이를 가정하지 않는다(상한 300초 · 정본 존 기동 상한)
+const up = async (db, port, extra) => { const c = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env: zoneEnv(db, port, extra), stdio: 'ignore' }); const x = exitOf(c, 1500000);
+  await Promise.race([until(() => health(port), 300000, 500), x]); return { c, x }; };
 const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }); const m = d.prepare('select data, day from world_meta').get(); d.close(); return m ? Object.assign(JSON.parse(m.data), { _day: m.day }) : null; } catch (e) { return null; } };
 
 (async () => {
   const S = path.join(TMP, 'save.db');
   //   저장 — 짧은 하루(2초)로 캐러밴을 띄운다 → SIGTERM(종료 저장)
-  { const z = up(S, base, { VILLAGE_DAY_MS: '2000' });
+  { const z = await up(S, base, { VILLAGE_DAY_MS: '2000' });
     const got = await until(async () => { const C = await car(base); return C && C.cars.filter((c) => c.st === 'outbound').length >= 2 ? C : null; }, 600000, 2000);
     ok(!!got, '[상황] 짧은 하루로 길 위 캐러밴이 섰다', got ? `${got.cars.length}대 · 날 ${got.day}` : '없음');
     try { z.c.kill('SIGTERM'); } catch (e) {} await Promise.race([z.x, sleep(30000)]); try { z.c.kill('SIGKILL'); } catch (e) {} await z.x; }
@@ -61,7 +64,7 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
   //     안 하면 고립이 부팅 따라잡기 창 안에서 선다(창 안 = 마감 몫 · T728 이 창 끝에 쓴다 — 하루 중 문이 아니다).
   const S6 = path.join(TMP, 'save6.db');
   for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(S + s, S6 + s); } catch (e) {} }
-  { const z = up(S6, base + 2, { VILLAGE_DAY_MS: '360000' });
+  { const z = await up(S6, base + 2, { VILLAGE_DAY_MS: '360000' });
     //   + 가는 몸 하나가 길 30% 를 넘었고(다시 뜬 첫 틱에 고립 훅이 걸린다 — 훅 = 가는 길 25% 넘은 첫 몸) 하루 앞쪽(다음 창까지 멀다 · 창은 동쪽 끝 자정 = 하루 0.73 쯤부터)
     const g = await until(async () => { const C = await car(base + 2); return C && C.t775 && C.t775.done && !C.w731 && C.frac != null && C.frac < 0.5
       && C.cars.some((x) => x.st === 'outbound' && x.body && x.body.phase === 'outbound' && x.body.len > 0 && x.body.prog / x.body.len > 0.3 && x.body.prog / x.body.len < 0.9) ? C : null; }, 900000, 1000);
@@ -72,7 +75,7 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
   console.log('\n② 죽음 판 — 하루 중 고립 귀환 뒤 SIGKILL(켬 · 끔 같은 사본)');
   const iso = async (tag, off, k) => {
     const db = copy('iso-' + tag, S6), port = base + 20 + k * 2, env = Object.assign({ VILLAGE_DAY_MS: '360000' }, off ? { T1034_CARAVAN_KEEP: '0' } : {});
-    let z = up(db, port, Object.assign({ VILLAGE_CARAVAN_BLOCKTEST: '2' }, env));
+    let z = await up(db, port, Object.assign({ VILLAGE_CARAVAN_BLOCKTEST: '2' }, env));
     const K = await until(async () => { const C = await car(port); const c = C && C.t775 && C.t775.done && C.cars.find((x) => x.st === 'inbound' && x.ab && x.body); return c ? { C, c } : null; }, 300000, 250);
     //   켬 = 틱 끝 메타 행이 그 귀환을 실을 때까지 · 끔 = 같은 벽시계만큼(5초 — 끔은 마감 전엔 메타 행을 안 쓴다)
     if (K) await until(async () => { const m = metaOf(db); const r = m && (m.caravans || []).find((x) => x.id === K.c.id); return off ? null : (r && r.state === 'inbound' ? 1 : null); }, 5000, 200);
@@ -80,7 +83,7 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
     try { z.c.kill('SIGKILL'); } catch (e) {} await z.x;
     if (!K || !K2) return { tag, K: null };
     const k2 = K2.cars.find((x) => x.id === K.c.id);
-    z = up(db, port + 1, env);
+    z = await up(db, port + 1, env);
     const A = await until(async () => { const C = await car(port + 1); if (!C || !C.t775 || !C.t775.done) return null; return { C, c: C.cars.find((x) => x.id === K.c.id) || null }; }, 300000, 500);
     try { z.c.kill('SIGKILL'); } catch (e) {} await z.x;
     return { tag, K: { C: K2, c: k2, win: !!(K.C.w731 || K2.w731) }, A };   // win = 고립 순간 또는 죽기 직전에 창이 열려 있었다
@@ -106,7 +109,7 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
   console.log('\n③ 마감 낀 판 — 마감에서 머묾에 든 뒤 SIGKILL(켬 · 끔 같은 사본)');
   //   20초 하루로 다시 — 다음 마감에 도착할 가는 캐러밴이 설 때 SIGTERM(그 날로 저장)
   let pick = null;
-  { const z = up(S, base + 1, { VILLAGE_DAY_MS: '20000' });
+  { const z = await up(S, base + 1, { VILLAGE_DAY_MS: '20000' });
     pick = await until(async () => { const C = await car(base + 1); if (!C || !C.t775 || !C.t775.done) return null; const c = C.cars.find((x) => x.st === 'outbound' && x.body && x.arr === C.day + 1); return c ? { id: c.id, day: C.day } : null; }, 900000, 500);
     try { z.c.kill('SIGTERM'); } catch (e) {} await Promise.race([z.x, sleep(30000)]); try { z.c.kill('SIGKILL'); } catch (e) {} await z.x; }
   const M0 = metaOf(S);
@@ -114,14 +117,14 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
   if (!pick) { console.log(`\n=== T1034: 통과 ${pass} · 실패 ${fail} ===`); process.exit(1); }
   const run = async (tag, off, k) => {
     const db = copy('close-' + tag), port = base + 10 + k * 2, env = Object.assign({ VILLAGE_DAY_MS: '180000' }, off ? { T1034_CARAVAN_KEEP: '0' } : {});
-    let z = up(db, port, env);
+    let z = await up(db, port, env);
     //   머묾에 들었고 · 그 마감 끝 저장(메타 행 = 새 날)이 섰을 때 죽인다(같은 날 메타만 되살린다 — T728 규약)
     const K = await until(async () => { const C = await car(port); const c = C && C.cars.find((x) => x.id === pick.id); if (!(c && c.st === 'inbound' && c.body && c.body.phase === 'linger')) return null;
       const m = metaOf(db); return m && m._day === C.day ? { C, c } : null; }, 600000, 250);
     try { z.c.kill('SIGKILL'); } catch (e) {} await z.x;
     const M = metaOf(db);
     if (!K) return { tag, K: null, A: null, M };
-    z = up(db, port + 1, env);
+    z = await up(db, port + 1, env);
     const A = await until(async () => { const C = await car(port + 1); if (!C || !C.t775 || !C.t775.done) return null; return { C, c: C.cars.find((x) => x.id === pick.id) || null }; }, 300000, 500);
     try { z.c.kill('SIGKILL'); } catch (e) {} await z.x;
     return { tag, K, A, M };
