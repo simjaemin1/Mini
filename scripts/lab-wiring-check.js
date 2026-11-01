@@ -205,7 +205,8 @@ for (const [f, k] of [['server/trade.js', 'T807_QUOTE_TRIM'],   // ★[T817] 거
                       ['server/trade.js', 'T976_WANT_CAPPED'],   // ★[T976] 받을 양 견적 끝 줄이 상한 절삭의 wantCapped=true 를 안 덮는다 켬 기본
                       ['server/trade.js', 'T988_TRADE_WORDS'],   // ★[T988] 거래가 안 서는 판의 말 = 그 판의 참(종전 낱말) 켬 기본
                       ['server/trade.js', 'T999_TRADE_CAP'],   // ★[T999] 상한의 마지막 한 개도 판다 · 상한 탐색은 상한에 닿을 때까지 켬 기본
-                      ['sim/battle-core.js', 'T995_BACK_AMMO']]) {   // ★[T1008] 탄 없는 사수는 3.5m 에서 안 물러선다 켬 기본(battle-core — 서버 war-live · 전쟁실험실 인라인 · 번들 밖)
+                      ['sim/battle-core.js', 'T995_BACK_AMMO'],   // ★[T1008] 탄 없는 사수는 3.5m 에서 안 물러선다 켬 기본(battle-core — 서버 war-live · 전쟁실험실 인라인 · 번들 밖)
+                      ['sim/battle-core.js', 'T1019_UNTRAP']]) {   // ★[T1019] 막힌 칸 안 몸은 걸어 나온다 켬 기본 후보(battle-core 클램프 — 같은 손잡이가 war-live 마중 · villages 포진점도 켠다)
   const re = new RegExp(`process\\.env\\.${k}\\s*===\\s*'0'`);
   if (re.test(rd(f))) ok(`  채택 손잡이 ${k} 기본 ON (=== '0' 으로 되돌림 · ${f})`);
   else bad(`  채택 손잡이 ${k} 의 기본값이 채택값이 아니다 (${f})`);

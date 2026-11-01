@@ -2567,28 +2567,39 @@ function _gateTradePotential(all, ta, foodFn, floor) {
 //     진짜 다시 세기(`_t957Take`)가 서면 이 일은 버린다(그 셈이 바탕을 세운다). T957 · T968 끔이면 안 선다(종전 — 첫 무효화가 BFS).
 const T977_DIST_SAME = process.env.T977_DIST_SAME !== '0';
 let _t996Job = null;   // ★[T996] 바탕만 다시 세우는 일 { g, slices, ms }
+// ★★[T1011 2026-10-31 · T996 회부 2 · 3 · 손잡이 `T1011_BASIS_LAZY`(끔 기본 — `=1` 만 켬 · 켬 기본 후보 회부)] **바탕 다시 세움을 첫 무효화까지 미룬다.**
+//   T996: 환호 적재 뒤 바탕을 BFS 로 다시 세웠다(부팅 직후 마감 밖 7.7초 일). 무효화가 끝내 안 서면 헛일이다(라이브 사람 벽 · 울타리는 드물다 — T957 §1).
+//   켬: 같은 자리 같은 일을 **확인만** 한다(`verifyOnly` — 옛 바탕 칸을 지금 술어로 · 제 메모 · `PATH_STEP_NODES` 알갱이). 같으면 바탕 그대로(첫 무효화 BFS 0).
+//     다르면 BFS 를 안 돌고 **바탕을 내려놓는다**(null) ⇒ 첫 무효화는 확인 없이 BFS 한 번(그 셈이 지금 격자 바탕을 세운다 · T977 그대로) · 그 뒤는 BFS 0.
+//   값: 바탕은 쓸 때 다시 판정되므로(T977 증서) 있든 없든 행렬은 같다 · 주입 0 · 공유 메모 무접촉(T996 과 같다). 끔 = T996 그대로.
+const T1011_BASIS_LAZY = process.env.T1011_BASIS_LAZY === '1';
 function distBasisRefresh() {
   if (!T977_DIST_SAME || !T957_DIST_SLICE || !T968_DIST_BG || T598_ROUTE_COST || T598_ROUTE_EDGE) return false;
   if (!state._distBasis || !state._distCtx || !state.world) return false;
-  _t996Job = { g: _distMatrixGen('바탕 다시 세움', { basisOnly: true }), slices: 0, ms: 0 };
+  _t996Job = { g: _distMatrixGen(T1011_BASIS_LAZY ? '바탕 확인' : '바탕 다시 세움', T1011_BASIS_LAZY ? { basisOnly: true, verifyOnly: true } : { basisOnly: true }), slices: 0, ms: 0 };
   _probe.t996Start = (_probe.t996Start | 0) + 1;
   return true;
 }
 const _t977Same = (B, villages, n) => !!B && B.blk.length === n && B.coords.length === villages.length && villages.every((v, i) => v.coord.x === B.coords[i][0] && v.coord.y === B.coords[i][1]);
 // ★[T977] 재는 판 전용 셈(`T977_PROBE=1` · 안 주면 무동작 · 제품 값 무접촉) — 늘어난 몫의 귀속: 조각 머리(조각 벽 − 몸통) · 찬 머리(조각 첫 알갱이의 노드당 시간) · 지형 판정 · GC.
 const T977_PROBE = process.env.T977_PROBE === '1';
-const _t977 = { cur: null, last: null, coldNext: false, slice: null, gc: [], obs: null, runs: [] };
+// ★[T1027] 재는 판 전용 셈(`T1027_PROBE=1` · 안 주면 무동작 · 제품 값 무접촉) — 조각 안/밖 노드당 시간 표(③): A* `pathStep`(교역로 재개형 · T617 먼 길) 노드당 ns · 생활층 쉼표 한 걸음 ns.
+//   30초마다 `[T1027]` 한 줄(그 창 누계 · 줄을 찍고 비운다). 시계는 hrtime 둘(부름 앞뒤) — 부름마다 수십 ns 몫이 같이 들어간다(두 팔 같음).
+const T1027_PROBE = process.env.T1027_PROBE === '1';
+const _t1027 = { a: { ns: 0, pops: 0, n: 0 }, f: { ns: 0, pops: 0, n: 0 }, l: { ns: 0, n: 0 } };
+if (T1027_PROBE) setInterval(() => { const A = _t1027; console.log(`[${state.zoneId}] [T1027] 조각 노드당 ${JSON.stringify({ astar: A.a, far: A.f, life: A.l, nsPerPop: A.a.pops ? Math.round(A.a.ns / A.a.pops) : null, farNsPerPop: A.f.pops ? Math.round(A.f.ns / A.f.pops) : null, lifeNsPerStep: A.l.n ? Math.round(A.l.ns / A.l.n) : null })}`); _t1027.a = { ns: 0, pops: 0, n: 0 }; _t1027.f = { ns: 0, pops: 0, n: 0 }; _t1027.l = { ns: 0, n: 0 }; }, 30000).unref();
+const _t977 = { cur: null, last: null, coldNext: false, slice: null, gc: [], obs: null, runs: [], gi: 0 };   // ★[T1027] gi = 지금 조각 안 몇째 알갱이인가(조각 머리에서 0)
 const _t977hr = () => Number(process.hrtime.bigint());
 function _t977Begin(reason) {
   if (!_t977.obs) { try { const { PerformanceObserver } = require('perf_hooks'); _t977.obs = new PerformanceObserver((l) => { for (const e of l.getEntries()) if (_t977.gc.length < 50000) _t977.gc.push([e.startTime, e.duration]); }); _t977.obs.observe({ entryTypes: ['gc'] }); } catch (e) { _t977.obs = 1; } }
   const self = !_t977.slice; if (self) _t977SliceBeg();   // 동기 문(조각 한 번) — 조각 머리를 스스로 연다
-  return (_t977.cur = { self, reason: reason || '부팅', segN: 0, coldN: 0, coldNs: 0, coldPops: 0, warmN: 0, warmNs: 0, warmPops: 0, pops: 0, sampN: 0, sampNs: 0, verN: 0, same: null, slices: 0, sliceNs: 0, iv: [], sT: _t977hr(), sP: 0 });
+  return (_t977.cur = { self, reason: reason || '부팅', gb: new Array(12).fill(0), gp: new Array(12).fill(0), segN: 0, coldN: 0, coldNs: 0, coldPops: 0, warmN: 0, warmNs: 0, warmPops: 0, pops: 0, sampN: 0, sampNs: 0, verN: 0, same: null, slices: 0, sliceNs: 0, iv: [], sT: _t977hr(), sP: 0 });
 }
-function _t977Seg(R) { const ns = _t977hr() - R.sT, p = R.pops - R.sP; R.segN++; if (_t977.coldNext) { _t977.coldNext = false; R.coldN++; R.coldNs += ns; R.coldPops += p; } else { R.warmN++; R.warmNs += ns; R.warmPops += p; } }
+function _t977Seg(R) { const ns = _t977hr() - R.sT, p = R.pops - R.sP; R.segN++; { const g = _t977.gi++, b = g === 0 ? 0 : Math.min(11, 1 + Math.floor(Math.log2(g))); R.gb[b] += ns; R.gp[b] += p; }   /* ★[T1027] 조각 안 자리별(알갱이 0 · 1 · 2~3 · 4~7 … · 1024~) 노드당 시간 */ if (_t977.coldNext) { _t977.coldNext = false; R.coldN++; R.coldNs += ns; R.coldPops += p; } else { R.warmN++; R.warmNs += ns; R.warmPops += p; } }
 function _t977Go(R) { R.sT = _t977hr(); R.sP = R.pops; }
 function _t977Samp(R, ta, gx, gy) { const a = _t977hr(); const v = coarseOpen(ta, gx, gy); R.sampNs += _t977hr() - a; R.sampN++; return v; }
 function _t977End(R) { _t977Seg(R); _t977.last = R; _t977.cur = null; if (R.self) _t977SliceEnd(); }
-function _t977SliceBeg() { if (!T977_PROBE) return; _t977.coldNext = true; _t977.slice = [_t977hr(), require('perf_hooks').performance.now()]; }
+function _t977SliceBeg() { if (!T977_PROBE) return; _t977.coldNext = true; _t977.gi = 0; _t977.slice = [_t977hr(), require('perf_hooks').performance.now()]; }
 function _t977SliceEnd() {
   if (!T977_PROBE || !_t977.slice) return;
   const R = _t977.cur || _t977.last, [a, p] = _t977.slice; _t977.slice = null; _t977.coldNext = false;
@@ -2604,7 +2615,7 @@ function _t977Report(R, at) {   // at = '끝'(주입 뒤) | '다 셈'(주입 앞
   let gcMs = 0, gcN = 0; for (const [gs, gd] of _t977.gc) for (const [x, y] of iv) { const o = Math.min(gs + gd, y) - Math.max(gs, x); if (o > 0) { gcMs += o; gcN++; } }
   const ms = (ns) => +(ns / 1e6).toFixed(1), seg = R.coldNs + R.warmNs, sl = R.sliceNs + open;
   const S = { at, hash: R.hash || null, reason: R.reason, slices: R.slices + (open ? 1 : 0), sliceMs: ms(sl), segMs: ms(seg), headMs: ms(sl - seg), coldN: R.coldN, coldMs: ms(R.coldNs), coldPops: R.coldPops, warmN: R.warmN, warmMs: ms(R.warmNs), warmPops: R.warmPops,
-    nsPerPopCold: R.coldPops ? Math.round(R.coldNs / R.coldPops) : null, nsPerPopWarm: R.warmPops ? Math.round(R.warmNs / R.warmPops) : null, pops: R.pops, sampN: R.sampN, sampMs: ms(R.sampNs), verN: R.verN, same: R.same, gcMs: +gcMs.toFixed(1), gcN };
+    nsPerPopCold: R.coldPops ? Math.round(R.coldNs / R.coldPops) : null, nsPerPopWarm: R.warmPops ? Math.round(R.warmNs / R.warmPops) : null, pops: R.pops, byGrain: R.gb.map((ns, b) => (R.gp[b] ? [R.gp[b], Math.round(ns / R.gp[b])] : null)), sampN: R.sampN, sampMs: ms(R.sampNs), verN: R.verN, same: R.same, gcMs: +gcMs.toFixed(1), gcN };
   if (_t977.runs.length < 20) _t977.runs.push(S);
   console.log(`[${state.zoneId}] [T977] 거리행렬 일 쪼개 보기 ${JSON.stringify(S)}`);
   //   GC 항목은 뒤늦게 온다(관측자 콜백) — 동기 셈(부팅 · 한 번에)은 위 셈에 안 잡힌다 ⇒ 2초 뒤 같은 구간으로 한 번 더 센다
@@ -2677,6 +2688,13 @@ function* _distMatrixGen(reason, opts) {
   if (T977_DIST_SAME && !_prev && _wantK < 0 && !(T598_ROUTE_COST || T598_ROUTE_EDGE) && _t977Same(state._distBasis, villages, blk.length)) {
     if (yield* _t977Verify(state._distBasis.blk, isBlk, gw, _pr)) _same = state._distBasis.mat;   // 확인 고리는 따로 둔 발생기(BFS 발생기 몸통은 끔과 같게 · 한 몸에 둔 판 N1 ~ N4 는 BFS 노드당 시간이 컸다 · 보고 T977 §3)
     if (_pr) _pr.same = !!_same;
+  }
+  if (_basisOnly && opts.verifyOnly && !_same) {   // ★[T1011] 미룸 — 확인이 갈렸다: BFS 0 · 바탕을 내려놓는다(첫 무효화가 한 번 센다)
+    state._distBasis = null;
+    _probe.t1011Drop = (_probe.t1011Drop | 0) + 1;
+    console.log(`[${state.zoneId}] 🏘️ [T1011] 거리행렬 바탕 확인: 격자가 다르다(판정 ${sampled}칸 · ${Date.now() - t0}ms) — 바탕을 내려놓는다(BFS 0 · 첫 무효화가 한 번 센다)`);
+    if (_pr) _t977End(_pr);
+    return;
   }
   const INCR = _prev ? _wantK : -1;
   const mat = []; for (let i = 0; i < M; i++) { const row = new Array(M).fill(Infinity); row[i] = 0; mat.push(row); }
@@ -2990,7 +3008,9 @@ function _routeResume(key, x0, y0, x1, y1, budgetMs) {
   };
   for (;;) {
     const c0 = Date.now();
+    const _q0 = T1027_PROBE ? process.hrtime.bigint() : 0n, _p0 = T1027_PROBE ? (J.S.pops | 0) : 0;   // ★[T1027] 재는 판 전용
     const r = PathCore.pathStep(J.S, budgetMs > 0 ? PATH_STEP_NODES : 0);
+    if (T1027_PROBE) { _t1027.a.ns += Number(process.hrtime.bigint() - _q0); _t1027.a.pops += (J.S.pops | 0) - _p0; _t1027.a.n++; }
     { const el = Date.now() - c0; if (el > _probe.pathChunkMax) _probe.pathChunkMax = el; }   // 알갱이 하나의 최악(계측)
     if (r.done && !r.path && _routePlainRetry(J)) {   // ★[T578] 상한에 걸렸다 — 같은 슬롯에서 종전 규칙으로 이어 판다
       const J2 = _routeBegin(x0, y0, x1, y1, null, true);   // ⚠`_routeBegin` 머리가 세워 둔 일을 버린다 — 이 일은 같은 일의 이음이라 되돌려 놓는다
@@ -3514,7 +3534,9 @@ function _walkResume(key, coarse, budgetMs) {
       }
       if (J.farS) {
         for (;;) {
-          const r = PathCore.pathStep(J.farS, PATH_STEP_NODES);   // ★[T617 ①] 512 → 교역로 재개형과 같은 알갱이(32) — 512 한 걸음이 최대 40~52ms 였다(나무 술어가 청크를 낳는 칸). 양보는 반복 사이에서만(path-core 보증 · 같은 길)
+          const _q0 = T1027_PROBE ? process.hrtime.bigint() : 0n, _p0 = T1027_PROBE ? (J.farS.pops | 0) : 0;   // ★[T1027] 재는 판 전용
+          const r = PathCore.pathStep(J.farS, PATH_STEP_NODES);
+          if (T1027_PROBE) { _t1027.f.ns += Number(process.hrtime.bigint() - _q0); _t1027.f.pops += (J.farS.pops | 0) - _p0; _t1027.f.n++; }   // ★[T617 ①] 512 → 교역로 재개형과 같은 알갱이(32) — 512 한 걸음이 최대 40~52ms 였다(나무 술어가 청크를 낳는 칸). 양보는 반복 사이에서만(path-core 보증 · 같은 길)
           if (r.done) { seg = r.path; J.farS = null; (state._walkSegFar || (state._walkSegFar = new Map())).set(sk, seg || null); if (seg) J.far++; break; }
           if (over()) return { done: false };
         }
@@ -6168,6 +6190,7 @@ function _warEnsureDefense(body, sortie) {   // sortie=true — 출격 결단: �
   const d = _warDraftPids(w.def, comp, seed, w.id); if (!d) return;   // 주민 0 → 무저항(돌격이 목표에 닿으면 war-core walkover)
   const th = Math.atan2(ac.cy - dc.cy, ac.cx - dc.cx), so = scram ? WAR_SCRAM_STANDOFF : WL.WAR_DEF_STANDOFF;
   const rally = { cx: dc.cx + Math.cos(th) * so, cy: dc.cy + Math.sin(th) * so };
+  if (T1019_UNTRAP) { const c = _warStandNear(rally.cx, rally.cy); if (c) { rally.cx = c.cx; rally.cy = c.cy; } }   // ★[T1019 ⓒ] 켬 — 포진점이 막힌 칸이면 설 수 있는 가장 가까운 칸(못 찾으면 그 자리)
   const g = WL.buildGroup(d.units, comp.form, rally, th, seed); if (!g) return;
   _t790Mark(g);   // ★[T790] 켬 — 방어 대형도 몸 걸음(긴급 소집은 슬롯 놓기를 안 거친다 · 끔 = 무동작)
   g.holdPt = { cx: rally.cx, cy: rally.cy };
@@ -6202,6 +6225,24 @@ const T771_SORTIE_MISS = process.env.T771_SORTIE_MISS !== '0';   // ★[T781 10-
 //   새 수 0 · 새 손잡이 하나 · 칸 둘(몸 `_t956C0` = 돌격 시작의 접촉 수 · 전쟁 `_assaultMiss`).
 //   ★[T974 2026-10-28] 켬 기본(결함 고침 — PM · 열일곱째 판) · 되돌림 `T956_ASSAULT_MISS=0`(= 종전 글자 그대로).
 const T956_ASSAULT_MISS = process.env.T956_ASSAULT_MISS !== '0';   // ★[T974 10-28] 켬 기본 · 되돌림 `=0`
+// ★★[T1019 2026-10-31 · T1008 회부 2 ⓓ · ★PM] **헛 돌격 = 상대 hp 를 못 깎은 돌격** — 손잡이 `T1019_ASSAULT_HP`(끔 기본 · 켜는 값 `'1'` 하나 · 끔 = 종전 글자).
+//   T956 칸(위)은 "접촉 0 인 돌격"만 헛걸음으로 본다. 그런데 사거리 끝에서 화살 한 대(접촉 1 ~ 2 걸음)가 오가고 아무도 안 다친 돌격이
+//     날마다 같은 표로 되풀이됐다(보고 T1008 §3 ⓓ — 켬 판 넷 112날 · 되풀이 15 묶음 · 가장 긴 11날) — 접촉이 서 T956 칸이 안 선다.
+//   켬: 대치로 끝난 공격 돌격이 **방어 병사 hp 합을 못 줄였으면**(돌격 시작 hp — 그 뒤 든 병사는 다 찬 hp · 죽은 몸 = 0) 같은 칸(`w._assaultMiss`)을 세운다 —
+//     war-core 결단은 이튿날 돌격 줄을 뺀 같은 표(T956 그대로). 문턱 대신 hp 합 변화(새 수 0) · 칸 하나(몸 `_t1019H0` = 돌격 시작의 방어 병사 hp).
+//   T956 칸을 넓히는 줄이라 `T956_ASSAULT_MISS=0` 이면 안 돈다.
+const T1019_ASSAULT_HP = process.env.T1019_ASSAULT_HP === '1';
+// ★★[T1019 2026-10-31 · T1008 회부 1 ⓒ] **방어 포진점이 막힌 칸에 안 선다** — 손잡이 `T1019_UNTRAP`(켬 기본 후보 · 되돌림 `=0` · war-live 마중 · battle-core 클램프와 같은 손잡이 하나).
+//   지휘 몸은 대형 원점(포진점에서 시작)에 놓인다 — 포진점(회관 앞 12칸 · 45칸)이 집 발자국 · 나무 · 물 칸이면 그 몸이 그 칸 안에서 시작한다.
+//   켬: 포진점이 막혔으면 설 수 있는 가장 가까운 칸(`_warStandNear` — T541 ⓑ 나선 · 술어 `_warBlockedCell`) · 못 찾으면 종전 자리. 새 수 0.
+const T1019_UNTRAP = process.env.T1019_UNTRAP !== '0';
+function _t1019HpRef(f) { const H = new Map(); for (const u of f.ctx.units) if (u.side === 'B') H.set(u, Math.max(0, u.hp)); return H; }   // ★[T1019 ⓓ] 돌격 시작 — 방어 병사마다 hp
+function _t1019NoHurt(f, H0) {   // ★[T1019 ⓓ] 돌격 동안 방어 병사 hp 합이 안 줄었나(시작 hp · 그 뒤 든 병사는 다 찬 hp(battle-core spawn = maxHp) · 지금 hp(죽은 몸 = 0))
+  if (!f || !H0) return false;
+  let s0 = 0, s1 = 0;
+  for (const u of f.ctx.units) { if (u.side !== 'B') continue; s0 += H0.has(u) ? H0.get(u) : (u.maxHp || 0); s1 += Math.max(0, u.hp); }
+  return s1 >= s0;
+}
 // ── 교전 계기 — war-core onEngage(assault·sortie 결단)에서 부른다 ──
 //   true = 실체가 맡았다(w.phase='battle' — war-core 훅 계약). 군대 몸이 없으면(징발 0) 철수 처리(아래 _warNoArmy).
 function _warEngage(w, day, why) {
@@ -6217,6 +6258,7 @@ function _warEngage(w, day, why) {
   f.holder = side === 'A' ? 'B' : 'A';
   if (T771_SORTIE_MISS) body._t771C0 = side === 'B' ? (f.contacts | 0) : null;   // ★[T771] 방어 출격이 시작될 때의 접촉 수(대치 때 그대로면 헛걸음)
   if (T956_ASSAULT_MISS) body._t956C0 = side === 'A' ? (f.contacts | 0) : null;   // ★[T956] 공격 돌격이 시작될 때의 접촉 수(대치 때 그대로면 헛걸음)
+  if (T956_ASSAULT_MISS && T1019_ASSAULT_HP) body._t1019H0 = side === 'A' ? _t1019HpRef(f) : null;   // ★[T1019 ⓓ] 켬 — 공격 돌격이 시작될 때의 방어 병사 hp(대치 때 합이 안 줄었으면 헛걸음)
   state.warLive.orderAdvance(f, side);
   state.warLive.setSideCtl(f, side, true);   // 먼저 행군로 위를 대형으로 걷는다 — 곧은 길이 열리고 교전 거리에 들면 풀린다(_warAdvanceMarch)
   f.adv = { side, released: false, s: null };
@@ -6243,7 +6285,9 @@ function _warToStandoff(body) {
   if (body.defGroup) { WL.regroup(body.defGroup); if (!body.defGroup.holdPt) body.defGroup.holdPt = { cx: body.defGroup.cmd.cx, cy: body.defGroup.cmd.cy }; }
   body.mode = 'camp';
   if (T771_SORTIE_MISS && body._t771C0 != null) { if (!f || (f.contacts | 0) === body._t771C0) w._sortieMiss = state.world.day; body._t771C0 = null; }   // ★[T771] 출격이 접촉 없이 끝났다 — 그날을 전쟁에 남긴다
+  if (T1019_ASSAULT_HP && T956_ASSAULT_MISS && body._t956C0 != null && _t1019NoHurt(f, body._t1019H0)) w._assaultMiss = state.world.day;   // ★[T1019 ⓓ] 켬 — 방어 병사 hp 합을 못 줄인 돌격도 같은 칸(아래 T956 줄은 글자 그대로)
   if (T956_ASSAULT_MISS && body._t956C0 != null) { if (!f || (f.contacts | 0) === body._t956C0) w._assaultMiss = state.world.day; body._t956C0 = null; }   // ★[T956] 돌격이 접촉 없이 끝났다 — 그날을 전쟁에 남긴다
+  if (T1019_ASSAULT_HP) body._t1019H0 = null;
   w.phase = 'march'; w.op = 'camp'; w._sortie = false;
   state._warStat.standoff++;
   if (f) f.standoffs = (f.standoffs || 0) + 1;
@@ -7385,6 +7429,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   t1026: { on: T1026_SLOT_KEEP, start: Object.assign({}, _t1026.start), yield: Object.assign({}, _t1026.yield), drop: Object.assign({}, _t1026.drop), held: _pathJob ? (_pathJob.door || '?') : null },   // ★[T1026] 문마다 일 시작 · 기다림 · 버림(셈만)
   t968: { on: T968_DIST_BG, bgSlices: _probe.t968BgSlices | 0, bgMs: _probe.t968BgMs | 0, bgSliceMax: _probe.t968BgSliceMax | 0, ready: _probe.t968Ready | 0, readyClose: _probe.t968ReadyClose | 0, closeSlices: _probe.t968CloseSlices | 0, frozen: _probe.t968Frozen | 0, waitQ: _probe.t968WaitQ | 0 },   // ★[T968] 셈만
   t977: { same: T977_DIST_SAME, probe: T977_PROBE, runs: _t977.runs },
+  t1011: { lazy: T1011_BASIS_LAZY, drop: _probe.t1011Drop | 0 },   // ★[T1011] 바탕 확인만(셈만)
   t996: { start: _probe.t996Start | 0, done: _probe.t996Done | 0, same: _probe.t996Same | 0, drop: _probe.t996Drop | 0, slices: _probe.t996Slices | 0, work: _probe.t996Work | 0, sliceMax: _probe.t996SliceMax | 0, ms: _probe.t996Ms | 0, busy: !!_t996Job },   // ★[T996] 바탕 다시 세움(셈만)   // ★[T977] 재는 판 전용 셈(끔 = 빈 목록)
   t957: { on: T957_DIST_SLICE, runs: _probe.t957Runs | 0, slices: _probe.t957Slices | 0, sliceMax: _probe.t957SliceMax | 0, workMax: _probe.t957WorkMax | 0, restart: _probe.t957Restart | 0, busy: !!_t957Dist },   // ★[T957] 거리행렬 조각(셈만)   // ★[T929] 도착 경계 귀환 길(두 팔 다 선다 — 셈만)   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
@@ -7839,7 +7884,10 @@ function _lifeDayJobs(vils, add) {
     add('life', () => {
       try {
         if (!g) g = _lifeDailySteps(vil); else _t523Pause += Date.now() - at;
-        if (g.next().done) return;
+        const _q0 = T1027_PROBE ? process.hrtime.bigint() : 0n;   // ★[T1027] 재는 판 전용(쉼표 한 걸음)
+        const _gd = g.next().done;
+        if (T1027_PROBE) { _t1027.l.ns += Number(process.hrtime.bigint() - _q0); _t1027.l.n++; }
+        if (_gd) return;
         at = Date.now(); return 'retry';
       } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); }
     }, 'life:쉼표');
@@ -8228,6 +8276,7 @@ function __p3Bind(mock) {
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
     _t681Day, _t681Flush, T681_ON, T703_MARCH,   // ★[T703] T681 켬(기본) 판의 하루 경계 두 자리 — 하네스가 운영 하루 마감과 같은 차례(econ 앞 `_t681Flush` · 캐러밴 앞 `_t681Day`)로 부른다(값 무변 · 내보내기만)
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
+    T1019_UNTRAP, T1019_ASSAULT_HP, _t1019HpRef, _t1019NoHurt,   // ★[T1019] 하네스(`test-t1019-untrap`)가 운영과 같은 문을 부른다(내보내기만)
     banditHost, _t841Sh,   // ★[T841] 도적 몸 신원 문(호스트 `bodySh`) — 하네스(`test-body-seed-other`)가 운영과 같은 호스트를 도적 층에 꽂는다(내보내기만)
     T811_ARMS_BODY, _warArmsLoad, _warArmsCollect, _warArmsUnload, _t811Fall, _t857Pick, _t811Sync, _t811Stat,   // ★[T811] 무기 몸 짐 — 하네스(`test-arms-body`)가 운영과 같은 문을 부른다(내보내기만)
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
@@ -12312,9 +12361,20 @@ function* _huntHuntersSteps(vil, players, day) {
  *   전부 랩 `lifeDayAll` 의 그 줄들이다(라인은 위 머리말).
  */
 function _lifeGameDay(vil, day) { const g = _lifeGameDaySteps(vil, day); while (!g.next().done); }   // ★[T523] 정본 몸통은 아래 발생기(쉼표 = 사냥꾼 한 명)
+// ★★[T1013 2026-10-31 · 손잡이 `T1013_BAND_DAY` — 끔 기본(`'1'` 만 켬 · 끔 = main 글자) · 판 자(t577)는 아이에 `1` 을 싣는다] **사냥터 짓기를 그날 안에 끝낸다.**
+//   `_huntBandBuild` 는 마을 하루치 벽시계 몫(`T146_BUILD_MS` 20ms)이 바닥나면 커서를 남기고 **내일** 잇는다 — 다 짓는 날이 CPU 에 달린다(결과형 · T986 전수 표 5).
+//   가상 시계 판은 한 콜백 안에서 시계가 안 흘러 몫이 안 닳으니 첫날 다 짓는다. 벽시계 판은 부하가 크면 큰 마을 띠가 다음 날로 넘어가 사냥꾼 차감 ·
+//   14일 `land.game` 갱신이 판마다 달라졌다(`--house` 800날 부하 판 시드 1020 날 771 임업1 · 보고/T1013 §2).
+//   켜면 몫이 바닥나도 내일로 미루지 않고 **쉼표(yield)** 를 두고 같은 날 이어 짓는다 — 마감 조각(T687)이 나눠 돌고, 조각 없는 부르는 쪽(`_lifeGameDay`)은 한 번에 돈다.
+//   지은 띠 · 셀 차례는 끊는 자리와 무관하다(줄 커서 그대로) ⇒ 첫날 다 짓는 가상 시계 판과 같은 답. 새 수 0.
+const T1013_BAND_DAY = process.env.T1013_BAND_DAY === '1';
+const _t1013Stat = { short: 0, resume: 0, carry: 0 };   // 계측 전용 — 몫이 바닥난 마을-날 · 같은 날 이어 지은 번 · 내일로 넘긴 마을-날
 function* _lifeGameDaySteps(vil, day) {
   if (_t146() === 0) return;
-  const m = _huntBandBuild(vil);
+  let m = _huntBandBuild(vil);
+  if (!m && vil._gameScan) _t1013Stat.short++;
+  if (!m && T1013_BAND_DAY) while (!m && vil._gameScan) { _t1013Stat.resume++; yield; m = _huntBandBuild(vil); }   // ★[T1013] 켬 — 몫이 바닥나면 쉼표 뒤 같은 날 이어 짓는다(끔 = 내일)
+  if (!m && vil._gameScan) _t1013Stat.carry++;
   if (!m) return;
   if (T687_ON) yield;   // ★[T687] 쉼표 — 밴드 짓기 뒤(쉰 시간은 부르는 쪽이 뺀다)
   //   ① 사냥꾼 하루치 차감 — 정본 하나(하루 틱도 하네스도 이 문으로 들어온다)
@@ -14366,7 +14426,7 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat,   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
+module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat),   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
   streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   T856_LAND_ELEV, _t856LandElev,   // ★[T856] 마을 고도 — 하네스(`test-land-elev`)가 같은 함수를 부른다(사본 0)
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
