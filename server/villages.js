@@ -1957,6 +1957,33 @@ function territoryBoundary(territory, ccx, ccy) {
   }
   return out;
 }
+// ★★[T1063 · ★재민 11-01 실기 "영토 바깥에 건물이 지어지고 있던 경우"] **화면의 영토 = 서버 영토** — 손잡이 `T1063_TERR_BUILD`(켬 기본 후보 · `=0` 종전).
+//   종전: 클라가 그리는 초록 외곽선(`b`)은 시딩 때 `layout.territory` 로 구운 스냅샷(hall `data.bnd` · 위 Stage 4A 머리 "부채 — 계획서 §2")이고,
+//   서버 영토(`vil._terrSet` — 짓기 술어 `_lifeSiteFilters` "마을 영토 밖" 이 묻는 그 집합)는 `_terrGrow` 로 날마다 자란다 ⇒ 자란 칸에 선 집 · 마당이
+//   화면에선 외곽선 **밖**에 선다(보고/T1063 ② · ③ "주인 화면 영토 밖"). 켬 = welcome · 하루 방송이 **지금 `_terrSet` 의 외곽선**을 보낸다(같은 꼴 [dx,dy,mask] ·
+//   영토가 바뀐 날 그 마을만). 끔 = 종전 글자 그대로(메시지에 `bnd` 칸 없음). 서버 값 무변(그리기 자료만).
+const T1063_TERR_BUILD = process.env.T1063_TERR_BUILD !== '0';
+function _t1063Bnd(vil) {
+  const T = vil && vil._terrSet;
+  if (!T || !T.size) return null;
+  const cells = []; for (const k of T) { const i = k.indexOf(','); cells.push([+k.slice(0, i), +k.slice(i + 1)]); }
+  return territoryBoundary(cells, vil.ccx, vil.ccy);
+}
+// 하루 방송 칸 — 영토 칸 수가 지난번 보낸 뒤 바뀐 마을만(그 마을 외곽선) · welcome 페이로드(`clientPayload`)도 같이 고친다(늦게 들어온 사람도 지금 영토)
+const _t1063Sent = new Map();   // 마을 dbId → 마지막으로 보낸 영토 칸 수(마을 칸 · econ 무접촉 — 판 자 마을 칸 지문 무변)
+const _t1063Msg = (C, m) => (C && C.bnd ? Object.assign(m, { bnd: C.bnd }) : m);   // 켬이고 바뀐 마을이 있을 때만 칸 하나 더
+function _t1063DayBnd(vils) {
+  if (!T1063_TERR_BUILD) return null;
+  const out = {}; let n = 0;
+  for (const vil of vils) {
+    const sz = vil._terrSet ? vil._terrSet.size : 0;
+    if (!sz || sz === _t1063Sent.get(vil.dbId)) continue;
+    const b = _t1063Bnd(vil); if (!b) continue;
+    _t1063Sent.set(vil.dbId, sz); out[vil.dbId] = b; n++;
+    for (const cv of (state.clientPayload || [])) if (cv.id === vil.dbId) { cv.b = b; delete cv.approx; }
+  }
+  return n ? out : null;
+}
 
 // =============================================================================
 // ★★[T593 ⑤ 2026-10-03] **마을 이름표 = 땅이 말하는 직업** — 손잡이 `T593_LABEL`(기본 끔 · 켬 = '1' · 끔 = 옛 이름 그대로).
@@ -5408,7 +5435,8 @@ function init(deps) {
     // --- Stage 4A: 클라 영토 페이로드(welcome 1회) — 경계 셀 flat [dx,dy,mask] or 반경 근사 ---
     state.clientPayload = state.villages.map(v => {
       const e = { id: v.dbId, name: v.name, cx: v.ccx, cy: v.ccy, pop: v.econ.npcs.length, r: v._maxRPx };
-      if (v._bnd) e.b = v._bnd; else e.approx = 1;
+      const _b63 = T1063_TERR_BUILD && v._terrSet && v._terrSet.size ? _t1063Bnd(v) : null;   // ★[T1063] 켬 = 지금 서버 영토의 외곽선(끔 = 시딩 스냅샷 그대로 · 마을 칸 무접촉)
+      if (_b63) { _t1063Sent.set(v.dbId, v._terrSet.size); e.b = _b63; } else if (v._bnd) e.b = v._bnd; else e.approx = 1;
       e.lon = v._lonOff;   // §19 경도(클라 로컬 태양시 표시 공식용)
       e.tr = Math.round(Math.sqrt(((v.econ.land && v.econ.land.size ? v.econ.land.size * 25 : 2800)) / Math.PI) * SZ);   // §19/§2 영토 크립: econ 영토 등가 반경(px) — 매일 갱신(bnd는 시딩 스냅샷·시각 부채)
       return e;
@@ -7763,6 +7791,7 @@ function _t731Jobs(now, T) {
     add('ore', () => { if (C.ore.v) console.log(`[${state.zoneId}] ⛏ NPC 채굴: ${C.ore.v}개 마을 · 재고 -${C.ore.c.toFixed(0)}`); });
     add('wx', () => {
       for (const vil of V) C.terr[vil.dbId] = Math.round(Math.sqrt(((vil.econ.land && vil.econ.land.size ? vil.econ.land.size * 25 : 2800)) / Math.PI) * SZ);
+      C.bnd = _t1063DayBnd(V);   // ★[T1063] 켬 = 영토가 바뀐 마을의 지금 외곽선(끔 = null · 방송 글자 무변)
       for (const vil of V) {
         const w = vil.econ && vil.econ._weather;
         C.wx[vil.dbId] = (w && w.untilDay >= state.world.day) ? [w.name, (w.mult && w.mult.fertility != null) ? w.mult.fertility : 1] : null;
@@ -7776,8 +7805,8 @@ function _t731Jobs(now, T) {
     add('bcast', () => {
       let _cal = null; try { _cal = require('./events').calendarOf(state.world.day | 0); } catch (e) {}
       const _cn = T728_KEEP ? t728CalNext() : null;
-      state.deps.broadcast(_cn ? Object.assign({ type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal }, _cn)
-        : { type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal });
+      state.deps.broadcast(_t1063Msg(C, _cn ? Object.assign({ type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal }, _cn)
+        : { type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal }));
     });
     if (T681_ON) add('caravan', () => _t681Day(C.now), 'caravan_body');
     if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true), 'caravan_fish');
@@ -7996,6 +8025,7 @@ function _openDayJobs(now, T) {
   add('wx', () => {
     // §19/§2 영토 크립(4파): econ land.size는 매일 자람(1셀 단위 구매) — 등가 반경(px)을 클라에 동기.
     for (const vil of C.vils) C.terr[vil.dbId] = Math.round(Math.sqrt(((vil.econ.land && vil.econ.land.size ? vil.econ.land.size * 25 : 2800)) / Math.PI) * SZ);
+    C.bnd = _t1063DayBnd(C.vils);   // ★[T1063] 켬 = 영토가 바뀐 마을의 지금 외곽선(끔 = null · 방송 글자 무변)
     // ★★[날씨 축] econ 이 마을마다 돌리는 단기 날씨(가뭄·폭풍·풍요·안개)를 클라에 동기한다.
     //   ★계수를 클라가 다시 적지 않는다. econ 이 실제로 쓰는 `mult.fertility` 를 **그대로 보낸다**.
     for (const vil of C.vils) {
@@ -8016,8 +8046,8 @@ function _openDayJobs(now, T) {
     // ★[달력 2026-08-30] 날짜가 바뀌었으니 달력도 같이 보낸다 — 클라가 매핑을 다시 하지 않는다.
     let _cal = null; try { _cal = require('./events').calendarOf(state.world.day | 0); } catch (e) {}
     const _cn = T728_KEEP ? t728CalNext() : null;   // ★[T728 ④] 켬이면 다음 날짜 · 경계 시각을 같이(끔 = 종전 글자)
-    state.deps.broadcast(_cn ? Object.assign({ type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal }, _cn)
-      : { type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal });
+    state.deps.broadcast(_t1063Msg(C, _cn ? Object.assign({ type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal }, _cn)
+      : { type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal }));
   });
 
   // ⑦ 캐러밴 실체 동기 — 중앙 17ms 인데 **p95 989ms**(안이 전부 A*). 캐러밴 한 대씩 쪼갠다.
@@ -8309,6 +8339,7 @@ function __p3Bind(mock) {
   Object.assign(state, mock);
   return {
     state, tickWarBodies, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
+    T1063_TERR_BUILD, _t1063Bnd, _t1063DayBnd, _t1063Msg, territoryBoundary,   // ★[T1063] 화면 영토 = 서버 영토(하네스 `test-t1063-terr-draw` 가 운영과 같은 문을 부른다)
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
     _t681Day, _t681Flush, T681_ON, T703_MARCH,   // ★[T703] T681 켬(기본) 판의 하루 경계 두 자리 — 하네스가 운영 하루 마감과 같은 차례(econ 앞 `_t681Flush` · 캐러밴 앞 `_t681Day`)로 부른다(값 무변 · 내보내기만)

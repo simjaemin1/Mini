@@ -1281,6 +1281,8 @@
       if (msg.calendar) { myCalendar = msg.calendar; updateHud(); }   // ★[달력] 날짜가 바뀌었다
       // §4-4 Stage 4A: 게임일 1회 — 마을 인구 라벨 + NPC 직업(simJob) 변경분 + §19 영토 크립 반경(tr) 갱신
       if (c.simVillages && msg.pops) for (const v of c.simVillages) { if (msg.pops[v.id] != null) v.pop = msg.pops[v.id]; if (msg.terr && msg.terr[v.id] != null) v.tr = msg.terr[v.id]; }
+      // ★[T1063] 서버가 영토가 바뀐 마을의 **지금 외곽선**을 보낸 날(`T1063_TERR_BUILD` 켬 · 없으면 종전 그대로) — 그리는 초록 외곽선 = 서버 영토(짓기 술어의 그 집합)
+      if (c.simVillages && msg.bnd) for (const v of c.simVillages) { const nb = msg.bnd[v.id]; if (Array.isArray(nb) && nb.length) { v.b = nb; delete v.approx; } }
       if (msg.jobs) for (const [pid, job] of Object.entries(msg.jobs)) { const o = c.others.get(pid); if (o) o.simJob = job; }
       if (_wxIngest(c, msg.wx)) needsRedraw = true;   // ★[날씨 축] — 방송과 하네스가 같은 입구
     } else if (msg.type === 'bandit_camps') {
