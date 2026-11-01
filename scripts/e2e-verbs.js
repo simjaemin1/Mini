@@ -1027,9 +1027,10 @@ async function waitHttp(url, tries = 600) {
     //     ⇒ 게이트는 **내가** 넘는 것이다(그 사람이 아니라). 나는 **마을 중심에 서고**,
     //       화면 안에 보이는 사람을 누른다 — `pickAt` 도 `verbsFor` 도 거리 게이트가 없다.
     // ★[T849] `n` = 그 순간 **화면 안 사람 수**(아래 같은 화면 시험을 지난 NPC 수 · 마을 고르기가 쓴다) — 고르는 사람(`best`)은 그대로.
+    // ★[T1035] `zz` = 그중 **잠자리에 든 사람 수**(서버가 실어 보낸 일 `act` 가 취침 · 귀가 — 생활 층 `_lifeGoHome` 의 그 두 말 · villages.js:8888 · 8894) — 아래 기다리기가 쓴다.
     const findNpc = () => R.evaluate(() => {
       const cv = document.getElementById('canvas');
-      let best = null, n = 0;
+      let best = null, n = 0, zz = 0;
       for (const c of conns.values()) {
         if (!c.meta || !c.others) continue;
         const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
@@ -1040,11 +1041,12 @@ async function waitHttp(url, tries = 600) {
           // ★화면 **안**에 있어야 두드릴 수 있다(가장자리 24px 은 뺀다).
           if (!(sc.px > 24 && sc.py > 24 && sc.px < cv.width - 24 && sc.py < cv.height - 24)) continue;
           n++;
+          if (o.act === '취침' || o.act === '귀가') zz++;
           const d = Math.hypot(x - myAbsPredicted.x, y - myAbsPredicted.y);
           if (!best || d < best.d) best = { pid: o.pid, name: o.name || '', tribe: o.tribeName || null, x, y, d };
         }
       }
-      return best ? Object.assign(best, { n }) : null;
+      return best ? Object.assign(best, { n, zz }) : null;
     });
     // 마을 하나를 DB 에서 골라 그 중심으로 간다 — 거기 NPC 가 산다(게이트 안이라 거래도 뜬다).
     const vrows = (() => { try {
@@ -1071,6 +1073,34 @@ async function waitHttp(url, tries = 600) {
     //   그 끝의 탭 창은 R 주 스레드 94% 멈춤 · 광산1 · 2 에서 잡은 판은 20/20 초록).
     //   ⇒ 같은 여덟 곳에 한 번씩 서서(같은 `warp` · 1.5초 · 게이트 물음) **그 순간** 화면 안 사람 수만 세고(기다리지 않는다),
     //     **많은 곳부터**(같으면 DB 순서 · 못 선 곳은 뺀다) 종전 기다리기를 돈다. 기다리기 · 200px · 40번 · 게이트 · 판정은 그대로.
+    // ★[T1035] 진단 — 그 순간의 세계를 읽기만 한다(고르기 · 기다리기 · 판정 무변): 해 몫(서버 `worldPhase` 와 같은 시계 — 클라 `worldClock`) ·
+    //   내 자리(예측 · 서버 권위) · 마을 중심 · 화면 안 사람마다 [나에게서 · 중심에서 · 일(`act`) · 직업 · 걷는 중] · 화면 밖까지 든 사람 수.
+    const diag13 = (vid) => R.evaluate((id) => {
+      const cv = document.getElementById('canvas');
+      const wc = (typeof worldClock !== 'undefined') ? worldClock : null;
+      const ph = wc ? (((Date.now() + wc.serverNowOffset - wc.epoch) % wc.dayLengthMs) + wc.dayLengthMs) % wc.dayLengthMs / wc.dayLengthMs : null;
+      const A = (typeof _evVillageAnchorAbs === 'function') ? _evVillageAnchorAbs(id) : null;
+      const srv = (typeof myAbsPos !== 'undefined' && myAbsPos) ? myAbsPos : null;
+      const on = []; let all = 0;
+      for (const c of conns.values()) {
+        if (!c.meta || !c.others) continue;
+        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+        for (const o of c.others.values()) {
+          if (!o.npc) continue;
+          all++;
+          const x = ox + o.x, y = oy + o.y, sc = window.__w2s(x, y);
+          if (!(sc.px > 24 && sc.py > 24 && sc.px < cv.width - 24 && sc.py < cv.height - 24)) continue;
+          on.push([Math.round(Math.hypot(x - myAbsPredicted.x, y - myAbsPredicted.y)), A ? Math.round(Math.hypot(x - A.x, y - A.y)) : null,
+            o.act || '-', o.simJob || '-', (o.vx || o.vy) ? 1 : 0]);
+        }
+      }
+      on.sort((a, b) => a[0] - b[0]);
+      return { ph: ph == null ? null : +ph.toFixed(3), all, on,
+        me: [Math.round(myAbsPredicted.x), Math.round(myAbsPredicted.y)], srv: srv ? [Math.round(srv.x), Math.round(srv.y)] : null,
+        meC: A ? Math.round(Math.hypot(myAbsPredicted.x - A.x, myAbsPredicted.y - A.y)) : null, gate: window.__evNearVid,
+        lag: srv ? Math.round(Math.hypot(myAbsPredicted.x - srv.x, myAbsPredicted.y - srv.y)) : null };
+    }, vid);
+    const acts13 = (on) => { const o = {}; for (const r of on) o[r[2]] = (o[r[2]] || 0) + 1; return Object.entries(o).map(([k, n]) => `${k} ${n}`).join(' · '); };
     const _seen = [];
     for (const v of vrows.slice(0, 8)) {
       await warp(R, v.cx * 32 + 16, v.cy * 32 + 16, 6, 120);
@@ -1079,6 +1109,8 @@ async function waitHttp(url, tries = 600) {
       if (gate == null) { _seen.push({ v, n: null }); continue; }   // 중심에 못 섰다 — 차례에서 뺀다
       const cand = await findNpc();
       _seen.push({ v, n: cand ? cand.n : 0 });
+      const dg = await diag13(v.id);   // ★[T1035] 진단(읽기만)
+      console.log(`  · [상황] ⑬ 둘러봄 ${v.name}(${v.id}) — 몫 ${dg.ph} · 화면 안 ${dg.on.length}/${dg.all} · 가까운 셋 ${JSON.stringify(dg.on.slice(0, 3))} · 일 ${acts13(dg.on) || '-'} · 나↔중심 ${dg.meC}px · 예측↔서버 ${dg.lag}px`);
     }
     const _order = _seen.filter((x) => x.n != null).sort((a, b) => b.n - a.n).map((x) => x.v);   // 안정 정렬 — 같으면 DB 순서
     console.log(`  · [상황] 마을마다 그 순간 화면 안 사람  ${_seen.map((x) => `${x.v.name} ${x.n == null ? '못 섬' : x.n}`).join(' · ')}`);
@@ -1089,11 +1121,24 @@ async function waitHttp(url, tries = 600) {
       await sleep(1500);
       const gate = await R.evaluate(() => window.__evNearVid);
       if (gate == null) continue;                         // 중심에 못 섰다 — 다음 마을
-      for (let i = 0; i < 40 && !npc; i++) {              // 최대 ~40초, 200px 안으로 올 때까지
+      const _w0 = Date.now(), _d0 = await diag13(v.id); let _dMin = Infinity, _polls = 0, _nMin = Infinity, _nMax = 0, _zzPolls = 0;   // ★[T1035] 진단(읽기만)
+      // ★★[T1035 2026-11-01] **잠든 마을은 40번에 안 센다** — 화면 안 사람이 다 잠자리(`zz` = `n` · 서버 `act` 취침 · 귀가)인 번은 세지 않고
+      //   깰 때까지 그 자리에서 기다린다(조건 대기 · 200px · 40번 · 판정 무변). 상한 = 하루(welcome `worldClock.dayLengthMs` — 안전망 · 시계가 없으면 종전대로 다 센다).
+      //   실측(보고/T1035 §1): 마을 밤(그 마을 현지 해 몫 ≥ `dayPhaseRatio` — 세계 해 몫 + 경도 몫 · villages.js:12890 · 12905)엔 주민이 다 집 잠자리
+      //   (마을마다 가장 가까운 잠자리가 중심에서 363 ~ 421px)에 들어 200px 안으로 오는 사람이 없다 —
+      //   종전 글자는 마을마다 40번(48 ~ 68초)을 세고 여덟 곳을 건넜다. 아침 전에 다 쓰면 `없음`(빨강) · 아침에 닿은 마지막 마을이 광산4 면
+      //   아래 게이트 밖 걸음이 막힌 동쪽으로 갔다. 아침이면 출근 · 곳간 인출이 중심을 지난다(진단 판 새벽에 잡은 사람 189 ~ 197px).
+      const _dayMs = await R.evaluate(() => ((typeof worldClock !== 'undefined' && worldClock && worldClock.dayLengthMs) || null));
+      for (let i = 0; i < 40 && !npc && (!_dayMs || Date.now() - _w0 < _dayMs); ) {   // 깨어 있는 번으로 최대 ~40초, 200px 안으로 올 때까지
         const cand = await findNpc();
+        _polls++; if (cand) { _dMin = Math.min(_dMin, cand.d); _nMin = Math.min(_nMin, cand.n); _nMax = Math.max(_nMax, cand.n); } else _nMin = 0;
         if (cand && cand.d <= 200) { npc = cand; vsel = v; break; }
+        if (_dayMs && cand && cand.zz === cand.n) _zzPolls++; else i++;   // 다 잠들었으면 안 센다
         await sleep(1000);
       }
+      const _d1 = await diag13(v.id);
+      console.log(`  · [상황] ⑬ 기다림 ${v.name}(${v.id}) — ${npc ? '잡음' : '못 잡음'} · ${_polls}번(잠든 번 ${_zzPolls}) ${((Date.now() - _w0) / 1000).toFixed(1)}초 · 가장 가까이 온 ${_dMin === Infinity ? '-' : Math.round(_dMin)}px`
+        + ` · 화면 안 ${_nMin === Infinity ? 0 : _nMin}~${_nMax} · 몫 ${_d0.ph}→${_d1.ph} · 나↔중심 ${_d0.meC}→${_d1.meC}px · 예측↔서버 ${_d0.lag}→${_d1.lag}px · 처음 ${JSON.stringify(_d0.on.slice(0, 4))} 일 ${acts13(_d0.on) || '-'} · 끝 ${JSON.stringify(_d1.on.slice(0, 4))} 일 ${acts13(_d1.on) || '-'}`);
     }
     pre(!!npc, '마을 한복판에 서서 화면 안의 NPC 하나를 잡았다',
         npc ? `${npc.name}(${npc.tribe}) · 나에게서 ${Math.round(npc.d)}px` : '없음');
@@ -1178,7 +1223,17 @@ async function waitHttp(url, tries = 600) {
 
         // ── 말 걸기 → 그 사람 입에서 **마을이 아는 소식**이 나온다
         await clearNotices(R);
-        await R.evaluate(() => { const m = document.getElementById('ctxMenu'); if (m) m.children[0].click(); });
+        // ★★[T1035 2026-11-01] **메뉴가 연 그 사람**을 제품이 적어 둔 그대로 읽는다 — 누르는 그 틱에(`talkToNpc` 가 `_npcAsk` 를 놓고 · 답이 오면 `npcAskTake` 가 가져가며 지운다 · 46-h-verbs.js:315 · 331).
+        //   제품 `pickAt`(46-h-verbs.js:32 · 42)은 짚은 자리 상자(±`PICK_PLAYER_HALF`) 안의 **첫** 사람을 낸다(가장 가까운 사람이 아니다) — 몰려 걷는 사람들
+        //   (어부 다섯이 191 ~ 202px 에 붙어 걸었다) 가운데 하나를 짚으면 메뉴는 다른 사람 것으로 열리고 그 말은 그 사람 머리 위로 간다.
+        //   종전 글자는 짚은 사람(아래 `lastPt` — 하네스가 고른 가장 가까운 이)의 말풍선을 찾아 `null` 이었다(보고/T1035 §1 · 야간 10-31 같은 줄).
+        //   ⇒ "그 사람" = 메뉴가 연 사람(위 `[상황] 화면 안의 그 사람에게 메뉴가 열렸다` 의 그 메뉴) · 아래 말풍선 · 첫 줄 · 알림 판정은 그대로 그 사람에게 잰다.
+        const _ask = await R.evaluate(() => { const m = document.getElementById('ctxMenu'); if (m) m.children[0].click();
+          return (typeof _npcAsk !== 'undefined' && _npcAsk) ? { pid: _npcAsk.pid, name: _npcAsk.name } : null; });
+        if (_ask && _ask.pid !== npc.pid) {
+          console.log(`  · [상황] ⑬ 짚은 사람(${npc.name})과 메뉴가 연 사람(${_ask.name})이 다르다 — 제품 pickAt 은 상자 안 첫 사람 · 말 · 말풍선 · 알림은 메뉴가 연 그 사람으로 잰다`);
+          npc = { ...npc, pid: _ask.pid, name: _ask.name };
+        }
         await sleep(2500);
         const said = await R.evaluate((pid) => {
           const b = speechBubbles.get(pid);
@@ -1231,12 +1286,29 @@ async function waitHttp(url, tries = 600) {
       // ⚠**멀리 가면 그 사람이 시야에서 사라진다**(초안이 900px 밖으로 나갔다가 `others` 가 비어
       //   `null` 을 두 번 받았다 — 규칙이 아니라 표적을 잃은 것이다).
       //   ⇒ 게이트(260)만 넉넉히 넘고 AOI 안에는 남는 자리로 간다: 마을 중심에서 400px.
-      await warp(R, vsel.cx * 32 + 16 + 400, vsel.cy * 32 + 16, 8, 120);
+      // ★★[T1035 2026-11-01] 게이트 밖 자리는 **서버가 선 자리**로 정한다 — 중심 +400 이 물 · 바위 · 환호 칸이면 서버가 안 옮긴다
+      //   ("강·바다 위로는 텔레포트 불가" · zone.js:7275). 종전 글자는 그 판에 중심에 그대로 선 채 게이트 안을 읽었다(광산4 동쪽 · "게이트 밖 4" · 보고/T1035 §1).
+      //   ⇒ 동 · 서 · 남 · 북 400px 를 차례로 옮겨 보고 서버 권위 자리(`__getSrvAbs`)가 그 과녁(120px 안)에 선 첫 곳에 선다
+      //   (400 · 120 · 8번 · 아래 기다림 · 판정 그대로 — 넷 다 못 서면 아래 줄이 그대로 빨갛다).
+      let _wOut = null, _wDir = null, _wTx = null, _wTy = null;
+      for (const [dx, dy, nm] of [[400, 0, '동'], [-400, 0, '서'], [0, 400, '남'], [0, -400, '북']]) {
+        _wTx = vsel.cx * 32 + 16 + dx; _wTy = vsel.cy * 32 + 16 + dy;
+        _wOut = await warp(R, _wTx, _wTy, 8, 120);
+        if (_wOut && Math.hypot(_wOut.x - _wTx, _wOut.y - _wTy) <= 120) { _wDir = nm; break; }
+        console.log(`  · [상황] ⑬ 게이트 밖 ${nm}쪽 400px 에 못 섰다 — 서버가 선 자리 ${_wOut ? `(${Math.round(_wOut.x)},${Math.round(_wOut.y)})` : '-'}(과녁 (${_wTx},${_wTy}))`);
+      }
       await sleep(1800);
       // ★[T949] 1.8초는 **최소**다 — 묶은 상자에선 게이트 답(\`__evNearVid\`)이 그보다 늦게 바뀌었다("게이트 밖 4" — 옮긴 뒤에도 앞 마을 값).
       //   게이트 밖 답이 올 때까지 **기다린다**(상한 15초 = 안전망 · 못 벗어났으면 아래 줄은 그대로 빨갛다).
       for (let t0 = Date.now(); Date.now() - t0 < 15000 && (await R.evaluate(() => window.__evNearVid)) != null; ) await sleep(300);
       const outGate = await R.evaluate(() => window.__evNearVid);
+      { // ★[T1035] 진단(읽기만) — 옮긴 자리(서버 권위 · 존 로컬) · 가장 가까운 마을 · 클라 게이트 훅 · 텔레포트 거절 알림
+        const tx = _wTx, ty = _wTy, p = _wOut;
+        const nv = p ? vrows.map((v) => ({ v, d: Math.hypot(p.x - (v.cx * 32 + 16), p.y - (v.cy * 32 + 16)) })).sort((a, b) => a.d - b.d)[0] : null;
+        const ev = await R.evaluate(() => ({ dbg: window.__evDbg || null, tp: (window.__notices || []).slice(-12).filter((s) => /텔레포트/.test(s)).slice(-2) }));
+        console.log(`  · [상황] ⑬ 게이트 밖으로 — ${vsel.name}(${vsel.id}) ${_wDir || '넷 다 못 섬'}쪽 400px = (${tx},${ty}) · 선 자리 ${p ? `(${Math.round(p.x)},${Math.round(p.y)}) · 과녁에서 ${Math.round(Math.hypot(p.x - tx, p.y - ty))}px` : '-'}`
+          + ` · 가장 가까운 마을 ${nv ? `${nv.v.name}(${nv.v.id}) ${Math.round(nv.d)}px` : '-'} · 게이트 훅 ${String(outGate)} · minD ${ev.dbg ? ev.dbg.minD : '-'} · 알림 ${JSON.stringify(ev.tp)}`);
+      }
       pre(outGate == null, '마을에서 벗어났다(게이트 밖)', String(outGate));
       if (outGate == null) {
         // ⚠여기서도 화면에 사람이 없을 수 있다 — **보일 때까지 기다렸다가** 규칙을 묻는다.
