@@ -42,9 +42,9 @@ function run(tag, env) {
     const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
     const R = fs.readFileSync(path.join(ROOT, 'scripts', 't577-server-run.js'), 'utf8');
     const n = (V.match(/process\.env\.T1013_BAND_DAY/g) || []).length;
-    ok(/const T1013_BAND_DAY = process\.env\.T1013_BAND_DAY === '1';/.test(V) && n === 1
+    ok(/const T1013_BAND_DAY = process\.env\.T1013_BAND_DAY !== '0';/.test(V) && n === 1
       && /const KID_BAND = process\.env\.T1013_BAND_DAY != null \? process\.env\.T1013_BAND_DAY : '1';/.test(R) && /T1013_BAND_DAY: KID_BAND,/.test(R),
-      "⓪ 손잡이 — 제품 `=== '1'` 하나(끔 기본) · 판 자 아이 기본 `1`(부르는 값 먼저)", `env 읽기 ${n}`);
+      "⓪ 손잡이 — 제품 `!== '0'` 하나(켬 기본 · ★재민 11-01 · PM land1036) · 판 자 아이 기본 `1`(부르는 값 먼저)", `env 읽기 ${n}`);
   }
   const [on, off] = await Promise.all([run('on', {}), run('off', { T1013_BAND_DAY: '0' })]);
   ok(!!(on && on.on === true && on.short > 0 && on.carry === 0 && on.resume > 0),

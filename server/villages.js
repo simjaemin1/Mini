@@ -12399,7 +12399,7 @@ function _lifeGameDay(vil, day) { const g = _lifeGameDaySteps(vil, day); while (
 //   14일 `land.game` 갱신이 판마다 달라졌다(`--house` 800날 부하 판 시드 1020 날 771 임업1 · 보고/T1013 §2).
 //   켜면 몫이 바닥나도 내일로 미루지 않고 **쉼표(yield)** 를 두고 같은 날 이어 짓는다 — 마감 조각(T687)이 나눠 돌고, 조각 없는 부르는 쪽(`_lifeGameDay`)은 한 번에 돈다.
 //   지은 띠 · 셀 차례는 끊는 자리와 무관하다(줄 커서 그대로) ⇒ 첫날 다 짓는 가상 시계 판과 같은 답. 새 수 0.
-const T1013_BAND_DAY = process.env.T1013_BAND_DAY === '1';
+const T1013_BAND_DAY = process.env.T1013_BAND_DAY !== '0';   // ★[PM land1036 · ★재민 11-01 "제품도 켬"] 켬 기본 · 되돌림 `=0` = 종전(몫이 바닥나면 다음 날)
 const _t1013Stat = { short: 0, resume: 0, carry: 0 };   // 계측 전용 — 몫이 바닥난 마을-날 · 같은 날 이어 지은 번 · 내일로 넘긴 마을-날
 function* _lifeGameDaySteps(vil, day) {
   if (_t146() === 0) return;
