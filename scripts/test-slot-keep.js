@@ -11,7 +11,7 @@
 //
 // 틀: 씨앗 세계(`slicer-seed` 정본) · 빠른 날 →
 //   1판: 선계산 끔 · 캐러밴이 길에 나설 때까지 날을 돌리고 · 무효화로 교역로 캐시(메모리 · DB)를 비운 채 내린다.
-//   2판: 같은 DB 로 재기동 = **다시 뜬 직후** · 선계산 켬 · 유예 0(`VILLAGE_ROUTE_WARM_IDLE_MS=0` — 이미 있는 손잡이 · 두 문이 처음부터 겹치게) ·
+//   2판: 같은 DB 로 재기동(정본 하루) = **다시 뜬 직후** · 선계산 켬 · 유예 0(`VILLAGE_ROUTE_WARM_IDLE_MS=0` — 이미 있는 손잡이 · 두 문이 처음부터 겹치게) ·
 //        되살림 줄이 선 그 순간 **진짜 무효화 한 번 더**(`/routedbg?invalidate=1` = 벽 · 울타리) · 그 뒤 `/perf` probe `t1026` 을 본다.
 //
 // 검사:
@@ -66,6 +66,13 @@ async function up(warm, extra) {
   return (await _zp).ok;
 }
 async function down() { killAll(); await sleep(4000); }
+//   ★1판은 **정상 종료**(SIGTERM)로 내린다 — 다시 떠도 장부를 이어 가는 종료 저장(T728 · `t728Shutdown`)은 정상 종료에서만 돈다.
+//     SIGKILL 로 내리면 다시 뜬 세계에 길 위 캐러밴이 없어 되살림 줄이 안 선다(첫 판 실측 · ② 빨강). 존이 스스로 끝날 때까지 기다린다(상한은 표에만).
+async function downGraceful() {
+  const z = procs.find((p) => p.spawnargs.some((a) => /zone\.js$/.test(a)));
+  if (z && z.exitCode === null) { const gone = new Promise((r) => z.once('exit', r)); try { z.kill('SIGTERM'); } catch (e) {} const t = Date.now(); await Promise.race([gone, sleep(60000)]); console.log(`  (1판 존 정상 종료 ${Date.now() - t}ms${z.exitCode === null ? ' — ★60초 안에 안 끝났다' : ''})`); }
+  await down();
+}
 const probe = (j) => (j && j.econTick && j.econTick.probe) || {};
 const pairs = (t, a, b) => ((t && t.drop) ? ((t.drop[`${a}>${b}`] | 0) + (t.drop[`${b}>${a}`] | 0)) : 0);
 
@@ -87,10 +94,12 @@ const pairs = (t, a, b) => ((t && t.drop) ? ((t.drop[`${a}>${b}`] | 0) + (t.drop
   console.log(`  1판  날 ${P1.econTick ? P1.econTick.days : '?'} · 판 교역로 ${cold1} · 무효화 ${!!inv1.invalidated} → 캐시 메모리 ${R1.mem} · DB ${R1.db}`);
   ok(cold1 >= 1, '① [상황] 1판에서 교역로가 실제로 파였다(캐러밴이 길에 나섰다)', `${cold1}쌍`);
   ok(R1.mem === 0 && R1.db === 0, '① [상황] 무효화가 교역로 캐시를 메모리 · DB 둘 다 비웠다(다시 뜨면 길이 없다)', `메모리 ${R1.mem} · DB ${R1.db}`);
-  await down();
+  await downGraceful();
 
   // ── 2판: 다시 뜬 직후 · 선계산 켬(유예 0) · 되살림 줄이 선 순간 무효화 한 번 더 ────────────
-  if (!await up(true, { VILLAGE_ROUTE_WARM_IDLE_MS: '0' })) { console.log('  ✗ 2판 기동 실패'); process.exit(1); }
+  //   ⚠2판은 **정본 하루**(1,440,000ms)로 다시 띄운다 — 1판(빠른 날)의 날로 띄우면 존 기동(≈80초) 동안 길 위 캐러밴이 다 끝나 되살림 줄이 안 선다
+  //     (첫 판 실측: 되살림 줄 0대 · ② 빨강). 빠른 날 틀을 정본 하루로 다시 띄우는 것은 t368 → t646 · t1026-thrash 가 쓰는 그 문법이다.
+  if (!await up(true, { VILLAGE_ROUTE_WARM_IDLE_MS: '0', VILLAGE_DAY_MS: '1440000' })) { console.log('  ✗ 2판 기동 실패'); process.exit(1); }
   let P0 = {}, R0 = {};
   for (let i = 0; i < 300; i++) { P0 = await jget(`http://localhost:${ZPORT}/perf`); const t = probe(P0).t775; if (t && (t.wait > 0 || t.done)) break; await sleep(200); }
   const inv2 = await jget(`http://localhost:${ZPORT}/routedbg?invalidate=1`);
@@ -107,7 +116,7 @@ const pairs = (t, a, b) => ((t && t.drop) ? ((t.drop[`${a}>${b}`] | 0) + (t.drop
     await sleep(3000);
     P = await jget(`http://localhost:${ZPORT}/perf`); R = await jget(`http://localhost:${ZPORT}/routedbg`);
     const t = probe(P).t775;
-    if (t && (t.done || t.wait === 0) && R.warmLeft === 0) break;
+    if (t && (t.done || t.wait === 0)) break;   // 되살림 줄이 비면 끝(선계산이 다 끝나기까지는 안 기다린다 — 판정 대상은 두 문이 다투는 동안)
   }
   const pr = probe(P), T = pr.t1026 || {}, t775 = pr.t775 || {};
   const watched = Date.now() - t0;
