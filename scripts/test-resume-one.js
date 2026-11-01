@@ -28,7 +28,7 @@ console.log('\n=== T896 ② 캐러밴 몸 되살림 — 빈 쌍은 한 틱에 �
 console.log('\n① 글자');
 const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
 ok(/const T896_RESUME_ONE = process\.env\.T896_RESUME_ONE !== '0';/.test(V), "손잡이 — 켬 기본 · `=0` 만 끔(T910 ⓪)");
-ok(V.includes("    if (T896_RESUME_ONE) { if (_t896NeedSlot(c)) { if (slotTaken) { keep.push(c); _probe.t896Held = (_probe.t896Held || 0) + 1; continue; } slotTaken = true; } }   // ★[T896] 빈 쌍은 한 틱 한 대\n    const r = spawnCaravanBody(c, now);\n    if (r === 'wait') { keep.push(c); continue; }   // 길이 아직 — 줄에 남긴다(다음 틱)"),
+ok(V.includes("    if (T896_RESUME_ONE) { if (_t896NeedSlot(c)) { if (slotTaken) { keep.push(c); _probe.t896Held = (_probe.t896Held || 0) + 1; continue; } slotTaken = true; } }   // ★[T896] 빈 쌍은 한 틱 한 대\n    const r = _t1026Door('resume775', () => spawnCaravanBody(c, now));   // ★[T1026] 꼬리표(값 무변)\n    if (r === 'wait') { keep.push(c); continue; }   // 길이 아직 — 줄에 남긴다(다음 틱)"),
   '켬 줄은 `spawnCaravanBody` 부름 바로 앞 한 줄 · 끔 갈래 = 종전 두 줄 그대로');
 ok(/function _t896NeedSlot\(c\) \{[\s\S]{0,300}state\.routeCache\.get\(_routeKey\(a, b\)\.key\) === undefined;/.test(V), '빈 쌍 술어 = 교역로 캐시(`_routeKey` — 제품 열쇠)에 그 쌍이 없다');
 
@@ -56,7 +56,7 @@ delete process.env.T896_RESUME_ONE;
   ok(mc >= 10, '[상황] 저장된 세계 — 길 위 캐러밴이 메타에 실렸다', `캐러밴 ${mc}`);
   const again = async (tag, on, k) => {
     const db = path.join(TMP, tag + '.db'); for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(S + s, db + s); } catch (e) {} }
-    const port = base + 401 + k; const env = zoneEnv(db, port, Object.assign({ T910_SIG_PURE: '0' }, on ? {} : { T896_RESUME_ONE: '0' }));   // ★[PM 착지 10-24d] 판 꾸밈: T910 켬 기본이면 다시 뜬 판이 길 캐시를 지켜 빈 쌍이 안 선다 — 이 하네스가 재는 상황(캐시를 버린 재기동 · 빈 쌍 줄)은 `T910_SIG_PURE=0` 으로 세운다(두 팔 같게 · 단언 무변)   // ★[T910 ⓪] 켬 = 빈 값(기본) · 끔 = '0'
+    const port = base + 401 + k; const env = zoneEnv(db, port, Object.assign({ T910_SIG_PURE: '0', T1026_SLOT_KEEP: '0' }, on ? {} : { T896_RESUME_ONE: '0' }));   // ★[PM land1034] T1026_SLOT_KEEP 켬 기본이면 끔 판도 안 버린다(T896 이 고친 꼴을 T1026 이 문 전부로 넓힘) — 이 판은 T896 한 손잡이만 가르므로 둘 다 0 · ★[PM 착지 10-24d] 판 꾸밈: T910 켬 기본이면 다시 뜬 판이 길 캐시를 지켜 빈 쌍이 안 선다 — 이 하네스가 재는 상황(캐시를 버린 재기동 · 빈 쌍 줄)은 `T910_SIG_PURE=0` 으로 세운다(두 팔 같게 · 단언 무변)   // ★[T910 ⓪] 켬 = 빈 값(기본) · 끔 = '0'
     const c = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env, stdio: 'ignore' }); const cx = exitOf(c, 900000);
     const rows = []; const t0 = Date.now();
     while (Date.now() - t0 < 420000) { await sleep(10000); const p = await perf(port); if (!p || !p.econTick) continue;

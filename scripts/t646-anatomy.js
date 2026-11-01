@@ -24,6 +24,7 @@
 //     없으면 종전 그대로(낮 · 밤 창 둘 · 존 env 무변).
 //   [T968] --inv-day — 무효화를 **낮 창 머리**에 부른다(라이브의 흔한 꼴 — 마감 한참 앞의 벽 · 울타리). 밤 창은 --inv 와 같이 하루가 닫힐 때까지 잰다.
 //   [T1011] --boot-win — 기동 직후 부팅 창(부팅부터 /perf 한 번 + 30초 조각 둘 · `t996` · `t1011` probe).
+//   [T1027] T1027_ZFLAGS="--trace-gc --trace-deopt …" — 존 프로세스에 덧 깃발(공백으로 가름 · 존 로그로 나온다) · 없으면 종전 그대로.
 //   [T977] --inv-after — 밤 창(하루가 닫힘) 뒤 무효화 한 번 더 · 조각 둘(`after` 창) — 부팅 행렬 다음이 아닌 **둘째 다시 세기**. 조각마다 존 `[T977]` 줄(`T977_PROBE=1`)도 적는다.
 'use strict';
 const path = require('path');
@@ -484,7 +485,8 @@ async function run(conf, tag, probe) {
   const c = spawn(process.execPath, [path.join(dir, 'server/central.js')], { cwd: dir, stdio: 'ignore',
     env: Object.assign({}, env0, { PORT: String(CP), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });
   const PROF = process.argv.includes('--prof') ? path.join(DIR, `prof-${tag}`) : null;   // 기본 끔 — 켜면 존에 V8 CPU 프로파일(10ms 표본 · 자기 시간으로 빈 몫을 찾는다)
-  const z = spawn(process.execPath, [...(process.argv.includes('--shape') ? ['--allow-natives-syntax'] : []), ...(PROF ? ['--cpu-prof', '--cpu-prof-interval', '10000', '--cpu-prof-dir', PROF] : []), path.join(dir, 'server/zone.js')], { cwd: dir, stdio: ['ignore', logf, logf],
+  const ZF = (process.env.T1027_ZFLAGS || '').split(' ').filter(Boolean);   // ★[T1027] 존에 덧 V8 · node 깃발(`--trace-gc` · `--trace-deopt` · `--single-threaded-gc` …) — 없으면 종전 그대로
+  const z = spawn(process.execPath, [...ZF, ...(process.argv.includes('--shape') ? ['--allow-natives-syntax'] : []), ...(PROF ? ['--cpu-prof', '--cpu-prof-interval', '10000', '--cpu-prof-dir', PROF] : []), path.join(dir, 'server/zone.js')], { cwd: dir, stdio: ['ignore', logf, logf],
     env: Object.assign({}, env0, CONF[conf], { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY), DB_PATH: DB, VILLAGE_WAR_LOG: '0', T312_FISH_ACT: '1', ...(INV ? { E2E_GIVE: '1' } : {}),   // ★[T945] `/routedbg` 문(테스트 전용 게이트)
       T646_EVERY: String(SLICE_S * 30), T646_SEGONLY: SEG ? '1' : '', T675_SAB: process.argv.includes('--sab') ? '1' : '', T677_BR: process.argv.includes('--br') ? '1' : '', T719_HIST: process.argv.includes('--hist') ? '1' : '', T719_HBR: process.argv.includes('--hbr') ? '1' : '', T670_AFAIL_OUT: path.join(DIR, `${tag}.afail.json`), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`), T671_TRAP_OUT: process.argv.includes('--trap') ? path.join(DIR, `${tag}.trap.json`) : '', T671_SHAPE_OUT: process.argv.includes('--shape') ? path.join(DIR, `${tag}.shape.jsonl`) : '' }) });
