@@ -3332,6 +3332,21 @@ function _t1061Sigs() {
   for (const b of bs) { hb.update(b.id + '|' + (b.c ? (b.c.state + '|' + b.c.departDay + '|' + b.c.arriveDay) : '') + ':'); for (const p of (b.pts || [])) hb.update(p.x + ',' + p.y + ';'); }
   return { walkN: wk.length, walkSig: h.digest('hex').slice(0, 16), bodyN: bs.length, bodySig: hb.digest('hex').slice(0, 16) };
 }
+// ★[T1061] 걷는 길 감사(계측 전용 · `T1061_WALK_AUDIT=1` 인 판의 `/routedbg` 만) — 캐시에 든 걷는 길을 **지금 이 순간** 한 번에(예산 0) 다시 파서 바이트를 견준다.
+//   걷는 길의 입력(답압 등급 · 나무)은 시간에 따라 변하므로 다른 시각에 판 두 판의 서명은 같을 까닭이 없다 — 같은 순간의 한 번에 판 길과 견주면 조각 경계의 몫만 남는다.
+function _t1061WalkAudit() {
+  if (!state.walkCache) return { n: 0, mismatch: 0 };
+  let n = 0, bad = 0, first = '';
+  for (const [key, hit] of [...state.walkCache.entries()]) {
+    state.walkCache.delete(key); if (state._walkJobs) state._walkJobs.delete(key);
+    let r = null; try { r = _walkResume(key, hit.coarse, 0); } catch (e) { r = null; }
+    const a = hit.pts || [], b = (r && r.pts) || [];
+    const same = a.length === b.length && a.every((p, i) => p.x === b[i].x && p.y === b[i].y);
+    n++; if (!same) { bad++; if (!first) first = `${key} ${a.length}↔${b.length}`; }
+    state.walkCache.set(key, hit);   // 원래 것을 되돌린다(감사는 세계를 안 바꾼다)
+  }
+  return { n, mismatch: bad, first };
+}
 function routeDebug(opts) {
   const o = opts || {};
   const out = { mem: state.routeCache ? state.routeCache.size : 0, sig: state._routeSig || null,
@@ -3354,7 +3369,7 @@ function routeDebug(opts) {
                 stale: state._routeStale | 0,   // ★[T619] 마을 칸이 달라 안 물려받은 쌍
                 db: (state.db && state.db.countTradeRoutes) ? state.db.countTradeRoutes(state.zoneId) : -1,
                 // ★[T1061] 값 같음 증명용 서명(시험 전용 창) — 걷는 길 캐시 전체 · 캐러밴 몸(id · 구간 · 폴리라인 바이트). 조각 경계가 달라도 같아야 한다.
-                ..._t1061Sigs() };
+                ..._t1061Sigs(), ...(process.env.T1061_WALK_AUDIT === '1' ? { walkAudit: _t1061WalkAudit() } : {}) };
   // ★★[T85] **재개형 감사** — 캐시에 든 길(동기 문이 판 것)과 **재개형으로 다시 판 길**이 비트 동일인가.
   //   ★왜 이 자리인가: 579쌍은 **정본 시드 세계의 실제 쌍**이다(선계산 큐가 세운 그것) —
   //     합성 격자로 재면 그건 다른 세계를 잰 것이다(족보: 계측기도 사본 금지 · 정본 함수를 불러라).
