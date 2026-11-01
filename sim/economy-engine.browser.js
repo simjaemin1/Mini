@@ -10377,6 +10377,7 @@ function houseCrewDay(v, s2, crew, labor, tripsEach, perLoad, roundS, dbg, advan
 //   ⚠땅이 없는 자리 — 서버 `_lifeAddHouseSite` 는 영토 칸 · 물 · 농지 거름으로 집터를 못 찾으면 안 세운다(정지 마을). 랩 t17 엔 영토 칸이 없어 늘 선다(보고 T1050 §1 회부).
 //   붙이는 문은 `labHouseAttach(v, 시딩 집 칸, { crew: LIFE_CREW, pday: LIFE_STAGE_PDAY })` 하나 — 자 t17 · t176 이 `layout.houses` 칸 수(서버 `_houseCells` 시딩과 같은 칸)와
 //     서버 정본 두 수(`villages.js` 의 그 두 상수 · `__labProbe._t400Probe.LIFE_CREW` · `.LIFE_STAGE_PDAY` 로 읽는다 — 사본 0)를 준다. 안 붙인 마을(서버 · 다른 자 · 랩 HTML)은 한 글자도 안 닿는다.
+//   ★[T1056] 랩 HTML 둘(마을실험실 · 전쟁실험실)의 생활층 집 고리도 이 손잡이를 읽는다(켬 문 `_t1056H` — 켬 = 마을 집터를 아래 `labSiteCrewDay` 가 짓는다 · 끔 = 종전 셋째 규칙 = 종전 바이트).
 const T1050_LAB_HOUSE = !(typeof process !== 'undefined' && process.env && process.env.T1050_LAB_HOUSE === '0');
 function labHouseAttach(v, cells0, life) {
   if (!T1050_LAB_HOUSE || !T400_BUILD_ACT || !v || !life || !(life.crew > 0) || !(life.pday > 0)) return false;
@@ -10389,19 +10390,33 @@ function labHouseDay(v) {
   const L = _villageLayoutMod(); if (!L) return null;
   const N = (v.npcs && v.npcs.length) || 0;
   v._mapBeds = H.cells * L.HOUSE_CAP_PER_FLOOR;                                                         // ① 침상
-  if (!H.site && L.houseSiteWant(N, v.housing + ((T958_HOUSE_REAL && v._t958Want > 0) ? v._t958Want : 0), H.cells, H.site ? 1 : 0)) H.site = { stage: 1 };   // ② 방아쇠 → 집터
+  if (!H.site && L.houseSiteWant(N, v.housing + ((T958_HOUSE_REAL && v._t958Want > 0) ? v._t958Want : 0), H.cells, H.site ? 1 : 0)) H.site = labSiteNew({});   // ② 방아쇠 → 집터
   v._t400Live = true;                                                                                    // ③ 크루 하루(서버 `_t400BuildDay` 머리 그 줄)
-  const dbg = { crew: 0, trips: 0, perTrip: 0, took: 0, placed: 0, adv: 0, stall: 0, walkS: 0 };
+  const dbg = labCrewDbg();
   const s2 = H.site; if (!s2) return dbg;
-  const n = Math.min(H.crew, N); if (!n) return dbg;
+  labSiteCrewDay(v, s2, H.crew, H.pday, dbg, () => { H.cells++; H.site = null; H.sum.built++; });
+  const U = H.sum; U.days++; U.crewDays += dbg.crew; U.trips += dbg.trips; U.took += dbg.took; U.adv += dbg.adv; U.stallDays += dbg.stall;
+  return dbg;
+}
+// ★★[T1056 2026-11-01 · T1050 회부 2] **몸 없는 크루의 집터 하루** — 위 `labHouseDay`(랩 자 t17 · t176)와 랩 HTML 둘(마을실험실 · 전쟁실험실 생활층 집 고리)이
+//   **같은 함수**를 부른다(사본 0 · 새 수 0). 몸통은 `labHouseDay` ③④ 를 글자 그대로 뺐다(t17 · t176 판 바이트 같음):
+//     크루 = 명부 앞 `min(LIFE_CREW, 인구)` 명의 일꾼 날수(손만 있는 자리) · 시공 = 크루 × `LIFE_STAGE_PDAY` · 왕복 상한 = 없음 · 한 짐 = `crewPerLoad`
+//     ④ 단계가 공정 끝(`hutStageCount()` — 서버 글자 `stage <= 3` 의 그 수)을 넘으면 `done()`(부르는 쪽의 완공 — t17 = 집 칸 +1 · 랩 HTML = 그 집 층 +1)
+//   s2 = 집터(`stage` · `mat` 를 쥔다 — 랩 HTML 은 제 집 객체 그대로) · crewMax · pday = 서버 정본 두 수(`villages.js` `LIFE_CREW` · `LIFE_STAGE_PDAY` —
+//   t17 은 `__labProbe._t400Probe` 로 · 랩 HTML 은 번들이 그 두 줄에서 구운 `EconEngine.LifeCrew` 로 받는다)
+function labCrewDbg() { return { crew: 0, trips: 0, perTrip: 0, took: 0, placed: 0, adv: 0, stall: 0, walkS: 0 }; }   // 그날 계측 칸(`houseCrewDay` 가 더한다 — 서버 `_t400Dbg` 의 그 칸들)
+function labSiteNew(s2) { if (!(s2.stage > 0)) s2.stage = 1; return s2; }   // 서버 `_lifeAddHouseSite` 가 세우는 그 단계(`stage: 1` — ①굴착을 마친 집터)
+function labSiteCrewDay(v, s2, crewMax, pday, dbg, done) {
+  const N = (v.npcs && v.npcs.length) || 0;
+  const n = Math.min(crewMax, N); if (!n) return dbg;
+  labSiteNew(s2);
   const crew = []; for (let i = 0; i < n; i++) crew.push({ inventory: {} });
   dbg.crew = n; dbg.perTrip = Infinity;
-  houseCrewDay(v, s2, crew, n * H.pday, Infinity, crewPerLoad, 0, dbg, () => {
+  houseCrewDay(v, s2, crew, n * pday, Infinity, crewPerLoad, 0, dbg, () => {
     s2.stage++;
     if (s2.stage < hutStageCount()) return true;                                                         // ④ 완공 — 서버 `stage <= 3` 그 경계
-    H.cells++; H.site = null; H.sum.built++; return false;
+    done(); return false;
   });
-  const U = H.sum; U.days++; U.crewDays += dbg.crew; U.trips += dbg.trips; U.took += dbg.took; U.adv += dbg.adv; U.stallDays += dbg.stall;
   return dbg;
 }
 function labHouseWorldDay(world) {   // 하루 끝(econ 틱 뒤 — 서버 생활층 차례) · 붙인 마을만
@@ -14999,7 +15014,7 @@ module.exports = {
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
-  T1050_LAB_HOUSE, crewPerLoad, houseCrewDay, labHouseAttach, labHouseDay, labHouseWorldDay,   // ★[T1050] 집 크루 하루 정본(서버 생활층 · 랩 몸 없는 마을이 같은 함수) · 손잡이
+  T1050_LAB_HOUSE, crewPerLoad, houseCrewDay, labHouseAttach, labHouseDay, labHouseWorldDay, labSiteNew, labSiteCrewDay, labCrewDbg,   // ★[T1050] 집 크루 하루 정본(서버 생활층 · 랩 몸 없는 마을이 같은 함수) · 손잡이 · ★[T1056] 몸 없는 크루의 집터 하루(t17 · t176 · 랩 HTML 둘이 같은 함수)
   T400_BUILD_ACT, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
@@ -17625,5 +17640,5 @@ module.exports = {
 
 ;return module.exports;})();
 
-  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops; root.EconEngine.ZoneCfg=modules.zcfg;
+  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops; root.EconEngine.ZoneCfg=modules.zcfg; root.EconEngine.LifeCrew={"crew":2,"pday":1};
 })(typeof window!=='undefined'?window:globalThis);

@@ -1,0 +1,14 @@
+# T1056 끔 = 종전 바이트 · 리팩터 무변
+① t17(sim/economy-sim.js — labHouseDay 몸통을 labSiteCrewDay 로 뺀 판) ↔ main 41c74d6(따로 뺀 작업 트리)
+   60날 시드 1020 T17_JSON: cmp 같음
+   800날 시드 1020 + 관찰기 셋(t1012 · lab-diverge-ctl · t1050) — t1012.json · t17.json · t1050.json: cmp 셋 다 같음
+② 랩 HTML 둘 — base(git show HEAD:lab/<파일>) ↔ 지금 랩 ?T1050_LAB_HOUSE=0 · 빨리감기 300날 · 마을 8 · 시드 7 · 42 · 1020
+   세계 지문(날마다 마을별 econ 인구 · 몸 · 곳간 · 창고 · 집 줄) 6/6 같음(계측/T1056_랩HTML.txt ⓑ)
+③ test-lab-psite 를 끔 판(LAB_FILE=lab/전쟁실험실.html?T1050_LAB_HOUSE=0 = 옛 규칙)으로 — 새 ⑧ · ⑧ⓞ 빨강(결과: FAIL 2건)
+     ⑧ 의 자(의뢰 집이 서 있는 날만) — B 0/3(평균 오른 단계 0 · 곳간 빈 날 0 · 완공 0)
+     ✗ ⑧ 의뢰 집이 서 있는 날, 마을 집터는 크루가 붙은 날 **전부** 서버 집 규칙의 하루 몫을 받았다 — B 0/3일 (의뢰 집이 마을 몫을 안 깎았다)
+     ✗ ⑧ⓞ 옛 규칙이면 빨강 — 마을 집터 하루 진척이 옛 상한 L_BUILDCAP(0.35채)을 넘은 날 0일(A 0 · B 0 · 최대 하루 0채 · 옛 규칙 = 0일)
+     ✓ ⑧ⓜ 자명 통과 금지 — 마을 크루를 일부러 빼앗은 미끼 판은 같은 자로 **빨강** — B′ 0/3일 (크루 붙은 날 3 중 3일 몫 미달)
+   결과: FAIL (2건)
+④ 서버 판 자 크루 몸 수(프리로드 탐침 — econ houseCrewDay 를 감싸 crew.length 를 센다 · 계측 전용 · 커밋 밖) — t577-server-run.js 60날 시드 1020
+   {"calls":1027,"hist":{"1":1027},"labor":1027,"adv":483}   ← 크루-날 1,027 전부 몸 1(VILLAGE_NPC_CAP=1 · _t400Crew 가 명부 몸에서 고른다) · 랩 = LIFE_CREW 2

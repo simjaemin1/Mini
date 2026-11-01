@@ -1033,5 +1033,57 @@ console.log('\n[N] 집 크루 하루 — 정본 하나(T1050)');
   if (bite) ok('ⓔ [자명 통과 금지] 서버 몸통에 곳간 출구를 되살린 사본은 ⓑ 가 문다'); else bad('ⓔ [자명 통과 금지] 비틀어도 같은 답');
 }
 
+// ── O: 랩 HTML 둘의 집 고리 = 서버 집 규칙(T1056) ─────────────────────────────────────
+//   ★[T1056 2026-11-01 · T1050 회부 2] 마을실험실 · 전쟁실험실 생활층 집 고리(켬 — `T1050_LAB_HOUSE` 랩 기본)가 t17 · t176 의 몸 없는 크루와 **같은 함수**
+//   (econ `labSiteCrewDay` → `houseCrewDay`)를 부른다. 크루 두 수는 번들이 서버 `villages.js` 두 줄에서 구운 `EconEngine.LifeCrew` 다(사본 0).
+//   ⓐ econ: `labHouseDay` 가 `labSiteCrewDay` 를 부르고(몸통 하나) · `labSiteCrewDay` 가 `houseCrewDay` 를 한 번 부른다
+//   ⓑ 번들: `EconEngine.LifeCrew` = 서버 `LIFE_CREW` · `LIFE_STAGE_PDAY` 글자(값 대조)
+//   ⓒ 랩 HTML 둘(번들 밖 글): `EconEngine.labSiteCrewDay(` 한 자리 · econ `_t400Live` 한 자리 · 방아쇠가 `_t958Want` 를 읽는다 · 크루 몸통 사본 0
+//      (`actFromGranary` · `hutEconStage` · `crewPerLoad` · `houseCrewDay(` 를 번들 밖에서 안 부른다) · 켬 문(`_t1056H`)이 econ 손잡이 둘을 읽는다 ·
+//      셋째 규칙 글(`L_BUILDRATE*slack` 진척)은 끔 갈래 한 자리뿐
+//   ⓓ [자명 통과 금지] 번들에서 LifeCrew 를 뺀 사본 · 방아쇠에서 `_t958Want` 를 뺀 사본 · 랩 글에 곳간 출구를 손으로 부른 사본 · 크루 문을 하나 더 둔 사본은 ⓑⓒ 가 문다
+console.log('\n[O] 랩 HTML 둘의 집 고리 — 서버 집 규칙 · 정본 하나(T1056)');
+{
+  const ESRC = rd('sim/economy-sim.js'), B = rd('sim/economy-engine.browser.js');
+  const fnB = (src, name) => { const i = src.indexOf('function ' + name + '('); if (i < 0) return null; let d = 0; for (let j = src.indexOf('{', i); j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}') { d--; if (!d) return src.slice(i, j + 1); } } return null; };
+  const lhd = fnB(ESRC, 'labHouseDay'), lsc = fnB(ESRC, 'labSiteCrewDay');
+  if (lhd && lsc && (lhd.match(/labSiteCrewDay\(/g) || []).length === 1 && !/houseCrewDay\(/.test(lhd) && (lsc.match(/houseCrewDay\(/g) || []).length === 1)
+    ok('ⓐ econ `labHouseDay`(t17 · t176) → `labSiteCrewDay` → `houseCrewDay` — 몸 없는 크루 몸통 하나');
+  else bad(`ⓐ econ 몸 없는 크루 몸통 — labHouseDay ${lhd ? '○' : '✗'} · labSiteCrewDay ${lsc ? '○' : '✗'}(한 벌이어야 한다)`);
+  const lifeOf = (b) => { const m = b.match(/root\.EconEngine\.LifeCrew=(\{[^}]*\});/); try { return m ? JSON.parse(m[1]) : null; } catch (e) { return null; } };
+  const LC = +(LIVE.match(/const LIFE_CREW = (\d+)/) || [])[1], LP = +(LIVE.match(/const LIFE_STAGE_PDAY = (\d+)/) || [])[1];
+  const lifeOk = (b) => { const L = lifeOf(b); return !!L && L.crew === LC && L.pday === LP && LC > 0 && LP > 0; };
+  if (lifeOk(B)) ok(`ⓑ 번들 \`EconEngine.LifeCrew\` = 서버 \`LIFE_CREW\` ${LC} · \`LIFE_STAGE_PDAY\` ${LP}(villages.js 글자 — 사본 0)`);
+  else bad(`ⓑ 번들 \`EconEngine.LifeCrew\` ${JSON.stringify(lifeOf(B))} ≠ 서버 ${LC} · ${LP} — 번들을 다시 구워라(sim/build-econ-bundle.js T1056)`);
+  const outside = (H) => { const a = H.indexOf('<!-- ENGINE-BUNDLE-START'), b = H.indexOf('<!-- ENGINE-BUNDLE-END'); return (a >= 0 && b > a) ? H.slice(0, a) + H.slice(b) : H; };
+  const OLD = 'doBulk?L_BUILDRATE*slack:Math.min(L_BUILDCAP,Math.max((h._crewD||0)/L_BUILDSEC,L_BUILDRATE*0.25*slack))';
+  const TRIG = /VillageLayout\.houseSiteWant\(s\.pop,\(\(s\.econ&&s\.econ\.housing\)\|\|0\)\+\(\(_t1056H&&EconEngine\.T958_HOUSE_REAL&&s\.econ\._t958Want>0\)\?s\.econ\._t958Want:0\),builtFl,sites\)/;
+  const judge = (H) => {
+    const O = outside(H), why = [];
+    if ((O.match(/EconEngine\.labSiteCrewDay\(/g) || []).length !== 1) why.push(`크루 문 ${(O.match(/EconEngine\.labSiteCrewDay\(/g) || []).length}곳(하나)`);
+    if ((O.match(/s\.econ\._t400Live=true/g) || []).length !== 1) why.push('`_t400Live` 한 자리 아님');
+    if (!TRIG.test(O)) why.push('방아쇠가 `_t958Want` 를 안 읽는다');
+    if (/actFromGranary|hutEconStage|crewPerLoad|houseCrewDay\(/.test(O)) why.push('번들 밖 크루 몸통 사본(곳간 출구 · 단계 자재 · 짐 · 크루 하루)');
+    if (!/const _t1056H=!!\(s\.econ&&EconEngine\.T1050_LAB_HOUSE&&EconEngine\.T400_BUILD_ACT&&EconEngine\.labSiteCrewDay&&EconEngine\.LifeCrew\);/.test(O)) why.push('켬 문 `_t1056H` 가 econ 손잡이를 안 읽는다');
+    if (!/EconEngine\.labSiteCrewDay\(s\.econ,h,_LC\.crew,_LC\.pday,EconEngine\.labCrewDbg\(\),/.test(O) || !/const _LC=EconEngine\.LifeCrew,/.test(O)) why.push('크루 문이 번들 두 수(`EconEngine.LifeCrew`)를 안 준다');
+    if (O.split(OLD).length - 1 !== 1) why.push(`셋째 규칙 진척 글 ${O.split(OLD).length - 1}곳(끔 갈래 하나)`);
+    return why;
+  };
+  let H0 = null;
+  for (const f of ['lab/마을실험실.html', 'lab/전쟁실험실.html']) {
+    const H = rd(f); H0 = H0 || H;
+    const why = judge(H);
+    if (!why.length) ok(`ⓒ ${f} — 집 고리 켬 = econ \`labSiteCrewDay\` 한 자리(번들 두 수) · \`_t400Live\` · 방아쇠 \`_t958Want\` · 크루 몸통 사본 0 · 셋째 규칙은 끔 갈래 하나`);
+    else bad(`ⓒ ${f} — ${why.join(' · ')}`);
+  }
+  // ⓓ 자명 통과 금지
+  const m1 = !lifeOk(B.replace(/ root\.EconEngine\.LifeCrew=\{[^}]*\};/, ''));
+  const m2 = H0 ? judge(H0.replace('((_t1056H&&EconEngine.T958_HOUSE_REAL&&s.econ._t958Want>0)?s.econ._t958Want:0)', '0')).length > 0 : false;
+  const m3 = H0 ? judge(H0.replace('const _LC=EconEngine.LifeCrew,', 'const _LC=EconEngine.LifeCrew,_h0=EconEngine.actFromGranary(s.econ,"wood",1),')).length > 0 : false;
+  const m4 = H0 ? judge(H0.replace('EconEngine.labSiteCrewDay(s.econ,h,', 'EconEngine.labSiteCrewDay(s.econ,h,_LC.crew,_LC.pday,EconEngine.labCrewDbg(),()=>{});EconEngine.labSiteCrewDay(s.econ,h,')).length > 0 : false;
+  if (m1 && m2 && m3 && m4) ok('ⓓ [자명 통과 금지] 번들에서 LifeCrew 를 뺀 사본 · 방아쇠에서 `_t958Want` 를 뺀 사본 · 랩 글에 곳간 출구를 부른 사본 · 크루 문을 둘로 늘린 사본 — 넷 다 문다');
+  else bad(`ⓓ [자명 통과 금지] 비틀어도 같은 답 — LifeCrew ${m1 ? '문다' : '죽음'} · _t958Want ${m2 ? '문다' : '죽음'} · 곳간 출구 ${m3 ? '문다' : '죽음'} · 문 둘 ${m4 ? '문다' : '죽음'}`);
+}
+
 console.log(`\n=== 배선 검사: 실패 ${fail} · 경고 ${warn} ===`);
 process.exit(fail ? 1 : 0);

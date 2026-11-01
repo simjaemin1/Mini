@@ -1,0 +1,38 @@
+# T1056 하네스 — 마지막 코드(이 가지 작업 트리 · 번들 · 인라인 다시 구운 판)
+## 랩 하네스 전부(scripts/test-lab-*.js · 차례대로 · 원문 요약 줄)
+test-lab-diverge-ctl exit 0 205s :: === 11건 중 PASS 11 · FAIL 0 ===
+test-lab-happywork exit 0 24s :: === 결과: 59 PASS / 0 FAIL ===
+test-lab-stone exit 0 104s :: === T299 둘째 화물 기본 끔(정정) 포함: 통과 132 · 실패 0 ===
+test-lab-hunt exit 0 0s :: === 62건 중 PASS 62 · FAIL 0 ===
+test-lab-trees exit 0 9s :: === test-lab-trees: 52 PASS / 0 FAIL ===
+test-lab-wood exit 0 0s :: === 36건 중 PASS 36 · FAIL 0 ===
+test-lab-alloc exit 0 95s :: === 결과: 54 PASS / 0 FAIL ===
+test-lab-market exit 0 231s :: 결과: PASS
+test-lab-mining exit 0 1657s :: 결과: PASS
+test-lab-psite exit 0 1255s :: 결과: PASS
+
+## 카드 게이트
+test-build-act :: === 82/82 ✓ ===
+test-t958-house-real :: === 통과 24 · 실패 0 ===
+test-wood-act :: === 결과: 158 PASS / 0 FAIL ===
+test-headless-parity :: 결과: PASS
+test-psite-server :: 결과: PASS
+test-harness-lint :: === 68건 중 PASS 68 · FAIL 0 ===
+lab-wiring-check :: 실패 0 · 경고 1(종전 [H] world._warSeq · _warStats)
+build-econ-bundle --check :: 16 일치 / 0 불일치 · inline-engine --check :: 마을실험실 · 전쟁실험실 최신
+
+## test-lab-psite ⑧ 줄(켬 — 지금 랩)
+  ⑧ 의 자(의뢰 집이 서 있는 날만) — B 2/2(평균 오른 단계 2 · 곳간 빈 날 0 · 완공 0)
+  ✓ ⑧ 의뢰 집이 서 있는 날, 마을 집터는 크루가 붙은 날 **전부** 서버 집 규칙의 하루 몫을 받았다 — B 2/2일 (의뢰 집이 마을 몫을 안 깎았다)
+  ✓ ⑧ⓞ 옛 규칙이면 빨강 — 마을 집터 하루 진척이 옛 상한 L_BUILDCAP(0.35채)을 넘은 날 16일(A 8 · B 8 · 최대 하루 0.6667채 · 옛 규칙 = 0일)
+  [미끼 B′] 의뢰 집이 서 있는 동안 마을 크루를 하나 빼앗음 — 지정 (842,624) 프레임 1282 · 몫 다 받은 날(서 있는 날) 1/2(평균 오른 단계 1.5) · (표) 창 전부 13/14
+  ✓ ⑧ⓜ 자명 통과 금지 — 마을 크루를 일부러 빼앗은 미끼 판은 같은 자로 **빨강** — B′ 1/2일 (크루 붙은 날 2 중 1일 몫 미달)
+결과: PASS
+
+## test-lab-psite ⑧ 줄(끔 — LAB_FILE=lab/전쟁실험실.html?T1050_LAB_HOUSE=0 · 옛 규칙 · 미끼 확인용)
+  ⑧ 의 자(의뢰 집이 서 있는 날만) — B 0/3(평균 오른 단계 0 · 곳간 빈 날 0 · 완공 0)
+  ✗ ⑧ 의뢰 집이 서 있는 날, 마을 집터는 크루가 붙은 날 **전부** 서버 집 규칙의 하루 몫을 받았다 — B 0/3일 (의뢰 집이 마을 몫을 안 깎았다)
+  ✗ ⑧ⓞ 옛 규칙이면 빨강 — 마을 집터 하루 진척이 옛 상한 L_BUILDCAP(0.35채)을 넘은 날 0일(A 0 · B 0 · 최대 하루 0채 · 옛 규칙 = 0일)
+  [미끼 B′] 의뢰 집이 서 있는 동안 마을 크루를 하나 빼앗음 — 지정 (842,624) 프레임 1282 · 몫 다 받은 날(서 있는 날) 0/3(평균 오른 단계 0) · (표) 창 전부 0/18
+  ✓ ⑧ⓜ 자명 통과 금지 — 마을 크루를 일부러 빼앗은 미끼 판은 같은 자로 **빨강** — B′ 0/3일 (크루 붙은 날 3 중 3일 몫 미달)
+결과: FAIL (2건)
