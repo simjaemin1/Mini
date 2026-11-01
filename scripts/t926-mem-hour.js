@@ -33,7 +33,7 @@
 //   ★[T997] --peak 이면 입장 뒤 산 청크 캐시(`_mt3Chunk`) 갈고리를 건다(그림 무접촉 — 적기만 한다): 그 객체의 `clear` 를 감싸 부른 자리를 호출 더미로 가르고
 //     (`_mt3Bake` = 260 상한 · `_mt3Collect` = 존 바뀜 · 그 밖) 비우기 앞 청크 수 · 띠 캔버스 장 수 · 넓이(같은 캔버스는 한 번)를 적고, 2초마다 같은 셈으로 최댓값을 든다.
 //     바퀴 끝 표본에 `mtPeak`(그 바퀴 최대 넓이 · 청크 수 · 장 수 · 상한 비우기마다 [청크 · 장 · 넓이] · 존 바뀜 · 그 밖 비우기 수)을 싣고 비운다 — 바퀴 끝 표본(광산2 · 존 넘기 뒤)이 못 보는 바퀴 안 꼭대기.
-// 실행: [E2E_BROWSER=webkit] node scripts/t926-mem-hour.js [--min 60] [--every 5] [--snap 5,60] [--mdump] [--terr] [--own] [--peak] [--out /tmp/t926] [--tag cr-off]
+// 실행: [E2E_BROWSER=webkit] node scripts/t926-mem-hour.js [--min 60] [--every 5] [--snap 5,60] [--mdump] [--terr] [--own] [--peak] [--first] [--out /tmp/t926] [--tag cr-off]
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -53,7 +53,8 @@ const SNAPS = String(arg('--snap', '5,60')).split(',').filter(Boolean).map(Numbe
 const MDUMP = process.argv.includes('--mdump');   // 크롬만 — 바퀴 끝마다 memory-infra 덤프(프로세스 · 할당자별 크기)
 const TERR = process.argv.includes('--terr');     // 지형 칸 셈(`Terrain.isWaterCellLocal` · `isRockCellLocal` — 칸 캐시가 없을 때만 불린다)을 세고 잰다(T926 ② 켬이 더 하는 일)
 const OWNF = process.argv.includes('--own');      // [T970] 살아 있는 캔버스를 붙든 이름으로 가른다(머리말 ★T970)
-const PEAK = process.argv.includes('--peak');     // [T997] 바퀴 안 산 청크 캐시 꼭대기 · 상한 비우기(머리말 ★T997)
+const PEAK = process.argv.includes('--peak');
+const FIRST = process.argv.includes('--first');   // [T1014] 첫 접속 표(머리말 위 FIRSTHOOK)     // [T997] 바퀴 안 산 청크 캐시 꼭대기 · 상한 비우기(머리말 ★T997)
 const OWN_DEPTH = +arg('--own-depth', '7');
 const BR = require('./e2e-browser').which();
 const TAG = arg('--tag', BR);
@@ -178,11 +179,41 @@ const PEAKHOOK = () => {
   setInterval(() => { try { up(_mt3Chunk); } catch (e) {} }, 2000);
   return true;
 };
+// ★[T1014] --first — 첫 접속 표(제품 표시 없이 · 옛 트리에도 같은 자): "들어가기" 눌림(갈고리) → welcome 받음(소켓 onmessage 를 감싸 첫 welcome 의 처리 앞 · 뒤)
+//   → 첫 그림(welcome 처리 뒤 첫 rAF 판의 끝 = 그다음 rAF 머리) → 첫 입력(그다음 rAF 머리) → 가라앉음(그 뒤 첫 rAF 간격 ≤ 50ms · 30초 안). rAF 고리는 이 갈고리 하나.
+const FIRSTHOOK = () => {
+  if (window.__t1014f) return true;
+  const F = window.__t1014f = { click: null, wRx: null, wDone: null, raf: [] };
+  const P = WebSocket.prototype, D = Object.getOwnPropertyDescriptor(P, 'onmessage');
+  Object.defineProperty(P, 'onmessage', { configurable: true, enumerable: D.enumerable, get: D.get, set(fn) {
+    if (typeof fn !== 'function') return D.set.call(this, fn);
+    const w = function (ev) {
+      const isW = F.wRx == null && typeof ev.data === 'string' && ev.data.slice(0, 200).indexOf('"type":"welcome"') >= 0;
+      const t0 = performance.now();
+      try { return fn.call(this, ev); } finally { if (isW && F.wRx == null) { F.wRx = t0; F.wDone = performance.now(); } }
+    };
+    D.set.call(this, w);
+  } });
+  const loop = () => { if (F.raf.length < 40000) F.raf.push(performance.now()); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  const b = document.getElementById('enter'); if (b) b.addEventListener('click', () => { if (F.click == null) F.click = performance.now(); }, true);
+  return true;
+};
+const FIRSTREAD = () => {
+  const F = window.__t1014f; if (!F || F.click == null || F.wDone == null) return { ok: false, click: F && F.click, wRx: F && F.wRx };
+  const R = F.raf, i0 = R.findIndex((t) => t > F.wDone); if (i0 < 0 || i0 + 2 >= R.length) return { ok: false, why: 'rAF 모자람' };
+  const frame1 = R[i0 + 1], input = R[i0 + 2]; let settle = null;
+  for (let i = i0 + 3; i < R.length; i++) { if (R[i] - F.click > 30000 + (input - F.click)) break; if (R[i] - R[i - 1] <= 50) { settle = R[i]; break; } }
+  let ln = 0, lms = 0; for (let i = i0 + 3; i < R.length && (settle == null || R[i] <= settle); i++) { const dt = R[i] - R[i - 1]; if (dt > 50) { ln++; lms += dt - 16.7; } }
+  const d = (a, b) => (a == null || b == null ? null : +(b - a).toFixed(0));
+  return { ok: true, wait: d(F.click, F.wRx), wProc: d(F.wRx, F.wDone), firstDraw: d(F.click, frame1), firstInput: d(F.click, input), settle: d(F.click, settle), longN: ln, longMs: Math.round(lms) };
+};
 const SAMPLE = (names) => {
   const M = window.__t926; const out = {};
   const a = M.fr.splice(0); const s = a.slice().sort((x, y) => x - y);
   const q = (p) => (s.length ? +s[Math.min(s.length - 1, Math.floor(p * s.length))].toFixed(1) : null);
-  out.frame = { n: a.length, p50: q(0.5), p95: q(0.95), max: s.length ? +s[s.length - 1].toFixed(1) : null, sumMs: Math.round(a.reduce((x, y) => x + y, 0)) };
+  out.frame = { n: a.length, p50: q(0.5), p95: q(0.95), max: s.length ? +s[s.length - 1].toFixed(1) : null, sumMs: Math.round(a.reduce((x, y) => x + y, 0)),
+    long50: a.filter((x) => x > 50).length, long100: a.filter((x) => x > 100).length, longMs: Math.round(a.filter((x) => x > 50).reduce((x, y) => x + y - 16.7, 0)) };   // [T1014] 긴 프레임(>50 · >100ms) 수 · 막은 ms
   out.dom = { nodes: document.getElementsByTagName('*').length, canvas: document.getElementsByTagName('canvas').length, img: document.images.length };
   out.lis = { add: M.addN, rem: M.remN, net: M.addN - M.remN, top: Object.entries(M.byType).sort((x, y) => y[1] - x[1]).slice(0, 8) };
   M.cvRefs = M.cvRefs.filter((r) => r.deref()); M.imgRefs = M.imgRefs.filter((r) => r.deref());
@@ -353,11 +384,14 @@ async function memDump(cdp) {
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, { timeout: 60000 }).catch(() => {});
   await page.evaluate(INSTR);
+  if (FIRST) await page.evaluate(FIRSTHOOK);
   if (TERR) await page.evaluate(TERRHOOK);
   // 들어갈 존 = 한반도(로비 목록의 기본은 central 에 먼저 붙은 산 존이라 판마다 갈린다 — 같은 대본이려면 고른다)
   for (let i = 0; i < 120; i++) { const okz = await page.evaluate(() => { const s = document.getElementById('startZone'); const o = s && [...s.options].find((x) => x.value === 'hanbando' && !x.disabled); if (o) { s.value = 'hanbando'; return true; } return false; }); if (okz) break; await sleep(500); }
   const en = await page.$('#enter'); if (en) await en.click();
   if (!(await FixClock.waitInWorld(page, { timeoutMs: 240000 })).ok) { console.log('입장 실패'); process.exit(1); }
+  let first = null;
+  if (FIRST) { for (let i = 0; i < 120; i++) { first = await page.evaluate(FIRSTREAD); if (first.ok && first.settle != null) break; await sleep(500); } console.log(`  · [T1014] 첫 접속 ${JSON.stringify(first)}`); }
   await sleep(3000);
   const z0 = await page.evaluate(() => (window.__getPrimaryZoneId ? window.__getPrimaryZoneId() : null));
   if (z0 !== 'hanbando') { console.log(`입장 존이 ${z0} — 한반도가 아니다`); process.exit(1); }
@@ -434,7 +468,7 @@ async function memDump(cdp) {
     samples.push(row); fs.appendFileSync(outF, JSON.stringify(row) + '\n');
     const mb = (b) => (b == null ? '-' : (b / 1048576).toFixed(1));
     const big = Object.entries(row.cache).filter(([, v]) => v[0] > 0).sort((x, y) => (y[1][2] - x[1][2]) || (y[1][0] - x[1][0])).slice(0, 6).map(([n, v]) => `${n} ${v[0]}${v[1] ? `/${v[1]}장 ${(v[2] / 1e6).toFixed(1)}M화소` : ''}`).join(' · ');
-    console.log(`  [${String(k).padStart(2)}] ${atMin}분 · ${row.zone} · 프레임 ${row.frame.n}판 p50 ${row.frame.p50} p95 ${row.frame.p95} max ${row.frame.max} · ` +
+    console.log(`  [${String(k).padStart(2)}] ${atMin}분 · ${row.zone} · 프레임 ${row.frame.n}판 p50 ${row.frame.p50} p95 ${row.frame.p95} max ${row.frame.max} · >50ms ${row.frame.long50}판 ${row.frame.longMs}ms · ` +
       (row.cdp ? `힙 ${mb(row.cdp.usedPre)}→GC ${mb(row.cdp.usedGC)}MB · 노드 ${row.cdp.nodes} · 리스너 ${row.cdp.listeners} · ` : '') +
       `DOM ${row.dom.nodes} · 리스너(갈고리) ${row.lis.net} · 캔버스 만든 ${row.cv.made} 산 ${row.cv.live} ${(row.cv.livePx / 1e6).toFixed(1)}M화소 · RSS ${JSON.stringify(row.rss)}${row.snap ? ` · 스냅샷 ${mb(row.snap.bytes)}MB ${row.snap.ms}ms` : ''}`);
     console.log(`       캐시: ${big}`);
@@ -480,7 +514,7 @@ async function memDump(cdp) {
     const left = tEnd - Date.now(); if (left > 0) await sleep(left);
     await sampleNow(k, log.join(' · ') + (left < 0 ? ` · ⚠바퀴가 ${Math.round(-left / 1000)}초 늦었다` : ''));
   }
-  const res = { tag: TAG, browser: BR, min: MIN, every: EVERY, knobs, welcome, corridor: CE, errs, samples: samples.length };
+  const res = { tag: TAG, browser: BR, min: MIN, every: EVERY, knobs, welcome, corridor: CE, errs, samples: samples.length, first };
   fs.writeFileSync(path.join(OUT, `${TAG}-meta.json`), JSON.stringify(res, null, 1));
   console.log(`  · 오류 ${errs.length}: ${JSON.stringify(errs.slice(0, 8))}`);
   console.log(`  → ${outF}`);

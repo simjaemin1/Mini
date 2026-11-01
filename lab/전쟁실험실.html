@@ -15127,6 +15127,16 @@ function _legProfitPerUnit(pFrom, pTo, transportCostPerUnit, expectedLossRatio) 
 //   ⚠가는 길 약탈은 **도착 존 호스트**가 정한다(`banditGang(from, to)` 에 스텁이 든다 — 지금 호스트는 스텁 쌍에 갱 0 · 회부).
 const T525_CROSS_ZONE = (typeof process !== 'undefined' && process.env && process.env.T525_CROSS_ZONE === '1');
 function _xzOn(world) { return !!(T525_CROSS_ZONE && world && world.xzone && typeof world.xzone.dist === 'function'); }
+// ★★[T1030 2026-10-31 · T952 회부 2 ㄱ] 손잡이 `T1030_XZ_MARKET`('1' 만 켬 · 끔 기본 · **팔 `T525_CROSS_ZONE` 켬일 때만** 선다 · 끔 = main 바이트) —
+//   **교차 존 캐러밴도 장을 연다.** 받는 존(`c._xzHome`)의 도착이 같은 존 T707 장 갈래를 탄다(값만 찍고 `c._mktD` · 정산은 다음 econ 틱 머리 `settleMarketsV2`).
+//   계약(기록 셋 — 교역 행 · 돌려보낼 짐 · 짐 레코드)은 **글자 그대로**, 적는 **때**만 옮긴다:
+//     ⓐ 도착(D) — 몸 길(`_xzBack` 경계 칸 · 남은 일수)은 종전대로 도착 때 정한다(길은 정산과 무관 · 몸이 장 끝에 그 길로 떠난다).
+//     ⓑ 정산(D+1 머리) — 교역 행이 그때 선다(`_t1030Settled` 가 `c._xzRow` 로 쥔다 · 돌려보낼 짐 · 짐 레코드도 `_caravanTrade` 가 그때 싣는다).
+//     ⓒ 'return'(`_xzHandBack`) — 장이 선 날(`_mktD`)엔 안 적는다. 귀환 갈래가 `_xzBack.day` 에(경계에 붙은 마을 `leg 0` 이면 정산한 날 = D+1) 적는다.
+//   ⓓ 존이 죽으면 — 장 중인 캐러밴은 받는 존 world 에 있다(정산 전 `_t707` 칸까지 · 서버 T728 메타가 마을 행과 같은 경계에 싣는다 — 서버 몫).
+//     다시 뜬 존이 호스트를 아직 안 꽂았으면(걸음표 전 `_xzOn` 거짓) 이웃 존 캐러밴의 도착 · 'return' 을 하루씩 미룬다(`_t1030Hold` — 짐은 그 캐러밴에 그대로).
+const T1030_XZ_MARKET = T525_CROSS_ZONE && (typeof process !== 'undefined' && process.env && process.env.T1030_XZ_MARKET === '1');
+function _t1030Hold(world, c) { return T1030_XZ_MARKET && !!(c && c._xzHome) && !_xzOn(world); }
 // 거리 — 스텁이 끼면 호스트에 묻는다(걸음 · 존 경계 너머) · 아니면 종전 정본(`villageDist`) 그대로.
 function _xzDist(world, a, b) {
   if ((a && a._xz) || (b && b._xz)) {
@@ -16143,11 +16153,12 @@ function _killWarriors(v, n) {
 //   교역 기록의 날 = 장부에 든 날(도착 + 1 · 장부 사건 FIRST_GOODS · 마지막 교역일이 그날 줄로 읽는다 — 장이 선 날은 `c._mktD`).
 //   ⚠끔 = 종전 바이트(아래 갈래가 한 줄도 안 닿는다 · `_caravanTrade` 는 도착 자리에서 종전과 같은 차례로 불린다).
 //   ⚠이웃 존이 낀 캐러밴(T525 · 기본 끔)은 종전대로 도착 때 정산(`_xzArriveLoop` 가 그 자리의 교역 기록을 읽는다).
+//   ★[T1030] 손잡이 `T1030_XZ_MARKET` 켬이면 받는 존 쪽(`c._xzHome`)도 장 갈래 — 'return' 기록을 정산 뒤로 옮긴다(위 `T1030_XZ_MARKET` 주석).
 //   플레이어 ↔ 캐러밴 거래와 그에 따른 재계산은 나중(이 정산이 그 갈고리 자리 · 찍어 둔 `c._t707` 이 그 기준값이다).
 // ★[PM 10-13 · 재민 "켜자"] 켬 기본 — 서버·실험실(번들은 process 가 없어 켬) 같이 · 되돌림 `T707_MARKET=0`
 const T707_MARKET = !(typeof process !== 'undefined' && process.env && process.env.T707_MARKET === '0');
 function _t707On(world) { return T707_MARKET || !!(world && world.t707Market); }
-function _t707Xz(c) { return !!(c && (c._xzHome || (c.from && c.from._xz) || (c.to && c.to._xz))); }
+function _t707Xz(c) { return !!(c && (c._xzHome || (c.from && c.from._xz) || (c.to && c.to._xz))) && !(T1030_XZ_MARKET && c._xzHome); }   // ★[T1030] 켬 = 받는 존의 이웃 존 캐러밴도 장 갈래(집 존 쪽 — 스텁이 목적지 — 은 그 전에 넘긴다)
 function _caravanArrive(world, c, day) {
     // ★★[T525] 목적지가 이웃 존 스텁 — 도착은 그 존이 치른다(약탈도 그쪽 호스트가 정한다). 팔이 꺼졌거나 호스트가 빠졌으면 짐을 되돌린다.
     if (c.to && c.to._xz) { if (_xzOn(world)) _xzHandOff(world, c, day); else _xzBounce(world, c, day); return; }
@@ -16436,10 +16447,17 @@ function settleMarketsV2(world) {
     if (!P) continue;
     c._t707 = null;
     _caravanTrade(world, c, world.day, P.give, P.loss, P.pricesTo, P.pricesFrom, P.pTo);   // 날 = 장부에 든 날(오늘 econ 날) — 장부 사건(`events.js` FIRST_GOODS)·마지막 교역일이 오늘 줄로 읽는다
+    if (T1030_XZ_MARKET && c._xzHome) _t1030Settled(world, c);   // ★[T1030] 이웃 존 캐러밴 — 방금 선 교역 행을 'return' 이 실을 행으로(끔 = 이 줄 무동작)
     n++;
   }
   if (n) { const S = world._t707Stat || (world._t707Stat = { settled: 0, days: 0 }); S.settled += n; S.days++; }
   return n;
+}
+// ★[T1030] 정산 뒤 — `_xzArriveLoop` 가 도착 때 하던 행 줍기(`row.xzone` · `c._xzRow`)를 여기서(행은 `_caravanTrade` 가 막 넣은 끝 행 · 사본 0).
+function _t1030Settled(world, c) {
+  const row = world.tradeLog.length ? world.tradeLog[world.tradeLog.length - 1] : null;
+  if (row) { row.xzone = c._xzHome.zone; c._xzRow = row; }
+  const S = world._t1030Stat || (world._t1030Stat = { settled: 0 }); S.settled++;
 }
 
 function tickCaravansV2(world, day) {
@@ -16455,13 +16473,13 @@ function tickCaravansV2(world, day) {
     }
 
     else if (c.state === 'outbound' && day >= c.arriveDay) {
-      if (c._xzHome) _xzArriveLoop(world, c, day);   // ★[T525·T533] 이웃 존 캐러밴의 도착(이 존 몫을 걸어 왔다 · 우회 뒤 도착도 여기)
+      if (c._xzHome) { if (!_t1030Hold(world, c)) _xzArriveLoop(world, c, day); }   // ★[T525·T533] 이웃 존 캐러밴의 도착(이 존 몫을 걸어 왔다 · 우회 뒤 도착도 여기) · ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전)
       else _caravanArrive(world, c, day);
     }
 
     // ★★[T533] 이웃 존 캐러밴의 귀환 구간 — 집은 스텁이라 이 존 곳간에 넣지 않는다: 제 몫을 걸어 경계 칸에 선 날 집 존으로 넘긴다.
     else if (c._xzHome && c.state === 'inbound') {
-      if (c._xzBack && day >= c._xzBack.day) _xzHandBack(world, c, day, c._xzRow || null, c._xzBack.remain);
+      if (c._xzBack && day >= c._xzBack.day && !_t1030Hold(world, c)) _xzHandBack(world, c, day, c._xzRow || null, c._xzBack.remain);   // ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전)
     }
 
     else if (c.state === 'inbound' && day >= c.returnArriveDay && !c._t707) {   // ★[T707] 정산 전 장은 귀환을 안 닫는다(머리에서 정산되니 실제로는 안 닿는다 · 끔이면 `_t707` 없음 = 종전)
@@ -16591,7 +16609,7 @@ function _xzArriveLoop(world, c, day) {
   const leg = sp ? _xzLeg(R, sp.fLocal) : 0;
   c._xzBack = { day: day + leg, leg, remain: R - leg, ptLocal: sp ? (sp.ptLocal || null) : null, ptPeer: sp ? (sp.ptPeer || null) : null };
   c.returnArriveDay = c._xzBack.day;   // 이 존 안의 귀환 = 경계 칸까지(몸의 귀환 구간이 이 날에 닿는다)
-  if (leg === 0) _xzHandBack(world, c, day, row, c._xzBack.remain);
+  if (leg === 0 && !(T1030_XZ_MARKET && c._mktD === day)) _xzHandBack(world, c, day, row, c._xzBack.remain);   // ★[T1030] 켬 — 장이 선 날은 안 적는다(귀환 갈래가 정산 뒤에 · 끔 = 종전)
 }
 // 이웃 존 캐러밴이 넘어왔다('arrive') — 집 마을은 스텁(값표·델타), 목적지는 이 존의 진짜 마을.
 //   ★[T533] 남은 일수만큼 이 존 몫을 걷는다(state 'outbound' · 도착일에 `_xzArriveLoop`). 기록이 한 경계 늦게 닿았으니 하루를 뺀다.
@@ -17256,6 +17274,7 @@ module.exports = {
   cargoTwoOn, cargoTwoGateOn, _legProfitPerUnit,
   // ★★[T525] 존 경계 넘기 뼈대 — 호스트(존 서버·자)가 **같은 두 함수**로 스텁을 만든다(답하는 쪽 스냅 · 받는 쪽 스텁 · 사본 0)
   T525_CROSS_ZONE, xzoneSnapshot, xzoneStub,
+  T1030_XZ_MARKET,   // ★[T1030] 교차 존 장(팔 켬일 때만 · 끔 기본) — 서버(재기동 메타가 이웃 존 캐러밴을 잇는다)가 같은 손잡이를 읽는다
   xzoneBounce: _xzBounce, xzoneLeg: _xzLeg,   // ★[T533] 서버 호스트가 부르는 둘 — 이웃 존이 안 받은 넘김을 경계에서 되돌림 · 제 존 몫 일수(몸이 되짚을 때) — 사본 0
   _xzProbe: { handOff: _xzHandOff, arrive: _xzArrive, arriveLoop: _xzArriveLoop, handBack: _xzHandBack, ret: _xzReturn },   // ★[T748] 존 경계 짐 레코드 — 하네스가 **이 함수들**을 그대로 부른다(사본 0 · 값 무변)
   setLotHook,   // ★[T732] 곳간 로트 장부 훅(서버 켬일 때만 꽂는다 · 랩·CLI 는 안 꽂는다 = 무동작)
@@ -17295,6 +17314,12 @@ const DEPLOY_W=130, DEPLOY_H=130;        // 표준 배치 폭(전투실험실과
 //   켬: 탄이 없으면 그 물러섬 줄을 건너뛰고 탄 없는 절(15m 안 다가섬 · 손 닿으면 친다)로 간다. 새 수 0(3.5 · 15 · reach 그대로).
 //   ★[T1008] 켬 기본 — 노드(서버 · 하네스)는 env 가 `'0'` 일 때만 끔 · 브라우저(전쟁실험실 인라인 — env 없음) = 켬.
 const T995_BACK_AMMO=!(typeof process!=='undefined'&&process.env&&process.env.T995_BACK_AMMO==='0');   // ★[T1008 10-30] 켬 기본 · 되돌림 `=0`
+// ★★[T1019 2026-10-31 · T1008 회부 1 ⓒ] **막힌 칸 안에 선 몸은 걸어 나온다** — 손잡이 `T1019_UNTRAP`(켬 기본 후보 · 되돌림 `=0` = 종전 글자 · 서버 war-live · villages 와 같은 손잡이 하나).
+//   종전: 아래 몸 클램프(sep 끝)는 새 자리가 막혔으면 축별로 미끄러지고 둘 다 막히면 **이전 자리**로 되돌린다 — 이전 자리도 막힌 칸이면(대형 원점이 건물 발자국에 섰다 ·
+//     집 안에 있던 몸이 징발됐다 · 그 뒤 지은 집) 한 걸음이 칸보다 작아 칸 안 다음 점은 늘 막힘이라 **영원히 못 나온다**(T295 후속 · T541 ⓑ · T790 주석의 그 덫 · 보고 T1008 ⓒ 401날 전쟁).
+//   켬: 이전 자리가 막힌 칸이면 클램프를 건너뛴다(걸음은 그대로 — 밖으로 나오면 그다음 걸음부터 종전 클램프). war-live T790 `inBlk`(걷는 대형 몸)와 같은 규칙 · 새 수 0.
+//   노드(서버 · 하네스)는 env 가 `'0'` 일 때만 끔 · 브라우저(전쟁실험실 인라인 — env 없음) = 켬(랩은 ctx.world 가 없어 클램프 줄 자체가 안 돈다 — 무변).
+const T1019_UNTRAP=!(typeof process!=='undefined'&&process.env&&process.env.T1019_UNTRAP==='0');   // ★[T1019 10-31] 켬 기본 후보 · 되돌림 `=0`
 
 // ═══════════ 병종 정의 (전투실험실 UNITS 복사) ═══════════
 const UNITS={
@@ -17640,7 +17665,7 @@ function sep(ctx,u,dt){let sx=0,sy=0,n=0,hxx=0,hyy=0,hn=0; const bx=Math.floor(u
       if(d<SEP_CORE){hxx+=dx/d*(SEP_CORE-d)*0.5;hyy+=dy/d*(SEP_CORE-d)*0.5;hn++;}}}}   // ★[몸 하한] 지름 0.5m 침범 위치보정 누적(1.0m 소프트 간격과 별개 층)
   if(n){u.x+=sx/n*1.0*dt; u.y+=sy/n*1.0*dt;}
   if(hn){const hl=Math.hypot(hxx,hyy); if(hl>1e-9){const hk=Math.min(1,Math.max(1.0*dt,0.08)/hl); u.x+=hxx*hk; u.y+=hyy*hk;}}   // 몸 겹침 해소 — dt 무관 최소 0.08m/스텝(압착에도 관통 불가), 나무·건물 클램프가 뒤에서 지형 보정
-  if(ctx.world&&u._ox!=null&&ctx.world.blocked(u.x,u.y)){   // ★[T284] 몸 클램프 — 존의 장애물(지형·건물 행). 축별로 미끄러지고, 둘 다 막히면 제자리
+  if(ctx.world&&u._ox!=null&&ctx.world.blocked(u.x,u.y)&&!(T1019_UNTRAP&&ctx.world.blocked(u._ox,u._oy))){   // ★[T284] 몸 클램프 — 존의 장애물(지형·건물 행). 축별로 미끄러지고, 둘 다 막히면 제자리 · ★[T1019] 켬 = 이전 자리도 막혔으면(갇힌 몸) 안 묶는다 — 걸어 나온다
     const nx=u.x, ny=u.y;
     if(!ctx.world.blocked(nx,u._oy)){u.y=u._oy;}
     else if(!ctx.world.blocked(u._ox,ny)){u.x=u._ox;}
