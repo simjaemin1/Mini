@@ -13729,7 +13729,7 @@ function _t1025Restore() {
 // ★[T1034] 읽기만(세계 0) — 탐침 · 하네스가 캐러밴 장부와 몸을 본다(`world.caravans` 차례 · 몸이 없으면 body null).
 function t1034Peek() {
   const W = state.world, B = state.caravanBodies, P = state.deps && state.deps.players;
-  const out = { day: W ? W.day | 0 : null, w731: !!state._t731, t775: state._t775 ? { done: !!state._t775.done, q: state._t775.q ? state._t775.q.length : null } : null, cars: [] };
+  const out = { day: W ? W.day | 0 : null, w731: !!state._t731, frac: W && state.dayMs ? +_econDayFrac(Date.now()).toFixed(4) : null, t775: state._t775 ? { done: !!state._t775.done, q: state._t775.q ? state._t775.q.length : null } : null, cars: [] };
   for (const c of ((W && W.caravans) || [])) {
     const b = B && B.get(c.id), pl = b && P && P.get(b.pid), T = b && b._t661;
     out.cars.push({ id: c.id, st: c.state, from: c.from && c.from.name, to: c.to && c.to.name, dep: c.departDay, arr: c.arriveDay, ret: c.returnArriveDay,

@@ -62,8 +62,10 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
   const S6 = path.join(TMP, 'save6.db');
   for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(S + s, S6 + s); } catch (e) {} }
   { const z = up(S6, base + 2, { VILLAGE_DAY_MS: '360000' });
-    const g = await until(async () => { const C = await car(base + 2); return C && C.t775 && C.t775.done && !C.w731 ? C : null; }, 600000, 1000);
-    ok(!!g, '[상황] 고르기 — 재는 하루로 몸을 다 세웠고 현지 자정 창이 닫혔다', g ? `날 ${g.day}` : '못 닫힘');
+    //   + 가는 몸 하나가 길 30% 를 넘었고(다시 뜬 첫 틱에 고립 훅이 걸린다 — 훅 = 가는 길 25% 넘은 첫 몸) 하루 앞쪽(다음 창까지 멀다 · 창은 동쪽 끝 자정 = 하루 0.73 쯤부터)
+    const g = await until(async () => { const C = await car(base + 2); return C && C.t775 && C.t775.done && !C.w731 && C.frac != null && C.frac < 0.5
+      && C.cars.some((x) => x.st === 'outbound' && x.body && x.body.phase === 'outbound' && x.body.len > 0 && x.body.prog / x.body.len > 0.3 && x.body.prog / x.body.len < 0.9) ? C : null; }, 900000, 1000);
+    ok(!!g, '[상황] 고르기 — 재는 하루로 몸을 다 세웠고 · 창이 닫혔고 · 하루 앞쪽 · 길 30% 넘은 가는 몸', g ? `날 ${g.day} · 하루 ${g.frac}` : '못 맞춤');
     await sleep(2000); try { z.c.kill('SIGTERM'); } catch (e) {} await Promise.race([z.x, sleep(30000)]); try { z.c.kill('SIGKILL'); } catch (e) {} await z.x; }
   const copy = (tag, src) => { const from = src || S; const db = path.join(TMP, tag + '.db'); for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(from + s, db + s); } catch (e) {} } return db; };
 
