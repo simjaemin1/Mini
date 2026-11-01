@@ -1,0 +1,262 @@
+{
+ "card": "T1057",
+ "made": "2026-11-01",
+ "world": "main 41c74d6a(land1037 · 서버 기준선 서버기준선_2026-11-01b · 랩 정본 T1047+T1050)",
+ "q1b": {
+  "server": {
+   "how": "t577-server-run 400 1020,7,42 · -r t934-observe -r t875-observe · A 기본 · C T858_NO_SHIELD=1",
+   "fam365": {
+    "on": [
+     25,
+     50,
+     52
+    ],
+    "off": [
+     140,
+     204,
+     295
+    ]
+   },
+   "d31_90_off": 108,
+   "shield": {
+    "villages": 153,
+    "shielded": 42,
+    "on": 127,
+    "off": 513,
+    "ratio": 4.04,
+    "offRest": 126
+   }
+  },
+  "lab": {
+   "how": "T934_OUT=… node -r t934-observe t17-metrics 400 <시드> · off = T858_NO_SHIELD=1",
+   "fam365": {
+    "on": [
+     136,
+     78,
+     66
+    ],
+    "off": [
+     307,
+     279,
+     194
+    ]
+   },
+   "d31_90_off": 80,
+   "shield": {
+    "villages": 153,
+    "shielded": 37,
+    "on": 280,
+    "off": 644,
+    "ratio": 2.3,
+    "offRest": 136
+   }
+  }
+ },
+ "q4": {
+  "how": "T521_GANG_ARMS=1 [T530_TRADE_ARMS=1] NODE_OPTIONS=--require scripts/t765-obs.js server-baseline-check 서버기준선_2026-11-01b",
+  "arms": {
+   "same": "3/3",
+   "armsLoot": {
+    "1020": 23.099,
+    "7": 0,
+    "42": 12.313
+   },
+   "endBag": {
+    "1020": 0,
+    "7": 0,
+    "42": 12.313
+   },
+   "vanished": 23.099,
+   "pct": 65
+  },
+  "armsTrade": {
+   "same": "다름 3/3",
+   "armsLoot": {
+    "1020": 54.825,
+    "7": 27.54,
+    "42": 99.384
+   },
+   "endBag": {
+    "1020": 36.625,
+    "7": 0,
+    "42": 41.356
+   },
+   "vanished": 103.768,
+   "pct": 57
+  }
+ },
+ "q5": {
+  "how": "T403_ARMS_LEDGER=1 · 전쟁 자 t577 50날 VILLAGE_DAY_MS=10000 WAR_FIXTURE=assault*3 + t764-arms-probe · 기준선 자 server-baseline-check",
+  "war": {
+   "force": [
+    387,
+    379,
+    489
+   ],
+   "out": [
+    387,
+    379,
+    489
+   ],
+   "militia": [
+    0,
+    0,
+    0
+   ],
+   "retOut": [
+    359,
+    362,
+    422
+   ],
+   "returned": [
+    339,
+    341,
+    390
+   ],
+   "lostInDefeat": [
+    20,
+    21,
+    32
+   ],
+   "endBag": [
+    28,
+    17,
+    8
+   ]
+  },
+  "gate": {
+   "same": "다름 3/3",
+   "pop": {
+    "1020": 2517,
+    "7": 2689,
+    "42": 2599
+   }
+  }
+ },
+ "q6": {
+  "how": "전쟁 자 50날 T403 · T811_ARMS_BODY · T826_LOOT_BODY 켬 + t811-arms-probe",
+  "cap1": {
+   "kgMax": [
+    119.686,
+    117.257,
+    138.252
+   ],
+   "overSamples": [
+    [
+     772,
+     949
+    ],
+    [
+     748,
+     925
+    ],
+    [
+     854,
+     899
+    ]
+   ],
+   "overWars": [
+    [
+     47,
+     47
+    ],
+    [
+     49,
+     49
+    ],
+    [
+     51,
+     51
+    ]
+   ],
+   "otherKgMax": [
+    103.2,
+    102.3,
+    118.8
+   ]
+  },
+  "inf": {
+   "kgMax": [
+    16.963,
+    18.958,
+    19.987
+   ],
+   "overSamples": [
+    [
+     0,
+     4924
+    ],
+    [
+     0,
+     4254
+    ],
+    [
+     0,
+     4041
+    ]
+   ]
+  }
+ },
+ "q7": {
+  "how": "t702-forest-audit · t717-wood-probe 기준선 자 · t717-equilibrium",
+  "yMatMedian": 0.444,
+  "need400Median": 3.06,
+  "formulaOne": 0.504,
+  "n0": "26/51",
+  "coverByEq": "11/51",
+  "coverWithDeadwood": "16~24/51",
+  "wood06": {
+   "n": 28,
+   "yMatMedian": 0.185,
+   "pctOfNeed": "5.7(중앙 비) ~ 7.5(합 비)"
+  }
+ },
+ "q9": {
+  "preserveRows": 49,
+  "mismatch": 43,
+  "byRecipe": {
+   "dry_fish": 21,
+   "pickle_fish": 22
+  },
+  "dried_fish": 445.5,
+  "pickled_veg": 150,
+  "carp": 1.9336,
+  "cooked": 1.12
+ },
+ "q10": {
+  "bear": 4.9689
+ },
+ "q15": {
+  "M": {
+   "walk": 14.7,
+   "run": 29.8
+  },
+  "F": {
+   "walk": 18.3,
+   "run": 36.0
+  }
+ },
+ "q16": {
+  "off": "49/0",
+  "on": "49/0",
+  "note": "T794 하네스가 베리를 언 날 안에서 한 번에 넣음 — 옛 43/4 꼴을 더 안 잰다"
+ },
+ "q20": {
+  "pairs": 1836,
+  "ok": 1083,
+  "bad": 753,
+  "badMs": 199629,
+  "okMs": 90884,
+  "badShare": 0.687
+ },
+ "q22": {
+  "table": "계측/T1010_넘는몫_2026-10-31.json overpay.table 과 같음(made · sec 만 다름)"
+ },
+ "harness": {
+  "test-preserve-carry": "41/0",
+  "test-granary-item": "42/0",
+  "test-granary-age": "31/0",
+  "test-village-only": "101/0",
+  "test-donate": "42/0"
+ }
+}
