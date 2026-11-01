@@ -96,7 +96,10 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
     ok(!!(kL && aL) && Math.abs(kL.len - aL.len) < 1 && aL.leg === 'inbound', '★켬 — 몸이 같은 길(돌아서는 구간 · 길이 1px 안)', kL && aL ? `${kL.len.toFixed(1)} → ${aL.len.toFixed(1)}` : '—');
     const mv = (k && a && k.body && a.body && k.body.x != null && a.body.x != null) ? Math.hypot(a.body.x - k.body.x, a.body.y - k.body.y) : null;
     const gap = ion.A && ion.A.C && ion.K.C ? (ion.A.C.at - ion.K.C.at) : null, want = kL && gap != null ? kL.ppd / 360000 * gap : null;
-    ok(mv != null && want != null && mv <= want + 64, '★켬 — 같은 자리(장부 속도로 그 사이 갈 몫 + 64px 안)', mv != null ? `옮김 ${mv.toFixed(1)}px · 몫 ${want != null ? want.toFixed(1) : '—'}px` : '—'); }
+    //   잣대 = 그 사이 살아 있는 몸이 갈 수 있던 최대 — 장부 몫과 틱 판 귀환 걸음 상한(T772 · 존 `MOVE_SPEED` 정본) × 그 사이 중 큰 쪽(+64px).
+    //     돌아선 몸은 고립 순간 장부 목표 뒤에서 걸음 상한으로 쫓는다(종전 틱 판 그대로) — 그 몸이 그 시간에 못 갈 곳이면(순간 이동) 실패다. 끔 판(되돌아감)은 아래 대조.
+    const MS = +((Z.match(/const MOVE_SPEED = (\d+);/) || [])[1]) || 0, walk = gap != null ? MS / 1000 * gap : null, bound = want != null && walk != null ? Math.max(want, walk) : null;
+    ok(mv != null && bound != null && MS > 0 && mv <= bound + 64, '★켬 — 같은 자리(그 사이 갈 수 있던 몫 + 64px 안 — 순간 이동 0)', mv != null ? `옮김 ${mv.toFixed(1)}px · 장부 몫 ${want != null ? want.toFixed(1) : '—'}px · 걸음 몫 ${walk != null ? walk.toFixed(1) : '—'}px(${MS}px/s × ${gap != null ? (gap / 1000).toFixed(1) : '—'}초)` : '—'); }
   { const k = ioff.K && ioff.K.c, a = ioff.A && ioff.A.c;
     ok(!!(k && a) && a.st === 'outbound' && a.ret !== k.ret, '★★[자명 통과 금지] 끔 — 같은 판에서 장부가 가는 길로 되돌아간다(종전 · 메타 행이 아침 것)', k && a ? `${k.st}/${k.ret} → ${a.st}/${a.ret}` : '—'); }
 
