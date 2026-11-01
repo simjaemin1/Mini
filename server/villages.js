@@ -3324,6 +3324,14 @@ function _routePrime() {
 //   ⓐ 캐시 크기(메모리·DB)와 세계 서명 ⓑ **감사**: 캐시에 든 경로를 실제로 다시 계산해 비교한다.
 //   "저장해도 답이 안 달라진다"는 `path-core` 의 보증이지만, 보증은 **밟아 봐야** 검사가 된다
 //   (T41 의 단조성 감사와 같은 규약 — 코드로만 확인하고 적으면 그게 N.6 을 만든 방식이다).
+function _t1061Sigs() {
+  const h = require('crypto').createHash('sha1'), hb = require('crypto').createHash('sha1');
+  const wk = state.walkCache ? [...state.walkCache.keys()].sort() : [];
+  for (const k of wk) { const e = state.walkCache.get(k); h.update(k + ':'); for (const p of (e.pts || [])) h.update(p.x + ',' + p.y + ';'); }
+  const bs = state.caravanBodies ? [...state.caravanBodies.values()].sort((a, b) => (a.id > b.id ? 1 : a.id < b.id ? -1 : 0)) : [];
+  for (const b of bs) { hb.update(b.id + '|' + (b.c ? (b.c.state + '|' + b.c.departDay + '|' + b.c.arriveDay) : '') + ':'); for (const p of (b.pts || [])) hb.update(p.x + ',' + p.y + ';'); }
+  return { walkN: wk.length, walkSig: h.digest('hex').slice(0, 16), bodyN: bs.length, bodySig: hb.digest('hex').slice(0, 16) };
+}
 function routeDebug(opts) {
   const o = opts || {};
   const out = { mem: state.routeCache ? state.routeCache.size : 0, sig: state._routeSig || null,
@@ -3344,7 +3352,9 @@ function routeDebug(opts) {
                   if (pl) for (const p of pl.values()) if (!p.isNpc) n++; return n; })(),
                 primed: state._routePrimed | 0, coldPrimed: _probe.routeColdPrimed | 0,
                 stale: state._routeStale | 0,   // ★[T619] 마을 칸이 달라 안 물려받은 쌍
-                db: (state.db && state.db.countTradeRoutes) ? state.db.countTradeRoutes(state.zoneId) : -1 };
+                db: (state.db && state.db.countTradeRoutes) ? state.db.countTradeRoutes(state.zoneId) : -1,
+                // ★[T1061] 값 같음 증명용 서명(시험 전용 창) — 걷는 길 캐시 전체 · 캐러밴 몸(id · 구간 · 폴리라인 바이트). 조각 경계가 달라도 같아야 한다.
+                ..._t1061Sigs() };
   // ★★[T85] **재개형 감사** — 캐시에 든 길(동기 문이 판 것)과 **재개형으로 다시 판 길**이 비트 동일인가.
   //   ★왜 이 자리인가: 579쌍은 **정본 시드 세계의 실제 쌍**이다(선계산 큐가 세운 그것) —
   //     합성 격자로 재면 그건 다른 세계를 잰 것이다(족보: 계측기도 사본 금지 · 정본 함수를 불러라).
@@ -3698,7 +3708,7 @@ const T896_RESUME_ONE = process.env.T896_RESUME_ONE !== '0';
 //     (T896 이 빈 쌍에 건 그 계약 — 'wait' 와 같은 자리 · 새 수 0). 걷는 길 · 교역로의 답은 그대로다(같은 문 · 같은 차례 · 조각 경계만 다름 — T85 · T617).
 //   셈(두 팔 · 세계 0): 틱마다 걷는 길 부름 수 · ms · 가장 긴 부름 · 미룬 캐러밴 수 — `/perf` probe `t1061`.
 const T1061_RESUME_SLICE = process.env.T1061_RESUME_SLICE !== '0';
-const _t1061 = { held: 0, walkCalls: 0, walkMs: 0, callMax: 0, tickSeq: -1, tickMs: 0, tickCalls: 0, tickMax: 0, tickMaxCalls: 0, over30: 0, over16: 0 };
+const _t1061 = { held: 0, overCalls: 0, walkCalls: 0, walkMs: 0, callMax: 0, tickSeq: -1, tickMs: 0, tickCalls: 0, tickMax: 0, tickMaxCalls: 0, over30: 0, over16: 0 };
 function _t1061Walk(ms) {   // 걷는 길 한 부름(셈만) — 틱 차례(`_t1026Seq`)가 바뀌면 지난 틱 몫을 닫는다
   const T = _t1061;
   if (T.tickSeq !== _t1026Seq) { if (T.tickMs > 30) T.over30++; if (T.tickMs > 16) T.over16++; T.tickSeq = _t1026Seq; T.tickMs = 0; T.tickCalls = 0; }
@@ -3753,6 +3763,7 @@ function _t775Resume(now) {
     if (bodies.size >= CARAVAN_BODY_MAX) { _probe.t775Cap = (_probe.t775Cap || 0) + 1; continue; }   // 몸 상한(E2) — 몸 없이 장부만 간다(센다)
     if (T1061_RESUME_SLICE && (TB.out(TICK_SLICE_MS, 'resume775') || (!TB.ON && TICK_SLICE_MS > 0 && Date.now() - _q0 >= TICK_SLICE_MS))) { cut = true; keep.push(c); _t1061.held++; continue; }   // ★[T1061] 이 틱 몫이 바닥났다 — 이 캐러밴부터 다음 틱
     if (T896_RESUME_ONE) { if (_t896NeedSlot(c)) { if (slotTaken) { keep.push(c); _probe.t896Held = (_probe.t896Held || 0) + 1; continue; } slotTaken = true; } }   // ★[T896] 빈 쌍은 한 틱 한 대
+    if (TB.ON && TB.left(TICK_SLICE_MS) <= 0) _t1061.overCalls++;   // ★[T1061] 셈만 — 이 틱 몫이 이미 바닥난 뒤에 부른 캐러밴(켬이면 위 줄이 막아 0 · 끔 = 종전 쌓임) · `left` 는 부작용 없음
     const r = _t1026Door('resume775', () => spawnCaravanBody(c, now));   // ★[T1026] 꼬리표(값 무변)
     if (r === 'wait') { keep.push(c); continue; }   // 길이 아직 — 줄에 남긴다(다음 틱)
     if (r) { _probe.t775Spawned = (_probe.t775Spawned || 0) + 1; if (c.state === 'inbound') _probe.t775Inbound = (_probe.t775Inbound || 0) + 1; }
@@ -7484,7 +7495,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
   ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done), ...(T896_RESUME_ONE ? { held896: _probe.t896Held | 0 } : {}) } } : {}),
   t929: { on: T929_RET_RESUME, wait: _probe.t929Wait | 0, cold: _probe.t929Cold | 0, msMax: _probe.t929MsMax | 0 },
-  t1061: { on: T1061_RESUME_SLICE, held: _t1061.held, walkCalls: _t1061.walkCalls, walkMs: _t1061.walkMs, callMax: _t1061.callMax, tickMax: _t1061.tickMax, tickMaxCalls: _t1061.tickMaxCalls, over30: _t1061.over30, over16: _t1061.over16 },   // ★[T1061] 걷는 길 틱 몫(셈만)
+  t1061: { on: T1061_RESUME_SLICE, held: _t1061.held, overCalls: _t1061.overCalls, walkCalls: _t1061.walkCalls, walkMs: _t1061.walkMs, callMax: _t1061.callMax, tickMax: _t1061.tickMax, tickMaxCalls: _t1061.tickMaxCalls, over30: _t1061.over30, over16: _t1061.over16 },   // ★[T1061] 걷는 길 틱 몫(셈만)
   t1026: { on: T1026_SLOT_KEEP, start: Object.assign({}, _t1026.start), yield: Object.assign({}, _t1026.yield), drop: Object.assign({}, _t1026.drop), dropFresh: _t1026.dropFresh | 0, held: _pathJob ? (_pathJob.door || '?') : null },   // ★[T1026] 문마다 일 시작 · 기다림 · 버림(셈만)
   t968: { on: T968_DIST_BG, bgSlices: _probe.t968BgSlices | 0, bgMs: _probe.t968BgMs | 0, bgSliceMax: _probe.t968BgSliceMax | 0, ready: _probe.t968Ready | 0, readyClose: _probe.t968ReadyClose | 0, closeSlices: _probe.t968CloseSlices | 0, frozen: _probe.t968Frozen | 0, waitQ: _probe.t968WaitQ | 0 },   // ★[T968] 셈만
   t977: { same: T977_DIST_SAME, probe: T977_PROBE, runs: _t977.runs },
