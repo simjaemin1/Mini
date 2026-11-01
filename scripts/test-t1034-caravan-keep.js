@@ -57,13 +57,22 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
     const got = await until(async () => { const C = await car(base); return C && C.cars.filter((c) => c.st === 'outbound').length >= 2 ? C : null; }, 600000, 2000);
     ok(!!got, '[상황] 짧은 하루로 길 위 캐러밴이 섰다', got ? `${got.cars.length}대 · 날 ${got.day}` : '없음');
     try { z.c.kill('SIGTERM'); } catch (e) {} await Promise.race([z.x, sleep(30000)]); try { z.c.kill('SIGKILL'); } catch (e) {} await z.x; }
-  const copy = (tag) => { const db = path.join(TMP, tag + '.db'); for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(S + s, db + s); } catch (e) {} } return db; };
+  //   고르기 — 재는 하루(6분)로 훅 없이 띄워 T775 줄 · 현지 자정 창(시계가 바뀐 따라잡기 마감)이 닫힐 때까지 → SIGTERM(그 시계로 저장)
+  //     안 하면 고립이 부팅 따라잡기 창 안에서 선다(창 안 = 마감 몫 · T728 이 창 끝에 쓴다 — 하루 중 문이 아니다).
+  const S6 = path.join(TMP, 'save6.db');
+  for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(S + s, S6 + s); } catch (e) {} }
+  { const z = up(S6, base + 2, { VILLAGE_DAY_MS: '360000' });
+    const g = await until(async () => { const C = await car(base + 2); return C && C.t775 && C.t775.done && !C.w731 ? C : null; }, 600000, 1000);
+    ok(!!g, '[상황] 고르기 — 재는 하루로 몸을 다 세웠고 현지 자정 창이 닫혔다', g ? `날 ${g.day}` : '못 닫힘');
+    await sleep(2000); try { z.c.kill('SIGTERM'); } catch (e) {} await Promise.race([z.x, sleep(30000)]); try { z.c.kill('SIGKILL'); } catch (e) {} await z.x; }
+  const copy = (tag, src) => { const from = src || S; const db = path.join(TMP, tag + '.db'); for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(from + s, db + s); } catch (e) {} } return db; };
 
   console.log('\n② 죽음 판 — 하루 중 고립 귀환 뒤 SIGKILL(켬 · 끔 같은 사본)');
   const iso = async (tag, off, k) => {
-    const db = copy('iso-' + tag), port = base + 20 + k * 2, env = Object.assign({ VILLAGE_DAY_MS: '360000' }, off ? { T1034_CARAVAN_KEEP: '0' } : {});
+    const db = copy('iso-' + tag, S6), port = base + 20 + k * 2, env = Object.assign({ VILLAGE_DAY_MS: '360000' }, off ? { T1034_CARAVAN_KEEP: '0' } : {});
     let z = up(db, port, Object.assign({ VILLAGE_CARAVAN_BLOCKTEST: '2' }, env));
     const K = await until(async () => { const C = await car(port); const c = C && C.t775 && C.t775.done && C.cars.find((x) => x.st === 'inbound' && x.ab && x.body); return c ? { C, c } : null; }, 300000, 250);
+    if (K) ok(!K.C.w731, `[상황] ${tag} — 고립이 하루 중(현지 자정 창 밖)에 섰다`, `창 ${K.C.w731}`);
     //   켬 = 틱 끝 메타 행이 그 귀환을 실을 때까지 · 끔 = 같은 벽시계만큼(5초 — 끔은 마감 전엔 메타 행을 안 쓴다)
     if (K) await until(async () => { const m = metaOf(db); const r = m && (m.caravans || []).find((x) => x.id === K.c.id); return off ? null : (r && r.state === 'inbound' ? 1 : null); }, 5000, 200);
     const K2 = K ? await car(port) : null;

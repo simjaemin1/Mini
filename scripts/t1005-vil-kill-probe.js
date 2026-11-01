@@ -225,7 +225,7 @@ async function actCaravan(a) {   // ★[T1034] 행동 없음 — 몸이 선 길 
   if (BLOCK === '2') { for (let i = 0; i < 600; i++) { const L = await look({ car: true }); if (L && L.car && L.car.cars.some((c) => c.st === 'inbound' && c.ab && c.body)) break; await sleep(1000); } await sleep(3000); }
   const m1 = await look({ car: true });
   const n = m1 && m1.car ? m1.car.cars.filter((c) => c.body).length : 0;
-  return { ok: n > 0, m0, m1, act: { iso: m1 && m1.car ? m1.car.cars.filter((c) => c.st === 'inbound' && c.ab).map((c) => c.id) : null, bodies: n, cars: m1 && m1.car ? m1.car.cars.length : 0, waitSec: Math.round((Date.now() - t0) / 1000) } };
+  return { ok: n > 0, m0, m1, act: { iso: m1 && m1.car ? m1.car.cars.filter((c) => c.st === 'inbound' && c.ab).map((c) => c.id) : null, w731: m1 && m1.car ? m1.car.w731 : null, dirty: m1 && m1.car && m1.car.stat ? m1.car.stat.dirty : null, bodies: n, cars: m1 && m1.car ? m1.car.cars.length : 0, waitSec: Math.round((Date.now() - t0) / 1000) } };
 }
 async function actTrade(a) {   // T983 문(거래소) — 회부 2 창(곳간 행 → 사람 저장) 재기용 · 행동은 T983 탐침 그대로
   const m0 = await look({});
@@ -401,6 +401,11 @@ setInterval(()=>{ const a=D+'/ask'; if(!fs.existsSync(a)) return; let q={}; try{
       if (_arr ? L.car.cars.some((c) => c.st === 'outbound' && c.arr === L.car.day + 1) : L.car.cars.filter((c) => c.st === 'outbound' || c.st === 'inbound').length >= 2) break; }
     console.log(`[T1034 탐침] 캐러밴 데우기 ${Math.round((Date.now() - tw) / 1000)}초 · 길 위 ${L && L.car ? L.car.cars.length : 0}대 · 날 ${L && L.car ? L.car.day : '—'}`);
     WARM = false;
+    //   --isolate = 고르기 한 번 — 운영 하루로 훅 없이 띄워 T775 줄과 현지 자정 창(따라잡기 마감 · 시계가 2초 하루에서 바뀌었다)이 닫힐 때까지 → SIGTERM.
+    //     안 하면 재는 판이 부팅 따라잡기 창 안에서 고립을 보고(창 안 = 마감 몫 · T728 · 하루 중 문이 아니다) 그 창이 닫히기 전에 죽는다.
+    if (BLOCK === '2') { await downP(Z, 'SIGTERM'); Z = null; await upZ(); const ts = Date.now(); let G = null;
+      for (let i = 0; i < 600; i++) { await sleep(1000); G = await look({ car: true }); if (G && G.car && G.car.t775 && G.car.t775.done && !G.car.w731) break; }
+      await sleep(2000); console.log(`[T1034 탐침] 고르기 ${Math.round((Date.now() - ts) / 1000)}초 · 창 ${G && G.car ? G.car.w731 : '—'} · 날 ${G && G.car ? G.car.day : '—'}`); }
   }
   if (WIN === 'hunt') {   // 데우기 — 사냥터 밴드 · 밴드 안 야생 몹이 설 때까지(짧은 하루) → SIGTERM(종료 저장 · T728 곁 칸 `_t728Game`) → 운영 하루로 다시
     await downP(Z, 'SIGTERM'); Z = null; WARM = true; await upZ(); const tw = Date.now(); let L = null;
