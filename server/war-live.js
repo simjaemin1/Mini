@@ -45,6 +45,14 @@ function _t874On() { return typeof process !== 'undefined' && !!process.env && p
 //   새 수 0(`reach` · `standoffSec` 그대로).
 function _t995On(k) { return typeof process !== 'undefined' && !!process.env && process.env[k] === '1'; }
 const T995_CONTACT_REACH = _t995On('T995_CONTACT_REACH'), T995_DRY_STANDOFF = _t995On('T995_DRY_STANDOFF');
+// ═══════════ ★★[T1019 2026-10-31 · T1008 회부 1 ⓒ] 방어 마중 원점이 막힌 칸에 안 든다 — 손잡이 `T1019_UNTRAP`(켬 기본 후보 · 되돌림 `=0` = 종전 글자) ═══════════
+//   왜(보고 T1019 §1 · T1008 ⓒ 401날 전쟁 · 판 자 `~raid3` 시드 7 전쟁 9 농촌3 → 어촌6): 방어 포진(`_muDefHold`)은 원점을 포진점에서 공격 쪽으로 마중(`DEF_ADVANCE` · 상한
+//     `DEF_ADVANCE_MAX` 8칸)하는데 그 걸음이 **막힌 칸인지 안 본다**(랩 `_muTickDefHold` 는 경로 커널 `_muFormStep` 으로 벽을 본다 — "지휘관도 벽 인지" · 서버 이식이 그 줄을 뺐다).
+//     지휘 몸은 원점에 놓인다(`_muStepFollow` — T790 끔) ⇒ 원점이 건물 발자국 칸에 서면 지휘 몸이 그 칸 안에 서고, 풀린 뒤 battle-core 클램프(이전 자리도 막힘 → 제자리)로 못 나온다.
+//     실측: 포진점 (2031.79, 3918) + 8칸 × 공격 원점 쪽 단위 = (2031.647, 3910.001) — 어촌6 집 발자국 칸 (2031, 3910) · 401날 그 칸.
+//   켬: 마중 한 걸음이 막힌 칸이면 축별로 미끄러지고 둘 다 막히면 그 자리(villages `_warWalkGroupTo` 의 원점 걸음 줄과 같은 꼴 · 술어 = 호스트 `blockedCell`). 새 수 0.
+//   같은 손잡이가 battle-core 클램프(갇힌 몸은 걸어 나온다)와 villages 포진점(막혔으면 설 수 있는 가장 가까운 칸)을 켠다.
+const T1019_UNTRAP = typeof process !== 'undefined' && !!process.env && process.env.T1019_UNTRAP !== '0';   // ★[T1019 10-31] 켬 기본 후보 · 되돌림 `=0`
 const _T874 = (function () {
   class O { constructor(o) { return o; } }
   class B extends O {
@@ -241,7 +249,11 @@ function createWarLive(opts) {
     if (atkCmd) { const hx = atkCmd.cx - g.cmd.cx, hy = atkCmd.cy - g.cmd.cy, hd = Math.hypot(hx, hy); if (hd > 0.5) g.heading = Math.atan2(hy, hx); }
     if (atkCmd && MU.DEF_ADVANCE > 0) { const ax = atkCmd.cx - g.holdPt.cx, ay = atkCmd.cy - g.holdPt.cy, ad = Math.hypot(ax, ay);
       const advNow = Math.hypot(g.cmd.cx - g.holdPt.cx, g.cmd.cy - g.holdPt.cy);
-      if (ad > 1 && advNow < MU.DEF_ADVANCE_MAX) { const step = Math.min(MU.FOLLOW_CAP * MU.DEF_ADVANCE, MU.DEF_ADVANCE_MAX - advNow); g.cmd.cx += ax / ad * step; g.cmd.cy += ay / ad * step; } }
+      if (ad > 1 && advNow < MU.DEF_ADVANCE_MAX) { const step = Math.min(MU.FOLLOW_CAP * MU.DEF_ADVANCE, MU.DEF_ADVANCE_MAX - advNow);
+        if (!T1019_UNTRAP || !blockedCell) { g.cmd.cx += ax / ad * step; g.cmd.cy += ay / ad * step; }   // 끔 = 종전 글자(술어를 안 본다)
+        else { const nx = g.cmd.cx + ax / ad * step, ny = g.cmd.cy + ay / ad * step;   // ★[T1019 ⓒ] 켬 — 마중 원점이 막힌 칸(건물 발자국 · 지형 · 나무)에 안 든다: 축별로 미끄러지고 둘 다 막히면 그 자리(villages `_warWalkGroupTo` 줄과 같은 꼴 · 랩 `_muTickDefHold` "지휘관도 벽 인지")
+          //   원점이 이미 막힌 칸 안이면(재편 원점 = 갇힌 몸 자리 등) 막지 않는다 — 나오는 걸음(T790 `inBlk` · battle-core 클램프와 같은 규칙)
+          if (!blockedCell(nx, ny) || blockedCell(g.cmd.cx, g.cmd.cy)) { g.cmd.cx = nx; g.cmd.cy = ny; } else if (!blockedCell(nx, g.cmd.cy)) g.cmd.cx = nx; else if (!blockedCell(g.cmd.cx, ny)) g.cmd.cy = ny; } } }
     _muStepFollow(g, cap != null ? cap : MU.FOLLOW_CAP);
   }
   function _muCmdDist(a, b) { if (!a || !b || !a.cmd || !b.cmd) return Infinity; return Math.hypot(a.cmd.cx - b.cmd.cx, a.cmd.cy - b.cmd.cy); }
