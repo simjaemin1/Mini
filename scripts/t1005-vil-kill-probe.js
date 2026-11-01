@@ -16,8 +16,13 @@
 //   자리 찾기(물가 선 칸 · 사냥 밴드 안 몹 · 집터 후보 칸)도 이 읽기로 한다 — **행동은 하나도 이 길로 안 한다**(전부 위 클라 메시지).
 //   죽은 뒤에는 존 DB(`w-han.db`)의 마을 행(`econ_state`)을 직접 읽는다 = 다시 뜨면 읽힐 바로 그 값.
 //
-// 쓰는 법: node scripts/t1005-vil-kill-probe.js <meal|fish|hunt|house> <판 수> [close] [--now]
-//   손잡이는 env 그대로(`T1005_VIL_SAVE=0` = 끔 · 종전).
+// 쓰는 법: node scripts/t1005-vil-kill-probe.js <meal|fish|hunt|house|trade|phouse|ev> <판 수> [close] [--now] [--raw] [--rot] [--term] [--restarts=K]
+//   ★[T1023] 창 `phouse` = 완공된 의뢰 집 픽스처(존이 내려간 사이 `village_buildings` 'phouse' 행 하나 — 행동 아님) → 다시 뜨기만 `<판 수>` 번 · 뜰 때마다 그 사람 소유 벽 · 바닥 행 수
+//   ★[T1023] `--term` = SIGTERM(종료 저장 문) · `--restarts=K` = 집터 창에서 행동 한 번 뒤 같은 신호로 K 번 다시 뜨기(뜰 때마다 의뢰 집터 행) · 손잡이 `T1023_PSITE_KEEP=0` = 끔
+//   ev    — ★[T1025] 완공 · 굶음 사건 줄(`noteVillageBuilt` · `noteStarved`)을 **래퍼가 세운다**(관측 손 — 생활층 완공 · 기근 몸은 탐침 시간 안에 안 선다) → 같은 틱 끝 →
+//           죽이고 행 곁 칸(`_t1025Ev`) · 다시 뜬 뒤 대기 줄(`t1025Pending`)을 본다. 구제 줄은 meal 창이 정본 문으로 세운다.
+//   손잡이는 env 그대로(`T1005_VIL_SAVE=0` = 끔 · 종전 · ★[T1025] `T1025_EV_CORPSE=0` = 끔).
+//   ★[T1025] `--rot` — 사냥 창에서 도살 없이 사체가 썩을 때까지(5분 + 청소 30초) 기다린 뒤 죽인다(부패 갈래 장부).
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -27,15 +32,20 @@ const WebSocket = require('ws');
 
 const ROOT = path.join(__dirname, '..');
 const WIN = process.argv[2];
-const _WI = ['meal', 'fish', 'hunt', 'house', 'trade'].indexOf(WIN);
-const _OFF = process.env.T1005_VIL_SAVE === '0';
-const CPORT = 3110 + _WI * 100 + (_OFF ? 50 : 0), HPORT = 3120 + _WI * 100 + (_OFF ? 50 : 0);   // 창 · 손잡이마다 다른 포트 — 여덟을 같이 돌릴 수 있게
+const _WI = ['meal', 'fish', 'hunt', 'house', 'trade', 'phouse', 'ev'].indexOf(WIN);
+const _OFF = process.env.T1005_VIL_SAVE === '0', _OFF23 = process.env.T1023_PSITE_KEEP === '0';
+const _OFF25 = process.env.T1025_EV_CORPSE === '0';   // ★[T1025] 끔 판 — 포트 · 자리를 따로
+const _PO = (_OFF ? 50 : 0) + (_OFF23 ? 25 : 0) + (_OFF25 ? 12 : 0) + (process.argv.includes('--term') ? 4 : 0);   // 창 · 손잡이 · 신호마다 다른 포트 — 같이 돌릴 수 있게
+const CPORT = 3110 + _WI * 100 + _PO, HPORT = 3120 + _WI * 100 + _PO;   // 창 · 손잡이마다 다른 포트 — 여덟을 같이 돌릴 수 있게
 const N = +(process.argv[3] || 3);
 const CLOSE = process.argv.includes('close');
 const NOW = process.argv.includes('--now');
 const RAW = process.argv.includes('--raw');   // 사냥 창 — 도살 없이(사체만 남은 채) 죽인다
-if (!['meal', 'fish', 'hunt', 'house', 'trade'].includes(WIN)) { console.error('창: meal | fish | hunt | house | trade'); process.exit(2); }
-const DDIR = `/tmp/t1005-probe-${WIN}-${_OFF ? 'off' : 'on'}${process.argv.includes('close') ? '-close' : ''}`;
+const ROT = process.argv.includes('--rot');   // ★[T1025] 사냥 창 — 도살 없이 사체가 썩은 뒤 죽인다
+if (!['meal', 'fish', 'hunt', 'house', 'trade', 'phouse', 'ev'].includes(WIN)) { console.error('창: meal | fish | hunt | house | trade | phouse | ev'); process.exit(2); }
+const SIG = process.argv.includes('--term') ? 'SIGTERM' : 'SIGKILL';   // ★[T1023] 죽이는 신호(SIGTERM = 종료 저장 문 · T728)
+const RESTARTS = Math.max(1, +((process.argv.find((x) => x.startsWith('--restarts=')) || '=1').split('=')[1]) || 1);   // ★[T1023] 한 판 안 다시 뜨기 횟수(행동 한 번 뒤 같은 신호로 거듭)
+const DDIR = `/tmp/t1005-probe-${WIN}-${_OFF ? 'off' : 'on'}${_OFF23 ? '-t1023off' : ''}${_OFF25 ? '-e0' : ''}${process.argv.includes('close') ? '-close' : ''}${SIG === 'SIGTERM' ? '-term' : ''}${RAW ? '-raw' : ''}${ROT ? '-rot' : ''}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let C = null, Z = null, nLog = 0, SQ = null;
 function boot(file, env, tag) {
@@ -71,7 +81,7 @@ function dbRead() {
   try {
     const row = db.prepare('SELECT econ_state FROM villages WHERE id = ?').get(VID);
     let e = null; try { e = JSON.parse(row.econ_state); } catch (er) {}
-    const G = e && e._t728Game, S = e && e._t740Side;
+    const G = e && e._t728Game, S = e && e._t740Side, EV = e && e._t1025Ev;
     let gSum = null; if (G && Array.isArray(G.m)) { gSum = 0; for (let i = 1; i < G.m.length; i += 2) gSum += +G.m[i] || 0; }
     const huts = db.prepare("SELECT id, data FROM buildings WHERE type = 'hut_site'").all().filter((b) => { try { return JSON.parse(b.data).psite === 1; } catch (er) { return false; } });
     const psw = db.prepare("SELECT COUNT(*) AS n FROM village_buildings WHERE village_id = ? AND type = 'psitework'").get(VID).n;
@@ -79,7 +89,9 @@ function dbRead() {
     let pot = null; if (S && S._potSet && Array.isArray(S._potSet.$S)) pot = S._potSet.$S.length;
     return { food: e && e.storage ? +(+e.storage.food || 0).toFixed(6) : null, fishSustain: e && e.land ? e.land.fishSustain : null, fishBase: e && e.land ? e.land._fishBase : null,
       gameSum: gSum != null ? +gSum.toFixed(6) : null, psite: S && S.psite ? S.psite : null, potN: pot, hutSites: huts.length, hutIds: huts.map((b) => b.id), psitework: psw,
-      rescueEv: (ev.find((x) => x.type === 'RESCUED') || {}).n || 0, fishCells: db.prepare('SELECT COUNT(*) AS n, SUM(stock) AS s FROM fish_cells').get() };
+      rescueEv: (ev.find((x) => x.type === 'RESCUED') || {}).n || 0,
+      t1025Ev: EV ? { r: (EV.r || []).length, b: (EV.b || []).length, s: EV.s | 0 } : null,   // ★[T1025] 행 곁 칸의 사건 대기 줄(구조 · 완공 · 굶음)
+      evRows: Object.fromEntries(ev.map((x) => [x.type, x.n])), fishCells: db.prepare('SELECT COUNT(*) AS n, SUM(stock) AS s FROM fish_cells').get() };
   } finally { db.close(); }
 }
 function open(qs) {
@@ -161,7 +173,10 @@ async function actHunt(a) {
   }
   //   도살(정본 `butcher` · 사람 짐에 고기 · 그 자리 사람 저장) — `--raw` 면 안 한다(사체는 메모리 전용이라 죽으면 사라진다 — 보고 §2)
   let butch = null;
-  if (kills && !RAW) {
+  if (kills && ROT) {   // ★[T1025] 썩을 때까지(5분 + 청소 간격 30초 + 몫) — 도살 없이
+    const mR0 = await look({}); await sleep(5 * 60 * 1000 + 40000); const mR1 = await look({});
+    butch = `썩음 — 장부 ${mR0 && mR0.gameSum} → ${mR1 && mR1.gameSum} · 셈 ${JSON.stringify(mR1 && mR1.corpse)}`;
+  } else if (kills && !RAW) {
     const cp = (a.corpses || []).slice(-1)[0]; const n1 = a.notices.length;
     if (cp) { send(a, { type: 'butcher', cid: cp.cid }); await sleep(1500); butch = (a.notices.slice(n1).find((t) => /도살/.test(t)) || '').slice(0, 60); }
   }
@@ -184,6 +199,13 @@ async function actHouse(a) {
   return { ok: !!done, m0: Object.assign({}, m0, { houseCand: undefined }), m1, act: { tries, at: done, psite: m1 && m1.psite, hut0: m0 && m0.hutSites, hut1: m1 && m1.hutSites } };
 }
 
+async function actEv(a) {   // ★[T1025] 완공 · 굶음 줄 하나씩 — 래퍼가 세운다(관측 손 · 위 머리말)
+  const m0 = await look({});
+  const L = await look({ note: true });
+  await sleep(1500);   // 같은 틱 끝(T1005 표) · 넉넉히
+  const m1 = await look({});
+  return { ok: !!(L && L.noted), m0, m1, act: { noted: L && L.noted, pend0: m0 && m0.pend, pend1: m1 && m1.pend } };
+}
 async function actTrade(a) {   // T983 문(거래소) — 회부 2 창(곳간 행 → 사람 저장) 재기용 · 행동은 T983 탐침 그대로
   const m0 = await look({});
   send(a, { type: '__e2e_give', kgs: { fish: [1.7, 1.2, 0.9] }, quiet: true }); await sleep(1200);
@@ -215,6 +237,7 @@ async function trip() {
   else if (WIN === 'fish') r = await actFish(a, 3);
   else if (WIN === 'hunt') r = await actHunt(a);
   else if (WIN === 'trade') r = await actTrade(a);
+  else if (WIN === 'ev') r = await actEv(a);
   else r = await actHouse(a);
   if (!r.ok) { await close(a); return { k, err: `행동 성사 0 — ${(a.notices.slice(-1)[0] || '').slice(0, 80)}`, act: r.act }; }
   const dayT = await dayNow(); const tT = Date.now();
@@ -231,7 +254,7 @@ async function trip() {
     await sleep(8000);
   }
   const dayK = await dayNow();
-  await downP(Z, 'SIGKILL'); Z = null; await close(a);
+  await downP(Z, SIG); Z = null; await close(a);
   const killMs = Date.now() - tT;
   const dbK = dbRead();
   await sleep(1000); await upZ(); await sleep(3000);
@@ -247,7 +270,8 @@ async function trip() {
     // 생성 = 곳간이 되돌아간 몫(사람은 먹은 채 저장됐다) — 행 food 가 먹기 전 값이면 1 끼
     out.kept = dbK.food != null && r.m1 ? Math.abs(dbK.food - r.m1.food) < Math.abs(dbK.food - r.m0.food) : null;
     out.created = out.kept === false ? +(r.m0.food - r.m1.food).toFixed(6) : 0;
-    out.rescueEvLost = dbK.rescueEv === 0;
+    out.rescueEvLost = dbK.rescueEv === 0 && !(dbK.t1025Ev && dbK.t1025Ev.r > 0);   // ★[T1025] 장부 행에도 · 곁 칸에도 없다
+    out.t1025 = { rowEv: dbK.t1025Ev, pendLive: memK && memK.pend, pendAfter: memA && memA.pend, evRowsAfter: dbA.evRows };
   } else if (WIN === 'fish') {
     out.kept = memK ? (dbK.fishSustain != null && Math.abs(dbK.fishSustain - memK.fishSustain) < 1e-6) : null;
     out.capLost = dbK.fishSustain == null;   // 행에 상한 칸이 아예 없다(첫 매김이 낚시였던 판 — 다시 뜨면 상한 미적용 · `refreshFishSustain` 머리)
@@ -257,18 +281,33 @@ async function trip() {
     out.meat = { live: invLive && (invLive.meat_game || 0), after: invA && (invA.meat_game || 0) };
     out.kept = dbK.gameSum != null && memK ? Math.abs(dbK.gameSum - memK.gameSum) < 1e-6 : null;
     out.created = dbK.gameSum != null && memK ? +(dbK.gameSum - memK.gameSum).toFixed(6) : null;   // 되살아난 개체(행 − 죽기 전)
+    //   ★[T1025] 잃음 = 장부에서 빠진 마릿수(잡기 앞 메모리 − 죽은 순간 행) − 고기가 된 마릿수(사람 행에 고기가 남았다 · 썩은 판은 0 — 빠지는 게 옳다)
+    const _real = (out.meat.after > 0 ? 1 : 0) + (ROT ? 1 : 0);
+    out.lostGame = dbK.gameSum != null && r.m0 && r.m0.gameSum != null ? +((r.m0.gameSum - dbK.gameSum) - _real).toFixed(6) : null;
+    out.corpse = memK && memK.corpse;
   } else if (WIN === 'trade') {
     out.kept = dbK.food != null && r.act && r.act.take === 'food' ? dbK.food < r.m0.food : null;
+  } else if (WIN === 'ev') {   // ★[T1025] 행 곁 칸 · 다시 뜬 뒤 대기 줄
+    out.t1025 = { rowEv: dbK.t1025Ev, pendLive: memK && memK.pend, pendAfter: memA && memA.pend };
+    out.kept = !!(memA && memA.pend && memK && memK.pend && memA.pend.b === memK.pend.b && memA.pend.s === memK.pend.s);
+    out.created = 0;
   } else {
     out.invLive = invLive && { pillar: invLive.pillar || 0, rafter: invLive.rafter || 0, thatch: invLive.thatch || 0 };
     out.invA = invA && { pillar: invA.pillar || 0, rafter: invA.rafter || 0, thatch: invA.thatch || 0 };
     out.kept = !!(dbK.psite && memK && memK.psite && dbK.psite.cx === memK.psite.cx && dbK.psite.cy === memK.psite.cy);
     out.created = dbA.hutSites - dbK.hutSites;   // 다시 뜬 뒤 의뢰 집터 건물 행 − 죽은 순간(같은 자리 둘째 집터 = 생성)
     out.boKept = !!(memA && memA.psite && memK && memK.psite && memA.psite.bo === memK.psite.bo);
+    //   ★[T1023] 같은 신호로 더 다시 뜨기 — 뜰 때마다 의뢰 집터 행 수 · 붙든 건물 번호
+    out.restarts = [{ n: 1, huts: dbA.hutIds, bo: memA && memA.psite ? memA.psite.bo : null }];
+    for (let i = 2; i <= RESTARTS; i++) {
+      await sleep(1500); await downP(Z, SIG); Z = null; await sleep(1000); await upZ(); await sleep(3000);
+      const mi = await look({}), di = dbRead(); out.restarts.push({ n: i, huts: di.hutIds, bo: mi && mi.psite ? mi.psite.bo : null });
+    }
+    out.extraRows = out.restarts[out.restarts.length - 1].huts.length - dbK.hutSites;   // 마지막 뜬 뒤 의뢰 집터 행 − 의뢰 순간(겹쳐 선 행)
   }
   return out;
 }
-function pick(m) { if (!m) return null; const o = {}; for (const k of ['food', 'fishSustain', 'fishBase', 'gameSum', 'gameN', 'psite', 'potN', 'hutSites', 'day']) if (m[k] !== undefined) o[k] = m[k]; return o; }
+function pick(m) { if (!m) return null; const o = {}; for (const k of ['food', 'fishSustain', 'fishBase', 'gameSum', 'gameN', 'psite', 'potN', 'hutSites', 'day', 'pend', 'corpse']) if (m[k] !== undefined) o[k] = m[k]; return o; }
 
 (async () => {
   fs.rmSync(DDIR, { recursive: true, force: true }); fs.mkdirSync(DDIR, { recursive: true });
@@ -287,7 +326,9 @@ function look(q){ H=H||Zm.__testBind(); const V=H.SimVillages; const vil=V.villa
   const e=vil.econ, L=e.land||{}; let gs=0,gn=0; if(vil._gameRich) for(const g of vil._gameRich.values()){gs+=g;gn++;}
   let huts=0; for(const b of H.buildings.values()) if(b.type==='hut_site'&&b.data&&b.data.psite===1) huts++;
   const o={day:V.dayInfo?undefined:undefined, food:+(+((e.storage||{}).food)||0).toFixed(6), fishSustain:L.fishSustain, fishBase:L._fishBase, gameSum:+gs.toFixed(6), gameN:gn,
-    psite:vil._psite?{cx:vil._psite.cx,cy:vil._psite.cy,stage:vil._psite.stage,bo:vil._psite.bo?vil._psite.bo.dbId:null}:null, potN:vil._potSet?vil._potSet.size:null, hutSites:huts, ccx:vil.ccx, ccy:vil.ccy};
+    psite:vil._psite?{cx:vil._psite.cx,cy:vil._psite.cy,stage:vil._psite.stage,bo:vil._psite.bo?vil._psite.bo.dbId:null}:null, potN:vil._potSet?vil._potSet.size:null, hutSites:huts, ccx:vil.ccx, ccy:vil.ccy,
+    pend:V.t1025Pending?V.t1025Pending(VID):null, corpse:H.t1025Corpse?Object.assign({},H.t1025Corpse):null};
+  if(q.note){ V.noteVillageBuilt(vil,'house'); V.noteStarved(vil); o.noted=true; }   // ★[T1025] ev 창 — 관측 손(완공 · 굶음 줄을 세운다 · 머리말)
   if(q.spot){ const R=H.Fishing.CFG.REACH_PX, out=[]; for(let r=1;r<=70&&out.length<1;r++) for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){ if(Math.max(Math.abs(dx),Math.abs(dy))!==r) continue;
       const px=(vil.ccx+dx)*32+16, py=(vil.ccy+dy)*32+16; if(H.isWaterTileLocal(px,py)||H.isTerrainBlockedLocal(px,py)) continue;
       let w=null; for(let yy=-R;yy<=R&&!w;yy+=32) for(let xx=-R;xx<=R;xx+=32){ if(xx*xx+yy*yy>R*R) continue; if(H.isWaterTileLocal(px+xx,py+yy)){ w={x:px+xx,y:py+yy}; break; } }
@@ -321,8 +362,19 @@ setInterval(()=>{ const a=D+'/ask'; if(!fs.existsSync(a)) return; let q={}; try{
     if (M.length) { M.sort((p, q) => Math.hypot(p.x - SQ.x, p.y - SQ.y) - Math.hypot(q.x - SQ.x, q.y - SQ.y)); SQ = { x: Math.round(M[0].x), y: Math.round(M[0].y) }; }
     console.log(`[T1005 탐침] 사냥 광장 = 밴드 안 몹 ${M.length} 중 회관에서 가장 가까운 것(${M[0] ? M[0].type : '—'}) 자리 ${SQ.x},${SQ.y}`);
   }
+  if (WIN === 'phouse') {   // ★[T1023 ③] 완공된 의뢰 집(`phouse`) — 부팅이 벽 · 바닥을 사람 소유로 다시 세운다(부팅 지우기 `npc_%` 를 안 탄다)
+    //   ★픽스처(행동 아님 · 보고에 적는다): 존이 내려간 사이 `_lifeCompleteHouse` 가 쓰는 그 행(`village_buildings` type 'phouse' · data.owner)을 하나 넣는다.
+    //     완공까지 크루가 며칠 지어야 해서 클라로는 못 닿는다. 그 뒤로는 다시 뜨기만 한다(신호 `SIG`) — 뜰 때마다 그 사람 소유 벽 · 바닥 행을 센다.
+    await downP(Z, 'SIGTERM'); Z = null;
+    const OW = 'guest_t1023_phouse', db2 = new (require('node:sqlite').DatabaseSync)(`${DDIR}/w-han.db`);
+    db2.prepare("INSERT INTO village_buildings (village_id, type, cx, cy, floors, data, created_at) VALUES (?, 'phouse', ?, ?, 1, ?, ?)").run(VID, v.cx + 30, v.cy + 30, JSON.stringify({ owner: OW }), Date.now()); db2.close();
+    const cnt = () => { const d = new (require('node:sqlite').DatabaseSync)(`${DDIR}/w-han.db`); try { return d.prepare("SELECT type, COUNT(*) AS n FROM buildings WHERE owner_id = ? GROUP BY type ORDER BY type").all(OW).map((r) => `${r.type} ${r.n}`).join(' · ') || '0'; } finally { d.close(); } };
+    console.log(`[T1023 탐침 · phouse] 신호 ${SIG} · 의뢰 집 행 하나(픽스처 · 마을 ${v.name} · 칸 ${v.cx + 30},${v.cy + 30} · 주인 ${OW})`);
+    for (let i = 1; i <= N; i++) { await upZ(); await sleep(3000); console.log(JSON.stringify({ boot: i, rows: cnt() })); await downP(Z, SIG); Z = null; await sleep(1000); }
+    process.exit(0);
+  }
   await downP(Z, 'SIGTERM'); Z = null; await upZ(); await sleep(3000);
-  console.log(`[T1005 탐침] 창 ${WIN} · T1005_VIL_SAVE=${process.env.T1005_VIL_SAVE === undefined ? '(기본)' : process.env.T1005_VIL_SAVE} · 판 ${N} · ${CLOSE ? '마감 낀 판' : '마감 안 낀 판'}${NOW ? ' · 사람 저장 안 기다림' : ''} · 마을 ${v.name} · 광장 ${SQ.x},${SQ.y}`);
+  console.log(`[T1005 탐침] 창 ${WIN} · T1025_EV_CORPSE=${process.env.T1025_EV_CORPSE === undefined ? '(기본)' : process.env.T1025_EV_CORPSE} · T1005_VIL_SAVE=${process.env.T1005_VIL_SAVE === undefined ? '(기본)' : process.env.T1005_VIL_SAVE} · 판 ${N} · ${CLOSE ? '마감 낀 판' : '마감 안 낀 판'}${NOW ? ' · 사람 저장 안 기다림' : ''} · 마을 ${v.name} · 광장 ${SQ.x},${SQ.y}`);
   const R = [];
   for (let i = 0; i < N; i++) { let r; try { r = await trip(); } catch (e) { r = { err: e.message }; if (!Z) await upZ().catch(() => {}); } R.push(r); console.log(JSON.stringify(r)); }
   fs.writeFileSync(`${DDIR}/result.json`, JSON.stringify(R, null, 1));
@@ -330,6 +382,7 @@ setInterval(()=>{ const a=D+'/ask'; if(!fs.existsSync(a)) return; let q={}; try{
   const sum = (f) => +M.reduce((s, r) => s + (+r[f] || 0), 0).toFixed(6);
   console.log(`[T1005 합] 창 ${WIN} · 재는 판 ${M.length}/${R.length} · 남음 ${M.filter((r) => r.kept).length} · 되돌아감 ${M.filter((r) => r.kept === false).length}`
     + (WIN === 'fish' ? ` · 상한 초과(행 − 죽기 전) 합 ${sum('capExcess')}` : ` · 생성 합 ${sum('created')}`)
-    + (WIN === 'meal' ? ` · 사건 줄 잃음 ${M.filter((r) => r.rescueEvLost).length}/${M.length}` : ''));
+    + (WIN === 'meal' ? ` · 사건 줄 잃음 ${M.filter((r) => r.rescueEvLost).length}/${M.length}` : '')
+    + (WIN === 'hunt' ? ` · 사냥감 잃음 합 ${sum('lostGame')}` : ''));
   process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });

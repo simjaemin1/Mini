@@ -790,7 +790,8 @@ const server = http.createServer(async (req, res) => {
         central: `${PUBLIC_HOST}:${PORT}`,
         ...(process.env.T937_GT_PREWARM !== '0' ? { gtPrewarm: true } : {}),   // [T937 · ★T948 켬 기본 — PM 10-27] 클라가 **로비에서** 지면 굽기의 한 번짜리 준비 둘(맨땅 마스크 `_gtMask` · 풀 잎 가르기 `_grassSplit`)을 미리 한다(첫 그림에서 뺀다 · 00-const `_gtPrewarm`) · 되돌림 `T937_GT_PREWARM=0` 이면 칸이 없다(옛 /zones · 첫 타일이 한다) · ★welcome 이 아니라 /zones 인 까닭: 로비는 welcome 전이다
         ...(process.env.T962_VIL_SLICE !== '0' ? { vilSlice: true } : {}),   // [T962 · ★T982 켬 기본 — PM 10-28] 클라가 로비의 마을 그림 굽기를 판당 8ms 로 나눠 돈다(20-r2 `_bakeVilArtSliced` · 화소 같음) · 되돌림 `T962_VIL_SLICE=0` 이면 칸이 없다(한 판에 다 — 종전 꼴 · 때는 /zones 뒤) · /zones 인 까닭: T937 과 같다(로비는 welcome 전)
-        ...(process.env.T991_GT_SLICE !== '0' ? { gtSlice: true } : {}),   // [T991 · ★T1003 켬 기본 — PM 10-30] 로비 지면 데우기 둘(`gtPrewarm`)을 판당 8ms 로 쪼갠다(00-const `_gtPrewarmSliced` · 생성기 `_gtMaskGen` · `_grassSplitGen` · 값 같음) · 되돌림 `T991_GT_SLICE=0` 이면 칸이 없다(T991 앞 /zones · 둘을 한 판씩)
+        ...(process.env.T991_GT_SLICE !== '0' ? { gtSlice: true } : {}),
+        ...(process.env.T1024_FIRST_WAIT !== '0' ? { firstWait: true } : {}),   // [T1024 · 켬 기본 — PM 10-31] 클라 첫 재시도도 백오프 간격(확정 오류 15초 · 아니면 1초부터 지수)을 기다린다(33-m-conn `ensurePrimaryConnection`) · 되돌림 `T1024_FIRST_WAIT=0` 이면 칸이 없다(종전 — 첫 재시도는 곧바로)   // [T991 · ★T1003 켬 기본 — PM 10-30] 로비 지면 데우기 둘(`gtPrewarm`)을 판당 8ms 로 쪼갠다(00-const `_gtPrewarmSliced` · 생성기 `_gtMaskGen` · `_grassSplitGen` · 값 같음) · 되돌림 `T991_GT_SLICE=0` 이면 칸이 없다(T991 앞 /zones · 둘을 한 판씩)
         handoffCommit: HANDOFF_COMMIT,   // ★[T604 추신3] 핸드오프 겹침 띠(px) — 클라 해안 평행이동의 경계 앞 바다 지킴이 읽는다(서버 chunk.js 와 같은 수 · 박힌 수 0)
       });
     }
