@@ -1,0 +1,165 @@
+# T1055 표 기계 원문 — node scripts/t1055-table.js (판 디렉터리는 세션 스크래치 · 판 JSON 은 커밋 안 함)
+# 서버 capinf(VILLAGE_NPC_CAP=Infinity = 운영 기본 · 판 1) ↔ 랩 정본 띠(4)
+
+## ① 세계 합 인구 90(날 89 · 시드 1020 / 7 / 42 · 합)
+
+| 판 | 1020 | 7 | 42 | 합 |
+|---|---:|---:|---:|---:|
+| run-capinf | 1,748 | 1,689 | 1,729 | 5,166 |
+| lab:on-h | 1,799 | 1,701 | 1,759 | 5,259 |
+| lab:on-hunt1 | 1,799 | 1,701 | 1,759 | 5,259 |
+| lab:on-hunt2 | 1,746 | 1,733 | 1,760 | 5,239 |
+| lab:on-hunt3 | 1,763 | 1,772 | 1,769 | 5,304 |
+
+서버 띠 5,166 ~ 5,166 · 랩 띠 5,239 ~ 5,304 · 서버 ÷ 랩(가운데) 0.980 · 틈 73
+
+## ② 마을마다(3시드 합 · 서버 판 1 ↔ 랩 판 4 · 칸 = 판 평균 · 서버 / 랩)
+
+| 마을 | 인구 90 서버 띠 | 랩 띠 | 차(가운데) | 틈 ÷ 폭 | 출생 | 나간 몸(굶어) | 주거 89 | 침상 89 | 지은 칸 89 | 식량 환산 89 | 크루-날 | 꺼낸 목재 | 단계 | 기다린 날 | 게이트 날 | 목재 수입 89 |
+|---|---|---|---:|---:|---|---|---|---|---|---|---|---|---|---|---|---|
+| 임업6 | 173 ~ 173 | 188 ~ 194 | -18 | 2.50 | 149 / 167 | 0(0) / 0(0) | 172 / 191 | 174 / 195 | 30 / 32.8 | 5,932 / 5,649 | 194 / 171 | 247 / 273 | 73 / 81 | 53 / 35 | 81 / 70 | 0 / 0 |
+| 어촌4 | 114 ~ 114 | 120 ~ 141 | -16.5 | 0.29 | 90 / 109 | 0(0) / 0(0) | 114 / 132 | 114 / 135 | 19 / 22.5 | 4,349 / 4,359 | 306 / 278 | 131 / 172 | 39 / 51 | 127 / 106 | 148 / 134 | 566 / 592 |
+| 임업2 | 189 ~ 189 | 162 ~ 188 | +14 | 0.04 | 165 / 156 | 0(0) / 0(0) | 188 / 179 | 192 / 182 | 32 / 30.3 | 6,822 / 6,332 | 182 / 181 | 273 / 254 | 79 / 75 | 44 / 44 | 72 / 75 | 0 / 32 |
+| 어촌9 | 84 ~ 84 | 90 ~ 90 | -6 | ∞ | 60 / 66 | 0(0) / 0(0) | 84 / 89 | 84 / 90 | 14 / 15 | 3,630 / 3,590 | 276 / 220 | 80 / 90 | 24 / 27 | 122 / 92 | 142 / 133 | 153 / 240 |
+| 임업5 | 78 ~ 78 | 84 ~ 84 | -6 | ∞ | 54 / 60 | 0(0) / 0(0) | 78 / 84 | 78 / 84 | 13 / 14 | 1,016 / 1,386 | 206 / 148 | 70 / 80 | 21 / 24 | 89 / 58 | 161 / 154 | 109 / 265 |
+| 광산1 | 69 ~ 69 | 70 ~ 72 | -2 | 0.50 | 46 / 47 | 1(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 139 / 224 | 198 / 198 | 60 / 60 | 18 / 18 | 87 / 87 | 17 / 45 | 0 / 0 |
+| 농촌14 | 71 ~ 71 | 72 ~ 72 | -1 | ∞ | 47 / 48 | 0(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 1,610 / 1,679 | 228 / 231 | 60 / 60 | 18 / 18 | 102 / 103 | 77 / 95 | 0 / 0 |
+| 어촌6 | 114 ~ 114 | 114 ~ 162 | -24 | 겹침 | 97 / 102 | 7(0) / 0(0) | 114 / 126 | 114 / 126 | 19 / 21 | 5,619 / 5,601 | 348 / 330 | 131 / 151 | 39 / 45 | 148 / 135 | 160 / 155 | 0 / 0 |
+| 어촌5 | 72 ~ 72 | 72 ~ 108 | -18 | 겹침 | 48 / 62 | 0(0) / 0(0) | 72 / 86 | 72 / 86 | 12 / 14.3 | 5,732 / 5,628 | 348 / 324 | 60 / 83 | 18 / 25 | 162 / 146 | 163 / 150 | 0 / 30 |
+| 농촌5 | 162 ~ 162 | 162 ~ 192 | -15 | 겹침 | 138 / 154 | 0(0) / 0(0) | 162 / 178 | 162 / 179 | 27 / 30.3 | 5,077 / 6,677 | 240 / 263 | 214 / 249 | 63 / 74 | 78 / 83 | 110 / 105 | 0 / 0 |
+| 농촌8 | 72 ~ 72 | 72 ~ 96 | -12 | 겹침 | 48 / 60 | 0(0) / 0(0) | 72 / 84 | 72 / 84 | 12 / 14 | 2,287 / 2,583 | 362 / 336 | 60 / 87 | 18 / 25 | 169 / 152 | 157 / 142 | 0 / 14 |
+| 어촌11 | 126 ~ 126 | 126 ~ 150 | -12 | 겹침 | 104 / 110 | 2(0) / 0(0) | 126 / 134 | 126 / 134 | 21 / 22.3 | 4,398 / 4,954 | 268 / 269 | 150 / 164 | 45 / 49 | 104 / 102 | 128 / 126 | 0 / 0 |
+| 농촌17 | 192 ~ 192 | 168 ~ 198 | +9 | 겹침 | 168 / 161 | 0(0) / 0(0) | 192 / 185 | 192 / 185 | 32 / 30.8 | 5,351 / 6,467 | 234 / 244 | 260 / 255 | 78 / 75 | 65 / 73 | 101 / 106 | 0 / 0 |
+| 임업3 | 96 ~ 96 | 72 ~ 102 | +9 | 겹침 | 72 / 68 | 0(0) / 0(0) | 96 / 92 | 96 / 92 | 16 / 15.3 | 3,885 / 3,078 | 298 / 299 | 107 / 103 | 31 / 29 | 129 / 131 | 158 / 164 | 0 / 0 |
+| 농촌4 | 166 ~ 166 | 150 ~ 168 | +7 | 겹침 | 142 / 140 | 0(0) / 0(0) | 165 / 164 | 168 / 170 | 28 / 28.3 | 5,450 / 5,514 | 256 / 260 | 223 / 225 | 66 / 67 | 84 / 85 | 118 / 120 | 0 / 0 |
+| 농촌3 | 102 ~ 102 | 78 ~ 114 | +6 | 겹침 | 80 / 75 | 2(0) / 0(0) | 102 / 99 | 102 / 99 | 17 / 16.5 | 4,352 / 3,654 | 348 / 357 | 117 / 112 | 34 / 33 | 152 / 157 | 162 / 168 | 0 / 0 |
+| 농촌6 | 72 ~ 72 | 72 ~ 84 | -6 | 겹침 | 48 / 57 | 0(0) / 0(0) | 72 / 81 | 72 / 81 | 12 / 13.5 | 3,109 / 3,197 | 352 / 333 | 60 / 75 | 18 / 23 | 164 / 151 | 160 / 148 | 0 / 32 |
+| 어촌3 | 174 ~ 174 | 174 ~ 186 | -6 | 겹침 | 150 / 156 | 0(0) / 0(0) | 174 / 180 | 174 / 180 | 29 / 30.5 | 6,132 / 5,968 | 252 / 244 | 247 / 258 | 71 / 75 | 82 / 76 | 115 / 111 | 0 / 6 |
+| 임업4 | 84 ~ 84 | 72 ~ 84 | +6 | 겹침 | 60 / 56 | 0(0) / 0(0) | 84 / 80 | 84 / 80 | 14 / 13.3 | 1,378 / 1,934 | 208 / 246 | 80 / 73 | 24 / 22 | 88 / 109 | 148 / 154 | 142 / 0 |
+| 농촌16 | 96 ~ 96 | 84 ~ 99 | +4.5 | 겹침 | 72 / 67 | 0(0) / 0(0) | 96 / 91 | 96 / 92 | 16 / 15.3 | 3,235 / 3,150 | 232 / 243 | 100 / 97 | 30 / 28 | 96 / 103 | 119 / 127 | 152 / 81 |
+| 임업1 | 78 ~ 78 | 78 ~ 86 | -4 | 겹침 | 54 / 58 | 0(0) / 0(0) | 78 / 81 | 78 / 83 | 13 / 13.8 | 2,583 / 1,966 | 264 / 236 | 70 / 81 | 21 / 24 | 118 / 103 | 176 / 173 | 0 / 93 |
+| 광산2 | 72 ~ 72 | 72 ~ 78 | -3 | 겹침 | 48 / 51 | 0(0) / 0(0) | 72 / 75 | 72 / 75 | 12 / 12.5 | 3,000 / 2,908 | 322 / 315 | 60 / 65 | 18 / 20 | 149 / 145 | 174 / 170 | 0 / 0 |
+| 광산4 | 72 ~ 72 | 72 ~ 78 | -3 | 겹침 | 48 / 50 | 0(0) / 0(0) | 72 / 74 | 72 / 74 | 12 / 12.3 | 1,621 / 1,477 | 324 / 310 | 60 / 63 | 18 / 19 | 150 / 142 | 195 / 194 | 0 / 0 |
+| 광산6 | 72 ~ 72 | 72 ~ 78 | -3 | 겹침 | 48 / 50 | 0(0) / 0(0) | 72 / 74 | 72 / 74 | 12 / 12.3 | 3,227 / 3,222 | 292 / 289 | 60 / 64 | 18 / 19 | 134 / 132 | 134 / 133 | 0 / 9 |
+| 농촌1 | 96 ~ 96 | 96 ~ 102 | -3 | 겹침 | 72 / 74 | 0(0) / 0(0) | 96 / 98 | 96 / 98 | 16 / 16.3 | 3,530 / 2,506 | 196 / 180 | 100 / 104 | 30 / 31 | 78 / 69 | 158 / 157 | 529 / 486 |
+| 농촌10 | 72 ~ 72 | 72 ~ 78 | -3 | 겹침 | 48 / 50 | 0(0) / 0(0) | 72 / 73 | 72 / 74 | 12 / 12.3 | 1,246 / 1,554 | 204 / 191 | 60 / 63 | 18 / 19 | 90 / 83 | 125 / 119 | 0 / 59 |
+| 농촌12 | 78 ~ 78 | 78 ~ 84 | -3 | 겹침 | 54 / 56 | 0(0) / 0(0) | 78 / 80 | 78 / 80 | 13 / 13.3 | 3,196 / 3,131 | 340 / 339 | 76 / 80 | 21 / 23 | 157 / 156 | 153 / 153 | 0 / 0 |
+| 농촌19 | 72 ~ 72 | 72 ~ 78 | -3 | 겹침 | 48 / 50 | 0(0) / 0(0) | 72 / 74 | 72 / 74 | 12 / 12.3 | 2,265 / 2,661 | 362 / 359 | 60 / 65 | 18 / 19 | 169 / 167 | 159 / 157 | 0 / 5 |
+| 농촌2 | 234 ~ 234 | 216 ~ 246 | +3 | 겹침 | 210 / 204 | 0(0) / 0(0) | 234 / 227 | 240 / 236 | 40 / 39.3 | 8,557 / 7,864 | 184 / 188 | 343 / 337 | 102 / 100 | 24 / 28 | 84 / 87 | 669 / 724 |
+| 농촌21 | 72 ~ 72 | 72 ~ 78 | -3 | 겹침 | 48 / 50 | 0(0) / 0(0) | 72 / 74 | 72 / 74 | 12 / 12.3 | 2,701 / 2,976 | 356 / 354 | 66 / 67 | 18 / 19 | 166 / 165 | 158 / 157 | 0 / 4 |
+| 어촌1 | 102 ~ 102 | 96 ~ 102 | +3 | 겹침 | 78 / 75 | 0(0) / 0(0) | 102 / 99 | 102 / 99 | 17 / 16.5 | 1,573 / 1,660 | 206 / 232 | 110 / 105 | 33 / 32 | 81 / 95 | 160 / 163 | 0 / 28 |
+| 어촌13 | 72 ~ 72 | 72 ~ 78 | -3 | 겹침 | 48 / 51 | 0(0) / 0(0) | 72 / 75 | 72 / 75 | 12 / 12.5 | 5,131 / 4,378 | 324 / 321 | 60 / 68 | 18 / 20 | 150 / 147 | 160 / 157 | 0 / 15 |
+| 농촌9 | 72 ~ 72 | 72 ~ 77 | -2.5 | 겹침 | 48 / 52 | 0(0) / 0(0) | 72 / 75 | 72 / 77 | 12 / 12.8 | 1,287 / 1,228 | 228 / 193 | 60 / 68 | 18 / 20 | 102 / 83 | 138 / 131 | 0 / 114 |
+| 어촌2 | 233 ~ 233 | 228 ~ 233 | +2.5 | 겹침 | 211 / 205 | 2(0) / 0(0) | 232 / 229 | 234 / 230 | 40 / 41 | 8,124 / 7,990 | 138 / 143 | 340 / 353 | 102 / 106 | 2 / 2 | 57 / 56 | 0 / 0 |
+| 광산7 | 66 ~ 66 | 64 ~ 67 | +0.5 | 겹침 | 42 / 42 | 0(0) / 0(0) | 70 / 69 | 72 / 72 | 12 / 12 | 531 / 209 | 88 / 92 | 60 / 60 | 18 / 18 | 32 / 34 | 14 / 17 | 0 / 0 |
+| 농촌11 | 83 ~ 83 | 72 ~ 95 | -0.5 | 겹침 | 59 / 59 | 0(0) / 0(0) | 83 / 83 | 84 / 84 | 14 / 14 | 2,599 / 2,857 | 322 / 321 | 83 / 84 | 24 / 24 | 147 / 146 | 141 / 141 | 0 / 5 |
+| 광산3 | 72 ~ 72 | 72 ~ 72 | 0 | 겹침 | 48 / 48 | 0(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 1,212 / 1,348 | 242 / 242 | 60 / 60 | 18 / 18 | 109 / 109 | 151 / 150 | 0 / 0 |
+| 광산5 | 72 ~ 72 | 72 ~ 72 | 0 | 겹침 | 48 / 48 | 0(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 2,475 / 2,558 | 270 / 270 | 60 / 60 | 18 / 18 | 123 / 123 | 170 / 169 | 0 / 0 |
+| 농촌13 | 72 ~ 72 | 72 ~ 72 | 0 | 겹침 | 50 / 48 | 2(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 2,534 / 2,651 | 356 / 356 | 62 / 62 | 18 / 18 | 166 / 166 | 160 / 163 | 0 / 0 |
+| 농촌15 | 72 ~ 72 | 72 ~ 72 | 0 | 겹침 | 48 / 48 | 0(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 1,251 / 1,687 | 202 / 202 | 60 / 60 | 18 / 18 | 89 / 89 | 121 / 121 | 0 / 0 |
+| 농촌18 | 72 ~ 72 | 72 ~ 72 | 0 | 겹침 | 48 / 48 | 0(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 1,004 / 1,376 | 214 / 215 | 60 / 60 | 18 / 18 | 95 / 96 | 131 / 131 | 0 / 0 |
+| 농촌20 | 72 ~ 72 | 72 ~ 72 | 0 | 겹침 | 48 / 48 | 0(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 926 / 1,270 | 212 / 219 | 60 / 60 | 18 / 18 | 94 / 98 | 126 / 129 | 40 / 46 |
+| 농촌22 | 162 ~ 162 | 156 ~ 168 | 0 | 겹침 | 138 / 140 | 0(0) / 0(0) | 162 / 164 | 162 / 164 | 27 / 27.3 | 5,774 / 5,643 | 268 / 266 | 213 / 216 | 63 / 64 | 92 / 91 | 124 / 123 | 0 / 0 |
+| 농촌7 | 126 ~ 126 | 108 ~ 144 | 0 | 겹침 | 102 / 98 | 0(0) / 0(0) | 126 / 122 | 126 / 122 | 21 / 20.3 | 5,195 / 4,749 | 250 / 255 | 157 / 146 | 45 / 43 | 95 / 99 | 98 / 104 | 680 / 680 |
+| 어촌10 | 90 ~ 90 | 90 ~ 90 | 0 | 겹침 | 66 / 66 | 0(0) / 0(0) | 90 / 90 | 90 / 90 | 15 / 15 | 4,387 / 4,429 | 280 / 280 | 90 / 90 | 27 / 27 | 122 / 122 | 133 / 133 | 0 / 0 |
+| 어촌12 | 72 ~ 72 | 72 ~ 72 | 0 | 겹침 | 48 / 48 | 0(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 2,746 / 3,411 | 308 / 311 | 66 / 64 | 18 / 18 | 142 / 143 | 162 / 163 | 0 / 11 |
+| 어촌14 | 72 ~ 72 | 72 ~ 72 | 0 | 겹침 | 50 / 48 | 2(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 3,200 / 2,893 | 246 / 248 | 60 / 60 | 18 / 18 | 111 / 112 | 144 / 148 | 0 / 0 |
+| 어촌15 | 120 ~ 120 | 114 ~ 126 | 0 | 겹침 | 96 / 96 | 0(0) / 0(0) | 120 / 120 | 120 / 120 | 20 / 20 | 5,057 / 4,830 | 276 / 276 | 149 / 140 | 43 / 42 | 110 / 110 | 127 / 128 | 0 / 0 |
+| 어촌16 | 96 ~ 96 | 96 ~ 96 | 0 | 겹침 | 72 / 72 | 0(0) / 0(0) | 96 / 96 | 96 / 96 | 16 / 16 | 5,157 / 4,620 | 270 / 271 | 107 / 105 | 30 / 30 | 115 / 116 | 138 / 139 | 0 / 0 |
+| 어촌7 | 72 ~ 72 | 72 ~ 72 | 0 | 겹침 | 48 / 48 | 0(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 4,127 / 4,261 | 302 / 306 | 60 / 60 | 18 / 18 | 139 / 141 | 159 / 159 | 0 / 0 |
+| 어촌8 | 72 ~ 72 | 72 ~ 72 | 0 | 겹침 | 48 / 48 | 0(0) / 0(0) | 72 / 72 | 72 / 72 | 12 / 12 | 3,498 / 3,418 | 284 / 284 | 60 / 60 | 18 / 18 | 130 / 130 | 158 / 158 | 0 / 0 |
+
+안 겹친 마을 7 / 51 · 차 합(가운데) -112 = 서버 쪽 큰 마을 64.5 + 랩 쪽 큰 마을 -176.5
+
+### 1위 7 직업(날 89 · 3시드 합 · 판 run-capinf / lab:on-h)
+
+* 임업6: farmer 80/101 · forager 59/47 · lumberjack 10/17 · hunter 9/10 · mason 6/9 · tailor 4/4 · warrior 3/3 · fisher 2/3
+* 어촌4: farmer 46/67 · fisher 25/25 · forager 18/21 · lumberjack 10/8 · hunter 6/9 · mason 3/5 · tailor 3/3 · warrior 3/3
+* 임업2: farmer 96/97 · forager 27/26 · smith 19/17 · lumberjack 15/13 · fisher 13/11 · mason 7/8 · hunter 5/5 · tailor 4/4 · warrior 3/3 · armorsmith 0/1
+* 어촌9: farmer 42/45 · fisher 23/26 · forager 9/11 · mason 3/3 · warrior 3/3 · tailor 2/2 · hunter 2/0
+* 임업5: hunter 75/79 · mason 3/5
+* 광산1: farmer 59/60 · mason 6/6 · forager 4/6
+* 농촌14: fisher 34/52 · farmer 20/20 · forager 12/0 · mason 5/0
+
+## ③ 차 1위 7 해부(마을-날 · 3시드 · 판 평균 · 서버 / 랩)
+
+| 마을 | 열림 | 게이트-침상 | 게이트-주거 | 닫힘-식량 | 닫힘-K | 닫힘-행복 | 단계 오른 날 | 지은 채 | 한 채 시공 날 | 기다린 날(목재 0) | 게이트인데 집터 없음 | 걷기 ÷ 낮 | 땔감 덮음 < 1 날 | 목재 0 날 | 목재 수입 89 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 임업6 | 186 / 197 | 61 / 45.8 | 20 / 24.3 | 0 / 0 | 0 / 0 | 0 / 0 | 49 / 54.3 | 24 / 26.8 | 2.04 / 2.03 | 53 / 35.3 | 37 / 43 | 1.15% / — | 10 / 1.5 | 55 / 37.3 | 0 / 0 |
+| 어촌4 | 119 / 133.3 | 130 / 112.5 | 18 / 21.3 | 0 / 0 | 0 / 0 | 0 / 0 | 26 / 33.8 | 13 / 16.5 | 2.00 / 2.05 | 127 / 105.5 | 23 / 29.5 | 0.25% / — | 113 / 123.5 | 148 / 128 | 565.8 / 592.4 |
+| 임업2 | 195 / 192.5 | 49 / 49.5 | 23 / 25 | 0 / 0 | 0 / 0 | 0 / 0 | 53 / 49.5 | 26 / 24.3 | 2.04 / 2.04 | 44 / 44.3 | 42 / 40.8 | 1.28% / — | 33 / 55 | 95 / 104.3 | 0 / 31.8 |
+| 어촌9 | 125 / 134.5 | 116 / 87.8 | 26 / 44.8 | 0 / 0 | 0 / 0 | 0 / 0 | 16 / 18 | 8 / 9 | 2.00 / 2.00 | 122 / 92 | 26 / 45.8 | 0.13% / — | 204 / 190.8 | 206 / 192.5 | 153.3 / 240.1 |
+| 임업5 | 106 / 113.5 | 87 / 57 | 74 / 96.5 | 0 / 0 | 0 / 0 | 0 / 0 | 14 / 16 | 7 / 8 | 2.00 / 2.00 | 89 / 58 | 71 / 93.5 | 0.14% / — | 190 / 184 | 189 / 182.5 | 108.7 / 265.3 |
+| 광산1 | 161 / 156.3 | 0 / 23.8 | 17 / 21.5 | 89 / 65.5 | 0 / 0 | 0 / 0 | 12 / 12 | 6 / 6 | 2.00 / 2.00 | 87 / 87 | 17 / 20.3 | 0.16% / — | 222 / 222 | 225 / 225 | 0 / 0 |
+| 농촌14 | 145 / 134.3 | 49 / 64.3 | 28 / 30.8 | 45 / 37.8 | 0 / 0 | 0 / 0 | 12 / 12 | 6 / 6 | 2.00 / 2.00 | 102 / 103.3 | 28 / 28.8 | 0.15% / — | 207 / 207 | 210 / 210 | 0 / 0 |
+
+### 새 집 완공 날(판 run-capinf ↔ lab:on-h · 시드마다) · 인구가 처음 갈린 날
+
+* 임업6 1020: 갈린 날 — · 서버 2 · 4 · 45 · 54 · 62 · 69 · 75 ↔ 랩 2 · 4 · 45 · 54 · 62 · 69 · 75
+* 임업6 7: 갈린 날 72 · 서버 2 · 4 · 40 · 49 · 57 · 64 · 85 ↔ 랩 2 · 4 · 40 · 49 · 57 · 64 · 70 · 76 · 81 · 86
+* 임업6 42: 갈린 날 78 · 서버 2 · 4 · 40 · 49 · 57 · 64 · 70 · 79 · 84 · 89 ↔ 랩 2 · 4 · 40 · 49 · 57 · 64 · 70 · 76 · 81 · 86
+* 어촌4 1020: 갈린 날 66 · 서버 2 · 4 · 28 · 38 · 46 · 64 · 70 ↔ 랩 2 · 4 · 28 · 38 · 46 · 67 · 73 · 85
+* 어촌4 7: 갈린 날 — · 서버 2 · 4 ↔ 랩 2 · 4
+* 어촌4 42: 갈린 날 39 · 서버 2 · 4 · 37 · 47 ↔ 랩 2 · 4 · 36 · 46 · 67 · 74 · 80 · 86
+* 임업2 1020: 갈린 날 78 · 서버 2 · 4 · 35 · 44 · 52 · 59 · 65 · 71 · 77 · 82 · 87 ↔ 랩 2 · 4 · 35 · 44 · 52 · 59 · 65 · 71 · 76 · 81 · 86
+* 임업2 7: 갈린 날 68 · 서버 2 · 4 · 36 · 45 · 53 · 60 · 66 · 72 ↔ 랩 2 · 4 · 36 · 45 · 53 · 60
+* 임업2 42: 갈린 날 75 · 서버 2 · 4 · 37 · 46 · 54 · 61 · 67 ↔ 랩 2 · 4 · 37 · 46 · 54 · 61 · 67 · 73
+* 어촌9 1020: 갈린 날 63 · 서버 2 · 4 ↔ 랩 2 · 4 · 61
+* 어촌9 7: 갈린 날 — · 서버 2 · 4 ↔ 랩 2 · 4
+* 어촌9 42: 갈린 날 — · 서버 2 · 4 · 44 · 53 ↔ 랩 2 · 4 · 44 · 53
+* 임업5 1020: 갈린 날 59 · 서버 2 · 4 ↔ 랩 2 · 4 · 57
+* 임업5 7: 갈린 날 57 · 서버 2 · 4 · 56 ↔ 랩 2 · 4 · 55
+* 임업5 42: 갈린 날 — · 서버 2 · 4 ↔ 랩 2 · 4
+* 광산1 1020: 갈린 날 23 · 서버 2 · 4 ↔ 랩 2 · 4
+* 광산1 7: 갈린 날 23 · 서버 2 · 4 ↔ 랩 2 · 4
+* 광산1 42: 갈린 날 23 · 서버 2 · 4 ↔ 랩 2 · 4
+* 농촌14 1020: 갈린 날 62 · 서버 2 · 4 ↔ 랩 2 · 4
+* 농촌14 7: 갈린 날 62 · 서버 2 · 4 ↔ 랩 2 · 4
+* 농촌14 42: 갈린 날 46 · 서버 2 · 4 ↔ 랩 2 · 4
+
+### 날 띠(날 1 ~ 89 · 한 글자 = 하루 · o 열림 · B 게이트-침상 · H 게이트-주거 · F 식량 · K · P 행복 · 위 = 서버 run-capinf · 아래 = 랩 lab:on-h)
+
+```
+임업6 1020     서버 oooooooooooooooooooooooooooooooooooBBBBBBBBBBHoooHoooBHooooooBHoooooBHooooBHooooBBBBBBBBB
+             랩   oooooooooooooooooooooooooooooooooooBBBBBBBBBBHoooHoooBHooooooBHoooooBHooooBHooooBBBBBBBBB
+임업6 7        서버 oooooooooooooooooooooooooooooooooooBBBBBHoooHoooBHooooooBHoooooBHooooBBBBBBBBBBBBBBBBHooo
+             랩   oooooooooooooooooooooooooooooooooooBBBBBHoooHoooBHooooooBHoooooBHooooBHooooBHooooHoooBHoo
+임업6 42       서버 oooooooooooooooooooooooooooooooooooBBBBBHoooHoooBHooooooBHoooooBHooooBHooooBBBBHooooHoooB
+             랩   oooooooooooooooooooooooooooooooooooBBBBBHoooHoooBHooooooBHoooooBHooooBHooooBHooooHoooBHoo
+어촌4 1020     서버 ooooooooooooooooooooHoooooHBHoooooooooHooooooBHoooooBBBBBBBBBBBBHooooBHooooBBBBBBBBBBBBBB
+             랩   ooooooooooooooooooooHoooooHBHoooooooooHooooooBHoooooBBBBBBBBBBBBBBBHooooBHooooBBBBBBBHooo
+어촌4 7        서버 ooooooooooooooooooooooHHoHHHoooBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+             랩   ooooooooooooooooooooooHHoHHHoooBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+어촌4 42       서버 ooooooooooooooooooooooHHoHHoooBBBBBBBHooooooooBHooooooBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+             랩   ooooooooooooooooooooooHHoHHoooBBBBBBHooooooooBHooooooBBBBBBBBBBBBBBHoooooBHooooBHooooBHoo
+임업2 1020     서버 oooooooooooooooooooooooooooooooooooHoooHoooBHooooooBHoooooBHooooBHooooBHooooBHoooBHoooBHo
+             랩   oooooooooooooooooooooooooooooooooooHoooHoooBHooooooBHoooooBHooooBHooooBHooooHoooBHoooBHoo
+임업2 7        서버 oooooooooooooooooooooooooooooooooooBHoooHoooBHooooooBHoooooBHooooBHooooBHooooBBBBBBBBBBBB
+             랩   oooooooooooooooooooooooooooooooooooBHoooHoooBHooooooBHoooooBHooooBBBBBBBBBBBBBBBBBBBBBBBB
+임업2 42       서버 oooooooooooooooooooooooooooooooooooBBHoooHoooBHooooooBHoooooBHooooBHooooBBBBBBBBBBBBBBBBB
+             랩   oooooooooooooooooooooooooooooooooooBBHoooHoooBHooooooBHoooooBHooooBHooooBHooooBBBBBBBBBBB
+어촌9 1020     서버 ooooooooooooooooooooooooooooooHHooHHHHHooHHHooHHHHBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+             랩   ooooooooooooooooooooooooooooooHHooHHHHHooHHHooHHHHBBBBBBBBBBBHoHHHHooHHHooHHHoHHHHooHHooH
+어촌9 7        서버 ooooooooooooooooooooooooooooooHHHoooooooBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+             랩   ooooooooooooooooooooooooooooooHHHoooooooBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+어촌9 42       서버 ooooooooooooooooooooooooooooooHHooHHHHooHooBHooooooooHooooooooBBBBBBBBBBBBBBBBBBBBBBBBBBB
+             랩   ooooooooooooooooooooooooooooooHHooHHHHooHooBHooooooooHooooooooBBBBBBBBBBBBBBBBBBBBBBBBBBB
+임업5 1020     서버 oooooooooooooooooooooooooooooHHHoHHHHHooHHHHoHHHHHBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+             랩   oooooooooooooooooooooooooooooHHHoHHHHHooHHHHoHHHHHBBBBBBBHoHHHHooHHHoHHHHoHHHHoHHHoHHHHBB
+임업5 7        서버 oooooooooooooooooooooooooooooHHHoHHHHHooHHHHoHHHHHBBBBBBHoHHHHoHHHHooHHHoHHHHoHHHoHHHHBBB
+             랩   oooooooooooooooooooooooooooooHHHoHHHHHooHHHHoHHHHHBBBBBHoHHHHoHHHHoHHHHooHHHoHHHoHHHHBBBB
+임업5 42       서버 oooooooooooooooooooooooooooooHHHoHHHHHooHHHHoHHHHHBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+             랩   oooooooooooooooooooooooooooooHHHoHHHHHooHHHHoHHHHHBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+광산1 1020     서버 ooooooooooooooooooooooooooooooooooooooooooHoooHHHooooHFFFFFFFoFFFooFFFFFFFFFFFFFFFFFFFFFF
+             랩   ooooooooooooooooooooooooooooooooooooooooooHoooHHHoooHHFFFFFooooooBBFFFFFFFFFFFFFFFFFFFFBB
+광산1 7        서버 ooooooooooooooooooooooooooooooooooooooooooooooHHHoooHHFFFFFFFFFFFFFFFFFFFFFFFooFFFFFooFoo
+             랩   ooooooooooooooooooooooooooooooooooooooooooHoooHHHoooHHHoooHHHBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+광산1 42       서버 ooooooooooooooooooooooooooooooooooooooooooooooHHHoooHHHoooHFFFFoFFFoFFFFFFFFFFFFFFFFFFFFF
+             랩   ooooooooooooooooooooooooooooooooooooooooooHoooHHHooooHHoooHHHBBBBBBBBBFFFFFBFFFFFFFFFFFFF
+농촌14 1020    서버 ooooooooooooooooooooooooooooooooooooHHooHHHHoooHHFFFFFooFFFoFFFFFFoooFFFoFFFFoFFFFFFFFooo
+             랩   ooooooooooooooooooooooooooooooooooooHHooHHHHoooHHFFFFFFFooFoooBBBBFFFFFFFFFFFFFBBBBBBBBBB
+농촌14 7       서버 ooooooooooooooooooooooooooooooooooooHHooHHHHooHHHHFFoFFooFooooFFFFFFFFBBBBBBBBBBBBBBBBBBB
+             랩   ooooooooooooooooooooooooooooooooooooHHooHHHHooHHHHFFFoFFFFFoFFFFFFFFoooBBBBBBBBBBBBBBBBBB
+농촌14 42      서버 ooooooooooooooooooooooooooooooooooooHHooHHHHooHHHHooFFooooFBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+             랩   ooooooooooooooooooooooooooooooooooooHHooHHHHoooHHHooHHHHBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+```
