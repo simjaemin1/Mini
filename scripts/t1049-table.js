@@ -47,6 +47,7 @@ for (const f of files) {
       K: r1(avg(rs, (r) => r[C.K] || 0)), kSlot: r1(avg(rs, (r) => r[C.kSlot] || 0)), kProd: r1(avg(rs, (r) => r[C.kProd] || 0)), kFuel: r1(avg(rs, (r) => r[C.kFuel] || 0)),
       logi: r1(avg(rs, (r) => r[C.logi] || 0)), hunger: r1(avg(rs, (r) => r[C.hunger] || 0)), health: r1(avg(rs, (r) => r[C.health] || 0)), happy: r1(avg(rs, (r) => r[C.happy] || 0)),
       hp: r1(avg(rs, (r) => r[C.hp] || 0)), hap: r1(avg(rs, (r) => r[C.hap] || 0)),
+      tool: C.tool != null ? r1(avg(rs, (r) => r[C.tool] || 0)) : null, stone: C.stone != null ? r1(avg(rs, (r) => r[C.stone] || 0)) : null, tBoost: C.tBoost != null ? r1(avg(rs, (r) => r[C.tBoost] || 0)) : null, deps: C.deps != null ? r1(avg(rs, (r) => r[C.deps] || 0)) : null,
     } : null;
     const gone = {}; const g = R.gone[t.v] || {};
     for (const k in g) { const i = k.indexOf(':'), d = +k.slice(0, i), c = k.slice(i + 1); if (d > P && d <= t.D) gone[c] = (gone[c] || 0) + g[k]; }
@@ -67,6 +68,7 @@ for (const o of out) {
   const f = (k) => `${a[k] ?? '-'} → ${b[k] ?? '-'}`;
   console.log(`  인구 ${f('n')} · 곳간 날수 ${f('feDays')} · 사람당 산출 ${f('prodPH')}(곡 ${f('grainPH')} · 어 ${f('fishPH')} · 육 ${f('meatPH')} · 채 ${f('foragePH')}) · 사람당 먹음 ${f('eatPH')}`);
   console.log(`  수입 ${f('imp')} · 수출 ${f('exp')} · 잃은 짐 ${f('lost')} · 징집 ${f('draftFrac')} · 짐꾼 ${f('packFrac')} · 조공 날 ${f('tribDays')} · 전쟁 날 ${f('warDays')}`);
+  console.log(`  도구 ${f('tool')} · 돌 ${f('stone')} · 도구 배수 ${f('tBoost')} · 도구 쓰는 사람 ${f('deps')}`);
   console.log(`  K ${f('K')}(자리 ${f('kSlot')} · 흐름 ${f('kProd')} · 땔감 ${f('kFuel')}) · 항 logi ${f('logi')} · hunger ${f('hunger')} · health ${f('health')} · happy ${f('happy')}`);
   if (o.balPeakToStarve) console.log(`  피크 → 굶기 장부: ${JSON.stringify(o.balPeakToStarve)}`);
 }
