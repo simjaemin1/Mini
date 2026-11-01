@@ -10592,6 +10592,7 @@ function _lifeLiveFarmTile(vil, cx, cy, type) {   // 개간 완료 실체화: �
   vil._mCl = (vil._mCl || 0) + 1;   // ★[LIFE_* 튜닝 계측] 오늘 개간된 셀 수(실걸음·LOD 배치 공통 싱크)
   const rowid = state.db.insertVillageBuilding({ village_id: vil.dbId, type, cx, cy, floors: 0, data: null });
   vil._farmSet.add(cx + ',' + cy); vil._potSet.delete(cx + ',' + cy); vil._frontier = null; vil._farmArr = null;
+  _t1053Deforest(vil, cx, cy, 0);   // ★[T1053] 랩 `clearCell` → `deforestCell`(개간 끝 = 그 셀의 서식지 파괴 · 끔 = 무동작)
   if (type === 'dryfield' && vil._drySet) vil._drySet.add(cx + ',' + cy);   // ★[생활 층 100% ③] 밭 구분 유지(작물 상태머신 field 판정)
   if (type === 'farmland') vil._farmN++; else vil._dryN++;
   // ★★[T100 · ECON 2-b] **밭 브리지** — 개간한 칸 수를 econ 이 읽는다.
@@ -10776,6 +10777,7 @@ function lifeRequestPlayerSite(vil, x, y, ownerId, ownerName) {
   if (bo) state.deps.broadcast({ type: 'building_added', building: bo });
   state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'psitework', cx: x, cy: y, floors: 0, data: JSON.stringify({ owner: ownerId }) });
   vil._psite = { cx: x, cy: y, stage: 1, bo, player: 1, owner: ownerId, ownerName: ownerName || null };
+  _t1053Deforest(vil, x, y, L_DEFOREST_H);   // ★[T1053] 의뢰 집터도 집터 — 랩 집터 고름 그 식(같은 규칙 · 끔 = 무동작)
   vil._psiteCrew = 0;
   console.log(`[${state.zoneId}] 🏠 [${vil.name}] 플레이어 의뢰 집터 @(${x},${y}) owner=${ownerId} — 여유 크루가 짓는다`);
   return { ok: true, site: vil._psite };
@@ -11351,6 +11353,7 @@ function _lifeAddHouseSiteInner(vil) {
       if (bo) state.deps.broadcast({ type: 'building_added', building: bo });
       state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'housesite', cx: x, cy: y, floors: 0, data: null });
       vil._site = { cx: x, cy: y, stage: 1, bo };
+      _t1053Deforest(vil, x, y, L_DEFOREST_H);   // ★[T1053] 랩 집터 고름 → `deforestArea(±L_DEFOREST_H)`(끔 = 무동작)
       _probe.siteLog.push(`${(state.world && state.world.day) | 0}:${vil.dbId}:${x},${y}:${strict ? 's' : 'l'}`);   // ★[T41] 비트 동일 대조용(선택된 자리만)
       console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 생활층 신축 터 @(${x},${y}) — 크루 시공 시작`);
       return;
@@ -12048,6 +12051,7 @@ function _lifeGranAdd(vil) {
   });
   if (!g) return;   // 링 여력 없음 — 관용(시딩 '자리 없음 스킵'과 동일)
   vil._granPend = { cx: g.cx, cy: g.cy, day: day + G_BUILDD };
+  _t1053Deforest(vil, g.cx, g.cy, L_DEFOREST_GRAN);   // ★[T1053] 랩 곳간 자리 → `deforestArea(±3)`(끔 = 무동작)
   console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 곳간 증설 착공 @(${g.cx},${g.cy}) — 식량 ${Math.round(food)} → 목표 ${_gn}동(현재 ${vil._granList.length}), ${G_BUILDD}일 후 완공`);
 }
 // 완공: 5×3 밀폐 렉트 실체화(gran 태그) + village_buildings 영속 + 라이브 방송. _lifeCompleteHouse 동형 경로.
@@ -12202,6 +12206,7 @@ function _huntBandBuild(vil) {
   vil._gameScan = null;
   if (!st.m.size) { vil._gameNone = 1; return null; }
   vil._gameRich = st.m;
+  if (T1053_DEFOREST_GAME) { _t1053Developed(vil); if (!st.m.size) { vil._gameRich = null; vil._gameNone = 1; return null; } }   // ★[T1053] 랩 정착 · 재배치 몫 — 이미 개발된 칸은 장부에 안 든 것과 같게(`_gameTot0` 앞)
   vil._gameTot0 = st.m.size * L_GAMEMAX;
   vil._baseGame = (vil.econ && vil.econ.land) ? vil.econ.land.game : null;   // 갱신의 기준(랩 `baseGame`)
   return st.m;
@@ -12437,6 +12442,39 @@ function huntDeforest(vil, cx, cy) {
   const m = vil && vil._gameRich; if (!m) return false;
   return m.delete(cx + ',' + cy);
 }
+// ★★[T1053 2026-11-01 · T1009 회부 3 · ★PM 결함 "랩 = 목표 · 같은 규칙"] 손잡이 `T1053_DEFOREST_GAME`(켬 기본 · 되돌림 `=0` = 종전 — 위 문을 부르는 제품 자리 0).
+//   랩 `deforestCell`(lab/마을실험실.html 19407 · 전쟁실험실 20040)은 개발된 셀의 사냥감을 영구히 지운다(`gameRich.delete` — 서식지 파괴 · K 영구 감소).
+//   랩이 부르는 자리 → 같은 일을 하는 서버 자리(보고/T1053 §1 표):
+//     집터 고름(19279 · ±L_DEFOREST_H) → `_lifeAddHouseSiteInner` 새 터 · `lifeRequestPlayerSite` 의뢰 터 · 곳간 자리(19241 · ±3) → 곳간 착공 자리(`_granPend`) ·
+//     개간 끝(20468 · 그 셀) → `_lifeLiveFarmTile`(실걸음 · 일괄 공통 한 곳) ·
+//     정착(20233 집 ±L_DEFOREST_H · 20242 첫 밭 셀) · 재배치(19350 집 ±L_DEFOREST_H) → 장부를 다 지은 그 순간 지금 개발된 칸에 같은 식을 한 번
+//     (`_huntBandBuild` — 랩은 정착이 장부보다 먼저라 그 칸이 장부에 안 든다 · 그래서 `_gameTot0` 앞에서).
+//   랩 벌목꾼(20526)은 `forestRich` 를 깎고 다시 자라게 둔다(서식지 그대로) — 서버 벌목(생활층 나무꾼 · NPC · 사람)도 장부를 안 건드린다(같은 규칙 · 부르는 자리 0).
+//   랩 `deforestCell` 의 다른 몫(숲 칸 지움 · 벌채 부산물 목재)은 서버에 짝 칸이 없다(나무는 `trees.js` 실체 · 이 카드 밖).
+const T1053_DEFOREST_GAME = process.env.T1053_DEFOREST_GAME !== '0';
+const L_DEFOREST_H = 12;    // 랩 19406 그대로 — 집 주변 벌채 반경(±셀 · 정사각 · "5→12 §3b 실축")
+const L_DEFOREST_GRAN = 3;  // 랩 19241 그대로 — 곳간 자리 벌채 반경(`deforestArea(s,g.cx,g.cy,3)`)
+/** ★[T1053] 랩 `deforestArea(s, cx, cy, rad)` 의 장부 몫 그대로 — ±rad 정사각 셀마다 위 문(`huntDeforest`) · rad 0 = 그 셀(랩 `deforestCell`). @returns 지운 셀 수 */
+function _t1053Deforest(vil, cx, cy, rad) {
+  if (!T1053_DEFOREST_GAME || !vil || !vil._gameRich) return 0;
+  let n = 0;
+  for (let dx = -rad; dx <= rad; dx++) for (let dy = -rad; dy <= rad; dy++) if (huntDeforest(vil, cx + dx, cy + dy)) n++;
+  _t1053Stat.cells += n;
+  return n;
+}
+/** ★[T1053] 장부를 다 지은 순간 — 이미 개발된 칸(집 · 집터 · 곳간 · 곳간 착공 · 밭)에 같은 식을 한 번(랩 정착 · 재배치 몫). @returns 지운 셀 수 */
+function _t1053Developed(vil) {
+  if (!T1053_DEFOREST_GAME || !vil || !vil._gameRich) return 0;
+  let n = 0;
+  for (const h of (vil._houseCells || [])) n += _t1053Deforest(vil, h.cx, h.cy, L_DEFOREST_H);
+  for (const ps of [vil._site, vil._psite, vil._pendSite]) if (ps) n += _t1053Deforest(vil, ps.cx, ps.cy, L_DEFOREST_H);
+  for (const g of (vil._granList || [])) n += _t1053Deforest(vil, g.cx, g.cy, L_DEFOREST_GRAN);
+  if (vil._granPend) n += _t1053Deforest(vil, vil._granPend.cx, vil._granPend.cy, L_DEFOREST_GRAN);
+  for (const k of (vil._farmSet || [])) { const ci = k.indexOf(','); n += _t1053Deforest(vil, +k.slice(0, ci), +k.slice(ci + 1), 0); }
+  _t1053Stat.built++;
+  return n;
+}
+const _t1053Stat = { cells: 0, built: 0 };   // 계측 — 세계 규칙은 안 읽는다(`/perf` 아님 · 하네스 · 판 탐침이 읽는다)
 
 // ★★[T315 ②] 완공 침상 명부 — **정본 한 곳**. 제품(`_lifeDaily`)과 하네스가 같은 이 함수를 부른다(사본 0).
 //   움집은 단층(`village-layout.HOUSE_MAX_FLOORS` = 1)이라 완공 층수 = `_houseCells.length`
@@ -14495,7 +14533,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
-  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
+  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
   // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
   noteRescue,

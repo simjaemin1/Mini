@@ -23,6 +23,7 @@ function cut(name) {
   throw new Error('중괄호 매칭 실패: ' + name);
 }
 const constLine = src.match(/const G_CAP = \d+, G_MAX = \d+, G_BUILDD = \d+;/)[0];
+const t1053Line = src.match(/const L_DEFOREST_GRAN = \d+;/)[0];   // ★[T1053] 곳간 착공 줄이 넘기는 반경 상수(원문 그 줄 · 스텁은 아무것도 안 한다)
 
 // ---- 스텁 월드 ----
 const SZ = 32;
@@ -64,10 +65,11 @@ const state = {
 const _stubs = {
   noteVillageBuilt() {},           // T50 사건 장부 접점 — 여기선 무시한다
   _t435On() { return false; },     // ★[T435] 곳간 증설 행위 손잡이 — 이 하네스는 **끈 판**(종전 날짜 규칙)을 잰다 · 켠 판은 `test-build-act ⑥`
+  _t1053Deforest() { return 0; },  // ★[T1053] 곳간 자리 벌채 → 사냥터 장부(랩 `deforestArea(±3)`) — 이 하네스가 재는 층이 아니다(장부 몫은 `test-deforest-game` 이 잰다)
 };
 const ctx = vm.createContext(Object.assign({ state, SZ, console, Math, Set, Map, Array, Object, JSON, Number }, _stubs));
 // ★[PM 2026-09-19 · 야간 09-19 빨강] T284 가 `_lifeCompleteGranary` 안에서 `_vbFootprint`(같은 파일 top-level)를 부른다 — 원문 그대로 같이 잘라 넣는다(사본 0 · 하네스 계약 그대로).
-vm.runInContext(constLine + '\n' + cut('_vbFootprint') + '\n' + cut('pickGranarySpot') + '\n' + cut('_lifeCompleteGranary') + '\n' + cut('_lifeGranAdd')
+vm.runInContext(constLine + '\n' + t1053Line + '\n' + cut('_vbFootprint') + '\n' + cut('pickGranarySpot') + '\n' + cut('_lifeCompleteGranary') + '\n' + cut('_lifeGranAdd')
   + '\nglobalThis.__api = { pickGranarySpot, _lifeGranAdd, _lifeCompleteGranary, G_CAP, G_MAX, G_BUILDD };', ctx);
 const API = ctx.__api;
 
