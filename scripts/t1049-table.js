@@ -2,7 +2,7 @@
 'use strict';
 // (@regress 없음 — 러너 밖 · T1049 표 기계 · 판 JSON(`*.t1049.json`)만 읽는다)
 // === scripts/t1049-table.js — 해체 마을 하나하나: 피크 → 굶기 시작 → 해체 =========================================
-//   쓰는 법: node scripts/t1049-table.js <판.t1049.json …> [--json out.json] [--vil 이름] [--all] [--short]
+//   쓰는 법: node scripts/t1049-table.js <판.t1049.json …> [--json out.json] [--vil 이름] [--all] [--short] [--groups]
 //     --short = 마을 하나 한 줄(보고서 표 밑감 · 돌 바닥 여부 · 굶기 앞 창의 도구 배수 · 돌 · 사람당 산출/먹음 · K/인구 · 수출입 · 전쟁·조공·징집)
 //   해체 마을마다(랩 판이면 굶어 죽은 사람이 난 마을마다):
 //     피크 날(해체 앞 인구 최대 · 처음 그 값) · 굶기 시작한 날(피크 뒤 처음 인구식 굶주림 항 < 0 — `villageFamine` 정본 판정) · 해체 날
@@ -64,6 +64,19 @@ for (const f of files) {
 }
 // 돌 바닥 마을(land.stone = 바닥 0.25) — 씨 1020·7·42 랩 판 T152 표(전수 시딩 · 세 씨 같은 36곳)에서 옮긴 이름. 서버도 같은 존 시딩이다.
 const FLOOR = new Set('농촌1,농촌2,농촌3,농촌4,농촌5,농촌6,농촌7,농촌8,농촌9,농촌10,농촌11,농촌12,농촌13,농촌14,농촌15,농촌16,농촌17,농촌18,농촌19,농촌20,농촌21,농촌22,어촌2,어촌3,어촌5,어촌6,어촌7,어촌8,어촌10,어촌11,어촌12,어촌13,어촌15,어촌16,임업3,임업6'.split(','));
+// --groups = 갈래 셋(규칙은 이 글자 그대로 · 문턱은 보고 T1049 §2 표에서 읽은 경계 — 새 수가 아니라 표 가르는 자):
+//   ㄱ 돌 나선   : 굶기 앞 창 돌 < 1 · 도구 배수 < 0.6 (도구가 닳아 맨손 — 0.25× 쪽)
+//   ㄴ K 넘침    : 위가 아니고 · 사람당 산출 < 먹음 · K/인구 ≥ 1.3 (K 는 키우라는데 땅이 제 사람을 못 먹임)
+//   ㄷ K 맞닿음  : 나머지(K/인구 < 1.3 — 큰 마을이 K 끝에서 흉년·도구 덜 찬 채 꺾임)
+const groupOf = (o) => { const b = o.preStarve || o.starveToEnd || {}; if ((b.stone ?? 9) < 1 && (b.tBoost ?? 9) < 0.6) return 'ㄱ';
+  if ((b.prodPH ?? 0) < (b.eatPH ?? 0) && b.n && b.K / b.n >= 1.3) return 'ㄴ'; return 'ㄷ'; };
+if (args.includes('--groups')) {
+  const g = {}; for (const o of out) { const k = groupOf(o); (g[k] = g[k] || []).push(`${o.run}:${o.v}`); }
+  console.log(`해체 ${out.length} · ` + ['ㄱ', 'ㄴ', 'ㄷ'].map((k) => `${k} ${(g[k] || []).length}`).join(' · '));
+  for (const k of ['ㄱ', 'ㄴ', 'ㄷ']) if (g[k]) console.log(`  ${k}: ${g[k].join(' ')}`);
+  if (JOUT) fs.writeFileSync(JOUT, JSON.stringify(out.map((o) => Object.assign({ group: groupOf(o) }, o)), null, 1));
+  process.exit(0);
+}
 if (args.includes('--short')) {
   console.log('판\t마을\t바닥\t피크→굶기→끝\t도구배수(피크→굶기앞)\t돌(피크→굶기앞)\t산출/먹음(굶기앞)\tK/인구(굶기앞)\t수입·수출(굶기앞·날)\t전쟁·조공·징집');
   for (const o of out) { const a = o.atPeak || {}, b = o.preStarve || o.starveToEnd || {};
