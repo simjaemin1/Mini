@@ -13857,6 +13857,15 @@ function villageNews(vid, n) {
   return { ok: true, vid: vid | 0, name: vil.name, day: state.world.day | 0, rows, lines: rows.map((r) => r.line) };
 }
 
+// ★[T1072 2026-11-02] 마을 화면 자료(`server/village-view.js`)가 읽는 정본 손잡이 — **읽기만**(값을 만들지 않는다 · 게이트는 부르는 쪽이 `villageBoard` 로 먼저 지난다).
+//   마을 몸(`vil`) · 사건 장부 · econ 세계 · 오늘 · econ 모듈(집 공정 표 `hutEconStage`)을 그대로 넘긴다 — 사본 0.
+function villageViewSrc(vid) {
+  const vil = state.byDbId && state.byDbId.get(vid | 0);
+  if (!vil || !vil.econ) return null;
+  return { vil, ledger: state.ledger, world: state.world, day: (state.world && state.world.day) | 0, E: _lifeEcon(),
+    nameOfEcon: (v) => { const x = state.byEcon && state.byEcon.get(v); return x ? x.name : null; } };
+}
+
 // ★납품 — 서버 권위. 실물 이동은 `playerVillageDeposit`(정본), 몫 확정은 장부(원자적).
 function villageDeliver(vid, px, py, inventory, item, want, unitsOf) {
   if (!state.ledger) return { err: '아직 장부가 없다' };
@@ -14527,6 +14536,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   villageNews, __rumorProbe,
   // ★[T18 2026-09-01] 연대기 — 마을 연표(260px 게이트 · 도달일 기준)
   villageChronicle,
+  villageViewSrc,   // ★[T1072] 마을 화면 자료가 읽는 정본 손잡이(읽기만)
   // ★[겨울 난이도 2026-08-31] 마을 미기후(추위 완충) — zone.js 가 Body.tick 으로 넘긴다
   shelterAt,
   // ★[2026-08-27 거래소] 물물교환 — zone.js 가 소비. 둘 다 260px 게이트 안에서만 답한다.

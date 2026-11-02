@@ -13,14 +13,16 @@
       "age": 412,
       "chief": { "name": "도미", "npc": true }
     },
-    "me": { "member": false, "memberVid": null, "contrib": 4, "need": 12, "chief": false, "offer": null },
+    "me": { "member": false, "memberVid": null, "contrib": 4, "need": 12, "left": 8, "chief": false, "offer": null },
     "dash": { "pop": 48, "toWinter": 34, "projectsN": 3 },
     "requests": {
       "rows": [
-        { "res": "wood", "ko": "나무", "item": "wood", "qty": 30, "filled": 12, "remain": 18, "rewRes": "salt", "rewKo": "소금", "rewQty": 4, "line": "나무가 모자라 30만큼 구한다 — 소금 4로 갚는다" },
-        { "res": "stone", "ko": "돌", "item": "stone", "qty": 10, "filled": 0, "remain": 10, "rewRes": "hide", "rewKo": "가죽", "rewQty": 2, "line": "돌이 모자라 10만큼 구한다 — 가죽 2로 갚는다" }
+        { "res": "wood", "ko": "나무", "item": "wood", "qty": 30, "filled": 12, "remain": 18, "rewRes": "salt", "rewKo": "소금", "rewQty": 4, "line": "나무 18 → 소금 4" },
+        { "res": "stone", "ko": "돌", "item": "stone", "qty": 10, "filled": 0, "remain": 10, "rewRes": "hide", "rewKo": "가죽", "rewQty": 2, "line": "돌 10 → 가죽 2" },
+        { "res": "hide", "ko": "가죽", "item": "hide", "qty": 4, "filled": 1, "remain": 3 }
       ],
-      "withheld": 1
+      "withheld": 1,
+      "rewardWithheld": 1
     },
     "news": {
       "rows": [

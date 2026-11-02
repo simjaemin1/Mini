@@ -33,12 +33,14 @@
 | | `chief` `{ name, npc }` \| `null` | obj | `village-kin.chiefOf(vil)` | 머리줄 "촌장 도미" |
 | `me` | `member` · `memberVid` | bool · int\|null | `membership.publicState().vid` (=== vid 이면 이 마을 사람) | 가입 안내 "아직 이 마을 사람이 아닙니다" |
 | | `contrib` · `need` | int · int | `onboarding.contrib`(`membership.contribOf`) · `membership.CFG.N_MEMBER` | 머리줄 "마을 사람이 되기까지 n / m" |
+| | `left` | int | `need − contrib`(0 아래로 안 간다 · 파생) | 가입 안내 "n 더 모으면" |
 | | `chief` · `offer` | bool · int\|null | `membership.publicState` | — |
 | `dash` | `pop` | int | `econ.npcs.length` | "사는 사람 48명" |
 | | `toWinter` | int \| null | 달력 정본으로 다음 겨울 첫날까지(파생 · 겨울이면 0) | "겨울까지 34일 남았습니다" |
 | | `projectsN` | int | `projects.now.length` | "하고 있는 일 5가지" |
-| `requests` | `rows[]` `{ res, ko, item, qty, filled, remain, rewRes, rewKo, rewQty, line }` | arr | `villageBoard().rows`(게시판 정본) | "마을의 부탁" |
-| | `withheld` | int | 뭉뚱그린 품목이라 뺀 줄 수 | — |
+| `requests` | `rows[]` `{ res, ko, item, qty, filled, remain, rewRes?, rewKo?, rewQty?, line? }` | arr | `villageBoard().rows`(게시판 정본) | "마을의 부탁" · "12 / 30 모임" |
+| | `withheld` | int | 구하는 품목이 뭉뚱그린 것이라 뺀 줄 수 | — |
+| | `rewardWithheld` | int | 갚는 품목만 뭉뚱그린 것(거의 곡식)이라 **갚는 칸 · 문장(`line` = "나무 18 → 곡식 4")을 뺀** 줄 수 — 그 줄은 `rewRes`·`rewKo`·`rewQty`·`line` 키가 없다 | — |
 | `news` | `rows[]` `{ line, type, day, heard, ago, from }` | arr | `villageBoard().news`(= `ledger.visibleEvents` · 소문 가시성) | "마을 소식" · "3일 전 · 들려온 소문"(`from` ≠ null) |
 | | `withheld` | int | 위와 같음 | — |
 | `projects` | `now[]` — 아래 §3 | arr | 집터 `vil._site` · 의뢰 집터 `vil._psite` · 캐러밴 `world.caravans` | "지금 하고 있는 일" 카드 |
@@ -71,6 +73,14 @@
 | 때 | 무엇을 | 상한 |
 |---|---|---|
 | 열 때 | 칸 전부(`full:true`) | 메시지당 한 번 |
-| 열려 있는 동안 | 다시 읽어 **JSON 이 바뀐 칸만**(`full:false`) | 존의 5초 박자(`zone.js` 바닥 물건 정리 `setInterval(…, 5000)` · 잠든 존 유지보수와 같은 수 — 새 수 0 · 손잡이 `VILLAGE_VIEW_MS`) — 한 사람 5초에 한 번 |
+| 열려 있는 동안 | 다시 읽어 **JSON 이 바뀐 칸만**(`full:false`) · 시세는 입력 지문(그날 · 곳간 · 내 짐 · 기준 · 걸린 보상)이 같으면 지난 칸 그대로(정본 재호출 0 — 곳간이 한 톨만 움직여도 다시 부른다) | 존의 5초 박자(`zone.js` 바닥 물건 정리 `setInterval(…, 5000)` · 잠든 존 유지보수와 같은 수 — 새 수 0 · 손잡이 `VILLAGE_VIEW_MS`) — 한 사람 5초에 한 번 |
 | 내가 납품 · 교환 · 기부 · 꺼내기를 한 직후 | 같은 비교(바뀐 칸만) | 그 행동 한 번에 한 번 |
 | 닫을 때 · 끊길 때 | 없음(열림 표지를 지운다) | — |
+
+## 5. 값(한 마을 열기 · `scripts/test-village-view.js` ⑥ · 존 한 벌 · 마을 2곳 · 인구 8~12)
+| 무엇 | 평균 | 가운데 | 최대 | 대부분 |
+|---|---|---|---|---|
+| 열기(칸 전부 · 정본 전부) | 9.0~11.7ms | 8.6~11.4ms | 16~27ms | 거래소 정본 `villageTradeBoard` 한 번(≈9ms — `gluttedAt` 이 품목마다 시세를 두 번 낸다 · 지금 거래소 패널이 여는 값과 같다) |
+| 열린 동안 다시 읽기(시세 입력 그대로) | 157~275µs | 124~133µs | 0.4~3.2ms | 게시판 · 연대기 · 곳간 스냅숏 · 몸 명부 |
+| 통째 메시지 | 약 5KB | | | 사람 칸이 인구만큼 는다 |
+박자 5초 × 열린 사람 하나 = 다시 읽기 한 번(시세 입력이 바뀐 박자만 거래소 정본 한 번 더).

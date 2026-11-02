@@ -136,6 +136,8 @@ const Guild = require('./guild');             // ★[T128 2026-09-05] 길드 모
 // ★★[T785 2026-10-18 · 재민 10-18 ⓑ] **마을이 유일한 무리** — 손잡이 `T785_VILLAGE_ONLY`('1' 만 켬 · 끔 = main 바이트).
 //   켬이면 존이 마을 일로 central `/tribe…` · `/war…` 를 안 부른다(아래 `VillageKin.ON` 갈래 전부) · 칸은 회관 행(`server/village-kin.js`).
 const VillageKin = require('./village-kin');
+// ★[T1072 2026-11-02] 마을 화면 자료 `villageView` — 정본 함수들을 읽어 칸으로 묶는다(읽기만 · 새 규칙 0). 모양 정본 `설계/설계_마을화면_villageView.md`.
+const VillageView = require('./village-view');
 // ★★[T787 2026-10-18 · 켬 기본] 사람 몸의 옛 길드 칸 — 켬이면 **실어 나르기만** 한다(`_tribe0` = 계정 행 `tribe_id`).
 //   저장 · 핸드오프에 그대로 싣는다(central `players.tribe_id` 를 존이 지우지 않는다 — 표 걷기는 재민 배포 판단).
 //   런타임 `tribeId` · `tribeName` 은 사람에게 null 이다 — 마을 일 · 이름표 · 채팅 · VP · 금고 어느 자리도 길드를 안 읽는다.
@@ -5497,6 +5499,8 @@ Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: gameDayNow,
   donate: (player, vid, want) => tryVillageDonate(player, vid, want),   // ★[T769] `/기부` 의 실물 길(켬에서만 불린다)
   //   ★[T732] 곳간 문 감싸개 — 켬일 때만 준다(끄면 이 칸이 없다 = membership 이 종전 그대로 부른다). UI · 채팅 인출이 다 이 문을 지난다.
   ...(process.env.T732_MOMENT_LOT !== '0' ? { wrapWithdraw: (player, fn) => _t732Wrap(player, fn) } : {}) });   // ★[T778] 켬 기본
+// ★[T1072] 마을 화면 자료 — 직업 이름표는 **함수 뒤에서** 읽는다(`JOB_KR_NPC` 가 이 줄보다 뒤에서 선다 · 위 이름표 선례).
+VillageView.init({ SimVillages, Membership, VillageKin, send, players, get jobKo() { return JOB_KR_NPC; } });
 
 // ★[T45 2026-09-02] 사유지 v2 — **이미 있는 것만 넘긴다**(사본 금지).
 //   ⚠`gameDay` 를 일부러 안 넘긴다 — 부재 시계는 **실시간**이고 세계의 시간이 아니다(claims.js 제3 규약).
@@ -7188,6 +7192,7 @@ const VILLAGE_BOOK_MSG = new Set([
   'village_trade', 'village_trade_exec', 'village_trade_quote', 'village_withdraw',   // ★[T11] 인출도 마을 장부다
   'village_donate',   // ★[T769] 기부도 마을 장부다(켬에서만 오는 메시지 · 끔 = 아무도 안 보낸다)
   'village_welcome',   // ★[T19] 이방인 받기 스위치도 마을 장부다
+  'village_view',   // ★[T1072] 마을 화면 자료도 마을 장부를 읽는다(마감 중이면 줄을 선다)
   'sell_relic', 'shop_info', 'craft_buy', 'craft_sell',
   'village_start', 'village_advance', 'request_village_house',
   'shelter_start', 'shelter_advance',   // ★[T62] 공용 쉼터도 마을 장부다(마을 영토·마을 소유)
@@ -7385,6 +7390,8 @@ function handlePlayerInput(player, raw) {
       send(player.ws, { type: 'village_trade_quote', quote: q, vid: msg.vid | 0 });
     }
   }
+  else if (msg.type === 'village_view') VillageView.open(player, msg.vid, msg.numeraire);   // ★[T1072] 마을 화면 열기(열린 채 다시 = 기준 품목 바꾸기)
+  else if (msg.type === 'village_view_close') VillageView.close(player);                 // ★[T1072] 닫기
   // ★★[테스트 전용 · 기본 OFF] E2E 하네스가 재료를 채운다. `E2E_GIVE=1` 일 때만 **분기 자체가 존재**한다 —
   //   기본 부팅에서는 이 메시지가 아무 일도 안 한다(라이브에 새 능력이 생기지 않는다).
   //   왜 필요한가: 건립 사슬(돌·통나무·곡괭이 → 사유지 → 3단계)을 실클라에서 처음부터 캐게 하면
@@ -7615,6 +7622,8 @@ function handlePlayerInput(player, raw) {
     send(player.ws, { type: 'notice', text: player.pvpEnabled ? '⚔️ PvP 활성화' : '🕊️ PvP 비활성화' });
   }
   // 14.49-e7b: change_floor 메시지 핸들러 제거 (자동 계단으로 대체)
+  // ★[T1072] 마을 장부 메시지(납품 · 교환 · 기부 · 꺼내기 …) 직후 — 마을 화면이 열려 있으면 바뀐 칸만 한 번(열기 자신은 뺀다)
+  if (msg.type !== 'village_view' && VILLAGE_BOOK_MSG.has(msg.type) && VillageView.isOpen(player)) VillageView.poke(player);
 }
 
 // === 부족 채팅 라우팅 ===
@@ -12890,6 +12899,7 @@ function __testBind() {
     // ── 거래소 E2E(2026-08-27) ── 정본을 그대로 내준다(하네스가 가격을 다시 풀면 사본이다)
     Trade: require('./trade'), Events: require('./events'), SimVillages,
     tryVillageTrade, tryVillageTradeExec,
+    VillageView, JOB_KR_NPC,   // ★[T1072] 마을 화면 자료 하네스(`test-village-view` · 내보내기만)
     HUNGER_MAX, THIRST_MAX, MOVE_SPEED,
     // ★[T45 사유지 v2 2026-09-02] 클레임 경로를 **정본 함수 그대로** 내준다 —
     //   하네스가 인접·연결성·상태기를 다시 짜면 그게 사본이고, 두 산수가 갈리는 날이 온다.
