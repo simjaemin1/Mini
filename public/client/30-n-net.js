@@ -1598,7 +1598,7 @@
       //     그리기는 `47-s-board.js` 하나다. 여기서는 넘기기만 한다(연대기와 같은 접점 문법).
       boardOnMessage(bd);
     } else if (msg.type === 'village_view') {
-      villageViewOnMessage(msg.view);   // ★[T1070] 마을 화면 자료(T1072 `villageView` — 이름은 T1072 가 정한다 · 그리기는 52-v-village-view.js)
+      villageViewOnMessage(msg);   // ★[T1070 · T1103] 마을 화면 자료(T1072 `villageView` — 통째 `view` · 바뀐 칸만 `slots` 둘 다 메시지째 넘긴다 · 그리기는 52-v-village-view.js)
     } else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_quest' || msg.type === 'onboarding_fx' || msg.type === 'onboarding_day') {
       onbOnMessage(msg);   // ★[온보딩 v2] 대본 상태·첫 의뢰·곳간 이펙트·하루 정산 — 그리기는 `70-lobby.js`
     } else if (msg.type === 'pvp_state') {

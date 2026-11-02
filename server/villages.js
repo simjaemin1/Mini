@@ -14137,12 +14137,14 @@ function villageBoard(vid, px, py) {
 
 // ★★[T7] 사건 목록 — **가시성 술어 하나를 통과한 것만**. 게시판·근황이 같은 이 함수를 쓴다.
 const BOARD_NEWS_N = Math.max(1, parseInt(process.env.EV_BOARD_NEWS_N || '8', 10));
-function _newsRows(vid, n) {
+//   ★[T1103] `lineFn` — 한 줄을 만드는 함수(기본 = 촌장 말 `briefLine`). 마을 화면은 같은 사건 · 같은 술어로 하십시오체 줄(`newsLine`)을 받는다(아래 `villageViewNews`).
+function _newsRows(vid, n, lineFn) {
   const L = state.ledger;
   if (!L) return [];
   const day = state.world.day | 0;
+  const lf = lineFn || Events.briefLine;
   return L.visibleEvents(vid | 0, { n, today: day }).rows.map((r) => ({
-    line: Events.briefLine(r.ev),
+    line: lf(r.ev),
     type: r.ev.type, item: r.ev.item,
     day: r.ev.day,          // 사건이 난 날
     heard: r.heard,         // ★이 마을이 들은 날 — 둘의 차이가 곧 소문이 걸어온 일수다
@@ -14176,7 +14178,7 @@ function villageChronicle(vid, px, py, year) {
       // ★[T50] `type`·`deed`·`sev` 를 함께 싣는다 — 게시판 소식(`_newsRows`)이 이미 `type` 을 싣는
       //   것과 같은 이유다. 이게 없으면 화면은 "값이 크게 움직인 줄"과 "세계에서 일어난 일"을
       //   **구분할 방법이 없다**(지금 클라는 안 쓰지만, 없으면 다시 유도해야 하고 그게 사본이다).
-      items: b.items.map((x) => ({ line: x.line, day: x.day, heard: x.heard, type: x.type,
+      items: b.items.map((x) => ({ line: x.line, day: x.day, heard: x.heard, type: x.type, item: x.item,   // ★[T1103] `item` — 마을 화면 "끝낸 일"이 같은 사건을 하십시오체로 읽는다(`Events.newsLine` · 곳간/움집)
         deed: !!x.deed, sev: x.sev, from: x.from == null ? null : nameOf(x.from) })),
     })),
   };
@@ -14186,6 +14188,8 @@ function villageChronicle(vid, px, py, year) {
 //   ⚠260px 게이트가 **없다**. 그래도 캐논(원격 시세 조회 금지)을 어기지 않는 이유:
 //     여기서 나가는 건 시세도 재고도 아니라 **촌장이 할 말 한 줄**이고, 그마저도
 //     소문이 물리적으로 그 마을에 닿은 뒤에만 나간다. 정보 비대칭은 도달표가 지킨다.
+// ★[T1103] 마을 화면 "마을 소식" — 게시판 소식과 **같은 술어 · 같은 줄 수**(`_newsRows` · `BOARD_NEWS_N`) · 줄만 하십시오체(`Events.newsLine`). 게이트는 부르는 쪽(`village-view.js build` 가 `villageBoard` 로 먼저 지난다).
+function villageViewNews(vid) { return _newsRows(vid, BOARD_NEWS_N, Events.newsLine); }
 function villageNews(vid, n) {
   if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   const vil = state.byDbId && state.byDbId.get(vid | 0);
@@ -14200,7 +14204,8 @@ function villageViewSrc(vid) {
   const vil = state.byDbId && state.byDbId.get(vid | 0);
   if (!vil || !vil.econ) return null;
   return { vil, ledger: state.ledger, world: state.world, day: (state.world && state.world.day) | 0, E: _lifeEcon(),
-    nameOfEcon: (v) => { const x = state.byEcon && state.byEcon.get(v); return x ? x.name : null; } };
+    nameOfEcon: (v) => { const x = state.byEcon && state.byEcon.get(v); return x ? x.name : null; },
+    needClear: () => _lifeNeedClear(vil) };   // ★[T1084] 개간 술어 정본 그대로(읽기만 · 농부 개간 두 길 — 몸 13040 · 일괄 `_lifeClearDay` — 이 술어 하나를 묻는다)
 }
 
 // ★납품 — 서버 권위. 실물 이동은 `playerVillageDeposit`(정본), 몫 확정은 장부(원자적).
@@ -14881,7 +14886,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
   villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,
   // ★[T7 2026-09-01] 소문 물리 전파 — 시작 화면 근황(온보딩 v2 가 읽는다) · 하네스 계측
-  villageNews, __rumorProbe,
+  villageNews, villageViewNews, __rumorProbe,   // ★[T1103] villageViewNews — 마을 화면 소식(하십시오체 줄)
   // ★[T18 2026-09-01] 연대기 — 마을 연표(260px 게이트 · 도달일 기준)
   villageChronicle,
   villageViewSrc,   // ★[T1072] 마을 화면 자료가 읽는 정본 손잡이(읽기만)

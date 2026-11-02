@@ -467,4 +467,4 @@
 
 // ★[T1070] 마을 화면 시험 훅 — 자료 넣기(T1072 전 임시 자료 · e2e) · 상태 읽기(최상위 실행문은 이 파일에만 — 분할 규약)
 window.__vvInject = (v) => villageViewOnMessage(v);
-window.__vvState = () => ({ open: villageViewOpen(), tab: vvTab, vid: vvVid, far: vvFar(), knob: vvKnobOn() });
+window.__vvState = () => ({ open: villageViewOpen(), tab: vvTab, vid: vvVid, far: vvFar(), knob: vvKnobOn(), seq: vvSeq, num: vvNum, data: !!vvData });   // ★[T1103] seq · 고른 기준 · 자료 유무

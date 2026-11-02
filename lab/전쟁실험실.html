@@ -3932,6 +3932,49 @@ function briefLine(ev) {
   const f = LINES[ev.type];
   return f ? f(ev) : '';
 }
+// ★[T1103 2026-11-03 · PM 카드 ③] 마을 화면 "마을 소식" · "끝낸 일" 한 줄 — 같은 사건을 **하십시오체**로(촌장 말 `LINES` 는 하게체 그대로).
+//   T1069 회부 3("소식 칸이 촌장 말 함수를 쓰면 시안과 말투가 다르다") — 화면 칸은 이 표를 읽는다(`server/village-view.js`). 게시판 · 브리핑 · 연대기는 `briefLine` 그대로(동작 무변).
+//   ⚠`LINES` 와 같은 계약 — 다섯 필드(+ 철 바뀜의 `meta.season` · `LINES` 와 같은 칸)로만 · 수치를 읊지 않는다. 종류는 `LINES` 와 같은 집합이다(`test-village-view` ⑦ 이 맞춰 본다).
+const NEWS_LINES = {
+  STOCK_SHORTAGE: (ev) => { const n = koRes(ev.item); return `${n}${josa(n, '이', '가')} 모자랍니다.`; },
+  STOCK_GLUT: (ev) => { const n = koRes(ev.item); return `${n}${josa(n, '은', '는')} 곳간에 남아돕니다.`; },
+  PRICE_SPIKE: (ev) => `${koRes(ev.item)} 값이 올랐습니다.`,
+  PRICE_DROP: (ev) => `${koRes(ev.item)} 값이 내렸습니다.`,
+  CARAVAN_LATE: () => '행상이 아직 오지 않았습니다.',
+  SEASON_CHANGE: (ev) => {
+    const s = ev.meta && ev.meta.season;
+    return s === 'spring' ? '봄이 왔습니다.' : s === 'summer' ? '여름이 왔습니다.' : s === 'autumn' ? '가을이 왔습니다.' : '겨울이 왔습니다.';
+  },
+  HARVEST_BOON: () => '올해는 거둘 것이 많습니다.',
+  HARVEST_BLIGHT: () => '올해는 소출이 적습니다.',
+  WEATHER: (ev) => {
+    const k = String(ev.item || '');
+    if (k.indexOf('가뭄') >= 0) return '비가 오지 않아 밭이 마릅니다.';
+    if (k.indexOf('폭풍') >= 0) return '바람이 거셉니다.';
+    if (k.indexOf('풍요') >= 0) return '들에 거둘 것이 많습니다.';
+    if (k.indexOf('안개') >= 0) return '안개가 짙어 사냥이 어렵습니다.';
+    return '날씨가 심상치 않습니다.';
+  },
+  POP_COLLAPSE: () => '사람이 자꾸 줄고 있습니다.',
+  CARAVAN_RAIDED: () => '행상이 길에서 털렸습니다.',
+  TRADER_KILLED: () => '고갯길에서 행상이 목숨을 잃었습니다.',
+  BUILT: (ev) => ((ev.item === 'granary') ? '곳간 한 채가 올라갔습니다.' : '움집 한 채가 올라갔습니다.'),
+  FIRST_GOODS: (ev) => { const n = koRes(ev.item); return `${n}${josa(n, '이', '가')} 이 마을에 처음 들어왔습니다.`; },
+  WINTER_KEPT: (ev) => { const n = koRes(ev.item); return `올겨울 ${n}${josa(n, '은', '는')} 넉넉했습니다.`; },
+  WINTER_SHORT: (ev) => { const n = koRes(ev.item); return `올겨울 ${n}${josa(n, '은', '는')} 넉넉하지 않았습니다.`; },
+  DISSOLVED: () => '굶주림 끝에 남은 사람들이 마을을 버리고 도적이 되었습니다.',
+  EMPTIED: () => '마을에 사람이 하나도 남지 않았습니다.',
+  STARVED: () => '굶어 죽은 사람이 나왔습니다.',
+  RESCUED: (ev) => {
+    const who = String(ev.item || '');
+    if (!who || who === 'village') return '쓰러진 사람을 마을 사람들이 쉼터로 옮겼습니다.';
+    return `${who}${josa(who, '이', '가')} 쓰러진 사람을 일으켰습니다.`;
+  },
+};
+function newsLine(ev) {
+  const f = ev && NEWS_LINES[ev.type];
+  return f ? f(ev) : '';
+}
 // 게시판 한 줄 — "무엇을 얼마 가져오면 무엇으로 갚는다"
 function boardLine(req) {
   const remain = (req.remain != null ? req.remain : (req.qty - req.filled));
@@ -4012,7 +4055,7 @@ function deliverToVillage(a) {
     rew: rewPaid, rewRes, rewItem: rewPlayerItem, done: c.done, req: c.req };
 }
 
-module.exports = { createLedger, CFG, TYPES, DEED_TYPES, DEED_FOREIGN, briefLine, boardLine, koRes, josa, seasonOf, KO_SEASON,
+module.exports = { createLedger, CFG, TYPES, DEED_TYPES, DEED_FOREIGN, briefLine, boardLine, newsLine, LINE_TYPES: Object.keys(LINES), NEWS_LINE_TYPES: Object.keys(NEWS_LINES), koRes, josa, seasonOf, KO_SEASON,
   blurMag,   // ★[T127] 뭉갬 정본 — 하네스·계측기가 **이 함수**를 부른다(사본 금지)
   yearDaysOf, seasonStartOf, calendarOf, yearOf, yearSpanOf, springYearOf,
   buildDeliverable, deliverToVillage, pricesOf, pricesFresh, payableQty };

@@ -1,0 +1,152 @@
+{
+ "browser": "chromium",
+ "version": "153.0.8010.12",
+ "sizes": [
+  {
+   "W": 1440,
+   "H": 900,
+   "open": {
+    "total": 324.9,
+    "skin": 62.3,
+    "open": true
+   },
+   "tabs": [
+    {
+     "tab": "dash",
+     "total": 35.2,
+     "skin": 0,
+     "texts": 34,
+     "canvases": 53
+    },
+    {
+     "tab": "proj",
+     "total": 93.7,
+     "skin": 43.6,
+     "texts": 42,
+     "canvases": 65
+    },
+    {
+     "tab": "mem",
+     "total": 154.8,
+     "skin": 74.5,
+     "texts": 85,
+     "canvases": 125
+    },
+    {
+     "tab": "store",
+     "total": 159.9,
+     "skin": 82.9,
+     "texts": 116,
+     "canvases": 179
+    }
+   ],
+   "tabs2": [
+    {
+     "tab": "dash",
+     "total": 29.9,
+     "skin": 0
+    },
+    {
+     "tab": "proj",
+     "total": 27.9,
+     "skin": 0
+    },
+    {
+     "tab": "mem",
+     "total": 36.5,
+     "skin": 0
+    },
+    {
+     "tab": "store",
+     "total": 42.2,
+     "skin": 0
+    }
+   ],
+   "rafOpen": {
+    "n": 131,
+    "p50": 16.7,
+    "p95": 33.4,
+    "max": 83.3
+   },
+   "rafClosed": {
+    "n": 139,
+    "p50": 16.7,
+    "p95": 33.4,
+    "max": 50
+   }
+  },
+  {
+   "W": 1280,
+   "H": 720,
+   "open": {
+    "total": 385.1,
+    "skin": 125.8,
+    "open": true
+   },
+   "tabs": [
+    {
+     "tab": "dash",
+     "total": 28,
+     "skin": 0,
+     "texts": 34,
+     "canvases": 53
+    },
+    {
+     "tab": "proj",
+     "total": 91.5,
+     "skin": 39.8,
+     "texts": 42,
+     "canvases": 65
+    },
+    {
+     "tab": "mem",
+     "total": 146.2,
+     "skin": 82,
+     "texts": 85,
+     "canvases": 125
+    },
+    {
+     "tab": "store",
+     "total": 113.7,
+     "skin": 54.1,
+     "texts": 116,
+     "canvases": 179
+    }
+   ],
+   "tabs2": [
+    {
+     "tab": "dash",
+     "total": 29.7,
+     "skin": 0
+    },
+    {
+     "tab": "proj",
+     "total": 28.4,
+     "skin": 0
+    },
+    {
+     "tab": "mem",
+     "total": 28.3,
+     "skin": 0
+    },
+    {
+     "tab": "store",
+     "total": 34.9,
+     "skin": 0
+    }
+   ],
+   "rafOpen": {
+    "n": 152,
+    "p50": 16.7,
+    "p95": 33.4,
+    "max": 50
+   },
+   "rafClosed": {
+    "n": 145,
+    "p50": 16.7,
+    "p95": 33.4,
+    "max": 83.4
+   }
+  }
+ ]
+}
