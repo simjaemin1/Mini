@@ -3,6 +3,19 @@
 > ★이 파일은 **영역 소유 세션만** 갱신한다. 다른 영역에 쓸 말이 생기면 `인계/회부.md` 에 한 줄.
 > (T557 에서 처음 세웠다 — 다른 카드가 같은 이름으로 세웠으면 절을 합친다.)
 
+## T1072. ★★2026-11-02 — 마을 화면 자료 `villageView` — 서버가 보내는 한 덩어리(세션14 · 승인 대기 · 가지 `batch/village-view-data-1102` · 보고/T1072_2026-11-02.md)
+
+* **모양 정본** `설계/설계_마을화면_villageView.md` · 고정 자료 `test/fixtures/village-view.json`(첫 커밋 `cff47c2` 로 먼저 밀었다 — T1070 이 그 전부터 화면을 그린다).
+* **메시지** 클라 → `{ type:'village_view', vid, numeraire? }`(열기 · 열린 채 다시 = 기준 품목 바꾸기) · `{ type:'village_view_close' }` / 서버 → `{ type:'village_view', vid, seq, full:true, view }`(열 때) · `{ …, full:false, slots }`(바뀐 칸만 · 칸 통째 교체).
+* **칸 열 개** `head · me · dash · requests · news · projects · members · store · prices · gate`. 없는 칸은 **키가 없다**(갚는 것이 곡식인 부탁 줄의 `rewRes`·`line` · 집 행위 끔 판의 `need` · 기준 안 고른 시세 `pick`).
+* **게이트** = 게시판 · 브리핑 · 연대기 · 거래소와 같은 260px 술어 — 멀리서는 안 열린다(`notice`). 열린 채 멀어지면 `gate.near=false` · `prices={none:'far'}` 만 오고 나머지는 멈춘다.
+  ⇒ T1070 ⑥ "멀리서 창고 시세 = 가까이 가야 볼 수 있습니다"는 **열고 나서 걸어 나가는** 판으로 잰다.
+* **품목** 뭉뚱그린 econ 재화(`server/village-view.js` `LUMPED` — 곡식 · 고기 · 생선 …)는 줄째 빼고 센다(`withheld`). 거래소 기본 기준(곡식)이면 시세 수 없이 `{ pick:true, basis }` — 고르면(`numeraire`) 그 기준으로 통째 다시 온다.
+* **박자** 열린 동안 5초(`VILLAGE_VIEW_MS` · 존의 5초) + 마을 장부 메시지 직후 한 번 · 장부 마감 중엔 건너뛴다. 값: 열기 ≈ 9~12ms(거의 다 거래소 정본) · 다시 읽기 ≈ 0.13ms(시세 입력 지문이 같으면 정본 재호출 0).
+* **제품 줄** `server/village-view.js`(새 · 읽기만) · `server/villages.js` `villageViewSrc`(손잡이 · 읽기만) · `server/zone.js` 9줄(require · init · `VILLAGE_BOOK_MSG` 한 줄 · 열기/닫기 · 장부 메시지 뒤 `poke` · `__testBind` 내보내기). 클라 무접촉.
+* ⚠NPC 이름 끝 🤖(`zone.js:3585`)가 그대로 실린다 — 마을 화면 이모지 0 캐논과 부딪친다(회부 T1072 19).
+* 하네스 `scripts/test-village-view.js`(`@regress` · 존 한 벌 · ≈18초) 50/0 — 칸 = 서버 값 · 원격 시세 0 · 뭉뚱그림 0 · 바뀐 칸만 · 값.
+
 ## T557-우물UI. ★★2026-09-30 — **우물을 화면에서 짓고 마신다**(승인 대기 · 보고/T557_2026-09-30.md)
 
 * **버튼** `우물 터 잡기`(`index.html .hud-actions` · 옆 패널 시설 목록도 같은 버튼) — 기본 숨김 · welcome `uiCfg.wellAct`(서버 `T509_WELL` 켬)일 때만 보인다(`30-n-net` 한 줄).
