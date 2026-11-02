@@ -34,6 +34,31 @@ const ICON_DIR = path.join(ROOT, 'public', 'assets', 'icons');
 const RENDER_PY = path.join(ROOT, 'scripts', 'props_render.py');
 const CLIENT_ICON = path.join(ROOT, 'public', 'client', '43-i-icon.js');
 
+// ★[T1067] **짐 창에서 갈리는가의 자** — ⑩(T156)이 지은 그 식을 위로 올렸다(⑩ · ⑫ 가 같은 자를 쓴다 · 두 벌 0).
+//   알파 > 96 인 화소(둘 중 하나라도)의 RGB |Δ| 평균. 문턱은 ⑩ 머리 주석의 유도(배포본 전 짝 5% 분위 43.5 → 40).
+const ICON_FLOOR = 40;
+const _icPx = {};
+const _icRd = (k) => _icPx[k] || (_icPx[k] = require('pngjs').PNG.sync.read(fs.readFileSync(path.join(ICON_DIR, k + '.png'))));
+function iconDist(a, b) {
+  const A = _icRd(a), B = _icRd(b); let s = 0, n = 0;
+  for (let i = 0; i < A.data.length; i += 4) {
+    if (A.data[i + 3] > 96 || B.data[i + 3] > 96) {
+      s += Math.abs(A.data[i] - B.data[i]) + Math.abs(A.data[i + 1] - B.data[i + 1]) + Math.abs(A.data[i + 2] - B.data[i + 2]);
+      n++;
+    }
+  }
+  return n ? s / (3 * n) : 0;
+}
+function nearestIcon(k) {
+  let best = 1e9, who = '';
+  for (const f of fs.readdirSync(ICON_DIR)) {
+    if (!f.endsWith('.png')) continue;
+    const o2 = f.slice(0, -4); if (o2 === k) continue;
+    const d = iconDist(k, o2); if (d < best) { best = d; who = o2; }
+  }
+  return { best, who };
+}
+
 function pngMeta(p) {                        // IHDR + IDAT 알파 — pngjs 로 읽는다(러너가 이미 무는 의존성)
   const { PNG } = require('pngjs');
   const png = PNG.sync.read(fs.readFileSync(p));
@@ -389,26 +414,11 @@ console.log('\n[⑩ 열매 아이콘 넷 — `nature_render.py ICON_BUILD` 이 �
   //   기존 아이콘 전 짝의 화소 |Δ| 분포를 재면 중앙값 95.8 · 5% 분위 43.5 · 최소 10.4
   //   (최소는 씨앗들끼리다 — 씨앗은 원래 서로 닮았다). 새 넷은 그 **5% 분위 위**에 있어야 한다.
   //   ⓘ 전 짝(10,296)을 매번 다시 재면 느리다 ⇒ 새 넷 대 나머지(4×147)만 잰다.
-  const FLOOR = 40;   // 5% 분위 43.5 를 내림 — 유도 근거는 위 주석(보고 §0-ⓒ 에 표)
-  const { PNG: PNG2 } = require('pngjs');
-  const px = {};
-  const all = fs.readdirSync(ICON_DIR).filter(f => f.endsWith('.png')).map(f => f.slice(0, -4));
-  const rd = (k) => px[k] || (px[k] = PNG2.sync.read(fs.readFileSync(path.join(ICON_DIR, k + '.png'))));
-  const dist = (a, b) => {
-    const A = rd(a), B = rd(b); let s = 0, n = 0;
-    for (let i = 0; i < A.data.length; i += 4) {
-      if (A.data[i + 3] > 96 || B.data[i + 3] > 96) {
-        s += Math.abs(A.data[i] - B.data[i]) + Math.abs(A.data[i + 1] - B.data[i + 1]) + Math.abs(A.data[i + 2] - B.data[i + 2]);
-        n++;
-      }
-    }
-    return n ? s / (3 * n) : 0;
-  };
+  //   ★[T1067] 자(`iconDist` · `ICON_FLOOR` 40 = 5% 분위 43.5 를 내림)는 머리로 올렸다 — ⑫ 가 같은 자를 쓴다(식 · 문턱 무변).
   for (const k of FKEYS) {
     if (!fmeta[k]) continue;
-    let best = 1e9, who = '';
-    for (const o2 of all) { if (o2 === k) continue; const d = dist(k, o2); if (d < best) { best = d; who = o2; } }
-    ok(best >= FLOOR, `${k}: 가장 닮은 아이콘 ${who} 와 |Δ| ${best.toFixed(1)} ≥ ${FLOOR} (배포본 5% 분위 43.5 에서 유도)`);
+    const { best, who } = nearestIcon(k);
+    ok(best >= ICON_FLOOR, `${k}: 가장 닮은 아이콘 ${who} 와 |Δ| ${best.toFixed(1)} ≥ ${ICON_FLOOR} (배포본 5% 분위 43.5 에서 유도)`);
   }
 }
 
@@ -574,6 +584,50 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
     ok(typeof lock._범프 === 'string' && /복원 완료/.test(lock._범프) && /Distance/.test(lock._범프),
        '잠금표 `_범프` 가 "복원 완료" 라고 적혀 있다');
     console.log('     ⇒ 다음 재굽기가 이 표와 대조한다. 기계를 바꾸면 여기가 먼저 빨개진다.');
+  }
+}
+
+console.log('\n[⑫ T1067 그림 없던 품목 — `props_render.py ITEMS_T1067` 이 굽는 표]');
+{
+  // ★★[T1067] ①②③ 은 위 31종(`ITEMS` 글자 표)만 돈다. 이 묶음은 그 뒤에 **따로** 붙는다(옷 여섯과 같은 꼴) ⇒ 그 표를 따로 읽는다.
+  //   키를 여기 손으로 안 적는다 — 굽는 표에서 뽑는다(사본 금지).
+  const py = fs.readFileSync(RENDER_PY, 'utf8');
+  const blk = py.match(/^ITEMS_T1067 = \[([\s\S]*?)^\]/m);
+  ok(!!blk, 'props_render.py 에서 ITEMS_T1067 표를 읽었다');
+  const NK = blk ? [...blk[1].matchAll(/\('([a-z_]+)',\s*m_/g)].map(m => m[1]) : [];
+  ok(NK.length === 31, `T1067 서른하나 (실측 ${NK.length})`);
+  ok(/^ITEMS \+= ITEMS_T1067$/m.test(py), '굽는 고리가 이 표를 돈다(`ITEMS += ITEMS_T1067`)');
+  // ★③ 과 같은 물음 — 키가 **서버 품목**인가. 무게 정본에 없으면 낚시 정본(`fishing.FISH_ITEMS`)에 묻는다:
+  //   민물 아홉(T593 · `freshfish.SPECIES`)은 플레이어 낚시가 실제로 내는 품목인데 무게 표에 줄이 없다(회부 — 무게는 econ 정본 몫).
+  const W3 = require(path.join(ROOT, 'server', 'weights.js'));
+  const F3 = require(path.join(ROOT, 'server', 'fishing.js'));
+  const csrc = fs.readFileSync(CLIENT_ICON, 'utf8');
+  const tbl = csrc.match(/const ICON_RENDERED = new Set\(\[([\s\S]*?)\]\);/);
+  const wanted = new Set(tbl ? [...tbl[1].matchAll(/'([\w]+)'/g)].map(m => m[1]) : []);
+  let bad = 0; const notSrv = [], notWired = [];
+  for (const k of NK) {
+    const q = path.join(ICON_DIR, k + '.png');
+    if (!fs.existsSync(q)) { ok(false, `${k}.png 이 없다`); bad++; continue; }
+    const m = pngMeta(q);
+    if (!(m.w === 96 && m.h === 96)) { ok(false, `${k}.png ${m.w}×${m.h} (96 아님)`); bad++; }
+    else if (!(m.clear > 200 && m.solid > 200)) { ok(false, `${k}.png 알파가 죽었다 (투명 ${m.clear} · 불투명 ${m.solid})`); bad++; }
+    if (W3.kgOf(k) == null && !F3.FISH_ITEMS.includes(k)) notSrv.push(k);
+    if (!wanted.has(k)) notWired.push(k);
+  }
+  ok(bad === 0, `${NK.length}장 전수 — 96×96 · 알파 살아 있음 (어긋남 ${bad})`);
+  ok(notSrv.length === 0, `키 ${NK.length}개가 전부 서버 품목이다(무게 정본 또는 낚시 정본) ${notSrv.length ? '— 아닌 것: ' + notSrv.join(', ') : ''}`);
+  ok(notWired.length === 0, `${NK.length}키 전부 ICON_RENDERED 에 올랐다 ${notWired.length ? '— 안 오른 것: ' + notWired.join(', ') : ''}`);
+  // ★날것 → 익힌 것은 **같은 모델 함수**에서 나온다(§9-A 첫째 층 · ⑥ⓑ 와 같은 물음).
+  for (const [raw, done] of [['meat_game', 'meat_game_cooked'], ['meat_bear', 'meat_bear_cooked']]) {
+    const fa = (py.match(new RegExp('^def m_' + raw + '\\(\\):\\s*_(\\w+)\\(', 'm')) || [])[1];
+    const fb = (py.match(new RegExp('^def m_' + done + '\\(\\):\\s*_(\\w+)\\(', 'm')) || [])[1];
+    ok(!!fa && fa === fb, `${raw} / ${done}: 같은 모델 함수 _${fa || '?'} / _${fb || '?'}`);
+  }
+  // ★짐 창에서 갈리는가 — ⑩ 과 **같은 자 · 같은 문턱**(`iconDist` · `ICON_FLOOR`). 새 키끼리도 견준다(폴더 전수).
+  for (const k of NK) {
+    if (!fs.existsSync(path.join(ICON_DIR, k + '.png'))) continue;
+    const { best, who } = nearestIcon(k);
+    ok(best >= ICON_FLOOR, `${k}: 가장 닮은 아이콘 ${who} 와 |Δ| ${best.toFixed(1)} ≥ ${ICON_FLOOR}`);
   }
 }
 

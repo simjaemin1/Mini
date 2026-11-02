@@ -131,6 +131,43 @@ M['driedb'] = simple_mat("p_driedb", (0.24, 0.09, 0.11), 0.62)                  
 M['radish'] = simple_mat("p_radish", (0.86, 0.85, 0.80), 0.45)                                     # 무 속살
 M['radskin'] = simple_mat("p_radskin", (0.62, 0.66, 0.52), 0.50)                                   # 무 껍질(윗동 푸르다)
 M['ochre'] = simple_mat("p_ochre", (0.66, 0.30, 0.18), 0.85)                                  # 붉은 흙 안료
+# ── [T1067] 어종 열셋 — 민물 아홉(`server/freshfish.js`) · 바다 넷(`server/seafish.js` 해안 표) ──────────
+#   ★위 재질은 한 줄도 안 바꿨다(이미 구운 장이 그대로다) — 새 몸빛만 더한다. 표 키는 `g_` 머리 · datablock 이름은 이 파일의 `p_/f_/t_` 네임스페이스(`test-render-common` · 겹침 0).
+M['g_bronze'] = striped_mat("f_crucian", (0.24, 0.22, 0.10), (0.34, 0.31, 0.15), 28, 0.36, 0.45)   # 붕어 — 어두운 청동빛 올리브(잉어 황갈보다 검푸르다)
+M['g_dusk'] = simple_mat("f_catfish", (0.10, 0.10, 0.09), 0.35)                                       # 메기 — 비늘 없는 검은 잿빛(매끈 · 젖은 살갗)
+M['g_brown'] = striped_mat("f_snakehead", (0.36, 0.33, 0.22), (0.44, 0.40, 0.27), 28, 0.34, 0.45)      # 가물치 — 누런 잿갈 바탕(그 위에 검은 얼룩띠)
+M['g_yellow'] = striped_mat("f_mandarin", (0.80, 0.62, 0.14), (0.92, 0.76, 0.24), 26, 0.34, 0.45)    # 쏘가리 — 밝은 누런 금빛(검은 무늬와 대비)
+M['g_teal'] = simple_mat("f_minnowbar", (0.16, 0.36, 0.40), 0.45)                                        # 피라미 — 청록 가로띠(혼인색)
+M['g_pink'] = simple_mat("f_minnowfin", (0.70, 0.36, 0.38), 0.45)                                        # 피라미 — 분홍 지느러미
+M['g_ayu'] = simple_mat("f_ayuspot", (0.76, 0.62, 0.18), 0.45)                                          # 은어 — 아가미 뒤 노란 점
+M['g_eel'] = striped_mat("f_eel", (0.17, 0.19, 0.11), (0.24, 0.26, 0.15), 18, 0.24, 0.40)          # 뱀장어 등 — 짙은 올리브(매끈)
+M['g_eelb'] = simple_mat("f_eelbelly", (0.74, 0.68, 0.44), 0.45)                                        # 뱀장어 배 — 누런 흰빛
+M['g_loach'] = striped_mat("f_loach", (0.50, 0.42, 0.22), (0.58, 0.49, 0.27), 30, 0.30, 0.45)      # 미꾸라지 — 누런 갈색(그 위에 잔 얼룩)
+M['g_ayub'] = striped_mat("f_ayubody", (0.72, 0.62, 0.22), (0.82, 0.72, 0.30), 34, 0.28, 0.42)        # 은어 — 누르스름한 은빛(수박 향 나는 노란 몸빛)
+M['g_ayuk'] = striped_mat("f_ayuback", (0.20, 0.24, 0.10), (0.28, 0.32, 0.15), 30, 0.32, 0.40)        # 은어 등 — 짙은 올리브 녹색
+M['g_white'] = striped_mat("f_barbelw", (0.74, 0.75, 0.74), (0.86, 0.86, 0.84), 36, 0.28, 0.42)      # 누치 — 흰 은빛(등은 잿갈)
+M['g_grey'] = striped_mat("f_barbelg", (0.26, 0.25, 0.22), (0.34, 0.32, 0.28), 30, 0.32, 0.42)        # 누치 등 — 잿갈
+M['g_basket'] = striped_mat("p_basket", (0.60, 0.48, 0.26), (0.46, 0.35, 0.17), 18, 0.85, 0.45)    # 대 · 싸리 바구니
+# ── [T1067] 사냥 산출 · 손도구 · 장비 갈래 · 광물 둘 ───────────────────────────────────
+M['g_venison'] = bumped_mat("p_venison", (0.46, 0.10, 0.09), (0.30, 0.05, 0.05), 10, 0.25, 0.55)   # 사슴고기 — 검붉은 살(돼지 · 소 고기보다 어둡다)
+M['g_fat'] = bumped_mat("p_fatcap", (0.80, 0.72, 0.52), (0.68, 0.60, 0.42), 12, 0.20, 0.50)          # 굳은 기름 · 비계(누르스름)
+M['g_furblk'] = striped_mat("p_furblk", (0.07, 0.06, 0.05), (0.15, 0.13, 0.11), 40, 0.95, 0.90)   # 곰 털(검다)
+M['g_furbrn'] = striped_mat("p_furbrn", (0.38, 0.27, 0.16), (0.56, 0.42, 0.26), 40, 0.95, 0.90)   # 들짐승 털(누런 갈색)
+M['g_plucked'] = bumped_mat("p_plucked", (0.86, 0.70, 0.58), (0.74, 0.56, 0.44), 14, 0.30, 0.55)  # 털 뽑은 닭 살갗
+M['g_bone'] = bumped_mat("p_bonewh", (0.86, 0.82, 0.70), (0.70, 0.65, 0.52), 9, 0.30, 0.70)         # 뼈(누렇게 바랜 흰빛)
+M['g_leather'] = bumped_mat("p_tanned", (0.36, 0.21, 0.10), (0.27, 0.15, 0.07), 5, 0.12, 0.55)    # 무두질한 가죽(짙은 갈색 · 매끈)
+M['g_lthin'] = simple_mat("p_tanlite", (0.56, 0.40, 0.24), 0.60)                                       # 가죽 속살 · 덧댄 테(밝은 갈색)
+M['g_antler'] = bumped_mat("p_antler", (0.62, 0.50, 0.34), (0.42, 0.32, 0.20), 13, 0.55, 0.75)    # 녹각(누런 갈색 · 끝은 희다)
+M['g_tip'] = simple_mat("p_tipwh", (0.90, 0.86, 0.76), 0.55)                                         # 뿔 끝 · 알껍데기
+M['g_rust'] = striped_mat("p_pheasant", (0.52, 0.24, 0.10), (0.20, 0.12, 0.07), 22, 0.60, 0.60)       # 꿩 꼬리깃(적갈에 검은 띠)
+M['g_straw'] = striped_mat("p_nest", (0.66, 0.56, 0.30), (0.50, 0.40, 0.20), 30, 0.85, 0.40)     # 마른 풀 둥지
+M['g_boiled'] = bumped_mat("p_boiled", (0.40, 0.29, 0.22), (0.30, 0.21, 0.16), 10, 0.25, 0.55)    # 삶은 고기(잿빛 갈색 — 굽지 않아 그을음이 없다)
+M['g_obsid'] = bumped_mat("p_obsid", (0.02, 0.02, 0.025), (0.05, 0.05, 0.06), 6, 0.04, 0.48)     # 흑요석(검은 유리 — 월드 반사로 잿빛이 안 되게 거칠기를 조금 둔다)
+M['g_sulfur'] = bumped_mat("p_sulfur", (0.86, 0.74, 0.14), (0.66, 0.54, 0.08), 12, 0.45, 0.70)    # 유황(샛노란 결정)
+M['g_sard'] = striped_mat("f_sardine", (0.16, 0.30, 0.38), (0.24, 0.38, 0.46), 34, 0.28, 0.40)        # 정어리 등 — 청록 푸른빛
+M['g_octo'] = bumped_mat("t_octopus", (0.58, 0.27, 0.20), (0.40, 0.17, 0.13), 9, 0.40, 0.55)          # 문어 — 적갈 살갗(오돌토돌)
+M['g_sucker'] = simple_mat("t_sucker", (0.84, 0.72, 0.64), 0.50)                                    # 문어 빨판 — 살빛
+M['g_squid'] = bumped_mat("t_squid", (0.78, 0.66, 0.56), (0.52, 0.34, 0.26), 14, 0.22, 0.42)       # 오징어 — 살빛에 갈색 색소점
 # ── [T95] 옷 여섯 · 시설 셋 ─────────────────────────────────────────────────
 # ★★옷 색의 정본은 **`render_common.CLOTH_MATS`** 하나다(T81 이 fiber·ramie 를 밀어낸 값 그대로).
 #   짐 창의 갖옷과 몸에 걸친 갖옷이 **같은 물건**으로 읽혀야 한다 — 색이 갈리면 그 순간 두 물건이 된다.
@@ -1070,6 +1107,538 @@ def m_pickled_veg():
         cyl(0.024, 0.44, (0, 0, 0.96 + i * 0.05), rot=(0, math.radians(90), 0), mat=M['cord'], verts=7)
 
 
+# ═══════════════ [T1067] 어종 열셋 — 민물 아홉 · 바다 넷 ═══════════════
+# ★키 = 서버 품목 키 그대로 — 민물 `server/freshfish.js SPECIES`(T593 · 플레이어 낚시가 강 · 호수 · 논물에서 낸다) ·
+#   바다 `server/seafish.js` 해안 낚싯대 표(`gear: 'rod'`). 이름 · 무게 · 물 · 철은 그 두 표가 정본이다(여기 안 적는다).
+# ★몸틀은 T76 의 `_finfish()` 그대로다(새 몸틀 0) — 지느러미 물고기 열은 인자만 다르다.
+#   몸틀로 안 되는 넷(뱀장어 · 멸치 · 문어 · 오징어)만 이 절에서 모양을 짓는다.
+# ★크기는 그림이 말하지 않는다(§9 — 96px 를 꽉 채운다). 손가락만 한 멸치는 **한 무더기**로(소금 · 자갈의 문법).
+# ★고증: 청동기 후기 한반도 — 붕어 · 메기 · 가물치 · 쏘가리 · 누치 · 피라미 · 은어 · 뱀장어 · 미꾸라지는
+#   강 · 못 · 논물의 토박이고, 정어리 · 멸치 · 문어 · 오징어는 연안에서 잡힌다(`설계/고증_바닷물고기.md`).
+
+def _blotch(xs, D, H, rad, mat, zmid=0.30, zamp=0.18, seed=0):
+    """큰 얼룩 — 몸 옆(카메라 쪽 −y)에 붙는 납작한 반점. `_finfish` 의 잔 반점(0.055)으로는 96px 에서 무늬가 안 선다."""
+    random.seed(seed)
+    for i, x in enumerate(xs):
+        z = zmid + (zamp if i % 2 else -zamp * 0.6) * H + random.uniform(-0.04, 0.04)
+        ico(rad * random.uniform(0.85, 1.15), (x, -0.27 * D, z), subdiv=2, mat=mat,
+            scale=(1.25, 0.30, 1.0), jitter=0.18, smooth=True)
+
+
+def _shift(n0, dx=0.0, dy=0.0, dz=0.0):
+    """`n0` 번째 뒤로 지은 오브젝트를 통째로 옮긴다 — 몸틀(`_finfish`)은 자리 인자가 없어서 무리(꿰미)를 지을 때 쓴다."""
+    for o in OBJS[n0:]:
+        o.location.x += dx; o.location.y += dy; o.location.z += dz
+
+
+def _spin(n0, rz, px=0.0, py=0.0):
+    """`n0` 번째 뒤로 지은 오브젝트를 (px, py) 둘레로 세계 z 축 `rz` 만큼 돌린다 — 무리(정어리 부채)를 지을 때 쓴다.
+    ⓘ 부품마다 이미 기운 각(지느러미)이 있어 오일러 z 에 더하면 틀린다 — 회전 행렬을 앞에 곱한다."""
+    from mathutils import Matrix
+    R = Matrix.Rotation(rz, 3, 'Z')
+    c, s_ = math.cos(rz), math.sin(rz)
+    for o in OBJS[n0:]:
+        x, y = o.location.x - px, o.location.y - py
+        o.location.x, o.location.y = px + x * c - y * s_, py + x * s_ + y * c
+        o.rotation_euler = (R @ o.rotation_euler.to_matrix()).to_euler('XYZ')
+
+
+def _fishlet(x, y, z, ang, body, back, s=1.0, tail=None, curl=0.0):
+    """잔고기 한 마리 — 멸치 · 미꾸라지 무리(§9 — 작은 것은 개수와 그릇으로 말한다).
+    `curl` 은 몸이 휜 정도(미꾸라지는 몸을 꼰다) · `ang` 은 머리 쪽 방향(라디안)."""
+    ca, sa = math.cos(ang), math.sin(ang)
+    n = 6
+    for j in range(n):                                                              # 몸 여섯 마디 — 머리에서 꼬리로 가늘어진다
+        t = j / (n - 1)
+        bend = curl * (t - 0.35) ** 2 * 2.2
+        dx = (0.32 - t * 0.64) * s
+        px, py = x + ca * dx - sa * bend * s, y + sa * dx + ca * bend * s
+        r = (0.078 - t * 0.034) * s
+        o = ico(r, (px, py, z), subdiv=2, mat=body, scale=(1.45, 1.0, 1.0), jitter=0.03, smooth=True)
+        o.rotation_euler = (0, 0, ang)
+        o = ico(r * 0.82, (px, py, z + r * 0.42), subdiv=2, mat=back, scale=(1.45, 0.78, 0.62), jitter=0.03, smooth=True)
+        o.rotation_euler = (0, 0, ang)
+    ico(0.026 * s, (x + ca * 0.34 * s + sa * 0.04 * s, y + sa * 0.34 * s - ca * 0.04 * s, z + 0.022 * s), subdiv=1, mat=M['scorch'])   # 눈
+    bend = curl * 0.65 ** 2 * 2.2
+    tx, ty = x - ca * 0.40 * s - sa * bend * s, y - sa * 0.40 * s + ca * bend * s
+    box(0.10 * s, 0.02 * s, 0.12 * s, (tx, ty, z), rot=(0, 0, ang), mat=(tail or M['fin2']))                          # 꼬리
+
+
+def m_crucian():
+    """붕어 — 강 · 못 · 논물 어디나 사철. **몸이 높고 짧으며 수염이 없다**(잉어와 가르는 표지) · 검푸른 청동빛."""
+    _finfish(L=0.84, D=0.60, H=1.36, body=M['g_bronze'], back=M['g_bronze'], forked=True, seed=1671)
+
+
+def m_catfish():
+    """메기 — 중 · 하류 여름. **납작하고 넓은 머리 · 긴 입수염 한 쌍과 짧은 한 쌍** · 비늘 없는 검은 잿빛 몸 ·
+    등지느러미는 작고 뒷지느러미가 꼬리까지 길다."""
+    _finfish(L=1.40, D=0.86, H=0.66, body=M['g_dusk'], back=M['g_dusk'], dorsals=0, forked=False, seed=1672)
+    ico(0.34, (1.02, 0.0, 0.26), subdiv=2, mat=M['g_dusk'], scale=(1.05, 1.55, 0.58), jitter=0.03, smooth=True)   # 넓적한 머리
+    box(0.30, 0.56, 0.05, (1.26, 0.0, 0.17), mat=M['belly'])                                                     # 큰 입(흰 입술)
+    for sgn in (-1, 1):
+        cyl(0.024, 1.30, (0.92, sgn * 0.72, 0.24), rot=(0, math.radians(90), math.radians(sgn * -52)),
+            mat=M['scorch'], verts=5)                                                                        # 긴 수염(위턱)
+        cyl(0.018, 0.40, (1.18, sgn * 0.22, 0.08), rot=(math.radians(sgn * 40), math.radians(60), 0),
+            mat=M['scorch'], verts=5)                                                                        # 짧은 수염(아래턱)
+    box(0.14, 0.04, 0.12, (0.30, 0.0, 0.56), rot=(0, math.radians(-12), 0), mat=M['g_dusk'])                     # 작은 등지느러미
+    box(1.20, 0.035, 0.14, (-0.66, 0.0, 0.06), mat=M['g_dusk'])                                                  # 긴 뒷지느러미
+
+
+def m_snakehead():
+    """가물치 — 호수 여름. **긴 통나무꼴 몸에 등 · 뒷지느러미가 길게 이어지고** 누런 잿갈 바탕에 검은 얼룩띠가 크게 진다 ·
+    꼬리는 둥글다."""
+    _finfish(L=1.50, D=0.70, H=0.74, body=M['g_brown'], back=M['g_brown'], dorsals=0, forked=False, seed=1673)
+    _blotch([0.80, 0.52, 0.24, -0.04, -0.32, -0.60, -0.88, -1.12], 0.70, 0.74, 0.15, M['scorch'], seed=16731)
+    box(1.90, 0.045, 0.16, (-0.30, 0.0, 0.62), rot=(0, math.radians(-3), 0), mat=M['scorch'])                    # 긴 등지느러미(검다)
+    box(1.20, 0.045, 0.13, (-0.58, 0.0, 0.03), mat=M['scorch'])                                                  # 긴 뒷지느러미
+    box(0.30, 0.20, 0.06, (1.18, 0.0, 0.20), rot=(0, math.radians(-14), 0), mat=M['g_brown'])                    # 큰 아래턱
+
+
+def m_mandarin():
+    """쏘가리 — 상 · 중류 바위 틈. **밝은 누런 금빛에 표범 같은 검은 무늬** · 가시 등지느러미 · 큰 입 · 둥근 꼬리."""
+    _finfish(L=1.00, D=0.62, H=1.12, body=M['g_yellow'], back=M['g_yellow'], dorsals=2, forked=False, seed=1674)
+    _blotch([0.62, 0.40, 0.18, -0.04, -0.26, -0.48, -0.70], 0.62, 1.12, 0.12, M['scorch'], zamp=0.16, seed=16741)
+    _blotch([0.50, 0.08, -0.36, -0.62], 0.62, 1.12, 0.09, M['scorch'], zmid=0.12, zamp=0.05, seed=16742)
+    _blotch([0.30, -0.14, -0.58], 0.62, 1.12, 0.08, M['scorch'], zmid=0.50, zamp=0.04, seed=16743)
+    box(0.30, 0.22, 0.07, (1.02, 0.0, 0.22), rot=(0, math.radians(-18), 0), mat=M['g_yellow'])                  # 내민 아래턱
+    for i in range(5):                                                                                           # 등 가시
+        cyl(0.016, 0.22, (0.50 - i * 0.12, 0.0, 0.84), rot=(0, math.radians(-14), 0), mat=M['scorch'], verts=5)
+
+
+def m_barbel():
+    """누치 — 중류 모래 바닥. **길쭉한 흰 은빛 몸에 잿갈 등 · 입가 수염 한 쌍** · 주둥이가 길게 아래로 숙었다 · 꼬리가 갈라진다."""
+    _finfish(L=1.46, D=0.54, H=0.76, body=M['g_white'], back=M['g_grey'], barbels=2, forked=True, seed=1675)
+    ico(0.17, (1.20, 0.0, 0.22), subdiv=2, mat=M['g_white'], scale=(1.55, 0.70, 0.66), jitter=0.05, smooth=True)  # 숙인 긴 주둥이
+
+
+def _minnow_one(seed):
+    _finfish(L=0.62, D=0.40, H=0.70, body=M['f_silver'], back=M['f_back'], forked=True, seed=seed)
+    for i in range(4):                                                                                           # 청록 가로띠 — 카메라 쪽(−y)으로 내민다
+        box(0.028, 0.03, 0.24, (0.30 - i * 0.17, -0.17, 0.30), rot=(0, math.radians(8), 0), mat=M['g_teal'])
+    box(0.34, 0.04, 0.24, (-0.26, 0.0, 0.06), rot=(0, math.radians(18), 0), mat=M['g_pink'])                     # 큰 뒷지느러미(분홍)
+    box(0.16, 0.12, 0.04, (0.22, -0.16, 0.16), rot=(math.radians(34), 0, math.radians(-10)), mat=M['g_pink'])     # 가슴지느러미
+
+
+def m_minnow():
+    """피라미 — 상 · 중류 여울. 손가락만 한 은빛 잔고기에 **청록 가로띠와 분홍 지느러미**(혼인색) —
+    한 마리로는 안 읽히니(§9) **풀 끈에 아가미를 꿴 꿰미 셋**."""
+    cyl(0.022, 2.60, (0.36, 0.0, 1.08), rot=(0, math.radians(-52), 0), mat=M['fiber'], verts=6)                # 아가미로 꿴 풀 끈(셋의 머리를 잇는다)
+    for i, (dx, dz) in enumerate(((-0.80, 1.62), (-0.10, 1.08), (0.60, 0.54))):
+        n0 = len(OBJS)
+        _minnow_one(16760 + i)
+        _shift(n0, dx=dx, dz=dz)
+
+
+def m_sweetfish():
+    """은어 — 상 · 중류 여름. 날씬한 **누르스름한 은빛** 몸에 올리브 등 · **아가미 뒤 노란 점과 노란 지느러미 · 기름지느러미**."""
+    _finfish(L=1.18, D=0.46, H=0.80, body=M['g_ayub'], back=M['g_ayuk'], forked=True, seed=1677)
+    ico(0.14, (0.42, -0.24, 0.36), subdiv=2, mat=M['g_ayu'], scale=(1.4, 0.35, 1.0), jitter=0.05, smooth=True)   # 노란 점
+    box(0.14, 0.04, 0.10, (-0.66, 0.0, 0.58), mat=M['g_ayu'])                                                    # 기름지느러미
+    box(0.52, 0.045, 0.34, (0.04, 0.0, 0.72), rot=(0, math.radians(-14), 0), mat=M['g_ayu'])                     # 크고 노란 등지느러미
+    for sgn in (-1, 1):                                                                                          # 노란 꼬리 갈퀴(몸틀 꼬리 위에 덧댄다)
+        box(0.24, 0.032, 0.16, (-1.12, 0.0, 0.30 + sgn * 0.14), rot=(0, math.radians(sgn * 40), 0), mat=M['g_ayu'])
+
+
+def m_eel():
+    """뱀장어 — 하류 가을. **뱀처럼 긴 몸이 S 자로 누웠고** 등 · 뒷지느러미가 꼬리까지 한 줄로 이어진다 ·
+    등은 짙은 올리브 · 배는 누런 흰빛. 몸틀(`_finfish`)로는 안 되는 모양이라 촘촘한 마디로 잇는다."""
+    random.seed(1678)
+    n = 40
+    for i in range(n):
+        t = i / (n - 1)
+        x = 1.10 - t * 2.30
+        y = math.sin(t * math.pi * 1.55) * 0.38
+        r = 0.15 * (1.0 - 0.55 * t) if t > 0.08 else 0.15 * (0.80 + 2.5 * t)
+        ico(r, (x, y, 0.20), subdiv=2, mat=M['g_eel'], scale=(1.0, 1.0, 1.0), smooth=True)                       # 등(위)
+        ico(r * 0.90, (x, y - 0.02, 0.14), subdiv=2, mat=M['g_eelb'], scale=(1.0, 1.0, 0.75), smooth=True)        # 배(아래)
+        if t > 0.30:
+            ico(r * 0.42, (x, y, 0.20 + r * 0.95), subdiv=1, mat=M['g_eel'], scale=(1.0, 1.0, 1.25), smooth=True)  # 이어진 등지느러미(낮은 둑)
+    ico(0.055, (1.16, -0.09, 0.25), subdiv=2, mat=M['belly'], smooth=True)                                     # 눈
+    ico(0.032, (1.19, -0.12, 0.25), subdiv=2, mat=M['scorch'], smooth=True)
+    box(0.12, 0.10, 0.03, (0.94, -0.13, 0.18), rot=(math.radians(40), 0, 0), mat=M['fin2'])                       # 가슴지느러미
+
+
+def _wiggle(x0, y0, ang, L, r0, body, belly, n, amp, waves, seed, spots=0, spot_mat=None, z0=0.0):
+    """꼬인 긴 몸 — 마디를 **촘촘히** 겹쳐 잇는다(간격 ≈ 반지름의 0.4 — 성기면 구슬로 읽힌다 · 1패스 실측).
+    미꾸라지 셋이 쓴다(뱀장어 `m_eel` 과 같은 마디 문법 — 그 하나는 등지느러미 둑이 붙어 제 고리를 둔다). `ang` 은 머리 쪽 방향."""
+    random.seed(seed)
+    ca, sa = math.cos(ang), math.sin(ang)
+    pts = []
+    for i in range(n):
+        t = i / (n - 1)
+        u = (0.5 - t) * L
+        v = math.sin(t * math.pi * waves) * amp
+        x, y = x0 + ca * u - sa * v, y0 + sa * u + ca * v
+        r = r0 * (1.0 - 0.55 * t) if t > 0.08 else r0 * (0.80 + 2.5 * t)
+        ico(r, (x, y, z0 + r), subdiv=2, mat=body, smooth=True)
+        ico(r * 0.90, (x, y, z0 + r * 0.62), subdiv=2, mat=belly, scale=(1.0, 1.0, 0.75), smooth=True)
+        pts.append((x, y, r))
+    for k in range(spots):                                                           # 잔 얼룩(등)
+        x, y, r = pts[int((k + 0.5) / spots * (n - 2)) + 1]
+        ico(r * 0.42, (x + random.uniform(-0.3, 0.3) * r, y + random.uniform(-0.3, 0.3) * r, z0 + r * 1.85),
+            subdiv=1, mat=spot_mat, scale=(1.0, 1.0, 0.4))
+    hx, hy, hr = pts[0]
+    ico(hr * 0.34, (hx + ca * hr * 0.55 + sa * hr * 0.45, hy + sa * hr * 0.55 - ca * hr * 0.45, z0 + hr * 1.35),
+        subdiv=1, mat=M['scorch'])                                                   # 눈
+    return pts
+
+
+def m_loach():
+    """미꾸라지 — 논물 · 도랑. 손가락만 한 **누런 갈색 잔고기가 몸을 꼰다**(검은 잔 얼룩 · 입가 수염) —
+    한 마리로는 안 읽히니(§9) **셋이 나란히 꿈틀**."""
+    for i, (dy, ph) in enumerate(((-0.42, 1.0), (0.0, -1.0), (0.42, 1.0))):
+        pts = _wiggle(0.0, dy, 0.10 * ph, 1.30, 0.085, M['g_loach'], M['g_eelb'], 34, 0.10 * ph, 1.6,
+                      seed=16790 + i, spots=9, spot_mat=M['scorch'])
+        hx, hy, hr = pts[0]
+        for sgn in (-1, 1):                                                          # 입수염
+            cyl(0.010, 0.16, (hx + 0.09, hy + sgn * 0.04, hr * 0.8), rot=(0, math.radians(80), math.radians(sgn * 30)),
+                mat=M['f_spot'], verts=4)
+
+
+def _sardine_one(seed):
+    _finfish(L=1.02, D=0.44, H=0.74, body=M['f_silver'], back=M['g_sard'], forked=True, seed=seed)
+    ico(0.40, (-0.02, 0.0, 0.48), subdiv=2, mat=M['g_sard'], scale=(1.70, 0.50, 0.40), jitter=0.04, smooth=True)   # 푸른 등을 넓게
+    for i in range(7):                                                                                           # 점 한 줄 — 카메라 쪽으로 내민다
+        ico(0.060, (0.48 - i * 0.16, -0.25, 0.36), subdiv=1, mat=M['scorch'], scale=(1.1, 0.35, 1.0), jitter=0.2, smooth=True)
+
+
+def m_sardine():
+    """정어리 — 연안 떼. 날씬한 은빛 몸에 **진한 청록 등 · 옆구리에 검은 점이 한 줄** · 꼬리가 깊게 갈라진다.
+    0.1kg 잔고기라(§9) **셋을 머리 모아 부채로** — 한 마리면 연어 · 청어와 갈리지 않는다(`test-icons ⑫` 자)."""
+    for i, (rz, dy, dz) in enumerate(((-0.42, -0.10, 0.0), (0.0, 0.18, 0.10), (0.42, 0.46, 0.20))):
+        n0 = len(OBJS)
+        _sardine_one(16800 + i)
+        _spin(n0, rz, px=0.95, py=0.0)
+        _shift(n0, dy=dy, dz=dz)
+
+
+def _anchovy_one(x, y, z, ang, s=1.0):
+    """멸치 한 마리 — 매끈한 긴 몸 한 덩이(마디로 이으면 애벌레로 읽힌다 · 1패스 실측) + 푸른 등줄 + 갈라진 꼬리 + 눈."""
+    ca, sa = math.cos(ang), math.sin(ang)
+    o = ico(0.11 * s, (x, y, z), subdiv=2, mat=M['f_silver'], scale=(3.3, 0.62, 0.72), smooth=True); o.rotation_euler = (0, 0, ang)
+    o = ico(0.085 * s, (x - ca * 0.02 * s, y - sa * 0.02 * s, z + 0.045 * s), subdiv=2, mat=M['g_sard'],
+            scale=(3.6, 0.40, 0.42), smooth=True); o.rotation_euler = (0, 0, ang)                       # 푸른 등줄
+    ico(0.028 * s, (x + ca * 0.30 * s + sa * 0.05 * s, y + sa * 0.30 * s - ca * 0.05 * s, z + 0.02 * s), subdiv=1, mat=M['scorch'])  # 눈
+    for sgn in (-1, 1):                                                                                  # 갈라진 꼬리
+        box(0.11 * s, 0.018 * s, 0.07 * s, (x - ca * 0.40 * s, y - sa * 0.40 * s, z + sgn * 0.035 * s),
+            rot=(0, math.radians(sgn * 35), ang), mat=M['fin2'])
+
+
+def m_anchovy():
+    """멸치 — 남해 연안 떼. 손가락만 한 은빛 잔고기 — 한 마리로는 안 읽히니(§9) **한 무더기**(그물에서 쏟아 나란히 쌓인 것)."""
+    random.seed(1681)
+    k = 0
+    for layer, (n, z) in enumerate(((5, 0.08), (4, 0.17), (3, 0.26))):
+        for j in range(n):
+            y = (j - (n - 1) / 2.0) * 0.17
+            x = random.uniform(-0.10, 0.10) + layer * 0.05
+            _anchovy_one(x, y, z, random.uniform(-0.30, 0.30) + (math.pi if k % 4 == 3 else 0.0), s=1.0)
+            k += 1
+
+
+def m_octopus():
+    """문어 — 연안 바위. **둥근 몸통(외투막) 아래로 빨판 달린 팔 여덟이 말려** 바닥에 퍼졌다 · 적갈 살갗."""
+    random.seed(1682)
+    ico(0.44, (-0.18, 0.0, 0.66), subdiv=2, mat=M['g_octo'], scale=(1.25, 1.00, 1.10), jitter=0.05, smooth=True)   # 외투막
+    ico(0.30, (0.20, 0.0, 0.40), subdiv=2, mat=M['g_octo'], scale=(1.0, 1.10, 0.85), jitter=0.05, smooth=True)     # 머리
+    for sgn in (-1, 1):                                                                                              # 눈
+        ico(0.075, (0.34, sgn * 0.22, 0.56), subdiv=2, mat=M['g_sucker'], jitter=0.05, smooth=True)
+        ico(0.040, (0.38, sgn * 0.25, 0.57), subdiv=2, mat=M['scorch'], jitter=0.05, smooth=True)
+    for k in range(8):                                                                                               # 팔 여덟 — 끝이 말린다
+        a0 = k * (math.tau / 8) + 0.18
+        px, py, pz = 0.20 + math.cos(a0) * 0.18, math.sin(a0) * 0.18, 0.24
+        heading = a0
+        for s in range(11):
+            t = s / 10.0
+            r = 0.10 * (1.0 - 0.70 * t)
+            heading += 0.16 + t * 0.42 * (1 if k % 2 else -1)
+            px += math.cos(heading) * 0.13 * (1.0 - 0.35 * t)
+            py += math.sin(heading) * 0.13 * (1.0 - 0.35 * t)
+            pz = max(r * 0.8, 0.22 - t * 0.20)
+            ico(r, (px, py, pz), subdiv=2, mat=M['g_octo'], scale=(1.0, 1.0, 0.85), jitter=0.04, smooth=True)
+            if s % 2 == 0 and s < 9:
+                ico(r * 0.42, (px, py, pz + r * 0.62), subdiv=1, mat=M['g_sucker'], scale=(1.0, 1.0, 0.6))      # 빨판
+
+
+def m_squid():
+    """오징어 — 동해 연안. **긴 원뿔 몸통 끝에 세모 지느러미 · 큰 눈 · 팔 여덟과 촉완 둘** · 살빛에 갈색 색소점."""
+    random.seed(1683)
+    ico(0.32, (-0.30, 0.0, 0.32), subdiv=2, mat=M['g_squid'], scale=(2.50, 1.00, 0.95), jitter=0.03, smooth=True)   # 몸통
+    ico(0.19, (-0.98, 0.0, 0.32), subdiv=2, mat=M['g_squid'], scale=(1.60, 0.90, 0.80), jitter=0.03, smooth=True)   # 끝
+    for sgn in (-1, 1):                                                                                                # 세모 지느러미
+        box(0.50, 0.38, 0.04, (-1.02, sgn * 0.26, 0.34), rot=(0, 0, math.radians(sgn * 38)), mat=M['g_squid'])
+    ico(0.21, (0.50, 0.0, 0.30), subdiv=2, mat=M['g_squid'], scale=(1.10, 1.05, 0.90), jitter=0.04, smooth=True)    # 머리
+    for sgn in (-1, 1):                                                                                                # 큰 눈
+        ico(0.11, (0.54, sgn * 0.20, 0.37), subdiv=2, mat=M['belly'], jitter=0.03, smooth=True)
+        ico(0.068, (0.58, sgn * 0.25, 0.38), subdiv=2, mat=M['scorch'], jitter=0.03, smooth=True)
+    for k in range(8):                                                                                                 # 팔 여덟 — 굵게 모아 앞으로
+        a = (k / 7.0 - 0.5) * 0.90
+        for s in range(6):
+            t = s / 5.0
+            ico(0.070 * (1.0 - 0.55 * t), (0.70 + s * 0.12 * math.cos(a), math.sin(a) * (0.10 + s * 0.10), 0.24 - t * 0.12),
+                subdiv=2, mat=M['g_squid'], jitter=0.03, smooth=True)
+    for sgn in (-1, 1):                                                                                                # 촉완 둘(짧게 — 몸이 그림을 채우게) + 곤봉
+        cyl(0.028, 0.62, (1.04, sgn * 0.16, 0.14), rot=(0, math.radians(88), math.radians(sgn * 12)), mat=M['g_squid'], verts=6)
+        ico(0.075, (1.36, sgn * 0.23, 0.13), subdiv=2, mat=M['g_squid'], scale=(1.7, 0.9, 0.7), jitter=0.04, smooth=True)
+    for i in range(18):                                                                                                # 색소점
+        x = random.uniform(-1.0, 0.30)
+        ico(0.038, (x, random.uniform(-0.30, -0.16), 0.30 + random.uniform(0.02, 0.22)),
+            subdiv=1, mat=M['g_octo'], scale=(1.0, 0.5, 1.0), jitter=0.2, smooth=True)
+
+
+# ═══════════════ [T1067] 사냥 산출 · 손도구 둘 · 장비 갈래 셋 · 광물 둘 ═══════════════
+# ★키 = 서버 품목 키 — 사냥 · 도살 산출(`server/wildlife.js` 동물 표 · 도살 `server/zone.js` · 이름 `specialty`/`game-meat`) ·
+#   손 제작 망치 · 톱(`server/zone.js` RECIPES) · 작업대 장비 갈래(`EQUIPMENT_RECIPES` · 클라 `EQUIP_ICONS` — 재질이 그림을 안 바꾸는 갈래) ·
+#   선광 광물 둘(흑요석 · 유황 — 지금은 광물 갈래 대표 `ore` 를 빌린다 · T481).
+# ★날것 → 익힌 것은 **같은 함수 · 다른 인자**(§9-A 첫째 층) — `_haunch(cooked)` · `_bearslab(boiled)`.
+# ★고증: 청동기 후기 — 장비 갈래 그림은 그 시대 가장 흔한 꼴로 고른다(무기 = 간돌 창 · 도구 = 홈자귀(송국리 문화의 표지 석기) ·
+#   갑옷 = 가죽 몸가리개). 재질별 그림은 갈래 하나로 묶는다(`equipPicKey` — 옷만 재질마다 · 그 규약 그대로).
+
+def _haunch(cooked=False):
+    """사슴 뒷다리 한 짝 — 넓적다리 살 · 정강이 · 굽. `cooked=True` 는 **같은 다리**를 구운 것(털 · 굽을 걷어 낸 뼈 정강이 · 그을음)."""
+    random.seed(1684)
+    flesh = M['grilled'] if cooked else M['g_venison']
+    ico(0.50, (-0.20, 0.0, 0.36), subdiv=2, mat=flesh, scale=(1.30, 0.82, 0.72), jitter=0.06, smooth=True)          # 넓적다리 살
+    ico(0.30, (0.30, 0.0, 0.30), subdiv=2, mat=flesh, scale=(1.10, 0.70, 0.66), jitter=0.06, smooth=True)            # 무릎 쪽으로 좁아진다
+    ico(0.13, (-0.86, 0.0, 0.46), subdiv=2, mat=M['g_bone'], scale=(1.0, 1.0, 1.0), jitter=0.05, smooth=True)        # 잘린 관절(엉덩뼈 머리)
+    if cooked:
+        cyl(0.075, 0.70, (0.78, 0.0, 0.24), rot=(0, math.radians(84), 0), mat=M['g_bone'], verts=10)               # 드러난 정강이뼈
+        ico(0.11, (1.14, 0.0, 0.22), subdiv=2, mat=M['g_bone'], scale=(1.1, 1.0, 0.9), jitter=0.05, smooth=True)
+        for (dx, dz) in ((-0.42, 0.66), (0.02, 0.62), (0.34, 0.50), (-0.70, 0.52)):                                # 탄 자국
+            ico(0.11, (dx, -0.16, dz), subdiv=1, mat=M['scorch'], scale=(1.6, 0.35, 0.8), jitter=0.3, smooth=False)
+    else:
+        cyl(0.11, 0.62, (0.78, 0.0, 0.24), rot=(0, math.radians(84), 0), mat=M['g_furbrn'], verts=10)              # 털 붙은 정강이
+        for sgn in (-1, 1):                                                                                         # 갈라진 굽
+            box(0.16, 0.08, 0.20, (1.12, sgn * 0.05, 0.16), rot=(0, math.radians(-20), 0), mat=M['scorch'])
+
+
+def m_meat_game():        _haunch(False)
+def m_meat_game_cooked(): _haunch(True)
+
+
+def _bearslab(boiled=False):
+    """곰고기 한 덩이 — **누르스름한 비계**가 한 켜 얹힌 검붉은 살에 검은 털가죽 띠가 붙어 있다.
+    `boiled=True` 는 **같은 덩이**를 삶아 털을 벗기고 **세 점으로 썬 것**(살이 잿빛 갈색 · 비계 켜는 그대로 · 그을음 없음).
+    ⓘ 솥에 담아 보이면 씨앗 접시 문법과 겹친다(`test-icons ⑫` 실측 23.8) — 그릇 없이 썬 결로 말한다."""
+    random.seed(1686)
+    if boiled:
+        for i in range(3):                                                                                                  # 썬 세 점 — 살 · 비계 두 켜는 날것과 같다
+            x = -0.46 + i * 0.46
+            for (zz, sx, mat) in ((0.0, 1.0, M['g_boiled']), (0.24, 0.96, M['g_fat'])):
+                o = ico(0.40, (x, 0.0, 0.34 + zz * 0.55), subdiv=2, mat=mat, scale=(0.30, 1.10 * sx, (0.62 if zz == 0 else 0.24)),
+                        jitter=0.05, smooth=True)
+                o.rotation_euler = (0, math.radians(-24), 0)
+        return
+    ico(0.56, (0.0, 0.0, 0.26), subdiv=2, mat=M['g_venison'], scale=(1.30, 0.96, 0.46), jitter=0.07, smooth=True)       # 살
+    ico(0.54, (0.0, 0.0, 0.42), subdiv=2, mat=M['g_fat'], scale=(1.24, 0.90, 0.16), jitter=0.06, smooth=True)           # 비계 한 켜
+    for (dx, dy) in ((-0.30, -0.28), (0.20, -0.32), (0.46, -0.10)):                                                      # 살 결(비계 줄)
+        ico(0.10, (dx, dy, 0.30), subdiv=1, mat=M['g_fat'], scale=(1.8, 0.30, 0.4), jitter=0.2, smooth=True)
+    for i in range(9):                                                                                                  # 검은 털가죽 띠(한쪽 가장자리)
+        t = i / 8.0
+        ico(0.17, (-0.66 + t * 1.32, 0.44, 0.50), subdiv=1, mat=M['g_furblk'], scale=(1.0, 0.8, 0.9), jitter=0.35, smooth=False)
+
+
+def m_meat_bear():        _bearslab(False)
+def m_meat_bear_cooked(): _bearslab(True)
+
+
+def m_meat_chicken():
+    """닭고기 — 꿩 · 메추라기를 잡아 **털을 뽑은 통 한 마리**. 다리 둘 · 접은 날개 · 목 그루터기."""
+    random.seed(1688)
+    ico(0.46, (0.0, 0.0, 0.40), subdiv=2, mat=M['g_plucked'], scale=(1.25, 0.95, 0.82), jitter=0.04, smooth=True)   # 몸통
+    ico(0.30, (0.36, 0.0, 0.50), subdiv=2, mat=M['g_plucked'], scale=(1.0, 1.05, 0.95), jitter=0.04, smooth=True)   # 가슴
+    cyl(0.09, 0.26, (0.70, 0.0, 0.62), rot=(0, math.radians(60), 0), mat=M['g_plucked'], verts=10)                # 목 그루터기
+    for sgn in (-1, 1):
+        ico(0.16, (-0.30, sgn * 0.34, 0.24), subdiv=2, mat=M['g_plucked'], scale=(1.5, 0.9, 0.9), jitter=0.04, smooth=True)  # 다리 살
+        cyl(0.035, 0.30, (-0.60, sgn * 0.40, 0.16), rot=(0, math.radians(76), 0), mat=M['g_bone'], verts=7)        # 다리뼈 끝
+        ico(0.24, (0.06, sgn * 0.40, 0.46), subdiv=2, mat=M['g_plucked'], scale=(1.30, 0.40, 0.70), jitter=0.04, smooth=True)  # 접은 날개
+    ico(0.08, (-0.56, 0.0, 0.52), subdiv=1, mat=M['g_plucked'], jitter=0.1)                                          # 꽁지
+
+
+def m_bone():
+    """뼈 — 사냥한 짐승의 다리뼈 둘. 곧은 줄기에 **혹 두 개씩 달린 끝**(뼈의 표지)."""
+    random.seed(1689)
+    for (x, y, rz, L) in ((0.0, -0.10, 18, 1.60), (0.0, 0.16, -46, 1.20)):
+        a = math.radians(rz)
+        cyl(0.075, L, (x, y, 0.16), rot=(0, math.radians(90), a), mat=M['g_bone'], verts=10)
+        for end in (-1, 1):
+            ex, ey = x + math.cos(a) * L / 2 * end, y + math.sin(a) * L / 2 * end
+            for sgn in (-1, 1):
+                ico(0.12, (ex - math.sin(a) * 0.08 * sgn, ey + math.cos(a) * 0.08 * sgn, 0.17), subdiv=2, mat=M['g_bone'],
+                    jitter=0.06, smooth=True)
+
+
+def m_fur():
+    """모피 — 털을 살린 채 다룬 털가죽을 **둘둘 말아 끈으로 묶었다** · 끝에 꼬리가 늘어진다(여우 · 늑대).
+    `hide`(날가죽)는 펴 둔 가죽이고 이것은 **털이 북슬한 두루마리**다 — 한눈에 갈려야 한다."""
+    random.seed(1690)
+    cyl(0.34, 1.20, (0.0, 0.0, 0.34), rot=(0, math.radians(90), 0), mat=M['g_furbrn'], verts=16)                 # 두루마리
+    for i in range(240):                                                                                            # 털 — 작고 매끈한 뭉치를 촘촘히(부드러운 윤곽)
+        ang = random.uniform(-0.35, math.pi + 0.35)
+        x = random.uniform(-0.62, 0.62)
+        rr = random.uniform(0.05, 0.085)
+        o = ico(rr, (x, math.cos(ang) * 0.38, 0.34 + math.sin(ang) * 0.38), subdiv=2,
+                mat=(M['g_furbrn'] if i % 4 else M['g_furblk']), scale=(0.7, 0.7, 1.7), jitter=0.10, smooth=True)
+        o.rotation_euler = (ang - math.pi / 2, random.uniform(-0.4, 0.4), 0)
+    for sgn in (-1, 1):                                                                                             # 동여맨 끈
+        cyl(0.40, 0.05, (sgn * 0.34, 0.0, 0.34), rot=(0, math.radians(90), 0), mat=M['cord'], verts=16)
+    for i in range(8):                                                                                              # 늘어진 꼬리(끝이 희다)
+        t = i / 7.0
+        ico(0.15 * (1.0 - 0.45 * t), (0.70 + t * 0.62, -0.10 - t * 0.30, 0.20 - t * 0.12), subdiv=1,
+            mat=(M['g_tip'] if t > 0.80 else M['g_furbrn']), scale=(1.3, 1.0, 1.0), jitter=0.30, smooth=False)
+
+
+def m_leather():
+    """가죽 — 무두질해 **매끈한 짙은 갈색** 가죽을 말아 두었다(한 자락은 펴져 있다). 털이 없다 —
+    날가죽(`hide` · 누런 펴진 가죽)과 모피(털 두루마리)와 갈린다."""
+    random.seed(1691)
+    cyl(0.24, 1.10, (-0.30, 0.0, 0.24), rot=(0, math.radians(90), math.radians(12)), mat=M['g_leather'], verts=18)  # 만 부분
+    for sgn in (-1, 1):
+        cyl(0.248, 0.02, (-0.30 + sgn * 0.54 * math.cos(math.radians(12)), sgn * 0.54 * math.sin(math.radians(12)), 0.24),
+            rot=(0, math.radians(90), math.radians(12)), mat=M['g_lthin'], verts=18)                                # 말린 단면(속살 빛)
+    plane(1.10, 0.95, (0.28, -0.05, 0.03), rot=(0, 0, math.radians(12)), mat=M['g_leather'])                      # 펴진 자락
+    for (dx, dy) in ((0.82, 0.30), (0.86, -0.42), (0.10, -0.52)):                                                 # 다리 자리 가장자리(가죽 윤곽)
+        ico(0.14, (dx, dy, 0.03), subdiv=1, mat=M['g_leather'], scale=(1.4, 0.8, 0.12), jitter=0.2)
+    cyl(0.26, 0.05, (-0.30, 0.0, 0.24), rot=(0, math.radians(90), math.radians(12)), mat=M['cord'], verts=16)       # 끈
+
+
+def m_horn():
+    """뿔 — 사슴 · 말코손바닥사슴의 **가지 친 녹각** 하나. 밑동 테(뿔밑) · 굽은 줄기 · 가지 셋 · 끝은 희다."""
+    random.seed(1692)
+    pts = []
+    for i in range(9):                                                                                              # 굽은 줄기
+        t = i / 8.0
+        x, z = -0.70 + t * 1.30, 0.10 + math.sin(t * math.pi * 0.85) * 0.70
+        r = 0.10 * (1.0 - 0.45 * t)
+        ico(r, (x, 0.0, z), subdiv=2, mat=(M['g_tip'] if t > 0.95 else M['g_antler']), jitter=0.05, smooth=True)
+        pts.append((x, z, r))
+        if i < 8:
+            nx, nz = -0.70 + (i + 1) / 8.0 * 1.30, 0.10 + math.sin((i + 1) / 8.0 * math.pi * 0.85) * 0.70
+            ln = math.hypot(nx - x, nz - z)
+            cyl(r * 0.95, ln, ((x + nx) / 2, 0.0, (z + nz) / 2), rot=(0, math.atan2(nx - x, nz - z), 0), mat=M['g_antler'], verts=8)
+    ico(0.15, (-0.72, 0.0, 0.08), subdiv=1, mat=M['g_antler'], scale=(1.0, 1.2, 0.5), jitter=0.3)                 # 뿔밑 테
+    for (k, ln, lean) in ((2, 0.50, -10), (4, 0.42, 4), (6, 0.34, 14)):                                           # 가지 셋
+        x, z, r = pts[k]
+        tx, tz = x + math.sin(math.radians(lean)) * ln, z + math.cos(math.radians(lean)) * ln
+        cyl(r * 0.70, ln, ((x + tx) / 2, -0.04, (z + tz) / 2), rot=(0, math.radians(lean), 0), mat=M['g_antler'], verts=8)
+        ico(r * 0.62, (tx, -0.04, tz), subdiv=2, mat=M['g_tip'], jitter=0.05, smooth=True)
+
+
+def m_feather():
+    """깃털 — 꿩 **꼬리깃 셋**을 부채로 펼쳤다(적갈에 검은 띠 · 가운데 흰 깃대)."""
+    random.seed(1693)
+    for i, rz in enumerate((-16, 0, 16)):
+        a = math.radians(rz)
+        cx, cy = math.cos(a) * 0.20, math.sin(a) * 0.20
+        o = ico(0.40, (cx, cy, 0.04 + i * 0.03), subdiv=2, mat=M['g_rust'], scale=(3.10, 0.72, 0.05), jitter=0.02, smooth=True)
+        o.rotation_euler = (0, 0, a)
+        cyl(0.010, 2.10, (cx, cy, 0.065 + i * 0.03), rot=(0, math.radians(90), a), mat=M['g_lthin'], verts=5)   # 깃대(가늘게)
+    cyl(0.05, 0.30, (-1.30, 0.0, 0.10), rot=(0, math.radians(90), 0), mat=M['cord'], verts=8)                     # 깃대 밑을 묶은 끈
+
+
+def m_egg():
+    """계란 — 메추라기 · 꿩 둥지에서 꺼낸 **알 셋**을 마른 풀 둥지째 들었다."""
+    random.seed(1694)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.50, minor_radius=0.16, location=(0, 0, 0.14))
+    add(bpy.context.active_object, M['g_straw'])                                                                    # 둥지 테
+    cyl(0.48, 0.08, (0, 0, 0.06), mat=M['g_straw'], verts=18)                                                       # 둥지 바닥
+    for i in range(16):                                                                                             # 삐져나온 풀
+        a = random.uniform(0, math.tau)
+        cyl(0.012, random.uniform(0.30, 0.50), (math.cos(a) * 0.56, math.sin(a) * 0.56, 0.16),
+            rot=(random.uniform(-0.6, 0.6), math.radians(80), a), mat=M['g_straw'], verts=4)
+    for (x, y, rz) in ((-0.14, -0.10, 0.3), (0.16, -0.04, -0.4), (0.0, 0.18, 1.2)):
+        o = ico(0.18, (x, y, 0.28), subdiv=2, mat=M['g_tip'], scale=(1.0, 1.0, 1.30), jitter=0.01, smooth=True)
+        o.rotation_euler = (math.radians(70), 0, rz)
+
+
+def m_hammer():
+    """망치 — 나무 3 · 돌 3 손 제작(시설 0). 둥근 **냇돌 망치돌**을 자루 끝에 가로로 물려 끈으로 동여맸다."""
+    random.seed(1695)
+    cyl(0.07, 1.50, (-0.20, 0.0, 0.18), rot=(0, math.radians(86), math.radians(6)), mat=M['haft'], verts=9)       # 자루
+    ico(0.30, (0.62, 0.0, 0.26), subdiv=2, mat=M['river'], scale=(0.86, 1.30, 0.86), jitter=0.06, smooth=True)    # 망치돌(가로)
+    _lash(0.62, 0.0, 0.26, (math.radians(90), 0, 0), r=0.035, ln=0.66, n=3, gap=0.09)
+
+
+def m_saw():
+    """톱 — 나무 2 · 돌 4 손 제작(시설 0). 납작한 돌날 **아래에 이를 깨뜨려 세우고** 나무 자루에 박아 끈으로 동여맸다."""
+    random.seed(1696)
+    cyl(0.085, 0.70, (-0.78, 0.0, 0.18), rot=(0, math.radians(90), 0), mat=M['haft'], verts=10)                   # 자루
+    box(1.30, 0.07, 0.30, (0.20, 0.0, 0.22), mat=M['chipped'])                                                      # 돌날
+    for i in range(11):                                                                                             # 이
+        cone(0.05, 0.0, 0.10, (-0.38 + i * 0.12, 0.0, 0.03), rot=(math.radians(180), 0, 0), mat=M['chipped'], verts=4)
+    _lash(-0.46, 0.0, 0.20, (0, math.radians(90), 0), r=0.04, ln=0.16, n=1)
+    for k in range(3):
+        cyl(0.10, 0.04, (-0.52 + k * 0.07, 0.0, 0.20), rot=(0, math.radians(90), 0), mat=M['fiber'], verts=10)
+
+
+def m_weapon():
+    """무기(갈래) — 작업대 장비 무기 갈래의 그림. 청동기 후기에 가장 흔한 **간돌 창** — 버들잎꼴 창끝을 긴 자루에 묶었다.
+    재질(돌 · 나무 · 뼈 · 흑요석 · 구리 · 청동 · 철)이 그림을 안 바꾼다(갈래 아이콘 규약)."""
+    random.seed(1697)
+    cyl(0.055, 2.40, (-0.40, 0.0, 0.14), rot=(0, math.radians(88), math.radians(4)), mat=M['haft'], verts=8)       # 긴 자루
+    ico(0.26, (1.08, 0.0, 0.18), subdiv=2, mat=M['ground'], scale=(2.10, 0.20, 0.62), jitter=0.02, smooth=True)    # 버들잎꼴 창끝(간돌)
+    box(0.30, 0.03, 0.06, (1.00, -0.05, 0.19), mat=M['chipped'])                                                     # 가운데 등날
+    _lash(0.62, 0.0, 0.16, (0, math.radians(90), math.radians(4)), r=0.04, ln=0.12, n=1)
+    for k in range(3):
+        cyl(0.075, 0.035, (0.52 + k * 0.06, 0.0, 0.16), rot=(0, math.radians(90), 0), mat=M['fiber'], verts=10)
+
+
+def m_tool():
+    """도구(갈래) — 작업대 장비 도구 갈래의 그림. 송국리 문화의 표지 석기 **홈자귀** — 홈을 판 간돌 자귀를
+    무릎꼴(ㄱ자) 자루 짧은 쪽에 대고 끈으로 감았다. 재질이 그림을 안 바꾼다(갈래 아이콘 규약)."""
+    random.seed(1698)
+    cyl(0.07, 1.40, (-0.30, 0.0, 0.16), rot=(0, math.radians(84), 0), mat=M['haft'], verts=9)                      # 자루 긴 쪽
+    cyl(0.085, 0.52, (0.44, 0.0, 0.36), rot=(0, math.radians(20), 0), mat=M['haft'], verts=9)                      # 무릎(짧은 쪽 · 위로 꺾임)
+    box(0.16, 0.24, 0.86, (0.66, 0.0, 0.30), rot=(0, math.radians(24), 0), mat=M['ground'])                        # 간돌 자귀 몸(길쭉하다)
+    box(0.04, 0.26, 0.06, (0.62, 0.0, 0.58), rot=(0, math.radians(24), 0), mat=M['scorch'])                        # 묶는 홈
+    box(0.20, 0.26, 0.05, (0.84, 0.0, -0.08), rot=(0, math.radians(24), 0), mat=M['grind'])                        # 날(간 면)
+    _lash(0.56, 0.0, 0.56, (0, math.radians(110), 0), r=0.035, ln=0.34, n=2, gap=0.07)
+
+
+def m_armor():
+    """갑옷(갈래) — 작업대 장비 갑옷 갈래의 그림. **가죽 몸가리개**를 앞판이 위로 오게 **펴 놓았다**(옷 여섯 아이콘과 같은 눕힌 자세) —
+    어깨가 넓고 허리가 좁은 몸판 · 목 파임 · 어깨끈 · 아래로 늘어진 가죽 자락.
+    재질(가죽 · 날가죽 · 구리 · 청동 · 철 · 운철)이 그림을 안 바꾼다(갈래 아이콘 규약)."""
+    random.seed(1699)
+    ico(0.50, (0.30, 0.0, 0.10), subdiv=2, mat=M['g_leather'], scale=(0.62, 1.30, 0.20), jitter=0.02, smooth=True)   # 가슴(넓다)
+    ico(0.50, (-0.16, 0.0, 0.10), subdiv=2, mat=M['g_leather'], scale=(0.70, 0.96, 0.19), jitter=0.02, smooth=True)  # 허리(좁다)
+    ico(0.20, (0.64, 0.0, 0.17), subdiv=2, mat=M['scorch'], scale=(0.45, 1.30, 0.20), jitter=0.02, smooth=True)       # 목 파임
+    for sgn in (-1, 1):
+        box(0.46, 0.20, 0.05, (0.64, sgn * 0.42, 0.18), rot=(0, 0, math.radians(sgn * 10)), mat=M['g_lthin'])       # 어깨끈
+        ico(0.17, (0.42, sgn * 0.66, 0.16), subdiv=2, mat=M['scorch'], scale=(1.0, 0.45, 0.30), smooth=True)       # 팔 구멍
+        for k in range(3):                                                                                           # 옆 여밈 끈
+            cyl(0.020, 0.16, (0.10 - k * 0.22, sgn * 0.52, 0.16), rot=(math.radians(90), 0, 0), mat=M['cord'], verts=6)
+    box(0.07, 1.04, 0.04, (0.12, 0.0, 0.205), mat=M['g_lthin'])                                                      # 가슴 테
+    for i in range(5):                                                                                               # 늘어진 가죽 자락
+        box(0.42, 0.15, 0.05, (-0.78, -0.36 + i * 0.18, 0.06), rot=(0, math.radians(4), 0), mat=M['g_leather'])
+        box(0.05, 0.155, 0.055, (-0.60, -0.36 + i * 0.18, 0.08), mat=M['g_lthin'])
+
+
+def m_obsidian():
+    """흑요석 — 선광해 고른 **검은 유리 돌**. 패각상으로 깨진 매끈한 면과 날카로운 모서리 · 옆에 떨어진 격지 둘."""
+    random.seed(1700)
+    ico(0.46, (0.0, 0.0, 0.36), subdiv=1, mat=M['g_obsid'], scale=(1.20, 0.95, 0.85), jitter=0.22, smooth=False)  # 덩이
+    ico(0.24, (0.40, 0.10, 0.62), subdiv=1, mat=M['g_obsid'], scale=(1.0, 0.8, 0.7), jitter=0.30, smooth=False)   # 모난 등
+    for (x, y, rz) in ((0.70, -0.40, 0.4), (-0.62, -0.42, -0.6)):                                                  # 격지(얇은 조각)
+        o = ico(0.16, (x, y, 0.05), subdiv=1, mat=M['g_obsid'], scale=(1.6, 1.0, 0.25), jitter=0.25, smooth=False)
+        o.rotation_euler = (0, 0, rz)
+
+
+def m_sulfur():
+    """유황 — 선광해 고른 **샛노란 결정 덩이**. 성긴 덩이 위에 뾰족한 결정이 돋았다."""
+    random.seed(1701)
+    for i in range(7):                                                                                              # 덩이
+        a = i * 2.399
+        d = random.uniform(0.0, 0.34)
+        ico(random.uniform(0.18, 0.26), (math.cos(a) * d, math.sin(a) * d, 0.20 + (0.34 - d) * 0.30), subdiv=1,
+            mat=M['g_sulfur'], scale=(1.1, 1.0, 0.8), jitter=0.28, smooth=False)
+    for i in range(9):                                                                                              # 돋은 결정
+        a = random.uniform(0, math.tau)
+        d = random.uniform(0.0, 0.30)
+        cone(0.07, 0.0, random.uniform(0.18, 0.30), (math.cos(a) * d, math.sin(a) * d, 0.46 + (0.30 - d) * 0.25),
+             rot=(random.uniform(-0.4, 0.4), random.uniform(-0.4, 0.4), 0), mat=M['g_sulfur'], verts=5)
+
+
 # ★표 — 아이콘 키 = 서버 품목 키. 세계 렌더는 아직 없다(`world` 빈 칸) — 붙일 때 같은 모델을 쓴다.
 ITEMS = [
     ('crude_axe', m_crude_axe), ('crude_pick', m_crude_pick), ('crude_blade', m_crude_blade),
@@ -1085,6 +1654,20 @@ ITEMS = [
     ('dried_fish', m_dried_fish), ('dried_oyster', m_dried_oyster), ('dried_seaweed', m_dried_seaweed),
     ('smoked_meat', m_smoked_meat), ('dried_fruit', m_dried_fruit), ('pickled_veg', m_pickled_veg),
 ]
+# ★[T1067] 어종 열셋 · 사냥 산출 · 손도구 · 장비 갈래 · 광물 — 위 31종(`test-icons ①` 이 그 수를 못 박는다) **뒤에 따로** 붙인다(아래 옷 여섯과 같은 꼴).
+#   키는 서버 정본(민물 `freshfish.SPECIES` · 바다 `seafish` 해안 표)과 같다 — `test-icons ⑫` 가 그 대조를 잰다.
+ITEMS_T1067 = [
+    ('crucian', m_crucian), ('catfish', m_catfish), ('snakehead', m_snakehead), ('mandarin', m_mandarin),
+    ('barbel', m_barbel), ('minnow', m_minnow), ('sweetfish', m_sweetfish), ('eel', m_eel), ('loach', m_loach),
+    ('sardine', m_sardine), ('anchovy', m_anchovy), ('octopus', m_octopus), ('squid', m_squid),
+    # ── 사냥 산출 아홉 · 익힌 것 둘(날것과 같은 함수) · 손도구 둘 · 장비 갈래 셋 · 광물 둘 ──
+    ('meat_game', m_meat_game), ('meat_game_cooked', m_meat_game_cooked), ('meat_bear', m_meat_bear),
+    ('meat_bear_cooked', m_meat_bear_cooked), ('meat_chicken', m_meat_chicken), ('bone', m_bone), ('fur', m_fur),
+    ('leather', m_leather), ('horn', m_horn), ('feather', m_feather), ('egg', m_egg),
+    ('hammer', m_hammer), ('saw', m_saw), ('weapon', m_weapon), ('tool', m_tool), ('armor', m_armor),
+    ('obsidian', m_obsidian), ('sulfur', m_sulfur),
+]
+ITEMS += ITEMS_T1067
 # ★원물 → 보존식 계보(하네스가 실루엣 상관으로 검사한다). `spoil.PRESERVE` 가 정본이고 여기는 **이 파일이 가진 짝**만 적는다.
 # ★[T95] 옷 여섯 — 재질마다 다른 물건이다(갖옷과 삼베옷은 같은 그림일 수 없다).
 #   키는 `clothes_<mat>` · 순서는 `server/clothes.js` 표 순서(계약).

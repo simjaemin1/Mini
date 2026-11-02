@@ -84,6 +84,16 @@
     // ★[T519] 우물 — **품목이 아니라 시설**이다(키 = 건물 종류 `well` · `item_` 접두는 짓는 품목 몫).
     //   세계 스프라이트와 같은 빌더(`building_render.py well`)를 아이콘 프리셋으로 한 번 더 구웠다(새 형상 0).
     'well',
+    // ★[T1067] 그림 없던 품목 서른하나 — 전수(`scripts/t1067-item-census.js`)의 굽는 차례 위에서부터.
+    //   어종 열셋(민물 `freshfish` 아홉 · 바다 해안 넷)은 T76 몸틀 `_finfish` 그대로 · 사냥 산출 아홉 · 익힌 둘(날것과 같은 함수) ·
+    //   손도구 둘(망치 · 톱) · 장비 갈래 셋(갑옷 · 무기 · 도구 — `EQUIP_ICONS` 키) · 선광 광물 둘(흑요석 · 유황 — 광물 대표 `ore` 를 빌리던 것).
+    //   굽는 곳 `props_render.py` `ITEMS_T1067` · `test-icons ⑫` 가 이 목록과 대조한다.
+    'crucian', 'catfish', 'snakehead', 'mandarin', 'barbel', 'minnow', 'sweetfish', 'eel', 'loach',
+    'sardine', 'anchovy', 'octopus', 'squid',
+    'meat_game', 'meat_game_cooked', 'meat_bear', 'meat_bear_cooked', 'meat_chicken',
+    'bone', 'fur', 'leather', 'horn', 'feather', 'egg',
+    'hammer', 'saw', 'weapon', 'tool', 'armor',
+    'obsidian', 'sulfur',
   ]);
   // ★★[T66 2차 · 재민 확정 2026-09-03] 옛 **거부 목록** `ICON_NO_RENDER` 은 **없앴다** — 뒤집혔다.
   //   종전: "여기 있으면 렌더가 없다"(빠뜨리면 404). 지금: `ICON_RENDERED` 에 **있으면 그림, 없으면 점선 칸**.
