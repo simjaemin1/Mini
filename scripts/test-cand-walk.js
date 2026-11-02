@@ -276,7 +276,10 @@ function sub(name, env) {
   const calls = BS.split('\n').filter((l) => /_t577Walk\(/.test(l) && !/^function _t577Walk\(/.test(l));
   ok((BS.match(/process\.env\.T577_CAND_WALK === '1'/g) || []).length === 1 && calls.length === 2 && calls.some((l) => /if \(T577_WALK\) _t577Walk\(vil, day\);/.test(l)) && calls.some((l) => /_t765Probe: \{/.test(l) || /walk: \(vil, day\) => _t577Walk\(vil, day\)/.test(l)),
     '⑧ 손잡이 하나 · 걷기는 켬 문 한 곳에서만 불린다(`if (T577_WALK) _t577Walk(vil, day)`)');
-  ok((BS.match(/S\.host\.t765Depart\(/g) || []).length === 1 && (BS.match(/S\.host\.t765Join\(/g) || []).length === 1, '⑧ 몸 문 둘은 걷기 · 닿기 안에서만');
+  // ★[T1075 ④] 몸 문 `t765Depart` 는 걷기 두 자리 — 해체 뒤 남은 사람(`_t577Walk`) · 불행 이탈 한 사람(`_t1075Leave`) — 안에서만 불린다
+  const _fnOf = (src, re) => { const out = []; let fn = null; for (const l of src.split('\n')) { const m = /^function (\w+)\(/.exec(l); if (m) fn = m[1]; if (re.test(l)) out.push(fn); } return out; };
+  const _dep = _fnOf(BS, /S\.host\.t765Depart\(/);
+  ok(_dep.length === 2 && _dep.includes('_t577Walk') && _dep.includes('_t1075Leave') && (BS.match(/S\.host\.t765Join\(/g) || []).length === 1, '⑧ 몸 문 둘은 걷기 · 닿기 안에서만(걷기 = 해체 뒤 남은 사람 · ★[T1075] 불행 이탈 한 사람)', JSON.stringify(_dep));
   ok(/if \(S\.WALK\.length\) _t765Arrive\(day\);/.test(BS) && /const _walk = S\.WALK\.length \? \{ walk:/.test(BS), '⑧ 끔이면 장부가 비어 닿기 · 저장 칸이 안 돈다');
   ok(/if \(r\.len - r\.L <= 0\.5\) \{ _bxGone\(r, p\); _bx\.arrive\+\+; \}/.test(VS) && /if \(remain <= 0\.5\) \{ if \(T681_ON\) \{ p\.vx = 0; p\.vy = 0; continue; \} _bxGone\(r, p\); _bx\.arrive\+\+; continue; \}/.test(VS),
     '⑧ 종전 도착 회수 두 줄은 글자 그대로(새 줄은 그 앞 · `r.t765` 기록만 건너뛴다)');
