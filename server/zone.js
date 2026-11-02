@@ -8860,7 +8860,7 @@ function _t767Land(player, item, carry, d, kDone) {
 // 수령 — 끝난 것만, 내 것만, 시설 앞에서.
 function doCraftCollect(player, buildingId) {
   ensurePlayerItems(player);
-  const b = buildingId ? buildings.get(buildingId) : (facilityFor(player, 'tool') || facilityFor(player, 'smelt') || {}).b;
+  const b = buildingId ? _facilityById(buildingId) : (facilityFor(player, 'tool') || facilityFor(player, 'smelt') || {}).b;   // ★[T1066] 화덕 id 도 찾는다(끔 = `buildings.get` 그대로)
   if (!b || !Facility.FACILITIES[b.type]) { send(player.ws, { type: 'notice', text: '시설이 없다' }); return; }
   const f = Facility.FACILITIES[b.type];
   if (Math.hypot(b.x - player.x, b.y - player.y) > f.range + 8) { send(player.ws, { type: 'notice', text: `${f.ko} 앞으로 가야 받는다` }); return; }
@@ -9295,6 +9295,8 @@ function seasonColdNow() {
 function isNearCampfire(p) {
   const near = qtBuildings ? qtBuildings.queryCircle(p.x, p.y, 100) : Array.from(buildings.values());
   for (const b of near) { if (b.type === 'campfire' && Math.hypot(b.x - p.x, b.y - p.y) < 100) return true; }
+  //   ★[T1066] 움집 화덕도 몸을 데운다 — 요리 창과 **같은 목록**(`_facilities` 의 화덕 · 같은 반경 줄) · 끔이면 이 줄 무동작
+  if (T1066_VILLAGE_FIRE && (p.floor || 0) === 0) for (const b of _bldNear(p.x, p.y, 100)) { if (b.hearth && Math.hypot(b.x - p.x, b.y - p.y) < 100) return true; }
   return false;
 }
 // 장비 사용 마모(설계 §5: 인스턴스별이라 econ 전역 피드백 0). 파손 시 자동 해제·알림. wear마다 저장 안 함(도구 레거시 동형 — 성능).
@@ -10095,16 +10097,43 @@ const Facility = require('./facility');
 //   ⚠1차 실장은 `qtBuildings`(활성청크 인덱스)만 봤다가 **테스트 부팅에서 시설을 못 찾았다** —
 //     청크에 안 실린 건물은 인덱스에 없기 때문이다. 그렇다고 매번 전 건물(3만+채)을 훑을 수도 없다.
 //   ⇒ 건물 수가 바뀌거나 5초가 지나면 다시 모은다(시설은 몇 개뿐이라 목록이 작다).
-const _facIdx = { n: -1, at: 0, list: [] };
+const _facIdx = { n: -1, at: 0, list: [], byId: new Map() };
+// ★★[T1066 2026-11-02 · ★재민 11-01 "마을 집마다 모닥불처럼 생긴 것도 모닥불 판정으로 요리" · PM 판정: 결함] **움집 화덕도 모닥불이다** —
+//   손잡이 `T1066_VILLAGE_FIRE`(★켬 기본 후보 · 되돌림 `=0` = 종전 바이트).
+//   클라는 움집(바닥 행 `data.hut` 태그 — 마을 NPC 집 · 의뢰 집 · 쉼터)마다 화덕을 둘 그린다(마당 · 실내 — 서버 건물 행 아님).
+//   켬 = 그 두 자리를 **모닥불 시설**로 이 목록에 싣는다(`type: 'campfire'` — 요리 창 · 대기열 · 몸 데우기가 같은 목록 · 같은 술어 · 사본 0).
+//     자리 = `server/hut-hearth.js`(클라 그림 자리 그대로 · 새 수 0) · 대기열 = 캐리어 바닥 행 `data.t1066[key]` 안(영속 = 그 행 · `markBuildingDirty`).
+//     누구 불인가 = `_facilityMine`(마을 집 불은 누구나 요리 · 사유 움집 불은 주인만 — 보고 T1066 ② 표 · PM 판정).
+const T1066_VILLAGE_FIRE = process.env.T1066_VILLAGE_FIRE !== '0';
+const HutHearth = require('./hut-hearth');
+const _t1066Ent = new WeakMap();   // 캐리어 바닥 행 → 화덕 시설 둘(같은 객체를 다시 쓴다 — 대기열 칸이 캐리어 data 에 산다)
+function _t1066Hearths(carrier) {
+  let es = _t1066Ent.get(carrier);
+  if (es && es.hut === carrier.data.hut) return es.list;
+  const list = HutHearth.hearthsOf(carrier.data.hut, BUILDING_SIZE).map((h) => {
+    const e = { id: `hearth_${carrier.id}_${h.key}`, type: 'campfire', hearth: h.key, carrier, x: h.x, y: h.y, floor: 0 };
+    Object.defineProperty(e, 'data', { enumerable: true, get() {   // 대기열 칸 = 캐리어 data 안 제 칸(마당 · 실내 따로 — 시설은 하나씩 만든다)
+      const d = carrier.data || (carrier.data = {}); const t = d.t1066 || (d.t1066 = {}); return t[h.key] || (t[h.key] = {}); }, set(v) { const d = carrier.data || (carrier.data = {}); (d.t1066 || (d.t1066 = {}))[h.key] = v; } });
+    for (const k of ['dbId', 'ownerId', 'owner_id', 'ownerName']) Object.defineProperty(e, k, { enumerable: true, get() { return carrier[k]; } });
+    return e;
+  });
+  _t1066Ent.set(carrier, { hut: carrier.data.hut, list });
+  return list;
+}
 function _facilities(now) {
   const t = now || Date.now();
   if (buildings.size !== _facIdx.n || t - _facIdx.at > 5000) {
-    _facIdx.list = [];
-    for (const b of buildings.values()) if (Facility.FACILITIES[b.type]) _facIdx.list.push(b);
+    _facIdx.list = []; _facIdx.byId = new Map();
+    for (const b of buildings.values()) {
+      if (Facility.FACILITIES[b.type]) _facIdx.list.push(b);
+      else if (T1066_VILLAGE_FIRE && HutHearth.isCarrier(b, BUILDING_SIZE)) for (const e of _t1066Hearths(b)) { _facIdx.list.push(e); _facIdx.byId.set(e.id, e); }
+    }
     _facIdx.n = buildings.size; _facIdx.at = t;
   }
   return _facIdx.list;
 }
+//   ★[T1066] 시설 id → 시설(건물 행 · 화덕) — 수령 문이 bid 로 찾는 자리(화덕은 건물 행이 아니라 이 목록에만 있다)
+function _facilityById(id) { const b = buildings.get(id); if (b) return b; if (!T1066_VILLAGE_FIRE) return undefined; _facilities(); return _facIdx.byId.get(id); }
 function _bldNear(x, y, r) {
   const out = [];
   for (const b of _facilities()) if (Math.hypot(b.x - x, b.y - y) <= r) out.push(b);
@@ -10120,6 +10149,7 @@ function _facilityMine(player, b) {
   if (!b) return false;
   if (b.ownerId == null && b.owner_id == null) return true;      // 주인 없는 것(테스트 픽스처)
   const own = b.ownerId != null ? b.ownerId : b.owner_id;
+  if (b.hearth && typeof own === 'string' && own.startsWith('npc_simvil_')) return true;   // ★[T1066] 마을 집 화덕 = 누구나(요리 창만 연다 · 권한 갈래는 보고 T1066 ② 표 — PM)
   return own === player.playerId;
 }
 // 대기열 페이로드 — 클라가 "몇 초 남았나"를 화면에 그린다(남은 시간은 조회 시각의 함수).
@@ -10138,6 +10168,7 @@ function sendCraftQueue(player) { send(player.ws, { type: 'craft_queue', queue: 
 // 대기열이 바뀌면 건물 data 를 영속한다 — **오프라인 진행의 근거**다(재부팅해도 가마는 타고 있다).
 //   ⚠완성품 인스턴스가 통째로 들어가지만 `data_json` 은 블롭이라 스키마 변경이 없다(tools_json 선례).
 function markBuildingDirty(b) {
+  if (b && b.carrier) b = b.carrier;   // ★[T1066] 화덕 대기열은 캐리어 바닥 행 data 안에 산다 — 그 행을 쓴다
   if (!b || !b.dbId) return;
   try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {}
 }
@@ -10245,7 +10276,7 @@ function sendFacility(player) {
   const mine = near ? _facilityMine(player, near.b) : false;
   send(player.ws, { type: 'facility',
     near: near ? { bid: near.b.id, btype: near.b.type, ko: near.ko, kind: near.kind, mine,
-                   craftMs: Facility.CRAFT_MS[near.kind] || 0 } : null,
+                   craftMs: Facility.CRAFT_MS[near.kind] || 0, ...(near.b.hearth ? { hearth: near.b.hearth } : {}) } : null,   // ★[T1066] 움집 화덕이면 그 자리(마당 · 실내) — 클라가 창을 저절로 안 연다(마을을 지날 때마다 뜨지 않게)
     recipes: near && mine ? _facilityRecipes(player, near.kind) : [],
     queue: craftQueuePayload(player) });
 }
@@ -12816,6 +12847,7 @@ function __testBind() {
     SMELT_BASE_MS, SMELT_MIN_MS, KILN_BURN_MS, KILN_BATCH_MS_PER, _smeltDurationMs, _jobProgress,
     // ── 조업 **페이싱** 실측(2026-08-02f ②) ── 단조까지 이어야 사슬 한 바퀴의 실시간이 나온다
     doCraftEquipment, EQUIPMENT_RECIPES, Facility, facilityFor, _facilityMine, doCraftCollect,
+    T1066_VILLAGE_FIRE, isNearCampfire, _facilityById,   // ★[T1066] 움집 화덕 하네스(`test-t1066-village-fire` · 내보내기만)
     sendFacility, _facilityRecipes, craftQueuePayload, BUILDING_COST, BUILDING_RECIPES, PlayerItems,
     playerCraftLevel, doShopBuy,
     // ── 주기 저장 비용 실측(2026-08-26) ── 하네스가 저장 건수·누적 ms 를 그대로 읽는다

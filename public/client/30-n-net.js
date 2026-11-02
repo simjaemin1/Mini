@@ -1193,7 +1193,7 @@
       const was = myFacility && myFacility.near ? myFacility.near.bid : null;
       myFacility = msg;
       const now = msg.near ? msg.near.bid : null;
-      if (now && now !== was && now !== _facAutoOpened && msg.near.mine) {
+      if (now && now !== was && now !== _facAutoOpened && msg.near.mine && !msg.near.hearth) {   // ★[T1066] 움집 화덕은 저절로 안 연다(마을을 지날 때마다 창이 뜨지 않게 · 창은 K 로 연다)
         _facAutoOpened = now;
         openSide('facility');
       }
