@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오석 판 보기</title>
+<!-- T1071 ③ 보기 판 — 시안 `설계/시안/오석/마을_dash.jpg` 를 실제 DOM 으로(같은 자리 · 같은 글자).
+     ?way=canvas|svg|css (판 글자 그리는 길 · 기본 = 모듈 `Oseok.way`) · ?fit=0 (창에 맞춰 줄이지 않음) · ?shot=1 (조작 줄 숨김)
+     ?bench=1 (글자 바꾸기 값 재기 — scripts/t1071-oseok-compare.js 가 부른다)
+     시안의 숫자 · 이름은 예시다 — 이 판은 보기용이고 게임 화면 교체는 다음 카드(T1070 마을 화면이 첫 손님). -->
+<style>
+  html,body{margin:0;background:#0a0a0a;color:#ddd;font:14px/1.4 system-ui,sans-serif}
+  #wrap{position:relative;width:1440px;height:1080px;transform-origin:0 0}
+  #stage{position:absolute;left:0;top:0;width:1440px;height:1080px;overflow:hidden}
+  #stage>.os-plate{position:absolute}
+  #stage .lab{position:absolute;left:0;top:0;line-height:normal}
+  #stage .sh{position:absolute}
+  #bar{position:fixed;right:8px;bottom:8px;z-index:9;background:rgba(0,0,0,.7);padding:6px 10px;border-radius:4px}
+  #bar a{color:#ccc;margin:0 6px}
+  #bar a.on{color:#fff;font-weight:700;text-decoration:none}
+  #sheen{position:absolute;inset:0;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage"></div></div>
+<div id="bar"></div>
+<script src="client/52-u-oseok.js"></script>
+<script>
+(function () {
+  'use strict';
+  const Q = new URLSearchParams(location.search);
+  const WAY = Q.get('way') || Oseok.way; Oseok.way = WAY;
+  if (Q.get('c')) Object.assign(Oseok.C, JSON.parse(Q.get('c')));
+  if (Q.get('css')) { const st = document.createElement('style'); st.textContent = Q.get('css'); document.head.appendChild(st); }   // 재기용 스타일 덮기   // 재기 · 맞추기용 값 덮기(scripts/t1071-oseok-tune.js)
+  const stage = document.getElementById('stage');
+  const bar = document.getElementById('bar');
+  if (Q.get('shot') === '1') bar.style.display = 'none';
+  else bar.innerHTML = '판 글자 길: ' + ['canvas', 'svg', 'css'].map((w) => `<a href="?way=${w}" class="${w === WAY ? 'on' : ''}">${w}</a>`).join('');
+  // 창보다 크면 줄여 보인다(재기 · 사진은 ?fit=0)
+  function fit() { if (Q.get('fit') === '0') return; const k = Math.min(1, innerWidth / 1440, innerHeight / 1080); document.getElementById('wrap').style.transform = k < 1 ? `scale(${k})` : ''; }
+  addEventListener('resize', fit); fit();
+
+  // ── 시안 tabs.py header · dash 와 같은 자리 · 같은 글자 ───────────────────────────────────────
+  const texts = [];       // {el, x, y, anchor, size, font}
+  const dyn = [];         // 바꿀 수 있는 글자(재기용) — 숫자가 든 칸
+  function block(x, y, w, h) {
+    const el = document.createElement('div'); el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px`;
+    stage.appendChild(el); Oseok.plate(el, { ox: x, oy: y }); return el;
+  }
+  function T(x, y, s, size, font, anchor) {
+    const el = document.createElement('div'); el.className = 'lab'; stage.appendChild(el);
+    Oseok.text(el, s, { size, font });
+    const t = { el, x, y, anchor: anchor || 'ls', size, font, s }; texts.push(t); if (/\d/.test(s)) dyn.push(t); return t;
+  }
+  function sh(x, y, w, h) { const el = document.createElement('div'); el.className = 'sh'; el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px`; stage.appendChild(el); return el; }
+  // PIL rect(x,y,w,h,lw) — 바깥 테두리가 x..x+w · 안으로 lw
+  function rect(x, y, w, h, lw) { const el = sh(x, y, w + 0.5, h + 0.5); Oseok.frame(el, { lw, w: w + 0.5, h: h + 0.5 }); return el; }
+  // PIL line(x0,y0,x1,y1,w) — 가운데 선 · 굵기 w
+  function line(x0, y0, x1, y1, w) {
+    const L = Math.hypot(x1 - x0, y1 - y0), a = Math.atan2(y1 - y0, x1 - x0);
+    const pad = 2, H = w + 2 * pad;
+    const el = sh((x0 + x1) / 2 - L / 2, (y0 + y1) / 2 - H / 2, L, H);
+    if (a) el.style.transform = `rotate(${a}rad)`;
+    Oseok.rule(el, { lw: w, w: L, h: H });
+    if (WAY !== 'canvas') { el.style.top = `${(y0 + y1) / 2 - w / 2}px`; el.style.height = `${w}px`; }
+    return el;
+  }
+  function barAt(x, y, w, h, p) { const el = sh(x, y, w, h); Oseok.bar(el, p, { w, h }); return el; }
+  function button(x, y, w, h, s, size, font, primary, lw) {
+    const el = sh(x, y, w + 0.5, h + 0.5); Oseok.button(el, s, { size, font, primary, lw, w: w + 0.5, h: h + 0.5 }); return el;
+  }
+
+  function header(active) {
+    block(16, 14, 1408, 128);
+    T(48, 90, '어촌3', 66, 'serif'); T(52, 124, '남해 바닷가 마을 · 촌장 도미 · 412일째', 20, 'sansm');
+    T(1046, 48, '마을 사람이 되기까지', 22, 'sansm'); T(1336, 48, '34 / 50', 26, 'sans', 'rs');
+    barAt(1046, 64, 290, 12, 0.68);
+    rect(1362, 30, 40, 40, 2); line(1372, 40, 1392, 60, 2.4); line(1392, 40, 1372, 60, 2.4);
+    for (const [t, x, x2] of [['대시보드', 480, 586], ['프로젝트', 620, 724], ['구성원', 760, 838], ['창고', 880, 932]]) {
+      T(x, 82, t, 26, 'serif'); if (t === active) line(x - 2, 92, x2, 92, 2.4);
+    }
+  }
+  function dash() {
+    header('대시보드');
+    block(16, 156, 1408, 250);
+    for (let i = 0; i < 4; i++) block(16 + i * 356, 420, 342, 196);
+    block(16, 630, 884, 436); block(914, 630, 510, 436);
+    const y0 = 180;
+    T(48, y0 + 46, '아직 이 마을 사람이 아닙니다', 40, 'serif');
+    T(50, y0 + 94, '마을 일을 도우면 기여가 쌓입니다.', 23, 'sansm');
+    T(50, y0 + 128, '16만 더 모으면 어촌3 사람이 될 수 있습니다.', 23, 'sansm');
+    T(640, y0 + 42, '마을 사람이 되면', 27, 'serif');
+    ['곳간에서 먹을 것을 꺼내 쓸 수 있습니다', '마을 땅에 집을 지을 수 있습니다', '도적이 오면 함께 지켜 줍니다'].forEach((l, i) => T(644, y0 + 86 + i * 34, '· ' + l, 21, 'sansm'));
+    T(1086, y0 + 42, '부탁 하나만 들어주면', 22, 'sansm'); T(1086, y0 + 74, '바로 마을 사람이 됩니다.', 22, 'sansm');
+    button(1084, y0 + 98, 176, 54, '부탁 보기', 23, 'sans', true, 2.2);
+    button(1272, y0 + 98, 128, 54, '내 땅 정하기', 20, 'sansm', false, 1.6);
+    const ys = 432;
+    const stats = [['사는 사람', '48명', '이번 철에 3명 늘었습니다'], ['지금은', '가을', '겨울까지 34일 남았습니다'], ['겨울 준비', null, null], ['하고 있는 일', '5가지', '움집이 사흘 뒤 완성됩니다']];
+    stats.forEach(([a, b, c], i) => {
+      const x = 16 + i * 356;
+      T(x + 30, ys + 34, a, 21, 'sansm');
+      if (b) { T(x + 28, ys + 110, b, 58, 'serif'); T(x + 30, ys + 158, c, 19, 'sansm'); }
+      else {
+        T(x + 30, ys + 74, '먹을 것', 20, 'sansm'); T(x + 310, ys + 74, '82%', 20, 'sans', 'rs'); barAt(x + 30, ys + 86, 280, 10, 0.82);
+        T(x + 30, ys + 132, '땔감이 모자랍니다', 20, 'sans'); T(x + 310, ys + 132, '61%', 20, 'sans', 'rs'); barAt(x + 30, ys + 144, 280, 10, 0.61);
+      }
+    });
+    const yb = 644;
+    T(48, yb + 42, '마을의 부탁', 30, 'serif');
+    const reqs = [['목재 30', '겨울 땔감이 모자랍니다', '12 / 30', 0.40, '+16'], ['돌도끼 2', '나무꾼 도끼가 다 닳았습니다', '0 / 2', 0.0, '+12'], ['사슴 고기 10kg', '겨울에 먹을 고기가 필요합니다', '4 / 10', 0.40, '+10'], ['갈대 20단', '움집 지붕에 씁니다', '15 / 20', 0.75, '+6']];
+    reqs.forEach(([w, why, got, pc, cb], i) => {
+      const y = yb + 70 + i * 88;
+      T(50, y + 30, w, 25, 'sans'); T(50, y + 60, why, 18, 'sansm');
+      T(372, y + 30, got + ' 모임', 18, 'sansm'); barAt(372, y + 44, 180, 9, pc);
+      T(584, y + 40, '기여 ' + cb, 22, 'sans');
+      button(712, y + 14, 166, 50, '가진 것 주기', 21, 'sans', false, 2);
+      if (i < 3) line(48, y + 82, 880, y + 82, 0.8);
+    });
+    T(940, yb + 42, '마을 소식', 30, 'serif');
+    const news = [['오늘', '움집 한 채가 올라가고 있습니다.'], ['3일 전 · 들려온 소문', '북쪽 고갯길에 도적이 나타났다고 합니다.'], ['9일 전', '임업2와 장사를 트기로 했습니다.'], ['21일 전', '아이 셋이 태어나 48명이 되었습니다.']];
+    news.forEach(([w, t], i) => {
+      const y = yb + 76 + i * 86;
+      T(942, y + 18, w, 17, 'sansm'); T(942, y + 50, t, 20, 'sansm');
+      if (i < 3) line(940, y + 72, 1400, y + 72, 0.8);
+    });
+  }
+
+  // 글자 자리 맞추기 — 시안 PIL 닻(ls · rs · mm)과 같은 자리에 바탕선을 둔다
+  const PIL_MID = { serif: (1151 - 286) / 2000, sans: (1160 - 288) / 2000, sansm: (1160 - 288) / 2000 };
+  function place(t) {
+    const el = t.el;
+    el.style.left = '0px'; el.style.top = '0px';
+    const mk = document.createElement('i'); mk.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline'; el.appendChild(mk);
+    const er = el.getBoundingClientRect(), mr = mk.getBoundingClientRect(); mk.remove();
+    const k = (document.getElementById('wrap').getBoundingClientRect().width / 1440) || 1;
+    const bo = (mr.top - er.top) / k, w = er.width / k;
+    const left = t.x - (t.anchor[0] === 'r' ? w : t.anchor[0] === 'm' ? w / 2 : 0);
+    const base = t.anchor[1] === 'm' ? t.y + PIL_MID[t.font] * t.size : t.y;
+    el.style.left = `${left}px`; el.style.top = `${base - bo}px`;
+  }
+
+  // 넓게 퍼진 윤(시안 sheen 0.06 · 가우스) — 판 위에만 · 아주 옅다
+  function sheen() {
+    for (const el of stage.querySelectorAll('.os-plate')) {
+      const x = parseFloat(el.style.left), y = parseFloat(el.style.top);
+      const g = 'radial-gradient(ellipse 1440px 1296px at 360px 108px,' + [0, 0.25, 0.5, 0.75, 1].map((r) => `rgba(255,255,255,${(0.021 * Math.exp(-4 * r * r)).toFixed(4)}) ${r * 100}%`).join(',') + ')';
+      el.style.backgroundImage = `${g}, ${getComputedStyle(el).backgroundImage}`;
+      el.style.backgroundSize = '1440px 1080px, 512px 512px';
+      el.style.backgroundPosition = `${-x}px ${-y}px, ${-x}px ${-y}px`;
+      el.style.backgroundRepeat = 'no-repeat, repeat';
+    }
+  }
+
+  window.__oseok = { ready: false, way: WAY };
+  Oseok.ready().then(() => {
+    const t0 = performance.now();
+    Oseok.ground(stage, { ox: 0, oy: 0 });
+    dash();
+    const t1 = performance.now();
+    for (const t of texts) place(t);
+    sheen();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.__oseok = { ready: true, way: WAY, buildMs: +(t1 - t0).toFixed(1), firstPaintMs: +(performance.now() - t0).toFixed(1), texts: texts.length, dyn: dyn.length };
+    }));
+  });
+
+  // ── 재기: 숫자 든 글자를 바꾸고(같은 길이) 그 판 그리기까지의 주 스레드 값 ─────────────────────────
+  //   한 번 = rAF 안에서 t0 → 글자 바꿈 → (그리기) → 그 판 뒤 메시지 t1. 바꾸지 않는 판도 같은 식으로 잰다.
+  // 숫자는 다른 숫자로 · 'all' 이면 숫자 없는 글자도 끝에 폭 0 글자를 붙여 다시 그리게 한다(같은 그림 · 다시 그리는 값만)
+  const alt = (s, k, which) => { const r = s.replace(/\d/g, (d) => String((+d + 1 + (k % 9)) % 10)); return (r === s && which === 'all') ? s + '\u200b' : r; };
+  window.__oseokBench = (n, which) => new Promise((res) => {
+    const mc = new MessageChannel(); let pend = null; mc.port1.onmessage = () => { pend && pend(); };
+    const L = which === 'all' ? texts : dyn;
+    const out = { change: [], idle: [], jsMs: [] };
+    let i = 0;
+    const step = () => {
+      requestAnimationFrame(() => {
+        const t0 = performance.now(); const ch = (i % 2) === 0;
+        if (ch) { const k = i >> 1; for (const t of L) Oseok.text(t.el, (k & 1) ? t.s : alt(t.s, k, which), { size: t.size, font: t.font }); }
+        const tj = performance.now();
+        pend = () => { const t1 = performance.now(); (ch ? out.change : out.idle).push(t1 - t0); if (ch) out.jsMs.push(tj - t0); i++; if (i < 2 * n) step(); else res(out); };
+        mc.port2.postMessage(0);
+      });
+    };
+    step();
+  });
+  // 끊김 없이 매 판 바꾸기 — 초당 판 수
+  window.__oseokFps = (sec, which) => new Promise((res) => {
+    const L = which === 'all' ? texts : dyn; let k = 0; const t0 = performance.now(); let fr = 0;
+    const f = () => {
+      k++; for (const t of L) Oseok.text(t.el, (k & 1) ? t.s : alt(t.s, k, which), { size: t.size, font: t.font });
+      fr++; if (performance.now() - t0 < sec * 1000) requestAnimationFrame(f); else res({ frames: fr, fps: +(fr / ((performance.now() - t0) / 1000)).toFixed(1) });
+    };
+    requestAnimationFrame(f);
+  });
+})();
+</script>
+</body>
+</html>
