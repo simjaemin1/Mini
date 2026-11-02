@@ -11108,6 +11108,10 @@ const STONE_NET_ON = !(typeof process !== 'undefined' && process.env && process.
 //   (실측: 바닥 36마을이 800일에 8,110~11,947 단위를 수출한다). 그 게이트가 이 수를 읽어야 하는데
 //   저쪽에 다시 적으면 그게 사본이다. **수는 여기 하나뿐이다**(`test-lab-stone` 이 대조한다).
 const STONE_NET_STOCK = 0.2;
+// ★[T1049] 돌 바닥 — `server/livelihood.js` `FLOOR.stone`(바위 지형이 전혀 없는 마을의 land.stone · 정본 0.25)와 같은 값이다.
+//   sim 은 server 를 못 싣는다(번들 규약) — 이 파일은 그 값을 STONE_NET 문(위 1915 · 4993 · 5032 의 `0.2499`/`0.25`)에 글자로 써 왔다.
+//   이름 하나로 묶어 v2 수출 문이 읽는다(새 수 0 · 하네스 `test-floor-stone` 가 livelihood 정본과 같은지 본다).
+const STONE_FLOOR_LAND = 0.25;
 // ═══ ★★부얼타운(광산촌) 판정 — **단일 정의**. 시딩(villages.js)도 이 함수를 부른다(사본 금지) ═══
 //   ⚠1차 시도의 실패에서 배운 것: "식량 부양력이 하한 미달"만으로 잡으면 **너무 많이 잡힌다.**
 //     선별된 마을 20곳 중 절반 가까이가 부양력 1.3~2.0 구간이라, 거기에 식량을 얹고 농사 탈출구를
@@ -15087,6 +15091,7 @@ function computeVillagePrices(v) {
 module.exports = {
   T860_ON, CATCH_FROM, PRESERVE_FROM, _preserveSurplus, _t860Begin, _t860Dry, T877_ON, _t860Unit, PRESERVED_FOODS, PRESERVE_YIELD, PRESERVE_FOOD_FACTOR, FORAGE_FOOD_FACTOR,   // ★[T860] 잡은 날 말리기 — 손잡이 · 잡은 칸 표(하네스가 spoil 정본과 대조한다 · 사본 0) · 갈무리 한 걸음
   STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
+  STONE_FLOOR_LAND,   // ★[T1049] 돌 바닥(livelihood FLOOR.stone) — v2 수출 게이트가 읽는다(사본 0)
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
   T958_HOUSE_REAL,   // ★[T958] 집 행위 마을 econ 주거 = 지은 침상까지(★[T974] 켬 기본 · `=0` 되돌림 · ★[T966] 끔 기본이던 글자) — 방아쇠(서버 `villages.js`)가 읽는다
@@ -15203,6 +15208,15 @@ module.exports = {
 const v1 = require('./economy-sim');
 // ★[T180] 되돌림 — 끄면 종전(굶는 마을도 돌을 판다) **비트 동일**. 채택값은 ON(한 줄 결함 수리).
 const T180_STONE_EXPORT = !(typeof process !== 'undefined' && process.env && process.env.T180_STONE_EXPORT === '0');
+// ★[T1049 · ★재민 11-01 "처음 마을들은 터지면 안 된다"] 손잡이 `T1049_FLOOR_STONE` — 돌 바닥 마을(land.stone ≤ 바닥 · 바위 지형 0)은 **제 돌을 안 판다**.
+//   T1049 실측: 판 자 800날 12판 해체 12곳 중 7곳이 돌 바닥 마을의 '돌 나선'이고, 그 마을들은 처음 곳간 돌(≈190)을 교역으로 판다(랩 1020 농촌10 D1~75 에 100 · 판 전체 154).
+//     ⚠이 손잡이는 그 새는 문만 막는다 — 나머지(제 살림 돌 소비 > 바닥 채집 · K 넘침)는 손잡이 밖이다(보고 T1049 회부).
+//   바닥 마을은 돌을 다시 못 채운다(채집 상한 0.225/인·일 · T152) — 판 돌은 도구 재료였다. 돌이 0 이 되면 석공이 멈추고 도구가 닳아
+//   맨손(0.25×)이 되고 곡 산출이 1/5 로 떨어져 두 번째 겨울에 굶는다(보고 T1049 §1). 도구는 이미 자본재로 묶여 있다(CAPITAL) — 그 재료가 안 묶여 있었다.
+//   끔 = 종전 바이트(이 줄 무동작).
+const T1049_FLOOR_STONE = (typeof process !== 'undefined' && process.env && process.env.T1049_FLOOR_STONE === '1');   // 기본 끔 · 켬 = '1' — 판 자 대조(보고 T1049 §3)에서 해체가 안 줄어 켬 기본 후보에서 내렸다
+//   두 문을 같이 막는다 — ⓐ 떠나는 캐러밴 수출 후보(아래 `stock < STONE_NET_STOCK` 곁) · ⓑ 도착한 캐러밴이 대금으로 사 가는 귀환 화물(`_caravanTrade` — 파는 쪽 유보 없이 `> 1` 이면 다 판다).
+const _t1049Floor = (r, vil) => T1049_FLOOR_STONE && r === 'stone' && !!vil && ((vil.land && vil.land.stone) || 0) <= v1.STONE_FLOOR_LAND;
 // ★★[T825 2026-10-20 · T796 회부 4] **곳간이 바닥인 마을은 먹을 것을 내다 팔지 않는다** — 손잡이 `T825_FOOD_KEEP`(★[T935] 켬 기본 · 되돌림 `=0` · ★[T928] 하한 = 하루치).
 //   아래 잉여 셈은 식량류 넷(`FOODR` — food · fish · meat · cooked_food)만 식량 하한(36일치 = `target × 1.2`)으로 본다.
 //   생곡(쌀 · 밀 · 보리 — 도정 수율 0.72) · 채집 · 보존식 · 작물은 **식량 환산에 드는데**(`v1.totalFoodEquivalent` — 곳간 · K · 사다리가 먹는다)
@@ -16236,6 +16250,7 @@ function* tickTradeV2Steps(world, day) {
         //   ⇒ 돌 수출 후보는 **안전망 문턱 위**일 때만. 수는 v1 정본에서 읽는다(사본 0 · 새 수 0).
         //   되돌림 `T180_STONE_EXPORT=0` → 종전 비트 동일.
         if (r === 'stone' && T180_STONE_EXPORT && stock < v1.STONE_NET_STOCK) continue;
+        if (_t1049Floor(r, a.v)) continue;   // ★[T1049] ⓐ 돌 바닥 마을은 제 돌을 안 판다(위 손잡이 주석)
         if (T825_FOOD_KEEP && !FOODR[r] && stock > thresh) {   // ★[T825 · T928] 켬 — 먹을 것은 곳간 식량이 하루치를 넘는 몫까지만
           const _f = _t825FoodPer(a.v, r);
           if (_f > 0) {
@@ -16805,12 +16820,13 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
       }
       if (_bfR) returnRes = _bfR;
     }
-    if (!returnRes || !(v1.seedReserveAvail(c.to, returnRes) > 1) || _returnGlutted(returnRes)) {   // ★[T692] 비축 뺀 곳간(끔 = 종전)
+    if (!returnRes || _t1049Floor(returnRes, c.to) || !(v1.seedReserveAvail(c.to, returnRes) > 1) || _returnGlutted(returnRes)) {   // ★[T1049] ⓑ 돌 바닥 마을 돌은 귀환 화물로도 안 판다   // ★[T692] 비축 뺀 곳간(끔 = 종전)
       // 다시 best 찾기 — 귀환 마을 글럿 재화는 제외
       let bestR = null, bestRatio = 0;
       for (const r of TRADABLE) {
         if (r === c.giveRes) continue;
         if (_oreBanned(r)) continue;   // ★[2026-08-02f ①-3] 귀환화물로도 원석을 싣지 않는다(발주와 같은 잣대)
+        if (_t1049Floor(r, c.to)) continue;   // ★[T1049] ⓑ
         const bStock = v1.seedReserveAvail(c.to, r);   // ★[T692] 비축 뺀 곳간(끔 = 종전)
         if (bStock <= 1) continue;
         if (_returnGlutted(r)) continue;   // ★return-glut-cap
@@ -16835,7 +16851,7 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
       if (_rpFn) {
         let _r = null;
         try { _r = _rpFn(c.from, c.to, returnRes); } catch (e) { _r = null; }
-        if (_r && _r !== c.giveRes && v1.seedReserveAvail(c.to, _r) > 1 && !_returnGlutted(_r)) returnRes = _r;   // ★[T692] 비축 뺀 곳간
+        if (_r && _r !== c.giveRes && !_t1049Floor(_r, c.to) && v1.seedReserveAvail(c.to, _r) > 1 && !_returnGlutted(_r)) returnRes = _r;   // ★[T1049] ⓑ   // ★[T692] 비축 뺀 곳간
       }
     }
     // ★pull 계측(#26 — 행동 무영향 카운터): 위기 발주촌 대금 구성(식량류 비율). 회귀 불변식이 pull 채널의 조용한 회귀를 감시.
@@ -17722,6 +17738,7 @@ module.exports = {
   _xzProbe: { handOff: _xzHandOff, arrive: _xzArrive, arriveLoop: _xzArriveLoop, handBack: _xzHandBack, ret: _xzReturn },   // ★[T748] 존 경계 짐 레코드 — 하네스가 **이 함수들**을 그대로 부른다(사본 0 · 값 무변)
   setLotHook,   // ★[T732] 곳간 로트 장부 훅(서버 켬일 때만 꽂는다 · 랩·CLI 는 안 꽂는다 = 무동작)
   T784_CARGO_AGE, _t784Probe: { F: _t784F, arrive: _t784Arrive },
+  T1049_FLOOR_STONE,   // ★[T1049] 돌 바닥 마을은 제 돌을 안 판다(하네스 `test-floor-stone` 가 읽는다)
   T812_CARGO_TEMP, _t812Probe: { exp: _t812Exp },
   T840_LEG_ELEV, elevKmOf: _elevKmOf,   // ★[T840] 다리 고도 — 장부(`granary-lots.unload`)가 같은 함수를 부른다(사본 0)   // ★[T812] 길 위 노출 — 하네스가 이 함수를 그대로 부른다(사본 0)   // ★[T784] 짐 늙음 — 하네스가 **이 두 함수**를 그대로 부른다(사본 0 · 값 무변)
 };

@@ -203,7 +203,8 @@ console.log('\n⑧ 문(T173) — `economy-sim-v2.js` 의 접점은 한 줄인가
   ok(!/returnPullFn/.test(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8')),
     '⑧ ★★서버는 이 문을 **안 연다**(= 라이브 무변)');
   //   ★[T703] T692(`T692_SEED_RESERVE` · 기본 끔)가 실물 게이트를 `v1.seedReserveAvail(c.to, _r)`(= 곳간 − 시딩 비축 · 끔이면 `storage[_r] || 0` 그대로)로 바꿨다 — 두 꼴을 다 받는다
-  ok(/if \(_r && _r !== c\.giveRes && (?:\(c\.to\.storage\[_r\] \|\| 0\)|v1\.seedReserveAvail\(c\.to, _r\)) > 1 && !_returnGlutted\(_r\)\) returnRes = _r;/.test(V2CODE),
+  //   ★[T1049] `T1049_FLOOR_STONE`(기본 끔) 게이트 `!_t1049Floor(_r, c.to) && ` 가 사이에 끼어도 두 게이트는 그대로다 — 둘 다 받는다
+  ok(/if \(_r && _r !== c\.giveRes && (?:!_t1049Floor\(_r, c\.to\) && )?(?:\(c\.to\.storage\[_r\] \|\| 0\)|v1\.seedReserveAvail\(c\.to, _r\)) > 1 && !_returnGlutted\(_r\)\) returnRes = _r;/.test(V2CODE),
     '⑧ ★★★**공짜 돌 0** — 문이 종전 두 게이트(실물 >1 · 글럿 아님)를 그대로 다시 건다');
 }
 

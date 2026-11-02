@@ -99,6 +99,7 @@ function _t765Arrive(day) {   // 길 위 장부 — 닿은 사람을 받는 마�
     const to = S.host.villages.find((v) => v.dbId === w.to);
     if (!to || !to.econ) continue;
     const npc = w.npc;
+    if (npc && Number.isFinite(npc.age) && day > w.d0) npc.age += (day - w.d0) / 365;   // ★[T1049 ④] 길 위에서도 늙는다 — econ 하루 늙기(`economy-sim.js` `n.age += 1 / 365`)를 걸은 날 수만큼(장부 안은 econ 밖이라 종전엔 그 날들이 빠졌다 · 새 수 0)
     to.econ.npcs.push(npc);
     if (to.econ.counts && npc && npc.currentJob) to.econ.counts[npc.currentJob] = (to.econ.counts[npc.currentJob] || 0) + 1;
     if (to.econ._banditized) S.stats.t765IntoDis = (S.stats.t765IntoDis || 0) + 1;   // 걷는 사이 받는 마을도 해체됐다(그래도 그 마을에 붙는다 · 표에만)
