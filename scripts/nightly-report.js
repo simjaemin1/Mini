@@ -284,6 +284,9 @@ L.push(`· 상자 판 ${VER ? `\`${VER}\`` : '**로그에 없다**(T760 앞 러�
 // ★[T1029] 상자 의존 — 러너가 찍은 `[의존]` 한 줄(python · numpy · PIL · zlib 판 · 없으면 `[상황]`)을 그대로 옮긴다(옛 로그엔 없다 — 없다고 적는다)
 const DEP = (lines.map((l) => split1(l).s).find((s) => /^\s*\[의존\] /.test(s)) || '').replace(/^\s*\[의존\] /, '');
 L.push(`· 상자 의존 ${DEP ? (/^\[상황\]/.test(DEP) ? `**${DEP}**` : `\`${DEP}\``) : '**로그에 없다**(T1029 앞 러너)'}`);
+// ★[T1051 · PM 11-01] `test-map-editor` 층 데이터가 PNG 바이트만 다르고 화소가 같으면(통과) 그 `[상황]` 줄을 의존 줄 밑에 옮긴다 — PIL · zlib 판과 같이 본다
+const ENC = (lines.map((l) => split1(l).s).find((s) => /\[상황\] 층 데이터 PNG 인코더 차이\(화소 같음\)/.test(s)) || '').replace(/^\s*\[상황\] 층 데이터 PNG 인코더 차이\(화소 같음\) — /, '');
+if (ENC) L.push(`· 층 데이터 인코더 차이(화소 같음 · 통과 · T1051) — ${cell(ENC)}`);
 L.push(`· 상시 점검(§1b · T1038) — 뺄 차례 **${CHK.marks.drop}** · 상시 올릴지 **${CHK.marks.raise}** · 상시 줄 ${known.size}`);
 L.push(`· 이 문서는 \`scripts/nightly-report.js\` 가 로그만 읽어 냈다 — **모델 판단 0** · 같은 로그면 바이트가 같다`);
 L.push(`· 로그 \`${LOG}\` · 단독 재실행 \`${RETRY}\` · 상시 목록 \`${path.relative(ROOT, argOf('--known', KNOWN_DEFAULT))}\``);

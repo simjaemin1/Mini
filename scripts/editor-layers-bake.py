@@ -14,6 +14,58 @@ import numpy as np, base64, io, json, os, subprocess, sys, tempfile, zlib
 from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
+# ★[T1051 · PM 11-01 · T971 회부 1] 층 대조 = **풀어낸 화소**(폭 · 높이 · RGBA) — PNG **바이트**는 zlib · Pillow 판을 따라 갈린다(야간 상자만 5밤 빨강 ·
+#   그 밤 줄 "PNG 바이트 다름 · 화소 같음(인코더 차이)"). 화소가 하나라도 다르면 여전히 **다르다**(1) · PNG 바깥 칸(셈 · 이름 · 도장)은 글자 그대로.
+#   돌려주는 값: 0 = 바이트까지 같다 · 2 = 바이트만 다르고 화소 같다(인코더 차이 — `[상황]` 줄 · 통과) · 1 = 다르다(빨강).
+import hashlib
+def _pix(d):
+    im = Image.open(io.BytesIO(base64.b64decode(d.split(',', 1)[1]))).convert('RGBA')
+    a = np.array(im)
+    return a, '%dx%d·%s' % (im.width, im.height, hashlib.sha256(a.tobytes()).hexdigest()[:12])
+def compare(cur, txt):
+    if cur == txt: return 0, ['[editor-layers] 정본과 같다']
+    try:
+        A = json.loads(cur) if cur else {}; B = json.loads(txt)
+    except Exception as e:
+        return 1, ['[editor-layers] **정본과 다르다** — 층 파일을 못 읽는다(%r)' % (e,)]
+    enc, bad = [], []
+    def walk(a, b, path):
+        if isinstance(b, dict) and isinstance(a, dict):
+            for k in sorted(set(a) | set(b)): walk(a.get(k), b.get(k), path + [str(k)])
+        elif a != b:
+            if isinstance(b, str) and isinstance(a, str) and b.startswith('data:image/png') and a.startswith('data:image/png'):
+                (pa, ha), (pb, hb) = _pix(a), _pix(b)
+                same = pa.shape == pb.shape and np.array_equal(pa, pb)
+                (enc if same else bad).append('[editor-layers] 다른 자리: %s — PNG 바이트 다름 · 화소 %s (%dB ↔ %dB · %s ↔ %s)' % ('.'.join(path), '같음(인코더 차이)' if same else '**다름**', len(a), len(b), ha, hb))
+            else:
+                bad.append('[editor-layers] 다른 자리: %s — 값 다름' % '.'.join(path))
+    try:
+        walk(A, B, [])
+    except Exception as e:
+        return 1, ['[editor-layers] **정본과 다르다** — 다른 자리 못 찾음: %r' % (e,)]
+    import PIL
+    ver = 'PIL %s · zlib %s' % (PIL.__version__, zlib.ZLIB_RUNTIME_VERSION)
+    if bad:
+        return 1, ['[editor-layers] **정본과 다르다** — python3 scripts/editor-layers-bake.py → node scripts/build-map-editor.js ~/Mini/map-editor.html'] + bad + enc
+    return 2, ['[editor-layers] 정본과 같다(화소) · [상황] 인코더 차이(화소 같음) — PNG %d 자리 바이트만 다르다 · %s' % (len(enc), ver)] + enc
+if '--selftest' in sys.argv:   # 자명 통과 금지 — 정본 층 파일로 미끼 둘을 만들어 견준다(굽기 0 · 1초)
+    cur = open('lab/map-editor-layers.json', encoding='utf8').read()
+    J = json.loads(cur)
+    z = sorted(J['streams'])[0]
+    a, _ = _pix(J['streams'][z]['png'])
+    def enc_png(arr, level):
+        b = io.BytesIO(); Image.fromarray(arr, 'RGBA').save(b, 'PNG', compress_level=level)
+        return 'data:image/png;base64,' + base64.b64encode(b.getvalue()).decode()
+    E = json.loads(cur); E['streams'][z]['png'] = enc_png(a, 1)          # ⓐ 화소 같음 · 바이트만 다름(다른 압축)
+    a2 = a.copy(); y, x = np.argwhere(a2[..., 3] > 0)[0]; a2[y, x, 3] = 0   # ⓑ 화소 한 칸(개울 셀 하나를 비움)
+    P = json.loads(cur); P['streams'][z]['png'] = enc_png(a2, 1)
+    V = json.loads(cur); V['streams'][z]['cells'] += 1                  # ⓒ 셈 한 칸
+    for nm, obj in (('encoder', E), ('pixel', P), ('value', V)):
+        code, lines = compare(cur, json.dumps(obj, ensure_ascii=False, separators=(',', ':')))
+        print('[selftest] %s → %d · %s' % (nm, code, lines[0]))
+        for l in lines[1:2]: print('[selftest]   ' + l)
+    sys.exit(0)
+
 ZS = ['hanbando', 'nippon', 'jungwon_n']   # 해안 층 · 개울 래스터가 있는 존(같은 셋)
 VAR = os.environ.get('T588_COAST') or 'b'
 zc = json.loads(subprocess.check_output(['node', '-e', "const Z=require('./server/zone-config').ZONES;const o={};for(const k of %s){const z=Z[k];o[k]=[Math.ceil(z.zoneWidth/32),Math.ceil(z.zoneHeight/32)]}process.stdout.write(JSON.stringify(o))" % json.dumps(ZS)]))
@@ -69,24 +121,8 @@ fs.writeFileSync(dst,o);""", z, str(nx), str(ny), band, sea], stdout=subprocess.
 txt = json.dumps(out, ensure_ascii=False, separators=(',', ':'))
 if '--check' in sys.argv:   # 낡음 자 — 정본(지형 json · 개울 래스터 · 해안)이 바뀌었는데 층을 안 다시 구웠나
     cur = open('lab/map-editor-layers.json', encoding='utf8').read() if os.path.exists('lab/map-editor-layers.json') else ''
-    print('[editor-layers] 정본과 같다' if cur == txt else '[editor-layers] **정본과 다르다** — python3 scripts/editor-layers-bake.py → node scripts/build-map-editor.js ~/Mini/map-editor.html')
-    if cur != txt:   # [T971] 어디가 다른지 — 판정은 안 바꾼다(바이트 같음이 문턱 그대로) · 줄만 더 찍는다
-        try:
-            A = json.loads(cur) if cur else {}; B = json.loads(txt)
-            def pix(d):
-                return np.array(Image.open(io.BytesIO(base64.b64decode(d.split(',', 1)[1]))).convert('RGBA'))
-            def walk(a, b, path):
-                if isinstance(b, dict) and isinstance(a, dict):
-                    for k in sorted(set(a) | set(b)): walk(a.get(k), b.get(k), path + [str(k)])
-                elif a != b:
-                    if isinstance(b, str) and isinstance(a, str) and b.startswith('data:image/png') and a.startswith('data:image/png'):
-                        same = np.array_equal(pix(a), pix(b))
-                        print('[editor-layers] 다른 자리: %s — PNG 바이트 다름 · 화소 %s (%dB ↔ %dB)' % ('.'.join(path), '같음(인코더 차이)' if same else '**다름**', len(a), len(b)))
-                    else:
-                        print('[editor-layers] 다른 자리: %s — 값 다름' % '.'.join(path))
-            walk(A, B, [])
-        except Exception as e:
-            print('[editor-layers] 다른 자리 못 찾음: %r' % (e,))
-    sys.exit(0 if cur == txt else 1)
+    code, lines = compare(cur, txt)
+    for l in lines: print(l)
+    sys.exit(0 if code in (0, 2) else 1)
 open('lab/map-editor-layers.json', 'w', encoding='utf8').write(txt)
 print('→ lab/map-editor-layers.json', os.path.getsize('lab/map-editor-layers.json'), 'B')

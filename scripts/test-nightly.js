@@ -259,6 +259,13 @@ console.log('\n=== ⑩ [T1029] 상자 의존 한 줄 · `[editor-layers]` 귀속
   const E3 = go(elLog('', '[editor-layers] 다른 자리 못 찾음: x'), 3);
   ok(/· 상자 의존 \*\*로그에 없다\*\*\(T1029 앞 러너\)/.test(E3) && !/\[editor-layers\] 귀속: \*\*(상자|층)/.test(E3), '옛 로그(`[의존]` 없음) → "로그에 없다" · 못 찾음 줄은 둘 어느 쪽도 아니다');
   ok(!/\[editor-layers\] 귀속/.test(B), '★`[editor-layers]` 줄이 없는 보고엔 귀속 줄이 **안** 선다');
+  // ★[T1051] 화소 같음(통과) 판 — 하네스가 찍은 `[상황]` 줄이 머리 "층 데이터 인코더 차이" 칸으로 간다 · 없는 로그엔 칸 0
+  { const enc = [...head('python 3.13.0 · numpy 2.5.3 · PIL 12.3.0 · zlib 1.3'), ...block(4, 1, 'test-map-editor.js', true, []).slice(0, 1),
+      L(4, 1, '  [상황] 층 데이터 PNG 인코더 차이(화소 같음) — [editor-layers] 정본과 같다(화소) · [상황] 인코더 차이(화소 같음) — PNG 6 자리 바이트만 다르다 · PIL 12.3.0 · zlib 1.3 · 야간 상자 [의존] 줄과 같이 본다'),
+      L(4, 2, '  ✓ RC=0'), L(4, 3, '===== 본 판 끝 =====')].join('\n') + '\n';
+    const E4 = go(enc, 4);
+    ok(/· 층 데이터 인코더 차이\(화소 같음 · 통과 · T1051\) — .*PNG 6 자리 바이트만 다르다 · PIL 12\.3\.0 · zlib 1\.3/.test(E4) && /상시 밖 빨강 0건/.test(E4), '★[T1051] 화소 같음 판은 **통과** · `[상황]` 줄이 머리 "층 데이터 인코더 차이" 칸으로 간다');
+    ok(!/층 데이터 인코더 차이/.test(E1), '자명 통과 금지 — `[상황]` 줄 없는 로그엔 그 칸이 **안** 선다'); }
   // 러너가 실제로 `[의존]` 한 줄을 찍는가 — 예행(`NIGHT_DRY`)으로 목록만 뽑고 선다(서버 0) · 가짜 python3 면 `[상황]`
   const dry = (extraPath) => { const LP = path.join(TMP, `dep${extraPath ? 'F' : 'T'}`, 'r.log'); fs.mkdirSync(path.dirname(LP), { recursive: true });
     execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-run.sh')], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
