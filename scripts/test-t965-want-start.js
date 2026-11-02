@@ -67,7 +67,7 @@ if (process.env.T965_SUB) {   // ── 아이 판: 0날 세계 · 판마다 곳
         const sinv = mkInv(false), sh = host(sinv, 1, want), sq = Trade.quote(L, econV2, vil, vi, give, take, sh.u, sh.o);
         const sx = Trade.exchange({ ledger: L, econV2, vil, vid: vi, inventory: sinv, giveRes: give, takeRes: take, giveQty: 0, want, unitsOf, deposit: V.playerVillageDeposit });
         restore(v, snap);
-        const m = /([0-9]+)개가 필요한데 그만큼 없다/.exec(sx.err || '');
+        const m = /([0-9]+)개가 있어야 하는데 그만큼 없습니다/.exec(sx.err || '');
         short.push([vi, take, want, sq.err ? null : (sq.giveNeeded == null ? null : sq.giveNeeded), sx.ok ? 1 : 0, m ? +m[1] : null]);
       }
     }

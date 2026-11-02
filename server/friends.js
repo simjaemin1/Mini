@@ -95,52 +95,52 @@ function handleChat(player, text) {
   const t = String(text || '').trim();
   if (!t.startsWith('/친구')) return false;
   const say = (m) => { try { if (H && H.send && player.ws) H.send(player.ws, { type: 'notice', text: m }); } catch (e) {} };
-  if (!ready()) { say('🙋 친구는 지금 물어볼 수 없다'); return true; }
+  if (!ready()) { say('🙋 지금은 벗 목록을 볼 수 없습니다.'); return true; }
   const arg = t.slice('/친구'.length).trim();
   const me = player.playerId;
-  if (!me) { say('🙋 손님은 아직 친구를 맺을 수 없다'); return true; }
+  if (!me) { say('🙋 손님은 아직 벗을 맺을 수 없습니다.'); return true; }
 
   if (!arg) {                                   // 목록
     load(me, true).then((rec) => {
-      if (!rec || !rec.ok) { say('🙋 친구 목록을 지금 못 물어봤다 — 잠시 뒤 다시'); return; }
+      if (!rec || !rec.ok) { say('🙋 벗 목록을 가져오지 못했습니다. 잠시 뒤 다시 해 보십시오.'); return; }
       const names = [...rec.names.values()].filter(Boolean);
-      say(names.length ? `🙋 벗 ${names.length}명 — ${names.join(' · ')}` : '🙋 아직 벗이 없다 — `/친구 <이름>` 으로 청하게');
+      say(names.length ? `🙋 벗이 ${names.length}명 있습니다. ${names.join(' · ')}` : '🙋 아직 벗이 없습니다. `/친구 <이름>`이라고 적어 청하십시오.');
     }).catch(() => {});
     return true;
   }
   if (arg.startsWith('끊기')) {
     const name = arg.slice('끊기'.length).trim();
-    if (!name) { say('🙋 누구와 끊는가 — `/친구 끊기 <이름>`'); return true; }
+    if (!name) { say('🙋 누구와 벗을 끊으시겠습니까? `/친구 끊기 <이름>`처럼 적으십시오.'); return true; }
     H.central.friendRemove(me, name).then(async (r) => {
-      if (!r || !r.ok) { say(r && r.reason === 'no_such_name' ? `🙋 '${name}' 은 없는 이름이다` : '🙋 지금은 못 끊었다 — 잠시 뒤 다시'); return; }
+      if (!r || !r.ok) { say(r && r.reason === 'no_such_name' ? `🙋 '${name}'은(는) 없는 이름입니다.` : '🙋 지금은 끊지 못했습니다. 잠시 뒤 다시 해 보십시오.'); return; }
       await _reload(me, r.player_id);
       if (H.refreshTags) H.refreshTags(me, r.player_id);
-      say(r.had ? `🙋 ${r.name} 과(와) 벗을 끊었다` : `🙋 ${r.name} 과(와)는 원래 벗이 아니었다`);
-      if (r.wasFriend && H.tellPlayer) H.tellPlayer(r.player_id, `🙋 ${player.name} 과(와) 벗을 끊었다`);
-    }).catch(() => say('🙋 지금은 못 끊었다 — 잠시 뒤 다시'));
+      say(r.had ? `🙋 ${r.name} 님과 벗을 끊었습니다.` : `🙋 ${r.name} 님과는 원래 벗이 아니었습니다.`);
+      if (r.wasFriend && H.tellPlayer) H.tellPlayer(r.player_id, `🙋 ${player.name} 님과 벗을 끊었습니다.`);
+    }).catch(() => say('🙋 지금은 끊지 못했습니다. 잠시 뒤 다시 해 보십시오.'));
     return true;
   }
   const name = arg;
   H.central.friendRequest(me, name).then(async (r) => {
     if (!r || !r.ok) {
-      say(r && r.reason === 'no_such_name' ? `🙋 '${name}' 은 없는 이름이다`
-        : r && r.reason === 'self' ? '🙋 자기 자신과는 벗이 될 수 없다'
-        : '🙋 지금은 못 청했다 — 잠시 뒤 다시');
+      say(r && r.reason === 'no_such_name' ? `🙋 '${name}'은(는) 없는 이름입니다.`
+        : r && r.reason === 'self' ? '🙋 자기 자신과는 벗이 될 수 없습니다.'
+        : '🙋 지금은 청하지 못했습니다. 잠시 뒤 다시 해 보십시오.');
       return;
     }
     if (r.state === 'accepted') {
       await _reload(me, r.player_id);
       if (H.refreshTags) H.refreshTags(me, r.player_id);
-      say(`🙋 ${r.name} 과(와) 벗이 되었다`);
+      say(`🙋 ${r.name} 님과 벗이 되었습니다.`);
       // 상대에게도 알린다 — **접속 중일 때만**. 알림함은 이 카드가 아니다(회부).
-      if (H.tellPlayer) H.tellPlayer(r.player_id, `🙋 ${player.name} 과(와) 벗이 되었다`);
-    } else if (r.state === 'already_friends') say(`🙋 ${r.name} 과(와)는 이미 벗이다`);
-    else if (r.state === 'already_requested') say(`🙋 ${r.name} 에게 이미 청해 두었다 — 상대가 같은 말을 하면 성립한다`);
+      if (H.tellPlayer) H.tellPlayer(r.player_id, `🙋 ${player.name} 님과 벗이 되었습니다.`);
+    } else if (r.state === 'already_friends') say(`🙋 ${r.name} 님과는 이미 벗입니다.`);
+    else if (r.state === 'already_requested') say(`🙋 ${r.name} 님에게 이미 청해 두었습니다. 상대도 같은 말을 하면 벗이 됩니다.`);
     else {
-      say(`🙋 ${r.name} 에게 벗이 되자고 청했다 — 상대도 \`/친구 ${player.name}\` 이라 하면 성립한다`);
+      say(`🙋 ${r.name} 님에게 벗이 되자고 청했습니다. 상대도 \`/친구 ${player.name}\`이라고 적으면 벗이 됩니다.`);
       if (H.tellPlayer) H.tellPlayer(r.player_id, askedLine(player.name));
     }
-  }).catch(() => say('🙋 지금은 못 청했다 — 잠시 뒤 다시'));
+  }).catch(() => say('🙋 지금은 청하지 못했습니다. 잠시 뒤 다시 해 보십시오.'));
   return true;
 }
 
@@ -173,7 +173,7 @@ async function startVidCounts(playerId) {
 //   그 자리에서 하는 말(위 `handleChat`)과 다음 접속에 밀린 말(아래 `pendingLines`)이 **같은 문장**이어야
 //   한다 — 둘을 따로 쓰면 그게 사본이고, 한쪽만 고쳐지는 날이 온다.
 function askedLine(fromName) {
-  return `🙋 ${fromName} 이(가) 벗이 되자고 청했다 — \`/친구 ${fromName}\``;
+  return `🙋 ${fromName} 님이 벗이 되자고 청했습니다. 받으려면 \`/친구 ${fromName}\`이라고 적으십시오.`;
 }
 /**
  * 밀린 친구 요청 — 로그인 때 세울 줄들. `[{ text, kind }]`.

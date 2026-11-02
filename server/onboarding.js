@@ -631,8 +631,8 @@ function startInfo(opts) {
 }
 function _welcomes(v, a) {
   const why = [];
-  if (!a) why.push('도착 지점 없음');
-  if ((v.pop | 0) < CFG.RECOMMEND_POP) why.push('사람이 너무 적다');
+  if (!a) why.push('내릴 자리가 없습니다');
+  if ((v.pop | 0) < CFG.RECOMMEND_POP) why.push('사람이 너무 적습니다');
   return { ok: why.length === 0, why };
 }
 

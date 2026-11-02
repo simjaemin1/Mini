@@ -449,14 +449,14 @@ function cropSprite(stage, crop) {
 
     if (connPhase === 'error') {
       state = 'error'; hard = true;
-      title = '서버에 들어가지 못했다 — 기다려도 해결되지 않는다';
-      why = `원인: ${connReason || '알 수 없음'}${connStage ? ` · 단계 ${connStage}` : ''}${connRef ? ` · ref ${connRef}` : ''}`;
+      title = '서버에 들어가지 못했습니다. 기다려도 풀리지 않습니다.';
+      why = `까닭: ${connReason || '알 수 없음'}${connStage ? ` · 단계 ${connStage}` : ''}${connRef ? ` · ref ${connRef}` : ''}`;
     } else if (connPhase === 'entering') {
       const el3 = now - (connOutageAt || connHelloAt || now);
       if (el3 < CONN_QUIET_MS) { el.classList.remove('on'); return; }   // ★유예 — 번쩍임 방지
       hard = el3 > CONN_ENTER_WARN_MS;
       state = hard ? 'error' : 'entering';
-      title = hard ? '서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다'
+      title = hard ? '서버가 들어오는 일을 끝내지 못하고 있습니다. 오류일 수 있습니다.'
                    : '서버가 받았다 — 입장 처리 중';
       why = `${(el3 / 1000).toFixed(0)}초 경과${connStage ? ` · 단계 ${connStage}` : ''}${connRef ? ` · ref ${connRef}` : ''}`;
     } else if (connPhase === 'connecting') {
@@ -464,8 +464,8 @@ function cropSprite(stage, crop) {
       if (el3 < CONN_QUIET_MS) { el.classList.remove('on'); return; }   // ★유예 — 번쩍임 방지
       hard = el3 > CONN_WAIT_WARN_MS;
       state = hard ? 'error' : 'waiting';
-      title = hard ? '서버가 응답하지 않는다 — 계속 재시도 중이지만 오류일 수 있다'
-                   : '서버 응답을 기다리는 중 — 잠시 기다리면 대개 들어가진다';
+      title = hard ? '서버가 대답하지 않습니다. 계속 다시 시도하는 중이지만 오류일 수 있습니다.'
+                   : '서버의 대답을 기다리는 중입니다. 잠시 기다리면 대개 들어가집니다.';
       why = `${(el3 / 1000).toFixed(0)}초 경과 · ${connAttempts}번째 시도`;
     } else if (netStalled) {
       state = 'lost'; hard = true;

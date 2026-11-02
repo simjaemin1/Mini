@@ -90,7 +90,7 @@ const panelSrc = (P.match(/function renderTradePanel[^]*?\n  \}\n/) || [''])[0];
   ok((C.match(/out\.wantCapped = true/g) || []).length === 2 && /if \(!\(tr\.n > 0\) \|\| !\(out\.takeAtNeeded > 0\)\) \{\s*(?:if \(T988_ON\) out\.why = _whyNot\([^;\n]*\);\s*)?out\.giveNeeded = null; out\.takeAtNeeded = null; out\.wantCapped = true;\s*\}/.test(C),
     '② `true` 를 놓는 자리 둘 그대로(받을 양 > 상한 · T835 절삭 낱개 0)');
   //   ★[T988] 경고 글자는 견적이 그 판의 말(`why`)을 실으면 그 말 · 없으면 T976 글자 그대로(`why ||` 한 겹만 허락)
-  ok(panelSrc.length > 500 && /if \(trQuote\.wantCapped\) h \+= `<div class="tr-warn">(?:\$\{trQuote\.why \|\| `)?마을이 지금 내줄 수 있는 \$\{tk\}은\(는\) \$\{trQuote\.cap\}까지다(?:`\})?<\/div>`;/.test(panelSrc),
+  ok(panelSrc.length > 500 && /if \(trQuote\.wantCapped\) h \+= `<div class="tr-warn">(?:\$\{trQuote\.why \|\| `)?마을이 지금 내줄 수 있는 \$\{tk\}은\(는\) \$\{trQuote\.cap\}개까지입니다(?:`\})?<\/div>`;/.test(panelSrc),
     '② 클라 받을 양 축이 그 칸을 읽어 경고를 그린다(`renderTradePanel` · 손잡이는 안 읽는다)', `${panelSrc.length}자`); }
 
 const sub = (env) => JSON.parse(execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, env, { T976_SUB: '1' }), stdio: 'pipe', maxBuffer: 64 << 20 }).toString().trim().split('\n').pop());
@@ -116,8 +116,8 @@ for (const W of WORLDS) {
   ok(onTz.every((r) => r.q.wantCapped === true && r.q.takeAtNeeded == null), '★★ⓑ 켬 — 절삭 0 판은 전부 `wantCapped = true` · 낱개 · 받을 양 칸은 그대로 null', `${onTz.filter((r) => r.q.wantCapped === true).length}/${onTz.length}`);
   //   ★[T1010] 켬 기본 세계 = T988 의 참 말(무거운 짐은 낱개 하나가 마을이 내줄 몫 전부보다 무겁다 — 한 개 넘침) · 견적이 실은 `why` 와 한 글자 같다 · 되돌림 짝 = 종전 말 그대로
   const refuse = W.words
-    ? (r, ko) => r.x.ok === 0 && r.x.err === `${ko[r.give]} 한 개 값이 마을이 내줄 수 있는 ${ko[r.take]} 전부(${r.q.cap})보다 비싸다 — 이 마을은 지금 그 값을 못 치른다` && r.q.why === r.x.err
-    : (r, ko) => r.x.ok === 0 && r.x.err === `마을이 ${ko[r.take]} 1개를 못 내준다 — 지금 내줄 수 있는 건 ${r.q.cap}까지다`;
+    ? (r, ko) => r.x.ok === 0 && r.x.err === `${ko[r.give]} 한 개 값이 마을이 내줄 수 있는 ${ko[r.take]} 전부(${r.q.cap})보다 비쌉니다. 이 마을은 지금 그 값을 치를 수 없습니다.` && r.q.why === r.x.err
+    : (r, ko) => r.x.ok === 0 && r.x.err === `마을이 ${ko[r.take]} 1개를 내줄 수 없습니다. 지금 내줄 수 있는 것은 ${r.q.cap}개까지입니다.`;
   ok(onTz.every((r) => refuse(r, on.ko)) && offTz.every((r) => refuse(r, off.ko)), W.words
     ? '★ⓒ 실행은 두 판 다 같은 말로 거절한다 — T988 의 참 말("… 한 개 값이 … 전부(N)보다 비싸다 — 못 치른다") · N = 견적의 `cap` · 견적 `why` 와 한 글자 같다'
     : '★ⓒ 실행은 두 판 다 같은 말로 거절한다 — N = 견적의 `cap`(화면 경고와 같은 수)', onTz[0] ? onTz[0].x.err : '-');
@@ -136,7 +136,7 @@ for (const W of WORLDS) {
   const r1 = onTz[0], r0 = offTz.find((r) => r.vi === r1.vi && r.give === r1.give && r.take === r1.take && r.kind === r1.kind);
   const hOn = draw(on, r1), hOff = draw(off, r0);
   //   ★[T1010] 켬 기본 세계의 경고 = 실행 거절 말 그대로(견적 `why` — ⓒ 가 그 글자를 잰다) · 되돌림 짝 = 종전 경고 글자
-  const warn = W.words ? `<div class="tr-warn">${r1.x.err}</div>` : `<div class="tr-warn">마을이 지금 내줄 수 있는 ${on.ko[r1.take]}은(는) ${r1.q.cap}까지다</div>`;
+  const warn = W.words ? `<div class="tr-warn">${r1.x.err}</div>` : `<div class="tr-warn">마을이 지금 내줄 수 있는 ${on.ko[r1.take]}은(는) ${r1.q.cap}개까지입니다</div>`;
   ok(!/tr-warn/.test(hOff) && !/내야 할/.test(hOff) && /id="trGo" disabled/.test(hOff), 'ⓔ 미끼(끔) — 그린 패널에 경고 · \'내야 할\' 줄이 없고 단추만 꺼졌다(까닭 0)');
   ok(hOn.split(warn).length === 2 && !/내야 할/.test(hOn) && /id="trGo" disabled/.test(hOn), W.words
     ? '★★ⓔ 켬 — 그린 패널에 경고 한 줄(실행 거절과 같은 말) · 단추는 그대로 꺼짐' : '★★ⓔ 켬 — 그린 패널에 경고 한 줄(실행 거절과 같은 수) · 단추는 그대로 꺼짐', warn.replace(/<[^>]+>/g, ''));

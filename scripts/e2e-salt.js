@@ -255,7 +255,7 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   ok(/초 남음|걸어 둔 것/.test(qt), '★★③ 대기열에 걸렸다(가마는 밤새 탄다)', (qt.match(/[^\n]{0,20}초 남음/) || [''])[0].trim());
   await sleep(BOIL_MS + 2500);
   const dt = await ptxt();
-  ok(/다 됐다|받기/.test(dt), '★★③ 다 되면 화면이 그렇게 말한다', (dt.match(/[^\n]{0,24}다 됐다[^\n]{0,12}/) || [''])[0].trim());
+  ok(/다 됨|받기/.test(dt), '★★③ 다 되면 화면이 그렇게 말한다', (dt.match(/[^\n]{0,24}다 됐다[^\n]{0,12}/) || [''])[0].trim());
   await page.evaluate(() => { const b = document.querySelector('[data-fcollect]'); if (b) b.click(); });
   await sleep(1600);
   const inv5 = await inv();

@@ -115,7 +115,7 @@ console.log('\n⑤ 아이콘 하나 · 잠금표');
 console.log('\n⑥ 우물가 E 문구 = 물가 E 문구 (실서버 함수 왕복 · 손잡이 켬)');
 {
   const zsrc = rd('server/zone.js');
-  ok(/doneHint: `우물가에서 E — 목을 축이고, \$\{ITEM_LABEL_SERVER\[Salt\.VESSEL\]\}이 있으면 민물을 담는다`/.test(zsrc),
+  ok(/doneHint: `우물가에서 E를 누르면 목을 축이고, \$\{ITEM_LABEL_SERVER\[Salt\.VESSEL\]\}이 있으면 민물을 담습니다\.`/.test(zsrc),
      '⑥ 완공 안내의 그릇 이름은 이름표 정본(`ITEM_LABEL_SERVER[Salt.VESSEL]`)에서 — 물가 문구와 같은 문법');
   const TMP = `/tmp/test-well-art-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
@@ -128,7 +128,7 @@ console.log('\n⑥ 우물가 E 문구 = 물가 E 문구 (실서버 함수 왕복
   const H = Zone.__testBind();
   console.log = _l; console.warn = _w; console.error = _e;
   const SZ = H.BUILDING_SIZE;
-  ok(H.WELL_SPEC.doneHint === '우물가에서 E — 목을 축이고, 물병이 있으면 민물을 담는다', '⑥ 글자 무변 — 정본에서 지은 안내가 종전 글자와 같다', H.WELL_SPEC.doneHint);
+  ok(H.WELL_SPEC.doneHint === '우물가에서 E를 누르면 목을 축이고, 물병이 있으면 민물을 담습니다.', '⑥ 글자 무변 — 정본에서 지은 안내가 종전 글자와 같다', H.WELL_SPEC.doneHint);
   let _pid = 0;
   const mk = (name, o = {}) => { const notices = []; const ws = { readyState: 1, send: (s) => { try { const m = JSON.parse(s); if (m.type === 'notice') notices.push(m.text); } catch (e) {} } };
     return { playerId: `twa_${++_pid}`, pid: `pwa_${_pid}`, name, ws, x: 0, y: 0, floor: 0, inventory: Object.assign({}, o.inv || {}),

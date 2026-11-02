@@ -193,7 +193,7 @@ say('\n[③ 조업 — era.js 물리가 그대로 답한다(청동기)]');
   const ore1 = owner.inventory.iron_ore;
   H.tryFurnaceSmelt(owner, furnaceId);
   eq(owner.inventory.iron_ore, ore1, '★숯 부족이면 정광이 소모되지 않는다');
-  ok(/숯 부족/.test(lastNotice(owner)), '숯 부족 안내');
+  ok(/숯이 모자랍니다/.test(lastNotice(owner)), '숯 부족 안내');
   owner.inventory.charcoal = keep;
 
   // 정광 부족
@@ -272,7 +272,7 @@ say('\n[⑤ 시대 축 — 같은 노가 시대에 따라 다른 답을 낸다]'
   const nSite0 = findBuilding('furnace_site').length;
   H.tryFurnaceStart(bp, spot3.cx * SZ + 1, spot3.cy * SZ + 1, 'bloomery');
   eq(findBuilding('furnace_site').length, nSite0, '★청동기엔 괴련로를 못 짓는다');
-  ok(/알려지지 않았다/.test(lastNotice(bp)), `거부 사유 — "${lastNotice(bp)}"`);
+  ok(/알려지지 않았습니다/.test(lastNotice(bp)), `거부 사유 — "${lastNotice(bp)}"`);
 
   Era.setEra('early_iron');
   const after = Era.smeltYield('iron', { furnace: 'crucible', fuel: 'charcoal', bellows: true });
@@ -390,13 +390,13 @@ say('\n⑥ 조업 진척 계약 — 장입 → 시간 → 출탕');
     ok(P.inventory.charcoal < ch0, '장입 — 숯도 즉시 차감');
     ok(!!(b.data && b.data.job), '장입 — 조업 상태(job)가 붙는다');
     ok(!P.inventory.iron, '장입 직후엔 **산출이 없다**(즉시 제련이 아니다)');
-    ok(noticed(P, /장입/), '장입 안내가 나온다');
+    ok(noticed(P, /불을 지폈습니다/), '장입 안내가 나온다');
     // ── 대기 중 클릭: 남은 시간만 알려주고 **아무것도 안 준다**(연타 치트 차단)
     const ore1 = P.inventory.iron_ore, ch1 = P.inventory.charcoal;
     H.tryFurnaceSmelt(P, b.id);
     eq(P.inventory.iron_ore, ore1, '조업 중 재클릭 — 재료 추가 소모 없음');
     eq(P.inventory.charcoal, ch1, '조업 중 재클릭 — 숯 추가 소모 없음');
-    ok(noticed(P, /조업 중/), '조업 중이라고 알려준다');
+    ok(noticed(P, /쇠를 뽑는 중입니다/), '조업 중이라고 알려준다');
     // ── 진척: 서버 계산이 0~1 안에 있고 단조 증가
     const j = b.data.job;
     const pMid = H._jobProgress(j, j.startedAt + (j.until - j.startedAt) / 2);
@@ -405,7 +405,7 @@ say('\n⑥ 조업 진척 계약 — 장입 → 시간 → 출탕');
     b.data.job.until = Date.now() - 1;
     H.tryFurnaceSmelt(P, b.id);
     ok(!(b.data && b.data.job), '출탕 — 조업 상태가 사라진다');
-    ok(noticed(P, /출탕/), '출탕 안내가 나온다');
+    ok(noticed(P, /쇠를 꺼냈/), '출탕 안내가 나온다');
     // ── 이탈 보존: 다른 사람이 와도 내 노는 내 것(소유 계약 그대로)
     H.tryFurnaceSmelt(P, b.id);   // 재장입
     ok(!!(b.data && b.data.job), '재장입 가능');

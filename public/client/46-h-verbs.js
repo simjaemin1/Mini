@@ -138,9 +138,9 @@
       const edible = Object.keys(inventory || {})
         .filter((k) => (inventory[k] || 0) > 0 && !!(foodEffects && foodEffects[k]));
       out.push({
-        label: edible.length ? '먹이기…' : '먹이기 — 먹일 것이 없다',
+        label: edible.length ? '먹이기…' : '먹이기 — 먹일 것 없음',
         send: () => {
-          if (!edible.length) { showNotice('먹일 것이 없다'); return; }
+          if (!edible.length) { showNotice('먹일 것이 없습니다.'); return; }
           // 하위 목록 = 같은 자리에 메뉴를 한 번 더 연다(새 UI 0 · `showContextMenu` 그대로).
           showContextMenu(_lastMenuX, _lastMenuY, edible.map((k) => ({
             label: `${itemKo(k)} ×${inventory[k]}`,
@@ -195,7 +195,7 @@
       //   "벌목 멈추기"를 누른 사람에게 반복이 **새로 선다**(e2e-verbs ⑧ 묶은 상자 20판 중 2 · 보고/T949 회부 1 · 보고/T1020 §2).
       //   켬 = "멈추기" 줄은 멈추기만 한다(이미 멎었으면 할 일 없음 · 같은 알림). 시작 줄(`word`)은 종전 그대로 토글.
       const stopOnly = on && !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.stopMenu === true);
-      out.push({ label: on ? `${word} 멈추기` : word, send: stopOnly ? () => { stopGatherLoop(); showNotice('멈췄다'); } : () => toggleGatherLoop(t.id) });
+      out.push({ label: on ? `${word} 멈추기` : word, send: stopOnly ? () => { stopGatherLoop(); showNotice('멈췄습니다.'); } : () => toggleGatherLoop(t.id) });
       // ★★[T135] **베는 것과 따는 것은 다른 일이다.** 열매가 실제로 달린 나무에만 두 번째 동사가 뜬다.
       //   ⚠클라는 "무엇이 열매나무인가"를 모른다 — 서버가 개체에 `fruitKo`(달린 열매 이름)를 실어 줄 때만
       //     뜬다. 종 목록을 여기 적으면 그게 또 사본이다(T90 이 지운 그 표의 재발).
@@ -218,12 +218,12 @@
         onClick: () => sendPrimary({ type: 'eat', item: k }),
       }));
       out.push({
-        label: eats.length ? '먹기…' : '먹기 — 먹을 것이 없다',
-        send: () => { if (!eats.length) { showNotice('먹을 것이 없다'); return; } showContextMenu(_lastMenuX, _lastMenuY, sub(eats)); },
+        label: eats.length ? '먹기…' : '먹기 — 먹을 것 없음',
+        send: () => { if (!eats.length) { showNotice('먹을 것이 없습니다.'); return; } showContextMenu(_lastMenuX, _lastMenuY, sub(eats)); },
       });
       out.push({
-        label: drinks.length ? '마시기…' : '마시기 — 마실 것이 없다',
-        send: () => { if (!drinks.length) { showNotice('마실 것이 없다 — 물가에서 E'); return; } showContextMenu(_lastMenuX, _lastMenuY, sub(drinks)); },
+        label: drinks.length ? '마시기…' : '마시기 — 마실 것 없음',
+        send: () => { if (!drinks.length) { showNotice('마실 것이 없습니다. 물가에서 E를 누르면 마실 수 있습니다.'); return; } showContextMenu(_lastMenuX, _lastMenuY, sub(drinks)); },
       });
       // 짐·장비 — 인벤 패널이 정본 경로다(새 창구 0 · `I` 키의 별칭).
       out.push({ label: '짐과 장비', send: () => { if (typeof toggleInv === 'function') toggleInv(); } });
@@ -299,7 +299,7 @@
   //   ★★[T90 · §0-ⓐ] 메뉴에서 시작한 반복은 **누른 그 자연물을 끝까지 든다**(`resId` 고정).
   //     지목이 없던 때는 매 타가 최근접으로 흘렀다 — 걷다 보면 다른 나무를 베고 있었다.
   function toggleGatherLoop(resId) {
-    if (window.__eRepeat) { stopGatherLoop(); showNotice('멈췄다'); return; }
+    if (window.__eRepeat) { stopGatherLoop(); showNotice('멈췄습니다.'); return; }
     sendPrimary({ type: 'gather', resId });                // 첫 타는 즉시(E 와 같다) · 지목해서
     _goneStreak = 0;
     startGatherLoop(() => _resourceGone(resId), resId);    // 다 캐면 저절로 멎는다
@@ -430,7 +430,7 @@
     if (now - _walk.at > WALK_STALL_MS) {
       if (Math.hypot(myAbsPredicted.x - _walk.px, myAbsPredicted.y - _walk.py) < WALK_STALL_PX) {
         if (_walk.then) return done();
-        _walk = null; showNotice('더 못 간다'); return null;
+        _walk = null; showNotice('더는 갈 수 없습니다.'); return null;
       }
       _walk.px = myAbsPredicted.x; _walk.py = myAbsPredicted.y; _walk.at = now;
     }
@@ -445,7 +445,7 @@
     const zm = (typeof zonesMeta !== 'undefined' && primaryZoneId) ? zonesMeta[primaryZoneId] : null;   // 오프셋은 존 설정 거울(연결 `meta` 는 재접속 찰나에 빈다)
     if (!zm) { if (menuAt) verbOpenWaterMenu({ absX, absY, cx: menuAt.cx, cy: menuAt.cy }, null); return; }
     const lx = absX - (zm.worldOffsetX || 0), ly = absY - (zm.worldOffsetY || 0);
-    if (lx < 0 || ly < 0 || lx >= (zm.zoneWidth || 0) || ly >= (zm.zoneHeight || 0)) { showNotice('경계 너머다 — 가서 살펴라'); return; }
+    if (lx < 0 || ly < 0 || lx >= (zm.zoneWidth || 0) || ly >= (zm.zoneHeight || 0)) { showNotice('경계 너머입니다. 가까이 가서 살펴보십시오.'); return; }
     if (_lookWait && _lookWait.timer) clearTimeout(_lookWait.timer);
     _lookWait = { x: lx, y: ly, absX, absY, cx: menuAt ? menuAt.cx : null, cy: menuAt ? menuAt.cy : null, timer: null };
     if (menuAt) {
@@ -480,7 +480,7 @@
       items.push({ label: '마시기', onClick: act('drink') });
       if (bottles > 0 && vk) items.push({ label: `병에 담기 — ${itemKo(vk)} ${bottles}`, onClick: act('fill') });
     } else if (msg && msg.water === 'sea') {
-      items.push({ label: '짠물이다', onClick: () => showNotice(msg.say || msg.line) });
+      items.push({ label: '짠물 살피기', onClick: () => showNotice(msg.say || msg.line) });
       if (bottles > 0 && vk) items.push({ label: `짠물 뜨기 — ${itemKo(vk)} ${bottles}`, onClick: act('fill') });
     }
     items.push({ label: '걷기', onClick: () => verbWalkTo(tx, ty, WALK_ADJ_PX) });

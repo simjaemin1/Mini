@@ -441,7 +441,7 @@ const Y = E.yearDaysOf();
         const n4 = H.db.getResources().length;
         at(far);
         H.tryPlantTree(me, far.x, far.y, 'acorn');
-        ok(H.db.getResources().length === n4 && /남의 땅엔 못 심는다/.test(lastN()),
+        ok(H.db.getResources().length === n4 && /남의 땅에는 심을 수 없습니다/.test(lastN()),
           '★★⑦ⓒ2 **남의 사유지엔 못 심는다** — 거절 사유가 거리가 아니라 **땅 주인**이다', lastN());
         // ★대조 — 같은 칸이 **내 것**이면 심어진다(자명 통과 금지: 자리 탓이 아니라 주인 탓임을 보인다)
         H.claims.get(cid).ownerPid = me.playerId;
@@ -464,7 +464,7 @@ const Y = E.yearDaysOf();
           const n5 = H.db.getResources().length;
           at(far2);
           H.tryPlantTree(me, far2.x, far2.y, 'acorn');
-          ok(H.db.getResources().length === n5 && /마을 땅이다/.test(lastN()),
+          ok(H.db.getResources().length === n5 && /마을 땅입니다/.test(lastN()),
             '★★⑦ⓒ5 **남의 마을 땅(옛 길드 영토)엔 못 심는다** — 사유가 거리가 아니라 그 땅이다', lastN());
           me.tribeId = 'tribe_other';            // 옛 몸 칸이 그 길드와 같아지면
           if (!_KIN787) {

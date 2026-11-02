@@ -139,7 +139,7 @@ const VillageKin = require('./village-kin');
 // ★★[T787 2026-10-18 · 켬 기본] 사람 몸의 옛 길드 칸 — 켬이면 **실어 나르기만** 한다(`_tribe0` = 계정 행 `tribe_id`).
 //   저장 · 핸드오프에 그대로 싣는다(central `players.tribe_id` 를 존이 지우지 않는다 — 표 걷기는 재민 배포 판단).
 //   런타임 `tribeId` · `tribeName` 은 사람에게 null 이다 — 마을 일 · 이름표 · 채팅 · VP · 금고 어느 자리도 길드를 안 읽는다.
-const _T787_GUILD_GONE = '길드는 이제 마을이다 — `/마을` 로 본다';
+const _T787_GUILD_GONE = '길드는 이제 마을입니다. `/마을`이라고 적어 보십시오.';
 function _t787Tribe0(p) { return p ? (VillageKin.ON ? (p._tribe0 ?? null) : (p.tribeId ?? null)) : null; }
 //   이름표 머리 `[이름]` — 켬 = 사람은 **그 사람의 마을**(몸 `member` · 이 존) · NPC 는 종전 그대로(그 NPC 의 마을). 뜻이 하나다.
 function _t787Label(p) { if (!p) return null; if (VillageKin.ON && !p.isNpc) { const v = VillageKin.memberVil(p); return v ? (v.name || null) : null; } return p.tribeName || null; }
@@ -2527,7 +2527,7 @@ function spawnCorpse(mob, killerPid) {
 
 function butcherCorpse(player, cid) {
   const corpse = corpses.get(cid);
-  if (!corpse) { send(player.ws, { type: 'notice', text: '사체 없음' }); return; }
+  if (!corpse) { send(player.ws, { type: 'notice', text: '주검이 없습니다.' }); return; }
   const dist = Math.hypot(player.x - corpse.x, player.y - corpse.y);
   if (dist > 80) { send(player.ws, { type: 'notice', text: '너무 멀어' }); return; }
   // drop → 인벤
@@ -2782,7 +2782,7 @@ function consumeEquippedDurability(player, amount = 1) {
     const breakName = t.type;
     if (player.equipped === t.id) player.equipped = null;
     if (player.hotkey1 === t.id) player.hotkey1 = null;
-    send(player.ws, { type: 'notice', text: `${breakName} 깨짐` });
+    send(player.ws, { type: 'notice', text: `${breakName}이(가) 깨졌습니다.` });
   }
   // 클라에 toolItems + equipped 갱신
   send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 });
@@ -2809,7 +2809,7 @@ function consumeToolByType(player, toolName, amount = 1) {
     const breakName = target.type;
     if (player.equipped === target.id) player.equipped = null;
     if (player.hotkey1 === target.id) player.hotkey1 = null;
-    send(player.ws, { type: 'notice', text: `${breakName} 깨짐` });
+    send(player.ws, { type: 'notice', text: `${breakName}이(가) 깨졌습니다.` });
   }
   send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 });
   return true;
@@ -5612,8 +5612,8 @@ function _elsewhereLine(name, playerId, say) {
   central.getPlayer(String(playerId)).then((row) => {
     const z = row && row.last_zone;
     const nm = (z && ZONES[z] && ZONES[z].displayName) || null;
-    say(nm ? `${name} 은(는) 다른 곳에 있다 — ${nm}` : `${name} 은(는) 다른 곳에 있다`);
-  }).catch(() => say(`${name} 은(는) 다른 곳에 있다`));
+    say(nm ? `${name} 님은 다른 곳(${nm})에 있습니다.` : `${name} 님은 다른 곳에 있습니다.`);
+  }).catch(() => say(`${name} 님은 다른 곳에 있습니다.`));
 }
 /** 따라가기를 끈다 — 이유를 한 줄로 말하고, 다음 `gauges` 가 화살을 거둔다(`follow: null`). */
 function _followStop(player, why) {
@@ -5635,11 +5635,11 @@ function _followPayload(p) {
   const f = _followOf(p);
   if (!f) return null;
   const t = _onlineHere(f.id);
-  if (!t) { _followStop(p, `${f.name} 이(가) 보이지 않는다 — 따라가기를 거둔다`); return { follow: null }; }
+  if (!t) { _followStop(p, `${f.name} 님이 보이지 않아 따라가기를 그만둡니다.`); return { follow: null }; }
   const dx = t.x - p.x, dy = t.y - p.y;
   const d = Math.hypot(dx, dy);
   //   ★도착 — 그 반경도 T110/T43 의 것이다(`RESCUE_RANGE_PX` · 손으로 적은 수 0).
-  if (d <= RESCUE_RANGE_PX) { _followStop(p, `${f.name} 에게 닿았다`); return { follow: null }; }
+  if (d <= RESCUE_RANGE_PX) { _followStop(p, `${f.name} 님 곁에 닿았습니다.`); return { follow: null }; }
   //   ★T110 반경 밖이면 **방향만** — 걸음 수는 걸어 닿는 거리 안에서만 뜻이 있다.
   const far = d > Rescue.shoutRange();
   return { follow: { pid: t.pid, x: Math.round(t.x), y: Math.round(t.y), name: f.name,
@@ -5652,15 +5652,15 @@ function followChat(player, text) {
   const isCmd = t.startsWith('/어디') || t.startsWith('/따라가기') || t.startsWith('/숨기');
   if (!isCmd) return false;
   const say = (m) => { try { send(player.ws, { type: 'notice', text: m }); } catch (e) {} };
-  if (!player.playerId || String(player.playerId).startsWith('anon_')) { say('손님은 아직 벗을 찾을 수 없다'); return true; }
+  if (!player.playerId || String(player.playerId).startsWith('anon_')) { say('손님은 아직 벗을 찾을 수 없습니다.'); return true; }
 
   // ── `/숨기` — 세션 동안만. DB 0(영속은 회부).
   if (t.startsWith('/숨기')) {
     const arg = t.slice('/숨기'.length).trim();
-    if (arg === '끝') { player._hidden = false; say('이제 벗들에게 자리가 보인다'); return true; }
+    if (arg === '끝') { player._hidden = false; say('이제 벗들에게 내 자리가 보입니다.'); return true; }
     if (arg) { say('자리를 숨긴다 — `/숨기` · 되돌리려면 `/숨기 끝`'); return true; }
     player._hidden = true;
-    say('자리를 숨겼다 — 벗들에게 "다른 곳"으로만 보인다(`/숨기 끝` 이면 되돌린다)');
+    say('자리를 숨겼습니다. 벗들에게는 "다른 곳"으로만 보입니다. `/숨기 끝`이라고 적으면 되돌립니다.');
     return true;
   }
 
@@ -5668,35 +5668,35 @@ function followChat(player, text) {
   if (t.startsWith('/따라가기')) {
     const arg = t.slice('/따라가기'.length).trim();
     if (arg === '끝') {
-      if (!_followOf(player)) { say('따라가던 벗이 없다'); return true; }
-      _followStop(player, '따라가기를 그만뒀다');
+      if (!_followOf(player)) { say('따라가던 벗이 없습니다.'); return true; }
+      _followStop(player, '따라가기를 그만두었습니다.');
       return true;
     }
     if (!arg) { say('누구를 따라가나 — `/따라가기 <이름>` · 그만두려면 `/따라가기 끝`'); return true; }
     const f = Friends.friendByName(player.playerId, arg);
-    if (!f) { say(`${arg} 은(는) 자네의 벗이 아니다`); return true; }
+    if (!f) { say(`${arg} 님은 벗이 아닙니다.`); return true; }
     const there = _onlineHere(f.id);
-    if (!there) { _elsewhereLine(f.name, f.id, say); say('여기 없는 벗은 따라갈 수 없다'); return true; }
+    if (!there) { _elsewhereLine(f.name, f.id, say); say('여기 없는 벗은 따라갈 수 없습니다.'); return true; }
     player._follow = { id: f.id, name: f.name };
     player._followOff = false;
-    say(`${f.name} 을(를) 따라간다 — 화살이 그쪽을 가리킨다(도착하면 저절로 꺼진다)`);
+    say(`${f.name} 님을 따라갑니다. 화살이 그쪽을 가리키고, 닿으면 저절로 꺼집니다.`);
     return true;
   }
 
   // ── `/어디 <이름>`
   {
     const arg = t.slice('/어디'.length).trim();
-    if (!arg) { say('누구를 찾나 — `/어디 <이름>`'); return true; }
+    if (!arg) { say('누구를 찾으시겠습니까? `/어디 <이름>`처럼 적으십시오.'); return true; }
     const f = Friends.friendByName(player.playerId, arg);
-    if (!f) { say(`${arg} 은(는) 자네의 벗이 아니다`); return true; }
+    if (!f) { say(`${arg} 님은 벗이 아닙니다.`); return true; }
     const there = _onlineHere(f.id);
     if (!there) { _elsewhereLine(f.name, f.id, say); return true; }
     const dx = there.x - player.x, dy = there.y - player.y;
     const d = Math.hypot(dx, dy);
     const dir = Onboarding.dirWord(dx, dy) || '어딘가';
     //   ★T110 반경 **밖이면 방향만** — 그 너머의 걸음 수는 "걸어서 닿는 거리"를 넘어 뜻이 없다.
-    if (d > Rescue.shoutRange()) { say(`${f.name} 은(는) ${dir} 쪽 멀리 있다`); return true; }
-    say(`${f.name} 은(는) ${dir} 쪽 ${Rescue.steps(d)}걸음 거리에 있다`);
+    if (d > Rescue.shoutRange()) { say(`${f.name} 님은 ${dir} 멀리 있습니다.`); return true; }
+    say(`${f.name} 님은 ${dir} ${Rescue.steps(d)}걸음 거리에 있습니다.`);
     return true;
   }
 }
@@ -6375,7 +6375,7 @@ wss.on('connection', (ws, req) => {
     _connCleanupHalf(C);
     C.failed = true;   // ★[T1002] 이 접속은 끝났다 — 닫히기까지 pong 을 안 보낸다(켬)
     try { ws.send(JSON.stringify({ type: 'conn_error', ref: C.ref, stage: C.stage,
-      msg: `입장 처리 시간 초과(${Math.round(CONN_DEADLINE_MS / 1000)}초) — 단계 ${C.stage} 에서 멈췄다` })); } catch (_) {}
+      msg: `들어오는 데 너무 오래 걸렸습니다(${Math.round(CONN_DEADLINE_MS / 1000)}초 · ${C.stage} 단계에서 멈춤).` })); } catch (_) {}
     setTimeout(() => { try { ws.close(4002, 'conn_timeout'); } catch (_) {} }, 150);
   }, CONN_DEADLINE_MS);
   const _clear = () => clearTimeout(_dl);
@@ -7139,7 +7139,7 @@ async function _acceptConnection(ws, req, C) {
     send(ws, { type: 'player_downed', pid: player.pid, rescueWindowMs: RESCUE_WINDOW_MS,
       options: listRespawnOptions(player), source: 'relogin' });
     broadcast({ type: 'player_down_state', pid: player.pid, isDown: true, why: 'relogin' });   // ★[T402] 재접속 복원 — 옆 `player_downed` 의 그 낱말
-    if (player._deadUntil) _sayWake(player, '⏳ 정해진 대로 —');   // ★[T563] 이미 정해진 몸이면 패널은 기다림을 말한다(버튼 아님)
+    if (player._deadUntil) _sayWake(player, '⏳ 정해진 대로');   // ★[T563] 이미 정해진 몸이면 패널은 기다림을 말한다(버튼 아님)
   }
 
   // ★★[T139 2026-09-06] **부름 알림함** — 접속 중이 아니어도 부름은 남는다(T128 회부 2 · T115 와 같은 자리).
@@ -7162,7 +7162,7 @@ async function _acceptConnection(ws, req, C) {
       const N = Math.max(1, Notice.NOTICE_MAX | 0);
       if (lines.length > N) {
         const k = lines.length - (N - 1);
-        lines = lines.slice(0, N - 1).concat([{ text: `… 외 ${k}건의 부름이 더 있다`, kind: 'info' }]);
+        lines = lines.slice(0, N - 1).concat([{ text: `… 이 밖에 부름이 ${k}건 더 있습니다.`, kind: 'info' }]);
       }
       if (!ws || ws.readyState !== 1) return;      // 그새 나갔다 — 다음 접속에 다시 센다
       for (const L of lines) send(ws, { type: 'notice', text: L.text, kind: L.kind });
@@ -7210,7 +7210,7 @@ function handlePlayerInput(player, raw) {
   // ★[T1 §2-②] 마을이 장부를 마감하는 중이면 마을 요청만 줄을 세운다(위 주석).
   if (VILLAGE_BOOK_MSG.has(msg.type) && SimVillages.villagesBusy && SimVillages.villagesBusy()
       && (SimVillages.villageBookWait || SimVillages.villageWait)(() => { try { handlePlayerInput(player, raw); } catch (e) {} })) {   // ★[T792] 현지 자정 창 안(섞인 날) = 바로 · 마을마다 제 장부 날
-    if (ws && ws.readyState === 1) send(ws, { type: 'notice', text: '🏘️ 마을이 하루 장부를 마감하는 중이다 — 곧 처리된다' });
+    if (ws && ws.readyState === 1) send(ws, { type: 'notice', text: '🏘️ 마을이 하루 장부를 닫는 중입니다. 곧 처리됩니다.' });
     return;
   }
 
@@ -7563,7 +7563,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'plant_menu_ask') send(player.ws, { type: 'plant_menu', menu: plantMenuPayload(player) });
   else if (msg.type === 'fish_cast') tryFishCast(player);      // ★[낚시 v2] 던지기 — 이미 던져 뒀으면 챔질로 넘어간다
   else if (msg.type === 'fish_strike') tryFishStrike(player);  // ★[낚시 v2] 챔질(서버 시각으로만 판정)
-  else if (msg.type === 'fish_reel') { if (player._fish) { player._fish = null; send(player.ws, { type: 'fish_state', state: 'idle' }); send(player.ws, { type: 'notice', text: '🎣 줄을 거뒀다' }); } }
+  else if (msg.type === 'fish_reel') { if (player._fish) { player._fish = null; send(player.ws, { type: 'fish_state', state: 'idle' }); send(player.ws, { type: 'notice', text: '🎣 낚싯줄을 거두었습니다.' }); } }
   else if (msg.type === 'harvest') tryHarvest(player);
   // ★[T148 2026-09-07] 개명 `feed` → `tame_feed`(짐승 길들이기). **옛 이름 폴백 0.**
   //   사람 먹이기는 `{type:'verb', name:'feed'}`(`Rescue.verb`)라 봉투가 다르고, 이제 이름도 안 겹친다.
@@ -7573,7 +7573,7 @@ function handlePlayerInput(player, raw) {
     player.tribeId = msg.tribeId || null;
     player.tribeName = msg.tribeName || null;
     savePlayer(player);
-    send(player.ws, { type: 'notice', text: player.tribeId ? `마을 [${player.tribeName}] 적용` : '마을에서 나왔다' });
+    send(player.ws, { type: 'notice', text: player.tribeId ? `${player.tribeName} 마을 사람이 되었습니다.` : '마을에서 나왔습니다.' });
   }
   // ═══ ★★[T235 2026-09-13] **클라가 central 을 직접 부르던 다섯 — 존이 대신 부른다** ═══
   //   여태 그 다섯(`/market/order`·`/market/cancel`·`/war/declare`·`/war/end`·`/tribe/leave`)은
@@ -7612,7 +7612,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'pvp_set') {
     player.pvpEnabled = !!msg.enabled;
     send(player.ws, { type: 'pvp_state', enabled: player.pvpEnabled });
-    send(player.ws, { type: 'notice', text: player.pvpEnabled ? '⚔️ PvP 활성화' : '🕊️ PvP 비활성화' });
+    send(player.ws, { type: 'notice', text: player.pvpEnabled ? '⚔️ PvP를 켰습니다.' : '🕊️ PvP를 껐습니다.' });
   }
   // 14.49-e7b: change_floor 메시지 핸들러 제거 (자동 계단으로 대체)
 }
@@ -7637,12 +7637,12 @@ function tryFeed(player) {
   }
   if (!best) { send(player.ws, { type: 'notice', text: '근처에 동물이 없습니다' }); return; }
   const def = MOB_DEFS[best.type];
-  if (!def?.tameFood) { send(player.ws, { type: 'notice', text: `${best.type}는 길들일 수 없음` }); return; }
+  if (!def?.tameFood) { send(player.ws, { type: 'notice', text: `${best.type}는 길들일 수 없습니다.` }); return; }
   // ★★[2026-08-02d] 시대 게이트 — era.js "송국리기엔 기마 없음" 이 코드로 지켜지는 유일한 자리.
   //   `canTame` 은 UNLOCK 표만 본다(하드코딩 없음): 표에 없는 짐승은 통과, 나중 시대 항목은 차단.
   //   ⚠메시지에 시대를 노출하지 않는다 — 플레이어에게 세계는 그냥 "아직 그런 짐승은 못 다룬다"여야 한다.
   if (!require('./era').canTame(best.type)) {
-    send(player.ws, { type: 'notice', text: '아직 길들일 수 없는 짐승이다' }); return;
+    send(player.ws, { type: 'notice', text: '아직 길들일 수 없는 짐승입니다.' }); return;
   }
   // 이미 다른 사람 거면 거부
   if (best.tameOwner && best.tameOwner !== player.playerId) {
@@ -7665,7 +7665,7 @@ function tryFeed(player) {
       best.aggroTarget = null; // 어그로 해제
       best.dirty = true;
       broadcast({ type: 'mob_tamed', mid: best.mid, owner: player.playerId, ownerName: player.name });
-      send(player.ws, { type: 'notice', text: `🎉 ${best.type} 길들이기 성공!` });
+      send(player.ws, { type: 'notice', text: `🎉 ${best.type}을(를) 길들였습니다.` });
     } else {
       send(player.ws, { type: 'notice', text: `먹이 줌 (${best.tameProgress}/${def.tameNeed})` });
     }
@@ -7756,19 +7756,19 @@ function _cropTend(player, b, today) {
     const dormant = Crops.dormantAt(cid, today);
     const vd = Crops.vernalDay(cid, d.plantedDay);
     send(player.ws, { type: 'notice',
-      text: `${c.ko} 자라는 중 — ${grown}/${need}일 · 품질 ${Math.round(e.q * 100)}%`
+      text: `${c.ko}이(가) 자라는 중입니다. ${need}일 가운데 ${grown}일 자랐고 품질은 ${Math.round(e.q * 100)}%입니다.`
           + (dormant
-              ? ` · 겨울엔 쉰다(${Crops.lifecycleOf(cid)} — 자라지도, 손볼 것도 없다)`
+              ? ` 겨울에는 쉽니다(${Crops.lifecycleOf(cid)}). 자라지도 않고 손볼 것도 없습니다.`
               : '')
-          + (Crops.isWinterCrop(cid) && today < vd ? ' · 겨울을 지나야 자라기 시작한다(춘화)' : '')
-          + (rd != null ? ` · ${Math.max(0, rd - today)}일 남음` : '')
-          + ' · 지금은 손볼 것이 없다' });
+          + (Crops.isWinterCrop(cid) && today < vd ? ' 겨울을 나야 자라기 시작합니다.' : '')
+          + (rd != null ? ` 거두기까지 ${Math.max(0, rd - today)}일 남았습니다.` : '')
+          + ' 지금은 손볼 것이 없습니다.' });
     return false;
   }
   if (want === 3) {                                   // 물대기 — 물병 한 되가 든다
     const FRESH = require('./tidal').FRESH, VESSEL = Salt.VESSEL;
     if (Math.floor(player.inventory[FRESH] || 0) < 1) {
-      send(player.ws, { type: 'notice', text: `${c.ko}이(가) 목마르다 — 물 한 되가 있어야 댄다(물가에서 병에 담아 와라)` });
+      send(player.ws, { type: 'notice', text: `${c.ko}이(가) 목말라합니다. 물 한 되가 있어야 댈 수 있습니다. 물가에서 병에 담아 오십시오.` });
       return false;
     }
     player.inventory[FRESH] = Math.floor(player.inventory[FRESH] || 0) - 1;
@@ -7778,10 +7778,10 @@ function _cropTend(player, b, today) {
   const did = SimVillages.cropDoTask(e, nong, today);
   _cropWriteBack(d, e, today);
   if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(d)); } catch (er) {} }
-  const KO = { pest: '병든 잎을 골라냈다', water: '물을 댔다', weed: '김을 맸다' };
+  const KO = { pest: '병든 잎을 골라냈습니다', water: '물을 댔습니다', weed: '김을 맸습니다' };
   send(player.ws, { type: 'notice',
-    text: `${KO[did] || '손봤다'} — ${c.ko} 품질 ${Math.round(e.q * 100)}%`
-        + (did === 'water' ? ` · 빈 ${ITEM_LABEL_SERVER[Salt.VESSEL] || Salt.VESSEL} 하나가 남았다` : '')
+    text: `${KO[did] || '손봤습니다'}. ${c.ko} 품질은 ${Math.round(e.q * 100)}%입니다.`
+        + (did === 'water' ? ` 빈 ${ITEM_LABEL_SERVER[Salt.VESSEL] || Salt.VESSEL} 하나가 남았습니다.` : '')
         + (did === 'weed' ? ` (${e.wd}/${SimVillages.CROP_WEED_STAGES}벌)` : '') });
   if (did === 'water') sendInventory(player);
   savePlayer(player);
@@ -7823,10 +7823,10 @@ function _plantInto(player, b, cropId, today) {
   const rd = Crops.readyDay(cropId, today);
   sendInventory(player);
   send(player.ws, { type: 'notice',
-    text: `${c.ko} 다시 심었다(빈 밭) — ${Crops.growDaysOf(cropId)}일 자란다`
-        + (c.winterCrop ? '(월동 — 겨울엔 안 자란다)' : '') + (Crops.isPerennial(cropId) ? '(다년생 — 베어도 다시 난다)' : '')
+    text: `빈 밭에 ${c.ko}을(를) 다시 심었습니다. ${Crops.growDaysOf(cropId)}일 자랍니다.`
+        + (c.winterCrop ? ' 겨울을 나는 작물이라 겨울에는 자라지 않습니다.' : '') + (Crops.isPerennial(cropId) ? ' 여러해살이라 베어도 다시 납니다.' : '')
         + ` · 물 ${supply}/${c.water}${wm < 1 ? ` (${Math.round(wm * 100)}%)` : ''}`
-        + ` · 씨앗 ${Math.round(off.fresh * 100)}% ⇒ 예상 ${units}단위`
+        + ` 씨앗이 ${Math.round(off.fresh * 100)}% 성하니 ${units}단위쯤 거둘 것 같습니다.`
         + (rd != null ? ` · ${Math.max(0, rd - today)}일 뒤` : '') });
   savePlayer(player);
 }
@@ -7838,13 +7838,13 @@ function doPlant(player, cropId) {
     const ko = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' };
     const when = Crops.sowSeasons(cropId).map((x) => ko[x] || x).join('·') || '—';
     send(player.ws, { type: 'notice',
-      text: `지금은 ${ko[Crops.seasonOfDay(today)]}이다 — ${c.ko}은(는) ${when}에 심는다` });
+      text: `지금은 ${ko[Crops.seasonOfDay(today)]}입니다. ${c.ko}은(는) ${when}에 심습니다.` });
     return;
   }
   const seed = Crops.seedOf(cropId);
   Lots.reconcile(player, seed, player.inventory, today);
   if (Lots.sum(player, seed) < 1) {
-    send(player.ws, { type: 'notice', text: `${c.ko} 씨앗이 없다` }); return;
+    send(player.ws, { type: 'notice', text: `${c.ko} 씨앗이 없습니다.` }); return;
   }
   // ★★[T58b] **빈 밭이 곁에 있으면 거기 심는다** — 수확이 밭을 남기므로(회부 G 해소) 새로 갈 이유가 없다.
   //   개간은 한 번이고 농사는 여러 해다. 자리·비용 판정은 종전 건립 경로가 그대로 맡는다(여기선 재사용만).
@@ -7871,10 +7871,10 @@ function doPlant(player, cropId) {
   const rd = Crops.readyDay(cropId, today);
   sendInventory(player);
   send(player.ws, { type: 'notice',
-    text: `🌱 ${c.ko} 심었다 — ${Crops.growDaysOf(cropId)}일 자란다`
-        + (c.winterCrop ? '(월동 — 겨울엔 안 자란다)' : '') + (Crops.isPerennial(cropId) ? '(다년생 — 베어도 다시 난다)' : '')
+    text: `🌱 ${c.ko}을(를) 심었습니다. ${Crops.growDaysOf(cropId)}일 자랍니다.`
+        + (c.winterCrop ? ' 겨울을 나는 작물이라 겨울에는 자라지 않습니다.' : '') + (Crops.isPerennial(cropId) ? ' 여러해살이라 베어도 다시 납니다.' : '')
         + ` · 물 ${supply}/${c.water}${wm < 1 ? ` (${Math.round(wm * 100)}%)` : ''}`
-        + ` · 씨앗 ${Math.round(off.fresh * 100)}% ⇒ 예상 ${units}단위`
+        + ` 씨앗이 ${Math.round(off.fresh * 100)}% 성하니 ${units}단위쯤 거둘 것 같습니다.`
         + (rd != null ? ` · ${Math.max(0, rd - today)}일 뒤` : '') });
   savePlayer(player);
 }
@@ -7956,10 +7956,10 @@ function tryHarvest(player) {
     send(player.ws, { type: 'notice',
       text: (units > 0
         ? `${_crop.ko} ${units}단위 수확${_stump ? '' : ' + 씨앗 1'} (품질 ${Math.round(_q * 100)}%${_q < 1 ? ` · 온전했다면 ${_base}단위` : ''} · 보관 ${Crops.keepDaysOf(_cid)}일)`
-        : `${_crop.ko} 흉작 — 한 단위도 못 걷었다(물 ${_supply}/${_crop.water} · 씨앗 ${Math.round((_fresh || 0) * 100)}% · 품질 ${Math.round(_q * 100)}%).${_stump ? '' : ' 씨앗만 건졌다'}`)
+        : `${_crop.ko} 농사를 망쳐 한 단위도 거두지 못했습니다(물 ${_supply}/${_crop.water} · 씨앗 ${Math.round((_fresh || 0) * 100)}% · 품질 ${Math.round(_q * 100)}%).${_stump ? '' : ' 씨앗만 건졌습니다.'}`)
         + (_stump
-            ? ` · ★다년생이다 — 그루터기가 남아 다시 난다(${Crops.growDaysOf(_cid)}일 · 씨앗은 안 나온다)`
-            : ' · 밭은 그대로 남았다 — 다시 심을 수 있다') });
+            ? ` 여러해살이라 그루터기가 남아 ${Crops.growDaysOf(_cid)}일 뒤 다시 납니다. 씨앗은 나오지 않습니다.`
+            : ' 밭은 그대로 남아 다시 심을 수 있습니다.') });
     savePlayer(player);
     return;
   }
@@ -8023,7 +8023,7 @@ function doEat(player, item, amount, who) {
   //   `test-tidal` 의 돌연변이 검사가 **이 줄을 지우면 빨개진다**(실클라도 빈 병 +1 을 센다).
   //   ★★[T56 2026-09-02] 남에게 먹여도 **빈 병은 준 사람 손에 남는다**(`player`) — 물을 먹여 주고
   //     병까지 넘어가면 그건 주기(give)지 먹이기가 아니다. 물건은 주는 쪽, 몸은 받는 쪽이 이 함수의 규약이다.
-  if (eff.returns)  { player.inventory[eff.returns] = (player.inventory[eff.returns] || 0) + ate; send(player.ws, { type: 'notice', text: `🏺 빈 ${ITEM_LABEL_SERVER[eff.returns] || eff.returns} ${ate}개가 남았다` }); }
+  if (eff.returns)  { player.inventory[eff.returns] = (player.inventory[eff.returns] || 0) + ate; send(player.ws, { type: 'notice', text: `🏺 빈 ${ITEM_LABEL_SERVER[eff.returns] || eff.returns} ${ate}개가 남았습니다.` }); }
   // ★★[T43 2026-09-02] **HP 0 의 뜻을 하나로.** 종전엔 이 갈래가 `damagePlayer` 밖에서 hp 를 깎아
   //   hp 가 0 이 돼도 **쓰러지지 않는 몸**이 만들어졌다(죽음 설계 §0-ⓐ-4 가 잡은 구멍:
   //   그 몸은 더 안 맞고 영원히 안 아물어 로그아웃 말고는 빠져나올 길이 없었다).
@@ -8064,10 +8064,10 @@ function doEat(player, item, amount, who) {
   const _stg = Spoil.stageOf(fresh);
   const _gain = Math.round((eff.hunger || 0) * ate * _nut);
   // ★"섭취했다"는 **받는 사람**의 말이다 — 먹여 준 쪽에는 `rescue.js` 가 제 문장을 보낸다.
-  send(target.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[item] || item} 섭취 (+허기 ${_gain})`
+  send(target.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[item] || item}을(를) 먹었습니다(허기 +${_gain})`
     + (_stg !== 'fresh' && isLot ? ` · ${Spoil.STAGE_EMO[_stg]} ${Spoil.STAGE_KO[_stg]}` : '')
-    + (_ill > 0 ? ' · 🤢 탈이 났다(부상↑)' : '')
-    + (_cooked ? ' · ✨ 잘 먹었다(사기↑)' : '') });
+    + (_ill > 0 ? '. 🤢 탈이 나서 몸이 상했습니다' : '')
+    + (_cooked ? '. ✨ 잘 먹어서 기운이 납니다' : '') });
   savePlayer(player);
   if (target !== player) savePlayer(target);
 }
@@ -8099,12 +8099,12 @@ function doCook(player, recipeName) {
   // ★[시설 제작창 2026-08-29] 화덕 판정을 **정본에게 물어본다**(`facility.js`) — 반경 상수를 여기 또 적지 않는다.
   //   종전엔 이 함수가 전 건물을 훑으며 96px 를 손으로 비교했다(같은 수가 두 곳에 있었다).
   const _fc = facilityFor(player, 'cook');
-  if (!_fc) { send(player.ws, { type: 'notice', text: '🔥 모닥불·화덕 앞에서만 요리한다' }); return; }
-  if (!_facilityMine(player, _fc.b)) { send(player.ws, { type: 'notice', text: `${_fc.ko}은(는) 내 것이 아니다` }); return; }
+  if (!_fc) { send(player.ws, { type: 'notice', text: '🔥 모닥불이나 화덕 앞에서만 요리할 수 있습니다.' }); return; }
+  if (!_facilityMine(player, _fc.b)) { send(player.ws, { type: 'notice', text: `${_fc.ko}은(는) 내 것이 아닙니다.` }); return; }
   // 재료 확인
   for (const [item, amt] of Object.entries(recipe.cost)) {
     if ((player.inventory[item] || 0) < amt) {
-      send(player.ws, { type: 'notice', text: `${item} ${amt}개 필요` }); return;
+      send(player.ws, { type: 'notice', text: `${item}이(가) ${amt}개 있어야 합니다.` }); return;
     }
   }
   // ★[T694] 품목을 내는 줄(`recipe.item` — `game-meat.js` 사냥 고기 굽기·삶기 · 켬에서만 이런 줄이 있다)은 **대기열 자리를 먼저 본다**
@@ -8133,7 +8133,7 @@ function doCook(player, recipeName) {
     markBuildingDirty(_fc.b);
     sendInventory(player);
     sendCraftQueue(player);
-    send(player.ws, { type: 'notice', text: `🔥 ${_fc.ko}에 얹었다 — ${recipe.label} · ${Math.ceil(rkI.job.ms / 1000)}초${rkI.ahead ? ` (앞에 ${rkI.ahead}개)` : ''}` });
+    send(player.ws, { type: 'notice', text: `🔥 ${_fc.ko}에 ${recipe.label}을(를) 얹었습니다. ${Math.ceil(rkI.job.ms / 1000)}초 걸립니다.${rkI.ahead ? ` 앞에 ${rkI.ahead}개가 먼저 익고 있습니다.` : ''}` });
     savePlayer(player);
     return;
   }
@@ -8156,7 +8156,7 @@ function doCook(player, recipeName) {
   markBuildingDirty(_fc.b);
   sendInventory(player);
   sendCraftQueue(player);
-  send(player.ws, { type: 'notice', text: `🔥 ${_fc.ko}에 얹었다 — ${recipe.label} · ${Math.ceil(rk.job.ms / 1000)}초${rk.ahead ? ` (앞에 ${rk.ahead}개)` : ''}` });
+  send(player.ws, { type: 'notice', text: `🔥 ${_fc.ko}에 ${recipe.label}을(를) 얹었습니다. ${Math.ceil(rk.job.ms / 1000)}초 걸립니다.${rk.ahead ? ` 앞에 ${rk.ahead}개가 먼저 익고 있습니다.` : ''}` });
   void cookLvl;
   savePlayer(player);
 }
@@ -8181,8 +8181,8 @@ function doPreserve(player, recipeKey, amount) {
   if (!r) { send(player.ws, { type: 'notice', text: `알 수 없는 가공: ${recipeKey}` }); return; }
   // ① 시설 — 정본에게 묻는다(반경 상수를 여기 또 적지 않는다)
   const fc = facilityFor(player, r.kind);
-  if (!fc) { send(player.ws, { type: 'notice', text: `${r.facilityKo} 앞에서만 ${r.label}를 한다` }); return; }
-  if (!_facilityMine(player, fc.b)) { send(player.ws, { type: 'notice', text: `${fc.ko}은(는) 내 것이 아니다` }); return; }
+  if (!fc) { send(player.ws, { type: 'notice', text: `${r.facilityKo} 앞에서만 ${r.label}를 할 수 있습니다.` }); return; }
+  if (!_facilityMine(player, fc.b)) { send(player.ws, { type: 'notice', text: `${fc.ko}은(는) 내 것이 아닙니다.` }); return; }
   // ② 입력 로트 — 얼마나 있나
   const today = zoneGameDay();
   Lots.reconcile(player, r.from, player.inventory, today);
@@ -8194,7 +8194,7 @@ function doPreserve(player, recipeKey, amount) {
   // ③ 부재료 — 소금·땔감. **먼저 확인만** 한다(뺐다가 되돌리는 경로를 안 만든다).
   for (const [k, n] of Object.entries(r.needs || {})) {
     if ((player.inventory[k] || 0) < n * take) {
-      send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[k] || k} ${n * take}개 필요 — ${r.label}에는 ${k === 'salt' ? '소금이' : '땔감이'} 든다` });
+      send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[k] || k}이(가) ${n * take}개 있어야 합니다. ${r.label}에는 ${k === 'salt' ? '소금이' : '땔감이'} 듭니다.` });
       return;
     }
   }
@@ -8221,7 +8221,7 @@ function doPreserve(player, recipeKey, amount) {
   const outQty = Spoil.T767_CARRY ? Math.floor(got.taken + 1e-6) : Spoil.outputQty(got.taken, fr.fresh);
   if (outQty < 1) {
     _undo();
-    send(player.ws, { type: 'notice', text: `너무 적거나 시들어 ${r.label} 한 개도 안 나온다` }); return;
+    send(player.ws, { type: 'notice', text: `너무 적거나 시들어서 ${r.label}이(가) 한 개도 나오지 않습니다.` }); return;
   }
   for (const [k, n] of Object.entries(r.needs || {})) consumeItem(player, k, n * take);
   // ⑤ 대기열 — 시간은 **게임일로 적고** 하루 길이로 환산한다(새 시계 금지).
@@ -8246,7 +8246,7 @@ function doPreserve(player, recipeKey, amount) {
   sendCraftQueue(player);
   const _stg = Spoil.stageOf(fr.fresh);
   send(player.ws, { type: 'notice',
-    text: `${fc.ko}에 걸었다 — ${r.label} · ${r.from} ${got.taken}(${Spoil.STAGE_KO[_stg]}) → ${Spoil.PRESERVED_ITEMS[r.out].ko} ${outQty}개`
+    text: `${fc.ko}에 ${r.label}을(를) 걸었습니다. ${r.from} ${got.taken}(${Spoil.STAGE_KO[_stg]})으로 ${Spoil.PRESERVED_ITEMS[r.out].ko} ${outQty}개를 만듭니다.`
         + (Spoil.T767_CARRY ? '(신선도 그대로)' : '')   // ★[T767]
         + ` · ${r.days}일(${Math.ceil(ms / 60000)}분)${rk.ahead ? ` (앞에 ${rk.ahead}개)` : ''}` });
   savePlayer(player);
@@ -8268,8 +8268,8 @@ function doBoilSalt(player, recipeKey, amount) {
   if (!r) { send(player.ws, { type: 'notice', text: `알 수 없는 가공: ${recipeKey}` }); return; }
   // ① 시설 — 정본에게 묻는다(반경 상수를 여기 또 적지 않는다)
   const fc = facilityFor(player, r.kind);
-  if (!fc) { send(player.ws, { type: 'notice', text: `${r.facilityKo} 앞에서만 ${r.label}을 한다` }); return; }
-  if (!_facilityMine(player, fc.b)) { send(player.ws, { type: 'notice', text: `${fc.ko}은(는) 내 것이 아니다` }); return; }
+  if (!fc) { send(player.ws, { type: 'notice', text: `${r.facilityKo} 앞에서만 ${r.label}을 할 수 있습니다.` }); return; }
+  if (!_facilityMine(player, fc.b)) { send(player.ws, { type: 'notice', text: `${fc.ko}은(는) 내 것이 아닙니다.` }); return; }
   // ② 대기열 자리를 **먼저** 본다 — 재료를 뺀 뒤에 "찼다"로 되돌리는 길을 아예 없앤다(보존 선례).
   if (Facility.view(fc.b, Date.now()).length >= Facility.MAX_QUEUE) {
     send(player.ws, { type: 'notice', text: `${fc.ko} 대기열이 찼다(${Facility.MAX_QUEUE})` }); return;
@@ -8280,12 +8280,12 @@ function doBoilSalt(player, recipeKey, amount) {
   if (!gate.ok) {
     const ko = ITEM_LABEL_SERVER[gate.item] || gate.item;
     send(player.ws, { type: 'notice',
-      text: `${ko} ${gate.need}${gate.item === Salt.BRINE ? '되' : '개'} 필요(보유 ${gate.have})`
-          + (gate.item === Salt.BRINE ? ` — 갯벌에서 물병으로 뜬다` : ` — 자염은 땔감을 먹는다`) });
+      text: `${ko}이(가) ${gate.need}${gate.item === Salt.BRINE ? '되' : '개'} 있어야 합니다(지금 ${gate.have}).`
+          + (gate.item === Salt.BRINE ? ` 짠물은 갯벌에서 물병으로 뜹니다.` : ` 소금을 고으려면 땔감이 듭니다.`) });
     return;
   }
   const outQty = Salt.potYield(recipeKey) * pots;
-  if (outQty < 1) { send(player.ws, { type: 'notice', text: `한 솥으로는 소금이 한 줌도 안 나온다` }); return; }
+  if (outQty < 1) { send(player.ws, { type: 'notice', text: `한 솥으로는 소금이 한 줌도 나오지 않습니다.` }); return; }
   // ④ 재료를 깎는다.
   for (const [k, n] of Object.entries(gate.cost)) consumeItem(player, k, n * pots);
   // ⑤ 대기열 — 시간은 **게임일로 적고** 하루 길이로 환산한다(새 시계 금지 · 보존과 같은 규약).
@@ -8306,9 +8306,9 @@ function doBoilSalt(player, recipeKey, amount) {
   sendInventory(player);
   sendCraftQueue(player);
   send(player.ws, { type: 'notice',
-    text: `🧂 ${fc.ko}에 걸었다 — ${r.label} ${pots}솥 · ${Salt.BRINE_KO} ${gate.cost[Salt.BRINE] * pots}되`
+    text: `🧂 ${fc.ko}에 ${r.label} ${pots}솥을 걸었습니다. ${Salt.BRINE_KO} ${gate.cost[Salt.BRINE] * pots}되가 들었습니다.`
         + ` + ${ITEM_LABEL_SERVER.wood} ${gate.cost.wood * pots} → ${ITEM_LABEL_SERVER[r.out]} ${outQty}`
-        + ` (빈 ${ITEM_LABEL_SERVER[Salt.VESSEL]} ${backVessels}개도 같이 나온다)`
+        + ` 빈 ${ITEM_LABEL_SERVER[Salt.VESSEL]} ${backVessels}개도 함께 돌려받습니다.`
         + ` · ${Math.ceil(ms / 60000)}분${rk.ahead ? ` (앞에 ${rk.ahead}개)` : ''}` });
   savePlayer(player);
 }
@@ -8328,7 +8328,7 @@ function preserveMenuPayload() {
 function doEatDish(player, id) {
   ensurePlayerItems(player);
   const idx = (player.dishes || []).findIndex(d => d.id === id);
-  if (idx < 0) { send(player.ws, { type: 'notice', text: '해당 요리 없음' }); return; }
+  if (idx < 0) { send(player.ws, { type: 'notice', text: '그 요리가 없습니다.' }); return; }
   const dish = player.dishes[idx];
   const fresh = dishFreshness(dish);
   const nutrition = Math.round((dish.attrs.nutrition || 0) * fresh / 100); // 식으면 영양↓
@@ -8342,7 +8342,7 @@ function doEatDish(player, id) {
   player.dishes.splice(idx, 1);
   sendDishes(player);
   send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst) });
-  send(player.ws, { type: 'notice', text: `${dish.label} 섭취 (+허기 ${nutrition}${hpBuff ? ` · +HP ${hpBuff}` : ''}${fresh < 40 ? ' · 식음' : ''})` });
+  send(player.ws, { type: 'notice', text: `${dish.label}을(를) 먹었습니다(허기 +${nutrition}${hpBuff ? ` · +HP ${hpBuff}` : ''}${fresh < 40 ? ' · 식어 있었습니다' : ''}).` });
 }
 
 // Phase 5-K3: observer 메시지 핸들러 — 일반 observer 연결 + 핸드오프 후 primary→observer 전환 공용.
@@ -8528,11 +8528,11 @@ function doCraftItem(player, recipeName) {
   }
   // 14.52: requiresTool은 도구 — 내구도 양수 체크
   if (recipe.requiresTool && !hasTool(player, recipe.requiresTool)) {
-    send(player.ws, { type: 'notice', text: `${recipe.requiresTool} 없거나 깨짐` }); return;
+    send(player.ws, { type: 'notice', text: `${recipe.requiresTool}이(가) 없거나 깨졌습니다.` }); return;
   }
   for (const [it, amt] of Object.entries(recipe.from)) {
     if ((player.inventory[it] || 0) < amt) {
-      send(player.ws, { type: 'notice', text: `${it} ${amt}개 필요` }); return;
+      send(player.ws, { type: 'notice', text: `${it}이(가) ${amt}개 있어야 합니다.` }); return;
     }
   }
   for (const [it, amt] of Object.entries(recipe.from)) consumeItem(player, it, amt);   // ★[원장 승격]
@@ -8564,7 +8564,7 @@ function doCraftBuilding(player, recipeName) {
   }
   for (const [k, v] of Object.entries(cost)) {
     if ((player.inventory[k] || 0) < v) {
-      send(player.ws, { type: 'notice', text: `${k} ${v}개 필요` }); return;
+      send(player.ws, { type: 'notice', text: `${k}이(가) ${v}개 있어야 합니다.` }); return;
     }
   }
   for (const [k, v] of Object.entries(cost)) consumeItem(player, k, v);   // ★[원장 승격]
@@ -8572,7 +8572,7 @@ function doCraftBuilding(player, recipeName) {
   // 14.53: 망치 instance 내구도 -1
   if (recipe._useHammer) consumeToolByType(player, 'hammer', 1);
   sendInventory(player);
-  send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료 (인벤에 추가됨)` });
+  send(player.ws, { type: 'notice', text: `${recipe.label}을(를) 만들어 짐에 넣었습니다.` });
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
@@ -8583,12 +8583,12 @@ function doPlaceBuilding(player, itemType, atX, atY, floor, dir, side) {
     send(player.ws, { type: 'notice', text: `알 수 없는 건축물 아이템: ${itemType}` }); return;
   }
   if ((player.inventory[itemType] || 0) < 1) {
-    send(player.ws, { type: 'notice', text: `${recipe.label} 인벤에 없음` }); return;
+    send(player.ws, { type: 'notice', text: `짐에 ${recipe.label}이(가) 없습니다.` }); return;
   }
   // 14.53-h: player 자신의 floor에서만 배치 가능 (다른 층 차단)
   const playerFloor = player.floor || 0;
   if ((floor || 0) !== playerFloor) {
-    send(player.ws, { type: 'notice', text: `현재 ${playerFloor}F에 있음 — 다른 층 설치 불가` }); return;
+    send(player.ws, { type: 'notice', text: `지금 ${playerFloor}층에 있어 다른 층에는 놓을 수 없습니다.` }); return;
   }
   // 14.53-i: wall/door는 dir이 side 의미 (N/S/E/W). 일반 building은 dir이 회전.
   const isEdgeBuild = (recipe._buildType === 'wall' || recipe._buildType === 'door');
@@ -8606,7 +8606,7 @@ function doPlaceBuilding(player, itemType, atX, atY, floor, dir, side) {
 function doDismantleBuilding(player, buildingId) {
   const b = buildings.get(buildingId);
   if (!b) {
-    send(player.ws, { type: 'notice', text: '건축물 없음' }); return;
+    send(player.ws, { type: 'notice', text: '지은 것이 없습니다.' }); return;
   }
   // §4-4 Stage 4A: 마을 공용 경작지(비영속 materialize 타일, dbId=null)는 분해 불가 —
   //   청크 재활성 때 부활하므로 분해 허용 시 아이템 무한 증식 루프가 됨.
@@ -8616,13 +8616,13 @@ function doDismantleBuilding(player, buildingId) {
   // 14.53-h: 같은 floor 건물만 분해 가능
   const playerFloor = player.floor || 0;
   if ((b.floor || 0) !== playerFloor) {
-    send(player.ws, { type: 'notice', text: `현재 ${playerFloor}F에 있음 — 다른 층 건물 분해 불가` }); return;
+    send(player.ws, { type: 'notice', text: `지금 ${playerFloor}층에 있어 다른 층 건물은 허물 수 없습니다.` }); return;
   }
   // 14.54-d: 다른 사람 사유지 건물 분해 불가
   for (const c of claims.values()) {
     if (c.ownerPid !== player.playerId &&
         b.x >= c.x && b.x < c.x + c.w && b.y >= c.y && b.y < c.y + c.h) {
-      send(player.ws, { type: 'notice', text: '다른 사람 사유지 건물은 분해 불가' }); return;
+      send(player.ws, { type: 'notice', text: '남의 땅에 선 건물은 허물 수 없습니다.' }); return;
     }
   }
   const d = Math.hypot(b.x - player.x, b.y - player.y);
@@ -8686,7 +8686,7 @@ function doDismantleBuilding(player, buildingId) {
   if (typeof wallCellCacheBuiltAt !== 'undefined') wallCellCacheBuiltAt = 0;
   stairCellDirty = true;
   sendInventory(player);
-  send(player.ws, { type: 'notice', text: `${itemType ? BUILDING_RECIPES[itemType].label : b.type} 분해 → 인벤 환원` });
+  send(player.ws, { type: 'notice', text: `${itemType ? BUILDING_RECIPES[itemType].label : b.type}을(를) 허물어 짐에 넣었습니다.` });
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
@@ -8774,10 +8774,10 @@ function doCraftEquipment(player, itemType, material, rawMix) {
   const _kind = (rawMix && typeof rawMix === 'object' && Object.keys(rawMix).length) ? 'smelt' : 'tool';
   const _fac = facilityFor(player, _kind);
   if (!_fac) {
-    send(player.ws, { type: 'notice', text: _kind === 'smelt' ? '🔥 노 앞에서만 녹인다' : '🪵 작업대 앞에서만 만든다 — 통나무 4 · 석재 2 로 짓는다' });
+    send(player.ws, { type: 'notice', text: _kind === 'smelt' ? '🔥 노 앞에서만 녹일 수 있습니다.' : '🪵 작업대 앞에서만 만들 수 있습니다. 작업대는 통나무 넷과 석재 둘로 짓습니다.' });
     return;
   }
-  if (!_facilityMine(player, _fac.b)) { send(player.ws, { type: 'notice', text: `${_fac.ko}은(는) 내 것이 아니다` }); return; }
+  if (!_facilityMine(player, _fac.b)) { send(player.ws, { type: 'notice', text: `${_fac.ko}은(는) 내 것이 아닙니다.` }); return; }
   // ── 주조 경로: 금속 여러 개를 배합해 녹인다(품질 = 합금 모델 × 숙련) ──
   if (rawMix && typeof rawMix === 'object' && Object.keys(rawMix).length) {
     if (!recipe.cast) { send(player.ws, { type: 'notice', text: `${recipe.label}은(는) 주조하지 않습니다` }); return; }
@@ -8786,7 +8786,7 @@ function doCraftEquipment(player, itemType, material, rawMix) {
     const lvl0 = playerCraftLevel(player, recipe.skill);
     let cinst;
     try { cinst = PlayerItems.craftItem(itemType, lvl0, nm.use); }
-    catch (e) { send(player.ws, { type: 'notice', text: `주조 실패: ${e.message}` }); return; }
+    catch (e) { send(player.ws, { type: 'notice', text: `부어 만들지 못했습니다(${e.message}).` }); return; }
     cinst.id = genEquipId();
     cinst.mix = {};                                   // 배합 기록(표시·수선용)
     for (const k in nm.mix) cinst.mix[k] = +(nm.mix[k] * 100).toFixed(1);
@@ -8813,7 +8813,7 @@ function doCraftEquipment(player, itemType, material, rawMix) {
   const lvl = playerCraftLevel(player, recipe.skill);
   let inst;
   try { inst = PlayerItems.craftItem(itemType, lvl, { [material]: recipe.qty }); }
-  catch (e) { send(player.ws, { type: 'notice', text: `제작 실패: ${e.message}` }); return; }
+  catch (e) { send(player.ws, { type: 'notice', text: `만들지 못했습니다(${e.message}).` }); return; }
   inst.id = genEquipId();
   inst.mat = material;   // 대표 재료(수선·표시용)
   const _paid = {};
@@ -8838,7 +8838,7 @@ function _enqueueCraft(player, fac, kind, inst, label, skill) {
   markBuildingDirty(fac.b);
   const secs = Math.ceil(r.job.ms / 1000);
   send(player.ws, { type: 'notice',
-    text: `🪵 ${fac.ko}에 걸었다 — ${label} · ${secs}초${r.ahead ? ` (앞에 ${r.ahead}개)` : ''}` });
+    text: `🪵 ${fac.ko}에 ${label}을(를) 걸었습니다. ${secs}초 걸립니다.${r.ahead ? ` 앞에 ${r.ahead}개가 먼저 만들어지고 있습니다.` : ''}` });
   sendCraftQueue(player);
   return r;
 }
@@ -8861,13 +8861,13 @@ function _t767Land(player, item, carry, d, kDone) {
 function doCraftCollect(player, buildingId) {
   ensurePlayerItems(player);
   const b = buildingId ? buildings.get(buildingId) : (facilityFor(player, 'tool') || facilityFor(player, 'smelt') || {}).b;
-  if (!b || !Facility.FACILITIES[b.type]) { send(player.ws, { type: 'notice', text: '시설이 없다' }); return; }
+  if (!b || !Facility.FACILITIES[b.type]) { send(player.ws, { type: 'notice', text: '시설이 없습니다.' }); return; }
   const f = Facility.FACILITIES[b.type];
-  if (Math.hypot(b.x - player.x, b.y - player.y) > f.range + 8) { send(player.ws, { type: 'notice', text: `${f.ko} 앞으로 가야 받는다` }); return; }
+  if (Math.hypot(b.x - player.x, b.y - player.y) > f.range + 8) { send(player.ws, { type: 'notice', text: `${f.ko} 앞으로 가야 받을 수 있습니다.` }); return; }
   const got = Facility.collect(b, player.playerId, Date.now());
   if (!got.length) {
     const mine = Facility.view(b, Date.now()).filter((j) => j.owner === player.playerId);
-    send(player.ws, { type: 'notice', text: mine.length ? `아직 만드는 중 — ${Math.ceil(mine[0].leftMs / 1000)}초 남음` : '받을 게 없다' });
+    send(player.ws, { type: 'notice', text: mine.length ? `아직 만드는 중입니다. ${Math.ceil(mine[0].leftMs / 1000)}초 남았습니다.` : '받을 것이 없습니다.' });
     sendCraftQueue(player); return;
   }
   markBuildingDirty(b);
@@ -8910,15 +8910,15 @@ function doCraftCollect(player, buildingId) {
   }
   sendInventory(player, 'craft');   // ★[T417] 받았다(끝난 것이 하나라도 있을 때만 여기 온다) — `where` 낱말 · 소리 층 `inventoryWhere.craft`
   sendEquipment(player); sendDishes(player); sendCraftQueue(player);
-  send(player.ws, { type: 'notice', text: `✅ ${f.ko}에서 받았다 — ${got.map((j) => j.label).join(' · ')}` });
+  send(player.ws, { type: 'notice', text: `✅ ${f.ko}에서 ${got.map((j) => j.label).join(' · ')}을(를) 받았습니다.` });
   if (canPersist(player)) savePlayer(player);
 }
 // 장착: 슬롯당 1개(교체). 파손 불가.
 function doEquipItem(player, id) {
   ensurePlayerItems(player);
   const inst = findEquip(player, id);
-  if (!inst) { send(player.ws, { type: 'notice', text: '해당 장비 없음' }); return; }
-  if (inst.broken || inst.dura === 0) { send(player.ws, { type: 'notice', text: '파손된 장비 — 수선 필요' }); return; }
+  if (!inst) { send(player.ws, { type: 'notice', text: '그 장비가 없습니다.' }); return; }
+  if (inst.broken || inst.dura === 0) { send(player.ws, { type: 'notice', text: '부서진 장비입니다. 먼저 고쳐야 합니다.' }); return; }
   const def = EQUIPMENT_RECIPES[inst.type];
   const slot = def ? def.slot : inst.type;
   player.equipSlots[slot] = inst.id;
@@ -8938,9 +8938,9 @@ function doUnequipItem(player, slot) {
 function doRepairEquipment(player, id, material) {
   ensurePlayerItems(player);
   const inst = findEquip(player, id);
-  if (!inst || inst.dura == null) { send(player.ws, { type: 'notice', text: '수선 불가' }); return; }
+  if (!inst || inst.dura == null) { send(player.ws, { type: 'notice', text: '고칠 수 없는 물건입니다.' }); return; }
   const def = EQUIPMENT_RECIPES[inst.type];
-  if (!def) { send(player.ws, { type: 'notice', text: '수선 불가' }); return; }
+  if (!def) { send(player.ws, { type: 'notice', text: '고칠 수 없는 물건입니다.' }); return; }
   // ★주조품은 **자기 배합 그대로** 때운다 — 청동검을 순동으로 때우면 때운 자리가 무르다.
   //   (재료를 지정하지 않았고 배합 기록이 있을 때. 지정하면 옛 단일재료 경로.)
   if (!material && inst.mix && Object.keys(inst.mix).length) {
@@ -8960,7 +8960,7 @@ function doRepairEquipment(player, id, material) {
   if (!def.accepts.includes(mat)) { send(player.ws, { type: 'notice', text: '수선에 못 쓰는 재료' }); return; }
   const cost = Math.max(1, Math.floor(def.qty / 2));
   const have = player.inventory[mat] || 0;
-  if (have < cost) { send(player.ws, { type: 'notice', text: `수선 재료 부족: ${mat} ${cost} 필요` }); return; }
+  if (have < cost) { send(player.ws, { type: 'notice', text: `고칠 재료가 모자랍니다. ${mat}이(가) ${cost} 있어야 합니다.` }); return; }
   const lvl = playerCraftLevel(player, def.skill);
   player.inventory[mat] = have - cost;
   PlayerItems.repairItem(inst, lvl, { [mat]: cost });
@@ -9304,7 +9304,7 @@ function wearEquipment(player, slot, amount) {
   PlayerItems.wearItem(inst, amount || 1);
   if (inst.broken || inst.dura === 0) {
     delete player.equipSlots[slot];   // 파손 시 자동 해제(수선 전까지 재장착 불가)
-    send(player.ws, { type: 'notice', text: `${(EQUIPMENT_RECIPES[inst.type] && EQUIPMENT_RECIPES[inst.type].label) || inst.type} 파손 — 수선 필요` });
+    send(player.ws, { type: 'notice', text: `${(EQUIPMENT_RECIPES[inst.type] && EQUIPMENT_RECIPES[inst.type].label) || inst.type}이(가) 부서졌습니다. 고쳐야 다시 쓸 수 있습니다.` });
     if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
   }
   sendEquipment(player);
@@ -9325,10 +9325,10 @@ function doShopBuy(player, itemType, material) {
   const recipe = EQUIPMENT_RECIPES[itemType];
   if (!recipe) { send(player.ws, { type: 'notice', text: `알 수 없는 장비: ${itemType}` }); return; }
   const vq = nearestVillageQ(player);
-  if (!vq) { send(player.ws, { type: 'notice', text: '거래하려면 마을 근처(마을광장)로 가세요' }); return; }
+  if (!vq) { send(player.ws, { type: 'notice', text: '거래하려면 마을 광장 가까이 가십시오.' }); return; }
   if (!recipe.accepts.includes(material)) { send(player.ws, { type: 'notice', text: `${recipe.label}에 못 쓰는 재료` }); return; }
   const have = player.inventory[material] || 0;
-  if (have < recipe.qty) { send(player.ws, { type: 'notice', text: `재료 부족: ${material} ${recipe.qty} 필요` }); return; }
+  if (have < recipe.qty) { send(player.ws, { type: 'notice', text: `재료가 모자랍니다. ${material}이(가) ${recipe.qty} 있어야 합니다.` }); return; }
   const qkey = EQUIP_TYPE_QKEY[itemType];
   const villageQ = (vq[qkey] != null ? vq[qkey] : 0.6);   // 마을 품질 EMA(없으면 기본)
   let inst;
@@ -9338,7 +9338,7 @@ function doShopBuy(player, itemType, material) {
   player._craftN = (player._craftN || 0) + 1;
   const _craftRng = _SEED.seedRand(_SEED.seedOf(_shOf(player), Math.floor(player.x / BUILDING_SIZE), Math.floor(player.y / BUILDING_SIZE), zoneGameDay(), player._craftN));
   try { inst = PlayerItems.materializeFromVillage(itemType, villageQ, _craftRng, { [material]: recipe.qty }); }
-  catch (e) { send(player.ws, { type: 'notice', text: `구매 실패: ${e.message}` }); return; }
+  catch (e) { send(player.ws, { type: 'notice', text: `사지 못했습니다(${e.message}).` }); return; }
   inst.id = genEquipId(); inst.mat = material;
   player.inventory[material] = have - recipe.qty;
   player.equipment.push(inst);
@@ -9351,7 +9351,7 @@ function doShopBuy(player, itemType, material) {
 function doShopSell(player, id) {
   ensurePlayerItems(player);
   const idx = player.equipment.findIndex(e => e.id === id);
-  if (idx < 0) { send(player.ws, { type: 'notice', text: '해당 장비 없음' }); return; }
+  if (idx < 0) { send(player.ws, { type: 'notice', text: '그 장비가 없습니다.' }); return; }
   const inst = player.equipment[idx];
   const recipe = EQUIPMENT_RECIPES[inst.type];
   const mat = inst.mat || (recipe && recipe.accepts[0]);
@@ -9374,7 +9374,7 @@ function doShopSell(player, id) {
   } else if (mat) player.inventory[mat] = (player.inventory[mat] || 0) + refund;
   sendInventory(player);
   sendEquipment(player);
-  send(player.ws, { type: 'notice', text: `용해: ${(recipe && recipe.label) || inst.type} → ${backTxt}` });
+  send(player.ws, { type: 'notice', text: `${(recipe && recipe.label) || inst.type}을(를) 녹여 ${backTxt}을(를) 되찾았습니다.` });
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
@@ -9390,7 +9390,7 @@ const RELIC_MATS = new Set(['iron', 'meteoric_iron']);
 function doSellIronRelic(player, id) {
   ensurePlayerItems(player);
   const idx = player.equipment.findIndex(e => e.id === id);
-  if (idx < 0) { send(player.ws, { type: 'notice', text: '해당 장비 없음' }); return; }
+  if (idx < 0) { send(player.ws, { type: 'notice', text: '그 장비가 없습니다.' }); return; }
   const inst = player.equipment[idx];
   // ★재질 판정 — 주조품(mix)이면 철 비중이 과반이어야 '철기'다. 단일 재료면 그 재료.
   let isIron = RELIC_MATS.has(inst.mat);
@@ -9404,8 +9404,8 @@ function doSellIronRelic(player, id) {
   let r;
   const _d732 = T732_MOMENT ? _t732DoorBegin(player, []) : null;   // ★[T732] 대금은 곳간에서 나온다(끄면 null)
   try { r = SimVillages.lifeSellIronRelic(player.x, player.y, SHOP_RANGE_PX, { quality: q }); }
-  catch (e) { _t732DoorEnd(_d732, player, false); send(player.ws, { type: 'notice', text: `판매 실패: ${e.message}` }); return; }
-  if (!r || r.err) { _t732DoorEnd(_d732, player, false); send(player.ws, { type: 'notice', text: r ? r.err : '판매 불가' }); return; }
+  catch (e) { _t732DoorEnd(_d732, player, false); send(player.ws, { type: 'notice', text: `팔지 못했습니다(${e.message}).` }); return; }
+  if (!r || r.err) { _t732DoorEnd(_d732, player, false); send(player.ws, { type: 'notice', text: r ? r.err : '팔 수 없습니다.' }); return; }
   player.equipment.splice(idx, 1);
   for (const k in player.equipSlots) if (player.equipSlots[k] === id) delete player.equipSlots[k];
   const parts = [];
@@ -9415,7 +9415,7 @@ function doSellIronRelic(player, id) {
   sendInventory(player);
   sendEquipment(player);
   send(player.ws, { type: 'notice',
-    text: `🗡️ ${r.village}에 철기를 넘겼다 — ${parts.join(' · ') || '(대금 없음)'}  · 이 마을 철기 ${r.relics}점` });
+    text: `🗡️ ${r.village}에 철기를 넘겼습니다. 받은 것은 ${parts.join(' · ') || '없음'}이고, 이 마을 철기는 ${r.relics}점이 되었습니다.` });
   console.log(`[${ZONE_ID}] 🗡️ ${player.name} → ${r.village} 철제 위세품 판매 (값 ${r.price} · 대금가치 ${r.paidValue})`);
   if (SimVillages.t983Save) SimVillages.t983Save(r.village);   // ★[T983] 대금이 나간 곳간 행도 이 순간에(이름으로 찾는다 · 끔 = 무동작)
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
@@ -9433,7 +9433,7 @@ function doCraft(player, recipeName) {
   const lack = Object.entries(cost).filter(([k, v]) => (player.inventory[k] || 0) < v);
   if (lack.length) {
     const need = Object.entries(cost).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${v}`).join(', ');
-    send(player.ws, { type: 'notice', text: `${recipe.label} 제작에는 ${need} 필요` });
+    send(player.ws, { type: 'notice', text: `${recipe.label}을(를) 만들려면 ${need}이(가) 있어야 합니다.` });
     return;
   }
   for (const [k, v] of Object.entries(cost)) player.inventory[k] = (player.inventory[k] || 0) - v;
@@ -9455,7 +9455,7 @@ function doEquip(player, toolItemId) {
   } else {
     const inst = player.toolItems && player.toolItems.find(t => t.id === toolItemId);
     if (!inst) {
-      send(player.ws, { type: 'notice', text: '해당 도구 없음' });
+      send(player.ws, { type: 'notice', text: '그 도구가 없습니다.' });
       return;
     }
     if (inst.d <= 0) {
@@ -9476,7 +9476,7 @@ function doSetHotkey(player, toolItemId) {
   } else {
     const inst = player.toolItems && player.toolItems.find(t => t.id === toolItemId);
     if (!inst) {
-      send(player.ws, { type: 'notice', text: '해당 도구 없음' });
+      send(player.ws, { type: 'notice', text: '그 도구가 없습니다.' });
       return;
     }
     player.hotkey1 = inst.id;
@@ -9720,13 +9720,13 @@ function tryFishCast(player) {
     return tryFishStrike(player);
   }
   // ★[T609 ②] 끌어올리는 중(싸움 단계 — 손잡이 `T609_BIG_WINDOW` a·b 켬만 생긴다) — 새로 던지지 않는다.
-  if (cur && cur.state === 'fight') { send(player.ws, { type: 'notice', text: '🎣 끌어올리는 중이다 — 조금만' }); return; }
+  if (cur && cur.state === 'fight') { send(player.ws, { type: 'notice', text: '🎣 끌어올리는 중입니다. 조금만 기다리십시오.' }); return; }
   const tgt = _castTargetFor(player);
-  if (!tgt) { send(player.ws, { type: 'notice', text: '🎣 여기선 물에 닿지 않는다 — 물가로 더 가까이' }); return; }
+  if (!tgt) { send(player.ws, { type: 'notice', text: '🎣 여기서는 물에 닿지 않습니다. 물가로 더 가까이 가십시오.' }); return; }
   // ★[T593 ③] 그 물·그 철에 사는 종이 없으면 던지지 않는다(NPC 어부의 `'none'` 과 같은 자리 — 빈 바늘을 만들지 않는다).
   const _day = Fishing.T593_SEA ? gameDayNow() : null;
   if (Fishing.T593_SEA && !_t593Pool(tgt.sp, _day, tgt.x, tgt.y).length) {
-    send(player.ws, { type: 'notice', text: `🎣 이 철엔 ${tgt.sp.kind === 'sea' ? '이 바다' : '이 물'}에서 무는 게 없다` }); return;
+    send(player.ws, { type: 'notice', text: `🎣 이 철에는 ${tgt.sp.kind === 'sea' ? '이 바다' : '이 물'}에서 무는 고기가 없습니다.` }); return;
   }
   const cx = Math.floor(tgt.x / 32), cy = Math.floor(tgt.y / 32);
   const stock01 = Fishing.stockRatioAt(cx, cy, now);
@@ -9748,20 +9748,20 @@ function tryFishCast(player) {
   // ★[T593] 힌트 — 켬이면 고른 그 자리(`tgt.sp` · 바다면 '바다'/'강어귀') · 끔이면 종전 그 식 그대로(네 인자 `spotAt` 재질의).
   const _hk = Fishing.T593_SEA ? tgt.sp : Fishing.spotAt(_terrain, ZONE_ID, tgt.x, tgt.y);
   send(player.ws, { type: 'fish_state', state: 'wait', x: tgt.x, y: tgt.y,
-    hint: `🎣 던졌다 — ${_hk.kind === 'sea' ? (_hk.spot === 'mouth' ? '강어귀' : '바다') : (_hk.kind === 'lake' ? '잔잔한 물' : '흐르는 물')}` });
-  send(player.ws, { type: 'notice', text: '🎣 던졌다. 찌를 봐라 — 흔들리면 Shift+F' });
+    hint: `🎣 던진 곳 — ${_hk.kind === 'sea' ? (_hk.spot === 'mouth' ? '강어귀' : '바다') : (_hk.kind === 'lake' ? '잔잔한 물' : '흐르는 물')}` });
+  send(player.ws, { type: 'notice', text: '🎣 낚싯줄을 던졌습니다. 찌가 흔들리면 Shift+F를 누르십시오.' });
 }
 // ② 챔질 — **서버 시각으로만** 판정한다.
 function tryFishStrike(player) {
   const f = player && player._fish;
   const now = Date.now();
-  if (!f || f.state !== 'wait') { send(player.ws, { type: 'notice', text: '🎣 아직 안 던졌다 (Shift+F)' }); return; }
+  if (!f || f.state !== 'wait') { send(player.ws, { type: 'notice', text: '🎣 아직 낚싯줄을 던지지 않았습니다. Shift+F로 던지십시오.' }); return; }
   const st = _fishStats(player);
   if (now < f.biteAt) {   // 성급한 챔질 — 입질 전이다
     player._fish = null;
     st.missed++;
     send(player.ws, { type: 'fish_state', state: 'idle' });
-    send(player.ws, { type: 'notice', text: '🎣 성급했다 — 아직 안 물었는데 챘다' });
+    send(player.ws, { type: 'notice', text: '🎣 너무 일찍 챘습니다. 아직 물지 않았습니다.' });
     return;
   }
   const late = now - f.biteAt;
@@ -9772,8 +9772,8 @@ function tryFishStrike(player) {
     const big = f.kg >= Fishing.CFG.BIG_KG;
     send(player.ws, { type: 'fish_state', state: 'idle' });
     send(player.ws, { type: 'notice', text: big
-      ? `🎣 놓쳤다 — **묵직한 놈**이었다(${f.kg.toFixed(1)}kg). 물결만 남았다`
-      : '🎣 놓쳤다 — 미끼만 따 먹혔다' });
+      ? `🎣 놓쳤습니다. **묵직한 놈**이었습니다(${f.kg.toFixed(1)}kg). 물결만 남았습니다.`
+      : '🎣 놓쳤습니다. 미끼만 따 먹혔습니다.' });
     savePlayer(player);
     return;
   }
@@ -9784,7 +9784,7 @@ function tryFishStrike(player) {
   if (f.fightMs > 0) {
     player._fish = Object.assign({}, f, { state: 'fight', landAt: now + f.fightMs });
     send(player.ws, { type: 'fish_state', state: 'fight', x: f.x, y: f.y, landAt: player._fish.landAt, srvNow: now });
-    send(player.ws, { type: 'notice', text: `🎣 걸었다! 끌어올린다 — ${(f.fightMs / 1000).toFixed(1)}초` });
+    send(player.ws, { type: 'notice', text: `🎣 걸렸습니다. ${(f.fightMs / 1000).toFixed(1)}초 동안 끌어올립니다.` });
     return;
   }
   return _fishLand(player, f, now);
@@ -9805,7 +9805,7 @@ function _fishLand(player, f, now) {
   const _whole = Fishing.T593_SEA && f.species && gotKg > 0 && took >= wantStock - 1e-12;
   if (gotKg <= 0.01 && !_whole) {
     st.missed++;
-    send(player.ws, { type: 'notice', text: '🎣 빈 바늘 — 이 자리는 씨가 말랐다. 자리를 옮겨라' });
+    send(player.ws, { type: 'notice', text: '🎣 빈 바늘입니다. 이 자리는 고기가 말랐으니 자리를 옮기십시오.' });
     savePlayer(player);
     return;
   }
@@ -9839,9 +9839,9 @@ function _fishLand(player, f, now) {
   sendInventory(player);
   const big = gotKg >= Fishing.CFG.BIG_KG;
   send(player.ws, { type: 'fish_catch', kg: +gotKg.toFixed(2), n, item: sp, big, record: isRecord });
-  send(player.ws, { type: 'notice', text: (big ? '🎣🐟 **월척!** ' : '🎣 ')
+  send(player.ws, { type: 'notice', text: (big ? '🎣🐟 **월척입니다.** ' : '🎣 ')
     + `${ITEM_LABEL_SERVER[sp] || sp} ${gotKg.toFixed(1)}kg ×${n}`
-    + (isRecord ? ' — 여태 잡은 것 중 가장 크다' : '') });
+    + (isRecord ? ' 여태 잡은 것 가운데 가장 큽니다.' : '') });
   savePlayer(player);
 }
 
@@ -9919,7 +9919,7 @@ function mineOreCell(player) {
   player._mineT = now;
   const key = cx + '_' + cy;
   const rec = _oreRec(key, now);
-  if (rec.s < 1) { send(player.ws, { type: 'notice', text: '⛏ 이 자리는 다 팠다 — 옆으로 옮기자' }); _oreSave(key, rec); return true; }
+  if (rec.s < 1) { send(player.ws, { type: 'notice', text: '⛏ 이 자리는 다 팠습니다. 옆으로 옮기십시오.' }); _oreSave(key, rec); return true; }
   // ★★[재민 최종] 채굴 **속도는 고정**이다 — 1초/타 · 덩이당 60타 · 재고 소모 1. 전부 레벨 무관.
   //   레벨이 바꾸는 건 딱 셋:  ①곡괭이 내구 절약  ②떨어져 나오는 **덩이 크기**  ③감정
   const lvlF = Specialty.mineLevelF((player.craftSkill && player.craftSkill.mining) || 0);
@@ -9929,7 +9929,7 @@ function mineOreCell(player) {
   //     평균보다 무거울 수 있다. 상한을 조금 넘길 수 있게 두는 게 옳다 — 캐고 나서야 크기를 아니까.)
   const w = Specialty.inventoryWeight(player.inventory || {});
   if (w + Specialty.mineChunkKg(lvlF) > Specialty.CARRY_MAX_KG) {
-    send(player.ws, { type: 'notice', text: `⛏ 짐이 가득 — ${w.toFixed(0)}/${Specialty.CARRY_MAX_KG}kg. 마을에 부리고 오자` });
+    send(player.ws, { type: 'notice', text: `⛏ 짐이 가득 찼습니다(${w.toFixed(0)}/${Specialty.CARRY_MAX_KG}kg). 마을에 부려 놓고 오십시오.` });
     return true;
   }
   // ★★[재민 지적으로 뒤집은 설계] 타수 카운터(rec.w)는 **셀에 쌓인다** — 2인 1조가 성립하는 규약.
@@ -9985,7 +9985,7 @@ function mineOreCell(player) {
     const id = _mineIdentify(player, mineral, isOre, lvlF);   // ★감정은 xp 적립 *전*에 — 방금 캔 덩이가 자기 xp 덕을 보면 안 된다
     player.craftSkill = player.craftSkill || {};
     player.craftSkill.mining = (player.craftSkill.mining || 0) + 1;   // 덩이 1개 = xp 1 = 1 게임시간
-    msg = `⛏ 돌덩이 ${kg.toFixed(1)}kg${id ? ' — ' + id : ' (정체 모름 · 마을에서 선광)'}`;
+    msg = `⛏ 돌덩이 ${kg.toFixed(1)}kg${id ? ' — ' + id : ' · 무엇인지 모름(마을에서 가려야 함)'}`;
   } else {
     const dp = Specialty.mineDepthP(f);
     msg = `⛏ 캐는 중 ${Math.round(rec.w)}/${Math.round(need)}`
@@ -10001,7 +10001,7 @@ function mineOreCell(player) {
 //   고증: 캔 광석은 선광(dressing)을 거쳐야 정광이 된다. 맥석은 갱구 옆 폐석더미로 간다.
 function trySortOre(player) {
   const n = (player.inventory && player.inventory.ore_chunk) || 0;
-  if (n <= 0) { send(player.ws, { type: 'notice', text: '선광할 원석이 없다' }); return; }
+  if (n <= 0) { send(player.ws, { type: 'notice', text: '가려낼 원석이 없습니다.' }); return; }
   // (n 은 kg)
   // ★장부는 **kg**이다(덩이 크기가 사람마다 다르므로). 선광하면 kg → 광석 개수로 갈린다.
   //   광석 1개 = CHUNK_KG(3.5kg) 기준. 소수분은 다음 선광으로 이월(버리지 않는다).
@@ -10267,13 +10267,13 @@ function tryForage(player) {
   player._forageAt = now;
   const src = Forage.sourceAt(player.x, player.y, _forageCtx(player));
   if (!src) {
-    send(player.ws, { type: 'notice', text: '🤏 여긴 주울 게 없다 — 덤불·물가·숲을 찾아라' });
+    send(player.ws, { type: 'notice', text: '🤏 여기는 주울 것이 없습니다. 덤불이나 물가, 숲을 찾아보십시오.' });
     return;
   }
   const got = Forage.take(src.key, now, 1);
   if (!got) {
     // ★반독점의 얼굴 — 한 자리를 훑으면 그 자리만 마른다. 옆 개체는 멀쩡하다.
-    send(player.ws, { type: 'notice', text: `🤏 ${src.where} — 여긴 다 훑었다. 잠시 뒤 다시 자란다(옆 것을 찾아라)` });
+    send(player.ws, { type: 'notice', text: `🤏 ${src.where}은(는) 다 훑었습니다. 잠시 뒤 다시 자라니 옆을 찾아보십시오.` });
     return;
   }
   // ★★[자염 배치 2026-09-01] **짠물은 물병을 쓴다** — 병 하나가 짠물 한 되로 바뀐다.
@@ -10284,7 +10284,7 @@ function tryForage(player) {
   //     이 줄만 뒤처지지 않게). 조건을 여기 다시 적지 않고 정본에게 묻는다: `Tidal.usesVessel`.
   if (require('./tidal').usesVessel(src.kind)) {   // ★require 는 캐시된다 — 새 상단 선언을 만들지 않는다(zone 예산)
     if ((player.inventory[Salt.VESSEL] || 0) < got) {
-      send(player.ws, { type: 'notice', text: `🏺 ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있어야 짠물을 뜬다` });
+      send(player.ws, { type: 'notice', text: `🏺 ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있어야 짠물을 뜰 수 있습니다.` });
       return;
     }
     consumeItem(player, Salt.VESSEL, got);
@@ -10296,7 +10296,7 @@ function tryForage(player) {
   if (src.kind === Salt.BRINE) {
     send(player.ws, { type: 'notice',
       text: `🌊 ${src.where}에서 ${Salt.BRINE_KO} ${got}되 — 남은 ${ITEM_LABEL_SERVER[Salt.VESSEL]} ${Math.floor(player.inventory[Salt.VESSEL] || 0)}개`
-          + ` · 소금 한 줌엔 ${Salt.brinePerPot()}되가 든다` });
+          + ` · 소금 한 줌에 ${Salt.brinePerPot()}되` });
   } else send(player.ws, { type: 'notice',
     text: `🤏 ${src.where}에서 ${ITEM_LABEL_SERVER[src.kind] || src.kind} ${got} (남은 양 ${Forage.left(src.key, now).toFixed(1)})` });
   if (canPersist(player)) savePlayer(player);
@@ -10357,42 +10357,42 @@ function foreignClaimAt(player, x, y) {
 }
 
 function tryPlantTree(player, x, y, item) {
-  if (_t124Plant() === 0) { send(player.ws, { type: 'notice', text: '지금은 심을 수 없다', kind: 'plant' }); return; }
+  if (_t124Plant() === 0) { send(player.ws, { type: 'notice', text: '지금은 심을 수 없습니다.', kind: 'plant' }); return; }
   const seed = String(item || '');
   const species = PLANT_SEEDS[seed];
   if (!species) { send(player.ws, { type: 'notice', text: '심을 수 있는 씨앗이 아니다', kind: 'plant' }); return; }
   if ((player.inventory[seed] || 0) < 1) {
-    send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[seed] || seed}이(가) 없다`, kind: 'plant' }); return;
+    send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[seed] || seed}이(가) 없습니다.`, kind: 'plant' }); return;
   }
   // ★셀 가운데로 스냅한다 — 나무는 칸에 선다(자리를 소수점으로 흩뿌리면 겹침 판정이 흔들린다).
   const px = Math.floor(x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
   const py = Math.floor(y / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
   const d = Math.hypot(px - player.x, py - player.y);
   if (d > GATHER_RANGE) {
-    send(player.ws, { type: 'notice', text: `${Math.round(d)}px 떨어짐 — ${GATHER_RANGE}px 안에만 심는다`, kind: 'plant' }); return;
+    send(player.ws, { type: 'notice', text: `너무 멉니다. 바로 곁에만 심을 수 있습니다.`, kind: 'plant' }); return;
   }
   // ⓐ 지형 — 물·바위엔 못 심는다(정본 술어 그대로 · 새 판정 0)
   if (isTerrainBlockedLocal(px, py)) {
-    send(player.ws, { type: 'notice', text: '여기엔 못 심는다 — 물이나 바위다', kind: 'plant' }); return;
+    send(player.ws, { type: 'notice', text: '여기에는 심을 수 없습니다. 물이나 바위입니다.', kind: 'plant' }); return;
   }
   // ⓑ 남의 땅
   const foreign = foreignClaimAt(player, px, py);
   if (foreign) {
     send(player.ws, { type: 'notice',
-      text: `${foreign.ownerName || '남'}의 ${foreign.kind === 'guild' ? '마을 땅이다' : '사유지다'} — 남의 땅엔 못 심는다`, kind: 'plant' });
+      text: `${foreign.ownerName || '남'}의 ${foreign.kind === 'guild' ? '마을 땅입니다' : '사유지입니다'}. 남의 땅에는 심을 수 없습니다.`, kind: 'plant' });
     return;
   }
   // ⓒ 그 칸이 비었나 — 자원·건물이 있으면 안 된다(같은 칸에 둘이 서면 그게 결함이다)
   for (const r of resources.values()) {
     if (Math.floor(r.x / BUILDING_SIZE) === Math.floor(px / BUILDING_SIZE)
         && Math.floor(r.y / BUILDING_SIZE) === Math.floor(py / BUILDING_SIZE)) {
-      send(player.ws, { type: 'notice', text: '이미 뭔가 서 있다', kind: 'plant' }); return;
+      send(player.ws, { type: 'notice', text: '이미 무언가 서 있습니다.', kind: 'plant' }); return;
     }
   }
   for (const b of buildings.values()) {
     if (Math.floor(b.x / BUILDING_SIZE) === Math.floor(px / BUILDING_SIZE)
         && Math.floor(b.y / BUILDING_SIZE) === Math.floor(py / BUILDING_SIZE)) {
-      send(player.ws, { type: 'notice', text: '이미 뭔가 서 있다', kind: 'plant' }); return;
+      send(player.ws, { type: 'notice', text: '이미 무언가 서 있습니다.', kind: 'plant' }); return;
     }
   }
   // ── 심는다: DB 행 하나 + 메모리 하나. 단계는 **T122 정산 함수**가 정한다(사본 0).
@@ -10403,7 +10403,7 @@ function tryPlantTree(player, x, y, item) {
     dbId = db.insertResource({ type: 'sapling', x: px, y: py,
       hp: RESOURCE_HP_TABLE.sapling, max_hp: RESOURCE_HP_TABLE.sapling, planted_day: day, species });
   } catch (e) { dbId = null; }
-  if (!dbId) { send(player.ws, { type: 'notice', text: '심지 못했다', kind: 'plant' }); return; }
+  if (!dbId) { send(player.ws, { type: 'notice', text: '심지 못했습니다.', kind: 'plant' }); return; }
   const r = _liveResourceRow({ id: dbId, type: 'sapling', x: px, y: py,
     hp: RESOURCE_HP_TABLE.sapling, max_hp: RESOURCE_HP_TABLE.sapling, planted_day: day, species });
   if (r) _shapeRegrown(r);
@@ -10413,7 +10413,7 @@ function tryPlantTree(player, x, y, item) {
   savePlayer(player);
   if (r) broadcast({ type: 'resource_spawn', resource: r });
   send(player.ws, { type: 'notice',
-    text: `${ITEM_LABEL_SERVER[seed] || seed}을(를) 심었다 — 묘목이 섰다`, kind: 'plant' });
+    text: `${ITEM_LABEL_SERVER[seed] || seed}을(를) 심었습니다. 묘목이 섰습니다.`, kind: 'plant' });
   return r;
 }
 
@@ -10461,11 +10461,11 @@ function _fruitSeasonSweep() {
 }
 function tryPickFruit(player, resId) {
   const T = Trees;
-  if (!T || !T.ON()) { send(player.ws, { type: 'notice', text: '열매를 딸 수 없다', kind: 'gather' }); return; }
+  if (!T || !T.ON()) { send(player.ws, { type: 'notice', text: '열매를 딸 수 없습니다.', kind: 'gather' }); return; }
   const target = (resId !== undefined && resId !== null) ? resources.get(resId) : null;
-  if (!target) { send(player.ws, { type: 'notice', text: '거기엔 아무것도 없다', kind: 'gather' }); return; }
+  if (!target) { send(player.ws, { type: 'notice', text: '거기에는 아무것도 없습니다.', kind: 'gather' }); return; }
   const d = Math.hypot(target.x - player.x, target.y - player.y);
-  if (d > GATHER_RANGE) { send(player.ws, { type: 'notice', text: `${Math.round(d)}px 떨어짐 — ${GATHER_RANGE}px 안에서 딴다`, kind: 'gather' }); return; }
+  if (d > GATHER_RANGE) { send(player.ws, { type: 'notice', text: `너무 멉니다. 바로 곁에서 따야 합니다.`, kind: 'gather' }); return; }
   const sp = target.sp, item = sp && T.fruitOf(sp);
   if (!item) { send(player.ws, { type: 'notice', text: '열매가 열리는 나무가 아니다', kind: 'gather' }); return; }
   // ★★[T170 2026-09-11] **날짜 시계는 하나다.** 종전엔 여기만 `zoneGameDay()`(벽시계 파생)였다 —
@@ -10480,7 +10480,7 @@ function tryPickFruit(player, resId) {
   // ★[T170] 딴 그 순간이 "정산이 뒤집히는" 세 자리 중 하나다 — 바뀌었으면 그 행을 다시 보낸다.
   if (_fruitStamp(target)) broadcast({ type: 'resource_spawn', resource: target });
   if (!(got > 0)) {
-    send(player.ws, { type: 'notice', text: `${T.koOf(sp)} — 아직 열매가 없다(${['봄','여름','가을','겨울'][['spring','summer','autumn','winter'].indexOf(T.fruitSeasonOf(sp))]}에 열린다)`, kind: 'gather' });
+    send(player.ws, { type: 'notice', text: `${T.koOf(sp)}에는 아직 열매가 없습니다(${['봄','여름','가을','겨울'][['spring','summer','autumn','winter'].indexOf(T.fruitSeasonOf(sp))]}에 열립니다).`, kind: 'gather' });
     return;
   }
   const n = Math.max(1, Math.round(got * 10));   // 재고 단위(연간수율=1.0 기준) → 낱개. 표의 눈금 그대로 열 배.
@@ -10496,13 +10496,13 @@ function tryPickFruit(player, resId) {
 function drinkFresh(player) {
   const before = player.thirst || 0;
   player.thirst = Math.min(100, before + 30);
-  let msg = `💧 물 마심 (+${Math.round(player.thirst - before)})`;
+  let msg = `💧 물을 마셨습니다(갈증 +${Math.round(player.thirst - before)}).`;
   // ★★[낚시 v2 · 재민 확정 2026-08-26] 여기 있던 **어업 동전 던지기를 걷어냈다.**
   //   종전: 물 옆에서 E → `_dt() < 0.5` 로 어종 하나. 자리도 시간도 기술도 고갈도 없었다.
   //   그게 정확히 §2 가 말한 "입력이 같고 결과가 확실한" 진행바다.
   //   ⇒ 낚시는 이제 **제 동사**(Shift+F)를 갖는다: 자리를 고르고, 기다리고, 챔질하고, 놓친다.
   //   E 는 목 축이는 것만 한다(그것도 세계의 일이다). 처음 오는 사람을 위해 한 줄로 알려 준다.
-  if (!player._fishHinted) { player._fishHinted = true; msg += ' · 🎣 낚시는 Shift+F'; }
+  if (!player._fishHinted) { player._fishHinted = true; msg += ' 🎣 낚시는 Shift+F로 합니다.'; }
   send(player.ws, { type: 'notice', text: msg });
   send(player.ws, { type: 'self_stat', thirst: Math.round(player.thirst) });
   savePlayer(player);
@@ -10521,20 +10521,20 @@ function _waterVerb(player, act) {
     if (isWaterTileLocal(player.x + dx, player.y + dy) || _wellCellAt(player.x + dx, player.y + dy) || _streamDrinkAt(player.x + dx, player.y + dy)) { adj = { x: player.x + dx, y: player.y + dy }; break; }   // ★[T557] 우물가도 물가(E 갈래와 같은 술어) · ★[T585] 개울 칸도
   }
   if (!adj && _streamDrinkAt(player.x, player.y)) adj = { x: player.x, y: player.y };   // ★[T585] 개울 칸 위에 서 있어도(건너는 물 — 발밑이 물이다)
-  if (!adj) { send(player.ws, { type: 'notice', text: '물 바로 옆에 서야 한다', kind: 'gather' }); return; }
+  if (!adj) { send(player.ws, { type: 'notice', text: '물 바로 옆에 서야 합니다.', kind: 'gather' }); return; }
   const sea = isSeaTileLocal(adj.x, adj.y);
   if (act === 'drink') {
-    if (sea) { send(player.ws, { type: 'notice', text: '🌊 짠물이다 — 마실 수 없다 · 마실 물은 강·호수·샘에서', kind: 'gather' }); return; }
+    if (sea) { send(player.ws, { type: 'notice', text: '🌊 짠물이라 마실 수 없습니다. 마실 물은 강이나 호수, 샘에서 구하십시오.', kind: 'gather' }); return; }
     drinkFresh(player);
     return;
   }
   if ((player.inventory[Salt.VESSEL] || 0) < 1) {
-    send(player.ws, { type: 'notice', text: `🏺 ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있어야 물을 뜬다`, kind: 'gather' }); return;
+    send(player.ws, { type: 'notice', text: `🏺 ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있어야 물을 뜰 수 있습니다.`, kind: 'gather' }); return;
   }
   //   (그릇이 있으니 바다에서 열리는 것은 짠물 하나다 — `Forage.sourceAt` 이 갯벌이면 `brine` 을 낸다. 아니면 갈대가 나오므로 거절한다.)
   const _src = sea ? Forage.sourceAt(player.x, player.y, _forageCtx(player)) : null;
   if (sea && !(_src && _src.kind === Salt.BRINE)) {
-    send(player.ws, { type: 'notice', text: '🌊 여기선 짠물을 못 뜬다 — 갯벌에서 뜬다', kind: 'gather' }); return;
+    send(player.ws, { type: 'notice', text: '🌊 여기서는 짠물을 뜰 수 없습니다. 짠물은 갯벌에서 뜹니다.', kind: 'gather' }); return;
   }
   tryForage(player);
 }
@@ -10560,9 +10560,9 @@ function tryLook(player, x, y) {
     parts.push('우물 — 민물');
   } else if (_streamDrinkAt(px, py)) {   // ★[T585] 개울 칸 = 민물(물 메뉴가 열린다 · 건너는 얕은 물 · 낚시 없음)
     water = 'fresh';
-    parts.push('개울 — 민물 · 건널 수 있다(걸음 느려짐)');
+    parts.push('개울 — 민물 · 건널 수 있음(걸음 느려짐)');
   } else if (isRockTileLocal(px, py)) {
-    parts.push('바위 — 지나갈 수 없다');
+    parts.push('바위 — 지나갈 수 없음');
   } else {
     const src = Forage.sourceAt(px, py, _forageCtx(player));
     parts.push(src ? `${src.where} — E 로 ${lab(src.kind)}` : '빈 땅 — 주울 것 없음');
@@ -10576,7 +10576,7 @@ function tryLook(player, x, y) {
   }
   //   물 칸이면 그릇(품목 키 · 가진 수)도 싣는다 — "병에 담기"가 뜰지는 서버가 아는 그릇 표로 가른다(클라에 키를 안 적는다).
   send(player.ws, { type: 'look', x, y, water, line: '살피기 — ' + parts.join(' · '),
-    say: water === 'sea' ? '🌊 짠물이다 — 마시면 목이 더 마른다 · 마실 물은 강·호수·샘에서' : null,
+    say: water === 'sea' ? '🌊 짠물입니다. 마시면 목이 더 마릅니다. 마실 물은 강이나 호수, 샘에서 구하십시오.' : null,
     vessel: water ? Salt.VESSEL : null, bottles: water ? Math.floor(player.inventory[Salt.VESSEL] || 0) : 0 });
 }
 
@@ -10592,11 +10592,11 @@ function tryGather(player, resId, water) {
   //     물을 마시고, 메뉴가 또 거짓말을 한다("누른 것"이 뜻을 잃는다).
   if (resId !== undefined && resId !== null) {
     const target = resources.get(resId);
-    if (!target) { send(player.ws, { type: 'notice', text: '거기엔 아무것도 없다', kind: 'gather' }); return; }
+    if (!target) { send(player.ws, { type: 'notice', text: '거기에는 아무것도 없습니다.', kind: 'gather' }); return; }
     const d = Math.hypot(target.x - player.x, target.y - player.y);
     if (d > GATHER_RANGE) {
       send(player.ws, { type: 'notice',
-        text: `${Math.round(d)}px 떨어짐 — ${GATHER_RANGE}px 안에서 캔다`, kind: 'gather' });
+        text: `너무 멉니다. 바로 곁에서 캐야 합니다.`, kind: 'gather' });
       return;
     }
     gatherResource(player, target);
@@ -10631,7 +10631,7 @@ function tryGather(player, resId, water) {
       if (isSeaTileLocal(player.x + dx, player.y + dy)) {
         Body.drinkBrine(player, Date.now());
         send(player.ws, { type: 'notice',
-          text: `🌊 짠물이다 — 목이 축여지기는커녕 더 마른다 (${Math.round(Body.CFG.BRINE_SEC / 60)}분간 갈증이 빨라진다)`
+          text: `🌊 짠물입니다. 목이 축여지기는커녕 더 마릅니다. ${Math.round(Body.CFG.BRINE_SEC / 60)}분 동안 목이 더 빨리 마릅니다.`
               + ' · 마실 물은 강·호수·샘에서' });
         send(player.ws, { type: 'self_stat', thirst: Math.round(player.thirst ?? THIRST_MAX) });
         return;
@@ -10652,7 +10652,7 @@ function tryGather(player, resId, water) {
       const now = Date.now();
       const HARVEST_COOLDOWN = 5 * 60 * 1000;  // 5분 cooldown
       if (m.lastHarvestAt && now - m.lastHarvestAt < HARVEST_COOLDOWN) {
-        send(player.ws, { type: 'notice', text: `${def.ko} — 아직 자원 안 채워짐` });
+        send(player.ws, { type: 'notice', text: `${def.ko}은(는) 아직 다시 자라지 않았습니다.` });
         return;
       }
       m.lastHarvestAt = now;
@@ -10705,7 +10705,7 @@ function gatherResource(player, best) {
       }
       // 차단 + 침입자 vp 증가
       player.vp = Math.min(VP_MAX, (player.vp ?? 0) + VP_TRESPASS_GATHER);
-      send(player.ws, { type: 'notice', text: `${c.ownerName}의 영지입니다. (위반 +${VP_TRESPASS_GATHER})` });
+      send(player.ws, { type: 'notice', text: `${c.ownerName}의 땅입니다. 남의 것을 거두어 적대감이 ${VP_TRESPASS_GATHER} 올랐습니다.` });
       send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), vp: Math.round(player.vp) });
       savePlayer(player);
       return;
@@ -10746,7 +10746,7 @@ function gatherResource(player, best) {
     const loot = _t495Rest(best, lootOfResource(best, { day: zoneGameDay() }));   // ★[작물 층] 플레이어 채집만 계절 씨앗을 본다 · ★[T495] 남은 단위만(장부 없으면 그 객체 그대로)
     //   운철만 말이 붙는다(전리품은 정본이 내고, 여기선 그 뜻을 사람에게 알린다).
     if (best.type === 'meteorite') {
-      send(player.ws, { type: 'notice', text: '☄️ 하늘에서 떨어진 쇠 — 불에 넣지 않아도 이미 금속이다. 두들기면 바로 날이 선다.' });
+      send(player.ws, { type: 'notice', text: '☄️ 하늘에서 떨어진 쇠입니다. 불에 넣지 않아도 이미 금속이라 두들기면 바로 날이 섭니다.' });
     }
     for (const [item, amt] of Object.entries(loot)) {
       player.inventory[item] = (player.inventory[item] || 0) + amt;
@@ -10806,9 +10806,9 @@ function tryClaim(player, kind = 'personal') {
   const cost = CLAIM_COST[kind];
   // 길드 사유지: 리더만 + 길드 소속 필수
   //   ★[T786 C11] T785 켬 — 길드 사유지는 **마을 땅**(그 마을 영토)으로 접혔다 · 따로 놓는 문은 닫는다(영토는 마을이 넓힌다).
-  if (kind === 'guild' && VillageKin.ON) { send(player.ws, { type: 'notice', text: '🏘️ 마을 땅은 그 마을의 영토다 — 따로 놓지 않는다' }); return; }
+  if (kind === 'guild' && VillageKin.ON) { send(player.ws, { type: 'notice', text: '🏘️ 마을 땅은 그 마을의 영토라 따로 정하지 않습니다.' }); return; }
   if (kind === 'guild') {
-    if (!player.tribeId) { send(player.ws, { type: 'notice', text: '마을 사람이 아닙니다 — 마을 땅을 못 정한다' }); return; }
+    if (!player.tribeId) { send(player.ws, { type: 'notice', text: '마을 사람이 아니어서 마을 땅을 정할 수 없습니다.' }); return; }
     // leader 체크는 central 호출 필요. 일단 단순화: 길드원이면 누구나 (TODO: leader만)
     // 14.42-a: 길드당 단 하나의 길드 사유지(메인 거점). 기존 거 있으면 자동 옮기기 (제거 후 새로 만듦).
     const existingGuildClaims = [];
@@ -10821,7 +10821,7 @@ function tryClaim(player, kind = 'personal') {
         claims.delete(id);
         broadcast({ type: 'claim_removed', id });
       }
-      send(player.ws, { type: 'notice', text: `🏛️ 마을 땅 ${existingGuildClaims.length}개 → 새 위치로 이동` });
+      send(player.ws, { type: 'notice', text: `🏛️ 마을 땅 ${existingGuildClaims.length}칸을 새 자리로 옮겼습니다.` });
     }
   }
   // 슬롯 한도 체크
@@ -10865,7 +10865,7 @@ function tryClaim(player, kind = 'personal') {
       const nf = Claims.transfer(vid, victim, player);
       savePlayer(player);
       sendInventory(player);
-      send(player.ws, { type: 'notice', text: `🏠 ${prevOwner}이(가) 쓰던 자리를 이어받았다 (${t.why}${nf ? ` · 시설 ${nf}채 승계` : ''})` });
+      send(player.ws, { type: 'notice', text: `🏠 ${prevOwner}이(가) 쓰던 자리를 이어받았습니다(${t.why}${nf ? ` · 시설 ${nf}채도 함께` : ''}).` });
       return;
     }
   }
@@ -10878,8 +10878,8 @@ function tryClaim(player, kind = 'personal') {
     const adj = Claims.adjacencyOf(player.playerId, Math.floor(cx / SZ), Math.floor(cy / SZ));
     if (!adj.ok) {
       send(player.ws, { type: 'notice', text: adj.diag
-        ? '🏠 모서리로만 닿는다 — 사유지는 변을 맞대야 이어진다'
-        : `🏠 내 사유지에 붙여서만 넓힐 수 있다 (지금 ${adj.mine}칸)` });
+        ? '🏠 모서리로만 닿습니다. 내 땅은 변을 맞대야 이어집니다.'
+        : `🏠 내 땅에 붙여서만 넓힐 수 있습니다(지금 ${adj.mine}칸).` });
       return;
     }
   }
@@ -10960,7 +10960,7 @@ function tryUnclaim(player, claimId) {
   //     그건 규칙을 소급하는 것과 같다(L-5 위반). 산수는 `claims.js` 정본 하나.
   const sp = Claims.unclaimSplits(player.playerId, claimId);
   if (sp.splits) {
-    send(player.ws, { type: 'notice', text: `🏠 여기를 포기하면 내 땅이 ${sp.before}덩이에서 ${sp.after}덩이로 갈라진다 — 끝에서부터 걷어라` });
+    send(player.ws, { type: 'notice', text: `🏠 여기를 내놓으면 내 땅이 ${sp.before}덩이에서 ${sp.after}덩이로 갈라집니다. 끝에서부터 내놓으십시오.` });
     return;
   }
   if (c.dbId) db.deleteClaim(c.dbId);
@@ -11149,7 +11149,7 @@ function tryDropItem(player, item, amount, opts) {
   if (opts.toolId) {
     const arr = player.toolItems || [];
     const ix = arr.findIndex((t) => t && t.id === opts.toolId);
-    if (ix < 0) { send(player.ws, { type: 'notice', text: '그 도구가 없다' }); return; }
+    if (ix < 0) { send(player.ws, { type: 'notice', text: '그 도구가 없습니다.' }); return; }
     const inst = arr.splice(ix, 1)[0];
     if (player.equipped === inst.id) { player.equipped = null; }      // 들고 있던 것이면 손에서 놓는다
     if (player.hotkey1 === inst.id) { player.hotkey1 = null; }
@@ -11157,7 +11157,7 @@ function tryDropItem(player, item, amount, opts) {
     _spawnGroundItems(player, inst.type, [_instParcel('tool', inst, kg)]);   // ★[T102] 개체 그대로
     sendInventory(player, 'drop:tool');
     send(player.ws, { type: 'tools', toolItems: player.toolItems || [], equipped: player.equipped, hotkey1: player.hotkey1 || null });
-    send(player.ws, { type: 'notice', text: `🪓 ${ITEM_LABEL_SERVER[inst.type] || inst.type} 버림 (내구 ${inst.d}/${inst.max})` });
+    send(player.ws, { type: 'notice', text: `🪓 ${ITEM_LABEL_SERVER[inst.type] || inst.type}을(를) 버렸습니다(내구 ${inst.d}/${inst.max}).` });
     savePlayer(player);
     return;
   }
@@ -11168,13 +11168,13 @@ function tryDropItem(player, item, amount, opts) {
   if (opts.equipId) {
     const arr = player.equipment || [];
     const ix = arr.findIndex((e) => e && e.id === opts.equipId);
-    if (ix < 0) { send(player.ws, { type: 'notice', text: '그 장비가 없다' }); return; }
-    if (_isWorn(player, opts.equipId)) { send(player.ws, { type: 'notice', text: '입고 있는 것은 벗어야 버린다' }); return; }
+    if (ix < 0) { send(player.ws, { type: 'notice', text: '그 장비가 없습니다.' }); return; }
+    if (_isWorn(player, opts.equipId)) { send(player.ws, { type: 'notice', text: '입고 있는 것은 벗어야 버릴 수 있습니다.' }); return; }
     const inst = arr.splice(ix, 1)[0];
     _spawnGroundItems(player, inst.type, [_instParcel('equip', inst)]);
     sendInventory(player, 'drop:equip');
     try { sendEquipment(player); } catch (e) {}
-    send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 버림` });
+    send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)}을(를) 버렸습니다.` });
     savePlayer(player);
     return;
   }
@@ -11185,7 +11185,7 @@ function tryDropItem(player, item, amount, opts) {
     if (have <= 0) { _short(); return; }
     Carry.reconcile(player, player.inventory);   // ★지목 전에 채운다 — 표준 몫에도 주소가 있어야 고를 수 있다
     const t = Carry.takeByIds(player, item, ids);
-    if (!t.n) { send(player.ws, { type: 'notice', text: '그 개체가 인벤에 없다' }); return; }
+    if (!t.n) { send(player.ws, { type: 'notice', text: '짐에 그 물건이 없습니다.' }); return; }
     const n = Math.min(t.n, have);
     // ★0 이 돼도 키를 **남긴다** — 옛 경로(`-=`)가 그랬고, 여기서 지우면 인벤을 순회하는
     //   곳들의 동작이 조용히 바뀐다(이 배치는 정비지 개편이 아니다).
@@ -11205,7 +11205,7 @@ function tryDropItem(player, item, amount, opts) {
     const want = Math.max(1, Math.min(99, parseInt(amount, 10) || 1));
     const r = Lots.consumeFrom(player, item, opts.lotDay | 0, want, player.inventory, (T732_MOMENT && Number.isFinite(+opts.lotK)) ? +opts.lotK : undefined);   // ★[T732] 순간으로 고르면 그 로트
     const n = Math.floor(r.taken + 1e-9);
-    if (n <= 0) { send(player.ws, { type: 'notice', text: '그 로트가 비었다' }); return; }
+    if (n <= 0) { send(player.ws, { type: 'notice', text: '그 묶음은 비었습니다.' }); return; }
     const t = Carry.takeEntries(player, item, n);
     // ★로트 지목 갈래는 `consumeFrom` 이 이미 그 로트를 깎았다 — 레코드를 그 자리에서 받아 싣는다.
     _spawnGroundItems(player, item, [{ n, kg: t.kg, led: t.entries }], (r.ages && r.ages.length) ? r.ages : null);
@@ -11238,7 +11238,7 @@ function tryRepairBuilding(player) {
     const d = Math.hypot(b.x - player.x, b.y - player.y);
     if (d < bestD) { best = b; bestD = d; }
   }
-  if (!best) { send(player.ws, { type: 'notice', text: '근처에 수리할 건축물 없음' }); return; }
+  if (!best) { send(player.ws, { type: 'notice', text: '근처에 고칠 건물이 없습니다.' }); return; }
   // 본인 또는 같은 길드 건축물만 수리 가능
   let ownerTribe = null;
   if (best.ownerId !== player.playerId && VillageKin.ON) {   // ★[T786 C15] 켬 — 본인 또는 **같은 마을 사람**의 건축물(주인이 이 존에 있을 때 — 종전과 같은 찾기)
@@ -11268,7 +11268,7 @@ function tryRepairBuilding(player) {
   if (best.data.hp >= maxHp / 2) { if (best.data.damaged) _collBump(best); best.data.damaged = false; } // 절반 이상 회복 시 다시 작동 · ★[T562] 도장
   try { db.updateBuildingData(best.dbId, JSON.stringify(best.data)); } catch (e) {}
   sendInventory(player);
-  send(player.ws, { type: 'notice', text: `🔧 ${best.type} 수리 (${best.data.hp}/${maxHp})${best.data.damaged ? '' : ' ✅ 복구'}` });
+  send(player.ws, { type: 'notice', text: `🔧 ${best.type}을(를) 고쳤습니다(${best.data.hp}/${maxHp}).${best.data.damaged ? '' : ' ✅ 다 고쳤습니다.'}` });
   broadcast({ type: 'building_damaged', id: best.id, hp: best.data.hp, maxHp, damaged: !!best.data.damaged });
   roomsTouchBuilding(best);   // ★[배치 18 ①] 수리로 다시 경계가 됐다 → 방 복원
   savePlayer(player);
@@ -11290,7 +11290,7 @@ function tryPickupItem(player, gid) {
     sendInventory(player, r.kind === 'equip' ? 'pickup:equip' : 'pickup:tool');
     if (r.kind === 'equip') { try { sendEquipment(player); } catch (e) {} }
     else send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
-    send(player.ws, { type: 'notice', text: `🤚 ${PlayerItems.displayItem(r.inst)} 주움` });
+    send(player.ws, { type: 'notice', text: `🤚 ${PlayerItems.displayItem(r.inst)}을(를) 주웠습니다.` });
     savePlayer(player);
     broadcast({ type: 'ground_item_removed', id: gid });
     return;
@@ -11303,7 +11303,7 @@ function tryPickupItem(player, gid) {
     groundItems.delete(gid);
     sendInventory(player, 'pickup:tool');
     send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
-    send(player.ws, { type: 'notice', text: `🤚 ${ITEM_LABEL_SERVER[gi.tool.type] || gi.tool.type} 주움 (내구 ${gi.tool.d}/${mx})` });
+    send(player.ws, { type: 'notice', text: `🤚 ${ITEM_LABEL_SERVER[gi.tool.type] || gi.tool.type}을(를) 주웠습니다(내구 ${gi.tool.d}/${mx}).` });
     savePlayer(player);
     broadcast({ type: 'ground_item_removed', id: gid });
     return;
@@ -11326,7 +11326,7 @@ function tryPickupItem(player, gid) {
   } else Lots.note(player, gi.item, gi.count, zoneGameDay());
   groundItems.delete(gid);
   sendInventory(player, 'pickup');
-  send(player.ws, { type: 'notice', text: `🤚 ${ITEM_LABEL_SERVER[gi.item] || gi.item} ×${gi.count} 주움` });
+  send(player.ws, { type: 'notice', text: `🤚 ${ITEM_LABEL_SERVER[gi.item] || gi.item} ${gi.count}개를 주웠습니다.` });
   savePlayer(player);
   broadcast({ type: 'ground_item_removed', id: gid });
 }
@@ -11507,13 +11507,13 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
     if (!skipCost) {
       // 비용 모두 확인 (plank, wood, stone)
       if (cost.plank && (player.inventory.plank || 0) < cost.plank) {
-        send(player.ws, { type: 'notice', text: `판자 ${cost.plank}개 필요` }); return false;
+        send(player.ws, { type: 'notice', text: `판자가 ${cost.plank}개 있어야 합니다.` }); return false;
       }
       if (cost.wood && (player.inventory.wood || 0) < cost.wood) {
-        send(player.ws, { type: 'notice', text: `통나무 ${cost.wood}개 필요` }); return false;
+        send(player.ws, { type: 'notice', text: `통나무가 ${cost.wood}개 있어야 합니다.` }); return false;
       }
       if (cost.stone && (player.inventory.stone || 0) < cost.stone) {
-        send(player.ws, { type: 'notice', text: `돌 ${cost.stone}개 필요` }); return false;
+        send(player.ws, { type: 'notice', text: `돌이 ${cost.stone}개 있어야 합니다.` }); return false;
       }
       _buildCostPay(player, cost, -1);   // ★[T48] 지불 — 환불과 같은 표를 걷는다
     }
@@ -11538,19 +11538,19 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   if (!skipCost) {
     // 14.50: plank/wood/stone 분리 비용
     if (cost.plank && (player.inventory.plank || 0) < cost.plank) {
-      send(player.ws, { type: 'notice', text: `판자 ${cost.plank}개 필요` }); return false;
+      send(player.ws, { type: 'notice', text: `판자가 ${cost.plank}개 있어야 합니다.` }); return false;
     }
     if (cost.wood && (player.inventory.wood || 0) < cost.wood) {
-      send(player.ws, { type: 'notice', text: `통나무 ${cost.wood}개 필요` }); return false;
+      send(player.ws, { type: 'notice', text: `통나무가 ${cost.wood}개 있어야 합니다.` }); return false;
     }
     if (cost.stone && (player.inventory.stone || 0) < cost.stone) {
-      send(player.ws, { type: 'notice', text: `돌 ${cost.stone}개 필요` }); return false;
+      send(player.ws, { type: 'notice', text: `돌이 ${cost.stone}개 있어야 합니다.` }); return false;
     }
     if (cost.seed && (player.inventory[cost.seed] || 0) < 1) {
-      send(player.ws, { type: 'notice', text: `${cost.seed} 1개 필요` }); return false;
+      send(player.ws, { type: 'notice', text: `${cost.seed}이(가) 하나 있어야 합니다.` }); return false;
     }
     if (cost.fiber && (player.inventory.fiber || 0) < cost.fiber) {
-      send(player.ws, { type: 'notice', text: `섬유 ${cost.fiber}개 필요` }); return false;
+      send(player.ws, { type: 'notice', text: `섬유가 ${cost.fiber}개 있어야 합니다.` }); return false;
     }
   }
   // 격자에 스냅 (32 단위)
@@ -11567,7 +11567,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   }
   const inOwnClaim = !inOtherClaim; // 호환용 변수 (아래 코드가 참조)
   if (!inOwnClaim) {
-    send(player.ws, { type: 'notice', text: '다른 사람의 사유지엔 못 지음' }); return false;
+    send(player.ws, { type: 'notice', text: '남의 땅에는 지을 수 없습니다.' }); return false;
   }
 
   // 같은 (x,y,floor)에 다른 건축물 없는지 — quadtree + floor 일치만 체크
@@ -11628,7 +11628,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
       buildings.delete(id);
       if (chunkManager.removeBuilding) chunkManager.removeBuilding(building);
       db.deleteBuilding(dbId);
-      send(player.ws, { type: 'notice', text: '계단은 남→북(N) 또는 동→서(W) 방향만 가능' });
+      send(player.ws, { type: 'notice', text: '계단은 남쪽에서 북쪽(N)으로, 또는 동쪽에서 서쪽(W)으로만 놓을 수 있습니다.' });
       if (!skipCost) {
         _buildCostPay(player, cost, +1);   // ★[T48] 환불 — 지불과 **같은 표**(종전엔 seed·fiber 를 빠뜨렸다)
         sendInventory(player);
@@ -11654,7 +11654,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
       buildings.delete(id);
       if (chunkManager.removeBuilding) chunkManager.removeBuilding(building);
       db.deleteBuilding(dbId);
-      send(player.ws, { type: 'notice', text: '위층 입구에 이미 건축물 있음 — 계단 못 지음' });
+      send(player.ws, { type: 'notice', text: '위층 입구에 이미 무언가 있어 계단을 놓을 수 없습니다.' });
       // 자원 환원
       if (!skipCost) {
         _buildCostPay(player, cost, +1);   // ★[T48] 환불 — 지불과 **같은 표**(종전엔 seed·fiber 를 빠뜨렸다)
@@ -11719,13 +11719,13 @@ function tryHutStart(player, atX, atY) {
     x0 = gx - 3; y0 = gy - 4; x1 = gx + 2; y1 = gy - 1;
   }
   const st = HUT_STAGES[0];
-  if (!hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label} — 곡괭이 필요` }); return; }
+  if (!hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label}에는 곡괭이가 있어야 합니다.` }); return; }
   for (let x = x0 - 1; x <= x1 + 1; x++) for (let y = y0 - 1; y <= y1 + 1; y++) {
     const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
     if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '물·바위를 피해서 파야 합니다' }); return; }
     for (const c of claims.values()) {
       if (c.ownerPid !== player.playerId && px >= c.x && px < c.x + c.w && py >= c.y && py < c.y + c.h) {
-        send(player.ws, { type: 'notice', text: '다른 사람의 사유지엔 못 지음' }); return;
+        send(player.ws, { type: 'notice', text: '남의 땅에는 지을 수 없습니다.' }); return;
       }
     }
   }
@@ -11741,7 +11741,7 @@ function tryHutStart(player, atX, atY) {
   const data = { stage: 1, x0, y0, x1, y1, owner: player.playerId, floor: 0 };
   const bo = _liveBuildRow('hut_site', ctrX, ctrY, data, player.playerId, `${player.name}의 움집터`, null);
   broadcast({ type: 'building_added', building: bo });
-  send(player.ws, { type: 'notice', text: `⛏️ ${st.label} 완료 — 다음: ${HUT_STAGES[1].label} (움집터 클릭)` });
+  send(player.ws, { type: 'notice', text: `⛏️ ${st.label}을(를) 마쳤습니다. 다음은 ${HUT_STAGES[1].label}입니다. 움집터를 누르십시오.` });
   console.log(`[${ZONE_ID}] ⛏️ ${player.name} 움집터 굴착 [${x0}..${x1}]×[${y0}..${y1}]`);
 }
 // ★★[11차 T4] 마을 NPC 크루에게 집 짓기를 의뢰한다 — 랩 10차 B안의 서버 접점.
@@ -11752,23 +11752,23 @@ function tryHutStart(player, atX, atY) {
 //   부족하면 **지정 자체를 거절**한다(외상 없음 — 진행 중 미납 상태라는 새 개념을 만들지 않기 위해).
 const PSITE_COST = HutStages.PSITE_COST;   // = HUT_STAGES ②굴립주6 ③서까래8 ④이엉8 (fiber는 원자재라 제외) — ★[T400] 공정 표에서 **유도**(`hut-stages.js`)
 function tryRequestVillageHouse(player, atX, atY) {
-  if (!Number.isFinite(atX) || !Number.isFinite(atY)) { send(player.ws, { type: 'notice', text: '자리를 지정해 주세요' }); return; }
-  if (Math.hypot(atX - player.x, atY - player.y) > 400) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에 의뢰할 수 없다' }); return; }
+  if (!Number.isFinite(atX) || !Number.isFinite(atY)) { send(player.ws, { type: 'notice', text: '자리를 골라 주십시오.' }); return; }
+  if (Math.hypot(atX - player.x, atY - player.y) > 400) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에는 맡길 수 없습니다.' }); return; }
   const cx = Math.floor(atX / BUILDING_SIZE), cy = Math.floor(atY / BUILDING_SIZE);
   const vil = SimVillages.villageOwningCell ? SimVillages.villageOwningCell(cx, cy) : null;
-  if (!vil) { send(player.ws, { type: 'notice', text: '마을 영토 안에서만 의뢰할 수 있다' }); return; }
+  if (!vil) { send(player.ws, { type: 'notice', text: '마을 땅 안에서만 맡길 수 있습니다.' }); return; }
   // ★재료 검사 먼저(거절이면 상태를 아무것도 안 바꾼다) → 자리 검사 → 그 다음에야 차감.
   const lack = [];
   for (const [it, amt] of Object.entries(PSITE_COST)) if ((player.inventory[it] || 0) < amt) lack.push(`${ITEM_LABEL_SERVER[it] || it} ${player.inventory[it] || 0}/${amt}`);
   if (lack.length) { send(player.ws, { type: 'notice', text: `재료 선납 부족 — ${lack.join(' · ')}` }); return; }
   const r = SimVillages.lifeRequestPlayerSite(vil, cx, cy, player.playerId, `${player.name}의 의뢰 움집`);
-  if (!r || r.err) { send(player.ws, { type: 'notice', text: `의뢰 불가 — ${(r && r.err) || '알 수 없음'}` }); return; }
+  if (!r || r.err) { send(player.ws, { type: 'notice', text: `맡길 수 없습니다(${(r && r.err) || '까닭을 모릅니다'}).` }); return; }
   for (const [it, amt] of Object.entries(PSITE_COST)) consumeItem(player, it, amt);   // ★자리 확정 뒤 차감(실패 시 재료가 사라지지 않게) · [원장 승격]
   if (SimVillages.t1005Save) SimVillages.t1005Save(vil, 'house');   // ★[T1005] 의뢰 집터(곁 칸 psite · 건물 번호 · 잠재 농지)도 그 행에 이 순간(끔 = 무동작)
   if (SimVillages.t1023On && SimVillages.t1023On()) savePlayer(player);   // ★[T1023] 선납 차감도 이 순간 — 마을 행 다음 사람 저장(T983 차례 · 끔 = 종전: 주기 저장까지)
   sendInventory(player);
   const costStr = Object.entries(PSITE_COST).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${v}`).join(' · ');
-  send(player.ws, { type: 'notice', text: `🏠 ${vil.name} 크루에게 집 짓기를 의뢰했다 (${costStr} 선납) — 마을 일이 없을 때 지어 준다` });
+  send(player.ws, { type: 'notice', text: `🏠 ${vil.name} 일꾼들에게 집 짓기를 맡겼습니다(${costStr} 먼저 냄). 마을 일이 없을 때 지어 줍니다.` });
   console.log(`[${ZONE_ID}] 🏠 ${player.name} → ${vil.name} 집 의뢰 @(${cx},${cy}) 선납 ${costStr}`);
 }
 function tryHutAdvance(player, buildingId) {
@@ -11791,7 +11791,7 @@ function tryHutAdvance(player, buildingId) {
     b.data.stage = stage + 1;
     db.updateBuildingData(b.dbId, JSON.stringify(b.data));
     broadcast({ type: 'building_added', building: b });
-    send(player.ws, { type: 'notice', text: `${st.label} 완료 — 다음: ${HUT_STAGES[stage + 1].label}` });
+    send(player.ws, { type: 'notice', text: `${st.label}을(를) 마쳤습니다. 다음은 ${HUT_STAGES[stage + 1].label}입니다.` });
   } else {
     // ④ 완공 — 터 제거 + NPC 정본 6×4 실체화(벽=변·남벽 2칸 문·바닥·앵커)
     const { x0, y0, x1, y1 } = b.data;
@@ -11809,7 +11809,7 @@ function tryHutAdvance(player, buildingId) {
     for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) _liveBuildRow('floor', x * SZg + SZg / 2, y * SZg + SZg / 2, { floor: 0, hut: _hutTag }, oid, onm, made);
     _liveBuildRow('hut', ((x0 + x1 + 1) / 2) * SZg, ((y0 + y1 + 1) / 2) * SZg, { owner: player.playerId, floor: 0 }, oid, onm, made);
     broadcast({ type: 'buildings_spawn', buildings: made });
-    send(player.ws, { type: 'notice', text: '🏠 움집 완공! (수혈 굴착→굴립주→골조→이엉 — 고증 공정 완주)' });
+    send(player.ws, { type: 'notice', text: '🏠 움집이 다 지어졌습니다. 구덩이를 파고 기둥을 세우고 뼈대를 엮고 이엉을 덮었습니다.' });
     console.log(`[${ZONE_ID}] 🏠 ${player.name} 움집 완공 @(${x0}..${x1},${y0}..${y1})`);
   }
   savePlayer(player);
@@ -11926,7 +11926,7 @@ function _claimFootprint(player, x0, y0, x1, y1) {
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
     const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
     const c = _furnaceClaimOf(player, px, py);
-    if (!c) return { err: '발자국 2×2 전체가 내 사유지(또는 내 마을 땅) 안에 있어야 한다' };
+    if (!c) return { err: '지을 자리 네 칸이 모두 내 사유지나 내 마을 땅 안에 있어야 합니다.' };
     if (c.kind === 'village') { if (guildId == null) guildId = c.vid; }   // ★[T786 C3] 켬 — 마을 땅 칸(아래 반환은 `vid`)
     else if (c.kind === 'guild') { if (guildId == null) guildId = c.guildTribeId; }
     else anyPersonal = true;   // 개인·임시 사유지가 한 칸이라도 물리면 **개인 소유**로 굳는다
@@ -11938,8 +11938,8 @@ function _claimFootprint(player, x0, y0, x1, y1) {
 // ★2×2 사유지 설치물의 **공용** 착공/시공 — 노와 숯가마가 같은 계약을 쓴다(복제 금지).
 //   spec = { siteType, doneType, ko, icon, stages, kind }
 function _siteStart(player, atX, atY, spec) {
-  if (!Number.isFinite(atX) || !Number.isFinite(atY)) { send(player.ws, { type: 'notice', text: '자리를 지정해 주세요' }); return; }
-  if (Math.hypot(atX - player.x, atY - player.y) > 200) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에 못 지음' }); return; }
+  if (!Number.isFinite(atX) || !Number.isFinite(atY)) { send(player.ws, { type: 'notice', text: '자리를 골라 주십시오.' }); return; }
+  if (Math.hypot(atX - player.x, atY - player.y) > 200) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에는 지을 수 없습니다.' }); return; }
   const SZg = BUILDING_SIZE;
   const cx = Math.floor(atX / SZg), cy = Math.floor(atY / SZg);
   const x0 = cx, y0 = cy, x1 = cx + 1, y1 = cy + 1;   // 2×2
@@ -11948,13 +11948,13 @@ function _siteStart(player, atX, atY, spec) {
   const cl = spec.claim ? spec.claim(player, x0, y0, x1, y1) : _claimFootprint(player, x0, y0, x1, y1);
   if (cl.err) { send(player.ws, { type: 'notice', text: `${spec.ko} — ${cl.err}` }); return; }
   const st = spec.stages[0];
-  if (st.tool && !hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label} — ${ITEM_LABEL_SERVER[st.tool] || st.tool} 필요` }); return; }
+  if (st.tool && !hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label}에는 ${ITEM_LABEL_SERVER[st.tool] || st.tool}이(가) 있어야 합니다.` }); return; }
   for (const [it, amt] of Object.entries(st.need)) {
     if ((player.inventory[it] || 0) < amt) { send(player.ws, { type: 'notice', text: `${st.label} — 재료 부족: ${ITEM_LABEL_SERVER[it] || it} ${player.inventory[it] || 0}/${amt}` }); return; }
   }
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
     const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
-    if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '물·바위를 피해서 지어야 한다' }); return; }
+    if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '물이나 바위를 피해서 지어야 합니다.' }); return; }
   }
   const ctrX = ((x0 + x1 + 1) / 2) * SZg, ctrY = ((y0 + y1 + 1) / 2) * SZg;
   const nearB = qtBuildings ? qtBuildings.queryCircle(ctrX, ctrY, SZg * 4) : Array.from(buildings.values());
@@ -11969,7 +11969,7 @@ function _siteStart(player, atX, atY, spec) {
   const bo = _liveBuildRow(spec.siteType, ctrX, ctrY, data, player.playerId, `${player.name}의 ${spec.ko} 터`, null);
   broadcast({ type: 'building_added', building: bo });
   sendInventory(player);
-  send(player.ws, { type: 'notice', text: `⛏️ ${st.label} 완료 — 다음: ${spec.stages[1].label} (${spec.ko} 터 클릭)` });
+  send(player.ws, { type: 'notice', text: `⛏️ ${st.label}을(를) 마쳤습니다. 다음은 ${spec.stages[1].label}입니다. ${spec.ko} 터를 누르십시오.` });
   console.log(`[${ZONE_ID}] ${spec.icon} ${player.name} ${spec.ko} 터 @(${x0},${y0}) ${cl.tribeId ? 'guild' : (cl.vid != null ? 'village' : 'personal')}`);
   return bo;
 }
@@ -11991,7 +11991,7 @@ function _siteAdvance(player, b, spec) {
     b.data.stage = stage + 1;
     db.updateBuildingData(b.dbId, JSON.stringify(b.data));
     broadcast({ type: 'building_added', building: b });
-    send(player.ws, { type: 'notice', text: `${st.label} 완료 — 다음: ${spec.stages[stage + 1].label}` });
+    send(player.ws, { type: 'notice', text: `${st.label}을(를) 마쳤습니다. 다음은 ${spec.stages[stage + 1].label}입니다.` });
   } else {
     const { x0, y0, owner, tribeId, kind } = b.data;
     buildings.delete(b.id); if (chunkManager.removeBuilding) chunkManager.removeBuilding(b); db.deleteBuilding(b.dbId);
@@ -12006,7 +12006,7 @@ function _siteAdvance(player, b, spec) {
     //   실패해도 건물은 남긴다(플레이어가 쓴 재료를 삼키지 않는다) — 사유만 알리고 다시 시도하게 한다.
     if (spec.onDone) {
       try { spec.onDone(player, done, { x0, y0, tribeId, owner }); }
-      catch (e) { console.error(`[${ZONE_ID}] ${spec.icon} 완공 훅 실패:`, e.message); send(player.ws, { type: 'notice', text: `${spec.ko} 는 섰지만 마을 등록에 실패했다: ${e.message}` }); }
+      catch (e) { console.error(`[${ZONE_ID}] ${spec.icon} 완공 훅 실패:`, e.message); send(player.ws, { type: 'notice', text: `${spec.ko}은(는) 섰지만 마을에 올리지 못했습니다(${e.message}).` }); }
     }
   }
   savePlayer(player);
@@ -12017,16 +12017,16 @@ function _siteAdvance(player, b, spec) {
 function _furnaceSpec(kind) {
   const k = FURNACE_KINDS[kind] ? kind : 'crucible';
   return { siteType: 'furnace_site', doneType: 'furnace', ko: `노(${FURNACE_KINDS[k].ko})`, icon: '🔥',
-           stages: FURNACE_KINDS[k].stages, kind: k, doneHint: '철 정광 + 숯을 들고 노를 클릭하면 제련한다' };
+           stages: FURNACE_KINDS[k].stages, kind: k, doneHint: '철 정광과 숯을 들고 노를 누르면 쇠를 뽑습니다.' };
 }
 const KILN_SPEC = { siteType: 'kiln_site', doneType: 'charcoal_kiln', ko: '숯가마', icon: '🪵',
                     stages: CHARCOAL_KILN_STAGES, kind: 'charcoal_kiln',
-                    doneHint: `통나무 ${CHARCOAL_KILN_WOOD}을 들고 클릭하면 숯 ${CHARCOAL_KILN_YIELD}을 굽는다 (노천 탄화는 통나무 ${ITEM_RECIPES.charcoal.from.wood}→숯 ${ITEM_RECIPES.charcoal.to.charcoal})` };
+                    doneHint: `통나무 ${CHARCOAL_KILN_WOOD}개를 들고 누르면 숯 ${CHARCOAL_KILN_YIELD}개를 굽습니다. 맨땅에서 구우면 통나무 ${ITEM_RECIPES.charcoal.from.wood}개로 숯 ${ITEM_RECIPES.charcoal.to.charcoal}개가 나옵니다.` };
 
 function tryFurnaceStart(player, atX, atY, kind) {
   const k = FURNACE_KINDS[kind] ? kind : 'crucible';
   const Era = require('./era');
-  if (!Era.hasTech(k)) { send(player.ws, { type: 'notice', text: `${FURNACE_KINDS[k].ko} 설계는 아직 이 세상에 알려지지 않았다` }); return; }
+  if (!Era.hasTech(k)) { send(player.ws, { type: 'notice', text: `${FURNACE_KINDS[k].ko} 짓는 법은 아직 이 세상에 알려지지 않았습니다.` }); return; }
   return _siteStart(player, atX, atY, _furnaceSpec(k));
 }
 function tryFurnaceAdvance(player, buildingId) {
@@ -12034,7 +12034,7 @@ function tryFurnaceAdvance(player, buildingId) {
   if (!b || b.type !== 'furnace_site') return;
   return _siteAdvance(player, b, _furnaceSpec(b.data && b.data.kind));
 }
-function tryKilnStart(player, atX, atY) { if (!require('./era').hasTech('charcoal_kiln')) { send(player.ws, { type: 'notice', text: `${KILN_SPEC.ko} 설계는 아직 이 세상에 알려지지 않았다` }); return; } return _siteStart(player, atX, atY, KILN_SPEC); }   // ★[T463] 표(`era.js UNLOCK.bronze.tech`)가 정본 — 노(`tryFurnaceStart`)와 같은 문
+function tryKilnStart(player, atX, atY) { if (!require('./era').hasTech('charcoal_kiln')) { send(player.ws, { type: 'notice', text: `${KILN_SPEC.ko} 짓는 법은 아직 이 세상에 알려지지 않았습니다.` }); return; } return _siteStart(player, atX, atY, KILN_SPEC); }   // ★[T463] 표(`era.js UNLOCK.bronze.tech`)가 정본 — 노(`tryFurnaceStart`)와 같은 문
 function tryKilnAdvance(player, buildingId) {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'kiln_site') return;
@@ -12063,9 +12063,9 @@ function _wellGroundAt(x0, y0) {
 const WELL_SPEC = { siteType: 'well_site', doneType: 'well', ko: '우물', icon: '🪣', stages: WellStages.WELL_STAGES, kind: 'well',
                     claim: (player, x0, y0, x1, y1) => _wellGroundAt(x0, y0)
                       ? _claimFootprint(player, x0, y0, x1, y1)
-                      : { err: `이 땅엔 우물을 팔 물줄기가 없다 — ${(WellStages.WELL_VILLAGES || []).join('·')} 마을 땅에서 판다` },
+                      : { err: `이 땅에는 우물을 팔 물줄기가 없습니다. 우물은 ${(WellStages.WELL_VILLAGES || []).join('·')} 마을 땅에서 팝니다.` },
                     // ★[T519 ③] 그릇 이름은 **이름표 정본**에서 — 물가 문구(`🏺 ${…[Salt.VESSEL]}이 있어야 물을 뜬다`)와 같은 문법(글자 무변 · 사본 0).
-                    doneHint: `우물가에서 E — 목을 축이고, ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있으면 민물을 담는다` };
+                    doneHint: `우물가에서 E를 누르면 목을 축이고, ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있으면 민물을 담습니다.` };
 function tryWellStart(player, atX, atY) { if (!T509_WELL) return; return _siteStart(player, atX, atY, WELL_SPEC); }
 function tryWellAdvance(player, buildingId) {
   if (!T509_WELL) return;
@@ -12107,7 +12107,7 @@ const VILLAGE_FOUND_STAGES = [
 const VILLAGE_SPEC = {
   siteType: 'village_site', doneType: 'village_hall', ko: '마을 회관', icon: '🏘️',
   stages: VILLAGE_FOUND_STAGES, kind: 'village_hall',
-  doneHint: '마을이 섰다 — 아직 사람은 없다. 곳간에 식량을 채우면 사람이 깃든다',
+  doneHint: '마을이 섰습니다. 아직 사람은 없습니다. 곳간에 먹을 것을 채우면 사람이 깃듭니다.',
   // ★완공 = 마을 등록. econ·DB·교역 거리행렬은 villages.js 정본이 전담한다(여기서 다시 만들지 않는다).
   onDone: (player, done, ctx) => {
     const ccx = ctx.x0, ccy = ctx.y0;   // 2×2 발자국의 좌상 셀을 마을 중심으로 삼는다(회관 좌표 = 그 셀)
@@ -12121,15 +12121,15 @@ const VILLAGE_SPEC = {
       //     땅 규약은 안 바꾼다(그건 큰 판이다). 대신 **창설자의 길드**를 그대로 싣는다.
       //     ⚠무길드면 `null` 그대로다 — 소개문 없음 · 곳간문 열림(지금과 같다 · T19 "무길드는 죄가 아니다").
       ? SimVillages.foundPlayerVillage({ ccx, ccy, founder: player.playerId, founderName: player.name, tribeId: VillageKin.ON ? null : (ctx.tribeId || player.tribeId || null), name: player.name ? `${player.name}의 마을` : null })
-      : { ok: false, err: '마을 시뮬이 이 서버에 없다' };
-    if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ 회관은 섰지만 마을이 서지 못했다 — ${r.err}` }); return; }
+      : { ok: false, err: '이 서버에는 마을이 돌지 않습니다.' };
+    if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ 회관은 섰지만 마을이 서지 못했습니다(${r.err}).` }); return; }
     done.data.villageDbId = r.dbId;   // 회관 ↔ 마을 결속(재고 UI 가 이 셀로 마을을 찾는다)
     //   ★★[T197] **창설 = 소속** — 세운 사람은 제 마을 사람이다(`membership.seatFounder` 한 자리).
     //     여태는 제가 세운 마을의 곳간을 못 열었다(소속 문턱 기여 12 는 *남의* 마을 문이다).
     try { Membership.seatFounder(player, r.dbId); } catch (e) {}
     try { db.updateBuildingData(done.dbId, JSON.stringify(done.data)); } catch (e) {}
     broadcast({ type: 'building_added', building: done });
-    send(player.ws, { type: 'notice', text: `🏘️ **[${r.name}]** 이(가) 섰다 — 인구 0. 곳간에 식량을 채우면 사람이 깃든다 (회관 클릭 = 재고)` });
+    send(player.ws, { type: 'notice', text: `🏘️ **[${r.name}]** 마을이 섰습니다. 아직 사람은 없습니다. 곳간에 먹을 것을 채우면 사람이 깃듭니다. 회관을 누르면 재고를 볼 수 있습니다.` });
   },
 };
 // ═══ ★★[T62 2026-09-03 재민 확정] 공용 쉼터 — **파지 않은 움집** ═══════════════
@@ -12148,7 +12148,7 @@ const SHELTER_STAGES = HUT_STAGES.slice(1).map((st, i) => ({ need: st.need, labe
 const SHELTER_SPEC = {
   siteType: 'shelter_site', doneType: 'shelter', ko: '공용 쉼터', icon: '🛖',
   stages: SHELTER_STAGES, kind: 'shelter',
-  doneHint: '이방인이 첫날 밤을 날 자리다',
+  doneHint: '이방인이 첫날 밤을 나는 자리입니다.',
   // ★★허가 — **마을 땅이 곧 허가다.** 공용 쉼터는 마을의 것이지 내 것이 아니므로
   //   사유지 슬롯(개인 3·임시 9)을 태우게 하지 않는다. 자격은 회관과 **같은 술어**를 쓴다:
   //   개인 땅 마을이면 창설자, 길드 땅 마을이면 길드원(`_furnaceCanUse` 가 회관에 대해 답하는 그것).
@@ -12159,26 +12159,26 @@ const SHELTER_SPEC = {
     const f = vil.econ && vil.econ.founder;
     const tid = vil._tribeId || null;
     if (!f) return { err: '오래된 마을엔 이미 쉼터가 있다 — 여긴 지을 자리가 아니다' };   // NPC 마을은 백필 소관
-    if (VillageKin.ON) return _kinIsMemberOf(player, vil.dbId) ? { tribeId: null, vid: vil.dbId | 0 } : { err: '이 마을 사람이 아니다 — 남의 마을에 쉼터를 못 짓는다' };   // ★[T786 C2] 켬 = 그 마을 사람
+    if (VillageKin.ON) return _kinIsMemberOf(player, vil.dbId) ? { tribeId: null, vid: vil.dbId | 0 } : { err: '이 마을 사람이 아니어서 쉼터를 지을 수 없습니다.' };   // ★[T786 C2] 켬 = 그 마을 사람
     const mine = (f === player.playerId) || (tid && player.tribeId && tid === player.tribeId);
-    if (!mine) return { err: '이 마을의 관리자가 아닙니다 — 남의 마을에 쉼터를 못 짓는다' };
+    if (!mine) return { err: '이 마을의 관리자가 아니어서 쉼터를 지을 수 없습니다.' };
     return { tribeId: tid };
   },
   onDone: (player, done, ctx) => {
     // ★어느 마을의 쉼터인가 — **영토 집합이 정본**이다(반경으로 다시 재지 않는다).
     const vil = SimVillages.villageOfCell ? SimVillages.villageOfCell(ctx.x0, ctx.y0) : null;
-    if (!vil) { send(player.ws, { type: 'notice', text: '🛖 쉼터는 섰지만 **어느 마을 것도 아니다** — 마을 영토 안에 지어야 그 마을의 쉼터가 된다' }); return; }
+    if (!vil) { send(player.ws, { type: 'notice', text: '🛖 쉼터는 섰지만 **어느 마을 것도 아닙니다.** 마을 땅 안에 지어야 그 마을의 쉼터가 됩니다.' }); return; }
     // 6×4 집채의 부지 중심 — 터(2×2)의 좌상 셀이 집채 안에 들어오게 맞춘다(움집과 같은 오프셋 규약).
     const cx = (ctx.x0 | 0) + 3, cy = (ctx.y0 | 0) + 2;
-    const r = SimVillages.addShelter ? SimVillages.addShelter(vil.dbId, cx, cy) : { ok: false, err: '마을 시뮬이 이 서버에 없다' };
-    if (!r.ok) { send(player.ws, { type: 'notice', text: `🛖 쉼터를 마을에 못 올렸다 — ${r.err}` }); return; }
-    if (r.already) { send(player.ws, { type: 'notice', text: `🛖 [${vil.name}] 에는 이미 쉼터가 있다` }); return; }
+    const r = SimVillages.addShelter ? SimVillages.addShelter(vil.dbId, cx, cy) : { ok: false, err: '이 서버에는 마을이 돌지 않습니다.' };
+    if (!r.ok) { send(player.ws, { type: 'notice', text: `🛖 쉼터를 마을에 올리지 못했습니다(${r.err}).` }); return; }
+    if (r.already) { send(player.ws, { type: 'notice', text: `🛖 ${vil.name}에는 이미 쉼터가 있습니다.` }); return; }
     // ★터 표지는 지운다 — 실체(6×4)는 `addShelter` 가 정본 경로로 이미 세웠다.
     try { db.deleteBuilding(done.dbId); } catch (e) {}
     buildings.delete(done.id);
     try { if (chunkManager && chunkManager.removeBuilding) chunkManager.removeBuilding(done); } catch (e) {}
     broadcast({ type: 'building_removed', id: done.id });
-    send(player.ws, { type: 'notice', text: `🛖 **[${vil.name}] 공용 쉼터**가 섰다 — 이방인이 첫날 밤을 날 자리다 (이제 '이방인 받기'를 켤 수 있다)` });
+    send(player.ws, { type: 'notice', text: `🛖 **${vil.name} 공용 쉼터**가 섰습니다. 이방인이 첫날 밤을 나는 자리입니다. 이제 '이방인 받기'를 켤 수 있습니다.` });
     console.log(`[${ZONE_ID}] 🛖 ${player.name} 쉼터 완공 @(${cx},${cy}) → ${vil.name}`);
   },
 };
@@ -12187,14 +12187,14 @@ function tryShelterStart(player, atX, atY) {
   const SZg = BUILDING_SIZE;
   const x0 = Math.floor(atX / SZg), y0 = Math.floor(atY / SZg);
   const vil = SimVillages.villageOfCell ? SimVillages.villageOfCell(x0, y0) : null;
-  if (!vil) { send(player.ws, { type: 'notice', text: '🛖 마을 영토 안에만 쉼터를 세운다 — 여긴 어느 마을 땅도 아니다' }); return; }
-  if (SimVillages.hasShelter && SimVillages.hasShelter(vil.dbId)) { send(player.ws, { type: 'notice', text: `🛖 [${vil.name}] 에는 이미 쉼터가 있다 — 마을에 하나면 된다` }); return; }
+  if (!vil) { send(player.ws, { type: 'notice', text: '🛖 쉼터는 마을 땅 안에만 세울 수 있습니다. 여기는 어느 마을 땅도 아닙니다.' }); return; }
+  if (SimVillages.hasShelter && SimVillages.hasShelter(vil.dbId)) { send(player.ws, { type: 'notice', text: `🛖 ${vil.name}에는 이미 쉼터가 있습니다. 마을에 하나면 됩니다.` }); return; }
   // 완공 실체는 6×4 다 — **그 발자국 전체**를 지금 본다(2×2 만 보면 지붕이 물 위에 앉는다).
   const cx = x0 + 3, cy = y0 + 2;
   for (let x = cx - 5; x <= cx + 0; x++) for (let y = cy - 5; y <= cy - 2; y++) {
     const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
-    if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '🛖 지붕이 앉을 자리가 물·바위다 — 조금 물러서 지어라' }); return; }
-    if (!vil._terrSet || !vil._terrSet.has(x + ',' + y)) { send(player.ws, { type: 'notice', text: '🛖 집채가 마을 영토 밖으로 나간다' }); return; }
+    if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '🛖 지붕이 앉을 자리가 물이나 바위입니다. 조금 물러서 지으십시오.' }); return; }
+    if (!vil._terrSet || !vil._terrSet.has(x + ',' + y)) { send(player.ws, { type: 'notice', text: '🛖 집채가 마을 땅 밖으로 나갑니다.' }); return; }
   }
   return _siteStart(player, atX, atY, SHELTER_SPEC);
 }
@@ -12208,8 +12208,8 @@ function tryVillageStart(player, atX, atY) {
   //   판정은 villages.js 정본과 같은 함수를 쓴다(사본 금지): dryRun 으로 물어본다.
   const SZg = BUILDING_SIZE;
   const cx = Math.floor(atX / SZg), cy = Math.floor(atY / SZg);
-  const chk = SimVillages.foundPlayerVillage ? SimVillages.foundPlayerVillage({ ccx: cx, ccy: cy, founder: player.playerId, dryRun: true }) : { ok: false, err: '마을 시뮬이 이 서버에 없다' };
-  if (!chk.ok) { send(player.ws, { type: 'notice', text: `🏘️ 여기엔 마을을 못 세운다 — ${chk.err}` }); return; }
+  const chk = SimVillages.foundPlayerVillage ? SimVillages.foundPlayerVillage({ ccx: cx, ccy: cy, founder: player.playerId, dryRun: true }) : { ok: false, err: '이 서버에는 마을이 돌지 않습니다.' };
+  if (!chk.ok) { send(player.ws, { type: 'notice', text: `🏘️ 여기에는 마을을 세울 수 없습니다(${chk.err}).` }); return; }
   return _siteStart(player, atX, atY, VILLAGE_SPEC);
 }
 function tryVillageAdvance(player, buildingId) {
@@ -12224,14 +12224,14 @@ function tryVillageInventory(player, buildingId) {
   if (!b || b.type !== 'village_hall') return;
   if (Math.hypot(b.x - player.x, b.y - player.y) > 200) { send(player.ws, { type: 'notice', text: '회관에서 너무 멀리 있습니다' }); return; }
   if (!_furnaceCanUse(player, b)) {
-    send(player.ws, { type: 'notice', text: b.data && b.data.tribeId ? '우리 마을이 아닙니다 — 재고를 볼 수 없다' : '이 마을의 관리자가 아닙니다 — 재고를 볼 수 없다' });
+    send(player.ws, { type: 'notice', text: b.data && b.data.tribeId ? '우리 마을이 아니어서 재고를 볼 수 없습니다.' : '이 마을의 관리자가 아니어서 재고를 볼 수 없습니다.' });
     return;
   }
   const d = b.data || {};
   const vil = SimVillages.playerVillageAt ? SimVillages.playerVillageAt(d.x0, d.y0) : null;
-  if (!vil) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했다' }); return; }
+  if (!vil) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했습니다.' }); return; }
   const inv = SimVillages.playerVillageInventory(vil);
-  if (!inv) { send(player.ws, { type: 'notice', text: '재고를 읽지 못했다' }); return; }
+  if (!inv) { send(player.ws, { type: 'notice', text: '재고를 읽지 못했습니다.' }); return; }
   inv.welcome = _welcomeLine(vil.dbId);   // ★[T19] 이방인 받기 — **기존 payload 한 줄**(새 창구 0)
   inv.hallId = buildingId;
   if (T769) inv.donate = true;            // ★[T769] 켬 = "넣기" 를 "기부"로(받는 것 없음) — 끔이면 이 칸이 없다
@@ -12251,18 +12251,18 @@ function tryVillageWelcome(player, buildingId, on) {
   if (Math.hypot(b.x - player.x, b.y - player.y) > 200) { send(player.ws, { type: 'notice', text: '회관에서 너무 멀리 있습니다' }); return; }
   if (VillageKin.ON) {   // ★[T786 C1] 켬 — 이방인 받기를 켜고 끄는 것은 **촌장**(열람 · 넣기는 마을 사람)
     const _wv = (b.data && b.data.villageDbId != null && SimVillages.villageByDbId) ? SimVillages.villageByDbId(b.data.villageDbId | 0) : null;
-    if (!(_wv && VillageKin.isChief(player, _wv))) { send(player.ws, { type: 'notice', text: '🏘️ 촌장만 할 수 있다' }); return; }
+    if (!(_wv && VillageKin.isChief(player, _wv))) { send(player.ws, { type: 'notice', text: '🏘️ 촌장만 할 수 있습니다.' }); return; }
   } else
   if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: '이 마을의 관리자가 아닙니다' }); return; }
   const vid = (b.data && b.data.villageDbId != null) ? (b.data.villageDbId | 0) : null;
-  if (vid == null) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했다' }); return; }
+  if (vid == null) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했습니다.' }); return; }
   const r = Newcomers.setOn(vid, !!on);
   if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
   const e = Newcomers.listable(vid);
   send(player.ws, { type: 'notice', text: r.on
-    ? (e.listed ? '🏘️ 이방인을 받는다 — 시작 지도에 우리 마을이 오른다'
-                : `🏘️ 이방인을 받기로 했다 — 다만 아직 지도엔 안 오른다: ${e.why.join(' · ')}`)
-    : '🏘️ 이방인을 받지 않는다 — 시작 지도에서 내렸다' });
+    ? (e.listed ? '🏘️ 이방인을 받습니다. 시작 지도에 우리 마을이 오릅니다.'
+                : `🏘️ 이방인을 받기로 했습니다. 다만 아직 지도에는 오르지 않습니다(${e.why.join(' · ')}).`)
+    : '🏘️ 이방인을 받지 않습니다. 시작 지도에서 내렸습니다.' });
   tryVillageInventory(player, buildingId);   // 화면을 그 자리에서 갱신(거래소·곳간과 같은 규약)
 }
 // ★[배치 12 ②] 곳간에 넣기 — 권한·거리 규약은 열람과 **완전히 같다**(같은 회관, 같은 술어).
@@ -12293,7 +12293,7 @@ function tryVillageDeposit(player, buildingId, want, _donVil) {
   if (!T769 && !_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: '이 마을의 관리자가 아닙니다' }); return; }   // ★[T769] 켬 = 누구나 기부(근접만)
   const d = b.data || {};
   vil = SimVillages.playerVillageAt ? SimVillages.playerVillageAt(d.x0, d.y0) : null;
-  if (!vil) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했다' }); return; }
+  if (!vil) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했습니다.' }); return; }
   }
   if (T725_HALL) {   // ★[T725 ①] 상한 것은 회관도 안 받는다 — 낼 품목(곳간이 받는 것 · 1개 이상)만 묻는다
     const _map = SimVillages.playerVillageDepositMap() || {};
@@ -12312,7 +12312,7 @@ function tryVillageDeposit(player, buildingId, want, _donVil) {
   sendInventory(player);
   const kv = Object.entries(r.taken).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
   //   ★[T769] 켬 = 기부 — 받는 것 없음이 한 줄에 보이게(거래 · 납품과 말을 섞지 않는다)
-  send(player.ws, { type: 'notice', text: T769 ? `🏘️ ${vil.name ? vil.name + ' ' : ''}곳간에 기부했다 — ${kv} · 받는 것 없음` : `🏘️ 곳간에 넣었다 — ${kv}` });
+  send(player.ws, { type: 'notice', text: T769 ? `🏘️ ${vil.name ? vil.name + ' ' : ''}곳간에 ${kv}을(를) 내놓았습니다. 대가는 없습니다.` : `🏘️ 곳간에 ${kv}을(를) 넣었습니다.` });
   if (_donVil) {   // ★[T769] 기부 문(채팅 · 패널) — 거래소 창이 열려 있으면 그 창을 다시 보낸다(꺼내기 뒷정리와 같은 규약)
     try {
       const _v = player._memberNearVid;
@@ -12330,7 +12330,7 @@ function tryVillageDeposit(player, buildingId, want, _donVil) {
 //   NPC 마을(회관 없음)도 사람 마을도 받는다 · 실물 길은 회관과 같은 `tryVillageDeposit` 본문(마을을 넷째 인자로 넘긴다).
 function tryVillageDonate(player, vid, want) {
   if (!T769) return;
-  if (!SimVillages.villageWithdrawGate) { send(player.ws, { type: 'notice', text: '🏘️ 곳간을 찾지 못했다' }); return; }
+  if (!SimVillages.villageWithdrawGate) { send(player.ws, { type: 'notice', text: '🏘️ 곳간을 찾지 못했습니다.' }); return; }
   const g = SimVillages.villageWithdrawGate(vid | 0, player.x, player.y);
   if (g.err) { send(player.ws, { type: 'notice', text: `🏘️ ${g.err}` }); return; }
   return tryVillageDeposit(player, null, want || {}, g.vil);   // 회관과 같은 본문(사본 0)
@@ -12492,8 +12492,8 @@ function _afterWithdraw(player, r) {
   savePlayer(player);
   sendInventory(player);
   const _sw768 = !!(_g732 && Object.values(_g732.got || {}).some((g) => g && g.swap));   // ★[T768] 넣은 물건 그대로 나온 몫이 있다(켬 · 없으면 종전 글자)
-  send(player.ws, { type: 'notice', text: `🏘️ ${r.name} 곳간에서 ${ITEM_LABEL_SERVER[r.item] || r.item} ${r.qty}${_sw768 ? ' 몫(넣은 물건 그대로)' : ''} 꺼냈다`
-    + ' — 촌장 몫(한도 없음)'   // ★[T769] 촌장 꺼내기 · ★[T779] 옛 "오늘 남은 몫 n/m"(기여 한도)은 걷었다
+  send(player.ws, { type: 'notice', text: `🏘️ ${r.name} 곳간에서 ${ITEM_LABEL_SERVER[r.item] || r.item} ${r.qty}${_sw768 ? ' 몫(넣은 물건 그대로)' : ''}을(를) 꺼냈습니다.`
+    + ' 촌장 몫이라 한도가 없습니다.'   // ★[T769] 촌장 꺼내기 · ★[T779] 옛 "오늘 남은 몫 n/m"(기여 한도)은 걷었다
     + (_g732 ? _t732GotLine(player, _g732) : '') });
   // ★거래소 창이 열려 있으면 **그 창을 다시 보내 준다** — 방금 곳간이 줄었다
   //   (거래소 실행이 시세를 다시 보내 주는 것과 같은 규약: 화면이 낡은 값을 들고 있으면 그게 거짓말이다).
@@ -12517,14 +12517,14 @@ function _memberLine(player, vid) {
 //   ★[T779] 손잡이 밖이다(옛 소속 · 기여 한도 갈래는 걷었다).
 function tryVillageWithdraw(player, vid, res, qty) {
   const fin = (r) => {
-    if (!r || !r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${(r && r.err) || '곳간을 열지 못했다'}` }); return r; }
+    if (!r || !r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${(r && r.err) || '곳간을 열지 못했습니다.'}` }); return r; }
     if (SimVillages.t983Save) SimVillages.t983Save(vid | 0);   // ★[T983] 곳간 행도 이 순간에(사람 저장 `_afterWithdraw` 보다 먼저 · 끔 = 무동작)
     _afterWithdraw(player, r);
     return r;
   };
   const r = Membership.withdrawChief(player, vid | 0, res, qty);
   if (r && typeof r.then === 'function') {
-    return r.then(fin).catch(() => { send(player.ws, { type: 'notice', text: '🏘️ 곳간을 열지 못했다 — 잠시 뒤 다시' }); return null; });
+    return r.then(fin).catch(() => { send(player.ws, { type: 'notice', text: '🏘️ 곳간을 열지 못했습니다. 잠시 뒤 다시 해 보십시오.' }); return null; });
   }
   return fin(r);
 }
@@ -12590,8 +12590,8 @@ function _spoiledGuardItems(player, items) {
     if (Spoil.freshnessOf(it, Spoil.exposureOf(arr[0], today)) > 0) continue;   // ★[부패 2차] 나이 → 노출
     const bad = Math.floor(arr[0].n);
     const okLeft = Math.floor(Lots.sum(player, it) - arr[0].n);
-    return `${ITEM_LABEL_SERVER[it] || it} 중 ${bad > 0 ? bad : arr[0].n}개가 상했다 — 마을은 상한 것을 받지 않는다`
-         + `. 먼저 버려라(성한 것 ${okLeft}개는 그대로 낼 수 있다)`;
+    return `${ITEM_LABEL_SERVER[it] || it} 중 ${bad > 0 ? bad : arr[0].n}개가 상했습니다. 마을은 상한 것을 받지 않습니다`
+         + `. 먼저 버리십시오. 성한 것 ${okLeft}개는 그대로 낼 수 있습니다.`;
   }
   return null;
 }
@@ -12627,8 +12627,8 @@ function tryVillageTradeExec(player, vid, giveRes, takeRes, qty, want, numeraire
   savePlayer(player);
   sendInventory(player);
   const gave = Object.entries(r.gaveItems || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
-  send(player.ws, { type: 'notice', text: `🏪 ${r.name} 거래소 — ${gave} → ${ITEM_LABEL_SERVER[r.tookItem] || r.tookItem} ${r.take}`
-    + (r.capped ? ` (마을 재고가 모자라 ${r.wanted}→${r.give}개만 받았다)` : '') + (_g732 ? _t732GotLine(player, _g732) : '') });
+  send(player.ws, { type: 'notice', text: `🏪 ${r.name} 거래소에서 ${gave}을(를) 내고 ${ITEM_LABEL_SERVER[r.tookItem] || r.tookItem} ${r.take}을(를) 받았습니다.`
+    + (r.capped ? ` 마을 재고가 모자라 ${r.wanted}개 가운데 ${r.give}개만 받았습니다.` : '') + (_g732 ? _t732GotLine(player, _g732) : '') });
   // ★시세표를 **다시 보내 준다** — 방금 내 거래가 시세를 움직였을 수 있고, 그걸 보는 게 이 배치의 요점이다.
   try {
     const b = SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory, numeraire);   // ★[T69] 되보내는 표도 **같은 기준**이라야 한다
@@ -12651,8 +12651,8 @@ function tryVillageDeliver(player, vid, item, want) {
   savePlayer(player);
   sendInventory(player);
   const gave = Object.entries(r.taken || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
-  const got = r.rew > 0 ? ` → ${ITEM_LABEL_SERVER[r.rewItem] || r.rewItem} ${r.rew}` : '';
-  send(player.ws, { type: 'notice', text: `📋 ${r.name}에 납품 — ${gave}${got}${r.refused > 0 ? ` (${r.refused}개는 남은 몫을 넘어 돌려받음)` : ''}`
+  const got = r.rew > 0 ? ` 삯으로 ${ITEM_LABEL_SERVER[r.rewItem] || r.rewItem} ${r.rew}을(를) 받았습니다.` : '';
+  send(player.ws, { type: 'notice', text: `📋 ${r.name}에 ${gave}을(를) 바쳤습니다.${got}${r.refused > 0 ? ` ${r.refused}개는 남은 몫을 넘어 돌려받았습니다.` : ''}`
     + (_g732 ? _t732GotLine(player, _g732) : '') });   // ★[T779] 겨울 몫 알림(T20 "올겨울 몫")은 걷었다
   Onboarding.onDeliver(player, r, vid | 0);   // ★[온보딩 v2] 누적 기여(=T11 이 재사용할 하나의 카운터)·곳간 이펙트·훅 대사·빈터 권리
   //   ★[T785] 켬 — 가입 문이 '초대제'인 마을은 기여로 권하지 않는다(부름 `/초대` → `/수락` 만 · 문은 마을 칸)
@@ -12675,7 +12675,7 @@ function tryKilnBurn(player, buildingId) {
     const job = b.data.job;
     if (nowK < job.until) {
       const remain = Math.ceil((job.until - nowK) / 1000);
-      send(player.ws, { type: 'notice', text: `🪵 탄화 중 — ${remain}초 남음 (${Math.round(_jobProgress(job, nowK) * 100)}%). 연도를 막아 뒀으니 자리를 떠도 된다` });
+      send(player.ws, { type: 'notice', text: `🪵 숯을 굽는 중입니다. ${remain}초 남았습니다(${Math.round(_jobProgress(job, nowK) * 100)}%). 연기 구멍을 막아 두었으니 자리를 떠도 됩니다.` });
       return;
     }
     const got = CHARCOAL_KILN_YIELD * (job.n || 1);
@@ -12684,7 +12684,7 @@ function tryKilnBurn(player, buildingId) {
     if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
     broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
     sendInventory(player);
-    send(player.ws, { type: 'notice', text: `🪵 가마를 헐었다 — 숯 ${got} 수거 (장입 ${job.n || 1}회분)` });
+    send(player.ws, { type: 'notice', text: `🪵 가마를 헐어 숯 ${got}개를 꺼냈습니다(${job.n || 1}번 넣은 몫).` });
     savePlayer(player);
     return;
   }
@@ -12704,7 +12704,7 @@ function tryKilnBurn(player, buildingId) {
     broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
     sendInventory(player);
     send(player.ws, { type: 'notice',
-      text: `🪵 장입 — 통나무 ${CHARCOAL_KILN_WOOD * n}${n > 1 ? ` (×${n}회분)` : ''} 을 재고 연도를 막았다. ${Math.round(dur / 1000)}초 뒤 가마를 헐어 숯을 꺼낸다` });
+      text: `🪵 통나무 ${CHARCOAL_KILN_WOOD * n}개${n > 1 ? `(${n}번 몫)` : ''}를 쌓고 연기 구멍을 막았습니다. ${Math.round(dur / 1000)}초 뒤 가마를 헐어 숯을 꺼냅니다.` });
     savePlayer(player);
   }
 }
@@ -12712,7 +12712,7 @@ function tryFurnaceSmelt(player, buildingId) {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'furnace') return;
   if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '노에서 너무 멀리 있습니다' }); return; }
-  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 마을의 노가 아닙니다' : (b.data.vid != null ? '우리 마을의 노가 아닙니다' : '이 노의 주인이 아닙니다 — 개인 노엔 타인 관여 불가') }); return; }   // ★[T786] `vid` = 마을 시설(켬에서만 선다 · 끔 = 종전 두 갈래)
+  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 마을의 노가 아닙니다' : (b.data.vid != null ? '우리 마을의 노가 아닙니다' : '이 노의 주인이 아닙니다. 남의 노는 쓸 수 없습니다.') }); return; }   // ★[T786] `vid` = 마을 시설(켬에서만 선다 · 끔 = 종전 두 갈래)
   const now = Date.now();
   const kind = (b.data && b.data.kind) || 'crucible';
   // ★★[2026-08-02e ⑤] 조업 중이면 — 아직이면 남은 시간을, 끝났으면 **출탕**한다.
@@ -12722,7 +12722,7 @@ function tryFurnaceSmelt(player, buildingId) {
     const job = b.data.job;
     if (now < job.until) {
       const remain = Math.ceil((job.until - now) / 1000);
-      send(player.ws, { type: 'notice', text: `🔥 조업 중 — ${remain}초 남음 (${Math.round(_jobProgress(job, now) * 100)}%). 자리를 떠도 불은 계속 탄다` });
+      send(player.ws, { type: 'notice', text: `🔥 쇠를 뽑는 중입니다. ${remain}초 남았습니다(${Math.round(_jobProgress(job, now) * 100)}%). 자리를 떠도 불은 계속 탑니다.` });
       return;
     }
     // ── 출탕 — 장입 때 정한 수율로 산출한다(중간에 시대가 열려도 **장입 시점 물리**가 기준이다:
@@ -12734,8 +12734,8 @@ function tryFurnaceSmelt(player, buildingId) {
     const whole2 = Math.floor(tot2 / Specialty.CHUNK_KG);
     carry2._iron_smelt = +(tot2 - whole2 * Specialty.CHUNK_KG).toFixed(3);
     let m2;
-    if (whole2 > 0) { player.inventory.iron = (player.inventory.iron || 0) + whole2; m2 = `🔥 출탕 — 철 ${whole2}덩이!`; }
-    else m2 = `🔥 출탕 — 해면철 부스러기 ${kg2.toFixed(2)}kg (누적 ${tot2.toFixed(2)}/${Specialty.CHUNK_KG}kg — 슬래그가 대부분이다)`;
+    if (whole2 > 0) { player.inventory.iron = (player.inventory.iron || 0) + whole2; m2 = `🔥 쇠를 꺼냈습니다. 철 ${whole2}덩이입니다.`; }
+    else m2 = `🔥 쇠를 꺼냈지만 부스러기 ${kg2.toFixed(2)}kg뿐입니다(모은 것 ${tot2.toFixed(2)}/${Specialty.CHUNK_KG}kg). 대부분 쇠똥입니다.`;
     delete b.data.job;
     if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
     broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
@@ -12745,14 +12745,14 @@ function tryFurnaceSmelt(player, buildingId) {
     return;
   }
   const ore = player.inventory.iron_ore || 0;
-  if (ore < 1) { send(player.ws, { type: 'notice', text: '철 정광이 없다 — 철 광맥을 캐서 선광하면 나온다' }); return; }
+  if (ore < 1) { send(player.ws, { type: 'notice', text: '철 정광이 없습니다. 철 광맥을 캐서 가려내면 나옵니다.' }); return; }
   const fuelNeed = FURNACE_FUEL_PER_ORE;
-  if ((player.inventory.charcoal || 0) < fuelNeed) { send(player.ws, { type: 'notice', text: `숯 부족 (정광 1덩이당 숯 ${fuelNeed} — 제작창 노천 탄화 또는 숯가마로 굽는다)` }); return; }
+  if ((player.inventory.charcoal || 0) < fuelNeed) { send(player.ws, { type: 'notice', text: `숯이 모자랍니다. 정광 한 덩이에 숯 ${fuelNeed}개가 듭니다. 숯은 제작창이나 숯가마에서 굽습니다.` }); return; }
   // ★물리는 era.js 하나가 정한다 — 청동기 도가니로 3.4%, 시대 열리면 같은 노가 67.8%, 괴련로 88.1%.
   const Era = require('./era');
   const setup = { furnace: kind, fuel: 'charcoal', bellows: true };
   const y = Era.smeltYield('iron', setup);
-  if (!(y > 0)) { send(player.ws, { type: 'notice', text: '이 노로는 철이 안 나온다' }); return; }
+  if (!(y > 0)) { send(player.ws, { type: 'notice', text: '이 노로는 쇠가 나오지 않습니다.' }); return; }
   player.inventory.iron_ore -= 1;
   player.inventory.charcoal -= fuelNeed;
   // ── 장입 — 재료는 **지금** 들어가고(불 속에 넣은 것은 돌려받지 못한다), 산출은 시간 뒤에 나온다
@@ -12763,7 +12763,7 @@ function tryFurnaceSmelt(player, buildingId) {
     broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
     sendInventory(player);
     send(player.ws, { type: 'notice',
-      text: `🔥 장입 — 정광 1·숯 ${fuelNeed} 을 넣고 불을 지폈다. ${Math.round(dur / 1000)}초 뒤 노를 클릭해 출탕한다 (자리를 떠도 된다)` });
+      text: `🔥 정광 하나와 숯 ${fuelNeed}개를 넣고 불을 지폈습니다. ${Math.round(dur / 1000)}초 뒤 노를 누르면 쇠를 꺼냅니다. 자리를 떠도 됩니다.` });
     savePlayer(player);
     return;
   }
@@ -12773,8 +12773,8 @@ function tryFurnaceSmelt(player, buildingId) {
   const whole = Math.floor(tot / Specialty.CHUNK_KG);
   carry._iron_smelt = +(tot - whole * Specialty.CHUNK_KG).toFixed(3);
   let msg2;
-  if (whole > 0) { player.inventory.iron = (player.inventory.iron || 0) + whole; msg2 = `🔥 제련 성공 — 철 ${whole}덩이!`; }
-  else msg2 = `🔥 해면철 부스러기 ${kg.toFixed(2)}kg (누적 ${tot.toFixed(2)}/${Specialty.CHUNK_KG}kg — 슬래그가 대부분이다)`;
+  if (whole > 0) { player.inventory.iron = (player.inventory.iron || 0) + whole; msg2 = `🔥 쇠를 뽑았습니다. 철 ${whole}덩이입니다.`; }
+  else msg2 = `🔥 쇠 부스러기 ${kg.toFixed(2)}kg뿐입니다(모은 것 ${tot.toFixed(2)}/${Specialty.CHUNK_KG}kg). 대부분 쇠똥입니다.`;
   sendInventory(player);
   send(player.ws, { type: 'notice', text: msg2 + ` · 수율 ${(y * 100).toFixed(1)}%` });
   savePlayer(player);
@@ -12912,7 +12912,7 @@ module.exports = { __testBind, __furnaceBind: __testBind };
 const GRANARY_COST = GranaryStages.GRANARY_COST;   // ★[T435] 판자 12·돌 8 — `granary-stages.js` 에서 유도(NPC 곳간 증설과 같은 표 · 사본 0)
 async function tryBuildGuildGranary(player, atX, atY) {
   //   ★[T786 C9] T785 켬 — 길드 곳간(A17)은 **마을 곳간**으로 접혔다(곳간 증설 · 넣기 · 꺼내기는 마을 문) · 길드 금고(`treasury_json`)는 없앨 추상(T787) — 짓는 문은 닫는다.
-  if (VillageKin.ON) { send(player.ws, { type: 'notice', text: '🏘️ 곳간은 마을의 것이다 — 마을 곳간에 넣고, 꺼내는 것은 마을 문으로' }); return; }
+  if (VillageKin.ON) { send(player.ws, { type: 'notice', text: '🏘️ 곳간은 마을의 것입니다. 넣을 때는 마을 곳간에 넣고, 꺼낼 때는 마을을 거치십시오.' }); return; }
   if (!player.tribeId) { send(player.ws, { type: 'notice', text: '마을 사람이 아닙니다' }); return; }
   // 리더 검사(central)
   try {
@@ -12929,10 +12929,10 @@ async function tryBuildGuildGranary(player, atX, atY) {
   let gx, gy;
   if (Number.isFinite(atX) && Number.isFinite(atY)) {
     // ★건축모드 커서 배치[사용자 지시 "좀보이드 스타일"]
-    if (Math.hypot(atX - player.x, atY - player.y) > 200) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에 못 지음' }); return; }
+    if (Math.hypot(atX - player.x, atY - player.y) > 200) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에는 지을 수 없습니다.' }); return; }
     gx = Math.floor(atX / SZg); gy = Math.floor(atY / SZg);
     const pcx = Math.floor(player.x / SZg), pcy = Math.floor(player.y / SZg);
-    if (pcx >= gx - 2 && pcx <= gx + 2 && pcy >= gy - 1 && pcy <= gy + 1) { send(player.ws, { type: 'notice', text: '곳간은 밀폐 — 발자국 안에 서 있으면 갇힙니다. 밖에서 지으세요' }); return; }
+    if (pcx >= gx - 2 && pcx <= gx + 2 && pcy >= gy - 1 && pcy <= gy + 1) { send(player.ws, { type: 'notice', text: '곳간은 꽉 막힌 건물이라 그 자리 안에 서 있으면 갇힙니다. 밖에서 지으십시오.' }); return; }
   } else { gx = Math.round(player.x / SZg); gy = Math.round(player.y / SZg) - 3; }   // 폴백(구식): 북쪽 3칸
   // 길드영토 안(발자국 네 모서리 전부) — claim 사각 bbox 판정
   const inMyGuildClaim = (px, py) => {
@@ -12975,7 +12975,7 @@ async function tryBuildGuildGranary(player, atX, atY) {
   broadcast({ type: 'buildings_spawn', buildings: made });
   savePlayer(player);
   sendInventory(player);
-  send(player.ws, { type: 'notice', text: `🏚️ 마을 곳간 완공! (E로 입출고 — 마을 사람 공유, 전쟁 시 약탈 목표가 됩니다)` });
+  send(player.ws, { type: 'notice', text: `🏚️ 마을 곳간이 다 지어졌습니다. E로 넣고 꺼내며 마을 사람이 함께 씁니다. 싸움이 나면 약탈당할 수 있습니다.` });
   console.log(`[${ZONE_ID}] 🏚️ ${player.name} 길드 곳간 건설 tribe=${player.tribeId} @(${gx},${gy})`);
 }
 
@@ -13026,7 +13026,7 @@ function tryChestPut(player, buildingId, item, amount) {
   }
   // Phase 14.25: 모든 아이템 저장 허용 (white-list)
   if (!CHEST_ALLOWED_ITEMS.has(item)) {
-    send(player.ws, { type: 'notice', text: `${item}은 상자에 못 넣음` }); return;
+    send(player.ws, { type: 'notice', text: `${item}은(는) 상자에 넣을 수 없습니다.` }); return;
   }
   amount = Math.max(1, Math.min(99, amount | 0));
   if ((player.inventory[item] || 0) < amount) {
@@ -13074,7 +13074,7 @@ async function tryChestTake(player, buildingId, item, amount) {
     send(player.ws, { type: 'notice', text: '상자에서 너무 멀리 있습니다' }); return;
   }
   if (!CHEST_ALLOWED_ITEMS.has(item)) {
-    send(player.ws, { type: 'notice', text: `${item}은 인출 불가` }); return;
+    send(player.ws, { type: 'notice', text: `${item}은(는) 꺼낼 수 없습니다.` }); return;
   }
   // ★[T45] **보관 중인 무주 사유지의 상자는 잠긴다.** 그래야 보관이 보관이다(§3.2).
   //   길드·마을이 맡은 땅은 그쪽이 쓰라고 맡은 것이라 안 잠근다 — 판정은 `claims.js` 하나.
@@ -13183,7 +13183,7 @@ async function tryChestTake(player, buildingId, item, amount) {
   sendInventory(player);
   send(player.ws, { type: 'chest_state', buildingId: b.id, data: b.data });
   if (isLoot) {
-    send(player.ws, { type: 'notice', text: `🏴‍☠️ 약탈! ${item} ${takeAmt} (loot_rate ${(lootRate*100).toFixed(0)}%)` });
+    send(player.ws, { type: 'notice', text: `🏴‍☠️ ${item} ${takeAmt}을(를) 빼앗았습니다(${(lootRate*100).toFixed(0)}%).` });
     console.log(`[${ZONE_ID}] 🏴‍☠️ ${player.name} 약탈 ${b.ownerName} chest: ${item} ${takeAmt}`);
   }
 }
@@ -13344,7 +13344,7 @@ async function tryAttack(player) {
   if (bestMob) {
     // 자기 길든 mob은 공격 안 함 — gather/feed 우선
     if (bestMob.tameOwner === player.playerId) {
-      send(player.ws, { type: 'notice', text: '내가 길들인 동물은 공격하지 않음' });
+      send(player.ws, { type: 'notice', text: '내가 길들인 짐승은 공격하지 않습니다.' });
       return;
     }
     setMobHp(bestMob, bestMob.hp - atk, 'player');   // ★[T954] 문으로(쓰기 · 저장 표 · 방송 — 종전 세 줄 그 차례)
@@ -13438,7 +13438,7 @@ async function tryAttack(player) {
       if (p.playerId === bestWall.ownerId) { ownerTribe = p.tribeId; _ownerP = p; break; }
     }
     if (VillageKin.ON ? !!(_ownerP && _kinSameVil(player, _ownerP)) : (player.tribeId && ownerTribe === player.tribeId)) {   // ★[T786 C16] 켬 = 같은 마을 사람의 건축물
-      send(player.ws, { type: 'notice', text: '내 마을 건축물은 공격 못 함' }); return;
+      send(player.ws, { type: 'notice', text: '내 마을 건물은 공격할 수 없습니다.' }); return;
     }
     const maxHp = BUILDING_MAX_HP[bestWall.type] || 50;
     if (typeof bestWall.data !== 'object' || bestWall.data === null) bestWall.data = {};
@@ -13447,7 +13447,7 @@ async function tryAttack(player) {
       bestWall.data.damaged = true;
       _collBump(bestWall);   // ★[T562] 부서진 벽은 통과 — 도장
       bestWall.data.hp = 0;
-      send(player.ws, { type: 'notice', text: `💥 ${bestWall.type} 손상! 통과 가능 (수리하면 복구)` });
+      send(player.ws, { type: 'notice', text: `💥 ${bestWall.type}이(가) 부서져 지나갈 수 있습니다. 고치면 다시 막힙니다.` });
       // §4-4 Stage 4B(§5.5b): 벽류 파괴(손상=통과 가능) = 개통 → 교역 거리행렬·캐러밴 경로 무효화
       if (bestWall.type === 'wall' || bestWall.type === 'fence') SimVillages.invalidateTradeDistances(Math.floor(bestWall.x / BUILDING_SIZE), Math.floor(bestWall.y / BUILDING_SIZE));
     } else {
@@ -13570,7 +13570,7 @@ function damagePlayer(p, dmg, source) {
     const add = Body.onDamage(p, dmg);
     if (add > 0) {
       const inj = Body.ensure(p).injury;
-      send(p.ws, { type: 'notice', text: `🩹 다쳤다 — ${source ? source.replace('mob:', '') + '에게 ' : ''}크게 맞았다 (부상 ${(inj * 100).toFixed(0)}%)` });
+      send(p.ws, { type: 'notice', text: `🩹 ${source ? source.replace('mob:', '') + '에게 ' : ''}크게 맞아 다쳤습니다(부상 ${(inj * 100).toFixed(0)}%).` });
     }
   }
   if (p.hp <= 0) {
@@ -13898,19 +13898,19 @@ function _sayWake(p, lead) {
   const nm = sp && sp.name ? sp.name : null;
   const where = nm || (sp ? `(${Math.round(sp.x)}, ${Math.round(sp.y)})` : '이 자리');
   send(p.ws, { type: 'down_wake', pid: p.pid, wakeInMs: left, x: sp ? sp.x : null, y: sp ? sp.y : null, name: nm });
-  send(p.ws, { type: 'notice', text: `${lead} 약 ${Math.ceil(left / 1000)}초 뒤 ${where}에서 깨어난다` });
+  send(p.ws, { type: 'notice', text: `${lead} 약 ${Math.ceil(left / 1000)}초 뒤 ${where}에서 깨어납니다.` });
 }
 function tryRespawnChoice(player, claimId) {
   if (!player.isDown) { send(player.ws, { type: 'notice', text: '다운 상태가 아닙니다' }); return; }
-  if (player._deadUntil) { _sayWake(player, '⏳ 이미 정해졌다(다시 눌러도 앞당겨지지 않는다) —'); return; }   // ★[T563 ⓐ]
+  if (player._deadUntil) { _sayWake(player, '⏳ 이미 정해졌습니다. 다시 눌러도 앞당겨지지 않습니다.'); return; }   // ★[T563 ⓐ]
   const opts = listRespawnOptions(player);
   const target = opts.find(o => o.claimId === claimId) || opts[0];
   if (!target) {
     // ★여기 오면 `listRespawnOptions` 의 마지막 보루가 깨진 것이다(마을이 하나도 없는 존).
-    send(player.ws, { type: 'notice', text: '깨어날 자리를 못 찾았다 — 구조를 기다린다' });
+    send(player.ws, { type: 'notice', text: '깨어날 자리를 찾지 못했습니다. 구조를 기다립니다.' });
     return;
   }
-  send(player.ws, { type: 'notice', text: '⏳ 구조를 기다리지 않기로 했다…' });
+  send(player.ws, { type: 'notice', text: '⏳ 구조를 기다리지 않기로 했습니다.' });
   resolveDowned(player, target);
 }
 
@@ -13929,7 +13929,7 @@ function tryRescue(rescuer, downedPid) {
   // ★이미 업고 있으면 R 은 **내려놓기**다(같은 키 · 상태 토글 — 새 동사 0).
   if (rescuer._carrying) {
     const cur = players.get(rescuer._carrying);
-    _dropCarried(rescuer, cur, '내려놓았다');
+    _dropCarried(rescuer, cur, '내려놓았습니다.');
     return;
   }
   const target = players.get(downedPid);
@@ -13937,7 +13937,7 @@ function tryRescue(rescuer, downedPid) {
     send(rescuer.ws, { type: 'notice', text: '구조 대상이 없습니다' });
     return;
   }
-  if (target._carriedBy) { send(rescuer.ws, { type: 'notice', text: '다른 사람이 이미 업고 있다' }); return; }
+  if (target._carriedBy) { send(rescuer.ws, { type: 'notice', text: '다른 사람이 이미 업고 있습니다.' }); return; }
   const elapsed = Date.now() - (target.downedAt || 0);
   if (elapsed > RESCUE_WINDOW_MS) {
     send(rescuer.ws, { type: 'notice', text: '구조 가능 시간이 지났습니다' });
@@ -13956,15 +13956,15 @@ function tryRescue(rescuer, downedPid) {
   broadcast({ type: 'player_down_state', pid: target.pid, isDown: true, carriedBy: rescuer.pid, why: 'carried' });   // ★[T402] 업힘
   const eff = Carry.effects(rescuer);
   send(rescuer.ws, { type: 'notice',
-    text: `🫂 ${target.name}을(를) 업었다 — ${Math.round(RESCUE_HOLD_MS / 1000)}초 붙들면 깨어난다`
+    text: `🫂 ${target.name}을(를) 업었습니다. ${Math.round(RESCUE_HOLD_MS / 1000)}초 붙들고 있으면 깨어납니다.`
         + ` · 짐 ${eff.kg.toFixed(0)}/${eff.cap.toFixed(0)}kg (이속 ×${eff.moveMult})` });
-  send(target.ws, { type: 'notice', text: `🫂 ${rescuer.name}님이 당신을 업었다` });
+  send(target.ws, { type: 'notice', text: `🫂 ${rescuer.name}님이 당신을 업었습니다.` });
   // ★★구조자가 **왜 쓰러졌는지**를 볼 수 있어야 한다(§12: 원인 표지는 없고 몸이 원인이다).
   //   새 패널을 만들지 않았다 — 기존 알림 문구 문법으로 그 몸의 무들을 그대로 읽어 준다.
   try {
     const md = Body.moodles(target).map((m) => `${m.emo} ${m.ko} ${Math.round(m.sev * 100)}%`);
     send(rescuer.ws, { type: 'notice',
-      text: `🩺 ${target.name}의 상태 — ${md.length ? md.join(' · ') : '겉으로는 멀쩡하다'}`
+      text: `🩺 ${target.name}의 상태 — ${md.length ? md.join(' · ') : '겉으로는 멀쩡합니다'}`
           + ` (배고픔 ${Math.round(target.hunger)} · 목마름 ${Math.round(target.thirst)})` });
   } catch (e) {}
 }
@@ -14083,7 +14083,7 @@ function _noteRescueEvent(p, by) {
 
 function resolveDowned(p, wakeSpotOverride) {
   const inVillage = (() => { try { return (SimVillages.shelterAt(p.x, p.y) || 0) > 0; } catch (e) { return false; } })();
-  if (p._carriedBy) { const c = players.get(p._carriedBy); _dropCarried(c, p, '내려놓았다'); }
+  if (p._carriedBy) { const c = players.get(p._carriedBy); _dropCarried(c, p, '내려놓았습니다.'); }
   // ★[T83 ③] 자리를 고른 다음 **설 수 있는 칸**으로 내린다(사유지일 때만 — 마을 이송은 무변).
   let spot = wakeCellOf(wakeSpotOverride || (inVillage ? nearestVillageWake(p.x, p.y) : _wakeSpotOf(p)));
   // ★[T88 ②] 마을 안이면 **먼저 먹인다** — 곳간이 비어 못 먹이면 구제가 아니라 죽음이다.
@@ -14091,7 +14091,7 @@ function resolveDowned(p, wakeSpotOverride) {
   if (inVillage) {
     meal = _villageMeal(p, (spot && spot.vid != null) ? spot.vid : (nearestVillageWake(p.x, p.y) || {}).vid);
     if (meal && meal.empty) {
-      send(p.ws, { type: 'notice', text: '🏘️ 마을 곳간이 비었다 — 아무도 당신을 먹일 수 없었다…' });
+      send(p.ws, { type: 'notice', text: '🏘️ 마을 곳간이 비어 아무도 당신을 먹일 수 없었습니다.' });
       console.log(`[${ZONE_ID}] 🏘️→⚰️ ${p.name} 마을 곳간 비어 구제 실패 — 야생과 같은 값`);
       spot = wakeCellOf(_wakeSpotOf(p));   // 죽음이므로 깨어날 자리도 사망 사다리로
     }
@@ -14104,12 +14104,12 @@ function resolveDowned(p, wakeSpotOverride) {
     // ── 마을 안 불사 — 죽지 않는다. 짐도 그대로다. 마을 사람이 쉼터로 옮긴다.
     p._deadUntil = Date.now() + delayMs;
     p._wakeSpot = spot ? { x: spot.x, y: spot.y, name: spot.name || spot.vname || null } : null;   // ★[T563] 이름은 말(`_sayWake`)에만 쓴다
-    p._wakeMsg = `🏘️ 마을 사람들이 당신을 쉼터로 옮겼다 — ${spot && (spot.name || spot.vname) ? (spot.name || spot.vname) + '에서 ' : ''}깨어났다`
-               + ((meal && meal.fed) ? ' · 마을 사람이 죽 한 그릇을 먹였다' : '');
+    p._wakeMsg = `🏘️ 마을 사람들이 당신을 쉼터로 옮겼습니다. ${spot && (spot.name || spot.vname) ? (spot.name || spot.vname) + '에서 ' : ''}깨어났습니다.`
+               + ((meal && meal.fed) ? ' 마을 사람이 죽 한 그릇을 먹여 주었습니다.' : '');
     p._diedInWild = false;
     _noteRescueEvent(p, 'village');   // ★[T119] 사건 장부 접점 1줄 — 마을이 옮긴 것도 구조다
-    send(p.ws, { type: 'notice', text: '🏘️ 마을 안이다 — 누군가 당신을 발견했다…' });
-    _sayWake(p, '🏘️ 쉼터로 옮겨진다 —');   // ★[T563 ⓑ]
+    send(p.ws, { type: 'notice', text: '🏘️ 마을 안이라 누군가 당신을 발견했습니다.' });
+    _sayWake(p, '🏘️ 쉼터로 옮겨집니다.');   // ★[T563 ⓑ]
     console.log(`[${ZONE_ID}] 🏘️ ${p.name} 마을 안 구제 — 쉼터 이송 대기`
       + ((meal && meal.fed) ? ` · 곳간 한 끼(${meal.item} ${meal.qty} · 남은 ${meal.stockAfter})` : ''));
     return;
@@ -14119,10 +14119,10 @@ function resolveDowned(p, wakeSpotOverride) {
   Body.startAftermath(p, gameDayNow());
   p._deadUntil = Date.now() + delayMs;
   p._wakeSpot = spot ? { x: spot.x, y: spot.y, name: spot.name || spot.vname || null } : null;   // ★[T563] 이름은 말에만
-  p._wakeMsg = `⚰️ 얼마나 지났는지 모르겠다 — ${spot && (spot.name || spot.vname) ? (spot.name || spot.vname) + '에서 ' : ''}깨어났다.`
-             + ` 짐은 쓰러진 자리에 두고 왔다 (며칠은 숨이 덜 붙는다)`;
+  p._wakeMsg = `⚰️ 얼마나 지났는지 모르겠습니다. ${spot && (spot.name || spot.vname) ? (spot.name || spot.vname) + '에서 ' : ''}깨어났습니다.`
+             + ` 짐은 쓰러진 자리에 두고 왔습니다. 며칠은 숨이 덜 붙습니다.`;
   p._diedInWild = true;
-  send(p.ws, { type: 'notice', text: '⚰️ 정신을 잃었다…' });
+  send(p.ws, { type: 'notice', text: '⚰️ 정신을 잃었습니다.' });
   _sayWake(p, '⏳');   // ★[T563 ⓑ] 몇 초 뒤 · 어디서 — 침묵 대신
   console.log(`[${ZONE_ID}] ⚰️ ${p.name} 사망 @ (${p.x.toFixed(0)},${p.y.toFixed(0)}) — 짐 낙하 · 후유증`);
 }
@@ -14250,14 +14250,14 @@ function tickDowned(now) {
     // ⓐ 업힌 사람 — 업은 이를 따라간다(게이지는 이미 멎어 있다: 생존 루프가 `isDown` 을 건너뛴다)
     if (p._carriedBy) {
       const c = players.get(p._carriedBy);
-      if (!c || c.isDown || c.handingOff || !c.ws || c.ws.readyState !== 1) { _dropCarried(c, p, '놓쳤다'); continue; }
+      if (!c || c.isDown || c.handingOff || !c.ws || c.ws.readyState !== 1) { _dropCarried(c, p, '놓쳤습니다.'); continue; }
       p.x = c.x; p.y = c.y; p.floor = c.floor || 0;
       p._rescueHoldMs = (p._rescueHoldMs || 0) + dt;
       if (p._rescueHoldMs >= RESCUE_HOLD_MS) {
         _dropCarried(c, p, null);
         _noteRescueEvent(p, c.name || 'village');   // ★[T119] 사건 장부 접점 1줄 — 일으킨 이의 이름이 연표에 남는다
-        _wakeUp(p, p.x, p.y, RESCUE_HP_FRAC, `🤝 ${c.name}님이 당신을 일으켰다 (HP ${Math.round(p.maxHp * RESCUE_HP_FRAC)})`);
-        send(c.ws, { type: 'notice', text: `🤝 ${p.name}님을 구했다` });
+        _wakeUp(p, p.x, p.y, RESCUE_HP_FRAC, `🤝 ${c.name}님이 당신을 일으켰습니다(HP ${Math.round(p.maxHp * RESCUE_HP_FRAC)}).`);
+        send(c.ws, { type: 'notice', text: `🤝 ${p.name}님을 구했습니다.` });
         console.log(`[${ZONE_ID}] 🤝 ${c.name} → ${p.name} 구조 성공(${Math.round(RESCUE_HOLD_MS / 1000)}초 붙들기)`);
       }
       continue;
@@ -14265,7 +14265,7 @@ function tickDowned(now) {
     // ⓑ 깨어날 시각이 됐다(사망·이송 뒤 게임 시간 경과)
     if (p._deadUntil && now >= p._deadUntil) {
       const sp = p._wakeSpot;
-      _wakeUp(p, sp ? sp.x : p.x, sp ? sp.y : p.y, RESCUE_HP_FRAC, p._wakeMsg || '눈을 떴다');
+      _wakeUp(p, sp ? sp.x : p.x, sp ? sp.y : p.y, RESCUE_HP_FRAC, p._wakeMsg || '눈을 떴습니다.');
       p._wakeSpot = null; p._wakeMsg = null; p._diedInWild = false;
       continue;
     }
@@ -16068,8 +16068,8 @@ function _fishPollOne(p, now) {   // 종전 `_fishPoll` 고리 몸통 글자 그
       p._fish = null; _fishStats2.expired++;
       send(p.ws, { type: 'fish_state', state: 'idle' });
       send(p.ws, { type: 'notice', text: big
-        ? `🎣 놓쳤다 — **묵직한 놈**이었다(${f.kg.toFixed(1)}kg). 물결만 남았다`
-        : '🎣 놓쳤다 — 미끼만 따 먹혔다' });
+        ? `🎣 놓쳤습니다. **묵직한 놈**이었습니다(${f.kg.toFixed(1)}kg). 물결만 남았습니다.`
+        : '🎣 놓쳤습니다. 미끼만 따 먹혔습니다.' });
       savePlayer(p);
     }
   }
@@ -16241,12 +16241,12 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
 function _t564HandoffWhy(e) {
   const m = String((e && (e.code || e.message)) || '');
   if (e && e.status === 404) return { k: '문', say: '서버 사이 안 문이 닫혀 있다(비밀 어긋남)' };
-  if (e && e.status === 409) return { k: '규약', say: `서버 판이 다르다(이 존 ${HANDOFF_PROTO} · 저쪽 ${(e.body && e.body.proto) != null ? e.body.proto : '?'}) — 재배포가 필요하다` };
-  if (/ENOTFOUND|EAI_AGAIN/.test(m)) return { k: '주소', say: '저쪽 서버 주소를 못 찾았다' };
-  if (/ECONNREFUSED/.test(m)) return { k: '거절', say: '저쪽 서버가 연결을 받지 않는다' };
-  if (/timeout|ETIMEDOUT|ESOCKETTIMEDOUT/i.test(m)) return { k: '시간', say: '저쪽 서버가 응답하지 않는다' };
+  if (e && e.status === 409) return { k: '규약', say: `두 서버의 판이 다릅니다(이 존 ${HANDOFF_PROTO} · 저쪽 ${(e.body && e.body.proto) != null ? e.body.proto : '?'}). 다시 배포해야 합니다.` };
+  if (/ENOTFOUND|EAI_AGAIN/.test(m)) return { k: '주소', say: '저쪽 서버 주소를 찾지 못했습니다.' };
+  if (/ECONNREFUSED/.test(m)) return { k: '거절', say: '저쪽 서버가 연결을 받지 않습니다.' };
+  if (/timeout|ETIMEDOUT|ESOCKETTIMEDOUT/i.test(m)) return { k: '시간', say: '저쪽 서버가 대답하지 않습니다.' };
   if (e && e.status) return { k: String(e.status), say: `저쪽 서버가 거절했다(${e.status})` };
-  return { k: '그 밖', say: '저쪽 서버와 이야기하지 못했다' };
+  return { k: '그 밖', say: '저쪽 서버와 이야기하지 못했습니다.' };
 }
 function _t564HandoffFail(player, targetZoneId, target, e) {
   const w = _t564HandoffWhy(e);

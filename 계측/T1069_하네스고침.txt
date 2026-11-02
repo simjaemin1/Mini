@@ -1,0 +1,523 @@
+# T1069 하네스 고침 — 문장 자체가 계약인 단언만 새 문장으로(단언 무름 0 · 검사 수 무변).
+# 적용: node scripts/t1069-apply.js 계측/T1069_하네스고침.txt (--check 로 확인)
+@@ scripts/e2e-friends.js
+- /벗이 되었다/
++ /벗이 되었습니다/
+- /벗이 되자고 청했다/
++ /벗이 되자고 청했습니다/
+- /carol 이\(가\) 벗이 되자고 청했다/
++ /carol 님이 벗이 되자고 청했습니다/
+@@ scripts/e2e-guild.js
+- /꺼내기는 촌장만/
++ /꺼내는 것은 촌장만/
+- /outsider 이\(가\) 벗이 되자고 청했다/
++ /outsider 님이 벗이 되자고 청했습니다/
+- /이 마을 곳간은 사람이 꺼내지 않는다/
++ /이 마을 곳간은 사람이 열지 않습니다/
+@@ scripts/e2e-membership.js
+- /기부는 누구나/
++ /내놓는 것은 누구나/
+- /꺼내기는 촌장만/
++ /꺼내는 것은 촌장만/
+- /사람이 꺼내지 않는다|촌장만|마을이 멀다/
++ /사람이 열지 않습니다|촌장만|마을에서 너무 멉니다/
+- /이 마을 곳간은 사람이 꺼내지 않는다/
++ /이 마을 곳간은 사람이 열지 않습니다/
+@@ scripts/e2e-onboarding.js
+- /곳간은 촌장만 꺼낸다|사람이 꺼내지 않는다|
++ /곳간은 촌장만 열 수 있습니다|사람이 열지 않습니다|
+- /곳간은 촌장만 꺼낸다/
++ /곳간은 촌장만 열 수 있습니다/
+- /마을이 굶고 있다/
++ /마을이 굶고 있/
+- /촌장이 아직 권하지 않았다/
++ /촌장이 아직 마을 사람이 되라고 권하지 않았습니다/
+@@ scripts/test-donate.js
+- /꺼내기는 촌장만/
++ /꺼내는 것은 촌장만/
+- /기부는 누구나/
++ /내놓는 것은 누구나/
+@@ scripts/test-newcomers.js
+- includes('곳간을 읽지 못했다')
++ includes('곳간을 읽지 못했습니다')
+@@ scripts/test-village-only.js
+- /곳간은 촌장만 꺼낸다/
++ /곳간은 촌장만 열 수 있습니다/
+@@ scripts/lib-e2e-src.js
+- /이\(가\) 벗이 되자고 청했다/g
++ /님이 벗이 되자고 청했습니다/g
+@@ scripts/e2e-onboarding.js
+- st.notes.some((t) => /곳간에 쌓였다/.test(t))
++ st.notes.some((t) => /곳간에 쌓였습니다/.test(t))
+@@ scripts/e2e-site-exit.js
+- s1.n.includes('건축 모드 꺼짐')
++ s1.n.includes('짓기를 마쳤습니다.')
+@@ scripts/e2e-ui.js
+- ok(/아물고 있다/.test(await hpTitle())
++ ok(/아무는 중/.test(await hpTitle())
+@@ scripts/e2e-trade.js
+- /거래소|마을 중심에서 너무 멀다|
++ /거래소|마을 한가운데에서 너무 멉니다|
+@@ scripts/e2e-downed.js
+- /쓰러졌다/
++ /쓰러졌습니다/
+- /먹였다/
++ /먹였습니다/
+@@ scripts/e2e-friends.js
+- /청했다/
++ /청했습니다/
+- /끊었다/
++ /끊었습니다/
+- /없는 이름이다/
++ /없는 이름입니다/
+- /못 청했다/
++ /청하지 못했습니다/
+@@ scripts/e2e-guild.js
+- /청했다/
++ /청했습니다/
+- /없는 이름이다/
++ /없는 이름입니다/
+- /식량 재고 ([\d.]+)/
++ /먹을 것이 ([\d.]+) 있습니다/
+- /그런 물건은 없다/
++ /은\(는\) 없습니다/
+@@ scripts/e2e-membership.js
+- /떠났다/
++ /떠났습니다/
+- /사람이 꺼내지 않는다|촌장만/
++ /사람이 열지 않습니다|촌장만/
+@@ scripts/e2e-metallurgy.js
+- /터 배치/
++ /자리를 고르십시오/
+@@ scripts/e2e-onboarding.js
+- /촌장이 아직 권하지 않았/
++ /촌장이 아직 마을 사람이 되라고 권하지 않았/
+@@ scripts/e2e-ui.js
+- /너무 멀다/
++ /너무 멉니다/
+@@ scripts/e2e-verbs.js
+- /먹였다/
++ /먹였습니다/
+@@ scripts/e2e-village.js
+- includes('잘 자리가 없다')
++ includes('잘 자리가 없습니다')
+@@ scripts/test-downed.js
+- /쓰러졌다/
++ /쓰러졌습니다/
+- /먹였다/
++ /먹였습니다/
+- includes('쓰러진 사람이 없다')
++ includes('쓰러진 사람이 없습니다')
+@@ scripts/test-newcomers.js
+- includes('사람이 살지 않는다')
++ includes('사람이 살지 않습니다')
+- includes('잘 자리가 없다')
++ includes('잘 자리가 없습니다')
+- includes('안 온다')
++ includes('오지 않습니다')
+- includes('도착 지점')
++ includes('내릴 자리')
+@@ scripts/test-shelter.js
+- /잘 자리가 없다/
++ /잘 자리가 없습니다/
+@@ scripts/test-membership.js
+- /굶고 있다/
++ /굶고 있/
+- /촌장만 꺼낸다/
++ /촌장만 열 수 있습니다/
+@@ scripts/test-donate.js
+- /사람이 꺼내지 않는다/
++ /사람이 열지 않습니다/
+- /촌장만 꺼낸다/
++ /촌장만 열 수 있습니다/
+@@ scripts/test-donate.js
+- /멀|가까이|떨어/.test(ON.far.note)
++ /멀|멉|가까이|떨어/.test(ON.far.note)
+@@ scripts/e2e-cold.js
+- /물 마심/
++ /물을 마셨습니다/
+@@ scripts/e2e-streams.js
+- /물 마심/
++ /물을 마셨습니다/
+@@ scripts/e2e-well.js
+- /물 마심/
++ /물을 마셨습니다/
+@@ scripts/e2e-conn.js
+- /시간 초과/
++ /너무 오래 걸렸습니다/
+@@ scripts/e2e-downed.js
+- /업었다/
++ /업었습니다/
+- /짐은 쓰러진 자리|깨어났다/
++ /짐은 쓰러진 자리|깨어났습니다/
+@@ scripts/e2e-emptystart.js
+- 여긴 다 훑었다
++ 다 훑었습니다
+- 주울 게 없다
++ 주울 것이 없습니다
+@@ scripts/e2e-fishing.js
+- /던졌다/
++ /던졌습니다/
+- /놓쳤다/
++ /놓쳤습니다/
+- /물에 닿지 않는다|물가로/
++ /물에 닿지 않습니다|물가로/
+@@ scripts/test-fishing.js
+- /놓쳤다/
++ /놓쳤습니다/
+- /끌어올린다/
++ /끌어올립니다/
+@@ scripts/e2e-friends.js
+- /걸음 거리에 있다/
++ /걸음 거리에 있습니다/
+- /쪽 멀리 있다/
++ /쪽 멀리 있습니다/
+- /닿았다/
++ /닿았습니다/
+- /숨겼다/
++ /숨겼습니다/
+- /다른 곳에 있다/
++ /다른 곳(\(.*\))?에 있습니다/
+- /보인다/
++ /보입니다/
+- /보이지 않는다/
++ /보이지 않아/
+@@ scripts/e2e-guest-reconnect.js
+- /관리자가 아닙니다|우리 마을이 아닙니다/
++ /관리자가 아닙니다|관리자가 아니어서|우리 마을이 아니어서/
+@@ scripts/e2e-village.js
+- /관리자가 아닙니다|우리 마을이 아닙니다|너무 멀리/
++ /관리자가 아닙니다|관리자가 아니어서|우리 마을이 아니어서|너무 멀리/
+@@ scripts/e2e-guild.js
+- /길드는 이제 마을이다/
++ /길드는 이제 마을입니다/
+- /외 2건의 부름이 더 있다/
++ /부름이 2건 더 있습니다/
+@@ scripts/e2e-handoff-proto.js
+- /판이 다르다/
++ /판이 다릅니다/
+@@ scripts/e2e-membership.js
+- /기부했다/
++ /내놓았습니다/
+- /받는 것 없음/.test(dn)
++ /대가는 없습니다/.test(dn)
+@@ scripts/test-donate.js
+- /기부했다/
++ /내놓았습니다/
+- /받는 것 없음/.test(ON.hall.note)
++ /대가는 없습니다/.test(ON.hall.note)
+- /한도 없음/
++ /한도가 없습니다/
+@@ scripts/e2e-nature.js
+- /심었다/
++ /심었습니다/
+@@ scripts/e2e-respawn-choice.js
+- /정신을 잃었다/
++ /정신을 잃었습니다/
+@@ scripts/t894-body-paths-probe.js
+- /정신을 잃었다/
++ /정신을 잃었습니다/
+@@ scripts/e2e-ui.js
+- /짠물이다 — 마실 수 없다/
++ /짠물이라 마실 수 없습니다/
+@@ scripts/e2e-verbs.js
+- /안에서 캔다/
++ /바로 곁에서 캐야 합니다/
+@@ scripts/e2e-winter.js
+- /상했다/
++ /상했습니다/
+@@ scripts/test-hall-units.js
+- /상했다/.test(zOn.spoiled.note) && /받지 않는다/.test(zOn.spoiled.note)
++ /상했습니다/.test(zOn.spoiled.note) && /받지 않습니다/.test(zOn.spoiled.note)
+@@ scripts/test-preserve.js
+- /탈이 났다/
++ /탈이 나서/
+- /상했다/
++ /상했습니다/
+@@ scripts/t1005-vil-kill-probe.js
+- 곳간이 비었다
++ 곳간이 비어
+- 쉼터로 옮겨진다
++ 쉼터로 옮겨집니다
+- 집 짓기를 의뢰했다
++ 집 짓기를 맡겼습니다
+@@ scripts/test-claim-v2.js
+- /갈라진다/
++ /갈라집니다/
+- /이어받았다/
++ /이어받았습니다/
+@@ scripts/test-downed.js
+- /약 (\d+)초 뒤 (.+)에서 깨어난다/
++ /약 (\d+)초 뒤 (.+)에서 깨어납니다/
+- /이미 정해졌다/
++ /이미 정해졌습니다/
+- /정신을 잃었다/
++ /정신을 잃었습니다/
+@@ scripts/test-emptystart.js
+- /다 훑었다/
++ /다 훑었습니다/
+@@ scripts/test-furnace.js
+- /숯 부족/
++ /숯이 모자랍니다/
+- /알려지지 않았다/
++ /알려지지 않았습니다/
+- /조업 중/
++ /쇠를 뽑는 중입니다/
+@@ scripts/test-newcomers.js
+- /촌장만 할 수 있다/
++ /촌장만 할 수 있습니다/
+@@ scripts/test-preserve-carry.js
+- /한 개도 안 나온다/
++ /한 개도 나오지 않습니다/
+@@ scripts/test-psite-server.js
+- /의뢰 불가|마당|영토|너무 멀어/
++ /맡길 수 없습니다|마당|영토|너무 멀어/
+@@ scripts/test-regrow.js
+- /남의 땅엔 못 심는다/
++ /남의 땅에는 심을 수 없습니다/
+- /마을 땅이다/
++ /마을 땅입니다/
+@@ scripts/test-shelter.js
+- /마을 사람들이 당신을 쉼터로 옮겼다/
++ /마을 사람들이 당신을 쉼터로 옮겼습니다/
+@@ scripts/test-village-only.js
+- /넘겼다/
++ /넘겼습니다/
+- /길드는 이제 마을이다/
++ /길드는 이제 마을입니다/
+- /마을 땅은 그 마을의 영토다/
++ /마을 땅은 그 마을의 영토라/
+- /곳간은 마을의 것이다/
++ /곳간은 마을의 것입니다/
+@@ scripts/test-well.js
+- /물줄기가 없다/
++ /물줄기가 없습니다/
+@@ scripts/test-events.js
+- .replace("'봄일세. 밭에 나갈 때야.'", "'🌱 봄일세. 밭에 나갈 때야.'")
++ .replace("'봄일세. 밭에 나갈 때일세.'", "'🌱 봄일세. 밭에 나갈 때일세.'")
+@@ scripts/test-winter.js
+- /궁하겠어/
++ /궁하겠네/
+@@ scripts/test-t988-trade-words.js
+- 개를 못 내준다 — 지금 내줄 수 있는 건 ${N_}까지다$`)
++ 개를 내줄 수 없습니다\\. 지금 내줄 수 있는 것은 ${N_}개까지입니다\\.$`)
+- 보다 비싸다 — 이 마을은 지금 그 값을 못 치른다$`)
++ 보다 비쌉니다\\. 이 마을은 지금 그 값을 치를 수 없습니다\\.$`)
+- /^그 양으론 한 개도 못 바꾼다 — 더 내야 한다$/
++ /^그 양으로는 한 개도 바꿀 수 없습니다\. 더 내야 합니다\.$/
+- /^그 양으론 한 개도 못 바꾼다$/
++ /^그 양으로는 한 개도 바꿀 수 없습니다\.$/
+- /^마을에 .+이\(가\) 남아 있지 않다$/
++ /^마을에 .+이\(가\) 남아 있지 않습니다\.$/
+- 개가 필요한데 그만큼 없다$`)
++ 개가 있어야 하는데 그만큼 없습니다\\.$`)
+- /^그만큼 갖고 있지 않다$/
++ /^그만큼 갖고 있지 않습니다\.$/
+- 은\\(는\\) ${N_}까지다$`)
++ 은\\(는\\) ${N_}개까지입니다$`)
+- `^마을이 내줄 수 있는 건 ${N_}까지 — (${N_})개만 받는다$`
++ `^마을이 내줄 수 있는 것은 ${N_}개까지라 (${N_})개만 받습니다\\.$`
+- /— (\d+)개만 받는다$/
++ /까지라 (\d+)개만 받습니다\.$/
+- /더 내야 한다/.test(
++ /더 내야 합니다/.test(
+- ('그 양으론 한 개도 못 바꾼다 — 더 내야 한다')
++ ('그 양으로는 한 개도 바꿀 수 없습니다\. 더 내야 합니다\.')
+- body.includes("'그 양으론 한 개도 못 바꾼다'") && old6[1].startsWith("'그 양으론 한 개도 못 바꾼다")
++ body.includes("'그 양으로는 한 개도 바꿀 수 없습니다.'") && old6[1].startsWith("'그 양으로는 한 개도 바꿀 수 없습니다")
+- 마을이 내줄 수 있는 건 \$\{trQuote\.cap\}까지 — \$\{trQuote\.giveUsed != null \? trQuote\.giveUsed : trQuote\.maxGive\}개만 받는다<\/div>
++ 마을이 내줄 수 있는 것은 \$\{trQuote\.cap\}개까지라 \$\{trQuote\.giveUsed != null \? trQuote\.giveUsed : trQuote\.maxGive\}개만 받습니다\.<\/div>
+- 마을이 내줄 수 있는 건 \$\{trQuote\.cap\}까지 — \$\{trQuote\.giveNeeded\}개만 받는다<\/div>
++ 마을이 내줄 수 있는 것은 \$\{trQuote\.cap\}개까지라 \$\{trQuote\.giveNeeded\}개만 받습니다\.<\/div>
+- \$\{trQuote\.cap\}까지다`\}/
++ \$\{trQuote\.cap\}개까지입니다`\}/
+@@ scripts/test-t999-trade-cap.js
+- 개를 못 내준다 — 지금 내줄 수 있는 건 ${N_}까지다$`)
++ 개를 내줄 수 없습니다\\. 지금 내줄 수 있는 것은 ${N_}개까지입니다\\.$`)
+- 보다 비싸다 — 이 마을은 지금 그 값을 못 치른다$`)
++ 보다 비쌉니다\\. 이 마을은 지금 그 값을 치를 수 없습니다\\.$`)
+- /^그 양으론 한 개도 못 바꾼다 — 더 내야 한다$/
++ /^그 양으로는 한 개도 바꿀 수 없습니다\. 더 내야 합니다\.$/
+- /^그 양으론 한 개도 못 바꾼다$/
++ /^그 양으로는 한 개도 바꿀 수 없습니다\.$/
+- /^마을에 .+이\(가\) 남아 있지 않다$/
++ /^마을에 .+이\(가\) 남아 있지 않습니다\.$/
+- 개가 필요한데 그만큼 없다$`)
++ 개가 있어야 하는데 그만큼 없습니다\\.$`)
+- /^그만큼 갖고 있지 않다$/
++ /^그만큼 갖고 있지 않습니다\.$/
+- 은\\(는\\) ${N_}까지다$`)
++ 은\\(는\\) ${N_}개까지입니다$`)
+- `^마을이 내줄 수 있는 건 ${N_}까지 — (${N_})개만 받는다$`
++ `^마을이 내줄 수 있는 것은 ${N_}개까지라 (${N_})개만 받습니다\\.$`
+- /— (\d+)개만 받는다$/
++ /까지라 (\d+)개만 받습니다\.$/
+- /더 내야 한다/.test(
++ /더 내야 합니다/.test(
+@@ scripts/test-t976-want-capped.js
+- \$\{trQuote\.cap\}까지다(?:
++ \$\{trQuote\.cap\}개까지입니다(?:
+- 전부(${r.q.cap})보다 비싸다 — 이 마을은 지금 그 값을 못 치른다`
++ 전부(${r.q.cap})보다 비쌉니다. 이 마을은 지금 그 값을 치를 수 없습니다.`
+- `마을이 ${ko[r.take]} 1개를 못 내준다 — 지금 내줄 수 있는 건 ${r.q.cap}까지다`
++ `마을이 ${ko[r.take]} 1개를 내줄 수 없습니다. 지금 내줄 수 있는 것은 ${r.q.cap}개까지입니다.`
+- 은(는) ${r1.q.cap}까지다</div>`
++ 은(는) ${r1.q.cap}개까지입니다</div>`
+@@ scripts/test-t988-trade-words.js
+- 남아 있지 않다`) \};/.exec(C);
++ 남아 있지 않습니다\.`) \};/.exec(C);
+- \)보다 비싸다 — 이 마을은 지금 그 값을 못 치른다`)/.exec(C);
++ \)보다 비쌉니다\. 이 마을은 지금 그 값을 치를 수 없습니다\.`)/.exec(C);
+@@ scripts/e2e-conn.js
+- /오류일 수 있다|응답하지 않는다/
++ /오류일 수 있습니다|대답하지 않습니다/
+@@ scripts/e2e-craft.js
+- /다 됐다|받기/
++ /다 됨|받기/
+@@ scripts/e2e-preserve.js
+- /다 됐다|받기/
++ /다 됨|받기/
+@@ scripts/e2e-salt.js
+- /다 됐다|받기/
++ /다 됨|받기/
+@@ scripts/e2e-friends.js
+- /걸음 거리에 있다/
++ /걸음 거리에 있습니다/
+@@ scripts/e2e-guild.js
+- /부른 마을이 없다/
++ /부른 마을이 없습니다/
+- /소개를 적었다/
++ /소개를 적었습니다/
+- /\[돌칼\] 이\(가\) 자네를 부른다/
++ /돌칼에서 당신을 부릅니다/
+- /불렀다/
++ /불렀습니다/
+- /부른다/
++ /부릅니다/
+- /에 들었다/
++ /에 들었습니다/
+@@ scripts/e2e-membership.js
+- /촌장이 아니다/
++ /촌장 아님/
+@@ scripts/e2e-onboarding.js
+- /소개를 적었다/
++ /소개를 적었습니다/
+- /에 들었다/
++ /에 들었습니다/
+- A.notices.some((t) => /마을 사람이 아니다/.test(t))
++ A.notices.some((t) => /마을 사람이 아닙니다/.test(t))
+@@ scripts/e2e-trade.js
+- |갖고 있지 않다|못 치른다|못 바꾼다/
++ |갖고 있지 않습니다|치를 수 없습니다|바꿀 수 없습니다/
+@@ scripts/e2e-village.js
+- /아직 아무도 살지 않는다/
++ /아직 아무도 살지 않습니다/
+@@ scripts/e2e-winter.js
+- /그런 의뢰가 없다/
++ /그런 부탁이 없습니다/
+@@ scripts/e2e-events.js
+- /갚을 것이 없다/
++ /갚을 것이 없습니다/
+@@ scripts/e2e-chronicle.js
+- /일에 들었다/
++ /일에 들음/
+@@ scripts/lib-e2e-src.js
+- /자네를 부른다/
++ /당신을 부릅니다/
+@@ scripts/test-claim-v2.js
+- /옛 보관 줄은 이제 없다/
++ /옛 보관 줄은 이제 없습니다/
+@@ scripts/test-game-meat.js
+- /넣을 수 있는 물건이 없다/
++ /넣을 수 있는 물건이 없습니다/
+@@ scripts/test-granary-rot.js
+- /그만큼 없다/
++ /그만큼 없습니다/
+@@ scripts/test-salt.js
+- /내 것이 아니다/
++ /내 것이 아닙니다/
+@@ scripts/test-t965-want-start.js
+- /([0-9]+)개가 필요한데 그만큼 없다/
++ /([0-9]+)개가 있어야 하는데 그만큼 없습니다/
+@@ scripts/test-village-only.js
+- /소개를 적었다/
++ /소개를 적었습니다/
+- /부른 마을이 없다/
++ /부른 마을이 없습니다/
+- /불렀다/
++ /불렀습니다/
+- /자네를 부른다/
++ /당신을 부릅니다/
+- /에 들었다/
++ /에 들었습니다/
+- /마을 사람이 아니다/
++ /마을 사람이 아닙니다/
+- /우리 마을 사람이 아니다/
++ /우리 마을 사람이 아닙니다/
+- /자네가 \[.*\] 촌장/
++ /이제 .*의 촌장이 되었습니다/
+- /먼저 자리를 넘기고/
++ /먼저 자리를 넘겨야/
+- /촌장은 내보낼 수 없다/
++ /촌장은 내보낼 수 없습니다/
+- /아무나 들 수 있다/
++ /아무나 들 수 있습니다/
+- /촌장 .* · 아무나 든다 · "새 물레 소리"/
++ /촌장 .* · 아무나 듦 · "새 물레 소리"/
+- /전쟁을 걸었다/
++ /전쟁을 걸었습니다/
+- /전쟁이 끝났다/
++ /전쟁이 끝났습니다/
+- /옛 보관 줄은 이제 없다/
++ /옛 보관 줄은 이제 없습니다/
+- /이 존의 마을 사람이 아니다/
++ /이 지역 마을 사람이 아닙니다/
+@@ scripts/test-well-art.js
+- /doneHint: `우물가에서 E — 목을 축이고, \$\{ITEM_LABEL_SERVER\[Salt\.VESSEL\]\}이 있으면 민물을 담는다`/
++ /doneHint: `우물가에서 E를 누르면 목을 축이고, \$\{ITEM_LABEL_SERVER\[Salt\.VESSEL\]\}이 있으면 민물을 담습니다\.`/
+- H.WELL_SPEC.doneHint === '우물가에서 E — 목을 축이고, 물병이 있으면 민물을 담는다'
++ H.WELL_SPEC.doneHint === '우물가에서 E를 누르면 목을 축이고, 물병이 있으면 민물을 담습니다.'
+@@ scripts/test-donate.js
+- /의뢰/.test(z.deliver.err2 || '')
++ /부탁/.test(z.deliver.err2 || '')
+@@ scripts/test-emptystart.js
+- /깨짐/.test(t)
++ /깨졌습니다/.test(t)
+@@ scripts/test-fishing.js
+- ok(/성급/.test(P.__notices()
++ ok(/너무 일찍/.test(P.__notices()
+- ok(/성급/.test(P4.__notices()
++ ok(/너무 일찍/.test(P4.__notices()
+@@ scripts/test-furnace.js
+- noticed(P, /장입/)
++ noticed(P, /불을 지폈습니다/)
+- noticed(P, /출탕/)
++ noticed(P, /쇠를 꺼냈/)
+@@ scripts/e2e-metallurgy.js
+- /사유지|재료|곡괭이|물·바위|멀어서/
++ /사유지|재료|곡괭이|물·바위|바위|멀어서/
+@@ scripts/test-downed.js
+- /섭취/.test(t)
++ /먹었습니다/.test(t)
+@@ scripts/test-preserve.js
+- /섭취/.test(lastNote(p))
++ /먹었습니다/.test(lastNote(p))
+@@ scripts/test-village-only.js
+- /마을 \[물레\] 적용/
++ /물레 마을 사람이 되었습니다/
+- Cc.notices.some((t) => /볼 수 없다/.test(t))
++ Cc.notices.some((t) => /볼 수 없습니다/.test(t))
+@@ scripts/e2e-ui.js
+- sl[0] === '짠물이다'
++ sl[0] === '짠물 살피기'
+@@ scripts/e2e-friends.js
+- /쪽 \d+걸음 거리에 있다/
++ /쪽 \d+걸음 거리에 있습니다/
+@@ scripts/e2e-membership.js
+- /사람 — .*일째/.test(t)
++ /사람이 된 지 .*일째/.test(t)
+- /사람 —|오늘부터/
++ /사람이 된 지|오늘부터/
+@@ scripts/e2e-friends.js
+- /벗이 아니다/.test(t)
++ /벗이 아닙니다/.test(t)

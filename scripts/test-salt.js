@@ -200,7 +200,7 @@ function findRiverBank() {
     pre(!!H.facilityFor(p2, 'boil'), '이제 반경 안에 가마가 있다');
     pre(!H._facilityMine(p2, other), '그 가마는 **내 것이 아니다**');
     H.doBoilSalt(p2, 'boil_salt', 1);
-    ok(/내 것이 아니다/.test(last(p2)), '남의 가마로는 못 한다', last(p2));
+    ok(/내 것이 아닙니다/.test(last(p2)), '남의 가마로는 못 한다', last(p2));
 
     // ⓒ 모닥불로는 못 한다 — 시설의 창이 갈려 있다
     const p3 = mkPlayer('mine_cf', { brine: NEED, wood: WOOD }, 13000, 9000);

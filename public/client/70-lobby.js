@@ -90,7 +90,7 @@ function onbEnsureDom() {
     + '<svg id="onbMap" class="onb-map" viewBox="0 0 360 130" preserveAspectRatio="none"></svg>'
     + '<div id="onbCard" class="onb-detail"></div>'
     + '<button id="onbAny" type="button" class="onb-any">아무 곳이나 (추천)</button>'
-    + '<div class="sublabel" id="onbHint">지도를 눌러 고르게 — 급하면 아무 곳이나</div>';
+    + '<div class="sublabel" id="onbHint">지도에서 마을을 눌러 고르십시오. 급하면 아무 곳이나 고르셔도 됩니다.</div>';
   // ★자리: 오른쪽 열의 `#lobbyVillages`. 없으면(옛 마크업) 종전 자리로 떨어진다.
   const host = document.getElementById('lobbyVillages');
   if (host) { host.appendChild(box); return box; }
@@ -155,14 +155,14 @@ function onbRenderCard() {
   const v = onbInfo.villages.find((x) => x.vid === onbSelVid) || null;
   if (!v) {
     // ★[T66] 이모지 0 — 성격은 서버가 준 **한글 이름**(`chKo`)으로 말한다(`chEmo` 는 안 쓴다).
-    el.innerHTML = '<span class="dim">고른 마을이 없네. <b>아무 곳이나</b>를 누르면 이방인을 반기는 곳으로 데려다 주지.</span>'
-      + '<br/><span class="dim">점 색이 성격 · 노란 테가 추천이다.</span>';
+    el.innerHTML = '<span class="dim">아직 고른 마을이 없습니다. <b>아무 곳이나</b>를 누르면 이방인을 반기는 마을로 모셔 갑니다.</span>'
+      + '<br/><span class="dim">점 색은 마을의 성격이고, 노란 테를 두른 곳이 추천하는 마을입니다.</span>';
     return;
   }
   el.innerHTML = `<b>${v.name}</b> <span class="dim">${v.chKo || ''} · ${v.popKo} · ${v.busyKo}</span>`
-    + (v.player ? `<br/><span class="accent">사람이 세운 마을 — 이방인을 받는다${v.founderName ? ` (${v.founderName})` : ''}</span>` : '')
+    + (v.player ? `<br/><span class="accent">사람이 세운 마을입니다. 이방인을 받습니다${v.founderName ? ` (${v.founderName})` : ''}</span>` : '')
     // ★[T115] 함께 도착 — **서버가 센 수를 그대로** 쓴다(로비가 다시 세지 않는다).
-    + ((v.friendsHere | 0) ? `<br/><span class="accent">벗 ${v.friendsHere}명이 여기서 시작했다</span>` : '')
+    + ((v.friendsHere | 0) ? `<br/><span class="accent">벗 ${v.friendsHere}명이 여기서 시작했습니다</span>` : '')
     // ★[T128] 마을 소개문 — 길드장이 쓴 한 줄. **서버가 자른 문장을 그대로** 쓴다(길이 상한 사본 0).
     + (v.intro ? `<br/><span class="quote">“${onbEsc(v.intro)}”</span>` : '')
     + `<br/><span class="quote">“${v.news}”</span>`
@@ -183,7 +183,7 @@ function onbRenderCards() {
     + `<span class="vc-name">${v.name}</span> <span class="vc-kind">${v.chKo || ''} · ${v.zoneKo || ''}</span>`
     + `<span class="vc-busy">${v.busyKo} · ${v.popKo}</span>`
     + `<div class="vc-news">${v.news || ''}</div>`
-    + (v.player ? '<span class="vc-badge">사람이 세운 마을 — 이방인을 받는다</span>' : '')
+    + (v.player ? '<span class="vc-badge">사람이 세운 마을</span>' : '')
     + ((v.friendsHere | 0) ? `<span class="vc-badge">벗 ${v.friendsHere}명</span>` : '')
     + (v.intro ? `<div class="vc-news">${onbEsc(v.intro)}</div>` : '')
     + '</div>').join('');
@@ -344,7 +344,7 @@ function onbOnMessage(msg) {
       // ★★서버가 보내는 좌표는 **존 로컬**이다. 렌더는 **절대 월드**를 쓴다(`fish_state` 가 한 번 겪은 함정).
       const _c = conns.get(primaryZoneId);
       const _ox = (_c && _c.meta && _c.meta.worldOffsetX) || 0, _oy = (_c && _c.meta && _c.meta.worldOffsetY) || 0;
-      showNotice('곳간에 쌓였다.', 2500);
+      showNotice('곳간에 쌓였습니다.', 2500);
       window.__onbFxN = (window.__onbFxN | 0) + 1;   // ★하네스 훅 — 알림은 40칸 링버퍼라 놓칠 수 있다(거래소 배치 교훈). **상태로 센다**
       onbGranaryFx(msg.x + _ox, msg.y + _oy);
     } else if (msg.type === 'onboarding_day') {
@@ -364,7 +364,7 @@ function onbHudLine() {
   const bits = [];
   if (onbDayText) bits.push(onbDayText);
   if (onbState && !onbState.lotOk && onbState.need) bits.push(`의뢰 ${onbState.contrib}/${onbState.need}`);
-  else if (onbState && onbState.lotOk) bits.push('빈터 권리 얻음');
+  else if (onbState && onbState.lotOk) bits.push('빈터를 받았습니다');
   el.textContent = bits.join('  ·  ');
   el.style.display = bits.length ? '' : 'none';
   return el.textContent;

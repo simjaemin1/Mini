@@ -299,7 +299,7 @@ const PRESERVE = {
 function canPreserve(recipeKey, fresh) {
   const r = PRESERVE[recipeKey];
   if (!r) return { ok: false, err: '알 수 없는 가공' };
-  if (!(fresh > 0)) return { ok: false, err: '상한 재료로는 보존식을 만들 수 없다' };
+  if (!(fresh > 0)) return { ok: false, err: '상한 재료로는 갈무리 음식을 만들 수 없습니다.' };
   return { ok: true };
 }
 // 산출량 — 입력 n 개, 입력 신선도 f → 산출 개수(내림. 0 이면 부르는 쪽이 거절한다).

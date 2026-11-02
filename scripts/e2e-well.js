@@ -178,7 +178,7 @@ process.on('exit', shutdown);
   ok(!!wmenu && wmenu.includes('마시기') && wmenu.some((l) => /^병에 담기/.test(l)), '④ 우물 칸 우클릭 = 물 메뉴(마시기 · 병에 담기) — 서버 `look` 이 "우물 — 민물"', JSON.stringify(wmenu));
   if (wmenu && wmenu.includes('마시기')) await page.evaluate(() => { const m = document.getElementById('ctxMenu'); for (const e of m.children) if ((e.textContent || '').trim() === '마시기') { e.click(); break; } });
   let th1 = null, drank = false;
-  for (let i = 0; i < 40 && !drank; i++) { await sleep(400); const t = await notices(); if (/물 마심/.test(t)) drank = true; }
+  for (let i = 0; i < 40 && !drank; i++) { await sleep(400); const t = await notices(); if (/물을 마셨습니다/.test(t)) drank = true; }
   th1 = await page.evaluate(() => (typeof myThirst !== 'undefined') ? myThirst : null);
   ok(drank, '④ ★"마시기" — 걸어가 우물가에서 마셨다(물 마심 +30)', `알림: ${await notices()} · 목 ${th0} → ${th1}`);
   await snap('04-drink');

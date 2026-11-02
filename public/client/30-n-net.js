@@ -31,9 +31,9 @@
   function centralCall(door, extra, timeoutMs) {
     return new Promise((resolve) => {
       const prev = _centralWait.get(door);
-      if (prev) { try { prev({ error: '앞의 요청이 취소됐다' }); } catch (e) {} }
+      if (prev) { try { prev({ error: '앞의 요청이 취소되었습니다.' }); } catch (e) {} }
       _centralWait.set(door, resolve);
-      const t = setTimeout(() => { if (_centralWait.get(door) === resolve) { _centralWait.delete(door); resolve({ error: '응답이 없다 — 잠시 뒤 다시' }); } }, timeoutMs || 8000);
+      const t = setTimeout(() => { if (_centralWait.get(door) === resolve) { _centralWait.delete(door); resolve({ error: '응답이 없습니다. 잠시 뒤 다시 해 보십시오.' }); } }, timeoutMs || 8000);
       _centralWait.set(door, (d) => { clearTimeout(t); resolve(d); });
       sendPrimary(Object.assign({ type: 'central_call', door }, extra || {}));
     });
@@ -140,7 +140,7 @@
           warn = document.createElement('div');
           warn.id = 'zoneDeadWarn';
           warn.style.cssText = 'margin-top:8px;padding:8px 10px;border-radius: 0;background:var(--inset);border:1px solid var(--accent);color:var(--accent);font-size:13px;line-height:1.5';
-          warn.textContent = '현재 접속 가능한 지역이 없습니다. 서버 점검 중일 수 있어요 — 잠시 후 자동으로 다시 확인합니다.';
+          warn.textContent = '지금 들어갈 수 있는 지역이 없습니다. 서버를 점검하는 중일 수 있습니다. 잠시 뒤 저절로 다시 확인합니다.';
           (document.getElementById('zoneRow') || sel.parentNode).appendChild(warn);
         }
         warn.style.display = 'block';
@@ -252,7 +252,7 @@
           if (d && d.ok === false && d.reason !== 'missing_home_zone') {
             const err = document.getElementById('authError');
             err.textContent = ({ username_taken: '이미 사용 중인 이름입니다.',
-                                 wrong_password: '패스워드가 틀렸습니다.' })[d.reason] || `인증 실패: ${d.reason}`;
+                                 wrong_password: '패스워드가 틀렸습니다.' })[d.reason] || `들어가지 못했습니다(${d.reason}).`;
             err.classList.remove('hidden');
             return;                                   // 로비에 남는다(종전 auth_error 자리와 같은 칸)
           }
@@ -366,7 +366,7 @@
       const stalled = !!lastTickAt && gap > showAt;
       if (stalled && !netStalled) {
         console.warn(`[recover] ★서버 틱 ${(gap / 1000).toFixed(1)}초간 없음 — 유령 클라. 예측 정지`);
-        setNetStalled(true, `서버 응답 ${(gap / 1000).toFixed(0)}초 없음`);
+        setNetStalled(true, `서버가 ${(gap / 1000).toFixed(0)}초째 대답이 없습니다`);
       } else if (!stalled && netStalled) {
         setNetStalled(false);
       }
@@ -605,7 +605,7 @@
       if (placementMode) {
         // 사용자 위치에서 거리 체크 (160px)
         const distMe = Math.hypot(clickWx - myAbsPredicted.x, clickWy - myAbsPredicted.y);
-        if (distMe > 160) { showNotice('너무 멀어서 거기에 못 지음 (160px)'); return; }
+        if (distMe > 160) { showNotice('너무 멀어서 거기에는 지을 수 없습니다.'); return; }
         if (placementMode.special) {
           // ★움집터·길드 곳간 — 커서 셀 기준 다중 셀 배치(검증·재료·배치는 서버 권위)
           const _sp = placementMode.special;
@@ -615,7 +615,7 @@
                     : (_sp === 'psite' ? 'request_village_house' : 'build_guild_granary'))))));
           sendPrimaryAt({ type: _mt, atX: clickWx, atY: clickWy, kind: placementMode.kind || undefined });
           if (!e.shiftKey) {
-            placementMode = null; showNotice('배치 요청');
+            placementMode = null; showNotice('그 자리에 짓겠다고 알렸습니다.');
             // ★[T839 · ★T850 켬 기본 — 손잡이 `T839_SITE_EXIT`(되돌림 `=0`) · 서버 env 가 정본 · welcome `uiCfg.siteExit`] **터를 놓았으면 건축 모드를 끈다.**
             //   다섯 터(움집 · 노 · 숯가마 · 우물 · 회관)는 `*_start` 가 `buildMode = true` 로 들어오고 여기서 `placementMode` 만 걷혔다 —
             //   건축 모드가 남아 커서가 터를 잡으면 아래 14.51 갈래가 좌클릭을 **3초 분해**로 먼저 가져갔다(안내 "다음: ② … (터 클릭)"대로 누른 사람이 제 터를 부순다 · T824 회부 1).
@@ -623,7 +623,7 @@
             //   ⚠Shift 배치(이어 놓기)는 종전 그대로 모드를 지킨다. 집 의뢰(`psite`) · 마을 곳간은 다섯 터가 아니다(손대지 않는다).
             if (uiCfg && uiCfg.siteExit && (_sp === 'hut_site' || _sp === 'furnace_site' || _sp === 'kiln_site' || _sp === 'well_site' || _sp === 'village_site')) {
               buildMode = false;
-              showNotice('건축 모드 꺼짐');
+              showNotice('짓기를 마쳤습니다.');
               if (invOpen) renderInvPanel(document.getElementById('invBody'));
             }
           }
@@ -633,7 +633,7 @@
           // 14.54-d: blocked면 클릭 무시 + 알림
           const _cx = Math.floor(clickWx / 32), _cy = Math.floor(clickWy / 32);
           if (isPlacementBlocked(placementMode.itemType, _cx, _cy, placementMode.dir || 'N')) {
-            showNotice('여기엔 못 지음 (겹침 또는 다른 사람 사유지)'); return;
+            showNotice('여기에는 지을 수 없습니다. 다른 것과 겹치거나 남의 땅입니다.'); return;
           }
           // 14.51: 3초 progress 시작 → 완료 시 server 송신 + 인벤 차감 (server 측에서)
           startBuildAction('place', {
@@ -645,7 +645,7 @@
         } else {
           // 옛 호환 (즉시)
           sendPrimaryAt({ type: 'build', buildType: placementMode.type, floor: placementMode.floor, atX: clickWx, atY: clickWy });
-          if (!e.shiftKey) { placementMode = null; showNotice('배치 모드 종료'); }
+          if (!e.shiftKey) { placementMode = null; showNotice('자리 고르기를 마쳤습니다.'); }
         }
         return;
       }
@@ -661,7 +661,7 @@
           const tx = ox + target.x + (isEdge ? 16 : 0);
           const ty = oy + target.y + (isEdge ? 16 : 0);
           const d = Math.hypot(tx - myAbsPredicted.x, ty - myAbsPredicted.y);
-          if (d > 160) { showNotice('너무 멀어서 분해 못함 (160px)'); return; }
+          if (d > 160) { showNotice('너무 멀어서 허물 수 없습니다.'); return; }
           startBuildAction('dismantle', { buildingId: hoverBuildingId });
           return;
         }
@@ -1330,7 +1330,7 @@
     } else if (msg.type === 'war_command_ack') {
       // §4-4 P4: 지휘 참가 응답(서버 진영·근접 검증). 거절 시 관전만 유지.
       if (!msg.ok && _warCmdId === msg.warId) _warCmdId = null;
-      _warCmdMsg = msg.ok ? '지휘 수락됨 — WASD로 부대 지휘' : ('지휘 거절: ' + (msg.reason || '조건 불충족'));
+      _warCmdMsg = msg.ok ? '지휘를 맡았습니다. WASD로 부대를 움직이십시오.' : ('지휘를 맡지 못했습니다. ' + (msg.reason || '조건이 맞지 않습니다.'));
       updateWarHud();
     } else if (msg.type === 'building_added') {
       c.buildings.set(msg.building.id, msg.building);
@@ -1657,7 +1657,7 @@
       return;
     } else if (msg.type === 'zone_full') {
       // zone 가득 참 — 로비로 복귀 + 알림
-      const text = `${zonesMeta[msg.zone]?.displayName || msg.zone} 가득 참 (${msg.current}/${msg.cap}명). 다른 zone 선택.`;
+      const text = `${zonesMeta[msg.zone]?.displayName || msg.zone}에 사람이 가득 찼습니다(${msg.current}/${msg.cap}명). 다른 지역을 고르십시오.`;
       console.warn('[zone_full]', text);
       for (const [zid, cc] of conns) try { cc.ws.close(); } catch (e) {}
       conns.clear();
@@ -1678,7 +1678,7 @@
         wrong_password: '패스워드가 틀렸습니다.',
         username_taken: '이미 사용 중인 이름입니다.',
       };
-      const text = reasonMap[msg.reason] || `인증 실패: ${msg.reason}`;
+      const text = reasonMap[msg.reason] || `들어가지 못했습니다(${msg.reason}).`;
       console.warn('[auth]', text);
       // 연결 종료, 게임 화면 → 로비
       for (const [zid, cc] of conns) try { cc.ws.close(); } catch (e) {}

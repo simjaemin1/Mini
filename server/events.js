@@ -1044,11 +1044,11 @@ function createLedger(opts) {
   function claim(vid, item, want) {
     const s = byVid.get(vid);
     const req = s && s.reqs.get(item);
-    if (!req) return { ok: false, err: '그런 의뢰가 없다' };
+    if (!req) return { ok: false, err: '그런 부탁이 없습니다.' };
     const room = req.qty - req.filled;
-    if (!(room > 0)) return { ok: false, err: '이미 다 채워진 의뢰다' };
+    if (!(room > 0)) return { ok: false, err: '이미 다 채워진 부탁입니다.' };
     const n = Math.floor(Number(want) || 0);
-    if (!(n > 0)) return { ok: false, err: '낼 수량이 없다' };
+    if (!(n > 0)) return { ok: false, err: '낼 것이 없습니다.' };
     const take = Math.min(n, room);                   // ★초과분 거절 — 여기서 즉시 확정(await 없음 = 원자적)
     req.filled += take;
     const rew = Math.max(0, Math.round(req.rewQty * (take / req.qty)));
@@ -1359,8 +1359,8 @@ function josa(word, withBatchim, withoutBatchim) {
 }
 const LINES = {
   STOCK_SHORTAGE: (ev) => { const n = koRes(ev.item); return `요즘 ${n}${josa(n, '이', '가')} 달리는군.`; },
-  STOCK_GLUT: (ev) => { const n = koRes(ev.item); return `${n}${josa(n, '은', '는')} 곳간에 쌓여 썩을 지경이야.`; },
-  PRICE_SPIKE: (ev) => `${koRes(ev.item)} 값이 부쩍 올랐어.`,
+  STOCK_GLUT: (ev) => { const n = koRes(ev.item); return `${n}${josa(n, '은', '는')} 곳간에 쌓여 썩을 지경일세.`; },
+  PRICE_SPIKE: (ev) => `${koRes(ev.item)} 값이 부쩍 올랐네.`,
   PRICE_DROP: (ev) => `${koRes(ev.item)} 값이 영 시원찮네.`,
   CARAVAN_LATE: (ev) => `행상이 여태 안 오는군. 고갯길에 무슨 일이 있나.`,
   SEASON_CHANGE: (ev) => {
@@ -1368,15 +1368,15 @@ const LINES = {
     // ★[T779 2026-10-18] 가을의 **올겨울 목표 공표**(T20 — `meta.winter` 를 읽어 "올겨울 … 모아 두려 하네")는 걷었다.
     //   새 사건엔 그 칸이 없고, 이미 쓰인 옛 가을 사건(`village_events` 90일 창)에 남은 칸도 안 읽는다 —
     //   없어진 프로젝트를 다시 공표하지 않는다. 옛 가을 사건은 아래 가을 한 줄로 읽힌다(판정 `WINTER_*` 줄은 그대로 — 연표는 영구).
-    return s === 'spring' ? '봄일세. 밭에 나갈 때야.'
+    return s === 'spring' ? '봄일세. 밭에 나갈 때일세.'
       : s === 'summer' ? '여름이군. 물가를 조심하게.'
-        : s === 'autumn' ? '가을일세. 거둘 것이 많아.'
+        : s === 'autumn' ? '가을일세. 거둘 것이 많네.'
           : '겨울이 왔네. 땔감은 넉넉한가.';
   },
   // ── ★[T50 2026-09-02] 세계의 "일" ──────────────────────────────────────────
   //   ⚠수치를 읊지 않는다(§3.2 대시보드 톤 금지). "비옥도 0.7배"가 아니라 "소출이 시원찮다"다.
-  HARVEST_BOON: () => '올해는 땅이 넉넉하이. 거둘 것이 많아.',
-  HARVEST_BLIGHT: () => '올해는 소출이 영 시원찮아. 겨울이 걱정일세.',
+  HARVEST_BOON: () => '올해는 땅이 넉넉하이. 거둘 것이 많네.',
+  HARVEST_BLIGHT: () => '올해는 소출이 영 시원찮네. 겨울이 걱정일세.',
   // 종류는 **econ 이 붙인 이름**(`_weather.name`)에서 온다 — 여기서 날씨를 다시 정의하지 않는다.
   //   ⚠econ 이 새 날씨를 더하면 아래 폴백이 받는다(빈 문장이 나가지 않는다). 계약 검사는 test-events ㉜.
   WEATHER: (ev) => {
@@ -1384,18 +1384,18 @@ const LINES = {
     if (k.indexOf('가뭄') >= 0) return '비가 통 안 오는군. 밭이 마르네.';
     if (k.indexOf('폭풍') >= 0) return '바람이 사납네. 지붕을 단단히 매게.';
     if (k.indexOf('풍요') >= 0) return '요즘은 들에 나가면 손이 바쁘이.';
-    if (k.indexOf('안개') >= 0) return '안개가 짙어. 사냥 나가긴 어렵겠군.';
+    if (k.indexOf('안개') >= 0) return '안개가 짙네. 사냥 나가긴 어렵겠군.';
     return '날씨가 심상찮네.';
   },
-  POP_COLLAPSE: () => '사람이 자꾸 줄어. 이러다 마을이 비겠어.',
-  CARAVAN_RAIDED: () => '행상이 길에서 털렸다는군. 한동안 길이 사납겠어.',
-  TRADER_KILLED: () => '고갯길에서 행상이 변을 당했네. 끝내 돌아오지 못했어.',
+  POP_COLLAPSE: () => '사람이 자꾸 줄어드네. 이러다 마을이 비겠네.',
+  CARAVAN_RAIDED: () => '행상이 길에서 털렸다는군. 한동안 길이 사납겠네.',
+  TRADER_KILLED: () => '고갯길에서 행상이 변을 당했네. 끝내 돌아오지 못했다네.',
   BUILT: (ev) => ((ev.item === 'granary') ? '곳간을 한 채 더 올렸네.' : '새 움집이 하나 섰네.'),
-  FIRST_GOODS: (ev) => { const n = koRes(ev.item); return `${n}${josa(n, '이', '가')} 이 마을에 처음 들어왔어.`; },
+  FIRST_GOODS: (ev) => { const n = koRes(ev.item); return `${n}${josa(n, '이', '가')} 이 마을에 처음 들어왔네.`; },
   // ── ★[T20 2026-09-02] 겨울나기 판정 ─────────────────────────────────────────
   //   ⚠`vid·day·type·item·mag` 만으로 만든다(㉝ 계약) — 기여자 이름·수량은 `meta` 라 여기 못 쓴다.
   WINTER_KEPT: (ev) => { const n = koRes(ev.item); return `올겨울은 넉넉하이. ${n} 곳간이 든든하네 — 자네들 덕일세.`; },
-  WINTER_SHORT: (ev) => { const n = koRes(ev.item); return `올겨울 ${n}${josa(n, '은', '는')} 좀 궁하겠어. 그래도 손을 보탠 이가 있었네.`; },
+  WINTER_SHORT: (ev) => { const n = koRes(ev.item); return `올겨울 ${n}${josa(n, '은', '는')} 좀 궁하겠네. 그래도 손을 보탠 이가 있었네.`; },
   // ── ★[T119 2026-09-05] 구조 ────────────────────────────────────────────────
   //   ⚠㉝ 계약 — `vid·day·type·item·mag` 다섯 필드로만 만든다. 그래서 **이름은 `item` 한 칸**이다:
   //     `'village'` 면 마을이 옮긴 것이고, 그 밖이면 그 글자가 **일으킨 사람의 이름**이다.
@@ -1403,7 +1403,7 @@ const LINES = {
   // ── ★[T572 2026-10-03] 사람 줄어듦의 끝 ─────────────────────────────────────
   //   ⚠㉝ 계약 — 다섯 필드로만. 남은 수·최고치는 `meta` 라 못 쓴다(그래서 수를 안 읊는다 — §3.2 톤과도 같다).
   DISSOLVED: () => '굶주림 끝에 남은 이들이 마을을 버리고 도적이 되었다네.',
-  EMPTIED: () => '마을에 사람이 하나도 안 남았다네. 빈 움집만 서 있어.',
+  EMPTIED: () => '마을에 사람이 하나도 안 남았다네. 빈 움집만 서 있네.',
   // ── ★[T590 2026-10-03] 굶어 죽음 — 다섯 필드로만(㉝) · 누가 몇이 아니라 일이 났다는 것(그 철 첫 몸)
   STARVED: () => '끝내 굶어 죽은 이가 나왔다네.',
   RESCUED: (ev) => {
@@ -1419,7 +1419,7 @@ function briefLine(ev) {
 // 게시판 한 줄 — "무엇을 얼마 가져오면 무엇으로 갚는다"
 function boardLine(req) {
   const remain = (req.remain != null ? req.remain : (req.qty - req.filled));
-  return `${koRes(req.item)} ${remain} → ${koRes(req.rewItem)} ${req.rewQty}`;
+  return `${koRes(req.item)} ${remain}개를 가져오면 ${koRes(req.rewItem)} ${req.rewQty}개로 갚습니다.`;
 }
 
 // ── 납품 정산 ─────────────────────────────────────────────────────────────────
@@ -1434,7 +1434,7 @@ function _kcal() { if (_Kc === null) { try { _Kc = require('./kcal'); } catch (e
 function deliverToVillage(a) {
   const { ledger, vil, vid, inventory, item, deposit } = a;
   const v = vil && vil.econ;
-  if (!v) return { ok: false, err: '마을을 찾지 못했다' };
+  if (!v) return { ok: false, err: '마을을 찾지 못했습니다.' };
   const D = ledger.deliverable;
   const playerItems = (D.items.get(item) || []);
   if (!playerItems.length) return { ok: false, err: '곳간이 받는 물건이 아니다' };
@@ -1443,8 +1443,8 @@ function deliverToVillage(a) {
   let have = 0;
   for (const it of playerItems) have += Math.floor(Number(inventory[it]) || 0);
   const want = (a.want != null) ? Math.floor(Number(a.want) || 0) : have;
-  if (!(want > 0)) return { ok: false, err: '낼 물건이 없다' };
-  if (want > have) return { ok: false, err: '그만큼 갖고 있지 않다' };
+  if (!(want > 0)) return { ok: false, err: '낼 물건이 없습니다.' };
+  if (want > have) return { ok: false, err: '그만큼 갖고 있지 않습니다.' };
 
   // ① 몫 확정 — 여기서 초과분이 거절된다(동시 납품 경쟁의 유일한 관문)
   const c = ledger.claim(vid, item, want);
@@ -1458,7 +1458,7 @@ function deliverToVillage(a) {
     if (!_rewItem0 || have < c.rew) {
       ledger.unclaim(vid, item, c.take);
       ledger.stats.reqRefused++;
-      return { ok: false, err: '마을이 지금 갚을 것이 없다 — 촌장이 면목없어 한다' };
+      return { ok: false, err: '마을이 지금 갚을 것이 없습니다. 촌장이 면목없어 합니다.' };
     }
   }
   // ② 실물 이동 — 정본 함수. 내가 가진 아이템에서 c.take 개만큼 골라 낸다.
@@ -1472,7 +1472,7 @@ function deliverToVillage(a) {
   // ★[무게 배치 2026-08-27] 개체 무게 환산을 **게시판 납품에도** 그대로 태운다 —
   //   같은 물고기가 거래소에선 2.2단위, 게시판에선 1단위면 그게 보이지 않는 손이다.
   const dep = deposit(vil, inventory, give, a.unitsOf);
-  if (!dep || !dep.ok) { ledger.unclaim(vid, item, c.take); return { ok: false, err: (dep && dep.err) || '곳간이 받지 않았다' }; }
+  if (!dep || !dep.ok) { ledger.unclaim(vid, item, c.take); return { ok: false, err: (dep && dep.err) || '곳간이 받지 않았습니다.' }; }
 
   // ③ 보상 — 마을 잉여를 실제로 덜어 준다(물물. `_cash` 는 쓰지 않는다 — 재민 세금 캐논).
   //   ★**전액 아니면 0**. 위 ①b 가 이미 보장하므로 여기서 깎이는 일은 없다.

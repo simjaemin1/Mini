@@ -271,7 +271,7 @@ say('\n⑥ 곳간 — 넣기 단위 = 열량 · 대표 = 사슴·들짐승고기
     '★★⑥ 넣기 단위 = 열량 ÷ 하루치(실 _unitsOfFor — 갓 잡은 것) · 사슴 10kg = 4.898 · 곰 10kg = 6.571 단위', `${u.meat_game} · ${u.meat_bear}`);
   ok(zOn.dep.ok && zOn.dep.taken.meat_game === 10 && zOn.dep.taken.meat_bear === 10 && Math.abs(zOn.dep.storage.meat_game - (u.meat_game + u.meat_bear)) < 2e-3 && !zOn.dep.invAfter.meat_game && !zOn.dep.invAfter.meat_bear,
     '★★⑥ 곳간에 넣었다 — 두 품목이 econ meat_game 한 칸으로(손에서 빠지고 곳간이 는다)', JSON.stringify(zOn.dep.storage));
-  ok(!zOff.dep.ok && /넣을 수 있는 물건이 없다/.test(zOff.dep.err || ''), '⑥ 끔 — 곳간이 안 받는다(T647 그대로)', zOff.dep.err || '');
+  ok(!zOff.dep.ok && /넣을 수 있는 물건이 없습니다/.test(zOff.dep.err || ''), '⑥ 끔 — 곳간이 안 받는다(T647 그대로)', zOff.dep.err || '');
   const d = zOn.del;
   ok(d.toEconMeatGame === 'meat_game' && d.itemsMeatGame.join() === 'meat_game,meat_bear' && d.inFrom, '★⑥ 꺼내기·보상 대표 = 사슴·들짐승고기 · 게시판·거래소(fromEcon)에 meat_game', JSON.stringify(d.itemsMeatGame));
   ok(d.toEconCooked === 'fish_cooked' && d.itemsCooked.slice(-2).join() === 'meat_game_cooked,meat_bear_cooked' && zOff.del.toEconCooked === 'fish_cooked',

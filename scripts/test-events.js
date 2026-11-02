@@ -1604,7 +1604,7 @@ const mkLedgerGeo = (world, geo, cfg) => {
 
   // 돌연변이 — 문장 하나에 이모지를 되살리면 잡는가
   {
-    const poisoned = srcs['server/events.js'].replace("'봄일세. 밭에 나갈 때야.'", "'🌱 봄일세. 밭에 나갈 때야.'");
+    const poisoned = srcs['server/events.js'].replace("'봄일세. 밭에 나갈 때일세.'", "'🌱 봄일세. 밭에 나갈 때일세.'");
     ok(poisoned !== srcs['server/events.js'], '㊸c 전제: 돌연변이를 실제로 심었다(치환이 먹었다)');
     ok(emojiSites(poisoned).length === 1, '㊸ ★문장 하나에 이모지를 되살리면 **잡는다**(잡을 수 있는 검사다)',
       `${emojiSites(poisoned).length}자리`);

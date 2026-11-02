@@ -259,11 +259,11 @@
       else if (k === 'r') sendPrimary({ type: 'repair_building' });          // Shift+R 수리
       else if (k === 'n') {                                                  // Shift+N 납품
         // ★납품 — 품목을 안 보낸다. **서버가** 낼 수 있는 첫 의뢰를 고른다(권위는 서버에 있다).
-        if (evNearVid == null) showNotice('마을 중심에서 너무 멀다');
+        if (evNearVid == null) showNotice('마을 한가운데에서 너무 멉니다.');
         else sendPrimary({ type: 'village_deliver', vid: evNearVid });
       }
       else if (k === 'g') {                                                  // Shift+G 게시판
-        if (evNearVid == null) showNotice('마을 중심에서 너무 멀다');
+        if (evNearVid == null) showNotice('마을 한가운데에서 너무 멉니다.');
         else sendPrimary({ type: 'village_board', vid: evNearVid });
       }
       // ★Shift+I·K·H·T·B·J 는 **패널 쪽 리스너**(50-i-panel.js)가 잡는다 — 여기선 아무것도 안 한다.
@@ -319,7 +319,7 @@
       // 14.51: B 키 = 건축 모드 토글 (옛 즉시 wall build 폐기)
       buildMode = !buildMode;
       if (!buildMode) { placementMode = null; }
-      showNotice(buildMode ? '건축 모드 켜짐 (인벤에서 건축물 클릭)' : '건축 모드 꺼짐');
+      showNotice(buildMode ? '짓기를 시작합니다. 짐에서 지을 것을 고르십시오.' : '짓기를 마쳤습니다.');
       if (invOpen) renderInvPanel(document.getElementById('invBody')); // 재렌더 (강조 갱신)
     }
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
@@ -389,19 +389,19 @@
       else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
       else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
       else if (a === 'build_floor') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
-      else if (a === 'hut_start') { buildMode = true; placementMode = { special: 'hut_site' }; showNotice('움집터 배치 모드 — 클릭 위치에 6×4 수혈 굴착 (곡괭이 필요 · B=취소)'); }   // ★움집 고증 건축(좀보이드 커서 배치)
+      else if (a === 'hut_start') { buildMode = true; placementMode = { special: 'hut_site' }; showNotice('움집 자리를 고르십시오. 누른 곳에 움집 구덩이를 팝니다. 곡괭이가 있어야 하고, B를 누르면 그만둡니다.'); }   // ★움집 고증 건축(좀보이드 커서 배치)
       else if (a === 'furnace_start') {   // ★노 건설(재민 확정 — 움집 동형). kind=도가니로/괴련로(시대가 정한다)
         const kind = btn.dataset.kind || 'crucible';
         buildMode = true; placementMode = { special: 'furnace_site', kind };
-        showNotice(`${kind === 'bloomery' ? '괴련로' : '노(爐)'} 터 배치 — 내 사유지/마을 땅 안 2×2 (B=취소)`);
+        showNotice(`${kind === 'bloomery' ? '괴련로' : '노(爐)'} 자리를 고르십시오. 내 땅이나 마을 땅 안이어야 합니다. B를 누르면 그만둡니다.`);
       }
-      else if (a === 'well_start') { buildMode = true; placementMode = { special: 'well_site' }; showNotice('우물 터 배치 — 내 사유지 2×2 (곡괭이 · 자갈 20·20 · 임업4·농촌10·광산1·임업1 마을 땅 · B=취소)'); }   // ★[T557] 우물(노·숯가마와 같은 계약)
-      else if (a === 'kiln_start') { buildMode = true; placementMode = { special: 'kiln_site' }; showNotice('숯가마 터 배치 — 내 사유지/마을 땅 안 2×2 (돌 4·곡괭이 · B=취소)'); }   // ★숯가마(노와 같은 계약)
+      else if (a === 'well_start') { buildMode = true; placementMode = { special: 'well_site' }; showNotice('우물 자리를 고르십시오. 내 땅이어야 하고 곡괭이와 자갈이 있어야 합니다. B를 누르면 그만둡니다.'); }   // ★[T557] 우물(노·숯가마와 같은 계약)
+      else if (a === 'kiln_start') { buildMode = true; placementMode = { special: 'kiln_site' }; showNotice('숯가마 자리를 고르십시오. 내 땅이나 마을 땅 안이어야 하고 돌과 곡괭이가 있어야 합니다. B를 누르면 그만둡니다.'); }   // ★숯가마(노와 같은 계약)
       // ★★[2026-08-03e 배치 12 ①] 마을 회관 — 노·숯가마와 **완전히 같은 배치 계약**(2×2·사유지·단계).
       //   다른 건 완공이 곧 마을 등록이라는 것뿐이다. 자리 가능 여부는 서버가 착공 전에 판정한다.
-      else if (a === 'village_start') { buildMode = true; placementMode = { special: 'village_site' }; showNotice('마을 회관 터 배치 — 내 사유지/마을 땅 안 2×2 (터 다지기 → 환호 → 굴립주 · B=취소)'); }
+      else if (a === 'village_start') { buildMode = true; placementMode = { special: 'village_site' }; showNotice('마을 회관 자리를 고르십시오. 내 땅이나 마을 땅 안이어야 합니다. 터를 다지고 도랑을 두른 뒤 기둥을 세웁니다. B를 누르면 그만둡니다.'); }
       // ★[11차 T4] 마을 크루에게 집 의뢰 — placementMode.special 재사용(발명 0). 검증·재료·배치는 서버 권위.
-      else if (a === 'psite_request') { buildMode = true; placementMode = { special: 'psite' }; showNotice('집 의뢰 모드 — 마을 영토 안을 클릭 (기둥6·서까래8·이엉8 선납 · B=취소)'); }
+      else if (a === 'psite_request') { buildMode = true; placementMode = { special: 'psite' }; showNotice('집 지을 자리를 마을 땅 안에서 고르십시오. 기둥 여섯, 서까래 여덟, 이엉 여덟을 먼저 냅니다. B를 누르면 그만둡니다.'); }
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
       // ★★[T148 2026-09-07] **선의 이름까지 갈았다: `feed` → `tame_feed`.**
       //   T140 은 버튼 낱말만 갈고 프로토콜은 뒀다 — 그래서 `feed` 가 선에서 여전히 두 뜻이었다

@@ -156,7 +156,7 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   ok((await page.evaluate(() => window.__getEquipment().length)) === eq0, '★⑤ 다 되기 전엔 못 받는다');
   await sleep(CRAFT_MS + 1500);
   const dtxt = await page.evaluate(() => window.__panelText());
-  ok(/다 됐다|받기/.test(dtxt), '★★⑤ 다 되면 **화면이 그렇게 말한다**', (dtxt.match(/[^\n]{0,24}다 됐다[^\n]{0,12}/) || [''])[0].trim());
+  ok(/다 됨|받기/.test(dtxt), '★★⑤ 다 되면 **화면이 그렇게 말한다**', (dtxt.match(/[^\n]{0,24}다 됐다[^\n]{0,12}/) || [''])[0].trim());
   await page.evaluate(() => { const b = document.querySelector('[data-fcollect]'); if (b) b.click(); });
   await sleep(1200);
   const eq1 = await page.evaluate(() => window.__getEquipment());

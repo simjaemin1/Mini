@@ -131,7 +131,7 @@ console.log('\n⑥ [T557 · #88] 기본 켬 · 지하수 가용도 — 우물 �
   layClaims(far.cx, far.cy, Q); Q.x = (far.cx + 1) * SZ; Q.y = (far.cy + 1) * SZ;
   const n0 = wells('well_site').length;
   H.tryWellStart(Q, far.cx * SZ + 1, far.cy * SZ + 1);
-  ok(wells('well_site').length === n0 && Q.toolItems[0].d === 100 && /물줄기가 없다/.test(Q.notices[Q.notices.length - 1] || ''), '⑥ ★노동권 밖 — 사유지·곡괭이·자갈이 다 있어도 거절(도구 무변) · 알림에 우물 마을', Q.notices[Q.notices.length - 1]);
+  ok(wells('well_site').length === n0 && Q.toolItems[0].d === 100 && /물줄기가 없습니다/.test(Q.notices[Q.notices.length - 1] || ''), '⑥ ★노동권 밖 — 사유지·곡괭이·자갈이 다 있어도 거절(도구 무변) · 알림에 우물 마을', Q.notices[Q.notices.length - 1]);
   ok(!!H._wellGroundAt(spot.cx, spot.cy) && !H._wellGroundAt(far.cx, far.cy), '⑥ 판정 = 후보 자리(`siteCandidates`)에서 `sustain.LABOR_R` 셀 안', `${H._wellGroundAt(spot.cx, spot.cy).name} · 밖 ${far.cx},${far.cy}`);
 }
 

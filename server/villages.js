@@ -1883,7 +1883,7 @@ function villageQualityAt(px, py, maxDistPx) {
 const RELIC_PAY_PREF = ['food', 'hide', 'stone', 'wood', 'herb', 'jade', 'obsidian'];   // 대금으로 받을 재화(플레이어에게 쓸모 순)
 const RELIC_PAY_KEEP = { food: 20 };   // 마을이 남겨 둬야 하는 몫(1인당) — 곳간을 비워 굶기지 않는다
 function lifeSellIronRelic(px, py, maxDistPx, opts) {
-  if (!state.ready) return { err: '마을 시뮬이 꺼져 있다' };
+  if (!state.ready) return { err: '마을이 돌지 않고 있습니다.' };
   let best = null, bestD = (maxDistPx != null ? maxDistPx : Infinity);
   for (const v of state.villages) {
     if (!v.econ) continue;
@@ -1891,7 +1891,7 @@ function lifeSellIronRelic(px, py, maxDistPx, opts) {
     const d = Math.hypot(cx - px, cy - py);
     if (d < bestD) { bestD = d; best = v; }
   }
-  if (!best) return { err: '거래할 마을이 근처에 없다' };
+  if (!best) return { err: '근처에 거래할 마을이 없습니다.' };
   const e = best.econ;
   const N = (e.npcs && e.npcs.length) || 1;
   // ① 이 마을이 매기는 값 — v2 그림자가격 그대로(사본 금지)
@@ -1901,7 +1901,7 @@ function lifeSellIronRelic(px, py, maxDistPx, opts) {
     const tbl = pf ? pf(e) : null;
     price = (tbl && tbl.iron_relic) || 0;
   } catch (err) { price = 0; }
-  if (!(price > 0)) return { err: `${best.name}은(는) 값을 못 쳐준다` };
+  if (!(price > 0)) return { err: `${best.name}은(는) 값을 쳐줄 수 없습니다.` };
   const q = Math.max(0.2, Math.min(1.6, (opts && opts.quality) || 1));   // 품질 배수(장비 인스턴스 q)
   const want = price * q;
   // ② 대금 — 그 마을이 실제로 가진 것에서만. 곳간을 비우지 않는다.
@@ -1919,7 +1919,7 @@ function lifeSellIronRelic(px, py, maxDistPx, opts) {
     if (take <= 0.01) continue;
     pay[r] = +take.toFixed(2); paid += take * unit;
   }
-  if (paid < want * 0.25) return { err: `${best.name}은(는) 값을 치를 물건이 없다 (가난한 마을이다)` };
+  if (paid < want * 0.25) return { err: `${best.name}은(는) 가난해서 값을 치를 물건이 없습니다.` };
   // ③ 쓰기 — 딱 두 종류
   for (const r in pay) e.storage[r] = Math.max(0, (e.storage[r] || 0) - pay[r]);
   e.storage.iron_relic = (e.storage.iron_relic || 0) + 1;
@@ -2158,10 +2158,10 @@ const PV_GAP_CELLS = Math.max(0, parseInt(process.env.PVILLAGE_GAP || '10', 10))
 const PV_MAX = Math.max(0, parseInt(process.env.PVILLAGE_MAX || String(VILLAGE_MAX), 10));   // 플레이어 마을 상한(기본 = NPC 상한과 같은 수)
 // 반환: { ok: true, vil } · { ok: false, err: '한국어 사유' }
 function foundPlayerVillage(opts) {
-  if (!ENABLED || !state.world || !state.db || !state.ta) return { ok: false, err: '마을 시뮬이 꺼져 있어 마을을 세울 수 없다' };
+  if (!ENABLED || !state.world || !state.db || !state.ta) return { ok: false, err: '마을이 돌지 않고 있어 마을을 세울 수 없습니다.' };
   const ccx = opts.ccx | 0, ccy = opts.ccy | 0;
   const founder = String(opts.founder || '');
-  if (!founder) return { ok: false, err: '창설자를 알 수 없다' };
+  if (!founder) return { ok: false, err: '마을을 세우는 사람을 알 수 없습니다.' };
   const ta = state.ta, db = state.db, econ = state.econ, world = state.world;
   // ── 상한 ────────────────────────────────────────────────────────────────
   const pvNow = state.villages.filter((v) => v.econ && v.econ.founder).length;
@@ -2170,7 +2170,7 @@ function foundPlayerVillage(opts) {
   for (const vil of state.villages) {
     const rCells = Math.max(PV_TERR_R, Math.round((vil._maxRPx || 0) / SZ)) + PV_GAP_CELLS;
     if (Math.hypot(ccx - vil.ccx, ccy - vil.ccy) < rCells) {
-      return { ok: false, err: `[${vil.name}] 의 땅과 너무 가깝다 — ${rCells}셀은 떨어져야 한다` };
+      return { ok: false, err: `${vil.name}의 땅과 너무 가깝습니다. ${rCells}칸은 떨어져야 합니다.` };
     }
   }
   // ── 터: 반경 PV_TERR_R 안의 **막히지 않은** 셀만(물·바위는 터가 아니다) ──────
@@ -2183,7 +2183,7 @@ function foundPlayerVillage(opts) {
       territory.push([x, y]);
     }
   }
-  if (territory.length < 8) return { ok: false, err: '물·바위뿐이라 마을을 앉힐 터가 안 나온다' };
+  if (territory.length < 8) return { ok: false, err: '물과 바위뿐이라 마을을 앉힐 터가 나오지 않습니다.' };
   // ★착공 전 자리 확인(`dryRun`) — 여기까지가 "이 자리에 세울 수 있는가"의 전부다.
   //   같은 함수를 쓰므로 착공 판정과 완공 판정이 **어긋날 수 없다**(따로 쓰면 그게 사본이다).
   if (opts.dryRun) return { ok: true, dryRun: true, cells: territory.length };
@@ -2192,7 +2192,7 @@ function foundPlayerVillage(opts) {
   try {
     if (ta.prepareFert) ta.prepareFert(ccx, ccy, PV_TERR_R + 8);
     lp = extractLandParamsApprox(ta, ccx, ccy, { territory });
-  } catch (e) { return { ok: false, err: `땅을 재지 못했다: ${e.message}` }; }
+  } catch (e) { return { ok: false, err: `땅을 재지 못했습니다(${e.message}).` }; }
   const day = world.day | 0;
   let name = String(opts.name || '').trim() || `${opts.founderName || '누군가'}의 마을`;
   if (state.claimedNames && state.claimedNames.has(name)) {   // 이름 유니크 — 레거시 디듀프·시세 패널이 이름으로 마을을 찾는다
@@ -2237,7 +2237,7 @@ function foundPlayerVillage(opts) {
     db.db.exec('COMMIT');
   } catch (e) {
     try { db.db.exec('ROLLBACK'); } catch (_) {}
-    return { ok: false, err: `마을을 기록하지 못했다: ${e.message}` };
+    return { ok: false, err: `마을을 기록하지 못했습니다(${e.message}).` };
   }
   // ── 런타임 등록 — init 의 마을 1곳분과 **같은 모양**으로 채운다 ─────────────
   world.villages.push(ev);
@@ -10761,7 +10761,7 @@ function _t620Audit(vil, nm, x, y, memo, raw) {   // 검사용 — 메모의 답
 //     즉 vil._buildCrew가 LIFE_CREW에 닿은 뒤의 크루는 마을 집터에 붙어도 진척이 0이다.
 //     "관례값이 아니라 포화점을 계산하라"는 원칙은 같고, 숫자는 각 모델의 상수에서 유도된다.
 function lifeRequestPlayerSite(vil, x, y, ownerId, ownerName) {
-  if (!vil || !state.ta) return { err: '마을 없음' };
+  if (!vil || !state.ta) return { err: '마을이 없습니다.' };
   if (!vil._terrSet || !vil._terrSet.size) return { err: '마을이 아직 깨어나지 않음(영토 0셀)' };
   if (vil._psite) return { err: '이 마을엔 이미 의뢰한 집터가 있다(완공 후 다시)' };
   x = Math.round(x / 2) * 2; y = Math.round(y / 2) * 2;                       // 짝수 격자 스냅(가장 가까운 짝수 — 랩 교정분)
@@ -10899,7 +10899,7 @@ function playerVillageDepositMap() { return PV_DEPOSIT_MAP; }
 //   ⚠콜백이 없으면 **종전 그대로**(개수 × 환산율)다 — 이 배치 이전 경로는 한 줄도 안 달라진다.
 function playerVillageDeposit(vil, inventory, want, unitsOf) {
   const v = vil && vil.econ;
-  if (!v) return { ok: false, err: '마을을 찾지 못했다' };
+  if (!v) return { ok: false, err: '마을을 찾지 못했습니다.' };
   const moved = {}, taken = {};
   for (const [item, q0] of Object.entries(want || {})) {
     const res = PV_DEPOSIT_MAP[item];
@@ -10914,7 +10914,7 @@ function playerVillageDeposit(vil, inventory, want, unitsOf) {
     const u = Number.isFinite(units) && units > 0 ? units : put;
     moved[res] = +((moved[res] || 0) + u * PV_DEPOSIT_RATE).toFixed(3);
   }
-  if (!Object.keys(taken).length) return { ok: false, err: '넣을 수 있는 물건이 없다(곳간은 식량·목재·석재·광물만 받는다)' };
+  if (!Object.keys(taken).length) return { ok: false, err: '넣을 수 있는 물건이 없습니다. 곳간은 먹을 것과 나무, 돌, 광물만 받습니다.' };
   for (const [item, q] of Object.entries(taken)) inventory[item] -= q;
   for (const [res, q] of Object.entries(moved)) v.storage[res] = +((v.storage[res] || 0) + q).toFixed(3);
   return { ok: true, moved, taken };
@@ -10932,15 +10932,15 @@ function playerVillageDeposit(vil, inventory, want, unitsOf) {
 //     남는 몫이 **오늘 얻은 것**으로 잡힌다(무게 배치의 규약 그대로 · T5 노출 E 규약).
 function playerVillageWithdraw(vil, inventory, res, qty) {
   const v = vil && vil.econ;
-  if (!v) return { ok: false, err: '마을을 찾지 못했다' };
-  if (!state.ledger) return { ok: false, err: '아직 장부가 없다' };
+  if (!v) return { ok: false, err: '마을을 찾지 못했습니다.' };
+  if (!state.ledger) return { ok: false, err: '아직 장부가 없습니다.' };
   const r = String(res || '');
   const item = state.ledger.deliverable.toEcon.get(r);
   if (!item) return { ok: false, err: '곳간에서 꺼낼 수 있는 물건이 아니다' };
   const q = Math.floor(Number(qty) || 0);
-  if (!(q > 0)) return { ok: false, err: '꺼낼 양이 없다' };
+  if (!(q > 0)) return { ok: false, err: '꺼낼 것이 없습니다.' };
   const have = playerVillageWithdrawStock(vil, r);
-  if (have < q) return { ok: false, err: `곳간에 그만큼 없다 (지금 ${have})` };
+  if (have < q) return { ok: false, err: `곳간에 그만큼 없습니다(지금 ${have}).` };
   // ★★★[T59 2026-09-03] **넣을 때와 꺼낼 때가 같은 짝을 쓴다.**
   //   종전엔 넣기만 `unitsOf`(무게)로 환산하고 **꺼내기는 1단위 = 1개**였다 — 다리가 한쪽만 있었다.
   //   이제 식량은 열량이 단위다: econ 1단위 = 하루치(`Kcal.DAY_KCAL`) ⇒ 낱개 수를 정본이 푼다.
@@ -10949,7 +10949,7 @@ function playerVillageWithdraw(vil, inventory, res, qty) {
   const _K = _kcal();
   const conv = (_K && _K.kcalOf(item) > 0) ? _K.itemsOf(item, q) : { items: q, leftUnits: 0 };
   const give = Math.floor(conv.items);
-  if (give < 1) return { ok: false, err: `그 양으로는 ${item} 한 개도 안 나온다 — 더 청해라` };
+  if (give < 1) return { ok: false, err: `그 양으로는 ${item}이(가) 한 개도 나오지 않습니다. 더 청하십시오.` };
   const spend = +(q - (conv.leftUnits || 0)).toFixed(4);
   v.storage[r] = +(((v.storage[r] || 0) - spend * PV_DEPOSIT_RATE)).toFixed(3);
   inventory[item] = (inventory[item] || 0) + give;
@@ -10993,7 +10993,7 @@ function playerVillageWithdrawStock(vil, res) {
 }
 // 근접 게이트 — 브리핑·게시판·거래소와 **같은 술어 하나**(`_villageNear`, 260px). 우회로 없음.
 function villageWithdrawGate(vid, px, py) {
-  if (!state.ledger) return { err: '아직 장부가 없다' };
+  if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   return _villageNear(vid, px, py);
 }
 
@@ -11052,12 +11052,12 @@ function hasShelter(vid) { return !!shelterOf(vid); }
 //   ★멱등: 이미 있으면 있는 것을 돌려준다(두 채가 서지 않는다).
 function addShelter(vid, cx, cy) {
   const vil = (state.byDbId && state.byDbId.get(vid | 0)) || null;
-  if (!vil) return { ok: false, err: '그런 마을이 없다' };
+  if (!vil) return { ok: false, err: '그런 마을이 없습니다.' };
   if (vil._shelter) return { ok: true, already: true, cell: vil._shelter };
-  if (!Number.isFinite(cx) || !Number.isFinite(cy)) return { ok: false, err: '자리가 없다' };
+  if (!Number.isFinite(cx) || !Number.isFinite(cy)) return { ok: false, err: '자리가 없습니다.' };
   const c = { cx: cx | 0, cy: cy | 0 };
   try { state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'shelter', cx: c.cx, cy: c.cy, floors: 1, data: null }); }
-  catch (e) { return { ok: false, err: `쉼터를 기록하지 못했다: ${e.message}` }; }
+  catch (e) { return { ok: false, err: `쉼터를 기록하지 못했습니다(${e.message}).` }; }
   vil._shelter = c;
   if (vil._bRows) vil._bRows.push({ village_id: vil.dbId, type: 'shelter', cx: c.cx, cy: c.cy, floors: 1, data: null });
   // ★★실체 — **정본 하나를 부른다**(사본 금지). 마을 움집이 완공될 때 서는 그 코드 그대로다
@@ -11102,11 +11102,11 @@ function pickShelterSpot(vid, arrive) {
 //   ★도착 지점이 아직 안 구워졌으면 **아무것도 안 한다**(다음에 부르면 된다 — 좌표를 지어내지 않는다).
 function ensureShelter(vid, arrive) {
   const vil = (state.byDbId && state.byDbId.get(vid | 0)) || null;
-  if (!vil) return { ok: false, err: '그런 마을이 없다' };
+  if (!vil) return { ok: false, err: '그런 마을이 없습니다.' };
   if (vil._shelter) return { ok: true, already: true, cell: vil._shelter };
-  if (vil.econ && vil.econ.founder) return { ok: false, err: '사람이 세운 마을은 창설자가 짓는다' };
+  if (vil.econ && vil.econ.founder) return { ok: false, err: '사람이 세운 마을은 세운 사람이 짓습니다.' };
   const spot = pickShelterSpot(vid, arrive);
-  if (!spot) return { ok: false, err: '자리를 찾지 못했다' };
+  if (!spot) return { ok: false, err: '자리를 찾지 못했습니다.' };
   return addShelter(vid, spot.cx, spot.cy);
 }
 
@@ -13733,10 +13733,10 @@ function* _scanEventsSteps() {
 function villageAnchorPx(vil) { return { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 }; }
 function _villageNear(vid, px, py) {
   const vil = state.byDbId && state.byDbId.get(vid | 0);
-  if (!vil) return { err: '그런 마을이 없다' };
+  if (!vil) return { err: '그런 마을이 없습니다.' };
   const a = villageAnchorPx(vil);
   const d = Math.hypot(a.x - px, a.y - py);
-  if (d > EV_BRIEF_PX) return { err: '마을 중심에서 너무 멀다' };
+  if (d > EV_BRIEF_PX) return { err: '마을 한가운데에서 너무 멉니다.' };
   return { vil };
 }
 
@@ -13748,7 +13748,7 @@ function _villageNear(vid, px, py) {
 //
 //   opts.sinceDay : 이 플레이어가 마지막으로 세계를 본 게임일(복귀 브리핑). 없으면 평소 브리핑.
 function villageBrief(vid, px, py, opts) {
-  if (!state.ledger) return { err: '아직 장부가 없다' };
+  if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
   const L = state.ledger;
@@ -13781,7 +13781,7 @@ function villageBrief(vid, px, py, opts) {
 //   ⚠`news` 는 **추가 필드**다(클라 무접촉). 지금 클라는 `rows` 만 그린다 —
 //     화면에 띄우는 건 연대기 UI(T18)/온보딩 몫이라 회부에 적었다.
 function villageBoard(vid, px, py) {
-  if (!state.ledger) return { err: '아직 장부가 없다' };
+  if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
   const rows = state.ledger.board(vid | 0).map((r) => ({
@@ -13824,7 +13824,7 @@ function _newsRows(vid, n) {
 //   ★무엇이 실리는지는 여기서 정하지 않는다. `ledger.chronicle` 하나가 정한다(사본 금지) —
 //     그 함수가 T7 의 가시성 술어와 **같은 도달표** 위에 선다.
 function villageChronicle(vid, px, py, year) {
-  if (!state.ledger) return { err: '아직 장부가 없다' };
+  if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
   const L = state.ledger, day = state.world.day | 0;
@@ -13850,16 +13850,16 @@ function villageChronicle(vid, px, py, year) {
 //     여기서 나가는 건 시세도 재고도 아니라 **촌장이 할 말 한 줄**이고, 그마저도
 //     소문이 물리적으로 그 마을에 닿은 뒤에만 나간다. 정보 비대칭은 도달표가 지킨다.
 function villageNews(vid, n) {
-  if (!state.ledger) return { err: '아직 장부가 없다' };
+  if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   const vil = state.byDbId && state.byDbId.get(vid | 0);
-  if (!vil) return { err: '그런 마을이 없다' };
+  if (!vil) return { err: '그런 마을이 없습니다.' };
   const rows = _newsRows(vid, Math.max(1, (n | 0) || BOARD_NEWS_N));
   return { ok: true, vid: vid | 0, name: vil.name, day: state.world.day | 0, rows, lines: rows.map((r) => r.line) };
 }
 
 // ★납품 — 서버 권위. 실물 이동은 `playerVillageDeposit`(정본), 몫 확정은 장부(원자적).
 function villageDeliver(vid, px, py, inventory, item, want, unitsOf) {
-  if (!state.ledger) return { err: '아직 장부가 없다' };
+  if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
   // ★품목 미지정 = "낼 수 있는 걸 내겠다". **서버가** 고른다 — 클라가 고르면 그건 클라 권위다.
@@ -13870,7 +13870,7 @@ function villageDeliver(vid, px, py, inventory, item, want, unitsOf) {
       .sort((a, b) => (b.remain / Math.max(1, b.qty)) - (a.remain / Math.max(1, a.qty)));
     // ★[T779] 걸린 의뢰가 없으면 낼 것이 없다(겨울 몫 갈래는 걷었다 — 의뢰 없는 곳간 넣기는 기부 문이 받는다 · T769).
     item = rows.length ? rows[0].item : null;
-    if (!item) return { err: '지금 낼 수 있는 의뢰가 없다' };
+    if (!item) return { err: '지금 낼 수 있는 부탁이 없습니다.' };
   }
   const r = Events.deliverToVillage({
     ledger: state.ledger, vil: g.vil, vid: vid | 0, inventory,
@@ -13898,7 +13898,7 @@ function villageDeliver(vid, px, py, inventory, item, want, unitsOf) {
 const Trade = require('./trade');
 
 function villageTradeBoard(vid, px, py, inventory, numeraire) {   // ★[T69] 기준 품목 = 내가 낼 물건(전달만)
-  if (!state.ledger) return { err: '아직 장부가 없다' };
+  if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
   return _t789View(() => Object.assign({ ok: true }, _T732_ON ? Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory, numeraire, _kcal()) : Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory, numeraire)));   // ★[T748] 켬 = 마을 몫을 받을 낱개로(열량 짝) · ★[T789] 사람의 눈(끄면 그대로)
@@ -13906,7 +13906,7 @@ function villageTradeBoard(vid, px, py, inventory, numeraire) {   // ★[T69] �
 
 // 견적(마른 실행) — 패널이 "확정" 전에 비율·최대량을 보여 주려면 필요하다. 실행과 **같은 게이트**를 통과한다.
 function villageTradeQuote(vid, px, py, giveRes, takeRes, qty, unitsOf, opts) {   // ★[T69] opts.want(전달만)
-  if (!state.ledger) return { err: '아직 장부가 없다' };
+  if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
   // ★[무게] 개수 → 단위. 콜백이 없으면 1개=1단위(종전 그대로).
@@ -13927,7 +13927,7 @@ function villageTradeQuote(vid, px, py, giveRes, takeRes, qty, unitsOf, opts) { 
 }
 
 function villageTradeExec(vid, px, py, inventory, giveRes, takeRes, qty, unitsOf, want) {   // ★[T69] want(전달만)
-  if (!state.ledger) return { err: '아직 장부가 없다' };
+  if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
   const r = Trade.exchange({
@@ -14154,9 +14154,9 @@ function refreshAllFishSustain(now, t661Day) {
 //   ⚠기본 동작은 **한 글자도 안 바뀐다**(`skip` 없으면 종전 그대로) — 다른 하네스 무접촉.
 function __e2eForceShortage(vid, skip) {
   const _skip = new Set(Array.isArray(skip) ? skip : []);
-  if (!state.ledger) return { err: '장부 없음' };
+  if (!state.ledger) return { err: '장부가 없습니다.' };
   const vil = state.byDbId && state.byDbId.get(vid | 0);
-  if (!vil) return { err: '그런 마을 없음' };
+  if (!vil) return { err: '그런 마을이 없습니다.' };
   const v = vil.econ, D = state.ledger.deliverable, C = state.ledger.cfg;
   // ★★[2026-08-26] 픽스처는 **자기가 재려는 것을 망가뜨리면 안 된다**.
   //   게시판에 이미 걸린 의뢰의 **보상 품목**을 부족으로 만들면 마을은 약속한 값을 못 갚게 되고,
@@ -14222,9 +14222,9 @@ function _e2eShortHoldApply() {   // ★[T755] 장부가 읽기 직전 — 의�
 //   ⚠econ 무수정 규약과 어긋나지 않는다: 이건 랩이 아니라 **하네스가 세계에 날씨를 부르는 손**이고,
 //     그 필드는 econ 이 매 틱 스스로 쓰고 지우는 자기 필드다(E2E_GIVE 게이트 밖에선 도달 불가).
 function __e2eForceDeed(vid, kind) {
-  if (!state.ledger) return { err: '장부 없음' };
+  if (!state.ledger) return { err: '장부가 없습니다.' };
   const vil = state.byDbId && state.byDbId.get(vid | 0);
-  if (!vil || !vil.econ) return { err: '그런 마을 없음' };
+  if (!vil || !vil.econ) return { err: '그런 마을이 없습니다.' };
   const day = state.world.day | 0;
   const KINDS = {
     가뭄: { name: '🌵가뭄', mult: { fertility: 0.65, water: 0.7 } },

@@ -78,8 +78,8 @@ function untilOpenMs(nowMs) {
 // 물때 이름 — 우리말 물때 어휘를 쓴다(숫자를 화면에 뿌리지 않는다).
 function tideKo(nowMs) {
   const l = levelAt(nowMs);
-  if (isOpen(nowMs)) return '한사리 썰물(갯벌이 드러났다)';
-  return l > 0.75 ? '밀물 한물(물이 찼다)' : '물이 드나든다';
+  if (isOpen(nowMs)) return '한사리 썰물(갯벌 드러남)';
+  return l > 0.75 ? '밀물 한물(물 참)' : '물이 드나드는 중';
 }
 
 // ── ② 무엇이 잡히나 — 자리 × 물때의 결정론 ─────────────────────────────────

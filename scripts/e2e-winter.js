@@ -295,10 +295,10 @@ async function waitHttp(url, tries = 900) {
     ok(!!paneHead && paneHead.open && paneHead.filled && paneHead.head === false, '④ ★가을 한복판에 연 게시판 **판**의 머리 자리가 비어 있다(`.bp-head` 0 — 그린 화면)',
       JSON.stringify(paneHead));
     ok(srvWinter.length === 0, '④b 서버 콘솔에도 겨울 공표 · 판정 줄 0', srvWinter.slice(0, 2).join(' | '));
-    ok(!!tried && tried.gave && tried.f0 > 0 && tried.nt.length > 0 && !tried.nt.some((t) => /상했다/.test(t)),
+    ok(!!tried && tried.gave && tried.f0 > 0 && tried.nt.length > 0 && !tried.nt.some((t) => /상했습니다/.test(t)),
       '⑤ 전제: 가을에 성한 곡식을 손에 쥐고 냈다(거절 까닭이 "상했다"가 아니다 — 겨울 갈래를 잰다)',
       JSON.stringify(tried && { day: tried.day, before: tried.before, f0: tried.f0, reqs: tried.foodReqs, nt: tried.nt }));
-    ok(!!tried && tried.foodReqs === 0 && tried.nt.some((t) => /그런 의뢰가 없다/.test(t)) && !tried.nt.some((t) => /올겨울 몫/.test(t)) && tried.f1 === tried.f0,
+    ok(!!tried && tried.foodReqs === 0 && tried.nt.some((t) => /그런 부탁이 없습니다/.test(t)) && !tried.nt.some((t) => /올겨울 몫/.test(t)) && tried.f1 === tried.f0,
       '⑤b ★곡식 의뢰가 없으면 납품으로 안 받는다("그런 의뢰가 없다" — 장부 정본) — 겨울 몫 갈래 0(손의 곡식 그대로)', JSON.stringify(tried && { f0: tried.f0, f1: tried.f1, nt: tried.nt }));
     await freeze(true);
     const ch = await askChron(V.id, null);

@@ -303,7 +303,7 @@ async function waitHttp(url, tries = 900) {
   }
   // 화면에도 실제로 그려졌는가 — 페이로드만 보면 §8.2 층을 안 재게 된다
   const p2 = await openChron();
-  ok(/일에 들었다/.test(p2.body), '⑥d 화면에 "…일에 들었다"가 실제로 그려진다', JSON.stringify(p2.body.slice(0, 80)));
+  ok(/일에 들음/.test(p2.body), '⑥d 화면에 "…일에 들었다"가 실제로 그려진다', JSON.stringify(p2.body.slice(0, 80)));
   ok(new RegExp(A.name).test(p2.body), '⑥e 화면에 출처 마을 이름이 보인다', A.name);
   await snap('ch-03-after');
 

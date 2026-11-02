@@ -162,10 +162,10 @@ const seen = (C, pid) => C.others.get(pid) || null;
   A.notices.length = 0;
   say(A, '/친구 bob');
   await sleep(1200);
-  ok(A.notices.some((t) => /청했다/.test(t)), '① 청했다는 말을 들었다', JSON.stringify(A.notices.slice(-1)));
+  ok(A.notices.some((t) => /청했습니다/.test(t)), '① 청했다는 말을 들었다', JSON.stringify(A.notices.slice(-1)));
   say(A, '/친구'); await sleep(1200);
   ok(await nFriends(A.playerId) === 0, '① ★한쪽만 청한 것은 **아직 친구가 아니다**', await nFriends(A.playerId));
-  ok(B.notices.some((t) => /벗이 되자고 청했다/.test(t)), '①b 상대도 그 사실을 듣는다(접속 중이라면)');
+  ok(B.notices.some((t) => /벗이 되자고 청했습니다/.test(t)), '①b 상대도 그 사실을 듣는다(접속 중이라면)');
   // ★자명 통과 금지 — 같은 말을 두 번 해도 성립하지 않는다(내가 두 번 부른 건 수락이 아니다)
   A.notices.length = 0; say(A, '/친구 bob'); await sleep(1000);
   ok(A.notices.some((t) => /이미 청해/.test(t)), '①c ★★같은 사람이 두 번 청해도 **성립하지 않는다**', JSON.stringify(A.notices.slice(-1)));
@@ -178,8 +178,8 @@ const seen = (C, pid) => C.others.get(pid) || null;
   //     도착 지점에 선다** — bob 은 이제 다른 마을 어귀에서 태어나고, 그 순간 청크가 켜지면서
   //     수백 개체가 그 소켓으로 먼저 흐른다. 말은 왔는데 **1.5초 안에 못 읽는 판**이 생겼다
   //     (실측: 쌍은 섰는데(②b·②c 초록) 알림만 빈 배열). ⇒ 정해진 초를 자지 말고 **들을 때까지** 기다린다.
-  for (let i = 0; i < 40 && !B.notices.some((t) => /벗이 되었다/.test(t)); i++) await sleep(250);
-  ok(B.notices.some((t) => /벗이 되었다/.test(t)), '② ★서로 청하면 그 자리에서 벗이 된다', JSON.stringify(B.notices.slice(-1)));
+  for (let i = 0; i < 40 && !B.notices.some((t) => /벗이 되었습니다/.test(t)); i++) await sleep(250);
+  ok(B.notices.some((t) => /벗이 되었습니다/.test(t)), '② ★서로 청하면 그 자리에서 벗이 된다', JSON.stringify(B.notices.slice(-1)));
   say(A, '/친구'); say(B, '/친구'); await sleep(1200);
   ok(await nFriends(A.playerId) === 1, '②b alice 쪽에서 1명', await nFriends(A.playerId));
   ok(await nFriends(B.playerId) === 1, '②c bob 쪽에서도 1명 — **쌍은 하나**다', await nFriends(B.playerId));
@@ -262,7 +262,7 @@ const seen = (C, pid) => C.others.get(pid) || null;
 
     // ⓐ 친구가 아니면 거절한다 — 그리고 **그 사람이 있는지조차 말하지 않는다**
     A.notices.length = 0; say(A, '/어디 carol'); await sleep(1200);
-    ok(A.notices.some((t) => /벗이 아니다/.test(t)), '★④-2ⓐ 친구가 아니면 `/어디` 는 **거절한다**', JSON.stringify(A.notices.slice(-1)));
+    ok(A.notices.some((t) => /벗이 아닙니다/.test(t)), '★④-2ⓐ 친구가 아니면 `/어디` 는 **거절한다**', JSON.stringify(A.notices.slice(-1)));
 
     // ⓑ 같은 존의 벗 — 방위와 걸음
     const a0 = await posOf('alice');
@@ -270,14 +270,14 @@ const seen = (C, pid) => C.others.get(pid) || null;
     ok(await warp(B, a0.x + 1200, a0.y + 400), '④-2ⓑ2 전제: bob 을 걸어 닿을 거리에 세웠다');
     await sleep(600);
     A.notices.length = 0; say(A, '/어디 bob'); await sleep(1500);
-    ok(A.notices.some((t) => /쪽 \d+걸음 거리에 있다/.test(t)),
+    ok(A.notices.some((t) => /쪽 \d+걸음 거리에 있습니다/.test(t)),
        '★★④-2ⓑ 같은 존이면 **방위와 걸음**으로 답한다(T110 어휘 그대로)', JSON.stringify(A.notices.slice(-1)));
 
     // ⓒ T110 반경 밖이면 **방향만** — 걸음 수는 걸어 닿는 거리 안에서만 뜻이 있다
     ok(await warp(B, a0.x + R_FAR + 2000, a0.y), '④-2ⓒ 전제: bob 을 T110 반경 밖으로 보냈다');
     await sleep(600);
     A.notices.length = 0; say(A, '/어디 bob'); await sleep(1500);
-    ok(A.notices.some((t) => /쪽 멀리 있다/.test(t)) && !A.notices.some((t) => /걸음 거리에 있다/.test(t)),
+    ok(A.notices.some((t) => /쪽 멀리 있습니다/.test(t)) && !A.notices.some((t) => /걸음 거리에 있습니다/.test(t)),
        '★★④-2ⓒ 반경 **밖이면 방향만** — 걸음 수를 말하지 않는다', JSON.stringify(A.notices.slice(-1)));
 
     // ⓓ 따라가기 — 화살이 서고, **표적이 움직이면 따라 돈다**
@@ -304,18 +304,18 @@ const seen = (C, pid) => C.others.get(pid) || null;
     ok(await warp(B, a0.x + Math.round(R80 / 2), a0.y), '④-2ⓕ 전제: bob 이 구조 반경 안으로 들어왔다');
     await sleep(2500);
     ok(A.follow === null, '★★④-2ⓕ 도착하면 화살이 **거둬진다**(`follow: null`)', JSON.stringify(A.follow));
-    ok(A.notices.some((t) => /닿았다/.test(t)), '④-2ⓕ2 그리고 그렇게 말한다', JSON.stringify(A.notices.slice(-2)));
+    ok(A.notices.some((t) => /닿았습니다/.test(t)), '④-2ⓕ2 그리고 그렇게 말한다', JSON.stringify(A.notices.slice(-2)));
 
     // ⓖ `/숨기` — 숨은 벗은 "다른 곳"으로만 보인다
     B.notices.length = 0; say(B, '/숨기'); await sleep(1200);
-    ok(B.notices.some((t) => /숨겼다/.test(t)), '④-2ⓖ 전제: bob 이 자리를 숨겼다', JSON.stringify(B.notices.slice(-1)));
+    ok(B.notices.some((t) => /숨겼습니다/.test(t)), '④-2ⓖ 전제: bob 이 자리를 숨겼다', JSON.stringify(B.notices.slice(-1)));
     A.notices.length = 0; say(A, '/어디 bob'); await sleep(2000);
-    ok(A.notices.some((t) => /다른 곳에 있다/.test(t)) && !A.notices.some((t) => /걸음|쪽 멀리/.test(t)),
+    ok(A.notices.some((t) => /다른 곳(\(.*\))?에 있습니다/.test(t)) && !A.notices.some((t) => /걸음|쪽 멀리/.test(t)),
        '★★④-2ⓖ 숨은 벗은 **"다른 곳"까지만** 보인다(같은 존인데도)', JSON.stringify(A.notices.slice(-1)));
     A.notices.length = 0; say(A, '/따라가기 bob'); await sleep(2000);
     ok(!A.follow, '★④-2ⓖ2 숨은 벗은 **따라갈 수도 없다**', JSON.stringify(A.follow));
     B.notices.length = 0; say(B, '/숨기 끝'); await sleep(1200);
-    ok(B.notices.some((t) => /보인다/.test(t)), '④-2ⓖ3 `/숨기 끝` 이면 되돌아온다', JSON.stringify(B.notices.slice(-1)));
+    ok(B.notices.some((t) => /보입니다/.test(t)), '④-2ⓖ3 `/숨기 끝` 이면 되돌아온다', JSON.stringify(B.notices.slice(-1)));
 
     // ⓗ 벗이 나가면 꺼진다
     ok(await warp(B, a0.x + 1500, a0.y + 500), '④-2ⓗ 전제: bob 이 다시 멀리 섰다');
@@ -324,7 +324,7 @@ const seen = (C, pid) => C.others.get(pid) || null;
     ok(!!(A.follow && Number.isFinite(A.follow.x)), '④-2ⓗ2 전제: 화살이 다시 섰다', JSON.stringify(A.follow));
     close(B); await sleep(3000);
     ok(A.follow === null, '★★④-2ⓗ 벗이 나가면 화살이 **거둬진다**', JSON.stringify(A.follow));
-    ok(A.notices.some((t) => /보이지 않는다/.test(t)), '④-2ⓗ3 그리고 그렇게 말한다', JSON.stringify(A.notices.slice(-2)));
+    ok(A.notices.some((t) => /보이지 않아/.test(t)), '④-2ⓗ3 그리고 그렇게 말한다', JSON.stringify(A.notices.slice(-2)));
 
     // ⓘ `__notices` 규약 무변 — 따라가는 동안 알림이 **초당 한 줄씩 쌓이지 않았다**
     ok(A.notices.length < 6, '★★④-2ⓘ 따라가는 동안 알림이 **안 쌓인다**(자리가 `gauges` 라서 — 규약 무변)',
@@ -344,7 +344,7 @@ const seen = (C, pid) => C.others.get(pid) || null;
   A.notices.length = 0;
   say(A, '/친구 끊기 bob');
   await sleep(2500);
-  ok(A.notices.some((t) => /끊었다/.test(t)), '⑤ 끊었다는 말을 들었다', JSON.stringify(A.notices.slice(-1)));
+  ok(A.notices.some((t) => /끊었습니다/.test(t)), '⑤ 끊었다는 말을 들었다', JSON.stringify(A.notices.slice(-1)));
   ok(await nFriends(A.playerId) === 0 && await nFriends(B.playerId) === 0, '⑤b 양쪽 다 0 명이 된다');
   await sleep(2500);
   const aSeesB2 = seen(A, B.pid);
@@ -358,11 +358,11 @@ const seen = (C, pid) => C.others.get(pid) || null;
     const D1 = await connect('dave', 'pw4', VID_B);
     await sleep(600); close(D1); await sleep(1200);
     C3.notices.length = 0; say(C3, '/친구 dave'); await sleep(1500);
-    ok(C3.notices.some((t) => /청했다/.test(t)), '⑤-2 전제: 꺼져 있는 사람에게도 청할 수 있다', JSON.stringify(C3.notices.slice(-1)));
+    ok(C3.notices.some((t) => /청했습니다/.test(t)), '⑤-2 전제: 꺼져 있는 사람에게도 청할 수 있다', JSON.stringify(C3.notices.slice(-1)));
     const D2 = await connect('dave', 'pw4', VID_B);
     await sleep(2500);
     ok(D2.playerId === D1.playerId, '⑤-2b 전제: 같은 사람으로 다시 들어왔다', D2.playerId);
-    ok(D2.notices.some((t) => /carol 이\(가\) 벗이 되자고 청했다/.test(t)),
+    ok(D2.notices.some((t) => /carol 님이 벗이 되자고 청했습니다/.test(t)),
        '★★⑤-2 밀린 친구 요청이 **다음 접속에 한 줄로 선다**', JSON.stringify(D2.notices));
     //   ★자명 통과 금지 — 세었다고 요청이 사라지지 않는다(수락만이 지운다)
     const pend = await (async (u, body) => {
@@ -399,9 +399,9 @@ const seen = (C, pid) => C.others.get(pid) || null;
     ok(seenName === n1, '⑧d ★★화면 이름 = 신원의 이름(작명소가 하나다 — 갈리면 지목이 깨진다)', `${JSON.stringify(seenName)} vs ${JSON.stringify(n1)}`);
     //   ★서로 부른다 — 정본은 종전 `friendRequest` 그대로다(사본 0)
     G1.notices.length = 0; say(G1, `/친구 ${n2}`); await sleep(1800);
-    ok(G1.notices.some((t) => /벗이 되자고 청했다/.test(t)), '⑧e 게스트가 게스트를 **이름으로 부른다**', JSON.stringify(G1.notices.slice(-1)));
+    ok(G1.notices.some((t) => /벗이 되자고 청했습니다/.test(t)), '⑧e 게스트가 게스트를 **이름으로 부른다**', JSON.stringify(G1.notices.slice(-1)));
     G2.notices.length = 0; say(G2, `/친구 ${n1}`); await sleep(1800);
-    ok(G2.notices.some((t) => /벗이 되었다/.test(t)), '⑧ ★★**게스트 둘이 벗이 되었다**(T115 회부 5 가 닫힌다)', JSON.stringify(G2.notices.slice(-1)));
+    ok(G2.notices.some((t) => /벗이 되었습니다/.test(t)), '⑧ ★★**게스트 둘이 벗이 되었다**(T115 회부 5 가 닫힌다)', JSON.stringify(G2.notices.slice(-1)));
     const fl = await jget(`http://localhost:${CPORT}/friends/${encodeURIComponent(G1.playerId)}`);
     ok(!!(fl && fl.friends && fl.friends.length === 1 && fl.friends[0].id === G2.playerId),
       '⑧f 정본(central `friends` 표)에 그 쌍이 있다', JSON.stringify(fl && fl.friends));
@@ -413,7 +413,7 @@ const seen = (C, pid) => C.others.get(pid) || null;
       '⑧g2 자명 통과 금지 — 그 갈래는 여전히 **이름을 안 준다**(T115 규약 무변)');
     //   ★자명 통과 금지 — 없는 이름은 여전히 없다
     G1.notices.length = 0; say(G1, '/친구 여행자없음'); await sleep(1500);
-    ok(G1.notices.some((t) => /없는 이름이다/.test(t)), '⑧h ★자명 통과 금지 — 아무 이름이나 되는 게 아니다', JSON.stringify(G1.notices.slice(-1)));
+    ok(G1.notices.some((t) => /없는 이름입니다/.test(t)), '⑧h ★자명 통과 금지 — 아무 이름이나 되는 게 아니다', JSON.stringify(G1.notices.slice(-1)));
     //   ★★승계(게스트 → 계정) 뒤에도 **벗이 유지된다** — 쌍은 `player_id` 로 묶였지 이름으로가 아니다
     const pr = await jpost(`http://localhost:${CPORT}/promote`, { token: g1.token, username: 'promoted1', password: 'pw-t208' });
     ok(!!(pr && pr.ok && pr.player && pr.player.player_id === g1.player_id),
@@ -437,7 +437,7 @@ const seen = (C, pid) => C.others.get(pid) || null;
   say(A, '/친구 bob');
   await sleep(7000);                       // central 클라 타임아웃(5초)보다 길게 기다린다
   ok(!A.closed, '⑥ ★central 이 죽어도 **놀던 사람은 안 끊긴다**', `열림 ${!A.closed}`);
-  ok(A.notices.some((t) => /못 청했다/.test(t)), '⑥b ★조용히 실패하지 않는다 — 말로 알려 준다',
+  ok(A.notices.some((t) => /청하지 못했습니다/.test(t)), '⑥b ★조용히 실패하지 않는다 — 말로 알려 준다',
     JSON.stringify(A.notices.slice(-1)));
   ok(A.others.size >= 1 && tickBefore >= 1, '⑥c 틱이 계속 온다(세계가 멎지 않았다)', `${tickBefore} → ${A.others.size}`);
   const infoDown = await jget(`http://localhost:${ZPORT}/startinfo?as=alice`);

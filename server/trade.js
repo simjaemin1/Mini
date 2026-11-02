@@ -373,27 +373,27 @@ function _moreWorks(econV2, v, giveRes, takeRes, n0, maxN, unitsAt, capU, takeN)
   return takeN(planSliced(econV2, v, giveRes, takeRes, unitsAt(lo), capU).took) > 0;
 }
 function _whyNot(econV2, v, giveRes, takeRes, capShow, capU, u1, more) {   // ★[T988] 거래가 안 서는 판의 말 하나(견적 · 실행 같은 함수 · 읽기만)
-  if (capShow <= 0) return `마을에 ${Events.koRes(takeRes)}이(가) 남아 있지 않다`;
+  if (capShow <= 0) return `마을에 ${Events.koRes(takeRes)}이(가) 남아 있지 않습니다.`;
   if (u1 > 0 && planSliced(econV2, v, giveRes, takeRes, u1, capU).gave < u1 - 1e-9) {
     return `${Events.koRes(giveRes)} 한 개 값이 마을이 내줄 수 있는 `
-      + `${Events.koRes(takeRes)} 전부(${capShow})보다 비싸다 — 이 마을은 지금 그 값을 못 치른다`;
+      + `${Events.koRes(takeRes)} 전부(${capShow})보다 비쌉니다. 이 마을은 지금 그 값을 치를 수 없습니다.`;
   }
-  return more ? '그 양으론 한 개도 못 바꾼다 — 더 내야 한다' : '그 양으론 한 개도 못 바꾼다';
+  return more ? '그 양으로는 한 개도 바꿀 수 없습니다. 더 내야 합니다.' : '그 양으로는 한 개도 바꿀 수 없습니다.';
 }
 function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   const v = vil.econ;
-  if (giveRes === takeRes) return { err: '같은 물건끼리는 바꿀 게 없다' };
+  if (giveRes === takeRes) return { err: '같은 물건끼리는 바꿀 수 없습니다.' };
   const canIn = tradableIn(ledger), canOut = tradableOut(ledger, vid);
-  if (!canIn.has(giveRes)) return { err: '곳간이 받지 않는 물건이다' };
+  if (!canIn.has(giveRes)) return { err: '곳간이 받지 않는 물건입니다.' };
   if (!canOut.has(takeRes)) {
     return { err: lockedRewards(ledger, vid).has(takeRes)
-      ? '그건 게시판 의뢰의 삯으로 잡아 둔 것이다 — 마을이 못 판다'
-      : '마을이 내주지 않는 물건이다' };
+      ? '그것은 게시판 부탁의 삯으로 잡아 둔 것이라 마을이 팔 수 없습니다.'
+      : '마을이 내주지 않는 물건입니다.' };
   }
   // ★`planSliced` 의 첫 조각과 **같은 표**를 봐야 표시된 한계비율이 실제 첫 조각과 일치한다.
   const prices = Events.pricesFresh(econV2, v);
   const pA = +prices[giveRes] || 0, pB = +prices[takeRes] || 0;
-  if (!(pA > 0) || !(pB > 0)) return { err: '이 마을엔 그 물건의 시세가 없다' };
+  if (!(pA > 0) || !(pB > 0)) return { err: '이 마을에는 그 물건의 시세가 없습니다.' };
   const s = CFG.SPREAD;
   const stock = +((v.storage || {})[takeRes] || 0);
   const cap = Events.payableQty(stock, CFG.STOCK_FRAC);
@@ -537,8 +537,8 @@ function exchange(a) {
     if (qw.err) return { ok: false, err: qw.err };
     if (!(qw.giveNeeded > 0)) {
       if (T988_ON && qw.why) return { ok: false, err: qw.why };   // ★[T988] 절삭 0 판 — 견적이 실은 그 말(받을 양 ≤ 상한이라 아래 말은 거짓)
-      return { ok: false, err: `마을이 ${Events.koRes(takeRes)} ${wantTake}개를 못 내준다`
-        + ` — 지금 내줄 수 있는 건 ${qw.cap}까지다` };
+      return { ok: false, err: `마을이 ${Events.koRes(takeRes)} ${wantTake}개를 내줄 수 없습니다.`
+        + ` 지금 내줄 수 있는 것은 ${qw.cap}개까지입니다.` };
     }
     // ★견적의 `giveNeeded` 에서 출발해, **고른 그 개체들의 실제 무게**로 다시 재며 올라간다.
     //   걸음은 견적과 **같은 함수**다(`_climbToWant`) — 자만 어림에서 실측으로 바뀐다.
@@ -550,11 +550,11 @@ function exchange(a) {
   } else {
     q0 = Math.max(0, Math.floor(Number(a.giveQty) || 0));       // ★플레이어가 내는 건 **개수**다
   }
-  if (q0 < CFG.MIN_GIVE) return { ok: false, err: `${CFG.MIN_GIVE}개 이상은 내야 한다` };
+  if (q0 < CFG.MIN_GIVE) return { ok: false, err: `${CFG.MIN_GIVE}개 이상은 내야 합니다.` };
   if (have < q0) {
     return { ok: false, err: wantTake > 0
-      ? `${Events.koRes(takeRes)} ${wantTake}개를 받으려면 ${Events.koRes(giveRes)} ${q0}개가 필요한데 그만큼 없다`
-      : '그만큼 갖고 있지 않다' };
+      ? `${Events.koRes(takeRes)} ${wantTake}개를 받으려면 ${Events.koRes(giveRes)} ${q0}개가 있어야 하는데 그만큼 없습니다.`
+      : '그만큼 갖고 있지 않습니다.' };
   }
 
   const u0 = _units(_pick(q0));
@@ -590,17 +590,17 @@ function exchange(a) {
       const more = !(wantTake > 0) && !qt.capped && give > 0 && _moreWorks(econV2, v, giveRes, takeRes, q0, have, G.at, capU, _takeN);
       return { ok: false, err: _whyNot(econV2, v, giveRes, takeRes, qt.cap, capU, _units(_pick(1)), more) };
     }
-    if (qt.cap <= 0) return { ok: false, err: `마을에 ${Events.koRes(takeRes)}이(가) 남아 있지 않다` };
+    if (qt.cap <= 0) return { ok: false, err: `마을에 ${Events.koRes(takeRes)}이(가) 남아 있지 않습니다.` };
     if (qt.maxGive < 1) {
       return { ok: false, err: `${Events.koRes(giveRes)} 한 개 값이 마을이 내줄 수 있는 `
-        + `${Events.koRes(takeRes)} 전부(${qt.cap})보다 비싸다 — 이 마을은 지금 그 값을 못 치른다` };
+        + `${Events.koRes(takeRes)} 전부(${qt.cap})보다 비쌉니다. 이 마을은 지금 그 값을 치를 수 없습니다.` };
     }
-    return { ok: false, err: '그 양으론 한 개도 못 바꾼다 — 더 내야 한다' };
+    return { ok: false, err: '그 양으로는 한 개도 바꿀 수 없습니다. 더 내야 합니다.' };
   }
 
   // ② 재고를 **먼저** 잡는다(동시 경쟁의 관문)
   const before = +((v.storage || {})[takeRes] || 0);
-  if (before < spend) return { ok: false, err: '마을 재고가 방금 줄었다 — 다시 해 보라' };
+  if (before < spend) return { ok: false, err: '마을 재고가 방금 줄었습니다. 다시 해 보십시오.' };
   v.storage[takeRes] = +(before - spend).toFixed(3);
 
   // ③④ 내 물건 → 곳간(정본 deposit). 실패하면 ⑤ 되돌린다.
@@ -608,10 +608,10 @@ function exchange(a) {
   const dep = deposit(vil, inventory, want, unitsOf || undefined);
   if (!dep || !dep.ok) {
     v.storage[takeRes] = before;                      // ⑤ 되돌림
-    return { ok: false, err: (dep && dep.err) || '곳간이 받지 않았다' };
+    return { ok: false, err: (dep && dep.err) || '곳간이 받지 않았습니다.' };
   }
   const takeItem = D.toEcon.get(takeRes);
-  if (!takeItem) { v.storage[takeRes] = before; return { ok: false, err: '내줄 물건의 실체가 없다' }; }
+  if (!takeItem) { v.storage[takeRes] = before; return { ok: false, err: '내줄 물건이 실제로 없습니다.' }; }
   inventory[takeItem] = (inventory[takeItem] || 0) + take;
 
   return { ok: true, vid, name: vil.name, giveRes, takeRes, give, take,

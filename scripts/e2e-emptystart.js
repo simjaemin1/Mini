@@ -221,7 +221,7 @@ function findForageSpots() {
   const nt = await notices();
   // ★[T78] `🤏` 로 찾지 않는다 — 알림 경계가 접두 이모지를 `kind:'gather'` 로 옮기고 글자를 뺐다.
   //   화면 문자열만 보는 자리라 **주웠다는 말**로 찾는다(검사의 뜻 그대로).
-  const _gathered = (t) => /남은 양 |여긴 다 훑었다|주울 게 없다|짐이 가득/.test(t);   // 세 갈래 전부(성공·마름·빈자리)
+  const _gathered = (t) => /남은 양 |다 훑었습니다|주울 것이 없습니다|짐이 가득/.test(t);   // 세 갈래 전부(성공·마름·빈자리)
   ok(nt.some(_gathered), '★② 무엇을 어디서 주웠는지 말해 준다',
     (nt.filter(_gathered).slice(-1)[0] || '').slice(0, 50));
   await snap('es-02-forage');

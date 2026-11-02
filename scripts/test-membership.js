@@ -399,7 +399,7 @@ console.log('\n⑩ ★이 하네스가 실패할 줄 아는가 — 일부러 틀
   ok(Villages.villageFamine(VIL), '⑪b 전제: 엔진의 판단을 **읽었다**(다시 세지 않았다)', VIL.econ._dpDebug.hunger);
   const mid = +VIL.econ.storage.food;
   const w1 = wdChief(p, VID, 'food', 1);
-  ok(!w1.ok && /굶고 있다/.test(w1.err || ''), '★★⑪b2 굶는 마을은 **곳간을 안 연다**(촌장에게도)', w1.err);
+  ok(!w1.ok && /굶고 있/.test(w1.err || ''), '★★⑪b2 굶는 마을은 **곳간을 안 연다**(촌장에게도)', w1.err);
   ok(+VIL.econ.storage.food === mid, '★⑪b3 그리고 곳간은 **한 톨도 안 줄었다**(거절이 진짜다)', `${mid} → ${+VIL.econ.storage.food}`);
   //   ⓒ 판단이 양수면(굶지 않는다) 다시 열린다 — 부호 하나가 문이다
   VIL.econ._dpDebug = { hunger: 0, dP: 0.1 };
@@ -420,7 +420,7 @@ console.log('\n⑩ ★이 하네스가 실패할 줄 아는가 — 일부러 틀
   const lk = M.handleChat(p, '/곳간 잠금');
   const op = M.handleChat(p, '/곳간 열기');
   const said = sent.slice(n0).filter((x) => x && x.type === 'notice').map((x) => x.text);
-  ok(lk === true && op === true && said.length === 2 && said.every((t) => /촌장만 꺼낸다/.test(t)), '⑪e2 `/곳간 잠금|열기` 는 명령으로 받아 한 줄로 답한다(말로 안 흘러간다)', said.join(' · '));
+  ok(lk === true && op === true && said.length === 2 && said.every((t) => /촌장만 열 수 있습니다/.test(t)), '⑪e2 `/곳간 잠금|열기` 는 명령으로 받아 한 줄로 답한다(말로 안 흘러간다)', said.join(' · '));
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

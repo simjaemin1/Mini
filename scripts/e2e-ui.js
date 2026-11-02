@@ -325,7 +325,7 @@ async function waitHttp(url, tries = 600) {
       sent: window.__t55sent.map((m) => m.type),
       notice: (window.__notices || []).slice(-3).join(' | '),
     }));
-    ok(nOut.sent.includes('village_deliver') || /너무 멀다/.test(nOut.notice),
+    ok(nOut.sent.includes('village_deliver') || /너무 멉니다/.test(nOut.notice),
        '★⑦ `Shift+N`(납품)이 그대로 도달한다(마을 밖이면 "너무 멀다")', nOut.sent.join(' ') + ' | ' + nOut.notice);
 
     // ★패널 Shift 단축키 — 맨손 리스너로 안 흘리면서도 **패널은 열려야** 한다
@@ -412,7 +412,7 @@ async function waitHttp(url, tries = 600) {
     let healTx = '', tries = 0;
     while (tries++ < 25 && !/▲/.test(healTx)) { await sleep(400); healTx = await hpTx(); }
     ok(/▲/.test(healTx), '★★⑨ⓑ **HP 가 오르는 중이면 게이지가 말한다**(회부 "HP 자연 회복이 화면에 안 실린다" 종결)', healTx);
-    ok(/아물고 있다/.test(await hpTitle()), '★⑨ⓑ 그 표식은 말로도 설명된다', await hpTitle());
+    ok(/아무는 중/.test(await hpTitle()), '★⑨ⓑ 그 표식은 말로도 설명된다', await hpTitle());
 
     // ⓒ ★자명 통과 금지 — 갈증이 바닥이면 회복이 멎고 표식도 꺼진다(늘 켜져 있는 등불이 아니다)
     await setBody({ hp: 40, thirst: 0 });
@@ -962,7 +962,7 @@ async function waitHttp(url, tries = 600) {
     if (water.sea) {
       await tele(water.sea.lx, water.sea.ly);
       const sl = await tapUntilMenu(await clientPt(water.sea.x, water.sea.y));
-      ok(!!sl && sl[0] === '짠물이다' && !sl.includes('마시기'), '★★⑯ⓔ 바다 우클릭 = **짠물이다**(마시기 없음 — 판정은 서버 `isSeaTileLocal`)', JSON.stringify(sl));
+      ok(!!sl && sl[0] === '짠물 살피기' && !sl.includes('마시기'), '★★⑯ⓔ 바다 우클릭 = **짠물이다**(마시기 없음 — 판정은 서버 `isSeaTileLocal`)', JSON.stringify(sl));
       await closeMenu();
     } else {
       // ★이 픽스처의 클라는 바다를 못 그린다(central `ENABLED_ZONES=hanbando` 하나 — 해안선은 바다 존이 zonesMeta 에 있어야 선다 · T473).
@@ -996,14 +996,14 @@ async function waitHttp(url, tries = 600) {
         await sleep(900);
         await page.evaluate(([x, y]) => verbLook(x, y, { cx: 640, cy: 400 }), [seaT.x, seaT.y]);
         let sl = null; for (let i = 0; i < 30 && !sl; i++) { await sleep(100); sl = await menuLabels(); }
-        ok(!!sl && sl[0] === '짠물이다' && !sl.includes('마시기'), '★★⑯ⓔ 바다 = **짠물이다**(마시기 없음 — 메뉴는 서버 답 `look.water` 으로 짓는다 · 판정 `isSeaTileLocal`)', JSON.stringify(sl));
+        ok(!!sl && sl[0] === '짠물 살피기' && !sl.includes('마시기'), '★★⑯ⓔ 바다 = **짠물이다**(마시기 없음 — 메뉴는 서버 답 `look.water` 으로 짓는다 · 판정 `isSeaTileLocal`)', JSON.stringify(sl));
         await snap('ui-16e-sea-menu');
         await closeMenu();
         const th0 = await page.evaluate(() => myThirst);
         await page.evaluate(() => { window.__notices && (window.__notices.length = 0); window.__sendPrimary({ type: 'gather', water: 'drink' }); });
         await sleep(1500);
         const th1 = await page.evaluate(() => myThirst), nt = await lastNotice();
-        ok(/짠물이다 — 마실 수 없다/.test(nt) && th1 >= th0 - 1, '★⑯ⓔ2 메뉴의 마시기는 짠물을 **안 마신다**(벌 `drinkBrine` 0 · E 는 종전대로)', `${nt} · 갈증 ${Math.round(th0)} → ${Math.round(th1)}`);
+        ok(/짠물이라 마실 수 없습니다/.test(nt) && th1 >= th0 - 1, '★⑯ⓔ2 메뉴의 마시기는 짠물을 **안 마신다**(벌 `drinkBrine` 0 · E 는 종전대로)', `${nt} · 갈증 ${Math.round(th0)} → ${Math.round(th1)}`);
       }
     }
 

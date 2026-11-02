@@ -96,7 +96,7 @@ function renderBoardPane() {
   const title = document.getElementById('boardPaneTitle');
   if (!body) return;
   const bd = boardPaneData;
-  if (!bd || !bd.ok) { body.innerHTML = '<div class="bd-none">게시판을 읽지 못했다.</div>'; return; }
+  if (!bd || !bd.ok) { body.innerHTML = '<div class="bd-none">게시판을 읽지 못했습니다.</div>'; return; }
   if (title) title.textContent = `${bd.name} 게시판`;
 
   let h = '';
@@ -106,11 +106,11 @@ function renderBoardPane() {
   const rows = Array.isArray(bd.rows) ? bd.rows : [];
   h += `<div class="bd-sec">걸린 의뢰</div>`;
   if (!rows.length) {
-    h += `<div class="bd-none">걸린 의뢰가 없다</div>`;
+    h += `<div class="bd-none">걸린 부탁이 없습니다.</div>`;
   } else {
     h += `<div class="bp-hdr"><span></span><span>구하는 것</span><span>남은</span><span>진척</span><span>갚을 것</span><span></span></div>`;
     h += rows.map(boardRowHtml).join('');
-    h += `<div class="bp-hint"><span class="key">Shift+N</span> 은 서버가 고른 의뢰에 낸다 — 줄의 <b>납품</b>은 그 줄에 낸다.</div>`;
+    h += `<div class="bp-hint"><span class="key">Shift+N</span> 을 누르면 서버가 고른 부탁에 냅니다. 줄마다 있는 <b>납품</b>은 그 줄에 냅니다.</div>`;
   }
 
   // ── 들은 소식 ─────────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ function renderBoardPane() {
     btn.onclick = () => {
       const r = rows[+btn.getAttribute('data-bp-give')];
       if (!r) return;
-      if (evNearVid == null) { showNotice('마을 중심에서 너무 멀다'); return; }
+      if (evNearVid == null) { showNotice('마을 한가운데에서 너무 멉니다.'); return; }
       sendPrimary({ type: 'village_deliver', vid: evNearVid, item: r.item });
     };
   }

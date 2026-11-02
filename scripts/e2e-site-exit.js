@@ -97,7 +97,7 @@ async function round(label, env) {
     await page.mouse.click(p.x, p.y);
     await sleep(400);
     const s1 = await st();
-    if (label === '켬') ok(s1.bm === false && s1.pm === null && s1.n.includes('건축 모드 꺼짐'), `[${label}] ★★${S.name} — 캔버스 클릭(착공 요청) 뒤 **건축 모드 꺼짐** · 배치 모드 걷힘 · 알림 "건축 모드 꺼짐"`, JSON.stringify(s1));
+    if (label === '켬') ok(s1.bm === false && s1.pm === null && s1.n.includes('짓기를 마쳤습니다.'), `[${label}] ★★${S.name} — 캔버스 클릭(착공 요청) 뒤 **건축 모드 꺼짐** · 배치 모드 걷힘 · 알림 "짓기를 마쳤습니다"`, JSON.stringify(s1));
     else ok(s1.bm === true && s1.pm === null, `[${label}] ★${S.name} — 캔버스 클릭 뒤 건축 모드가 **남는다**(종전 그대로 — 대조군)`, JSON.stringify(s1));
     if (S.a === 'hut_start') {
       //   움집터는 곡괭이만 있으면 그 자리에 선다(① 굴착 완료 · 다음 "② … (움집터 클릭)") — **안내대로 터를 누르면** 무엇이 되나.

@@ -205,7 +205,7 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   ok(/초 남음|걸어 둔 것/.test(qtxt), '★★② 대기열에 걸렸다(오프라인에도 마른다)', (qtxt.match(/[^\n]{0,20}초 남음/) || [''])[0].trim());
   await sleep(DRY_MS + 2000);
   const dtxt = await page.evaluate(() => window.__panelText());
-  ok(/다 됐다|받기/.test(dtxt), '★★② 다 되면 화면이 그렇게 말한다', (dtxt.match(/[^\n]{0,24}다 됐다[^\n]{0,12}/) || [''])[0].trim());
+  ok(/다 됨|받기/.test(dtxt), '★★② 다 되면 화면이 그렇게 말한다', (dtxt.match(/[^\n]{0,24}다 됐다[^\n]{0,12}/) || [''])[0].trim());
   await page.evaluate(() => { const b = document.querySelector('[data-fcollect]'); if (b) b.click(); });
   await sleep(1400);
   const inv2 = await inv();

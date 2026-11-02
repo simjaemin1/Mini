@@ -188,14 +188,14 @@ process.on('exit', shutdown);
     const tClick = Date.now();
     await A.click('#downOptions button');
     await sleep(15000);                                  // ★기다리다 누르는 사람 — 되감김은 두 누름 사이 틈만큼 난다(틈이 짧으면 눈금에 묻힌다)
-    const drops1 = (await notices()).filter((t) => /정신을 잃었다/.test(t)).length;
+    const drops1 = (await notices()).filter((t) => /정신을 잃었습니다/.test(t)).length;
     //   두 번째 누름 — 버튼이 살아 있으면 클릭, 아니면 같은 메시지를 소켓으로(사람이 누를 수 있었던 그 메시지)
     const bs = await buttons();
     if (bs.length && !bs[0].disabled) await A.click('#downOptions button');
     else await A.evaluate(() => window.__sendPrimary({ type: 'respawn_choice', kind: null }));
     await sleep(1500);
     const n2 = await notices();
-    const drops2 = n2.filter((t) => /정신을 잃었다/.test(t)).length;
+    const drops2 = n2.filter((t) => /정신을 잃었습니다/.test(t)).length;
     console.log('    알림(두 번째 누름 뒤):', JSON.stringify(n2.slice(-4)));
     ok(drops2 === drops1 && drops1 === 1, 'ⓑ 두 번째 누름이 **다시 죽이지 않는다**(짐을 두 번 떨구지 않는다)', `정신 잃음 알림 ${drops1} → ${drops2}`);
     const said1 = n2.map(secsIn).filter((x) => x != null);
@@ -241,7 +241,7 @@ process.on('exit', shutdown);
     console.log('    소켓들:', (got2.find((m) => m.t === 'url') || {}).text);
     console.log('    새 소켓(승계) 받은 것:', JSON.stringify(got2.filter((m) => m.t !== 'player_down_state').map((m) => m.t === 'notice' ? m.text : m.t + (m.ms != null ? `(${m.ms}ms)` : ''))));
     ok(got2.some((m) => m.t === 'welcome') && got2.some((m) => m.t === 'player_downed'), 'ⓓ 같은 몸을 물려받았다(welcome 뒤 쓰러진 채 `player_downed`)');
-    ok(!got2.some((m) => m.t === 'notice' && /정신을 잃었다/.test(m.text || '')), 'ⓓ 물려받아도 **다시 죽지 않는다**(짐을 두 번 떨구지 않는다)');
+    ok(!got2.some((m) => m.t === 'notice' && /정신을 잃었습니다/.test(m.text || '')), 'ⓓ 물려받아도 **다시 죽지 않는다**(짐을 두 번 떨구지 않는다)');
     const dw = got2.find((m) => m.t === 'down_wake');
     ok(!!dw && said0 != null && dw.ms / 1000 <= said0, 'ⓓ 물려받은 몸도 **남은 초**를 안다(`down_wake` · 처음 말한 초 이하)', `처음 ${said0}초 · 지금 ${dw ? Math.round(dw.ms / 1000) : '—'}초`);
     let dWake = null;
@@ -252,7 +252,7 @@ process.on('exit', shutdown);
     }
     //   ★다시 죽는 것은 **창이 끝날 때**다(승계된 몸은 `_deadUntil` 0 · 창은 쓰러진 시각부터) — 5초 창으로는 못 본다 ⇒ 깨어날 때까지 받은 것 전부로 센다
     const allD = await A.evaluate(() => window.__t563rawOut.slice());
-    const reDie = allD.filter((m) => m.t === 'notice' && /정신을 잃었다/.test(m.text || '')).length;
+    const reDie = allD.filter((m) => m.t === 'notice' && /정신을 잃었습니다/.test(m.text || '')).length;
     ok(reDie === 0, 'ⓓ 깨어날 때까지 새 소켓에 **"정신을 잃었다" 0번**(창이 끝나도 다시 안 죽는다)', `${reDie}번`);
     const ref = said0 != null ? said0 : aWake;
     ok(dWake != null && ref != null && dWake <= ref + 8, 'ⓓ 처음 정해진 초에 깨어난다(시계가 안 되감긴다 · +8초 안)', `말함 ${said0} · ⓐ ${aWake} · 실제 ${dWake}`);

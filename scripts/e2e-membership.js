@@ -45,7 +45,7 @@ for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm
 const MEMBER_N = 3;          // ★위 머리 주석 — 통로 검사용으로 낮춘 문턱(값 자체는 test-membership ①)
 // ★[T779] 이 판이 재는 것은 **기본 세계**다 — 존에 기부 손잡이(`T769_DONATE`)를 물려주지 않는다(바깥 셸에 '0' 이 남아 있어도 기본 켬으로 뜬다).
 //   NPC 마을의 꺼내기 거절 말 — `membership._chiefNow` 의 그 한 줄(창설자 없음 = 사람 촌장 없음).
-const NPC_NO = /이 마을 곳간은 사람이 꺼내지 않는다/;
+const NPC_NO = /이 마을 곳간은 사람이 열지 않습니다/;
 let pass = 0, fail = 0;
 const shots = [];
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
@@ -210,7 +210,7 @@ async function waitHttp(url, tries = 900) {
     await clearNotices();
     await say('/인출');
     const n = await notices();
-    ok(n.some((t) => NPC_NO.test(t)), `⑦ 곳간은 촌장만 — \`/인출\` 이 거절된다(NPC 마을 = 사람 촌장 없음)`, JSON.stringify(n.filter((t) => /사람이 꺼내지 않는다|촌장만|마을이 멀다/.test(t)).slice(-1)));
+    ok(n.some((t) => NPC_NO.test(t)), `⑦ 곳간은 촌장만 — \`/인출\` 이 거절된다(NPC 마을 = 사람 촌장 없음)`, JSON.stringify(n.filter((t) => /사람이 열지 않습니다|촌장만|마을에서 너무 멉니다/.test(t)).slice(-1)));
     const after = await inv();
     ok((after.food | 0) === (before.food | 0), `⑦b 거절이 말뿐이 아니다 — 곡식이 안 들어왔다`, `food ${before.food | 0} → ${after.food | 0}`);
   }
@@ -273,7 +273,7 @@ async function waitHttp(url, tries = 900) {
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { wood: 3 } })); await sleep(900);
   const t1 = await openTrade();
   ok(t1.open, `③ 거래소 창이 열린다`);
-  ok(/사람/.test(t1.body) && /곳간 꺼내기 — 촌장만/.test(t1.body) && /촌장이 아니다/.test(t1.body) && !/곳간 몫/.test(t1.body),
+  ok(/사람/.test(t1.body) && /곳간 꺼내기 — 촌장만/.test(t1.body) && /촌장 아님/.test(t1.body) && !/곳간 몫/.test(t1.body),
      `③b 소속 한 줄 + "곳간 꺼내기 — 촌장만 · 촌장이 아니다"(한도 말 없음 · 새 패널 0)`,
      JSON.stringify((t1.body.match(/[^\n]*촌장만[^\n]{0,20}/) || [''])[0]));
   ok(!!t1.member && t1.member.vid === V.id && t1.member.chief === false && !('limit' in t1.member) && !('remain' in t1.member) && Array.isArray(t1.member.donate),
@@ -294,8 +294,8 @@ async function waitHttp(url, tries = 900) {
     const k1 = await contrib();
     ok((iv1.wood | 0) < (iv0.wood | 0), `③f 눌렀더니 **짐이 실제로 곳간으로 갔다**`, `wood ${iv0.wood | 0} → ${iv1.wood | 0}`);
     let dn = '';
-    for (let i = 0; i < 10 && !dn; i++) { dn = (await notices()).find((t) => /기부했다/.test(t)) || ''; if (!dn) await sleep(300); }
-    ok(/기부했다/.test(dn) && /받는 것 없음/.test(dn), `③g 결과 알림 — "기부했다 … 받는 것 없음"`, JSON.stringify(dn));
+    for (let i = 0; i < 10 && !dn; i++) { dn = (await notices()).find((t) => /내놓았습니다/.test(t)) || ''; if (!dn) await sleep(300); }
+    ok(/내놓았습니다/.test(dn) && /대가는 없습니다/.test(dn), `③g 결과 알림 — "기부했다 … 받는 것 없음"`, JSON.stringify(dn));
     ok(k1 === k0, `③h 기부는 기여를 안 올린다(기여는 게시판 납품만 센다)`, `${k0} → ${k1}`);
   }
   await snap('mb-03-donated');
@@ -326,8 +326,8 @@ async function waitHttp(url, tries = 900) {
     for (let i = 0; i < 6 && !refused; i++) { await clearNotices(); await say('/인출'); refused = (await notices()).find((t) => NPC_NO.test(t)) || ''; }
     ok(!!refused, `④ 마을 사람이 되어도 꺼내기는 촌장만 — \`/인출\` 이 거절된다(옛 오늘 몫 갈래 없음)`, JSON.stringify(refused));
     let look = '';
-    for (let i = 0; i < 6 && !look; i++) { await clearNotices(); await say('/곳간'); look = (await notices()).find((t) => /꺼내기는 촌장만/.test(t)) || ''; }
-    ok(!!look && /기부는 누구나/.test(look) && !/남은 몫|누적 기여/.test(look), `④b "/곳간" 형편 한 줄 — 꺼내기 촌장만 · 기부 누구나 · 한도 말 없음`, JSON.stringify(look));
+    for (let i = 0; i < 6 && !look; i++) { await clearNotices(); await say('/곳간'); look = (await notices()).find((t) => /꺼내는 것은 촌장만/.test(t)) || ''; }
+    ok(!!look && /내놓는 것은 누구나/.test(look) && !/남은 몫|누적 기여/.test(look), `④b "/곳간" 형편 한 줄 — 꺼내기 촌장만 · 기부 누구나 · 한도 말 없음`, JSON.stringify(look));
   }
 
   // ── ⑤ 재접속 — 소속이 몸을 따라간다 ────────────────────────────────────────
@@ -343,9 +343,9 @@ async function waitHttp(url, tries = 900) {
     const n = await notices();
     // ★이미 소속이면 `/소속` 은 **상태를 되읊는다**("… 사람 — N일째 · 누적 기여 K").
     //   새로 들어온 것이라면 "오늘부터" 가 뜬다 — 그 둘을 구별해야 "살아남았다"를 잰 것이다.
-    ok(n.some((t) => /사람 — .*일째/.test(t)) && !n.some((t) => /오늘부터 자네는/.test(t)),
+    ok(n.some((t) => /사람이 된 지 .*일째/.test(t)) && !n.some((t) => /오늘부터 자네는/.test(t)),
        `⑤ 재접속해도 그 마을 사람이다(몸에 실려 있다 — 새로 가입한 게 아니다)`,
-       JSON.stringify(n.filter((t) => /사람 —|오늘부터/.test(t)).slice(-1)));
+       JSON.stringify(n.filter((t) => /사람이 된 지|오늘부터/.test(t)).slice(-1)));
   }
 
   // ── ⑥ 탈퇴 — 나가되 기여는 남는다 ──────────────────────────────────────────
@@ -354,14 +354,14 @@ async function waitHttp(url, tries = 900) {
   {
     const n = await notices();
     if (!n.length) console.log(`    (진단) '/탈퇴' 뒤 알림 0 — 근접 vid=${await page.evaluate(() => window.__evNearVid)} · 연결=${await page.evaluate(() => !!window.__sendPrimary)}`);
-    ok(n.some((t) => /떠났다/.test(t)), `⑥ "/탈퇴" 로 나간다`, JSON.stringify(n.filter((t) => /떠났다/.test(t)).slice(-1)));
-    const line = n.filter((t) => /떠났다/.test(t)).slice(-1)[0] || '';
+    ok(n.some((t) => /떠났습니다/.test(t)), `⑥ "/탈퇴" 로 나간다`, JSON.stringify(n.filter((t) => /떠났습니다/.test(t)).slice(-1)));
+    const line = n.filter((t) => /떠났습니다/.test(t)).slice(-1)[0] || '';
     const m = line.match(/기여\s*(\d+)/);
     ok(!!m && (+m[1]) >= MEMBER_N, `⑥b 나가도 누적 기여는 그대로다(이력서 캐논)`, `${m ? m[1] : '?'} (탈퇴 전 ${kBefore})`);
     await clearNotices();
     await say('/인출');
     const n2 = await notices();
-    ok(n2.some((t) => NPC_NO.test(t)), `⑥c 나간 뒤에도 곳간은 촌장만 — 거절된다`, JSON.stringify(n2.filter((t) => /사람이 꺼내지 않는다|촌장만/.test(t)).slice(-1)));
+    ok(n2.some((t) => NPC_NO.test(t)), `⑥c 나간 뒤에도 곳간은 촌장만 — 거절된다`, JSON.stringify(n2.filter((t) => /사람이 열지 않습니다|촌장만/.test(t)).slice(-1)));
   }
   await snap('mb-04-left');
 

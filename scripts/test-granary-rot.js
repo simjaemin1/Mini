@@ -252,7 +252,7 @@ say('\n③ 존(진짜 문) — 꺼내기 · 거래소 받기 · 시세표 · 마
   const z = zOn;
   pre(z.gl && z.Afill && z.Afill.length === 2 && z.Afill[0][1] > z.shelfG, '칸 — 상한 3(노출 > 보관일) + 성한 2(그 날 0시에 얻은 것)', J(z.Afill));
   ok(z.A && z.A.inv === 2 && z.A.f != null && z.A.f > 0, '★★③ 꺼내기 — 성한 몫 안이면 성한 것만 나온다(1 단위 = 낱개 2 · 가장 늙은 몫 신선도 > 0)', J(z.A));
-  ok(z.B && z.B.inv === 0 && near(z.B.du, 0) && /그만큼 없다/.test(z.B.note), '★★③ 남은 성한 몫(≈1)을 넘게(3) 청하면 거절 — 상한 것을 안 내준다(정본 문의 그 거절 · 곳간 그대로)', J({ du: z.B && z.B.du, note: z.B && z.B.note }));
+  ok(z.B && z.B.inv === 0 && near(z.B.du, 0) && /그만큼 없습니다/.test(z.B.note), '★★③ 남은 성한 몫(≈1)을 넘게(3) 청하면 거절 — 상한 것을 안 내준다(정본 문의 그 거절 · 곳간 그대로)', J({ du: z.B && z.B.du, note: z.B && z.B.note }));
   ok(z.Cboard && near(z.Cboard.stock, 10, 1e-2) && z.Cquote && near(z.Cquote.stock, 10, 1e-2), '★③ 시세표 · 견적(사람의 눈) — 그 칸 재고가 성한 10 으로 보인다(상한 3 빼고)', J({ board: z.Cboard, quote: z.Cquote }));
   ok(z.C && z.C.r && z.C.r.ok && z.C.inv > 0 && z.C.f != null && z.C.f > 0, '★★③ 거래소 받기 — 받은 것은 성한 것(가장 늙은 몫 신선도 > 0)', J(z.C));
   ok(z.C && z.C.r && z.Cquote && !z.Cquote.capped && z.Cquote.take > 0 && z.C.r.take === z.Cquote.take, '★③ 견적 = 실행 — 같은 눈이라 받을 낱개가 같다(상한에 안 걸리는 양)', J({ quote: z.Cquote && z.Cquote.take, exec: z.C && z.C.r && z.C.r.take }));

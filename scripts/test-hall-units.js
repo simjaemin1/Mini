@@ -212,7 +212,7 @@ const rt = (r) => (r.kc > 0 ? (r.got * r.kcRep) / (r.N * r.kc) : r.got / r.N);  
 say('\n③ 상한 것 · 시든 것(생선)');
 {
   ok(zOff.spoiled.du === 10 && zOff.spoiled.inv === 0, '③ 끔 — 상한 생선 10개를 **개수 그대로** 받는다(종전)', `단위 ${zOff.spoiled.du}`);
-  ok(zOn.spoiled.du === 0 && zOn.spoiled.inv === 10 && /상했다/.test(zOn.spoiled.note) && /받지 않는다/.test(zOn.spoiled.note),
+  ok(zOn.spoiled.du === 0 && zOn.spoiled.inv === 10 && /상했습니다/.test(zOn.spoiled.note) && /받지 않습니다/.test(zOn.spoiled.note),
     '★③ 켬 — 상한 것 거절(게시판·거래소와 같은 판정 · 같은 말) · 인벤 그대로', zOn.spoiled.note.slice(0, 90));
   const want = +(10 * zOn.wilt.kc / DAY * 0.5).toFixed(3);
   ok(zOff.wilt.du === 10 && near(zOn.wilt.du, want, 0.0011), '③ 시든 것(f 0.5) — 끔 = 10단위 · 켬 = 열량 × 신선도', `켬 ${zOn.wilt.du} = 10 × ${zOn.wilt.kc} ÷ ${DAY} × 0.5`);

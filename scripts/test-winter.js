@@ -171,7 +171,7 @@ let L4 = null;
   const k = items(0).find((x) => x.type === 'WINTER_KEPT');
   const s = items(1).find((x) => x.type === 'WINTER_SHORT');
   ok(!!k && k.line === Events.briefLine(rows[0]) && /올겨울은 넉넉하이/.test(k.line), '④ ★옛 달성 판정이 그 마을 연표 겨울 칸에 **줄로** 선다', k ? k.line : '(없음)');
-  ok(!!s && s.line === Events.briefLine(rows[1]) && /궁하겠어/.test(s.line), '④f 옛 미달 판정도 같다', s ? s.line : '(없음)');
+  ok(!!s && s.line === Events.briefLine(rows[1]) && /궁하겠네/.test(s.line), '④f 옛 미달 판정도 같다', s ? s.line : '(없음)');
   for (const r of rows) {
     ok(!!Events.briefLine(r) && Events.briefLine(r) === Events.briefLine(Object.assign({}, r, { meta: null })),
       `④g ${r.type} 문장이 **vid·day·type·item·mag 만으로** 재현된다(㉝ 계약 — 연표 표는 meta 를 안 담는다)`);
