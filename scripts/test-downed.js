@@ -554,8 +554,8 @@ const isWildSpot = (x, y) =>
     // ★★정본 경로로 쓰러뜨린다 — `Rescue.shoutOnce` 를 손으로 부르면 "훅이 걸려 있는가"를 안 재게 된다.
     H.damagePlayer(a, 200, 'fall');
     pre(a.isDown, '쓰러졌다');
-    const nn = near.__notices().filter((t) => /쓰러졌다/.test(t));
-    const fn = far.__notices().filter((t) => /쓰러졌다/.test(t));
+    const nn = near.__notices().filter((t) => /쓰러졌습니다/.test(t));
+    const fn = far.__notices().filter((t) => /쓰러졌습니다/.test(t));
     ok(nn.length === 1, '★★⑫ 쓰러진 **그 순간** 반경 안 사람이 듣는다 — `damagePlayer` 가 부른다(훅 검사)', JSON.stringify(nn));
     ok(fn.length === 0, '★★⑫ 반경 밖은 **못 듣는다** — 소리에는 끝이 있다', `${R}px 밖 · ${fn.length}건`);
     ok(/걸음/.test(nn[0] || '') && !/px/.test(nn[0] || ''),
@@ -594,7 +594,7 @@ const isWildSpot = (x, y) =>
     const b = mkPlayer('v_near', vspot.x + 200, vspot.y);
     H.damagePlayer(a, 200, 'fall');
     pre(a.isDown, '마을 안에서 쓰러졌다');
-    ok(b.__notices().filter((t) => /쓰러졌다/.test(t)).length === 0,
+    ok(b.__notices().filter((t) => /쓰러졌습니다/.test(t)).length === 0,
       '★★⑫ **마을 안에서는 안 외친다** — 마을 사람이 옮기는 자리다(§12)');
     // ★자명 통과 금지 — 같은 두 사람을 야생에 세우면 들린다(마을이라서 조용한 게 맞다)
     a.isDown = false; a.downedAt = 0; a.hp = 100;
@@ -608,7 +608,7 @@ const isWildSpot = (x, y) =>
     const _pinV = H.Rescue.CFG.SHOUT_RANGE_PX;
     H.Rescue.CFG.SHOUT_RANGE_PX = Math.round(64 * 180 * H.Rescue.CFG.HEAR_FRAC);
     H.damagePlayer(a, 200, 'fall');
-    ok(b.__notices().filter((t) => /쓰러졌다/.test(t)).length === 1,
+    ok(b.__notices().filter((t) => /쓰러졌습니다/.test(t)).length === 1,
       '★★⑫ 자명 통과 금지 — **같은 두 사람이 야생에 서면 들린다**');
     H.Rescue.CFG.SHOUT_RANGE_PX = _pinV;   // ★[T110] 못 박았던 정본 반경을 되돌린다(유도로 복귀)
   }
@@ -632,10 +632,10 @@ const isWildSpot = (x, y) =>
     ok(b.hunger === bHunger0, '★★⑬ **주는 사람은 안 먹는다** — 대상 인자가 실제로 갈린다', `${b.hunger}`);
     ok((b.inventory.berry || 0) === 2, '★★⑬ **주는 사람 인벤에서 빠진다**(원장 정합)', `berry ${b.inventory.berry}`);
     ok((a.inventory.berry || 0) === 0, '★⑬ 받는 사람 인벤은 안 늘어난다(먹인 것이지 준 것이 아니다)');
-    ok(a.__notices().some((t) => /섭취/.test(t)), '★⑬ "섭취했다"는 **받는 사람**의 말이다',
-      JSON.stringify(a.__notices().filter((t) => /섭취/.test(t))));
-    ok(b.__notices().some((t) => /먹였다/.test(t)), '★⑬ 먹여 준 쪽은 제 문장을 듣는다',
-      JSON.stringify(b.__notices().filter((t) => /먹였다/.test(t))));
+    ok(a.__notices().some((t) => /먹었습니다/.test(t)), '★⑬ "섭취했다"는 **받는 사람**의 말이다',
+      JSON.stringify(a.__notices().filter((t) => /먹었습니다/.test(t))));
+    ok(b.__notices().some((t) => /먹였습니다/.test(t)), '★⑬ 먹여 준 쪽은 제 문장을 듣는다',
+      JSON.stringify(b.__notices().filter((t) => /먹였습니다/.test(t))));
     // ★★돌연변이 — 대상 인자를 안 주면 **주는 사람이 먹는다**(위 두 판정이 ✗ 를 낼 수 있다)
     {
       b.hunger = 50;                          // ★배부른 몸으로는 못 잰다 — 100 은 더 안 오른다(자명 통과)
@@ -648,7 +648,7 @@ const isWildSpot = (x, y) =>
     // 거리 게이트 — T43 의 그 거리 하나다(소속은 안 본다)
     b.x = 30848 + 4000;
     const far = H.Rescue.handleChat(b, '/먹이기 berry');
-    ok(far === true && b.__notices().slice(-1)[0].includes('쓰러진 사람이 없다'),
+    ok(far === true && b.__notices().slice(-1)[0].includes('쓰러진 사람이 없습니다'),
       '★⑬ 멀면 못 먹인다 — 거절 사유를 말한다', b.__notices().slice(-1)[0]);
   }
   // ── /물 — 물은 들고 다닐 수 없다. 물가로 업고 가야 한다. ──────────────────
@@ -1508,7 +1508,7 @@ const isWildSpot = (x, y) =>
       const until0 = p._deadUntil;
       ok(until0 > tClick, '★★㉒ⓐ 누르면 **깨어날 시각이 정해진다**(포기 = 창 소진과 같은 값 · T43)', `${((until0 - tClick) / 1000).toFixed(1)}초 뒤`);
       const n1 = p.__notices();
-      const said = n1.map((t) => { const m = String(t).match(/약 (\d+)초 뒤 (.+)에서 깨어난다/); return m ? { s: +m[1], where: m[2] } : null; }).find(Boolean);
+      const said = n1.map((t) => { const m = String(t).match(/약 (\d+)초 뒤 (.+)에서 깨어납니다/); return m ? { s: +m[1], where: m[2] } : null; }).find(Boolean);
       ok(!!said && Math.abs(said.s - (until0 - tClick) / 1000) <= 1.5 && said.where === sv.name,
         '★★㉒ⓐ 서버가 **몇 초 뒤 · 어디서** 깨어나는지 말한다(침묵 금지 · 자리 이름 = 처음 고른 마을)', JSON.stringify(n1));
       const dw = p.__msgs.filter((m) => m.type === 'down_wake');
@@ -1526,7 +1526,7 @@ const isWildSpot = (x, y) =>
       ok(p._deadUntil === until0, '★★㉒ⓑ 두 번째 누름이 **시계를 되감지 않는다**(깨어날 시각 그대로)', `${until0} → ${p._deadUntil}`);
       ok(invOf() === inv1 && bundlesOf() === bun1, '★★㉒ⓑ 두 번째 누름이 **짐을 또 떨구지 않는다**(값은 한 번)', `몸 ${inv1} → ${invOf()} · 꾸러미 ${bun1} → ${bundlesOf()}`);
       const n2 = p.__notices();
-      ok(n2.length === 2 && n2.every((t) => /이미 정해졌다/.test(t) && /약 \d+초 뒤/.test(t)) && !n2.some((t) => /정신을 잃었다/.test(t)),
+      ok(n2.length === 2 && n2.every((t) => /이미 정해졌습니다/.test(t) && /약 \d+초 뒤/.test(t)) && !n2.some((t) => /정신을 잃었습니다/.test(t)),
         '★㉒ⓑ 대신 **남은 초**를 다시 말한다(다시 죽지 않는다)', JSON.stringify(n2));
       // ⓒ 안 누른 사람 — 창이 끝나 정해질 때도 같은 말을 한다(두 길이 같은 문 `resolveDowned` 를 쓴다)
       const q = mkPlayer('t563q', wild.x + 64, wild.y);
@@ -1535,7 +1535,7 @@ const isWildSpot = (x, y) =>
       // ⓓ 깨어난다 — 말한 그 초에 · 고른 자리(처음 고른 마을 쉼터 문간)에서
       let qSaid = null;
       const woke = await untilWake(p);
-      for (const t of q.__notices()) { const m = String(t).match(/약 (\d+)초 뒤 (.+)에서 깨어난다/); if (m) { qSaid = m; break; } }
+      for (const t of q.__notices()) { const m = String(t).match(/약 (\d+)초 뒤 (.+)에서 깨어납니다/); if (m) { qSaid = m; break; } }
       ok(!!qSaid && q._deadUntil > 0, '★㉒ⓒ 안 누르고 창이 끝나 정해져도 **몇 초 뒤 · 어디서**를 말한다', qSaid ? qSaid[0] : JSON.stringify(q.__notices()));
       const tWake = Date.now();
       ok(woke && !p.isDown && p.hp > 0, '★★㉒ⓓ 그리고 **깨어난다**(`player_respawn`)', `hp ${Math.round(p.hp)} · ${p.__msgs.some((m) => m.type === 'player_respawn' && m.pid === p.pid) ? 'player_respawn ○' : 'player_respawn ✗'}`);

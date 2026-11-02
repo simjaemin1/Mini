@@ -235,7 +235,7 @@ console.log('\n④ 연결성 — ㄷ 자의 목을 빼면 갈라진다');
   ok(spNeck.splits && spNeck.before === 1 && spNeck.after === 2, '④ 목을 빼면 1덩이 → 2덩이', JSON.stringify(spNeck));
   ok(!spEnd.splits, '④ 끝을 빼면 안 갈라진다', JSON.stringify(spEnd));
   clearNotes(p); H.tryUnclaim(p, neck);
-  ok(/갈라진다/.test(lastNote(p)) && claims.has(neck), '④ 목 포기는 **정본 경로에서 거절**된다', JSON.stringify(lastNote(p)));
+  ok(/갈라집니다/.test(lastNote(p)) && claims.has(neck), '④ 목 포기는 **정본 경로에서 거절**된다', JSON.stringify(lastNote(p)));
   clearNotes(p); H.tryUnclaim(p, end);
   ok(/해제/.test(lastNote(p)) && !claims.has(end), '④ 끝 포기는 통과한다');
   // ★L-5 — 이미 갈라져 있는 사람도 버릴 수 있어야 한다(절대 기준이면 아무것도 못 버린다)
@@ -312,7 +312,7 @@ console.log('\n⑥ 승계 — 셀을 이어받으면 그 위 시설도 따라온
   Claims.setState(cid, c, 'pref', 'village:9', Date.now());
   heir.member = { vid: 9, zone: 'hanbando' };
   const note = claimAt(heir, CX, CY);
-  ok(/이어받았다/.test(note), '⑥ 우선권이 있는 사람이 그 자리를 이어받는다', JSON.stringify(note));
+  ok(/이어받았습니다/.test(note), '⑥ 우선권이 있는 사람이 그 자리를 이어받는다', JSON.stringify(note));
   ok(claims.get(cid).ownerPid === heir.playerId, '⑥ 셀의 주인이 바뀌었다');
   ok(claims.get(cid).state === 'active' && !claims.get(cid).heldBy, '⑥ 이어받은 땅은 다시 active 다');
   ok(H._furnaceCanUse(heir, b) && !H._furnaceCanUse(owner, b),
@@ -323,7 +323,7 @@ console.log('\n⑥ 승계 — 셀을 이어받으면 그 위 시설도 따라온
   const stranger = mkPlayer('stranger');
   join(stranger, 902);                          // 길드 영토(켬 = 마을 땅) 요건은 통과시키되(자리 문제 아님)
   const note2 = claimAt(stranger, CX + 20, CY); // 우선권은 `guild:99` 라 이 사람에겐 없다
-  ok(KIN ? /옛 보관 줄은 이제 없다/.test(note2) : /마을 사람만/.test(note2), '⑥ 우선권이 없으면 거절', JSON.stringify(note2));
+  ok(KIN ? /옛 보관 줄은 이제 없습니다/.test(note2) : /마을 사람만/.test(note2), '⑥ 우선권이 없으면 거절', JSON.stringify(note2));
   ok(claims.get(c2id).ownerPid === owner.playerId, '⑥ 거절이 말뿐이 아니다 — 주인이 안 바뀌었다');
   buildings.delete('bf1'); wipe(owner); wipe(heir); wipe(stranger); claims.delete(gl);
 }

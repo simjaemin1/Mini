@@ -61,14 +61,14 @@
         _vmpStructFor = villageName;
       }
       updateVmpData(sumEl, priceEl, villageName, world, me, myPrices, storage, treasury, pd, _vmpAllResources);
-    }).catch(e => { sumEl.innerHTML = `<div style="color:var(--hp)">로드 실패: ${e.message}</div>`; });
+    }).catch(e => { sumEl.innerHTML = `<div style="color:var(--hp)">불러오지 못했습니다(${e.message}).</div>`; });
     // 거래 로그 — 다른 마을 변경 시만 통째, 그 외엔 textContent만 update
     const logEl = document.getElementById('vmpTradeLog');
     if (logEl) {
       fetch('/economy/canadia/tradelog').then(r => r.json()).then(d => {
         const trades = (d.trades || []).filter(t => t.a === villageName || t.b === villageName).slice(0, 12);
         renderVmpTradeLog(logEl, villageName, trades, needRebuild);
-      }).catch(e => { logEl.innerHTML = `<div style="color:var(--hp)">로그 로드 실패: ${e.message}</div>`; });
+      }).catch(e => { logEl.innerHTML = `<div style="color:var(--hp)">거래 기록을 불러오지 못했습니다(${e.message}).</div>`; });
     }
   }
   // 첫 호출 시 표 구조 build (data attribute로 cell 매핑)
@@ -151,7 +151,7 @@
     if (!force && key === _vmpTradeLastKey) return;
     _vmpTradeLastKey = key;
     if (!trades.length) {
-      logEl.innerHTML = '<div class="dim" style="padding:6px">아직 이 마을 관련 거래 없음</div>';
+      logEl.innerHTML = '<div class="dim" style="padding:6px">아직 이 마을과 한 거래가 없습니다.</div>';
       return;
     }
     let html = '<div class="tr-head">최근 거래</div>';

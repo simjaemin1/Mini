@@ -72,9 +72,9 @@ const _remote = new Map();   // vid → { vp, idleDays, at }
 function eligibility(vid) {
   const why = [];
   const out = { ok: false, why, shelter: false, pop: 0, foodDays: 0, vp: null, idleDays: null, on: isOn(vid) };
-  if (!ready()) { why.push('아직 준비되지 않았다'); return out; }
+  if (!ready()) { why.push('아직 준비가 되지 않았습니다'); return out; }
   const vil = H.villageOf ? H.villageOf(vid) : null;
-  if (!vil || !vil.econ) { why.push('그런 마을이 없다'); return out; }
+  if (!vil || !vil.econ) { why.push('그런 마을이 없습니다'); return out; }
   if (!vil.econ.founder) { why.push('사람이 세운 마을이 아니다'); return out; }
   // ① 쉼터 — **시설**과 **먹일 것**, 둘 다다.
   //   ★★[T62 2026-09-03] §9.3 자격 첫 항 *"쉼터 보유"* 가 이제 시설로 존재한다
@@ -83,7 +83,7 @@ function eligibility(vid) {
   //   ⚠**대체 술어를 버리지 않는다.** 자격 = 쉼터 ∧ (인구 ≥1 ∧ 자립 ≥3일):
   //     지붕이 있어도 먹일 것이 없으면 이방인을 굶긴다(§9.4 "납품 → **밥 + 공용 쉼터**" 가 요구하는 상태 그대로).
   out.shelter = !!(H.hasShelter && H.hasShelter(vid));
-  if (!out.shelter) why.push('이방인이 잘 자리가 없다 — 쉼터를 지어야 한다');
+  if (!out.shelter) why.push('이방인이 잘 자리가 없습니다. 쉼터를 지어야 합니다');
   const pop = (vil.econ.npcs && vil.econ.npcs.length) | 0;
   out.pop = pop;
   let foodEq = NaN;
@@ -93,8 +93,8 @@ function eligibility(vid) {
   //   central 을 못 물어본 것과는 다르다: 곳간은 **여기 있는 값**이고, 못 읽었다면 그건 결함이다.
   const foodOk = Number.isFinite(foodEq);
   out.foodDays = foodOk ? +(foodEq / Math.max(1, pop)).toFixed(1) : null;
-  if (pop < CFG.MIN_POP) why.push('아직 사람이 살지 않는다');
-  else if (!foodOk) why.push('곳간을 읽지 못했다');
+  if (pop < CFG.MIN_POP) why.push('아직 사람이 살지 않습니다');
+  else if (!foodOk) why.push('곳간을 읽지 못했습니다');
   else if (out.foodDays < CFG.MIN_FOOD_DAYS) why.push(`곳간이 얇다 (자립 ${out.foodDays}일)`);
   // ② 길드 벌점 — 길드가 없으면 벌점도 없다(무길드를 죄로 삼지 않는다)
   const r = _remote.get(vid | 0) || null;
@@ -102,10 +102,10 @@ function eligibility(vid) {
   // ③ 최근 활동 — 창설자가 얼마나 안 왔나
   if (r && r.idleDays != null) {
     out.idleDays = +r.idleDays.toFixed(1);
-    if (r.idleDays > activeDays()) why.push(`촌장이 ${Math.round(r.idleDays)}일째 안 온다`);
+    if (r.idleDays > activeDays()) why.push(`촌장이 ${Math.round(r.idleDays)}일째 오지 않습니다`);
   }
   // ④ 도착 지점 — 이방인이 **내릴 자리**가 있어야 한다(NPC 마을과 같은 조건)
-  if (H.arrivalOf && !H.arrivalOf(vid)) why.push('도착 지점 없음');
+  if (H.arrivalOf && !H.arrivalOf(vid)) why.push('내릴 자리가 없습니다');
   out.ok = why.length === 0;
   return out;
 }
@@ -118,7 +118,7 @@ function listable(vid) { const e = eligibility(vid); return { ...e, listed: !!(C
 //     (막으면 "왜 안 켜지지"가 되고, 안 막으면 "왜 아직 안 뜨지 — 아, 곳간이 얇구나"가 된다.)
 function setOn(vid, on) {
   const b = hallOf(vid);
-  if (!b) return { ok: false, err: '이 마을의 회관을 찾지 못했다' };
+  if (!b) return { ok: false, err: '이 마을의 회관을 찾지 못했습니다.' };
   b.data = b.data || {};
   b.data.welcomeStrangers = on ? 1 : 0;
   if (b.dbId && H.updateBuildingData) { try { H.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
@@ -182,15 +182,15 @@ function handleChat(player, text) {
   const arg = t.slice('/이방인'.length).trim();
   const say = (m) => { try { if (H.send && player.ws) H.send(player.ws, { type: 'notice', text: m }); } catch (e) {} };
   const b = H.nearHall ? H.nearHall(player) : null;
-  if (!b) { say('🏘️ 우리 마을 회관 앞에서 말하게'); return true; }
+  if (!b) { say('🏘️ 자기 마을 회관 앞에서 말씀하십시오.'); return true; }
   const vid = (b.data && b.data.villageDbId != null) ? (b.data.villageDbId | 0) : null;
-  if (vid == null) { say('🏘️ 이 회관에 딸린 마을을 찾지 못했다'); return true; }
+  if (vid == null) { say('🏘️ 이 회관에 딸린 마을을 찾지 못했습니다.'); return true; }
   // ★[T167 2026-09-10] `받기`·`막기` 를 **같은 자리에** 더한다 — T128 `/길드 초대제|공개` 와 같은 말결이다.
   //   ⚠새 경로가 아니라 **같은 인자 표**다: 켜/꺼(종전) 와 받기/막기가 한 줄에서 갈린다(사본 0).
   if (arg === '켜' || arg === 'on' || arg === '받기') { if (H.setSwitch) H.setSwitch(player, b, true); return true; }
   if (arg === '꺼' || arg === 'off' || arg === '막기') { if (H.setSwitch) H.setSwitch(player, b, false); return true; }
   const e = listable(vid);
-  say(`🏘️ 이방인 받기 ${e.on ? '켬' : '끔'}${e.listed ? ' · 시작 지도에 올라 있다' : ''}`
+  say(`🏘️ 이방인 받기 ${e.on ? '켬' : '끔'}${e.listed ? ' · 시작 지도에 오름' : ''}`
     + ` — 인구 ${e.pop} · 자립 ${e.foodDays}일`
     + (e.vp != null ? ` · 명성 벌점 ${e.vp}` : '')
     + (e.idleDays != null ? ` · 촌장 ${Math.round(e.idleDays)}일 전` : '')

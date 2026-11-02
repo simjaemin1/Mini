@@ -782,7 +782,7 @@ function diffCountNoEnts(a, b, ents) {
               const n0 = notices.length;
               sendW({ type: 'plant_tree', x: SQ.x + dx, y: SQ.y + dy, item });
               await until(() => notices.length > n0, 8000);
-              if (!/심었다/.test(notices.slice(n0).join(' | '))) continue;
+              if (!/심었습니다/.test(notices.slice(n0).join(' | '))) continue;
               await until(() => [...rows.values()].some((r) => r.isSeed === false && !before.has(r.id)), 8000);
               const got = [...rows.values()].find((r) => r.isSeed === false && !before.has(r.id));
               if (got) return got;

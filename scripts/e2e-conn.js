@@ -286,7 +286,7 @@ const ZENV = (extra) => Object.assign({
     const rErr = await waitFor(async () => { c = await snap(page); return (c.phase === 'error' && c.closed) ? c : null; });
     ok(c.phase === 'error', '★★②-b 마감액이 **안 끝나는 실패**를 끊었다(try/catch 로는 못 잡는 갈래)',
       `${c.phase}${rErr.timedOut ? ` — ${(CAP / 1000) | 0}초 동안 닫힌 확정 오류가 안 섰다` : ` (${rErr.ms}ms 만에 · 마감액 ${DL}ms)`}`);
-    ok(/시간 초과/.test(c.reason || ''), '★★②-b 사유가 "시간 초과"라고 말한다', c.reason);
+    ok(/너무 오래 걸렸습니다/.test(c.reason || ''), '★★②-b 사유가 "시간 초과"라고 말한다', c.reason);
     ok(/welcome/.test(c.reason || '') || c.stage === 'welcome', '★②-b 멈춘 단계가 사유에 있다', c.reason);
     console.log(`    [상황] 귀 ${(c.log || []).length}번 · 찌르기 ${c.poke | 0}번 — ${seqOf(c.log || []).slice(-260)}`);
     const fl2 = flipsOf(c.log || []);
@@ -343,7 +343,7 @@ const ZENV = (extra) => Object.assign({
     ok(c.hard === true, '★★④ 오래되면 **빨강으로 바뀐다** — 기다림이 무한정 정당화되지 않는다',
       `${c.state}/hard=${c.hard}${rH.timedOut ? ` — ${(CAP / 1000) | 0}초 동안 안 굳었다` : ` (${rH.ms}ms 만에)`}`);
     const txt4 = await page.evaluate(() => (document.getElementById('netLost') || {}).innerText || '');
-    ok(/오류일 수 있다|응답하지 않는다/.test(txt4), '★④ 문구가 오류 가능성을 말한다', txt4.replace(/\n/g, ' / ').slice(0, 110));
+    ok(/오류일 수 있습니다|대답하지 않습니다/.test(txt4), '★④ 문구가 오류 가능성을 말한다', txt4.replace(/\n/g, ' / ').slice(0, 110));
     await snapOf(page, 'conn-04-hardened');
 
     // ── ⑤ 백오프 — 재시도가 무한 폭주하지 않는다 ────────────────────────────

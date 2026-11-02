@@ -731,22 +731,22 @@ function mineIdPhrase(lvlF, saysOre, guess, koOf) {
   const fam = ORE_FAMILY_KO[guess] || '낯선 돌';
   if (L <= 1) return null;                                                       // 0~1 — 아직 못 본다
   if (!saysOre) {
-    if (L <= 3) return '그냥 돌 같기도 하다';
-    if (L <= 6) return '맥석인 것 같다';
-    return '맥석이다';
+    if (L <= 3) return '그냥 돌 같기도 합니다';
+    if (L <= 6) return '맥석인 것 같습니다';
+    return '맥석입니다';
   }
   switch (L) {
-    case 2: return '광이 도는 것 같기도 하다';
-    case 3: return '예사 돌은 아닌 성싶다';
-    case 4: return '묵직한 게 광석 같다';
-    case 5: return fam + ' 같다';
+    case 2: return '광이 도는 것 같기도 합니다';
+    case 3: return '예사 돌은 아닌 성싶습니다';
+    case 4: return '묵직한 게 광석 같습니다';
+    case 5: return fam + ' 같습니다';
     case 6: {
       const c = ORE_CONFUSE[guess];
       const alt = c ? Object.keys(c).sort((a, b) => c[b] - c[a])[0] : null;
-      return alt ? (fam + ' — ' + ko(guess) + ' 아니면 ' + ko(alt)) : (fam + ' — ' + ko(guess) + ' 같다');
+      return alt ? (fam + ' — ' + ko(guess) + ' 아니면 ' + ko(alt)) : (fam + ' — ' + ko(guess) + ' 같습니다');
     }
     case 7: return ko(guess) + ' 같은데…';
-    case 8: return _ro(ko(guess)) + ' 보인다';
+    case 8: return _ro(ko(guess)) + ' 보입니다';
     // 9~10 단정(오인 8→4%). ★[2026-08-02d] `_ida` 직결을 뺐다 — '구리' + '다' = **"구리다"**
     //   (한국어로 '냄새가 고약하다'). 명장 감정사가 광석을 보고 "구리다"라 말하는 화면이 나온다.
     //   전 광종에 자연스러운 단정형으로 바꾼다: 틀림없는 구리 · 틀림없는 철 · 틀림없는 금.

@@ -1126,18 +1126,18 @@ const server = http.createServer(async (req, res) => {
       if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const playerId = data.player_id;
-      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
+      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '먼저 로그인하십시오.' });
       const side = data.side;
-      if (side !== 'sell' && side !== 'buy') return jsonResp(res, 400, { error: 'side 잘못됨' });
+      if (side !== 'sell' && side !== 'buy') return jsonResp(res, 400, { error: '사고팔기 칸이 잘못되었습니다.' });
       const item = data.item;
-      if (!validateItem(item)) return jsonResp(res, 400, { error: 'item 잘못됨' });
+      if (!validateItem(item)) return jsonResp(res, 400, { error: '물건 칸이 잘못되었습니다.' });
       const amount = Math.max(1, +data.amount | 0);
       const priceItem = data.price_item;
-      if (!validateItem(priceItem) || priceItem === item) return jsonResp(res, 400, { error: 'price_item 잘못됨' });
+      if (!validateItem(priceItem) || priceItem === item) return jsonResp(res, 400, { error: '값으로 낼 물건 칸이 잘못되었습니다.' });
       const priceAmount = Math.max(1, +data.price_amount | 0);
 
       const p = stmtGetPlayer.get(playerId);
-      if (!p) return jsonResp(res, 400, { error: '플레이어 없음' });
+      if (!p) return jsonResp(res, 400, { error: '그런 사람이 없습니다.' });
       if (side === 'sell') {
         if ((p[item] | 0) < amount) return jsonResp(res, 400, { error: `${item} 부족` });
         const inv = { wood: p.wood, stone: p.stone };
@@ -1168,7 +1168,7 @@ const server = http.createServer(async (req, res) => {
       const playerId = data.player_id;
       const orderId = +data.order_id | 0;
       const o = orders.get(orderId);
-      if (!o) return jsonResp(res, 404, { error: '주문 없음' });
+      if (!o) return jsonResp(res, 404, { error: '그런 주문이 없습니다.' });
       if (o.player_id !== playerId) return jsonResp(res, 403, { error: '본인 주문 아님' });
       const p = stmtGetPlayer.get(playerId);
       if (p) {
@@ -1443,8 +1443,8 @@ const server = http.createServer(async (req, res) => {
       const data = await readBody(req);
       const playerId = data.player_id;
       const name = (data.name || '').trim().slice(0, 20);
-      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
-      if (!name) return jsonResp(res, 400, { error: '마을 이름 필요' });
+      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '먼저 로그인하십시오.' });
+      if (!name) return jsonResp(res, 400, { error: '마을 이름을 적으십시오.' });
       const p = stmtGetPlayer.get(playerId);
       if (!p) return jsonResp(res, 404, { error: 'player not found' });
       if (p.tribe_id) return jsonResp(res, 400, { error: '이미 마을 사람이다 — 먼저 탈퇴' });
@@ -1464,16 +1464,16 @@ const server = http.createServer(async (req, res) => {
       const data = await readBody(req);
       const playerId = data.player_id;
       const tribeId = parseInt(data.tribe_id, 10);
-      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
+      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '먼저 로그인하십시오.' });
       const p = stmtGetPlayer.get(playerId);
       if (!p) return jsonResp(res, 404, { error: 'player not found' });
-      if (p.tribe_id) return jsonResp(res, 400, { error: '이미 마을 사람이다' });
+      if (p.tribe_id) return jsonResp(res, 400, { error: '이미 마을 사람입니다.' });
       const t = db.prepare('SELECT * FROM tribes WHERE id = ?').get(tribeId);
-      if (!t) return jsonResp(res, 404, { error: '그런 마을 없음' });
+      if (!t) return jsonResp(res, 404, { error: '그런 마을이 없습니다.' });
       // ★★[T128] 승인제 — **초대제 길드는 부름 없이는 못 든다.** 열린 길드는 종전 그대로다
       //   (기본값이 'open' 이라 이미 있는 길드의 행동이 한 줄도 안 바뀐다).
       if (tribeClosed(t) && !stmtInvHas.get(tribeId, playerId)) {
-        return jsonResp(res, 200, { ok: false, reason: 'invite_only', error: '부름을 받아야 드는 마을이다' });
+        return jsonResp(res, 200, { ok: false, reason: 'invite_only', error: '부름을 받아야 들 수 있는 마을입니다.' });
       }
       db.prepare('UPDATE players SET tribe_id = ? WHERE player_id = ?').run(tribeId, playerId);
       stmtInvDel.run(tribeId, playerId);          // 부름으로 들어왔으면 그 문은 치운다
@@ -1495,7 +1495,7 @@ const server = http.createServer(async (req, res) => {
       if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const playerId = data.player_id;
-      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
+      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '먼저 로그인하십시오.' });
       const p = stmtGetPlayer.get(playerId);
       if (!p || !p.tribe_id) return jsonResp(res, 400, { error: '마을 사람이 아니다' });
       const tribeId = p.tribe_id;

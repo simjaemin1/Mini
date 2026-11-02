@@ -57,9 +57,9 @@ function itemKo(k) {
     const p = pv.props || {};
     const gCol = pv.grade >= 1 ? 'var(--stam)' : (pv.grade >= 0.7 ? 'var(--accent)' : 'var(--hp)');
     const warn = [];
-    if (p.brittle > 0.02) warn.push('취성 — 잘 부러진다');
-    if (p.split > 0.02) warn.push('층이 갈린다');
-    if (p.mp > 1150) warn.push('노가 못 녹인다');
+    if (p.brittle > 0.02) warn.push('잘 부러짐');
+    if (p.split > 0.02) warn.push('층이 갈림');
+    if (p.mp > 1150) warn.push('노가 못 녹임');
     const useTxt = Object.entries(pv.use || {}).map(([k, v]) => (CAST_KO[k] || k) + ' ' + v).join(' · ');
     box.innerHTML =
       '<b style="color:' + gCol + '">등급 ' + (pv.grade == null ? '?' : pv.grade.toFixed(2)) + '</b>'
@@ -229,7 +229,7 @@ function itemKo(k) {
   const TRADE_QKEY = { clothes: 'clothQ', weapon: 'weapQ', armor: 'weapQ', tool: 'toolQ' };
   function tradeSectionHtml() {
     const v = shopVillage;
-    if (!v) return '<div class="hint" style="padding:12px">마을광장 근처에서 열면 마을 장인의 품질이 표시됩니다.<br>(거래 반경 밖이면 비어 있음 — 마을로 가까이)</div>';
+    if (!v) return '<div class="hint" style="padding:12px">마을 광장 가까이에서 열면 마을 장인의 솜씨가 보입니다.<br>거래할 수 있는 거리 밖이면 비어 있으니 마을로 가까이 가십시오.</div>';
     let h = `<div class="hint" style="margin:6px 0;font-weight:bold">${v.name} <span style="color:var(--dim-2);font-weight:normal">· ${v.dist}px${v.pop != null ? ` · 인구 ${v.pop}` : ''}</span></div>`;
     if (equipmentRecipes && equipmentMeta) {
       for (const [type, rc] of Object.entries(equipmentRecipes)) {
@@ -271,7 +271,7 @@ function itemKo(k) {
         h += `<div class="craft-recipe">
           <div class="cr-icon">${itemPic(equipPicKey(inst.type, inst.mat), 22)}</div>
           <div class="cr-info"><div class="cr-name">${rc.label || inst.type} <span style="color:var(--dim-2);font-weight:normal">Lv${inst.craftedSkill || 0}</span>${_fe ? ' <span style="color:var(--accent-hi)">철기</span>' : ''}</div>
-          <div class="cr-cost">용해 ${inst.mat ? itemIconHtml(inst.mat, 18, itemKo(inst.mat)) : '재료'} ×${refund} 회수${_fe ? ' &nbsp;/&nbsp; <span style="color:var(--accent-hi)">위세품으로 넘기면 마을이 값을 친다</span>' : ''}</div></div>
+          <div class="cr-cost">용해 ${inst.mat ? itemIconHtml(inst.mat, 18, itemKo(inst.mat)) : '재료'} ×${refund} 회수${_fe ? ' &nbsp;/&nbsp; <span style="color:var(--accent-hi)">위세품으로 넘기면 마을이 값을 쳐줍니다</span>' : ''}</div></div>
           <div style="display:flex;flex-direction:column;gap:3px">
             <button data-sell="${inst.id}">용해</button>
             ${_fe ? `<button data-relic="${inst.id}" style="background:var(--accent);border-color:var(--accent)">위세품 판매</button>` : ''}
@@ -333,7 +333,7 @@ function itemKo(k) {
         const canCraft = hasTool && Object.entries(ir.from).every(([k, v]) => (inventory[k] || 0) >= v);
         const fromStr = Object.entries(ir.from).map(([k, v]) => `${itemIconHtml(k, 18, itemKo(k))} ${v}`).join(' · ');
         const toStr = Object.entries(ir.to).map(([k, v]) => `${itemIconHtml(k, 18, itemKo(k))} ×${v}`).join(' ');
-        const toolStr = ir.requiresTool ? ` (${ir.requiresTool} 필요)` : '';
+        const toolStr = ir.requiresTool ? ` (${ir.requiresTool} 있어야 함)` : '';
         const row = document.createElement('div');
         row.className = 'craft-row';
         row.innerHTML = `
@@ -415,7 +415,7 @@ function itemKo(k) {
     list.innerHTML = '';
     const entries = Object.entries(cookRecipes || {});
     if (entries.length === 0) {
-      list.innerHTML = '<div class="hint">요리 레시피 없음</div>';
+      list.innerHTML = '<div class="hint">만들 수 있는 요리가 없습니다.</div>';
       return;
     }
     for (const [name, r] of entries) {
@@ -468,9 +468,9 @@ function itemKo(k) {
   //   ★[T759 2026-10-15] 머리의 그림 글자(모래시계 · U+23F3)를 걷었다 — 먹선 캐논(이모지 0). 같은 칸의 이웃 줄(쓰러졌다 … · 구조를 기다리는 중 …)이
   //     글자뿐이라 글자뿐으로 맞춘다. 말은 그대로(기다림은 글이 이미 말한다).
   function _downWaitText() {
-    if (!myDownWakeAt) return myDownChosen ? '골랐다 — 서버의 답을 기다린다…' : '';
+    if (!myDownWakeAt) return myDownChosen ? '골랐습니다. 서버의 답을 기다립니다.' : '';
     const s = Math.max(0, Math.ceil((myDownWakeAt - performance.now()) / 1000));
-    return `약 ${s}초 뒤 ${myDownWakeName || '고른 자리'}에서 깨어난다 — 기다리면 된다(다시 누를 것 없다)`;
+    return `약 ${s}초 뒤 ${myDownWakeName || '고른 자리'}에서 깨어납니다. 기다리시면 됩니다. 다시 누를 필요는 없습니다.`;
   }
   function _renderDownWait() {
     const optBox = document.getElementById('downOptions');
@@ -491,7 +491,7 @@ function itemKo(k) {
     if (!optBox) return;
     optBox.innerHTML = '';
     const st0 = document.getElementById('downStatusText');
-    if (st0) st0.textContent = '쓰러졌다. 구조를 기다리거나, 기다리지 않고 깨어날 자리를 고른다.';
+    if (st0) st0.textContent = '쓰러졌습니다. 구조를 기다리거나, 기다리지 않고 깨어날 자리를 고르십시오.';
     // ★[T563] 순서는 서버 사다리(T83 캐논) 그대로 — 길드 → 개인·임시 → 처음 고른 마을 → 귀향점 → 마을 쉼터.
     //   종전 표는 개인을 길드 앞에 세웠고 `start`·`shelter` 가 없어 날말("shelter")이 떴다.
     const KIND_ORDER = { guild: 0, personal: 1, temporary: 2, start: 3, home: 4, shelter: 5 };
@@ -500,7 +500,7 @@ function itemKo(k) {
     if (sorted.length === 0) {
       const none = document.createElement('div');
       none.className = 'down-opt-none';
-      none.innerHTML = '부활 가능한 지점이 없습니다.<br/>사유지를 만들거나 마을에 드세요.<br/><span style="font-size:10px;opacity:0.7">다른 사람이 R 키로 구조해줄 수 있음</span>';
+      none.innerHTML = '깨어날 수 있는 자리가 없습니다.<br/>내 땅을 정하거나 마을에 드십시오.<br/><span style="font-size:10px;opacity:0.7">다른 사람이 R 키로 구해 줄 수 있습니다.</span>';
       optBox.appendChild(none);
     } else {
       for (const o of sorted) {
@@ -539,7 +539,7 @@ function itemKo(k) {
     } else {
       if (hint) {
         hint.classList.add('expired');
-        hint.innerHTML = '구조 가능 시간 지남 — 마을 안이면 쉼터로 옮겨지고, 야생이면 정신을 잃는다.';
+        hint.innerHTML = '구할 수 있는 때가 지났습니다. 마을 안이면 쉼터로 옮겨지고, 들판이면 정신을 잃습니다.';
       }
     }
   }, 500);
@@ -559,7 +559,7 @@ function itemKo(k) {
     if (!body) return;
     body.innerHTML = '<div class="hint">로딩 중...</div>';
     if (!myUsername || myUsername.startsWith('anon_')) {
-      body.innerHTML = '<div class="hint">게스트 모드는 마을 일 불가 — 로그인 필요</div>';
+      body.innerHTML = '<div class="hint">손님은 마을 일을 할 수 없습니다. 로그인하십시오.</div>';
       return;
     }
     // ★★[T787 2026-10-18 · 길드 = 마을] 서버가 켬(`uiCfg.villageOnly`)이면 이 패널은 **마을 패널**이다 —
@@ -569,12 +569,12 @@ function itemKo(k) {
       const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
       const ROWS = [
         ['/마을', '내 마을 보기 — 촌장 · 곳간 문 · 가입 문 · 소개'],
-        ['/소속', '마을 곳간에 보탠 뒤 그 마을에 든다'],
-        ['/초대 이름', '마을 사람이 사람을 부른다'], ['/수락', '부름을 받아 든다'],
-        ['/촌장', '촌장 보기 · 촌장은 `/촌장 이름` 으로 자리를 넘긴다'],
+        ['/소속', '마을 곳간에 보탠 뒤 그 마을에 들기'],
+        ['/초대 이름', '마을 사람이 사람 부르기'], ['/수락', '부름을 받아 들기'],
+        ['/촌장', '촌장 보기 · 촌장은 `/촌장 이름`으로 자리 넘기기'],
         ['/곳간 열기 · /곳간 잠금', '촌장 — 곳간 문'], ['/소개 한 줄', '촌장 — 마을 소개'],
         ['/마을 초대제 · /마을 공개', '촌장 — 가입 문'], ['/전쟁 마을 · /종전 마을', '촌장 — 마을 사이 전쟁'],
-        ['/t 메시지', '마을 채팅'], ['/탈퇴', '마을에서 나온다'],
+        ['/t 메시지', '마을 채팅'], ['/탈퇴', '마을에서 나오기'],
       ];
       body.innerHTML = `<div class="hint">소속 마을: <b>${myTribeName ? `[${esc(myTribeName)}]` : '(아직 없음)'}</b></div>`
         + `<button class="craft-btn" id="villageLookBtn" style="margin:6px 0 8px">내 마을 보기</button>`
@@ -649,17 +649,17 @@ function itemKo(k) {
         // 선포 버튼 핸들러
         body.querySelectorAll('[data-declare]').forEach(b => b.onclick = async () => {
           const did = parseInt(b.dataset.declare, 10);
-          if (!confirm('선전포고하면 침략자 적대감이 부과될 수 있어요. 진행할까요?')) return;
+          if (!confirm('전쟁을 걸면 침략자로 적대감이 붙을 수 있습니다. 그래도 하시겠습니까?')) return;
           //   ★[T235] 존 경유 — 공격자 길드도 클라가 안 고른다(존이 내 `tribeId` 를 쓴다).
           const d = await window.__centralCall('war/declare', { defender_guild_id: did });
           if (d.ok) { showNotice(`전쟁 선포! tier=${d.tier} loot=${(d.loot_rate*100).toFixed(0)}%`); renderTribePanel(); }
-          else alert(d.error || '선포 실패');
+          else alert(d.error || '전쟁을 걸지 못했습니다.');
         });
         body.querySelectorAll('[data-end-war]').forEach(b => b.onclick = async () => {
           const wid = parseInt(b.dataset.endWar, 10);
           const d = await window.__centralCall('war/end', { war_id: wid });   // ★[T235] 존 경유
           if (d.ok) { showNotice('전쟁 종료'); renderTribePanel(); }
-          else alert(d.error || '종전 실패');
+          else alert(d.error || '전쟁을 끝내지 못했습니다.');
         });
         const grBtn = document.getElementById('tribeGranaryBtn');
         if (grBtn) grBtn.onclick = () => { buildMode = true; placementMode = { special: 'guild_granary' }; toggleTribePanel(); showNotice('마을 곳간 배치 모드 — 마을 땅 안 클릭 (5×3 밀폐 · 밖에서 지으세요 · B=취소)'); };
@@ -667,10 +667,10 @@ function itemKo(k) {
           if (!confirm('정말 탈퇴하시겠습니까?')) return;
           const d = await window.__centralCall('tribe/leave', {});   // ★[T235] 존 경유 — 남을 못 뺀다
           if (d.ok) { myTribeId = null; myTribeName = null; sendPrimary({ type: 'tribe_set', tribeId: null, tribeName: null }); renderTribePanel(); }
-          else alert(d.error || '탈퇴 실패');
+          else alert(d.error || '마을에서 나오지 못했습니다.');
         };
       } catch (e) {
-        body.innerHTML = `<div class="hint">로드 실패: ${e.message}</div>`;
+        body.innerHTML = `<div class="hint">불러오지 못했습니다(${e.message}).</div>`;
       }
     } else {
       // 길드 없음 — 만들기 또는 가입
@@ -712,7 +712,7 @@ function itemKo(k) {
           //   ★[T245] 존 경유 — `player_id` 를 클라가 안 고른다(바깥에서 남을 길드장으로 만들 수 있었다).
           const d = await window.__centralCall('tribe/create', { name });
           if (d.ok) { myTribeId = d.tribe_id; myTribeName = d.name; sendPrimary({ type: 'tribe_set', tribeId: d.tribe_id, tribeName: d.name }); renderTribePanel(); }
-          else alert(d.error || '생성 실패');
+          else alert(d.error || '마을을 만들지 못했습니다.');
         };
         body.querySelectorAll('[data-join]').forEach(b => b.onclick = async () => {
           const tid = parseInt(b.dataset.join, 10);
@@ -721,13 +721,13 @@ function itemKo(k) {
           if (d.ok) {
             myTribeId = d.tribe_id; myTribeName = d.name;
             sendPrimary({ type: 'tribe_set', tribeId: d.tribe_id, tribeName: d.name });
-            if (d.promoted) showNotice(`[${d.name}] 마을을 넘겨받았다 — 이제 자네가 촌장이다`);
+            if (d.promoted) showNotice(`${d.name} 마을을 넘겨받았습니다. 이제 촌장입니다.`);
             renderTribePanel();
           }
-          else alert(d.error || '가입 실패');
+          else alert(d.error || '마을에 들지 못했습니다.');
         });
       } catch (e) {
-        body.innerHTML = `<div class="hint">로드 실패: ${e.message}</div>`;
+        body.innerHTML = `<div class="hint">불러오지 못했습니다(${e.message}).</div>`;
       }
     }
   }
@@ -994,7 +994,7 @@ function itemKo(k) {
   //   그 문장의 재료(parts)는 서버가 계산해 보낸다(하네스도 클라도 곡선을 다시 안 푼다).
   function renderBodyPanel(body) {
     const b = myBody;
-    if (!b) { body.innerHTML = '<div class="bd-none">몸 상태를 아직 못 받았다 — 잠시 뒤 다시 열어 보라.</div>'; return; }
+    if (!b) { body.innerHTML = '<div class="bd-none">몸 상태를 아직 받지 못했습니다. 잠시 뒤 다시 열어 보십시오.</div>'; return; }
     const pct = (v) => Math.max(0, Math.min(100, v));
     const need = (emo, name, v) => {
       const cls = v < 25 ? 'bad' : (v < 50 ? 'warn' : '');
@@ -1018,26 +1018,26 @@ function itemKo(k) {
       h += `<div class="bd-row"><span class="bd-emo">${uiIcon('bolt', 14)}</span><span class="bd-name">스태미나</span>`
         + `<span class="bd-bar"><span class="bd-fill ${scls}" style="width:${sp}%"></span></span>`
         + `<span class="bd-num">${Math.round(sp)}%</span></div>`;
-      h += `<div class="bd-why">달리기는 이걸 쓴다 — <b>짐이 무거우면 더 빨리</b> 준다. `
-        + (b.stamLock ? '<b>지금은 바닥나 숨을 고르는 중</b>이다(어느 정도 차야 다시 달린다).'
-                      : (b.canSprint === false ? '지금은 달릴 수 없다.' : '지금은 달릴 수 있다.')) + '</div>';
+      h += `<div class="bd-why">달리면 이것이 줄어듭니다. <b>짐이 무거우면 더 빨리</b> 줄어듭니다. `
+        + (b.stamLock ? '<b>지금은 바닥나 숨을 고르는 중</b>입니다. 어느 정도 차야 다시 달릴 수 있습니다.'
+                      : (b.canSprint === false ? '지금은 달릴 수 없습니다.' : '지금은 달릴 수 있습니다.')) + '</div>';
       const rp = (b.recoverParts || []).filter((x) => x.recover < 0.999);
       if (typeof b.recover === 'number' && b.recover < 0.999) {
         // ★[T66 2차] 서버 `emo` 안 쓴다 — 축 표에서 그림을 고른다(위 "지금 걸린 효과"와 같은 규약).
         const why = rp.map((x) => `${uiIcon(MOODLE_ICO[x.axis] || 'warn', 12)}${x.ko} ×${x.recover.toFixed(2)}`).join(' · ');
         h += `<div class="bd-why">회복 속도 <b>×${b.recover.toFixed(2)}</b>${why ? ` — ${why}` : ''}`
-          + `<br>배고픔·목마름은 <b>걸음을 늦추지 않는다</b>. 대신 <b>숨 고르기와 아묾</b>이 느려진다.`
-          + (b.recover <= 0 ? ' <b>지금은 아예 멈춰 있다</b>(그래도 체력이 깎이지는 않는다).' : '') + '</div>';
+          + `<br>배고픔과 목마름은 <b>걸음을 늦추지 않습니다</b>. 대신 <b>숨 고르기와 상처 아물기</b>가 느려집니다.`
+          + (b.recover <= 0 ? ' <b>지금은 아예 멈춰 있습니다</b>. 그래도 체력이 깎이지는 않습니다.' : '') + '</div>';
       }
     }
     h += '<div class="bd-sec">몸</div>';
     h += sev('snow', '추위', b.cold) + sev('bolt', '피로', b.fatigue) + sev('heart', '부상', b.injury);
     if (b.injury > 0.01) {
-      h += `<div class="bd-why">부상은 시간이 낫게 한다${b.herb ? ' · <b>약초가 듣는 중</b>(회복 빨라짐)' : ' — <b>약초(herb)</b>를 먹으면 빨라진다'}</div>`;
+      h += `<div class="bd-why">부상은 시간이 지나면 낫습니다.${b.herb ? ' <b>약초가 듣는 중</b>이라 빨리 낫습니다.' : ' <b>약초</b>를 먹으면 더 빨리 낫습니다.'}</div>`;
     }
     h += '<div class="bd-sec">지금 걸린 효과</div>';
     const parts = (b.parts || []).filter((x) => x.move < 0.999 || x.work < 0.999 || x.axis === 'morale');
-    if (!parts.length) h += '<div class="bd-none">없다 — 몸이 성하다.</div>';
+    if (!parts.length) h += '<div class="bd-none">없습니다. 몸이 성합니다.</div>';
     else {
       for (const x of parts) {
         const bits = [];
@@ -1059,12 +1059,12 @@ function itemKo(k) {
       h += `<div class="bd-why"><b>${(c.kg || 0).toFixed(1)}kg</b> / 용량 ${c.cap}kg`
         + `${c.over ? ` — <b>${Math.round((c.ratio - 1) * 100)}% 초과</b>` : ''}</div>`;
       if (c.moveMult < 0.999) h += `<div class="bd-why">이속 ${Math.round((c.moveMult - 1) * 100)}% · 피로 ×${(c.fatigueMult || 1).toFixed(2)} <b>(짐 ${(c.ratio).toFixed(2)}배)</b></div>`;
-      if (c.floored) h += '<div class="bd-floor">과적 바닥 — 더 실어도 이보다 느려지진 않는다(대신 피로는 계속 는다).</div>';
+      if (c.floored) h += '<div class="bd-floor">느려지는 것이 바닥에 닿았습니다. 더 실어도 이보다 느려지지는 않지만 피로는 계속 쌓입니다.</div>';
     }
     h += `<div class="bd-sec">합계</div><div class="bd-why">이속 <b>×${(myCarry && typeof myCarry.combined === 'number' ? myCarry.combined : b.moveMult).toFixed(2)}</b>`
       + `${myCarry && myCarry.moveMult < 0.999 ? ` <span class="bd-dim">(몸 ×${b.moveMult.toFixed(2)} × 짐 ×${myCarry.moveMult.toFixed(2)})</span>` : ''}`
       + ` · 작업속도 <b>×${b.workMult.toFixed(2)}</b></div>`;
-    if (b.floored) h += '<div class="bd-floor">바닥이 걸렸다 — 아무리 나빠져도 이보다 느려지지 않는다(죽음의 나선 방지).</div>';
+    if (b.floored) h += '<div class="bd-floor">느려지는 것이 바닥에 닿았습니다. 아무리 나빠져도 이보다 느려지지는 않습니다.</div>';
     body.innerHTML = h;
   }
 
@@ -1073,7 +1073,7 @@ function itemKo(k) {
   //   화면과 실제가 갈리는 순간 그게 "보이지 않는 손"이 된다(일관성 원칙).
   function renderTradePanel(body) {
     if (!myTrade) {
-      body.innerHTML = '<div class="bd-none">거래소는 <b>마을 중심 가까이</b>에서만 열린다 — 이웃 마을 시세는 걸어가서 보는 것이다.</div>';
+      body.innerHTML = '<div class="bd-none">거래소는 <b>마을 한가운데 가까이</b>에서만 열립니다. 이웃 마을 시세는 그 마을에 가서 보십시오.</div>';
       return;
     }
     const t = myTrade;
@@ -1091,22 +1091,22 @@ function itemKo(k) {
         h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span><b>${mb.name || '마을'}</b> 사람`
           + ` <span style="opacity:.7">· 기여 ${mb.contrib}</span></span><span></span></div>`;
       } else if (mb.offer != null) {
-        h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>촌장이 마을 사람으로 받아 주겠다 한다</span>`
+        h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>촌장이 마을 사람으로 받아 주겠다고 합니다</span>`
           + `<span>채팅에 <b>/소속</b></span></div>`;
       } else {
-        h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>아직 이 마을 사람이 아니다</span>`
+        h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>아직 이 마을 사람이 아닙니다</span>`
           + `<span>누적 기여 <b>${mb.contrib}</b>/${mb.need}</span></div>`;
       }
       h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>곳간 꺼내기 — 촌장만</span>`
-        + `<span>${mb.chief === true ? '<button class="tr-btn" id="mbWd" style="padding:2px 8px">꺼낸다</button>'
-          : (mb.chief === null ? '촌장 확인 중' : '촌장이 아니다')}</span></div>`;   // null = 길드 촌장을 central 에 묻는 중(서버 캐시가 비었다 — 다음 창에서 선다)
+        + `<span>${mb.chief === true ? '<button class="tr-btn" id="mbWd" style="padding:2px 8px">꺼내기</button>'
+          : (mb.chief === null ? '촌장 확인 중' : '촌장 아님')}</span></div>`;   // null = 길드 촌장을 central 에 묻는 중(서버 캐시가 비었다 — 다음 창에서 선다)
       if (_dn) {
         const _mine = _dn.filter((k) => (inventory[k] || 0) >= 1);
         h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>곳간에 기부 — 받는 것 없음</span>`
-          + `<span class="bd-dim">기여는 게시판 납품만 센다</span></div>`;
+          + `<span class="bd-dim">기여는 게시판에 바친 것만 셉니다</span></div>`;
         h += `<div class="tr-line" style="display:flex;flex-wrap:wrap;gap:6px">`
           + (_mine.length ? _mine.map((k) => `<button class="tr-btn" data-dn="${k}" style="padding:2px 8px">${itemKo(k)} ${inventory[k]} 기부</button>`).join('')
-            : '<span class="bd-dim">곳간이 받는 걸 안 들고 있다</span>')
+            : '<span class="bd-dim">곳간이 받는 물건을 들고 있지 않습니다</span>')
           + `</div>`;
       }
     }
@@ -1139,10 +1139,10 @@ function itemKo(k) {
       if (wantAxis) {
         // 이 수는 전부 **서버가 낸 것**이다(여기서 비율로 다시 나누면 그게 사본이다).
         //   ★[T988] 서버가 그 판의 말(`why` · `wantShort`)을 실어 보내면 그 말을 그린다 — 칸이 없으면(서버 `T988_TRADE_WORDS=0`) 종전 글자 그대로.
-        if (trQuote.wantCapped) h += `<div class="tr-warn">${trQuote.why || `마을이 지금 내줄 수 있는 ${tk}은(는) ${trQuote.cap}까지다`}</div>`;
+        if (trQuote.wantCapped) h += `<div class="tr-warn">${trQuote.why || `마을이 지금 내줄 수 있는 ${tk}은(는) ${trQuote.cap}개까지입니다`}</div>`;
         else if (trQuote.giveNeeded > 0 && trQuote.wantShort) {   // ★[T988] 절삭돼 받을 양에 못 닿는다 — 낼 양 축의 그 두 줄(실제로 낼 · 받을 것)
           h += `<div class="tr-line">${gk} <b>${trQuote.giveNeeded}</b> ${tk} <b>${trQuote.takeAtNeeded}</b></div>`;
-          h += `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.giveNeeded}개만 받는다</div>`;
+          h += `<div class="tr-warn">마을이 내줄 수 있는 것은 ${trQuote.cap}개까지라 ${trQuote.giveNeeded}개만 받습니다.</div>`;
         } else if (trQuote.giveNeeded > 0) {
           h += `<div class="tr-line">${tk} <b>${trQuote.want}</b> 받으려면 — 내야 할 ${gk} <b>${trQuote.giveNeeded}</b>`
             + `<span class="bd-dim"> (낱개라 올림 · 그러면 ${tk} ${trQuote.takeAtNeeded})</span></div>`;
@@ -1151,10 +1151,10 @@ function itemKo(k) {
         h += `<div class="tr-line">${gk} <b>${trQuote.give}</b> ${tk} <b>${trQuote.take}</b></div>`;
       }
       h += `<div class="tr-line">한 개당 ${trQuote.ratio}${trQuote.avgRatio && Math.abs(trQuote.avgRatio - trQuote.ratio) > 1e-4
-        ? ` · 이 물량 평균 <b>${trQuote.avgRatio}</b>(많이 낼수록 값이 나빠진다)` : ''}</div>`;
+        ? ` · 이 물량 평균 <b>${trQuote.avgRatio}</b>(많이 낼수록 값이 나빠집니다)` : ''}</div>`;
       // ★상한 경고는 **낼 양 축의 말**이다 — 받을 양 축에선 위 `wantCapped` 가 그 자리를 맡는다.
       if (!wantAxis && trQuote.why) h += `<div class="tr-warn">${trQuote.why}</div>`;   // ★[T988] 실행이 거절할 판 — 실행과 같은 말(칸이 없으면 아래 종전 줄)
-      else if (!wantAxis && trQuote.capped) h += `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.giveUsed != null ? trQuote.giveUsed : trQuote.maxGive}개만 받는다</div>`;   // ★[T807] 켬 = 실행이 실제로 받을 낱개(`giveUsed`) · 끔 = 칸 없음 = 종전
+      else if (!wantAxis && trQuote.capped) h += `<div class="tr-warn">마을이 내줄 수 있는 것은 ${trQuote.cap}개까지라 ${trQuote.giveUsed != null ? trQuote.giveUsed : trQuote.maxGive}개만 받습니다.</div>`;   // ★[T807] 켬 = 실행이 실제로 받을 낱개(`giveUsed`) · 끔 = 칸 없음 = 종전
       // ★★[무게 배치] **용량 초과 경고** — 막지는 않는다(과적은 플레이어 선택이다).
       //   넘치게 사서 뒤뚱거리며 나르는 것도 플레이라, 화면은 사실만 말하고 결정은 사람이 한다.
       //   ★[T69] 재는 수량도 **축이 말하는 그 거래**의 것이라야 한다.
@@ -1165,7 +1165,7 @@ function itemKo(k) {
         const wOut = (itemWeights[trGive] || 0) * _out;
         const after = Math.max(0, (myCarry.kg || 0) + wIn - wOut);
         if (after > (myCarry.cap || 0)) {
-          h += `<div class="tr-warn">받으면 <b>${after.toFixed(1)}kg</b> — 용량 ${myCarry.cap}kg 를 넘는다(느려지고 피로가 빨리 찬다). 그래도 살 수 있다.</div>`;
+          h += `<div class="tr-warn">받으면 <b>${after.toFixed(1)}kg</b> — 용량 ${myCarry.cap}kg 를 넘습니다. 느려지고 피로가 빨리 쌓이지만 그래도 살 수 있습니다.</div>`;
         }
       }
     } else h += '<div class="tr-line">…</div>';
@@ -1177,9 +1177,9 @@ function itemKo(k) {
       + `<input id="trWant" type="number" min="0" value="${trWant}"></div>`;
     h += `<div class="tr-qty"><span class="bd-dim">낼 개수</span>`
       + `<input id="trQty" type="number" min="1" value="${trQty}">`
-      + `<button class="tr-btn" id="trGo"${_canGo ? '' : ' disabled'}>바꾼다</button></div>`;
-    h += '<div class="tr-hint">시세 = 이 마을이 지금 매기는 값이다. 내가 팔면 흔해져 떨어지고, 사면 귀해져 오른다.<br>'
-      + '마을이 원하는 물건은 게시판(Shift+G)에 걸린다 — 그쪽이 늘 값이 낫다.</div>';
+      + `<button class="tr-btn" id="trGo"${_canGo ? '' : ' disabled'}>바꾸기</button></div>`;
+    h += '<div class="tr-hint">시세는 이 마을이 지금 매기는 값입니다. 내가 팔면 흔해져 떨어지고, 사면 귀해져 오릅니다.<br>'
+      + '마을이 원하는 물건은 게시판(Shift+G)에 걸리고, 그쪽 값이 늘 더 낫습니다.</div>';
     h += '</div>';
     body.innerHTML = h;
     const vid = window.__evNearVid;
@@ -1247,7 +1247,7 @@ function itemKo(k) {
   function renderFacilityPanel(el) {
     const F = myFacility;
     if (!F || !F.near) { el.innerHTML = '<div class="hint">시설 앞에 서면 그 시설의 제작창이 열린다 — 모닥불(요리·훈제) · 작업대(도구·절임) · 노(제련) · 건조대(말리기)</div>'; return; }
-    if (!F.near.mine) { el.innerHTML = `<div class="hint">${F.near.ko}은(는) 내 것이 아니다 — 남의 시설 사용권은 아직 없다.</div>`; return; }
+    if (!F.near.mine) { el.innerHTML = `<div class="hint">${F.near.ko}은(는) 내 것이 아닙니다. 남의 시설은 아직 쓸 수 없습니다.</div>`; return; }
     const secs = Math.round((F.near.craftMs || 0) / 1000);
     let h = `<div class="hint" style="margin-bottom:8px"><b>${F.near.ko}</b> — 여기서 만들 수 있는 것만 보인다 · 한 개 ${secs}초</div>`;
     // ── 대기열 ──
@@ -1259,7 +1259,7 @@ function itemKo(k) {
         h += `<div class="craft-recipe ${j.done ? 'can-make' : ''}">
           <div class="cr-icon">${j.done ? '' : ''}</div>
           <div class="cr-info"><div class="cr-name">${j.label}</div>
-          <div class="cr-cost">${j.done ? '다 됐다 — 받아 가라' : `${left}초 남음`}</div></div>
+          <div class="cr-cost">${j.done ? '다 됨 · 받아 가기' : `${left}초 남음`}</div></div>
           ${j.done ? '<button data-fcollect="1">받기</button>' : ''}</div>`;
       }
     }

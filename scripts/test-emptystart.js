@@ -232,7 +232,7 @@ const invSum = (inv) => Object.entries(inv || {}).filter(([k]) => !['floor', 'tr
     const total = Object.values(p.inventory).reduce((a, b) => a + b, 0);
     ok(total === F.CFG.CAP, '★★③ 한 개체는 **정해진 양만** 품는다 — 훑으면 마른다',
       `${total} = 상한 ${F.CFG.CAP}`);
-    ok(/다 훑었다/.test(p.__notices().slice(-1)[0] || ''), '★③ 마르면 그렇다고 말해 준다',
+    ok(/다 훑었습니다/.test(p.__notices().slice(-1)[0] || ''), '★③ 마르면 그렇다고 말해 준다',
       (p.__notices().slice(-1)[0] || '').slice(0, 40));
     // ⓒ ★★반독점 — **옆 개체는 멀쩡하다**(전역 공유 풀이면 여기서 같이 말라야 한다)
     const other = Object.values(found).find((f) => f && f.src.key !== spot.src.key);
@@ -306,7 +306,7 @@ const invSum = (inv) => Object.entries(inv || {}).filter(([k]) => !['floor', 'tr
     for (let i = 0; i < TD.crude_axe + 2 && (p.toolItems || []).length; i++) H.consumeEquippedDurability(p, 1);
     ok((p.toolItems || []).length === 0, '★★⑤ 다 쓰면 **부서져 사라진다**(재제작 루프)',
       `${(p.toolItems || []).length}개 남음`);
-    ok(p.__notices().some((t) => /깨짐/.test(t)), '★⑤ 부서졌다고 알려 준다');
+    ok(p.__notices().some((t) => /깨졌습니다/.test(t)), '★⑤ 부서졌다고 알려 준다');
     // 재제작 — 재료만 있으면 다시 만든다
     p.inventory.pebble = (p.inventory.pebble || 0) + cost.pebble;
     p.inventory.twig = (p.inventory.twig || 0) + cost.twig;

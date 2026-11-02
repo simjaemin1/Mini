@@ -141,7 +141,7 @@ process.on('exit', shutdown);
   ok(!!menu && menu.includes('마시기'), '★④ 개울 칸 우클릭 = 물 메뉴("마시기") — 서버 `look` 이 "개울 — 민물"', JSON.stringify(menu));
   if (menu && menu.includes('마시기')) await page.evaluate(() => { const m = document.getElementById('ctxMenu'); for (const e of m.children) if ((e.textContent || '').trim() === '마시기') { e.click(); break; } });
   let drank = false;
-  for (let i = 0; i < 40 && !drank; i++) { await sleep(400); if (/물 마심/.test(await notices())) drank = true; }
+  for (let i = 0; i < 40 && !drank; i++) { await sleep(400); if (/물을 마셨습니다/.test(await notices())) drank = true; }
   ok(drank, '★④ "마시기" — 개울가에서 마셨다', `알림: ${await notices()}`);
   await snap('03-drink');
 

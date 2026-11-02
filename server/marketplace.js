@@ -108,19 +108,19 @@ const server = http.createServer(async (req, res) => {
     if (req.url === '/order' && req.method === 'POST') {
       const data = await readBody(req);
       const playerId = data.player_id;
-      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
+      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '먼저 로그인하십시오.' });
       const side = data.side;
-      if (side !== 'sell' && side !== 'buy') return jsonResp(res, 400, { error: 'side 잘못됨' });
+      if (side !== 'sell' && side !== 'buy') return jsonResp(res, 400, { error: '사고팔기 칸이 잘못되었습니다.' });
       const item = data.item;
-      if (!validateItem(item)) return jsonResp(res, 400, { error: 'item 잘못됨' });
+      if (!validateItem(item)) return jsonResp(res, 400, { error: '물건 칸이 잘못되었습니다.' });
       const amount = Math.max(1, +data.amount | 0);
       const priceItem = data.price_item;
-      if (!validateItem(priceItem) || priceItem === item) return jsonResp(res, 400, { error: 'price_item 잘못됨' });
+      if (!validateItem(priceItem) || priceItem === item) return jsonResp(res, 400, { error: '값으로 낼 물건 칸이 잘못되었습니다.' });
       const priceAmount = Math.max(1, +data.price_amount | 0);
 
       // Escrow: 주문 등록 시 미리 차감
       const p = db.getPlayer(playerId);
-      if (!p) return jsonResp(res, 400, { error: '플레이어 없음' });
+      if (!p) return jsonResp(res, 400, { error: '그런 사람이 없습니다.' });
       if (side === 'sell') {
         if ((p[item] | 0) < amount) return jsonResp(res, 400, { error: `${item} 부족` });
         const inv = { wood: p.wood, stone: p.stone };
@@ -148,7 +148,7 @@ const server = http.createServer(async (req, res) => {
       const playerId = data.player_id;
       const orderId = +data.order_id | 0;
       const o = orders.get(orderId);
-      if (!o) return jsonResp(res, 404, { error: '주문 없음' });
+      if (!o) return jsonResp(res, 404, { error: '그런 주문이 없습니다.' });
       if (o.player_id !== playerId) return jsonResp(res, 403, { error: '본인 주문 아님' });
       // 환불: escrow 돌려줌
       const p = db.getPlayer(playerId);

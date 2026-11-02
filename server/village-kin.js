@@ -174,26 +174,26 @@ function handleChat(player, text) {
   const arg = sp < 0 ? '' : t.slice(sp + 1).trim();
   const mine = memberVil(player);
   const chiefHere = !!(mine && isChief(player, mine));
-  const notMine = () => { _send(player, '🏘️ 이 존의 마을 사람이 아니다'); return true; };
-  const notChief = () => { _send(player, '🏘️ 촌장만 할 수 있다'); return true; };
+  const notMine = () => { _send(player, '🏘️ 이 지역 마을 사람이 아닙니다.'); return true; };
+  const notChief = () => { _send(player, '🏘️ 촌장만 할 수 있습니다.'); return true; };
 
   if (cmd === '/촌장') {
     if (!mine) return notMine();
     if (!arg) {
       const c = chiefOf(mine);
-      _send(player, `🏘️ [${mine.name}] 촌장 — ${c ? (c.name || c.id) : '없다'}`);
+      _send(player, `🏘️ [${mine.name}] 촌장 — ${c ? (c.name || c.id) : '없음'}`);
       return true;
     }
     if (!chiefHere) return notChief();
     const tgt = _online(arg);
-    if (!tgt) { _send(player, `🏘️ ${arg} 은(는) 지금 여기 없다`); return true; }
-    if (String(tgt.playerId) === String(player.playerId)) { _send(player, '🏘️ 이미 자네가 촌장이다'); return true; }
+    if (!tgt) { _send(player, `🏘️ ${arg} 님은 지금 여기 없습니다.`); return true; }
+    if (String(tgt.playerId) === String(player.playerId)) { _send(player, '🏘️ 이미 촌장입니다.'); return true; }
     const tv = memberVil(tgt);
-    if (!tv || (tv.dbId | 0) !== (mine.dbId | 0)) { _send(player, `🏘️ ${arg} 은(는) 우리 마을 사람이 아니다`); return true; }
+    if (!tv || (tv.dbId | 0) !== (mine.dbId | 0)) { _send(player, `🏘️ ${arg} 님은 우리 마을 사람이 아닙니다.`); return true; }
     mine._kin.chief = String(tgt.playerId);
     save(mine);
-    _send(player, `🏘️ [${mine.name}] 촌장 자리를 ${tgt.name} 에게 넘겼다`);
-    _send(tgt, `🏘️ 이제 자네가 [${mine.name}] 촌장일세`);
+    _send(player, `🏘️ ${mine.name} 촌장 자리를 ${tgt.name} 님에게 넘겼습니다.`);
+    _send(tgt, `🏘️ 이제 ${mine.name}의 촌장이 되었습니다.`);
     return true;
   }
   //   ★[T809 · T779] `/곳간 열기|잠금` — 곳간 잠금은 걷었다(손잡이와 무관 — 촌장 혼자 꺼내니 정할 문이 없다) · 그 한 줄은 membership 이 답한다.
@@ -204,17 +204,17 @@ function handleChat(player, text) {
     if (!chiefHere) return notChief();
     mine._kin.intro = _cutIntro(arg);
     save(mine);
-    _send(player, mine._kin.intro ? `🏘️ [${mine.name}] 소개를 적었다 — "${mine._kin.intro}"` : `🏘️ [${mine.name}] 소개를 지웠다`);
+    _send(player, mine._kin.intro ? `🏘️ ${mine.name} 소개를 적었습니다. "${mine._kin.intro}"` : `🏘️ ${mine.name} 소개를 지웠습니다.`);
     return true;
   }
   //   ★[T787] 마을 보기 · 가입 문 — 옛 `/길드 초대제|공개` 는 `/마을 …` 이다(길드 = 마을). 옛 명령은 한 줄 안내만.
-  if (cmd === '/길드') { _send(player, '🏘️ 길드는 이제 마을이다 — `/마을` (가입 문은 `/마을 초대제` · `/마을 공개`)'); return true; }
+  if (cmd === '/길드') { _send(player, '🏘️ 길드는 이제 마을입니다. `/마을`이라고 적어 보십시오. 드는 문은 `/마을 초대제`와 `/마을 공개`로 정합니다.'); return true; }
   if (cmd === '/마을' && !arg) {
-    if (!mine) { _send(player, '🏘️ 아직 어느 마을 사람도 아니다 — 마을 곳간에 보태면 `/소속` 으로 든다'); return true; }
+    if (!mine) { _send(player, '🏘️ 아직 어느 마을 사람도 아닙니다. 마을 곳간에 보탠 뒤 `/소속`이라고 적으면 마을 사람이 됩니다.'); return true; }
     const c = chiefOf(mine);
     const k = mine._kin || {};
-    _send(player, `🏘️ [${mine.name}] 촌장 ${c ? (c.name || c.id) : '없다'} · `   // ★[T809] 곳간 문 칸은 안 적는다(T779 가 잠금을 걷었다 · 꺼내기 = 촌장)
-      + `${k.joinMode === 'invite' ? '부름을 받아야 든다' : '아무나 든다'}${k.intro ? ` · "${k.intro}"` : ''}`);
+    _send(player, `🏘️ [${mine.name}] 촌장 ${c ? (c.name || c.id) : '없음'} · `   // ★[T809] 곳간 문 칸은 안 적는다(T779 가 잠금을 걷었다 · 꺼내기 = 촌장)
+      + `${k.joinMode === 'invite' ? '부름을 받아야 듦' : '아무나 듦'}${k.intro ? ` · "${k.intro}"` : ''}`);
     return true;
   }
   if (cmd === '/마을' && (arg === '초대제' || arg === '공개')) {
@@ -222,7 +222,7 @@ function handleChat(player, text) {
     if (!chiefHere) return notChief();
     mine._kin.joinMode = (arg === '초대제') ? 'invite' : 'open';
     save(mine);
-    _send(player, mine._kin.joinMode === 'invite' ? `🏘️ [${mine.name}] 은 이제 **부름을 받아야** 든다` : `🏘️ [${mine.name}] 은 이제 아무나 들 수 있다`);
+    _send(player, mine._kin.joinMode === 'invite' ? `🏘️ ${mine.name}은(는) 이제 **부름을 받아야** 들 수 있습니다.` : `🏘️ ${mine.name}은(는) 이제 아무나 들 수 있습니다.`);
     return true;
   }
   if (cmd === '/마을') { _send(player, '🏘️ `/마을` (보기) · `/마을 초대제` · `/마을 공개`'); return true; }
@@ -232,23 +232,23 @@ function handleChat(player, text) {
     if (!mine) return notMine();
     if (!arg) { _send(player, '누구를 부르는가 — `/초대 <이름>`', 'guild'); return true; }
     const tgt = _online(arg);
-    if (!tgt) { _send(player, `'${arg}' 은 지금 여기 없다`, 'guild'); return true; }
-    if (String(tgt.playerId) === String(player.playerId)) { _send(player, '자기 자신은 못 부른다', 'guild'); return true; }
+    if (!tgt) { _send(player, `'${arg}' 님은 지금 여기 없습니다.`, 'guild'); return true; }
+    if (String(tgt.playerId) === String(player.playerId)) { _send(player, '자기 자신은 부를 수 없습니다.', 'guild'); return true; }
     const tv = memberVil(tgt);
-    if (tv && (tv.dbId | 0) === (mine.dbId | 0)) { _send(player, `${arg} 은(는) 이미 우리 마을 사람이다`, 'guild'); return true; }
-    if (H.Membership && H.Membership.memberOf && H.Membership.memberOf(tgt)) { _send(player, `${arg} 은(는) 다른 마을 사람이다 — 먼저 나와야 한다`, 'guild'); return true; }
+    if (tv && (tv.dbId | 0) === (mine.dbId | 0)) { _send(player, `${arg} 님은 이미 우리 마을 사람입니다.`, 'guild'); return true; }
+    if (H.Membership && H.Membership.memberOf && H.Membership.memberOf(tgt)) { _send(player, `${arg} 님은 다른 마을 사람입니다. 먼저 그 마을에서 나와야 합니다.`, 'guild'); return true; }
     if (!tgt._kinCall) tgt._kinCall = new Map();
     tgt._kinCall.delete(mine.dbId | 0);
     tgt._kinCall.set(mine.dbId | 0, _day());   // 가장 최근 것이 끝에 선다(Map 순서)
-    _send(player, `${tgt.name} 을(를) [${mine.name}] 로 불렀다 — 상대가 \`/수락\` 하면 든다`, 'guild');
-    const called = (H.Guild && H.Guild.calledLine) ? H.Guild.calledLine(mine.name) : `[${mine.name}] 이(가) 자네를 부른다 — \`/수락\` 하면 든다`;
+    _send(player, `${tgt.name} 님을 ${mine.name}(으)로 불렀습니다. 상대가 \`/수락\`이라고 적으면 마을에 듭니다.`, 'guild');
+    const called = (H.Guild && H.Guild.calledLine) ? H.Guild.calledLine(mine.name) : `${mine.name}에서 당신을 부릅니다. \`/수락\`이라고 적으면 마을에 듭니다.`;
     _send(tgt, called, 'guild');
     return true;
   }
   if (cmd === '/수락') {
     const calls = player._kinCall instanceof Map ? player._kinCall : null;
     const ids = calls ? [...calls.keys()].filter((v) => !!_vil(v)) : [];
-    if (!ids.length) { _send(player, '자네를 부른 마을이 없다', 'guild'); return true; }
+    if (!ids.length) { _send(player, '당신을 부른 마을이 없습니다.', 'guild'); return true; }
     if (H.Membership && H.Membership.memberOf && H.Membership.memberOf(player)) { _send(player, '이미 마을 사람이다 — 먼저 `/탈퇴`', 'guild'); return true; }
     let vid = ids[ids.length - 1];
     if (arg) {
@@ -260,7 +260,7 @@ function handleChat(player, text) {
     if (!r || !r.ok) { _send(player, '지금은 못 들었다 — 잠시 뒤 다시', 'guild'); return true; }
     const more = ids.length - 1;
     player._kinCall = null;
-    _send(player, `[${(_vil(vid) || {}).name || ''}] 에 들었다${more > 0 ? ` (다른 부름 ${more}건은 지웠다)` : ''}`, 'guild');
+    _send(player, `${(_vil(vid) || {}).name || ''}에 들었습니다.${more > 0 ? ` 다른 부름 ${more}건은 지웠습니다.` : ''}`, 'guild');
     return true;
   }
   //   가입 문 '초대제' — 기여로 받은 권함(`_memberOfferVid`)으로는 못 든다(부름 `/수락` 만). 열린 마을은 종전 그대로 흘려보낸다.
@@ -268,18 +268,18 @@ function handleChat(player, text) {
     const M = H.Membership;
     if (M && M.memberOf && M.memberOf(player)) return false;
     const ov = player._memberOfferVid;
-    if (ov != null && joinModeOfVid(ov) === 'invite') { _send(player, `🏘️ [${(_vil(ov) || {}).name || ''}] 은 부름을 받아야 든다 — 마을 사람에게 \`/초대\` 를 청하게`); return true; }
+    if (ov != null && joinModeOfVid(ov) === 'invite') { _send(player, `🏘️ ${(_vil(ov) || {}).name || ''}은(는) 부름을 받아야 들 수 있습니다. 마을 사람에게 \`/초대\`를 청하십시오.`); return true; }
     return false;
   }
   //   촌장 자리는 비우지 않는다 — 촌장은 넘기고 떠난다 · 촌장은 내보내지 못한다(칸이 마을 사람 밖으로 새지 않게).
   if (cmd === '/탈퇴') {
-    if (chiefHere) { _send(player, '🏘️ 촌장은 먼저 자리를 넘기고 떠난다 — `/촌장 <이름>`'); return true; }
+    if (chiefHere) { _send(player, '🏘️ 촌장은 먼저 자리를 넘겨야 떠날 수 있습니다. `/촌장 <이름>`이라고 적으십시오.'); return true; }
     return false;
   }
   if (cmd === '/추방') {
     //   ★[T786 C5] 내보내는 것은 **촌장**이다(membership `expel` 머리 주석 "촌장이 한다" — 종전 술어는 "쫓는 쪽도 그 마을 사람"이었다).
     const tgt = arg ? _online(arg) : null;
-    if (tgt && mine && isChief(tgt, mine)) { _send(player, '🏘️ 촌장은 내보낼 수 없다'); return true; }
+    if (tgt && mine && isChief(tgt, mine)) { _send(player, '🏘️ 촌장은 내보낼 수 없습니다.'); return true; }
     if (mine && !chiefHere) return notChief();
     return false;
   }
@@ -287,21 +287,21 @@ function handleChat(player, text) {
   if (cmd === '/전쟁' || cmd === '/종전') {
     if (!mine) return notMine();
     if (!chiefHere) return notChief();
-    if (!arg) { _send(player, `🏘️ 어느 마을과 — \`${cmd} <마을 이름>\``); return true; }
+    if (!arg) { _send(player, `🏘️ 어느 마을과 하시겠습니까? \`${cmd} <마을 이름>\`처럼 적으십시오.`); return true; }
     const tgt = _villageByName(arg);
-    if (!tgt || !tgt._kin) { _send(player, `🏘️ [${arg}] 은 이 땅에 없는 마을이다`); return true; }
-    if ((tgt.dbId | 0) === (mine.dbId | 0)) { _send(player, '🏘️ 제 마을과는 싸우지 않는다'); return true; }
+    if (!tgt || !tgt._kin) { _send(player, `🏘️ ${arg}은(는) 이 땅에 없는 마을입니다.`); return true; }
+    if ((tgt.dbId | 0) === (mine.dbId | 0)) { _send(player, '🏘️ 자기 마을과는 싸울 수 없습니다.'); return true; }
     const at = isAtWar(mine.dbId, tgt.dbId);
     if (cmd === '/전쟁') {
-      if (at) { _send(player, `🏘️ [${tgt.name}] 과(와) 이미 싸우고 있다`); return true; }
+      if (at) { _send(player, `🏘️ ${tgt.name}과(와) 이미 싸우고 있습니다.`); return true; }
       _setWar(mine, tgt, true, player.playerId);
-      const line = `⚔️ [${mine.name}] 이(가) [${tgt.name}] 에 전쟁을 걸었다`;
+      const line = `⚔️ ${mine.name}이(가) ${tgt.name}에 전쟁을 걸었습니다.`;
       _tellVillage(mine, line); _tellVillage(tgt, line);
       return true;
     }
-    if (!at) { _send(player, `🏘️ [${tgt.name}] 과(와)는 싸우고 있지 않다`); return true; }
+    if (!at) { _send(player, `🏘️ ${tgt.name}과(와)는 싸우고 있지 않습니다.`); return true; }
     _setWar(mine, tgt, false, player.playerId);
-    const line = `🏘️ [${mine.name}] 과(와) [${tgt.name}] 의 전쟁이 끝났다`;
+    const line = `🏘️ ${mine.name}과(와) ${tgt.name}의 전쟁이 끝났습니다.`;
     _tellVillage(mine, line); _tellVillage(tgt, line);
     return true;
   }

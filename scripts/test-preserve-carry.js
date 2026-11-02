@@ -167,7 +167,7 @@ console.log('\n⓪ 끔 = 종전(수율 · 리셋)');
   ok(a.fresh1.dried === 1 && a.fresh1.lots.length === 1 && near(a.fresh1.lots[0].f, 1),
     '⓪ 끔·날 — 갓 잡은 1 → 1 · 산출 신선도 1(리셋)', `${a.fresh1.dried}개 · ${fmtL(a.fresh1.lots)}`);
   pre(b.fresh1.before.length === 1 && b.fresh1.before[0].f < 1, '끔·순간 — 갓 잡은 것도 넣는 순간엔 신선도가 1 밑이다(순간 노출)', b.fresh1.before.map((x) => x.f).join(','));
-  ok(b.fresh1.dried === 0 && b.fresh1.fishLeft === 1 && /한 개도 안 나온다/.test(b.fresh1.note),
+  ok(b.fresh1.dried === 0 && b.fresh1.fishLeft === 1 && /한 개도 나오지 않습니다/.test(b.fresh1.note),
     '★⓪ 끔·순간 — **갓 잡은 1 → 0**(T732 §7-0 · 수율 ⌊1 × 0.99…⌋) · 생선은 되돌린다 — 이 카드가 걷는 꼴', `${b.fresh1.dried}개 · 생선 ${b.fresh1.fishLeft} · "${b.fresh1.note.slice(0, 30)}"`);
   for (const [nm, r] of [['날', a], ['순간', b]]) {
     const fIn = r.wilt3.before.reduce((s, x) => s + x.n * x.f, 0) / 3;

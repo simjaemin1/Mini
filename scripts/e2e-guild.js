@@ -149,26 +149,26 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
   // ── ① 초대 → 알림 → 수락 → 가입 ─────────────────────────────────────────
   L.notices.length = 0; M.notices.length = 0; M.kinds.length = 0;
   say(L, '/초대 member'); await sleep(1500);
-  ok(L.notices.some((t) => /불렀다/.test(t)), '① 부른 쪽이 그 사실을 듣는다', last(L));
-  ok(M.notices.some((t) => /부른다/.test(t)), '① ★불린 쪽에게 **알림이 간다**', last(M));
+  ok(L.notices.some((t) => /불렀습니다/.test(t)), '① 부른 쪽이 그 사실을 듣는다', last(L));
+  ok(M.notices.some((t) => /부릅니다/.test(t)), '① ★불린 쪽에게 **알림이 간다**', last(M));
   ok(M.kinds.includes('guild'), '①b ★그 알림의 종류가 `guild` 다(새 종류 하나 · 그림은 이미 있던 것)', JSON.stringify(M.kinds.slice(-2)));
   const beforeJoin = await jget(`${CEN}/player/${encodeURIComponent(M.playerId)}`);
   ok(!!beforeJoin && !beforeJoin.player.tribe_id, '①c 전제 — 아직 길드에 안 들어 있다(아래가 자명 통과가 아니다)');
   M.notices.length = 0;
   say(M, '/수락'); await sleep(2000);
-  ok(M.notices.some((t) => /에 들었다/.test(t)), '① ★`/수락` 한 마디로 든다', last(M));
+  ok(M.notices.some((t) => /에 들었습니다/.test(t)), '① ★`/수락` 한 마디로 든다', last(M));
   const afterJoin = await jget(`${CEN}/player/${encodeURIComponent(M.playerId)}`);
   ok(!!afterJoin && afterJoin.player.tribe_id === TID, '①d 가입의 정본(`players.tribe_id`)이 실제로 바뀌었다', afterJoin && afterJoin.player.tribe_id);
   const invLeft = await jpost(`${CEN}/tribe/invites`, { player_id: M.playerId });
   ok(!!invLeft && invLeft.invites.length === 0, '①e ★들어갔으면 **문을 치운다** — 부름 행이 안 남는다', JSON.stringify(invLeft && invLeft.invites));
   // ★자명 통과 금지 — 부름이 없는 사람은 `/수락` 해도 못 든다
   O.notices.length = 0; say(O, '/수락'); await sleep(1200);
-  ok(O.notices.some((t) => /부른 마을이 없다/.test(t)), '①f ★★부름이 없으면 `/수락` 은 아무것도 안 한다', last(O));
+  ok(O.notices.some((t) => /부른 마을이 없습니다/.test(t)), '①f ★★부름이 없으면 `/수락` 은 아무것도 안 한다', last(O));
 
   // ── ② 승인제 — 초대 없이는 못 든다(대조: 열린 길드는 된다) ──────────────
   L.notices.length = 0;
   say(L, '/길드 초대제'); await sleep(1200);
-  ok(L.notices.some((t) => /길드는 이제 마을이다/.test(t)) && !L.notices.some((t) => /부름을 받아야/.test(t)),
+  ok(L.notices.some((t) => /길드는 이제 마을입니다/.test(t)) && !L.notices.some((t) => /부름을 받아야/.test(t)),
     '②⁰ ★[T787] 옛 명령 `/길드` 는 **한 줄 안내**만 — 문은 안 걸린다', last(L));
   L.notices.length = 0;
   say(L, '/마을 초대제'); await sleep(1500);
@@ -191,7 +191,7 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
   // ── ③ 마을 소개문 ───────────────────────────────────────────────────────
   L.notices.length = 0;
   say(L, '/소개 돌칼 사람들은 강가에 산다'); await sleep(1500);
-  ok(L.notices.some((t) => /소개를 적었다/.test(t)), '③ 길드장이 소개를 적었다', last(L));
+  ok(L.notices.some((t) => /소개를 적었습니다/.test(t)), '③ 길드장이 소개를 적었다', last(L));
   const intros = await jget(`${CEN}/tribe_intros`);
   ok(!!intros && intros.intros.some((r) => r.id === TID && /강가에 산다/.test(r.intro)),
     '③b ★central 에 남는다', JSON.stringify(intros && intros.intros));
@@ -223,7 +223,7 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     const I1 = await connect('inbox', 'pw5');           // 계정을 만들고
     await sleep(600); close(I1); await sleep(1200);      // 나간다
     L.notices.length = 0; say(L, '/초대 inbox'); await sleep(1500);
-    ok(L.notices.some((t) => /불렀다/.test(t)), '④a 전제: 꺼져 있는 사람도 부를 수는 있다(central 이 행을 남긴다)', last(L));
+    ok(L.notices.some((t) => /불렀습니다/.test(t)), '④a 전제: 꺼져 있는 사람도 부를 수는 있다(central 이 행을 남긴다)', last(L));
     const inv0 = await jpost(`${CEN}/tribe/invites`, { player_id: I1.playerId });
     ok(!!inv0 && inv0.invites.length === 1, '④a2 전제: 부름 행이 실제로 남아 있다', JSON.stringify(inv0 && inv0.invites.map((x) => x.name)));
 
@@ -231,7 +231,7 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     const I2 = await connect('inbox', 'pw5');
     await sleep(2500);
     ok(I2.playerId === I1.playerId, '④b 전제: 같은 사람으로 다시 들어왔다', I2.playerId);
-    ok(I2.notices.some((t) => /\[돌칼\] 이\(가\) 자네를 부른다/.test(t)),
+    ok(I2.notices.some((t) => /돌칼에서 당신을 부릅니다/.test(t)),
        '★★④ 끊겨 있던 사이의 **길드 부름이 다음 접속에 말이 된다**', JSON.stringify(I2.notices));
     ok(I2.kinds.includes('guild'), '④b2 그 줄의 종류는 `guild` 다(T128 이 만든 그 종류 그대로 · 새 종류 0)', JSON.stringify(I2.kinds));
     //   ★자명 통과 금지 — 부름은 **읽기만** 했다. 그 자리에서 사라지지 않는다(수락이 지운다).
@@ -242,12 +242,12 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     // ⓒ 밀린 **친구 요청**도 같다 — 표만 다르고 자리가 같다
     const F1 = await connect('offfriend', 'pw6'); await sleep(600); close(F1); await sleep(1200);
     O.notices.length = 0; say(O, '/친구 offfriend'); await sleep(1500);
-    ok(O.notices.some((t) => /청했다/.test(t)), '④c 전제: 꺼져 있는 사람에게도 청할 수 있다', last(O));
+    ok(O.notices.some((t) => /청했습니다/.test(t)), '④c 전제: 꺼져 있는 사람에게도 청할 수 있다', last(O));
     const pend = await jpost(`${CEN}/friend/pending`, { player_id: F1.playerId });
     ok(!!(pend && pend.ok && pend.requests.length === 1 && pend.requests[0].name === 'outsider'),
        '④c2 ★밀린 요청을 세는 문이 **새 표 없이** 답한다(`since IS NULL` 술어 하나)', JSON.stringify(pend && pend.requests));
     const F2 = await connect('offfriend', 'pw6'); await sleep(2500);
-    ok(F2.notices.some((t) => /outsider 이\(가\) 벗이 되자고 청했다/.test(t)),
+    ok(F2.notices.some((t) => /outsider 님이 벗이 되자고 청했습니다/.test(t)),
        '★★④c 끊겨 있던 사이의 **친구 요청도 다음 접속에 말이 된다**', JSON.stringify(F2.notices));
     ok(F2.kinds.includes('info'), '④c3 그 줄의 종류는 `info` 다(친구는 종전 종류 그대로)', JSON.stringify(F2.kinds));
     close(F2);
@@ -280,7 +280,7 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     const H2 = await connect('manycall', 'pw8'); await sleep(2500);
     ok(H2.notices.length === NMAX, `★★④e 넘쳐도 **정확히 N(${NMAX})줄**만 온다 — 오래된 줄이 소리 없이 사라지지 않는다`,
        `${H2.notices.length}줄 ${JSON.stringify(H2.notices)}`);
-    ok(H2.notices.some((t) => /외 2건의 부름이 더 있다/.test(t)), '★★④e2 그리고 **접힌 만큼을 말한다**("… 외 k건")', last(H2));
+    ok(H2.notices.some((t) => /부름이 2건 더 있습니다/.test(t)), '★★④e2 그리고 **접힌 만큼을 말한다**("… 외 k건")', last(H2));
     close(H2);
 
     // ⓕ 부름이 없으면 **아무 말도 안 한다**(자명 통과 금지의 뒷면)
@@ -303,14 +303,14 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     //   ⓐ 부른다 — 고치기 전엔 여기서 `'여행자XXXX' 은 없는 이름이다` 가 나왔다
     L.notices.length = 0; G.notices.length = 0;
     say(L, `/초대 ${gname}`); await sleep(1800);
-    ok(L.notices.some((t) => /불렀다/.test(t)), '⑨ ★★**게스트를 길드로 부를 수 있다**(T208 회부 1 이 닫힌다)', last(L));
-    ok(G.notices.some((t) => /부른다/.test(t)), '⑨b 불린 게스트에게 **알림이 간다**', JSON.stringify(G.notices.slice(-1)));
+    ok(L.notices.some((t) => /불렀습니다/.test(t)), '⑨ ★★**게스트를 길드로 부를 수 있다**(T208 회부 1 이 닫힌다)', last(L));
+    ok(G.notices.some((t) => /부릅니다/.test(t)), '⑨b 불린 게스트에게 **알림이 간다**', JSON.stringify(G.notices.slice(-1)));
     ok(G.kinds.includes('guild'), '⑨b2 그 알림의 종류는 `guild` 다(새 종류 0)', JSON.stringify(G.kinds.slice(-2)));
     //   ⓑ 든다 — 초대제 길드라 **부름이 있어야** 지난다
     const before = await jget(`${CEN}/player/${encodeURIComponent(G.playerId)}`);
     ok(!!before && !before.player.tribe_id, '⑨c 전제 — 아직 길드에 안 들어 있다(아래가 자명 통과가 아니다)');
     G.notices.length = 0; say(G, '/수락'); await sleep(2000);
-    ok(G.notices.some((t) => /에 들었다/.test(t)), '⑨ ★게스트가 `/수락` 한 마디로 든다', JSON.stringify(G.notices.slice(-1)));
+    ok(G.notices.some((t) => /에 들었습니다/.test(t)), '⑨ ★게스트가 `/수락` 한 마디로 든다', JSON.stringify(G.notices.slice(-1)));
     const after = await jget(`${CEN}/player/${encodeURIComponent(G.playerId)}`);
     ok(!!after && after.player.tribe_id === TID, '⑨d 가입의 정본(`players.tribe_id`)이 실제로 바뀌었다', after && after.player.tribe_id);
     //   ⓒ **밀린 부름**도 게스트에게 선다(T139 의 그 자리 — 표도 코드도 그대로다)
@@ -318,9 +318,9 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     const gname2 = g2 && g2.player && g2.player.name;
     const G2a = await connectGuest(g2.token); await sleep(600); close(G2a); await sleep(1200);
     L.notices.length = 0; say(L, `/초대 ${gname2}`); await sleep(1800);
-    ok(L.notices.some((t) => /불렀다/.test(t)), '⑨e 전제: 꺼져 있는 게스트도 부를 수는 있다', last(L));
+    ok(L.notices.some((t) => /불렀습니다/.test(t)), '⑨e 전제: 꺼져 있는 게스트도 부를 수는 있다', last(L));
     const G2b = await connectGuest(g2.token); await sleep(2500);
-    ok(G2b.notices.some((t) => /\[돌칼\] 이\(가\) 자네를 부른다/.test(t)),
+    ok(G2b.notices.some((t) => /돌칼에서 당신을 부릅니다/.test(t)),
       '⑨ ★밀린 부름이 **게스트에게도** 다음 접속에 말이 된다(T139 문법 그대로)', JSON.stringify(G2b.notices));
     close(G2b);
     //   ⓓ 승계 뒤에도 **길드가 그대로다** — 행을 갈아치우지 않으니(배치 14 ①) 당연해야 한다
@@ -329,7 +329,7 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     ok(!!(pr && pr.player && pr.player.tribe_id === TID), '⑨ ★승계 뒤에도 **길드가 그대로다**(소속은 pid 에 달려 있다)', pr && pr.player && pr.player.tribe_id);
     //   ⓔ 자명 통과 금지 — 아무 이름이나 불리는 게 아니다
     L.notices.length = 0; say(L, '/초대 여행자없음'); await sleep(1500);
-    ok(L.notices.some((t) => /없는 이름이다/.test(t)), '⑨g ★자명 통과 금지 — 없는 이름은 여전히 없다', last(L));
+    ok(L.notices.some((t) => /없는 이름입니다/.test(t)), '⑨g ★자명 통과 금지 — 없는 이름은 여전히 없다', last(L));
     close(G);
   }
 
@@ -384,7 +384,7 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     //   ⚠**곳간으로 재지 마라** — 마을은 살아 있어서 주민이 먹는다(실측: 두 번 읽는 사이 341 → 340).
     //     "안 나왔다"를 재는 자리는 **짐**이다(곳간은 스스로 준다).
     const packOf = (C) => Object.entries(C.inv || {}).reduce((a, [, v]) => a + (Number(v) || 0), 0);
-    const NPC_NO = /이 마을 곳간은 사람이 꺼내지 않는다/;
+    const NPC_NO = /이 마을 곳간은 사람이 열지 않습니다/;
 
     // ⓐ 마을 앞에 선다
     //   ⚠`startInfo` 의 `cx,cy` 는 **존 로컬 셀**이다 — 텔레포트는 **px** 를 받는다(`cx*32+16` · e2e-verbs 규약).
@@ -401,8 +401,8 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     O.ws.send(JSON.stringify({ type: 'village_brief', vid: V0.vid | 0 })); await sleep(800);
     O.notices.length = 0; say(O, '/곳간'); await sleep(1500);
     const line0 = O.notices.find((t) => /곳간 —/.test(t)) || '';
-    ok(!!line0 && /꺼내기는 촌장만/.test(line0) && !/남은 몫|누적 기여/.test(line0), '★⑦c 마을 사람이 아니어도 **곳간이 형편을 말한다**(누구나 본다 · 꺼내기 촌장만 · 한도 말 없음)', JSON.stringify(line0));
-    const stock0 = parseFloat((/식량 재고 ([\d.]+)/.exec(line0) || [])[1]);
+    ok(!!line0 && /꺼내는 것은 촌장만/.test(line0) && !/남은 몫|누적 기여/.test(line0), '★⑦c 마을 사람이 아니어도 **곳간이 형편을 말한다**(누구나 본다 · 꺼내기 촌장만 · 한도 말 없음)', JSON.stringify(line0));
+    const stock0 = parseFloat((/먹을 것이 ([\d.]+) 있습니다/.exec(line0) || [])[1]);
     ok(Number.isFinite(stock0) && stock0 > 0, '⑦c2 전제: 곳간에 식량이 실제로 있다(아래 거절이 빈 곳간 때문이 아니다)', stock0);
     const packA = packOf(O);
     O.notices.length = 0; say(O, '/곳간 식량 1'); await sleep(1500);
@@ -418,14 +418,14 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     // ⓒ 마을 사람이 되어도 꺼내기는 촌장만 — 우리말 품목은 풀리고(거절 까닭이 이름이 아니다) · 짐은 그대로
     const pack1 = packOf(O);
     O.notices.length = 0; say(O, '/곳간 식량 1'); await sleep(1800);
-    ok(!O.notices.some((t) => /그런 물건은 없다/.test(t)), '⑦e ★"식량"이라는 우리말이 재화로 풀린다', last(O));
+    ok(!O.notices.some((t) => /은\(는\) 없습니다/.test(t)), '⑦e ★"식량"이라는 우리말이 재화로 풀린다', last(O));
     ok(O.notices.some((t) => NPC_NO.test(t)) && packOf(O) === pack1,
        '★★⑦e2 마을 사람이 되어도 **곳간은 안 열린다**(꺼내기 = 촌장만 — 이 마을엔 사람 촌장이 없다) · 짐 그대로', `${last(O)} · 짐 ${pack1} → ${packOf(O)}`);
 
     // ⓓ 모르는 말은 아무것도 안 준다(자명 통과 금지의 뒷면)
     const pack0 = packOf(O);
     O.notices.length = 0; say(O, '/곳간 없는물건 1'); await sleep(1500);
-    ok(O.notices.some((t) => /그런 물건은 없다/.test(t)), '★⑦f 모르는 말엔 **아무것도 안 나온다**', last(O));
+    ok(O.notices.some((t) => /은\(는\) 없습니다/.test(t)), '★⑦f 모르는 말엔 **아무것도 안 나온다**', last(O));
     ok(packOf(O) === pack0, '★★⑦f2 그리고 **짐이 한 톨도 안 늘었다**(거절이 진짜다 · 곳간은 주민이 먹어 스스로 준다)',
        `${pack0} → ${packOf(O)}`);
 

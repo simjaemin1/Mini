@@ -445,7 +445,7 @@ async function waitHttp(url, tries = 900) {
       const st = await page.evaluate(() => ({ s: window.__onbState || null, notes: (window.__notices || []).slice(-12), fx: window.__onbFxN | 0,
         greet: (window.__onbGreet && window.__onbGreet.lines) ? window.__onbGreet.lines.slice() : [] }));
       const invA = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
-      if (st.fx > 0 || st.notes.some((t) => /곳간에 쌓였다/.test(t))) fxSeen = true;   // ★알림 링버퍼가 아니라 **상태**로 센다
+      if (st.fx > 0 || st.notes.some((t) => /곳간에 쌓였습니다/.test(t))) fxSeen = true;   // ★알림 링버퍼가 아니라 **상태**로 센다
       if (st.notes.some((t) => /빈터 하나 내어줌세|밥이라도/.test(t))) hookSeen = true;
       // ★★[T62] 쉼터 한 줄은 **말풍선에서** 잡는다 — `showNotice` 는 촌장 대사의 **첫 줄만** 띄운다
       //   (`70-lobby.js` `onbOnMessage`: `msg.lines[0]`). 쉼터는 둘째 줄이라 `__notices` 엔 영영 안 온다.
@@ -794,10 +794,10 @@ async function waitHttp(url, tries = 900) {
       const notes = lastN(C, 2), p1 = packFood(C);
       return { p0, p1, notes, gave: Number.isFinite(p0) && Number.isFinite(p1) && p1 > p0,
         //   ★[T779] 촌장 판정 거절 셋(촌장 아님 · 사람 촌장 없음 · central 못 물음) — 판정 자리 `membership._chiefNow` · `chiefCheck` 의 그 말
-        chiefNo: /곳간은 촌장만 꺼낸다|사람이 꺼내지 않는다|촌장을 확인하지 못했다/.test(notes),
+        chiefNo: /곳간은 촌장만 열 수 있습니다|사람이 열지 않습니다|촌장을 확인하지 못했다/.test(notes),
         //   ★[T202] **기근은 잠금이 아니다**(T159 의 다른 문 · 마을의 형편). 셋을 갈라 놓지 않으면
         //     대조 팔이 "곳간이 잠겼다"와 "마을이 굶는다"를 구별 못 하고 거짓 빨강이 난다(실측).
-        famine: /마을이 굶고 있다/.test(notes) };
+        famine: /마을이 굶고 있/.test(notes) };
     };
     //   ★★[T197] 한 번으로 판정하지 않는다 — 등짐 답(`inventory`)이 늦게 닿는 판이 있다(아래 고리 그대로).
     //     ★[T779] 옛 까닭 둘(길드 곳간문 캐시 · 하루 몫 1)은 걷혔다 — 남은 판정 불가는 없다 · 촌장 거절은 **그 자리에서** 돌려준다(기다려도 안 풀린다).
@@ -848,12 +848,12 @@ async function waitHttp(url, tries = 900) {
         } catch (e) {}
         if (TID) { snd(A, { type: 'tribe_set', tribeId: TID, tribeName: '돌칼' }); await sleep(900); }
         A.notices.length = 0; chat(A, `/소개 ${INTRO}`); await sleep(1500);
-        step('⓪d 길드를 세우고 소개를 적었다', !!(TID && A.notices.some((t) => /소개를 적었다/.test(t))),
+        step('⓪d 길드를 세우고 소개를 적었다', !!(TID && A.notices.some((t) => /소개를 적었습니다/.test(t))),
           `tribe ${TID} · ${lastN(A, 1)}`);
         } else {
           //   ★[T787] 켬 — 마을 사람이 아니면 소개를 못 쓴다(촌장 문) · 대조: 지금 쓰면 거절된다(아래 ③d 가 창설 뒤에 적는다)
           A.notices.length = 0; chat(A, `/소개 ${INTRO}`); await sleep(1300);
-          step('⓪d [켬] 아직 마을 사람이 아니면 소개를 못 쓴다(촌장 문 · 창설 뒤에 적는다)', A.notices.some((t) => /마을 사람이 아니다/.test(t)), lastN(A, 1));
+          step('⓪d [켬] 아직 마을 사람이 아니면 소개를 못 쓴다(촌장 문 · 창설 뒤에 적는다)', A.notices.some((t) => /마을 사람이 아닙니다/.test(t)), lastN(A, 1));
         }
 
         await warp(A, (V.cx | 0) * 32 + 16, (V.cy | 0) * 32 + 16);
@@ -901,7 +901,7 @@ async function waitHttp(url, tries = 900) {
           if (KIN787) {
             //   ★[T787] 켬 — 세운 사람 = 촌장(마을 칸) · 소개는 촌장이 적는다(central 무접촉)
             A.notices.length = 0; chat(A, `/소개 ${INTRO}`); await sleep(1500);
-            step('③d [켬] 촌장(세운 사람)이 소개를 적었다', A.notices.some((t) => /소개를 적었다/.test(t)), lastN(A, 1));
+            step('③d [켬] 촌장(세운 사람)이 소개를 적었다', A.notices.some((t) => /소개를 적었습니다/.test(t)), lastN(A, 1));
           }
 
           await fillGranary(A, HALL);
@@ -967,7 +967,7 @@ async function waitHttp(url, tries = 900) {
         A.notices.length = 0; chat(A, '/곳간 잠금'); await sleep(1800);
         const lockLine = A.notices.slice(-2).join(' | ');
         step('⑨b ★[T779] `/곳간 잠금` 은 한 줄로 답한다(길드 곳간 잠금 걷음 — "곳간은 촌장만 꺼낸다")',
-          /곳간은 촌장만 꺼낸다/.test(lockLine) && !/잠갔다/.test(lockLine), lockLine);
+          /곳간은 촌장만 열 수 있습니다/.test(lockLine) && !/잠갔다/.test(lockLine), lockLine);
         const w3 = await withdrawUntil(A, HALL, 'give');
         step('⑨c 그 뒤에도 촌장은 **그대로 꺼낸다**(잠근 문이 없다)',
           w3.gave, `등짐 밥 ${w3.p0} → ${w3.p1} · ${w3.n}판 · ${w3.notes}`);
@@ -1021,7 +1021,7 @@ async function waitHttp(url, tries = 900) {
             }
             A.notices.length = 0; chat(A, `/초대 ${name}`); await sleep(1300);
             C.notices.length = 0; chat(C, '/수락'); await sleep(1500);
-            return { C, joined: C.notices.some((t) => /에 들었다/.test(t)), said: C.notices.slice(-1)[0] || A.notices.slice(-1)[0] || '' };
+            return { C, joined: C.notices.some((t) => /에 들었습니다/.test(t)), said: C.notices.slice(-1)[0] || A.notices.slice(-1)[0] || '' };
           }
           if (seatFirstVid != null) {
             //   ★선행 조건만 픽스처로 세운다(T11 `__e2e_body` — `test-handoff-body` 가 쓰는 그 문).
@@ -1043,14 +1043,14 @@ async function waitHttp(url, tries = 900) {
         //   ★★[T235] **기근은 촌장 거절이 아니다** — 거절 까닭을 갈라 잰다(⑩ 이 배운 그 한 줄).
         const w5 = await withdrawUntil(E.C, HALL, 'refuse');
         step(KIN787 ? '⑪ ★[켬] 부름으로 든 사람은 그 마을 사람이다(픽스처 0) · 그래도 꺼내기는 촌장만 — 등짐 그대로' : '⑪ ★길드원은 **도착만으로** 제 길드 마을 사람이다(픽스처 0) · 그래도 꺼내기는 촌장(길드장)만 — 등짐 그대로',
-          isMember(mateLine) && /곳간은 촌장만 꺼낸다/.test(w5.notes || '') && !w5.gave,
+          isMember(mateLine) && /곳간은 촌장만 열 수 있습니다/.test(w5.notes || '') && !w5.gave,
           `/소속 → ${mateLine} · 꺼내기 → ${w5.notes} · 등짐 밥 ${w5.p0} → ${w5.p1}`);
         //   ⑪b 대조 — 비길드원은 **기여 문** 그대로다(자명 통과 금지 — 권함이 없다)
         const F = await wsConnect('arcstranger', 'arcpw', NEWVID | 0); await sleep(1500);
         await warp(F, HX2 + 40, HY2 + 40);
         const strLine = await memberLine(F);
         step(KIN787 ? '⑪b 대조 — 안 불린 사람에겐 **기여 문**이 그대로 있다(촌장이 아직 권하지 않았다)' : '⑪b 대조 — 비길드원에겐 **기여 문**이 그대로 있다(촌장이 아직 권하지 않았다)',
-          !isMember(strLine) && /촌장이 아직 권하지 않았다/.test(strLine), strLine);
+          !isMember(strLine) && /촌장이 아직 마을 사람이 되라고 권하지 않았습니다/.test(strLine), strLine);
         shut(F);
         //   ⑪c ★이미 남의 마을 사람이던 길드원은 **안 끌려온다**(카드의 "옮긴다"를 안 했다 — 회부 1)
         //   ⚠재는 자리를 **NPC 마을 줄**로 잡는다: 유저 마을 줄은 `listable`(받기·쉼터·인구·곳간·활동)을
@@ -1071,7 +1071,7 @@ async function waitHttp(url, tries = 900) {
         //   ⑫a 마을 탈퇴(`/탈퇴`) — 소속은 사라지고 **기여는 남는다**
         E.C.notices.length = 0; chat(E.C, '/탈퇴'); await sleep(1300);
         const l1 = await granaryLine(E.C);
-        step('⑫a 마을 `/탈퇴` → 소속은 사라진다(기여 문이 도로 선다)', !isMember(l1) && /촌장이 아직 권하지 않았다/.test(l1), l1);
+        step('⑫a 마을 `/탈퇴` → 소속은 사라진다(기여 문이 도로 선다)', !isMember(l1) && /촌장이 아직 마을 사람이 되라고 권하지 않았습니다/.test(l1), l1);
         //   ⑫b 재접속 — 도착 훅이 **빈자리**를 다시 앉힌다. 그게 이 규약의 얼굴이다:
         //     `/탈퇴` 는 "지금 이 판에서 빠진다"이고, 다음 접속에 제 길드 마을로 돌아온다.
         shut(E.C); await sleep(900);
@@ -1079,7 +1079,7 @@ async function waitHttp(url, tries = 900) {
         const l2 = await granaryLine(E2);
         if (KIN787) {
           //   ★[T787] 켬 — 길드 → 마을 다리 0: 나간 사람은 다시 붙어도 **안 앉는다**(소속을 바꾸는 문은 마을 문뿐)
-          step('⑫b [켬] 재접속해도 **다시 안 앉는다**(길드원 앉히기 다리 0)', !isMember(l2) && /촌장이 아직 권하지 않았/.test(l2), l2);   // ★[T809] 말은 T779 의 `/소속` 문장
+          step('⑫b [켬] 재접속해도 **다시 안 앉는다**(길드원 앉히기 다리 0)', !isMember(l2) && /촌장이 아직 마을 사람이 되라고 권하지 않았/.test(l2), l2);   // ★[T809] 말은 T779 의 `/소속` 문장
           //   ⑫c · ⑫d — 옛 길드 문(탈퇴 · 해체)은 존이 안 연다(닫힌 답 하나) · 마을 소속은 그 문과 무관하다
           const cr = await new Promise((res) => { const h = (raw) => { let m = null; try { m = JSON.parse(String(raw)); } catch (e) { return; } if (m && m.type === 'central_result' && m.door === 'tribe/leave') { E2.ws.off('message', h); res(m); } }; E2.ws.on('message', h); snd(E2, { type: 'central_call', door: 'tribe/leave' }); setTimeout(() => { E2.ws.off('message', h); res(null); }, 5000); });
           step('⑫c [켬] 옛 길드 탈퇴 문은 닫혔다(존이 central 을 안 부른다 · 한 줄 안내)', !!(cr && cr.ok === false && /마을/.test(String(cr.data && cr.data.error || ''))), JSON.stringify(cr && cr.data));

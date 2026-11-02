@@ -119,7 +119,7 @@ function shoutOnce(downed, now) {
     const d = Math.hypot(q.x - downed.x, q.y - downed.y);
     if (d > RANGE) continue;
     // ★이모지 0(T71·T78) — 종류는 `kind`, 방향 화살은 `downed` 의 좌표가 그린다(클라 `34-m-renderloop`).
-    _send(q, `${downed.name}이(가) 쓰러졌다 — ${_dir(q.x, q.y, downed.x, downed.y)} ${steps(d)}걸음`,
+    _send(q, `${downed.name}이(가) 쓰러졌습니다. ${_dir(q.x, q.y, downed.x, downed.y)} ${steps(d)}걸음 거리입니다.`,
       { kind: 'downed', downed: { pid: downed.pid, x: Math.round(downed.x), y: Math.round(downed.y), at, windowMs: win } });
     heard++;
   }
@@ -228,13 +228,13 @@ function _pickTarget(rescuer, pid) {
 function feed(rescuer, word, now, pid) {
   const t = Number.isFinite(now) ? now : Date.now();
   const target = _pickTarget(rescuer, pid);
-  if (!target) { _send(rescuer, `🥣 옆에 쓰러진 사람이 없다 — ${H.RESCUE_RANGE_PX || 80}px 안에서`); return false; }
-  if (!_windowOpen(target, t)) { _send(rescuer, '🥣 너무 늦었다 — 구조 가능 시간이 지났다'); return false; }
+  if (!target) { _send(rescuer, `🥣 곁에 쓰러진 사람이 없습니다. 쓰러진 사람 바로 옆에서 하십시오.`); return false; }
+  if (!_windowOpen(target, t)) { _send(rescuer, '🥣 너무 늦었습니다. 살릴 수 있는 때가 지났습니다.'); return false; }
   const item = _resolveItem(word);
   if (!item) {
     const has = _edibleOf(rescuer).map((k) => _labels()[k] || k);
-    _send(rescuer, has.length ? `🥣 무엇을 먹일 것인가 — "/먹이기 ${has[0]}" (가진 것: ${has.slice(0, 6).join(' · ')})`
-                              : '🥣 먹일 것이 없다');
+    _send(rescuer, has.length ? `🥣 무엇을 먹이시겠습니까? "/먹이기 ${has[0]}"처럼 적으십시오. 가진 것은 ${has.slice(0, 6).join(' · ')}입니다.`
+                              : '🥣 먹일 것이 없습니다.');
     return false;
   }
   // ★★**정본 하나로 먹인다.** `doEat` 에 대상 인자를 더했다(기본값 = 자기 자신) ⇒
@@ -243,8 +243,8 @@ function feed(rescuer, word, now, pid) {
   const before = { hunger: target.hunger, thirst: target.thirst };
   H.doEat(rescuer, item, 1, target);
   const ko = _labels()[item] || item;
-  _send(rescuer, `🥣 ${target.name}에게 ${ko}을(를) 먹였다 — 배고픔 ${Math.round(before.hunger)} → ${Math.round(target.hunger)}`);
-  _send(target, `🥣 ${rescuer.name}님이 ${ko}을(를) 먹여 주었다`);
+  _send(rescuer, `🥣 ${target.name}에게 ${ko}을(를) 먹였습니다(배고픔 ${Math.round(before.hunger)}에서 ${Math.round(target.hunger)}).`);
+  _send(target, `🥣 ${rescuer.name}님이 ${ko}을(를) 먹여 주었습니다.`);
   return true;
 }
 
@@ -253,11 +253,11 @@ function _fresh() { if (_F === undefined) { try { _F = require('./tidal').FRESH 
 function water(rescuer, now, pid) {
   const t = Number.isFinite(now) ? now : Date.now();
   const target = _pickTarget(rescuer, pid);
-  if (!target) { _send(rescuer, `💧 옆에 쓰러진 사람이 없다 — ${H.RESCUE_RANGE_PX || 80}px 안에서`); return false; }
-  if (!_windowOpen(target, t)) { _send(rescuer, '💧 너무 늦었다 — 구조 가능 시간이 지났다'); return false; }
+  if (!target) { _send(rescuer, `💧 곁에 쓰러진 사람이 없습니다. 쓰러진 사람 바로 옆에서 하십시오.`); return false; }
+  if (!_windowOpen(target, t)) { _send(rescuer, '💧 너무 늦었습니다. 살릴 수 있는 때가 지났습니다.'); return false; }
   const MAX = H.THIRST_MAX || 100;
   const before = target.thirst;
-  if (before >= MAX) { _send(rescuer, '💧 이미 충분히 마셨다'); return false; }
+  if (before >= MAX) { _send(rescuer, '💧 이미 넉넉히 마셨습니다.'); return false; }
   // ── ⓐ **들고 온 물이 먼저다** [T54 가 민물 휴대를 열었다] ─────────────────
   //   물은 이제 그릇에 담긴다(`fresh_water`). 그러면 이 동사는 **먹이기와 같은 일**이 되므로
   //   같은 문 하나로 보낸다 — 회복량도 그릇 반납도 `doEat` 이 표대로 한다(여기서 안 짠다).
@@ -268,8 +268,8 @@ function water(rescuer, now, pid) {
   const F = _fresh();
   if (F && (rescuer.inventory && (rescuer.inventory[F] || 0) >= 1)) {
     H.doEat(rescuer, F, 1, target);
-    _send(rescuer, `💧 ${target.name}에게 물을 먹였다 — 목마름 ${Math.round(before)} → ${Math.round(target.thirst)}`);
-    _send(target, `💧 ${rescuer.name}님이 물을 먹여 주었다`);
+    _send(rescuer, `💧 ${target.name}에게 물을 먹였습니다(목마름 ${Math.round(before)}에서 ${Math.round(target.thirst)}).`);
+    _send(target, `💧 ${rescuer.name}님이 물을 먹여 주었습니다.`);
     return true;
   }
   // ── ⓑ 손이 비었으면 **물가에서 손으로 떠 먹인다** ─────────────────────────
@@ -277,13 +277,13 @@ function water(rescuer, now, pid) {
   //   물가로 옮기게 된다** — §12 의 "불가로 옮기기"가 그 자리다.
   if (!freshWaterNear(rescuer.x, rescuer.y)) {
     _send(rescuer, seaOnlyNear(rescuer.x, rescuer.y)
-      ? '🌊 짠물이다 — 먹이면 더 마르게 할 뿐이다. 강·호수·샘으로 업고 가라'
-      : '💧 물도 그릇도 없다 — 민물을 떠 오거나, 강·호수·샘 옆으로 업고 가라');
+      ? '🌊 짠물입니다. 먹이면 목이 더 마를 뿐입니다. 강이나 호수, 샘으로 업고 가십시오.'
+      : '💧 물도 그릇도 없습니다. 민물을 떠 오거나 강이나 호수, 샘 옆으로 업고 가십시오.');
     return false;
   }
   target.thirst = Math.min(MAX, before + (H.WATER_DRINK_AMOUNT || 35));
-  _send(rescuer, `💧 ${target.name}의 입에 물을 떠 넣었다 — 목마름 ${Math.round(before)} → ${Math.round(target.thirst)}`);
-  _send(target, `💧 ${rescuer.name}님이 물을 먹여 주었다`);
+  _send(rescuer, `💧 ${target.name}의 입에 물을 떠 넣었습니다(목마름 ${Math.round(before)}에서 ${Math.round(target.thirst)}).`);
+  _send(target, `💧 ${rescuer.name}님이 물을 먹여 주었습니다.`);
   try { if (H.afterVerb) H.afterVerb(target); } catch (e) {}
   return true;
 }

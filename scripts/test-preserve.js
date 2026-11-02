@@ -197,7 +197,7 @@ function giveAged(p, item, n, ageDays) {
       giveAged(p, SPOIL_ITEM, 3, age);
       p.hunger = 0; Body.ensure(p).injury = 0;
       H.doEat(p, SPOIL_ITEM, 1);
-      if (i === 0) pre(/섭취/.test(lastNote(p)), '★그리고 **실제로 먹었다**(행동의 성사를 독립적으로 센다)', lastNote(p).slice(0, 40));
+      if (i === 0) pre(/먹었습니다/.test(lastNote(p)), '★그리고 **실제로 먹었다**(행동의 성사를 독립적으로 센다)', lastNote(p).slice(0, 40));
       hun.push(+p.hunger.toFixed(6)); inj.push(+Body.ensure(p).injury.toFixed(6));
       sickP.push(+(((Body.ensure(p).sick || {}).P) || 0).toFixed(6));
     }
@@ -218,7 +218,7 @@ function giveAged(p, item, n, ageDays) {
     ok(p.hp === hp0 && b.injury === before, '★★②ⓓ 먹는 자리에선 **HP 도 부상도 안 움직인다** — 잠복(배탈 지수 P 만 선다)', `HP ${hp0}→${p.hp} · 부상 ${before}→${b.injury}`);
     ok(!!b.sick && b.sick.P > 0 && !(b.sick.B > 0), '★②ⓓ 새 칸 하나 — 몸의 배탈 칸 `sick`(P > 0 · B = 0 · 처음 먹을 때 선다)', JSON.stringify(b.sick && { P: b.sick.P, B: b.sick.B }));
     ok(Body.effects(p).moveMult === mv0, '★②ⓓ 걸음은 그대로다(배탈은 체력 축 하나 — 부상 곡선을 안 탄다)', `${mv0} → ${Body.effects(p).moveMult}`);
-    ok(!/탈이 났다/.test(lastNote(p)) && /섭취/.test(lastNote(p)), '★②ⓓ 화면은 먹은 것만 말한다(잠복 — 먹는 자리의 "탈이 났다" 없음)', lastNote(p).slice(0, 50));
+    ok(!/탈이 나서/.test(lastNote(p)) && /먹었습니다/.test(lastNote(p)), '★②ⓓ 화면은 먹은 것만 말한다(잠복 — 먹는 자리의 "탈이 났다" 없음)', lastNote(p).slice(0, 50));
     // 잠복 뒤 — 그 양의 앓기 시작 시각(`sick.course` 의 닫힌 해)보다 반 시간 더 몸 틱을 민다(게임 시간 = 이 존의 하루 길이)
     const c = Sick.course(b.sick.P, 48, 1 / 60);
     pre(c.onsetH > 0, '이 양은 문턱을 넘는다(안 앓는 양이면 아래가 자명 통과)', `독 ${b.sick.P} · 앓기 시작 ${c.onsetH}시간`);
@@ -430,7 +430,7 @@ function giveAged(p, item, n, ageDays) {
     pre(Spoil.bestOf('fish', Lots.of(p, 'fish'), H.zoneGameDay()) === 0, '가진 생선이 전부 상함이다');
     const g1 = H._spoiledGuardItems(p, ['fish']);
     const g2 = H._spoiledGuardRes(p, 'fish');
-    ok(!!g1 && /상했다/.test(g1), '★★⑤ⓒ 게시판 납품 — 상한 것은 **거절**한다(조용히 0 아님)', String(g1).slice(0, 46));
+    ok(!!g1 && /상했습니다/.test(g1), '★★⑤ⓒ 게시판 납품 — 상한 것은 **거절**한다(조용히 0 아님)', String(g1).slice(0, 46));
     ok(!!g2, '★★⑤ⓒ 거래소도 **같은 판정**을 쓴다(판정 두 벌 금지)', String(g2).slice(0, 46));
     const clean = mkPlayer('ok2', {}); giveAged(clean, 'fish', 3, 0);
     ok(H._spoiledGuardItems(clean, ['fish']) === null, '★⑤ⓒ 성한 것은 안 막는다(위양성 0)');

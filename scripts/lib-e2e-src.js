@@ -58,10 +58,10 @@ SECTIONS.guild = function (ok, S) {
   const gj = codeOnly(S('server/guild.js'));
   //   ⚠**받는 쪽 문장**만 센다. 청한 쪽에게 하는 말("…에게 벗이 되자고 청했다")은 다른 문장이라
   //     그것까지 세면 초록이 될 길이 없다(초안이 여기서 2를 봤다).
-  ok((fj.match(/이\(가\) 벗이 되자고 청했다/g) || []).length === 1, '★⑥i 친구 청함 문장은 **한 자리**다(`askedLine`)',
-     (fj.match(/이\(가\) 벗이 되자고 청했다/g) || []).length);
-  ok((gj.match(/자네를 부른다/g) || []).length === 1, '★⑥i2 길드 부름 문장도 **한 자리**다(`calledLine`)',
-     (gj.match(/자네를 부른다/g) || []).length);
+  ok((fj.match(/님이 벗이 되자고 청했습니다/g) || []).length === 1, '★⑥i 친구 청함 문장은 **한 자리**다(`askedLine`)',
+     (fj.match(/님이 벗이 되자고 청했습니다/g) || []).length);
+  ok((gj.match(/당신을 부릅니다/g) || []).length === 1, '★⑥i2 길드 부름 문장도 **한 자리**다(`calledLine`)',
+     (gj.match(/당신을 부릅니다/g) || []).length);
 };
 
 // ── friends — `e2e-friends` ⑦ 소스 — 1비트가 낱말이 되고, 로비는 다시 세지 않는다(야간 B)

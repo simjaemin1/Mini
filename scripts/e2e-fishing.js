@@ -211,7 +211,7 @@ function pickRiverSpot() {
   ok(stWait && Math.hypot(stWait.lx - spot.x, stWait.ly - spot.y) < 200,
     '★★② 서버가 고른 자리가 **의도한 그 물**이다 = 워프가 실제로 먹혔다',
     stWait ? `${Math.round(Math.hypot(stWait.lx - spot.x, stWait.ly - spot.y))}px` : 'X');
-  ok(notes1.some((t) => /던졌다/.test(t)), '★② 던졌다는 알림이 화면에 온다');
+  ok(notes1.some((t) => /던졌습니다/.test(t)), '★② 던졌다는 알림이 화면에 온다');
 
   ok(!!bit, '★★③ 기다리면 **입질이 온다**(서버가 정한 시각에 상태가 바뀐다)', bit ? `창 ${bit.windowMs}ms` : '시간 초과');
   ok(!!(bit && bit.windowMs > 0), '★③ 창 폭을 **서버가** 실어 보낸다(클라가 지어내지 않는다)', bit ? `${bit.windowMs}ms` : 'X');
@@ -237,7 +237,7 @@ function pickRiverSpot() {
   await sleep((bit2 ? bit2.windowMs : 3000) + 1600);   // 창을 **그냥 지나친다**
   const notes3 = await page.evaluate(() => (window.__notices || []).slice(-4));
   const stMiss = await page.evaluate(() => window.__fishState || null);
-  ok(notes3.some((t) => /놓쳤다/.test(t)), '★★⑤ 창을 지나치면 **놓친다**(서버가 알아서 거둔다)', JSON.stringify(notes3.slice(-1)));
+  ok(notes3.some((t) => /놓쳤습니다/.test(t)), '★★⑤ 창을 지나치면 **놓친다**(서버가 알아서 거둔다)', JSON.stringify(notes3.slice(-1)));
   ok(stMiss === null, '★⑤ 놓치면 찌가 사라진다');
   ok(!(await page.evaluate(() => window.__fishLast)), '★⑤ 놓쳤으면 물고기는 안 들어온다');
   await snap('fi-05-missed');
@@ -249,7 +249,7 @@ function pickRiverSpot() {
   await page.keyboard.press('Shift+KeyF');
   await sleep(1200);
   const notes4 = await page.evaluate(() => (window.__notices || []).slice(-3));
-  ok(notes4.some((t) => /물에 닿지 않는다|물가로/.test(t)), '★⑥ 물에서 멀면 **서버가 거절**한다', JSON.stringify(notes4.slice(-1)));
+  ok(notes4.some((t) => /물에 닿지 않습니다|물가로/.test(t)), '★⑥ 물에서 멀면 **서버가 거절**한다', JSON.stringify(notes4.slice(-1)));
 
   // ── ⑦ **손맛은 눈으로 확인한다** — 찌가 화면에 실제로 그려지는가 ───────────
   //   ★상태만 보면 안 된다. 이 레포가 배치 5 에서 배운 것: 계약이 다 맞는데 화면에 없을 수 있다.

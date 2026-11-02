@@ -55,24 +55,24 @@ function handleChat(player, text) {
   const isCmd = t.startsWith('/초대') || t.startsWith('/수락') || t.startsWith('/소개') || t.startsWith('/마을') || t.startsWith('/길드');
   if (!isCmd) return false;
   const say = (m) => { try { if (H && H.send && player.ws) H.send(player.ws, { type: 'notice', text: m, kind: 'guild' }); } catch (e) {} };
-  if (!ready()) { say('마을 일은 지금 물어볼 수 없다'); return true; }
+  if (!ready()) { say('지금은 마을 일을 물어볼 수 없습니다.'); return true; }
   const me = player.playerId;
-  if (!me) { say('손님은 아직 마을 일을 다룰 수 없다'); return true; }
+  if (!me) { say('손님은 아직 마을 일을 다룰 수 없습니다.'); return true; }
 
   if (t.startsWith('/초대')) {
     const name = t.slice('/초대'.length).trim();
     if (!name) { say('누구를 부르는가 — `/초대 <이름>`'); return true; }
     H.central.tribeInvite(me, name).then((r) => {
       if (!r || !r.ok) {
-        say(r && r.reason === 'no_such_name' ? `'${name}' 은 없는 이름이다`
-          : r && r.reason === 'not_in_tribe' ? '마을 사람만 부를 수 있다'
-          : r && r.reason === 'already_member' ? `${name} 은(는) 이미 우리 마을 사람이다`
-          : r && r.reason === 'in_other_tribe' ? `${name} 은(는) 다른 마을 사람이다 — 먼저 나와야 한다`
-          : r && r.reason === 'self' ? '자기 자신은 못 부른다'
+        say(r && r.reason === 'no_such_name' ? `'${name}'은(는) 없는 이름입니다.`
+          : r && r.reason === 'not_in_tribe' ? '마을 사람만 부를 수 있습니다.'
+          : r && r.reason === 'already_member' ? `${name} 님은 이미 우리 마을 사람입니다.`
+          : r && r.reason === 'in_other_tribe' ? `${name} 님은 다른 마을 사람입니다. 먼저 그 마을에서 나와야 합니다.`
+          : r && r.reason === 'self' ? '자기 자신은 부를 수 없습니다.'
           : '지금은 못 불렀다 — 잠시 뒤 다시');
         return;
       }
-      say(`${r.name} 을(를) [${r.tribe}] 로 불렀다 — 상대가 \`/수락\` 하면 든다`);
+      say(`${r.name} 님을 ${r.tribe}(으)로 불렀습니다. 상대가 \`/수락\`이라고 적으면 마을에 듭니다.`);
       if (H.tellPlayer) H.tellPlayer(r.player_id, calledLine(r.tribe), 'guild');
     }).catch(() => say('지금은 못 불렀다 — 잠시 뒤 다시'));
     return true;
@@ -88,19 +88,19 @@ function handleChat(player, text) {
     const go = (tribeId) => {
       H.central.tribeInviteAccept(me, tribeId).then((r) => {
         if (!r || !r.ok) {
-          say(r && r.reason === 'no_invite' ? '자네를 부른 마을이 없다'
+          say(r && r.reason === 'no_invite' ? '당신을 부른 마을이 없습니다.'
             : r && r.reason === 'already_in_tribe' ? '이미 마을 사람이다 — 먼저 `/탈퇴`'
             : '지금은 못 들었다 — 잠시 뒤 다시');
           return;
         }
-        say(`[${r.name}] 에 들었다${(r.more | 0) > 0 ? ` (다른 부름 ${r.more}건은 지웠다)` : ''}`);
+        say(`${r.name}에 들었습니다.${(r.more | 0) > 0 ? ` 다른 부름 ${r.more}건은 지웠습니다.` : ''}`);
         if (H.refreshTribe) H.refreshTribe(me);
       }).catch(() => say('지금은 못 들었다 — 잠시 뒤 다시'));
     };
     if (!want) { go(null); return true; }        // 안 고르면 종전 그대로(가장 최근)
     H.central.tribeInvites(me).then((r) => {
       const list = (r && r.ok && Array.isArray(r.invites)) ? r.invites : [];
-      if (!list.length) { say('자네를 부른 마을이 없다'); return; }
+      if (!list.length) { say('당신을 부른 마을이 없습니다.'); return; }
       const pick = list.find((x) => String(x.name || '').trim() === want);
       if (!pick) { say(`[${want}] 은(는) 자네를 부르지 않았다 — 부른 곳: ${list.map((x) => `[${x.name}]`).join(' ')}`); return; }
       go(pick.tribe_id);
@@ -115,12 +115,12 @@ function handleChat(player, text) {
     if (arg !== '초대제' && arg !== '공개') { say('마을의 문 — `/마을 초대제` 또는 `/마을 공개`'); return true; }
     H.central.tribeMode(me, arg === '초대제' ? 'invite' : 'open').then((r) => {
       if (!r || !r.ok) {
-        say(r && r.reason === 'not_leader' ? '촌장만 문을 걸 수 있다'
-          : r && r.reason === 'not_in_tribe' ? '마을 사람만 쓸 수 있다'
+        say(r && r.reason === 'not_leader' ? '촌장만 드는 문을 정할 수 있습니다.'
+          : r && r.reason === 'not_in_tribe' ? '마을 사람만 쓸 수 있습니다.'
           : '지금은 못 바꿨다 — 잠시 뒤 다시');
         return;
       }
-      say(r.mode === 'invite' ? `[${r.name}] 은 이제 **부름을 받아야** 든다` : `[${r.name}] 은 이제 아무나 들 수 있다`);
+      say(r.mode === 'invite' ? `${r.name}은(는) 이제 **부름을 받아야** 들 수 있습니다.` : `${r.name}은(는) 이제 아무나 들 수 있습니다.`);
     }).catch(() => say('지금은 못 바꿨다 — 잠시 뒤 다시'));
     return true;
   }
@@ -130,13 +130,13 @@ function handleChat(player, text) {
     const line = t.slice('/소개'.length).trim();
     H.central.tribeIntro(me, line).then((r) => {
       if (!r || !r.ok) {
-        say(r && r.reason === 'not_leader' ? '촌장만 소개를 쓸 수 있다'
-          : r && r.reason === 'not_in_tribe' ? '마을 사람만 쓸 수 있다'
+        say(r && r.reason === 'not_leader' ? '촌장만 소개를 쓸 수 있습니다.'
+          : r && r.reason === 'not_in_tribe' ? '마을 사람만 쓸 수 있습니다.'
           : '지금은 못 썼다 — 잠시 뒤 다시');
         return;
       }
       _introBust();                       // ★그 자리에서 비운다 — 다음 시작 화면이 새 문장을 본다
-      say(r.intro ? `[${r.name}] 소개를 적었다 — "${r.intro}"` : `[${r.name}] 소개를 지웠다`);
+      say(r.intro ? `${r.name} 소개를 적었습니다. "${r.intro}"` : `${r.name} 소개를 지웠습니다.`);
     }).catch(() => say('지금은 못 썼다 — 잠시 뒤 다시'));
     return true;
   }
@@ -145,7 +145,7 @@ function handleChat(player, text) {
 // ★★[T139 2026-09-06] **부름 알림함** — 그 자리에서 하는 말과 다음 접속에 밀린 말이 **같은 문장**이다.
 //   둘을 따로 쓰면 그게 사본이고, 한쪽만 고쳐지는 날이 온다(친구 쪽 `askedLine` 과 같은 규약).
 function calledLine(tribeName) {
-  return `[${tribeName}] 이(가) 자네를 부른다 — \`/수락\` 하면 든다`;
+  return `${tribeName}에서 당신을 부릅니다. \`/수락\`이라고 적으면 마을에 듭니다.`;
 }
 /**
  * 밀린 길드 부름 — 로그인 때 세울 줄들. `[{ text, kind }]` · **최근 것이 먼저**(central 이 `at DESC`).

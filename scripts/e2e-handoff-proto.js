@@ -137,7 +137,7 @@ async function runCase(tag, envOf, chromium, C) {
   console.log('\n[ⓟ 규약 판 다름]');
   { const x = R.proto;
     ok(x.up && x.reached, 'ⓒ ⓟ 걸음이 선에 닿았다(서버 권위 · 선 32px 안)', `선 넘은 서버 x ${x.maxOver}`);
-    ok(x.notices.some((t) => /판이 다르다/.test(t)), 'ⓟ ★사람이 알림을 받는다 — "서버 판이 다르다"', x.notices[0] || '(없음)');
+    ok(x.notices.some((t) => /판이 다릅니다/.test(t)), 'ⓟ ★사람이 알림을 받는다 — "서버 판이 다르다"', x.notices[0] || '(없음)');
     ok(x.z === 'hanbando' && x.handoffMsgs === 0, 'ⓟ ★유령 0 — 클라에 handoff 가 안 왔고 주 존은 한반도 그대로', `주 존 ${x.z} · handoff ${x.handoffMsgs}`);
     ok(cnt(L(x, 'hanbando'), /✗ 넘기 실패 → nippon .*까닭=규약/g) > 0 && cnt(L(x, 'nippon'), /✗ handoff_prepare 규약 판 다름/g) > 0, 'ⓟ 두 존 로그 한 줄씩이 까닭을 말한다(보낸 쪽 `까닭=규약` · 받는 쪽 "규약 판 다름")');
     ok(cnt(L(x, 'hanbando'), /ACK timeout/g) === 0, 'ⓟ ACK timeout 0(몸을 지우지 않았다)');

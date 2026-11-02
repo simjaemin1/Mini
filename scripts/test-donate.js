@@ -202,13 +202,13 @@ ok(KNOB.on === true && KNOB.mOn === true, "다른 값('true')도 켬 — 끄는 
 ok(!ON.errs.length && !OFF.errs.length && !KNOB.errs.length, '하위 실행 오류 0', JSON.stringify({ on: ON.errs, off: OFF.errs, t: KNOB.errs }).slice(0, 300));
 
 console.log('\n② 기부 문 셋(회관 · `/기부` · 거래소 패널) · 누구나 · 받는 것 없음');
-ok(ON.hall.stockUp > 0 && ON.hall.invLeft === 0 && /기부했다/.test(ON.hall.note) && /받는 것 없음/.test(ON.hall.note),
+ok(ON.hall.stockUp > 0 && ON.hall.invLeft === 0 && /내놓았습니다/.test(ON.hall.note) && /대가는 없습니다/.test(ON.hall.note),
   '★비관리자 회관 기부 ok — 곳간이 늘고 손이 비었다 · "기부했다 … 받는 것 없음"', `${ON.hall.stockUp} · ${ON.hall.note}`);
-ok(ON.chatKey === true && ON.npc.stockUp > 0 && ON.npc.invLeft === 1 && /기부했다/.test(ON.npc.note),
+ok(ON.chatKey === true && ON.npc.stockUp > 0 && ON.npc.invLeft === 1 && /내놓았습니다/.test(ON.npc.note),
   '★NPC 마을 `/기부 wood 3` ok — 3 낸다(1 남음) · 곳간이 는다', `${ON.npc.stockUp} · 남음 ${ON.npc.invLeft} · ${ON.npc.note}`);
 ok(ON.chatKo === true && ON.npcKo.stockUp > 0 && ON.npcKo.invLeft === 0, `우리말 품목 이름 \`/기부 ${ON.woodKo} 1\` 도 같은 풀이(\`/곳간\` 의 표 — 사본 0)`, `${ON.npcKo.stockUp} · ${ON.npcKo.note}`);
 ok(ON.panel.stockUp > 0 && ON.panel.invLeft === 0, '거래소 패널의 기부 메시지(`village_donate`) ok', `${ON.panel.stockUp} · ${ON.panel.note}`);
-ok(ON.far.stockUp === 0 && /멀|가까이|떨어/.test(ON.far.note), '먼 곳은 거절 — 게시판과 같은 근접 게이트', ON.far.note);
+ok(ON.far.stockUp === 0 && /멀|멉|가까이|떨어/.test(ON.far.note), '먼 곳은 거절 — 게시판과 같은 근접 게이트', ON.far.note);
 
 console.log('\n③ 기여 — 기부는 계량기를 안 올린다');
 ok(ON.contrib.p1 === 0 && ON.contrib.p2 === 0, '★기부한 두 사람의 기여 0 그대로', JSON.stringify(ON.contrib));
@@ -216,7 +216,7 @@ ok(ON.contribCtrl === 1, '대조 — 게시판 납품 훅(`Onboarding.onDeliver`
 
 console.log('\n④ 꺼내기 = 촌장만(한도 없음)');
 ok(ON.wdP1.took === 0 && /촌장/.test(ON.wdP1.note), '★비관리자 꺼내기 거절', ON.wdP1.note);
-ok(ON.wdC1.took === 5 && ON.wdC2.took === 5 && /한도 없음/.test(ON.wdC1.note), '★촌장(창설자) 꺼내기 ok — 같은 날 5 · 5(하루 몫 없음)', `${ON.wdC1.took} · ${ON.wdC2.took} · ${ON.wdC1.note}`);
+ok(ON.wdC1.took === 5 && ON.wdC2.took === 5 && /한도가 없습니다/.test(ON.wdC1.note), '★촌장(창설자) 꺼내기 ok — 같은 날 5 · 5(하루 몫 없음)', `${ON.wdC1.took} · ${ON.wdC2.took} · ${ON.wdC1.note}`);
 ok(ON.sync.prom === false && ON.sync.took > 0, '창설자 촌장 판정은 그 자리에서 선다(동기 — 기다림 0)', JSON.stringify(ON.sync));
 ok(ON.accept.ok && ON.wdM.member && ON.wdM.took === 0 && /촌장/.test(ON.wdM.note), '★마을 사람(촌장 아님) 꺼내기 거절 — 소속은 그대로', ON.wdM.note);
 ok(ON.acceptNote.r === true && /오늘부터 자네는/.test(ON.acceptNote.note) && !/곳간을 열어|\/인출/.test(ON.acceptNote.note), '마을 사람에게 "곳간을 열어 두겠네(/인출)" 말이 안 간다(걷음)', ON.acceptNote.note);
@@ -236,9 +236,9 @@ if (ON.kin) ok(ON.wdG.prom === false && ON.wdX.prom === false && ON.wdG2.prom ==
 else ok(ON.wdG.prom === true && ON.wdX.prom === false && ON.wdG2.prom === false && ON.wdG2.took > 0 && ON.cAsk === 2,
   '길드 촌장 — 캐시가 비면 central 을 묻고 그 뒤(비동기) · 캐시 창(`GRAN_TTL_MS`) 안이면 그 자리에서 · 묻는 수 = 빈 캐시 둘(77 · 78)',
   `묻기 ${ON.cAsk} · 첫 ${ON.wdG.prom} · 남 ${ON.wdX.prom} · 둘째 ${ON.wdG2.prom}/${ON.wdG2.took}`);
-ok(ON.wdN.took === 0 && /사람이 꺼내지 않는다/.test(ON.wdN.note), 'NPC 마을 = 사람 꺼내기 0', ON.wdN.note);
-ok(ON.lock.r === true && /촌장만 꺼낸다/.test(ON.lock.note), '`/곳간 잠금` 은 한 줄로 답한다(길드 곳간 잠금 걷음)', ON.lock.note);
-ok(/꺼내기는 촌장만/.test(ON.look.note) && /기부는 누구나/.test(ON.look.note) && !/남은 몫|누적 기여/.test(ON.look.note), '`/곳간` 형편 한 줄 — 한도 말 없음 · 기부 꼬리', ON.look.note);
+ok(ON.wdN.took === 0 && /사람이 열지 않습니다/.test(ON.wdN.note), 'NPC 마을 = 사람 꺼내기 0', ON.wdN.note);
+ok(ON.lock.r === true && /촌장만 열 수 있습니다/.test(ON.lock.note), '`/곳간 잠금` 은 한 줄로 답한다(길드 곳간 잠금 걷음)', ON.lock.note);
+ok(/꺼내는 것은 촌장만/.test(ON.look.note) && /내놓는 것은 누구나/.test(ON.look.note) && !/남은 몫|누적 기여/.test(ON.look.note), '`/곳간` 형편 한 줄 — 한도 말 없음 · 기부 꼬리', ON.look.note);
 ok(ON.chatWd.took === 2 && ON.chatWd2.took === 3, '채팅 꺼내기(촌장 `/곳간 food 2` · `/인출 3`) — 같은 촌장 문 · 같은 뒷정리', `${ON.chatWd.took} · ${ON.chatWd2.took} · ${ON.chatWd2.note}`);
 ok(ON.chatWdM.took === 0 && /촌장/.test(ON.chatWdM.note), '마을 사람의 `/인출` 도 촌장 문에서 막힌다(옛 "오늘 몫" 갈래 없음)', ON.chatWdM.note);
 
@@ -246,7 +246,7 @@ console.log('\n⑤ 겨울 프로젝트 없음(T779 걷음) — 손잡이와 상�
 for (const [tag, z] of [['켬', ON], ['끔', OFF]]) {
   ok(z.winterFile === false && z.winterReq === 'MODULE_NOT_FOUND', `[${tag}] ★\`server/winter.js\` 가 없다(불러도 못 찾는다)`, `${z.winterFile} · ${z.winterReq}`);
   ok(z.board && z.board.ok && !z.board.head, `[${tag}] ★게시판에 머리줄 칸이 없다(의뢰 · 소식 둘)`, JSON.stringify(z.board));
-  ok(z.deliver.foodReq === 0 && /의뢰/.test(z.deliver.err2 || '') && z.deliver.left2 === 5 && !z.deliver.winter2,
+  ok(z.deliver.foodReq === 0 && /부탁/.test(z.deliver.err2 || '') && z.deliver.left2 === 5 && !z.deliver.winter2,
     `[${tag}] ★의뢰 없는 곡식은 안 받는다 — 품목 미지정 납품이 겨울 몫을 고르지 않는다(손 5 그대로)`, JSON.stringify(z.deliver));
   ok(z.deliver.srcWinter === false && z.deliver.srcLedger === true,
     `[${tag}] 납품 본문 — 겨울 갈래 · 겨울 표지 0 · 품목 지정은 곧장 장부 정본(의뢰 납품 하나)`, `겨울 ${z.deliver.srcWinter} · 장부 ${z.deliver.srcLedger}`);
@@ -265,8 +265,8 @@ ok(OFF.chatKey === false && OFF.npc.stockUp === 0, '`/기부` 는 명령이 아�
 ok(OFF.panel.stockUp === 0, '`village_donate` 문이 닫혀 있다', String(OFF.panel.stockUp));
 ok(OFF.wdP1.took === 0 && OFF.wdM.took === 0 && OFF.wdC1.took === 5 && OFF.chatWd2.took === 3 && OFF.wdN.took === 0,
   '★꺼내기는 손잡이 밖 — 끔에서도 촌장만(비관리자 · 마을 사람 거절 · 창설자 5 · `/인출 3` · NPC 0)', `${OFF.wdP1.note} · ${OFF.wdM.note} · ${OFF.wdC1.took}`);
-ok(/꺼내기는 촌장만/.test(OFF.look.note) && !/기부/.test(OFF.look.note), '`/곳간` 형편 줄 — 기부 꼬리만 빠진다', OFF.look.note);
-ok(OFF.lock.r === true && /촌장만 꺼낸다/.test(OFF.lock.note) && OFF.cAsk === (OFF.kin ? ON.cAsk : 2), `\`/곳간 잠금\` 한 줄 · central 묻기도 켬 판과 같은 수(꺼내기 판정은 손잡이 밖${OFF.kin ? ' · ★[T809] 마을 한 무리 = 묻기 0' : ''})`, `${OFF.lock.note} · 묻기 ${OFF.cAsk} / 켬 ${ON.cAsk}`);
+ok(/꺼내는 것은 촌장만/.test(OFF.look.note) && !/기부/.test(OFF.look.note), '`/곳간` 형편 줄 — 기부 꼬리만 빠진다', OFF.look.note);
+ok(OFF.lock.r === true && /촌장만 열 수 있습니다/.test(OFF.lock.note) && OFF.cAsk === (OFF.kin ? ON.cAsk : 2), `\`/곳간 잠금\` 한 줄 · central 묻기도 켬 판과 같은 수(꺼내기 판정은 손잡이 밖${OFF.kin ? ' · ★[T809] 마을 한 무리 = 묻기 0' : ''})`, `${OFF.lock.note} · 묻기 ${OFF.cAsk} / 켬 ${ON.cAsk}`);
 ok(!/곳간을 열어|\/인출/.test(OFF.acceptNote.note) && /오늘부터 자네는/.test(OFF.acceptNote.note), '수락 말에 곳간 말 없음(걷음 — 끔에서도)', OFF.acceptNote.note);
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);

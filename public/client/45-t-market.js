@@ -36,7 +36,7 @@
     } catch (e) { console.error(e); }
   }
   async function placeOrder(side) {
-    if (!myUsername) { showNotice('로그인이 필요합니다 (게스트 거래소 사용 불가)'); return; }
+    if (!myUsername) { showNotice('로그인해야 합니다. 손님은 거래소를 쓸 수 없습니다.'); return; }
     const item = document.getElementById('marketItem').value;
     const amount = +document.getElementById('marketAmount').value || 1;
     const priceItem = item === 'wood' ? 'stone' : 'wood';

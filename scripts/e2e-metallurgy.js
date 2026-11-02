@@ -190,7 +190,7 @@ async function waitHttp(url, tries = 900) {
   await sleep(600);
   await snap('05-furnace-ghost');   // ★2×2 고스트가 커서 자리에 그려진 화면
   const place = await page.evaluate(() => ({
-    note: (window.__notices || []).some((t) => /터 배치/.test(t)),
+    note: (window.__notices || []).some((t) => /자리를 고르십시오/.test(t)),
     last: (window.__notices || []).slice(-3),
   }));
   console.log(`    배치 모드 알림: ${JSON.stringify(place.last)}`);
@@ -212,7 +212,7 @@ async function waitHttp(url, tries = 900) {
     const b = (window.__getAllWalls && []) || [];
     return (window.__notices || []).some((t) => /노 터|터 다지기/.test(t));
   });
-  const refusedKo = nt.some((t) => /사유지|재료|곡괭이|물·바위|멀어서/.test(t));
+  const refusedKo = nt.some((t) => /사유지|재료|곡괭이|물·바위|바위|멀어서/.test(t));
   ok(built || refusedKo, `노 배치 응답이 한국어 계약 메시지다 ${built ? '(착공)' : '(거부 사유 명시)'}`);
   ok(!nt.some((t) => /[a-z_]{3,}\s*\d|undefined|NaN/.test(t)), '알림에 영문 키·undefined·NaN 이 안 샌다');
 

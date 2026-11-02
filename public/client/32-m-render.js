@@ -220,6 +220,6 @@
     const elapsed = performance.now() - buildAction.startedAt;
     const pct = Math.min(100, (elapsed / buildAction.durationMs) * 100);
     el.querySelector('.bp-fill').style.width = pct.toFixed(1) + '%';
-    el.querySelector('.bp-text').textContent = buildAction.kind === 'place' ? '배치 중… (이동 시 취소)' : '분해 중… (이동 시 취소)';
+    el.querySelector('.bp-text').textContent = buildAction.kind === 'place' ? '놓는 중… (움직이면 그만둠)' : '허무는 중… (움직이면 그만둠)';
   }
 

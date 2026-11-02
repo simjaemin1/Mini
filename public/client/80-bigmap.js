@@ -281,7 +281,7 @@
       ctx.fillRect(dx, dy, dw, dh);
       if (zoom > 0.005) {
         ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText(r && r.st === 'fail' ? '(지도 없음 — 존에 못 닿음)' : '(지도 굽는 중)', dx + dw / 2, dy + dh / 2 + 16);
+        ctx.fillText(r && r.st === 'fail' ? '(지도 없음 · 지역에 못 닿음)' : '(지도 굽는 중)', dx + dw / 2, dy + dh / 2 + 16);
       }
     }
     // 강 중심선 — 표식(칸이 아니다). 존 사각형 밖으로 안 나가게 자른다(경계 걸침은 이웃이 제 목록으로 그린다).
@@ -598,7 +598,7 @@
       const zw = z.zoneWidth || 0, zh = z.zoneHeight || 0;
       if (wx >= zox && wx < zox + zw && wy >= zoy && wy < zoy + zh) {
         if (z.isOcean) {
-          alert('바다는 텔레포트 불가');
+          alert('바다로는 순간이동할 수 없습니다.');
           return;
         }
         targetZone = zid;

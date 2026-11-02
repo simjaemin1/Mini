@@ -98,13 +98,13 @@
       <div class="hint">슬롯 사용: 개인 ${counts.personal}/9 · 임시 ${counts.temporary}/4 · 마을 땅 ${counts.guild}/50</div>
       <div class="hint" style="font-size:11px;opacity:0.7;margin-bottom:10px">
         <b>C</b>=개인 사유지 (마을 땅 안만) · <b>T</b>=임시 (어디든) · <b>Shift+C</b>=마을 땅 (마을 사람만)<br/>
-        해제하면 슬롯 회수. 자원은 환불 안 됨. 다른 위치 가서 다시 설치 가능.
+        땅을 내놓으면 칸은 돌아오지만 들인 것은 돌려받지 못합니다. 다른 곳에 가서 다시 정할 수 있습니다.
       </div>
       <div class="inv-col-head">내 사유지 목록 (${my.length}개)</div>
       ${list}
     `;
     body.querySelectorAll('[data-unclaim]').forEach(btn => btn.onclick = () => {
-      if (!confirm('이 사유지를 해제하시겠습니까? (자원 환불 X)')) return;
+      if (!confirm('이 땅을 내놓으시겠습니까? 들인 것은 돌려받지 못합니다.')) return;
       sendPrimary({ type: 'unclaim', claimId: btn.dataset.unclaim });
       setTimeout(() => renderClaimsPanel(body), 200);
     });
@@ -508,7 +508,7 @@
           const _c = CROP_OF_SEED[item];
           const _ok = _c.sow && _c.sow.indexOf(cropSeasonNow()) >= 0;
           opts.push({
-            label: '' + _c.ko + ' 심기' + (_ok ? '' : ' (' + (_c.sow || []).map((x) => seasonKo(x)).join('·') + '에 심는다)'),
+            label: '' + _c.ko + ' 심기' + (_ok ? '' : ' (' + (_c.sow || []).map((x) => seasonKo(x)).join('·') + '에 심음)'),
             onClick: () => sendPrimary({ type: 'plant', crop: _c.id }),
           });
         }
@@ -616,7 +616,7 @@
         sendPrimary({ type: 'drop_item', item, amount: n });
         return;
       }
-      if (d.toolId) { showNotice('도구는 상자에 못 넣는다 — 바닥에만 내려놓을 수 있다'); return; }
+      if (d.toolId) { showNotice('도구는 상자에 넣을 수 없습니다. 바닥에만 내려놓을 수 있습니다.'); return; }
       // 상자 — ⚠개체 정체를 못 담는다(회부: 상자 원장). 수량만 간다.
       sendPrimary({ type: 'chest_put', buildingId: target, item, amount: (d.ids && d.ids.length) ? Math.min(n, d.ids.length) : n });
       return;
@@ -730,7 +730,7 @@
           ${cats.map(c => `<div class="craft-cat ${c.id===craftCat?'active':''}" data-cat="${c.id}">${c.label}</div>`).join('')}
         </div>
         <div class="craft-items">
-          ${craftCat === 'equip' ? equipmentSectionHtml() : craftCat === 'trade' ? tradeSectionHtml() : (items.length === 0 ? '<div style="color:var(--dim-2);padding:20px;text-align:center">레시피 없음</div>' : items.map(r => {
+          ${craftCat === 'equip' ? equipmentSectionHtml() : craftCat === 'trade' ? tradeSectionHtml() : (items.length === 0 ? '<div style="color:var(--dim-2);padding:20px;text-align:center">만들 수 있는 것이 없습니다.</div>' : items.map(r => {
             // need 체크
             const costOK = Object.entries(r.cost).every(([k,v]) => (inventory[k]||0) >= v);
             const hammerOK = !r.needHammer || hasToolAlive('hammer');
@@ -801,13 +801,13 @@
           <p style="margin:0 0 0 0">건축물에 마우스 hover 좌클릭 <b>3초 progress</b> 분해 (인벤 +1)</p>
         </div>
         <div style="background:var(--head);padding:10px;border-radius: 0;font-size:12px;color:var(--accent);margin-top:8px">
-          옛 즉시 빌드 시스템은 제거됨. 모든 건축물 = 제작인벤배치.
+          바로 짓기는 없어졌습니다. 모든 건물은 만들어서 짐에 넣은 뒤 놓습니다.
         </div>
         <!-- 터 잡기(다단계 건축) — 아래 JS 주석 참조. 노·숯가마·움집은 아이템이 아니라 '터'다. -->
         <div id="siteBuildBox" style="background:var(--head);padding:10px;border-radius: 0;font-size:12px;margin-top:8px">
-          <p style="margin:0 0 8px 0;color:var(--accent);font-weight:bold">터 잡기 (다단계 건축 — 자리부터 잡는다)</p>
+          <p style="margin:0 0 8px 0;color:var(--accent);font-weight:bold">터 잡기 (여러 단계로 짓는 건물 · 자리부터)</p>
           <div id="siteBuildList" style="display:flex;flex-direction:column;gap:6px"></div>
-          <p style="margin:8px 0 0 0;color:var(--dim-2)">자리를 잡은 뒤 자재를 들고 터를 클릭하면 다음 단계가 올라간다.</p>
+          <p style="margin:8px 0 0 0;color:var(--dim-2)">자리를 잡은 뒤 재료를 들고 터를 누르면 다음 단계가 올라갑니다.</p>
         </div>
       </div>`;
     // ★★[2026-08-02d 배치 5 ⑥ — 실클라 E2E 가 잡은 결함] 터 잡기(다단계 건축) 구획.
@@ -831,7 +831,7 @@
         b.onclick = () => { srcBtn.click(); closeSide(); };   // 정본 핸들러 호출 — 배치 모드 진입 후 패널을 비켜 준다
         list.appendChild(b);
       }
-      if (!list.children.length) list.innerHTML = '<span style="color:var(--dim-2)">(지금 잡을 수 있는 터가 없다)</span>';
+      if (!list.children.length) list.innerHTML = '<span style="color:var(--dim-2)">(지금 잡을 수 있는 터가 없습니다)</span>';
     }
     document.getElementById('buildToggleBtn').onclick = () => {
       buildMode = !buildMode;
@@ -890,7 +890,7 @@
       const need = inv.nextResidentAt;
       const have = (inv.nextResidentHave != null) ? inv.nextResidentHave : inv.foodEquiv;   // 서버가 준 정본 값(클라 재계산 0)
       h += `<div style="margin:0 10px 10px;padding:8px;background:var(--head);border:1px solid var(--line);border-radius: 0;color:var(--fg)">`
-        + `아직 아무도 살지 않는다. 곳간 <b>식량 ${need}</b>어치가 쌓이면 첫 주민이 깃든다`
+        + `아직 아무도 살지 않습니다. 곳간에 <b>먹을 것 ${need}</b>어치가 쌓이면 첫 주민이 깃듭니다.`
         + (need ? ` <span style="color:var(--dim-2)">(지금 <b data-pvi-have>${(+have).toFixed(1)}</b>)</span>` : '') + `.</div>`;
     }
     for (const g of (inv.groups || [])) {
@@ -914,7 +914,7 @@
     const _dn = !!inv.donate;
     h += `<div style="padding:6px 10px;border-top:1px solid var(--inset);color:var(--dim-2)">${_dn ? '곳간에 기부 (내 짐 · 받는 것 없음)' : '곳간에 넣기 (내 짐)'}</div>`;
     if (!mine.length) {
-      h += `<div style="padding:0 10px 8px;color:var(--dim-2);font-size:11px">${_dn ? '기부할 만한 걸 안 들고 있다.' : '넣을 만한 걸 안 들고 있다.'}</div>`;
+      h += `<div style="padding:0 10px 8px;color:var(--dim-2);font-size:11px">${_dn ? '내놓을 만한 것을 들고 있지 않습니다.' : '넣을 만한 것을 들고 있지 않습니다.'}</div>`;
     } else {
       h += `<div style="padding:0 10px 10px;display:flex;flex-wrap:wrap;gap:6px">`;
       for (const k of mine) {
@@ -931,8 +931,8 @@
         + `<div style="padding:0 10px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">`
         + `<button id="pviWel" style="padding:5px 9px;background:${w.on ? 'var(--line)' : 'var(--line)'};color:var(--fg);border:1px solid ${w.on ? 'var(--stam)' : 'var(--line)'};border-radius: 0;cursor:pointer;font-size:12px">`
         + `${w.on ? '받는 중 — 끄기' : '이방인 받기'}</button>`
-        + (w.listed ? `<span style="color:var(--dim);font-size:11px">시작 지도에 올라 있다</span>`
-                    : `<span style="color:var(--dim-2);font-size:11px">${w.on ? '아직 지도엔 안 오른다' : '지도에 없다'}</span>`)
+        + (w.listed ? `<span style="color:var(--dim);font-size:11px">시작 지도에 오름</span>`
+                    : `<span style="color:var(--dim-2);font-size:11px">${w.on ? '아직 지도에 안 오름' : '지도에 없음'}</span>`)
         + `</div>`;
       if (w.why && w.why.length) {
         h += `<div style="padding:0 10px 8px;color:var(--hp);font-size:11px">${esc(w.why.join(' · '))}</div>`;
@@ -940,7 +940,7 @@
       // ★[T62] 쉼터가 없으면 **여기서 바로 짓는다** — 새 패널 0, HUD 버튼 0(§8.2 를 안 건드린다)
       if (!w.shelter) h += `<div style="padding:0 10px 10px"><button id="pviShel" style="padding:5px 9px;background:var(--line);color:var(--fg);border:1px solid var(--line);border-radius: 0;cursor:pointer;font-size:12px">공용 쉼터 터 잡기</button></div>`;
     }
-    h += `<div style="padding:8px 10px;color:var(--dim-2);font-size:11px;border-top:1px solid var(--inset)">회관을 다시 클릭하면 갱신된다</div>`;
+    h += `<div style="padding:8px 10px;color:var(--dim-2);font-size:11px;border-top:1px solid var(--inset)">회관을 다시 누르면 새로 고칩니다.</div>`;
     el.innerHTML = h;
     const cl = document.getElementById('pviClose');
     if (cl) cl.onclick = () => { el.style.display = 'none'; };
@@ -950,7 +950,7 @@
     // ★[T62] 쉼터 착공 — 기존 배치 모드 그대로다(노·숯가마·회관과 같은 문법 · 새 동사 0)
     { const sb = document.getElementById('pviShel');
       if (sb) sb.onclick = () => { el.style.display = 'none'; buildMode = true; placementMode = { special: 'shelter_site' };
-        showNotice('공용 쉼터 터 배치 — 마을 영토 안 2×2 (기둥 6 → 서까래 8·풀 6 → 이엉 8 · B=취소)'); }; }
+        showNotice('공용 쉼터 자리를 마을 땅 안에서 고르십시오. 기둥, 서까래와 풀, 이엉 순서로 짓습니다. B를 누르면 그만둡니다.'); }; }
     for (const btn of el.querySelectorAll('[data-pvi-put]')) {
       btn.onclick = () => {
         const it = btn.getAttribute('data-pvi-put');
@@ -1017,6 +1017,6 @@
       const selEl = document.getElementById('mkSel');
       if (selEl) selEl.onchange = (e) => { _marketSel = e.target.value; renderMarketPanel(body); };
     }).catch(err => {
-      body.innerHTML = `<div style="padding:10px;color:var(--hp)">시세 로드 실패: ${err.message}</div>`;
+      body.innerHTML = `<div style="padding:10px;color:var(--hp)">시세를 불러오지 못했습니다(${err.message}).</div>`;
     });
   }

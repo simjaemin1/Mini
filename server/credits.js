@@ -40,7 +40,7 @@ function handleChat(send, player, text) {
   if (t !== '/크레딧' && !t.startsWith('/크레딧 ')) return false;
   const say = (m) => { try { send(player.ws, { type: 'notice', text: m }); } catch (e) {} };
   const lines = requiredLines();
-  if (!lines.length) { say('크레딧을 지금 못 읽었다'); return true; }
+  if (!lines.length) { say('지금은 만든 사람 목록을 읽지 못했습니다.'); return true; }
   for (const L of lines) say(L);
   return true;
 }

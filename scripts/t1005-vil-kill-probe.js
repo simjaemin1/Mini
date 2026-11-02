@@ -133,7 +133,7 @@ async function actMeal(a) {
   let down = false, moved = false;
   for (let i = 0; i < 600 && !moved; i++) { await sleep(500);
     if (a.self && a.self.isDown) down = true;
-    if (a.notices.some((t) => /쉼터로 옮겨진다|곳간이 비었다/.test(t))) moved = true; }
+    if (a.notices.some((t) => /쉼터로 옮겨집니다|곳간이 비어/.test(t))) moved = true; }
   const m1 = await look({});
   return { ok: moved, down, m0, m1, act: { food0: m0 && m0.food, food1: m1 && m1.food, note: (a.notices.filter((t) => /쉼터|곳간/.test(t)).slice(-1)[0] || '').slice(0, 60) } };
 }
@@ -191,7 +191,7 @@ async function actHouse(a) {
     tries++; const n0 = a.notices.length;
     send(a, { type: 'request_village_house', atX: c.x, atY: c.y }); await sleep(250);
     const t = a.notices.slice(n0).join(' | ');
-    if (/집 짓기를 의뢰했다/.test(t)) { done = c; break; }
+    if (/집 짓기를 맡겼습니다/.test(t)) { done = c; break; }
     if (tries >= 400) break;
   }
   await sleep(500);

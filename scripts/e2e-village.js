@@ -325,7 +325,7 @@ async function waitHttp(url, tries = 900) {
     const j = JSON.stringify(inv);
     ok(!/_cash/.test(j), '★재고 응답에 `_cash` 가 **값 차원에서** 없다(장부는 화면에 안 나온다)');
     const panelTxt = await page.evaluate(() => (document.getElementById('villageInvPanel') || {}).innerText || '');
-    ok(/아직 아무도 살지 않는다/.test(panelTxt), '★화면이 "빈 터"라고 말한다 — 소멸이 아니라 아직 시작 안 함');
+    ok(/아직 아무도 살지 않습니다/.test(panelTxt), '★화면이 "빈 터"라고 말한다 — 소멸이 아니라 아직 시작 안 함');
     ok(!/현금|cash/i.test(panelTxt), '화면에도 현금 항목이 없다');
   }
   await snap('06-inv-empty');
@@ -397,7 +397,7 @@ async function waitHttp(url, tries = 900) {
       //     그런데 이 자리엔 촌장 브리핑(근접만으로 나간다)이 먼저 도착할 수 있고, 그러면 거절이
       //     오기 **전에** 판정해서 빨개진다(실제로 그랬다: 마지막 알림이 "10일 만이군…" 이었다).
       //     제품은 정상이다 — 거절은 그 뒤에 온다. ⇒ **찾는 것이 올 때까지** 기다린다(읽기는 무해).
-      const _denied = (t) => /관리자가 아닙니다|우리 마을이 아닙니다|너무 멀리/.test(t);
+      const _denied = (t) => /관리자가 아닙니다|관리자가 아니어서|우리 마을이 아니어서|너무 멀리/.test(t);
       let nt3 = [];
       for (let i = 0; i < 25; i++) {
         await page2.evaluate((id) => window.__sendPrimary({ type: 'village_inventory', buildingId: id }), hall.id);
@@ -512,7 +512,7 @@ async function waitHttp(url, tries = 900) {
     {
       const wPre = await wdbg(true);
       const rPre = wPre && (wPre.villages || [])[0];
-      ok(!!rPre && rPre.shelter === false && (rPre.why || []).join().includes('잘 자리가 없다'),
+      ok(!!rPre && rPre.shelter === false && (rPre.why || []).join().includes('잘 자리가 없습니다'),
         `★[T62] ⓕ **쉼터가 없으면 자격이 안 선다** — ${rPre ? JSON.stringify(rPre.why) : '?'}`);
       // ★순서가 뜻을 갖는다: 쉼터를 **먼저** 짓는다. 짓는 동안 마을이 곳간을 먹으므로,
       //   곳간은 그 뒤에 채운다(둘 다여야 서는 자격을 한 번에 세우려면 이 순서뿐이다).

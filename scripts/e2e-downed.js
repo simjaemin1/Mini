@@ -232,7 +232,7 @@ async function waitHttp(url, tries = 600) {
     await snap('downed-01-fall');
 
     // ★★[T56] **소리가 먼저다.** B 는 아직 아무것도 안 했는데 화면이 먼저 말해야 한다.
-    const shout = (await notices(Bp)).filter((t) => /쓰러졌다/.test(t));
+    const shout = (await notices(Bp)).filter((t) => /쓰러졌습니다/.test(t));
     ok(shout.length > 0, '★★ⓓ **A 가 쓰러지자 B 화면에 외침이 뜬다** — 창 3분의 근거가 이제 있다',
       JSON.stringify(shout.slice(-1)));
     ok(/걸음/.test(shout[0] || '') && !/px|NaN|undefined/.test(shout[0] || ''),
@@ -256,7 +256,7 @@ async function waitHttp(url, tries = 600) {
       await clearNotices(Bp);
       await Bp.evaluate(() => { if (window.__downedCries) window.__downedCries.clear(); });
       await sleep(7000);                                   // 외침 주기 3초 × 2 회분
-      const outN = (await notices(Bp)).filter((t) => /쓰러졌다/.test(t));
+      const outN = (await notices(Bp)).filter((t) => /쓰러졌습니다/.test(t));
       const outC = await cries(Bp);
       const bFar = await absOf(Bp);
       pre(Math.hypot(bFar.x - ap0.x, bFar.y - ap0.y) > HEAR_R,
@@ -275,7 +275,7 @@ async function waitHttp(url, tries = 600) {
       await warp(Bp, ap0.x + Math.round(HEAR_R * 0.6), ap0.y);
       await clearNotices(Bp);
       await sleep(7000);
-      const inN = (await notices(Bp)).filter((t) => /쓰러졌다/.test(t));
+      const inN = (await notices(Bp)).filter((t) => /쓰러졌습니다/.test(t));
       const inC = await cries(Bp);
       const bNear = await absOf(Bp);
       pre(Math.hypot(bNear.x - ap0.x, bNear.y - ap0.y) < HEAR_R,
@@ -369,7 +369,7 @@ async function waitHttp(url, tries = 600) {
       await sleep(220);
     }
     await sleep(1200);
-    const fedN = (await notices(Bp)).filter((t) => /먹였다/.test(t));
+    const fedN = (await notices(Bp)).filter((t) => /먹였습니다/.test(t));
     ok(fedN.length > 0, '★★ⓓ **`/먹이기` 로 남을 먹인다**(새 패널 0 · 클라 무접촉 · T11 선례)',
       JSON.stringify(fedN.slice(-1)));
     const aBody = await A.evaluate(() => window.__bodyState || null);
@@ -380,7 +380,7 @@ async function waitHttp(url, tries = 600) {
     await Bp.evaluate(() => { const e = new KeyboardEvent('keydown', { key: 'r', bubbles: true }); window.dispatchEvent(e); document.dispatchEvent(e); });
     await sleep(1500);
     const bn = await notices(Bp);
-    ok(bn.some((t) => /업었다/.test(t)),
+    ok(bn.some((t) => /업었습니다/.test(t)),
       '★★ⓐ **R 한 번으로 낯선 이를 업는다**(클라 판정에서 길드 제한이 빠졌다)', JSON.stringify(bn.slice(-2)));
     ok(bn.some((t) => /상태 —/.test(t)), '★★ⓐ 그리고 **왜 쓰러졌는지 보인다**(§12 · 새 패널 0)',
       JSON.stringify(bn.filter((t) => /상태 —/.test(t))));
@@ -458,7 +458,7 @@ async function waitHttp(url, tries = 600) {
     ok(wNow < w0 && wNow > 0, '★★ⓑ **짐 일부를 두고 왔다**(kg 절반 · 무거운 것부터 — T83)',
       invAfter ? `wood ${w0} → ${wNow}` : '-');
     const an = await notices(A);
-    ok(an.some((t) => /짐은 쓰러진 자리|깨어났다/.test(t)), '★ⓑ 화면이 무슨 일이 났는지 말한다', JSON.stringify(an.slice(-2)));
+    ok(an.some((t) => /짐은 쓰러진 자리|깨어났습니다/.test(t)), '★ⓑ 화면이 무슨 일이 났는지 말한다', JSON.stringify(an.slice(-2)));
     await snap('downed-03-dead');
 
     // ── 짐 회수 원정 — 걸어가서 줍는다 ─────────────────────────────────────

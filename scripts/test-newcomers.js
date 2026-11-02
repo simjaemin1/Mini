@@ -164,7 +164,7 @@ console.log('\n③ 자격 셋 — 한 인자만 바꿔 답이 뒤집히는가');
   // ⓐ 쉼터 — 사람이 없다
   _vils.get(1).econ.npcs = [];
   const a1 = Newcomers.listable(1);
-  ok(!a1.ok && a1.why.join().includes('사람이 살지 않는다'), '③ⓐ 사람이 없으면 막힌다', JSON.stringify(a1.why));
+  ok(!a1.ok && a1.why.join().includes('사람이 살지 않습니다'), '③ⓐ 사람이 없으면 막힌다', JSON.stringify(a1.why));
   base();
   // ⓐ' 쉼터 — 곳간이 얇다
   _vils.get(1).econ.storage.food = 1;
@@ -174,14 +174,14 @@ console.log('\n③ 자격 셋 — 한 인자만 바꿔 답이 뒤집히는가');
   // ⓐ″ ★못 읽으면 **통과시키지 않는다** — NaN 이 조용히 지나가면 이 절 전체가 거짓이 된다
   delete _vils.get(1).econ.storage.fish;
   const a3 = Newcomers.listable(1);
-  ok(!a3.ok && a3.why.join().includes('곳간을 읽지 못했다') && a3.foodDays === null,
+  ok(!a3.ok && a3.why.join().includes('곳간을 읽지 못했습니다') && a3.foodDays === null,
     '③ⓐ″ ★곳간을 못 읽으면 막힌다 — `NaN < 3` 은 false 라 그냥 두면 자명 통과한다', JSON.stringify(a3.why));
   base();
   // ⓐ‴ ★★[T62] **쉼터가 없으면 막힌다** — §9.3 자격 첫 항이 이제 시설이다.
   //   T19 은 이 자리에 인구·자립일이라는 **대체 술어**만 뒀다(보고 T19 §0-ⓔ). 이제 둘 다다.
   _shelterNo.add(1);
   const a4 = Newcomers.listable(1);
-  ok(!a4.ok && a4.shelter === false && a4.why.join().includes('잘 자리가 없다'),
+  ok(!a4.ok && a4.shelter === false && a4.why.join().includes('잘 자리가 없습니다'),
     '③ⓐ‴ ★쉼터가 없으면 막힌다 — 지붕이 없는 마을은 이방인을 부를 수 없다', JSON.stringify(a4.why));
   _shelterNo.delete(1);
   const a5 = Newcomers.listable(1);
@@ -203,7 +203,7 @@ console.log('\n③ 자격 셋 — 한 인자만 바꿔 답이 뒤집히는가');
   // ⓒ 최근 활동
   remote(1, { vp: 0, idleDays: Newcomers.activeDays() + 0.5 });
   const c1 = Newcomers.listable(1);
-  ok(!c1.ok && c1.why.join().includes('안 온다'), '③ⓒ 촌장이 오래 안 오면 막힌다', JSON.stringify(c1.why));
+  ok(!c1.ok && c1.why.join().includes('오지 않습니다'), '③ⓒ 촌장이 오래 안 오면 막힌다', JSON.stringify(c1.why));
   remote(1, { vp: 0, idleDays: Newcomers.activeDays() - 0.5 });
   ok(Newcomers.listable(1).ok, '③ⓒ′ 문턱 바로 아래는 통과한다');
   base();
@@ -255,7 +255,7 @@ console.log('\n⑤ 권한 — 재고 열람과 **같은 술어**다');
   players.set(me.pid, me);
   H.tryVillageWelcome(me, hall.id, true);
   const last = msgs.filter((m) => m.type === 'notice').slice(-1)[0];
-  ok(!Newcomers.isOn(3) && last && (require('../server/village-kin').ON ? /촌장만 할 수 있다/ : /관리자가 아닙니다/).test(last.text),   // ★[T787] 켬 기본 — 이방인 받기는 촌장 문(T786 C18)
+  ok(!Newcomers.isOn(3) && last && (require('../server/village-kin').ON ? /촌장만 할 수 있습니다/ : /관리자가 아닙니다/).test(last.text),   // ★[T787] 켬 기본 — 이방인 받기는 촌장 문(T786 C18)
     '⑤ 남의 마을 회관은 못 켠다 — 거절이 말뿐이 아니다', JSON.stringify(last && last.text));
 }
 
@@ -265,7 +265,7 @@ console.log('\n⑥ 도착 지점 — 이방인이 내릴 자리가 있어야 오
   remote(1, { vp: 0, idleDays: 1 });
   _arrOk.delete(1);
   const noArr = Newcomers.listable(1);
-  ok(!noArr.ok && noArr.why.join().includes('도착 지점'), '⑥ 내릴 자리가 없으면 지도에 안 오른다', JSON.stringify(noArr.why));
+  ok(!noArr.ok && noArr.why.join().includes('내릴 자리'), '⑥ 내릴 자리가 없으면 지도에 안 오른다', JSON.stringify(noArr.why));
   _arrOk.add(1);
   ok(Newcomers.listable(1).ok, '⑥ 생기면 오른다 — NPC 마을과 **같은 조건**이다');
 }

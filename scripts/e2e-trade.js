@@ -122,7 +122,7 @@ async function waitHttp(url, tries = 900) {
   //   `🏪` 로 찾던 자리가 전부 빈손이 된다. 화면 문자열만 보는 자리라 **말로** 찾는다(검사의 뜻 그대로).
   //   ⚠거래소 알림의 갈래는 셋이다: 성사("… 거래소 — A → B") · 게이트 거절("마을 중심에서 너무 멀다") ·
   //     장부 거절(곳간·재고·상한). 하나만 잡으면 ①과 ④가 서로 다른 이유로 조용히 빠진다.
-  const _isTrade = (s) => /거래소|마을 중심에서 너무 멀다|곳간|마을 재고|내줄 수 있는|갖고 있지 않다|못 치른다|못 바꾼다/.test(String(s));
+  const _isTrade = (s) => /거래소|마을 한가운데에서 너무 멉니다|곳간|마을 재고|내줄 수 있는|갖고 있지 않습니다|치를 수 없습니다|바꿀 수 없습니다/.test(String(s));
   const openTrade = async () => {
     await page.evaluate(() => document.querySelector('#sidebar .sb-icon[data-side="trade"]').click());
     await sleep(700);

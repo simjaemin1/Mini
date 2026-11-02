@@ -90,7 +90,7 @@ if (process.env.T609_SUB === 'fight') {
     out.fightMs = p._fish.fightMs; out.windowMs = p._fish.windowMs; out.planHasFight = true;
     H.tryFishStrike(p);
     out.state = p._fish && p._fish.state;
-    out.fightNotice = p.__notices().some((t) => /끌어올린다/.test(t));
+    out.fightNotice = p.__notices().some((t) => /끌어올립니다/.test(t));
     out.fightState = (p.__last('fish_state') || {}).state;
     H.tryFishCast(p);   // 싸움 중 다시 던지기 — 막혀야 한다
     out.busy = p.__notices().some((t) => /끌어올리는 중/.test(t)) && !!p._fish && p._fish.state === 'fight';
@@ -214,7 +214,7 @@ if (process.env.T609_SUB === 'fight') {
   // ⓐ 성급한 챔질 — 입질 전
   const before = P.__msgs.length;
   H.tryFishStrike(P);
-  ok(/성급/.test(P.__notices().slice(-1)[0] || ''), '★★② 입질 **전** 챔질은 놓침이다', P.__notices().slice(-1)[0]);
+  ok(/너무 일찍/.test(P.__notices().slice(-1)[0] || ''), '★★② 입질 **전** 챔질은 놓침이다', P.__notices().slice(-1)[0]);
   ok(P._fish === null, '★② 성급한 챔질 뒤엔 줄이 걷힌다(상태가 남지 않는다)');
 
   // ⓑ 창 **안** 챔질 — 성공
@@ -237,7 +237,7 @@ if (process.env.T609_SUB === 'fight') {
   P3._fish.bit = true;
   const kgMissed = P3._fish.kg;
   H.tryFishStrike(P3);
-  ok(/놓쳤다/.test(P3.__notices().slice(-1)[0] || ''), '★★② 창 **밖** 챔질은 놓침이다', P3.__notices().slice(-1)[0]);
+  ok(/놓쳤습니다/.test(P3.__notices().slice(-1)[0] || ''), '★★② 창 **밖** 챔질은 놓침이다', P3.__notices().slice(-1)[0]);
   ok(!P3.__last('fish_catch'), '★② 놓쳤으면 물고기는 안 들어온다');
 
   // ⓓ **클라 시각 조작은 안 먹힌다** — 서버가 자기 시계만 본다
@@ -246,7 +246,7 @@ if (process.env.T609_SUB === 'fight') {
   const realBite = P4._fish.biteAt;
   // 클라가 보낼 수 있는 것은 "지금 챘다"뿐이다. 시각 필드를 실어 보내도 서버는 안 읽는다.
   H.tryFishStrike(P4, { clientNow: realBite + 10, t: realBite + 10 });
-  ok(/성급/.test(P4.__notices().slice(-1)[0] || ''),
+  ok(/너무 일찍/.test(P4.__notices().slice(-1)[0] || ''),
     '★★② 클라가 시각을 실어 보내도 **서버 시계로** 판정한다(조작 거절)', P4.__notices().slice(-1)[0]);
 
   // ═══ ③ 고갈 · 리필 ═════════════════════════════════════════════════════════

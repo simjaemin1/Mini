@@ -466,7 +466,7 @@ async function waitHttp(url, tries = 600) {
       const th1 = await page.evaluate(() => (window.__getGauges ? window.__getGauges().thirst : null));
       ok(ns2.some((t) => /짠물/.test(t)),
         '★★⑦㉣ **바닷가에서 마시면 화면이 "짠물"이라고 말한다**(재민 실기 3)', JSON.stringify(ns2));
-      ok(!ns2.some((t) => /물 마심/.test(t)), '★★⑦㉣ "물 마심 (+30)" 이 **안 뜬다** — 종전 결함이 사라졌다');
+      ok(!ns2.some((t) => /물을 마셨습니다/.test(t)), '★★⑦㉣ "물 마심 (+30)" 이 **안 뜬다** — 종전 결함이 사라졌다');
       ok(th1 != null && th0 != null && th1 <= th0, '★★⑦㉣ 갈증이 **한 점도 안 채워졌다**', `${th0} → ${th1}`);
     }
   }

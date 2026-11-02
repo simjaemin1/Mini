@@ -118,7 +118,7 @@
       foot.style.cssText = 'margin-top:6px;border-top:1px solid rgba(var(--fg-rgb), 0.12);padding-top:5px;';
       if (_warCmdMsg) { const mm = document.createElement('div'); mm.style.cssText = 'color:var(--accent-hi);font-size:11px;margin-bottom:4px;'; mm.textContent = _warCmdMsg; foot.appendChild(mm); }
       const bStop = document.createElement('button');
-      bStop.textContent = '관전/지휘 종료 → 내 캐릭터';
+      bStop.textContent = '지휘 그만두고 내 몸으로';
       bStop.style.cssText = _warBtnCss('var(--line)');
       bStop.addEventListener('click', () => { if (_warCmdId) setCommand(null); stopSpectate(); }); foot.appendChild(bStop);
       el.appendChild(foot);

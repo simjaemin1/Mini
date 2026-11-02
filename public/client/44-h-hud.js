@@ -77,7 +77,7 @@
     });
     // 클릭 = 토글 (1키와 동일)
     slot.addEventListener('click', () => {
-      if (!hotkey1) { showNotice('인벤에서 도구를 드래그하세요'); return; }
+      if (!hotkey1) { showNotice('짐에서 도구를 끌어다 놓으십시오.'); return; }
       sendPrimary({ type: 'toggle_hotkey' });
     });
     // 우클릭 = 슬롯 비우기
@@ -85,7 +85,7 @@
       e.preventDefault();
       if (hotkey1) {
         sendPrimary({ type: 'set_hotkey', toolItemId: null });
-        showNotice('1번 슬롯 비움');
+        showNotice('1번 칸을 비웠습니다.');
       }
     });
     return bar;
@@ -175,8 +175,8 @@
       const _hpTx = document.getElementById('hpText');
       _hpTx.textContent = `${Math.round(myHp)}/${myMaxHp}${_healing ? ' ▲' : ''}`;
       _hpTx.title = _healing
-        ? `아물고 있다${myRecover < 0.999 ? ` (회복 ×${myRecover.toFixed(2)})` : ''}`
-        : (myHp < myMaxHp ? '아물지 않는다 — 무들이 이유를 말한다' : '');
+        ? `아무는 중${myRecover < 0.999 ? ` (회복 ×${myRecover.toFixed(2)})` : ''}`
+        : (myHp < myMaxHp ? '상처가 아물지 않습니다. 아래 상태 칸에 까닭이 있습니다.' : '');
     }
     // hunger / thirst bar
     const hungerEl = document.getElementById('hungerFill');
@@ -202,7 +202,7 @@
     if (vpEl) {
       vpEl.style.width = `${Math.max(0, Math.min(100, myVp))}%`;
       const txt = myVp >= VP_THRESHOLD
-        ? `적대감 ${Math.round(myVp)} — 내 영지 보호 해제됨`
+        ? `적대감 ${Math.round(myVp)} · 내 땅 보호 풀림`
         : `적대감 ${Math.round(myVp)}/${VP_THRESHOLD}`;
       document.getElementById('vpText').textContent = txt;
       document.querySelector('.vp-bar')?.classList.toggle('danger', myVp >= VP_THRESHOLD);
@@ -215,7 +215,7 @@
         sprintBadge = document.createElement('span');
         sprintBadge.id = 'sprintBadge';
         sprintBadge.className = 'badge';
-        sprintBadge.title = 'Shift = 달리기 — 스태미나를 쓴다(짐이 무거우면 더). 배고프면 숨 고르기가 느리다.';
+        sprintBadge.title = 'Shift를 누르면 달립니다. 달리면 숨이 차고, 짐이 무거우면 더 빨리 찹니다. 배가 고프면 숨이 늦게 돌아옵니다.';
         pvpBadgeForSprint.parentNode.insertBefore(sprintBadge, pvpBadgeForSprint);
       }
       const canSp = mySprint && myCanSprint;
@@ -346,9 +346,9 @@
         else if (window.__paintIcons) window.__paintIcons(wb.parentNode || document);
         const tip = `바깥 ${myWeather.tempC != null ? myWeather.tempC + '℃ · ' : ''}추위 ${Math.round(myWeather.cold * 100)}%${myWeather.night ? ' (밤)' : ' (낮)'}`
           // ★[옷 티어] 옷이 **몇 ℃ 를 벌어 주는지**를 말한다 — 그래야 "가죽옷을 살까"가 판단이 된다.
-          + (myWeather.insC > 0 ? ` · 입은 옷이 체감 +${myWeather.insC}℃` : ' · 맨몸 — 옷이 없다')
-          + (sh > 0.01 ? ` · 마을 미기후가 ${Math.round((myWeather.cut || 0) * 100)}% 막아 준다` : ' · 야생 — 막아 주는 것이 없다')
-          + ' · 모닥불·실내는 여기에 더해 몸에 적용된다';
+          + (myWeather.insC > 0 ? ` · 입은 옷이 체감 +${myWeather.insC}℃` : ' · 맨몸이라 막아 주는 옷이 없습니다')
+          + (sh > 0.01 ? ` · 마을 안이라 추위를 ${Math.round((myWeather.cut || 0) * 100)}% 덜 탑니다` : ' · 들판이라 막아 주는 것이 없습니다')
+          + ' · 모닥불 곁이나 지붕 아래에서는 더 따뜻합니다';
         // ★값이 그대로면 **DOM 을 안 건드린다** — `updateHud` 는 100ms 마다 도는데 날씨는 초당 1회
         //   바뀔까 말까다. 매번 쓰면 그때마다 HUD 줄의 스타일·레이아웃이 다시 계산된다
         //   (헤드리스 SwiftShader 에서 실제로 프레임에 얹힌다 — `e2e-waterperf` 배율이 그걸 잡았다).

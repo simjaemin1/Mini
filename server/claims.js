@@ -219,24 +219,24 @@ function onPlayerActive(player) {
 // ── 남의 땅을 가져가기 ───────────────────────────────────────────────────────
 //   `pref` = `held_by` 가 가리키는 쪽만 · `free` = 아무나. 그 밖에는 아무도 못 가져간다.
 function takeableBy(player, c) {
-  if (!c || !isOwnKind(c)) return { ok: false, why: '마을 땅은 개인이 가져갈 수 없다' };
-  if (c.ownerPid === player.playerId) return { ok: false, why: '이미 내 땅이다' };
+  if (!c || !isOwnKind(c)) return { ok: false, why: '마을 땅은 개인이 가져갈 수 없습니다.' };
+  if (c.ownerPid === player.playerId) return { ok: false, why: '이미 내 땅입니다.' };
   const st = c.state || 'active';
   if (st === 'free') return { ok: true, why: '개방된 땅' };
-  if (st !== 'pref') return { ok: false, why: st === 'held' ? '주인이 맡겨 둔 땅이다(보관 중)' : '남의 사유지다' };
+  if (st !== 'pref') return { ok: false, why: st === 'held' ? '주인이 맡겨 둔 땅입니다(보관 중).' : '남의 사유지입니다.' };
   const hb = String(c.heldBy || '');
-  if (hb.startsWith('guild:') && _KIN_ON) return { ok: false, why: '옛 보관 줄은 이제 없다 — 개방을 기다려야 한다' };   // ★[T786 C14] 켬 — 옛 길드 보관 줄(새로는 안 생긴다)
+  if (hb.startsWith('guild:') && _KIN_ON) return { ok: false, why: '옛 보관 줄은 이제 없습니다. 땅이 풀리기를 기다려야 합니다.' };   // ★[T786 C14] 켬 — 옛 길드 보관 줄(새로는 안 생긴다)
   if (hb.startsWith('guild:')) {
     const gid = hb.slice(6);
     return (player.tribeId && String(player.tribeId) === gid)
-      ? { ok: true, why: '같은 마을의 우선권' } : { ok: false, why: '그 마을 사람만 가져갈 수 있다' };
+      ? { ok: true, why: '같은 마을의 우선권' } : { ok: false, why: '그 마을 사람만 가져갈 수 있습니다.' };
   }
   if (hb.startsWith('village:')) {
     const vid = hb.slice(8) | 0;
     const m = player.member;
-    return (m && (m.vid | 0) === vid) ? { ok: true, why: '같은 마을의 우선권' } : { ok: false, why: '그 마을 사람만 가져갈 수 있다' };
+    return (m && (m.vid | 0) === vid) ? { ok: true, why: '같은 마을의 우선권' } : { ok: false, why: '그 마을 사람만 가져갈 수 있습니다.' };
   }
-  return { ok: false, why: '무주 공시 중이다 — 개방을 기다려야 한다' };   // held_by 없음 = 아무도 우선권이 없다
+  return { ok: false, why: '임자 없는 땅으로 알리는 중입니다. 땅이 풀리기를 기다려야 합니다.' };   // held_by 없음 = 아무도 우선권이 없다
 }
 // ★시설 승계 — **새 권한 술어를 만들지 않는다.** `data.owner`/`data.tribeId` 를 바꾸면
 //   `_furnaceCanUse` 가 그대로 새 주인을 인정한다(제2 규약).
@@ -283,7 +283,7 @@ function chestLocked(player, b) {
     if ((c.state || 'active') !== 'held' || c.heldBy) continue;
     if (c.ownerPid === player.playerId) continue;
     for (const [cx, cy] of cellsOf(c)) {
-      if (key(cx, cy) === bk) return `${c.ownerName || '누군가'}의 짐이다 — 주인이 자리를 비운 동안은 잠긴다`;
+      if (key(cx, cy) === bk) return `${c.ownerName || '누군가'}의 짐입니다. 주인이 자리를 비운 동안은 잠겨 있습니다.`;
     }
   }
   return null;

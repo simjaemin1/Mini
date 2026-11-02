@@ -97,7 +97,7 @@ if (process.env.T999_SUB) {   // ── 아이 판 ──
         if (x.ok && x.give >= 2) { const q2 = Trade.quote(L, econV2, vil, vi, give, take, 1, Object.assign({ inventory: mkInv(), unitsOf, giveCount: x.give - 1 }, tkO));
           m1 = q2 && !q2.err ? { capped: !!q2.capped, take: q2.take, units: q2.giveUnitsPicked } : { err: 1 }; }
         let cf = null;   // "더 내야 한다" 의 참 — 가진 것 안에서 더 내 서는 실행(T988 잣대)
-        if (axis === 'give' && !x.ok && /더 내야 한다/.test(x.err || '')) for (let n2 = n + 1; n2 <= HAVE && cf == null; n2++) { const s2 = JSON.stringify(v.storage); const x2 = ex(mkInv(), n2, 0); restore(s2); if (x2.ok && x2.take > 0) cf = n2; }
+        if (axis === 'give' && !x.ok && /더 내야 합니다/.test(x.err || '')) for (let n2 = n + 1; n2 <= HAVE && cf == null; n2++) { const s2 = JSON.stringify(v.storage); const x2 = ex(mkInv(), n2, 0); restore(s2); if (x2.ok && x2.take > 0) cf = n2; }
         out.push({ axis, vi, tk: tk ? 1 : 0, pair: give + '>' + take, n, oneOver, have: HAVE, potAll, q: q.err ? { err: q.err } : q, x: XO(x), m1, cf,
           sc: q.err ? null : screen(vi, give, take, q, axis, axis === 'want' ? n : 0, axis === 'give' ? n : 1) });
       }
@@ -179,10 +179,10 @@ const sub = (mode, val) => new Promise((res, rej) => {
 });
 //   말 참 가르기(T988 하네스 잣대 그대로 — 줄의 말이 그 판과 맞나 · 빈 목록 = 참)
 const N_ = '\\d+(?:\\.\\d+)?';
-const E1 = new RegExp(`^마을이 .+ ${N_}개를 못 내준다 — 지금 내줄 수 있는 건 ${N_}까지다$`), E5 = new RegExp(`^.+ 한 개 값이 마을이 내줄 수 있는 .+ 전부\\(${N_}\\)보다 비싸다 — 이 마을은 지금 그 값을 못 치른다$`);
-const E6 = /^그 양으론 한 개도 못 바꾼다 — 더 내야 한다$/, E6a = /^그 양으론 한 개도 못 바꾼다$/, E4 = /^마을에 .+이\(가\) 남아 있지 않다$/;
-const E3 = new RegExp(`^.+ ${N_}개를 받으려면 .+ ${N_}개가 필요한데 그만큼 없다$`), E3g = /^그만큼 갖고 있지 않다$/;
-const CAPW = new RegExp(`^마을이 지금 내줄 수 있는 .+은\\(는\\) ${N_}까지다$`), S5 = new RegExp(`^마을이 내줄 수 있는 건 ${N_}까지 — (${N_})개만 받는다$`);
+const E1 = new RegExp(`^마을이 .+ ${N_}개를 내줄 수 없습니다\\. 지금 내줄 수 있는 것은 ${N_}개까지입니다\\.$`), E5 = new RegExp(`^.+ 한 개 값이 마을이 내줄 수 있는 .+ 전부\\(${N_}\\)보다 비쌉니다\\. 이 마을은 지금 그 값을 치를 수 없습니다\\.$`);
+const E6 = /^그 양으로는 한 개도 바꿀 수 없습니다\. 더 내야 합니다\.$/, E6a = /^그 양으로는 한 개도 바꿀 수 없습니다\.$/, E4 = /^마을에 .+이\(가\) 남아 있지 않습니다\.$/;
+const E3 = new RegExp(`^.+ ${N_}개를 받으려면 .+ ${N_}개가 있어야 하는데 그만큼 없습니다\\.$`), E3g = /^그만큼 갖고 있지 않습니다\.$/;
+const CAPW = new RegExp(`^마을이 지금 내줄 수 있는 .+은\\(는\\) ${N_}개까지입니다$`), S5 = new RegExp(`^마을이 내줄 수 있는 것은 ${N_}개까지라 (${N_})개만 받습니다\\.$`);
 function lies(r) {
   const L = [];
   if (r.q.err) return L;
@@ -196,14 +196,14 @@ function lies(r) {
     for (const w of warn) {
       if (CAPW.test(w) && !(r.n > r.q.cap)) L.push('화면 "내줄 수 있는 X은(는) N까지다" 인데 받을 양 ≤ N');
       if (E5.test(w) && !r.oneOver) L.push('화면 "한 개 값이 전부보다 비싸다" 인데 마을이 그 한 개를 다 받는다');
-      if (E6.test(w) && r.cf == null && !/더 내야 한다/.test(e)) L.push('화면 "더 내야 한다" 인데 실행은 다른 말');
+      if (E6.test(w) && r.cf == null && !/더 내야 합니다/.test(e)) L.push('화면 "더 내야 한다" 인데 실행은 다른 말');
       const m = S5.exec(w); if (m && +m[1] > 0) L.push('화면 "n개만 받는다(n > 0)" 인데 실행은 거절');
     }
     if (r.axis === 'want' && !warn.length && !deal.some((d) => /내야 할/.test(d))) L.push('화면 빈 견적(까닭 0)');
     if (r.sc.go) L.push('화면 단추가 켜졌는데 실행은 거절');
   } else if (r.axis === 'give') {
     if (r.q.take !== r.x.take) L.push('화면 받을 양 ≠ 실행');
-    for (const w of warn) { const m = /— (\d+)개만 받는다$/.exec(w); if (m && +m[1] !== r.x.give) L.push('화면 "n개만 받는다" ≠ 실행 낸 낱개'); }
+    for (const w of warn) { const m = /까지라 (\d+)개만 받습니다\.$/.exec(w); if (m && +m[1] !== r.x.give) L.push('화면 "n개만 받는다" ≠ 실행 낸 낱개'); }
   } else {
     const want = /^.+ (\d+) 받으려면 — 내야 할 .+ (\d+) \(낱개라 올림 · 그러면 .+ (\d+)\)$/.exec(deal[0] || '');
     const shortL = !want && /^.+ (\d+(?:\.\d+)?) .+ (\d+)$/.exec(deal[0] || '');

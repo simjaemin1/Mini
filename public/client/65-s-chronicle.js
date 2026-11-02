@@ -74,7 +74,7 @@ function chronIcon(it) { return uiIcon((it && CHRON_TYPE_EMO[it.type]) || 'scrol
 
 function renderChroniclePanel(el) {
   if (window.__evNearVid == null) {
-    el.innerHTML = '<div class="hint">마을 중심에 서면 그 마을의 연대기를 읽을 수 있다 — 연표는 <b>마을이 들은 것</b>만 적는다.</div>';
+    el.innerHTML = '<div class="hint">마을 한가운데에 서면 그 마을의 연대기를 읽을 수 있습니다. 연표에는 <b>마을이 들은 것</b>만 적힙니다.</div>';
     return;
   }
   const c = chronData;
@@ -91,22 +91,22 @@ function renderChroniclePanel(el) {
   // ── 계절 칸 — 빈 계절도 자리를 지킨다. **구멍도 정보다**("그 해 봄엔 아무 소식도 없었다").
   const secs = c.seasons || [];
   if (!secs.length) {
-    h += '<div class="hint">이 해에는 아직 아무 일도 적히지 않았다.</div>';
+    h += '<div class="hint">이 해에는 아직 아무 일도 적히지 않았습니다.</div>';
   } else {
     for (const b of secs) {
       h += `<div class="hint" style="font-weight:bold;margin:10px 0 4px">— ${uiIcon(CHRON_SEASON_EMO[b.season] || 'cal', 14)} ${b.seasonKo} —</div>`;
-      if (!b.items.length) { h += '<div class="hint" style="opacity:.6">조용한 계절이었다.</div>'; continue; }
+      if (!b.items.length) { h += '<div class="hint" style="opacity:.6">조용한 계절이었습니다.</div>'; continue; }
       for (const it of b.items) {
         const where = it.from ? `<span style="color:var(--dim-2)">${it.from}에서</span> ` : '';
         const lag = (it.heard - it.day);
-        const when = lag > 0 ? `<span style="color:var(--dim-2)"> · ${lag}일 걸려 닿았다</span>` : '';
+        const when = lag > 0 ? `<span style="color:var(--dim-2)"> · ${lag}일 걸려 닿음</span>` : '';
         // ★[T55] `deed`(일어난 일)는 **굵게** — 값이 움직인 줄과 한눈에 갈린다(구분은 한 가지만).
         h += `<div class="craft-recipe"><div class="cr-icon">${chronIcon(it)}</div>`
            + `<div class="cr-info"><div class="cr-name"${it.deed ? ' style="font-weight:bold"' : ''}>${where}${it.line}</div>`
-           + `<div class="cr-cost">${it.heard}일에 들었다${when}</div></div></div>`;
+           + `<div class="cr-cost">${it.heard}일에 들음${when}</div></div></div>`;
       }
       // ★`more` 는 **우리 마을 몫만** 센다(서버 주석 참조) — 이웃 소식까지 세면 "그 밖에 490건"이 된다.
-      if (b.more > 0) h += `<div class="hint" style="opacity:.7">그 밖에 ${b.more}건은 잊혔다 — 촌장이 기억하는 건 유난했던 일뿐이다.</div>`;
+      if (b.more > 0) h += `<div class="hint" style="opacity:.7">그 밖에 ${b.more}건은 잊혔습니다. 촌장은 유난했던 일만 기억합니다.</div>`;
     }
   }
   el.innerHTML = h;

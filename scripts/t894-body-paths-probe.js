@@ -184,7 +184,7 @@ async function trip(P) {
     const t1 = Date.now();
     while (Date.now() - t1 < 900000) { await sleep(2000); B = await bodyOf(name); if (B && B.vital && !B.vital.isDown) break; }
     extra.woke = !!(B && B.vital && !B.vital.isDown); extra.wakeMs = Date.now() - t1;
-    extra.died = F.a.notices.some((t) => /정신을 잃었다/.test(t));
+    extra.died = F.a.notices.some((t) => /정신을 잃었습니다/.test(t));
     await sleep(1500);
     after = await bodyOf(name);
     await close(F.a); await sleep(1500);

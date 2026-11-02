@@ -390,7 +390,7 @@ async function waitHttp(url, tries = 900) {
     const inv3 = await page3.evaluate(() => window.__villageInv);
     const nt3 = await page3.evaluate(() => (window.__notices || []).slice());
     ok(inv3 == null, '★★남의 마을 재고는 **여전히 안 열린다**(응답 자체가 없다)');
-    ok(nt3.some((t) => /관리자가 아닙니다|우리 마을이 아닙니다/.test(t)),
+    ok(nt3.some((t) => /관리자가 아닙니다|관리자가 아니어서|우리 마을이 아니어서/.test(t)),
       `★거부 사유가 **권한**이다(거리가 아니다) — "${nt3.slice(-1)[0] || '(없음)'}"`);
   }
   if (hut) {
