@@ -1,0 +1,83 @@
+{
+  "_doc": "T1072 villageView 고정 자료 — 모양은 설계/설계_마을화면_villageView.md 표 그대로 · 값은 예시(클라 배치용 · 서버 값 아님). 서버 메시지 { type:'village_view', vid, seq, full:true, view } 의 view 칸이다.",
+  "type": "village_view",
+  "vid": 3,
+  "seq": 1,
+  "full": true,
+  "view": {
+    "head": {
+      "vid": 3,
+      "name": "어촌3",
+      "day": 612,
+      "cal": { "label": "2년 9월 12일 (가을)", "season": "autumn", "seasonKo": "가을", "dayOfSeason": 12, "seasonDays": 91, "year": 2 },
+      "age": 412,
+      "chief": { "name": "도미", "npc": true }
+    },
+    "me": { "member": false, "memberVid": null, "contrib": 4, "need": 12, "chief": false, "offer": null },
+    "dash": { "pop": 48, "toWinter": 34, "projectsN": 3 },
+    "requests": {
+      "rows": [
+        { "res": "wood", "ko": "나무", "item": "wood", "qty": 30, "filled": 12, "remain": 18, "rewRes": "salt", "rewKo": "소금", "rewQty": 4, "line": "나무가 모자라 30만큼 구한다 — 소금 4로 갚는다" },
+        { "res": "stone", "ko": "돌", "item": "stone", "qty": 10, "filled": 0, "remain": 10, "rewRes": "hide", "rewKo": "가죽", "rewQty": 2, "line": "돌이 모자라 10만큼 구한다 — 가죽 2로 갚는다" }
+      ],
+      "withheld": 1
+    },
+    "news": {
+      "rows": [
+        { "line": "움집 한 채가 올라갔다.", "type": "BUILT", "day": 611, "heard": 611, "ago": 1, "from": null },
+        { "line": "임업2에 도적이 나타났다고 한다.", "type": "CARAVAN_RAIDED", "day": 607, "heard": 609, "ago": 3, "from": "임업2" }
+      ],
+      "withheld": 0
+    },
+    "projects": {
+      "now": [
+        { "kind": "house", "name": "움집 짓기", "stage": 2, "stages": 4, "stageLabel": "③ 도리·서까래 골조(서까래 8·풀 6)", "need": [ { "res": "wood", "ko": "나무", "need": 4, "have": 2 } ] },
+        { "kind": "phouse", "name": "갈매 움집", "stage": 1, "stages": 4, "stageLabel": "② 굴립주 기둥 세우기(기둥 6)" },
+        { "kind": "caravan", "name": "임업2로 가는 행상", "to": "임업2", "state": "outbound", "toDays": 2, "cargo": [ { "res": "salt", "ko": "소금", "n": 40 } ] }
+      ],
+      "done": [
+        { "line": "곳간 한 동을 지었다.", "day": 600, "ago": 12 },
+        { "line": "움집 한 채가 올라갔다.", "day": 582, "ago": 30 }
+      ]
+    },
+    "members": {
+      "n": 48,
+      "byJob": [ { "job": "fisher", "ko": "어부", "n": 14 }, { "job": "farmer", "ko": "농부", "n": 9 }, { "job": "forager", "ko": "채집꾼", "n": 7 } ],
+      "people": [
+        { "pid": "npc_simvil_3_1", "name": "도미", "job": "fisher", "jobKo": "어부", "act": "출근", "chief": true },
+        { "pid": "npc_simvil_3_2", "name": "갈매", "job": "fisher", "jobKo": "어부", "act": "낚시", "chief": false },
+        { "pid": "npc_simvil_3_3", "name": "다래", "job": "farmer", "jobKo": "농부", "act": "개간", "chief": false },
+        { "pid": "npc_simvil_3_4", "name": "솔이", "job": "forager", "jobKo": "채집꾼", "act": "", "chief": false }
+      ]
+    },
+    "store": {
+      "rows": [
+        { "res": "wood", "ko": "나무", "qty": 85, "daysOf": 21.3, "short": false, "glut": false },
+        { "res": "stone", "ko": "돌", "qty": 42, "daysOf": 3.1, "short": true, "glut": false },
+        { "res": "salt", "ko": "소금", "qty": 64, "daysOf": null, "short": false, "glut": false },
+        { "res": "millet", "ko": "기장", "qty": 140, "daysOf": 52.0, "short": false, "glut": true }
+      ],
+      "shortDays": 5,
+      "glutDays": 45,
+      "withheld": 3
+    },
+    "prices": {
+      "numeraire": "wood",
+      "numeraireKo": "나무",
+      "spread": 0.1,
+      "rows": [
+        { "res": "salt", "ko": "소금", "num": 2.4, "glut": false, "canGive": true, "canTake": true, "mine": 0 },
+        { "res": "wood", "ko": "나무", "num": 1, "glut": false, "canGive": true, "canTake": true, "mine": 12 },
+        { "res": "stone", "ko": "돌", "num": 0.6, "glut": false, "canGive": true, "canTake": true, "mine": 3 }
+      ],
+      "basis": [ { "res": "wood", "ko": "나무", "mine": 12 }, { "res": "stone", "ko": "돌", "mine": 3 } ],
+      "withheld": 4
+    },
+    "gate": { "near": true }
+  },
+  "_variants": {
+    "pricesFar": { "none": "far" },
+    "pricesPick": { "pick": true, "basis": [ { "res": "wood", "ko": "나무", "mine": 12 } ], "withheld": 4 },
+    "delta": { "type": "village_view", "vid": 3, "seq": 2, "full": false, "slots": { "gate": { "near": false }, "prices": { "none": "far" } } }
+  }
+}
