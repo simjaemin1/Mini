@@ -22,6 +22,9 @@ let onbLastDay = -1;
 let onbTimer = null;
 let onbSelVid = null;
 let onbWarmTries = 0;          // 도착 지점이 다 구워질 때까지 시작 화면이 다시 묻는 횟수
+let onbArrive = null;           // ★[T1064] 도착 기록(서버 `arrivalOf` 그대로 · 존 로컬 · `onboarding_state.arrive`)
+let onbGreetGot = null;         // ★[T1064] 촌장 첫 인사를 받았나 — 'greet' 한 통 그대로 { vid, quest, lines }(빈 판이면 quest null)
+let onbNextLast = null;         // ★[T1064] 「지금 할 일」 칸이 마지막으로 그린 것(하네스 읽기 훅)
 
 // ── 존 HTTP 주소 — 로비는 central 오리진에서 뜨고 존은 다른 호스트다 ────────────
 //   `/startinfo` 는 존이 CORS 를 열어 답한다(`/lifedbg` 와 같은 규약).
@@ -323,10 +326,12 @@ function onbOnMessage(msg) {
     if (msg.type === 'onboarding_state') {
       onbState = msg.state || null;
       window.__onbState = onbState;
-      if (msg.arrive) onbFaceVillage(msg.arrive);
+      if (msg.arrive) { onbArrive = msg.arrive; onbFaceVillage(msg.arrive); }   // ★[T1064] 도착 기록을 들고 있는다(「지금 할 일」의 자리 이름 · 나루터/어귀)
       updateHud();
     } else if (msg.type === 'onboarding_quest') {
       if (msg.quest) { onbQuest = msg.quest; window.__onbQuest = onbQuest; }
+      // ★[T1064] 촌장 첫 인사 한 통을 그대로 들고 있는다 — 빈 판(quest null)이어도 "들었다"는 사실이 단계를 가른다.
+      if (msg.kind === 'greet') onbGreetGot = { vid: msg.vid, quest: msg.quest || null, lines: Array.isArray(msg.lines) ? msg.lines.slice(0, 3) : [] };
       onbState = msg.state || onbState;
       window.__onbState = onbState;
       // ★촌장의 말 — **기존 말풍선 그대로** 그린다(세계 안 · 새 패널 0). 통로만 온보딩 전용이다.
@@ -359,6 +364,7 @@ function onbOnMessage(msg) {
 }
 // HUD 한 줄 — `updateHud()` 가 한 줄로 부른다. **새 패널 0**(§9.5).
 function onbHudLine() {
+  try { onbNextRender(); } catch (e) { window.__onbNextErr = String(e && e.message || e); }   // ★[T1064] 「지금 할 일」 — 같은 HUD 틱(100ms)에 같이 그린다
   const el = document.getElementById('onbHud');
   if (!el) return '';
   const bits = [];
@@ -369,6 +375,155 @@ function onbHudLine() {
   el.style.display = bits.length ? '' : 'none';
   return el.textContent;
 }
+// ══ ★★[T1064 2026-11-02] 「지금 할 일」 — 화면 한쪽 고정 칸 하나 ═══════════════════════════════════════
+//   ★왜 [재민 11-01] "막막하다 · 뭘 해야 할지 모르겠다 · 마을 앞에 스폰되면 제대로 보여 주는 게 없다."
+//     서버는 대본 단계를 다 안다(`onboarding_state` · 촌장 첫 인사 · 첫 의뢰 · 빈터 권리) — 화면이 그걸 한 번도 말하지 않았다
+//     (HUD 한 줄 "의뢰 0/3" 뿐 · 보고/T1064 §1 · §2).
+//   ★규약 다섯:
+//     ① **판정은 서버.** 단계는 서버가 보낸 것(`onbState` · 촌장 인사 한 통 · 도착 기록 · 게이트 `evNearVid`)에서만 고른다 — 새 상태 0.
+//        보이는 것 = 일어난 것: 인사를 **받아야** 의뢰 단계로 넘어가고, 첫 납품은 서버의 `firstDone` 으로만 넘어간다.
+//     ② 새 수 0 — "닿았나"는 이미 있는 반경 둘로만 판다: 마을 = 게이트(`EV_BRIEF_PX` → `evNearVid`) · 빈터 = 서버가 준 `lot.r`.
+//        문구의 수는 서버 값뿐이다(의뢰 양 `remain` · 기여 `contrib` · 문턱 `need`).
+//     ③ 손잡이 `T1064_NEXT_STEP`(서버 env → welcome `uiCfg.nextStep` · 켬 기본 후보 · `=0` 이면 칸이 없다 → 이 칸이 안 선다 = 종전 화면).
+//     ④ 먹선(`설계/설계_화면규칙_B_먹선.md`) — 판 · 판 머리(`.pane-head`) · 테 1px · 강조는 화살 하나(호박색) · 단축키는 `.key` · 이모지 0 ·
+//        색 · 크기는 `style.css` 의 `#onbNext` 줄들(조각에 색 리터럴 0). 자리는 지도 판 바로 밑(지도 판의 폭) — HUD 재배치 0.
+//     ⑤ 말투(`지시/지시_T1069.md`): 할 일은 명사형 · 설명은 하십시오체 · 가운뎃점 · 화살표 · 괄호 기호 나열 0 · 단축키 뒤 조사는 "키로".
+//   ⚠§9.5 "퀘스트 화살표 금지(디에게틱 안내)"와 부딪친다 — 세계에는 아무것도 꽂지 않고 이 칸 안의 화살 하나로 **쪽**만 가리킨다.
+//     켤지는 재민 판정(보고/T1064 회부 1 · 손잡이로 끈다).
+function onbNextOn() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.nextStep === true); }
+// 단계 고르기 — **순수 함수**(입력 한 벌 → 계획 한 벌 · DOM 0). 하네스(`test-t1064-next-step`)가 제품 글자 그대로 부른다.
+//   I = { state, arrive, greet, nearVid, me:{x,y}, off:{x,y}, anchor(vid) → {x,y,name} 절대, itemKo(k) }
+//   돌려주는 것 = { stage, place, item, guide:[글자 | {k:단축키}], target:{x,y} 절대 | null }
+function onbNextPlan(I) {
+  const s = I && I.state;
+  if (!s || s.vid == null) return null;
+  const vill = (vid) => (vid != null && I.anchor ? I.anchor(vid) : null);
+  const near = I.nearVid != null ? I.nearVid : null;
+  const here = vill(near), home = vill(s.vid);
+  const arr = (I.arrive && I.arrive.vid === s.vid) ? I.arrive : null;
+  const off = I.off || { x: 0, y: 0 };
+  const lot = s.lot ? { x: s.lot.x + off.x, y: s.lot.y + off.y, r: s.lot.r } : null;   // 빈터 구역 = 도착 지점 둘레(서버 `vacantZoneOf`)
+  const me = I.me || null;
+  const inLot = !!(lot && me && Math.hypot(me.x - lot.x, me.y - lot.y) <= lot.r);
+  const homeName = (arr && arr.name) || (home && home.name) || '';
+  const K = (k) => ({ k });
+  // 어디 있나 — 게이트 안이면 그 마을 · 도착 둘레(빈터 구역)면 나루터/어귀 · 그 밖은 마을 밖
+  let place = '';
+  if (here) place = `${here.name} 마을 안`;
+  else if (inLot && homeName) place = `${homeName} ${arr && arr.kind === 'dock' ? '나루터' : '어귀'}`;
+  else if (homeName) place = `${homeName} 마을 밖`;
+  let p;
+  if (s.lotOk) {
+    p = inLot
+      ? { stage: 'build', item: '내 집 짓기', guide: ['여기가 빈터입니다. ', K('C'), ' 키로 땅을 걸고 건축 판 ', K('Shift B'), ' 에서 움집 터파기를 고르십시오.'], target: null }
+      : { stage: 'lot', item: '빈터로 가기', guide: ['촌장이 어귀 빈터를 내어 주었습니다. 화살표 쪽으로 가면 빈터입니다.'], target: lot };
+  } else if (s.firstDone) {
+    const left = Math.max(0, (s.need | 0) - (s.contrib | 0));
+    p = { stage: 'more', item: '게시판 의뢰 하기',
+      guide: [`의뢰를 ${left}번 더 하면 촌장이 빈터를 내어 줍니다. 게시판은 마을 한복판에서 `, K('Shift G'), ' 키로 봅니다.'],
+      target: home, gate: s.vid };
+  } else if (I.greet) {
+    const q = I.greet.quest;
+    if (q) {
+      const said = (I.greet.lines && I.greet.lines[2]) ? String(I.greet.lines[2]) : '';
+      const ko = I.itemKo ? I.itemKo(q.item) : String(q.item);
+      p = { stage: 'quest', item: `${ko} ${q.remain}개 구해 오기`,
+        guide: ['촌장의 부탁입니다. ', said ? `촌장이 “${said}” 하고 일렀습니다. ` : '', '다 모으면 마을 한복판에서 ', K('Shift N'), ' 키로 납품하십시오.'].filter((x) => x !== ''),
+        target: vill(I.greet.vid) || home, gate: I.greet.vid };
+    } else {
+      // 빈 판 — 촌장이 한 말(둘째 줄)을 그대로 옮긴다: 쉼터가 있으면 "마을 쉼터에서 쉬게" · 없으면 "모닥불 곁에서 쉬게" · 쉼터 안이면 근황 한 줄.
+      //   쉼터 자리는 클라가 모른다(서버 `shelterOf`) — 화살도 "쉼터"라는 말도 지어내지 않는다(보이는 것 = 일어난 것).
+      const said = (I.greet.lines && I.greet.lines[1]) ? String(I.greet.lines[1]) : '';
+      p = { stage: 'rest', item: '쉬어 가기',
+        guide: [said ? `촌장이 “${said}” 하고 일렀습니다. ` : '지금은 마을에 급한 일이 없다고 합니다. ', '게시판에 일이 걸리면 다시 오십시오. 게시판은 마을 한복판에서 ', K('Shift G'), ' 키로 봅니다.'],
+        target: null };
+    }
+  } else if (near != null) {
+    p = { stage: 'wait', item: '촌장 이야기 듣기', guide: ['마을에 들어왔습니다. 촌장이 곧 말을 걸어 옵니다.'], target: null };
+  } else {
+    p = { stage: 'enter', item: '마을로 들어가기',
+      guide: [`${homeName} 마을이 화살표 쪽에 있습니다. `, K('WASD'), ' 키로 걸어 들어가면 촌장이 맞아 줍니다.'],
+      target: home, gate: s.vid };
+  }
+  if (p.gate != null && near === p.gate) p.target = null;   // 그 마을 게이트 안이면 화살 없음(닿았다)
+  p.place = place;
+  return p;
+}
+// 입력 한 벌 — 이미 있는 전역에서 **읽기만** 한다(좌표: 서버가 주는 것은 존 로컬 → 1차 존 오프셋을 더해 절대).
+function onbNextInputs() {
+  const c = (typeof conns !== 'undefined' && typeof primaryZoneId !== 'undefined') ? conns.get(primaryZoneId) : null;
+  return {
+    state: onbState, arrive: onbArrive, greet: onbGreetGot,
+    nearVid: (typeof evNearVid !== 'undefined') ? evNearVid : null,
+    me: (typeof myAbsPredicted !== 'undefined' && myAbsPredicted) ? { x: myAbsPredicted.x, y: myAbsPredicted.y } : null,
+    off: { x: (c && c.meta && c.meta.worldOffsetX) || 0, y: (c && c.meta && c.meta.worldOffsetY) || 0 },
+    anchor: (vid) => {
+      const a = (typeof _evVillageAnchorAbs === 'function') ? _evVillageAnchorAbs(vid) : null;
+      return a ? { x: a.x, y: a.y, name: (a.v && a.v.name) || '' } : null;
+    },
+    itemKo: (k) => (typeof itemKo === 'function' ? itemKo(k) : String(k)),
+  };
+}
+function onbNextEsc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function onbEnsureNext() {
+  let el = document.getElementById('onbNext');
+  if (el) return el;
+  const host = document.getElementById('game') || document.body;
+  el = document.createElement('div');
+  el.id = 'onbNext';
+  el.className = 'hidden';
+  el.innerHTML = '<div class="pane-head"><span>지금 할 일</span><span id="onbNextPlace" class="ph-sub ph-key"></span></div>'
+    + '<div class="onb-next-body"><span id="onbNextArrow" class="onb-next-arrow"></span>'
+    + '<div class="onb-next-text"><div id="onbNextItem" class="onb-next-item"></div><div id="onbNextGuide" class="onb-next-guide"></div></div></div>';
+  host.appendChild(el);
+  return el;
+}
+// 그리기 — `onbHudLine()`(HUD 틱 100ms)이 부른다. 글자는 바뀔 때만 다시 쓰고, 화살 돌림만 틱마다 맞춘다.
+function onbNextRender() {
+  const old = document.getElementById('onbNext');
+  if (!onbNextOn()) { if (old) old.classList.add('hidden'); onbNextLast = null; return null; }
+  const g = document.getElementById('game');
+  const inGame = !!g && !g.classList.contains('hidden');
+  const I = onbNextInputs();
+  const p = inGame ? onbNextPlan(I) : null;
+  const el = onbEnsureNext();
+  if (!p) { el.classList.add('hidden'); onbNextLast = null; return null; }
+  // 자리 — 지도 판 바로 밑(위 간격은 CSS · 폭은 지도 판의 폭). 지도 판이 없으면 CSS 자리(오른쪽 위).
+  //   ⚠무들 칩 기둥(`#moodles` · 오른쪽 위에서 아래로 쌓인다)이 지도 판보다 길어지면 그 밑으로 내려선다 — 칩을 덮지도 칩에 덮이지도 않는다.
+  const mm = document.getElementById('minimap');
+  const r = (mm && !mm.classList.contains('hidden')) ? mm.getBoundingClientRect() : null;
+  const mo = document.getElementById('moodles');
+  const mr = (mo && mo.children && mo.children.length) ? mo.getBoundingClientRect() : null;
+  if (r && r.height > 0) {
+    const low = (mr && mr.height > 0 && mr.right > r.left) ? Math.max(r.bottom, mr.bottom) : r.bottom;
+    el.style.top = `${Math.round(low)}px`; el.style.right = `${Math.round(innerWidth - r.right)}px`; el.style.width = `${Math.round(r.width)}px`;
+  } else { el.style.top = ''; el.style.right = ''; el.style.width = ''; }
+  const sig = `${p.stage}|${p.place}|${p.item}|${JSON.stringify(p.guide)}`;
+  if (el.dataset.sig !== sig) {
+    el.dataset.sig = sig;
+    el.dataset.stage = p.stage;
+    document.getElementById('onbNextPlace').textContent = p.place;
+    document.getElementById('onbNextItem').textContent = p.item;
+    document.getElementById('onbNextGuide').innerHTML = p.guide.map((x) => (x && x.k != null) ? `<span class="key">${onbNextEsc(x.k)}</span>` : onbNextEsc(x)).join('');
+  }
+  // 화살 — 화면에서 목표 쪽(사영된 두 점의 각) · 세계에는 아무것도 안 그린다
+  const ar = document.getElementById('onbNextArrow');
+  let ang = null;
+  if (p.target && I.me && window.__w2s) {
+    const a = window.__w2s(p.target.x, p.target.y), b = window.__w2s(I.me.x, I.me.y);
+    if (a && b && isFinite(a.px) && isFinite(b.px)) ang = Math.atan2(a.py - b.py, a.px - b.px);
+  }
+  if (ang != null) {
+    if (!ar.firstChild) ar.innerHTML = uiIcon('arrowR', 20);
+    ar.style.transform = `rotate(${ang.toFixed(3)}rad)`;
+    ar.classList.remove('hidden');
+  } else { ar.innerHTML = ''; ar.style.transform = ''; ar.classList.add('hidden'); }
+  el.classList.remove('hidden');
+  onbNextLast = { stage: p.stage, place: p.place, item: p.item,
+    guide: p.guide.map((x) => (x && x.k != null) ? `[${x.k}]` : x).join(''),
+    target: p.target ? { x: Math.round(p.target.x), y: Math.round(p.target.y) } : null, angle: ang };
+  return p;
+}
 // 하네스 훅 — **읽기 전용만**. 발신은 기존 `window.__sendPrimary` 를 쓴다(새 창구 안 만든다).
 function onbHooks() {
   window.__onbInfo = () => (onbInfo ? JSON.parse(JSON.stringify(onbInfo)) : null);
@@ -377,5 +532,6 @@ function onbHooks() {
     facing: { x: myFacingVx, y: myFacingVy } });
   window.__onbPick = (vid) => { onbSelect(vid); return onbStartVid; };
   window.__onbAny = () => { const a = document.getElementById('onbAny'); if (a) a.click(); return onbStartVid; };
+  window.__t1064Next = () => (onbNextLast ? JSON.parse(JSON.stringify(onbNextLast)) : null);   // ★[T1064] 「지금 할 일」이 그린 것(읽기만)
   return true;
 }

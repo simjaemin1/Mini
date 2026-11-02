@@ -834,6 +834,20 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: var(--font); back
   color: var(--dim); font-size: 11px; cursor: pointer; }
 .onb-hud-line { font-size: 12px; color: var(--dim); }
 .onb-fx { color: var(--accent); }
+/* ── ★[T1064 2026-11-02] 「지금 할 일」 — 지도 판 바로 밑 고정 칸 하나(70-lobby `onbNextRender`) ─────────────
+   ★먹선 그대로: 판 · 판 머리(`.pane-head`) · 테 1px · 모서리 0 · 그림자 0 · 강조는 화살 하나(호박색) · 단축키는 `.key`.
+   ★자리 — 지도 판(`#minimap` · 오른쪽 위) 바로 밑. 위 간격은 눈금 8, 폭은 지도 판의 폭(조각이 지도 판의 상자에서 읽어 맞춘다).
+     지도 판이 없으면 이 줄의 오른쪽 위 자리다. 눌림을 먹지 않는다(세계를 누르는 손을 막지 않는다). */
+#onbNext { position: fixed; top: 12px; right: 12px; width: 320px; margin-top: 8px; z-index: 10;
+  background: var(--pane); border: 1px solid var(--line); color: var(--fg); pointer-events: none; }
+#onbNext .pane-head { font-size: 13px; padding: 6px 10px; }
+.onb-next-body { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px 10px; }
+.onb-next-arrow { flex: 0 0 auto; width: 20px; height: 20px; color: var(--accent);
+  display: inline-flex; align-items: center; justify-content: center; transform-origin: 50% 50%; }
+.onb-next-text { flex: 1 1 auto; min-width: 0; word-break: keep-all; overflow-wrap: anywhere; }   /* 낱말 가운데서 줄을 안 끊는다("들 / 어가면") */
+.onb-next-item { font-size: 14px; font-weight: 700; color: var(--fg-strong); line-height: 1.4; }
+.onb-next-guide { margin-top: 4px; font-size: 12px; color: var(--dim); line-height: 1.6; }
+.onb-next-guide .key { margin: 0 1px; }
 
 /* ── ★[T80 2026-09-03] 게시판 판 — 토스트가 아니라 벽에 붙은 판 ──────────────
    ★새 색 0 · 모서리 0 · 이모지 0. 값은 전부 위 `:root` 토큰이다.
