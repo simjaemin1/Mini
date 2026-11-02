@@ -11,6 +11,11 @@
 //   ⑥ 마을 회귀(A/B): 같은 시드·같은 가상시계에서 A(플레이어 집 없음) vs B(있음)의 마을 자체 건설 산출을
 //      **같은 날짜 기준**으로 비교한다. 여유 크루를 빌려주는 설계이므로 0이 아닐 수 있다 — 실측치를 보고한다.
 //   ⑦ pageerror·console error 0.
+//   ⑧ ★[T1056 · PM 판정 — ★재민 11-01 "서버 집 규칙이 정본"이 규칙을 바꿨다] 의뢰 집이 서 있는 날 마을 집터는 **서버 집 규칙의 하루 몫을 다 받는다** —
+//      마을 크루 = 명부 앞 `min(LIFE_CREW, 인구)` 명 · 하루 `× LIFE_STAGE_PDAY` 단계(econ `labSiteCrewDay` · 두 수는 서버 `villages.js` 글자에서 읽는다) ·
+//      그 몫을 다 올렸거나(오른 단계 = 시공 단계) 곳간이 비었거나(그게 세계다) 그날 완공했다. 의뢰 집 몸(징발 크루)은 마을 몫을 못 깎는다(서버 크루 = 관측자 · 몸 무관).
+//      ⑧ⓞ 옛 규칙이면 빨강(자명 통과 금지) — 하루 진척이 옛 상한 `L_BUILDCAP`(0.35채)을 넘은 날이 있다(옛 규칙은 그 상한을 못 넘는다 · 새 규칙은 크루 둘 = 2단계 = 2/3채).
+//      ⑧ⓜ 미끼 — 의뢰 집이 서 있는 동안 마을 크루를 하나 빼앗은 판은 같은 자로 빨강.
 //
 // 결정론 장치(랩은 안 건드린다 — 하네스가 페이지에 주입):
 //   · Math.random = mulberry32(고정 시드)  · performance.now = 가상시계(프레임당 16.667ms)
@@ -42,19 +47,16 @@ const RUN_DAYS = 18;        // 지정 후 관측 일수
 //   위 T649 머리말의 그 글 그대로다(같은 꼴을 mining · market 도 쓴다 · 사본 0).
 const LC = require('./fixture-lab-clock');
 const INIT = LC.init;
-// ★[T649] 미끼 판 — ⑧ 이 지키는 것(마을 집터에 예비 크루 L_PCREW_RESERVE 가 먼저 · 의뢰 집은 그 위 잉여만)을 **일부러 깬다**.
-//   랩 파일은 안 건드린다 — 이 판의 페이지에서만 `pickBuildSite` 를 감싸, 의뢰 집이 서 있는 동안
-//   마을 집터에 **이미 누가 붙어 있으면** 다음 사람부터는 의뢰 집으로 보낸다(예비 크루를 빼앗는다 → 마을 집터는
-//   크루가 붙은 채 상한을 못 채운다). 같은 자(⑧)가 이 판에서 빨개야 ⑧ 의 초록이 무언가를 지킨다.
-//   ⚠둘에 하나만 돌리는 미끼(T649 첫 판)는 ⑧ 이 초록이었다 — 마을 집터가 크루 1/10 로도 상한(1,610 인·분)을 채웠다(잉여만 뺏겼다 = 깬 게 아니다).
+// ★[T1056 · PM 판정] 미끼 판 — 새 ⑧ 이 지키는 것(마을 집터 = 서버 집 규칙의 하루 몫 · 의뢰 집이 서도 안 깎인다)을 **일부러 깬다**.
+//   랩 파일은 안 건드린다 — 이 판의 페이지에서만 econ 크루 문(`EconEngine.labSiteCrewDay`)을 감싸, 의뢰 집이 서 있는 동안 마을 크루를
+//   **하나 빼앗는다**(크루 상한 − 1 — 의뢰 집이 명부 크루를 빌려 간 꼴). 같은 자(⑧)가 이 판에서 빨개야 ⑧ 의 초록이 무언가를 지킨다.
+//   (종전 T649 미끼 — 몸 `pickBuildSite` 를 감싸 예비 몸을 빼앗기 — 는 옛 규칙의 자였다: 새 규칙에선 몸이 마을 몫에 안 닿아 그 미끼는 무는 자리가 없다.)
 const DECOY = `(() => {
-  const orig = pickBuildSite;
-  window.pickBuildSite = function (a) {
-    const r = orig(a), s = life;
-    if (!r || r.player || !s) return r;
-    const p = s.houses.find((h) => h.player && (h.builtFloors || 0) < (h.floors || 1));
-    if (!p) return r;
-    return s.agents.some((b) => b !== a && b._site === r && b.state === 'build') ? p : r;
+  const orig = EconEngine.labSiteCrewDay;
+  EconEngine.labSiteCrewDay = function (v, s2, crewMax, pday, dbg, done) {
+    const s = life;
+    const p = s && s.houses.find((h) => h.player && (h.builtFloors || 0) < (h.floors || 1));
+    return orig.call(this, v, s2, p ? crewMax - 1 : crewMax, pday, dbg, done);
   };
 })(); true`;
 
@@ -72,7 +74,8 @@ const SNAP = () => {
     vHouses: vh.length,
     mapBeds: (v.econ && v.econ._mapBeds) || 0,
     bedsExpect: vh.filter((h) => (h.builtFloors || 0) >= 1).length * L_FLOORCAP,
-    floorCap: L_FLOORCAP,   // ★[T219] 층당 정원을 **랩이 쥔 그 값으로** 내보낸다(하네스가 6 을 적지 않게)
+    floorCap: L_FLOORCAP,   // (아래 줄 — ★[T1056] ⑧ⓞ 의 옛 상한)
+    buildCap: L_BUILDCAP,   // ★[T219] 층당 정원을 **랩이 쥔 그 값으로** 내보낸다(하네스가 6 을 적지 않게)
     plog: (v._psiteLog || []).slice(),
     homesInPlayer: v.agents.filter((a) => a.home && ph.some((h) => a.home.cx >= h.cx - 5 && a.home.cx <= h.cx && a.home.cy >= h.cy - 5 && a.home.cy <= h.cy - 2)).length,
     onPlayer: v.agents.filter((a) => a._site && a._site.player).length,
@@ -215,37 +218,51 @@ async function runOnce(withPlayerSite, prng, decoy) {
   chk(A.errs.length === 0, 'A런 pageerror ' + A.errs.length + '건');
   chk(A2.errs.length === 0, 'A′런 pageerror ' + A2.errs.length + '건');
 
-  // ── ⑧ 인과 판정: "마을 집터가 크루 붙은 날 하루 상한(L_BUILDCAP)을 채웠는가" ──
-  //    층수 A/B 비교는 잡음에 묻힌다(집터 하나가 늘면 벌채·잠재농지·난수 스트림이 전부 갈라진다).
-  //    빼앗겼는지 여부는 **상한 포화**로 직접 본다: 상한을 채운 날엔 크루를 더 붙여도 진척이 0이므로,
-  //    그 잉여를 플레이어에게 돌린 것은 마을에서 아무것도 뺏지 않은 것이다.
-  // ★[T1004 · PM ⓐ ← T938] ⑧ 의 분모 = **의뢰 집이 서 있는 날**(그날 마감에 미완공 의뢰 집 줄 `bld.p` 가 있는 날)의 마을 집터만.
-  //   ⑧ 이 지키는 인과(`pickBuildSite` — 의뢰 집이 미완공일 때만 "마을 집터 정원 먼저 · 잉여만 의뢰 집")는 그 날에만 적용된다.
-  //   의뢰 집이 없거나 완공된 날은 옛 "미완공 최근접" 한 줄이라 의뢰 집과 무관한 쏠림 미달이 난다(T938 §1-2 · 의뢰 집 없는 12판 6/248) — 그 날을 세면
-  //   ⑧ 이 지키지 않는 것 때문에 빨개진다. 미끼(⑧ⓜ)는 **같은 좁힌 자**로 잰다(T938 §1-4: B 3/3 · 미끼 0/3 — 좁혀도 문다 · 자명 통과 아님).
-  //   창 전부(옛 자)는 표로만 찍는다(단언 아님).
+  // ── ⑧ ★[T1056 · PM 판정] 마을 집터 = 서버 집 규칙의 하루 몫(크루 `min(LIFE_CREW, 인구)` × `LIFE_STAGE_PDAY` 단계) ──
+  //    ★★재민 11-01 "서버 집 규칙이 정본" — 옛 ⑧(T649 · T1004)은 옛 랩 몸 크루 규칙(하루 상한 `L_BUILDCAP` 포화 · 예비 몸 `L_PCREW_RESERVE`)을 단언했다.
+  //    새 규칙에선 마을 크루가 명부 앞 몸의 일꾼 날수다(서버 `_t400Crew` · 관측자 · 몸 무관 — econ `labSiteCrewDay`). 그래서 "의뢰 집이 마을 몫을 안 뺏는다"는
+  //    **크루 붙은 날마다 하루 몫을 다 받았다**로 잰다: 시공 단계(그날 크루 × LIFE_STAGE_PDAY) = min(LIFE_CREW, 인구) × LIFE_STAGE_PDAY(두 수는 서버 글자) ·
+  //    그리고 그 몫을 다 올렸거나(오른 단계 = 시공 단계) · 곳간이 비었거나(목재가 없으면 기다린다 — 그게 세계다) · 그날 완공했다(남은 몫은 버린다 — 서버 슬롯 하나).
+  //    분모 = 의뢰 집이 서 있는 날(T1004 그 좁힌 자 그대로) · 크루 붙은 날(줄의 `crew > 0` — 크루는 하루 한 집터 · 다음 집터 줄은 `wait`).
+  //    창 전부는 표로만 찍는다(단언 아님).
+  const VSRC = require('fs').readFileSync(path.resolve(__dirname, '..', 'server', 'villages.js'), 'utf8');
+  const LIFE_CREW = +VSRC.match(/const LIFE_CREW = (\d+)/)[1], LIFE_STAGE_PDAY = +VSRC.match(/const LIFE_STAGE_PDAY = (\d+)/)[1];
+  const want = (r) => Math.min(LIFE_CREW, r.pop) * LIFE_STAGE_PDAY;
   const capStat = (run, standOnly) => {
-    let crewed = 0, sat = 0, sumInc = 0;
+    let crewed = 0, full = 0, sumAdv = 0, stall = 0, done = 0, over = 0, maxFrac = 0;
     for (const [, s] of run.series) {
       if (!s.bld) continue;
       if (standOnly && !((s.bld.p || []).length > 0)) continue;
-      for (const r of (s.bld.v || [])) { if (r.crew > 0) { crewed++; sumInc += r.inc; if (r.inc >= r.cap - 1e-6) sat++; } }
+      for (const r of (s.bld.v || [])) {
+        if (!(r.crew > 0)) continue;
+        crewed++; sumAdv += r.adv || 0; if (r.stall) stall++; if (r.done) done++;
+        const frac = (r.adv || 0) / (r.stages || Infinity); if (frac > maxFrac) maxFrac = frac;
+        if (frac > s.buildCap + 1e-9) over++;
+        if (r.labor === want(r) && (r.adv === r.labor || r.stall === 1 || r.done === 1)) full++;
+      }
     }
-    return { crewed, sat, mean: crewed ? +(sumInc / crewed).toFixed(4) : 0 };
+    return { crewed, full, stall, done, over, maxFrac: +maxFrac.toFixed(4), mean: crewed ? +(sumAdv / crewed).toFixed(4) : 0 };
   };
-  const sat8 = (c) => c.crewed > 0 && c.sat === c.crewed;   // ⑧ 의 자 — 아래 미끼도 **같은 자**로 잰다(crewed 0 = 빨강 · 자명 통과 금지)
+  const sat8 = (c) => c.crewed > 0 && c.full === c.crewed;   // ⑧ 의 자 — 아래 미끼도 **같은 자**로 잰다(crewed 0 = 빨강 · 자명 통과 금지)
   const ca = capStat(A), cbAll = capStat(B), cb = capStat(B, true);
-  console.log(`  (표) 창 전부 — 마을 집터 '크루 붙은 날' 하루 상한 포화율 — A ${ca.sat}/${ca.crewed}(평균 진척 ${ca.mean}) · B ${cbAll.sat}/${cbAll.crewed}(평균 진척 ${cbAll.mean}) · 상한 0.35`);
-  console.log(`  ⑧ 의 자(의뢰 집이 서 있는 날만) — B ${cb.sat}/${cb.crewed}(평균 진척 ${cb.mean})`);
+  console.log(`  (표) 창 전부 — 마을 집터 '크루 붙은 날' 하루 몫(min(LIFE_CREW ${LIFE_CREW}, 인구) × LIFE_STAGE_PDAY ${LIFE_STAGE_PDAY})을 다 받은 날 — A ${ca.full}/${ca.crewed}(평균 오른 단계 ${ca.mean} · 곳간 빈 날 ${ca.stall} · 완공 ${ca.done}) · B ${cbAll.full}/${cbAll.crewed}(평균 ${cbAll.mean} · 곳간 빈 날 ${cbAll.stall} · 완공 ${cbAll.done})`);
+  console.log(`  ⑧ 의 자(의뢰 집이 서 있는 날만) — B ${cb.full}/${cb.crewed}(평균 오른 단계 ${cb.mean} · 곳간 빈 날 ${cb.stall} · 완공 ${cb.done})`);
   chk(sat8(cb),
-    `⑧ 의뢰 집이 서 있는 날, 마을 집터는 크루가 붙은 날 **전부** 하루 상한을 채웠다 — B ${cb.sat}/${cb.crewed}일 (여유 크루만 빌려줬다는 인과 증거)`);
-  // ★[T649] 자명 통과 금지 — 지키는 대상(마을 집터가 먼저)을 **일부러 깬** 판에서는 같은 자가 빨개야 한다.
-  //   B 와 같은 판(같은 난수 · 같은 지정 프레임)에 미끼만 얹는다. 크루가 붙은 날이 남아 있어야(crewed>0) 빨강이 "포화를 못 채웠다"는 뜻이다.
+    `⑧ 의뢰 집이 서 있는 날, 마을 집터는 크루가 붙은 날 **전부** 서버 집 규칙의 하루 몫을 받았다 — B ${cb.full}/${cb.crewed}일 (의뢰 집이 마을 몫을 안 깎았다)`);
+  // ★[T1056] ⑧ⓞ 옛 규칙이면 빨강 — 옛 규칙의 하루 진척은 `L_BUILDCAP`(0.35채)에 묶인다. 새 규칙은 크루 둘이면 하루 2단계(한 채 = 집터 뒤 단계 수)라 그 상한을 넘는 날이 선다.
+  //   창 전부(A · B)에서 센다 — 옛 규칙 판이면 넘는 날이 0 이라(그리고 줄에 오른 단계 칸이 없다) 이 줄이 빨갛다.
+  {
+    const nOver = ca.over + cbAll.over, mx = Math.max(ca.maxFrac, cbAll.maxFrac);
+    chk(nOver > 0,
+      `⑧ⓞ 옛 규칙이면 빨강 — 마을 집터 하루 진척이 옛 상한 L_BUILDCAP(${B.last.buildCap}채)을 넘은 날 ${nOver}일(A ${ca.over} · B ${cbAll.over} · 최대 하루 ${mx}채 · 옛 규칙 = 0일)`);
+  }
+  // ★[T649 → T1056] 자명 통과 금지 — 지키는 대상(마을 몫이 안 깎인다)을 **일부러 깬** 판에서는 같은 자가 빨개야 한다.
+  //   B 와 같은 판(같은 난수 · 같은 지정 프레임)에 미끼만 얹는다. 크루가 붙은 날이 남아 있어야(crewed>0) 빨강이 "몫을 못 받았다"는 뜻이다.
   const D = await runOnce(true, undefined, true);
   const cd = capStat(D, true), cdAll = capStat(D);
-  console.log(`  [미끼 B′] 의뢰 집이 서 있는 동안 마을 집터엔 먼저 붙은 한 사람만 — 지정 (${D.placed.cx},${D.placed.cy}) 프레임 ${D.placeFrame} · 포화(서 있는 날) ${cd.sat}/${cd.crewed}(평균 진척 ${cd.mean}) · (표) 창 전부 ${cdAll.sat}/${cdAll.crewed}`);
+  console.log(`  [미끼 B′] 의뢰 집이 서 있는 동안 마을 크루를 하나 빼앗음 — 지정 (${D.placed.cx},${D.placed.cy}) 프레임 ${D.placeFrame} · 몫 다 받은 날(서 있는 날) ${cd.full}/${cd.crewed}(평균 오른 단계 ${cd.mean}) · (표) 창 전부 ${cdAll.full}/${cdAll.crewed}`);
   chk(cd.crewed > 0 && !sat8(cd),
-    `⑧ⓜ 자명 통과 금지 — 예비 크루를 일부러 빼앗은 미끼 판은 같은 자로 **빨강** — B′ ${cd.sat}/${cd.crewed}일 (크루 붙은 날 ${cd.crewed} 중 ${cd.crewed - cd.sat}일 상한 미달)`);
+    `⑧ⓜ 자명 통과 금지 — 마을 크루를 일부러 빼앗은 미끼 판은 같은 자로 **빨강** — B′ ${cd.full}/${cd.crewed}일 (크루 붙은 날 ${cd.crewed} 중 ${cd.crewed - cd.full}일 몫 미달)`);
 
   const am = new Map(A.series), bm = new Map(B.series), a2m = new Map(A2.series);
   const days = [...am.keys()].filter((d) => bm.has(d) && a2m.has(d)).sort((a, b) => a - b);

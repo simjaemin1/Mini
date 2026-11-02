@@ -1,0 +1,4682 @@
+{
+ "runs": [
+  {
+   "run": "run-srv",
+   "seed": 1020,
+   "att": 1282,
+   "f365": 106,
+   "fall": 367,
+   "vils": 9,
+   "failV": [
+    "농촌3",
+    "어촌2",
+    "어촌7",
+    "농촌5",
+    "어촌1",
+    "임업2",
+    "어촌12",
+    "농촌8",
+    "농촌9"
+   ],
+   "per": {
+    "광산1": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌6": {
+     "att": 18,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌3": {
+     "att": 21,
+     "fail": 6,
+     "att365": 5,
+     "fail365": 0,
+     "first": 686
+    },
+    "광산2": {
+     "att": 22,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 22,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "임업3": {
+     "att": 48,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌11": {
+     "att": 21,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 124,
+     "fail": 71,
+     "att365": 118,
+     "fail365": 71,
+     "first": 102
+    },
+    "임업6": {
+     "att": 33,
+     "fail": 0,
+     "att365": 29,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 46,
+     "fail": 20,
+     "att365": 5,
+     "fail365": 0,
+     "first": 528
+    },
+    "광산3": {
+     "att": 8,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 24,
+     "fail": 8,
+     "att365": 16,
+     "fail365": 8,
+     "first": 56
+    },
+    "어촌1": {
+     "att": 15,
+     "fail": 1,
+     "att365": 5,
+     "fail365": 0,
+     "first": 581
+    },
+    "광산4": {
+     "att": 10,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 86,
+     "fail": 27,
+     "att365": 74,
+     "fail365": 27,
+     "first": 198
+    },
+    "광산5": {
+     "att": 24,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 33,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌22": {
+     "att": 14,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 41,
+     "fail": 0,
+     "att365": 19,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 12,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌9": {
+     "att": 24,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌12": {
+     "att": 46,
+     "fail": 20,
+     "att365": 3,
+     "fail365": 0,
+     "first": 577
+    },
+    "어촌4": {
+     "att": 23,
+     "fail": 0,
+     "att365": 12,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 34,
+     "fail": 0,
+     "att365": 27,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌3": {
+     "att": 32,
+     "fail": 0,
+     "att365": 18,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 38,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 17,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 7,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 20,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 18,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 10,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 9,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌15": {
+     "att": 24,
+     "fail": 0,
+     "att365": 15,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 8,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌16": {
+     "att": 22,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 15,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 216,
+     "fail": 213,
+     "att365": 3,
+     "fail365": 0,
+     "first": 587
+    },
+    "농촌9": {
+     "att": 9,
+     "fail": 1,
+     "att365": 3,
+     "fail365": 0,
+     "first": 601
+    },
+    "농촌10": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 8,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 5,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 18,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 5,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 20,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 6,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    }
+   }
+  },
+  {
+   "run": "run-srv",
+   "seed": 7,
+   "att": 1119,
+   "f365": 73,
+   "fall": 250,
+   "vils": 9,
+   "failV": [
+    "어촌6",
+    "어촌2",
+    "어촌7",
+    "농촌5",
+    "임업2",
+    "어촌9",
+    "어촌12",
+    "어촌13",
+    "농촌8"
+   ],
+   "per": {
+    "광산1": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌6": {
+     "att": 52,
+     "fail": 15,
+     "att365": 20,
+     "fail365": 4,
+     "first": 337
+    },
+    "농촌3": {
+     "att": 22,
+     "fail": 0,
+     "att365": 11,
+     "fail365": 0,
+     "first": null
+    },
+    "광산2": {
+     "att": 22,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 16,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업3": {
+     "att": 11,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌11": {
+     "att": 22,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 75,
+     "fail": 14,
+     "att365": 60,
+     "fail365": 14,
+     "first": 103
+    },
+    "임업6": {
+     "att": 35,
+     "fail": 0,
+     "att365": 25,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 37,
+     "fail": 12,
+     "att365": 3,
+     "fail365": 0,
+     "first": 510
+    },
+    "광산3": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 17,
+     "fail": 1,
+     "att365": 10,
+     "fail365": 1,
+     "first": 62
+    },
+    "어촌1": {
+     "att": 9,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "광산4": {
+     "att": 9,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 125,
+     "fail": 53,
+     "att365": 103,
+     "fail365": 53,
+     "first": 228
+    },
+    "광산5": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 37,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌22": {
+     "att": 18,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 16,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 7,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌9": {
+     "att": 27,
+     "fail": 1,
+     "att365": 7,
+     "fail365": 1,
+     "first": 215
+    },
+    "어촌12": {
+     "att": 41,
+     "fail": 12,
+     "att365": 3,
+     "fail365": 0,
+     "first": 466
+    },
+    "어촌4": {
+     "att": 21,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 32,
+     "fail": 0,
+     "att365": 20,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌3": {
+     "att": 29,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 18,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 22,
+     "fail": 0,
+     "att365": 12,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 8,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 13,
+     "fail": 5,
+     "att365": 5,
+     "fail365": 0,
+     "first": 710
+    },
+    "어촌15": {
+     "att": 20,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 25,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌16": {
+     "att": 18,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 140,
+     "fail": 137,
+     "att365": 3,
+     "fail365": 0,
+     "first": 663
+    },
+    "농촌9": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌10": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 24,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 13,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 25,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 16,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 22,
+     "fail": 0,
+     "att365": 16,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 16,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    }
+   }
+  },
+  {
+   "run": "run-srv",
+   "seed": 42,
+   "att": 1099,
+   "f365": 62,
+   "fall": 195,
+   "vils": 9,
+   "failV": [
+    "농촌3",
+    "어촌14",
+    "임업3",
+    "어촌2",
+    "농촌5",
+    "임업2",
+    "어촌9",
+    "어촌12",
+    "광산6"
+   ],
+   "per": {
+    "광산1": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌6": {
+     "att": 18,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌3": {
+     "att": 22,
+     "fail": 3,
+     "att365": 4,
+     "fail365": 0,
+     "first": 407
+    },
+    "광산2": {
+     "att": 19,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 37,
+     "fail": 16,
+     "att365": 4,
+     "fail365": 0,
+     "first": 611
+    },
+    "임업3": {
+     "att": 51,
+     "fail": 6,
+     "att365": 26,
+     "fail365": 5,
+     "first": 316
+    },
+    "어촌11": {
+     "att": 24,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 104,
+     "fail": 51,
+     "att365": 100,
+     "fail365": 51,
+     "first": 130
+    },
+    "임업6": {
+     "att": 33,
+     "fail": 0,
+     "att365": 28,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 25,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "광산3": {
+     "att": 14,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 24,
+     "fail": 1,
+     "att365": 9,
+     "fail365": 1,
+     "first": 62
+    },
+    "어촌1": {
+     "att": 8,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "광산4": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 148,
+     "fail": 87,
+     "att365": 31,
+     "fail365": 5,
+     "first": 352
+    },
+    "광산5": {
+     "att": 17,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 8,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌22": {
+     "att": 27,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 38,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 17,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌9": {
+     "att": 29,
+     "fail": 6,
+     "att365": 4,
+     "fail365": 0,
+     "first": 526
+    },
+    "어촌12": {
+     "att": 44,
+     "fail": 19,
+     "att365": 3,
+     "fail365": 0,
+     "first": 515
+    },
+    "어촌4": {
+     "att": 19,
+     "fail": 0,
+     "att365": 12,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 36,
+     "fail": 0,
+     "att365": 18,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌3": {
+     "att": 29,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 38,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 21,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 6,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 25,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 5,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 14,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌15": {
+     "att": 19,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 31,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 10,
+     "fail": 6,
+     "att365": 3,
+     "fail365": 0,
+     "first": 658
+    },
+    "어촌16": {
+     "att": 8,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 27,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌9": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌10": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 4,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 22,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 10,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 6,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 22,
+     "fail": 0,
+     "att365": 16,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    }
+   }
+  },
+  {
+   "run": "run-srv~raid1",
+   "seed": 1020,
+   "att": 1050,
+   "f365": 75,
+   "fall": 206,
+   "vils": 8,
+   "failV": [
+    "농촌3",
+    "임업3",
+    "어촌2",
+    "어촌7",
+    "농촌5",
+    "어촌9",
+    "어촌12",
+    "광산6"
+   ],
+   "per": {
+    "광산1": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌6": {
+     "att": 16,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌3": {
+     "att": 14,
+     "fail": 3,
+     "att365": 5,
+     "fail365": 0,
+     "first": 763
+    },
+    "광산2": {
+     "att": 21,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 22,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업3": {
+     "att": 103,
+     "fail": 59,
+     "att365": 4,
+     "fail365": 0,
+     "first": 594
+    },
+    "어촌11": {
+     "att": 16,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 121,
+     "fail": 67,
+     "att365": 113,
+     "fail365": 67,
+     "first": 102
+    },
+    "임업6": {
+     "att": 35,
+     "fail": 0,
+     "att365": 29,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 49,
+     "fail": 23,
+     "att365": 7,
+     "fail365": 0,
+     "first": 502
+    },
+    "광산3": {
+     "att": 11,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 18,
+     "fail": 8,
+     "att365": 17,
+     "fail365": 8,
+     "first": 56
+    },
+    "어촌1": {
+     "att": 5,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "광산4": {
+     "att": 7,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 59,
+     "fail": 0,
+     "att365": 35,
+     "fail365": 0,
+     "first": null
+    },
+    "광산5": {
+     "att": 27,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 32,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌22": {
+     "att": 8,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 36,
+     "fail": 0,
+     "att365": 17,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 8,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌9": {
+     "att": 31,
+     "fail": 8,
+     "att365": 3,
+     "fail365": 0,
+     "first": 552
+    },
+    "어촌12": {
+     "att": 56,
+     "fail": 31,
+     "att365": 3,
+     "fail365": 0,
+     "first": 596
+    },
+    "어촌4": {
+     "att": 24,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 32,
+     "fail": 0,
+     "att365": 22,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌3": {
+     "att": 28,
+     "fail": 0,
+     "att365": 17,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 41,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 19,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 5,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 18,
+     "fail": 0,
+     "att365": 12,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 8,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 10,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 11,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌15": {
+     "att": 23,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 6,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 15,
+     "fail": 7,
+     "att365": 3,
+     "fail365": 0,
+     "first": 493
+    },
+    "어촌16": {
+     "att": 9,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 15,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌9": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌10": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 10,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 13,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 7,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 7,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 20,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 6,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    }
+   }
+  },
+  {
+   "run": "run-srv~raid1",
+   "seed": 7,
+   "att": 1399,
+   "f365": 96,
+   "fall": 418,
+   "vils": 12,
+   "failV": [
+    "농촌3",
+    "어촌14",
+    "임업3",
+    "어촌2",
+    "어촌7",
+    "농촌5",
+    "임업2",
+    "어촌12",
+    "어촌13",
+    "광산6",
+    "농촌8",
+    "어촌8"
+   ],
+   "per": {
+    "광산1": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌6": {
+     "att": 20,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌3": {
+     "att": 20,
+     "fail": 6,
+     "att365": 5,
+     "fail365": 0,
+     "first": 469
+    },
+    "광산2": {
+     "att": 20,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 35,
+     "fail": 11,
+     "att365": 6,
+     "fail365": 0,
+     "first": 564
+    },
+    "임업3": {
+     "att": 93,
+     "fail": 53,
+     "att365": 4,
+     "fail365": 0,
+     "first": 655
+    },
+    "어촌11": {
+     "att": 21,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 109,
+     "fail": 53,
+     "att365": 100,
+     "fail365": 53,
+     "first": 103
+    },
+    "임업6": {
+     "att": 33,
+     "fail": 0,
+     "att365": 28,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 34,
+     "fail": 2,
+     "att365": 9,
+     "fail365": 2,
+     "first": 351
+    },
+    "광산3": {
+     "att": 5,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 39,
+     "fail": 17,
+     "att365": 8,
+     "fail365": 1,
+     "first": 62
+    },
+    "어촌1": {
+     "att": 6,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "광산4": {
+     "att": 16,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 95,
+     "fail": 38,
+     "att365": 85,
+     "fail365": 38,
+     "first": 247
+    },
+    "광산5": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 34,
+     "fail": 0,
+     "att365": 12,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌22": {
+     "att": 16,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 40,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 24,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌9": {
+     "att": 29,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌12": {
+     "att": 54,
+     "fail": 26,
+     "att365": 3,
+     "fail365": 0,
+     "first": 455
+    },
+    "어촌4": {
+     "att": 24,
+     "fail": 0,
+     "att365": 16,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 36,
+     "fail": 0,
+     "att365": 26,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌3": {
+     "att": 31,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 38,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 6,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 20,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 7,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 21,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 32,
+     "fail": 9,
+     "att365": 3,
+     "fail365": 0,
+     "first": 494
+    },
+    "어촌15": {
+     "att": 18,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 29,
+     "fail": 0,
+     "att365": 11,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 8,
+     "fail": 1,
+     "att365": 3,
+     "fail365": 0,
+     "first": 479
+    },
+    "어촌16": {
+     "att": 19,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 12,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 203,
+     "fail": 200,
+     "att365": 3,
+     "fail365": 0,
+     "first": 600
+    },
+    "농촌9": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌10": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 23,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 17,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 26,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 4,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 23,
+     "fail": 0,
+     "att365": 15,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 22,
+     "fail": 2,
+     "att365": 11,
+     "fail365": 2,
+     "first": 344
+    }
+   }
+  },
+  {
+   "run": "run-srv~raid1",
+   "seed": 42,
+   "att": 1202,
+   "f365": 106,
+   "fall": 319,
+   "vils": 9,
+   "failV": [
+    "농촌3",
+    "어촌14",
+    "어촌2",
+    "농촌5",
+    "임업2",
+    "어촌10",
+    "어촌12",
+    "광산6",
+    "농촌8"
+   ],
+   "per": {
+    "광산1": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌6": {
+     "att": 32,
+     "fail": 0,
+     "att365": 25,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌3": {
+     "att": 23,
+     "fail": 3,
+     "att365": 4,
+     "fail365": 0,
+     "first": 377
+    },
+    "광산2": {
+     "att": 20,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 42,
+     "fail": 17,
+     "att365": 3,
+     "fail365": 0,
+     "first": 503
+    },
+    "임업3": {
+     "att": 45,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌11": {
+     "att": 24,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 112,
+     "fail": 51,
+     "att365": 100,
+     "fail365": 51,
+     "first": 130
+    },
+    "임업6": {
+     "att": 34,
+     "fail": 0,
+     "att365": 26,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 29,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "광산3": {
+     "att": 11,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 22,
+     "fail": 1,
+     "att365": 9,
+     "fail365": 1,
+     "first": 62
+    },
+    "어촌1": {
+     "att": 10,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "광산4": {
+     "att": 6,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 117,
+     "fail": 54,
+     "att365": 102,
+     "fail365": 54,
+     "first": 180
+    },
+    "광산5": {
+     "att": 25,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 31,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌22": {
+     "att": 11,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 33,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 17,
+     "fail": 3,
+     "att365": 3,
+     "fail365": 0,
+     "first": 589
+    },
+    "어촌9": {
+     "att": 24,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌12": {
+     "att": 37,
+     "fail": 11,
+     "att365": 3,
+     "fail365": 0,
+     "first": 555
+    },
+    "어촌4": {
+     "att": 14,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 35,
+     "fail": 0,
+     "att365": 26,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌3": {
+     "att": 29,
+     "fail": 0,
+     "att365": 12,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 46,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 6,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 19,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 4,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 8,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌15": {
+     "att": 14,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 5,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 16,
+     "fail": 7,
+     "att365": 3,
+     "fail365": 0,
+     "first": 560
+    },
+    "어촌16": {
+     "att": 9,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 26,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 175,
+     "fail": 172,
+     "att365": 3,
+     "fail365": 0,
+     "first": 628
+    },
+    "농촌9": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌10": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 4,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 8,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 12,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 5,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 23,
+     "fail": 0,
+     "att365": 16,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 9,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    }
+   }
+  },
+  {
+   "run": "run-srv~raid2",
+   "seed": 1020,
+   "att": 1006,
+   "f365": 126,
+   "fall": 226,
+   "vils": 9,
+   "failV": [
+    "농촌3",
+    "어촌14",
+    "임업3",
+    "어촌2",
+    "농촌5",
+    "임업2",
+    "어촌9",
+    "어촌12",
+    "광산6"
+   ],
+   "per": {
+    "광산1": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌6": {
+     "att": 15,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌3": {
+     "att": 23,
+     "fail": 6,
+     "att365": 5,
+     "fail365": 0,
+     "first": 417
+    },
+    "광산2": {
+     "att": 19,
+     "fail": 0,
+     "att365": 12,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 49,
+     "fail": 26,
+     "att365": 6,
+     "fail365": 0,
+     "first": 400
+    },
+    "임업3": {
+     "att": 84,
+     "fail": 47,
+     "att365": 4,
+     "fail365": 0,
+     "first": 659
+    },
+    "어촌11": {
+     "att": 16,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 117,
+     "fail": 66,
+     "att365": 112,
+     "fail365": 66,
+     "first": 102
+    },
+    "임업6": {
+     "att": 33,
+     "fail": 0,
+     "att365": 26,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 27,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "광산3": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 43,
+     "fail": 18,
+     "att365": 18,
+     "fail365": 8,
+     "first": 56
+    },
+    "어촌1": {
+     "att": 5,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "광산4": {
+     "att": 10,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 110,
+     "fail": 51,
+     "att365": 102,
+     "fail365": 51,
+     "first": 198
+    },
+    "광산5": {
+     "att": 8,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 8,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌22": {
+     "att": 18,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 32,
+     "fail": 0,
+     "att365": 21,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 19,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌9": {
+     "att": 21,
+     "fail": 1,
+     "att365": 7,
+     "fail365": 1,
+     "first": 362
+    },
+    "어촌12": {
+     "att": 37,
+     "fail": 10,
+     "att365": 4,
+     "fail365": 0,
+     "first": 430
+    },
+    "어촌4": {
+     "att": 7,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 33,
+     "fail": 0,
+     "att365": 26,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌3": {
+     "att": 28,
+     "fail": 0,
+     "att365": 23,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 6,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 18,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 5,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 15,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 19,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 20,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌15": {
+     "att": 17,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 7,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 8,
+     "fail": 1,
+     "att365": 3,
+     "fail365": 0,
+     "first": 616
+    },
+    "어촌16": {
+     "att": 15,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 7,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌9": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌10": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 17,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 8,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 21,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 19,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    }
+   }
+  },
+  {
+   "run": "run-srv~raid2",
+   "seed": 7,
+   "att": 1490,
+   "f365": 78,
+   "fall": 500,
+   "vils": 14,
+   "failV": [
+    "어촌6",
+    "농촌3",
+    "어촌14",
+    "임업3",
+    "어촌2",
+    "어촌7",
+    "농촌5",
+    "어촌1",
+    "임업2",
+    "어촌10",
+    "어촌12",
+    "어촌13",
+    "광산6",
+    "농촌8"
+   ],
+   "per": {
+    "광산1": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌6": {
+     "att": 48,
+     "fail": 7,
+     "att365": 12,
+     "fail365": 0,
+     "first": 421
+    },
+    "농촌3": {
+     "att": 28,
+     "fail": 6,
+     "att365": 13,
+     "fail365": 6,
+     "first": 336
+    },
+    "광산2": {
+     "att": 23,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 43,
+     "fail": 21,
+     "att365": 5,
+     "fail365": 0,
+     "first": 445
+    },
+    "임업3": {
+     "att": 100,
+     "fail": 56,
+     "att365": 4,
+     "fail365": 0,
+     "first": 569
+    },
+    "어촌11": {
+     "att": 20,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 71,
+     "fail": 14,
+     "att365": 60,
+     "fail365": 14,
+     "first": 103
+    },
+    "임업6": {
+     "att": 33,
+     "fail": 0,
+     "att365": 27,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 47,
+     "fail": 19,
+     "att365": 6,
+     "fail365": 0,
+     "first": 390
+    },
+    "광산3": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 15,
+     "fail": 2,
+     "att365": 8,
+     "fail365": 1,
+     "first": 62
+    },
+    "어촌1": {
+     "att": 12,
+     "fail": 4,
+     "att365": 5,
+     "fail365": 0,
+     "first": 779
+    },
+    "광산4": {
+     "att": 10,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 123,
+     "fail": 51,
+     "att365": 99,
+     "fail365": 51,
+     "first": 249
+    },
+    "광산5": {
+     "att": 28,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 33,
+     "fail": 0,
+     "att365": 11,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌22": {
+     "att": 19,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 16,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 18,
+     "fail": 1,
+     "att365": 3,
+     "fail365": 0,
+     "first": 505
+    },
+    "어촌9": {
+     "att": 24,
+     "fail": 0,
+     "att365": 16,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌12": {
+     "att": 49,
+     "fail": 21,
+     "att365": 12,
+     "fail365": 6,
+     "first": 357
+    },
+    "어촌4": {
+     "att": 23,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 36,
+     "fail": 0,
+     "att365": 31,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌3": {
+     "att": 31,
+     "fail": 0,
+     "att365": 13,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 11,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 19,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 9,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 15,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 22,
+     "fail": 0,
+     "att365": 15,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 13,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 6,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 21,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 24,
+     "fail": 4,
+     "att365": 6,
+     "fail365": 0,
+     "first": 574
+    },
+    "어촌15": {
+     "att": 20,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 33,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 23,
+     "fail": 14,
+     "att365": 3,
+     "fail365": 0,
+     "first": 526
+    },
+    "어촌16": {
+     "att": 9,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 22,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 283,
+     "fail": 280,
+     "att365": 3,
+     "fail365": 0,
+     "first": 520
+    },
+    "농촌9": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌10": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 8,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 10,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 25,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 12,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 21,
+     "fail": 0,
+     "att365": 17,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 11,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    }
+   }
+  },
+  {
+   "run": "run-srv~raid2",
+   "seed": 42,
+   "att": 1665,
+   "f365": 248,
+   "fall": 817,
+   "vils": 9,
+   "failV": [
+    "농촌3",
+    "임업3",
+    "어촌2",
+    "농촌5",
+    "임업2",
+    "어촌10",
+    "어촌12",
+    "농촌2",
+    "농촌8"
+   ],
+   "per": {
+    "광산1": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌6": {
+     "att": 32,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌3": {
+     "att": 17,
+     "fail": 6,
+     "att365": 4,
+     "fail365": 0,
+     "first": 602
+    },
+    "광산2": {
+     "att": 21,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 16,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "임업3": {
+     "att": 90,
+     "fail": 43,
+     "att365": 62,
+     "fail365": 30,
+     "first": 259
+    },
+    "어촌11": {
+     "att": 21,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 104,
+     "fail": 51,
+     "att365": 100,
+     "fail365": 51,
+     "first": 130
+    },
+    "임업6": {
+     "att": 35,
+     "fail": 0,
+     "att365": 29,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 27,
+     "fail": 0,
+     "att365": 14,
+     "fail365": 0,
+     "first": null
+    },
+    "광산3": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 21,
+     "fail": 1,
+     "att365": 9,
+     "fail365": 1,
+     "first": 62
+    },
+    "어촌1": {
+     "att": 9,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "광산4": {
+     "att": 6,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 153,
+     "fail": 84,
+     "att365": 16,
+     "fail365": 0,
+     "first": 388
+    },
+    "광산5": {
+     "att": 24,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 30,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌22": {
+     "att": 9,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 37,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 24,
+     "fail": 4,
+     "att365": 5,
+     "fail365": 0,
+     "first": 530
+    },
+    "어촌9": {
+     "att": 23,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌12": {
+     "att": 42,
+     "fail": 15,
+     "att365": 3,
+     "fail365": 0,
+     "first": 426
+    },
+    "어촌4": {
+     "att": 16,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 48,
+     "fail": 12,
+     "att365": 10,
+     "fail365": 0,
+     "first": 428
+    },
+    "어촌3": {
+     "att": 29,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 24,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 15,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 22,
+     "fail": 0,
+     "att365": 11,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 20,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌15": {
+     "att": 5,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 5,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌16": {
+     "att": 11,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 27,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 604,
+     "fail": 601,
+     "att365": 169,
+     "fail365": 166,
+     "first": 199
+    },
+    "농촌9": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌10": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 8,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 12,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 4,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 6,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 21,
+     "fail": 0,
+     "att365": 17,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    }
+   }
+  },
+  {
+   "run": "run-srv~raid3",
+   "seed": 1020,
+   "att": 1078,
+   "f365": 139,
+   "fall": 207,
+   "vils": 11,
+   "failV": [
+    "농촌3",
+    "임업3",
+    "어촌2",
+    "어촌7",
+    "농촌5",
+    "임업2",
+    "임업5",
+    "어촌10",
+    "어촌12",
+    "광산6",
+    "농촌8"
+   ],
+   "per": {
+    "광산1": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌6": {
+     "att": 15,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌3": {
+     "att": 20,
+     "fail": 6,
+     "att365": 5,
+     "fail365": 0,
+     "first": 754
+    },
+    "광산2": {
+     "att": 21,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 24,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "임업3": {
+     "att": 41,
+     "fail": 1,
+     "att365": 4,
+     "fail365": 0,
+     "first": 796
+    },
+    "어촌11": {
+     "att": 17,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 121,
+     "fail": 67,
+     "att365": 112,
+     "fail365": 67,
+     "first": 102
+    },
+    "임업6": {
+     "att": 34,
+     "fail": 0,
+     "att365": 28,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 54,
+     "fail": 27,
+     "att365": 7,
+     "fail365": 0,
+     "first": 423
+    },
+    "광산3": {
+     "att": 12,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 25,
+     "fail": 8,
+     "att365": 16,
+     "fail365": 8,
+     "first": 56
+    },
+    "어촌1": {
+     "att": 6,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "광산4": {
+     "att": 13,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 114,
+     "fail": 56,
+     "att365": 107,
+     "fail365": 56,
+     "first": 182
+    },
+    "광산5": {
+     "att": 24,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 46,
+     "fail": 9,
+     "att365": 10,
+     "fail365": 0,
+     "first": 439
+    },
+    "농촌22": {
+     "att": 14,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 36,
+     "fail": 0,
+     "att365": 12,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 35,
+     "fail": 13,
+     "att365": 5,
+     "fail365": 0,
+     "first": 529
+    },
+    "어촌9": {
+     "att": 24,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌12": {
+     "att": 38,
+     "fail": 11,
+     "att365": 15,
+     "fail365": 8,
+     "first": 330
+    },
+    "어촌4": {
+     "att": 23,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 33,
+     "fail": 0,
+     "att365": 25,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌3": {
+     "att": 29,
+     "fail": 0,
+     "att365": 21,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 18,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 20,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 7,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 13,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 4,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 17,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 9,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌15": {
+     "att": 24,
+     "fail": 0,
+     "att365": 15,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 17,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 7,
+     "fail": 1,
+     "att365": 3,
+     "fail365": 0,
+     "first": 781
+    },
+    "어촌16": {
+     "att": 18,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 9,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 11,
+     "fail": 8,
+     "att365": 3,
+     "fail365": 0,
+     "first": 792
+    },
+    "농촌9": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌10": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 17,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 6,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 21,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 6,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    }
+   }
+  },
+  {
+   "run": "run-srv~raid3",
+   "seed": 7,
+   "att": 1973,
+   "f365": 184,
+   "fall": 892,
+   "vils": 11,
+   "failV": [
+    "광산7",
+    "어촌6",
+    "어촌14",
+    "임업3",
+    "어촌2",
+    "농촌5",
+    "어촌1",
+    "임업2",
+    "어촌10",
+    "어촌12",
+    "농촌8"
+   ],
+   "per": {
+    "광산1": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 185,
+     "fail": 181,
+     "att365": 3,
+     "fail365": 0,
+     "first": 619
+    },
+    "어촌6": {
+     "att": 37,
+     "fail": 1,
+     "att365": 14,
+     "fail365": 1,
+     "first": 307
+    },
+    "농촌3": {
+     "att": 22,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "광산2": {
+     "att": 21,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 45,
+     "fail": 20,
+     "att365": 4,
+     "fail365": 0,
+     "first": 505
+    },
+    "임업3": {
+     "att": 81,
+     "fail": 36,
+     "att365": 5,
+     "fail365": 0,
+     "first": 511
+    },
+    "어촌11": {
+     "att": 15,
+     "fail": 0,
+     "att365": 11,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 75,
+     "fail": 14,
+     "att365": 60,
+     "fail365": 14,
+     "first": 103
+    },
+    "임업6": {
+     "att": 36,
+     "fail": 0,
+     "att365": 26,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 27,
+     "fail": 0,
+     "att365": 12,
+     "fail365": 0,
+     "first": null
+    },
+    "광산3": {
+     "att": 19,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 38,
+     "fail": 19,
+     "att365": 8,
+     "fail365": 1,
+     "first": 62
+    },
+    "어촌1": {
+     "att": 13,
+     "fail": 1,
+     "att365": 5,
+     "fail365": 0,
+     "first": 488
+    },
+    "광산4": {
+     "att": 22,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 79,
+     "fail": 6,
+     "att365": 52,
+     "fail365": 6,
+     "first": 267
+    },
+    "광산5": {
+     "att": 25,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 39,
+     "fail": 0,
+     "att365": 13,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌22": {
+     "att": 19,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 37,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 19,
+     "fail": 1,
+     "att365": 3,
+     "fail365": 0,
+     "first": 539
+    },
+    "어촌9": {
+     "att": 21,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌12": {
+     "att": 41,
+     "fail": 16,
+     "att365": 3,
+     "fail365": 0,
+     "first": 478
+    },
+    "어촌4": {
+     "att": 21,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 33,
+     "fail": 0,
+     "att365": 17,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌3": {
+     "att": 32,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 43,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 24,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 9,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 12,
+     "fail": 0,
+     "att365": 12,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 9,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 6,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 12,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 22,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌15": {
+     "att": 22,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 31,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 6,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌16": {
+     "att": 19,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 16,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 600,
+     "fail": 597,
+     "att365": 165,
+     "fail365": 162,
+     "first": 203
+    },
+    "농촌9": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌10": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 20,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 17,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 27,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 15,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 28,
+     "fail": 0,
+     "att365": 17,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 15,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    }
+   }
+  },
+  {
+   "run": "run-srv~raid3",
+   "seed": 42,
+   "att": 1441,
+   "f365": 42,
+   "fall": 539,
+   "vils": 6,
+   "failV": [
+    "농촌3",
+    "어촌2",
+    "농촌5",
+    "임업2",
+    "어촌12",
+    "농촌8"
+   ],
+   "per": {
+    "광산1": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "광산7": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌6": {
+     "att": 16,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌3": {
+     "att": 16,
+     "fail": 10,
+     "att365": 4,
+     "fail365": 0,
+     "first": 588
+    },
+    "광산2": {
+     "att": 11,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌14": {
+     "att": 19,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "임업3": {
+     "att": 47,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌11": {
+     "att": 19,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌2": {
+     "att": 90,
+     "fail": 37,
+     "att365": 84,
+     "fail365": 37,
+     "first": 128
+    },
+    "임업6": {
+     "att": 32,
+     "fail": 0,
+     "att365": 28,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌7": {
+     "att": 28,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "광산3": {
+     "att": 13,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌5": {
+     "att": 23,
+     "fail": 1,
+     "att365": 10,
+     "fail365": 1,
+     "first": 62
+    },
+    "어촌1": {
+     "att": 6,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "광산4": {
+     "att": 10,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업2": {
+     "att": 141,
+     "fail": 81,
+     "att365": 30,
+     "fail365": 4,
+     "first": 354
+    },
+    "광산5": {
+     "att": 19,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "임업5": {
+     "att": 23,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌22": {
+     "att": 16,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "임업1": {
+     "att": 40,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌10": {
+     "att": 6,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌9": {
+     "att": 23,
+     "fail": 0,
+     "att365": 8,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌12": {
+     "att": 40,
+     "fail": 17,
+     "att365": 3,
+     "fail365": 0,
+     "first": 481
+    },
+    "어촌4": {
+     "att": 15,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌2": {
+     "att": 37,
+     "fail": 0,
+     "att365": 19,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌3": {
+     "att": 30,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌1": {
+     "att": 19,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌13": {
+     "att": 9,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌15": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌16": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌17": {
+     "att": 21,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌18": {
+     "att": 4,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌19": {
+     "att": 14,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌20": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌14": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌21": {
+     "att": 23,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌13": {
+     "att": 9,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌15": {
+     "att": 18,
+     "fail": 0,
+     "att365": 7,
+     "fail365": 0,
+     "first": null
+    },
+    "임업4": {
+     "att": 29,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "광산6": {
+     "att": 10,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌16": {
+     "att": 19,
+     "fail": 0,
+     "att365": 9,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌5": {
+     "att": 23,
+     "fail": 0,
+     "att365": 5,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌8": {
+     "att": 396,
+     "fail": 393,
+     "att365": 3,
+     "fail365": 0,
+     "first": 407
+    },
+    "농촌9": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌10": {
+     "att": 3,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌11": {
+     "att": 24,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌7": {
+     "att": 18,
+     "fail": 0,
+     "att365": 10,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌12": {
+     "att": 24,
+     "fail": 0,
+     "att365": 4,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌6": {
+     "att": 12,
+     "fail": 0,
+     "att365": 6,
+     "fail365": 0,
+     "first": null
+    },
+    "농촌4": {
+     "att": 20,
+     "fail": 0,
+     "att365": 15,
+     "fail365": 0,
+     "first": null
+    },
+    "어촌8": {
+     "att": 5,
+     "fail": 0,
+     "att365": 3,
+     "fail365": 0,
+     "first": null
+    }
+   }
+  }
+ ],
+ "gap": [
+  [
+   "run-srv",
+   "h",
+   {
+    "89": {
+     "all": 209,
+     "sub": 67,
+     "absAll": 509,
+     "absSub": 91,
+     "n": 153,
+     "subB": 36,
+     "absSubB": 36
+    },
+    "364": {
+     "all": -74,
+     "sub": -128,
+     "absAll": 1688,
+     "absSub": 412,
+     "n": 153,
+     "subB": -178,
+     "absSubB": 302
+    },
+    "last": {
+     "all": 1637,
+     "sub": 24,
+     "absAll": 4195,
+     "absSub": 678,
+     "n": 153,
+     "subB": 24,
+     "absSubB": 678
+    }
+   }
+  ],
+  [
+   "run-srv~raid1",
+   "h1",
+   {
+    "89": {
+     "all": 208,
+     "sub": 74,
+     "absAll": 508,
+     "absSub": 98,
+     "n": 153,
+     "subB": 36,
+     "absSubB": 36
+    },
+    "364": {
+     "all": 107,
+     "sub": -49,
+     "absAll": 1619,
+     "absSub": 439,
+     "n": 153,
+     "subB": -159,
+     "absSubB": 271
+    },
+    "last": {
+     "all": 1644,
+     "sub": 91,
+     "absAll": 3836,
+     "absSub": 717,
+     "n": 153,
+     "subB": 91,
+     "absSubB": 717
+    }
+   }
+  ],
+  [
+   "run-srv~raid2",
+   "h2",
+   {
+    "89": {
+     "all": 195,
+     "sub": 77,
+     "absAll": 517,
+     "absSub": 149,
+     "n": 153,
+     "subB": 6,
+     "absSubB": 30
+    },
+    "364": {
+     "all": -592,
+     "sub": -347,
+     "absAll": 2168,
+     "absSub": 891,
+     "n": 153,
+     "subB": -448,
+     "absSubB": 554
+    },
+    "last": {
+     "all": 1236,
+     "sub": -154,
+     "absAll": 4170,
+     "absSub": 786,
+     "n": 153,
+     "subB": -154,
+     "absSubB": 786
+    }
+   }
+  ],
+  [
+   "run-srv~raid3",
+   "h3",
+   {
+    "89": {
+     "all": 254,
+     "sub": 52,
+     "absAll": 678,
+     "absSub": 180,
+     "n": 153,
+     "subB": 10,
+     "absSubB": 22
+    },
+    "364": {
+     "all": 469,
+     "sub": 127,
+     "absAll": 1735,
+     "absSub": 411,
+     "n": 153,
+     "subB": 68,
+     "absSubB": 228
+    },
+    "last": {
+     "all": -396,
+     "sub": -123,
+     "absAll": 3936,
+     "absSub": 815,
+     "n": 153,
+     "subB": -123,
+     "absSubB": 815
+    }
+   }
+  ]
+ ]
+}

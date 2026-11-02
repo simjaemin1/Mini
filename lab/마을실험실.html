@@ -10481,6 +10481,7 @@ function houseCrewDay(v, s2, crew, labor, tripsEach, perLoad, roundS, dbg, advan
 //   ⚠땅이 없는 자리 — 서버 `_lifeAddHouseSite` 는 영토 칸 · 물 · 농지 거름으로 집터를 못 찾으면 안 세운다(정지 마을). 랩 t17 엔 영토 칸이 없어 늘 선다(보고 T1050 §1 회부).
 //   붙이는 문은 `labHouseAttach(v, 시딩 집 칸, { crew: LIFE_CREW, pday: LIFE_STAGE_PDAY })` 하나 — 자 t17 · t176 이 `layout.houses` 칸 수(서버 `_houseCells` 시딩과 같은 칸)와
 //     서버 정본 두 수(`villages.js` 의 그 두 상수 · `__labProbe._t400Probe.LIFE_CREW` · `.LIFE_STAGE_PDAY` 로 읽는다 — 사본 0)를 준다. 안 붙인 마을(서버 · 다른 자 · 랩 HTML)은 한 글자도 안 닿는다.
+//   ★[T1056] 랩 HTML 둘(마을실험실 · 전쟁실험실)의 생활층 집 고리도 이 손잡이를 읽는다(켬 문 `_t1056H` — 켬 = 마을 집터를 아래 `labSiteCrewDay` 가 짓는다 · 끔 = 종전 셋째 규칙 = 종전 바이트).
 const T1050_LAB_HOUSE = !(typeof process !== 'undefined' && process.env && process.env.T1050_LAB_HOUSE === '0');
 function labHouseAttach(v, cells0, life) {
   if (!T1050_LAB_HOUSE || !T400_BUILD_ACT || !v || !life || !(life.crew > 0) || !(life.pday > 0)) return false;
@@ -10493,19 +10494,33 @@ function labHouseDay(v) {
   const L = _villageLayoutMod(); if (!L) return null;
   const N = (v.npcs && v.npcs.length) || 0;
   v._mapBeds = H.cells * L.HOUSE_CAP_PER_FLOOR;                                                         // ① 침상
-  if (!H.site && L.houseSiteWant(N, v.housing + ((T958_HOUSE_REAL && v._t958Want > 0) ? v._t958Want : 0), H.cells, H.site ? 1 : 0)) H.site = { stage: 1 };   // ② 방아쇠 → 집터
+  if (!H.site && L.houseSiteWant(N, v.housing + ((T958_HOUSE_REAL && v._t958Want > 0) ? v._t958Want : 0), H.cells, H.site ? 1 : 0)) H.site = labSiteNew({});   // ② 방아쇠 → 집터
   v._t400Live = true;                                                                                    // ③ 크루 하루(서버 `_t400BuildDay` 머리 그 줄)
-  const dbg = { crew: 0, trips: 0, perTrip: 0, took: 0, placed: 0, adv: 0, stall: 0, walkS: 0 };
+  const dbg = labCrewDbg();
   const s2 = H.site; if (!s2) return dbg;
-  const n = Math.min(H.crew, N); if (!n) return dbg;
+  labSiteCrewDay(v, s2, H.crew, H.pday, dbg, () => { H.cells++; H.site = null; H.sum.built++; });
+  const U = H.sum; U.days++; U.crewDays += dbg.crew; U.trips += dbg.trips; U.took += dbg.took; U.adv += dbg.adv; U.stallDays += dbg.stall;
+  return dbg;
+}
+// ★★[T1056 2026-11-01 · T1050 회부 2] **몸 없는 크루의 집터 하루** — 위 `labHouseDay`(랩 자 t17 · t176)와 랩 HTML 둘(마을실험실 · 전쟁실험실 생활층 집 고리)이
+//   **같은 함수**를 부른다(사본 0 · 새 수 0). 몸통은 `labHouseDay` ③④ 를 글자 그대로 뺐다(t17 · t176 판 바이트 같음):
+//     크루 = 명부 앞 `min(LIFE_CREW, 인구)` 명의 일꾼 날수(손만 있는 자리) · 시공 = 크루 × `LIFE_STAGE_PDAY` · 왕복 상한 = 없음 · 한 짐 = `crewPerLoad`
+//     ④ 단계가 공정 끝(`hutStageCount()` — 서버 글자 `stage <= 3` 의 그 수)을 넘으면 `done()`(부르는 쪽의 완공 — t17 = 집 칸 +1 · 랩 HTML = 그 집 층 +1)
+//   s2 = 집터(`stage` · `mat` 를 쥔다 — 랩 HTML 은 제 집 객체 그대로) · crewMax · pday = 서버 정본 두 수(`villages.js` `LIFE_CREW` · `LIFE_STAGE_PDAY` —
+//   t17 은 `__labProbe._t400Probe` 로 · 랩 HTML 은 번들이 그 두 줄에서 구운 `EconEngine.LifeCrew` 로 받는다)
+function labCrewDbg() { return { crew: 0, trips: 0, perTrip: 0, took: 0, placed: 0, adv: 0, stall: 0, walkS: 0 }; }   // 그날 계측 칸(`houseCrewDay` 가 더한다 — 서버 `_t400Dbg` 의 그 칸들)
+function labSiteNew(s2) { if (!(s2.stage > 0)) s2.stage = 1; return s2; }   // 서버 `_lifeAddHouseSite` 가 세우는 그 단계(`stage: 1` — ①굴착을 마친 집터)
+function labSiteCrewDay(v, s2, crewMax, pday, dbg, done) {
+  const N = (v.npcs && v.npcs.length) || 0;
+  const n = Math.min(crewMax, N); if (!n) return dbg;
+  labSiteNew(s2);
   const crew = []; for (let i = 0; i < n; i++) crew.push({ inventory: {} });
   dbg.crew = n; dbg.perTrip = Infinity;
-  houseCrewDay(v, s2, crew, n * H.pday, Infinity, crewPerLoad, 0, dbg, () => {
+  houseCrewDay(v, s2, crew, n * pday, Infinity, crewPerLoad, 0, dbg, () => {
     s2.stage++;
     if (s2.stage < hutStageCount()) return true;                                                         // ④ 완공 — 서버 `stage <= 3` 그 경계
-    H.cells++; H.site = null; H.sum.built++; return false;
+    done(); return false;
   });
-  const U = H.sum; U.days++; U.crewDays += dbg.crew; U.trips += dbg.trips; U.took += dbg.took; U.adv += dbg.adv; U.stallDays += dbg.stall;
   return dbg;
 }
 function labHouseWorldDay(world) {   // 하루 끝(econ 틱 뒤 — 서버 생활층 차례) · 붙인 마을만
@@ -15103,7 +15118,7 @@ module.exports = {
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
-  T1050_LAB_HOUSE, crewPerLoad, houseCrewDay, labHouseAttach, labHouseDay, labHouseWorldDay,   // ★[T1050] 집 크루 하루 정본(서버 생활층 · 랩 몸 없는 마을이 같은 함수) · 손잡이
+  T1050_LAB_HOUSE, crewPerLoad, houseCrewDay, labHouseAttach, labHouseDay, labHouseWorldDay, labSiteNew, labSiteCrewDay, labCrewDbg,   // ★[T1050] 집 크루 하루 정본(서버 생활층 · 랩 몸 없는 마을이 같은 함수) · 손잡이 · ★[T1056] 몸 없는 크루의 집터 하루(t17 · t176 · 랩 HTML 둘이 같은 함수)
   T400_BUILD_ACT, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
@@ -17729,7 +17744,7 @@ module.exports = {
 
 ;return module.exports;})();
 
-  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops; root.EconEngine.ZoneCfg=modules.zcfg;
+  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops; root.EconEngine.ZoneCfg=modules.zcfg; root.EconEngine.LifeCrew={"crew":2,"pday":1};
 })(typeof window!=='undefined'?window:globalThis);
 
 </script>
@@ -19345,7 +19360,7 @@ function relayoutVillage(s,np){
   const _tOwn=Object.assign({},TR.terrain,{isBlocked:(x,y)=>{if(TR.terrain.isBlocked(x,y))return true;const o=_claimedAll.get(x+','+y);return !!o&&o!==s;}});   // ★[T599 ← T569 ①] 재배치도 남의 영토를 막힌 땅으로 본다(서버는 영토를 다시 짓지 않는다 — 랩 재배치가 ① 을 지키게)
   const V2=VillageLayout.generate(_tOwn,s.center.cx,s.center.cy,np,{fert:s.fert,water:s.water,compactW,sizeMul:s._sizeMul||1.5,settlement,maxCells:MAX_CELLS,targetCells:s.econ?Math.min(Math.round(s.econ.land.size*25),_terrCapOf(s)):undefined,existingHouses:s.houses,existingFarmland:s.farmland,existingDryfield:s.dryfield});   // ★영토 목표=econ size(MB/MC)
   if(s.V&&s.V.territory){const tset=new Set(V2.territory.map(c=>c[0]+','+c[1]));for(const c of s.V.territory){const k=c[0]+','+c[1];if(!tset.has(k)){tset.add(k);V2.territory.push(c);}}}   // ★영토 불수축(폐경지 유지 — 한 번 연 땅은 영토)
-  for(const h of V2.houses){const old=bs.get(Math.round(h.cx)+','+Math.round(h.cy));if(old){h.builtFloors=old.builtFloors;h.built=old.built;}else{h.builtFloors=0;h.built=0;}}   // 기존 집=유지, 새 집=집터(미완공→건설)
+  for(const h of V2.houses){const old=bs.get(Math.round(h.cx)+','+Math.round(h.cy));if(old){h.builtFloors=old.builtFloors;h.built=old.built;if(old.stage!=null){h.stage=old.stage;h.mat=old.mat;}/*★[T1056] 집터 공정 단계 · 놓인 자재(서버 집 규칙 — 크루가 곳간에서 꺼내 놓은 목재)도 재배치를 건너 산다(안 그러면 놓인 목재가 사라진다) · 끔 판엔 그 칸이 없다*/}else{h.builtFloors=0;h.built=0;}}   // 기존 집=유지, 새 집=집터(미완공→건설)
   V=V2; s.V=V2; s.houses=V2.houses; V2.gran=s.gran||[]; V2.pop=np; V2.walls=buildWalls();   // ★곳간 존속(재배치가 곳간을 지우지 않게 — 벽 재구축 전에 부착)
   for(const h of V2.houses)deforestArea(s,Math.round(h.cx),Math.round(h.cy),L_DEFOREST_H);   // ★집 동네 벌채(±5)
   s.potFarm=(V2.nongZone||[]).slice(); s.potDry=[];   // ★논 존닝만 잠재 메뉴 갱신(밭=창발) — V2.farmland은 개간 실상태(잠금분)라 potFarm 아님
@@ -20601,14 +20616,22 @@ function lifeDay(doBulk){const s=life;if(!s)return;s.day++;const day=s.day;
   if(s.econ){const need=Math.max(1,Math.round(s.pop*VillageLayout.landNeedPer((s.fert!=null?s.fert:(s.V?s.V.fert:null)),L_LANDNEED)));const nd=Math.min(s.potSet?s.potSet.size:0,need);s.econ._paddyShare=nd/need;}   // ★밭 창발 후에도 안정식 유지(수요=보즈럽 기준 동기): 논=존닝·밭=수요 잔여 추정 — 개간 실측 피드백 금지(econ 카오스) 원칙 승계
   // ★집 건설: (빨리감기만) 완공 층 부족하면 근사 집터 추가. 관찰 모드는 relayout이 집 배치까지 처리.
   if(s.center&&s.houses){
+    // ★★[T1056 2026-11-01 · T1050 회부 2 · ★재민 11-01 "서버 집 규칙이 정본"] 집 고리 = 서버 집 규칙 — 랩 자(t17 · t176)와 **같은 함수**(econ `labSiteCrewDay` → `houseCrewDay`).
+    //   켬(`T1050_LAB_HOUSE` · 랩 기본 — 번들 빈 env = 켬 · URL `?T1050_LAB_HOUSE=0` = 끔 = 종전 바이트): ⓐ econ `_t400Live`(econ 이 집 목재를 추상 차감하지 않는다 · 주거 = 지은 침상까지 · T958)
+    //   ⓑ 방아쇠에 그날 올리고 싶던 몫(`_t958Want`) ⓒ 마을 크루 = 명부 앞 `min(LIFE_CREW, 인구)` 명의 일꾼 날수 · 하루 `× LIFE_STAGE_PDAY` 단계(두 수 = 서버 `villages.js` 정본 → 번들 `EconEngine.LifeCrew`) —
+    //   크루가 곳간 목재를 꺼내(econ 곳간 출구) 집터에 놓고 자재가 차면 그 순간 단계가 오른다 · 관측자 · 속도(빨리감기/관찰) 무관 · 미완공 집터가 여럿이면 크루는 마을 집 줄 첫 집터 하나(서버 슬롯 하나와 같은 하루 몫).
+    //   셋째 규칙(층 진척 `L_BUILDRATE × slack` · 현장 몸 초 `_crewD ÷ L_BUILDSEC` · econ 의 집 목재 차감)은 끔 갈래에만 남는다.
+    const _t1056H=!!(s.econ&&EconEngine.T1050_LAB_HOUSE&&EconEngine.T400_BUILD_ACT&&EconEngine.labSiteCrewDay&&EconEngine.LifeCrew);
+    const _LC=EconEngine.LifeCrew,_HS=EconEngine.hutStageCount();let _crewDone=false;
+    if(_t1056H)s.econ._t400Live=true;   // ★[T1056] 서버 `_t400BuildDay` 머리 그 줄(날마다 · 집터가 없어도)
     {/*★상시화(구 doBulk 전용): 집터 추가가 빨리감기에서만 돌아 관찰·하네스·본체에선 건설 파이프라인 정지 → 완공 계약 도입 후 인구가 초기 침대에 영구 결박되던 것*/
       /*★[T230] 목표 층수 계산은 VillageLayout.houseSiteWant 안으로 들어갔다 — 랩 주석의 데드락 설명도 그 함수가 갖는다(사본 0).*/
       let builtFl=0,sites=0;for(const h of s.houses){builtFl+=(h.builtFloors||0);if((h.builtFloors||0)<(h.floors||1))sites++;}
-      if(VillageLayout.houseSiteWant(s.pop,(s.econ&&s.econ.housing)||0,builtFl,sites))addHouseSite(s);   // ★★[T230] 규칙은 village-layout 정본 하나 — 랩도 서버도 **같은 함수**를 부른다(사본 0 · 값·판정 불변)
+      if(VillageLayout.houseSiteWant(s.pop,((s.econ&&s.econ.housing)||0)+((_t1056H&&EconEngine.T958_HOUSE_REAL&&s.econ._t958Want>0)?s.econ._t958Want:0),builtFl,sites))addHouseSite(s);   // ★★[T1056 · T1050 회부 2] 켬 = 서버 방아쇠 그 줄: econ 주거가 지은 침상에 묶이니 그날 올리고 싶었던 몫(`_t958Want`)을 더해 읽는다(서버 `villages.js` · t17 `labHouseDay` 와 같은 식) · 끔 = + 0 = 종전 글자   // ★★[T230] 규칙은 village-layout 정본 하나 — 랩도 서버도 **같은 함수**를 부른다(사본 0 · 값·판정 불변)
     }
     const fe=s.econ?((s.econ.storage.food||0)+(s.econ.storage.fish||0)+(s.econ.storage.meat||0)):s.pop*30;
     const slack=fe>s.pop*40?1:(fe>s.pop*25?0.5:0.2);   // 식량안보일수록 여유노동↑ → 건설 빠름
-    for(const h of s.houses){const bf=h.builtFloors||0;if(bf<(h.floors||1)){h.built=(h.built||0)+(doBulk?L_BUILDRATE*slack:Math.min(L_BUILDCAP,Math.max((h._crewD||0)/L_BUILDSEC,L_BUILDRATE*0.25*slack)));if(h.built>=1){h.builtFloors=bf+1;h.built=0;if(bf===0&&s.V&&s.V.walls)s.V.walls=buildWalls(s.V);}}h._crewD=0;}   // ★[성장 신축 콜라이더 — 사용자 의심 적중] 첫 층 완공 순간 그 마을 벽 재구축: 구멍=신축 집이 다음 relayout(인구±4)까지 무벽 유령이던 것. 증축(1→2층)은 풋프린트 불변=재구축 불필요   // ★징발 실효화(관찰): 진척=현장 crew·초/L_BUILDSEC(연출→실체), 바닥=기존 25%(공동 노역 — 인부 0이어도 데드락 없음). 빨리감기·하네스(doBulk)=기존 공식(등가 경로, 회귀 무영향)
+    for(const h of s.houses){const bf=h.builtFloors||0;if(bf<(h.floors||1)){if(_t1056H){if(!_crewDone){_crewDone=true;EconEngine.labSiteCrewDay(s.econ,h,_LC.crew,_LC.pday,EconEngine.labCrewDbg(),()=>{h.builtFloors=bf+1;if(bf===0&&s.V&&s.V.walls)s.V.walls=buildWalls(s.V);});}h.built=(h.builtFloors||0)>=(h.floors||1)?0:(h.stage|0)/_HS;}else{h.built=(h.built||0)+(doBulk?L_BUILDRATE*slack:Math.min(L_BUILDCAP,Math.max((h._crewD||0)/L_BUILDSEC,L_BUILDRATE*0.25*slack)));if(h.built>=1){h.builtFloors=bf+1;h.built=0;if(bf===0&&s.V&&s.V.walls)s.V.walls=buildWalls(s.V);}}}h._crewD=0;}   // ★[성장 신축 콜라이더 — 사용자 의심 적중] 첫 층 완공 순간 그 마을 벽 재구축: 구멍=신축 집이 다음 relayout(인구±4)까지 무벽 유령이던 것. 증축(1→2층)은 풋프린트 불변=재구축 불필요   // ★징발 실효화(관찰): 진척=현장 crew·초/L_BUILDSEC(연출→실체), 바닥=기존 25%(공동 노역 — 인부 0이어도 데드락 없음). 빨리감기·하네스(doBulk)=기존 공식(등가 경로, 회귀 무영향)   // ★★[T1056] 켬 = 마을 크루 하나가 첫 미완공 집터에 econ `labSiteCrewDay`(서버 집 규칙 · 완공 순간 벽 재구축은 종전 그 줄) · 진행바(그림만) = 공정 단계 ÷ 단계 수(①굴착을 마친 집터 = 1) · 끔 = 종전 셋째 규칙 그대로
     {let _bf=0;for(const h of s.houses)_bf+=(h.builtFloors||0);if(s.econ)s.econ._mapBeds=_bf*L_FLOORCAP;}   // ★맵 완공 침대 발행 → econ 성장 게이트가 참조(완공 계약)
     if(s.gran){const _gn=Math.max(1,Math.min(G_MAX,Math.ceil((s.food||0)/G_CAP)));if(s.gran.length<_gn)_granAdd(s);   // ★곳간 증설=재고 비례(식량 G_CAP인일당 1동 — 집 성장 패턴)
       for(const g of s.gran)if(!g.done){g.built=(g.built||0)+1/G_BUILDD;if(g.built>=1){g.built=1;g.done=true;if(s.V&&s.V.walls)s.V.walls=buildWalls(s.V);}}}   // 완공 순간 벽 편입(_wallGen 캐시 무효 포함)

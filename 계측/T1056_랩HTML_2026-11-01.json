@@ -1,0 +1,818 @@
+{
+ "village:7": {
+  "base": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": null,
+    "has": false
+   },
+   "ms": 42629,
+   "fp": "c7a4306d",
+   "traj": [
+    200,
+    329,
+    437,
+    496,
+    519,
+    469
+   ],
+   "pop": 469,
+   "alive": 8,
+   "floors": 98,
+   "sites": 0,
+   "wood": 0.06,
+   "housing": 504.67,
+   "beds": 588,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 1121,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "off": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": false,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 46018,
+   "fp": "c7a4306d",
+   "traj": [
+    200,
+    329,
+    437,
+    496,
+    519,
+    469
+   ],
+   "pop": 469,
+   "alive": 8,
+   "floors": 98,
+   "sites": 0,
+   "wood": 0.06,
+   "housing": 504.67,
+   "beds": 588,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 1121,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "on": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 45362,
+   "fp": "80fd0433",
+   "traj": [
+    229,
+    424,
+    439,
+    441,
+    431,
+    430
+   ],
+   "pop": 430,
+   "alive": 8,
+   "floors": 79,
+   "sites": 7,
+   "wood": 0,
+   "housing": 457.3,
+   "beds": 474,
+   "vd": 2400,
+   "live": 2400,
+   "hOverB": 321,
+   "C": {
+    "calls": 1619,
+    "crewOk": 1619,
+    "adv": 193,
+    "over": 0,
+    "stall": 1501,
+    "took": 664.8280324363878,
+    "built": 64,
+    "replay": 1619
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "replay": {
+   "same": 1619,
+   "diff": 0,
+   "first": null
+  }
+ },
+ "village:42": {
+  "base": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": null,
+    "has": false
+   },
+   "ms": 48567,
+   "fp": "8d3b8cce",
+   "traj": [
+    216,
+    369,
+    469,
+    459,
+    493,
+    413
+   ],
+   "pop": 413,
+   "alive": 8,
+   "floors": 95,
+   "sites": 0,
+   "wood": 0,
+   "housing": 449.58,
+   "beds": 570,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 948,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "off": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": false,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 48179,
+   "fp": "8d3b8cce",
+   "traj": [
+    216,
+    369,
+    469,
+    459,
+    493,
+    413
+   ],
+   "pop": 413,
+   "alive": 8,
+   "floors": 95,
+   "sites": 0,
+   "wood": 0,
+   "housing": 449.58,
+   "beds": 570,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 948,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "on": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 51825,
+   "fp": "4c8cbe5e",
+   "traj": [
+    258,
+    451,
+    451,
+    393,
+    520,
+    455
+   ],
+   "pop": 455,
+   "alive": 8,
+   "floors": 103,
+   "sites": 6,
+   "wood": 174.98,
+   "housing": 571.63,
+   "beds": 618,
+   "vd": 2400,
+   "live": 2400,
+   "hOverB": 24,
+   "C": {
+    "calls": 1514,
+    "crewOk": 1514,
+    "adv": 262,
+    "over": 0,
+    "stall": 1357,
+    "took": 886.3200000000002,
+    "built": 87,
+    "replay": 1514
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "replay": {
+   "same": 1514,
+   "diff": 0,
+   "first": null
+  }
+ },
+ "village:1020": {
+  "base": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": null,
+    "has": false
+   },
+   "ms": 52842,
+   "fp": "8e2b9c3a",
+   "traj": [
+    224,
+    389,
+    501,
+    600,
+    619,
+    589
+   ],
+   "pop": 589,
+   "alive": 8,
+   "floors": 113,
+   "sites": 0,
+   "wood": 0.17,
+   "housing": 573.59,
+   "beds": 678,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 1092,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "off": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": false,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 54286,
+   "fp": "8e2b9c3a",
+   "traj": [
+    224,
+    389,
+    501,
+    600,
+    619,
+    589
+   ],
+   "pop": 589,
+   "alive": 8,
+   "floors": 113,
+   "sites": 0,
+   "wood": 0.17,
+   "housing": 573.59,
+   "beds": 678,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 1092,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "on": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 59862,
+   "fp": "2c76cce9",
+   "traj": [
+    241,
+    484,
+    548,
+    533,
+    577,
+    598
+   ],
+   "pop": 598,
+   "alive": 8,
+   "floors": 127,
+   "sites": 6,
+   "wood": 538.58,
+   "housing": 727.42,
+   "beds": 762,
+   "vd": 2400,
+   "live": 2400,
+   "hOverB": 24,
+   "C": {
+    "calls": 1699,
+    "crewOk": 1699,
+    "adv": 334,
+    "over": 0,
+    "stall": 1496,
+    "took": 1132.8548739105129,
+    "built": 111,
+    "replay": 1699
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "replay": {
+   "same": 1699,
+   "diff": 0,
+   "first": null
+  }
+ },
+ "war:7": {
+  "base": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": null,
+    "has": false
+   },
+   "ms": 64267,
+   "fp": "d3b4f89c",
+   "traj": [
+    200,
+    329,
+    431,
+    514,
+    573,
+    584
+   ],
+   "pop": 584,
+   "alive": 8,
+   "floors": 114,
+   "sites": 0,
+   "wood": 41.33,
+   "housing": 627.01,
+   "beds": 684,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 1264,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "off": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": false,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 62117,
+   "fp": "d3b4f89c",
+   "traj": [
+    200,
+    329,
+    431,
+    514,
+    573,
+    584
+   ],
+   "pop": 584,
+   "alive": 8,
+   "floors": 114,
+   "sites": 0,
+   "wood": 41.33,
+   "housing": 627.01,
+   "beds": 684,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 1264,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "on": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 70804,
+   "fp": "52c1a907",
+   "traj": [
+    234,
+    433,
+    421,
+    440,
+    437,
+    416
+   ],
+   "pop": 416,
+   "alive": 8,
+   "floors": 76,
+   "sites": 7,
+   "wood": 0,
+   "housing": 450.47,
+   "beds": 456,
+   "vd": 2400,
+   "live": 2400,
+   "hOverB": 321,
+   "C": {
+    "calls": 1637,
+    "crewOk": 1637,
+    "adv": 184,
+    "over": 0,
+    "stall": 1526,
+    "took": 634.8745287250698,
+    "built": 61,
+    "replay": 1637
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "replay": {
+   "same": 1637,
+   "diff": 0,
+   "first": null
+  }
+ },
+ "war:42": {
+  "base": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": null,
+    "has": false
+   },
+   "ms": 49947,
+   "fp": "90cb6528",
+   "traj": [
+    216,
+    369,
+    464,
+    441,
+    498,
+    418
+   ],
+   "pop": 418,
+   "alive": 8,
+   "floors": 96,
+   "sites": 0,
+   "wood": 0.06,
+   "housing": 450.07,
+   "beds": 576,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 923,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "off": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": false,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 52126,
+   "fp": "90cb6528",
+   "traj": [
+    216,
+    369,
+    464,
+    441,
+    498,
+    418
+   ],
+   "pop": 418,
+   "alive": 8,
+   "floors": 96,
+   "sites": 0,
+   "wood": 0.06,
+   "housing": 450.07,
+   "beds": 576,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 923,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "on": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 61077,
+   "fp": "a985392a",
+   "traj": [
+    258,
+    451,
+    439,
+    414,
+    518,
+    470
+   ],
+   "pop": 470,
+   "alive": 8,
+   "floors": 101,
+   "sites": 6,
+   "wood": 191.55,
+   "housing": 566.83,
+   "beds": 606,
+   "vd": 2400,
+   "live": 2400,
+   "hOverB": 24,
+   "C": {
+    "calls": 1528,
+    "crewOk": 1528,
+    "adv": 255,
+    "over": 0,
+    "stall": 1374,
+    "took": 857.7399999999998,
+    "built": 85,
+    "replay": 1528
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "replay": {
+   "same": 1528,
+   "diff": 0,
+   "first": null
+  }
+ },
+ "war:1020": {
+  "base": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": null,
+    "has": false
+   },
+   "ms": 76410,
+   "fp": "1c46fe9a",
+   "traj": [
+    224,
+    390,
+    529,
+    633,
+    697,
+    720
+   ],
+   "pop": 720,
+   "alive": 8,
+   "floors": 140,
+   "sites": 0,
+   "wood": 151.48,
+   "housing": 766.14,
+   "beds": 840,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 1295,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "off": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": false,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 73990,
+   "fp": "1c46fe9a",
+   "traj": [
+    224,
+    390,
+    529,
+    633,
+    697,
+    720
+   ],
+   "pop": 720,
+   "alive": 8,
+   "floors": 140,
+   "sites": 0,
+   "wood": 151.48,
+   "housing": 766.14,
+   "beds": 840,
+   "vd": 2400,
+   "live": 0,
+   "hOverB": 1295,
+   "C": {
+    "calls": 0,
+    "crewOk": 0,
+    "adv": 0,
+    "over": 0,
+    "stall": 0,
+    "took": 0,
+    "built": 0,
+    "replay": []
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "on": {
+   "err": null,
+   "knob": {
+    "T1050_LAB_HOUSE": true,
+    "T400_BUILD_ACT": true,
+    "LifeCrew": {
+     "crew": 2,
+     "pday": 1
+    },
+    "has": true
+   },
+   "ms": 70191,
+   "fp": "5c5cdda8",
+   "traj": [
+    241,
+    492,
+    529,
+    550,
+    542,
+    483
+   ],
+   "pop": 483,
+   "alive": 8,
+   "floors": 100,
+   "sites": 8,
+   "wood": 0,
+   "housing": 575,
+   "beds": 600,
+   "vd": 2400,
+   "live": 2400,
+   "hOverB": 24,
+   "C": {
+    "calls": 1798,
+    "crewOk": 1798,
+    "adv": 252,
+    "over": 0,
+    "stall": 1647,
+    "took": 859.7869214381062,
+    "built": 84,
+    "replay": 1798
+   },
+   "pageErrors": 0,
+   "pageErr0": null
+  },
+  "replay": {
+   "same": 1798,
+   "diff": 0,
+   "first": null
+  }
+ }
+}
