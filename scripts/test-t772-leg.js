@@ -66,10 +66,10 @@ function world(on, lenPx) {
   const state = { caravanBodies: new Map(), deps: { players: new Map(), isPositionActive: null, isBlockedByWall: null, moveSpeed: zoneMove }, world: { day: D, caravans: [] },
     dayMs: DAY, epoch: 0, lastGameDay: D, zoneId: 't', roads: null, _carTickAt: 0, byEcon: new Map() };
   const stat = { legs: 0, home: 0, late: 0, lateMaxPx: 0, lateSumPx: 0 };
-  const names = ['state', 'T772_ON', '_t772Stat', 'T661_ON', 'T707_ON', 'T731_ON', 'CARAVAN_BLOCKTEST', 'SZ', '_escortMarch', 'despawnCaravanNpc', '_t707Tally', '_t661Stamp', 'console', 'T775_RESUME'];   // ★[T775 · PM 착지 10-17] 다시 뜬 판 갈래 — ★[T782] 제품 기본 = 켬(가짜 세계엔 `state.ready` 가 없어 다시 뜸 문은 안 연다)
+  const names = ['state', 'T772_ON', '_t772Stat', 'T661_ON', 'T707_ON', 'T731_ON', 'CARAVAN_BLOCKTEST', 'SZ', '_escortMarch', 'despawnCaravanNpc', '_t707Tally', '_t661Stamp', 'console', 'T775_RESUME', '_t1034Mark'];   // ★[T775 · PM 착지 10-17] 다시 뜬 판   // ★[T1034] 귀환 출발 표(메타 행 한 줄 — 가짜 세계엔 저장이 없다 · 값 무변) 갈래 — ★[T782] 제품 기본 = 켬(가짜 세계엔 `state.ready` 가 없어 다시 뜸 문은 안 연다)
   const F = new Function(...names, SRC + '\nreturn { econDayToMs, setBodyPts, _t661Path, _t661Vis, startReturnLeg, tickCaravanBodies, _caravanSyncSweep };');
   const quiet = { log: () => {} };
-  const K = F(state, on, stat, true, false, false, 0, 32, () => {}, () => {}, () => {}, () => {}, quiet, true);   // ★[T782] T775 = 제품 기본(켬)
+  const K = F(state, on, stat, true, false, false, 0, 32, () => {}, () => {}, () => {}, () => {}, quiet, true, () => {});   // ★[T782] T775 = 제품 기본(켬)
   const head = K.econDayToMs(D), lingerEnd = head + DAY * 4 / 24;   // T707 장 머묾 하루 4/24(보고 T762)
   const pts = [{ x: 0, y: 0 }, { x: lenPx * 0.5, y: 0 }, { x: lenPx * 0.5, y: lenPx * 0.5 }];
   const c = { id: 1, from: { name: 'A' }, to: { name: 'B' }, arriveDay: D, returnArriveDay: D + 1 };

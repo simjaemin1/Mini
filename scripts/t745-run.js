@@ -10,6 +10,7 @@
 //                     날 뜀은 K 로 고정한다(`T740_FORCE_JUMP` 사본 — 빠른 시계에선 멈춤 앞 저장 큐 드레인(마을 하나 = 틱 하나 · 51 틱 = 1.7 초)이
 //                     벽시계 6~7 날이라 T728 ⑥ 시계 셈이 그 날들까지 뛴다 · 대조 판은 econ 날을 K 만 민다 — 둘을 같은 뜀에 둔다).
 //                   실제 시계: T740 그대로(`T740_CLOCK_AT` 얼림 · `T740_FORCE_JUMP` 사본).
+//     --caravan N   (★T1034) 판 조건의 VILLAGE_CARAVAN_MAX 만 N 으로(기본 0 = 그대로) — 캐러밴 몸 칸이 도는 판
 //     --bodykeep    (멈춤 판) 몸의 JSON 칸을 명부 자리마다 덤프해 다시 뜬 몸에 되돌린다(T740 몸 영속 흉내 · 계측 사본)
 //     (대조 판은 도적 마지막 날도 econ 날과 같이 민다 — ★T754 기본 · `T742_CONT_SYNC=0` 이면 종전 · `t740-side-hook`)
 //     --stop S --cont  대조 판 — 같은 자리에서 재기동 없이 벽시계 · econ 날을 K 날 밀고 이어 간다(`__t740Cont`).
@@ -26,6 +27,7 @@ const TAG = a[0];
 const opt = (k, d) => { const i = a.indexOf('--' + k); return i >= 0 ? a[i + 1] : d; };
 const DAYS = +opt('days', '400'), SEED = +opt('seed', '1020'), STOP = +opt('stop', '0'), JUMP = +opt('jump', '0'), CONT = a.includes('--cont');
 const VC = a.includes('--vclock');
+const CARMAX = opt('caravan', '0');   // ★[T1034] `--caravan N` — 길 위 캐러밴을 세운 판(기본 0 = T650 자 그대로 · 지문 기계 같음 · 캐러밴 몸 칸 손잡이를 자 위에서 돌리려고)
 const DIR = path.join(process.env.T745_DIR || '/tmp/t745/runs', TAG);
 fs.mkdirSync(DIR, { recursive: true });
 const DB = path.join(DIR, 'w.db');
@@ -38,7 +40,7 @@ function boot(phase, extra) {
     const env = Object.assign({}, process.env, {
       ZONE_ID: 'hanbando', PORT: String(36000 + ((process.pid * 7 + (phase === 'p1' ? 0 : 1)) % 1500)), DB_PATH: DB,
       ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1', VILLAGE_DAY_MS: '250', T315_MAPBEDS: '0', VILLAGE_NPC_CAP: '1',
-      T400_BUILD_ACT: '0', VILLAGE_CARAVAN_MAX: '0', T640_BOOT_SLICE: '0',
+      T400_BUILD_ACT: '0', VILLAGE_CARAVAN_MAX: CARMAX, T640_BOOT_SLICE: '0',
       T577_SEED: String(SEED), T577_DAYS: String(DAYS), T577_OUT: out + '.json',
       T745_VCLOCK: VC ? '1' : '',
       NODE_OPTIONS: PRE,

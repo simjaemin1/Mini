@@ -14970,6 +14970,7 @@ setInterval(() => {
     }
     if (SimVillages.deferLate) SimVillages.deferLate(now);   // ★[T695] 결정 문이 없는 틱(잠든 존)도 마감은 잇는다
     if (SimVillages.t1005Flush) SimVillages.t1005Flush();   // ★[T1005] 잠든 틱에도 남은 표(마감 뒤로 미룬 몫) — 아래 꼬리와 같은 줄
+    if (SimVillages.t1034Flush) SimVillages.t1034Flush();   // ★[T1034] 캐러밴 몸 칸 표 — 잠든 틱에도(마감 뒤로 미룬 몫)
     TB.end();   // ★[T687]
     return;
   }
@@ -16030,6 +16031,7 @@ setInterval(() => {
   // ★★[T43] 쓰러짐 사슬 — 업고 걷기 · 붙들기 진행 · 창 소진 · 깨어남(내부에서 1초에 한 번만 돈다).
   tickDowned(now);
   if (SimVillages.t1005Flush) SimVillages.t1005Flush();   // ★[T1005] 이 틱에 표한 마을(낚시 · 사냥) — 마을마다 한 줄(끔 · 빈 표 = 무동작)
+  if (SimVillages.t1034Flush) SimVillages.t1034Flush();   // ★[T1034] 이 틱에 표한 캐러밴(귀환 출발 · 고립 · 지연 · 재경로 실패) — 메타 행 한 줄(끔 · 빈 표 = 무동작)
   if (T719_REACH_PRE_Z) { const _h7 = process.hrtime(_tickHr0), _el = _h7[0] * 1e3 + _h7[1] / 1e6; if (_el < 10) SimVillages.t719ReachPre(Math.min(2, 10 - _el)); }
   if (T750_CAST_SLICE_Z) { const _h8 = process.hrtime(_tickHr0), _el8 = _h8[0] * 1e3 + _h8[1] / 1e6; if (_el8 < 10) SimVillages.t750CastPre(Math.min(2, 10 - _el8)); }   // ★[T750] 남는 시간에 어부 던질 칸의 지형 자리 미리(villages.js `t750CastPre` · 끔이면 이 줄만 거친다)   // ★[T719] 남는 시간에 닿는 칸 집합 미리(villages.js `t719ReachPre` 머리 · 끔이면 이 줄만 거친다)
   { const _tot = Date.now() - now; if (_tot >= 33) perfMark('tick', _tot); }
