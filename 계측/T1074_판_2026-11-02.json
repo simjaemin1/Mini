@@ -1,0 +1,220 @@
+{
+ "runs": {
+  "on-off": {
+   "seeds": 3,
+   "fam365": 127,
+   "fd365": 0,
+   "fdShield365": 0,
+   "famAll": 4203,
+   "fdAll": 0,
+   "empty": 0,
+   "pop400": 7949,
+   "popEnd": 14770,
+   "dissolved": 2,
+   "starvingMax": 0,
+   "debtMeanMax": 0,
+   "q2": {
+    "pins": 0,
+    "wipes": 0,
+    "phantom": 0
+   }
+  },
+  "on-on": {
+   "seeds": 3,
+   "fam365": 30,
+   "fd365": 0,
+   "fdShield365": 3,
+   "famAll": 3120,
+   "fdAll": 110,
+   "empty": 0,
+   "pop400": 7644,
+   "popEnd": 14878,
+   "dissolved": 1,
+   "starvingMax": 24,
+   "debtMeanMax": 19.398,
+   "q2": {
+    "pins": 0,
+    "wipes": 0,
+    "phantom": 0
+   }
+  },
+  "raid1-off": {
+   "seeds": 3,
+   "fam365": 94,
+   "fd365": 0,
+   "fdShield365": 0,
+   "famAll": 3694,
+   "fdAll": 0,
+   "empty": 2,
+   "pop400": 8117,
+   "popEnd": 14738,
+   "dissolved": 4,
+   "starvingMax": 0,
+   "debtMeanMax": 0,
+   "q2": {
+    "pins": 0,
+    "wipes": 0,
+    "phantom": 0
+   }
+  },
+  "raid1-on": {
+   "seeds": 3,
+   "fam365": 55,
+   "fd365": 0,
+   "fdShield365": 63,
+   "famAll": 3261,
+   "fdAll": 271,
+   "empty": 0,
+   "pop400": 8084,
+   "popEnd": 13552,
+   "dissolved": 0,
+   "starvingMax": 120,
+   "debtMeanMax": 30.387,
+   "q2": {
+    "pins": 0,
+    "wipes": 0,
+    "phantom": 0
+   }
+  },
+  "raid2-off": {
+   "seeds": 3,
+   "fam365": 212,
+   "fd365": 0,
+   "fdShield365": 0,
+   "famAll": 4015,
+   "fdAll": 0,
+   "empty": 2,
+   "pop400": 8001,
+   "popEnd": 14606,
+   "dissolved": 5,
+   "starvingMax": 0,
+   "debtMeanMax": 0,
+   "q2": {
+    "pins": 0,
+    "wipes": 0,
+    "phantom": 0
+   }
+  },
+  "raid2-on": {
+   "seeds": 3,
+   "fam365": 69,
+   "fd365": 0,
+   "fdShield365": 106,
+   "famAll": 3183,
+   "fdAll": 160,
+   "empty": 0,
+   "pop400": 7604,
+   "popEnd": 14754,
+   "dissolved": 1,
+   "starvingMax": 66,
+   "debtMeanMax": 26.687,
+   "q2": {
+    "pins": 0,
+    "wipes": 0,
+    "phantom": 0
+   }
+  },
+  "raid3-off": {
+   "seeds": 3,
+   "fam365": 256,
+   "fd365": 0,
+   "fdShield365": 0,
+   "famAll": 4579,
+   "fdAll": 0,
+   "empty": 2,
+   "pop400": 8168,
+   "popEnd": 15842,
+   "dissolved": 6,
+   "starvingMax": 0,
+   "debtMeanMax": 0,
+   "q2": {
+    "pins": 0,
+    "wipes": 0,
+    "phantom": 0
+   }
+  },
+  "raid3-on": {
+   "seeds": 3,
+   "fam365": 34,
+   "fd365": 0,
+   "fdShield365": 79,
+   "famAll": 2817,
+   "fdAll": 185,
+   "empty": 0,
+   "pop400": 7219,
+   "popEnd": 14548,
+   "dissolved": 0,
+   "starvingMax": 60,
+   "debtMeanMax": 32.236,
+   "q2": {
+    "pins": 0,
+    "wipes": 0,
+    "phantom": 0
+   }
+  }
+ },
+ "shield": {
+  "A": {
+   "seeds": 3,
+   "fam365": 30,
+   "fd365": 0,
+   "fdShield365": 3,
+   "famAll": 217,
+   "fdAll": 106,
+   "empty": 0,
+   "pop400": 7644,
+   "popEnd": 7644,
+   "dissolved": 1,
+   "starvingMax": 24,
+   "debtMeanMax": 19.398
+  },
+  "C": {
+   "seeds": 3,
+   "fam365": 228,
+   "fd365": 24,
+   "fdShield365": 0,
+   "famAll": 354,
+   "fdAll": 137,
+   "empty": 0,
+   "pop400": 7655,
+   "popEnd": 7655,
+   "dissolved": 0,
+   "starvingMax": 128,
+   "debtMeanMax": 19.259
+  }
+ },
+ "split": {
+  "off": {
+   "deaths": 4203,
+   "d365": 127,
+   "tot": {
+    "logi": 2381.6459176795343,
+    "hunger": 699.4698414190343,
+    "health": 757.632910875514,
+    "happy": 364.2513300259185
+   },
+   "t365": {
+    "logi": 61.49490393785842,
+    "hunger": 49.17430725651075,
+    "health": 11.532665386417975,
+    "happy": 4.798123419212857
+   }
+  },
+  "on": {
+   "deaths": 3120,
+   "d365": 30,
+   "tot": {
+    "logi": 1771.240371617727,
+    "hunger": 0,
+    "health": 882.7655831172582,
+    "happy": 465.99404526501837
+   },
+   "t365": {
+    "logi": 20.113589915470484,
+    "hunger": 0,
+    "health": 6.439804602217569,
+    "happy": 3.4466054823119463
+   }
+  }
+ }
+}
