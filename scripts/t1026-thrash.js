@@ -8,7 +8,8 @@
 // 조각마다 `/perf` probe 누계: 일 시작(`pathJobs`) · 버림(`pathDrop`) · 다 판 쌍(`routeCold`) · 기다림(`pathWait`) · 되살림 줄(`t775`) ·
 //   문마다 셈(`t1026` — 시작 · 기다림 · 버림 `버린 문>새 문`) · 선계산 남은 쌍(`/routedbg warmLeft`) · 틱 p50 · p95 · max(조각마다 `?reset=1`).
 //
-// 실행: node scripts/t1026-thrash.js <tag> [--dir <코드 사본>] [--slices N]   · 존 env 는 이 프로세스 env 를 물려받는다(예: T1026_SLOT_KEEP=0)
+// 실행: node scripts/t1026-thrash.js <tag> [--dir <코드 사본>] [--slices N] [--no-inv] [--prof <디렉터리>]
+//   [T1036] --no-inv = 무효화를 안 부른다(평시 판) · --prof <dir> = 존에 V8 CPU 프로파일(`--cpu-prof` · 표본 2ms · 한 틱 정체의 스택을 찾는 용도)   · 존 env 는 이 프로세스 env 를 물려받는다(예: T1026_SLOT_KEEP=0)
 //   T1026_TPL(기본 /tmp/t646/tpl/tpl-t100.db) · T1026_OUT(기본 /tmp/t1026) · T1026_PORT(기본 4110 · 존 = +1) · T1026_LEAD_S(기본 150)
 'use strict';
 const path = require('path');
@@ -20,6 +21,7 @@ const TAG = process.argv[2];
 if (!TAG || TAG.startsWith('--')) { console.error('쓰기: node scripts/t1026-thrash.js <tag> [--dir <사본>] [--slices N]'); process.exit(2); }
 const DIR = path.resolve(arg('--dir', ROOT));
 const SLICES = parseInt(arg('--slices', '30'), 10), SLICE_S = 30;
+const NO_INV = process.argv.includes('--no-inv'), PROF = arg('--prof', null);   // ★[T1036]
 const TPL = process.env.T1026_TPL || '/tmp/t646/tpl/tpl-t100.db';
 const OUT = process.env.T1026_OUT || '/tmp/t1026';
 const CP = +(process.env.T1026_PORT || 4110), ZP = CP + 1, SECRET = 't1026';
@@ -38,7 +40,7 @@ fs.mkdirSync(OUT, { recursive: true });
   const env0 = Object.assign({}, process.env, { NODE_OPTIONS: `--require ${path.join(__dirname, 't455-clock.js')}`, T455_CLOCK_PRE: '1', T455_CLOCK_AT: String(at) });
   const c = spawn(process.execPath, [path.join(DIR, 'server/central.js')], { cwd: DIR, stdio: 'ignore',
     env: Object.assign({}, env0, { PORT: String(CP), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });
-  const z = spawn(process.execPath, [path.join(DIR, 'server/zone.js')], { cwd: DIR, stdio: ['ignore', logf, logf],
+  const z = spawn(process.execPath, [...(PROF ? ['--cpu-prof', '--cpu-prof-interval', '2000', '--cpu-prof-dir', PROF] : []), path.join(DIR, 'server/zone.js')], { cwd: DIR, stdio: ['ignore', logf, logf],
     env: Object.assign({}, env0, { VILLAGE_NPC_CAP: '40', PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY), DB_PATH: DB, VILLAGE_WAR_LOG: '0', T312_FISH_ACT: '1', E2E_GIVE: '1' }) });
   const kill = () => { try { z.kill('SIGKILL'); } catch (e) {} try { c.kill('SIGKILL'); } catch (e) {} };
@@ -61,7 +63,7 @@ fs.mkdirSync(OUT, { recursive: true });
   const pr0 = (P0 && P0.econTick && P0.econTick.probe) || {};
   const L0 = await getj('/lifedbg');
   let inv = null;
-  for (let i = 0; i < 30 && !(inv && inv.invalidated); i++) { inv = await getj('/routedbg?invalidate=1'); if (!(inv && inv.invalidated)) await sleep(500); }
+  for (let i = 0; !NO_INV && i < 30 && !(inv && inv.invalidated); i++) { inv = await getj('/routedbg?invalidate=1'); if (!(inv && inv.invalidated)) await sleep(500); }
   const R1 = await getj('/routedbg');
   say('기동', Date.now() - t0, 'ms · 캐시', R0 && R0.mem, '· 되살림 줄', pr0.t775 && pr0.t775.wait, '· phase', L0 && L0.phase, '· 무효화', !!(inv && inv.invalidated), '· 선계산 줄', R1 && R1.warmLeft, '· 슬롯 손잡이', pr0.t1026 ? pr0.t1026.on : '(없음)');
   const head = { tag: TAG, dir: DIR, at, env: { T1026_SLOT_KEEP: process.env.T1026_SLOT_KEEP || '' }, boot: { ms: Date.now() - t0, mem: R0 && R0.mem, t775: pr0.t775 || null, phase: L0 && L0.phase, warmAfter: R1 && R1.warmLeft, invalidated: !!(inv && inv.invalidated) }, base: { pathJobs: pr0.pathJobs | 0, pathDrop: pr0.pathDrop | 0, routeCold: pr0.routeCold | 0, pathWait: pr0.pathWait | 0 } };
@@ -83,6 +85,7 @@ fs.mkdirSync(OUT, { recursive: true });
   clearInterval(ping); try { ws.close(); } catch (e) {}
   fs.writeFileSync(path.join(OUT, `${TAG}.json`), JSON.stringify(Object.assign(head, { slices }), null, 1));
   say('끝 →', path.join(OUT, `${TAG}.json`));
+  if (PROF) { try { z.kill('SIGINT'); } catch (e) {} await sleep(15000); }   // ★[T1036] 프로파일은 정상 종료(SIGINT)에만 써진다
   kill();
   process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });

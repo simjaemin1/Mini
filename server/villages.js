@@ -2988,6 +2988,7 @@ function _routeResume(key, x0, y0, x1, y1, budgetMs) {
     //     주인이 안 부른 일(앞 틱에 손이 안 간 일 — 마감에 얼었거나 · 그 문이 그 쌍을 놓았다)은 종전대로 버린다(버려진 일이 슬롯을 영영 쥐지 않게).
     if (T1026_SLOT_KEEP && _pathJob.seq >= _t1026Seq - 1) { _t1026Note('yield', _pathDoor); return { done: false }; }
     _t1026Drop(_pathJob.door, _pathDoor, 1);
+    if (_pathJob.seq >= _t1026Seq - 1) _t1026.dropFresh = (_t1026.dropFresh | 0) + 1;   // ★[T1036 ③] 쥐고 있던 일(이 틱 · 앞 틱에 이어 판 일)을 버렸다 — 셈만(켬이면 위 줄이 먼저 기다리게 해서 0 이어야 한다 · 끔 = 종전 서로 버림)
     _probe.pathDrop++; _pathJob = null;   // ★한 번에 하나
   }
   if (!_pathJob) {
@@ -7463,7 +7464,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
   ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done), ...(T896_RESUME_ONE ? { held896: _probe.t896Held | 0 } : {}) } } : {}),
   t929: { on: T929_RET_RESUME, wait: _probe.t929Wait | 0, cold: _probe.t929Cold | 0, msMax: _probe.t929MsMax | 0 },
-  t1026: { on: T1026_SLOT_KEEP, start: Object.assign({}, _t1026.start), yield: Object.assign({}, _t1026.yield), drop: Object.assign({}, _t1026.drop), held: _pathJob ? (_pathJob.door || '?') : null },   // ★[T1026] 문마다 일 시작 · 기다림 · 버림(셈만)
+  t1026: { on: T1026_SLOT_KEEP, start: Object.assign({}, _t1026.start), yield: Object.assign({}, _t1026.yield), drop: Object.assign({}, _t1026.drop), dropFresh: _t1026.dropFresh | 0, held: _pathJob ? (_pathJob.door || '?') : null },   // ★[T1026] 문마다 일 시작 · 기다림 · 버림(셈만)
   t968: { on: T968_DIST_BG, bgSlices: _probe.t968BgSlices | 0, bgMs: _probe.t968BgMs | 0, bgSliceMax: _probe.t968BgSliceMax | 0, ready: _probe.t968Ready | 0, readyClose: _probe.t968ReadyClose | 0, closeSlices: _probe.t968CloseSlices | 0, frozen: _probe.t968Frozen | 0, waitQ: _probe.t968WaitQ | 0 },   // ★[T968] 셈만
   t977: { same: T977_DIST_SAME, probe: T977_PROBE, runs: _t977.runs },
   t1011: { lazy: T1011_BASIS_LAZY, drop: _probe.t1011Drop | 0 },   // ★[T1011] 바탕 확인만(셈만)

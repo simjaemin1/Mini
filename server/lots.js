@@ -113,10 +113,17 @@ const T732_MOMENT = process.env.T732_MOMENT_LOT !== '0';   // ★[T778] 켬 기�
 let _mClk = null, _mDay = 0;
 const _mNpc = new WeakMap();
 const _mStat = { approx: 0, approxBy: {}, coalesced: 0 };
+// ★★[T1036 2026-11-01 · 손잡이 `T1036_SPOIL_WARM`(★켬 기본 · 되돌림 `=0` = 종전 — 첫 정산 때 센다)] **부패 기준 온도를 시계를 꽂는 순간(부팅) 미리 센다.**
+//   `spoil.refC()` 는 "연평균 노출 = 1" 이 되는 기준 온도를 이분법(60번 × 365일 × 하루 STEPS 점)으로 **처음 물을 때 한 번** 푼다(`_ref` 에 남는다).
+//   그 처음이 라이브에선 **처음 순간 로트를 정산하는 몸의 결정 틱 안**이었다 — 다시 뜬 존에서 고기를 처음 낚은 어부의 `noteNow` →
+//   `exposureAt` → `cumExposure` → `dayExposure` → `rateAtC` → `refC` 가 한 틱을 통째로 먹었다(T1036 실측: 결정 113.8ms · CPU 114.9 · 오프라인 113.7ms ·
+//   프로파일 129ms 묶음 · 둘째부터 0.009ms). 값은 결정론(econ 기온 곡선 · 같은 상수)이라 언제 세든 같다 — 부팅(15초) 안으로 옮길 뿐이다. 새 수 0.
+const T1036_SPOIL_WARM = process.env.T1036_SPOIL_WARM !== '0';
 function setClock(nowMs, dayMs) {
   _mClk = (typeof nowMs === 'function') ? nowMs : null;
   _mDay = Number(dayMs) > 0 ? Number(dayMs) : 0;
   if (typeof Spoil.setMomentClock === 'function') Spoil.setMomentClock(T732_MOMENT ? _mClk : null, _mDay);
+  if (T1036_SPOIL_WARM && _mClk && typeof Spoil.rateAtC === 'function') { try { Spoil.rateAtC(0); } catch (e) {} }   // ★[T1036] 기준 온도 첫 풀이를 여기서(값 같음 · 둘째부터 표에서)
 }
 function _mOn() { return T732_MOMENT && _mClk !== null && _mDay > 0; }
 function _mNpcBox(p) { return !!(p && p.isNpc) && _mOn(); }
