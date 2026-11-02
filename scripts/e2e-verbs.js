@@ -629,6 +629,30 @@ async function waitHttp(url, tries = 600) {
       ok(!!nLab && nLab.some((t2) => t2.includes(want)),
          `★★⑧ 그 동사가 **종류에 맞는 말**이다(${res.type} → ${want})`, JSON.stringify(nLab));
       ok(!!nLab && !/\p{Extended_Pictographic}/u.test(nLab.join('')), '★⑧ 메뉴 글자에 이모지 0');
+      // ★★[T1065] 켬 판 — 맨손으로 누르면 **안 벤다**: 이유 한 줄이 화면에 오고 hp 그대로 · 채집 반복이 멈춘다.
+      //   그다음 사람이 하는 그대로 조잡한 석기를 만들어 손에 든다(재료 = `__e2e_give` 픽스처 · 제작 · 장착 = 사람이 보내는 그 두 메시지) → 아래 종전 판정.
+      const _gated = process.env.T1065_TOOL_GATE !== '0' && ['tree', 'sapling', 'rock', 'ore', 'meteorite'].includes(res.type);
+      if (_gated) {
+        const _hpB0 = await R.evaluate((id) => { for (const c of conns.values()) { const r = c.resources && c.resources.get(id); if (r) return r.hp; } return null; }, res.id);
+        await clearNotices(R);
+        await R.evaluate(() => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[0]) _m.children[0].click(); });
+        let _why = null;
+        for (let i = 0; i < 40 && !_why; i++) { await sleep(250); _why = await R.evaluate(() => (window.__notices || []).find((t) => /있어야 .+ 수 있습니다\./.test(t)) || null); }
+        await sleep(1500);   // 반복이 돌았다면 한 타가 더 갔을 시간
+        const _hpB1 = await R.evaluate((id) => { for (const c of conns.values()) { const r = c.resources && c.resources.get(id); if (r) return r.hp; } return 'gone'; }, res.id);
+        const _rep = await R.evaluate(() => !!window.__eRepeat);
+        ok(!!_why && _hpB1 === _hpB0, '★★⑧ [T1065] 맨손으로 누르면 **안 벤다** — 이유 한 줄이 화면에 온다 · hp 그대로', `${_why} · hp ${_hpB0} → ${_hpB1}`);
+        ok(!_rep, '★⑧ [T1065] 거절되면 채집 반복이 멈춘다(될 수 없는 일을 1초마다 다시 보내지 않는다)', String(_rep));
+        const _tool = res.type === 'tree' || res.type === 'sapling' ? 'crude_axe' : 'crude_pick';
+        const _cost = require(path.join(ROOT, 'server', 'stone-uses.js')).CRUDE_TOOLS[_tool].cost;   // 정본 표(사본 0)
+        await R.evaluate((c) => window.__sendPrimary({ type: '__e2e_give', items: c }), _cost);
+        await sleep(400);
+        await R.evaluate((t) => window.__sendPrimary({ type: 'craft', recipe: t }), _tool);
+        await sleep(600);
+        await R.evaluate((t) => window.__sendPrimary({ type: 'equip', tool: t }), _tool);
+        await sleep(800);
+        await tapUntilMenu(rPt);   // 메뉴를 다시 연다(위 클릭이 닫았다) — 아래 종전 판정이 그 첫 줄을 누른다
+      }
       // 눌러 본다 — **`gather` 가 간다**(새 메시지 0). 서버가 답하거나 자원 hp 가 준다.
       const hp0 = await R.evaluate((id) => {
         for (const c of conns.values()) { const r = c.resources && c.resources.get(id); if (r) return r.hp; }

@@ -2990,6 +2990,52 @@ const _crudeOf = (m) => 1 + (Math.max(1, m) - 1) * CRUDE_EFF_FRAC;
 TOOL_EFFECTS.crude_axe   = { gatherWoodMult: _crudeOf(TOOL_EFFECTS.axe.gatherWoodMult),     gatherStoneMult: 1, attackMult: 1.0 };
 TOOL_EFFECTS.crude_pick  = { gatherWoodMult: 1, gatherStoneMult: _crudeOf(TOOL_EFFECTS.pickaxe.gatherStoneMult), attackMult: 1.0 };
 TOOL_EFFECTS.crude_blade = { gatherWoodMult: 1, gatherStoneMult: 1, attackMult: _crudeOf(TOOL_EFFECTS.sword.attackMult) };
+// ★★[T1065 2026-11-02 · ★재민 11-01 "낚시나 공격이 시작하자마자 가능한데 불가능해야 한다 — 벌목 · 낚시 · 공격은 전부 도구나 무기가 있어야"]
+//   손잡이 `T1065_TOOL_GATE`(켬 기본 후보 · `=0` = 종전 — 맨손으로 다 된다 · 레시피 · 방송 바이트 그대로).
+//   **사람 동사만**(`handlePlayerInput` 길 — NPC 는 제 길(`npc.behavior` · `_t325CutTreeAt` · `_t340Try` · `huntKillAt`)이라 무변).
+//   맨손 = 줍기(`tryForage`) · 따기(`tryPickFruit`) · 덤불 · 약초 · 도살 · 수확 · 바닥 아이템 · 가축 젖. 아래 넷은 **손에 든 것**이 있어야:
+//     벌목(나무 · 묘목) = 도끼 · 조잡한 돌도끼 · 작업대 도구 장비 / 채석 · 채광(바위 · 광물 · 운철) = 곡괭이 · 조잡한 돌괭이 · 작업대 도구 장비 /
+//     공격 = 손에 든 도구(`TOOL_EFFECTS` 에 있는 것 — 그 표가 이미 공격 배수를 준다) · 작업대 무기 장비 / 낚시 = 막대 낚싯대 / 활 = 활(아이템 없음 — 회부).
+//   ★새 수 0: 거부는 문만 닫는다(배수 · 피해 · 내구 그대로). 안 될 때 이유 한 줄 + 만드는 법(레시피 표에서 글자를 만든다 — 옮겨 적지 않는다).
+const T1065_TOOL_GATE = process.env.T1065_TOOL_GATE !== '0';
+// ★[T1065 ③] 급조 사다리의 빈 칸 하나 — **막대 낚싯대**(켬 판에만 선다 · 끔 = 레시피 표 종전 그대로).
+//   재료 = 조잡한 돌도끼에서 돌 날(자갈)을 뺀 몫(자루 잔가지 · 동여매는 풀) · 내구 = 같은 자루 · 끈이라 조잡한 돌도끼 내구(표에서 유도 · 새 수 0 · ⚠회부 — 재민 확인).
+//   `StoneUses.CRUDE_TOOLS` 에는 안 넣는다 — 그 표는 econ 막석기 단가(`perCrudeTool` 평균)의 정본이라 넣으면 econ 이 움직인다.
+if (T1065_TOOL_GATE) {
+  const _ax = StoneUses.CRUDE_TOOLS.crude_axe.cost;
+  RECIPES.crude_rod = { cost: { twig: _ax.twig, fiber: _ax.fiber }, label: '막대 낚싯대', crude: true };
+  TOOL_MAX_DURABILITY.crude_rod = TOOL_MAX_DURABILITY.crude_axe;
+}
+const T1065_NEED = {
+  chop:   { ok: (t) => t === 'axe' || t === 'crude_axe', slot: 'tool', make: 'crude_axe', act: '나무를 벨' },
+  quarry: { ok: (t) => t === 'pickaxe' || t === 'crude_pick', slot: 'tool', make: 'crude_pick', act: '돌을 캘' },
+  attack: { ok: (t) => !!TOOL_EFFECTS[t], slot: 'weapon', make: 'crude_blade', act: '싸울' },
+  fish:   { ok: (t) => t === 'crude_rod', slot: null, make: 'crude_rod', act: '낚시를 할' },
+  ranged: { ok: () => false, slot: null, make: null, act: '활을 쏠', none: '활' },
+};
+const _t1065Stat = { refuse: {}, pass: {} };   // 계측 전용 — 동사별 거부 · 통과 수(`/perf` · 하네스)
+// 받침이 있으면 a, 없으면 b(이/가 · 을/를) — 한글 끝 글자만 본다
+const _t1065Jo = (w, a, b) => { const c = String(w).charCodeAt(String(w).length - 1); return (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28) ? a : b; };
+const _t1065Cost = (cost) => Object.entries(cost || {}).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${v}개`).join(', ');
+// → null(된다) | 이유 한 줄(하십시오체 · T1069). 끔 · NPC 면 늘 null.
+function _t1065Gate(player, kind, quiet) {   // quiet = 고르기만(셈 안 함 · E 최근접 고르기)
+  if (!T1065_TOOL_GATE || !player || player.isNpc) return null;
+  const N = T1065_NEED[kind];
+  if (!N) return null;
+  const eq = getEquippedTool(player);
+  if ((eq && eq.d > 0 && N.ok(eq.type)) || (N.slot && getEquippedEquipment(player, N.slot))) { if (!quiet) _t1065Stat.pass[kind] = (_t1065Stat.pass[kind] || 0) + 1; return null; }
+  if (quiet) return true;
+  _t1065Stat.refuse[kind] = (_t1065Stat.refuse[kind] || 0) + 1;
+  if (N.none) return `${N.none}${_t1065Jo(N.none, '이', '가')} 있어야 ${N.act} 수 있습니다. ${N.none}${_t1065Jo(N.none, '은', '는')} 아직 만들 수 없습니다.`;
+  const own = (player.toolItems || []).find((t) => t.d > 0 && N.ok(t.type));
+  const lab = (t) => (RECIPES[t] && RECIPES[t].label) || ITEM_LABEL_SERVER[t] || t;
+  if (own) return `${lab(own.type)}${_t1065Jo(lab(own.type), '을', '를')} 손에 들어야 ${N.act} 수 있습니다. 가방에서 골라 손에 드십시오.`;
+  const r = RECIPES[N.make], L = lab(N.make);
+  return `${L}${_t1065Jo(L, '이', '가')} 있어야 ${N.act} 수 있습니다. ${_t1065Cost(r && r.cost)}로 제작 창에서 만들 수 있습니다.`;
+}
+// 자연물 → 그 일의 동사(벌목 · 채석) · 나머지는 맨손(null)
+const _t1065ResKind = (r) => { const t = r && r.type; return (t === 'tree' || t === 'sapling') ? 'chop' : (t === 'rock' || t === 'ore' || t === 'meteorite') ? 'quarry' : null; };
+const _t1065ResGate = (player, r, quiet) => { const k = _t1065ResKind(r); return k ? _t1065Gate(player, k, quiet) : null; };
 const PLAYER_MAX_HP = 100;
 // ★★[T942 2026-10-27] **HP 문(`setHp` · T109)의 낱말 표 둘 — 자리만 여기로**(글자 · 값 그대로). 마을 몸(NPC) HP 도 그 문으로 쓰는데(`SimVillages.init` 의 `setHp`)
 //   다시 뜬 판 몸 복원(`villages._t747Restore` · T747 켬 기본)이 `SimVillages.init(...)` **안에서** 바로 돌아 문을 부른다 — 표가 문 곁(그 init 줄보다 아래)에
@@ -9721,6 +9767,8 @@ function tryFishCast(player) {
   }
   // ★[T609 ②] 끌어올리는 중(싸움 단계 — 손잡이 `T609_BIG_WINDOW` a·b 켬만 생긴다) — 새로 던지지 않는다.
   if (cur && cur.state === 'fight') { send(player.ws, { type: 'notice', text: '🎣 끌어올리는 중이다 — 조금만' }); return; }
+  // ★[T1065] 낚싯대가 있어야 던진다(챔질 · 끌어올리기는 위 두 갈래 — 이미 던진 줄은 그대로) · 끔 = 종전(맨손 낚시)
+  { const why = _t1065Gate(player, 'fish'); if (why) { send(player.ws, { type: 'notice', text: why, kind: 'fishing' }); return; } }
   const tgt = _castTargetFor(player);
   if (!tgt) { send(player.ws, { type: 'notice', text: '🎣 여기선 물에 닿지 않는다 — 물가로 더 가까이' }); return; }
   // ★[T593 ③] 그 물·그 철에 사는 종이 없으면 던지지 않는다(NPC 어부의 `'none'` 과 같은 자리 — 빈 바늘을 만들지 않는다).
@@ -9750,6 +9798,8 @@ function tryFishCast(player) {
   send(player.ws, { type: 'fish_state', state: 'wait', x: tgt.x, y: tgt.y,
     hint: `🎣 던졌다 — ${_hk.kind === 'sea' ? (_hk.spot === 'mouth' ? '강어귀' : '바다') : (_hk.kind === 'lake' ? '잔잔한 물' : '흐르는 물')}` });
   send(player.ws, { type: 'notice', text: '🎣 던졌다. 찌를 봐라 — 흔들리면 Shift+F' });
+  // ★[T1065] 던질 때마다 낚싯대 내구 1(도구가 쓰일 때 1 — 채집 · 공격과 같은 문법) · 끔 = 낚싯대가 없다(종전)
+  if (T1065_TOOL_GATE && !player.isNpc) { const _rod = getEquippedTool(player); if (_rod && _rod.type === 'crude_rod') consumeEquippedDurability(player, 1); }
 }
 // ② 챔질 — **서버 시각으로만** 판정한다.
 function tryFishStrike(player) {
@@ -10259,7 +10309,14 @@ function _forageCtx(player) {
     hasVessel: (player.inventory && (player.inventory[Salt.VESSEL] || 0) >= 1),
     isWell: T509_WELL ? (x, y) => _wellCellAt(x, y) : undefined,   // ★[T509] 우물 칸 민물 담기(끔이면 없음 = 종전)
     isStream: _streamOn() ? (x, y) => isStreamLocal(x, y) : undefined,   // ★[T585] 개울 칸 민물 담기(개울 없으면 없음 = 종전 · 갈대·자갈·낚시는 큰 물만)
+    rockNear: T1065_TOOL_GATE ? _t1065RockNear : undefined,   // ★[T1065] 바위 개체 둘레 자갈(켬만 · 끔 = 없음 = 종전)
   };
+}
+// ★[T1065] 반경 안에 살아 있는 바위 개체가 있나(맨손 채석이 닫힌 판의 자갈 소스 — `forage.sourceAt` ③′)
+function _t1065RockNear(x, y, rad) {
+  const list = qtResources ? qtResources.queryCircle(x, y, rad) : resources.values();
+  for (const r of list) if (r && r.type === 'rock' && r.hp > 0 && Math.hypot(r.x - x, r.y - y) <= rad) return true;
+  return false;
 }
 function tryForage(player) {
   const now = Date.now();
@@ -10675,10 +10732,16 @@ function tryGather(player, resId, water) {
   const nearby = qtResources ? qtResources.queryCircle(player.x, player.y, GATHER_RANGE) : Array.from(resources.values());
   let best = null;
   let bestDist = GATHER_RANGE;
+  let refused = null;   // ★[T1065] 손에 맞는 도구가 없어 건너뛴 가장 가까운 것(켬만 · 끔 = 늘 null · 종전 고르기 그대로)
   for (const r of nearby) {
     const d = Math.hypot(r.x - player.x, r.y - player.y);
-    if (d < bestDist) { best = r; bestDist = d; }
+    if (d < bestDist) {
+      if (_t1065ResGate(player, r, true)) { if (!refused || d < refused.d) refused = { r, d }; continue; }
+      best = r; bestDist = d;
+    }
   }
+  //   ★[T1065] 맨손이면 손에 맞는 것을 고른다(덤불 · 약초) → 없으면 줍기 → 주울 것도 없으면 건너뛴 그것의 이유 한 줄(숲에서 맨손 E = 잔가지 줍기)
+  if (!best && refused && !Forage.sourceAt(player.x, player.y, _forageCtx(player))) { gatherResource(player, refused.r); return; }
   if (!best) { tryForage(player); return; }
   gatherResource(player, best);
 }
@@ -10724,6 +10787,8 @@ function gatherResource(player, best) {
     return;
   }
 
+  // ★[T1065] 벌목 · 채석은 손에 든 도구가 있어야 — 없으면 이유 한 줄(끔 · 그 밖의 자연물 = 이 줄 통과 · 종전)
+  { const why = _t1065ResGate(player, best); if (why) { send(player.ws, { type: 'notice', text: why, kind: 'gather', stop: 'gather' }); return; } }   // `stop` = 클라 채집 반복을 멈춘다(될 수 없는 일을 1초마다 다시 보내지 않게)
   // 14.53: 장착 instance 기반 도구 효과
   const eqInst = getEquippedTool(player);
   const eff = eqInst ? TOOL_EFFECTS[eqInst.type] : null;
@@ -11347,6 +11412,7 @@ const ITEM_LABEL_SERVER = {
   //   `plank` 에서 잡은 그 자리와 같은 종류다. 새 품목이 아니라 **메우는 것**이다.
   acorn: '도토리',
   crude_axe: '조잡한 돌도끼', crude_pick: '조잡한 돌괭이', crude_blade: '조잡한 돌칼',
+  ...(T1065_TOOL_GATE ? { crude_rod: '막대 낚싯대' } : {}),   // ★[T1065] 켬 판에만 서는 급조 낚싯대
   axe: '도끼', pickaxe: '곡괭이', sword: '검',
   // ★[T38 2026-09-01] `plank`(판자)가 **서버 표에만** 없었다 — 클라 사본에는 있어서 여태 안 보였다.
   //   `scripts/test-itemlabel.js` 가 제작 비용 키 19개를 전수로 대조해 찾아냈다(눈으로 찾은 게 아니다).
@@ -12810,6 +12876,7 @@ function __testBind() {
     T998_NPC_WILD_SYNC,   // ★[T998] 랩 동기 하네스(`test-npc-wild-sync` · 내보내기만)
     T1009_WILD_DOOR,   // ★[T1009] 야생 그림자 문 하네스(`test-wild-door` · 내보내기만)
     T1032_NPC_KILL, T1025_EV_CORPSE,   // ★[T1032] 같은 하네스가 판을 읽는다(내보내기만)
+    T1065_TOOL_GATE, _t1065Gate, t1065Stat: _t1065Stat, PLAYER_ATTACK_DAMAGE, arrows,   // ★[T1065] 도구 문 하네스(`test-t1065-tool-gate` · 내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
     spawnCorpse, butcherCorpse, corpses, t1025Corpse: _t1025Corpse,   // ★[T1025] 사체 장부 미룸 셈(탐침이 읽는다)
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
@@ -13198,6 +13265,8 @@ function tryRangedAttack(player, aimX, aimY) {
   if (now - (player.lastRangedAt || 0) < 600) return; // 쿨다운
   // 활 장착 확인 (간이: equipped가 'bow'면). 무기 시스템 확장 전까지 관대하게 허용.
   player.lastRangedAt = now;
+  // ★[T1065] 빈손에서 화살이 나가지 않는다 — 활 아이템이 아직 없다(회부) · 끔 = 종전(관대하게 허용)
+  { const why = _t1065Gate(player, 'ranged'); if (why) { send(player.ws, { type: 'notice', text: why, kind: 'combat' }); return; } }
   // 장착 무기 장비(품질 attack) → 화살 데미지 가산 + 마모 (근접 tryAttack과 동형·미장착 시 불변)
   let arrowDmg = ARROW_DMG;
   const wpnEq = getEquippedEquipment(player, 'weapon');
@@ -13321,6 +13390,8 @@ async function tryAttack(player) {
   const now = Date.now();
   if (now - player.lastAttackAt < PLAYER_ATTACK_COOLDOWN_MS) return;
   player.lastAttackAt = now;
+  // ★[T1065] 맨손으로는 싸우지 않는다 — 손에 든 도구 · 무기 장비가 있어야(끔 = 종전 맨손 피해)
+  { const why = _t1065Gate(player, 'attack'); if (why) { send(player.ws, { type: 'notice', text: why, kind: 'combat' }); return; } }
 
   // 14.53: 장착 instance 기반 무기 효과
   const eqInst = getEquippedTool(player);

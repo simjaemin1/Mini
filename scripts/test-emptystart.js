@@ -250,9 +250,10 @@ const invSum = (inv) => Object.entries(inv || {}).filter(([k]) => !['floor', 'tr
     ok(F.left(k, now + F.CFG.REFILL_MIN * 60000) >= F.CFG.CAP - 1e-6,
       '★★③ **분 단위로 다시 찬다**(편재성 캐논 — 시작 재료는 귀해지지 않는다)',
       `${F.CFG.REFILL_MIN}분 뒤 ${F.left(k, now + F.CFG.REFILL_MIN * 60000).toFixed(1)}/${F.CFG.CAP}`);
-    // ⓔ 채집은 도구가 **필수가 아니다**(§0-ⓑ 실측: 맨손 1, 도구 3 — 게이트가 아니라 가속)
+    // ⓔ 채집 기본 피해는 1 이고 도구는 가속기다(§0-ⓑ 실측: 맨손 1, 도구 3).
+    //   ★[T1065 · ★재민 11-01] 단 벌목 · 채석은 `T1065_TOOL_GATE` 켬이면 손에 든 도구가 있어야 한다(맨손 = 줍기 · 따기 · 덤불 · 약초) — 그 문은 `test-t1065-tool-gate` 가 잰다.
     const zsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
-    ok(/let dmg = 1;/.test(zsrc), '★★③ 채집 기본 피해가 **1**이다 — 도구 없이도 캔다(도구는 가속기)');
+    ok(/let dmg = 1;/.test(zsrc), '★★③ 채집 기본 피해가 **1**이다 — 맨손은 덤불 · 약초 · 줍기를 캔다(도구는 가속기 · 벌목 · 채석 문은 T1065)');
     ok(!/groundItems\.set\([^)]*forage|scatter/i.test(zsrc), '★③ **낙하물 스캐터가 없다** — 땅에 아이템을 흩뿌리지 않는다');
   }
 
