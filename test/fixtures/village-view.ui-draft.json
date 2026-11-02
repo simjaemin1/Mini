@@ -1,0 +1,90 @@
+{
+  "_note": "T1070 임시 자료(화면 짓기용) — 시안 `설계/시안/오석/마을_*.jpg` 네 장의 값을 그대로 옮겼다(예시 값 · 서버 값 아님). 정본 자료 모양은 T1072 `villageView`(`test/fixtures/village-view.json`) — 오면 `52-v-village-view.js` 의 `vvAdapt` 한 곳만 맞춘다.",
+  "vid": 0,
+  "name": "어촌3",
+  "region": "남해 바닷가 마을",
+  "chief": "도미",
+  "day": 412,
+  "member": false,
+  "contrib": { "n": 34, "need": 50 },
+  "join": {
+    "remainText": "16만 더 모으면 어촌3 사람이 될 수 있습니다.",
+    "perks": ["곳간에서 먹을 것을 꺼내 쓸 수 있습니다", "마을 땅에 집을 지을 수 있습니다", "도적이 오면 함께 지켜 줍니다"],
+    "oneRequest": true
+  },
+  "stats": {
+    "pop": 48, "popDelta": 3,
+    "season": "가을", "toWinter": 34,
+    "winter": [ { "label": "먹을 것", "frac": 0.82, "short": false }, { "label": "땔감", "frac": 0.61, "short": true } ],
+    "workN": 5, "workNext": "움집이 사흘 뒤 완성됩니다"
+  },
+  "requests": [
+    { "item": "목재", "qty": 30, "filled": 12, "unit": "", "why": "겨울 땔감이 모자랍니다", "contrib": 16 },
+    { "item": "돌도끼", "qty": 2, "filled": 0, "unit": "", "why": "나무꾼 도끼가 다 닳았습니다", "contrib": 12 },
+    { "item": "사슴 고기", "qty": 10, "filled": 4, "unit": "kg", "why": "겨울에 먹을 고기가 필요합니다", "contrib": 10 },
+    { "item": "갈대", "qty": 20, "filled": 15, "unit": "단", "why": "움집 지붕에 씁니다", "contrib": 6 }
+  ],
+  "news": [
+    { "when": "오늘", "text": "움집 한 채가 올라가고 있습니다." },
+    { "when": "3일 전 · 들려온 소문", "text": "북쪽 고갯길에 도적이 나타났다고 합니다." },
+    { "when": "9일 전", "text": "임업2와 장사를 트기로 했습니다." },
+    { "when": "21일 전", "text": "아이 셋이 태어나 48명이 되었습니다." }
+  ],
+  "projects": {
+    "hint": "모자란 재료를 가져오면 더 빨리 끝납니다. 가져온 만큼 기여도 쌓입니다.",
+    "active": [
+      { "name": "움집 두 채", "status": "사흘 뒤 완성", "frac": 0.75, "needs": [ { "item": "목재", "have": 12, "need": 30 }, { "item": "갈대", "have": 15, "need": 20 } ], "after": "다 지으면 침상이 넷 늘어납니다" },
+      { "name": "동쪽 밭 일구기", "status": "하는 중", "frac": 0.60, "needs": [ { "item": "돌괭이", "have": 1, "need": 3 } ], "after": "봄에 조와 기장을 심을 땅입니다" },
+      { "name": "북쪽 사냥터", "status": "6칸 중 4칸", "frac": 0.66, "needs": [ { "item": "돌창", "have": 2, "need": 4 } ], "after": "사슴이 늘면 고기가 넉넉해집니다" },
+      { "name": "숭어 말리기", "status": "겨울 준비", "frac": 0.50, "needs": [ { "item": "소금", "have": 8, "need": 16, "unit": "kg" } ], "after": "말린 숭어는 겨우내 상하지 않습니다" },
+      { "name": "임업2로 가는 행상", "status": "이틀 뒤 도착", "frac": 0.40, "needs": [ { "item": "말린 숭어", "have": 40, "need": 40 } ], "after": "목재를 받아 오면 땔감이 넉넉해집니다" },
+      { "name": "바닷가 움막 고치기", "status": "시작 전", "frac": 0, "needs": [ { "item": "목재", "have": 0, "need": 10 }, { "item": "갈대", "have": 0, "need": 15 } ], "after": "비를 피해 그물을 손볼 수 있습니다" }
+    ],
+    "next": [ "겨울이 오기 전에 땔감 140을 모아야 합니다. 지금 61%입니다.", "밖에서 자는 두 사람에게 집을 마련해 주려 합니다.", "동쪽 빈터 세 곳을 새로 올 사람의 집터로 내줄 계획입니다." ],
+    "done": [ { "name": "바닷가 건조대 세우기", "ago": 12 }, { "name": "임업2와 장사 트기", "ago": 9 }, { "name": "움집 한 채", "ago": 30 } ]
+  },
+  "members": {
+    "total": 48, "delta": 3,
+    "jobs": [ { "job": "어부", "n": 14 }, { "job": "농부", "n": 9 }, { "job": "채집꾼", "n": 7 }, { "job": "장인", "n": 5 }, { "job": "나무꾼", "n": 4 }, { "job": "전사", "n": 3 }, { "job": "아이", "n": 6 } ],
+    "people": [
+      { "name": "도미", "job": "어부", "chief": true, "act": "바닷가에서 그물을 손보는 중" },
+      { "name": "갈매", "job": "어부", "act": "배를 타고 숭어를 잡는 중" },
+      { "name": "너울", "job": "어부", "act": "숭어를 말리는 중" },
+      { "name": "노을", "job": "어부", "act": "통발을 걷으러 감" },
+      { "name": "다래", "job": "농부", "act": "동쪽 밭을 일구는 중" },
+      { "name": "여울", "job": "농부", "act": "기장을 거두는 중" },
+      { "name": "이슬", "job": "농부", "act": "조를 말리는 중" },
+      { "name": "바위", "job": "나무꾼", "act": "도끼가 닳아 쉬는 중" },
+      { "name": "솔이", "job": "채집꾼", "act": "갈대를 베는 중" },
+      { "name": "머루", "job": "채집꾼", "act": "도토리를 줍는 중" },
+      { "name": "미르", "job": "장인", "sub": "토기", "act": "민무늬토기를 굽는 중" },
+      { "name": "돌쇠", "job": "장인", "sub": "석기", "act": "돌도끼를 가는 중" },
+      { "name": "한결", "job": "전사", "act": "북쪽 고갯길을 지키는 중" },
+      { "name": "우레", "job": "전사", "act": "집에서 쉬는 중" },
+      { "name": "샛별", "job": "채집꾼", "newcomer": true, "act": "움집이 지어지길 기다리는 중" },
+      { "name": "방울", "job": "아이", "act": "바닷가에서 조개를 줍는 중" }
+    ],
+    "hint": "처음 왔다면 촌장 도미에게 인사하십시오. 마을 일을 알려 줍니다."
+  },
+  "store": {
+    "near": true,
+    "base": "조",
+    "baseOptions": ["조", "목재", "숭어"],
+    "note": ["시세는 이 마을이 지금 매기는 값입니다.", "많이 팔리면 내려가고, 귀해지면 오릅니다.", "이웃 마을 값은 직접 가 봐야 알 수 있습니다."],
+    "noteWhen": "오늘 아침 장이 섰을 때의 값입니다.",
+    "rows": [
+      { "item": "숭어", "qty": 210, "unit": "마리", "plenty": 0.9, "price": 0.8, "trend": -1 },
+      { "item": "조", "qty": 180, "unit": "되", "plenty": 0.74, "price": 1, "trend": 0 },
+      { "item": "기장", "qty": 140, "unit": "되", "plenty": 0.62, "price": 1.1, "trend": 0 },
+      { "item": "말린 숭어", "qty": 96, "unit": "마리", "plenty": 0.6, "price": 1.6, "trend": 1 },
+      { "item": "사슴 고기", "qty": 58, "unit": "kg", "plenty": 0.4, "price": 2.2, "trend": 1 },
+      { "item": "목재", "qty": 85, "unit": "개", "plenty": 0.38, "price": 2.4, "trend": 2 },
+      { "item": "돌", "qty": 42, "unit": "개", "plenty": 0.55, "price": 0.6, "trend": 0 },
+      { "item": "돌도끼", "qty": 5, "unit": "개", "plenty": 0.2, "price": 9, "trend": 1 },
+      { "item": "갈대", "qty": 64, "unit": "단", "plenty": 0.5, "price": 0.4, "trend": -1 },
+      { "item": "삼베옷", "qty": 30, "unit": "벌", "plenty": 0.66, "price": 14, "trend": 0 }
+    ],
+    "short": [ { "item": "목재", "why": "겨울 땔감", "trend": 1 }, { "item": "돌도끼", "why": "나무꾼 도끼가 닳음", "trend": 1 } ],
+    "shortHint": "모자란 것을 가져오면 값을 쳐 주고 기여도 많이 쌓입니다."
+  }
+}

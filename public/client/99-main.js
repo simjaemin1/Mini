@@ -264,6 +264,7 @@
       }
       else if (k === 'g') {                                                  // Shift+G 게시판
         if (evNearVid == null) showNotice('마을 중심에서 너무 멀다');
+        else if (vvKnobOn()) { if (villageViewOpen()) closeVillageView(); else openVillageView(evNearVid); }   // ★[T1070] 손잡이 켬 = 마을 화면(메뉴 넷) · 끔 = 종전 게시판
         else sendPrimary({ type: 'village_board', vid: evNearVid });
       }
       // ★Shift+I·K·H·T·B·J 는 **패널 쪽 리스너**(50-i-panel.js)가 잡는다 — 여기선 아무것도 안 한다.
@@ -463,3 +464,7 @@
     }
   }, 1000);
 // @@moved-end:14155
+
+// ★[T1070] 마을 화면 시험 훅 — 자료 넣기(T1072 전 임시 자료 · e2e) · 상태 읽기(최상위 실행문은 이 파일에만 — 분할 규약)
+window.__vvInject = (v) => villageViewOnMessage(v);
+window.__vvState = () => ({ open: villageViewOpen(), tab: vvTab, vid: vvVid, far: vvFar(), knob: vvKnobOn() });
