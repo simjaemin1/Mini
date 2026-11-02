@@ -21,6 +21,8 @@
 // ⚠존을 **이 프로세스 안에서** 띄운다(`test-regrow ⑦` 과 같은 문법 · `Zone.__testBind`).
 // 실행: node scripts/test-ghost-tree.js
 'use strict';
+// ★[T1065 판 꾸밈] 이 하네스가 재는 것 = 뺀 나무 장부 · 유령 방송(맨손 벌목 픽스처) — 도구 문(`T1065_TOOL_GATE` · 맨손 거부 · 활 없음)은 `test-t1065-tool-gate` 가 잰다. 단언 무변 · 손으로 켜 볼 수 있다(env 를 주면 그 값).
+process.env.T1065_TOOL_GATE = process.env.T1065_TOOL_GATE || '0';
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

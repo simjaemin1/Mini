@@ -16,6 +16,8 @@
 //
 // 실행: node scripts/test-seed-hp.js   (아이 넷 × 두 판 · 몇 분)
 'use strict';
+// ★[T1065 판 꾸밈] 이 하네스가 재는 것 = 시드 나무 hp 가 판을 건너나(맨손 피해 1 픽스처) — 도구 문(`T1065_TOOL_GATE` · 맨손 거부 · 활 없음)은 `test-t1065-tool-gate` 가 잰다. 단언 무변 · 손으로 켜 볼 수 있다(env 를 주면 그 값).
+process.env.T1065_TOOL_GATE = process.env.T1065_TOOL_GATE || '0';
 const path = require('path');
 const fs = require('fs');
 const { spawnSync } = require('child_process');
