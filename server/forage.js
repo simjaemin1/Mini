@@ -79,6 +79,7 @@ const RING = (() => {
   }
   return o;
 })();
+const RING_PX = Math.max(...RING.map(([dx, dy]) => Math.hypot(dx, dy))) * CFG.CELL_PX;   // ★[T1065] 링 가장 바깥 반경(px) — ③′ 바위 개체 둘레(표에서 유도)
 // ★덤불은 여기 없다 — **파괴형 채집**(`zone.tryGather` 의 `berry_bush` 산출)이 맡는다.
 //   재민 확정 "덤불 E = 잔가지"는 그쪽 산출에 잔가지를 넣어 지켰다(열매·풀과 함께 나온다).
 //   여기는 **개체가 곁에 없을 때** 땅 자체가 주는 것들이다(비파괴 · 개체별 lazy 고갈).
@@ -145,6 +146,12 @@ function sourceAt(x, y, ctx) {
     if (ctx.isRock(cx, cy) || ctx.isWater(cx, cy)) {
       return { kind: 'pebble', key: `c:${Math.floor(x / CFG.CELL_PX)}_${Math.floor(y / CFG.CELL_PX)}`, where: '자갈 지형' };
     }
+  }
+  // ③′ ★[T1065 2026-11-02] **바위 덩이(개체) 둘레도 같은 자갈 땅이다** — 위 ③ 의 "둘레에 바위가 있는 땅"을 바위 개체에도 적용한다(링 반경 그대로 · 새 수 0).
+  //   왜: T1065 켬이면 맨손 채석이 닫힌다 → 마을 어귀에 심은 바위 군락(재민 #58 · `groves`)이 맨손 자갈 소스였던 15곳(1,200px 안)이 첫 급조 도구를 못 만든다(돌괭이도 자갈 3).
+  //   ⇒ 바위는 그대로 두고 그 곁 자갈을 손으로 줍는다. `ctx.rockNear` 는 켬 판만 준다(끔 = 없음 = 종전 바이트).
+  if (ctx.rockNear && ctx.rockNear(x, y, RING_PX)) {
+    return { kind: 'pebble', key: `c:${Math.floor(x / CFG.CELL_PX)}_${Math.floor(y / CFG.CELL_PX)}`, where: '바위 곁' };
   }
   return null;   // ★들판 한복판엔 주울 게 없다 — "어디서 주울까"가 판단이 되게 한다
 }

@@ -1754,5 +1754,7 @@
           name: ((c.others && c.others.get(d.pid)) || {}).name || null });
       }
       showNotice(msg.text, undefined, msg.kind);   // ★[T90] 종류가 그림이 된다(T78 이 실어 둔 칸을 이제 읽는다)
+      // ★[T1065] 서버가 "이건 될 수 없다"고 하면 채집 반복을 멈춘다(맨손 벌목 · 채석 거절 — 99-main 의 E 떼기와 같은 두 줄 · 새 상태 0)
+      if (msg.stop === 'gather' && window.__eRepeat) { clearInterval(window.__eRepeat); window.__eRepeat = null; }
     }
   }

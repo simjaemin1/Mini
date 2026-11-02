@@ -16,6 +16,8 @@
 //     `T967_MOB_HP=0` 자식으로 한 번 더 돌려 끔 판을 본다 — 끔 판의 `[관찰]` 줄 넷은 T954 의 그 글자와 같아야 한다(종전 그대로).
 // 실행: node scripts/test-mob-hp-door.js   (실서버를 임시 DB · 임시 포트로 한 프로세스에 띄운다 — 라이브 무접촉)
 'use strict';
+// ★[T1065 판 꾸밈] 이 하네스가 재는 것 = 짐승 hp 문(맨손 10 · 화살 25 피해 픽스처) — 도구 문(`T1065_TOOL_GATE` · 맨손 거부 · 활 없음)은 `test-t1065-tool-gate` 가 잰다. 단언 무변 · 손으로 켜 볼 수 있다(env 를 주면 그 값).
+process.env.T1065_TOOL_GATE = process.env.T1065_TOOL_GATE || '0';
 const path = require('path');
 const fs = require('fs');
 const TMP = `/tmp/test-mob-hp-${process.pid}.db`;

@@ -29,6 +29,8 @@
 //   [관찰] 켬 주기 저장 한 번의 시간
 // 실행: node scripts/test-mob-hp-restart.js   (임시 DB · 임시 포트 · 라이브 무접촉)
 'use strict';
+// ★[T1065 판 꾸밈] 이 하네스가 재는 것 = 짐승 hp 가 재기동을 건너나(화살 · 사람 공격 픽스처) — 도구 문(`T1065_TOOL_GATE` · 맨손 거부 · 활 없음)은 `test-t1065-tool-gate` 가 잰다. 단언 무변 · 손으로 켜 볼 수 있다(env 를 주면 그 값).
+process.env.T1065_TOOL_GATE = process.env.T1065_TOOL_GATE || '0';
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
