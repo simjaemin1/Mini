@@ -622,6 +622,8 @@ function createWar(opts) {
   // ★[T295 ③] 섭식 정본 함수 주입(사본 0) — 호스트가 `{ consumeFood }`(economy-sim 의 그 함수)를 넘긴다.
   //   미주입이면 군량은 종전대로 `storage.food` 한 칸만 본다(랩·v1 CLI = 비트 동일).
   const FOOD = opts.food || (typeof window !== 'undefined' && window.EconomySim) || null;
+  // ★[T1113 ②] 출정 거부 — 호스트가 econ 술어 둘을 넘긴다(`{ refuseMuster(): bool, unhappy(econ): bool }` · 사본 0). 미주입(랩 · CLI) = 종전 그대로.
+  const HAPPY = (opts.happy && typeof opts.happy.unhappy === 'function') ? opts.happy : null;
   // 곳간 식량등가 — 주입돼 있으면 econ 정본(`totalFoodEquivalent`), 아니면 종전 근사(`warFE` 5품목).
   const _feOf = (e) => (FOOD && typeof FOOD.totalFoodEquivalent === 'function') ? FOOD.totalFoodEquivalent(e) : warFE(e);
 
@@ -711,6 +713,11 @@ function createWar(opts) {
   // 동원 — 군량 선차감 + 동원기간 생산정지(_warMobUntil/_warMobFrac) + 편성 저장(WARS push)
   function warMobilize(V, U, casus, dist, day) {
     const e = V.econ, st = stats(), c = e.counts || {}, warriors = Math.round(c.warrior || 0), NV = e.npcs.length;
+    if (HAPPY && HAPPY.refuseMuster() && HAPPY.unhappy(e)) {   // ★[T1113 ②] 행복이 중립 밑인 마을은 나서지 않는다(선포 0 · 쿨다운 0 — 다음 날 다시 따진다)
+      st.refuseMuster = (st.refuseMuster || 0) + 1;
+      log(day, V.name + '→' + U.name + ' 출정 거부(행복 낮음)');
+      return false;
+    }
     const plan = _warNpcMobPlan(V, U, casus, dist, day);
     if (!plan.viable) return false;
     const force = plan.forceCount, marchDays = plan.marchDays, rations = plan.rations, mode = plan.mode;

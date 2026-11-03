@@ -1,0 +1,1136 @@
+{
+ "7": {
+  "base": {
+   "days": 800,
+   "first": {
+    "day": 1,
+    "giniPop": 0,
+    "giniGran": 0.008249675487681863
+   },
+   "marks": [
+    {
+     "day": 100,
+     "giniPop": 0.22,
+     "giniGran": 0.33,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 1727
+    },
+    {
+     "day": 200,
+     "giniPop": 0.346,
+     "giniGran": 0.428,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2187
+    },
+    {
+     "day": 300,
+     "giniPop": 0.383,
+     "giniGran": 0.41,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2578
+    },
+    {
+     "day": 400,
+     "giniPop": 0.398,
+     "giniGran": 0.492,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2809
+    },
+    {
+     "day": 500,
+     "giniPop": 0.423,
+     "giniGran": 0.513,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 3451
+    },
+    {
+     "day": 600,
+     "giniPop": 0.403,
+     "giniGran": 0.538,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 3912
+    },
+    {
+     "day": 700,
+     "giniPop": 0.329,
+     "giniGran": 0.562,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 3956
+    },
+    {
+     "day": 800,
+     "giniPop": 0.339,
+     "giniGran": 0.58,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 4760
+    }
+   ],
+   "dPop": 0.339,
+   "dGran": 0.572,
+   "empty": 0,
+   "dissolved": 0,
+   "floor": {
+    "bottom": {
+     "names": [
+      "광산1",
+      "광산7",
+      "농촌20",
+      "농촌18",
+      "농촌14",
+      "농촌15",
+      "농촌9",
+      "농촌19",
+      "농촌8",
+      "광산5"
+     ],
+     "low": [
+      787,
+      759,
+      760,
+      778,
+      679,
+      768,
+      739,
+      535,
+      481,
+      303
+     ],
+     "live": [
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 658.9,
+     "share": 0.824
+    },
+    "top": {
+     "names": [
+      "임업2",
+      "어촌2",
+      "임업6",
+      "농촌2",
+      "어촌3",
+      "임업3",
+      "임업1",
+      "농촌4",
+      "임업5",
+      "농촌17"
+     ],
+     "low": [
+      62,
+      42,
+      518,
+      29,
+      469,
+      171,
+      248,
+      374,
+      318,
+      73
+     ],
+     "live": [
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 230.4,
+     "share": 0.288
+    },
+    "n": 51
+   },
+   "mid": {
+    "day": 400,
+    "dPop": -0.059,
+    "dGran": 0.088
+   }
+  },
+  "shock": {
+   "days": 800,
+   "first": {
+    "day": 1,
+    "giniPop": 0,
+    "giniGran": 0.008249675487681863
+   },
+   "marks": [
+    {
+     "day": 100,
+     "giniPop": 0.22,
+     "giniGran": 0.33,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 1727
+    },
+    {
+     "day": 200,
+     "giniPop": 0.346,
+     "giniGran": 0.428,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2187
+    },
+    {
+     "day": 300,
+     "giniPop": 0.383,
+     "giniGran": 0.41,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2578
+    },
+    {
+     "day": 400,
+     "giniPop": 0.398,
+     "giniGran": 0.492,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2809
+    },
+    {
+     "day": 500,
+     "giniPop": 0.423,
+     "giniGran": 0.513,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 3451
+    },
+    {
+     "day": 600,
+     "giniPop": 0.403,
+     "giniGran": 0.539,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 3912
+    },
+    {
+     "day": 700,
+     "giniPop": 0.344,
+     "giniGran": 0.561,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 3850
+    },
+    {
+     "day": 800,
+     "giniPop": 0.339,
+     "giniGran": 0.57,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 4660
+    }
+   ],
+   "dPop": 0.339,
+   "dGran": 0.562,
+   "empty": 0,
+   "dissolved": 0,
+   "floor": {
+    "bottom": {
+     "names": [
+      "광산1",
+      "광산7",
+      "농촌10",
+      "농촌18",
+      "농촌14",
+      "농촌20",
+      "농촌9",
+      "농촌19",
+      "농촌8",
+      "농촌15"
+     ],
+     "low": [
+      790,
+      781,
+      777,
+      786,
+      762,
+      759,
+      768,
+      599,
+      414,
+      780
+     ],
+     "live": [
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 721.6,
+     "share": 0.902
+    },
+    "top": {
+     "names": [
+      "임업2",
+      "어촌2",
+      "임업6",
+      "농촌2",
+      "어촌3",
+      "임업3",
+      "임업1",
+      "농촌4",
+      "임업5",
+      "농촌17"
+     ],
+     "low": [
+      62,
+      42,
+      517,
+      29,
+      559,
+      171,
+      248,
+      376,
+      367,
+      73
+     ],
+     "live": [
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 244.4,
+     "share": 0.305
+    },
+    "n": 51
+   },
+   "shock": {
+    "name": "농촌1",
+    "day": 549,
+    "until": 640,
+    "kind": "☠️흉년",
+    "pop": {
+     "base": 51,
+     "back": null,
+     "backDays": null,
+     "min": 51,
+     "minDay": 549,
+     "end": 201,
+     "endDay": 800,
+     "tail": 34,
+     "dipped": false,
+     "ctlEnd": 188,
+     "ctlAtMin": 51,
+     "gapEnd": 13
+    },
+    "gran": {
+     "base": 2227.57,
+     "back": 677,
+     "backDays": 128,
+     "min": 987,
+     "minDay": 584,
+     "end": 12261.8,
+     "endDay": 800,
+     "tail": 6424.52,
+     "dipped": true,
+     "ctlEnd": 13381.06,
+     "ctlAtMin": 1026.13,
+     "gapEnd": -1119.26
+    },
+    "ctl": {
+     "firstDiverge": 550,
+     "cleanBefore": true,
+     "worstGap": -2,
+     "worstDay": 732,
+     "caught": 734,
+     "endGap": 13,
+     "endRel": 0.069,
+     "noiseMed": 5,
+     "noiseP90": 19,
+     "noiseMax": 47,
+     "louder": 10,
+     "others": 50
+    }
+   }
+  },
+  "pickSame": true
+ },
+ "42": {
+  "base": {
+   "days": 800,
+   "first": {
+    "day": 1,
+    "giniPop": 0,
+    "giniGran": 0.008156904325679993
+   },
+   "marks": [
+    {
+     "day": 100,
+     "giniPop": 0.224,
+     "giniGran": 0.317,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 1763
+    },
+    {
+     "day": 200,
+     "giniPop": 0.321,
+     "giniGran": 0.433,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2115
+    },
+    {
+     "day": 300,
+     "giniPop": 0.352,
+     "giniGran": 0.434,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2295
+    },
+    {
+     "day": 400,
+     "giniPop": 0.408,
+     "giniGran": 0.517,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2438
+    },
+    {
+     "day": 500,
+     "giniPop": 0.441,
+     "giniGran": 0.572,
+     "empty": 1,
+     "dissolved": 1,
+     "pop": 3273
+    },
+    {
+     "day": 600,
+     "giniPop": 0.408,
+     "giniGran": 0.603,
+     "empty": 1,
+     "dissolved": 2,
+     "pop": 4048
+    },
+    {
+     "day": 700,
+     "giniPop": 0.392,
+     "giniGran": 0.597,
+     "empty": 1,
+     "dissolved": 2,
+     "pop": 3820
+    },
+    {
+     "day": 800,
+     "giniPop": 0.392,
+     "giniGran": 0.562,
+     "empty": 3,
+     "dissolved": 2,
+     "pop": 4567
+    }
+   ],
+   "dPop": 0.392,
+   "dGran": 0.554,
+   "empty": 3,
+   "dissolved": 2,
+   "floor": {
+    "bottom": {
+     "names": [
+      "농촌18",
+      "광산1",
+      "광산7",
+      "농촌10",
+      "농촌20",
+      "농촌9",
+      "농촌21",
+      "농촌14",
+      "어촌8",
+      "광산4"
+     ],
+     "low": [
+      445,
+      649,
+      758,
+      768,
+      774,
+      746,
+      485,
+      755,
+      397,
+      225
+     ],
+     "live": [
+      446,
+      709,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 600.2,
+     "share": 0.794
+    },
+    "top": {
+     "names": [
+      "어촌2",
+      "임업2",
+      "임업3",
+      "임업6",
+      "농촌2",
+      "어촌3",
+      "농촌4",
+      "농촌12",
+      "어촌15",
+      "농촌17"
+     ],
+     "low": [
+      70,
+      43,
+      73,
+      569,
+      43,
+      402,
+      393,
+      607,
+      538,
+      509
+     ],
+     "live": [
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 324.7,
+     "share": 0.406
+    },
+    "n": 51
+   },
+   "mid": {
+    "day": 400,
+    "dPop": -0.016,
+    "dGran": 0.045
+   }
+  },
+  "shock": {
+   "days": 800,
+   "first": {
+    "day": 1,
+    "giniPop": 0,
+    "giniGran": 0.008156904325679993
+   },
+   "marks": [
+    {
+     "day": 100,
+     "giniPop": 0.224,
+     "giniGran": 0.317,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 1763
+    },
+    {
+     "day": 200,
+     "giniPop": 0.321,
+     "giniGran": 0.433,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2115
+    },
+    {
+     "day": 300,
+     "giniPop": 0.352,
+     "giniGran": 0.434,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2295
+    },
+    {
+     "day": 400,
+     "giniPop": 0.408,
+     "giniGran": 0.517,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2438
+    },
+    {
+     "day": 500,
+     "giniPop": 0.441,
+     "giniGran": 0.572,
+     "empty": 1,
+     "dissolved": 1,
+     "pop": 3273
+    },
+    {
+     "day": 600,
+     "giniPop": 0.408,
+     "giniGran": 0.601,
+     "empty": 1,
+     "dissolved": 2,
+     "pop": 4060
+    },
+    {
+     "day": 700,
+     "giniPop": 0.414,
+     "giniGran": 0.597,
+     "empty": 3,
+     "dissolved": 2,
+     "pop": 3606
+    },
+    {
+     "day": 800,
+     "giniPop": 0.398,
+     "giniGran": 0.57,
+     "empty": 3,
+     "dissolved": 2,
+     "pop": 4472
+    }
+   ],
+   "dPop": 0.398,
+   "dGran": 0.562,
+   "empty": 3,
+   "dissolved": 2,
+   "floor": {
+    "bottom": {
+     "names": [
+      "농촌18",
+      "광산1",
+      "광산7",
+      "농촌10",
+      "농촌20",
+      "농촌14",
+      "농촌21",
+      "어촌8",
+      "농촌13",
+      "광산4"
+     ],
+     "low": [
+      445,
+      611,
+      598,
+      782,
+      738,
+      777,
+      500,
+      391,
+      710,
+      225
+     ],
+     "live": [
+      446,
+      627,
+      640,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 577.7,
+     "share": 0.79
+    },
+    "top": {
+     "names": [
+      "어촌2",
+      "임업2",
+      "임업6",
+      "임업3",
+      "농촌2",
+      "어촌3",
+      "농촌4",
+      "농촌12",
+      "어촌15",
+      "농촌17"
+     ],
+     "low": [
+      70,
+      43,
+      531,
+      73,
+      42,
+      417,
+      304,
+      619,
+      544,
+      547
+     ],
+     "live": [
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 319,
+     "share": 0.399
+    },
+    "n": 51
+   },
+   "shock": {
+    "name": "임업5",
+    "day": 549,
+    "until": 640,
+    "kind": "☠️흉년",
+    "pop": {
+     "base": 38,
+     "back": 745,
+     "backDays": 196,
+     "min": 34,
+     "minDay": 740,
+     "end": 97,
+     "endDay": 800,
+     "tail": 55,
+     "dipped": true,
+     "ctlEnd": 125,
+     "ctlAtMin": 106,
+     "gapEnd": -28
+    },
+    "gran": {
+     "base": 878.35,
+     "back": 554,
+     "backDays": 5,
+     "min": 0,
+     "minDay": 739,
+     "end": 538.38,
+     "endDay": 800,
+     "tail": 382.44,
+     "dipped": true,
+     "ctlEnd": 5671.79,
+     "ctlAtMin": 3940.28,
+     "gapEnd": -5133.41
+    },
+    "ctl": {
+     "firstDiverge": 550,
+     "cleanBefore": true,
+     "worstGap": -73,
+     "worstDay": 741,
+     "caught": null,
+     "endGap": -28,
+     "endRel": -0.224,
+     "noiseMed": 4,
+     "noiseP90": 35,
+     "noiseMax": 75,
+     "louder": 6,
+     "others": 50
+    }
+   }
+  },
+  "pickSame": true
+ },
+ "1020": {
+  "base": {
+   "days": 800,
+   "first": {
+    "day": 1,
+    "giniPop": 0,
+    "giniGran": 0.008156904325679993
+   },
+   "marks": [
+    {
+     "day": 100,
+     "giniPop": 0.237,
+     "giniGran": 0.355,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 1803
+    },
+    {
+     "day": 200,
+     "giniPop": 0.352,
+     "giniGran": 0.381,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2219
+    },
+    {
+     "day": 300,
+     "giniPop": 0.375,
+     "giniGran": 0.414,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2333
+    },
+    {
+     "day": 400,
+     "giniPop": 0.366,
+     "giniGran": 0.451,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2345
+    },
+    {
+     "day": 500,
+     "giniPop": 0.397,
+     "giniGran": 0.525,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2834
+    },
+    {
+     "day": 600,
+     "giniPop": 0.398,
+     "giniGran": 0.484,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 3396
+    },
+    {
+     "day": 700,
+     "giniPop": 0.377,
+     "giniGran": 0.588,
+     "empty": 0,
+     "dissolved": 1,
+     "pop": 3398
+    },
+    {
+     "day": 800,
+     "giniPop": 0.388,
+     "giniGran": 0.588,
+     "empty": 0,
+     "dissolved": 2,
+     "pop": 4010
+    }
+   ],
+   "dPop": 0.388,
+   "dGran": 0.58,
+   "empty": 0,
+   "dissolved": 2,
+   "floor": {
+    "bottom": {
+     "names": [
+      "광산1",
+      "농촌18",
+      "광산7",
+      "농촌10",
+      "농촌15",
+      "농촌20",
+      "농촌14",
+      "농촌9",
+      "광산3",
+      "농촌8"
+     ],
+     "low": [
+      788,
+      787,
+      776,
+      782,
+      787,
+      771,
+      790,
+      754,
+      567,
+      486
+     ],
+     "live": [
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 728.8,
+     "share": 0.911
+    },
+    "top": {
+     "names": [
+      "임업2",
+      "어촌2",
+      "농촌2",
+      "임업6",
+      "어촌3",
+      "임업1",
+      "농촌17",
+      "임업3",
+      "어촌11",
+      "농촌22"
+     ],
+     "low": [
+      70,
+      42,
+      75,
+      586,
+      466,
+      110,
+      77,
+      146,
+      183,
+      182
+     ],
+     "live": [
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 193.7,
+     "share": 0.242
+    },
+    "n": 51
+   },
+   "mid": {
+    "day": 400,
+    "dPop": 0.022,
+    "dGran": 0.137
+   }
+  },
+  "shock": {
+   "days": 800,
+   "first": {
+    "day": 1,
+    "giniPop": 0,
+    "giniGran": 0.008156904325679993
+   },
+   "marks": [
+    {
+     "day": 100,
+     "giniPop": 0.237,
+     "giniGran": 0.355,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 1803
+    },
+    {
+     "day": 200,
+     "giniPop": 0.352,
+     "giniGran": 0.381,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2219
+    },
+    {
+     "day": 300,
+     "giniPop": 0.375,
+     "giniGran": 0.414,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2333
+    },
+    {
+     "day": 400,
+     "giniPop": 0.366,
+     "giniGran": 0.451,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2345
+    },
+    {
+     "day": 500,
+     "giniPop": 0.397,
+     "giniGran": 0.525,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 2834
+    },
+    {
+     "day": 600,
+     "giniPop": 0.401,
+     "giniGran": 0.505,
+     "empty": 0,
+     "dissolved": 0,
+     "pop": 3394
+    },
+    {
+     "day": 700,
+     "giniPop": 0.393,
+     "giniGran": 0.576,
+     "empty": 0,
+     "dissolved": 1,
+     "pop": 3255
+    },
+    {
+     "day": 800,
+     "giniPop": 0.378,
+     "giniGran": 0.565,
+     "empty": 0,
+     "dissolved": 1,
+     "pop": 4129
+    }
+   ],
+   "dPop": 0.378,
+   "dGran": 0.557,
+   "empty": 0,
+   "dissolved": 1,
+   "floor": {
+    "bottom": {
+     "names": [
+      "광산1",
+      "광산7",
+      "농촌10",
+      "농촌15",
+      "농촌18",
+      "농촌20",
+      "농촌14",
+      "농촌9",
+      "광산3",
+      "농촌8"
+     ],
+     "low": [
+      799,
+      760,
+      786,
+      799,
+      776,
+      767,
+      797,
+      734,
+      538,
+      488
+     ],
+     "live": [
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 724.4,
+     "share": 0.905
+    },
+    "top": {
+     "names": [
+      "임업2",
+      "어촌2",
+      "농촌2",
+      "임업6",
+      "어촌3",
+      "임업1",
+      "농촌17",
+      "임업3",
+      "어촌11",
+      "농촌22"
+     ],
+     "low": [
+      70,
+      42,
+      75,
+      599,
+      460,
+      111,
+      77,
+      146,
+      189,
+      97
+     ],
+     "live": [
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800,
+      800
+     ],
+     "lowMean": 186.6,
+     "share": 0.233
+    },
+    "n": 51
+   },
+   "shock": {
+    "name": "농촌4",
+    "day": 549,
+    "until": 640,
+    "kind": "☠️흉년",
+    "pop": {
+     "base": 42,
+     "back": null,
+     "backDays": null,
+     "min": 42,
+     "minDay": 549,
+     "end": 69,
+     "endDay": 800,
+     "tail": 27,
+     "dipped": false,
+     "ctlEnd": 76,
+     "ctlAtMin": 42,
+     "gapEnd": -7
+    },
+    "gran": {
+     "base": 2307.87,
+     "back": 659,
+     "backDays": 110,
+     "min": 1050.28,
+     "minDay": 564,
+     "end": 2012.44,
+     "endDay": 800,
+     "tail": 700.84,
+     "dipped": true,
+     "ctlEnd": 2274.18,
+     "ctlAtMin": 1367.83,
+     "gapEnd": -261.74
+    },
+    "ctl": {
+     "firstDiverge": 550,
+     "cleanBefore": true,
+     "worstGap": -9,
+     "worstDay": 798,
+     "caught": null,
+     "endGap": -7,
+     "endRel": -0.092,
+     "noiseMed": 6,
+     "noiseP90": 34,
+     "noiseMax": 78,
+     "louder": 23,
+     "others": 50
+    }
+   }
+  },
+  "pickSame": true
+ }
+}

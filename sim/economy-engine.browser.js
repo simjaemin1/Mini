@@ -11636,6 +11636,7 @@ function assignNPCJob(v, npc, job, day) {
   if (npc._warDraft) return { ok: false, why: 'draft' };
   if (npc.currentJob === job) return { ok: false, why: 'same' };
   if (npc.captive && CAPTIVE_JOB_BAN[job]) return { ok: false, why: 'captive' };
+  if (t1113On('T1113_REFUSE_ASSIGN') && t1113Unhappy(v)) return { ok: false, why: 'unhappy', happy: t1113Happy(v) };   // ★[T1113 ①] 행복이 중립 밑이면 촌장 말을 안 듣는다
   const since = day - (npc.lastJobChangeDay == null ? -999 : npc.lastJobChangeDay);
   if (since < JOB_SWITCH_COOLDOWN) return { ok: false, why: 'cool', left: JOB_SWITCH_COOLDOWN - since };
   const counts = jobCounts(v);
@@ -11644,6 +11645,30 @@ function assignNPCJob(v, npc, job, day) {
   switchNPCJob(npc, job, day, v);
   npc._chiefAssignDay = day;
   return { ok: true };
+}
+// ═══ ★[T1113 · 재민 11-02] 행복이 낮을 때 효과 셋 — 손잡이 셋(다 **끔 기본** · 켜는 값 `'1'` · 랩 `window.<이름> = 1`) ═══
+//   문턱 = econ 행복 중립점 0.5(`happiness: 0.5 기준` · T209 하한이 배수를 1 로 자르는 자리) — T1075 평형 행복이 아직 main 에 없어 **지금 행복 값**(`lastStats.happiness`)을 읽는다.
+//   세기 = 행복 → 작업량 식(T157 · `happyWorkMul`)의 아래쪽 그대로 — T209 가 1 로 잘라 둔 몫(1 + (h − 0.5) × H · 하한 1 − H/2)을 **식량 외에만** 되살린다(새 수 0).
+//   ① `T1113_REFUSE_ASSIGN` — 촌장 지정(`assignNPCJob`)을 거부한다. 자율 전환(굶을 때 식량직 포함)은 이 문을 안 지난다.
+//   ② `T1113_REFUSE_MUSTER` — 출정(선전포고 `war-core warMobilize`)을 거부한다(공격하는 마을 행복 기준 · 지키는 쪽은 그대로).
+//   ③ `T1113_LOW_QUALITY` — 식량 외 산출 · 도구 · 무기 · 옷 품질 목표에 위 배수를 곱한다(식량 · 조리식 품질은 그대로).
+//   끄면 이 블록은 한 줄도 안 돈다(종전 비트).
+function t1113On(name) { const x = _allocKnob(name); return x !== null && x !== '0'; }
+const T1113_HAPPY_MID = 0.5;   // econ 행복 중립점(위 주석) — 이름만 붙였다
+function t1113Happy(v) { const h = v && v.lastStats && v.lastStats.happiness; return (typeof h === 'number' && isFinite(h)) ? h : null; }
+function t1113Unhappy(v) { const h = t1113Happy(v); return h !== null && h < T1113_HAPPY_MID; }
+//   ③ 의 배수 — 행복이 중립 밑이면 `happyWorkMul` 의 T209 앞 식(아래쪽), 아니면 1.
+function t1113LowMul(v) {
+  const h = t1113Happy(v); if (h === null || !(h < T1113_HAPPY_MID)) return 1;
+  const W = happyWorkWOf(v); if (!(W > 0)) return 1;
+  return Math.max(1 - W * 0.5, 1 + (h - T1113_HAPPY_MID) * W);
+}
+//   식량인가 — 곳간 식량 등가(`totalFoodEquivalent`)가 세는 그 표들 그대로(사본 0)
+function t1113IsFood(v, r) {
+  if (r === 'food' || r === 'fish' || r === 'meat' || r === 'cooked_food') return true;
+  if (FORAGE_FOOD_FACTOR[r] != null || PRESERVED_FOODS.indexOf(r) >= 0 || RAW_GRAINS.indexOf(r) >= 0) return true;
+  const own = _t368Crops(v); if (own) for (const [k] of own) if (k === r) return true;
+  return false;
 }
 // ★[T1085] 촌장 화면이 고를 직업 — 이 땅에 자리가 하나라도 있는 직업(`jobCapacity` > 0)과 지금 빈자리 여부. 읽기 전용.
 function assignableJobs(v) {
@@ -12376,6 +12401,8 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   if (_hwm !== 1 + (v.lastStats.happiness - 0.5) * _hwW) v._hwClampDays = (v._hwClampDays || 0) + 1;   // 계측 전용 — 상한이 어디서 서나(회계 아님)
   v._hwmLast = _hwm;
 }
+const _t1113LQ = t1113On('T1113_LOW_QUALITY') ? t1113LowMul(v) : 1;   // ★[T1113 ③] 식량 외 산출 배수(끔 · 행복 ≥ 0.5 = 1)
+if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 전용
   // ★production stat → 생산성(자재·설비 비축이 실제 생산력↑). 상한 클램프로 스노볼 방지. 잠재력엔 미적용(K 오염 방지).
   const _prodMul = (v.lastStats && typeof v.lastStats.production === 'number')
     ? 1 + Math.min(PROD_STAT_CAP, v.lastStats.production * PROD_STAT_W) : 1;
@@ -12480,7 +12507,8 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       const sm = satMul(r);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
       dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
-      amt *= _hpm * _hwm * _prodMul * sm * (v._laborMul || 1) * _capM;   // ★건강→작업량(±10%) × **행복→작업량(T157 · 주입 없으면 1)** × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산) × 포로 노동(captive만 0.6, 미설치=1) ★[T329] 포위 배수 제거(반경으로 간다)
+      amt *= _hpm * _hwm * _prodMul * sm * (v._laborMul || 1) * _capM;
+      if (_t1113LQ !== 1 && !t1113IsFood(v, r)) amt *= _t1113LQ;   // ★[T1113 ③] 식량 외만(끔 = 이 줄 무동작)   // ★건강→작업량(±10%) × **행복→작업량(T157 · 주입 없으면 1)** × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산) × 포로 노동(captive만 0.6, 미설치=1) ★[T329] 포위 배수 제거(반경으로 간다)
       if (amt <= 0) return;
       if (r === 'food') v._grainToday = (v._grainToday || 0) + amt;   // ★오늘 곡물 실생산 → 볏짚 연료(아래 연료 블록)
       const tax = amt * TAX_RATE;
@@ -13181,6 +13209,8 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     let toolTarget;
     if (maxMasonSk >= 0) toolTarget = TOOL_Q_BASE + TOOL_Q_SPAN * (maxMasonSk / 10);   // 석공 품질(막석기~명장석기)
     else toolTarget = SELF_TOOL_Q;   // 석공 없음 → 막석기 자급 품질
+    const _t1113Q = t1113On('T1113_LOW_QUALITY') ? t1113LowMul(v) : 1;   // ★[T1113 ③] 품질 목표에도(끔 = 1)
+    toolTarget *= _t1113Q;
     v._toolQ = (v._toolQ != null ? v._toolQ : 1.4) * (1 - TOOL_Q_EMA) + toolTarget * TOOL_Q_EMA;
     // 무기: 최고 재료등급(청동>철>석검 — 현 재고 가용성) × 최고 무기장(smith)·석공(석검) 숙련.
     let maxSmithSk = -1, maxMasonSkW = -1;
@@ -13193,12 +13223,13 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     } else if (maxMasonSkW >= 0) {
       weapTarget = WEAP_Q_STONE * (1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (maxMasonSkW / 10));   // 마제석검/활
     }
+    if (weapTarget != null) weapTarget *= _t1113Q;
     if (weapTarget != null) v._weapQ = (v._weapQ != null ? v._weapQ : WEAP_Q_STONE) * (1 - WEAP_Q_EMA) + weapTarget * WEAP_Q_EMA;
   }
   // ★의복 품질 EMA(2026-07-13) — 오늘 재봉분(숙련×재료 믹스)이 마을 의복 스톡 질을 서서히 갱신(_weapQ 동형). 방한(coldStress 완화 보너스, _computeVillageStats)에 반영. 제작 없는 날은 유지.
   {
     if ((v._clothQden || 0) > 0) {
-      const _cqT = v._clothQnum / v._clothQden;
+      const _cqT = v._clothQnum / v._clothQden * (t1113On('T1113_LOW_QUALITY') ? t1113LowMul(v) : 1);   // ★[T1113 ③] 옷 품질 목표에도(끔 = ×1)
       v._clothQ = (v._clothQ != null ? v._clothQ : CLOTH_Q_BASE) * (1 - CLOTH_Q_EMA) + _cqT * CLOTH_Q_EMA;
     }
     // 장인 없고 무기 스톡만 있으면 현 품질 유지(감쇠 없음 — 남은 무기는 그대로).
@@ -15225,7 +15256,8 @@ function computeVillagePrices(v) {
 }
 
 module.exports = {
-  assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
+  assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
+  t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
   _autoSwitchJobForTest: autoSwitchJob, _switchNPCJobForTest: switchNPCJob,   // ★[T1085] 하네스가 자율 전환 그 함수를 부른다(시험 이름 · 사본 0)
   foodDebtOf, T1074_FOOD_DEBT,   // ★[T1074] 식량 빚 읽는 함수 하나(T1075 가 읽는다)
   __t1074: { _fdEaters, _fdNeed, _fdSettle, _fdDeathIdx, FD_ADAPT_MAX, FD_ADAPT_DOWN_DAYS, FD_ADAPT_UP_DAYS, FD_DEATH_DAYS },   // 하네스 훅(test-t1074-food-debt)

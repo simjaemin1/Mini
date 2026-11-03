@@ -12717,6 +12717,7 @@ const _T1085_WHY = {
   cool: (r) => `이 사람은 얼마 전에 일을 바꾸었습니다. ${r.left}일 뒤에 다시 맡길 수 있습니다.`,
   slot: (r, L) => `${L} 자리가 남지 않았습니다. 이 땅이 받쳐 주는 만큼만 일할 수 있습니다.`,
   weapon: () => '무기가 모자랍니다. 무기 하나에 전사 한 사람입니다. 곳간에 무기를 먼저 채우십시오.',
+  unhappy: (r) => `마을 사람들의 행복이 낮아(${(+r.happy).toFixed(2)}) 일을 바꾸라는 말을 듣지 않습니다. 먹을 것과 살 곳을 먼저 채우십시오.`,   // ★[T1113 ①] 손잡이 T1113_REFUSE_ASSIGN
 };
 function _t1085Notice(player, text) { send(player.ws, { type: 'notice', text }); }
 function tryAssignJob(player, vid, npcId, job) {

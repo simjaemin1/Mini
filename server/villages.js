@@ -5706,6 +5706,8 @@ function init(deps) {
       //   그대로 넘긴다(사본 0 · 순서표를 베끼지 않는다). 곳간 `food` 가 0 이어도 쌀·생선이 있으면 팩이 찬다.
       //   미주입(랩·v1 CLI)이면 war-core 는 종전대로 `storage.food` 한 칸만 본다 = 비트 동일.
       food: { consumeFood: econ.consumeFood, totalFoodEquivalent: econ.totalFoodEquivalent },
+      // ★[T1113 ②] 출정 거부 술어 — econ 정본 둘(손잡이 `T1113_REFUSE_MUSTER` 끔 기본 = war-core 가 거부하지 않는다)
+      happy: { refuseMuster: () => econ.t1113On('T1113_REFUSE_MUSTER'), unhappy: econ.t1113Unhappy },
       // ★[2파 작전층] 실체 개전 훅 — assault/sortie '결단' 시점에만 호출(자동 개전 없음).
       //   ★[T284] 관측자 조건 폐지 — 전쟁은 항상 실체다. true = 전진 명령(w.phase='battle' = 교전 중 표식).
       // ★[T423] 짐이 먹는다 — 하루 경계에 몸이 제 짐에서 먹고(`_warRationEat` → 거울 일수) · 귀환 도착에 남은 짐을 모은다.

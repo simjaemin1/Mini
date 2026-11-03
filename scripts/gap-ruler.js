@@ -101,8 +101,8 @@ if (A.includes('--table')) {
   process.exit(0);
 }
 
-const DAYS = parseInt(A.find((x) => /^\d+$/.test(x)) || '800', 10);
-const SEEDS = A.find((x) => /^\d+(,\d+)+$/.test(x)) || '1020,7,42';
+const DAYS = parseInt(A.find((x, i) => /^\d+$/.test(x) && A[i - 1] !== '--seeds') || '800', 10);
+const SEEDS = (A.includes('--seeds') ? A[A.indexOf('--seeds') + 1] : null) || A.find((x) => /^\d+(,\d+)+$/.test(x)) || '1020,7,42';   // `--seeds 1020` = 시드 하나(이어 돌기)
 const OUTJ = A.includes('--out') ? A[A.indexOf('--out') + 1] : null;
 const DIR = process.env.GAP_DIR || `/tmp/gap-ruler-${process.pid}`;
 fs.mkdirSync(DIR, { recursive: true });
