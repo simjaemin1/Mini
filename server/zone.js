@@ -3688,7 +3688,9 @@ function _t671Shape(p) {
   p._t733F = undefined;   // ★[T733 ②] 손에 남긴 걷는 채집 몫(villages.js `_t347Deliver` · `_t733NewForage` — 손잡이 `T733_FELL_LOOT` 켬일 때만 값이 든다)
   p._t724Site = undefined; p._t724T = undefined;   // ★[T724] 광부 몸의 그날 셀 · 선 때(villages.js `_t724BodyStep` — 손잡이 `T724_MINE_ACT` 켬일 때만 값이 든다)
   if (T1140_STUCK_INLINE && !T1140_HOT_ORDER) { p._t1140Sx = undefined; p._t1140Sy = undefined; p._t1140Sa = undefined; }   // ★[T1140 ③-다] 막힘 칸 셋(차례 리터럴엔 이미 있다 · 끔 = 이 줄 무동작)
+  if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ②] 어부 던짐 종의 지난 답(villages.js `_t1144SpHit` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)
 }
+const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT === '1';   // ★[T1144] 생활 층 사건 때만(villages.js 머리말 · 이 파일은 몸 칸 하나만 · 끔 기본 · `'1'` 만 켬)
 // ★★[T1140 ③-가 2026-11-04 · 손잡이 `T1140_HOT_ORDER`(기본 끔 · `'1'` 만 켬 · 끔 = 아래 함수가 안 불린다 = 종전 글자)] **걸음 머리 칸을 x · y 곁에** — T791 회부 2 의 남은 몫.
 //   T806 ③ 이 걸음 몸통 칸을 객체 안(리터럴)에 넣었다. 그 칸들은 리터럴 **뒤쪽**(30 번째 칸 뒤)에 있다 — 틱 머리 공간 색인이 몸마다 이미 짚는 x · y 칸(앞 줄)과 다른 캐시 줄이다.
 //   T1140 ① 표본: 걸음 몸통의 첫 짚기 줄 셋(막힘 서 있음 판정 · 결정 문 `canadiaVillage` · `nextDecisionAt` · 도착 뒤 첫 줄)이 낮 `npcStep` 의 ≈ 28 % — 셈이 아니라 그 틱에 처음 짚는 칸 몫이다.

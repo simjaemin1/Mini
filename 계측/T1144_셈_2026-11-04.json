@@ -1,0 +1,91 @@
+{
+ "at": "2026-11-04",
+ "card": "T1144",
+ "rule": "셈 판 N1 — T1144_LIFE_EVENT=1 T1144_COUNT=1 · t646-anatomy run inf N1 --seg --ref 3c441b95 · 틀 tpl-t100(main f9a19d90 200날) · scripts/t1144-count.js 가 /lifedbg totals.t1144 를 15초마다",
+ "def": {
+  "farmWasteOff": "(지난 답 그대로 + 다시 잰 칸 중 같은 답) ÷ 칸 물음 = 끔(종전)의 헛물음 몫",
+  "farmWasteOn": "다시 잰 칸 중 같은 답 ÷ 칸 물음 = 켬 뒤 남은 헛물음",
+  "fishWasteOff": "던짐 중 칸·날·몸·물·바다 갈래가 지난 던짐과 같았던 몫",
+  "unitWasteOff": "물린 한 마리 낱값 중 지난 값과 같은 열쇠 몫"
+ },
+ "windows": {
+  "day": {
+   "phase": [
+    0.103,
+    0.228
+   ],
+   "secs": 180,
+   "farm": {
+    "calls": 2719,
+    "cells": 311840,
+    "reuse": 310978,
+    "re": 862,
+    "reSame": 0
+   },
+   "fish": {
+    "casts": 3191,
+    "reuse": 1999
+   },
+   "unit": {
+    "calls": 1910,
+    "reuse": 1907
+   },
+   "farmWasteOff": 0.9972,
+   "farmWasteOn": 0,
+   "fishWasteOff": 0.6264,
+   "unitWasteOff": 0.9984
+  },
+  "night": {
+   "phase": [
+    0.728,
+    0.843
+   ],
+   "secs": 165,
+   "farm": {
+    "calls": 543,
+    "cells": 63376,
+    "reuse": 63376,
+    "re": 0,
+    "reSame": 0
+   },
+   "fish": {
+    "casts": 432,
+    "reuse": 281
+   },
+   "unit": {
+    "calls": 265,
+    "reuse": 265
+   },
+   "farmWasteOff": 1,
+   "farmWasteOn": 0,
+   "fishWasteOff": 0.6505,
+   "unitWasteOff": 1
+  },
+  "dayAll": {
+   "phase": [
+    0.009,
+    0.697
+   ],
+   "secs": 991,
+   "farm": {
+    "calls": 14083,
+    "cells": 1622597,
+    "reuse": 1617695,
+    "re": 4902,
+    "reSame": 0
+   },
+   "fish": {
+    "casts": 16234,
+    "reuse": 10084
+   },
+   "unit": {
+    "calls": 9662,
+    "reuse": 9657
+   },
+   "farmWasteOff": 0.997,
+   "farmWasteOn": 0,
+   "fishWasteOff": 0.6212,
+   "unitWasteOff": 0.9995
+  }
+ }
+}

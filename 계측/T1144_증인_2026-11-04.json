@@ -1,0 +1,212 @@
+{
+ "at": "2026-11-04T03:26:21.891Z",
+ "tpl": "tpl-t100.db(main f9a19d90 200날 굽기 · 지움)",
+ "secs": 360,
+ "short": 150,
+ "hand": {
+  "q": 102200,
+  "did": 46828,
+  "crops": 1992,
+  "stat": {
+   "farm": {
+    "calls": 102200,
+    "cells": 38740549,
+    "reuse": 35927130,
+    "re": 2813419,
+    "reSame": 2686522,
+    "full": 3650,
+    "wit": 102200,
+    "bad": 0,
+    "badW": 0
+   },
+   "fish": {
+    "casts": 0,
+    "reuse": 0,
+    "wit": 0,
+    "bad": 0
+   },
+   "unit": {
+    "calls": 0,
+    "reuse": 0,
+    "wit": 0,
+    "bad": 0
+   }
+  },
+  "on": true,
+  "probe": true
+ },
+ "handBrkDay": {
+  "q": 102200,
+  "did": 46828,
+  "crops": 1992,
+  "stat": {
+   "farm": {
+    "calls": 102200,
+    "cells": 38740549,
+    "reuse": 37306551,
+    "re": 1433998,
+    "reSame": 1307298,
+    "full": 3650,
+    "wit": 102200,
+    "bad": 8665,
+    "badW": 0
+   },
+   "fish": {
+    "casts": 0,
+    "reuse": 0,
+    "wit": 0,
+    "bad": 0
+   },
+   "unit": {
+    "calls": 0,
+    "reuse": 0,
+    "wit": 0,
+    "bad": 0
+   }
+  },
+  "on": true,
+  "probe": true
+ },
+ "handBrkDo": {
+  "q": 102200,
+  "did": 46828,
+  "crops": 1992,
+  "stat": {
+   "farm": {
+    "calls": 102200,
+    "cells": 38740549,
+    "reuse": 35966209,
+    "re": 2774340,
+    "reSame": 2648950,
+    "full": 3650,
+    "wit": 102200,
+    "bad": 46238,
+    "badW": 0
+   },
+   "fish": {
+    "casts": 0,
+    "reuse": 0,
+    "wit": 0,
+    "bad": 0
+   },
+   "unit": {
+    "calls": 0,
+    "reuse": 0,
+    "wit": 0,
+    "bad": 0
+   }
+  },
+  "on": true,
+  "probe": true
+ },
+ "handBrkSize": {
+  "q": 102200,
+  "did": 46828,
+  "crops": 1992,
+  "stat": {
+   "farm": {
+    "calls": 102200,
+    "cells": 25671510,
+    "reuse": 23799399,
+    "re": 1872111,
+    "reSame": 1788315,
+    "full": 3650,
+    "wit": 102200,
+    "bad": 12963,
+    "badW": 764
+   },
+   "fish": {
+    "casts": 0,
+    "reuse": 0,
+    "wit": 0,
+    "bad": 0
+   },
+   "unit": {
+    "calls": 0,
+    "reuse": 0,
+    "wit": 0,
+    "bad": 0
+   }
+  },
+  "on": true,
+  "probe": true
+ },
+ "real": {
+  "farm": {
+   "calls": 2010,
+   "cells": 234253,
+   "reuse": 229066,
+   "re": 5187,
+   "reSame": 1,
+   "full": 37,
+   "wit": 2010,
+   "bad": 0,
+   "badW": 0
+  },
+  "fish": {
+   "casts": 2607,
+   "reuse": 1532,
+   "wit": 1532,
+   "bad": 0
+  },
+  "unit": {
+   "calls": 1455,
+   "reuse": 1447,
+   "wit": 1447,
+   "bad": 0
+  }
+ },
+ "brk-do": {
+  "farm": {
+   "calls": 103,
+   "cells": 14308,
+   "reuse": 13013,
+   "re": 1295,
+   "reSame": 0,
+   "full": 11,
+   "wit": 103,
+   "bad": 71,
+   "badW": 0
+  },
+  "fish": {
+   "casts": 129,
+   "reuse": 58,
+   "wit": 58,
+   "bad": 0
+  },
+  "unit": {
+   "calls": 63,
+   "reuse": 60,
+   "wit": 60,
+   "bad": 0
+  }
+ },
+ "brk-sp": {
+  "farm": {
+   "calls": 101,
+   "cells": 14132,
+   "reuse": 12755,
+   "re": 1377,
+   "reSame": 1,
+   "full": 11,
+   "wit": 101,
+   "bad": 0,
+   "badW": 0
+  },
+  "fish": {
+   "casts": 124,
+   "reuse": 97,
+   "wit": 97,
+   "bad": 47
+  },
+  "unit": {
+   "calls": 54,
+   "reuse": 50,
+   "wit": 50,
+   "bad": 0
+  }
+ },
+ "pass": 22,
+ "fail": 0,
+ "rule": "node scripts/t1144-witness.js <틀 tpl-t100> --secs 360 · 제품 3c441b95 · 22/0"
+}

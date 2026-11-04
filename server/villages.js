@@ -9495,6 +9495,48 @@ function t750CastPre(budgetMs) {
   }
   return filled;
 }
+// ★★[T1144 ② 2026-11-04 · 손잡이 `T1144_LIFE_EVENT`(위 ① 머리말 · 끔 = `_t340Try` 의 두 줄이 무동작)] **어부 던짐의 종 — 사건 때만 다시 뽑는다.**
+//   T1144 표본(main 낮): `_t340Try` 포함 5.8 % 중 종 뽑기(`freshfish.pick` → `pickFrom` → 존 특산 `chooseSpecies` · `mixAt`)가 1.7 % — 던질 때마다(물림 · 놓침 뒤 같은 자리 다시 던짐) 같은 종을 다시 뽑는다.
+//   종은 (몸 해시 `h` · 칸 · 날 · 물 갈래 · 바다 갈래 · 존)의 순수 함수다(주사위 0 · `pickFrom` 해시 · `chooseSpecies` 는 그 칸의 섞임 표 · 종 표는 모듈 상수) ⇒ 다섯이 같으면 지난 답 그대로.
+//   사건(보고/T1144 ① 표): 칸이 바뀜(드리울 자리 옮김 `_fishT`) · 날이 바뀜 · 물 갈래가 바뀜(`vil._t312W` — 철이 바뀌면 하루 마감이 비우고 다시 읽는다 · 논이 생기면 `paddy`) ·
+//   바다 갈래가 바뀜(`_t593SeaBank` — 곁 칸 물 타일) — 물 · 바다 갈래는 **던질 때마다 종전 자리에서 그대로 다시 읽어** 열쇠로 견준다(그 둘을 부르는 때 · 횟수가 종전과 같다:
+//   바다면 `_t312Water` 를 안 부르고 민물이면 한 번 — 종전 식이 그 차례다 · `_t312Water` 는 비어 있을 때 그 순간 값을 굳히므로 부르는 때가 값이다).
+//   몸 칸 하나(`_t1144Sp` — `_t671Shape` 목록 · 켬일 때만 선다). 증인 갈래는 지난 답을 쓰지 않고 다시 뽑아 견준다(`_t1144S.fish`).
+function _t1144SpHit(vil, npc, key, day, h, sea) {
+  _t1144Wit = null;
+  const w = sea ? null : _t312Water(vil);
+  const M = npc._t1144Sp;
+  if (T1144_CNT) _t1144S.fish.casts++;
+  if (M && (M.k === key || T1144_BRK === 'sp') && M.d === day && M.h === h && M.s === sea && M.w === w) {   // 미끼 `sp` = 칸 사건을 빠뜨린다(증인만)
+    if (T1144_CNT) _t1144S.fish.reuse++;
+    if (T1144_WIT) { _t1144S.fish.wit++; _t1144Wit = M; return undefined; }   // 증인 — 종전 식으로 다시 뽑게 두고 `_t1144SpPut` 에서 견준다
+    return M.sp;
+  }
+  if (M) { M.k = key; M.d = day; M.h = h; M.s = sea; M.w = w; M.sp = undefined; } else npc._t1144Sp = { k: key, d: day, h, s: sea, w, sp: undefined };
+  return undefined;
+}
+let _t1144Wit = null;
+function _t1144SpPut(npc, sp) {
+  if (_t1144Wit) { if (_t1144Wit.sp !== sp) _t1144S.fish.bad++; _t1144Wit = null; return; }
+  const M = npc._t1144Sp; if (M) M.sp = sp;
+}
+// ★★[T1144 ③] **물린 한 마리의 장부 낱값 — 종마다 한 번.** 물릴 때마다 `econUnitsOf`(열량 표 · 무게 표 · 보존 표)를 다시 부른다(표본 1.1 %).
+//   그 답은 (종 · 그 종 무게 · T1128 손잡이)만의 함수다(표는 모듈 상수 — 판 안에서 안 바뀐다) ⇒ 사건 0 · 처음 한 번 잰 값 그대로. 식은 부르는 자리의 종전 식 그대로다.
+const _t1144U = new Map();
+function _t1144Units(K, sp) {
+  const on = _t1128On(), k = sp.id + '|' + sp.kg + '|' + (on ? 1 : 0);
+  let v = _t1144U.get(k);
+  if (T1144_CNT) _t1144S.unit.calls++;
+  if (v === undefined || _t1144U.K !== K) {
+    if (_t1144U.K !== K) { _t1144U.clear(); _t1144U.K = K; }
+    v = on ? _t1128HandUnits(K, sp.id, sp.kg) : (+K.econUnitsOf('fish', 1, sp.kg) || 0);
+    _t1144U.set(k, v);
+  } else {
+    if (T1144_CNT) _t1144S.unit.reuse++;
+    if (T1144_WIT) { _t1144S.unit.wit++; const v2 = on ? _t1128HandUnits(K, sp.id, sp.kg) : (+K.econUnitsOf('fish', 1, sp.kg) || 0); if (!Object.is(v, v2)) _t1144S.unit.bad++; v = v2; }
+  }
+  return v;
+}
 function _t340Try(vil, npc, now, day, h, ws) {
   const F = _fishingMod(); if (!F) return false;
   const cx = Math.floor((npc._fishSpotX != null ? npc._fishSpotX : ws.x) / SZ);
@@ -9515,8 +9557,10 @@ function _t340Try(vil, npc, now, day, h, ws) {
     // ★[T593 ④] 바다 칸 물가에 섰으면 바다 표(플레이어와 같은 표 · 해역은 바이옴) — 아니면 종전 민물 줄 그대로(끔이면 `_sea` 는 늘 null).
     const _sea = _t593SeaBank(cx, cy);
     //   ★[T602] 해역 = 그 물가 칸의 해안 구간(`areaAt` — 플레이어와 같은 함수 · 끔이면 T593 그대로 바이옴)
-    const _sp = _sea ? _seaTbl().pick(_seaTbl().areaAt(state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2), _sea, day, h ^ cx ^ Math.imul(cy, 0x85ebca6b))
+    const _m44 = T1144_LIFE_EVENT ? _t1144SpHit(vil, npc, key, day, h, _sea) : undefined;   // ★[T1144 ②] 켬 = 같은 칸 · 날 · 물 · 바다 갈래면 지난 종(아래 머리말) · 끔 = 늘 `undefined`(아래 종전 줄 그대로)
+    const _sp = _m44 !== undefined ? _m44 : _sea ? _seaTbl().pick(_seaTbl().areaAt(state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2), _sea, day, h ^ cx ^ Math.imul(cy, 0x85ebca6b))
       : _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b), _ch, state.zoneId);   // ★[T609] 존(민물 표 켬이면 열도 가물치 뺌)
+    if (T1144_LIFE_EVENT && _m44 === undefined) _t1144SpPut(npc, _sp);   // ★[T1144 ②] 다시 잰 답을 몸 칸에(증인 갈래는 견준다)
     if (!_sp) return 'none';   // 그 물·그 철엔 사는 종이 없다(종전 `!_sp` 자리 — 라벨 '드리움')
     const n = (npc._t340N = (npc._t340N || 0) + 1);
     const pl = F.plan(sp, stock01, now, _t340Rng(h ^ Math.imul(n, 0x9e3779b9) ^ Math.imul(day, 0x85ebca6b)));
@@ -10131,7 +10175,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
     totals: { pop: tN, actN: tAct, actPct: tN ? +(tAct / tN * 100).toFixed(1) : 0, vgStuck: _vgStuckN, t562: _t562Stat,
               tkPday: _lifeTasksPerFarmerDay(), taskSec: LIFE_TASK_SEC,   // ★결산 정합 진단: 헤드리스가 쓰는 농부 1인 하루 작물 셀(날 길이 파생)
               dormant: out.filter(v => !v.terr).length, noFarmer: out.filter(v => !(v.jobs && v.jobs.farmer)).length,
-              ...(T707_ON ? { t707: Object.assign({}, _t707Stat) } : {}), ...(T772_ON ? { t772: Object.assign({}, _t772Stat) } : {}) },   // ★[T707] 켬만 — 장 · 명부 · 몸 없는 장 · 정산 누계
+              ...(T707_ON ? { t707: Object.assign({}, _t707Stat) } : {}), ...(T772_ON ? { t772: Object.assign({}, _t772Stat) } : {}), ...(T1144_CNT ? { t1144: JSON.parse(JSON.stringify(_t1144S)) } : {}) },   // ★[T1144] 셈 갈래만(증인 · 헛물음) · ★[T707] 켬만 — 장 · 명부 · 몸 없는 장 · 정산 누계
     villages: out };
 }
 function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
@@ -10251,6 +10295,7 @@ function cropAfterHarvest(e, day) {
 const T818_CELL_MEMO = process.env.T818_CELL_MEMO !== '0';   // ★[T834 ①] 켬 기본(PM 10-21) · 끔 탐침 `=0`
 const _t818Ct = new WeakMap();   // vil → { day, seed, mo, r: [밭·짝, 밭·홀, 논·짝, 논·홀] }
 function _cellTask(vil, k, day) {   // 우선순위: 5수확 4방제 3물대기(논만) 2파종 1김매기 0없음
+  if (T1144_LIFE_EVENT) _t1144Dirty(vil, k);   // ★[T1144 ①ⓔ] 바깥 부름 = 그 칸 사건(켬 셈 · 증인 대조 셈 안은 무동작) · 끔 = 무동작
   const e = vil._crop.get(k);
   const nong = !vil._drySet.has(k);
   if (!e) {
@@ -10373,6 +10418,7 @@ function _t368Deliver(vil, npc, why) {
   return got;
 }
 function _lifeDoTask0(vil, npc, k, day) {
+  if (T1144_LIFE_EVENT && T1144_BRK !== 'do') _t1144Dirty(vil, k);   // ★[T1144 ①ⓑ] 그 칸 일 = 그 칸 사건(아래가 칸을 고친다 · 묻는 셈은 이 뒤) · 끔 = 무동작
   const e = vil._crop.get(k), nong = !vil._drySet.has(k);
   const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1;
   if (!e) { const cr = _villageCropFor(vil, nong ? '논' : '밭', _Crops().monthOf(day), par); if (!cr) return false; vil._crop.set(k, { c: cr, p: day, td: day, w: day, wd: 0, ps: 0, q: 1 }); if (npc) _lifeAct(npc, nong ? '모내기' : '파종'); return true; }
@@ -10398,6 +10444,7 @@ function __farmBind() {
     lifeFarmDay, _lifeTasksPerFarmerDay,   // ★[T117] 하루치 작물 노동 정본 — 계측기가 이걸 부른다(사본 0)
     cropTaskOf, cropDoTask, cropDayTick, cropAfterHarvest,
     _t368Item, _t368Hold, _t368Deliver, _t368Attach, _farmGranary, _lifeHeadlessDay, _t368ZoneAwake,   // ★[T368] 하네스가 품목·손·귀환·헤드리스 끄기를 **정본 그대로** 부른다(사본 0)
+    _lifeNextFarmCell, t1144Stat: () => JSON.parse(JSON.stringify(_t1144S)), T1144_LIFE_EVENT,   // ★[T1144] 증인이 밭 칸 물음을 정본 그대로 부른다(켬 · 증인 갈래는 env)
     L_WATERGAP, L_WEEDS, L_PESTP, L_QW, L_QP, L_QMIN, L_QREC };
 }
 // ★[헤드리스 일일 결산 — 사용자 "아무도 안 보는 마을도 일과가 작동해야 하는 거 아냐?"] 동면 마을(관측자 없음)의
@@ -10486,7 +10533,78 @@ function lifeFarmDay(vil, day, farmerN, onDid) {
   }
   return total;
 }
+// ★★[T1144 ① 2026-11-04 · 손잡이 `T1144_LIFE_EVENT`(기본 끔 · `'1'` 만 켬 · 끔 = 아래 함수 머리 한 줄이 무동작 = 종전 글자)] **밭 칸 일 — 사건 때만 다시 잰다.**
+//   T1140 ① 표본: 농부 결정마다 `_lifeNextFarmCell` 이 마을 밭 칸 전부(수백)의 그날 일(`_cellTask` → `cropTaskOf`)을 다시 묻는다(낮 0.17 µs/사람).
+//   한 칸의 답은 (그 칸 작물 칸 · 논/밭 · 그날) 셋만의 함수다 — 작물 표 함수(`isReady` · `dormantAt` · `rainedOn` · `grownDays` · `monthOf`)는 날의 순수 함수 ·
+//   빈 칸은 `_villageCropFor`(시드 · 달 · 구획 — 순수) ⇒ **사건이 없으면 지난 답 그대로**다. 사건(보고/T1144 ① 표 · 전수):
+//     ⓐ 날이 바뀜(부르는 쪽 `day`) → 전 칸 ⓑ 그 칸 일 함(`_lifeDoTask0` — 파종 `set` · 수확 `delete` · `cropAfterHarvest` · `cropDoTask` 의 방제 · 물대기 · 김매기) → 그 칸
+//     ⓒ 하루 틱(`cropDayTick` 고리 — 품질 · 병) → 전 칸 ⓓ 밭 · 논밭 구분 칸이 늘었다(`_lifeLiveFarmTile` — 크기 열쇠 · 지우는 자리 0) · 표 객체가 바뀌었다(부팅 · T740 · T747 되돌림 — 같은 객체 열쇠) → 다시 짓기
+//     ⓔ 바깥이 `_cellTask` 를 불렀다(헤드리스 `lifeFarmDay` · 랩 탐침 — 다른 날로 `_cropSky` 가 `e.w` 를 옮길 수 있다) → 그 칸.
+//     클레임(`_cropClaim`)은 표에 안 넣는다 — 부를 때마다 종전처럼 그 자리에서 본다(하루 리셋 · T747 되돌림이 객체를 바꿔도 그대로).
+//   ★같은 값 · 같은 부작용: 종전은 부를 때마다 안 잡힌 칸 전부에 `_cropSky`(비 온 날 `e.w = day` — 멱등)를 건다. 켬은 **더러운 칸만**(사건 뒤 처음 · 안 잡힌 칸만 — 종전이 재는 바로 그 칸) 잰다 —
+//     깨끗한 칸은 그날 사건 뒤 이미 한 번 쟀으니(그때 `e.w = day`) 종전의 다시 걸기는 아무것도 안 바꾼다. 잡힌 칸은 종전도 안 쟀다 → 더러운 채 둔다.
+//     고르는 셈(우선순위 > 가까움 · 같으면 먼저 본 칸)과 차례(`_farmSet` 넣은 차례)는 종전 그대로 · 거리 식도 같은 부동소수 차례(칸 중심 `x*SZ+SZ/2` 를 미리 둔다).
+//   표는 모듈 WeakMap(마을 칸 0 · 몸 칸 0) · 새 수 0. 증인 `scripts/t1144-witness.js`(켬 셈 ↔ 종전 셈을 같은 순간에 · 미끼).
+const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT === '1';
+const T1144_WIT = T1144_LIFE_EVENT && process.env.T1144_WITNESS === '1';   // 증인 갈래(종전 답으로 세계를 돌리고 켬 답을 곁에서 견준다 · 계측 전용)
+const T1144_CNT = T1144_LIFE_EVENT && (T1144_WIT || process.env.T1144_COUNT === '1');   // 헛물음 셈(계측 전용 · 끄면 셈 0)
+const T1144_BRK = T1144_WIT ? (process.env.T1144_WITNESS_BREAK || '') : '';   // 증인 미끼(사건 하나를 일부러 빠뜨린다 — 자명 통과 금지)
+const _t1144F = new WeakMap();   // vil → 밭 칸 표 { fs, ds, cr, n, dn, day, keys, px, py, p(-1 = 더러움) }
+let _t1144In = false;            // 켬 셈 · 증인 대조 셈 안에서 부른 `_cellTask` 는 사건이 아니다(ⓔ 가르기)
+const _t1144S = { farm: { calls: 0, cells: 0, reuse: 0, re: 0, reSame: 0, full: 0, wit: 0, bad: 0, badW: 0 }, fish: { casts: 0, reuse: 0, wit: 0, bad: 0 }, unit: { calls: 0, reuse: 0, wit: 0, bad: 0 } };
+function _t1144Farm(vil, day) {
+  const fs = vil._farmSet, ds = vil._drySet, cr = vil._crop;
+  let F = _t1144F.get(vil);
+  if (!F || F.fs !== fs || F.ds !== ds || F.cr !== cr || ((F.n !== fs.size || F.dn !== ds.size) && T1144_BRK !== 'size')) {   // ⓓ 다시 짓기(미끼 `size` 는 증인만)
+    const n = fs.size, keys = new Array(n), px = new Float64Array(n), py = new Float64Array(n);
+    let i = 0;
+    for (const k of fs) { const ci = k.indexOf(','); keys[i] = k; px[i] = +k.slice(0, ci) * SZ + SZ / 2; py[i] = +k.slice(ci + 1) * SZ + SZ / 2; i++; }
+    F = { fs, ds, cr, n, dn: ds.size, day, keys, px, py, p: new Int8Array(n).fill(-1), q: T1144_CNT ? new Int8Array(n).fill(-1) : null, idx: null };
+    _t1144F.set(vil, F);
+    if (T1144_CNT) _t1144S.farm.full++;
+  } else if (F.day !== day) { F.day = day; F.p.fill(-1); if (T1144_CNT) _t1144S.farm.full++; }   // ⓐ
+  return F;
+}
+function _t1144Dirty(vil, k) {   // ⓑ · ⓔ — 그 칸만
+  if (_t1144In) return;
+  const F = _t1144F.get(vil); if (!F) return;
+  if (!F.idx) { F.idx = new Map(); for (let i = 0; i < F.n; i++) F.idx.set(F.keys[i], i); }
+  const i = F.idx.get(k); if (i !== undefined) F.p[i] = -1;
+}
+function _t1144DirtyAll(vil) { const F = _t1144F.get(vil); if (F) F.p.fill(-1); }   // ⓒ
+function _t1144NextFarm(vil, npc, day) {
+  const F = _t1144Farm(vil, day), cl = vil._cropClaim, p = F.p, keys = F.keys, px = F.px, py = F.py, n = F.n;
+  let best = -1, bp = 0, bd = 1e9;
+  _t1144In = true;
+  try {
+    for (let i = 0; i < n; i++) {
+      let v = p[i];
+      if (v < 0) {   // 더러운 칸 — 종전 차례 그대로(잡힌 칸은 종전도 안 잰다 → 더러운 채)
+        if (cl.has(keys[i])) continue;
+        v = p[i] = _cellTask(vil, keys[i], day);
+        if (T1144_CNT) { _t1144S.farm.re++; _t1144S.farm.cells++; if (F.q[i] === v) _t1144S.farm.reSame++; F.q[i] = v; }
+      } else if (T1144_CNT && !cl.has(keys[i])) { _t1144S.farm.reuse++; _t1144S.farm.cells++; }
+      if (v === 0) continue;
+      if (cl.has(keys[i])) continue;
+      const dx = px[i] - npc.x, dy = py[i] - npc.y, d = dx * dx + dy * dy;
+      if (v > bp || (v === bp && d < bd)) { bp = v; bd = d; best = i; }
+    }
+  } finally { _t1144In = false; }
+  if (T1144_CNT) _t1144S.farm.calls++;
+  return best < 0 ? null : keys[best];
+}
+function _t1144Next(vil, npc, day) {
+  if (!T1144_WIT) return _t1144NextFarm(vil, npc, day);
+  //   증인 — 켬 셈을 먼저(더러운 칸을 잰다) · 그다음 종전 셈(세계는 종전 답으로 돈다). 종전 셈이 작물 칸을 하나라도 바꾸면(깨끗한 칸의 `_cropSky` 가 무동작이 아니면) 그것도 어긋남이다.
+  const a = _t1144NextFarm(vil, npc, day);
+  const w0 = []; for (const e of vil._crop.values()) w0.push(e.w);
+  _t1144In = true; let b; try { b = _lifeNextFarmCell(vil, npc, day); } finally { _t1144In = false; }
+  let j = 0, wBad = 0; for (const e of vil._crop.values()) { if (e.w !== w0[j]) wBad++; j++; }
+  _t1144S.farm.wit++; if (a !== b) _t1144S.farm.bad++; if (wBad) _t1144S.farm.badW++;
+  return b;
+}
 function _lifeNextFarmCell(vil, npc, day) {   // 랩 nextTask 동형(구역 대신 전 농지 — 서버 농지 수백 셀 스케일): 우선순위 높고 가까운 할 일
+  if (T1144_LIFE_EVENT && !_t1144In) return _t1144Next(vil, npc, day);   // ★[T1144 ①] 켬 = 사건 때만(위) · 끔 = 이 줄 무동작(아래 종전 줄 그대로)
   let best = null, bp = 0, bd = 1e9;
   for (const k of vil._farmSet) {
     if (vil._cropClaim.has(k)) continue;   // 다른 농부 진행 중(랩은 plot 담당제로 분산 — 서버는 셀 클레임)
@@ -13885,6 +14003,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   if (vil._crop && vil._crop.size) {
     const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
     for (const [k, e] of vil._crop) cropDayTick(e, !vil._drySet.has(k), day, k);   // ★[T58b] 정본 하나(플레이어 농지도 이걸 재생한다)
+    if (T1144_LIFE_EVENT && T1144_BRK !== 'day') _t1144DirtyAll(vil);   // ★[T1144 ①ⓒ] 하루 틱 = 전 칸 사건 · 끔 = 무동작
   }
   _sub('cropDay');   // ★[T523] 계측 전용 — 둘째 토막(아래 `gran` 은 이제 사냥 하루만)
   if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
@@ -14286,7 +14405,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
           const _K = _kcal();
           const _ec = _lifeEconNpc(vil, npc);
           const _mul = (_ec && typeof _ec._t172mul === 'number' && _ec._t172mul > 0) ? _ec._t172mul : 1;
-          const _units = _K ? (_t1128On() ? _t1128HandUnits(_K, _sp.id, _sp.kg) : (+_K.econUnitsOf('fish', 1, _sp.kg) || 0)) * _mul : 0;   // ★[T1128 9-b] 켬 = 그 종 한 마리의 표 열량(끔 = 종전 글자)
+          const _units = _K ? (T1144_LIFE_EVENT ? _t1144Units(_K, _sp) : _t1128On() ? _t1128HandUnits(_K, _sp.id, _sp.kg) : (+_K.econUnitsOf('fish', 1, _sp.kg) || 0)) * _mul : 0;   // ★[T1128 9-b] 켬 = 그 종 한 마리의 표 열량(끔 = 종전 글자) · ★[T1144 ③] 켬 = 종마다 한 번
           //   ⓓ 셀 예산에서 **통째로** 꺼낸다 — 안 되면 그 셀은 오늘 비었다(이월 0).
           const _got = _t312Take(vil, day, _key, _units);
           if (_got > 0) {
@@ -15786,6 +15905,7 @@ module.exports = { t1147Stat: () => _t1147Stat, _t1147Pick, t750CastPre, t750Sta
           const ev = vil.econ; if (!ev || !ev.npcs || !ev.npcs.length) continue;
           n += lifeFarmDay(vil, day, (ev.counts && ev.counts.farmer) || 0, onDid ? (k, t, c0, p0, e1) => onDid(vil, k, t, c0, p0, e1) : null);
           for (const [k, e] of vil._crop) cropDayTick(e, !vil._drySet.has(k), day, k);   // 라이브 하루 경계와 같은 줄
+          if (T1144_LIFE_EVENT && T1144_BRK !== 'day') _t1144DirtyAll(vil);   // ★[T1144 ①ⓒ] 같은 사건(라이브 줄과 같이 · 미끼 `day` 는 증인만)
         }
         return n;
       },

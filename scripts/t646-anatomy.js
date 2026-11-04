@@ -618,20 +618,23 @@ function table() {
     if (j.lines && j.lines.file && fs.existsSync(j.lines.file)) {
       const lo = Math.min(...w.slices.map((x) => x.mt0 || Infinity)), hi = Math.max(...w.slices.map((x) => x.mt1 || 0));
       const C = fs.readFileSync(j.lines.file, 'utf8').trim().split('\n').map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter((x) => x && x.t0 >= lo && x.t1 <= hi);
-      const T = { chunks: C.length, tot: 0, dec: 0, ns: 0, nsSelf: 0, self: {}, call: {}, dF: {}, dL: {}, c2: {}, inc: {}, rq: {} };
-      for (const c of C) { T.tot += c.tot; T.dec += c.dec; T.ns += c.ns; T.nsSelf += c.nsSelf; for (const [k, v] of Object.entries(c.self)) T.self[k] = (T.self[k] || 0) + v; for (const [k, v] of Object.entries(c.call)) T.call[k] = (T.call[k] || 0) + v;
+      const T = { chunks: C.length, tot: 0, dec: 0, ns: 0, nsSelf: 0, self: {}, call: {}, dF: {}, dL: {}, c2: {}, inc: {}, rq: {}, nsR: 0, decR: 0, decLost: 0 };
+      for (const c of C) { T.tot += c.tot; T.dec += c.dec; T.ns += c.ns; T.nsSelf += c.nsSelf;
+        //   ★[T1144 자 고침] 결정 문 고리(`_decOne`)가 그 토막에서 부른 쪽에 인라인되면 틀이 사라져 `dec` 가 0 이 된다(npcStep 표본은 그대로) — 그 토막은 환산 비(npcStep ÷ 결정 문 고리)에서 뺀다.
+        //     없으면 종전과 같은 값(모든 토막의 dec > 0 이면 nsR = ns · decR = dec).
+        if (c.ns > 0 && !(c.dec > 0)) T.decLost++; else { T.nsR += c.ns; T.decR += c.dec; } for (const [k, v] of Object.entries(c.self)) T.self[k] = (T.self[k] || 0) + v; for (const [k, v] of Object.entries(c.call)) T.call[k] = (T.call[k] || 0) + v;
         for (const [k, v] of Object.entries(c.incl || {})) T.inc[k] = (T.inc[k] || 0) + v;   // ★[T1140] 함수 포함 표본(npcStep 아래)
         for (const [k, v] of Object.entries(c.reqBy || {})) T.rq[k] = (T.rq[k] || 0) + v;   // ★[T1140] 걸음 안 require() 를 부른 함수
         //   [T791 ①-b] 부른 함수 안쪽(자기 줄 · 두 층 사슬) — 표본기 판에 있을 때만
         for (const [f, o] of Object.entries(c.deep || {})) for (const [ln, v] of Object.entries(o)) { T.dF[f] = (T.dF[f] || 0) + v; T.dL[f + ' #' + ln] = (T.dL[f + ' #' + ln] || 0) + v; }
         for (const [k, v] of Object.entries(c.call2 || {})) T.c2[k] = (T.c2[k] || 0) + v; }
-      const decUs = r.segUs['결정 문(순회)'] || 0, stepUs = T.dec ? decUs * T.ns / T.dec : 0, u = (n) => +(T.ns ? stepUs * n / T.ns : 0).toFixed(3);
+      const decUs = r.segUs['결정 문(순회)'] || 0, stepUs = T.decR ? decUs * T.nsR / T.decR : 0, u = (n) => +(T.ns ? stepUs * n / T.ns : 0).toFixed(3);   // ★[T1144] 환산 비는 고리 틀이 선 토막만(위)
       const G = j.lines.groups.groups.map(([nm, a0, a1]) => { let n = 0; for (const [ln, v] of Object.entries(T.self)) if (+ln >= a0 && +ln <= a1) n += v; return [nm + ' (' + a0 + '~' + a1 + ')', n, u(n)]; });
       const calls = Object.entries(T.call).sort((x, y) => y[1] - x[1]).map(([k, n]) => [k, n, u(n)]);
       { const inG = G.reduce((t, g) => t + g[1], 0); G.push(['몸통 밖 줄(인라인된 함수 · 다른 파일)', T.nsSelf - inG, u(T.nsSelf - inG)]); }
       const selfTop = Object.entries(T.self).sort((x, y) => y[1] - x[1]).slice(0, 15).map(([ln, n]) => [+ln, n, u(n)]);
       const top = (o, n) => Object.entries(o).sort((x, y) => y[1] - x[1]).slice(0, n).map(([k, v]) => [k, v, u(v)]);
-      r.lines = { chunks: T.chunks, samples: T.tot, decSamples: T.dec, stepSamples: T.ns, decUs, stepUs: +stepUs.toFixed(3), selfUs: u(T.nsSelf), groups: G, calls: calls.slice(0, 20), selfTop,
+      r.lines = { chunks: T.chunks, decLost: T.decLost, samples: T.tot, decSamples: T.dec, stepSamples: T.ns, decUs, stepUs: +stepUs.toFixed(3), selfUs: u(T.nsSelf), groups: G, calls: calls.slice(0, 20), selfTop,
         deepFn: top(T.dF, 20), deepTop: top(T.dL, 25), call2: top(T.c2, 15), incl: top(T.inc, 400), reqBy: top(T.rq, 15), selfAll: Object.entries(T.self).map(([ln, n]) => [+ln, n, u(n)]) };
     }
     out.runs.push(r);
