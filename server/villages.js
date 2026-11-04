@@ -7385,7 +7385,7 @@ function _warForageMarch(w, body, day, bearers) {
 function _warRationLoad(body) {
   const w = body && body.w, WC = state.war; if (!w || !WC || !WC.packSplit || !WC.rationActOn || !WC.rationActOn()) return 0;
   const players = state.deps.players, bearers = (body.pids || []).map(pid => players.get(pid)).filter(Boolean);
-  const one = WC.packSplit(w, bearers.length); if (!one) return 0;
+  const one = WC.packSplit(w, bearers.length); if (!one) { if (T1167_WAR && w._packOnBodies && body._fgPts == null && _t1167Pref.has(w.id)) { body._fgPts = body.pts; body._fgProg = body.prog || 0; } return 0; }   // ★[T1167] 되살린 원정 — 팩은 이미 몸에 있다(다시 안 나눈다) · 길에서 채집 시작점만 지금 자리로(지나온 길 전부를 그날 길로 세지 않게)
   const _G = _t748G(), _hand = _G ? bearers.map((p) => _t748HandOf(_G, p, w._packKeys)) : null;   // ★[T748] 몸이 이미 든 같은 칸(짐 거울이 그것도 짐으로 본다) — 그 손의 로트를 짐 줄로(아래 줄이 짐을 얹기 전에)
   for (const p of bearers) { const cur = _warBagView(p, w._packKeys); for (const k in one) cur[k] = (cur[k] || 0) + one[k]; _warBagWrite(p, w._packKeys, cur); p._warPackOf = w.id; }
   if (_G) bearers.forEach((p, i) => { _G.bagPut(p, _hand[i]); if (w._packSplitLots) _G.bagPut(p, w._packSplitLots); });   // ★[T748] 팩 레코드를 몸 짐 줄로(몸마다 고르게 · 끄면 칸이 안 선다)
