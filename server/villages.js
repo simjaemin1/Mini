@@ -9185,7 +9185,7 @@ function __p3Bind(mock) {
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
-    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1167Stat, _t1167Pack, _t1167Early, _t1167Bind, _t1167Pref, _warEngage, _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
+    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1167Stat, _t1167Pack, _t1167Early, _t1167Bind, _t1167Pref, _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
@@ -15481,6 +15481,7 @@ let _t1167Pend = null;          // 몸이 서기 전 — 자리로 적힌 표(�
 const _t1167Stat = { saved: 0, savedWars: 0, restored: 0, lost: 0, den: 0, why: '', byPhase: {}, rebind: 0, slotMiss: 0, pidClear: 0, reengage: 0, like: 0, dropKeys: [] };
 function _t1167SlotMap() { const m = new Map(); for (const v of (state.villages || [])) { const a = v && v.npcPids; if (a) for (let i = 0; i < a.length; i++) m.set(a[i], [v.dbId, i]); } return m; }
 function _t1167Pack() {
+  if (!T1167_WAR) return null;
   const WC = state.war; if (!WC || !WC.WARS || !WC.WARS.length) { _t1167Pref.clear(); return null; }
   const live = new Set(), out = []; let SL = null;
   const slot = (pid) => { if (!SL) SL = _t1167SlotMap(); return SL.get(pid) || null; };
@@ -15510,6 +15511,7 @@ function _t1167Pack() {
 }
 //   ② 되살림(이른 쪽) — 마을 · econ 이 선 뒤 · 무기 거울 정산(`rebuildFromEcon`) 앞. 메타 행을 직접 읽는다(T728 되살림과 같은 행 · 같은 날 규칙).
 function _t1167Early() {
+  if (!T1167_WAR) return 0;
   const WC = state.war, W = state.world; if (!WC || !WC.WARS || !W) return 0;
   const row = state.db && state.db.getWorldMeta ? state.db.getWorldMeta(state.zoneId) : null;
   if (!row) { _t1167Stat.why = '메타 행 없음'; return 0; }
@@ -15543,6 +15545,7 @@ function _t1167Early() {
 }
 //   ② 되살림(몸 쪽) — T747 몸 되살림 뒤. 자리 → 새 pid · econ 징발 표의 낡은 pid 지움.
 function _t1167Bind() {
+  if (!T1167_WAR) return 0;
   for (const v of (state.villages || [])) { const e = v && v.econ; if (!e || !e.npcs) continue; for (const n of e.npcs) if (n._warPid != null) { delete n._warPid; _t1167Stat.pidClear++; } }
   if (!_t1167Pend || !state.war) { _t1167Pend = null; return 0; }
   const pidAt = (s) => { const v = Array.isArray(s) ? state.byDbId.get(s[0]) : null; const pid = v && v.npcPids ? v.npcPids[s[1]] : undefined; return (pid != null && state.deps.players.has(pid)) ? pid : null; };
