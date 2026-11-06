@@ -3155,6 +3155,12 @@ const _t564Warned = new Set();   // 존별 "판 모름" 로그는 한 번만
 //   클라: `handoff` 에 `back`(= 받는 존 토큰 수명 ms)을 싣는다 — 그 안에서 이 존 소켓이 열려 있으면 클라는 받는 존에 이름 · 열쇠로 따로 붙지 않고 답을 기다린다
 //     (그 재시도가 받는 존에 행 몸을 세우면 몸이 둘이다 — 게스트는 존 사이 중복 차단이 없다 · `33-m-conn.js` `_t1092Wait`).
 const T1092_HANDOFF_BACK = process.env.T1092_HANDOFF_BACK !== '0';
+// ★[T1160 · 11-04 · T1092 회부 2 · 결함] welcome 의 `promoted` 한 칸이 두 뜻이었다 — ⓐ 관측 소켓 → 주 소켓 승격(넘기 · `_promoteWelcome` `{ promoted: true }`)
+//   ⓑ 첫 접속에서 게스트 → 등록 계정 승계(배치 14 ①). 클라는 ⓑ 를 보고 게스트 열쇠를 지우는데 ⓐ 에도 지웠다 — 게스트가 존을 한 번 넘으면 열쇠가 사라져
+//   재접속 · 새로 고침이 새 게스트로 섰다(몸 · 땅 · 소속을 잃음). 거꾸로 ⓑ 의 첫 welcome 은 클라가 ⓐ 로 읽어 자원 · 땅 · 건물 받기를 건너뛰었다.
+//   켬(기본 · `=0` 종전 바이트): 첫 접속 welcome 은 승계를 `guestMerged` 칸에 싣는다(`promoted` 칸 없음) — `promoted` 는 승격(ⓐ) 하나의 뜻.
+//   클라(`30-n-net.js` welcome)는 손잡이와 상관없이 "이 소켓에 승격을 보냈나"(`_promoteSentAt`)로도 가른다 — 끔 서버의 `promoted` 첫 welcome 도 승계로 읽는다.
+const T1160_GUEST_MERGED = process.env.T1160_GUEST_MERGED !== '0';
 // ★★[PM 11-03 · ★재민 11-03 실기 "여전히 안 넘어가짐" · 핑 3,044ms] 넘기 시한 둘을 env 로 · 기본을 늘린다 — 서울이 메시지 하나에 3초를 쓰는 판에서
 //   보낸 존 ACK 3초 · 받는 존 토큰 5초 안에 브라우저가 옮겨 붙지 못해 토큰이 버려졌다(T1092 가 사람을 돌려놓는다 · 까닭 "연결하지 못했습니다").
 //   `HANDOFF_ACK_MS`(보낸 존이 도착 확인을 기다리는 시간 · 기본 12초) ≤ `HANDOFF_TOKEN_MS`(받는 존 토큰 수명 · 기본 15초) — 종전 값은 `=3000` · `=5000`.
@@ -7352,7 +7358,7 @@ async function _acceptConnection(ws, req, C) {
     guestToken: _guestTokenForWelcome || null,
     // ★[2026-08-03g 배치 14 ①] 이번 접속에서 게스트 → 등록 계정 **승계**가 일어났나.
     //   클라가 이걸 보고 죽은 토큰을 localStorage 에서 지운다(서버는 이미 NULL 로 만들었다).
-    promoted: _promoted || false,
+    ...(T1160_GUEST_MERGED ? { guestMerged: _promoted || false } : { promoted: _promoted || false }),   // ★[T1160] 켬 = 승계는 `guestMerged`(`promoted` = 승격 하나의 뜻) · 끔 = 종전 칸
     zone: zonePublicMeta(),
     hardcodedTerrain: getHardcodedTerrainForZone(),
     ...(T1125_LEAN_PROMOTE ? { sig: _t1125Mark(ws, true, true) } : {}),   // ★[T1125 ⑥] 판 서명(지형 · 표 일곱) — 이 소켓이 둘 다 받았다
