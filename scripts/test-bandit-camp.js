@@ -175,9 +175,10 @@ if (SUB) {   // ── 아이 판 — 손잡이는 모듈 적재 때 읽는다(e
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 function sub(name, on, bait, fix) {
-  const env = Object.assign({}, process.env, { T1079_SUB: name, BANDIT_MINDAY: '1', T1078_BANDIT_ALL: '1', T521_GANG_ARMS: '1' });
-  delete env.T1079_BANDIT_CAMP; delete env.T1039_BANDIT_BODY; delete env.VILLAGE_NPC_CAP; delete env.T1079_BAIT; delete env.BANDIT_FIXTURE; delete env.T476_PUNITIVE;
-  if (on === 'only') { env.T1079_BANDIT_CAMP = '1'; delete env.T1078_BANDIT_ALL; }
+  const env = Object.assign({}, process.env, { T627_TRIP_DAY: '0', T1104_BANDIT_WALK: '0', T1079_SUB: name, BANDIT_MINDAY: '1', T1078_BANDIT_ALL: '1', T521_GANG_ARMS: '1' });
+  env.T1079_BANDIT_CAMP = '0'; delete env.T1039_BANDIT_BODY; delete env.VILLAGE_NPC_CAP; delete env.T1079_BAIT; delete env.BANDIT_FIXTURE; delete env.T476_PUNITIVE;
+  if (on === 'only') { env.T1079_BANDIT_CAMP = '1'; env.T1078_BANDIT_ALL = '0'; }
+  else if (on === 'default') delete env.T1079_BANDIT_CAMP;
   else if (on) env.T1079_BANDIT_CAMP = typeof on === 'string' ? on : '1';
   if (bait) env.T1079_BAIT = bait;
   if (fix !== false) env.BANDIT_FIXTURE = 'dissolve';
@@ -192,7 +193,7 @@ console.log('\n=== T1079 — 은거지 = 실제 시설 · 짐 더미(손잡이 `
 {
   const code = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
   const BD = code('server/bandits.js'), V2 = code('sim/economy-sim-v2.js');
-  ok(/const T1079_CAMP = T1078_ALL && typeof process !== 'undefined' && !!process\.env && process\.env\.T1079_BANDIT_CAMP === '1';/.test(BD), "정적 · 손잡이 하나(`'1'` 만 켬) · T1078 켬 위에서만 선다");
+  ok(BD.includes("const T1079_CAMP = T1078_ALL && !(typeof process !== 'undefined' && process.env && process.env.T1079_BANDIT_CAMP === '0');"), "정적 · 손잡이 하나(`'1'` 만 켬) · T1078 켬 위에서만 선다");
   const a = BD.indexOf('function _t1079St('), b = BD.indexOf('function t1079('), blk = BD.slice(a, b);
   ok(a > 0 && b > a && !/[^\w.'"`](?:[2-9]|\d{2,})(?:\.\d+)?(?![\w])/.test(blk.replace(/'[^']*'|`[^`]*`/g, '')), '정적 · T1079 문 덩이(bandits)에 새 수 0(0 · 1 말고 수 글자 없음)');
   const i = V2.indexOf('function _raidScrum('), sc = V2.slice(i, V2.indexOf('\n}\n', i));
@@ -274,7 +275,7 @@ ok(C && J && F && Coff && Foff, '[전제] 다섯 판이 다 돌았다');
 // ── 손잡이 그 밖 값 ──
 {
   const z = sub('camp', '0'), strip = (o) => JSON.stringify(Object.assign({}, o, { on: null }));
-  ok(z && z.on === false && strip(z) === strip(Coff), "ⓐ 손잡이 그 밖 값(`'0'`) = 손잡이 없음 — 판 결과 JSON 바이트 같음(몸 · 저장 줄 · 로그)", `${strip(z).length}B`);
+  ok(z && z.on === false && strip(z) === strip(Coff), "ⓐ 명시적 `'0'` = 종전 끔 — 판 결과 JSON 바이트 같음(몸 · 저장 줄 · 로그)", `${strip(z).length}B`);
 }
 // ── ⓑ 미끼 ──
 {
@@ -285,5 +286,7 @@ ok(C && J && F && Coff && Foff, '[전제] 다섯 판이 다 돌았다');
   const b3 = sub('camp', true, 'noarm');
   ok(b3 && b3.hook === false, 'ⓑ 미끼 `noarm`(econ 무기 문을 뗀다) — ⑤ 호스트 문 칸이 빨개진다', b3 ? `hook ${b3.hook}` : '');
 }
+
+{ const clean = o => JSON.stringify(o, (k,v) => k === 'perf' ? null : v); ok(clean(sub('camp', 'default')) === clean(sub('camp', true)), '[T1184] 미설정 기본 = 명시적 켬(몸·더미·걸음 결과)'); }
 console.log(`\n결과: ${fail ? 'FAIL' : 'PASS'} (${pass} 통과 · ${fail} 실패)`);
 process.exit(fail ? 1 : 0);

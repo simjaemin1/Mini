@@ -56,6 +56,7 @@
 //   VILLAGE_LIFE=0 node scripts/t577-server-run.js 400 1020              # 층 끄기 판(생활층 · ENABLE_BANDITS · VILLAGE_CARAVAN_MAX · T513_DAY_SLICE · WAR_MINDAY)
 //   node scripts/t577-server-run.js --table <dir>                        # 판 JSON 만 읽어 표(세계를 안 세운다)
 //   T577_DIR=/tmp/t577/runs  판 JSON · 아이 로그 자리(기본 /tmp/t577-<pid>)
+//   T577_PORT_BASE=41000  독립 계측기끼리 다른 1,000포트 띠를 배정(미설정=39100 · 세계 조건 무변경)
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -99,7 +100,7 @@ function table(outs) {
 
 if (process.argv.includes('--table')) {
   const dir = process.argv[process.argv.indexOf('--table') + 1];
-  const outs = fs.readdirSync(dir).filter((f) => /\.json$/.test(f)).sort().map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
+  const outs = fs.readdirSync(dir).filter((f) => /\.json$/.test(f)).sort().map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))).filter((o) => o && o.eight && Array.isArray(o.rows));
   table(outs);
   process.exit(0);
 }

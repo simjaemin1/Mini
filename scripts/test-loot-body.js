@@ -26,7 +26,7 @@ console.log('\n=== 노획을 몸이 옮긴다(T826) ===');
 // ── ⓐ 정적 ──────────────────────────────────────────────────────────────────
 console.log('\n[ⓐ] 정적 — 손잡이 문 · 조건 · 곳간 되돌림 · 새 수 0');
 {
-  ok(/function _lootBodyOn\(\) \{ return typeof process !== 'undefined' && !!process\.env && process\.env\.T826_LOOT_BODY === '1'; \}/.test(CC), "ⓐ 손잡이 하나 — `T826_LOOT_BODY === '1'`(기본 끔)");
+  ok(/function _lootBodyOn\(\) \{ return typeof process !== 'undefined' && !!process\.env && process\.env\.T826_LOOT_BODY !== '0'; \}/.test(CC), "ⓐ 손잡이 하나 — `T826_LOOT_BODY !== '0'`(★[T1168 K28] 켬 기본 · `=0` 끔)");
   const i = CC.indexOf('const _w0 = winnerE.storage.weapon;'), line = i >= 0 ? CC.slice(i, CC.indexOf('\n', i)) : '';
   ok(/if \(_wf && atkWin && _wf\.gain > 0 && w\._arms && !w\._arms\.done && w\._armsOnBodies && _lootBodyOn\(\)\)/.test(line),
     'ⓐ 조건 — 결판 흐름이 있고 · 공격 승 · 회수 > 0 · 원정 장부가 열렸고 · 몸 짐(T811)일 때만(그 밖은 종전 글자)');
@@ -56,13 +56,13 @@ console.log('\n[ⓑ] war-core 판 — 같은 씨 · 공격 승 · 끔 / 켬(몸 
   //   결판 날 — 결판 주사위는 (날 · 전쟁 번호) 씨다(`_battleRng`) · 끔 판에서 공격이 이기고 회수가 서는 첫 날을 골라 판 넷이 같은 날에 결판한다
   let D = null;
   for (let d = 400; d < 460 && D == null; d++) {
-    delete process.env.T826_LOOT_BODY;
+    process.env.T826_LOOT_BODY = '0';   // ★[T1168] 켬 기본 — 끔 판은 `=0`
     const W = mkW(); W.war.warMobilize(W.atk, W.def, 'existential', 300, W.world.day);
     const w = W.world._warWars[0], g = W.atk.econ.storage.weapon; W.war.warResolveBattle(w, d);
     if (((W.world._warStats || {}).atkWin | 0) > 0 && W.atk.econ.storage.weapon > g) D = d;
   }
   const run = (knob, bodies, reboot) => {
-    if (knob) process.env.T826_LOOT_BODY = '1'; else delete process.env.T826_LOOT_BODY;
+    if (knob) process.env.T826_LOOT_BODY = '1'; else process.env.T826_LOOT_BODY = '0';   // ★[T1168] 끔 = `=0`
     const W = mkW(), A = W.atk.econ;
     W.war.warMobilize(W.atk, W.def, 'existential', 300, W.world.day);
     const w = W.world._warWars[0]; if (bodies) w._armsOnBodies = 1;

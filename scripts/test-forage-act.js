@@ -21,6 +21,11 @@
 //
 // 실행: node scripts/test-forage-act.js
 'use strict';
+process.env.T449_BODY_DAY = '0';
+process.env.T491_BATCH_FROM_BODY = '0';
+// [T1183] 이 하네스의 옛 압축 시계·econ 명부 대조 판을 명시한다.
+process.env.T627_TRIP_DAY = '0';
+process.env.T561_ROSTER_BODY = '0';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 const path = require('path');
 const fs = require('fs');
@@ -1251,7 +1256,7 @@ console.log('\n㉑ [T561] 채집 일괄의 명부도 몸의 그날을 본다(나
      && /const _fg = _t449S \? 0 : _fgE;/.test(daily) && /const _cap = _trips \* _perLoad \* _fg;/.test(daily),
     '㉑ ★★끔 = econ 채집꾼 수(옛 줄) · 켬 = 그날 **나설 수 있는** 채집꾼 몸 — 관측 마을 줄(T449) · 한도의 꼴(짐 × 짐당 개체 × 명부) 무변');
   const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
-  const run = (env, o) => probe(Object.assign({ T347_FORAGE_ACT: '1', T325_WOOD_ACT: '', T561_ROSTER_BODY: '', T374_DEMAND_STOP: '0', T490_FORAGE_REACH: '0', T449_BODY_DAY: '' }, env),
+  const run = (env, o) => probe(Object.assign({ T347_FORAGE_ACT: '1', T325_WOOD_ACT: '', T561_ROSTER_BODY: '0', T374_DEMAND_STOP: '0', T490_FORAGE_REACH: '0', T449_BODY_DAY: '0' }, env),
    `const E=require(${EP}); const V=require(${VP}); const P=V.__labProbe;
     const ccx=100, ccy=100; const players=new Map();
     const b=(pid,x)=>Object.assign({pid,isNpc:true,simJob:'forager',hp:100,maxHp:100,inventory:{}},x||{});
