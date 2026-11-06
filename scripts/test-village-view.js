@@ -161,6 +161,10 @@ const ITEM_KEYS = (view) => {   // 품목이 서는 자리 전부(④)
     ok(view.members.people.every((q) => { const b = byPid.get(q.pid); return b && q.name === b.name && q.job === (b.simJob || null) && q.act === (b._lifeAct || '') && q.jobKo === (b.simJob ? (H.JOB_KR_NPC[b.simJob] || null) : null); }),
       '사람 칸마다 이름 · 직업 · 지금 하는 일(행위 라벨 `_lifeAct`) = 몸 그대로');
     ok(view.members.byJob.reduce((a, r) => a + r.n, 0) === bodies.filter((b) => b.simJob).length, '직업별 수의 합 = 직업 있는 몸 수');
+    ok(view.members.people.every((q) => !/[\p{Extended_Pictographic}\uFE0F\u200D]/u.test(q.name || '')),
+      '★[T1164] NPC 이름은 표지 이모지 없는 이름 문자열이다');
+    ok(view.members.byJob.every((r) => typeof r.ko === 'string' && r.ko.length > 0),
+      '★[T1164] 직업별 줄의 우리말 이름 누락 0', view.members.byJob.filter((r) => !r.ko).map((r) => r.job).join(',') || '누락 0');
     ok(view.members.people.filter((q) => q.chief).length <= 1, '촌장 표지는 많아야 한 사람');
   }
   {

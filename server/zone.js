@@ -2262,7 +2262,7 @@ function bigmapStat() {
            cpuMs: _bm.cpu, wallMs: _bm.ms, tiles: _bm.tiles.size, tileN: _bm.tileN, tileMs: _bm.tileMs, served: _bm.served,
            tileServed: _bm.tileServed, repainted: _bm.repainted, live: T565_MAP_LIVE };
 }
-// ── ★[T565 ③] 지도의 실시간 점 — 팔 `T565_MAP_LIVE`(기본 켬 · 재민 요청 · 되돌림 `=0`) ──────────────
+// ── ★[T565 ③ · T1165] 지도의 실시간 점 — 팔 `T565_MAP_LIVE`(기본 끔 · 개발 판 `=1`) ──────────────
 //   틱의 `players`(남의 몸)는 **보이는 반경** 안만 간다. 지도는 존 전체라 그걸로는 안 된다 ⇒
 //   지도가 열려 있는 동안 클라가 1초에 한 번 `map_players` 를 묻고, 존이 **존 안 사람 전부의 자리**를 한 묶음으로 답한다
 //   (새 메시지 하나 · 묻고 답하는 한 쌍 — T507 `look` 의 문법). 이름·존·자리만 싣는다.
@@ -2270,7 +2270,7 @@ function bigmapStat() {
 //   · 이웃 존의 유령(T512 `ghostPlayers`)은 이 목록에 **없다**(다른 Map · 그 사람은 제 존이 답한다)
 //   · 묻는 사람 자신은 뺀다(클라가 제 예측 자리로 다른 색 점을 그린다)
 //   ⚠손님(게스트)에게도 보인다 — 디버그 팔이다. 손님에게 보일지는 재민 몫(회부).
-const T565_MAP_LIVE = process.env.T565_MAP_LIVE !== '0';
+const T565_MAP_LIVE = process.env.T565_MAP_LIVE === '1';
 const _t565Asked = new WeakMap();   // ws → 마지막으로 답한 시각
 function _t565MapPlayers(ws, selfPid) {
   if (!ws || ws.readyState !== 1) return;
@@ -3775,7 +3775,7 @@ function spawnNpc(opts = {}) {
   cy = clamp(cy, NPC_CLAIM_SIZE, ZONE.zoneHeight - NPC_CLAIM_SIZE);
   const pid = `p${nextPid++}`;
   const npcId = `npc_${ZONE_ID}_${nextNpcSerial++}_${Math.random().toString(36).slice(2,6)}`;
-  const name = (opts.name || NPC_NAMES[Math.floor(_dt()*NPC_NAMES.length)]) + '🤖';
+  const name = opts.name || NPC_NAMES[Math.floor(_dt()*NPC_NAMES.length)];
   const color = opts.color || NPC_COLORS[Math.floor(_dt()*NPC_COLORS.length)];
   // ★★[T806 ③ 2026-10-19 · 손잡이 `T806_HOT_INOBJ`(★[T818] 켬 기본 · `=0` 끔 = 아래 둘째 리터럴 = 종전 글자 그대로)] **막힘 서 있음 줄 — 몸 바깥 속성 칸.**
   //   T791 ①: 선 몸의 가장 무거운 줄은 `detectStuck` 머리(`npc.path` …)였고 길 거울 뒤에도 남았다 — 리터럴 밖에서 붙은 칸(`path` · `pathIndex` · `_stuckPos` …)은
@@ -7395,7 +7395,7 @@ async function _acceptConnection(ws, req, C) {
     //   ⇒ 클라가 다시 만들 방법이 없다. 안 실으면 클라 사본(55키)이 정본(108키)에 영원히 뒤처지고,
     //     그게 `oyster`·`seaweed`·`abalone`·`brine` 이 화면에 영문으로 뜬 이유였다(회부 0-갯·0-염·T38).
     //   품목 카탈로그는 존 독립이라 **첫 primary welcome 한 번이면 족하다**(클라가 들고 다닌다).
-    itemLabels: ItemLabel.itemLabels(ITEM_LABEL_SERVER, BUILDING_RECIPES),
+    itemLabels: ItemLabel.itemLabels(ITEM_LABEL_SERVER, BUILDING_RECIPES, Object.assign({}, RECIPES, EQUIPMENT_RECIPES)),
     // ★★[T61 2026-09-03] econ 자원 종류 이름(장마당 시세표의 **열 이름**) — 정본은 `itemlabel.js`.
     //   종전엔 클라(`60-t-market.js ITEM_KR` 9키)가 표를 들고 있었다. 그게 사본이고, T55 가 품목에서
     //   닫은 것과 **같은 결함**이다(서버가 종류를 늘리면 화면만 영문으로 남는다).
@@ -11903,7 +11903,7 @@ if (Fishing.T593_SEA) for (const s of Fresh.SPECIES) if (!(s.id in ITEM_LABEL_SE
 //     (「밤에서 chestnut 4」). 품목 199개가 같은 구멍에 있었다.
 //   이름을 여기 옮겨 적지 않는다 — `itemLabels` 의 규약("base 가 먼저 · 덮지 않는다")이
 //   위 손글씨·주입 이름을 그대로 지키고, 빠진 것만 정본에서 채운다.
-for (const [k, ko] of Object.entries(ItemLabel.itemLabels(ITEM_LABEL_SERVER, BUILDING_RECIPES))) {
+for (const [k, ko] of Object.entries(ItemLabel.itemLabels(ITEM_LABEL_SERVER, BUILDING_RECIPES, Object.assign({}, RECIPES, EQUIPMENT_RECIPES)))) {
   if (!(k in ITEM_LABEL_SERVER)) ITEM_LABEL_SERVER[k] = ko;
 }
 
@@ -16637,7 +16637,7 @@ setInterval(() => {
         // ★[캐릭 시트 2026-08-30] **신원 1비트**(애니 상태가 아니다 — 애니는 기존 값에서 유도한다).
         //   이게 없으면 클라가 NPC 와 사람 플레이어를 못 가른다(`simJob` 은 마을 시뮬 NPC 에만 있다).
         //   ⇒ 사람 시트가 마을 주민에게까지 입혀진다 = **회부된 별도 배치를 몰래 하는 것**이다. 그래서 실어 보낸다.
-        if (o.isNpc) e.npc = 1;
+        if (o.isNpc) e.npc = true;
         // ★★[T115 2026-09-05] **벗 1비트** — 보는 사람 기준이다(친구는 쌍이고, 남의 쌍은 남의 것이다).
         //   판정은 `friends.js` 정본 하나(`isFriend`)가 하고 여기선 **부를 뿐**이다.
         //   ⚠`name` 과 **같은 창**(최초 가시분)에 실린다. 도중에 벗이 되면 `Friends.init` 의

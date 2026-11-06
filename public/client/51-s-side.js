@@ -852,7 +852,7 @@
     wood: '통나무', stone: '돌', twig: '삭정이', pebble: '자갈',
     tool: '간석기 도구', iron_tool: '철 도구', bronze_tool: '청동 도구',
     ore: '원석', iron: '철', copper: '구리', tin: '주석',
-    weapon: '무기', armor: '갑옷', hide: '가죽', bone: '뼈',
+    weapon: '무기', armor: '갑옷', hide: '가죽', leather: '무두질 가죽', bone: '뼈', jade: '옥',
     clothes: '옷', herb: '약재', clay: '진흙', charcoal: '숯', obsidian: '흑요석', jade: '옥', tigerhide: '호피',
     hemp: '삼베', ramie: '모시',
   };

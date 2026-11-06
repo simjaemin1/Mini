@@ -170,10 +170,13 @@ console.log('\n=== [T61] econ 자원 종류 이름(장마당 열) ===');
   const obj = (src, name) => { const i = src.indexOf('const ' + name + ' = {'); let j = src.indexOf('{', i), d = 0, k = j;
     for (; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}') { d--; if (!d) break; } }
     return src.slice(j, k + 1); };
-  let BR = null; try { BR = eval('(' + obj(zsrc, 'BUILDING_RECIPES') + ')'); } catch (e) {}
+  let BR = null, RCP = null, EQ = null;
+  try { BR = eval('(' + obj(zsrc, 'BUILDING_RECIPES') + ')'); } catch (e) {}
+  try { RCP = eval('(' + obj(zsrc, 'RECIPES') + ')'); } catch (e) {}
+  try { EQ = eval('(' + obj(zsrc, 'EQUIPMENT_RECIPES') + ')'); } catch (e) {}
   ok(!!BR, '★⑩ 전제: `BUILDING_RECIPES` 를 읽었다(건축물 이름의 정본)');
   const base = {}; for (const k of SERVER_KEYS) base[k] = 'x';
-  const merged = IL.itemLabels(base, BR || {});
+  const merged = IL.itemLabels(base, BR || {}, Object.assign({}, RCP || {}, EQ || {}));
   ok(Object.keys(merged).length > SERVER_KEYS.size,
      '★⑩ 합친 표가 zone 표보다 크다 — 광물·건축물 이름이 실제로 붙었다',
      `${SERVER_KEYS.size} → ${Object.keys(merged).length}키`);
@@ -182,6 +185,22 @@ console.log('\n=== [T61] econ 자원 종류 이름(장마당 열) ===');
   }
   ok(!/\(Wall\)|\(Fence\)/.test(String(merged.item_wall) + String(merged.item_fence)),
      '★⑩ 건축물 이름에서 영문 꼬리를 뗐다(정본 라벨은 "벽 (Wall)" 꼴이다)', `${merged.item_wall} · ${merged.item_fence}`);
+  const labelsWithEnglishFallback = IL.itemLabels(
+    Object.assign({}, base, { hammer: 'hammer', saw: 'saw', tool: 'tool', weapon: 'weapon' }),
+    BR || {}, Object.assign({}, RCP || {}, EQ || {}, {
+      hammer: { label: '망치' }, saw: { label: '톱' },
+      tool: { label: '도구' }, weapon: { label: '무기' },
+    }));
+  for (const [k, ko] of [['hammer', '망치'], ['saw', '톱'], ['tool', '도구'], ['weapon', '무기'], ['jade', '옥']])
+    ok(labelsWithEnglishFallback[k] === ko, '★[T1164] ' + k + ' 품목 이름표', labelsWithEnglishFallback[k]);
+  const hide = IL.itemLabels({ hide: '가죽' }, BR || {}, Object.assign({}, RCP || {}, EQ || {}));
+  ok(hide.hide === '가죽' && hide.leather === '무두질 가죽' && hide.hide !== hide.leather,
+     '★[T1164] 곳간의 생가죽과 무두질 가죽 이름이 구별된다', `${hide.hide} · ${hide.leather}`);
+  const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
+  const zoneJobs = zsrc.match(/const JOB_KR_NPC = \{([^}]+)\}/);
+  const jobKeys = zoneJobs ? [...zoneJobs[1].matchAll(/([A-Za-z_][\w]*)\s*:/g)].map((x) => x[1]) : [];
+  ok(jobKeys.length > 0 && Object.keys(E.JOBS || {}).every((k) => jobKeys.includes(k)),
+     '★[T1164] 모든 econ 직업에 마을 화면 우리말 이름이 있다', `${Object.keys(E.JOBS || {}).filter((k) => !jobKeys.includes(k)).join(',') || '누락 0'}`);
 }
 
 
