@@ -159,6 +159,8 @@ console.log('\n=== T1197 ⑤ 호스트(몸 문) ===');
   bodies[0].hunger = 100;
   const stepOk = H.t1197BodyStep(bodies[0], t0 + 3000);
   ok(stepOk === true && near(bodies[0].hunger, persons[0]._mh, 1e-12) && persons[0]._mh < M.fed[0], '흘림 — 몸 허기 = 그 사람 게이지(존이 100 으로 채우지 않는다)', `${bodies[0].hunger.toFixed(3)} < ${M.fed[0].toFixed(3)}`);
+  { const q1 = persons[1], h0 = q1._mh, d0 = q1._mD; const r = H.t1197BodyStep(bodies[1], t0 + 9000, false);
+    ok(r === false && q1._mh === h0 && q1._mD === d0, '안 보이는 몸(활성 칸 밖) — 몸 길을 안 탄다 · 그 사람은 날 경계 일괄(벽시계 무관 — 헤드리스 판 결정론)'); }
   for (const r of Object.keys(e.storage)) if (r !== 'food') e.storage[r] = 0;
   e.storage.food = 50; const f0 = e.storage.food;
   const ate = H._t1197BodyMeal(vil, bodies[0], 0, t0 + 3000);
