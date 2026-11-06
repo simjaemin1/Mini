@@ -306,6 +306,28 @@ function _actEntitiesAtCell(cellX, cellY, types, raw) {
   for (const e of a) if (types[e.type]) out.push(e);
   return out;
 }
+function _physicalRocksInCircle(x,y,radius) {
+  const found=new Map(),types={rock:1};
+  for(let cx=Math.max(0,Math.floor((x-radius)/32));cx<=Math.min(Math.ceil(ZONE.zoneWidth/32)-1,Math.floor((x+radius)/32));cx++)for(let cy=Math.max(0,Math.floor((y-radius)/32));cy<=Math.min(Math.ceil(ZONE.zoneHeight/32)-1,Math.floor((y+radius)/32));cy++){
+    for(const r of _actEntitiesAtCell(cx,cy,types)){
+      if(Math.hypot(r.x-x,r.y-y)>radius)continue;
+      // Startup index tables may precede the canonical rock HP installation.
+      if(!resources.has(r.id)&&r.isSeed&&r.maxHp!==RESOURCE_HP_TABLE.rock&&!seedHp.has(r.seedKey)&&r.hp===r.maxHp)r.hp=r.maxHp=RESOURCE_HP_TABLE.rock;
+      _t978Apply(r);if(r.hp>0)found.set(r.seedKey||r.id,r);
+    }
+  }
+  return [...found.values()];
+}
+function _physicalStoneHit(npc,chosen) {
+  const live=_actEntitiesAtCell(Math.floor(chosen.x/32),Math.floor(chosen.y/32),{rock:1}).find(r=>(r.seedKey||r.id)===(chosen.seedKey||chosen.id));
+  if(!live||!(live.hp>0))return {missing:true};
+  if(Math.hypot(npc.x-live.x,npc.y-live.y)>=GATHER_RANGE)return {remote:true};
+  _t978Apply(live);
+  let kg=Weights.kgOf('stone');
+  if(live.hp<=1)kg=Math.max(kg,Object.entries(lootOfResource(live)).reduce((n,[k,q])=>n+Weights.kgOf(k)*q,0));
+  if(require('./carry').npcTotalKg(npc)+kg>require('./carry').CFG.CAP_KG+1e-9)return {full:true};
+  return _npcGatherResource(npc,live);
+}
 // ★★★[T440 2026-09-27 · ★PM 결정(위임) · T398 §1-4 ⓑ · T426 §0-ⓖ 표] **청크 한 판(ringCache)** — 셀 색인의 문 하나.
 //   셀마다 색인(`resourcesAtCell`)을 부르면 그 셀에 닿는 청크(1~4)를 **셀마다 다시 낳는다** — 나무꾼 고리(50마을 32만 칸)를
 //   하루 한 번 훑는 데 3,057ms 였다(T426 ④ · 셀당 9.5µs). ⇒ 청크를 **한 판** 낳아(`generateChunkResources` — 청크가 켜질 때
@@ -4960,7 +4982,7 @@ let _t316Econ = null;
 function _t316WalkAlways(npc) {
   if (!npc || !npc.simVillageId) return false;
   if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
-  if (_t316Econ && (_t316Econ.T312_FISH_ACT || (_t316Econ.T368_FARM_ACT && npc.simJob === 'farmer'))) return true;
+  if (_t316Econ && (_t316Econ.T312_FISH_ACT || (_t316Econ.T1188_ORE_SPLIT&&npc.simJob==='miner') || _t316Econ.T435_GRANARY_ACT || _t316Econ.T527_BRIDGE_ACT || (_t316Econ.T325_WOOD_ACT && npc.simJob === 'lumberjack') || (_t316Econ.T347_FORAGE_ACT && npc.simJob === 'forager') || (_t316Econ.T368_FARM_ACT && npc.simJob === 'farmer'))) return true;   // T1180: 단독 켬도 해당 몸의 결정·이동 문을 연다
   //   ★★[T529] 인사하러 가는 촌장도 — 줄은 손잡이 켬에서만 생긴다(끔이면 거짓 · 술어는 여전히 이 하나).
   return !!(SimVillages.chiefWalking && SimVillages.chiefWalking(npc));
 }
@@ -5014,6 +5036,24 @@ function _t738Adopt(p) {
   _t738.X[s] = p.x; _t738.Y[s] = p.y;
   Object.defineProperty(p, 'x', { get() { return _t738.X[s]; }, set(v) { _t738.X[s] = v; }, enumerable: true, configurable: true });
   Object.defineProperty(p, 'y', { get() { return _t738.Y[s]; }, set(v) { _t738.Y[s] = v; }, enumerable: true, configurable: true });
+}
+function _npcGatherResource(npc,r) {
+        // 직접 채집 (tryGather 로직 간소화)
+        const _hp0 = r.hp;   // ★[T1126] 친 앞 hp
+        let _dmg = 1;   // ★[T1146] NPC 한 타 배수(종전 1 · 도구 무관) — 바위면 사람 `gatherResource` 와 같은 함수가 그 타에 떨어지는 hp 점으로 바꾼다
+        if (T1146_ROCK && r.type === 'rock') _dmg = _t1146Cut(r, _dmg, true);
+        r.hp -= _dmg;
+        { const _y = _t1126HitYield(r, _hp0); if (_y > 0) _t1126Give(npc, _y); _t1126Note(npc, r, _y); }   // ★[T1126] 바위 hp 한 점 = 돌 하나 — 플레이어 `gatherResource` 와 같은 문(정본 하나) · 계측 한 줄(켬 · 끔 둘 다 — 세계 0)
+        if (r.hp <= 0) {
+          const loot = _t495Rest(r, lootOfResource(r));   // ★정본 하나 — 플레이어와 같은 표를 쓴다(사본 금지) · ★[T495] 남은 단위만(장부 없으면 그 객체 그대로)
+          for (const [k, v] of Object.entries(loot)) { npc.inventory[k] = (npc.inventory[k] || 0) + v; if (T732_MOMENT) Lots.note(npc, k, v, zoneGameDay()); }   // ★[T732] NPC 손도 얻은 순간(곁 장부 — 몸 필드 0)
+          _takeResourceEntity(r, true);     // ★[T325] 빼는 여섯 줄을 **문 하나**로 모았다(아래 정의 · 행동 무변)
+        } else if (r.hp !== _hp0) {   // ★[T1146] 깎기만 한 타(hp 그대로)는 저장 · 방송 0 — 끔이면 늘 참(한 타 = 1 점 · 종전 차례 그대로)
+          if (r.dbId) db.updateResourceHp(r.dbId, r.hp);
+          else _t978Note(r);   // ★[T978] 시드 개체(행 없음)는 남은 hp 장부로
+          broadcast({ type: 'resource_update', id: r.id, hp: r.hp });
+        }
+  return {hit:true};
 }
 function npcStep(npc, dt, now) {
   if (T738_SOA_XY) _t738Adopt(npc);   // ★[T738] 끔 = 종전 그대로
@@ -5144,21 +5184,7 @@ function npcStep(npc, dt, now) {
     if (npc.behavior === 'gather' && npc.gatherTarget) {
       const r = resources.get(npc.gatherTarget);
       if (r && Math.hypot(r.x - npc.x, r.y - npc.y) < GATHER_RANGE) {
-        // 직접 채집 (tryGather 로직 간소화)
-        const _hp0 = r.hp;   // ★[T1126] 친 앞 hp
-        let _dmg = 1;   // ★[T1146] NPC 한 타 배수(종전 1 · 도구 무관) — 바위면 사람 `gatherResource` 와 같은 함수가 그 타에 떨어지는 hp 점으로 바꾼다
-        if (T1146_ROCK && r.type === 'rock') _dmg = _t1146Cut(r, _dmg, true);
-        r.hp -= _dmg;
-        { const _y = _t1126HitYield(r, _hp0); if (_y > 0) _t1126Give(npc, _y); _t1126Note(npc, r, _y); }   // ★[T1126] 바위 hp 한 점 = 돌 하나 — 플레이어 `gatherResource` 와 같은 문(정본 하나) · 계측 한 줄(켬 · 끔 둘 다 — 세계 0)
-        if (r.hp <= 0) {
-          const loot = _t495Rest(r, lootOfResource(r));   // ★정본 하나 — 플레이어와 같은 표를 쓴다(사본 금지) · ★[T495] 남은 단위만(장부 없으면 그 객체 그대로)
-          for (const [k, v] of Object.entries(loot)) { npc.inventory[k] = (npc.inventory[k] || 0) + v; if (T732_MOMENT) Lots.note(npc, k, v, zoneGameDay()); }   // ★[T732] NPC 손도 얻은 순간(곁 장부 — 몸 필드 0)
-          _takeResourceEntity(r, true);     // ★[T325] 빼는 여섯 줄을 **문 하나**로 모았다(아래 정의 · 행동 무변)
-        } else if (r.hp !== _hp0) {   // ★[T1146] 깎기만 한 타(hp 그대로)는 저장 · 방송 0 — 끔이면 늘 참(한 타 = 1 점 · 종전 차례 그대로)
-          if (r.dbId) db.updateResourceHp(r.dbId, r.hp);
-          else _t978Note(r);   // ★[T978] 시드 개체(행 없음)는 남은 hp 장부로
-          broadcast({ type: 'resource_update', id: r.id, hp: r.hp });
-        }
+        _npcGatherResource(npc,r);
         npc.gatherTarget = null;
         npc.nextDecisionAt = 0;
       }
@@ -5570,6 +5596,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
     rec.s -= got; _oreSaveNpc++; _oreSave(key, rec); return got;
   },
   // ★NPC 경제가 보는 p 는 **자잘을 뺀 합성**이다(isMajorOreAt 과 짝) — 자잘은 플레이어 전용
+  oreMineralAt:(px,py,rng)=>_terrain.oreMineralAt?_terrain.oreMineralAt(ZONE_ID,px,py,rng):null,   // T1188: 사람과 같은 실제 광맥의 광물
   oreProbAt: (px, py) => (_terrain.oreProbMajorAt ? _terrain.oreProbMajorAt(ZONE_ID, px, py) : 0.3),
   ORE_K: require('./specialty').ORE_K, NPC_MINE_PER_DAY: require('./specialty').NPC_MINE_PER_DAY,
   // ★NPC 광부도 **플레이어와 같은 공식**으로 깊이 페널티를 겪고 숙련으로 상쇄한다(축이 하나다)
@@ -5593,6 +5620,12 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   t325CutTreeAt: (cx, cy) => _t325CutTreeAt(cx, cy),
   // ★[T325] 전리품 표는 존이 쥔다 — 생활층은 "이 그루가 목재 몇 낱개냐"만 묻는다(사본 0)
   t325LootOf: (r) => lootOfResource(r),
+  gatherRange: GATHER_RANGE,
+  stoneResources: (x,y,r) => _physicalRocksInCircle(x,y,r),
+  stoneHit: (npc,r) => _physicalStoneHit(npc,r),
+  t312DrawFishAt: (cx,cy,kg,now) => { const want=kg/Fishing.CFG.KG_PER_STOCK;return Fishing.drawWholeStock(cx,cy,want,now,_fishSave)>=want-1e-12; },   // T1180: 사람과 같은 어장·환산·저장 문
+  t312FishTargetAt: (p,spot) => _castTargetFor(p,spot),
+  t312FishSpotAt: (x,y) => Fishing.spotAt(_terrain,ZONE_ID,x,y,_fishSea()),
   // ★[T347] 채집 행위 — 문 둘 + 전리품 표 하나. 재생 문(`t341Unharvest`)은 **위 그것을 그대로 쓴다**(사본 0).
   //   ⚠`t347LootOf` 는 `{ day }` 를 넘긴다 — 야생 채종이 계절 정본을 지나게(주사위 0 · `_t347PickAt` 과 같은 ctx).
   t347GrovesAtCell: (cx, cy, raw) => _t347GrovesAtCell(cx, cy, raw),
@@ -10112,7 +10145,7 @@ function _t593Pick(sp, x, y, h, day) {
   return Fresh.pick(_t593Water(sp), day, h, _ch, ZONE_ID);   // ★[T609] 존(위와 같다)
 }
 // 던질 자리 — 플레이어 주변에서 **가장 좋은 물 칸**을 서버가 고른다(클라가 자리를 못 속인다).
-function _castTargetFor(player) {
+function _castTargetFor(player, spotAt) {
   const R = Fishing.CFG.REACH_PX;
   const _sea = _fishSea();   // ★[T593] 켬이면 바다 칸도 자리다(끔 = undefined)
   let best = null, bestScore = -1;
@@ -10121,7 +10154,7 @@ function _castTargetFor(player) {
       if (dx * dx + dy * dy > R * R) continue;
       const x = player.x + dx, y = player.y + dy;
       if (!isWaterTileLocal(x, y)) continue;
-      const sp = Fishing.spotAt(_terrain, ZONE_ID, x, y, _sea);
+      const sp = spotAt ? spotAt(x,y) : Fishing.spotAt(_terrain, ZONE_ID, x, y, _sea);
       if (!sp.water) continue;
       const sc = Fishing.spotScore(sp);
       const v = sc.rate * sc.size;
@@ -10164,7 +10197,7 @@ function tryFishCast(player) {
   // ★[T593 ②] 켬이면 무는 종을 **지금** 고른다 — 그 종의 kg(표)가 무게의 중앙값이다(끔 = null = 종전 대본 그대로).
   //   종 씨는 대본 씨를 레포가 이미 쓰는 섞는 수(0x85ebca6b · T312)로 한 번 비튼 것 — 대기·무게 굴림과 겹치지 않는다.
   const _spc = Fishing.T593_SEA ? _t593Pick(tgt.sp, tgt.x, tgt.y, _SEED.step(_seed ^ 0x85ebca6b), _day) : null;
-  const pl = Fishing.plan(tgt.sp, stock01, now, _SEED.seedRand(_seed), (_spc && Fishing.T593_KG) ? _spc.kg : undefined);   // ★[T593] `T593_KG=0` 이면 종전 무게 분포
+  const pl = Fishing.plan(tgt.sp, stock01, now, _SEED.seedRand(_seed), (_spc && (Fishing.T593_KG||require('./fish-goods').ON)) ? require('./fish-goods').ON?require('./fish-goods').bodyKg(_spc.id,_spc.kg):_spc.kg : undefined);   // ★[T593] `T593_KG=0` 이면 종전 무게 분포
   player._fish = {
     state: 'wait', x: tgt.x, y: tgt.y, cx, cy, sp: tgt.sp,
     biteAt: pl.biteAt, kg: pl.kg, windowMs: pl.windowMs, castAt: now, stock01,
@@ -10225,7 +10258,7 @@ function _fishLand(player, f, now) {
   // ★어장에서 **실제로 뺀 만큼만** 준다 — 없는 물고기를 주사위로 만들지 않는다.
   //   재고가 모자라면 잡히는 양도 그만큼 준다(빈 자리는 빈 바늘로 답한다).
   const wantStock = kg / Fishing.CFG.KG_PER_STOCK;
-  const took = Fishing.drawStock(f.cx, f.cy, wantStock, now, _fishSave);
+  const took = (require('./fish-goods').ON?Fishing.drawWholeStock:Fishing.drawStock)(f.cx, f.cy, wantStock, now, _fishSave);
   const gotKg = took <= 0 ? 0 : +(took * Fishing.CFG.KG_PER_STOCK).toFixed(3);
   player._fish = null;
   send(player.ws, { type: 'fish_state', state: 'idle' });
@@ -13431,6 +13464,7 @@ function tryFurnaceSmelt(player, buildingId) {
 //     지어 봐야 안다 — 실제로 이 하네스가 "노를 아예 못 짓는다"를 처음 잡아냈다.
 function __testBind() {
   return {
+    npcs, _physicalRocksInCircle, _physicalStoneHit, _npcGatherResource,
     claims, buildings, players, BUILDING_SIZE, Specialty, tryAssignJob, tryVillageBoard, JOB_KR_NPC, tryVillageSiteGive,   // ★[T1189 ⑤]   // ★[T1085] 촌장 일 맡기기(하네스가 진짜 문을 부른다)
     _t738Adopt, _t738: () => _t738, observers, isPositionActive: (x, y) => isPositionActive(x, y), _t774: () => ({ X: _t774X, Y: _t774Y, n: _t774N, src: _t774Src, ref: _spInc.ref, act: _spInc.act, hit: _t774Stat.hit, miss: _t774Stat.miss, same: _t774Src === activeChunkKeys }),   // ★[T774] 활성 열 증인(읽기)
       // ★[T738] SoA x·y 증인(`scripts/t738-witness.js` · 읽기 · 부르기만)
@@ -13454,7 +13488,7 @@ function __testBind() {
     T1032_NPC_KILL, T1025_EV_CORPSE,   // ★[T1032] 같은 하네스가 판을 읽는다(내보내기만)
     T1065_TOOL_GATE, _t1065Gate, t1065Stat: _t1065Stat, PLAYER_ATTACK_DAMAGE, arrows,   // ★[T1065] 도구 문 하네스(`test-t1065-tool-gate` · 내보내기만)
     T1120_NEXT_TOOL, _t1120Cfg, tryHutStart,   // ★[T1120] 다음 막힘 하네스(`test-t1120-next-tool` — 거절 알림 `need` · welcome 표 · 움집 터파기 문 · 내보내기만)
-    T1126_ROCK_YIELD, T1126_ROCK_HP0, _t1126Rho, _t1126RockStones, _t1126HitYield, _t1126Give, t1126Stat: () => Object.assign({}, _t1126Stat),   // ★[T1126] 바위 하나에서 돌 여러 개 하네스(`test-t1126-rock-yield` — 내보내기만)
+    GATHER_RANGE, T1126_ROCK_YIELD, T1126_ROCK_HP0, _t1126Rho, _t1126RockStones, _t1126HitYield, _t1126Give, t1126Stat: () => Object.assign({}, _t1126Stat),   // ★[T1126] 바위 하나에서 돌 여러 개 하네스(`test-t1126-rock-yield` — 내보내기만)
     T1146_STONE_RULE, T1146_ROCK, T1146_K_BED, _t1146Cut, _t1146Gangue, t1146Chip: (id) => _t1146Chip.get(id) || 0, t1146Stat: () => Object.assign({}, _t1146Stat),   // ★[T1146] 돌 규칙 하나 하네스(`test-t1146-stone-rule` — 내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
     spawnCorpse, butcherCorpse, corpses, t1025Corpse: _t1025Corpse,   // ★[T1025] 사체 장부 미룸 셈(탐침이 읽는다)

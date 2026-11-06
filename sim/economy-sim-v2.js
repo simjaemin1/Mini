@@ -16,6 +16,17 @@
 // =============================================================================
 
 const v1 = require('./economy-sim');
+const OreGoods=v1.OreGoods,T1188_ORE_SPLIT=v1.T1188_ORE_SPLIT;
+const FishGoods=v1.FishGoods;
+// T1192: observed catch energy divides the old dried-fish target once. Mixed vegetable pickle stock has no historical fish fraction: flow only.
+function _fishTarget(v,r,target){
+ if(!v1.T1192_FISH_SPECIES)return target;
+ if(FishGoods.isItem(r)){const it=FishGoods.items()[r],split=it.kind==='dry'?FishGoods.reserve(v,r,(SUBSISTENCE_PER_NPC.dried_fish||0)*30,0,v1.PRESERVE_FOOD_FACTOR)*(v.npcs.length||1):0;return Math.max(target,split);}
+ if(r==='dried_fish'&&Object.keys(FishGoods.shares(v)).length)return((v._consEMA||{})[r]||0)*30;
+ return target;
+}
+const _oreShares=OreGoods.shares(),_orePart=r=>FishGoods.isItem(r)?0:T1188_ORE_SPLIT&&OreGoods.isOre(r)?(_oreShares[OreGoods.mineralOf(r)]||0):1;
+const _oreQuote=(p,r,f=1)=>T1188_ORE_SPLIT&&OreGoods.isOre(r)?(p[r]??f):(p[r]||f);
 // ★[T180] 되돌림 — 끄면 종전(굶는 마을도 돌을 판다) **비트 동일**. 채택값은 ON(한 줄 결함 수리).
 const T180_STONE_EXPORT = !(typeof process !== 'undefined' && process.env && process.env.T180_STONE_EXPORT === '0');
 // ★[T1049 · ★재민 11-01 "처음 마을들은 터지면 안 된다"] 손잡이 `T1049_FLOOR_STONE` — 돌 바닥 마을(land.stone ≤ 바닥 · 바위 지형 0)은 **제 돌을 안 판다**.
@@ -132,7 +143,7 @@ const HORSE_HAUL_MUL = 0.62;   // 말 보급 후 육상 운반비 배수(등짐 
 //   ⇒ 그래서 **논증이 아니라 실측으로** 판정한다: 금지 전후로 주조 마을 수·원석 적체·기준선을 같이 잰다.
 //     이 손잡이는 그 실측을 하기 위해 존재한다. 기본 OFF.
 const ORE_TRADE_BAN = (typeof process !== 'undefined' && process.env && process.env.ORE_TRADE_BAN === '1');
-const _oreBanned = (r) => ORE_TRADE_BAN && r === 'ore';
+const _oreBanned = (r) => ORE_TRADE_BAN && (r === 'ore'||(T1188_ORE_SPLIT&&OreGoods.isOre(r)));
 let _eraModV2;
 function _eraV2() { if (_eraModV2 === undefined) { try { _eraModV2 = require('../server/era'); } catch (e) { _eraModV2 = null; } } return _eraModV2; }
 function haulMul() {
@@ -234,6 +245,10 @@ try {
   console.log(`[econ-sim-v2] specialty.js 통합: ${Object.keys(SPECIALTY).length}종 → 총 ${TRADABLE.length} TRADABLE`);
 } catch (e) {
   console.warn('[econ-sim-v2] specialty.js 로드 실패 (옛 17종만 사용):', e.message);
+}
+if(T1188_ORE_SPLIT){
+  TRADABLE.splice(TRADABLE.indexOf('ore'),1);
+  for(const id of OreGoods.ids){const f=OreGoods.shares()[OreGoods.mineralOf(id)]||0;if(!TRADABLE.includes(id))TRADABLE.push(id);ELASTICITY[id]=ELASTICITY.ore;BASE_VALUE_V2[id]=BASE_VALUE_V2.ore;UTILITY_WEIGHT[id]=UTILITY_WEIGHT.ore*f;DECAY_V2[id]=DECAY_V2.ore;}
 }
 // ※금 디버그(가치 50000) 제거 — 금은 use-value가 없어 진짜 수요가 없음(사용자 지적).
 //   광산촌은 실제 수요재(ore→대장간, stone→주거)로만 자생해야 경제적으로 옳음.
@@ -422,6 +437,7 @@ function xzoneSnapshot(v, day, fresh) {
     isolated: !!v.isolated, isolatedUntilDay: v.isolatedUntilDay || 0, grudge: v._grudgeBlock ? Object.assign({}, v._grudgeBlock) : null,
     counts: { warrior: (v.counts && v.counts.warrior) || 0, hunter: (v.counts && v.counts.hunter) || 0 },
     foodEMA: (v.surplusEMA && v.surplusEMA.food) || 0, weapQ: v._weapQ, oreMix: (v.land && v.land.oreMix) || null,
+    ...(v1.T1192_FISH_SPECIES?{fishCatchMix:v._t1192CatchMix||null}:{}),
     oreMixEff: v._oreMixEff ? Object.assign({}, v._oreMixEff) : null, day,
   };
 }
@@ -432,6 +448,7 @@ function xzoneStub(snap, zone, extra) {
     _xz: true, zone, name: snap.name, npcs: { length: snap.n }, storage: snap.storage, _xzPrices: snap.prices,
     isolated: snap.isolated, isolatedUntilDay: snap.isolatedUntilDay, _grudgeBlock: snap.grudge,
     counts: snap.counts, surplusEMA: { food: snap.foodEMA }, _weapQ: snap.weapQ, land: { oreMix: snap.oreMix },
+    ...(v1.T1192_FISH_SPECIES?{_t1192CatchMix:snap.fishCatchMix||null}:{}),
     _oreMixEff: snap.oreMixEff, tradeStats: { caravansRaided: 0, cargoLost: 0, banditsRepelled: 0 }, _xzDay: snap.day,   // 도착 존 약탈 델타(`_caravanArrive` 가 더하는 칸 · 0 에서)
   }, extra || {});
 }
@@ -823,7 +840,7 @@ function _targetV2(v, r, ctx) {
   const elast = ELASTICITY[r] || 1.0;
   // v2 r6.1: target에 효용 가중치 약하게 — 너무 크면 모두 부족 신호로 식량 폭주
   const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
-  const util = UTILITY_WEIGHT[r] || 0.1;
+  const util = (T1188_ORE_SPLIT&&OreGoods.isOre(r))||FishGoods.isItem(r)?(UTILITY_WEIGHT[r]??0):(UTILITY_WEIGHT[r]||0.1);
   let target, stock;
   if (CAP_TARGET[r] !== undefined) {
     // 자본재: 커버리지 기반(사용자 1인당 1개). 도구는 합산 재고.
@@ -855,7 +872,7 @@ function _targetV2(v, r, ctx) {
     // ★[2026-08-02f ①-2] 파생 투입수요 — 판정은 v1 한 곳에서만(사본 금지). 손잡이 OFF 면 항상 0.
     //   동기 계약: 아래 `_priceParamsV2`·`tickDecay` 도 같은 줄을 갖는다.
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;
-    target = Math.max(subs * 30, buffer, flowT, derivT);
+    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT));
     // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
     //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
@@ -908,7 +925,9 @@ function _priceFromV2(T) { return T.base * Math.max(PRICE_ADJ_MIN, Math.min(T.ma
 //   ⇒ 사슬 항등식을 가격에 직접 건다: **중간재는 그것이 될 최종재보다 비쌀 수 없다.**
 //     P(원석) ≤ 제련수율 × P(그 마을 광종의 금속)
 //   priceOf(금속 id) → 그 마을 결정층 값(원석 상한 앞). 조성이 없거나 합이 0 이면 null(상한 없음).
-function _oreCapV2(v, priceOf) {
+function _oreCapV2(v, priceOf, raw) {
+  if(T1188_ORE_SPLIT&&OreGoods.isOre(raw)){const m=OreGoods.mineralOf(raw),id=m==='jade_raw'?'jade':m;return v1._eraMetalKnown&&!v1._eraMetalKnown(id)?0:v1._SMELT_YIELD*(priceOf(id)||0);}
+
   const mix = v1.oreMixOf ? v1.oreMixOf(v) : (v.land && v.land.oreMix);   // ★유효 조성(수입 원석 포함)
   if (!mix) return null;
   let mv = 0, tot = 0;
@@ -925,13 +944,15 @@ function _priceOfV2(v, k, ctx) { return ELASTICITY[k] === undefined ? 0 : _price
 function _priceNowV2(v, r) {
   const ctx = _targetCtxV2(v);
   let p = _priceOfV2(v, r, ctx);
-  if (r === 'ore') { const cap = _oreCapV2(v, (k) => _priceOfV2(v, k, ctx)); if (cap != null) p = Math.min(p, cap); }
+  if (r === 'ore'||(T1188_ORE_SPLIT&&OreGoods.isOre(r))) { const cap = _oreCapV2(v, (k) => _priceOfV2(v, k, ctx),r); if (cap != null) p = Math.min(p, cap); }
   return p;
 }
 function computeShadowPrices(v) {
+  if(T1188_ORE_SPLIT)v1.migrateOre(v);
   const prices = {};
   const ctx = _targetCtxV2(v);
   for (const r of TRADABLE) prices[r] = _priceFromV2(_targetV2(v, r, ctx));
+  if(T1188_ORE_SPLIT)for(const k of OreGoods.ids){const cap=_oreCapV2(v,id=>prices[id],k);prices[k]=Math.min(prices[k]||0,cap);}
   if (prices.ore != null) {
     const cap = _oreCapV2(v, (k) => prices[k]);
     if (cap != null) prices.ore = Math.min(prices.ore, cap);
@@ -978,7 +999,7 @@ function _priceParamsV2(v, r) {
   const cnt = v.counts || {};
   const base = BASE_VALUE_V2[r] || 1;
   const e = ELASTICITY[r] || 1.0;
-  const util = UTILITY_WEIGHT[r] || 0.1;
+  const util = (T1188_ORE_SPLIT&&OreGoods.isOre(r))||FishGoods.isItem(r)?(UTILITY_WEIGHT[r]??0):(UTILITY_WEIGHT[r]||0.1);
   let target, stock;
   if (r === 'tool' || r === 'bronze_tool' || r === 'iron_tool') {
     let toolDeps = 0;
@@ -993,7 +1014,7 @@ function _priceParamsV2(v, r) {
     const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약: computeShadowPrices와 동일 공식·subs 가드)
     const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2);
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
-    target = Math.max(subs * 30, buffer, flowT, derivT);
+    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT));
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
         && (v.storage.food || 0) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
     stock = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(v, r) : (v.storage[r] || 0));   // ★[T859] 켬 — food 는 곳간 식량 환산(결정층과 같은 칸)
@@ -1009,8 +1030,8 @@ function _priceParamsV2(v, r) {
 function _settleParamsV2(v, r) {
   const ctx = _targetCtxV2(v);
   const P = _targetV2(v, r, ctx);
-  if (r === 'ore') {
-    const cap = _oreCapV2(v, (k) => _priceOfV2(v, k, ctx));
+  if (r === 'ore'||(T1188_ORE_SPLIT&&OreGoods.isOre(r))) {
+    const cap = _oreCapV2(v, (k) => _priceOfV2(v, k, ctx),r);
     if (cap != null) P.maxAdj = Math.min(P.maxAdj, cap / P.base);
   }
   if (!(P.target > 0) || !(P.maxAdj > PRICE_ADJ_MIN)) P.flat = P.base * Math.min(PRICE_ADJ_MIN, P.maxAdj);
@@ -1098,11 +1119,11 @@ function lowestProducer(v, prices, day) {
     if (j === 'forager') {
       mv = 1.0 * 0.3 * (1 + (npc.skills.foraging || 0) * 0.05) * (prices.vegetable || 1);
     } else {
-      const landKey = JOB_LAND[j];
+      const landKey = T1188_ORE_SPLIT&&j==='miner'?'ore':JOB_LAND[j];
       if (!landKey) continue;   // 비생산직(대장·요리·전사 등)은 교역 차출 대상 아님
       const jd = v1.JOBS[j];
       const skillMul = 1 + (j === 'hunter' ? ((npc.skills.hunting || 0) + (npc.skills.archery || 0)) / 2 : (npc.skills[jd.field] || 0)) * 0.05;   // ★사냥꾼=두 숙련 평균(활+사냥)
-      mv = jd.base * (v.land[landKey] || 0) * skillMul * (prices[JOB_OUT[j]] || 1);
+      mv = jd.base * (v.land[landKey] || 0) * skillMul * (T1188_ORE_SPLIT&&j==='miner'?v1.oreValue(v,k=>prices[k]??0):(prices[JOB_OUT[j]]||1));
     }
     if (mv < bestMV) { bestMV = mv; best = npc; }
   }
@@ -1172,7 +1193,7 @@ function _exportCandidatesV2(a, N) {   // a = 마을 칸({ v }) — 몸통 줄�
         if (_oreBanned(r)) continue;   // ★[2026-08-02f ①-3] 원석은 산지에서만 녹인다 — 발주 후보에서 제외
         const stock = v1.seedReserveAvail(a.v, r);   // ★[T692] 곳간 − 시딩 비축(끔 = `a.v.storage[r] || 0` 그대로)
         const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
-        const buffer = N * 0.8;
+        const buffer = N * 0.8 * _orePart(r);
         const target = Math.max(subs * 30, buffer);
         let keep, thresh;
         if (FOODR[r]) { keep = target * 1.2; thresh = target * 1.4; }       // 식량: 36일치 보유(>기근30), 42일치 초과만 수출
@@ -1195,7 +1216,7 @@ function _exportCandidatesV2(a, N) {   // a = 마을 칸({ v }) — 몸통 줄�
         //   **모른다** — 어쩌다 재고가 차면 그걸 잉여로 읽고 실어 보내고, 그 자리에서 다시 0 이 된다.
         //   ⇒ 돌 수출 후보는 **안전망 문턱 위**일 때만. 수는 v1 정본에서 읽는다(사본 0 · 새 수 0).
         //   되돌림 `T180_STONE_EXPORT=0` → 종전 비트 동일.
-        if (r === 'stone' && T180_STONE_EXPORT && stock < v1.STONE_NET_STOCK) continue;
+        if (r === 'stone' && T180_STONE_EXPORT && stock < v1.stoneWorkStock(a.v)) continue;
         if (_t1049Floor(r, a.v)) continue;   // ★[T1049] ⓐ 돌 바닥 마을은 제 돌을 안 판다(위 손잡이 주석)
         if (T825_FOOD_KEEP && !FOODR[r] && stock > thresh) {   // ★[T825 · T928] 켬 — 먹을 것은 곳간 식량이 하루치를 넘는 몫까지만
           const _f = _t825FoodPer(a.v, r);
@@ -1893,7 +1914,7 @@ function* tickTradeV2Steps(world, day) {
       //   ★★[T726] 켬 — 결정층과 같은 값(목표 함수 하나 · 웃돈 상한 · 원석 상한). 끔 = 종전 축약식(보유 수요 `N × max(0.5, util × 1.2)`).
       if (T726_ONE_TARGET) a.prices[cand.res] = _priceNowV2(a.v, cand.res);
       else { const r = cand.res, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
-          subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2),
+          subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5*_orePart(r), ((T1188_ORE_SPLIT&&OreGoods.isOre(r))||FishGoods.isItem(r)?(UTILITY_WEIGHT[r]??0):(UTILITY_WEIGHT[r]||0.1)) * 1.2),
           tg = Math.max(subs * 30, buf), st = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(a.v, r) : (a.v.storage[r] || 0));   // ★[T859]
         a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
       if (!T726_ONE_TARGET && _t1152Own(a.v, cand.res)) a.prices[cand.res] = _priceNowV2(a.v, cand.res);   // ★[T1152 ①] 그 곡선이 선 품목은 출발 직후 값도 결정층 한 함수(종전 축약식은 목표 30날 · 탄력을 글자로 가진다 · 끔 = 무동작)
@@ -1950,7 +1971,7 @@ function* tickTradeV2Steps(world, day) {
         a.sent += _n2 * _p2;
         if (T726_ONE_TARGET) a.prices[_res2] = _priceNowV2(a.v, _res2);   // ★[T726] 켬 — 첫 품목과 같은 값 문
         else { const r = _res2, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
-            subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2),
+            subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5*_orePart(r), ((T1188_ORE_SPLIT&&OreGoods.isOre(r))||FishGoods.isItem(r)?(UTILITY_WEIGHT[r]??0):(UTILITY_WEIGHT[r]||0.1)) * 1.2),
             tg = Math.max(subs * 30, buf), st = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(a.v, r) : (a.v.storage[r] || 0));   // ★[T859]
           a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
         if (!T726_ONE_TARGET && _t1152Own(a.v, _res2)) a.prices[_res2] = _priceNowV2(a.v, _res2);   // ★[T1152 ①] 첫 품목과 같은 문(끔 = 무동작)
@@ -1975,16 +1996,17 @@ function* tickTradeV2Steps(world, day) {
         // ★A(수입쪽)가 이미 그 재화 글럿이면 수입 안 함 — 수요 없는 걸 계속 실어와 무한 누적(돌 덤핑)되는 것 방지.
         //   연속교역으로 거래가 잦아지면 최저가 이웃에서 잉여를 계속 끌어와 쌓이므로, 자기 목표재고 넘으면 후보 제외.
         const aSubs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
-        let aTarget = Math.max(aSubs * 30, N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2));
+        let aTarget = Math.max(aSubs * 30, N * Math.max(0.5*_orePart(r), ((T1188_ORE_SPLIT&&OreGoods.isOre(r))||FishGoods.isItem(r)?(UTILITY_WEIGHT[r]??0):(UTILITY_WEIGHT[r]||0.1)) * 1.2));
         // ★무기·갑옷 자본재 목표=사용자(전사+사냥꾼)×1.3 — 일반칙(N×0.5)은 전사 적은 마을서 과대 → 청동검 과잉 귀환 허용하던 원인.
         if (r === 'weapon') aTarget = Math.max(2, (((a.v.counts && a.v.counts.warrior) || 0) + ((a.v.counts && a.v.counts.hunter) || 0)) * 1.3);
         else if (r === 'armor') aTarget = Math.max(1, ((a.v.counts && a.v.counts.warrior) || 0) * 1.3);
         if ((a.v.storage[r] || 0) >= aTarget * WEAPON_RETURN_GLUT_MULT) continue;   // ★return-glut-cap: 무기는 사용자×1.3×배수 넘으면 안 실어옴(청동검 소량 수입). 그 외 극단 글럿 차단
         const bStock = v1.seedReserveAvail(b.v, r);   // ★[T692] 되사 갈 수 있는 곳간 = 곳간 − 시딩 비축(끔 = 종전)
         const bSubs = (SUBSISTENCE_PER_NPC[r] || 0) * b.v.npcs.length;
-        const bTarget = Math.max(bSubs * 30, b.v.npcs.length * 0.3);
+        const bTarget = Math.max(bSubs * 30, b.v.npcs.length * 0.3 * _orePart(r));
         if (bStock <= bTarget * 1.0) continue;
-        const ratio = (a.prices[r] || 1) / (b.prices[r] || 1);
+        if(T1188_ORE_SPLIT&&OreGoods.isOre(r)&&(!(a.prices[r]>0)||!(b.prices[r]>0)))continue;
+        const ratio = _oreQuote(a.prices,r) / _oreQuote(b.prices,r);
         if (ratio > bestReturnRatio) {
           bestReturnRatio = ratio;
           bestReturnRes = r;
@@ -2226,7 +2248,7 @@ function _caravanArrive(world, c, day) {
     // 도착 마을 현재 가격으로 매도 검토
     const pricesTo = computeShadowPrices(c.to);
     const pricesFrom = c.from._xz ? c.from._xzPrices : computeShadowPrices(c.from);   // ★[T525] 이웃 존 캐러밴 — 집 값표는 핸드오프에 실려 온 것
-    const pTo = pricesTo[c.giveRes] || 1;
+    const pTo = _oreQuote(pricesTo,c.giveRes);
     { const A = world._tradeAudit || (world._tradeAudit = { n: 0, rs: [], bail: 0, reroute: 0 });   // ★교역 가격변동 감사(상비): 도착 실현가/출발 예상가
       A.n++; const r0 = c.pTo_at_depart > 0 ? pTo / c.pTo_at_depart : 1; if (A.rs.length < 8000) A.rs.push(+r0.toFixed(3)); }
 
@@ -2347,7 +2369,7 @@ function _caravanArrive(world, c, day) {
 function _returnGluttedV2(from, r) {
   const _fromN = from.npcs.length || 1;
   const subs = (SUBSISTENCE_PER_NPC[r] || 0) * _fromN;
-  let target = Math.max(subs * 30, _fromN * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2));
+  let target = Math.max(subs * 30, _fromN * Math.max(0.5*_orePart(r), ((T1188_ORE_SPLIT&&OreGoods.isOre(r))||FishGoods.isItem(r)?(UTILITY_WEIGHT[r]??0):(UTILITY_WEIGHT[r]||0.1)) * 1.2));
   // ★무기·갑옷은 자본재 — 목표=사용자(전사+사냥꾼)×1.3(활 포함). 일반칙(N×0.5)은 전사 적은 마을서 과대 → 무기 과잉비축 허용하던 원인.
   if (r === 'weapon') target = Math.max(2, ((from.counts && from.counts.warrior || 0) + (from.counts && from.counts.hunter || 0)) * 1.3);
   else if (r === 'armor') target = Math.max(1, (from.counts && from.counts.warrior || 0) * 1.3);
@@ -2397,7 +2419,8 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
         if (r === c.giveRes) continue;
         if (!((c.to.storage[r] || 0) > 1)) continue;
         if (_returnGlutted(r)) continue;
-        const ratio = (pricesFrom[r] || 1) / (pricesTo[r] || 1);
+        if(T1188_ORE_SPLIT&&OreGoods.isOre(r)&&(!(pricesFrom[r]>0)||!(pricesTo[r]>0)))continue;
+        const ratio = _oreQuote(pricesFrom,r) / _oreQuote(pricesTo,r);
         if (ratio > _bfRatio) { _bfRatio = ratio; _bfR = r; }
       }
       if (_bfR) returnRes = _bfR;
@@ -2412,7 +2435,8 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
         const bStock = v1.seedReserveAvail(c.to, r);   // ★[T692] 비축 뺀 곳간(끔 = 종전)
         if (bStock <= 1) continue;
         if (_returnGlutted(r)) continue;   // ★return-glut-cap
-        const ratio = (pricesFrom[r] || 1) / (pricesTo[r] || 1);
+        if(T1188_ORE_SPLIT&&OreGoods.isOre(r)&&(!(pricesFrom[r]>0)||!(pricesTo[r]>0)))continue;
+        const ratio = _oreQuote(pricesFrom,r) / _oreQuote(pricesTo,r);
         if (ratio > bestRatio) { bestRatio = ratio; bestR = r; }
       }
       returnRes = bestR;
@@ -2751,10 +2775,12 @@ const DECAY_EXCESS_MULT = { food: 2, meat: 2, fish: 2, cooked_food: 2, fruit: 2,
 // ★옹기(유령 박멸·§9 손실 절약형): 진흙(광부 부산물)을 매일 소비(가구 장독 빚기·깨진 독 갈기 — 가내수공, 신규 직업 없음)
 //   → 충족률 EMA(v._potteryR) → 부패성 식량 부패율 ×(1−0.3×충족) — 소비의 대가가 실물 손실 감소(밀폐 저장).
 //   수요 하드코딩 아님(가격 항 없음): 공급 없으면 현행 부패 그대로(페널티 없음), 있으면 절약. 진흙 없는 마을엔 수입 유인 창발.
+if(T1188_ORE_SPLIT)for(const k of OreGoods.ids)DECAY_EXCESS_MULT[k]=DECAY_EXCESS_MULT.ore;
 const CLAY_DAILY_PC = 0.02;        // 1인당 일일 진흙(장독 유지 — 광산촌 부산물 흐름 스케일)
 const POTTERY_DECAY_SAVE = 0.3;    // 완전 충족 시 부패 −30%(질그릇 밀폐 — 상한)
 const POTTERY_FOODS = { food: 1, cooked_food: 1, fish: 1, meat: 1, fruit: 1, vegetable: 1, mushroom: 1, wheat: 1, rice: 1, barley: 1 };
 function tickDecay(v) {
+  if(T1188_ORE_SPLIT)v1.migrateOre(v);
   const N = v.npcs.length || 1;
   // 옹기: 진흙 흐름 소비 → 충족률 EMA(~50일 관성 — 독은 한 번 빚으면 오래감)
   const _cNeed = N * CLAY_DAILY_PC;
@@ -2782,11 +2808,11 @@ function tickDecay(v) {
     if (_t726) target = _targetV2(v, r, _t726).target;
     else {
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
-    const util = UTILITY_WEIGHT[r] || 0.1;
+    const util = (T1188_ORE_SPLIT&&OreGoods.isOre(r))||FishGoods.isItem(r)?(UTILITY_WEIGHT[r]??0):(UTILITY_WEIGHT[r]||0.1);
     const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약·subs 가드) — 롱테일 작업 재고는 과잉부패에서 보호
     const buffer = N * (util * 1.2);
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
-    target = Math.max(subs * 30, buffer, flowT, derivT);
+    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT));
     }
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;
@@ -2957,7 +2983,7 @@ function printSummary(world, days) {
   for (const v of villages) {
     const co = v.coord ? `(${v.coord.x.toFixed(0)},${v.coord.y.toFixed(0)})` : '(?,?)';
     const land = `${v.land.fertility.toFixed(1)}/${v.land.wood.toFixed(1)}/${v.land.stone.toFixed(1)}/${v.land.ore.toFixed(1)}`;
-    const sto = `${(v.storage.food || 0).toFixed(0)}/${(v.storage.wood || 0).toFixed(0)}/${(v.storage.stone || 0).toFixed(0)}/${(v.storage.ore || 0).toFixed(0)}/${(v.storage.tool || 0).toFixed(1)}`;
+    const sto = `${(v.storage.food || 0).toFixed(0)}/${(v.storage.wood || 0).toFixed(0)}/${(v.storage.stone || 0).toFixed(0)}/${v1.oreTotal(v).toFixed(0)}/${(v.storage.tool || 0).toFixed(1)}`;
     const cash = (v.treasury._cash || 0).toFixed(1);
     console.log(`${v.name.padEnd(16)} ${String(v.npcs.length).padStart(4)}  ${co.padEnd(12)} ${land.padEnd(14)} ${sto.padEnd(34)} ${cash.padStart(10)}`);
   }
@@ -3289,7 +3315,13 @@ function subsGuard(r, who) {
   return who === 'board' ? false : isSubsistenceFlow(r);   // 현행: 가격만 가드
 }
 
+if(v1.T1192_FISH_SPECIES)for(const [id,it]of Object.entries(v1.FishGoods.items())){
+ const parent=it.kind==='dry'?'dried_fish':'pickled_veg',f=v1.preservedFactor(id)/v1.PRESERVE_FOOD_FACTOR;
+ BASE_VALUE_V2[id]=v1.BASE_VALUE[id];UTILITY_WEIGHT[id]=0;SUBSISTENCE_PER_NPC[id]=0;DECAY_V2[id]=DECAY_V2[parent];
+ ELASTICITY[id]=ELASTICITY[parent]||1;DECAY_EXCESS_MULT[id]=DECAY_EXCESS_MULT[parent]||3;
+}
 module.exports = {
+  _t1188Probe:{budgetPart:_orePart,returnGlutted:_returnGluttedV2,exportCandidates:_exportCandidatesV2,quote:_oreQuote},
   createWorldV2,
   tickWorldV2, tickWorldV2Parts,   // ★[T513] 하루 틱 조각(서버 하루 마감이 여러 프레임에 흘린다 · 정본 한 벌)
   computeShadowPrices,

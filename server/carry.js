@@ -262,6 +262,14 @@ function totalKg(p) {
   // 장착품은 equipment 배열에 그대로 있으므로 equipSlots 를 또 더하지 않는다(이중 계산 금지).
   return +kg.toFixed(3);
 }
+// T1192: NPC T724 inventory.ore_chunk is already kg; the player's same key is a count.
+// Keep that existing save convention and normalize it only when reading an NPC's entire load.
+function npcTotalKg(p) {
+  const sample={inventory:{...p.inventory},kgLedger:JSON.parse(JSON.stringify(p.kgLedger||{})),lots:JSON.parse(JSON.stringify(p.lots||{})),_carryingKg:p._carryingKg,toolItems:p.toolItems,equipment:p.equipment,dishes:p.dishes};
+  const ore=Math.max(0,+sample.inventory.ore_chunk||0);
+  delete sample.inventory.ore_chunk;delete sample.kgLedger.ore_chunk;delete sample.lots.ore_chunk;
+  return totalKg(sample)+ore;
+}
 // ── ★★[T12 지게 2026-09-01] 상한은 이제 한 값이 아니다 — **기본 + 운반구** 이다. ─────────
 //   ★가산은 **곱이 아니라 더하기**다. 이유: `MOVE_CURVE` 는 kg 이 아니라 **비율 r = kg/cap** 을 받는다
 //   ⇒ 상한만 옮기면 **곡선은 한 글자도 안 변하고 통째로 옮겨진다**(과적 단계·바닥·피로 전부 그대로).
@@ -350,7 +358,7 @@ function fromSave(p, saved) {
   return ledger(p);
 }
 
-module.exports = { CFG, MOVE_CURVE, STAGE_AT, R1,
+module.exports = { npcTotalKg, CFG, MOVE_CURVE, STAGE_AT, R1,
   lerpCurve, xWhereBelow, ledger, noteInstance, noteEntries, takeKg, takeEntries, takeByIds, peekKg, reconcile,
   hasLedger, entries, viewLedger, assertInvariant, assertCount,
   totalKg, capKg, effects, stageOf, moodle, combinedMove, payload, toSave, fromSave,

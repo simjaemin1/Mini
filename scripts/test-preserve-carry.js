@@ -21,6 +21,7 @@
 //
 // 실행: node scripts/test-preserve-carry.js
 'use strict';
+process.env.T1192_FISH_SPECIES='0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

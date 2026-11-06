@@ -229,9 +229,9 @@ ok(/const T1146_STONE_RULE = process\.env\.T1146_STONE_RULE === '1';/.test(Z) &&
 ok(/const T1146_ROCK = T1146_STONE_RULE && T1126_ROCK_YIELD;/.test(Z), '바위 규칙은 T1126 위에서만 선다(hp = 돌 수 정본 — T1126 끔이면 hp 4 는 돌 수가 아니다)');
 ok(/const StoneRule = require\('\.\/stone-rule'\);/.test(Z) && /const T1146_K_BED = StoneRule\.kIntact\(Specialty\.CHUNK_KG, Specialty\.MINE_SWINGS_PER, TOOL_EFFECTS\.pickaxe\.gatherStoneMult\);/.test(Z),
   '★암반 한 타 kg 은 채굴 정본 셋(덩이 kg · 덩이당 타수 · 곡괭이 배수)에서 — 손으로 적은 수 0');
-const fGR = fnBody(Z, 'gatherResource'), fNS = fnBody(Z, 'npcStep'), fCut = fnBody(Z, '_t1146Cut'), fSay = fnBody(Z, '_t1146Say'), fSort = fnBody(Z, 'trySortOre'), fGan = fnBody(Z, '_t1146Gangue'), fMine = fnBody(Z, 'mineOreCell');
+const fGR = fnBody(Z, 'gatherResource'), fNS = fnBody(Z, '_npcGatherResource'), fCut = fnBody(Z, '_t1146Cut'), fSay = fnBody(Z, '_t1146Say'), fSort = fnBody(Z, 'trySortOre'), fGan = fnBody(Z, '_t1146Gangue'), fMine = fnBody(Z, 'mineOreCell');
 ok(/if \(T1146_ROCK && best\.type === 'rock'\) dmg = _t1146Cut\(best, dmg\);[^\n]*\n  best\.hp -= dmg;/.test(fGR), '★사람 문 — 도구 배수(`dmg`)를 그 타에 떨어지는 hp 점으로 바꾼 뒤 종전 줄(`best.hp -= dmg`)이 깎는다');
-ok(/let _dmg = 1;[^\n]*\n\s*if \(T1146_ROCK && r\.type === 'rock'\) _dmg = _t1146Cut\(r, _dmg, true\);\n\s*r\.hp -= _dmg;/.test(fNS), '★NPC 문 — 배수 1(종전) · 같은 함수 `_t1146Cut`(정본 하나 · 사본 0)');
+ok(/_npcGatherResource\(npc,r\)/.test(fnBody(Z, 'npcStep')) && /let _dmg = 1;[^\n]*\n\s*if \(T1146_ROCK && r\.type === 'rock'\) _dmg = _t1146Cut\(r, _dmg, true\);\n\s*r\.hp -= _dmg;/.test(fNS), '★NPC 문 — 배수 1(종전) · 같은 함수 `_t1146Cut`(정본 하나 · 사본 0)');
 ok(/StoneRule\.kgPerSwing\(mult, 'cracked', T1146_K_BED\)/.test(fCut) && /StoneRule\.split\(/.test(fCut) && /Weights\.kgOf\('stone'\)/.test(fCut), '바위 한 타 = 정본 모듈의 식(금 간 돌) · 돌 한 개 kg = `weights` 석괴');
 ok(nums(fCut).join() === '0,6' && nums(fGan).join() === '0' && nums(fSay).join() === '0,1', '★새 수 0 — 존 세 함수에 0 · 소수 자리 수만', `${nums(fCut).join()} | ${nums(fGan).join()} | ${nums(fSay).join()}`);
 ok(/if \(best\.hp !== _hp0\) \{/.test(fGR) && /\} else if \(r\.hp !== _hp0\) \{/.test(fNS), 'hp 가 그대로인 타(깎기만)는 저장 · 방송 0 — 끔이면 늘 참(종전 차례)');
@@ -241,10 +241,10 @@ ok(/StoneRule\.split\(kg, Weights\.kgOf\('stone'\), Weights\.kgOf\('pebble'\)\)/
 ok(fMine.length > 0 && !/1146/.test(fMine), '★땅 채굴(`mineOreCell`) 글자 무접촉 — 암반은 같은 식의 정본 그 자체(★재민 채굴 속도 고정)');
 const fHand = fnBody(VIL, '_t1146HandIn'), fSet = fnBody(VIL, '_t720Settle'), fGran = fnBody(VIL, '_lifeGranStep'), fHeld = fnBody(VIL, '_t720Held');
 ok(/_lifeEcon\(\)\.actToGranary\(vil\.econ, k, u, null, null\)/.test(fHand) && /const _T1146_KEYS = \['stone', 'pebble'\];/.test(VIL), '★곳간 입구 — T733 부산물 문과 같은 몸통(`actToGranary` · 오늘치 · 건수 칸 없음) · 돌 · 자갈 두 칸');
-const HIN = /if \(npc\.inventory && \(npc\.inventory\.stone > 0 \|\| npc\.inventory\.pebble > 0\) && T1146_STONE_RULE\) _t1146HandIn\(vil, npc\);/;
-ok(HIN.test(fSet) && HIN.test(fGran) && !/stone|pebble|1146/.test(fHeld),
-  '곳간에 닿는 두 순간(해 질 녘 정산 · 곳간② 저장)에서만 — 돌만 든 손은 그것 때문에 곳간에 안 간다(`_t720Held` 무변)');
-ok(nums(fHand).join() === '0,1e-9,6', '★새 수 0 — 곳간 입구에 0 · 소수 자리 · 0 비교(1e-9)만', nums(fHand).join());
+const HIN = /if \(npc\.inventory && \(npc\.inventory\.stone > 0 \|\| npc\.inventory\.pebble > 0\) && _stoneHandInOn\(vil\)\) _t1146HandIn\(vil, npc\);/;
+ok(HIN.test(fSet) && HIN.test(fGran) && fHeld.includes('_stoneHeld(npc)') && fnBody(VIL, '_stoneHandInOn').includes("productionFormulaOff(vil.econ, 'forager')"),
+  '곳간에 닿는 두 순간(해 질 녘 정산 · 곳간② 저장)에서만 — 실물 생산에서 돌만 든 손도 실제 귀환 대상이다');
+ok(nums(fHand).every(n => ['0','1e-9','2','44','6'].includes(n)) && nums(fHand).filter(n=>n==='44').length===1, '★새 수 0 — 기존 회관 중심/2·도착 거리44 · 소수 자리 · 0 비교(1e-9)만', nums(fHand).join());
 
 sec('② 유도 — 출처 표의 비 · 땅 채굴 정본 · 무게 보존');
 {
