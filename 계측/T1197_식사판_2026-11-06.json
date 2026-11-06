@@ -171,6 +171,176 @@
  ],
  "srvon97": [
   {
+   "file": "/tmp/s5m/runs/srv-on97b/on97b-1020.t1197.json",
+   "days": 800,
+   "day0": 1,
+   "dayN": 800,
+   "pop": 5189,
+   "empty": 5,
+   "villages": 51,
+   "starved": 368,
+   "dead": 2150,
+   "shield": 0,
+   "born": 8433,
+   "bySeason": {
+    "spring": 24,
+    "summer": 0,
+    "autumn": 61,
+    "winter": 283
+   },
+   "byYearSeason": {
+    "1:spring": 0,
+    "1:summer": 0,
+    "1:autumn": 61,
+    "1:winter": 283,
+    "2:spring": 24,
+    "2:summer": 0,
+    "2:autumn": 0,
+    "2:winter": 0,
+    "3:spring": 0
+   },
+   "winter": [
+    {
+     "day": 275,
+     "year": 1,
+     "pop": 3777,
+     "foodDays": 28.7,
+     "villageMedian": 27.1,
+     "under30": 30
+    },
+    {
+     "day": 640,
+     "year": 2,
+     "pop": 4697,
+     "foodDays": 62.7,
+     "villageMedian": 55.7,
+     "under30": 10
+    }
+   ],
+   "farmPop": 1924,
+   "usPerPersonDay": 37.1,
+   "host": {
+    "meals": 0,
+    "bodyDied": 0,
+    "loneDied": 368
+   },
+   "host98": null
+  },
+  {
+   "file": "/tmp/s5m/runs/srv-on97b/on97b-7.t1197.json",
+   "days": 800,
+   "day0": 1,
+   "dayN": 800,
+   "pop": 5570,
+   "empty": 2,
+   "villages": 51,
+   "starved": 150,
+   "dead": 1818,
+   "shield": 0,
+   "born": 8648,
+   "bySeason": {
+    "spring": 0,
+    "summer": 0,
+    "autumn": 0,
+    "winter": 150
+   },
+   "byYearSeason": {
+    "1:spring": 0,
+    "1:summer": 0,
+    "1:autumn": 0,
+    "1:winter": 150,
+    "2:spring": 0,
+    "2:summer": 0,
+    "2:autumn": 0,
+    "2:winter": 0,
+    "3:spring": 0
+   },
+   "winter": [
+    {
+     "day": 275,
+     "year": 1,
+     "pop": 3768,
+     "foodDays": 29.4,
+     "villageMedian": 33.3,
+     "under30": 22
+    },
+    {
+     "day": 640,
+     "year": 2,
+     "pop": 5184,
+     "foodDays": 61.1,
+     "villageMedian": 50.8,
+     "under30": 4
+    }
+   ],
+   "farmPop": 2135,
+   "usPerPersonDay": 37.05,
+   "host": {
+    "meals": 0,
+    "bodyDied": 0,
+    "loneDied": 150
+   },
+   "host98": null
+  },
+  {
+   "file": "/tmp/s5m/runs/srv-on97b/on97b-42.t1197.json",
+   "days": 800,
+   "day0": 1,
+   "dayN": 800,
+   "pop": 5010,
+   "empty": 5,
+   "villages": 51,
+   "starved": 329,
+   "dead": 2142,
+   "shield": 0,
+   "born": 8143,
+   "bySeason": {
+    "spring": 35,
+    "summer": 0,
+    "autumn": 0,
+    "winter": 294
+   },
+   "byYearSeason": {
+    "1:spring": 0,
+    "1:summer": 0,
+    "1:autumn": 0,
+    "1:winter": 294,
+    "2:spring": 35,
+    "2:summer": 0,
+    "2:autumn": 0,
+    "2:winter": 0,
+    "3:spring": 0
+   },
+   "winter": [
+    {
+     "day": 275,
+     "year": 1,
+     "pop": 3706,
+     "foodDays": 31.3,
+     "villageMedian": 30,
+     "under30": 25
+    },
+    {
+     "day": 640,
+     "year": 2,
+     "pop": 4878,
+     "foodDays": 58.2,
+     "villageMedian": 47.7,
+     "under30": 6
+    }
+   ],
+   "farmPop": 1953,
+   "usPerPersonDay": 41.6,
+   "host": {
+    "meals": 0,
+    "bodyDied": 0,
+    "loneDied": 329
+   },
+   "host98": null
+  }
+ ],
+ "srvon97_prefix": [
+  {
    "file": "/tmp/s5m/runs/srv-on97/on97-1020.t1197.json",
    "days": 800,
    "day0": 1,
