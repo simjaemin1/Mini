@@ -6,6 +6,9 @@
 //         ⑤ 원정 중 제 짐을 먹는 병사는 마을 식사 명부에서 빠진다 ⑥ 끔(`=0`) = 칸이 안 선다(★T1127 손잡이 켬 기본)
 //         ⑦ econ 하루를 실제로 돌린 판 — 곳간 0 마을은 빚이 쌓이고 14일 넘긴 날부터 하루 1명 · 옛 굶주림 두 줄은 0
 'use strict';
+// ★[T1197] 이 하네스는 T1074 빚 장부(손잡이 `T1197_MEAL_BODY=0` 판)를 잰다 — 켬(기본)은 빚이 몸 게이지의 거울로 내려가고(`test-t1197-meal-body`) 여기 ④ ⑦ 의 14일 · 하루 1명 규칙이 아니다.
+//   아이 프로세스도 이 env 를 물려받는다. 부르는 쪽이 준 값이 먼저다.
+process.env.T1197_MEAL_BODY = process.env.T1197_MEAL_BODY || '0';
 const path = require('path');
 const { execFileSync } = require('child_process');
 let pass = 0, fail = 0;
