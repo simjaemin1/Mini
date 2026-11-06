@@ -14685,6 +14685,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
 //   ⚠econ 손잡이(`T1196_ARTISAN_ACT`)가 꺼지면 작업표가 안 서고 이 블록은 아무것도 안 한다(종전 서성임 그대로). 새 수 0.
 const T1196_KIND = { mason: 'tool', armorsmith: 'tool', tailor: 'tool', smith: 'smelt', cook: 'cook' };   // facility.js 창 — 작업대(도구 · 갑옷 · 옷) · 노(제련 · 주조) · 화덕(요리)
 let _t1196Fac = null;
+let _t1196HH = null;
+function _t1196Hut() { if (_t1196HH === null) { try { _t1196HH = require('./hut-hearth'); } catch (e) { _t1196HH = false; } } return _t1196HH || null; }
 function _t1196CraftMs(kind) { if (_t1196Fac === null) { try { _t1196Fac = require('./facility'); } catch (e) { _t1196Fac = false; } } return (_t1196Fac && _t1196Fac.CRAFT_MS && _t1196Fac.CRAFT_MS[kind]) || 0; }
 const _t1196Stat = { claim: 0, take: 0, give: 0, fac: 0, hall: 0, orphan: 0 };   // 계측 전용(회계 아님)
 function _t1196On(vil) { const E = _lifeEcon(); return !!(E.T1196_ARTISAN_ACT && vil && vil.econ && E.productionActsBound(vil.econ)); }
@@ -14716,6 +14718,12 @@ function _t1196Spot(vil, npc, job) {
   const kind = T1196_KIND[job], cx = vil.ccx * SZ + SZ / 2, cy = vil.ccy * SZ + SZ / 2;
   const f = state.deps.facilityNear ? state.deps.facilityNear(kind, cx, cy, T325_R * SZ) : null;
   if (f) return { x: f.x, y: f.y, fac: f.type };
+  //   요리 — 시설 목록이 켜진 청크 것만 보므로(안 켜진 마을 집은 메모리에 없다) 움집 마당 화덕 자리를 집 칸에서 바로 짓는다(`hut-hearth.js` 정본 · 움집 발자국 `_vbFootprint` · T1066 이 모닥불로 치는 그 자리)
+  if (kind === 'cook' && vil._houseCells && vil._houseCells.length) {
+    const HH = _t1196Hut(); let best = null, bd = Infinity;
+    if (HH) for (const hc of vil._houseCells) { const y = HH.hearthsOf(_vbFootprint('house', hc.cx, hc.cy), SZ).find((e) => e.key === 'yard'); if (!y) continue; const d = Math.hypot(y.x - npc.x, y.y - npc.y); if (d < bd) { bd = d; best = y; } }
+    if (best) return { x: best.x, y: best.y, fac: 'hearth' };
+  }
   const idx = _lifeOtherIndex(vil, npc);
   return { x: (vil.ccx + ((idx % 6) - 3)) * SZ + SZ / 2, y: (vil.ccy + ((((idx / 6) | 0) % 6) - 3)) * SZ + SZ / 2, fac: null };   // 회관 안 작업 앵커(아래 villager 분기와 같은 식)
 }
@@ -14744,6 +14752,7 @@ function _t1196Step(vil, npc, now, job) {
       const f = E.artisanTake(e, t.id); _t1196Stat.take++;
       if (!(f > 0)) { E.artisanGive(e, t.id); npc._t1196J = null; npc._t1196W = null; return true; }   // 재료가 하나도 없었다 — 빈손 작업표를 닫는다(넣을 것 0)
       const sp = _t1196Spot(vil, npc, job); if (sp.fac) _t1196Stat.fac++; else _t1196Stat.hall++;
+      { const A = _t1196Stat.at || (_t1196Stat.at = {}); const k = job + ':' + (sp.fac || 'hall'); A[k] = (A[k] || 0) + 1; }   // 계측 전용 — 직업 × 작업 자리
       W.ph = 'go'; W.at = 0; W.tx = sp.x; W.ty = sp.y; W.fac = sp.fac;
       return true;
     }
@@ -14771,9 +14780,9 @@ function artisanPerf() {
     for (const k in (e._t1196G || {})) G[k] = +((G[k] || 0) + e._t1196G[k]).toFixed(4);
     for (const k in (e._t1196Seats || {})) seats[k] = (seats[k] || 0) + e._t1196Seats[k];
     for (const t of (e._t1196Q || [])) { q++; if (t.st === 1) q1++; }
-    if (state.deps.facilityNear) for (const kd of Object.keys(kinds)) if (state.deps.facilityNear(kd, vil.ccx * SZ + SZ / 2, vil.ccy * SZ + SZ / 2, T325_R * SZ)) kinds[kd]++;
+    if (state.deps.facilityNear) for (const kd of Object.keys(kinds)) if (state.deps.facilityNear(kd, vil.ccx * SZ + SZ / 2, vil.ccy * SZ + SZ / 2, T325_R * SZ) || (kd === 'cook' && vil._houseCells && vil._houseCells.length)) kinds[kd]++;
   }
-  return { vils, ...C, queue: q, held: q1, seats, bodyGive: B, allGive: G, facVillages: kinds, steps: Object.assign({}, _t1196Stat) };
+  return { vils, ...C, queue: q, held: q1, seats, bodyGive: B, allGive: G, facVillages: kinds, steps: Object.assign({}, _t1196Stat, { at: Object.assign({}, _t1196Stat.at || {}) }) };
 }
 // ★랩 otRole verbatim — '주민' 버킷(숲·산·물·논밭 외 직업)의 역할 라벨.
 //   랩 원문: const c=econ.counts, order=[['smith','대장장이'],['weaponsmith','무기장'],['armorsmith','갑옷장'],

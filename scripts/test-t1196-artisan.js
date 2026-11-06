@@ -108,6 +108,18 @@ const Zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   ok(k12 === 1 && v._t1196Q.length === 0 && v._t1196C.late === 1 && v.storage.stone === 6, '① 손에 든 작업표는 사흘 기다린다 · 넘으면 손의 재료로 마친다(늦음 1 — 몸을 잃었을 때)', `늦음 ${v._t1196C.late}`);
 }
 
+// ①′ 꺼내기 비율 — 레시피마다 "없으면 못 만드는" 재료로 잰다(요리 곁재료 · 갑옷 보조 = 있는 만큼 · 재봉 옷감 = 보온 합)
+{
+  const E = require(path.join(ROOT, 'sim', 'economy-sim'));
+  const mk = (job, take, storage) => { const v = { storage: Object.assign({}, storage), treasury: {}, _t1196Q: [{ id: 1, job, day: 1, take, give: { x: 1 }, tre: {}, st: 0, f: 0, pid: null }] }; const f = E.artisanTake(v, 1); return { f, v }; };
+  const c = mk('cook', { food: 1, fruit: 0.5, meat: 0.5 }, { food: 1, fruit: 0, meat: 0.5 });
+  const a1 = mk('armorsmith', { stone: 0.5, hide: 0.4, ore: 0.2, hemp: 0.1, fur: 0.1 }, { stone: 1, hide: 1, ore: 1, hemp: 1, fur: 0 });
+  const a2 = mk('armorsmith', { stone: 0.5, hide: 0.4, ore: 0.2 }, { stone: 1, hide: 0.2, ore: 1 });
+  const t = mk('tailor', { hemp: 2, fur: 1 }, { hemp: 2, fur: 0 });
+  const m = mk('mason', { stone: 2 }, { stone: 0.5 });
+  ok(c.f === 1 && c.v.storage.food === 0 && c.v.storage.meat === 0 && a1.f === 1 && a1.v.storage.fur === 0 && a2.f === 0.5 && Math.abs(t.f - 1.2 / 2.7) < 1e-12 && t.v.storage.hemp === 0 && m.f === 0.25,
+    '①′ 비율 — 요리 곁재료 없어도 1 · 갑옷 보조(모피) 없어도 1 · 갑옷 본재료(가죽 반) 0.5 · 재봉 = 있는 보온 ÷ 든 보온(0.444) · 석공 = 가장 모자란 재료(0.25)', `요리 ${c.f} · 갑옷 ${a1.f}/${a2.f} · 재봉 ${t.f.toFixed(3)} · 석공 ${m.f}`);
+}
 // ② 랩 · 끔 바이트
 {
   const lab1 = child(['--econ', 'lab', '120'], { T1196_ARTISAN_ACT: '1' }), lab0 = child(['--econ', 'lab', '120'], { T1196_ARTISAN_ACT: '0' });
@@ -166,6 +178,15 @@ const Zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   vil.econ._t1196Q = [{ id: 2, job: 'mason', day: 3, take: { stone: 1 }, give: { tool: 0.5 }, tre: {}, st: 0, f: 0, pid: null }];
   let seenAt = null; { let now = 2e6; for (let i = 0; i < 400; i++) { const r = H._t1196Step(vil, b1, now, 'mason'); if (r === null) break; if (b1._lifeAct === '제작' && !seenAt) seenAt = [b1.x, b1.y]; if (b1.targetX != null) { b1.x = b1.targetX; b1.y = b1.targetY; } now += 1000; } }
   ok(seenAt && seenAt[0] === fac.x && seenAt[1] === fac.y && H._t1196Stat.fac >= 1, '④ 그 창을 여는 시설(작업대)이 마을에 있으면 그 앞에서 만든다', seenAt ? seenAt.join(',') : '없음');
+  // 요리 — 시설 목록이 비어도(안 켜진 청크) 움집 마당 화덕(hut-hearth 정본 자리) 앞에서
+  fac = null;
+  const HH = require(path.join(ROOT, 'server', 'hut-hearth.js'));
+  vil._houseCells = [{ cx: 26, cy: 24 }];
+  const want = HH.hearthsOf([26 - 5, 24 - 5, 26, 24 - 2], SZ).find((e) => e.key === 'yard');
+  const b3 = { pid: 'b3', simJob: 'cook', simVillageId: 5, x: 0, y: 0 }; players.set('b3', b3); vil.npcPids.push('b3');
+  vil.econ._t1196Q = [{ id: 4, job: 'cook', day: 3, take: { food: 1 }, give: { cooked_food: 1.5 }, tre: {}, st: 0, f: 0, pid: null }]; vil.econ.storage.food = 3;
+  let cookAt = null; { let now = 3e6; for (let i = 0; i < 200; i++) { const r = H._t1196Step(vil, b3, now, 'cook'); if (r === null) break; if (b3._lifeAct === '제작' && !cookAt) cookAt = [b3.x, b3.y]; if (b3.targetX != null) { b3.x = b3.targetX; b3.y = b3.targetY; } now += 1000; } }
+  ok(cookAt && want && cookAt[0] === want.x && cookAt[1] === want.y && vil.econ.storage.cooked_food === 1.5 && vil.econ.storage.food === 2, '④ 요리 — 시설 목록이 비어도 움집 마당 화덕(`hut-hearth.js` 자리 · 움집 발자국 [cx−5..cx]×[cy−5..cy−2]) 앞에서 · 요리 정본 시간', cookAt ? `${cookAt.join(',')} · 화덕 ${want.x},${want.y}` : '없음');
   // ⑤ 명부 — 손에 든 몸은 자리 밖 · 몸을 잃은 작업표는 주인을 지운다
   vil.econ._t1196Q = [{ id: 3, job: 'mason', day: 3, take: { stone: 1 }, give: { tool: 0.5 }, tre: {}, st: 1, f: 1, pid: 'b2' }];
   b2._t1196J = 3;
@@ -175,7 +196,7 @@ const Zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   H._t1196Seats(vil);
   const orphan = vil.econ._t1196Q[0].pid;
   const r3 = run(vil, b1, 400);
-  ok(s1 === '{"mason":1}' && orphan === null && r3.lab[0] === '운반' && !vil.econ._t1196Q.length, '⑤ 명부 — 손에 든 몸은 자리 밖(자리 1) · 몸을 잃은 작업표는 주인을 지운다 → 다른 몸이 손의 재료째 이어서 만든다(인출 없이 운반부터)', `${s1} · ${r3.lab.join('>')}`);
+  ok(s1 === '{"mason":1,"cook":1}' && orphan === null && r3.lab[0] === '운반' && !vil.econ._t1196Q.length, '⑤ 명부 — 손에 든 몸은 자리 밖(자리 1) · 몸을 잃은 작업표는 주인을 지운다 → 다른 몸이 손의 재료째 이어서 만든다(인출 없이 운반부터)', `${s1} · ${r3.lab.join('>')}`);
 }
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
