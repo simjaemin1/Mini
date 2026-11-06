@@ -1486,7 +1486,7 @@ function _bxObserve(vil) {
 }
 // ═══ ★★[T1197 2026-11-06 · 추상 걷기 C] **몸이 곳간에서 꺼내 먹고 · 굶으면 그 몸이 쓰러진다** ═══════════════
 //   정본은 econ 명부 사람의 몸 게이지(`sim/economy-sim.js` T1197 머리글 — `_mh` · `_mhp` · `_mD` · `_mS`). 몸은 그 사람과 짝(`p._econId`)이고:
-//     ⓐ 흘림 — 존 `_gaugeStep` 의 NPC 면제 자리에서 `t1197BodyStep`: 그 사람 게이지를 지금 econ 시각(날 + 그날 몫)까지 흘리고 몸 허기에 비춘다 ·
+//     ⓐ 흘림 — 존 `_gaugeStep` 의 NPC 면제 자리에서 `t1197BodyStep`(보이는 몸만 — 활성 칸): 그 사람 게이지를 지금 econ 시각(날 + 그날 몫)까지 흘리고 몸 허기에 비춘다 ·
 //        깎인 HP 는 몸에도 깎인다(문 `_setHp` · 1 아래로는 안 내린다 — 죽음은 날 경계가 정한다: 보호막 · POP_MIN 이 econ 에 있다).
 //     ⓑ 끼니 — 일과의 두 집 문(기상 · 귀가)에서 `_t1197BodyMeal`: 그 끼니를 아직 안 먹었으면 곳간 장부에서 꺼내 먹는다(econ `t1197Meal` · 라벨 '식사').
 //     ⓒ 쓰러짐 — 날 경계에 econ 이 HP 0 인 사람을 빼면(`_t1197Dead` 목록) 그 사람과 짝인 몸이 그 자리에서 쓰러진다(T590 ⓐ 문 `_bxDie` · 까닭 `starve`).
@@ -1509,8 +1509,8 @@ function _t1197Person(vil, p) {
 }
 function _t1197Now(now) { return state.world.day + _econDayFrac(now); }
 // ⓐ 흘림 — 반환 true = 이 몸의 허기는 게이지가 쥔다(존이 채우지 않는다)
-function t1197BodyStep(p, now) {
-  if (!state.world || p.simVillageId == null || p._bxExit || p._muster || !_t1197On()) return false;
+function t1197BodyStep(p, now, act) {   // `act` = 그 몸이 활성 칸(보는 사람이 있다) — 거짓이면 몸 길을 안 탄다(그 사람은 날 경계 일괄 · 벽시계 무관)
+  if (act === false || !state.world || p.simVillageId == null || p._bxExit || p._muster || !_t1197On()) return false;
   const vil = state.byDbId && state.byDbId.get(p.simVillageId); if (!vil || !vil.econ) return false;
   const q = _t1197Person(vil, p); if (!q) return false;
   const lost = _lifeEcon().t1197Advance(q, _t1197Now(now));

@@ -1343,7 +1343,7 @@ function _t1197Init(p, d) {
 // 게이지를 econ 시각 `toD` 까지 흘린다 — 감쇠(적응만큼 느리게) · 극단이면 HP. 반환 = 깎인 HP.
 function t1197Advance(p, toD) {
   const M = _t1197(); if (!M) return 0;
-  _t1197Init(p, toD);
+  _t1197Init(p, Math.floor(toD));   // 처음 보는 사람은 그날 머리부터(몸이 낮에 처음 짚어도 일괄과 같은 출발 — 벽시계 무관)
   const dd = toD - p._mD; if (!(dd > 0)) return 0;
   p._mD = toD;
   const sec = dd * M.DAY_S, a = 1 - (p._fdA || 0), h0 = p._mh;

@@ -16298,8 +16298,9 @@ setInterval(() => {
     //   유일한 식량 사망 경로). 기존엔 canadia만 면제라 활성 청크의 마을 NPC가 게이지 드레인→기아 hp 드레인을 맞았고,
     //   이것이 '관측할수록 마을이 굶는' 임업3 요양 사태(24/24 hp<60%)의 원인이었다. 도적·캐러밴·병사도 랩에 개체 허기 없음.
     //   ★★[T1197 2026-11-06 · 추상 걷기 C] 켬(econ `T1197_MEAL_BODY` — 같은 글자) = 마을 몸의 허기는 **그 사람의 몸 게이지**가 쥔다(곳간에서 꺼내 먹고 · 굶으면 그 몸이 쓰러진다 —
-    //     `villages.js` T1197 머리글 · 흘림은 `t1197BodyStep` 하나) · 갈증은 면제 그대로 · 짝 없는 몸 · 마을 밖 몸 · 끔 = 종전 줄.
-    if (p.isNpc) { if (!(T1197_BODY && p.simVillageId != null && SimVillages.t1197BodyStep && SimVillages.t1197BodyStep(p, now))) p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX; return; }
+    //     `villages.js` T1197 머리글 · 흘림은 `t1197BodyStep` 하나) · **보이는 몸만**(활성 칸 — 안 보이는 몸의 사람은 날 경계 일괄이 친다 · 벽시계 무관 = 헤드리스 판 결정론) ·
+    //     갈증은 면제 그대로 · 짝 없는 몸 · 마을 밖 몸 · 끔 = 종전 줄.
+    if (p.isNpc) { if (!(T1197_BODY && p.simVillageId != null && SimVillages.t1197BodyStep && SimVillages.t1197BodyStep(p, now, isPositionActive(p.x, p.y)))) p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX; return; }
     // ★★[신체 상태 §7 · 2026-08-26] 여기 있던 허기·갈증·밤추위 계산을 **`server/body.js` 로 옮겼다.**
     //   종전엔 감쇠는 여기, 추위는 여기 안 지역변수(`p._cold`), 효과는 여기저기 흩어져 있었다.
     //   축이 다섯이 되면 그 흩어짐이 곧 사고다 ⇒ **정본 하나**로 모은다. 여기 남는 건 **맥락 수집**뿐이다.
