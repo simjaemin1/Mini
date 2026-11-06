@@ -244,8 +244,8 @@ console.log('\n=== T1104 — 약탈 · 토벌 = 맵 위 사건(손잡이 `T1104_
   ok(va > 0 && vb > va && !num.test(vblk), '정적 · T1104 몸 쪽 문 덩이(villages)에 새 수 0', va > 0 ? (vblk.match(num) || [''])[0] : '덩이 없음');
   ok(/const gangO = world\.banditMeet \? null : \(world\.banditGang \? world\.banditGang\(c\.from, c\.to\) : null\);/.test(V2) && /let outboundLoss = world\.banditMeet \? _raidTaken\(c, 'outbound'\) : _raidOut\(world, c, day, gangO\);/.test(V2)
     && /const gangI = world\.banditMeet \? null : \(world\.banditGang \? world\.banditGang\(c\.from, c\.to\) : null\);/.test(V2) && /let inboundLoss = world\.banditMeet \? _raidTaken\(c, 'inbound'\) : _raidIn\(world, c, day, gangI\);/.test(V2)
-    && /if \(world\.banditMeet\) \{ _raidMeet\(world, c, day\); if \(c\._done\) continue; \}/.test(V2) && (V2.match(/_raidScrum\(c\.escort, _escAtk\(c\.from\), gang[OI]\.n, world\.banditArmed \? world\.banditArmed\(gang[OI]\) : null\)/g) || []).length === 2,
-    '정적 · econ — 두 판(`_raidOut` · `_raidIn`)은 종전 덩이를 이름만 올렸다(식 · 부름 둘) · 만남 문이 없으면 도착 자리에서 종전 그대로 · 있으면 길 위에서 · 캐러밴 하루 머리 한 줄');
+    && /if \(world\.banditMeet\) \{ _raidMeet\(world, c, day\); if \(c\._done\) return; \}/.test(V2) && (V2.match(/_raidScrum\(c\.escort, _escAtk\(c\.from\), gang[OI]\.n, world\.banditArmed \? world\.banditArmed\(gang[OI]\) : null\)/g) || []).length === 2,
+    '정적 · econ — 실제 도착을 기다려도 하루 만남은 한 번 · 두 판(`_raidOut` · `_raidIn`)은 종전 덩이를 이름만 올렸다(식 · 부름 둘) · 만남 문이 없으면 도착 자리에서 종전 그대로 · 있으면 길 위에서 · 캐러밴 하루 머리 한 줄');
 }
 
 const RO = sub('raid', true), RF = sub('raid', false), MO = sub('miss', true), MF = sub('miss', false), SO = sub('sup', true), SF = sub('sup', false);

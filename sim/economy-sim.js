@@ -626,7 +626,25 @@ function seedReserveAvail(v, r) { return ((v.storage && v.storage[r]) || 0) - se
 // 채집물은 환산비가 낮아 농사보다 끼니로 비효율
 // ★[T423] 마을 식사 명부 — 원정 중 팩을 먹는 병사(`_warPack`)를 뺀 수. 표식이 없으면(끔 · 전쟁 없는 세계) 한 글자도 안 다르다.
 function _t423EatN(v, N) { let k = 0; for (const p of v.npcs) if (p._warPack && p._warDraft) k++; return k ? N - k : N; }
+// T1157 b: use public food only to cover today's private food shortage.
+const T1157_EAT_VAULT = typeof process !== 'undefined' && process.env && process.env.T1157_EAT_VAULT === '1';
+function t1157Food(v, need) {
+  if (!T1157_EAT_VAULT || !v.treasury) return;
+  let missing = Math.max(0, need - totalFoodEquivalent(v));
+  for (const r of Object.keys(v.treasury)) {
+    if (!(missing > 1e-9)) break;
+    const available = Math.max(0, v.treasury[r] || 0);
+    if (!(available > 0)) continue;
+    const storage = { food: 0, fish: 0, meat: 0, cooked_food: 0 }; storage[r] = 1;
+    const f = totalFoodEquivalent({ storage, _world: v._world });
+    if (!(f > 0)) continue;
+    const q = Math.min(available, missing / f);
+    v.treasury[r] -= q; v.storage[r] = (v.storage[r] || 0) + q;
+    missing -= q * f;
+  }
+}
 function consumeFood(v, need) {
+  if (T1157_EAT_VAULT) t1157Food(v, need);
   let remaining = need;
   // ★소비량 군별 기록(_foodEaten) — 이게 진짜 식단(자체생산+수입, 신선히 먹은 것 포함). 다양성 판정에 씀.
   const eaten = v._foodEaten || (v._foodEaten = {});
@@ -1353,6 +1371,10 @@ const FIREWOOD_PC_SRC = 10000000 / 21526374 * 663 / 365 / 3;
 //   ★갚는 길 — `T1135_FUEL_EQ` 판에서 나무꾼 몫(T374 문의 분자 `_t1135Need`)에 추위 빚 ÷ H 를 더한다(겨울 끝까지 고르게 쌓는다 · 새 수 0).
 //     생활층 헤드리스 나무꾼은 베기 전에 삭정이부터 줍는다(`server/villages.js` T1148 줄 — "나무꾼(삭정이 줍기 포함)").
 //   T717 한 명 문(`T717_FUEL_GATE`)은 이 문으로 갈음한다(그 손잡이는 끔 그대로 — 표에서 비교만).
+// T1156: v2 supplies its existing basket planner; v1 never copies a value curve.
+const T1156_SPECIALTY_JOB = typeof process !== 'undefined' && process.env && process.env.T1156_SPECIALTY_JOB === '1';
+let _t1156Quote = null;
+function setT1156Quote(fn) { _t1156Quote = fn; }
 const T1148_FUEL_JOB = (typeof process !== 'undefined' && process.env && process.env.T1148_FUEL_JOB === '1');
 function t1148Cold(v) {
   const A = v && v._t1148Ahead;
@@ -5457,6 +5479,9 @@ function pickDeficitJob_rational(v, world) {
       ['hunter',  v.land.game      * 0.7],
       ['forager', forageLandMean   * 0.25],
     ].filter(([j]) => hasSlot(v, j, cap, counts));
+    if (T1156_SPECIALTY_JOB && _t1156Quote) {
+      for (const q of _t1156Quote(v, world)) if (hasSlot(v, q.job, cap, counts)) foodOpts.push([q.job, q.foodPerDay]);
+    }
     foodOpts.sort((a, b) => b[1] - a[1]);
     if (foodOpts.length > 0) return foodOpts[0][0];
   }
@@ -6403,6 +6428,8 @@ module.exports = {
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
   T958_HOUSE_REAL,   // ★[T958] 집 행위 마을 econ 주거 = 지은 침상까지(★[T974] 켬 기본 · `=0` 되돌림 · ★[T966] 끔 기본이던 글자) — 방아쇠(서버 `villages.js`)가 읽는다
+  T1156_SPECIALTY_JOB, setT1156Quote,
+  T1157_EAT_VAULT, t1157Food,
   T1148_FUEL_JOB, t1148Cold,   // ★[T1148] 추위 빚(끔 기본 · `'1'` 켬)
   T1135_FUEL_EQ, FIREWOOD_PC_SRC, woodShareD, woodFormulaOff,   // ★[T1135] 땔감 평형(끔 기본 · `'1'` 켬) · 고증 d · 나무꾼 분자 · 수식 목재 걷어냄
   T1046_WOOD_SHARE,   // ★[T1046] 나무꾼 안전망 = 출생 문과 같은 주거 상한(끔 기본 · `'1'` 켬)

@@ -17,6 +17,9 @@
 //
 // 실행: node scripts/test-t772-leg.js   (존 안 띄움 · 1초)
 'use strict';
+// T1182: 이 자는 종전 일정 보간 길을 재며 실제 몸 정본은 별도 자가 잰다.
+process.env.T762_CARAVAN_BODY='0';
+process.env.T1136_ESCORT_CARRY='0';
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
