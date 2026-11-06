@@ -1,0 +1,280 @@
+{
+ "card": "T1187",
+ "gate": {
+  "off_vs_1104c": "같음 3/3(두 번)",
+  "rename_A_B": "같음 3/3(400날 · 51마을)",
+  "bait_C": "다름 3/3(1 ~ 2날)"
+ },
+ "serverOnOff": {
+  "1020": {
+   "off": {
+    "pop": 3412,
+    "dead": 0,
+    "ever": 51,
+    "weapQ": 229,
+    "expand": 652,
+    "board": 2139,
+    "toolQ": 3055.3,
+    "preserve": 0,
+    "grain": 6676.3
+   },
+   "on": {
+    "pop": 3432,
+    "dead": 0,
+    "ever": 51,
+    "weapQ": 187,
+    "expand": 550,
+    "board": 1667,
+    "toolQ": 3520.2,
+    "preserve": 0,
+    "grain": 9999.5
+   }
+  },
+  "7": {
+   "off": {
+    "pop": 3428,
+    "dead": 1,
+    "ever": 51,
+    "weapQ": 238,
+    "expand": 512,
+    "board": 1937,
+    "toolQ": 3466,
+    "preserve": 3.5,
+    "grain": 10202
+   },
+   "on": {
+    "pop": 3454,
+    "dead": 0,
+    "ever": 51,
+    "weapQ": 279,
+    "expand": 856,
+    "board": 1580,
+    "toolQ": 3965.9,
+    "preserve": 1.1,
+    "grain": 11418.7
+   }
+  },
+  "42": {
+   "off": {
+    "pop": 3224,
+    "dead": 0,
+    "ever": 51,
+    "weapQ": 223,
+    "expand": 525,
+    "board": 1833,
+    "toolQ": 2914.2,
+    "preserve": 0,
+    "grain": 9712.5
+   },
+   "on": {
+    "pop": 3487,
+    "dead": 1,
+    "ever": 51,
+    "weapQ": 166,
+    "expand": 664,
+    "board": 2139,
+    "toolQ": 2664.7,
+    "preserve": 16.1,
+    "grain": 7354.7
+   }
+  }
+ },
+ "lab": {
+  "off": [
+   6436,
+   6008,
+   6299
+  ],
+  "on": [
+   6487,
+   6289,
+   6139
+  ]
+ },
+ "war": {
+  "off": {
+   "1020": {
+    "eight": {
+     "pop": 5200,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 517,
+     "expand": 3269,
+     "board": 3896,
+     "toolQ": 6538.3,
+     "preserve": 0,
+     "grain": 24231.9
+    },
+    "war": {
+     "decl": 27,
+     "battle": 22,
+     "atkWin": 9,
+     "defWin": 13,
+     "cas": 469,
+     "captured": 107,
+     "siege": 0,
+     "assault": 25,
+     "sortie": 0,
+     "withdraw": 4,
+     "surrender": 0,
+     "walkover": 0,
+     "tribute": 0,
+     "loot": 9
+    },
+    "empty": 0
+   },
+   "7": {
+    "eight": {
+     "pop": 5660,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 746,
+     "expand": 4200,
+     "board": 4069,
+     "toolQ": 8355.2,
+     "preserve": 100.4,
+     "grain": 27533.7
+    },
+    "war": {
+     "decl": 32,
+     "battle": 27,
+     "atkWin": 6,
+     "defWin": 21,
+     "cas": 621,
+     "captured": 144,
+     "siege": 0,
+     "assault": 27,
+     "sortie": 4,
+     "withdraw": 7,
+     "surrender": 0,
+     "walkover": 0,
+     "tribute": 1,
+     "loot": 6
+    },
+    "empty": 0
+   },
+   "42": {
+    "eight": {
+     "pop": 4594,
+     "dead": 3,
+     "ever": 51,
+     "weapQ": 415,
+     "expand": 1796,
+     "board": 3642,
+     "toolQ": 6388.4,
+     "preserve": 4.3,
+     "grain": 23380.7
+    },
+    "war": {
+     "decl": 28,
+     "battle": 21,
+     "atkWin": 5,
+     "defWin": 16,
+     "cas": 443,
+     "captured": 84,
+     "siege": 2,
+     "assault": 22,
+     "sortie": 3,
+     "withdraw": 7,
+     "surrender": 0,
+     "walkover": 0,
+     "tribute": 0,
+     "loot": 5
+    },
+    "empty": 3
+   }
+  },
+  "on": {
+   "1020": {
+    "eight": {
+     "pop": 5227,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 489,
+     "expand": 2780,
+     "board": 3974,
+     "toolQ": 6829.6,
+     "preserve": 80.3,
+     "grain": 20693.1
+    },
+    "war": {
+     "decl": 23,
+     "battle": 21,
+     "atkWin": 10,
+     "defWin": 11,
+     "cas": 487,
+     "captured": 119,
+     "siege": 1,
+     "assault": 20,
+     "sortie": 1,
+     "withdraw": 2,
+     "surrender": 0,
+     "walkover": 0,
+     "tribute": 0,
+     "loot": 10
+    },
+    "empty": 0
+   },
+   "7": {
+    "eight": {
+     "pop": 4958,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 524,
+     "expand": 2740,
+     "board": 3561,
+     "toolQ": 6914.7,
+     "preserve": 192.5,
+     "grain": 23337.2
+    },
+    "war": {
+     "decl": 33,
+     "battle": 31,
+     "atkWin": 14,
+     "defWin": 17,
+     "cas": 804,
+     "captured": 144,
+     "siege": 0,
+     "assault": 28,
+     "sortie": 3,
+     "withdraw": 2,
+     "surrender": 0,
+     "walkover": 0,
+     "tribute": 1,
+     "loot": 14
+    },
+    "empty": 0
+   },
+   "42": {
+    "eight": {
+     "pop": 5737,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 633,
+     "expand": 4282,
+     "board": 3667,
+     "toolQ": 7968,
+     "preserve": 32.2,
+     "grain": 24902.4
+    },
+    "war": {
+     "decl": 35,
+     "battle": 24,
+     "atkWin": 9,
+     "defWin": 15,
+     "cas": 637,
+     "captured": 139,
+     "siege": 0,
+     "assault": 37,
+     "sortie": 1,
+     "withdraw": 13,
+     "surrender": 0,
+     "walkover": 0,
+     "tribute": 0,
+     "loot": 9
+    },
+    "empty": 0
+   }
+  }
+ }
+}

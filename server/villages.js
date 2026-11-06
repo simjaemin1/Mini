@@ -2451,6 +2451,16 @@ function _t1063DayBnd(vils) {
 //     그래서 기본 끔이다: 켜면 바뀐 마을의 그 한 비트가 따라 바뀐다(자 `t17-metrics`·`t176-ab` 도 같은 손잡이로 같은 이름을 쓴다).
 //   ⚠초기화(빈 villages 테이블) 때만 돈다 — 살아 있는 세계의 이름은 DB 그대로다.
 const T593_LABEL = process.env.T593_LABEL === '1';
+// ★★[T1187 2026-11-06 · ★재민 11-05 "한반도 마을은 정말 한국식 이름 · 닛폰 마을은 정말 일본식 이름 · 근처 지형 이름 따라가도 되고" · 손잡이 `T1187_NAMES`(기본 끔 · `'1'` 만 켬)]
+//   **시딩 이름을 땅이름 꼴로** — 규칙은 `server/village-names.js` 하나(근처 지형 줄기 + 마을 갈래 꼬리 · 겹침 0 · 보고 T1187 §1).
+//   그 존 후보 전부(`siteCandidates` — T1178 재배치가 자리를 바꾸면 바뀐 자리로)를 한 번에 지어 겹침을 막는다. 자원권 반경은 이 파일의 `LAND_SCAN_R`(사본 0).
+//   ⚠이름은 econ 입력이 아니어야 한다 — `T1187_NAME_FREE`(economy-sim · bandits)가 이름 해시 셋을 끊는다. 켜는 판은 둘을 같이 켠다(보고 §3).
+//   ⚠초기화(빈 villages 테이블) 때만 돈다 — 살아 있는 세계의 이름은 DB 그대로다. 끔 = 후보 이름 그대로(비트 동일).
+const T1187_NAMES = process.env.T1187_NAMES === '1';
+function _t1187Names(terrain, hard) {
+  const zt = (terrain && terrain.ZONE_TERRAIN && terrain.ZONE_TERRAIN[state.zoneId]) || {};
+  return require('./village-names').nameMap(state.zoneId, Object.assign({}, zt, { villages: hard }), LAND_SCAN_R);
+}
 const _T593_WORD = Object.freeze({ plain: '농촌', riverside: '어촌', mining: '광산', forest: '임업' });   // 후보 `type` ↔ 이름 낱말(지금 이름이 이미 쓰는 그 넷)
 function _t593Kind(tag, why, lp, fShare, hShare) {
   if (why === 'riverside' || why === 'plain') return why;                       // ① typeLabel 판정 그대로
@@ -2517,6 +2527,7 @@ function seedVillages(db, terrain, ta, ZONE) {
   const rows = [];
   const VillageLayout = require('./village-layout');
   const _t593 = T593_LABEL ? _t593Namer(hard) : null;   // ★[T593 ⑤] 켬만(끔 = 옛 이름 · 이 줄 null)
+  const _t1187 = T1187_NAMES ? _t1187Names(terrain, hard) : null;   // ★[T1187] 켬만 — 옛 후보 이름 → 땅이름 꼴(끔 = 이 줄 null)
   db.db.exec('BEGIN');
   try {
     for (const hv of picked) {
@@ -2538,7 +2549,8 @@ function seedVillages(db, terrain, ta, ZONE) {
       const lp = extractLandParamsApprox(ta, c.ccx, c.ccy, layout);
       // ★[T593 ⑤] 켬이면 이름표를 땅에 맞춘다(위 `_t593Namer`) — 끔이면 `vName` = 후보 이름 그대로(비트 동일).
       const _lab = _t593 ? _t593.label(hv, layout, lp) : null;
-      const vName = _lab ? _lab.name : hv.name;
+      const vName = (_t1187 && _t1187.get(hv.name)) || (_lab ? _lab.name : hv.name);   // ★[T1187] 켬 = 땅이름 꼴(T593 꼬리표 갈래는 그대로 남는다)
+      if (_t1187) console.log(`[${state.zoneId}] 🏷️ [T1187] ${hv.name} → ${vName}`);
       if (_lab && (_lab.renamed || _lab.kind !== hv.type)) console.log(`[${state.zoneId}] 🏷️ [T593] ${hv.name} → ${vName} (꼬리표 ${hv.type} → ${_lab.kind} · 갈래 ${_lab.why})`);
       const dbId = db.insertVillage({
         zone: state.zoneId, name: vName, cx: c.ccx, cy: c.ccy,
@@ -2549,6 +2561,7 @@ function seedVillages(db, terrain, ta, ZONE) {
         // Stage 4A: bnd = 영토 경계 셀(중심 상대 [dx,dy,mask] flat) — 클라 영토 렌더용 영속(전체 2850셀 아님)
         //   ★[T593] 켬이면 후보 이름·새 꼬리표를 같이 남긴다(`seedName`·`t593` — 이름으로 묶인 옛 자료를 되짚는 실). 끔이면 종전 다섯 칸 그대로.
         data: JSON.stringify(_lab ? { typeLabel: layout.type, dock: layout.dock || null, land: lp, seedType: hv.type, bnd: territoryBoundary(layout.territory, c.ccx, c.ccy), seedName: hv.name, t593: _lab.kind }
+          : _t1187 ? { typeLabel: layout.type, dock: layout.dock || null, land: lp, seedType: hv.type, bnd: territoryBoundary(layout.territory, c.ccx, c.ccy), seedName: hv.name }   // ★[T1187] 켬 = 후보 이름을 남긴다(다리 후보 · 우물 · 옛 자료가 후보 이름으로 묶여 있다 — 부팅이 `_seedName` 으로 되읽는다)
           : { typeLabel: layout.type, dock: layout.dock || null, land: lp, seedType: hv.type, bnd: territoryBoundary(layout.territory, c.ccx, c.ccy) }),
       });
       for (const h of layout.houses) db.insertVillageBuilding({ village_id: dbId, type: 'house', cx: h.cx, cy: h.cy, floors: h.floors || 1, data: null });
@@ -13016,7 +13029,7 @@ function _t527Complete(site, day) {
 function _t527BridgeDay(vil) {
   const E = _lifeEcon();
   const sites = _t527Sites(); if (!sites || !vil.econ) return null;
-  const site = sites.find((s) => !s.done && s.v.indexOf(vil.name) >= 0); if (!site) return null;
+  const site = sites.find((s) => !s.done && (s.v.indexOf(vil.name) >= 0 || (vil._seedName && s.v.indexOf(vil._seedName) >= 0))); if (!site) return null;   // ★[T1187] 다리 후보 `v` 는 후보 이름(zone-config 데이터) — 이름표를 바꾼 마을(T1187 · T593)은 후보 이름(`_seedName` · 홀 데이터)으로도 찾는다(이름만 바꿔 다리를 잃지 않게)
   const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
   const dbg = vil._t527Dbg = { day, site: site.i, crew: 0, trips: 0, took: 0, adv: 0, stall: 0, walkS: 0, jobs: {} };
   const crew = _t527Crew(vil); if (!crew.length) return dbg;

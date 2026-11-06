@@ -12565,12 +12565,26 @@ const WellStages = require('./well-stages');
 // ★[T557 · #88] 지하수 가용도 — `WellStages.WELL_VILLAGES`(재민 결정 데이터)의 **후보 자리**(`terrain.siteCandidates` — 시딩이 부르는 문 하나)에서
 //   노동권(`sustain.LABOR_R` 셀) 안이면 판다. 바깥이면 사유지를 묻기 **전에** 거절한다(재료·도구 무변). 마을 이름은 알림에만.
 let _wellSpots = null;
+// ★[T1187 2026-11-06 · 손잡이 `T1187_NAMES`(villages 시딩과 같은 손잡이 · 기본 끔)] 우물 알림의 마을 이름 — 켬이면 시딩이 지은 이름(`village-names` 정본 · 같은 후보 · 같은 반경)으로 보인다. 끔 = 표 글자 그대로.
+let _t1187Nm;
+function _t1187WellNames(cand) {
+  if (process.env.T1187_NAMES !== '1') return null;
+  if (_t1187Nm === undefined) { try { const zt = (_terrain.ZONE_TERRAIN && _terrain.ZONE_TERRAIN[ZONE_ID]) || {}; _t1187Nm = require('./village-names').nameMap(ZONE_ID, Object.assign({}, zt, { villages: cand }), SimVillages.LAND_SCAN_R); } catch (e) { _t1187Nm = null; } }
+  return _t1187Nm;
+}
+function _t1187WellList() {
+  const L = WellStages.WELL_VILLAGES || [];
+  const nm = _t1187WellNames((_terrain.siteCandidates ? _terrain.siteCandidates(ZONE_ID) : []) || []);
+  return nm ? L.map((n) => nm.get(n) || n) : L;
+}
 function _wellGroundAt(x0, y0) {
   if (!_wellSpots) {
     _wellSpots = [];
     try {
       const want = new Set(WellStages.WELL_VILLAGES || []);
-      for (const v of (_terrain.siteCandidates ? _terrain.siteCandidates(ZONE_ID) : []) || []) if (v && want.has(v.name)) _wellSpots.push({ name: v.name, cx: Math.round(v.x / BUILDING_SIZE), cy: Math.round(v.y / BUILDING_SIZE) });
+      const _cand = (_terrain.siteCandidates ? _terrain.siteCandidates(ZONE_ID) : []) || [];
+      const _nm = _t1187WellNames(_cand);   // ★[T1187] 켬 = 알림에 땅이름 꼴(자리는 후보 이름 그대로 — 표는 재민 결정 데이터)
+      for (const v of _cand) if (v && want.has(v.name)) _wellSpots.push({ name: _nm ? (_nm.get(v.name) || v.name) : v.name, cx: Math.round(v.x / BUILDING_SIZE), cy: Math.round(v.y / BUILDING_SIZE) });
     } catch (e) { _wellSpots = []; }
   }
   const R = require('./sustain').LABOR_R;
@@ -12580,7 +12594,7 @@ function _wellGroundAt(x0, y0) {
 const WELL_SPEC = { siteType: 'well_site', doneType: 'well', ko: '우물', icon: '🪣', stages: WellStages.WELL_STAGES, kind: 'well',
                     claim: (player, x0, y0, x1, y1) => _wellGroundAt(x0, y0)
                       ? _claimFootprint(player, x0, y0, x1, y1)
-                      : { err: `이 땅에는 우물을 팔 물줄기가 없습니다. 우물은 ${(WellStages.WELL_VILLAGES || []).join('·')} 마을 땅에서 팝니다.` },
+                      : { err: `이 땅에는 우물을 팔 물줄기가 없습니다. 우물은 ${_t1187WellList().join('·')} 마을 땅에서 팝니다.` },
                     // ★[T519 ③] 그릇 이름은 **이름표 정본**에서 — 물가 문구(`🏺 ${…[Salt.VESSEL]}이 있어야 물을 뜬다`)와 같은 문법(글자 무변 · 사본 0).
                     doneHint: `우물가에서 E를 누르면 목을 축이고, ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있으면 민물을 담습니다.` };
 function tryWellStart(player, atX, atY) { if (!T509_WELL) return; return _siteStart(player, atX, atY, WELL_SPEC); }
