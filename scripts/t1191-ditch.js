@@ -12,18 +12,20 @@
 //   · 꼴 기하 = `server/village-layout.js` `ditchRing`(검단리 규약 — 폭 2 · 장/단 118/70 · 출입구 · 여유) 그 함수를 그대로 부른다.
 //     축(단축 = 강 쪽)은 판 DB 에 없으므로 판 도랑 칸에서 되찾는다(주축 PCA · 그 수직 · 1° 훑기 가운데 판 도랑과 가장 많이 겹치는 축) — 되찾은 축으로 같은 집을 넣어 다시 그린 고리가
 //     판 도랑과 몇 칸 겹치나를 같이 적는다(되찾기 검사 · 지형 구멍은 DB 에 없어 기하 고리가 조금 크다).
-//   · 일손 = 개간 셀 속도(`LIFE_CLEAR_PDAY` = 3 칸/인·일 — 생활층 정본 · 도랑 파기 속도는 게임에 없다 → 빌려 쓴 자) · 흙 = 칸 × 깊이(검단리 0.2 ~ 1.1 m)
+//   · 흙 = 칸(1 m²) × 깊이(검단리 0.2 ~ 1.1 m) · 일손 = 흙 ÷ 1.8 m³/인·일(실험고고학 Lobisser 2006) · 견줌 = 개간 셀 속도(`LIFE_CLEAR_PDAY` 3 칸/인·일 — 게임엔 도랑 파기 속도가 없다)
 // 꼴: ㄷ 마을 전체 고리(지금 판 고리) + 도랑 칸 영토 편입 · ㄹ 핵심 구역(회관 마당 · 곳간)만 두른 고리 · (섞기는 보고에서 유적 표로 고른다 — 둘의 수를 다 적는다)
 const fs = require('fs');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const VL = require(path.join(__dirname, '..', 'server', 'village-layout.js'));
 const ji = process.argv.indexOf('--json'), JOUT = ji > 0 ? process.argv[ji + 1] : null;
-const files = process.argv.slice(2).filter((f, i, a) => f !== '--json' && a[i - 1] !== '--json' && fs.existsSync(f));
+const si = process.argv.indexOf('--svg'), SVGDIR = si > 0 ? process.argv[si + 1] : null;   // 꼴 그림(마을마다 SVG 한 장)
+const files = process.argv.slice(2).filter((f, i, a) => !/^--(json|svg)$/.test(f) && !/^--(json|svg)$/.test(a[i - 1] || '') && fs.existsSync(f));
 if (!files.length) { console.error('쓰는 법: node scripts/t1191-ditch.js [--json <파일>] <판.db> …'); process.exit(2); }
 let LIFE_CLEAR_PDAY = 3;
 try { const src = fs.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8'); const m = /const LIFE_CLEAR_PDAY\s*=\s*(\d+(?:\.\d+)?)/.exec(src); if (m) LIFE_CLEAR_PDAY = +m[1]; } catch (e) {}
 const DEPTH = [0.2, 1.1];   // 검단리 도랑 깊이(설계/설계_장마당_환호_고증과_설계안.md B-1 · 우리역사넷)
+const DIG_M3 = 1.8;         // 1인 하루 파서 나르는 흙(m³) — Lobisser 2006 euroREA 3 실험고고학 "a strong person was able to dig and remove 1,8 m3 of earth per day"
 
 function seedTerr(hall) {
   let d = null; try { d = JSON.parse(hall.data || 'null'); } catch (e) { d = null; }
@@ -109,24 +111,41 @@ for (const f of files) {
     let rcOther = 0; for (const k of rcSet) { const o = owner.get(k); if (o != null && o !== v) rcOther++; }
     let rcHin = 0; for (const h of allH) if (ell(h.cx, h.cy, rc.a, rc.b) < 1) rcHin++;
     const man = (n) => +(n / LIFE_CLEAR_PDAY).toFixed(1);
+    const dig = (n) => [Math.round(n * DEPTH[0] / DIG_M3), Math.round(n * DEPTH[1] / DIG_M3)];
+    if (SVGDIR) {   // 그림 — 칸 1 = 4px · 마을 둘레 ±(ㄷ′ 장반경 + 14)
+      const R = Math.max(rw.ao, re.ao) + 14, PX = 4, W = (2 * R + 1) * PX;
+      const rect = (x, y, fill, op) => { const dx = x - ccx + R, dy = y - ccy + R; if (dx < 0 || dy < 0 || dx > 2 * R || dy > 2 * R) return ''; return `<rect x="${dx * PX}" y="${dy * PX}" width="${PX}" height="${PX}" fill="${fill}"${op ? ` fill-opacity="${op}"` : ''}/>`; };
+      const parts = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${W + 64}" viewBox="0 0 ${W} ${W + 64}"><rect width="${W}" height="${W + 64}" fill="#fbfaf6"/>`];
+      for (const [k, o] of owner) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (Math.abs(x - ccx) > R || Math.abs(y - ccy) > R) continue; parts.push(rect(x, y, o === v ? '#9cc98a' : '#c9c3d6', 0.8)); }
+      for (const k of rwSet) { const ci = k.indexOf(','); parts.push(rect(+k.slice(0, ci), +k.slice(ci + 1), '#3d6fb6', 0.45)); }
+      for (const k of rcSet) { const ci = k.indexOf(','); parts.push(rect(+k.slice(0, ci), +k.slice(ci + 1), '#c0392b', 0.55)); }
+      for (const c of D) parts.push(rect(c.cx, c.cy, '#6b4423'));
+      for (const h of allH) parts.push(rect(h.cx, h.cy, '#111'));
+      parts.push(rect(ccx, ccy, '#e6a817'));
+      const L = (y, c, t) => `<rect x="8" y="${W + y - 9}" width="10" height="10" fill="${c}"/><text x="24" y="${W + y}" font-size="12" font-family="sans-serif" fill="#222">${t}</text>`;
+      parts.push(L(16, '#6b4423', `ㄷ 판 도랑(부팅 고리 ${Dset.size}칸)`), L(32, '#3d6fb6', `ㄷ′ 지금 집 전부 고리(${rwSet.size}칸)`), L(48, '#c0392b', `ㄹ 회관 마당 · 곳간만(${rcSet.size}칸)`));
+      parts.push(`<text x="${W - 8}" y="${W + 16}" font-size="12" font-family="sans-serif" text-anchor="end" fill="#222">${V.name} · ${path.basename(f, '.db')} · 날 ${meta.value}</text><text x="${W - 8}" y="${W + 32}" font-size="12" font-family="sans-serif" text-anchor="end" fill="#555">초록 제 영토 · 보라 이웃 영토 · 검정 집 · 노랑 회관</text></svg>`);
+      fs.mkdirSync(SVGDIR, { recursive: true });
+      fs.writeFileSync(path.join(SVGDIR, `T1191_${V.name}_${path.basename(f, '.db')}_d${meta.value}.svg`), parts.join(''));
+    }
     out.push({ db: path.basename(f), day: meta ? +meta.value : null, v, name: V.name, pop: V.population,
       D: { cells: Dset.size, a: re.a, b: re.b, perim: +(Math.PI * (3 * (re.a + re.b) - Math.sqrt((3 * re.a + re.b) * (re.a + 3 * re.b)))).toFixed(0), reHit, reCells: re.cells.length,
-        outSeed, outOwn, overlapOther: other, otherVils: otherV.size, toAddTerr: outOwn - other, manDays: man(Dset.size), m3: [+(Dset.size * DEPTH[0]).toFixed(0), +(Dset.size * DEPTH[1]).toFixed(0)] },
-      W: { cells: rwSet.size, a: rw.a, b: rw.b, overlapOther: rwOther, otherVils: rwOV.size, noOwner: rwOutOwn, manDays: man(rwSet.size) },
+        outSeed, outOwn, overlapOther: other, otherVils: otherV.size, toAddTerr: outOwn - other, manDays: man(Dset.size), digDays: dig(Dset.size), m3: [+(Dset.size * DEPTH[0]).toFixed(0), +(Dset.size * DEPTH[1]).toFixed(0)] },
+      W: { cells: rwSet.size, a: rw.a, b: rw.b, overlapOther: rwOther, otherVils: rwOV.size, noOwner: rwOutOwn, manDays: man(rwSet.size), digDays: dig(rwSet.size) },
       grow: { terr: own.size, seed: seed.size, terrBeyond, terrOnDitch, terrInside },
       houses: { all: allH.length, inRing: hIn, outRing: hOut },
-      R: { cells: rcSet.size, a: rc.a, b: rc.b, outSeed: rcOutSeed, outOwn: rcOutOwn, overlapOther: rcOther, housesIn: rcHin, manDays: man(rcSet.size), m3: [+(rcSet.size * DEPTH[0]).toFixed(0), +(rcSet.size * DEPTH[1]).toFixed(0)] } });
+      R: { cells: rcSet.size, a: rc.a, b: rc.b, outSeed: rcOutSeed, outOwn: rcOutOwn, overlapOther: rcOther, housesIn: rcHin, manDays: man(rcSet.size), digDays: dig(rcSet.size), m3: [+(rcSet.size * DEPTH[0]).toFixed(0), +(rcSet.size * DEPTH[1]).toFixed(0)] } });
   }
 }
-console.log(`| 판 | 날 | 마을 | 인구 | ㄷ 도랑 칸 | 장 · 단반경(m) | 둘레(m) | 시딩 영토 밖 | 끝 영토 밖 | 이웃 영토와 겹침 | 일손(인·일 · 개간 셀 속도 ${LIFE_CLEAR_PDAY}) | 흙(m³ · 깊이 0.2 ~ 1.1) | 되찾기 겹침 |`);
-console.log('|---|---:|---|---:|---:|---|---:|---:|---:|---:|---:|---|---|');
-for (const r of out) console.log(`| ${r.db} | ${r.day} | ${r.name} | ${r.pop} | ${r.D.cells} | ${r.D.a} · ${r.D.b} | ${r.D.perim} | ${r.D.outSeed} | ${r.D.outOwn} | ${r.D.overlapOther}(${r.D.otherVils}곳) | ${r.D.manDays} | ${r.D.m3[0]} ~ ${r.D.m3[1]} | ${r.D.reHit}/${r.D.cells}(기하 ${r.D.reCells}) |`);
-console.log('\n| 판 | 마을 | ㄹ 핵심 고리 칸 | 장 · 단반경 | 시딩 영토 밖 | 끝 영토 밖 | 이웃 겹침 | 고리 안 집 | 일손(인·일) | 흙(m³) |');
+console.log(`| 판 | 날 | 마을 | 인구 | ㄷ 도랑 칸 | 장 · 단반경(m) | 둘레(m) | 시딩 영토 밖 | 끝 영토 밖 | 이웃 영토와 겹침 | 흙(m³ · 깊이 0.2 ~ 1.1) | 일손(인·일 · 1.8 m³) | 견줌 개간 속도(인·일) | 되찾기 겹침 |`);
+console.log('|---|---:|---|---:|---:|---|---:|---:|---:|---:|---|---|---:|---|');
+for (const r of out) console.log(`| ${r.db} | ${r.day} | ${r.name} | ${r.pop} | ${r.D.cells} | ${r.D.a} · ${r.D.b} | ${r.D.perim} | ${r.D.outSeed} | ${r.D.outOwn} | ${r.D.overlapOther}(${r.D.otherVils}곳) | ${r.D.m3[0]} ~ ${r.D.m3[1]} | ${r.D.digDays[0]} ~ ${r.D.digDays[1]} | ${r.D.manDays} | ${r.D.reHit}/${r.D.cells}(기하 ${r.D.reCells}) |`);
+console.log('\n| 판 | 마을 | ㄹ 핵심 고리 칸 | 장 · 단반경 | 시딩 영토 밖 | 끝 영토 밖 | 이웃 겹침 | 고리 안 집 | 흙(m³) | 일손(인·일 · 1.8 m³) |');
 console.log('|---|---|---:|---|---:|---:|---:|---|---:|---|');
-for (const r of out) console.log(`| ${r.db} | ${r.name} | ${r.R.cells} | ${r.R.a} · ${r.R.b} | ${r.R.outSeed} | ${r.R.outOwn} | ${r.R.overlapOther} | ${r.R.housesIn}/${r.houses.all} | ${r.R.manDays} | ${r.R.m3[0]} ~ ${r.R.m3[1]} |`);
-console.log('\n| 판 | 마을 | ㄷ′ 지금 집 전부 고리 칸 | 장 · 단반경 | 이웃 영토와 겹침 | 어느 영토에도 없는 칸 | 일손(인·일) |');
+for (const r of out) console.log(`| ${r.db} | ${r.name} | ${r.R.cells} | ${r.R.a} · ${r.R.b} | ${r.R.outSeed} | ${r.R.outOwn} | ${r.R.overlapOther} | ${r.R.housesIn}/${r.houses.all} | ${r.R.m3[0]} ~ ${r.R.m3[1]} | ${r.R.digDays[0]} ~ ${r.R.digDays[1]} |`);
+console.log('\n| 판 | 마을 | ㄷ′ 지금 집 전부 고리 칸 | 장 · 단반경 | 이웃 영토와 겹침 | 어느 영토에도 없는 칸 | 일손(인·일 · 1.8 m³) |');
 console.log('|---|---|---:|---|---:|---:|---:|');
-for (const r of out) console.log(`| ${r.db} | ${r.name} | ${r.W.cells} | ${r.W.a} · ${r.W.b} | ${r.W.overlapOther}(${r.W.otherVils}곳) | ${r.W.noOwner} | ${r.W.manDays} |`);
+for (const r of out) console.log(`| ${r.db} | ${r.name} | ${r.W.cells} | ${r.W.a} · ${r.W.b} | ${r.W.overlapOther}(${r.W.otherVils}곳) | ${r.W.noOwner} | ${r.W.digDays[0]} ~ ${r.W.digDays[1]} |`);
 console.log('\n| 판 | 마을 | 영토 칸(시딩 → 지금) | 도랑 위 영토 칸 | 고리 안 영토 | 고리 바깥 영토 | 집(고리 안 · 밖) |');
 console.log('|---|---|---|---:|---:|---:|---|');
 for (const r of out) console.log(`| ${r.db} | ${r.name} | ${r.grow.seed} → ${r.grow.terr} | ${r.grow.terrOnDitch} | ${r.grow.terrInside} | ${r.grow.terrBeyond} | ${r.houses.inRing} · ${r.houses.outRing} |`);
