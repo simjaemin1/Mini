@@ -1,0 +1,58 @@
+{
+  "card": "T1186",
+  "date": "2026-11-06",
+  "access": "맥 내장 브라우저(EXARC · Cambridge · e뮤지엄 · 田原本町) + 맥 셸 curl/pdftotext(원문 PDF 다섯 — 컨테이너 프록시 403 자리) + 웹 검색 · 가져오기(MDPI · Britannica · 高知 · 平塚)",
+  "blade": {
+    "axe": {
+      "type": "太型蛤刃石斧 (야요이 · 대륙계 마제석기)",
+      "used_g": [386, 1100, 730, 867, 412, 800, 1110, 698, 1040, 425, 719],
+      "used_rows": ["9 ウバヶ平 Cd 完形 110mm", "12 松本町 Ab 完形 182mm", "27 沢 Bc 完形 157mm", "29 上町 Cc 完形 158mm", "35 岩平 Cd 完形 105mm", "39 千蔵寺 Ac 完形 154mm", "52 上町上 Bb 完形 182mm", "58 三川原 Cc 完形 136mm", "59 三川原 Cb 完形 176mm", "67 岡前 Cd 完形 96mm", "72 赤保木 Cc 完形 152mm"],
+      "excluded": "ほぼ完 1500 · 262 · 650 g · 괄호(깨진 것) 740 · 349 · 252 g",
+      "mean_g": 753.36,
+      "source": "吉朝則富 2022 「飛驒の太型蛤刃石斧」『光ミュージアム研究紀要 人文科学』9, 第1表 — https://h-am.jp/kiyo/pdf/kiyo_jinbun/jinbun09_2021.pdf",
+      "also": [
+        { "g": 793.9, "size": "16.4 × 6.8 × 4.3 cm", "site": "高知 田村遺跡群", "source": "高知県立埋蔵文化財センター 収蔵庫 太型蛤刃石斧 — http://www.kochi-maibun.jp/center_collection_detail24.html" },
+        { "g": 1351, "size": "21.3 cm", "site": "平塚 田村天神前遺跡", "source": "平塚市博物館 大陸から伝わった磨製石斧 — https://www.hirahaku.jp/web_yomimono/kouko/ko50-14.html" }
+      ]
+    },
+    "pickaxe": {
+      "type": "打製石斧 · 土掘具(鍬) — 돌괭이",
+      "used_g": [1004.6, 438.1, 571.5],
+      "size_cm": [27.0, 20.5, 22.3],
+      "mean_g": 671.4,
+      "site": "和歌山 立野遺跡 야요이 전기 유로(遺構302)",
+      "source": "『立野遺跡』(公財)和歌山県文化財センター 2013 — 肥後弘幸 2021 「舞鶴市志高遺跡の石鍬」『京都府埋蔵文化財論集』8, 注10 재인용 — https://www.kyotofu-maibun.or.jp/data/kankou/kankou-pdf/ronsyuu8/06higo.pdf",
+      "also": [ { "mean_g": 89.5, "n": 12, "site": "舞鶴 志高遺跡 야요이 중기 후엽 石鍬(粘板岩)", "note": "보고자: 鍬として利用することは…効果は疑わしい — 안 씀" } ]
+    },
+    "unconfirmed": {
+      "돌자귀(扁平片刃·柱状片刃·유구석부)": "미확인",
+      "반달돌칼(石包丁)": "미확인 — 烏丸綾小路(京都) · 片野(三重) · 鳥取 소개 쪽에 무게 없음",
+      "석검(磨製石剣)": "미확인 — 인천시립박물관 간돌검 · 경기도박물관(구글 아트) 무게 없음",
+      "석촉": "미확인 — 인천시립박물관 간돌화살촉 길이 범위만",
+      "한반도 출토 무게": "미확인 — e뮤지엄 · 인천시립박물관 · 순천 문화 자료 = 크기만 · 보고서 유물 관찰표 원문 검색 실패"
+    }
+  },
+  "life": {
+    "rock": {
+      "kg": 1500,
+      "endpoint": "냇돌이 심하게 깨지지 않았다(하한)",
+      "tool": "자루 단 홈 없는 냇돌 채광 망치(Chuquicamata 꼴) · 웨일스 1990년대 초 · 불 지핀 광맥",
+      "source": "Timberlake & Craddock 2013, Chungara 45(1): 33–59, p.50 — https://www.redalyc.org/pdf/326/32626321007.pdf",
+      "haft": "p.51 — 자루 · 묶음 반 시간쯤마다 고침 · 자루가 더 큰 한계(kg 환산 미확인)"
+    },
+    "wood": {
+      "trees": 100,
+      "endpoint": "원래 날 그대로(하한 · 재연마 전)",
+      "tool": "신석기 원래 부싯돌 도끼(덴마크 드라베드 숲 1952–54)",
+      "source": "Encyclopaedia Britannica, Hand tool — Neolithic tools — https://www.britannica.com/technology/hand-tool/Neolithic-tools (원보고 Iversen 1956 Scientific American 194(3) · Jørgensen 1985 National Museum of Denmark — 유료 · 미열람)",
+      "also": "참나무 30 cm 넘는 것 반 시간 · 소나무 61 cm 20분 안 · 3명이 자작나무 숲 0.05 ha 4시간"
+    },
+    "reference": [
+      { "what": "뗀 처트 도끼 0.4 · 0.6 kg · 월계참나무 지름 3.5–5.6 cm 80그루", "endpoint": "재연마 3–4그루마다 · 머리 깨짐 0", "source": "Putz, Fletcher & Magee 2023, Forests 14(2): 202 — https://www.mdpi.com/1999-4907/14/2/202" },
+      { "what": "넓적 쐐기 1 kg · 참나무 25 · 35 cm", "endpoint": "1시간 남짓 · 2시간 가까이 · 날 닳음 거의 없음 · 2.5 kg 짜리는 빗맞은 한 타에 날 큰 조각", "source": "Elburg, Hein, Probst-Böhm & Walter 2015, EXARC Journal 2015/2 — https://exarc.net/ark:/88735/10196" },
+      { "what": "망치도끼 평균 지름 16 cm 100그루", "source": "Štelcl & Malina 1970 (Elburg 2015 재인용 · 원문 미열람)" },
+      { "what": "돌레라이트 채굴 망치 8.1 · 5.6 · 2.1 kg 두 시간 실험", "endpoint": "수명 수 없음", "source": "Hernández 외 2020, EXARC Journal 2020/1 — https://exarc.net/ark:/88735/10480" }
+    ]
+  },
+  "wear_allow": { "value": 1, "derivation": "첫 움집 길에서 도구마다 깎은 · 벤 kg ÷ 그 도구 수명 kg 의 최댓값(실기 판마다 · 보고 §4) < 1 → 1" }
+}

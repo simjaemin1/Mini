@@ -82,6 +82,9 @@ if (process.env.T1065_CHILD === '1') {
       o.hpTool = H.resources.has(r.id) ? r.hp : 'gone'; o.toolText = (last(p) || {}).text || null; o.mult = H.TOOL_EFFECTS[tool][kind === 'chop' ? 'gatherWoodMult' : 'gatherStoneMult'];
       o.chipTool = chipOf(r);
       o.dura = inst ? [d0, inst.d, inst.max] : null;
+      // ★[T1186] 돌 규칙 켬이면 곡괭이 · 도끼는 깎은 · 벤 kg 만큼 닳는다 — 그 나무 통나무 kg · 한 kg 닳기를 같이 적는다(판정은 부모)
+      o.knob1146 = !!H.T1146_STONE_RULE; o.perKg = H._t1186PerKg ? H._t1186PerKg(tool) : 0; o.maxHp = r0.maxHp;
+      o.resKg = kind === 'chop' ? ((H.lootOfResource(r) || {}).wood || 0) * require(path.join(ROOT, 'server', 'weights.js')).kgOf('wood') : 0;
     }
     res[kind] = o;
   }
@@ -212,7 +215,8 @@ if (ON && OFF) {
   ok(R.chop.bareStop === 'gather', '★거절 알림이 채집 반복을 멈추라고 한다(`stop: gather` — 될 수 없는 일을 1초마다 다시 보내지 않게)', R.chop.bareStop);
   ok(/조잡한 돌도끼를 손에 들어야 나무를 벨 수 있습니다/.test(R.chop.ownText || '') && R.chop.hpOwn === R.chop.hp0, '★가졌는데 안 들었다 — "손에 들어야" · hp 그대로', R.chop.ownText);
   ok(R.chop.hpTool === R.chop.hp0 - R.chop.mult || (R.chop.hpTool === 'gone' && R.chop.hp0 <= R.chop.mult), '★★조잡한 돌도끼를 들면 벤다 — 배수 그대로(`TOOL_EFFECTS.crude_axe`)', `hp ${R.chop.hp0} → ${R.chop.hpTool} · 배수 ${R.chop.mult}`);
-  ok(R.chop.dura && R.chop.dura[1] === R.chop.dura[0] - 1, '조잡한 돌도끼 내구 1 닳음(종전 문법)', JSON.stringify(R.chop.dura));
+  const chopWear = R.chop.knob1146 ? +(R.chop.resKg * Math.min(R.chop.mult, R.chop.hp0) / R.chop.maxHp * R.chop.perKg).toFixed(6) : 1;   // ★[T1186] 켬 = 벤 kg × 한 kg 닳기(그 나무 통나무 kg × 깎인 hp ÷ 최대 hp) · 끔 = 1
+  ok(R.chop.dura && Math.abs((R.chop.dura[0] - R.chop.dura[1]) - chopWear) < 1e-5 && (!R.chop.knob1146 || R.chop.perKg > 0), `조잡한 돌도끼 내구 — 한 타 ${chopWear} 닳음(${R.chop.knob1146 ? `★[T1186] 벤 ${R.chop.resKg} kg × ${Math.min(R.chop.mult, R.chop.hp0)}/${R.chop.maxHp} × 100/1500` : '종전 문법 1'})`, JSON.stringify(R.chop.dura));
   ok(R.quarry.hpBare === R.quarry.hp0 && !(R.quarry.chipBare > 0) && /조잡한 돌괭이가 있어야 돌을 캘 수 있습니다/.test(R.quarry.bareText || ''), '★★맨손 채석 — hp 그대로(바위 장부도 0) · 이유 한 줄', R.quarry.bareText);
   ok(/자갈은 바위 곁에서 맨손으로 주울 수 있습니다\./.test(R.quarry.bareText || ''), '★맨손 채석 이유가 자갈 얻는 길을 같이 말한다(돌괭이가 자갈 3 을 먹는다 — 길이 돌지 않게)', R.quarry.bareText);
   //   ★[T1146] 돌 규칙 켬(기본)이면 한 타는 hp 대신 바위 장부에 배수 × 금 간 돌 한 타 kg 을 쌓는다(돌 한 개 kg 이 차야 hp 한 점) — 같은 배수가 kg 으로 보인다
