@@ -15,6 +15,8 @@
 // ※ zone.js 의 mineOreCell / NPC 채굴 배선은 **실서버 부팅**으로 확인한다(이 하네스 범위 밖):
 //    `DB_PATH=… VILLAGE_DAY_MS=6000 node --experimental-sqlite <wrap>` → 로그 "⛏ NPC 채굴: N개 마을 · 재고 -X"
 'use strict';
+// T1188: 기존 원석/OFF 계약. 광물별 켬은 test-t1188-ore-split이 검사.
+process.env.T1188_ORE_SPLIT='0';
 const path = require('path');
 const S = require(path.join(__dirname, '..', 'server', 'specialty'));
 const L = require(path.join(__dirname, '..', 'server', 'livelihood'));

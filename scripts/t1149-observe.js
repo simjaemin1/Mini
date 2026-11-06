@@ -6,7 +6,7 @@
 //     인구 · 곳간 식량 환산(`totalFoodEquivalent`) · K 와 그 셋(`_dpDebug.K` · `_kDbg` 자리 · 식량 흐름 · 땔감) · 침상(min(주거, 지은 침상)) ·
 //     누계 식량 수입(`tradeStats.foodImported`) · 누계 죽음(`_deadTot`) · 누계 출생(명부에 처음 보는 사람) ·
 //     그날 길 위 식량 캐러밴 — 이 마을로 오는 것(나간 짐이 식량 · 돌아오는 짐이 식량) · 이 마을에서 식량을 내가는 것 · 그날 식량 값(`_priceCache.food`) ·
-//     식량 흐름 EMA(`surplusEMA.food`) · 한랭(`_coldStress`) · 로지스틱 항(`_dpDebug.logi`)
+//     식량 흐름 EMA(`surplusEMA.food`) · 한랭(`_coldStress`) · 로지스틱 항(`_dpDebug.logi`) · [T1179] 밭에 선 먹을 것(`t1179Standing`) · 보존식 재고(`PRESERVED_FOODS` 합)
 //   표 기계 `scripts/t1149-table.js`.
 const path = require('path'), fs = require('fs');
 if (!process.env.T577_SEED) return;
@@ -16,7 +16,7 @@ if (!fs.existsSync(path.join(ROOT, 'server', 'events.js'))) ROOT = path.join(pat
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const FOODR = { food: 1, fish: 1, meat: 1, cooked_food: 1, rice: 1, wheat: 1, barley: 1 };
-const COLS = ['pop', 'tfe', 'K', 'kSlot', 'kProd', 'kFuel', 'hcap', 'imp', 'dead', 'born', 'carIn', 'carOut', 'pFood', 'sEma', 'cold', 'logi', 'banditized'];
+const COLS = ['pop', 'tfe', 'K', 'kSlot', 'kProd', 'kFuel', 'hcap', 'imp', 'dead', 'born', 'carIn', 'carOut', 'pFood', 'sEma', 'cold', 'logi', 'banditized', 'pool', 'pres'];
 const rec = { root: ROOT, cols: COLS, names: null, land: null, rows: [], errs: 0, err0: null };
 const r2 = (x) => (x == null || !isFinite(+x)) ? null : Math.round((+x) * 100) / 100;
 const SEEN = new WeakSet(), BORN = new Map();
@@ -41,7 +41,8 @@ function snap(world, day) {
     let tfe = 0; try { tfe = V1.totalFoodEquivalent(v); } catch (e) { tfe = -1; }
     const hcap = Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity);
     return [(v.npcs || []).length, r2(tfe), r2(dd.K), r2(kd.slot), r2(kd.prod), r2(kd.fuel), isFinite(hcap) ? r2(hcap) : null, r2(T.foodImported), v._deadTot || 0, BORN.get(v) || 0,
-      cin.get(v) || 0, cout.get(v) || 0, r2(v._priceCache && v._priceCache.food), r2(v.surplusEMA && v.surplusEMA.food), r2(v._coldStress), r2(dd.logi), v._banditized ? 1 : 0];
+      cin.get(v) || 0, cout.get(v) || 0, r2(v._priceCache && v._priceCache.food), r2(v.surplusEMA && v.surplusEMA.food), r2(v._coldStress), r2(dd.logi), v._banditized ? 1 : 0,
+      r2(V1.t1179Standing ? V1.t1179Standing(v) : 0), r2((V1.PRESERVED_FOODS || []).reduce((a, k) => a + ((v.storage || {})[k] || 0), 0))];
   });
   rec.rows.push([day, row]);
 }

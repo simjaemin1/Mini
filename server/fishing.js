@@ -282,6 +282,16 @@ function stockRatioAt(cx, cy, now) {
 
 // 어획 — 그 자리의 셀들에서 stock 을 뺀다. 반환: 실제로 뺀 stock 총량.
 //   onSave(key, r) 로 영속을 호출자에 맡긴다(이 모듈은 DB 를 모른다).
+// T1180: 한 마리를 대는 재고가 있을 때만 같은 어장 장부에서 뺀다. 부족하면 손·재고를 바꾸지 않는다.
+function drawWholeStock(cx, cy, stock, now, onSave) {
+  if (!(stock>0) || !Number.isFinite(stock) || !Number.isInteger(cx) || !Number.isInteger(cy)) return 0;
+  let available=0;
+  for(let dy=-CFG.DRAW_R;dy<=CFG.DRAW_R;dy++)for(let dx=-CFG.DRAW_R;dx<=CFG.DRAW_R;dx++){
+    if(dx*dx+dy*dy>CFG.DRAW_R*CFG.DRAW_R)continue;
+    available+=rec((cx+dx)+'_'+(cy+dy),now).s;
+  }
+  return available+1e-12>=stock ? drawStock(cx,cy,stock,now,onSave) : 0;
+}
 function drawStock(cx, cy, stock, now, onSave) {
   const cells = [];
   for (let dy = -CFG.DRAW_R; dy <= CFG.DRAW_R; dy++) {
@@ -447,6 +457,7 @@ function plan(sp, stock01, now, rng, kg0) {
   const waitMs = Math.max(CFG.WAIT_MIN_MS, Math.min(CFG.WAIT_MAX_MS, Math.round(raw)));
   let kg = _lognormal(rng, (kg0 > 0 ? Math.log(kg0) : CFG.SIZE_MU) + Math.log(sc.size), CFG.SIZE_SIGMA);
   kg = Math.min(CFG.SIZE_MAX, +kg.toFixed(3));
+  if(require('./fish-goods').ON&&kg0>0)kg=kg0;
   if (!T609_BIG_WINDOW) return { biteAt: now + waitMs, waitMs, kg, windowMs: windowMsFor(kg) };
   return { biteAt: now + waitMs, waitMs, kg, windowMs: windowFor(kg, kg0), fightMs: fightMsFor(kg) };   // ★[T609 ②] 켬만
 }
@@ -494,7 +505,7 @@ module.exports = {
   CFG, fishCells, setDayMs, T593_SEA, T593_KG,
   SPECIES_BY_BIOME, ALL_SPECIES, FISH_ITEMS, speciesFor, isFish,
   spotAt, spotScore, _riverU, _lakeR, _seaSpot,
-  regen, rec, stockRatioAt, drawStock, deficitStock, deficitBy, stockToEcon, diffuse,
+  regen, rec, stockRatioAt, drawStock, drawWholeStock, deficitStock, deficitBy, stockToEcon, diffuse,
   plan, windowMsFor, _lognormal,
   T609_BIG_WINDOW, windowFor, fightMsFor,   // ★[T609 ②] 큰 종 창 안 셋 — 표 기계(`t602-windows.js`)가 같은 함수로 잰다
 };

@@ -41,7 +41,7 @@ const body = (name) => (VC.match(new RegExp('function\\*? ' + name + '\\([^)]*\\
 const noNum = (s) => !/[^\w.](?:[1-9]|\d{2,})(?:\.\d+)?(?![\w])/.test(s.replace(/toFixed\(6\)/g, '').replace(/1e-9/g, ''));
 const ON = '1';
 //   손잡이 다섯은 기본값 그대로(T717 ② · T720 · T374 켬) · 행위 층(T325 · T347)은 판마다 연다 · 몸 명부 손잡이들은 끔
-const BASE = { T733_FELL_LOOT: '0', T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T374_DEMAND_STOP: '1', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T561_ROSTER_BODY: '',
+const BASE = { T733_FELL_LOOT: '0', T325_WOOD_ACT: '1', T347_FORAGE_ACT: '0', T374_DEMAND_STOP: '1', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T561_ROSTER_BODY: '',
   T717_WOOD_HAND: undefined, T720_LON_DAY: undefined, T490_FORAGE_REACH: '0' };
 const env = (o) => Object.assign({}, BASE, o || {});
 
@@ -85,7 +85,7 @@ console.log('\n① 잔가지 · 도토리 → 곳간 — 정적');
      && /if \(r > 1e-9\) P\[k\] = r; else delete P\[k\];/.test(pin),
     'ⓑ ★★곳간이 안 받은 몫 — 몸은 손에 · 헤드리스는 마을 짐에 · 짐은 받은 만큼만 뺀다(T544 · T717 ② 문법)');
   ok(/if \(T717_WOOD_HAND\) _t717PackPut\(vil, u - \(_g \|\| 0\)\);\s*if \(T733_FELL_LOOT\) _t733LootIn\(vil, loot\);/.test(daily)
-     && /if \(T717_WOOD_HAND && _on\) _t717PackIn\(vil\);\s*if \(T733_FELL_LOOT && _on\) _t733PackIn\(vil\);/.test(daily)
+     && /if \(T717_WOOD_HAND && _on && !_bodyOnly\) _t717PackIn\(vil\);\s*if \(T733_FELL_LOOT && _on && !_bodyOnly\) _t733PackIn\(vil\);/.test(daily)
      && daily.indexOf('_t733PackIn(vil)') < daily.indexOf('for (let k = 0; k < _tr.length * 8'),
     'ⓐ ★★헤드리스 — 같은 그루(`loot`)의 두 칸을 통나무 입구 바로 뒤에서 · 짐은 베기 전(통나무 짐 옆)');
   ok(/if \(T733_FELL_LOOT\) _wood\(\);\s*if \(E\.T347_FORAGE_ACT && E\.forageActOn\(vil\.econ\)\) \{[\s\S]*?\}\s*if \(!T733_FELL_LOOT\) _wood\(\);/.test(hands)
@@ -144,7 +144,7 @@ console.log('\n① 잔가지 · 도토리 → 곳간 — 실행(정본 함수 ·
   ok(aOff.cutA >= 1 && aOff.ga === 0 && aOff.lostA === aOff.cutA && aOn.cut === aOff.cut && aOn.gw === aOff.gw && aOn.ga === aOn.cutA && aOn.gt === aOn.cutT && aOn.lostA === 0 && aOn.lostT === 0,
     'ⓑ ★★도토리 달린 그루 — 끔: 도토리가 사라진다 · 켬: 곳간에(통나무 쪽은 같다)', `벤 ${aOn.cut}그루 · 도토리 ${aOn.cutA}(끔 사라짐 ${aOff.lostA} · 켬 곳간 ${aOn.ga}) · 잔가지 ${aOn.cutT}(켬 곳간 ${aOn.gt})`);
   //   행위 층 끔 세계 — 켜도 부르는 자리가 없다(기본 세계 = main 바이트의 근거)
-  const noAct = probe(env({ T733_FELL_LOOT: ON, T325_WOOD_ACT: '' }), dayJs);
+  const noAct = probe(env({ T733_FELL_LOOT: ON, T325_WOOD_ACT: '0' }), dayJs);
   ok(noAct.cut === 0 && noAct.gt === 0 && noAct.ga === 0 && noAct.gr === null,
     'ⓐ ★행위 층(`T325_WOOD_ACT`) 끔 세계 — 켜도 아무것도 안 한다(벰 0 · 곳간 0 · 계측 칸 0) ⇒ 기본 세계는 main 그대로', JSON.stringify({ cut: noAct.cut, gt: noAct.gt, gr: noAct.gr }));
 }
@@ -253,7 +253,7 @@ console.log('\n② 채집 손 "그날 새로 땄나" — 실행(정본 함수)')
       days.push({walked:D.walked,picks:picks-p0,batch:gB,hand:b.inventory.berry,gran:+(fr()-f0).toFixed(4),t733:D.t733||null});
     }
     console.log(JSON.stringify({on:T.ON,days,W:vil._t733Wf||null}))`;
-  const E3 = { T347_FORAGE_ACT: '1', T325_WOOD_ACT: '' };
+  const E3 = { T347_FORAGE_ACT: '1', T325_WOOD_ACT: '0' };
   const dOff = probe(env(E3), dd), dOn = probe(env(Object.assign({ T733_FELL_LOOT: ON }, E3)), dd);
   const col = (o, k) => o.days.map((x) => x[k]).join('·');
   ok(dOff.on === false && col(dOff, 'walked') !== '0·0·0' && col(dOff, 'picks') === '0·0·0' && col(dOff, 'hand') === '4·2·0' && dOff.days[2].gran === 6,
@@ -264,7 +264,7 @@ console.log('\n② 채집 손 "그날 새로 땄나" — 실행(정본 함수)')
     'ⓓ ★★★켬 — 그 몸은 걸은 몸이 아니다 ⇒ 일괄(짐 · 덤불)이 그날 몫(2)을 채우고 · 해 질 녘 손은 곳간이 안 받는다(손 6 그대로 · 곳간은 같은 6) · 계측 칸: 갈린 날 3 · 옛 셈이면 막혔을 일괄 3',
     `걸음 ${col(dOn, 'walked')} · 일괄 딴 개체 ${col(dOn, 'picks')} · 일괄 곳간 ${col(dOn, 'batch')} · 손 ${col(dOn, 'hand')} · ${JSON.stringify(dOn.W)}`);
   //   채집 층 끔 세계 — 켜도 아무것도 안 한다
-  const noF = probe(env({ T733_FELL_LOOT: ON, T347_FORAGE_ACT: '', T325_WOOD_ACT: '' }), dd);
+  const noF = probe(env({ T733_FELL_LOOT: ON, T347_FORAGE_ACT: '0', T325_WOOD_ACT: '0' }), dd);
   ok(noF.days.every((x) => x.walked === undefined && x.picks === 0 && x.hand === 6) && noF.W === null,
     'ⓐ ★채집 층(`T347_FORAGE_ACT`) 끔 세계 — 켜도 세는 자리 · 넣는 자리가 안 돈다(손 그대로 · 계측 칸 0)', JSON.stringify(noF.days[0]));
 }

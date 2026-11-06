@@ -494,6 +494,16 @@ function sowableMonth(field, month) {
   const out = IDS.filter((id) => fitsField(id, field) && sowMonthsOf(id).includes(month | 0));
   return (_smCache[k] = out);
 }
+// ★[T1179] 마을 특산물 고르기 — 시드 · 달 · 자리(논 1종 · 밭 2종 분담)의 순수 함수. 몸은 `server/villages.js` `_villageCropFor` 에서
+//   **글자 그대로 옮겼다**(그쪽은 이 함수를 부른다 · 결과 바이트 같음) — econ 작물 철(`T1179_CROP_SEASON`)이 같은 고르기를 부른다(사본 0).
+function villageCropPick(seed, field, mo, par) {
+  const cand = sowableMonth(field, mo);
+  if (!cand.length) return null;
+  const pick = (salt) => { const h = (Math.imul(seed ^ salt, 2654435761) ^ Math.imul(mo + 1, 40503)) >>> 0; return cand[h % cand.length]; };
+  let res; if (field !== '밭') res = pick(101);
+  else { const c1 = pick(211); if (cand.length < 2) res = c1; else { let c2 = pick(307); if (c2 === c1) c2 = cand[(cand.indexOf(c1) + 1) % cand.length]; res = par ? c2 : c1; } }
+  return res;
+}
 // ★결정론 해시 — `wildSeedAt` 이 쓰는 그 함수를 **그대로 내준다**(부르는 쪽이 사본을 만들지 않게).
 function h32(a, b, c) { return _h32(a, b, c); }
 
@@ -540,7 +550,7 @@ module.exports = {
   keepDaysOf, seedKeepDaysOf, hungerOf, tastyOf, growDaysOf, kgOf, koOf, emojiOf,
   T594_CROP_CAL, calDaysOf,   // ★[T594] 작물 철 고증 — 손잡이 · 고증 활동일(순수 유도 · 표에 없으면 null)
   seasonOfDay, sowSeasons, canSowOn, sowableIn, sowableOn, wildSeedAt, WILD_SEED_CHANCE,
-  monthOf, sowMonthsOf, fitsField, sowableMonth, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
+  monthOf, sowMonthsOf, fitsField, sowableMonth, villageCropPick, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
   lifecycleOf, isPerennial, isWinterCrop, LC_WINTER, LC_PERENNIAL,
   dormantAt, vernalDay, VERNAL, CARE_PAUSE, PER_DORMANT, T1041_CROP_MEMO, t1041Stat: () => Object.assign({ on: T1041_CROP_MEMO }, _t1041Stat), _grownDays0,   // ★[T1041] 활동일 · 계절 기억 손잡이(하네스가 읽는다) · ★[T99] 휴면 술어 하나 · 춘화일 — 마을·플레이어가 같이 부른다
   rainedOn, RAIN_WATER,   // ★[T112] 비 온 날은 물 준 날 — 상태기 셋이 같이 부른다
