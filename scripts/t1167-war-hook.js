@@ -5,7 +5,7 @@
 //   env:
 //     T1167_H_MODE=stop    날 장부 문(econ 하루 끝)에서 원하는 꼴의 전쟁(`T1167_H_WANT`)이 서 있으면 → 날 얼림 → 마감 · 저장 큐 드레인 → 덤프 → SIGTERM(제품 종료 문)
 //     T1167_H_MODE=resume  준비가 서는 순간 덤프(`.boot`) · 그 뒤 날마다 전쟁 줄 · `T1167_H_AFTER` 날 뒤 덤프(`.end`) 하고 나간다
-//     T1167_H_WANT=march|siege|battle|return   march = 행군(몸 징발 뒤) · siege = 주둔 · 포위 · battle = 교전 · return = 귀환
+//     T1167_H_WANT=march|march0|siege|battle|return   march = 행군(몸 징발 뒤) · march0 = 몸이 서기 전 행군 · siege = 주둔 · 포위 · battle = 교전 · return = 귀환
 //     T1167_H_MIN=날        이 날 전엔 멈추지 않는다 · T1167_H_OUT=<파일 머리>
 //   읽기만 한다 — 세계에 쓰는 것은 멈춤(얼림 · SIGTERM — t722 자와 같은 문)뿐이다.
 const path = require('path');
@@ -52,6 +52,7 @@ function want(w, st) {
   let dr = 0; for (const n of ((w.atk && w.atk.econ && w.atk.econ.npcs) || [])) if (n._warDraft === w.id) dr++;
   if (!dr) return false;   // 징발 중(econ 표가 서 있는 원정만)
   if (WANT === 'march') return w.phase === 'march' && w.op === 'march' && body && body.instantiated && (w.eta - st.world.day) >= 2;
+  if (WANT === 'march0') return w.phase === 'march' && w.op === 'march' && !(body && body.instantiated);   // ★[T1167 · 11-05] 몸이 서기 전 행군(빠른 시계 판은 행군이 하루 — 선포 날 경계에서 멈춘다 · 다시 뜬 뒤 `_warEnsureBody` 가 몸을 세운다)
   if (WANT === 'siege') return w.phase === 'march' && (w.op === 'camp' || w.op === 'siege') && body && body.instantiated;
   if (WANT === 'battle') return w.phase === 'battle' && body && body.fight;
   if (WANT === 'return') return w.phase === 'return' && (w.eta - st.world.day) >= 2 && w._packOnBodies;
