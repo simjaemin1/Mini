@@ -3730,6 +3730,7 @@ function _t671Shape(p) {
   p._warPackOf = undefined;   // 전쟁 짐(villages.js `_t671Unpack` — 끔이면 `delete`)
   p._t717L = undefined;   // ★[PM 10-14 · T717 ②] 손에 남긴 통나무 몫(villages.js `_t325Deliver` · `_t717NewWood` — test-body-fields 규약)
   p._t733F = undefined;   // ★[T733 ②] 손에 남긴 걷는 채집 몫(villages.js `_t347Deliver` · `_t733NewForage` — 손잡이 `T733_FELL_LOOT` 켬일 때만 값이 든다)
+  p._t1196J = undefined; p._t1196W = undefined;   // ★[T1196] 장인 몸이 든 작업표 번호 · 걸음 칸(villages.js `_t1196Step` — 손잡이 `T1196_ARTISAN_ACT` 켬 · 실제 몸 호스트에서만 값이 든다)
   p._t724Site = undefined; p._t724T = undefined;   // ★[T724] 광부 몸의 그날 셀 · 선 때(villages.js `_t724BodyStep` — 손잡이 `T724_MINE_ACT` 켬일 때만 값이 든다)
   if (T1140_STUCK_INLINE && !T1140_HOT_ORDER) { p._t1140Sx = undefined; p._t1140Sy = undefined; p._t1140Sa = undefined; }   // ★[T1140 ③-다] 막힘 칸 셋(차례 리터럴엔 이미 있다 · 끔 = 이 줄 무동작)
 }
@@ -5546,6 +5547,8 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★★[T333] 바위 술어도 넘긴다 — 생활층 지형 어댑터(`villages.js isRock`)가 여태 `terrain.isRockCellLocal` 을
   //   **직접** 불러 메모를 지나쳤다(T324 프로파일: 남은 지형 시간의 9.6%). 같은 양자화(셀 중심)라 답은 같다.
   isRockTileLocal,
+  // ★[T1196] 장인 작업 자리 — 그 창(kind: tool · smelt · cook)을 여는 가장 가까운 시설(작업대 · 노 · 숯가마 · 모닥불 · 움집 화덕) · 반경 안 · 없으면 null(시설 목록 · 창 표는 정본 하나 — `_facilities` · `Facility.KIND_TYPES`)
+  facilityNear: (kind, x, y, r) => { const ty = Facility.KIND_TYPES[kind] || []; let best = null, bd = Infinity; for (const b of _facilities()) { if (!ty.includes(b.type) || (b.floor | 0) !== 0) continue; const d = Math.hypot(b.x - x, b.y - y); if (d <= r && d < bd) { bd = d; best = b; } } return best ? { x: best.x, y: best.y, type: best.type, id: best.id } : null; },
   isSeaTileLocal,   // ★[T593 ④] 바다 술어 — NPC 어부가 선 물가가 바다 칸 곁인지(`villages._t593SeaBank` · 손잡이 `T593_SEA` 끔이면 안 읽는다)
   standCellNear: _standCellNear,   // ★[T541 ⓑ] 설 수 있는 가장 가까운 칸 — 나선은 한 자리(T83) · 전쟁 대형 슬롯이 막혔을 때 부른다(술어는 호출측)
   npcReachBegin, npcReachStep, npcReachHas, collGenAround, collGenAll, decBudgetOver,   // ★★[T562] 집마다 닿는 칸 집합(같은 술어·같은 반경) · 그 기억의 도장 · 사람 안의 결정 예산
@@ -6137,6 +6140,7 @@ const server = http.createServer((req, res) => {
       // ★[T324] 걷는 몸 관측 — 두 팔이 같은 창으로 보인다(손잡이 뒤가 아니다 · `?reset=1` 이 영점 조정).
       walk: walkPerf(_rst),
       wood: (() => { try { return SimVillages.woodPerf ? SimVillages.woodPerf() : null; } catch (e) { return null; } })(),   // ★[T325] 나무꾼 관측(끔이면 null)
+      artisan: (() => { try { return SimVillages.artisanPerf ? SimVillages.artisanPerf() : null; } catch (e) { return null; } })(),   // ★[T1196] 장인 작업장 관측(끔이면 null)
       forage: (() => { try { return SimVillages.foragePerf ? SimVillages.foragePerf() : null; } catch (e) { return null; } })(),   // ★[T347] 채집 관측(끔이면 null)
       farm: (() => { try { return SimVillages.farmPerf ? SimVillages.farmPerf() : null; } catch (e) { return null; } })(),   // ★[T368] 농부 관측(끔이면 null)
       xzone: (() => { try { return SimVillages.xzonePerf ? SimVillages.xzonePerf() : null; } catch (e) { return null; } })(),   // ★[T533] 존 경계 관측(팔 끔이면 null)

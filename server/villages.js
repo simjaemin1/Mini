@@ -5908,6 +5908,7 @@ function init(deps) {
       picker: 'rational', infoRange: 5000, raidPer100: 0.005, // 랩과 동일 옵션
     });
     econ.bindProductionActs(world);   // T1180: 모든 마을에서 세 행위의 수식 폴백을 닫는다
+    world.lotsPause = (on) => { const G = _t748G(); if (G) G.suspend(on); };   // ★[T1196] 장인 작업표를 떼는 동안 곳간 로트 장부를 멈춘다(갈래가 곳간을 잠깐 바꿨다 되돌린다 — 거래소 견적과 같은 문 · 곳간은 몸이 넣고 뺄 때만 장부에 든다)
     world.villages = [];
     world.events = [];
     // ★★[T135] 나무 층을 econ 에 꽂는다 — `priceFn` 과 같은 계약(econ 은 지형·청크를 모른다).
@@ -9174,6 +9175,7 @@ function __p3Bind(mock) {
   Object.assign(state, mock);
   return {
     state, tickWarBodies, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
+    _t1196Step, _t1196Seats, _t1196Stat, T1196_KIND, artisanPerf,   // ★[T1196] 장인 몸 문 — 하네스(`test-t1196-artisan`)가 운영과 같은 문을 부른다(내보내기만)
     T1063_TERR_BUILD, _t1063Bnd, _t1063DayBnd, _t1063Msg, territoryBoundary,   // ★[T1063] 화면 영토 = 서버 영토(하네스 `test-t1063-terr-draw` 가 운영과 같은 문을 부른다)
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
@@ -11171,6 +11173,7 @@ function _t724DayMark(vil) {
   }
 }
 function _lifeHandsIn(vil) {
+  _t1196Seats(vil);   // ★[T1196] econ 틱 앞 — 장인 빈 몸 명부(끔 · 랩 = 첫 줄에서 돌아간다)
   //   ★★[T757] T720 켬(경계 일괄 없음 — 손은 해 질 녘 `_t720Step` 에서 든다)이어도 **그날 광부 몸이 쳤나**는 여기서 심는다 —
   //     표식(`_t724Walk`)은 손이 아니라 **타수**의 뜻이고, 읽는 둘(econ 원석 게이트 `mineActOn` · `_oreMineDaily` 셀 깎기 문)이 바로 뒤 econ · 채굴 조각이다.
   //     종전(T720 · T724 를 10-14 같이 켬): 이 함수 첫 줄에서 돌아가 표식이 한 번도 안 섰다 ⇒ 몸이 친 마을에서도 econ 수식 원석 + 일괄 셀 깎기가 돌았다(몸 XOR 일괄 위반 · 보고/T757).
@@ -14624,6 +14627,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   //   → 이동 중 '출근'(랩 toWork 동형), 도착하면 역할 라벨. 전부 랩에 있는 라벨만 사용(신규 발명 없음).
   //   이 분기 이전엔 기타 직업이 `return false`로 레거시 일과에 떨어져 **라벨이 영영 안 붙었다**(액션 라벨 구멍의 실체).
   if (!LIFE_FIELD_JOBS.has(job)) {
+    if (T1196_KIND[job]) { const _r = _t1196Step(vil, npc, now, job); if (_r !== null) return _r; }   // ★[T1196] 장인 — 작업표가 있으면 몸이 만든다(없으면 · 끔 = 종전 서성임)
     const idx = _lifeOtherIndex(vil, npc);
     const wx = (vil.ccx + ((idx % 6) - 3)) * SZ + SZ / 2;
     const wy = (vil.ccy + ((((idx / 6) | 0) % 6) - 3)) * SZ + SZ / 2;
@@ -14670,6 +14674,107 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   return false;   // 기타 직업(전사·대장장이 등 실내·특수) → 레거시 일과(작업 도넛·채집)
 }
 
+// ═══ ★★★[T1196 2026-11-06 · 추상 걷기 B] 장인 작업장 — 몸이 곳간에서 재료를 꺼내 들고 · 작업 자리에서 만들고 · 곳간에 넣는다 ═══
+//   econ 쪽(`sim/economy-sim.js` `T1196_ARTISAN_ACT` 머리 주석): 장인 갈래가 그날 할 일을 **작업표**로 내고 곳간은 안 움직인다. 곳간을 움직이는 것은 이 몸뿐이다.
+//   ⓐ 자리(명부) — econ 틱 앞(`_lifeHandsIn` 머리)에 그 직업의 **빈 몸**(작업표를 손에 든 몸 밖) 수를 마을에 심는다(`_t1196Seats`) — econ 은 그만큼만 작업표를 낸다.
+//   ⓑ 몸 — 빈 작업표(그 직업 · 주인 없음)를 집는다 → 곳간 사다리(곳간 없는 마을은 회관 = 마을 중심 · T720 · T561 의 그 자리)에서 머물고(`인출` · `G_DRAWW`) 재료를 꺼낸다(`artisanTake` — 있는 만큼) →
+//     작업 자리로 걸어가(`운반`) 그 창의 제작 시간 동안 머문다(`제작` · `facility.js CRAFT_MS` — 작업대 · 노 · 화덕 정본 시간) → 곳간 사다리로 돌아와 머물고(`저장` · `G_STOREW`) 넣는다(`artisanGive`).
+//   ⓒ 작업 자리 — 그 창(`T1196_KIND`)을 여는 **기존 시설**(작업대 · 노 · 숯가마 · 모닥불 · 움집 화덕 — 존 시설 목록 `deps.facilityNear` · 반경 = 마을 생활 반경 `T325_R`)이 있으면 그 앞,
+//     없으면 그 몸의 회관 안 작업 앵커(종전 서성이던 그 자리 — 랩 villager 분기 앵커). 새로 세울 자리는 이 카드가 안 짓는다(보고 회부 표 · 마을 배치 줄).
+//   ⓓ 몸을 잃은 작업표(몸이 거둬짐 · 다시 뜬 판) — 하루 머리 명부(`_t1196Seats`)가 주인을 지운다 → 같은 직업 빈 몸이 이어서 집는다(든 재료는 작업표 칸에 그대로 · 소멸 0).
+//   ⚠econ 손잡이(`T1196_ARTISAN_ACT`)가 꺼지면 작업표가 안 서고 이 블록은 아무것도 안 한다(종전 서성임 그대로). 새 수 0.
+const T1196_KIND = { mason: 'tool', armorsmith: 'tool', tailor: 'tool', smith: 'smelt', cook: 'cook' };   // facility.js 창 — 작업대(도구 · 갑옷 · 옷) · 노(제련 · 주조) · 화덕(요리)
+let _t1196Fac = null;
+function _t1196CraftMs(kind) { if (_t1196Fac === null) { try { _t1196Fac = require('./facility'); } catch (e) { _t1196Fac = false; } } return (_t1196Fac && _t1196Fac.CRAFT_MS && _t1196Fac.CRAFT_MS[kind]) || 0; }
+const _t1196Stat = { claim: 0, take: 0, give: 0, fac: 0, hall: 0, orphan: 0 };   // 계측 전용(회계 아님)
+function _t1196On(vil) { const E = _lifeEcon(); return !!(E.T1196_ARTISAN_ACT && vil && vil.econ && E.productionActsBound(vil.econ)); }
+//   ⓐ 명부 — econ 틱 앞. 몸을 잃은 작업표의 주인도 여기서 지운다(ⓓ).
+function _t1196Seats(vil) {
+  if (!_t1196On(vil)) return;
+  const E = _lifeEcon(), pl = state.deps.players, e = vil.econ;
+  const Q = e._t1196Q || [], held = new Set();
+  for (const t of Q) {
+    if (t.pid == null) continue;
+    const b = pl && pl.get(t.pid);
+    if (!b || b._t1196J !== t.id || b.simVillageId !== vil.dbId) { t.pid = null; _t1196Stat.orphan++; continue; }
+    if (t.st === 1) held.add(t.pid);
+  }
+  const S = {};
+  for (const pid of (vil.npcPids || [])) {
+    const p = pl && pl.get(pid);
+    if (!p || p.handingOff || p.simWar || p.simCaravan || p._muster || E.T1196_SET[p.simJob] !== 1 || held.has(pid)) continue;
+    S[p.simJob] = (S[p.simJob] || 0) + 1;
+  }
+  e._t1196Seats = S;
+}
+function _t1196Ladder(vil, npc) {
+  let g = null, bd = Infinity;
+  for (const x of (vil._granList || [])) { const L = _granLadder(x), d = Math.hypot(L.x - npc.x, L.y - npc.y); if (d < bd) { bd = d; g = x; } }
+  return g ? _granLadder(g) : { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 };
+}
+function _t1196Spot(vil, npc, job) {
+  const kind = T1196_KIND[job], cx = vil.ccx * SZ + SZ / 2, cy = vil.ccy * SZ + SZ / 2;
+  const f = state.deps.facilityNear ? state.deps.facilityNear(kind, cx, cy, T325_R * SZ) : null;
+  if (f) return { x: f.x, y: f.y, fac: f.type };
+  const idx = _lifeOtherIndex(vil, npc);
+  return { x: (vil.ccx + ((idx % 6) - 3)) * SZ + SZ / 2, y: (vil.ccy + ((((idx / 6) | 0) % 6) - 3)) * SZ + SZ / 2, fac: null };   // 회관 안 작업 앵커(아래 villager 분기와 같은 식)
+}
+//   ⓑ 몸 한 걸음 — 이번 틱 소유권을 가지면 true · 집을 작업표가 없으면 null(종전 서성임으로)
+function _t1196Step(vil, npc, now, job) {
+  if (!_t1196On(vil)) return null;
+  const E = _lifeEcon(), e = vil.econ, Q = e._t1196Q;
+  if (!Q || !Q.length) { if (npc._t1196J != null) { npc._t1196J = null; npc._t1196W = null; } return null; }
+  let t = null;
+  if (npc._t1196J != null) { for (const x of Q) if (x.id === npc._t1196J) { t = x; break; } if (!t || t.pid !== npc.pid) { t = null; npc._t1196J = null; npc._t1196W = null; } }
+  if (!t) {
+    for (const x of Q) if (x.pid == null && x.job === job) { t = x; break; }
+    if (!t) return null;
+    t.pid = npc.pid; npc._t1196J = t.id; npc._t1196W = { ph: t.st === 0 ? 'draw' : 'go', at: 0, tx: 0, ty: 0, fac: null };
+    _t1196Stat.claim++;
+  }
+  const W = npc._t1196W || (npc._t1196W = { ph: t.st === 0 ? 'draw' : 'go', at: 0, tx: 0, ty: 0, fac: null });
+  const go = (x, y, lab) => { npc.behavior = 'wander'; npc.targetX = x; npc.targetY = y; npc.gatherTarget = null; _lifeAct(npc, lab); };
+  if (W.ph === 'draw' || W.ph === 'back') {
+    const L = _t1196Ladder(vil, npc);
+    if (Math.hypot(npc.x - L.x, npc.y - L.y) > 44) { W.at = 0; go(L.x, L.y, W.ph === 'draw' ? '인출' : '운반'); return true; }
+    if (!W.at) W.at = now;
+    _lifeAct(npc, W.ph === 'draw' ? '인출' : '저장');
+    if (now - W.at < (W.ph === 'draw' ? G_DRAWW : G_STOREW)) return true;
+    if (W.ph === 'draw') {
+      const f = E.artisanTake(e, t.id); _t1196Stat.take++;
+      if (!(f > 0)) { E.artisanGive(e, t.id); npc._t1196J = null; npc._t1196W = null; return true; }   // 재료가 하나도 없었다 — 빈손 작업표를 닫는다(넣을 것 0)
+      const sp = _t1196Spot(vil, npc, job); if (sp.fac) _t1196Stat.fac++; else _t1196Stat.hall++;
+      W.ph = 'go'; W.at = 0; W.tx = sp.x; W.ty = sp.y; W.fac = sp.fac;
+      return true;
+    }
+    E.artisanGive(e, t.id); _t1196Stat.give++;
+    npc._t1196J = null; npc._t1196W = null;
+    return true;
+  }
+  if (W.ph === 'go' && !(W.tx || W.ty)) { const sp = _t1196Spot(vil, npc, job); W.tx = sp.x; W.ty = sp.y; W.fac = sp.fac; }   // 이어서 집은 작업표(재료는 이미 손에)
+  if (Math.hypot(npc.x - W.tx, npc.y - W.ty) > 44) { W.at = 0; go(W.tx, W.ty, '운반'); W.ph = 'go'; return true; }
+  if (!W.at) { W.at = now; W.ph = 'work'; }
+  _lifeAct(npc, '제작');
+  if (now - W.at < _t1196CraftMs(T1196_KIND[job])) return true;
+  W.ph = 'back'; W.at = 0;
+  return true;
+}
+//   관측 창구 — `/perf` 가 그대로 내준다(회계 아님 · 끔이면 null)
+function artisanPerf() {
+  const E = _lifeEcon(); if (!E.T1196_ARTISAN_ACT) return null;
+  const C = { made: 0, body: 0, batch: 0, late: 0, short: 0 }, B = {}, G = {}, seats = {}, kinds = { tool: 0, smelt: 0, cook: 0 };
+  let q = 0, q1 = 0, vils = 0;
+  for (const vil of state.villages || []) {
+    const e = vil.econ; if (!e || !E.productionActsBound(e)) continue; vils++;
+    const c = e._t1196C; if (c) for (const k in C) C[k] += c[k] || 0;
+    for (const k in (e._t1196B || {})) B[k] = +((B[k] || 0) + e._t1196B[k]).toFixed(4);
+    for (const k in (e._t1196G || {})) G[k] = +((G[k] || 0) + e._t1196G[k]).toFixed(4);
+    for (const k in (e._t1196Seats || {})) seats[k] = (seats[k] || 0) + e._t1196Seats[k];
+    for (const t of (e._t1196Q || [])) { q++; if (t.st === 1) q1++; }
+    if (state.deps.facilityNear) for (const kd of Object.keys(kinds)) if (state.deps.facilityNear(kd, vil.ccx * SZ + SZ / 2, vil.ccy * SZ + SZ / 2, T325_R * SZ)) kinds[kd]++;
+  }
+  return { vils, ...C, queue: q, held: q1, seats, bodyGive: B, allGive: G, facVillages: kinds, steps: Object.assign({}, _t1196Stat) };
+}
 // ★랩 otRole verbatim — '주민' 버킷(숲·산·물·논밭 외 직업)의 역할 라벨.
 //   랩 원문: const c=econ.counts, order=[['smith','대장장이'],['weaponsmith','무기장'],['armorsmith','갑옷장'],
 //            ['cook','요리사'],['merchant','행상'],['warrior','전사']];
@@ -15808,7 +15913,8 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
+module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
+  t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
   streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   T856_LAND_ELEV, _t856LandElev,   // ★[T856] 마을 고도 — 하네스(`test-land-elev`)가 같은 함수를 부른다(사본 0)
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
