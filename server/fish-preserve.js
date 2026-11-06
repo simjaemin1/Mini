@@ -17,6 +17,7 @@
 //   · 이름 — 고증 이름이 있으면 그것: 북어(말린 명태) · 과메기(겨울 해풍에 말린 청어) · 새우젓 · 멸치젓 · 오징어젓(소금에 삭힌 젓갈) ·
 //     없으면 "건 ○○" · "○○ 절임". 이름 없는 `fish`(잡어) 는 말린 것 = 종전 `dried_fish`(건어물) 그대로 · 절인 것 = `pickled_fish`(생선 절임).
 //
+// T1192가 켜지면 econ도 종별 품목 ID·낱개 단위. 꺼진 판은 아래 종전 접힘을 유지한다.
 // ── econ ──────────────────────────────────────────────────────────────────────────────────────
 //   ⚠econ 재화는 새로 세우지 않는다 — 곳간 · 거래소 문(`villages.PV_DEPOSIT_MAP`)에서 말린 것은 `dried_fish` · 절인 것은 `pickled_veg` 칸으로 **열량으로** 접는다
 //   (곰고기 → 사슴·들짐승고기 꼴 · T694). 곳간 레코드는 넣은 그 품목을 들고(T768 `it`) 꺼낼 때 그 품목 그대로 나온다(T1128 문 10).
@@ -25,7 +26,7 @@
 // ⚠맞물림 금지 — fishing · freshfish · weights · kcal 은 **부를 때** 부른다(spoil · weights · kcal 이 이 파일을 부른다).
 //   번들(econ 브라우저)은 모르는 require 에 `{}` 를 준다 — 읽는 쪽이 `ON` 을 먼저 본다.
 
-const ON = !(typeof process !== 'undefined' && process.env && process.env.T1128_KCAL_TIDY === '0');
+const ON = !(typeof process !== 'undefined' && process.env && process.env.T1128_KCAL_TIDY === '0') || !(typeof process !== 'undefined' && process.env && process.env.T1192_FISH_SPECIES === '0');
 
 const NAME_DRY = { pollock: '북어', herring: '과메기' };
 const NAME_PICKLE = { shrimp: '새우젓', anchovy: '멸치젓', squid: '오징어젓' };
@@ -44,7 +45,7 @@ function koOf(s) {
   const sp = Sp() && Sp().RESOURCES && Sp().RESOURCES[s];
   if (sp && sp.ko) return sp.ko;
   const fr = Fr(); if (fr && fr.koOf) { const k = fr.koOf(s); if (k) return k; }
-  return s;
+  const sea=require('./seafish').TABLE.find(r=>r.id===s);return sea?.ko||s;
 }
 function driedId(s) { return s === 'fish' ? 'dried_fish' : 'dried_' + s; }
 function pickledId(s) { return s === 'fish' ? 'pickled_fish' : 'pickled_' + s; }
@@ -107,4 +108,5 @@ function table(kcal, weights) {
   return out;
 }
 
-module.exports = { ON, NAME_DRY, NAME_PICKLE, species, isSpecies, koOf, driedId, pickledId, items, isItem, outBy, rawKgOf, kgOf, kcalPerKgOf, table };
+const ECON_YIELD=0.4; // 기존 econ PRESERVE_YIELD를 이 정본으로 이동(값 무변)
+module.exports = { ECON_YIELD, ON, NAME_DRY, NAME_PICKLE, species, isSpecies, koOf, driedId, pickledId, items, isItem, outBy, rawKgOf, kgOf, kcalPerKgOf, table };

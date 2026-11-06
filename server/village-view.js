@@ -31,6 +31,7 @@ const ZoneConfig = require('./zone-config');
 // ── 뭉뚱그린 재화 — 캐논 §1 의 "카테고리"(food/ore/forage/cooked/fish/meat) + 연장 · 무장(연장 · 무기 · 갑옷 — 시안은 "돌도끼"처럼 그 물건을 쓴다).
 //   ⚠목록 하나는 여기뿐이다(하네스도 이것을 읽는다). 정본 목록이 서버에 따로 없어 회부에 올렸다(T1072 ④).
 const LUMPED = new Set(['food', 'fish', 'meat', 'cooked_food', 'fruit', 'vegetable', 'mushroom', 'herb', 'ore', 'tool', 'iron_tool', 'bronze_tool', 'weapon', 'armor']);
+if(require('./ore-goods').ON)LUMPED.delete('ore');
 const isLumped = (r) => r != null && LUMPED.has(String(r));
 
 // ★열려 있는 동안 다시 읽는 박자 — 존의 5초(`zone.js` 바닥 물건 정리 `setInterval(…, 5000)` · 잠든 존 유지보수와 같은 수 · 새 수 0).

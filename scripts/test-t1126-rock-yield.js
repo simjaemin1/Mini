@@ -167,9 +167,9 @@ ok(/Weights\.kgOf\('stone'\)/.test(fN) && /ROCK_COLLIDER_R \/ BUILDING_SIZE/.tes
 ok(nums(fRho).join(',') === '0,1,1000,2' && nums(fN).join(',') === '0,1,3,4' && nums(fY).join(',') === '0,1' && nums(fG).join(',') === '0',
   '★새 수 0 — 몸의 수 글자는 단위(1000) · 가운데(2 · 범위 두 끝 [0] [1]) · 구 부피(4/3) · 0 · 1 뿐', `${nums(fRho)} | ${nums(fN)} | ${nums(fY)} | ${nums(fG)}`);
 ok(/RESOURCE_HP_TABLE\.rock = _t1126RockStones\(\)/.test(Z) && /if \(T1126_ROCK_YIELD\) RESOURCE_HP_TABLE\.rock = /.test(Z), '★바위 hp 정본(청크 표)을 N 으로 — 켬일 때만(스폰 · 군락 · 재생이 다 그 표를 읽는다)');
-const fGR = fnBody(Z, 'gatherResource'), fNS = fnBody(Z, 'npcStep');
+const fGR = fnBody(Z, 'gatherResource'), fNS = fnBody(Z, '_npcGatherResource');
 ok(/const _hp0 = best\.hp;/.test(fGR) && /_t1126HitYield\(best, _hp0\)/.test(fGR) && /_t1126Give\(player, _t1126Y\)/.test(fGR), '★사람 문 — `gatherResource` 가 친 앞 hp 로 그 자리 돌을 준다');
-ok(/const _hp0 = r\.hp;/.test(fNS) && /_t1126HitYield\(r, _hp0\)/.test(fNS) && /_t1126Give\(npc, _y\)/.test(fNS), '★NPC 문 — `npcStep` 직접 채집이 같은 두 함수를 부른다(정본 하나)');
+ok(/_npcGatherResource\(npc,r\)/.test(fnBody(Z, 'npcStep')) && /const _hp0 = r\.hp;/.test(fNS) && /_t1126HitYield\(r, _hp0\)/.test(fNS) && /_t1126Give\(npc, _y\)/.test(fNS), '★NPC 문 — `npcStep` 직접 채집이 같은 두 함수를 부른다(정본 하나)');
 ok((Z.match(/inventory\.stone = \(body\.inventory\.stone \|\| 0\) \+ n/g) || []).length === 1 && (Z.match(/function _t1126Give\(/g) || []).length === 1, '사본 0 — 돌을 손에 넣는 줄은 `_t1126Give` 하나');
 ok(Z.includes('const loot = _t495Rest(best, lootOfResource(best, { day: zoneGameDay() }));') && Z.includes('const loot = _t495Rest(r, lootOfResource(r));'), '부서질 때 전리품 두 줄 그대로(`lootOfResource` rock → 돌 1 · 자갈 2)');
 ok(/rock: \{ stone: 1, pebble: 2 \}|t === 'rock'[^\n]*stone: 1[^\n]*pebble: 2/.test(Z), '전리품 표 바위 = 돌 1 · 자갈 2 그대로');

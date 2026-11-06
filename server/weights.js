@@ -20,6 +20,7 @@
 //   ★[T1136] 그 M항의 판 — 바구니 교역(손잡이 `T1136_BASKET` · 끔 기본)을 켜면 econ 캐러밴이 낱개 무게(`kgOfOrDefault`)로 짐을 채운다(끔 = econ 은 이 파일을 안 부른다 · T517 · T1050 갈래는 종전 그대로).
 'use strict';
 const Specialty = require('./specialty');
+const OreGoods = require('./ore-goods');
 // ★★[작물 층 2026-08-31] 작물 34종 + 씨앗의 kg — **`server/crops.js` 가 파생 정본**이다.
 //   12종은 specialty 가 무게를 갖고 있고(그쪽이 정본), 없는 22종만 분류 앵커에서 유도한다.
 //   여기서 표를 다시 적지 않는다 — 읽기만 한다(이 파일의 머리 규약 그대로).
@@ -147,7 +148,9 @@ const DERIVED_KG = {
 let _FP = null;
 function _fp() { if (_FP === null) { try { _FP = require('./fish-preserve'); } catch (e) { _FP = false; } } return _FP || null; }
 function kgOf(id, noFp) {
+  if(OreGoods.isOre(id))return CORE_KG.ore;
   if (!id) return null;
+  const FG=require('./fish-goods');if(FG.ON){const b=FG.bodyKg(id);if(b>0)return b;if(!noFp&&FG.isItem(id)){const k=_fp().kgOf(id,kgOf);if(k>0)return k;}}
   const key = ITEM_ALIAS[id] || id;
   const sp = Specialty.RESOURCES && Specialty.RESOURCES[key];
   if (sp && sp.weight > 0) return sp.weight;
@@ -172,6 +175,7 @@ function catalog() {
   for (const [item, key] of Object.entries(ITEM_ALIAS)) if (out[item] == null && out[key] != null) out[item] = out[key];
   if (Crops) for (const [k, w] of Object.entries(Crops.weightMap())) if (out[k] == null) out[k] = w;
   { const FP = _fp(); if (FP && FP.ON && typeof FP.items === 'function') for (const k of [...Object.keys(FP.items()), ...FP.species()]) if (out[k] == null) { const w = kgOf(k); if (w > 0) out[k] = w; } }   // ★[T1128]
+  if(require('./fish-goods').ON)for(const id of require('./fish-goods').species())out[id]=kgOf(id); // 클라 payload도 같은 몸 kg
   return out;
 }
 // 알려진 아이디 전부(하네스 전수 스윕용)
