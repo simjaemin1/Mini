@@ -9555,6 +9555,47 @@ function t750CastPre(budgetMs) {
   }
   return filled;
 }
+// ★★[T1144 ② · T1154 2026-11-05 — 세션14 판(`batch/life-event-1104` · `9f36e9ac`)의 둘째 사건을 S15 틀(`T1144_LIFE_EVENT` · `verify`) 위에] **어부 던짐의 종 — 사건 때만 다시 뽑는다.**
+//   세션14 표본(main 낮): `_t340Try` 포함 5.8 % 중 종 뽑기(`freshfish.pick` → `pickFrom` → 존 특산 `chooseSpecies` · `mixAt`)가 1.7 % — 던질 때마다 같은 자리 · 같은 날이면 같은 종을 다시 뽑는다.
+//   종은 (몸 해시 `h` · 칸 · 날 · 물 갈래 · 바다 갈래)의 순수 함수다(주사위 0 · `pickFrom` 해시 · `chooseSpecies` 는 그 칸의 섞임 표 · 종 표 · 존은 모듈 상수) ⇒ 다섯이 같으면 지난 답 그대로.
+//   사건: 칸이 바뀜(드리울 자리 `_fishSpotX/Y`) · 날이 바뀜 · 물 갈래가 바뀜(`vil._t312W` — 하루 마감이 비우고 다시 읽는다 · 논이 생기면 `paddy`) · 바다 갈래가 바뀜(`_t593SeaBank`).
+//   물 · 바다 갈래는 **던질 때마다 종전 자리에서 그대로 다시 읽어** 열쇠로 견준다(바다면 `_t312Water` 를 안 부르고 민물이면 한 번 — 종전 식의 차례 그대로 · `_t312Water` 는 비어 있을 때 그 순간 값을 굳히므로 부르는 때가 값이다).
+//   몸 칸 하나(`_t1144Sp` — zone.js `_t671Shape` 목록 · 켬일 때만 선다). `verify` = 늘 다시 뽑아 지난 답과 견준다(답은 다시 뽑은 것 = 종전).
+//   미끼(`T1144_VERIFY_BAIT=sp` · verify 판만 — 칸 사건을 빠뜨린다): verify 가 물어야 한다(자명 통과 금지 · 하네스 ⑤).
+const _T1144_BAIT = process.env.T1144_LIFE_EVENT === 'verify' ? (process.env.T1144_VERIFY_BAIT || '') : '';
+function _t1144SpGet(vil, npc, key, day, h, sea) {   // 지난 답(같은 다섯) 또는 undefined — undefined 면 부르는 쪽이 종전 줄로 뽑고 `_t1144SpPut`
+  const w = sea ? null : _t312Water(vil);
+  const M = npc._t1144Sp;
+  _t1144Stat.fq++;
+  if (M && (M.k === key || _T1144_BAIT === 'sp') && M.d === day && M.h === h && M.s === sea && M.w === w) {
+    _t1144Stat.fhit++;
+    if (T1144_VERIFY) { _t1144Stat.fvq++; _t1144SpWas = M.sp; _t1144SpChk = true; return undefined; }   // 대조 — 다시 뽑게 두고 `_t1144SpPut` 에서 견준다
+    return M.sp;
+  }
+  if (M) { M.k = key; M.d = day; M.h = h; M.s = sea; M.w = w; M.sp = undefined; } else npc._t1144Sp = { k: key, d: day, h, s: sea, w, sp: undefined };
+  return undefined;
+}
+let _t1144SpWas = null, _t1144SpChk = false;
+function _t1144SpPut(npc, sp) {
+  if (_t1144SpChk) { _t1144SpChk = false; if (_t1144SpWas !== sp) _t1144Stat.fvbad++; _t1144SpWas = null; return; }
+  const M = npc._t1144Sp; if (M) M.sp = sp;
+}
+// ★★[T1144 ③ · T1154] **물린 한 마리의 장부 낱값 — 종마다 한 번.** 물릴 때마다 `econUnitsOf`(열량 표 · 무게 표)를 다시 부른다(세션14 표본 1.1 %).
+//   그 답은 (종 · 그 종 무게 · T1128 손잡이 · 열량 모듈)만의 함수다(표는 모듈 상수 — 판 안에서 안 바뀐다) ⇒ 사건 0 · 처음 한 번 잰 값 그대로. 식은 부르는 자리의 종전 식 그대로다.
+//   `verify` = 늘 다시 재어 지난 값과 견준다(`Object.is` · 답은 다시 잰 것).
+const _t1144U = new Map();
+function _t1144Units(K, sp) {
+  const on = _t1128On(), k = sp.id + '|' + sp.kg + '|' + (on ? 1 : 0);
+  if (_t1144U.K !== K) { _t1144U.clear(); _t1144U.K = K; }
+  let v = _t1144U.get(k);
+  _t1144Stat.uq++;
+  if (v === undefined || T1144_VERIFY) {
+    const v2 = on ? _t1128HandUnits(K, sp.id, sp.kg) : (+K.econUnitsOf('fish', 1, sp.kg) || 0);
+    if (v !== undefined) { _t1144Stat.uvq++; if (!Object.is(v, v2)) _t1144Stat.uvbad++; }
+    v = v2; _t1144U.set(k, v);
+  } else _t1144Stat.uhit++;
+  return v;
+}
 function _t340Try(vil, npc, now, day, h, ws) {
   const F = _fishingMod(); if (!F) return false;
   const cx = Math.floor((npc._fishSpotX != null ? npc._fishSpotX : ws.x) / SZ);
@@ -9575,8 +9616,10 @@ function _t340Try(vil, npc, now, day, h, ws) {
     // ★[T593 ④] 바다 칸 물가에 섰으면 바다 표(플레이어와 같은 표 · 해역은 바이옴) — 아니면 종전 민물 줄 그대로(끔이면 `_sea` 는 늘 null).
     const _sea = _t593SeaBank(cx, cy);
     //   ★[T602] 해역 = 그 물가 칸의 해안 구간(`areaAt` — 플레이어와 같은 함수 · 끔이면 T593 그대로 바이옴)
-    const _sp = _sea ? _seaTbl().pick(_seaTbl().areaAt(state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2), _sea, day, h ^ cx ^ Math.imul(cy, 0x85ebca6b))
+    const _m44 = T1144_LIFE_EVENT ? _t1144SpGet(vil, npc, key, day, h, _sea) : undefined;   // ★[T1144 ② · T1154] 켬 = 같은 칸 · 날 · 물 · 바다 갈래면 지난 종(위 머리말) · 끔 = 늘 `undefined`(아래 종전 줄 그대로)
+    const _sp = _m44 !== undefined ? _m44 : _sea ? _seaTbl().pick(_seaTbl().areaAt(state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2), _sea, day, h ^ cx ^ Math.imul(cy, 0x85ebca6b))
       : _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b), _ch, state.zoneId);   // ★[T609] 존(민물 표 켬이면 열도 가물치 뺌)
+    if (T1144_LIFE_EVENT && _m44 === undefined) _t1144SpPut(npc, _sp);   // ★[T1144 ②] 다시 뽑은 답을 몸 칸에(verify 는 견준다)
     if (!_sp) return 'none';   // 그 물·그 철엔 사는 종이 없다(종전 `!_sp` 자리 — 라벨 '드리움')
     const n = (npc._t340N = (npc._t340N || 0) + 1);
     const pl = F.plan(sp, stock01, now, _t340Rng(h ^ Math.imul(n, 0x9e3779b9) ^ Math.imul(day, 0x85ebca6b)));
@@ -10211,7 +10254,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
     totals: { pop: tN, actN: tAct, actPct: tN ? +(tAct / tN * 100).toFixed(1) : 0, vgStuck: _vgStuckN, t562: _t562Stat,
               tkPday: _lifeTasksPerFarmerDay(), taskSec: LIFE_TASK_SEC,   // ★결산 정합 진단: 헤드리스가 쓰는 농부 1인 하루 작물 셀(날 길이 파생)
               dormant: out.filter(v => !v.terr).length, noFarmer: out.filter(v => !(v.jobs && v.jobs.farmer)).length,
-              ...(T707_ON ? { t707: Object.assign({}, _t707Stat) } : {}), ...(T772_ON ? { t772: Object.assign({}, _t772Stat) } : {}) },   // ★[T707] 켬만 — 장 · 명부 · 몸 없는 장 · 정산 누계
+              ...(T707_ON ? { t707: Object.assign({}, _t707Stat) } : {}), ...(T772_ON ? { t772: Object.assign({}, _t772Stat) } : {}), ...(T1144_VERIFY ? { t1144: Object.assign({}, _t1144Stat) } : {}) },   // ★[T1154] verify 판만 — 사건 셋 셈(증인 `t1144-witness`)   // ★[T707] 켬만 — 장 · 명부 · 몸 없는 장 · 정산 누계
     villages: out };
 }
 function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
@@ -10579,9 +10622,11 @@ function lifeFarmDay(vil, day, farmerN, onDid) {
 //     ⓑ 는 그 칸만 −1 로(다음 물음 때 잰다 — 종전과 같은 때 · 같은 칸에서 `_cropSky` 가 선다), ⓐ ⓒ ⓓ ⓔ ⓕ 는 통째로 다시 짓는다.
 //     클레임(`_cropClaim`)은 기억하지 않는다 — 물을 때마다 그대로 읽는다(종전처럼 클레임 칸은 안 잰다).
 //   ★같은 답: 같은 칸 차례(`_farmSet` 삽입 차례) · 같은 거리 식(`x * SZ + SZ / 2 - npc.x` — 가운데 좌표를 같은 식으로 미리 셈) · 같은 동률 규칙(먼저 온 칸).
-const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT === '1' || process.env.T1144_LIFE_EVENT === 'verify';
+//   ★[T1154 2026-11-05 · 회부 T1144-1 · 족보 760 규칙] **켬 기본** — `'0'` 만 끔(종전 글자) · 그 밖(없음 · `'1'` · …) = 켬 · `'verify'` = 켬 + 대조(답은 종전).
+//     같은 손잡이가 사건 셋을 진다: ① 밭 칸 훑기(아래) · ② 어부 던짐 종(`_t1144SpGet`) · ③ 물린 한 마리 낱값(`_t1144Units`) — 둘째 · 셋째는 세션14 판에서 얹었다.
+const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT !== '0';
 const T1144_VERIFY = process.env.T1144_LIFE_EVENT === 'verify';
-const _t1144Stat = { q: 0, build: 0, ask: 0, skip: 0, dirty: 0, reset: 0, vq: 0, vbad: 0 };   // 계측 전용(회계 아님)
+const _t1144Stat = { q: 0, build: 0, ask: 0, skip: 0, dirty: 0, reset: 0, vq: 0, vbad: 0, fq: 0, fhit: 0, fvq: 0, fvbad: 0, uq: 0, uhit: 0, uvq: 0, uvbad: 0 };   // 계측 전용(회계 아님) · f = 어부 던짐 종 · u = 낱값
 const _t1144M = new WeakMap();   // vil → { day, seed, crop, farm, dry, n, K, X, Y, P, ix }
 function _t1144Reset(vil) { if (T1144_LIFE_EVENT && _t1144M.delete(vil)) _t1144Stat.reset++; }   // ⓒ — 칸 전부
 function _t1144Dirty(vil, k) {   // ⓑ — 그 칸만(다음 물음 때 잰다)
@@ -14434,7 +14479,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
           const _K = _kcal();
           const _ec = _lifeEconNpc(vil, npc);
           const _mul = (_ec && typeof _ec._t172mul === 'number' && _ec._t172mul > 0) ? _ec._t172mul : 1;
-          const _units = _K ? (_t1128On() ? _t1128HandUnits(_K, _sp.id, _sp.kg) : (+_K.econUnitsOf('fish', 1, _sp.kg) || 0)) * _mul : 0;   // ★[T1128 9-b] 켬 = 그 종 한 마리의 표 열량(끔 = 종전 글자)
+          const _units = _K ? (T1144_LIFE_EVENT ? _t1144Units(_K, _sp) : _t1128On() ? _t1128HandUnits(_K, _sp.id, _sp.kg) : (+_K.econUnitsOf('fish', 1, _sp.kg) || 0)) * _mul : 0;   // ★[T1128 9-b] 켬 = 그 종 한 마리의 표 열량(끔 = 종전 글자) · ★[T1144 ③ · T1154] 켬 = 종마다 한 번
           //   ⓓ 셀 예산에서 **통째로** 꺼낸다 — 안 되면 그 셀은 오늘 비었다(이월 0).
           const _got = _t312Take(vil, day, _key, _units);
           if (_got > 0) {
@@ -15223,12 +15268,12 @@ function __e2eDayFreeze(on) {
 //
 // ★결손 → econ 환산은 `sustain.js` 정본 계수 그대로다(`Fishing.stockToEcon`). 사본 금지.
 //   모든 셀이 만땅이면 결손 0 → 값이 **씨딩 때와 정확히 같다** = 헤드리스 기준선 불변.
-// ★★[T1140 ③-나 2026-11-04 · 손잡이 `T1140_LIFE_REQ`(기본 끔 · `'1'` 만 켬 · 끔 = 종전 글자)] **생활 층 안 `require()` 를 한 번만** — T791 회부 3(결정 부름 안 생활 층)의 한 손.
+// ★★[T1140 ③-나 2026-11-04 · 손잡이 `T1140_LIFE_REQ`(★T1154 11-05 켬 기본 — `'0'` 만 끔 = 종전 글자 · 회부 T1144-2)] **생활 층 안 `require()` 를 한 번만** — T791 회부 3(결정 부름 안 생활 층)의 한 손.
 //   T1140 ① 표본: 걸음(`npcStep`) 안 표본의 ≈1 % 가 노드 모듈 적재기(`require` · `Module._load`)였다 — 결정마다 생활 층 함수가 이미 실린 모듈을 다시 `require` 한다
 //   (`_fishingMod` — 어부 물가 · 바다 손 · 어장 · `_tripDayMs` — 하루 몫 · `zone-config`). `require` 는 실린 모듈이면 **같은 객체**를 돌려준다(캐시) ⇒
 //   켬이면 처음 받은 객체를 모듈 칸에 둔다(`_zc720` · `_lifeVL` · `_seaTbl` 과 같은 꼴 · 실패면 종전처럼 `null`). 같은 객체 · 같은 답 · 세계 무접촉.
 //   ★T1140 ③ 판: `require()` 줄 낮 0.028 → 0 · 밤 0.010 → 0 µs/사람(표본 사슬) — 켬 기본 후보(PM).
-const T1140_LIFE_REQ = process.env.T1140_LIFE_REQ === '1';
+const T1140_LIFE_REQ = process.env.T1140_LIFE_REQ !== '0';   // ★[T1154] 켬 기본
 let _t1140Fish;   // undefined = 아직 · null = 실패(종전도 늘 실패 — 같은 파일 · 같은 판)
 function _fishingMod() {
   if (T1140_LIFE_REQ) { if (_t1140Fish === undefined) { try { _t1140Fish = require('./fishing'); } catch (e) { _t1140Fish = null; } } return _t1140Fish; }
