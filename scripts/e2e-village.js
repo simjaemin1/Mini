@@ -138,7 +138,7 @@ async function waitHttp(url, tries = 900) {
   await sleep(2500);
   await snap('01-lobby');
   const enterBtn = await page.$('#enter');
-  ok(!!enterBtn, '로비에 입장 버튼(`#enter` · 「나루터로 간다」 — T84 개명)이 있다');
+  ok(!!enterBtn, '로비에 입장 버튼(`#enter` · 「나루터로 가기」 — T84 개명 · T1190 명사형)이 있다');
   // ★★이름을 넣고 들어간다 — **게스트로는 이 검사를 할 수 없다**(실측으로 알아낸 것):
   //   게스트는 재접속할 때마다 `anon_*` **새 playerId** 를 받는다. 그래서 잠깐 끊겼다 붙으면
   //   방금 제가 지은 회관·노·사유지의 주인이 아니게 된다(소유 판정이 playerId 대조라서).

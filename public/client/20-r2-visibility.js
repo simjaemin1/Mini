@@ -344,7 +344,7 @@
   function clCellOf(x, y) { return { cx: Math.floor(x / CL_BUILDING_SIZE), cy: Math.floor(y / CL_BUILDING_SIZE) }; }
   // 14.51: 3초 progress 작업 시작 (place 또는 dismantle)
   function startBuildAction(kind, payload) {
-    if (buildAction) { showNotice('이미 작업 중'); return; }
+    if (buildAction) { showNotice('이미 작업하고 있습니다.'); return; }
     const durationMs = 3000;
     buildAction = { kind, startedAt: performance.now(), durationMs, payload,
                     startPx: lastMouseSx, startPy: lastMouseSy,
@@ -377,7 +377,7 @@
         });
         // 인벤 0 되면 placement 종료
         if ((inventory[payload.itemType] || 0) <= 1) {
-          placementMode = null; showNotice('인벤 떨어짐 — 배치 종료');
+          placementMode = null; showNotice('가방의 물건이 떨어져 배치를 마칩니다.');
         }
       } else if (kind === 'dismantle') {
         sendPrimary({ type: 'dismantle_building', buildingId: payload.buildingId });

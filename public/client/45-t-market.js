@@ -44,10 +44,10 @@
     try {
       //   ★[T235] 존 경유 — `player_id` 를 클라가 안 고른다(ws 접속이 본인이다).
       const data = await window.__centralCall('market/order', { order: { side, item, amount, price_item: priceItem, price_amount: priceAmount } });
-      if (data.error) showNotice(`거래소: ${data.error}`);
-      else showNotice(`주문 등록: ${data.matched === 'full' ? '즉시 체결!' : data.matched === 'partial' ? '부분 체결' : '대기 중'}`);
+      if (data.error) showNotice(`거래소에서 막혔습니다: ${data.error}`);
+      else showNotice(`주문을 넣었습니다(${data.matched === 'full' ? '바로 체결' : data.matched === 'partial' ? '일부 체결' : '기다리는 중'}).`);
       refreshMarket();
-    } catch (e) { showNotice('거래소 오류'); }
+    } catch (e) { showNotice('거래소에 문제가 생겼습니다.'); }
   }
 
   // === 상자 UI === (Phase 14.21 — 옛 modal 폐기, 새 인벤 패널로 redirect)

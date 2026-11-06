@@ -230,7 +230,7 @@
     { const tO = performance.now(); onbLobbyInit(); _lobStep('시작 화면(onbLobbyInit)', tO); }
     document.getElementById('enter').onclick = async () => {
       _ldOpen();   // ★[T920] 첫 접속 표 — 눌림(첫 번만)
-      _gimgOpen('나루터로 간다');   // ★[T1123] 게임 그림 문 ⓓ(이미 열렸으면 아무 일 없음)
+      _gimgOpen('나루터로 가기');   // ★[T1123] 게임 그림 문 ⓓ(이미 열렸으면 아무 일 없음)
       const inputName = document.getElementById('name').value.trim();
       const inputPw = document.getElementById('password').value;
       // ★★[T363] **제출 때 한 번** — 이름이 이미 있나 · 있다면 어디로 가야 하나.
@@ -504,7 +504,7 @@
       if (!_bmBusy) {
         e.preventDefault();
         if (stepZoom(e.deltaY > 0 ? -1 : +1)) {        // 위로 굴리면 확대
-          showNotice(`확대 ${ZOOM}×`, 700);
+          showNotice(`${ZOOM}배로 확대했습니다.`, 700);
         }
         return;
       }
@@ -550,7 +550,7 @@
         const i = seq.indexOf(placementMode.dir || 'N');
         placementMode.dir = seq[(i + 1) % 4];
       }
-      showNotice(`회전: ${placementMode.dir}`);
+      showNotice(`방향을 ${placementMode.dir}(으)로 돌렸습니다.`);
     });
     // === [조준 모드 2026-08-30] 우클릭 홀드 = 조준 · 조준 중 좌클릭 = 공격 =========
     //   ★기존 상호작용을 잡아먹지 않는다: 우클릭은 preventDefault 만(위 contextmenu 가 이미 한다),

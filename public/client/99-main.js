@@ -340,8 +340,8 @@
     //   ⇒ 단축키 표를 다시 짜지 않는다(버튼 라벨의 "(O)"·"(G)"만 걷었다 — 없는 단축키를 광고하지 않는다).
     else if (k === 'n') toggleTribePanel();
     else if (k === 'v') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
-    else if (k === 'z') { myBuildFloor = Math.min(5, myBuildFloor + 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
-    else if (k === 'x') { myBuildFloor = Math.max(0, myBuildFloor - 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
+    else if (k === 'z') { myBuildFloor = Math.min(5, myBuildFloor + 1); showNotice(`건축 층을 ${myBuildFloor}층으로 바꾸었습니다.`); updateHud(); }
+    else if (k === 'x') { myBuildFloor = Math.max(0, myBuildFloor - 1); showNotice(`건축 층을 ${myBuildFloor}층으로 바꾸었습니다.`); updateHud(); }
     // 14.49-e7b: ,/. 키 제거 (자동 계단 도입 후 불필요)
     else if (k === 'u') {
       // 14.49-d: 빌드 시 player facing(myFacingVx/Vy)으로 stair dir 결정

@@ -652,4 +652,4 @@ function exchange(a) {
            ...(feeRate > 0 ? { fee, feeRate, feeOwe: _F.owe, feeOweBefore: _F.before, feeUnits: +(_units(want) - giveUnits).toFixed(3) } : {}) };   // ★[T1151] 율이 서면 끝수 장부(이 거래 뒤)도 — 존이 몸에 적는다   // ★[T1137] 수수료(낱개 · 율 · 곳간에 든 단위)
 }
 
-module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON, T835_ON, T965_ON, T976_ON, T988_ON, T999_ON };
+module.exports = { CFG, KO_NUM, sig, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON, T835_ON, T965_ON, T976_ON, T988_ON, T999_ON };

@@ -65,7 +65,7 @@
     `;
     body.querySelectorAll('.skill-talent-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        showNotice(`${btn.dataset.skill} 특성 트리 — 다음 단계에서 구현`);
+        showNotice(`${btn.dataset.skill} 특성 트리는 아직 없습니다.`);
       });
     });
   }
@@ -558,7 +558,7 @@
           if (item === 'item_fence') dir = 'NS';
           placementMode = { itemType: item, floor: myFloor, dir };
           placingDir = dir;
-          showNotice(`${itemKo(item)} 배치 모드 — 좌클릭=배치, 우클릭=회전, ESC=취소`);   // [T55]
+          showNotice(`${itemKo(item)}을(를) 놓을 자리를 고르십시오(왼쪽 클릭 = 놓기 · 오른쪽 클릭 = 돌리기 · ESC = 취소).`);   // [T55]
         };
       });
     }

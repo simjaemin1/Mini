@@ -212,16 +212,16 @@ console.log('\n③ 인접 — 변은 되고 모서리는 안 된다');
   ok(KIN ? ((H.SimVillages.villageOfCell(BX, BY) || {}).dbId === LABV(900)) : !!H.findGuildClaimContaining(BX * SZ + SZ / 2, BY * SZ + SZ / 2, 900),
     KIN ? '③ 상황 assert(켬) — 검사 자리가 내 마을 땅 안이다(아니면 아래가 전부 "마을 땅 밖"으로 죽는다)'
         : '③ 상황 assert — 검사 자리가 내 길드 영토 안이다(아니면 아래가 전부 "길드 영토 밖"으로 죽는다)');
-  ok(/사유지 설치/.test(claimAt(p, BX, BY)), '③ 첫 셀은 어디든 된다(내 셀 0개 — 예외)', `${myCells(p).length}칸`);
+  ok(/사유지를 두었습니다/.test(claimAt(p, BX, BY)), '③ 첫 셀은 어디든 된다(내 셀 0개 — 예외)', `${myCells(p).length}칸`);
   ok(/붙여서만/.test(claimAt(p, BX + 5, BY)), '③ 떨어진 자리는 거절', '');
   ok(/모서리로만/.test(claimAt(p, BX + 1, BY + 1)), '③ **대각은 거절** — 모서리로만 닿는 땅은 걸어서 안 이어진다');
-  ok(/사유지 설치/.test(claimAt(p, BX + 1, BY)), '③ 변을 공유하면 허용');
-  ok(/사유지 설치/.test(claimAt(p, BX + 1, BY + 1)), '③ 이제 그 대각 자리도 된다 — 옆 셀이 생겨 **변으로** 닿기 때문이다');
+  ok(/사유지를 두었습니다/.test(claimAt(p, BX + 1, BY)), '③ 변을 공유하면 허용');
+  ok(/사유지를 두었습니다/.test(claimAt(p, BX + 1, BY + 1)), '③ 이제 그 대각 자리도 된다 — 옆 셀이 생겨 **변으로** 닿기 때문이다');
   ok(myCells(p).length === 3, '③ 상황 assert — 실제로 3칸이 섰다(자명 통과가 아니다)', myCells(p).join(' '));
   // ★L-5 소급 안 함 — 흩뿌려진 옛 셀 옆에도 계속 이어 붙을 수 있다
   const far = db.insertClaim({ owner_id: p.playerId, owner_name: p.name, x: (BX + 40) * SZ, y: BY * SZ, w: SZ, h: SZ, kind: 'personal' });
   claims.set('cfar', { id: 'cfar', dbId: far, ownerPid: p.playerId, ownerName: p.name, x: (BX + 40) * SZ, y: BY * SZ, w: SZ, h: SZ, kind: 'personal', state: 'active' });
-  ok(/사유지 설치/.test(claimAt(p, BX + 41, BY)), '③ L-5: 옛 흩뿌린 셀 옆에도 이어 붙는다(규칙을 소급하지 않는다)');
+  ok(/사유지를 두었습니다/.test(claimAt(p, BX + 41, BY)), '③ L-5: 옛 흩뿌린 셀 옆에도 이어 붙는다(규칙을 소급하지 않는다)');
   wipe(p); claims.delete(gl);
 }
 
@@ -243,7 +243,7 @@ console.log('\n④ 연결성 — ㄷ 자의 목을 빼면 갈라진다');
   clearNotes(p); H.tryUnclaim(p, neck);
   ok(/갈라집니다/.test(lastNote(p)) && claims.has(neck), '④ 목 포기는 **정본 경로에서 거절**된다', JSON.stringify(lastNote(p)));
   clearNotes(p); H.tryUnclaim(p, end);
-  ok(/해제/.test(lastNote(p)) && !claims.has(end), '④ 끝 포기는 통과한다');
+  ok(/풀었습니다/.test(lastNote(p)) && !claims.has(end), '④ 끝 포기는 통과한다(★T1190 ① 알림 "사유지를 풀었습니다.")');
   // ★L-5 — 이미 갈라져 있는 사람도 버릴 수 있어야 한다(절대 기준이면 아무것도 못 버린다)
   const iso = db.insertClaim({ owner_id: p.playerId, owner_name: p.name, x: (BX + 30) * SZ, y: BY * SZ, w: SZ, h: SZ, kind: 'personal' });
   claims.set('ciso', { id: 'ciso', dbId: iso, ownerPid: p.playerId, ownerName: p.name, x: (BX + 30) * SZ, y: BY * SZ, w: SZ, h: SZ, kind: 'personal', state: 'active' });

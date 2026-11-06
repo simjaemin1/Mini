@@ -188,7 +188,8 @@ const isWildSpot = (x, y) =>
     ok(b._carrying === a.pid && a._carriedBy === b.pid,
       '★★③ **낯선 사람도 업는다** — 같은 길드 제한이 사라졌다(§12 "다른 플레이어")');
     // 업는 순간 구조자가 쓰러진 사람의 **상태를 본다**(새 패널 0 · 기존 알림 문법)
-    ok(b.__notices().some((t) => /상태 —/.test(t)),
+    ok(b.__notices().some((t) => /의 상태입니다\./.test(t)),   // ★[T1190 ①] 알림 문장
+     
       '★★③ 구조자가 **왜 쓰러졌는지** 본다(§12: 원인은 몸 상태다 · 새 UI 0)',
       JSON.stringify(b.__notices().filter((t) => /상태 —/.test(t))));
     // 업으면 무거워진다 — 소프트 과적 곡선 그대로
@@ -449,7 +450,8 @@ const isWildSpot = (x, y) =>
     const b = mkPlayer('g_b', 30848 + 400, 59872);      // ★멀리
     H.damagePlayer(a, 200, 'fall');
     H.tryRescue(b, a.pid);
-    ok(!b._carrying && b.__notices().some((t) => /떨어짐/.test(t)),
+    ok(!b._carrying && b.__notices().some((t) => /떨어져 있습니다/.test(t)),   // ★[T1190 ①] 알림 문장
+     
       '★⑨ **멀면 못 업는다** — 거절 사유가 거리라고 말한다', JSON.stringify(b.__notices().slice(-1)));
     b.x = a.x + 40;
     H.tryRescue(b, a.pid);

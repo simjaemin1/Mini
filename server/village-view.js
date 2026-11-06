@@ -20,6 +20,9 @@
 // ★[T1116] 창고 탭(재민 11-01 "창고 · 각 물품별 시세")에 셀 수 있는 것을 더했다 — 곳간 줄 하루 수요 `use` · 값 래치 `priceUp`/`priceDown` ·
 //   모자란 것 / 남는 것 줄 `store.short` · `store.glut`(사건 장부 래치 · 곳간이 바닥난 물건 포함) · 값 오르내림 줄 `store.priceMoves`(이 마을 장부 링 ·
 //   지난 `PRICE_WIN` 날). 새 칸만 · 옛 이름 무변 · 새 수 0. 지난 날마다의 시세(30날 흐름)는 저장 칸이 없어 키가 없다(`보고/T1116_2026-11-03.md` · 회부).
+// ★[T1189 · ★재민 11-05 문 24 권고대로] 빈칸 — ① 겨울 준비 `dash.winter`(먹을 것 며칠치 ÷ 겨울 끝까지 남은 날) ② 마을 꼴 `head.kindKo` ⑥ 시세 흐름 `prices.trend`
+//   (econ 행 30날 고리 · `villages.js _t1189PxRecord`) ⑦ kg `store.rows[].kg` — ⑤ 재료 가져오기는 존 문 `village_site_give`(`villages.js playerSiteGive`) · ③ ④ ⑧ ⑨ 는 화면 몫/무변.
+// ★[T1169 · K18] 촌장 「일 맡기기」 명부 `members.assign`(게시판 판 T1085 와 같은 `assignRoster` · 같은 술어 · 촌장에게만 · 아니면 키 없음).
 //
 // 보내는 때: 열 때 칸 전부(`full:true`) · 열려 있는 동안 **JSON 이 바뀐 칸만**(`full:false`) — 존의 5초 박자(아래 `TICK_MS`) +
 //   마을 장부 메시지(납품 · 교환 · 기부 · 꺼내기 …) 직후 한 번. 닫거나 끊기면 표지를 지운다.
@@ -47,6 +50,7 @@ function init(h) {
 }
 
 const ko = (r) => (Events.koRes ? Events.koRes(r) : r);
+let _W; const _kgOf = (r) => { if (_W === undefined) { try { _W = require('./weights'); } catch (e) { _W = null; } } try { return (_W && _W.kgOf) ? (+_W.kgOf(r) || 0) : 0; } catch (e) { return 0; } };   // ★[T1189 ⑦] 무게 정본
 const _r = (x, n) => (Number.isFinite(+x) ? +(+x).toFixed(n) : null);
 
 // 다음 겨울 첫날까지(겨울이면 0) — 달력 정본(`calendarOf` 의 철 첫날 · 철 길이)만 따라간다(365 · 90 같은 수 0).
@@ -72,6 +76,8 @@ function _head(src, vil) {
   //   존을 모르는 판(헤드리스)이면 키가 없다.
   const zc = src.zoneId && ZoneConfig.ZONES ? ZoneConfig.ZONES[src.zoneId] : null;
   if (zc && zc.displayName) out.region = zc.displayName;
+  //   ★[T1189 ② · 문 24 ② ㄱ] 마을 꼴 — 회관 행의 꼬리표 낱말(`villages.js` `_kindKo` · 농촌 · 어촌 · 광산 · 임업). 부제 = 지역 이름 + 마을 꼴(화면이 잇는다). 없으면 키 없음.
+  if (vil._kindKo) out.kindKo = vil._kindKo;
   if (Number.isFinite(vil.econ.foundedDay)) out.age = day - (vil.econ.foundedDay | 0);
   let ch = null; try { ch = H.VillageKin && H.VillageKin.chiefOf ? H.VillageKin.chiefOf(vil) : null; } catch (e) { ch = null; }
   out.chief = ch ? { name: ch.name || null, npc: !!ch.npc } : null;
@@ -179,6 +185,17 @@ function _members(vil, chiefId) {
   const byJob = [...tally].map(([job, n]) => ({ job, ko: (H.jobKo && H.jobKo[job]) || null, n })).sort((a, b) => (b.n - a.n) || (a.job < b.job ? -1 : 1));
   return { n: people.length, byJob, people };
 }
+// ★[T1169 · K18 · T1115 회부 2] 촌장 「일 맡기기」 명부 — 게시판 판(T1085 `_t1085Members`)이 싣던 **그 자료 그대로**(`SimVillages.assignRoster` 하나 · 사본 0).
+//   싣는 때도 같다: 사람이 세운 마을(`econ.founder`) · 이 사람이 촌장(`me.chief` = `membership.publicState().chief` = `chiefCached` — 게시판과 같은 술어).
+//   아니면 키가 없다(제2 규약). 한 줄 = econ 사람(몸 이름 없음 — 게시판과 같다): id · 지금 일 · 나이 · 남은 날 · 원정 중 · 촌장이 맡김. 고를 일 = 자리 있는 직업 · 빈자리.
+function _assign(vil, me) {
+  const V = H && H.SimVillages;
+  if (!me || !me.chief || !V || !V.assignRoster || !vil || !vil.econ || !vil.econ.founder) return null;
+  const R = V.assignRoster(vil);
+  if (!R) return null;
+  const k = (j) => (H.jobKo && H.jobKo[j]) || j;
+  return { rows: R.rows.map((x) => Object.assign(x, { jobKo: k(x.job) })), jobs: R.jobs.map((x) => Object.assign(x, { ko: k(x.job) })), cooldown: R.cooldown };
+}
 // 대시보드 — 옛 셋(`pop` · `toWinter` · `projectsN`) 그대로 + [T1105] 서버에 이미 있는 두 값(값이 없으면 키가 없다).
 //   `foodDays` = 곳간 스냅숏 정본(`villages.js playerVillageInventory().foodDays` = econ `totalFoodEquivalent ÷ 인구` — 한 사람 하루 1 이라 "며칠치")
 //     그대로. 새로 오는 사람 문(`newcomers.js` "자립 n일")과 같은 함수다. ⚠겨울 준비 **%** 가 아니다 — 분모(겨울 목표)가 없다(T779 가 걷었다 · 회부).
@@ -186,9 +203,23 @@ function _members(vil, chiefId) {
 //     겨울엔 추위만큼 수요가 커진다). econ 이 이 값으로 건강을 깎는다(`stats.fuelCov`). 소수 둘째 자리(이 파일 `_r` 관례) ·
 //     `fuelShort` = 그 값이 1 아래(오늘 쓸 땔감을 다 못 땠다). 첫 econ 날 전엔 둘 다 키가 없다.
 //     ⚠이것도 "겨울 대비" 가 아니라 **오늘** 몫이다 — 겨울 목표는 위와 같이 회부.
+// ★[T1189 ① · 문 24 ① ㄱ] 겨울 준비 — 먹을 것 며칠치(`foodDays`) ÷ **겨울 끝까지 남은 날**(`winterLeft` — 달력 정본: 겨울이면 이번 겨울 남은 날 ·
+//   아니면 다음 겨울 첫날까지 + 그 겨울 날 수). `dash.winter[]` 한 줄 `{ label:'먹을 것', frac, short, days, need }`(frac 은 1 에서 멈춘다 · short = 며칠치 < 남은 날).
+//   ⚠카드 원문은 "다음 수확까지"(T1179 수확창)인데 그 창이 main 에 아직 없다 — 그 전 꼴("남은 겨울 날")이다(T1179 가 서면 분모 한 줄을 바꾼다).
+//   땔감은 이 줄에 넣지 않는다 — "오늘 땔감"(`fuelCov` · `fuelShort`)이 따로 선다(화면).
+function winterLeft(day) {
+  const c = Events.calendarOf(day);
+  if (c.season === 'winter') return c.seasonDays - c.dayOfSeason + 1;
+  const t = toWinter(day);
+  return t + Events.calendarOf(day + t).seasonDays;
+}
 function _dash(src, vil, projects, inv) {
   const out = { pop: vil.econ.npcs.length, toWinter: toWinter(src.day), projectsN: projects.now.length };
   if (inv && Number.isFinite(inv.foodDays)) out.foodDays = inv.foodDays;
+  if (Number.isFinite(out.foodDays)) {
+    const need = winterLeft(src.day);
+    if (need > 0) out.winter = [{ label: '먹을 것', frac: _r(Math.min(1, out.foodDays / need), 2), short: out.foodDays < need, days: out.foodDays, need }];
+  }
   const fc = vil.econ._fuelCov;
   if (Number.isFinite(fc)) { out.fuelCov = _r(fc, 2); out.fuelShort = out.fuelCov < 1; }
   return out;
@@ -213,6 +244,8 @@ function _store(src, vil, inv) {
   const line = (r, q) => {
     const e = +ema[r] || 0, o = { res: r, ko: ko(r), qty: q, daysOf: e > 0 ? _r(q / e, 1) : null };
     if (e > 0) o.use = _r(e, 2);
+    //   ★[T1189 ⑦ · 문 24 ⑦ ㄱ] 단위 둘 — 낱개(`qty` 그대로) · kg(= 낱개 × 무게 정본 `weights.kgOf` · 소수 첫째 자리). 무게를 모르는 품목은 키 없음.
+    const kg = _kgOf(r); if (kg > 0) o.kg = _r(q * kg, 1);
     return o;
   };
   const rows = [], short = { rows: [], withheld: 0 }, glut = { rows: [], withheld: 0 }, seen = new Set(); let withheld = 0;
@@ -250,6 +283,21 @@ function pricesKey(src, vil, player, numeraire, board) {
   return src.day + '|' + JSON.stringify(vil.econ.storage || {}) + '|' + JSON.stringify(player.inventory || {}) + '|' + (numeraire || '') + '|'
     + (board.rows || []).map((r) => r.rewItem || '').join(',');
 }
+// ★[T1189 ⑥ · 문 24 ⑥ ㄱ] 시세 흐름 — 마을 econ 행의 30날 고리(`villages.js _t1189PxRecord` · 하루 한 줄 · 거래소 정본 값을 받아 적은 것)를
+//   지금 고른 기준 품목으로 나눈다(거래소 `num` 과 같은 나눗셈 · 같은 자리수 `trade.sig` — 값을 새로 계산하지 않는다).
+//   `prices.trend = { days, rows[] { res, pts[] { ago, num } } }` — 시세 칸(`prices.rows`)에 있는 품목만 · 오래된 것부터 · 그날 기준이나 품목 값이 없으면 그 점은 없다.
+//   시세 칸 안에 산다 ⇒ 멀면(`none:'far'`) 같이 없다(원격 시세 0 · 제4 규약). 고리가 비면 키 없음.
+function _trend(vil, P, day) {
+  const ring = vil && vil.econ && Array.isArray(vil.econ._t1189Px) ? vil.econ._t1189Px : null;
+  if (!P || P.none || P.pick || !P.numeraire || !ring || !ring.length) return;
+  const T = require('./trade'), n = P.numeraire, rows = [];
+  for (const r of P.rows || []) {
+    const pts = [];
+    for (const x of ring) { const pn = +(x.p || {})[n] || 0, p = +(x.p || {})[r.res] || 0; if (pn > 0 && p > 0) pts.push({ ago: (day | 0) - (x.d | 0), num: T.sig(p / pn) }); }
+    if (pts.length) rows.push({ res: r.res, pts });
+  }
+  if (rows.length) P.trend = { days: (Events.CFG && Events.CFG.PRICE_WIN) || ring.length, rows };
+}
 function _prices(player, vid, numeraire) {
   const tb = H.SimVillages.villageTradeBoard ? H.SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory, numeraire) : { err: 'far' };
   if (!tb || tb.err) return { none: 'far' };
@@ -276,9 +324,10 @@ function build(player, vid, numeraire, memo) {
   const hd = _head(src, vil);
   const projects = _projects(src, vil, V.villageChronicle ? V.villageChronicle(vid | 0, player.x, player.y) : null);
   const inv = V.playerVillageInventory ? V.playerVillageInventory(vil) : null;   // 곳간 스냅숏 정본 — 창고 칸 · 먹을 것 며칠치가 같은 한 번을 읽는다
+  const me = _me(player, vil);
   const view = {
     head: hd.slot,
-    me: _me(player, vil),
+    me,
     dash: _dash(src, vil, projects, inv),
     requests: _requests(board),
     news: _news(board, src.day, vid),
@@ -288,9 +337,10 @@ function build(player, vid, numeraire, memo) {
     prices: null,
     gate: { near: true },
   };
+  { const A = _assign(vil, me); if (A) view.members.assign = A; }   // ★[T1169] 촌장에게만(없으면 키 없음 — 옛 바이트)
   const key = memo ? pricesKey(src, vil, player, numeraire, board) : null;
   if (memo && memo.key === key && memo.slot) { view.prices = memo.slot; ST.priceReuse++; }
-  else { view.prices = _prices(player, vid, numeraire); if (memo) { memo.key = key; memo.slot = view.prices; } }
+  else { view.prices = _prices(player, vid, numeraire); _trend(vil, view.prices, src.day); if (memo) { memo.key = key; memo.slot = view.prices; } }
   return { view };
 }
 function _timed(player, vid, numeraire, memo) {

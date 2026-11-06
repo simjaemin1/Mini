@@ -6046,6 +6046,8 @@ function init(deps) {
       if (hallData && hallData.founderName) ev.founderName = String(hallData.founderName);
       //   ★[T593 ⑤] 이름표를 바꿔 심은 판이면 후보 이름을 곁에 둔다(레거시 디듀프가 후보 이름으로 묻는다 · 없으면 칸 자체를 안 만든다).
       if (hallData && hallData.seedName) state.villages[state.villages.length - 1]._seedName = String(hallData.seedName);
+      //   ★[T1189 ②] 마을 꼴 — 회관 행에 이미 있는 꼬리표(`t593` 다시 붙인 것 · 없으면 시딩 후보 `seedType`)의 이름 낱말(`_T593_WORD` — 지금 이름이 쓰는 그 넷). 사람 마을 · 꼬리표 없는 행은 칸 없음.
+      { const _k = hallData && (hallData.t593 || hallData.seedType); if (_k && _T593_WORD[_k]) state.villages[state.villages.length - 1]._kindKo = _T593_WORD[_k]; }
       if (T785) VillageKin.attach(state.villages[state.villages.length - 1], hallData, _t785Row);   // ★[T785] 켬 — 회관 행의 마을 칸을 되살린다(표지 없는 사람 마을 = 이행 대기)
       _fieldBridge({ econ: ev, _farmSet: farmSet, _potSet: potSet, _drySet: drySet });   // ★[T100] 밭 브리지 초기값(영속 행에서 — 개간 전에도 밭은 있다) · ★[T198] 두 칸도 같은 줄에서
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
@@ -12001,6 +12003,42 @@ function playerVillageDeposit(vil, inventory, want, unitsOf) {
   return { ok: true, moved, taken };
 }
 
+// ★★[T1189 ⑤ · ★재민 11-05 문 24 ⑤ ㄱ] **공사에 재료 가져오기** — 사람이 짐의 자재를 지금 짓는 집터(`vil._site.mat`)에 **직접** 놓는다.
+//   크루가 곳간에서 날라 오는 그 칸(`economy-sim.js houseCrewDay` 가 `s2.mat[k]` 에 더하는 자리)과 같은 칸 — 몸 짐에서 빠지고 집터에 놓인다(실물 · 곳간을 거치지 않는다).
+//   물건 → 재화 · 환산은 곳간 넣기와 **같은 표**(`PV_DEPOSIT_MAP` · `PV_DEPOSIT_RATE` · `unitsOf`) — 사본 0.
+//   받는 양 = 이 집에 **남은 몫**(지금 단계부터 끝 단계까지 공정 표 합 − 이미 놓인 것 — 크루가 짐을 채우는 한도와 같은 식)까지. 남는 몫을 넘으면 낱개를 줄인다(넘친 자재가 집터에서 사라지지 않게).
+//   집 행위가 꺼진 판(`T400_BUILD_ACT` 끔 — 집터 장부가 없다)이면 길이 없다.
+//   반환 `{ ok, moved, taken, done }` — `done` = 이 한 번으로 **지금 단계 자재가 다 찼다**(전엔 모자랐다). 기여는 부르는 쪽이 이것으로 센다(부탁 하나를 다 채운 것과 같은 꼴 · 문 24 ③).
+function playerSiteGive(vil, inventory, want, unitsOf) {
+  const v = vil && vil.econ, site = vil && vil._site, E = _t1085Econ();
+  if (!v || !site) return { ok: false, err: '지금 짓고 있는 집이 없습니다.' };
+  if (!E.T400_BUILD_ACT || !E.hutEconStage || !E.hutStageCount) return { ok: false, err: '이 마을은 집터에 재료를 받지 않습니다.' };
+  if (!site.mat) site.mat = {};
+  const st = site.stage | 0, n = E.hutStageCount(), need = E.hutEconStage(st) || {};
+  const left = {};
+  for (let i = st; i < n; i++) for (const [k, q] of Object.entries(E.hutEconStage(i) || {})) left[k] = (left[k] || 0) + (+q || 0);
+  for (const k of Object.keys(left)) left[k] -= (+site.mat[k] || 0);
+  const met = () => Object.keys(need).every((k) => (+site.mat[k] || 0) >= need[k]);
+  const before = met();
+  const moved = {}, taken = {};
+  for (const [item, q0] of Object.entries(want || {})) {
+    const res = PV_DEPOSIT_MAP[item];
+    if (!res || !(left[res] > 1e-9)) continue;
+    let put = Math.min(Math.floor(Number(q0)), Math.floor(Number(inventory[item]) || 0));
+    if (!(put > 0)) continue;
+    const per = (q) => { const u = (typeof unitsOf === 'function') ? Number(unitsOf(item, q)) : q; return (Number.isFinite(u) && u > 0 ? u : q) * PV_DEPOSIT_RATE; };
+    while (put > 0 && per(put) > left[res] + 1e-9) put--;   // 남은 몫을 넘지 않는 낱개까지
+    if (!(put > 0)) continue;
+    const u = per(put);
+    taken[item] = put; left[res] -= u;
+    moved[res] = +((moved[res] || 0) + u).toFixed(6);
+  }
+  if (!Object.keys(taken).length) return { ok: false, err: '이 집에 쓸 재료가 짐에 없습니다. 집터는 지금 모자란 자재만 받습니다.' };
+  for (const [item, q] of Object.entries(taken)) inventory[item] -= q;
+  for (const [res, q] of Object.entries(moved)) site.mat[res] = +((+site.mat[res] || 0) + q).toFixed(6);
+  return { ok: true, moved, taken, done: !before && met(), stage: st };
+}
+
 
 // ★★[T11 2026-09-02 재민 확정] **곳간에서 꺼내기 — 위 `playerVillageDeposit` 의 역연산.**
 //   누가·얼마나는 `server/membership.js`(소속·한도)가 정한다. 여기는 **실물 이동만** 한다.
@@ -14946,6 +14984,30 @@ function t1034Peek() {
 }
 function t1025Pending(vid) { return { r: _evRescues.filter((e) => e.vid === vid).length, b: _evBuilds.filter((e) => e.vid === vid).length, s: _evStarved.filter((e) => e.vid === vid).length }; }
 
+// ★★[T1189 ⑥ · ★재민 11-05 문 24 ⑥ ㄱ] **시세 30날 고리** — 마을마다 하루 한 번 그날 시세 한 줄을 econ 행 칸 `_t1189Px` 에 쌓는다.
+//   값 = 거래소가 읽는 그 정본(`Events.pricesFresh` = econ `computeShadowPrices` — 이 줄은 값을 계산하지 않고 받아 적는다 · 사본 0).
+//   품목 = 그날 곳간에 있는 재화 ∪ 사람이 낼 수 있는 재화(`ledger.deliverable.toEcon` — 시세 기준으로 고를 수 있는 것) · 유효 숫자 넷.
+//   길이 = 장부의 30날 창(`ledger.cfg.PRICE_WIN` — 새 수 0). econ 행에 실려 재기동을 넘는다(`serializeEcon` 이 칸째 싣는다 · econ 은 이 칸을 읽지 않는다).
+function _t1189PxRecord() {
+  const V2 = state.econV2, L = state.ledger, W = state.world;
+  if (!V2 || !L || !W || !V2.computeShadowPrices) return;
+  const day = W.day | 0, N = (L.cfg && L.cfg.PRICE_WIN) || require('./events').CFG.PRICE_WIN;
+  const del = (L.deliverable && L.deliverable.toEcon) ? [...L.deliverable.toEcon.keys()] : [];
+  const Ev = require('./events');
+  for (const vil of state.villages || []) {
+    const v = vil && vil.econ;
+    if (!v || !v.storage) continue;
+    let P = null; try { P = Ev.pricesFresh(V2, v); } catch (e) { P = null; }
+    if (!P) continue;
+    const row = {};
+    const put = (r) => { if (!r || r.charCodeAt(0) === 95 || r in row) return; const p = +P[r] || 0; if (p > 0) row[r] = +p.toPrecision(4); };
+    for (const r of Object.keys(v.storage)) if ((+v.storage[r] || 0) > 0) put(r);
+    for (const r of del) put(r);
+    const ring = Array.isArray(v._t1189Px) ? v._t1189Px : (v._t1189Px = []);
+    if (ring.length && (ring[ring.length - 1].d | 0) === day) ring[ring.length - 1].p = row; else ring.push({ d: day, p: row });
+    while (ring.length > N) ring.shift();
+  }
+}
 function _scanEventsDaily() { const g = _scanEventsSteps(); while (!g.next().done); }   // ★[T698] 몸통은 아래 발생기 하나(끔 = 끝까지 한 번에 · 종전 그대로)
 function* _scanEventsSteps() {
   if (!state.ledger) return;
@@ -14961,6 +15023,7 @@ function* _scanEventsSteps() {
     let r = lg.next(); while (!r.done && r.value !== 'tail') { yield; r = lg.next(); }
     evs = r.done ? (r.value || []) : (state.ledger.scanDay(state.world, state.world.day, _x, { drain: lg }) || []);   // 꼬리는 감싼 문(관찰기 훅이 다 선 장부를 본다)
   } else evs = state.ledger.scanDay(state.world, state.world.day, _x);
+  try { _t1189PxRecord(); } catch (e) {}   // ★[T1189 ⑥] 마을마다 하루 한 번 시세 한 줄(장부와 같은 하루 경계)
   // 의뢰 진척 저장은 납품 시점에 한다(여기선 게시/철회만 — onRequest 훅이 이미 했다).
   if (state.world.day % 30 === 0) {
     try { state.db.pruneVillageEvents(state.zoneId, state.world.day - state.ledger.cfg.KEEP_DAYS); } catch (e) {}
@@ -15094,8 +15157,10 @@ function villageChronicle(vid, px, py, year) {
 //   ⚠260px 게이트가 **없다**. 그래도 캐논(원격 시세 조회 금지)을 어기지 않는 이유:
 //     여기서 나가는 건 시세도 재고도 아니라 **촌장이 할 말 한 줄**이고, 그마저도
 //     소문이 물리적으로 그 마을에 닿은 뒤에만 나간다. 정보 비대칭은 도달표가 지킨다.
-// ★[T1103] 마을 화면 "마을 소식" — 게시판 소식과 **같은 술어 · 같은 줄 수**(`_newsRows` · `BOARD_NEWS_N`) · 줄만 하십시오체(`Events.newsLine`). 게이트는 부르는 쪽(`village-view.js build` 가 `villageBoard` 로 먼저 지난다).
-function villageViewNews(vid) { return _newsRows(vid, BOARD_NEWS_N, Events.newsLine); }
+// ★[T1103] 마을 화면 "마을 소식" — 게시판 소식과 **같은 술어 · 같은 줄 수**(`_newsRows` · `BOARD_NEWS_N`). 게이트는 부르는 쪽(`village-view.js build` 가 `villageBoard` 로 먼저 지난다).
+// ★[T1190 ② · ★재민 11-05 문 25 ② ㄴ] 줄 = **촌장 말(하게체) 그대로**(`Events.briefLine` — 게시판 · 촌장 브리핑과 같은 줄). 종전(T1103)의 화면용 하십시오체(`newsLine`)를 걷었다.
+//   `Events.newsLine` 표는 남는다 — 끝낸 일(`projects.done`) · 값 오르내림(`store.priceMoves`) 줄은 소식 칸이 아니라 그대로 쓴다(문 25 는 "마을 소식"만).
+function villageViewNews(vid) { return _newsRows(vid, BOARD_NEWS_N); }
 function villageNews(vid, n) {
   if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   const vil = state.byDbId && state.byDbId.get(vid | 0);
@@ -15806,6 +15871,7 @@ module.exports = { t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify
   t1095Stat: () => JSON.parse(JSON.stringify(_t1095Stat)),   // ★[T1095] 채굴 일괄 수요 문 증인(관측 자 `t1095-observe` · 하네스)
   t765Stat: () => JSON.parse(JSON.stringify(_t765Stat)),   // ★[T765] 후보 걷기 몸 증인(관측 자 `t765-obs` · 실제 하루 판)
   villageFamine, playerVillageDepositMap, assignJob, assignRoster,   // ★[T1085] 촌장 일 맡기기
+  playerSiteGive, t1189PxRecord: () => _t1189PxRecord(),   // ★[T1189 ⑤ ⑥] 공사에 재료 가져오기 · 시세 30날 고리(하네스가 하루를 기다리지 않고 한 줄을 세운다)
     // ★[T159] 기근 판정(엔진 판단을 읽는다) · 품목→재화 대응표
   playerVillageWithdrawStockFoodEq, _countsAsFoodEq,   // ★[T20-ⓑ] 한도의 밑변 = econ 식량 등가(보존식 포함)
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
