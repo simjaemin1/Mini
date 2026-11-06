@@ -7,7 +7,7 @@
 //
 // ★★제1 규약 — **가격 사본을 만들면 그 순간 실패다.**
 //   교환비는 `econV2.computeShadowPrices(v)` **정본 하나**가 낸 값의 비율이다. 이 파일에는
-//   가격을 계산하는 줄이 **하나도 없고**, 접근자(`events.pricesFresh`)만 부른다.
+//   가격을 계산하는 줄이 **하나도 없고**, 접근자(`events.pricesFresh` · ★[T1161] 두 칸만 읽는 자리는 `events.pricesFreshOf` — 같은 값)만 부른다.
 //
 // ★★[2026-08-27 · `e2e-trade ⑤` 가 잡은 결함] **하루 캐시(`events.pricesOf`)를 쓰지 않는다.**
 //   1차 실장은 `pricesOf(econV2, v, day)` 를 썼다. 그건 NPC 교역(`tickTradeV2`)이 **하루에 한 번**
@@ -112,12 +112,12 @@ function tradableOut(ledger, vid) {
 function gluttedAt(econV2, v, res, stock) {
   const st = v.storage || {};
   const before = +st[res] || 0;
-  const p0 = +Events.pricesFresh(econV2, v)[res] || 0;
+  const p0 = +Events.pricesFreshOf(econV2, v, [res])[res] || 0;   // ★[T1161] 그 칸만(같은 값)
   if (!(p0 > 0)) return false;
   _t732Pause(true);   // ★[T732] 계산이지 거래가 아니다 — 장부 멈춤(끄면 무동작)
   try {
     st[res] = before + Math.max(CFG.GLUT_PROBE_MIN, before * CFG.GLUT_PROBE_FRAC);
-    const p1 = +Events.pricesFresh(econV2, v)[res] || 0;
+    const p1 = +Events.pricesFreshOf(econV2, v, [res])[res] || 0;
     // 재고를 크게 늘렸는데 값이 **한 톨도** 안 내려가면 바닥이다.
     return !(p1 < p0 * (1 - 1e-9));
   } finally { st[res] = before; _t732Pause(false); }
@@ -193,7 +193,7 @@ function planSliced(econV2, v, giveRes, takeRes, giveQty, cap) {
   _t732Pause(true);   // ★[T732] 조각 계획은 계산이다 — 장부 멈춤(끄면 무동작)
   try {
     for (let i = 0; i < n; i++) {
-      const p = Events.pricesFresh(econV2, v);
+      const p = Events.pricesFreshOf(econV2, v, [giveRes, takeRes]);   // ★[T1161 · K13] 두 칸만 — 전 표의 그 두 칸과 같은 값(정본 `shadowPricesOf`)
       const pA = +p[giveRes] || 0, pB = +p[takeRes] || 0;
       if (!(pA > 0) || !(pB > 0)) break;
       const r = (pA * (1 - s)) / (pB * (1 + s));
@@ -391,7 +391,7 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
       : '마을이 내주지 않는 물건입니다.' };
   }
   // ★`planSliced` 의 첫 조각과 **같은 표**를 봐야 표시된 한계비율이 실제 첫 조각과 일치한다.
-  const prices = Events.pricesFresh(econV2, v);
+  const prices = Events.pricesFreshOf(econV2, v, [giveRes, takeRes, CFG.NUMERAIRE]);   // ★[T1161] 읽는 세 칸(낼 것 · 받을 것 · 기준 품목 — 아래 `numGive` · `numTake`)만 · 전 표의 그 칸과 같은 값
   const pA = +prices[giveRes] || 0, pB = +prices[takeRes] || 0;
   if (!(pA > 0) || !(pB > 0)) return { err: '이 마을에는 그 물건의 시세가 없습니다.' };
   const s = CFG.SPREAD;

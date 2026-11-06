@@ -938,6 +938,25 @@ function computeShadowPrices(v) {
   }
   return prices;
 }
+// ★[T1161 · K13] 값표의 **몇 칸만** — `computeShadowPrices(v)` 의 그 칸과 같은 값(같은 함수 · 같은 차례 · 새 수 0).
+//   거래소 견적 · 실행(`server/trade.js planSliced` · 조각 12 × 이분 탐색)은 두 칸(낼 것 · 받을 것)만 읽는데
+//   전 품목(226)을 매겨 왔다 — t988 하네스 시간의 95%(T1121 §2-3). 그 칸들만 같은 길로 매긴다.
+//   · 값표 밖 품목(ELASTICITY 에 없음) = 칸 없음(전 표와 같이 `undefined`).
+//   · 원석 상한은 금속 칸을 같은 함수(`_priceFromV2(_targetV2)`)로 매겨 견준다 — 전 표의 `prices[k]` 와 같은 값 · 표 밖 금속 = 0(전 표의 `|| 0`).
+//   · 세계 공급 캐시(`_worldStockOf` · 하루 한 번 세계 곳간을 센다)를 전 표와 **같은 순간**에 세운다 — 전 표는 부를 때마다 그 캐시를 묻는다(값표 밖
+//     두 칸만 묻는 판이 그 순간을 늦추면 그날 캐시가 다른 재고로 서서 뒤 값이 갈린다). 계산이지 세계를 안 바꾼다(전 표와 같은 쓰기 한 곳).
+function shadowPricesOf(v, keys) {
+  const prices = {};
+  const ctx = _targetCtxV2(v);
+  if (TRADABLE.length) _worldStockOf(v, TRADABLE[0]);
+  const own = Object.prototype.hasOwnProperty;
+  for (const r of keys) if (own.call(ELASTICITY, r) && !own.call(prices, r)) prices[r] = _priceFromV2(_targetV2(v, r, ctx));
+  if (prices.ore != null) {
+    const cap = _oreCapV2(v, (k) => own.call(prices, k) ? prices[k] : (own.call(ELASTICITY, k) ? _priceFromV2(_targetV2(v, k, ctx)) : undefined));
+    if (cap != null) prices.ore = Math.min(prices.ore, cap);
+  }
+  return prices;
+}
 
 // =============================================================================
 // 1b. 시장 충격 정산(price-impact settlement) — 2026-07-12 (b00c9f4 50% 하드캡의 창발 대체)
@@ -3192,6 +3211,7 @@ module.exports = {
   createWorldV2,
   tickWorldV2, tickWorldV2Parts,   // ★[T513] 하루 틱 조각(서버 하루 마감이 여러 프레임에 흘린다 · 정본 한 벌)
   computeShadowPrices,
+  shadowPricesOf,   // ★[T1161 · K13] 값표의 몇 칸만(전 표의 그 칸과 같은 값) — 거래소 견적 · 실행이 부른다
   netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
   haulMul, HORSE_HAUL_MUL, TRANSPORT_COST_PER_1000,   // ★말 사역(2026-08-02e ⑥) — 시대 전/후 비트 동일 검증용
   computeVillageStats,
