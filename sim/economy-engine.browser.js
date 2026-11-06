@@ -1897,7 +1897,7 @@ const RESOURCES = {
   meat_chicken:{ ko: '닭고기',     emoji: '🍗', category: 'livestock', weight: 0.5, baseValue: 2,  utility: 0.6, contributes: { subsistence: 0.5 }, harvest: 'breeding' },
   meat_game:   { ko: '사슴·들짐승고기', emoji: '🍖', category: 'livestock', weight: 1.0, baseValue: 4, utility: 0.6, contributes: { subsistence: 0.7 }, harvest: 'hunting' },
   fur:         { ko: '모피',       emoji: '🦊', category: 'livestock', weight: 1.2, baseValue: 25, utility: 0.4, contributes: { happiness: 0.5, prestige: 0.6 }, harvest: 'hunting' },
-  leather:     { ko: '가죽',       emoji: '🟫', category: 'livestock', weight: 3, baseValue: 5,  utility: 0.6, contributes: { production: 0.7 }, harvest: 'hunting' },
+  leather:     { ko: '무두질 가죽', emoji: '🟫', category: 'livestock', weight: 3, baseValue: 5,  utility: 0.6, contributes: { production: 0.7 }, harvest: 'hunting' },
   wool:        { ko: '양털',       emoji: '🧶', category: 'livestock', weight: 0.3, baseValue: 4,  utility: 0.6, contributes: { production: 0.6 }, harvest: 'breeding' },
   silk_raw:    { ko: '비단 원사',  emoji: '🧵', category: 'livestock', weight: 0.2, baseValue: 30, utility: 0.4, contributes: { production: 0.8 }, harvest: 'breeding' },
   silkworm:    { ko: '누에',       emoji: '🐛', category: 'livestock', weight: 0.01,baseValue: 5,  utility: 0.2, contributes: { production: 0.2 }, harvest: 'breeding' },
@@ -9666,6 +9666,41 @@ function fromSave(p, saved) {
   }
   return all(p);
 }
+// ★★[T1166 2026-11-05 · 판정대기 문 17 ㄱ(족보 727) · T1133 회부 2 · 손잡이는 villages `T1166_NPC_LOT_PERSIST`] **NPC 몸 손의 곁 장부를 몸 영속과 같이.**
+//   NPC 로트는 몸 밖 `_mNpc`(WeakMap · 몸 필드 0)라 다시 뜨면(몸 = 새 객체) 양(T747 `inventory`)만 남고 날짜를 잃었다 — 첫 맞추기가 손 전부를
+//   "지금 얻은 것"으로 잡아(`approx`) 그 손이 다시 싱싱해졌다(신선도 캐논 — 음식이 실제보다 싱싱해 보이면 안 된다). 저장 순간에만 몸 줄(T747)로 옮겨 적고
+//   되살린 몸에 다시 건다(T1133 몸 짐과 같은 길). 레코드 꼴은 이 장부 그대로(`{d,k,n,e,t,m,w}` · 뭉갠 것만 `coalesced`) — 값을 안 깎는다(늙기 연속).
+const _pStat = { save: 0, saveRecs: 0, load: 0, loadRecs: 0 };
+const _P_KEYS = ['d', 'k', 'n', 'e', 't', 'm', 'w'];
+function _pCopy(l) { const o = {}; for (const key of _P_KEYS) if (Number.isFinite(l[key])) o[key] = l[key]; if (l.coalesced) o.coalesced = true; return o; }
+function npcDump(p, look) {   // 읽기만(정산 0 · 세계 무변) · `look` = 재기만(셈 0)
+  const L = (p && p.isNpc) ? _mNpc.get(p) : null; if (!L) return null;
+  const o = {}; let n = 0;
+  for (const [item, arr] of Object.entries(L)) {
+    if (!Array.isArray(arr)) continue;
+    const a = arr.filter((l) => l && l.n > CFG.EPS).map(_pCopy);
+    if (a.length) { o[item] = a; n += a.length; }
+  }
+  if (!n) return null;
+  if (!look) { _pStat.save++; _pStat.saveRecs += n; }
+  return o;
+}
+//   되살린 몸에 건다 — 이미 줄이 있으면(남은 손이 첫 몸에 더해지는 자리) 섞고 순간 순 · 상한 규칙(오래된 쪽으로만 뭉갬)을 그대로 탄다. 건 레코드 수.
+function npcLoad(p, saved) {
+  if (!_mOn() || !p || !p.isNpc || !saved || typeof saved !== 'object') return 0;
+  let n = 0;
+  for (const [item, recs] of Object.entries(saved)) {
+    if (!isLot(item) || !Array.isArray(recs)) continue;
+    const a = recs.filter((l) => l && l.n > CFG.EPS && (Number.isFinite(l.k) || Number.isFinite(l.d))).map(_pCopy);
+    if (!a.length) continue;
+    for (const l of a) if (!Number.isFinite(l.d)) l.d = Math.floor(l.k / _mDay);
+    const arr = of(p, item); arr.push(...a); n += a.length;
+    _mSort(arr); _mCap(arr, _mNowFrac(Math.floor(_mNowMs() / _mDay)));
+  }
+  if (n) { _pStat.load++; _pStat.loadRecs += n; }
+  return n;
+}
+function npcStats() { return Object.assign({}, _pStat); }
 // ★[T732] 하네스·보고가 읽는 자(관측 전용 — 세계를 안 바꾼다)
 function stats(reset) { const o = { approx: _mStat.approx, approxBy: Object.assign({}, _mStat.approxBy), coalesced: _mStat.coalesced }; if (reset) { _mStat.approx = 0; _mStat.approxBy = {}; _mStat.coalesced = 0; } return o; }
 function peek(p, item, amount, inventory, today) { return _mOn() ? _mPeek(p, item, amount, inventory, today) : []; }
@@ -9677,6 +9712,7 @@ function dayMs() { return _mOn() ? _mDay : null; }
 function msOf(day) { return _mOn() ? _mMsOf(day) : null; }
 module.exports = { CFG, LOT_CORE, _day, isLot, all, of, sum, note, reconcile, consume, consumeFrom, view, viewAll, toSave, fromSave,
   T732_MOMENT, setClock, momentOn, nowMs, dayMs, msOf, peek, stats, noteNow,   // ★[T732] 순간 로트(손잡이 · 시계 · 미리 보기 · 자)
+  npcDump, npcLoad, npcStats,   // ★[T1166] NPC 몸 곁 장부 영속(villages 몸 줄 T747 이 부른다)
   T725_KINDS, NO_ROT,   // ★[T725 ②] 안 썩는 재료 표(하네스·보고가 읽는다)
   // ★[부패 2차 2026-09-01] 정산·자리·그릇 이동
   settle, setPlace, moveOut, moveIn, settleRecs };
