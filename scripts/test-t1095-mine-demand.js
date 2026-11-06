@@ -13,6 +13,8 @@
 //
 // 실행: node scripts/test-t1095-mine-demand.js
 'use strict';
+// T1188: 기존 원석/OFF 계약. 광물별 켬은 test-t1188-ore-split이 검사.
+process.env.T1188_ORE_SPLIT='0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

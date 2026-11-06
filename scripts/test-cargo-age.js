@@ -21,6 +21,8 @@
 //
 // 실행: node scripts/test-cargo-age.js
 'use strict';
+// T1188: 기존 원석/OFF 계약. 광물별 켬은 test-t1188-ore-split이 검사.
+process.env.T1188_ORE_SPLIT='0';
 const path = require('path');
 const fs = require('fs');
 const vm = require('vm');
@@ -188,7 +190,7 @@ const bsrc = fs.readFileSync(BUNDLE, 'utf8');
 ok(/modules\["spoil"\]=/.test(bsrc) && /modules\["lots"\]=/.test(bsrc) && /if\(\/\(\^\|\[\/\]\)spoil\$\/\.test\(p\)\)return modules\.spoil;/.test(bsrc), '⑥ 번들이 spoil · lots 를 싣고 `require` 를 그 둘로 잇는다');
 const runB = (knob, seed, days) => {
   const ctx = { console: { log() {}, warn() {}, error() {} }, Math, Date, JSON };
-  ctx.window = ctx; ctx.globalThis = ctx; ctx.process = { env: knob ? { T784_CARGO_AGE: knob } : {} };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.process = { env: knob ? { T784_CARGO_AGE: knob, T1188_ORE_SPLIT:'0' } : { T1188_ORE_SPLIT:'0' } };
   vm.createContext(ctx); vm.runInContext(bsrc, ctx);
   const B = ctx.EconEngine;
   const w = B.createWorldV2({ seed, villageCount: 5, namePool: ['가', '나', '다', '라', '마'], infoRange: 5000, raidPer100: 0.005, picker: 'rational' });
@@ -234,7 +236,7 @@ const bs = fs.readFileSync(BUNDLE, 'utf8');
 ok(/modules\["weather"\]=/.test(bs) && /if\(\/\(\^\|\[\/\]\)weather\$\/\.test\(p\)\)return modules\.weather;/.test(bs), '⑦ 번들이 날씨 정본을 싣고 `require` 를 잇는다(없으면 하루 노출 1 = 날 수)');
 const runB2 = (env, seed, days) => {
   const ctx = { console: { log() {}, warn() {}, error() {} }, Math, Date, JSON };
-  ctx.window = ctx; ctx.globalThis = ctx; ctx.process = { env };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.process = { env: {T1188_ORE_SPLIT:'0',...env} };
   vm.createContext(ctx); vm.runInContext(bs, ctx);
   const B = ctx.EconEngine;
   const w = B.createWorldV2({ seed, villageCount: 5, namePool: ['가', '나', '다', '라', '마'], infoRange: 5000, raidPer100: 0.005, picker: 'rational' });

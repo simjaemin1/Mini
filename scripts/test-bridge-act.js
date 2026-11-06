@@ -12,6 +12,8 @@
 //   ⑥ 클라 미러 — `bridges_add` 가 welcome 과 같은 두 집합(렌더 · 콜라이더)에 더한다
 // 실행: node scripts/test-bridge-act.js
 'use strict';
+// T1181: 기존 되돌림 계약. 새 기본값·실제 몸은 test-t1181-build-defaults에서 검사.
+for(const k of ['T435_GRANARY_ACT', 'T527_BRIDGE_ACT', 'T517_HUT_STONE', 'T419_STONE_REAL']) process.env[k]='0';
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -82,11 +84,11 @@ console.log('\n② 착공 후보 — 존 설정 `bridgeSites`(계획기 v2 셀 �
 console.log('\n③ 손잡이 하나 · 기본 끔 — 다리 셀 집합 비트 동일');
 {
   const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
-  const g0 = probe({ T400_BUILD_ACT: '0', T435_GRANARY_ACT: '' }, `const E=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'))});process.stdout.write(JSON.stringify({k:E.T527_BRIDGE_ACT,s:E.T537_SHORTCUT,o:E.actFromGranary({storage:{wood:9}},'wood',3)}));`);
-  ok(E.T527_BRIDGE_ACT === false && E.T537_SHORTCUT === false && g0.k === false && g0.o === 0, '③ ★★다리·지름길 기본 **끔** · (집·곳간도 끄면) 곳간 출구 0 — T537 추신2 로 집(T400)은 기본 켬이라 출구 자체는 열려 있다', JSON.stringify(g0));
+  const g0 = probe({ T400_BUILD_ACT: '0', T435_GRANARY_ACT: '0' }, `const E=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'))});process.stdout.write(JSON.stringify({k:E.T527_BRIDGE_ACT,s:E.T537_SHORTCUT,o:E.actFromGranary({storage:{wood:9}},'wood',3)}));`);
+  ok(E.T527_BRIDGE_ACT === false && E.T537_SHORTCUT === false && g0.k === false && g0.o === 0, '③ 명시적 다리·지름길 되돌림 **끔** · (집·곳간도 끄면) 곳간 출구 0 — T537 추신2 로 집(T400)은 기본 켬이라 출구 자체는 열려 있다', JSON.stringify(g0));
   const all = ['sim', 'server', 'public/client'].flatMap((d) => fs.readdirSync(path.join(ROOT, d)).filter((f) => f.endsWith('.js') && !/economy-engine\.browser/.test(f)).map((f) => rd(d + '/' + f)));
   const nKnob = all.reduce((a, s) => a + (s.match(/process\.env\.T527_BRIDGE_ACT/g) || []).length, 0);
-  ok(nKnob === 1 && /const T527_BRIDGE_ACT = process\.env\.T527_BRIDGE_ACT === '1';/.test(ESRC), '③ 손잡이 한 자리(econ)', `env 읽기 ${nKnob}`);
+  ok(nKnob === 1 && /const T527_BRIDGE_ACT = process\.env\.T527_BRIDGE_ACT !== '0';/.test(ESRC), '③ 손잡이 한 자리(econ)', `env 읽기 ${nKnob}`);
   ok(/_lifeEcon\(\)\.T527_BRIDGE_ACT/.test(VSRC) && /if \(_t527On\(\)\) \{ try \{ _t527BridgeDay\(vil\);/.test(VSRC), '③ 생활층은 econ 손잡이를 읽는다 · 하루 절에 한 줄(집 크루 줄 바로 뒤 · 관측자 문 앞)');
   const body = VSRC.slice(VSRC.indexOf('function _t527On()'), VSRC.indexOf('const G_CAP = 2500'));
   ok(body.length > 1500 && !/anyViewerNear|Math\.random/.test(body), '③ 관측자 0 · 주사위 0');
@@ -105,7 +107,7 @@ const mk=(name,wood)=>({dbId:1,name,ccx:S0?S0.cells[0]:0,ccy:S0?S0.cells[1]+6:0,
 `;
 console.log('\n③′ 끔 — 크루 0 · 후보 표 안 섬(자식 프로세스)');
 {
-  const off = probe({ T527_BRIDGE_ACT: '', T537_SHORTCUT: '1' }, WORLD({}) + `const vil=mk(${JSON.stringify(SCB)},900); const d=Q.day(vil); process.stdout.write(JSON.stringify({k:E.T527_BRIDGE_ACT,sites:Q.sites(),d,w:vil.econ.storage.wood,built}));`);
+  const off = probe({ T527_BRIDGE_ACT: '0', T537_SHORTCUT: '1' }, WORLD({}) + `const vil=mk(${JSON.stringify(SCB)},900); const d=Q.day(vil); process.stdout.write(JSON.stringify({k:E.T527_BRIDGE_ACT,sites:Q.sites(),d,w:vil.econ.storage.wood,built}));`);
   ok(off.k === false && off.sites === null && off.d === null && off.w === 900 && off.built.length === 0, '③′ ★끔 — 후보 표가 서지 않는다 · 곳간 무변 · 다리 0', JSON.stringify(off));
 }
 
@@ -217,7 +219,7 @@ process.stdout.write(String.fromCharCode(10)+JSON.stringify({r0,done:S0.done,row
   ok(b.r0.stage === 0 && b.r0.mat === 300 && b.r0.sum === 300, '⑧ B ★재기동 뒤 **진척이 이어진다** — 놓인 통나무 300 · 크루 누적 300(DB 행에서)', JSON.stringify(b.r0));
   ok(b.done === true && b.rowDone === 1 && b.added === SCN && b.cnt === 850 + SCN - SCDUP && Math.abs(b.took - SCRAW) < 1e-6, `⑧ B 완공 — 행 done · 셀 ${SCN} 기록 · 존 ${850 + SCN - SCDUP}(시딩 850 + 새 ${SCN - SCDUP}) · 누적 ${SCRAW}(두 판을 이은 합)`, JSON.stringify({ cnt: b.cnt, took: b.took }));
   // C — 재기동(손잡이 끔): 존 부팅이 지은 다리를 다시 올린다
-  const c = boot({ T527_BRIDGE_ACT: '' }, `let wet=null; for(let i=0;i+1<ZC.bridgeShortcuts[0].cells.length;i+=2){ const x=px(ZC.bridgeShortcuts[0].cells[i]),y=px(ZC.bridgeShortcuts[0].cells[i+1]); if(H.isWaterTileLocal(x,y)&&!(ZC.bridges.join(',').includes(ZC.bridgeShortcuts[0].cells[i]+','+ZC.bridgeShortcuts[0].cells[i+1]))){ wet=[x,y]; break; } }
+  const c = boot({ T527_BRIDGE_ACT: '0' }, `let wet=null; for(let i=0;i+1<ZC.bridgeShortcuts[0].cells.length;i+=2){ const x=px(ZC.bridgeShortcuts[0].cells[i]),y=px(ZC.bridgeShortcuts[0].cells[i+1]); if(H.isWaterTileLocal(x,y)&&!(ZC.bridges.join(',').includes(ZC.bridgeShortcuts[0].cells[i]+','+ZC.bridgeShortcuts[0].cells[i+1]))){ wet=[x,y]; break; } }
 process.stdout.write(String.fromCharCode(10)+JSON.stringify({cnt:H.bridgeCellCount(),pl:(H.bridgePayload()||[]).length/2,head:(H.bridgePayload()||[]).slice(0,ZC.bridges.length).join()===ZC.bridges.join(),blk:H.isTerrainBlockedLocal(wet[0],wet[1]),sig:setSig(),log:LOG.filter(l=>/지은 다리 복원/.test(l)).length,sites:Q.sites()})+String.fromCharCode(10));`);
   ok(c.cnt === 850 + SCN - SCDUP && c.pl === 850 + SCN - SCDUP && c.head === true && c.blk === false && c.log === 1, `⑧ C ★재기동(끔) — 존 부팅이 **같은 셀**을 다시 올린다 · welcome 도 ${850 + SCN - SCDUP}(시딩 뒤에 붙음) · 물 칸 통행`, JSON.stringify({ cnt: c.cnt, pl: c.pl, blk: c.blk }));
   ok(c.sig === b.sig && c.sites === null, '⑧ C 다리 셀 집합 해시 = 완공 직후 판과 같다 · 끔이면 진척 표는 안 선다(지은 다리만 남는다)', `${c.sig}`);
