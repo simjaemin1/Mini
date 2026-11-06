@@ -264,11 +264,51 @@ function totalKg(p) {
 }
 // T1192: NPC T724 inventory.ore_chunk is already kg; the player's same key is a count.
 // Keep that existing save convention and normalize it only when reading an NPC's entire load.
-function npcTotalKg(p) {
+function _npcTotalKg0(p) {
   const sample={inventory:{...p.inventory},kgLedger:JSON.parse(JSON.stringify(p.kgLedger||{})),lots:JSON.parse(JSON.stringify(p.lots||{})),_carryingKg:p._carryingKg,toolItems:p.toolItems,equipment:p.equipment,dishes:p.dishes};
   const ore=Math.max(0,+sample.inventory.ore_chunk||0);
   delete sample.inventory.ore_chunk;delete sample.kgLedger.ore_chunk;delete sample.lots.ore_chunk;
   return totalKg(sample)+ore;
+}
+// ★[T1200 µs 줄기] 손잡이 `T1200_KG_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 두 길을 다 재고 견줌 · 답은 종전 길).
+//   종전 길(위)은 몸 장부 · 로트를 **JSON 으로 통째 베껴** 셈한다 — 셈 도중 `_norm` 이 옛 꼴 장부를 고쳐 쓰므로(수 → 항목 · 빈 항목 지움 · id 붙임)
+//   진짜 몸을 안 건드리려는 베낌이다. 그 베낌이 NPC 한 걸음마다 돈다(land1048 · 짐 상한 판정 넷 — 어부 · 채석 · 해 질 녘 · 존 채석 타격).
+//   켬: 장부 · 로트가 **이미 고칠 것이 없는 꼴**이면(장부 항목 = 객체 · kg · id 유한 / 로트 = 객체 · n 유한) 그 둘을 얕게만 베낀다.
+//   ★같은 값: ⓐ 고칠 것이 없으면 `_norm` 은 아무것도 안 쓴다 ⇒ 얕은 사본이어도 진짜 몸에 쓰기 0. 겉 객체(장부 · 로트 · 인벤)는 새 객체라
+//     `delete …ore_chunk` · `Lots.of` 의 빈 배열 달기는 사본에만 선다(종전과 같음). ⓑ 유한 수는 JSON 왕복에서 비트 그대로다(−0 → 0 은 합 · toFixed 에서 같다).
+//     ⓒ 하나라도 고칠 꼴(수 항목 · NaN · 빈칸 · id 없음 · 로트 n 이 유한 수가 아님)이면 종전 길 그대로다.
+const T1200_KG_FAST = process.env.T1200_KG_FAST === '1' || process.env.T1200_KG_FAST === 'verify';
+const T1200_VERIFY = process.env.T1200_KG_FAST === 'verify';
+const _t1200Stat = { fast: 0, slow: 0, vq: 0, vbad: 0 };   // 계측 전용
+function _t1200Plain(L, lot) {   // 고칠 것이 없는 꼴인가(장부: 항목 객체 · kg · id 유한 / 로트: 항목 객체 · n 유한)
+  if (L == null) return true;
+  if (typeof L !== 'object' || Array.isArray(L)) return false;
+  for (const k of Object.keys(L)) {
+    const a = L[k];
+    if (!Array.isArray(a)) { if (a !== undefined && typeof a === 'object') return false; continue; }
+    for (let i = 0; i < a.length; i++) {
+      const e = a[i];
+      if (!e || typeof e !== 'object' || Array.isArray(e)) return false;
+      if (lot ? !(typeof e.n === 'number' && Number.isFinite(e.n)) : !(typeof e.kg === 'number' && Number.isFinite(e.kg) && typeof e.id === 'number' && Number.isFinite(e.id))) return false;
+    }
+  }
+  return true;
+}
+function _npcTotalKgFast(p) {
+  if (!_t1200Plain(p.kgLedger, false) || !_t1200Plain(p.lots, true)) { _t1200Stat.slow++; return _npcTotalKg0(p); }
+  _t1200Stat.fast++;
+  const sample={inventory:{...p.inventory},kgLedger:{...(p.kgLedger||{})},lots:{...(p.lots||{})},_carryingKg:p._carryingKg,toolItems:p.toolItems,equipment:p.equipment,dishes:p.dishes};
+  const ore=Math.max(0,+sample.inventory.ore_chunk||0);
+  delete sample.inventory.ore_chunk;delete sample.kgLedger.ore_chunk;delete sample.lots.ore_chunk;
+  return totalKg(sample)+ore;
+}
+function npcTotalKg(p) {
+  if (!T1200_KG_FAST) return _npcTotalKg0(p);
+  if (!T1200_VERIFY) return _npcTotalKgFast(p);
+  const a = _npcTotalKgFast(p), b = _npcTotalKg0(p);
+  _t1200Stat.vq++; if (!Object.is(a, b)) { _t1200Stat.vbad++; if (_t1200Stat.vbad <= 5) console.error(`[T1200] verify 어긋남 ${a} ≠ ${b}`); }
+  if ((_t1200Stat.vq & 8191) === 0) console.error(`[T1200] verify 견줌 ${_t1200Stat.vq} · 어긋남 ${_t1200Stat.vbad} · 얕은 길 ${_t1200Stat.fast} · 종전 길 ${_t1200Stat.slow}`);
+  return b;
 }
 // ── ★★[T12 지게 2026-09-01] 상한은 이제 한 값이 아니다 — **기본 + 운반구** 이다. ─────────
 //   ★가산은 **곱이 아니라 더하기**다. 이유: `MOVE_CURVE` 는 kg 이 아니라 **비율 r = kg/cap** 을 받는다
@@ -358,7 +398,7 @@ function fromSave(p, saved) {
   return ledger(p);
 }
 
-module.exports = { npcTotalKg, CFG, MOVE_CURVE, STAGE_AT, R1,
+module.exports = { npcTotalKg, _npcTotalKg0, _npcTotalKgFast, t1200Stat: () => Object.assign({ on: T1200_KG_FAST, verify: T1200_VERIFY }, _t1200Stat), CFG, MOVE_CURVE, STAGE_AT, R1,
   lerpCurve, xWhereBelow, ledger, noteInstance, noteEntries, takeKg, takeEntries, takeByIds, peekKg, reconcile,
   hasLedger, entries, viewLedger, assertInvariant, assertCount,
   totalKg, capKg, effects, stageOf, moodle, combinedMove, payload, toSave, fromSave,
