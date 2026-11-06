@@ -10046,6 +10046,7 @@ const Weights = require('./weights');
 const Carry = require('./carry');
 const Lots = require('./lots');
 if (T732_MOMENT) Lots.setClock(zoneGameMs, _SEASON_DAY_MS);   // ★[T732] 얻은 순간의 시계(끄면 안 꽂는다 — 날 문법 그대로)
+if (T732_MOMENT && SimVillages.lotsClockSet) { try { SimVillages.lotsClockSet(); } catch (e) { console.error(`[${ZONE_ID}] 🧺 [T1166] 몸 로트 줄 걸기 실패(빈 장부로 계속):`, e.message); } }   // ★[T1166] 되살림(init — 시계 전)이 쥔 몸 손 로트 · 몸 짐 줄을 시계가 꽂힌 바로 뒤에 건다(끄면 쥔 줄 0 · 무동작)
 const Fishing = require('./fishing');
 // ★★[T574 2026-10-03] 존 특산 프로필 + 경계 혼용 띠(정본 `server/region-profiles.js`) — 낚시 종 · 부팅 광종 채움이 부른다.
 //   손잡이 `T574_REGION`(띠 반폭 D 셀) — 끄면 두 자리 모두 옛 글자 그대로(주사위·해시 소비도 같다).

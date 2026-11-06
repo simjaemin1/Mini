@@ -1104,6 +1104,53 @@ const _T747_KEYS = ['simJob', 'x', 'y', 'hp', '_rest', 'inventory', '_t312U', '_
 //   ⚠진행 중 전쟁 자체는 아직 재기동에 안 실린다(T742 회부 1) — 그 판에선 짐이 몸 손에 날짜째 남는다(양은 종전에도 남았다 · 늙기가 이어진다).
 const T1133_BAG = process.env.T1133_BAG_PERSIST !== '0';
 const _t1133Stat = { saved: 0, savedRecs: 0, restored: 0, restoredRecs: 0, spill: 0 };
+// ★★[T1166 2026-11-05 · K30 · T1133 회부 2 · 판정대기 문 17 ㄱ(족보 727)] 손잡이 `T1166_NPC_LOT_PERSIST`(★켬 기본 후보 · `=0` = 종전 글자).
+//   NPC 몸 손의 로트 곁 장부(`lots.js` `_mNpc` — 몸 밖 WeakMap · T732)도 몸이 다시 뜨면 잃었다 — 양(T747 `inventory`)은 남고 날짜가 사라져 첫 맞추기가
+//   손 전부를 "지금 얻은 것"으로 잡았다(`Lots.stats().approx` · 그 손이 다시 싱싱해짐). 켜면 몸 줄에 `_lots` 한 칸(`Lots.npcDump` — 장부 꼴 그대로 · 몸 필드 0 · 새 수 0).
+//   ★부팅 차례: 운영 되살림(`_t747Restore`)은 `SimVillages.init` 안 — 존이 로트 시계를 꽂기(`Lots.setClock` · zone.js) **전**이다. 그 순간엔 장부가 꺼져 있어
+//   (`_t732Lots()` = null) 걸 수 없다 — 줄을 `_t1166Pend` 에 쥐고 시계가 꽂힌 바로 뒤(zone 이 `SimVillages.lotsClockSet()` 을 부른다 · 첫 틱 머리 `_t732Boot` 도 한 번 더) 건다.
+//   T1133 몸 짐 줄도 같은 까닭으로 그 차례엔 못 걸렸다(`_t748G()` = null) — 켬이면 같은 줄로 미룬다(끄면 T1133 종전 글자 그대로).
+const T1166_LOT = process.env.T1166_NPC_LOT_PERSIST !== '0';
+const _t1166Stat = { saved: 0, savedRecs: 0, restored: 0, restoredRecs: 0, spill: 0, deferred: 0, flushed: 0, bagDeferred: 0, bagFlushed: 0 };
+const _t1166Pend = [];   // { b, lots?, bag?, packOf?, spill } — 시계가 꽂히면 비운다
+//   몸 짐 줄 걸기(T1133 글자 그대로 — 자리만 함수로) · 장부가 꺼져 있으면 -1
+function _t1133BagLoad(b, bag, packOf, spill) {
+  const G = _t748G(); if (!G) return -1;
+  const n = G.bagLoad(b, bag);
+  if (n) { if (spill) _t1133Stat.spill++; else { _t1133Stat.restored++; if (packOf != null) b._warPackOf = packOf; } _t1133Stat.restoredRecs += n; }
+  return n;
+}
+function _t1166LotLoad(b, lots, spill) {
+  const L = _t732Lots(); if (!L) return -1;
+  const n = L.npcLoad(b, lots);
+  if (n) { if (spill) _t1166Stat.spill++; else _t1166Stat.restored++; _t1166Stat.restoredRecs += n; }
+  return n;
+}
+function _t1166Flush() {
+  if (!_t1166Pend.length || !_t732Lots()) return 0;
+  const P = _t1166Pend.splice(0);
+  for (const x of P) {
+    if (x.lots) { if (_t1166LotLoad(x.b, x.lots, x.spill) >= 0) _t1166Stat.flushed++; }
+    if (x.bag) { if (_t1133BagLoad(x.b, x.bag, x.packOf, x.spill) >= 0) _t1166Stat.bagFlushed++; }
+  }
+  return P.length;
+}
+//   크기 자(읽기만 · 계측) — 지금 저장하면 몸 줄에 더해질 `_lots` 칸 바이트 · 로트 든 몸 · 레코드
+function _t1166Sizes() {
+  const L = _t732Lots(), P = state.deps && state.deps.players; if (!L || !P) return null;
+  const out = { bodies: 0, recs: 0, bytes: 0, vils: 0, maxVilBytes: 0, maxBodyBytes: 0, npcs: 0 };
+  for (const vil of (state.villages || [])) {
+    let vb = 0;
+    for (const pid of (vil.npcPids || [])) {
+      const b = P.get(pid); if (!b) continue; out.npcs++;
+      const lt = L.npcDump(b, true); if (!lt) continue;
+      const n = Buffer.byteLength(JSON.stringify({ _lots: lt })) - 1;
+      out.bodies++; for (const k in lt) out.recs += lt[k].length; out.bytes += n; vb += n; if (n > out.maxBodyBytes) out.maxBodyBytes = n;
+    }
+    if (vb > 0) { out.vils++; if (vb > out.maxVilBytes) out.maxVilBytes = vb; }
+  }
+  return out;
+}
 //   크기 자(읽기만 · 계측) — 지금 저장하면 몸 줄에 더해질 짐 칸 바이트(`_bag` · `_packOf`) · 짐 든 몸 · 레코드 · 마을마다
 function _t1133Sizes() {
   const G = _t748G(), P = state.deps && state.deps.players; if (!G || !P) return null;
@@ -1130,6 +1177,7 @@ function _t747Pack(vil) {
     const o = {};
     for (const k of _T747_KEYS) { const x = b[k]; if (x !== undefined && x !== null) o[k] = _t740Enc(x); }
     if (_G) { const bg = _G.bagDump(b); if (bg) { o._bag = bg; if (b._warPackOf != null) o._packOf = b._warPackOf; _t1133Stat.saved++; for (const res in bg) _t1133Stat.savedRecs += bg[res].length; } }   // ★[T1133] 몸 짐 줄(있을 때만 — 없으면 칸 0 · 종전 바이트)
+    if (T1166_LOT) { const _L = _t732Lots(); const lt = _L ? _L.npcDump(b) : null; if (lt) { o._lots = lt; _t1166Stat.saved++; for (const k in lt) _t1166Stat.savedRecs += lt[k].length; } }   // ★[T1166] 몸 손 로트 줄(있을 때만 — 없으면 칸 0 · 종전 바이트)
     if (o._lifeTask && o._lifeTask.k === 'greet') delete o._lifeTask;   // 인사(T529)는 그 사람 · 그 순간의 일 — 싣지 않는다
     rows.push(o);
   }
@@ -1149,14 +1197,15 @@ function _t747Restore() {
     if (!Array.isArray(rows)) continue;
     const dropped = [];
     R.villages++;
-    const spill = [], spillBag = [];
+    const spill = [], spillBag = [], spillLots = [];
     for (let i = 0; i < rows.length; i++) {
       const S0 = rows[i]; if (!S0) continue;
       const S = _t740Dec(S0);
       const b = i < vil.npcPids.length ? P.get(vil.npcPids[i]) : null;
-      if (!b) { if (S.inventory) spill.push(S.inventory); if (S._bag) spillBag.push(S._bag); continue; }
+      if (!b) { if (S.inventory) spill.push(S.inventory); if (S._bag) spillBag.push(S._bag); if (S._lots) spillLots.push(S._lots); continue; }
       R.bodies++;
-      if (S._bag && T1133_BAG) { const _G = _t748G(); const n = _G ? _G.bagLoad(b, S._bag) : 0; if (n) { _t1133Stat.restored++; _t1133Stat.restoredRecs += n; if (S._packOf != null) b._warPackOf = S._packOf; } }   // ★[T1133] 같은 자리 몸에 짐 줄 · 표식(끄면 칸을 안 읽는다)
+      if (S._bag && T1133_BAG) { if (_t1133BagLoad(b, S._bag, S._packOf, false) < 0 && T1166_LOT && _T732_ON) { _t1166Pend.push({ b, bag: S._bag, packOf: S._packOf, spill: false }); _t1166Stat.bagDeferred++; } }   // ★[T1133] 같은 자리 몸에 짐 줄 · 표식(끄면 칸을 안 읽는다) · ★[T1166] 시계 전이면 미룬다
+      if (S._lots && T1166_LOT) { if (_t1166LotLoad(b, S._lots, false) < 0 && _T732_ON) { _t1166Pend.push({ b, lots: S._lots, spill: false }); _t1166Stat.deferred++; } }   // ★[T1166] 같은 자리 몸에 손 로트 줄(시계 전이면 미룬다)
       if (S.simJob != null && b.simJob !== S.simJob) { R.jobMiss++; b.simJob = S.simJob; }   // 같은 자리 = 같은 몸(직업도 그 몸의 것)
       if (Number.isFinite(S.x) && Number.isFinite(S.y)) { if (T1145_XY_COLS) BC.w(b, S.x, S.y); else { b.x = S.x; b.y = S.y; } b.targetX = S.x; b.targetY = S.y; b.vx = 0; b.vy = 0; R.moved++; }
       if (Number.isFinite(S.hp) && S.hp > 0) { _setHp(b, Math.min(S.hp, b.maxHp || S.hp), 'restore'); if (b.hp < (b.maxHp || 100)) R.hpLow++; }   // ★[T942] 문으로
@@ -1175,7 +1224,8 @@ function _t747Restore() {
     if (spill.length) {   // 저장된 몸이 지금보다 많았다 — 남은 손은 첫 몸에(소멸 0)
       const b0 = vil.npcPids.length ? P.get(vil.npcPids[0]) : null;
       if (b0) { b0.inventory = b0.inventory || {}; for (const inv of spill) for (const k in inv) if (typeof inv[k] === 'number' && inv[k] > 0 && k !== 'seed_berry') { b0.inventory[k] = +((b0.inventory[k] || 0) + inv[k]).toFixed(6); R.extraHands++; } }
-      if (b0 && T1133_BAG && spillBag.length) { const _G = _t748G(); if (_G) for (const bg of spillBag) { const n = _G.bagLoad(b0, bg); if (n) { _t1133Stat.spill++; _t1133Stat.restoredRecs += n; } } }   // ★[T1133] 그 손의 짐 줄도 같은 몸에(날짜째 · 소멸 0)
+      if (b0 && T1133_BAG && spillBag.length) for (const bg of spillBag) { if (_t1133BagLoad(b0, bg, null, true) < 0 && T1166_LOT && _T732_ON) { _t1166Pend.push({ b: b0, bag: bg, spill: true }); _t1166Stat.bagDeferred++; } }   // ★[T1133] 그 손의 짐 줄도 같은 몸에(날짜째 · 소멸 0) · ★[T1166] 시계 전이면 미룬다
+      if (b0 && T1166_LOT && spillLots.length) for (const lt of spillLots) { if (_t1166LotLoad(b0, lt, true) < 0 && _T732_ON) { _t1166Pend.push({ b: b0, lots: lt, spill: true }); _t1166Stat.deferred++; } }   // ★[T1166] 그 손의 로트 줄도 같은 몸에(날짜째)
     }
     //   마을 클레임 그림자 — 저장 순간 그대로 · 푼 진행 작업의 몫만 뺀다 · 광부 손 합은 되돌린 손에서 다시 센다(T724 가 해 질 녘에 다시 세는 그 합)
     if (SH) {
@@ -9181,7 +9231,7 @@ function __p3Bind(mock) {
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
-    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
+    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), _t1166Flush, _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
@@ -15500,6 +15550,7 @@ function _t732Boot() {
   //   (econ 이 곳간을 처음 만지는 자리가 그 틱이다 — 저장된 장부와 곳간 값이 그때까지 같다).
   if (!_t732Lots()) { _t732BootWait = true; return null; }
   _t732BootWait = false;
+  _t1166Flush();   // ★[T1166] 되살림이 미룬 몸 줄(시계가 꽂힌 바로 뒤 zone 이 이미 비웠으면 무동작)
   let n = 0, saved = 0;
   for (const v of ((state.world && state.world.villages) || [])) {
     const sv = _t732Saved.get(v) || null;
@@ -15639,7 +15690,7 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
+module.exports = { t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes, t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), t1166Sizes: _t1166Sizes, lotsClockSet: _t1166Flush,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
   streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   T856_LAND_ELEV, _t856LandElev,   // ★[T856] 마을 고도 — 하네스(`test-land-elev`)가 같은 함수를 부른다(사본 0)
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
