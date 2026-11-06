@@ -12990,21 +12990,24 @@ function _t1196Seat(v, job, day) {
 function _t1196Begin(v, job, day) {
   if (!_t1196Seat(v, job, day)) return null;
   const P = v._world && v._world.lotsPause; if (typeof P === 'function') P(true);   // 서버 곳간 로트 장부 — 되돌릴 바뀜은 안 적는다(End 가 푼다)
-  const st = Object.assign({}, v.storage), tr = Object.assign({}, v.treasury || {}), R = v._t1196R || null, view = {};
-  if (R) for (const k in R) { const b = st[k] || 0, x = b - R[k]; view[k] = x > 0 ? x : 0; v.storage[k] = view[k]; }
-  return { st, tr, view };
+  const st = Object.assign({}, v.storage), tr = Object.assign({}, v.treasury || {});
+  return { st, tr };
 }
 function _t1196Back(obj, base) { for (const k in obj) if (!(k in base)) delete obj[k]; for (const k in base) obj[k] = base[k]; }
 function _t1196End(v, npc, S, day) {
   const take = {}, give = {}, tre = {};
   let any = false;
   for (const k in v.storage) {
-    const before = (k in S.view) ? S.view[k] : (S.st[k] || 0), d = (v.storage[k] || 0) - before;
+    const before = S.st[k] || 0, d = (v.storage[k] || 0) - before;
     if (d < -T1196_EPS) { take[k] = -d; any = true; } else if (d > T1196_EPS) { give[k] = d; any = true; }
   }
   const T = v.treasury || {};
   for (const k in T) { const d = (T[k] || 0) - (S.tr[k] || 0); if (d > T1196_EPS) { tre[k] = d; any = true; } }
   _t1196Back(v.storage, S.st); if (v.treasury) _t1196Back(v.treasury, S.tr);
+  if (any) {   // 그 재료는 그날 마을 틱 동안 다른 쓰임에서 비켜 둔다(장인 몫 — 마을 하루 꼬리 `t1196Unhide` 가 곳간에 그대로 되돌린다 · 갈래가 먼저 쓰던 종전 차례를 지킨다)
+    const H = v._t1196H || (v._t1196H = {});
+    for (const k in take) { v.storage[k] = (v.storage[k] || 0) - take[k]; H[k] = (H[k] || 0) + take[k]; }
+  }
   { const P = v._world && v._world.lotsPause; if (typeof P === 'function') P(false); }
   if (!any) { v._t1196Used[npc.currentJob]--; return; }   // 오늘 만들 것이 없었다 — 자리를 돌려준다(그 몸은 쉰다)
   const id = (v._t1196N = (v._t1196N | 0) + 1);
@@ -13016,6 +13019,23 @@ function _t1196End(v, npc, S, day) {
 function _t1196Unres(v, t) {
   const R = v._t1196R; if (!R) return;
   for (const k in t.take) { const x = (R[k] || 0) - t.take[k]; if (x > T1196_EPS) R[k] = x; else delete R[k]; }
+}
+//   비켜 둠 — 마을 틱 머리(일괄 뒤)에 아직 몸이 안 집어 간 작업표의 재료를 그날 틱 동안 곳간에서 비켜 두고(`_t1196H`), 마을 하루 꼬리(먹기 뒤 · 썩기 앞)에 그대로 되돌린다.
+//   ⚠곳간 로트 장부는 그동안 멈춘다(되돌릴 바뀜) — 틱 밖(몸 시간)의 곳간은 늘 실물 그대로다(꺼낼 때 · 넣을 때만 움직인다).
+function _t1196Pause(v, on) { const P = v._world && v._world.lotsPause; if (typeof P === 'function') P(on); }
+function _t1196Hide(v) {
+  const R = v._t1196R; if (!R) return;
+  let H = null;
+  _t1196Pause(v, true);
+  for (const k in R) { const h = Math.min(R[k], Math.max(0, v.storage[k] || 0)); if (h > 0) { v.storage[k] -= h; (H || (H = v._t1196H || (v._t1196H = {})))[k] = ((H && H[k]) || 0) + h; } }
+  _t1196Pause(v, false);
+}
+function t1196Unhide(v) {
+  const H = v && v._t1196H; if (!H) return;
+  _t1196Pause(v, true);
+  for (const k in H) v.storage[k] = (v.storage[k] || 0) + H[k];
+  _t1196Pause(v, false);
+  delete v._t1196H;
 }
 function _t1196Find(v, id) { const Q = v && v._t1196Q; if (!Q) return -1; for (let i = 0; i < Q.length; i++) if (Q[i].id === id) return i; return -1; }
 //   재료를 꺼낸다 — 그때 곳간에 있는 만큼. 비율 `f` 는 그 레시피가 **없으면 못 만드는** 재료로 잰다(정본 정의 그대로 · 새 수 0):
@@ -13044,6 +13064,8 @@ function artisanTake(v, id) {
   const i = _t1196Find(v, id); if (i < 0) return -1;
   const t = v._t1196Q[i]; if (t.st !== 0) return t.f;
   _t1196Unres(v, t);
+  const H = v._t1196H;   // 틱 조각 사이(비켜 둔 채)에 몸이 오면 제 몫부터 곳간에 되돌린다
+  if (H) { _t1196Pause(v, true); for (const k in t.take) { const b = Math.min(H[k] || 0, t.take[k]); if (b > 0) { v.storage[k] = (v.storage[k] || 0) + b; H[k] -= b; if (!(H[k] > T1196_EPS)) delete H[k]; } } _t1196Pause(v, false); }
   const have = (k) => Math.max(0, v.storage[k] || 0);
   const f = _t1196Frac(t, have);
   const sub = t.job === 'tailor';
@@ -14548,7 +14570,7 @@ function tickVillage(v, day) {
     }
   }
   if (T692_SEED_RESERVE && v._seedReserve > 0) v._seedReserve = Math.min(v._seedReserve, v.storage.wood || 0);   // ★[T692] 비축은 곳간을 넘지 않는다(하루 머리)
-  if (T1196_ARTISAN_ACT && v._t1196Q && v._t1196Q.length) _t1196Day(v, day);   // ★[T1196] 어제까지 몸이 안 집어 간 작업표 = 일괄(끔 · 랩 = 작업표가 안 선다)
+  if (T1196_ARTISAN_ACT && v._t1196Q && v._t1196Q.length) { _t1196Day(v, day); _t1196Hide(v); }   // ★[T1196] 어제까지 몸이 안 집어 간 작업표 = 일괄 · 남은 작업표 재료는 그날 틱 동안 비켜 둔다(끔 · 랩 = 작업표가 안 선다)
 
   // 1) 각 NPC 일하기 → 산출물 storage에 + skill xp
   //    매일 새 객체 만들지 말고 버퍼 재사용 (GC 부하 ↓)
@@ -17610,7 +17632,7 @@ module.exports = {
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
   mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT,
-  T1196_ARTISAN_ACT, T1196_SET, artisanActOn, artisanTake, artisanGive,   // ★[T1196] 장인 작업장
+  T1196_ARTISAN_ACT, T1196_SET, artisanActOn, artisanTake, artisanGive, t1196Unhide,   // ★[T1196] 장인 작업장
   __t1196: { begin: _t1196Begin, end: _t1196End, day: _t1196Day, seat: _t1196Seat },   // ★[T1196] 하네스 문(운영 경로는 안 부른다)
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
@@ -20524,6 +20546,7 @@ function tickWorldV2Parts(world) {
       if (v1.fishMsyDayClose) v1.fishMsyDayClose(v);   // ★[T923] 어장 MSY 상한 — 마을 하루 마감(원래 land · 서버 `refreshFishSustain` 첫 마감과 같은 때 · 켬 기본 · `T17_MSY=0` 무동작)
       v1.adjustGuildTax(v, world.day);
       tickSubsistence(v, world.day);
+      if (v1.T1196_ARTISAN_ACT && v._t1196H) v1.t1196Unhide(v);   // ★[T1196] 비켜 둔 장인 재료를 곳간에 그대로(먹기 뒤 · 썩기 앞 — 작업표가 선 마을만 · 랩 · 끔 = 칸이 없다)
       if (world._dbg?.decay !== false) tickDecay(v);
   }
   Object.assign(P, {

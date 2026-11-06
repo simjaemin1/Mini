@@ -57,9 +57,9 @@ const Zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   const kind = (Vsrc.match(/^const T1196_KIND = \{ ([^}]*) \};/m) || [])[1] || '';
   const keys = (t) => [...t.matchAll(/([a-z]+):/g)].map((m) => m[1]).sort().join(',');
   const wrap = (Ssrc.match(/\n    try \{\n    if \(jdef\.produceSpecial === 'forager'\) \{/g) || []).length, fin = (Ssrc.match(/\} finally \{ if \(_t1196S\) _t1196End\(v, npc, _t1196S, day\); \}/g) || []).length;
-  const head = (Ssrc.match(/if \(T1196_ARTISAN_ACT && v\._t1196Q && v\._t1196Q\.length\) _t1196Day\(v, day\);/g) || []).length;
-  ok(knob.length === 1 && keys(set) === 'armorsmith,cook,mason,smith,tailor' && keys(set) === keys(kind) && wrap === 1 && fin === 1 && head === 1,
-    '⓪ 손잡이 한 줄(`!== \'0\'` · 번들 안전) · 장인 다섯 = 몸 창 표 · 갈래 감싸기 하나 · 하루 머리 한 줄', `다섯 ${keys(set)} · 창 ${keys(kind)} · 감싸기 ${wrap}/${fin} · 머리 ${head}`);
+  const head = (Ssrc.match(/if \(T1196_ARTISAN_ACT && v\._t1196Q && v\._t1196Q\.length\) \{ _t1196Day\(v, day\); _t1196Hide\(v\); \}/g) || []).length, V2src = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8'), tail = (V2src.match(/tickSubsistence\(v, world\.day\);\n      if \(v1\.T1196_ARTISAN_ACT && v\._t1196H\) v1\.t1196Unhide\(v\);/g) || []).length;
+  ok(knob.length === 1 && keys(set) === 'armorsmith,cook,mason,smith,tailor' && keys(set) === keys(kind) && wrap === 1 && fin === 1 && head === 1 && tail === 1,
+    '⓪ 손잡이 한 줄(`!== \'0\'` · 번들 안전) · 장인 다섯 = 몸 창 표 · 갈래 감싸기 하나 · 마을 틱 머리(일괄 · 비켜 둠) 한 줄 · 마을 하루 꼬리(되돌림 · 먹기 뒤 썩기 앞) 한 줄', `다섯 ${keys(set)} · 창 ${keys(kind)} · 감싸기 ${wrap}/${fin} · 머리 ${head} · 꼬리 ${tail}`);
   const callers = [...Vsrc.matchAll(/\.artisan(Take|Give)\(/g)].map((m) => Vsrc.slice(0, m.index).lastIndexOf('\nfunction ')).map((i) => Vsrc.slice(i + 10, Vsrc.indexOf('(', i + 10)));
   const zoneUse = (Zsrc.match(/artisan(Take|Give)\(/g) || []).length;
   ok(callers.length >= 3 && callers.every((f) => f === '_t1196Step') && zoneUse === 0, '⓪ 곳간 문(`artisanTake` · `artisanGive`)을 부르는 곳 = 몸 걸음 하나(`_t1196Step`)', `${callers.length}곳 · ${[...new Set(callers)].join(',')}`);
@@ -83,13 +83,15 @@ const Zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   v.storage.stone -= 2; v.storage.tool = 0.9; v.treasury.tool = 0.1;          // 갈래 흉내 — 돌 2 → 도구 0.9(+ 세금 0.1)
   T.end(v, { currentJob: 'mason' }, S, 7);
   const t = (v._t1196Q || [])[0];
-  ok(S && JSON.stringify(v.storage) === st0 && JSON.stringify(v.treasury) === tr0 && t && t.take.stone === 2 && t.give.tool === 0.9 && t.tre.tool === 0.1 && v._t1196R.stone === 2,
-    '① 갈래가 낸 차 = 작업표(돌 2 · 도구 0.9 · 금고 0.1) · 곳간 · 금고는 바이트 그대로 되돌아간다 · 예약 돌 2', `${JSON.stringify(v.storage)} · 예약 ${JSON.stringify(v._t1196R)}`);
+  const hid = JSON.stringify(v._t1196H), mid = v.storage.stone;
+  ok(S && mid === 8 && hid === '{"stone":2}' && !('tool' in v.storage) && JSON.stringify(v.treasury) === tr0 && t && t.take.stone === 2 && t.give.tool === 0.9 && t.tre.tool === 0.1 && v._t1196R.stone === 2,
+    '① 갈래가 낸 차 = 작업표(돌 2 · 도구 0.9 · 금고 0.1) · 산출 · 금고는 바로 되돌아가고 재료(돌 2)는 그날 틱 동안 비켜 둔다 · 예약 돌 2', `틱 안 ${JSON.stringify(v.storage)} · 비켜 둠 ${hid}`);
   ok(T.begin(v, 'mason', 7) === null, '① 자리 하나 = 작업표 하나(석공 자리 1 이 찼다 — 둘째 석공은 종전 수식 = 일괄)');
   const S2 = T.begin(v, 'cook', 7), seen = v.storage.stone;
   T.end(v, { currentJob: 'cook' }, S2, 7);
-  ok(seen === 8 && v.storage.stone === 10 && (v._t1196Used.cook | 0) === 0 && v._t1196Q.length === 1, '① 같은 날 다음 갈래는 예약을 뺀 곳간을 본다(돌 8) · 만들 것 없는 갈래는 자리를 돌려준다(작업표 0)', `본 돌 ${seen}`);
-  ok(pauses.join() === 'true,false,true,false', '① 로트 장부 멈춤 짝(떼는 동안만 · 열고 닫음)', pauses.join());
+  E.t1196Unhide(v);
+  ok(seen === 8 && JSON.stringify(v.storage) === st0 && !v._t1196H && (v._t1196Used.cook | 0) === 0 && v._t1196Q.length === 1, '① 같은 날 다음 갈래(그날 틱의 다른 쓰임도)는 비켜 둔 곳간을 본다(돌 8) · 만들 것 없는 갈래는 자리를 돌려준다 · 마을 하루 꼬리에 곳간은 바이트 그대로', `본 돌 ${seen} · 꼬리 ${JSON.stringify(v.storage)}`);
+  ok(pauses.length === 6 && pauses.join() === 'true,false,true,false,true,false', '① 로트 장부 멈춤 짝(떼기 · 비켜 둠 · 되돌림 동안만 · 열고 닫음)', pauses.join());
   v.storage.stone = 1;
   const f = E.artisanTake(v, t.id);
   ok(f === 0.5 && v.storage.stone === 0 && !('stone' in (v._t1196R || {})) && t.st === 1, '① 꺼내기 — 있는 만큼(돌 1 / 2 = 비율 0.5) · 곳간에서 그만큼 · 예약 풀림', `비율 ${f}`);
@@ -132,7 +134,7 @@ const Zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   const ratio = (k) => (labOff.out[k] > 0 ? body.out[k] / labOff.out[k] : (body.out[k] > 0 ? Infinity : 1));
   const R = ['tool', 'weapon', 'clothes'].map((k) => ratio(k));
   ok(!body.err && body.made > 50 && body.give === body.made && body.q === 0 && body.C.body === body.made, '③ 작업표가 선다 · 몸이 다 넣는다(꺼낸 수 = 넣은 수 · 남은 작업표 0)', body.err || `작업표 ${body.made} · 넣음 ${body.give} · 모자람 ${body.C.short}`);
-  ok(!body.err && R.every((r) => r > 0.5 && r < 2) && Math.abs(body.pop - labOff.pop) / labOff.pop < 0.1, '③ 산출(도구 · 무기 · 옷) · 인구가 수식 판과 같은 자릿수(곳간이 하루 늦게 · 몸 손을 거쳐 든다)',
+  ok(!body.err && R.every((r) => r > 0.5 && r < 2) && body.pop / labOff.pop > 0.75 && body.pop / labOff.pop < 1.33, '③ 산출(도구 · 무기 · 옷) ×0.5 ~ 2 · 인구 ×0.75 ~ 1.33 — 수식 판과 같은 자릿수(8마을 한 시드 판의 잡음 폭 · 곳간이 몸 손을 거쳐 든다)',
     body.err || `도구 ${body.out.tool.toFixed(1)}/${labOff.out.tool.toFixed(1)} · 무기 ${body.out.weapon.toFixed(1)}/${labOff.out.weapon.toFixed(1)} · 옷 ${body.out.clothes.toFixed(1)}/${labOff.out.clothes.toFixed(1)} · 인구 ${body.pop}/${labOff.pop}`);
 }
 
