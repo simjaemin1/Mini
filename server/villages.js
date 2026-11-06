@@ -11171,6 +11171,7 @@ function _t724DayMark(vil) {
   }
 }
 function _lifeHandsIn(vil) {
+  _t1195HuntIn(vil);   // ★[T1195] 어제 사냥꾼 몸이 잡은 짐승 → 곳간(econ 틱 바로 앞 · T720 켬이어도 · 끔 = 첫 줄에서 돌아간다)
   //   ★★[T757] T720 켬(경계 일괄 없음 — 손은 해 질 녘 `_t720Step` 에서 든다)이어도 **그날 광부 몸이 쳤나**는 여기서 심는다 —
   //     표식(`_t724Walk`)은 손이 아니라 **타수**의 뜻이고, 읽는 둘(econ 원석 게이트 `mineActOn` · `_oreMineDaily` 셀 깎기 문)이 바로 뒤 econ · 채굴 조각이다.
   //     종전(T720 · T724 를 10-14 같이 켬): 이 함수 첫 줄에서 돌아가 표식이 한 번도 안 섰다 ⇒ 몸이 친 마을에서도 econ 수식 원석 + 일괄 셀 깎기가 돌았다(몸 XOR 일괄 위반 · 보고/T757).
@@ -13529,6 +13530,7 @@ function* _huntHuntersSteps(vil, players, day) {
     // ★[T158] 오늘 예산을 연다 — 어제 쓴 것은 여기서 지운다(하루 경계는 이 함수다).
     //   ⚠예산은 아래에서 **실제로 뺀 수**를 그대로 적는 것이라 새 수가 없다.
     p._huntBud = 0; p._huntKil = 0;
+    if (_lifeEcon().T1195_HUNT_REAL) { p._t1195K = k; p._t1195Open = 1; p._t1195At = 0; p._t1195Sp = null; }   // ★[T1195] 오늘 몫을 연다 — 뺀 셀 · 오늘 표식(닿음 · 종)은 새로 · 경계에서 한 번만 정산(`_t1195HuntIn`) · 끔 = 이 칸들이 안 선다
     if (k !== null) {
       const t0h = huntTakeAt(vil, w.cx, w.cy, 1);                   // ★랩 10821 — 먼저 잡는다
       took += t0h; p._huntBud = t0h;                                // ★[T158] 이 사람이 오늘 잡은 수 = 뷰 연출의 예산
@@ -13651,6 +13653,89 @@ function* _lifeGameDaySteps(vil, day) {
 function huntDeforest(vil, cx, cy) {
   const m = vil && vil._gameRich; if (!m) return false;
   return m.delete(cx + ',' + cy);
+}
+// ══ ★★★[T1195 2026-11-06 · 추상 걷기 A · ★재민 11-05 "추상 다 없애자고 했는데 왜 아직도 남겨둔 거야" · 손잡이 `T1195_HUNT_REAL`(econ 정본 · 켬 기본 · `=0` = 종전 글자)] ══
+//   **사냥 고기 = 몸이 잡은 마리 × kg.** 종전에는 고기가 econ 수식(`0.7 × land.game × 숙련 × 도구`)에서 나왔고, 개체 장부(T146)가 빼는 마리 ·
+//   보이는 몸 사냥(T158)이 쓰러뜨린 마리와 따로 놀았다(세 수가 셋). 켬: 실제 호스트에서 사냥꾼 수식 산출을 닫고(econ `productionFormulaOff`)
+//   그날 몸이 잡은 짐승만 곳간에 든다 — 이 함수가 하루 경계(econ 마을 틱 바로 앞 · `_lifeHandsIn` 첫 줄)에서 어제 몫을 넣는다.
+//   ① 몇 마리 — 사냥꾼 몸마다:
+//      · 뷰 안 = 보이는 두뇌가 실제로 쓰러뜨린 마리(`_huntKil` · 종은 쓰러뜨린 그 짐승 `_t1195Sp` — `wildlife` 이 그 자리에서 적는다). 다 받는다.
+//      · 뷰 밖 = 그날 사냥터에 닿았나(`_t1195At` · 생활층 사냥꾼 갈래가 현장 300px 안에서 심는다 — T724 `_t724Walk` 꼴 하루 표식).
+//        닿았으면 장부가 그날 그 몸 몫으로 뺀 마리(`_huntBud` = 랩 `huntTake` · T158 예산)에서 뷰 안에서 이미 잡은 수를 뺀 **온전한 마리**(내림).
+//        종은 보이는 사냥이 쓰는 먹잇감 섞음(`wildlife` `MOB_PREY` 사슴3 · 멧돼지1 · 토끼2) 차례를 몸마다 돌린다(주사위 0 · 신원 해시로 시작 칸만 엇갈린다).
+//        그날 수요(econ `huntDemandLeft` · T374 꼴 · D = 수식이 내던 마을 몫)가 남았을 때만 한 마리씩 받는다 — 못 받은 짐승은 안 잡은 것이다(③).
+//   ② 얼마 — 한 마리의 정본 드롭(`animals.dropsOf` · 종 × 아종 kg 행) 그대로: 열량이 있는 칸(사슴·들짐승고기 · 곰고기)은 econ `meat` 에
+//      열량으로(`kcal.econUnitsOf` · 생선이 `fish` 로 드는 것과 같은 짝), 나머지(가죽 · 뿔 · 뼈 · 모피)는 같은 이름 econ 칸에 낱개 그대로.
+//      몸통은 econ `huntToGranary`(= 어부 · 나무꾼과 같은 `actToGranary` · 세금 · 곳간 · 국고).
+//   ③ 장부 — **뺀 마리 = 든 마리**(한 수). 그날 장부가 뺀 `_huntBud` 와 실제로 든 마리의 차이를 오늘 뺀 셀(`_t1195K` · 없으면 `_huntWk`)에
+//      되돌린다(덜 들었으면 돌려주고 · 뷰 안에서 예산보다 더 잡았으면 더 뺀다 · 셀은 0 ~ K 안). 셀이 그사이 없어졌으면(개간 · T1053) 못 돌린다(센다).
+//   ⚠끔 = 첫 줄에서 돌아간다(표식 칸도 안 선다 · econ 수식 그대로 · 기준선 11-04c 바이트). 헤드리스 랩은 호스트가 없어 종전 수식 그대로다.
+const _t1195Stat = { calls: 0, bodies: 0, seenN: 0, seenU: 0, reachN: 0, reachU: 0, refuse: 0, noReach: 0, refund: 0, over: 0, lostCell: 0, sp: {}, items: {} };
+let _t1195A = null, _t1195P = null;
+function _t1195Animals() { if (_t1195A === null) { try { _t1195A = require('./animals'); } catch (e) { _t1195A = false; } } return _t1195A || null; }
+function _t1195Prey() {   // 보이는 사냥의 먹잇감 섞음(종 id) — 정본은 `wildlife` 한 곳(사본 0)
+  if (_t1195P === null) { let a = null; try { a = require('./wildlife').preyIds; } catch (e) {} _t1195P = (Array.isArray(a) && a.length) ? a : []; }
+  return _t1195P;
+}
+// 한 마리를 곳간에 — 든 econ 고기 단위(정본 드롭이 없으면 -1 · 그 마리는 안 든 것이다).
+function _t1195Put(vil, E, sp) {
+  const A = _t1195Animals(), K = _kcal(); if (!A || !K || !sp) return -1;
+  const d = A.dropsOf(sp, state.zoneId || 'hanbando'); if (!d) return -1;
+  let u = 0;
+  for (const it in d) {
+    const q = d[it]; if (!(q > 0)) continue;
+    const mu = +K.econUnitsOf(it, q) || 0;
+    if (mu > 0) u += E.huntToGranary(vil.econ, 'meat', mu);   // 고기 — 열량으로
+    else E.huntToGranary(vil.econ, it, q);                     // 가죽 · 뿔 · 뼈 · 모피 — 낱개 그대로
+    _t1195Stat.items[it] = (_t1195Stat.items[it] || 0) + q;
+  }
+  _t1195Stat.sp[sp] = (_t1195Stat.sp[sp] || 0) + 1;
+  vil._t1195Got = (vil._t1195Got || 0) + 1;                    // 계측 전용 — 이 마을에 든 마리 누계
+  return u;
+}
+function _t1195HuntIn(vil) {
+  const E = _lifeEcon();
+  if (!E.T1195_HUNT_REAL || !vil || !vil.econ || !E.huntActOn(vil.econ)) return;
+  const pl = state.deps && state.deps.players; if (!pl) return;
+  _t1195Stat.calls++;
+  const m = vil._gameRich, prey = _t1195Prey(), L = prey.length;
+  for (const pid of (vil.npcPids || [])) {
+    const p = pl.get(pid); if (!p || !p._t1195Open) continue;   // 그날 몫이 열린 몸만 · 한 번만(같은 날 두 번 불려도 두 번 안 넣는다)
+    const bud = p._huntBud || 0, kil = p._huntKil || 0, at = p._t1195At ? 1 : 0, sp0 = p._t1195Sp || null, k0 = p._t1195K;
+    p._t1195Open = 0; p._t1195At = 0; p._t1195Sp = null; p._t1195K = null;
+    if (!(bud > 0) && !(kil > 0)) continue;
+    _t1195Stat.bodies++;
+    let got = 0;
+    // ① 뷰 안 — 쓰러뜨린 그 짐승 그대로(종을 못 적은 마리 — 재시작 사이 등 — 는 섞음 차례로)
+    if (kil > 0) {
+      let left = kil;
+      if (sp0) for (const sp in sp0) { let n = Math.min(left, sp0[sp] | 0); while (n-- > 0) { const u = _t1195Put(vil, E, sp); left--; if (u >= 0) { got++; _t1195Stat.seenN++; _t1195Stat.seenU += u; } } }
+      while (left-- > 0 && L) { const c = p._t1195C | 0; p._t1195C = c + 1; const u = _t1195Put(vil, E, prey[(_shOfNpc(p) + c) % L]); if (u >= 0) { got++; _t1195Stat.seenN++; _t1195Stat.seenU += u; } }
+    }
+    // ② 뷰 밖 — 사냥터에 닿은 날만 · 장부 몫의 온전한 마리 · 그날 수요가 남았을 때만
+    const nOut = Math.floor(Math.max(0, bud - kil));
+    if (nOut > 0) {
+      if (!at) _t1195Stat.noReach += nOut;
+      else for (let i = 0; i < nOut; i++) {
+        if (!(E.huntDemandLeft(vil.econ) > 0) || !L) { _t1195Stat.refuse += nOut - i; break; }
+        const c = p._t1195C | 0, u = _t1195Put(vil, E, prey[(_shOfNpc(p) + c) % L]);
+        if (u >= 0) { p._t1195C = c + 1; got++; _t1195Stat.reachN++; _t1195Stat.reachU += u; }
+      }
+    }
+    // ③ 장부 — 뺀 마리 = 든 마리
+    const diff = bud - got;
+    if (diff !== 0 && m) {
+      const key = (k0 != null) ? k0 : (p._huntWk ? _gameKey(vil, p._huntWk.cx, p._huntWk.cy) : null);
+      const g = key != null ? m.get(key) : undefined;
+      if (g === undefined) _t1195Stat.lostCell += Math.abs(diff);
+      else {
+        const ng = Math.max(0, Math.min(L_GAMEMAX, g + diff));
+        m.set(key, ng);
+        if (ng > g) _t1195Stat.refund += ng - g; else _t1195Stat.over += g - ng;
+        vil._gameTook = (vil._gameTook || 0) - (ng - g);   // 계측 칸도 실제로 빠진 수로(세계 규칙은 안 읽는다)
+      }
+    }
+  }
 }
 // ★★[T1053 2026-11-01 · T1009 회부 3 · ★PM 결함 "랩 = 목표 · 같은 규칙"] 손잡이 `T1053_DEFOREST_GAME`(켬 기본 · 되돌림 `=0` = 종전 — 위 문을 부르는 제품 자리 0).
 //   랩 `deforestCell`(lab/마을실험실.html 19407 · 전쟁실험실 20040)은 개발된 셀의 사냥감을 영구히 지운다(`gameRich.delete` — 서식지 파괴 · K 영구 감소).
@@ -14609,6 +14694,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     // 뷰 밖(비활성)=몹도 없음(LOD) — 사냥터 밴드 순회(연출 최소·복귀 시 두뇌가 즉시 인수)
     npc._huntOn = 0;
     if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 300) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; return true; }
+    //   ★[T1195] 그날 사냥터에 닿았다(T724 `_t724Walk` 꼴 하루 표식 · 경계에서 `_t1195HuntIn` 이 읽고 지운다). 현장이 집이면(T427 — 닿는 사냥터가 없는 날) 안 심는다.
+    if (_lifeEcon().T1195_HUNT_REAL && !npc._t1195At) { const _hm = _t427HomeOf(vil, npc); if (ws.x !== _hm.x || ws.y !== _hm.y) npc._t1195At = 1; }
     if (npc._jobT && now < npc._jobT) return true;
     npc._jobT = now + 7000 + (h % 5) * 1200;
     // ★[T350 · 주사위 0] 수색 배회 목표 — 씨 = (신원 · 작업장 셀 · 게임일 · 시도 번호 `_jobT` 대신 `h`).
@@ -15840,7 +15927,7 @@ module.exports = { t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
-  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
+  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
   // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
   noteRescue,
