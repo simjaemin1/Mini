@@ -28,7 +28,7 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const pre = (c, m, x) => { if (!c) { fail++; console.log('  ✗ [상황] ' + m + (x !== undefined ? `  ${x}` : '')); } else console.log('  · [상황] ' + m + (x !== undefined ? `  ${x}` : '')); };
 const say = (m) => console.log(m);
 
-const TMP = `/tmp/test-downed-${process.pid}.db`;
+const TMP = `${require('os').tmpdir()}/test-downed-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
 process.env.PORT = String(37200 + (process.pid % 150));

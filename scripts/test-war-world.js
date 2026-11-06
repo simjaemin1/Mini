@@ -648,11 +648,11 @@ async function serverPart() {
   const { spawn } = require('child_process');
   const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
   const CPORT = 3410, ZPORT = 3420;
-  const CDB = `/tmp/warw-c-${process.pid}.db`, ZDB = `/tmp/warw-z-${process.pid}.db`;
+  const CDB = `${require('os').tmpdir()}/warw-c-${process.pid}.db`, ZDB = `${require('os').tmpdir()}/warw-z-${process.pid}.db`;
   for (const f of [CDB, ZDB]) for (const sfx of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + sfx); } catch (e) {} }
   const SECRET = 't284-' + Math.random().toString(36).slice(2);
   const procs = [];
-  const LOG = `/tmp/warw-zone-${process.pid}.log`;
+  const LOG = `${require('os').tmpdir()}/warw-zone-${process.pid}.log`;
   const out = fs.openSync(LOG, 'w');
   const boot = (file, env, io) => { const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], { cwd: ROOT, env: Object.assign({}, process.env, env), stdio: io || ['ignore', 'ignore', 'ignore'] }); procs.push(p); return p; };
   const kill = () => { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } };
@@ -1184,9 +1184,10 @@ function berryArrowPart() {
   const renamed = Object.keys(M).filter(k => M[k] !== k);
   const same = renamed.filter(k => HV._econSameOf(k)).map(k => `${k}=${M[k]}(${KC.kcalPerKg(k)})`);
   // ★[T716 ⑥ · 켬 세계] T694 사냥 고기 셋(곰고기 → 들짐승고기 · 익힌 둘 → 조리식)이 이름 다른 줄에 더해진다 — 등가는 그대로 둘(곰고기 1,610 ≠ 들짐승고기 1,200 kcal/kg)
-  ok(same.join('·') === 'berry=fruit(500)·meat_raw=meat(1500)' && renamed.length === 10
+  ok(same.join('·') === 'berry=fruit(500)·meat_raw=meat(1500)' && renamed.length >= 10
+    && renamed.filter(k => !HV._econSameOf(k)).length === renamed.length - same.length
     && ['meat_bear', 'meat_game_cooked', 'meat_bear_cooked'].every((k) => renamed.includes(k) && !HV._econSameOf(k)),
-    'ⓧ① 등가 표 — 대응 정본의 이름이 다른 줄 10 중 **같은 물건 2**(kg당 열량이 같다) · 가공·제련 대응 5 와 사냥 고기 셋(T694 — 곰고기 1,610 ≠ 1,200 · 익힌 둘)은 "바꿔 받는 물건"이라 빠진다', `${same.join(' · ')} · 빠짐 ${renamed.filter(k => !HV._econSameOf(k)).map(k => k + '→' + M[k]).join(' ')}`);
+    'ⓧ① 등가 표 — 대응 정본의 이름이 다른 줄 중(T1145 물고기 건어·절임 대응이 늘어 개수는 고정하지 않는다 · 10 이상) **같은 물건 2**(kg당 열량이 같다) · 가공·제련 대응 5 와 사냥 고기 셋(T694 — 곰고기 1,610 ≠ 1,200 · 익힌 둘)은 "바꿔 받는 물건"이라 빠진다', `${same.join(' · ')} · 빠짐 ${renamed.filter(k => !HV._econSameOf(k)).map(k => k + '→' + M[k]).join(' ')}`);
   ok(KC.kcalPerKg('berry') === KC.kcalPerKg('fruit') && HV._econSameOf('fiber') === null && HV._econSameOf('twig') === null && HV._econSameOf('herb') === null,
     'ⓧ① 군락 전리품 넷 — berry → fruit(같은 물건) · twig·herb 는 이름이 같다 · fiber 는 econ 재화가 아니다(대응 없음)', `berry ${KC.kcalPerKg('berry')} = fruit ${KC.kcalPerKg('fruit')} kcal/kg`);
   const fnSame = VS.slice(VS.indexOf('function _econSameOf('), VS.indexOf('function _econSameOf(') + 600);
