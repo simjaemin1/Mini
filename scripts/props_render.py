@@ -3935,6 +3935,218 @@ def _beams(wood, seed, edge=None):
     _spin(n0, math.radians(-38))
 
 
+# ═══════════════ [T1172] 어종 가공품 마흔셋 — 말린 것 21 · 절인 것 21 · 생선 절임 1(T1128 §4) ═══════════════
+# ★키 = 서버 품목 키(`server/fish-preserve.js` — `dried_<종>` · `pickled_<종>` · 잡어 절임 `pickled_fish`) — `test-icons ⑮` 가 그 대조를 잰다.
+# ★계보(T76 ⑥ · T67 캐논): 말린 것 · 절인 것은 **원물과 같은 물고기**다 — 원물 함수(`m_<종>`)를 그대로 부르고 그 몸에 가공만 입힌다
+#   (새 몸틀 0 · 종을 가르는 꼴 · 빛 · 무늬는 원물이 이미 가진 것).
+#   · 말린 것 = 살이 졸아 얇아지고(두께를 누른다) 빛이 누렇게 바래 어두워진다 · 널어 말린 꼴을 든다 —
+#     지느러미 물고기 · 꿰미는 아가미로 꿴 끈(T76 `dried_fish` 그 문법) · 오징어 · 문어는 펴서 꿴 꼬챙이 둘 · 잔것(새우 · 게 · 멸치 · 미꾸라지 · 뱀장어)은 납작하게 졸았다.
+#   · 절인 것 = 소금에 절어 빛이 희게 바래고 **켜켜이 쌓아** 소금을 쳤다 — 같은 물고기 두 마리를 눕혀 엇갈려 쌓고 위에 소금 알갱이(염장 생선 꼴).
+# ★빛 바래기 = 화면 빛(sRGB)에 **더하는** 몫이다 — 섞기(lerp)나 곱하기는 종 사이 빛 차이를 줄여 짐 창에서 종이 안 갈린다(1패스 실측: 섞기 판은
+#   마른 잉어 ↔ 마른 대구 |Δ| 21 · 그릇을 같이 쓴 판은 절인 명태 ↔ 절인 가물치 5.4 — `test-icons` 자 40 밑). 더하기는 종 사이 차이를 그대로 둔다.
+# ★고증: 청동기 후기 한반도 — 말리기 · 소금 절임(자염)은 이 세계가 이미 가진 두 가공이다(`spoil.PRESERVE` · `salt`).
+#   북어 · 과메기 · 새우젓 · 멸치젓 · 오징어젓은 이름만 고증 이름이고 그림 문법은 같다(같은 가공).
+
+_T1172_OFF = {'dry': (-12, -40, -78), 'pale': (30, 22, -20), 'salt': (26, 30, 24)}   # 화면 빛(0~255)에 더하는 몫 — 마른 것 = 누렇고 어둡게 · 북어 = 누렇게 희게 · 절인 것 = 희게
+_T1172_TINT = {}                                                 # (재질 이름, 갈래) → 바랜 사본(같은 재질은 한 번만 짓는다)
+
+
+def _t1172_shift(c, off):
+    """선형 빛 → 화면 빛(sRGB)에 `off` 를 더해 → 선형으로(0~1 로 자른다)."""
+    out = []
+    for i in range(3):
+        l = max(0.0, c[i])
+        sv = 12.92 * l if l <= 0.0031308 else 1.055 * (l ** (1 / 2.4)) - 0.055
+        sv = min(1.0, max(0.0, sv + off[i] / 255.0))
+        out.append(sv / 12.92 if sv <= 0.04045 else ((sv + 0.055) / 1.055) ** 2.4)
+    return (out[0], out[1], out[2], 1.0)
+
+
+def _t1172_tint(mat, kind):
+    """재질 사본 — 바탕 빛(Principled 기본값 · RGB 노드)만 바랜다. 결 · 범프 · 거칠기는 그대로(같은 살갗이 바랜 것)."""
+    if mat is None:
+        return None
+    key = (mat.name, kind)
+    if key in _T1172_TINT:
+        return _T1172_TINT[key]
+    off = _T1172_OFF[kind]
+    m2 = mat.copy(); m2.name = mat.name + '_t1172' + kind
+    for n in m2.node_tree.nodes:
+        if n.type == 'RGB':
+            n.outputs[0].default_value = _t1172_shift(n.outputs[0].default_value, off)
+        elif n.type == 'BSDF_PRINCIPLED':
+            bc = n.inputs["Base Color"]
+            if not bc.is_linked:
+                bc.default_value = _t1172_shift(bc.default_value, off)
+            em = n.inputs.get("Emission Strength")
+            if em is not None:
+                em.default_value = 0.0                                                     # 가공품은 안 빛난다
+    _T1172_TINT[key] = m2
+    return m2
+
+
+def _t1172_raw(sp):
+    """원물을 그대로 짓고(같은 함수 · 같은 씨) 변환을 정점에 굽는다 — 그 뒤 가공은 세계 축 정점으로 한다."""
+    n0 = len(OBJS)
+    globals()['m_' + sp]()
+    rc.bake_transforms()
+    return OBJS[n0:]
+
+
+def _t1172_box(objs):
+    xs, ys, zs = [], [], []
+    for o in objs:
+        for v in o.data.vertices:
+            xs.append(v.co.x); ys.append(v.co.y); zs.append(v.co.z)
+    return min(xs), max(xs), min(ys), max(ys), min(zs), max(zs)
+
+
+def _t1172_paint(objs, kind):
+    for o in objs:
+        for i, sl in enumerate(o.material_slots):
+            if sl.material is not None:
+                o.material_slots[i].material = _t1172_tint(sl.material, kind)
+
+
+# 원물 그림의 꼴 — 선 몸(옆모습이 카메라를 본다)과 누운 몸
+_T1172_UPRIGHT = ('salmon', 'cod', 'herring', 'trout', 'pollock', 'carp', 'crucian', 'catfish', 'snakehead', 'mandarin',
+                  'barbel', 'sweetfish', 'sardine', 'minnow', 'shrimp', 'fish')
+_T1172_SPREAD = ('squid', 'octopus')                                         # 말릴 때 펴서 꼬챙이에 꿴다
+_T1172_SPLIT = ('cod', 'herring', 'salmon')                                  # 배를 갈라 펴서 말린다(대구포 · 과메기 · 연어포) — 눕혀 넓게 편 몸에 벌림 꼬챙이
+_T1172_PALE = ('pollock',)                                                   # 북어 — 한겨울 덕장에서 얼었다 녹으며 말라 누렇게 희다(어둡게 안 바랜다)
+_T1172_TAIL = ('carp',)                                                      # 잉어 — 꼬리를 묶어 머리를 아래로 매달아 말린다(굵은 몸은 세로로 걸어야 고루 마른다)
+
+
+def _dried(sp):
+    """말린 것 — 원물(`m_<종>`)과 **같은 물고기**를 말렸다(T76 `_fish(dried=True)` 문법을 종마다)."""
+    random.seed(11720)
+    objs = _t1172_raw(sp)
+    _t1172_paint(objs, 'pale' if sp in _T1172_PALE else 'dry')
+    x0, x1, y0, y1, z0, z1 = _t1172_box(objs)
+    cx, cy, cz = (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2
+    if sp in _T1172_SPLIT:
+        for o in objs:                                                                       # 눕혀(옆구리가 위를 본다) 넓게 편다 — 갈라 벌린 몸
+            for v in o.data.vertices:
+                x, y, z = v.co.x, v.co.y - cy, v.co.z - cz
+                v.co.y, v.co.z = -z * 1.85, y * 0.45
+        x0, x1, y0, y1, z0, z1 = _t1172_box(objs)
+        for o in objs:
+            for v in o.data.vertices:
+                v.co.z -= z0
+        for f in (0.30, 0.70):                                                               # 벌림 꼬챙이 둘(편 몸을 버틴다)
+            cyl(0.026, (y1 - y0) + 0.24, (x0 + (x1 - x0) * f, (y0 + y1) / 2, (z1 - z0) + 0.03),
+                rot=(math.radians(90), 0, 0), mat=M['bark2'], verts=6)
+    elif sp in _T1172_UPRIGHT:
+        for o in objs:                                                                       # ★살이 졸았다 — 두께(옆 폭)를 눌러 같은 실루엣을 남긴다
+            for v in o.data.vertices:
+                v.co.y = cy + (v.co.y - cy) * 0.55
+        if sp in _T1172_TAIL:                                                                # 꼬리를 위로 세운다(머리가 아래) · 꼬리에 묶은 끈 고리
+            for o in objs:
+                for v in o.data.vertices:
+                    x, z = v.co.x - cx, v.co.z - (z0 + z1) / 2
+                    v.co.x, v.co.z = cx + z, -x + (x1 - x0) / 2                              # 길이가 높이로 · 몸 높이가 너비로(같은 몸을 세웠다)
+            zt = (x1 - x0)
+            cyl(0.030, 0.62, (cx, cy, zt + 0.22), mat=M['fiber'], verts=6)                     # 꼬리 묶은 끈(위로)
+            cyl(0.030, 0.70, (cx, cy, zt + 0.52), rot=(0, math.radians(90), 0), mat=M['bark2'], verts=6)   # 건 장대
+        elif sp not in ('minnow', 'shrimp'):                                                 # 피라미는 원물부터 꿰미다
+            zc = z0 + (z1 - z0) * 0.80
+            cyl(0.030, (x1 - x0) + 0.50, (cx, cy, zc), rot=(0, math.radians(90), math.radians(-3)),
+                mat=M['fiber'], verts=6)                                                     # 아가미로 꿴 끈(널어 말린다)
+    elif sp in _T1172_SPREAD:
+        for o in objs:                                                                       # 펴서 말렸다 — 높이를 눌러 납작하게
+            for v in o.data.vertices:
+                v.co.z = z0 + (v.co.z - z0) * 0.42
+        zt = z0 + (z1 - z0) * 0.42 + 0.03
+        cyl(0.030, (x1 - x0) + 0.30, (cx, cy, zt), rot=(0, math.radians(90), 0), mat=M['bark2'], verts=6)          # 길게 꿴 꼬챙이
+        cyl(0.028, (y1 - y0) + 0.30, (cx - (x1 - x0) * 0.18, cy, zt + 0.02), rot=(math.radians(90), 0, 0),
+            mat=M['bark2'], verts=6)                                                         # 가로 꼬챙이(편 몸을 버틴다)
+    else:
+        for o in objs:                                                                       # 졸아붙었다 — 높이를 누른다
+            for v in o.data.vertices:
+                v.co.z = z0 + (v.co.z - z0) * 0.60
+
+
+def _pickled(sp):
+    """절인 것 — 원물(`m_<종>`)과 **같은 물고기 둘**이 소금에 절어 켜켜이 엇갈려 누웠고 위에 소금이 앉았다
+    (배를 갈라 펴 말리는 종은 절일 때도 갈라 편다 — 자반)."""
+    random.seed(11721)
+    a = _t1172_raw(sp)
+    b = _t1172_raw(sp)                                                                       # 같은 함수 · 같은 씨 — 같은 물고기 한 마리 더
+    _t1172_paint(a + b, 'salt')
+    x0, x1, y0, y1, z0, z1 = _t1172_box(a)
+    cx, cy, cz = (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2
+    lay = sp in _T1172_UPRIGHT
+    for k, objs in enumerate((a, b)):
+        ang = math.radians(-14 if k == 0 else 62)
+        ca, sa = math.cos(ang), math.sin(ang)
+        for o in objs:
+            for v in o.data.vertices:
+                x, y, z = v.co.x - cx, v.co.y - cy, v.co.z - cz
+                if lay:                                                                      # 선 몸은 눕힌다 — 옆구리(무늬)가 위를 본다
+                    y, z = -z, y
+                    if sp in _T1172_SPLIT:                                                   # 자반 — 배를 갈라 펴서 소금 친다(말린 것과 같은 갈래)
+                        y, z = y * 1.85, z * 0.45
+                x, y = x * ca - y * sa, x * sa + y * ca
+                v.co.x, v.co.y, v.co.z = x, y, z
+    for k, objs in enumerate((a, b)):                                                        # 바닥에 놓고 둘째를 첫째 위에
+        bx0, bx1, by0, by1, bz0, bz1 = _t1172_box(objs)
+        lift = (-bz0) if k == 0 else (_t1172_box(a)[5] * 0.50 - bz0)                         # 둘째 밑 = 첫째 높이의 반(겹쳐 누른다)
+        for o in objs:
+            for v in o.data.vertices:
+                v.co.z += lift
+    x0, x1, y0, y1, z0, z1 = _t1172_box(a + b)
+    for i in range(18):                                                                      # 위에 친 소금
+        t = random.uniform(0.0, 1.0)
+        ico(random.uniform(0.030, 0.050),
+            (x0 + (x1 - x0) * random.uniform(0.15, 0.85), y0 + (y1 - y0) * random.uniform(0.15, 0.85), z1 - 0.02 - t * 0.10),
+            subdiv=1, mat=M['saltx'], scale=(1.2, 1.2, 0.6), jitter=0.30, smooth=False)
+
+# 마흔셋 — 말린 것 · 절인 것은 원물 함수 이름을 그대로 넘긴다(`test-icons ⑮` 가 짝을 잰다)
+def m_dried_anchovy():    _dried('anchovy')
+def m_pickled_anchovy():  _pickled('anchovy')
+def m_dried_carp():    _dried('carp')
+def m_pickled_carp():  _pickled('carp')
+def m_dried_cod():    _dried('cod')
+def m_pickled_cod():  _pickled('cod')
+def m_dried_crab():    _dried('crab')
+def m_pickled_crab():  _pickled('crab')
+def m_dried_herring():    _dried('herring')
+def m_pickled_herring():  _pickled('herring')
+def m_dried_octopus():    _dried('octopus')
+def m_pickled_octopus():  _pickled('octopus')
+def m_dried_pollock():    _dried('pollock')
+def m_pickled_pollock():  _pickled('pollock')
+def m_dried_salmon():    _dried('salmon')
+def m_pickled_salmon():  _pickled('salmon')
+def m_dried_sardine():    _dried('sardine')
+def m_pickled_sardine():  _pickled('sardine')
+def m_dried_shrimp():    _dried('shrimp')
+def m_pickled_shrimp():  _pickled('shrimp')
+def m_dried_squid():    _dried('squid')
+def m_pickled_squid():  _pickled('squid')
+def m_dried_trout():    _dried('trout')
+def m_pickled_trout():  _pickled('trout')
+def m_dried_barbel():    _dried('barbel')
+def m_pickled_barbel():  _pickled('barbel')
+def m_dried_catfish():    _dried('catfish')
+def m_pickled_catfish():  _pickled('catfish')
+def m_dried_crucian():    _dried('crucian')
+def m_pickled_crucian():  _pickled('crucian')
+def m_dried_eel():    _dried('eel')
+def m_pickled_eel():  _pickled('eel')
+def m_dried_loach():    _dried('loach')
+def m_pickled_loach():  _pickled('loach')
+def m_dried_mandarin():    _dried('mandarin')
+def m_pickled_mandarin():  _pickled('mandarin')
+def m_dried_minnow():    _dried('minnow')
+def m_pickled_minnow():  _pickled('minnow')
+def m_dried_snakehead():    _dried('snakehead')
+def m_pickled_snakehead():  _pickled('snakehead')
+def m_dried_sweetfish():    _dried('sweetfish')
+def m_pickled_sweetfish():  _pickled('sweetfish')
+def m_pickled_fish():  _pickled('fish')
+
+
 # ★표 — 아이콘 키 = 서버 품목 키. 세계 렌더는 아직 없다(`world` 빈 칸) — 붙일 때 같은 모델을 쓴다.
 ITEMS = [
     ('crude_axe', m_crude_axe), ('crude_pick', m_crude_pick), ('crude_blade', m_crude_blade),
@@ -4017,6 +4229,33 @@ ITEMS_T1099 = [
     ('flint', m_flint), ('granite', m_granite), ('limestone', m_limestone), ('marble', m_marble), ('phosphate', m_phosphate),
 ]
 ITEMS += ITEMS_T1099
+
+# ★[T1172] 어종 가공품 마흔셋(T1128 §4) — 키 = `server/fish-preserve.js items()` 그대로(종 차례 = `fishing.FISH_ITEMS`) · `test-icons ⑮` 가 이 표를 잰다.
+ITEMS_T1172 = [
+    ('dried_anchovy', m_dried_anchovy), ('pickled_anchovy', m_pickled_anchovy),
+    ('dried_carp', m_dried_carp), ('pickled_carp', m_pickled_carp),
+    ('dried_cod', m_dried_cod), ('pickled_cod', m_pickled_cod),
+    ('dried_crab', m_dried_crab), ('pickled_crab', m_pickled_crab),
+    ('dried_herring', m_dried_herring), ('pickled_herring', m_pickled_herring),
+    ('dried_octopus', m_dried_octopus), ('pickled_octopus', m_pickled_octopus),
+    ('dried_pollock', m_dried_pollock), ('pickled_pollock', m_pickled_pollock),
+    ('dried_salmon', m_dried_salmon), ('pickled_salmon', m_pickled_salmon),
+    ('dried_sardine', m_dried_sardine), ('pickled_sardine', m_pickled_sardine),
+    ('dried_shrimp', m_dried_shrimp), ('pickled_shrimp', m_pickled_shrimp),
+    ('dried_squid', m_dried_squid), ('pickled_squid', m_pickled_squid),
+    ('dried_trout', m_dried_trout), ('pickled_trout', m_pickled_trout),
+    ('dried_barbel', m_dried_barbel), ('pickled_barbel', m_pickled_barbel),
+    ('dried_catfish', m_dried_catfish), ('pickled_catfish', m_pickled_catfish),
+    ('dried_crucian', m_dried_crucian), ('pickled_crucian', m_pickled_crucian),
+    ('dried_eel', m_dried_eel), ('pickled_eel', m_pickled_eel),
+    ('dried_loach', m_dried_loach), ('pickled_loach', m_pickled_loach),
+    ('dried_mandarin', m_dried_mandarin), ('pickled_mandarin', m_pickled_mandarin),
+    ('dried_minnow', m_dried_minnow), ('pickled_minnow', m_pickled_minnow),
+    ('dried_snakehead', m_dried_snakehead), ('pickled_snakehead', m_pickled_snakehead),
+    ('dried_sweetfish', m_dried_sweetfish), ('pickled_sweetfish', m_pickled_sweetfish),
+    ('pickled_fish', m_pickled_fish),
+]
+ITEMS += ITEMS_T1172
 # ★원물 → 보존식 계보(하네스가 실루엣 상관으로 검사한다). `spoil.PRESERVE` 가 정본이고 여기는 **이 파일이 가진 짝**만 적는다.
 # ★[T95] 옷 여섯 — 재질마다 다른 물건이다(갖옷과 삼베옷은 같은 그림일 수 없다).
 #   키는 `clothes_<mat>` · 순서는 `server/clothes.js` 표 순서(계약).
