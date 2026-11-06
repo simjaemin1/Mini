@@ -87,7 +87,7 @@ const T1134_HAPPY_TARGET = process.env.T1134_HAPPY_TARGET !== '0';   // ★[T114
 //     부팅 실체화(다시 뜸 · 몸은 비영속)는 종전 그대로 은거지에 세운다.
 //   `spawn` — 단 · 단 몸은 종전 그대로 그날 선다 · 단 몸이 서는 그 틱에 단이 된 사람 몫의 마을 몸을 거둔다(호스트 `t1039Leave` — 떠남 표 · 순간이동 0 · 걷는 몸 0).
 const T1039_BODY = (() => { const v = typeof process !== 'undefined' && !!process.env ? process.env.T1039_BANDIT_BODY : undefined; return v == null || v === '' ? 'walk' : (v === '0' ? '' : v); })();   // ★[PM land1038 · ★재민 11-01 "걸어간 몸이 단"] 켬 기본 = walk · 종전 = `=0` · 대조 `=spawn`
-// ★★[T1078 2026-11-02 · ★재민 11-02 "도적과 은신처가 모두 맵 내에 실제로 보이는 거 맞지..? 추상 아니지?"] **도적 단원 전원이 몸** — 손잡이 `T1078_BANDIT_ALL`('1' 만 켬 · 끔 = 아래 갈래 줄이 하나도 안 닿는다 = 종전 글자).
+// ★★[T1078 2026-11-02 · ★재민 11-02 "도적과 은신처가 모두 맵 내에 실제로 보이는 거 맞지..? 추상 아니지?"] **도적 단원 전원이 몸** — 손잡이 `T1078_BANDIT_ALL`(T1184 켬 기본 · 명시적 `=0` 되돌림 · 끔 = 아래 갈래 줄이 하나도 안 닿는다 = 종전 글자).
 //   종전: `syncBodies` 는 단마다 min(3, n)(`BDT_BODY_PER_GANG`) 몸만 은거지 곁에 세웠다(“연출 전용 · econ 무접촉”) — 나머지 사람은 숫자였다 · 몸이 맞아 죽으면 존이 30초 뒤 마을 광장에 되살렸다(순간이동).
 //   켬: ★T1039 `walk` 갈래를 **함께 켠다**(켬이면 `T1039_BANDIT_BODY` 값과 무관하게 walk — `spawn` 은 은거지 곁 새 몸이라 “새 몸 0” 과 맞지 않는다 · 회부).
 //     ① 단원 수 = 몸 수 — 상한 3 을 걷는다(`_t1078Cap` = n). 몸은 **걸어 들어오고**(해체 단 = T1039 walk 걸어온 몸 · 절망 이탈 = 그 마을 몸이 은거지까지 걸어 닿는 날 단의 몸 —
@@ -98,9 +98,10 @@ const T1039_BODY = (() => { const v = typeof process !== 'undefined' && !!proces
 //     ③ 은거지 곁 일과 — 밤은 은거지에서 잠(`취침`) · 아침 창(농부 출근 창 `SCH_FARMW_R` 그 수)엔 단 비축이 그날 끼니를 댔으면 은거지에서 `식사` · 낮은 종전 배회(일터 = 은거지 둘레).
 //        끼니 양은 종전 유지비 줄(`BDT_UPKEEP` × n) 그대로 — 몸은 그 사실을 보일 뿐이다(econ 사본 0 · 호스트 `t1078Life` · 존 `decideNpcBehavior` 문).
 //   새 수 0 · 주사위 새 흐름 0 · econ(sim/) 무접촉.
-const T1078_ALL = typeof process !== 'undefined' && !!process.env && process.env.T1078_BANDIT_ALL === '1';
+// [T1184] 켬 기본 · 세 팔 모두 명시적 =0 으로 되돌린다.
+const T1078_ALL = !(typeof process !== 'undefined' && process.env && process.env.T1078_BANDIT_ALL === '0');
 const T1039_WALK = T1039_BODY === 'walk' || T1078_ALL, T1039_SPAWN = T1039_BODY === 'spawn' && !T1078_ALL;
-// ★★[T1079 2026-11-02 · ★재민 11-02 판정대기 문 4 = ⓑ "은거지에 더미로 남는다" · 문 4-b = PM ㄱ "약탈 전투가 무기를 읽는다"] **은거지 = 실제 시설 · 짐 더미** — 손잡이 `T1079_BANDIT_CAMP`('1' 만 켬 · 끔 = 아래 갈래 줄이 하나도 안 닿는다 = 종전 글자).
+// ★★[T1079 2026-11-02 · ★재민 11-02 판정대기 문 4 = ⓑ "은거지에 더미로 남는다" · 문 4-b = PM ㄱ "약탈 전투가 무기를 읽는다"] **은거지 = 실제 시설 · 짐 더미** — 손잡이 `T1079_BANDIT_CAMP`(T1184 켬 기본 · 명시적 `=0` 되돌림 · 끔 = 아래 갈래 줄이 하나도 안 닿는다 = 종전 글자).
 //   ★T1078 켬 위에서만 선다(`T1078_BANDIT_ALL=1` 이 없으면 이 손잡이는 무동작 — 몸 없는 단에 시설만 서지 않게 · 회부).
 //   ① 시설: 단이 은거지에 서는 그 순간(`_t1039Arrive` · 소굴 재결성 · 종전 결성 줄) 야영 터를 세운다 — 모닥불(존 건물 `campfire` · 은거지 칸 가운데 = 몸의 집 · 잠자리)과
 //      짐 더미(존 건물 `chest` · 은거지 칸 모서리 — 그릇)다. 존 건물 행 문(`liveBuildRow` — 움집 · 곳간 완공과 같은 문)이라 클라에 보이고 DB 에 남는다(호스트 `t1079Pitch`).
@@ -113,8 +114,8 @@ const T1039_WALK = T1039_BODY === 'walk' || T1078_ALL, T1039_SPAWN = T1039_BODY 
 //      `t765Join` — 출생 자리를 그 몸이 받는다 · 새 몸 0). 주민 될 사람 기록(econ 항목)은 단이 된 날 econ 에서 빠진 그 항목이다(해체 · 이탈 — `g.npc1079` · 사본 0).
 //   ⑤ econ `_raidScrum` 도적 atk: 호스트 `world.banditArmed`(켬만 설치) = 손에 든 무기 수(`armsHeld`) → 든 사람 atk = 토벌 · 호위 식 `_escAtk` 그대로 · 맨손 = 그 식의 무기 0.
 //   새 수 0 · 주사위 새 흐름 0.
-const T1079_CAMP = T1078_ALL && typeof process !== 'undefined' && !!process.env && process.env.T1079_BANDIT_CAMP === '1';
-// ★★[T1104 2026-11-03 · ★재민 11-02 "추상 아니지?"] **약탈 · 토벌을 맵 위 사건으로** — 손잡이 `T1104_BANDIT_WALK`('1' 만 켬 · 끔 = 아래 갈래 줄이 하나도 안 닿는다 = 종전 글자).
+const T1079_CAMP = T1078_ALL && !(typeof process !== 'undefined' && process.env && process.env.T1079_BANDIT_CAMP === '0');
+// ★★[T1104 2026-11-03 · ★재민 11-02 "추상 아니지?"] **약탈 · 토벌을 맵 위 사건으로** — 손잡이 `T1104_BANDIT_WALK`(T1184 켬 기본 · 명시적 `=0` 되돌림 · 끔 = 아래 갈래 줄이 하나도 안 닿는다 = 종전 글자).
 //   ★T1078 · T1079 켬 위에서만 선다(`T1078_BANDIT_ALL=1 T1079_BANDIT_CAMP=1` 이 없으면 무동작 — 몸 · 더미가 없는 단에 걸음만 서지 않게).
 //   ① 약탈: 단은 은거지에 있다가 길목 표(`S.pairs` — 그 쌍의 첫 단 = econ 이 고르던 그 단)에 든 캐러밴이 길을 떠나면 그 길에서 은거지에 가장 가까운 정점(길목)으로
 //      **단 몸이 다 걸어 나간다**(T590 걸음 · T681 ③ 걸음 장부 — 하루 걸음 = 존 걸음 × 하루 길이). 캐러밴 장부(T661 식 — 길이 × 지난 날 ÷ 구간 날)가 길목을 지나는 그날
@@ -125,7 +126,7 @@ const T1079_CAMP = T1078_ALL && typeof process !== 'undefined' && !!process.env 
 //      닿은 날 단이 은거지에 있으면 종전 식(Lanchester)으로 은거지에서 싸운다(단이 길목에 나가 있으면 돌아올 때까지 은거지에서 기다린다) · 원정 전사는 그 자리에 쓰러진다.
 //      이겨서 단이 무너지면 산 원정 몸이 짐 더미를 싣는다(T466 노획 문 `_warLootLoad` — 몸마다 `CAP_KG`) · 집으로 걸어 와 곳간에 내린다(T423 내려놓기 문 `lootGive`) · 못 실은 것은 더미에 남는다.
 //   새 수 0 · 주사위 새 흐름 0(econ 약탈은 그 판의 `v1.srand` 차례 · 토벌은 종전 `_rb` 그대로).
-const T1104_WALK = T1079_CAMP && typeof process !== 'undefined' && !!process.env && process.env.T1104_BANDIT_WALK === '1';
+const T1104_WALK = T1079_CAMP && !(typeof process !== 'undefined' && process.env && process.env.T1104_BANDIT_WALK === '0');
 const T577_RAMP = process.env.T577_RAMP !== '0';   // ★[T577 추신] 기본 켬
 function _t577Hash(name) { let h = 0; const s = String(name || ''); for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0; return h >>> 0; }
 function _bdtOpenDay(vil) {   // 이 마을의 보호기가 끝나는 날(끔이면 모두 BDT_MIN_DAY — 종전) · ★[T984] 이 날부터 그 마을이 해체 · 절망 이탈 문을 탄다(소굴 습격은 이 날과 무관)
@@ -857,8 +858,10 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
     const fN = Math.min(force, Math.max(BDT_SUP_N, Math.ceil(bg.n * 1.5))), wep = Math.min(1, ((e.storage && e.storage.weapon) || 0) / Math.max(1, fN));   // ★[튜닝] 갱 1.5배 파견(per-entity 격퇴 확보)
     if (T1104_WALK) bg._sup = _t1104SupGo(vil, bg, fN, wep, day);   // ★[T1104 ②] 켬 = 원정 몸이 은거지까지 걷는다(닿는 날 = 걸음 장부 · 아래 날짜 셈 대신)
     else bg._sup = { vilDbId: vil.dbId, eta: day + Math.max(1, Math.ceil(bd / 240)), force: fN, wep }; // 도보 강행군 ~240셀/일
+    if (T1104_WALK && !bg._sup) continue; // [T1184] 몸을 파견하지 못했으면 장부 원정도 없다.
     e._bdtSupCd = day + BDT_SUP_CD;
-    log(day, `${vil.name} 토벌대 ${fN}명 파견 → 도적단#${bg.id}(거리 ${bd | 0}셀)${T1104_WALK ? _t1104SupTxt(bg) : ''}`);
+    const sent = T1104_WALK ? _t1104SupOf(bg).force : fN;
+    log(day, `${vil.name} 토벌대 ${sent}명 파견 → 도적단#${bg.id}(거리 ${bd | 0}셀)${T1104_WALK ? _t1104SupTxt(bg) : ''}`);
   }
   pairSync();
   if (T1104_WALK) { _t1104SupDay(day); _t1104Day(day); }   // ★[T1104] 원정 몸(돌아옴 · 단이 사라진 원정) · 단의 걸음(길목으로 나감 · 돌아옴 · 더미에 내림) — 길목 표가 오늘 것이 된 뒤
@@ -901,7 +904,7 @@ function restore(row) {
   if (d.stats) Object.assign(S.stats, d.stats, { log: S.stats.log });
   if (T1079_CAMP) for (const g of S.GANGS) if (g.t1079) _t1079Relink(g);   // ★[T1079] 더미 행을 다시 잇는다(그 자리 · 그 단 표식 — 존 건물 행 문)
   if (Array.isArray(d.road)) S.ROAD = d.road.map((r) => ({ g: { ...r.g, _sup: r.g._sup || null, _supKill: r.g._supKill || 0 }, vid: r.vid, d0: r.d0, len: r.len, ppd: r.ppd, pids: [] }));   // ★[T1039 walk] 다시 뜨면 몸 없이 장부만(닿는 날 단이 선다 · 걸어온 몸 0)
-  if (T1104_WALK) S.SUPS = Array.isArray(d.sups) ? d.sups.map((F) => Object.assign({}, F, { pids: [], bag: {} })) : [];   // ★[T1104] 다시 뜨면 몸 없이 장부만(몸은 마을에 다시 선다 — T1039 길 위 단 그 꼴)
+  if (T1104_WALK) S.SUPS = Array.isArray(d.sups) ? d.sups.map((F) => Object.assign({}, F, { pids: [], bag: {} })) : [];   // ★[T1104] 다시 뜨면 몸은 마을에 다시 선다. 몸 결속 없는 원정은 T1184 하루 절에서 취소한다
   if (Array.isArray(d.walk)) S.WALK = d.walk.map((w) => Object.assign(_walkRow(w), { pid: null }));   // ★[T1108] 복원 줄 하나 — 다시 뜨면 몸 없이 장부만(몸은 비영속) · `t1079` 표지 · 길 위 칸 그대로
   console.log(`[${S.zoneId}] 🏴 [도적] 복원: 소굴 ${S.DENS.length}곳(생존 ${S.DENS.filter(x => !x.cleared).length}) · 도적단 ${S.GANGS.length}(총원 ${S.GANGS.reduce((a, g) => a + g.n, 0)}) · 저장 day ${row.day}`);
 }
@@ -1204,6 +1207,7 @@ function t1079() {
 //   걷는 원정 `S.SUPS[]` = { id, gid, vilDbId, force, wep, st: 'go' | 'home', d0 · len · ppd, pids(원정 몸) · bag(몸마다 실은 것) · camp }.
 function _t1104St() { return S.stats.t1104 || (S.stats.t1104 = { out: 0, met: 0, miss: 0, back: 0, home: 0, food: 0, arms: 0, keep: 0, ledger: 0, drop: 0, boot: 0, far: 0,
   supGo: 0, supBodies: 0, supWait: 0, supFight: 0, supFell: 0, supWon: 0, supLoad: 0, supHome: 0, supStore: 0, supEmpty: 0 }); }   // 켬에서만 칸이 선다
+function _t1184Here(p, cx, cy) { return !!p && Math.floor(p.x / SZ) === cx && Math.floor(p.y / SZ) === cy; }
 function _t1104At(L, day) { return !!L && L.ppd > 0 && (day - L.d0) * L.ppd >= L.len - 0.5; }   // 걸음 장부 닿음(T765 `_t765Arrive` · T1039 `_t1039Arrive` 그 식)
 function _t1104Eta(L) { return L && L.ppd > 0 ? L.d0 + Math.ceil(Math.max(0, L.len - 0.5) / L.ppd) : null; }
 function _t1104Away(p) { return T1104_WALK && !!p && p._t1104W != null; }   // 이 몸은 지금 은거지 밖을 걷는다(길목 · 돌아옴)
@@ -1272,7 +1276,7 @@ function _t1104Day(day) {   // 도적 하루(길목 표가 오늘 것이 된 뒤
       if (T.met != null || gone) { S.t1104T.delete(T.tc); _t1104Back(g, day, T.met != null ? 'met' : 'miss'); }
       continue;
     }
-    if (T.st === 'back') { if (!_t1104At(T, day)) continue; _t1104Home(g, day); T = g.t1104; }
+    if (T.st === 'back') { if (!_t1104At(T, day) || !_t1104Bodies(g).every(p => _t1184Here(p, g.camp.cx, g.camp.cy))) continue; _t1104Home(g, day); T = g.t1104; }
     if (T.st === 'camp') { const pk = _t1104Pick(g, day, byE, S.t1104T); if (pk) _t1104Out(g, pk, day); }
   }
 }
@@ -1349,6 +1353,9 @@ function _t1104Meet(c, day) {
   const T = g.t1104;
   if (!T || T.st !== 'out' || T.met != null || T.tc !== c.id || T.leg !== c.state || !(g.n > 0) || S.GANGS.indexOf(g) < 0) return null;
   if (!_t1104At(T, day)) return null;   // 아직 길목에 못 닿았다
+  // [T1184] 길날만 지난 단과 몸이 없는 단은 싸우지 않는다.
+  const party = _t1104Bodies(g).filter(p => p._t1104W === g.id);
+  if (party.length !== g.n || !party.every(p => _t1184Here(p, Math.floor(T.x / SZ), Math.floor(T.y / SZ)))) return null;
   const out = c.state === 'outbound', D0 = out ? c.departDay : c.arriveDay, D1 = out ? c.arriveDay : c.returnArriveDay;
   const L1 = _t1104Lc(T.clen, D0, D1, day), L0 = _t1104Lc(T.clen, D0, D1, day - 1);
   if (!(day > D0 && L1 >= T.s && (day - 1 <= D0 || L0 < T.s))) return null;   // 오늘 길목을 지나지 않는다
@@ -1360,14 +1367,17 @@ function _t1104Meet(c, day) {
 // ── ② 걷는 원정 ──
 function _t1104SupOf(g) { return g && g._sup && g._sup.t1104 != null ? (S.SUPS || []).find((F) => F.id === g._sup.t1104) || null : null; }
 function _t1104SupTxt(g) { const F = _t1104SupOf(g); return F ? ` — 걸어서(몸 ${F.pids.length} · 길 ${Math.round(F.len / SZ)}셀 · 닿는 날 D${_t1104Eta(F)}) [T1104]` : ''; }
-function _t1104SupGo(vil, bg, fN, wep, day) {   // 종전 결단이 고른 병력 — 그 마을 전사 · 사냥꾼 몸(명부 뒤부터 · 몸 상한 밖 사람은 장부)이 은거지까지 걷는다
+function _t1104SupGo(vil, bg, fN, wep, day) {   // 결단이 요청한 병력 중 실제 뽑혀 걸어 나간 전사·사냥꾼 몸만 전투 병력이다
   const H = S.host, st = _t1104St(), id = bg.id + ':' + day + ':' + vil.dbId;
   const cx = bg.camp.cx * SZ + SZ / 2, cy = bg.camp.cy * SZ + SZ / 2;
   const L0 = H.t1079Len ? H.t1079Len({ cx: vil.ccx, cy: vil.ccy }, { ccx: bg.camp.cx, ccy: bg.camp.cy }) : null;
   let len = L0 ? L0.len : Math.hypot(cx - (vil.ccx * SZ + SZ / 2), cy - (vil.ccy * SZ + SZ / 2));
+  const candidates = H.t1104Draft ? H.t1104Draft(vil, fN) : [];
+  if (candidates.length < BDT_SUP_N || candidates.length < bg.n) return null;
   const pids = [];
-  for (const p of (H.t1104Draft ? H.t1104Draft(vil, fN) : [])) { const r = H.t1104Walk(p, cx, cy, 't1104s', id, vil); if (r) { pids.push(p.pid); if (r.len > len) len = r.len; } }
-  const F = { id, gid: bg.id, vilDbId: vil.dbId, force: fN, wep, st: 'go', d0: day, len, ppd: H.t1104Ppd ? H.t1104Ppd() : 0, pids, bag: {}, camp: { cx: bg.camp.cx, cy: bg.camp.cy } };
+  for (const p of candidates) { if (pids.includes(p.pid)) continue; const r = H.t1104Walk(p, cx, cy, 't1104s', id, vil); if (r) { pids.push(p.pid); if (r.len > len) len = r.len; } }
+  if (pids.length < BDT_SUP_N || pids.length < bg.n) { for (const pid of pids) if (H.t1104Release) H.t1104Release(H.players.get(pid)); return null; }
+  const F = { id, gid: bg.id, vilDbId: vil.dbId, force: pids.length, wep, st: 'go', d0: day, len, ppd: H.t1104Ppd ? H.t1104Ppd() : 0, pids, bag: {}, camp: { cx: bg.camp.cx, cy: bg.camp.cy } };
   (S.SUPS || (S.SUPS = [])).push(F);
   st.supGo++; st.supBodies += pids.length;
   return { t1104: id };
@@ -1375,7 +1385,11 @@ function _t1104SupGo(vil, bg, fN, wep, day) {   // 종전 결단이 고른 병�
 function _t1104SupAt(g, day) {   // 원정이 은거지에 닿았고 단이 은거지에 있으면 그 원정(단이 길목에 나가 있으면 돌아올 때까지 은거지에서 기다린다)
   const F = _t1104SupOf(g);
   if (!F) { if (g._sup && g._sup.t1104 != null) g._sup = null; return null; }
+  F.pids = F.pids.filter(pid => { const p = S.host.players.get(pid); return p && p.hp > 0; });
+  F.force = F.pids.length;
+  if (!F.force) { g._sup = null; return null; }
   if (F.st !== 'go' || !_t1104At(F, day)) return null;
+  if (!F.pids.every(pid => { const p = S.host.players.get(pid); return !p.isDown && _t1184Here(p, g.camp.cx, g.camp.cy); })) return null;
   if (g.t1104 && g.t1104.st !== 'camp') { if (F.wait == null) { F.wait = day; _t1104St().supWait++; log(day, `토벌대가 도적단#${g.id} 은거지에 닿았다 — 단이 길목에 나가 있어 기다린다 [T1104]`); } return null; }
   _t1104St().supFight++;
   return F;
@@ -1426,6 +1440,8 @@ function _t1104SupDay(day) {   // 원정 하루 — 단이 사라진 은거지�
   for (let i = 0; i < S.SUPS.length; i++) {
     const F = S.SUPS[i];
     const fvil = H.villages.find((v) => v.dbId === F.vilDbId) || null;
+    F.pids = F.pids.filter(pid => { const p = H.players.get(pid); return p && p.hp > 0; });
+    if (!F.pids.length) { const g = S.GANGS.find(g => g.id === F.gid); if (g && g._sup && g._sup.t1104 === F.id) g._sup = null; S.SUPS.splice(i--, 1); continue; } // [T1184] 재부팅 등으로 몸 없는 원정은 취소한다.
     if (F.st === 'go') {
       if (!_t1104At(F, day)) continue;
       if (S.GANGS.some((g) => g.id === F.gid)) continue;   // 단이 있다 — 교전은 유지비 줄(`_t1104SupAt`)
@@ -1433,7 +1449,7 @@ function _t1104SupDay(day) {   // 원정 하루 — 단이 사라진 은거지�
       _t1104SupHome(F, fvil, day);
       continue;
     }
-    if (F.st === 'home' && _t1104At(F, day)) {
+    if (F.st === 'home' && _t1104At(F, day) && (!fvil || F.pids.every(pid => _t1184Here(H.players.get(pid), fvil.ccx, fvil.ccy)))) {
       let n = 0;
       for (const pid of F.pids) { const p = H.players.get(pid); if (!p) continue; if (fvil && H.t1104Store) n += H.t1104Store(fvil, p, F.bag[pid] || null); if (H.t1104Release) H.t1104Release(p); }
       st.supHome++; if (n > 0) st.supStore++;
@@ -1447,7 +1463,7 @@ function _t1104SupSave(F) { return { id: F.id, gid: F.gid, vilDbId: F.vilDbId, f
 function t1104() {
   return { on: T1104_WALK, stat: S.stats.t1104 ? JSON.parse(JSON.stringify(S.stats.t1104)) : null,
     gangs: S.GANGS.map((g) => ({ id: g.id, n: g.n, t: g.t1104 ? JSON.parse(JSON.stringify(g.t1104)) : null })),
-    sups: (S.SUPS || []).map((F) => ({ id: F.id, gid: F.gid, st: F.st, d0: F.d0, len: F.len, ppd: F.ppd, eta: _t1104Eta(F), pids: F.pids.slice(), bag: JSON.parse(JSON.stringify(F.bag)), wait: F.wait != null ? F.wait : null })) };
+    sups: (S.SUPS || []).map((F) => ({ id: F.id, gid: F.gid, st: F.st, force: F.force, d0: F.d0, len: F.len, ppd: F.ppd, eta: _t1104Eta(F), pids: F.pids.slice(), bag: JSON.parse(JSON.stringify(F.bag)), wait: F.wait != null ? F.wait : null })) };
 }
 
 // =============================================================================

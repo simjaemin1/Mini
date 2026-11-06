@@ -20,6 +20,8 @@
 //  ⑫ 몸 걸음(T474 켬 판) — 다리 날 = 거리 ÷ 7,200 · 짧은 다리는 하루 안에 갔다 온다(econ 날 경계에 안 묶인다)
 // 실행: node scripts/test-t1136-basket.js
 'use strict';
+// 종전 상인 한 명 판은 명시적으로 되돌림. 기본 호위 운반은 T1182에서 검증.
+process.env.T1136_ESCORT_CARRY = '0';
 const path = require('path');
 const { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');

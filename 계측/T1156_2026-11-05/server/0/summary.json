@@ -1,0 +1,92 @@
+{
+  "task": "T1156",
+  "mode": "0",
+  "commandResult": {
+    "task": "T1156",
+    "mode": "0",
+    "rc": 0,
+    "seconds": 1075.0945094950002,
+    "source": "/tmp/t1156-code",
+    "command": [
+      "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+      "scripts/server-baseline-check.js",
+      "계측/서버기준선_2026-11-04c.json",
+      "--days",
+      "400",
+      "--seeds",
+      "1020,7,42",
+      "--par",
+      "3"
+    ]
+  },
+  "sourceDirectory": "/tmp/sbc-gGDqmf",
+  "check": {
+    "base": "계측/서버기준선_2026-11-04c.json",
+    "plan": {
+      "7": 400,
+      "42": 400,
+      "1020": 400
+    },
+    "seeds": [
+      1020,
+      7,
+      42
+    ],
+    "sec": 1075,
+    "per": {
+      "7": {
+        "seed": 7,
+        "code": 0,
+        "sec": 1075
+      },
+      "42": {
+        "seed": 42,
+        "code": 0,
+        "sec": 987
+      },
+      "1020": {
+        "seed": 1020,
+        "code": 0,
+        "sec": 1044
+      }
+    },
+    "res": {
+      "7": {
+        "same": true,
+        "days": 400
+      },
+      "42": {
+        "same": true,
+        "days": 400
+      },
+      "1020": {
+        "same": true,
+        "days": 400
+      }
+    }
+  },
+  "runs": [
+    {
+      "seed": 1020,
+      "days": 400,
+      "population": 3412,
+      "same": true,
+      "sourceJSONSHA256": "51651e35721059fccb49e0371aae950892ea9361787ca19f1700eb6682068729"
+    },
+    {
+      "seed": 7,
+      "days": 400,
+      "population": 3428,
+      "same": true,
+      "sourceJSONSHA256": "a1abd58ba517994a5c9db9e57952b5f62d88b6313742c8b043e0b3d5bb4aa90b"
+    },
+    {
+      "seed": 42,
+      "days": 400,
+      "population": 3224,
+      "same": true,
+      "sourceJSONSHA256": "45d9daacda3c216bd6eab7457f02b94f326c8ebe2edf151c11c2540cf74be5f6"
+    }
+  ],
+  "complete": true
+}

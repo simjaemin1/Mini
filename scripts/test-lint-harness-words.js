@@ -22,7 +22,7 @@ let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };
 const R = fs.mkdtempSync(path.join(os.tmpdir(), 'tlhw-'));
 const W = (rel, s) => { fs.mkdirSync(path.dirname(path.join(R, rel)), { recursive: true }); fs.writeFileSync(path.join(R, rel), s); };
-const G = (...a) => execFileSync('git', ['-C', R, '-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+const G = (...a) => execFileSync('git', ['-C', R, '-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
 const commit = (m) => { G('add', '-A'); G('commit', '-q', '-m', m); return G('rev-parse', 'HEAD').trim(); };
 const lint = (...a) => { const r = spawnSync(process.execPath, [LINT, '--root', R, ...a], { encoding: 'utf8' }); const out = (r.stdout || '') + (r.stderr || ''); return { code: r.status, out, last: out.trim().split('\n').pop(), red: out.split('\n').filter((l) => /^  ✗/.test(l)), yel: out.split('\n').filter((l) => /^  ~/.test(l)) }; };
 const SERVER1 = `'use strict';

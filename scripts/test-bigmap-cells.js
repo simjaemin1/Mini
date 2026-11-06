@@ -10,13 +10,13 @@
 //      새벌 동쪽 산맥 띠를 뚫은 자리를 반드시 포함한다(재민이 본 그 자리)
 //   ④ 조각 인자 — 꼴이 틀리면 400 · 존 밖이면 404
 //   ⑤ `map_players` — 존 안 **사람**만(주민·유령 0) · 묻는 사람 자신은 빠진다 · 관측 소켓도 답을 받는다 · 0.5초 안 두 번 = 한 번
-//   ⑥ 팔 끔(`T565_MAP_LIVE=0`) — 답은 `off:1` 하나(자리 0)
+//   ⑥ 기본 끔 — 답은 `off:1` 하나(자리 0) · 개발 판 `T565_MAP_LIVE=1` 은 닛폰 존에 명시
 //   ⑦ 지은 다리(런타임) — 표본 셀이면 그 픽셀만 다리로 바뀌고, 표본 밖이면 그대로(`bigmap-bake` 모듈 · 존 무관)
 //
 // ★자명 통과 금지 — 대조가 빨개질 줄 아는지 **픽스처로 한 픽셀을 뒤집어** 본다 · 자리 목록이 비어서 통과하지 않게 남이 실제로 실린다.
 //
 // 실행: node scripts/test-bigmap-cells.js
-//   central(3010) + 새벌(3020 · 팔 끔) + 닛폰(3021 · 팔 켬 · 레거시 마을 주민이 선다) — 마을 시뮬 끔(지형만 본다).
+//   central(3010) + 새벌(3020 · 기본 끔) + 닛폰(3021 · `T565_MAP_LIVE=1` 켬 · 레거시 마을 주민이 선다) — 마을 시뮬 끔(지형만 본다).
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -111,8 +111,8 @@ function auditZoneMap(zid, png, flip) {
   const cp = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: DBS[0], PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando,nippon' });
   const cUp = await FB.waitUp(cp, /central server up on/, { name: 'central' });
   ok(cUp.ok, 'central 기동', cUp.why);
-  const hp = boot('hanbando', 'zone.js', zoneEnv('hanbando', HPORT, DBS[1], { T565_MAP_LIVE: '0' }));
-  const np = boot('nippon', 'zone.js', zoneEnv('nippon', NPORT, DBS[2]));
+  const hp = boot('hanbando', 'zone.js', zoneEnv('hanbando', HPORT, DBS[1]));
+  const np = boot('nippon', 'zone.js', zoneEnv('nippon', NPORT, DBS[2], { T565_MAP_LIVE: '1' }));
   const [hUp, nUp] = await Promise.all([FB.waitUp(hp, /zone server up on/, { name: 'hanbando', capMs: 300000 }), FB.waitUp(np, /zone server up on/, { name: 'nippon', capMs: 300000 })]);   // ★[T899] 존 상한 = 정본 300초(종전 기본 120초 — 2코어 상자 부팅 >100초 가정 밖)
   ok(hUp.ok && nUp.ok, '존 둘 기동(새벌 팔 끔 · 닛폰 팔 켬)', `${hUp.why} · ${nUp.why}`);
   if (!cUp.ok || !hUp.ok || !nUp.ok) { console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`); process.exit(1); }
@@ -216,7 +216,7 @@ function auditZoneMap(zid, png, flip) {
   ok(rO && pidsO === [pidA, pidB].sort().join(','), '관측 소켓(이웃 존에서 보는 눈)도 이 존 사람 전부를 받는다', pidsO || '무응답');
 
   // ── ⑥ 팔 끔 ─────────────────────────────────────────────────────────────
-  console.log('\n⑥ T565_MAP_LIVE=0(새벌)');
+  console.log('\n⑥ T565_MAP_LIVE 기본 끔(새벌)');
   const C = await connectWs(HPORT, 'name=c');
   const D = await connectWs(HPORT, 'name=d');
   await sleep(300);

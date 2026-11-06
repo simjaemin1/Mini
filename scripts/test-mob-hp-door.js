@@ -172,7 +172,7 @@ _log('\n④ 길들인 짐승 먹이(`tryFeed`)');
   const ms = msgs.slice(k0).filter((o) => o.mid === m.mid && o.type === 'mob_damaged').map((o) => o.hp);
   seen(`먹이 ${pet}(maxHp ${m.maxHp}) 길듦 ${tamed} · maxHp−3 → ${h1} · maxHp−9 → ${h2} · 방송 ${ms.join(',')} · 저장 표 ${d1} · 알림 ${p.notices.slice(-1)[0] || ''}`);
   ok(tamed && h1 === m.maxHp && h2 === m.maxHp - 4, '★★④ +5 · maxHp 상한(종전 식 `min(maxHp, hp + 5)`)', `${h1} · ${h2}`);
-  ok(ms.join(',') === `${m.maxHp},${m.maxHp - 4}` && d1 === true && /HP \+5/.test(p.notices.slice(-1)[0] || ''), '★④ 방송 hp = 그 값 · 저장 표 · 알림 "HP +5"', ms.join(','));
+  ok(ms.join(',') === `${m.maxHp},${m.maxHp - 4}` && d1 === true && /HP가 5 올랐습니다/.test(p.notices.slice(-1)[0] || ''), '★④ 방송 hp = 그 값 · 저장 표 · 알림 "HP가 5 올랐습니다"(★T1190 ① 문장)', ms.join(','));
 }
 
 _log('\n⑤ 야생 — 존이 넘긴 host 의 문');
@@ -220,7 +220,7 @@ if (!CHILD) {
     '사람 공격 wolf hp 15 → 5 → -5 · 방송 5,-5,removed · 저장 표 true · 사체 true · 몹 남음 false',
     '화살 wolf hp 30 → 5 → 0 · 방송 5,0,removed · 저장 표 false · 사체 true · 몹 남음 false',
     'NPC 대 늑대 hp 20 → 12 → 4 → -4 · 방송 12,4,-4,removed · 저장 표 true · 몹 남음 false · NPC wander',
-    '먹이 camel_domestic(maxHp 80) 길듦 true · maxHp−3 → 80 · maxHp−9 → 76 · 방송 80,76 · 저장 표 true · 알림 camel_domestic HP +5',
+    '먹이 camel_domestic(maxHp 80) 길듦 true · maxHp−3 → 80 · maxHp−9 → 76 · 방송 80,76 · 저장 표 true · 알림 camel_domestic의 HP가 5 올랐습니다.',   // ★[T1190 ①] 알림 문장(T954 글자 갱신)
   ];
   const { spawnSync } = require('child_process');
   const r = spawnSync(process.execPath, [__filename], { encoding: 'utf8', timeout: 120000,

@@ -197,7 +197,7 @@ async function found(C, base, centers) {
     if (!(await warpCell(C, SITE.X + dx, SITE.Y + dy))) continue;
     C.notices.length = 0;
     snd(C, { type: 'claim', kind: 'temporary' }); await sleep(600);
-    if (C.notices.some((t) => /사유지 설치/.test(t))) got++;
+    if (C.notices.some((t) => /사유지를 두었습니다/.test(t))) got++;   // ★[T1190 ①] 알림 문장
   }
   if (got < 4) return { SITE, why: `임시 사유지 ${got}/4 · ${lastN(C, 1)}` };
   await warpCell(C, SITE.X, SITE.Y);

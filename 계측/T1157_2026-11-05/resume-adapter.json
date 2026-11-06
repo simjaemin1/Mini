@@ -1,0 +1,6 @@
+{
+  "beforeSHA256": "eb219d9454295e6b6252be5d6fba533e0a7133b84b691800cd61fdf314586bbf",
+  "afterSHA256": "04511f106aec70c1a739dc3ddeb8a07a11cca4773163acc3b21cc70bdb339040",
+  "reuse": "verify seed1020, completed400days, prior parent recorded normal exit0/1252s",
+  "scope": "measurement harness only; official full comparison remains unchanged"
+}

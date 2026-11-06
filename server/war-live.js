@@ -214,7 +214,7 @@ function createWarLive(opts) {
     const cmd = units.find(u => u.cmd); if (cmd) { const ox = cmd.slx, oy = cmd.sly; for (const u of units) { u.slx -= ox; u.sly -= oy; } }
   }
   function _muSlotXY(g, u) { const cs = Math.cos(g.heading), sn = Math.sin(g.heading); return [g.cmd.cx + u.slx * cs - u.sly * sn, g.cmd.cy + u.slx * sn + u.sly * cs]; }
-  function _muSeparate(g, dDays) {
+  function _muSeparate(g, dDays, budget) {
     const us = g.units, n = us.length; if (n < 2) return;
     const R = MU.SEP_R, R2 = R * R, str = MU.SEP_STR * dDays;
     const px = new Float64Array(n), py = new Float64Array(n);
@@ -222,7 +222,7 @@ function createWarLive(opts) {
       for (let j = 0; j < n; j++) { if (j === i) continue; const b = us[j]; const dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
         if (d2 < R2 && d2 > 1e-6) { const dv = Math.sqrt(d2); sx += dx / dv; sy += dy / dv; cnt++; } }
       if (cnt) { px[i] = sx / cnt; py[i] = sy / cnt; } }
-    for (let i = 0; i < n; i++) { const a = us[i]; if (a.cmd) continue; if (px[i] || py[i]) { const nx2 = a.x + px[i] * str, ny2 = a.y + py[i] * str; if (!blockedCell || !blockedCell(nx2, ny2)) { a.x = nx2; a.y = ny2; } } }
+    for (let i = 0; i < n; i++) { const a = us[i]; if (a.cmd) continue; if (px[i] || py[i]) { const d = Math.hypot(px[i] * str, py[i] * str), cap = budget ? budget[i] : d, mul = d > 0 ? Math.min(1, cap / d) : 0; const nx2 = a.x + px[i] * str * mul, ny2 = a.y + py[i] * str * mul; if (!blockedCell || !blockedCell(nx2, ny2)) { a.x = nx2; a.y = ny2; } } }
   }
   // 슬롯 추종 — ★[T284] 한 걸음이 막힌 칸(물·바위·건물 행)이면 그 축을 버린다(대형도 존 콜라이더를 본다).
   //   ★[T790] 호스트가 대형에 몸 걸음(`g._t790Walk` 셀/스텝 — 존 손잡이 `T790_NO_SNAP` 켬에서만 선다)을 달면 지휘 몸도 원점까지 **걸어서** 가고(종전 = 바로 놓기)
@@ -232,10 +232,13 @@ function createWarLive(opts) {
     if (!g || !g.units) return;
     const cs = Math.cos(g.heading), sn = Math.sin(g.heading);
     const wc = g._t790Walk > 0 ? g._t790Walk : 0;
+    if (g._t790Physical && !wc) return; // [T1183] 걸음 정본이 빠진 몸을 대신 놓지 않는다.
+    const before = wc && g._t790Physical ? g.units.map(u => [u.x, u.y]) : null;
     for (const u of g.units) {
       if (u.dead) continue;
       if (u.cmd && !wc) { u.x = g.cmd.cx; u.y = g.cmd.cy; continue; }
-      const tx = u.cmd ? g.cmd.cx : g.cmd.cx + u.slx * cs - u.sly * sn + (u.jx || 0), ty = u.cmd ? g.cmd.cy : g.cmd.cy + u.slx * sn + u.sly * cs + (u.jy || 0);
+      let tx = u.cmd ? g.cmd.cx : g.cmd.cx + u.slx * cs - u.sly * sn + (u.jx || 0), ty = u.cmd ? g.cmd.cy : g.cmd.cy + u.slx * sn + u.sly * cs + (u.jy || 0);
+      if (wc && g.detour && g.detour.target) { const t = g.detour.target(tx, ty); if (t) { tx = t.x; ty = t.y; } }
       const dx = tx - u.x, dy = ty - u.y, dd = Math.hypot(dx, dy);
       if (dd > (u.cmd ? 0 : MU.FOLLOW_SNAP)) { const st = Math.min(cap != null ? cap : MU.FOLLOW_CAP, dd, wc || dd);
         const inBlk = wc && blockedCell ? blockedCell(u.x, u.y) : false;   // ★[T790] 걷는 몸이 막힌 칸 안에 섰으면(발자국 색인이 뒤에 섰다 등) 곧은 걸음으로 걸어 나온다 — 한 걸음이 작아 칸 안 다음 점은 늘 막힘이라 종전 문으론 못 나온다
@@ -264,7 +267,9 @@ function createWarLive(opts) {
           if (w) { const ex = w.x - u.x, ey = w.y - u.y, ed = Math.hypot(ex, ey); if (ed > 1e-6) { const s2 = Math.min(st, ed), mx = u.x + ex / ed * s2, my = u.y + ey / ed * s2; if (!blockedCell(mx, my)) { u.x = mx; u.y = my; } } }
         } }
     }
-    _muSeparate(g, 1);
+    // [T1183] 슬롯 추종과 몸 겹침 해소가 같은 한 걸음 예산을 나눈다.
+    const budget = before ? g.units.map((u, i) => u.dead || (u.bu && u.bu.hp <= 0) ? 0 : Math.max(0, Math.min(cap != null ? cap : MU.FOLLOW_CAP, wc) - Math.hypot(u.x-before[i][0], u.y-before[i][1]))) : null;
+    _muSeparate(g, 1, budget);
   }
   function _muDefHold(g, atkCmd, cap) {
     if (!g || !g.holdPt) return;
@@ -314,7 +319,11 @@ function createWarLive(opts) {
     const f = { w, ctx, handle, seed, quality: quality || { A: null, B: null },
       state: 'form', t: 0, contactT: -1, gapT: 0, bestGap: Infinity, engagedOnce: false, contacts: 0,
       byPid: new Map(), settled: null, _stepMs: 0 };
-    if (arrowOut && arrowNear) ctx.onArrow = (kind, ar, u) => _arrowEvent(f, kind, ar, u);
+    ctx.onArrow = (kind, ar, u) => {
+      // [T1183] 피격 몸은 실제 발사자를 기억한다. 화살 계산은 battle-core 그대로다.
+      if (f.physical && kind === 'hit' && u && ar.sh && ar.sh.side !== u.side) u._t1183Shooter = ar.sh;
+      if (arrowOut && arrowNear) _arrowEvent(f, kind, ar, u);
+    };
     return f;
   }
   // ★[T458 ③] 화살 사건 하나 — 발사('fire') · 끝('hit' 맞음 | 'end' 사거리 다 날아 땅). battle-core 는 보기만 하는 훅이라 상태 무변.
@@ -388,16 +397,35 @@ function createWarLive(opts) {
   // 대치 — 양쪽을 대형으로 되돌린다(추격 없음). 호출측(villages)이 대형 재편·주둔점·war 상태를 맡는다.
   function toStandoff(f) { setSideCtl(f, 'A', true); setSideCtl(f, 'B', true); f.state = 'form'; f.contactT = -1; f.bestGap = Infinity; }
 
+  // [T1183] 진에 선 군대도 실제 사거리 안 적과 날아가는 화살을 본다.
+  function hasRangedContact(f) {
+    if (f.ctx.arrows.length) return true;
+    return f.ctx.units.some(u => {
+      const D = BC.UNITS[u.type];
+      return u.hp > 0 && D && D.ranged > 0 && f.ctx.sides[u.side][D.ammo || 'arrows'] > 0
+        && f.ctx.units.some(e => e.side !== u.side && e.hp > 0 && Math.hypot(e.x-u.x,e.y-u.y) <= D.ranged);
+    });
+  }
   // stepFight(f) — 존 틱 한 번(dt = 1/TICK_HZ). 반환 = 이번 틱의 사건 { contact, standoff, rout:'A'|'B'|null }.
   function stepFight(f) {
     const ctx = f.ctx; f.t += STEP_DT;
+    const guards = [];
+    if (f.physical) for (const u of ctx.units) {
+      const D = BC.UNITS[u.type];
+      if (u.hp <= 0 || !u.ctl || !D || !(D.ranged > 0)) continue;
+      const ammo = ctx.sides[u.side][D.ammo || 'arrows'];
+      if (ammo > 0 && ctx.units.some(e => e.side !== u.side && e.hp > 0 && Math.hypot(e.x-u.x,e.y-u.y) <= D.ranged)) {
+        u.ctl = false; guards.push(u); // 사격도 정본 전투 스텝이 수행한다.
+      } else u.cd -= STEP_DT;
+    }
     BC._trackVel(ctx, STEP_DT);
     BC._stepBattle(ctx, STEP_DT);
     const ev = { contact: false, standoff: false, rout: null };
-    if (f.state === 'form') return ev;
+    if (f.state === 'form' && !f.physical) { for (const u of guards) u.ctl = true; return ev; }
     // 접촉 = battle-core 타격 판정 상태(근접 사거리 안 'melee' · 사거리 안 'shoot')
     for (const u of ctx.units) { if (u.hp > 0 && !u.ctl && (u.st === 'shoot' || (u.st === 'melee' && (!T995_CONTACT_REACH || _t995InReach(u))))) { ev.contact = true; break; } }   // ★[T995 ㉡] 켬 = 'melee' 는 손 안일 때만
     if (ev.contact) { f.contactT = f.t; if (f.state !== 'engaged') { f.state = 'engaged'; f.engagedOnce = true; f.contacts++; setSideCtl(f, 'A', false); setSideCtl(f, 'B', false); } }
+    if (!ev.contact) for (const u of guards) if (!u.routing) u.ctl = true;
     // 전진 진척(본대 간격이 1m 이상 줄면 진척) — 막혀서 못 붙는 전진도 대치로 떨어진다
     const ca = centroid(f, 'A'), cb = centroid(f, 'B');
     if (ca && cb) { const gap = Math.hypot(ca.x - cb.x, ca.y - cb.y); if (gap < f.bestGap - 1) { f.bestGap = gap; f.gapT = f.t; } }
@@ -453,7 +481,7 @@ function createWarLive(opts) {
     // 대형
     buildGroup, regroup, _muAssignSlots, _muSlotXY, _muSeparate, _muStepFollow, _muDefHold, _muCmdDist, _muCompForm, bindGroupUnit,
     // 교전
-    makeFight, enlist, stepFight, arrowStat, orderAdvance, toStandoff, setSideCtl, settle, buildRes, aliveCounts, centroid, engR, standoffSec,
+    makeFight, enlist, stepFight, hasRangedContact, arrowStat, orderAdvance, toStandoff, setSideCtl, settle, buildRes, aliveCounts, centroid, engR, standoffSec,
     // 상수
     WAR_ENGAGE_R, WAR_ALERT_R, WAR_DEF_STANDOFF, MU, MU_TYPES, MU_TYPE_INT, M_PER_CELL, PX_PER_M, TICK_HZ, STEP_DT, MELEE_ENG_R,
   };

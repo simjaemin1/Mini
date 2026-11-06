@@ -96,7 +96,7 @@ console.log('\n[⑤ 대가 = 재료 선납 — 부족하면 지정 자체를 거
   const mPay = /consumeItem\(player,\s*it,\s*amt\)|player\.inventory\[it\]\s*-=\s*amt/.exec(fn);
   chk(!!mPay, `차감 호출을 **찾았다**(정본 이름이 바뀌면 여기부터 빨개진다) — ${mPay ? mPay[0] : '못 찾음'}`);
   chk(!!mPay && mPay.index > iPlace, '★차감은 자리 확정 **뒤**(소스 순서) — 실행 증명은 ⑨');
-  chk(/type: 'notice'/.test(fn) && /재료 선납 부족/.test(fn), '부족 사유를 notice로 돌려준다');
+  chk(/type: 'notice'/.test(fn) && /먼저 낼 재료가 모자랍니다/.test(fn), '부족 사유를 notice로 돌려준다');
   chk(/거리|너무 멀어서/.test(fn), '거리 게이트 실재(원격 의뢰 금지)');
   // HUT_STAGES 실제 소요와 대조 — 선납이 공정 소요와 어긋나면 '이 집은 뭘로 짓나'가 깨진다
   const _need = {}; for (const st of _HS.HUT_STAGES) for (const [k, n] of Object.entries(st.need || {})) _need[k] = (_need[k] || 0) + n;

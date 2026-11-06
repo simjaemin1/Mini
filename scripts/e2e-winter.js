@@ -105,7 +105,7 @@ async function waitHttp(url, tries = 900) {
   page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
   const snap = async (n) => { const f = path.join(SHOTS, n + '.png'); await page.screenshot({ path: f }); shots.push(f); return f; };
 
-  await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`http://localhost:${CPORT}/?T1070_VILLAGE_VIEW=0`, { waitUntil: 'domcontentloaded' });   // ★[T1169 · K18] 끔 갈래 못박음 — ④ 는 게시판 **판**(`#boardPane` · `47-s-board.js`)의 머리 자리를 잰다(마을 화면은 T1137 부터 켬 기본 · e2e-events · e2e-assign-job 과 같은 줄)
   await sleep(2500);
   // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
   const btn = await page.$('#enter');

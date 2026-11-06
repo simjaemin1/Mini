@@ -110,7 +110,7 @@ console.log('\n=== 원정 몸 짐의 날짜를 몸과 같이 저장 — T1133_BA
 {
   const Vs = fs.readFileSync(SV('villages.js'), 'utf8'), Gs = fs.readFileSync(SV('granary-lots.js'), 'utf8');
   ok(/const T1133_BAG = process\.env\.T1133_BAG_PERSIST !== '0';/.test(Vs) && (Vs.match(/process\.env\.T1133_BAG_PERSIST/g) || []).length === 1
-    && /const bg = _G\.bagDump\(b\); if \(bg\) \{ o\._bag = bg;/.test(Vs) && /_G\.bagLoad\(b, S\._bag\)/.test(Vs)
+    && /const bg = _G\.bagDump\(b\); if \(bg\) \{ o\._bag = bg;/.test(Vs) && /_t1133BagLoad\(b, S\._bag, S\._packOf, false\)/.test(Vs) && /const n = G\.bagLoad\(b, bag\);/.test(Vs)   /* ★[T1166] 거는 글자가 함수 하나로(시계 전이면 미룸) */
     && /function gangDump\(g\) \{ const a = GANG\.get\(g\); return \(a && a\.length\) \? a\.map\(_rd\) : null; \}/.test(Gs) && /out\.L\[res\] = recs\.map\(_rd\)/.test(Gs) && /o\[res\] = recs\.map\(_rd\)/.test(Gs)
     && (Gs.match(/u: \+r\.u\.toFixed\(9\)/g) || []).length === 1,
     "⓪ 손잡이 한 줄(`!== '0'`) · 몸 줄에 `bagDump` · 되살림에 `bagLoad` · 저장 꼴 `_rd` 하나(곳간 · 갱 · 몸 짐 — 사본 0)");

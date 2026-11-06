@@ -11,11 +11,12 @@
       "day": 612,
       "cal": { "label": "2년 9월 12일 (가을)", "season": "autumn", "seasonKo": "가을", "dayOfSeason": 12, "seasonDays": 91, "year": 2 },
       "region": "새벌",
+      "kindKo": "어촌",
       "age": 412,
       "chief": { "name": "도미", "npc": true }
     },
     "me": { "member": false, "memberVid": null, "contrib": 4, "need": 12, "left": 8, "chief": false, "offer": null },
-    "dash": { "pop": 48, "toWinter": 34, "projectsN": 4, "foodDays": 23.4, "fuelCov": 0.61, "fuelShort": true },
+    "dash": { "pop": 48, "toWinter": 34, "projectsN": 4, "foodDays": 23.4, "winter": [ { "label": "먹을 것", "frac": 0.19, "short": true, "days": 23.4, "need": 124 } ], "fuelCov": 0.61, "fuelShort": true },
     "requests": {
       "rows": [
         { "res": "wood", "ko": "나무", "item": "wood", "qty": 30, "filled": 12, "remain": 18, "rewRes": "salt", "rewKo": "소금", "rewQty": 4, "line": "나무 18 → 소금 4" },
@@ -52,14 +53,27 @@
         { "pid": "npc_simvil_3_2", "name": "갈매", "job": "fisher", "jobKo": "어부", "act": "낚시", "chief": false },
         { "pid": "npc_simvil_3_3", "name": "다래", "job": "farmer", "jobKo": "농부", "act": "개간", "chief": false },
         { "pid": "npc_simvil_3_4", "name": "솔이", "job": "forager", "jobKo": "채집꾼", "act": "", "chief": false }
-      ]
+      ],
+      "assign": {
+        "rows": [
+          { "id": "v3_n1", "job": "fisher", "age": 31, "left": 0, "away": false, "chief": false, "jobKo": "어부" },
+          { "id": "v3_n2", "job": "farmer", "age": 24, "left": 12, "away": false, "chief": true, "jobKo": "농부" },
+          { "id": "v3_n3", "job": "warrior", "age": 27, "left": 0, "away": true, "chief": false, "jobKo": "전사" }
+        ],
+        "jobs": [
+          { "job": "farmer", "open": true, "ko": "농부" },
+          { "job": "fisher", "open": true, "ko": "어부" },
+          { "job": "smith", "open": false, "ko": "대장장이" }
+        ],
+        "cooldown": 30
+      }
     },
     "store": {
       "rows": [
-        { "res": "wood", "ko": "나무", "qty": 85, "daysOf": 21.3, "use": 3.99, "short": false, "glut": false, "priceUp": false, "priceDown": false },
-        { "res": "stone", "ko": "돌", "qty": 42, "daysOf": 3.1, "use": 13.55, "short": true, "glut": false, "priceUp": true, "priceDown": false },
-        { "res": "salt", "ko": "소금", "qty": 64, "daysOf": null, "short": false, "glut": false },
-        { "res": "millet", "ko": "기장", "qty": 140, "daysOf": 52.0, "use": 2.69, "short": false, "glut": true, "priceUp": false, "priceDown": true }
+        { "res": "wood", "ko": "나무", "qty": 85, "daysOf": 21.3, "use": 3.99, "kg": 255, "short": false, "glut": false, "priceUp": false, "priceDown": false },
+        { "res": "stone", "ko": "돌", "qty": 42, "daysOf": 3.1, "use": 13.55, "kg": 168, "short": true, "glut": false, "priceUp": true, "priceDown": false },
+        { "res": "salt", "ko": "소금", "qty": 64, "daysOf": null, "kg": 64, "short": false, "glut": false },
+        { "res": "millet", "ko": "기장", "qty": 140, "daysOf": 52.0, "use": 2.69, "kg": 84, "short": false, "glut": true, "priceUp": false, "priceDown": true }
       ],
       "shortDays": 5,
       "glutDays": 45,
@@ -96,7 +110,12 @@
         { "res": "stone", "ko": "돌", "num": 0.6, "glut": false, "canGive": true, "canTake": true, "mine": 3 }
       ],
       "basis": [ { "res": "wood", "ko": "나무", "mine": 12 }, { "res": "stone", "ko": "돌", "mine": 3 } ],
-      "withheld": 4
+      "withheld": 4,
+      "trend": { "days": 30, "rows": [
+        { "res": "salt", "pts": [ { "ago": 4, "num": 2.1 }, { "ago": 3, "num": 2.2 }, { "ago": 2, "num": 2.6 }, { "ago": 1, "num": 2.5 }, { "ago": 0, "num": 2.4 } ] },
+        { "res": "wood", "pts": [ { "ago": 4, "num": 1 }, { "ago": 0, "num": 1 } ] },
+        { "res": "stone", "pts": [ { "ago": 2, "num": 0.7 }, { "ago": 0, "num": 0.6 } ] }
+      ] }
     },
     "gate": { "near": true }
   },

@@ -159,9 +159,10 @@ if (SUB) {   // ── 아이 판 — 손잡이는 모듈 적재 때 읽는다(e
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 function sub(name, on, bait, fix) {
-  const env = Object.assign({}, process.env, { T1078_SUB: name, BANDIT_MINDAY: '1' });
-  delete env.T1078_BANDIT_ALL; delete env.T1039_BANDIT_BODY; delete env.VILLAGE_NPC_CAP; delete env.T1078_BAIT; delete env.BANDIT_FIXTURE;
-  if (on) env.T1078_BANDIT_ALL = typeof on === 'string' ? on : '1';
+  const env = Object.assign({}, process.env, { T627_TRIP_DAY: '0', T1079_BANDIT_CAMP: '0', T1104_BANDIT_WALK: '0', T1078_SUB: name, BANDIT_MINDAY: '1' });
+  env.T1078_BANDIT_ALL = '0'; delete env.T1039_BANDIT_BODY; delete env.VILLAGE_NPC_CAP; delete env.T1078_BAIT; delete env.BANDIT_FIXTURE;
+  if (on === 'default') delete env.T1078_BANDIT_ALL;
+  else if (on) env.T1078_BANDIT_ALL = typeof on === 'string' ? on : '1';
   if (bait) env.T1078_BAIT = bait;
   if (fix !== false) env.BANDIT_FIXTURE = 'dissolve';
   const o = execFileSync(process.execPath, [__filename], { env, encoding: 'utf8', maxBuffer: 64 << 20 });
@@ -181,7 +182,7 @@ console.log('\n=== T1078 — 도적 단원 전원이 몸(손잡이 `T1078_BANDIT
     '정적 · 존 `damagePlayer` NPC 갈래 — 되살림(`setTimeout`) 앞에서 도적 단원 몸이면 `t1078Died` 가 쥔다(`_bdtGid` 가 선 몸만)');
   const j = Z.indexOf('SimVillages.npcLifeTick(npc, now)) return;'), k = Z.indexOf('SimVillages.t1078Life(npc, now)) return;');
   ok(j >= 0 && k > j && k - j < 400 && /if \(npc\._bdtGid != null && SimVillages\.t1078Life && SimVillages\.t1078Life\(npc, now\)\) return;/.test(Z), '정적 · 존 `decideNpcBehavior` — 마을 일과 문 바로 뒤 도적 일과 문(늑대 도주 뒤 · 배회 앞)');
-  ok(/const T1078_ALL = typeof process !== 'undefined' && !!process\.env && process\.env\.T1078_BANDIT_ALL === '1';/.test(BD) && /const T1039_WALK = T1039_BODY === 'walk' \|\| T1078_ALL, T1039_SPAWN = T1039_BODY === 'spawn' && !T1078_ALL;/.test(BD),
+  ok(BD.includes("const T1078_ALL = !(typeof process !== 'undefined' && process.env && process.env.T1078_BANDIT_ALL === '0');") && /const T1039_WALK = T1039_BODY === 'walk' \|\| T1078_ALL, T1039_SPAWN = T1039_BODY === 'spawn' && !T1078_ALL;/.test(BD),
     "정적 · 손잡이 하나(`'1'` 만 켬) · 켬 = T1039 walk 갈래를 같이 켠다(spawn 은 꺼진다)");
   const a = BD.indexOf('function _t1078Cap('), b = BD.indexOf('function t1078Died('), blk = BD.slice(a, BD.indexOf('\n}\n', b));
   ok(a > 0 && !/[^\w.'"`](?:[2-9]|\d{2,})(?:\.\d+)?(?![\w])/.test(blk.replace(/'[^']*'|`[^`]*`/g, '')), '정적 · T1078 몸 문 덩이에 새 수 0(0 · 1 말고 수 글자 없음)');
@@ -205,7 +206,7 @@ ok(L && S && D && Loff && Soff, '[전제] 다섯 판이 다 돌았다');
   ok(vanishN(L) === 0 && L.A.vanished.filter((v) => v.how === 'arrive').length >= 2, '① 소멸 0 — 지워진 몸은 다 누운 몸 거둠(`rot`) · 걸어 닿음 거둠(`arrive`)뿐(해산 몸 2는 닿아 거둠 — 주민 되기는 T1079 ④)', JSON.stringify(L.A.vanished));
   ok(L.lastSave && !(L.lastSave.gangs || []).length && L.lastSave.stats && L.lastSave.stats.t1078 && Loff.lastSave && !Loff.lastSave.stats.t1078, '① 저장 줄 — 켬에서만 `stats.t1078` 칸 · 끔 = 칸 0(종전 바이트)');
   const z = sub('life', '0'), strip = (o) => JSON.stringify(Object.assign({}, o, { on: null }));
-  ok(z && z.on === false && strip(z) === strip(Loff), "ⓐ 손잡이 그 밖 값(`'0'`) = 손잡이 없음 — 판 결과 JSON 바이트 같음(몸 · 저장 줄 · 로그)", `${strip(z).length}B`);
+  ok(z && z.on === false && strip(z) === strip(Loff), "ⓐ 명시적 `'0'` = 종전 끔 — 판 결과 JSON 바이트 같음(몸 · 저장 줄 · 로그)", `${strip(z).length}B`);
 }
 // ── ② 몸 죽음 = 단 n −1 · 그 자리 낙하 ──
 {
@@ -249,5 +250,7 @@ ok(L && S && D && Loff && Soff, '[전제] 다섯 판이 다 돌았다');
   const b2 = sub('life', true, 'noout');
   ok(b2 && (vanishN(b2) > 0 || !(b2.A.ev.out || []).every((q) => q.alive && q.k === 'move')), 'ⓑ 미끼 `noout`(걸어 나감 문을 뗀다) — ①의 “해산 몸이 걸어 나간다 · 소멸 0”이 빨개진다', b2 ? `소멸 ${vanishN(b2)} · ${JSON.stringify(b2.A.ev.out)}` : '');
 }
+
+{ const clean = o => JSON.stringify(o, (k,v) => k === 'perf' ? null : v); ok(clean(sub('life', 'default')) === clean(sub('life', true)), '[T1184] 미설정 기본 = 명시적 켬(몸·더미·걸음 결과)'); }
 console.log(`\n결과: ${fail ? 'FAIL' : 'PASS'} (${pass} 통과 · ${fail} 실패)`);
 process.exit(fail ? 1 : 0);

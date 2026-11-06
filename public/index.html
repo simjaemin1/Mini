@@ -37,7 +37,7 @@
                되돌렸던 이유는 `button:has-text("월드 입장")` 으로 로비를 여는 **하네스 30개**였는데,
                그 30개를 전부 `#enter`(id)로 바꿨다 ⇒ 이제 **라벨과 하네스가 무관하다**.
                앞으로 이 글자는 마음대로 고쳐도 된다(하네스는 id 를 본다). -->
-          <button id="enter">나루터로 간다</button>
+          <button id="enter">나루터로 가기</button>   <!-- ★[T1190 ③ · ★재민 11-05 문 25 ③ ㄱ] 단추 = 명사형(종전 「나루터로 간다」 · T84 이름) -->
           <!-- ★★[게스트 안내 2026-08-30 재민 확정] 게스트 토큰은 **영속**이다(같은 브라우저 = 같은 몸).
                그 사실을 아무도 말해 주지 않으면 "게스트는 날아간다"고 오해한다 — 한 줄로 적는다. -->
           <div id="guestNote" class="hidden" style="margin:10px 0 0;display:flex;align-items:baseline;gap:8px;justify-content:space-between">
@@ -363,6 +363,7 @@
   <script src="soil-base.js?v=5h0"></script>
   <script src="coast-shape.js?v=5h0"></script>
   <script src="move-model.js?v=5h0"></script>
+  <script src="terrain-sig.js?v=5h0"></script>
   <script src="animals.js?v=5h0"></script>
   <!-- @area client — public/client.js 를 영역별로 나눈 것. 원문 순서 보존(재배열 금지).
        ★새 기능은 새 파일 + 여기 등록 1줄. 최상위 실행문은 99-main.js 에만.

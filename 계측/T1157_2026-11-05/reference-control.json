@@ -1,0 +1,41 @@
+[
+  {
+    "seed": 1020,
+    "days": 800,
+    "referenceByteEqualCanonical": true,
+    "run": {
+      "name": "reference",
+      "seed": 1020,
+      "rc": 0,
+      "seconds": 921.2653976889997,
+      "env": {},
+      "output": "/tmp/t1157-results/reference-1020.json"
+    }
+  },
+  {
+    "seed": 7,
+    "days": 800,
+    "referenceByteEqualCanonical": true,
+    "run": {
+      "name": "reference",
+      "seed": 7,
+      "rc": 0,
+      "seconds": 688.3103778910008,
+      "env": {},
+      "output": "/tmp/t1157-results/reference-7.json"
+    }
+  },
+  {
+    "seed": 42,
+    "days": 800,
+    "referenceByteEqualCanonical": true,
+    "run": {
+      "name": "reference",
+      "seed": 42,
+      "rc": 0,
+      "seconds": 576.2941368879983,
+      "env": {},
+      "output": "/tmp/t1157-results/reference-42.json"
+    }
+  }
+]

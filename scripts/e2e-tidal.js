@@ -343,7 +343,7 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
       ok(after === before - 1, '★★★⑥ **건굴을 먹었다** — `PRESERVED_EFFECTS` 주입이 화면까지 닿았다',
         `건굴 ${before} → ${after}`);
       const nt = await page.evaluate(() => ((window.__notices || []).slice(-1)[0] || ''));
-      ok(!/먹을 수 없는/.test(String(nt || '')), '★⑥ "먹을 수 없는 아이템"이 아니다', String(nt || '').slice(0, 60));
+      ok(!/먹을 수 없습니다/.test(String(nt || '')), '★⑥ "먹을 수 없습니다"가 아니다(★T1190 ① 문장)', String(nt || '').slice(0, 60));
     }
     await snap('td-06-dried');
   }

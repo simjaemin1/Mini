@@ -1,0 +1,216 @@
+{
+  "source": "c2bec2b4adaa17eb39c8eed723d169efc8ab0d59",
+  "node": "v22.23.0",
+  "status": "complete",
+  "sha256": {
+    "server/villages.js": "17a7c43e160f66301d8348d386ac270ef5752faa4da7c8914259819b4b93b8b5",
+    "server/bandits.js": "ba437b48db66f676cd7475c380a618e9e77c6e7d0388b9344577bd33c035b0f7",
+    "server/home-population.js": "bfbd8eb4b9b2177d35d831e4e62cf35103d93629fc747ec354454d5af564448b",
+    "server/war-live.js": "1e4a09514655e4c407b31b3fa118170ef8e617a872fd2f9e020e1a4a0b1707ff",
+    "sim/war-core.js": "937b8efa8dfd8eabe0188840305a2655f467dbbd6b1f99215a44c6e2c25b519c",
+    "sim/economy-sim.js": "93e7b9860e98e415dad5905d9e810b53bdbbae009c647f03db07bc15efed4249"
+  },
+  "harnesses": [
+    {
+      "name": "test-war-nosnap",
+      "exit": 0,
+      "wallSec": 7.874,
+      "summary": [
+        "=== 결과: 61 PASS / 0 FAIL ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-arms-body",
+      "exit": 0,
+      "wallSec": 1.971,
+      "summary": [
+        "=== 결과: 29 PASS / 0 FAIL ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-draft-famine",
+      "exit": 0,
+      "wallSec": 14.749,
+      "summary": [
+        "15 통과 · 0 실패"
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-farm-act",
+      "exit": 0,
+      "wallSec": 13.627,
+      "summary": [
+        "=== 결과: 78 PASS / 0 FAIL ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-t941-ruler",
+      "exit": 0,
+      "wallSec": 2.342,
+      "summary": [
+        "=== PASS 9 / FAIL 0 ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-forage-act",
+      "exit": 0,
+      "wallSec": 21.356,
+      "summary": [
+        "=== 결과: 251 PASS / 0 FAIL ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-wood-act",
+      "exit": 0,
+      "wallSec": 8.548,
+      "summary": [
+        "=== 결과: 159 PASS / 0 FAIL ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-t1044-scram-walk",
+      "exit": 0,
+      "wallSec": 4.543,
+      "summary": [
+        "=== 결과: 18 PASS / 0 FAIL ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-t1060-scram-hold",
+      "exit": 0,
+      "wallSec": 7.131,
+      "summary": [
+        "=== 결과: 16 PASS / 0 FAIL ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-t1089-ret-walk",
+      "exit": 0,
+      "wallSec": 6.471,
+      "summary": [
+        "=== 결과: 19 PASS / 0 FAIL ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-army-morale",
+      "exit": 0,
+      "wallSec": 1.659,
+      "summary": [
+        "=== 22건 중 PASS 22 · FAIL 0 ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-loot-body",
+      "exit": 0,
+      "wallSec": 0.997,
+      "summary": [
+        "=== 결과: 13 PASS / 0 FAIL ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-t1168-sortie-ammo",
+      "exit": 0,
+      "wallSec": 0.172,
+      "summary": [
+        "=== 결과: 22 PASS / 0 FAIL ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-arms-keep",
+      "exit": 0,
+      "wallSec": 0.523,
+      "summary": [
+        "=== 결과: 17 PASS / 0 FAIL ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-t1183-physical-war",
+      "exit": 0,
+      "wallSec": 1.081,
+      "summary": [
+        "16 통과 / 0 실패"
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-bandit-all",
+      "exit": 0,
+      "wallSec": 3.498,
+      "summary": [
+        "결과: PASS (32 통과 · 0 실패)"
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-bandit-camp",
+      "exit": 0,
+      "wallSec": 3.9,
+      "summary": [
+        "결과: PASS (35 통과 · 0 실패)"
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-bandit-walk",
+      "exit": 0,
+      "wallSec": 15.552,
+      "summary": [
+        "결과: PASS (41 통과 · 0 실패)"
+      ],
+      "env": {
+        "T1184_OPERATING_PROBE": "1"
+      }
+    },
+    {
+      "name": "test-t1159-home-n",
+      "exit": 0,
+      "wallSec": 0.896,
+      "summary": [
+        "결과: 10 통과 / 0 실패"
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-harness-lint",
+      "exit": 0,
+      "wallSec": 40.499,
+      "summary": [
+        "=== 69건 중 PASS 69 · FAIL 0 ==="
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-t1183-surrender-loss",
+      "exit": 0,
+      "wallSec": 0.324,
+      "summary": [
+        "결과: 9 통과 / 0 실패"
+      ],
+      "env": {}
+    },
+    {
+      "name": "test-t1184-war-owner",
+      "exit": 0,
+      "wallSec": 0.273,
+      "summary": [
+        "결과: 4 통과 / 0 실패"
+      ],
+      "env": {}
+    }
+  ],
+  "note": "전쟁 목 판184/1과 HP정적15/4는 별도 기존 실패 기록. 이 묶음은 해당22개 기능 회귀만 실행."
+}

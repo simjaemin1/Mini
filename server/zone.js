@@ -2284,7 +2284,7 @@ function bigmapStat() {
            cpuMs: _bm.cpu, wallMs: _bm.ms, tiles: _bm.tiles.size, tileN: _bm.tileN, tileMs: _bm.tileMs, served: _bm.served,
            tileServed: _bm.tileServed, repainted: _bm.repainted, live: T565_MAP_LIVE };
 }
-// ── ★[T565 ③] 지도의 실시간 점 — 팔 `T565_MAP_LIVE`(기본 켬 · 재민 요청 · 되돌림 `=0`) ──────────────
+// ── ★[T565 ③ · T1165] 지도의 실시간 점 — 팔 `T565_MAP_LIVE`(기본 끔 · 개발 판 `=1`) ──────────────
 //   틱의 `players`(남의 몸)는 **보이는 반경** 안만 간다. 지도는 존 전체라 그걸로는 안 된다 ⇒
 //   지도가 열려 있는 동안 클라가 1초에 한 번 `map_players` 를 묻고, 존이 **존 안 사람 전부의 자리**를 한 묶음으로 답한다
 //   (새 메시지 하나 · 묻고 답하는 한 쌍 — T507 `look` 의 문법). 이름·존·자리만 싣는다.
@@ -2292,7 +2292,7 @@ function bigmapStat() {
 //   · 이웃 존의 유령(T512 `ghostPlayers`)은 이 목록에 **없다**(다른 Map · 그 사람은 제 존이 답한다)
 //   · 묻는 사람 자신은 뺀다(클라가 제 예측 자리로 다른 색 점을 그린다)
 //   ⚠손님(게스트)에게도 보인다 — 디버그 팔이다. 손님에게 보일지는 재민 몫(회부).
-const T565_MAP_LIVE = process.env.T565_MAP_LIVE !== '0';
+const T565_MAP_LIVE = process.env.T565_MAP_LIVE === '1';
 const _t565Asked = new WeakMap();   // ws → 마지막으로 답한 시각
 function _t565MapPlayers(ws, selfPid) {
   if (!ws || ws.readyState !== 1) return;
@@ -2591,12 +2591,12 @@ function butcherCorpse(player, cid) {
     player.inventory[item] = (player.inventory[item] || 0) + amt;
     // ★[T732] 사체에서 나온 것은 **죽은 순간**에 생겼다(바닥에 누운 동안도 늙었다 — 바닥 = 몸에 지님과 같은 배율) · 끄면 쓸개가 '오늘'로 잡는다
     if (T732_MOMENT) Lots.note(player, item, amt, zoneGameDay(), 'carry', zoneGameMsAt(corpse.spawnTime || Date.now()));
-    parts.push(`${item} ${amt}`);
+    parts.push(`${ITEM_LABEL_SERVER[item] || item} ${amt}`);   // ★[T1190 ①] 이름표로(영문 키가 알림에 새지 않게)
   }
   const def = ANIMALS[corpse.mobType];
   const koName = def?.ko || corpse.mobType;
   sendInventory(player);
-  send(player.ws, { type: 'notice', text: `${koName} 도살 +${parts.join(', ')}` });
+  send(player.ws, { type: 'notice', text: `${koName}을(를) 손질해 ${parts.join(', ')}을(를) 얻었습니다.` });
   _t1025CorpseEnd(corpse, 'butchered');   // ★[T1025] 켬 — 잡을 때 미룬 사냥터 장부 한 마리(T1005 이 틱 끝 행 · 끔 = `huntAt` 없음 · 무동작)
   savePlayer(player);
   corpses.delete(cid);
@@ -3177,6 +3177,12 @@ const _t564Warned = new Set();   // 존별 "판 모름" 로그는 한 번만
 //   클라: `handoff` 에 `back`(= 받는 존 토큰 수명 ms)을 싣는다 — 그 안에서 이 존 소켓이 열려 있으면 클라는 받는 존에 이름 · 열쇠로 따로 붙지 않고 답을 기다린다
 //     (그 재시도가 받는 존에 행 몸을 세우면 몸이 둘이다 — 게스트는 존 사이 중복 차단이 없다 · `33-m-conn.js` `_t1092Wait`).
 const T1092_HANDOFF_BACK = process.env.T1092_HANDOFF_BACK !== '0';
+// ★[T1160 · 11-04 · T1092 회부 2 · 결함] welcome 의 `promoted` 한 칸이 두 뜻이었다 — ⓐ 관측 소켓 → 주 소켓 승격(넘기 · `_promoteWelcome` `{ promoted: true }`)
+//   ⓑ 첫 접속에서 게스트 → 등록 계정 승계(배치 14 ①). 클라는 ⓑ 를 보고 게스트 열쇠를 지우는데 ⓐ 에도 지웠다 — 게스트가 존을 한 번 넘으면 열쇠가 사라져
+//   재접속 · 새로 고침이 새 게스트로 섰다(몸 · 땅 · 소속을 잃음). 거꾸로 ⓑ 의 첫 welcome 은 클라가 ⓐ 로 읽어 자원 · 땅 · 건물 받기를 건너뛰었다.
+//   켬(기본 · `=0` 종전 바이트): 첫 접속 welcome 은 승계를 `guestMerged` 칸에 싣는다(`promoted` 칸 없음) — `promoted` 는 승격(ⓐ) 하나의 뜻.
+//   클라(`30-n-net.js` welcome)는 손잡이와 상관없이 "이 소켓에 승격을 보냈나"(`_promoteSentAt`)로도 가른다 — 끔 서버의 `promoted` 첫 welcome 도 승계로 읽는다.
+const T1160_GUEST_MERGED = process.env.T1160_GUEST_MERGED !== '0';
 // ★★[PM 11-03 · ★재민 11-03 실기 "여전히 안 넘어가짐" · 핑 3,044ms] 넘기 시한 둘을 env 로 · 기본을 늘린다 — 서울이 메시지 하나에 3초를 쓰는 판에서
 //   보낸 존 ACK 3초 · 받는 존 토큰 5초 안에 브라우저가 옮겨 붙지 못해 토큰이 버려졌다(T1092 가 사람을 돌려놓는다 · 까닭 "연결하지 못했습니다").
 //   `HANDOFF_ACK_MS`(보낸 존이 도착 확인을 기다리는 시간 · 기본 12초) ≤ `HANDOFF_TOKEN_MS`(받는 존 토큰 수명 · 기본 15초) — 종전 값은 `=3000` · `=5000`.
@@ -3733,7 +3739,9 @@ function _t671Shape(p) {
   p._t1196J = undefined; p._t1196W = undefined;   // ★[T1196] 장인 몸이 든 작업표 번호 · 걸음 칸(villages.js `_t1196Step` — 손잡이 `T1196_ARTISAN_ACT` 켬 · 실제 몸 호스트에서만 값이 든다)
   p._t724Site = undefined; p._t724T = undefined;   // ★[T724] 광부 몸의 그날 셀 · 선 때(villages.js `_t724BodyStep` — 손잡이 `T724_MINE_ACT` 켬일 때만 값이 든다)
   if (T1140_STUCK_INLINE && !T1140_HOT_ORDER) { p._t1140Sx = undefined; p._t1140Sy = undefined; p._t1140Sa = undefined; }   // ★[T1140 ③-다] 막힘 칸 셋(차례 리터럴엔 이미 있다 · 끔 = 이 줄 무동작)
+  if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ② · T1154] 어부 던짐 종의 지난 답(villages.js `_t1144SpGet` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)
 }
+const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT !== '0';   // ★[T1144 · T1154] villages.js 와 같은 손잡이(켬 기본 · `'0'` 만 끔) — 이 파일은 몸 칸 하나만
 // ★★[T1140 ③-가 2026-11-04 · 손잡이 `T1140_HOT_ORDER`(기본 끔 · `'1'` 만 켬 · 끔 = 아래 함수가 안 불린다 = 종전 글자)] **걸음 머리 칸을 x · y 곁에** — T791 회부 2 의 남은 몫.
 //   T806 ③ 이 걸음 몸통 칸을 객체 안(리터럴)에 넣었다. 그 칸들은 리터럴 **뒤쪽**(30 번째 칸 뒤)에 있다 — 틱 머리 공간 색인이 몸마다 이미 짚는 x · y 칸(앞 줄)과 다른 캐시 줄이다.
 //   T1140 ① 표본: 걸음 몸통의 첫 짚기 줄 셋(막힘 서 있음 판정 · 결정 문 `canadiaVillage` · `nextDecisionAt` · 도착 뒤 첫 줄)이 낮 `npcStep` 의 ≈ 28 % — 셈이 아니라 그 틱에 처음 짚는 칸 몫이다.
@@ -3792,7 +3800,7 @@ function spawnNpc(opts = {}) {
   cy = clamp(cy, NPC_CLAIM_SIZE, ZONE.zoneHeight - NPC_CLAIM_SIZE);
   const pid = `p${nextPid++}`;
   const npcId = `npc_${ZONE_ID}_${nextNpcSerial++}_${Math.random().toString(36).slice(2,6)}`;
-  const name = (opts.name || NPC_NAMES[Math.floor(_dt()*NPC_NAMES.length)]) + '🤖';
+  const name = opts.name || NPC_NAMES[Math.floor(_dt()*NPC_NAMES.length)];
   const color = opts.color || NPC_COLORS[Math.floor(_dt()*NPC_COLORS.length)];
   // ★★[T806 ③ 2026-10-19 · 손잡이 `T806_HOT_INOBJ`(★[T818] 켬 기본 · `=0` 끔 = 아래 둘째 리터럴 = 종전 글자 그대로)] **막힘 서 있음 줄 — 몸 바깥 속성 칸.**
   //   T791 ①: 선 몸의 가장 무거운 줄은 `detectStuck` 머리(`npc.path` …)였고 길 거울 뒤에도 남았다 — 리터럴 밖에서 붙은 칸(`path` · `pathIndex` · `_stuckPos` …)은
@@ -6856,7 +6864,7 @@ async function _acceptConnection(ws, req, C) {
       type: 'welcome',
       observer: true,
       zone: zonePublicMeta(),
-      hardcodedTerrain: getHardcodedTerrainForZone(),
+      ...(_t1163Skip(url) ? { hfHit: 1 } : { hardcodedTerrain: getHardcodedTerrainForZone() }),   // ★[T1163] 켬 · 클라가 로비 `/terrain.json` 으로 같은 절(`hf` = 파일 절 서명)을 가졌으면 지형을 빼고 `hfHit` 한 칸(끔 = 종전 글자 · 칸 차례 그대로)
       ...(T1125_LEAN_PROMOTE ? { sig: _t1125Mark(ws, true, false) } : {}),   // ★[T1125 ⑥ ⑦] 관측 소켓이 열릴 때 지형을 미리 받는다 — 승격 welcome 은 지형을 다시 안 싣는다
       resources: Array.from(resources.values()),
       claims: Array.from(claims.values()),
@@ -7389,9 +7397,9 @@ async function _acceptConnection(ws, req, C) {
     guestToken: _guestTokenForWelcome || null,
     // ★[2026-08-03g 배치 14 ①] 이번 접속에서 게스트 → 등록 계정 **승계**가 일어났나.
     //   클라가 이걸 보고 죽은 토큰을 localStorage 에서 지운다(서버는 이미 NULL 로 만들었다).
-    promoted: _promoted || false,
+    ...(T1160_GUEST_MERGED ? { guestMerged: _promoted || false } : { promoted: _promoted || false }),   // ★[T1160] 켬 = 승계는 `guestMerged`(`promoted` = 승격 하나의 뜻) · 끔 = 종전 칸
     zone: zonePublicMeta(),
-    hardcodedTerrain: getHardcodedTerrainForZone(),
+    ...(_t1163Skip(url) ? { hfHit: 1 } : { hardcodedTerrain: getHardcodedTerrainForZone() }),   // ★[T1163] 켬 · 같은 절을 가졌으면 지형을 뺀다(관측 welcome 과 같은 한 줄 · 끔 = 종전)
     ...(T1125_LEAN_PROMOTE ? { sig: _t1125Mark(ws, true, true) } : {}),   // ★[T1125 ⑥] 판 서명(지형 · 표 일곱) — 이 소켓이 둘 다 받았다
     resources: Array.from(resources.values()),
     claims: Array.from(claims.values()),
@@ -7426,7 +7434,7 @@ async function _acceptConnection(ws, req, C) {
     //   ⇒ 클라가 다시 만들 방법이 없다. 안 실으면 클라 사본(55키)이 정본(108키)에 영원히 뒤처지고,
     //     그게 `oyster`·`seaweed`·`abalone`·`brine` 이 화면에 영문으로 뜬 이유였다(회부 0-갯·0-염·T38).
     //   품목 카탈로그는 존 독립이라 **첫 primary welcome 한 번이면 족하다**(클라가 들고 다닌다).
-    itemLabels: ItemLabel.itemLabels(ITEM_LABEL_SERVER, BUILDING_RECIPES),
+    itemLabels: ItemLabel.itemLabels(ITEM_LABEL_SERVER, BUILDING_RECIPES, Object.assign({}, RECIPES, EQUIPMENT_RECIPES)),
     // ★★[T61 2026-09-03] econ 자원 종류 이름(장마당 시세표의 **열 이름**) — 정본은 `itemlabel.js`.
     //   종전엔 클라(`60-t-market.js ITEM_KR` 9키)가 표를 들고 있었다. 그게 사본이고, T55 가 품목에서
     //   닫은 것과 **같은 결함**이다(서버가 종류를 늘리면 화면만 영문으로 남는다).
@@ -7574,6 +7582,7 @@ const VILLAGE_BOOK_MSG = new Set([
   'village_inventory', 'village_deposit', 'village_brief', 'village_board', 'village_deliver',
   'village_trade', 'village_trade_exec', 'village_trade_quote', 'village_withdraw',   // ★[T11] 인출도 마을 장부다
   'village_donate',   // ★[T769] 기부도 마을 장부다(켬에서만 오는 메시지 · 끔 = 아무도 안 보낸다)
+  'village_site_give',   // ★[T1189 ⑤] 공사에 재료 가져오기도 마을 몸(집터)을 만진다
   'village_welcome',   // ★[T19] 이방인 받기 스위치도 마을 장부다
   'village_view',   // ★[T1072] 마을 화면 자료도 마을 장부를 읽는다(마감 중이면 줄을 선다)
   'sell_relic', 'shop_info', 'craft_buy', 'craft_sell',
@@ -7766,7 +7775,8 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_deliver') tryVillageDeliver(player, msg.vid, msg.item, msg.want);
   else if (msg.type === 'village_withdraw') tryVillageWithdraw(player, msg.vid, msg.res, msg.qty);   // ★[T11] 곳간 인출 · ★[T779] 촌장만
   else if (msg.type === 'assign_job') tryAssignJob(player, msg.vid, msg.npc, msg.job);   // ★[T1085] 촌장이 구성원에게 일을 맡긴다
-  else if (msg.type === 'village_donate' && T769) tryVillageDonate(player, msg.vid, msg.want);   // ★[T769] 기부 — 누구나 · 상시 · 받는 것 없음(켬에서만)
+  else if (msg.type === 'village_donate' && T769) tryVillageDonate(player, msg.vid, msg.want);
+  else if (msg.type === 'village_site_give') tryVillageSiteGive(player, msg.vid, msg.want);   // ★[T1189 ⑤] 공사에 재료 가져오기 — 짐 → 집터(실물) · 단계 자재를 다 채우면 기여 +1   // ★[T769] 기부 — 누구나 · 상시 · 받는 것 없음(켬에서만)
   else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_greet' || msg.type === 'onboarding_day') Onboarding.handleMsg(player, msg);   // ★[온보딩 v2] 대본 상태·촌장 첫 마디·하루 정산
   else if (msg.type === 'village_trade') tryVillageTrade(player, msg.vid, msg.numeraire);                     // ★[거래소] 시세표(T69 기준 품목)
   else if (msg.type === 'village_trade_exec') tryVillageTradeExec(player, msg.vid, msg.give, msg.take, msg.qty, msg.want, msg.numeraire);  // ★[거래소] 교환(T69 받을 양)
@@ -8057,13 +8067,13 @@ function tryFeed(player) {
   }
   // 음식 보유 체크
   if ((player.inventory[def.tameFood] || 0) < 1) {
-    send(player.ws, { type: 'notice', text: `${def.tameFood} 필요 (${best.type} 길들이기)` }); return;
+    send(player.ws, { type: 'notice', text: `${best.type}을(를) 길들이려면 ${def.tameFood}이(가) 있어야 합니다.` }); return;
   }
   player.inventory[def.tameFood] -= 1;
   if (best.tameOwner === player.playerId) {
     // 이미 내 동물 — hp 회복만
     setMobHp(best, Math.min(best.maxHp, best.hp + 5), 'feed');   // ★[T954] 문으로(상한 maxHp 는 이 자리 식 그대로)
-    send(player.ws, { type: 'notice', text: `${best.type} HP +5` });
+    send(player.ws, { type: 'notice', text: `${best.type}의 HP가 5 올랐습니다.` });
   } else {
     best.tameProgress = (best.tameProgress || 0) + 1;
     if (best.tameProgress >= def.tameNeed) {
@@ -8074,7 +8084,7 @@ function tryFeed(player) {
       broadcast({ type: 'mob_tamed', mid: best.mid, owner: player.playerId, ownerName: player.name });
       send(player.ws, { type: 'notice', text: `🎉 ${best.type}을(를) 길들였습니다.` });
     } else {
-      send(player.ws, { type: 'notice', text: `먹이 줌 (${best.tameProgress}/${def.tameNeed})` });
+      send(player.ws, { type: 'notice', text: `먹이를 주었습니다(${best.tameProgress}/${def.tameNeed}).` });
     }
   }
   sendInventory(player);
@@ -8239,7 +8249,7 @@ function _plantInto(player, b, cropId, today) {
 }
 function doPlant(player, cropId) {
   const c = Crops.get(cropId);
-  if (!c) { send(player.ws, { type: 'notice', text: `알 수 없는 작물: ${cropId}` }); return; }
+  if (!c) { send(player.ws, { type: 'notice', text: `${cropId}은(는) 모르는 작물입니다.` }); return; }
   const today = zoneGameDay();
   if (!Crops.canSowOn(cropId, today)) {
     const ko = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' };
@@ -8390,7 +8400,7 @@ function doEat(player, item, amount, who) {
   const target = who || player;
   const eff = FOOD_EFFECTS[item];
   if (!eff) {
-    send(player.ws, { type: 'notice', text: `먹을 수 없는 아이템: ${item}` }); return;
+    send(player.ws, { type: 'notice', text: `${item}은(는) 먹을 수 없습니다.` }); return;
   }
   const isLot = Lots.isLot(item);
   const want = Math.max(0, Number(amount) > 0 ? Number(amount) : 1);
@@ -8398,7 +8408,7 @@ function doEat(player, item, amount, who) {
   if (isLot) Lots.reconcile(player, item, player.inventory, today);
   const stock = isLot ? Lots.sum(player, item) : (player.inventory[item] || 0);
   if (stock < Math.min(want, 1e-6)) {
-    send(player.ws, { type: 'notice', text: `${item} 부족` }); return;
+    send(player.ws, { type: 'notice', text: `${item}이(가) 모자랍니다.` }); return;
   }
   let ate = Math.min(want, stock);
   // ★★[부패 배치 2026-08-31] 신선도는 **먹은 그 로트들**에서 나온다.
@@ -8413,7 +8423,7 @@ function doEat(player, item, amount, who) {
     fresh = fr.fresh; spoiledQty = fr.spoiled;
   } else {
     ate = Math.min(want, Math.floor(stock) || stock);
-    if (ate < 1) { send(player.ws, { type: 'notice', text: `${item} 부족` }); return; }
+    if (ate < 1) { send(player.ws, { type: 'notice', text: `${item}이(가) 모자랍니다.` }); return; }
     ate = Math.floor(ate);
     consumeItem(player, item, ate);   // ★[원장 승격] 인벤+원장 동시 차감(정본 하나)
   }
@@ -8501,7 +8511,7 @@ function _t705SpoiledShare(player, cost) {
 function doCook(player, recipeName) {
   const recipe = COOK_RECIPES[recipeName];
   if (!recipe) {
-    send(player.ws, { type: 'notice', text: `알 수 없는 요리: ${recipeName}` }); return;
+    send(player.ws, { type: 'notice', text: `${recipeName}은(는) 모르는 요리입니다.` }); return;
   }
   // ★[시설 제작창 2026-08-29] 화덕 판정을 **정본에게 물어본다**(`facility.js`) — 반경 상수를 여기 또 적지 않는다.
   //   종전엔 이 함수가 전 건물을 훑으며 96px 를 손으로 비교했다(같은 수가 두 곳에 있었다).
@@ -8517,7 +8527,7 @@ function doCook(player, recipeName) {
   // ★[T694] 품목을 내는 줄(`recipe.item` — `game-meat.js` 사냥 고기 굽기·삶기 · 켬에서만 이런 줄이 있다)은 **대기열 자리를 먼저 본다**
   //   (보존 가공 `doPreserve` 문법 — 재료를 뺀 뒤 "대기열이 찼다"로 되돌리는 길을 아예 안 만든다 · 되돌리기는 로트 나이를 뭉갠다).
   if (recipe.item && Facility.view(_fc.b, Date.now()).length >= Facility.MAX_QUEUE) {
-    send(player.ws, { type: 'notice', text: `${_fc.ko} 대기열이 찼다(${Facility.MAX_QUEUE})` }); return;
+    send(player.ws, { type: 'notice', text: `${_fc.ko} 대기열이 찼습니다(${Facility.MAX_QUEUE}).` }); return;
   }
   const _t705Sp = T705_SICK ? _t705SpoiledShare(player, recipe.cost) : 0;   // ★[T705] 상한 몫(먹기 전에 미리 · 끄면 0)
   for (const [item, amt] of Object.entries(recipe.cost)) consumeItem(player, item, amt);   // ★[원장 승격] 제작 투입도 원장을 깎는다
@@ -8585,7 +8595,7 @@ function doCook(player, recipeName) {
 function doPreserve(player, recipeKey, amount) {
   // ★[T59] `from` 이 어종 집합이면 **손에 있는 것 하나로 풀어** 받는다(정본이 고른다 · 주사위 0).
   const r = Spoil.resolveFrom(Spoil.PRESERVE[recipeKey], player.inventory);
-  if (!r) { send(player.ws, { type: 'notice', text: `알 수 없는 가공: ${recipeKey}` }); return; }
+  if (!r) { send(player.ws, { type: 'notice', text: `${recipeKey}은(는) 모르는 가공입니다.` }); return; }
   // ① 시설 — 정본에게 묻는다(반경 상수를 여기 또 적지 않는다)
   const fc = facilityFor(player, r.kind);
   if (!fc) { send(player.ws, { type: 'notice', text: `${r.facilityKo} 앞에서만 ${r.label}를 할 수 있습니다.` }); return; }
@@ -8595,9 +8605,9 @@ function doPreserve(player, recipeKey, amount) {
   Lots.reconcile(player, r.from, player.inventory, today);
   const stock = Lots.sum(player, r.from);
   const want = Math.max(1, Math.floor(Number(amount) > 0 ? Number(amount) : 1));
-  if (stock < 1) { send(player.ws, { type: 'notice', text: `${r.from} 부족` }); return; }
+  if (stock < 1) { send(player.ws, { type: 'notice', text: `${r.from}이(가) 모자랍니다.` }); return; }
   const take = Math.min(want, Math.floor(stock));
-  if (take < 1) { send(player.ws, { type: 'notice', text: `${r.from} 부족` }); return; }
+  if (take < 1) { send(player.ws, { type: 'notice', text: `${r.from}이(가) 모자랍니다.` }); return; }
   // ③ 부재료 — 소금·땔감. **먼저 확인만** 한다(뺐다가 되돌리는 경로를 안 만든다).
   for (const [k, n] of Object.entries(r.needs || {})) {
     if ((player.inventory[k] || 0) < n * take) {
@@ -8608,7 +8618,7 @@ function doPreserve(player, recipeKey, amount) {
   // ★대기열 자리도 **미리** 본다 — 재료를 뺀 뒤에 "대기열이 찼다"로 되돌리는 길을 아예 없앤다.
   //   (되돌리기는 나이 분포를 근사로 뭉갠다. 안 하는 게 낫다.)
   if (Facility.view(fc.b, Date.now()).length >= Facility.MAX_QUEUE) {
-    send(player.ws, { type: 'notice', text: `${fc.ko} 대기열이 찼다(${Facility.MAX_QUEUE})` }); return;
+    send(player.ws, { type: 'notice', text: `${fc.ko} 대기열이 찼습니다(${Facility.MAX_QUEUE}).` }); return;
   }
   // ④ 입력을 깎는다 — **오래된 로트부터**(`consume` 정본 하나). 그래서 "말릴 거면 오래된 것부터"가
   //   저절로 성립하고, 동시에 **싱싱할 때 말릴 이유**가 생긴다(수율이 신선도에 비례하므로).
@@ -8673,14 +8683,14 @@ function doPreserve(player, recipeKey, amount) {
 // ★한 솥이 단위다. `amount` 는 솥 수다 — 되당 땔감 0.29단 같은 소수를 화면에 안 띄우려고 그렇게 잡았다.
 function doBoilSalt(player, recipeKey, amount) {
   const r = Salt.RECIPES[recipeKey];
-  if (!r) { send(player.ws, { type: 'notice', text: `알 수 없는 가공: ${recipeKey}` }); return; }
+  if (!r) { send(player.ws, { type: 'notice', text: `${recipeKey}은(는) 모르는 가공입니다.` }); return; }
   // ① 시설 — 정본에게 묻는다(반경 상수를 여기 또 적지 않는다)
   const fc = facilityFor(player, r.kind);
   if (!fc) { send(player.ws, { type: 'notice', text: `${r.facilityKo} 앞에서만 ${r.label}을 할 수 있습니다.` }); return; }
   if (!_facilityMine(player, fc.b)) { send(player.ws, { type: 'notice', text: `${fc.ko}은(는) 내 것이 아닙니다.` }); return; }
   // ② 대기열 자리를 **먼저** 본다 — 재료를 뺀 뒤에 "찼다"로 되돌리는 길을 아예 없앤다(보존 선례).
   if (Facility.view(fc.b, Date.now()).length >= Facility.MAX_QUEUE) {
-    send(player.ws, { type: 'notice', text: `${fc.ko} 대기열이 찼다(${Facility.MAX_QUEUE})` }); return;
+    send(player.ws, { type: 'notice', text: `${fc.ko} 대기열이 찼습니다(${Facility.MAX_QUEUE}).` }); return;
   }
   // ③ 재료 — **확인만** 한다(정본 게이트 하나에게 묻는다).
   const pots = Math.max(1, Math.floor(Number(amount) > 0 ? Number(amount) : 1));
@@ -8941,7 +8951,7 @@ function attachPlayerHandlers(ws, player) {
 function doCraftItem(player, recipeName) {
   const recipe = ITEM_RECIPES[recipeName];
   if (!recipe) {
-    send(player.ws, { type: 'notice', text: `알 수 없는 가공 레시피: ${recipeName}` }); return;
+    send(player.ws, { type: 'notice', text: `${recipeName}은(는) 모르는 가공 레시피입니다.` }); return;
   }
   // 14.52: requiresTool은 도구 — 내구도 양수 체크
   if (recipe.requiresTool && !hasTool(player, recipe.requiresTool)) {
@@ -8959,7 +8969,7 @@ function doCraftItem(player, recipeName) {
   // 14.53: 도구 instance 내구도 -1 (saw 등)
   if (recipe.requiresTool) consumeToolByType(player, recipe.requiresTool, 1);
   sendInventory(player);
-  send(player.ws, { type: 'notice', text: `${recipe.label} 완료` });
+  send(player.ws, { type: 'notice', text: `${recipe.label}을(를) 마쳤습니다.` });
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
@@ -8967,7 +8977,7 @@ function doCraftItem(player, recipeName) {
 function doCraftBuilding(player, recipeName) {
   const recipe = BUILDING_RECIPES[recipeName];
   if (!recipe) {
-    send(player.ws, { type: 'notice', text: `알 수 없는 건축물 레시피: ${recipeName}` }); return;
+    send(player.ws, { type: 'notice', text: `${recipeName}은(는) 모르는 건축물 레시피입니다.` }); return;
   }
   // 14.52: 망치는 "도구" — 내구도 양수 체크 (재료 아님)
   if (recipe._useHammer && !hasTool(player, 'hammer')) {
@@ -8997,7 +9007,7 @@ function doCraftBuilding(player, recipeName) {
 function doPlaceBuilding(player, itemType, atX, atY, floor, dir, side) {
   const recipe = BUILDING_RECIPES[itemType];
   if (!recipe) {
-    send(player.ws, { type: 'notice', text: `알 수 없는 건축물 아이템: ${itemType}` }); return;
+    send(player.ws, { type: 'notice', text: `${itemType}은(는) 모르는 건축물 아이템입니다.` }); return;
   }
   if ((player.inventory[itemType] || 0) < 1) {
     send(player.ws, { type: 'notice', text: `짐에 ${recipe.label}이(가) 없습니다.` }); return;
@@ -9152,7 +9162,7 @@ function normalizeCastMix(recipe, rawMix, inventory, skipStock) {
   }
   if (!skipStock) for (const k of ks) {
     const have = inventory[k] || 0;
-    if (have + 1e-9 < use[k]) return { err: `재료 부족: ${k} ${use[k]} 필요 (보유 ${(+have).toFixed(2)})` };
+    if (have + 1e-9 < use[k]) return { err: `재료가 모자랍니다. ${k} ${use[k]}이(가) 있어야 합니다(지금 ${(+have).toFixed(2)}).` };   // ★[T1190 ①] 알림으로 나가는 까닭 — 문장
   }
   return { use, mix };
 }
@@ -9183,7 +9193,7 @@ function doCastPreview(player, itemType, rawMix) {
 function doCraftEquipment(player, itemType, material, rawMix) {
   ensurePlayerItems(player);
   const recipe = EQUIPMENT_RECIPES[itemType];
-  if (!recipe) { send(player.ws, { type: 'notice', text: `알 수 없는 장비: ${itemType}` }); return; }
+  if (!recipe) { send(player.ws, { type: 'notice', text: `${itemType}은(는) 모르는 장비입니다.` }); return; }
   // ★★[재민 확정 2026-08-29] **시설 게이트.** 종전엔 이 함수가 **어디서나 즉석으로** 돌았다 —
   //   들판 한복판에서 청동검이 나왔다. 그건 §8.5 헌법("제작은 시설 앞의 물리 행위")의 정면 반례다.
   //   단일 재료(깎기·두드리기)는 **작업대**, 배합 주조(녹이기)는 **노**. 창이 다르면 시설도 다르다.
@@ -9217,14 +9227,14 @@ function doCraftEquipment(player, itemType, material, rawMix) {
     void lvl0;
     return;
   }
-  if (!recipe.accepts.includes(material)) { send(player.ws, { type: 'notice', text: `${recipe.label}에 못 쓰는 재료: ${material}` }); return; }
+  if (!recipe.accepts.includes(material)) { send(player.ws, { type: 'notice', text: `${material}은(는) ${recipe.label}에 못 쓰는 재료입니다.` }); return; }
   // ★★[T12 지게 2026-09-01] **곁재료(`extra`)** — 이 표의 첫 다품목 장비(지게의 밀삐).
   //   골라 쓰는 주재료와 달리 `extra` 는 **늘 같이 든다**. 없으면 여기서 거절한다.
   //   ⚠거절만 하면 화면이 거짓말한다(버튼이 켜져 있다) ⇒ `_facilityRecipes` 의 `cost` 와
   //     클라의 게이팅에도 같은 곁재료를 실어 보낸다. 세 자리가 **같은 `extra` 하나**를 읽는다.
   const _eqCost = Object.assign({}, recipe.extra || {}, { [material]: (recipe.extra || {})[material] ? ((recipe.extra[material] || 0) + recipe.qty) : recipe.qty });
   for (const [k, n] of Object.entries(_eqCost)) {
-    if ((player.inventory[k] || 0) < n) { send(player.ws, { type: 'notice', text: `재료 부족: ${ITEM_LABEL_SERVER[k] || k} ${n} 필요 (보유 ${Math.floor(player.inventory[k] || 0)})` }); return; }
+    if ((player.inventory[k] || 0) < n) { send(player.ws, { type: 'notice', text: `재료가 모자랍니다. ${ITEM_LABEL_SERVER[k] || k} ${n}개가 있어야 합니다(지금 ${Math.floor(player.inventory[k] || 0)}개).` }); return; }
   }
   const have = player.inventory[material] || 0;
   const lvl = playerCraftLevel(player, recipe.skill);
@@ -9401,12 +9411,12 @@ function doRepairEquipment(player, id, material) {
     PlayerItems.repairItem(inst, lvl0, nm.use);
     sendInventory(player);
     sendEquipment(player);
-    send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 수선 (같은 배합)` });
+    send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)}을(를) 같은 배합으로 수선했습니다.` });
     if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
     return;
   }
   const mat = material || inst.mat;
-  if (!def.accepts.includes(mat)) { send(player.ws, { type: 'notice', text: '수선에 못 쓰는 재료' }); return; }
+  if (!def.accepts.includes(mat)) { send(player.ws, { type: 'notice', text: '수선에 못 쓰는 재료입니다.' }); return; }
   const cost = Math.max(1, Math.floor(def.qty / 2));
   const have = player.inventory[mat] || 0;
   if (have < cost) { send(player.ws, { type: 'notice', text: `고칠 재료가 모자랍니다. ${mat}이(가) ${cost} 있어야 합니다.` }); return; }
@@ -9415,7 +9425,7 @@ function doRepairEquipment(player, id, material) {
   PlayerItems.repairItem(inst, lvl, { [mat]: cost });
   sendInventory(player);
   sendEquipment(player);
-  send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 수선` });
+  send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)}을(를) 수선했습니다.` });
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 // 장비 효과 발현(설계 §8-3): 무기 attack→전투·도구 efficiency→노동. 장비 미장착 시 기존 행동 불변(additive).
@@ -9774,10 +9784,10 @@ function doShopInfo(player) {
 function doShopBuy(player, itemType, material) {
   ensurePlayerItems(player);
   const recipe = EQUIPMENT_RECIPES[itemType];
-  if (!recipe) { send(player.ws, { type: 'notice', text: `알 수 없는 장비: ${itemType}` }); return; }
+  if (!recipe) { send(player.ws, { type: 'notice', text: `${itemType}은(는) 모르는 장비입니다.` }); return; }
   const vq = nearestVillageQ(player);
   if (!vq) { send(player.ws, { type: 'notice', text: '거래하려면 마을 광장 가까이 가십시오.' }); return; }
-  if (!recipe.accepts.includes(material)) { send(player.ws, { type: 'notice', text: `${recipe.label}에 못 쓰는 재료` }); return; }
+  if (!recipe.accepts.includes(material)) { send(player.ws, { type: 'notice', text: `${recipe.label}에 못 쓰는 재료입니다.` }); return; }
   const have = player.inventory[material] || 0;
   if (have < recipe.qty) { send(player.ws, { type: 'notice', text: `재료가 모자랍니다. ${material}이(가) ${recipe.qty} 있어야 합니다.` }); return; }
   const qkey = EQUIP_TYPE_QKEY[itemType];
@@ -9795,7 +9805,7 @@ function doShopBuy(player, itemType, material) {
   player.equipment.push(inst);
   sendInventory(player);
   sendEquipment(player);
-  send(player.ws, { type: 'notice', text: `${vq.name} 장인 구매: ${PlayerItems.displayItem(inst)}` });
+  send(player.ws, { type: 'notice', text: `${vq.name} 장인에게서 ${PlayerItems.displayItem(inst)}을(를) 샀습니다.` });
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 // 판매: 장비 용해 → 재료 절반 회수(설계 §4 판매=용해). ★마을 EMA 넛지(sellNudge)는 econ write라 @1500 검증 후 별도 배선 — 현재 미적용(econ 무접촉 유지).
@@ -9850,7 +9860,7 @@ function doSellIronRelic(player, id) {
     for (const k in inst.mix) { tot += inst.mix[k]; if (RELIC_MATS.has(k)) fe += inst.mix[k]; }
     isIron = tot > 0 && fe / tot > 0.5;
   }
-  if (!isIron) { send(player.ws, { type: 'notice', text: '철기가 아니다 — 위세품으로 쳐주지 않는다(용해는 판매 버튼)' }); return; }
+  if (!isIron) { send(player.ws, { type: 'notice', text: '철기가 아니라 위세품으로 쳐주지 않습니다. 녹이려면 판매 단추를 쓰십시오.' }); return; }
   const q = (inst.attrs && inst.attrs.__q != null) ? inst.attrs.__q : (inst.q != null ? inst.q / 100 : 1);
   let r;
   const _d732 = T732_MOMENT ? _t732DoorBegin(player, []) : null;   // ★[T732] 대금은 곳간에서 나온다(끄면 null)
@@ -9875,7 +9885,7 @@ function doSellIronRelic(player, id) {
 function doCraft(player, recipeName) {
   const recipe = RECIPES[recipeName];
   if (!recipe) {
-    send(player.ws, { type: 'notice', text: `알 수 없는 레시피: ${recipeName}` });
+    send(player.ws, { type: 'notice', text: `${recipeName}은(는) 모르는 레시피입니다.` });
     return;
   }
   // ★[2026-08-28] **일반 cost** — 잔가지·자갈·풀처럼 나무/돌이 아닌 재료도 받는다(조잡한 석기).
@@ -9895,7 +9905,7 @@ function doCraft(player, recipeName) {
   player.toolItems.push(inst);
   sendInventory(player);
   send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
-  send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료 (인벤에 추가)` });
+  send(player.ws, { type: 'notice', text: `${recipe.label}을(를) 만들어 가방에 넣었습니다.` });
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어
 }
 
@@ -9910,7 +9920,7 @@ function doEquip(player, toolItemId) {
       return;
     }
     if (inst.d <= 0) {
-      send(player.ws, { type: 'notice', text: '깨진 도구' });
+      send(player.ws, { type: 'notice', text: '깨진 도구입니다.' });
       return;
     }
     player.equipped = inst.id; // 옛 거 자동 해제 (한 번에 1개)
@@ -10077,6 +10087,7 @@ const Weights = require('./weights');
 const Carry = require('./carry');
 const Lots = require('./lots');
 if (T732_MOMENT) Lots.setClock(zoneGameMs, _SEASON_DAY_MS);   // ★[T732] 얻은 순간의 시계(끄면 안 꽂는다 — 날 문법 그대로)
+if (T732_MOMENT && SimVillages.lotsClockSet) { try { SimVillages.lotsClockSet(); } catch (e) { console.error(`[${ZONE_ID}] 🧺 [T1166] 몸 로트 줄 걸기 실패(빈 장부로 계속):`, e.message); } }   // ★[T1166] 되살림(init — 시계 전)이 쥔 몸 손 로트 · 몸 짐 줄을 시계가 꽂힌 바로 뒤에 건다(끄면 쥔 줄 0 · 무동작)
 const Fishing = require('./fishing');
 // ★★[T574 2026-10-03] 존 특산 프로필 + 경계 혼용 띠(정본 `server/region-profiles.js`) — 낚시 종 · 부팅 광종 채움이 부른다.
 //   손잡이 `T574_REGION`(띠 반폭 D 셀) — 끄면 두 자리 모두 옛 글자 그대로(주사위·해시 소비도 같다).
@@ -10498,14 +10509,13 @@ function trySortOre(player) {
   let score = '';
   if (player.oreGuess && player.oreGuess.n > 0) {
     const g = player.oreGuess;
-    score = ` · 눈대중 ${g.hit}/${g.n} 적중`;
-    if (g.hit < g.n) score += ` (${g.n - g.hit} 헛짐)`;
-    if (g.tn > 0) score += ` · 종류 ${g.thit}/${g.tn}`;   // ★②층 성적(7렙+ 종 단정만 집계)
+    score = ` 눈대중은 ${g.n}번 가운데 ${g.hit}번 맞았습니다${g.hit < g.n ? `(${g.n - g.hit}번 헛짐)` : ''}.`;   // ★[T1190 ①] 하십시오체 문장(수 그대로)
+    if (g.tn > 0) score += ` 종류는 ${g.tn}번 가운데 ${g.thit}번 맞았습니다.`;   // ★②층 성적(7렙+ 종 단정만 집계)
     player.oreGuess = { n: 0, hit: 0, tn: 0, thit: 0 };   // 성적은 선광마다 리셋 — "이번 한 짐"의 성적이다
   }
   send(player.ws, {
     type: 'notice',
-    text: `⚒ 선광 ${n.toFixed(0)}kg → ` + (parts.length ? parts.join(', ') : '광석 없음') + (got.stone_waste ? ` · 맥석 ${got.stone_waste}kg 버림` : '') + _t1146Txt + score
+    text: `⚒ 흙 ${n.toFixed(0)}kg을 골라 ` + (parts.length ? `${parts.join(', ')}을(를) 얻었습니다.` : '광석은 나오지 않았습니다.') + (got.stone_waste ? ` 맥석 ${got.stone_waste}kg은 버렸습니다.` : '') + _t1146Txt + score   // ★[T1190 ① · 문 25 ① ㄱ] 알림 = 하십시오체 문장(뜻 · 수 그대로 · ⚒ 표지는 알림 종류 표지라 남김 — 회부)
   });
   savePlayer(player);
 }
@@ -10521,7 +10531,7 @@ function _t1146Gangue(player, kg) {
   }
   const S = _t1146Stat; S.sortKg += kg; S.sortStone += sp.stone; S.sortPebble += sp.pebble; S.crumbKg += sp.crumbKg;
   const got = [sp.stone > 0 ? `${ITEM_LABEL_SERVER.stone} ${sp.stone}` : '', sp.pebble > 0 ? `${ITEM_LABEL_SERVER.pebble} ${sp.pebble}` : ''].filter(Boolean);
-  return ` · 맥석 ${kg.toFixed(1)}kg → ` + got.join(', ') + (sp.crumbKg > 0 ? `${got.length ? ' · ' : ''}부스러기 ${+sp.crumbKg.toFixed(2)}kg 그 자리에` : '');
+  return ` 맥석 ${kg.toFixed(1)}kg에서 ` + (got.length ? `${got.join(', ')}을(를) 얻었습니다.` : '얻은 것이 없습니다.') + (sp.crumbKg > 0 ? ` 부스러기 ${+sp.crumbKg.toFixed(2)}kg은 그 자리에 두었습니다.` : '');   // ★[T1190 ①] 문장
 }
 
 // 주기적 정리 (15분) — 만땅 회복된 셀 레코드 제거. minedCells만 순회(파인 셀, 한정적)라 가벼움.
@@ -10805,10 +10815,10 @@ function tryForage(player) {
   sendInventory(player);
   if (src.kind === Salt.BRINE) {
     send(player.ws, { type: 'notice',
-      text: `🌊 ${src.where}에서 ${Salt.BRINE_KO} ${got}되 — 남은 ${ITEM_LABEL_SERVER[Salt.VESSEL]} ${Math.floor(player.inventory[Salt.VESSEL] || 0)}개`
-          + ` · 소금 한 줌에 ${Salt.brinePerPot()}되` });
+      text: `🌊 ${src.where}에서 ${Salt.BRINE_KO} ${got}되를 떴습니다. 남은 ${ITEM_LABEL_SERVER[Salt.VESSEL]}은(는) ${Math.floor(player.inventory[Salt.VESSEL] || 0)}개입니다.`
+          + ` 소금 한 줌에 ${Salt.brinePerPot()}되가 듭니다.` });   // ★[T1190 ①] 문장
   } else send(player.ws, { type: 'notice',
-    text: `🤏 ${src.where}에서 ${ITEM_LABEL_SERVER[src.kind] || src.kind} ${got} (남은 양 ${Forage.left(src.key, now).toFixed(1)})` });
+    text: `🤏 ${src.where}에서 ${ITEM_LABEL_SERVER[src.kind] || src.kind} ${got}을(를) 주웠습니다(남은 양 ${Forage.left(src.key, now).toFixed(1)}).` });   // ★[T1190 ①] 문장
   if (canPersist(player)) savePlayer(player);
 }
 
@@ -10997,7 +11007,7 @@ function tryPickFruit(player, resId) {
   player.inventory = player.inventory || {};
   player.inventory[item] = (player.inventory[item] || 0) + n;
   if (T732_MOMENT) Lots.note(player, item, n, zoneGameDay());   // ★[T732] 딴 순간(머루 = 로트)
-  send(player.ws, { type: 'notice', text: `🌰 ${T.koOf(sp)}에서 ${ITEM_LABEL_SERVER[item] || item} ${n}`, kind: 'gather' });
+  send(player.ws, { type: 'notice', text: `🌰 ${T.koOf(sp)}에서 ${ITEM_LABEL_SERVER[item] || item} ${n}개를 땄습니다.`, kind: 'gather' });
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   if (canPersist(player)) savePlayer(player);
 }
@@ -11171,10 +11181,10 @@ function tryGather(player, resId, water) {
         const got = Math.max(1, Math.floor(amt));
         player.inventory[item] = (player.inventory[item] || 0) + got;
         if (T732_MOMENT) Lots.note(player, item, got, zoneGameDay());   // ★[T732] 거둔 순간(젖·알·기름)
-        parts.push(`${item} ${got}`);
+        parts.push(`${ITEM_LABEL_SERVER[item] || item} ${got}`);   // ★[T1190 ①] 이름표로
       }
       sendInventory(player);
-      send(player.ws, { type: 'notice', text: `${def.ko} +${parts.join(', ')}` });
+      send(player.ws, { type: 'notice', text: `${def.ko}에게서 ${parts.join(', ')}을(를) 얻었습니다.` });
       savePlayer(player);
       return;
     }
@@ -11357,11 +11367,11 @@ function tryClaim(player, kind = 'personal') {
   const max = kind === 'temporary' ? CLAIM_SLOT_TEMPORARY_START : (kind === 'guild' ? CLAIM_SLOT_GUILD_START : CLAIM_SLOT_PERSONAL_START);
   if (usedCount >= max) {
     const kName = { personal: '개인', temporary: '임시', guild: '마을' }[kind];
-    send(player.ws, { type: 'notice', text: `${kName} 사유지 슬롯 한도 (${max}) 초과` });
+    send(player.ws, { type: 'notice', text: `${kName} 사유지를 더 둘 수 없습니다(한도 ${max}).` });
     return;
   }
   if ((player.inventory.wood || 0) < cost.wood || (player.inventory.stone || 0) < cost.stone) {
-    send(player.ws, { type: 'notice', text: `재료 부족 (나무 ${cost.wood}, 돌 ${cost.stone})` });
+    send(player.ws, { type: 'notice', text: `재료가 모자랍니다(나무 ${cost.wood}, 돌 ${cost.stone}).` });
     return;
   }
   // 1 grid 단위로 스냅
@@ -11432,7 +11442,7 @@ function tryClaim(player, kind = 'personal') {
   // ★[온보딩 v2 §9.5] 예외 하나 — **마을 어귀 빈터**. 누적 기여를 채운 사람은 그 구역에서만 길드 요건이 면제된다(구역 밖은 종전 그대로).
   const _onbLot = Onboarding.vacantLotAllows(player, cx + SZ / 2, cy + SZ / 2);
   if (kind === 'personal' && !_onbLot && VillageKin.ON) {   // ★[T786 C12] 켬 — 개인 사유지는 **내 마을 땅** 안에만(종전 "내 길드 영토")
-    if (!_kinMyLand(player, cx + SZ / 2, cy + SZ / 2)) { send(player.ws, { type: 'notice', text: '개인 사유지는 내 마을 땅 안에만 설치 가능 (마을 사람이 되거나 임시 사유지 T 사용)' }); return; }
+    if (!_kinMyLand(player, cx + SZ / 2, cy + SZ / 2)) { send(player.ws, { type: 'notice', text: '개인 사유지는 내 마을 땅 안에만 둘 수 있습니다. 마을 사람이 되거나 임시 사유지(T)를 쓰십시오.' }); return; }
     //   ★★[T1137] 켬 — 영토 안 집터(새로 · 넓히기)는 **인정 구성원**만(가입만으로는 안 된다 · 탈퇴해도 잡아 둔 땅은 그대로 — 이 문은 새로 잡는 것만 막는다).
     //     영토 밖 들판 빈터(온보딩 빈터 권리 `_onbLot`)는 위 갈래 밖이라 종전 그대로다(첫 30분 움집 흐름 무변).
     if (Membership.T1137) {
@@ -11446,12 +11456,12 @@ function tryClaim(player, kind = 'personal') {
   } else
   if (kind === 'personal' && !_onbLot) {
     if (!player.tribeId) {
-      send(player.ws, { type: 'notice', text: '개인 사유지는 마을 땅 안에만 설치 가능 (마을에 들거나 임시 사유지 T 사용)' });
+      send(player.ws, { type: 'notice', text: '개인 사유지는 마을 땅 안에만 둘 수 있습니다. 마을에 들거나 임시 사유지(T)를 쓰십시오.' });
       return;
     }
     const myGuildArea = findGuildClaimContaining(cx + SZ/2, cy + SZ/2, player.tribeId);
     if (!myGuildArea) {
-      send(player.ws, { type: 'notice', text: '내 마을 땅 안에서만 개인 사유지 설치 가능' });
+      send(player.ws, { type: 'notice', text: '개인 사유지는 내 마을 땅 안에서만 둘 수 있습니다.' });
       return;
     }
   }
@@ -11480,7 +11490,7 @@ function tryClaim(player, kind = 'personal') {
   savePlayer(player);
   sendInventory(player);
   const kIcon = { personal: '🏠 개인', temporary: '⛺ 임시', guild: '🏛️ 마을' }[kind];
-  send(player.ws, { type: 'notice', text: `${kIcon} 사유지 설치 (${usedCount + 1}/${max})` });
+  send(player.ws, { type: 'notice', text: `${kIcon} 사유지를 두었습니다(${usedCount + 1}/${max}).` });
   broadcast({ type: 'claim_added', claim });
 }
 
@@ -11502,7 +11512,7 @@ function tryUnclaim(player, claimId) {
   }
   if (c.dbId) db.deleteClaim(c.dbId);
   claims.delete(claimId);
-  send(player.ws, { type: 'notice', text: `사유지 해제 (자원은 환불 X)` });
+  send(player.ws, { type: 'notice', text: '사유지를 풀었습니다. 들인 자원은 돌려받지 못합니다.' });
   broadcast({ type: 'claim_removed', id: claimId });
 }
 
@@ -11678,7 +11688,7 @@ function _spawnGroundItems(player, item, parcels, lotRecs) {
 function tryDropItem(player, item, amount, opts) {
   opts = opts || {};
   const have = player.inventory[item] || 0;
-  const _short = () => send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[item] || item} 부족` });
+  const _short = () => send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[item] || item}이(가) 모자랍니다.` });
 
   // ── ⓪ 도구 개체 지목 — ★[인벤 마무리 2026-08-30] 도구는 인벤 수량이 아니라 **인스턴스**다.
   //   `toolItems` 는 `{id, type, d, max}` 라 스칼라 맵에 없다 ⇒ 드롭 경로가 아예 없었다
@@ -11780,21 +11790,21 @@ function tryRepairBuilding(player) {
   let ownerTribe = null;
   if (best.ownerId !== player.playerId && VillageKin.ON) {   // ★[T786 C15] 켬 — 본인 또는 **같은 마을 사람**의 건축물(주인이 이 존에 있을 때 — 종전과 같은 찾기)
     let _ow = null; for (const p of players.values()) { if (p.playerId === best.ownerId) { _ow = p; break; } }
-    if (!(_ow && _kinSameVil(player, _ow))) { send(player.ws, { type: 'notice', text: '내/우리 마을 건축물만 수리 가능' }); return; }
+    if (!(_ow && _kinSameVil(player, _ow))) { send(player.ws, { type: 'notice', text: '내 건축물이나 우리 마을 건축물만 고칠 수 있습니다.' }); return; }
   } else
   if (best.ownerId !== player.playerId) {
     for (const p of players.values()) {
       if (p.playerId === best.ownerId) { ownerTribe = p.tribeId; break; }
     }
     if (!player.tribeId || ownerTribe !== player.tribeId) {
-      send(player.ws, { type: 'notice', text: '내/우리 마을 건축물만 수리 가능' }); return;
+      send(player.ws, { type: 'notice', text: '내 건축물이나 우리 마을 건축물만 고칠 수 있습니다.' }); return;
     }
   }
   // 비용 — 건축 비용 절반 (반올림 올림)
   const cost = BUILDING_COST[best.type] || { wood: 1, stone: 1 };
   const wNeed = Math.ceil((cost.wood || 0) / 2), sNeed = Math.ceil((cost.stone || 0) / 2);
   if ((player.inventory.wood || 0) < wNeed || (player.inventory.stone || 0) < sNeed) {
-    send(player.ws, { type: 'notice', text: `수리 비용 부족 (나무 ${wNeed}, 돌 ${sNeed})` });
+    send(player.ws, { type: 'notice', text: `고칠 재료가 모자랍니다(나무 ${wNeed}, 돌 ${sNeed}).` });
     return;
   }
   player.inventory.wood -= wNeed;
@@ -11934,7 +11944,7 @@ if (Fishing.T593_SEA) for (const s of Fresh.SPECIES) if (!(s.id in ITEM_LABEL_SE
 //     (「밤에서 chestnut 4」). 품목 199개가 같은 구멍에 있었다.
 //   이름을 여기 옮겨 적지 않는다 — `itemLabels` 의 규약("base 가 먼저 · 덮지 않는다")이
 //   위 손글씨·주입 이름을 그대로 지키고, 빠진 것만 정본에서 채운다.
-for (const [k, ko] of Object.entries(ItemLabel.itemLabels(ITEM_LABEL_SERVER, BUILDING_RECIPES))) {
+for (const [k, ko] of Object.entries(ItemLabel.itemLabels(ITEM_LABEL_SERVER, BUILDING_RECIPES, Object.assign({}, RECIPES, EQUIPMENT_RECIPES)))) {
   if (!(k in ITEM_LABEL_SERVER)) ITEM_LABEL_SERVER[k] = ko;
 }
 
@@ -12009,7 +12019,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   }
   floor = Math.max(0, Math.min(5, floor | 0));
   if (!BUILDING_COST[type]) {
-    send(player.ws, { type: 'notice', text: '알 수 없는 건축물' }); return false;
+    send(player.ws, { type: 'notice', text: '모르는 건축물입니다.' }); return false;
   }
   // 14.50: 망치 체크 (목공 type) — skipCost일 때도 망치 체크는 유지 (이미 만들 때 한 번 했으니 제외 가능하지만, 보수적으로)
   // 14.51: place는 이미 만들어둔 거니 망치 체크 skip
@@ -12248,7 +12258,7 @@ function tryHutStart(player, atX, atY) {
   let x0, y0, x1, y1;
   if (Number.isFinite(atX) && Number.isFinite(atY)) {
     // ★건축모드 커서 배치[사용자 지시 "좀보이드 스타일"] — 커서 셀 중심 6×4
-    if (Math.hypot(atX - player.x, atY - player.y) > 200) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에 못 팜' }); return; }
+    if (Math.hypot(atX - player.x, atY - player.y) > 200) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기를 팔 수 없습니다.' }); return; }
     const cx = Math.floor(atX / SZg), cy = Math.floor(atY / SZg);
     x0 = cx - 3; y0 = cy - 2; x1 = cx + 2; y1 = cy + 1;
   } else {
@@ -12298,7 +12308,7 @@ function tryRequestVillageHouse(player, atX, atY) {
   // ★재료 검사 먼저(거절이면 상태를 아무것도 안 바꾼다) → 자리 검사 → 그 다음에야 차감.
   const lack = [];
   for (const [it, amt] of Object.entries(PSITE_COST)) if ((player.inventory[it] || 0) < amt) lack.push(`${ITEM_LABEL_SERVER[it] || it} ${player.inventory[it] || 0}/${amt}`);
-  if (lack.length) { send(player.ws, { type: 'notice', text: `재료 선납 부족 — ${lack.join(' · ')}` }); return; }
+  if (lack.length) { send(player.ws, { type: 'notice', text: `먼저 낼 재료가 모자랍니다: ${lack.join(' · ')}.` }); return; }
   const r = SimVillages.lifeRequestPlayerSite(vil, cx, cy, player.playerId, `${player.name}의 의뢰 움집`);
   if (!r || r.err) { send(player.ws, { type: 'notice', text: `맡길 수 없습니다(${(r && r.err) || '까닭을 모릅니다'}).` }); return; }
   for (const [it, amt] of Object.entries(PSITE_COST)) consumeItem(player, it, amt);   // ★자리 확정 뒤 차감(실패 시 재료가 사라지지 않게) · [원장 승격]
@@ -12321,7 +12331,7 @@ function tryHutAdvance(player, buildingId) {
   for (const [it, amt] of Object.entries(st.need)) {
     if ((player.inventory[it] || 0) < amt) {
       const needStr = Object.entries(st.need).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${player.inventory[k] || 0}/${v}`).join(' · ');
-      send(player.ws, { type: 'notice', text: `${st.label} — 재료 부족: ${needStr}` }); return;
+      send(player.ws, { type: 'notice', text: `${st.label}에 쓸 재료가 모자랍니다: ${needStr}.` }); return;
     }
   }
   for (const [it, amt] of Object.entries(st.need)) consumeItem(player, it, amt);   // ★[원장 승격]
@@ -12504,7 +12514,7 @@ function _siteStart(player, atX, atY, spec) {
   const st = spec.stages[0];
   if (st.tool && !hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label}에는 ${ITEM_LABEL_SERVER[st.tool] || st.tool}이(가) 있어야 합니다.`, ..._t1120N({ tool: st.tool }) }); return; }   // ★[T1120] 가질 도구(켬만)
   for (const [it, amt] of Object.entries(st.need)) {
-    if ((player.inventory[it] || 0) < amt) { send(player.ws, { type: 'notice', text: `${st.label} — 재료 부족: ${ITEM_LABEL_SERVER[it] || it} ${player.inventory[it] || 0}/${amt}` }); return; }
+    if ((player.inventory[it] || 0) < amt) { send(player.ws, { type: 'notice', text: `${st.label}에 쓸 재료가 모자랍니다: ${ITEM_LABEL_SERVER[it] || it} ${player.inventory[it] || 0}/${amt}.` }); return; }
   }
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
     const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
@@ -12536,7 +12546,7 @@ function _siteAdvance(player, b, spec) {
   for (const [it, amt] of Object.entries(st.need)) {
     if ((player.inventory[it] || 0) < amt) {
       const needStr = Object.entries(st.need).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${player.inventory[k] || 0}/${v}`).join(' · ');
-      send(player.ws, { type: 'notice', text: `${st.label} — 재료 부족: ${needStr}` }); return;
+      send(player.ws, { type: 'notice', text: `${st.label}에 쓸 재료가 모자랍니다: ${needStr}.` }); return;
     }
   }
   for (const [it, amt] of Object.entries(st.need)) consumeItem(player, it, amt);   // ★[원장 승격]
@@ -12554,7 +12564,7 @@ function _siteAdvance(player, b, spec) {
     if (b.data.vid != null) _dd.vid = b.data.vid | 0;   // ★[T786] 켬 = 마을 시설은 완공돼도 마을 것(끔이면 `vid` 가 없다 · 칸 무변)
     done = _liveBuildRow(spec.doneType, b.x, b.y, _dd, owner, `${player.name}의 ${spec.ko}`, null);
     broadcast({ type: 'building_added', building: done });
-    send(player.ws, { type: 'notice', text: `${spec.icon} ${spec.ko} 완공! — ${spec.doneHint}` });
+    send(player.ws, { type: 'notice', text: `${spec.icon} ${spec.ko}을(를) 다 지었습니다. ${spec.doneHint}` });
     console.log(`[${ZONE_ID}] ${spec.icon} ${player.name} ${spec.ko} 완공 @(${x0},${y0})`);
     // ★★[2026-08-03e 배치 12 ①] 완공 훅 — 회관은 **완공이 곧 마을 등록**이다(노·숯가마는 훅이 없다).
     //   실패해도 건물은 남긴다(플레이어가 쓴 재료를 삼키지 않는다) — 사유만 알리고 다시 시도하게 한다.
@@ -12917,6 +12927,29 @@ function tryVillageDonate(player, vid, want) {
   if (g.err) { send(player.ws, { type: 'notice', text: `🏘️ ${g.err}` }); return; }
   return tryVillageDeposit(player, null, want || {}, g.vil);   // 회관과 같은 본문(사본 0)
 }
+// ★★[T1189 ⑤ · ★재민 11-05 문 24 ⑤ ㄱ] 공사에 재료 가져오기 — 누구나 · 근접(곳간 · 게시판과 같은 술어 `villageWithdrawGate`) · 짐 → 지금 짓는 집터.
+//   실물 길 = `SimVillages.playerSiteGive`(곳간 넣기와 같은 물건 → 재화 표 · 환산) · 낸 개체를 짐 무게 장부에서 뺀다(회관 넣기와 같은 두 줄).
+//   상한 것은 안 받는다(회관과 같은 문 `_spoiledGuardItems`). 그 한 번으로 지금 단계 자재가 다 차면 기여 +1(`Onboarding.onSiteGive` — 계량기 하나).
+function tryVillageSiteGive(player, vid, want) {
+  if (!SimVillages.villageWithdrawGate || !SimVillages.playerSiteGive) return null;
+  const g = SimVillages.villageWithdrawGate(vid | 0, player.x, player.y);
+  if (g.err) { send(player.ws, { type: 'notice', text: g.err }); return { ok: false, err: g.err }; }
+  const _map = SimVillages.playerVillageDepositMap() || {};
+  const _sp = _spoiledGuardItems(player, Object.keys(want || {}).filter((it) => _map[it] && Number(want[it]) >= 1));
+  if (_sp) { send(player.ws, { type: 'notice', text: _sp }); return { ok: false, err: _sp }; }
+  for (const it of Object.keys(want || {})) if (Lots.isLot(it)) delete want[it];   // 집 자재는 상하지 않는 물건 — 로트 품목은 집터 길이 없다(곳간 문이 받는다)
+  const r = SimVillages.playerSiteGive(g.vil, player.inventory, want || {}, _unitsOfFor(player));
+  if (!r.ok) { send(player.ws, { type: 'notice', text: r.err }); return r; }
+  for (const [it, n] of Object.entries(r.taken || {})) Carry.takeKg(player, it, n);
+  Carry.reconcile(player, player.inventory);
+  if (SimVillages.t983Save) SimVillages.t983Save(g.vil);   // 집터 자재 · 마을 행을 이 순간에(곳간 넣기와 같은 자리)
+  savePlayer(player);
+  sendInventory(player);
+  const kv = Object.entries(r.taken).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}개`).join(', ');
+  send(player.ws, { type: 'notice', text: `${g.vil.name ? g.vil.name + ' ' : ''}집터에 ${kv}를 놓았습니다.${r.done ? ' 이번 단계 재료가 다 찼습니다. 마을 기여가 1 늘었습니다.' : ''}` });
+  if (r.done) Onboarding.onSiteGive(player, true, vid | 0);
+  return r;
+}
 // ═══[2026-08-25 사건 레이어] 촌장 브리핑 · 마을 게시판 · 납품 ═══════════════
 //   설계 §3.2: **대시보드 UI 금지 — 촌장 대사·게시판 의뢰로 번역**한다.
 //   서버가 하는 일: 거리 게이트 + 자기 마을 것만. 나머지 판정은 villages.js→events.js 정본.
@@ -13154,7 +13187,8 @@ function tryAssignJob(player, vid, npcId, job) {
     const O = JOB_KR_NPC[r.old] || r.old;
     const CD = (SimVillages.assignRoster(vil) || {}).cooldown;
     _t1085Notice(player, `${O} 한 사람에게 ${L} 일을 맡겼습니다. 이 사람은 ${CD}일 동안 스스로 일을 바꾸지 않습니다. 마을이 굶으면 먹을 것을 구하는 일로 먼저 돌아갑니다.`);
-    tryVillageBoard(player, vid);   // 명부를 새로 그린다(같은 판 · 같은 자료)
+    if (VillageView.isOpen(player)) VillageView.poke(player);   // ★[T1169] 마을 화면(켬 기본)에서 맡겼으면 그 화면의 명부 칸만 다시(게시판 판을 띄우지 않는다)
+    else tryVillageBoard(player, vid);   // 명부를 새로 그린다(같은 판 · 같은 자료)
     return r;
   };
   const c = Membership.chiefCheck(player, vil);
@@ -13333,7 +13367,7 @@ function tryKilnBurn(player, buildingId) {
     savePlayer(player);
     return;
   }
-  if ((player.inventory.wood || 0) < CHARCOAL_KILN_WOOD) { send(player.ws, { type: 'notice', text: `통나무 부족 (1회 장입 ${player.inventory.wood || 0}/${CHARCOAL_KILN_WOOD})` }); return; }
+  if ((player.inventory.wood || 0) < CHARCOAL_KILN_WOOD) { send(player.ws, { type: 'notice', text: `통나무가 모자랍니다(한 번에 넣는 몫 ${player.inventory.wood || 0}/${CHARCOAL_KILN_WOOD}).` }); return; }
   // ★★[2026-08-02d ④] 가득 채우기 — 통나무 3씩 클릭을 반복하는 지루함만 없앤다.
   //   ⚠수지는 **1회 조업과 완전히 같다**(장입 3 → 숯 4를 n번). 배치라고 수율이 좋아지지 않는다 —
   //     그러면 클릭 수가 물리를 바꾸는 셈이고, 그건 이 프로젝트가 계속 피해 온 것이다.
@@ -13435,7 +13469,7 @@ function tryFurnaceSmelt(player, buildingId) {
 function __testBind() {
   return {
     npcs, _physicalRocksInCircle, _physicalStoneHit, _npcGatherResource,
-    claims, buildings, players, BUILDING_SIZE, Specialty, tryAssignJob, tryVillageBoard, JOB_KR_NPC,   // ★[T1085] 촌장 일 맡기기(하네스가 진짜 문을 부른다)
+    claims, buildings, players, BUILDING_SIZE, Specialty, tryAssignJob, tryVillageBoard, JOB_KR_NPC, tryVillageSiteGive,   // ★[T1189 ⑤]   // ★[T1085] 촌장 일 맡기기(하네스가 진짜 문을 부른다)
     _t738Adopt, _t738: () => _t738, observers, isPositionActive: (x, y) => isPositionActive(x, y), _t774: () => ({ X: _t774X, Y: _t774Y, n: _t774N, src: _t774Src, ref: _spInc.ref, act: _spInc.act, hit: _t774Stat.hit, miss: _t774Stat.miss, same: _t774Src === activeChunkKeys }),   // ★[T774] 활성 열 증인(읽기)
       // ★[T738] SoA x·y 증인(`scripts/t738-witness.js` · 읽기 · 부르기만)
     FURNACE_STAGES, FURNACE_KINDS, FURNACE_FUEL_PER_ORE, CHARCOAL_KILN_STAGES, CHARCOAL_KILN_YIELD, CHARCOAL_KILN_WOOD,
@@ -13615,7 +13649,7 @@ async function tryBuildGuildGranary(player, atX, atY) {
   // 비용
   const inv = player.inventory || {};
   if ((inv.plank || 0) < GRANARY_COST.plank || (inv.stone || 0) < GRANARY_COST.stone) {
-    send(player.ws, { type: 'notice', text: `재료 부족 — 판자 ${GRANARY_COST.plank}·돌 ${GRANARY_COST.stone}` }); return;
+    send(player.ws, { type: 'notice', text: `재료가 모자랍니다(판자 ${GRANARY_COST.plank} · 돌 ${GRANARY_COST.stone}).` }); return;
   }
   inv.plank -= GRANARY_COST.plank; inv.stone -= GRANARY_COST.stone;
   // 실물 생성: 밀폐 벽 16변 + 바닥 15 + 앵커 1 (DB+메모리+청크+일괄 방송)
@@ -13685,7 +13719,7 @@ function tryChestPut(player, buildingId, item, amount) {
   }
   amount = Math.max(1, Math.min(99, amount | 0));
   if ((player.inventory[item] || 0) < amount) {
-    send(player.ws, { type: 'notice', text: `${item} 부족` }); return;
+    send(player.ws, { type: 'notice', text: `${item}이(가) 모자랍니다.` }); return;
   }
   // ★★[상자 원장 2026-08-30 재민 확정] **왕복 보존을 상자까지.** 2kg 물고기를 넣었다 빼도 2kg 이다.
   //   구조: `b.data._led[item] = [{kg, d?}, …]`. 밑줄 접두사라 기존 두 소비자가 **이미** 걸러낸다 —
@@ -13781,7 +13815,7 @@ async function tryChestTake(player, buildingId, item, amount) {
     }
     const atWar = await isAtWar(_myWk, ownerTribeId);
     if (!atWar) {
-      send(player.ws, { type: 'notice', text: '전쟁 중이어야 약탈 가능' }); return;
+      send(player.ws, { type: 'notice', text: '전쟁 중에만 약탈할 수 있습니다.' }); return;
     }
     // 활성 전쟁의 loot_rate 가져오기
     const wars = VillageKin.ON ? [] : await getActiveWars();   // ★[T785] 켬 — 마을 전쟁엔 다이얼 칸이 없다(아래 종전 바닥 그대로)
@@ -13793,7 +13827,7 @@ async function tryChestTake(player, buildingId, item, amount) {
   }
 
   if (!b.data || (b.data[item] || 0) < amount) {
-    send(player.ws, { type: 'notice', text: `상자에 ${item} 부족` }); return;
+    send(player.ws, { type: 'notice', text: `상자에 ${item}이(가) 모자랍니다.` }); return;
   }
   // 약탈이면 loot_rate 적용 (요청한 amount 중 일부만 실제 인출)
   let takeAmt = amount;
@@ -14017,12 +14051,12 @@ async function tryAttack(player) {
     // 남의 길든 동물 공격 시 vp 누적 (PvP 비슷)
     if (bestMob.tameOwner && bestMob.tameOwner !== player.playerId) {
       player.vp = Math.min(VP_MAX, (player.vp ?? 0) + VP_ATTACK_PLAYER);
-      send(player.ws, { type: 'notice', text: `${bestMob.tameOwnerName}의 동물 공격 (위반 +${VP_ATTACK_PLAYER})` });
+      send(player.ws, { type: 'notice', text: `${bestMob.tameOwnerName}의 동물을 공격했습니다(위반 +${VP_ATTACK_PLAYER}).` });
     }
     if (bestMob.hp <= 0) {
       // Phase 5-7: 사체 entity 생성 (즉시 인벤 X. 도살 액션 필요).
       killCorpse(bestMob, player.playerId);   // ★[T1032] 사체 문 하나(T1025 두 줄 — 사냥터 장부 한 마리는 이 사체가 끝날 때 · 글자 · 차례 그대로)
-      send(player.ws, { type: 'notice', text: `${ANIMALS[bestMob.type]?.ko || bestMob.type} 사냥 — 사체 도살 (E)` });
+      send(player.ws, { type: 'notice', text: `${ANIMALS[bestMob.type]?.ko || bestMob.type}을(를) 사냥했습니다. 주검은 E로 손질하십시오.` });
       // DB + chunk에서 mob 제거
       if (bestMob.dbId) { try { db.deleteMob(bestMob.dbId); } catch (e) {} }
       chunkManager.removeMob(bestMob);
@@ -14110,7 +14144,7 @@ async function tryAttack(player) {
       // §4-4 Stage 4B(§5.5b): 벽류 파괴(손상=통과 가능) = 개통 → 교역 거리행렬·캐러밴 경로 무효화
       if (bestWall.type === 'wall' || bestWall.type === 'fence') SimVillages.invalidateTradeDistances(Math.floor(bestWall.x / BUILDING_SIZE), Math.floor(bestWall.y / BUILDING_SIZE));
     } else {
-      send(player.ws, { type: 'notice', text: `${bestWall.type} 공격 (${bestWall.data.hp}/${maxHp})` });
+      send(player.ws, { type: 'notice', text: `${bestWall.type}을(를) 공격했습니다(${bestWall.data.hp}/${maxHp}).` });
     }
     try { db.updateBuildingData(bestWall.dbId, JSON.stringify(bestWall.data)); } catch (e) {}
     broadcast({ type: 'building_damaged', id: bestWall.id, hp: bestWall.data.hp, maxHp, damaged: !!bestWall.data.damaged });
@@ -14138,7 +14172,7 @@ async function applyPvpAttackPenalty(attacker, victim) {
   }
   const personalGain = Math.round(VP_ATTACK_PLAYER * multiplier);
   attacker.vp = Math.min(VP_MAX, (attacker.vp ?? 0) + personalGain);
-  send(attacker.ws, { type: 'notice', text: `${victim.name} 공격 [${tag}] 개인 +${personalGain}${guildAdd ? `, 마을 명성 +${guildAdd}` : ''}` });
+  send(attacker.ws, { type: 'notice', text: `${victim.name}을(를) 공격했습니다(${tag} · 개인 +${personalGain}${guildAdd ? `, 마을 명성 +${guildAdd}` : ''}).` });
   send(attacker.ws, { type: 'gauges', hunger: Math.round(attacker.hunger), thirst: Math.round(attacker.thirst), vp: Math.round(attacker.vp) });
   savePlayer(attacker);
   // 길드 vp는 central 비동기 (실패해도 게임 진행)
@@ -14605,7 +14639,7 @@ function tryRescue(rescuer, downedPid) {
   }
   const d = Math.hypot(rescuer.x - target.x, rescuer.y - target.y);
   if (d > RESCUE_RANGE_PX) {
-    send(rescuer.ws, { type: 'notice', text: `${Math.round(d)}px 떨어짐 — ${RESCUE_RANGE_PX}px 안에서 R` });
+    send(rescuer.ws, { type: 'notice', text: `${Math.round(d)}px 떨어져 있습니다. ${RESCUE_RANGE_PX}px 안에서 R을 누르십시오.` });
     return;
   }
   // ── 업는다 ────────────────────────────────────────────────────────────
@@ -14624,8 +14658,8 @@ function tryRescue(rescuer, downedPid) {
   try {
     const md = Body.moodles(target).map((m) => `${m.emo} ${m.ko} ${Math.round(m.sev * 100)}%`);
     send(rescuer.ws, { type: 'notice',
-      text: `🩺 ${target.name}의 상태 — ${md.length ? md.join(' · ') : '겉으로는 멀쩡합니다'}`
-          + ` (배고픔 ${Math.round(target.hunger)} · 목마름 ${Math.round(target.thirst)})` });
+      text: `🩺 ${target.name}의 상태입니다. ${md.length ? md.join(' · ') : '겉으로는 멀쩡합니다'}`
+          + `(배고픔 ${Math.round(target.hunger)} · 목마름 ${Math.round(target.thirst)}).` });   // ★[T1190 ①] 문장(무 표지 줄은 그대로)
   } catch (e) {}
 }
 
@@ -16669,7 +16703,7 @@ setInterval(() => {
         // ★[캐릭 시트 2026-08-30] **신원 1비트**(애니 상태가 아니다 — 애니는 기존 값에서 유도한다).
         //   이게 없으면 클라가 NPC 와 사람 플레이어를 못 가른다(`simJob` 은 마을 시뮬 NPC 에만 있다).
         //   ⇒ 사람 시트가 마을 주민에게까지 입혀진다 = **회부된 별도 배치를 몰래 하는 것**이다. 그래서 실어 보낸다.
-        if (o.isNpc) e.npc = 1;
+        if (o.isNpc) e.npc = true;
         // ★★[T115 2026-09-05] **벗 1비트** — 보는 사람 기준이다(친구는 쌍이고, 남의 쌍은 남의 것이다).
         //   판정은 `friends.js` 정본 하나(`isFriend`)가 하고 여기선 **부를 뿐**이다.
         //   ⚠`name` 과 **같은 창**(최초 가시분)에 실린다. 도중에 벗이 되면 `Friends.init` 의
@@ -17139,6 +17173,34 @@ function _t1125Mark(ws, ht, tb) {   // 이 소켓에 지금 실어 보내는 것
   if (ws) ws._t1125Has = { ht: ht ? S.ht : (H.ht || null), tb: tb ? S.tb : (H.tb || null) };
   return S;
 }
+// ★★[T1163 2026-11-05 · K4 · T1125 ②] 손잡이 `T1163_WELCOME_SIG`(`=== '1'` 만 켬 · **끔 기본** · 끔 = 종전 welcome 글자 그대로).
+//   클라는 로비에서 `/terrain.json`(central 이 내는 `server/hanbando-terrain.json` 그대로 · T1131 `?v=` immutable)을 이미 받는다 — 그런데 첫 접속 · 관측 welcome 이
+//   그 존 지형(`hardcodedTerrain`)을 또 싣는다(한반도 첫 접속 welcome 의 7할). 켬 = 클라가 접속 주소에 실은 `hf`(가진 절의 서명 · `public/terrain-sig.js` 정본 —
+//   서버 · 클라 같은 파일)가 **이 존 파일 절 서명**과 같으면 지형을 빼고 `hfHit: 1` 을 싣는다. 모르면(`hf` 없음 · 지형 없는 존) · 다르면 종전대로 싣는다.
+//   파일 절 서명 = 파일을 **따로 읽은 사본**(런타임 칸 `_segIdx` · `_bbox` 가 붙기 전 — T910 `_t910PureTerrain` 과 같은 까닭)에 `restoreBakeOff`(`T574_REGION=0` 이면
+//   구운 광종을 되돌린다 — 메모리 정본과 같은 길)를 건 그 존 절. ⇒ 존 파일이 central 파일과 다른 판(배포 어긋남) · `T574_REGION=0` 이면 서명이 달라 종전대로 싣는다.
+//   뺀 소켓은 지형을 가진 것으로 적는다(`_t1125Mark(ws, true, …)` — 승격 welcome 도 지형을 다시 안 싣는다 · T1125 ⑥ 그대로).
+const T1163_WELCOME_SIG = process.env.T1163_WELCOME_SIG === '1';
+const TerrainSig = require('../public/terrain-sig.js');
+let _t1163Hf;   // undefined = 아직 안 셈 · null = 셀 수 없음(지형 없는 존 · 파일 없음)
+function _t1163FileSig() {
+  if (_t1163Hf !== undefined) return _t1163Hf;
+  _t1163Hf = null;
+  try {
+    const all = JSON.parse(require('fs').readFileSync(require.resolve('./hanbando-terrain.json'), 'utf8'));
+    try { require('./region-profiles').restoreBakeOff(all); } catch (e) { /* 프로필 없음 = 옛 길(terrain.js 와 같다) */ }
+    if (all && all[ZONE_ID]) _t1163Hf = TerrainSig.terrainSig(all[ZONE_ID]);
+  } catch (e) { _t1163Hf = null; }
+  return _t1163Hf;
+}
+function _t1163Skip(url) {   // 참 = 이 welcome 은 지형을 뺀다
+  if (!T1163_WELCOME_SIG || !url) return false;
+  const want = url.searchParams.get('hf');
+  if (!want) return false;
+  const S = _t1163FileSig();
+  return !!S && want === S;
+}
+if (T1163_WELCOME_SIG) setImmediate(_t1163FileSig);   // 켬이면 부팅 뒤 한 번 미리 센다(첫 welcome 이 파일 읽기를 안 기다리게)
 const T1125_WEL_HEAD = process.env.T1125_WEL_HEAD !== '0';
 const T1125_WEL_KBPS = parseFloat(process.env.T1125_WEL_KBPS || '') || 1700 / 40;
 function sendWelcome(ws, obj) {

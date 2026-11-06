@@ -256,7 +256,7 @@ const zOnLot0 = sub('zone', { T694_GAME_MEAT: '1', T732_MOMENT_LOT: '0' });   //
   ok(zOn.label.meat_bear === '곰고기' && zOn.label.meat_game_cooked === '구운 사슴·들짐승고기' && zOn.label.meat_bear_cooked === '삶은 곰고기' && zOn.label.meat_game === '사슴·들짐승고기',
     '⑤ 이름표 — 서버 표(클라가 받는 그 표)', JSON.stringify(zOn.label));
   ok(T694_ITEMS.every((x) => zOff.eff[x] === null && zOff.label[x] === null), '⑤ 끔 — 먹기 표 · 이름표에 T694 품목 없음(main)');
-  ok((zOn.notes || []).some((s) => /곰 도살 \+meat_bear 36/.test(s)), '⑤ 도살 알림이 곰고기를 말한다', (zOn.notes || []).find((s) => /곰 도살/.test(s)) || '');
+  ok((zOn.notes || []).some((s) => /^곰을\(를\) 손질해 곰고기 36[ ,을]/.test(s)), '⑤ 도살 알림이 곰고기를 말한다(★T1190 ① 문장 · 이름표)', (zOn.notes || []).find((s) => /손질해/.test(s)) || '');
 }
 
 // ── ⑥ 곳간 ──────────────────────────────────────────────────────────────────────────────
