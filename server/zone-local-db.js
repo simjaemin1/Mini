@@ -480,8 +480,9 @@ for (const k in stmtVbCells) { try { stmtVbCells[k].setReturnArrays(true); } cat
 const stmtVbStruct = db.prepare(`SELECT * FROM village_buildings WHERE village_id = ? AND type IN ${T538_STRUCT_TYPES} ORDER BY id`);
 //   반지름 — 종전 부팅은 **모든 행**의 hypot 최대를 쟀다. 제곱 거리 최대(정수 · SQLite 가 C 에서)인 행만 돌려준다 → JS 가 같은 `Math.hypot` 을 잰다.
 const stmtVbFar = db.prepare(
-  'SELECT cx, cy FROM village_buildings WHERE village_id = ?1 AND ((cx - ?2) * (cx - ?2) + (cy - ?3) * (cy - ?3)) = ' +
-  '(SELECT MAX((cx - ?2) * (cx - ?2) + (cy - ?3) * (cy - ?3)) FROM village_buildings WHERE village_id = ?1)');
+  //   [T1176] 같은 번호(?1·?2·?3)를 되쓰면 맥 node v22.15 의 node:sqlite 가 "column index out of range" — 순번 `?` 만 쓰고 값은 호출에서 되푼다(결과 같음).
+  'SELECT cx, cy FROM village_buildings WHERE village_id = ? AND ((cx - ?) * (cx - ?) + (cy - ?) * (cy - ?)) = ' +
+  '(SELECT MAX((cx - ?) * (cx - ?) + (cy - ?) * (cy - ?)) FROM village_buildings WHERE village_id = ?)');
 // ★[T284] 발자국이 있는 행만(집·의뢰집·쉼터·곳간) — 전쟁 콜라이더 색인용. 마을 한 곳 전체 행(농지 포함 ~5천)을 읽으면
 //   51마을에 ~300ms 라 교전마다 틱이 멎는다(실측 · 보고/T284 §0-ⓓ). village_id 색인을 탄다.
 const stmtGetVillageStructRows = db.prepare("SELECT type, cx, cy FROM village_buildings WHERE village_id = ? AND type IN ('house','phouse','shelter','granary')");
@@ -761,7 +762,7 @@ function getTerrContestOwners() {
     "SELECT cx, cy, village_id FROM village_buildings WHERE id IN (SELECT MIN(id) FROM village_buildings WHERE type = 'terr' GROUP BY cx, cy HAVING COUNT(DISTINCT village_id) > 1)");
   return _stmtTerrContest.all();
 }
-function getVillageFarthest(villageId, ccx, ccy) { return stmtVbFar.all(villageId, ccx, ccy); }
+function getVillageFarthest(villageId, ccx, ccy) { return stmtVbFar.all(villageId, ccx, ccx, ccy, ccy, ccx, ccx, ccy, ccy, villageId); }   // [T1176] 순번 인자 — 질의 속 `?` 순서대로
 function getVillageFarmInCellRect(cx0, cx1, cy0, cy1) { return stmtGetVillageFarmInCellRect.all(cx0, cx1, cy0, cy1); }
 
 console.log(`[${ZONE_ID}/db] 로컬 zone DB 준비됨: ${DB_PATH}`);

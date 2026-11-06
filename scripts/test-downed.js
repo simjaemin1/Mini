@@ -913,6 +913,9 @@ const isWildSpot = (x, y) =>
         const g = SimVillages.villageByDbId(v.id);
         if (!sh || !g || !g._terrSet || !g._terrSet.size) continue;
         p.member = { vid: v.id | 0, zone: process.env.ZONE_ID };
+        //   [T1175] T1137(`3f7466ac` · 켬 기본 `T1137_MEMBER_OPEN`) — 영토 안 집터는 **인정 구성원**(기여 ≥ `N_MEMBER`)만. 정본 계량기(온보딩 `contrib`)를 그 수로 채워 세운다(규칙 무변).
+        { const _Mb = require(path.join(__dirname, '..', 'server', 'membership.js')), _Onb = require(path.join(__dirname, '..', 'server', 'onboarding.js'));
+          const _st = _Onb.stateOf(p.playerId); if ((_st.contrib | 0) < _Mb.CFG.N_MEMBER) _st.contrib = _Mb.CFG.N_MEMBER; }
         for (const key of g._terrSet) {
           const [cx, cy] = key.split(',').map(Number);
           if (Math.hypot(cx - v.cx, cy - v.cy) < 4) continue;

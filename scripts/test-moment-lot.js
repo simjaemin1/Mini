@@ -331,7 +331,8 @@ if (process.env.T732_SUB === 't748') {
     out.lots = Lots.stats();
   } catch (e) { out.err = String(e && e.stack || e); }
   console.log = _log;
-  console.log(JSON.stringify(out));
+  //   [T1175] 맥은 파이프 stdout 이 비동기라 `console.log` 뒤 바로 `process.exit` 하면 8KB 넘는 줄이 잘린다(⑨⑦ JSON 깨짐 · 리눅스 상자는 동기라 안 보였다) — 동기로 쓴다(글자 같음)
+  require('fs').writeSync(1, JSON.stringify(out) + '\n');
   process.exit(0);
 }
 
@@ -749,7 +750,10 @@ say('\n⑩ [T748] 거래소 받기 — 열량 짝(꺼내기 · 게시판 보상�
   //     '계획 단위 → 낱개' 셈(`avg × 낼 것`)은 낼 것 6 이 재고 상한에 안 걸린 판의 식이다 — 시드 7 · 마을 5 의 200날은 켬 기본 세계에서 마을0 이
   //     돌을 내고 고기를 받아 상한에 걸린다(낼 것 6 → 실행 1). 둘레 날(100 ~ 300)에서 상한이 걸리는 날은 두 세계가 서로 다르다 — 250날은
   //     두 세계(켬 기본 · 되돌림 `=0`) 다 안 걸리고 245 · 255날도 두 세계 다 선다(보고 T955 §1 · 둘레 표 `계측/T955_픽스처둘레_2026-10-27.json`).
-  const T0 = sub748('trade', {}, true, { T748_TK: '0' }), T1 = sub748('trade', {}, true, { T748_TK: '1' });
+  //   ★[T1175] 그 뒤 켬 기본이 된 T474(`T474_CARAVAN_WALK`) · T1147(`T1134_HAPPY_TARGET`)이 이 세계를 갈라 250날에 다시 상한에 걸렸다(계획 68.27단위 → 실행 39개 · ⑩ 낱개 ✗).
+  //     둘 중 **하나만** 끄도 250날이 상한 밖으로 돌아간다(둘 다 실측 107/0) — T955 가 고른 픽스처 세계로 둘 다 묶는다(단언 무변).
+  const T1175_PIN = { T474_CARAVAN_WALK: '0', T1134_HAPPY_TARGET: '0' };
+  const T0 = sub748('trade', {}, true, Object.assign({ T748_TK: '0' }, T1175_PIN)), T1 = sub748('trade', {}, true, Object.assign({ T748_TK: '1' }, T1175_PIN));
   const a = (T0.trade || {}), b = (T1.trade || {});
   ok(!T0.err && !T1.err && a.res && a.res === b.res && a.give === b.give && a.kcal > 0 && Math.abs(a.kcal - a.DAY) > 1, '⑩ [상황] 두 판 — 낱개 열량이 하루치와 다른 식량을 받는다(같은 것을 내고)', `${a.give} → ${a.res}(${a.kcal}kcal · 하루치 ${a.DAY})`);
   const A0 = a.a || {}, A1 = b.a || {};

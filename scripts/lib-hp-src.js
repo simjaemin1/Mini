@@ -57,7 +57,8 @@ const SPECS = {
   npc: {
     name: '마을 NPC 몸 hp', file: 'server/villages.js', door: /\nfunction setHp\(p, v, why\) \{/, doorName: '`setHp(p, v, why)`',
     fwd: 'function _setHp(p, v, why) { return state.deps.setHp(p, v, why); }',
-    unit: ['bu', 'A[i]'], calls: 9, whys: ['captive', 'died', 'regen', 'release', 'restore', 'starve', 'war'],
+    unit: ['bu', 'A[i]'], calls: 11,   // [T1174/T1175] T1108(`a58682d7` · 해체 걷기 길 위 하루)이 문을 부르는 자리 둘(`starve` · `died`)을 보탰다 — 9 → 11(낱말 일곱 그대로)
+    whys: ['captive', 'died', 'regen', 'release', 'restore', 'starve', 'war'],
   },
 };
 
@@ -218,7 +219,7 @@ function npcSourceChecks(ok, srcs, head) {
   H('\n③ 문을 부르는 자리');
   const PEER = setOf(ZSRC, 'HP_PEER'), QUIET = setOf(ZSRC, 'HP_QUIET');
   const calls = npcDoorCalls(VSRC), whys = [...new Set(calls.map((c) => c.why))].sort();
-  ok(calls.length === N.calls, '★③ 문을 부르는 자리 아홉(요양 · 전쟁 거울 · 포로 · 풀림 · 원정 굶음 둘 · 원정 굶어 죽음 · 그 자리 죽음 · 다시 뜬 판 복원)', `${calls.length} — ${calls.map((c) => c.why).join(' · ')}`);
+  ok(calls.length === N.calls, '★③ 문을 부르는 자리 열하나(요양 · 전쟁 거울 · 포로 · 풀림 · 원정 굶음 둘 · 원정 굶어 죽음 · 그 자리 죽음 · 다시 뜬 판 복원 · 해체 걷기 굶음 · 해체 걷기 죽음)', `${calls.length} — ${calls.map((c) => c.why).join(' · ')}`);
   ok(JSON.stringify(whys) === JSON.stringify(WANT), '★③ 낱말 일곱 — 자리마다 그 일의 이름', whys.join(' · '));
   ok(!!PEER && PEER.length > 0 && whys.every((w) => !PEER.includes(w)), '★★③ 방송 낱말(`HP_PEER`)과 겹침 0 — 마을 몸 hp 는 방송되지 않는다(종전 그대로)', PEER ? `HP_PEER ${PEER.join(',')}` : '표 못 읽음');
   ok(!!QUIET && QUIET.includes('regen'), '★③ 요양 회복은 조용한 낱말(`regen` — 사람 자연 회복과 같은 뜻 · 같은 낱말)');

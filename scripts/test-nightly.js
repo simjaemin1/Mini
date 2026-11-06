@@ -142,6 +142,42 @@ ok(/\| `e2e-cold` \|/.test(A), '`e2e-` 도 같은 자로 잰다');
   ok(/\| `이상한이름` \|/.test(D) && /상시 밖 빨강 1건\*\*/.test(D), '★`test-`·`e2e-` 어느 쪽도 아닌 이름도 그대로 센다', '이상한이름');
 }
 
+console.log('\n=== ⑤b [T1177] 이어 돌기 — 끊긴 판을 같은 로그에서 남은 것만 ===');
+{
+  const LISTR = ['test-a.js', 'test-b.js', 'test-c.js', 'test-d.js'];
+  const headR = [L(4, 0, '===== nightly-run 시작 · TZ=Asia/Seoul · base=deadbeef ====='), L(4, 0, `  [오늘] 묶음 A · ${LISTR.length}종`), L(4, 0, `  [목록] ${LISTR.join(' ')} `)];
+  const cutPart = [...headR, ...block(4, 10, 'test-a.js', true, []), L(4, 20, '##### test-b.js #####')];   // 컨테이너가 test-b 도중에 죽었다
+  const fCut = path.join(TMP, 'resume-cut.log'); fs.writeFileSync(fCut, cutPart.join('\n') + '\n');
+  const done1 = execFileSync(process.execPath, [REPORT, '--done', fCut], { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+  ok(JSON.stringify(done1) === JSON.stringify(['test-a.js']), '★--done — 판정이 난 것만(끊긴 test-b 는 안 든다)', done1.join(' '));
+  const fRes = path.join(TMP, 'resume-full.log');
+  fs.writeFileSync(fRes, [...cutPart, L(6, 0, '===== nightly-run 이어서 · 줄 1 의 판 · TZ=Asia/Seoul · base=deadbeef ====='),
+    ...block(6, 1, 'test-b.js', true, []), ...block(6, 10, 'test-c.js', false, ['① 틀렸다']), ...block(6, 20, 'test-d.js', true, []), L(6, 30, '===== 본 판 끝 ====='), L(6, 31, '===== nightly-run 끝 =====')].join('\n') + '\n');
+  const outR = path.join(TMP, 'resume.md');
+  run(['--log', fRes, '--base', 'deadbeef', '--out', outR, '--known', path.join(TMP, 'none.txt'), '--prev-dir', TMP]);
+  const md = fs.readFileSync(outR, 'utf8');
+  ok(/돈 것 \*\*4\*\* · 통과 \*\*3\*\* · 실패 \*\*1\*\* · 끊김 \*\*0\*\* · 미측정 \*\*0\*\*/.test(md), '★★이어 돈 밤 — 끊긴 test-b 를 뒤 판이 메웠다(한 하네스 한 줄 · 끊김 0 · 미측정 0)', (md.split('\n').find((l) => l.includes('돈 것')) || '').slice(0, 120));
+  ok(/이어 돌기 \*\*1번\*\*\(06:00\)/.test(md), '★이어 돈 횟수 · 시각을 머리에 적는다', (md.split('\n').find((l) => l.includes('이어 돌기')) || '없음').slice(0, 80));
+  const outC = path.join(TMP, 'resume-cut.md');
+  run(['--log', fCut, '--base', 'deadbeef', '--out', outC, '--known', path.join(TMP, 'none.txt'), '--prev-dir', TMP]);
+  const mdC = fs.readFileSync(outC, 'utf8');
+  ok(/끊김 \*\*1\*\* · 미측정 \*\*2\*\*/.test(mdC) && !/이어 돌기/.test(mdC), '자명 통과 금지 — 이어 돌지 않은 로그는 종전 그대로(끊김 1 · 미측정 2 · 이어 돌기 줄 없음)', (mdC.split('\n').find((l) => l.includes('돈 것')) || '').slice(0, 120));
+  //   러너 쪽(`nightly-run.sh`)은 bash 4 이상(`printf '%(…)T'` · 연관 배열)에서만 잰다 — 맥 기본 bash 3.2 면 건너뛴다(안 잰 것을 쟀다고 안 쓴다)
+  let bv = 0; try { bv = parseInt(execFileSync('bash', ['-c', 'echo ${BASH_VERSINFO[0]}'], { encoding: 'utf8' }), 10) || 0; } catch (e) {}
+  if (bv >= 4) {
+    const d = path.join(TMP, 'resume-run'); fs.mkdirSync(d, { recursive: true });
+    const today = execFileSync('bash', ['-c', "TZ=Asia/Seoul printf '%(%Y-%m-%d)T' -1"], { encoding: 'utf8' }).trim();
+    const fix = cutPart.map((l) => today + l.slice(10));
+    const LOGR = path.join(d, 'regress.log'); fs.writeFileSync(LOGR, fix.join('\n') + '\n');
+    const o = execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-run.sh')], { cwd: ROOT, encoding: 'utf8', env: Object.assign({}, process.env, { LOG: LOGR, NIGHT_DRY: '1', NIGHT_TZ: 'Asia/Seoul' }), stdio: ['ignore', 'pipe', 'pipe'] });
+    const lg = fs.readFileSync(LOGR, 'utf8');
+    ok(o.trim().split('\n').slice(0, 3).join(' ') === 'test-b.js test-c.js test-d.js', '★★nightly-run 이어 돌기 — 남은 셋만(끊긴 test-b 부터 · 목록 순서)', o.trim().split('\n').slice(0, 3).join(' '));
+    ok((lg.match(/===== nightly-run 시작/g) || []).length === 1 && /===== nightly-run 이어서/.test(lg), '★새 `시작` 줄을 안 찍는다(`이어서` 줄 — 한 밤 한 보고)');
+    const o0 = execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-run.sh')], { cwd: ROOT, encoding: 'utf8', env: Object.assign({}, process.env, { LOG: LOGR + '.0', NIGHT_DRY: '1', NIGHT_RESUME: '0', NIGHT_LIST: 'test-x.js' }), stdio: ['ignore', 'pipe', 'pipe'] });
+    ok(/test-x\.js/.test(o0) && !/test-b\.js/.test(o0), '자명 통과 금지 — NIGHT_RESUME=0 · NIGHT_LIST 면 종전 길(이어 돌지 않는다)');
+  } else console.log(`  · [건너뜀] nightly-run 이어 돌기 실행 — bash ${bv} (4 이상 필요 · 상자 bash 에서 잰다)`);
+}
+
 console.log('\n=== ⑥ nightly-run.sh — 두 개가 뜨면 둘째가 죽는다 ===');
 {
   // 하네스가 전부 central 3010 · zone 3020 을 쓴다(러너 머리 ②). 두 개가 돌면 `EADDRINUSE` 가
