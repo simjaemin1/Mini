@@ -13480,7 +13480,7 @@ function t1197Kill(v, p, body) {
 // 날 경계 — 지난 하루(날 머리 `day − 1` ~ `day`)를 친다: 끼니 둘(몸이 이미 먹은 끼니는 건너뜀) · 남은 시간 흘림 · 빚 거울 · 적응 · 회복.
 function t1197Day(v, day) {
   const M = _t1197(); const d0 = day - 1, d1 = day;
-  v._t1197Dead = null;   // 그날 굶어 죽은 사람 목록(호스트가 날 경계 뒤 읽는다)
+  v._t1197Dead = null; v._t1198Gone = null;   // 그날 빠진 사람 목록(호스트가 날 경계 뒤 읽는다)
   { const fe = v._foodEaten || (v._foodEaten = {}), b = v._t1197Body; for (const r in fe) fe[r] = 0; if (b) for (const r in b) fe[r] = (fe[r] || 0) + b[r]; v._t1197Body = null; }   // 몸 끼니가 그날 식단의 앞 몫
   const E = _fdEaters(v), eat = new Set(E);
   for (const p of v.npcs) { _t1197Init(p, d0); if (!eat.has(p) && p._mD < d1) p._mD = d1; }   // 원정 팩 병사 — 시간은 흐르되 게이지는 제 짐(T906)이 정한다
@@ -13504,6 +13504,25 @@ function t1197Day(v, day) {
   return { need, short };
 }
 function t1197DieDays() { const M = _t1197(); return M ? M.dieDays : FD_DEATH_DAYS; }   // 굶어 죽기까지 날(켬 = 몸 정본에서 유도 · 끔 = 14)
+const T1198_BIRTH_BODY = T1197_MEAL_BODY && !(typeof process !== 'undefined' && process.env && process.env.T1198_BIRTH_BODY === '0');
+// ════════════════════════════════════════════════════════════════
+// ★★[T1198 2026-11-06 · 추상 걷기 D · ★재민 11-05] **출생 = 집의 짝 곁 몸 · 명부 ↔ 몸 1:1** — 손잡이 `T1198_BIRTH_BODY`(켬 기본 · `=0` 만 끔 = 종전 바이트 · T1197 끔이면 안 선다).
+//   종전: 출생 = θ-로지스틱 누적 ≥ 1 이면 `createNPC`(부모 무관) · 몸은 서버가 하루 ±2(`POP_SYNC_PER_DAY`)로 econ 수를 따라 스폰(사람과 몸 사이 짝 0).
+//   켬(econ 쪽):
+//     ① 아이를 가질 수 있는 집 = 침상 있는 집(주거 상한 ÷ 채당 정원 — `hutCapPerHut` 정본) 가운데 사는 사람이 둘 이상인 집.
+//        사는 곳 = 명부 차례로 채당 정원씩(원정 팩 병사 제외 · 몸 층의 집 배정 `spawnOneNpc` 이 명부 자리로 집을 고르는 그 꼴).
+//     ② 출생 누적(`_dPAccum`)은 그 집 수를 넘지 않고 · 한 집에 하루 한 아이 · 아이의 부모 칸 `_pa` = 그 집 첫 사람 · `_born` = 그날(호스트가 그 몸 곁에 아이 몸을 세운다).
+//        어느 집부터 = 날 % 집 수(차례 돌림 · 주사위 0).
+//     ③ 로지스틱 음수로 빠진 사람(가장 늙은 이 — 나이 칸 그대로)의 id 를 `_t1198Gone` 에 싣는다(호스트가 **그 사람의 몸**을 그 자리에서 눕힌다).
+function _t1198Houses(v, hcap, day) {
+  const per = hutCapPerHut(); if (!(per > 0)) return null;
+  const E = v.npcs.filter((p) => !(p._warPack && p._warDraft));
+  const bedHouses = hcap === Infinity ? Infinity : Math.floor(hcap / per);
+  const out = [];
+  for (let h = 0; h * per < E.length && h < bedHouses; h++) if (Math.min(per, E.length - h * per) >= 2) out.push(E[h * per]);
+  if (out.length > 1) { const k = ((day | 0) % out.length + out.length) % out.length; return out.slice(k).concat(out.slice(0, k)); }
+  return out;
+}
 // ★★[T1075 2026-11-02 · ★재민 11-02] **행복 = 평형 회귀(배너로드식) · 굶주림 평형 · 사망 계단** — 손잡이 `T1075_HAPPY_EQ`(**기본 끔** · `=1` 만 켬 · 끔 = 종전 바이트).
 //   재민 11-02: 마운트앤블레이드 배너로드의 안보 · 충성도처럼 "현재가 높으면 기본 변화량이 마이너스, 낮으면 플러스" · 굶는 동안 평형을 내려
 //   낮은 행복을 유지 · 기아 사망자가 생기면 계단으로 뚝 · 이후 아주 천천히 회복.
@@ -16981,6 +17000,10 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
 
   // 6) 인구 적용 — 정수 단위. 분수는 누적해서 처리.
   v._dPAccum = (v._dPAccum || 0) + dP;
+  // ★[T1198 ①②] 켬 = 출생 누적은 아이를 가질 수 있는 집 수를 넘지 않는다(한 집 하루 한 아이) · 끔 = null = 종전 줄
+  const _t98 = (T1198_BIRTH_BODY && _t1197()) ? _t1198Houses(v, _hcap, day) : null;
+  let _t98k = 0;
+  if (_t98 && v._dPAccum > _t98.length) v._dPAccum = _t98.length;
   while (v._dPAccum >= 1) {
     // 인구 cap — N² 폭발 방지
     if (v.npcs.length >= POP_MAX) {
@@ -17001,7 +17024,9 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       v._dPAccum = Math.min(v._dPAccum, 0.9);
       break;
     }
+    if (_t98 && _t98k >= _t98.length) { v._dPAccum = Math.min(v._dPAccum, 0.9); break; }   // ★[T1198] 아이를 가질 집이 다 찼다
     const npc = createNPC({ job: newJob, inheritSkill: apprenticeInherit(v, newJob) });   // ★S4 명장 견습(세대 전승)
+    if (_t98) { npc._pa = _t98[_t98k++].id; npc._born = day; }   // ★[T1198 ②] 그 집 짝 곁에서 선다(호스트가 부모 몸 곁에 세운다)
     v.npcs.push(npc);
     v.counts[newJob] = (v.counts[newJob] || 0) + 1;
     v._dPAccum -= 1;
@@ -17047,6 +17072,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     if (!T1074_FOOD_DEBT) _t1075Starved(v, v.npcs.length);   // ★[T1075 ③] 빚 판이 아니면 이 고리가 기근 길이다(빚 판에선 굶어 죽음 = 빚 죽음 · 끔 = 무동작)
     const dead = v.npcs.splice(oldestIdx, 1)[0];
     v.counts[dead.currentJob] = (v.counts[dead.currentJob] || 0) - 1;
+    if (T1198_BIRTH_BODY && _t1197()) (v._t1198Gone || (v._t1198Gone = [])).push(dead.id);   // ★[T1198 ③] 그 사람의 몸이 눕는다(호스트)
     v._dPAccum += 1;
   }
   // ★[T924] 켬 = 고리가 몸이 없어 멈춘 날(빚이 −1 아래로 남았는데 사람은 있다 = 남은 사람이 다 징발 중) 못 치른 몫을 넘기지 않는다 — 출생 줄의 `0.9` 거울(끔 = 종전 바이트)
@@ -18812,6 +18838,7 @@ module.exports = {
   T1075_HAPPY_EQ, HAPPY_EQ_HALF_DAYS,
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
   foodDebtOf, T1074_FOOD_DEBT,   // ★[T1074] 식량 빚 읽는 함수 하나(T1075 가 읽는다)
+  T1198_BIRTH_BODY, _t1198Houses,   // ★[T1198] 출생 = 집 짝 곁 · 명부 ↔ 몸 1:1 — 호스트 · 하네스
   T1197_MEAL_BODY, NPC_HP_DAY, npcRegenMul, t1197Advance, t1197Meal, t1197Kill, t1197Day, t1197DieDays, __t1197: () => _t1197(),   // ★[T1197] 몸 게이지 끼니 — 호스트(몸 끼니 · 몸 흘림 · 그 자리 죽음) · 하네스가 같은 함수를 부른다
   __t1074: { _fdEaters, _fdNeed, _fdSettle, _fdDeathIdx, FD_ADAPT_MAX, FD_ADAPT_DOWN_DAYS, FD_ADAPT_UP_DAYS, FD_DEATH_DAYS, FD_REPAY_MAX, T1117_FD_EVID },   // 하네스 훅(test-t1074-food-debt)
   T860_ON, CATCH_FROM, PRESERVE_FROM, _preserveSurplus, _t860Begin, _t860Dry, T877_ON, _t860Unit, PRESERVED_FOODS, PRESERVE_YIELD, PRESERVE_FOOD_FACTOR, FORAGE_FOOD_FACTOR,   // ★[T860] 잡은 날 말리기 — 손잡이 · 잡은 칸 표(하네스가 spoil 정본과 대조한다 · 사본 0) · 갈무리 한 걸음

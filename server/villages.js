@@ -1480,6 +1480,11 @@ function _bxObserve(vil) {
     for (const id of ids) { if (_t1197DieBody(vil, id)) dd--; else lone++; }
     if (lone > 0) { noteBodyExit(vil, 'starve', lone); dd -= lone; }
   }
+  if (dd > 0 && e._t1198Gone && e._t1198Gone.length && _t1198On()) {   // ★[T1198] 켬 = 늙어(로지스틱 음수) 빠진 **그 사람**의 몸이 눕는다 · 몸 없는 사람은 까닭 줄 `old`
+    const ids = e._t1198Gone.slice(0, dd); let lone = 0;
+    for (const id of ids) { if (_t1197DieBody(vil, id, 'old')) dd--; else lone++; }
+    if (lone > 0) { noteBodyExit(vil, 'old', lone); dd -= lone; }
+  }
   if (dd > 0) noteBodyExit(vil, villageFamine(vil) ? 'starve' : 'old', dd);
   if (dk > 0) noteBodyExit(vil, 'road', dk);
   vil._bxSeen.dead = dead; vil._bxSeen.kill = kill;
@@ -1501,7 +1506,7 @@ function _t1197Ix(v) {   // id → 사람(날마다 · 못 찾으면 다시 굽�
 function _t1197Person(vil, p) {
   const v = vil && vil.econ; if (!v || !v.npcs) return null;
   const m = _t1197Ix(v);
-  if (p._econId != null) { const q = m.get(p._econId); if (q) return q; p._econId = null; }
+  if (p._econId != null) { const q = m.get(p._econId); if (q) return q; if (_t1198On()) return null; p._econId = null; }   // ★[T1198] 켬 = 짝 잃은 몸은 다시 짝짓지 않는다(날 경계 동기가 그 까닭으로 내보낸다)
   const players = state.deps.players, taken = new Set();
   for (const pid of vil.npcPids) { const b = players.get(pid); if (b && b !== p && b._econId != null) taken.add(b._econId); }
   for (const q of v.npcs) { if (q._warPack && q._warDraft) continue; if (!taken.has(q.id)) { p._econId = q.id; return q; } }
@@ -1531,19 +1536,75 @@ function _t1197BodyMeal(vil, npc, k, now) {
   return true;
 }
 // ⓒ 굶어 죽은 그 사람의 몸
-function _t1197DieBody(vil, id) {
-  const players = state.deps.players;
+function _t1197DieBody(vil, id, k) {   // ★[T1198] `k` = 까닭(없으면 굶음) — 늙어 죽은 그 사람의 몸도 같은 문
+  const players = state.deps.players, why = k || 'starve';
   for (let i = 0; i < vil.npcPids.length; i++) {
     const p = players.get(vil.npcPids[i]);
     if (!p || p._econId !== id || p._muster || p._bxExit) continue;
     vil.npcPids.splice(i, 1);
     if (T822_BODY_SEED) _t822Rekey(vil, i);
-    _bxDie(vil, p, { k: 'starve' });
-    _t1197Stat.bodyDied++;
+    _bxDie(vil, p, { k: why });
+    if (why === 'starve') _t1197Stat.bodyDied++; else _t1198Stat.oldDied++;
     return true;
   }
-  _t1197Stat.loneDied++;
+  if (why === 'starve') _t1197Stat.loneDied++; else _t1198Stat.oldLone++;
   return false;
+}
+// ═══ ★★[T1198 2026-11-06 · 추상 걷기 D] **출생 = 집의 짝 곁 몸 · 명부 ↔ 몸 1:1** ═══════════════
+//   손잡이 = econ `T1198_BIRTH_BODY`(같은 글자 · 켬 기본 · T1197 끔이면 안 선다 · 끔 = 이 문들이 아무것도 안 한다 = 종전 바이트).
+//   종전: 몸 수가 econ 수를 하루 ±2(`POP_SYNC_PER_DAY`)로 따라갔다 — 늘 땐 집 자리에 무에서 · 줄 땐 까닭 줄의 차례 몸(사람과 몸 사이 짝 0).
+//   켬(`_t1198Sync` — 날 경계 동기의 그 자리):
+//     ⓐ 몸마다 그 사람(T1197 짝 `_econId`) — 그 사람이 명부에 없으면 그 몸이 그 까닭으로 나간다(굶음 · 늙음은 날 경계 목록 그대로 그 몸 · 그 밖 = 까닭 줄 머리 · T590 ⓐⓑⓒ 문).
+//     ⓑ 몸 없는 사람 — 그날 난 아이(econ `_born` · `_pa`)는 **부모 몸 곁**에 바로 선다(그 집 · 그 침상) · 그 밖은 집 자리(`spawnOneNpc` 그대로).
+//     ⓒ 하루 상한이 없다(따라가기 걷기) — 사람이 있으면 몸이 있고 없으면 없다(가시 몸 상한 `NPC_CAP_PER_VILLAGE` 안에서) · 직업 = 그 사람 직업.
+//   늙음 = 나이 칸(econ `age` — 날마다 1/365 · 로지스틱 음수가 고르는 가장 늙은 이) · 몸 칸 `age` 는 그 거울(따로 늙지 않는다).
+function _t1198On() { const E = _lifeEcon(); return !!(E.T1198_BIRTH_BODY && _t1197On()); }
+const _t1198Stat = { born: 0, bornBeside: 0, bornHome: 0, spawned: 0, orphan: 0, oldDied: 0, oldLone: 0, jobs: 0 };
+function _t1198Sync(vil, cap) {
+  const players = state.deps.players, v = vil.econ, m = _t1197Ix(v);
+  // ⓐ 짝 잃은 몸
+  for (let i = vil.npcPids.length - 1; i >= 0; i--) {
+    const p = players.get(vil.npcPids[i]);
+    if (!p || p._muster || p._bxExit) continue;
+    const q = p._econId != null ? m.get(p._econId) : _t1197Person(vil, p);   // 짝 잃은 몸은 다시 짝짓지 않는다 · 짝 없던 몸(재기동 · 첫 동기)은 짝을 짓는다
+    if (q && vil.npcPids.length <= cap) continue;
+    vil.npcPids.splice(i, 1);
+    if (T822_BODY_SEED) _t822Rekey(vil, i);
+    const w = _bxTake(vil);
+    _t1198Stat.orphan++;
+    if (BX_CAT[w.k] === 'died') _bxDie(vil, p, w); else _bxWalk(vil, p, w);
+  }
+  // ⓑ 몸 없는 사람
+  const linked = new Map();
+  for (const pid of vil.npcPids) { const p = players.get(pid); if (p && p._econId != null) linked.set(p._econId, p); }
+  for (const q of v.npcs) {
+    if (vil.npcPids.length >= cap) break;
+    if (linked.has(q.id) || (q._warPack && q._warDraft)) continue;
+    const p = spawnOneNpc(vil);
+    p._econId = q.id; linked.set(q.id, p);
+    _t1198Stat.spawned++;
+    if (q._born != null && q._born >= (state.world.day | 0)) {   // 그날 난 아이 — 부모 몸 곁 · 그 집 · 그 침상
+      _t1198Stat.born++;
+      const pa = q._pa != null ? linked.get(q._pa) : null;
+      if (pa && !pa._bxExit) {
+        const x = pa.x + SZ / 2, y = pa.y;
+        if (T1145_XY_COLS) BC.w(p, x, y); else { p.x = x; p.y = y; }
+        p.npcHomeX = pa.npcHomeX; p.npcHomeY = pa.npcHomeY; p.npcBedX = pa.npcBedX; p.npcBedY = pa.npcBedY;
+        _t1198Stat.bornBeside++;
+      } else _t1198Stat.bornHome++;
+    }
+  }
+  for (const pid of vil.npcPids) { const p = players.get(pid); const q = p && p._econId != null ? m.get(p._econId) : null; if (q) p.age = q.age; }   // 나이 칸 거울
+}
+// ⓒ 직업 = 그 사람 직업(분포 동기 대신) — 바뀐 몸만 알린다
+function _t1198Jobs(vil, changedOut) {
+  const players = state.deps.players, m = _t1197Ix(vil.econ);
+  for (const pid of vil.npcPids) {
+    const p = players.get(pid); const q = p && p._econId != null ? m.get(p._econId) : null;
+    if (!q || p.simJob === q.currentJob) continue;
+    p.simJob = q.currentJob; _t1198Stat.jobs++;
+    if (changedOut) changedOut[p.pid] = q.currentJob;
+  }
 }
 const _t1197Stat = { meals: 0, bodyDied: 0, loneDied: 0 };
 function _bxTake(vil) {   // 까닭 줄 머리에서 한 사람 몫(없으면 `unknown`)
@@ -2107,6 +2168,7 @@ function syncVillagePop(vil, maxDelta) {
   _bxObserve(vil);   // ★[T590] econ 이 줄인 까닭(읽기만)
   const _t1041W = T1041_WAR_BODY && _t1041InWar(vil);   // ★[T1041 ⓑ] 끔이면 거짓(종전 두 줄 그대로)
   const target = Math.min(vil.econ.npcs.length, _t1041W ? Infinity : NPC_CAP_PER_VILLAGE);
+  if (_t1198On()) { _t1198Sync(vil, _t1041W ? Infinity : NPC_CAP_PER_VILLAGE); if (vil._bxQ && vil._bxQ.length) { for (const h of vil._bxQ) _bx.trimmed += h.n; vil._bxQ.length = 0; } return; }   // ★[T1198] 켬 = 명부 ↔ 몸 1:1(하루 상한 없음 · 위 머리글) · 남은 까닭은 버린다(종전 꼬리 줄과 같은 뜻)
   let delta = target - vil.npcPids.length;
   if (delta > 0) for (let i = 0; i < Math.min(delta, _t1041W ? Infinity : maxDelta); i++) spawnOneNpc(vil);
   else if (delta < 0) for (let i = 0; i < Math.min(-delta, maxDelta); i++) { if (!removeOneNpc(vil, _bxTake(vil))) break; } // 남은 게 전부 _muster면 중단(reconverge는 종전 후)
@@ -2122,6 +2184,7 @@ function syncVillagePop(vil, maxDelta) {
 //   · changedOut(pid→job)에 변경분 축적 — 호출부가 게임일 1회 sim_village_day로 브로드캐스트.
 // =============================================================================
 function syncVillageJobs(vil, changedOut) {
+  if (_t1198On()) { _t1198Jobs(vil, changedOut); return; }   // ★[T1198] 켬 = 몸 직업 = 그 사람 직업
   const players = state.deps.players;
   const pids = vil.npcPids.filter(pid => players.has(pid));
   const n = pids.length;
@@ -9244,7 +9307,7 @@ function __p3Bind(mock) {
     state, tickWarBodies, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
     T1063_TERR_BUILD, _t1063Bnd, _t1063DayBnd, _t1063Msg, territoryBoundary,   // ★[T1063] 화면 영토 = 서버 영토(하네스 `test-t1063-terr-draw` 가 운영과 같은 문을 부른다)
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
-    t1197BodyStep, _t1197Person, _t1197BodyMeal, _t1197DieBody, _t1197Stat, _t1197On, econDayToMs,   // ★[T1197] 몸 게이지 끼니 문(하네스 `test-t1197-meal-body` 가 운영과 같은 문을 부른다)
+    t1197BodyStep, _t1197Person, _t1197BodyMeal, _t1197DieBody, _t1197Stat, _t1197On, econDayToMs, _t1198Sync, _t1198Jobs, _t1198Stat, _t1198On, syncVillageJobs,   // ★[T1197] 몸 게이지 끼니 문(하네스 `test-t1197-meal-body` 가 운영과 같은 문을 부른다)
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
     _oreMineDaily, T1095_MINE_DEMAND, _t1095Stat,   // ★[T1095] 채굴 일괄 수요 문 — 하네스(`test-t1095-mine-demand`)가 운영과 같은 문을 부른다(내보내기만)
     _t1039Depart, _t1039Join, _t1039Leave,   // ★[T1039] 도적 전환 몸 문 셋(하네스 `test-bandit-body` 가 운영과 같은 문을 부른다)
@@ -15932,7 +15995,8 @@ module.exports = { t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify
   playerVillageWithdraw, playerVillageWithdrawStock, villageWithdrawGate,   // ★[T11] 곳간 인출 — 납품의 역연산(같은 표·같은 환산율)
   villageNear: _villageNear,   // ★[T1132] 회관 패널 보기 · 기부 = 마을 화면 · 게시판 · 거래소와 같은 술어 하나(260px · 함수 그대로 — 사본 0)
   bodyExitStats, noteBodyExit, tickBodyExits,   // ★[T590] 줄어드는 몸 — 판 자(`t577-server-hook`)가 까닭별 수를 읽는다 · 하네스가 같은 문을 부른다
-  t1197BodyStep, __t1197: { person: _t1197Person, meal: _t1197BodyMeal, dieBody: _t1197DieBody, stat: _t1197Stat, on: _t1197On },   // ★[T1197] 몸 게이지 — 존 `_gaugeStep` 이 흘림을 부른다 · 하네스가 같은 문을 부른다
+  t1197BodyStep, __t1197: { person: _t1197Person, meal: _t1197BodyMeal, dieBody: _t1197DieBody, stat: _t1197Stat, on: _t1197On },
+  __t1198: { sync: _t1198Sync, jobs: _t1198Jobs, stat: _t1198Stat, on: _t1198On },   // ★[T1198] 명부 ↔ 몸 1:1 — 판 자가 셈을 읽는다   // ★[T1197] 몸 게이지 — 존 `_gaugeStep` 이 흘림을 부른다 · 하네스가 같은 문을 부른다
   t1039Stat: () => JSON.parse(JSON.stringify(_t1039Stat)),   // ★[T1039] 도적 전환 몸 증인(관찰기 `t1039-observe` · 하네스)
   t1078Life: (npc, now) => _t1078Life(npc, now),   // ★[T1078] 도적 단원 몸의 은거지 곁 일과(존 `decideNpcBehavior` 가 `_bdtGid` 가 선 몸에만 부른다 · 관찰기가 감싼다)
   t1039Exits: () => state.bodyExits || null,   // ★[T1039] 줄어드는 몸 기록(읽기만 — 관찰기가 은거지로 걷는 몸을 단마다 센다)
