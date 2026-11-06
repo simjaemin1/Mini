@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @regress
 'use strict';
+for (const k of ['T312_FISH_ACT','T325_WOOD_ACT','T347_FORAGE_ACT']) if (process.env[k] == null) process.env[k] = '1';   // ★PM land1048: 생산 셋 끔 기본(켤 날 T1202) — 어부 귀환 길은 켬 판
 const assert=require('assert'),{spawnSync}=require('child_process'),path=require('path');let pass=0,fail=0;
 function test(n,f){try{f();pass++;console.log('PASS '+n);}catch(e){fail++;console.log('FAIL '+n+': '+e.stack);}}
 const close=(a,b,t=1e-6)=>assert(Math.abs(a-b)<t,`${a} != ${b}`);

@@ -397,12 +397,12 @@ console.log('\n=== [T66] 화면 규칙 B — 이모지 0 · 색은 토큰 하나
     }
     // ⓕ ★★알림 문장 — 두 정본에서 조립된다. `zone.js` 의 그 줄을 **소스에서 읽어** 같은 꼴로 만든다.
     {
-      const line = (src.match(/text: `🌰 \$\{T\.koOf\(sp\)\}에서 \$\{ITEM_LABEL_SERVER\[item\] \|\| item\} \$\{n\}`/) || [])[0];
+      const line = (src.match(/text: `🌰 \$\{T\.koOf\(sp\)\}에서 \$\{ITEM_LABEL_SERVER\[item\] \|\| item\} \$\{n\}개를 땄습니다\.`/) || [])[0];   // ★[T1190 · PM land1048] 알림은 하십시오체 문장(문 25 ㄱ)
       ok(!!line, '⑯ 전제: 채집 알림 줄을 `zone.js` 에서 찾았다(형식이 바뀌면 아래가 거짓이 된다)');
-      const sentence = `🌰 ${Trees.koOf('chestnut')}에서 ${ITEM_LABELS_CANON[Trees.fruitOf('chestnut')]} 4`;
-      ok(sentence === '🌰 밤나무에서 밤 4', '★★⑯ 「밤나무에서 밤 4」', sentence);
-      const s2 = `🌰 ${Trees.koOf('mulberry')}에서 ${ITEM_LABELS_CANON[Trees.fruitOf('mulberry')]} 4`;
-      ok(s2 === '🌰 산뽕나무에서 오디 4', '★⑯ 산뽕도 같다', s2);
+      const sentence = `🌰 ${Trees.koOf('chestnut')}에서 ${ITEM_LABELS_CANON[Trees.fruitOf('chestnut')]} 4개를 땄습니다.`;
+      ok(sentence === '🌰 밤나무에서 밤 4개를 땄습니다.', '★★⑯ 「밤나무에서 밤 4개를 땄습니다.」', sentence);
+      const s2 = `🌰 ${Trees.koOf('mulberry')}에서 ${ITEM_LABELS_CANON[Trees.fruitOf('mulberry')]} 4개를 땄습니다.`;
+      ok(s2 === '🌰 산뽕나무에서 오디 4개를 땄습니다.', '★⑯ 산뽕도 같다', s2);
       ok(!/[A-Za-z_]{3,}/.test(sentence.replace('🌰 ', '')) && !/[A-Za-z_]{3,}/.test(s2.replace('🌰 ', '')),
          '★⑯ 두 문장에 영문 키가 0(이 카드가 고친 그 증상)');
     }

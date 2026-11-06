@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @nightly C   ← ★PM land1048: 묶음 표식(없으면 매일 단위로 돌아 test-nightly ⑦ 중복)
 // === scripts/e2e-t1160-promote-key.js — **존을 넘어도 게스트 열쇠가 남는다 · 승계는 여전히 지운다** (T1160) ==================
 //
 // ★왜 [T1160 · T1092 회부 2 · 결함 · 급함] welcome 의 `promoted` 한 칸이 두 뜻이었다:

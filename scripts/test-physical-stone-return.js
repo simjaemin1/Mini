@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 'use strict';
+for (const k of ['T312_FISH_ACT','T325_WOOD_ACT','T347_FORAGE_ACT']) if (process.env[k] == null) process.env[k] = '1';   // ★PM land1048: 생산 셋 끔 기본(켤 날 T1202) — 이 하네스는 몸 길 켬 판을 잰다
+if (process.env.T561_ROSTER_BODY == null) process.env.T561_ROSTER_BODY = '0';   // ★PM land1048: T1183 이 T561 켬 기본 — 이 하네스의 "옛 T561/T904 끔" 칸은 끔 판
 process.env.ENABLE_VILLAGES='0';
 process.env.T1146_STONE_RULE='0';
 const assert=require('assert'),E=require('../sim/economy-sim'),V=require('../server/villages');
