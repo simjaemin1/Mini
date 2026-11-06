@@ -67,6 +67,8 @@
   window.__loadReport = _loadReport;   // ★[T920] 첫 접속 표 한 줄(00-const `_loadReport` · 보고/T920 맨 위)
   window.__lagReport = _lagReport;   // ★[T913] 렉 보고 한 줄(00-const `_lagReport` · 재민 Safari 콘솔 — 보고/T913 맨 위)
   window.__memLine = _memLine;   // ★[T926] 힙 · 캐시 한 줄만 따로(00-const `_memLine` · 렉 보고 글 끝 줄과 같은 것 — 30초 캡처 없이)
+  window.__hidpiDbg = _hidpiDbg;   // ★[T1193] 레티나 2배 손잡이 상태(00-const `_hidpiDbg` — 켬 · 배율 · 뒤판 · CSS 크기)
+  _t1193LagLink();   // ★[T1193] 주소 `lag=<초>` 면 들어간 뒤 렉 보고 표 + 복사 단추(재민 Safari 링크 · 00-const) — 주소에 없으면 아무 일도 안 한다
 // @@moved-end:491
 // @@moved-begin:600
   (async () => {

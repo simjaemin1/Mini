@@ -33,7 +33,12 @@
 //   ★[T997] --peak 이면 입장 뒤 산 청크 캐시(`_mt3Chunk`) 갈고리를 건다(그림 무접촉 — 적기만 한다): 그 객체의 `clear` 를 감싸 부른 자리를 호출 더미로 가르고
 //     (`_mt3Bake` = 260 상한 · `_mt3Collect` = 존 바뀜 · 그 밖) 비우기 앞 청크 수 · 띠 캔버스 장 수 · 넓이(같은 캔버스는 한 번)를 적고, 2초마다 같은 셈으로 최댓값을 든다.
 //     바퀴 끝 표본에 `mtPeak`(그 바퀴 최대 넓이 · 청크 수 · 장 수 · 상한 비우기마다 [청크 · 장 · 넓이] · 존 바뀜 · 그 밖 비우기 수)을 싣고 비운다 — 바퀴 끝 표본(광산2 · 존 넘기 뒤)이 못 보는 바퀴 안 꼭대기.
+//   ★[T1193] 레티나 2배(`T1193_HIDPI`) 견줌 — --dsf <배율>(브라우저 화면 배율 · deviceScaleFactor · 기본 = 종전 1) · --q <주소 꼬리>(예: `?T1193_HIDPI=1`) ·
+//     --lag 면 바퀴마다 클라 렉 보고(`__lagReport(바퀴 초 − 20)` · T913 표 그대로 — 프레임 p50 · p95 · 최대 · 층 지면 · 물 · 산 · 자연물 · 몸 · HUD)를 바퀴 첫머리에 걸어
+//     표본에 `lag`(글 · 층 표 · 프레임 합)로 싣고, 표본마다 `t1193`(손잡이 `__hidpiDbg` · 지면 타일 구움 · 버림 수 · 산 청크 구운 수 · ms — 누적)을 싣는다.
+//     기본(옵션 없음)은 종전 그대로.
 // 실행: [E2E_BROWSER=webkit] node scripts/t926-mem-hour.js [--min 60] [--every 5] [--snap 5,60] [--mdump] [--terr] [--own] [--peak] [--first] [--out /tmp/t926] [--tag cr-off]
+//       [--dsf 2] [--q '?T1193_HIDPI=1'] [--lag] [--headed(xvfb-run -a -s '-screen 0 2400x1600x24' 밑에서)] [--eval '<입장 뒤 한 번 부를 식>']
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -56,6 +61,11 @@ const OWNF = process.argv.includes('--own');      // [T970] 살아 있는 캔버
 const PEAK = process.argv.includes('--peak');
 const FIRST = process.argv.includes('--first');   // [T1014] 첫 접속 표(머리말 위 FIRSTHOOK)     // [T997] 바퀴 안 산 청크 캐시 꼭대기 · 상한 비우기(머리말 ★T997)
 const OWN_DEPTH = +arg('--own-depth', '7');
+const DSF = arg('--dsf', null) != null ? +arg('--dsf', null) : null;   // [T1193] 화면 배율(없으면 종전 — 컨텍스트에 안 건넨다)
+const QS = arg('--q', '');                                             // [T1193] 주소 꼬리
+const LAG = process.argv.includes('--lag');                            // [T1193] 바퀴마다 렉 보고(T913 표)
+const EVAL = arg('--eval', null);                                      // [T1193] 입장 뒤 페이지에서 한 번 부를 식(견줌 판 — 예: `delete _mainCtx.drawImage` = 1배 그림 큰 화소 감싸기 뗌)
+const HEADED = process.argv.includes('--headed');                      // [T1193] 머리 있는 브라우저(WebKit = GTK MiniBrowser · xvfb-run 밑에서) — 이 상자의 헤드리스 WebKit(WPE)은 몇 분 안에 웹 프로세스가 죽는다(보고 T1193 §2)
 const BR = require('./e2e-browser').which();
 const TAG = arg('--tag', BR);
 const CPORT = 3010;
@@ -179,6 +189,16 @@ const PEAKHOOK = () => {
   setInterval(() => { try { up(_mt3Chunk); } catch (e) {} }, 2000);
   return true;
 };
+// ★[T1193] 지면 타일 캐시 갈고리 — 구움(set) · 버림(delete) · 비움(clear) 수(누적 · 그림 무접촉)
+const GTHOOK = () => {
+  if (window.__t1193gt) return true;
+  if (typeof _groundTiles === 'undefined') return false;
+  const G = window.__t1193gt = { set: 0, del: 0, clr: 0 }, M = _groundTiles;
+  M.set = function (k, v) { G.set++; return Map.prototype.set.call(this, k, v); };
+  M.delete = function (k) { G.del++; return Map.prototype.delete.call(this, k); };
+  M.clear = function () { G.clr++; return Map.prototype.clear.call(this); };
+  return true;
+};
 // ★[T1014] --first — 첫 접속 표(제품 표시 없이 · 옛 트리에도 같은 자): "들어가기" 눌림(갈고리) → welcome 받음(소켓 onmessage 를 감싸 첫 welcome 의 처리 앞 · 뒤)
 //   → 첫 그림(welcome 처리 뒤 첫 rAF 판의 끝 = 그다음 rAF 머리) → 첫 입력(그다음 rAF 머리) → 가라앉음(그 뒤 첫 rAF 간격 ≤ 50ms · 30초 안). rAF 고리는 이 갈고리 하나.
 const FIRSTHOOK = () => {
@@ -214,6 +234,7 @@ const SAMPLE = (names) => {
   const q = (p) => (s.length ? +s[Math.min(s.length - 1, Math.floor(p * s.length))].toFixed(1) : null);
   out.frame = { n: a.length, p50: q(0.5), p95: q(0.95), max: s.length ? +s[s.length - 1].toFixed(1) : null, sumMs: Math.round(a.reduce((x, y) => x + y, 0)),
     long50: a.filter((x) => x > 50).length, long100: a.filter((x) => x > 100).length, longMs: Math.round(a.filter((x) => x > 50).reduce((x, y) => x + y - 16.7, 0)) };   // [T1014] 긴 프레임(>50 · >100ms) 수 · 막은 ms
+  { const h = {}; for (const x of a) { const b = Math.min(5000, Math.round(x)); h[b] = (h[b] || 0) + 1; } out.frame.hist = h; }   // [T1193] 1ms 칸 도수(바퀴를 모아 p50 · p95 를 다시 낸다)
   out.dom = { nodes: document.getElementsByTagName('*').length, canvas: document.getElementsByTagName('canvas').length, img: document.images.length };
   out.lis = { add: M.addN, rem: M.remN, net: M.addN - M.remN, top: Object.entries(M.byType).sort((x, y) => y[1] - x[1]).slice(0, 8) };
   M.cvRefs = M.cvRefs.filter((r) => r.deref()); M.imgRefs = M.imgRefs.filter((r) => r.deref());
@@ -252,6 +273,8 @@ const SAMPLE = (names) => {
   out.heap = (typeof performance !== 'undefined' && performance.memory) ? { used: performance.memory.usedJSHeapSize, total: performance.memory.totalJSHeapSize } : null;
   try { const p = window.__getSrvAbs ? window.__getSrvAbs() : null; out.pos = p ? [Math.round(p.x), Math.round(p.y)] : null; } catch (e) {}
   try { out.zone = window.__getPrimaryZoneId ? window.__getPrimaryZoneId() : null; } catch (e) {}
+  try { out.t1193 = { hidpi: window.__hidpiDbg ? window.__hidpiDbg() : null, gt: window.__t1193gt ? Object.assign({}, window.__t1193gt) : null,
+    mt3: (typeof _mt3BakeN !== 'undefined') ? { n: _mt3BakeN, ms: Math.round(_mt3BakeMs) } : null, fade: (typeof _mtFadeCv !== 'undefined' && _mtFadeCv) ? _mtFadeCv.width * _mtFadeCv.height : 0 }; } catch (e) {}   // [T1193] 누적
   return out;
 };
 // [T970] 클라 맨 위 바인딩 이름 — public/client/*.js 의 두 칸 들여쓰기 `const|let|var`(쪼갠 한 파일 · 맨 위 = 두 칸) · 깊이 0 쉼표로 가른 조각마다 맨 앞 이름
@@ -323,9 +346,9 @@ function rss() {
   for (const line of txt.split('\n')) {
     const m = line.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/); if (!m) continue;
     const kb = +m[2], cmd = m[3]; let k = null;
-    if (/WebKitWebProcess/.test(cmd)) k = 'wk.web'; else if (/WebKitGPUProcess/.test(cmd)) k = 'wk.gpu'; else if (/WebKitNetworkProcess/.test(cmd)) k = 'wk.net';
+    if (/WebKitWebProcess|WPEWebProcess/.test(cmd)) k = 'wk.web'; else if (/WebKitGPUProcess|WPEGPUProcess/.test(cmd)) k = 'wk.gpu'; else if (/WebKitNetworkProcess|WPENetworkProcess/.test(cmd)) k = 'wk.net';   // [T1193] Playwright WebKit(WPE) 이름도
     else if (/MiniBrowser/.test(cmd)) k = 'wk.ui';
-    else if (/\/chrome-linux\/chrome( |$)|headless_shell/.test(cmd)) { const t = (cmd.match(/--type=([a-z-]+)/) || [null, 'browser'])[1]; k = 'cr.' + t; }
+    else if (/\/chrome-linux(64)?\/chrome( |$)|headless_shell|chrome-headless-shell/.test(cmd)) { const t = (cmd.match(/--type=([a-z-]+)/) || [null, 'browser'])[1]; k = 'cr.' + t; }   // [T1193] Playwright 1.63 = chrome-linux64
     if (k) o[k] = (o[k] || 0) + kb;
   }
   return o;
@@ -374,14 +397,15 @@ async function memDump(cdp) {
   console.log(`  · 기동 central ${cu.ok} · ${ZIDS.map((z) => `${z} ${zu[z].ok}`).join(' · ')} (${Math.round((Date.now() - t00) / 1000)}초)`);
   if (!cu.ok || !ZIDS.every((z) => zu[z].ok)) process.exit(1);
 
-  const browser = await require('./e2e-browser').launch({ headless: true });
-  const page = await (await browser.newContext({ viewport: { width: 1100, height: 720 } })).newPage();
+  const browser = await require('./e2e-browser').launch({ headless: !HEADED });   // [T1193] --headed
+  const page = await (await browser.newContext(Object.assign({ viewport: { width: 1100, height: 720 } }, DSF != null ? { deviceScaleFactor: DSF } : {}))).newPage();   // [T1193] --dsf
+  page.on('crash', () => { console.log(`  ⚠페이지(웹 프로세스)가 죽었다 — ${new Date().toISOString()}`); setTimeout(() => process.exit(3), 500); });   // [T1193] 죽으면 기다리지 않고 끝낸다
   const errs = [];
   page.on('pageerror', (e) => errs.push('pageerror: ' + String(e.message).slice(0, 200)));
   page.on('console', (m) => { if (m.type() === 'error') errs.push('console.error: ' + m.text().slice(0, 200)); });
   const cdp = BR === 'chromium' ? await page.context().newCDPSession(page) : null;
   if (cdp) { await cdp.send('Performance.enable'); await cdp.send('HeapProfiler.enable'); }
-  await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`http://localhost:${CPORT}/${QS}`, { waitUntil: 'domcontentloaded' });   // [T1193] --q
   await page.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, { timeout: 60000 }).catch(() => {});
   await page.evaluate(INSTR);
   if (FIRST) await page.evaluate(FIRSTHOOK);
@@ -395,9 +419,11 @@ async function memDump(cdp) {
   await sleep(3000);
   const z0 = await page.evaluate(() => (window.__getPrimaryZoneId ? window.__getPrimaryZoneId() : null));
   if (z0 !== 'hanbando') { console.log(`입장 존이 ${z0} — 한반도가 아니다`); process.exit(1); }
-  const welcome = await page.evaluate(() => { const o = {}; for (const k of Object.keys(uiCfg || {})) if (/^(waterHalf|mtReadPx|mtBand|t926|cutNear|mtNear)/.test(k)) o[k] = uiCfg[k]; return { ui: o, ua: navigator.userAgent }; });
+  const welcome = await page.evaluate(() => { const o = {}; for (const k of Object.keys(uiCfg || {})) if (/^(waterHalf|mtReadPx|mtBand|t926|cutNear|mtNear|hidpi)/.test(k)) o[k] = uiCfg[k]; return { ui: o, ua: navigator.userAgent }; });
   console.log(`  · welcome ${JSON.stringify(welcome)}`);
   if (PEAK) console.log(`  · [T997] 산 청크 캐시 갈고리 ${await page.evaluate(PEAKHOOK)}`);
+  if (EVAL) console.log(`  · [T1193] 입장 뒤 식 '${EVAL}' → ${JSON.stringify(await page.evaluate((src) => { try { return String((0, eval)(src)); } catch (e) { return 'ERR ' + e.message; } }, EVAL))}`);
+  if (LAG || DSF != null || QS) console.log(`  · [T1193] 지면 타일 갈고리 ${await page.evaluate(GTHOOK)} · 손잡이 ${JSON.stringify(await page.evaluate(() => (window.__hidpiDbg ? window.__hidpiDbg() : null)))} · 화면 배율 ${DSF} · 주소 '${QS}'`);
   // 결정론 고정 — 비 0 · 해 몫 한낮(1초마다 다시 세움)
   await page.waitForFunction(() => typeof window.__rainForce === 'function', { timeout: 60000 }).catch(() => {});
   await page.evaluate(() => {
@@ -445,10 +471,11 @@ async function memDump(cdp) {
   const outF = path.join(OUT, `${TAG}-samples.jsonl`); fs.writeFileSync(outF, '');
   const tStart = Date.now();
   let lastCycleEnd = tStart;
-  const sampleNow = async (k, note) => {
+  const sampleNow = async (k, note, lagR) => {
     const atMin = +((Date.now() - tStart) / 60000).toFixed(2);
     const S = await page.evaluate(SAMPLE, { caches: CACHE_NAMES, arrays: ARRAY_NAMES });
     const row = { k, atMin, note, ...S, rss: rss() };
+    if (lagR) row.lag = lagR;   // [T1193] --lag
     if (cdp) {
       const m0 = Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((m) => [m.name, m.value]));
       await cdp.send('HeapProfiler.collectGarbage');
@@ -472,6 +499,8 @@ async function memDump(cdp) {
       (row.cdp ? `힙 ${mb(row.cdp.usedPre)}→GC ${mb(row.cdp.usedGC)}MB · 노드 ${row.cdp.nodes} · 리스너 ${row.cdp.listeners} · ` : '') +
       `DOM ${row.dom.nodes} · 리스너(갈고리) ${row.lis.net} · 캔버스 만든 ${row.cv.made} 산 ${row.cv.live} ${(row.cv.livePx / 1e6).toFixed(1)}M화소 · RSS ${JSON.stringify(row.rss)}${row.snap ? ` · 스냅샷 ${mb(row.snap.bytes)}MB ${row.snap.ms}ms` : ''}`);
     console.log(`       캐시: ${big}`);
+    if (row.lag && row.lag.frames) { const F = row.lag.frames; console.log(`       [T1193] 렉 보고 ${F.n}판 p50 ${F.p50} p95 ${F.p95} max ${F.max} · 층 ` + (row.lag.table || []).map((r) => `${r['층']} ${r['합 ms']}`).join(' · ')); }
+    if (row.t1193) console.log(`       [T1193] ${JSON.stringify(row.t1193)}`);
     if (row.mtPeak) { const P = row.mtPeak; console.log(`       [T997] 바퀴 안 산 청크 캐시 꼭대기 ${P.maxSize}청크 · ${P.maxCv}장 · ${(P.maxPx / 1e6).toFixed(1)}M화소 · 상한 비우기 ${P.caps.length}${P.caps.length ? ' [' + P.caps.map((c) => `${c[0]}청크 ${c[1]}장 ${(c[2] / 1e6).toFixed(1)}M`).join(' · ') + ']' : ''} · 존 바뀜 ${P.zone} · 그 밖 ${P.other}`); }
     if (row.own) {
       const O = row.own, M6 = (v) => (v / 1e6).toFixed(2);
@@ -489,6 +518,8 @@ async function memDump(cdp) {
     const tEnd = tStart + k * EVERY * 60000;
     const log = [];
     await feed();
+    // [T1193] --lag — 바퀴 첫머리에 렉 보고를 건다(바퀴 끝 20초 앞에 끝난다 · 결과는 표본에)
+    const lagP = LAG ? page.evaluate((sec) => window.__lagReport(sec).then((R) => (R ? { text: R.text, table: R.table, frames: R.frame.frames, verdict: R.verdict, mem: R.mem } : null)), Math.max(30, Math.round(EVERY * 60 - 20))).catch((e) => ({ err: String(e).slice(0, 160) })) : null;
     // ⓐ 걷기 — 네모 두 바퀴
     for (let r = 0; r < 2; r++) for (const key of ['d', 's', 'a', 'w']) await walkKeys([key], 6000);
     log.push('걷기');
@@ -512,9 +543,10 @@ async function memDump(cdp) {
     if ((await pz()) !== 'hanbando') { await walkTo(['w', 'a'], 'hanbando', 45000); }
     await warpL(HOME.cx * 32 + 16, HOME.cy * 32 + 16);
     const left = tEnd - Date.now(); if (left > 0) await sleep(left);
-    await sampleNow(k, log.join(' · ') + (left < 0 ? ` · ⚠바퀴가 ${Math.round(-left / 1000)}초 늦었다` : ''));
+    const lagR = lagP ? await lagP : null;   // [T1193]
+    await sampleNow(k, log.join(' · ') + (left < 0 ? ` · ⚠바퀴가 ${Math.round(-left / 1000)}초 늦었다` : ''), lagR);
   }
-  const res = { tag: TAG, browser: BR, min: MIN, every: EVERY, knobs, welcome, corridor: CE, errs, samples: samples.length, first };
+  const res = { tag: TAG, browser: BR, min: MIN, every: EVERY, knobs, welcome, corridor: CE, errs, samples: samples.length, first, dsf: DSF, q: QS, lag: LAG, headed: HEADED, eval: EVAL };
   fs.writeFileSync(path.join(OUT, `${TAG}-meta.json`), JSON.stringify(res, null, 1));
   console.log(`  · 오류 ${errs.length}: ${JSON.stringify(errs.slice(0, 8))}`);
   console.log(`  → ${outF}`);
