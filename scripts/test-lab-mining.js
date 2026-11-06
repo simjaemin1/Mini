@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다) · ★[T830 2026-10-21] 칠하기 끔(T799) 뒤 다시 넣음 — 상한은 `TIMEOUT_OF` 3,600초 그대로
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다) · ★[T830 2026-10-21] 칠하기 끔(T799) 뒤 다시 넣음 — T1170: 기본 세계 90날 · 상한은 `TIMEOUT_OF` 7,200초
 // === 11차 채광 재설계 — 랩 헤드리스 검증 하네스 ===
 //
 // 검증 항목(전부 실측 — 주장하려면 여기서 돌아야 한다):
@@ -11,6 +11,7 @@
 //   ⑤ land.ore 연동: oFrac 하락에 따라 econ.land.ore 가 base×(0.4+0.6·oFrac) 로 따라간다(바닥 0.4)
 //   ⑥ 광부 정원 되먹임: land.ore 하락 → jobCapacity.miner 하락
 //   ⑦ pageerror·console error 0
+//   [과거 끔 세계의 창 기록 — T1170 기본 세계 90날은 아래 실행 결과로 확인]
 //   ⚠[T684 ← T660 회부 ②] ③④ 는 **창 길이에 기댄다** — 이 씨(7)·시계에선 첫 광부가 41~50일에 선다(T660: 40일 0 → 50일 1) · `RUN_DAYS` 를 그보다 짧게 주면(종전 `RUN_DAYS=8` 판들) 광부 0 이라 ③④ 가 빨갛다 — 제품이 아니라 창이다.
 //   ⚠[T684 ← T660 회부 ③ · ★T830 2026-10-21 지금 판 실측으로 고침] ③ "2인 1조" 는 기본 판(60일 · dt 16.667 · T707 끔 세계)에서 **광부 2명 · 점유 셀 1개 · 셀당 분포 {"2":1} · 같은 조 1/1** — 짝 규칙을 한 조로 잰다(T799 판 넷 실측 같음 · 40일 광부 0 → 50일 2).
 //     (종전 이 줄: "광부 1명 · 셀 1개 · 0/0 이라 짝 규칙을 안 잰다" — T684 때 판. `③ⓜ` 미끼는 그대로 자가 살아 있음을 보인다 · 미끼 판 0/1)
@@ -28,23 +29,12 @@ const LC = require('./fixture-lab-clock');
 const CHROME = process.env.CHROME_PATH || undefined;
 // ★랩 파일 경로: LAB_FILE 환경변수(기본 `lab/전쟁실험실.html`).
 //   ⚠[T123 2026-09-05] 종전 기본값은 레포 밖 `~/Mini/…` 였다 — 랩이 레포 안으로 들어온 뒤에도 남아 조용히 어긋났다.
-// ★[T758 2026-10-15] 이 하네스가 재는 세계 = **T707 장마당 끔**(URL `?T707_MARKET=0` — 랩 env 문 T641 · 서버와 같은 이름 · 같은 되돌림 값).
-//   ③④ 는 "이 씨 · 이 시계에서 첫 광부가 41~50일에 선다"는 **종전 세계 단언**이다(T684 머리말) — 10-13 T707 켬 기본(f55e4880 · 번들은 process 가 없어 켬)
-//   뒤 기본 판은 60일 안에 광부가 안 선다(T751 §2 · T758 §3). f55e4880 의 "하네스 끔 판 '=0' · 종전 세계 단언은 끔으로 묶음" 꼴로 끔 세계에 묶는다.
-//   켬(기본) 세계로 돌리려면 `LAB_QS=`(빈 값) · 다른 손잡이를 같이 주려면 `LAB_QS='T707_MARKET=0&…'`.
-// ★[T852 2026-10-22 ← T830 회부 1] **T792 켬 기본(PM 10-18 · `599df3b9`) 둘도 끔 세계에 묶는다** — `T731_LOCAL_MIDNIGHT=0`(마을 현지 자정 창) · `T761_LOCAL_CLOCKS=0`(풍흉·날씨 굴림을 마을 조각에서 · 몹 밤 · 기온 일교차 현지).
-//   까닭: 두 손잡이는 엔진 번들 안에서 `!== '0'` 꼴(서버와 같은 줄 · env 없음 = 켬)이라 **기본이 켬**이다 — 서버 기본(T792)과 같다.
-//   ⚠[T882 2026-10-23 정정] 위 첫 판 글("env 문이 만들어 줘야 켜진다 · 쿼리 없는 브라우저 기본은 끔")은 틀렸다 — 번들 머리 shim(`var process = root.process || { env: {} }`)이 늘 `process` 를 주므로
-//     엔진 쪽 두 손잡이는 쿼리 유무와 무관하게 켬이다(`EconEngine.ZoneCfg.T761_CLOCKS` 를 쿼리 없는 랩에서 읽어 확인). 쿼리 유무로 갈린 것은 랩 쪽 읽기(`window.LAB_ENV && …` · 예 `L_T720`)였고 T882 가 문을 늘 세워 닫았다.
-//   이 하네스의 귀속 판(아래)은 그대로 맞다 — 켬 세계가 이 씨 · 이 시계의 세계를 바꾼다.
-//   그러면 이 씨 · 이 시계의 세계가 바뀌어 17일째(랩 날 137) 지문부터 갈리고 60일 안에 광부가 안 선다(광부 0 · ③④ 빨강 2). 이 하네스의 ③④ 는
-//   "첫 광부가 41~50일에 선다"는 **종전 세계 단언**(T684 머리말 · T758 이 T707 을 끈 것과 같은 꼴)이다 — 켬 세계로 다시 재려면 `LAB_QS=` 로 손잡이를 풀어 준다.
-//   귀속 판(17일 지문 · `02a62e6` 랩 = `d5f85d45`): 둘 다 기본(켬) `8666b775` · `T731=0` 만 `8666b775` · `T761=0` 만 `8666b775` · **둘 다 0 → `d5f85d45`**.
-const LAB_QS = process.env.LAB_QS != null ? process.env.LAB_QS : 'T707_MARKET=0&T731_LOCAL_MIDNIGHT=0&T761_LOCAL_CLOCKS=0';
-const LAB = 'file://' + (process.env.LAB_FILE || path.resolve(__dirname, '..', 'lab', '전쟁실험실.html')) + (LAB_QS ? '?' + LAB_QS : '');
+// T1170: T1047/T1050을 포함한 랩 기본 세계. 종전 끔 세계는 LAB_QS로 명시한다.
+const LAB_QS = process.env.LAB_QS != null ? process.env.LAB_QS : '';
+const LAB = (process.env.LAB_URL || ('file://' + (process.env.LAB_FILE || path.resolve(__dirname, '..', 'lab', '전쟁실험실.html')))) + (LAB_QS ? '?' + LAB_QS : '');
 const SPEED = parseInt(process.env.SPEED || '119', 10);
 const NVIL = 3, POP = parseInt(process.env.POP || '40', 10), SEED = 7;
-const RUN_DAYS = parseInt(process.env.RUN_DAYS || '60', 10);
+const RUN_DAYS = parseInt(process.env.RUN_DAYS || '90', 10);
 
 const INIT = LC.init;
 
@@ -151,6 +141,7 @@ const SNAP = () => {
     lifeToggle();
   }, { nv: NVIL, pop: POP, seed: SEED, sp: SPEED });
 
+  const miningIndex = await page.evaluate(() => Math.max(0, VILS.findIndex(q => q.role === 'mining')));
   const take = () => page.evaluate(SNAP);
   const fps = [];   // ★[T799] 날마다 지문(첫 프레임 = 표본 프레임)
   const tWall = Date.now();
@@ -163,7 +154,7 @@ const SNAP = () => {
     if (s.day !== series[series.length - 1].day || fps.length === 0) fps.push(s.day + ':' + await LC.fp(page));
     if (s.day !== series[series.length - 1].day) { series.push(s); if ((s.day - startDay) % 10 === 0) console.log('    …day ' + (s.day - startDay) + '/' + RUN_DAYS + ' 재고 ' + s.oreSum + ' 광부 ' + s.miners + ' land.ore ' + s.landOre + ' (프레임 ' + frame + ')'); }
     if (s.day >= startDay + RUN_DAYS) break;
-    frame = await LC.untilDay(page, s.day + 1);   // ★[T660] 다음 랩 날의 첫 프레임까지 민다(종전: 300ms 잠 · 1,500초 벽시계)
+    frame = await LC.untilDay(page, s.day + 1, miningIndex);   // ★[T660] 다음 랩 날의 첫 프레임까지 민다(종전: 300ms 잠 · 1,500초 벽시계)
   }
   const sN = series[series.length - 1];
   {

@@ -42,14 +42,14 @@ const init = (prng) => `
     if (!lifeOn || Q.indexOf(lifeLoop) < 0) throw new Error('시계 정지 — 생활 시계가 다음 프레임 줄에 없다 · day ' + VILS[0].day + ' · 프레임 ' + n);
     return n;
   };
-  window.__untilDay = (d) => { while (VILS[0].day < d) window.__tick(); return n; };
+  window.__untilDay = (d, i = 0) => { while (VILS[i].day < d) window.__tick(); return n; };
   window.__frame = () => n;
   window.__vt = () => vt;
 })();
 `;
 
 /** 랩 날 d 의 첫 프레임까지 민다 — 돌려주는 값 = 그 프레임 번호 */
-const untilDay = (page, d) => page.evaluate((x) => window.__untilDay(x), d);
+const untilDay = (page, d, i = 0) => page.evaluate(([x, v]) => window.__untilDay(x, v), [d, i]);
 
 // ★[T799 → T830 2026-10-21] 헤드리스 칠하기 끔 · 프레임 지문 — 랩 하네스 둘(`test-lab-mining` · `test-lab-psite`)이 같이 쓴다(사본 금지 · 여기 한 자리).
 //   실측(T799 CDP 프로파일 · 하루 726 프레임 ≈ 35~39초): `lifeLoop → draw()` 가 92.6% · 그중 캔버스 **그리기 호출**(fillRect 57.1% 외)이 과반.

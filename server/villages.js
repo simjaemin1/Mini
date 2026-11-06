@@ -3504,7 +3504,7 @@ function _routePlainRetry(J) {
 // ── 재개형 문 — 예산(ms)만큼 밀고 나온다. `{ done, pts }`. `done:false` 면 다음 조각에 이어 간다.
 //   ⚠`budgetMs <= 0` = 슬라이서를 끈 대조군(`VILLAGE_TICK_SLICE_MS=0`) ⇒ **한 번에 완주**한다
 //     (종전 동작 그대로 — 되돌리는 스위치가 경로에도 그대로 걸린다).
-function _routeResume(key, x0, y0, x1, y1, budgetMs) {
+function _routeResume(key, x0, y0, x1, y1, budgetMs, auditNodes) {
   if (_pathJob && _pathJob.key !== key) {
     //   ★★[T655] 떠 있는 일이 **부팅 표본**(T640 · `routeSampleStep` 이 단 표식)이면 버리지 않고 기다린다 — 버리면 표본이 그 쌍을 처음부터 다시 판다
     //     (빠른 시계 실측: 양보 3,608 · 일 84 → 216초). 표본은 그 쌍을 끝낸 뒤 한 틱 비켜 준다(`_routeBootWait`) — 서로 버리지 않고 번갈아.
@@ -3535,7 +3535,7 @@ function _routeResume(key, x0, y0, x1, y1, budgetMs) {
   for (;;) {
     const c0 = Date.now();
     const _q0 = T1027_PROBE ? process.hrtime.bigint() : 0n, _p0 = T1027_PROBE ? (J.S.pops | 0) : 0;   // ★[T1027] 재는 판 전용
-    const r = PathCore.pathStep(J.S, budgetMs > 0 ? PATH_STEP_NODES : 0);
+    const r = PathCore.pathStep(J.S, auditNodes || (budgetMs > 0 ? PATH_STEP_NODES : 0));
     if (T1027_PROBE) { _t1027.a.ns += Number(process.hrtime.bigint() - _q0); _t1027.a.pops += (J.S.pops | 0) - _p0; _t1027.a.n++; }
     { const el = Date.now() - c0; if (el > _probe.pathChunkMax) _probe.pathChunkMax = el; }   // 알갱이 하나의 최악(계측)
     if (r.done && !r.path && _routePlainRetry(J)) {   // ★[T578] 상한에 걸렸다 — 같은 슬롯에서 종전 규칙으로 이어 판다
@@ -3546,7 +3546,7 @@ function _routeResume(key, x0, y0, x1, y1, budgetMs) {
       continue;
     }
     if (r.done) return close(true, r.path);
-    if (Date.now() - t0 >= budgetMs) return close(false, null);
+    if (auditNodes || Date.now() - t0 >= budgetMs) return close(false, null);
   }
 }
 const _routeWarned = new Set();
@@ -3899,7 +3899,7 @@ function routeDebug(opts) {
   //   ★왜 이 자리인가: 579쌍은 **정본 시드 세계의 실제 쌍**이다(선계산 큐가 세운 그것) —
   //     합성 격자로 재면 그건 다른 세계를 잰 것이다(족보: 계측기도 사본 금지 · 정본 함수를 불러라).
   //   ★`budget` 은 **노드 예산**이다: 1 이면 한 노드마다 놓았다 이어 간다 = 순서 보존의 가장 센 증거.
-  //   ⚠재개형은 `_routeBegin` 이 세우고 `pathStep` 이 미는 **그 문 그대로**를 쓴다(사본 0).
+  //   ⚠재개형은 진짜 `_routeResume` 문을 쓴다. auditNodes 는 감사 전용 노드 조각 크기(운영 기본 무변).
   if (o.resume > 0 && state.routeCache) {
     const bud = Math.max(1, o.budget | 0);
     let n = 0, bad = 0, first = '', slices = 0, maxSlices = 0;
@@ -3907,10 +3907,18 @@ function routeDebug(opts) {
       if (n >= o.resume) break;
       const p = key.split('_'); const a = state.byDbId.get(+p[0]), b = state.byDbId.get(+p[1]);
       if (!a || !b) continue;
-      const J = _routeBegin(a.ccx * SZ + SZ / 2, a.ccy * SZ + SZ / 2, b.ccx * SZ + SZ / 2, b.ccy * SZ + SZ / 2);
+      // T1170: 진짜 재개형 문을 사용해 T578 상한 뒤 종전 규칙 재탐색도 감사한다.
       let re = null, k = 0;
-      if (J) { let r; do { r = PathCore.pathStep(J.S, bud); k++; } while (!r.done); re = _routeFinish(J, r.path); }
-      _pathJob = null;
+      try {
+        _pathJob = null;
+        let r;
+        do {
+          r = _routeResume('audit:' + key, a.ccx * SZ + SZ / 2, a.ccy * SZ + SZ / 2,
+            b.ccx * SZ + SZ / 2, b.ccy * SZ + SZ / 2, 0, bud);
+          k++;
+        } while (!r.done);
+        re = r.pts;
+      } finally { _pathJob = null; }
       const same = JSON.stringify(re || null) === JSON.stringify(pts || null);
       n++; slices += k; if (k > maxSlices) maxSlices = k;
       if (!same) { bad++; if (!first) first = key; }
@@ -8619,7 +8627,7 @@ function _t731Jobs(now, T) {
     if (state.xzone) addH('xzone', () => _xzDayIn());
     if (T681_ON) addH('econ', () => _t681Flush());
     W.P = state.econV2.tickWorldV2Parts(state.world);   // econ 정본 조각 한 벌(`tickWorldV2` 가 부르는 그것 — 조각 손잡이와 무관하게 켬 판은 조각으로만 간다)
-    addH('econ', () => { _econDayFixture(); mute(() => W.P.head()); W.headDone = true; }, 'econ:head');   // ★[T755] 머리 뒤 ~ 꼬리 = 전쟁 몸 쉼(onGameTick)
+    addH('econ', () => { mute(() => W.P.head()); W.headDone = true; }, 'econ:head');   // ★[T755] 머리 뒤 ~ 꼬리 = 전쟁 몸 쉼(onGameTick)
     if (state.deps.dayRoads) addH('roads', () => { try { state.deps.dayRoads(); } catch (e) { console.error(`[${state.zoneId}] 🛤️ [T990] 길 하루 실패:`, e.message); } });   // ★[T990] 켬 — 길의 하루 = 날을 올린 머리 바로 뒤(도적 하루 앞 · `roads.js dayTick` 머리 주석 · 끔 = 존 틱이 정한다)
     if (state.deps.dayBandits) addH('bandit', () => { try { state.deps.dayBandits(); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T986] 도적 하루 실패:`, e.message); } });   // ★[T986] 켬 — 도적 하루 = 날을 올린 머리 바로 뒤(마을 조각 앞 · `bandits.js dayTick` 머리 주석 · 끔 = 존 틱이 부른다)
     addH('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
@@ -8722,7 +8730,7 @@ let _t523Pause = 0;   // 쉼표에서 다른 프레임에 넘겨 준 시간의 �
 
 // ★[T513] econ 조각의 앞뒤 일 — 한 조각(끔)과 여러 조각(켬)이 **같은 함수**를 부른다(사본 0 · 몸통은 종전 econ 조각 그대로 옮겼다).
 function _econDayFixture() {
-  // ★[2파 테스트 훅] WAR_FIXTURE — 운영 무설정. WAR_FIXTURE_DAY(기본 1)≥ 첫 경계에 1회(침묵 창 밖 — 로그 가시·당일 daily가 소비).
+  // ★[2파 테스트 훅] WAR_FIXTURE — 운영 무설정. WAR_FIXTURE_DAY(기본 1)≥ 마감 전쟁 하루 뒤에 1회(첫 행군은 다음 daily).
   if (process.env.WAR_FIXTURE && !state._warFixtured && state.war && state.world.day >= (parseInt(process.env.WAR_FIXTURE_DAY || '', 10) || 1)) {
     state._warFixtured = true;
     try { _applyWarFixture(process.env.WAR_FIXTURE); } catch (e) { console.error(`[${state.zoneId}] ⚔️ [FIXTURE] 실패:`, e.message); }
@@ -8739,6 +8747,7 @@ function _econDayWar() {
     if (_t476On()) { try { _t476Decide(state.world.day); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T476] 토벌 결단 실패:`, e.message); } } }   // ★[T476] 토벌 결단(끔이면 한 줄)
 }
 function _econDayAfter() {
+  _econDayFixture();   // T1170: 오늘 전쟁 하루 뒤 선포 — 첫 행군은 내일 잰다(테스트 훅만).
   // ★★[T60 ② 2026-09-03] **NPC 어획이 같은 물을 줄인다** — econ 틱 **직후**, 같은 하루 안에서.
   //   여기가 옳은 자리인 이유: `_fishOutLast` 는 방금 끝난 하루의 실적이고, 아래 `refreshFishSustain`
   //   (주기 갱신)이 그 결손을 상한으로 옮긴다. 조각 순서 캐논(`econ` 단계)은 안 건드린다.
@@ -8767,7 +8776,7 @@ function _econDayAfter() {
 function _econDayParts(C, add) {
   const P = state.econV2.tickWorldV2Parts(state.world);
   const mute = (f) => { const _log = console.log; console.log = () => {}; try { f(); } finally { console.log = _log; } };
-  add('econ', () => { _econDayFixture(); for (const vil of C.vils) _lifeHandsIn(vil); mute(() => P.head()); }, 'econ:head');
+  add('econ', () => { for (const vil of C.vils) _lifeHandsIn(vil); mute(() => P.head()); }, 'econ:head');
   for (const v of state.world.villages.slice()) add('econ', () => mute(() => P.village(v)), 'econ:vil');   // 마을 하나 = 조각 하나(목록은 여는 순간 얼린다)
   if (T698_BOUNDARY_SLICE && typeof P.tradeSteps === 'function') {   // ★[T698] 켬 — 마을 하나씩(같은 발생기를 끝까지 = `P.trade()`)
     let g = null;
@@ -8853,7 +8862,6 @@ function _openDayJobs(now, T) {
   //   ★[T513] 손잡이 켬이면 아래 `_econDayParts` 가 같은 일을 조각 여럿으로 얹는다(끔 = 이 한 조각 그대로).
   if (T513_DAY_SLICE && state.econV2 && typeof state.econV2.tickWorldV2Parts === 'function') _econDayParts(C, add);
   else add('econ', () => {
-    _econDayFixture();
     // ★★[T475 ② 두 시계 한 줄] 생활 하루는 econ 틱 **앞**에서 닫는다 — 걷는 몸이 낮에 딴 손을 이 틱이 오늘치를 장부로 옮기고 비우기 전에 곳간에.
     for (const vil of C.vils) _lifeHandsIn(vil);
     // econ 1일 틱 — tickWorldV2 내부 로그(캐러밴·회복 등)는 침묵시키고 아래 요약 1줄만.

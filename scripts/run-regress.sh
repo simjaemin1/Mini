@@ -39,7 +39,8 @@ TIMEOUT_SEC="${TIMEOUT_SEC:-2400}"
 #   ~~`@regress` 표식은 안 붙인다 — 야간 목록은 그대로고, 이름을 주고 돌릴 때만 이 표가 쓰인다.~~
 #   ★[T830 2026-10-21 · PM 10-20 결정] 칠하기 끔(T799 · `fixture-lab-clock` `noPaint`) 뒤 두 판에 `@regress` 를 다시 붙였다 — 전수·야간 단위에 든다 · 이 표(3,600초)는 그대로.
 #   ★[T1121 2026-11-03] 지금 판(2코어 · 혼자): mining 1,601 → 1,018초(표시만 하는 토글 둘 끔 · `leanDraw`) · psite 1,105 → 664초(판 넷 둘씩 나란히). 이 표(3,600초)는 그대로.
-declare -A TIMEOUT_OF=( [test-lab-mining.js]=3600 [test-lab-psite.js]=3600 )
+# T1170: 기본 세계 채광 창 90날 — 종전 끔 세계 60날의 상한을 늘린다.
+declare -A TIMEOUT_OF=( [test-lab-mining.js]=7200 [test-lab-psite.js]=3600 )
 FAILED=()
 PASSED=()
 # ★[T1121 2026-11-03] **걸린 시간도 러너가 말한다.** 야간 11-02 묶음 A 가 4시간 33분 · PM 착지 게이트(하네스 96)가 7시간을 넘었는데
