@@ -1,0 +1,421 @@
+{
+ "_": "T1194 검사기(scripts/model-check.py) — PR #77 셋. 읽은 파일 = 맥 ~/Mini/_3d_in/euhhong/ 의 셋(md5 같음 · 컨테이너 블렌더 4.0.2 로 돌림). 다시: blender --background --factory-startup --python scripts/model-check.py -- boar.fbx bull.fbx gamecock.fbx --class=animals --json=<파일>",
+ "spec": {
+  "formatsBest": [
+   ".glb",
+   ".gltf"
+  ],
+  "formatsTaken": [
+   ".fbx",
+   ".obj",
+   ".blend"
+  ],
+  "fileMbMax": 25,
+  "trisTarget": 20000,
+  "trisMax": 30000,
+  "texMax": 2048,
+  "animClasses": [
+   "animals",
+   "char"
+  ],
+  "normTol": 0.005,
+  "groundTolM": 0.01
+ },
+ "items": [
+  "형식",
+  "파일 크기",
+  "면 수",
+  "텍스처 크기",
+  "텍스처 동봉",
+  "UV",
+  "뼈대",
+  "동작",
+  "크기(m)",
+  "앞 방향",
+  "바닥 · 위",
+  "출처.txt"
+ ],
+ "results": [
+  {
+   "file": "boar.fbx",
+   "path": "~/Mini/_3d_in/euhhong/boar.fbx",
+   "md5": "b689c38efce260bd9119b54dfdefe7fc",
+   "bytes": 62431372,
+   "class": "animals",
+   "rows": [
+    {
+     "item": "형식",
+     "value": "fbx",
+     "spec": ".glb 권장",
+     "verdict": "경고"
+    },
+    {
+     "item": "파일 크기",
+     "value": "62.4 MB",
+     "spec": "≤ 25 MB",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "면 수",
+     "value": "삼각형 500,000",
+     "spec": "20,000 안팎(≤ 30,000)",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 크기",
+     "value": "base_color 4096² · normal 2048²",
+     "spec": "≤ 2048",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 동봉",
+     "value": "내장 2 · 파일 0",
+     "spec": "모델 안 또는 같은 폴더",
+     "verdict": "통과"
+    },
+    {
+     "item": "UV",
+     "value": "있음",
+     "spec": "텍스처 메시마다",
+     "verdict": "통과"
+    },
+    {
+     "item": "뼈대",
+     "value": "뼈 0",
+     "spec": "1 이상(동물 · 사람)",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "동작",
+     "value": "0",
+     "spec": "idle · walk · run · eat · die",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "크기(m)",
+     "value": "0.342 × 1.000 × 0.648 (정규화로 보임)",
+     "spec": "실제 미터 또는 출처.txt 크기",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "앞 방향",
+     "value": "적힘 없음(+Y 로 본다)",
+     "spec": "+Y 또는 출처.txt '앞:'",
+     "verdict": "경고"
+    },
+    {
+     "item": "바닥 · 위",
+     "value": "위 +Z · 최저 z +0.000 m",
+     "spec": "최저 z = 0 ± 0.01 m",
+     "verdict": "통과"
+    },
+    {
+     "item": "출처.txt",
+     "value": "없음",
+     "spec": "만든 사람 · 만든 도구 · 쓰임 조건",
+     "verdict": "빠짐"
+    }
+   ],
+   "pass": false,
+   "missing": [
+    "파일 크기",
+    "면 수",
+    "텍스처 크기",
+    "뼈대",
+    "동작",
+    "크기(m)",
+    "출처.txt"
+   ],
+   "stats": {
+    "tris": 500000,
+    "polys": 500000,
+    "verts": 300123,
+    "dims": [
+     0.3418,
+     0.9997,
+     0.6479
+    ],
+    "minZ": 0.0,
+    "bones": 0,
+    "actions": [],
+    "actionsFound": {},
+    "textures": [
+     {
+      "name": "base_color",
+      "w": 4096,
+      "h": 4096,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "sRGB"
+     },
+     {
+      "name": "normal",
+      "w": 2048,
+      "h": 2048,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "Non-Color"
+     }
+    ],
+    "front": null,
+    "sizeM": null,
+    "normalized": true,
+    "source": null
+   }
+  },
+  {
+   "file": "bull.fbx",
+   "path": "~/Mini/_3d_in/euhhong/bull.fbx",
+   "md5": "d5aa04165f066866d948279eddd5fe35",
+   "bytes": 68472572,
+   "class": "animals",
+   "rows": [
+    {
+     "item": "형식",
+     "value": "fbx",
+     "spec": ".glb 권장",
+     "verdict": "경고"
+    },
+    {
+     "item": "파일 크기",
+     "value": "68.5 MB",
+     "spec": "≤ 25 MB",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "면 수",
+     "value": "삼각형 500,000",
+     "spec": "20,000 안팎(≤ 30,000)",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 크기",
+     "value": "base_color 4096² · normal 2048²",
+     "spec": "≤ 2048",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 동봉",
+     "value": "내장 2 · 파일 0",
+     "spec": "모델 안 또는 같은 폴더",
+     "verdict": "통과"
+    },
+    {
+     "item": "UV",
+     "value": "있음",
+     "spec": "텍스처 메시마다",
+     "verdict": "통과"
+    },
+    {
+     "item": "뼈대",
+     "value": "뼈 0",
+     "spec": "1 이상(동물 · 사람)",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "동작",
+     "value": "0",
+     "spec": "idle · walk · run · eat · die",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "크기(m)",
+     "value": "0.428 × 0.996 × 0.741 (정규화로 보임)",
+     "spec": "실제 미터 또는 출처.txt 크기",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "앞 방향",
+     "value": "적힘 없음(+Y 로 본다)",
+     "spec": "+Y 또는 출처.txt '앞:'",
+     "verdict": "경고"
+    },
+    {
+     "item": "바닥 · 위",
+     "value": "위 +Z · 최저 z +0.000 m",
+     "spec": "최저 z = 0 ± 0.01 m",
+     "verdict": "통과"
+    },
+    {
+     "item": "출처.txt",
+     "value": "없음",
+     "spec": "만든 사람 · 만든 도구 · 쓰임 조건",
+     "verdict": "빠짐"
+    }
+   ],
+   "pass": false,
+   "missing": [
+    "파일 크기",
+    "면 수",
+    "텍스처 크기",
+    "뼈대",
+    "동작",
+    "크기(m)",
+    "출처.txt"
+   ],
+   "stats": {
+    "tris": 500000,
+    "polys": 500000,
+    "verts": 372806,
+    "dims": [
+     0.4282,
+     0.9962,
+     0.7411
+    ],
+    "minZ": 0.0,
+    "bones": 0,
+    "actions": [],
+    "actionsFound": {},
+    "textures": [
+     {
+      "name": "base_color",
+      "w": 4096,
+      "h": 4096,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "sRGB"
+     },
+     {
+      "name": "normal",
+      "w": 2048,
+      "h": 2048,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "Non-Color"
+     }
+    ],
+    "front": null,
+    "sizeM": null,
+    "normalized": true,
+    "source": null
+   }
+  },
+  {
+   "file": "gamecock.fbx",
+   "path": "~/Mini/_3d_in/euhhong/gamecock.fbx",
+   "md5": "69f495826fdcd6f376013e3f8aeb6b19",
+   "bytes": 67522460,
+   "class": "animals",
+   "rows": [
+    {
+     "item": "형식",
+     "value": "fbx",
+     "spec": ".glb 권장",
+     "verdict": "경고"
+    },
+    {
+     "item": "파일 크기",
+     "value": "67.5 MB",
+     "spec": "≤ 25 MB",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "면 수",
+     "value": "삼각형 500,000",
+     "spec": "20,000 안팎(≤ 30,000)",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 크기",
+     "value": "base_color 4096² · normal 2048²",
+     "spec": "≤ 2048",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 동봉",
+     "value": "내장 2 · 파일 0",
+     "spec": "모델 안 또는 같은 폴더",
+     "verdict": "통과"
+    },
+    {
+     "item": "UV",
+     "value": "있음",
+     "spec": "텍스처 메시마다",
+     "verdict": "통과"
+    },
+    {
+     "item": "뼈대",
+     "value": "뼈 0",
+     "spec": "1 이상(동물 · 사람)",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "동작",
+     "value": "0",
+     "spec": "idle · walk · run · eat · die",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "크기(m)",
+     "value": "0.478 × 1.000 × 0.999 (정규화로 보임)",
+     "spec": "실제 미터 또는 출처.txt 크기",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "앞 방향",
+     "value": "적힘 없음(+Y 로 본다)",
+     "spec": "+Y 또는 출처.txt '앞:'",
+     "verdict": "경고"
+    },
+    {
+     "item": "바닥 · 위",
+     "value": "위 +Z · 최저 z +0.000 m",
+     "spec": "최저 z = 0 ± 0.01 m",
+     "verdict": "통과"
+    },
+    {
+     "item": "출처.txt",
+     "value": "없음",
+     "spec": "만든 사람 · 만든 도구 · 쓰임 조건",
+     "verdict": "빠짐"
+    }
+   ],
+   "pass": false,
+   "missing": [
+    "파일 크기",
+    "면 수",
+    "텍스처 크기",
+    "뼈대",
+    "동작",
+    "크기(m)",
+    "출처.txt"
+   ],
+   "stats": {
+    "tris": 500000,
+    "polys": 500000,
+    "verts": 355208,
+    "dims": [
+     0.4776,
+     1.0,
+     0.9992
+    ],
+    "minZ": 0.0,
+    "bones": 0,
+    "actions": [],
+    "actionsFound": {},
+    "textures": [
+     {
+      "name": "base_color",
+      "w": 4096,
+      "h": 4096,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "sRGB"
+     },
+     {
+      "name": "normal",
+      "w": 2048,
+      "h": 2048,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "Non-Color"
+     }
+    ],
+    "front": null,
+    "sizeM": null,
+    "normalized": true,
+    "source": null
+   }
+  }
+ ]
+}

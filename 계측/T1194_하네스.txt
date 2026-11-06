@@ -1,0 +1,48 @@
+# T1194 하네스 — 하네스마다 한 줄(이름 rc 초 :: 마지막 결과 줄 · ✗ 줄) · 가지 최종 나무(손잡이 끔 · env 없음) · dad5679c 위 작업 나무
+
+## ① 새 하네스 · 고친 하네스(굽기 목록 등록) · 자산 전수
+test-model-intake rc=0 0s :: === 33건 중 PASS 33 · FAIL 0 ===
+test-render-common rc=0 0s :: 결과: PASS
+test-render-common --selftest rc=0 0s :: 결과: PASS(검사기가 오염 7건을 잡았다)
+    (--selftest 는 일부러 오염본을 넣는다 — ✗ 일곱 이상이 통과 조건 · 아래 다섯 줄은 그 오염을 잡은 줄의 앞 다섯)
+      ✗ icon_render.py: 헬퍼 재정의 1개 → ico
+      ✗ icon_render.py: 씬 상수 재정의 2개 → SAMPLES, PPU
+      ✗ render_common.py 에 재질표 `M` 이 없다
+      ✗ icon_render.py: `ico(…)` 28곳 모두 `subdiv=` 를 명시한다 — 생략 2곳(합친 기본값이 icon 옛값과 다르다)
+      ✗ nature_render.py: `def simple_mat…` 정의 1회
+test-assets-audit rc=1 19s :: 결과: FAIL(1)
+    (⑪a 53 > 52 — main dad5679c 깨끗한 나무에서도 같은 줄 · 같은 53장 · 안 닿는 목록에 이 가지 파일 0 — 새 파일 셋은 닿음: game 1,642 → 1,645 · 메타 1장은 "동적 접두만" 표)
+      ✗ ⑪a 이미지에 실리는데 어디서도 안 닿는 파일 53장 ≤ 기준 52(T456 뒤 수) — 늘면 빨갛다  ★1장 늘었다 — 새로 실린 것을 부르는 자리를 만들거나, 산물·도구면 `.dockerignore`·`tools/_rnd_archive/` 로 빼라(정말 실어야 하면 까닭을 보고에 적고 기준을 올린다)
+
+## ② 고친 클라 글자(public/client/40-r2-sprites.js)를 읽는 하네스
+test-client-globals rc=0 1s :: === PASS 26 / FAIL 0 ===
+test-far-trees rc=0 103s :: 결과: PASS 19 / FAIL 0
+test-regrow rc=0 17s :: === 100건 중 PASS 100 · FAIL 0 ===
+test-snow rc=0 1s :: === 43건 중 PASS 43 · FAIL 0 ===
+test-t1126-rock-yield rc=0 8s :: === T1126: 52건 중 PASS 52 · FAIL 0 ===
+
+## ③ 고친 서버 글자(server/zone.js 의 uiCfg)를 읽는 하네스
+test-t1125-welcome rc=0 13s :: === 26건 중 PASS 26 · FAIL 0 ===
+test-charsheet rc=0 12s :: === test-charsheet 결과: 통과 194 · 실패 0 ===
+test-t1086-first-join rc=0 0s :: === 82건 중 PASS 82 · FAIL 0 ===
+test-audio rc=0 2s :: === PASS 208 / FAIL 0 ===
+test-village-only rc=0 71s :: === 결과: 106 통과 · 0 실패 ===
+test-well rc=0 2s :: === 32/32 ✓ ===
+test-coast-shape rc=0 154s :: === PASS 47 / FAIL 0 ===
+test-t1059-pick-top rc=0 0s :: === 44건 중 PASS 44 · FAIL 0 ===
+test-t1064-next-step rc=0 0s :: === 49건 중 PASS 49 · FAIL 0 ===
+test-t1120-next-tool rc=0 6s :: === T1120: 85건 중 PASS 85 · FAIL 0 ===
+
+## ④ 굽기 이웃(같은 render_common 을 쓰는 굽기의 하네스)
+test-icons rc=0 8s :: 결과: PASS
+test-props rc=0 1s :: 결과: PASS
+test-building-anchor rc=0 0s :: 결과: PASS
+test-crops-world rc=0 0s :: 결과: PASS
+test-well-art rc=0 2s :: === 33/33 ✓ ===
+test-winter-fx rc=0 1s :: === 61건 중 PASS 61 · FAIL 0 ===
+
+## ⑤ 블렌더 쪽(하네스 아님 · 손으로 돌린 것 · 컨테이너 블렌더 4.0.2)
+검사기 PR #77 셋 :: 통과 0 / 3 — 셋 다 빠짐 7 · 경고 2 · 통과 3(계측/T1194_검사_PR77.json)
+멧돼지 굽기 두 번 :: body_idle.png md5 692767a90bcc6ba71bd010c22daf7cc9 · wild_boar_meta.json md5 dc5362f533a0ee0e778676fcf22a2288 — 두 번 바이트 같음
+128px 비교판 넷 다시 :: 원본 · 규격판(씬 안) · 규격판 .glb · 자동 줄이기 — 첫 판과 바이트 같음 · 규격판 .glb md5 6c7028114c242642d36cc2e7250fbd9e 같음
+시험 모델(뼈 2 · 동작 2) :: 검사기 크기 0.300 × 0.800 × 0.750(glTF 뼈 모양 물체 뺀 뒤 — 빼기 전 1.902 × 2.000 × 2.350) · 굽기 body_idle 236×376(4프레임) · body_walk 472×376(8프레임)
