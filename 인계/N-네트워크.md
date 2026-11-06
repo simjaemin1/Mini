@@ -3,6 +3,13 @@
 > ★이 파일은 **영역 소유 세션만** 갱신한다. 다른 영역에 쓸 말이 생기면 `인계/회부.md` 에 한 줄.
 > 원문은 `_아카이브_2026-08_다음세션_인계.md` 에 그대로 동결돼 있다(족보 · 삭제 금지).
 > 이사할 때 **문장을 한 글자도 안 고쳤다** — 낡아 보이는 줄엔 `[낡음? 확인 필요]` 표만 붙였다.
+## T1163. ★★2026-11-05 — **첫 접속 · 관측 welcome 의 지형을 서명으로 뺀다**(손잡이 `T1163_WELCOME_SIG` · `=== '1'` 만 켬 · **끔 기본** · 승인 대기 · 보고/API_2026-11-05_0220.md)
+
+* 클라는 로비에서 `/terrain.json` 을 이미 받는다(T1131 `?v=`). 서명 정본 `public/terrain-sig.js`(서버 require · 클라 `<script>` — 사본 0 · 두 갈래 32비트 섞기 + 글자 수 · `crypto.subtle` 없는 http 에서도 선다). 99-main 선로딩이 **setHardcoded 앞**에 존마다 세어 `_t1163Hf`(30-n-net)에 둔다 → `connectZone` 주소 `hf=<서명>`(선로딩 전이면 칸 없음 = 종전).
+* 서버 `_t1163Skip(url)` — 켬 · `hf` = 이 존 **파일 절 서명**(파일을 따로 읽은 사본 + `restoreBakeOff` · 런타임 `_segIdx` 가 붙기 전)이면 첫 접속 · 관측 welcome 이 `hardcodedTerrain` 자리에 `hfHit: 1` 하나(칸 차례 그대로) · 소켓은 지형을 가진 것으로 적힘(`_t1125Mark` → 승격 welcome 도 지형 0). 다르면 · 모르면 종전.
+* 클라 `msg.hfHit` → `_terrainAppliedZones` 에 넣고 `_t1125Ht[존] = sig.ht`(승격 `have`). ⚠끔이어도 클라는 주소에 `hf` 를 싣는다(서버가 무시 · welcome 글자 무변).
+* 운영 꼴 로컬 바이트(JSON): 한반도 첫 접속 943 → 127 KB · 관측 847 → 30 KB · 닛폰 첫 접속 869 → 248 · 관측 773 → 152(`계측/T1163_welcome_bytes_{전,후}.json` · `t1125-welcome-bytes.js --hf`). 하네스 `test-t1163-welcome-sig`(서버 · 노드) · 실클라 `e2e-t1163-welcome-sig`(샌드박스 맥에선 Chromium 이 못 떠 안 돌림).
+
 ## T1130. ★★2026-11-04 — **서버가 없는 존에는 묻지 않는다** — central `/zones` 존 칸 `hosted`(손잡이 `T1130_HOSTED` · 켬 기본 후보 · 승인 대기 · 보고/T1130_2026-11-04.md)
 
 * 재민 11-03 실기(사파리 · https 전환 뒤): 콘솔 TLS 오류 수십 줄. 클라가 개울(`00-const` `loadStreams` → `<존>/streams.bin`)과 큰 지도(`80-bigmap` `zoneBase` → `<존>/bigmap.png`)를 `zonesMeta` 26존 다에 묻는다 — 서버 없는 존(중원 · 베링 …)의 주소는 `hostFromEnv` 끝(`PUBLIC_HOST` = 서울 IP)으로 떨어져 `https://<IP>/…` = 인증서 불일치.

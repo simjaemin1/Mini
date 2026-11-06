@@ -797,6 +797,7 @@
       params.set('color', myColor);
       if (onbStartVid != null) params.set('start_vid', String(onbStartVid));   // ★[온보딩 v2] 시작 화면에서 고른 마을 — 서버가 그 마을 도착 지점으로 앉힌다
     }
+    if (_t1163Hf[zoneId]) params.set('hf', _t1163Hf[zoneId]);   // ★[T1163] 가진 지형 절 서명(서버가 같으면 welcome 에서 지형을 뺀다)
     const url = `${meta.wsUrl}/?${params.toString()}`;
     const ws = new WebSocket(url);
     if (role === 'primary' && _ld.rx && _ld.at.ws == null) { _ldMark('ws'); ws.addEventListener('open', () => _ldMark('open'), { once: true }); }   // ★[T920] 첫 접속 창에만
@@ -856,6 +857,9 @@
   //   예측 유지(서버 `T1125_KEEP_PRED` → `uiCfg.keepPred`) — 넘기 동안 예측을 멈추지 않고 승격 welcome 은 자리를 적기만 한다(첫 틱이 한 번 보정).
   const _t1125Ht = {};
   let _t1125Tb = null;
+  // ★[T1163] 로비 `/terrain.json` 으로 가진 존 절의 서명(`public/terrain-sig.js` — 99-main 선로딩이 setHardcoded 앞에 센다) — 존 접속 주소 `hf` 로 실는다.
+  //   서버 손잡이 `T1163_WELCOME_SIG` 켬 · 같으면 그 welcome 은 지형을 빼고 `hfHit` 를 싣는다(끔 · 다르면 종전대로 지형이 온다). 선로딩 전에 붙으면 칸이 없다(종전).
+  const _t1163Hf = {};
   function _t1125Keep() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.keepPred === true); }
 
   // ★[T1077] 넘겨받을 존에 못 붙었다 — 화면에 까닭 한 줄(하십시오체 · 존 이름은 표시 이름 — 서버 T564 알림과 같은 자리)
@@ -900,6 +904,10 @@
         const _sz = c.zoneId || (msg.zone && msg.zone.id);
         if (msg.hardcodedTerrain && _sz) _t1125Ht[_sz] = msg.sig.ht;
         if (msg.recipes) _t1125Tb = msg.sig.tb;
+      }
+      if (msg.hfHit) {   // ★[T1163] 서버가 지형을 뺐다 — 로비에서 받은 절(이미 setHardcoded)이 이 존 절과 같다. 이미 적용한 존으로 적고(다음 welcome 이 지형을 실어도 다시 안 갈아 끼운다) · 승격 때 알릴 서명도 적는다.
+        const _hz = c.zoneId || (msg.zone && msg.zone.id);
+        if (_hz) { _terrainAppliedZones.add(_hz); if (msg.sig && msg.sig.ht) _t1125Ht[_hz] = msg.sig.ht; }
       }
       if (!msg.observer && msg.pid) c._t1125Pid = msg.pid;   // ★[T1125 ⑧] 이 소켓에서 내 몸의 pid(틱에서 내 몸을 찾는 열쇠)
       if (c.zoneId && zonesMeta[c.zoneId] && zonesMeta[c.zoneId].hosted === false && uiCfg && uiCfg.streams) { try { loadStreams(); } catch (e) {} }   // ★[T1130] 호스트 없다고 적힌 존에 붙었다(표시가 틀렸다) — 붙은 존은 표시와 상관없이 개울을 받는다(00-const `_t1130Skip`)

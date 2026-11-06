@@ -6825,7 +6825,7 @@ async function _acceptConnection(ws, req, C) {
       type: 'welcome',
       observer: true,
       zone: zonePublicMeta(),
-      hardcodedTerrain: getHardcodedTerrainForZone(),
+      ...(_t1163Skip(url) ? { hfHit: 1 } : { hardcodedTerrain: getHardcodedTerrainForZone() }),   // ★[T1163] 켬 · 클라가 로비 `/terrain.json` 으로 같은 절(`hf` = 파일 절 서명)을 가졌으면 지형을 빼고 `hfHit` 한 칸(끔 = 종전 글자 · 칸 차례 그대로)
       ...(T1125_LEAN_PROMOTE ? { sig: _t1125Mark(ws, true, false) } : {}),   // ★[T1125 ⑥ ⑦] 관측 소켓이 열릴 때 지형을 미리 받는다 — 승격 welcome 은 지형을 다시 안 싣는다
       resources: Array.from(resources.values()),
       claims: Array.from(claims.values()),
@@ -7360,7 +7360,7 @@ async function _acceptConnection(ws, req, C) {
     //   클라가 이걸 보고 죽은 토큰을 localStorage 에서 지운다(서버는 이미 NULL 로 만들었다).
     ...(T1160_GUEST_MERGED ? { guestMerged: _promoted || false } : { promoted: _promoted || false }),   // ★[T1160] 켬 = 승계는 `guestMerged`(`promoted` = 승격 하나의 뜻) · 끔 = 종전 칸
     zone: zonePublicMeta(),
-    hardcodedTerrain: getHardcodedTerrainForZone(),
+    ...(_t1163Skip(url) ? { hfHit: 1 } : { hardcodedTerrain: getHardcodedTerrainForZone() }),   // ★[T1163] 켬 · 같은 절을 가졌으면 지형을 뺀다(관측 welcome 과 같은 한 줄 · 끔 = 종전)
     ...(T1125_LEAN_PROMOTE ? { sig: _t1125Mark(ws, true, true) } : {}),   // ★[T1125 ⑥] 판 서명(지형 · 표 일곱) — 이 소켓이 둘 다 받았다
     resources: Array.from(resources.values()),
     claims: Array.from(claims.values()),
@@ -17107,6 +17107,34 @@ function _t1125Mark(ws, ht, tb) {   // 이 소켓에 지금 실어 보내는 것
   if (ws) ws._t1125Has = { ht: ht ? S.ht : (H.ht || null), tb: tb ? S.tb : (H.tb || null) };
   return S;
 }
+// ★★[T1163 2026-11-05 · K4 · T1125 ②] 손잡이 `T1163_WELCOME_SIG`(`=== '1'` 만 켬 · **끔 기본** · 끔 = 종전 welcome 글자 그대로).
+//   클라는 로비에서 `/terrain.json`(central 이 내는 `server/hanbando-terrain.json` 그대로 · T1131 `?v=` immutable)을 이미 받는다 — 그런데 첫 접속 · 관측 welcome 이
+//   그 존 지형(`hardcodedTerrain`)을 또 싣는다(한반도 첫 접속 welcome 의 7할). 켬 = 클라가 접속 주소에 실은 `hf`(가진 절의 서명 · `public/terrain-sig.js` 정본 —
+//   서버 · 클라 같은 파일)가 **이 존 파일 절 서명**과 같으면 지형을 빼고 `hfHit: 1` 을 싣는다. 모르면(`hf` 없음 · 지형 없는 존) · 다르면 종전대로 싣는다.
+//   파일 절 서명 = 파일을 **따로 읽은 사본**(런타임 칸 `_segIdx` · `_bbox` 가 붙기 전 — T910 `_t910PureTerrain` 과 같은 까닭)에 `restoreBakeOff`(`T574_REGION=0` 이면
+//   구운 광종을 되돌린다 — 메모리 정본과 같은 길)를 건 그 존 절. ⇒ 존 파일이 central 파일과 다른 판(배포 어긋남) · `T574_REGION=0` 이면 서명이 달라 종전대로 싣는다.
+//   뺀 소켓은 지형을 가진 것으로 적는다(`_t1125Mark(ws, true, …)` — 승격 welcome 도 지형을 다시 안 싣는다 · T1125 ⑥ 그대로).
+const T1163_WELCOME_SIG = process.env.T1163_WELCOME_SIG === '1';
+const TerrainSig = require('../public/terrain-sig.js');
+let _t1163Hf;   // undefined = 아직 안 셈 · null = 셀 수 없음(지형 없는 존 · 파일 없음)
+function _t1163FileSig() {
+  if (_t1163Hf !== undefined) return _t1163Hf;
+  _t1163Hf = null;
+  try {
+    const all = JSON.parse(require('fs').readFileSync(require.resolve('./hanbando-terrain.json'), 'utf8'));
+    try { require('./region-profiles').restoreBakeOff(all); } catch (e) { /* 프로필 없음 = 옛 길(terrain.js 와 같다) */ }
+    if (all && all[ZONE_ID]) _t1163Hf = TerrainSig.terrainSig(all[ZONE_ID]);
+  } catch (e) { _t1163Hf = null; }
+  return _t1163Hf;
+}
+function _t1163Skip(url) {   // 참 = 이 welcome 은 지형을 뺀다
+  if (!T1163_WELCOME_SIG || !url) return false;
+  const want = url.searchParams.get('hf');
+  if (!want) return false;
+  const S = _t1163FileSig();
+  return !!S && want === S;
+}
+if (T1163_WELCOME_SIG) setImmediate(_t1163FileSig);   // 켬이면 부팅 뒤 한 번 미리 센다(첫 welcome 이 파일 읽기를 안 기다리게)
 const T1125_WEL_HEAD = process.env.T1125_WEL_HEAD !== '0';
 const T1125_WEL_KBPS = parseFloat(process.env.T1125_WEL_KBPS || '') || 1700 / 40;
 function sendWelcome(ws, obj) {
