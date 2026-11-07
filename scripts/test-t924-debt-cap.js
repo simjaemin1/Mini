@@ -63,7 +63,8 @@ for (let d = 401; d <= 440; d++) {
 console.log(JSON.stringify({ start, tot0, drafted0: start - keepFree, rows }));
 `;
 function run(env, keepFree, mode) {
-  const e = Object.assign({}, process.env); delete e.T924_DEBT_CAP; delete e.T815_DRAFT_FAMINE; Object.assign(e, env);
+  // ★[T1216] `T815_DRAFT_FAMINE` 은 T1183(land1048)이 켬 기본으로 돌렸다 — 이 판의 ⓐ ⓑ ⓒ ⓓ 는 T815 끔(셈만 느는 죽음이 서는 종전 셈) 위에서 T924 만 갈라 잰다(ⓔ 가 T815 켬을 따로 준다) ⇒ 팔이 안 주면 '0' 으로 묶는다
+  const e = Object.assign({}, process.env); delete e.T924_DEBT_CAP; delete e.T815_DRAFT_FAMINE; e.T815_DRAFT_FAMINE = '0'; Object.assign(e, env);
   const out = execFileSync(process.execPath, ['-e', CHILD, String(keepFree), mode || 'run'], { env: e, encoding: 'utf8', maxBuffer: 1 << 26 });
   return JSON.parse(out.trim().split('\n').pop());
 }
