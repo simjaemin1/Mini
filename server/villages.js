@@ -1556,7 +1556,7 @@ function _t1197Ix(v) {   // id → 사람(날마다 · 못 찾으면 다시 굽�
   return ix.m;
 }
 function _t1197Person(vil, p) {
-  const v = vil && vil.econ; if (!v || !v.npcs) return null;
+  const v = vil && vil.econ; if (!v || !v.npcs || !state.world) return null;   // ★[PM land1050 · T1208-K1 §2] 세계 시계 없는 판(랩 탐침 · 헤드리스) — 흘림 문(`t1197BodyStep`)과 같은 가드
   const m = _t1197Ix(v);
   if (p._econId != null) { const q = m.get(p._econId); if (q) return q; if (_t1198On()) return null; p._econId = null; }   // ★[T1198] 켬 = 짝 잃은 몸은 다시 짝짓지 않는다(날 경계 동기가 그 까닭으로 내보낸다)
   const players = state.deps.players, taken = new Set();
