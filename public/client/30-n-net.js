@@ -1832,6 +1832,11 @@
       //   ★[T235] 다섯 문의 답 — 한 종류다. 기다리던 자리에 그대로 건네고 끝(새 화면 0).
       const r = _centralWait.get(msg.door);
       if (r) { _centralWait.delete(msg.door); r(msg.data || (msg.ok ? { ok: true } : { error: '실패' })); }
+    } else if (msg.type === 'terr_quote' || msg.type === 'terr_progress' || msg.type === 'terr_done' || msg.type === 'terr_stop') {
+      if (typeof verbsOnTerr === 'function') verbsOnTerr(msg);   // ★[T1207] 영토 넓히기 — 값 · 진척 · 끝 · 멈춤(`46-h-verbs`)
+    } else if (msg.type === 'village_bnd') {
+      // ★[T1207] 플레이어가 넓힌 영토의 지금 외곽선(하루 방송 `bnd` 와 같은 칸 · 같은 꼴)
+      if (c.simVillages && msg.bnd) { for (const v of c.simVillages) { const nb = msg.bnd[v.id]; if (Array.isArray(nb) && nb.length) { v.b = nb; delete v.approx; } } needsRedraw = true; }
     } else if (msg.type === 'look') {
       if (typeof verbsOnLook === 'function') verbsOnLook(msg);   // ★[T507] 살피기의 답 — 물 메뉴도 이 답으로 짓는다(`46-h-verbs`)
     } else if (msg.type === 'notice') {

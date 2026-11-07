@@ -825,6 +825,7 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
           const npc = ev.npcs.splice(k, 1)[0];
           if (ev.counts && npc && npc.currentJob) ev.counts[npc.currentJob] = Math.max(0, (ev.counts[npc.currentJob] || 0) - 1);
           S.stats.supDead++; _gone++;
+          if (process.env.T1206_NAT_DEATH !== '0') ev._t1206Due = (ev._t1206Due || 0) + 1;   // ★[T1206 ③] 원정 전사도 부장(econ 같은 문 · 다음 날 경계)
         }
         if (T1104_WALK) _t1104SupDead(F, fvil, _gone, g, _A);   // ★[T1104 ②] 원정 몸이 은거지에서 쓰러진다(실전투에서 죽은 그 차례 · 몸이 모자란 몫만 종전 까닭 줄)
         else if (_gone && host.noteBodyExit) host.noteBodyExit(fvil, 'expedition', _gone, g.camp);   // ★[T590] 원정은 추상(몸이 안 나갔다) — 집에 선 몸이 그 소굴 쪽으로 걸어 나간다(그 밖 · 회부)

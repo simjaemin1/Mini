@@ -21,6 +21,9 @@
 // 실행: node scripts/test-one-target.js
 'use strict';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
+// ★[T1208] 원석 한 품목 판에 묶는다 — ⓑ 고정물은 조성(`land.oreMix`)을 한 품목 `ore` 에 걸어 원석 상한을 재는데, T1188 원석 광물별(`T1188_ORE_SPLIT` · land1048 켬)
+//   판엔 `ore` 값이 없다(광물마다 `ore_<광물>`) — 그 판의 상한 정산 = 결정 대조는 이 하네스 밖(보고/T1208_K4 회부). 아이 판도 이 env 를 물려받는다.
+if (process.env.T1188_ORE_SPLIT == null) process.env.T1188_ORE_SPLIT = '0';
 const path = require('path');
 const fs = require('fs');
 const vm = require('vm');

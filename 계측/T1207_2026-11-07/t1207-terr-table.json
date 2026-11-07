@@ -1,0 +1,410 @@
+{
+ "src": {
+  "clearMinPerM2": 1.44,
+  "postSpacingM": 1.8,
+  "woodPerPost": 3,
+  "k": 1.01,
+  "alpha": 10,
+  "S0": 1500,
+  "dayMin": 1007.9999999999999,
+  "pvR": 4,
+  "start": 49,
+  "targets": [
+   4500,
+   7500,
+   11700
+  ],
+  "pops": [
+   30,
+   60,
+   100
+  ]
+ },
+ "crossCheck": true,
+ "arms": {
+  "card": {
+   "label": "카드(S₀ 1500 · α 10 · k 1.01)",
+   "round": [
+    {
+     "target": 4500,
+     "size": 4500,
+     "cells": 4451,
+     "labMin": 9775.4,
+     "days": 9.7,
+     "realH": 2.72,
+     "wood": 489.1,
+     "woodCeil": 556,
+     "posts": 163,
+     "mLast": 3.03,
+     "mMax": 3.03
+    },
+    {
+     "target": 7500,
+     "size": 7500,
+     "cells": 7451,
+     "labMin": 27297.1,
+     "days": 27.1,
+     "realH": 7.58,
+     "wood": 1066.3,
+     "woodCeil": 1156,
+     "posts": 355.4,
+     "mLast": 5.08,
+     "mMax": 5.08
+    },
+    {
+     "target": 11700,
+     "size": 11700,
+     "cells": 11651,
+     "labMin": 66730.8,
+     "days": 66.2,
+     "realH": 18.54,
+     "wood": 2188,
+     "woodCeil": 2300,
+     "posts": 729.3,
+     "mLast": 7.96,
+     "mMax": 7.96
+    }
+   ],
+   "strip": {
+    "10": [
+     {
+      "target": 4500,
+      "size": 4500,
+      "cells": 4451,
+      "labMin": 9270044.6,
+      "days": 9196.5,
+      "realH": 2575.01,
+      "wood": 2387690.4,
+      "woodCeil": 2387931,
+      "posts": 795896.8,
+      "mLast": 4467.49,
+      "mMax": 4467.74
+     },
+     {
+      "target": 7500,
+      "size": 7500,
+      "cells": 7451,
+      "labMin": 45400253,
+      "days": 45039.9,
+      "realH": 12611.18,
+      "wood": 11715938.4,
+      "woodCeil": 11716344,
+      "posts": 3905312.8,
+      "mLast": 13025.35,
+      "mMax": 13025.35
+     },
+     {
+      "target": 11700,
+      "size": 11700,
+      "cells": 11651,
+      "labMin": 179012588.1,
+      "days": 177591.9,
+      "realH": 49725.72,
+      "wood": 46067270.1,
+      "woodCeil": 46067907,
+      "posts": 15355756.7,
+      "mLast": 32666.88,
+      "mMax": 32667.35
+     }
+    ],
+    "20": [
+     {
+      "target": 4500,
+      "size": 4500,
+      "cells": 4451,
+      "labMin": 1648372.8,
+      "days": 1635.3,
+      "realH": 457.88,
+      "wood": 201201,
+      "woodCeil": 201324,
+      "posts": 67067,
+      "mLast": 827.01,
+      "mMax": 827.04
+     },
+     {
+      "target": 7500,
+      "size": 7500,
+      "cells": 7451,
+      "labMin": 8555874.3,
+      "days": 8488,
+      "realH": 2376.63,
+      "wood": 1044731.3,
+      "woodCeil": 1044938,
+      "posts": 348243.8,
+      "mLast": 2526.48,
+      "mMax": 2526.52
+     },
+     {
+      "target": 11700,
+      "size": 11700,
+      "cells": 11651,
+      "labMin": 35037115.6,
+      "days": 34759,
+      "realH": 9732.53,
+      "wood": 4273996.9,
+      "woodCeil": 4274312,
+      "posts": 1424665.6,
+      "mLast": 6546.11,
+      "mMax": 6546.11
+     }
+    ]
+   }
+  },
+  "a0": {
+   "label": "참고 — α 0(모양 벌점 없음)",
+   "round": [
+    {
+     "target": 4500,
+     "size": 4500,
+     "cells": 4451,
+     "labMin": 9775.2,
+     "days": 9.7,
+     "realH": 2.72,
+     "wood": 489,
+     "woodCeil": 556,
+     "posts": 163,
+     "mLast": 3.03,
+     "mMax": 3.03
+    },
+    {
+     "target": 7500,
+     "size": 7500,
+     "cells": 7451,
+     "labMin": 27296.8,
+     "days": 27.1,
+     "realH": 7.58,
+     "wood": 1066.1,
+     "woodCeil": 1156,
+     "posts": 355.4,
+     "mLast": 5.08,
+     "mMax": 5.08
+    },
+    {
+     "target": 11700,
+     "size": 11700,
+     "cells": 11651,
+     "labMin": 66730.4,
+     "days": 66.2,
+     "realH": 18.54,
+     "wood": 2187.9,
+     "woodCeil": 2300,
+     "posts": 729.3,
+     "mLast": 7.96,
+     "mMax": 7.96
+    }
+   ],
+   "strip": {
+    "10": [
+     {
+      "target": 4500,
+      "size": 4500,
+      "cells": 4451,
+      "labMin": 9775.2,
+      "days": 9.7,
+      "realH": 2.72,
+      "wood": 2511.8,
+      "woodCeil": 2757,
+      "posts": 837.3,
+      "mLast": 3.03,
+      "mMax": 3.03
+     },
+     {
+      "target": 7500,
+      "size": 7500,
+      "cells": 7451,
+      "labMin": 27296.8,
+      "days": 27.1,
+      "realH": 7.58,
+      "wood": 7028.2,
+      "woodCeil": 7439,
+      "posts": 2342.7,
+      "mLast": 5.08,
+      "mMax": 5.08
+     },
+     {
+      "target": 11700,
+      "size": 11700,
+      "cells": 11651,
+      "labMin": 66730.4,
+      "days": 66.2,
+      "realH": 18.54,
+      "wood": 17157.1,
+      "woodCeil": 17806,
+      "posts": 5719,
+      "mLast": 7.96,
+      "mMax": 7.96
+     }
+    ],
+    "20": [
+     {
+      "target": 4500,
+      "size": 4500,
+      "cells": 4451,
+      "labMin": 9775.2,
+      "days": 9.7,
+      "realH": 2.72,
+      "wood": 1188.9,
+      "woodCeil": 1312,
+      "posts": 396.3,
+      "mLast": 3.03,
+      "mMax": 3.03
+     },
+     {
+      "target": 7500,
+      "size": 7500,
+      "cells": 7451,
+      "labMin": 27296.8,
+      "days": 27.1,
+      "realH": 7.58,
+      "wood": 3323.6,
+      "woodCeil": 3526,
+      "posts": 1107.9,
+      "mLast": 5.08,
+      "mMax": 5.08
+     },
+     {
+      "target": 11700,
+      "size": 11700,
+      "cells": 11651,
+      "labMin": 66730.4,
+      "days": 66.2,
+      "realH": 18.54,
+      "wood": 8125,
+      "woodCeil": 8438,
+      "posts": 2708.3,
+      "mLast": 7.96,
+      "mMax": 7.96
+     }
+    ]
+   }
+  },
+  "s49": {
+   "label": "참고 — 시작 영토 = 창설 49칸",
+   "round": [
+    {
+     "target": 4500,
+     "size": 4500,
+     "cells": 4451,
+     "labMin": 309663.9,
+     "days": 307.2,
+     "realH": 86.02,
+     "wood": 15494.3,
+     "woodCeil": 15562,
+     "posts": 5164.8,
+     "mLast": 96.06,
+     "mMax": 96.06
+    },
+    {
+     "target": 7500,
+     "size": 7500,
+     "cells": 7451,
+     "labMin": 864711.2,
+     "days": 857.8,
+     "realH": 240.2,
+     "wood": 33776.5,
+     "woodCeil": 33863,
+     "posts": 11258.8,
+     "mLast": 160.94,
+     "mMax": 160.94
+    },
+    {
+     "target": 11700,
+     "size": 11700,
+     "cells": 11651,
+     "labMin": 2113879.5,
+     "days": 2097.1,
+     "realH": 587.19,
+     "wood": 69312.2,
+     "woodCeil": 69427,
+     "posts": 23104.1,
+     "mLast": 252.19,
+     "mMax": 252.19
+    }
+   ],
+   "strip": {
+    "10": [
+     {
+      "target": 4500,
+      "size": 4500,
+      "cells": 4451,
+      "labMin": 293654021.2,
+      "days": 291323.4,
+      "realH": 81570.56,
+      "wood": 75636625.2,
+      "woodCeil": 75636872,
+      "posts": 25212208.4,
+      "mLast": 141520.01,
+      "mMax": 141527.96
+     },
+     {
+      "target": 7500,
+      "size": 7500,
+      "cells": 7451,
+      "labMin": 1438177213.7,
+      "days": 1426763.1,
+      "realH": 399493.67,
+      "wood": 371134400.6,
+      "woodCeil": 371134816,
+      "posts": 123711466.9,
+      "mLast": 412613.68,
+      "mMax": 412613.68
+     },
+     {
+      "target": 11700,
+      "size": 11700,
+      "cells": 11651,
+      "labMin": 5670713449,
+      "days": 5625707.8,
+      "realH": 1575198.18,
+      "wood": 1459306805.1,
+      "woodCeil": 1459307444,
+      "posts": 486435601.7,
+      "mLast": 1034812.84,
+      "mMax": 1034827.8
+     }
+    ],
+    "20": [
+     {
+      "target": 4500,
+      "size": 4500,
+      "cells": 4451,
+      "labMin": 52216716.7,
+      "days": 51802.3,
+      "realH": 14504.64,
+      "wood": 6373591,
+      "woodCeil": 6373709,
+      "posts": 2124530.3,
+      "mLast": 26197.68,
+      "mMax": 26198.71
+     },
+     {
+      "target": 7500,
+      "size": 7500,
+      "cells": 7451,
+      "labMin": 271030724,
+      "days": 268879.7,
+      "realH": 75286.31,
+      "wood": 33094721.9,
+      "woodCeil": 33094917,
+      "posts": 11031574,
+      "mLast": 80033.08,
+      "mMax": 80034.47
+     },
+     {
+      "target": 11700,
+      "size": 11700,
+      "cells": 11651,
+      "labMin": 1109896486.6,
+      "days": 1101087.8,
+      "realH": 308304.58,
+      "wood": 135390543,
+      "woodCeil": 135390847,
+      "posts": 45130181,
+      "mLast": 207365.89,
+      "mMax": 207365.89
+     }
+    ]
+   }
+  }
+ }
+}

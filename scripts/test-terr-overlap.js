@@ -18,6 +18,9 @@
 'use strict';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/tto-${process.pid}.db`;
+//   ★[T1207] 이 판이 재는 것은 **고르는 법**(방향 · 겹침)이다 — 영토 값(개간 · 말뚝 · 곳간 · 몸)은 끈다(자식도 이 env 를 물려받는다).
+//     켬은 고른 셀을 "치른 만큼" 더할 뿐 고르는 법은 한 글자도 안 바꾼다(`test-t1207-terr-real` ⑧′ — 다 치른 날의 셀 = 끔이 고른 셀) · 이 판의 마을엔 곳간 · 몸이 없다.
+process.env.T1207_TERR_REAL = process.env.T1207_TERR_REAL || '0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

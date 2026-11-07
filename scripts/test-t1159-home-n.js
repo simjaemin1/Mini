@@ -1,5 +1,8 @@
 // @regress
 'use strict';
+// ★[T1208-K1 2026-11-07] 이 자는 T1159 집 N 문(종전 econ 출생 줄)을 잰다 — land1049 가 켠 `T1198_BIRTH_BODY` 는 출생을 "아이 가질 집 = ⌊주거 상한 ÷ 채당 정원⌋"(정원 6)으로 묶어
+//   이 판(주거 5 · 침상 5)엔 집 0 → 출생 0 이라 "출생 한 명만" 이 20 ≠ 21 로 갈렸다(`=0` 이면 초록 · main 초록). T1198 의 출생은 `test-t1198-birth-body` 몫. 부르는 쪽이 값을 주면 그 값이 먼저.
+if (process.env.T1198_BIRTH_BODY == null) process.env.T1198_BIRTH_BODY = '0';
 const assert = require('assert/strict');
 const {execFileSync} = require('child_process');
 const {homePopulation,bindWarBody} = require('../server/home-population');
