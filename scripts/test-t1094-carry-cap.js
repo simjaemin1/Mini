@@ -87,7 +87,10 @@ const codeOf = (src) => src.split('\n').map((l) => l.replace(/\/\/.*$/, '')).joi
 const CV = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
 const CC = codeOf(fs.readFileSync(path.join(ROOT, 'sim', 'war-core.js'), 'utf8'));
 const fnBody = (C, name) => { const i = C.indexOf('function ' + name + '('); if (i < 0) return ''; let d = 0, j = C.indexOf('{', i); for (let k = j; k < C.length; k++) { if (C[k] === '{') d++; else if (C[k] === '}') { d--; if (!d) return C.slice(i, k + 1); } } return ''; };
-const sub = (env, P) => { const E = Object.assign({}, process.env, { T1094_SUB: 'load' }); for (const k of KNOBS) delete E[k]; delete E.T1094_P; Object.assign(E, env || {}); if (P) E.T1094_P = JSON.stringify(P);
+// ★[T1208] land1048 이 켬 기본으로 돌린 둘을 이 판의 전제대로 묶는다(아이 판마다 · 판이 따로 주면 그것):
+//   `T1041_WAR_BODY`(T1183 · 전쟁 마을 몸 무제한) — ⓑ 는 가시 몸 하나(`VILLAGE_NPC_CAP=1`)가 병력 팩을 다 지는 판이다(켜면 몸 여덟이 나눠 진다 · 상한이 안 문다).
+//   `T811_ARMS_BODY`(무기 몸 · 켬 기본) — ⓓ 끔 증인은 이 카드 문(`T1094_CARRY_CAP`)을 끄면 무기가 장부에만 남는가다(켜면 T811 문이 따로 싣는다).
+const sub = (env, P) => { const E = Object.assign({}, process.env, { T1094_SUB: 'load' }); for (const k of KNOBS) delete E[k]; delete E.T1094_P; if (E.T1041_WAR_BODY == null) E.T1041_WAR_BODY = '0'; E.T811_ARMS_BODY = '0'; Object.assign(E, env || {}); if (P) E.T1094_P = JSON.stringify(P);
   const o = execFileSync(process.execPath, [__filename], { cwd: ROOT, env: E, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 26 }).toString(); return JSON.parse(o.slice(o.indexOf('{"knob"'))); };
 const near = (a, b, e) => Math.abs((a || 0) - (b || 0)) <= (e || 1e-6);
 console.log('\n=== 문 6 — 원정은 몸이 질 수 있는 만큼만 가져간다(T1094) ===');

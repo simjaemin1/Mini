@@ -45,7 +45,7 @@ ok(on.offA === true && on.offU === false && on.offC === true && onNoAct.offA ===
 {
   const S = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
   ok(/function woodToGranary\(v, units\) \{[\s\S]{0,120}actDemandCap\(v, units, woodShareD\(v\), '_t325InflowToday'\)/.test(S), '② 곳간 입구도 같은 분자(`woodShareD`)');
-  ok(/const fuelNeed = N \* _firewoodPC\(\) \* \(1 \+ FUEL_COLD_W/.test(S) && /if \(T1135_FUEL_EQ\) v\._t1135Need = fuelNeed;/.test(S), '② 틱이 그날 `fuelNeed` 를 남긴다(1인 수요 = `_firewoodPC()`)');
+  ok(/const fuelNeed = _homeN \* _firewoodPC\(\) \* \(1 \+ FUEL_COLD_W/.test(S) && /if \(T1135_FUEL_EQ\) v\._t1135Need = fuelNeed;/.test(S), '② 틱이 그날 `fuelNeed` 를 남긴다(1인 수요 = `_firewoodPC()`)');
   const SC = S.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');   // 주석 뺀 판(부름만 센다)
   const uses = (SC.match(/\bFIREWOOD_PC\b(?!_SRC)/g) || []).length, fn = (SC.match(/_firewoodPC\(\)/g) || []).length;
   ok(fn === 6 && /const need = N \* _firewoodPC\(\) \* \(H \+ FUEL_COLD_W \* \(A\.cs \|\| 0\)\);/.test(S) && /const _firewoodPC = \(\) => \(T1135_FUEL_EQ \? FIREWOOD_PC_SRC : FIREWOOD_PC\);/.test(S), '④ 1인 땔감을 읽는 자리가 한 함수(`_firewoodPC` — 주석 뺀 부름: T1135 네 줄 다섯 + ★[T1148] 추위 빚 하나)', `함수 ${fn} · 상수 글자 ${uses}`);
@@ -85,6 +85,7 @@ const C=require('./server/chunk');console.log(JSON.stringify({F:_t1135W(),want:6
      && /t325LootOf: \(r\) => lootOfResource\(r\)/.test(Z), '⑥ 정본 두 갈래의 return 이 한 함수(`_t1135Sap`)를 지난다 · 몸 · 헤드리스가 같은 `lootOfResource`(→ `t325LootOf`)');
 }
 // ── ⑦ 삭정이 ──
+// ★[T1208] 옛 글자 둘을 지금 글자로 — ② 인구 칸이 `_homeN`(집에 있는 사람 · 원정 뺌) · ⑦ 명부 0 문에 T1180 생산 식 끔(`productionFormulaOff` 나무꾼) 갈래가 붙었다(뜻 · 단언 무변).
 {
   const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
   ok(/const T1135_DEAD_KG_HA_YR = 6593 \* 0\.087 \+ 1200;/.test(V), '⑦ 출처 수 — 계방산 가지 낙엽(6,593 × 8.7%) + 점봉산 고사목 1,200 kg/ha/년');
@@ -92,7 +93,7 @@ const C=require('./server/chunk');console.log(JSON.stringify({F:_t1135W(),want:6
   ok(g > lj && fg > g && lj > 0, '⑦ 줍기 절은 나무꾼 절 뒤 · 채집 절 앞(헤드리스 하루 한 자리)');
   const blk = V.slice(g, fg);
   ok(!/t325CutTreeAt|t341Unharvest/.test(blk), '⑦ 산 나무는 안 벤다(벌목 문 · 되살림 문을 안 부른다)');
-  ok(/_t561Crew\(vil, 'forager'\)/.test(blk) && /vil\.econ\.counts && vil\.econ\.counts\.forager/.test(blk) && /_t449S \? 0 :/.test(blk), '⑦ 명부 = 채집꾼(채집 절과 같은 한 칸 · 관측 마을은 몸 명부라 0)');
+  ok(/_t561Crew\(vil, 'forager'\)/.test(blk) && /vil\.econ\.counts && vil\.econ\.counts\.forager/.test(blk) && /const _fg = \(_t449S \|\| _lifeEcon\(\)\.productionFormulaOff\?\.\(vil\.econ,'lumberjack'\)\) \? 0 : _fgE;/.test(blk), '⑦ 명부 = 채집꾼(채집 절과 같은 한 칸 · 관측 마을은 몸 명부라 0)');
   ok(/woodDemandLeft\(vil\.econ\)/.test(blk) && /woodToGranary\(vil\.econ, _take\)/.test(blk) && /_t491BodyDay\(vil, Math\.sqrt\(_bd\)\) \* _fg/.test(blk), '⑦ 같은 수요 문 · 같은 곳간 입구 · 걸음 한도(한 몸의 하루 단 × 명부)');
   ok(/if \(vil\.econ && _lifeEcon\(\)\.T325_WOOD_ACT && _t1135On\(\) && _lifeEcon\(\)\.woodActOn\(vil\.econ\)\) \{/.test(blk) && /function _t1135On\(\) \{ return !!_lifeEcon\(\)\.T1135_FUEL_EQ; \}/.test(V), '⑦ 켬만(끔 = 한 줄도 안 돈다 · env 는 econ 정본 하나)');
   ok(/const live = \(S && S\.K > 0\) \? Math\.min\(1, \(S\.N \| 0\) \/ S\.K\) : 0;/.test(V), '⑦ 벤 숲은 덜 떨어뜨린다(지금 선 그루 ÷ 교란 전 그루)');

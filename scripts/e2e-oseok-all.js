@@ -76,7 +76,8 @@ const S = (d) => `${q(d, 0.5)} / ${q(d, 0.95)} / ${Math.max(...d).toFixed(1)}`;
     console.log(`\n── 손잡이 ${mode === 'on' ? '켬' : '끔'} ──`);
     const pg = await D.page(1440, 900);
     vals.version = D.version;
-    await pg.goto(`http://localhost:${CPORT}/${mode === 'on' ? '?T1124_OSEOK_ALL=1' : ''}`);
+    // ★[T1208] 게시판 판은 종전 판(`#boardPane`)을 잰다 — 마을 화면(`T1070_VILLAGE_VIEW` · T1137 켬 기본)이면 Shift+G 가 그 화면을 연다(아래 게시판 줄 주석 그대로 끔에 묶는다).
+    await pg.goto(`http://localhost:${CPORT}/?T1070_VILLAGE_VIEW=0${mode === 'on' ? '&T1124_OSEOK_ALL=1' : ''}`);
     await pg.ev(`(() => { window.__osaErr = []; window.addEventListener('error', (e) => window.__osaErr.push(String(e.message).slice(0, 160))); return 1; })()`);
     for (let i = 0; i < 120 && !(await pg.ev(`(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); })()`)); i++) await sleep(500);
     await pg.ev('(typeof Oseok !== "undefined" ? Oseok.ready().then(() => 1) : 0)');
