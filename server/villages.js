@@ -74,6 +74,9 @@
 //   둘 다 invalidate 호출로 행렬 재계산 로그까지 확인).
 // =============================================================================
 'use strict';
+// ★[T1214 µs 줄기] 손잡이 상수(머리 주석 = `_physicalStoneWork` 앞 ★★[T1214] 절) — 싣는 도중에 부르는 함수가 있어도 서도록 파일 머리에 둔다.
+const T1214_STEP_FAST = process.env.T1214_STEP_FAST === '1' || process.env.T1214_STEP_FAST === 'verify';
+const T1214_VERIFY = process.env.T1214_STEP_FAST === 'verify';
 // ★[T732 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔)] 로트 장부는 **늦게 · 켬일 때만** 부른다 — 끄면(랩 포함) `lots.js` 를 싣지도 않는다(main 바이트 · 랩 모듈 무변).
 const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT !== '0');   // ★[T778] 켬 기본 · 되돌림 `=0`
 let _t732LotsM = null;
@@ -111,7 +114,7 @@ function _t748BagsOf(G, body, w, keys) {
 //   ⚠짐 무게(`_t312Kg` · 짐이 차면 귀환)는 그대로 몸 크기(민물 표 kg)다 — 무게 표 kg 와의 어긋남은 회부.
 function _t1128HandUnits(K, id, kg) {   // 켬 전용 — 표에 그 종의 열량이 없으면(어종 밖 · 열량 0) 종전 식으로 떨어진다
   if (!K) return 0;
-  if(require('./fish-goods').ON)return +K.econUnitsOf(id,1,require('./fish-goods').bodyKg(id,kg))||0;
+  if((T1214_STEP_FAST?_t1214FG():require('./fish-goods')).ON)return +K.econUnitsOf(id,1,(T1214_STEP_FAST?_t1214FG():require('./fish-goods')).bodyKg(id,kg))||0;   // ★[T1214 ③]
   const u = +K.econUnitsOf(id, 1) || 0;
   return u > 0 ? u : (kg > 0 ? (+K.econUnitsOf('fish', 1, kg) || 0) : 0);
 }
@@ -124,7 +127,7 @@ function _t748FishRecs(G, npc) {
   const out = [];
   for (const id of ids) {
     const n = inv[id] || 0; if (!(n > 0)) continue;
-    const kg = (require('./fish-goods').ON?require('./fish-goods').bodyKg(id):0) || _fresh().kgOf(id) || _seaTbl().kgOf(id) || 0;
+    const kg = ((T1214_STEP_FAST?_t1214FG():require('./fish-goods')).ON?(T1214_STEP_FAST?_t1214FG():require('./fish-goods')).bodyKg(id):0) || _fresh().kgOf(id) || _seaTbl().kgOf(id) || 0;   // ★[T1214 ③]
     const per = _t1128On() ? _t1128HandUnits(K, id, kg) : ((K && kg > 0) ? (+K.econUnitsOf('fish', 1, kg) || 0) : 0);   // ★[T1128 9-b] 켬 = 그 종 한 마리의 표 열량(끔 = 종전 글자)
     out.push(...G.handRecs(npc, id, n, per > 0 ? per : 1));
   }
@@ -9996,13 +9999,13 @@ function _t312Deliver(vil, npc) {
   if (_t593SeaHand()) for (const id of _seaTbl().ids()) ids.add(id);
   const hand = []; let natural = 0, mass = 0;
   for (const id of ids) {
-    const n = inv[id] || 0, kg = (require('./fish-goods').ON?require('./fish-goods').bodyKg(id):0) || _fresh().kgOf(id) || _seaTbl().kgOf(id) || 0;
+    const n = inv[id] || 0, kg = ((T1214_STEP_FAST?_t1214FG():require('./fish-goods')).ON?(T1214_STEP_FAST?_t1214FG():require('./fish-goods')).bodyKg(id):0) || _fresh().kgOf(id) || _seaTbl().kgOf(id) || 0;   // ★[T1214 ③]
     const per = _t1128On() ? _t1128HandUnits(K, id, kg) : ((K && kg > 0) ? (+K.econUnitsOf('fish', 1, kg) || 0) : 0);
     if (!(n > 0 && per > 0)) continue;
     hand.push({id,n,kg,per}); natural += n * per; mass += n * kg;
   }
   if (!(natural > 0)) return 0;
-  if(require('./fish-goods').ON){u=natural;npc._t312U=natural;npc._t312Kg=mass;}
+  if((T1214_STEP_FAST?_t1214FG():require('./fish-goods')).ON){u=natural;npc._t312U=natural;npc._t312Kg=mass;}   // ★[T1214 ③]
   let left = _lifeEcon().fishDemandLeft(vil.econ), take = 0, takenKg = 0;
   const selected = [];
   for (const h of hand) {
@@ -10017,7 +10020,7 @@ function _t312Deliver(vil, npc) {
   if (_d) { const records = []; if (got > 0) for (const h of selected) records.push(..._G.handRecs(npc,h.id,h.n,h.per)); _G.doorShut(vil.econ,'fish',records); }
   if (!(got > 0)) return 0;
   for (const h of selected) inv[h.id] -= h.n;
-  npc._t312U = +Math.max(0,u-(require('./fish-goods').ON?take:got)).toFixed(6);
+  npc._t312U = +Math.max(0,u-((T1214_STEP_FAST?_t1214FG():require('./fish-goods')).ON?take:got)).toFixed(6);   // ★[T1214 ③]
   npc._t312Kg = mass > 0 ? +Math.max(0,(npc._t312Kg||0)*(1-takenKg/mass)).toFixed(3) : 0;
   npc._t1180FullFish = false;
   vil._t312Deliv = +((vil._t312Deliv || 0) + got).toFixed(6);
@@ -10315,7 +10318,7 @@ function _t312Take(vil, day, key, want) {
 }
 function _t312Catch(vil,day,cx,cy,want,kg,now,npc) {
   const cap=_carryCfg()?.CFG?.CAP_KG||0;
-  if(npc && cap>0 && (require('./fish-goods').ON?require('./carry').npcTotalKg(npc):(npc._t312Kg||0))+kg>cap+1e-9){npc._t1180FullFish=(npc._t312Kg||0)>0;return 0;}   // T1180: 한 마리를 더 실을 수 없으면 잡지 않고 귀환
+  if(npc && cap>0 && ((T1214_STEP_FAST?_t1214FG():require('./fish-goods')).ON?(T1214_STEP_FAST?_t1214Carry():require('./carry')).npcTotalKg(npc):(npc._t312Kg||0))+kg>cap+1e-9){npc._t1180FullFish=(npc._t312Kg||0)>0;return 0;}   // T1180: 한 마리를 더 실을 수 없으면 잡지 않고 귀환
   const key=cx+','+cy,got=_t312Take(vil,day,key,want);
   if (!(got>0)) return 0;
   const draw=state.deps.t312DrawFishAt;
@@ -10429,9 +10432,138 @@ function _stoneApproach(vil,npc,rock,day) {
     if(Math.hypot(x-rock.x,y-rock.y)>=range||dp.isTerrainBlockedLocal?.(x,y)||dp.isBlockedByWall?.(x,y,x,y,0))continue;
     points.push({x,y});
   }
+  if (T1214_STEP_FAST) return _t1214PtPick(vil, npc, points, day, dp);   // ★[T1214 ②] 켬 = 가까운 자리부터(같은 차례 · 같은 묻기)
   points.sort((a,b)=>Math.hypot(a.x-npc.x,a.y-npc.y)-Math.hypot(b.x-npc.x,b.y-npc.y));
   for(const p of points){const reach=_t427On()?_t427Reach(vil,npc,p.x,p.y,day,dp.decBudgetOver||null):true;if(reach===null)return null;if(reach)return p;}
   return false;
+}
+// ★★[T1214 µs 줄기 2026-11-07] 손잡이 `T1214_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 두 길을 다 재고 견줌 · 답은 종전 길).
+//   T1200 §5 의 다음 감 셋 — 행위 켬 판에서 NPC 한 걸음마다 **같은 답을 다시 짓는** 몫. 셋 다 같은 값이다(같은 수 · 같은 차례 · 같은 부름).
+//   ① 짓기 크루 명부 — `_t1181Task` 가 걸음마다 다리 크루 명부(`_t527Crew` — 있는 몸 훑기 · Map 찾기)를 지어 "이 사람이 있나"를 묻고,
+//      있으면 그제야 그 마을의 열린 다리 터를 찾는다. 다리 터 목록(`_t527Sites()`)이 **비었으면**(한반도 기본 — 섬 다리 0 ·
+//      지름길 `T537_SHORTCUT` 끔) 크루든 아니든 그 블록은 아무것도 안 한다(빈 목록의 `find` → 터 없음 → land1049 는 `null` · land1050 은
+//      아래 영토 일감(T1207)으로 넘어간다 — 둘 다 블록을 건너뛴 끝과 같다). 켬: 목록이 빈 판에서는 명부를 안 훑는다(`_t1214Crew527`).
+//      목록이 하나라도 있으면 종전 글자 그대로(명부 → 터 찾기). 곳간 크루(`_t435Crew`)는 이미 곳간 터(`vil._granPend`)가 있을 때만 훑는다(무변).
+//      ⚠목록을 처음 짓는 때(게으른 첫 부름)가 "첫 크루의 걸음" → "첫 몸의 걸음"으로 당겨진다 — 지은 목록 · DB 되살림은 같다
+//        (다리 행은 목록을 지은 뒤에만 쓴다 — `_t527Save` 가 목록의 터를 받는다 · 그 앞에 쓰는 자리 0).
+//   ② 실물 채석 목록 — `_physicalStoneWork` 가 걸음마다 거른 바위 목록을, `_stoneApproach` 가 바위 곁 설 자리 목록을 거리로 **통째 정렬**한 뒤
+//      앞에서부터 닿는지 묻는다(비교마다 `Math.hypot` 둘). 걷는 동안 첫 바위 · 첫 자리에서 거의 늘 멈춘다.
+//      켬: 같은 목록(종전 거르개 · 종전 칸 훑기 그대로)에서 거리를 원소마다 한 번만 재고(`_t1214Near` · 판마다 쓰는 거리 칸) 가장 가까운 것부터
+//      묻는다. 그것이 안 닿으면 남은 것을 (거리, 차례)로 정렬해 종전처럼 이어 묻는다(`_t1214RockPick` · `_t1214PtPick`).
+//      ★같은 차례인 까닭: V8 `Array.prototype.sort` 는 안정 정렬(TimSort · ES2019 부터 명세)이다 ⇒ 종전 차례 = (거리, 목록 차례) 오름차순.
+//        거리는 같은 식 · 같은 입력이라 비트 같다. 유한 수끼리 뺀 값의 부호 = 대소(점진 언더플로 — a − b = 0 ⟺ a = b) ·
+//        ∞ 와 유한은 ±∞ · ∞ 끼리는 종전 비교가 NaN → +0(명세 SortCompare — 같음)이라 차례로 갈린다(켬도 차례로 가른다).
+//        NaN 거리가 하나라도 서면 종전 비교가 어긋난 순서가 되어(구현 몫) **종전 길 그대로** 정렬한다.
+//      닿음 묻기(`_stoneApproach` · `_t427Reach`)는 종전과 같은 원소를 같은 차례로 · 같은 수만큼 부른다(첫째에서 멈추면 하나).
+//   ③ 짐 무게 — 실물 채석 · 크루 짐 고르기 · 해 질 녘 정산 머리 · 어부 잡기 · 어부 입고 · 생활 층 어부 칸이 부를 때마다 하던
+//      `require('./carry')` · `require('./weights')` · `require('./fish-goods')` 를 한 번 받은 모듈 칸으로
+//      (T1140 ③-나 꼴 · 다 실린 모듈만 칸에 둔다 — 실리는 도중의 빈 객체는 안 둔다). 무게 표 안쪽(`weights.kgOf` 의 `require('./fish-goods')` ·
+//      바다 표 `find` · `items()` 의 `require` · `fishing.plan` 의 `require`)은 그 파일들 머리 주석(같은 손잡이).
+//   ⚠켬 기본은 PM 몫(판정 0). 끔 = 종전 글자(종전 식이 그대로 돈다).
+//   (손잡이 상수는 파일 머리에 있다 — `T1214_STEP_FAST` · `T1214_VERIFY`)
+const _t1214Stat = { crewQ: 0, crewSkip: 0, crewVq: 0, crewBad: 0, modVq: 0, modBad: 0 };   // 계측 전용(verify 칸은 verify 에서만 오른다)
+function _t1214Bad(k, msg) { const S = _t1214Stat; if ((S[k + 'Bad'] = (S[k + 'Bad'] | 0) + 1) <= 5) console.error(`[T1214] verify 어긋남 ${k} — ${msg}`); }
+function _t1214Tick(k) { const S = _t1214Stat; if (((S[k + 'Vq'] = (S[k + 'Vq'] | 0) + 1) & 8191) === 0) console.error(`[T1214] verify ${k} 견줌 ${S[k + 'Vq']} · 어긋남 ${S[k + 'Bad'] | 0}`); }
+//   ① 다리 크루 문 — 터 목록이 빈 판이면 명부를 안 훑는다(거짓 = 종전 답 `null` 과 같은 끝) · verify = 종전 문도 재고, 갈리면 목록이 빈 판인가 본다
+function _t1214Crew527(vil, npc) {
+  const S = _t527Sites();
+  const empty = !!S && S.length === 0;
+  _t1214Stat.crewQ++;
+  if (!T1214_VERIFY) { if (empty) { _t1214Stat.crewSkip++; return false; } return _t527Crew(vil).some(p=>p.pid===npc.pid); }
+  const b = _t527Crew(vil).some(p=>p.pid===npc.pid);
+  _t1214Tick('crew'); if (empty && b && (S || []).find(s=>!s.done&&s.v.includes(vil.name))) _t1214Bad('crew', `${vil.name} ${npc.pid} 빈 목록인데 터`);
+  if (empty) _t1214Stat.crewSkip++;
+  return b;
+}
+//   ② 가까운 차례로 묻기 — 바위 목록 · 설 자리 목록에 칸 하나씩(거리 칸 · 셈). 둘은 겹쳐 돈다(바위를 묻는 도중 설 자리를 고른다) ⇒ 칸이 따로다.
+const _T1214_STOP = { stop: true };
+const _T1214R = { q: 0, first: 0, rest: 0, nan: 0, vq: 0, bad: 0, d: new Float64Array(64), pt: null };   // 바위 목록(`_physicalStoneWork`)
+const _T1214P = { q: 0, first: 0, rest: 0, nan: 0, vq: 0, bad: 0, d: new Float64Array(64) };             // 설 자리 목록(`_stoneApproach`)
+function _t1214Near(arr, npc, St) {   // 원소마다 거리 한 번(종전 비교 식의 한 쪽 그대로) → St.d · 돌려줌: 첫째 차례((거리, 차례)가 가장 작은 것) · 빈 목록 -2 · NaN -1
+  const n = arr.length; if (!n) return -2;
+  let d = St.d; if (d.length < n) d = St.d = new Float64Array(Math.max(n, d.length * 2));
+  let bi = 0, bd = 0;
+  for (let i = 0; i < n; i++) { const a = arr[i], x = Math.hypot(a.x-npc.x,a.y-npc.y); if (x !== x) return -1; d[i] = x; if (i === 0 || x < bd) { bi = i; bd = x; } }
+  return bi;
+}
+function _t1214Rest(n, bi, d) {   // 첫째를 뺀 나머지 — (거리, 차례) 오름차순(∞ − ∞ = NaN → 차례로 가른다 · 종전 비교의 "같음"과 같다)
+  const rest = [];
+  for (let i = 0; i < n; i++) if (i !== bi) rest.push(i);
+  rest.sort((a, b) => (d[a] - d[b]) || (a - b));
+  return rest;
+}
+function _t1214Order(arr, npc, St) {   // verify · 하네스 — 켬 차례 전부(원소 차례 번호) · NaN 이면 null
+  const bi = _t1214Near(arr, npc, St);
+  if (bi === -1) return null;
+  if (bi === -2) return [];
+  return [bi, ..._t1214Rest(arr.length, bi, St.d)];
+}
+function _t1214VerifyOrder(arr, npc, St, old) {   // 켬 차례는 묻기 없이 짓고(묻기를 두 번 하지 않는다) · 종전 길(arr 를 종전 차례로 정렬하며 묻는다)의 차례와 견준다
+  const o = _t1214Order(arr, npc, St), mine = o ? o.map((i) => arr[i]) : null;
+  const res = old();
+  St.vq++; if ((St.vq & 8191) === 0) console.error(`[T1214] verify ${St === _T1214R ? 'rock' : 'pt'} 견줌 ${St.vq} · 어긋남 ${St.bad}`);
+  if (mine) { for (let i = 0; i < arr.length; i++) if (mine[i] !== arr[i]) { if (++St.bad <= 5) console.error(`[T1214] verify 어긋남 ${St === _T1214R ? 'rock' : 'pt'} — 차례 ${i}/${arr.length}`); break; } }
+  else St.nan++;
+  return res;
+}
+function _t1214SortRock(vil, npc, rocks, day) {   // 종전 글자(통째 정렬 · 앞에서부터 묻기) — 돌려줌: STOP | null | 바위(설 자리는 _T1214R.pt)
+  rocks.sort((a,b) => Math.hypot(a.x-npc.x,a.y-npc.y)-Math.hypot(b.x-npc.x,b.y-npc.y));
+  for (const r of rocks) {
+    const reach = _stoneApproach(vil,npc,r,day);
+    if (reach === null) return _T1214_STOP;
+    if (reach) { _T1214R.pt = reach; return r; }
+  }
+  return null;
+}
+function _t1214RockPick(vil, npc, rocks, day) {   // 돌려줌: STOP | null | 바위(설 자리는 _T1214R.pt)
+  const St = _T1214R; St.q++;
+  if (T1214_VERIFY) return _t1214VerifyOrder(rocks, npc, St, () => _t1214SortRock(vil, npc, rocks, day));
+  const bi = _t1214Near(rocks, npc, St);
+  if (bi === -2) return null;
+  if (bi === -1) { St.nan++; return _t1214SortRock(vil, npc, rocks, day); }
+  St.first++;
+  { const r = rocks[bi], reach = _stoneApproach(vil,npc,r,day); if (reach === null) return _T1214_STOP; if (reach) { St.pt = reach; return r; } }
+  St.rest++;
+  for (const i of _t1214Rest(rocks.length, bi, St.d)) { const r = rocks[i], reach = _stoneApproach(vil,npc,r,day); if (reach === null) return _T1214_STOP; if (reach) { St.pt = reach; return r; } }
+  return null;
+}
+function _t1214SortPt(vil, npc, points, day, dp) {   // 종전 글자 — 돌려줌: null(멈춤) | 자리 | false
+  points.sort((a,b)=>Math.hypot(a.x-npc.x,a.y-npc.y)-Math.hypot(b.x-npc.x,b.y-npc.y));
+  for(const p of points){const reach=_t427On()?_t427Reach(vil,npc,p.x,p.y,day,dp.decBudgetOver||null):true;if(reach===null)return null;if(reach)return p;}
+  return false;
+}
+function _t1214PtPick(vil, npc, points, day, dp) {   // 종전 `_stoneApproach` 꼬리와 같은 답 — null(멈춤) | 자리 | false
+  const St = _T1214P; St.q++;
+  if (T1214_VERIFY) return _t1214VerifyOrder(points, npc, St, () => _t1214SortPt(vil, npc, points, day, dp));
+  const bi = _t1214Near(points, npc, St);
+  if (bi === -2) return false;
+  if (bi === -1) { St.nan++; return _t1214SortPt(vil, npc, points, day, dp); }
+  St.first++;
+  { const p = points[bi], reach = _t427On()?_t427Reach(vil,npc,p.x,p.y,day,dp.decBudgetOver||null):true; if (reach === null) return null; if (reach) return p; }
+  St.rest++;
+  for (const i of _t1214Rest(points.length, bi, St.d)) { const p = points[i], reach = _t427On()?_t427Reach(vil,npc,p.x,p.y,day,dp.decBudgetOver||null):true; if (reach === null) return null; if (reach) return p; }
+  return false;
+}
+//   ③ 모듈 칸 — 다 실린 모듈(그 함수가 선 객체)만 둔다 · verify = 매번 `require` 와 같은 객체인가
+let _t1214CarryM = null, _t1214WeightsM = null;
+function _t1214Carry() {
+  let m = _t1214CarryM;
+  if (!m) { m = require('./carry'); if (m && typeof m.npcTotalKg === 'function') _t1214CarryM = m; return m; }
+  if (T1214_VERIFY) { const b = require('./carry'); _t1214Tick('mod'); if (b !== m) { _t1214Bad('mod', 'carry'); return b; } }
+  return m;
+}
+let _t1214FGM = null;
+function _t1214FG() {
+  let m = _t1214FGM;
+  if (!m) { m = require('./fish-goods'); if (m && typeof m.bodyKg === 'function') _t1214FGM = m; return m; }
+  if (T1214_VERIFY) { const b = require('./fish-goods'); _t1214Tick('mod'); if (b !== m) { _t1214Bad('mod', 'fish-goods'); return b; } }
+  return m;
+}
+function _t1214Weights() {
+  let m = _t1214WeightsM;
+  if (!m) { m = require('./weights'); if (m && typeof m.kgOf === 'function') _t1214WeightsM = m; return m; }
+  if (T1214_VERIFY) { const b = require('./weights'); _t1214Tick('mod'); if (b !== m) { _t1214Bad('mod', 'weights'); return b; } }
+  return m;
 }
 function _physicalStoneWork(vil, npc, now, fv, dayR, day, bodyDay = day) {
   const E = _lifeEcon();
@@ -10446,15 +10578,21 @@ function _physicalStoneWork(vil, npc, now, fv, dayR, day, bodyDay = day) {
   if(state.deps.stoneResources&&(!vil._stoneTargets||vil._stoneTargets.day!==day))vil._stoneTargets={day,rows:state.deps.stoneResources(cx,cy,R)};
   const raw=state.deps.stoneResources?vil._stoneTargets.rows:(qt?qt.queryCircle(cx,cy,R):[]);
   const rocks = raw.filter(r => r.type === 'rock' && r.hp > 0 && (limit==null||_lifeJobSiteOK(vil,r.x,r.y,limit)));
-  rocks.sort((a,b) => Math.hypot(a.x-npc.x,a.y-npc.y)-Math.hypot(b.x-npc.x,b.y-npc.y));
   let rock = null,point=null;
+  if (T1214_STEP_FAST) {   // ★[T1214 ②] 켬 = 가장 가까운 바위부터(같은 차례 · 같은 묻기) — 머리 주석
+    const got = _t1214RockPick(vil, npc, rocks, day);
+    if (got === _T1214_STOP) return true;
+    if (got) { rock = got; point = _T1214R.pt; _T1214R.pt = null; }
+  } else {
+  rocks.sort((a,b) => Math.hypot(a.x-npc.x,a.y-npc.y)-Math.hypot(b.x-npc.x,b.y-npc.y));
   for (const r of rocks) {
     const reach = _stoneApproach(vil,npc,r,day);
     if (reach === null) return true;
     if (reach) { rock=r;point=reach;break; }
   }
+  }
   if (!rock) return false;
-  const C = require('./carry'), W = require('./weights');
+  const C = T1214_STEP_FAST ? _t1214Carry() : require('./carry'), W = T1214_STEP_FAST ? _t1214Weights() : require('./weights');   // ★[T1214 ③]
   let nextKg = W.kgOf('stone');
   if (rock.hp <= 1 && state.deps.t325LootOf) {
     const loot = state.deps.t325LootOf(rock) || {};
@@ -13470,9 +13608,9 @@ function _t720Settle(vil, npc, now, S) {
 }
 function _t720Step(vil, npc, now, fv, dayR, day, fullFish = false) {
   if (!fullFish && _stoneHandInOn(vil) && _stoneHeld(npc) > 0) {
-    const C = require('./carry');
+    const C = (T1214_STEP_FAST?_t1214Carry():require('./carry'));   // ★[T1214 ③]
     const kg = C.npcTotalKg(npc);
-    fullFish = kg >= C.CFG.CAP_KG || (npc.inventory.stone > 0 && kg + require('./weights').kgOf('stone') > C.CFG.CAP_KG + 1e-9);
+    fullFish = kg >= C.CFG.CAP_KG || (npc.inventory.stone > 0 && kg + (T1214_STEP_FAST?_t1214Weights():require('./weights')).kgOf('stone') > C.CFG.CAP_KG + 1e-9);
   }
   let S = npc._t720;
   if (!S || !S.k) {
@@ -13881,7 +14019,7 @@ function _t1181Task(vil,npc) {
     const p=vil._granPend,target={x:p.cx*SZ+SZ/2,y:(p.cy+2)*SZ+SZ/2};
     return {kind:'granary',key:'g/'+p.cx+','+p.cy+'/'+p.day,site:p,target,need:()=>E.granaryEconMaterials()||{}};
   }
-  if(E.T527_BRIDGE_ACT && _t527Crew(vil).some(p=>p.pid===npc.pid)) {
+  if(E.T527_BRIDGE_ACT && (T1214_STEP_FAST ? _t1214Crew527(vil,npc) : _t527Crew(vil).some(p=>p.pid===npc.pid))) {   // ★[T1214 ①] 켬 = 다리 터 목록이 빈 판에선 명부를 안 훑는다(빈 목록 → p 없음 → 이 블록은 아무것도 안 한다 · 종전도 같은 끝)
     const p=(_t527Sites()||[]).find(s=>!s.done&&(s.v.includes(vil.name)||(vil._seedName&&s.v.includes(vil._seedName))));   // ★[T1203] 후보 이름으로도(T1187 · 13031 줄과 같은 문)
     if(p){   // ★[T1207] 다리 후보가 없는 마을이면 아래 영토 일감으로 넘어간다(끔이면 종전처럼 null)
       const candidates=[];for(let i=0;i<p.cells.length;i+=2){const x=p.cells[i]*SZ+SZ/2,y=p.cells[i+1]*SZ+SZ/2;if(!_t394Blocked(x,y))candidates.push({x,y});}
@@ -13906,7 +14044,7 @@ function _t1181Step(vil,npc,now,awake) {
   const S=()=>{const k=t?.kind==='bridge'?'_t527Sum':t?.kind==='terr'?'_t1207Sum':'_t435Sum';return vil[k]||(vil[k]={days:0,crewDays:0,trips:0,took:0,placed:0,adv:0,stallDays:0,built:0,jobs:{}});};
   return _t1181Haul.step(npc,t,{now,awake,reach:44,drawMs:G_DRAWW,storeMs:G_STOREW,maxGap:SCH_VG_STUCK,
     move:(g,label)=>{npc.behavior='wander';npc.targetX=g.x;npc.targetY=g.y;npc.gatherTarget=null;_lifeAct(npc,label);},act:label=>_lifeAct(npc,(t&&t.kind==='terr'&&label==='건축')?'개간':label),home:()=>_lifeGoHome(npc,'취침'),
-    pick:()=>{for(const[item,left]of missing()){const W=_carryCfg(),kg=require('./weights').kgOf(item),room=kg>0?Math.max(0,Math.floor((W.CFG.CAP_KG-W.totalKg(npc))/kg)):0;const spare=item==='wood'&&(t.kind==='bridge'||t.kind==='terr')?Math.max(0,E.woodSpare(vil.econ)):Infinity;const n=Math.min(left,_t400PerLoad(item),room,spare);if(n>0&&(vil.econ.storage[item]||0)>0)return{item,n};}return null;},
+    pick:()=>{for(const[item,left]of missing()){const W=_carryCfg(),kg=(T1214_STEP_FAST?_t1214Weights():require('./weights')).kgOf(item),room=kg>0?Math.max(0,Math.floor((W.CFG.CAP_KG-W.totalKg(npc))/kg)):0;const spare=item==='wood'&&(t.kind==='bridge'||t.kind==='terr')?Math.max(0,E.woodSpare(vil.econ)):Infinity;const n=Math.min(left,_t400PerLoad(item),room,spare);if(n>0&&(vil.econ.storage[item]||0)>0)return{item,n};}return null;},
     take:(k,n)=>{const q=E.actFromGranary(vil.econ,k,n,true);if(q>0){S().took+=q;S().trips++;}return q;},
     refund:(k,n)=>E.returnActMaterials(vil.econ,k,n),
     place:(k,n)=>{if(!(n>0))return;t.site.mat[k]=(t.site.mat[k]||0)+n;E.actMaterialsPlaced(vil.econ,k,n);S().placed=(S().placed||0)+n;if(t.kind==='bridge')_t527Save(t.site);},
@@ -15436,12 +15574,12 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
           //      그 어부의 배율(숙련·도구)은 econ 이 제 자리에서 남겨 둔 `_t172mul` 을 **그대로** 쓴다(T172 규약 · 사본 0).
           const _K = _kcal();
           const _ec = _lifeEconNpc(vil, npc);
-          const _mul = require('./fish-goods').ON ? 1 : ((_ec && typeof _ec._t172mul === 'number' && _ec._t172mul > 0) ? _ec._t172mul : 1);
+          const _mul = (T1214_STEP_FAST?_t1214FG():require('./fish-goods')).ON ? 1 : ((_ec && typeof _ec._t172mul === 'number' && _ec._t172mul > 0) ? _ec._t172mul : 1);
           const _units = _K ? (T1144_LIFE_EVENT ? _t1144Units(_K, _sp) : _t1128On() ? _t1128HandUnits(_K, _sp.id, _sp.kg) : (+_K.econUnitsOf('fish', 1, _sp.kg) || 0)) * _mul : 0;   // ★[T1128 9-b] 켬 = 그 종 한 마리의 표 열량(끔 = 종전 글자) · ★[T1144 ③ · T1154] 켬 = 종마다 한 번
           //   ⓓ 셀 예산에서 **통째로** 꺼낸다 — 안 되면 그 셀은 오늘 비었다(이월 0).
           const _got = _t312Catch(vil,day,_cx,_cy,_units,_sp.kg,now,npc);
           if (_got > 0) {
-            require('./fish-goods').note(vil.econ,_sp.id,1);
+            (T1214_STEP_FAST?_t1214FG():require('./fish-goods')).note(vil.econ,_sp.id,1);   // ★[T1214 ③]
             if (npc.inventory) { npc.inventory[_sp.id] = (npc.inventory[_sp.id] || 0) + 1; const _L = _t732Lots(); if (_L) _L.noteNow(npc, _sp.id, 1); }   // ★손에 — 플레이어와 **같은 칸**(`inventory`) · ★[T732] 낚은 순간
             npc._t312U = +((npc._t312U || 0) + _got).toFixed(6);                            // 손에 든 것의 장부값(귀환 때 곳간으로)
             npc._t312Kg = +((npc._t312Kg || 0) + _sp.kg).toFixed(3);
@@ -17089,6 +17227,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
     // ★[T400] 집 행위 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 걸음·자재 규칙을 다시 적지 않는다 — 정본 함수를 그대로 부른다.
     _t1188Probe: {mine:(v,p,n,d)=>_t724BodyStep(v,p,n,d),deliver:(v,p,n)=>_t724Deliver(v,p,'gran',n),bulk:v=>_oreMineDaily(v)},
     _t1181Probe: { step:(v,p,n,a)=>_t1181Step(v,p,n,a),task:(v,p)=>_t1181Task(v,p),drawMs:()=>G_DRAWW,storeMs:()=>G_STOREW },
+    _t1214Probe: { get ON() { return T1214_STEP_FAST; }, get VERIFY() { return T1214_VERIFY; }, stat: () => { const R = _T1214R, P = _T1214P; return Object.assign({}, _t1214Stat, { rockQ: R.q, rockFirst: R.first, rockRest: R.rest, rockNaN: R.nan, rockVq: R.vq, rockBad: R.bad, ptQ: P.q, ptFirst: P.first, ptRest: P.rest, ptNaN: P.nan, ptVq: P.vq, ptBad: P.bad }); }, crew435: (v) => _t435Crew(v).map((p) => p.pid), crew527: (v) => _t527Crew(v).map((p) => p.pid), crew527Gate: (v, p) => _t1214Crew527(v, p), order: (arr, npc) => _t1214Order(arr, npc, { d: new Float64Array(4) }), carry: () => _t1214Carry(), weights: () => _t1214Weights(), fishGoods: () => _t1214FG() },   // ★[T1214] 하네스 문(정본 그대로 부름)
     _t435Probe: { granAdd: (vil) => _lifeGranAdd(vil), day: (vil) => _t435GranaryDay(vil), ready: (vil) => _t435Ready(vil), crew: (vil) => _t435Crew(vil).map((p) => p.pid) },   // ★[T435] 하네스가 같은 함수를 부른다
     _t527Probe: { sites: () => _t527Sites(), reset: () => { state._t527Sites = null; }, sig: (site) => _t527Sig(site), day: (vil) => _t527BridgeDay(vil), crew: (vil) => _t527Crew(vil).map((p) => p.pid), need: (site, i) => _t527EconNeed(site, i), stages: (site) => _t527StageCount(site) },   // ★[T527] 하네스가 같은 함수를 부른다
     _t400Probe: { setup: (o) => { const k = { deps: state.deps, db: state.db, dayMs: state.dayMs, epoch: state.epoch, zoneId: state.zoneId };

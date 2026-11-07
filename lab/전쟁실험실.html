@@ -1018,9 +1018,32 @@ module.exports = {
 const ON=typeof process==='undefined'||!process.env||process.env.T1192_FISH_SPECIES!=='0';
 const Fresh=require('./freshfish'),Sea=require('./seafish');
 let SEA_BODY_IDS=null;
-function bodyKg(id,fallback=0){const f=Fresh.kgOf(id);if(f>0)return f;const row=Sea.TABLE?.find(r=>r.id===id);if(row?.kg?.length===2){if(!SEA_BODY_IDS){const ids=require('./fishing').FISH_ITEMS;if(!Array.isArray(ids))return fallback;SEA_BODY_IDS=new Set(ids);}if(SEA_BODY_IDS.has(id))return(row.kg[0]+row.kg[1])/2;}return fallback;}
-function species(){return require('./fish-preserve').species();}
-function items(){return require('./fish-preserve').items();}
+// ★[T1214 ③ µs 줄기] 손잡이 `T1214_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 두 길을 다 재고 견줌 · 답은 종전 길 · 머리 주석 = villages.js `T1214`).
+//   ⓐ `bodyKg` 의 바다 표 `find`(무게를 물을 때마다 25줄 훑기 — 물고기가 아닌 품목은 끝까지) → 한 번 지은 id 표. 처음 찾은 줄을 둔다(`find` 와 같은 줄) ·
+//     id 가 NaN 인 줄은 안 둔다(`===` 로는 영영 안 맞는다) · 표 배열이 바뀌면(다른 배열) 다시 짓는다 · 줄이 객체가 아닌 표는 종전 `find` 그대로(던짐까지 같게).
+//   ⓑ `items()` · `species()` 의 `require('./fish-preserve')` → 한 번 받은 모듈 칸(다 실린 모듈만 · 그 함수가 선 객체). 끔 = 종전 글자.
+const T1214=typeof process!=='undefined'&&!!process.env&&(process.env.T1214_STEP_FAST==='1'||process.env.T1214_STEP_FAST==='verify');
+const T1214V=T1214&&process.env.T1214_STEP_FAST==='verify';
+const _t1214Stat={vq:0,bad:0};
+function _t1214Bad(m){if(++_t1214Stat.bad<=5)console.error('[T1214] verify 어긋남 fish-goods '+m);}
+let _seaOf,_seaMap=null,_fpM=null;
+function _seaRow(id){
+  const T=Sea.TABLE;
+  if(_seaOf!==T){_seaOf=T;_seaMap=null;if(Array.isArray(T)){const M=new Map();let ok=true;for(let i=0;i<T.length;i++){const r=T[i];if(!r||typeof r!=='object'){ok=false;break;}const k=r.id;if(k===k&&!M.has(k))M.set(k,r);}if(ok)_seaMap=M;}}
+  if(!_seaMap)return T?.find(r=>r.id===id);
+  const a=_seaMap.get(id);
+  if(T1214V){const b=T.find(r=>r.id===id);_t1214Stat.vq++;if(a!==b){_t1214Bad('바다 표 '+id);return b;}}
+  return a;
+}
+function _fp(){
+  const m=_fpM;
+  if(!m){const b=require('./fish-preserve');if(b&&typeof b.items==='function'&&typeof b.species==='function')_fpM=b;return b;}
+  if(T1214V){const b=require('./fish-preserve');_t1214Stat.vq++;if(b!==m){_t1214Bad('fish-preserve');return b;}}
+  return m;
+}
+function bodyKg(id,fallback=0){const f=Fresh.kgOf(id);if(f>0)return f;const row=T1214?_seaRow(id):Sea.TABLE?.find(r=>r.id===id);if(row?.kg?.length===2){if(!SEA_BODY_IDS){const ids=require('./fishing').FISH_ITEMS;if(!Array.isArray(ids))return fallback;SEA_BODY_IDS=new Set(ids);}if(SEA_BODY_IDS.has(id))return(row.kg[0]+row.kg[1])/2;}return fallback;}
+function species(){return (T1214?_fp():require('./fish-preserve')).species();}
+function items(){return (T1214?_fp():require('./fish-preserve')).items();}
 function isItem(id){return ON&&!!items()[id];}
 const FACTORS=new Map(); // 표준 품목 kg·T59 밀도·하루 열량은 이 프로세스에서 고정, 나이/실제 개체 kg를 캐시하지 않는다.
 function factor(id){if(!FACTORS.has(id)){const K=require('./kcal');FACTORS.set(id,K.kcalOf(id)/K.DAY_KCAL);}return FACTORS.get(id);}
@@ -1029,7 +1052,7 @@ function note(v,id,n){if(!ON||!species().includes(id)||!(n>0))return;const m=v._
 function shares(v){const m=v?._t1192CatchMix||null,c=v&&SHARE_CACHE.get(v);if(c&&c.mix===m)return {...c.value};const o={};let sum=0;for(const id of species()){if(!(m?.[id]>0))continue;const u=m[id]*factor(id);if(u>0){o[id]=u;sum+=u;}}if(sum>0)for(const id in o)o[id]/=sum;if(v)SHARE_CACHE.set(v,{mix:m,value:o});return {...o};}
 function reserve(v,id,oldDry,oldPickle,oldFactor){const it=items()[id];if(!it)return 0;const s=shares(v)[it.from]||0;if(!(s>0))return 0;const f=factor(id);return f>0?s*(it.kind==='dry'?oldDry:oldPickle)*oldFactor/f:0;}
 function audit(){const Sp=require('./specialty'),W=require('./weights');return species().map(id=>{const fr=Fresh.kgOf(id),r=Sea.TABLE?.find(x=>x.id===id),old=Sp.RESOURCES[id]?.weight||W.CORE_KG[id]||fr||0;return{id,ko:require('./fish-preserve').koOf(id),parcelKg:old,bodyKg:bodyKg(id,old),source:fr?'설계/설계_민물고기.md §1 (T603 kg 미확인 · 현행 몸 크기 유지)':r?.kg?'설계/고증_바닷물고기.md T592/T602 기존 몸 앵커 · kg 미확인(low:kg, 구체 kg 출처 없음)':'미확인 · 현행 값 유지',verified:false,hasExistingSeaKgField:!fr&&!!r?.kg,tableLow:r?.low||[],tableSource:r?.src||null};});}
-module.exports={ON,bodyKg,species,items,isItem,factor,note,shares,reserve,audit};
+module.exports={ON,bodyKg,species,items,isItem,factor,note,shares,reserve,audit,t1214Stat:()=>Object.assign({on:T1214,verify:T1214V},_t1214Stat)};
 
 ;return module.exports;})();
   modules["fish-preserve"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["fish-preserve"];},set:function(v){modules["fish-preserve"]=v;}});module.exports={};var exports=module.exports;var require=req;var window=undefined;
@@ -1729,6 +1752,18 @@ function windowMsFor(kg) {
 //       종 kg 가 없으면(`T593_KG=0` · 하네스의 네 인자) 지금 식.
 //   ⚠싸움 단계는 존이 돈다(`zone.tryFishStrike` → `_fishPoll`): 건 뒤 `fightMs` 동안 끌어올리고 그 뒤 손에 든다 · 그 사이 줄을 거두면 놓친다.
 //   ⚠NPC 어부의 창은 그대로다(어부의 놓침은 반사신경이 아니라 자리 비움 — T340 · 보고 회부).
+// ★[T1214 ③ µs 줄기] 손잡이 `T1214_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 매번 `require` 도 받아 같은 객체인가 견줌 · 답은 `require` 쪽 · 머리 주석 = villages.js `T1214`).
+//   `plan` 이 던짐마다 하던 `require('./fish-goods')` 를 한 번 받은 모듈 칸으로(다 실린 모듈 — `bodyKg` 함수가 선 객체만). 끔 = 종전 글자.
+const T1214_STEP_FAST = typeof process !== 'undefined' && !!process.env && (process.env.T1214_STEP_FAST === '1' || process.env.T1214_STEP_FAST === 'verify');
+const T1214_VERIFY = T1214_STEP_FAST && process.env.T1214_STEP_FAST === 'verify';
+const _t1214Stat = { vq: 0, bad: 0 };   // 계측 전용
+let _t1214FGM = null;
+function _t1214FG() {
+  const m = _t1214FGM;
+  if (!m) { const b = require('./fish-goods'); if (b && typeof b.bodyKg === 'function') _t1214FGM = b; return b; }
+  if (T1214_VERIFY) { const b = require('./fish-goods'); _t1214Stat.vq++; if (b !== m) { if (++_t1214Stat.bad <= 5) console.error('[T1214] verify 어긋남 fishing → fish-goods'); return b; } }
+  return m;
+}
 const T609_BIG_WINDOW = (() => { const v = process.env.T609_BIG_WINDOW; return (v === 'a' || v === 'b' || v === 'c') ? v : null; })();
 function windowFor(kg, kg0, mode) {
   const m = mode === undefined ? T609_BIG_WINDOW : mode;
@@ -1752,7 +1787,7 @@ function plan(sp, stock01, now, rng, kg0) {
   const waitMs = Math.max(CFG.WAIT_MIN_MS, Math.min(CFG.WAIT_MAX_MS, Math.round(raw)));
   let kg = _lognormal(rng, (kg0 > 0 ? Math.log(kg0) : CFG.SIZE_MU) + Math.log(sc.size), CFG.SIZE_SIGMA);
   kg = Math.min(CFG.SIZE_MAX, +kg.toFixed(3));
-  if(require('./fish-goods').ON&&kg0>0)kg=kg0;
+  if((T1214_STEP_FAST?_t1214FG():require('./fish-goods')).ON&&kg0>0)kg=kg0;   // ★[T1214 ③]
   if (!T609_BIG_WINDOW) return { biteAt: now + waitMs, waitMs, kg, windowMs: windowMsFor(kg) };
   return { biteAt: now + waitMs, waitMs, kg, windowMs: windowFor(kg, kg0), fightMs: fightMsFor(kg) };   // ★[T609 ②] 켬만
 }
@@ -1802,6 +1837,7 @@ module.exports = {
   spotAt, spotScore, _riverU, _lakeR, _seaSpot,
   regen, rec, stockRatioAt, drawStock, drawWholeStock, deficitStock, deficitBy, stockToEcon, diffuse,
   plan, windowMsFor, _lognormal,
+  t1214Stat: () => Object.assign({ on: T1214_STEP_FAST, verify: T1214_VERIFY }, _t1214Stat),   // ★[T1214] 계측
   T609_BIG_WINDOW, windowFor, fightMsFor,   // ★[T609 ②] 큰 종 창 안 셋 — 표 기계(`t602-windows.js`)가 같은 함수로 잰다
 };
 // ★[T818 ②] 접근자 하나가 리터럴에 있으면 V8 이 내보내기 객체를 통째로 사전 모드로 짓는다(T806 ② 와 같은 까닭) — 같은 이름 · 같은 몸통 · 열거 · 고칠 수 있음으로 리터럴 밖에 단다(값 무변 · 키 차례만 이 하나가 끝)
@@ -6001,6 +6037,20 @@ module.exports = {
 'use strict';
 const Specialty = require('./specialty');
 const OreGoods = require('./ore-goods');
+// ★[T1214 ③ µs 줄기] 손잡이 `T1214_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 매번 `require` 도 받아 같은 객체인가 견줌 · 답은 `require` 쪽 · 머리 주석 = villages.js `T1214`).
+//   `kgOf` 가 부를 때마다 하던 `require('./fish-goods')`(NPC 짐 무게가 품목마다 부른다)를 한 번 받은 모듈 칸으로 — `require` 는 실린 모듈이면 같은 객체다.
+//   다 실린 모듈(`bodyKg` 함수가 선 객체)만 칸에 둔다 — 맞물려 실리는 도중의 빈 객체는 안 둔다(그때는 종전처럼 매번 부른다). 끔 = 종전 글자.
+//   ⚠파일 머리에 둔다 — 이 파일은 싣는 도중(유도 표 · 사냥 고기 표)에 `kgOf` 를 부른다(상수가 그보다 먼저 서야 한다).
+const T1214_STEP_FAST = typeof process !== 'undefined' && !!process.env && (process.env.T1214_STEP_FAST === '1' || process.env.T1214_STEP_FAST === 'verify');
+const T1214_VERIFY = T1214_STEP_FAST && process.env.T1214_STEP_FAST === 'verify';
+const _t1214Stat = { vq: 0, bad: 0 };   // 계측 전용
+let _t1214FG = null;
+function _t1214Fg() {
+  const m = _t1214FG;
+  if (!m) { const b = require('./fish-goods'); if (b && typeof b.bodyKg === 'function') _t1214FG = b; return b; }
+  if (T1214_VERIFY) { const b = require('./fish-goods'); _t1214Stat.vq++; if (b !== m) { if (++_t1214Stat.bad <= 5) console.error('[T1214] verify 어긋남 weights → fish-goods'); return b; } }
+  return m;
+}
 // ★★[작물 층 2026-08-31] 작물 34종 + 씨앗의 kg — **`server/crops.js` 가 파생 정본**이다.
 //   12종은 specialty 가 무게를 갖고 있고(그쪽이 정본), 없는 22종만 분류 앵커에서 유도한다.
 //   여기서 표를 다시 적지 않는다 — 읽기만 한다(이 파일의 머리 규약 그대로).
@@ -6130,7 +6180,7 @@ function _fp() { if (_FP === null) { try { _FP = require('./fish-preserve'); } c
 function kgOf(id, noFp) {
   if(OreGoods.isOre(id))return CORE_KG.ore;
   if (!id) return null;
-  const FG=require('./fish-goods');if(FG.ON){const b=FG.bodyKg(id);if(b>0)return b;if(!noFp&&FG.isItem(id)){const k=_fp().kgOf(id,kgOf);if(k>0)return k;}}
+  const FG=T1214_STEP_FAST?_t1214Fg():require('./fish-goods');if(FG.ON){const b=FG.bodyKg(id);if(b>0)return b;if(!noFp&&FG.isItem(id)){const k=_fp().kgOf(id,kgOf);if(k>0)return k;}}
   const key = ITEM_ALIAS[id] || id;
   const sp = Specialty.RESOURCES && Specialty.RESOURCES[key];
   if (sp && sp.weight > 0) return sp.weight;
@@ -6161,7 +6211,7 @@ function catalog() {
 // 알려진 아이디 전부(하네스 전수 스윕용)
 function allIds() { return Object.keys(catalog()); }
 
-module.exports = { CORE_KG, ITEM_ALIAS, DERIVED_KG, DEFAULT_KG, kgOf, kgOfOrDefault, catalog, allIds };
+module.exports = { CORE_KG, ITEM_ALIAS, DERIVED_KG, DEFAULT_KG, kgOf, kgOfOrDefault, catalog, allIds, t1214Stat: () => Object.assign({ on: T1214_STEP_FAST, verify: T1214_VERIFY }, _t1214Stat) };
 
 ;return module.exports;})();
   modules["hut"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["hut"];},set:function(v){modules["hut"]=v;}});module.exports={};var exports=module.exports;var require=req;
