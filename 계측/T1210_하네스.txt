@@ -113,3 +113,9 @@ test-assets-audit :: 결과: FAIL(1)
 test-weight :: 64건 중 PASS 62 · FAIL 2 — ★★① specialty 값 · [T778 끔 탐침] (main 같은 두 줄)
 test-t1059-pick-top :: public/client/46-h-verbs.js:430 에서 멈춤(main 같은 자리)
 test-assets-audit :: ⑪a 안 닿는 파일 53장 > 기준 52 (main 같은 53 — 이 가지의 새 시트 넷 · 메타는 목록이 닿는다)
+
+## 최신 main 9bbe28bf(land1050) 합친 나무(93b589f7)에서 다시
+test-model-intake :: === 65건 중 PASS 65 · FAIL 0 ===
+test-client-globals 26/0 · test-render-common PASS · test-charsheet 194/0 · test-far-trees 19/0 · test-regrow 100/0 · test-snow 43/0 · test-move 38/0 · test-t1086-first-join 82/0
+test-weight :: 62/2 (깨끗한 9bbe28bf 같은 두 줄) · test-assets-audit :: ⑪a 53 > 52 (깨끗한 9bbe28bf 같은 53)
+test-t1059-pick-top :: 44/0 (66bf163d 의 멈춤이 land1050 에서 풀림 — 깨끗한 9bbe28bf 도 44/0)
