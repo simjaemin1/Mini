@@ -5800,12 +5800,41 @@ function waterMult(id, supply) {
   const short = Math.max(0, 1 - got / need);
   return +Math.max(0, 1 - short * (c.care / CARE_MAX)).toFixed(6);
 }
+// ★★★[T1215 2026-11-07 · ★재민 11-07 문 34 ㄱ(족보 782)] **칸 넓이 캐논 — 밭 칸 하나 = 실제 땅 `FIELD_CELL_M2` m²** — 손잡이 `T1215_FIELD_M2`(★켬 기본 후보 · `=1` 켬 · 끔 = 종전 글자).
+//   종전: 칸 한 번 수확 = 작물 표 `수확량(1-10)` 등급 × 물 × 발아율 **낱개**였다(조 5 낱 × 0.7 kg = 3.5 kg/m² = 35,000 kg/ha — 고증의 50 ~ 70배 · 보고/T1201 §2).
+//     등급은 상대 값이지 kg 가 아니다. 그리고 사람당 밭(`LAND_NEED` 12칸 = 12 m²)은 고증의 1/250 이다 — 둘이 반대쪽으로 틀려 사람당 곡식이 고증의 18 ~ 28% 였다.
+//   캐논(칸의 물리 성질 · 배수 캐논 안 · ★재민 09-23): 밭 칸 하나가 실제 땅 `FIELD_CELL_M2` 를 대신한다.
+//     `FIELD_CELL_M2` = 250 = 사람당 심는 밭 3,000 m² ÷ `LAND_NEED` 12. 3,000 m² = 50명에 30 ha(휴경 포함)의 절반(휴경 절반)
+//       — Qin & Fuller 2019(Cambridge *Evolutionary Human Sciences* 2024 「Millets, dogs, pigs and permanent settlement」 인용) · 범위 30 ~ 36 ha 의 아래 끝.
+//   칸당 수확(kg) = 고증 kg/ha ÷ 10,000 × `FIELD_CELL_M2` — 낱개 = 그 kg ÷ 낱개 무게(`kgOf`) × 물 × 발아율(종전 둘 그대로).
+//     고증 kg/ha(`T1215_KG_HA` — 출처 한 줄씩 · 보고/T1201 §1 표):
+//       조 · 기장 650(Ho 1975 — 같은 글 · 범위 500 ~ 650 의 위 끝) · 벼 1,000(현미 10a 당 100 kg 이하 — 寺沢 · 渡部 · 佐々木 · Sainsbury 「The Impact of Rice」) ·
+//       콩 760(한국 1967 ~ 71 평균 — JIRCAS TARS 17 · 현대 값이라 위 끝).
+//     미확인 작물: 같은 분류(`group`)의 확인 작물(곡물 → 조 · 콩류 → 콩), 분류에 없으면 조를 잡고, 작물 표가 두 작물에 준 kg 비(등급 × 낱개 무게)로 잇는다
+//       (등급은 같은 표 안의 상대 값이라 비로는 쓴다 — 새 수 0).
+//   ⚠한 정본: 서버 생활층 마을 밭(`villages._t368Item`) · 플레이어 밭(`zone.js` 다섯 자리) · 랩(번들 · 인라인)이 모두 이 함수를 부른다.
+const T1215_FIELD_M2 = (typeof process !== 'undefined' && process.env) ? process.env.T1215_FIELD_M2 === '1' : false;
+const FIELD_CELL_M2 = 250;
+const T1215_KG_HA = { foxtail_millet: 650, millet: 650, rice: 1000, soybean: 760 };
+const _T1215_REF = { '곡물': 'foxtail_millet', '콩류': 'soybean' };
+function cellKgOf(id) {   // 칸 하나 한 번 수확의 kg(물 · 발아율 앞) — 캐논 켬 · 끔 둘 다에서 같은 답(계측 · 표가 읽는다)
+  const c = get(id); if (!c) return 0;
+  const src = T1215_KG_HA[id];
+  if (src != null) return src / 10000 * FIELD_CELL_M2;
+  const ref = _T1215_REF[c.group] || 'foxtail_millet', rc = get(ref);
+  const gk = (x) => (Number(x.yield) || 0) * (kgOf(x.id) || 0);
+  const g0 = gk(rc); if (!(g0 > 0)) return 0;
+  return T1215_KG_HA[ref] / 10000 * FIELD_CELL_M2 * gk(c) / g0;
+}
+function kgHaSrcOf(id) { return T1215_KG_HA[id] != null ? T1215_KG_HA[id] : null; }   // 출처가 있는 작물만(그 밖 null = 미확인)
 // 수확 단위 = 수확량 × 물충족 × **발아율**(씨앗 신선도). 전부 결정론 — 주사위 없음.
+//   ★[T1215] 켬 = 칸당 kg ÷ 낱개 무게 × 물 × 발아율(위 캐논) · 끔 = 종전 글자.
 function harvestUnits(id, opts) {
   const c = get(id); if (!c) return 0;
   const o = opts || {};
   const w = waterMult(id, o.supply);
   const germ = Math.max(0, Math.min(1, o.seedFresh == null ? 1 : Number(o.seedFresh)));
+  if (T1215_FIELD_M2) { const per = kgOf(id) || 0; return per > 0 ? Math.max(0, Math.floor(cellKgOf(id) / per * w * germ + 1e-9)) : 0; }
   return Math.max(0, Math.floor(c.yield * w * germ + 1e-9));
 }
 
@@ -5971,7 +6000,7 @@ module.exports = {
   lifecycleOf, isPerennial, isWinterCrop, LC_WINTER, LC_PERENNIAL,
   dormantAt, vernalDay, VERNAL, CARE_PAUSE, PER_DORMANT, T1041_CROP_MEMO, t1041Stat: () => Object.assign({ on: T1041_CROP_MEMO }, _t1041Stat), _grownDays0,   // ★[T1041] 활동일 · 계절 기억 손잡이(하네스가 읽는다) · ★[T99] 휴면 술어 하나 · 춘화일 — 마을·플레이어가 같이 부른다
   rainedOn, RAIN_WATER,   // ★[T112] 비 온 날은 물 준 날 — 상태기 셋이 같이 부른다
-  grownDays, isReady, readyDay, waterMult, harvestUnits,
+  grownDays, isReady, readyDay, waterMult, harvestUnits, T1215_FIELD_M2, FIELD_CELL_M2, T1215_KG_HA, cellKgOf, kgHaSrcOf,
   daysToFirstHarvest,   // ★[T100 5판] 창설 곳간의 밑변 — econ 이 45 를 지어내지 않게(사본 0)
   shelfMap, weightMap, foodMap, labelMap, emojiMap, payload,
 };
