@@ -11345,7 +11345,7 @@ function _lifeClearDay(vil, farmerN) {
   }
   return done;
 }
-// ★★[T1212 ① 2026-11-07 · T1201 회부 2] **생활층 밭 달력 = econ 날** — 손잡이 `T1212_LIFE_CAL`(★켬 기본 후보 · `=1` 켬 · 끔 = 종전 글자 그대로).
+// ★★[T1212 ① 2026-11-07 · T1201 회부 2] **생활층 밭 달력 = econ 날** — 손잡이 `T1212_LIFE_CAL`(★[T1223] **켬 기본** · 되돌림 `=0` = 종전 글자 그대로).
 //   생활층 날(`gameDayOf` · `_ledgerDay`)은 벽시계 날이다 — (지금 − `worldEpoch` 0) ÷ 하루 길이. 두 탈이 났다(보고/T1201 §0 · T1212 §1):
 //     ⓐ 판 자(하루 250 ms)에서는 그 날이 70억 남짓이라 달력 정본(`events.calendarOf`)이 2³¹ 을 넘는 날을 1년 3월 1일로 돌린다 ⇒ 마을 밭이 늘 3월.
 //     ⓑ 운영(하루 10분)은 날 290만 남짓이라 달은 돈다. 그러나 존의 하늘 · 몸 기온(`zone.js gameDayNow` = econ 날)과 마을 밭의 달이 따로 간다.
@@ -11356,7 +11356,7 @@ function _lifeClearDay(vil, farmerN) {
 //     켠 뒤 그 마을을 처음 만지는 순간 같은 차(생활 날 − econ 날)를 한 번 빼고 표식(`_t1212Cal` — T740 곁 칸)을 단다 ⇒ 나이 · 물때 · 김매기 차례는 그대로.
 //     끄면 표식이 선 마을은 그 차를 다시 더하고 표식을 뗀다(되돌림 손실 0). 표식이 선 뒤 다시 뜨면 econ 날로 이어진다(멈춘 동안 econ 이 안 갔으니 밭도 안 자란다 — 종전엔 벽시계로 자랐다 · 보고 §1).
 //   ⚠플레이어 밭(존 건물 · `zone.js zoneGameDay`)은 이 손잡이 밖이다 — 회부.
-const T1212_LIFE_CAL = process.env.T1212_LIFE_CAL === '1';
+const T1212_LIFE_CAL = process.env.T1212_LIFE_CAL !== '0';   // ★[T1223] 켬 기본(종전 `=== '1'`) — 운영도 밭의 달 = econ 의 달 · 이어받기는 위 ⚠ 줄(처음 만질 때 한 번 · 표식 `_t1212Cal`)
 const _T1212_DAYS = ['p', 'td', 'w'];
 const _t1212Stat = { rebased: 0, rebasedCells: 0, undone: 0, lastOff: null };
 function _t1212Off() {
