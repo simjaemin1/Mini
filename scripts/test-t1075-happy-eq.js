@@ -10,6 +10,7 @@
 // ★[T1147] 판 꾸밈 — 이 하네스는 T1075 평형 모델을 잰다. T1134 목표 행복이 켬 기본이 되어 T1134 가 이기므로 이 판은 그것을 끈다(단언 무변 · T1134 는 test-happy-converge).
 process.env.T1134_HAPPY_TARGET = process.env.T1134_HAPPY_TARGET || '0';
 process.env.T1197_MEAL_BODY = process.env.T1197_MEAL_BODY || '0';   // ★[T1197] 이 하네스의 ④ 사망 계단 · ⑤ 이탈은 T1074 빚 죽음 판(하루 1명 · 14일)으로 짰다 — 켬(몸 게이지) 판은 `test-t1197-meal-body`
+if (process.env.T1206_NAT_DEATH == null) process.env.T1206_NAT_DEATH = '0';   // ★[T1216-K1] T1206 켬 기본(land1050) — 켬이면 dP 에 「출생 다시 맞춤(그날 기대 자연사)」 몫이 더해지는데 ⑤ 의 압력 식(logi + hunger + health + prestige ± happy)은 그 몫 앞에서 짠 것이라 끔으로 묶는다(단언 무변 · 자연사 켬 세계는 test-t1206-natural-death 가 잰다)
 const path = require('path');
 const { execFileSync } = require('child_process');
 let pass = 0, fail = 0;
