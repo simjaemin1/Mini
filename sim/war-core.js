@@ -558,11 +558,13 @@ function _opDefEstPack(force) { return Math.max(8, Math.min(14, WAR_SIEGE_PACK *
 // ★[T1134] 겪은 일 — 마을 칸 `_t1134E` 에 한 몫(손잡이 `T1134_HAPPY_TARGET` 끔 = 무동작 · econ 이 반감기 30날로 줄인다)
 function _t1134On() { return !(typeof process !== 'undefined' && !!process.env && process.env.T1134_HAPPY_TARGET === '0'); }   // ★[T1147] 켬 기본(econ 과 같은 글자)
 function _t1134Ev(e, amt) { if (e && amt > 0 && _t1134On()) e._t1134E = (e._t1134E || 0) + amt; }
+function _t1206On() { return !(typeof process !== 'undefined' && !!process.env && process.env.T1206_NAT_DEATH === '0'); }   // ★[T1206] econ 과 같은 글자(켬 기본)
 function _warRemoveNpc(e, npc) {
   if (!e || !e.npcs || !npc) return false;
   const j = e.npcs.indexOf(npc); if (j < 0) return false;
   _t1134Ev(e, 1 / e.npcs.length);   // ★[T1134] 전사 · 포로 한 사람 = 1/N(빠지기 전 인구)
   e.npcs.splice(j, 1);
+  if (_t1206On()) e._t1206Due = (e._t1206Due || 0) + 1;   // ★[T1206 ③] 전사도 부장 — 다음 날 경계가 econ 의 같은 문(`t1206Bury`)으로 묻는다
   if (e.counts && npc.currentJob && !npc._warDraft) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1);
   if (npc._warDraft) { delete npc._warDraft; if (npc._warPid != null) delete npc._warPid; }   // 비워 둔 자리는 안 돌려준다(전사)
   return true;
