@@ -2124,7 +2124,9 @@ function _t1080Pack(vil, n) {
   const out = []; for (let i = 0; i < n; i++) out.push(Object.assign({}, one));
   return { bags: out, fe, kg };
 }
-// ⓒ 길 위 하루 — w = 도적 길 위 장부 한 줄 { npc, pack, h, hp, pid, ... } · 반환 true = 오늘 굶어 죽었다
+// ⓒ 길 위 하루 — w = 도적 길 위 장부 한 줄 { npc, pack, h, roadHp, pid, ... } · 반환 true = 오늘 굶어 죽었다
+//   ★[T1203 2026-11-07 · T1175 회부 ⓑ] 장부 체력 칸 이름 `hp` → `roadHp` — 몸의 hp 는 문(`_setHp`)으로만 쓴다(T1076 캐논 · `lib-hp-src` 거름망이 `w.hp = …` 를 몸 쓰기로 읽었다).
+//   이 칸은 몸 hp 의 장부 사본이다(몸 없는 걷기에선 유일한 체력). 값 · 식 · 차례 무변 · 영속 칸 이름은 그대로 `hp`(bandits `_walkRow` 가 옮겨 싣는다).
 function _t1080RoadDay(w, day, ctxVil) {
   const WC = state.war; if (!WC || !WC.bodyEat) return false;
   const K = _kcal(); if (!K) return false;
@@ -2138,11 +2140,11 @@ function _t1080RoadDay(w, day, ctxVil) {
   const L = _t906Day(ent);
   const phi = need > 0 ? Math.max(0, Math.min(1, got / need)) : 1;
   ent.h = Math.min(100, ent.h + phi * K.dayHunger());
-  w.h = ent.h; w.hp = (w.hp != null ? w.hp : 100) - L;
+  w.h = ent.h; w.roadHp = (w.roadHp != null ? w.roadHp : 100) - L;
   _t1080Stat.roadDays++; if (phi < 1) _t1080Stat.hungryDays++; _t1080Stat.minH = Math.min(_t1080Stat.minH, ent.h);
   const p = w.pid != null ? state.deps.players.get(w.pid) : null;
   if (p && L > 0) _setHp(p, Math.max(0, (p.hp == null ? (p.maxHp || 100) : p.hp) - L), 'starve');
-  if (!(w.hp <= 0)) return false;
+  if (!(w.roadHp <= 0)) return false;
   _t1080Stat.dead++;
   if (p) {   // 그 몸이 그 자리에 눕는다 — `_bxDie` 그 줄들(낙하 문 · 누운 몸 기록 · 회수 시계) · 짐은 먼저 그 몸 짐 칸에(낙하 문이 그 짐을 떨군다)
     const now = Date.now(), { npcs, broadcast } = state.deps;
@@ -4464,7 +4466,7 @@ function _t1034Apply(body, now) {
   if(body._t1182 && S.act) {
     body._t1182At=now;const A=S.act;if(A.xzIn)body._xzInPts=A.xzIn.map(q=>({x:q[0],y:q[1]}));setBodyPts(body,A.pts.map(q=>({x:q[0],y:q[1]})));body.phase=S.ph;body.prog=Math.max(0,Math.min(body.len,A.pg));
     body.lingerUntil=S.lg;body.departAt=S.da;body.arriveAt=S.aa;body.pxPerDay=S.ppd;body.nomPxMs=S.nom;
-    const put=(p,q)=>{if(!p||!q)return;if(T1145_XY_COLS)BC.w(p,q[0],q[1]);else{p.x=q[0];p.y=q[1];}p.hp=q[2];p.vx=0;p.vy=0;};
+    const put=(p,q)=>{if(!p||!q)return;if(T1145_XY_COLS)BC.w(p,q[0],q[1]);else{p.x=q[0];p.y=q[1];}if(Number.isFinite(q[2]))_setHp(p,q[2],'restore');p.vx=0;p.vy=0;};   // ★[T1203] 몸 hp 는 문으로(T1076 캐논 · `restore` — 다시 뜬 판 복원 낱말 · 마을 몸은 소켓 0 이라 방송 0 · 값 = [0, 최대] 안의 그 값)
     put(state.deps.players.get(body.pid),A.p);
     for(let i=0;i<(body.escorts||[]).length;i++){const e=body.escorts[i],r=(A.escorts||[])[i];if(!r)continue;put(state.deps.players.get(e.pid),r.p);if(r.pts){e._actPath=_t661Path(r.pts.map(q=>({x:q[0],y:q[1]})));e._actPath.prog=r.pg;e._actPrefix=r.prefix;e._actSource=body.pts;}}
     const savedT=S.T, samePath=body.phase!=='linger';
@@ -10358,7 +10360,7 @@ function _t717PackIn(vil) {
   const g = _lifeEcon().woodToGranary(vil.econ, u) || 0;
   if (!(g > 0)) return 0;
   const r = +(u - g).toFixed(6);
-  if (r > 1e-9) vil.econ._t717Pack = r; else delete vil.econ._t717Pack;
+  if (r > 1e-9) vil.econ._t717Pack = r; else _t862Drop(vil.econ, '_t717Pack');   // ★[T1203] T862 ② 문(켬 = `undefined` · 읽기는 `|| 0`)
   vil._t717PkIn = +((vil._t717PkIn || 0) + g).toFixed(6);   // 계측 전용 누계(짐에서 곳간으로 든 단 · 켠 팔에만 선다)
   return g;
 }
@@ -10522,7 +10524,7 @@ function _t733PackIn(vil) {
     const r = +(u - g).toFixed(6);
     if (r > 1e-9) P[k] = r; else delete P[k];
   }
-  if (!Object.keys(P).length) delete vil.econ._t733Pack;
+  if (!Object.keys(P).length) _t862Drop(vil.econ, '_t733Pack');   // ★[T1203] T862 ② 문(켬 = `undefined` · 읽기는 참거짓)
   return got;
 }
 // ★★[T733 ②] **채집 손 — 그 몸이 그날 새로 땄나**(나무꾼 `_t717L` · `_t717NewWood` 와 같은 꼴 · T717 회부 ⑥).
@@ -13573,6 +13575,7 @@ function _t707ActJob(vil, job) {   // 행위 팔이 켜진 직업 — 그 몸의
   if (job === 'farmer') return !!E.T368_FARM_ACT;
   return false;
 }
+const T1203_CREW_ROSTER = process.env.T1203_CREW_ROSTER === '1';   // ★[T1203] 장 명부에서 곳간 · 다리 크루는 그날 일이 있을 때만 뺀다(끔 기본 · `=1` 켬 — 켬은 세계 값을 바꾼다 · 켤지 = 판정)
 function _t707Roster(vil, rec) {
   const ids = vil.npcPids || [], P = ids.length;
   if (!P) return 0;
@@ -13581,8 +13584,11 @@ function _t707Roster(vil, rec) {
   if (n <= 0) return 0;
   const skip = new Set();
   if (E.T400_BUILD_ACT && vil._site) for (const p of _t400Crew(vil)) skip.add(p.pid);
-  if (E.T435_GRANARY_ACT) for (const p of _t435Crew(vil)) skip.add(p.pid);
-  if (E.T527_BRIDGE_ACT) for (const p of _t527Crew(vil)) skip.add(p.pid);
+  // ★[T1203 2026-11-07] 곳간 · 다리 크루는 **그날 일이 있을 때만** 뺀다 — 일하는 자리와 같은 조건(곳간 터 `_granPend` · 그 마을의 덜 지은 다리 자리 · `_t435GranaryDay` · `_t1181Task` · `_t527BridgeDay`).
+  //   종전: 손잡이만 보고 늘 두 명씩 뺐다(land1048 에서 둘 다 켬 기본 — 곳간 터도 다리 자리도 없는 날 명부 셋째 · 넷째가 까닭 없이 장에서 빠졌다 · `test-server-market` ⑤).
+  //   손잡이 `T1203_CREW_ROSTER` — 끔 기본(= 종전 줄 그대로 · 기준선 11-07b 같음) · `=1` 켬. 켬은 세계 값을 바꾼다(장 명부 `_mkt` 날 2 부터 · 보고 T1203 §2.4 · 회부).
+  if (E.T435_GRANARY_ACT && (!T1203_CREW_ROSTER || vil._granPend)) for (const p of _t435Crew(vil)) skip.add(p.pid);
+  if (E.T527_BRIDGE_ACT && (!T1203_CREW_ROSTER || (_t527Sites() || []).some((s2) => !s2.done && (s2.v.indexOf(vil.name) >= 0 || (vil._seedName && s2.v.indexOf(vil._seedName) >= 0))))) for (const p of _t527Crew(vil)) skip.add(p.pid);
   const s0 = (((vil.dbId | 0) + (rec.d | 0)) % P + P) % P;   // ★얼굴 돌리기 — (마을, 날) 차례로 시작점(주사위 0)
   let got = 0;
   for (let i = 0; i < P && n > 0; i++) {
@@ -13876,7 +13882,7 @@ function _t1181Task(vil,npc) {
     return {kind:'granary',key:'g/'+p.cx+','+p.cy+'/'+p.day,site:p,target,need:()=>E.granaryEconMaterials()||{}};
   }
   if(E.T527_BRIDGE_ACT && _t527Crew(vil).some(p=>p.pid===npc.pid)) {
-    const p=(_t527Sites()||[]).find(s=>!s.done&&s.v.includes(vil.name));
+    const p=(_t527Sites()||[]).find(s=>!s.done&&(s.v.includes(vil.name)||(vil._seedName&&s.v.includes(vil._seedName))));   // ★[T1203] 후보 이름으로도(T1187 · 13031 줄과 같은 문)
     if(p){   // ★[T1207] 다리 후보가 없는 마을이면 아래 영토 일감으로 넘어간다(끔이면 종전처럼 null)
       const candidates=[];for(let i=0;i<p.cells.length;i+=2){const x=p.cells[i]*SZ+SZ/2,y=p.cells[i+1]*SZ+SZ/2;if(!_t394Blocked(x,y))candidates.push({x,y});}
       candidates.sort((a,b)=>Math.hypot(a.x-vil.ccx*SZ,a.y-vil.ccy*SZ)-Math.hypot(b.x-vil.ccx*SZ,b.y-vil.ccy*SZ));

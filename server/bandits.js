@@ -885,7 +885,7 @@ function _walkRow(w) {   // 길 위 장부 한 줄의 영속 칸 — 저장 · �
   const o = { npc: w.npc, from: w.from, to: w.to, d0: w.d0, len: w.len, ppd: w.ppd };
   if (w.t1079) o.t1079 = 1;
   if (w.t1075) o.t1075 = 1;   // ★[T1075 · T1109] 불행 이탈 표지(끔 = 칸 없음)
-  if (w.lastDay != null) Object.assign(o, { dep: w.dep, to0: w.to0, pack: w.pack || {}, h: w.h, hp: w.hp, lastDay: w.lastDay, why: w.why, rr: w.rr || 0 });
+  if (w.lastDay != null) Object.assign(o, { dep: w.dep, to0: w.to0, pack: w.pack || {}, h: w.h, hp: w.roadHp != null ? w.roadHp : w.hp, lastDay: w.lastDay, why: w.why, rr: w.rr || 0 });   // ★[T1203] 영속 칸 이름은 `hp` 그대로 — 장부 칸은 `roadHp`(저장 = 장부 줄 · 복원 = 저장 줄이 들어온다)
   return o;
 }
 function save(day) {
@@ -910,7 +910,7 @@ function restore(row) {
   if (T1079_CAMP) for (const g of S.GANGS) if (g.t1079) _t1079Relink(g);   // ★[T1079] 더미 행을 다시 잇는다(그 자리 · 그 단 표식 — 존 건물 행 문)
   if (Array.isArray(d.road)) S.ROAD = d.road.map((r) => ({ g: { ...r.g, _sup: r.g._sup || null, _supKill: r.g._supKill || 0 }, vid: r.vid, d0: r.d0, len: r.len, ppd: r.ppd, pids: [] }));   // ★[T1039 walk] 다시 뜨면 몸 없이 장부만(닿는 날 단이 선다 · 걸어온 몸 0)
   if (T1104_WALK) S.SUPS = Array.isArray(d.sups) ? d.sups.map((F) => Object.assign({}, F, { pids: [], bag: {} })) : [];   // ★[T1104] 다시 뜨면 몸은 마을에 다시 선다. 몸 결속 없는 원정은 T1184 하루 절에서 취소한다
-  if (Array.isArray(d.walk)) S.WALK = d.walk.map((w) => Object.assign(_walkRow(w), { pid: null }));   // ★[T1108] 복원 줄 하나 — 다시 뜨면 몸 없이 장부만(몸은 비영속) · `t1079` 표지 · 길 위 칸 그대로
+  if (Array.isArray(d.walk)) S.WALK = d.walk.map((w) => { const r = Object.assign(_walkRow(w), { pid: null }); if (r.hp !== undefined) { r.roadHp = r.hp; delete r.hp; } return r; });   // ★[T1203] 저장 칸 `hp` → 장부 칸 `roadHp`   // ★[T1108] 복원 줄 하나 — 다시 뜨면 몸 없이 장부만(몸은 비영속) · `t1079` 표지 · 길 위 칸 그대로
   console.log(`[${S.zoneId}] 🏴 [도적] 복원: 소굴 ${S.DENS.length}곳(생존 ${S.DENS.filter(x => !x.cleared).length}) · 도적단 ${S.GANGS.length}(총원 ${S.GANGS.reduce((a, g) => a + g.n, 0)}) · 저장 day ${row.day}`);
 }
 function clientCamps() { // 마커 1종: 활동 단(n>0) + 빈 소굴(n=0, 재결성 대기 — 클라가 흐리게). 철거 소굴 제외.

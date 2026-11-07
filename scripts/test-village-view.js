@@ -554,6 +554,14 @@ const ITEM_KEYS = (view) => {   // 품목이 서는 자리 전부(④)
     const E5 = V.villageViewSrc(VID).E, site = vil._site;
     ok(!!site && !!E5.T400_BUILD_ACT, '[자명 통과 금지] 집 행위가 켜진 세계에 집터가 실제로 있다', site ? `단계 ${site.stage}` : '없음');
     if (site) {
+      // ★[T1203 2026-11-07 · 픽스처] 움집 단계 넷 중 0 · 3 단계는 econ 자재가 없는 단계다(`hutEconStage` = {} — 손일만).
+      //   이 세계의 집터가 그 단계에 서 있으면 고를 자재가 없어 이 절이 빈 칸(`k5` 없음)으로 빨갰다(land1048 · 집 행위 켬 세계는 집터가 3 단계에 닿는다).
+      //   이 절이 재는 것은 "자재 한 줄을 짐에서 받는 문"이라 — 자재가 있는 가장 가까운 단계(지금 단계부터 거꾸로 · 없으면 앞으로)로 집터를 옮겨 둔다(그 단계 놓인 자재 0 에서).
+      if (!Object.keys(E5.hutEconStage(site.stage | 0) || {}).length) {
+        const _n = E5.hutStageCount(), _has = (i) => Object.keys(E5.hutEconStage(i) || {}).length > 0;
+        let _s = -1; for (let i = site.stage | 0; i >= 0 && _s < 0; i--) if (_has(i)) _s = i; for (let i = 0; i < _n && _s < 0; i++) if (_has(i)) _s = i;
+        if (_s >= 0) { site.stage = _s; site.mat = {}; }
+      }
       const need5 = E5.hutEconStage(site.stage | 0) || {}, DM = V.playerVillageDepositMap();
       if (!site.mat) site.mat = {};
       const k5 = Object.keys(need5).find((k) => Object.keys(DM).some((it) => DM[it] === k));

@@ -2432,7 +2432,7 @@ function t1196Unhide(v) {
   _t1196Pause(v, true);
   for (const k in H) v.storage[k] = (v.storage[k] || 0) + H[k];
   _t1196Pause(v, false);
-  delete v._t1196H;
+  v._t1196H = undefined;   // ★[T1203 · T862 ② 캐논] 날 `delete` 는 마을 econ 객체를 V8 사전 모드로 내린다(날마다 · 작업표 든 마을 — `test-econ-fast` ③ 켬 판 최대 9) — 읽는 자리가 전부 참거짓이라 `undefined` = 지운 칸 · 저장(`JSON.stringify`)도 안 싣는다
 }
 function _t1196Find(v, id) { const Q = v && v._t1196Q; if (!Q) return -1; for (let i = 0; i < Q.length; i++) if (Q[i].id === id) return i; return -1; }
 //   재료를 꺼낸다 — 그때 곳간에 있는 만큼. 비율 `f` 는 그 레시피가 **없으면 못 만드는** 재료로 잰다(정본 정의 그대로 · 새 수 0):

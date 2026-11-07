@@ -18,6 +18,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 ;(function (root) {
 'use strict';
+// ★[T1203 2026-11-07 · T862 ② 캐논 × T1094] 원정 짐 무기 거울(`_warArmsOut`)을 지우는 문 — 마을 econ 객체에 날 `delete` 를 하면 V8 사전 모드로 내려간다.
+//   T1094(11-03)가 무기 반출을 켬 기본으로 바꾼 뒤 전쟁마다 이 `delete` 가 돌아 `test-econ-fast` ③ 켬 판에 사전 모드 마을이 생겼다. villages `_t862Drop` 과 같은 손잡이 ·
+//   같은 뜻(켬 = `undefined` — 읽는 자리가 `> 0` · `!= null` 이라 지운 칸과 같은 답 · 저장 `JSON.stringify` 도 안 싣는다 · 끔 `T862_ECON_FAST=0` = 종전 `delete`).
+const _T862_FAST = !(typeof process !== 'undefined' && process.env && process.env.T862_ECON_FAST === '0');
+function _t862DropArms(e) { if (_T862_FAST) e._warArmsOut = undefined; else delete e._warArmsOut; }
 
 // ── battle-core 의존(headless 판정) ──
 var BattleCore = (typeof module !== 'undefined' && module.exports && typeof require === 'function')
@@ -677,7 +682,7 @@ function createWar(opts) {
   function _syncArmsToEcon(vil) {
     const e = vil && vil.econ; if (!e) return;
     let s = 0; for (const w of WARS) if (w.atk === vil && w._arms && !w._arms.done) s += Math.max(0, w._arms.weapon || 0);
-    if (s > 0) e._warArmsOut = s; else if (e._warArmsOut != null) delete e._warArmsOut;   // 반올림 0 — 짐의 수 그대로(되돌릴 때 한 점도 안 어긋나게)
+    if (s > 0) e._warArmsOut = s; else if (e._warArmsOut != null) _t862DropArms(e);   // 반올림 0 — 짐의 수 그대로(되돌릴 때 한 점도 안 어긋나게)
   }
   function warTerrR(v) { return Math.sqrt(territoryOf(v) / Math.PI); }
   function _battleRng(day, id) { return makeRng(hash2(baseSeed ^ 0x5ca1ab1e, hash2(day | 0, id | 0))); }
@@ -1363,7 +1368,7 @@ function createWar(opts) {
       let held = 0; for (const w of WARS) if (w.atk === vil && w._arms && !w._arms.done) held += Math.max(0, w._arms.weapon || 0);
       const back = Math.max(0, e._warArmsOut - held);
       if (back > 0 && e.storage) e.storage.weapon = (e.storage.weapon || 0) + back;
-      if (held > 0) e._warArmsOut = held; else delete e._warArmsOut;
+      if (held > 0) e._warArmsOut = held; else _t862DropArms(e);
       if (back > 0) log(world.day || 0, vil.name + ' 다시 뜸 — 원정 짐 무기 ' + back + ' 곳간에(진행 중 전쟁은 안 실린다)');
     }
     return TRIBUTES.length;

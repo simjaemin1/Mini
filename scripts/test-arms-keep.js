@@ -15,6 +15,8 @@
 //   세계 꼴은 `test-war-world` 의 `_mkCostWorld` 와 같은 두 마을(공격 30 · 방어 24 · 곳간 무기 40)이다.
 // 실행: node scripts/test-arms-keep.js
 'use strict';
+// ★[T1203 2026-11-07] 거울 칸 "지움" = T862 ② 문(`_t862DropArms` — 켬 기본 `undefined` · 끔 `T862_ECON_FAST=0` 이면 `delete`)이라 "칸 없음"은 `=== undefined` 로 잰다
+//   (T862 의 같은 뜻 — 날 `delete` 는 마을 econ 객체를 사전 모드로 내린다 · `test-econ-fast` ③ · 보고 T1203 §2.5).
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
@@ -68,7 +70,7 @@ console.log('\n① 정적');
 {
   const sync = (C.match(/function _syncArmsToEcon\(vil\) \{[\s\S]*?\n  \}/) || [''])[0];
   const reb = (C.match(/function rebuildFromEcon\(\) \{[\s\S]*?\n  \}/) || [''])[0];
-  ok(/for \(const w of WARS\) if \(w\.atk === vil && w\._arms && !w\._arms\.done\) s \+= Math\.max\(0, w\._arms\.weapon \|\| 0\);/.test(sync) && /if \(s > 0\) e\._warArmsOut = s; else if \(e\._warArmsOut != null\) delete e\._warArmsOut;/.test(sync),
+  ok(/for \(const w of WARS\) if \(w\.atk === vil && w\._arms && !w\._arms\.done\) s \+= Math\.max\(0, w\._arms\.weapon \|\| 0\);/.test(sync) && /if \(s > 0\) e\._warArmsOut = s; else if \(e\._warArmsOut != null\) _t862DropArms\(e\);/.test(sync),
     'ⓑ 거울은 늘 짐에서 다시 센다(`_syncTribToEcon` 꼴 · 두 번째 장부 0) · 0 이면 칸을 지운다');
   const calls = (C.match(/_syncArmsToEcon\(/g) || []).length - 1;
   ok(calls === 4 && /WARS\.push\(_war\);\s*if \(_war\._arms\) _syncArmsToEcon\(V\);/.test(C) && /if \(w\._arms\) _syncArmsToEcon\(w\.atk\); \}/.test(C)
@@ -90,9 +92,9 @@ console.log('\n② 끔(main 글자) — 칸 0 · 곳간 무변 · 재기동에�
   const a0 = A.storage.weapon;
   const okM = W.war.warMobilize(W.atk, W.def, 'feud', 300, W.world.day);
   const w = wOf(W)[0];
-  ok(okM && w && w._arms === undefined && A.storage.weapon === a0 && !('_warArmsOut' in A), 'ⓐ ★끔 — 동원해도 곳간 그대로 · 짐 칸 0 · 거울 칸 0', `곳간 ${a0} → ${A.storage.weapon}`);
+  ok(okM && w && w._arms === undefined && A.storage.weapon === a0 && A._warArmsOut === undefined, 'ⓐ ★끔 — 동원해도 곳간 그대로 · 짐 칸 0 · 거울 칸 0', `곳간 ${a0} → ${A.storage.weapon}`);
   const W2 = reboot(W);
-  ok(W2.atk.econ.storage.weapon === a0 && !('_warArmsOut' in W2.atk.econ) && wOf(W2).length === 0, 'ⓐ ★끔 재기동 — 곳간 그대로(잃는 것 없음) · 전쟁은 안 실린다(T742 회부 1 그대로)', `곳간 ${W2.atk.econ.storage.weapon} · 전쟁 ${wOf(W2).length}`);
+  ok(W2.atk.econ.storage.weapon === a0 && W2.atk.econ._warArmsOut === undefined && wOf(W2).length === 0, 'ⓐ ★끔 재기동 — 곳간 그대로(잃는 것 없음) · 전쟁은 안 실린다(T742 회부 1 그대로)', `곳간 ${W2.atk.econ.storage.weapon} · 전쟁 ${wOf(W2).length}`);
 }
 
 // ── ③ 켬 — 거울 = 짐 ─────────────────────────────────────────────────────────────────────────────────────
@@ -115,7 +117,7 @@ let R1 = null;
     'ⓑ 결판(공격 패) — 짐에서 빠진 몫만큼 거울이 준다 · 집 곳간은 반출 뒤 그대로', `짐 ${w._arms.out} → ${w._arms.weapon.toFixed(3)} · 거울 ${A._warArmsOut}`);
   R1.afterBattle = w._arms.weapon;
   w.phase = 'return'; w.eta = W.world.day; W.war.daily(W.world.day);
-  ok(wOf(W).length === 0 && !('_warArmsOut' in A) && near(A.storage.weapon, R1.aMob + R1.afterBattle), 'ⓑ 귀환 — 반납 뒤 거울 칸이 지워진다(짐 0) · 곳간 = 반출 뒤 + 남은 짐', `곳간 ${A.storage.weapon.toFixed(3)}`);
+  ok(wOf(W).length === 0 && A._warArmsOut === undefined && near(A.storage.weapon, R1.aMob + R1.afterBattle), 'ⓑ 귀환 — 반납 뒤 거울 칸이 지워진다(짐 0) · 곳간 = 반출 뒤 + 남은 짐', `곳간 ${A.storage.weapon.toFixed(3)}`);
   //   두 원정 — 같은 마을이 두 상대로(거울 = 두 짐의 합) · 하나가 돌아오면 나머지 하나
   const W3 = mkWorld({ atkPop: 60 });
   const A3 = W3.atk.econ; A3.storage.weapon = 200; W3.def.econ._warCd = 1e9;
@@ -142,7 +144,7 @@ console.log('\n④ 켬 — 재기동(econ 은 실리고 진행 중 전쟁은 안
   //   ⓒ 행군 중 다시 뜬다 — 짐 n 이 곳간으로
   const W = mkOut(); const w = wOf(W)[0]; const a0 = 40, n = w._arms.weapon;
   const W2 = reboot(W);
-  ok(wOf(W2).length === 0 && near(W2.atk.econ.storage.weapon, a0) && !('_warArmsOut' in W2.atk.econ),
+  ok(wOf(W2).length === 0 && near(W2.atk.econ.storage.weapon, a0) && W2.atk.econ._warArmsOut === undefined,
     'ⓒ ★★행군 중 재기동 — 전쟁은 사라져도 짐의 무기 n 은 곳간에(곳간 + 짐 = 반출 앞 · 소멸 0) · 거울 칸 지움', `반출 ${n} · 다시 뜬 곳간 ${W2.atk.econ.storage.weapon}(반출 앞 ${a0})`);
   //   ⓓ 대조 — 거울이 없으면(T764 앞 글자) 다시 뜬 곳간 = 반출 뒤 그대로 ⇒ n 이 사라진다
   const Wb = mkOut(); delete Wb.atk.econ._warArmsOut;
@@ -151,7 +153,7 @@ console.log('\n④ 켬 — 재기동(econ 은 실리고 진행 중 전쟁은 안
   //   결판 뒤(공격 패 · 귀환 길)에 다시 뜬다 — 남은 짐만큼
   const Wc = mkOut(); const wc = wOf(Wc)[0]; Wc.war.warResolveBattle(wc, Wc.world.day); const left = wc._arms.weapon;
   const Wc2 = reboot(Wc);
-  ok(near(Wc2.atk.econ.storage.weapon, a0 - n + left) && !('_warArmsOut' in Wc2.atk.econ), 'ⓒ 결판 뒤 귀환 길에 재기동 — 남은 짐만큼 곳간에(결판이 뺀 몫은 결판 규칙대로 · 두 번 안 빠진다)', `${(a0 - n).toFixed(3)} + ${left.toFixed(3)} = ${Wc2.atk.econ.storage.weapon.toFixed(3)}`);
+  ok(near(Wc2.atk.econ.storage.weapon, a0 - n + left) && Wc2.atk.econ._warArmsOut === undefined, 'ⓒ 결판 뒤 귀환 길에 재기동 — 남은 짐만큼 곳간에(결판이 뺀 몫은 결판 규칙대로 · 두 번 안 빠진다)', `${(a0 - n).toFixed(3)} + ${left.toFixed(3)} = ${Wc2.atk.econ.storage.weapon.toFixed(3)}`);
   //   ⓔ 칸을 본다 — 켬으로 저장하고 끔으로 다시 떠도 돌아온다
   const Wd = mkOut(); setK(false); const Wd2 = reboot(Wd); setK(true);
   ok(near(Wd2.atk.econ.storage.weapon, a0), 'ⓔ 켬으로 저장 · 끔으로 다시 뜸 — 그래도 곳간에(손잡이가 아니라 칸)', `${Wd2.atk.econ.storage.weapon}`);
