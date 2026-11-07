@@ -534,7 +534,7 @@ function windowMsFor(kg) {
 //   ⚠NPC 어부의 창은 그대로다(어부의 놓침은 반사신경이 아니라 자리 비움 — T340 · 보고 회부).
 // ★[T1214 ③ µs 줄기] 손잡이 `T1214_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 매번 `require` 도 받아 같은 객체인가 견줌 · 답은 `require` 쪽 · 머리 주석 = villages.js `T1214`).
 //   `plan` 이 던짐마다 하던 `require('./fish-goods')` 를 한 번 받은 모듈 칸으로(다 실린 모듈 — `bodyKg` 함수가 선 객체만). 끔 = 종전 글자.
-const T1214_STEP_FAST = typeof process !== 'undefined' && !!process.env && (process.env.T1214_STEP_FAST === '1' || process.env.T1214_STEP_FAST === 'verify');
+const T1214_STEP_FAST = typeof process !== 'undefined' && !!process.env && process.env.T1214_STEP_FAST !== '0';
 const T1214_VERIFY = T1214_STEP_FAST && process.env.T1214_STEP_FAST === 'verify';
 const _t1214Stat = { vq: 0, bad: 0 };   // 계측 전용
 let _t1214FGM = null;

@@ -25,7 +25,7 @@ const OreGoods = require('./ore-goods');
 //   `kgOf` 가 부를 때마다 하던 `require('./fish-goods')`(NPC 짐 무게가 품목마다 부른다)를 한 번 받은 모듈 칸으로 — `require` 는 실린 모듈이면 같은 객체다.
 //   다 실린 모듈(`bodyKg` 함수가 선 객체)만 칸에 둔다 — 맞물려 실리는 도중의 빈 객체는 안 둔다(그때는 종전처럼 매번 부른다). 끔 = 종전 글자.
 //   ⚠파일 머리에 둔다 — 이 파일은 싣는 도중(유도 표 · 사냥 고기 표)에 `kgOf` 를 부른다(상수가 그보다 먼저 서야 한다).
-const T1214_STEP_FAST = typeof process !== 'undefined' && !!process.env && (process.env.T1214_STEP_FAST === '1' || process.env.T1214_STEP_FAST === 'verify');
+const T1214_STEP_FAST = typeof process !== 'undefined' && !!process.env && process.env.T1214_STEP_FAST !== '0';
 const T1214_VERIFY = T1214_STEP_FAST && process.env.T1214_STEP_FAST === 'verify';
 const _t1214Stat = { vq: 0, bad: 0 };   // 계측 전용
 let _t1214FG = null;

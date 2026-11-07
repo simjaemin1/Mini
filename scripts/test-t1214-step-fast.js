@@ -142,7 +142,7 @@ function child(mode, extra) {
 const FP = ['task', 'taskN', 'rock', 'rockN', 'kg', 'kgN', 'bodyKg', 'body'];
 for (const [lab, extra] of [['T400 기본(켬)', {}], ['T400_BUILD_ACT=0(기준선 판 조건)', { T400_BUILD_ACT: '0' }]]) {
   console.log(`── ${lab} ──`);
-  const off = child(null, extra), on = child('1', extra), vf = child('verify', extra);
+  const off = child('0', extra), on = child(null, extra), vf = child('verify', extra);   // ★[PM land1051] 켬 기본 — 끔 팔 = '0' · 켬 팔 = 손잡이 없음(기본)
   ok(`끔 아이 — 새 길 셈 0 · 손잡이 끔(villages · weights · fish-goods)`, off.stat.on === false && off.stat.villages.crewQ === 0 && off.stat.villages.rockQ === 0 && off.stat.villages.ptQ === 0 && off.stat.weights.on === false && off.stat.fishGoods.on === false, JSON.stringify(off.stat));
   ok(`① 다리 크루 문 전수 — 빈 목록 = 거짓 · 목록이 있으면 종전 명부(${off.crew.n} 물음 · 어긋남 ${off.crew.bad}/${on.crew.bad}/${vf.crew.bad})`, off.crew.n > 5000 && off.crew.bad === 0 && on.crew.bad === 0 && vf.crew.bad === 0);
   ok(`① 켬 아이 — 빈 목록 판에서 명부를 건너뛰었다(${on.stat.villages.crewSkip}/${on.stat.villages.crewQ})`, on.stat.villages.crewSkip > 0 && on.stat.villages.crewQ > on.stat.villages.crewSkip);

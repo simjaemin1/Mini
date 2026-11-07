@@ -7,7 +7,7 @@ let SEA_BODY_IDS=null;
 //   ⓐ `bodyKg` 의 바다 표 `find`(무게를 물을 때마다 25줄 훑기 — 물고기가 아닌 품목은 끝까지) → 한 번 지은 id 표. 처음 찾은 줄을 둔다(`find` 와 같은 줄) ·
 //     id 가 NaN 인 줄은 안 둔다(`===` 로는 영영 안 맞는다) · 표 배열이 바뀌면(다른 배열) 다시 짓는다 · 줄이 객체가 아닌 표는 종전 `find` 그대로(던짐까지 같게).
 //   ⓑ `items()` · `species()` 의 `require('./fish-preserve')` → 한 번 받은 모듈 칸(다 실린 모듈만 · 그 함수가 선 객체). 끔 = 종전 글자.
-const T1214=typeof process!=='undefined'&&!!process.env&&(process.env.T1214_STEP_FAST==='1'||process.env.T1214_STEP_FAST==='verify');
+const T1214=typeof process!=='undefined'&&!!process.env&&process.env.T1214_STEP_FAST!=='0';
 const T1214V=T1214&&process.env.T1214_STEP_FAST==='verify';
 const _t1214Stat={vq:0,bad:0};
 function _t1214Bad(m){if(++_t1214Stat.bad<=5)console.error('[T1214] verify 어긋남 fish-goods '+m);}

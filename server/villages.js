@@ -75,7 +75,7 @@
 // =============================================================================
 'use strict';
 // ★[T1214 µs 줄기] 손잡이 상수(머리 주석 = `_physicalStoneWork` 앞 ★★[T1214] 절) — 싣는 도중에 부르는 함수가 있어도 서도록 파일 머리에 둔다.
-const T1214_STEP_FAST = process.env.T1214_STEP_FAST === '1' || process.env.T1214_STEP_FAST === 'verify';
+const T1214_STEP_FAST = process.env.T1214_STEP_FAST !== '0';   // ★[PM land1051] 켬 기본(값 0 · 기준선 11-07b 같음 3/3 — T1214 보고 · `=0` 끔 · `=verify` 두 길 견줌)
 const T1214_VERIFY = process.env.T1214_STEP_FAST === 'verify';
 // ★[T732 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔)] 로트 장부는 **늦게 · 켬일 때만** 부른다 — 끄면(랩 포함) `lots.js` 를 싣지도 않는다(main 바이트 · 랩 모듈 무변).
 const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT !== '0');   // ★[T778] 켬 기본 · 되돌림 `=0`
