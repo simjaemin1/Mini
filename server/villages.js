@@ -13681,12 +13681,13 @@ function _t720Step(vil, npc, now, fv, dayR, day, fullFish = false) {
   const _s19 = T1219_STEP_FAST && !fullFish && npc._t720 && npc._t720.k;   // ★[T1219 ③] 켬 + 정산 길 위 = 머리 건너뜀
   if (_s19 && !T1219_VERIFY) _t1219Stat.t720Skip++;
   else if (!fullFish && _stoneHandInOn(vil) && _stoneHeld(npc) > 0) {
-    if (_s19) { _t1219Stat.t720Vq++; }   // verify — 종전처럼 재고(값은 아래 절이 안 쓴다 · 세계 무변) 셈만 한다
+    if (_s19) { if ((++_t1219Stat.t720Vq & 4095) === 0) console.error(`[T1219] verify t720 견줌 ${_t1219Stat.t720Vq} · 어긋남 ${_t1219Stat.t720Bad}`); }   // verify — 종전처럼 재고(값은 아래 절이 안 쓴다 · 세계 무변) 셈한다
     const C = (T1214_STEP_FAST?_t1214Carry():require('./carry'));   // ★[T1214 ③]
     const kg = C.npcTotalKg(npc);
     fullFish = kg >= C.CFG.CAP_KG || (npc.inventory.stone > 0 && kg + (T1214_STEP_FAST?_t1214Weights():require('./weights')).kgOf('stone') > C.CFG.CAP_KG + 1e-9);
   }
   let S = npc._t720;
+  if (T1219_VERIFY && _s19 && (!S || !S.k) && ++_t1219Stat.t720Bad <= 5) console.error(`[T1219] verify 어긋남 t720 — 건너뛸 몸이 정산 길을 새로 연다 ${npc.pid}`);   // ★[T1219 ③] 건너뜀의 전제(그 값을 쓰는 절이 안 선다)를 산 판에서 잰다
   if (!S || !S.k) {
     if (!(fv >= dayR) && !fullFish) return false;           // T1180: 가득 찬 생선도 같은 귀환·체류 문
     if (S && S.dd === day && !fullFish) return false;

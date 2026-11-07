@@ -41,11 +41,12 @@ for (const r of T.runs) {
     p50: r.tq ? r3(r.tq.p50) : null, p95: r.tq ? r3(r.tq.p95) : null, p99: r.tq ? r3(r.tq.p99) : null, perfP50: r.tickP50, perfP95: r.tickP95,
     rem: L.stepUs != null ? r3(L.stepUs - 0.3) : null,
     pre: r.pre ? r3(r.pre.stepUs) : null, nsDec: L.decSamples ? r3(L.stepSamples / L.decSamples) : null, flags: (r.flags || []).slice(), sliceLines: r.sliceLines || null,   // ★[T1219] 밤 닫힘 앞 · 환산 비 · 자가 표시
+    live: r.live ? r3(r.live.stepUs) : null, dead: r.live ? r.live.dead : null, sliceDec: r.sliceDec || null,   // ★[T1219 ⓑ'] 결정 표본이 빠진 조각 뺀 셈
     ctrl: r3(CTRL.reduce((t, k) => t + (r.segUs[k] || 0), 0)), ratio: r3(L.stepUs / CTRL.reduce((t, k) => t + (r.segUs[k] || 0), 0)), samples: ns, chunks: L.chunks, reqBy: L.reqBy || null, groups: L.groups || null, selfTop: (L.selfTop || []).slice(0, 8) });
 }
 //   ★[T1219] 자가 표시(상대) — 같은 창 판들의 환산 비(npcStep 표본 ÷ 결정 표본) 중앙보다 0.07 넘게 크면 '결정표본?'(고리 틀이 표본에서 빠지기 시작한 판)
 for (const W of ['day', 'night']) { const xs = rows.filter((x) => x.W === W && x.nsDec != null), m = med(xs.map((x) => x.nsDec)); for (const x of xs) if (m != null && x.nsDec > m + 0.07 && !x.flags.includes('결정표본')) x.flags.push('결정표본?'); }
-const COLS = ['npcStep', 'pre', 'nsDec', 'rem', 'totUs', 'moveGate', 'decGate', 'dec', 'life', 'path', 'astar', 'self', 'lnStuck', 'lnGate', 'lnArrive', 'req', 'p50', 'p99', 'ctrl', 'ratio'];
+const COLS = ['npcStep', 'live', 'pre', 'nsDec', 'rem', 'totUs', 'moveGate', 'decGate', 'dec', 'life', 'path', 'astar', 'self', 'lnStuck', 'lnGate', 'lnArrive', 'req', 'p50', 'p99', 'ctrl', 'ratio'];
 const arms = {};
 for (const x of rows) { const k = x.arm + '|' + x.W; (arms[k] = arms[k] || []).push(x); }
 const armRows = Object.entries(arms).map(([k, xs]) => { const [arm, W] = k.split('|'); const o = { arm, W, n: xs.length, tags: xs.map((x) => x.tag) };
@@ -54,12 +55,12 @@ const out = { at: new Date().toISOString(), dir: DIR, rule: 'inf · --seg --line
 const pad = (s, n) => String(s == null ? '—' : s).padStart(n);
 let txt = '판 · 창 · ' + COLS.join(' · ') + ' (µs/사람 · p50/p99 ms)\n';
 for (const x of rows.sort((a, b) => (a.tag + a.W).localeCompare(b.tag + b.W))) txt += pad(x.tag, 4) + pad(x.W, 6) + COLS.map((c) => pad(x[c], 8)).join('') + '\n';
-{ const fl = rows.filter((x) => x.flags && x.flags.length); txt += '\n자가 표시(T1219) — 줄맞춤 = 조각마다 [T646] 줄 수가 1 이 아님(밤 = 하루 닫힘 조각) · 결정표본 = 환산 비 ≥ 0.86 · 결정표본? = 같은 창 중앙 + 0.07 넘음 · pre = 밤 닫힘 앞 조각만 다시 센 npcStep\n';
-  txt += fl.length ? fl.map((x) => `  ${x.tag} ${x.W} — ${x.flags.join(' · ')} · 조각 줄 ${JSON.stringify(x.sliceLines)} · 환산 비 ${x.nsDec}${x.pre != null ? ' · pre ' + x.pre : ''}`).join('\n') + '\n' : '  (없음)\n'; }
+{ const fl = rows.filter((x) => x.flags && x.flags.length); txt += '\n자가 표시(T1219) — 줄맞춤 = 조각마다 [T646] 줄 수가 1 이 아님(밤 = 하루 닫힘 조각) · 결정표본 = 환산 비 ≥ 0.86 · 결정표본? = 같은 창 중앙 + 0.07 넘음 · 결정표본 빠짐 = 결정 표본 0 인 조각이 있음(live = 그 조각 뺀 npcStep) · pre = 밤 닫힘 앞 조각만 다시 센 npcStep\n';
+  txt += fl.length ? fl.map((x) => `  ${x.tag} ${x.W} — ${x.flags.join(' · ')} · 조각 줄 ${JSON.stringify(x.sliceLines)} · 환산 비 ${x.nsDec}${x.dead ? ' · 결정 표본 0 조각 ' + JSON.stringify(x.dead) + ' · 조각 결정 표본 ' + JSON.stringify(x.sliceDec) + ' · live ' + x.live : ''}${x.pre != null ? ' · pre ' + x.pre : ''}`).join('\n') + '\n' : '  (없음)\n'; }
 txt += '\n팔 중앙(범위)\n';
 for (const a of armRows.sort((p, q) => (p.arm + p.W).localeCompare(q.arm + q.W))) txt += pad(a.arm, 4) + pad(a.W, 6) + ' n' + a.n + ' ' + COLS.map((c) => `${c} ${a[c]}[${a[c + 'Lo']}~${a[c + 'Hi']}]`).join(' · ') + '\n';
 // 마크다운 표(보고에 붙인다) — 팔마다 중앙 [범위]
-const NAME = { pre: '└ npcStep 밤 닫힘 앞(T1219)', nsDec: 'npcStep 표본 ÷ 결정 표본', npcStep: '`npcStep`', rem: '0.3 까지 남은 몫', totUs: '사람당 전체', moveGate: '이동 문', decGate: '결정 문', dec: '└ 결정(포함)', life: '└ └ 생활 층', path: '└ 길 묻기(`computeNpcPath`)', astar: '└ └ A*(`findPath`)', self: '└ 걸음 몸통 자기', lnStuck: '└ └ 막힘 서 있음 판정(줄 · 안 인라인이면 부름)', lnGate: '└ └ 결정 문 줄', lnArrive: '└ └ 도착 뒤 첫 줄', req: '└ require()', p50: '틱 p50 ms', p99: '틱 p99 ms', ctrl: '대조(손 안 댄 구간 합)', ratio: '`npcStep` ÷ 대조' };
+const NAME = { live: '└ npcStep 결정 표본 선 조각만(T1219)', pre: '└ npcStep 밤 닫힘 앞(T1219)', nsDec: 'npcStep 표본 ÷ 결정 표본', npcStep: '`npcStep`', rem: '0.3 까지 남은 몫', totUs: '사람당 전체', moveGate: '이동 문', decGate: '결정 문', dec: '└ 결정(포함)', life: '└ └ 생활 층', path: '└ 길 묻기(`computeNpcPath`)', astar: '└ └ A*(`findPath`)', self: '└ 걸음 몸통 자기', lnStuck: '└ └ 막힘 서 있음 판정(줄 · 안 인라인이면 부름)', lnGate: '└ └ 결정 문 줄', lnArrive: '└ └ 도착 뒤 첫 줄', req: '└ require()', p50: '틱 p50 ms', p99: '틱 p99 ms', ctrl: '대조(손 안 댄 구간 합)', ratio: '`npcStep` ÷ 대조' };
 const cell = (a, c) => (a ? (a.n > 1 ? `${a[c]} [${a[c + 'Lo']}~${a[c + 'Hi']}]` : `${a[c]}`) : '—');
 function md(armList) {
   const A = (arm, W) => armRows.find((x) => x.arm === arm && x.W === W);

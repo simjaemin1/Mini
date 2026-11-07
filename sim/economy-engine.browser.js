@@ -1477,25 +1477,35 @@ function regen(s0, days, K) {
 
 // ★★[T1219 µs 줄기 2026-11-08] 손잡이 `T1219_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 두 길을 다 재고 견줌 · 답은 종전 길).
 //   어장 칸 읽기 — `stockRatioAt` · `drawWholeStock` · `drawWholeFish` 가 원판(반경 `DRAW_R` · 기본 29칸)마다 칸 열쇠 글자(`x + '_' + y`)를
-//   새로 짓고(수 → 글자 둘 · 잇기) `rec()` 로 읽는다(Map 은 새 글자를 펴고 해시를 다시 센다 · 빈 칸이면 새 객체). T1214 판의 깊은 줄 1위(`rec` 264).
-//   켬: 같은 글자를 칸(정수 좌표)마다 한 번 지어 두고(`_t1219Key` — 정수 좌표 → 열쇠 글자 표) 재고 수만 읽는 셈(`_t1219RecS`)을 쓴다.
-//   ★같은 값: ⓐ 열쇠 글자가 같다 — 정수 좌표의 글자(`ToString` · −0 → '0')를 처음 한 번 종전 식 그대로 짓고 둔다 ⇒ 같은 Map 칸.
-//     ⓑ 있는 칸의 되살림(regen · `t` 고침)은 같은 칸을 같은 차례로 · 같은 `now` 로 고친다(종전 `rec` 몸 그대로). ⓒ 빈 칸은 종전에도 `CFG.CELL_K` 만
-//     읽혔다(새 객체는 버려졌다) — 켬은 그 객체를 안 짓는다. ⓓ 좌표가 정수가 아니거나(문자열 · NaN · ∞ 포함) ±2^20 밖이면 종전 식으로 짓는다.
-//     더하는 차례 · 나누는 식은 종전 그대로다. 같은 `now` 에서 두 번 읽으면 둘째는 고칠 것이 없다(되살림이 `t = now` 로 끝난다) ⇒ verify 가 두 길을 다 잰다.
+//   새로 짓고(수 → 글자 둘 · 잇기) `rec()` 로 읽는다(Map 은 새 글자마다 해시를 다시 센다 · 빈 칸이면 새 객체). T1214 판의 깊은 줄 1위(`rec` 264).
+//   켬: 자리(정수 원판 가운데)마다 원판 칸 열쇠 글자 배열을 한 번 지어 두고(`_t1219DiscKeys` — 자리 수(Smi) → 배열 · 종전 고리 차례 · 종전 글자)
+//   재고 수만 읽는 셈(`_t1219RecS`)으로 돈다. 열쇠 글자는 해시를 품고 있어 다시 세지 않는다.
+//   ★같은 값: ⓐ 열쇠 글자가 같다 — 종전 고리(dy 바깥 · dx 안 · 같은 거르개 · 같은 식 `(cx + dx) + '_' + (cy + dy)`)로 처음 한 번 짓고 둔다 ⇒ 같은 Map 칸.
+//     ⓑ 있는 칸의 되살림(regen · `t` 고침)은 같은 칸을 같은 차례로 · 같은 `now` 로 고친다(종전 `rec` 몸 그대로) · 더하는 차례 · 나누는 식도 종전 그대로.
+//     ⓒ 빈 칸은 종전에도 `CFG.CELL_K` 만 읽혔다(새 객체는 버려졌다) — 켬은 그 객체를 안 짓는다.
+//     ⓓ 가운데가 정수가 아니거나(문자열 · NaN · ∞ · 소수) ±2^14 밖이면 배열 없이 종전 식 열쇠로 돈다. 반경(`CFG.DRAW_R`)이 바뀌면 표를 비운다.
+//     같은 `now` 에서 두 번 읽으면 둘째는 고칠 것이 없다(되살림이 `t = now` 로 끝난다) ⇒ verify 가 두 길을 다 잰다.
+//   (첫 글자 `79e3d8e2` 는 칸마다 열쇠 표를 두었다 — 정수 좌표 → 2^42 수 열쇠 Map 이라 칸마다 힙 수 해시가 글자 잇기보다 비쌌다 · 판 C1 몫 ↑ · 보고 §2.)
 const T1219_STEP_FAST = typeof process !== 'undefined' && !!process.env && (process.env.T1219_STEP_FAST === '1' || process.env.T1219_STEP_FAST === 'verify');
 const T1219_VERIFY = T1219_STEP_FAST && process.env.T1219_STEP_FAST === 'verify';
-const _t1219Stat = { q: 0, keys: 0, vq: 0, bad: 0 };   // 계측 전용
-const _t1219Keys = new Map();   // 정수 좌표 수 → 열쇠 글자(종전 식으로 처음 한 번 지은 것)
-const _T1219_OFF = 1048576;     // 2^20 — 수 = (x + 2^20) · 2^21 + (y + 2^20) < 2^42(정확)
-function _t1219Key(x, y) {
-  if ((x | 0) === x && (y | 0) === y && x > -_T1219_OFF && x < _T1219_OFF && y > -_T1219_OFF && y < _T1219_OFF) {
-    const id = (x + _T1219_OFF) * 2097152 + (y + _T1219_OFF);
-    let k = _t1219Keys.get(id);
-    if (k === undefined) { k = x + '_' + y; _t1219Keys.set(id, k); _t1219Stat.keys++; }
-    return k;
+const _t1219Stat = { q: 0, keys: 0, vq: 0, bad: 0 };   // 계측 전용(keys = 지은 자리 배열 수)
+const _t1219Pos = new Map();   // 자리 수(Smi) → 원판 칸 열쇠 글자 배열
+let _t1219PosR = null;         // 표를 지은 반경
+const _T1219_P = 16384;        // 2^14 — 자리 수 = (x + 2^14) · 2^15 + (y + 2^14) < 2^30(Smi)
+function _t1219DiscKeys(cx, cy) {
+  if ((cx | 0) === cx && (cy | 0) === cy && cx > -_T1219_P && cx < _T1219_P && cy > -_T1219_P && cy < _T1219_P) {
+    const R = CFG.DRAW_R;
+    if (R !== _t1219PosR) { _t1219Pos.clear(); _t1219PosR = R; }
+    const id = (cx + _T1219_P) * 32768 + (cy + _T1219_P);
+    let a = _t1219Pos.get(id);
+    if (a === undefined) {
+      a = [];
+      for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { if (dx * dx + dy * dy > R * R) continue; a.push((cx + dx) + '_' + (cy + dy)); }
+      _t1219Pos.set(id, a); _t1219Stat.keys++;
+    }
+    return a;
   }
-  return x + '_' + y;
+  return null;
 }
 function _t1219RecS(key, now) {   // = `rec(key, now).s` — 같은 고침(있는 칸만 되살린다) · 빈 칸에 새 객체를 안 짓는다
   const r = fishCells.get(key);
@@ -1505,16 +1515,20 @@ function _t1219RecS(key, now) {   // = `rec(key, now).s` — 같은 고침(있�
   return r.s;
 }
 function _t1219Bad(what, a, b) { _t1219Stat.bad++; if (_t1219Stat.bad <= 5) console.error(`[T1219] verify 어긋남 ${what} ${a} ≠ ${b}`); }
-function _t1219Tick() { if ((++_t1219Stat.vq & 8191) === 0) console.error(`[T1219] verify fish 견줌 ${_t1219Stat.vq} · 어긋남 ${_t1219Stat.bad}`); }
-function _t1219Disc(cx, cy, now) {   // 원판 칸 재고 합 · 칸 수 — 종전 이중 고리와 같은 차례(dy 바깥 · dx 안 · 같은 거르개)
-  let sum = 0, n = 0;
+function _t1219Tick() { if ((++_t1219Stat.vq & 8191) === 0) console.error(`[T1219] verify fish 견줌 ${_t1219Stat.vq} · 어긋남 ${_t1219Stat.bad} · 자리 표 ${_t1219Pos.size}`); }
+let _t1219N = 0;   // 마지막 원판 칸 수
+function _t1219Disc(cx, cy, now) {   // 원판 칸 재고 합(칸 수 = `_t1219N`) — 종전 이중 고리와 같은 차례
+  const a = _t1219DiscKeys(cx, cy);
+  let sum = 0;
+  if (a !== null) { for (let i = 0; i < a.length; i++) sum += _t1219RecS(a[i], now); _t1219N = a.length; return sum; }
+  let n = 0;
   for (let dy = -CFG.DRAW_R; dy <= CFG.DRAW_R; dy++) {
     for (let dx = -CFG.DRAW_R; dx <= CFG.DRAW_R; dx++) {
       if (dx * dx + dy * dy > CFG.DRAW_R * CFG.DRAW_R) continue;
-      sum += _t1219RecS(_t1219Key(cx + dx, cy + dy), now); n++;
+      sum += _t1219RecS(cx + dx + '_' + (cy + dy), now); n++;
     }
   }
-  _t1219Disc.n = n;
+  _t1219N = n;
   return sum;
 }
 function rec(key, now) {
@@ -1529,7 +1543,7 @@ function rec(key, now) {
 function stockRatioAt(cx, cy, now) {
   if (T1219_STEP_FAST && typeof cx === 'number' && typeof cy === 'number') {   // ★[T1219] 켬 = 열쇠 글자 표 · 재고 수만 읽기(머리 주석)
     _t1219Stat.q++;
-    const s1 = _t1219Disc(cx, cy, now), n1 = _t1219Disc.n, v1 = n1 ? (s1 / n1) / CFG.CELL_K : 1;
+    const s1 = _t1219Disc(cx, cy, now), n1 = _t1219N, v1 = n1 ? (s1 / n1) / CFG.CELL_K : 1;
     if (!T1219_VERIFY) return v1;
     const v0 = _stockRatioAt0(cx, cy, now); _t1219Tick(); if (!Object.is(v0, v1)) _t1219Bad('stockRatioAt', v0, v1);
     return v0;
@@ -1916,7 +1930,7 @@ module.exports = {
   regen, rec, stockRatioAt, drawStock, drawWholeStock, deficitStock, deficitBy, stockToEcon, diffuse,
   plan, windowMsFor, _lognormal,
   t1214Stat: () => Object.assign({ on: T1214_STEP_FAST, verify: T1214_VERIFY }, _t1214Stat),   // ★[T1214] 계측
-  t1219Stat: () => Object.assign({ on: T1219_STEP_FAST, verify: T1219_VERIFY, keyN: _t1219Keys.size }, _t1219Stat), _t1219Key, _t1219RecS, _stockRatioAt0,   // ★[T1219] 계측 · 하네스 문
+  t1219Stat: () => Object.assign({ on: T1219_STEP_FAST, verify: T1219_VERIFY, posN: _t1219Pos.size }, _t1219Stat), _t1219DiscKeys, _t1219RecS, _stockRatioAt0,   // ★[T1219] 계측 · 하네스 문
   expectedWaitMs, drawWholeFish, discN,   // ★[T1217]
   FISH_BK, fishBuckets, bucketOf, bucketRec, bucketRatioAt, drawBucketFish, bucketWholeFish, bucketDiffuse, bucketDeficitBy,   // ★[T1217 ②-b] 마을 어부의 어장 장부(랩 버킷) 몸이 없는 어부의 한 시간(입질 기댓값 · 온전한 마리 n 까지 같은 어장 장부)
   T609_BIG_WINDOW, windowFor, fightMsFor,   // ★[T609 ②] 큰 종 창 안 셋 — 표 기계(`t602-windows.js`)가 같은 함수로 잰다
