@@ -1258,7 +1258,8 @@ console.log('\n㉑ [T561] 채집 일괄의 명부도 몸의 그날을 본다(나
   const daily = (VC.match(/function _lifeDaily\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
   ok(/const _t561F = T561_ROSTER_BODY \? _t561Crew\(vil, 'forager'\) : null;/.test(daily)
      && /const _fgE = _t561F \? _t561F\.length : \(\(vil\.econ\.counts && vil\.econ\.counts\.forager\) \|\| 0\);/.test(daily)
-     && daily.includes("const _fg = (_t449S || _lifeEcon().productionFormulaOff?.(vil.econ,'forager')) ? 0 : _fgE;") && /const _cap = _trips \* _perLoad \* _fg;/.test(daily),
+     && daily.includes("const _fg = _t1202G ? _t1202G.n : ((_t449S || _lifeEcon().productionFormulaOff?.(vil.econ,'forager')) ? 0 : _fgE);") && /const _cap = _trips \* _perLoad \* _fg;/.test(daily)   // ★[T1202] 실제 호스트만 T1202 명부(몸 없는 일꾼 · 왕복 못 하는 시계)
+     && daily.includes("const _t1202G = (_on && _lifeEcon().productionFormulaOff?.(vil.econ,'forager')) ? _t1202Roster(vil, 'forager', _t561F, _walked, _t449S) : null;"),
     '㉑ ★★끔 = econ 채집꾼 수(옛 줄) · 켬 = 그날 **나설 수 있는** 채집꾼 몸 — 관측 마을 줄(T449) · 한도의 꼴(짐 × 짐당 개체 × 명부) 무변');
   const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
   const run = (env, o) => probe(Object.assign({ T347_FORAGE_ACT: '1', T325_WOOD_ACT: '0', T561_ROSTER_BODY: '0', T374_DEMAND_STOP: '0', T490_FORAGE_REACH: '0', T449_BODY_DAY: '0' }, env),

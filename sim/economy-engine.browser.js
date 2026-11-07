@@ -5802,8 +5802,16 @@ function sowableMonth(field, month) {
 }
 // ★[T1179] 마을 특산물 고르기 — 시드 · 달 · 자리(논 1종 · 밭 2종 분담)의 순수 함수. 몸은 `server/villages.js` `_villageCropFor` 에서
 //   **글자 그대로 옮겼다**(그쪽은 이 함수를 부른다 · 결과 바이트 같음) — econ 작물 철(`T1179_CROP_SEASON`)이 같은 고르기를 부른다(사본 0).
+// ★★[T1201 2026-11-07 · ★재민 11-07 문 33 ㄴ] **청동기 작물(고증)** — 손잡이 `T1201_BRONZE_CROPS`(끔 기본 · `=1` 켬 · 그 밖 값 = 끔).
+//   켬이면 **마을 밭**(이 함수 — 생활층 `_villageCropFor` · econ 작물 철)이 고르는 후보를 한반도 청동기 유적에서 나온 작물로만 줄인다.
+//   출처(우리역사넷 「청동기시대의 농경」 · 국사편찬위원회): 밭작물 "보리 · 조 · 수수 · 기장 · 콩" + "밀 · 팥 · 피" 등 다양한 잡곡 ·
+//     벼(흔암리 · 송국리 탄화미) · 여의곡 율무(Job's tears). 이 열 가지 밖(상추 · 오이 · 가지 · 배추 · 무 · 마늘 …)은 청동기 출토 기록이 없다.
+//   ⚠고르는 산수 · 시드 · 분담(논 1 · 밭 2)은 그대로다(후보 목록만 준다 · 새 수 0). 그 달 후보가 0 이면 `null`(종전처럼 안 심는다).
+//   ⚠플레이어 밭 · 야생 채종 · 첫 수확일(`daysToFirstHarvest`)은 안 건드린다(`sowableMonth` 무변). 끄면 이 함수 글자 그대로.
+const T1201_BRONZE_CROPS = (typeof process !== 'undefined' && process.env) ? process.env.T1201_BRONZE_CROPS === '1' : false;
+const T1201_BRONZE_SET = new Set(['barley', 'foxtail_millet', 'sorghum', 'millet', 'soybean', 'wheat', 'azuki', 'barnyard_millet', 'rice', 'adlay']);
 function villageCropPick(seed, field, mo, par) {
-  const cand = sowableMonth(field, mo);
+  const cand = T1201_BRONZE_CROPS ? sowableMonth(field, mo).filter((id) => T1201_BRONZE_SET.has(id)) : sowableMonth(field, mo);
   if (!cand.length) return null;
   const pick = (salt) => { const h = (Math.imul(seed ^ salt, 2654435761) ^ Math.imul(mo + 1, 40503)) >>> 0; return cand[h % cand.length]; };
   let res; if (field !== '밭') res = pick(101);
@@ -5856,7 +5864,7 @@ module.exports = {
   keepDaysOf, seedKeepDaysOf, hungerOf, tastyOf, growDaysOf, kgOf, koOf, emojiOf,
   T594_CROP_CAL, calDaysOf,   // ★[T594] 작물 철 고증 — 손잡이 · 고증 활동일(순수 유도 · 표에 없으면 null)
   seasonOfDay, sowSeasons, canSowOn, sowableIn, sowableOn, wildSeedAt, WILD_SEED_CHANCE,
-  monthOf, sowMonthsOf, fitsField, sowableMonth, villageCropPick, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
+  monthOf, sowMonthsOf, fitsField, sowableMonth, villageCropPick, T1201_BRONZE_CROPS, T1201_BRONZE_SET, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
   lifecycleOf, isPerennial, isWinterCrop, LC_WINTER, LC_PERENNIAL,
   dormantAt, vernalDay, VERNAL, CARE_PAUSE, PER_DORMANT, T1041_CROP_MEMO, t1041Stat: () => Object.assign({ on: T1041_CROP_MEMO }, _t1041Stat), _grownDays0,   // ★[T1041] 활동일 · 계절 기억 손잡이(하네스가 읽는다) · ★[T99] 휴면 술어 하나 · 춘화일 — 마을·플레이어가 같이 부른다
   rainedOn, RAIN_WATER,   // ★[T112] 비 온 날은 물 준 날 — 상태기 셋이 같이 부른다
@@ -13510,6 +13518,7 @@ function t1197Kill(v, p, body) {
   v.counts[p.currentJob] = (v.counts[p.currentJob] || 0) - 1;
   v._deathsToday = (v._deathsToday || 0) + 1; v._deadTot = (v._deadTot || 0) + 1; v._fdDeadTot = (v._fdDeadTot || 0) + 1;
   if (!body) (v._t1197Dead || (v._t1197Dead = [])).push(p.id);
+  if (T1206_NAT_DEATH) t1206Bury(v, 1, v.npcs.length + 1);   // ★[T1206 ③] 부장(같은 문)
   return true;
 }
 // 날 경계 — 지난 하루(날 머리 `day − 1` ~ `day`)를 친다: 끼니 둘(몸이 이미 먹은 끼니는 건너뜀) · 남은 시간 흘림 · 빚 거울 · 적응 · 회복.
@@ -13539,6 +13548,62 @@ function t1197Day(v, day) {
   return { need, short };
 }
 function t1197DieDays() { const M = _t1197(); return M ? M.dieDays : FD_DEATH_DAYS; }   // 굶어 죽기까지 날(켬 = 몸 정본에서 유도 · 끔 = 14)
+// ════════════════════════════════════════════════════════════════
+// ★★[T1206 2026-11-07 · ★재민 11-07 "자연사가 없으니 죽는 건 전쟁 · 굶주림뿐" · "죽는 만큼 인구 성장도 빨라져야"] **자연사 · 출생 다시 맞춤 · 부장품**
+//   손잡이 `T1206_NAT_DEATH`(켬 기본 · `=0` 만 끔 = 종전 바이트).
+//   ① 나이별 사망 — 시일러(Siler) 모델 생명표: 하루 위험 h(x) = a₁e^(−b₁x) + a₂ + a₃e^(b₃x) (x = 나이 · 해) → 그날 죽을 몫 p = 1 − e^(−h/365).
+//      수 다섯 = Gurven & Kaplan 2007 (Population and Development Review 33(2):321–365) 표 2 "Average hunter-gatherer" 행:
+//        a₁ 0.422 · b₁ 1.131 · a₂ 0.013 · a₃ 1.47×10⁻⁴ · b₃ 0.086 — 같은 표 e₁₅ 37.7 · 사망률 배가 8.1 해. 원시 사회 모델 생명표(채집민 다섯 무리의 평균).
+//      ★한반도 청동기 인골 생명표는 못 찾았다(미확인 — 산성 토양으로 인골이 거의 안 남는다). 같은 동아시아의 조몬 인골 e₁₅ 는 16(Kobayashi) → 32(Nagaoka 외 2008 · 장골 귀면 연령 추정 고침)라
+//        이 표(37.7)보다 낮다 — 농경 청동기 사회가 채집민보다 높았는지 낮았는지는 회부.
+//      16살 아래 칸은 쓰지 않는다(생길 때 나이 16 ~ 35 · 아이로 태어나기는 이번에 안 한다 — ★재민 11-07).
+//      누가 죽나 — 사람마다 그날 균등값 u = 해시(사람 id · 날)(주사위 0 · 차례 무관 · 결정론) · u < p 면 죽는다. 원정 징발 중인 사람은 빼고(그 죽음은 전쟁 정산), POP_MIN 은 지킨다.
+//   ② 출생 다시 맞춤 — 그날 출생 세기에 **그날 기대 자연사**(명부 사람마다 p 의 합 · 같은 생명표)를 더한다 ⇒ K 에서 출생 = 자연사(로지스틱의 평형 K 는 그대로 · 새 배수 0).
+//   ③ 부장품 — 죽은 사람 하나마다 곳간 사치품(위세 기여가 있는 품목 — 효용 정본 `contributes.prestige`) 가운데 한 사람 몫 × 부장 비율을 지운다(그 무덤에 든다).
+//      부장 비율 = 유물이 나온 무덤 몫 20/117 ≈ 0.171 — 이기성 2024(「청동기시대 군집묘와 혼계」, 한국학 47(3)) 묘역 넷: 나주 영천 3/21(본문 "21기 중 3기를 제외하고는 유물이 출토되지 않는다") ·
+//        양평 양수리 I 0/17 · 보령 명천동 6/40 · 논산 마전리 C 11/39(표에서 센 수 — 옹관 3호 "묘광바닥 판석"은 유물로 안 셈). 자연사 · 굶어 죽음 · 늙어 빠짐 · 전사 · 행상 피살 · 원정 전사 모두 같은 문(`t1206Bury`).
+//        econ 밖 문(전쟁 · 캐러밴 · 도적)은 그 마을 칸 `_t1206Due` 에 한 사람씩 적고 다음 날 경계가 같은 문으로 묻는다.
+const T1206_NAT_DEATH = !(typeof process !== 'undefined' && process.env && process.env.T1206_NAT_DEATH === '0');
+const T1206_SILER = { a1: 0.422, b1: 1.131, a2: 0.013, a3: 1.47e-4, b3: 0.086 };   // Gurven & Kaplan 2007 표 2(위 머리글)
+const T1206_GRAVE = 20 / 117;   // 이기성 2024 묘역 넷(위 머리글)
+function t1206Hazard(age) { const S = T1206_SILER, x = Math.max(0, +age || 0); return S.a1 * Math.exp(-S.b1 * x) + S.a2 + S.a3 * Math.exp(S.b3 * x); }   // 해마다
+function t1206DayP(age) { return 1 - Math.exp(-t1206Hazard(age) / 365); }
+function _t1206IsLux(id) { const SP = _getSpecialty(); const c = (SP && SP[id] && SP[id].contributes) || LEGACY_CONTRIBUTES[id] || null; return !!(c && c.prestige > 0); }
+// 부장 — 죽은 사람 n(죽기 전 인구 N0) · 사치품마다 곳간 × min(1, n × 비율 ÷ N0) 를 지운다(소비 흐름에 적는다). 반환 = 지운 양 합(낱개 단위 그대로).
+function t1206Bury(v, n, N0) {
+  if (!T1206_NAT_DEATH || !(n > 0) || !v || !v.storage) return 0;
+  const N = Math.max(1, N0 || ((v.npcs ? v.npcs.length : 0) + n));
+  const f = Math.min(1, n * T1206_GRAVE / N);
+  let tot = 0;
+  for (const r of Object.keys(v.storage)) {
+    const q = v.storage[r] || 0; if (!(q > 0) || !_t1206IsLux(r)) continue;
+    const take = q * f; v.storage[r] = q - take; _cons(v, r, take); tot += take;
+  }
+  v._buryUsed = (v._buryUsed || 0) + tot; v._buryN = (v._buryN || 0) + n;
+  return tot;
+}
+// 그날 기대 자연사(출생 다시 맞춤의 몫) — 명부 사람마다 p 합(징발 중 제외)
+function t1206Expected(v) { let e = 0; for (const p of v.npcs) if (!p._warDraft) e += t1206DayP(p.age); return e; }
+// 그날 자연사 — 정해진 씨(사람 id · 날)로 고른 그 사람들 · 반환 = 죽은 수
+function t1206Day(v, day) {
+  if (!T1206_NAT_DEATH) return 0;
+  const N0 = v.npcs.length; let k = 0;
+  for (const p of v.npcs.slice()) {
+    if (p._warDraft) continue;
+    if (!(v.npcs.length > POP_MIN)) break;
+    if (!(_hashStr(p.id + '|' + day + '|t1206') < t1206DayP(p.age))) continue;
+    const i = v.npcs.indexOf(p); if (i < 0) continue;
+    v.npcs.splice(i, 1);
+    v.counts[p.currentJob] = (v.counts[p.currentJob] || 0) - 1;
+    v._deathsToday = (v._deathsToday || 0) + 1; v._deadTot = (v._deadTot || 0) + 1; v._natDeadTot = (v._natDeadTot || 0) + 1;
+    v._natAgeSum = (v._natAgeSum || 0) + (+p.age || 0);
+    if (_t1206Gone) _t1206Gone(v, p);
+    k++;
+  }
+  if (k) t1206Bury(v, k, N0);
+  return k;
+}
+let _t1206Gone = null;   // 아래 T1198 문이 선 뒤 꽂힌다(그 사람의 몸이 눕는다)
 const T1198_BIRTH_BODY = T1197_MEAL_BODY && !(typeof process !== 'undefined' && process.env && process.env.T1198_BIRTH_BODY === '0');
 // ════════════════════════════════════════════════════════════════
 // ★★[T1198 2026-11-06 · 추상 걷기 D · ★재민 11-05] **출생 = 집의 짝 곁 몸 · 명부 ↔ 몸 1:1** — 손잡이 `T1198_BIRTH_BODY`(켬 기본 · `=0` 만 끔 = 종전 바이트 · T1197 끔이면 안 선다).
@@ -13558,6 +13623,7 @@ function _t1198Houses(v, hcap, day) {
   if (out.length > 1) { const k = ((day | 0) % out.length + out.length) % out.length; return out.slice(k).concat(out.slice(0, k)); }
   return out;
 }
+_t1206Gone = (v, p) => { if (T1198_BIRTH_BODY && _t1197()) (v._t1198Gone || (v._t1198Gone = [])).push(p.id); };   // ★[T1206] 자연사한 그 사람의 몸이 눕는다(T1198 늙음 문 그대로)
 // ★★[T1075 2026-11-02 · ★재민 11-02] **행복 = 평형 회귀(배너로드식) · 굶주림 평형 · 사망 계단** — 손잡이 `T1075_HAPPY_EQ`(**기본 끔** · `=1` 만 켬 · 끔 = 종전 바이트).
 //   재민 11-02: 마운트앤블레이드 배너로드의 안보 · 충성도처럼 "현재가 높으면 기본 변화량이 마이너스, 낮으면 플러스" · 굶는 동안 평형을 내려
 //   낮은 행복을 유지 · 기아 사망자가 생기면 계단으로 뚝 · 이후 아주 천천히 회복.
@@ -17184,6 +17250,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     _logiTerm = Math.min(0, POP_GROWTH_RATE * _homeN * (1 - Math.pow(_homeN / Math.max(1, _Knf), LOGISTIC_THETA)));
   }
   let dP = _logiTerm;
+  if (T1206_NAT_DEATH) { const _ne = t1206Expected(v); dP += _ne; v._natExp = _ne; }   // ★[T1206 ②] 출생 다시 맞춤 — 그날 기대 자연사만큼(같은 생명표 · K 의 평형은 그대로)
   // 굶주림: 흐름 음수 + 창고 식량_equiv 부족
   let _hungerTerm = 0;
   if (!T1074_FOOD_DEBT) {   // ★[T1074 ⑤] 켬 = 옛 굶주림 두 줄을 걷는다(죽음은 사람마다 빚이 정한다)
@@ -17307,6 +17374,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     const dead = v.npcs.splice(oldestIdx, 1)[0];
     v.counts[dead.currentJob] = (v.counts[dead.currentJob] || 0) - 1;
     if (T1198_BIRTH_BODY && _t1197()) (v._t1198Gone || (v._t1198Gone = [])).push(dead.id);   // ★[T1198 ③] 그 사람의 몸이 눕는다(호스트)
+    if (T1206_NAT_DEATH) t1206Bury(v, 1, v.npcs.length + 1);   // ★[T1206 ③] 부장(같은 문)
     v._dPAccum += 1;
   }
   // ★[T924] 켬 = 고리가 몸이 없어 멈춘 날(빚이 −1 아래로 남았는데 사람은 있다 = 남은 사람이 다 징발 중) 못 치른 몫을 넘기지 않는다 — 출생 줄의 `0.9` 거울(끔 = 종전 바이트)
@@ -17330,11 +17398,17 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
         _t1075Starved(v, v.npcs.length);   // ★[T1075 ③] 사망 계단(끔 = 무동작)
         const dead = v.npcs.splice(_fdk, 1)[0];
         v.counts[dead.currentJob] = (v.counts[dead.currentJob] || 0) - 1;
+        if (T1206_NAT_DEATH) t1206Bury(v, 1, v.npcs.length + 1);   // ★[T1206 ③] 부장(같은 문)
         v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1; v._fdDeadTot = (v._fdDeadTot || 0) + 1;
       }
     }
   }
 
+  // ★★[T1206 ①③] 자연사(나이별 생명표 · 정해진 씨) · econ 밖 문(전쟁 · 캐러밴 · 도적)이 적어 둔 죽음의 부장 — 끔 = 무동작
+  if (T1206_NAT_DEATH) {
+    if (v._t1206Due > 0) { t1206Bury(v, v._t1206Due, v.npcs.length + v._t1206Due); v._t1206Due = 0; }
+    t1206Day(v, day);
+  }
   // ★★[T1075 ④] 이탈 — 불행 압력이 1 을 채우면 가장 젊은 자유민 1명이 몸으로 이웃 마을까지 걷는다(호스트 길 위 장부 · 하루 상한 = 인구 상한과 같은 N × POP_MAX_DELTA_PCT)
   if (T1075_HAPPY_EQ || T1134_HAPPY_TARGET) {   // ★[T1134] 같은 이탈 문(호스트가 더 행복한 이웃만 받는다)
     const _cap = N * POP_MAX_DELTA_PCT, _go = v._world && typeof v._world.t1075Emigrate === 'function' ? v._world.t1075Emigrate : null;
@@ -19082,6 +19156,7 @@ module.exports = {
   T1075_HAPPY_EQ, HAPPY_EQ_HALF_DAYS,
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
   foodDebtOf, T1074_FOOD_DEBT,   // ★[T1074] 식량 빚 읽는 함수 하나(T1075 가 읽는다)
+  T1206_NAT_DEATH, T1206_SILER, T1206_GRAVE, t1206Hazard, t1206DayP, t1206Bury, t1206Day, t1206Expected, _t1206IsLux,   // ★[T1206] 자연사 · 출생 다시 맞춤 · 부장 — 하네스 · 관찰기
   T1198_BIRTH_BODY, _t1198Houses,   // ★[T1198] 출생 = 집 짝 곁 · 명부 ↔ 몸 1:1 — 호스트 · 하네스
   T1197_MEAL_BODY, NPC_HP_DAY, npcRegenMul, t1197Advance, t1197Meal, t1197Kill, t1197Day, t1197DieDays, __t1197: () => _t1197(),   // ★[T1197] 몸 게이지 끼니 — 호스트(몸 끼니 · 몸 흘림 · 그 자리 죽음) · 하네스가 같은 함수를 부른다
   __t1074: { _fdEaters, _fdNeed, _fdSettle, _fdDeathIdx, FD_ADAPT_MAX, FD_ADAPT_DOWN_DAYS, FD_ADAPT_UP_DAYS, FD_DEATH_DAYS, FD_REPAY_MAX, T1117_FD_EVID },   // 하네스 훅(test-t1074-food-debt)
@@ -21293,7 +21368,7 @@ function killTrader(c, v) {
   const t = c.trader;
   if (t && v.npcs) {
     const i = v.npcs.indexOf(t);
-    if (i >= 0) { v.npcs.splice(i, 1); if (v.counts) v.counts[t.currentJob] = Math.max(0, (v.counts[t.currentJob] || 0) - 1); }
+    if (i >= 0) { v.npcs.splice(i, 1); if (v.counts) v.counts[t.currentJob] = Math.max(0, (v.counts[t.currentJob] || 0) - 1); if (v1.T1206_NAT_DEATH) v._t1206Due = (v._t1206Due || 0) + 1; }   // ★[T1206 ③] 부장(다음 날 경계 · 같은 문)
   }
   if (v.tradeStats) v.tradeStats.tradersKilled = (v.tradeStats.tradersKilled || 0) + 1;
   c._done = true; c._abandoned = true;
@@ -21340,6 +21415,7 @@ function _killWarriors(v, n) {
   for (let z = 0; z < n; z++) {
     let idx = -1; for (let i = 0; i < v.npcs.length; i++) if (v.npcs[i].currentJob === 'warrior') { idx = i; break; }
     if (idx < 0) break; v.npcs.splice(idx, 1); if (v.counts) v.counts.warrior = Math.max(0, (v.counts.warrior || 0) - 1);
+    if (v1.T1206_NAT_DEATH) v._t1206Due = (v._t1206Due || 0) + 1;   // ★[T1206 ③] 호위 전사도 부장(다음 날 경계 · 같은 문)
   }
 }
 // =============================================================================

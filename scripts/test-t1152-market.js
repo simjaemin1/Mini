@@ -39,6 +39,12 @@ if (process.env.T1152_SUB) {
     for (let d = 0; d < 40; d++) V2.tickWorldV2(w);
     const C = P.cal(w.day);
     out.C = C; out.rows = [];
+    // ★[T1208] 적자 갈래 고정물 — T1197(식사 = 몸 · 켬 기본) 판의 이 씨 40날 세계엔 식량 적자 마을이 없다(적자 선반영 갈래가 안 선다).
+    //   세계 상태가 갈래를 안 열면 첫 마을 하나에 적자 EMA 를 심는다(인구 × 0.5 · 식 · 단언 무변 — 갈래를 여는 픽스처).
+    out.planted = null;
+    if (!w.villages.some((v) => v.npcs.length && v.surplusEMA && v.surplusEMA.food < 0)) {
+      const v0 = w.villages.find((v) => v.npcs.length); v0.surplusEMA = v0.surplusEMA || {}; v0.surplusEMA.food = -v0.npcs.length * 0.5; out.planted = v0.id;
+    }
     for (const v of w.villages) {
       const N = v.npcs.length; if (!N) continue;
       const D = V2._settleParamsV2(v, 'food'), S = V2._priceParamsV2(v, 'food'), px = V2.computeShadowPrices(v);
@@ -136,7 +142,7 @@ console.log('\n④ 식량 곡선(켬 판 · 실제 마을 40날)');
   const exp = (r) => { let s = Math.max(0.1, r.st); if (r.ema < 0) s = Math.max(0.1, s + r.ema * C.H); return { t: r.N * C.H, s }; };
   ok(rows.every((r) => near(r.D.t, exp(r).t) && near(r.S.t, exp(r).t)), '목표 = 인구 × H(결정층 · 정산 종전 식 둘 다)', rows.slice(0, 3).map((r) => `${r.N}명 → ${r.D.t.toFixed(1)}`).join(' · '));
   ok(rows.every((r) => near(r.D.e, C.e) && near(r.S.e, C.e)), '탄력 = 유도 e(두 식 다)');
-  ok(rows.every((r) => near(r.D.s, exp(r).s) && near(r.S.s, exp(r).s)) && rows.some((r) => r.ema < 0), '유효 재고 = 곳간 + 적자 선반영 × H(바닥 → 선반영 → 바닥 · 종전 차례)', `적자 마을 ${rows.filter((r) => r.ema < 0).length}`);
+  ok(rows.every((r) => near(r.D.s, exp(r).s) && near(r.S.s, exp(r).s)) && rows.some((r) => r.ema < 0), '유효 재고 = 곳간 + 적자 선반영 × H(바닥 → 선반영 → 바닥 · 종전 차례)', `적자 마을 ${rows.filter((r) => r.ema < 0).length}${R.planted != null ? ' (심은 적자 마을 ' + R.planted + ')' : ''}`);
   ok(rows.every((r) => near(r.p, r.D.b * Math.max(0.01, Math.min(r.D.mx, Math.pow(r.D.t / r.D.s, r.D.e))))), '그림자가격 = 그 곡선(기준값 × clamp(바닥 · 천장 · (목표 ÷ 유효 재고)^e))', rows.slice(0, 3).map((r) => r.p.toFixed(3)).join(' · '));
   ok(rows.every((r) => r.woodSame && r.own && !r.ownW), '다른 품목(나무)은 같은 객체 그대로 · 그 곡선이 선 품목 = 식량 하나');
 }

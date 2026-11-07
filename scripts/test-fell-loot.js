@@ -85,7 +85,7 @@ console.log('\n① 잔가지 · 도토리 → 곳간 — 정적');
      && /if \(r > 1e-9\) P\[k\] = r; else delete P\[k\];/.test(pin),
     'ⓑ ★★곳간이 안 받은 몫 — 몸은 손에 · 헤드리스는 마을 짐에 · 짐은 받은 만큼만 뺀다(T544 · T717 ② 문법)');
   ok(/if \(T717_WOOD_HAND\) _t717PackPut\(vil, u - \(_g \|\| 0\)\);\s*if \(T733_FELL_LOOT\) _t733LootIn\(vil, loot\);/.test(daily)
-     && /if \(T717_WOOD_HAND && _on && !_bodyOnly\) _t717PackIn\(vil\);\s*if \(T733_FELL_LOOT && _on && !_bodyOnly\) _t733PackIn\(vil\);/.test(daily)
+     && /if \(T717_WOOD_HAND && _on && \(!_bodyOnly \|\| T1202_BATCH\)\) _t717PackIn\(vil\);\s*if \(T733_FELL_LOOT && _on && \(!_bodyOnly \|\| T1202_BATCH\)\) _t733PackIn\(vil\);/.test(daily)   // ★[T1202] 일괄 짐은 일괄 몫 — 실제 호스트에서도 다시 든다(T1202 끔 = T1180 줄)
      && daily.indexOf('_t733PackIn(vil)') < daily.indexOf('for (let k = 0; k < _tr.length * 8'),
     'ⓐ ★★헤드리스 — 같은 그루(`loot`)의 두 칸을 통나무 입구 바로 뒤에서 · 짐은 베기 전(통나무 짐 옆)');
   ok(/if \(T733_FELL_LOOT\) _wood\(\);\s*if \(E\.T347_FORAGE_ACT && E\.forageActOn\(vil\.econ\)\) \{[\s\S]*?\}\s*if \(!T733_FELL_LOOT\) _wood\(\);/.test(hands)

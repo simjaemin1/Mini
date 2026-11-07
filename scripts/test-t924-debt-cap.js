@@ -126,7 +126,8 @@ console.log('\nⓕ 정적');
   ok((S.match(/process\.env\.T924_DEBT_CAP/g) || []).length === 1 && /const T924_DEBT_CAP = !\(typeof process !== 'undefined' && process\.env && process\.env\.T924_DEBT_CAP === '0'\);/.test(S), '손잡이는 `!(… === \'0\')` 한 자리(켬 기본)');
   const iLoop = S.indexOf('while (v._dPAccum <= -1 && v.npcs.length > POP_MIN)'), iBrk = S.indexOf('if (oldestIdx < 0) break;'), iCap = S.indexOf('if (T924_DEBT_CAP && v._dPAccum <= -1 && v.npcs.length > POP_MIN) v._dPAccum = Math.max(v._dPAccum, -0.9);');
   ok(iLoop > 0 && iBrk > iLoop && iCap > iBrk, '거울 줄은 기근 고리 뒤 · 고리 안 `if (oldestIdx < 0) break;` 글자 무변', `고리 ${iLoop} · break ${iBrk} · 거울 ${iCap}`);
-  ok((S.match(/v\._dPAccum = Math\.min\(v\._dPAccum, 0\.9\);/g) || []).length === 3, '0.9 는 출생 줄의 그 수(출생이 막힌 세 자리 `Math.min(v._dPAccum, 0.9)`)');
+  // ★[T1208-K3 2026-11-07] 옛 글자 — T1198(land1049 · 출생 = 몸)이 출생이 막힌 넷째 자리(아이를 가질 집이 다 찼다)를 같은 0.9 로 더했다 → 셋 → 넷.
+  ok((S.match(/v\._dPAccum = Math\.min\(v\._dPAccum, 0\.9\);/g) || []).length === 4, '0.9 는 출생 줄의 그 수(출생이 막힌 네 자리 `Math.min(v._dPAccum, 0.9)` — 넷째는 T1198 집이 다 찬 날)');
   ok(Number.isFinite(MAXD) && MAXD > 0, 'POP_MAX_DELTA_PCT 정본 글자를 읽었다', String(MAXD));
 }
 console.log(`\n${pass} 통과 · ${fail} 실패`);
