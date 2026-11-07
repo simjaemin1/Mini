@@ -5646,6 +5646,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   stoneResources: (x,y,r) => _physicalRocksInCircle(x,y,r),
   stoneHit: (npc,r) => _physicalStoneHit(npc,r),
   t312DrawFishAt: (cx,cy,kg,now) => { const want=kg/Fishing.CFG.KG_PER_STOCK;return Fishing.drawWholeStock(cx,cy,want,now,_fishSave)>=want-1e-12; },   // T1180: 사람과 같은 어장·환산·저장 문
+  t1217DrawFish: (cx, cy, perStock, n, now, kFn) => Fishing.drawBucketFish(cx, cy, perStock, n, now, kFn, _fishSave),   // ★[T1217 ②-b] 마을 어부(몸 · 일괄)의 마리 — 버킷 장부 · 같은 저장 문(온전한 마리 n 까지)
   t312FishTargetAt: (p,spot) => _castTargetFor(p,spot),
   t312FishSpotAt: (x,y) => Fishing.spotAt(_terrain,ZONE_ID,x,y,_fishSea()),
   // ★[T347] 채집 행위 — 문 둘 + 전리품 표 하나. 재생 문(`t341Unharvest`)은 **위 그것을 그대로 쓴다**(사본 0).
@@ -10121,22 +10122,27 @@ const RegionProfiles = require('./region-profiles');
 Fishing.setDayMs(parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
 { // 부팅: 파인 어장 셀 로드(만땅 셀은 애초에 저장 안 됨 — mined_cells 와 같은 문법)
   try {
-    for (const r of db.getAllFishCells()) Fishing.fishCells.set(r.cell_key, { s: r.stock, t: r.last_t });
+    for (const r of db.getAllFishCells()) { if (String(r.cell_key).startsWith('B:')) Fishing.fishBuckets.set(String(r.cell_key).slice(2), { s: r.stock, t: r.last_t, K: null }); else Fishing.fishCells.set(r.cell_key, { s: r.stock, t: r.last_t }); }   // ★[T1217 ②-b] 'B:' = 마을 어부 장부(버킷 · K 는 처음 만질 때 다시 센다) · 끔 = 그 열쇠가 저장된 적 없다
     if (Fishing.fishCells.size) console.log(`[${ZONE_ID}] 🎣 파인 어장 셀 ${Fishing.fishCells.size}개 로드`);
   } catch (e) { console.log(`[${ZONE_ID}] fish_cells 로드 실패: ${e.message}`); }
 }
 function _fishSave(key, r) {
-  if (r.s >= Fishing.CFG.CELL_K) { Fishing.fishCells.delete(key); try { db.deleteFishCell(key); } catch (e) {} return; }
+  if (r.s >= Fishing.CFG.CELL_K) { if (key.startsWith('B:')) Fishing.fishBuckets.delete(key.slice(2)); else Fishing.fishCells.delete(key); try { db.deleteFishCell(key); } catch (e) {} return; }   // ★[T1217 ②-b] 버킷 열쇠는 버킷 장부에서
   try { db.upsertFishCell(key, r.s, r.t); } catch (e) {}
 }
 // 회복은 **어획이 없어도** 보여야 한다 — 5분마다 만땅 셀을 정리하고 마을 어장 상한을 다시 매긴다.
-const FISH_TICK_MS = Math.max(5000, parseInt(process.env.FISH_TICK_MS || '', 10) || 60000);
+//   ★[T1217] 켬(`T1217_MARGIN=1` · 생산 어부 켬)이면 주기를 어장 하루 시계에 묶는다 — 게임 하루의 1/24(정본 하루 24분이면 60초 = 종전 값 그대로 ·
+//     판 시계 `VILLAGE_DAY_MS` 판은 그만큼 짧게 · 일괄이 어장을 깎는 세계에서 번짐 · 재생이 그 날 시계로 돈다 · 끔 = 종전 글자).
+const T1217_FISH = process.env.T1217_MARGIN === '1' && process.env.T312_FISH_ACT === '1';
+const FISH_TICK_MS = (T1217_FISH && !process.env.FISH_TICK_MS) ? Math.max(1, Math.round(Fishing.DAY_MS / 24))
+  : Math.max(5000, parseInt(process.env.FISH_TICK_MS || '', 10) || 60000);
 let _fishTickAt = Date.now();
 setInterval(() => {
   const now = Date.now();
   const dtDays = (now - _fishTickAt) / Fishing.DAY_MS;
   _fishTickAt = now;
   const r = Fishing.diffuse(dtDays, _fishSave);
+  if (T1217_FISH) { try { Fishing.bucketDiffuse(dtDays, SimVillages._t1217BucketK, _fishSave); } catch (e) {} }   // ★[T1217 ②-b] 마을 어부 장부도 같은 시계로 번지고 재생한다
   let pruned = 0;
   for (const [key, rec] of [...Fishing.fishCells]) {
     if (rec.s >= Fishing.CFG.CELL_K - 1e-4) { Fishing.fishCells.delete(key); try { db.deleteFishCell(key); } catch (e) {} pruned++; }
@@ -10219,7 +10225,7 @@ function tryFishCast(player) {
     send(player.ws, { type: 'notice', text: `🎣 이 철에는 ${tgt.sp.kind === 'sea' ? '이 바다' : '이 물'}에서 무는 고기가 없습니다.` }); return;
   }
   const cx = Math.floor(tgt.x / 32), cy = Math.floor(tgt.y / 32);
-  const stock01 = Fishing.stockRatioAt(cx, cy, now);
+  const stock01 = Fishing.stockRatioAt(cx, cy, now) * (T1217_FISH ? Fishing.bucketRatioAt(cx, cy, now, null) : 1);   // ★[T1217 ②-b] 켬 = 마을 어부가 비운 물(버킷)에서는 플레이어도 덜 문다
   // ★[T350 · 주사위 0] 플레이어 낚시도 주민과 **같은 문법**이다(T340: "어부 = 플레이어 낚시 대본 그대로").
   //   씨 = (사람 · 던진 셀 · 게임일 · 이 사람의 던짐 횟수) — `_t340Try` 가 주민에게 쓴 그 다섯이다.
   player._castN = (player._castN || 0) + 1;
