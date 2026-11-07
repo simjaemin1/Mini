@@ -103,7 +103,7 @@ if (process.env.T725_SUB === 'zone') {
       if (q >= 1) H.tryVillageWithdraw(p, VID, res, q);
       const got = rep ? Math.floor(+p.inventory[rep] || 0) - before : 0;
       const leftU = +(+VIL.econ.storage[res] || 0).toFixed(6);
-      out.rows.push({ item, res, rep, kc: +kc.toFixed(3), kcRep: +kcRep.toFixed(3), N, uf, du, taken: N - left0, q, got, leftU,
+      out.rows.push({ item, res, rep, kc: +kc.toFixed(3), kcRep: +kcRep.toFixed(3), N, uf, du, taken: N - left0, q, got, leftU, fg: !!require(SV('fish-goods.js')).isItem(item),   // ★[T1216] fg = T1192 어종별 보존식(정본 문이 낱개 단위로 받는다)
         note: note.slice(0, 120) });
     }
 
@@ -179,7 +179,10 @@ say('\n① 손잡이');
 
 say('\n② 왕복 — 진짜 회관 문으로 넣고 진짜 꺼내기로 뺀다(곳간이 받는 품목 전부)');
 const DAY = zOff.day;
-const mult = (r) => (r.kc > 0 ? r.du * DAY / (r.N * r.kc) : r.du / r.N);   // 넣은 열량(열량 없는 것은 개수) 대비 꺼낼 수 있는 몫
+// ★[T1216] T1192(land1048 · 어종별 보존식 `dried_*` · `pickled_*` · `pickled_fish`)는 곳간 칸이 **낱개 단위**다 — 정본 넣기 문(`playerVillageDeposit` `fish-goods.isItem(item) ? put`)
+//   · 꺼내기 문(`isItem(r) ? {items:q}`)이 열량 환산을 거치지 않는다(보고/T1192 "어종별 재화는 낱개 단위"). 이 하네스(T725)는 그 앞에 쓰여 "열량 품목 = 하루치 단위"를 전제했다 ⇒ 그 줄들은 개수 = 단위로 잰다.
+const unitOf = (r) => (r.fg ? r.N * zOn.rate : +r.uf.toFixed(3));   // 켬 판 회관이 매겨야 할 단위(T1192 줄 = 개수 × 환산율 · 나머지 = 거래소·게시판 문 `_unitsOfFor`)
+const mult = (r) => (r.kc > 0 && !r.fg ? r.du * DAY / (r.N * r.kc) : r.du / r.N);   // 넣은 열량(열량 없는 것 · T1192 낱개 품목은 개수) 대비 꺼낼 수 있는 몫
 const rt = (r) => (r.kc > 0 ? (r.got * r.kcRep) / (r.N * r.kc) : r.got / r.N);   // 실제 왕복 — 꺼낸 것 ÷ 넣은 것
 {
   const byOff = new Map(zOff.rows.map((r) => [r.item, r])), byOn = new Map(zOn.rows.map((r) => [r.item, r]));
@@ -191,10 +194,10 @@ const rt = (r) => (r.kc > 0 ? (r.got * r.kcRep) / (r.N * r.kc) : r.got / r.N);  
   ok(inflOff.length > 0 && fish && near(mult(fish), DAY / fish.kc, 1e-6) && rt(fish) > 5 && rt(berry) > 9,
     '★★② 끔 — 열량 품목은 넣고 빼면 **불어난다**(배수 = 하루치 ÷ 낱개 열량) — 카드의 "생선 1 → 5 · 베리 1 → 9"',
     `${inflOff.length}줄 · 생선 ×${mult(fish).toFixed(3)}(왕복 실측 ×${rt(fish).toFixed(3)}) · 베리 ×${mult(berry).toFixed(3)} · 약초 ×${mult(herb).toFixed(1)}`);
-  ok(zOn.rows.every((r) => r.taken === r.N && near(r.du, +r.uf.toFixed(3), 0.0011)), '★② 켬 — 회관 단위 = 거래소·게시판 문(`_unitsOfFor`)이 매기는 단위(같은 함수 · 새 환산 0)',
-    zOn.rows.filter((r) => !near(r.du, +r.uf.toFixed(3), 0.0011)).map((r) => `${r.item} ${r.du}≠${r.uf}`).join(',') || `${zOn.rows.length}줄`);
+  ok(zOn.rows.every((r) => r.taken === r.N && near(r.du, unitOf(r), 0.0011)), '★② 켬 — 회관 단위 = 거래소·게시판 문(`_unitsOfFor`)이 매기는 단위(같은 함수 · 새 환산 0 · T1192 어종별 보존식은 정본 문 그대로 개수)',
+    zOn.rows.filter((r) => !near(r.du, unitOf(r), 0.0011)).map((r) => `${r.item} ${r.du}≠${unitOf(r)}`).join(',') || `${zOn.rows.length}줄 · T1192 낱개 ${zOn.rows.filter((r) => r.fg).length}`);
   // 허용 오차 = 곳간 칸의 셋째 자리 반올림 한 번(0.0005단위)이 배수에 주는 몫 — 열량 품목 0.0005 × 하루치 ÷ 넣은 열량 · 열량 없는 것 0.0005 ÷ 개수
-  const tolM = (r) => (r.kc > 0 ? 0.0006 * DAY / (r.N * r.kc) : 0.0006 / r.N);
+  const tolM = (r) => (r.kc > 0 && !r.fg ? 0.0006 * DAY / (r.N * r.kc) : 0.0006 / r.N);   // ★[T1216] T1192 낱개 품목은 개수 꼴(mult 와 같은 갈래)
   const badM = zOn.rows.filter((r) => !near(mult(r), 1, tolM(r)));
   ok(badM.length === 0, '★★② 켬 — 배수 1(넣은 열량 = 곳간에 든 열량 · 열량 없는 것은 개수 = 단위)', badM.map((r) => `${r.item} ×${mult(r).toFixed(4)}`).join(',') || `${zOn.rows.length}줄 전부 1`);
   // 보존 — 넣기·꺼내기 두 번의 셋째 자리 반올림(각 0.0005단위 = 1.2kcal) 안에서

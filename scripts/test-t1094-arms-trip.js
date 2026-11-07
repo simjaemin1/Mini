@@ -79,6 +79,7 @@ if (process.env.T1094_SUB === 'trip') {
     if (!out.loaded && b0 && b0.instantiated && b0.pids && b0.pids.length) out.loaded = { n: b0.pids.length, onB: r3(sumM()), ledger: r3(w._arms ? w._arms.weapon : null), left: r3(w._arms ? (w._arms.left || 0) : null), W: r3(atk.econ.storage.weapon) };
     if (now - dayAt >= dayMs) {
       if (H.T681_ON) { let k = 0; while (H._t681Flush() === 'retry' && k++ < 1e6); }
+      { const bx = H.state.warBodies.get(w.id); if (bx && bx.ended && !out.end) out.end = bx.ended; }   // ★[T1216] T941 켬 기본(T1183) — 남은 교전 몫을 이 경계의 flush 가 돌려 결판이 서고, 귀환 몸이 같은 경계(`_t681Day`)에서 지워진다 ⇒ 경계 안에서도 결판을 읽는다
       dayAt = now; world.day++; H.state.lastGameDay++;
       if (P.scen === 'withdraw' && !withdrawn && out.loaded) { withdrawn = true; w.op = 'withdraw'; w._sortie = false; w.phase = 'return'; w.eta = world.day + (w.marchDays || 1); }   // 싸움 없이 철수(war-core 철수 전이 그 칸)
       const a = w._arms, M = sumM();   // 하루 경계 — 장부 = 산 몸 짐 합(귀환 도착 앞)
@@ -147,12 +148,13 @@ const AS = sub({}, { scen: 'assault' });
 
 console.log('\n[ⓓ] 되돌림');
 {
-  const L0 = sub({ T403_ARMS_LEDGER: '0' }, { scen: 'withdraw' }), C0 = sub({ T1094_CARRY_CAP: '0' }, { scen: 'withdraw' });
+  // ★[T1216] `T811_ARMS_BODY`(무기 몸 · land1048 켬 기본) — 끔 증인은 이 카드 문(`T1094_CARRY_CAP`)만 끈 판이다(켜 두면 T811 문이 따로 몸에 싣는다 · test-t1094-carry-cap 그 묶기)
+  const L0 = sub({ T403_ARMS_LEDGER: '0' }, { scen: 'withdraw' }), C0 = sub({ T1094_CARRY_CAP: '0', T811_ARMS_BODY: '0' }, { scen: 'withdraw' });
   ok(L0.arms0 === null && L0.arms === null && near(L0.W1, L0.W0) && near(L0.W2, L0.W0) && L0.loaded && L0.loaded.onB === null,
     "ⓓ `T403_ARMS_LEDGER=0` — 장부 0 · 원정 동안 곳간 무기 그대로(종전 — 읽기만)", JSON.stringify({ W: [L0.W0, L0.W1, L0.W2] }));
   ok(C0.arms0 && C0.loaded && C0.loaded.onB === null && near(C0.loaded.ledger, C0.arms0.out) && near(C0.W2, C0.W0),
     "ⓓ `T1094_CARRY_CAP=0` — 장부는 서지만 몸 짐 0(증인 — 장부에만 있고 몸에 없는 짐) · 귀환에 곳간 = 동원 전", JSON.stringify({ loaded: C0.loaded, W: [C0.W0, C0.W2] }));
-  const CA = sub({ T1094_CARRY_CAP: '0' }, { scen: 'assault' });
+  const CA = sub({ T1094_CARRY_CAP: '0', T811_ARMS_BODY: '0' }, { scen: 'assault' });
   const lostA = CA.arms0 ? CA.arms0.out - ((CA.arms && CA.arms.back) || 0) : 0, gainB = (CA.WB2 || 0) - (CA.WB0 || 0), gone = lostA - gainB;
   const sumBody = (AS.W0 + AS.WB0) - (AS.W2 + AS.WB2), sumLedger = (CA.W0 + CA.WB0) - (CA.W2 + CA.WB2);
   ok(CA.end && CA.end.why === 'rout' && CA.end.winner === 'B' && lostA > 0 && gainB > 0 && gone > 1e-6 && near(sumLedger, gone, 1e-6) && near(sumBody, (AS.t811 && AS.t811.ground) || 0, 1e-6),
