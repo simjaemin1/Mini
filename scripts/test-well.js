@@ -101,7 +101,7 @@ ok(site && site.type === 'well_site' && P.toolItems[0].d === 97, '③ 착공 —
 H.tryWellAdvance(P, site.id);
 ok(wells('well_site').length === 1 && site.data.stage === 2 && P.inventory.pebble === 19 && wells('well').length === 0, '③ ★[T557] 벽 1단 — 자갈 20 을 쌓으면 터가 **쌓는 중**(stage 2 · 그림 `well_s2`)으로 선다', `stage ${site.data.stage} · 남은 자갈 ${P.inventory.pebble}`);
 H.tryWellAdvance(P, site.id);
-ok(wells('well').length === 0 && P.notices.some((t) => /재료 부족/.test(t)), '③ 자갈 19 — 2단이 모자라면 안 선다');
+ok(wells('well').length === 0 && P.notices.some((t) => /재료가 모자랍니다/.test(t)), '③ 자갈 19 — 2단이 모자라면 안 선다');
 P.inventory.pebble = 20;
 const done = H.tryWellAdvance(P, site.id);
 ok(done && done.type === 'well' && (P.inventory.pebble || 0) === 0 && wells('well_site').length === 0, '③ 자갈 20 더 — 2단 · 우물 완공(터는 걷힌다 · 합 40)', P.notices[P.notices.length - 1]);

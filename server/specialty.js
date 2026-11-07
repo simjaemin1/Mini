@@ -189,7 +189,7 @@ const RESOURCES = {
   meat_chicken:{ ko: '닭고기',     emoji: '🍗', category: 'livestock', weight: 0.5, baseValue: 2,  utility: 0.6, contributes: { subsistence: 0.5 }, harvest: 'breeding' },
   meat_game:   { ko: '사슴·들짐승고기', emoji: '🍖', category: 'livestock', weight: 1.0, baseValue: 4, utility: 0.6, contributes: { subsistence: 0.7 }, harvest: 'hunting' },
   fur:         { ko: '모피',       emoji: '🦊', category: 'livestock', weight: 1.2, baseValue: 25, utility: 0.4, contributes: { happiness: 0.5, prestige: 0.6 }, harvest: 'hunting' },
-  leather:     { ko: '가죽',       emoji: '🟫', category: 'livestock', weight: 3, baseValue: 5,  utility: 0.6, contributes: { production: 0.7 }, harvest: 'hunting' },
+  leather:     { ko: '무두질 가죽', emoji: '🟫', category: 'livestock', weight: 3, baseValue: 5,  utility: 0.6, contributes: { production: 0.7 }, harvest: 'hunting' },
   wool:        { ko: '양털',       emoji: '🧶', category: 'livestock', weight: 0.3, baseValue: 4,  utility: 0.6, contributes: { production: 0.6 }, harvest: 'breeding' },
   silk_raw:    { ko: '비단 원사',  emoji: '🧵', category: 'livestock', weight: 0.2, baseValue: 30, utility: 0.4, contributes: { production: 0.8 }, harvest: 'breeding' },
   silkworm:    { ko: '누에',       emoji: '🐛', category: 'livestock', weight: 0.01,baseValue: 5,  utility: 0.2, contributes: { production: 0.2 }, harvest: 'breeding' },

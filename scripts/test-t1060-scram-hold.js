@@ -156,7 +156,7 @@ const CV = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf
 const CW = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'war-live.js'), 'utf8'));
 const CB = codeOf(fs.readFileSync(path.join(ROOT, 'sim', 'battle-core.js'), 'utf8'));
 const fnBody = (C, name) => { const i = C.indexOf('function ' + name + '('); if (i < 0) return ''; let d = 0, j = C.indexOf('{', i); for (let k = j; k < C.length; k++) { if (C[k] === '{') d++; else if (C[k] === '}') { d--; if (!d) return C.slice(i, k + 1); } } return ''; };
-const sub = (env, P) => { const E = Object.assign({}, process.env, { T1060_SUB: 'war' }); for (const k of KNOBS) delete E[k]; delete E.T1060_P; Object.assign(E, env || {}); if (P) E.T1060_P = JSON.stringify(P);
+const sub = (env, P) => { const E = Object.assign({}, process.env, { T1060_SUB: 'war' }); for (const k of KNOBS) delete E[k]; E.T790_NO_SNAP = '0'; E.T941_BATTLE_DAY = '0'; E.T627_TRIP_DAY = '0'; delete E.T1060_P; Object.assign(E, env || {}); if (P) E.T1060_P = JSON.stringify(P);
   const o = execFileSync(process.execPath, [__filename], { cwd: ROOT, env: E, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 26 }).toString(); return JSON.parse(o.slice(o.indexOf('{"sc"'))); };
 const strip = (o) => JSON.stringify(Object.assign({}, o, { knob: null, knobOn: null }));
 const sum = (o) => JSON.stringify({ sc: o.sc, so: o.so, nx: o.nx, c2: o.c2, end: o.end, endT: o.endT, bad: o.bad, u: o.units.slice(0, 4).map((x) => [x.cmd ? 'C' : '', x.d0, x.dS, x.mnS, x.mx, x.dead].join(':')) });
@@ -173,7 +173,7 @@ ok(/if \(body\.defGroup\) \{ WL\.regroup\(body\.defGroup\); if \(!body\.defGroup
   'ⓐ ① 대치 전이 — 방어 재편 줄 글자 그대로 + 바로 다음 한 줄(`_t1060Hold`) · 공격 재편 줄 무변');
 ok(/if \(g && g\._scram && g\._t790Walk > 0 && g\.holdPt && g\.units && g\.units\.length\) g\.cmd = \{ cx: g\.holdPt\.cx, cy: g\.holdPt\.cy \};/.test(hold) && !/regroup|setSideCtl|\.x =|\.y =/.test(hold),
   'ⓐ ① 원점 문 — 긴급 소집(`_scram`) · 몸 걸음 칸(`_t790Walk`) · 포진점이 있을 때만 원점 = 포진점(몸 자리 · 상태 무변 — 몸은 걷는다)');
-ok(/const T = \(c && c\.n\) \? \(_t1060Aim\(fight, u\) \|\| \{ x: c\.x, y: c\.y \}\) : fight\.objective; if \(!T\) return null;/.test(ww)
+ok(/const T = shooter \|\| \(\(c && c\.n\) \? \(_t1060Aim\(fight, u\) \|\| \{ x: c\.x, y: c\.y \}\) : fight\.objective\); if \(!T\) return null;/.test(ww)
   && /if \(!T1060_ATK_AIM \|\| u\.side !== 'A'\) return null;/.test(aim) && /if \(!g \|\| !g\._scram \|\| !g\.holdPt\) return null;/.test(aim) && /return \{ x: g\.holdPt\.cx \* MPC, y: g\.holdPt\.cy \* MPC \};/.test(aim),
   "ⓐ ② 겨눔 — advance 목표 = (켬 · 공격 몸 · 긴급 소집 수비면 포진점) 아니면 적 본대 무게중심(끔 = 종전 글자의 값) · 수비 없으면 목표 마을 그대로");
 {

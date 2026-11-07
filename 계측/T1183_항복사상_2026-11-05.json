@@ -1,0 +1,51 @@
+{
+  "before": {
+    "population": [
+      10,
+      10
+    ],
+    "casualties": 0,
+    "battle": 0,
+    "surrender": 1,
+    "captured": 0,
+    "lootAmount": 15,
+    "food": [
+      115,
+      85
+    ],
+    "log": [
+      "D400 수비 무혈 항복 → 공격 — 곳간 15 공납·조공 3년·사상 0·성문 개방(방화 없음)"
+    ]
+  },
+  "after": {
+    "population": [
+      9,
+      9
+    ],
+    "casualties": 2,
+    "battle": 0,
+    "surrender": 1,
+    "captured": 0,
+    "lootAmount": 15,
+    "food": [
+      115,
+      85
+    ],
+    "log": [
+      "D400 수비 교전 뒤 항복 → 공격 — 곳간 15 공납·조공 3년·사상 2(공격 1·수비 1)·성문 개방(방화 없음)"
+    ]
+  },
+  "source": "a05c2eba",
+  "node": "v22.23.0",
+  "harness": {
+    "name": "test-t1183-surrender-loss",
+    "pass": 9,
+    "fail": 0
+  },
+  "productScope": "T1041 켬의 실제 항복 사상 명부. 포로·교전 승패 재판정 없이 기존 항복 노획 한 번. 다른 전쟁·이미 제거된 pid 제외.",
+  "sha256": {
+    "server/villages.js": "73171fca484b61d00d01476691639a546c9faa4c7d4e3a5f55e6d1405ac7574c",
+    "sim/war-core.js": "937b8efa8dfd8eabe0188840305a2655f467dbbd6b1f99215a44c6e2c25b519c",
+    "scripts/test-t1183-surrender-loss.js": "253e9baef2df9b75acf7ef4d70f660c1e566d21801ede385e082cc4880d8706b"
+  }
+}

@@ -170,10 +170,13 @@ console.log('\n=== [T61] econ 자원 종류 이름(장마당 열) ===');
   const obj = (src, name) => { const i = src.indexOf('const ' + name + ' = {'); let j = src.indexOf('{', i), d = 0, k = j;
     for (; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}') { d--; if (!d) break; } }
     return src.slice(j, k + 1); };
-  let BR = null; try { BR = eval('(' + obj(zsrc, 'BUILDING_RECIPES') + ')'); } catch (e) {}
+  let BR = null, RCP = null, EQ = null;
+  try { BR = eval('(' + obj(zsrc, 'BUILDING_RECIPES') + ')'); } catch (e) {}
+  try { RCP = eval('(' + obj(zsrc, 'RECIPES') + ')'); } catch (e) {}
+  try { EQ = eval('(' + obj(zsrc, 'EQUIPMENT_RECIPES') + ')'); } catch (e) {}
   ok(!!BR, '★⑩ 전제: `BUILDING_RECIPES` 를 읽었다(건축물 이름의 정본)');
   const base = {}; for (const k of SERVER_KEYS) base[k] = 'x';
-  const merged = IL.itemLabels(base, BR || {});
+  const merged = IL.itemLabels(base, BR || {}, Object.assign({}, RCP || {}, EQ || {}));
   ok(Object.keys(merged).length > SERVER_KEYS.size,
      '★⑩ 합친 표가 zone 표보다 크다 — 광물·건축물 이름이 실제로 붙었다',
      `${SERVER_KEYS.size} → ${Object.keys(merged).length}키`);
@@ -182,6 +185,22 @@ console.log('\n=== [T61] econ 자원 종류 이름(장마당 열) ===');
   }
   ok(!/\(Wall\)|\(Fence\)/.test(String(merged.item_wall) + String(merged.item_fence)),
      '★⑩ 건축물 이름에서 영문 꼬리를 뗐다(정본 라벨은 "벽 (Wall)" 꼴이다)', `${merged.item_wall} · ${merged.item_fence}`);
+  const labelsWithEnglishFallback = IL.itemLabels(
+    Object.assign({}, base, { hammer: 'hammer', saw: 'saw', tool: 'tool', weapon: 'weapon' }),
+    BR || {}, Object.assign({}, RCP || {}, EQ || {}, {
+      hammer: { label: '망치' }, saw: { label: '톱' },
+      tool: { label: '도구' }, weapon: { label: '무기' },
+    }));
+  for (const [k, ko] of [['hammer', '망치'], ['saw', '톱'], ['tool', '도구'], ['weapon', '무기'], ['jade', '옥']])
+    ok(labelsWithEnglishFallback[k] === ko, '★[T1164] ' + k + ' 품목 이름표', labelsWithEnglishFallback[k]);
+  const hide = IL.itemLabels({ hide: '가죽' }, BR || {}, Object.assign({}, RCP || {}, EQ || {}));
+  ok(hide.hide === '가죽' && hide.leather === '무두질 가죽' && hide.hide !== hide.leather,
+     '★[T1164] 곳간의 생가죽과 무두질 가죽 이름이 구별된다', `${hide.hide} · ${hide.leather}`);
+  const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
+  const zoneJobs = zsrc.match(/const JOB_KR_NPC = \{([^}]+)\}/);
+  const jobKeys = zoneJobs ? [...zoneJobs[1].matchAll(/([A-Za-z_][\w]*)\s*:/g)].map((x) => x[1]) : [];
+  ok(jobKeys.length > 0 && Object.keys(E.JOBS || {}).every((k) => jobKeys.includes(k)),
+     '★[T1164] 모든 econ 직업에 마을 화면 우리말 이름이 있다', `${Object.keys(E.JOBS || {}).filter((k) => !jobKeys.includes(k)).join(',') || '누락 0'}`);
 }
 
 
@@ -378,12 +397,12 @@ console.log('\n=== [T66] 화면 규칙 B — 이모지 0 · 색은 토큰 하나
     }
     // ⓕ ★★알림 문장 — 두 정본에서 조립된다. `zone.js` 의 그 줄을 **소스에서 읽어** 같은 꼴로 만든다.
     {
-      const line = (src.match(/text: `🌰 \$\{T\.koOf\(sp\)\}에서 \$\{ITEM_LABEL_SERVER\[item\] \|\| item\} \$\{n\}`/) || [])[0];
+      const line = (src.match(/text: `🌰 \$\{T\.koOf\(sp\)\}에서 \$\{ITEM_LABEL_SERVER\[item\] \|\| item\} \$\{n\}개를 땄습니다\.`/) || [])[0];   // ★[T1190 · PM land1048] 알림은 하십시오체 문장(문 25 ㄱ)
       ok(!!line, '⑯ 전제: 채집 알림 줄을 `zone.js` 에서 찾았다(형식이 바뀌면 아래가 거짓이 된다)');
-      const sentence = `🌰 ${Trees.koOf('chestnut')}에서 ${ITEM_LABELS_CANON[Trees.fruitOf('chestnut')]} 4`;
-      ok(sentence === '🌰 밤나무에서 밤 4', '★★⑯ 「밤나무에서 밤 4」', sentence);
-      const s2 = `🌰 ${Trees.koOf('mulberry')}에서 ${ITEM_LABELS_CANON[Trees.fruitOf('mulberry')]} 4`;
-      ok(s2 === '🌰 산뽕나무에서 오디 4', '★⑯ 산뽕도 같다', s2);
+      const sentence = `🌰 ${Trees.koOf('chestnut')}에서 ${ITEM_LABELS_CANON[Trees.fruitOf('chestnut')]} 4개를 땄습니다.`;
+      ok(sentence === '🌰 밤나무에서 밤 4개를 땄습니다.', '★★⑯ 「밤나무에서 밤 4개를 땄습니다.」', sentence);
+      const s2 = `🌰 ${Trees.koOf('mulberry')}에서 ${ITEM_LABELS_CANON[Trees.fruitOf('mulberry')]} 4개를 땄습니다.`;
+      ok(s2 === '🌰 산뽕나무에서 오디 4개를 땄습니다.', '★⑯ 산뽕도 같다', s2);
       ok(!/[A-Za-z_]{3,}/.test(sentence.replace('🌰 ', '')) && !/[A-Za-z_]{3,}/.test(s2.replace('🌰 ', '')),
          '★⑯ 두 문장에 영문 키가 0(이 카드가 고친 그 증상)');
     }

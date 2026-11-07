@@ -110,7 +110,12 @@ console.log('\n③ 계수의 자리 — 주입 한 곳 · 정본 상수 한 곳 
     '③ 읽는 길이 `world` 백참조다(T135 `forageTakeFn` 선례 — 새 배선 0)');
   // ★[T244] 계수를 **얻는 자리**도 한 줄이다 — 선언 말고 부르는 자리(생산 루프)
   const calls = CODE.split('\n').filter((l) => l.indexOf('happyWorkWOf(') >= 0 && l.indexOf('function ') < 0 && l.indexOf('happyWorkWOf,') < 0);
-  ok(calls.length === 1, '③ ★[T244] 엔진이 계수를 **얻는 자리가 한 줄**이다(`const _hwW = happyWorkWOf(v)`)', `${calls.length}줄`);
+  //   [T1174] T1113 이 낮은 행복 배수(`t1113LowMul`)에서 **같은 함수**를 한 번 더 부른다(새 계수 0 · 읽기만) — 생산 루프의 `const _hwW` 는 여전히 한 줄,
+  //   나머지 부름은 그 T1113 줄 하나뿐이어야 한다(다른 곳에서 새로 얻기 시작하면 ✗).
+  const loopCalls = calls.filter((l) => /const _hwW = happyWorkWOf\(v\)/.test(l));
+  const t1113Calls = calls.filter((l) => /const W = happyWorkWOf\(v\); if \(!\(W > 0\)\) return 1;/.test(l));
+  ok(loopCalls.length === 1 && calls.length === loopCalls.length + t1113Calls.length && t1113Calls.length <= 1,
+    '③ ★[T244] 엔진이 계수를 **얻는 자리**는 생산 루프 한 줄(`const _hwW = happyWorkWOf(v)`) + T1113 낮은 행복 배수 한 줄뿐이다', `루프 ${loopCalls.length} · T1113 ${t1113Calls.length} · 전체 ${calls.length}줄`);
   // ★[T244] 그 수가 적힌 자리도 **한 줄**이다 — 선언 하나 · 나머지는 그 이름을 부른다
   const lits = CODE.split('\n').filter((l) => /T157_HAPPYWORK_H\s*=\s*[0-9.]/.test(l));
   ok(lits.length === 1, '③ ★★[T244] 계수의 **수가 적힌 줄이 하나**다(사본 0)', `${lits.length}줄`);

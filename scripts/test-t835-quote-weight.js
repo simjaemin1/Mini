@@ -77,8 +77,9 @@ if (process.env.T835_SUB === '1') {   // ── 아이 판: 세계 하나 · 판
       wrows.push([vi, tk ? 1 : 0, give + '>' + take, want, q.err ? null : (q.giveNeeded == null ? null : q.giveNeeded), q.err ? null : (q.takeAtNeeded == null ? null : q.takeAtNeeded), x.ok ? 1 : 0, x.ok ? x.give : null, x.ok ? x.take : null, minOk]);
     }
   }
-  console.log = _l; console.log(JSON.stringify({ on: Trade.T835_ON, gives: GIVES, rows, wrows }));
-  process.exit(0);
+  //   ★[T1162] 쓰기가 끝난 뒤에 나간다 — 맥 파이프는 비동기라 `console.log` 직후 `process.exit` 가 8,192 바이트에서 잘랐다(출력 글자는 그대로)
+  console.log = _l; process.stdout.write(JSON.stringify({ on: Trade.T835_ON, gives: GIVES, rows, wrows }) + '\n', () => process.exit(0));
+  return;
 }
 
 let pass = 0, fail = 0;
@@ -104,8 +105,8 @@ console.log('\n② 글자 — 고르기 · 단위 셈 하나');
   ok(defs === 1 && pickers === 1 && /const G = _giver\(D, inventory, giveRes, unitsOf\);/.test(C), '② 실행의 고르기 · 단위 셈 = `_giver` 하나(정본 순서 고르기 사본 0)', `정의 ${defs} · 고르기 ${pickers}`);
   ok(/const _G = \(T835_ON && opts && opts\.inventory\) \? _giver\(ledger\.deliverable, opts\.inventory, giveRes,/.test(C), '② 견적의 켬 갈래가 같은 함수 · 인벤이 올 때만');
   const Vs = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8')), Zs = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
-  ok(/\{ inventory: opts\.inventory, unitsOf: \(typeof unitsOf === 'function'\) \? unitsOf : undefined, giveCount: _n \}/.test(Vs) && /\{ want: msg\.want, inventory: player\.inventory \}/.test(Zs),
-    '② 호스트 — 존이 낼 사람 인벤을 넘기고 마을 문이 그대로 전달한다(손잡이는 안 읽는다)'); }
+  ok(/\{ inventory: opts\.inventory, unitsOf: \(typeof unitsOf === 'function'\) \? unitsOf : undefined, giveCount: _n \}/.test(Vs) && /\{ want: msg\.want, inventory: player\.inventory(?:, [^}]*)? \}/.test(Zs),
+    '② 호스트 — 존이 낼 사람 인벤을 넘기고 마을 문이 그대로 전달한다(손잡이는 안 읽는다 · 뒤에 수수료 칸 feeRate · feeOwe 가 붙어도 된다 — T1151)'); }
 
 // ★[T1121 2026-11-03] 아이 판 둘(끔 · 켬)을 **나란히** — 둘은 서로 안 닿는다(판마다 세계 하나 · 같은 씨 · 같은 짐 · 프로세스 따로).
 //   종전엔 하나씩 차례로 돌려(execFileSync) 2코어 상자에서 한 코어가 놀았다(386초 · T1121 표 8위). `test-t988-trade-words` · `test-t807-quote-exec` 가 이미 쓰는 꼴 그대로다.

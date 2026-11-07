@@ -205,11 +205,12 @@ function _t862Drop(o, k) { if (T862_ECON_FAST) o[k] = undefined; else delete o[k
 //   `in` 문(부팅 복원) — 켬이면 `undefined` 칸 = 지운 칸(저장 줄은 JSON 이라 실린 칸이 `undefined` 일 수 없다 ⇒ 끔의 `k in o` 와 같은 답 · 두 번 불러도 같다)
 function _t862Has(o, k) { return (k in o) && !(T862_ECON_FAST && o[k] === undefined); }
 const NPC_CAP_PER_VILLAGE = process.env.VILLAGE_NPC_CAP ? Math.max(1, parseInt(process.env.VILLAGE_NPC_CAP, 10) || 40) : Infinity;
-// ★[T1041 ⓑ 2026-11-02 · 판 자 전용 손잡이 `T1041_WAR_BODY=1`(기본 끔 = 종전 바이트 · 제품 무변)] **전쟁에 든 마을만 몸 무제한.**
+// ★[T1041 ⓑ 2026-11-02 · 손잡이 `T1041_WAR_BODY`(T1183 켬 기본 · 되돌림 `=0`)] **전쟁에 든 마을만 몸 무제한.**
 //   판 자는 `VILLAGE_NPC_CAP=1`(가시 몸 하나)이라 군대가 몸 하나 대 하나다(T1031). 몸∞ 판은 평시 몸까지 다 굴려 1시간을 넘긴다.
 //   켜면 war-core 의 진행 전쟁(`WARS` — 행군 · 주둔 · 교전 · 귀환)에 공 · 방으로 든 마을만 상한을 풀고(econ 인구까지) 그날 한 번에 채운다.
 //   (몸∞ 판에선 그 몸이 이미 서 있으니 하루 2명씩 따라가면 교전 때 몸이 모자란다 — 그래서 채움만 한 번에.) 전쟁이 끝나면 종전대로 하루 2명씩 줄어든다.
-const T1041_WAR_BODY = process.env.T1041_WAR_BODY === '1';
+// [T1183] 켬 기본 · 되돌림 `T1041_WAR_BODY=0`.
+const T1041_WAR_BODY = process.env.T1041_WAR_BODY !== '0';
 function _t1041InWar(vil) { const W = state.war && state.war.WARS; if (!W) return false; for (const w of W) if (w && (w.atk === vil || w.def === vil)) return true; return false; }
 const POP_SYNC_PER_DAY = 2; // 인구 반영은 완만: 게임일당 마을당 ±2명까지 (증가=스폰, 감소=최근 NPC부터)
 // ★★[T559 ② 2026-09-30 · 재민 #78] **마을 간 최소 간격을 존마다 유도하는 식** — 손잡이 `T559_SPACING_DERIVE=1`(★기본 **끔** = 종전 12,000 그대로).
@@ -284,7 +285,8 @@ const _t952Stat = { stays: 0, joined: 0 };
 //   서버 몫 둘: ⓐ 재기동 메타(T728)가 이웃 존이 낀 캐러밴을 **스텁째** 싣고 되돌린다(종전 = 이름으로 적어 다시 뜨면 못 이었다 — 받는 존의 장 · 집 존의 'xzone' 이 사라졌다)
 //   ⓑ `/perf` 교차 존 덤프에 장 칸(`mkt` · `mk` · `rowDay`) — 켬일 때만.
 function _t1030On() { return !!(state.econV2 && state.econV2.T1030_XZ_MARKET); }
-// ★★[T762 2026-10-15 · 세션6] 손잡이 `T762_CARAVAN_BODY`(기본 끔 · `=1` 켬) — 캐러밴 몸 두 자리(T474 켬 판이 드러냈다 · 둘 다 끔에서도 같은 줄):
+// ★★[T1182 2026-11-05] T762 몸 정본 기본 켬(되돌림 =0). 아래 T762는 원래 동기 수정의 기록.
+// ★★[T762 2026-10-15 · 세션6] 손잡이 `T762_CARAVAN_BODY`(당시 기본 끔 · `=1` 켬) — 캐러밴 몸 두 자리(T474 켬 판이 드러냈다 · 둘 다 끔에서도 같은 줄):
 //   ① 그날 econ 틱이 띄운 캐러밴도 **그날** 캐러밴 동기에 든다(아래 덧 조각).
 //   ② econ 재라우팅(옛 목적지에 닿아 값 손절)에서 몸이 다시 떠나는 자리 = 옛 길 **끝**(장부 끝까지 답압) — 종전엔 `_t661Day` 가
 //      재라우팅이 이미 바꾼 도착일로 장부를 세워 옛 길 중간(1일 다리면 절반)에 두고, 몸이 거기로 되돌아가 다시 떠났다(실제 날 판 14,167px 되감기).
@@ -298,8 +300,8 @@ function _t1030On() { return !!(state.econV2 && state.econV2.T1030_XZ_MARKET); }
 //   ③ 켬이면 쓸기(`_caravanSyncSweep` — 집에 닿은 몸 회수)를 덧 조각 **앞**으로 — 종전 차례(새 몸 → 쓸기)면 어제 집에 닿은 몸이 아직 자리를 쥔 채
 //      새 몸을 세워 상한 60 에 걸린다(실제 날 판: 48 + 12 = 60 에서 15 대가 몸 없이 갔다 · 쓸기 뒤 34). 쓸기는 몸만 훑는다 — 새 캐러밴엔 아직 몸이 없어
 //      `seen` 에 없어도 안 닿는다. (끔의 같은 차례 — 새 몸이 쓸기 앞 — 는 종전 그대로 · 보고 T762 §2.)
-//   ⚠끔 = main 바이트(이 손잡이 줄이 안 닿는다 — 문을 여는 명부 글자 그대로). 몸 0 판(서버 기준선 자 · `VILLAGE_CARAVAN_MAX=0`)은 켬에서도 같아야 한다(보고 T762).
-const T762_CARAVAN_BODY = process.env.T762_CARAVAN_BODY === '1';
+//   ⚠끔 = main 바이트(이 손잡이 줄이 안 닿는다 — 문을 여는 명부 글자 그대로). T1182부터 켬에서는 표시 상한(`VILLAGE_CARAVAN_MAX`)을 적용하지 않는다. 옛 T762의 몸 0 판은 같아야 한다(보고 T762).
+const T762_CARAVAN_BODY = process.env.T762_CARAVAN_BODY !== '0';   // T1182: 몸 정본 기본 켬, 되돌림 =0
 // ★★[T772 2026-10-16 · 세션5] **귀환 몸 — 장 뒤 따라잡기 질주 없애기**(보고 T762 §2-4 · §3 ⓑ) · 손잡이 하나 `T772_LEG_FROM_LINGER`('1' 만 켬 · 끔 = main 바이트).
 //   결함: T661 보이는 몸이 귀환 일정을 **그날 머리부터** 보간한다(`_t661Vis` — `(지금 − econ 날 머리) ÷ 하루`). T707 장이 하루 4/24 를 머물게 하니
 //     1일 다리 몸은 장이 끝나는 순간 길의 17~21 % 뒤에 서 있고, 따라잡기 상한(명목 ×4)으로 몇 분에 메운다 — 실제 날 판 최대 171 px/s(몸 걸음 64 의 2.7배).
@@ -373,7 +375,7 @@ const state = {
 //   종전엔 이 파일 아홉 줄이 몸 hp 를 문 밖에서 썼다(요양 회복 · 전쟁 hp 거울 · 포로 · 풀림 · 원정 굶음 둘 · 원정 굶어 죽음 · 줄어드는 몸의 그 자리 죽음(T590) · 다시 뜬 판 복원).
 //   값 · 차례 · 메시지 무변 — 넘기는 값은 늘 0 ~ `maxHp`(NPC `maxHp` 는 스폰 리터럴 `PLAYER_MAX_HP` 하나 · 이 파일은 안 쓴다 · 전투 단위 hp 는 깎이기만 한다)라
 //   문의 깎기가 아무것도 안 깎고 · 같은 값이면 안 쓴다(값은 이미 그 값) · NPC 몸은 소켓이 없고(`ws: null`) 낱말은 방송 낱말이 아니다(요양 = `regen` · 조용한 낱말).
-//   하나만 다르다 — 원정 굶음(T906 'die' 판 · 끔 기본)이 0 밑으로 깎던 잠깐 값은 문이 0 으로 깎는다: 갈림(`<= 0`)은 같고 그 몸은 같은 걸음에서 `_t906Die` 가 0 으로 눕힌다.
+//   (원정 굶음 T906 'die' 판이 0 밑으로 깎던 잠깐 값 — 그 판은 T1168 이 걷었다.)
 //   전투 단위(`bu` · 교전 `ctx.units`)의 hp 는 몸이 아니라 판의 칸이다(war-live · battle-core 소유) — 이 문 밖. 소스 검사 `scripts/test-npc-hp-door.js`.
 function _setHp(p, v, why) { return state.deps.setHp(p, v, why); }
 
@@ -1105,6 +1107,53 @@ const _T747_KEYS = ['simJob', 'x', 'y', 'hp', '_rest', 'inventory', 'oreLedger',
 //   ⚠진행 중 전쟁 자체는 아직 재기동에 안 실린다(T742 회부 1) — 그 판에선 짐이 몸 손에 날짜째 남는다(양은 종전에도 남았다 · 늙기가 이어진다).
 const T1133_BAG = process.env.T1133_BAG_PERSIST !== '0';
 const _t1133Stat = { saved: 0, savedRecs: 0, restored: 0, restoredRecs: 0, spill: 0 };
+// ★★[T1166 2026-11-05 · K30 · T1133 회부 2 · 판정대기 문 17 ㄱ(족보 727)] 손잡이 `T1166_NPC_LOT_PERSIST`(★켬 기본 후보 · `=0` = 종전 글자).
+//   NPC 몸 손의 로트 곁 장부(`lots.js` `_mNpc` — 몸 밖 WeakMap · T732)도 몸이 다시 뜨면 잃었다 — 양(T747 `inventory`)은 남고 날짜가 사라져 첫 맞추기가
+//   손 전부를 "지금 얻은 것"으로 잡았다(`Lots.stats().approx` · 그 손이 다시 싱싱해짐). 켜면 몸 줄에 `_lots` 한 칸(`Lots.npcDump` — 장부 꼴 그대로 · 몸 필드 0 · 새 수 0).
+//   ★부팅 차례: 운영 되살림(`_t747Restore`)은 `SimVillages.init` 안 — 존이 로트 시계를 꽂기(`Lots.setClock` · zone.js) **전**이다. 그 순간엔 장부가 꺼져 있어
+//   (`_t732Lots()` = null) 걸 수 없다 — 줄을 `_t1166Pend` 에 쥐고 시계가 꽂힌 바로 뒤(zone 이 `SimVillages.lotsClockSet()` 을 부른다 · 첫 틱 머리 `_t732Boot` 도 한 번 더) 건다.
+//   T1133 몸 짐 줄도 같은 까닭으로 그 차례엔 못 걸렸다(`_t748G()` = null) — 켬이면 같은 줄로 미룬다(끄면 T1133 종전 글자 그대로).
+const T1166_LOT = process.env.T1166_NPC_LOT_PERSIST !== '0';
+const _t1166Stat = { saved: 0, savedRecs: 0, restored: 0, restoredRecs: 0, spill: 0, deferred: 0, flushed: 0, bagDeferred: 0, bagFlushed: 0 };
+const _t1166Pend = [];   // { b, lots?, bag?, packOf?, spill } — 시계가 꽂히면 비운다
+//   몸 짐 줄 걸기(T1133 글자 그대로 — 자리만 함수로) · 장부가 꺼져 있으면 -1
+function _t1133BagLoad(b, bag, packOf, spill) {
+  const G = _t748G(); if (!G) return -1;
+  const n = G.bagLoad(b, bag);
+  if (n) { if (spill) _t1133Stat.spill++; else { _t1133Stat.restored++; if (packOf != null) b._warPackOf = packOf; } _t1133Stat.restoredRecs += n; }
+  return n;
+}
+function _t1166LotLoad(b, lots, spill) {
+  const L = _t732Lots(); if (!L) return -1;
+  const n = L.npcLoad(b, lots);
+  if (n) { if (spill) _t1166Stat.spill++; else _t1166Stat.restored++; _t1166Stat.restoredRecs += n; }
+  return n;
+}
+function _t1166Flush() {
+  if (!_t1166Pend.length || !_t732Lots()) return 0;
+  const P = _t1166Pend.splice(0);
+  for (const x of P) {
+    if (x.lots) { if (_t1166LotLoad(x.b, x.lots, x.spill) >= 0) _t1166Stat.flushed++; }
+    if (x.bag) { if (_t1133BagLoad(x.b, x.bag, x.packOf, x.spill) >= 0) _t1166Stat.bagFlushed++; }
+  }
+  return P.length;
+}
+//   크기 자(읽기만 · 계측) — 지금 저장하면 몸 줄에 더해질 `_lots` 칸 바이트 · 로트 든 몸 · 레코드
+function _t1166Sizes() {
+  const L = _t732Lots(), P = state.deps && state.deps.players; if (!L || !P) return null;
+  const out = { bodies: 0, recs: 0, bytes: 0, vils: 0, maxVilBytes: 0, maxBodyBytes: 0, npcs: 0 };
+  for (const vil of (state.villages || [])) {
+    let vb = 0;
+    for (const pid of (vil.npcPids || [])) {
+      const b = P.get(pid); if (!b) continue; out.npcs++;
+      const lt = L.npcDump(b, true); if (!lt) continue;
+      const n = Buffer.byteLength(JSON.stringify({ _lots: lt })) - 1;
+      out.bodies++; for (const k in lt) out.recs += lt[k].length; out.bytes += n; vb += n; if (n > out.maxBodyBytes) out.maxBodyBytes = n;
+    }
+    if (vb > 0) { out.vils++; if (vb > out.maxVilBytes) out.maxVilBytes = vb; }
+  }
+  return out;
+}
 //   크기 자(읽기만 · 계측) — 지금 저장하면 몸 줄에 더해질 짐 칸 바이트(`_bag` · `_packOf`) · 짐 든 몸 · 레코드 · 마을마다
 function _t1133Sizes() {
   const G = _t748G(), P = state.deps && state.deps.players; if (!G || !P) return null;
@@ -1131,6 +1180,7 @@ function _t747Pack(vil) {
     const o = {};
     for (const k of _T747_KEYS) { const x = b[k]; if (x !== undefined && x !== null && !(k==='oreLedger'&&!Object.keys(x).length)) o[k] = _t740Enc(x); }
     if (_G) { const bg = _G.bagDump(b); if (bg) { o._bag = bg; if (b._warPackOf != null) o._packOf = b._warPackOf; _t1133Stat.saved++; for (const res in bg) _t1133Stat.savedRecs += bg[res].length; } }   // ★[T1133] 몸 짐 줄(있을 때만 — 없으면 칸 0 · 종전 바이트)
+    if (T1166_LOT) { const _L = _t732Lots(); const lt = _L ? _L.npcDump(b) : null; if (lt) { o._lots = lt; _t1166Stat.saved++; for (const k in lt) _t1166Stat.savedRecs += lt[k].length; } }   // ★[T1166] 몸 손 로트 줄(있을 때만 — 없으면 칸 0 · 종전 바이트)
     if (o._lifeTask && o._lifeTask.k === 'greet') delete o._lifeTask;   // 인사(T529)는 그 사람 · 그 순간의 일 — 싣지 않는다
     rows.push(o);
   }
@@ -1150,14 +1200,15 @@ function _t747Restore() {
     if (!Array.isArray(rows)) continue;
     const dropped = [];
     R.villages++;
-    const spill = [], spillBag = [], spillHaul = [], spillOre = [];
+    const spill = [], spillBag = [], spillLots = [], spillHaul = [], spillOre = [];
     for (let i = 0; i < rows.length; i++) {
       const S0 = rows[i]; if (!S0) continue;
       const S = _t740Dec(S0);
       const b = i < vil.npcPids.length ? P.get(vil.npcPids[i]) : null;
-      if (!b) { if (S.inventory) spill.push(S.inventory); if(S.oreLedger)spillOre.push(S.oreLedger); if (S._bag) spillBag.push(S._bag); if(S._t1181Haul?.n>0)spillHaul.push({...S._t1181Haul,returning:true,at:null}); for(const h of(S._t1181Returns||[]))if(h.n>0)spillHaul.push({...h,returning:true,at:null}); continue; }
+      if (!b) { if (S.inventory) spill.push(S.inventory); if(S.oreLedger)spillOre.push(S.oreLedger); if (S._bag) spillBag.push(S._bag); if (S._lots) spillLots.push(S._lots); if(S._t1181Haul?.n>0)spillHaul.push({...S._t1181Haul,returning:true,at:null}); for(const h of(S._t1181Returns||[]))if(h.n>0)spillHaul.push({...h,returning:true,at:null}); continue; }
       R.bodies++;
-      if (S._bag && T1133_BAG) { const _G = _t748G(); const n = _G ? _G.bagLoad(b, S._bag) : 0; if (n) { _t1133Stat.restored++; _t1133Stat.restoredRecs += n; if (S._packOf != null) b._warPackOf = S._packOf; } }   // ★[T1133] 같은 자리 몸에 짐 줄 · 표식(끄면 칸을 안 읽는다)
+      if (S._bag && T1133_BAG) { if (_t1133BagLoad(b, S._bag, S._packOf, false) < 0 && T1166_LOT && _T732_ON) { _t1166Pend.push({ b, bag: S._bag, packOf: S._packOf, spill: false }); _t1166Stat.bagDeferred++; } }   // ★[T1133] 같은 자리 몸에 짐 줄 · 표식(끄면 칸을 안 읽는다) · ★[T1166] 시계 전이면 미룬다
+      if (S._lots && T1166_LOT) { if (_t1166LotLoad(b, S._lots, false) < 0 && _T732_ON) { _t1166Pend.push({ b, lots: S._lots, spill: false }); _t1166Stat.deferred++; } }   // ★[T1166] 같은 자리 몸에 손 로트 줄(시계 전이면 미룬다)
       if (S.simJob != null && b.simJob !== S.simJob) { R.jobMiss++; b.simJob = S.simJob; }   // 같은 자리 = 같은 몸(직업도 그 몸의 것)
       if (Number.isFinite(S.x) && Number.isFinite(S.y)) { if (T1145_XY_COLS) BC.w(b, S.x, S.y); else { b.x = S.x; b.y = S.y; } b.targetX = S.x; b.targetY = S.y; b.vx = 0; b.vy = 0; R.moved++; }
       if (Number.isFinite(S.hp) && S.hp > 0) { _setHp(b, Math.min(S.hp, b.maxHp || S.hp), 'restore'); if (b.hp < (b.maxHp || 100)) R.hpLow++; }   // ★[T942] 문으로
@@ -1179,7 +1230,8 @@ function _t747Restore() {
       if (b0) { b0.inventory = b0.inventory || {}; for (const inv of spill) for (const k in inv) if (typeof inv[k] === 'number' && inv[k] > 0 && k !== 'seed_berry') { b0.inventory[k] = +((b0.inventory[k] || 0) + inv[k]).toFixed(6); R.extraHands++; } }
       if(b0&&spillOre.length){const L=b0.oreLedger||(b0.oreLedger={});for(const d of spillOre)for(const[k,n]of Object.entries(d))if(n>0)L[k]=(L[k]||0)+n;}
       if(b0&&spillHaul.length)b0._t1181Returns=(b0._t1181Returns||[]).concat(spillHaul);   // 남은 운반 짐도 소유권을 이어 원래 곳간에 반환
-      if (b0 && T1133_BAG && spillBag.length) { const _G = _t748G(); if (_G) for (const bg of spillBag) { const n = _G.bagLoad(b0, bg); if (n) { _t1133Stat.spill++; _t1133Stat.restoredRecs += n; } } }   // ★[T1133] 그 손의 짐 줄도 같은 몸에(날짜째 · 소멸 0)
+      if (b0 && T1133_BAG && spillBag.length) for (const bg of spillBag) { if (_t1133BagLoad(b0, bg, null, true) < 0 && T1166_LOT && _T732_ON) { _t1166Pend.push({ b: b0, bag: bg, spill: true }); _t1166Stat.bagDeferred++; } }   // ★[T1133] 그 손의 짐 줄도 같은 몸에(날짜째 · 소멸 0) · ★[T1166] 시계 전이면 미룬다
+      if (b0 && T1166_LOT && spillLots.length) for (const lt of spillLots) { if (_t1166LotLoad(b0, lt, true) < 0 && _T732_ON) { _t1166Pend.push({ b: b0, lots: lt, spill: true }); _t1166Stat.deferred++; } }   // ★[T1166] 그 손의 로트 줄도 같은 몸에(날짜째)
     }
     //   마을 클레임 그림자 — 저장 순간 그대로 · 푼 진행 작업의 몫만 뺀다 · 광부 손 합은 되돌린 손에서 다시 센다(T724 가 해 질 녘에 다시 세는 그 합)
     if (SH) {
@@ -1696,11 +1748,14 @@ function tickBodyExits(now) {
     if (r.t765 && remain <= 0.5) { p.vx = 0; p.vy = 0; continue; }   // ★[T765] 후보 몸은 닿아도 안 거둔다 — 붙는 날(도적 하루 장부)까지 그 자리에 선다
     if ((r.t1039 || r.t1078 != null || r.t1104 != null) && remain <= 0.5) { p.vx = 0; p.vy = 0; continue; }   // ★[T1104] 길목 · 은거지 · 원정 걸음도 닿으면 선다(도적 하루 장부가 다음 걸음 · 받기를 정한다)   // ★[T1039 walk] 단이 될 몸도 닿아도 안 거둔다 — 단이 서는 날(도적 하루 장부)까지 은거지에 선다 · ★[T1078] 단에 들 몸(절망 이탈)도
     if (remain <= 0.5) { if (T681_ON) { p.vx = 0; p.vy = 0; continue; } _bxGone(r, p); _bx.arrive++; continue; }   // ★[T681 ③] 켬이면 도착 회수는 하루 경계
-    const step = T681_ON ? Math.min(remain, sp * dtMs, Math.max(0, _t681BxVis(r, now) - r.prog)) : Math.min(remain, sp * dtMs);   // ★[T681 ③] 켬 = 장부 일정을 넘지 않게(보이는 것)
+    // [T1184] 길날과 몸의 시간은 같은 예산이다. T627 압축 판도 운영 하루를 걷는다.
+    // r.ppd(px/길날) ÷ (sp(px/ms) × 판 하루(ms)) = 두 시계의 비. 운영 시계 및 T627=0은 정확히1.
+    const moveMs = r.t1104 != null && r.ppd > 0 && state.dayMs > 0 ? dtMs * (r.ppd / (sp * state.dayMs)) : dtMs;
+    const step = T681_ON ? Math.min(remain, sp * moveMs, Math.max(0, _t681BxVis(r, now) - r.prog)) : Math.min(remain, sp * moveMs);   // ★[T681 ③] 켬 = 장부 일정을 넘지 않게(보이는 것)
     if (!(step > 0)) { p.vx = 0; p.vy = 0; continue; }
     const next = caravanPointAt(r, r.prog + step);
     r.prog += step;
-    p.vx = (next.x - p.x) / dtMs * 1000; p.vy = (next.y - p.y) / dtMs * 1000;
+    p.vx = (next.x - p.x) / moveMs * 1000; p.vy = (next.y - p.y) / moveMs * 1000;
     if (T1145_XY_COLS) BC.w(p, next.x, next.y); else { p.x = next.x; p.y = next.y; }   // ★[T1145] 켬 = 쓰기 길
   }
 }
@@ -1934,6 +1989,7 @@ function _t1104Walk(p, x, y, tag, id, vil) {
   p._bxExit = undefined;
   _bxWalk(vil || { dbId: null, ccx: x / SZ, ccy: y / SZ }, p, { k: 'move', to: { x, y } });
   const r = state.bodyExits.get(p.pid); if (!r) return null;
+  r.ppd = _t1079Ppd(); // [T1184] 만남·도착 장부와 같은 길날(기존 T1080/T627 정본).
   r.t1104 = id; r.t1104k = tag === 't1104s' ? 's' : 'g';
   p._t1104W = id;
   return r;
@@ -3590,7 +3646,7 @@ function _routePlainRetry(J) {
 // ── 재개형 문 — 예산(ms)만큼 밀고 나온다. `{ done, pts }`. `done:false` 면 다음 조각에 이어 간다.
 //   ⚠`budgetMs <= 0` = 슬라이서를 끈 대조군(`VILLAGE_TICK_SLICE_MS=0`) ⇒ **한 번에 완주**한다
 //     (종전 동작 그대로 — 되돌리는 스위치가 경로에도 그대로 걸린다).
-function _routeResume(key, x0, y0, x1, y1, budgetMs) {
+function _routeResume(key, x0, y0, x1, y1, budgetMs, auditNodes) {
   if (_pathJob && _pathJob.key !== key) {
     //   ★★[T655] 떠 있는 일이 **부팅 표본**(T640 · `routeSampleStep` 이 단 표식)이면 버리지 않고 기다린다 — 버리면 표본이 그 쌍을 처음부터 다시 판다
     //     (빠른 시계 실측: 양보 3,608 · 일 84 → 216초). 표본은 그 쌍을 끝낸 뒤 한 틱 비켜 준다(`_routeBootWait`) — 서로 버리지 않고 번갈아.
@@ -3621,7 +3677,7 @@ function _routeResume(key, x0, y0, x1, y1, budgetMs) {
   for (;;) {
     const c0 = Date.now();
     const _q0 = T1027_PROBE ? process.hrtime.bigint() : 0n, _p0 = T1027_PROBE ? (J.S.pops | 0) : 0;   // ★[T1027] 재는 판 전용
-    const r = PathCore.pathStep(J.S, budgetMs > 0 ? PATH_STEP_NODES : 0);
+    const r = PathCore.pathStep(J.S, auditNodes || (budgetMs > 0 ? PATH_STEP_NODES : 0));
     if (T1027_PROBE) { _t1027.a.ns += Number(process.hrtime.bigint() - _q0); _t1027.a.pops += (J.S.pops | 0) - _p0; _t1027.a.n++; }
     { const el = Date.now() - c0; if (el > _probe.pathChunkMax) _probe.pathChunkMax = el; }   // 알갱이 하나의 최악(계측)
     if (r.done && !r.path && _routePlainRetry(J)) {   // ★[T578] 상한에 걸렸다 — 같은 슬롯에서 종전 규칙으로 이어 판다
@@ -3632,7 +3688,7 @@ function _routeResume(key, x0, y0, x1, y1, budgetMs) {
       continue;
     }
     if (r.done) return close(true, r.path);
-    if (Date.now() - t0 >= budgetMs) return close(false, null);
+    if (auditNodes || Date.now() - t0 >= budgetMs) return close(false, null);
   }
 }
 const _routeWarned = new Set();
@@ -3985,7 +4041,7 @@ function routeDebug(opts) {
   //   ★왜 이 자리인가: 579쌍은 **정본 시드 세계의 실제 쌍**이다(선계산 큐가 세운 그것) —
   //     합성 격자로 재면 그건 다른 세계를 잰 것이다(족보: 계측기도 사본 금지 · 정본 함수를 불러라).
   //   ★`budget` 은 **노드 예산**이다: 1 이면 한 노드마다 놓았다 이어 간다 = 순서 보존의 가장 센 증거.
-  //   ⚠재개형은 `_routeBegin` 이 세우고 `pathStep` 이 미는 **그 문 그대로**를 쓴다(사본 0).
+  //   ⚠재개형은 진짜 `_routeResume` 문을 쓴다. auditNodes 는 감사 전용 노드 조각 크기(운영 기본 무변).
   if (o.resume > 0 && state.routeCache) {
     const bud = Math.max(1, o.budget | 0);
     let n = 0, bad = 0, first = '', slices = 0, maxSlices = 0;
@@ -3993,10 +4049,18 @@ function routeDebug(opts) {
       if (n >= o.resume) break;
       const p = key.split('_'); const a = state.byDbId.get(+p[0]), b = state.byDbId.get(+p[1]);
       if (!a || !b) continue;
-      const J = _routeBegin(a.ccx * SZ + SZ / 2, a.ccy * SZ + SZ / 2, b.ccx * SZ + SZ / 2, b.ccy * SZ + SZ / 2);
+      // T1170: 진짜 재개형 문을 사용해 T578 상한 뒤 종전 규칙 재탐색도 감사한다.
       let re = null, k = 0;
-      if (J) { let r; do { r = PathCore.pathStep(J.S, bud); k++; } while (!r.done); re = _routeFinish(J, r.path); }
-      _pathJob = null;
+      try {
+        _pathJob = null;
+        let r;
+        do {
+          r = _routeResume('audit:' + key, a.ccx * SZ + SZ / 2, a.ccy * SZ + SZ / 2,
+            b.ccx * SZ + SZ / 2, b.ccy * SZ + SZ / 2, 0, bud);
+          k++;
+        } while (!r.done);
+        re = r.pts;
+      } finally { _pathJob = null; }
       const same = JSON.stringify(re || null) === JSON.stringify(pts || null);
       n++; slices += k; if (k > maxSlices) maxSlices = k;
       if (!same) { bad++; if (!first) first = key; }
@@ -4269,7 +4333,7 @@ function _caravanNpcs(c, x, y, tribeId, tribeName, simVid) {
   //   평화 마을=escort 0=단독(현행 무변) · 위협 마을=대열(창발). 이동은 tickCaravanBodies._escortMarch(경로 추종 종대).
   const escorts = [];
   {
-    const escN = Math.min(5, Math.max(0, c.escort | 0));
+    const escN = (state.econV2 && state.econV2.T1136_ESCORT_CARRY) ? Math.max(0, c.escort | 0) : Math.min(5, Math.max(0, c.escort | 0));
     for (let ei = 0; ei < escN; ei++) {
       const ep = state.deps.spawnNpc({
         x, y,
@@ -4295,6 +4359,7 @@ function _caravanNpcs(c, x, y, tribeId, tribeName, simVid) {
 //       오늘 떠난 몸 · 장 마당 몸(T707) · 이웃 존 몸(T533)은 종전 그대로다(시작 날 = 오늘이면 같은 수).
 const T775_RESUME = process.env.T775_CARAVAN_RESUME !== '0';   // ★[T782 · PM 10-18] 켬 기본 · 되돌림 `=0`
 function _t775Place(body, c, outbound, p, now) {
+  if (body._t1182) return;   // T1182: 일정 자리로 뛰지 않는다. T1034가 저장한 실제 몸은 별도로 복원한다.
   const T = body._t661, d = state.world.day;
   const D0 = outbound ? c.departDay : c.arriveDay;
   if (D0 < d) {   // 오늘 앞에 시작한 구간 — 장부의 시작 날을 그날로(오늘 시작한 구간은 `_t661Anchor` 그대로 · 같은 수)
@@ -4359,10 +4424,14 @@ function t1034Flush() {
 function _t1034Pack() {
   const B = state.caravanBodies, b = {};
   if (B) for (const [id, body] of B) {
-    if (body._xz) continue;
+    if (body._xz && !body._t1182) continue;
     const T = body._t661;
     b[String(id)] = { ph: body.phase, dd: body.delayedDays | 0, seen: body._evSeenDelay | 0, rf: body.repairFailN | 0, lg: Number.isFinite(body.lingerUntil) ? body.lingerUntil : null,
       da: body.departAt, aa: body.arriveAt, ppd: body.pxPerDay, nom: body.nomPxMs, pg: body.prog, at: Date.now(),
+      ...(body._t1182 ? { act: { pts:body.pts.map(q=>[q.x,q.y]), pg:body.prog,
+        ...(body._xzInPts?{xzIn:body._xzInPts.map(q=>[q.x,q.y])}:{}),
+        p:(()=>{const p=state.deps.players.get(body.pid);return p?[p.x,p.y,p.hp]:null;})(),
+        escorts:(body.escorts||[]).map(e=>{const p=state.deps.players.get(e.pid),w=e._actPath;return {p:p?[p.x,p.y,p.hp]:null,pts:w?w.pts.map(q=>[q.x,q.y]):null,pg:w?w.prog:0,prefix:e._actPrefix||0};}) } } : {}),
       T: T ? { L: T.L, len: T.path.len, D0: T.D0, leg: T.leg, ppd: T.ppd, st: !!T.stall, day: T.day, t0: (T772_ON && T.t0 != null) ? T.t0 : null,   // 귀환 보간 시작(T772 켬 판만 · 끔 = 칸이 늘 null)
         //   길 점도 싣는다 — 다시 뜬 판이 길을 다시 파면 다른 길이 나온다(답압 · 길 무게가 그새 바뀌었다 — 가는 길 57,484 → 57,409px · 몸 최대 370px 튐 · 보고/T1034 §1),
         //   고립 귀환(걸어온 역경로)과 도착 경계 귀환 길(`_t661ReturnPts`)은 T775 가 파는 길(도착 마을 → 집)과 아예 다르다. 몸은 걷던 그 길에 다시 선다.
@@ -4379,6 +4448,18 @@ function _t1034Apply(body, now) {
   if (!S) return;
   state._t1034Saved.delete(k);
   body.delayedDays = S.dd | 0; body._evSeenDelay = S.seen | 0; body.repairFailN = S.rf | 0;
+  if(body._t1182 && S.act) {
+    body._t1182At=now;const A=S.act;if(A.xzIn)body._xzInPts=A.xzIn.map(q=>({x:q[0],y:q[1]}));setBodyPts(body,A.pts.map(q=>({x:q[0],y:q[1]})));body.phase=S.ph;body.prog=Math.max(0,Math.min(body.len,A.pg));
+    body.lingerUntil=S.lg;body.departAt=S.da;body.arriveAt=S.aa;body.pxPerDay=S.ppd;body.nomPxMs=S.nom;
+    const put=(p,q)=>{if(!p||!q)return;if(T1145_XY_COLS)BC.w(p,q[0],q[1]);else{p.x=q[0];p.y=q[1];}p.hp=q[2];p.vx=0;p.vy=0;};
+    put(state.deps.players.get(body.pid),A.p);
+    for(let i=0;i<(body.escorts||[]).length;i++){const e=body.escorts[i],r=(A.escorts||[])[i];if(!r)continue;put(state.deps.players.get(e.pid),r.p);if(r.pts){e._actPath=_t661Path(r.pts.map(q=>({x:q[0],y:q[1]})));e._actPath.prog=r.pg;e._actPrefix=r.prefix;e._actSource=body.pts;}}
+    const savedT=S.T, samePath=body.phase!=='linger';
+    _t661Anchor(body,samePath?body.pts:(savedT && savedT.P?savedT.P.map(q=>({x:q[0],y:q[1]})):body.pts),savedT?savedT.leg:(body.phase==='outbound'?'outbound':'inbound'));
+    body._t661.L=savedT?savedT.L:body.prog;
+    if(savedT){Object.assign(body._t661,{D0:savedT.D0,ppd:savedT.ppd,stall:!!savedT.st,day:savedT.day});if(T772_ON && savedT.t0!=null)body._t661.t0=savedT.t0;}
+    _t1034Stat.applied++;return;   // 복원은 저장한 실제 위치, 꺼진 동안 걸은 것으로 치지 않는다.
+  }
   const spawnPh = body.phase;   // T775 가 세운 단계(가는 길 · 귀환 · T707 장 마당 머묾)
   //   실은 길 점으로 장부 길을 다시 건다(같은 길 · 같은 자리). 구간이 안 맞으면(가는 몸으로 섰는데 실은 칸이 귀환 · 그 반대) 덮지 않는다
   const legOk = S.T && (S.T.leg === 'outbound' ? spawnPh === 'outbound' : (spawnPh === 'inbound' || spawnPh === 'linger'));
@@ -4398,7 +4479,7 @@ function _t1034Apply(body, now) {
   if (Number.isFinite(S.ppd)) body.pxPerDay = S.ppd;
   if (Number.isFinite(S.nom)) body.nomPxMs = S.nom;
   if (!(body.phase === 'linger' && spawnPh === 'linger')) {   // 장 마당에 선 머묾 몸은 그 자리 그대로(T707 마당)
-    let at = body.phase === 'linger' ? 0 : (T.stall ? T.L : _t661Vis(body, now));   // 머묾 = 귀환 길 머리(도착 자리) · 막힘 = 장부 자리 · 그 밖 = 보이는 자리
+    let at = body._t1182 ? Math.min(T.path.len,Math.max(0,S.pg||0)) : body.phase === 'linger' ? 0 : (T.stall ? T.L : _t661Vis(body, now));   // 머묾 = 귀환 길 머리(도착 자리) · 막힘 = 장부 자리 · 그 밖 = 보이는 자리
     //   보이는 자리보다 뒤에 있던 몸(쫓아가는 중 — 고립 귀환 · 귀환 걸음 상한)은 실은 자리에서 그 뒤 걸음 상한만큼까지만(틱 판과 같은 상한 · 더 앞으로 뛰지 않는다)
     if (body.phase !== 'linger' && Number.isFinite(S.pg) && Number.isFinite(S.at)) {
       const cap = (T772_ON && T.leg === 'inbound' && state.deps.moveSpeed > 0) ? state.deps.moveSpeed / 1000 : body.nomPxMs * 4;
@@ -4480,13 +4561,13 @@ function _t775Resume(now) {
     if (cut) { keep.push(c); continue; }   // ★[T1061]
     if (c && c._done && !bodies.has(c.id)) { _probe.t775Lost = (_probe.t775Lost || 0) + 1; continue; }   // 몸을 받기 전에 장부가 끝났다(길이 끝내 안 파였다 — 센다)
     if (!c || c._done || bodies.has(c.id) || !(c.state === 'outbound' || c.state === 'inbound')) continue;
-    if (state.xzone && ((c.to && c.to._xz) || (c.from && c.from._xz))) continue;   // 이웃 존 몸은 T533 길이 맡는다
-    if (bodies.size >= CARAVAN_BODY_MAX) { _probe.t775Cap = (_probe.t775Cap || 0) + 1; continue; }   // 몸 상한(E2) — 몸 없이 장부만 간다(센다)
+    if (!T762_CARAVAN_BODY && state.xzone && ((c.to && c.to._xz) || (c.from && c.from._xz))) continue;   // 이웃 존 몸은 T533 길이 맡는다
+    if (!T762_CARAVAN_BODY && bodies.size >= CARAVAN_BODY_MAX) { _probe.t775Cap = (_probe.t775Cap || 0) + 1; continue; }   // 몸 상한(E2) — 몸 없이 장부만 간다(센다)
     //   ★[T1061] 이 틱 몫이 바닥났나 — **한 번 재서** 문과 셈이 같이 쓴다(따로 재면 그 사이 몫이 바닥나 셈이 흔들린다). `left` 는 부작용이 없다 —
     //     미룰 때만 `out` 을 불러 공유 예산의 '쉰 문' 셈 · 결정 몫 번갈아(T695)를 종전 문들과 같은 문법으로 남긴다.
     const _dry = TB.ON ? (TB.left(TICK_SLICE_MS) <= 0) : (TICK_SLICE_MS > 0 && Date.now() - _q0 >= TICK_SLICE_MS);
     if (T1061_RESUME_SLICE && _dry) { if (TB.ON) TB.out(TICK_SLICE_MS, 'resume775'); cut = true; keep.push(c); _t1061.held++; continue; }   // 이 캐러밴부터 다음 틱
-    if (T896_RESUME_ONE) { if (_t896NeedSlot(c)) { if (slotTaken) { keep.push(c); _probe.t896Held = (_probe.t896Held || 0) + 1; continue; } slotTaken = true; } }   // ★[T896] 빈 쌍은 한 틱 한 대
+    if (T896_RESUME_ONE && !(T762_CARAVAN_BODY && state._t1034Saved && state._t1034Saved.get(String(c.id))?.act)) { if (_t896NeedSlot(c)) { if (slotTaken) { keep.push(c); _probe.t896Held = (_probe.t896Held || 0) + 1; continue; } slotTaken = true; } }   // ★[T896] 빈 쌍은 한 틱 한 대
     if (_dry) _t1061.overCalls++;   // ★[T1061] 셈만 — 이 틱 몫이 이미 바닥난 뒤에 부른 캐러밴(위와 같은 잼 · 켬이면 위 줄이 막아 0 · 끔 = 종전 쌓임)
     const r = _t1026Door('resume775', () => spawnCaravanBody(c, now));   // ★[T1026] 꼬리표(값 무변)
     if (r === 'wait') { keep.push(c); continue; }   // 길이 아직 — 줄에 남긴다(다음 틱)
@@ -4497,7 +4578,16 @@ function _t775Resume(now) {
   if (!keep.length) { R.done = true; if (state._t1034Saved) state._t1034Saved = null; }   // ★[T1034] 몸을 못 받은 칸은 여기서 버린다
 }
 function spawnCaravanBody(c, now, budgetMs) {
-  if (state.xzone && ((c.to && c.to._xz) || (c.from && c.from._xz))) return _xzSpawnBody(c, now);   // ★★[T533] 이웃 존이 낀 캐러밴(팔 켬 + 호스트 — 끔이면 이 줄 무동작)
+  if (state.xzone && ((c.to && c.to._xz) || (c.from && c.from._xz))) {
+    const saved=T762_CARAVAN_BODY && state._t1034Saved && state._t1034Saved.get(String(c.id));
+    if(saved && saved.act) {
+      const vil=state.byEcon.get(c.from)||state.byEcon.get(c.to);if(!vil)return false;
+      const pts=saved.act.pts.map(q=>({x:q[0],y:q[1]}));
+      const b=_xzMakeBody(c.id,c,pts,saved.ph,now,saved.aa,c.to,{tribeId:`simvil_${vil.dbId}`,tribeName:vil.name,simVid:vil.dbId});
+      _t1034Apply(b,now);return true;
+    }
+    return _xzSpawnBody(c, now);
+  }   // ★★[T533] 이웃 존이 낀 캐러밴(팔 켬 + 호스트 — 끔이면 이 줄 무동작)
   const fromVil = state.byEcon.get(c.from), toVil = state.byEcon.get(c.to);
   if (!fromVil || !toVil) return false;
   const outbound = c.state === 'outbound'; // (통상 outbound — inbound 스폰은 상한 이월분 방어)
@@ -4505,15 +4595,20 @@ function spawnCaravanBody(c, now, budgetMs) {
   // ★★[T85] 길을 **예산만큼만** 판다. 다 안 파였으면 이 조각에서는 안 떠나고 `'wait'` 를 돌려준다 —
   //   부른 쪽(`_caravanSyncOne` → `_drainTickJobs`)이 **같은 하루 안의 다음 조각**에 다시 부른다.
   //   ⚠여기서 아직 아무것도 안 만졌다(스폰 전) — 그래서 재진입이 안전하다. 이 줄이 그 계약이다.
-  const rr = getRouteResumable(legA, legB, (budgetMs === undefined) ? TB.slice(TICK_SLICE_MS) : budgetMs);   // ★[T687] 켬 = 이 틱 남은 몫
-  if (!rr.done) { _probe.pathWait++; return 'wait'; }
-  if (!rr.pts) return false;
-  // ★★[T578 ②] 노드 사이를 걷는 길 — 쌍마다 한 번 예산만큼 이어 판다(아직이면 교역로와 같은 `'wait'` 계약 · 아무것도 안 만졌다).
-  const wr = _walkFor(legA, legB, (budgetMs === undefined) ? TB.slice(TICK_SLICE_MS) : budgetMs);   // ★[T687]
-  if (!wr.done) { _probe.pathWait++; return 'wait'; }
-  let pts = wr.pts || rr.pts;
-  const _t707Mk = T707_ON && !outbound && c._mktD === state.world.day && pts && pts.length;   // ★[T707] 장이 선 날 상한이 풀려 도착 마을에서 서는 몸 — 장 끝까지 마당에 선다
-  if (_t707Mk) pts = [_t707Yard(legA)].concat(pts);
+  const saved=T762_CARAVAN_BODY && state._t1034Saved && state._t1034Saved.get(String(c.id));
+  let pts;
+  const _t707Mk = !saved && T707_ON && !outbound && c._mktD === state.world.day;
+  if(saved && saved.act)pts=saved.act.pts.map(q=>({x:q[0],y:q[1]}));
+  else {
+    const rr = getRouteResumable(legA, legB, (budgetMs === undefined) ? TB.slice(TICK_SLICE_MS) : budgetMs);
+    if (!rr.done) { _probe.pathWait++; return 'wait'; }
+    if (!rr.pts) return false;
+    const wr = _walkFor(legA, legB, (budgetMs === undefined) ? TB.slice(TICK_SLICE_MS) : budgetMs);
+    if (!wr.done) { _probe.pathWait++; return 'wait'; }
+    pts = wr.pts || rr.pts;
+    if (T762_CARAVAN_BODY && T707_ON && outbound) pts = pts.concat([_t707Yard(toVil)]);
+    if (_t707Mk) pts = [_t707Yard(legA)].concat(pts);
+  }
   // ★[T533] 상인·호위 몸 세우기를 이름만 올렸다(`_caravanNpcs` — 이웃 존에서 넘어온 몸도 같은 함수 · 부르는 차례 그대로: 상인 → 호위).
   const N = _caravanNpcs(c, legA.ccx * SZ + SZ / 2, legA.ccy * SZ + SZ / 2, `simvil_${fromVil.dbId}`, fromVil.name, fromVil.dbId);
   const p = N.p;
@@ -4521,7 +4616,7 @@ function spawnCaravanBody(c, now, budgetMs) {
   const body = {
     id: c.id, pid: p.pid, c, phase: outbound ? 'outbound' : 'inbound', toV: c.to,
     delayedDays: 0, repairFailN: 0, lastRepairAt: 0,
-    pinHunger: p.hunger, pinThirst: p.thirst, // 원정 중 게이지 고정(다게임일 이동 아사 방지 — canadia 동형)
+    _t1182: T762_CARAVAN_BODY, _t1182At: now, pinHunger: p.hunger, pinThirst: p.thirst, // 원정 중 게이지 고정(다게임일 이동 아사 방지 — canadia 동형)
   };
   setBodyPts(body, pts);
   body.departAt = now;
@@ -4535,7 +4630,9 @@ function spawnCaravanBody(c, now, budgetMs) {
   //   ★[T782 · T775 갈래] 장 마당 몸인데 **장이 이미 끝났다**(다시 뜬 판 · 늦게 선 몸 — `lingerUntil` ≤ 지금) — 종전엔 마당(길 머리)에 섰다가 다음 틱에 귀환을 열어
   //     길 전체를 따라잡았다(끔 = 명목 ×4 질주 · T772 켬 = 몸 걸음이라 집 도착에 길 위 = 늦음). 귀환을 여기서 열고 **장부 자리**(`_t775Place` · `_t661Vis` 같은 식)에 세운다(T775 계약 그대로 · 새 수 0).
   if (T775_RESUME && T661_ON && _t707Mk && Number.isFinite(body.lingerUntil) && body.lingerUntil <= now) { startReturnLeg(body, now); _t775Place(body, c, false, p, now); _probe.t782MktLate = (_probe.t782MktLate || 0) + 1; }
+  body._t1182 = T762_CARAVAN_BODY;
   state.caravanBodies.set(c.id, body);
+  if(saved && saved.act)_t1034Apply(body,now);
   console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 출발: ${c.from.name}→${c.to.name} ${c.giveRes}×${Math.round(c.giveAmt)} 호위${c.escort}(실체 ${body.escorts.length}) — 경로 ${pts.length}정점 ${Math.round(body.len)}px ${legDays}게임일(econ d${c.departDay}→d${c.arriveDay})`);
   return true;
 }
@@ -4554,6 +4651,7 @@ function _t661ReturnPts(body) {
 }
 function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 출발
   const c = body.c;
+  if (body._t1182 && c._t707) return; // 정산은 기존 하루 머리에서 실제 몸을 확인한 뒤 저장 마감과 함께 치른다.   // T1182: 장 정산으로 짐을 받은 뒤 귀로를 걷는다.
   if (body._xz && c && c._xzHome) return _xzStartReturnLeg(body, now);   // ★★[T533] 이웃 존 캐러밴 — 집은 경계 너머다(경계 칸까지 걷는다 · 끔이면 이 줄 무동작)
   if (T661_ON && body._t661 && body._t661.leg === 'inbound') {   // ★[T661] 돌아가는 길은 도착 경계에 장부가 이미 골랐다(`_t661ReturnPts`) — 몸은 그 길을 걷는다
     setBodyPts(body, body._t661.path.pts);
@@ -4730,6 +4828,7 @@ function _t661Stamp(body, a, b) {
 }
 // 하루 한 번 — 장부를 오늘 자리로(벽에 서면 거기서 멈춘다) · 지난 구간 답압 · 가드.
 function _t661Day(body, now) {
+  if (body._t1182) return;   // T1182: 실제 걸은 거리만 몸 틱이 기록한다.
   const T = body._t661; if (!T) return;
   const d = state.world.day;
   if (T.day === d) return;   // 같은 날 두 번(조각 'retry' 로 다시 불려도) — 한 번만
@@ -4784,9 +4883,77 @@ function _t661Vis(body, now) {
 
 // 30Hz — 모든 실체 캐러밴 전진. 활성 청크(플레이어 시야)만 벽 충돌 판정, 비활성은 경로 보간(dormant 동형).
 //   idle 존 스킵보다 앞(onGameTick 최상단 호출)이라 무인 존에서도 진행 — econ과 이격 없음.
+// T1182: 시계나 장부 L 대신 살아 있는 실제 상인의 구간 끝을 본다.
+function _t1182BodyReady(c, leg) {
+  const body = state.caravanBodies && state.caravanBodies.get(c.id);
+  const p = body && state.deps.players.get(body.pid);
+  if (!body || body.c !== c || !p || p.hp <= 0 || body.toV !== c.to) return false;
+  if (leg === 'market') { if (body.phase !== 'linger' || Date.now() < body.lingerUntil) return false; }
+  else if (body.phase !== leg || body.len - body.prog > 0.5) return false;
+  const goal = caravanPointAt(body, body.len);
+  if (body._t1182 && Math.hypot(p.x-goal.x,p.y-goal.y)>0.5) return false;
+  return !body._t1182 || (body.escorts || []).every(e => { const ep=state.deps.players.get(e.pid); return !ep || ep.hp<=0 || Math.hypot(ep.x-goal.x,ep.y-goal.y)<=0.5; });
+}
+// 속도는 몸 정본. 시험용 하루 단축만 운영 하루와의 비로 환산한다.
+function _t1182Step(dtMs) {
+  const W=require('./zone-config').WORLD, speed=state.deps.moveSpeed || require('../public/move-model').DEFAULTS.baseSpeed;
+  return speed*dtMs/1000*W.dayLengthMs/state.dayMs;
+}
+// 같은 보행 커널을 상인과 짐 진 호위가 쓴다. 벽 검사 간격은 기존 SZ/4.
+function _t1182Walk(path,p,want,dtMs) {
+  const {isPositionActive,isBlockedByWall}=state.deps;
+  const anchor=caravanPointAt(path,path.prog);
+  if(Math.hypot(p.x-anchor.x,p.y-anchor.y)>0.5){
+    const rejoin=_t661Path([{x:p.x,y:p.y},anchor]);rejoin.prog=0;
+    return _t1182Walk(rejoin,p,Math.min(rejoin.len,_t1182Step(dtMs)),dtMs);
+  }
+  let at=path.prog, prev={x:p.x,y:p.y}, blocked=false;
+  for(let q=at+SZ/4;at<want;q+=SZ/4) {
+    const L=Math.min(q,want), next=caravanPointAt(path,L);
+    if(isPositionActive && isPositionActive(prev.x,prev.y) && isBlockedByWall && isBlockedByWall(next.x,next.y,prev.x,prev.y,0)){blocked=true;break;}
+    at=L;prev=next;
+    if(state.roads)state.roads.stampEntityPx(p,next.x,next.y);
+  }
+  path.prog=at;p.vx=(prev.x-p.x)/dtMs*1000;p.vy=(prev.y-p.y)/dtMs*1000;
+  if(T1145_XY_COLS)BC.w(p,prev.x,prev.y);else{p.x=prev.x;p.y=prev.y;}
+  return blocked;
+}
+function _t1182Move(body,p,now,dtMs) {
+  const blocked=_t1182Walk(body,p,Math.min(body.len,body.prog+_t1182Step(dtMs)),dtMs);
+  if(body._t661 && body._t661.path.pts===body.pts)body._t661.L=body.prog;
+  _escortMarch(body,dtMs,state.deps.players);
+  if(blocked)caravanBlockedResponse(body,p,now);
+}
+// 돌아서는 호위도 제 자리부터 걷는다. 옛 길의 남은 구간으로 상인의 새 출발점까지 잇는다.
+function _t1182EscortPath(e,p,body) {
+  const pts=[{x:p.x,y:p.y}], old=e._actPath, goal=body.pts[0];
+  if(old) {
+    let cut=old.len,best=Infinity;
+    for(let i=0;i<old.pts.length-1;i++) {
+      if(old.cum[i+1]<old.prog)continue;
+      const a=old.pts[i],b=old.pts[i+1],dx=b.x-a.x,dy=b.y-a.y,n=dx*dx+dy*dy;
+      const f=n?Math.max(0,Math.min(1,((goal.x-a.x)*dx+(goal.y-a.y)*dy)/n)):0;
+      const d=(a.x+f*dx-goal.x)**2+(a.y+f*dy-goal.y)**2;
+      if(d<best){best=d;cut=old.cum[i]+f*Math.sqrt(n);}
+    }
+    for(let i=1;i<old.pts.length;i++)if(old.cum[i]>old.prog && old.cum[i]<cut)pts.push(old.pts[i]);
+  }
+  pts.push(goal);const prefix=_t661Path(pts).len;
+  e._actPath=_t661Path(pts.concat(body.pts.slice(1)));e._actPath.prog=0;
+  e._actSource=body.pts;e._actPrefix=prefix;
+}
+function _t1182Escort(body,dtMs,players) {
+  for(let i=0;i<(body.escorts || []).length;i++) {
+    const e=body.escorts[i],p=players.get(e.pid);if(!p || p.hp<=0)continue;
+    p.hunger=e.pinH;p.thirst=e.pinT;
+    if(e._actSource!==body.pts)_t1182EscortPath(e,p,body);
+    const path=e._actPath, target=e._actPrefix+(body.len-body.prog<=0.5?body.len:Math.max(0,body.prog-20*(i+1)));
+    _t1182Walk(path,p,Math.min(path.len,path.prog+_t1182Step(dtMs),Math.max(path.prog,target)),dtMs);
+  }
+}
 function tickCaravanBodies(now) {
   const bodies = state.caravanBodies;
-  const dtMs = Math.min(500, Math.max(1, now - (state._carTickAt || now)));
+  const frameDtMs = Math.min(500, Math.max(1, now - (state._carTickAt || now)));
   state._carTickAt = now;
   if (T775_RESUME && T661_ON && state.ready) _t775Resume(now);   // ★[T775] 다시 뜬 판 — 첫 경계를 기다리지 않는다(끔 = 이 줄 무동작)
   if (!bodies || !bodies.size) return;
@@ -4794,6 +4961,9 @@ function tickCaravanBodies(now) {
   for (const body of bodies.values()) {
     const p = players.get(body.pid);
     if (!p) continue; // 외부 소실(비정상) — 소멸 동기(syncCaravanBodies)가 회수
+    const dtMs=body._t1182?Math.min(500,Math.max(0,now-(body._t1182At??now))):frameDtMs;
+    if(body._t1182)body._t1182At=now;
+    if(!(dtMs>0)){p.vx=0;p.vy=0;continue;}
     p.hunger = body.pinHunger; p.thirst = body.pinThirst; // 원정 중 아사 방지(스폰 시점 값 고정)
     if (p.hp <= 0) { p.vx = 0; p.vy = 0; continue; }      // 늑대 등 사망 — 부활 후 아래 경로 스냅으로 복귀
     if (body.phase === 'linger') {
@@ -4804,14 +4974,14 @@ function tickCaravanBodies(now) {
     }
     const c = body.c;
     const remainPx = body.len - body.prog;
-    if (body._xzSendWait && (remainPx <= 0.5 || now > body._xzSendWait.until)) {   // ★[T578 추신] 경계 칸에 닿았다(또는 닿을 시각에서 하루를 넘겼다) — 이제 민다
+    if (body._xzSendWait && (remainPx <= 0.5 || (!body._t1182 && now > body._xzSendWait.until))) {   // ★[T578 추신] 경계 칸에 닿았다(또는 닿을 시각에서 하루를 넘겼다) — 이제 민다
       const w = body._xzSendWait; body._xzSendWait = null;
       if (remainPx > 0.5 && state.xzone) state.xzone.st.walkWaitLate++;
       body._xzWalked = remainPx > 0.5 ? 'late' : 'walked';   // 표(trace) — 경계까지 걸었나
       try { _xzSend(w.r, w.g, w.tries, true); } catch (e) {}
       p.vx = 0; p.vy = 0; continue;
     }
-    if (remainPx <= 0.5) { p.vx = 0; p.vy = 0; _escortMarch(body, dtMs, players); continue; } // 종점 대기 — econ 경계 처리(sync)가 상태 전이/회수
+    if (remainPx <= 0.5) { if(body._t1182)_t1182Walk(body,p,body.prog,dtMs); p.vx = 0; p.vy = 0; _escortMarch(body, dtMs, players); continue; } // 종점 대기 — econ 경계 처리(sync)가 상태 전이/회수
     // 테스트 훅: 가상 차단 1회(재경로 로그) 또는 강제 고립 1회 — 운영(env 무설정) 완전 무경로
     if (CARAVAN_BLOCKTEST && !state._blockTested && body.phase === 'outbound' && body.prog > body.len * 0.25) {
       state._blockTested = true;
@@ -4826,6 +4996,7 @@ function tickCaravanBodies(now) {
       invalidateTradeDistances(Math.round(p.x / SZ), Math.round(p.y / SZ)); // 차단=무효화 훅 경로도 함께 검증
       continue;
     }
+    if (body._t1182) { _t1182Move(body,p,now,dtMs); continue; }
     // 도착 임박 가드 — 실체가 못 갔으면 econ 도착을 뒤로(§5.5b 지연): econ이 몸을 앞지르는 것 차단.
     //   발동 조건 = '최대 따라잡기 속도(명목×4)로도 남은 시간+2틱 안에 못 닿는 잔여'만 — 페이싱의
     //   정상 잔여(마지막 1틱 분량)를 지연으로 오인하지 않게(첫 스모크에서 전 캐러밴 +1일 오발 확인·수정).
@@ -4873,6 +5044,7 @@ function tickCaravanBodies(now) {
 //   진행도가 20(i+1)px 미만이면 출발점 대기 → 상단이 앞서 나가며 한 명씩 뒤따라 나감(회관 집결→순차 출발 연출이 공짜로 창발).
 //   경로가 위치의 진실(상인 동형): 재라우팅·귀환(setBodyPts)도 진행도 추종이라 추가 처리 불요. 사망(늑대 등)=정지, 부활 후 스냅 복귀.
 function _escortMarch(body, dtMs, players) {
+  if (body._t1182) return _t1182Escort(body,dtMs,players);
   const list = body.escorts;
   if (!list || !list.length) return;
   for (let i = 0; i < list.length; i++) {
@@ -4910,7 +5082,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
     if (T707_ON && c._mktD === world.day) _t707Open(c);   // ★[T707] 장부 도착이 장을 연다 — 몸 유무와 무관 · 'retry' 로 다시 불려도 한 번(끔 = 이 줄 무동작)
     if (T661_ON && body && body._t661) _t661Day(body, now);   // ★★[T661] 하루 한 번 장부 — 차례 = `world.caravans` 차례(이 함수를 부르는 그 차례)
     if (!body) {
-      if (bodies.size < CARAVAN_BODY_MAX) {
+      if (T762_CARAVAN_BODY || bodies.size < CARAVAN_BODY_MAX) {
         const r = spawnCaravanBody(c, now, _pb);
         if (r === 'wait') return 'retry';   // ★[T85] 길이 아직 — 이 조각은 여기까지. 다음 조각에 이어 간다.
         if (r) S.spawned++;
@@ -4950,7 +5122,10 @@ function _caravanSyncOne(now, c, S, budgetMs) {
         if (!rr2.done) { _probe.pathWait++; return 'retry'; }
         pts = rr2.pts;
       }
-      if (pts) pts = [{ x: pos.x, y: pos.y }, ...pts];
+      if (pts) {
+        pts = [{ x: pos.x, y: pos.y }, ...pts];
+        if (T762_CARAVAN_BODY && T707_ON && newToVil) pts = pts.concat([_t707Yard(newToVil)]);
+      }
       else if (newToVil) pts = [{ x: pos.x, y: pos.y }, { x: newToVil.ccx * SZ + SZ / 2, y: newToVil.ccy * SZ + SZ / 2 }]; // 경로 실패 폴백: 직선 보간(비활성 수준 — 행렬 유한쌍이라 실사용 희박)
       else { despawnCaravanNpc(body); bodies.delete(c.id); S.removed++; return; } // 대상 마을 미상(방어) — 실체 생략, econ은 계속
       if (_t762End && body._t661.L < body._t661.path.len) { _t661Stamp(body, body._t661.L, body._t661.path.len); body._t661.L = body._t661.path.len; }   // ★[T762 ②] 옛 길 남은 구간 답압(집에 닿은 날 쓸기와 같은 꼴) — 길이 다 파인 뒤라 재진입 0
@@ -4989,7 +5164,7 @@ function _caravanSyncSweep(S) {
   const bodies = state.caravanBodies, seen = S.seen;
   for (const [id, body] of [...bodies]) {
     if (seen.has(id)) continue;
-    if (body._xzHanding || (body.c && body.c._xzPending)) continue;   // ★[T533] 경계 문 앞(이웃 존 답을 기다린다) · 받은 몸(기록이 다음 경계에 든다) — 끔이면 없다
+    if (body._xzHanding || (body.c && body.c._xzPending) || (body._t1182 && body.c && body.c._xzHandedBack && !body.c._xzTraderDead)) continue;   // ★[T533] 경계 문 앞(이웃 존 답을 기다린다) · 받은 몸(기록이 다음 경계에 든다) — 끔이면 없다
     const c = body.c;
     const killed = c && c.trader && c.from && Array.isArray(c.from.npcs) && c.from.npcs.indexOf(c.trader) < 0;
     if (T772_ON && T661_ON && body._t661 && !killed && body._t661.leg === 'inbound') {   // ★[T772 ②] econ 이 집 도착을 냈는데 몸이 아직 길 위(또는 장) — 센다(메우지 않는다)
@@ -5080,10 +5255,12 @@ function _xzTrace(kind, o) {
 }
 // 몸 하나 세우기 — 같은 존 출발과 같은 함수(`_caravanNpcs`)로 상인·호위를 세우고 길 첫 점(경계 칸이거나 제 마을)에 둔다.
 function _xzMakeBody(key, c, pts, phase, now, arriveAt, toV, who) {
+  const dest = state.byEcon && state.byEcon.get(c.to);
+  if (T762_CARAVAN_BODY && T707_ON && phase === 'outbound' && dest) pts = pts.concat([_t707Yard(dest)]);
   const N = _caravanNpcs(c, pts[0].x, pts[0].y, who.tribeId, who.tribeName, who.simVid == null ? null : who.simVid);
   const legDays = Math.max(1, Math.round((arriveAt - now) / state.dayMs));
   const body = { id: key, pid: N.p.pid, c, phase, toV, delayedDays: 0, repairFailN: 0, lastRepairAt: 0,
-    pinHunger: N.p.hunger, pinThirst: N.p.thirst, _xz: true };
+    _t1182: T762_CARAVAN_BODY, _t1182At: now, pinHunger: N.p.hunger, pinThirst: N.p.thirst, _xz: true };
   setBodyPts(body, pts);
   body.departAt = now;
   body.arriveAt = Math.max(now + 1, arriveAt);
@@ -5101,6 +5278,16 @@ function _xzMakeBody(key, c, pts, phase, now, arriveAt, toV, who) {
 //   (같은 존의 "경로 실패 → 실체 생략, econ 은 계속"과 같은 뜻). 이웃 존에서 온 몸은 받을 때 세운다(여기 아님).
 function _xzSpawnBody(c, now) {
   const X = state.xzone;
+  // 예전 저장에 몸 좌표가 없으면 마지막으로 확정된 출발점부터 걷는다(지난 시간으로 도착을 만들지 않는다).
+  if (T762_CARAVAN_BODY && X && (c._xzHome || (c.state==='inbound' && c._xzBackPt))) {
+    const vil=state.byEcon.get(c._xzHome?c.to:c.from);if(!vil)return false;
+    const peer=c._xzHome?c._xzHome.zone:c.to.zone, name=c._xzHome?c.from.name:c.to.name;
+    const sp=X.core.splitNames(vil.name,peer,name);if(!sp)return 'wait';
+    const outbound=c.state==='outbound', into=outbound || !c._xzHome;
+    const pts=into?sp.ptsLocal.slice().reverse():sp.ptsLocal.slice();
+    const b=_xzMakeBody(c.id,c,pts,outbound?'outbound':'inbound',now,econDayToMs(outbound?c.arriveDay:c.returnArriveDay),c.to,{tribeId:`simvil_${vil.dbId}`,tribeName:vil.name,simVid:vil.dbId});
+    b._xzInPts=sp.ptsLocal.slice().reverse();return true;
+  }
   if (!X || !(c.to && c.to._xz) || c.state !== 'outbound' || !c._xzCross) return false;
   const fromVil = state.byEcon.get(c.from); if (!fromVil) return false;
   const sp = X.core.splitNames(fromVil.name, c.to.zone, c.to.name);
@@ -5124,6 +5311,7 @@ function _xzStartReturnLeg(body, now) {
     for (let i = body.pts.length - 1; i >= 0; i--) pts.push(body.pts[i]);
     if (body._xzInPts && body._xzInPts !== body.pts) for (let i = body._xzInPts.length - 1; i >= 0; i--) pts.push(body._xzInPts[i]);
   }
+  if(body._t1182){const p=state.deps.players.get(body.pid);if(p && !_xzSamePt(p,pts[0]))pts=[{x:p.x,y:p.y},...pts];}
   setBodyPts(body, pts);
   body.phase = 'inbound';
   const legDays = Math.max(1, c.returnArriveDay - state.world.day);
@@ -5235,14 +5423,26 @@ function _xzWalkToBorder(body, r, now) {
   return true;
 }
 // 미는 문 — 받았다는 답을 듣고서야 몸을 지운다(그 사이 몸은 경계 칸에 선다 · 쓸기가 안 치운다).
+function _xzTransferBody(r,key) {
+  const b=state.caravanBodies.get(key)||null;
+  return T762_CARAVAN_BODY && r.kind==='arrive' && b && b.c && b.c.state!=='xzone'?null:b;
+}
 function _xzSend(r, g, tries, walked) {
   const X = state.xzone;
   const key = (r.kind === 'arrive') ? r.id : ('xz:' + r.toZone + ':' + r.id);
-  const body = state.caravanBodies.get(key) || null;
+  const body = _xzTransferBody(r,key);
   if (body) body._xzHanding = true;
   if (body && !walked && !body._xzSendWait && _xzWalkToBorder(body, r, Date.now())) {   // ★[T578 추신] 경계 칸까지 걷고 나서 민다
     body._xzSendWait = { r, g, tries, at: Date.now(), until: body.arriveAt + state.dayMs }; X.st.walkWait++;   // 기다림 상한 = 명목 빠르기로 닿을 시각 + 하루
     return;
+  }
+  if(T762_CARAVAN_BODY && r.kind==='arrive' && !X.track.has(r.id)) {
+    const c=(state.world.caravans||[]).find(c=>c.id===r.id && c.state==='xzone' && !c._done);
+    if(c)X.track.set(r.id,{c,res:r.giveRes,amt:r.giveAmt,sentDay:state.world.day});
+  }
+  if(T762_CARAVAN_BODY){
+    const D=X._t1182Depart||(X._t1182Depart=new WeakMap());
+    if(!D.has(r)){const p=body && state.deps.players.get(body.pid);D.set(r,{body:!!body,at:p?{x:Math.round(p.x),y:Math.round(p.y)}:null,walked:body?body._xzWalked||null:null});}
   }
   X.st.sent++;
   const payload = { kind: 'caravan', zone: state.zoneId, gday: g, rec: r };
@@ -5253,22 +5453,23 @@ function _xzSend(r, g, tries, walked) {
 }
 function _xzAfterSend(r, key, ok, why, answered, tries) {
   const X = state.xzone; if (!X) return;
-  const body = state.caravanBodies.get(key) || null;
+  const body = _xzTransferBody(r,key);
   if (ok) {
     X.st.sentOk++;
-    let at = null;
-    let walked = null;
-    if (body) { const P = state.deps.players.get(body.pid); at = P ? { x: Math.round(P.x), y: Math.round(P.y) } : null; walked = body._xzWalked || null; despawnCaravanNpc(body); state.caravanBodies.delete(key); X.st.bodyOut++; }
+    const departure=T762_CARAVAN_BODY && X._t1182Depart && X._t1182Depart.get(r);
+    let at = departure?departure.at:null, walked = departure?departure.walked:null;
+    if (body) { const P = state.deps.players.get(body.pid); if(!departure){at = P ? { x: Math.round(P.x), y: Math.round(P.y) } : null;walked = body._xzWalked || null;} despawnCaravanNpc(body); state.caravanBodies.delete(key); }
+    const hadBody=!!body || !!(departure && departure.body);if(hadBody)X.st.bodyOut++;
     if (r.kind === 'arrive') {
       X.st.crossArrive++;
       const c = (state.world.caravans || []).find((x) => x.id === r.id && x.state === 'xzone' && !x._done) || null;
-      if (c) X.track.set(r.id, { c, res: r.giveRes, amt: r.giveAmt, sentDay: state.world.day });
-      _xzTrace('out', { id: r.id, to: r.to, toZone: r.toZone, res: r.giveRes, amt: r.giveAmt, res2: r.giveRes2 || null, amt2: r.giveAmt2 || 0, remain: r.remain, at, pt: r.ptHome || null, body: !!body, walked });
+      if (c && (!T762_CARAVAN_BODY || !X.track.has(r.id))) X.track.set(r.id, { c, res: r.giveRes, amt: r.giveAmt, sentDay: state.world.day });
+      _xzTrace('out', { id: r.id, to: r.to, toZone: r.toZone, res: r.giveRes, amt: r.giveAmt, res2: r.giveRes2 || null, amt2: r.giveAmt2 || 0, remain: r.remain, at, pt: r.ptHome || null, body: hadBody, walked });
     } else {
       X.st.crossReturn++;
       if (r.row && !r.abandoned && !r.traderDead && !r.row.rerouted) X.st.soldOk++;   // 경계 교역 성사(이 존이 팔고 산 것 — T525 §4 '도착 존이 판 것')
       _xzTrace('back', { id: r.id, toZone: r.toZone, lastTo: r.lastTo, res: r.returningRes, amt: r.returningAmt, res2: r.returningRes2 || null, amt2: r.returningAmt2 || 0,
-        abandoned: !!r.abandoned, traderDead: !!r.traderDead, sold: r.row && r.row.sent ? r.row.sent : null, bought: r.row && r.row.bought ? r.row.bought : null, remain: r.remain, at, body: !!body, walked,
+        abandoned: !!r.abandoned, traderDead: !!r.traderDead, sold: r.row && r.row.sent ? r.row.sent : null, bought: r.row && r.row.bought ? r.row.bought : null, remain: r.remain, at, body: hadBody, walked,
         ...(_t1030On() ? { rowDay: r.row ? r.row.day : null } : {}) });   // ★[T1030] 켬만 — 그 교역 행의 날(정산한 날)
     }
     return;
@@ -5337,7 +5538,7 @@ function _xzBodyIn(r, g, peer) {
   const X = state.xzone;
   if (r.kind === 'return' && r.traderDead) return;   // 상인이 그쪽에서 죽었다 — 넘어올 몸이 없다
   if (!r.ptPeer) { X.st.bodyInSkip++; return; }        // 경계 칸이 없는 기록(합친 길 없음 · T525 뼈대) — 몸 없이 econ 만
-  if (state.caravanBodies.size >= CARAVAN_BODY_MAX) { X.st.bodyInSkip++; return; }
+  if (!T762_CARAVAN_BODY && state.caravanBodies.size >= CARAVAN_BODY_MAX) { X.st.bodyInSkip++; return; }
   const now = Date.now();
   const arriveAt = state.epoch + (g + Math.max(1, r.remain || 0)) * state.dayMs;
   const center = (vil) => ({ x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 });
@@ -5357,9 +5558,11 @@ function _xzBodyIn(r, g, peer) {
     console.log(`[${state.zoneId}] 🐂 캐러밴 ${key} 넘어옴: ${homeName}@${peer}→${vil.name} ${r.giveRes}×${Math.round(r.giveAmt)} — 경계 칸 (${Math.round(r.ptPeer.x)},${Math.round(r.ptPeer.y)})에서 이어 걷는다 ${Math.round(b.len)}px · 남은 ${r.remain}일`);
   } else {
     const key = r.id;
-    if (state.caravanBodies.has(key)) return;
+    const oldBody=state.caravanBodies.get(key);
+    if (oldBody && !T762_CARAVAN_BODY) return;
     const hc = (state.world.caravans || []).find((x) => x.id === r.id && x.state === 'xzone' && !x._done); if (!hc) return;
     const vil = state.byEcon.get(hc.from); if (!vil) return;
+    if(oldBody){despawnCaravanNpc(oldBody);state.caravanBodies.delete(key);} // 귀환 수신이 출발 인수도 증명한다.
     let sp = r.lastTo ? X.core.splitNames(vil.name, peer, r.lastTo) : null;
     if (!(sp && _xzSamePt(sp.ptLocal, r.ptPeer))) sp = X.core.splitNames(vil.name, peer, hc.to && hc.to.name);
     const pts = (sp && _xzSamePt(sp.ptLocal, r.ptPeer)) ? sp.ptsLocal.slice().reverse() : [r.ptPeer, center(vil)];
@@ -5378,7 +5581,7 @@ function xzonePerf() {
     const P = state.deps.players.get(b.pid);
     bodies.push({ key: k, phase: b.phase, pending: !!(b.c && b.c._xzPending), handing: !!b._xzHanding, x: P ? Math.round(P.x) : null, y: P ? Math.round(P.y) : null,
       len: Math.round(b.len), prog: Math.round(b.prog), end: b.pts && b.pts.length ? { x: Math.round(b.pts[b.pts.length - 1].x), y: Math.round(b.pts[b.pts.length - 1].y) } : null,
-      departAt: b.departAt, arriveAt: b.arriveAt, nomPxMs: b.nomPxMs, lu: b.lingerUntil, t952: b._t952 || null,   // ★[T952] 머묾 끝 · 켬 판의 셈(끔 = null)
+      bodyAt: b._t1182At, departAt: b.departAt, arriveAt: b.arriveAt, nomPxMs: b.nomPxMs, lu: b.lingerUntil, t952: b._t952 || null,   // ★[T952] 머묾 끝 · 켬 판의 셈(끔 = null)
       ...(_t1030On() ? { mk: (() => { const v = b.c && state.byEcon && state.byEcon.get(b.c.to), r = v && v._mkt; return (r && r.cars.has(k)) ? { d: r.d, end: r.end, at: r.at.size, vil: v.name, ls: b._t1030 ? b._t1030.at : null } : null; })() } : {}) });   // ★[T1030] 켬만 — 그 몸이 든 장 기록(날 · 끝 · 명부 수)
   }
   const cars = [];
@@ -6038,6 +6241,8 @@ function init(deps) {
       villageCount: dbRows.length,          // 슬롯만 확보 — 아래서 전부 실지형 마을로 교체
       picker: 'rational', infoRange: 5000, raidPer100: 0.005, // 랩과 동일 옵션
     });
+    // [T1159] econ은 지형을 몰라 몸의 집 N을 호스트에 묻는다(손잡이 끔이면 호출 0).
+    world.homePopulation = (v) => { const vil = state.byEcon.get(v); return vil ? require('./home-population').homePopulation(vil, state.deps.players, SZ) : v.npcs.length; };
     econ.bindProductionActs(world);   // T1180: 모든 마을에서 세 행위의 수식 폴백을 닫는다
     world.villages = [];
     world.events = [];
@@ -6131,6 +6336,8 @@ function init(deps) {
       if (hallData && hallData.founderName) ev.founderName = String(hallData.founderName);
       //   ★[T593 ⑤] 이름표를 바꿔 심은 판이면 후보 이름을 곁에 둔다(레거시 디듀프가 후보 이름으로 묻는다 · 없으면 칸 자체를 안 만든다).
       if (hallData && hallData.seedName) state.villages[state.villages.length - 1]._seedName = String(hallData.seedName);
+      //   ★[T1189 ②] 마을 꼴 — 회관 행에 이미 있는 꼬리표(`t593` 다시 붙인 것 · 없으면 시딩 후보 `seedType`)의 이름 낱말(`_T593_WORD` — 지금 이름이 쓰는 그 넷). 사람 마을 · 꼬리표 없는 행은 칸 없음.
+      { const _k = hallData && (hallData.t593 || hallData.seedType); if (_k && _T593_WORD[_k]) state.villages[state.villages.length - 1]._kindKo = _T593_WORD[_k]; }
       if (T785) VillageKin.attach(state.villages[state.villages.length - 1], hallData, _t785Row);   // ★[T785] 켬 — 회관 행의 마을 칸을 되살린다(표지 없는 사람 마을 = 이행 대기)
       _fieldBridge({ econ: ev, _farmSet: farmSet, _potSet: potSet, _drySet: drySet });   // ★[T100] 밭 브리지 초기값(영속 행에서 — 개간 전에도 밭은 있다) · ★[T198] 두 칸도 같은 줄에서
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
@@ -6145,6 +6352,7 @@ function init(deps) {
     }
     world.day = maxDay;
     state.world = world;
+    if (T762_CARAVAN_BODY) world.caravanBodyReady = _t1182BodyReady;
     state.byDbId = new Map(state.villages.map(v => [v.dbId, v]));
     state.byEcon = new Map(state.villages.map(v => [v.econ, v])); // Stage 4B: econ 마을 객체 → 공간 마을(캐러밴 from/to 해석)
     state.claimedNames = new Set(state.villages.map(v => v.name)); // 레거시 디듀프 대상(이름 유니크 — 50곳 검증됨)
@@ -6191,6 +6399,7 @@ function init(deps) {
       rationCollect: (w) => _warRationCollect(w),
       // ★[T811] 무기 몸 짐 — 장부 도착(귀환)에 몸 짐을 거둔다(손잡이 끔이면 `_armsOnBodies` 가 안 서 war-core 가 안 부른다)
       armsCollect: (w) => _warArmsCollect(w),
+      surrenderDeaths: (w) => _t1183SurrenderDeaths(w),
       // ★[T466] 약탈 곳간 몫을 몸이 받는다(몸이 있을 때만 true — 아니면 war-core 가 종전대로 즉시 옮긴다) · 손잡이 끔이면 안 불린다
       lootCarry: (w, items, kind, lots) => { try { return _warLootAccept(w, items, kind, lots); } catch (e) { console.error(`[${state.zoneId}] 💰 [T466] 노획 받기 실패(즉시 정산으로):`, e.message); return false; } },
       onEngage: (w, day, why) => {
@@ -6475,17 +6684,19 @@ function _warPref(job, type) {
 const WAR_SAMPLE = parseInt(process.env.VILLAGE_WAR_SAMPLE || '', 10) || 0;
 function _warSampleComp(comp, cap) {
   const MU_TYPES = state.warLive.MU_TYPES; const o = {}; let tot = 0;
-  if (WAR_SAMPLE > 0) cap = WAR_SAMPLE;
+  if (T1041_WAR_BODY) cap = Infinity; // [T1183] 전쟁은 명부 전원: 표본 병사로 사상을 확대하지 않는다.
+  else if (WAR_SAMPLE > 0) cap = WAR_SAMPLE;
   for (const k of MU_TYPES) { o[k] = Math.round(comp[k] || 0); tot += o[k]; }
   if (tot > cap && tot > 0) { const r = cap / tot; for (const k of MU_TYPES) o[k] = Math.round((comp[k] || 0) * r); }
   return o;
 }
 // ★[징발=상태전환] 마을 pid 에서 병종 선호로 선발 → _muster/_muType/simWar/npcs.delete(AI 정지). units[{type,pid}] — x/y 는 player 에 묶인다.
 function _warDraftPids(vil, comp, seed, warId) {
+  if (T1041_WAR_BODY && !vil._den) syncVillagePop(vil, Infinity); // 소집 전에 그 마을의 몸을 전부 세운다.
   const { players, npcs } = state.deps;
   const WL = state.warLive;
   const pool = [];
-  for (const pid of vil.npcPids) { const p = players.get(pid); if (!p || p._muster || (p.hp != null && p.hp <= 0)) continue; pool.push(p); }
+  for (const pid of vil.npcPids) { const p = players.get(pid); if (!p || p._muster || (T1041_WAR_BODY && p._t1104W != null) || (p.hp != null && p.hp <= 0)) continue; pool.push(p); }
   if (!pool.length) return null;
   const taken = new Set(); const units = []; const pids = [];
   const order = ['archer', 'slinger', 'champion', 'dagger', 'greataxe', 'spear', 'pike', 'militia'];
@@ -6499,7 +6710,7 @@ function _warDraftPids(vil, comp, seed, warId) {
       const gu = { type, pid: p.pid }; WL.bindGroupUnit(gu, p);                  // ★[T284] 좌표 = player 하나
       // ★★[T295 ①] **결속** — 이 pid 가 징발자다. war-core 가 그 사람(econ npc) 하나를 골라 자리를 비운다
       //   (같은 직업 우선 · 동원이 이미 세어 둔 징발자부터). 정본은 pid 다 — 반대 방향은 없다.
-      try { if (state.war && state.war.warDraftBind) state.war.warDraftBind(vil, p.pid, p.simJob, warId); } catch (_) { }
+      try { if (state.war && state.war.warDraftBind) require('./home-population').bindWarBody(p, state.war.warDraftBind(vil, p.pid, p.simJob, warId)); } catch (_) { }
       units.push(gu); pids.push(p.pid);
     }
   }
@@ -6511,14 +6722,15 @@ function _warDraftPids(vil, comp, seed, warId) {
 //     무저항·소굴 전투 문(공격 무게중심이 교전 반경 안)이 그 한 명을 끝까지 기다렸다(재현 판: 소굴 원정 10건 중 3건 · 3건 중 2건).
 //     나선은 존 정본 하나(`_standCellNear` · deps 주입 · 사본 0) · 술어는 전쟁 술어(`_warBlockedCell` — 발자국·지형·나무).
 //     나선이 못 찾거나(24칸 안이 전부 막힘) 술어 미주입(랩·구 존)이면 종전대로 제자리.
-// ★★[T790 2026-10-18] **전쟁 몸 튐 둘 없애기** — 손잡이 `T790_NO_SNAP`('1' 만 켬 · 끔 = main 바이트) · T781 회부 2 · 캐논: 순간이동 금지(모든 NPC 는 물리 몸).
+// ★★[T790 2026-10-18] **전쟁 몸 튐 둘 없애기** — 손잡이 `T790_NO_SNAP`(T1183 켬 기본 · 되돌림 `=0`) · T781 회부 2 · 캐논: 순간이동 금지(모든 NPC 는 물리 몸).
 //   ① 지휘 몸 놓기 — war-live `_muStepFollow` 가 지휘 몸을 대형 원점에 바로 놓는다(귀환 첫 틱 결판 자리 → 길 머리 55~87 m/s · T681 날 장부가 옮긴 원점).
 //   ② 슬롯 놓기 — 이 함수(징발 `_warInstantiateAttackers` · 방어 소집 `_warEnsureDefense` · T703 날마다 행군 대형)가 몸을 슬롯에 바로 놓는다(픽스처는 마을 → 진 1,408 m).
 //   켜면 두 자리 모두 **몸이 걸어서** 간다: 대형마다 몸 걸음(`g._t790Walk` = 존 걸음 정본 `moveSpeed` px/s ÷ 셀 px × 교전 스텝 초 = 셀/스텝)을 달고,
 //     war-live 추종이 지휘 몸도 그 걸음으로 원점까지 옮기고 병사 걸음도 그 걸음을 안 넘긴다. 슬롯 놓기는 안 한다(추종이 걸어서 붙는다).
 //   늦음 셈(`state._warStat.t790Late` · `_t790Stat`): 하루 경계(`_t681Day`)에 대형 몸이 아직 제 자리(지휘 = 원점 · 병사 = 슬롯 · 반경 `FOLLOW_SNAP`) 밖이면 하나 —
 //     메우기 0(순간이동으로 따라잡지 않는다). 교전에 풀린 몸(battle-core 가 모는 몸)은 안 센다. 새 수 0.
-const T790_NO_SNAP = process.env.T790_NO_SNAP === '1';
+// [T1183] 켬 기본 · 되돌림 `T790_NO_SNAP=0`.
+const T790_NO_SNAP = process.env.T790_NO_SNAP !== '0';
 // ★★[T844 2026-10-22] **끔 판 귀환도 그날 몫** — 손잡이 `T844_RET_QUOTA` · T832 회부 3. ★★[T861 2026-10-22] **켬 기본**(★PM 10-22) — `!== '0'` · 되돌림 `T844_RET_QUOTA=0`(= T861 전 바이트).
 //   T832 는 켬(T790) 판 귀환 몸을 T681 하루 몫으로 걷게 했다(`tickWarBodies` 귀환 줄 · `_t681Flush` 끝 귀환 고리). 끔 판은 틱마다 걸어,
 //   결판이 마감 안에서 나면 그날 귀환이 0걸음 → 몸이 결판 자리에서 풀린다(부하 다른 끔 두 판 D40 존 몸 해시 한 날 · T832 §3-2).
@@ -6526,10 +6738,11 @@ const T790_NO_SNAP = process.env.T790_NO_SNAP === '1';
 const T844_RET_QUOTA = process.env.T844_RET_QUOTA !== '0';
 const _RET_QUOTA = T790_NO_SNAP || T844_RET_QUOTA;   // 귀환 몸이 그날 몫(`_t681Take` · `_t681Flush`)으로 걷나 — 켬(T832) · 끔 + T844 손잡이
 const _t790Stat = { walk: 0, late: 0, lateMaxM: 0, lateSumM: 0 };
-function _t790Mark(g, on) { const sp = state.deps && state.deps.moveSpeed; if ((T790_NO_SNAP || on) && g && sp > 0 && state.warLive) g._t790Walk = sp / SZ * state.warLive.STEP_DT; return g; }   // 셀/스텝 = (px/s ÷ px/셀) × s/스텝 · ★[T1044] on = 이 대형만(긴급 소집 — T790 손잡이와 무관 · 없으면 종전)
+function _t790Mark(g, on) { const sp = state.deps && state.deps.moveSpeed; if ((T790_NO_SNAP || on) && g) { if (T790_NO_SNAP) g._t790Physical = true; if (sp > 0 && state.warLive) g._t790Walk = sp / SZ * state.warLive.STEP_DT; } return g; }   // 셀/스텝 = (px/s ÷ px/셀) × s/스텝 · ★[T1044] on = 이 대형만(긴급 소집 — T790 손잡이와 무관 · 없으면 종전)
 function _t790Place(g, u) {   // 대형 몸의 제 자리(셀) — 지휘 = 원점 · 병사 = 슬롯 + 흔들림(war-live `_muStepFollow` 가 겨누는 점) · ★[T1044] 늦음 셈 · 긴급 소집 몸 걸음이 같은 점을 본다(사본 0)
-  if (u.cmd) return [g.cmd.cx, g.cmd.cy];
-  const s = state.warLive._muSlotXY(g, u); return [s[0] + (u.jx || 0), s[1] + (u.jy || 0)];
+  const s = u.cmd ? [g.cmd.cx, g.cmd.cy] : state.warLive._muSlotXY(g, u).map((v, i) => v + (i ? u.jy || 0 : u.jx || 0));
+  const t = g.detour && g.detour.target ? g.detour.target(s[0], s[1]) : null;
+  return t ? [t.x, t.y] : s;
 }
 function _t790Lag(g) {   // 하루 경계 — 대형 몸이 제 자리 밖인가(걸음 셈 · 상태 무변)
   if (!g || !g.units || !(g._t790Walk > 0)) return 0;
@@ -6547,7 +6760,7 @@ function _t790Lag(g) {   // 하루 경계 — 대형 몸이 제 자리 밖인가
 }
 function _warSnapToSlots(g) {
   if (!g || !g.units) return;
-  if (T790_NO_SNAP && _t790Mark(g)._t790Walk > 0) { _t790Stat.walk++; return; }   // ★[T790 ②] 켬 — 놓지 않는다(몸이 걸어서 슬롯에 붙는다 · 대형 몸 걸음만 단다) · 걸음 정본이 없는 판(하네스 목)은 종전대로 놓는다
+  if (T790_NO_SNAP) { _t790Mark(g); if (g._t790Walk > 0) _t790Stat.walk++; return; }   // ★[T790 ②] 켬 — 놓지 않는다(몸이 걸어서 슬롯에 붙는다 · 대형 몸 걸음만 단다) · 걸음 정본이 없어도 대신 놓지 않는다
   const blocked = _warBlockedCell;
   for (const u of g.units) { if (u.cmd) { u.x = g.cmd.cx; u.y = g.cmd.cy; continue; } const s = state.warLive._muSlotXY(g, u);
     if (!blocked(s[0], s[1])) { u.x = s[0]; u.y = s[1]; continue; }
@@ -6646,6 +6859,7 @@ function _t804Local(mem, x, y, tx, ty, st) {   // 걸음 프리셋 길 — 반�
     P = mem._t804p; if (!P) return false;
   }
   for (let k = Math.min(P.pts.length - 1, P.i + CAP); k > P.i; k--) { const q = P.pts[k];
+    if (T790_NO_SNAP && _warBlockedCell(q.x, q.y)) continue; // [T1183] 생성 뒤 막힌 길점은 폐기. 1m 안 LOS 생략도 몸 충돌을 대신하지 않는다.
     if (_warClearLine(x * MPC, y * MPC, (q.x + 0.5) * MPC, (q.y + 0.5) * MPC)) { _t804Stat.follow++; return { x: q.x + 0.5, y: q.y + 0.5 }; } }
   mem._t804p = null; return null;   // 길 칸이 안 보인다 — 놓는다(다음 걸음에 막혔으면 그 자리에서 다시 묻는다)
 }
@@ -6811,7 +7025,10 @@ function _warDetourFor(body, walk) {
   };
   // ★[T541 ⓐ] 대형 추종이 먼저 묻는 술어 — 슬롯까지 곧은 줄이 열려 있나(`_warClearLine` 그대로 · 셀 = m × M_PER_CELL)
   det.clear = (u, tx, ty) => { const MPC = state.warLive.M_PER_CELL; return _warClearLine(u.x * MPC, u.y * MPC, tx * MPC, ty * MPC); };
-  if (T790_NO_SNAP) { det.walk = (u, tx, ty, st) => _t804Way(u, u.x, u.y, tx, ty, st, body); det.body = body; }   // ★[T804 ①] 걷는 몸의 길(war-live 는 대형에 몸 걸음 칸이 있을 때만 부른다) · 주둔 원점도 이 몸의 행군로를 본다
+  if (T790_NO_SNAP) {
+    det.walk = (u, tx, ty, st) => _t804Way(u, u.x, u.y, tx, ty, st, body); det.body = body;
+    det.target = (tx, ty) => { const p = _warBlockedCell(tx, ty) ? _warStandNear(tx, ty) : null; return p ? { x: p.cx, y: p.cy } : { x: tx, y: ty }; };
+  }   // ★[T804 ①] 걷는 몸의 길(war-live 는 대형에 몸 걸음 칸이 있을 때만 부른다) · 주둔 원점도 이 몸의 행군로를 본다
   if (walk && !det.walk) { det.walk = (u, tx, ty, st) => _t804Way(u, u.x, u.y, tx, ty, st, body); det.body = body; }   // ★[T1044 ①] walk = 이 대형만(긴급 소집 — T790 끔이어도 같은 길 문 `_t804Way`) · 없으면 종전
   return det;
 }
@@ -6897,9 +7114,10 @@ function _warWorld(fight) {
       return _warTreeCell(Math.floor(cx), Math.floor(cy));   // ★나무 뒤도 엄폐다(건물 상자와 같은 답 · 나무는 칸 하나)
     },
     advance(ctx, u) {   // 적 본대(무게중심) → 없으면 목표(방어 마을 중심 · m). 지키는 쪽(holder)은 사거리 밖 적을 쫓지 않는다(추격 없음).
-      if (fight.holder === u.side) return (T1044_SCRAM_WALK && u.gu && u.gu._t1044) ? _t1044Way(fight, u, dirTo) : null;   // ★[T1044 ③] 켬 — 아직 제 자리에 못 온 긴급 소집 몸만 제 자리로 걷는다(적은 쫓지 않는다 · 그 밖 = 종전 null)
+      const shooter = T790_NO_SNAP && u._t1183Shooter && u._t1183Shooter.hp > 0 ? u._t1183Shooter : null;
+      if (fight.holder === u.side && !shooter) return (T1044_SCRAM_WALK && u.gu && u.gu._t1044) ? _t1044Way(fight, u, dirTo) : null;   // ★[T1044 ③] 켬 — 아직 제 자리에 못 온 긴급 소집 몸만 제 자리로 걷는다(적은 쫓지 않는다 · 그 밖 = 종전 null)
       const c = ctx._cen[u.side === 'A' ? 'B' : 'A'];
-      const T = (c && c.n) ? (_t1060Aim(fight, u) || { x: c.x, y: c.y }) : fight.objective; if (!T) return null;   // ★[T1060 ②] 판 자 갈래 `T1060_ATK_AIM='1'` 만 — 긴급 소집 수비면 포진점(끔 = 적 본대 무게중심 · 종전)
+      const T = shooter || ((c && c.n) ? (_t1060Aim(fight, u) || { x: c.x, y: c.y }) : fight.objective); if (!T) return null;   // ★[T1060 ②] 판 자 갈래 `T1060_ATK_AIM='1'` 만 — 긴급 소집 수비면 포진점(끔 = 적 본대 무게중심 · 종전)
       const r = dirTo(u.x, u.y, T.x, T.y); if (!r || r.d <= 1) return null;
       // 곧은 길이 막혔으면 행군로(존 A* 경로 — 캐러밴과 같은 길)를 따라간다. 판정은 0.5초에 한 번(병사별 메모).
       const memo = u._cpT == null || fight.t - u._cpT >= 0.5;
@@ -6912,7 +7130,7 @@ function _warWorld(fight) {
       if (u._wpBlk) { const n = _warPathNext(u, wp.x, wp.y); if (n) return dirTo(u.x, u.y, n.x, n.y) || r; }
       return dirTo(u.x, u.y, wp.x, wp.y) || r;
     },
-    hold(ctx, u, e) { return fight.holder === u.side && !!e.ctl; },   // 추격 없음 — 물러나는(대형으로 돌아간) 적은 지키는 쪽이 쫓지 않는다
+    hold(ctx, u, e) { return fight.holder === u.side && !!e.ctl && !(T790_NO_SNAP && u._t1183Shooter === e); },   // 추격 없음 — 물러나는(대형으로 돌아간) 적은 지키는 쪽이 쫓지 않는다
     flee(ctx, u) {      // 자기 마을 쪽 · 다 왔으면 적 본대 반대쪽
       const h = fight.home[u.side];
       const r = h ? dirTo(u.x, u.y, h.x, h.y) : null;
@@ -6992,6 +7210,7 @@ function _warEnsureFight(body) {
   const qA = { weapQ: (w.weapQ != null ? w.weapQ : (A && A._weapQ != null ? A._weapQ : 0.5)) };
   const f = state.warLive.makeFight(w, null, { A: qA, B: null });
   f.ctx.world = _warWorld(f);
+  f.physical = T790_NO_SNAP; // [T1183] 사격·피격 대응도 현재 몸에서 시작한다.
   const mpc = state.warLive.M_PER_CELL;
   f.home = { A: { x: (w.atk.ccx + 0.5) * mpc, y: (w.atk.ccy + 0.5) * mpc }, B: { x: (w.def.ccx + 0.5) * mpc, y: (w.def.ccy + 0.5) * mpc } };
   f.objective = f.home.B;
@@ -7221,6 +7440,7 @@ function _warOrderFallback(body) {
 }
 // 대형 원점을 목표로 한 걸음(cap 셀) 옮기고 슬롯을 따른다 — 지휘관 순간이동 없음.
 function _warWalkGroupTo(g, tgt, cap) {
+  if (T790_NO_SNAP && _warBlockedCell(tgt.cx, tgt.cy)) { const p = _warStandNear(tgt.cx, tgt.cy); if (!p) return; tgt = p; }
   const dx = tgt.cx - g.cmd.cx, dy = tgt.cy - g.cmd.cy, d = Math.hypot(dx, dy);
   let w = null;
   if (T790_NO_SNAP && d > cap && g._t790Walk > 0) {   // ★[T804 ①] 켬 — 주둔 원점(지휘 몸이 바로 뒤를 걷는 점)도 막히면 길(원점의 길 기억은 그 대형의 걷는 점 `g._t804o` 에)
@@ -7233,6 +7453,14 @@ function _warWalkGroupTo(g, tgt, cap) {
   state.warLive._muStepFollow(g, cap);
 }
 // 대형 한 걸음(주둔·포진·재편) — 걸음 상한 = 본대 행군 속도.
+// [T1183] 돌격 명령을 기다리는 중에도 몸의 실제 사거리에 적이 들면 사격한다.
+function _warOverwatch(body) {
+  const f = body.fight, WL = state.warLive;
+  if (!T790_NO_SNAP || !f || body.mode !== 'camp' || !WL.hasRangedContact(f)) return;
+  if (!f.holder) f.holder = 'B';
+  const ev = WL.stepFight(f);
+  if (ev.contact) { body.mode = 'fight'; body.w.phase = 'battle'; state._warStat.engage++; }
+}
 function _warStepFormations(body) {
   const WL = state.warLive;
   const ag = body.atkGroup, dg = body.defGroup;
@@ -7390,6 +7618,7 @@ function _warDespawnPid(pid) {
 // 출정 해제 — _muster/simWar 해제 + npcs.add(AI 복귀) + hp 회복. pid 는 npcPids 유지(syncVillagePop 재수렴).
 function _warReleasePid(pid) {
   const { players, npcs } = state.deps; const p = players.get(pid); if (!p) return;
+  require('./home-population').bindWarBody(p, null);
   // ★[T295 ①] 복귀 — 결속을 풀면 그 사람은 제 직업 자리로 돌아간다(생산 재개).
   try { const vil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null; if (vil && state.war && state.war.warDraftReleasePid) state.war.warDraftReleasePid(vil, pid); } catch (_) { }
   p._muster = false; p._muType = null; p.simWar = false; p._brout = false; p._bcmd = false; p._bt = undefined; p._bside = undefined;
@@ -7560,28 +7789,12 @@ function _warEatBySpoil(WC, bag, need, ctx, eatU) {
   return got;
 }
 // ════════════════════════════════════════════════════════════════
-// ★★[T906 2026-10-24 · 설계_군량_행위 ⓐ-4 "군대가 굶으면 몸이 죽나" 미리 재기 · T886 회부 1] 손잡이 `T906_ARMY_STARVE`
-//   ('die' = ㄱ · 'mrl' = ㄴ · 그 밖 · 미설정 = 끔 = main 바이트 — 아래 한 줄도 안 돈다).
-//   T886 까지: 짐이 모자란 원정 몸의 못 먹은 몫은 장부 칸(`unfed`)에만 선다. 마을 기근 사다리(`consumeFood` 남은 몫 → 굶주림 항)에 부으면
-//   그 사다리는 마을 하나에 걸리고 징발자를 건너뛰어(T295 ①) **집에 남은 사람이 대신 죽는다** ⇒ 그 길은 안 쓴다.
-//   두 판이 같이 쓰는 것 — **몸의 굶주림 사다리**(server/body.js — 플레이어 몸이 쓰는 그 함수들 · 사본 0 · 새 수 0):
-//     원정 몸마다 허기 게이지 h(0~100)를 전쟁 객체의 표 `w._starve`(pid → 칸 · 몸 필드 0 · 영속 0 — 진행 중 전쟁은 재기동에 안 실린다)에 둔다.
-//     econ 하루 경계(아래 `_warRationEat` — 몸이 제 짐에서 먹는 그 자리)마다 ① 지난 하루를 적분한다 — 게이지 감쇠 `Body.decayStep(h, HUNGER_SEC, ·)`
-//     · 극단 HP `Body.extremeHpRate`(허기 축만 움직인다 — 갈증 · 추위 · 피로 · 부상은 셈 그릇에서 0 · NPC 면제 그대로) — 게임 1분(= 실초 1 · 비율의 단위)마다
-//     ② 오늘 먹은 몫 φ = 먹음 ÷ 몸의 몫만큼 채운다: h += φ × `Kcal.dayHunger()`(하루치 1단위 = 하루 허기 — kcal 캐논 `DAY_KCAL`).
-//     몸 하루 = 운영 하루(`Kcal.DAY_MS_DEFAULT` 24분) — 운영(econ 하루 24분)에선 실초 사다리와 같은 시계 · 빠른 시계 판(전쟁 자 10초 하루)에선 같은 날 수의 뜻(T871 시계 하나 꼴).
-//     짐을 실은 뒤 첫 경계는 먹기만 한다(실은 날의 남은 몫은 안 센다) — 배부르게 떠난다.
-//   ㄱ('die') — 그 몸이 약해지고 죽는다(그 몸 · 그 자리 · 전쟁 정산이 소유):
-//     극단 HP 를 그 몸의 교전 hp 에 같은 비율로 깎는다(`_warSyncMeta` 가 이미 쓰는 hp 비율 문법 — 몸 hp 는 그 거울) → 0 이면 그 자리에서 죽는다:
-//     짐은 그 자리에 떨어지고(`_warBagDrop` — 전사자 짐과 같은 문 · 장부 `drop`) · econ 사망은 war-core `warDraftKillPid`(그 몸에 묶인 징발자 한 사람 · `_warRemoveNpc` 정본 문) ·
-//     몸은 내려간다(`_warDespawnPid`). 교전 단위는 셈 없이 눕는다(`hp 0 · _dead` — 판의 사상 `sides.dead` → `warKill` 에 안 들어간다 ⇒ 한 사람은 한 번만 죽는다).
-//   ㄴ('mrl') — 안 죽는다. 짐꾼 몸마다 그날 먹은 뒤 게이지의 허기 무너짐(Body 회복 배율 곡선 `recoverMult` — 허기 축 · 배부르면 1 · 극단 0 · 몸 정본 곡선)을
-//     평균해 교전 사기 항의 군량 충족도(`sides.A.ration` — T295 ② 그 칸 · 종전엔 짐 잔량 비)로 적는다.
-//     사기 항의 가중치는 `T295_RATION_MRL`(값이 곧 가중치 · 재민 칸 · 새 수 0) — 미설정이면 사기 식이 안 돈다(ㄴ 의 크기는 그 값이 정한다).
-function _t906Mode() { const v = typeof process !== 'undefined' && process.env ? process.env.T906_ARMY_STARVE : null; return (v === 'die' || v === 'mrl') ? v : ''; }   // 부를 때마다 읽는다(하네스가 한 프로세스에서 판을 바꾼다)
+// ★★[T906 2026-10-24 → T1168 2026-11-05 걷음] 원정 굶음 판 `T906_ARMY_STARVE`('die' 몸 사다리 죽음 · 'mrl' 허기 무너짐 사기 항)는 **걷었다** —
+//   ★재민 11-02 문 2-b(족보 721 ④) "원정이 굶으면 = 군량 빚 + 사기 평형"이 갈음한다(T1076 `T1076_ARMY_MORALE` 켬 기본 · T1076 회부 2 · 카드 감 K2).
+//   남은 것은 몸의 굶주림 사다리 한 하루(`_t906Day`) — T1080 길 위 하루(`_t1080RoadDay`)가 이 함수를 그대로 쓴다(Body 정본 함수 · 사본 0 · 새 수 0):
+//     게이지 감쇠 `Body.decayStep(h, HUNGER_SEC, ·)` · 극단 HP `Body.extremeHpRate`(허기 축만 — 셈 그릇에서 나머지 0) — 게임 1분(= 실초 1)마다 적분.
 let _BdM = null;
 function _bodyMod() { if (_BdM === null) { try { _BdM = require('./body'); } catch (e) { _BdM = false; } } return _BdM || null; }
-function _t906Stat() { const S = state._warStat || (state._warStat = {}); return S.t906 || (S.t906 = { mode: _t906Mode(), bodyDays: 0, hungryBodyDays: 0, minH: 100, hpLost: 0, dead: 0, econDead: 0, deadDays: [] }); }
 // 지난 하루(몸 하루) — 게이지 감쇠 · 극단 HP 를 게임 1분마다 적분한다(Body 정본 함수 · 사본 0). 반환 = 그 하루의 HP 감소(몸 hp 100 기준).
 function _t906Day(ent) {
   const B = _bodyMod(), K = _kcal(); if (!B || !K || !K.DAY_MS_DEFAULT) return 0;
@@ -7590,60 +7803,6 @@ function _t906Day(ent) {
   let h = ent.h, L = 0;
   for (let i = 0; i < n; i++) { const h1 = B.decayStep(h, T, 1); sc.hunger = (h + h1) / 2; L += B.extremeHpRate(sc).rate; h = h1; }
   ent.h = h; return L;
-}
-// 몸 하나의 하루 경계 — 지난 하루 적분 → 오늘 먹은 몫만큼 채운다. ㄱ 이면 HP 를 깎고 0 이 되면 true(죽음은 부른 쪽이 루프 밖에서 치른다).
-function _t906Step(w, body, p, phi, mode) {
-  const K = _kcal(); if (!K) return false;
-  const tb = w._starve || (w._starve = new Map()), St = _t906Stat();
-  let ent = tb.get(p.pid); if (!ent) { ent = { h: 100, seen: false, min: 100, lost: 0, days: 0, hungry: 0 }; tb.set(p.pid, ent); }
-  let L = 0;
-  if (ent.seen) { L = _t906Day(ent); ent.days++; St.bodyDays++; ent.min = Math.min(ent.min, ent.h); St.minH = Math.min(St.minH, ent.h); }
-  ent.seen = true;
-  const f = Math.max(0, Math.min(1, phi));
-  if (f < 1) { ent.hungry++; St.hungryBodyDays++; }
-  ent.h = Math.min(100, ent.h + f * K.dayHunger());
-  if (mode !== 'die' || !(L > 0)) return false;
-  ent.lost += L; St.hpLost += L;
-  const g = body && body.atkGroup, gu = g && g.units ? g.units.find((u) => u.pid === p.pid) : null, bu = gu && gu.bu, mh = p.maxHp || 100;
-  if (bu) { bu.hp -= (L / mh) * (bu.maxHp || mh); if (bu.hp <= 0) return true; _setHp(p, Math.max(1, Math.round((bu.hp / Math.max(1, bu.maxHp)) * mh)), 'starve'); return false; }   // ★[T942] 몸 hp 는 문으로(단위 hp 는 판의 칸)
-  _setHp(p, (p.hp == null ? mh : p.hp) - L, 'starve'); return p.hp <= 0;   // ★[T942] 문으로 — 0 밑은 문이 0 으로(갈림 같음 · 그 몸은 `_t906Die` 가 같은 걸음에서 눕힌다)
-}
-// ㄴ — 그날 먹은 뒤 게이지의 허기 무너짐(Body 회복 배율 곡선 — 배부르면 1 · 극단 0)
-function _t906Sat(ent) { const B = _bodyMod(); if (!B) return 1; const sc = ent.sc || (ent.sc = { hunger: ent.h, thirst: 100 }); sc.hunger = ent.h; return B.recoverMult(sc); }
-// ㄱ — 굶어 죽은 몸을 그 자리에서 치른다(짐 드랍 · econ 사망 한 사람 · 몸 내림). 반환 = 떨어진 짐(식량등가).
-function _t906Die(w, body, p, day) {
-  const St = _t906Stat(), g = body && body.atkGroup, gu = g && g.units ? g.units.find((u) => u.pid === p.pid) : null, bu = gu && gu.bu;
-  if (bu) { bu.hp = 0; bu._dead = 1; }   // 셈 없이 눕는다(판의 사상 `sides.dead` 밖 — econ 사망은 아래 한 문)
-  //   그 단위는 판의 명부에서도 빠진다 — 편의 시작 수(`sides.start`)를 하나 덜어 결판 셈의 생존(start − dead)에 안 들게 한다(굶어 죽은 사람이 살아 돌아온 셈 0)
-  const f = body && body.fight, sd = bu && f && f.ctx && f.ctx.sides ? f.ctx.sides[bu.side] : null; if (sd && sd.start > 0) sd.start--;
-  if (gu) gu.dead = true;
-  _setHp(p, 0, 'starve'); p.vx = 0; p.vy = 0;   // ★[T942] 문으로
-  const fe = _warBagDrop(w, p);
-  const vil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
-  const ok = !!(vil && state.war && state.war.warDraftKillPid && state.war.warDraftKillPid(vil, p.pid));
-  if (state.war && state.war.armyMoraleLoss) state.war.armyMoraleLoss(w, 1);   // ★[T1076] 굶어 죽음 계단(끔이면 무동작)
-  St.dead++; if (ok) St.econDead++; if (St.deadDays.length < 64) St.deadDays.push({ day, war: w.id, pid: p.pid, econ: ok });
-  const bk = w._rationBook; if (bk) { bk.starveDead = (bk.starveDead || 0) + 1; if (ok) bk.starveEcon = (bk.starveEcon || 0) + 1; }
-  if (state.war && state.war.warLog) state.war.warLog(day, (w.atk && w.atk.name) + ' 원정 몸이 굶어 죽었다 — ' + p.pid + (ok ? '' : '(묶인 징발자 없음)') + ' · 짐 ' + (+fe || 0).toFixed(2) + ' 그 자리에');
-  _warDespawnPid(p.pid);
-  return fe || 0;
-}
-// ㄱ — 원정 몸이 다 굶어 죽었다(그 원정의 산 공격 몸 0 — 몸이 없는 병력은 사다리가 없다 · 몸 상한 밖). 원정은 거기서 끝난다(빈 원정이 돌지 않는다 · 추상 0):
-//   교전 국면에서 교전이 선 원정(`engagedOnce`)은 판의 끝 식이 다음 틱에 정산한다(`stepFight` — 싸우는 병사 0 → 궤주 · 수비 승 · 종전 문).
-//   그 밖(행군 · 주둔 · 대치로 물러난 교전 · 닿지 못한 전진)은 **war-core 철수 전이**를 적는다(`_opTransNPC` withdraw 와 같은 칸 — 포위면 `_opSetSiege` 로 먼저 푼다 · 귀환 시계).
-//   몸 · 교전 정리는 하루 마감 뒤 `_warAfterDaily`(war-core 결단이 전쟁을 끝냈을 때의 그 문)가 한다 — 교전이 있었으면(대치로 물러난 교전도) 그 교전을 정산하고(수비 승 ·
-//   그때까지의 사상이 econ 에 선다) 없으면 조용히 끝낸다. 같은 날 다른 원정의 항복과 안 섞이게 몸의 마지막 작전도 철수로 적는다(`_lastOp`).
-//   귀환 길이면 원정은 이미 돌아온다(그대로). 새 수 0 · 끔 · ㄴ 에선 안 돈다(굶어 죽음이 없다).
-function _t906Live(body) { const P = state.deps.players; for (const pid of (body.pids || [])) { const q = P.get(pid); if (q && (q.hp == null || q.hp > 0)) return true; } return false; }
-function _t906Wipe(w, body, day) {
-  const St = _t906Stat(); St.wiped = (St.wiped || 0) + 1;
-  const bk = w._rationBook; if (bk) bk.starveWiped = day;
-  const f = body.fight, home = w.phase === 'return' || body.phase === 'return', byFight = !home && !!(f && f.engagedOnce && w.phase === 'battle');
-  if (!home && !byFight) {   // war-core 철수 전이 그대로 — 몸 · 교전 정리는 하루 마감 뒤 `_warAfterDaily`(교전이 있었으면 정산 · 없으면 조용히)
-    if (state.war && state.war._opSetSiege) state.war._opSetSiege(w, false, day);
-    w.op = 'withdraw'; w._sortie = false; w.phase = 'return'; w.eta = day + (w.marchDays || 1); body._lastOp = 'withdraw';
-  }
-  if (state.war && state.war.warLog) state.war.warLog(day, (w.atk && w.atk.name) + ' 원정 몸이 다 굶어 죽었다 — ' + (home ? '귀환 길' : byFight ? '교전이 끝낸다(싸우는 병사 0)' : '철수(몸이 없다 · 교전이 있었으면 그 교전을 정산)'));
 }
 let _armyMoraleMod = null; function _armyMorale() { return _armyMoraleMod || (_armyMoraleMod = require('../sim/army-morale.js')); }   // ★[T1122] 원정 하루 먹기 · 충족도 · 빚 평균 한 곳
 function _warRationEat(w, day) {
@@ -7654,7 +7813,6 @@ function _warRationEat(w, day) {
   if (_forageMarchOn()) _warForageMarch(w, body, day, bearers);   // ★[T441] 먹기 전에 — 그날 지난 길에서 딴 것도 짐이다
   const eatU = {};
   const _on1076 = !!(WC.T1076_ON && WC.T1076_ON() && w._mrl != null), _dbt = _on1076 ? (w._debt || (w._debt = new Map())) : null;   // ★[T1076] 원정 사기 · 빚(끔 = 거짓 · 칸 0)
-  let _t906Dead = null; const _m906 = _t906Mode();   // ★[T906] 판(끔 = '') · ㄱ — 오늘 굶어 죽은 몸(루프 밖에서 치른다)
   const _G = _t748G();
   // ★[T1122] 몸 고리 = sim/army-morale.js `eatDay` 한 곳(전투실험실 날 축이 같은 고리를 부른다 · 차례 · 셈 그대로)
   const _day = _armyMorale().eatDay(bearers, need, {
@@ -7665,20 +7823,16 @@ function _warRationEat(w, day) {
     fe: (bag) => WC.bagFE(bag, ctx),
     id: (p) => p.pid,
     post: (p, bag, _e, _b0) => {
-      if (_m906 && _t906Step(w, body, p, need > 0 ? _e / need : 1, _m906)) (_t906Dead || (_t906Dead = [])).push(p);   // ★[T906] 몸의 굶주림 사다리(끔이면 안 돈다)
       if (_b0) for (const k of keys) { const d = (_b0[k] || 0) - (bag[k] || 0); if (d > 1e-12) _G.bagOut(p, k, d); }   // ★[T748] 먹은 몫 — 그 품목의 오래된 것부터(끄면 null)
     },
   }, _dbt);   // ★[T1076] 몸마다 군량 빚(하루치 단위 · 쌓기만 — 갚기 · 죽음은 T1074 몫 · 끔이면 null = 안 쌓는다)   // ★[T886] 짐이 모자란 몸 — 마을 밥상으로 안 돌아간다(셈만)
   const eaten = _day.eaten, unfed = _day.unfed, hungry = _day.hungry; let left = _day.left;
-  let _t906Alive = bearers.length;
-  if (_t906Dead) { for (const p of _t906Dead) left -= _t906Die(w, body, p, day); _t906Alive -= _t906Dead.length; if (left < 0) left = 0; if (body && !_t906Live(body)) _t906Wipe(w, body, day); }   // ★[T906] ㄱ — 그 자리에서 죽는다(짐은 떨어진다) · 산 몸이 0 이면 원정이 끝난다
   const perDay = (w.force || 0) * (state.warCore ? state.warCore.WAR_RATION : 1);
   const bk = w._rationBook; if (bk) { bk.eaten += eaten; bk.unfed = (bk.unfed || 0) + unfed; if (hungry) bk.hungryDays = (bk.hungryDays || 0) + hungry; if (w.phase === 'battle') { bk.battleEaten = (bk.battleEaten || 0) + eaten; bk.battleUnfed = (bk.battleUnfed || 0) + unfed; bk.battleDays = (bk.battleDays || 0) + 1; bk.battleBodyDays = (bk.battleBodyDays || 0) + bearers.length; if (hungry) bk.battleHungry = (bk.battleHungry || 0) + hungry; }   // ★[T886] 못 먹은 몫 · 교전 날 먹음(관측 셈)
     if (w._fgKeys) bk.fgEat = +((bk.fgEat || 0) + _warFgUnits(w, eatU)).toFixed(6); if (bk.days.length < 64) bk.days.push({ day, bearers: bearers.length, eaten: +eaten.toFixed(4), left: +left.toFixed(4) }); }
   // 사기 항 — 오늘 몫이 짐에 있나(짐꾼 병력 기준 · 0~1). 교전 몸이 있으면 그 판의 편 값에 바로 적는다.
-  const needNow = (_m906 ? _t906Alive : bearers.length) * need;
+  const needNow = bearers.length * need;
   let ration = _armyMorale().rationOf(left, needNow);   // ★[T1122] 같은 식 한 곳
-  if (_m906 === 'mrl') { const tb = w._starve; let s = 0, n = 0; for (const p of bearers) { const e = tb && tb.get(p.pid); if (e) { s += _t906Sat(e); n++; } } ration = n ? s / n : ration; }   // ★[T906] ㄴ — 허기 무너짐 평균이 군량 충족도
   w._ration = ration;
   if (body && body.fight && body.fight.ctx && body.fight.ctx.sides && body.fight.ctx.sides.A) body.fight.ctx.sides.A.ration = ration;
   if (_on1076) {   // ★[T1076] 사기 평형 하루 — 평형 = min(짐 비율, 1 − 빚 깊이 ÷ 14) · 교전이 서 있으면 그 편 칸에 바로
@@ -7709,7 +7863,7 @@ function _warRationCollect(w) {
   return Object.keys(items).length ? items : null;
 }
 // ════════════════════════════════════════════════════════════════
-// ★★[T811 2026-10-19 · 2층 — 몸이 무기를 든다 · T764 회부 2 · T781 · T790 §3] 손잡이 `T811_ARMS_BODY`('1' 만 켬 · 끔 = main 바이트).
+// ★★[T811 2026-10-19 · 2층 — 몸이 무기를 든다 · T764 회부 2 · T781 · T790 §3] 손잡이 `T811_ARMS_BODY`(T1183 켬 기본 · 되돌림 `=0`).
 //   T403 무기 반출(`T403_ARMS_LEDGER=1`)이면 원정 짐(`w._arms.weapon`)에 무기가 있지만 몸 손은 비었다. 켬이면 그 짐을 **병사 몸 짐 칸**
 //   (T423 그 칸 = `inventory` · 곳간 통칭 `weapon` 한 칸 — 품목은 재민 칸 · 새 몸 필드 0)에 나눠 싣는다.
 //   ★정본은 장부다(ⓐ 장부 도착 · PM 10-18 T790 카드): 곳간에 서는 수 · 결판 흐름(`warWeaponFlow`) · 거울(`_warArmsOut`)은 **한 글자도 안 바뀐다**.
@@ -7721,7 +7875,8 @@ function _warRationCollect(w) {
 //   ③ 귀환 — war-core 장부 도착(`daily` 귀환 갈래 · 무기 반납 앞)이 `armsCollect` 를 부른다 → 몸 짐을 내리고(합을 돌려준다) · 곳간엔 장부가 선다.
 //     몸이 장부보다 먼저 끝나면(`_warCleanupBody` · 몸 없음 · 고아) 몸 짐만 내리고 장부가 혼자 간다(`_armsOnBodies` 0).
 //   셈 — `state._warStat.t811` { load 실은 원정 · sync 맞춘 번 · fall 결판 자리에 떨어진 양 · pickA · pickB 이긴 쪽이 주운 양 · pickKg 주운 무게 · ground 땅에 남은 양 · groundItems 그중 낱개 땅 꾸러미 · back 귀환에 거둔 양 · gap 맞춘 뒤 |몸 합 − 장부| 최대 }.
-const T811_ARMS_BODY = process.env.T811_ARMS_BODY === '1';
+// [T1183] 켬 기본 · 되돌림 `T811_ARMS_BODY=0`.
+const T811_ARMS_BODY = process.env.T811_ARMS_BODY !== '0';
 const T811_KEY = 'weapon';
 function _t811Stat() { const S = state._warStat || (state._warStat = {}); return S.t811 || (S.t811 = { load: 0, sync: 0, fall: 0, pickA: 0, pickB: 0, pickKg: 0, ground: 0, groundItems: 0, back: 0, gap: 0 }); }
 function _t811Inv(p) { return (p && p.inventory && p.inventory[T811_KEY]) || 0; }
@@ -7862,7 +8017,8 @@ function _warBagDrop(w, p) {
   return fe;
 }
 // ════════════════════════════════════════════════════════════════
-// ★★[T466 2026-09-27 · 군량 = 행위 ⓒ · PM #68 · 재민 비전 "물리 노획 → 운반 → 귀가 저장"] **약탈은 몸이 옮긴다** — 손잡이 `T466_LOOT_ACT`(끔).
+// ★★[T466 2026-09-27 · 군량 = 행위 ⓒ · PM #68 · 재민 비전 "물리 노획 → 운반 → 귀가 저장"] **약탈은 몸이 옮긴다** — 손잡이 `T466_LOOT_ACT`.
+//   ★★[T1168 2026-11-05 · 카드 감 K28 · 추상 없애기 캐논] **켬 기본** — `!== '0'` · 되돌림 `T466_LOOT_ACT=0`(= T1168 전 바이트 · war-core 같은 글자).
 //   ① 노획: 전투가 끝난 그 자리(`_warEndFight` · 있는 결판 사건)에서 이긴 쪽 산 몸이 ⓐ 곳간 몫(war-core 정산이 뗀 **그 수 그대로** ·
 //     `_warLootMove` → `lootCarry` 가 여기 `w._lootPend` 에 맡긴다) ⓑ 전장 더미(`_warBagDrop` 이 쌓은 전사·포로의 짐)를 제 짐에 싣는다.
 //     상한 = `carry.js CAP_KG`(25kg · 있는 짐 문법 — T441 과 같은 몸 기준) · 무게 `weights.js`. 곳간 몫 먼저, 더미 나중(각각 섭식 정본이 뗀 순서).
@@ -7871,7 +8027,7 @@ function _warBagDrop(w, p) {
 //   ③ 운반·귀가: 공격 쪽은 **그 짐 그대로** 귀환 행군(T423 몸 · 하루 경계에 상하는 것부터 먹는다 · T458) → 집에 닿으면 T423 내려놓기
 //     (`rationLayDown` = `_warFoodGive`). 방어 쪽은 제 마을 안이라 주운 것을 그 자리에서 곳간에(`lootGive`).
 //   ★새 수 0 · 정산 수 무변(옮김만 몸) · 끔이면 이 절은 한 줄도 안 돈다(더미 0 · 훅 안 불림 = T458 비트 동일).
-function _lootActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T466_LOOT_ACT === '1'; }
+function _lootActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T466_LOOT_ACT !== '0'; }
 function _warLootAccept(w, items, kind, lots) {
   if (!_lootActOn() || !w || !items || !w._packOnBodies) return false;
   const body = state.warBodies && state.warBodies.get(w.id);
@@ -7968,7 +8124,7 @@ function _t476DenVil(g) {
 }
 function _t476DenRefresh(den) {   // 갱 → 어댑터(T476: n 명 전사 · 한 사람 한 무기 · 비축 = 곳간 food)
   const g = den._den.gang, e = den.econ, n = Math.max(0, g.n | 0);
-  //   ★★[T502 2026-09-28 · T476 발견 "3명 갱에도 31%"] 팔 `T502_ODDS_REAL`(끔) — 갱을 **세계가 가진 것만으로** 비춘다:
+  //   ★★[T502 2026-09-28 · T476 발견 "3명 갱에도 31%"] 팔 `T502_ODDS_REAL`(T1183 켬 기본 · 되돌림 =0) — 갱을 **세계가 가진 것만으로** 비춘다:
   //     몸 = `g.n` 그대로 · 직업 = bandits 몸의 그 이름(`'bandit'` — 전쟁 표에 없는 직업 = 민병) · 무기 = 갱이 가진 무기 **0**
   //     (bandits.js 는 무기를 들지 않는다 — 장물은 전부 식량으로 환산된다 `BDT_FENCE_*`) · 비축 = `g.food`. 새 수 0.
   //   끔이면 T476 그대로(전원 `warrior` · 무기 n) — 비트 동일.
@@ -7994,7 +8150,7 @@ function _t476GangLive(g) {   // bandits 가 준비되지 않은 세계(하네�
   const x = g.camp.cx * SZ + SZ / 2, y = g.camp.cy * SZ + SZ / 2;
   return camps.some(c => c.n > 0 && Math.abs(c.x - x) < 1 && Math.abs(c.y - y) < 1);
 }
-function _t502On() { return typeof process !== 'undefined' && !!process.env && process.env.T502_ODDS_REAL === '1'; }
+function _t502On() { return !(typeof process !== 'undefined' && process.env && process.env.T502_ODDS_REAL === '0'); } // [T1183] 켬 기본
 function _t476DenSync(w) {   // 어댑터 → 갱(전투·노획 뒤)
   const den = w && w.def; if (!den || !den._den) return;
   const g = den._den.gang, S2 = den.econ.storage;
@@ -8037,7 +8193,12 @@ function _t476Decide(day) {
     const den = _t476DenVil(gd.g);
     const plan = WC._warNpcMobPlan(vil, den, 'feud', gd.dist, day);
     //   ★[T502] 팔 켬이면 옛 비춤(T476)의 승산도 같은 줄에 적는다(같은 마을·같은 날·같은 갱 — 대조만 · 결단은 팔이 한다)
-    let oldP = null; if (_t502On()) { try { delete process.env.T502_ODDS_REAL; oldP = WC._warNpcMobPlan(vil, _t476DenVil(gd.g), 'feud', gd.dist, day); } finally { process.env.T502_ODDS_REAL = '1'; } }
+    let oldP = null;
+    if (_t502On()) {
+      const prev = process.env.T502_ODDS_REAL;
+      try { process.env.T502_ODDS_REAL = '0'; oldP = WC._warNpcMobPlan(vil, _t476DenVil(gd.g), 'feud', gd.dist, day); }
+      finally { if (prev === undefined) delete process.env.T502_ODDS_REAL; else process.env.T502_ODDS_REAL = prev; }
+    }
     const _oldTxt = oldP ? ' · T476 비춤 승산 ' + (oldP.pWin != null ? (oldP.pWin * 100).toFixed(0) + '%' : '-') + '/병력 ' + (oldP.forceCount != null ? oldP.forceCount : '-') : '';
     if (!plan || !plan.viable) { st.plan++; _say('소굴#' + gd.g.id + '(' + gd.g.n + '명 · ' + gd.dist.toFixed(0) + '셀) 동원 안 됨(' + ((plan && plan.capReason) || '-') + (plan && plan.pWin != null ? ' · 승산 ' + (plan.pWin * 100).toFixed(0) + '%' : '') + (plan && plan.forceCount != null ? ' · 병력 ' + plan.forceCount : '') + _oldTxt + ')'); continue; }
     const cost = plan.forceCount * (plan.marchDays * 2 + K.WAR_SIEGE_PACK) * K.WAR_RATION;
@@ -8103,6 +8264,16 @@ function warThreats() {
 }
 
 // ★[T284] 그날 war-core 결단이 전쟁을 끝냈는가(항복·철수) — daily 직후 한 번. 정산은 행위 한 번(f.settled 게이트).
+// [T1183] 교전 뒤 항복도 이미 쓰러진 몸의 주민 결속을 정산한다.
+// 전투 결과·노획을 다시 판정하지 않고, 항복 정본이 이 pid 명부만 읽는다.
+function _t1183SurrenderDeaths(w) {
+  if (!T1041_WAR_BODY || !w || !state.warBodies) return null;
+  const b = state.warBodies.get(w.id), f = b && b.w === w && b.fight;
+  if (!f) return null;
+  const out = { A: [], B: [] };
+  for (const u of f.ctx.units) if (u.hp <= 0 && u.agent != null && out[u.side]) out[u.side].push(u.agent);
+  return out;
+}
 //   항복은 war-core 가 이미 정산했다(_opDoSurrender) → 기록만. 철수는 교전이 있었으면 그 교전을 정산한다(수비 승).
 //   항복/철수 구별 = 그날 war-core 통계 surrender 증분(내보낸 stats() · 읽기만) — 같은 날 둘이 겹치면 곳간이 더 빈 쪽이 항복.
 function _warAfterDaily(surrBefore) {
@@ -8131,12 +8302,13 @@ function _warAfterDaily(surrBefore) {
 // ── ★★[T681] 장부 — 손잡이 켬일 때만 부른다 ──
 // 전쟁 몸 하루 몫(걸음 수) = 하루 길이 × 존 틱 Hz(교전 스텝 dt = 1/틱 Hz 그 값 · 새 수 0). 정본 시계 24분이면 43,200 = 그날 틱 수와 같다.
 function _t681Quota() { const WL = state.warLive; return Math.max(1, Math.round((state.dayMs || 0) * ((WL && WL.TICK_HZ) || 30) / 1000)); }
-// ★★[T941 2026-10-26 · **판 자 시험 전용** 손잡이 `T941_BATTLE_DAY` 기본 끔 · 끔 = main 바이트(이 줄들이 안 닿는다) — 제품은 이미 운영 시계라 켤 일이 없다]
+// ★★[T941 2026-10-26 · 판 자 교전 몫 손잡이 `T941_BATTLE_DAY` T1183 켬 기본 · 되돌림 =0 — 제품 운영 시계에서는 같은 하루 몫]
 //   판 자(하루 250ms)는 전쟁 몸 하루 몫이 `_t681Quota()` = 8 걸음(몸 0.27초)이라 교전 하루가 운영 하루(43,200 걸음 · 몸 1,440초)의 1/5,760 이다(T924 회부 3).
 //   켜면 **교전 국면(`w.phase === 'battle'`)인 몸만** 그날 몫을 정본 운영 하루(`zone-config WORLD.dayLengthMs` × 틱 Hz — T627 `_tripDayMs` 와 같은 자리 · 새 수 0)로 센다.
 //   그날 이미 쓴 몫은 하루 비율로 옮긴다(판 몫 남은 비 × 운영 몫) — 교전에 든 날은 그날 남은 비만큼 · 다음 날부터 하루 전부. 국면이 교전을 벗어나면 되돌려 옮긴다.
 //   틱이 못 쓴 몫은 하루 마감 첫 자리(`_t681Flush` — 종전 그 고리)가 채운다. 행군 · 귀환 몫은 그대로(장부가 옮긴다 — T681 · T832).
-const T941_BATTLE_DAY = process.env.T941_BATTLE_DAY === '1';
+// [T1183] 켬 기본 · 되돌림 `T941_BATTLE_DAY=0`.
+const T941_BATTLE_DAY = process.env.T941_BATTLE_DAY !== '0';
 function _t941BattleQuota() { const WL = state.warLive; const W = require('./zone-config').WORLD; return Math.max(1, Math.round(((W && W.dayLengthMs) || state.dayMs || 0) * ((WL && WL.TICK_HZ) || 30) / 1000)); }
 function _t941Q(body) {   // 켬일 때만 부른다 — 그날 몫(교전이면 운영 하루 몫으로 옮긴다)
   const d = state.world.day | 0;
@@ -8279,6 +8451,7 @@ function _warTickOne(w, body, now, dtMs, C) {
     _warStepFormations(body);
     if (body.fight && (body.fight.ctx.arrows.length)) WL.stepFight(body.fight);   // 대치 직후 날아가던 화살만 마저
     if (body.defGroup && body.defGroup._scram) _warEvacVillage(w.def, now);
+    _warOverwatch(body);
     if (body.fight && body.fight.engagedOnce && now - body._bcAt >= WAR_BC_MS) _warBroadcastBattle(body, now, 'standoff');
   } else {   // 'battle' — 연속 교전
     const f = body.fight; if (!f) return 0;
@@ -8355,22 +8528,42 @@ function _warSideCtl(f, side) { for (const u of f.ctx.units) if (u.side === side
 //   "이전 자리도 막힘" 이면 제자리라 그 칸에서 **영원히 못 나온다**(T295 후속 주석의 그 판 · 실서버 T530 W1 76셀 `_blk` 1 · 재생 D6~).
 //   나선·술어는 `_warSnapToSlots` 와 같은 것(`_warStandNear`) · 못 찾으면 그대로.
 function _warReleaseAdv(f, A, g) {
+  if (T790_NO_SNAP && g && !(g._t790Walk > 0)) return; // 걸음 정본 미주입은 순간 배치 근거가 아니다.
   if (T790_NO_SNAP && g && g.units && g._t790Walk > 0 && _t804WalkOut(g)) return;   // ★[T804 ②] 켬 — 막힌 칸 안의 몸은 가장 가까운 설 칸까지 걸어 나온 뒤에 푼다(한 칸 옮기기 0 · 그동안 그 쪽은 대형이 쥔다)
-  if (g && g.units) for (const u of g.units) { if (u.dead || !_warBlockedCell(u.x, u.y)) continue; const c = _warStandNear(u.x, u.y); if (c) { u.x = c.cx; u.y = c.cy; } }
+  if (!T790_NO_SNAP && g && g.units) for (const u of g.units) { if (u.dead || !_warBlockedCell(u.x, u.y)) continue; const c = _warStandNear(u.x, u.y); if (c) { u.x = c.cx; u.y = c.cy; } }
   A.released = true; state.warLive.setSideCtl(f, A.side, false);
+}
+// [T1183] 원정 시작은 실제 지휘 몸과 병사가 슬롯에 모인 뒤다.
+function _warGroupReady(g) {
+  if (!g || !g.units) return false;
+  return g.units.every(u => { if (u.dead || (u.bu && u.bu.hp <= 0)) return true; const t = _t790Place(g, u); return Math.hypot(t[0]-u.x, t[1]-u.y) <= (u.cmd ? state.warLive.MU.FOLLOW_SNAP : state.warLive.MU.FORM_R); });
 }
 function _warAdvanceMarch(body) {
   const f = body.fight, A = f && f.adv; if (!A || A.released) return;
   const WL = state.warLive, MPC = WL.M_PER_CELL;
   const g = A.side === 'A' ? body.atkGroup : body.defGroup;
   if (!g || !g.units.length) { _warReleaseAdv(f, A, g); return; }
+  if (T790_NO_SNAP && !A.formed) {
+    if (!_warGroupReady(g)) { WL._muStepFollow(g, _warWalkCap(g)); f.gapT = f.t; return; }
+    A.formed = true;
+  }
   const other = A.side === 'A' ? 'B' : 'A';
   const gc = { cx: g.cmd.cx, cy: g.cmd.cy };   // 대형 원점(흩어진 병사의 무게중심보다 단단하다)
   const og = other === 'A' ? body.atkGroup : body.defGroup;
-  const T = (og && og.units.length) ? { x: og.cmd.cx * MPC, y: og.cmd.cy * MPC } : f.objective;
+  const aim = og && og.units.length ? (T790_NO_SNAP ? _warGroupCentroid(og) : og.cmd) : null;
+  const T = aim ? { x: aim.cx * MPC, y: aim.cy * MPC } : f.objective;
   const gm = { x: gc.cx * MPC, y: gc.cy * MPC };
   const dist = Math.hypot(T.x - gm.x, T.y - gm.y);
   if (dist <= WL.WAR_ENGAGE_R * MPC && _warClearLine(gm.x, gm.y, T.x, T.y)) { _warReleaseAdv(f, A, g); return; }
+  if (T790_NO_SNAP) {
+    // 거친 행군선의 다음 미세 점이 벽이면 투영점 왕복에 갇힌다. 실제 적 몸까지 고운 걸음 경로로 간다.
+    _warWalkGroupTo(g, { cx: T.x / MPC, cy: T.y / MPC }, _warWalkCap(g));
+    const dx = g.cmd.cx - gc.cx, dy = g.cmd.cy - gc.cy;
+    const mem = g._t804o, searching = mem && (mem._t821s || (mem._t804r && mem._t804r._t821s));
+    if (Math.hypot(dx, dy) > 1e-9) { g.heading = Math.atan2(dy, dx); f.gapT = f.t; }
+    else if (searching) f.gapT = f.t; // 실제 경로 탐색이 진행 중인 동안 대치로 끊지 않는다.
+    return;
+  }
   const poly = _warRoutePoly(f); if (!poly) { _warReleaseAdv(f, A, g); return; }
   const C = poly.cum, L = C[C.length - 1];
   if (A.s == null) A.s = _polyS(poly, { x: g.cmd.cx * MPC, y: g.cmd.cy * MPC }, A, '_ks');
@@ -8385,9 +8578,8 @@ function _warAdvanceMarch(body) {
   if (Math.abs(ns - A.s) > 1e-9) f.gapT = f.t;   // 행군로 위 진척 = 전진 진척(굽은 길에서 본대 간격이 잠시 느는 것은 정체가 아니다)
   A.s = ns;
   const P0 = _polyAt(poly, ns), P1 = _polyAt(poly, ns + sgn * 1), px = P0.x, py = P0.y;
-  g.cmd = { cx: px / MPC, cy: py / MPC };
   g.heading = Math.atan2(P1.y - P0.y, P1.x - P0.x);
-  WL._muStepFollow(g, WL.MU.FOLLOW_CAP);
+  g.cmd = { cx: px / MPC, cy: py / MPC }; WL._muStepFollow(g, WL.MU.FOLLOW_CAP);
 }
 function _warHoldCtlSides(body) {
   const WL = state.warLive, f = body.fight, ag = body.atkGroup, dg = body.defGroup;
@@ -8513,7 +8705,7 @@ function onGameTick(now) {
   if (!state.tickJobs) {
     // Stage 4B: 캐러밴 실체 30Hz 전진 — zone.js idle 존 스킵보다 앞(호출 위치)이라 무인 존에서도 econ과 동행.
     //   도착 임박 가드가 아래 경계 econ 틱보다 먼저 돌아 'econ이 몸을 앞지르는' 순서 역전이 없다.
-    if (T1136_ON && state.ready && state.world && !state._t731) { try { _t1136Clock(now); } catch (e) { console.error(`[${state.zoneId}] 🐂 [T1136] 몸 시계 실패:`, e.message); } }   // ★[T1136] 몸 시계 — 몸 틱 바로 앞 · 지금까지 닿은 바구니 사건(몸이 없어도 econ 은 그 시각에 · 마감 중 · 현지 자정 창 안엔 안 부른다 · 끔 = 이 줄 무동작)
+    if (T1136_ON && !T762_CARAVAN_BODY && state.ready && state.world && !state._t731) { try { _t1136Clock(now); } catch (e) { console.error(`[${state.zoneId}] 🐂 [T1136] 몸 시계 실패:`, e.message); } }   // ★[T1136] 몸 시계 — 몸 틱 바로 앞 · 지금까지 닿은 바구니 사건(몸이 없어도 econ 은 그 시각에 · 마감 중 · 현지 자정 창 안엔 안 부른다 · 끔 = 이 줄 무동작)
     try { tickCaravanBodies(now); } catch (e) { console.error(`[${state.zoneId}] 🐂 캐러밴 실체 틱 실패:`, e.message); }
     // ★[T590] 줄어드는 몸 — 누운 몸의 시간 · 걸어 나가는 몸의 걸음(캐러밴 곁 · 같은 마감 정지)
     try { tickBodyExits(now); } catch (e) { console.error(`[${state.zoneId}] 🪦 줄어드는 몸 틱 실패:`, e.message); }
@@ -8712,7 +8904,7 @@ function _t731Jobs(now, T) {
     if (state.xzone) addH('xzone', () => _xzDayIn());
     if (T681_ON) addH('econ', () => _t681Flush());
     W.P = state.econV2.tickWorldV2Parts(state.world);   // econ 정본 조각 한 벌(`tickWorldV2` 가 부르는 그것 — 조각 손잡이와 무관하게 켬 판은 조각으로만 간다)
-    addH('econ', () => { _econDayFixture(); mute(() => W.P.head()); W.headDone = true; }, 'econ:head');   // ★[T755] 머리 뒤 ~ 꼬리 = 전쟁 몸 쉼(onGameTick)
+    addH('econ', () => { mute(() => W.P.head()); W.headDone = true; }, 'econ:head');   // ★[T755] 머리 뒤 ~ 꼬리 = 전쟁 몸 쉼(onGameTick)
     if (state.deps.dayRoads) addH('roads', () => { try { state.deps.dayRoads(); } catch (e) { console.error(`[${state.zoneId}] 🛤️ [T990] 길 하루 실패:`, e.message); } });   // ★[T990] 켬 — 길의 하루 = 날을 올린 머리 바로 뒤(도적 하루 앞 · `roads.js dayTick` 머리 주석 · 끔 = 존 틱이 정한다)
     if (state.deps.dayBandits) addH('bandit', () => { try { state.deps.dayBandits(); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T986] 도적 하루 실패:`, e.message); } });   // ★[T986] 켬 — 도적 하루 = 날을 올린 머리 바로 뒤(마을 조각 앞 · `bandits.js dayTick` 머리 주석 · 끔 = 존 틱이 부른다)
     addH('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
@@ -8815,7 +9007,7 @@ let _t523Pause = 0;   // 쉼표에서 다른 프레임에 넘겨 준 시간의 �
 
 // ★[T513] econ 조각의 앞뒤 일 — 한 조각(끔)과 여러 조각(켬)이 **같은 함수**를 부른다(사본 0 · 몸통은 종전 econ 조각 그대로 옮겼다).
 function _econDayFixture() {
-  // ★[2파 테스트 훅] WAR_FIXTURE — 운영 무설정. WAR_FIXTURE_DAY(기본 1)≥ 첫 경계에 1회(침묵 창 밖 — 로그 가시·당일 daily가 소비).
+  // ★[2파 테스트 훅] WAR_FIXTURE — 운영 무설정. WAR_FIXTURE_DAY(기본 1)≥ 마감 전쟁 하루 뒤에 1회(첫 행군은 다음 daily).
   if (process.env.WAR_FIXTURE && !state._warFixtured && state.war && state.world.day >= (parseInt(process.env.WAR_FIXTURE_DAY || '', 10) || 1)) {
     state._warFixtured = true;
     try { _applyWarFixture(process.env.WAR_FIXTURE); } catch (e) { console.error(`[${state.zoneId}] ⚔️ [FIXTURE] 실패:`, e.message); }
@@ -8824,14 +9016,33 @@ function _econDayFixture() {
     try { _applyWarFixture(process.env.WAR_FIXTURE, true); } catch (e) { console.error(`[${state.zoneId}] ⚔️ [FIXTURE] 재선포 실패:`, e.message); }
   }
 }
+// ★★[T1168 2026-11-05 · 카드 감 K5 · T771 회부 3] 출격 승산이 몸의 탄을 본다 — war-core 손잡이 `T1168_SORTIE_AMMO`(켬 기본 · `=0` 끔 = 칸이 안 선다).
+//   war-core 날 결단(`daily` → `_opDefenseDaily` 출격) 바로 앞에 — 교전 몸이 서 있는 전쟁마다 방어 편(B)의 살아 있는 몸 수 · 사수(궁수 · 투석병) 수 ·
+//   편 탄(battle-core `ctx.sides.B.arrows` · `stones` — 판이 쏠 때마다 줄이는 그 칸)을 `w._defAmmo` 에 적는다(읽기만 · 판 무변). 교전이 없으면 칸을 지운다(= 종전 승산).
+//   식은 war-core `_opAmmoShare` 한 곳(battle-core 병종 표의 근접 몫 · 한 사람 탄 — 새 수 0).
+function _t1168WriteAmmo() {
+  const WC = state.war; if (!WC || !state.warBodies) return;
+  const on = !!(state.warCore && state.warCore.T1168_AMMO_ON && state.warCore.T1168_AMMO_ON());
+  for (const body of state.warBodies.values()) {
+    const w = body && body.w; if (!w) continue;
+    if (!on) { if (w._defAmmo) delete w._defAmmo; continue; }
+    const f = body.fight, sd = f && f.ctx && f.ctx.sides && f.ctx.sides.B, us = f && f.ctx && f.ctx.units;
+    if (!sd || !us) { if (w._defAmmo) delete w._defAmmo; continue; }
+    let n = 0, archer = 0, slinger = 0;
+    for (const u of us) { if (!u || u.side !== 'B' || u._dead || !(u.hp > 0)) continue; n++; if (u.type === 'archer') archer++; else if (u.type === 'slinger') slinger++; }
+    if (!n) { if (w._defAmmo) delete w._defAmmo; continue; }
+    w._defAmmo = { n, archer, slinger, arrows: Math.max(0, sd.arrows || 0), stones: Math.max(0, sd.stones || 0) };
+  }
+}
 // ⚠console.log 를 침묵시킨 **안에서** 부른다(종전 자리 그대로 — tickWorldV2 직후).
 function _econDayWar() {
   // P1: 전쟁 econ 층 — tickWorldV2 직후 구동(오늘 세운 동원정지/봉쇄/원한제재가 내일 틱에 반영). phase='battle'는 skip(교전 중).
   //   ★[T284] 결단이 전쟁을 끝냈으면(항복·철수) 그 자리에서 실체를 정리·정산한다(_warAfterDaily).
-  if (state.war) { const _sb = (state.war.stats().surrender) || 0; state.war.daily(state.world.day); try { _warAfterDaily(_sb); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 결단 뒤 정리 실패:`, e.message); }
+  if (state.war) { const _sb = (state.war.stats().surrender) || 0; _t1168WriteAmmo(); state.war.daily(state.world.day); try { _warAfterDaily(_sb); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 결단 뒤 정리 실패:`, e.message); }
     if (_t476On()) { try { _t476Decide(state.world.day); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T476] 토벌 결단 실패:`, e.message); } } }   // ★[T476] 토벌 결단(끔이면 한 줄)
 }
 function _econDayAfter() {
+  _econDayFixture();   // T1170: 오늘 전쟁 하루 뒤 선포 — 첫 행군은 내일 잰다(테스트 훅만).
   // ★★[T60 ② 2026-09-03] **NPC 어획이 같은 물을 줄인다** — econ 틱 **직후**, 같은 하루 안에서.
   //   여기가 옳은 자리인 이유: `_fishOutLast` 는 방금 끝난 하루의 실적이고, 아래 `refreshFishSustain`
   //   (주기 갱신)이 그 결손을 상한으로 옮긴다. 조각 순서 캐논(`econ` 단계)은 안 건드린다.
@@ -8860,7 +9071,7 @@ function _econDayAfter() {
 function _econDayParts(C, add) {
   const P = state.econV2.tickWorldV2Parts(state.world);
   const mute = (f) => { const _log = console.log; console.log = () => {}; try { f(); } finally { console.log = _log; } };
-  add('econ', () => { _econDayFixture(); for (const vil of C.vils) _lifeHandsIn(vil); mute(() => P.head()); }, 'econ:head');
+  add('econ', () => { for (const vil of C.vils) _lifeHandsIn(vil); mute(() => P.head()); }, 'econ:head');
   for (const v of state.world.villages.slice()) add('econ', () => mute(() => P.village(v)), 'econ:vil');   // 마을 하나 = 조각 하나(목록은 여는 순간 얼린다)
   if (T698_BOUNDARY_SLICE && typeof P.tradeSteps === 'function') {   // ★[T698] 켬 — 마을 하나씩(같은 발생기를 끝까지 = `P.trade()`)
     let g = null;
@@ -8946,7 +9157,6 @@ function _openDayJobs(now, T) {
   //   ★[T513] 손잡이 켬이면 아래 `_econDayParts` 가 같은 일을 조각 여럿으로 얹는다(끔 = 이 한 조각 그대로).
   if (T513_DAY_SLICE && state.econV2 && typeof state.econV2.tickWorldV2Parts === 'function') _econDayParts(C, add);
   else add('econ', () => {
-    _econDayFixture();
     // ★★[T475 ② 두 시계 한 줄] 생활 하루는 econ 틱 **앞**에서 닫는다 — 걷는 몸이 낮에 딴 손을 이 틱이 오늘치를 장부로 옮기고 비우기 전에 곳간에.
     for (const vil of C.vils) _lifeHandsIn(vil);
     // econ 1일 틱 — tickWorldV2 내부 로그(캐러밴·회복 등)는 침묵시키고 아래 요약 1줄만.
@@ -9243,7 +9453,9 @@ function _drainTickJobs(now) {
   // ★[T1] **한 프레임이 실제로 얼마나 막혔나** — 조각 하나가 아니라 이 값이 RTT 를 정한다.
   { const fd = Date.now() - f0; if (fd > (C.frameMax || 0)) C.frameMax = fd; }
   if (J.length) return;                       // 아직 마감 중 — 다음 프레임에 이어서
-  state.tickJobs = null; state.tickCtx = null;  // ★먼저 푼다 — 안 그러면 방류된 요청이 도로 큐에 걸린다
+  state.tickJobs = null; state.tickCtx = null;
+  if (T762_CARAVAN_BODY) { const at=Date.now(); tickCaravanBodies(at); }
+  // ★먼저 푼다 — 안 그러면 방류된 요청이 도로 큐에 걸린다
   if (_T732_ON) { const G = _t732Gran(); if (G) { try { G.sync(state.world && state.world.villages); } catch (e) { console.error(`[${state.zoneId}] 🧺 [T732] 곳간 장부 맞대기 실패:`, e.message); } G.tickEnd(); } }   // ★[T732] 마감 끝 — 새 칸 감싸기 · 장부 합 = 곳간 값 맞대기(어긋남은 센다)
   if (C.t690) { _t690Closed(C); _drainVillageWaitQ(); return; }   // ★[T690] 위상 조각(생활층만) — 하루 마감 꼬리(`_closeDay` 로그·계측)는 경계 마감만
   if (C.t731mini) { _drainVillageWaitQ(); return; }   // ★[T731] 창 가운데(머리 · 마을) — 하루 마감 꼬리(`_closeDay`)는 창 꼬리에서만
@@ -9314,7 +9526,7 @@ function __p3Bind(mock) {
     _t1078Walkers, _t1078Die, _t1078Out, _t1078Life,   // ★[T1078] 단원 = 몸 문 넷(하네스 `test-bandit-all` 이 운영과 같은 문을 부른다)
     T1080_ROAD_LIFE, _t1080Pick, _t1080Pack, _t1080RoadDay, _t1080Reroute, _t1080Arrive, _t1080Stat, _t1079Len,   // ★[T1080] 하네스(`test-t1080-road-life`)가 운영과 같은 문을 부른다(내보내기만)
     _t681Day, _t681Flush, T681_ON, T703_MARCH,   // ★[T703] T681 켬(기본) 판의 하루 경계 두 자리 — 하네스가 운영 하루 마감과 같은 차례(econ 앞 `_t681Flush` · 캐러밴 앞 `_t681Day`)로 부른다(값 무변 · 내보내기만)
-    _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
+    _warOverwatch, _warGroupReady, _warAdvanceMarch, _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
     T1019_UNTRAP, T1019_ASSAULT_HP, _t1019HpRef, _t1019NoHurt,   // ★[T1019] 하네스(`test-t1019-untrap`)가 운영과 같은 문을 부른다(내보내기만)
     T1044_SCRAM_WALK,   // ★[T1044] 하네스(`test-t1044-scram-walk`)가 손잡이 값을 읽는다(내보내기만 · 걸음은 운영 문 `tickWarBodies` 그대로)
     T1060_SCRAM_HOLD, T1060_ATK_AIM,   // ★[T1060] 하네스(`test-t1060-scram-hold`)가 손잡이 값을 읽는다(내보내기만)
@@ -9322,11 +9534,11 @@ function __p3Bind(mock) {
     banditHost, _t841Sh,   // ★[T841] 도적 몸 신원 문(호스트 `bodySh`) — 하네스(`test-body-seed-other`)가 운영과 같은 호스트를 도적 층에 꽂는다(내보내기만)
     T1094_CARRY_CAP, _t1094Stat,   // ★[T1094 문 6] 하네스(`test-t1094-carry-cap` · `test-t1094-arms-trip`)가 손잡이 값 · 셈을 읽는다(내보내기만)
     T811_ARMS_BODY, _warArmsLoad, _warArmsCollect, _warArmsUnload, _t811Fall, _t857Pick, _t811Sync, _t811Stat,   // ★[T811] 무기 몸 짐 — 하네스(`test-arms-body`)가 운영과 같은 문을 부른다(내보내기만)
-    T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
+    T790_NO_SNAP, _t790Stat, _t790Mark, _t790Place, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
-    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
-    _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
+    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), _t1166Flush, _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
+    _warDraftPids, _warReleasePid, _t1183SurrenderDeaths, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
     _econSameOf, _warEatBySpoil,   // ★[T458] 같은 물건 한 줄 · 상하는 것부터 — 하네스가 **이 함수**로 등가 표를 센다(사본 0)
@@ -9335,7 +9547,8 @@ function __p3Bind(mock) {
     _t476Decide, _t476DenVil,   // ★[T476] 토벌 결단 · 소굴 어댑터 — 하네스가 운영과 같은 결단을 부른다
     _warRationLayDownBody, _warBagDrop, _t476DenRefresh, _t476DenSync,   // ★[T748] 켬 전용 일곱 길 — 하네스(`test-moment-lot` ⑨~)가 **이 함수들**을 그대로 부른다(사본 0)
     _t312Deliver, _t347Deliver, _t544PackPut, _t544PackIn, _t368Hold, _t368Deliver,
-    _warRationEat, _warRationCollect, _warRationLoad, _t906Day, _t906Step, _t906Sat, _t906Mode, _t906Live, _t906Die, _t906Wipe,   // ★[T906] 원정 몸 굶주림 사다리(하네스가 이 함수들을 그대로 부른다)
+    _t1168WriteAmmo,   // ★[T1168 K5] 방어 편 몸의 탄을 전쟁에 적는다(하네스 `test-t1168-sortie-ammo` 가 그대로 부른다)
+    _warRationEat, _warRationCollect, _warRationLoad, _t906Day,   // ★[T906 → T1168 걷음] 남은 몸 굶주림 하루(T1080 길 위 하루가 쓴다 · 하네스가 그대로 부른다)
       // ★[T423] 짐이 먹는다 — 하네스가 **이 함수들**을 war-core 에 건다(운영과 같은 두 훅)   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
   };
 }
@@ -9665,6 +9878,47 @@ function t750CastPre(budgetMs) {
   }
   return filled;
 }
+// ★★[T1144 ② · T1154 2026-11-05 — 세션14 판(`batch/life-event-1104` · `9f36e9ac`)의 둘째 사건을 S15 틀(`T1144_LIFE_EVENT` · `verify`) 위에] **어부 던짐의 종 — 사건 때만 다시 뽑는다.**
+//   세션14 표본(main 낮): `_t340Try` 포함 5.8 % 중 종 뽑기(`freshfish.pick` → `pickFrom` → 존 특산 `chooseSpecies` · `mixAt`)가 1.7 % — 던질 때마다 같은 자리 · 같은 날이면 같은 종을 다시 뽑는다.
+//   종은 (몸 해시 `h` · 칸 · 날 · 물 갈래 · 바다 갈래)의 순수 함수다(주사위 0 · `pickFrom` 해시 · `chooseSpecies` 는 그 칸의 섞임 표 · 종 표 · 존은 모듈 상수) ⇒ 다섯이 같으면 지난 답 그대로.
+//   사건: 칸이 바뀜(드리울 자리 `_fishSpotX/Y`) · 날이 바뀜 · 물 갈래가 바뀜(`vil._t312W` — 하루 마감이 비우고 다시 읽는다 · 논이 생기면 `paddy`) · 바다 갈래가 바뀜(`_t593SeaBank`).
+//   물 · 바다 갈래는 **던질 때마다 종전 자리에서 그대로 다시 읽어** 열쇠로 견준다(바다면 `_t312Water` 를 안 부르고 민물이면 한 번 — 종전 식의 차례 그대로 · `_t312Water` 는 비어 있을 때 그 순간 값을 굳히므로 부르는 때가 값이다).
+//   몸 칸 하나(`_t1144Sp` — zone.js `_t671Shape` 목록 · 켬일 때만 선다). `verify` = 늘 다시 뽑아 지난 답과 견준다(답은 다시 뽑은 것 = 종전).
+//   미끼(`T1144_VERIFY_BAIT=sp` · verify 판만 — 칸 사건을 빠뜨린다): verify 가 물어야 한다(자명 통과 금지 · 하네스 ⑤).
+const _T1144_BAIT = process.env.T1144_LIFE_EVENT === 'verify' ? (process.env.T1144_VERIFY_BAIT || '') : '';
+function _t1144SpGet(vil, npc, key, day, h, sea) {   // 지난 답(같은 다섯) 또는 undefined — undefined 면 부르는 쪽이 종전 줄로 뽑고 `_t1144SpPut`
+  const w = sea ? null : _t312Water(vil);
+  const M = npc._t1144Sp;
+  _t1144Stat.fq++;
+  if (M && (M.k === key || _T1144_BAIT === 'sp') && M.d === day && M.h === h && M.s === sea && M.w === w) {
+    _t1144Stat.fhit++;
+    if (T1144_VERIFY) { _t1144Stat.fvq++; _t1144SpWas = M.sp; _t1144SpChk = true; return undefined; }   // 대조 — 다시 뽑게 두고 `_t1144SpPut` 에서 견준다
+    return M.sp;
+  }
+  if (M) { M.k = key; M.d = day; M.h = h; M.s = sea; M.w = w; M.sp = undefined; } else npc._t1144Sp = { k: key, d: day, h, s: sea, w, sp: undefined };
+  return undefined;
+}
+let _t1144SpWas = null, _t1144SpChk = false;
+function _t1144SpPut(npc, sp) {
+  if (_t1144SpChk) { _t1144SpChk = false; if (_t1144SpWas !== sp) _t1144Stat.fvbad++; _t1144SpWas = null; return; }
+  const M = npc._t1144Sp; if (M) M.sp = sp;
+}
+// ★★[T1144 ③ · T1154] **물린 한 마리의 장부 낱값 — 종마다 한 번.** 물릴 때마다 `econUnitsOf`(열량 표 · 무게 표)를 다시 부른다(세션14 표본 1.1 %).
+//   그 답은 (종 · 그 종 무게 · T1128 손잡이 · 열량 모듈)만의 함수다(표는 모듈 상수 — 판 안에서 안 바뀐다) ⇒ 사건 0 · 처음 한 번 잰 값 그대로. 식은 부르는 자리의 종전 식 그대로다.
+//   `verify` = 늘 다시 재어 지난 값과 견준다(`Object.is` · 답은 다시 잰 것).
+const _t1144U = new Map();
+function _t1144Units(K, sp) {
+  const on = _t1128On(), k = sp.id + '|' + sp.kg + '|' + (on ? 1 : 0);
+  if (_t1144U.K !== K) { _t1144U.clear(); _t1144U.K = K; }
+  let v = _t1144U.get(k);
+  _t1144Stat.uq++;
+  if (v === undefined || T1144_VERIFY) {
+    const v2 = on ? _t1128HandUnits(K, sp.id, sp.kg) : (+K.econUnitsOf('fish', 1, sp.kg) || 0);
+    if (v !== undefined) { _t1144Stat.uvq++; if (!Object.is(v, v2)) _t1144Stat.uvbad++; }
+    v = v2; _t1144U.set(k, v);
+  } else _t1144Stat.uhit++;
+  return v;
+}
 function _t340Try(vil, npc, now, day, h, ws) {
   const F = _fishingMod(); if (!F) return false;
   let c = npc._t340;
@@ -9683,8 +9937,10 @@ function _t340Try(vil, npc, now, day, h, ws) {
     // ★[T593 ④] 바다 칸 물가에 섰으면 바다 표(플레이어와 같은 표 · 해역은 바이옴) — 아니면 종전 민물 줄 그대로(끔이면 `_sea` 는 늘 null).
     const _sea = _t593SeaBank(cx, cy);
     //   ★[T602] 해역 = 그 물가 칸의 해안 구간(`areaAt` — 플레이어와 같은 함수 · 끔이면 T593 그대로 바이옴)
-    const _sp = _sea ? _seaTbl().pick(_seaTbl().areaAt(state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2), _sea, day, h ^ cx ^ Math.imul(cy, 0x85ebca6b))
+    const _m44 = T1144_LIFE_EVENT ? _t1144SpGet(vil, npc, key, day, h, _sea) : undefined;   // ★[T1144 ② · T1154] 켬 = 같은 칸 · 날 · 물 · 바다 갈래면 지난 종(위 머리말) · 끔 = 늘 `undefined`(아래 종전 줄 그대로)
+    const _sp = _m44 !== undefined ? _m44 : _sea ? _seaTbl().pick(_seaTbl().areaAt(state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2), _sea, day, h ^ cx ^ Math.imul(cy, 0x85ebca6b))
       : _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b), _ch, state.zoneId);   // ★[T609] 존(민물 표 켬이면 열도 가물치 뺌)
+    if (T1144_LIFE_EVENT && _m44 === undefined) _t1144SpPut(npc, _sp);   // ★[T1144 ②] 다시 뽑은 답을 몸 칸에(verify 는 견준다)
     if (!_sp) return 'none';   // 그 물·그 철엔 사는 종이 없다(종전 `!_sp` 자리 — 라벨 '드리움')
     const n = (npc._t340N = (npc._t340N || 0) + 1);
     const pl = F.plan(sp, stock01, now, _t340Rng(h ^ Math.imul(n, 0x9e3779b9) ^ Math.imul(day, 0x85ebca6b)));
@@ -10403,7 +10659,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
     totals: { pop: tN, actN: tAct, actPct: tN ? +(tAct / tN * 100).toFixed(1) : 0, vgStuck: _vgStuckN, t562: _t562Stat,
               tkPday: _lifeTasksPerFarmerDay(), taskSec: LIFE_TASK_SEC,   // ★결산 정합 진단: 헤드리스가 쓰는 농부 1인 하루 작물 셀(날 길이 파생)
               dormant: out.filter(v => !v.terr).length, noFarmer: out.filter(v => !(v.jobs && v.jobs.farmer)).length,
-              ...(T707_ON ? { t707: Object.assign({}, _t707Stat) } : {}), ...(T772_ON ? { t772: Object.assign({}, _t772Stat) } : {}) },   // ★[T707] 켬만 — 장 · 명부 · 몸 없는 장 · 정산 누계
+              ...(T707_ON ? { t707: Object.assign({}, _t707Stat) } : {}), ...(T772_ON ? { t772: Object.assign({}, _t772Stat) } : {}), ...(T1144_VERIFY ? { t1144: Object.assign({}, _t1144Stat) } : {}) },   // ★[T1154] verify 판만 — 사건 셋 셈(증인 `t1144-witness`)   // ★[T707] 켬만 — 장 · 명부 · 몸 없는 장 · 정산 누계
     villages: out };
 }
 function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
@@ -10771,9 +11027,11 @@ function lifeFarmDay(vil, day, farmerN, onDid) {
 //     ⓑ 는 그 칸만 −1 로(다음 물음 때 잰다 — 종전과 같은 때 · 같은 칸에서 `_cropSky` 가 선다), ⓐ ⓒ ⓓ ⓔ ⓕ 는 통째로 다시 짓는다.
 //     클레임(`_cropClaim`)은 기억하지 않는다 — 물을 때마다 그대로 읽는다(종전처럼 클레임 칸은 안 잰다).
 //   ★같은 답: 같은 칸 차례(`_farmSet` 삽입 차례) · 같은 거리 식(`x * SZ + SZ / 2 - npc.x` — 가운데 좌표를 같은 식으로 미리 셈) · 같은 동률 규칙(먼저 온 칸).
-const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT === '1' || process.env.T1144_LIFE_EVENT === 'verify';
+//   ★[T1154 2026-11-05 · 회부 T1144-1 · 족보 760 규칙] **켬 기본** — `'0'` 만 끔(종전 글자) · 그 밖(없음 · `'1'` · …) = 켬 · `'verify'` = 켬 + 대조(답은 종전).
+//     같은 손잡이가 사건 셋을 진다: ① 밭 칸 훑기(아래) · ② 어부 던짐 종(`_t1144SpGet`) · ③ 물린 한 마리 낱값(`_t1144Units`) — 둘째 · 셋째는 세션14 판에서 얹었다.
+const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT !== '0';
 const T1144_VERIFY = process.env.T1144_LIFE_EVENT === 'verify';
-const _t1144Stat = { q: 0, build: 0, ask: 0, skip: 0, dirty: 0, reset: 0, vq: 0, vbad: 0 };   // 계측 전용(회계 아님)
+const _t1144Stat = { q: 0, build: 0, ask: 0, skip: 0, dirty: 0, reset: 0, vq: 0, vbad: 0, fq: 0, fhit: 0, fvq: 0, fvbad: 0, uq: 0, uhit: 0, uvq: 0, uvbad: 0 };   // 계측 전용(회계 아님) · f = 어부 던짐 종 · u = 낱값
 const _t1144M = new WeakMap();   // vil → { day, seed, crop, farm, dry, n, K, X, Y, P, ix }
 function _t1144Reset(vil) { if (T1144_LIFE_EVENT && _t1144M.delete(vil)) _t1144Stat.reset++; }   // ⓒ — 칸 전부
 function _t1144Dirty(vil, k) {   // ⓑ — 그 칸만(다음 물음 때 잰다)
@@ -10987,13 +11245,14 @@ function _t325Scan(vil, day) {
 //     낮 초 = `state.dayMs × dayPhaseRatio ÷ 1000` · 왕복 초 = `2 × 거리 ÷ moveSpeed` ·
 //     한 짐에 드는 그루 = `⌊CAP_KG ÷ (그루당 단 × kgOf('wood'))⌋`(최소 1그루 — 한 그루는 지고 온다)
 //   ⇒ 하루 벨 그루 = 왕복 수 × 짐당 그루 수. 숲에 있는 만큼만 벤다(그게 T341 의 유일한 상한이다).
-// ★★[T627 2026-10-04 · **리허설 전용** 손잡이 `T627_TRIP_DAY` 기본 끔 — 제품은 이미 운영 시계라 켤 일이 없다]
+// ★★[T627 2026-10-04 · 손잡이 `T627_TRIP_DAY` T1183 켬 기본 — 제품은 이미 운영 시계라 켤 일이 없다]
 //   생활층 하루 몫(나무꾼·집 크루·채집 왕복 · 농부 하루 셀 · 원판 밖 채집 반경 · 행군 채집 시간)은 **하루의 실초**에서 유도된다.
 //   시험 시계(`VILLAGE_DAY_MS`)로 하루를 줄인 판은 그 몫이 줄어 세계가 달라진다(T581 §4 — 4초 판 집 0 · 120초 판 통나무 0).
 //   ⇒ 켜면 몫을 셀 때만 낮 초를 **정본 운영 하루**(`zone-config WORLD.dayLengthMs`)로 셈한다(새 수 0). 몸의 걸음은 판 시계 그대로라
 //     몸이 실제로 못 걸은 왕복은 **결과로 채운다**(자재·통나무가 곳간에 닿는 장부는 정본 몫 · 몸은 보여 주기) — 그 차이를 `_probe.tripFill` 이 센다.
 //   끄면 `state.dayMs` 그대로(종전 글자 · main 바이트).
-const T627_TRIP_DAY = process.env.T627_TRIP_DAY === '1';
+// [T1183] 켬 기본 · 되돌림 `T627_TRIP_DAY=0`.
+const T627_TRIP_DAY = process.env.T627_TRIP_DAY !== '0';
 function _tripDayMs() {   // 하루 몫을 셀 때의 하루 길이(ms) — 끔 = 판 시계 · 켬 = 정본 운영 하루
   if (!T627_TRIP_DAY) return state.dayMs || 0;
   const W = (T1140_LIFE_REQ ? _zc720() : require('./zone-config')).WORLD;   // 정본 게임일(이 파일의 다른 자리처럼 그 자리에서 읽는다 · require 캐시) · ★[T1140 ③-나] 켬 = 같은 모듈 객체(`_zc720` 칸)
@@ -12149,6 +12408,42 @@ function playerVillageDeposit(vil, inventory, want, unitsOf) {
   return { ok: true, moved, taken };
 }
 
+// ★★[T1189 ⑤ · ★재민 11-05 문 24 ⑤ ㄱ] **공사에 재료 가져오기** — 사람이 짐의 자재를 지금 짓는 집터(`vil._site.mat`)에 **직접** 놓는다.
+//   크루가 곳간에서 날라 오는 그 칸(`economy-sim.js houseCrewDay` 가 `s2.mat[k]` 에 더하는 자리)과 같은 칸 — 몸 짐에서 빠지고 집터에 놓인다(실물 · 곳간을 거치지 않는다).
+//   물건 → 재화 · 환산은 곳간 넣기와 **같은 표**(`PV_DEPOSIT_MAP` · `PV_DEPOSIT_RATE` · `unitsOf`) — 사본 0.
+//   받는 양 = 이 집에 **남은 몫**(지금 단계부터 끝 단계까지 공정 표 합 − 이미 놓인 것 — 크루가 짐을 채우는 한도와 같은 식)까지. 남는 몫을 넘으면 낱개를 줄인다(넘친 자재가 집터에서 사라지지 않게).
+//   집 행위가 꺼진 판(`T400_BUILD_ACT` 끔 — 집터 장부가 없다)이면 길이 없다.
+//   반환 `{ ok, moved, taken, done }` — `done` = 이 한 번으로 **지금 단계 자재가 다 찼다**(전엔 모자랐다). 기여는 부르는 쪽이 이것으로 센다(부탁 하나를 다 채운 것과 같은 꼴 · 문 24 ③).
+function playerSiteGive(vil, inventory, want, unitsOf) {
+  const v = vil && vil.econ, site = vil && vil._site, E = _t1085Econ();
+  if (!v || !site) return { ok: false, err: '지금 짓고 있는 집이 없습니다.' };
+  if (!E.T400_BUILD_ACT || !E.hutEconStage || !E.hutStageCount) return { ok: false, err: '이 마을은 집터에 재료를 받지 않습니다.' };
+  if (!site.mat) site.mat = {};
+  const st = site.stage | 0, n = E.hutStageCount(), need = E.hutEconStage(st) || {};
+  const left = {};
+  for (let i = st; i < n; i++) for (const [k, q] of Object.entries(E.hutEconStage(i) || {})) left[k] = (left[k] || 0) + (+q || 0);
+  for (const k of Object.keys(left)) left[k] -= (+site.mat[k] || 0);
+  const met = () => Object.keys(need).every((k) => (+site.mat[k] || 0) >= need[k]);
+  const before = met();
+  const moved = {}, taken = {};
+  for (const [item, q0] of Object.entries(want || {})) {
+    const res = PV_DEPOSIT_MAP[item];
+    if (!res || !(left[res] > 1e-9)) continue;
+    let put = Math.min(Math.floor(Number(q0)), Math.floor(Number(inventory[item]) || 0));
+    if (!(put > 0)) continue;
+    const per = (q) => { const u = (typeof unitsOf === 'function') ? Number(unitsOf(item, q)) : q; return (Number.isFinite(u) && u > 0 ? u : q) * PV_DEPOSIT_RATE; };
+    while (put > 0 && per(put) > left[res] + 1e-9) put--;   // 남은 몫을 넘지 않는 낱개까지
+    if (!(put > 0)) continue;
+    const u = per(put);
+    taken[item] = put; left[res] -= u;
+    moved[res] = +((moved[res] || 0) + u).toFixed(6);
+  }
+  if (!Object.keys(taken).length) return { ok: false, err: '이 집에 쓸 재료가 짐에 없습니다. 집터는 지금 모자란 자재만 받습니다.' };
+  for (const [item, q] of Object.entries(taken)) inventory[item] -= q;
+  for (const [res, q] of Object.entries(moved)) site.mat[res] = +((+site.mat[res] || 0) + q).toFixed(6);
+  return { ok: true, moved, taken, done: !before && met(), stage: st };
+}
+
 
 // ★★[T11 2026-09-02 재민 확정] **곳간에서 꺼내기 — 위 `playerVillageDeposit` 의 역연산.**
 //   누가·얼마나는 `server/membership.js`(소속·한도)가 정한다. 여기는 **실물 이동만** 한다.
@@ -13063,7 +13358,7 @@ function _t707Open(c) {
   if (!vil || !state.dayMs || !state.world) return null;
   const D = state.world.day | 0;
   let rec = vil._mkt;
-  if (!rec || rec.d !== D) { rec = vil._mkt = { d: D, end: econDayToMs(D) + state.dayMs * _lifeVL().MKT_LINGER_DAY_FRAC, at: new Map(), cars: new Set(), body: -1 }; _t707Stat.markets++; }
+  if (!rec || rec.d !== D) { rec = vil._mkt = { d: D, end: (T762_CARAVAN_BODY ? Date.now() : econDayToMs(D)) + state.dayMs * _lifeVL().MKT_LINGER_DAY_FRAC, at: new Map(), cars: new Set(), body: -1 }; _t707Stat.markets++; }
   if (rec.cars.has(c.id)) return rec;
   rec.cars.add(c.id); _t707Stat.joins++;
   _t707Stat.roster += _t707Roster(vil, rec);
@@ -13089,7 +13384,7 @@ function _t707Linger(body, c, p) {   // 상인 머묾 = 장 끝 · 남문 앞 �
   const vil = state.byEcon && state.byEcon.get(c.to), rec = vil && vil._mkt;
   if (rec && rec.cars.has(c.id)) body.lingerUntil = rec.end;
   const rp = (T661_ON && body._t661) ? body._t661.path.pts : _t661ReturnPts(body);
-  if (rp && rp.length) { setBodyPts(body, rp); if (p) { if (T1145_XY_COLS) BC.w(p, rp[0].x, rp[0].y); else { p.x = rp[0].x; p.y = rp[0].y; } } }
+  if (!body._t1182 && rp && rp.length) { setBodyPts(body, rp); if (p) { if (T1145_XY_COLS) BC.w(p, rp[0].x, rp[0].y); else { p.x = rp[0].x; p.y = rp[0].y; } } }
   _t707Stat.linger++;
 }
 function _t707Walk(vil, npc, k) {   // 장 명부의 몸 — 제 자리로 걷고 선다(목표만 · 길은 존 걸음 · 사냥꾼은 두뇌 주도권을 내려놓는다 — `_lifeGoHome` 꼴)
@@ -13826,7 +14121,7 @@ function _mapBedsOf(vil) { return (vil._houseCells ? vil._houseCells.length : 0)
 // ★★★[T449 2026-09-27 · ★PM 결정(위임) · 재민 767b827e "아무도 안 보는 마을도 일과가 작동해야"의 반대쪽] **결산 문을 산다.**
 //   `_lifeDaily` 의 관측자 문은 `767b827e` 부터 **늘 거짓**이었다 — 존이 주입한 정본은 `anyViewerNear(점, r)` 인데 수 셋을
 //   넘겼다(`center.x` = undefined ⇒ 거리 NaN · T432 §2-ⓑ). 그래서 관측 마을도 새벽 일괄이 하루를 했다.
-//   손잡이 `T449_BODY_DAY`(기본 **끔** · 끔 = 종전 비트 동일 = 늘 거짓 — 아래 `_lifeDaily` 의 옛 줄이 그대로 돈다).
+//   손잡이 `T449_BODY_DAY`(T1183 기본 **켬** · 끔 = 종전 비트 동일 = 늘 거짓 — 아래 `_lifeDaily` 의 옛 줄이 그대로 돈다).
 //   켜면 **그 술어를 그 꼴로** 묻는다(점 · 반경 그 수 — 옛 줄의 두 식 그대로 · 새 술어 0 · 새 수 0).
 //   관측 마을의 하루는 **행위 팔이 켜진 직업은 몸이 · 나머지 직업은 일괄이** 한다(직업 × 몸/일괄 표 — 보고/T449 §1):
 //     ⓐ 헤드리스 결산(`_lifeHeadlessDay` — 개간 · 신축 · 작물)은 **이미 스스로 직업을 가른다** — 농부 두 절은 T368 켬이면
@@ -13836,7 +14131,8 @@ function _mapBedsOf(vil) { return (vil._houseCells ? vil._houseCells.length : 0)
 //        (`_walked`)이었다 ⇒ 관측 마을은 **몸 명부**다 — 일괄 명부에서 빠진다(T423 이중 식사 문법: 제 짐을 먹는 병사는
 //        마을 식사 명부에서 빠진다 · 한 몸이 두 번 안 한다). 명부 한 칸(`_ln`·`_fg`)만 바뀌고 절의 글자는 그대로다.
 //     ⓒ 어부(T312)는 일괄 갈래가 없다(T316 이 지웠다) · 곳간(T435)·집(T400)은 관측자 무관 크루 장부 — 무변.
-const T449_BODY_DAY = process.env.T449_BODY_DAY === '1';
+// [T1183] 켬 기본 · 되돌림 `T449_BODY_DAY=0`.
+const T449_BODY_DAY = process.env.T449_BODY_DAY !== '0';
 function _t449Seen(vil) {
   const f = state.deps && state.deps.anyViewerNear;
   return !!(f && f({ x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 }, (vil._maxRPx || 800) + 1600));
@@ -13846,7 +14142,7 @@ function _t449Seen(vil) {
 //   T449 켬 판의 빈손 14일은 나무꾼 몸이 `요양`한 날이었다(T449 §2-ⓒ) — 옛 명부(econ 수)는 몸의 그날을 안 보고 **성한 몸의 걸음 한도**를 벤다.
 //   ⚠몸의 ≈8 은 **하루 1그루**다 — 몸 갈래가 그날 목록(하루 캐시)에서 방금 비운 셀을 다시 고른다(보고/T491 §2-ⓑ · 회부 — 이 손잡이는 몸을 안 만진다).
 //   캐논: 일괄은 몸이 없을 때 몸을 **대신** 하는 것이지 몸보다 많이 내면 안 된다.
-//   손잡이 `T491_BATCH_FROM_BODY`(기본 **끔** · 끔 = 아래 `_lifeDaily` 나무꾼 절의 옛 줄 글자 그대로 — 명부 = econ 나무꾼 수 · 한 짐 = 그루).
+//   손잡이 `T491_BATCH_FROM_BODY`(T1183 기본 **켬** · 끔 = 아래 `_lifeDaily` 나무꾼 절의 옛 줄 글자 그대로 — 명부 = econ 나무꾼 수 · 한 짐 = 그루).
 //   켜면 나무꾼 절의 일괄은 **몸 크루의 하루**를 벤다 — 같은 함수(`_t491BodyDay` · T400 집 크루의 그 문법):
 //     ⓐ 명부 = 그날 일한 **나무꾼 몸**(`_t491Crew` — econ 수가 아니다) · 요양(`_rest`) · 시공 과업(`_lifeTask` 'build') ·
 //        집 크루(T400 `vil._t400Crew`)인 몸은 그날 나무를 못 했다 ⇒ 명부에서 빠진다(몸이 안 나른 날 일괄도 안 나른다 · 새 상태 0 — 몸이 이미 가진 칸).
@@ -13857,7 +14153,8 @@ function _t449Seen(vil) {
 //     ★[T888] 켬 기본(`T888_NPC_WALK`)이면 몸의 배회도 64px/s(배율 1 · 랩 평보) — 짐 수와 몸이 같은 걸음이다(`=0` 이면 종전 38.4).
 //   ⚠채집 절(T347)은 **안 만진다** — T490(세션2 채집 자리)의 자리다(보고 §회부 · 같은 함수를 그 절에 앉히는 것은 뒤 카드).
 //   ⚠관측 마을(T449 켬)은 그대로 몸 명부(일괄 0) — 두 손잡이는 서로 무관하게 켜고 끈다.
-const T491_BATCH_FROM_BODY = process.env.T491_BATCH_FROM_BODY === '1';
+// [T1183] 켬 기본 · 되돌림 `T491_BATCH_FROM_BODY=0`.
+const T491_BATCH_FROM_BODY = process.env.T491_BATCH_FROM_BODY !== '0';
 function _t491Crew(vil) {   // 그날 나무를 한 몸 — 명부 순서 · 주사위 0
   const out = [], pl = state.deps && state.deps.players, t4 = vil._t400Crew || null;
   for (const pid of (vil.npcPids || [])) {
@@ -13875,7 +14172,7 @@ function _t491BodyDay(vil, distPx) {   // 나무꾼 **한 몸**이 하루에 곳
 // ★★★[T561 2026-09-30 · #86 재민 "일괄 = 몸" · T491 판을 닫는 카드] **명부가 몸의 그날을 본다 · 몸이 하루 1그루에서 안 멈춘다.**
 //   T491 이 잰 25배의 주인 둘: ① 명부가 몸의 그날을 안 본다(앓은 날에도 econ 수만큼 성한 걸음 — 앓힌 판 끔 하루 66그루 ↔ 몸 0)
 //   ② 몸이 하루 1그루에서 멈춘다(그날 목록 하루 캐시에서 방금 비운 셀을 해 질 녘까지 다시 고른다 — 몸·날 848 중 657 이 정확히 1그루).
-//   손잡이 `T561_ROSTER_BODY`(기본 **끔** · 끔 = 아래 세 자리의 옛 줄 그대로 — `_lnE`·`_fgE` 는 econ 수 · 몸 갈래는 옛 고르기 · 사다리는 곡식 손만).
+//   손잡이 `T561_ROSTER_BODY`(T1183 기본 **켬** · 끔 = 아래 세 자리의 옛 줄 그대로 — `_lnE`·`_fgE` 는 econ 수 · 몸 갈래는 옛 고르기 · 사다리는 곡식 손만).
 //   ① 일괄 명부 — 나무꾼·채집 두 절(`_lifeDaily` 헤드리스 갈래 · 손은 `_lifeHandsIn`)의 명부 = 그날 **나설 수 있는** 그 직업 몸(`_t561Crew`).
 //      몸이 이미 가진 칸만 읽는다(새 상태 0 · 새 수 0 · 주사위 0): 쓰러짐(`isDown`) · 죽음(hp 0) · 요양(`_rest`) ·
 //      요양 문턱 아래(hp < maxHp × `SCH_REST_IN` — `npcLifeTick` 이 다음 결정에 침상으로 보내는 그 문턱 · 헤드리스 몸은 결정을 안 해서 칸이 늦게 선다) ·
@@ -13896,7 +14193,8 @@ function _t491BodyDay(vil, distPx) {   // 나무꾼 **한 몸**이 하루에 곳
 //      ⓓ 현장을 잡아 **나선** 몸도 그날 걸은 몸이다(`_t561Walked` — ⓑ 와 같은 도장). 닿지 못한 셀(강 건너 · A* 1,500칸 예산 — T399 회부) 앞에서
 //         하루를 선 몸은 0그루인데, 옛 XOR(해 질 녘 손)은 그 날을 "아무도 안 걸었다"로 읽어 일괄이 성한 몸 명부 × 걸음 한도를 벴다
 //         (30일 판 · 켬 · 수요 문 끔 — 보고/T561 §3). 몸이 나선 날은 일괄이 안 돈다.
-const T561_ROSTER_BODY = process.env.T561_ROSTER_BODY === '1';
+// [T1183] 켬 기본 · 되돌림 `T561_ROSTER_BODY=0`.
+const T561_ROSTER_BODY = process.env.T561_ROSTER_BODY !== '0';
 // ★★[T904 2026-10-24 · 손잡이 `T904_WOOD_NEXT`(기본 **끔** · `=1` 켬 · 끔 = 옛 줄 · main 바이트)] **나무꾼 몸이 빈 셀을 떠난다** — T561 ②(몸의 하루)만 따로 켠다.
 //   T888 수요 문 끈 짝 · T491 §2-ⓑ: 몸은 방금 비운 셀을 하루 캐시 목록에서 해 질 녘까지 다시 고른다(하루 1그루 · 빈 셀 위 `벌목` 라벨 그대로).
 //   랩 `resourceTick` 벌목꾼 줄은 일하던 셀이 바닥나면(`< L_WOODMAX × 0.15`) 다른 숲 셀로 옮긴다 — 그 뜻(고갈되면 떠난다)을 몸 갈래에 세운다.
@@ -14674,7 +14972,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
           const _K = _kcal();
           const _ec = _lifeEconNpc(vil, npc);
           const _mul = require('./fish-goods').ON ? 1 : ((_ec && typeof _ec._t172mul === 'number' && _ec._t172mul > 0) ? _ec._t172mul : 1);
-          const _units = _K ? (_t1128On() ? _t1128HandUnits(_K, _sp.id, _sp.kg) : (+_K.econUnitsOf('fish', 1, _sp.kg) || 0)) * _mul : 0;   // ★[T1128 9-b] 켬 = 그 종 한 마리의 표 열량(끔 = 종전 글자)
+          const _units = _K ? (T1144_LIFE_EVENT ? _t1144Units(_K, _sp) : _t1128On() ? _t1128HandUnits(_K, _sp.id, _sp.kg) : (+_K.econUnitsOf('fish', 1, _sp.kg) || 0)) * _mul : 0;   // ★[T1128 9-b] 켬 = 그 종 한 마리의 표 열량(끔 = 종전 글자) · ★[T1144 ③ · T1154] 켬 = 종마다 한 번
           //   ⓓ 셀 예산에서 **통째로** 꺼낸다 — 안 되면 그 셀은 오늘 비었다(이월 0).
           const _got = _t312Catch(vil,day,_cx,_cy,_units,_sp.kg,now,npc);
           if (_got > 0) {
@@ -15142,6 +15440,30 @@ function t1034Peek() {
 }
 function t1025Pending(vid) { return { r: _evRescues.filter((e) => e.vid === vid).length, b: _evBuilds.filter((e) => e.vid === vid).length, s: _evStarved.filter((e) => e.vid === vid).length }; }
 
+// ★★[T1189 ⑥ · ★재민 11-05 문 24 ⑥ ㄱ] **시세 30날 고리** — 마을마다 하루 한 번 그날 시세 한 줄을 econ 행 칸 `_t1189Px` 에 쌓는다.
+//   값 = 거래소가 읽는 그 정본(`Events.pricesFresh` = econ `computeShadowPrices` — 이 줄은 값을 계산하지 않고 받아 적는다 · 사본 0).
+//   품목 = 그날 곳간에 있는 재화 ∪ 사람이 낼 수 있는 재화(`ledger.deliverable.toEcon` — 시세 기준으로 고를 수 있는 것) · 유효 숫자 넷.
+//   길이 = 장부의 30날 창(`ledger.cfg.PRICE_WIN` — 새 수 0). econ 행에 실려 재기동을 넘는다(`serializeEcon` 이 칸째 싣는다 · econ 은 이 칸을 읽지 않는다).
+function _t1189PxRecord() {
+  const V2 = state.econV2, L = state.ledger, W = state.world;
+  if (!V2 || !L || !W || !V2.computeShadowPrices) return;
+  const day = W.day | 0, N = (L.cfg && L.cfg.PRICE_WIN) || require('./events').CFG.PRICE_WIN;
+  const del = (L.deliverable && L.deliverable.toEcon) ? [...L.deliverable.toEcon.keys()] : [];
+  const Ev = require('./events');
+  for (const vil of state.villages || []) {
+    const v = vil && vil.econ;
+    if (!v || !v.storage) continue;
+    let P = null; try { P = Ev.pricesFresh(V2, v); } catch (e) { P = null; }
+    if (!P) continue;
+    const row = {};
+    const put = (r) => { if (!r || r.charCodeAt(0) === 95 || r in row) return; const p = +P[r] || 0; if (p > 0) row[r] = +p.toPrecision(4); };
+    for (const r of Object.keys(v.storage)) if ((+v.storage[r] || 0) > 0) put(r);
+    for (const r of del) put(r);
+    const ring = Array.isArray(v._t1189Px) ? v._t1189Px : (v._t1189Px = []);
+    if (ring.length && (ring[ring.length - 1].d | 0) === day) ring[ring.length - 1].p = row; else ring.push({ d: day, p: row });
+    while (ring.length > N) ring.shift();
+  }
+}
 function _scanEventsDaily() { const g = _scanEventsSteps(); while (!g.next().done); }   // ★[T698] 몸통은 아래 발생기 하나(끔 = 끝까지 한 번에 · 종전 그대로)
 function* _scanEventsSteps() {
   if (!state.ledger) return;
@@ -15157,6 +15479,7 @@ function* _scanEventsSteps() {
     let r = lg.next(); while (!r.done && r.value !== 'tail') { yield; r = lg.next(); }
     evs = r.done ? (r.value || []) : (state.ledger.scanDay(state.world, state.world.day, _x, { drain: lg }) || []);   // 꼬리는 감싼 문(관찰기 훅이 다 선 장부를 본다)
   } else evs = state.ledger.scanDay(state.world, state.world.day, _x);
+  try { _t1189PxRecord(); } catch (e) {}   // ★[T1189 ⑥] 마을마다 하루 한 번 시세 한 줄(장부와 같은 하루 경계)
   // 의뢰 진척 저장은 납품 시점에 한다(여기선 게시/철회만 — onRequest 훅이 이미 했다).
   if (state.world.day % 30 === 0) {
     try { state.db.pruneVillageEvents(state.zoneId, state.world.day - state.ledger.cfg.KEEP_DAYS); } catch (e) {}
@@ -15290,8 +15613,10 @@ function villageChronicle(vid, px, py, year) {
 //   ⚠260px 게이트가 **없다**. 그래도 캐논(원격 시세 조회 금지)을 어기지 않는 이유:
 //     여기서 나가는 건 시세도 재고도 아니라 **촌장이 할 말 한 줄**이고, 그마저도
 //     소문이 물리적으로 그 마을에 닿은 뒤에만 나간다. 정보 비대칭은 도달표가 지킨다.
-// ★[T1103] 마을 화면 "마을 소식" — 게시판 소식과 **같은 술어 · 같은 줄 수**(`_newsRows` · `BOARD_NEWS_N`) · 줄만 하십시오체(`Events.newsLine`). 게이트는 부르는 쪽(`village-view.js build` 가 `villageBoard` 로 먼저 지난다).
-function villageViewNews(vid) { return _newsRows(vid, BOARD_NEWS_N, Events.newsLine); }
+// ★[T1103] 마을 화면 "마을 소식" — 게시판 소식과 **같은 술어 · 같은 줄 수**(`_newsRows` · `BOARD_NEWS_N`). 게이트는 부르는 쪽(`village-view.js build` 가 `villageBoard` 로 먼저 지난다).
+// ★[T1190 ② · ★재민 11-05 문 25 ② ㄴ] 줄 = **촌장 말(하게체) 그대로**(`Events.briefLine` — 게시판 · 촌장 브리핑과 같은 줄). 종전(T1103)의 화면용 하십시오체(`newsLine`)를 걷었다.
+//   `Events.newsLine` 표는 남는다 — 끝낸 일(`projects.done`) · 값 오르내림(`store.priceMoves`) 줄은 소식 칸이 아니라 그대로 쓴다(문 25 는 "마을 소식"만).
+function villageViewNews(vid) { return _newsRows(vid, BOARD_NEWS_N); }
 function villageNews(vid, n) {
   if (!state.ledger) return { err: '아직 장부가 없습니다.' };
   const vil = state.byDbId && state.byDbId.get(vid | 0);
@@ -15464,12 +15789,12 @@ function __e2eDayFreeze(on) {
 //
 // ★결손 → econ 환산은 `sustain.js` 정본 계수 그대로다(`Fishing.stockToEcon`). 사본 금지.
 //   모든 셀이 만땅이면 결손 0 → 값이 **씨딩 때와 정확히 같다** = 헤드리스 기준선 불변.
-// ★★[T1140 ③-나 2026-11-04 · 손잡이 `T1140_LIFE_REQ`(기본 끔 · `'1'` 만 켬 · 끔 = 종전 글자)] **생활 층 안 `require()` 를 한 번만** — T791 회부 3(결정 부름 안 생활 층)의 한 손.
+// ★★[T1140 ③-나 2026-11-04 · 손잡이 `T1140_LIFE_REQ`(★T1154 11-05 켬 기본 — `'0'` 만 끔 = 종전 글자 · 회부 T1144-2)] **생활 층 안 `require()` 를 한 번만** — T791 회부 3(결정 부름 안 생활 층)의 한 손.
 //   T1140 ① 표본: 걸음(`npcStep`) 안 표본의 ≈1 % 가 노드 모듈 적재기(`require` · `Module._load`)였다 — 결정마다 생활 층 함수가 이미 실린 모듈을 다시 `require` 한다
 //   (`_fishingMod` — 어부 물가 · 바다 손 · 어장 · `_tripDayMs` — 하루 몫 · `zone-config`). `require` 는 실린 모듈이면 **같은 객체**를 돌려준다(캐시) ⇒
 //   켬이면 처음 받은 객체를 모듈 칸에 둔다(`_zc720` · `_lifeVL` · `_seaTbl` 과 같은 꼴 · 실패면 종전처럼 `null`). 같은 객체 · 같은 답 · 세계 무접촉.
 //   ★T1140 ③ 판: `require()` 줄 낮 0.028 → 0 · 밤 0.010 → 0 µs/사람(표본 사슬) — 켬 기본 후보(PM).
-const T1140_LIFE_REQ = process.env.T1140_LIFE_REQ === '1';
+const T1140_LIFE_REQ = process.env.T1140_LIFE_REQ !== '0';   // ★[T1154] 켬 기본
 let _t1140Fish;   // undefined = 아직 · null = 실패(종전도 늘 실패 — 같은 파일 · 같은 판)
 function _fishingMod() {
   if (T1140_LIFE_REQ) { if (_t1140Fish === undefined) { try { _t1140Fish = require('./fishing'); } catch (e) { _t1140Fish = null; } } return _t1140Fish; }
@@ -15771,7 +16096,7 @@ function _t728Meta() {
     const o = {};
     for (const k of Object.keys(c)) {
       const x = c[k];
-      if (k === 'from' || k === 'to') o[k] = x ? ((x._xz && _t1030On()) ? Object.assign({}, x) : x.name) : null;   // ★[T1030] 켬 = 이웃 존 스텁은 스텁째(질의 캐시 · JSON 칸만 · 끔 = 종전 이름)
+      if (k === 'from' || k === 'to') o[k] = x ? ((x._xz && (T762_CARAVAN_BODY || _t1030On())) ? Object.assign({}, x) : x.name) : null;   // ★[T1030] 켬 = 이웃 존 스텁은 스텁째(질의 캐시 · JSON 칸만 · 끔 = 종전 이름)
       else if (k === 'trader') o[k] = (x && x.id != null) ? x.id : null;
       else { try { JSON.stringify(x); o[k] = x; } catch (e) { if (!_t728Stat.dropKeys.includes(k)) _t728Stat.dropKeys.push(k); } }
     }
@@ -15799,6 +16124,7 @@ function _t732Boot() {
   //   (econ 이 곳간을 처음 만지는 자리가 그 틱이다 — 저장된 장부와 곳간 값이 그때까지 같다).
   if (!_t732Lots()) { _t732BootWait = true; return null; }
   _t732BootWait = false;
+  _t1166Flush();   // ★[T1166] 되살림이 미룬 몸 줄(시계가 꽂힌 바로 뒤 zone 이 이미 비웠으면 무동작)
   let n = 0, saved = 0;
   for (const v of ((state.world && state.world.villages) || [])) {
     const sv = _t732Saved.get(v) || null;
@@ -15854,7 +16180,7 @@ function _t728Restore() {
         if (T876_CAR_FAST) { const { _t732Cargo, ...rest } = c; o = rest; _cg = _t732Cargo; }   // ★[T876 ②] 칸을 거른 사본(빠른 꼴 · 위 `T876_CAR_FAST` 주석)
         else { o = Object.assign({}, c); _cg = o._t732Cargo; delete o._t732Cargo; }   // ★[T732] 짐 레코드는 캐러밴 칸이 아니다(켬이면 장부로 · 끄면 버린다)
         o.from = byName.get(c.from); o.to = byName.get(c.to);
-        if (_t1030On()) { if (c.from && typeof c.from === 'object' && c.from._xz) o.from = c.from; if (c.to && typeof c.to === 'object' && c.to._xz) o.to = c.to; }   // ★[T1030] 스텁째 실은 것은 그대로(끔 = 이 줄 무동작)
+        if (T762_CARAVAN_BODY || _t1030On()) { if (c.from && typeof c.from === 'object' && c.from._xz) o.from = c.from; if (c.to && typeof c.to === 'object' && c.to._xz) o.to = c.to; }   // ★[T1030] 스텁째 실은 것은 그대로(끔 = 이 줄 무동작)
         if (!o.from || !o.to) { R.lost++; continue; }
         if (_cg) { const G = _t732GranMod(); if (G) G.cargoLoad(o, _cg); }   // (시계 없이도 — 짐 레코드를 그 캐러밴에 다시 싣기만)
         o.trader = findNpc(o.from, c.trader);
@@ -15863,7 +16189,7 @@ function _t728Restore() {
       W.caravans = out; W._caravanIdCounter = M.caravanId | 0; R.caravans = out.length;
       if (T1034_KEEP && M.t1034 && M.t1034.b) {
         //   몸 칸의 벽시계 값(머묾 끝 · 도착 시각 · 귀환 보간 시작)과 하루 px 은 시계(하루 길이 · epoch)가 같을 때만 뜻이 같다 — 다르면 안 쥔다(T775 자리 그대로)
-        if (M.anchor && M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch) { state._t1034Saved = new Map(Object.entries(M.t1034.b)); R.t1034 = state._t1034Saved.size; }
+        if (M.anchor && (T762_CARAVAN_BODY || (M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch))) { state._t1034Saved = new Map(Object.entries(M.t1034.b)); R.t1034 = state._t1034Saved.size; }
         else { _t1034Stat.clock++; R.t1034 = 'clock'; }
       }   // ★[T1034] 몸 칸 — T775 가 몸을 세울 때 덮는다(같은 날 메타만)
       R.meta = true;
@@ -15938,7 +16264,7 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
+module.exports = { t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes, t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), t1166Sizes: _t1166Sizes, lotsClockSet: _t1166Flush,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
   streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   T856_LAND_ELEV, _t856LandElev,   // ★[T856] 마을 고도 — 하네스(`test-land-elev`)가 같은 함수를 부른다(사본 0)
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
@@ -16003,6 +16329,7 @@ module.exports = { t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify
   t1095Stat: () => JSON.parse(JSON.stringify(_t1095Stat)),   // ★[T1095] 채굴 일괄 수요 문 증인(관측 자 `t1095-observe` · 하네스)
   t765Stat: () => JSON.parse(JSON.stringify(_t765Stat)),   // ★[T765] 후보 걷기 몸 증인(관측 자 `t765-obs` · 실제 하루 판)
   villageFamine, playerVillageDepositMap, assignJob, assignRoster,   // ★[T1085] 촌장 일 맡기기
+  playerSiteGive, t1189PxRecord: () => _t1189PxRecord(),   // ★[T1189 ⑤ ⑥] 공사에 재료 가져오기 · 시세 30날 고리(하네스가 하루를 기다리지 않고 한 줄을 세운다)
     // ★[T159] 기근 판정(엔진 판단을 읽는다) · 품목→재화 대응표
   playerVillageWithdrawStockFoodEq, _countsAsFoodEq,   // ★[T20-ⓑ] 한도의 밑변 = econ 식량 등가(보존식 포함)
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
@@ -16193,6 +16520,7 @@ module.exports = { t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify
       get L_WATERGAP() { return L_WATERGAP; },
       get TASKS_PER_FARMER() { return _lifeTasksPerFarmerDay(); },
     },
+    _caravanBodyProbe: { on: T762_CARAVAN_BODY, pack: _t1034Pack, restore: _t1034Apply, ready: _t1182BodyReady, tick: tickCaravanBodies, pts: setBodyPts, walk: _t1182Walk, returnLeg: startReturnLeg, linger: _t707Linger, sweep: _caravanSyncSweep, openMarket: _t707Open, sendXz: _xzSend, afterSendXz: _xzAfterSend },
     _distProbe: {
       compute: (reason, opts) => computeAndInjectDistMatrix(reason, opts),
       gen: (reason, opts) => _distMatrixGen(reason, opts),   // ★[T957] 하네스가 한 양보씩 민다(`test-distmatrix` ⑥)

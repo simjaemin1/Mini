@@ -17,6 +17,10 @@
 //
 // 실행: node scripts/test-wood-act.js
 'use strict';
+process.env.T449_BODY_DAY = '0';
+process.env.T491_BATCH_FROM_BODY = '0';
+// [T1183] 옛 압축 하루 대조를 명시한다.
+process.env.T627_TRIP_DAY = '0';
 // T1180: 기존 끔 대조를 명시한다. 새 기본값 계약은 test-t1180-produce-defaults가 잰다.
 process.env.T312_FISH_ACT='0';
 process.env.T325_WOOD_ACT='0';
@@ -472,7 +476,7 @@ console.log('\n⑪ [T491] 일괄 = 몸의 하루 — 명부는 그날 일한 나
 {
   const VC = codeOf(VSRC);
   const daily = (VC.match(/function _lifeDaily\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
-  ok(/^const T491_BATCH_FROM_BODY = process\.env\.T491_BATCH_FROM_BODY === '1';$/m.test(VSRC)
+  ok(/^const T491_BATCH_FROM_BODY = process\.env\.T491_BATCH_FROM_BODY !== '0';$/m.test(VSRC)
      && (VSRC.match(/process\.env\.T491_BATCH_FROM_BODY/g) || []).length === 1,
     '⑪ ★손잡이 `T491_BATCH_FROM_BODY` 는 **한 자리**에서 읽힌다 · `=== \'1\'` 이라야 켜진다(기본 끔)');
   //   ★같은 함수 — 한 몸의 하루 = T400 집 크루가 쓰는 **그 두 함수**(짐 수 · 한 짐)의 곱 · 몸통에 수 0
@@ -498,7 +502,7 @@ console.log('\n⑪ [T491] 일괄 = 몸의 하루 — 명부는 그날 일한 나
     '⑪ ★채집 절(T347)은 **무접촉**(T490 자리 — 같은 함수를 그 절에 앉히는 것은 뒤 카드)');
   //   ② 실행 — 정본 `_lifeDaily` 를 도는 판
   const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
-  const run = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '0', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T561_ROSTER_BODY: '', T374_DEMAND_STOP: '0' }, env),   // ★[T544 추신 ⓐ] 수요 문 기본 켬 — 이 판은 수요 문 없는 한도식을 잰다(끔 `'0'` 을 박는다)
+  const run = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '0', T449_BODY_DAY: '0', T491_BATCH_FROM_BODY: '0', T561_ROSTER_BODY: '0', T374_DEMAND_STOP: '0' }, env),   // ★[T544 추신 ⓐ] 수요 문 기본 켬 — 이 판은 수요 문 없는 한도식을 잰다(끔 `'0'` 을 박는다)
    `const E=require(${EP}); const V=require(${VP}); const P=V.__labProbe;
     const SZ=32, ccx=400, ccy=400; const players=new Map(), observers=new Map();
     const b=(pid,x)=>Object.assign({pid,isNpc:true,simJob:'lumberjack',inventory:{}},x||{});
@@ -562,7 +566,7 @@ console.log('\n⑫ [T561] 명부가 몸의 그날을 본다 · 몸이 하루 1�
   const daily = (VC.match(/function _lifeDaily\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
   const fnOf = (n) => (VC.match(new RegExp('function ' + n + '\\([\\s\\S]*?\\n\\}')) || [''])[0];
   //   ① 글자 — 손잡이 한 자리 · 몸의 칸 · 같은 문턱 · 끔 = 옛 줄
-  ok((VC.match(/process\.env\.T561_ROSTER_BODY/g) || []).length === 1 && /const T561_ROSTER_BODY = process\.env\.T561_ROSTER_BODY === '1';/.test(VC),
+  ok((VC.match(/process\.env\.T561_ROSTER_BODY/g) || []).length === 1 && /const T561_ROSTER_BODY = process\.env\.T561_ROSTER_BODY !== '0';/.test(VC),
     '⑫ ★손잡이 `T561_ROSTER_BODY` 는 **한 자리**에서 읽힌다 · `=== \'1\'` 이라야 켜진다(기본 끔)');
   const fit = fnOf('_t561Fit'), gate = (VC.match(/\} else if \(npc\.hp != null && npc\.hp > 0 && npc\.hp < \(npc\.maxHp \|\| 100\) \* SCH_REST_IN\) \{/) || [''])[0];
   ok(/if \(!p \|\| p\.isDown\) return false;/.test(fit) && /if \(p\._rest\) return false;/.test(fit)
@@ -593,7 +597,7 @@ console.log('\n⑫ [T561] 명부가 몸의 그날을 본다 · 몸이 하루 1�
     '⑫ ★몸 ⓑ — 사다리 정산에서 **통나무를 든 몸만** 온다 · 끄면(문 `_T561_BODY` 거짓) 첫 줄에서 돌아간다 · 다리는 해 질 녘의 그 다리(`_t325Deliver`) · 그날 걸은 몸으로 센다(몸 XOR 일괄) · ⓒ 곳간 없으면 회관(켬만 · 같은 다리)');
   //   ② 실행 — 일괄(정본 `_lifeDaily`) · ⑪ 의 판 그대로(숲 12셀 × 3그루 · 하루 60,000ms ⇒ 4짐 · 짐당 2그루)
   const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
-  const run = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '0', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T561_ROSTER_BODY: '', T374_DEMAND_STOP: '0' }, env),
+  const run = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '0', T449_BODY_DAY: '0', T491_BATCH_FROM_BODY: '0', T561_ROSTER_BODY: '0', T374_DEMAND_STOP: '0' }, env),
    `const E=require(${EP}); const V=require(${VP}); const P=V.__labProbe;
     const SZ=32, ccx=400, ccy=400; const players=new Map();
     const b=(pid,x)=>Object.assign({pid,isNpc:true,simJob:'lumberjack',hp:100,maxHp:100,inventory:{}},x||{});
@@ -643,7 +647,7 @@ console.log('\n⑫ [T561] 명부가 몸의 그날을 본다 · 몸이 하루 1�
   //   ③ 실행 — 몸(정본 `npcLifeTick` 을 1초씩 · 걸음 = 존 걸음 × 배회 0.6 — 몸이 걷는 그 속도 · 보고/T491 §2-ⓒ)
   //     숲 = 마을 동쪽 한 줄 8셀 × 1그루(한 그루 6단 = 18kg — 둘이면 짐 25kg 을 넘는다) · 곳간 사다리 = 마을 남쪽 · 낮 1,008초(실제 날의 낮)
   const MOVE = +((codeOf(ZSRC).match(/const MOVE_SPEED = (\d+);/) || [])[1]);
-  const body = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '0', T561_ROSTER_BODY: '', T374_DEMAND_STOP: '0' }, env),
+  const body = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '0', T561_ROSTER_BODY: '0', T374_DEMAND_STOP: '0' }, env),
    `const E=require(${EP}); const V=require(${VP}); const P=V.__labProbe;
     const SZ=32, ccx=400, ccy=400, DAY=1440000, D=60, T0=D*DAY; const players=new Map();
     const trees=new Map(); for(let i=0;i<8;i++) trees.set((ccx+6+i)+','+ccy,1); let cut=0;

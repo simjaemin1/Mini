@@ -24,6 +24,9 @@
 #   NIGHT_NO_REPORT=1            보고를 안 낸다(로그만)
 #   NIGHT_NO_RETRY=1             빨강 단독 재실행을 건너뛴다
 #   NIGHT_DRY=1                  오늘 목록만 뽑고 선다(3시간을 걸기 전에 목록을 눈으로 보는 자리)
+#   NIGHT_RESUME=auto|1|0        ★[T1177] 이어 돌기 — 로그의 마지막 판이 `nightly-run 끝` 없이 멈췄으면(컨테이너 재시작 · 11-05 191/322)
+#                                그 판의 목록에서 **판정이 난 것만 빼고** 이어 돈다(같은 로그 · 보고는 한 밤 한 장).
+#                                auto(기본) = 그 판이 오늘 시작했을 때만 · 1 = 날짜 무관 · 0 = 끔(종전). NIGHT_LIST 를 주면 안 잇는다.
 #   TIMEOUT_SEC · DRAIN_SEC      러너의 것 그대로 — 여기서 새로 정하지 않는다(`e2e-thirst` 15~20분은 러너가 안다)
 #
 # ⚠stdin 을 안 읽는다(`nohup` 으로 띄워도 멈추지 않게 · 러너 자식도 `</dev/null`).
@@ -61,7 +64,22 @@ state() { printf '%s\n' "$*" > "$STATE"; }
 say()  { printf '%(%Y-%m-%dT%H:%M:%S%z)T %s\n' -1 "$*" >> "$LOG"; }
 
 state "starting"
-say "===== nightly-run 시작 · TZ=$TZ · base=$(git rev-parse --short HEAD 2>/dev/null || echo '?') ====="
+# ── ★[T1177] 이어 돌기 판단 — 로그의 마지막 판(`nightly-run 시작` 줄부터)이 `nightly-run 끝` 없이 멈췄나.
+#   멈췄으면 그 판의 `[오늘]` · `[목록]` 두 줄과 판정 난 하네스(보고기 `--done` · 파서 사본 0)로 남은 것만 돈다.
+#   ⚠새 `시작` 줄을 안 찍는다(`이어서` 줄) — 보고기는 마지막 `시작` 줄부터 읽으므로 한 밤이 한 장으로 남는다.
+RESUME=""
+if [ "${NIGHT_RESUME:-auto}" != "0" ] && [ -z "${NIGHT_LIST:-}" ] && [ -s "$LOG" ]; then
+  _ls="$(grep -nF '===== nightly-run 시작' "$LOG" | tail -1 | cut -d: -f1)"
+  if [ -n "$_ls" ] && ! tail -n "+$_ls" "$LOG" | grep -qF '===== nightly-run 끝'; then
+    _sday="$(sed -n "${_ls}p" "$LOG" | cut -c1-10)"
+    if [ "${NIGHT_RESUME:-auto}" = "1" ] || [ "$_sday" = "$(printf '%(%Y-%m-%d)T' -1)" ]; then RESUME="$_ls"; fi
+  fi
+fi
+if [ -n "$RESUME" ]; then
+  say "===== nightly-run 이어서 · 줄 $RESUME 의 판 · TZ=$TZ · base=$(git rev-parse --short HEAD 2>/dev/null || echo '?') ====="
+else
+  say "===== nightly-run 시작 · TZ=$TZ · base=$(git rev-parse --short HEAD 2>/dev/null || echo '?') ====="
+fi
 # ★[T760 · T751 회부 6] 이 상자의 판 — 정규식 유니코드 속성(\p{…})은 Node · ICU · Unicode 판을 따른다.
 #   야간 상자만 10-02 밤에 하네스 둘이 같이 돌았다(글자 무변) — 다음엔 이 한 줄로 가른다. 보고가 머리로 옮긴다.
 say "  [판] $(node -p "'node ' + process.version + ' · icu ' + process.versions.icu + ' · unicode ' + process.versions.unicode + ' · v8 ' + process.versions.v8" 2>/dev/null || echo 'node 없음')"
@@ -89,7 +107,17 @@ else say "  [의존] [상황] python3 · numpy · PIL 중 없는 것이 있다 �
 #   `auto` 를 두 번 부르지 않는다: 한 번 물어 **글자**를 받고, 돌릴 땐 그 글자로 부른다(날짜가
 #   도중에 넘어가도 목록과 실행이 안 갈린다).
 LIST=""; WHICH=""
-if [ -n "${NIGHT_LIST:-}" ]; then
+if [ -n "$RESUME" ]; then
+  _run="$(tail -n "+$RESUME" "$LOG")"
+  WHICH="$(printf '%s\n' "$_run" | sed -n 's/.*\[오늘\] 묶음 \([^ ]*\) · [0-9]*종$/\1/p' | tail -1)"
+  _all="$(printf '%s\n' "$_run" | sed -n 's/.*\[목록\] //p' | tail -1)"
+  [ -n "$_all" ] || { say "  ✗ ★이어 돌 판의 [목록] 줄이 없다 — 이어 돌 수 없다(NIGHT_RESUME=0 으로 새로 띄워라)."; state "failed · 이어 돌기 목록 없음"; exit 4; }
+  _done="$(node scripts/nightly-report.js --done "$LOG" 2>/dev/null)"
+  LIST="$(printf '%s\n' $_all | grep -vxF -f <(printf '%s\n' $_done '') )"
+  say "  [이어서] 묶음 $WHICH · 목록 $(printf '%s\n' $_all | grep -c .)종 중 판정 난 것 $(printf '%s\n' $_done | grep -c .)종 · 남은 것 $(printf '%s\n' "$LIST" | grep -c .)종"
+  CNT="$(printf '%s\n' "$LIST" | grep -c . )"
+  if [ "$CNT" -eq 0 ]; then say "  [이어서] 남은 것 0종 — 재실행 · 보고만 한다"; fi
+elif [ -n "${NIGHT_LIST:-}" ]; then
   LIST="$(printf '%s\n' $NIGHT_LIST)"
   WHICH="LIST"
   say "  [목록 덮어쓰기] NIGHT_LIST = $NIGHT_LIST"
@@ -105,10 +133,12 @@ else
   [ -n "$WHICH" ] || { say "  ✗ ★분할기 출력에서 묶음 글자를 못 읽었다."; state "failed · 묶음 불명"; exit 4; }
   LIST="$(printf '%s\n' "$PROBE" | grep -E '^[A-Za-z0-9_.-]+\.js$')"
 fi
+if [ -z "$RESUME" ]; then
 CNT="$(printf '%s\n' "$LIST" | grep -c . )"
 [ "$CNT" -gt 0 ] || { say "  ✗ ★오늘 목록이 0종이다 — 조용한 빈 목록은 이 저장소에서 제일 위험한 답이다."; state "failed · 목록 0종"; exit 4; }
 say "  [오늘] 묶음 $WHICH · $CNT종"
 say "  [목록] $(printf '%s ' $LIST)"
+fi
 
 if [ -n "${NIGHT_DRY:-}" ]; then
   say "  [예행] NIGHT_DRY=1 — 목록만 뽑고 선다"
@@ -132,7 +162,9 @@ run_stream() {   # $@ = 실행할 명령
 }
 
 state "running 0/$CNT · (기동)"
-if [ -n "${NIGHT_LIST:-}" ]; then
+if [ -n "$RESUME" ]; then
+  [ "$CNT" -eq 0 ] || run_stream bash scripts/run-regress.sh $LIST   # ★[T1177] 남은 것만 · 목록 순서 그대로
+elif [ -n "${NIGHT_LIST:-}" ]; then
   run_stream bash scripts/run-regress.sh $LIST
 else
   run_stream bash scripts/nightly-split.sh "$WHICH"

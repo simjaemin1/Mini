@@ -56,6 +56,7 @@
 //   VILLAGE_LIFE=0 node scripts/t577-server-run.js 400 1020              # 층 끄기 판(생활층 · ENABLE_BANDITS · VILLAGE_CARAVAN_MAX · T513_DAY_SLICE · WAR_MINDAY)
 //   node scripts/t577-server-run.js --table <dir>                        # 판 JSON 만 읽어 표(세계를 안 세운다)
 //   T577_DIR=/tmp/t577/runs  판 JSON · 아이 로그 자리(기본 /tmp/t577-<pid>)
+//   T577_PORT_BASE=41000  독립 계측기끼리 다른 1,000포트 띠를 배정(미설정=39100 · 세계 조건 무변경)
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -99,7 +100,7 @@ function table(outs) {
 
 if (process.argv.includes('--table')) {
   const dir = process.argv[process.argv.indexOf('--table') + 1];
-  const outs = fs.readdirSync(dir).filter((f) => /\.json$/.test(f)).sort().map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
+  const outs = fs.readdirSync(dir).filter((f) => /\.json$/.test(f)).sort().map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))).filter((o) => o && o.eight && Array.isArray(o.rows));
   table(outs);
   process.exit(0);
 }
@@ -130,13 +131,16 @@ const KID_ECON = process.env.T990_ECON_DAY != null ? process.env.T990_ECON_DAY :
 // ★[T577 추신] 판 이름 — 판을 가르는 손잡이(후보 · 층 끄기)만 이름에 싣는다(`T577_TAG` 로 덮을 수 있다)
 const TAG = process.env.T577_TAG || Object.keys(process.env).filter((k) => /^(T577_(?!SEED$|DAYS$|OUT$|DIR$|PAR$|TAG$)|VILLAGE_LIFE$|ENABLE_BANDITS$|VILLAGE_CARAVAN_MAX$|T513_DAY_SLICE$|WAR_MINDAY$|T766_[A-Z_]+$)/.test(k)).sort().map((k) => `${k.replace(/^T577_(CAND_)?/, '').toLowerCase()}${process.env[k]}`).join('-') || 'base';
 
-function runOne(seed, k) {
+//   ★[T1162 K8] 빈 포트는 **운영체제에게 묻는다**(`listen(0)`) — 종전 `39100 + (pid + k·37) % 700` 은 같은 판 둘이 겹치거나 남의 포트를 밟았다.
+const freePort = () => new Promise((res, rej) => { const s = require('net').createServer(); s.unref(); s.on('error', rej); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)); }); });
+async function runOne(seed, k) {
+  const port = await freePort();
   return new Promise((resolve) => {
     const out = path.join(DIR, `${TAG}-${seed}.json`), logf = path.join(DIR, `${TAG}-${seed}.log`);
     const db = path.join(DIR, `${TAG}-${seed}.db`);
     for (const f of [out, db, db + '-wal', db + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
     const env = Object.assign({}, process.env, {
-      ZONE_ID: 'hanbando', PORT: String(39100 + ((process.pid + k * 37) % 700)), DB_PATH: db,
+      ZONE_ID: 'hanbando', PORT: String(port), DB_PATH: db,
       ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
       VILLAGE_DAY_MS: process.env.VILLAGE_DAY_MS || '250',
       T315_MAPBEDS: KID_MAPBEDS,   // ★[T914] 집 행위 켬 판 기본 '1'(지은 침상이 묶는다) · 끔 판 기본 '0'(종전)

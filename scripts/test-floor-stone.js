@@ -45,7 +45,11 @@ if (process.env.T1049_SUB === 'world') {
 
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
-const kid = (env) => JSON.parse(execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { T1049_SUB: 'world' }, env), encoding: 'utf8', maxBuffer: 1 << 24 }).trim().split('\n').pop());
+//   [T1174] 이 세계는 **호스트 없는 순수 시뮬 · T1049 가 쟀던 판**이다. 그 뒤 켬 기본이 된 둘이 판을 바꿔 "끔에선 돌이 나간다"(자명 통과 금지)가 ✗ 였다(교역 문 0 · 끔 켬 같음):
+//     · T474(`T474_CARAVAN_WALK !== '0'` · land1045) — 캐러밴이 몸으로 걸어야 거래하는데 호스트가 없어 아무도 안 걷는다
+//     · T1147(`T1134_HAPPY_TARGET !== '0'` · ★재민 11-04 ㄱ) — 행복 목표가 판의 길을 바꾼다
+//   → 둘 다 `'0'` 으로 묶는다(T1049 때 판 바이트와 같음 · 손잡이 T1049 의 뜻은 그대로 · 제품 무변).
+const kid = (env) => JSON.parse(execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { T1049_SUB: 'world', T474_CARAVAN_WALK: '0', T1134_HAPPY_TARGET: '0' }, env), encoding: 'utf8', maxBuffer: 1 << 24 }).trim().split('\n').pop());
 console.log('\n=== 돌 바닥 마을은 제 돌을 안 판다 (T1049) ===');
 
 console.log('\n① 바닥 수');
