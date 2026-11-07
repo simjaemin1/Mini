@@ -52,8 +52,12 @@ console.log('\n① 술어 · 읽는 자리 · 끔 탐침 · 부름 글자');
   ok(readers.length === 1 && readers[0] === path.join('server', 'specialty.js'), '① 읽는 자리 = server/specialty.js 하나(econ · 마을은 그 값을 받는다 · 번들은 사본)', readers.join(','));
   ok(/const T877_ON = \(\(\) => \{ try \{ return !!require\('\.\.\/server\/specialty'\)\.T877_ON; \}/.test(C), '① econ 은 specialty 의 값을 받는다(같은 손잡이 하나)');
   const probe = (v) => { const e = Object.assign({}, process.env); delete e.T877_DRY_FIX; if (v != null) e.T877_DRY_FIX = v;
-    return execFileSync(process.execPath, ['-e', `const E=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'))}),SP=require(${JSON.stringify(path.join(ROOT, 'server', 'specialty.js'))});console.log(E.T877_ON+'/'+!!SP.RESOURCES.dried_oyster+'/'+E.PRESERVED_FOODS.length+'/'+('oyster' in E.CATCH_FROM.fisher))`], { env: e, encoding: 'utf8' }).trim().split('\n').pop(); };
-  ok(probe(null) === 'true/true/6/true' && probe('0') === 'false/false/4/false' && probe('1') === 'true/true/6/true', '① ★끔 탐침 — env 없음 = 켬(넷 다) · `=0` = 끔(칸 · 보존식 목록 · 잡은 날 표 종전) · `=1` = 켬', `${probe(null)} · ${probe('0')}`);
+    return execFileSync(process.execPath, ['-e', `const E=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'))}),SP=require(${JSON.stringify(path.join(ROOT, 'server', 'specialty.js'))});console.log(E.T877_ON+'/'+!!SP.RESOURCES.dried_oyster+'/'+['dried_oyster','dried_seaweed'].every((k)=>E.PRESERVED_FOODS.includes(k))+'/'+E.PRESERVED_FOODS.length+'/'+('oyster' in E.CATCH_FROM.fisher))`], { env: e, encoding: 'utf8' }).trim().split('\n').pop(); };
+  //   ★[T1216-K3] 보존식 목록 길이 6 · 4 는 옛 수다 — 뒤 카드(T1192 어종별 보존식)가 목록을 늘렸다(49 · 47). 손잡이가 더하는 것은 그대로 **굴 · 미역 말림 둘**이라
+  //     길이 대신 "그 둘이 켬에만 있다 · 켬 − 끔 = 2" 로 못 박는다(뜻 그대로 · 남의 품목이 늘어도 안 흔들린다).
+  const P0 = probe(null).split('/'), P1 = probe('1').split('/'), Pz = probe('0').split('/');
+  ok(P0.slice(0, 3).join('/') === 'true/true/true' && P0[4] === 'true' && P1.join('/') === P0.join('/') && Pz.slice(0, 3).join('/') === 'false/false/false' && Pz[4] === 'false' && (+P0[3]) - (+Pz[3]) === 2,
+    '① ★끔 탐침 — env 없음 = 켬(넷 다) · `=0` = 끔(칸 · 보존식 목록 · 잡은 날 표 종전) · `=1` = 켬 · 목록 차 = 굴 · 미역 말림 둘', `${P0.join('/')} · ${Pz.join('/')}`);
   ok(/if \(T17_PRESERVE\) _preserveSurplus\(v, PRESERVE_FROM, jdef\.base \* skillMul, addProduce, null, T877_ON \? _t860Unit : null\);/.test(C),
     '① 요리사 부름 — 켬 = 잡은 날 말리기와 같은 환산 함수(`_t860Unit` · 사본 0) · 끔 = null(종전 글자)'); }
 

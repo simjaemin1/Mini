@@ -392,6 +392,104 @@ function deficitBy(keyPred, now) {
 const stockToEcon = (stock) => stock * (S.L_FISHR / 4) * S.FISH_ECON_PER_STOCK;
 
 // =============================================================================
+// ②-b ★★[T1217 2026-11-07] **마을 어부의 어장 장부 — 랩의 어장 단위(버킷)**
+// =============================================================================
+//   왜: 위 셀 장부(`fishCells`)는 **플레이어 몇 사람의 자리**를 담는 그릇이다(T60 ② 머리말 그대로) — 51마을 어부의 하루를 부으면 결손이 번져
+//     그릇이 지도 전체가 된다(T60 실측 30날 40만 칸 · ★T1217 실측: 일괄이 셀 장부를 깎으면 판 자 하루가 2.8초 → 40 ~ 55초 · 14날에 결손 8,300 재고 ·
+//     틱마다 셀 1만 4천 개가 나고 진다 · 셀 10만 개 번짐 한 번 400ms — 정본 하루 24분 판에서도 분마다 0.4초 멈춤).
+//   ⇒ 마을 어부(몸 · 일괄)는 **랩의 단위**로 깎는다 — 버킷 = `FISH_BK`(랩 `L_FISHBK` · 24 셀 한 변 · `villages.js` T60 줄과 같은 값) ·
+//     K = 그 버킷의 물셀 수(셀당 `CELL_K` — `sustain.js` fishSustain 의 그 K) · 재생 = 같은 로지스틱(`regen` · r = `L_FISHR` · 버킷 비율에) ·
+//     버킷 사이 번짐 = 셀 번짐률(`DIFF_PER_DAY`) ÷ 버킷 한 변²(같은 확산 계수를 굵은 격자에서 — 새 수 0 · 물이 있는 버킷끼리만).
+//   입질 비율(CPUE) = 셀 원판 비율(위 `stockRatioAt` — 플레이어가 판 자리) × 버킷 비율(마을 어부가 판 물) — 플레이어도 마을이 비운 물에서는 덜 문다.
+//   한 마리는 **한 장부에서만** 빠진다(플레이어 = 셀 · 마을 어부 = 버킷) — 두 번 세지 않는다.
+//   K 는 부르는 쪽이 준다(`kFn(bx, by)` — 이 모듈은 지형을 모른다 · 처음 만질 때 한 번 세어 기록에 둔다).
+//   기록 { s: 재고 비율(0 ~ 1) · t: 마지막 갱신 ms · K: 물셀 수 } — 안 판 버킷은 저장하지 않는다(셀 장부와 같은 문법 · 만땅 = 없음).
+const FISH_BK = 24;   // 랩 `L_FISHBK`(villages.js `FISH_BK` 와 같은 수 · T60 이 그 이름으로 적었다)
+const fishBuckets = new Map();
+const bucketKey = (bx, by) => bx + '_' + by;
+function bucketOf(cx, cy) { return [Math.floor(cx / FISH_BK), Math.floor(cy / FISH_BK)]; }
+function bucketRec(bx, by, now, kFn) {
+  const key = bucketKey(bx, by);
+  let r = fishBuckets.get(key);
+  if (!r) return { s: 1, t: now, K: null, fresh: true, key };
+  if (r.K == null && kFn) r.K = Math.max(0, kFn(bx, by) | 0);
+  const days = (now - r.t) / DAY_MS;
+  if (days > 0) { r.s = regen(r.s, days, 1); r.t = now; }
+  return r;
+}
+//   그 셀이 든 버킷의 재고 비율(0 ~ 1 · 안 판 버킷 = 1)
+function bucketRatioAt(cx, cy, now, kFn) { const [bx, by] = bucketOf(cx, cy); return bucketRec(bx, by, now, kFn).s; }
+//   마을 어부 한 사람의 마리 n 까지 — 그 셀이 든 버킷에서 온전한 마리(`perStock` = 한 마리 kg ÷ `KG_PER_STOCK`)만. 반환 = 뺀 마리 수.
+function drawBucketFish(cx, cy, perStock, n, now, kFn, onSave) {
+  if (!(perStock > 0) || !(n >= 1) || !Number.isFinite(perStock) || !Number.isInteger(cx) || !Number.isInteger(cy)) return 0;
+  const [bx, by] = bucketOf(cx, cy);
+  const r = bucketRec(bx, by, now, kFn);
+  if (r.K == null) r.K = kFn ? Math.max(0, kFn(bx, by) | 0) : 0;
+  const K = r.K * CFG.CELL_K;
+  if (!(K > 0)) return 0;
+  const k = Math.min(Math.floor(n), Math.floor((r.s * K + 1e-12) / perStock));
+  if (!(k >= 1)) return 0;
+  r.s = Math.max(0, r.s - k * perStock / K); r.t = now;
+  const key = r.key || bucketKey(bx, by); delete r.fresh; delete r.key;
+  fishBuckets.set(key, r);
+  if (onSave) onSave('B:' + key, r);
+  return k;
+}
+//   그 버킷에 남은 온전한 마리(한 마리 몫 `perStock`)
+function bucketWholeFish(cx, cy, perStock, now, kFn) {
+  const [bx, by] = bucketOf(cx, cy), r = bucketRec(bx, by, now, kFn);
+  const K = (r.K != null ? r.K : (kFn ? Math.max(0, kFn(bx, by) | 0) : 0)) * CFG.CELL_K;
+  return perStock > 0 && K > 0 ? Math.floor((r.s * K + 1e-12) / perStock) : 0;
+}
+//   번짐 + 재생 — 셀 장부의 `diffuse` 와 같은 꼴(결손 총합 보존 · 재생은 로지스틱만) · 계수 = DIFF_PER_DAY ÷ FISH_BK² · 물셀이 없는 버킷으로는 안 번진다.
+function bucketDiffuse(dtDays, kFn, onSave) {
+  if (!(dtDays > 0) || fishBuckets.size === 0) return { moved: 0, regen: 0 };
+  const a = 1 - Math.exp(-(CFG.DIFF_PER_DAY / (FISH_BK * FISH_BK)) * dtDays), share = a / 5;
+  const delta = new Map();
+  const Kof = (key) => { const r = fishBuckets.get(key); if (r && r.K != null) return r.K; const i = key.indexOf('_'); return kFn ? Math.max(0, kFn(+key.slice(0, i), +key.slice(i + 1)) | 0) : 0; };
+  let moved = 0;
+  for (const [key, r] of fishBuckets) {
+    if (r.K == null && kFn) { const i = key.indexOf('_'); r.K = Math.max(0, kFn(+key.slice(0, i), +key.slice(i + 1)) | 0); }
+    const K = r.K || 0, m = Math.max(0, 1 - r.s) * K;   // 결손(물셀 단위)
+    if (!(m > 1e-9)) continue;
+    const i = key.indexOf('_'), x = +key.slice(0, i), y = +key.slice(i + 1);
+    const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => bucketKey(x + dx, y + dy)).filter((k) => Kof(k) > 0);
+    if (!nb.length) continue;
+    const out = m * share * nb.length;
+    delta.set(key, (delta.get(key) || 0) - out); moved += out;
+    for (const k of nb) delta.set(k, (delta.get(k) || 0) + out / nb.length);
+  }
+  for (const [key, dm] of delta) {
+    let r = fishBuckets.get(key);
+    if (!r) { const i = key.indexOf('_'); r = { s: 1, t: Date.now(), K: kFn ? Math.max(0, kFn(+key.slice(0, i), +key.slice(i + 1)) | 0) : 0 }; }
+    if (!(r.K > 0)) continue;
+    r.s = Math.max(0, Math.min(1, r.s - dm / r.K));
+    fishBuckets.set(key, r);
+  }
+  let before = 0, after = 0;
+  for (const [key, r] of [...fishBuckets]) {
+    const K = r.K || 0;
+    before += Math.max(0, 1 - r.s) * K;
+    r.s = regen(r.s, dtDays, 1);
+    after += Math.max(0, 1 - r.s) * K;
+    if (r.s >= 1 - 1e-4) { fishBuckets.delete(key); r.s = 1; }
+    if (onSave) onSave('B:' + key, r);
+  }
+  return { moved: +moved.toFixed(6), regen: +(before - after).toFixed(6) };
+}
+//   마을 반경 안 버킷의 결손(물셀 단위 · 셀 장부 `deficitBy` 와 같은 단위) — econ 어장 상한(`fishSustain`)이 셀 장부 결손과 더해 읽는다.
+function bucketDeficitBy(pred, now) {
+  let d = 0;
+  for (const [key, r0] of fishBuckets) {
+    const i = key.indexOf('_'), bx = +key.slice(0, i), by = +key.slice(i + 1);
+    if (!pred(bx * FISH_BK + FISH_BK / 2, by * FISH_BK + FISH_BK / 2)) continue;
+    const r = bucketRec(bx, by, now, null);
+    d += Math.max(0, 1 - r.s) * (r.K || 0) * CFG.CELL_K;
+  }
+  return d;
+}
+
+// =============================================================================
 // ③ 한 번의 던짐 — 입질 시각·크기·챔질 창을 **서버가** 정한다
 // =============================================================================
 // 로그정규 표본(Box–Muller). 큰 놈이 드물고 잔챙이가 흔한 자연의 산포.
@@ -434,6 +532,18 @@ function windowMsFor(kg) {
 //       종 kg 가 없으면(`T593_KG=0` · 하네스의 네 인자) 지금 식.
 //   ⚠싸움 단계는 존이 돈다(`zone.tryFishStrike` → `_fishPoll`): 건 뒤 `fightMs` 동안 끌어올리고 그 뒤 손에 든다 · 그 사이 줄을 거두면 놓친다.
 //   ⚠NPC 어부의 창은 그대로다(어부의 놓침은 반사신경이 아니라 자리 비움 — T340 · 보고 회부).
+// ★[T1214 ③ µs 줄기] 손잡이 `T1214_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 매번 `require` 도 받아 같은 객체인가 견줌 · 답은 `require` 쪽 · 머리 주석 = villages.js `T1214`).
+//   `plan` 이 던짐마다 하던 `require('./fish-goods')` 를 한 번 받은 모듈 칸으로(다 실린 모듈 — `bodyKg` 함수가 선 객체만). 끔 = 종전 글자.
+const T1214_STEP_FAST = typeof process !== 'undefined' && !!process.env && process.env.T1214_STEP_FAST !== '0';
+const T1214_VERIFY = T1214_STEP_FAST && process.env.T1214_STEP_FAST === 'verify';
+const _t1214Stat = { vq: 0, bad: 0 };   // 계측 전용
+let _t1214FGM = null;
+function _t1214FG() {
+  const m = _t1214FGM;
+  if (!m) { const b = require('./fish-goods'); if (b && typeof b.bodyKg === 'function') _t1214FGM = b; return b; }
+  if (T1214_VERIFY) { const b = require('./fish-goods'); _t1214Stat.vq++; if (b !== m) { if (++_t1214Stat.bad <= 5) console.error('[T1214] verify 어긋남 fishing → fish-goods'); return b; } }
+  return m;
+}
 const T609_BIG_WINDOW = (() => { const v = process.env.T609_BIG_WINDOW; return (v === 'a' || v === 'b' || v === 'c') ? v : null; })();
 function windowFor(kg, kg0, mode) {
   const m = mode === undefined ? T609_BIG_WINDOW : mode;
@@ -449,15 +559,40 @@ function fightMsFor(kg, mode) {
   if (m === 'b') return Math.round(CFG.WIN_AT_1KG * Math.pow(k, CFG.WIN_POW));
   return 0;
 }
+//   입질 빈도 — 자리(흐름 경계 · 합류부) × 그 자리 재고 비율(빈 자리는 덜 문다 · CPUE ∝ 재고). `plan`(한 번의 던짐)과
+//   `expectedWaitMs`(★[T1217] 몸이 없는 어부의 한 시간 · 같은 식)가 이 한 줄을 같이 쓴다(사본 0).
+function _biteRate(sc, stock01) { return Math.max(0.08, sc.rate * Math.max(0.05, stock01)); }
+// ★[T1217] 한 번 던져 입질까지 걸리는 시간의 기댓값(ms) — `plan` 의 대기(지수분포 · 산포 `WAIT_JIT`)의 평균 = `WAIT_BASE_MS ÷ 빈도` 를 같은 두 끝으로 자른다.
+//   주사위 0 — 몸이 없는 어부(일괄)는 기댓값으로 그 시간을 보낸다(몸은 `plan` 이 굴린다 · 두 길의 평균이 같다).
+function expectedWaitMs(sp, stock01) {
+  const w = CFG.WAIT_BASE_MS / _biteRate(spotScore(sp), stock01);
+  return Math.max(CFG.WAIT_MIN_MS, Math.min(CFG.WAIT_MAX_MS, w));
+}
+// ★[T1217] 한 자리(반경 `DRAW_R` 원판)의 셀 수 — `stockRatioAt` 의 분모(남은 재고 = 비율 × 이 수 × `CELL_K`). 새 수 0(반경에서 센다).
+function discN() { let n = 0; for (let dy = -CFG.DRAW_R; dy <= CFG.DRAW_R; dy++) for (let dx = -CFG.DRAW_R; dx <= CFG.DRAW_R; dx++) if (dx * dx + dy * dy <= CFG.DRAW_R * CFG.DRAW_R) n++; return n; }
+// ★[T1217] 온전한 마리 n 까지 — 그 자리(반경 `DRAW_R`)에 한 마리 몫(`perStock`)이 남는 만큼만 같은 어장 장부에서 뺀다(`drawWholeStock` 을 n 번 부른 것과 같다 · 가운데부터).
+//   반환: 실제로 뺀 마리 수(0 ~ n). 한 마리 몫도 없으면 0(재고 · 장부를 안 건드린다).
+function drawWholeFish(cx, cy, perStock, n, now, onSave) {
+  if (!(perStock > 0) || !(n >= 1) || !Number.isFinite(perStock) || !Number.isInteger(cx) || !Number.isInteger(cy)) return 0;
+  let available = 0;
+  for (let dy = -CFG.DRAW_R; dy <= CFG.DRAW_R; dy++) for (let dx = -CFG.DRAW_R; dx <= CFG.DRAW_R; dx++) {
+    if (dx * dx + dy * dy > CFG.DRAW_R * CFG.DRAW_R) continue;
+    available += rec((cx + dx) + '_' + (cy + dy), now).s;
+  }
+  const k = Math.min(Math.floor(n), Math.floor((available + 1e-12) / perStock));
+  if (!(k >= 1)) return 0;
+  drawStock(cx, cy, k * perStock, now, onSave);
+  return k;
+}
 function plan(sp, stock01, now, rng, kg0) {
   const sc = spotScore(sp);
-  const rate = Math.max(0.08, sc.rate * Math.max(0.05, stock01));
+  const rate = _biteRate(sc, stock01);
   // 대기 = 지수분포(무기억) — "이제 슬슬 올 때가 됐다"가 성립하지 않는다.
   const raw = CFG.WAIT_BASE_MS / rate * (-Math.log(Math.max(1e-9, rng())) * CFG.WAIT_JIT + (1 - CFG.WAIT_JIT));
   const waitMs = Math.max(CFG.WAIT_MIN_MS, Math.min(CFG.WAIT_MAX_MS, Math.round(raw)));
   let kg = _lognormal(rng, (kg0 > 0 ? Math.log(kg0) : CFG.SIZE_MU) + Math.log(sc.size), CFG.SIZE_SIGMA);
   kg = Math.min(CFG.SIZE_MAX, +kg.toFixed(3));
-  if(require('./fish-goods').ON&&kg0>0)kg=kg0;
+  if((T1214_STEP_FAST?_t1214FG():require('./fish-goods')).ON&&kg0>0)kg=kg0;   // ★[T1214 ③]
   if (!T609_BIG_WINDOW) return { biteAt: now + waitMs, waitMs, kg, windowMs: windowMsFor(kg) };
   return { biteAt: now + waitMs, waitMs, kg, windowMs: windowFor(kg, kg0), fightMs: fightMsFor(kg) };   // ★[T609 ②] 켬만
 }
@@ -507,6 +642,9 @@ module.exports = {
   spotAt, spotScore, _riverU, _lakeR, _seaSpot,
   regen, rec, stockRatioAt, drawStock, drawWholeStock, deficitStock, deficitBy, stockToEcon, diffuse,
   plan, windowMsFor, _lognormal,
+  t1214Stat: () => Object.assign({ on: T1214_STEP_FAST, verify: T1214_VERIFY }, _t1214Stat),   // ★[T1214] 계측
+  expectedWaitMs, drawWholeFish, discN,   // ★[T1217]
+  FISH_BK, fishBuckets, bucketOf, bucketRec, bucketRatioAt, drawBucketFish, bucketWholeFish, bucketDiffuse, bucketDeficitBy,   // ★[T1217 ②-b] 마을 어부의 어장 장부(랩 버킷) 몸이 없는 어부의 한 시간(입질 기댓값 · 온전한 마리 n 까지 같은 어장 장부)
   T609_BIG_WINDOW, windowFor, fightMsFor,   // ★[T609 ②] 큰 종 창 안 셋 — 표 기계(`t602-windows.js`)가 같은 함수로 잰다
 };
 // ★[T818 ②] 접근자 하나가 리터럴에 있으면 V8 이 내보내기 객체를 통째로 사전 모드로 짓는다(T806 ② 와 같은 까닭) — 같은 이름 · 같은 몸통 · 열거 · 고칠 수 있음으로 리터럴 밖에 단다(값 무변 · 키 차례만 이 하나가 끝)

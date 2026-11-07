@@ -18,6 +18,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 ;(function (root) {
 'use strict';
+// ★[T1203 2026-11-07 · T862 ② 캐논 × T1094] 원정 짐 무기 거울(`_warArmsOut`)을 지우는 문 — 마을 econ 객체에 날 `delete` 를 하면 V8 사전 모드로 내려간다.
+//   T1094(11-03)가 무기 반출을 켬 기본으로 바꾼 뒤 전쟁마다 이 `delete` 가 돌아 `test-econ-fast` ③ 켬 판에 사전 모드 마을이 생겼다. villages `_t862Drop` 과 같은 손잡이 ·
+//   같은 뜻(켬 = `undefined` — 읽는 자리가 `> 0` · `!= null` 이라 지운 칸과 같은 답 · 저장 `JSON.stringify` 도 안 싣는다 · 끔 `T862_ECON_FAST=0` = 종전 `delete`).
+const _T862_FAST = !(typeof process !== 'undefined' && process.env && process.env.T862_ECON_FAST === '0');
+function _t862DropArms(e) { if (_T862_FAST) e._warArmsOut = undefined; else delete e._warArmsOut; }
 
 // ── battle-core 의존(headless 판정) ──
 var BattleCore = (typeof module !== 'undefined' && module.exports && typeof require === 'function')
@@ -677,7 +682,7 @@ function createWar(opts) {
   function _syncArmsToEcon(vil) {
     const e = vil && vil.econ; if (!e) return;
     let s = 0; for (const w of WARS) if (w.atk === vil && w._arms && !w._arms.done) s += Math.max(0, w._arms.weapon || 0);
-    if (s > 0) e._warArmsOut = s; else if (e._warArmsOut != null) delete e._warArmsOut;   // 반올림 0 — 짐의 수 그대로(되돌릴 때 한 점도 안 어긋나게)
+    if (s > 0) e._warArmsOut = s; else if (e._warArmsOut != null) _t862DropArms(e);   // 반올림 0 — 짐의 수 그대로(되돌릴 때 한 점도 안 어긋나게)
   }
   function warTerrR(v) { return Math.sqrt(territoryOf(v) / Math.PI); }
   function _battleRng(day, id) { return makeRng(hash2(baseSeed ^ 0x5ca1ab1e, hash2(day | 0, id | 0))); }
@@ -875,7 +880,11 @@ function createWar(opts) {
   //   호스트가 못 받으면(몸 없음·헤드리스·끔) 종전과 한 글자 같은 즉시 이동. 반환 = 뗀 양(정산 수 · 로그·통계 무변).
   function _warLootMove(w, D, A, amount, kind) {
     if (!(amount > 0)) return 0;
-    if (_t1134On()) { const fe0 = Math.max(0, _feOf(D)), got = _warLootMove0(w, D, A, amount, kind); if (fe0 > 0) _t1134Ev(D, got / fe0); return got; }   // ★[T1134] 곳간 약탈 — 빼앗긴 몫(그 전 곳간 대비)
+    if (_t1134On()) {
+      const fe0 = Math.max(0, _feOf(D)), feA = Math.max(0, _feOf(A)), got = _warLootMove0(w, D, A, amount, kind); if (fe0 > 0) _t1134Ev(D, got / fe0);   // ★[T1134] 곳간 약탈 — 빼앗긴 몫(그 전 곳간 대비)
+      if (FOOD && FOOD.T1205_HAPPY && typeof FOOD.t1205Ev === 'function' && got > 0) FOOD.t1205Ev(A, -got / Math.max(feA, got));   // ★[T1205] 승전 — 빼앗아 온 식량 ÷ 우리 곳간(좋은 일 · 겪은 일 −0.2 바닥) · 소굴 토벌도 같은 문(뺏은 양이 작다)
+      return got;
+    }
     return _warLootMove0(w, D, A, amount, kind);
   }
   function _warLootMove0(w, D, A, amount, kind) {
@@ -1363,7 +1372,7 @@ function createWar(opts) {
       let held = 0; for (const w of WARS) if (w.atk === vil && w._arms && !w._arms.done) held += Math.max(0, w._arms.weapon || 0);
       const back = Math.max(0, e._warArmsOut - held);
       if (back > 0 && e.storage) e.storage.weapon = (e.storage.weapon || 0) + back;
-      if (held > 0) e._warArmsOut = held; else delete e._warArmsOut;
+      if (held > 0) e._warArmsOut = held; else _t862DropArms(e);
       if (back > 0) log(world.day || 0, vil.name + ' 다시 뜸 — 원정 짐 무기 ' + back + ' 곳간에(진행 중 전쟁은 안 실린다)');
     }
     return TRIBUTES.length;

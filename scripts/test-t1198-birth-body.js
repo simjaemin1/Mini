@@ -11,7 +11,7 @@
 //
 // 실행: node scripts/test-t1198-birth-body.js   (존 안 띄움 · 몇 초)
 'use strict';
-// ★[PM land1049] `T1195_HUNT_REAL` · `T1197_MEAL_BODY`(+ T1198) 끔 기본으로(켬 판 서버 빈 마을 1 → 15 · 켤 날 T1209) — 이 하네스는 켬 판의 일을 잰다 → 켬에 묶는다(기본값 줄만 끔 기본으로).
+// ★[PM land1049] `T1195_HUNT_REAL` · `T1197_MEAL_BODY`(+ T1198) 끔 기본으로(켬 판 서버 빈 마을 1 → 15 · 켤 날 T1209 — 게이트 못 넘음 · 묶음 그대로) — 이 하네스는 켬 판의 일을 잰다 → 켬에 묶는다(기본값 줄만 끔 기본으로).
 if (process.env.T1197_MEAL_BODY == null) process.env.T1197_MEAL_BODY = '1';
 const path = require('path');
 const { execFileSync } = require('child_process');

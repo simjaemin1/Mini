@@ -1,0 +1,677 @@
+{
+ "spec": {
+  "formatsBest": [
+   ".glb",
+   ".gltf"
+  ],
+  "formatsTaken": [
+   ".fbx",
+   ".obj",
+   ".blend"
+  ],
+  "fileMbMax": 25,
+  "trisTarget": 20000,
+  "trisMax": 30000,
+  "texMax": 2048,
+  "animClasses": [
+   "animals",
+   "char"
+  ],
+  "normTol": 0.005,
+  "groundTolM": 0.01
+ },
+ "items": [
+  "형식",
+  "파일 크기",
+  "면 수",
+  "텍스처 크기",
+  "텍스처 동봉",
+  "UV",
+  "뼈대",
+  "동작",
+  "크기(m)",
+  "앞 방향",
+  "바닥 · 위",
+  "출처.txt"
+ ],
+ "results": [
+  {
+   "file": "water_deer_rig.glb",
+   "path": "~/Mini/_3d_in/varco/water_deer/water_deer_rig.glb",
+   "md5": "7ba1c1ac20a25d04d4e06ae29519fad5",
+   "bytes": 25578984,
+   "class": "animals",
+   "rows": [
+    {
+     "item": "형식",
+     "value": "glb",
+     "spec": ".glb 권장",
+     "verdict": "통과"
+    },
+    {
+     "item": "파일 크기",
+     "value": "25.6 MB",
+     "spec": "≤ 25 MB",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "면 수",
+     "value": "삼각형 60,909",
+     "spec": "20,000 안팎(≤ 30,000)",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 크기",
+     "value": "Image_0 4096² · Image_1 2048²",
+     "spec": "≤ 2048",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 동봉",
+     "value": "내장 2 · 파일 0",
+     "spec": "모델 안 또는 같은 폴더",
+     "verdict": "통과"
+    },
+    {
+     "item": "UV",
+     "value": "있음",
+     "spec": "텍스처 메시마다",
+     "verdict": "통과"
+    },
+    {
+     "item": "뼈대",
+     "value": "뼈 39",
+     "spec": "1 이상(동물 · 사람)",
+     "verdict": "통과"
+    },
+    {
+     "item": "동작",
+     "value": "0",
+     "spec": "idle · walk · run · eat · die",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "크기(m)",
+     "value": "0.254 × 0.999 × 0.891 (정규화로 보임)",
+     "spec": "실제 미터 또는 출처.txt 크기",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "앞 방향",
+     "value": "적힘 없음(+Y 로 본다)",
+     "spec": "+Y 또는 출처.txt '앞:'",
+     "verdict": "경고"
+    },
+    {
+     "item": "바닥 · 위",
+     "value": "위 +Z · 최저 z +0.000 m",
+     "spec": "최저 z = 0 ± 0.01 m",
+     "verdict": "통과"
+    },
+    {
+     "item": "출처.txt",
+     "value": "없음",
+     "spec": "만든 사람 · 만든 도구 · 쓰임 조건",
+     "verdict": "빠짐"
+    }
+   ],
+   "pass": false,
+   "missing": [
+    "파일 크기",
+    "면 수",
+    "텍스처 크기",
+    "동작",
+    "크기(m)",
+    "출처.txt"
+   ],
+   "stats": {
+    "tris": 60909,
+    "polys": 60909,
+    "verts": 38121,
+    "dims": [
+     0.2536,
+     0.9991,
+     0.8909
+    ],
+    "minZ": 0.0,
+    "bones": 39,
+    "actions": [],
+    "actionsFound": {},
+    "textures": [
+     {
+      "name": "Image_0",
+      "w": 4096,
+      "h": 4096,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "sRGB"
+     },
+     {
+      "name": "Image_1",
+      "w": 2048,
+      "h": 2048,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "Non-Color"
+     }
+    ],
+    "front": null,
+    "sizeM": null,
+    "normalized": true,
+    "source": null
+   }
+  },
+  {
+   "file": "water_deer_idle.glb",
+   "path": "~/Mini/_3d_in/varco/water_deer/water_deer_idle.glb",
+   "md5": "7c79114162db56b2e4f5897fae631b8a",
+   "bytes": 25659816,
+   "class": "animals",
+   "rows": [
+    {
+     "item": "형식",
+     "value": "glb",
+     "spec": ".glb 권장",
+     "verdict": "통과"
+    },
+    {
+     "item": "파일 크기",
+     "value": "25.7 MB",
+     "spec": "≤ 25 MB",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "면 수",
+     "value": "삼각형 60,909",
+     "spec": "20,000 안팎(≤ 30,000)",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 크기",
+     "value": "Image_0 4096² · Image_1 2048²",
+     "spec": "≤ 2048",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 동봉",
+     "value": "내장 2 · 파일 0",
+     "spec": "모델 안 또는 같은 폴더",
+     "verdict": "통과"
+    },
+    {
+     "item": "UV",
+     "value": "있음",
+     "spec": "텍스처 메시마다",
+     "verdict": "통과"
+    },
+    {
+     "item": "뼈대",
+     "value": "뼈 39",
+     "spec": "1 이상(동물 · 사람)",
+     "verdict": "통과"
+    },
+    {
+     "item": "동작",
+     "value": "Anim_0_Armature",
+     "spec": "idle · walk · run · eat · die",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "크기(m)",
+     "value": "0.254 × 0.999 × 0.891 (정규화로 보임)",
+     "spec": "실제 미터 또는 출처.txt 크기",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "앞 방향",
+     "value": "적힘 없음(+Y 로 본다)",
+     "spec": "+Y 또는 출처.txt '앞:'",
+     "verdict": "경고"
+    },
+    {
+     "item": "바닥 · 위",
+     "value": "위 +Z · 최저 z -0.000 m",
+     "spec": "최저 z = 0 ± 0.01 m",
+     "verdict": "통과"
+    },
+    {
+     "item": "출처.txt",
+     "value": "없음",
+     "spec": "만든 사람 · 만든 도구 · 쓰임 조건",
+     "verdict": "빠짐"
+    }
+   ],
+   "pass": false,
+   "missing": [
+    "파일 크기",
+    "면 수",
+    "텍스처 크기",
+    "동작",
+    "크기(m)",
+    "출처.txt"
+   ],
+   "stats": {
+    "tris": 60909,
+    "polys": 60909,
+    "verts": 38121,
+    "dims": [
+     0.2536,
+     0.9991,
+     0.8909
+    ],
+    "minZ": -0.0,
+    "bones": 39,
+    "actions": [
+     "Anim_0_Armature"
+    ],
+    "actionsFound": {},
+    "textures": [
+     {
+      "name": "Image_0",
+      "w": 4096,
+      "h": 4096,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "sRGB"
+     },
+     {
+      "name": "Image_1",
+      "w": 2048,
+      "h": 2048,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "Non-Color"
+     }
+    ],
+    "front": null,
+    "sizeM": null,
+    "normalized": true,
+    "source": null
+   }
+  },
+  {
+   "file": "water_deer_walk.glb",
+   "path": "~/Mini/_3d_in/varco/water_deer/water_deer_walk.glb",
+   "md5": "49bc69cbaba1ff3c6a31dcb5105cc150",
+   "bytes": 25659576,
+   "class": "animals",
+   "rows": [
+    {
+     "item": "형식",
+     "value": "glb",
+     "spec": ".glb 권장",
+     "verdict": "통과"
+    },
+    {
+     "item": "파일 크기",
+     "value": "25.7 MB",
+     "spec": "≤ 25 MB",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "면 수",
+     "value": "삼각형 60,909",
+     "spec": "20,000 안팎(≤ 30,000)",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 크기",
+     "value": "Image_0 4096² · Image_1 2048²",
+     "spec": "≤ 2048",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 동봉",
+     "value": "내장 2 · 파일 0",
+     "spec": "모델 안 또는 같은 폴더",
+     "verdict": "통과"
+    },
+    {
+     "item": "UV",
+     "value": "있음",
+     "spec": "텍스처 메시마다",
+     "verdict": "통과"
+    },
+    {
+     "item": "뼈대",
+     "value": "뼈 39",
+     "spec": "1 이상(동물 · 사람)",
+     "verdict": "통과"
+    },
+    {
+     "item": "동작",
+     "value": "Anim_0_Armature",
+     "spec": "idle · walk · run · eat · die",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "크기(m)",
+     "value": "0.254 × 0.999 × 0.891 (정규화로 보임)",
+     "spec": "실제 미터 또는 출처.txt 크기",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "앞 방향",
+     "value": "적힘 없음(+Y 로 본다)",
+     "spec": "+Y 또는 출처.txt '앞:'",
+     "verdict": "경고"
+    },
+    {
+     "item": "바닥 · 위",
+     "value": "위 +Z · 최저 z -0.000 m",
+     "spec": "최저 z = 0 ± 0.01 m",
+     "verdict": "통과"
+    },
+    {
+     "item": "출처.txt",
+     "value": "없음",
+     "spec": "만든 사람 · 만든 도구 · 쓰임 조건",
+     "verdict": "빠짐"
+    }
+   ],
+   "pass": false,
+   "missing": [
+    "파일 크기",
+    "면 수",
+    "텍스처 크기",
+    "동작",
+    "크기(m)",
+    "출처.txt"
+   ],
+   "stats": {
+    "tris": 60909,
+    "polys": 60909,
+    "verts": 38121,
+    "dims": [
+     0.2536,
+     0.9991,
+     0.8909
+    ],
+    "minZ": -0.0,
+    "bones": 39,
+    "actions": [
+     "Anim_0_Armature"
+    ],
+    "actionsFound": {},
+    "textures": [
+     {
+      "name": "Image_0",
+      "w": 4096,
+      "h": 4096,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "sRGB"
+     },
+     {
+      "name": "Image_1",
+      "w": 2048,
+      "h": 2048,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "Non-Color"
+     }
+    ],
+    "front": null,
+    "sizeM": null,
+    "normalized": true,
+    "source": null
+   }
+  },
+  {
+   "file": "water_deer_run.glb",
+   "path": "~/Mini/_3d_in/varco/water_deer/water_deer_run.glb",
+   "md5": "a0be5250e47d60adc5453b3b7e3b11ab",
+   "bytes": 25628712,
+   "class": "animals",
+   "rows": [
+    {
+     "item": "형식",
+     "value": "glb",
+     "spec": ".glb 권장",
+     "verdict": "통과"
+    },
+    {
+     "item": "파일 크기",
+     "value": "25.6 MB",
+     "spec": "≤ 25 MB",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "면 수",
+     "value": "삼각형 60,909",
+     "spec": "20,000 안팎(≤ 30,000)",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 크기",
+     "value": "Image_0 4096² · Image_1 2048²",
+     "spec": "≤ 2048",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 동봉",
+     "value": "내장 2 · 파일 0",
+     "spec": "모델 안 또는 같은 폴더",
+     "verdict": "통과"
+    },
+    {
+     "item": "UV",
+     "value": "있음",
+     "spec": "텍스처 메시마다",
+     "verdict": "통과"
+    },
+    {
+     "item": "뼈대",
+     "value": "뼈 39",
+     "spec": "1 이상(동물 · 사람)",
+     "verdict": "통과"
+    },
+    {
+     "item": "동작",
+     "value": "Anim_0_Armature",
+     "spec": "idle · walk · run · eat · die",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "크기(m)",
+     "value": "0.254 × 0.999 × 0.891 (정규화로 보임)",
+     "spec": "실제 미터 또는 출처.txt 크기",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "앞 방향",
+     "value": "적힘 없음(+Y 로 본다)",
+     "spec": "+Y 또는 출처.txt '앞:'",
+     "verdict": "경고"
+    },
+    {
+     "item": "바닥 · 위",
+     "value": "위 +Z · 최저 z -0.000 m",
+     "spec": "최저 z = 0 ± 0.01 m",
+     "verdict": "통과"
+    },
+    {
+     "item": "출처.txt",
+     "value": "없음",
+     "spec": "만든 사람 · 만든 도구 · 쓰임 조건",
+     "verdict": "빠짐"
+    }
+   ],
+   "pass": false,
+   "missing": [
+    "파일 크기",
+    "면 수",
+    "텍스처 크기",
+    "동작",
+    "크기(m)",
+    "출처.txt"
+   ],
+   "stats": {
+    "tris": 60909,
+    "polys": 60909,
+    "verts": 38121,
+    "dims": [
+     0.2536,
+     0.9991,
+     0.8909
+    ],
+    "minZ": -0.0,
+    "bones": 39,
+    "actions": [
+     "Anim_0_Armature"
+    ],
+    "actionsFound": {},
+    "textures": [
+     {
+      "name": "Image_0",
+      "w": 4096,
+      "h": 4096,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "sRGB"
+     },
+     {
+      "name": "Image_1",
+      "w": 2048,
+      "h": 2048,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "Non-Color"
+     }
+    ],
+    "front": null,
+    "sizeM": null,
+    "normalized": true,
+    "source": null
+   }
+  },
+  {
+   "file": "water_deer_death_horse.glb",
+   "path": "~/Mini/_3d_in/varco/water_deer/water_deer_death_horse.glb",
+   "md5": "bd7ccdfa787cc0f4f408c1e78fc5f134",
+   "bytes": 25745768,
+   "class": "animals",
+   "rows": [
+    {
+     "item": "형식",
+     "value": "glb",
+     "spec": ".glb 권장",
+     "verdict": "통과"
+    },
+    {
+     "item": "파일 크기",
+     "value": "25.7 MB",
+     "spec": "≤ 25 MB",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "면 수",
+     "value": "삼각형 60,909",
+     "spec": "20,000 안팎(≤ 30,000)",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 크기",
+     "value": "Image_0 4096² · Image_1 2048²",
+     "spec": "≤ 2048",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "텍스처 동봉",
+     "value": "내장 2 · 파일 0",
+     "spec": "모델 안 또는 같은 폴더",
+     "verdict": "통과"
+    },
+    {
+     "item": "UV",
+     "value": "있음",
+     "spec": "텍스처 메시마다",
+     "verdict": "통과"
+    },
+    {
+     "item": "뼈대",
+     "value": "뼈 39",
+     "spec": "1 이상(동물 · 사람)",
+     "verdict": "통과"
+    },
+    {
+     "item": "동작",
+     "value": "Anim_0_Armature",
+     "spec": "idle · walk · run · eat · die",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "크기(m)",
+     "value": "0.254 × 0.999 × 0.891 (정규화로 보임)",
+     "spec": "실제 미터 또는 출처.txt 크기",
+     "verdict": "빠짐"
+    },
+    {
+     "item": "앞 방향",
+     "value": "적힘 없음(+Y 로 본다)",
+     "spec": "+Y 또는 출처.txt '앞:'",
+     "verdict": "경고"
+    },
+    {
+     "item": "바닥 · 위",
+     "value": "위 +Z · 최저 z +0.000 m",
+     "spec": "최저 z = 0 ± 0.01 m",
+     "verdict": "통과"
+    },
+    {
+     "item": "출처.txt",
+     "value": "없음",
+     "spec": "만든 사람 · 만든 도구 · 쓰임 조건",
+     "verdict": "빠짐"
+    }
+   ],
+   "pass": false,
+   "missing": [
+    "파일 크기",
+    "면 수",
+    "텍스처 크기",
+    "동작",
+    "크기(m)",
+    "출처.txt"
+   ],
+   "stats": {
+    "tris": 60909,
+    "polys": 60909,
+    "verts": 38121,
+    "dims": [
+     0.2536,
+     0.9991,
+     0.8909
+    ],
+    "minZ": 0.0,
+    "bones": 39,
+    "actions": [
+     "Anim_0_Armature"
+    ],
+    "actionsFound": {},
+    "textures": [
+     {
+      "name": "Image_0",
+      "w": 4096,
+      "h": 4096,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "sRGB"
+     },
+     {
+      "name": "Image_1",
+      "w": 2048,
+      "h": 2048,
+      "packed": true,
+      "onDisk": false,
+      "colorspace": "Non-Color"
+     }
+    ],
+    "front": null,
+    "sizeM": null,
+    "normalized": true,
+    "source": null
+   }
+  }
+ ]
+}

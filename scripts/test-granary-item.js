@@ -21,9 +21,9 @@
 // ★[T1208-K3 2026-11-07] 픽스처 — ⑥ 랩 세계(5마을 · 200일 · 씨 7)는 출생 = 몸(T1198 · land1049 켬 기본)이면 122일째 습지에서 econ 말리기(`preserveRecord`)가 들어와
 //   대구 레코드에서 `dried_cod` 레코드가 난다(78 레코드-날) — ⑥ 의 "품목이 바뀐 레코드 0" 자가 그것을 센다. 이 하네스가 재는 것은 대구 레코드의 먹기 · 싣기 길이라
 //   판 세계를 T1198 앞(`=0` — 출생 몸 끔 · 종전 몸 동기)으로 묶는다. 부르는 쪽이 값을 주면 그 값이 먼저(켬 세계에서 말린 것을 어떻게 셀지는 보고 T1208-K3 회부).
-if (process.env.T1198_BIRTH_BODY == null) process.env.T1198_BIRTH_BODY = '0';
+//   ★[T1203 2026-11-07] 묶음 풀기 — ⑥ 의 자가 econ 말리기 · 절이기(`_t1192Preserve` → `preserveRecord` · 이름 = `fish-preserve` `driedId`/`pickledId` 정본)로 대구에서 난
+//     `dried_cod` · `pickled_cod` 를 "바뀐 품목"과 가른다(대구가 몸을 바꾼 것 — 다른 품목이 끼어든 것이 아니다). 그 밖의 품목만 바뀐 것으로 센다. 두 손잡이는 기본 그대로 탄다.
 // ★[PM land1050] 자연사(`T1206_NAT_DEATH` 켬 기본)도 같은 꼴 — 출생을 다시 맞춘 세계에서 말리기가 들어와 `dried_cod` 158 레코드-날. 같은 까닭으로 끔에 묶는다(말린 것 가르는 자 = T1203).
-if (process.env.T1206_NAT_DEATH == null) process.env.T1206_NAT_DEATH = '0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
@@ -318,7 +318,8 @@ say('\n⑥ 랩 econ v2(5마을 · 200일) — 대구는 대구로만 먹히고 �
   for (const v of world.villages) GL.attach(v, null, null);
   econV2.setLotHook(GL.hooks);
   const per = K.econUnitsOf('cod', 1);
-  let injected = 0, bad = 0, badI = 0, first = null, firstI = null, foreign = 0;
+  let injected = 0, bad = 0, badI = 0, first = null, firstI = null, foreign = 0, firstF = null, kept = 0;
+  const FP = require(SV('fish-preserve.js')), FROM_COD = new Set([FP.driedId('cod'), FP.pickledId('cod')]);   // ★[T1203] 대구가 말려 · 절여 난 품목(정본 이름)
   const npc = { isNpc: true, inventory: {} };
   try {
     for (let d = 0; d < 200; d++) {
@@ -335,7 +336,7 @@ say('\n⑥ 랩 econ v2(5마을 · 200일) — 대구는 대구로만 먹히고 �
       const c = GL.check(world.villages, 1e-6), ci = GL.checkItems(world.villages, 1e-6);
       if (c.bad.length) { bad++; if (!first) first = { d, b: c.bad.slice(0, 2) }; }
       if (ci.bad.length) { badI++; if (!firstI) firstI = { d, b: ci.bad.slice(0, 2) }; }
-      for (const v of world.villages) for (const recs of Object.values(GL.ledger(v) || {})) for (const r of recs) if (r.it != null && r.it !== 'cod') foreign++;
+      for (const v of world.villages) for (const recs of Object.values(GL.ledger(v) || {})) for (const r of recs) { if (r.it == null || r.it === 'cod') continue; if (FROM_COD.has(r.it)) { kept++; continue; } foreign++; if (!firstF) firstF = { d, it: r.it }; }
     }
   } finally { econV2.setLotHook(null); }
   const st = GL.stats(), ate = GL.eaten();
@@ -344,7 +345,8 @@ say('\n⑥ 랩 econ v2(5마을 · 200일) — 대구는 대구로만 먹히고 �
   for (const c of (world.caravans || [])) { const Kc = GL.cargoDump(c); if (Kc) for (const recs of Object.values(Kc)) for (const r of recs) if (r.it === 'cod') inCar += +r.u || 0; }
   ok(bad === 0, '★★⑥ 200일 매일 — 감싼 칸마다 장부 합 − 빚 = 곳간 값', first ? JSON.stringify(first) : `칸 ${GL.check(world.villages).cells}`);
   ok(badI === 0, '★★⑥ 200일 매일 — 마을마다 품목 합 = 든 것 − 난 것', firstI ? JSON.stringify(firstI) : JSON.stringify(GL.checkItems(world.villages)).slice(0, 120));
-  ok(foreign === 0, '★⑥ 품목이 바뀐 레코드 0(대구로 든 것은 대구로만 있다)', `${foreign}`);
+  ok(foreign === 0, '★⑥ 품목이 바뀐 레코드 0(대구로 든 것은 대구로만 있다 · 대구를 말리거나 절여 난 것은 대구의 몸 — 따로 센다)', `${foreign}${firstF ? ' ' + JSON.stringify(firstF) : ''}`);
+  pre(true, `대구를 말리거나 절여 난 레코드-날 ${kept}(${[...FROM_COD].join(' · ')} — econ 말리기 \`preserveRecord\`)`);
   ok((ate.cod || 0) > 0 && st.itemEatU > 0, '★★⑥ NPC 가 먹은 것 — 대구 그대로(먹은 품목 셈)', JSON.stringify({ 대구먹음: R6(ate.cod || 0), 넣음: R6(injected) }));
   ok(inLed + inCar + (ate.cod || 0) <= injected + 1e-6, '★⑥ 생성 0 — 장부 + 길 위 짐 + 먹은 것 ≤ 넣은 것(약탈 · 빚 갚기로 빠진 몫만 모자란다)', `${R6(inLed)} + ${R6(inCar)} + ${R6(ate.cod || 0)} ≤ ${R6(injected)}`);
   pre(true, `캐러밴이 실어 간 대구 단위 ${R6(st.itemCargoU)} · 옮겨 받은 넘김 ${st.moved}`);

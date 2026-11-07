@@ -145,7 +145,10 @@ async function runCase(tag, knobOn, C) {
     ctx = await newCtx(st); page = await openPage(ctx);
     ok(await enter(page), `[${tag}] ④ 브라우저를 껐다 켜서 다시 게스트로 들어갔다`);
     const pid4 = await pidOf(page), key4 = await keyOf(page);
-    ok(pid4 === pid1 && key4 === key1, `[${tag}] ④ ★재접속해도 같은 사람 — 같은 playerId · 같은 열쇠`, `${pid4} ${pid4 === pid1 ? '=' : '≠'} ${pid1} · 열쇠 ${key4 == null ? '없음' : (key4 === key1 ? '같음' : '다름')}`);
+    //   ★[T1216-K2] 열쇠는 쓸 때마다 갈린다(T217 · #27 판정 · `server/central.js` `/guest` 회전 — 켬 기본 · `GUEST_TOKEN_ROTATE=0` = 안 간다).
+    //     그래서 "같은 사람"은 같은 playerId + **새 열쇠가 브라우저에 있다**(회전 켬 = 옛 열쇠와 다른 64자 · 끔 = 같은 열쇠)다.
+    const ROT = String(process.env.GUEST_TOKEN_ROTATE || '1') !== '0';
+    ok(pid4 === pid1 && /^[0-9a-f]{64}$/.test(key4 || '') && (ROT ? key4 !== key1 : key4 === key1), `[${tag}] ④ ★재접속해도 같은 사람 — 같은 playerId · 열쇠는 ${ROT ? '회전한 새 열쇠(T217)' : '같은 열쇠(회전 끔)'}`, `${pid4} ${pid4 === pid1 ? '=' : '≠'} ${pid1} · 열쇠 ${key4 == null ? '없음' : (key4 === key1 ? '같음' : '다름')}`);
 
     // ⑤ 승계 — 열쇠를 든 채 이름 · 비밀번호
     const ACC = `t1160${tag}${process.pid % 10000}`, PW = 'pw-t1160';

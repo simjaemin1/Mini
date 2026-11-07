@@ -1819,10 +1819,14 @@
         // ★[재민 확정 2026-08-06] 시체도 **항상 보인다**(더는 살아 움직이는 것이 아니다).
         const vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         ctx.globalAlpha = vis;
-        ctx.font = '24px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('×', s.x, s.y);
+        // ★★[T1210] 받은 모델 시트에 쓰러짐(`die`)이 있는 종이면 누운 그림(한 번 쓰러지고 눕는다 · 40-r2-sprites `drawModelCorpse`) —
+        //   손잡이 `uiCfg.modelSprites`(끔 = 이 줄이 아무것도 안 부른다 · '×' 그대로) · 시트가 안 떴거나 그 종에 쓰러짐이 없으면 '×'.
+        if (!(uiCfg.modelSprites && drawModelCorpse(s.x, s.y, item.co))) {
+          ctx.font = '24px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('×', s.x, s.y);
+        }
         ctx.globalAlpha = 1;
       }
     }

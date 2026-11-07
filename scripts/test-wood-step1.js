@@ -54,13 +54,14 @@ console.log('\n② 손·짐에 남는 통나무 — 정적');
      && daily.indexOf('_t717PackIn(vil)') > daily.indexOf('_t325Deliver(vil, p)'),
     'ⓐ ★짐은 **베기 전** · 손 입고 뒤에 든다(채집 `_t544PackIn` 과 같은 자리) · 켬 ∧ 행위 마을만');
   ok(/vil\.econ\._t717Pack = \+\(\(vil\.econ\._t717Pack \|\| 0\) \+ u\)\.toFixed\(6\);/.test(put) && /woodToGranary\(vil\.econ, u\)/.test(pin)
-     && /if \(r > 1e-9\) vil\.econ\._t717Pack = r; else delete vil\.econ\._t717Pack;/.test(pin),
+     && /if \(r > 1e-9\) vil\.econ\._t717Pack = r; else _t862Drop\(vil\.econ, '_t717Pack'\);/.test(pin),
     'ⓐ 짐 = econ 마을 칸 하나(단) · 입고는 같은 입구(`woodToGranary`) · 받은 만큼만 뺀다');
   ok(/return T717_WOOD_HAND \? w > \(p\._t717L \|\| 0\) \+ 1e-9 : w > 0;/.test(nw)
      && /const nw = _t717NewWood\(p\); _t325Deliver\(vil, p\); if \(nw\) n\+\+;/.test(hin)
      && /const nw = _t717NewWood\(p\); (?:if \(!T720_LON_DAY\) )?_t325Deliver\(vil, p\); if \(nw\) _walked\+\+;/.test(daily),
     'ⓐ ★걸은 몸 세기(두 자리 — 틱 앞 손 입고 · 하루 손 입고) — 켬 = 남긴 몫보다 많이 든 손만 · 끔 = 손에 통나무가 있나(옛 줄)');
-  ok(!/Ground|Drop/.test(del + pin + put), 'ⓔ 바닥에 놓는 문은 안 불린다(짐 · 손뿐)');
+  // ★[T1203] 짐 칸 지우기는 T862 ② 문(`_t862Drop` — 켬 `undefined` · 끔 `delete` · 날 `delete` 는 econ 객체를 사전 모드로 내린다) — 바닥 문(`Drop`) 낱말이 아니다
+  ok(!/Ground|Drop/.test((del + pin + put).replace(/_t862Drop\(/g, '')), 'ⓔ 바닥에 놓는 문은 안 불린다(짐 · 손뿐)');
   //   새 수 0 — 이 카드가 더한 줄의 수는 1e-9(0 비교) · 6(소수 자리 — 옆 줄들의 그 규약)뿐
   const added = [del, pin, put, nw].join('\n').replace(/toFixed\(6\)/g, '').replace(/1e-9/g, '');
   ok(!/[^\w.](?:[2-9]|\d{2,})(?:\.\d+)?(?![\w])/.test(added.replace(/\b0\b/g, '')), 'ⓔ ★새 수 0 — 남기는 줄에 상수가 없다(0 · 소수 자리 · 0 비교만)');

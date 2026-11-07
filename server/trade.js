@@ -402,6 +402,10 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   //   ★[T835] 켬 + 호스트가 낼 사람 인벤(`opts.inventory`)을 넘겼으면 낼 단위 = **고른 그 개체들**(`_giver` · 실행과 같은 함수) — 개수는 `opts.giveCount`.
   const _G = (T835_ON && opts && opts.inventory) ? _giver(ledger.deliverable, opts.inventory, giveRes, (typeof opts.unitsOf === 'function') ? opts.unitsOf : null) : null;
   const _gN = (_G && Number(opts.giveCount) >= 1 && _G.have >= Math.floor(Number(opts.giveCount))) ? Math.floor(Number(opts.giveCount)) : 0;
+  // ★[T1203 2026-11-07 · T835 ⓑ "실행이 못 하면 견적 0"] 켬 + 인벤 + **낼 개수** 주문인데 가진 낱개가 모자라면 — 실행(`exchange`)과 같은 문 · 같은 글자로 거절한다.
+  //   종전: 첫 개체 단위로 이어 견적을 냈다(받을 쪽 상한에 걸리면 앞 두 낱개만 쓰는 견적 — 고기 8 개 주문 · 가진 것 7 개 → 견적 962 · 실행 "그만큼 갖고 있지 않습니다").
+  //   받을 양 주문(`opts.want`)은 실행이 올라가며 낱개 수를 정하는 길이라 이 문 밖이다(그 길의 "없다"는 그쪽 글자 그대로).
+  if (_G && Number(opts.giveCount) >= 1 && !(Math.floor(Number(opts.want) || 0) > 0) && _G.have < Math.floor(Number(opts.giveCount))) return { err: '그만큼 갖고 있지 않습니다.' };
   const _gAt = _G ? _G.at : null;   // c 개의 단위(가진 것 너머는 첫 개체 단위로 잇는다 — 실행은 거기서 "없다") · ★[T965] 식은 `_giver` 의 `at`(값 무변)
   const q = _gN ? _gAt(_gN) : Math.max(0, Number(giveQty) || 0);
   // 한계비율(첫 조각) — 표시용. 실제 수령량은 아래 planSliced 가 곡선을 따라 낸다.

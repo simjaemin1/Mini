@@ -107,13 +107,22 @@ const BASE = { VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0', T1195_HUNT_REAL: '
 //   ★[T1195] 사냥 몸 입고(`T1195_HUNT_REAL` 켬 기본)는 몸이 사냥터에 닿은 순간(벽시계 · 250ms 하루)에 갈린다 — 다시 뜬 판은 사냥꾼 몸이 사냥터 곁에서
 //     깨어 닿음이 잦아 나란히 띄운 두 판이 날 15 ~ 19 에 갈렸다(끔 = 34날 같음). 이 하네스가 재는 것은 T862 객체 꼴이고 그 전제는 기준선 자의 바이트 결정론이라
 //     기준선 끔 판처럼 몸 생산 손잡이 하나를 끈다(기준선 OFF env 와 같은 뜻 · 사냥 몸 입고의 값은 `test-t1195-hunt-real` · 정본 물리 판이 잰다).
+// ★[T1203 2026-11-07 · 덧붙임 ②] 아이 판은 가상 시계(`t745-vclock.js` — 서버 기준선 `--vclock` 과 같은 자 · 제품 무변)로 띄운다.
+//   까닭: 실제 시계 판은 land1048 뒤(몸 생산 · 전쟁 몸 · 출생 · 자연사 켬 기본) 나란히 띄운 두 판이 **같은 손잡이끼리도** 갈린다 —
+//   ② 를 끔 · 켬 대신 켬 · 켬으로 띄워도 이어 돈 날 지문이 날 10 에서 갈렸다(보고 T1203 §4.2). 이 하네스가 재는 것은 T862 객체 꼴이고 그 전제는
+//   두 판의 바이트 결정론이라(T650 · 위 BASE 주석과 같은 까닭) 시간을 하나로 묶는다. 다시 뜬 판은 저장 DB 의 앵커 벽시계 날 경계에서 시작한다
+//   (`T745_V0` = 앵커 epoch + g × 하루 — 아래 T949 탐침의 `_bootAt` 과 같은 값 · 메타 행이 없으면 상수 V0 — 두 팔 같은 값).
+const VCLOCK = `--require ${path.join(ROOT, 'scripts', 't745-vclock.js')}`;
+const v0Of = (db) => { try { const SQ = require(path.join(ROOT, 'node_modules', 'better-sqlite3')); const d = new SQ(db, { readonly: true, fileMustExist: true });
+  const m = d.prepare('SELECT data FROM world_meta WHERE zone = ?').get('hanbando'); d.close(); const a = m && JSON.parse(m.data).anchor;
+  return (a && Number.isFinite(a.g) && a.dayMs > 0) ? String((a.epoch || 0) + a.g * a.dayMs) : null; } catch (e) { return null; } };
 const knob = (env, on) => { if (on) delete env.T862_ECON_FAST; else env.T862_ECON_FAST = '0'; return env; };   // ★[T876 ①] 켬 = 빈 값(기본) · 끔 = '0'
 const wait = (c, ms) => new Promise((res) => { const k = setTimeout(() => { try { c.kill('SIGKILL'); } catch (e) {} }, ms); c.on('exit', (code) => { clearTimeout(k); res(code); }); });
 const readJ = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
 // 새 세계 판(t577 자) — 끝에 DB 가 남는다
 async function fresh(tag, days, on, probe) {
   const dir = path.join(TMP, tag), out = path.join(TMP, tag + '.json');
-  const env = knob(Object.assign({}, process.env, BASE, { T577_DIR: dir, T577_PAR: '1', T577_TAG: 'run' }, probe ? { T862_PROBE_OUT: out, NODE_OPTIONS: `--require ${PROBE}` } : {}), on);
+  const env = knob(Object.assign({}, process.env, BASE, { T577_DIR: dir, T577_PAR: '1', T577_TAG: 'run', T745_VCLOCK: '1', NODE_OPTIONS: VCLOCK + (probe ? ` --require ${PROBE}` : '') }, probe ? { T862_PROBE_OUT: out } : {}), on);
   const c = spawn(process.execPath, [path.join(ROOT, 'scripts', 't577-server-run.js'), String(days), '1020'], { cwd: ROOT, env, stdio: 'ignore' });
   await wait(c, 1800000);
   return { dir, probe: readJ(out) || { days: [], err: 'probe 없음' }, run: readJ(path.join(dir, 'run-1020.json')) || {}, db: path.join(dir, 'run-1020.db') };
@@ -125,7 +134,7 @@ async function again(tag, db, days, on) {
   const env = knob(Object.assign({}, process.env, BASE, {
     ZONE_ID: 'hanbando', PORT: String(39800 + (process.pid % 90) + (on ? 1 : 0) * 97), DB_PATH: mydb, ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
     VILLAGE_DAY_MS: '250', T315_MAPBEDS: '0', VILLAGE_NPC_CAP: '1', T640_BOOT_SLICE: '0', T577_SEED: '1020', T577_DAYS: String(days), T577_OUT: run,
-    T862_PROBE_OUT: out, NODE_OPTIONS: `--require ${PROBE}` }), on);
+    T862_PROBE_OUT: out, T745_VCLOCK: '1', NODE_OPTIONS: `${VCLOCK} --require ${PROBE}` }, v0Of(mydb) ? { T745_V0: v0Of(mydb) } : {}), on);
   const c = spawn(process.execPath, ['-r', path.join(ROOT, 'scripts', 't577-server-hook.js'), path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env, stdio: 'ignore' });
   await wait(c, 900000);
   return { probe: readJ(out) || { days: [], err: 'probe 없음' }, run: readJ(run) || {} };

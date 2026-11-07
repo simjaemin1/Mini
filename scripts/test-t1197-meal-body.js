@@ -12,7 +12,7 @@
 //
 // 실행: node scripts/test-t1197-meal-body.js   (존 안 띄움 · 몇 초)
 'use strict';
-// ★[PM land1049] `T1195_HUNT_REAL` · `T1197_MEAL_BODY`(+ T1198) 끔 기본으로(켬 판 서버 빈 마을 1 → 15 · 켤 날 T1209) — 이 하네스는 켬 판의 일을 잰다 → 켬에 묶는다(기본값 줄만 끔 기본으로).
+// ★[PM land1049] `T1195_HUNT_REAL` · `T1197_MEAL_BODY`(+ T1198) 끔 기본으로(켬 판 서버 빈 마을 1 → 15 · 켤 날 T1209 — 게이트 못 넘음 · 묶음 그대로) — 이 하네스는 켬 판의 일을 잰다 → 켬에 묶는다(기본값 줄만 끔 기본으로).
 if (process.env.T1197_MEAL_BODY == null) process.env.T1197_MEAL_BODY = '1';
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -125,10 +125,22 @@ function twoPaths(foodByDay, skip) {
 {
   const food = [3, 3, 0, 0, 0, 1, 6, 3, 3, 0, 2, 3, 3, 3];
   const { A, B: Bv } = twoPaths(food, false);
-  const dh = Math.max(...A.npcs.map((p, i) => Math.abs(p._mh - Bv.npcs[i]._mh)));
-  const dp = Math.max(...A.npcs.map((p, i) => Math.abs(p._mhp - Bv.npcs[i]._mhp)));
-  const ds = Math.abs(A.storage.food - Bv.storage.food);
-  ok(dh < 0.05 && dp < 0.05 && ds < 1e-6, '14일(굶는 날 포함) — 허기 · HP · 곳간이 같다(몸 틱 1분 · 일괄 1시간 걸음 차만)', JSON.stringify({ dh: +dh.toExponential(2), dp: +dp.toExponential(2), ds: +ds.toExponential(2), hpA: +A.npcs[0]._mhp.toFixed(3), hpB: +Bv.npcs[0]._mhp.toFixed(3) }));
+  const dev = (A, Bv, sorted) => {   // 두 길의 차 — `sorted` = 사람을 처지(HP · 허기)로 줄 세워 맞댄다
+    const o = (V) => sorted ? V.npcs.slice().sort((a, b) => (a._mhp - b._mhp) || (a._mh - b._mh)) : V.npcs;
+    const oA = o(A), oB = o(Bv);
+    return { dh: Math.max(...oA.map((p, i) => Math.abs(p._mh - oB[i]._mh))), dp: Math.max(...oA.map((p, i) => Math.abs(p._mhp - oB[i]._mhp))), ds: Math.abs(A.storage.food - Bv.storage.food),
+             hp0: [A, Bv].map((V) => V.npcs.filter((p) => p._mhp <= 0).length), hpA: +oA[0]._mhp.toFixed(3), hpB: +oB[0]._mhp.toFixed(3) };
+  };
+  if (process.argv[2] === '--child-paths') { console.log(JSON.stringify(dev(A, Bv, false))); process.exit(0); }
+  // ★[T1209] 켬이면 이 맞댐(같은 비율 솥의 두 길 · 걸음 차 0.05)은 끔 아이 프로세스가 그대로 잰다 — 모자란 솥의 순번 맞댐은 ⑦
+  const r = E.T1209_MEAL_TRIAGE
+    ? JSON.parse(execFileSync(process.execPath, [__filename, '--child-paths'], { env: Object.assign({}, process.env, { T1209_MEAL_TRIAGE: '0' }), encoding: 'utf8' }).trim().split('\n').pop())
+    : dev(A, Bv, false);
+  ok(r.dh < 0.05 && r.dp < 0.05 && r.ds < 1e-6, '14일(굶는 날 포함) — 허기 · HP · 곳간이 같다(몸 틱 1분 · 일괄 1시간 걸음 차만 · 같은 비율 솥)', JSON.stringify({ dh: +r.dh.toExponential(2), dp: +r.dp.toExponential(2), ds: +r.ds.toExponential(2), hpA: r.hpA, hpB: r.hpB }));
+  if (E.T1209_MEAL_TRIAGE) {
+    const t = dev(A, Bv, true);
+    ok(t.ds < 1e-6 && t.hp0[0] === t.hp0[1] && t.dh < 0.5 && t.dp < 0.5, '[T1209] 모자란 솥(위태로운 사람부터) — 두 길의 곳간 같음 · HP 0 사람 수 같음 · 처지 순 허기 · HP 차가 몸 HP 눈금(1) 반 아래(같은 처지끼리는 걸음 차로 순번이 바뀐다)', JSON.stringify({ dh: +t.dh.toFixed(3), dp: +t.dp.toFixed(3), ds: +t.ds.toExponential(2), hp0: t.hp0 }));
+  }
   const sk = twoPaths(food, true);
   const dh2 = Math.max(...sk.A.npcs.map((p, i) => Math.abs(p._mh - sk.B.npcs[i]._mh))) + Math.abs(sk.A.storage.food - sk.B.storage.food);
   ok(dh2 > 0.1, '[자명 통과 금지] 몸 길이 저녁 끼니를 건너뛴 사본은 갈린다', dh2.toFixed(3));

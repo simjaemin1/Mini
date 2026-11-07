@@ -73,6 +73,15 @@ const ENABLED = process.env.ONB_ENABLE !== '0';
 //   ★새 수 0 — 문은 "그 마을 의뢰 하나를 다 채웠다"(`done`)와 "시작 마을"(대본 상태 `start_vid`)뿐이다. 계량기는 그대로 하나(`contrib`).
 //   ★다른 마을에 드는 문은 종전 K-2(`MEMBER_N`) 그대로다 — 이 층은 대본(시작 마을)만 앞당긴다.
 const T1086 = process.env.T1086_FIRST_JOIN !== '0';
+// ★★[T1204 2026-11-07 · ★재민 11-07 문 29 ⓑ "그러자 b"] 「지금 할 일」 칸이 화살 대신 **글로** 방위 · 걸음을 말한다 — 손잡이 `T1204_NOW_WORDS`(켬 기본 · `=0` = 종전 화살).
+//   서버가 하는 일은 쉼터 자리 한 칸을 싣는 것뿐이다 — 좌표는 정본 하나(`SimVillages.shelterOf` · 설 자리 = 문 앞)를 부른다(자리를 다시 고르지 않는다 · 쉼터가 없으면 칸도 없다).
+//   방위말은 서버 · 클라 공용 정본 `public/dir-word.js`(촌장 대사와 같은 어휘) · 걸음 = 셀 거리(1셀 = 1m = 한 걸음 — 정본 단위)는 클라가 센다.
+const T1204 = process.env.T1204_NOW_WORDS !== '0';
+function _t1204Shelter(vid) {
+  if (!T1204 || vid == null) return null;
+  let sh = null; try { sh = H.shelterOf ? H.shelterOf(vid | 0) : null; } catch (e) { sh = null; }
+  return (sh && Number.isFinite(sh.x) && Number.isFinite(sh.y)) ? { vid: vid | 0, x: Math.round(sh.x), y: Math.round(sh.y) } : null;
+}
 //   촌장의 말(하게체 · `지시/지시_T1069.md`) — 권함 한 줄 · 빈터 한 줄. 받아들인 뒤의 말(`membership.firstJoinChat`)도 빈터 줄은 이것을 부른다(사본 0).
 const T1086_JOIN_LINE = '이만하면 자네를 우리 마을 사람으로 받겠네. 들겠거든 채팅에 "/소속"이라 적게.';
 const T1086_LOT_LINE = '어귀 빈터에 자네 터를 잡게. 거기다 집을 올리게.';
@@ -761,17 +770,8 @@ function pickFirstQuest(vid) {
 // ★[T56 2026-09-02] 아래 표를 **내보낸다**(`dirWord`) — 쓰러짐의 외침이 방위를 말해야 하는데,
 //   같은 8방 표를 두 벌 두면 그게 사본이고 "촌장은 해 지는 쪽이라는데 외침은 서쪽"이 된다.
 //   §9.5(화살표 금지 · 방향은 대사로)의 어휘가 이 세계에서 하나여야 한다.
-const _DIRWORD = (dx, dy) => {
-  const a = Math.atan2(dy, dx) * 180 / Math.PI;
-  if (a >= -22.5 && a < 22.5) return '해 뜨는 쪽';
-  if (a >= 22.5 && a < 67.5) return '해 뜨는 남쪽';
-  if (a >= 67.5 && a < 112.5) return '남쪽';
-  if (a >= 112.5 && a < 157.5) return '해 지는 남쪽';
-  if (a >= 157.5 || a < -157.5) return '해 지는 쪽';
-  if (a >= -157.5 && a < -112.5) return '해 지는 북쪽';
-  if (a >= -112.5 && a < -67.5) return '북쪽';
-  return '해 뜨는 북쪽';
-};
+//   ★[T1204] 몸은 서버 · 클라 공용 정본 `public/dir-word.js` 로 옮겼다(글자 그대로) — 「지금 할 일」 칸(클라)이 같은 파일을 읽는다(사본 0).
+const _DIRWORD = require('../public/dir-word.js').dirWord;
 /** 사람이 세운 마을인가 — 정본은 `villages` 의 `econ.founder` 하나다(여기서 다시 풀지 않는다). */
 function _isPlayerVillage(vid) {
   try {
@@ -932,7 +932,8 @@ function publicState(playerId) {
   return { vid: s.start_vid, firstItem: s.first_item, firstDone: !!s.first_done,
     contrib: s.contrib | 0, need: CFG.LOT_AFTER, lotOk: !!s.lot_ok,
     lot: z ? { x: z.x, y: z.y, r: z.rPx } : null,
-    day: { day: s.day, deliv: s.day_deliv | 0, fish: 0 } };
+    day: { day: s.day, deliv: s.day_deliv | 0, fish: 0 },
+    ...(T1204 ? { shelter: _t1204Shelter(s.start_vid) } : {}) };   // ★[T1204] 시작 마을 쉼터의 설 자리(존 로컬 px · 없으면 null · 끔 = 옛 바이트)
 }
 // 하루 정산 — **이력서 데이터 재사용**(새 패널 금지 · HUD 한 줄).
 function daySummary(player) {
@@ -1009,6 +1010,7 @@ function httpStartInfo(req, res) {
 }
 
 module.exports = {
+  _t1204Probe: (host, vid) => { const k = H; H = host || {}; try { return { has: T1204, sh: _t1204Shelter(vid), none: _t1204Shelter(99999) }; } finally { H = k; } },   // ★[T1204] 하네스 — 상태 칸이 서나 · 쉼터 자리(정본 `shelterOf`)를 그대로 싣나(존 손 대신 넘긴 손 · 읽기만)
   CFG, init, ready, invalidate,
   arrivals, arrivalOf, arriveFor, startGauges,
   startInfo, httpStartInfo, characterOf, worldSectors, SECTORS, CHARS, popBand, busyBand,

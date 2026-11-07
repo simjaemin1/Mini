@@ -1,4 +1,5 @@
 {
  "_": "model_render.py 산물 — 종 키 → 메타 경로(이 폴더 기준). 클라는 손잡이 T1194_MODEL_SPRITES 가 켜졌을 때만 읽는다.",
+ "deer": "water_deer/water_deer_meta.json",
  "wild_boar": "wild_boar/wild_boar_meta.json"
 }

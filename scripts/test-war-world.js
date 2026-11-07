@@ -46,6 +46,11 @@ process.env.T502_ODDS_REAL = '0';
 process.env.T941_BATTLE_DAY = '0';
 process.env.T627_TRIP_DAY = '0';
 }
+// ★[T1203 2026-11-07] 채집 행위 `T347_FORAGE_ACT` 는 land1048(T1180 · PM)부터 econ **모듈 상수**(끔 기본)다 — 판 중간에 env 를 바꿔도 안 먹는다
+//   (행군 길 채집 문 `villages.js _t441…` 이 그 상수를 본다 · 종전 하네스는 판마다 env 를 켰다 꼈다 해서 ⓦ · ⓧ② · ⓨ③ 아홉이 첫날부터 빈 칸으로 빨갰다).
+//   이 하네스의 행군 길 채집 절은 "채집이 행위인 세계"를 잰다 ⇒ 프로세스 머리에서 켬으로 묶는다(부르는 쪽이 값을 주면 그 값이 먼저다).
+//   ⓦ ★대조의 "채집이 행위가 아닌 세계" 판은 아이 프로세스(`__WW_SUB=forageOff` · 손잡이 없음 = 끔)가 같은 판을 잰다.
+if (process.env.__WW_SUB !== 'forageOff' && process.env.T347_FORAGE_ACT == null) process.env.T347_FORAGE_ACT = '1';
 // ★[T716 ⑥ · 2026-10-13] ⓧ① 은 **켬 세계**(T694 사냥 고기 · PM 10-13 켬 기본)의 단언이다 — PM 이 걸어 둔 끔 묶음(`T694_GAME_MEAT=0`)을 걷었다.
 //   곳간 대응표의 이름 다른 줄이 7 → 10(곰고기 → 들짐승고기 · 익힌 둘 → 조리식) · "같은 물건" 판정은 그대로 둘(곰고기 1,610 ≠ 1,200 kcal/kg).
 const path = require('path');
@@ -449,6 +454,7 @@ function _run(opts) {
 }
 
 (async () => {
+  if (process.env.__WW_SUB === 'forageOff') { const _q = console.log; console.log = () => {}; let r; try { r = forageOffSub(); } finally { console.log = _q; } console.log(JSON.stringify(r)); process.exit(0); }   // ★[T1203] ⓦ 대조 아이 판
   if (process.env.WW_ONLY_SERVER === '1') { await serverPart(); say(`결과: ${pass} 통과 / ${fail} 실패`); process.exit(fail ? 1 : 0); }
   //   ★[T458] 절 하나만(개발 — 전 절은 7분) · WW_PART=ration,forage,berry
   if (process.env.WW_PART) { const P = { ration: rationActPart, forage: forageMarchPart, berry: berryArrowPart, loot: lootActPart, punitive: punitivePart, odds: oddsRealPart, arms: gangArmsPart, march: marchStallPart }; for (const k of process.env.WW_PART.split(',')) P[k](); say(`\n결과: ${pass} 통과 / ${fail} 실패`); process.exit(fail ? 1 : 0); }
@@ -1480,7 +1486,8 @@ function marchStallPart() {
     "ⓩ''' 정적 — 존이 나선 정본을 넘긴다 · 새 팔 0 · 시한(타이머) 0 · 걸음은 path-core `localPath`");
 }
 function n3x(a, b) { return Math.abs((a || 0) - (b || 0)) <= 1e-6; }
-function forageMarchPart() {
+// ★[T1203] ⓦ 판 꾸밈 한 벌 — 본판(`forageMarchPart`)과 아이 판(`forageOffSub` · 채집이 행위가 아닌 세계)이 같은 것을 쓴다(사본 0).
+function _forageKit() {
   const keep = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT'].map(k => [k, process.env[k]]);
   const env = (a, b, c) => { const set = (k, v) => { if (v) process.env[k] = '1'; else if (k === 'T423_RATION_ACT') process.env[k] = '0'; else delete process.env[k]; }; set('T423_RATION_ACT', a); set('T441_FORAGE_MARCH', b); set('T347_FORAGE_ACT', c); };
   const run = (a, b, c, o, noReset) => { env(a, b, c); if (!noReset) groveReset(); try { return runScenario(o); } finally { env(0, 0, 0); } };
@@ -1490,6 +1497,17 @@ function forageMarchPart() {
   const sigD = (r) => JSON.stringify((r.packDays || []).map(x => x.rem));
   const O = { seed: 13, viewer: false, scenario: 'surrender', pack: true, untilHome: true, groves: true, econFood: true, dayMs: ZC.WORLD.dayLengthMs, maxTicks: 30 * 60 * 24 * 6 };
   const OA = Object.assign({}, O, { seed: 11, viewer: true, scenario: 'assault' });
+  return { keep, env, run, sig, sigD, O, OA };
+}
+// ★[T1203] 아이 판 — 채집 행위 끔(econ 상수가 끔인 프로세스)에서 데우기 한 판 뒤 T423 판 · 길 채집 손잡이만 켠 판을 견준다.
+function forageOffSub() {
+  const { run, sig, sigD, O } = _forageKit();
+  run(1, 0, 1, O);   // 데우기(본판과 같은 까닭 — 한 프로세스의 첫 판만 해시가 다르다)
+  const t = run(1, 0, 1, O), off = run(1, 1, 0, O);
+  return { econOff: !econ.T347_FORAGE_ACT, tPicks: (t.book && t.book.picks) || 0, offPicks: (off.book && off.book.picks) || 0, same: sig(t) === sig(off) && sigD(t) === sigD(off) };
+}
+function forageMarchPart() {
+  const { keep, env, run, sig, sigD, O, OA } = _forageKit();
 
   say('\n[ⓦ] 길에서 채집한다 — 그날 지난 길 둘레 군락을 채집 문으로 · 시간 = 낮 − 걸음 · 짐 상한 · 항등 · 결판 무변');
   //   ⚠데우기 한 판 — 이 절의 **첫 판만** 해시가 다르다(같은 씨 둘째 판부터는 한 글자 같다). 하네스 한 프로세스가 앞 절들과
@@ -1499,8 +1517,12 @@ function forageMarchPart() {
   const t423 = run(1, 0, 1, O), off2 = run(1, 1, 0, O), on = run(1, 1, 1, O);
   const cells0 = [...GROVE.cells.values()].reduce((a, b) => a + b.length, 0);
   const again = run(1, 1, 1, O, true);   // 같은 길 두 번째 원정(군락을 되돌려 놓지 않는다 — 재생은 T347 하루의 일)
-  ok(!t423.book.picks && sig(t423) === sig(off2) && sigD(t423) === sigD(off2) && !off2.book.picks,
-    'ⓦ ★대조 — 손잡이 끔(또는 채집이 행위가 아닌 세계)이면 T423 과 한 글자 같다', `끔 따기 ${t423.book.picks || 0} · T347 끔 따기 ${off2.book.picks || 0}`);
+  // ★[T1203] "채집이 행위가 아닌 세계"(T347 끔)는 econ 모듈 상수라 아이 프로세스가 잰다 · 이 프로세스(켬 묶음)의 `off2` 는 아래 칸들이 쓰지 않는다
+  const K0 = (() => { const e = Object.assign({}, process.env, { __WW_SUB: 'forageOff' }); delete e.T347_FORAGE_ACT;
+    try { return JSON.parse(require('child_process').execFileSync(process.execPath, [__filename], { env: e, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 }).trim().split('\n').pop()); } catch (x) { return { err: String(x.message || x).slice(0, 200) }; } })();
+  void off2;
+  ok(!t423.book.picks && K0.econOff === true && K0.same === true && K0.tPicks === 0 && K0.offPicks === 0,
+    'ⓦ ★대조 — 손잡이 끔(또는 채집이 행위가 아닌 세계)이면 T423 과 한 글자 같다', `끔 따기 ${t423.book.picks || 0} · T347 끔 따기 ${K0.offPicks}(아이 판 · econ 끔 ${K0.econOff} · 한 글자 ${K0.same})${K0.err ? ' ' + K0.err : ''}`);
   const fd = (on.book.fgDays || [])[0] || {};
   ok(on.book.picks > 0 && on.book.pickUnits > 0 && fd.picks > 0,
     'ⓦ 켬 — 행군 날 지난 길 둘레 군락을 딴다(채집 문 · 걷는 목록만 짐에)', `첫날 지난 칸 ${fd.cells} · 군락 셀 ${fd.groves} · ${fd.picks}포기 · ${fd.units}단위(${JSON.stringify(on.book.rawLoot || {})} 는 손에)`);

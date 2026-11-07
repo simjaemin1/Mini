@@ -144,7 +144,9 @@ const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ✓ ' + msg); } 
 const sec = (t) => console.log('\n' + t);
 const child = (env) => { const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: Object.assign({}, process.env, { T1207_CHILD: '1' }, env), encoding: 'utf8', timeout: 300000, maxBuffer: 64 << 20 });
   const l = (r.stdout || '').split('\n').find((x) => x.startsWith('@@T1207 ')); if (!l) { console.log(r.stdout, r.stderr); return null; } return JSON.parse(l.slice(8)); };
-const ON = child({ T1207_TERR_REAL: '1' }), OFF = child({ T1207_TERR_REAL: '0' });
+//   ★[T1213] 켬 판은 T1213(짓는 파생수요 더하기 · 땅의 차례)이 같이 선다 — 이 하네스는 T1207 제 몫(말뚝 모자람 = `derivedInputTarget` 의 큰 쪽 항)을 재므로
+//     켬 자식에 `T1213_DERIV_ADD=0`(재는 자 전용)을 준다. T1213 의 몫은 `test-t1213-terr-supply` 가 잰다.
+const ON = child({ T1207_TERR_REAL: '1', T1213_DERIV_ADD: '0' }), OFF = child({ T1207_TERR_REAL: '0' });
 const near = (a, b, e) => Math.abs(a - b) <= (e || 1e-9);
 
 console.log('\n=== T1207 영토 확장 실물화 — 개간 노동 + 경계 말뚝 · 크기 · 길쭉함 · NPC 곳간 · 몸 ===');

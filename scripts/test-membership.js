@@ -425,6 +425,28 @@ console.log('\n⑩ ★이 하네스가 실패할 줄 아는가 — 일부러 틀
   ok(lk === true && op === true && said.length === 2 && said.every((t) => /촌장만 열 수 있습니다/.test(t)), '⑪e2 `/곳간 잠금|열기` 는 명령으로 받아 한 줄로 답한다(말로 안 흘러간다)', said.join(' · '));
 }
 
+// ────────────────────────────────────────────────────────────────────────
+console.log('\n⑫ [T1211] `/곳간` 형편 줄 — 먹을 것 = 식량 등가 전체(손잡이 `T1211_STOCK_FE` · 켬 기본)');
+{
+  const q = mkPlayer('mb_t1211'); q.x = AT.x; q.y = AT.y; q._memberNearVid = VID;   // 앞에 선 마을(근접 브리핑이 적는 그 칸)
+  const S0 = Object.assign({}, VIL.econ.storage);
+  for (const k of Object.keys(VIL.econ.storage)) if (k !== 'food' && Villages._countsAsFoodEq(VIL, k)) VIL.econ.storage[k] = 0;   // 식량 등가에 드는 다른 칸을 비운다(아래 ⑫a 가 식량 칸만인 판)
+  const line = () => { const n0 = sent.length; M.handleChat(q, '/곳간'); const t = sent.slice(n0).filter((x) => x && x.type === 'notice').map((x) => x.text); return t[t.length - 1] || ''; };
+  try {
+    VIL.econ.storage.food = 300; VIL.econ.storage.meat = 0;
+    const a = line(), stA = stockOf(), feA = Villages.playerVillageWithdrawStockFoodEq(VIL);
+    ok(feA === stA && new RegExp(`먹을 것이 ${stA} 있습니다\\. 꺼내는`).test(a), '⑫a 식량 칸뿐이면 종전 줄 그대로(꼬리 0)', a);
+    VIL.econ.storage.meat = 200;
+    const b = line(), stB = stockOf(), feB = Villages.playerVillageWithdrawStockFoodEq(VIL);
+    if (process.env.T1211_STOCK_FE !== '0') ok(feB > stB && b.includes(`먹을 것이 ${feB} 있습니다(그중 식량 ${stB})`), '⑫b ★고기가 곳간에 있으면 먹을 것 = 식량 등가 전체 · 꼬리에 식량 칸(꺼내기는 품목마다)', b);
+    else ok(feB > stB && b.includes(`먹을 것이 ${stB} 있습니다. 꺼내는`), '⑫b 끔(`T1211_STOCK_FE=0`) = 종전 — 식량 칸 하나(고기를 안 센다)', b);
+    ok(feB === Villages.playerVillageWithdrawStockFoodEq(VIL) && feB > feA, '⑫b2 수는 꺼내기 한도의 밑변과 같은 함수(`playerVillageWithdrawStockFoodEq`)', `${feA} → ${feB}`);
+  } finally { for (const k of Object.keys(VIL.econ.storage)) if (!(k in S0)) delete VIL.econ.storage[k]; Object.assign(VIL.econ.storage, S0); }
+  const src = fs.readFileSync(path.join(__dirname, '..', 'server', 'membership.js'), 'utf8');
+  ok(/const T1211_STOCK_FE = process\.env\.T1211_STOCK_FE !== '0';/.test(src) && /\(T1211_STOCK_FE && V\.playerVillageWithdrawStockFoodEq\) \? V\.playerVillageWithdrawStockFoodEq\(g\.vil\) : st/.test(src),
+     '⑫c 끔(`=0`) = 종전 글자(`food` 칸 하나) — 손잡이 문 하나');
+}
+
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 try { _db.close(); fs.unlinkSync(process.env.DB_PATH); } catch (e) {}
 process.exit(fail ? 1 : 0);
