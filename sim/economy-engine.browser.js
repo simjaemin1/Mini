@@ -12190,9 +12190,34 @@ const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';   // ★PM land1048
 const _productionActHosts = new WeakSet();
 function bindProductionActs(world) { if (world && typeof world === 'object') _productionActHosts.add(world); }
 function productionActsBound(v) { return !!(v && v._world && _productionActHosts.has(v._world)); }
+// ★★[T1195 2026-11-06 · 추상 걷기 A · ★재민 11-05 "추상 다 없애자고 했는데 왜 아직도 남겨둔 거야"] **사냥 고기 = 몸이 잡은 마리 × kg.**
+//   종전: 사냥꾼 산출 = 공식 `0.7 × land.game × 숙련 × 도구`(+ 부산물 비율) — 개체 장부(T146)가 빼는 마리 · 보이는 몸 사냥(T158)과 따로 놀았다.
+//   켬: 실제 호스트(위 `bindProductionActs`)에서 사냥꾼의 수식 산출(고기 · 부산물 다)을 닫고(아래 `productionFormulaOff` 한 항),
+//     몸이 잡은 짐승만 `huntToGranary` 로 들어온다(T1180 어부 · 나무꾼 · 채집꾼과 같은 문법 · 같은 몸통 `actToGranary`).
+//     마리 → 고기 · 가죽 · 뿔 · 뼈는 서버가 정본(`animals.dropsOf` · `weights` · `kcal`)에서 바꾼다 — 이 파일은 수를 안 짓는다.
+//   ★수요 문(T374 · 같은 꼴): 그날 몫 D = 수식이 내던 마을 몫(`_huntOutLast` — 어부 `_fishOutLast` 와 같은 항들).
+//     짐승은 낱개로 나뉘지 않으므로 **온전한 마리**를 받는다 — 남은 수요가 있으면 한 마리를 다 받고(넘친 몫은 다음 날들의 몫을 미리 쓴 것 · 음수로 이월),
+//     남은 수요가 없으면 뷰 밖 몫은 안 받는다(장부에 되돌린다 — 몸이 그날 더 잡지 않은 것). 이월은 미리 쓴 몫(음수)만 · 못 채운 날 몫은 그날로 끝(T374 "그날 수요").
+//   헤드리스 랩은 호스트를 등록하지 않으므로 종전 수식 그대로다(랩 동일 = 격리 증명 · 몸 사냥의 증명이 아님).
+//   손잡이 `T1195_HUNT_REAL` — 켬 기본 · 되돌림 `=0`(끔 = 한 글자도 안 바뀐 종전 · 기준선 11-04c 같음).
+const T1195_HUNT_REAL = (typeof process !== 'undefined' && process.env && process.env.T1195_HUNT_REAL !== '0');
 function productionFormulaOff(v, job) {
   return !!(v && v._world && _productionActHosts.has(v._world) &&
-    ((job === 'miner' && T1188_ORE_SPLIT) || (job === 'fisher' && T312_FISH_ACT) || (job === 'lumberjack' && T325_WOOD_ACT) || (job === 'forager' && T347_FORAGE_ACT)));
+    ((job === 'miner' && T1188_ORE_SPLIT) || (job === 'fisher' && T312_FISH_ACT) || (job === 'lumberjack' && T325_WOOD_ACT) || (job === 'forager' && T347_FORAGE_ACT) || (job === 'hunter' && T1195_HUNT_REAL)));
+}
+function huntActOn(v) { return !!(T1195_HUNT_REAL && productionActsBound(v)); }
+// [T1195] 남은 그날 수요(econ 고기 단위 · 음수 = 미리 쓴 몫). 켬이 아니면 Infinity(문이 없다).
+function huntDemandLeft(v) { if (!T374_DEMAND_STOP || !huntActOn(v)) return Infinity; return (typeof v._t1195Bal === 'number' ? v._t1195Bal : 0); }
+// [T1195] 사냥꾼의 곳간 입구 — 몸통은 어부 · 나무꾼과 같은 `actToGranary`(세금 · 곳간 · 국고 순서 그대로).
+//   `meat` 이면 그날 수요에서 뺀다(넘치면 음수로 남는다 = 미리 쓴 몫). 들어온 품목은 오늘치(`_t1195InByItem`)로 남겨 틱이 실현 장부에 한 번 적는다.
+function huntToGranary(v, item, units) {
+  if (!huntActOn(v) || !v.storage || !item) return 0;
+  const g = actToGranary(v, item, units, null, null);
+  if (!(g > 0)) return 0;
+  const by = v._t1195InByItem || (v._t1195InByItem = {});
+  by[item] = (by[item] || 0) + g;
+  if (item === 'meat') v._t1195Bal = (typeof v._t1195Bal === 'number' ? v._t1195Bal : 0) - g;
+  return g;
 }
 // ★★★[T724 2026-10-13] **채굴 행위 이식 — 기본 끔.** 끄면 이 파일은 **오늘 main 과 비트 동일**이다
 //   (아래 네 자리가 전부 이 상수 뒤에 있다: 곳간 입구 `mineToGranary` · `addProduce('ore')` 게이트 · 수요 칸 `_oreOutLast` · 장부 다리).
@@ -14702,6 +14727,10 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   //   ⚠`stone` 가산은 이 수에 **안 든다**(믹스 밖에서 따로 더해지는 산출이다 — 보고 §표가 그 줄을 따로 적는다).
   //   ⚠읽는 쪽이 손잡이 뒤(`forageRegrow…`)라 끈 팔은 이 수를 **안 본다**(관측 칸).
   v._forageOutLast = _forageRaw * _forageScale;
+  if (huntActOn(v)) {   // ★[T1195] 사냥 그날 수요 — 어부 `_fishOutLast` 와 같은 꼴(자리 수 × base × 땅 × 공유 도구 · 숙련은 사람마다라 안 든다) · 끔 = 이 칸이 안 생긴다
+    v._huntOutLast = (v.counts.hunter || 0) * JOBS.hunter.base * JOBS.hunter.landBoost(v) * toolBoostShared;
+    v._t1195Bal = Math.min(typeof v._t1195Bal === 'number' ? v._t1195Bal : 0, 0) + v._huntOutLast;   // 미리 쓴 몫(음수)만 잇고 못 채운 몫은 그날로 끝(T374)
+  }
   v._forageScale = _forageScale;   // ★저장(§9): 채집 한계가치(픽커·기회비용)가 임연부 MSY 포화를 보게 — 포화 임연부에 herb 가격이 채집꾼을 무한 유인(공유지 비극)하는 것 차단
   if (T1179_CROP_SEASON) t1179FieldDay(v, day);   // ★[T1179] 익은 밭을 거두고 빈 자리에 심는다(생산 앞 · 끔 = 무동작)
   for (const npc of v.npcs) {
@@ -15226,6 +15255,11 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     v._t325InflowToday = 0;
     dailyProductionPotential.wood = (dailyProductionPotential.wood || 0) + _t325In;
     dailyProduction.wood = (dailyProduction.wood || 0) + _t325In;
+  }
+  // ★★[T1195] 몸이 잡아 들여온 고기 · 가죽 · 뿔 · 뼈도 **같은 자리에서** 장부에 적는다(T312 · T325 와 같은 꼴 · 이중 0 — 켠 호스트에서 사냥꾼은 `addProduce` 를 안 탄다).
+  if (T1195_HUNT_REAL && v._t1195InByItem) {
+    for (const [k, q] of Object.entries(v._t1195InByItem)) { if (!(q > 0)) continue; dailyProductionPotential[k] = (dailyProductionPotential[k] || 0) + q; dailyProduction[k] = (dailyProduction[k] || 0) + q; }
+    v._t1195InByItem = {};
   }
   // ★★[T724] 손으로 들여온 원석도 **같은 자리에서** 장부에 적는다(T312 · T325 와 같은 꼴 · 이중 0 — 몸이 친 날 `ore` 는 `addProduce` 를 안 탄다).
   //   그리고 수식이 오늘 낼 원석(광부 갈래가 모은 `_t724OutAcc`)을 내일의 수요 칸 `_oreOutLast` 로 넘긴다.
@@ -17631,6 +17665,7 @@ module.exports = {
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
   bindProductionActs, productionActsBound, productionFormulaOff,   // T1180: 물리 생산 호스트 등록 · 수식 대체 문
+  T1195_HUNT_REAL, huntActOn, huntDemandLeft, huntToGranary,   // T1195: 사냥 고기 = 몸이 잡은 마리 × kg(서버가 부른다)
   T452_KILN_ACT, kilnActOn, kilnWant, kilnDay, furnaceCharcoalTarget,   // ★[T452] 숯가마 행위
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn, stoneWorkStock,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다

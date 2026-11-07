@@ -103,7 +103,10 @@ Ev.createLedger = function () { const L = mk.apply(this, arguments); const sd = 
   } catch (e) { rec.err = String(e && e.message); } return sd.apply(this, arguments); }; return L; };
 process.on('exit', () => { try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} });
 `);
-const BASE = { VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0' };   // 판 조건 = 서버 기준선 자(T650)
+const BASE = { VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0', T1195_HUNT_REAL: '0' };   // 판 조건 = 서버 기준선 자(T650)
+//   ★[T1195] 사냥 몸 입고(`T1195_HUNT_REAL` 켬 기본)는 몸이 사냥터에 닿은 순간(벽시계 · 250ms 하루)에 갈린다 — 다시 뜬 판은 사냥꾼 몸이 사냥터 곁에서
+//     깨어 닿음이 잦아 나란히 띄운 두 판이 날 15 ~ 19 에 갈렸다(끔 = 34날 같음). 이 하네스가 재는 것은 T862 객체 꼴이고 그 전제는 기준선 자의 바이트 결정론이라
+//     기준선 끔 판처럼 몸 생산 손잡이 하나를 끈다(기준선 OFF env 와 같은 뜻 · 사냥 몸 입고의 값은 `test-t1195-hunt-real` · 정본 물리 판이 잰다).
 const knob = (env, on) => { if (on) delete env.T862_ECON_FAST; else env.T862_ECON_FAST = '0'; return env; };   // ★[T876 ①] 켬 = 빈 값(기본) · 끔 = '0'
 const wait = (c, ms) => new Promise((res) => { const k = setTimeout(() => { try { c.kill('SIGKILL'); } catch (e) {} }, ms); c.on('exit', (code) => { clearTimeout(k); res(code); }); });
 const readJ = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
