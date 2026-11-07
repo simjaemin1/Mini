@@ -309,13 +309,13 @@ if (ON && ON.npc) ok(ON.npc.first === firstAt(kBare, 4) && ON.npc.stone === 1 &&
 sec('⑤ 선광 — 맥석은 돌 · 자갈 · 그 자리 부스러기(무게 보존)');
 if (ON) {
   const A = ON.sortA;
-  ok(A.inv.stone === 1 && A.inv.pebble === 5 && !A.inv.ore_chunk && Math.abs(A.crumb - 0.3) < 1e-6 && /^선광 7kg → 광석 없음 · 맥석 7\.3kg → 돌 1, 자갈 5 · 부스러기 0\.3kg 그 자리에$/.test(A.say[0] || ''),
+  ok(A.inv.stone === 1 && A.inv.pebble === 5 && !A.inv.ore_chunk && Math.abs(A.crumb - 0.3) < 1e-6 && /^흙 7kg을 골라 광석은 나오지 않았습니다\. 맥석 7\.3kg에서 돌 1, 자갈 5을\(를\) 얻었습니다\. 부스러기 0\.3kg은 그 자리에 두었습니다\.$/.test(A.say[0] || ''),
     '★★맥석 7.3 kg → 돌 1 · 자갈 5 · 부스러기 0.3 kg(그 자리) — 버림 0', A.say[0]);
   const B = ON.sortB;
-  ok(B.inv.copper === 1 && B.inv.stone === 2 && !B.inv.pebble && Math.abs((B.carry.copper || 0) - 0.1) < 1e-6 && new RegExp(`→ ${ON.copperKo} 1 · 맥석 8\\.0kg → 돌 2$`).test(B.say[0] || ''),
+  ok(B.inv.copper === 1 && B.inv.stone === 2 && !B.inv.pebble && Math.abs((B.carry.copper || 0) - 0.1) < 1e-6 && new RegExp(`${ON.copperKo} 1을\\(를\\) 얻었습니다\\. 맥석 8\\.0kg에서 돌 2을\\(를\\) 얻었습니다\\.$`).test(B.say[0] || ''),
     '광맥 = 광석 + 돌 — 구리 3.6 kg + 맥석 8 kg → 구리 1(이월 0.1) · 돌 2', B.say[0]);
   const Cc = ON.sortC;
-  ok(!Cc.inv.stone && !Cc.inv.pebble && Math.abs(Cc.crumb - 0.4) < 1e-6 && /맥석 0\.4kg → 부스러기 0\.4kg 그 자리에$/.test(Cc.say[0] || ''), '자갈 한 알도 안 되는 맥석(0.4 kg) — 부스러기로 그 자리에', Cc.say[0]);
+  ok(!Cc.inv.stone && !Cc.inv.pebble && Math.abs(Cc.crumb - 0.4) < 1e-6 && /맥석 0\.4kg에서 얻은 것이 없습니다\. 부스러기 0\.4kg은 그 자리에 두었습니다\.$/.test(Cc.say[0] || ''), '자갈 한 알도 안 되는 맥석(0.4 kg) — 부스러기로 그 자리에', Cc.say[0]);
   const G = ON.ground;
   if (!G) ok(false, '광맥 밖 땅 칸을 못 찾았다');
   else {
@@ -332,7 +332,7 @@ else {
   const h = OFF.pick.hits;
   ok(OFF.on === false && OFF.rock === false && h[0].ds === 3 && h[0].m.join() === 'resource_update,inventory' && h.every((x) => x.say.length === 0) && h.every((x) => x.chip === 0),
     '곡괭이 첫 타 = 돌 3(T1126 — hp 3) · 방송 · 짐 알림 · 깎인 kg 말 0 · 바위 장부 0', h[0].m.join());
-  ok(OFF.sortA.inv.stone === undefined && OFF.sortA.inv.pebble === undefined && /^선광 7kg → 광석 없음 · 맥석 7\.3kg 버림$/.test(OFF.sortA.say[0] || ''), '맥석 7.3 kg 버림(종전 글자)', OFF.sortA.say[0]);
+  ok(OFF.sortA.inv.stone === undefined && OFF.sortA.inv.pebble === undefined && /^흙 7kg을 골라 광석은 나오지 않았습니다\. 맥석 7\.3kg은 버렸습니다\.$/.test(OFF.sortA.say[0] || ''), '맥석 7.3 kg 버림(종전 글자)', OFF.sortA.say[0]);
   ok(OFF.ground && OFF.ground.stone === 0 && OFF.ground.ch === 2, '땅 두 덩이 · 선광하면 돌 0(종전 — 폐석)');
 }
 
@@ -365,7 +365,7 @@ sec('⑧ 돌연변이 — 사람 문 · 선광 줄을 걷어 낸 글자');
   const ms = (() => { const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: Object.assign({}, process.env, { T1146_CHILD: '1', T1146_MUT: 'sort' }), encoding: 'utf8', timeout: 600000, maxBuffer: 64 << 20 });
     const l = (r.stdout || '').split('\n').find((x) => x.startsWith('@@T1146 ')); return l ? JSON.parse(l.slice(8)) : null; })();
   ok(mp && mp.pick.hits[0].ds === 3 && mp.pick.stone > 4, '★사람 문을 걷으면 곡괭이 첫 타 = 돌 3 — ③ 곡괭이 판정(돌 4 · 첫 돌 24타)이 빨갛다', mp && `첫 타 ${mp.pick.hits[0].ds} · 한 벌 ${mp.pick.stone}`);
-  ok(ms && /맥석 7\.3kg 버림/.test(ms.sortA.say[0] || '') && !ms.sortA.inv.stone, '★선광 줄을 걷으면 맥석이 다시 버려진다 — ⑤ 판정이 빨갛다', ms && ms.sortA.say[0]);
+  ok(ms && /맥석 7\.3kg은 버렸습니다/.test(ms.sortA.say[0] || '') && !ms.sortA.inv.stone, '★선광 줄을 걷으면 맥석이 다시 버려진다 — ⑤ 판정이 빨갛다', ms && ms.sortA.say[0]);
 }
 
 console.log(`\n=== T1146: ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);

@@ -134,6 +134,7 @@ async function waitUp(p, url, tries = 300) {
     PORT: String(ZPORT), ZONE_ID: ZID, DB_PATH: ZDB,
     CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
+    T474_CARAVAN_WALK: '0',   // [T1174] T474 켬 기본(land1045) 뒤 선별 14→17 · 시딩 13→16 · 쌍 78→120 으로 판이 달라진다(`=0` 이면 14/13/78 그대로 · 38/0) — 이 하네스의 수는 T559 때 판이라 묶는다
   });
   ok(await waitUp(zp, `http://localhost:${ZPORT}/health`), 'ⓔ1 중원북 존 기동');
   let ready = false;

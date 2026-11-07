@@ -959,6 +959,25 @@ function computeShadowPrices(v) {
   }
   return prices;
 }
+// ★[T1161 · K13] 값표의 **몇 칸만** — `computeShadowPrices(v)` 의 그 칸과 같은 값(같은 함수 · 같은 차례 · 새 수 0).
+//   거래소 견적 · 실행(`server/trade.js planSliced` · 조각 12 × 이분 탐색)은 두 칸(낼 것 · 받을 것)만 읽는데
+//   전 품목(226)을 매겨 왔다 — t988 하네스 시간의 95%(T1121 §2-3). 그 칸들만 같은 길로 매긴다.
+//   · 값표 밖 품목(ELASTICITY 에 없음) = 칸 없음(전 표와 같이 `undefined`).
+//   · 원석 상한은 금속 칸을 같은 함수(`_priceFromV2(_targetV2)`)로 매겨 견준다 — 전 표의 `prices[k]` 와 같은 값 · 표 밖 금속 = 0(전 표의 `|| 0`).
+//   · 세계 공급 캐시(`_worldStockOf` · 하루 한 번 세계 곳간을 센다)를 전 표와 **같은 순간**에 세운다 — 전 표는 부를 때마다 그 캐시를 묻는다(값표 밖
+//     두 칸만 묻는 판이 그 순간을 늦추면 그날 캐시가 다른 재고로 서서 뒤 값이 갈린다). 계산이지 세계를 안 바꾼다(전 표와 같은 쓰기 한 곳).
+function shadowPricesOf(v, keys) {
+  const prices = {};
+  const ctx = _targetCtxV2(v);
+  if (TRADABLE.length) _worldStockOf(v, TRADABLE[0]);
+  const own = Object.prototype.hasOwnProperty;
+  for (const r of keys) if (own.call(ELASTICITY, r) && !own.call(prices, r)) prices[r] = _priceFromV2(_targetV2(v, r, ctx));
+  if (prices.ore != null) {
+    const cap = _oreCapV2(v, (k) => own.call(prices, k) ? prices[k] : (own.call(ELASTICITY, k) ? _priceFromV2(_targetV2(v, k, ctx)) : undefined));
+    if (cap != null) prices.ore = Math.min(prices.ore, cap);
+  }
+  return prices;
+}
 
 // =============================================================================
 // 1b. 시장 충격 정산(price-impact settlement) — 2026-07-12 (b00c9f4 50% 하드캡의 창발 대체)
@@ -1184,6 +1203,7 @@ function _exportCandidatesV2(a, N) {   // a = 마을 칸({ v }) — 몸통 줄�
         else if (r === 'tigerhide') { keep = Math.max(1, N * TIGERHIDE_KEEP_PC); thresh = Math.max(2, N * TIGERHIDE_KEEP_PC * 1.6); }   // ★호피(§9 3차): 한계 위신 포화점(CAP/W≈0.025/인)×1.2만 쥐고 잉여=순수출재 — 일반칙(0.4N)이면 희소 위신재는 영영 수출 불가. 금·은·보석은 위신 포화(2/인)가 일반칙 위라 기존 규칙 유지
         else if (r === 'tin') { keep = Math.max(3, N * TIN_EXPORT_KEEP_PC); thresh = keep + N * TIN_EXPORT_SURPLUS_PC; }   // ★청동 희소성: 주석=전략재. 산지 마을이 대량 비축(자체 청동 독점 + 위세) 후 얇은 잉여만 수출 → 무산지 마을은 만성 주석 기근(청동 편중 유지, 무산지는 석기)
         else { keep = target * 0.5; thresh = target * 0.8; }                // 그 외: 15일치
+        if (a.t1157Release && !(FOODR[r] && _t1149Wd(a.v) > 0)) { keep = 0; thresh = 0; } // T1157 c: preserve active winter rule, seed reserve, and food/debt guards
         if (FOODR[r] && _t1149Wd(a.v) > 0) {   // ★[T1149 ⓒ] (위 if/else 사슬 뒤 — 사슬에 끼우면 식량이 `else` 갈래로 떨어져 끔에도 keep · thresh 가 바뀐다) 가을 · 겨울 — 제 겨울 몫(하루 생존량 × 겨울에 남은 날 · 곳간 식량 환산)을 넘는 몫만 판다
           const _room = v1.totalFoodEquivalent(a.v) - (SUBSISTENCE_PER_NPC.food || 0) * N * _t1149Wd(a.v);
           if (!(_room > 0)) continue;
@@ -1247,9 +1267,9 @@ function _t1136M() {
 }
 function _t1136Kg(r) { const k = +_t1136M().W.kgOfOrDefault(r); return k > 0 ? k : 0; }   // 낱개 하나의 kg(정본 · 표에 없으면 정본 기본값)
 function _t1136CapKg() { return _t1136M().C.CFG.CAP_KG; }   // 짐 상한 = 몸 짐 정본 × 사람 1(상인) — 호위 · 짐승 몫은 회부
-// ★[T1136 · 회부 판 · 기본 끔] `T1136_ESCORT_CARRY`('1' 만) — 사람 = 상인 + 호위: 호위 수 = 종전 만재(100 낱개) 호위 식(`_escortOfV2` · 그 길 위험 · 갱 · 전사 수 상한) ·
-//   짐 상한 = 몸 짐 × (1 + 호위). 끔(기본) = 상인 하나(호위는 손을 비운다). 카드 "25 kg × 사람"의 사람이 누구인가는 판정(회부) — 두 읽기를 같은 자로 재려고 둔다(새 수 0).
-const T1136_ESCORT_CARRY = (typeof process !== 'undefined' && process.env && process.env.T1136_ESCORT_CARRY === '1');
+// ★[T1182 · 기본 켬 · =0 되돌림] `T1136_ESCORT_CARRY` — 사람 = 상인 + 호위: 호위 수 = 종전 만재(100 낱개) 호위 식(`_escortOfV2` · 그 길 위험 · 갱 · 전사 수 상한) ·
+//   짐 상한 = 몸 짐 × (1 + 호위). 끔 = 상인 하나(호위는 손을 비운다). 카드 "25 kg × 사람"의 사람이 누구인가는 판정(회부) — 두 읽기를 같은 자로 재려고 둔다(새 수 0).
+const T1136_ESCORT_CARRY = (typeof process !== 'undefined' && process.env && process.env.T1136_ESCORT_CARRY !== '0');
 function _t1136Days(dist) { return Math.max(0, +dist || 0) / CARAVAN_DAY_SPEED; }   // 다리 날(소수 그대로)
 // 길 위 신선도(t0 → t1 · 소수 날) — T784 곡선 · T812 노출 정본(`_t812Exp` 의 누적 차) · T840 고도. 늙지 않는 품목 1.
 function _t1136F(res, t0, t1, elevKm) {
@@ -1266,7 +1286,8 @@ function _t1136Cv(cache, v, r, kind) {
   let M = cache ? cache.get(v) : null;
   const key = kind + r;
   if (M) { const C0 = M.get(key); if (C0) return C0; }
-  const P = kind === 's' ? _priceParamsV2(v, r) : _settleParamsV2(v, r);
+  const view = _t1157View(v);
+  const P = kind === 's' ? _priceParamsV2(view, r) : _settleParamsV2(view, r);
   const C = { P, S: _impactSegs(P) };
   if (cache) { if (!M) { M = new Map(); cache.set(v, M); } M.set(key, C); }
   return C;
@@ -1289,8 +1310,28 @@ function _t1136RvAdd(R, v, list, t) { if (!v || !list) return; let a = R.get(v);
 function _t1136Rv(R, v, r, tBy) { const a = R && R.get(v); if (!a) return 0; let s = 0; for (let i = 0; i < a.length; i += 3) if (a[i] === r && a[i + 2] <= tBy) s += a[i + 1]; return s; }
 // 내보낼 몫(바구니) — 종전 후보 함수 그대로 + 식량 빚 마을(T1074 · 켬 판에서만 빚이 선다)은 먹을 것(식량류 · 식량 환산이 있는 품목)을 못 낸다
 function _t1136DebtFood(v) { return !!(v1.foodDebtOf && v1.T1074_FOOD_DEBT && v1.foodDebtOf(v).max > 0); }
+// T1157: separate, default OFF. Only the basket reads public inventory.
+const T1157_SETTLE_VAULT = _T1152_ENV.T1157_SETTLE_VAULT === '1';
+const T1157_RELEASE_RESERVE = _T1152_ENV.T1157_RELEASE_RESERVE === '1';
+function _t1157Stock(v, r) {
+  return (v.storage[r] || 0) + (T1157_SETTLE_VAULT ? Math.max(0, (v.treasury || {})[r] || 0) : 0);
+}
+function _t1157View(v) {
+  if (!T1157_SETTLE_VAULT) return v;
+  const storage = { ...v.storage };
+  for (const r of TRADABLE) storage[r] = _t1157Stock(v, r);
+  return { ...v, storage };
+}
+// Move only the units actually sold. Public stock has no private lot record;
+// existing lot capture begins after the transfer and follows the normal path.
+function _t1157Fund(v, r, q) {
+  if (!T1157_SETTLE_VAULT) return;
+  const n = Math.min(Math.max(0, q - (v.storage[r] || 0)), Math.max(0, (v.treasury || {})[r] || 0));
+  if (n > 0) { v.treasury[r] -= n; v.storage[r] = (v.storage[r] || 0) + n; }
+}
 function _t1136Cands(v) {
-  const C = _exportCandidatesV2({ v }, v.npcs.length);
+  const view = _t1157View(v);
+  const C = _exportCandidatesV2({ v: view, t1157Release: T1157_RELEASE_RESERVE }, v.npcs.length);
   return _t1136DebtFood(v) ? C.filter((c) => !(EXPORT_FOODR[c.res] || _t825FoodPer(v, c.res) > 0)) : C;
 }
 // 물 채우기 — items[i] = { res, kg, max, at(k) → { g, cr, spend, c } }(k 번째 낱개). 다음 낱개 가운데 점수가 가장 큰 것(같으면 앞 차례)을 하나 싣는다.
@@ -1328,7 +1369,7 @@ function _t1136OutItems(ctx, av, bv, t0, tOut, risk) {
   for (const cand of ctx.candA) {
     const r = cand.res, kg = _t1136Kg(r);
     if (!(kg > 0) || kg > ctx.capKg) continue;
-    const max = Math.floor(Math.min(cand.surplus, av.storage[r] || 0) + 1e-9);
+    const max = Math.floor(Math.min(cand.surplus, _t1157Stock(av, r)) + 1e-9);
     if (max < 1) continue;
     const CA = _t1136Cv(ctx.cache, av, r, 'd'), CB = _t1136Cv(ctx.cache, bv, r, 's');   // 내 값 = 결정층 곡선 · B 장터에서 받을 값 = 정산 곡선(실제로 치르는 값 — 받아 올 짐을 사는 값과 같은 곡선이라 남는 값이 계획과 맞는다)
     const _phB = T1152_POOL ? _t825FoodPer(bv, r) : 0;   // ★[T1152 ① 측정 · 열량 시장] 열량 품목이면 먼저 닿을 짐의 열량 전부가 같은 곡선을 민다(그 밖 = 0 → 종전 줄)
@@ -1351,7 +1392,7 @@ function _t1136RetItems(cache, R, av, bv, sent, candB, capKg, t1, tBack, risk, f
     const kg = _t1136Kg(r);
     if (!(kg > 0) || kg > capKg) continue;
     const ro = R && R.out ? _t1136Rv(R.out, bv, r, t1) : 0;   // 먼저 닿을 캐러밴이 사 갈 몫(예약 ① 파는 쪽)
-    const max = Math.floor(Math.min(cand.surplus - ro, (bv.storage[r] || 0) - ro) + 1e-9);
+    const max = Math.floor(Math.min(cand.surplus - ro, _t1157Stock(bv, r) - ro) + 1e-9);
     if (max < 1) continue;
     const CB = _t1136Cv(cache, bv, r, kind), CA = _t1136Cv(cache, av, r, 'd');
     const _phA = T1152_POOL ? _t825FoodPer(av, r) : 0;   // ★[T1152 ① 측정 · 열량 시장] A 쪽 예약은 열량 합 · B 쪽 파는 몫(먼저 사 갈 짐)도 열량 합이 곡선을 민다(그 밖 = 종전 줄)
@@ -1423,6 +1464,52 @@ function _t1136Plan(world, ctx, a, bv, dist) {
   if (PB && PB.gain > PA.gain) { PB.how = 'cr'; return PB; }
   PA.how = 'kg'; return PA;
 }
+// T1156: quote a production window through the SAME basket plan, including
+// reachable destinations, their actual exportable stock, prices, losses and travel.
+// This is a forecast, never a deposit, order, RNG draw or promise of credit.
+const _t1156Quotes = new WeakMap();
+function _t1156Specialty(v, world) {
+  if (!world || !v.coord) return [];
+  const cached = _t1156Quotes.get(v);
+  if (cached && cached.day === world.day) return cached.rows;
+  const days = 30; // the famine block's existing food horizon
+  const base = v1.JOBS.miner.base;
+  const ore = base * (v.land.ore || 0) * (1 - (v._metalGlut || 0));
+  const forecasts = [
+    ['miner', { obsidian: base * (v.land.obsidian || 0) * (1 - (v._obsGlut || 0)), jade: base * (v.land.jade || 0) * (1 - (v._jadeGlut || 0)), salt: ore * 0.05, clay: ore * 0.08 }],
+    ['lumberjack', { wood: v1.JOBS.lumberjack.base * (v.land.wood || 0) }],
+  ];
+  const prices = computeShadowPrices(v), mv = lowestProducer(v, prices, world.day).mv;
+  const rows = [];
+  for (const [job, yields] of forecasts) {
+    const storage = { ...v.storage }, candA = [];
+    for (const r in yields) if (yields[r] > 0 && !_oreBanned(r)) {
+      const q = yields[r] * days;
+      storage[r] = (storage[r] || 0) + q; candA.push({ res: r, surplus: q });
+    }
+    if (!candA.length) continue;
+    const av = { ...v, storage }, a = { v: av, prices };
+    let best = 0;
+    for (const bv of world.villages) {
+      if (bv === v || bv._xz || !bv.npcs.length || !bv.coord || _destBlockedV2({v}, {v:bv}, world.day)) continue;
+      const dist = v1.villageDist(v, bv);
+      if (dist > (world.infoRange || 400)) continue;
+      // Only purchasable food belongs in a famine job comparison.
+      const candB = new Map([[bv, _t1136Cands(bv).filter(c => _t825FoodPer(v, c.res) > 0)]]);
+      const ctx = {t0:world.day + days, fwd:FORWARD_PRICE_MARGIN_NEV, capKg:_t1136CapKg(), cache:new Map(), candB, R:_t1136Resv(world), candA, mv:Number.isFinite(mv)?mv:0};
+      const plan = _t1136Plan(world, ctx, a, bv, dist);
+      if (!plan || !(plan.gain > 0)) continue;
+      let food = 0;
+      for (const it of plan.ret) food += it.amt * _t825FoodPer(v, it.res);
+      // Include production time AND the existing round trip; no instantaneous import.
+      best = Math.max(best, food / (days + plan.tOut + plan.tBack));
+    }
+    if (best > 0) rows.push({ job, foodPerDay:best });
+  }
+  _t1156Quotes.set(v, {day:world.day, rows});
+  return rows;
+}
+if (v1.T1156_SPECIALTY_JOB) v1.setT1156Quote(_t1156Specialty);
 // 마을 하나의 하루 발주(바구니) — 종전 고리와 같은 문(여유 노동 · 가장 값싼 생산자 · 목적지 거름 · 정보 반경 · 기회비용 관문) · 다리는 목적지마다 계획해 이득 최대(같으면 앞 목적지)
 function _t1136Village(world, a, evToData, nbList, spareCap, currentlyTrading, day, fwd, stepCache) {
   let launched = 0;
@@ -1461,6 +1548,7 @@ function _t1136Launch(world, a, P, lp, day, ctx) {
   let kg = 0, val = 0;
   for (const it of P.out) {
     const r = it.res, q = it.amt, kgU = _t1136Kg(r);
+    _t1157Fund(av, r, q);
     if (_LOTH) _LOTH.capBegin(av, r);
     av.storage[r] -= q;
     lots.push(_LOTH ? _LOTH.capEnd(av, r) : null);
@@ -1507,8 +1595,9 @@ function basketFlush(world, tEnd, inclusive) {
     let best = null, bt = Infinity;
     for (const c of world.caravans) {
       if (!c.basket || c._done) continue;
-      const t = _t1136Next(c);
-      if (!(inclusive ? t <= tEnd : t < tEnd)) continue;
+      if (!caravanBodyAllows(world, c, c.state)) continue;
+      const t = typeof world.caravanBodyReady === 'function' ? tEnd : _t1136Next(c);
+      if (typeof world.caravanBodyReady !== 'function' && !(inclusive ? t <= tEnd : t < tEnd)) continue;
       if (t < bt || (t === bt && c.id < best.id)) { bt = t; best = c; }
     }
     if (!best) break;
@@ -1535,8 +1624,8 @@ function _t1136Arrive(world, c, t) {
   const L = c.basket.map((it) => {
     const q = it.amt * (1 - lossOut), f = _t1136F(it.res, c.departDay, t, _elevKmOf(B));
     const n = Math.floor(q + 1e-9), cum = [0];
-    for (let j = 1; j <= n; j++) cum.push(_impactSellV2(B, it.res, j) * f);
-    if (q - n > 1e-9) cum.push(_impactSellV2(B, it.res, q) * f);   // 약탈로 남은 끝 조각(낱개 밑)
+    for (let j = 1; j <= n; j++) cum.push(_impactSellV2(_t1157View(B), it.res, j) * f);
+    if (q - n > 1e-9) cum.push(_impactSellV2(_t1157View(B), it.res, q) * f);   // 약탈로 남은 끝 조각(낱개 밑)
     const pA = (_priceNowV2(A, it.res) || 0) * _t1136F(it.res, t, t + tBack, _elevKmOf(A));   // 집에 되가져가면 내 값(지금 값 × 귀로 신선도)
     return { it, q, n, cum, pA, sold: 0 };
   });
@@ -1600,6 +1689,7 @@ function _t1136Arrive(world, c, t) {
     if (!(n > 0)) return;
     const r = items[i].res, C = _t1136Cv(cache, B, r, 's');
     const cost = _t1136I(C, C.P.sEff) - _t1136I(C, C.P.sEff - n);   // n 낱개 값(곡선 적분 — 낱개 값의 합과 같다)
+    _t1157Fund(B, r, n);
     if (_LOTH) _LOTH.capBegin(B, r);
     B.storage[r] = (B.storage[r] || 0) - n;
     if (_LOTH) _LOTH.cargo(c, 'r:' + r, _LOTH.capEnd(B, r));
@@ -2145,6 +2235,7 @@ function _raidMeet(world, c, day) {
 }
 function _raidTaken(c, leg) { const L = c._raidLoss; if (!L) return 0; const v = L[leg] || 0; delete L[leg]; if (!L.outbound && !L.inbound) delete c._raidLoss; return v; }   // ★[T1104] 길 위에서 치른 몫 — 읽고 지운다(되돌아 다른 마을로 가는 다음 구간이 새로 셈하게)
 function _caravanArrive(world, c, day) {
+    if (!caravanBodyAllows(world, c, 'outbound')) return;
     // ★★[T525] 목적지가 이웃 존 스텁 — 도착은 그 존이 치른다(약탈도 그쪽 호스트가 정한다). 팔이 꺼졌거나 호스트가 빠졌으면 짐을 되돌린다.
     if (c.to && c.to._xz) { if (_xzOn(world)) _xzHandOff(world, c, day); else _xzBounce(world, c, day); return; }
     // ★[de-abstract] 약탈 (가는 길) = per-entity 실전투(주사위 제거): 길목에 실제 갱 있으면 호위+상인 vs 갱 라운드 스크럼
@@ -2410,12 +2501,13 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
 // ★★[T707] 떠날 때 정산 — 찍어 둔 장(`c._t707`)을 `world.caravans` 차례로 한 번에 정산한다(같은 마을 같은 날 둘째는 첫째 정산 뒤 곳간을 본다 = 종전 차례).
 //   부르는 자리: `tickWorldV2Parts.head` — 날을 올린 바로 뒤 · 마을 틱 앞(교역 기록의 날 = 장부에 든 날).
 //   두 번 불려도 한 번(정산한 장은 지운다). 끔이면 찍힌 장이 없어 0.
-function settleMarketsV2(world) {
+function settleMarketsV2(world, only) {
   if (!world || !world.caravans || !world.caravans.length) return 0;
   let n = 0;
   for (const c of world.caravans) {
     const P = c._t707;
-    if (!P) continue;
+    if (!P || (only && c !== only)) continue;
+    if (!caravanBodyAllows(world,c,'market')) continue;
     c._t707 = null;
     _caravanTrade(world, c, world.day, P.give, P.loss, P.pricesTo, P.pricesFrom, P.pTo);   // 날 = 장부에 든 날(오늘 econ 날) — 장부 사건(`events.js` FIRST_GOODS)·마지막 교역일이 오늘 줄로 읽는다
     if (T1030_XZ_MARKET && c._xzHome) _t1030Settled(world, c);   // ★[T1030] 이웃 존 캐러밴 — 방금 선 교역 행을 'return' 이 실을 행으로(끔 = 이 줄 무동작)
@@ -2454,35 +2546,46 @@ function _homeDepositV2(c, res, received, slot, unsold) {   // unsold(바구니 
     c.from.tradeStats.woodImported = (c.from.tradeStats.woodImported || 0) + received;   // ★fuelK(리비히 연료)용 — 목재 수입도 부양력에 반영(교역이 숲빈약 마을 부양)
   }
 }
+// T1182: 실체 호스트가 있는 세계는 실제 몸 도착만 입금/경계 통과를 허락한다.
+// 헤드리스 econ 자에는 호스트가 없으며 기존 사건 시계를 사용한다.
+function caravanBodyAllows(world, c, leg) {
+  return typeof world.caravanBodyReady !== 'function' || !!world.caravanBodyReady(c, leg);
+}
 function tickCaravansV2(world, day) {
   // ★★[T525] 이웃 존에서 온 기록 먼저(그 존 캐러밴의 도착 · 이 존 캐러밴의 귀환) — 팔 켬 + 호스트가 꽂았을 때만.
   if (_xzOn(world) && world.xzone.inbox && world.xzone.inbox.length) _xzInbox(world, day);
   if (!world.caravans || !world.caravans.length) return;
-  for (const c of world.caravans) {
-    if (c._done) continue;
-    if (world.banditMeet) { _raidMeet(world, c, day); if (c._done) continue; }   // ★[T1104] 길 위 만남(호스트 문이 꽂힌 판만 · 끔 = 이 줄 무동작) — 행상이 길에서 죽었으면 그 캐러밴은 여기서 끝
-    if (c.basket) continue;   // ★[T1136] 바구니 캐러밴 — 도착 · 집 도착은 사건 처리기(`basketFlush`)가 몸이 닿은 시각대로 치른다(여기선 위 길 위 만남만 · 끔 = 바구니 없음 = 무동작)
+  for (const c of world.caravans) _caravanStepV2(world,c,day);
+  world.caravans = world.caravans.filter(c => !c._done);
+}
+function caravanBodyDue(world,c,leg,clockDue) {
+  return typeof world.caravanBodyReady === 'function' ? caravanBodyAllows(world,c,leg) : clockDue;
+}
+function _caravanStepV2(world,c,day) {
+    if (c._done) return;
+    if (world.banditMeet) { _raidMeet(world, c, day); if (c._done) return; }   // ★[T1104] 길 위 만남(호스트 문이 꽂힌 판만 · 끔 = 이 줄 무동작) — 행상이 길에서 죽었으면 그 캐러밴은 여기서 끝
+    if (c.basket) return;   // ★[T1136] 바구니 캐러밴 — 도착 · 집 도착은 사건 처리기(`basketFlush`)가 몸이 닿은 시각대로 치른다(여기선 위 길 위 만남만 · 끔 = 바구니 없음 = 무동작)
 
     // ★★[T533] 경계 칸에 서는 날(스텁이 목적지) — 몸과 기록이 함께 넘어간다(`_xzCross` 가 없는 캐러밴은 이 갈래를 안 탄다 = 종전).
-    if (c._xzCross && c.state === 'outbound' && c.to && c.to._xz && day >= c._xzCross.day) {
+    if (c._xzCross && c.state === 'outbound' && c.to && c.to._xz && caravanBodyDue(world,c,'outbound',day>=c._xzCross.day)) {
       if (_xzOn(world)) _xzHandOff(world, c, day); else _xzBounce(world, c, day);
     }
 
-    else if (c.state === 'outbound' && day >= c.arriveDay) {
+    else if (c.state === 'outbound' && caravanBodyDue(world,c,'outbound',day>=c.arriveDay)) {
       if (c._xzHome) { if (!_t1030Hold(world, c)) _xzArriveLoop(world, c, day); }   // ★[T525·T533] 이웃 존 캐러밴의 도착(이 존 몫을 걸어 왔다 · 우회 뒤 도착도 여기) · ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전)
       else _caravanArrive(world, c, day);
     }
 
     // ★★[T533] 이웃 존 캐러밴의 귀환 구간 — 집은 스텁이라 이 존 곳간에 넣지 않는다: 제 몫을 걸어 경계 칸에 선 날 집 존으로 넘긴다.
     else if (c._xzHome && c.state === 'inbound') {
-      if (c._xzBack && day >= c._xzBack.day && !_t1030Hold(world, c)) _xzHandBack(world, c, day, c._xzRow || null, c._xzBack.remain);   // ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전)
+      if (c._xzBack && caravanBodyDue(world,c,'inbound',day>=c._xzBack.day) && !_t1030Hold(world, c)) _xzHandBack(world, c, day, c._xzRow || null, c._xzBack.remain);   // ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전)
     }
 
-    else if (c.state === 'inbound' && day >= c.returnArriveDay && !c._t707) {   // ★[T707] 정산 전 장은 귀환을 안 닫는다(머리에서 정산되니 실제로는 안 닿는다 · 끔이면 `_t707` 없음 = 종전)
+    else if (c.state === 'inbound' && !c._t707 && caravanBodyDue(world,c,'inbound',day>=c.returnArriveDay)) {   // ★[T707] 정산 전 장은 귀환을 안 닫는다(머리에서 정산되니 실제로는 안 닿는다 · 끔이면 `_t707` 없음 = 종전)
       // ★[de-abstract] 약탈 (귀환) = per-entity 실전투: 왕복 같은 길목 갱 vs 호위+상인 · ★[T1104] 만남 문이 꽂혔으면 길 위에서 치른 몫만(`_raidMeet` · 끔 = 종전 글자)
       const gangI = world.banditMeet ? null : (world.banditGang ? world.banditGang(c.from, c.to) : null);
       let inboundLoss = world.banditMeet ? _raidTaken(c, 'inbound') : _raidIn(world, c, day, gangI);
-      if (c._done) continue;   // 행상 사망 → 캐러밴 종료(자원 입금 X)
+      if (c._done) return;   // 행상 사망 → 캐러밴 종료(자원 입금 X)
 
       if (c._returningRes && c._returningAmt > 0) {
         _homeDepositV2(c, c._returningRes, c._returningAmt * (1 - inboundLoss), 'ret');   // ★[T1136] 이름만 올렸다(위 함수 · 값 · 차례 무변)
@@ -2497,10 +2600,8 @@ function tickCaravansV2(world, day) {
       }
       c._done = true;
     }
-  }
-  world.caravans = world.caravans.filter(c => !c._done);
-}
 
+}
 // ═══ ★★[T525] 존 경계 넘기 — 몸의 기록 둘('arrive' · 'return') · 전부 팔 켬 + 호스트가 `world.xzone` 을 꽂았을 때만 닿는다 ═══
 //   기록은 호스트가 옮긴다(존 서버 = 안 문 핸드오프 · 자 = 워커 사이 전달). econ 은 `out` 에 쓰고 `inbox` 에서 읽을 뿐이다.
 // 이 존 캐러밴이 경계 칸에 섰다(`_xzCross`) 또는 스텁에 닿았다(T525 뼈대 · `split` 없음) — 몸을 넘긴다.
@@ -3224,6 +3325,7 @@ module.exports = {
   createWorldV2,
   tickWorldV2, tickWorldV2Parts,   // ★[T513] 하루 틱 조각(서버 하루 마감이 여러 프레임에 흘린다 · 정본 한 벌)
   computeShadowPrices,
+  shadowPricesOf,   // ★[T1161 · K13] 값표의 몇 칸만(전 표의 그 칸과 같은 값) — 거래소 견적 · 실행이 부른다
   netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
   haulMul, HORSE_HAUL_MUL, TRANSPORT_COST_PER_1000,   // ★말 사역(2026-08-02e ⑥) — 시대 전/후 비트 동일 검증용
   computeVillageStats,
@@ -3237,6 +3339,9 @@ module.exports = {
   isSubsistenceFlow, subsGuard,   // ★[T416] subs 가드 술어 하나 — 가격 셋·게시판 하나가 같은 문을 부른다
   T659_WOOD_FLOW,   // ★[T659] 통나무 흐름 닻 손잡이(기본 끔) — 하네스·자가 읽는다
   T707_MARKET, settleMarketsV2,   // ★[T707] 장마당 떠날 때 정산 — 손잡이(기본 끔) · 정산 문(서버 하루 마감이 econ 조각 첫 자리에서 부른다 · 하네스가 같은 문을 부른다)
+  _t1156Specialty,
+  _t1157Probe: { stock: _t1157Stock, view: _t1157View, fund: _t1157Fund, cands: _t1136Cands },
+  T1157_SETTLE_VAULT, T1157_RELEASE_RESERVE,
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
   // ★[T726] 목표 한 함수(결정층 식 정본) — 하네스 · 관찰기가 같은 문을 부른다

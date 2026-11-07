@@ -49,9 +49,9 @@ k = kidEnv({ T745_VCLOCK: '1', T941_BATTLE_DAY: '0' });
 ok(k && k.T941_BATTLE_DAY === '0', '④-a [T959] 부르는 쪽이 준 T941_BATTLE_DAY=0(되돌림 — T959 전 판 자)이 먼저', JSON.stringify(k));
 k = kidEnv({ T745_VCLOCK: '1' });
 const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
-ok(k && k.T941_BATTLE_DAY === '1' && kidEnv({}).T941_BATTLE_DAY === '1' && /const T941_BATTLE_DAY = process\.env\.T941_BATTLE_DAY === '1';/.test(V)
+ok(k && k.T941_BATTLE_DAY === '1' && kidEnv({}).T941_BATTLE_DAY === '1' && /const T941_BATTLE_DAY = process\.env\.T941_BATTLE_DAY !== '0';/.test(V)
   && /function _t681Quota\(\) \{ const WL = state\.warLive; return Math\.max\(1, Math\.round\(\(state\.dayMs \|\| 0\) \* \(\(WL && WL\.TICK_HZ\) \|\| 30\) \/ 1000\)\); \}/.test(V),
-  '★④-b [T959] 판 자 기본은 T941 켬(가상 시계 · 벽시계 판 둘 다 아이에 `1`) · 제품 손잡이 `=== \'1\'` 하나(제품 기본 끔) · 판 몫 식(`_t681Quota`) 글자 그대로');
+  '★④-b [T959] 판 자 기본은 T941 켬(가상 시계 · 벽시계 판 둘 다 아이에 `1`) · 제품 손잡이 `!== \'0\'` 하나(제품 켬 기본) · 판 몫 식(`_t681Quota`) 글자 그대로');
 const src = fs.readFileSync(RULER, 'utf8'); const bait = src.split('\n').filter((l) => !/KID_WAL != null \? \{ T696_WAL/.test(l)).join('\n');
 const BAIT = path.join(ROOT, 'scripts', '.t941-bait.js'); fs.writeFileSync(BAIT, bait);
 k = kidEnv({ T745_VCLOCK: '1' }, BAIT); fs.rmSync(BAIT, { force: true });

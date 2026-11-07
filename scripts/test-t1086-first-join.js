@@ -332,6 +332,8 @@ try {
   ok(bt.classList.contains('hidden') && bt.dataset.act === '', '재료가 모자라면 단추가 숨는다(누를 수 없는 단추 0)');
   ok(c.onbNextPress('') === false && c.onbNextPress('x') === false, '빈 이름 · 모르는 이름은 아무것도 안 보낸다');
   // 게시판 판(`#boardPane` · 납품하면 저절로 열린다)이 칸 자리를 덮으면 — 판 밑으로(자리가 있으면) · 없으면 판 왼쪽으로
+  //   ★[T1169 · K18] 이 절은 **끔 갈래**(`?T1070_VILLAGE_VIEW=0` — Shift+G = 게시판 판)의 것이다. 켬 기본(T1137)의 마을 화면 `#vvPane` 은
+  //   전체 화면 판(`position:fixed · inset:0`)이라 칸을 비켜 세울 자리가 없다 — 판을 닫으면 칸이 그대로 보인다(비켜 서기 대상 아님 · 제품 글자 무변).
   c.getComputedStyle = () => ({ marginTop: '8px' });
   const bp = L.D.doc.createElement('div'); bp.id = 'boardPane'; L.D.byId.set('boardPane', bp);
   bp.getBoundingClientRect = () => ({ left: 904, right: 1424, top: 64, bottom: 443, width: 520, height: 379 });

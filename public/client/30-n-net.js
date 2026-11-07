@@ -230,7 +230,7 @@
     { const tO = performance.now(); onbLobbyInit(); _lobStep('시작 화면(onbLobbyInit)', tO); }
     document.getElementById('enter').onclick = async () => {
       _ldOpen();   // ★[T920] 첫 접속 표 — 눌림(첫 번만)
-      _gimgOpen('나루터로 간다');   // ★[T1123] 게임 그림 문 ⓓ(이미 열렸으면 아무 일 없음)
+      _gimgOpen('나루터로 가기');   // ★[T1123] 게임 그림 문 ⓓ(이미 열렸으면 아무 일 없음)
       const inputName = document.getElementById('name').value.trim();
       const inputPw = document.getElementById('password').value;
       // ★★[T363] **제출 때 한 번** — 이름이 이미 있나 · 있다면 어디로 가야 하나.
@@ -504,7 +504,7 @@
       if (!_bmBusy) {
         e.preventDefault();
         if (stepZoom(e.deltaY > 0 ? -1 : +1)) {        // 위로 굴리면 확대
-          showNotice(`확대 ${ZOOM}×`, 700);
+          showNotice(`${ZOOM}배로 확대했습니다.`, 700);
         }
         return;
       }
@@ -550,7 +550,7 @@
         const i = seq.indexOf(placementMode.dir || 'N');
         placementMode.dir = seq[(i + 1) % 4];
       }
-      showNotice(`회전: ${placementMode.dir}`);
+      showNotice(`방향을 ${placementMode.dir}(으)로 돌렸습니다.`);
     });
     // === [조준 모드 2026-08-30] 우클릭 홀드 = 조준 · 조준 중 좌클릭 = 공격 =========
     //   ★기존 상호작용을 잡아먹지 않는다: 우클릭은 preventDefault 만(위 contextmenu 가 이미 한다),
@@ -797,6 +797,7 @@
       params.set('color', myColor);
       if (onbStartVid != null) params.set('start_vid', String(onbStartVid));   // ★[온보딩 v2] 시작 화면에서 고른 마을 — 서버가 그 마을 도착 지점으로 앉힌다
     }
+    if (_t1163Hf[zoneId]) params.set('hf', _t1163Hf[zoneId]);   // ★[T1163] 가진 지형 절 서명(서버가 같으면 welcome 에서 지형을 뺀다)
     const url = `${meta.wsUrl}/?${params.toString()}`;
     const ws = new WebSocket(url);
     if (role === 'primary' && _ld.rx && _ld.at.ws == null) { _ldMark('ws'); ws.addEventListener('open', () => _ldMark('open'), { once: true }); }   // ★[T920] 첫 접속 창에만
@@ -856,6 +857,9 @@
   //   예측 유지(서버 `T1125_KEEP_PRED` → `uiCfg.keepPred`) — 넘기 동안 예측을 멈추지 않고 승격 welcome 은 자리를 적기만 한다(첫 틱이 한 번 보정).
   const _t1125Ht = {};
   let _t1125Tb = null;
+  // ★[T1163] 로비 `/terrain.json` 으로 가진 존 절의 서명(`public/terrain-sig.js` — 99-main 선로딩이 setHardcoded 앞에 센다) — 존 접속 주소 `hf` 로 실는다.
+  //   서버 손잡이 `T1163_WELCOME_SIG` 켬 · 같으면 그 welcome 은 지형을 빼고 `hfHit` 를 싣는다(끔 · 다르면 종전대로 지형이 온다). 선로딩 전에 붙으면 칸이 없다(종전).
+  const _t1163Hf = {};
   function _t1125Keep() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.keepPred === true); }
 
   // ★[T1077] 넘겨받을 존에 못 붙었다 — 화면에 까닭 한 줄(하십시오체 · 존 이름은 표시 이름 — 서버 T564 알림과 같은 자리)
@@ -901,8 +905,16 @@
         if (msg.hardcodedTerrain && _sz) _t1125Ht[_sz] = msg.sig.ht;
         if (msg.recipes) _t1125Tb = msg.sig.tb;
       }
+      if (msg.hfHit) {   // ★[T1163] 서버가 지형을 뺐다 — 로비에서 받은 절(이미 setHardcoded)이 이 존 절과 같다. 이미 적용한 존으로 적고(다음 welcome 이 지형을 실어도 다시 안 갈아 끼운다) · 승격 때 알릴 서명도 적는다.
+        const _hz = c.zoneId || (msg.zone && msg.zone.id);
+        if (_hz) { _terrainAppliedZones.add(_hz); if (msg.sig && msg.sig.ht) _t1125Ht[_hz] = msg.sig.ht; }
+      }
       if (!msg.observer && msg.pid) c._t1125Pid = msg.pid;   // ★[T1125 ⑧] 이 소켓에서 내 몸의 pid(틱에서 내 몸을 찾는 열쇠)
       if (c.zoneId && zonesMeta[c.zoneId] && zonesMeta[c.zoneId].hosted === false && uiCfg && uiCfg.streams) { try { loadStreams(); } catch (e) {} }   // ★[T1130] 호스트 없다고 적힌 존에 붙었다(표시가 틀렸다) — 붙은 존은 표시와 상관없이 개울을 받는다(00-const `_t1130Skip`)
+      // ★[T1160 · 결함] `promoted` 는 **이 소켓에 승격(`promote_to_primary`)을 보냈을 때만** 승격 welcome 이다(관측 → 주 · 넘기).
+      //   그 밖의 welcome 에 실린 `promoted` 는 끔 서버(`T1160_GUEST_MERGED=0`)의 게스트 → 계정 승계 표다 — `guestMerged` 로 옮겨 읽는다.
+      //   종전엔 한 칸 두 뜻이라 존을 넘는 승격마다 게스트 열쇠를 지웠고(재접속 = 새 게스트), 승계 첫 welcome 은 승격 갈래를 타 자원 · 땅 · 건물을 안 받았다.
+      if (msg.promoted && !c._promoteSentAt) { msg.guestMerged = true; msg.promoted = false; }
       if (c._promoteSentAt) {
         console.log('[handoff] promote→welcome gap =', (_wStart - c._promoteSentAt).toFixed(0), 'ms',
           '| entities res=' + (msg.resources?.length||0), 'bld=' + (msg.buildings?.length||0), 'mob=' + (msg.mobs?.length||0));
@@ -922,7 +934,7 @@
       }
       //   ★[배치 14 ①] 승계됐다 — 그 토큰은 서버에서 **이미 죽었다**(guest_token = NULL).
       //   여기서도 지운다: 죽은 열쇠를 브라우저에 남겨 둘 이유가 없다(벨트와 멜빵).
-      if (msg.promoted) {
+      if (msg.guestMerged) {   // ★[T1160] 승계 표는 `guestMerged` 하나 — 승격(`promoted` · 넘기)은 열쇠를 안 건드린다
         myGuestToken = '';
         try { localStorage.removeItem(GUEST_TOKEN_KEY); } catch (e) {}
       }

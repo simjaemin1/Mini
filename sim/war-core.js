@@ -31,7 +31,8 @@ var Equilibrium = (typeof module !== 'undefined' && module.exports && typeof req
 var ArmyMorale = (typeof module !== 'undefined' && module.exports && typeof require === 'function')
   ? require('./army-morale.js')
   : root.ArmyMorale;
-// ★★[T1076 2026-11-02 · ★재민 11-02 문 2-b] **원정 사기 = 평형 회귀** — 손잡이 `T1076_ARMY_MORALE`(`=== '1'` 켬 · 끔 기본 = 아래 칸이 안 선다 · 종전 바이트).
+// ★★[T1076 2026-11-02 · ★재민 11-02 문 2-b] **원정 사기 = 평형 회귀** — 손잡이 `T1076_ARMY_MORALE`.
+//   ★★[T1168 2026-11-05 · 카드 감 K2] **켬 기본** — `!== '0'` · 되돌림 `T1076_ARMY_MORALE=0`(= 아래 칸이 안 선다 · T1168 전 바이트).
 //   원정 하나에 사기 칸 `w._mrl`(0~1 · 선포 때 1). 하루마다(호스트가 몸이 제 짐에서 먹는 자리 `_warRationEat` 에서 부른다):
 //     평형 = min(짐 비율 r, 1 − 빚 깊이 ÷ 14) — r = 먹고 남은 짐 ÷ 오늘 몫(0~1 · 호스트의 그 칸 그대로) · 빚 = 몸마다 못 먹은 몫(하루치 단위)의 평균.
 //     사기는 그 평형 쪽으로 반감기 14날로 다가간다(`Equilibrium.step`). 14 = ★재민 11-02 굶주림 시계(T1074 "14일") — 빚이 그 날을 다 채우면 평형 0.
@@ -39,7 +40,7 @@ var ArmyMorale = (typeof module !== 'undefined' && module.exports && typeof requ
 //   사기의 손: ① 주둔 결단 — 사기가 battle-core 궤주 문턱 `M_BREAK` 밑이면 철수(원정이 무너진다) ② 교전 — 호스트가 편 칸 `armyMrl` 에 실어
 //     battle-core 사기 목표에 곱한다(낮은 사기 = 낮은 목표 = 먼저 흔들린다 · 칸이 없으면 무변 — 랩 · 헤드리스는 종전 그대로).
 //   새 수 0 — 14(재민) · M_KABS · M_BREAK(battle-core) 뿐. 빚의 갚기 · 죽음 규칙(T1074)은 그 카드 몫이다(여기선 쌓기만 — 회부).
-function _t1076On() { return typeof process !== 'undefined' && !!process.env && process.env.T1076_ARMY_MORALE === '1'; }
+function _t1076On() { return typeof process !== 'undefined' && !!process.env && process.env.T1076_ARMY_MORALE !== '0'; }
 const T1076_DEBT_DAYS = ArmyMorale.DEBT_DAYS;   // ★재민 11-02(T1074 카드 "14일") — 빚 깊이의 자 · 사기 반감기(★[T1100] 정본 = sim/army-morale.js)
 
 // ═══════════ 결정론 RNG (lab _muRng/_warCapRng 와 동형 xorshift32) ═══════════
@@ -425,18 +426,20 @@ function _capComplete(fromVil, toVil, npc) {
 // ★[T423] 짐이 먹는다(군량 = 행위 ⓐ) — 손잡이 `T423_RATION_ACT`. 끔이면 아래 문들이 한 글자도 안 돈다.
 //   ★★[T861 2026-10-22] **켬 기본**(★PM 10-22 · T845 — 징발 묶임 · 몰사 0 · 재민 09-26 캐논 ⓐ 군량은 짐이 먹는다) — `!== '0'` · 되돌림 `T423_RATION_ACT=0`(= T861 전 바이트).
 function _rationActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T423_RATION_ACT !== '0'; }
-// ★★[T466] 약탈 = 행위(군량 행위 ⓒ · PM #68 · 재민 "즉시 판정이 아니라 물리 노획 → 운반 → 귀가 저장") — 손잡이 끔.
-function _lootActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T466_LOOT_ACT === '1'; }
+// ★★[T466] 약탈 = 행위(군량 행위 ⓒ · PM #68 · 재민 "즉시 판정이 아니라 물리 노획 → 운반 → 귀가 저장") — 손잡이(아래 줄 글자 하나).
+//   ★★[T1168 2026-11-05 · 카드 감 K28 · 추상 없애기 캐논] **켬 기본** — `!== '0'` · 되돌림 `=0`(= T1168 전 바이트 · 서버 `server/villages.js` 같은 글자).
+function _lootActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T466_LOOT_ACT !== '0'; }
 //   ★★[T1094 2026-11-03 · ★PM 11-02 캐논 문 5 = ㄱ(재민 보고됨)] **켬 기본** — 원정이 집 곳간 무기를 실어 간다(돌아오면 다시 곳간 · 소멸 0) · `!== '0'` · 되돌림 `T403_ARMS_LEDGER=0`(= T1094 전 바이트).
 //     문 6(몸이 질 수 있는 만큼만 · 못 지는 몫은 집 곳간에)은 호스트(`server/villages.js` `T1094_CARRY_CAP`)가 몸에 실을 때 건다 — 장부에서 그 몫을 빼고 곳간에 되돌린다(아래 `rationLeave` · 호스트 무기 줄).
 function _armsLedgerOn() { return typeof process !== 'undefined' && !!process.env && process.env.T403_ARMS_LEDGER !== '0'; }
-// ★★[T826 2026-10-20 · T811 회부 2] 노획을 몸이 옮긴다 — 손잡이 `T826_LOOT_BODY`('1' 만 켬 · T811 몸 짐 위에서만 돈다 · 끔 = main 바이트).
+// ★★[T826 2026-10-20 · T811 회부 2] 노획을 몸이 옮긴다 — 손잡이 `T826_LOOT_BODY`(T811 몸 짐 위에서만 돈다 — ★[T1094] `T1094_CARRY_CAP` 켬 기본이면 원정 무기는 늘 몸에 실린다).
+//   ★★[T1168 2026-11-05 · 카드 감 K28] **켬 기본** — `!== '0'` · 되돌림 `T826_LOOT_BODY=0`(= 결판 순간 공격 마을 곳간에 선다 · T1168 전 바이트).
 //   공격이 이기면 결판 흐름(`warWeaponFlow` — 사망 드랍 × 회수 · 투기 × 회수)의 회수 몫이 결판 순간 공격 마을 곳간에 섰다.
 //   켬 ∧ 그 원정 무기가 몸 짐에 실렸으면(`w._armsOnBodies` — 호스트 T811) 그 몫을 곳간이 아니라 **원정 장부**(`w._arms.weapon`)에 얹는다 —
 //   정본은 장부(ⓐ T811 꼴): 거울(`_warArmsOut`)이 그 몫까지 세고 · 호스트가 산 몸 짐으로 맞추고 · 귀환 장부 도착(`warArmsReturn`)에 곳간에 선다.
 //   ★새 수 0 — 옮기는 양 = 결판 흐름이 낸 `gain` 그대로 · 곳간은 결판 앞 값으로 되돌린다(더하고 빼지 않는다 — 소멸 · 생성 0).
 //   ⚠품질(`_weapQ`)은 결판 흐름이 이미 섞었다(마을 칸 · 종전 그대로) — 무기 수만 길 위에 있다.
-function _lootBodyOn() { return typeof process !== 'undefined' && !!process.env && process.env.T826_LOOT_BODY === '1'; }
+function _lootBodyOn() { return typeof process !== 'undefined' && !!process.env && process.env.T826_LOOT_BODY !== '0'; }
 // ★★[T732 2026-10-14] **군량 짐에도 로트가 실려 다닌다** — 호스트(존 서버 · 손잡이 `T732_MOMENT_LOT=1`)가 곳간 장부 훅을 꽂을 때만.
 //   랩 · CLI · 브라우저 · 끈 서버는 안 꽂는다 = `_LOTH` null = 아래 훅 줄이 전부 무동작(비트 동일). 훅은 **관측자**다(값 무변):
 //   곳간에서 뗄 때(`_warFoodTake`) 나간 레코드를 모으고 · 줄 때(`_warFoodGive`) 그 레코드째 받는 곳간에 넣는다(약탈 · 공납 · 몸값 · 팩 환급).
@@ -505,11 +508,31 @@ function _opAtkOdds(w) {
   return aEff / (aEff + dEff);
 }
 // 방어 시점 승산 — 정보 비대칭: 자기 전력은 정확히, 공격은 '보이는 머릿수'만(정예 0.4·무장 0.5/0.15 표준 가정)
-function _opDefOdds(defVil, atkForce) {
-  const dEff = _opDefEff(defVil);
+//   ★[T1168 K5] 셋째 인자 `ammo`(호스트가 몸 층에서 적은 그 전쟁 방어 편의 탄 — 아래 `_opAmmoShare`) — 없으면(랩 · 헤드리스 · 끔 · 교전 전) 종전 그대로.
+function _opDefOdds(defVil, atkForce, ammo) {
+  const dEff = _opDefEff(defVil) * _opAmmoShare(ammo);
   const F = Math.max(1, atkForce || 1), wG = Math.round(F * 0.4);
   const aEff = Math.max(1, (Math.min(F, wG) + Math.max(0, F - wG) * WAR_AUX_MULT)) * (0.6 + 0.5 * 0.5 + 0.3 * 0.15);
   return dEff / (dEff + aEff);
+}
+// ★★[T1168 2026-11-05 · 카드 감 K5 · T771 회부 3 · 추상 없애기 캐논] **출격 승산이 몸의 탄을 본다** — 손잡이 `T1168_SORTIE_AMMO`(켬 기본 · `=0` 끔 = 종전 바이트).
+//   T771: 방어 몸(궁수)이 화살을 다 쏜 뒤에도 출격 승산이 76 ~ 81% 로 날마다 출격을 정했다(승산은 병력만 본다) — 탄 없는 사수는 물러나고(battle-core) 접촉 0 → 대치가 되풀이됐다.
+//   호스트(존 서버 · 교전 몸이 서 있을 때만)가 방어 편의 살아 있는 몸 수 · 사수 수 · 편 탄(`ctx.sides.B.arrows` · `stones`)을 `w._defAmmo` 에 적는다.
+//   몸은 표본이다(T295 ⓑ) — 그 표본에서 탄 없는 사수가 잃는 몫을 마을 유효전력에 같은 비로 건다:
+//     사수 하나의 몫 = 근접 몫 `mAtk ÷ atk` + 원거리 몫 (1 − mAtk ÷ atk) × 탄 비(편 탄 ÷ (사수 × 한 사람 탄 `ARROWS_PER` · `STONES_PER`) · 0~1)
+//     ⇒ 탄이 가득이면 1(종전) · 화살 0 궁수는 근접 몫만(10 ÷ 44) — 비율은 battle-core 병종 표 그대로(새 수 0).
+function _t1168AmmoOn() { return typeof process !== 'undefined' && !!process.env && process.env.T1168_SORTIE_AMMO !== '0'; }
+function _opAmmoShare(a) {
+  if (!a || !(a.n > 0)) return 1;
+  const U = BattleCore.UNITS || {};
+  let lost = 0;
+  for (const [type, per, pool] of [['archer', BattleCore.ARROWS_PER || 20, 'arrows'], ['slinger', BattleCore.STONES_PER || 15, 'stones']]) {
+    const k = a[type] || 0, D = U[type]; if (!(k > 0) || !D || !(D.atk > 0)) continue;
+    const melee = Math.max(0, Math.min(1, (D.mAtk || 0) / D.atk));
+    const r = Math.max(0, Math.min(1, (a[pool] || 0) / (k * per)));
+    lost += k * (1 - melee) * (1 - r);
+  }
+  return Math.max(0, Math.min(1, 1 - lost / a.n));
 }
 // 방어의 공격 군량 '추정' — 병력 수 기반 근사(정확값 w._packRem 사용 금지 — 정보 비대칭)
 function _opDefEstPack(force) { return Math.max(8, Math.min(14, WAR_SIEGE_PACK * (1 - 0.004 * ((force || 20) - 20)))); }
@@ -829,14 +852,6 @@ function createWar(opts) {
     for (const n of e.npcs) if (n._warPid === pid) return _warDraftUnmark(e, n);
     return false;
   }
-  // ★[T906 2026-10-24] 굶어 죽은 원정 몸(손잡이 `T906_ARMY_STARVE=die` 일 때만 호스트가 부른다) — 그 몸(pid)에 묶인 징발자 **한 사람**의 econ 사망.
-  //   정본 문 `_warRemoveNpc`(warKill 이 부르는 그 함수 · 비워 둔 자리는 안 돌려준다) — 전쟁 정산이 소유(마을 기근 사다리 아님 · 집에 남은 사람이 대신 안 죽는다).
-  //   판의 사상 셈(`sides.dead` → `warKill`)엔 안 들어간다(호스트가 그 몸의 교전 단위를 셈 없이 눕힌다) ⇒ 한 사람은 한 번만 죽는다. 묶임이 없으면 false(아무도 안 죽는다).
-  function warDraftKillPid(vil, pid) {
-    const e = vil && vil.econ; if (!e || !e.npcs || pid == null) return false;
-    for (const n of e.npcs) if (n._warPid === pid) return _warRemoveNpc(e, n);
-    return false;
-  }
   // 전쟁 하나가 끝났다 — 그 전쟁 표식이 붙은 마크를 양쪽에서 거둔다(남은 것 청소 · 두 번 풀어도 무해).
   function warDraftReleaseWar(w) {
     if (!w) return 0; const id = (w.id | 0) || 1; let k = 0;
@@ -960,12 +975,27 @@ function createWar(opts) {
   // 무혈 항복 공통 효과 — 조공 계약+곳간 공납(WAR_LOOT 절반·★음수 하한 0 — 빈 곳간 항복=공납 0+조공 계약만, 랩 최신 수리)·사상 0·방화 없음·원한/피로 소폭
   function _opDoSurrender(atkVil, defVil, day, w) {
     const A = atkVil && atkVil.econ, D = defVil && defVil.econ; if (!A || !D) return 0;
+    // [T1183] 실제 교전 뒤 항복: 쓰러진 몸에 결속된 주민만 한 번 제거한다.
+    // 항복의 노획·조공은 아래 정본 한 번이며, 교전 승패/포로 주사위를 다시 돌리지 않는다.
+    const fallen = typeof opts.surrenderDeaths === 'function' ? opts.surrenderDeaths(w) : null;
+    const loss = { A: 0, B: 0 }, wid = w && ((w.id | 0) || 1);
+    if (fallen && w) for (const side of ['A', 'B']) {
+      const e = side === 'A' ? A : D;
+      for (const pid of new Set(Array.isArray(fallen[side]) ? fallen[side] : [])) {
+        const npc = e.npcs.find(n => n._warDraft === wid && n._warPid === pid);
+        if (npc && _warRemoveNpc(e, npc)) loss[side]++;
+      }
+    }
+    if (loss.A) armyMoraleLoss(w, loss.A);
+    if (loss.A + loss.B) stats().cas += loss.A + loss.B;
     const take = _warLootMove(w, D, A, Math.max(0, _feOf(D)) * WAR_LOOT * 0.5, 'surrender');   // ★[T295 ③] 곳간 품목대로(식량등가) · ★[T466] 켬이면 몸이 옮긴다
     if (D.npcs.length > 4) _addTribute(defVil, atkVil, day);
     warAddGrudge(D, atkVil.name, WAR_GRUDGE_UP * 0.5);
     A._warFatigue = (A._warFatigue || 0) + 0.10; D._warFatigue = (D._warFatigue || 0) + 0.25;
     const st = stats(); st.surrender = (st.surrender || 0) + 1;
-    log(day, defVil.name + ' 무혈 항복 → ' + atkVil.name + ' — 곳간 ' + take.toFixed(0) + ' 공납·조공 ' + WAR_TRIB_YRS + '년·사상 0·성문 개방(방화 없음)');
+    const fallText = loss.A + loss.B ? '교전 뒤 항복' : '무혈 항복';
+    const casText = loss.A + loss.B ? (loss.A + loss.B) + '(공격 ' + loss.A + '·수비 ' + loss.B + ')' : '0';
+    log(day, defVil.name + ' ' + fallText + ' → ' + atkVil.name + ' — 곳간 ' + take.toFixed(0) + ' 공납·조공 ' + WAR_TRIB_YRS + '년·사상 ' + casText + '·성문 개방(방화 없음)');
     return take;
   }
   // 무저항 함락(walkover) — 방어 징발 불가(주민<2)·전투·사상·유령 0. 승리 권리는 J 상한(§17) 그대로.
@@ -1066,7 +1096,7 @@ function createWar(opts) {
     }
     if (w._defMode === 'respond' && !w._sortie && (w._sortieEval == null || day > w._sortieEval)) {
       w._sortieEval = day;
-      const pDef = _opDefOdds(w.def, w.force || 0);
+      const pDef = _opDefOdds(w.def, w.force || 0, _t1168AmmoOn() ? w._defAmmo : null);   // ★[T1168 K5] 몸의 탄(칸이 없으면 종전)
       const fd = (w.def.econ) ? warFE(w.def.econ) / Math.max(1, w.def.econ.npcs.length) : 99;
       if (pDef >= WAR_SORTIE_ODDS || (fd < 8 && pDef >= 0.42)) { w._sortie = true; const st = stats(); st.sortie = (st.sortie || 0) + 1; log(day, w.def.name + ' 출격(sortie) 결단 — 응전 승산 ' + (pDef * 100 | 0) + '%'); }
     }
@@ -1345,7 +1375,6 @@ function createWar(opts) {
     // ★[T295] 동원의 대가 — 결속(pid 정본) · 군량 환급 한 곳. 호스트(server/villages.js)와 하네스가 이 문만 쓴다.
     warDraftBind, warDraftFill, warDraftReleasePid, warDraftReleaseWar, warDraftCount, warRationRefund,
     armyMoraleDay, armyMoraleLoss, T1076_ON: _t1076On, T1076_DEBT_DAYS,   // ★[T1076] 원정 사기 평형 — 호스트(server/villages.js)와 하네스가 이 문만 쓴다
-    warDraftKillPid,   // ★[T906] 굶어 죽은 원정 몸 — 묶인 징발자 한 사람의 econ 사망(호스트가 손잡이 켤 때만 부른다)
     packSplit, bodyEat, bagFE, rationLayDown, rationActOn: _rationActOn,
     rationLeave,   // ★[T1094 문 6] 못 진 군량을 집 곳간에 남긴다(호스트가 몸에 실을 때 · 내려놓기 그 문)
     lootGive, lootActOn: _lootActOn, warLog: (day, m) => log(day, m),   // ★[T466] 약탈 = 행위(손잡이 끔 · 끔이면 호스트 훅을 안 부른다)   // ★[T423] 짐이 먹는다(손잡이 끔이면 packSplit 이 null)
@@ -1373,7 +1402,7 @@ const WarCore = {
   // ★[2파 작전층 §15] 상수·정찰 근사(pure)
   WAR_SIEGE_PACK, WAR_PACK_CRIT, WAR_ASSAULT_ODDS, WAR_GAMBLE_ODDS, WAR_HOLD_GAMBLE, WAR_SORTIE_ODDS,
   WAR_DEF_RESPOND_ODDS, WAR_SURR_FOODD, WAR_SURR_ODDS, WAR_DEF_HYST,
-  _opDefEff, _opAtkOdds, _opDefOdds, _opDefEstPack,
+  _opDefEff, _opAtkOdds, _opDefOdds, _opDefEstPack, _opAmmoShare, T1168_AMMO_ON: _t1168AmmoOn,
   // ★[3파 포로 §18] 상수·pure
   WAR_CAP_ESCORT, WAR_CAP_ASSIM, WAR_CAP_ESC0, WAR_CAP_ESC1, WAR_CAP_ESC_D,
   WAR_CAP_RANSOM_INT, WAR_CAP_RANSOM_P, WAR_CAP_RANSOM_FOOD, WAR_CAP_RANSOM_FD, WAR_CAP_RANSOM_GR, WAR_CAP_ON,

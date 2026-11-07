@@ -1,0 +1,47 @@
+{
+  "base": "9df695c",
+  "node": "v22.23.0",
+  "sha256": {
+    "server/home-population.js": "bfbd8eb4b9b2177d35d831e4e62cf35103d93629fc747ec354454d5af564448b",
+    "server/villages.js": "e362218a4084f0c6522ecd25c9550cb22dcb5d82e4bd098a3ff3fe48b0928742",
+    "scripts/test-t1159-home-n.js": "425beb52d24c8cf007cf41d8ec1edda3faa25d515db9585dc232083c0e45bbc9"
+  },
+  "homeN": {
+    "pass": 10,
+    "fail": 0
+  },
+  "physicalWar": {
+    "pass": 14,
+    "fail": 0
+  },
+  "returnWalk": {
+    "pass": 19,
+    "fail": 0
+  },
+  "harnessLint": {
+    "pass": 69,
+    "fail": 0
+  },
+  "odds": {
+    "head": "5492dcce",
+    "node": "v22.23.0",
+    "command": "WW_PART=odds node scripts/test-war-world.js",
+    "exit": 0,
+    "pass": 6,
+    "fail": 0
+  },
+  "knownFailure": {
+    "harness": "test-npc-hp-door",
+    "current": {
+      "pass": 15,
+      "fail": 4
+    },
+    "beforeChange23157005": {
+      "pass": 15,
+      "fail": 4
+    },
+    "site": "w.h = ent.h; w.hp = (w.hp != null ? w.hp : 100) - L;",
+    "base9df695cSiteLine": 1951,
+    "note": "같은 길 위 도적 HP 줄을 정적 검사에서 잡는 기존 실패. 귀환 해제 실행 절은 통과. 이 수정에서 HP 줄은 변경하지 않았다."
+  }
+}

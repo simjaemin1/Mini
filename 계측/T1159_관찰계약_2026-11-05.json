@@ -1,0 +1,38 @@
+{
+  "version": 3,
+  "previousAdapter": {
+    "version": 2,
+    "purpose": "T1159 읽기 전용 관찰 보완. endPop은 마지막 각 마을 틱의 혼합 합 대신 실제 종료 시 세계 명부 합을 읽는다. 각 econ 날에는 마을별 틱 직후 인구 합·관찰된/기대 마을 수를 별도로 기록해 부분 날을 구분한다.",
+    "sourceProductHead": "26e14142b5e14a5c8a11503ff0b2f927a8b95627",
+    "beforeSha256": "31092b373dd163c671baf0dce053eea738f5ab4a9139319cfba3d0a13227e550",
+    "afterSha256": "257f70a3742ea1ead9d7c43471d241a22f5bc6e5e3f5c3237cdbb7f5fa1b0828",
+    "productChanges": false,
+    "appliesTo": [
+      "war-rollback",
+      "war-ten-off",
+      "war-ten-on",
+      "home-off",
+      "home-on"
+    ],
+    "note": "해당5판 시작 전 관찰기만 갱신. 이미 완료/실행 중인 다른 판은 이 관찰기를 프리로드하지 않는다. econEndPopulation은 각 마을 econ 틱 직후 합이며 하루 끝 전쟁 정산까지 지난 전체 인구와 구분한다."
+  },
+  "purpose": "집N의 몸∞ 두 갈래는 같은3개 도적 읽기 관찰을 함께 프리로드하여 상한1 판의 몸 부족과 몸∞의 실제 몸 수를 구분한다. 전쟁/집N5판 모두 시작 전에 관찰기만 갱신했다.",
+  "productChanges": false,
+  "sourceProductHead": "c2bec2b4adaa17eb39c8eed723d169efc8ab0d59",
+  "sha256": {
+    "scripts/t1159-observe.js": "69980c324b4474b7667b23ce2018c9ed7ea2daa06adfe6932046873575ed304e",
+    "scripts/t1078-observe.js": "b98007890c071ceb6ad697b6222c0c0dedb1bc7ef711784bcb32c5316fa9b122",
+    "scripts/t1079-observe.js": "a9358771f3e8ed237a8be5b76dc973ef05230f386d9afb6e0d2c4dc2a7770103",
+    "scripts/t1104-observe.js": "1486713e256cc6f10f0e52b4c949a72e93758775468006c32e0e89246e6b0ebe"
+  },
+  "appliesTo": [
+    "war-rollback",
+    "war-ten-off",
+    "war-ten-on",
+    "home-off",
+    "home-on"
+  ],
+  "additionalBanditObservation": "T1078_BANDIT_ALL=1인 home-off/home-on만 같은3개 읽기 관찰을 부른다.",
+  "previousProductHead": "26e14142b5e14a5c8a11503ff0b2f927a8b95627",
+  "noteAfterStaleRouteFix": "Observer byte hashes unchanged; host path-selection fix is a separate product commit."
+}

@@ -1,0 +1,94 @@
+{
+  "node": "v22.23.0",
+  "source": {
+    "server/villages.js": "5bd3f842167dfb969ea4febf04be5a457c42db89d8c6969e22f3ab76f2d057af",
+    "server/bandits.js": "ba437b48db66f676cd7475c380a618e9e77c6e7d0388b9344577bd33c035b0f7",
+    "scripts/test-bandit-walk.js": "bb9d12cdf9ddaaeafd93ee335d730aa1057f2c8339a318b2c2cec1f575d13176"
+  },
+  "walkHarness": {
+    "pass": 41,
+    "fail": 0,
+    "operatingDayFrom": "server/zone-config WORLD.dayLengthMs",
+    "compressedFixtureDayMs": 30000,
+    "arrival": {
+      "ledgerDay": 402,
+      "physicalFightDay": 402,
+      "budgetViolations": 0
+    }
+  },
+  "regressions": [
+    {
+      "name": "test-body-exit",
+      "exit": 0,
+      "tail": [
+        "",
+        "=== 28건 중 PASS 28 · FAIL 0 ===",
+        ""
+      ]
+    },
+    {
+      "name": "test-bandit-all",
+      "exit": 0,
+      "tail": [
+        "  ✓ [T1184] 미설정 기본 = 명시적 켬(몸·더미·걸음 결과)",
+        "",
+        "결과: PASS (32 통과 · 0 실패)"
+      ]
+    },
+    {
+      "name": "test-bandit-camp",
+      "exit": 0,
+      "tail": [
+        "  ✓ [T1184] 미설정 기본 = 명시적 켬(몸·더미·걸음 결과)",
+        "",
+        "결과: PASS (35 통과 · 0 실패)"
+      ]
+    },
+    {
+      "name": "test-bandit-body",
+      "exit": 0,
+      "tail": [
+        "  ✓ ⓑ 미끼 `spawn`+`noleave`(마을 몸을 안 거둠) — ②의 \"한 사람 몸 하나\"가 빨개진다  몸 둘 최대 0(0틱) · 마을 몸>사람 3 · 몸>사람(전체) 3 · 새 몸 3 · 걷는 몸 최대 0 · 순간이동 0",
+        "",
+        "결과: PASS (65 통과 · 0 실패)"
+      ]
+    },
+    {
+      "name": "test-t1080-road-life",
+      "exit": 0,
+      "tail": [
+        "  ✓ ⑦ 걷기는 여전히 `T577_CAND_WALK` 켬 문 한 곳에서만(끔 = 기준선 무접촉)",
+        "",
+        "=== 32건 중 PASS 32 · FAIL 0 ==="
+      ]
+    },
+    {
+      "name": "test-t1159-home-n",
+      "exit": 0,
+      "tail": [
+        "✓ 집에 몸이 0이면 이전 출생 누적분도 출생시키지 않는다",
+        "✓ 끔은 호스트 위치 콜백을 호출하지 않는다",
+        "결과: 8 통과 / 0 실패"
+      ]
+    },
+    {
+      "name": "test-t1183-physical-war",
+      "exit": 0,
+      "tail": [
+        "✓ 거친 행군선이 벽을 관통해도 실제 적 몸까지 고운 길로 돌아 교전에 풀린다",
+        "",
+        "14 통과 / 0 실패"
+      ]
+    },
+    {
+      "name": "test-harness-lint",
+      "exit": 0,
+      "tail": [
+        "",
+        "=== 69건 중 PASS 69 · FAIL 0 ===",
+        ""
+      ]
+    }
+  ],
+  "legacyFixtureNote": "T1080 30초 목의 11건 실패는 시계 보정 전에도 동일. 옛 판 T627=0 명시 후32/0, 리허설 전용 T627=1 검사는 유지."
+}

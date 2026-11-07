@@ -27,6 +27,15 @@ const R = (p) => require(path.join(__dirname, '..', p));
 const Z = process.argv[2] || 'hanbando';
 const OUT = process.argv[3] || `/tmp/t1153/${Z}.json`;
 const GRID = (() => { const i = process.argv.indexOf('--grid'); return i >= 0 ? (+process.argv[i + 1] || 32) : 32; })();
+// ★[T1173] 비옥도 물 술어 갈래 · 내륙 후보 — `--fert all|nosea|nosea+stream`(기본 all = 정본 그대로) · `--add valley,grove,foot` · `--noscen`(처방 추정 건너뜀)
+//   all = 큰 물 전부(해안 띠 바다 포함 — 존 `isWaterTileLocal`) · nosea = 바다 뺌(존 `isSeaTileLocal` = 해안 띠이면서 강 · 호수 아님 — 그 차집합) · +stream = 개울(T585) 더함
+//   valley = 지형 `valleys`(곡간 통로)를 물과 같은 항(0.62 · e^(−d/80))의 근원으로 · grove = 군락 `water_pool`(둠벙)을 같은 근원으로
+//   foot = 산록 완사면 띠 — 바위에서 ROCK_FULL/2 ~ 2·ROCK_FULL 셀(30 ~ 120)에 W_ROCK(0.18)을 더한다(정본 상수에서 유도 · 새 수 0 · 판정 칸)
+const _arg = (k, d) => { const i = process.argv.indexOf(k); return i >= 0 ? process.argv[i + 1] : d; };
+const FERT_MODE = _arg('--fert', 'all');
+const FERT_ADD = new Set(String(_arg('--add', '')).split(',').filter(Boolean));
+const NOSCEN = process.argv.includes('--noscen');
+const FERT_CANON = FERT_MODE === 'all' && !FERT_ADD.size;
 const t0 = Date.now();
 const log = (...a) => process.stderr.write(`[t1153 ${Z} ${((Date.now() - t0) / 1000).toFixed(0)}s] ${a.join(' ')}\n`);
 
@@ -50,10 +59,12 @@ const ta = P.makeTerrainAdapter(T, ZONE, { isTerrainBlockedLocal: (x, y) => !_in
 const L = R('server/livelihood'), S = R('server/sustain'), FERT = R('server/fertility'), VL = R('server/village-layout');
 const ECON = R('sim/economy-sim');
 let STR = null; try { STR = R('server/streams'); } catch (e) { STR = null; }
+const isSeaTileLocal = (x, y) => { if (!_inZone(x, y) || !BAND) return false; const tx = Math.floor(x / SZ), ty = Math.floor(y / SZ);
+  if (!BAND.has(`${tx}_${ty}`)) return false; try { return !T.isWaterCellLocal(Z, tx * SZ + SZ / 2, ty * SZ + SZ / 2); } catch { return false; } };   // zone.js `isSeaTileLocal` 그 차집합
 
 // ── 셀 래스터(정본 술어를 한 번 굽는다) ──
 const W = Math.ceil(ZONE.zoneWidth / SZ), H = Math.ceil(ZONE.zoneHeight / SZ);
-const WAT = new Uint8Array(W * H), ROCK = new Uint8Array(W * H), FOR = new Uint8Array(W * H), ORE = new Uint8Array(W * H), STRM = new Uint8Array(W * H);
+const WAT = new Uint8Array(W * H), ROCK = new Uint8Array(W * H), FOR = new Uint8Array(W * H), ORE = new Uint8Array(W * H), STRM = new Uint8Array(W * H), SEA = new Uint8Array(W * H), VAL = new Uint8Array(W * H), GRV = new Uint8Array(W * H);
 for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
   const i = y * W + x;
   if (ta.isWater(x, y)) WAT[i] = 1;
@@ -61,7 +72,44 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
   if (ta.forestMult(x, y) > 1.2) FOR[i] = 1;
   if (ta.isOre && ta.isOre(x, y)) ORE[i] = 1;
   if (STR && STR.isStreamCell && STR.isStreamCell(Z, x, y)) STRM[i] = 1;
+  if (WAT[i] && isSeaTileLocal(x * SZ + SZ / 2, y * SZ + SZ / 2)) SEA[i] = 1;
 }
+// ★[T1173] 지형 층 둘을 셀로(지형 JSON 그대로 · 읽기만) — 계곡(path + width · 강과 같은 꼴) · 군락 둠벙(center · r)
+{
+  const TJ = R('server/hanbando-terrain.json')[Z] || {};
+  for (const v of (TJ.valleys || [])) {
+    const P2 = v.path || [];
+    for (let k = 1; k < P2.length; k++) {
+      const a = P2[k - 1], b = P2[k], hw = ((a.width || 0) + (b.width || 0)) / 4 / SZ;   // 반폭(셀)
+      const ax = a.pos[0] / SZ, ay = a.pos[1] / SZ, bx = b.pos[0] / SZ, by = b.pos[1] / SZ;
+      const x0 = Math.floor(Math.min(ax, bx) - hw - 1), x1 = Math.ceil(Math.max(ax, bx) + hw + 1), y0 = Math.floor(Math.min(ay, by) - hw - 1), y1 = Math.ceil(Math.max(ay, by) + hw + 1);
+      const L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
+      for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(W - 1, x1); x++) {
+        const t = Math.max(0, Math.min(1, ((x + 0.5 - ax) * (bx - ax) + (y + 0.5 - ay) * (by - ay)) / L2));
+        const dx = x + 0.5 - (ax + t * (bx - ax)), dy = y + 0.5 - (ay + t * (by - ay));
+        if (dx * dx + dy * dy <= hw * hw) VAL[y * W + x] = 1;
+      }
+    }
+  }
+  for (const g of (TJ.groves || [])) {
+    if (g.kind !== 'water_pool') continue;
+    const cx0 = g.center[0] / SZ, cy0 = g.center[1] / SZ, r = Math.max(1, (g.r || 40) / SZ);
+    for (let y = Math.floor(cy0 - r); y <= Math.ceil(cy0 + r); y++) for (let x = Math.floor(cx0 - r); x <= Math.ceil(cx0 + r); x++) {
+      if (x < 0 || y < 0 || x >= W || y >= H) continue; if ((x + 0.5 - cx0) ** 2 + (y + 0.5 - cy0) ** 2 <= r * r) GRV[y * W + x] = 1; }
+  }
+}
+// 숲 적분 영상(임상 비율 — fertility.buildField 의 WOODY_R 창 · 창은 늘 17×17 칸으로 나눈다 — 그 함수의 넓힌 상자 그대로)
+const FII = new Float64Array((W + 1) * (H + 1));
+for (let y = 0; y < H; y++) { let row = 0; for (let x = 0; x < W; x++) { row += FOR[y * W + x]; FII[(y + 1) * (W + 1) + (x + 1)] = FII[y * (W + 1) + (x + 1)] + row; } }
+const woodyAt = (cx, cy) => { const M = FERT.WOODY_R, x0 = Math.max(0, cx - M), y0 = Math.max(0, cy - M), x1 = Math.min(W - 1, cx + M), y1 = Math.min(H - 1, cy + M);
+  if (x1 < x0 || y1 < y0) return 0; const s = FII[(y1 + 1) * (W + 1) + (x1 + 1)] - FII[y0 * (W + 1) + (x1 + 1)] - FII[(y1 + 1) * (W + 1) + x0] + FII[y0 * (W + 1) + x0]; return s / ((2 * M + 1) * (2 * M + 1)); };
+// 비옥도의 물 근원(갈래)
+const fertSrc = (x, y) => { const i = (x < 0 || y < 0 || x >= W || y >= H) ? -1 : y * W + x; if (i < 0) return false;
+  if (WAT[i] && !(FERT_MODE !== 'all' && SEA[i])) return true;
+  if (FERT_MODE === 'nosea+stream' && STRM[i]) return true;
+  if (FERT_ADD.has('valley') && VAL[i]) return true;
+  if (FERT_ADD.has('grove') && GRV[i]) return true;
+  return false; };
 log(`래스터 ${W}×${H}`);
 const at = (A, x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? 0 : A[y * W + x];
 const pred = { isWater: (x, y) => at(WAT, x, y) === 1, isRock: (x, y) => at(ROCK, x, y) === 1, isForest: (x, y) => at(FOR, x, y) === 1, isOre: (x, y) => at(ORE, x, y) === 1 };
@@ -102,17 +150,30 @@ function nearestWater(cx, cy, maxR, A) {   // villages.js `nearestWaterDist` 와
   return maxR + 1;
 }
 let TERR_N = 2850;   // 아래 §검증에서 51 실영토 중앙값으로 바꾼다
+function fieldVariant(cx, cy, R0, extraWater) {   // ★[T1173] 갈래 장 — 상자 EDT(prepareFert 그 상자) · `fertility.fertAt` 정본 식 + 산록 띠(켤 때만)
+  const src = extraWater ? (x, y) => fertSrc(x, y) || extraWater(x, y) : fertSrc;
+  const x0 = cx - R0, y0 = cy - R0, x1 = cx + R0, y1 = cy + R0;
+  const WD = VL.maskEDT(src, x0, y0, x1, y1), RD = VL.maskEDT(pred.isRock, x0, y0, x1, y1);
+  const FOOT = FERT_ADD.has('foot');
+  return { at: (x, y) => {
+    if (x < x0 || y < y0 || x > x1 || y > y1) return FERT.NEUTRAL;
+    const blocked = at(WAT, x, y) === 1 || at(ROCK, x, y) === 1;
+    let f = FERT.fertAt(WD.at(x, y), RD.at(x, y), woodyAt(x, y), blocked);
+    if (FOOT && !blocked) { const dr = RD.at(x, y); if (dr >= FERT.ROCK_FULL / 2 && dr <= FERT.ROCK_FULL * 2) f = Math.min(1, f + FERT.W_ROCK); }
+    return f; } };
+}
 function fertMean(cx, cy, extraWater) {
   const R0 = 62;
   const isW = extraWater ? (x, y) => at(WAT, x, y) === 1 || extraWater(x, y) : pred.isWater;
-  const F = FERT.buildField({ isWater: isW, isRock: pred.isRock, isWoody: pred.isForest, maskEDT: VL.maskEDT }, cx - R0, cy - R0, cx + R0, cy + R0);
+  const F = (FERT_CANON && !extraWater) || (FERT_CANON && extraWater) ? FERT.buildField({ isWater: isW, isRock: pred.isRock, isWoody: pred.isForest, maskEDT: VL.maskEDT }, cx - R0, cy - R0, cx + R0, cy + R0)
+    : fieldVariant(cx, cy, R0, extraWater);
   const r = Math.sqrt(TERR_N / Math.PI);
   let s = 0, n = 0, tw = 0;
   for (let dy = -Math.ceil(r); dy <= Math.ceil(r); dy++) for (let dx = -Math.ceil(r); dx <= Math.ceil(r); dx++) {
     if (dx * dx + dy * dy > r * r) continue;
     const x = cx + dx, y = cy + dy;
     if (at(ROCK, x, y)) continue;   // 영토는 바위에 안 선다(원판 근사)
-    n++; s += F.at(x, y); if (isW(x, y)) tw++;
+    n++; s += F.at(x, y); if (at(WAT, x, y) === 1 || (extraWater && extraWater(x, y))) tw++;   // ★[T1173] 경작 몫은 물 칸 전부를 뺀다(바다 칸도 밭이 아니다)
   }
   return { fert: n ? Math.max(0.1, Math.min(2.0, +((s / n) * 1.4).toFixed(2))) : 0.1, arable: n ? +((n - tw) / n).toFixed(2) : 1, tn: n };
 }
@@ -195,7 +256,7 @@ for (let cy = g0; cy < H; cy += GRID) for (let cx = g0; cx < W; cx += GRID) {
   if (WAT[i] || ROCK[i]) { cells.push({ cx, cy, k: WAT[i] ? 'w' : 'r' }); continue; }
   const lp = landRaster(cx, cy);
   const a20 = axes(lp, 20), a40 = axes(lp, 40);
-  cells.push({ cx, cy, k: 'l', lp: { fertility: lp.fertility, arable: lp.arable, water: lp.water, wood: lp.wood, game: lp.game, stone: lp.stone, ore: lp.ore, special: lp.special, nd: lp.nd, fS: lp.fishSustain, wS: lp.woodSustain },
+  cells.push({ cx, cy, k: 'l', fe: lp.fertility, nd: lp.nd, lp: { fertility: lp.fertility, arable: lp.arable, water: lp.water, wood: lp.wood, game: lp.game, stone: lp.stone, ore: lp.ore, special: lp.special, nd: lp.nd, fS: lp.fishSustain, wS: lp.woodSustain },
     o20: a20.out, p20: a20.pass, p40: a40.pass });
 }
 log(`격자 ${cells.length}칸 (뭍 ${cells.filter((c) => c.k === 'l').length})`);
@@ -219,7 +280,7 @@ const SCEN = [
   { id: 'f30', label: '② 숲 r30 만', mk: (c) => addForest(c.cx, c.cy, 30) },
   { id: 'o', label: '③ 자잘 광맥 만', mk: () => ({ oreShare: 0.0025 }) },
 ];
-const empty20 = cells.filter((c) => c.k === 'l' && !AX.some((k) => c.p20[k]));
+const empty20 = NOSCEN ? [] : cells.filter((c) => c.k === 'l' && !AX.some((k) => c.p20[k]));
 for (const c of empty20) {
   c.fix = {};
   for (const sc of SCEN) { const lp = landRaster(c.cx, c.cy, sc.mk(c)); const a = axes(lp, 20); c.fix[sc.id] = AX.filter((k) => a.pass[k]); }
@@ -337,7 +398,7 @@ const res = {
     a20: s.axes20 ? AX.filter((k) => s.axes20.pass[k]) : null, a40: s.axes40 ? AX.filter((k) => s.axes40.pass[k]) : null, o20: s.axes20 ? s.axes20.out : null,
     a20r: s.axes20r ? AX.filter((k) => s.axes20r.pass[k]) : null })),
   nbLive, routeCache: routeCache ? { file: routeCache.file, n: routeCache.n, len: routeCache.len } : null, liveNames: live.map((s) => s.name), matLive: matLive.map((r) => r.map((d) => (isFinite(d) ? Math.round(d) : null))),
-  rule, cellsOut: cells.map((c) => c.k === 'l' ? [c.cx, c.cy, AX.map((k) => (c.p20[k] ? 1 : 0) + (c.p40[k] ? 1 : 0)).join(''), c.fix ? SCEN.map((s) => c.fix[s.id].map((k) => AXL[k]).join('') || '-').join(',') : ''] : [c.cx, c.cy, c.k]),
+  rule, fertMode: FERT_MODE, fertAdd: [...FERT_ADD], fertCanon: FERT_CANON, cellsOut: cells.map((c) => c.k === 'l' ? [c.cx, c.cy, AX.map((k) => (c.p20[k] ? 1 : 0) + (c.p40[k] ? 1 : 0)).join(''), c.fix ? SCEN.map((s) => c.fix[s.id].map((k) => AXL[k]).join('') || '-').join(',') : '', c.fe, c.nd] : [c.cx, c.cy, c.k]),
   scenIds: SCEN.map((s) => s.id), sec: Math.round((Date.now() - t0) / 1000),
 };
 fs.mkdirSync(path.dirname(OUT), { recursive: true });

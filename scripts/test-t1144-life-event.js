@@ -2,7 +2,7 @@
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
 // === scripts/test-t1144-life-event.js — 농부 밭 칸 훑기는 사건 때만 [T1144 ① · ★재민 11-04 문 18 ㄱ · 족보 741] ===
 //   잰다(손잡이는 모듈 상수라 팔마다 아이 프로세스):
-//   ① 손잡이 `T1144_LIFE_EVENT` 끔 기본 · `'1'` 켬 · `'verify'` 대조(답은 종전)
+//   ① 손잡이 `T1144_LIFE_EVENT` ★켬 기본(T1154 11-05 — `'0'` 만 끔) · `'verify'` 대조(답은 종전) · `T1140_LIFE_REQ` 도 켬 기본(`'0'` 만 끔)
 //   ② 같은 답 — 정본 밭 계측기 세계(`scripts/farm-metrics.js` · 실지도 51마을 · 정본 노동 · 정본 하루 틱) 위에서
 //      가짜 농부(마을마다 넷 · 결정론)가 날마다 여러 번 `_lifeNextFarmCell` 을 묻고(정본 · `_cropProbe.nextFarmCell`) 칸을 잡고 한다(`_cropProbe.doTask` · 헤드리스 갈래).
 //      끔 · 켬 · verify 세 팔의 답 차례 지문 · 끝 밭 지문(칸 항목 전부) · 곳간이 같아야 한다 · verify 어긋남 0.
@@ -92,11 +92,14 @@ console.log('① 손잡이');
 const probe = (v) => { const e = Object.assign({}, process.env, { ENABLE_VILLAGES: '0' }); delete e.T1144_LIFE_EVENT; if (v != null) e.T1144_LIFE_EVENT = v;
   return execFileSync(process.execPath, ['-e', `const s=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}).t1144Stat();console.log(JSON.stringify([s.on,s.verify]))`], { env: e, encoding: 'utf8' }).trim().split('\n').pop(); };
 const K = { none: probe(null), zero: probe('0'), one: probe('1'), ver: probe('verify'), tru: probe('true') };
-ok(K.none === '[false,false]' && K.zero === '[false,false]' && K.tru === '[false,false]', '끔 기본 — 없음 · `0` · `true` 는 끔', JSON.stringify(K));
-ok(K.one === '[true,false]' && K.ver === '[true,true]', '`1` 켬 · `verify` 켬 + 대조', '');
+ok(K.none === '[true,false]' && K.one === '[true,false]' && K.tru === '[true,false]', '★켬 기본(T1154) — 없음 · `1` · `true` 는 켬', JSON.stringify(K));
+ok(K.zero === '[false,false]' && K.ver === '[true,true]', '`0` 만 끔 · `verify` 켬 + 대조', '');
+{ const src = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'), zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  ok(/const T1140_LIFE_REQ = process\.env\.T1140_LIFE_REQ !== '0';/.test(src), '`T1140_LIFE_REQ` 켬 기본(`\'0\'` 만 끔)', '');
+  ok(/const T1144_LIFE_EVENT = process\.env\.T1144_LIFE_EVENT !== '0';/.test(zsrc) && /if \(T1144_LIFE_EVENT\) p\._t1144Sp = undefined;/.test(zsrc), 'zone.js 손잡이(몸 칸 `_t1144Sp`)도 같은 켬 기본', ''); }
 console.log(`② 같은 답(정본 밭 계측기 세계 · 시드 1020 · ${DAYS}날 · 가짜 농부 마을마다 4 · 날마다 6 차례)`);
 const t0 = Date.now();
-const A = runChild(null), B = runChild('1'), V = runChild('verify');
+const A = runChild('0'), B = runChild(null), V = runChild('verify');   // ★[T1154] 끔 = `0` · 켬 = 기본(env 없음)
 console.log(`  · [상황] 세 팔 ${Math.round((Date.now() - t0) / 1000)}초`);
 ok(A.q > 10000 && A.found > 1000 && A.did > 500, '[상황] 끔 팔이 물었다 · 칸을 찾았다 · 했다', `물음 ${A.q} · 찾음 ${A.found} · 함 ${A.did} · 훑은 칸 ${A.scanned}` + (A.err ? ' ' + A.err : ''));
 ok(A.ans === B.ans && A.ans === V.ans, '답 차례 지문 — 끔 = 켬 = verify', `${A.ans} · ${B.ans} · ${V.ans}`);
@@ -108,7 +111,7 @@ console.log('③ 값');
 const askRatio = B.st ? B.st.ask / Math.max(1, B.scanned) : 1;
 ok(B.st && B.st.q === B.q && B.st.ask < B.scanned * 0.2, '켬 — `_cellTask` 물음이 훑은 칸의 20 % 아래(나머지는 사건 없음 · 지난 답)', B.st ? `물음 ${B.st.ask} / 훑은 칸 ${B.scanned} = ${(100 * askRatio).toFixed(1)} % · 지음 ${B.st.build} · 칸 지움 ${B.st.dirty} · 통째로 ${B.st.reset} · 0 건너뜀 ${B.st.skip}` : '');
 console.log('④ 미끼');
-const Bb = runChild('1', true), Vb = runChild('verify', true), Ab = runChild(null, true);
+const Bb = runChild(null, true), Vb = runChild('verify', true), Ab = runChild('0', true);
 ok(Vb.baited > 0 && Vb.st && Vb.st.vbad > 0, '사건 밖에서 칸을 몰래 고치면 verify 가 문다', Vb.st ? `몰래 ${Vb.baited} · 어긋남 ${Vb.st.vbad}` : '');
 ok(Bb.ans !== Ab.ans, '같은 미끼에서 켬 팔 답 지문이 끔과 갈린다(이 자가 잡는다)', `${Ab.ans} · ${Bb.ans}`);
 try { fs.unlinkSync(CACHE); } catch (e) {}

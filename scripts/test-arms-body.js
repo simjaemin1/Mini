@@ -28,7 +28,7 @@ console.log('\n=== 2층 — 몸이 무기를 든다(T811) ===');
 // ── ⓐ 정적 ──────────────────────────────────────────────────────────────────
 console.log('\n[ⓐ] 정적 — 손잡이 문 · war-core 한 줄 · 호스트 자리 · 새 수 0');
 {
-  ok(/const T811_ARMS_BODY = process\.env\.T811_ARMS_BODY === '1';/.test(CV), "ⓐ 손잡이 하나 — `T811_ARMS_BODY === '1'`(기본 끔)");
+  ok(/const T811_ARMS_BODY = process\.env\.T811_ARMS_BODY !== '0';/.test(CV), "ⓐ 손잡이 하나 — `T811_ARMS_BODY !== '0'`(켬 기본 · =0 되돌림)");
   ok(/if \(!\(T811_ARMS_BODY \|\| T1094_CARRY_CAP\) \|\| !w \|\| !w\._arms/.test(fnBody(CV, '_warArmsLoad')) && /const _t811 = \(T811_ARMS_BODY \|\| T1094_CARRY_CAP\) && w\._armsPack \?/.test(fnBody(CV, '_warEndFight')),   // ★[T1094] 문 6 켬이면 같은 문이 돈다(원정 무기는 몸에) — 이 판은 아이 env `T1094_CARRY_CAP=0` 으로 T811 손잡이만 잰다
     'ⓐ 끔 문 — 싣기 · 결판 갈래가 손잡이를 먼저 본다(끔이면 표 `_armsPack` 이 안 선다 → 나머지 자리는 표가 없어 무동작)');
   const inst = fnBody(CV, '_warInstantiateAttackers');
@@ -56,7 +56,7 @@ console.log('\n[ⓐ] 정적 — 손잡이 문 · war-core 한 줄 · 호스트 �
 // ── ⓑ 호스트 문(아이 프로세스 — 손잡이는 모듈을 싣는 순간 읽는다) ─────────────────────
 console.log('\n[ⓑ] 호스트 문 — 싣기 · 결판(패 · 승 · 포로 · 주울 몸 없음) · 귀환 거둠(켬 · 끔)');
 const child = (knob) => {
-  const env = Object.assign({}, process.env, { T1094_CARRY_CAP: '0' }); if (knob) env.T811_ARMS_BODY = '1'; else delete env.T811_ARMS_BODY;   // ★[T1094] 이 판은 T811 손잡이(상한 없는 몸 짐)를 잰다 — 문 6(상한 · 켬 기본)은 `test-t1094-carry-cap`
+  const env = Object.assign({}, process.env, { T1094_CARRY_CAP: '0' }); if (knob === 'default') delete env.T811_ARMS_BODY; else env.T811_ARMS_BODY = knob ? '1' : '0';   // ★[T1094] 이 판은 T811 손잡이(상한 없는 몸 짐)를 잰다 — 문 6(상한 · 켬 기본)은 `test-t1094-carry-cap`
   const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}),WC=require(${JSON.stringify(path.join(ROOT, 'sim', 'war-core.js'))});`
     + `const players=new Map();let drops=0;`
     //   낙하 목 — 죽음 캐논의 자리(짐 kg 절반 · 낱개 · 무거운 것부터 — 여기선 손 무기 낱개의 절반(적어도 하나)만 본다 · 부른 수를 센다)
@@ -92,6 +92,7 @@ const child = (knob) => {
 };
 {
   const off = child(false), on = child(true);
+  ok(JSON.stringify(child('default')) === JSON.stringify(on), '[T1183] 미설정 기본 = 명시적 켬');
   ok(off.knob === false && off.load.n === 0 && off.load.hand.join() === '2,0,0' && off.load.sum === null && off.load.on === null,
     'ⓑ 끔 — 싣기 0 · 손 그대로(제 무기 2 · 0 · 0) · 표 · 칸 0', JSON.stringify(off.load));
   ok(off.lose.field === 0 && off.lose.drops === 0 && off.lose.ledger === 15 && off.lose.defG === 10 && off.lose.hand.join() === '2,0,0' && off.lose.st0 === true && off.back.back === null,
