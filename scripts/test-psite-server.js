@@ -309,7 +309,8 @@ console.log('\n[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 
       chk(wouldBe === 0.7, `⑪ⓓ 그래서 종전 덮기의 답은 늘 **${wouldBe}** 였다(중립 ${FERT.NEUTRAL} × 1.4 — 실서버 세 판에서 어촌2·임업6·농촌2 가 정확히 그 값)`);
     }
     // ★규약 — `_terrGrow` 가 비옥도를 **안 덮는다**(그 함수 본문만 잘라서 본다)
-    const cut = (src) => { const i = src.indexOf('function _terrGrow(vil) {'); const j = src.indexOf('\nfunction ', i + 10); return i < 0 ? '' : src.slice(i, j < 0 ? src.length : j); };
+    const cut1 = (src, h) => { const i = src.indexOf(h); const j = src.indexOf('\nfunction ', i + 10); return i < 0 ? '' : src.slice(i, j < 0 ? src.length : j); };
+    const cut = (src) => cut1(src, 'function _terrGrow(vil) {') + cut1(src, 'function _terrAdd(');   // ★[T1207] 영토에 셀을 더하는 몸통은 `_terrAdd` 로 옮겼다(종전 고른 셀 · T1207 일괄 · 몸 완공 · 플레이어 넓히기가 같은 몸통) — 두 본문을 이어 본다
     const body = cut(VIL).replace(/\/\/[^\n]*/g, '');   // 주석 제거 — 주석 안의 옛 식에 속지 않게
     chk(body.length > 200, '⑪ⓔ (전제) `_terrGrow` 본문을 잘라 냈다');
     chk(!/land\.fertility\s*=/.test(body), '⑪ ★영토가 자라도 `land.fertility` 를 **안 덮는다** — 창설 값(`prepareFert` 가 제 상자로 잰 값)이 그대로 산다');

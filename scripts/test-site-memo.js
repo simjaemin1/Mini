@@ -237,8 +237,8 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
   //   이게 깨지면 ②의 감사가 다시 위반을 내기 시작한다(T335 실측: 캐시된 거부의 10%가 거짓).
   {
     const VS = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
-    const i0 = VS.indexOf('function _terrGrow');
-    const body = i0 < 0 ? '' : VS.slice(i0, VS.indexOf('\nfunction ', i0 + 10));
+    const i0 = VS.indexOf('function _terrGrow'), i1 = VS.indexOf('function _terrAdd(');   // ★[T1207] 영토에 셀을 더하는 몸통은 `_terrAdd` 로 옮겼다(종전 고른 셀 · T1207 일괄 · 몸 완공 · 플레이어 넓히기가 같은 몸통) — 두 본문을 이어 본다
+    const body = (i0 < 0 ? '' : VS.slice(i0, VS.indexOf('\nfunction ', i0 + 10))) + (i1 < 0 ? '' : VS.slice(i1, VS.indexOf('\nfunction ', i1 + 10)));
     ok(i0 > 0 && /lifeSiteReset\(vil\)/.test(body),
       '⑤ ★`_terrGrow` 가 영토를 넓힌 뒤 **`lifeSiteReset`**(표지 + 거부 캐시 파기)을 부른다 — T342 의 계약');
     ok(!/lifeSiteDirty\(vil\)/.test(body),
