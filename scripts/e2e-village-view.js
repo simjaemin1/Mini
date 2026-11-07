@@ -130,7 +130,7 @@ async function enterAndGo(page, V) {
   ok(reqT.length === S0.requests.rows.length && reqT.every((t, i) => t === `${S0.requests.rows[i].ko} ${S0.requests.rows[i].qty}`), '② 마을의 부탁 줄 = 서버 `requests.rows`(품목 이름 · 양)', reqT.join(' · '));
   const newsT = await page.evaluate(() => [...document.querySelectorAll('#vvBody .vv-news')].map((r) => [...r.querySelectorAll('.vv-t')].map((t) => (t.getAttribute('aria-label') || t.textContent).trim())));
   ok(newsT.length === S0.news.rows.length && newsT.every((n, i) => n[1] === S0.news.rows[i].line), '② 마을 소식 줄 = 서버 `news.rows[].line`', newsT.map((n) => n[1]).slice(0, 2).join(' / '));
-  ok(newsT.every((n) => /니다\.$/.test(n[1])), '② [T1103] 소식 줄 = 하십시오체(서버 `newsLine`)', newsT.length ? newsT[0][1] : '');
+  ok(newsT.length > 0 && newsT.some((n) => !/니다\.$/.test(n[1])), '② ★[T1190 ② · 문 25 ② ㄴ] 소식 줄 = 촌장 말(하게체) 그대로 — 화면용 하십시오체로 바꾸지 않는다', newsT.length ? newsT[0][1] : '');
   ok(!(await txts('#vvBody .vv-tabbody[data-k="dash"] .vv-t')).some((t) => /기여 \+|어제보다|오름|내림/.test(t)), '② 서버에 없는 칸(기여 +n · 어제보다)을 지어내지 않는다');
   await page.screenshot({ path: path.join(SHOTS, `${PFX}vv-dash.png`) });
 
@@ -172,7 +172,7 @@ async function enterAndGo(page, V) {
   ok((await tab('store')) === 'store', '④ 창고 탭');
   S0 = srv();   // 가진 것 주기(③)로 곳간이 움직였다 — 지금 서버 값과 대조
   const storeT = await page.evaluate(() => [...document.querySelectorAll('#vvBody .vv-tabbody[data-k="store"] .vv-store')].map((r) => [...r.children].map((c) => { const t = c.matches('.vv-t') ? c : c.querySelector('.vv-t'); return t ? (t.getAttribute('aria-label') || t.textContent).trim() : ''; })));
-  ok(storeT.length === S0.store.rows.length && storeT.every((r, i) => r[0] === S0.store.rows[i].ko && r[1] === String(S0.store.rows[i].qty)), '④ 곳간 줄 = 서버 `store.rows`(품목 이름 · 양)', storeT.map((r) => `${r[0]} ${r[1]}`).slice(0, 4).join(' · '));
+  ok(storeT.length === S0.store.rows.length && storeT.every((r, i) => r[0] === S0.store.rows[i].ko && r[1] === `${S0.store.rows[i].qty}개`), '④ 곳간 줄 = 서버 `store.rows`(품목 이름 · 양 — ★T1189 ⑦ 낱개 "n개" · 그 아래 kg)', storeT.map((r) => `${r[0]} ${r[1]}`).slice(0, 4).join(' · '));
   const P0 = S0.prices || {};
   const basisB = await page.evaluate(() => [...document.querySelectorAll('[data-vv="base"]')].map((b) => ({ res: b.dataset.b, label: b.getAttribute('data-label') })));
   ok(basisB.length === (P0.basis || []).length && basisB.every((b, i) => b.res === P0.basis[i].res && b.label === P0.basis[i].ko), '④ 시세 기준 단추 = 서버 `prices.basis`(보이는 것 = 이름 · 단추 값 = res id)', basisB.map((b) => `${b.label}=${b.res}`).join(' · '));
@@ -276,13 +276,13 @@ async function enterAndGo(page, V) {
     await tab('proj');
     const names = await page.evaluate(() => [...document.querySelectorAll('#vvBody .vv-tabbody[data-k="proj"] .vv-proj')].map((c) => { const t = c.querySelector('.vv-t'); return (t.getAttribute('aria-label') || t.textContent).trim(); }));
     ok(JSON.stringify(names) === JSON.stringify(['움집 짓기', '갈매가 맡긴 움집', '밭 일구기', '임업2로 가는 행상']), '⑨ 공사 줄 넷 — 이름은 서버 `kind` 로(서버가 이름을 안 싣는다 · 설계 §3)', names.join(' · '));
-    ok((await txts('#vvBody .vv-tabbody[data-k="proj"] .vv-t')).includes('다 지으면 침상이 6 늘어납니다.'), '⑨ 집터 `bedsGain` → "다 지으면 침상이 n 늘어납니다."(T1084)');
+    ok(!(await txts('#vvBody .vv-tabbody[data-k="proj"] .vv-t')).some((t) => /다 지으면/.test(t)), '⑨ ★T1189 ④ "다 되면 좋아지는 것"은 문장 없이 — 집터 `bedsGain` 줄을 안 그린다(문 24 ④ ㄱ)');
     await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { wood: 3 } }));   // 앞 ③ "가진 것 주기"가 짐의 나무를 다 바쳤을 수 있다(부탁 양은 세계마다 다르다)
     await sleep(700);
     sent.length = 0;
     await page.click('[data-vv="bring"]');
     await sleep(400);
-    ok(sent.some((m) => m.type === 'village_donate' && m.want && m.want.wood === 2), '⑨ "재료 가져오기" = 기부(`village_donate`) · 서버 `give` 키(내 물건 id)로 · 모자란 만큼(4 − 2)', JSON.stringify(sent.filter((m) => m.type === 'village_donate')));
+    ok(sent.some((m) => m.type === 'village_site_give' && m.want && m.want.wood === 2), '⑨ ★T1189 ⑤ "재료 가져오기" = 그 집터에(`village_site_give`) · 서버 `give` 키(내 물건 id)로 · 모자란 만큼(4 − 2)', JSON.stringify(sent.filter((m) => /village_(site_give|donate)/.test(m.type))));
     await page.evaluate(() => closeVillageView());
   }
   ok(!errs.length, '페이지 오류 0', errs.slice(0, 3).join(' | '));

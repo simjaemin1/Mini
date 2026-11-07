@@ -34,6 +34,7 @@ const path = require('path');
 const fs = require('fs');
 const net = require('net');
 const { spawn } = require('child_process');
+const receivedBetween = require('./fixture-xzone-counts');
 const FB = require('./fixture-boot');   // 기동 기다리기 정본(사본 0)
 
 const ROOT = path.join(__dirname, '..');
@@ -42,6 +43,10 @@ const CS = require(path.join(ROOT, 'server', 'chunk')).CHUNK_SIZE;
 const CPORT = 3010;
 const ZIDS = ['hanbando', 'nippon'];
 const DAYMS = process.env.XZ_DAYMS || '3000';
+// T1182: 물리 속도의 빠른 하루 환산, 이전 페이싱 판은 =0으로 그대로 잰다.
+const BODY = process.env.T762_CARAVAN_BODY !== '0';
+const FRAME_MS = 1000 / 30;
+const BODY_PX_MS = require('../public/move-model').DEFAULTS.baseSpeed / 1000 * require('../server/zone-config').WORLD.dayLengthMs / +DAYMS;
 const WAIT_S = parseInt(process.env.XZ_WAIT_S || '600', 10);
 
 let pass = 0, fail = 0;
@@ -70,12 +75,14 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
   console.log('\n=== 캐러밴이 존을 넘는다 — 두 존 e2e (T533) ===');
   for (const port of [CPORT].concat(ZIDS.map((z) => ZONES[z].port))) if (!await portFree(port)) { ok(false, `포트 ${port} 가 비어 있다(남의 서버를 잴 수 없다)`); process.exit(1); }
   const DDIR = `/tmp/e2e-xzc-${process.pid}`; fs.mkdirSync(DDIR, { recursive: true });
+  const checkpointDir=path.join(DDIR,'checkpoint');fs.mkdirSync(checkpointDir,{recursive:true});
   const c = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: `${DDIR}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: ZIDS.join(',') });
   const cu = await FB.waitUp(c, /central server up on/, { name: 'central' });
   ok(cu.ok, 'ⓔ0 central 기동', cu.ok ? `${cu.ms}ms` : cu.why);
   //   ★팔 `T525_CROSS_ZONE=1` · 마을 켬 · 하루 `XZ_DAYMS` · 캐러밴 몸 상한은 넉넉히(`VILLAGE_CARAVAN_MAX` — 종전 손잡이 · 넘는 캐러밴이 몸을 갖게) · 야생 끔(속도)
   const common = { CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '1', T525_CROSS_ZONE: '1', VILLAGE_DAY_MS: DAYMS, ENABLED_ZONES: ZIDS.join(','),
     VILLAGE_CARAVAN_MAX: '400', ENABLE_WILDLIFE: '0',
+    ...(BODY?{T1182_E2E_STOP_DIR:checkpointDir,NODE_OPTIONS:((process.env.NODE_OPTIONS||'')+' --require '+path.join(ROOT,'scripts/t1182-e2e-checkpoint.js')).trim()}:{}),
     T952_XZ_STAY: process.env.T952_XZ_STAY || '',   // ★[T952] 이 자에 준 그대로(끔 = 빈 값)
     T1030_XZ_MARKET: process.env.T1030_XZ_MARKET || '',   // ★[T1030] 이 자에 준 그대로(끔 = 빈 값)
     //   ★[T1139] 걸음표는 **물은 쌍만** 판다(`server/xzone.js` 손잡이 `T1139_XZ_LAZY` — 서버 기본은 끔 = 전 쌍 한 벌) · `T1139_XZ_LAZY=0` 을 주면 종전(전 쌍)
@@ -130,13 +137,13 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     H = await perf('hanbando'); N = await perf('nippon');
     if (!H || !N) { await sleep(1000); continue; }
     if (!pick) { const o = H.trace.find((t) => t.k === 'out' && t.body && t.at); if (o) pick = o; }
-    for (const b of N.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: N.now, prog: b.prog, len: b.len, nom: b.nomPxMs, dep: b.departAt, pend: b.pending, phase: b.phase, lu: b.lu, t952: b.t952, mk: b.mk }); seenN.set(b.key, L); }
+    for (const b of N.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: N.now, bt: b.bodyAt, prog: b.prog, len: b.len, nom: b.nomPxMs, dep: b.departAt, pend: b.pending, phase: b.phase, lu: b.lu, t952: b.t952, mk: b.mk }); seenN.set(b.key, L); }
     for (const x of (N.caravans || [])) if (x.mktD != null && String(x.id).startsWith('xz:hanbando:')) mktOf.set(String(x.id), x.mktD);   // ★[T1030] 장이 선 날(켬만 칸이 선다)
     if (pick) {
       const home = H.trace.find((t) => t.k === 'home' && t.id === pick.id);
       if (home) { done = home; break; }
     }
-    await sleep(500);
+    await sleep(BODY ? FRAME_MS : 500);
   }
   ok(!!pick, 'ⓒ0 전제: 한반도 캐러밴이 **몸을 가진 채** 경계를 넘었다(넘는 순간의 몸 자리가 있다)', pick ? `#${pick.id} → ${pick.to}@${pick.toZone} ${pick.res}×${Math.round(pick.amt)} · 남은 ${pick.remain}일` : '없음');
   const key = pick ? `xz:hanbando:${pick.id}` : null;
@@ -152,9 +159,9 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     const a = ln[i - 1], b = ln[i];
     const d = Math.hypot(b.x - a.x, b.y - a.y); moved += d;
     if (a.phase !== b.phase || a.dep !== b.dep) { legs++; continue; }   // 구간이 바뀌었다(머묾 → 귀환) — 새 길의 첫 점은 옛 길의 끝(같은 마을)
-    const dp = b.prog - a.prog, dt = Math.max(0, b.t - a.t);
-    if (d > Math.max(0, dp) + 2) offPath++;
-    const cap = (b.nom || 0) * 4 * dt + 2;
+    const dp = b.prog - a.prog, dt = Math.max(0, BODY ? (b.bt??b.t)-(a.bt??a.t) : b.t-a.t);
+    if (d > Math.max(0, dp) + (BODY ? Math.SQRT2 + 1 : 2)) offPath++;
+    const cap = BODY ? BODY_PX_MS * dt + 2 : (b.nom || 0) * 4 * dt + 2;
     if (dp > cap) overPace++;
     worst = Math.max(worst, cap > 0 ? dp / cap : 0);
   }
@@ -222,7 +229,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
       ok(longer.length > 0, 'ⓘ3 자명 통과 금지 — 적어도 한 몸은 종전 1게임시간보다 오래 머문다(장 끝 − 머묾을 연 시각)', `${longer.length}/${rows.length}`);
       const md = pick ? mktOf.get(`xz:hanbando:${pick.id}`) : undefined;
       const want = (back && md != null) ? (back.abandoned ? md : md + 1) : null;
-      ok(!!back && md != null && back.rowDay === want, "ⓘ4 ★'return' 의 교역 행 날 = 장이 선 날 + 1(다음 econ 틱 머리 정산 · 빈손이면 그날) — 값은 ⓓ 가 잰 같은 계약", back ? `장 날 ${md} · 행 날 ${back.rowDay}${back.abandoned ? ' (빈손)' : ''}` : '-');
+      ok(!!back && md != null && (BODY ? back.rowDay >= md && back.rowDay <= back.day : back.rowDay === want), BODY ? "ⓘ4 몸 정본 — 실제 시장 정산 행의 날은 장이 선 날 이후·경계 출발 날 이전(실제 도착 증거는 T1182 관측기)" : "ⓘ4 일정 판 — 교역 행 날 = 장이 선 날 + 1(빈손이면 그날)", back ? `장 날 ${md} · 행 날 ${back.rowDay}${back.abandoned ? ' (빈손)' : ''}` : '-');
     } else {
       ok(rows.length > 0 && rows.every((r) => r.mk === undefined) && (!back || back.rowDay === undefined), 'ⓘ1 끔 — 장 칸이 안 선다(덤프 `mk` · `rowDay` 없음 · 종전 계약)', `${rows.filter((r) => r.mk === undefined).length}/${rows.length}`);
     }
@@ -246,6 +253,13 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     E = { inN, inH, LN: N.live || {}, LH: H.live || {},
       e1: H.st.crossArrive === N.core.arriveIn, e2: N.core.arriveIn === N.core.returnOut + inN + slotOf(N),
       e3: N.st.crossArrive === H.core.arriveIn, e4: H.core.arriveIn === H.core.returnOut + inH + slotOf(H) };
+    if(BODY){
+      const ha=await perf('hanbando'),na=await perf('nippon');
+      E.hAfter=ha?.core.arriveOut;E.nAfter=na?.core.arriveOut;
+      E.e1=!!ha && receivedBetween(H.st.crossArrive,N.core.arriveIn,ha.core.arriveOut);
+      E.e3=!!ha && !!na && receivedBetween(N.st.crossArrive,ha.core.arriveIn,na.core.arriveOut);
+      E.hReceive=ha?.core.arriveIn;
+    }
     if (E.e1 && E.e2 && E.e3 && E.e4) break;
     await sleep(300);
   }
@@ -271,9 +285,9 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     dumpZ('hanbando', H); dumpZ('nippon', N);
     console.log(`  · [ⓔ 진단] 칸(지금) 한반도 ${JSON.stringify(H.live)} · 닛폰 ${JSON.stringify(N.live)}`);
   }
-  ok(E.e1, "ⓔ1 한반도가 넘긴 'arrive' = 닛폰이 받은 'arrive'", `${H.st.crossArrive} = ${N.core.arriveIn}`);
+  ok(E.e1, BODY ? "ⓔ1 인과 순서: 앞서 확인된 한반도 인수응답 ≤ 닛폰 수신 ≤ 뒤에 읽은 한반도 송신" : "ⓔ1 한반도 넘김 = 닛폰 수신", BODY ? `${H.st.crossArrive} ≤ ${N.core.arriveIn} ≤ ${E.hAfter}` : `${H.st.crossArrive} = ${N.core.arriveIn}`);
   ok(E.e2, "ⓔ2 ★닛폰이 받은 'arrive' = 돌려보낸 'return' + 지금 닛폰에 있는 것", `${N.core.arriveIn} = ${N.core.returnOut} + 이동 중(캐러밴 ${E.inN} · 줄 ${E.LN.pendArrive | 0} · 인박스 ${E.LN.inboxArrive | 0} · 셀 귀환 ${E.LN.outReturn | 0})`);
-  ok(E.e3, "ⓔ3 닛폰이 넘긴 'arrive' = 한반도가 받은 'arrive'(반대 방향)", `${N.st.crossArrive} = ${H.core.arriveIn}`);
+  ok(E.e3, BODY ? "ⓔ3 인과 순서: 앞서 확인된 닛폰 인수응답 ≤ 한반도 수신 ≤ 뒤에 읽은 닛폰 송신" : "ⓔ3 닛폰 넘김 = 한반도 수신", BODY ? `${N.st.crossArrive} ≤ ${E.hReceive} ≤ ${E.nAfter}` : `${N.st.crossArrive} = ${H.core.arriveIn}`);
   ok(E.e4, "ⓔ4 한반도가 받은 'arrive' = 돌려보낸 'return' + 지금 한반도에 있는 것", `${H.core.arriveIn} = ${H.core.returnOut} + 이동 중(캐러밴 ${E.inH} · 줄 ${E.LH.pendArrive | 0} · 인박스 ${E.LH.inboxArrive | 0} · 셀 귀환 ${E.LH.outReturn | 0})`);
   console.log(`  · [표 · T598 추신] 판 끝 관측 ${PR.n}번(두 존 × 60) — 종전 셈(st.pend) 어긋남 ${PR.oldBad} · 새 셈(세 칸) 어긋남 ${PR.newBad} · 종전 어긋남 때 기록이 인박스에 ${PR.inbox} · 셀 귀환(out)에 ${PR.out} · 줄 값이 늦음(st.pend ≠ 지금 줄) ${PR.pendLate}`);
   ok(H.st.sentFail === 0 && N.st.sentFail === 0 && H.st.bounced === 0 && N.st.bounced === 0, 'ⓔ5 문이 다 받았다(되돌림 0 · 못 보냄 0)', `한반도 ${H.st.sentOk}/${H.st.sent} · 닛폰 ${N.st.sentOk}/${N.st.sent}`);
@@ -293,7 +307,13 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     const inWin = (x, day) => ON ? (x.mkt != null) : (x.state === 'inbound' && x.xback != null && x.xback > day);
     let tgt = null, Mrow = null, preN = null, preH = null;
     const tK = Date.now();
-    while (!tgt && Date.now() - tK < WAIT_S * 1000) {
+    if(BODY){
+      fs.writeFileSync(path.join(checkpointDir,'arm'),'arm');
+      while(!fs.existsSync(path.join(checkpointDir,'ready.json')) && Date.now()-tK<WAIT_S*1000)await sleep(50);
+      if(fs.existsSync(path.join(checkpointDir,'ready.json'))){const R=JSON.parse(fs.readFileSync(path.join(checkpointDir,'ready.json'),'utf8'));if(R.error)throw new Error(R.error);tgt=R.target;Mrow=R.checkpoint;preN=R.before;}
+      fs.rmSync(path.join(checkpointDir,'arm'),{force:true});
+    }
+    while (!BODY && !tgt && Date.now() - tK < WAIT_S * 1000) {
       const Nn = await perf('nippon');
       if (Nn) for (const x of (Nn.caravans || [])) if (String(x.id).startsWith('xz:hanbando:') && inWin(x, Nn.day)) {
         //   그 캐러밴이 닛폰 DB 메타 행에 같은 창의 꼴로 실렸나(켬 = 정산 전 `_t707` · 끔 = 귀환 구간) — 실린 뒤에 죽인다(실리기 전이면 다음 경계까지 본다)
@@ -327,7 +347,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
         H2 = await perf('hanbando'); N2 = await perf('nippon');
         if (H2) home = (H2.trace || []).find((t) => t.k === 'home' && t.id === hid) || null;
         if (home) break;
-        if (N2 && N2.ready && N2.ready.includes('hanbando') && ready == null) { ready = Date.now(); until = Math.min(until, ready + Math.max(4, (tgt.xback || 0) - (tgt.depart || 0) + 4) * dm + 20000); }
+        if (N2 && N2.ready && N2.ready.includes('hanbando') && ready == null) { ready = Date.now(); if(!BODY)until = Math.min(until, ready + Math.max(4, (tgt.xback || 0) - (tgt.depart || 0) + 4) * dm + 20000); }
         await sleep(500);
       }
       const backs = N2 ? (N2.trace || []).filter((t) => t.k === 'back' && t.id === hid) : [];
@@ -339,7 +359,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
       console.log(`  · [표 · T1030 ⓗ] | 판 | 죽인 창 | 넘긴 짐 | 닛폰 다시 뜸: 이은 캐러밴 · 못 이은 | 닛폰 'return'(판 짐 · 돌려보낸 짐) | 한반도 곳간 | 한반도 그 캐러밴 | 생성 | 소멸 |`);
       console.log(`  · [표 · T1030 ⓗ] | ${ON ? '켬' : '끔'} | ${ON ? '장 중(정산 전)' : '판 뒤(귀환 구간)'} | ${tgt.res}×${sent.toFixed(2)} | ${m728 ? `${m728[1]} · ${lost}` : '-'} | ${backs.length ? backs.map((b) => `${b.sold ? `${b.sold.res}×${b.sold.amt}` : '-'} · ${b.res}×${(b.amt || 0).toFixed(2)}`).join(' / ') : '없음'} | ${homes.length ? homes.map((h) => `${h.res}×${(h.amt || 0).toFixed(2)}`).join(' / ') : '안 듦'} | ${hc ? hc.state : '없음(끝남)'} | ${made.toFixed(2)} | ${goneAmt == null ? '?' : (+goneAmt).toFixed(2)} |`);
       console.log(`  · [표 · T1030 ⓗ] 죽인 뒤 닛폰 다시 뜨기 ${((Date.now() - tKill) / 1000).toFixed(0)}s 안 · 걸음표 다시 ${ready ? `${((ready - tKill) / 1000).toFixed(0)}s` : '안 섬'}`);
-      if (ON) {
+      if (ON || BODY) {
         ok(lost === 0, 'ⓗ3 ★켬 — 다시 뜬 닛폰이 이웃 존 캐러밴을 잇는다(메타 행 · 못 이은 0)', m728 ? m728[0].slice(0, 120) : 'T728 줄 없음');
         ok(backs.length === 1 && backs[0].sold && backs[0].sold.res === tgt.res && Math.abs(backs[0].sold.amt - sent) < 0.01, "ⓗ4 ★켬 — 다시 뜬 닛폰이 한 번 정산해 'return' 하나(판 짐 = 넘긴 짐)", backs.map((b) => JSON.stringify(b.sold)).join(' · ') || '없음');
         ok(homes.length === 1 && Math.abs((homes[0].amt || 0) - retAmt) < 1e-9 && made === 0, 'ⓗ5 ★★켬 — 한반도 곳간에 하나 든다 = 돌려보낸 짐(생성 0 · 소멸 0)', homes.length ? `${homes[0].res}×${(homes[0].amt || 0).toFixed(4)} = ${retAmt.toFixed(4)}` : '안 듦');

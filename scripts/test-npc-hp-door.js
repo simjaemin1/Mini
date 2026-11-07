@@ -8,7 +8,7 @@
 //     ② 자명 통과 금지 — 옛 직접 대입 한 줄을 되살린 사본은 잡히고 · 전투 단위 줄은 안 잡힌다(거름망이 몸만 본다)
 //     ③ 문을 부르는 자리 아홉 · 낱말 일곱(방송 낱말 `HP_PEER` 과 겹침 0 · 요양은 조용한 낱말 `regen`)
 //     ④ 존 배선 — `SimVillages.init` 이 문을 넘긴다 · 낱말 표 둘이 그 init 보다 위(다시 뜬 판 몸 복원이 init 안에서 문을 부른다 — TDZ) · 미끼
-//     ⑤ 실행(존 없이 · `__p3Bind` 목 세계 · 문은 **존 소스의 글자 그대로** 떼어 세운다) — 풀림 · 원정 굶음(ㄱ 판)이 문을 지나 값 · 메시지가 그대로인가
+//     ⑤ 실행(존 없이 · `__p3Bind` 목 세계 · 문은 **존 소스의 글자 그대로** 떼어 세운다) — 풀림이 문을 지나 값 · 메시지가 그대로인가(★[T1168] 원정 굶음 ㄱ 판은 걷음)
 //   ★[T973] ⓪ ~ ④ 는 `lib-hp-src.js` `npcSourceChecks` 를 부른다(hp 문 셋의 소스 검사 한 벌 · `test-hp-src` ⑤ 와 같은 함수).
 // 실행: node scripts/test-npc-hp-door.js
 'use strict';
@@ -53,19 +53,6 @@ const V = require(path.join(ROOT, 'server', 'villages'));
   H._warReleasePid('n1');
   ok(p.hp === 100 && npcs.has('n1') && msgs.length === 0 && calls5.join() === 'release', '★⑤ 풀림(`_warReleasePid`) — 문을 지나 만피 · 결정 문 다시 · 메시지 0', `hp ${p.hp} · 문 ${calls5.join()} · 메시지 ${msgs.length}`);
 }
-{   // 원정 굶음 ㄱ 판(`T906_ARMY_STARVE=die`) — 몸 하루마다 사다리 → 0 이 되는 날 true
-  const H = V.__p3Bind({ deps: { players: new Map(), npcs: new Set(), setHp: door, broadcast: (m) => msgs.push(['B', m]) } });
-  const p = { pid: 'n2', isNpc: true, ws: null, hp: 100, maxHp: 100 }, w = {};
-  msgs.length = 0; calls5.length = 0;
-  const hs = []; let dead = -1, mono = true, neg = false;
-  for (let d = 0; d < 120 && dead < 0; d++) { const h0 = p.hp; const r = H._t906Step(w, null, p, 0, 'die'); hs.push(p.hp); if (p.hp > h0) mono = false; if (p.hp < 0) neg = true; if (r) dead = d; }
-  ok(dead > 0 && p.hp === 0 && !neg && mono && msgs.length === 0 && calls5.length > 0 && calls5.every((c) => c === 'starve'),
-    '★⑤ 원정 굶음(교전 단위 없는 몸 · `_t906Step`) — 날마다 문으로 깎이고 0 이 되는 날 true · 0 밑 0 · 메시지 0', `죽은 날 ${dead} · 문 ${calls5.length}번 · 끝 hp ${p.hp} · 앞 다섯 ${hs.slice(0, 5).map((x) => +x.toFixed(2)).join(',')}`);
-  const q = { pid: 'n3', isNpc: true, ws: null, hp: 100, maxHp: 100 }, gu = { pid: 'n3', bu: { hp: 30, maxHp: 30 } }, body = { atkGroup: { units: [gu] } }, w2 = {};
-  msgs.length = 0; calls5.length = 0;
-  let r2 = false, k = 0; for (; k < 120 && !r2; k++) { r2 = H._t906Step(w2, body, q, 0, 'die'); if (!r2 && gu.bu.hp > 0 && q.hp !== Math.max(1, Math.round((gu.bu.hp / 30) * 100))) break; }
-  ok(r2 && q.hp >= 1 && msgs.length === 0 && calls5.length > 0 && calls5.every((c) => c === 'starve'),
-    '★⑤ 원정 굶음(교전 단위 있는 몸) — 몸 hp 는 단위 hp 비율의 거울(문으로) · 단위가 0 이 되는 날 true · 메시지 0', `날 ${k} · 거울 ${calls5.length}번 · 몸 hp ${q.hp} · 단위 ${+gu.bu.hp.toFixed(2)}`);
-}
+// ★[T1168] 원정 굶음 ㄱ 판(`T906_ARMY_STARVE=die` · `_t906Step`)은 걷었다(★재민 11-02 문 2-b — 군량 빚 + 사기 평형이 갈음) — 그 두 단언도 같이 걷었다.
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

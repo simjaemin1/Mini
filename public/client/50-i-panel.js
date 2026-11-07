@@ -652,17 +652,17 @@ function itemKo(k) {
           if (!confirm('전쟁을 걸면 침략자로 적대감이 붙을 수 있습니다. 그래도 하시겠습니까?')) return;
           //   ★[T235] 존 경유 — 공격자 길드도 클라가 안 고른다(존이 내 `tribeId` 를 쓴다).
           const d = await window.__centralCall('war/declare', { defender_guild_id: did });
-          if (d.ok) { showNotice(`전쟁 선포! tier=${d.tier} loot=${(d.loot_rate*100).toFixed(0)}%`); renderTribePanel(); }
+          if (d.ok) { showNotice(`전쟁을 선포했습니다(tier ${d.tier} · 약탈 ${(d.loot_rate*100).toFixed(0)}%).`); renderTribePanel(); }
           else alert(d.error || '전쟁을 걸지 못했습니다.');
         });
         body.querySelectorAll('[data-end-war]').forEach(b => b.onclick = async () => {
           const wid = parseInt(b.dataset.endWar, 10);
           const d = await window.__centralCall('war/end', { war_id: wid });   // ★[T235] 존 경유
-          if (d.ok) { showNotice('전쟁 종료'); renderTribePanel(); }
+          if (d.ok) { showNotice('전쟁이 끝났습니다.'); renderTribePanel(); }
           else alert(d.error || '전쟁을 끝내지 못했습니다.');
         });
         const grBtn = document.getElementById('tribeGranaryBtn');
-        if (grBtn) grBtn.onclick = () => { buildMode = true; placementMode = { special: 'guild_granary' }; toggleTribePanel(); showNotice('마을 곳간 배치 모드 — 마을 땅 안 클릭 (5×3 밀폐 · 밖에서 지으세요 · B=취소)'); };
+        if (grBtn) grBtn.onclick = () => { buildMode = true; placementMode = { special: 'guild_granary' }; toggleTribePanel(); showNotice('마을 곳간을 놓을 자리를 마을 땅 안에서 누르십시오(5×3 밀폐 · 밖에서 지으십시오 · B = 취소).'); };
         document.getElementById('tribeLeaveBtn').onclick = async () => {
           if (!confirm('정말 탈퇴하시겠습니까?')) return;
           const d = await window.__centralCall('tribe/leave', {});   // ★[T235] 존 경유 — 남을 못 뺀다
@@ -908,7 +908,7 @@ function itemKo(k) {
   document.addEventListener('keydown', (e) => {
     if (isTypingTarget(e)) return;   // [T61 ] 규약 하나 — 글자를 치는 중이면 게임 키는 없다
     if (e.key === 'Escape') {
-      if (placementMode) { placementMode = null; showNotice('배치 모드 취소'); e.stopPropagation(); return; }
+      if (placementMode) { placementMode = null; showNotice('배치를 그만두었습니다.'); e.stopPropagation(); return; }
       if (invOpen) { closeInv(); e.stopPropagation(); }
       else if (activeSide) { closeSide(); e.stopPropagation(); }
     }

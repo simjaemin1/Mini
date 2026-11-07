@@ -9,7 +9,7 @@
 //   지키는 것: ⓐ 정적(손잡이 문 · 두 자리 · 칸 셋 · 늦음 셈 · 새 수 0) · ⓑ war-live 운영 함수 — 칸 없음 = 종전(지휘 몸 바로 놓기 · 병사 FOLLOW_CAP) ·
 //             칸 있음 = 지휘 몸 · 병사 스텝마다 ≤ 걸음 · 닿을 때까지 걸음 수 = 거리 ÷ 걸음 · ★칸 0 이면 종전과 비트 같다 ·
 //             막힌 칸 안에 선 걷는 몸(지휘 · 병사)은 걸어서 나온다 ·
-//             ⓒ 존 운영 문(아이 프로세스 · 켬/끔) — 슬롯 놓기(끔 = 놓는다 · 켬 = 안 놓고 칸만 · 걸음 정본이 없는 판은 종전대로 놓는다) ·
+//             ⓒ 존 운영 문(아이 프로세스 · 켬/끔) — 슬롯 놓기(끔 = 놓는다 · 켬 = 안 놓고 칸만 · 걸음 정본이 없는 판도 놓지 않는다) ·
 //             귀환(끔 = 첫 틱 길 머리 · 켬 = 걸음만) · 늦음 셈(교전에 풀린 몸은 안 센다)
 // ⚠존을 부팅하지 않는다 — war-live 정본(`createWarLive`)과 존 정본(`__p3Bind`)을 그대로 부른다(규칙 사본 0).
 // 실행: node scripts/test-war-nosnap.js
@@ -30,14 +30,14 @@ console.log('\n=== 전쟁 몸 튐 둘 없애기(T790) ===');
 // ── ⓐ 정적 ──────────────────────────────────────────────────────────────────
 console.log('\n[ⓐ] 정적 — 손잡이 문 · 두 자리 · 칸 셋 · 늦음 셈 · 새 수 0');
 {
-  ok(/const T790_NO_SNAP = process\.env\.T790_NO_SNAP === '1';/.test(CV), "ⓐ 손잡이 하나 — `T790_NO_SNAP === '1'`(기본 끔)");
+  ok(/const T790_NO_SNAP = process\.env\.T790_NO_SNAP !== '0';/.test(CV), "ⓐ 손잡이 하나 — `T790_NO_SNAP !== '0'`(켬 기본 · =0 되돌림)");
   const fol = fnBody(CL, '_muStepFollow');
   ok(/const wc = g\._t790Walk > 0 \? g\._t790Walk : 0;/.test(fol) && /if \(u\.cmd && !wc\) \{ u\.x = g\.cmd\.cx; u\.y = g\.cmd\.cy; continue; \}/.test(fol),
     'ⓐ ① war-live 추종 — 지휘 몸 바로 놓기는 칸이 없을 때만(칸 = 호스트가 단 몸 걸음)');
   ok(/Math\.min\(cap != null \? cap : MU\.FOLLOW_CAP, dd, wc \|\| dd\)/.test(fol) && /dd > \(u\.cmd \? 0 : MU\.FOLLOW_SNAP\)/.test(fol),
     'ⓐ ① 한 걸음 = min(상한, 남은 거리, 칸) — 칸 0 이면 min(상한, 남은 거리)(종전) · 지휘 몸은 원점까지 남김없이');
   const snap = fnBody(CV, '_warSnapToSlots');
-  ok(/if \(T790_NO_SNAP && _t790Mark\(g\)\._t790Walk > 0\) \{ _t790Stat\.walk\+\+; return; \}/.test(snap) && snap.indexOf('T790_NO_SNAP') < snap.indexOf('_muSlotXY'), 'ⓐ ② 슬롯 놓기 — 켬이면 놓기 전에 돌아간다(칸만 단다) · 걸음 정본이 없는 판은 종전대로 놓는다');
+  ok(/if \(T790_NO_SNAP\) \{ _t790Mark\(g\); if \(g\._t790Walk > 0\) _t790Stat\.walk\+\+; return; \}/.test(snap) && snap.indexOf('T790_NO_SNAP') < snap.indexOf('_muSlotXY'), 'ⓐ ② 슬롯 놓기 — 켬이면 놓기 전에 돌아간다(칸만 단다) · 걸음 정본이 없는 판도 놓지 않는다');
   const def = fnBody(CV, '_warEnsureDefense'), ret = fnBody(CV, '_warSetupReturn'), day = fnBody(CV, '_t681Day');
   ok(/_t790Mark\(g\);/.test(def) && /_t790Mark\(body\.retGroup\);/.test(ret), 'ⓐ 칸 셋 — 공격(슬롯 놓기 자리) · 방어(긴급 소집은 슬롯 놓기를 안 거친다) · 귀환 대형');
   ok(/if \(T790_NO_SNAP\) \{ _t790Lag\(body\.atkGroup\); _t790Lag\(body\.defGroup\); _t790Lag\(body\.retGroup\); \}/.test(day) && day.indexOf('_t790Lag') < day.indexOf("T.leg === 'march'"),
@@ -86,7 +86,7 @@ const mk = () => { const g = WL.buildGroup([{ type: 'champion', pid: 'a' }, { ty
 // ── ⓒ 존 운영 문(아이 프로세스 — 손잡이는 모듈을 싣는 순간 읽는다) ──────────────────
 console.log('\n[ⓒ] 존 운영 문 — 슬롯 놓기 · 귀환 · 늦음 셈(켬 · 끔)');
 const child = (knob) => {
-  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob) env.T790_NO_SNAP = '1'; else delete env.T790_NO_SNAP;   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
+  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0';   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
   const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}),WLM=require(${JSON.stringify(path.join(ROOT, 'server', 'war-live.js'))});`
     + `const players=new Map(),live=WLM.createWarLive({cellPx:32,pxPerM:32,tickHz:30});`
     + `const H=V.__p3Bind({warLive:live,world:{day:12},dayMs:10000,deps:{players,moveSpeed:64,npcs:new Set(),broadcast(){}},_warStat:{standoff:0}});`
@@ -109,11 +109,12 @@ const child = (knob) => {
 };
 {
   const off = child(false), on = child(true);
+  ok(JSON.stringify(child('default')) === JSON.stringify(on), '[T1183] 미설정 기본 = 명시적 켬');
   ok(off.snap.c[0] === 100 && off.snap.c[1] === 100 && off.snap.s[0] !== 41 && off.snap.walk === null && off.snap.n === 0,
     'ⓒ 끔 — 슬롯 놓기: 지휘 몸 · 병사를 그 자리(마을 → 원점)에 놓는다(종전) · 칸 0', JSON.stringify(off.snap));
   ok(on.snap.c[0] === 40 && on.snap.c[1] === 90 && on.snap.s[0] === 41 && on.snap.s[1] === 91 && Math.abs(on.snap.walk - WALK) < 1e-12 && on.snap.n === 1,
     'ⓒ 켬 — 슬롯 놓기: 안 놓는다(몸 그 자리) · 칸 = 몸 걸음 · 걸음 셈 1', JSON.stringify(on.snap));
-  ok(on.snapNoSpeed.c[0] === 100 && on.snapNoSpeed.c[1] === 100 && on.snapNoSpeed.walk === null && on.snapNoSpeed.n === on.snap.n,
+  ok(on.snapNoSpeed.c[0] === 40 && on.snapNoSpeed.c[1] === 90 && on.snapNoSpeed.walk === null && on.snapNoSpeed.n === on.snap.n,
     'ⓒ 켬 — 걸음 정본이 없는 판(deps 에 moveSpeed 없음)은 종전대로 놓는다 · 칸 0 · 걸음 셈 그대로', JSON.stringify(on.snapNoSpeed));
   ok(Math.abs(off.ret.moved - 100) < 1e-9 && off.ret.walk === null, 'ⓒ 끔 — 귀환 첫 틱: 살아남은 몸이 결판 자리 → 길 머리 100칸(종전 튐)', `${off.ret.moved}칸`);
   ok(Math.abs(on.ret.moved - WALK) < 1e-9 && Math.abs(on.ret.walk - WALK) < 1e-12, 'ⓒ 켬 — 귀환 첫 틱: 한 걸음(몸 걸음)만 · 대형 칸', `${on.ret.moved.toFixed(4)}칸`);
@@ -130,7 +131,7 @@ const child = (knob) => {
 console.log('\n[ⓓ] T804 — 걷는 몸의 길 · 전진 풀기 걸음(아이 프로세스 켬/끔)');
 {
   const fol = fnBody(CL, '_muStepFollow'), way = fnBody(CV, '_t804Way'), loc = fnBody(CV, '_t804Local'), road = fnBody(CV, '_t804Road'), wout = fnBody(CV, '_t804WalkOut'), det = fnBody(CV, '_warDetourFor'), wgt = fnBody(CV, '_warWalkGroupTo'), rel = fnBody(CV, '_warReleaseAdv');
-  ok(/if \(wc && g\.detour && g\.detour\.walk\)/.test(fol) && fol.indexOf('g.detour.walk') < fol.indexOf('g.detour.clear') && /if \(T790_NO_SNAP\) \{ det\.walk = /.test(det),
+  ok(/if \(wc && g\.detour && g\.detour\.walk\)/.test(fol) && fol.indexOf('g.detour.walk') < fol.indexOf('g.detour.clear') && /if \(T790_NO_SNAP\) \{\s+det\.walk = /.test(det),
     'ⓓ 정적 — war-live 는 걷는 몸(칸 있음)일 때만 호스트 길 훅을 먼저 겨눈다 · 훅은 켬에서만 선다(끔 = 무동작)');
   //   ★[T821] 묻는 문이 걸음 프리셋의 재개형 문(`localPathBegin` — `localPath` 와 한 프리셋 `_localOpts`)으로 바뀌었다 — 같은 순서 검사를 그 문에 건다(느슨하게 안 한다).
   ok(/PathCore\.localPathBegin\(/.test(loc) && !/PathCore\.|_search|new Map|new Set/.test(way + road) && !/routePath|_search/.test(loc) && loc.indexOf('_warClearLine') < loc.indexOf('PathCore.localPathBegin(') && loc.indexOf('mem._t804f === key') < loc.indexOf('PathCore.localPathBegin(')
@@ -143,7 +144,7 @@ console.log('\n[ⓓ] T804 — 걷는 몸의 길 · 전진 풀기 걸음(아이 �
     'ⓓ 정적 — 새 수 0(창 `FOLLOW_CAP + 2` · 칸 가운데 0.5 · 길 길이 `< 2` 는 `_warPathNext` 와 같은 글자 · 칸 열쇠 `× 65536 +` 는 villages 칸 열쇠 관례) · 시한 0 · 주사위 0', added.length + '자');
 }
 const child804 = (knob) => {
-  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob) env.T790_NO_SNAP = '1'; else delete env.T790_NO_SNAP;   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
+  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0';   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
   const js = `const path=require('path'),fs=require('fs'),ROOT=${JSON.stringify(ROOT)};const V=require(path.join(ROOT,'server','villages.js')),WLM=require(path.join(ROOT,'server','war-live.js'));`
     + `const ZS=fs.readFileSync(path.join(ROOT,'server/zone.js'),'utf8');const mm=/function _standCellNear\\(x0, y0, blocked\\) \\{[\\s\\S]*?\\n\\}/.exec(ZS);`
     + `const stand=new Function('ZONE','_BLOCKED_STAND',mm[0]+'\\nreturn _standCellNear;')({zoneWidth:1e7,zoneHeight:1e7},()=>false);const SZ=32;`
@@ -220,7 +221,7 @@ console.log('\n[ⓔ] T821 — 먼 진 걷기: 재개형 걸음 탐색(아이 프
     'ⓔ 정적 — 새 수 0 · 시한 0(틱 예산은 시간이 아니라 꺼냄 수 — 결정론) · 주사위 0', added.length + '자');
 }
 const child821 = (knob) => {
-  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob) env.T790_NO_SNAP = '1'; else delete env.T790_NO_SNAP;   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
+  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0';   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
   const js = `const path=require('path'),fs=require('fs'),ROOT=${JSON.stringify(ROOT)};const V=require(path.join(ROOT,'server','villages.js')),WLM=require(path.join(ROOT,'server','war-live.js')),PC=require(path.join(ROOT,'sim','path-core.js'));`
     + `const ZS=fs.readFileSync(path.join(ROOT,'server/zone.js'),'utf8');const mm=/function _standCellNear\\(x0, y0, blocked\\) \\{[\\s\\S]*?\\n\\}/.exec(ZS);`
     + `const stand=new Function('ZONE','_BLOCKED_STAND',mm[0]+'\\nreturn _standCellNear;')({zoneWidth:1e7,zoneHeight:1e7},()=>false);const SZ=32;`
@@ -300,7 +301,7 @@ console.log('\n[ⓕ] T832 — 켬 판 결정론: 귀환 몸도 그날 몫(아이
   ok(!/[^\w.'D](?:[2-9]|\d{2,})(?:\.\d+)?(?![\w'])/.test(blk) && !/Math\.random/.test(blk), 'ⓕ 정적 — 새 수 0(몫 = 종전 `_t681Quota` · 시간 예산은 종전 마감 예산 그대로 — 끊겨도 몫이 남아 다음 조각에 잇는다)');
 }
 const child832 = (knob, t844) => {   // knob = T790_NO_SNAP · t844 = T844_RET_QUOTA(끔 판 귀환 몫)
-  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob) env.T790_NO_SNAP = '1'; else delete env.T790_NO_SNAP; if (t844 === 'default') delete env.T844_RET_QUOTA; else env.T844_RET_QUOTA = t844 ? '1' : '0';   // ★[T861] 켬 기본 — 끈 판은 명시 `=0` · 'default' = env 없음   ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
+  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0'; if (t844 === 'default') delete env.T844_RET_QUOTA; else env.T844_RET_QUOTA = t844 ? '1' : '0';   // ★[T861] 켬 기본 — 끈 판은 명시 `=0` · 'default' = env 없음   ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
   const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}),WLM=require(${JSON.stringify(path.join(ROOT, 'server', 'war-live.js'))});`
     + `const players=new Map(),live=WLM.createWarLive({cellPx:32,pxPerM:32,tickHz:30});let calls=0;const sf=live._muStepFollow;live._muStepFollow=function(){calls++;return sf.apply(this,arguments);};`
     + `const H=V.__p3Bind({warLive:live,world:{day:12},dayMs:10000,deps:{players,moveSpeed:64,npcs:new Set(),broadcast(){}},_warStat:{standoff:0},war:{WARS:[]}});`

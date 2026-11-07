@@ -86,7 +86,9 @@ function parseBlocks(lines) {
     if (/^\s*✗/.test(s)) cur.marks.push(s.trim().replace(/^✗\s*/, ''));
   }
   if (cur) out.push(cur);
-  return out;
+  //   ★[T1177] 이어 돌기 — 끊긴 블록(닫히지 않음) 뒤에 **같은 이름이 다시 열리면** 그 끊김은 이어 돈 판이 메웠다(한 하네스 한 줄).
+  //     같은 이름이 뒤에 없으면 종전 그대로 끊김이다(이어 돌지 않은 로그는 바이트 같다).
+  return out.filter((b, i) => !(b.ok === null && out.slice(i + 1).some((x) => x.name === b.name)));
 }
 
 // ── 상시 목록 — `이름 | 이유 | 근거` ─────────────────────────────────────────
@@ -110,6 +112,14 @@ if (process.argv.includes('--reds')) {
   const f = argOf('--reds');
   if (!f || !fs.existsSync(f)) process.exit(0);
   for (const b of parseBlocks(readRun(f))) if (b.ok === false) console.log(b.name);
+  process.exit(0);
+}
+
+// ── [T1177] --done : 이번 판에서 **판정이 난** 하네스 이름만(초록 · 빨강) — `nightly-run.sh` 이어 돌기가 남은 목록을 이걸로 잡는다(파서 사본 0) ─────
+if (process.argv.includes('--done')) {
+  const f = argOf('--done');
+  if (!f || !fs.existsSync(f)) process.exit(0);
+  for (const b of parseBlocks(readRun(f))) if (b.ok !== null) console.log(b.name);
   process.exit(0);
 }
 
@@ -298,6 +308,9 @@ L.push(`# 보고 — 야간 러너 ${T0 ? T0.slice(0, 10) : '?'} (${T0 ? T0.slic
 L.push('');
 L.push(`**기준 커밋 \`${BASE}\`** · 시작 **${hhmm(T0)}** → 종료 **${hhmm(T1)}** (${dur(T0, T1)})`);
 L.push(`· 오늘 묶음 **${which}** · 목록 **${listed.length}종** · 돈 것 **${blocks.length}** · 통과 **${greens.length}** · 실패 **${reds.length}** · 끊김 **${cut.length}** · 미측정 **${missing.length}**`);
+//   ★[T1177] 이어 돈 판이면 몇 번 이었나 한 줄(이어 돌지 않은 밤은 이 줄이 없다 — 종전 바이트)
+const RESUMES = head.filter(({ s }) => s.startsWith('===== nightly-run 이어서')).map(({ t }) => hhmm(t));
+if (RESUMES.length) L.push(`· ★이어 돌기 **${RESUMES.length}번**(${RESUMES.join(' · ')}) — 끊긴 판을 같은 로그에서 남은 것만 이어 돌았다(T1177 · 시작→종료 시간에 멈춘 사이가 든다)`);
 // ★[T760] 상자의 판 — 러너가 시작 줄 뒤에 찍은 `[판]` 한 줄을 그대로 옮긴다(옛 로그엔 없다 — 없다고 적는다)
 const VER = (lines.map((l) => split1(l).s).find((s) => /^\s*\[판\] /.test(s)) || '').replace(/^\s*\[판\] /, '');
 L.push(`· 상자 판 ${VER ? `\`${VER}\`` : '**로그에 없다**(T760 앞 러너)'}`);

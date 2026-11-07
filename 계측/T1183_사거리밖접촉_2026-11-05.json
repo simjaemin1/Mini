@@ -1,0 +1,168 @@
+{
+  "status": "observed-while-running",
+  "sourceHead": "a05c2ebae621075ba5fda4fac22a45cf49bc08a6",
+  "sourceSha256": {
+    "server/war-live.js": "1e4a09514655e4c407b31b3fa118170ef8e617a872fd2f9e020e1a4a0b1707ff",
+    "sim/battle-core.js": "b83bbe91f05a0707f0041942d2c5c5f57e3f2b2698f257713805e53d734a2924"
+  },
+  "context": "T1183 all-server800 · 1020 · 평시 몸 상한1 · 열 팔 켬 · 도적 세 팔/집N 끔. 읽기 전용 Inspector 두 번, 계측 스위치·몸·난수·장부 무변경. 최종 완료/시간초과 결과는 아직 아니다.",
+  "firstSnapshot": {
+    "day": 704,
+    "warId": 24,
+    "fightT": 27198.499999772506,
+    "fightState": "engaged",
+    "alive": {
+      "A": 13,
+      "B": 30
+    },
+    "worldWar": {
+      "decl": 26,
+      "battle": 17,
+      "atkWin": 1,
+      "defWin": 16,
+      "cas": 573,
+      "loot": 1,
+      "tribute": 7,
+      "palisade": 48,
+      "weaponLoot": 1,
+      "unjust": 2,
+      "byCasus": {
+        "trade": 4,
+        "territory": 17,
+        "prestige": 2,
+        "feud": 3
+      },
+      "active": 2,
+      "tributes": 1,
+      "siege": 2,
+      "assault": 20,
+      "withdraw": 5,
+      "surrender": 2,
+      "sortie": 3,
+      "walkover": 0,
+      "captured": 84,
+      "capFreed": 54,
+      "escaped": 23,
+      "assimilated": 0,
+      "ransomed": 0,
+      "lootBody": 3.002539487825556
+    }
+  },
+  "contactSnapshot": {
+    "day": 705,
+    "flags": {
+      "T995_CONTACT_REACH": null,
+      "T995_DRY_STANDOFF": null
+    },
+    "bodies": [
+      {
+        "id": 24,
+        "mode": "fight",
+        "phase": "battle",
+        "t": 28799.9999997492,
+        "contactT": 28799.9999997492,
+        "gapT": 170.69999999999288,
+        "standoffSec": 9.285714285714286,
+        "lastHpLossAt": null,
+        "units": [
+          {
+            "type": "archer",
+            "side": "A",
+            "hp": 41.48589327861333,
+            "state": "melee",
+            "reach": 1.2,
+            "distance": 9.050584280597946,
+            "targetHp": 120
+          },
+          {
+            "type": "archer",
+            "side": "A",
+            "hp": 58,
+            "state": "melee",
+            "reach": 1.2,
+            "distance": 9.047354093109968,
+            "targetHp": 120
+          },
+          {
+            "type": "archer",
+            "side": "A",
+            "hp": 58,
+            "state": "melee",
+            "reach": 1.2,
+            "distance": 9.110608751508991,
+            "targetHp": 120
+          },
+          {
+            "type": "archer",
+            "side": "A",
+            "hp": 58,
+            "state": "melee",
+            "reach": 1.2,
+            "distance": 9.302622102933189,
+            "targetHp": 120
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "mode": "fight",
+        "phase": "battle",
+        "t": 218.03333333332353,
+        "contactT": 217.9999999999902,
+        "gapT": 209.36666666665735,
+        "standoffSec": 9.285714285714286,
+        "lastHpLossAt": null,
+        "units": [
+          {
+            "type": "spear",
+            "side": "A",
+            "hp": 57.48560618365199,
+            "state": "melee",
+            "reach": 1.8,
+            "distance": 1.1095321115750312,
+            "targetHp": 33.12532255236362
+          },
+          {
+            "type": "slinger",
+            "side": "B",
+            "hp": 46,
+            "state": "melee",
+            "reach": 1.2,
+            "distance": 1.9297534233441784,
+            "targetHp": 85.46331721728151
+          },
+          {
+            "type": "greataxe",
+            "side": "B",
+            "hp": 33.12532255236362,
+            "state": "melee",
+            "reach": 1.6,
+            "distance": 1.1095321115750312,
+            "targetHp": 57.48560618365199
+          },
+          {
+            "type": "spear",
+            "side": "B",
+            "hp": 120,
+            "state": "melee",
+            "reach": 1.8,
+            "distance": 1.6227190761902088,
+            "targetHp": 57.48560618365199
+          }
+        ]
+      }
+    ]
+  },
+  "finding": "W24 공격 궁수4명의 melee 표지가 실제 사거리1.2m 밖 약9m에서도 매 걸음 contactT를 갱신한다. T995_CONTACT_REACH/DRY_STANDOFF는 원래 끔 기본 시험 팔로 이번10개 승격 대상 밖이다. 해당 시험 스위치를 몰래 켜 완주시키지 않는다.",
+  "limitations": "벽 양쪽 정체를 실시간 위치로 확인했으나 이 두 스냅샷만으로 전 비용의 비율을 추정하지 않는다. battle-core는 T1168 베이스에서 변경하지 않았다.",
+  "runOutcome": {
+    "exit": 0,
+    "days": 800,
+    "wallSec": 5849.241,
+    "population": 5562,
+    "starvationDeaths": 486,
+    "empty": 0,
+    "dissolved": 0,
+    "note": "진단 뒤 실제 판은 상한7200초 안에 정상 종료했다. 정체 관측은 완주 실패 판정이 아니다."
+  }
+}

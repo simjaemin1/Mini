@@ -9,9 +9,9 @@ function check(name,fn){try{fn();pass++;console.log('PASS '+name);}catch(e){fail
 if(!process.env.T1180_MUTANT)for(const val of [undefined,'0','1',''])check('defaults '+String(val),()=>{
  const env={...process.env};for(const k of flags){delete env[k];if(val!==undefined)env[k]=val;}
  const r=spawnSync(process.execPath,['-e',`const E=require('./sim/economy-sim');console.log(JSON.stringify(${JSON.stringify(flags)}.map(k=>E[k])));`],{cwd:ROOT,env,encoding:'utf8'});
- assert.strictEqual(r.status,0,r.stderr);assert.deepStrictEqual(JSON.parse(r.stdout.trim().split('\n').at(-1)),flags.map(()=>val!=='0'));
+ assert.strictEqual(r.status,0,r.stderr);assert.deepStrictEqual(JSON.parse(r.stdout.trim().split('\n').at(-1)),flags.map(()=>val==='1'));   // ★PM land1048: 끔 기본(켬 판 세계 전멸 · 켤 날 T1202)
 });
-for(const k of flags)delete process.env[k];
+for(const k of flags)process.env[k]='1';   // ★PM land1048: 끔 기본 — 아래 몸 길 검사는 켬 판으로
 process.env.ENABLE_VILLAGES='0';
 if(process.env.T1180_MUTANT){
  const old=Module._extensions['.js'],kind=process.env.T1180_MUTANT;
