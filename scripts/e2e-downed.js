@@ -383,8 +383,9 @@ async function waitHttp(url, tries = 600) {
     const bn = await notices(Bp);
     ok(bn.some((t) => /업었습니다/.test(t)),
       '★★ⓐ **R 한 번으로 낯선 이를 업는다**(클라 판정에서 길드 제한이 빠졌다)', JSON.stringify(bn.slice(-2)));
-    ok(bn.some((t) => /상태 —/.test(t)), '★★ⓐ 그리고 **왜 쓰러졌는지 보인다**(§12 · 새 패널 0)',
-      JSON.stringify(bn.filter((t) => /상태 —/.test(t))));
+    // ★[T1216-K1] 옛 글자 — T1190 ① 이 「…상태 — 무들」 짧은 꼴을 「🩺 ○○의 상태입니다. …」 문장으로 바꿨다(server/zone.js 업기 알림 · 뜻 · 수 그대로)
+    ok(bn.some((t) => /의 상태입니다/.test(t)), '★★ⓐ 그리고 **왜 쓰러졌는지 보인다**(§12 · 새 패널 0)',
+      JSON.stringify(bn.filter((t) => /의 상태입니다/.test(t))));
 
     // 업고 걷는다 — 따라오는가
     const before = await absOf(A);
