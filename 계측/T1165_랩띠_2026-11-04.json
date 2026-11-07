@@ -1,0 +1,291 @@
+{
+  "card": "T1165",
+  "date": "2026-11-04",
+  "world": "land1047 뒤 · t17 800날",
+  "tool": "node scripts/lab-diverge-ctl.js band 800 1020,7,42 /tmp/t1165-lab",
+  "seeds": {
+    "7": {
+      "picked": [
+        {
+          "o": 1,
+          "village": "광산3",
+          "day": 1,
+          "amt": 0.533022
+        },
+        {
+          "o": 2,
+          "village": "광산5",
+          "day": 1,
+          "amt": 1.28625
+        },
+        {
+          "o": 3,
+          "village": "임업1",
+          "day": 1,
+          "amt": 2.31525
+        }
+      ],
+      "passed": [],
+      "runs": [
+        {
+          "run": "base",
+          "pop": 6008,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        },
+        {
+          "run": "hunt:1",
+          "pop": 6165,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        },
+        {
+          "run": "hunt:2",
+          "pop": 6299,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        },
+        {
+          "run": "hunt:3",
+          "pop": 6485,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        }
+      ]
+    },
+    "42": {
+      "picked": [
+        {
+          "o": 1,
+          "village": "광산3",
+          "day": 1,
+          "amt": 0.76146
+        },
+        {
+          "o": 2,
+          "village": "광산5",
+          "day": 1,
+          "amt": 1.28625
+        },
+        {
+          "o": 3,
+          "village": "임업1",
+          "day": 1,
+          "amt": 2.31525
+        }
+      ],
+      "passed": [],
+      "runs": [
+        {
+          "run": "base",
+          "pop": 6299,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        },
+        {
+          "run": "hunt:1",
+          "pop": 6441,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        },
+        {
+          "run": "hunt:2",
+          "pop": 6287,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        },
+        {
+          "run": "hunt:3",
+          "pop": 6354,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        }
+      ]
+    },
+    "1020": {
+      "picked": [
+        {
+          "o": 1,
+          "village": "광산3",
+          "day": 1,
+          "amt": 0.76146
+        },
+        {
+          "o": 2,
+          "village": "광산5",
+          "day": 1,
+          "amt": 1.28625
+        },
+        {
+          "o": 3,
+          "village": "임업1",
+          "day": 1,
+          "amt": 2.31525
+        }
+      ],
+      "passed": [],
+      "runs": [
+        {
+          "run": "base",
+          "pop": 6436,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        },
+        {
+          "run": "hunt:1",
+          "pop": 6229,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        },
+        {
+          "run": "hunt:2",
+          "pop": 6372,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        },
+        {
+          "run": "hunt:3",
+          "pop": 6537,
+          "dead": 0,
+          "live": 51,
+          "empty": []
+        }
+      ]
+    }
+  },
+  "plates": [
+    {
+      "7": {
+        "run": "base",
+        "pop": 6008,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      },
+      "42": {
+        "run": "base",
+        "pop": 6299,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      },
+      "1020": {
+        "run": "base",
+        "pop": 6436,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      }
+    },
+    {
+      "7": {
+        "run": "hunt:1",
+        "pop": 6165,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      },
+      "42": {
+        "run": "hunt:1",
+        "pop": 6441,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      },
+      "1020": {
+        "run": "hunt:1",
+        "pop": 6229,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      }
+    },
+    {
+      "7": {
+        "run": "hunt:2",
+        "pop": 6299,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      },
+      "42": {
+        "run": "hunt:2",
+        "pop": 6287,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      },
+      "1020": {
+        "run": "hunt:2",
+        "pop": 6372,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      }
+    },
+    {
+      "7": {
+        "run": "hunt:3",
+        "pop": 6485,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      },
+      "42": {
+        "run": "hunt:3",
+        "pop": 6354,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      },
+      "1020": {
+        "run": "hunt:3",
+        "pop": 6537,
+        "dead": 0,
+        "live": 51,
+        "empty": []
+      }
+    }
+  ],
+  "summary": {
+    "popSumRange": [
+      18743,
+      19376
+    ],
+    "popSums": [
+      18743,
+      18835,
+      18958,
+      19376
+    ],
+    "deadRange": [
+      0,
+      0
+    ],
+    "seedPopRanges": {
+      "7": {
+        "min": 6008,
+        "max": 6485
+      },
+      "42": {
+        "min": 6287,
+        "max": 6441
+      },
+      "1020": {
+        "min": 6229,
+        "max": 6537
+      }
+    }
+  }
+}

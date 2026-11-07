@@ -153,7 +153,7 @@ const owner = mkPlayer('대장장이', { inv: { stone: 20, wood: 10, hide: 8, ir
   H.tryFurnaceAdvance(owner, site.id);
   eq(site.data.stage, 2, '★재료 부족이면 단계가 안 오른다');
   eq(owner.inventory.wood, 6, '★재료 부족이면 다른 재료도 안 깎인다');
-  ok(/부족/.test(lastNotice(owner)), '부족 안내');
+  ok(/모자랍니다/.test(lastNotice(owner)), '부족 안내(★T1190 ① 문장)');
   owner.inventory.hide = keepHide;
 
   H.tryFurnaceAdvance(owner, site.id);

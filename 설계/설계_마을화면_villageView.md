@@ -54,7 +54,8 @@
 | `members` | `n` | int | `vil.npcPids` 중 몸이 있는 사람 | "함께 사는 사람 48명" |
 | | `byJob[]` `{ job, ko, n }` | arr | 몸의 `simJob` 집계 · 이름표 `zone.js JOB_KR_NPC` | 직업별 수 "어부 14" |
 | | `people[]` `{ pid, name, job, jobKo, act, chief }` | arr | 몸 `name` · `simJob` · 행위 라벨 `_lifeAct` · 촌장 = `chiefOf` | 사람 칸 |
-| `store` | `rows[]` `{ res, ko, qty, daysOf, short, glut }` | arr | 곳간 `playerVillageInventory().groups` · 래치 `ledger.detOf(vid,res)` · 소비 `econ._consEMA` | "곳간에 있는 것" · 넉넉함 · "모자란 것"(`short`) |
+| | `assign` (T1169) `{ rows[] { id, job, jobKo, age, left, away, chief }, jobs[] { job, ko, open }, cooldown }` | obj | 게시판 판 T1085 명부와 **같은 자료** `SimVillages.assignRoster`(econ 사람 · 몸 이름 없음) · 이름표 `JOB_KR_NPC` · 싣는 때 = 사람이 세운 마을(`econ.founder`) ∧ `me.chief`(`chiefCached` — 게시판과 같은 술어) · 아니면 **키 없음** | 촌장 「일 맡기기」 판(지금 일 · 나이 · 형편 · 맡길 일 · 단추 → `assign_job`) |
+| `store` | `rows[]` `{ res, ko, qty, daysOf, short, glut }` | arr | 곳간 `playerVillageInventory().groups` · 래치 `ledger.detOf(vid,res)` · 소비 `econ._consEMA` | "곳간에 있는 것" · 넉넉함 (「모자란 것」 판은 T1169 부터 아래 `store.short.rows`) |
 | | `rows[].use` (T1116) | num | 하루 수요 = econ 소비 EMA `_consEMA[res]`(`daysOf` 의 분모 그대로 · 소수 둘째 자리) · 소비 0 이면 키 없음 | 넉넉함 옆 "하루 n씩 씁니다" 자리 |
 | | `rows[].priceUp` · `priceDown` (T1116) | bool | 사건 장부 값 래치 `detOf().up/down`(`PRICE_SPIKE`/`PRICE_DROP` 이 선 뒤 풀리기 전까지 참 · 30날 자기평균 대비) · 장부가 그 물건 값을 창(`events.CFG.PRICE_WIN` 30날)만큼 지켜보기 전이면(재기동 직후 포함) **키 없음** | "값 ▲" · "값 ▼"(⚠"어제보다"가 아니다 — 회부) |
 | | `shortDays` · `glutDays` | num | `events.CFG.SHORT_DAYS` · `GLUT_DAYS`(넉넉함 기준 — 사건 장부 정본) | 넉넉함 막대의 눈금 |
@@ -106,4 +107,7 @@
 * 없는 칸은 화면에도 없다 — 줄 · 카드를 통째로 안 그린다(빈 문자열 · 0 · 예시 문장 0).
 * 클라가 만드는 것은 문장 틀(하십시오체) · 막대 비율(넉넉함 = `daysOf / glutDays` · 공정 = `stage / stages` · 부탁 = `filled / qty`) · 공사 줄 이름(`kind` 로 — 서버가 `name` 을 안 싣는다)뿐이다.
 * [T1116] 창고 탭 새 칸 — `store.short.rows` 는 `rows[].short` 로 거르는 것보다 넓다(곳간이 바닥난 물건이 든다) · `priceUp`/`priceDown` · `priceMoves` 는 키가 있을 때만 그린다 · 날마다의 시세 선 · 어제보다는 그리지 않는다(키 없음).
+* [T1169] 화면 「모자란 것」 = `store.short.rows`(바닥난 줄 = "곳간에 없습니다") — 칸이 없는 옛 서버만 `rows[].short` 거르기 · 구성원 탭 아래 「일 맡기기」 판 = `members.assign`(키가 있을 때만 · 단추 = `assign_job` · 맡긴 뒤 서버는 열린 마을 화면의 칸만 다시 보낸다 — 게시판 판을 띄우지 않는다).
 * 아직 서버에 없는 칸(T1105 가 셀 것) — 키가 오면 그린다: `head.region` · `dash.popDelta` · `dash.winter[] { label, frac, short }` · `dash.workNext` · `members.delta` · `projects.next[]`(문장 줄).
+
+* [T1189 · 문 24 권고대로] 새 칸 — `head.kindKo`(마을 꼴 · 회관 행 꼬리표 낱말 농촌 · 어촌 · 광산 · 임업 · 부제 = `region` + `kindKo`) · `dash.winter[] { label:'먹을 것', frac, short, days, need }`(먹을 것 며칠치 ÷ 겨울 끝까지 남은 날 — T1179 수확창이 서면 "다음 수확까지"로) · `store.rows[].kg`(낱개 × `weights.kgOf`) · `prices.trend { days, rows[] { res, pts[] { ago, num } } }`(econ 행 칸 `_t1189Px` 30날 고리 ÷ 고른 기준 · 시세 칸 안 — 멀면 없음). 화면: 오늘 땔감 줄(`fuelCov`)은 겨울 준비 판 안 따로 · 「다 되면」 문장 없음(`bedsGain` 안 그림) · 「모자란 것」 = 며칠치 + 값 ▲ · 「재료 가져오기」(집터) = `village_site_give` `{ vid, want }`(짐 → 집터 `_site.mat` · 남은 몫까지 · 단계 자재를 다 채운 한 번 = 기여 +1).

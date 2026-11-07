@@ -1,0 +1,176 @@
+{
+  "source": "/tmp/act-route-code",
+  "node": "v22.23.0",
+  "sourceSHA256": {
+    "server/villages.js": "17a7c43e160f66301d8348d386ac270ef5752faa4da7c8914259819b4b93b8b5",
+    "server/bandits.js": "ba437b48db66f676cd7475c380a618e9e77c6e7d0388b9344577bd33c035b0f7",
+    "server/home-population.js": "bfbd8eb4b9b2177d35d831e4e62cf35103d93629fc747ec354454d5af564448b",
+    "server/war-live.js": "1e4a09514655e4c407b31b3fa118170ef8e617a872fd2f9e020e1a4a0b1707ff",
+    "sim/war-core.js": "937b8efa8dfd8eabe0188840305a2655f467dbbd6b1f99215a44c6e2c25b519c",
+    "sim/economy-sim.js": "93e7b9860e98e415dad5905d9e810b53bdbbae009c647f03db07bc15efed4249",
+    "scripts/t1159-observe.js": "69980c324b4474b7667b23ce2018c9ed7ea2daa06adfe6932046873575ed304e",
+    "scripts/t1078-observe.js": "b98007890c071ceb6ad697b6222c0c0dedb1bc7ef711784bcb32c5316fa9b122",
+    "scripts/t1079-observe.js": "a9358771f3e8ed237a8be5b76dc973ef05230f386d9afb6e0d2c4dc2a7770103",
+    "scripts/t1104-observe.js": "1486713e256cc6f10f0e52b4c949a72e93758775468006c32e0e89246e6b0ebe"
+  },
+  "days": 400,
+  "portBase": 62000,
+  "limitSeconds": 3600,
+  "world": "front",
+  "battleDay": "0",
+  "runs": [
+    {
+      "mode": "0",
+      "exit": 1,
+      "timedOut": false,
+      "seconds": 477.24007013799564,
+      "args": [
+        "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+        "scripts/server-baseline-check.js",
+        "계측/서버기준선_2026-11-04c.json",
+        "--days",
+        "400",
+        "--seeds",
+        "1020,7,42",
+        "--par",
+        "3"
+      ],
+      "env": {
+        "T790_NO_SNAP": "1",
+        "T1041_WAR_BODY": "1",
+        "T811_ARMS_BODY": "1",
+        "T449_BODY_DAY": "1",
+        "T491_BATCH_FROM_BODY": "1",
+        "T561_ROSTER_BODY": "1",
+        "T502_ODDS_REAL": "1",
+        "T815_DRAFT_FAMINE": "1",
+        "T941_BATTLE_DAY": "0",
+        "T627_TRIP_DAY": "1",
+        "T1076_ARMY_MORALE": "1",
+        "T466_LOOT_ACT": "1",
+        "T826_LOOT_BODY": "1",
+        "T1168_SORTIE_AMMO": "1",
+        "T1078_BANDIT_ALL": "1",
+        "T1079_BANDIT_CAMP": "1",
+        "T1104_BANDIT_WALK": "1",
+        "T1159_HOME_N": "0",
+        "T577_PORT_BASE": "62000",
+        "NODE_OPTIONS": "-r /tmp/act-route-code/scripts/t1159-observe.js"
+      },
+      "sbcDir": "/tmp/sbc-F8PMvn",
+      "complete": true,
+      "seeds": [
+        {
+          "seed": 1020,
+          "days": 400,
+          "population": 3416,
+          "births": 4605,
+          "starvationDeaths": 966,
+          "starvingPersonDays": 52895,
+          "awayPersonDays": 0,
+          "observerErrors": [],
+          "unknownHomeDays": 0
+        },
+        {
+          "seed": 7,
+          "days": 400,
+          "population": 3755,
+          "births": 4089,
+          "starvationDeaths": 138,
+          "starvingPersonDays": 9189,
+          "awayPersonDays": 0,
+          "observerErrors": [],
+          "unknownHomeDays": 0
+        },
+        {
+          "seed": 42,
+          "days": 400,
+          "population": 3351,
+          "births": 3680,
+          "starvationDeaths": 145,
+          "starvingPersonDays": 7345,
+          "awayPersonDays": 0,
+          "observerErrors": [],
+          "unknownHomeDays": 0
+        }
+      ]
+    },
+    {
+      "mode": "1",
+      "exit": 1,
+      "timedOut": false,
+      "seconds": 469.28895499699865,
+      "args": [
+        "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+        "scripts/server-baseline-check.js",
+        "계측/서버기준선_2026-11-04c.json",
+        "--days",
+        "400",
+        "--seeds",
+        "1020,7,42",
+        "--par",
+        "3"
+      ],
+      "env": {
+        "T790_NO_SNAP": "1",
+        "T1041_WAR_BODY": "1",
+        "T811_ARMS_BODY": "1",
+        "T449_BODY_DAY": "1",
+        "T491_BATCH_FROM_BODY": "1",
+        "T561_ROSTER_BODY": "1",
+        "T502_ODDS_REAL": "1",
+        "T815_DRAFT_FAMINE": "1",
+        "T941_BATTLE_DAY": "0",
+        "T627_TRIP_DAY": "1",
+        "T1076_ARMY_MORALE": "1",
+        "T466_LOOT_ACT": "1",
+        "T826_LOOT_BODY": "1",
+        "T1168_SORTIE_AMMO": "1",
+        "T1078_BANDIT_ALL": "1",
+        "T1079_BANDIT_CAMP": "1",
+        "T1104_BANDIT_WALK": "1",
+        "T1159_HOME_N": "1",
+        "T577_PORT_BASE": "62000",
+        "NODE_OPTIONS": "-r /tmp/act-route-code/scripts/t1159-observe.js"
+      },
+      "sbcDir": "/tmp/sbc-GJ7yna",
+      "complete": true,
+      "seeds": [
+        {
+          "seed": 1020,
+          "days": 400,
+          "population": 3416,
+          "births": 4605,
+          "starvationDeaths": 966,
+          "starvingPersonDays": 52895,
+          "awayPersonDays": 0,
+          "observerErrors": [],
+          "unknownHomeDays": 0
+        },
+        {
+          "seed": 7,
+          "days": 400,
+          "population": 3755,
+          "births": 4089,
+          "starvationDeaths": 138,
+          "starvingPersonDays": 9189,
+          "awayPersonDays": 0,
+          "observerErrors": [],
+          "unknownHomeDays": 0
+        },
+        {
+          "seed": 42,
+          "days": 400,
+          "population": 3351,
+          "births": 3680,
+          "starvationDeaths": 145,
+          "starvingPersonDays": 7345,
+          "awayPersonDays": 0,
+          "observerErrors": [],
+          "unknownHomeDays": 0
+        }
+      ]
+    }
+  ],
+  "complete": true
+}

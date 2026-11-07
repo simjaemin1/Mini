@@ -19,6 +19,9 @@
 //
 // 실행: node scripts/test-server-market.js
 'use strict';
+// 기존 날 머리 장 일정 대조. 실제 몸 도착 시점의 개장은 T1182 자가 잰다.
+process.env.T762_CARAVAN_BODY='0';
+process.env.T1136_ESCORT_CARRY='0';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/tsm-${process.pid}.db`;
 const path = require('path');

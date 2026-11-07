@@ -1,0 +1,1399 @@
+{
+  "sourceHead": "c2bec2b4adaa17eb39c8eed723d169efc8ab0d59",
+  "prefixDays": 600,
+  "selectedWorld": "front",
+  "selectedBattleDay": "0",
+  "oneHourCapDirective": "지시_T1183_1db22f04.md 손잡이 절: 몸∞ 판은 1시간 상한 안에서",
+  "rawFiles": [
+    {
+      "source": "/tmp/act-route-followup-results/final-rollback.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback.log.gz",
+      "sha256": "78d0589b801553ce09d241020112907c8ace2acb9fbdab856835e9e6bf4e051f"
+    },
+    {
+      "source": "/tmp/sbc-lRd3fE/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback/check.json.gz",
+      "sha256": "7b0e322af4e9969544f7f76ed9ed10792ddfbfadfc455115be96e2ac21b4389e"
+    },
+    {
+      "source": "/tmp/sbc-lRd3fE/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback/check.json.gz",
+      "sha256": "7b0e322af4e9969544f7f76ed9ed10792ddfbfadfc455115be96e2ac21b4389e"
+    },
+    {
+      "source": "/tmp/sbc-lRd3fE/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback/sbc-7.json.gz",
+      "sha256": "a9a04c121f6416b5ca38e759ab086b211a4c421f33d522f81b8cdb154d82edce"
+    },
+    {
+      "source": "/tmp/sbc-lRd3fE/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback/sbc-1020.fd-deaths.json.gz",
+      "sha256": "6421930bbaa63a80340d038e1bb80b73c32e5648808f6370f581f4c55e9ab5ae"
+    },
+    {
+      "source": "/tmp/sbc-lRd3fE/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback/sbc-42.json.sbc.json.gz",
+      "sha256": "edda8d8df7ff26cea73775bf9a0861b3a70da63866bf88753c30c79839080493"
+    },
+    {
+      "source": "/tmp/sbc-lRd3fE/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback/sbc-7.json.sbc.json.gz",
+      "sha256": "5b2ed64915f5e60047840c912d422bfa9f2389339e825636ca9f1b9b8f27c242"
+    },
+    {
+      "source": "/tmp/sbc-lRd3fE/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback/sbc-42.fd-deaths.json.gz",
+      "sha256": "9a7262f19ead9c67d87e458fffd006b58ac11d29a18add19a75643e4d0d5ff58"
+    },
+    {
+      "source": "/tmp/sbc-lRd3fE/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback/sbc-42.json.gz",
+      "sha256": "8c80cb583005b5954999ed17535570166a7aab34565c304dd6cddc8c21c187e1"
+    },
+    {
+      "source": "/tmp/sbc-lRd3fE/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback/sbc-7.fd-deaths.json.gz",
+      "sha256": "01b4e7ae1ca0e2ac35392c85fc21c56877e3e781fc3dff7c0107ef63da36be3b"
+    },
+    {
+      "source": "/tmp/sbc-lRd3fE/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback/sbc-1020.json.gz",
+      "sha256": "1f2f5bfac8e58f767c76affc9bf1b4fb5bb97cd1d1e0f4a8ffc19ea9755005ad"
+    },
+    {
+      "source": "/tmp/sbc-lRd3fE/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/final-rollback/sbc-1020.json.sbc.json.gz",
+      "sha256": "dd9f5aa2bec33a2fea4c9fef3a6fae483d02ca586873602ffb462a42b812cf60"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/flat-final.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/flat-final.log.gz",
+      "sha256": "c41db8965f690a873098241730a0432a168eb09ff086911b9889dac23059a8f5"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body-plan.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan.log.gz",
+      "sha256": "7e86d3dde61143b372f47706683cc3bf9f8c430986a4164cd9e24947e09f0dc1"
+    },
+    {
+      "source": "/tmp/sbc-6TVyes/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan/check.json.gz",
+      "sha256": "0d7c012b00845e4f33cce86ad429a55d5460873b8de581b15d3646b0f32f15fc"
+    },
+    {
+      "source": "/tmp/sbc-6TVyes/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan/check.json.gz",
+      "sha256": "0d7c012b00845e4f33cce86ad429a55d5460873b8de581b15d3646b0f32f15fc"
+    },
+    {
+      "source": "/tmp/sbc-6TVyes/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan/sbc-7.json.gz",
+      "sha256": "929ba3d118d249777433e5aeddfbe9181ed4005bd00e0d7c8ddecb20cf1560c5"
+    },
+    {
+      "source": "/tmp/sbc-6TVyes/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan/sbc-1020.fd-deaths.json.gz",
+      "sha256": "9430ab1da967e2a1bab0c887a4b0a6119242cb64faf1cf1d5b170f121d9406b3"
+    },
+    {
+      "source": "/tmp/sbc-6TVyes/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan/sbc-42.json.sbc.json.gz",
+      "sha256": "bce9b3e1ba260c4e253228aa2c7148e24dbeb5a8befccce75b63981a32ea7b2d"
+    },
+    {
+      "source": "/tmp/sbc-6TVyes/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan/sbc-7.json.sbc.json.gz",
+      "sha256": "80a13ccbc1b9c88f2468666a51623eee600b3011fd6cc58c1782c5aba19b8bc8"
+    },
+    {
+      "source": "/tmp/sbc-6TVyes/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan/sbc-42.fd-deaths.json.gz",
+      "sha256": "086dfb0fd5fdc9dfe3edc6e427bea9e54e2d4de889ba197bc4c63e7ad9ab3fb8"
+    },
+    {
+      "source": "/tmp/sbc-6TVyes/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan/sbc-42.json.gz",
+      "sha256": "44987bb4913219a53a4057adb0c6af8dcdbdcf5712cc4adb3f531a1af0240e54"
+    },
+    {
+      "source": "/tmp/sbc-6TVyes/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan/sbc-7.fd-deaths.json.gz",
+      "sha256": "6fca6756c890156996fc5feb3a9f4490e87bdcc183b67cd3eaa59bab6385bbbe"
+    },
+    {
+      "source": "/tmp/sbc-6TVyes/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan/sbc-1020.json.gz",
+      "sha256": "961b16b95d07d515da9b999c9621663543977e3d428a18fbcaf7fe2f982abe0f"
+    },
+    {
+      "source": "/tmp/sbc-6TVyes/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-plan/sbc-1020.json.sbc.json.gz",
+      "sha256": "3319118dd124b0576db9920dd470a5a9ed8ff6a3980381dff52ddfa4c2aa3309"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off-plan.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan.log.gz",
+      "sha256": "270a0cb39b1c8cf5108135ded548b2503ee0bae339cb83ae64ed7a2c701b59dd"
+    },
+    {
+      "source": "/tmp/sbc-AEdXme/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan/check.json.gz",
+      "sha256": "f4be35473dfeee2798c3e1178725d9025c754a76e355b0fc9961f320544f4b42"
+    },
+    {
+      "source": "/tmp/sbc-AEdXme/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan/check.json.gz",
+      "sha256": "f4be35473dfeee2798c3e1178725d9025c754a76e355b0fc9961f320544f4b42"
+    },
+    {
+      "source": "/tmp/sbc-AEdXme/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan/sbc-7.json.gz",
+      "sha256": "3ac4246b78bfdcb439ddbf4b35721aa264f0bf11f6c790554d847d5887a47363"
+    },
+    {
+      "source": "/tmp/sbc-AEdXme/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan/sbc-1020.fd-deaths.json.gz",
+      "sha256": "9430ab1da967e2a1bab0c887a4b0a6119242cb64faf1cf1d5b170f121d9406b3"
+    },
+    {
+      "source": "/tmp/sbc-AEdXme/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan/sbc-42.json.sbc.json.gz",
+      "sha256": "bce9b3e1ba260c4e253228aa2c7148e24dbeb5a8befccce75b63981a32ea7b2d"
+    },
+    {
+      "source": "/tmp/sbc-AEdXme/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan/sbc-7.json.sbc.json.gz",
+      "sha256": "80a13ccbc1b9c88f2468666a51623eee600b3011fd6cc58c1782c5aba19b8bc8"
+    },
+    {
+      "source": "/tmp/sbc-AEdXme/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan/sbc-42.fd-deaths.json.gz",
+      "sha256": "086dfb0fd5fdc9dfe3edc6e427bea9e54e2d4de889ba197bc4c63e7ad9ab3fb8"
+    },
+    {
+      "source": "/tmp/sbc-AEdXme/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan/sbc-42.json.gz",
+      "sha256": "f56c860cdd3d694abc3b60b6cd2fbab9e7dd53014fee1d4c8649d618f97732f9"
+    },
+    {
+      "source": "/tmp/sbc-AEdXme/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan/sbc-7.fd-deaths.json.gz",
+      "sha256": "6fca6756c890156996fc5feb3a9f4490e87bdcc183b67cd3eaa59bab6385bbbe"
+    },
+    {
+      "source": "/tmp/sbc-AEdXme/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan/sbc-1020.json.gz",
+      "sha256": "1fb8e4ab66b65516b1ca435f0fb6436a8ba12240cc161b8ce9b7a7f700fb0750"
+    },
+    {
+      "source": "/tmp/sbc-AEdXme/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-plan/sbc-1020.json.sbc.json.gz",
+      "sha256": "7b47291e0a831e1f8fb4ee59cb6f0712f04ac2967e5d9c950972318f1c1da554"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp-plan.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan.log.gz",
+      "sha256": "11f60ad4d20fcbbc1d4d976cd27d65015c694bed92a2cdc9cb989ee3a7795692"
+    },
+    {
+      "source": "/tmp/sbc-wQFJye/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan/check.json.gz",
+      "sha256": "0be61984040dd310254a608855f11a17d7ee501a4fd287b7035130a496c89094"
+    },
+    {
+      "source": "/tmp/sbc-wQFJye/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan/check.json.gz",
+      "sha256": "0be61984040dd310254a608855f11a17d7ee501a4fd287b7035130a496c89094"
+    },
+    {
+      "source": "/tmp/sbc-wQFJye/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan/sbc-7.json.gz",
+      "sha256": "9a951d9b3d35ed9b79d67b0bc21d2e51b69282d163a5747ebbc935c1b3371a22"
+    },
+    {
+      "source": "/tmp/sbc-wQFJye/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan/sbc-1020.fd-deaths.json.gz",
+      "sha256": "3b6d053a67b35823b34cc587de8868ab220a7cd290453dbcd3dcff7688a10a73"
+    },
+    {
+      "source": "/tmp/sbc-wQFJye/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan/sbc-42.json.sbc.json.gz",
+      "sha256": "bce9b3e1ba260c4e253228aa2c7148e24dbeb5a8befccce75b63981a32ea7b2d"
+    },
+    {
+      "source": "/tmp/sbc-wQFJye/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan/sbc-7.json.sbc.json.gz",
+      "sha256": "80a13ccbc1b9c88f2468666a51623eee600b3011fd6cc58c1782c5aba19b8bc8"
+    },
+    {
+      "source": "/tmp/sbc-wQFJye/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan/sbc-42.fd-deaths.json.gz",
+      "sha256": "086dfb0fd5fdc9dfe3edc6e427bea9e54e2d4de889ba197bc4c63e7ad9ab3fb8"
+    },
+    {
+      "source": "/tmp/sbc-wQFJye/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan/sbc-42.json.gz",
+      "sha256": "2487a3fb73d22a151bba9053cf14981c587499e903abebe221b1233eb77695e6"
+    },
+    {
+      "source": "/tmp/sbc-wQFJye/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan/sbc-7.fd-deaths.json.gz",
+      "sha256": "6fca6756c890156996fc5feb3a9f4490e87bdcc183b67cd3eaa59bab6385bbbe"
+    },
+    {
+      "source": "/tmp/sbc-wQFJye/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan/sbc-1020.json.gz",
+      "sha256": "23da8ce27048ff59a20a2f845ac7e61b8214612424f56980194c92f9e5277683"
+    },
+    {
+      "source": "/tmp/sbc-wQFJye/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-plan/sbc-1020.json.sbc.json.gz",
+      "sha256": "fc615439f4c3aba65c058e27acd4d309817e2578abe4e4328b07fbc68f9db326"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body-server800.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-server800.log.gz",
+      "sha256": "42a67877978870a2c44984dab0f518b0197d4d260c12c8553986f5a4d29ea229"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body/server800/band-all-body-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-server800/band-all-body-1020.json.gz",
+      "sha256": "9775e76368da80ea880aead592dc9599c6dad273f6b9c80560bbe04502f9f670"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body/server800/band-all-body-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-server800/band-all-body-1020.fd-deaths.json.gz",
+      "sha256": "1c247f3f8441d64eb3678a970832d4c99962ea22466d8abb8aed944fd5394f13"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body/server800/band-all-body-1020.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-server800/band-all-body-1020.t1104.json.gz",
+      "sha256": "c0db66e1babc5446349b4e6a722cca393a00e7c6efb1ca7f6cf549c853d4f9ce"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body/server800/band-all-body-1020.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-server800/band-all-body-1020.t1078.json.gz",
+      "sha256": "b001e089ebe0b3f7737f8caa29c0b1fccf9179480ff4115225a822e09448a98f"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body/server800/band-all-body-1020.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-server800/band-all-body-1020.t1079.json.gz",
+      "sha256": "c89c55603b6a1a3dc8a270135007004fa7919cc2cfb879b8acafaea7dce97177"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body-lab-1020.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-lab-1020.log.gz",
+      "sha256": "522491c96a7e52fb2bffa128229981ad7a1ffaa02a77449ccfbec77812e219f6"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body/lab-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-lab-1020.json.gz",
+      "sha256": "2a8845620e3c40306287e66e17ef4fae5416efe7c7cfa0a19939d252d5c05118"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body-lab-7.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-lab-7.log.gz",
+      "sha256": "77e011e74e3a705768c08952886ba295e90c3f46d8bdbadc9f0da35e781ef5d0"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body/lab-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-lab-7.json.gz",
+      "sha256": "2f19d5d4ae39388a588dbde02433d0e4bdeca4864f5e5cea0fc263b99a8beae2"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body-lab-42.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-lab-42.log.gz",
+      "sha256": "3687cc0570f5d7046060cb8db829d758b77e7060d9f4e02cebf6703aa335ce74"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-all-body/lab-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-all-body-lab-42.json.gz",
+      "sha256": "9697e638e5935ea161dcf25361d172caf19fa411f31a5e3a4e90435e736ef9e7"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp-server800.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-server800.log.gz",
+      "sha256": "e56ef009a88462a80ae95f0a950acab973f16ff0a79cb187339127839b3002c2"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp/server800/band-camp-1020.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-server800/band-camp-1020.t1079.json.gz",
+      "sha256": "cad7e1525f862c45b2be5b704a9aac94e899a352c0c1c3d192f9746f62be7f75"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp/server800/band-camp-1020.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-server800/band-camp-1020.t1078.json.gz",
+      "sha256": "8e17fc90d744a96f179f5e6679c47501e6bf5f4fb252aa8e82e4223d9245548b"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp/server800/band-camp-1020.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-server800/band-camp-1020.t1104.json.gz",
+      "sha256": "50785958d534fe8a078f3a03e1e071b2f816c320d3d5cfe6254827f459e75edb"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp/server800/band-camp-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-server800/band-camp-1020.fd-deaths.json.gz",
+      "sha256": "9adea81f94e79f5347b3ec9298c47ca1aa09430253de363557b9fa42dc992780"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp/server800/band-camp-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-server800/band-camp-1020.json.gz",
+      "sha256": "7a2dd06d050a603dfd56b278b476b62cd59cb8afa9d49f0a475463c0d60e5619"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp-lab-1020.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-lab-1020.log.gz",
+      "sha256": "096d753df88381b239df09e44c56b49f2303e1851cfff5f0a9675a8a54b3a2a1"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp/lab-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-lab-1020.json.gz",
+      "sha256": "2a8845620e3c40306287e66e17ef4fae5416efe7c7cfa0a19939d252d5c05118"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off-server800.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-server800.log.gz",
+      "sha256": "1e623763bcc8756dfe0316d5c482af3bb4f14149bb65fd98e838d4037cf7578b"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off/server800/band-off-1020.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-server800/band-off-1020.t1078.json.gz",
+      "sha256": "8246844925f6eb18a49c1be10d5454124db7bdacf980b8f0df273b061022d45d"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off/server800/band-off-1020.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-server800/band-off-1020.t1104.json.gz",
+      "sha256": "3a6f3da365a36b3d289b868126fbc681b62dc0d000a562749a0d4037fe7f2116"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off/server800/band-off-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-server800/band-off-1020.fd-deaths.json.gz",
+      "sha256": "a7e7528e1f21144ca57fbaee8c7f1abab76d90f901110ce2a70a6f34c5061a8b"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off/server800/band-off-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-server800/band-off-1020.json.gz",
+      "sha256": "a429dd2df2e12e78c9edd005eb5378e9d57c5160d8652996f875b180be8bf8d0"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off/server800/band-off-1020.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-server800/band-off-1020.t1079.json.gz",
+      "sha256": "f92cdebbda448c96653d1330ce32feef2f63f65e85db3f3392a26a0c538be244"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp-lab-7.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-lab-7.log.gz",
+      "sha256": "837ff4691914050fae5f1d1fea1054cbc8d3e3a7392347b653d1baa27c836893"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp/lab-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-lab-7.json.gz",
+      "sha256": "2f19d5d4ae39388a588dbde02433d0e4bdeca4864f5e5cea0fc263b99a8beae2"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off-lab-1020.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-lab-1020.log.gz",
+      "sha256": "2dd9bbaf81d8a39e21c47ae2ad2fe5b4a1dbb0fd9855ebf8ba2a77275ab59a8d"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off/lab-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-lab-1020.json.gz",
+      "sha256": "2a8845620e3c40306287e66e17ef4fae5416efe7c7cfa0a19939d252d5c05118"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off-lab-7.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-lab-7.log.gz",
+      "sha256": "55d32f59c00b7ea70f87f1f582ff2d4e80ac9f8ce29019ed19aae7841cc39ba4"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off/lab-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-lab-7.json.gz",
+      "sha256": "2f19d5d4ae39388a588dbde02433d0e4bdeca4864f5e5cea0fc263b99a8beae2"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off-lab-42.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-lab-42.log.gz",
+      "sha256": "5ac6b84bc42a59d86f1b73d14928ea853bc4724cc04aa94b5d30cd98bb9acea1"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-off/lab-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-off-lab-42.json.gz",
+      "sha256": "9697e638e5935ea161dcf25361d172caf19fa411f31a5e3a4e90435e736ef9e7"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp-lab-42.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-lab-42.log.gz",
+      "sha256": "76fab1266b64db79bb6a2d459844300eaae06aa3a06ca1b9fe429975a6dc8203"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-camp/lab-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-camp-lab-42.json.gz",
+      "sha256": "9697e638e5935ea161dcf25361d172caf19fa411f31a5e3a4e90435e736ef9e7"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk-plan.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan.log.gz",
+      "sha256": "23ac1014a7d3f61cc51cd01274422f362185e054845f226d1a6add5eda37505b"
+    },
+    {
+      "source": "/tmp/sbc-S8KVX7/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan/check.json.gz",
+      "sha256": "a1684189d87939d051384e15b8de7b01096fbfd79aeeb19bd854a1342ae4a0bc"
+    },
+    {
+      "source": "/tmp/sbc-S8KVX7/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan/check.json.gz",
+      "sha256": "a1684189d87939d051384e15b8de7b01096fbfd79aeeb19bd854a1342ae4a0bc"
+    },
+    {
+      "source": "/tmp/sbc-S8KVX7/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan/sbc-7.json.gz",
+      "sha256": "10bb9da650fa1aefa122d1f3c4e3e7e47f2d1534bc8702d1c157b8df82b8cd3f"
+    },
+    {
+      "source": "/tmp/sbc-S8KVX7/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan/sbc-1020.fd-deaths.json.gz",
+      "sha256": "08a41dac8441f4bf9321d3c15110492c814c915546d36d2f776bddc446ad2686"
+    },
+    {
+      "source": "/tmp/sbc-S8KVX7/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan/sbc-42.json.sbc.json.gz",
+      "sha256": "3ce6606d04d3946f620b9d083bf3cd266134913b603c3f6bd276dd1479a2f196"
+    },
+    {
+      "source": "/tmp/sbc-S8KVX7/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan/sbc-7.json.sbc.json.gz",
+      "sha256": "4fd5ab05b70170f1f898700a54c4b6d69b7f814b74ffa69aad50a43faf519143"
+    },
+    {
+      "source": "/tmp/sbc-S8KVX7/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan/sbc-42.fd-deaths.json.gz",
+      "sha256": "086dfb0fd5fdc9dfe3edc6e427bea9e54e2d4de889ba197bc4c63e7ad9ab3fb8"
+    },
+    {
+      "source": "/tmp/sbc-S8KVX7/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan/sbc-42.json.gz",
+      "sha256": "84e08c8d2d6c9a4e9ae236b75ba099989354ceda5295ead92d76576cadfc25a0"
+    },
+    {
+      "source": "/tmp/sbc-S8KVX7/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan/sbc-7.fd-deaths.json.gz",
+      "sha256": "6fca6756c890156996fc5feb3a9f4490e87bdcc183b67cd3eaa59bab6385bbbe"
+    },
+    {
+      "source": "/tmp/sbc-S8KVX7/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan/sbc-1020.json.gz",
+      "sha256": "fe9c2a157eb9ddeee2a3b2c034d83c73645d97516e1f1a66c39b841b1aeec21b"
+    },
+    {
+      "source": "/tmp/sbc-S8KVX7/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-plan/sbc-1020.json.sbc.json.gz",
+      "sha256": "64d8cbdcddafa9002cf0e7bf727457a25ff8c47b0dc094a381d8da764a2e8bfb"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk-server800.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-server800.log.gz",
+      "sha256": "65ecff972df1922ca38c4dc826ee4b3b7ff9ec7ed46b2b589b2c8f9100e7c666"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk/server800/band-walk-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-server800/band-walk-1020.fd-deaths.json.gz",
+      "sha256": "b3dbffa76709d3ebf52612662bd65238775d04fdd4e1ffdd4ee3fe9c36c896ec"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk/server800/band-walk-1020.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-server800/band-walk-1020.t1079.json.gz",
+      "sha256": "5eb2e5ad372f80e0980902a2b62b371af13ca3f28572ceb14e1e2e9296705de4"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk/server800/band-walk-1020.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-server800/band-walk-1020.t1104.json.gz",
+      "sha256": "c05111c79c7b48d8f2986639ff0000efd57f21d364f7f4050924b387c9b11106"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk/server800/band-walk-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-server800/band-walk-1020.json.gz",
+      "sha256": "8c3ac7af0685318f9b8cdf3b338b048e6c2c72f6f008ed3baa670133a85bcea1"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk/server800/band-walk-1020.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-server800/band-walk-1020.t1078.json.gz",
+      "sha256": "1f4c081c9eeafbe7f020d0270a0bac8398f6f1b54c38a19f9ad82c34120c3a62"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk-lab-7.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-lab-7.log.gz",
+      "sha256": "4a7f7cd79944ea30e1932bdbd60867f23092c44daf856b25a4fe5cbe00e94044"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk/lab-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-lab-7.json.gz",
+      "sha256": "2f19d5d4ae39388a588dbde02433d0e4bdeca4864f5e5cea0fc263b99a8beae2"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk-lab-1020.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-lab-1020.log.gz",
+      "sha256": "4f00bcae039d75ecd08e3ba2e2e0ccc2b04731d0347ac72e2864fc0828e3ae6a"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk/lab-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-lab-1020.json.gz",
+      "sha256": "2a8845620e3c40306287e66e17ef4fae5416efe7c7cfa0a19939d252d5c05118"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk-lab-42.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-lab-42.log.gz",
+      "sha256": "a0042ae44cd929ce7cc2290d4cf56161f01731dd64bfc29d76b0d11aa14b89e9"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/band-walk/lab-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/band-walk-lab-42.json.gz",
+      "sha256": "9697e638e5935ea161dcf25361d172caf19fa411f31a5e3a4e90435e736ef9e7"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/war-rollback.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-rollback.log.gz",
+      "sha256": "11d0be0313d41ca14a55ca87b15dea6994d08fe6b1a5d11f08c7bc61541acb21"
+    },
+    {
+      "source": "/tmp/sbc-LqjSkZ/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-rollback/sbc-42.json.sbc.json.gz",
+      "sha256": "22bf3222da7a5190f9d43c206ce687f1661dbe807455fd48ebe6fde93efdb969"
+    },
+    {
+      "source": "/tmp/sbc-LqjSkZ/sbc-42.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-rollback/sbc-42.t1159.json.gz",
+      "sha256": "b26b9da5ecaf5c9e4ba28e19355e11972089bb4117624f86b426b74a3cc94e40"
+    },
+    {
+      "source": "/tmp/sbc-LqjSkZ/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-rollback/sbc-42.fd-deaths.json.gz",
+      "sha256": "0035049eff1bba297687f6103d2dc909cb5d79c17787c1ddb20a9d4c3c7782d6"
+    },
+    {
+      "source": "/tmp/sbc-LqjSkZ/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-rollback/sbc-42.json.gz",
+      "sha256": "faf49089a43269487c4a41316cd44ce9f610b48d6753d04eae8814f028ed256b"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/war-ten-off.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off.log.gz",
+      "sha256": "f093849d3b997c08145172181cbf84509ffa74d1e9a82655eb867b0bbc6f7a6d"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/check.json.gz",
+      "sha256": "295b3a0a92c0bbcfb434cfd5560ceaf14ff7631877ad028ef5c5e722758132a3"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/check.json.gz",
+      "sha256": "295b3a0a92c0bbcfb434cfd5560ceaf14ff7631877ad028ef5c5e722758132a3"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-7.json.gz",
+      "sha256": "e1c46d6053a18cb08dbca43881cbab26feebb419f4bccc2aee13b4169f15ace8"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-1020.fd-deaths.json.gz",
+      "sha256": "6caabc3cf765f7975fd31c3644a8552e3a6b27c0fa8480d68a80a7adf99f69c7"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-42.json.sbc.json.gz",
+      "sha256": "d7d4958ba4173172b74dcbc174d133f8398c9d4977ee53509264ff873e245d0d"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-7.json.sbc.json.gz",
+      "sha256": "acb3c7a8a17b9e032fda21b64264c045a31a84dc2115bc6733152e5c3331bd6e"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-42.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-42.t1159.json.gz",
+      "sha256": "a1d6b2bf4db5b57a6364ef695c3e38ff747c8f41123614b54bf61ea5becc0b5b"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-42.fd-deaths.json.gz",
+      "sha256": "c22a85916c5d2636284e3bd87e32266c3780ddc87304195b3d99461c049289ae"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-42.json.gz",
+      "sha256": "f5d403a80c8f8f207b78773b2ec3d456d3cfc850fbdb5c2994e60716bc56a908"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-1020.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-1020.t1159.json.gz",
+      "sha256": "3c5075d15ba7316370be18e4764224929640b6e15d06c22b302d1e71bc99fcdc"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-7.fd-deaths.json.gz",
+      "sha256": "bc83a91c9b87b39f4afae2b061e06a100832e2ce7b44a969270e8cddebd7de87"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-1020.json.gz",
+      "sha256": "bc677d8f4387e2ec935a0a1d83971a0de6130a68f68562f0ab5f66f0d3464aa8"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-7.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-7.t1159.json.gz",
+      "sha256": "7c3dc832d6dc04477f4f1ddd30c72ed2caf66d4208fb275728e5c322318a4e64"
+    },
+    {
+      "source": "/tmp/sbc-j5rDiX/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-off/sbc-1020.json.sbc.json.gz",
+      "sha256": "fa7f945ba92c4d2c7e5162b55ec11727be1945f5d9fffd142ecea77081a29343"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/war-ten-on.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/war-ten-on.log.gz",
+      "sha256": "0f1bc45ad60ba88644d7c7f49a99e4a797a5987edbc9e1b4a9e53c626e3ab889"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/home-off.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/home-off.log.gz",
+      "sha256": "9d84d0eeda2a61ca59758fd57f626eac40894599de04e9aa3ddbd5f2941e2b86"
+    },
+    {
+      "source": "/tmp/act-route-followup-results/home-on.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/followup/home-on.log.gz",
+      "sha256": "3fead741afe1abcadfb4188a0b8af8261fce709e67a9d4e1065c3b17759fb9f8"
+    },
+    {
+      "source": "/tmp/t1159-compressed600-results/home-0.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/harness.log.gz",
+      "sha256": "2a272b294f30aa640675396c41e4b75a1506d0f1d2e9b55ce837afdccef50b69"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/check.json.gz",
+      "sha256": "87a66cae6f1770d3a43d852b24fdd4298b024e70923aa8e3c1c753c0fd72d017"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-7.json.gz",
+      "sha256": "19e05b2ea2248767f02beb5ddd2942fc48b216ac4e6af3d9ed16cdf9d66536db"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-1020.fd-deaths.json.gz",
+      "sha256": "0b61b8ca393eb3dc608fa862d3fa096af87f39724b12339ebde209f8583d5ef3"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-7.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-7.t1078.json.gz",
+      "sha256": "ccd0d5da5e3314f0f66562ca8e419f845911c415405b411cd7a50b7df6b736d8"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-42.json.sbc.json.gz",
+      "sha256": "1b7feb21c9ed2a3ba888182611ed2cd0fcb30ff9ce8a5af63409c541dda194c8"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-42.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-42.t1079.json.gz",
+      "sha256": "0b0d021d96dd611da12d78e4e958a23a2e4607491e7c42fb64e4c1b6fb2d7584"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-1020.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-1020.log.gz",
+      "sha256": "0fd7575b0c18785990b61af5ed395005968891769d2a79b8d76cf091e27c873f"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-42.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-42.t1104.json.gz",
+      "sha256": "de1172c5eea09d320ad0749969bc3f9ea888eabbab24c93591488565593214f0"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-7.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-7.t1104.json.gz",
+      "sha256": "a462d45743814154cd0cf7d289fd542893ad31d2027530e7c82b522bee91755a"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-7.json.sbc.json.gz",
+      "sha256": "a423b25340ae30142a041814eab000532283a30a3a07ea7a71be013df743fb41"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-42.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-42.t1159.json.gz",
+      "sha256": "070728ee817dfae6701d0f180bf6acb05360c551b97377bf6713c5136384244b"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-42.fd-deaths.json.gz",
+      "sha256": "72929fbb55d3d7bf107440c7f48b5ba34cc6e43acc858a2f325c49696c17c3c1"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-42.json.gz",
+      "sha256": "631d74e6cf34064e76f638e6c11751cebd63a36b059e73ba248b19f47743c927"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-1020.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-1020.t1159.json.gz",
+      "sha256": "45b9cf429d92088c4ef71ce172c7e36fd9e4dae7854e233422a411786185c297"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-1020.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-1020.t1078.json.gz",
+      "sha256": "2da57ab55f1bea4da2233d6c7a949726ab482fb8a9c24a859e020b56fc8e86f1"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-42.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-42.t1078.json.gz",
+      "sha256": "3a105de1ec26a7ff549a88efe8e2b2394387b47cbcd25cf5c5af1a153794a01b"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-7.fd-deaths.json.gz",
+      "sha256": "ed751383db63b33f008b396a8b0b8cb52b8a2ddedab3d8fd60ba31bbedf43803"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-42.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-42.log.gz",
+      "sha256": "65e36fb4684698a545f1bd02b1c7770d19728803fec2164aa117b42bd7884ec0"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-1020.json.gz",
+      "sha256": "c2cf8b5f5b41df8d5858c506cda3ab3610fe02de8905ae18834ec35fa6ae33fb"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-7.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-7.t1079.json.gz",
+      "sha256": "a70fa522a2f5559aec9363e5c7f2f09494824e5af9b60a05369349ab8ce197fb"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-7.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-7.t1159.json.gz",
+      "sha256": "d76642dc2ee2b5a3c723fa88ea75a7082c5e8830d2c6739ff4c4d0262ef68b90"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-7.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-7.log.gz",
+      "sha256": "4063ace9f2d18de2f86c10771fa529d9de64f5848d60719afb8c3f1c4945b68c"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-1020.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-1020.t1104.json.gz",
+      "sha256": "1a8756d99a9288acb76da0180bf7226afd8539c881720dc627d3ba9271fb31a4"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-1020.json.sbc.json.gz",
+      "sha256": "89301c8319046a838258dfe5bf38f5ed42ba37a53e3aa700673b535952c44008"
+    },
+    {
+      "source": "/tmp/sbc-biO9c3/sbc-1020.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/0/sbc-1020.t1079.json.gz",
+      "sha256": "bc6f11296ef7da5c58fc58df47c2fb44f62354468086af1ac9cc245077e47aff"
+    },
+    {
+      "source": "/tmp/t1159-compressed600-results/home-1.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/harness.log.gz",
+      "sha256": "8927366bc96679853f91e835d6a37b427489b93c758bfe158ee15eb676ab88df"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/check.json.gz",
+      "sha256": "1c080d780b566208b71e22440b980494fc4e8c441e73535577aad3d392f3dc8c"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-7.json.gz",
+      "sha256": "24dc162b101c8371835b3801c252dc0fefc019e83f263da0579c2ecb8c380ef6"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-1020.fd-deaths.json.gz",
+      "sha256": "e4ded78a665a05177f9b201ddb678fad821c1dfbf84eb9dcf191d68909a24c19"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-7.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-7.t1078.json.gz",
+      "sha256": "48cc638d5956fbe0ef156a9900e0b1b58dfec15aca5fd5d81a0181c8d4eb9974"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-42.json.sbc.json.gz",
+      "sha256": "b0b46b4a899fd2bb0228bc9ffeb695fe6bb90ad8067175cc819ff2c2d1ac00b0"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-42.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-42.t1079.json.gz",
+      "sha256": "1a1a26f839f74dc0664ada4e2bc123dd25163f65849b9cad95463cbe5da9953d"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-1020.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-1020.log.gz",
+      "sha256": "70374d237387c88af76bd947b2913f734252eec69d583d4d55ac22ab754e6c48"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-42.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-42.t1104.json.gz",
+      "sha256": "c5493f14745e46abb31e809b7ccb221ccd490fb8c2913d7daee709ad1a56f569"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-7.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-7.t1104.json.gz",
+      "sha256": "c0ec89c6c12b305ec7063973c7a7b63ef8a5dbad4f22a88d418d4426ef660268"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-7.json.sbc.json.gz",
+      "sha256": "9b3d54f3e24a790ce48544272bbdc1e54779c8645a4f324ff684b513380397b7"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-42.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-42.t1159.json.gz",
+      "sha256": "5a82e9f61fc9cab06fcf0195c0e021e6ccd76261c3f38fa9d7c8e06124302060"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-42.fd-deaths.json.gz",
+      "sha256": "68f49970f20ed9ff869a51ea271db42744c2840cbda2037468b3f59800f9c919"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-42.json.gz",
+      "sha256": "6e563807554c40c7d79aec0e57cbb6ecf2c3647957f2094827bfc30dd8e36465"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-1020.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-1020.t1159.json.gz",
+      "sha256": "96c82f36440ca681955e8f2396904a7ef80e955dc64d9607e8fc07958d752a1d"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-1020.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-1020.t1078.json.gz",
+      "sha256": "07630ca7ab1270b815f8c9a483af8cfd2b561212896bd674bbb6a9c1c58a9635"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-42.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-42.t1078.json.gz",
+      "sha256": "9dcc6b2ef6755e99dc2d684dc24f6fd42a14e0f74045f422f4b87b3abc0bc1de"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-7.fd-deaths.json.gz",
+      "sha256": "ed751383db63b33f008b396a8b0b8cb52b8a2ddedab3d8fd60ba31bbedf43803"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-42.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-42.log.gz",
+      "sha256": "8280e29f333a2af535498138468acf098f38d326e0100e5575366c0d21c54bbd"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-1020.json.gz",
+      "sha256": "f8c3fe7d1f8defcd2469dfbaf705cf5079856df3ea98585c972d24037c2b6e6e"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-7.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-7.t1079.json.gz",
+      "sha256": "35eee58574b0196d57bc26c889185f78cd3ffbcef2e2b1f53b42efdfae8ef2f3"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-7.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-7.t1159.json.gz",
+      "sha256": "03db804e142af0def3a65849cb387c4df80714c192c8d089b27a7c6991a8a75d"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-7.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-7.log.gz",
+      "sha256": "840c771c82405cc696f26ef671e8d263bc5459e77d89de67403f628c053b821d"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-1020.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-1020.t1104.json.gz",
+      "sha256": "01d3900d587ddc6a4c845f09a4034ca112dd4495d3a534cd24abc794cad9796d"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-1020.json.sbc.json.gz",
+      "sha256": "8af60a6188ae1004973b3af5d6d4c974ff488c5e18c4be46869f96ff8b391c9f"
+    },
+    {
+      "source": "/tmp/sbc-88oQKA/sbc-1020.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home600/1/sbc-1020.t1079.json.gz",
+      "sha256": "704412f86d85f905601c8c6ee2f9352dc4fd00f02fb21c87952dc085f46979a9"
+    },
+    {
+      "source": "/tmp/t1159-prefix-results/home-0.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/home-0.log.gz",
+      "sha256": "ac2c92172fce13195a8842733b4d57375e82b628317162e00056dc46ebe6bf50"
+    },
+    {
+      "source": "/tmp/t1159-prefix-results/home-1.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/home-1.log.gz",
+      "sha256": "54d4b9fe5957c9f36a6a6ec401d75586e0169be8480590afb6d8864a3cfdaa1a"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/check.json.gz",
+      "sha256": "8ea250f32003817fc2ae4813d13049e88831f62a9f545c03185ca0b3c2225f8c"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-7.json.gz",
+      "sha256": "7801a257834458c15a1dbd393b338f010f720aee06a562a10cb7569c215ed574"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-1020.fd-deaths.json.gz",
+      "sha256": "c0679d1810a7ffde54061b2cdab90a10079f85665f217710fd53d7c3b7cd1d5c"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-7.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-7.t1078.json.gz",
+      "sha256": "a0c5448c60a97f46e8151b6d8101680f8306ffb6a11a6864bf9c4db71f888230"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-42.json.sbc.json.gz",
+      "sha256": "00a9ab9ac935e45cae1162dd801ae6ee6f6fb2388e5cd07ddec5004251179dc7"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-42.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-42.t1079.json.gz",
+      "sha256": "1f9df7ded466a3b60936c2775303920f6cf660068db577639b5d91af190eeb89"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-42.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-42.t1104.json.gz",
+      "sha256": "ee5e2c80ac1ef3189ed263491a9c32c595d22cafe0c598c9394c1d641d20b495"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-7.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-7.t1104.json.gz",
+      "sha256": "ee5e2c80ac1ef3189ed263491a9c32c595d22cafe0c598c9394c1d641d20b495"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-7.json.sbc.json.gz",
+      "sha256": "721990b52e4bd3b3f53ed3411274f50a5e35c84eb7d23677cbbe5f476c3b0195"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-42.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-42.t1159.json.gz",
+      "sha256": "3eb5696ee8da105c23bdde4d020889a678bbb016d18d11a500ef28196ea91fb4"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-42.fd-deaths.json.gz",
+      "sha256": "d2758745dc1b3878fd0cf5add2c737a968ef751ec22c931e239e8e992d5b1c7c"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-42.json.gz",
+      "sha256": "a2d6321f965cb99cba37c22ad3b79df2af54b1729875bee3bc3e30a88a074550"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-1020.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-1020.t1159.json.gz",
+      "sha256": "58d9f092f3bfb5c77b48f0afba6115732f876dcbf9d8bbc41455822f0613deeb"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-1020.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-1020.t1078.json.gz",
+      "sha256": "6f3e47dc511a54c5bdb3e3aa86237ddc3dfd178f06e6927cc922f15a01748c54"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-42.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-42.t1078.json.gz",
+      "sha256": "4b564823744e8579b9f367b4ec9e35a4542c00bdddc24d6e5894e4f1dba7e249"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-7.fd-deaths.json.gz",
+      "sha256": "bb61eb80217a5bd86e9e1f2a3b624ac5b6fec9249e25fb96433fc011ce3bd499"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-1020.json.gz",
+      "sha256": "c8dd50e8ac8951b4c1b26af22deba4df77fa22daa4a25bfdc54cc8a6af192a7e"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-7.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-7.t1079.json.gz",
+      "sha256": "6f95898608ff2f50de364a1f278239d6f37bf780cfcb69aa500b5a886fcf60d1"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-7.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-7.t1159.json.gz",
+      "sha256": "7ed3c611c87e49f0b2eb1bc2c3fe6c82be3fd68e47867535b24303430248f9cf"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-1020.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-1020.t1104.json.gz",
+      "sha256": "ee5e2c80ac1ef3189ed263491a9c32c595d22cafe0c598c9394c1d641d20b495"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-1020.json.sbc.json.gz",
+      "sha256": "e38e486063420abebbaa692f1b2f8f35609e64bc0d991cad9ea99ccfd6f51290"
+    },
+    {
+      "source": "/tmp/sbc-VrECz4/sbc-1020.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/0/sbc-1020.t1079.json.gz",
+      "sha256": "79c27b285c16877fb4c96fe79f8e704feec8a201176edcdf0b22f150eef6fd31"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/check.json.gz",
+      "sha256": "7fa0151471a3f3bbf38a56614fc2f8e85fe92d837d689842b57ef25c4526b9ad"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-7.json.gz",
+      "sha256": "7801a257834458c15a1dbd393b338f010f720aee06a562a10cb7569c215ed574"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-1020.fd-deaths.json.gz",
+      "sha256": "c0679d1810a7ffde54061b2cdab90a10079f85665f217710fd53d7c3b7cd1d5c"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-7.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-7.t1078.json.gz",
+      "sha256": "73a812947566bd91d26eb256e2339bc0396bbfc73353f0b9419f91cd337e0df0"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-42.json.sbc.json.gz",
+      "sha256": "00a9ab9ac935e45cae1162dd801ae6ee6f6fb2388e5cd07ddec5004251179dc7"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-42.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-42.t1079.json.gz",
+      "sha256": "e557116d946b6afbe1e25be7baa9f1e625ddc94c8c3317b485ce6300c8bbca92"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-42.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-42.t1104.json.gz",
+      "sha256": "ee5e2c80ac1ef3189ed263491a9c32c595d22cafe0c598c9394c1d641d20b495"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-7.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-7.t1104.json.gz",
+      "sha256": "ee5e2c80ac1ef3189ed263491a9c32c595d22cafe0c598c9394c1d641d20b495"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-7.json.sbc.json.gz",
+      "sha256": "721990b52e4bd3b3f53ed3411274f50a5e35c84eb7d23677cbbe5f476c3b0195"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-42.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-42.t1159.json.gz",
+      "sha256": "ffc97eb98cba60e5fe2e184c6e5aa08b35b80398bec8daaad9532ee10a1b936e"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-42.fd-deaths.json.gz",
+      "sha256": "d2758745dc1b3878fd0cf5add2c737a968ef751ec22c931e239e8e992d5b1c7c"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-42.json.gz",
+      "sha256": "a2d6321f965cb99cba37c22ad3b79df2af54b1729875bee3bc3e30a88a074550"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-1020.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-1020.t1159.json.gz",
+      "sha256": "32a326fce45b3a2a53116e52eaf7862b735487aa9865fcc8eca541ce99d2cdf5"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-1020.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-1020.t1078.json.gz",
+      "sha256": "6e29c0391cc451ebf6394c7d170ea861ffd6d04e1b434507765792d6b3ecbd42"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-42.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-42.t1078.json.gz",
+      "sha256": "89851e915e8cb2452961798713220c929ffe0f8f8bfce2b890543d8b42d9c7fc"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-7.fd-deaths.json.gz",
+      "sha256": "bb61eb80217a5bd86e9e1f2a3b624ac5b6fec9249e25fb96433fc011ce3bd499"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-1020.json.gz",
+      "sha256": "c8dd50e8ac8951b4c1b26af22deba4df77fa22daa4a25bfdc54cc8a6af192a7e"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-7.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-7.t1079.json.gz",
+      "sha256": "ab3e57f68e7449a678d4f81813a6122cf88c7a35e0668d351e221793188ff118"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-7.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-7.t1159.json.gz",
+      "sha256": "f99f0ab04cfd6e522f8d1c477c023c2a4c79413498c97907f63aa57871a35676"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-1020.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-1020.t1104.json.gz",
+      "sha256": "ee5e2c80ac1ef3189ed263491a9c32c595d22cafe0c598c9394c1d641d20b495"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-1020.json.sbc.json.gz",
+      "sha256": "e38e486063420abebbaa692f1b2f8f35609e64bc0d991cad9ea99ccfd6f51290"
+    },
+    {
+      "source": "/tmp/sbc-K7XrJ6/sbc-1020.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home200-operating-probe/1/sbc-1020.t1079.json.gz",
+      "sha256": "20becdac5ea7e220feadf261b7c060116247d737f8cf82e57d55a795a3947a4c"
+    },
+    {
+      "source": "/tmp/t1159-active-results/home-0.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-operating-limit/home-0.log.gz",
+      "sha256": "b94381701b24032a7c79f82a4ef54eb777b96301336eed5a918cae8fd960bde4"
+    },
+    {
+      "source": "/tmp/t1159-active-results/home-1.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-operating-limit/home-1.log.gz",
+      "sha256": "b146c4e3328cddb87afae5e599c05cd741aef00876b900f951f011fc0425bcad"
+    },
+    {
+      "source": "/tmp/t1159-compressed-results/home-0.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/home-0.log.gz",
+      "sha256": "5239354c7478016ca522376061e8a6f8266179be98e4e1508e07811741589497"
+    },
+    {
+      "source": "/tmp/t1159-compressed-results/home-1.log",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/home-1.log.gz",
+      "sha256": "9f89e47cae81b5b45f3b47fb8f7fde3b17e2358ce59df792957689845a687e40"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/check.json.gz",
+      "sha256": "9dd29f107cce2fd1572aecee3f20ee8a7653e4fd08da4bef1fc97e60b3d5638e"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-7.json.gz",
+      "sha256": "ac64f285c638a07c54a89c227e6688e5df78a6134ed4f385bdb987414b6fd364"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-1020.fd-deaths.json.gz",
+      "sha256": "9be224d9cd3097eb31372d5264ad36ff0d04f84a6220527df38f3772b59910e5"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-7.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-7.t1078.json.gz",
+      "sha256": "f18ae884bbfbf5983a8d96989076f72b65e670bfe5238083cd3d366ab1dfbbfb"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-42.json.sbc.json.gz",
+      "sha256": "6db9e9ad1604b401dada344efd078b51dff4e97043b292b2a5524781538b3fba"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-42.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-42.t1079.json.gz",
+      "sha256": "9f3ec7ab73e602542cb212d839a473b155c325d0ec15319c504a22464564c8ab"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-42.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-42.t1104.json.gz",
+      "sha256": "4a505469fb01fbdd29eab8222551af9b73bdec0f7d7d2751bced2d8de822426a"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-7.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-7.t1104.json.gz",
+      "sha256": "4a505469fb01fbdd29eab8222551af9b73bdec0f7d7d2751bced2d8de822426a"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-7.json.sbc.json.gz",
+      "sha256": "300f8dad414f533a5717232ab7808113d2f9dcf94602eda572c49510e68645ac"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-42.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-42.t1159.json.gz",
+      "sha256": "11f20e489c7b4c3067761148f1ecf49f5645780408dfa1537099a6fe2f067809"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-42.fd-deaths.json.gz",
+      "sha256": "78b8eeb0f43cd61bed23190def9eca3dfb453ea7d812cc0ccd9ef94e441ed90f"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-42.json.gz",
+      "sha256": "31f19e19178b82de1b9495c9be01fbbb89b9625a4bbb558433598d45ab543d40"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-1020.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-1020.t1159.json.gz",
+      "sha256": "26dded737caebc823148eadb54980c7b2b5d3d3b25dc012927248ab9bb5f4644"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-1020.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-1020.t1078.json.gz",
+      "sha256": "23235834086c57451f91d38859b4c633f0e8d3c7d2d80c6cb761e0527c5f362e"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-42.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-42.t1078.json.gz",
+      "sha256": "eda56dc25e31faeaaed4f26f346dc8ace1ac9286b43521f112b032d037fb27c9"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-7.fd-deaths.json.gz",
+      "sha256": "6d75a9f1c6becfb36bbed3198a4b5bd6d22eac0581a173bf0e74e6c54ec91d7c"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-1020.json.gz",
+      "sha256": "5793f25cba8d5765d4489001c018054c2b77e49ae346bf2630b51faa621da932"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-7.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-7.t1079.json.gz",
+      "sha256": "93992c6df069b8f4152a0d690f670f980c90ef137980ab1a3a124c325001a458"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-7.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-7.t1159.json.gz",
+      "sha256": "e701f13b4ecfb366aea3e667778d3b5b502d27b4c452b17a3168b5f87555e557"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-1020.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-1020.t1104.json.gz",
+      "sha256": "4a505469fb01fbdd29eab8222551af9b73bdec0f7d7d2751bced2d8de822426a"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-1020.json.sbc.json.gz",
+      "sha256": "97091a13ecdb3ce9c3cc00f160568aff7f15d5c05a2e21458baac702b7af6972"
+    },
+    {
+      "source": "/tmp/sbc-F8PMvn/sbc-1020.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/0/sbc-1020.t1079.json.gz",
+      "sha256": "4bc4e447b0e13dea2189e5cce22463ecb98f1c4d635751fc5728cc683da7a13c"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/check.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/check.json.gz",
+      "sha256": "bc1e2fee35065600a634ec197bb7e95305dd48ede29d1a7369e35a26bf02c555"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-7.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-7.json.gz",
+      "sha256": "ac64f285c638a07c54a89c227e6688e5df78a6134ed4f385bdb987414b6fd364"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-1020.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-1020.fd-deaths.json.gz",
+      "sha256": "9be224d9cd3097eb31372d5264ad36ff0d04f84a6220527df38f3772b59910e5"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-7.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-7.t1078.json.gz",
+      "sha256": "d64b2d08347272167e8a2b8d29907d58ffb94e3132fff445886fe3583313ddd9"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-42.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-42.json.sbc.json.gz",
+      "sha256": "6db9e9ad1604b401dada344efd078b51dff4e97043b292b2a5524781538b3fba"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-42.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-42.t1079.json.gz",
+      "sha256": "3c70037d67a540cd0cb13356768349163c4c40c52471047d4724a37b0da2dca4"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-42.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-42.t1104.json.gz",
+      "sha256": "4a505469fb01fbdd29eab8222551af9b73bdec0f7d7d2751bced2d8de822426a"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-7.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-7.t1104.json.gz",
+      "sha256": "4a505469fb01fbdd29eab8222551af9b73bdec0f7d7d2751bced2d8de822426a"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-7.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-7.json.sbc.json.gz",
+      "sha256": "300f8dad414f533a5717232ab7808113d2f9dcf94602eda572c49510e68645ac"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-42.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-42.t1159.json.gz",
+      "sha256": "91dd264bdc5daaed1dc9a265a55588fc9f53251fa86bcfd01a9bff643e409851"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-42.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-42.fd-deaths.json.gz",
+      "sha256": "78b8eeb0f43cd61bed23190def9eca3dfb453ea7d812cc0ccd9ef94e441ed90f"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-42.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-42.json.gz",
+      "sha256": "31f19e19178b82de1b9495c9be01fbbb89b9625a4bbb558433598d45ab543d40"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-1020.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-1020.t1159.json.gz",
+      "sha256": "688ab5fbbd0c893bf7e4aea0843cf2cb484f199016d25a6dc55d815815a4bef9"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-1020.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-1020.t1078.json.gz",
+      "sha256": "19a9b6f971ac150f2eccf1196cb04af1c8d860f6d4b1203244f97f05cde57cce"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-42.t1078.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-42.t1078.json.gz",
+      "sha256": "2395e7cb62fc507413ea5bffa77217abc6ef89f37532492a3bc7215c84e41c52"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-7.fd-deaths.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-7.fd-deaths.json.gz",
+      "sha256": "6d75a9f1c6becfb36bbed3198a4b5bd6d22eac0581a173bf0e74e6c54ec91d7c"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-1020.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-1020.json.gz",
+      "sha256": "5793f25cba8d5765d4489001c018054c2b77e49ae346bf2630b51faa621da932"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-7.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-7.t1079.json.gz",
+      "sha256": "be254b48baa3491f43250601a9bca584ff7c1e46aa2b811f18d2a84f727f265c"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-7.t1159.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-7.t1159.json.gz",
+      "sha256": "3b2e1bbc57ee13b7eaa7283a2643c86d0078b8437fb6d9475dfb66aea2409ff7"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-1020.t1104.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-1020.t1104.json.gz",
+      "sha256": "4a505469fb01fbdd29eab8222551af9b73bdec0f7d7d2751bced2d8de822426a"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-1020.json.sbc.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-1020.json.sbc.json.gz",
+      "sha256": "97091a13ecdb3ce9c3cc00f160568aff7f15d5c05a2e21458baac702b7af6972"
+    },
+    {
+      "source": "/tmp/sbc-GJ7yna/sbc-1020.t1079.json",
+      "artifact": "계측/B전쟁_마감_2026-11-06/home400-compressed-probe/1/sbc-1020.t1079.json.gz",
+      "sha256": "aeed82943cb2bd7ae022eb9159b05ec980230f43fc93fe4906b896acede7cb8a"
+    }
+  ]
+}

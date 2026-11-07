@@ -189,7 +189,7 @@ const RESOURCES = {
   meat_chicken:{ ko: '닭고기',     emoji: '🍗', category: 'livestock', weight: 0.5, baseValue: 2,  utility: 0.6, contributes: { subsistence: 0.5 }, harvest: 'breeding' },
   meat_game:   { ko: '사슴·들짐승고기', emoji: '🍖', category: 'livestock', weight: 1.0, baseValue: 4, utility: 0.6, contributes: { subsistence: 0.7 }, harvest: 'hunting' },
   fur:         { ko: '모피',       emoji: '🦊', category: 'livestock', weight: 1.2, baseValue: 25, utility: 0.4, contributes: { happiness: 0.5, prestige: 0.6 }, harvest: 'hunting' },
-  leather:     { ko: '가죽',       emoji: '🟫', category: 'livestock', weight: 3, baseValue: 5,  utility: 0.6, contributes: { production: 0.7 }, harvest: 'hunting' },
+  leather:     { ko: '무두질 가죽', emoji: '🟫', category: 'livestock', weight: 3, baseValue: 5,  utility: 0.6, contributes: { production: 0.7 }, harvest: 'hunting' },
   wool:        { ko: '양털',       emoji: '🧶', category: 'livestock', weight: 0.3, baseValue: 4,  utility: 0.6, contributes: { production: 0.6 }, harvest: 'breeding' },
   silk_raw:    { ko: '비단 원사',  emoji: '🧵', category: 'livestock', weight: 0.2, baseValue: 30, utility: 0.4, contributes: { production: 0.8 }, harvest: 'breeding' },
   silkworm:    { ko: '누에',       emoji: '🐛', category: 'livestock', weight: 0.01,baseValue: 5,  utility: 0.2, contributes: { production: 0.2 }, harvest: 'breeding' },
@@ -800,6 +800,9 @@ function miningParams(mineralId) {
 // RESOURCES.weight 는 정의만 있고 한 줄도 안 쓰이고 있었다. 게다가 게임이 실제로 쓰는 id 중
 // stone·wood·ore·fish·berry·herb·fiber 등은 RESOURCES 에 아예 없다 → 여기서 보충한다.
 // 광석만 무겁게 하면 나무 999개를 지고 다니게 되어 이상해지므로 **전 자원**에 건다.
+const OreGoods=require('./ore-goods');
+
+
 const EXTRA_WEIGHT = {
   ore_chunk: 1.0,   // ★[11차] 미확인 원석은 **kg 단위**로 인벤에 든다(덩이 크기가 숙련에 따라 달라서 개수로는 못 센다)
   stone: 3.0, wood: 2.5, plank: 1.2, pillar: 8.0, rafter: 1.0, thatch: 1.5,
@@ -816,6 +819,8 @@ const EXTRA_WEIGHT = {
   //   두 표에서 다르면 그게 버그의 씨앗이라 지운다 — 단일 진실은 RESOURCES 다(econ 도 그걸 쓴다).
 };
 function itemWeight(id) {
+  if(require('./fish-goods').ON&&(require('./fish-goods').bodyKg(id)>0||require('./fish-goods').isItem(id)))return require('./weights').kgOf(id);
+  if(OreGoods.isOre(id))return require('./weights').kgOf(id);
   const r = RESOURCES[id];
   if (r && typeof r.weight === 'number') return r.weight;
   if (EXTRA_WEIGHT[id] != null) return EXTRA_WEIGHT[id];
@@ -837,6 +842,8 @@ const ORE_POOLS = {
   savanna:     ['iron','copper','gold','manganese','phosphate','salt'],
   archipelago: ['copper','tin','gold','obsidian','salt'],
 };
+OreGoods.configure(RESOURCES,ORE_POOLS);
+if(OreGoods.ON)Object.assign(RESOURCES,OreGoods.descriptors(RESOURCES));
 function pickMineral(biome, seedNum) {
   const pool = (ORE_POOLS[biome] || ORE_POOLS.plains).filter(id => RESOURCES[id]);
   return pool[Math.abs(seedNum) % pool.length] || 'iron';
@@ -1011,4 +1018,9 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 if (typeof window !== 'undefined') {
   window.Specialty = { RESOURCES };
+}
+
+if(require('./fish-goods').ON)for(const [id,it]of Object.entries(require('./fish-goods').items())){
+ const old=RESOURCES[it.kind==='dry'?'dried_fish':'pickled_veg'];
+ RESOURCES[id]={ko:it.ko,emoji:old.emoji,category:'preserved',get weight(){return require('./weights').kgOf(id);},get baseValue(){return old.baseValue*require('./fish-goods').factor(id)*require('./fish-preserve').ECON_YIELD;},utility:0,contributes:{},harvest:'crafting'};
 }

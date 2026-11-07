@@ -1,0 +1,277 @@
+{
+  "status": "fixed-in-host-path-selection",
+  "beforeProductHead": "26e14142",
+  "finding": "실제 W13의 33명 중 한 몸이 예전 길의 새 장애물 앞에 멈춰, 대열 전체가 집결을 기다린다. 짧은 LOS의 옛 1m 생략과 실제 몸 충돌이 어긋났다.",
+  "actualSnapshots": {
+    "bodies": {
+      "day": 706,
+      "population": 4088,
+      "fdDeadTot": 1041,
+      "bodies": [
+        {
+          "id": 13,
+          "phase": "battle",
+          "bodyPhase": "march",
+          "mode": "fight",
+          "quota": {
+            "day": 706,
+            "left": 12941,
+            "b": 1
+          },
+          "ended": null,
+          "fight": {
+            "state": "advance",
+            "t": 111888.60000865789,
+            "contactT": -1,
+            "gapT": 111888.60000865789,
+            "units": 33,
+            "alive": 33
+          },
+          "groups": [
+            {
+              "cmd": {
+                "cx": 255.21930009000639,
+                "cy": 533.7806999099936
+              },
+              "n": 33,
+              "alive": 33,
+              "walk": 0.06666666666666667,
+              "physical": true,
+              "first": [
+                {
+                  "x": 255.21930009000639,
+                  "y": 533.7806999099936,
+                  "cmd": true,
+                  "pathFailed": null
+                },
+                {
+                  "x": 253.8840852407654,
+                  "y": 533.1395534723483,
+                  "cmd": false,
+                  "pathFailed": null
+                }
+              ]
+            },
+            null,
+            null
+          ]
+        },
+        {
+          "id": 24,
+          "phase": "battle",
+          "bodyPhase": "march",
+          "mode": "fight",
+          "quota": {
+            "day": 706,
+            "left": 43199,
+            "b": 1
+          },
+          "ended": null,
+          "fight": {
+            "state": "advance",
+            "t": 0.03333333333333333,
+            "contactT": -1,
+            "gapT": 0.03333333333333333,
+            "units": 24,
+            "alive": 24
+          },
+          "groups": [
+            {
+              "cmd": {
+                "cx": 214.5,
+                "cy": 2325.1622108690185
+              },
+              "n": 2,
+              "alive": 2,
+              "walk": 0.06666666666666667,
+              "physical": true,
+              "first": [
+                {
+                  "x": 440.8180489729084,
+                  "y": 2038.0760035562857,
+                  "cmd": true,
+                  "pathFailed": null
+                },
+                {
+                  "x": 436.8050910418527,
+                  "y": 2019.0268301288138,
+                  "cmd": false,
+                  "pathFailed": null
+                }
+              ]
+            },
+            {
+              "cmd": {
+                "cx": 188.42722451806912,
+                "cy": 2354.324415138145
+              },
+              "n": 22,
+              "alive": 22,
+              "walk": 0.06666666666666667,
+              "physical": true,
+              "first": [
+                {
+                  "x": 156.30423347645214,
+                  "y": 2409.311050043695,
+                  "cmd": true,
+                  "pathFailed": null
+                },
+                {
+                  "x": 177.48393576878212,
+                  "y": 2374.184502038076,
+                  "cmd": false,
+                  "pathFailed": null
+                }
+              ]
+            },
+            null
+          ]
+        }
+      ]
+    },
+    "muster": {
+      "day": 709,
+      "bodies": [
+        {
+          "id": 13,
+          "phase": "battle",
+          "mode": "fight",
+          "objective": {
+            "x": 213.5,
+            "y": 609.5
+          },
+          "adv": {
+            "side": "A",
+            "released": false,
+            "s": null
+          },
+          "groups": [
+            {
+              "cmd": {
+                "cx": 255.21930009000639,
+                "cy": 533.7806999099936
+              },
+              "ready": false,
+              "worst": [
+                {
+                  "x": 436.4999999999997,
+                  "y": 241.03815509639912,
+                  "cmd": false,
+                  "target": [
+                    247.88169375533434,
+                    540.91645047874
+                  ],
+                  "lag": 354.26523607605765,
+                  "failed": null,
+                  "path": {
+                    "i": 0,
+                    "len": 40
+                  },
+                  "far": false
+                },
+                {
+                  "x": 250.55548999662142,
+                  "y": 533.5795615776723,
+                  "cmd": false,
+                  "target": [
+                    250.21113269482808,
+                    533.5740760728828
+                  ],
+                  "lag": 0.3444009902151604,
+                  "failed": null,
+                  "path": null,
+                  "far": false
+                },
+                {
+                  "x": 252.3176746648675,
+                  "y": 532.3304662395624,
+                  "cmd": false,
+                  "target": [
+                    252.63406420644347,
+                    532.4633368867248
+                  ],
+                  "lag": 0.34315732674099464,
+                  "failed": null,
+                  "path": null,
+                  "far": false
+                }
+              ]
+            },
+            null
+          ]
+        }
+      ]
+    },
+    "route": {
+      "day": 713,
+      "units": [
+        {
+          "pid": "p4194",
+          "lag": 354.26523607605765,
+          "t": [
+            247.88169375533434,
+            540.91645047874
+          ],
+          "x": 436.4999999999997,
+          "y": 241.03815509639912,
+          "path": {
+            "i": 0,
+            "first": [
+              {
+                "x": 436,
+                "y": 241,
+                "blocked": false,
+                "clear": true
+              },
+              {
+                "x": 436,
+                "y": 240,
+                "blocked": true,
+                "clear": true
+              },
+              {
+                "x": 435,
+                "y": 240,
+                "blocked": true,
+                "clear": false
+              },
+              {
+                "x": 435,
+                "y": 239,
+                "blocked": true,
+                "clear": false
+              },
+              {
+                "x": 434,
+                "y": 239,
+                "blocked": false,
+                "clear": false
+              }
+            ]
+          },
+          "player": {
+            "muster": true,
+            "simWar": true,
+            "simJob": "farmer"
+          }
+        }
+      ]
+    }
+  },
+  "repair": "T790 켬의 _t804Local 길점 선택에서 현재 막힌 길점을 제외한다. 남은 길점도 안 보이면 기존 흐름이 그 길을 폐기하고 다음 걸음에 필요시 다시 묻는다. T790 끔은 기존 선택 그대로. 새 상수·스위치·순간이동·전투 커널 변경 없음.",
+  "counterfactual": {
+    "beforeExit": 1,
+    "beforeFailure": "새로 막힌 길점 앞에서 그룹 집결 false (기대true)",
+    "beforeLogSha256": "2516a13b6aab1bf05574519c6d7f28b8913b024ac86dc6ac46f19a21d225d5e5",
+    "afterExit": 0,
+    "physicalHarnessPass": 16,
+    "physicalHarnessFail": 0,
+    "afterLogSha256": "602c98344bdcf407b0608095e8bded88c5ca861fd880c1aa4100e844754f7be2",
+    "checks": [
+      "생성 뒤 막힌 1m 안 길점의 실제 충돌 재현",
+      "기존 단위 보행 상한·막힌 칸 불진입을 모두 지키며 실제 집결",
+      "T790 끔의 예전 길점 선택 유지"
+    ]
+  },
+  "measurementStatus": "새 소스로 T790 개별·전체 켬 및 도적 후속을 다시 측정한다. 기존 완료값을 새 코드의 결과로 세지 않는다."
+}

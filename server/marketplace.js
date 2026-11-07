@@ -122,7 +122,7 @@ const server = http.createServer(async (req, res) => {
       const p = db.getPlayer(playerId);
       if (!p) return jsonResp(res, 400, { error: '그런 사람이 없습니다.' });
       if (side === 'sell') {
-        if ((p[item] | 0) < amount) return jsonResp(res, 400, { error: `${item} 부족` });
+        if ((p[item] | 0) < amount) return jsonResp(res, 400, { error: `${item}이(가) 모자랍니다.` });   // ★[T1190 ①] 거래소 알림 꼬리 — 문장
         const inv = { wood: p.wood, stone: p.stone };
         inv[item] -= amount;
         db.updateInventory(playerId, inv.wood, inv.stone);

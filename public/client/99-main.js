@@ -78,7 +78,11 @@
       const all = await r.json();
       if (!window.Terrain || !window.Terrain.setHardcoded) return;
       const tH = performance.now();   // ★[T962] 로비 일 표
+      // ★[T1163] 존 절 서명 — setHardcoded 앞(런타임 칸이 붙기 전 · 받은 글자 그대로의 객체)에 센다 · 같은 동기 덩이라 접속은 적용된 지형과 서명을 함께 본다(30-n-net `_t1163Hf`)
+      const _hf = {};
+      if (window.TerrainSig) { for (const [zid, data] of Object.entries(all)) { try { _hf[zid] = window.TerrainSig.terrainSig(data); } catch (e) {} } }
       for (const [zid, data] of Object.entries(all)) window.Terrain.setHardcoded(zid, data);
+      Object.assign(_t1163Hf, _hf);
       // ★[배치 19 B] 물 흐름의 정본 = 이 rivers path 다(상류→하류 순서). terrain.js 는 이걸
       //   `window.Terrain` 으로 내보내지 않으므로(_getHardcoded 는 서버 전용 export) **여기서**
       //   받은 원본을 그대로 잡아 둔다 — 서버 파일을 건드리지 않고 사본도 만들지 않는다.
@@ -338,8 +342,8 @@
     //   ⇒ 단축키 표를 다시 짜지 않는다(버튼 라벨의 "(O)"·"(G)"만 걷었다 — 없는 단축키를 광고하지 않는다).
     else if (k === 'n') toggleTribePanel();
     else if (k === 'v') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
-    else if (k === 'z') { myBuildFloor = Math.min(5, myBuildFloor + 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
-    else if (k === 'x') { myBuildFloor = Math.max(0, myBuildFloor - 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
+    else if (k === 'z') { myBuildFloor = Math.min(5, myBuildFloor + 1); showNotice(`건축 층을 ${myBuildFloor}층으로 바꾸었습니다.`); updateHud(); }
+    else if (k === 'x') { myBuildFloor = Math.max(0, myBuildFloor - 1); showNotice(`건축 층을 ${myBuildFloor}층으로 바꾸었습니다.`); updateHud(); }
     // 14.49-e7b: ,/. 키 제거 (자동 계단 도입 후 불필요)
     else if (k === 'u') {
       // 14.49-d: 빌드 시 player facing(myFacingVx/Vy)으로 stair dir 결정

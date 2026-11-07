@@ -1,0 +1,373 @@
+{
+  "task": "T1180·T1181 physical supply followup",
+  "head": "2c18de898dfdcdd1884d4b49646cd70910e9d1d6",
+  "headless": [
+    {
+      "profile": "flow-old",
+      "source": "a93e6874",
+      "seed": 1020,
+      "days": 800,
+      "pop": 3033,
+      "empty": 19,
+      "econStarved": null,
+      "notes": "headless economy; not proof of physical supply"
+    },
+    {
+      "profile": "flow-new",
+      "source": "12e52c4a",
+      "seed": 1020,
+      "days": 800,
+      "pop": 3033,
+      "empty": 19,
+      "econStarved": null,
+      "notes": "headless economy; not proof of physical supply"
+    },
+    {
+      "profile": "planning-fixed",
+      "source": "6e2f227c",
+      "seed": 1020,
+      "days": 800,
+      "pop": 3060,
+      "empty": 12,
+      "econStarved": null,
+      "notes": "headless economy; not proof of physical supply"
+    },
+    {
+      "profile": "demand",
+      "source": "0998e296",
+      "seed": 1020,
+      "days": 800,
+      "pop": 3661,
+      "empty": 13,
+      "econStarved": null,
+      "notes": "headless economy; not proof of physical supply"
+    },
+    {
+      "profile": "crude",
+      "source": "623ff611",
+      "seed": 1020,
+      "days": 800,
+      "pop": 3710,
+      "empty": 11,
+      "econStarved": 6633,
+      "notes": "headless economy; not proof of physical supply"
+    },
+    {
+      "profile": "mineral",
+      "source": "51e5a68a",
+      "seed": 1020,
+      "days": 800,
+      "pop": 3710,
+      "empty": 11,
+      "econStarved": 6633,
+      "notes": "headless economy; not proof of physical supply"
+    },
+    {
+      "profile": "anchor-control",
+      "source": "canonical-index-fix-control",
+      "seed": 1020,
+      "days": 800,
+      "pop": 3775,
+      "empty": 12,
+      "econStarved": 7192,
+      "notes": "headless economy; not proof of physical supply"
+    },
+    {
+      "profile": "anchor",
+      "source": "experimental-preloader",
+      "seed": 1020,
+      "days": 800,
+      "pop": 3530,
+      "empty": 4,
+      "econStarved": 3220,
+      "notes": "headless economy; not proof of physical supply"
+    }
+  ],
+  "physical": [
+    {
+      "profile": "long",
+      "source": "623ff611-before-index-fix",
+      "seed": 1020,
+      "days": 14,
+      "pop": 707,
+      "empty": 0,
+      "econStarved": 0,
+      "dissolved": 0,
+      "physical": {
+        "day": 14,
+        "dayMs": 1440000,
+        "pop": 707,
+        "stock": {
+          "stone": 5698.875078426943,
+          "pebble": 0,
+          "wood": 2358.607336602675,
+          "tool": 2631.8024942619604
+        },
+        "held": {
+          "stone": 0,
+          "pebble": 0,
+          "wood": 4.05964
+        },
+        "jobs": {
+          "farmer": 213,
+          "miner": 9,
+          "fisher": 211,
+          "hunter": 92,
+          "mason": 51,
+          "warrior": 36,
+          "smith": 15,
+          "tailor": 31,
+          "armorsmith": 11,
+          "forager": 48,
+          "lumberjack": 3,
+          "caravan": 20
+        },
+        "stoneIn": {},
+        "woodIn": 2.94036,
+        "woodLadderIn": 0,
+        "carry": {
+          "maxKg": 25,
+          "overSamples": 0,
+          "bodies": {}
+        }
+      },
+      "fishFinal": {
+        "day": 14,
+        "pop": 707,
+        "fishVillagePop": 707,
+        "fishVillageN": 51,
+        "empty": 0,
+        "econStarved": 0,
+        "dissolved": 0,
+        "fishers": 211,
+        "fisherBodies": 211,
+        "heldKg": 14.439999999999932,
+        "preserved": {},
+        "receipt": 2818.938153,
+        "bodyReceipt": 2818.938153,
+        "remoteReceipt": 0,
+        "catch": {
+          "crucian": 41067,
+          "herring": 377,
+          "loach": 48301,
+          "squid": 782,
+          "anchovy": 300,
+          "octopus": 336,
+          "sardine": 384,
+          "shrimp": 341,
+          "crab": 512
+        }
+      },
+      "sourceHashes": {
+        "sim/economy-sim.js": "1170b0bed1f417d9b7aa22c0f78fd6c0fa4245911a9a7aedab3750485dd58bdb",
+        "sim/economy-sim-v2.js": "2b8a5f8d008badfacef573bea3be4f7377043bc68efec7b2a05d58e66082e34c",
+        "server/villages.js": "d0fe1bc4e336d9e86514db26f33c5abdf03bd38e1eb8a66ca5c60159c4b5baf5",
+        "server/zone.js": "60ead2deaf3a2a221799eef945bf4c7676eb090184cdfa8703f55b176e658b83",
+        "server/fishing.js": "9a4052e3562377562f6b2ae4932617e11d3edb53009d3f89fce1d56ab47b20d5",
+        "server/specialty.js": "b5690728d6f5d61f784613ef54f780f803b4ca6c5034de9f4cb25fabdbaaf2dc",
+        "server/weights.js": "7baee436b4e155b942c8f7340faeab5040e9685f5a9b7d07f830e032aa608f27",
+        "server/fish-goods.js": "f209eadb0cd44e031347c7b6f4ce218ffeb35189ce4afdf4245a25e29ac452a7",
+        "server/fish-preserve.js": "7d5315c204dbb0f1af99d0968dc82f5c8a9c261c433316525da7982bfe9d560e",
+        "server/granary-lots.js": "f054f320e7924679a1026376448cd75453cecd367da9b233fcda6a34842dca2e",
+        "server/carry.js": "7167f85f4c7d43a67bf30c373148499cbb48421e1c572ba00d78dc09bab1e6c9"
+      },
+      "runtime": {
+        "node": "v22.23.4",
+        "v8": "12.4.254.21-node.57",
+        "icu": "78.3"
+      }
+    },
+    {
+      "profile": "index",
+      "source": "canonical-index-fix",
+      "seed": 1020,
+      "days": 14,
+      "pop": 707,
+      "empty": 0,
+      "econStarved": 0,
+      "dissolved": 0,
+      "physical": {
+        "day": 14,
+        "dayMs": 1440000,
+        "pop": 707,
+        "stock": {
+          "stone": 6046.917203284111,
+          "pebble": 0,
+          "wood": 2358.588633727044,
+          "tool": 2631.755006357663
+        },
+        "held": {
+          "stone": 0,
+          "pebble": 0,
+          "wood": 4.05964
+        },
+        "jobs": {
+          "farmer": 213,
+          "miner": 9,
+          "fisher": 211,
+          "hunter": 93,
+          "mason": 51,
+          "warrior": 35,
+          "smith": 15,
+          "tailor": 31,
+          "armorsmith": 11,
+          "forager": 47,
+          "lumberjack": 3,
+          "caravan": 19
+        },
+        "stoneIn": {
+          "stone": 153
+        },
+        "woodIn": 2.94036,
+        "woodLadderIn": 0,
+        "carry": {
+          "maxKg": 25,
+          "overSamples": 0,
+          "bodies": {}
+        }
+      },
+      "fishFinal": {
+        "day": 14,
+        "pop": 707,
+        "fishVillagePop": 707,
+        "fishVillageN": 51,
+        "empty": 0,
+        "econStarved": 0,
+        "dissolved": 0,
+        "fishers": 211,
+        "fisherBodies": 211,
+        "heldKg": 15.294999999999932,
+        "preserved": {},
+        "receipt": 2819.6230870000013,
+        "bodyReceipt": 2819.6230870000013,
+        "remoteReceipt": 0,
+        "catch": {
+          "crucian": 41082,
+          "herring": 377,
+          "loach": 48284,
+          "squid": 782,
+          "anchovy": 300,
+          "octopus": 336,
+          "sardine": 384,
+          "shrimp": 341,
+          "crab": 512
+        }
+      },
+      "sourceHashes": {
+        "sim/economy-sim.js": "356fc3b26fb507cdd462028011982d7efc6f480e3dee343d53c2a59986da0c10",
+        "sim/economy-sim-v2.js": "2b8a5f8d008badfacef573bea3be4f7377043bc68efec7b2a05d58e66082e34c",
+        "server/villages.js": "fd723a67750c94b7473f4dcf321748728fce59a9e3926e5a48483800cc2f8fa8",
+        "server/zone.js": "17fe998ce1ed89d4d90422010ee13a3889c4746e4ba1cb85f055f5a1227b9404",
+        "server/fishing.js": "9a4052e3562377562f6b2ae4932617e11d3edb53009d3f89fce1d56ab47b20d5",
+        "server/specialty.js": "b5690728d6f5d61f784613ef54f780f803b4ca6c5034de9f4cb25fabdbaaf2dc",
+        "server/weights.js": "7baee436b4e155b942c8f7340faeab5040e9685f5a9b7d07f830e032aa608f27",
+        "server/fish-goods.js": "f209eadb0cd44e031347c7b6f4ce218ffeb35189ce4afdf4245a25e29ac452a7",
+        "server/fish-preserve.js": "7d5315c204dbb0f1af99d0968dc82f5c8a9c261c433316525da7982bfe9d560e",
+        "server/granary-lots.js": "f054f320e7924679a1026376448cd75453cecd367da9b233fcda6a34842dca2e",
+        "server/carry.js": "7167f85f4c7d43a67bf30c373148499cbb48421e1c572ba00d78dc09bab1e6c9"
+      },
+      "runtime": {
+        "node": "v22.23.4",
+        "v8": "12.4.254.21-node.57",
+        "icu": "78.3"
+      }
+    },
+    {
+      "profile": "empty-start",
+      "source": "canonical-index-fix-with-initial-stone-zero",
+      "seed": 1020,
+      "days": 5,
+      "pop": 463,
+      "empty": 0,
+      "econStarved": 0,
+      "dissolved": 0,
+      "physical": {
+        "day": 5,
+        "dayMs": 1440000,
+        "pop": 463,
+        "stock": {
+          "stone": 351.1516244104288,
+          "pebble": 0,
+          "wood": 5383.438608777222,
+          "tool": 2729.3070796279394
+        },
+        "held": {
+          "stone": 73,
+          "pebble": 0,
+          "wood": 0
+        },
+        "jobs": {
+          "farmer": 152,
+          "fisher": 200,
+          "hunter": 56,
+          "forager": 53,
+          "mason": 2,
+          "caravan": 31
+        },
+        "stoneIn": {
+          "stone": 648
+        },
+        "woodIn": 0,
+        "woodLadderIn": 0,
+        "carry": {
+          "maxKg": 25,
+          "overSamples": 0,
+          "bodies": {}
+        }
+      },
+      "fishFinal": {
+        "day": 5,
+        "pop": 463,
+        "fishVillagePop": 463,
+        "fishVillageN": 51,
+        "empty": 0,
+        "econStarved": 0,
+        "dissolved": 0,
+        "fishers": 200,
+        "fisherBodies": 200,
+        "heldKg": 11.11999999999994,
+        "preserved": {},
+        "receipt": 1098.9521310000005,
+        "bodyReceipt": 1098.9521310000005,
+        "remoteReceipt": 0,
+        "catch": {
+          "crucian": 16111,
+          "herring": 182,
+          "loach": 18573,
+          "squid": 198,
+          "anchovy": 78,
+          "octopus": 150,
+          "sardine": 150,
+          "shrimp": 106,
+          "crab": 126
+        }
+      },
+      "sourceHashes": {
+        "sim/economy-sim.js": "356fc3b26fb507cdd462028011982d7efc6f480e3dee343d53c2a59986da0c10",
+        "sim/economy-sim-v2.js": "2b8a5f8d008badfacef573bea3be4f7377043bc68efec7b2a05d58e66082e34c",
+        "server/villages.js": "fd723a67750c94b7473f4dcf321748728fce59a9e3926e5a48483800cc2f8fa8",
+        "server/zone.js": "17fe998ce1ed89d4d90422010ee13a3889c4746e4ba1cb85f055f5a1227b9404",
+        "server/fishing.js": "9a4052e3562377562f6b2ae4932617e11d3edb53009d3f89fce1d56ab47b20d5",
+        "server/specialty.js": "b5690728d6f5d61f784613ef54f780f803b4ca6c5034de9f4cb25fabdbaaf2dc",
+        "server/weights.js": "7baee436b4e155b942c8f7340faeab5040e9685f5a9b7d07f830e032aa608f27",
+        "server/fish-goods.js": "f209eadb0cd44e031347c7b6f4ce218ffeb35189ce4afdf4245a25e29ac452a7",
+        "server/fish-preserve.js": "7d5315c204dbb0f1af99d0968dc82f5c8a9c261c433316525da7982bfe9d560e",
+        "server/granary-lots.js": "f054f320e7924679a1026376448cd75453cecd367da9b233fcda6a34842dca2e",
+        "server/carry.js": "7167f85f4c7d43a67bf30c373148499cbb48421e1c572ba00d78dc09bab1e6c9"
+      },
+      "runtime": {
+        "node": "v22.23.4",
+        "v8": "12.4.254.21-node.57",
+        "icu": "78.3"
+      }
+    }
+  ],
+  "notes": [
+    "T17 base.dead means empty towns, not starvation.",
+    "Pre-623ff611 intermediate counts snapshots were aliased; not used for decision.",
+    "Actual physical day=1440000ms, cap=Infinity, houses ON, T419 explicitly ON. Historical SBC uses250ms/cap1 and remains a fingerprint gate.",
+    "Controlled quarry cycle proves one actual return and exact6stones/24kg, not natural job selection.",
+    "Price probe is an experiment only; its source preloader is archived separately. Source hashes describe disk source, with the experimental price replacement recorded in that preloader.",
+    "Only the new anchor/control pair has explicitly retained matching command environments; earlier iterative profiles are diagnostic comparisons."
+  ]
+}

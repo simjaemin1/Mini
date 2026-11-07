@@ -1177,5 +1177,395 @@
   "    base 들2-z2: 0aeb98a5d91601e5 (두 장 같음) · 다 구움 8901ms · 칸 964,1911",
   "    off 태어난자리-z1: 5bfd38c71f586c36 (두 장 같음) · 다 구움 9128ms · 칸 964,1871",
   "실패: page.evaluate: Target crashed "
- ]
+ ],
+ "chromium_merge_07eec54e": {
+  "browser": "chromium",
+  "base": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1193/base07",
+  "zooms": [
+   1,
+   2
+  ],
+  "vars": {
+   "base": {
+    "root": "base",
+    "q": "",
+    "dsf": 2,
+    "info": {
+     "hidpi": null,
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 2,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 42,
+    "errs": [],
+    "sec": 88
+   },
+   "off": {
+    "root": "branch",
+    "q": "",
+    "dsf": 2,
+    "info": {
+     "hidpi": {
+      "on": false,
+      "d": 1,
+      "want": false,
+      "q": null,
+      "dpr": 2,
+      "back": [
+       1100,
+       720
+      ],
+      "css": [
+       1100,
+       720
+      ],
+      "mpx": 0.79,
+      "nn": 0
+     },
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 2,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 42,
+    "errs": [],
+    "sec": 81
+   },
+   "base1": {
+    "root": "base",
+    "q": "",
+    "dsf": 1,
+    "info": {
+     "hidpi": null,
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 1,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 42,
+    "errs": [],
+    "sec": 74
+   },
+   "on1": {
+    "root": "branch",
+    "q": "?T1193_HIDPI=1",
+    "dsf": 1,
+    "info": {
+     "hidpi": {
+      "on": false,
+      "d": 1,
+      "want": true,
+      "q": true,
+      "dpr": 1,
+      "back": [
+       1100,
+       720
+      ],
+      "css": [
+       1100,
+       720
+      ],
+      "mpx": 0.79,
+      "nn": 0
+     },
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 1,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 42,
+    "errs": [],
+    "sec": 69
+   }
+  },
+  "shots": {
+   "태어난자리-z1": {
+    "base": {
+     "a": "61691efa3002a00a",
+     "b": "61691efa3002a00a",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8450,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "61691efa3002a00a",
+     "b": "61691efa3002a00a",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8695,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "61691efa3002a00a",
+     "b": "61691efa3002a00a",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8738,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "61691efa3002a00a",
+     "b": "61691efa3002a00a",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8166,
+     "dayU": 0.5
+    }
+   },
+   "태어난자리-z2": {
+    "base": {
+     "a": "21468926abe2b199",
+     "b": "21468926abe2b199",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8612,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "21468926abe2b199",
+     "b": "21468926abe2b199",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8241,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "21468926abe2b199",
+     "b": "21468926abe2b199",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8169,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "21468926abe2b199",
+     "b": "21468926abe2b199",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8092,
+     "dayU": 0.5
+    }
+   },
+   "산1-z1": {
+    "base": {
+     "a": "3ec87c7d7d669659",
+     "b": "3ec87c7d7d669659",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 20019,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "3ec87c7d7d669659",
+     "b": "3ec87c7d7d669659",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 21518,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "da49450af81ca667",
+     "b": "da49450af81ca667",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 15259,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "3ec87c7d7d669659",
+     "b": "3ec87c7d7d669659",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 13239,
+     "dayU": 0.5
+    }
+   },
+   "산1-z2": {
+    "base": {
+     "a": "08ad0fae33399c56",
+     "b": "08ad0fae33399c56",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8141,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "08ad0fae33399c56",
+     "b": "08ad0fae33399c56",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8081,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "9c21359e65878fcf",
+     "b": "9c21359e65878fcf",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8029,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "08ad0fae33399c56",
+     "b": "08ad0fae33399c56",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8027,
+     "dayU": 0.5
+    }
+   }
+  },
+  "cmp": [
+   {
+    "pair": "base↔off",
+    "k": "태어난자리-z1",
+    "a": "61691efa3002a00a",
+    "b": "61691efa3002a00a",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "태어난자리-z2",
+    "a": "21468926abe2b199",
+    "b": "21468926abe2b199",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산1-z1",
+    "a": "3ec87c7d7d669659",
+    "b": "3ec87c7d7d669659",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산1-z2",
+    "a": "08ad0fae33399c56",
+    "b": "08ad0fae33399c56",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "태어난자리-z1",
+    "a": "61691efa3002a00a",
+    "b": "61691efa3002a00a",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "태어난자리-z2",
+    "a": "21468926abe2b199",
+    "b": "21468926abe2b199",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산1-z1",
+    "a": "da49450af81ca667",
+    "b": "3ec87c7d7d669659",
+    "verdict": "다름",
+    "px": {
+     "px": 262,
+     "pct": 0.033,
+     "max": 10
+    }
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산1-z2",
+    "a": "9c21359e65878fcf",
+    "b": "08ad0fae33399c56",
+    "verdict": "다름",
+    "px": {
+     "px": 1048,
+     "pct": 0.132,
+     "max": 10
+    }
+   }
+  ],
+  "sum": {
+   "same": 6,
+   "diff": 2,
+   "skip": 0
+  },
+  "_note": "11-07 main 07eec54e 따라잡은 병합 나무 — base = 새 main · base1 산1 두 장의 다름은 base1(새 main 배율 1) 혼자의 산 비탈 나무 흔들림(base ↔ on1 · off ↔ on1 = 0화소)"
+ }
 }

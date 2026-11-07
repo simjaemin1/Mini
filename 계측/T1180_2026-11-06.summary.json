@@ -1,0 +1,1958 @@
+{
+  "server": [
+    {
+      "mode": "all-800",
+      "seed": 1020,
+      "days": 800,
+      "pop": 0,
+      "empty": 51,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 1723,
+      "elapsedSec": 1037,
+      "tickUs": 499.3275625735294,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 12037,
+      "aliveVillageDays": 13595,
+      "formulaOn": 0,
+      "formula": {},
+      "rejected": {
+        "fisher/fish": 12044,
+        "fisher/salmon": 45433,
+        "fisher/shrimp": 45433,
+        "fisher/crab": 45433,
+        "fisher/oyster": 45433,
+        "fisher/seaweed": 45433,
+        "fisher/salt": 1483,
+        "forager/vegetable": 62639,
+        "forager/mushroom": 62639,
+        "forager/pebble": 62639,
+        "forager/walnut": 62639,
+        "forager/honey": 62639,
+        "forager/stone": 62639,
+        "forager/herb": 13451,
+        "lumberjack/resin": 6390,
+        "lumberjack/bark": 6390,
+        "forager/fruit": 5625,
+        "forager/twig": 5625
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/all-800/sbc-1020.json"
+    },
+    {
+      "mode": "all-plan",
+      "seed": 1020,
+      "days": 400,
+      "pop": 0,
+      "empty": 51,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 1723,
+      "elapsedSec": 567,
+      "tickUs": 950.3504385784314,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 12037,
+      "aliveVillageDays": 13595,
+      "formulaOn": 0,
+      "formula": {},
+      "rejected": {
+        "fisher/fish": 44426,
+        "fisher/salmon": 45433,
+        "fisher/shrimp": 45433,
+        "fisher/crab": 45433,
+        "fisher/oyster": 45433,
+        "fisher/seaweed": 45433,
+        "fisher/salt": 1483,
+        "forager/vegetable": 62639,
+        "forager/mushroom": 62639,
+        "forager/pebble": 62639,
+        "forager/walnut": 62639,
+        "forager/honey": 62639,
+        "forager/stone": 62639,
+        "forager/herb": 13451,
+        "lumberjack/resin": 6390,
+        "lumberjack/bark": 6390,
+        "forager/fruit": 5625,
+        "forager/twig": 5625
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/all-plan/sbc-1020.json"
+    },
+    {
+      "mode": "all-plan",
+      "seed": 42,
+      "days": 60,
+      "pop": 1268,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 0,
+      "elapsedSec": 127,
+      "tickUs": 1518.8634705882353,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 2901,
+      "aliveVillageDays": 3060,
+      "formulaOn": 0,
+      "formula": {},
+      "rejected": {
+        "fisher/fish": 3764,
+        "fisher/salmon": 15522,
+        "fisher/shrimp": 15522,
+        "fisher/crab": 15522,
+        "fisher/oyster": 15522,
+        "fisher/seaweed": 15522,
+        "fisher/salt": 384,
+        "lumberjack/resin": 372,
+        "lumberjack/bark": 372,
+        "forager/vegetable": 140,
+        "forager/mushroom": 140,
+        "forager/pebble": 140,
+        "forager/walnut": 140,
+        "forager/honey": 140,
+        "forager/stone": 140
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/all-plan/sbc-42.json"
+    },
+    {
+      "mode": "all-plan",
+      "seed": 7,
+      "days": 60,
+      "pop": 1295,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 0,
+      "elapsedSec": 131,
+      "tickUs": 1474.6190513071895,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 2974,
+      "aliveVillageDays": 3060,
+      "formulaOn": 0,
+      "formula": {},
+      "rejected": {
+        "fisher/fish": 4094,
+        "fisher/salmon": 14759,
+        "fisher/shrimp": 14759,
+        "fisher/crab": 14759,
+        "fisher/oyster": 14759,
+        "fisher/seaweed": 14759,
+        "fisher/salt": 384,
+        "forager/vegetable": 174,
+        "forager/mushroom": 174,
+        "forager/pebble": 174,
+        "forager/walnut": 174,
+        "forager/honey": 174,
+        "forager/stone": 174,
+        "lumberjack/resin": 131,
+        "lumberjack/bark": 131,
+        "forager/fruit": 37,
+        "forager/twig": 37
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/all-plan/sbc-7.json"
+    },
+    {
+      "mode": "fish-800",
+      "seed": 1020,
+      "days": 800,
+      "pop": 3207,
+      "empty": 4,
+      "dissolved": 0,
+      "starved": 175,
+      "econStarved": 1094,
+      "elapsedSec": 513,
+      "tickUs": 1599.683173504902,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 23277,
+      "aliveVillageDays": 38952,
+      "formulaOn": 0,
+      "formula": {
+        "forager/fruit/unknown": 224667,
+        "forager/vegetable/unknown": 224667,
+        "forager/mushroom/unknown": 224667,
+        "forager/twig/unknown": 224667,
+        "forager/pebble/unknown": 224667,
+        "forager/walnut/unknown": 224667,
+        "forager/honey/unknown": 224667,
+        "forager/herb/unknown": 224667,
+        "forager/stone/unknown": 224667,
+        "lumberjack/wood/zero": 69077,
+        "lumberjack/resin/zero": 69077,
+        "lumberjack/bark/zero": 69077,
+        "lumberjack/wood/unknown": 24875,
+        "lumberjack/resin/unknown": 24875,
+        "lumberjack/bark/unknown": 24875,
+        "forager/mulberry_fruit/unknown": 35814,
+        "forager/acorn/unknown": 55776,
+        "forager/chestnut/unknown": 55776,
+        "forager/grape/unknown": 55776
+      },
+      "rejected": {
+        "fisher/fish": 48937,
+        "fisher/salmon": 245512,
+        "fisher/shrimp": 245512,
+        "fisher/crab": 245512,
+        "fisher/oyster": 245512,
+        "fisher/seaweed": 245512,
+        "fisher/salt": 7800
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/fish-800/sbc-1020.json"
+    },
+    {
+      "mode": "fish-plan",
+      "seed": 1020,
+      "days": 400,
+      "pop": 1601,
+      "empty": 3,
+      "dissolved": 0,
+      "starved": 18,
+      "econStarved": 864,
+      "elapsedSec": 232,
+      "tickUs": 1365.7843140686275,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 14619,
+      "aliveVillageDays": 20144,
+      "formulaOn": 0,
+      "formula": {
+        "forager/fruit/unknown": 67907,
+        "forager/vegetable/unknown": 67907,
+        "forager/mushroom/unknown": 67907,
+        "forager/twig/unknown": 67907,
+        "forager/pebble/unknown": 67907,
+        "forager/walnut/unknown": 67907,
+        "forager/honey/unknown": 67907,
+        "forager/herb/unknown": 67907,
+        "forager/stone/unknown": 67907,
+        "lumberjack/wood/zero": 16215,
+        "lumberjack/resin/zero": 16215,
+        "lumberjack/bark/zero": 16215,
+        "lumberjack/wood/unknown": 7781,
+        "lumberjack/resin/unknown": 7781,
+        "lumberjack/bark/unknown": 7781,
+        "forager/mulberry_fruit/unknown": 14692,
+        "forager/acorn/unknown": 24086,
+        "forager/chestnut/unknown": 24086,
+        "forager/grape/unknown": 24086
+      },
+      "rejected": {
+        "fisher/fish": 25437,
+        "fisher/salmon": 121753,
+        "fisher/shrimp": 121753,
+        "fisher/crab": 121753,
+        "fisher/oyster": 121753,
+        "fisher/seaweed": 121753,
+        "fisher/salt": 1682
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/fish-plan/sbc-1020.json"
+    },
+    {
+      "mode": "fish-plan",
+      "seed": 42,
+      "days": 60,
+      "pop": 1335,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 0,
+      "elapsedSec": 59,
+      "tickUs": 1017.7832385620915,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 2865,
+      "aliveVillageDays": 3060,
+      "formulaOn": 0,
+      "formula": {
+        "lumberjack/wood/zero": 90,
+        "lumberjack/resin/zero": 90,
+        "lumberjack/bark/zero": 90,
+        "forager/fruit/unknown": 77,
+        "forager/vegetable/unknown": 77,
+        "forager/mushroom/unknown": 77,
+        "forager/twig/unknown": 77,
+        "forager/pebble/unknown": 77,
+        "forager/walnut/unknown": 77,
+        "forager/honey/unknown": 77,
+        "forager/herb/unknown": 77,
+        "forager/stone/unknown": 77,
+        "lumberjack/wood/unknown": 497,
+        "lumberjack/resin/unknown": 497,
+        "lumberjack/bark/unknown": 497
+      },
+      "rejected": {
+        "fisher/fish": 3876,
+        "fisher/salmon": 15657,
+        "fisher/shrimp": 15657,
+        "fisher/crab": 15657,
+        "fisher/oyster": 15657,
+        "fisher/seaweed": 15657,
+        "fisher/salt": 384
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/fish-plan/sbc-42.json"
+    },
+    {
+      "mode": "fish-plan",
+      "seed": 7,
+      "days": 60,
+      "pop": 1333,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 0,
+      "elapsedSec": 61,
+      "tickUs": 1009.0128506535948,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 2914,
+      "aliveVillageDays": 3060,
+      "formulaOn": 0,
+      "formula": {
+        "forager/fruit/unknown": 258,
+        "forager/vegetable/unknown": 258,
+        "forager/mushroom/unknown": 258,
+        "forager/twig/unknown": 258,
+        "forager/pebble/unknown": 258,
+        "forager/walnut/unknown": 258,
+        "forager/honey/unknown": 258,
+        "forager/herb/unknown": 258,
+        "forager/stone/unknown": 258,
+        "lumberjack/wood/zero": 106,
+        "lumberjack/resin/zero": 106,
+        "lumberjack/bark/zero": 106,
+        "lumberjack/wood/unknown": 295,
+        "lumberjack/resin/unknown": 295,
+        "lumberjack/bark/unknown": 295
+      },
+      "rejected": {
+        "fisher/fish": 3931,
+        "fisher/salmon": 14919,
+        "fisher/shrimp": 14919,
+        "fisher/crab": 14919,
+        "fisher/oyster": 14919,
+        "fisher/seaweed": 14919,
+        "fisher/salt": 384
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/fish-plan/sbc-7.json"
+    },
+    {
+      "mode": "forage-800",
+      "seed": 1020,
+      "days": 800,
+      "pop": 0,
+      "empty": 51,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 4786,
+      "elapsedSec": 749,
+      "tickUs": 537.2476928676471,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 10731,
+      "aliveVillageDays": 14343,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 31059,
+        "fisher/salmon/unknown": 31059,
+        "fisher/shrimp/unknown": 31059,
+        "fisher/crab/unknown": 31059,
+        "fisher/oyster/unknown": 31059,
+        "fisher/seaweed/unknown": 31059,
+        "fisher/salt/unknown": 831,
+        "lumberjack/wood/unknown": 15548,
+        "lumberjack/resin/unknown": 15548,
+        "lumberjack/bark/unknown": 15548,
+        "fisher/fish/present": 35760,
+        "fisher/salmon/present": 35760,
+        "fisher/shrimp/present": 35760,
+        "fisher/crab/present": 35760,
+        "fisher/oyster/present": 35760,
+        "fisher/seaweed/present": 35760,
+        "fisher/salt/present": 763,
+        "lumberjack/wood/zero": 1684,
+        "lumberjack/resin/zero": 1684,
+        "lumberjack/bark/zero": 1684,
+        "fisher/fish/zero": 470,
+        "fisher/salmon/zero": 470,
+        "fisher/shrimp/zero": 470,
+        "fisher/crab/zero": 470,
+        "fisher/oyster/zero": 470,
+        "fisher/seaweed/zero": 470
+      },
+      "rejected": {
+        "forager/vegetable": 193649,
+        "forager/mushroom": 193649,
+        "forager/pebble": 193649,
+        "forager/walnut": 193649,
+        "forager/honey": 193649,
+        "forager/stone": 193649,
+        "forager/herb": 30312,
+        "forager/fruit": 36333,
+        "forager/twig": 36333
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/forage-800/sbc-1020.json"
+    },
+    {
+      "mode": "forage-plan",
+      "seed": 1020,
+      "days": 400,
+      "pop": 213,
+      "empty": 45,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 4111,
+      "elapsedSec": 455,
+      "tickUs": 1057.7063428431372,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 9996,
+      "aliveVillageDays": 13608,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 42803,
+        "fisher/salmon/unknown": 42803,
+        "fisher/shrimp/unknown": 42803,
+        "fisher/crab/unknown": 42803,
+        "fisher/oyster/unknown": 42803,
+        "fisher/seaweed/unknown": 42803,
+        "fisher/salt/unknown": 1188,
+        "lumberjack/wood/unknown": 16417,
+        "lumberjack/resin/unknown": 16417,
+        "lumberjack/bark/unknown": 16417,
+        "fisher/fish/present": 21744,
+        "fisher/salmon/present": 21744,
+        "fisher/shrimp/present": 21744,
+        "fisher/crab/present": 21744,
+        "fisher/oyster/present": 21744,
+        "fisher/seaweed/present": 21744,
+        "fisher/salt/present": 406,
+        "lumberjack/wood/zero": 815,
+        "lumberjack/resin/zero": 815,
+        "lumberjack/bark/zero": 815,
+        "fisher/fish/zero": 276,
+        "fisher/salmon/zero": 276,
+        "fisher/shrimp/zero": 276,
+        "fisher/crab/zero": 276,
+        "fisher/oyster/zero": 276,
+        "fisher/seaweed/zero": 276
+      },
+      "rejected": {
+        "forager/vegetable": 171209,
+        "forager/mushroom": 171209,
+        "forager/pebble": 171209,
+        "forager/walnut": 171209,
+        "forager/honey": 171209,
+        "forager/stone": 171209,
+        "forager/herb": 30312,
+        "forager/fruit": 26580,
+        "forager/twig": 26580
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/forage-plan/sbc-1020.json"
+    },
+    {
+      "mode": "forage-plan",
+      "seed": 42,
+      "days": 60,
+      "pop": 1611,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 0,
+      "elapsedSec": 102,
+      "tickUs": 1463.2711470588235,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 2091,
+      "aliveVillageDays": 3060,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 13578,
+        "fisher/salmon/unknown": 13578,
+        "fisher/shrimp/unknown": 13578,
+        "fisher/crab/unknown": 13578,
+        "fisher/oyster/unknown": 13578,
+        "fisher/seaweed/unknown": 13578,
+        "fisher/salt/unknown": 460,
+        "lumberjack/wood/unknown": 2698,
+        "lumberjack/resin/unknown": 2698,
+        "lumberjack/bark/unknown": 2698,
+        "lumberjack/wood/zero": 89,
+        "lumberjack/resin/zero": 89,
+        "lumberjack/bark/zero": 89,
+        "fisher/fish/present": 11,
+        "fisher/salmon/present": 11,
+        "fisher/shrimp/present": 11,
+        "fisher/crab/present": 11,
+        "fisher/oyster/present": 11,
+        "fisher/seaweed/present": 11
+      },
+      "rejected": {
+        "forager/vegetable": 4797,
+        "forager/mushroom": 4797,
+        "forager/pebble": 4797,
+        "forager/walnut": 4797,
+        "forager/honey": 4797,
+        "forager/stone": 4797,
+        "forager/herb": 1015,
+        "forager/fruit": 642,
+        "forager/twig": 642
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/forage-plan/sbc-42.json"
+    },
+    {
+      "mode": "forage-plan",
+      "seed": 7,
+      "days": 60,
+      "pop": 1560,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 0,
+      "elapsedSec": 100,
+      "tickUs": 1446.0895375816995,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 2060,
+      "aliveVillageDays": 3060,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 13046,
+        "fisher/salmon/unknown": 13046,
+        "fisher/shrimp/unknown": 13046,
+        "fisher/crab/unknown": 13046,
+        "fisher/oyster/unknown": 13046,
+        "fisher/seaweed/unknown": 13046,
+        "fisher/salt/unknown": 441,
+        "lumberjack/wood/unknown": 2358,
+        "lumberjack/resin/unknown": 2358,
+        "lumberjack/bark/unknown": 2358,
+        "fisher/fish/present": 18,
+        "fisher/salmon/present": 18,
+        "fisher/shrimp/present": 18,
+        "fisher/crab/present": 18,
+        "fisher/oyster/present": 18,
+        "fisher/seaweed/present": 18,
+        "lumberjack/wood/zero": 61,
+        "lumberjack/resin/zero": 61,
+        "lumberjack/bark/zero": 61
+      },
+      "rejected": {
+        "forager/vegetable": 5198,
+        "forager/mushroom": 5198,
+        "forager/pebble": 5198,
+        "forager/walnut": 5198,
+        "forager/honey": 5198,
+        "forager/stone": 5198,
+        "forager/herb": 853,
+        "forager/fruit": 565,
+        "forager/twig": 565
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/forage-plan/sbc-7.json"
+    },
+    {
+      "mode": "fuel-A-800",
+      "seed": 1020,
+      "days": 800,
+      "pop": 0,
+      "empty": 51,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 1479,
+      "elapsedSec": 981,
+      "tickUs": 410.52700267156865,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 4862,
+      "aliveVillageDays": 10796,
+      "formulaOn": 0,
+      "formula": {},
+      "rejected": {
+        "fisher/fish": 17548,
+        "fisher/salmon": 25526,
+        "fisher/shrimp": 25526,
+        "fisher/crab": 25526,
+        "fisher/oyster": 25526,
+        "fisher/seaweed": 25526,
+        "fisher/salt": 738,
+        "lumberjack/resin": 51772,
+        "lumberjack/bark": 51772,
+        "forager/vegetable": 11754,
+        "forager/mushroom": 11754,
+        "forager/pebble": 11754,
+        "forager/walnut": 11754,
+        "forager/honey": 11754,
+        "forager/stone": 11754,
+        "forager/fruit": 680,
+        "forager/twig": 680,
+        "forager/herb": 2452
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/fuel-A-800/sbc-1020.json"
+    },
+    {
+      "mode": "fuel-A-800",
+      "seed": 42,
+      "days": 800,
+      "pop": 0,
+      "empty": 51,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 1432,
+      "elapsedSec": 974,
+      "tickUs": 404.8169775245098,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 4762,
+      "aliveVillageDays": 10971,
+      "formulaOn": 0,
+      "formula": {},
+      "rejected": {
+        "fisher/fish": 16348,
+        "fisher/salmon": 22530,
+        "fisher/shrimp": 22530,
+        "fisher/crab": 22530,
+        "fisher/oyster": 22530,
+        "fisher/seaweed": 22530,
+        "fisher/salt": 283,
+        "lumberjack/resin": 52210,
+        "lumberjack/bark": 52210,
+        "forager/vegetable": 13669,
+        "forager/mushroom": 13669,
+        "forager/pebble": 13669,
+        "forager/walnut": 13669,
+        "forager/honey": 13669,
+        "forager/stone": 13669,
+        "forager/herb": 2148,
+        "forager/fruit": 956,
+        "forager/twig": 956
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/fuel-A-800/sbc-42.json"
+    },
+    {
+      "mode": "fuel-A-800",
+      "seed": 7,
+      "days": 800,
+      "pop": 0,
+      "empty": 51,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 1457,
+      "elapsedSec": 981,
+      "tickUs": 399.9212417156863,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 4834,
+      "aliveVillageDays": 10892,
+      "formulaOn": 0,
+      "formula": {},
+      "rejected": {
+        "fisher/fish": 16563,
+        "fisher/salmon": 24227,
+        "fisher/shrimp": 24227,
+        "fisher/crab": 24227,
+        "fisher/oyster": 24227,
+        "fisher/seaweed": 24227,
+        "fisher/salt": 734,
+        "lumberjack/resin": 51140,
+        "lumberjack/bark": 51140,
+        "forager/vegetable": 12630,
+        "forager/mushroom": 12630,
+        "forager/pebble": 12630,
+        "forager/walnut": 12630,
+        "forager/honey": 12630,
+        "forager/stone": 12630,
+        "forager/herb": 2303,
+        "forager/fruit": 514,
+        "forager/twig": 514
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/fuel-A-800/sbc-7.json"
+    },
+    {
+      "mode": "fuel-control-800",
+      "seed": 1020,
+      "days": 800,
+      "pop": 0,
+      "empty": 51,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 1262,
+      "elapsedSec": 1112,
+      "tickUs": 574.9342706862745,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 13248,
+      "aliveVillageDays": 15157,
+      "formulaOn": 0,
+      "formula": {},
+      "rejected": {
+        "fisher/fish": 12318,
+        "fisher/salmon": 56490,
+        "fisher/shrimp": 56490,
+        "fisher/crab": 56490,
+        "fisher/oyster": 56490,
+        "fisher/seaweed": 56490,
+        "fisher/salt": 1571,
+        "lumberjack/resin": 2663,
+        "lumberjack/bark": 2663,
+        "forager/vegetable": 48719,
+        "forager/mushroom": 48719,
+        "forager/pebble": 48719,
+        "forager/walnut": 48719,
+        "forager/honey": 48719,
+        "forager/stone": 48719,
+        "forager/fruit": 3208,
+        "forager/twig": 3208,
+        "forager/herb": 11446
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/fuel-control-800/sbc-1020.json"
+    },
+    {
+      "mode": "fuel-control-800",
+      "seed": 42,
+      "days": 800,
+      "pop": 0,
+      "empty": 51,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 1212,
+      "elapsedSec": 1126,
+      "tickUs": 581.7432515931373,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 13293,
+      "aliveVillageDays": 15653,
+      "formulaOn": 0,
+      "formula": {},
+      "rejected": {
+        "fisher/fish": 11786,
+        "fisher/salmon": 52145,
+        "fisher/shrimp": 52145,
+        "fisher/crab": 52145,
+        "fisher/oyster": 52145,
+        "fisher/seaweed": 52145,
+        "fisher/salt": 969,
+        "lumberjack/resin": 3506,
+        "lumberjack/bark": 3506,
+        "forager/vegetable": 52415,
+        "forager/mushroom": 52415,
+        "forager/pebble": 52415,
+        "forager/walnut": 52415,
+        "forager/honey": 52415,
+        "forager/stone": 52415,
+        "forager/herb": 12589,
+        "forager/fruit": 2934,
+        "forager/twig": 2934
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/fuel-control-800/sbc-42.json"
+    },
+    {
+      "mode": "fuel-control-800",
+      "seed": 7,
+      "days": 800,
+      "pop": 0,
+      "empty": 51,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 1244,
+      "elapsedSec": 1131,
+      "tickUs": 596.3181340196078,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 12668,
+      "aliveVillageDays": 14691,
+      "formulaOn": 0,
+      "formula": {},
+      "rejected": {
+        "fisher/fish": 14475,
+        "fisher/salmon": 53549,
+        "fisher/shrimp": 53549,
+        "fisher/crab": 53549,
+        "fisher/oyster": 53549,
+        "fisher/seaweed": 53549,
+        "fisher/salt": 1023,
+        "lumberjack/resin": 3634,
+        "lumberjack/bark": 3634,
+        "forager/vegetable": 48994,
+        "forager/mushroom": 48994,
+        "forager/pebble": 48994,
+        "forager/walnut": 48994,
+        "forager/honey": 48994,
+        "forager/stone": 48994,
+        "forager/herb": 10465,
+        "forager/fruit": 3933,
+        "forager/twig": 3933
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/fuel-control-800/sbc-7.json"
+    },
+    {
+      "mode": "off-800",
+      "seed": 1020,
+      "days": 800,
+      "pop": 5569,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 1447,
+      "econStarved": 896,
+      "elapsedSec": 824,
+      "tickUs": 2291.5732400735296,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 18910,
+      "aliveVillageDays": 40800,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 451147,
+        "fisher/salmon/unknown": 451147,
+        "fisher/shrimp/unknown": 451147,
+        "fisher/crab/unknown": 451147,
+        "fisher/oyster/unknown": 451147,
+        "fisher/seaweed/unknown": 451147,
+        "fisher/salt/unknown": 12672,
+        "forager/fruit/unknown": 519654,
+        "forager/vegetable/unknown": 519654,
+        "forager/mushroom/unknown": 519654,
+        "forager/twig/unknown": 519654,
+        "forager/pebble/unknown": 519654,
+        "forager/walnut/unknown": 519654,
+        "forager/honey/unknown": 519654,
+        "forager/herb/unknown": 519654,
+        "forager/stone/unknown": 519654,
+        "lumberjack/wood/unknown": 214049,
+        "lumberjack/resin/unknown": 214049,
+        "lumberjack/bark/unknown": 214049,
+        "forager/mulberry_fruit/unknown": 62716,
+        "forager/acorn/unknown": 102792,
+        "forager/chestnut/unknown": 102792,
+        "forager/grape/unknown": 102792
+      },
+      "rejected": {},
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/off-800/sbc-1020.json"
+    },
+    {
+      "mode": "off-plan",
+      "seed": 1020,
+      "days": 400,
+      "pop": 3412,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 362,
+      "econStarved": 522,
+      "elapsedSec": 360,
+      "tickUs": 1679.2632757843137,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 0,
+      "aliveVillageDays": 0,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 216562,
+        "fisher/salmon/unknown": 216562,
+        "fisher/shrimp/unknown": 216562,
+        "fisher/crab/unknown": 216562,
+        "fisher/oyster/unknown": 216562,
+        "fisher/seaweed/unknown": 216562,
+        "fisher/salt/unknown": 7456,
+        "forager/fruit/unknown": 152118,
+        "forager/vegetable/unknown": 152118,
+        "forager/mushroom/unknown": 152118,
+        "forager/twig/unknown": 152118,
+        "forager/pebble/unknown": 152118,
+        "forager/walnut/unknown": 152118,
+        "forager/honey/unknown": 152118,
+        "forager/herb/unknown": 152118,
+        "forager/stone/unknown": 152118,
+        "lumberjack/wood/unknown": 71249,
+        "lumberjack/resin/unknown": 71249,
+        "lumberjack/bark/unknown": 71249,
+        "forager/mulberry_fruit/unknown": 26392,
+        "forager/acorn/unknown": 38983,
+        "forager/chestnut/unknown": 38983,
+        "forager/grape/unknown": 38983
+      },
+      "rejected": {},
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/off-plan/sbc-1020.json"
+    },
+    {
+      "mode": "off-plan",
+      "seed": 42,
+      "days": 400,
+      "pop": 3224,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 427,
+      "econStarved": 381,
+      "elapsedSec": 373,
+      "tickUs": 1729.8817760784314,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 11461,
+      "aliveVillageDays": 20400,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 200936,
+        "fisher/salmon/unknown": 200936,
+        "fisher/shrimp/unknown": 200936,
+        "fisher/crab/unknown": 200936,
+        "fisher/oyster/unknown": 200936,
+        "fisher/seaweed/unknown": 200936,
+        "fisher/salt/unknown": 1877,
+        "forager/fruit/unknown": 147956,
+        "forager/vegetable/unknown": 147956,
+        "forager/mushroom/unknown": 147956,
+        "forager/twig/unknown": 147956,
+        "forager/pebble/unknown": 147956,
+        "forager/walnut/unknown": 147956,
+        "forager/honey/unknown": 147956,
+        "forager/herb/unknown": 147956,
+        "forager/stone/unknown": 147956,
+        "lumberjack/wood/unknown": 60412,
+        "lumberjack/resin/unknown": 60412,
+        "lumberjack/bark/unknown": 60412,
+        "forager/mulberry_fruit/unknown": 30248,
+        "forager/acorn/unknown": 39789,
+        "forager/chestnut/unknown": 39789,
+        "forager/grape/unknown": 39789
+      },
+      "rejected": {},
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/off-plan/sbc-42.json"
+    },
+    {
+      "mode": "off-plan",
+      "seed": 7,
+      "days": 400,
+      "pop": 3428,
+      "empty": 1,
+      "dissolved": 0,
+      "starved": 460,
+      "econStarved": 563,
+      "elapsedSec": 402,
+      "tickUs": 1834.219419754902,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 11655,
+      "aliveVillageDays": 20368,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 201225,
+        "fisher/salmon/unknown": 201225,
+        "fisher/shrimp/unknown": 201225,
+        "fisher/crab/unknown": 201225,
+        "fisher/oyster/unknown": 201225,
+        "fisher/seaweed/unknown": 201225,
+        "fisher/salt/unknown": 5489,
+        "forager/fruit/unknown": 162308,
+        "forager/vegetable/unknown": 162308,
+        "forager/mushroom/unknown": 162308,
+        "forager/twig/unknown": 162308,
+        "forager/pebble/unknown": 162308,
+        "forager/walnut/unknown": 162308,
+        "forager/honey/unknown": 162308,
+        "forager/herb/unknown": 162308,
+        "forager/stone/unknown": 162308,
+        "lumberjack/wood/unknown": 66540,
+        "lumberjack/resin/unknown": 66540,
+        "lumberjack/bark/unknown": 66540,
+        "forager/mulberry_fruit/unknown": 28839,
+        "forager/acorn/unknown": 43261,
+        "forager/chestnut/unknown": 43261,
+        "forager/grape/unknown": 43261
+      },
+      "rejected": {},
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/off-plan/sbc-7.json"
+    },
+    {
+      "mode": "wood-800",
+      "seed": 1020,
+      "days": 800,
+      "pop": 1090,
+      "empty": 1,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 123,
+      "elapsedSec": 958,
+      "tickUs": 1443.6303638480392,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 9922,
+      "aliveVillageDays": 40798,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 64014,
+        "fisher/salmon/unknown": 64014,
+        "fisher/shrimp/unknown": 64014,
+        "fisher/crab/unknown": 64014,
+        "fisher/oyster/unknown": 64014,
+        "fisher/seaweed/unknown": 64014,
+        "fisher/salt/unknown": 852,
+        "forager/fruit/unknown": 124691,
+        "forager/vegetable/unknown": 124691,
+        "forager/mushroom/unknown": 124691,
+        "forager/twig/unknown": 124691,
+        "forager/pebble/unknown": 124691,
+        "forager/walnut/unknown": 124691,
+        "forager/honey/unknown": 124691,
+        "forager/herb/unknown": 124691,
+        "forager/stone/unknown": 124691,
+        "fisher/fish/present": 35865,
+        "fisher/salmon/present": 35865,
+        "fisher/shrimp/present": 35865,
+        "fisher/crab/present": 35865,
+        "fisher/oyster/present": 35865,
+        "fisher/seaweed/present": 35865,
+        "forager/mulberry_fruit/unknown": 23057,
+        "fisher/salt/present": 2015,
+        "forager/acorn/unknown": 32928,
+        "forager/chestnut/unknown": 32928,
+        "forager/grape/unknown": 32928,
+        "fisher/fish/zero": 3060,
+        "fisher/salmon/zero": 3060,
+        "fisher/shrimp/zero": 3060,
+        "fisher/crab/zero": 3060,
+        "fisher/oyster/zero": 3060,
+        "fisher/seaweed/zero": 3060
+      },
+      "rejected": {
+        "lumberjack/resin": 205253,
+        "lumberjack/bark": 205253
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/wood-800/sbc-1020.json"
+    },
+    {
+      "mode": "wood-plan",
+      "seed": 1020,
+      "days": 400,
+      "pop": 1290,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 0,
+      "elapsedSec": 485,
+      "tickUs": 1442.9893685784314,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 5095,
+      "aliveVillageDays": 20400,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 55991,
+        "fisher/salmon/unknown": 55991,
+        "fisher/shrimp/unknown": 55991,
+        "fisher/crab/unknown": 55991,
+        "fisher/oyster/unknown": 55991,
+        "fisher/seaweed/unknown": 55991,
+        "fisher/salt/unknown": 1259,
+        "forager/fruit/unknown": 60654,
+        "forager/vegetable/unknown": 60654,
+        "forager/mushroom/unknown": 60654,
+        "forager/twig/unknown": 60654,
+        "forager/pebble/unknown": 60654,
+        "forager/walnut/unknown": 60654,
+        "forager/honey/unknown": 60654,
+        "forager/herb/unknown": 60654,
+        "forager/stone/unknown": 60654,
+        "fisher/fish/present": 723,
+        "fisher/salmon/present": 723,
+        "fisher/shrimp/present": 723,
+        "fisher/crab/present": 723,
+        "fisher/oyster/present": 723,
+        "fisher/seaweed/present": 723,
+        "forager/mulberry_fruit/unknown": 10020,
+        "forager/acorn/unknown": 18177,
+        "forager/chestnut/unknown": 18177,
+        "forager/grape/unknown": 18177,
+        "fisher/salt/present": 55
+      },
+      "rejected": {
+        "lumberjack/resin": 81254,
+        "lumberjack/bark": 81254
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/wood-plan/sbc-1020.json"
+    },
+    {
+      "mode": "wood-plan",
+      "seed": 42,
+      "days": 60,
+      "pop": 1377,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 0,
+      "elapsedSec": 100,
+      "tickUs": 1392.7994343137254,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 1921,
+      "aliveVillageDays": 3060,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 13334,
+        "fisher/salmon/unknown": 13334,
+        "fisher/shrimp/unknown": 13334,
+        "fisher/crab/unknown": 13334,
+        "fisher/oyster/unknown": 13334,
+        "fisher/seaweed/unknown": 13334,
+        "fisher/salt/unknown": 465,
+        "forager/fruit/unknown": 3043,
+        "forager/vegetable/unknown": 3043,
+        "forager/mushroom/unknown": 3043,
+        "forager/twig/unknown": 3043,
+        "forager/pebble/unknown": 3043,
+        "forager/walnut/unknown": 3043,
+        "forager/honey/unknown": 3043,
+        "forager/herb/unknown": 3043,
+        "forager/stone/unknown": 3043,
+        "fisher/fish/present": 62,
+        "fisher/salmon/present": 62,
+        "fisher/shrimp/present": 62,
+        "fisher/crab/present": 62,
+        "fisher/oyster/present": 62,
+        "fisher/seaweed/present": 62
+      },
+      "rejected": {
+        "lumberjack/resin": 3785,
+        "lumberjack/bark": 3785
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/wood-plan/sbc-42.json"
+    },
+    {
+      "mode": "wood-plan",
+      "seed": 7,
+      "days": 60,
+      "pop": 1365,
+      "empty": 0,
+      "dissolved": 0,
+      "starved": 0,
+      "econStarved": 0,
+      "elapsedSec": 112,
+      "tickUs": 1475.3817189542483,
+      "allIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "bodyIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "remoteIn": {
+        "fish": 0,
+        "wood": 0,
+        "forage": 0
+      },
+      "lumberjackZeroDays": 1840,
+      "aliveVillageDays": 3060,
+      "formulaOn": 0,
+      "formula": {
+        "fisher/fish/unknown": 13397,
+        "fisher/salmon/unknown": 13397,
+        "fisher/shrimp/unknown": 13397,
+        "fisher/crab/unknown": 13397,
+        "fisher/oyster/unknown": 13397,
+        "fisher/seaweed/unknown": 13397,
+        "fisher/salt/unknown": 465,
+        "forager/fruit/unknown": 2848,
+        "forager/vegetable/unknown": 2848,
+        "forager/mushroom/unknown": 2848,
+        "forager/twig/unknown": 2848,
+        "forager/pebble/unknown": 2848,
+        "forager/walnut/unknown": 2848,
+        "forager/honey/unknown": 2848,
+        "forager/herb/unknown": 2848,
+        "forager/stone/unknown": 2848,
+        "fisher/fish/present": 157,
+        "fisher/salmon/present": 157,
+        "fisher/shrimp/present": 157,
+        "fisher/crab/present": 157,
+        "fisher/oyster/present": 157,
+        "fisher/seaweed/present": 157
+      },
+      "rejected": {
+        "lumberjack/resin": 4142,
+        "lumberjack/bark": 4142
+      },
+      "errors": [],
+      "source": {
+        "sim/economy-sim.js": "71a916c53493d55cd21108162d3754acb3dc1b942144a8217ed3d05d76610985",
+        "server/villages.js": "c6b62d7ba3ad9475d83e0245b75419b40cd19dc1a165d01fd32a1f536c2a429a"
+      },
+      "file": "server/wood-plan/sbc-7.json"
+    }
+  ],
+  "lab": [
+    {
+      "mode": "all",
+      "seed": 1020,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 174883.736245,
+      "pop": 6436,
+      "empty": 0,
+      "starved": 1420,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/all/1020.json.t1180.json"
+    },
+    {
+      "mode": "all",
+      "seed": 42,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 174599.40128875,
+      "pop": 6299,
+      "empty": 0,
+      "starved": 1609,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/all/42.json.t1180.json"
+    },
+    {
+      "mode": "all",
+      "seed": 7,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 167280.65530625,
+      "pop": 6008,
+      "empty": 0,
+      "starved": 1466,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/all/7.json.t1180.json"
+    },
+    {
+      "mode": "base",
+      "seed": 1020,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 161546.81430375,
+      "pop": 6436,
+      "empty": 0,
+      "starved": 1420,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/base/1020.json.t1180.json"
+    },
+    {
+      "mode": "base",
+      "seed": 42,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 167075.3105825,
+      "pop": 6299,
+      "empty": 0,
+      "starved": 1609,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/base/42.json.t1180.json"
+    },
+    {
+      "mode": "base",
+      "seed": 7,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 156325.1035,
+      "pop": 6008,
+      "empty": 0,
+      "starved": 1466,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/base/7.json.t1180.json"
+    },
+    {
+      "mode": "fish",
+      "seed": 1020,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 168194.47564625,
+      "pop": 6436,
+      "empty": 0,
+      "starved": 1420,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/fish/1020.json.t1180.json"
+    },
+    {
+      "mode": "fish",
+      "seed": 42,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 163417.14753625,
+      "pop": 6299,
+      "empty": 0,
+      "starved": 1609,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/fish/42.json.t1180.json"
+    },
+    {
+      "mode": "fish",
+      "seed": 7,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 160652.439885,
+      "pop": 6008,
+      "empty": 0,
+      "starved": 1466,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/fish/7.json.t1180.json"
+    },
+    {
+      "mode": "forage",
+      "seed": 1020,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 168804.04903999998,
+      "pop": 6436,
+      "empty": 0,
+      "starved": 1420,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/forage/1020.json.t1180.json"
+    },
+    {
+      "mode": "forage",
+      "seed": 42,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 166303.1379625,
+      "pop": 6299,
+      "empty": 0,
+      "starved": 1609,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/forage/42.json.t1180.json"
+    },
+    {
+      "mode": "forage",
+      "seed": 7,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 163290.34285875,
+      "pop": 6008,
+      "empty": 0,
+      "starved": 1466,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/forage/7.json.t1180.json"
+    },
+    {
+      "mode": "fuel-A",
+      "seed": 1020,
+      "days": 800,
+      "tickN": 800,
+      "aliveVillageDays": 37704,
+      "lumberjackZeroDays": 14050,
+      "tickUs": 118394.834145,
+      "pop": 3139,
+      "empty": 7,
+      "starved": 5845,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/fuel-A/1020.json.t1180.json"
+    },
+    {
+      "mode": "fuel-A",
+      "seed": 42,
+      "days": 800,
+      "tickN": 800,
+      "aliveVillageDays": 36533,
+      "lumberjackZeroDays": 12876,
+      "tickUs": 105087.97485500001,
+      "pop": 3170,
+      "empty": 10,
+      "starved": 5815,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/fuel-A/42.json.t1180.json"
+    },
+    {
+      "mode": "fuel-A",
+      "seed": 7,
+      "days": 800,
+      "tickN": 800,
+      "aliveVillageDays": 33966,
+      "lumberjackZeroDays": 12016,
+      "tickUs": 88440.63768375,
+      "pop": 2946,
+      "empty": 15,
+      "starved": 5555,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/fuel-A/7.json.t1180.json"
+    },
+    {
+      "mode": "fuel-control",
+      "seed": 1020,
+      "days": 800,
+      "tickN": 800,
+      "aliveVillageDays": 40800,
+      "lumberjackZeroDays": 9350,
+      "tickUs": 124915.932785,
+      "pop": 3524,
+      "empty": 0,
+      "starved": 1044,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/fuel-control/1020.json.t1180.json"
+    },
+    {
+      "mode": "fuel-control",
+      "seed": 42,
+      "days": 800,
+      "tickN": 800,
+      "aliveVillageDays": 40800,
+      "lumberjackZeroDays": 7567,
+      "tickUs": 132546.6874875,
+      "pop": 3392,
+      "empty": 0,
+      "starved": 929,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/fuel-control/42.json.t1180.json"
+    },
+    {
+      "mode": "fuel-control",
+      "seed": 7,
+      "days": 800,
+      "tickN": 800,
+      "aliveVillageDays": 40800,
+      "lumberjackZeroDays": 6343,
+      "tickUs": 127349.9941425,
+      "pop": 3438,
+      "empty": 0,
+      "starved": 1135,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/fuel-control/7.json.t1180.json"
+    },
+    {
+      "mode": "off",
+      "seed": 1020,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 169038.72713374998,
+      "pop": 6436,
+      "empty": 0,
+      "starved": 1420,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/off/1020.json.t1180.json"
+    },
+    {
+      "mode": "off",
+      "seed": 42,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 164965.90762875,
+      "pop": 6299,
+      "empty": 0,
+      "starved": 1609,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/off/42.json.t1180.json"
+    },
+    {
+      "mode": "off",
+      "seed": 7,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 156340.736195,
+      "pop": 6008,
+      "empty": 0,
+      "starved": 1466,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/off/7.json.t1180.json"
+    },
+    {
+      "mode": "wood",
+      "seed": 1020,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 162759.9258525,
+      "pop": 6436,
+      "empty": 0,
+      "starved": 1420,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/wood/1020.json.t1180.json"
+    },
+    {
+      "mode": "wood",
+      "seed": 42,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 171403.4975375,
+      "pop": 6299,
+      "empty": 0,
+      "starved": 1609,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/wood/42.json.t1180.json"
+    },
+    {
+      "mode": "wood",
+      "seed": 7,
+      "days": 800,
+      "tickN": 800,
+      "tickUs": 153391.60004875,
+      "pop": 6008,
+      "empty": 0,
+      "starved": 1466,
+      "dissolved": 0,
+      "trades": 5000,
+      "file": "lab/wood/7.json.t1180.json"
+    }
+  ]
+}

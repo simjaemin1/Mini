@@ -234,7 +234,7 @@ say('\n⑥ 실기 — 존을 띄워 사체 → 도살(butcherCorpse) → 먹기(
     '⑥ 곰 도살 고기 = 곰고기 36(두 존 · T694) · 되돌림 사슴·들짐승고기 6', JSON.stringify(hb.out.bear.inv));
   ok(JSON.stringify(hb.out.wolf.inv) === JSON.stringify(off.out.wolf.inv) && JSON.stringify(hb.out.pheasant.inv) === JSON.stringify(off.out.pheasant.inv),
     '⑥ 늑대(표 밖) · 꿩(반올림 같음)은 켬 · 되돌림 인벤이 같다', JSON.stringify(hb.out.wolf.inv));
-  ok((hb.notes || []).some((s) => /도살 \+meat_game 33/.test(s)), '⑥ 도살 알림이 켬 수를 말한다', (hb.notes || []).find((s) => /도살/.test(s)) || '');
+  ok((hb.notes || []).some((s) => /손질해 사슴·들짐승고기 33[ ,을]/.test(s)), '⑥ 도살 알림이 켬 수를 말한다(★T1190 ① 문장 · 이름표)', (hb.notes || []).find((s) => /손질해/.test(s)) || '');
   // ★[T647] 먹기 — 손에서 한 개
   const e = hb.out.eat || {};
   pre(e.n0 === 33 && e.h0 === 50, '먹기 전 — 손에 사슴고기 33 · 허기 50');
@@ -246,7 +246,7 @@ say('\n⑥ 실기 — 존을 띄워 사체 → 도살(butcherCorpse) → 먹기(
   ok(e0.n1 === e.n1 && e0.sick === null && e.sick === null && Math.abs((e0.h1 - e0.h0) - (e.h1 - e.h0)) < 1e-9 && JSON.stringify(hbLot0.out.deer.inv) === JSON.stringify(hb.out.deer.inv),
     '⑥ [T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0`)에서도 같은 도살 · 같은 먹기(손 33 → 32 · 허기 · 독 0)', JSON.stringify({ n1: e0.n1, sick: e0.sick }));
   const oe = off.out.eat || {};
-  ok(!oe.eff && oe.n1 === oe.n0 && oe.h1 === oe.h0 && (off.notes || []).some((s) => /먹을 수 없는 아이템: meat_game/.test(s)), '★⑥ 되돌림 — 먹기 표에 없다("먹을 수 없는 아이템" · 허기 · 손 그대로 = main)', `손 ${oe.n0} → ${oe.n1}`);
+  ok(!oe.eff && oe.n1 === oe.n0 && oe.h1 === oe.h0 && (off.notes || []).some((s) => /meat_game은\(는\) 먹을 수 없습니다/.test(s)), '★⑥ 되돌림 — 먹기 표에 없다("…은(는) 먹을 수 없습니다" ★T1190 ① · 허기 · 손 그대로 = main)', `손 ${oe.n0} → ${oe.n1}`);
   // ★곳간·거래 무변 — meat_game 은 곳간 넣기 표 밖 · 표의 품목 환산은 켬 · 되돌림 같다
   ok(hb.inMap === true && off.inMap === false, '★⑥ 곳간·거래 — meat_game 은 곳간 넣기 표(PV_DEPOSIT_MAP) 안(T694 ④ · 넣기·꺼내기·거래소·게시판이 다룬다) · 되돌림(T636=0)은 밖');
   const common = Object.keys(off.conv).filter((k) => k in hb.conv), extra = Object.keys(hb.conv).filter((k) => !(k in off.conv)).sort();

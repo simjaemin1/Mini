@@ -533,6 +533,7 @@ function _t1128Day() { if (_t1128K === null) { try { _t1128K = require('./kcal')
 //   레코드 한 개의 개수 — 넣을 때 적은 한 개의 단위(`pu` · 넣은 그 순간 · 실제 무게 · 신선도째)가 있으면 단위 ÷ pu · 없으면(econ 이 만든 것 · 옛 레코드) 열량으로(단위 × 하루치 ÷ (열량 × f0)) · 모르면 −1
 function _t1128CountOf(r, it, kcalOf, D) {
   if (r.pu > 0) return (+r.u || 0) / r.pu;
+  if(require('./fish-goods').isItem(it))return +r.u||0;
   const kX = +kcalOf(it) || 0; if (!(kX > 0) || !(D > 0)) return -1;
   const f0 = r.f0 == null ? 1 : +r.f0;
   return (+r.u || 0) * D / (kX * Math.max(1e-6, f0));
@@ -906,7 +907,11 @@ function eaten(reset) { const o = Object.assign({}, EAT); if (reset) for (const 
 // ★[T789] 썩어 없어진 품목(econ 하루 마감에 버린 단위 — 하네스 · 자가 읽는다) · 끄면 늘 빈 묶음
 function rotOf(reset) { const o = Object.assign({}, ROT); if (reset) for (const k of Object.keys(ROT)) delete ROT[k]; return o; }
 
-module.exports = { ON, T840, T856, legSettle: _legSettle, elevOf: _elevOf, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
+function preserveRecord(r,from,to,n){
+  const nf=_nowFrac(),f=Spoil.freshnessOf(from,Spoil.exposureOf(r,Math.floor(nf))),pf=_gran();
+  return{k:r.k,u:n,pu:1,it:to,f0:1,e:Spoil.carryExposure(to,f),t:nf,m:pf.m,w:pf.w};
+}
+module.exports = { preserveRecord, ON, T840, T856, legSettle: _legSettle, elevOf: _elevOf, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
   tickBegin, tickEnd, doorBegin, doorEnd, doorIn, doorRest, doorCap,
   recsFromPlayer, recsToPlayer, recsToItems, byCount, countOf: _t1128CountOf, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
   itemSums, checkItems, itemFlow, eaten,   // ★[T768] 품목 칸 · 품목 불변식 · 마을이 먹은 품목

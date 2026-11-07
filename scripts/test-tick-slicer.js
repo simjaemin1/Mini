@@ -460,7 +460,10 @@ async function arm(label, sliceMs, extraEnv) {
     if (l0) {
       const SB = (L2.econTick && L2.econTick.stages) || {}, SL = (B.econTick && B.econTick.stages) || {};   // SB = 되돌림(끔) · SL = 켬(조각내기 팔)
       const lifeOff = (SB['1마을:life전체'] && SB['1마을:life전체'].max) || 0;
-      const stepMax = (SL['life:쉼표·max'] && SL['life:쉼표·max'].max) || 0;
+      //   ★[T1162 K12] 쉼표 조각 최대는 **여러 판의 최솟값**이다 — 한 판의 max 는 상자가 한 번 멈칫하면(T1033 7ms · T1051 1ms 넘김) 구조와 무관하게 뛴다.
+      //   조각내는 팔(head · aa — base · base2 는 양보 끈 0 이라 조각이 없어 걸러진다)이 낸 `life:쉼표·max` 중 **잰 것(>0)의 최솟값** — 구조 주장("조각은 한 마을 생활층보다 작다")이라 잡음 바닥으로 잰다.
+      const _sm = [B, A, A2, C2].map((x) => (x && x.econTick && x.econTick.stages && x.econTick.stages['life:쉼표·max'] && x.econTick.stages['life:쉼표·max'].max) || 0).filter((v) => v > 0);
+      const stepMax = _sm.length ? Math.min(..._sm) : 0;
       console.log(`  · 되돌림 ${fmt(l0)}`);
       console.log(`  · 창 전체 — 되돌림 한 마을 생활층 최대 ${lifeOff}ms(사냥 하루 ${(SB['1마을:gran'] && SB['1마을:gran'].max) || 0}ms) · 켬 쉼표 조각 최대 ${stepMax}ms · 켬 조각 ${b.chunks}(되돌림 ${l0.chunks})`);
       ok(SL['life:쉼표'] != null && SB['life:쉼표'] == null && b.chunks > l0.chunks, '⑩ 켬(기본)이 생활층을 쉼표에서 더 나눴다 · 되돌림엔 쉼표 조각 0', `조각 ${l0.chunks}(되돌림) → ${b.chunks}`);
