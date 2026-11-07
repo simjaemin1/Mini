@@ -660,6 +660,9 @@ let RUN9 = null;
       T774_ACTIVE_COL: false, _t774I: 0, _t774Act: null,   // ★[T774] 활성 열 — 한 바퀴(`_sweepOne`)가 읽는 손잡이 · 이 판은 끔 갈래(열 증인은 `T774_ACTIVE_COL=1 node scripts/t738-witness.js`)
       T761_CLOCKS: { on: false, wx: false, mob: false, temp: false },   // ★[T761 · PM 착지 10-15] 몸 기온 · 몹 밤 현지 시계 갈래 — 제품 기본(끔) 그대로
       T823_FREEZE_SHELL: true,    // ★[T823 · PM 착지 10-21 · ★T831 켬 기본] 떠난 몸 껍데기 거르기 — 제품 기본(켬) 그대로(이 판 몸은 다 `handingOff: false` — 어느 쪽이든 같은 값)
+      // ★[T1208-K1 2026-11-07] T1197 이 몸 단계(NPC 배고픔 줄)에 존 맨 위 이름 `T1197_BODY` 를 읽게 했다 — 이 판에 그 이름이 없어 ReferenceError(land1049 · main 초록).
+      //   값은 존 글자 그대로(`server/zone.js` 머리 · 켬 기본) · 이 판 `SimVillages` 엔 `t1197BodyStep` 이 없어 켬이어도 종전 갈래(배고픔 채움)로 간다 — 두 팔 같은 값.
+      T1197_BODY: process.env.T1074_FOOD_DEBT !== '0' && process.env.T1197_MEAL_BODY !== '0',
 
       COLD_CLOTH_WEAR_MS: 60000, CARRIER_WEAR_MS: 60000, VP_DECAY_PER_SEC: 0.5,
       send: (ws, m) => log.push('S' + ws.id + ':' + m.type + ':' + (m.hp ?? m.floor ?? '') + (m.follow ? ':' + JSON.stringify(m.follow) : '')),
@@ -1508,9 +1511,12 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
       const M = mk(on, pred);
       const _cellOfPx = (p) => Math.floor(p / SZ);
       const _gameKey = (vil, cx, cy) => { const k = cx + ',' + cy; return vil._gameRich.has(k) ? k : null; };
-      return new Function('_t427On', '_t427Reach', '_t427HomeOf', '_cellOfPx', '_gameKey', 'huntTakeAt', 'L_GAMEMAX', 'SZ', '_t562SliceStop', 'T697_DAY_GC', 'T715_HUNT_GC',
+      // ★[T1208-K1 2026-11-07] T1195 가 사냥꾼 하루 줄에 `_lifeEcon().T1195_HUNT_REAL`(오늘 몫 표식 넷)을 넣었다 — 이 판에 그 이름이 없어 ReferenceError(land1049 · main 초록).
+      //   이름 = villages 의 그것 그대로(econ 모듈을 부른다 — 손잡이 값은 모듈이 읽는 env · 사본 0). 표식은 사냥꾼 자리 고르기(`_huntWk` · `_workSite`)를 안 건드린다.
+      const _lifeEcon = () => require(path.join(ROOT, 'sim', 'economy-sim'));
+      return new Function('_t427On', '_t427Reach', '_t427HomeOf', '_cellOfPx', '_gameKey', 'huntTakeAt', 'L_GAMEMAX', 'SZ', '_t562SliceStop', 'T697_DAY_GC', 'T715_HUNT_GC', '_lifeEcon',
         huntSrc + '\nreturn huntHunters;')(M._t427On, M._t427Reach, M._t427HomeOf, _cellOfPx, _gameKey, () => 0, 100, SZ, M._t562SliceStop, process.env.T697_DAY_GC === '1',
-        t715 === undefined ? process.env.T715_HUNT_GC === '1' : t715);   // ★[T715] 사냥꾼 자리 고르기 알뜰 판(이 프로세스 env · ⑮-h2 는 끔·켬 둘을 직접 견준다)   // ★[T697] 사냥꾼 자리 고르기 손잡이(이 프로세스 env — 끔·켬 두 번 돌린다)
+        t715 === undefined ? process.env.T715_HUNT_GC === '1' : t715, _lifeEcon);   // ★[T715] 사냥꾼 자리 고르기 알뜰 판(이 프로세스 env · ⑮-h2 는 끔·켬 둘을 직접 견준다)   // ★[T697] 사냥꾼 자리 고르기 손잡이(이 프로세스 env — 끔·켬 두 번 돌린다)
     };
     // 종전 규칙(대조군) — 제품 글자와 따로 적은 argmax(빈 풍부 셀 먼저 · 다른 사냥꾼 ±5 피함 · 없으면 아무 풍부 셀)
     const ref = (m, hs, hwSeq) => { const hw = [], out = [];

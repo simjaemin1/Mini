@@ -453,8 +453,19 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
   //     채집 입고가 장부에 한 번도 안 올랐고(빚), T374 가 수요 문을 걸자 드러났다(보고/T374 §2).
   //     ⇒ 수를 올리고 **새 자리를 이름으로 못 박는다**(T312·T325 가 쓴 그 규약 · 정규식을 느슨하게 하지 않는다).
   //   ★[T368 2026-09-25] 하나 더 — 밭 장부 다리(품목별 · 넷째 적용). 같은 규약으로 **이름으로 못 박는다**.
-  ok(hits.length === 10, '⑫ 잠재를 건드리는 자리는 **열**이다(선언 1 · 쓰기 7 · 읽기 2 · ★T312 어부 · ★T325 나무꾼 · ★T374 채집 · ★T368 밭 · ★T724 광부)', `실제 ${hits.length}`);
-  ok(writes.length === 7, '⑫ ★쓰는 곳 **일곱** — `addProduce`(끈 팔) · T183(밭) · ★T312(어부) · ★T325(나무꾼) · ★T374(채집) · ★T368(밭 품목) · ★T724(광부)', `실제 ${writes.length}`);
+  //   ★[T1202 2026-11-07 · land1048 뒤 빨강 ⑫] 자리가 **둘 늘었다** — 둘 다 econ 정본 몸통의 장부 다리다(수만 올리지 않고 이름으로 못 박는다 · 아래 두 줄):
+  //     ⓐ T1192 `addProduce(r, amt, exactPreserve)` — 어부가 실제로 든 그 마리를 **몸 kg 그대로** 넣는 갈래(배율 · 포만 · 세금 갈래를 안 탄다 · 곳간 · 실현 · 잠재 셋에 같은 수)
+  //     ⓑ T1188 광종 원석 — 손으로 든 원석(`_t1188InByItem`)을 **광종 칸마다** 접는 줄(켜면 T724 `.ore` 한 칸 대신 · 같은 줄의 `else` 가 그 `.ore` 줄이다)
+  //   ★[T1202 · land1049 합침 · T1195 사냥 실제] 자리가 **하나 더** — 사냥 장부 다리(`_t1195InByItem` — 몸이 잡아 들여온 고기 · 가죽 · 뿔 · 뼈를 품목별로 잠재 · 실현에 같은 `q` ·
+  //     켠 호스트에서 사냥꾼은 `addProduce` 를 안 탄다 ⇒ 이중 0). 수만 올리지 않고 아래 한 줄로 이름을 못 박는다(같은 규약).
+  ok(hits.length === 13, '⑫ 잠재를 건드리는 자리는 **열셋**이다(선언 1 · 쓰기 10 · 읽기 2 · ★T312 어부 · ★T325 나무꾼 · ★T374 채집 · ★T368 밭 · ★T724 광부 · ★T1192 어종 · ★T1188 광종 · ★T1195 사냥)', `실제 ${hits.length}`);
+  ok(writes.length === 10, '⑫ ★쓰는 곳 **열** — `addProduce`(끈 팔) · T183(밭) · ★T312(어부) · ★T325(나무꾼) · ★T374(채집) · ★T368(밭 품목) · ★T724(광부) · ★T1192(어종 몸 kg) · ★T1188(광종) · ★T1195(사냥)', `실제 ${writes.length}`);
+  ok(/if \(T1195_HUNT_REAL && v\._t1195InByItem\) \{\s*\n\s*for \(const \[k, q\] of Object\.entries\(v\._t1195InByItem\)\) \{ if \(!\(q > 0\)\) continue; dailyProductionPotential\[k\] = \(dailyProductionPotential\[k\] \|\| 0\) \+ q; dailyProduction\[k\] = \(dailyProduction\[k\] \|\| 0\) \+ q; \}/.test(C),
+    '⑫ ★★[T1195] 열째 자리가 **사냥 장부 다리**다(품목별 · 잠재 · 실현에 같은 `q` · 배수 0)');
+  ok(/if\(T1192_FISH_SPECIES&&exactPreserve\)\{if\(!\(amt>0\)\)return;v\.storage\[r\]=\(v\.storage\[r\]\|\|0\)\+amt;dailyProduction\[r\]=\(dailyProduction\[r\]\|\|0\)\+amt;dailyProductionPotential\[r\]=\(dailyProductionPotential\[r\]\|\|0\)\+amt;return;\}/.test(C),
+    '⑫ ★★[T1192] 여덟째 자리가 **어종 몸 kg 다리**다(곳간 · 실현 · 잠재에 같은 `amt` · 배수 0 · 그 갈래는 거기서 돌아선다)');
+  ok(/if\(T1188_ORE_SPLIT\)\{for\(const\[k,q\]of Object\.entries\(v\._t1188InByItem\|\|\{\}\)\)\{dailyProductionPotential\[k\]=\(dailyProductionPotential\[k\]\|\|0\)\+q;dailyProduction\[k\]=\(dailyProduction\[k\]\|\|0\)\+q;\}\}else\{\s*\n\s*dailyProductionPotential\.ore = \(dailyProductionPotential\.ore \|\| 0\) \+ _t724In;/.test(C),
+    '⑫ ★★[T1188] 아홉째 자리가 **광종 원석 다리**다(켜면 광종마다 · 끄면 같은 줄의 `else` = T724 `.ore` 줄 · 잠재 · 실현에 같은 `q`)');
   ok(/dailyProductionPotential\[c\] = \(dailyProductionPotential\[c\] \|\| 0\) \+ u;/.test(C),
     '⑫ ★★[T368] 그 새 자리가 **밭 장부 다리**다(품목별 · `_t368InByItem`)');
   ok(/dailyProductionPotential\[it\] = \(dailyProductionPotential\[it\] \|\| 0\) \+ a;/.test(C),
@@ -528,7 +539,9 @@ console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름
     '⑮ ★그 버퍼는 **틱 머리에서 리셋**된다 — 그래서 생활층(틱 뒤)에서 적으면 지워진다');
   //   ★[T374] 한 줄 늘었다 — 채집 장부 다리(품목별). 이름으로 못 박는다(위 ⑫ 와 같은 규약).
   //   ★[T368] 한 줄 더 — 밭 장부 다리(품목별). 이름으로 못 박는다(위 ⑫ 와 같은 규약).
-  ok(writes.length === 6, '⑮ ★쓰는 줄 **여섯** — 리셋 둘 + `addProduce`(끈 팔) + T193(켠 팔) + ★T374(채집) + ★T368(밭 품목)', `실제 ${writes.length}`);
+  //   ★[T1202 2026-11-07 · land1048 뒤 빨강 ⑮] 두 줄 늘었다 — 위 ⑫ 의 두 다리(T1192 어종 몸 kg · T1188 광종)가 실현 장부에도 **같은 줄에서** 같은 수를 적는다(⑫ 에서 이름으로 못 박았다).
+  //   ★[T1202 · land1049 합침 · T1195] 한 줄 더 — 위 ⑫ 의 사냥 장부 다리가 실현 장부에도 **같은 줄에서** 같은 `q` 를 적는다(⑫ 에서 이름으로 못 박았다).
+  ok(writes.length === 9, '⑮ ★쓰는 줄 **아홉** — 리셋 둘 + `addProduce`(끈 팔) + T193(켠 팔) + ★T374(채집) + ★T368(밭 품목) + ★T1192(어종 몸 kg) + ★T1188(광종) + ★T1195(사냥)', `실제 ${writes.length}`);
   ok(/dailyProduction\[c\] = \(dailyProduction\[c\] \|\| 0\) \+ u;/.test(C),
     '⑮ ★★[T368] 그 새 줄이 **밭 장부 다리**다');
   ok(/dailyProduction\[it\] = \(dailyProduction\[it\] \|\| 0\) \+ a;/.test(C),
@@ -609,7 +622,10 @@ console.log('\n⑱ 볏짚 — 밭 수확이 **아궁이 밑변**(`_grainToday`)�
     '⑱ ★★★비우는 줄이 **읽는 줄 뒤**에 있다 — 그래서 생활층(틱 **뒤**)이 적은 값이 다음 틱까지 **산다**',
     reads[0] && resets[0] ? `읽기 :${reads[0][0]} < 리셋 :${resets[0][0]}` : '—');
   // ★[T240] 식의 **두 항이 그대로**고, 이월을 끈 가지는 종전 `min` 그대로다(비트 동일의 뿌리).
-  ok(/const _strawCap = N \* _firewoodPC\(\);/.test(C) && /const _firewoodPC = \(\) => \(T1135_FUEL_EQ \? FIREWOOD_PC_SRC : FIREWOOD_PC\);/.test(C) && /const _strawRaw = \(v\._grainToday \|\| 0\) \* STRAW_FUEL_PER_FOOD;/.test(C),
+  //   ★[T1202 2026-11-07 · land1048 뒤 빨강 ⑱] 상한의 사람 수가 `N` → `_homeN`(T1159 집에 있는 사람 · 끔 기본 = `N` 그대로)으로 갈렸다 — 수를 풀지 않고 그 셋을 다 문다:
+  //     상한 줄 · `_homeN = t1159HomeN(v)` · T1159 끔이면 `N`(= `v.npcs.length`)을 돌려주는 첫 줄.
+  ok(/const _strawCap = _homeN \* _firewoodPC\(\);/.test(C) && /const _homeN = t1159HomeN\(v\);/.test(C) && /function t1159HomeN\(v\) \{\s*\n\s*const N = v\.npcs\.length;\s*\n\s*if \(!T1159_HOME_N \|\| [^\n]*\) return N;/.test(C)
+     && /const _firewoodPC = \(\) => \(T1135_FUEL_EQ \? FIREWOOD_PC_SRC : FIREWOOD_PC\);/.test(C) && /const _strawRaw = \(v\._grainToday \|\| 0\) \* STRAW_FUEL_PER_FOOD;/.test(C),
     '⑱ 볏짚 두 항이 그대로다 — 상한 `N × FIREWOOD_PC`(★[T1135] 1인 땔감 함수 — 끔 = 그 상수) · 원량 `오늘 곡식 × STRAW_FUEL_PER_FOOD`');
   ok(/: Math\.min\(_strawCap, _strawRaw\);/.test(C),
     '⑱ ★이월을 끈 가지는 **종전 식 그대로** `min(상한, 원량)` 이다(T240 비트 동일의 뿌리)');
@@ -760,7 +776,9 @@ console.log('\n㉑ 짚만 이월 — 곡식 경로 무접촉 · 상한 그대로
     '㉑ ★★`_t100Credit`(T227 의 그 몸통)이 **한 줄도 안 바뀌었다** — 곡식은 여전히 즉시다');
 
   // ★상한은 종전 그대로 · 새 수 0 · 끄면 종전 가지가 남아 있다
-  ok(/const _strawCap = N \* _firewoodPC\(\);/.test(C) && /const _firewoodPC = \(\) => \(T1135_FUEL_EQ \? FIREWOOD_PC_SRC : FIREWOOD_PC\);/.test(C), '㉑ 상한은 **종전 그대로** `N × FIREWOOD_PC`(새 수 0 · ★[T1135] 끔 = 그 상수 · 켬 = 고증 d)');
+  //   ★[T1202 · land1048 뒤 빨강 ㉑] 사람 수는 `_homeN`(T1159 끔 기본 = `N`) — 위 ⑱ 과 같은 셋을 문다.
+  ok(/const _strawCap = _homeN \* _firewoodPC\(\);/.test(C) && /const _homeN = t1159HomeN\(v\);/.test(C) && /function t1159HomeN\(v\) \{\s*\n\s*const N = v\.npcs\.length;\s*\n\s*if \(!T1159_HOME_N \|\| [^\n]*\) return N;/.test(C)
+     && /const _firewoodPC = \(\) => \(T1135_FUEL_EQ \? FIREWOOD_PC_SRC : FIREWOOD_PC\);/.test(C), '㉑ 상한은 **종전 그대로** `N × FIREWOOD_PC`(새 수 0 · ★[T1135] 끔 = 그 상수 · 켬 = 고증 d · ★[T1159] 사람 수 = 집에 있는 사람 · 끔 = N)');
   ok(/const _strawRaw = \(v\._grainToday \|\| 0\) \* STRAW_FUEL_PER_FOOD;/.test(C),
     '㉑ 원량도 **종전 그대로** `_grainToday × STRAW_FUEL_PER_FOOD`(같은 축 — 목재 열량 당량)');
   ok(/: Math\.min\(_strawCap, _strawRaw\);/.test(C), '㉑ ★끄면 **종전 산수**(`min(상한, 원량)`) 그대로다 — 비트 동일의 뿌리');
@@ -896,7 +914,9 @@ console.log('\n⑭ 나머지 두 문 — 채집·석재는 배율을 안 삼킨�
     '⑭ ★★채집 문은 `baseAmt` 를 **예산으로 건넨다**(덮어쓰기 0 — 배율 셋이 이미 그 안에 있다)');
   ok(!/baseAmt\s*=\s*[^=]/.test(CODE.split("produceSpecial === 'forager'")[1].split("produceSpecial === 'cook'")[0]),
     '⑭ ★채집 절 안에서 `baseAmt` 에 **다시 대입하는 줄이 없다**');
-  ok(/const stoneYield = _stoneK \* skillMul \* _forageScale \* 0\.9;/.test(CODE),
+  //   ★[T1202 · land1048 뒤 빨강 ⑭] T1181 후속이 돌 실물(T419 · 끔 기본)일 때 식물 MSY(`_forageScale`)와의 결합을 풀었다 — `stoneRealOn() ? 1 : _forageScale`.
+  //     끔이면 종전 `_forageScale` 그대로고, `_stoneK` 만 갈아 끼우고 `skillMul` 이 문 뒤에 남는 꼴은 같다 — 그 꼴을 문다(`stoneRealOn` 정의는 test-stone-real 이 문다).
+  ok(/const stoneYield = _stoneK \* skillMul \* \(stoneRealOn\(\) \? 1 : _forageScale\) \* 0\.9;/.test(CODE),
     '⑭ ★★석재 문은 **관 굵기(`_stoneK`)만** 갈아 끼우고 `skillMul` 은 문 **뒤에** 남는다');
   ok(/let _stoneK = \(v\.land\.stone \|\| 0\);/.test(CODE) && /if \(_sbFn\) \{ const _k = _sbFn\(v\); if \(Number\.isFinite\(_k\) && _k >= 0\) _stoneK = _k; \}/.test(CODE),
     '⑭ 석재 문의 폴백이 곧 종전이다(미주입 = 비트 동일)');
@@ -924,7 +944,10 @@ console.log('\n⑯ 서버 자리 [T190] — 생활층이 그 농부의 배율을
     '⑯ ★배율을 집는 자리가 **하나**다');
   ok(/return \(e && typeof e\._t172mul === 'number'\) \? e\._t172mul : undefined;/.test(VCODE),
     '⑯ ★★못 집으면 **`undefined`** 를 넘긴다 — 1 로 받는 것은 **econ 문 안 한 곳**이다(사본 0)');
-  ok(!/_t172mul[^\n]*[*/+]/.test(VCODE) && !/[*/+][^\n]*_t172mul/.test(VCODE),
+  //   ★[T1202 · land1048 뒤 빨강 ⑯] 감지기는 **연산자**를 찾는다 — T1192 가 같은 줄에 `require('./fish-goods')` 를 두자 경로 문자열의 `/` 를 연산자로 읽었다(헛빨강).
+  //     따옴표 문자열(한 줄 '…' · "…")만 비우고 같은 두 정규식을 그대로 건다 — 문자열 밖 `* / +` 는 그대로 문다(⑦ 의 이중 곱셈 변조는 코드라 여전히 문다).
+  const VARITH = VCODE.replace(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"/g, "''");
+  ok(!/_t172mul[^\n]*[*/+]/.test(VARITH) && !/[*/+][^\n]*_t172mul/.test(VARITH),
     '⑯ ★★★생활층이 배율에 **산수를 안 한다**(읽어 넘기기만 — 이중 0)');
   ok(!/skillMul|toolBoost|inputMult/.test(VCODE),
     '⑯ 배율의 구성(`skillMul`·`toolBoost`·`inputMult`)은 **여기 없다**(정본은 econ 한 곳)');

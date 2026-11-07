@@ -1,0 +1,160 @@
+# T1208-K3 하네스 — land1049(`e7bbf42d`) 몫 K3(정렬 목록 NR%4==3 · 100종) · 러너 `scripts/nightly-run.sh`(NIGHT_LIST 묶음 아홉 · 빨강 단독 재실행 그대로) · 손잡이 env 없음
+# 줄: 하네스 · 첫 판 · 초 · 단독 재실행 · 초 · 첫 ✗ 줄(빨강만)
+
+## ① 전수 — 돌린 97 · 건넘(T1203) 3
+e2e-audio-probe.js	초록	134초
+e2e-blizzard.js	초록	57초
+e2e-chronicle.js	초록	89초
+e2e-cutaway.js	초록	161초
+e2e-fishing.js	초록	66초
+e2e-frost.js	초록	125초
+e2e-hp.js	초록	67초
+e2e-mountain.js	초록	199초
+e2e-mtfoot.js	초록	56초
+e2e-nature.js	초록	389초
+e2e-onboarding.js	초록	173초
+e2e-preserve.js	빨강 FAIL(rc=1)	99초	단독 빨강 FAIL(rc=1) 99초	✗ ★★② **건어물을 받았다**  건어물 undefined | ✗ ★★② [T767 켬] 그리고 **신선도를 이어받았다** — 갓 잡은 걸 말린 건어물은 신선 | ✗ ★★② [T767 켬] 넣은 1마리 → 건어물 **1**(개수 그대로)  건어물 undefined
+e2e-rumor.js	빨강 FAIL(rc=1)	105초	단독 초록 85초	✗ ④c2 전제: 얼린 순간이 사건 직후다(소문이 아직 걸어올 시간이 없었다 · T133)  얼린 날 18 − 사건일 14 = 4일
+e2e-spoil2.js	초록	58초
+e2e-ui.js	초록	128초
+e2e-waterperf.js	초록	115초
+e2e-winter.js	초록	49초
+e2e-thirst.js	초록	551초
+test-armor-cap.js	초록	0초
+test-assault-miss.js	초록	1초
+test-bandit-all.js	빨강 FAIL(rc=1)	2초	단독 빨강 FAIL(rc=1) 2초	✗ ① 새 몸 0 — 해체 단 · 이탈 · 해산 판에 새로 선 몸이 없다(걸어온 몸이 단의 몸)  4 · 4
+test-battle-fast.js	초록	2초
+test-body-exit.js	초록	0초
+test-body.js	초록	7초
+test-build-act.js	초록	2초
+test-car-fast.js	초록	119초
+test-charsheet.js	초록	11초
+test-client-globals.js	초록	1초
+test-coll-grid.js	초록	12초
+test-crops-world.js	초록	0초
+test-disk-check.js	초록	5초
+test-doors.js	초록	4초
+test-dusk-stamp.js	초록	1초
+test-econ-fieldyield.js	빨강 FAIL(rc=1)	38초	단독 빨강 FAIL(rc=1) 37초	✗ ⑦ [대조] 멀쩡한 켠 판은 **깨끗이 통과한다**(항상 빨간 감사기가 아니다) | ✗ ⑫ 잠재를 건드리는 자리는 **열**이다(선언 1 · 쓰기 7 · 읽기 2 · ★T312 어부 · ★T325 나무꾼 · ★T374 채집 · ★T368 밭 · ★T724 광부)  실제 13 | ✗ ⑫ ★쓰는 곳 **일곱** — `addProduce`(끈 팔) · T18
+test-far-trees.js	초록	102초
+test-fell-loot.js	초록	2초
+test-floor-stone.js	초록	18초
+test-food-sick.js	빨강 FAIL(rc=1)	15초	단독 빨강 FAIL(rc=1) 15초	✗ ★⑦ 존 NPC 는 허기·갈증 면제 — 몸 틱을 안 돈다 ⇒ 배탈 칸이 안 선다(식량은 econ 소유)
+test-game-meat.js	초록	8초
+test-ghost-tree.js	초록	4초
+test-granary-item.js	빨강 FAIL(rc=1)	19초	단독 빨강 FAIL(rc=1) 18초	✗ ★⑥ 품목이 바뀐 레코드 0(대구로 든 것은 대구로만 있다)  78
+test-guild-treasury.js	초록	0초
+test-happy-converge.js	초록	0초
+test-imsu.js	초록	3초
+test-itemlabel.js	초록	0초
+test-lab-army-morale.js	초록	19초
+test-lab-wood.js	초록	0초
+test-local-clocks.js	초록	35초
+test-loot-body.js	초록	1초
+test-mining.js	초록	5초
+test-model-intake.js	초록	0초
+test-msy.js	초록	0초
+test-no-shield.js	초록	0초
+test-npc-label.js	초록	1초
+test-one-decay.js	초록	0초
+test-picker-tables.js	초록	0초
+test-psite-server.js	초록	8초
+test-redeploy-light.js	초록	1초
+test-regrow.js	초록	17초
+test-resource-index.js	초록	1초
+test-road-day.js	초록	20초
+test-save-race.js	초록	158초
+test-segindex.js	초록	3초
+test-slot-keep.js	빨강 FAIL(rc=1)	114초	단독 빨강 FAIL(rc=1) 101초	✗ ③ ★★자명 통과 금지 — 되살림 줄과 선계산이 **실제로 다퉜다**(서로를 기다렸다 — 안 다퉜으면 아래 "버림 0"은 공짜다)  기다림 되살림 줄 0 · 선계산 0 | ✗ ③ ★★자명 통과 금지 — 되살림 줄과 선계산이 **실제로 다퉜다**(서로를 기다렸다 — 안 다퉜으면 아래 "버림 0"은 공짜다)  기다림 되살림 줄 0 · 선계산 0
+test-spoil2.js	초록	3초
+test-t1000-chunk-restart.js	초록	44초
+test-t1054-decay-wood.js	빨강 FAIL(rc=1)	1초	단독 빨강 FAIL(rc=1) 1초	✗ ⓐ 켬 — 곳간 목재가 준다 · 준 양 = 다시 찬 주거 × econ 단가  목재 −43.4200 · 수리 1.8000 × 1.6667 | ✗ ⓑ ★끔(기본) — 같은 마을 곳간 목재가 100 그대로(노후 메움이 목재 없이 — 결함이 보인다)  끝 59.58
+test-t1064-next-step.js	초록	0초
+test-t1075-happy-eq.js	초록	1초
+test-t1087-crew-cap.js	초록	1초
+test-t1094-arms-trip.js	빨강 FAIL(rc=1)	4초	단독 빨강 FAIL(rc=1) 4초	✗ ⓒ 결판 = 궤주(방어 승) · 하루 경계마다 장부 = 산 몸 짐 합  {"end":null,"chk":[[401,8,8],[402,1,1]],"gap":0} | ✗ ⓓ `T1094_CARRY_CAP=0` — 장부는 서지만 몸 짐 0(증인 — 장부에만 있고 몸에 없는 짐) · 귀환에 곳간 = 동원 전  {"loaded":{"n":8,"onB":8,"le
+test-t1113-low-happy.js	초록	0초
+test-t1126-rock-yield.js	초록	9초
+test-t1133-bag-persist.js	초록	1초
+test-t1144-life-event.js	초록	165초
+test-t1149-winter.js	초록	1초
+test-t1168-sortie-ammo.js	초록	0초
+test-t1180-produce-defaults.js	초록	1초
+test-t1183-surrender-loss.js	초록	0초
+test-t1188-ore-split.js	초록	3초
+test-t1197-meal-body.js	초록	0초
+test-t742-zone.js	초록	0초
+test-t807-quote-exec.js	초록	52초
+test-t924-debt-cap.js	빨강 FAIL(rc=1)	16초	단독 빨강 FAIL(rc=1) 16초	✗ 셈만 느는 죽음 — 끔(대조) 묶인 날마다 1 · 켬은 그날 압력이 빚을 −1 아래로 민 날만(적거나 같다)  끔 +0/40날 · 켬 +0 | ✗ 0.9 는 출생 줄의 그 수(출생이 막힌 세 자리 `Math.min(v._dPAccum, 0.9)`)
+test-t965-want-start.js	초록	6초
+test-t988-trade-words.js	초록	37초
+test-tame.js	초록	1초
+test-terrain-memo.js	초록	2초
+test-trade.js	초록	8초
+test-vein-batch.js	초록	1초
+test-village-found.js	초록	3초
+test-villager-stuck.js	초록	0초
+test-weight.js	빨강 FAIL(rc=1)	18초	단독 빨강 FAIL(rc=1) 18초	✗ ★★① specialty 값과 **한 자리도 안 다르다**(옮겨 적었으면 갈린다)  pollock salmon cod herring sardine anchovy | ✗ [T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0`)으로 같은 하네스 — 같은 줄 수 다 통과  62 / 1 | ✗ [T778 끔 탐침] 순간 로트 끔(`T732_MO
+test-winter-fx.js	초록	2초
+test-wood-step1.js	초록	2초
+test-route-persist.js	초록	482초
+test-t1034-caravan-keep.js	초록	423초
+test-t1161-two-prices.js	건넘 — T1203(S15 몫 · 카드 2)
+test-lab-mining.js	건넘 — T1203(S15 몫 · 카드 2)
+test-hp-src.js	건넘 — T1203(S15 몫 · 카드 2)
+# 하네스 합 4667초
+
+## ② 가르기 — main(`77a756d1`) 혼자 · land1049 손잡이 하나씩 `=0` · 흔들림(혼자 세 번) · 고친 뒤
+main	e2e-preserve.js	-	✗ RC=1 · 결과줄 36개 → **실패로 센다**	[소요] 98초
+main	e2e-rumor.js	-	✓ RC=0	[소요] 93초
+main	test-bandit-all.js	-	✓ RC=0	[소요] 3초
+main	test-econ-fieldyield.js	-	✗ RC=1 · 결과줄 211개 → **실패로 센다**	[소요] 38초
+main	test-food-sick.js	-	✓ RC=0	[소요] 15초
+main	test-granary-item.js	-	✓ RC=0	[소요] 17초
+main	test-slot-keep.js	-	✗ RC=1 · 결과줄 11개 → **실패로 센다**	[소요] 102초
+main	test-t1054-decay-wood.js	-	✗ RC=1 · 결과줄 18개 → **실패로 센다**	[소요] 0초
+main	test-t1094-arms-trip.js	-	✗ RC=1 · 결과줄 14개 → **실패로 센다**	[소요] 4초
+main	test-t924-debt-cap.js	-	✗ RC=1 · 결과줄 21개 → **실패로 센다**	[소요] 16초
+main	test-weight.js	-	✗ RC=1 · 결과줄 69개 → **실패로 센다**	[소요] 18초
+l1049	test-bandit-all.js	-	✗ RC=1 · 결과줄 35개 → **실패로 센다**	[소요] 2초
+k_T1146_STONE_RULE	test-bandit-all.js	T1146_STONE_RULE=0	✗ RC=1 · 결과줄 35개 → **실패로 센다**	[소요] 2초
+k_T1167_WAR_PERSIST	test-bandit-all.js	T1167_WAR_PERSIST=0	✗ RC=1 · 결과줄 35개 → **실패로 센다**	[소요] 3초
+k_T1195_HUNT_REAL	test-bandit-all.js	T1195_HUNT_REAL=0	✗ RC=1 · 결과줄 35개 → **실패로 센다**	[소요] 2초
+k_T1196_ARTISAN_ACT	test-bandit-all.js	T1196_ARTISAN_ACT=0	✗ RC=1 · 결과줄 35개 → **실패로 센다**	[소요] 3초
+k_T1197_MEAL_BODY	test-bandit-all.js	T1197_MEAL_BODY=0	✓ RC=0	[소요] 2초
+k_T1198_BIRTH_BODY	test-bandit-all.js	T1198_BIRTH_BODY=0	✓ RC=0	[소요] 3초
+k_T1188_HEAD_CACHE	test-bandit-all.js	T1188_HEAD_CACHE=0	✗ RC=1 · 결과줄 35개 → **실패로 센다**	[소요] 3초
+l1049	test-food-sick.js	-	✗ RC=1 · 결과줄 43개 → **실패로 센다**	[소요] 15초
+k_T1146_STONE_RULE	test-food-sick.js	T1146_STONE_RULE=0	✗ RC=1 · 결과줄 43개 → **실패로 센다**	[소요] 15초
+k_T1167_WAR_PERSIST	test-food-sick.js	T1167_WAR_PERSIST=0	✗ RC=1 · 결과줄 43개 → **실패로 센다**	[소요] 15초
+k_T1195_HUNT_REAL	test-food-sick.js	T1195_HUNT_REAL=0	✗ RC=1 · 결과줄 43개 → **실패로 센다**	[소요] 15초
+k_T1196_ARTISAN_ACT	test-food-sick.js	T1196_ARTISAN_ACT=0	✗ RC=1 · 결과줄 43개 → **실패로 센다**	[소요] 16초
+k_T1197_MEAL_BODY	test-food-sick.js	T1197_MEAL_BODY=0	✗ RC=1 · 결과줄 43개 → **실패로 센다**	[소요] 15초
+k_T1198_BIRTH_BODY	test-food-sick.js	T1198_BIRTH_BODY=0	✗ RC=1 · 결과줄 43개 → **실패로 센다**	[소요] 15초
+k_T1188_HEAD_CACHE	test-food-sick.js	T1188_HEAD_CACHE=0	✗ RC=1 · 결과줄 43개 → **실패로 센다**	[소요] 16초
+l1049	test-granary-item.js	-	✗ RC=1 · 결과줄 44개 → **실패로 센다**	[소요] 19초
+k_T1146_STONE_RULE	test-granary-item.js	T1146_STONE_RULE=0	✗ RC=1 · 결과줄 44개 → **실패로 센다**	[소요] 18초
+k_T1167_WAR_PERSIST	test-granary-item.js	T1167_WAR_PERSIST=0	✗ RC=1 · 결과줄 44개 → **실패로 센다**	[소요] 19초
+k_T1195_HUNT_REAL	test-granary-item.js	T1195_HUNT_REAL=0	✗ RC=1 · 결과줄 44개 → **실패로 센다**	[소요] 19초
+k_T1196_ARTISAN_ACT	test-granary-item.js	T1196_ARTISAN_ACT=0	✗ RC=1 · 결과줄 44개 → **실패로 센다**	[소요] 19초
+k_T1197_MEAL_BODY	test-granary-item.js	T1197_MEAL_BODY=0	✓ RC=0	[소요] 16초
+k_T1198_BIRTH_BODY	test-granary-item.js	T1198_BIRTH_BODY=0	✓ RC=0	[소요] 16초
+k_T1188_HEAD_CACHE	test-granary-item.js	T1188_HEAD_CACHE=0	✗ RC=1 · 결과줄 44개 → **실패로 센다**	[소요] 18초
+l1049	test-t924-debt-cap.js	-	✗ RC=1 · 결과줄 21개 → **실패로 센다**	[소요] 19초
+k_T1146_STONE_RULE	test-t924-debt-cap.js	T1146_STONE_RULE=0	✗ RC=1 · 결과줄 21개 → **실패로 센다**	[소요] 19초
+k_T1167_WAR_PERSIST	test-t924-debt-cap.js	T1167_WAR_PERSIST=0	✗ RC=1 · 결과줄 21개 → **실패로 센다**	[소요] 15초
+k_T1195_HUNT_REAL	test-t924-debt-cap.js	T1195_HUNT_REAL=0	✗ RC=1 · 결과줄 21개 → **실패로 센다**	[소요] 29초
+k_T1196_ARTISAN_ACT	test-t924-debt-cap.js	T1196_ARTISAN_ACT=0	✗ RC=1 · 결과줄 21개 → **실패로 센다**	[소요] 30초
+flaky1	e2e-rumor.js	-	✗ RC=1 · 결과줄 64개 → **실패로 센다**	[소요] 89초
+k_T1197_MEAL_BODY	test-t924-debt-cap.js	T1197_MEAL_BODY=0	✗ RC=1 · 결과줄 21개 → **실패로 센다**	[소요] 19초
+k_T1198_BIRTH_BODY	test-t924-debt-cap.js	T1198_BIRTH_BODY=0	✗ RC=1 · 결과줄 21개 → **실패로 센다**	[소요] 31초
+k_T1188_HEAD_CACHE	test-t924-debt-cap.js	T1188_HEAD_CACHE=0	✗ RC=1 · 결과줄 21개 → **실패로 센다**	[소요] 28초
+flaky2	e2e-rumor.js	-	✓ RC=0	[소요] 92초
+flaky3	e2e-rumor.js	-	✓ RC=0	[소요] 83초
+solo1	e2e-rumor.js	-	✓ RC=0	[소요] 82초
+solo2	e2e-rumor.js	-	✓ RC=0	[소요] 84초
+solo3	e2e-rumor.js	-	✓ RC=0	[소요] 82초
+fixed	test-food-sick.js	-	✓ RC=0	[소요] 15초
+fixed	test-granary-item.js	-	✓ RC=0	[소요] 16초
+fixed	test-t924-debt-cap.js	-	✗ RC=1 · 결과줄 21개 → **실패로 센다**	[소요] 16초
+# flaky1~3 은 손잡이 가르기(t924 · 포트 0)와 CPU 를 나눠 돌았다 — 셈에 안 넣는다 · solo1~3 = 상자에 혼자
