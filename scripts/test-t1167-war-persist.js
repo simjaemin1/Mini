@@ -16,6 +16,8 @@
 //   ④ ★켬 — 귀환 중 전쟁(몸 없음): 장부 귀환이 그 병사 명부 몸의 짐을 모은다(`_warRationCollect`) · 명부 밖 몸은 안 본다
 //   ⑤ 교전 중 전쟁 — 다시 개전 표(`_t1167Re`) · ⑥ 다른 날 메타 — 안 되살린다(생성 금지) · ⑦ 진행 중 전쟁 없으면 칸 0
 'use strict';
+// ★[PM land1049] 픽스처 마을에 `housesPx` 가 없다 — land1048 뒤 `T1041_WAR_BODY` 켬 기본이면 징발 앞 `syncVillagePop` → `spawnOneNpc` 가 그 칸을 읽어 넘어진다(제품 마을엔 늘 있다). 이 하네스는 영속을 재니 몸 세우기 갈래는 끔에 묶는다 · 켬 갈래 픽스처는 T1203 몫.
+if (process.env.T1041_WAR_BODY == null) process.env.T1041_WAR_BODY = '0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

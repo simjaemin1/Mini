@@ -68,7 +68,7 @@ const Zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   ok(wb != null && !/addProduce|v\.storage|workNPC/.test(wb.split('\n').slice(1).join('\n')), '⓪ 무기장 갈래 — 곳간 · 산출 · 숙련 글자 0(셈 밖 잔존 코드를 걷었다 · 빈 갈래로 남아 범용 갈래가 공짜 무기를 안 낸다)', wb ? `${wb.split('\n').length}줄` : '못 찾음');
   const shape = Zsrc.indexOf('function _t671Shape(p) {'), shapeEnd = Zsrc.indexOf('\n}\n', shape), sh = Zsrc.slice(shape, shapeEnd);
   ok(/p\._t1196J = undefined/.test(sh) && /p\._t1196W = undefined/.test(sh) && /facilityNear: \(kind, x, y, r\) => \{ const ty = Facility\.KIND_TYPES\[kind\]/.test(Zsrc), '⓪ 몸 칸 둘(`_t1196J` · `_t1196W`)이 `_t671Shape` 에 · 작업 자리 = 존 시설 목록(`Facility.KIND_TYPES` · 정본 창 표)');
-  ok(/function _lifeHandsIn\(vil\) \{\n  _t1196Seats\(vil\);/.test(Vsrc), '⓪ 명부는 econ 틱 앞(`_lifeHandsIn` 머리) 한 줄');
+  ok(/function _lifeHandsIn\(vil\) \{\n(?:  _t1195HuntIn\(vil\);[^\n]*\n)?  _t1196Seats\(vil\);/.test(Vsrc),   /* ★[PM land1049] T1195 사냥 입고 줄이 맨 앞에 설 수 있다(두 가지 합침 · 둘 다 econ 틱 앞) */ '⓪ 명부는 econ 틱 앞(`_lifeHandsIn` 머리) 한 줄');
 }
 
 // ① 작업표 — 운영 문 그대로(`__t1196`)
