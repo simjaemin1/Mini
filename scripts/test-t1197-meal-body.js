@@ -12,6 +12,8 @@
 //
 // 실행: node scripts/test-t1197-meal-body.js   (존 안 띄움 · 몇 초)
 'use strict';
+// ★[PM land1049] `T1195_HUNT_REAL` · `T1197_MEAL_BODY`(+ T1198) 끔 기본으로(켬 판 서버 빈 마을 1 → 15 · 켤 날 T1209) — 이 하네스는 켬 판의 일을 잰다 → 켬에 묶는다(기본값 줄만 끔 기본으로).
+if (process.env.T1197_MEAL_BODY == null) process.env.T1197_MEAL_BODY = '1';
 const path = require('path');
 const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
@@ -46,7 +48,7 @@ const mkV = (n, food, o) => { const v = Object.assign({ id: 9, npcs: [], storage
 
 console.log('\n=== T1197 ① 유도값 · 제 몫 ===');
 const M = E.__t1197();
-ok(E.T1197_MEAL_BODY === true && !!M, '켬 기본 — 몸 정본 · kcal 을 읽었다');
+ok(E.T1197_MEAL_BODY === true && !!M, '켬(하네스가 켬에 묶음 · 제품은 끔 기본) — 몸 정본 · kcal 을 읽었다');
 ok(M && M.DH === K.dayHunger() && M.HS === B.CFG.HUNGER_SEC && near(M.AT, 100 * (1 - B.extremeAt('hunger')), 1e-12), '하루 허기 · 감쇠 · 극단 문턱 = 정본 그 수', M && JSON.stringify({ DH: M.DH, HS: M.HS, AT: +M.AT.toFixed(3) }));
 ok(M && M.fed[0] > M.AT && M.fed[1] > M.AT && M.fed[0] < 100, '배부른 띠는 극단 밖', M && JSON.stringify(M.fed.map((x) => +x.toFixed(3))));
 ok(M && M.dieDays > 1 && M.dieDays < 14, '죽음 날 수 = 몸 정본 유도(허기 극단 3 게임일 + 게이지 몫)', M && M.dieDays.toFixed(3));

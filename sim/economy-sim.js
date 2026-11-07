@@ -1211,7 +1211,7 @@ function productionActsBound(v) { return !!(v && v._world && _productionActHosts
 //     남은 수요가 없으면 뷰 밖 몫은 안 받는다(장부에 되돌린다 — 몸이 그날 더 잡지 않은 것). 이월은 미리 쓴 몫(음수)만 · 못 채운 날 몫은 그날로 끝(T374 "그날 수요").
 //   헤드리스 랩은 호스트를 등록하지 않으므로 종전 수식 그대로다(랩 동일 = 격리 증명 · 몸 사냥의 증명이 아님).
 //   손잡이 `T1195_HUNT_REAL` — 켬 기본 · 되돌림 `=0`(끔 = 한 글자도 안 바뀐 종전 · 기준선 11-04c 같음).
-const T1195_HUNT_REAL = (typeof process !== 'undefined' && process.env && process.env.T1195_HUNT_REAL !== '0');
+const T1195_HUNT_REAL = (typeof process !== 'undefined' && process.env && process.env.T1195_HUNT_REAL === '1'); // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209
 function productionFormulaOff(v, job) {
   return !!(v && v._world && _productionActHosts.has(v._world) &&
     ((job === 'miner' && T1188_ORE_SPLIT) || (job === 'fisher' && T312_FISH_ACT) || (job === 'lumberjack' && T325_WOOD_ACT) || (job === 'forager' && T347_FORAGE_ACT) || (job === 'hunter' && T1195_HUNT_REAL)));
@@ -1343,7 +1343,7 @@ function foodDebtOf(v) {
 //   ④ 몸(서버 존)이 선 사람은 몸이 끼니를 먹고(`t1197Meal` · 호스트가 부른다) 게이지를 흘린다(`t1197Advance`) — 날 경계(`t1197Day`)는 그 사람의 남은 끼니 · 남은 시간만 친다.
 //      ⇒ 헤드리스 마을(몸 없음)은 이 날 경계가 몸 게이지를 일괄로 굴린다(T1185 질문 3 — 두 길이 같은 함수 · 결과 비교는 보고).
 //   수치 틀: 극단 구간 HP 적분은 게임 1시간(몸 60초) 중점 걸음(세계의 수가 아니다 — T906 `_t906Day` 의 1분 걸음과 같은 꼴 · 값 차는 하네스).
-const T1197_MEAL_BODY = T1074_FOOD_DEBT && !(typeof process !== 'undefined' && process.env && process.env.T1197_MEAL_BODY === '0');
+const T1197_MEAL_BODY = T1074_FOOD_DEBT && (typeof process !== 'undefined' && !!process.env && process.env.T1197_MEAL_BODY === '1'); // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209
 const NPC_HP_DAY = { rest: 18, work: 6 };   // ★[T1197] 몸 일일 회복(요양 · 근무) — 종전 `server/villages.js` 의 그 두 글자를 이리로 옮겼다(값 무변 · 서버 생활층이 이것을 읽는다)
 // 몸 일일 회복 배수(건강 · 행복 · 식량) — 종전 `server/villages.js` 의 그 식을 이리로 옮겼다(식 무변 · 서버 생활층과 아래 날 경계가 같은 함수)
 function npcRegenMul(econ, popAlt) {

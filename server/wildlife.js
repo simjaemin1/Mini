@@ -381,7 +381,7 @@ const ENABLED = process.env.ENABLE_WILDLIFE !== '0';   // 기본 켜짐. '0'만 
 // hp 스케일: 랩 hp ×10 ≈ 카탈로그 hp (사슴 3→30, 토끼 1→10, 멧돼지 6→60, 늑대 4→40, 호랑이 14→140≈130).
 const MAIN_TYPE = { '🦌': 'deer', '🐇': 'arctic_hare', '🐗': 'wild_boar', '🐺': 'wolf', '🐯': 'tiger' };
 // ★[T1195] 사냥 고기 = 몸이 잡은 마리 × kg — econ 정본 손잡이(`sim/economy-sim.js T1195_HUNT_REAL` · 켬 기본 · `=0` = 종전)와 같은 env 를 읽는다(종 기록만 · 세계 규칙 0).
-const T1195_HUNT_REAL = process.env.T1195_HUNT_REAL !== '0';
+const T1195_HUNT_REAL = process.env.T1195_HUNT_REAL === '1'; // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209
 const HP_SCALE = 10;
 const Animals = require('./animals');   // ★[T622] 존 짐승 칸(`faunaOn`·`faunaOut`) — 아래 5a 가 부른다
 

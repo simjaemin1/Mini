@@ -28,7 +28,7 @@ const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT, T720_LON_DAY, SUNRISE_FRAC, phaseAdd, localPhase, T761_CLOCKS } = require('./zone-config');   // ★[T720] 경도 하루 1단계 손잡이 · 시각 한 식   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
-const T1197_BODY = process.env.T1074_FOOD_DEBT !== '0' && process.env.T1197_MEAL_BODY !== '0';   // ★[T1197] econ `T1197_MEAL_BODY` 와 같은 글자(켬 기본 · `=0` 끔 · T1074 끔이면 안 선다) — 마을 몸 허기 면제 자리(`_gaugeStep`)
+const T1197_BODY = process.env.T1074_FOOD_DEBT !== '0' && process.env.T1197_MEAL_BODY === '1'; // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209 ·   // ★[T1197] econ `T1197_MEAL_BODY` 와 같은 글자(켬 기본 · `=0` 끔 · T1074 끔이면 안 선다) — 마을 몸 허기 면제 자리(`_gaugeStep`)
 // ★[T484 ②③] 존 기후 — 이 존의 평년값(`server/climate-normals.js` · `apply` 인 존만)과 청동기 Δ(`T484_PALEO` 켬만)를 econ `CLIMATE` 에 얹는다.
 //   표에 없는 존 · 한반도(`apply: false`) · 손잡이 끔이면 아무것도 안 바꾼다(비트 동일). econ 이 기온을 읽기 전(기동)에 한 번.
 { try { const _c = require('./weather').applyZoneClimate(process.env.ZONE_ID || 'korea'); if (_c && _c.changed) console.log(`[${process.env.ZONE_ID}] 🌡️ T484 존 기후 — 평년값 ${_c.normals ? '얹음' : '없음'} · 청동기 Δ ${_c.paleo ? '켬' : '끔'} · ${JSON.stringify(_c.CLIMATE)}`); } catch (e) {} }
