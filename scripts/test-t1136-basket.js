@@ -20,6 +20,9 @@
 //  ⑫ 몸 걸음(T474 켬 판) — 다리 날 = 거리 ÷ 7,200 · 짧은 다리는 하루 안에 갔다 온다(econ 날 경계에 안 묶인다)
 // 실행: node scripts/test-t1136-basket.js
 'use strict';
+// ★[T1216-K3] 자연사(T1206 · land1050 켬 기본)는 누가 죽을지를 사람 id 해시로 고르는데, 사람 id 가 프로세스 전체 마을 계수기(`sim/economy-sim.js` `_nextVillageId`)에서 나와
+//   한 프로세스 안 둘째 판은 다른 사람이 죽는다 — 이 하네스는 한 프로세스에서 두 판을 비트로 견준다. 그래서 자연사를 끔으로 묶는다(뿌리는 보고 T1216_K3 제품 회부).
+if (process.env.T1206_NAT_DEATH == null) process.env.T1206_NAT_DEATH = '0';
 // 종전 상인 한 명 판은 명시적으로 되돌림. 기본 호위 운반은 T1182에서 검증.
 process.env.T1136_ESCORT_CARRY = '0';
 const path = require('path');

@@ -46,7 +46,9 @@ const child = (knob, seed) => {
     + `const spawnNpc=(o)=>{const p={pid:'p'+(++pid),playerId:'npc_t_'+(serial++)+'_'+Math.random().toString(36).slice(2,6),name:o.name,x:o.x,y:o.y,isNpc:true};players.set(p.pid,p);npcs.add(p.pid);return p;};`
     + `const H=V.__p3Bind({ready:true,econ:{rngState:()=>({s0:${seed}})},villageSeed:${seed},villages:[],world:{},deps:{players,npcs,broadcast(){},spawnNpc}});`
     + `const host=H.banditHost();B._t765Probe.setHost(host);`
-    + `B.gangs().push({id:4,n:3,camp:{cx:40,cy:50}},{id:9,n:2,camp:{cx:90,cy:20}});B._t765Probe.syncBodies();`
+    //   ★[T1216-K3] T1078(도적 실체화 · `T1078_BANDIT_ALL` 켬 기본) 뒤로 몸이 처음 서는 길은 **부팅 실체화**(`syncBodies(boot)` — 단마다 n)다.
+    //     부팅 인자 없이 부르면 "황야에서 난 사람"만 몸이 되어 0몸이었다 — 운영 부팅 문 그대로(`_t1039Probe.syncBodies(true)` · 사본 0)로 부른다.
+    + `B.gangs().push({id:4,n:3,camp:{cx:40,cy:50}},{id:9,n:2,camp:{cx:90,cy:20}});B._t1039Probe.syncBodies(true);`
     //   존 결정 문이 보는 신원(`_shOf` — `_sh` 가 있으면 그것 · 없으면 `playerId` 를 해시)
     + `const sh=(p)=>p._sh!==undefined?p._sh:SR.pidHash(p.playerId||p.pid||'');const out=[];`
     + `for(const [gid,pids] of B._t765Probe.bodies())for(const k of pids){const p=players.get(k);out.push([gid,k,sh(p),p._sh===undefined?0:1,p.name,p.playerId.split('_').length]);}`
