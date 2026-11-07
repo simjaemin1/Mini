@@ -19,9 +19,8 @@
 //
 // 실행: node scripts/test-lab-stone.js
 'use strict';
-// ★[T1216-K3] 자연사(T1206 · land1050 켬 기본)는 누가 죽을지를 사람 id 해시로 고르는데, 사람 id 가 프로세스 전체 마을 계수기(`sim/economy-sim.js` `_nextVillageId`)에서 나와
-//   한 프로세스 안 둘째 판은 다른 사람이 죽는다 — 이 하네스는 한 프로세스에서 두 판을 비트로 견준다(②⑭). 그래서 자연사를 끔으로 묶는다(뿌리는 보고 T1216_K3 제품 회부).
-if (process.env.T1206_NAT_DEATH == null) process.env.T1206_NAT_DEATH = '0';
+// ★[T1222] 자연사(T1206 · 켬 기본) 세계 그대로 돈다 — T1216-K3 의 끔 묶음을 풀었다. 두 판 비트 비교(② ⑭ ㉓)는 econ 자연사 주사위 열쇠를 첫 세계 기준으로 옮겨(`_t1206Key`) 서고,
+//   ⑨ 끝 줄 · ㉓ 은 픽스처를 켬 세계에 맞췄다(⑨ 돌 남는 판을 픽스처가 세운다 · ㉓ 인구 80 — 보고 T1222).
 // ★[T1127 2026-11-04] 이 하네스가 재는 것은 굶주림 길(식량 빚 · 보호막) 밖이다 — 판 세계를 T1127 앞(`T1074_FOOD_DEBT=0 T858_NO_SHIELD=0` = 종전 바이트)으로 묶는다.
 //   T1127 이 두 손잡이를 켬 기본으로 바꾼 뒤 이 하네스의 작은 판 세계(인구 · 곳간 · 교역)가 갈려 단언이 빨개졌다(main 에선 초록 · 보고 T1127 §4). 켬 기본 세계에서 같은 단언을 다시 세우는 일은 회부. 부르는 쪽이 값을 주면 그 값이 먼저다.
 if (process.env.T1074_FOOD_DEBT == null) process.env.T1074_FOOD_DEBT = '0';
@@ -251,7 +250,8 @@ const mkTrade = (inject, starve) => {
     const P = econV2.tickWorldV2Parts(w);
     P.head();
     look('atSettle', pend);
-    if (starve) for (let i = 0; i < w.villages.length; i += 2) w.villages[i].storage.stone = 0;
+    if (starve === 'glut') for (const v of w.villages) v.storage.stone = 1e4;   // ★[T1222] 돌이 남아도는 세계(⑨ 마지막 줄) — 모든 마을 돌을 글럿 위로(같은 자리 · 아래 비우기의 거울)
+    else if (starve) for (let i = 0; i < w.villages.length; i += 2) w.villages[i].storage.stone = 0;
     //   ★[T727] 비우기는 머리 **뒤** — 머리는 끔 세계에선 돌을 안 건드려 끔 판 값이 같고(19 → 129건 · 5,423 단위 그대로),
     //     켬 세계에선 떠날 때 정산이 머리에 있다. 머리 앞에 비우면 픽스처가 정산 바로 앞을 쳐서 바닥 마을이 판 돌이 늘 0 이 된다
     //     (켬 ×1.55 — 세계가 아니라 픽스처가 정산 시각과 부딪친 값). 비우는 뜻은 같다: 그날 생산 앞에 바닥 마을 돌 = 0.
@@ -284,8 +284,11 @@ const digest = (w) => JSON.stringify(w.villages.map((v) => ({ n: v.npcs.length, 
   ok(sn._t173.stoneAmt > so._t173.stoneAmt * 2,
     '⑨ 늘어난 폭이 잡음이 아니다(2배 이상)', `×${(so._t173.stoneAmt ? sn._t173.stoneAmt / so._t173.stoneAmt : 0).toFixed(2)}`);
   //   ★굶기지 않으면 문은 **안 선다**(글럿 게이트가 막는다) — 문이 규칙을 느슨하게 하지 않는 증거
-  const ng = mkTrade(true, false);
-  ok(digest(ng) === digest(a), '⑨ ★★돌이 남아도는 세계에선 문이 **아무것도 안 바꾼다**(글럿 게이트 · 공짜 돌 0)');
+  //   ★[T1222] 그 세계를 픽스처가 **세운다** — 종전엔 굶기지 않은 판(`a`)이 돌이 남는다고 여겼는데, 자연사(T1206 켬 기본) 세계에선 바닥 마을 돌이
+  //     어느 날 글럿 아래로 내려가 문이 게이트를 지난 채 정당하게 섰다(세계가 갈린 까닭 = 문이 아니라 픽스처). 그래서 모든 마을 돌을 날마다 글럿 위로 채운 판 둘을 견준다.
+  const ga = mkTrade(false, 'glut'), ng = mkTrade(true, 'glut');
+  pre(ga._t173.returns > 0, '돌이 남는 판에서도 캐러밴이 귀환한다(문이 물을 자리가 있다)', `귀환 ${ga._t173.returns}건`);
+  ok(digest(ng) === digest(ga), '⑨ ★★돌이 남아도는 세계에선 문이 **아무것도 안 바꾼다**(글럿 게이트 · 공짜 돌 0)');
 }
 
 console.log('\n⑩ 진단 계측기 — T142 계측기를 재사용했나(정본 재구현 0)');
@@ -533,7 +536,7 @@ console.log('\n㉒ 둘째 화물 — 끔 비트 동일 · 켬 실림 · 용량 �
     w.onTradeLeg = () => { legs++; };
     for (let i = 0; i < 6; i++) {
       const v = econ.createVillage({ fertility: 1.2, water: 0.9, stone: (i % 2 ? 2.5 : LV.FLOOR.stone), ore: 0.2,
-                                     wood: 1.2, game: 0.7, arable: 1, size: 70, initialPop: 40, name: (i % 2 ? '산촌' : '바닥') + i });
+                                     wood: 1.2, game: 0.7, arable: 1, size: 70, initialPop: 80, name: (i % 2 ? '산촌' : '바닥') + i });   // ★[T1222] 40 → 80 — 자연사 켬 세계에서 40 은 엔진 `spareCap` 이 내내 1 이라 고정 1 이 아무것도 안 바꿨다(끔 세계도 2 가 63번뿐 · 80 = 켬 460 · 끔 437번 > 1)
       v._world = w; v.coord = { x: (i % 3) * 120, y: Math.floor(i / 3) * 120 };
       w.villages.push(v);
     }
