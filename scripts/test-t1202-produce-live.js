@@ -78,6 +78,20 @@ check('fish batch: no fisher, no shore, or knob off brings nothing', () => {
   const r = spawnSync(process.execPath, ['-e', "process.env.ENABLE_VILLAGES='0';const V=require('./server/villages');console.log(V._t1202Roster({econ:{counts:{fisher:3}},npcPids:[]},'fisher',null,0,false)===null?'off':'on')"], { cwd: ROOT, env: { ...process.env, T1202_BATCH: '0' }, encoding: 'utf8' });
   assert.strictEqual(r.stdout.trim().split('\n').at(-1), 'off');
 });
+check('production off (the default world): the fish batch and the shore search never run', () => {
+  //   생산 셋이 꺼진 세계(지금 기본)에서는 T1202 줄이 한 줄도 안 돈다 — 어부 일괄은 첫 줄(`T312_FISH_ACT`)에서 0 · 물가 찾기는 `_lifeJobSites` 의 같은 술어 뒤
+  const code = "process.env.ENABLE_VILLAGES='0';const E=require('./sim/economy-sim'),E2=require('./sim/economy-sim-v2'),V=require('./server/villages'),S=V.__p3Bind({}).state;" +
+    "const w=E2.createWorldV2({seed:42,villageCount:1}),v=w.villages[0];E.bindProductionActs(w);v.storage={fish:0};v.treasury={};v.counts={fisher:3};v._fishOutLast=4;v._t312Cells=1;" +
+    "S.deps={moveSpeed:64,dayPhaseRatio:0.7,players:new Map(),isWaterTileLocal:(x,y)=>Math.floor(x/32)===11&&Math.floor(y/32)===10};S.dayMs=250;S.zoneId='hanbando';" +
+    "const vil={name:'x',ccx:10,ccy:14,econ:v,npcPids:[],_jobSites:{day:7,tmul:1,fisher:[{x:336,y:336}],lumberjack:[],miner:[],forager:[],hunter:[]}};" +
+    "console.log(JSON.stringify([E.T312_FISH_ACT,V._t1202FishBatch(vil,7),(v.storage.fish||0)+(v.treasury.fish||0),vil._t1202Shore===undefined]));";
+  const env = { ...process.env }; delete env.T312_FISH_ACT; delete env.T325_WOOD_ACT; delete env.T347_FORAGE_ACT;
+  const r = spawnSync(process.execPath, ['-e', code], { cwd: ROOT, env, encoding: 'utf8' });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.deepStrictEqual(JSON.parse(r.stdout.trim().split('\n').at(-1)), [false, 0, 0, true]);
+  const r1 = spawnSync(process.execPath, ['-e', code], { cwd: ROOT, env: { ...env, T312_FISH_ACT: '1' }, encoding: 'utf8' });
+  const o1 = JSON.parse(r1.stdout.trim().split('\n').at(-1)); assert(o1[0] === true && o1[1] > 0, 'positive control ' + r1.stdout.slice(-200));
+});
 check('fish batch: a big demand is bounded by the bodies day (time and carry), not by the demand', () => {
   const { v, vil } = fishFixture({ D: 1e6, fishers: 1 });
   v._t312Cells = 1;
