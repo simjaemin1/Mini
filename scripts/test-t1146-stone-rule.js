@@ -225,7 +225,7 @@ const SRS = rd('server/stone-rule.js');
 const SR = require(path.join(ROOT, 'server', 'stone-rule.js'));
 
 sec('① 글자 — 손잡이 · 정본 모듈 하나 · 새 수 0 · 두 문 · 땅 채굴 무접촉 · 곳간 두 순간');
-ok(/const T1146_STONE_RULE = process\.env\.T1146_STONE_RULE !== '0';/.test(Z) && /const T1146_STONE_RULE = process\.env\.T1146_STONE_RULE !== '0';/.test(VIL), '손잡이 — 존 · 마을 둘 다 켬 기본(`=0` = 종전 · ★[T1186] 날 무게 · kg 닳기 위에서 첫 움집 2/2 뒤)');
+ok(/const T1146_STONE_RULE = process\.env\.T1146_STONE_RULE === '1';/.test(Z) && /const T1146_STONE_RULE = process\.env\.T1146_STONE_RULE === '1';/.test(VIL), '손잡이 — 존 · 마을 둘 다 끔 기본(`=1` 만 켬 · PM land1047 · ★[T1186 11-07] main 07eec54e 위 첫 움집 켬 1/2 — "다 서면 켬 기본" 안 섬)');
 ok(/const T1146_ROCK = T1146_STONE_RULE && T1126_ROCK_YIELD;/.test(Z), '바위 규칙은 T1126 위에서만 선다(hp = 돌 수 정본 — T1126 끔이면 hp 4 는 돌 수가 아니다)');
 ok(/const StoneRule = require\('\.\/stone-rule'\);/.test(Z) && /const T1146_K_BED = StoneRule\.kIntact\(Specialty\.CHUNK_KG, Specialty\.MINE_SWINGS_PER, TOOL_EFFECTS\.pickaxe\.gatherStoneMult\);/.test(Z),
   '★암반 한 타 kg 은 채굴 정본 셋(덩이 kg · 덩이당 타수 · 곡괭이 배수)에서 — 손으로 적은 수 0');
