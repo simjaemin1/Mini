@@ -14682,7 +14682,7 @@ function _t1202FishBatch(vil, day) {
 //   일한 값이 쉰 값보다 크지 않으면 그 사람은 그날 거기서 멈춘다(쉰다) — 쉰 시간은 그날 여가 몫으로 econ 에 간다(`_t1217Rest` · 사람-날).
 //   몸 · 일괄(T1202 명부 — 몸 없는 일꾼 · 판 시계로 왕복 못 하는 날의 안 걸은 몸)이 같은 술어(`_t1217HourFish` · `t1217Value`)를 쓴다.
 const _t1217Samp = [];   // 멈춤 표본(계측 전용)
-const _t1217Stat = { days: 0, persons: 0, hours: 0, fishN: 0, units: 0, short: 0, stopH: 0, stopN: 0, noSite: 0, noSp: 0, restDays: 0, bodyStop: 0, bodyRest: 0, valEat: 0, valSur: 0, pxBatch: 0 };
+const _t1217Stat = { days: 0, persons: 0, hours: 0, fishN: 0, units: 0, short: 0, stopH: 0, stopN: 0, noSite: 0, noSp: 0, restDays: 0, bodyStop: 0, bodyRest: 0, valEat: 0, valSur: 0, pxBatch: 0, moved: 0, bodyMoved: 0 };
 function _t1217On() { const E = _lifeEcon(); return !!(E.T1217_MARGIN && E.T312_FISH_ACT); }
 //   한 사람의 한 시간(또는 그 남은 몫) — 입질 기댓값 `ew` 마다 한 마리 · 짐이 차면 그 물가 ↔ 곳간 왕복(`round`) · 시간 순서(T1202 일괄의 그 꼴 · 새 수 0).
 //   반환 { m: 그 시간 낚을 마리, t: 그 시간이 끝난 시각, carried: 손의 kg }
@@ -14718,21 +14718,49 @@ function _t1217SpotAt(vil, day, s, h, F, FG, K, isW, _RP) {
   if (!spot || !spot.water) return null;
   return { s, cx, cy, sp: _sp, spot, kgF, units };
 }
-function _t1217Spot(vil, day, sites, r, F, FG, K, isW, _RP) {
-  const h = _pidHash(vil.name + '#fisher#' + r);
-  for (let i = 0; i < sites.length; i++) { const q = _t1217SpotAt(vil, day, sites[(h + i) % sites.length], h, F, FG, K, isW, _RP); if (q) return q; }
+//   ★[T1217] 자리 고르기 — 고기가 있는 데로 간다: 그 마을 현장 목록(물가 · 그날 한 번 — 던질 물 칸까지)에서 지금 입질 비율(셀 원판 × 버킷)이 가장 높은 자리 ·
+//     같으면 그 사람의 해시 차례에서 먼저 본 것(종전 고르기 그대로 — 고기가 고르게 있으면 종전 자리). 몸 · 일괄이 같은 함수(새 수 0 · 주사위 0).
+function _t1217Sites(vil, day, sites, isW) {
+  const C = vil._t1217Sites;
+  if (C && C.day === day && C.n === sites.length) return C.list;
+  const list = [];
+  for (const s of sites) { for (const [dx, dy] of [[SZ, 0], [-SZ, 0], [0, SZ], [0, -SZ], [SZ, SZ], [-SZ, SZ], [SZ, -SZ], [-SZ, -SZ]]) if (isW(s.x + dx, s.y + dy)) { list.push({ s, cx: Math.floor((s.x + dx) / SZ), cy: Math.floor((s.y + dy) / SZ) }); break; } }
+  vil._t1217Sites = { day, n: sites.length, list };
+  return list;
+}
+function _t1217Choose(vil, day, sites, h, F, isW, now, skip) {
+  const L = _t1217Sites(vil, day, sites, isW);
+  let best = null, bs = -1;
+  for (let i = 0; i < L.length; i++) { const e = L[(h + i) % L.length]; if (skip && skip.has(e)) continue; const r = _t1217Stock01(F, e.cx, e.cy, now); if (r > bs + 1e-12) { bs = r; best = e; } }
+  return best;
+}
+function _t1217Spot(vil, day, sites, r, F, FG, K, isW, _RP, now, skip) {
+  const h = _pidHash(vil.name + '#fisher#' + r), tried = new Set(skip || []);
+  for (let i = 0; i < sites.length; i++) {
+    const e = _t1217Choose(vil, day, sites, h, F, isW, now, tried); if (!e) return null;
+    const q = _t1217SpotAt(vil, day, e.s, h, F, FG, K, isW, _RP); if (q) { q.e = e; return q; }
+    tried.add(e);
+  }
   return null;
 }
 //   ★[T1217] 몸 어부의 한 시간 — 지금 그 물가에서 다음 한 시간을 낚으면(같은 술어 · 정본 운영 하루의 한 시간 · 손에 든 kg 에서 시작) 쉰 값보다 크나.
 //     판 시계의 한 시간마다 한 번 묻는다(부르는 쪽). 크지 않으면 그날 멈춘다.
-function _t1217BodyKeep(vil, npc, ws, day) {
+function _t1217BodyKeep(vil, npc, ws0, day) {
+  let ws = ws0;
   const F = _fishingMod(), K = _kcal(), isW = state.deps && state.deps.isWaterTileLocal;
   if (!F || !K || typeof isW !== 'function') return true;
   const { hourMs, H } = _t1217Clock(), spd = (state.deps && state.deps.moveSpeed) || 0, cap = ((_carryCfg() || {}).CFG || {}).CAP_KG || 0;
   if (!(hourMs > 0) || !(spd > 0)) return true;
-  const q = _t1217SpotAt(vil, day, ws, _pidHash(npc.pid), F, require('./fish-goods'), K, isW, _regionMod());
+  let q = _t1217SpotAt(vil, day, ws, _pidHash(npc.pid), F, require('./fish-goods'), K, isW, _regionMod());
   if (!q) return true;
   const val = _t1217Val(vil, H, null); if (!val) return true;
+  const KPS0 = (F.CFG && F.CFG.KG_PER_STOCK) || 1, now0 = Date.now();
+  if (!(F.bucketWholeFish(q.cx, q.cy, q.kgF / KPS0, now0, _t1217BucketK) >= 1)) {   // 그 물이 비었다 — 고기가 있는 자리로(일괄과 같은 고르기 · 몸이 걸어간다)
+    const sites = (_lifeJobSites(vil, day).fisher) || [];
+    const e = sites.length ? _t1217Choose(vil, day, sites, _pidHash(npc.pid), F, isW, now0, null) : null;
+    const q2 = e ? _t1217SpotAt(vil, day, e.s, _pidHash(npc.pid), F, require('./fish-goods'), K, isW, _regionMod()) : null;
+    if (q2 && F.bucketWholeFish(q2.cx, q2.cy, q2.kgF / KPS0, now0, _t1217BucketK) >= 1) { npc._workSite = { x: e.s.x, y: e.s.y, day }; _t1217Stat.bodyMoved++; q = q2; ws = e.s; }
+  }
   const round = 2 * Math.hypot(ws.x - (vil.ccx * SZ + SZ / 2), ws.y - (vil.ccy * SZ + SZ / 2)) / spd * 1000;
   const now = Date.now(), s01 = _t1217Stock01(F, q.cx, q.cy, now), o = _t1217HourFish(0, hourMs, F.expectedWaitMs(q.spot, s01), q.kgF, cap, round, npc._t312Kg || 0);
   const mE = Math.min(o.m, F.bucketWholeFish(q.cx, q.cy, q.kgF / ((F.CFG && F.CFG.KG_PER_STOCK) || 1), now, _t1217BucketK));   // 그 물에 남은 온전한 마리를 넘지 않는다(일괄과 같은 줄)
@@ -14788,9 +14816,9 @@ function _t1217FishDay(vil, day) {
   const FG = require('./fish-goods'), _RP = _regionMod(), cx0 = vil.ccx * SZ + SZ / 2, cy0 = vil.ccy * SZ + SZ / 2, KPS = (F.CFG && F.CFG.KG_PER_STOCK) || 1, now = Date.now();
   const P = [];
   for (let r = 0; r < R.n; r++) {
-    const q = _t1217Spot(vil, day, sites, r, F, FG, K, isW, _RP);
+    const q = _t1217Spot(vil, day, sites, r, F, FG, K, isW, _RP, now);
     if (!q) continue;
-    q.round = 2 * Math.hypot(q.s.x - cx0, q.s.y - cy0) / spd * 1000; q.t = 0; q.carried = 0; q.worked = 0; q.done = false;
+    q.r = r; q.round = 2 * Math.hypot(q.s.x - cx0, q.s.y - cy0) / spd * 1000; q.t = 0; q.carried = 0; q.worked = 0; q.done = false;
     P.push(q);
   }
   _t1217Stat.days++; _t1217Stat.persons += P.length;
@@ -14803,8 +14831,16 @@ function _t1217FishDay(vil, day) {
       if (!val) { val = _t1217Val(vil, H, 'b' + day + ':' + k); _t1217Stat.pxBatch++; }
       if (!val) { p.done = true; continue; }
       if (p.t < h0) p.t = h0;
+      //   그 물에 온전한 마리가 없으면 고기가 있는 자리로 옮긴다(걸어서 — 두 물가 사이 · 손의 짐은 그대로 · 같은 고르기 `_t1217Spot`)
+      if (!(F.bucketWholeFish(p.cx, p.cy, p.kgF / KPS, now, _t1217BucketK) >= 1)) {
+        const q = _t1217Spot(vil, day, sites, p.r, F, FG, K, isW, _RP, now, new Set([p.e]));
+        if (q && q.e !== p.e && F.bucketWholeFish(q.cx, q.cy, q.kgF / KPS, now, _t1217BucketK) >= 1) {
+          p.t += Math.hypot(q.s.x - p.s.x, q.s.y - p.s.y) / spd * 1000; _t1217Stat.moved++;
+          Object.assign(p, { s: q.s, cx: q.cx, cy: q.cy, sp: q.sp, spot: q.spot, kgF: q.kgF, units: q.units, e: q.e, round: 2 * Math.hypot(q.s.x - cx0, q.s.y - cy0) / spd * 1000 });
+        }
+      }
       const s01 = _t1217Stock01(F, p.cx, p.cy, now), ew = F.expectedWaitMs(p.spot, s01);
-      const o = _t1217HourFish(p.t, h1, ew, p.kgF, cap, p.round, p.carried);
+      const o = _t1217HourFish(Math.min(p.t, h1), h1, ew, p.kgF, cap, p.round, p.carried);
       const mE = Math.min(o.m, F.bucketWholeFish(p.cx, p.cy, p.kgF / KPS, now, _t1217BucketK));   // 그 물(버킷)에 남은 온전한 마리를 넘지 않는다
       const W = mE * p.units * val.unit, L = val.rest * frac;
       _t1217Stat.hours++;
@@ -17150,7 +17186,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
-  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
+  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, _t1217Choose, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
   // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
   noteRescue,

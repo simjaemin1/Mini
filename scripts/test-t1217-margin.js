@@ -30,6 +30,7 @@ if (MUT) {
     if (MUT === 'nodraw') swap('      const n = mE > 0 ? _t1217Draw(F, p.cx, p.cy, p.kgF / KPS, mE, now, vil) : 0;', '      const n = mE;');
     else if (MUT === 'nostop') swap('      if (!(W > L)) {', '      if (false) {');
     else if (MUT === 'nocpue') swap('      const s01 = _t1217Stock01(F, p.cx, p.cy, now), ew = F.expectedWaitMs(p.spot, s01);', '      const s01 = _t1217Stock01(F, p.cx, p.cy, now), ew = F.expectedWaitMs(p.spot, 1);');
+    else if (MUT === 'nochoose') swap('const r = _t1217Stock01(F, e.cx, e.cy, now); if (r > bs + 1e-12) { bs = r; best = e; }', 'const r = 1; if (r > bs + 1e-12) { bs = r; best = e; }');
     else if (MUT === 'norest') swap('  if (vil.econ) vil.econ._t1217Rest = ((r && r.rest) || 0) + bodyRest;', '  if (vil.econ) vil.econ._t1217Rest = 0;');
     m._compile(src, file);
   };
@@ -207,6 +208,27 @@ check('body: the same hour predicate (stop at an empty spot), and a stopped body
   const src = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
   assert(src.includes("if (_t1217On() && npc._t1217Stop && npc._t1217Stop.day === day) { _lifeGoHome(npc, '휴식'); return true; }"), 'stopped body goes home');
 });
+const MOVE = 'site choice: fishers go where the fish are (best bite ratio among the shore sites) · an emptied water is left for one that still holds fish';
+check(MOVE, () => {
+  const { v, vil } = fishFixture({ debt: 3, fishers: 2 });
+  //   둘째 물가 B(40, 10) — 던질 물(41, 10) = 버킷 (1, 0) · 물 = 셀 x 41 ~ 46
+  const isW0 = state.deps.isWaterTileLocal;
+  state.deps.isWaterTileLocal = (x, y) => { const cx = Math.floor(x / SZ), cy = Math.floor(y / SZ); return isW0(x, y) || (cx >= 41 && cx <= 46 && cy >= 0 && cy <= 23); };
+  vil._jobSites.fisher = [{ x: 10 * SZ + 16, y: 10 * SZ + 16 }, { x: 40 * SZ + 16, y: 10 * SZ + 16 }];
+  F.drawBucketFish(11, 10, 1, 288, Date.now(), V._t1217BucketK, null);   // A 의 물(버킷 0,0)을 비웠다
+  const r = V._t1217FishDay(vil, 7);
+  assert(r.got > 0, 'fished at B ' + r.got);
+  assert(F.fishBuckets.has('1_0') && F.fishBuckets.get('1_0').s < 1, 'B water lost fish');
+  assert.strictEqual(F.fishBuckets.get('0_0').s, 0, 'A stays empty');
+  //   고르기 그 자체 — A 가 해시 차례 첫째(h = 0)여도 입질 비율이 높은 B · 같으면 해시 차례 첫째(종전 자리)
+  const now = Date.now(), sites = vil._jobSites.fisher, isW = state.deps.isWaterTileLocal;
+  F.fishBuckets.clear(); vil._t1217Sites = null;
+  F.drawBucketFish(11, 10, 1, 259, now, V._t1217BucketK, null);   // A 의 물 = 10 %
+  assert.strictEqual(V._t1217Choose(vil, 7, sites, 0, F, isW, now, null).s, sites[1]);
+  F.fishBuckets.clear();
+  assert.strictEqual(V._t1217Choose(vil, 7, sites, 0, F, isW, now, null).s, sites[0]);
+  assert.strictEqual(V._t1217Choose(vil, 7, sites, 1, F, isW, now, null).s, sites[1]);
+});
 check('village ledger (bucket): regrows by the same logistic, spreads only into water buckets, keeps the deficit total while spreading', () => {
   fishFixture();
   const t0 = 1e6, kFn = (bx, by) => (bx === 0 && by === 0 ? 288 : (bx === 1 && by === 0 ? 100 : 0));
@@ -224,6 +246,6 @@ check('village ledger (bucket): regrows by the same logistic, spreads only into 
   near(before - after, r.regen, 1e-6);
 });
 state.deps = oldDeps; state.dayMs = oldDay; state.zoneId = oldZone; F.fishCells.clear(); F.fishBuckets.clear();
-if (!MUT) for (const [kind, name] of [['nodraw', DEBT], ['nostop', 'batch day: no debt and nothing worth buying → every fisher rests from the first hour (rested person-days = roster) · nothing drawn'], ['nocpue', CPUE], ['norest', 'rest goes to econ: _t1217Day writes the rested person-days the leisure base reads']])
+if (!MUT) for (const [kind, name] of [['nochoose', MOVE], ['nodraw', DEBT], ['nostop', 'batch day: no debt and nothing worth buying → every fisher rests from the first hour (rested person-days = roster) · nothing drawn'], ['nocpue', CPUE], ['norest', 'rest goes to econ: _t1217Day writes the rested person-days the leisure base reads']])
   check('mutant ' + kind + ' is caught', () => { const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, T1217_MUTANT: kind }, encoding: 'utf8' }); assert.strictEqual(r.status, 1, r.stderr); assert(r.stdout.includes('FAIL ' + name), r.stdout.slice(-600)); });
 console.log(`PASS ${pass} / FAIL ${fail}`); process.exitCode = fail ? 1 : 0;
