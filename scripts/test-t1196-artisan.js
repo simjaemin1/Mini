@@ -15,6 +15,10 @@
 'use strict';
 const path = require('path'), fs = require('fs');
 const { spawnSync } = require('child_process');
+// ★[T1208-K2] 묶음 — `T1195_HUNT_REAL`(사냥 고기 = 사냥꾼 몸이 잡은 짐승)을 켜면 서버 호스트가 사냥 수식을 닫아, "빈 몸 자리 없는 호스트 = 호스트 없음" ② ·
+//   "수식 판과 같은 자릿수" ③ 이 장인 밖 까닭(사냥꾼 몸이 없는 가짜 판의 고기 0 · 인구 218/421)으로 갈린다(land1049 첫 판 · 사냥 켬 기본이던 때).
+//   이 하네스가 재는 것은 장인 다섯의 몸 작업이라 사냥 손잡이를 끔으로 묶는다(지금 기본도 끔 — T1202 가 켜도 이 하네스는 장인만 잰다). 두 손잡이를 같이 켠 판은 회부(보고 T1208-K2).
+if (process.env.T1195_HUNT_REAL == null) process.env.T1195_HUNT_REAL = '0';
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };
