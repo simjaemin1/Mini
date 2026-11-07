@@ -1,0 +1,799 @@
+{
+ "how": "node scripts/t1191-ditch.js --json <파일> --svg <폴더> <판.db…> · 판 = t577 서버 판 자 main dad5679c · 2날(부팅) · 800날 · 시드 1020 · 7 · 42",
+ "boot": [
+  {
+   "db": "base-1020.db",
+   "day": 2,
+   "v": 1,
+   "name": "광산1",
+   "pop": 8,
+   "D": {
+    "cells": 292,
+    "a": 36,
+    "b": 21,
+    "perim": 182,
+    "reHit": 292,
+    "reCells": 366,
+    "outSeed": 71,
+    "outOwn": 71,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 71,
+    "manDays": 97.3,
+    "m3": [
+     58,
+     321
+    ]
+   },
+   "W": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 228,
+    "manDays": 135.3
+   },
+   "grow": {
+    "terr": 3450,
+    "seed": 3450,
+    "terrBeyond": 1067,
+    "terrOnDitch": 221,
+    "terrInside": 2162
+   },
+   "houses": {
+    "all": 3,
+    "inRing": 3,
+    "outRing": 0
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 116,
+    "outOwn": 116,
+    "overlapOther": 0,
+    "housesIn": 3,
+    "manDays": 115.3,
+    "m3": [
+     69,
+     381
+    ]
+   }
+  },
+  {
+   "db": "base-1020.db",
+   "day": 2,
+   "v": 3,
+   "name": "광산3",
+   "pop": 8,
+   "D": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "perim": 208,
+    "reHit": 406,
+    "reCells": 406,
+    "outSeed": 238,
+    "outOwn": 238,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 238,
+    "manDays": 135.3,
+    "m3": [
+     81,
+     447
+    ]
+   },
+   "W": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 238,
+    "manDays": 135.3
+   },
+   "grow": {
+    "terr": 3450,
+    "seed": 3450,
+    "terrBeyond": 699,
+    "terrOnDitch": 168,
+    "terrInside": 2583
+   },
+   "houses": {
+    "all": 3,
+    "inRing": 3,
+    "outRing": 0
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 86,
+    "outOwn": 86,
+    "overlapOther": 0,
+    "housesIn": 3,
+    "manDays": 115.3,
+    "m3": [
+     69,
+     381
+    ]
+   }
+  },
+  {
+   "db": "base-7.db",
+   "day": 2,
+   "v": 1,
+   "name": "광산1",
+   "pop": 8,
+   "D": {
+    "cells": 292,
+    "a": 36,
+    "b": 21,
+    "perim": 182,
+    "reHit": 292,
+    "reCells": 366,
+    "outSeed": 71,
+    "outOwn": 71,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 71,
+    "manDays": 97.3,
+    "m3": [
+     58,
+     321
+    ]
+   },
+   "W": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 228,
+    "manDays": 135.3
+   },
+   "grow": {
+    "terr": 3450,
+    "seed": 3450,
+    "terrBeyond": 1067,
+    "terrOnDitch": 221,
+    "terrInside": 2162
+   },
+   "houses": {
+    "all": 3,
+    "inRing": 3,
+    "outRing": 0
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 116,
+    "outOwn": 116,
+    "overlapOther": 0,
+    "housesIn": 3,
+    "manDays": 115.3,
+    "m3": [
+     69,
+     381
+    ]
+   }
+  },
+  {
+   "db": "base-7.db",
+   "day": 2,
+   "v": 3,
+   "name": "광산3",
+   "pop": 8,
+   "D": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "perim": 208,
+    "reHit": 406,
+    "reCells": 406,
+    "outSeed": 238,
+    "outOwn": 238,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 238,
+    "manDays": 135.3,
+    "m3": [
+     81,
+     447
+    ]
+   },
+   "W": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 238,
+    "manDays": 135.3
+   },
+   "grow": {
+    "terr": 3450,
+    "seed": 3450,
+    "terrBeyond": 699,
+    "terrOnDitch": 168,
+    "terrInside": 2583
+   },
+   "houses": {
+    "all": 3,
+    "inRing": 3,
+    "outRing": 0
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 86,
+    "outOwn": 86,
+    "overlapOther": 0,
+    "housesIn": 3,
+    "manDays": 115.3,
+    "m3": [
+     69,
+     381
+    ]
+   }
+  },
+  {
+   "db": "base-42.db",
+   "day": 2,
+   "v": 1,
+   "name": "광산1",
+   "pop": 8,
+   "D": {
+    "cells": 292,
+    "a": 36,
+    "b": 21,
+    "perim": 182,
+    "reHit": 292,
+    "reCells": 366,
+    "outSeed": 71,
+    "outOwn": 71,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 71,
+    "manDays": 97.3,
+    "m3": [
+     58,
+     321
+    ]
+   },
+   "W": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 228,
+    "manDays": 135.3
+   },
+   "grow": {
+    "terr": 3450,
+    "seed": 3450,
+    "terrBeyond": 1067,
+    "terrOnDitch": 221,
+    "terrInside": 2162
+   },
+   "houses": {
+    "all": 3,
+    "inRing": 3,
+    "outRing": 0
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 116,
+    "outOwn": 116,
+    "overlapOther": 0,
+    "housesIn": 3,
+    "manDays": 115.3,
+    "m3": [
+     69,
+     381
+    ]
+   }
+  },
+  {
+   "db": "base-42.db",
+   "day": 2,
+   "v": 3,
+   "name": "광산3",
+   "pop": 8,
+   "D": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "perim": 208,
+    "reHit": 406,
+    "reCells": 406,
+    "outSeed": 238,
+    "outOwn": 238,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 238,
+    "manDays": 135.3,
+    "m3": [
+     81,
+     447
+    ]
+   },
+   "W": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 238,
+    "manDays": 135.3
+   },
+   "grow": {
+    "terr": 3450,
+    "seed": 3450,
+    "terrBeyond": 699,
+    "terrOnDitch": 168,
+    "terrInside": 2583
+   },
+   "houses": {
+    "all": 3,
+    "inRing": 3,
+    "outRing": 0
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 86,
+    "outOwn": 86,
+    "overlapOther": 0,
+    "housesIn": 3,
+    "manDays": 115.3,
+    "m3": [
+     69,
+     381
+    ]
+   }
+  }
+ ],
+ "end": [
+  {
+   "db": "base-1020.db",
+   "day": 800,
+   "v": 1,
+   "name": "광산1",
+   "pop": 78,
+   "D": {
+    "cells": 292,
+    "a": 36,
+    "b": 21,
+    "perim": 182,
+    "reHit": 292,
+    "reCells": 366,
+    "outSeed": 71,
+    "outOwn": 71,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 71,
+    "manDays": 97.3,
+    "digDays": [
+     32,
+     178
+    ],
+    "m3": [
+     58,
+     321
+    ]
+   },
+   "W": {
+    "cells": 858,
+    "a": 85,
+    "b": 50,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 563,
+    "manDays": 286,
+    "digDays": [
+     95,
+     524
+    ]
+   },
+   "grow": {
+    "terr": 9900,
+    "seed": 3450,
+    "terrBeyond": 7455,
+    "terrOnDitch": 221,
+    "terrInside": 2224
+   },
+   "houses": {
+    "all": 13,
+    "inRing": 4,
+    "outRing": 9
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 116,
+    "outOwn": 75,
+    "overlapOther": 0,
+    "housesIn": 4,
+    "manDays": 115.3,
+    "digDays": [
+     38,
+     211
+    ],
+    "m3": [
+     69,
+     381
+    ]
+   }
+  },
+  {
+   "db": "base-1020.db",
+   "day": 800,
+   "v": 3,
+   "name": "광산3",
+   "pop": 54,
+   "D": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "perim": 208,
+    "reHit": 406,
+    "reCells": 406,
+    "outSeed": 238,
+    "outOwn": 238,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 238,
+    "manDays": 135.3,
+    "digDays": [
+     45,
+     248
+    ],
+    "m3": [
+     81,
+     447
+    ]
+   },
+   "W": {
+    "cells": 702,
+    "a": 70,
+    "b": 41,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 550,
+    "manDays": 234,
+    "digDays": [
+     78,
+     429
+    ]
+   },
+   "grow": {
+    "terr": 6900,
+    "seed": 3450,
+    "terrBeyond": 3635,
+    "terrOnDitch": 168,
+    "terrInside": 3097
+   },
+   "houses": {
+    "all": 9,
+    "inRing": 6,
+    "outRing": 3
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 86,
+    "outOwn": 0,
+    "overlapOther": 0,
+    "housesIn": 6,
+    "manDays": 115.3,
+    "digDays": [
+     38,
+     211
+    ],
+    "m3": [
+     69,
+     381
+    ]
+   }
+  },
+  {
+   "db": "base-7.db",
+   "day": 800,
+   "v": 1,
+   "name": "광산1",
+   "pop": 95,
+   "D": {
+    "cells": 292,
+    "a": 36,
+    "b": 21,
+    "perim": 182,
+    "reHit": 292,
+    "reCells": 366,
+    "outSeed": 71,
+    "outOwn": 71,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 71,
+    "manDays": 97.3,
+    "digDays": [
+     32,
+     178
+    ],
+    "m3": [
+     58,
+     321
+    ]
+   },
+   "W": {
+    "cells": 954,
+    "a": 95,
+    "b": 56,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 652,
+    "manDays": 318,
+    "digDays": [
+     106,
+     583
+    ]
+   },
+   "grow": {
+    "terr": 11280,
+    "seed": 3450,
+    "terrBeyond": 8835,
+    "terrOnDitch": 221,
+    "terrInside": 2224
+   },
+   "houses": {
+    "all": 21,
+    "inRing": 4,
+    "outRing": 17
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 116,
+    "outOwn": 75,
+    "overlapOther": 0,
+    "housesIn": 4,
+    "manDays": 115.3,
+    "digDays": [
+     38,
+     211
+    ],
+    "m3": [
+     69,
+     381
+    ]
+   }
+  },
+  {
+   "db": "base-7.db",
+   "day": 800,
+   "v": 3,
+   "name": "광산3",
+   "pop": 101,
+   "D": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "perim": 208,
+    "reHit": 406,
+    "reCells": 406,
+    "outSeed": 238,
+    "outOwn": 238,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 238,
+    "manDays": 135.3,
+    "digDays": [
+     45,
+     248
+    ],
+    "m3": [
+     81,
+     447
+    ]
+   },
+   "W": {
+    "cells": 934,
+    "a": 92,
+    "b": 54,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 708,
+    "manDays": 311.3,
+    "digDays": [
+     104,
+     571
+    ]
+   },
+   "grow": {
+    "terr": 11700,
+    "seed": 3450,
+    "terrBeyond": 8435,
+    "terrOnDitch": 168,
+    "terrInside": 3097
+   },
+   "houses": {
+    "all": 23,
+    "inRing": 6,
+    "outRing": 17
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 86,
+    "outOwn": 0,
+    "overlapOther": 0,
+    "housesIn": 6,
+    "manDays": 115.3,
+    "digDays": [
+     38,
+     211
+    ],
+    "m3": [
+     69,
+     381
+    ]
+   }
+  },
+  {
+   "db": "base-42.db",
+   "day": 800,
+   "v": 1,
+   "name": "광산1",
+   "pop": 52,
+   "D": {
+    "cells": 292,
+    "a": 36,
+    "b": 21,
+    "perim": 182,
+    "reHit": 292,
+    "reCells": 366,
+    "outSeed": 71,
+    "outOwn": 71,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 71,
+    "manDays": 97.3,
+    "digDays": [
+     32,
+     178
+    ],
+    "m3": [
+     58,
+     321
+    ]
+   },
+   "W": {
+    "cells": 698,
+    "a": 68,
+    "b": 40,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 454,
+    "manDays": 232.7,
+    "digDays": [
+     78,
+     427
+    ]
+   },
+   "grow": {
+    "terr": 6480,
+    "seed": 3450,
+    "terrBeyond": 4035,
+    "terrOnDitch": 221,
+    "terrInside": 2224
+   },
+   "houses": {
+    "all": 9,
+    "inRing": 4,
+    "outRing": 5
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 116,
+    "outOwn": 75,
+    "overlapOther": 0,
+    "housesIn": 4,
+    "manDays": 115.3,
+    "digDays": [
+     38,
+     211
+    ],
+    "m3": [
+     69,
+     381
+    ]
+   }
+  },
+  {
+   "db": "base-42.db",
+   "day": 800,
+   "v": 3,
+   "name": "광산3",
+   "pop": 54,
+   "D": {
+    "cells": 406,
+    "a": 41,
+    "b": 24,
+    "perim": 208,
+    "reHit": 406,
+    "reCells": 406,
+    "outSeed": 238,
+    "outOwn": 238,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "toAddTerr": 238,
+    "manDays": 135.3,
+    "digDays": [
+     45,
+     248
+    ],
+    "m3": [
+     81,
+     447
+    ]
+   },
+   "W": {
+    "cells": 702,
+    "a": 70,
+    "b": 41,
+    "overlapOther": 0,
+    "otherVils": 0,
+    "noOwner": 550,
+    "manDays": 234,
+    "digDays": [
+     78,
+     429
+    ]
+   },
+   "grow": {
+    "terr": 6900,
+    "seed": 3450,
+    "terrBeyond": 3635,
+    "terrOnDitch": 168,
+    "terrInside": 3097
+   },
+   "houses": {
+    "all": 9,
+    "inRing": 6,
+    "outRing": 3
+   },
+   "R": {
+    "cells": 346,
+    "a": 34,
+    "b": 20,
+    "outSeed": 86,
+    "outOwn": 0,
+    "overlapOther": 0,
+    "housesIn": 6,
+    "manDays": 115.3,
+    "digDays": [
+     38,
+     211
+    ],
+    "m3": [
+     69,
+     381
+    ]
+   }
+  }
+ ]
+}
