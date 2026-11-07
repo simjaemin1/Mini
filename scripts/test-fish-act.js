@@ -107,7 +107,8 @@ console.log('\n④ ⓓ 장부 = 손 · ⓔ 예산 소진 · 이월 0');
   ok(/function _t312Day\(vil, day\) \{ return _actDay\(vil, '_t312', day, _lifeEcon\(\)\.fishBudgetPerCell\(vil\.econ\)\); \}/.test(VC),
     '④ ★그리고 어부의 **분모는 그대로** 강가 셀 예산식이다(합치면서 값이 안 바뀌었다)');
   ok(/vil\._t312 = null;/.test(VC), '④ ★★하루가 끝나면 예산 장부를 **버린다**(이월 0 · 설계_민물고기 §2)');
-  ok(VC.includes("npc._t312U = +Math.max(0,u-(require('./fish-goods').ON?take:got)).toFixed(6);"), '④ ★★받은 장부 몫만 손에서 뺀다(나머지 보존)');
+  //   ★[T1220-K5] T1214 ③(`6ed86627` · land1051)이 같은 식의 모듈 꺼내기만 `T1214_STEP_FAST` 갈래(`_t1214FG()` — 같은 모듈 객체)로 바꿨다 — 식 · 뺄셈 · 자릿수는 그대로라 새 글자를 문다.
+  ok(VC.includes("npc._t312U = +Math.max(0,u-((T1214_STEP_FAST?_t1214FG():require('./fish-goods')).ON?take:got)).toFixed(6);"), '④ ★★받은 장부 몫만 손에서 뺀다(나머지 보존)');
   ok(VC.includes('for (const h of selected) inv[h.id] -= h.n;'),
     '④ ★받은 마리만 같은 inventory에서 뺀다(부분 입고·거절은 새 기능 자가 검증)');
   // 예산 자 — 같은 셀에서 예산보다 큰 것을 달라 하면 0, 예산 안이면 그만큼
