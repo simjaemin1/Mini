@@ -13756,6 +13756,18 @@ function _t527EconNeed(site, i) {
   return o;
 }
 function _t527StageCount(site) { const B = _bridgeStages(); return B ? B.bridgeStages(site.span, site.cells.length / 2).length : 0; }
+//   ★[T1213] 다리 터의 남은 몫(econ 재화) — 지금 단계의 모자란 몫(`_t527EconNeed` − 놓인 `mat`) + 뒤 단계 전부. econ 짓는 파생수요(`buildInputTarget`)가 읽는다.
+//     T1213 이 꺼졌으면(T1207 끔 포함) 칸을 안 세운다(종전 비트) · 터가 없거나 다 섰으면 칸을 지운다.
+function _t1213BridgeNeed(vil, site) {
+  const E = _lifeEcon(); if (!E.T1213_ON || !vil.econ) return;
+  if (!site || site.done) { if (vil.econ._t1213Bridge) delete vil.econ._t1213Bridge; return; }
+  const o = { wood: 0, stone: 0 }, n = _t527StageCount(site);
+  for (let i = site.stage | 0; i < n; i++) {
+    const need = _t527EconNeed(site, i) || {};
+    for (const k of ['wood', 'stone']) o[k] += Math.max(0, (need[k] || 0) - (i === (site.stage | 0) ? ((site.mat && site.mat[k]) || 0) : 0));
+  }
+  vil.econ._t1213Bridge = o;
+}
 function _t527Sites() {
   if (!_t527On()) return null;
   if (state._t527Sites) return state._t527Sites;
@@ -13807,7 +13819,9 @@ function _t527Complete(site, day) {
 function _t527BridgeDay(vil) {
   const E = _lifeEcon();
   const sites = _t527Sites(); if (!sites || !vil.econ) return null;
-  const site = sites.find((s) => !s.done && (s.v.indexOf(vil.name) >= 0 || (vil._seedName && s.v.indexOf(vil._seedName) >= 0))); if (!site) return null;   // ★[T1187] 다리 후보 `v` 는 후보 이름(zone-config 데이터) — 이름표를 바꾼 마을(T1187 · T593)은 후보 이름(`_seedName` · 홀 데이터)으로도 찾는다(이름만 바꿔 다리를 잃지 않게)
+  const site = sites.find((s) => !s.done && (s.v.indexOf(vil.name) >= 0 || (vil._seedName && s.v.indexOf(vil._seedName) >= 0)));
+  _t1213BridgeNeed(vil, site);   // ★[T1213] 다리 터의 남은 몫 → econ 짓는 파생수요(끔 = 칸 없음)
+  if (!site) return null;   // ★[T1187] 다리 후보 `v` 는 후보 이름(zone-config 데이터) — 이름표를 바꾼 마을(T1187 · T593)은 후보 이름(`_seedName` · 홀 데이터)으로도 찾는다(이름만 바꿔 다리를 잃지 않게)
   if (E.productionActsBound(vil.econ)) { _t527Save(site); return null; }   // T1181: 몸의 운반·현장 노동만 진척
   const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
   const dbg = vil._t527Dbg = { day, site: site.i, crew: 0, trips: 0, took: 0, adv: 0, stall: 0, walkS: 0, jobs: {} };
@@ -13834,7 +13848,7 @@ function _t527BridgeDay(vil) {
         for (let q = 0; q < crew.length; q++) { const i = (rr + q) % crew.length; if (left[i] > 0) { ci = i; break; } }
         if (ci < 0) { short = true; break; }                          // 오늘 걸음을 다 썼다
         //   ★[T537] 통나무는 **잉여만** 꺼낸다 — 숯가마와 같은 함수(`woodSpare` = 재고 − 비축 − 집 몫 · T488). 잉여가 없으면 그날은 기다린다(곳간 바닥 0).
-        const room = k === 'wood' ? Math.max(0, E.woodSpare(vil.econ)) : Infinity;
+        const room = k === 'wood' ? Math.max(0, E.woodSpareAfterLand(vil.econ)) : Infinity;   // ★[T1213] 땅 몫 뒤(끔 = `woodSpare` 그대로)
         const want = Math.min(_t400PerLoad(k), need[k] - (site.mat[k] || 0), room);
         const took = want > 0 ? E.actFromGranary(vil.econ, k, want) : 0;   // ★곳간 → 손(econ 정본 한 함수)
         if (!(took > 0)) { short = true; dbg.stall = 1; break; }      // 잉여가 없다(곳간이 비었거나 비축·집 몫뿐) — 기다린다
@@ -13896,7 +13910,7 @@ function _t1181Step(vil,npc,now,awake) {
   const S=()=>{const k=t?.kind==='bridge'?'_t527Sum':t?.kind==='terr'?'_t1207Sum':'_t435Sum';return vil[k]||(vil[k]={days:0,crewDays:0,trips:0,took:0,placed:0,adv:0,stallDays:0,built:0,jobs:{}});};
   return _t1181Haul.step(npc,t,{now,awake,reach:44,drawMs:G_DRAWW,storeMs:G_STOREW,maxGap:SCH_VG_STUCK,
     move:(g,label)=>{npc.behavior='wander';npc.targetX=g.x;npc.targetY=g.y;npc.gatherTarget=null;_lifeAct(npc,label);},act:label=>_lifeAct(npc,(t&&t.kind==='terr'&&label==='건축')?'개간':label),home:()=>_lifeGoHome(npc,'취침'),
-    pick:()=>{for(const[item,left]of missing()){const W=_carryCfg(),kg=require('./weights').kgOf(item),room=kg>0?Math.max(0,Math.floor((W.CFG.CAP_KG-W.totalKg(npc))/kg)):0;const spare=item==='wood'&&(t.kind==='bridge'||t.kind==='terr')?Math.max(0,E.woodSpare(vil.econ)):Infinity;const n=Math.min(left,_t400PerLoad(item),room,spare);if(n>0&&(vil.econ.storage[item]||0)>0)return{item,n};}return null;},
+    pick:()=>{for(const[item,left]of missing()){const W=_carryCfg(),kg=require('./weights').kgOf(item),room=kg>0?Math.max(0,Math.floor((W.CFG.CAP_KG-W.totalKg(npc))/kg)):0;const spare=item==='wood'&&(t.kind==='bridge'||t.kind==='terr')?Math.max(0,t.kind==='bridge'?E.woodSpareAfterLand(vil.econ):E.woodSpare(vil.econ)):Infinity;const n=Math.min(left,_t400PerLoad(item),room,spare);if(n>0&&(vil.econ.storage[item]||0)>0)return{item,n};}return null;},
     take:(k,n)=>{const q=E.actFromGranary(vil.econ,k,n,true);if(q>0){S().took+=q;S().trips++;}return q;},
     refund:(k,n)=>E.returnActMaterials(vil.econ,k,n),
     place:(k,n)=>{if(!(n>0))return;t.site.mat[k]=(t.site.mat[k]||0)+n;E.actMaterialsPlaced(vil.econ,k,n);S().placed=(S().placed||0)+n;if(t.kind==='bridge')_t527Save(t.site);},

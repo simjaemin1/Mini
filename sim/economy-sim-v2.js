@@ -873,7 +873,8 @@ function _targetV2(v, r, ctx) {
     // ★[2026-08-02f ①-2] 파생 투입수요 — 판정은 v1 한 곳에서만(사본 금지). 손잡이 OFF 면 항상 0.
     //   동기 계약: 아래 `_priceParamsV2`·`tickDecay` 도 같은 줄을 갖는다.
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;
-    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT));
+    const buildT = v1.buildInputTarget ? v1.buildInputTarget(v, r) : 0;   // ★[T1213] 짓는 파생수요(말뚝 · 집 · 다리 · 숯가마) — 생존과 다른 쓰임이라 **더한다**(T1207 끔 = 0 · 종전 비트) · 동기 계약 세 자리
+    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);
     // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
     //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
@@ -1015,7 +1016,8 @@ function _priceParamsV2(v, r) {
     const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약: computeShadowPrices와 동일 공식·subs 가드)
     const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2);
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
-    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT));
+    const buildT = v1.buildInputTarget ? v1.buildInputTarget(v, r) : 0;   // ★[T1213] 동기 계약(결정층 `_targetV2` 와 같은 항)
+    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
         && (v.storage.food || 0) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
     stock = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(v, r) : (v.storage[r] || 0));   // ★[T859] 켬 — food 는 곳간 식량 환산(결정층과 같은 칸)
@@ -2813,7 +2815,8 @@ function tickDecay(v) {
     const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약·subs 가드) — 롱테일 작업 재고는 과잉부패에서 보호
     const buffer = N * (util * 1.2);
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
-    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT));
+    const buildT = v1.buildInputTarget ? v1.buildInputTarget(v, r) : 0;   // ★[T1213] 동기 계약(결정층 `_targetV2` 와 같은 항)
+    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);
     }
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;

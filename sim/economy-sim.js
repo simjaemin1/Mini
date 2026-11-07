@@ -1752,8 +1752,14 @@ function houseDayBuild(v, N, fe) {
 //   집 몫(통나무) — 숯가마가 태우지 말고 남겨 둘 양. ★집(T400)이 끔이면 0 = 숯가마 종전 그대로(비트 동일 · 손잡이 0).
 function houseWoodShare(v) {
   if (!T400_BUILD_ACT || !v || !v.npcs || v.housing === undefined) return 0;
+  return houseBuildWant(v, 'wood');
+}
+//   ★[T1213] 그날 집이 올릴 양(`houseDayBuild` — 목재 제약 전) × 자재 단가(`houseCostPerCap` — T400 끔이면 종전 상수 HOUSE_WOOD · HOUSE_STONE).
+//     집 몫(위 · T400 켬만)과 짓는 파생수요(아래 `buildInputTarget` — 집 행위가 꺼진 판도 econ 이 곳간 목재로 짓는다)가 같은 몸통을 부른다(사본 0).
+function houseBuildWant(v, res) {
+  if (!v || !v.npcs || v.housing === undefined) return 0;
   const N = v.npcs.length;
-  return houseDayBuild(v, N, totalFoodEquivalent(v)) * houseCostPerCap('wood');
+  return houseDayBuild(v, N, totalFoodEquivalent(v)) * houseCostPerCap(res);
 }
 // ★[T537 2026-09-30] 통나무 **잉여** — T488 숯가마 식을 함수 하나로 뺐다(재고 − 비축 `RESERVE_PC.wood × 인구` − 집 몫 `houseWoodShare`).
 //   숯가마(`kilnDay`)와 다리 크루(villages `_t527BridgeDay`)가 **같은 함수**를 부른다 — 사본 0 · 새 상수 0 · 숯가마 산술 불변(같은 순서의 같은 뺄셈).
@@ -1762,6 +1768,36 @@ function woodSpare(v) {
   const N = (v.npcs && v.npcs.length) || 0;
   const reserve = (RESERVE_PC.wood || 0) * N;
   return (v.storage.wood || 0) - reserve - houseWoodShare(v);
+}
+// ══ ★★[T1213 2026-11-07 · T1207 회부 2 · ★재민 11-07 "나무나 돌 공급량을 늘려줘야겠네"] 땅의 차례 · 짓는 파생수요는 목표에 **더한다** ══
+//   T1207 켬 판(11-04c 3시드 × 800날): 넓히려 한 날의 99.6% 가 통나무 막힘 · 나무꾼 −20% — 말뚝 모자람이 v2 목표에서 생존 목표와 **큰 쪽**으로만
+//   합쳐져(`max`) 값이 안 움직였다. 이 절은 T1207 이 켜진 판에서만 선다(`T1207_TERR_REAL=1` · 끔 = 이 절 전부 0 = 종전 비트).
+//   `T1213_DERIV_ADD=0` 은 재는 자 전용(T1207 켬 · 이 절 끔 — 카드 T1213 의 앞 판을 같은 판 자로 잰다).
+const T1213_ON = (typeof process !== 'undefined' && process.env && process.env.T1207_TERR_REAL === '1' && process.env.T1213_DERIV_ADD !== '0');
+//   ① 땅의 차례 — 1인 비축 → 집 몫 → **땅 몫**(그날 못 치른 말뚝 `_t1207Need` — 서버 생활층이 적는다) → 숯가마 · 다리.
+//     땅(말뚝)은 `woodSpare`(비축 · 집 몫 뒤)를 그대로 쓰고, 숯가마 · 다리 크루는 땅 몫까지 뺀 잉여를 쓴다(배수 0 · 순서만).
+function landWoodShare(v) { return (T1213_ON && v && v._t1207Need > 0) ? v._t1207Need : 0; }
+function woodSpareAfterLand(v) { return woodSpare(v) - landWoodShare(v); }
+//   ② 짓는 파생수요(econ 재화 단위) — 생존(땔감 · 1인 0.05)과 **다른 쓰임**이라 v2 목표에 큰 쪽이 아니라 **합**으로 얹는다(`economy-sim-v2` 목표 세 자리).
+//     통나무 = 말뚝(`_t1207Need`) + 집(`houseBuildWant`) + 다리(남은 단계 몫 `_t1213Bridge` — 서버 생활층이 적는다) + 숯(노가 쓸 숯의 모자람을 구울 통나무 —
+//     숯 파생수요 `derivedInputTarget('charcoal')` 와 같은 목표 · 숯가마가 있으면 숯가마 배치(통나무 3 → 숯 4) · 없으면 노천 탄화(숯 1 = 통나무 3 ÷ 2)).
+//     돌 = 집(`houseBuildWant`) + 다리. 석기 · 구리 · 숯 자체의 파생수요는 그 재화의 흐름과 같은 쓰임이라 종전 `max` 그대로(이 항 밖).
+function buildInputTarget(v, r) {
+  if (!T1213_ON || !v || !v.storage) return 0;
+  const br = v._t1213Bridge || null;
+  if (r === 'wood') {
+    let t = (v._t1207Need > 0 ? v._t1207Need : 0) + houseBuildWant(v, 'wood') + ((br && br.wood) || 0);
+    const chT = derivedInputTarget(v, 'charcoal');
+    const gap = chT - (v.storage.charcoal || 0);
+    const S = gap > 0 ? _smeltUses() : null;
+    if (S) {
+      const wpc = v._kiln ? S.woodPerCharcoalKiln() : S.woodPerCharcoal();   // 정본 두 식(숯가마 · 노천 탄화) — 옮겨 적지 않는다
+      if (wpc > 0) t += gap * wpc;
+    }
+    return t;
+  }
+  if (r === 'stone') return houseBuildWant(v, 'stone') + ((br && br.stone) || 0);
+  return 0;
 }
 //   ★곳간 **출구** — `actToGranary` 의 역. 크루가 집터로 들고 가는 자재가 여기서 빠진다(있는 만큼만 · 세금 없음 — 마을 제 것이다).
 //     흐름 EMA 는 종전 주거 갈래가 찍던 **그 칸**(`_cons(v, 'wood', …)`)에 찍는다 — 수요 신호가 같은 자리에서 나온다.
@@ -3492,7 +3528,7 @@ function kilnDay(v) {
     v._kiln = { built: (v._day || 0) };
     return { built: 1 };
   }
-  const spare = woodSpare(v);   // ★[T488] 잉여 = 재고 − 비축 − **집 몫**(집이 끔이면 0 · 순서 집 → 숯가마 무변) · ★[T537] 식은 한 함수(다리 크루도 부른다)
+  const spare = woodSpareAfterLand(v);   // ★[T488] 잉여 = 재고 − 비축 − **집 몫**(집이 끔이면 0 · 순서 집 → 숯가마 무변) · ★[T537] 식은 한 함수(다리 크루도 부른다) · ★[T1213] 땅 몫 뒤(끔 = 0 · `woodSpare` 그대로)
   const target = furnaceCharcoalTarget(v);   // ★[T463] 식 한 곳 — 파생수요(`derivedInputTarget`)가 같은 함수를 부른다(산술 불변)
   const gap = target - (v.storage.charcoal || 0);
   if (!(spare >= S.CHARCOAL_KILN_WOOD) || !(gap > 0)) return { batches: 0 };
@@ -5602,7 +5638,7 @@ function derivedInputTarget(v, r) {
   //   (`pickDeficitJob_rational` 의 나무꾼 한계가치 `w('wood')`)가 그만큼 더 본다. 합치는 법은 v2 그대로(max · 배수 0).
   //   칸이 없으면(끔 · 랩 · CLI) 0 — 종전 비트.
   //   ⚠T1207 서버 판(11-04c 3시드 × 800날): 마을 모자람(평균 ~20)이 생존 몫(1인 0.05 × 30날 × 인구)을 거의 못 넘어 값이 안 움직였다 — 합치는 법(max ↔ 더하기)은 회부(보고/T1207 §6-2).
-  if (r === 'wood') return (v && v._t1207Need > 0) ? v._t1207Need : 0;
+  if (r === 'wood') return (!T1213_ON && v && v._t1207Need > 0) ? v._t1207Need : 0;   // ★[T1213] 켬이면 말뚝은 더하는 항(`buildInputTarget`)에 — 여기선 0(두 번 세지 않는다)
   // ★★[T463 2026-09-27] **숯도 파생수요다** — 노가 있는 마을(캐는 마을이거나 녹일 원석이 있는 마을 · `_trySmelt` 의 그 문)은
   //   숯을 **쓸 데가 실제로 있다**. 그런데 T443 연료는 곳간에 숯이 있을 때만 `_cons(charcoal)` 를 적는다 — 숯이 없는 광산 마을은
   //   노천 탄화(통나무)로 때우니 숯 흐름(flowT)이 **0** 이고, 값이 바닥(0.02)이라 캐러밴이 숯을 안 싣는다(보고 §ⓐ: 800일 숯 leg 1건).
@@ -7027,6 +7063,7 @@ module.exports = {
   T419_STONE_REAL, stoneRealPer, stoneRealOn, stoneWorkStock,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
   T1050_LAB_HOUSE, crewPerLoad, houseCrewDay, labHouseAttach, labHouseDay, labHouseWorldDay, labSiteNew, labSiteCrewDay, labCrewDbg,   // ★[T1050] 집 크루 하루 정본(서버 생활층 · 랩 몸 없는 마을이 같은 함수) · 손잡이 · ★[T1056] 몸 없는 크루의 집터 하루(t17 · t176 · 랩 HTML 둘이 같은 함수)
+  T1213_ON, houseBuildWant, landWoodShare, woodSpareAfterLand, buildInputTarget,   // ★[T1213] 땅의 차례 · 짓는 파생수요(v2 목표 세 자리 · 생활층 다리 크루가 같은 함수를 부른다)
   T400_BUILD_ACT, T1054_DECAY_WOOD, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, actMaterialsPlaced, returnActMaterials, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
