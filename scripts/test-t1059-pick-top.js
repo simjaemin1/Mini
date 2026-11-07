@@ -61,6 +61,9 @@ function makeWorld(src) {
     addEventListener: (t, f) => { (listeners[t] = listeners[t] || []).push(f); },
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 100000, height: 100000 }),
   };
+  // ★[T1208] T1193(레티나 2배)이 클릭 → 화면 자리 셈을 `cvW()` · `cvH()`(본 캔버스 CSS 크기 · `00-const.js`)로 바꿨다 — 이 판은 그 파일을 안 싣는다.
+  //   끔(HIDPI 1) 판의 그 함수 그대로 = `canvas.width` · `canvas.height`(제품 정의 `HIDPI > 1 ? W0 : canvas.width` 의 끔 갈래).
+  ctx.cvW = () => ctx.canvas.width; ctx.cvH = () => ctx.canvas.height;
   ctx.fire = (t, e) => { for (const f of (listeners[t] || [])) f(e); };
   ctx.zone = { meta: { worldOffsetX: OX, worldOffsetY: OY }, others: new Map(), resources: new Map(), groundItems: new Map(), buildings: new Map(), simVillages: [{ id: VID, name: '광산7' }] };
   ctx.conns.set('hanbando', ctx.zone);

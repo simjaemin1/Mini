@@ -76,6 +76,9 @@ async function waitHttp(url, tries = 900) {
     VILLAGE_DAY_MS: '2000',                        // 이 검사는 회복 창을 안 기다린다 — 게임루프를 굶기지 않는 값
     VILLAGE_FOUND_COST: '0.1', PVILLAGE_GAP: '10', PVILLAGE_MAX: '3',
     E2E_GIVE: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
+    // ★[T1208] 아래 "남의 마을 재고는 안 열린다 · 사유 = 권한" 은 종전 회관 문이다 — T1132(`T1132_HALL_VIEW` 켬 기본 · ★PM 문 12 ㄱ)는 남에게도 읽기 전용으로 연다
+    //   (그 문은 `test-t1132-hall-view` 가 잰다). 이 판은 재접속 · 권한 사유를 재므로 종전 문에 묶는다.
+    T1132_HALL_VIEW: '0',
   });
   // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
   //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
