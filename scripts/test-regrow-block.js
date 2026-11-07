@@ -492,7 +492,7 @@ if (MODE === '--seoul') {
     ok(/SimVillages\.villageOfCell/.test(rb) && /Roads\.pavedNear\(cx \| 0, cy \| 0, _T566_R\)/.test(rb) && /const _T566_R = 2;/.test(ZS)
        && /const T1 = 8, T2 = 28, VMAX = 120, DK = 0\.995;/.test(RS) && /lv === 2 && !S\.paved\.has\(k\)/.test(body(RS, 'stampCell')),
       '★ⓘ 술어 = 영토(`villageOfCell` 정본) ∪ 다져진 길(`T2`=28 그대로 · 오름은 `stampCell` 그 호출) 둘레 2 — 새 수 0');
-    ok(/const _T566_ON = process\.env\.T566_REGROW_BLOCK !== '0';/.test(ZS) && /state\.deps\.clearTreesInCells\(own, added\)/.test(body(VS, '_terrGrow')),
+    ok(/const _T566_ON = process\.env\.T566_REGROW_BLOCK !== '0';/.test(ZS) && /state\.deps\.clearTreesInCells\(own, added\)/.test(body(VS, '_terrGrow') + body(VS, '_terrAdd')),   // ★[T1207] 영토에 셀을 더하는 몸통은 `_terrAdd` 로 옮겼다(종전 고른 셀 · T1207 일괄 · 몸 완공 · 플레이어 넓히기가 같은 몸통) — 두 본문을 이어 본다
       '★ⓘ 손잡이 하나(`T566_REGROW_BLOCK` · 기본 켬 · `=0` 종전) · 영토가 자란 날 늘어난 셀을 같이 넘긴다');
   }
 
