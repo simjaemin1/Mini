@@ -1,5 +1,49 @@
 // @@split:40-r2-sprites — R2 — 몹·자연물·다리·나무
 
+  // ═══ ★[T1194 모델 시트] 받은 3D 모델을 구운 짐승 그림(서 있기 · 8방향) — 끔 기본 · 손잡이 `uiCfg.modelSprites` ═══
+  //   산물은 `scripts/model_render.py` 하나다: 목록 `/assets/animals/index.json`(종 키 → 메타) · 종 메타(사람 `char_meta.json` 문법) · `body_idle.png`.
+  //   **클라는 규격을 하나도 안 든다** — 프레임 크기 · 앵커 · 행 차례는 메타에서, 방향 행은 사람 시트와 같은 함수(`charDirRow`)에서.
+  //   손잡이가 꺼져 있으면 이 함수들은 불리지 않는다(요청 0). 켜도 목록 · 메타 · 그림이 다 뜨기 전엔 null — 부르는 쪽이 점선 칸을 그린다.
+  const _mdl = { idx: null, tried: false, sp: new Map() };
+  function modelSpriteIndex() {
+    if (_mdl.idx || _mdl.tried) return _mdl.idx;
+    _mdl.tried = true;
+    fetch('/assets/animals/index.json').then((r) => (r.ok ? r.json() : null)).then((j) => { if (j) _mdl.idx = j; }).catch(() => {});
+    return null;
+  }
+  function modelSpriteOf(type) {
+    const idx = modelSpriteIndex();
+    if (!idx || typeof idx[type] !== 'string') return null;
+    let e = _mdl.sp.get(type);
+    if (!e) {
+      e = { meta: null, img: null, ok: false };
+      _mdl.sp.set(type, e);
+      const rel = idx[type], dir = rel.slice(0, rel.lastIndexOf('/') + 1);
+      fetch('/assets/animals/' + rel).then((r) => (r.ok ? r.json() : null)).then((m) => {
+        if (!m || !m.frameW || !m.sheets || !m.sheets.body_idle) return;
+        e.meta = m;
+        const im = new Image();
+        im.onload = () => { e.ok = true; };
+        im.src = '/assets/animals/' + dir + 'body_idle.png';
+        e.img = im;
+      }).catch(() => {});
+    }
+    return e.ok ? e : null;
+  }
+  /** 서 있기 그림을 발밑 (x, y) 에 그린다. 그렸으면 그림 위 끝의 화면 y, 못 그렸으면 null(→ 점선 칸). */
+  function drawModelSprite(x, y, mob) {
+    const e = modelSpriteOf(mob.type);
+    if (!e) return null;
+    const m = e.meta, fw = m.frameW, fh = m.frameH;
+    const row = charDirRow(mob._fvx ?? 1, mob._fvy ?? 0);
+    const dx = Math.round(x - m.anchorX), dy = Math.round(y - m.anchorY);
+    ctx.drawImage(e.img, 0, row * fh, fw, fh, dx, dy, fw, fh);
+    if (!window.__mdlDbg) window.__mdlDbg = {};
+    window.__mdlDbg[mob.mid != null ? mob.mid : mob.type] = { type: mob.type, row, dx, dy, fw, fh };   // 진단 훅(하네스 · 화면 대조)
+    return dy;
+  }
+  // ═══ ★[T1194] 끝 ═══
+
   function drawMobIso(x, y, mob) {
     // Phase 5-6b: 36 mob 종류 — emoji fallback (옛 deer/wolf 외)
     if (mob.type !== 'deer' && mob.type !== 'wolf') {
@@ -16,7 +60,10 @@
         //     "여기 뭔가 있는데 그림이 아직 없다"가 보이고, 굽는 날 그 자리가 채워진다.
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        {
+        // ★★[T1194] 받은 3D 모델을 구운 **서 있기 그림**이 그 자리를 채운다 — 손잡이 `uiCfg.modelSprites`(서버 env `T1194_MODEL_SPRITES=1` · 끔 기본).
+        //   끄면 칸이 없어 이 줄이 아무것도 안 부른다(목록 · 메타 · 시트 요청 0 · 점선 칸 그대로). 켜도 그 종의 시트가 아직 없으면 점선 칸.
+        const _mdlTop = uiCfg.modelSprites ? drawModelSprite(x, y + 6 * sz, mob) : null;   // 발밑 = 위 그림자 가운데(같은 식 · 새 수 0)
+        if (_mdlTop == null) {
           const half = Math.round(11 * sz);
           ctx.save();
           ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(220,220,220,0.55)';
@@ -26,8 +73,9 @@
         // hp bar
         if (mob.hp != null && mob.hp < mob.maxHp) {
           const pct = mob.hp / mob.maxHp;
-          ctx.fillStyle = '#222'; ctx.fillRect(x - 12, y - 18 * sz, 24, 3);
-          ctx.fillStyle = '#c83a3a'; ctx.fillRect(x - 12, y - 18 * sz, 24 * pct, 3);
+          const hy = _mdlTop == null ? y - 18 * sz : Math.min(y - 18 * sz, _mdlTop - 3);   // [T1194] 그림이 서면 그 머리 위(막대 높이 3 만큼)
+          ctx.fillStyle = '#222'; ctx.fillRect(x - 12, hy, 24, 3);
+          ctx.fillStyle = '#c83a3a'; ctx.fillRect(x - 12, hy, 24 * pct, 3);
         }
         // tame 표시
         if (mob.tameOwner) {

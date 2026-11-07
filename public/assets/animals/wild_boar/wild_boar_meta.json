@@ -1,0 +1,60 @@
+{
+ "_": "model_render.py 산물 — 손편집 금지. 규약은 그 파일이 정본(사람 시트 char_meta.json 과 같은 문법).",
+ "anchorX": 34.0,
+ "anchorY": 40.675,
+ "clips": {
+  "idle": {
+   "fps": 1.0,
+   "frames": 1,
+   "loop": false
+  }
+ },
+ "dirOrder": "d = round(atan2(fy,fx)/(PI/4)) mod 8 — 월드 방향. d=0 은 +x(동).",
+ "dirs": 8,
+ "frameH": 54,
+ "frameW": 68,
+ "heightM": 0.9397,
+ "layers": [
+  "body"
+ ],
+ "lengthM": 1.45,
+ "ppu": 45.2548,
+ "pxPerMeterH": 32.0,
+ "renderPpu": 135.7645,
+ "rowOrder": "행 0 = 방향 0, 위에서 아래로. 열 = 프레임 0..n-1, 왼쪽에서 오른쪽으로.",
+ "shape": {
+  "celBands": 4,
+  "edgeA": 0.6,
+  "edgeK": 0.78,
+  "inkPx": 1,
+  "src": "public/assets/char/char_meta.json shape(사람 시트와 같은 붓)"
+ },
+ "sheets": {
+  "body_idle": {
+   "clip": "idle",
+   "cols": 1,
+   "h": 432,
+   "layer": "body",
+   "rows": 8,
+   "w": 68
+  }
+ },
+ "source": {
+  "actions": {},
+  "bones": 0,
+  "bpy": "4.0.2",
+  "bytes": 62431372,
+  "file": "boar.fbx",
+  "front": "-y",
+  "frontSrc": "인자",
+  "md5": "b689c38efce260bd9119b54dfdefe7fc",
+  "scale": 1.450434,
+  "sizeSrc": "고증 범위 몸길이 90~200 cm(Ultimate Ungulate · Sus scrofa)의 가운데 1.45 m — 형의 실제 크기가 오면 갈아 끼운다",
+  "srcTris": 500000,
+  "tris": 500000,
+  "variant": "원본"
+ },
+ "ss": 3,
+ "widthM": 0.4957,
+ "zsq": 0.8165
+}
