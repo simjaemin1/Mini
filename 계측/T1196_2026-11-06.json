@@ -8689,5 +8689,122 @@
   },
   "runs": "H1 K1 H2 K2 K3 H3",
   "ref": "bd6d8a7e"
+ },
+ "main8d29750a": {
+  "merge": "23b66eff",
+  "vclockBase": "계측/T1196_main가상판_2026-11-07.json",
+  "off": {
+   "7": {
+    "same": true,
+    "days": 400
+   },
+   "42": {
+    "same": true,
+    "days": 400
+   },
+   "1020": {
+    "same": true,
+    "days": 400
+   }
+  },
+  "on": {
+   "check": {
+    "7": {
+     "same": false,
+     "sideDay": 368,
+     "sideFields": [
+      "_gameRich",
+      "_gameTook",
+      "_otIdx",
+      "_otIdxDay"
+     ],
+     "econDay": 367
+    },
+    "42": {
+     "same": false,
+     "sideDay": 369,
+     "sideFields": [
+      "_otIdx",
+      "_otIdxDay"
+     ],
+     "econDay": 367
+    },
+    "1020": {
+     "same": false,
+     "sideDay": 367,
+     "sideFields": [
+      "_otIdx",
+      "_otIdxDay"
+     ],
+     "econDay": 367
+    }
+   },
+   "end": {
+    "1020": {
+     "eight": {
+      "pop": 3617,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 224,
+      "expand": 712,
+      "board": 2243,
+      "toolQ": 3323.5,
+      "preserve": 0,
+      "grain": 7240.2
+     },
+     "dissolved": 0,
+     "empty": 1,
+     "emptyDay": [
+      [
+       "농촌14",
+       369
+      ]
+     ]
+    },
+    "7": {
+     "eight": {
+      "pop": 3689,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 153,
+      "expand": 586,
+      "board": 2237,
+      "toolQ": 3273.1,
+      "preserve": 0,
+      "grain": 9400.9
+     },
+     "dissolved": 0,
+     "empty": 1,
+     "emptyDay": [
+      [
+       "농촌10",
+       367
+      ]
+     ]
+    },
+    "42": {
+     "eight": {
+      "pop": 3640,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 224,
+      "expand": 747,
+      "board": 2095,
+      "toolQ": 3327.3,
+      "preserve": 0,
+      "grain": 7721.4
+     },
+     "dissolved": 0,
+     "empty": 1,
+     "emptyDay": [
+      [
+       "농촌18",
+       387
+      ]
+     ]
+    }
+   }
+  },
+  "mainWallNondet": "main 8d29750a 벽시계 판 자 같은 트리 두 판 시드 7 날 6 갈림(어촌14 · 농촌13 · 17 · 21) · 기준선 11-06 과 날 5 갈림(1020 광산2 · 임업4) · 가상 시계면 30날 같음"
  }
 }
