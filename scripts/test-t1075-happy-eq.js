@@ -9,6 +9,7 @@
 'use strict';
 // ★[T1147] 판 꾸밈 — 이 하네스는 T1075 평형 모델을 잰다. T1134 목표 행복이 켬 기본이 되어 T1134 가 이기므로 이 판은 그것을 끈다(단언 무변 · T1134 는 test-happy-converge).
 process.env.T1134_HAPPY_TARGET = process.env.T1134_HAPPY_TARGET || '0';
+process.env.T1197_MEAL_BODY = process.env.T1197_MEAL_BODY || '0';   // ★[T1197] 이 하네스의 ④ 사망 계단 · ⑤ 이탈은 T1074 빚 죽음 판(하루 1명 · 14일)으로 짰다 — 켬(몸 게이지) 판은 `test-t1197-meal-body`
 const path = require('path');
 const { execFileSync } = require('child_process');
 let pass = 0, fail = 0;

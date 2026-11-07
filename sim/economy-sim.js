@@ -1321,8 +1321,194 @@ function _fdDeathIdx(v) {
 // ★읽는 함수 하나(T1075 · 진단 · UI) — 마을 사람들의 빚(징발 중 포함 · 제 짐 빚도 그 사람 칸이다)
 function foodDebtOf(v) {
   const a = (v && v.npcs) || []; let sum = 0, max = 0, starving = 0;
-  for (const p of a) { const d = p._fd || 0; sum += d; if (d > max) max = d; if (d > FD_DEATH_DAYS) starving++; }
+  const M = _t1197();   // ★[T1197] 켬 = 굶는 사람 = 허기가 극단(3단계 문턱 아래)인 사람(빚 > 14 대신 — 몸 정본이 죽음을 정한다) · 끔 = null = 종전 줄
+  for (const p of a) { const d = p._fd || 0; sum += d; if (d > max) max = d; if (M ? (p._mh != null && p._mh < M.AT) : d > FD_DEATH_DAYS) starving++; }
   return { n: a.length, mean: a.length ? sum / a.length : 0, max, starving };
+}
+// ════════════════════════════════════════════════════════════════
+// ★★[T1197 2026-11-06 · 추상 걷기 C · ★재민 11-05 "추상 다 없애자고 했는데 왜 아직도 남겨둔 거야"] **식사 = 몸이 꺼내 먹음 · 굶어 죽음 = 그 몸**
+//   손잡이 `T1197_MEAL_BODY`(켬 기본 · `=0` 만 끔 = 종전 바이트 · T1074 끔이면 안 선다 · 몸 정본 `server/body.js` 를 못 읽는 판도 안 선다).
+//   종전(T1074): 하루 한 번 마을 몫(`consumeFood`)을 사람마다 나눈 빚 장부 · 죽음 = 빚 > 14 인 사람 가운데 가장 늙은 1명/일 · 몸은 그 수의 거울(T590 — 명부 맨 앞 몸).
+//   켬 — 사람마다 **몸 게이지**를 명부 칸에 둔다(플레이어 몸과 같은 정본 함수 `Body.decayStep` · `Body.extremeness` + `CFG.EXTREME_HP_HUNGER` — 사본 0 · 새 수 0):
+//     `_mh` 허기(0 ~ 100) · `_mhp` 몸 HP(0 ~ 100) · `_mD` 게이지를 마지막으로 흘린 econ 시각(날 + 그날 몫) · `_mS` 마지막으로 먹은 끼니 번호(날 × 2 + 끼니).
+//   ① 끼니 둘 = 몸 일과의 두 집 문(`server/villages.js npcLifeTick` — 기상 · 귀가) · 시각 = 날 머리 · 날 + `dayPhaseRatio`(zone-config 정본 · 낮 몫).
+//      한 끼 = 다음 끼니까지 몸이 쓸 몫(하루치 × 그 사이 몫 × (1 − 적응)) + 갚기(게이지가 배부른 띠 아래인 만큼 · 하루 상한 `FD_REPAY_MAX` 의 그 사이 몫).
+//      곳간이 모자라면 그 끼니를 먹는 사람 모두 같은 비율(한 솥 — T1074 ①의 그 꼴). 곳간 장부는 **먹은 만큼만** 준다(`consumeFood` 그대로).
+//      허기 ↔ 식량 = `kcal.dayHunger`(하루치 1단위 = 하루 허기 · 정본) · 몸 하루 = 운영 하루(`kcal.DAY_MS_DEFAULT` — T906 원정 몸과 같은 시계).
+//   ② 굶어 죽음 = 그 사람의 허기가 극단(정본 단계 표의 3단계 문턱)을 넘은 동안 `_mhp` 가 깎여 0 → **그 사람**이 죽는다(가장 늙은 이 아님 · 하루 상한 없음).
+//      보호막(첫 365일 NPC 마을) · `POP_MIN` · 원정 팩 병사 제외는 T1074 그대로. 극단 밖이면 하루 회복(몸 일일 회복의 요양 몫 — 정본 `NPC_HP_DAY` · `npcRegenMul`).
+//   ③ T1074 빚 = 게이지의 장부 거울(날 단위): `_fd` = (배부른 띠 − 지금 허기) ÷ 하루 허기 + 잃은 HP ÷ 극단 최심의 하루 감소(≥ 0 · 죽음에서 ≈ 죽음 날 수) ·
+//      `_fdS` = 그날 못 먹은 하루치 몫 · 적응 `_fdA` 는 같은 수로 오르내리며 감쇠를 늦춘다.
+//      배부른 띠(끼니 앞 허기 둘) · 죽음 날 수(배부른 몸이 굶기 시작해 HP 0 까지)는 **유도값** — 제 몫을 다 먹는 몸을 아래 함수로 굴려 얻는다(새 수 0).
+//   ④ 몸(서버 존)이 선 사람은 몸이 끼니를 먹고(`t1197Meal` · 호스트가 부른다) 게이지를 흘린다(`t1197Advance`) — 날 경계(`t1197Day`)는 그 사람의 남은 끼니 · 남은 시간만 친다.
+//      ⇒ 헤드리스 마을(몸 없음)은 이 날 경계가 몸 게이지를 일괄로 굴린다(T1185 질문 3 — 두 길이 같은 함수 · 결과 비교는 보고).
+//   수치 틀: 극단 구간 HP 적분은 게임 1시간(몸 60초) 중점 걸음(세계의 수가 아니다 — T906 `_t906Day` 의 1분 걸음과 같은 꼴 · 값 차는 하네스).
+const T1197_MEAL_BODY = T1074_FOOD_DEBT && !(typeof process !== 'undefined' && process.env && process.env.T1197_MEAL_BODY === '0');
+const NPC_HP_DAY = { rest: 18, work: 6 };   // ★[T1197] 몸 일일 회복(요양 · 근무) — 종전 `server/villages.js` 의 그 두 글자를 이리로 옮겼다(값 무변 · 서버 생활층이 이것을 읽는다)
+// 몸 일일 회복 배수(건강 · 행복 · 식량) — 종전 `server/villages.js` 의 그 식을 이리로 옮겼다(식 무변 · 서버 생활층과 아래 날 경계가 같은 함수)
+function npcRegenMul(econ, popAlt) {
+  const st = econ.lastStats;
+  const hpF = Math.max(0.4, Math.min(1.5, 0.5 + (st ? st.health : 0.5)));
+  const hapF = Math.max(0.4, Math.min(1.5, 0.5 + (st ? st.happiness : 0.5)));
+  const _food = (econ.storage && econ.storage.food) || 0;
+  const _pop = (econ.npcs && econ.npcs.length) || popAlt;   // 랩 s.pop=econ 인구 동형
+  const foodF = Math.max(0.35, Math.min(1.4, _food / Math.max(1, _pop * 30)));
+  return hpF * hapF * foodF;   // 식량 하한 0.35(기근에도 소량 회복 → 죽음 나선 방지 — 랩 동형)
+}
+let _t1197M;
+function _t1197() {
+  if (_t1197M !== undefined) return _t1197M;
+  _t1197M = null;
+  if (!T1197_MEAL_BODY) return null;
+  let B = null, K = null, Z = null;
+  try { B = require('../server/body'); } catch (e) { B = null; }
+  try { K = require('../server/kcal'); } catch (e) { K = null; }
+  try { Z = require('../server/zone-config'); } catch (e) { Z = null; }
+  if (!B || typeof B.decayStep !== 'function' || typeof B.extremeness !== 'function' || typeof B.extremeAt !== 'function' || !B.CFG) return null;
+  if (!K || typeof K.dayHunger !== 'function' || !(K.DAY_MS_DEFAULT > 0)) return null;
+  const R = Z && Z.WORLD ? +Z.WORLD.dayPhaseRatio : NaN;
+  if (!(R > 0 && R < 1)) return null;
+  const M = { B, HS: B.CFG.HUNGER_SEC, RATE: B.CFG.EXTREME_HP_HUNGER, DAY_S: K.DAY_MS_DEFAULT / 1000, DH: K.dayHunger(), R,
+              AT: 100 * (1 - B.extremeAt('hunger')), STEP: 60, fed: [100, 100], dieDays: FD_DEATH_DAYS };
+  if (!(M.HS > 0) || !(M.DH > 0) || !(M.DAY_S > 0)) return null;
+  _t1197M = M;
+  // 유도 ① 배부른 띠 — 제 몫(갚기 0)을 다 먹는 몸을 굴려 끼니 앞 허기가 멎는 자리(수렴 · 0.4 ㎍ 아래)
+  const q = { _mh: 100, _mhp: 100, _mD: 0, _fdA: 0 };
+  for (let d = 0; d < 400; d++) {
+    const f0 = q._mh; q._mh = Math.min(100, q._mh + DAILY_FOOD_CONSUMPTION * R * M.DH); t1197Advance(q, d + R);
+    const f1 = q._mh; q._mh = Math.min(100, q._mh + DAILY_FOOD_CONSUMPTION * (1 - R) * M.DH); t1197Advance(q, d + 1);
+    if (Math.abs(f0 - M.fed[0]) < 1e-9 && Math.abs(f1 - M.fed[1]) < 1e-9) break;
+    M.fed[0] = f0; M.fed[1] = f1;
+  }
+  // 유도 ② 죽음 날 수 — 배부른 띠(끼니 앞)에서 굶기 시작한 몸이 HP 0 에 닿는 날(시간 몫 1/24 · 위 수치 틀과 같은 걸음)
+  const z = { _mh: M.fed[0], _mhp: 100, _mD: 0, _fdA: 0 };
+  let t = 0; while (z._mhp > 0 && t < 400) { t += 1 / 24; t1197Advance(z, t); }
+  M.dieDays = t;
+  return M;
+}
+function _t1197Init(p, d) {
+  if (p._mh != null) return;
+  const M = _t1197();
+  p._mh = M.fed[0]; p._mhp = 100; p._mD = d; p._mS = Math.floor(d) * 2 - 1;   // 처음 보는 사람 = 배부른 띠(끼니 앞) · 그날 끼니부터 먹는다
+}
+// 게이지를 econ 시각 `toD` 까지 흘린다 — 감쇠(적응만큼 느리게) · 극단이면 HP. 반환 = 깎인 HP.
+function t1197Advance(p, toD) {
+  const M = _t1197(); if (!M) return 0;
+  _t1197Init(p, Math.floor(toD));   // 처음 보는 사람은 그날 머리부터(몸이 낮에 처음 짚어도 일괄과 같은 출발 — 벽시계 무관)
+  const dd = toD - p._mD; if (!(dd > 0)) return 0;
+  p._mD = toD;
+  const sec = dd * M.DAY_S, a = 1 - (p._fdA || 0), h0 = p._mh;
+  const h1 = M.B.decayStep(h0, M.HS, sec * a);
+  if (!(h1 < M.AT)) { p._mh = h1; return 0; }
+  const n = Math.max(1, Math.ceil(sec / M.STEP)), ds = sec / n;
+  let h = h0, L = 0;
+  for (let i = 0; i < n; i++) {
+    const hn = M.B.decayStep(h, M.HS, ds * a);
+    L += M.RATE * M.B.extremeness('hunger', 1 - (h + hn) / 200) * ds;   // 정본 합산기의 허기 줄(`extremeHpRate` — 갈증 · 추위는 NPC 면제 그대로 0)
+    h = hn;
+  }
+  p._mh = h;
+  if (L > 0) p._mhp = Math.max(0, (p._mhp == null ? 100 : p._mhp) - L);
+  return L;
+}
+// 한 끼에 먹으려는 몫(하루치 단위) — 끼니 k 의 사이 몫 × (1 − 적응) + 갚기(배부른 띠 아래만큼 · 상한)
+function _t1197Want(p, k) {
+  const M = _t1197(), fr = k === 0 ? M.R : 1 - M.R;
+  const owe = Math.max(0, M.fed[k] - p._mh) / M.DH;
+  return DAILY_FOOD_CONSUMPTION * fr * (1 - (p._fdA || 0)) + Math.min(owe, FD_REPAY_MAX * fr);
+}
+// 곳간에서 꺼낸다(섭식 정본 `consumeFood` 그대로) — 식단 기록은 그날 끼니를 모은다(몸 끼니는 다음 날 경계의 식단에 든다 · 날 경계 사이에 지난 날 기록을 안 건드린다)
+function _t1197Eat(v, need, body) {
+  const fe = v._foodEaten, before = {};
+  if (fe) for (const r in fe) before[r] = fe[r];
+  const gap = consumeFood(v, need);
+  const now = v._foodEaten;
+  if (body) {
+    const b = v._t1197Body || (v._t1197Body = {});
+    for (const r in now) { b[r] = (b[r] || 0) + now[r]; now[r] = 0; }
+    for (const r in before) now[r] = before[r];
+  } else for (const r in before) now[r] = (now[r] || 0) + before[r];
+  return gap;
+}
+// 한 끼 — 끼니 번호 s(날 × 2 + k)를 아직 안 먹은 사람들에게 한 솥으로. 반환 { need(제 몫), want, got, short(제 몫 가운데 못 먹은 것) }.
+function t1197Meal(v, who, s, body) {
+  const M = _t1197(); if (!M || !who.length) return { need: 0, want: 0, got: 0, short: 0 };
+  const k = ((s % 2) + 2) % 2, fr = k === 0 ? M.R : 1 - M.R;
+  let W = 0, N0 = 0; const ws = new Array(who.length);
+  for (let i = 0; i < who.length; i++) { const w = _t1197Want(who[i], k); ws[i] = w; W += w; N0 += DAILY_FOOD_CONSUMPTION * fr * (1 - (who[i]._fdA || 0)); }
+  if (body && W > 0) {   // 몸 끼니도 한 솥 — 이 끼니를 아직 안 먹은 사람 모두의 몫 가운데 제 몫만큼(곳간이 모자라면 같은 비율 · 먼저 온 몸이 다 먹지 않는다)
+    let Wall = W; const mine = new Set(who);
+    for (const q of _fdEaters(v)) if (!mine.has(q) && q._mh != null && q._mS < s) Wall += _t1197Want(q, k);
+    const F = totalFoodEquivalent(v);
+    if (F < Wall) { const r = Math.max(0, F) / Wall; W = 0; for (let i = 0; i < ws.length; i++) { ws[i] *= r; W += ws[i]; } }
+  }
+  const w0 = body ? who.map((p) => _t1197Want(p, k)) : ws;   // 제 몫(솥 비율 앞) — 못 먹은 몫의 자
+  const gap = W > 0 ? _t1197Eat(v, W, body) : 0;
+  const f = W > 0 ? Math.max(0, W - gap) / W : 1;
+  let short = 0;
+  for (let i = 0; i < who.length; i++) {
+    const p = who[i], got = ws[i] * f;
+    const sh = DAILY_FOOD_CONSUMPTION * fr * (1 - (p._fdA || 0)) * (w0[i] > 0 ? Math.max(0, 1 - got / w0[i]) : 0);
+    p._mh = Math.min(100, p._mh + got * M.DH); p._mS = s;
+    p._fdS = (p._fdS || 0) + sh; short += sh;
+  }
+  return { need: N0, want: W, got: W - gap, short };
+}
+// 그 사람이 굶어 죽는다(명부에서 뺀다 · 셈은 T1074 빚 죽음 그 칸들). `body` = 몸이 그 자리에서 이미 쓰러졌다(호스트가 부른다 — 날 경계 목록에 안 싣는다).
+function t1197Kill(v, p, body) {
+  const i = v.npcs.indexOf(p); if (i < 0) return false;
+  _t1075Starved(v, v.npcs.length);   // ★[T1075 ③] 사망 계단(끔 = 무동작)
+  v.npcs.splice(i, 1);
+  v.counts[p.currentJob] = (v.counts[p.currentJob] || 0) - 1;
+  v._deathsToday = (v._deathsToday || 0) + 1; v._deadTot = (v._deadTot || 0) + 1; v._fdDeadTot = (v._fdDeadTot || 0) + 1;
+  if (!body) (v._t1197Dead || (v._t1197Dead = [])).push(p.id);
+  return true;
+}
+// 날 경계 — 지난 하루(날 머리 `day − 1` ~ `day`)를 친다: 끼니 둘(몸이 이미 먹은 끼니는 건너뜀) · 남은 시간 흘림 · 빚 거울 · 적응 · 회복.
+function t1197Day(v, day) {
+  const M = _t1197(); const d0 = day - 1, d1 = day;
+  v._t1197Dead = null; v._t1198Gone = null;   // 그날 빠진 사람 목록(호스트가 날 경계 뒤 읽는다)
+  { const fe = v._foodEaten || (v._foodEaten = {}), b = v._t1197Body; for (const r in fe) fe[r] = 0; if (b) for (const r in b) fe[r] = (fe[r] || 0) + b[r]; v._t1197Body = null; }   // 몸 끼니가 그날 식단의 앞 몫
+  const E = _fdEaters(v), eat = new Set(E);
+  for (const p of v.npcs) { _t1197Init(p, d0); if (!eat.has(p) && p._mD < d1) p._mD = d1; }   // 원정 팩 병사 — 시간은 흐르되 게이지는 제 짐(T906)이 정한다
+  for (const p of E) p._fdS = 0;
+  let need = 0, short = 0;
+  for (let k = 0; k < 2; k++) {
+    const t = d0 + (k ? M.R : 0), s = d0 * 2 + k, who = [];
+    for (const p of E) { if (p._mD < t) t1197Advance(p, t); if (p._mS < s) who.push(p); }
+    if (who.length) short += t1197Meal(v, who, s, false).short;
+  }
+  const rm = npcRegenMul(v, v.npcs.length);
+  for (const p of E) {
+    need += DAILY_FOOD_CONSUMPTION * (1 - (p._fdA || 0));
+    if (p._mD < d1) t1197Advance(p, d1);
+    const fd = Math.max(0, M.fed[0] - p._mh) / M.DH + (100 - (p._mhp == null ? 100 : p._mhp)) / (M.RATE * M.DAY_S);   // 허기 몫(하루치) + 잃은 HP 를 극단 최심에서 잃는 날(같은 정본 수) — 죽음에서 ≈ `dieDays`
+    p._fd = fd > 1e-9 ? fd : 0;
+    p._fdA = p._fd > 0 ? Math.min(FD_ADAPT_MAX, (p._fdA || 0) + FD_ADAPT_MAX / FD_ADAPT_DOWN_DAYS)
+                       : Math.max(0, (p._fdA || 0) - FD_ADAPT_MAX / FD_ADAPT_UP_DAYS);
+    if (p._mh >= M.AT && p._mhp < 100) p._mhp = Math.min(100, p._mhp + NPC_HP_DAY.rest * rm);   // 극단 밖이면 하루 회복(요양 몫 · 몸 일일 회복과 같은 수 · 배수 같은 함수) — 보호막이 잡아 둔 HP 0 도 여기서 오른다
+  }
+  return { need, short };
+}
+function t1197DieDays() { const M = _t1197(); return M ? M.dieDays : FD_DEATH_DAYS; }   // 굶어 죽기까지 날(켬 = 몸 정본에서 유도 · 끔 = 14)
+const T1198_BIRTH_BODY = T1197_MEAL_BODY && !(typeof process !== 'undefined' && process.env && process.env.T1198_BIRTH_BODY === '0');
+// ════════════════════════════════════════════════════════════════
+// ★★[T1198 2026-11-06 · 추상 걷기 D · ★재민 11-05] **출생 = 집의 짝 곁 몸 · 명부 ↔ 몸 1:1** — 손잡이 `T1198_BIRTH_BODY`(켬 기본 · `=0` 만 끔 = 종전 바이트 · T1197 끔이면 안 선다).
+//   종전: 출생 = θ-로지스틱 누적 ≥ 1 이면 `createNPC`(부모 무관) · 몸은 서버가 하루 ±2(`POP_SYNC_PER_DAY`)로 econ 수를 따라 스폰(사람과 몸 사이 짝 0).
+//   켬(econ 쪽):
+//     ① 아이를 가질 수 있는 집 = 침상 있는 집(주거 상한 ÷ 채당 정원 — `hutCapPerHut` 정본) 가운데 사는 사람이 둘 이상인 집.
+//        사는 곳 = 명부 차례로 채당 정원씩(원정 팩 병사 제외 · 몸 층의 집 배정 `spawnOneNpc` 이 명부 자리로 집을 고르는 그 꼴).
+//     ② 출생 누적(`_dPAccum`)은 그 집 수를 넘지 않고 · 한 집에 하루 한 아이 · 아이의 부모 칸 `_pa` = 그 집 첫 사람 · `_born` = 그날(호스트가 그 몸 곁에 아이 몸을 세운다).
+//        어느 집부터 = 날 % 집 수(차례 돌림 · 주사위 0).
+//     ③ 로지스틱 음수로 빠진 사람(가장 늙은 이 — 나이 칸 그대로)의 id 를 `_t1198Gone` 에 싣는다(호스트가 **그 사람의 몸**을 그 자리에서 눕힌다).
+function _t1198Houses(v, hcap, day) {
+  const per = hutCapPerHut(); if (!(per > 0)) return null;
+  const E = v.npcs.filter((p) => !(p._warPack && p._warDraft));
+  const bedHouses = hcap === Infinity ? Infinity : Math.floor(hcap / per);
+  const out = [];
+  for (let h = 0; h * per < E.length && h < bedHouses; h++) if (Math.min(per, E.length - h * per) >= 2) out.push(E[h * per]);
+  if (out.length > 1) { const k = ((day | 0) % out.length + out.length) % out.length; return out.slice(k).concat(out.slice(0, k)); }
+  return out;
 }
 // ★★[T1075 2026-11-02 · ★재민 11-02] **행복 = 평형 회귀(배너로드식) · 굶주림 평형 · 사망 계단** — 손잡이 `T1075_HAPPY_EQ`(**기본 끔** · `=1` 만 켬 · 끔 = 종전 바이트).
 //   재민 11-02: 마운트앤블레이드 배너로드의 안보 · 충성도처럼 "현재가 높으면 기본 변화량이 마이너스, 낮으면 플러스" · 굶는 동안 평형을 내려
@@ -1363,7 +1549,7 @@ function t1134C() { const x = (typeof process !== 'undefined' && process.env) ? 
 function t1134Half() { const x = (typeof process !== 'undefined' && process.env) ? parseFloat(process.env.T1134_HALF) : NaN; return Number.isFinite(x) && x > 0 ? x : HAPPY_EQ_HALF_DAYS; }
 //   하루 한 걸음 — 좋은 것 G · 인구 N · 오늘 굶주림 몫 hungerShare(0~1) → { target, h }. 마을 칸 둘(`_t1134E` · `_H`)만 쓴다(하네스가 이 함수를 그대로 부른다).
 function t1134Step(v, G, N, hungerShare) {
-  v._t1134E = (v._t1134E || 0) * Equilibrium.keep(HAPPY_EQ_HALF_DAYS) + (hungerShare > 0 ? hungerShare / FD_DEATH_DAYS : 0);
+  v._t1134E = (v._t1134E || 0) * Equilibrium.keep(HAPPY_EQ_HALF_DAYS) + (hungerShare > 0 ? hungerShare / t1197DieDays() : 0);   // ★[T1197] 켬 = 죽음 날 수(몸 정본 유도) · 끔 = 14
   const target = Math.max(0, Math.min(1, 0.5 + G - t1134C() * N - v._t1134E));
   v._H = v._H == null ? target : Equilibrium.step(v._H, target, t1134Half());
   return { target, h: v._H };
@@ -4527,11 +4713,13 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   //   빠진다"의 소비판 · 이중 계산 닫힘: 종전엔 팩 1 + 마을 1 = 1인 하루 2단위). 표식 `_warPack` 은 war-core 가 **손잡이 켤 때만**
   //   공격 징발에 붙인다(방어 소집은 안 붙는다 — 제 마을 곳간을 먹는다) ⇒ 끔이면 이 줄은 `N` 그대로 = 비트 동일.
   // ★[T1074] 켬 = 하루 몫은 사람마다(적응만큼 덜) + 남은 식량으로 갚을 빚 — 한 번의 섭식 정본 호출(식단 기록 한 번) · 먹은 몫을 사람마다 나눈다
-  const _fdE = T1074_FOOD_DEBT ? _fdEaters(v) : null, _fdN = _fdE ? _fdNeed(_fdE) : null;
-  const foodNeed = _fdN ? _fdN.need : _t423EatN(v, N) * DAILY_FOOD_CONSUMPTION;
+  // ★[T1197] 켬 = 끼니 둘 · 몸 게이지(위 T1197 머리글) — 빚 장부(T1074)는 게이지의 거울로 그 안에서 선다 · 끔 = null = 아래 종전 줄
+  const _t97 = (T1197_MEAL_BODY && _t1197()) ? t1197Day(v, day) : null;
+  const _fdE = (!_t97 && T1074_FOOD_DEBT) ? _fdEaters(v) : null, _fdN = _fdE ? _fdNeed(_fdE) : null;
+  const foodNeed = _t97 ? _t97.need : _fdN ? _fdN.need : _t423EatN(v, N) * DAILY_FOOD_CONSUMPTION;
   const _fdGap = _fdN ? consumeFood(v, _fdN.need + _fdN.debt) : 0;
   const _fdDay = _fdN ? _fdSettle(_fdE, _fdN.need, _fdN.debt, Math.max(0, _fdN.need + _fdN.debt - _fdGap)) : null;
-  const foodGap = _fdDay ? _fdDay.shortTotal : consumeFood(v, foodNeed);  // 남으면 굶주림
+  const foodGap = _t97 ? _t97.short : _fdDay ? _fdDay.shortTotal : consumeFood(v, foodNeed);  // 남으면 굶주림
   // 도구 마모 — tool dependent NPC만
   // ★★★[T180 2026-09-12 · 이 파일의 유일한 접점] **도구 수명을 밖에서 물어본다.**
   //   T163(②)·T173(①)이 서로 다른 방향에서 같은 곳을 가리켰다 — 움직이는 것은 `도구≈0` 일수다.
@@ -4926,7 +5114,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     stats.happinessGoods = stats.happiness; stats.happinessEq = _r.target; stats.happiness = _r.h;
   } else if (stats && T1075_HAPPY_EQ) {   // ★[T1075 ①②] 그날 값 = 평형 H* · 실제 H 는 마을 칸이 기억한다(소비자 — 일 배수 · 도적 층 — 는 H 를 읽는다)
     const _fd = T1074_FOOD_DEBT ? foodDebtOf(v) : null;
-    const _hs = stats.happiness * (_fd ? (1 - Math.min(1, _fd.mean / FD_DEATH_DAYS)) : 1);
+    const _hs = stats.happiness * (_fd ? (1 - Math.min(1, _fd.mean / t1197DieDays())) : 1);   // ★[T1197] 켬 = 죽음 날 수(몸 정본 유도) · 끔 = 14
     v._H = v._H == null ? _hs : _hs + (v._H - _hs) * Equilibrium.keep(HAPPY_EQ_HALF_DAYS);
     stats.happinessEq = _hs; stats.happiness = v._H;
   }
@@ -4958,6 +5146,10 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
 
   // 6) 인구 적용 — 정수 단위. 분수는 누적해서 처리.
   v._dPAccum = (v._dPAccum || 0) + dP;
+  // ★[T1198 ①②] 켬 = 출생 누적은 아이를 가질 수 있는 집 수를 넘지 않는다(한 집 하루 한 아이) · 끔 = null = 종전 줄
+  const _t98 = (T1198_BIRTH_BODY && _t1197()) ? _t1198Houses(v, _hcap, day) : null;
+  let _t98k = 0;
+  if (_t98 && v._dPAccum > _t98.length) v._dPAccum = _t98.length;
   while (v._dPAccum >= 1 && (!T1159_HOME_N || _homeN > 0)) {
     // 인구 cap — N² 폭발 방지
     if (v.npcs.length >= POP_MAX) {
@@ -4978,7 +5170,9 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       v._dPAccum = Math.min(v._dPAccum, 0.9);
       break;
     }
+    if (_t98 && _t98k >= _t98.length) { v._dPAccum = Math.min(v._dPAccum, 0.9); break; }   // ★[T1198] 아이를 가질 집이 다 찼다
     const npc = createNPC({ job: newJob, inheritSkill: apprenticeInherit(v, newJob) });   // ★S4 명장 견습(세대 전승)
+    if (_t98) { npc._pa = _t98[_t98k++].id; npc._born = day; }   // ★[T1198 ②] 그 집 짝 곁에서 선다(호스트가 부모 몸 곁에 세운다)
     v.npcs.push(npc);
     v.counts[newJob] = (v.counts[newJob] || 0) + 1;
     v._dPAccum -= 1;
@@ -5024,12 +5218,22 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     if (!T1074_FOOD_DEBT) _t1075Starved(v, v.npcs.length);   // ★[T1075 ③] 빚 판이 아니면 이 고리가 기근 길이다(빚 판에선 굶어 죽음 = 빚 죽음 · 끔 = 무동작)
     const dead = v.npcs.splice(oldestIdx, 1)[0];
     v.counts[dead.currentJob] = (v.counts[dead.currentJob] || 0) - 1;
+    if (T1198_BIRTH_BODY && _t1197()) (v._t1198Gone || (v._t1198Gone = [])).push(dead.id);   // ★[T1198 ③] 그 사람의 몸이 눕는다(호스트)
     v._dPAccum += 1;
   }
   // ★[T924] 켬 = 고리가 몸이 없어 멈춘 날(빚이 −1 아래로 남았는데 사람은 있다 = 남은 사람이 다 징발 중) 못 치른 몫을 넘기지 않는다 — 출생 줄의 `0.9` 거울(끔 = 종전 바이트)
   if (T924_DEBT_CAP && v._dPAccum <= -1 && v.npcs.length > POP_MIN) v._dPAccum = Math.max(v._dPAccum, -0.9);
   // ★★[T1074 ④] 켬 = 식량 빚 죽음 — 빚 > 14(하루치) **이고** 그날도 적자인 사람 가운데 가장 늙은 1명/일(그날 제 몫을 다 먹으면 안 죽는다).
   //   보호막(첫 365일 · NPC 마을)이 선 날은 위 고리와 같이 이 죽음도 막는다(`_fdShield` 에 센다 — ⑦ 보호막 켬 ↔ 끔 표의 자).
+  // ★★[T1197 ②] 켬 = 굶어 죽음은 HP 가 0 이 된 **그 사람** — 하루 상한 없음 · 보호막 · POP_MIN · 징발 제외는 아래 T1074 줄 그대로
+  if (T1197_MEAL_BODY && _t1197()) {
+    for (const p of v.npcs.slice()) {
+      if (!(p._mhp != null && p._mhp <= 0) || p._warDraft) continue;
+      if (!(v.npcs.length > POP_MIN)) break;
+      if (!v.founder && _shieldT < SHIELD_DAYS) { v._fdShield = (v._fdShield || 0) + 1; continue; }
+      t1197Kill(v, p, false);
+    }
+  } else
   if (T1074_FOOD_DEBT && v.npcs.length > POP_MIN) {
     const _fdk = _fdDeathIdx(v);
     if (_fdk >= 0) {
@@ -5791,7 +5995,7 @@ function pickDeficitJob_rational(v, world) {
   // ★★[T1148] 추위 빚 — 땔감도 생존 필요(위 `T1148_FUEL_JOB` 머리말 · 끔 = 이 줄 무동작). 기근 블록 **앞**이다(블록 안팎 같은 잣대).
   if (T1148_FUEL_JOB && foodEquiv > N * 6 && hasSlot(v, 'lumberjack', cap, counts) && !(T325_WOOD_ACT && v._t325Cells === 0)) {
     const _c = t1148Cold(v);
-    if (_c && _c.debt > 0 && _c.fuelDays < foodEquiv / N + FD_DEATH_DAYS) return 'lumberjack';
+    if (_c && _c.debt > 0 && _c.fuelDays < foodEquiv / N + t1197DieDays()) return 'lumberjack';   // ★[T1197] 켬 = 죽음 날 수(몸 정본 유도) · 끔 = 14
   }
   // 진짜 기근 (food < N*30일치) — 식량 직업 강제. ★경제적 정당성: 자급경제는 맬서스 상한에서 돌고,
   //   강제 30일버퍼가 ①식량안보→특화 노동 해방 ②식량생산 최대화→인구 상한 달성. (게이트 완화 실험 시 인구·특화 둘다 악화 확인)
@@ -6783,6 +6987,8 @@ module.exports = {
   T1075_HAPPY_EQ, HAPPY_EQ_HALF_DAYS,
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
   foodDebtOf, T1074_FOOD_DEBT,   // ★[T1074] 식량 빚 읽는 함수 하나(T1075 가 읽는다)
+  T1198_BIRTH_BODY, _t1198Houses,   // ★[T1198] 출생 = 집 짝 곁 · 명부 ↔ 몸 1:1 — 호스트 · 하네스
+  T1197_MEAL_BODY, NPC_HP_DAY, npcRegenMul, t1197Advance, t1197Meal, t1197Kill, t1197Day, t1197DieDays, __t1197: () => _t1197(),   // ★[T1197] 몸 게이지 끼니 — 호스트(몸 끼니 · 몸 흘림 · 그 자리 죽음) · 하네스가 같은 함수를 부른다
   __t1074: { _fdEaters, _fdNeed, _fdSettle, _fdDeathIdx, FD_ADAPT_MAX, FD_ADAPT_DOWN_DAYS, FD_ADAPT_UP_DAYS, FD_DEATH_DAYS, FD_REPAY_MAX, T1117_FD_EVID },   // 하네스 훅(test-t1074-food-debt)
   T860_ON, CATCH_FROM, PRESERVE_FROM, _preserveSurplus, _t860Begin, _t860Dry, T877_ON, _t860Unit, PRESERVED_FOODS, PRESERVE_YIELD, PRESERVE_FOOD_FACTOR, FORAGE_FOOD_FACTOR,   // ★[T860] 잡은 날 말리기 — 손잡이 · 잡은 칸 표(하네스가 spoil 정본과 대조한다 · 사본 0) · 갈무리 한 걸음
   STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
