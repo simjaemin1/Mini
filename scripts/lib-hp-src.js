@@ -47,6 +47,7 @@ const SPECS = {
       'bestWall.data.hp = (bestWall.data.hp ?? maxHp) - atk;': 1,          // 벽 — 부수기
       'bestWall.data.hp = 0;': 1,                                          // 벽 — 무너짐
       'if (e && e[0] === r.type && e[1] > 0 && e[1] < r.hp) r.hp = e[1];': 1,   // 자원 — 시드 개체 벤 hp 되살림(T978 `seed_hp` 장부 · PM 10-30 표에 더함)
+      'if(!resources.has(r.id)&&r.isSeed&&r.maxHp!==RESOURCE_HP_TABLE.rock&&!seedHp.has(r.seedKey)&&r.hp===r.maxHp)r.hp=r.maxHp=RESOURCE_HP_TABLE.rock;': 1,   // 자원 — 바위 시드 개체의 정본 hp 를 처음 세움(T1180 · T1181 후속 `2c18de89` · 몸 아님 · T1203 표에 더함)
     },
     wildWrite: /(?:^|[^\w$.])sh\.hp\s*(?:\+\+|--|\+=|-=|=(?!=))/, wildCall: /\bH\.setMobHp\(sh, /,
     loud: ['arrow', 'feed', 'npc', 'player'], keep: ['feed', 'npc', 'player'], whys: ['arrow', 'feed', 'npc', 'player'], wildWhy: 'wild',
@@ -57,7 +58,8 @@ const SPECS = {
   npc: {
     name: '마을 NPC 몸 hp', file: 'server/villages.js', door: /\nfunction setHp\(p, v, why\) \{/, doorName: '`setHp(p, v, why)`',
     fwd: 'function _setHp(p, v, why) { return state.deps.setHp(p, v, why); }',
-    unit: ['bu', 'A[i]'], calls: 8, whys: ['captive', 'died', 'regen', 'release', 'restore', 'starve', 'war'],
+    // ★[T1203 2026-11-07] 부르는 자리 8 → 10 — 식사 몸 굶음(`_t1198`/T1206 갈래 · `lost > 0` → `starve`)과 캐러밴 몸 복원(T1182 `_t1034Apply` 의 `put` · 종전 `p.hp=q[2]` 직접 쓰기를 문으로 · `restore`). 낱말 일곱 그대로.
+    unit: ['bu', 'A[i]'], calls: 10, whys: ['captive', 'died', 'regen', 'release', 'restore', 'starve', 'war'],
   },
 };
 

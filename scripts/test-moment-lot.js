@@ -82,7 +82,8 @@ if (process.env.T732_SUB === 't748') {
       const u = R6(3 * per(sp)); npc._t312U = u;
       const s0 = ev.storage.fish || 0, nr0 = GL.stats().doorNoRec;
       const got = H._t312Deliver(vil, npc);
-      const a = { u, got: R6(got), ds: R6((ev.storage.fish || 0) - s0), led: led(ev, 'fish'), hand: Lots.of(npc, sp).length, inv: npc.inventory[sp] || 0, noRec: GL.stats().doorNoRec - nr0 };
+      const a = { u, got: R6(got), ds: R6((ev.storage.fish || 0) - s0), led: led(ev, 'fish'), hand: Lots.of(npc, sp).length, inv: npc.inventory[sp] || 0, noRec: GL.stats().doorNoRec - nr0,
+        ledU: (GL.ledger(ev, 'fish') || []).reduce((q, r) => q + (+r.u || 0), 0), dsU: (ev.storage.fish || 0) - s0 };   // ★[T1203] 반올림 앞 합 · 받은 몫(아래 ⑨① 이 이것으로 1e-9 안에서 견준다)
       //   로트 아닌 종만 든 손 — 손에 레코드가 없다(그 순간의 새 로트 · 센다 · 보고 재민 칸)
       NOW += DAY; npc.inventory[np] = 1; npc._t312U = R6(per(np));
       const s1 = ev.storage.fish || 0, nr1 = GL.stats().doorNoRec;
@@ -539,6 +540,9 @@ say('\n⑤ 곳간 장부');
 say('\n⑥ 캐러밴 — 랩 econ v2(5마을 · 200일) · 매일 불변식 · 짐 레코드의 순간');
 {
   const econV2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
+  // ★[T1203 2026-11-07] 아래 끔 바이트 견줌(`w0`)은 **같은 세계**여야 한다 — econ 마을 번호 계수기(프로세스 전역)가 세계를 지을 때마다 늘어
+  //   나중에 지은 `w0` 는 마을 id 가 달라진다(id 에 묶인 칸이 값에 닿는다 · T1161 ② 와 같은 까닭 · 보고 T1203 §2). 지을 때의 흐름 상태를 잡아 `w0` 앞에서 되돌린다.
+  const _E1 = require(path.join(ROOT, 'sim', 'economy-sim')), _S0 = _E1.rngState();
   const world = econV2.createWorldV2({ seed: 7, villageCount: 5, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
   GL.stats(true);
   NOW = 2000 * DAY;
@@ -573,6 +577,7 @@ say('\n⑥ 캐러밴 — 랩 econ v2(5마을 · 200일) · 매일 불변식 · �
   ok(seen.out > 0 && seen.in > 0 && st.moved > 0, '⑥ 캐러밴이 실제로 오갔다 — 짐 싣기 · 내리기 · 레코드 넘김', JSON.stringify({ 싣기: seen.out, 내리기: seen.in, 넘김: st.moved }));
   ok(seen.kBad === 0 && seen.kOk > 0, '★★⑥ 내린 짐 레코드의 순간 < 오늘 마감 — 받는 곳간에서 "지금 얻은 것"이 되지 않는다', `${seen.kOk} 레코드`);
   // 끔 바이트 — 훅을 안 꽂은 같은 세계와 곳간 값이 같다(훅은 관측자)
+  _E1.setRngState(_S0);   // ★[T1203] 같은 계수기 · 같은 씨에서 짓는다
   const w0 = econV2.createWorldV2({ seed: 7, villageCount: 5, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
   for (let d = 0; d < 200; d++) econV2.tickWorldV2(w0);
   const sig = (w) => JSON.stringify(w.villages.map((v) => [v.name, Object.keys(v.storage).map((k) => [k, +(+v.storage[k]).toFixed(9)]), (v.npcs || []).length]));
@@ -651,7 +656,9 @@ say('\n⑨ [T748] 켬 전용 일곱 길 — 로트를 그대로 넘긴다(손잡
   const X = pair748('fish', { T312_FISH_ACT: '1' }), F = X.P;
   if (pre748(X, '어부 귀환(T312_FISH_ACT)')) {
     const a = F.a || {}, b = F.b || {};
-    ok(JSON.stringify(ks(a.led)) === JSON.stringify([F.k1, F.k2]) && near(a.led[0][1], 2 * a.led[1][1], 1e-6) && near(su(a.led), a.ds, 1e-6) && a.hand === 0,
+    // ★[T1203 2026-11-07] 합은 반올림 앞 값으로 견준다(1e-9) — 레코드를 하나씩 여섯째 자리로 반올림해 더하면 레코드 둘(어종별 T1192 뒤 낚은 순간 둘)에서
+    //   오차가 1e-6 에 닿는다(종전 `near(su(a.led), a.ds, 1e-6)` 이 1.900407 ↔ 1.900408 로 빨갰다 · 장부는 받은 몫만큼 정확히 떼어 담는다 — `doorIn`).
+    ok(JSON.stringify(ks(a.led)) === JSON.stringify([F.k1, F.k2]) && near(a.led[0][1], 2 * a.led[1][1], 1e-6) && near(a.ledU, a.dsU, 1e-9) && a.hand === 0,
       '★★⑨① 어부 귀환 — 손의 생선 로트(낚은 순간 둘 · 2 : 1)가 곳간 레코드로 · 합 = 곳간이 받은 몫 · 손 장부 비움', JSON.stringify(a.led));
     ok(b.noRec === 1 && b.led.length === a.led.length + 1 && b.led[b.led.length - 1][0] === b.kNow,
       '⑨① 로트 아닌 종만 든 손(표 밖 — 손에서 안 늙는다)은 레코드가 없다 — 그 순간의 새 로트 · 센다(재민 칸)', `${F.np} · 문 레코드 없음 ${b.noRec}`);
@@ -804,7 +811,8 @@ say('\n⑪ [T748] 배선 — 켬일 때만 닿는 줄 · 끄면 안 꽂는다(�
     '⑨⑦ 존 경계 — 기록 둘(\'arrive\' · \'return\')에 짐 레코드 · 받는 둘이 다시 싣는다(끄면 칸이 안 선다)');
   ok(/const _d = _G \? _G\.doorOpen\(vil\.econ\) : false;\s*\n\s+const g = _lifeEcon\(\)\.forageToGranary\(vil\.econ, k, u\) \|\| 0;\s*\n\s+if \(_d\) _G\.doorShut\(vil\.econ, k, _G\.handRecs\(npc, h, g\)\);/.test(VS)
     && /const _d = _G \? _G\.doorOpen\(vil\.econ\) : false;\s*\n\s+const g = _lifeEcon\(\)\.forageToGranary\(vil\.econ, it, u\) \|\| 0;\s*\n\s+if \(_d\) _G\.doorShut\(vil\.econ, it, _G\.pockTake\(vil\.econ, '_t544Pack', h, g\)\);/.test(VS)
-    && /const got = _lifeEcon\(\)\.fishToGranary\(vil\.econ, u\) \|\| 0;\s*\n\s+if \(_d\) _G\.doorShut\(vil\.econ, 'fish', _t748FishRecs\(_G, npc\)\);/.test(VS),
+    // ★[T1203 2026-11-07] 어부 입구 줄은 물고기 어종별(T1192 · physical-supply)에서 고른 종마다 손 레코드를 짓는 꼴로 바뀌었다(받은 몫이 0 이면 레코드 0) — 글자 자를 그 줄에 맞춘다(뜻 같음: 앞에서 열고 · 입구 한 줄 · 뒤에서 손 레코드로 닫는다).
+    && /const _G = _t748Gran\(vil\), _d = _G \? _G\.doorOpen\(vil\.econ\) : false;[^\n]*\n\s+const got = _lifeEcon\(\)\.fishToGranary\(vil\.econ, take\) \|\| 0;\s*\n\s+if \(_d\) \{ const records = \[\]; if \(got > 0\) for \(const h of selected\) records\.push\(\.\.\._G\.handRecs\(npc,h\.id,h\.n,h\.per\)\); _G\.doorShut\(vil\.econ,'fish',records\); \}/.test(VS),
     '⑨①② 곳간 입구 줄은 글자 그대로 — 그 앞에서 문을 열고 뒤에서 받은 몫만큼 손 레코드로 닫는다');
 }
 

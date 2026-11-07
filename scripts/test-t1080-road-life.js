@@ -187,16 +187,17 @@ ok(V.__p3Bind({}).T1080_ROAD_LIFE === true, '손잡이 켬 기본(`T577_CAND_WAL
   days(T, 1);
   B._t765Probe.save(T.W.day);
   const row = T.db.rows[T.db.rows.length - 1], J = JSON.parse(row.json);
+  // ★[T1203] 저장 줄 칸 이름은 `hp` 그대로(영속 꼴 무변) — 메모리 장부 칸만 `roadHp`(아래 줄들)
   ok(Array.isArray(J.walk) && J.walk.every((w) => w.pack && w.h != null && w.hp != null && w.dep != null), '⑤ 저장 줄 `walk` 에 짐 · 허기 · HP · 떠난 날');
-  const before = JSON.stringify(B._t765Probe.ledger().map((w) => [w.pack, w.h, w.hp, w.lastDay]));
+  const before = JSON.stringify(B._t765Probe.ledger().map((w) => [w.pack, w.h, w.roadHp, w.lastDay]));
   B._t765Probe.reset(); B._t765Probe.restore({ data: row.json, day: row.day });
-  const after = JSON.stringify(B._t765Probe.ledger().map((w) => [w.pack, w.h, w.hp, w.lastDay]));
+  const after = JSON.stringify(B._t765Probe.ledger().map((w) => [w.pack, w.h, w.roadHp, w.lastDay]));
   ok(before === after, '⑤ 복원 — 장부 칸 그대로');
 }
 // ⑥ 결정론 — 같은 세계 두 번 = 같은 장부
 {
   const run = () => { const T = world({ ids: [1, 3, 4, 5] }); T.O.econ.storage.food = 60; dissolve(T, 3); B._t765Probe.walk(T.O, T.W.day); days(T, 3); T.by.get(3).econ._banditized = 1; days(T, 30);
-    return JSON.stringify({ L: B._t765Probe.ledger().map((w) => [w.to, w.pack, w.h, w.hp]), e4: T.by.get(4).econ.npcs.length, st: T.by.get(4).econ.storage.food }); };
+    return JSON.stringify({ L: B._t765Probe.ledger().map((w) => [w.to, w.pack, w.h, w.roadHp]), e4: T.by.get(4).econ.npcs.length, st: T.by.get(4).econ.storage.food }); };
   ok(run() === run(), '⑥ 같은 세계 두 번 — 같은 장부 · 같은 도착(주사위 0)');
 }
 // ⑧ T1079 해산 몸 — 같은 걷기 문(★T1108): 길 위 하루(늙기 · 제 짐 · 굶주림) · 다시 고르기 · 저장 줄 하나(`t1079` 표지)
@@ -236,9 +237,9 @@ ok(V.__p3Bind({}).T1080_ROAD_LIFE === true, '손잡이 켬 기본(`T577_CAND_WAL
     B._t765Probe.save(T.W.day);
     const J = JSON.parse(T.db.rows[T.db.rows.length - 1].json);
     ok(J.walk && J.walk.length === 1 && J.walk[0].t1079 === 1 && J.walk[0].lastDay != null && J.walk[0].rr === 1, '⑧-c 저장 줄 하나 — `t1079` 표지 + 길 위 칸', JSON.stringify(Object.keys(J.walk[0])));
-    const before = JSON.stringify(B._t765Probe.ledger().map((x) => [x.t1079, x.to, x.h, x.hp, x.lastDay, x.rr]));
+    const before = JSON.stringify(B._t765Probe.ledger().map((x) => [x.t1079, x.to, x.h, x.roadHp, x.lastDay, x.rr]));
     B._t765Probe.reset(); B._t765Probe.restore({ data: T.db.rows[T.db.rows.length - 1].json, day: T.W.day });
-    ok(JSON.stringify(B._t765Probe.ledger().map((x) => [x.t1079, x.to, x.h, x.hp, x.lastDay, x.rr])) === before, '⑧-c 복원 — 같은 줄(표지 · 칸 그대로)');
+    ok(JSON.stringify(B._t765Probe.ledger().map((x) => [x.t1079, x.to, x.h, x.roadHp, x.lastDay, x.rr])) === before, '⑧-c 복원 — 같은 줄(표지 · 칸 그대로)');
   }
 }
 // ⑦ 글자 — 걷기 문 하나 · 손잡이 하나

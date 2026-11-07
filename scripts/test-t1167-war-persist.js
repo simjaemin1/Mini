@@ -16,8 +16,9 @@
 //   ④ ★켬 — 귀환 중 전쟁(몸 없음): 장부 귀환이 그 병사 명부 몸의 짐을 모은다(`_warRationCollect`) · 명부 밖 몸은 안 본다
 //   ⑤ 교전 중 전쟁 — 다시 개전 표(`_t1167Re`) · ⑥ 다른 날 메타 — 안 되살린다(생성 금지) · ⑦ 진행 중 전쟁 없으면 칸 0
 'use strict';
-// ★[PM land1049] 픽스처 마을에 `housesPx` 가 없다 — land1048 뒤 `T1041_WAR_BODY` 켬 기본이면 징발 앞 `syncVillagePop` → `spawnOneNpc` 가 그 칸을 읽어 넘어진다(제품 마을엔 늘 있다). 이 하네스는 영속을 재니 몸 세우기 갈래는 끔에 묶는다 · 켬 갈래 픽스처는 T1203 몫.
-if (process.env.T1041_WAR_BODY == null) process.env.T1041_WAR_BODY = '0';
+// ★[PM land1049 → T1203 2026-11-07] 끔 묶음(`T1041_WAR_BODY=0`)을 풀었다 — 켬(전쟁 몸 · land1048 뒤 기본) 판이 넘어지던 까닭은 픽스처 꼴 둘이었다:
+//   ⓐ 마을에 `housesPx` 가 없었다(제품 마을은 늘 배열) · ⓑ 마을 몸 수(3 · 2)가 econ 주민 수(6)보다 적어 징발 앞 `syncVillagePop` 이 모자란 몸을
+//   존 `spawnNpc`(픽스처 deps 에 없음)로 세우려 했다. 아래 `mkV` 는 빈 집 배열을 · 판은 마을마다 econ 주민 수만큼 몸을 갖는다(몸 세우기 0 · 제품 세계의 맞춘 꼴).
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
@@ -32,10 +33,11 @@ if (process.env.T1167_SUB) {
   try {
     const WarCore = require(path.join(ROOT, 'sim', 'war-core')), V = require(SV('villages.js'));
     const DAY0 = 400;
-    const mkV = (name, dbId, pids) => ({ name, dbId, ccx: dbId * 10, ccy: 0, npcPids: pids.slice(), econ: { name, npcs: Array.from({ length: 6 }, (_, i) => ({ id: dbId * 100 + i, currentJob: 'farmer' })), counts: {}, storage: { food: 50, weapon: 0 }, _warFatigue: 0 } });
+    // ★[T1203] `housesPx: []` — 제품 마을과 같은 칸(집 자리 없음 = 빈 배열) · 몸 수 = econ 주민 수(6 · 맞춘 세계 — 징발 앞 몸 세우기 0)
+    const mkV = (name, dbId, pids) => ({ name, dbId, ccx: dbId * 10, ccy: 0, housesPx: [], npcPids: pids.slice(), econ: { name, npcs: Array.from({ length: 6 }, (_, i) => ({ id: dbId * 100 + i, currentJob: 'farmer' })), counts: {}, storage: { food: 50, weapon: 0 }, _warFatigue: 0 } });
     const players = new Map(), npcs = new Map();
     const tag = PH === 'save' ? 'o' : 'n';   // 판마다 다른 pid(프로세스마다 새로 선다)
-    const A = mkV('공격', 1, [tag + 'a0', tag + 'a1', tag + 'a2']), D = mkV('방어', 2, [tag + 'd0', tag + 'd1']);
+    const A = mkV('공격', 1, [0, 1, 2, 3, 4, 5].map((i) => tag + 'a' + i)), D = mkV('방어', 2, [0, 1, 2, 3, 4, 5].map((i) => tag + 'd' + i));
     for (const v of [A, D]) for (const pid of v.npcPids) { const p = { pid, isNpc: true, hp: 100, inventory: {}, simJob: 'farmer', simVillageId: v.dbId }; players.set(pid, p); npcs.set(pid, p); }
     const world = { villages: [A.econ, D.econ], day: DAY0 };
     let H = null;

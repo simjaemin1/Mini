@@ -967,14 +967,28 @@ function computeShadowPrices(v) {
 //   · 원석 상한은 금속 칸을 같은 함수(`_priceFromV2(_targetV2)`)로 매겨 견준다 — 전 표의 `prices[k]` 와 같은 값 · 표 밖 금속 = 0(전 표의 `|| 0`).
 //   · 세계 공급 캐시(`_worldStockOf` · 하루 한 번 세계 곳간을 센다)를 전 표와 **같은 순간**에 세운다 — 전 표는 부를 때마다 그 캐시를 묻는다(값표 밖
 //     두 칸만 묻는 판이 그 순간을 늦추면 그날 캐시가 다른 재고로 서서 뒤 값이 갈린다). 계산이지 세계를 안 바꾼다(전 표와 같은 쓰기 한 곳).
+// ★★[T1203 2026-11-07 · T1161 ↔ T1188 만남 결함] 손잡이 `T1188_ORE_SPLIT` 켬(land1048 뒤 기본)에선 전 표가 세 가지를 더 한다 —
+//   ⓐ 값표 칸 = `TRADABLE`(옛 `ore` 를 빼고 광물별 원석을 넣는다 · 251 줄) — `ELASTICITY` 에는 옛 `ore` 가 남아 있어 그것으로 물으면 전 표에 없는 `ore` 칸을 매긴다
+//   ⓑ 광물별 원석 칸마다 금속 값 상한(`_oreCapV2(v, 금속 값, 원석)` — 금속 칸은 상한이 없는 칸이라 순서 무관)
+//   ⓒ 머리에서 옛 원석 곳간을 광물별로 옮긴다(`v1.migrateOre` — 세계에 쓴다 · 전 표와 같은 순간)
+//   종전 두 칸 길은 셋 다 없어 견적 · 실행의 원석 값이 전 표와 갈렸다(`test-t1161-two-prices` ①-1 · ②-1 · ④-1). 셋을 전 표와 같은 길로 탄다(새 수 0).
+//   끔(`T1188_ORE_SPLIT=0`)이면 `TRADABLE` 과 `ELASTICITY` 열쇠가 같고(86 줄) ⓑ ⓒ 가 안 돌아 종전 값 그대로다.
+let _t1203TrSet = null, _t1203TrN = -1;
+function _t1203Tradable() { if (_t1203TrN !== TRADABLE.length) { _t1203TrSet = new Set(TRADABLE); _t1203TrN = TRADABLE.length; } return _t1203TrSet; }
 function shadowPricesOf(v, keys) {
+  if (T1188_ORE_SPLIT) v1.migrateOre(v);   // ★[T1203 ⓒ] 전 표 머리와 같은 쓰기
   const prices = {};
   const ctx = _targetCtxV2(v);
   if (TRADABLE.length) _worldStockOf(v, TRADABLE[0]);
-  const own = Object.prototype.hasOwnProperty;
-  for (const r of keys) if (own.call(ELASTICITY, r) && !own.call(prices, r)) prices[r] = _priceFromV2(_targetV2(v, r, ctx));
+  const own = Object.prototype.hasOwnProperty, inT = _t1203Tradable();
+  const base = (k) => (inT.has(k) ? _priceFromV2(_targetV2(v, k, ctx)) : undefined);   // ★[T1203 ⓐ] 전 표의 `prices[k]`(상한 앞)
+  for (const r of keys) {
+    if (own.call(prices, r) || !inT.has(r)) continue;
+    if (T1188_ORE_SPLIT && OreGoods.isOre(r)) prices[r] = Math.min(base(r) || 0, _oreCapV2(v, base, r));   // ★[T1203 ⓑ] 전 표의 그 줄 그대로
+    else prices[r] = base(r);
+  }
   if (prices.ore != null) {
-    const cap = _oreCapV2(v, (k) => own.call(prices, k) ? prices[k] : (own.call(ELASTICITY, k) ? _priceFromV2(_targetV2(v, k, ctx)) : undefined));
+    const cap = _oreCapV2(v, (k) => own.call(prices, k) ? prices[k] : base(k));
     if (cap != null) prices.ore = Math.min(prices.ore, cap);
   }
   return prices;
