@@ -56,7 +56,7 @@ for (const s of SEEDS) for (const k of ['off', 'on0', 'on', 'onB', 'on659']) {
 const tot = (k, g) => SEEDS.reduce((a, s) => a + (res[s][k] ? g(res[s][k]) : 0), 0);
 const have = (k) => SEEDS.filter((s) => res[s][k]);
 const sum = {};
-for (const k of ['off', 'on']) {
+for (const k of ['off', 'on', 'on0']) {
   sum[k] = { seeds: have(k), pop: tot(k, (r) => r.end.pop), empty: tot(k, (r) => r.end.empty), terr: tot(k, (r) => r.end.terr), lj: tot(k, (r) => r.mean.lj), ljEnd: tot(k, (r) => r.end.lj),
     fo: tot(k, (r) => r.mean.fo), ma: tot(k, (r) => r.mean.ma), fa: tot(k, (r) => r.mean.fa), wood: tot(k, (r) => r.mean.wood), stone: tot(k, (r) => r.mean.stone), emaW: tot(k, (r) => r.mean.emaW),
     days: tot(k, (r) => r.t1207.days), stall: tot(k, (r) => r.t1207.stallWood), cells: tot(k, (r) => r.t1207.cells), postWood: tot(k, (r) => r.t1207.wood) };
@@ -80,6 +80,8 @@ if (s0.on0 || s0.onB || s0.on659) sum.s1020 = { off: pick1020(s0.off), on0: pick
 md.push('', `**3시드 합(끔 ↔ 켬)** — 끝 날 인구 ${f(sum.off.pop)} → ${f(sum.on.pop)}(${pc(sum.off.pop, sum.on.pop)} · 비 ${sum.popRatio}) · 빈 마을 ${sum.off.empty} → ${sum.on.empty} · 끝 날 영토 ${f(sum.off.terr)} → ${f(sum.on.terr)} · `
   + `나무꾼(평균) ${f(sum.off.lj, 1)} → ${f(sum.on.lj, 1)}(${pc(sum.off.lj, sum.on.lj)}) · 채집꾼 ${f(sum.off.fo, 1)} → ${f(sum.on.fo, 1)} · 석공 ${f(sum.off.ma, 1)} → ${f(sum.on.ma, 1)} · 농부 ${f(sum.off.fa, 1)} → ${f(sum.on.fa, 1)} · 곳간 통나무(평균) ${f(sum.off.wood)} → ${f(sum.on.wood)} · 돌 ${f(sum.off.stone)} → ${f(sum.on.stone)}`,
   `켬 영토 장부 — 넓히려 한 날 ${f(sum.on.days)} 중 통나무 막힘 ${f(sum.on.stall)}(${sum.on.stallPct}%) · 넓힌 셀 ${f(sum.on.cells)} · 말뚝 통나무 ${f(sum.on.postWood, 1)}`,
+  //   T1213 몫(켬 · T1213 끔 → 켬) — 켬0 판이 시드 셋 다 있을 때만(같은 시드끼리 합)
+  sum.on0.seeds.length === 3 ? `**T1213 몫(켬 · T1213 끔 → 켬 · 3시드 합)** — 끝 날 인구 ${f(sum.on0.pop)} → ${f(sum.on.pop)} · 빈 마을 ${sum.on0.empty} → ${sum.on.empty} · 나무꾼(평균) ${f(sum.on0.lj, 1)} → ${f(sum.on.lj, 1)}(${pc(sum.on0.lj, sum.on.lj)}) · 석공 ${f(sum.on0.ma, 1)} → ${f(sum.on.ma, 1)}(${pc(sum.on0.ma, sum.on.ma)}) · 재료 막힘 ${sum.on0.stallPct}% → ${sum.on.stallPct}% · 넓힌 셀 ${f(sum.on0.cells)} → ${f(sum.on.cells)} · 끝 날 영토 ${f(sum.on0.terr)} → ${f(sum.on.terr)}` : '(T1213 몫 — 켬0 판이 시드 셋 다 있지 않다)',
   `게이트(시드별) — ${gate.map((g) => `${g.seed}: 인구 비 ${g.popRatio}${g.popOk ? '' : '✗'} · 빈 마을 ${g.emptyOff} → ${g.emptyOn}${g.emptyOk ? '' : '✗'}`).join(' · ')} · 끔 판 = main 기준선 ${SAME || '?'} ⇒ 3시드 합 읽기 ${sum.gateSum && SAME === '3/3' ? '선다' : '안 선다'}(인구 비 ${sum.popRatio} · 빈 마을 ${sum.off.empty} → ${sum.on.empty}) · 시드마다 읽기 ${sum.gateSeed && SAME === '3/3' ? '선다' : '안 선다'}`,
   sum.s1020 ? `시드 1020 — ` + ['off', 'on0', 'on', 'onB', 'on659'].filter((k) => sum.s1020[k]).map((k) => { const q = sum.s1020[k];
     return `${NAME[k]} 인구 ${f(q.pop)} · 빈 ${q.empty} · 나무꾼 평균 ${f(q.lj, 1)} · 석공 ${f(q.ma, 1)}` + (k === 'off' ? '' : ` · 막힘 ${q.stallPct}% · 셀 ${f(q.cells)}`) + ` · 확장 ${f(q.expand)}`; }).join(' / ') : '(시드 1020 비교 판 없음)',
