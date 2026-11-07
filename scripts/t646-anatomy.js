@@ -633,7 +633,24 @@ function table() {
       const top = (o, n) => Object.entries(o).sort((x, y) => y[1] - x[1]).slice(0, n).map(([k, v]) => [k, v, u(v)]);
       r.lines = { chunks: T.chunks, samples: T.tot, decSamples: T.dec, stepSamples: T.ns, decUs, stepUs: +stepUs.toFixed(3), selfUs: u(T.nsSelf), groups: G, calls: calls.slice(0, 20), selfTop,
         deepFn: top(T.dF, 20), deepTop: top(T.dL, 25), call2: top(T.c2, 15), incl: top(T.inc, 400), reqBy: top(T.rq, 15), selfAll: Object.entries(T.self).map(([ln, n]) => [+ln, n, u(n)]) };
+      //   ★[T1219] 밤 창 하루 닫힘 앞 — econ 하루 닫힘(T731 현지 자정 · phase ≈ 0.84)이 든 조각은 `[T646]` 줄(900 틱마다)이 창 안 · 밖으로 판마다 갈린다(T1214 §1).
+      //     닫힘 앞 조각(phase < T646_PRE_PH · 기본 0.83)만으로 같은 셈(결정 문 시계 × npcStep 표본 ÷ 결정 표본)을 다시 한다 · 함수 포함 몫도 같이.
+      if (w.W === 'night') {
+        const PH = +(process.env.T646_PRE_PH || 0.83), sl = w.slices.filter((x) => x.phase != null && x.phase < PH);
+        let n = 0, popN = 0, dec = 0; for (const s0 of sl) for (const x of s0.ana) { n += x.n; popN += x.popN; dec += x.seg['결정 문(순회)'] || 0; }
+        const lo2 = Math.min(...sl.map((x) => x.mt0 || Infinity)), hi2 = Math.max(...sl.map((x) => x.mt1 || 0));
+        let ns2 = 0, dc2 = 0; const inc2 = {}; for (const c of C) if (c.t0 >= lo2 && c.t1 <= hi2) { ns2 += c.ns; dc2 += c.dec; for (const [k, v] of Object.entries(c.incl || {})) inc2[k] = (inc2[k] || 0) + v; }
+        const d2 = popN ? dec * 1000 / popN : 0, st2 = dc2 ? d2 * ns2 / dc2 : 0;
+        r.pre = { ph: PH, slices: sl.map((x) => x.k), lines: sl.reduce((t, x) => t + x.ana.length, 0), decUs: +d2.toFixed(3), stepUs: +st2.toFixed(3), stepSamples: ns2, decSamples: dc2,
+          incl: Object.entries(inc2).sort((x, y) => y[1] - x[1]).slice(0, 200).map(([k, v]) => [k, v, +(ns2 ? st2 * v / ns2 : 0).toFixed(4)]) };
+      }
     }
+    //   ★[T1219] 자가 표시 — ⓐ 줄맞춤: 조각마다 `[T646]` 줄이 하나가 아니다(0 = 그 조각 줄이 창 밖 · 2 = 둘이 겹침 — 창 셈이 판마다 다른 틱을 담는다)
+    //     ⓑ 결정표본: npcStep 표본 ÷ 결정 문 고리(`_decOne`) 표본 ≥ T646_NSDEC_MAX(기본 0.86) — 고리 틀이 인라인으로 표본에서 빠져 npcStep 환산이 부푼 판(T1200 회부 4)
+    r.sliceLines = w.slices.map((x) => (x.ana || []).length); r.slicePh = w.slices.map((x) => (x.phase != null ? +x.phase.toFixed(3) : null));
+    r.flags = [];
+    if (r.sliceLines.some((v) => v !== 1)) r.flags.push('줄맞춤');
+    if (r.lines && r.lines.decSamples && r.lines.stepSamples / r.lines.decSamples >= +(process.env.T646_NSDEC_MAX || 0.86)) r.flags.push('결정표본');
     out.runs.push(r);
   }
   // 목적지

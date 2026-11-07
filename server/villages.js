@@ -77,6 +77,10 @@
 // ★[T1214 µs 줄기] 손잡이 상수(머리 주석 = `_physicalStoneWork` 앞 ★★[T1214] 절) — 싣는 도중에 부르는 함수가 있어도 서도록 파일 머리에 둔다.
 const T1214_STEP_FAST = process.env.T1214_STEP_FAST !== '0';   // ★[PM land1051] 켬 기본(값 0 · 기준선 11-07b 같음 3/3 — T1214 보고 · `=0` 끔 · `=verify` 두 길 견줌)
 const T1214_VERIFY = process.env.T1214_STEP_FAST === 'verify';
+// ★[T1219 µs 줄기] 손잡이 `T1219_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 두 길 견줌 · 답은 종전 길 · 어장 칸 읽기는 `fishing.js` 머리 주석 · 해 질 녘 머리는 `_t720Step` 앞).
+const T1219_STEP_FAST = process.env.T1219_STEP_FAST === '1' || process.env.T1219_STEP_FAST === 'verify';
+const T1219_VERIFY = process.env.T1219_STEP_FAST === 'verify';
+const _t1219Stat = { t720: 0, t720Skip: 0, t720Vq: 0, t720Bad: 0 };   // 계측 전용
 // ★[T732 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔)] 로트 장부는 **늦게 · 켬일 때만** 부른다 — 끄면(랩 포함) `lots.js` 를 싣지도 않는다(main 바이트 · 랩 모듈 무변).
 const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT !== '0');   // ★[T778] 켬 기본 · 되돌림 `=0`
 let _t732LotsM = null;
@@ -13669,8 +13673,15 @@ function _t720Settle(vil, npc, now, S) {
   }
   if (npc.inventory && (npc.inventory.stone > 0 || npc.inventory.pebble > 0) && _stoneHandInOn(vil)) _t1146HandIn(vil, npc);   // ★[T1146 ③] 손의 돌 · 자갈도 곳간에(손에 있을 때만 · 끔 = 손에 남는다 · 종전)
 }
+// ★[T1219 ③ µs 줄기] 해 질 녘 머리 — 돌을 든 몸은 걸음마다 짐 무게 전부(`npcTotalKg`)를 다시 재어 "가득 찼나"(`fullFish`)를 정한다.
+//   그 값은 아래 "정산 길을 새로 여나" 절(`!S || !S.k`)에서만 쓰인다 — 이미 정산 길 위인 몸(`npc._t720.k`)은 재고도 버린다.
+//   켬: 정산 길 위인 몸은 머리 재기를 건너뛴다. 같은 값: 머리는 읽기만 한다(돌 입고 술어 · 손 돌 · `npcTotalKg` 는 몸에 쓰기 0 — T1200 증명 ·
+//   `kgOf`) ⇒ 건너뛰어도 세계가 같고, 건너뛴 판에선 그 값을 쓰는 절이 안 선다(머리와 그 절 사이에 `npc._t720` 을 바꾸는 줄 0).
 function _t720Step(vil, npc, now, fv, dayR, day, fullFish = false) {
-  if (!fullFish && _stoneHandInOn(vil) && _stoneHeld(npc) > 0) {
+  const _s19 = T1219_STEP_FAST && !fullFish && npc._t720 && npc._t720.k;   // ★[T1219 ③] 켬 + 정산 길 위 = 머리 건너뜀
+  if (_s19 && !T1219_VERIFY) _t1219Stat.t720Skip++;
+  else if (!fullFish && _stoneHandInOn(vil) && _stoneHeld(npc) > 0) {
+    if (_s19) { _t1219Stat.t720Vq++; }   // verify — 종전처럼 재고(값은 아래 절이 안 쓴다 · 세계 무변) 셈만 한다
     const C = (T1214_STEP_FAST?_t1214Carry():require('./carry'));   // ★[T1214 ③]
     const kg = C.npcTotalKg(npc);
     fullFish = kg >= C.CFG.CAP_KG || (npc.inventory.stone > 0 && kg + (T1214_STEP_FAST?_t1214Weights():require('./weights')).kgOf('stone') > C.CFG.CAP_KG + 1e-9);
@@ -17514,6 +17525,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
     // ★[T400] 집 행위 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 걸음·자재 규칙을 다시 적지 않는다 — 정본 함수를 그대로 부른다.
     _t1188Probe: {mine:(v,p,n,d)=>_t724BodyStep(v,p,n,d),deliver:(v,p,n)=>_t724Deliver(v,p,'gran',n),bulk:v=>_oreMineDaily(v)},
     _t1181Probe: { step:(v,p,n,a)=>_t1181Step(v,p,n,a),task:(v,p)=>_t1181Task(v,p),drawMs:()=>G_DRAWW,storeMs:()=>G_STOREW },
+    _t1219Probe: { get ON() { return T1219_STEP_FAST; }, get VERIFY() { return T1219_VERIFY; }, stat: () => Object.assign({}, _t1219Stat) },   // ★[T1219] 하네스 문
     _t1214Probe: { get ON() { return T1214_STEP_FAST; }, get VERIFY() { return T1214_VERIFY; }, stat: () => { const R = _T1214R, P = _T1214P; return Object.assign({}, _t1214Stat, { rockQ: R.q, rockFirst: R.first, rockRest: R.rest, rockNaN: R.nan, rockVq: R.vq, rockBad: R.bad, ptQ: P.q, ptFirst: P.first, ptRest: P.rest, ptNaN: P.nan, ptVq: P.vq, ptBad: P.bad }); }, crew435: (v) => _t435Crew(v).map((p) => p.pid), crew527: (v) => _t527Crew(v).map((p) => p.pid), crew527Gate: (v, p) => _t1214Crew527(v, p), order: (arr, npc) => _t1214Order(arr, npc, { d: new Float64Array(4) }), carry: () => _t1214Carry(), weights: () => _t1214Weights(), fishGoods: () => _t1214FG() },   // ★[T1214] 하네스 문(정본 그대로 부름)
     _t435Probe: { granAdd: (vil) => _lifeGranAdd(vil), day: (vil) => _t435GranaryDay(vil), ready: (vil) => _t435Ready(vil), crew: (vil) => _t435Crew(vil).map((p) => p.pid) },   // ★[T435] 하네스가 같은 함수를 부른다
     _t527Probe: { sites: () => _t527Sites(), reset: () => { state._t527Sites = null; }, sig: (site) => _t527Sig(site), day: (vil) => _t527BridgeDay(vil), crew: (vil) => _t527Crew(vil).map((p) => p.pid), need: (site, i) => _t527EconNeed(site, i), stages: (site) => _t527StageCount(site) },   // ★[T527] 하네스가 같은 함수를 부른다
