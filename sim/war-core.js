@@ -880,7 +880,11 @@ function createWar(opts) {
   //   호스트가 못 받으면(몸 없음·헤드리스·끔) 종전과 한 글자 같은 즉시 이동. 반환 = 뗀 양(정산 수 · 로그·통계 무변).
   function _warLootMove(w, D, A, amount, kind) {
     if (!(amount > 0)) return 0;
-    if (_t1134On()) { const fe0 = Math.max(0, _feOf(D)), got = _warLootMove0(w, D, A, amount, kind); if (fe0 > 0) _t1134Ev(D, got / fe0); return got; }   // ★[T1134] 곳간 약탈 — 빼앗긴 몫(그 전 곳간 대비)
+    if (_t1134On()) {
+      const fe0 = Math.max(0, _feOf(D)), feA = Math.max(0, _feOf(A)), got = _warLootMove0(w, D, A, amount, kind); if (fe0 > 0) _t1134Ev(D, got / fe0);   // ★[T1134] 곳간 약탈 — 빼앗긴 몫(그 전 곳간 대비)
+      if (FOOD && FOOD.T1205_HAPPY && typeof FOOD.t1205Ev === 'function' && got > 0) FOOD.t1205Ev(A, -got / Math.max(feA, got));   // ★[T1205] 승전 — 빼앗아 온 식량 ÷ 우리 곳간(좋은 일 · 겪은 일 −0.2 바닥) · 소굴 토벌도 같은 문(뺏은 양이 작다)
+      return got;
+    }
     return _warLootMove0(w, D, A, amount, kind);
   }
   function _warLootMove0(w, D, A, amount, kind) {

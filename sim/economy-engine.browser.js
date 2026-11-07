@@ -13718,6 +13718,49 @@ function t1134Step(v, G, N, hungerShare) {
   v._H = v._H == null ? target : Equilibrium.step(v._H, target, t1134Half());
   return { target, h: v._H };
 }
+// ★★[T1205 2026-11-07 · ★재민 11-07 판정대기 문 32] **행복 = 천천히 따라가는 부분 − 그날 바로 반영하는 인구 부담** — 손잡이 `T1205_HAPPY`(켬 기본 · `!== '0'` · 되돌림 `=0` = T1134 그대로).
+//   T1134 위에만 선다(`T1134_HAPPY_TARGET` 끔이면 이 절도 안 탄다).
+//   천천히 S: 목표 0.5 + 좋은 것 − 겪은 일 → 반감기 30날(`t1134Half`)로 다가간다. 0 ~ 1 로 안 자른다(위로 남는 몫은 부담이 깎는다).
+//   그날 바로 B = c × 인구ᵃ ÷ 영토ᵇ — 영토 = 생활층 영토 셀 수(호스트 `world.terrCells(v)` · 서버 `_terrSet` 넓이 · 없는 판 = econ 땅 `land.size × EXPAND_CELLS_PER_SLOT`)
+//     · 바닥 = 창설 영토(`land.baseSize × EXPAND_CELLS_PER_SLOT`). c · a · b = env `T1205_C` · `T1205_A` · `T1205_B`(기본 = 보고 §2 판에서 고른 값).
+//   행복 h = clip01(S − B) — 마을 칸 `v._H`(소비자 · 저장 줄 그대로) · S 는 `v._t1205S`.
+//   좋은 것 G 에 사치품(위신재) 항 하나 — `_computeVillageStats` 의 위신 합(1인당 충족률 × 위신 무게 · 호피 · 청동검 위세)을 1 에서 자르고 × `T1205_LUX_W`.
+//   겪은 일 E: 부호 있음 · −0.2 ~ +1 로 자름(`T1205_E_MIN` · `T1205_E_MAX` 아님 — 카드 글자 그대로 상수) · 좋은 일 = 승전 약탈(`war-core _warLootMove` — 빼앗아 온 식량 ÷ 우리 곳간).
+//   효과(모두 연속): 생산 배수 1 + 2W × max(0, h − 0.75)(W = `happyWorkWOf` · h = 1 에서 종전 최대 1 + W/2 그대로) ·
+//     출생 항 그대로 · 떠나기 = 인구 × k₂ × max(0, 0.25 − h)(k₂ = env `T1205_K2`) — 그날 떠난 몸만큼 B 가 줄어 h 가 0.25 에 닿으면 그날 멈춘다(S ≥ 0.25 일 때).
+const T1205_HAPPY = T1134_HAPPY_TARGET && !(typeof process !== 'undefined' && process.env && process.env.T1205_HAPPY === '0');
+const T1205_E_MIN = -0.2, T1205_E_MAX = 1;   // ★재민 11-07 카드(겪은 일 범위)
+const T1205_LUX_MAX = 1;                     // 사치품 1인당 충족률 자름(다른 항목과 같은 1)
+const T1205_DEF = { C: 0.0046, A: 2, B: 0.5, LUX_W: 0.15, K2: POP_MAX_DELTA_PCT / T1134_EMIG_H };   // ★[T1205 §2] c · a · b · 사치품 무게 = 판에서 고른 값(보고) · k₂ = 하루 인구 상한 ÷ 0.25(h = 0 에서 하루 떠남 = 종전 하루 상한 N × 6 %)
+function _t1205Env(k) { const x = (typeof process !== 'undefined' && process.env) ? parseFloat(process.env['T1205_' + k]) : NaN; return Number.isFinite(x) && x >= 0 ? x : T1205_DEF[k]; }
+function t1205Par() { return { c: _t1205Env('C'), a: _t1205Env('A'), b: _t1205Env('B'), luxW: _t1205Env('LUX_W'), k2: _t1205Env('K2') }; }
+//   영토 셀 수(바닥 = 창설 영토)
+function t1205Terr(v) {
+  const L = v.land || {}, floor = Math.max(1, (L.baseSize || L.size || 1) * EXPAND_CELLS_PER_SLOT);
+  let t = null;
+  const W = v._world; if (W && typeof W.terrCells === 'function') { try { t = W.terrCells(v); } catch (e) { t = null; } }
+  if (!(t > 0)) t = (L.size || 0) * EXPAND_CELLS_PER_SLOT;
+  return Math.max(floor, t);
+}
+function t1205Burden(N, T, P) { P = P || t1205Par(); return N > 0 ? P.c * Math.pow(N, P.a) / Math.pow(Math.max(1, T), P.b) : 0; }
+function t1205Ev(v, amt) { if (!v || !(amt !== 0) || !isFinite(amt)) return; v._t1134E = Math.max(T1205_E_MIN, Math.min(T1205_E_MAX, (v._t1134E || 0) + amt)); }
+//   하루 한 걸음 — 좋은 것 G(사치품 항 포함) · 인구 N · 영토 T · 오늘 굶는 몫 → { target(S 의 목표), slow, burden, h }
+function t1205Step(v, G, N, T, hungerShare) {
+  const P = t1205Par();
+  v._t1134E = Math.max(T1205_E_MIN, Math.min(T1205_E_MAX, (v._t1134E || 0) * Equilibrium.keep(HAPPY_EQ_HALF_DAYS) + (hungerShare > 0 ? hungerShare / t1197DieDays() : 0)));
+  const target = 0.5 + G - v._t1134E;
+  v._t1205S = v._t1205S == null ? target : target + (v._t1205S - target) * Equilibrium.keep(t1134Half());
+  const burden = t1205Burden(N, T, P);
+  v._H = Math.max(0, Math.min(1, v._t1205S - burden));
+  return { target, slow: v._t1205S, burden, h: v._H, terr: T };
+}
+//   0.25 에 닿을 때까지 떠날 사람 수(S ≥ 0.25 일 때만 뜻 — 아니면 Infinity)
+function t1205NeedOut(v, N, T) {
+  const P = t1205Par(), S = v._t1205S;
+  if (!(S >= T1134_EMIG_H) || !(P.c > 0)) return Infinity;
+  const nMax = Math.pow((S - T1134_EMIG_H) * Math.pow(Math.max(1, T), P.b) / P.c, 1 / P.a);   // 부담 ≤ S − 0.25 인 가장 큰 인구
+  return Math.max(0, Math.ceil(N - nMax - 1e-9));
+}
 // ★★[T931 2026-10-26 · T924 회부 2-ⓐ · 재민 10-24 "창고에 식량이 있는데 자유민이 그렇게 빨리 죽어?"]
 //   **식량 자리 K 에도 신뢰 관성** — 손잡이 `T931_SLOTK_EMA`(★[T943] **켬 기본 = `'season'`** · 되돌림 `'0'` = 끔 = 종전 바이트 · `'1'` = 값 전체 · 그 밖 · 미설정 = `'season'` · 브라우저 랩 = `'season'`).
 //   ★[T943 2026-10-27 · PM 결정 — T931 회부 1 = `'season'`(카드 글자 "계절 배수에"의 꼴 · 서버 띠 그날 굶주림 0 인 죽음 −45% · 랩 −23%)] T931 보고 §7 · T943 보고.
@@ -16184,7 +16227,7 @@ function tickVillage(v, day) {
 const _hwW = happyWorkWOf(v);   // ★[T244] 기본 켬(정본 H) · 주입이 있으면 그것 · `L_HAPPYWORK=0` 이면 0(종전 비트)
 let _hwm = 1;
 if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
-  _hwm = happyWorkMul(v.lastStats.happiness, _hwW);
+  _hwm = T1205_HAPPY ? 1 + 2 * _hwW * Math.max(0, v.lastStats.happiness - 0.75) : happyWorkMul(v.lastStats.happiness, _hwW);   // ★[T1205] 0.75 위만 · 연속 · h = 1 에서 종전 최대(1 + W/2) 그대로
   if (_hwm !== 1 + (v.lastStats.happiness - 0.5) * _hwW) v._hwClampDays = (v._hwClampDays || 0) + 1;   // 계측 전용 — 상한이 어디서 서나(회계 아님)
   v._hwmLast = _hwm;
 }
@@ -17279,8 +17322,15 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   if (stats && T1134_HAPPY_TARGET) {   // ★[T1134] 목표 행복 — 좋은 것(그날 합) · 인구 · 겪은 일 → 목표 · 실제 h 는 목표로
     const _fd = T1074_FOOD_DEBT ? foodDebtOf(v) : null;
     const _hsh = _fd ? (_fd.n > 0 ? _fd.starving / _fd.n : 0) : (_hungerTerm < 0 ? 1 : 0);   // 오늘 굶는 몫(빚 판 = 굶는 사람 ÷ 인구 · 종전 판 = 마을 굶주림 날이면 1)
+    if (T1205_HAPPY) {   // ★[T1205] 좋은 것 + 사치품 · 천천히 − 그날 바로
+      const _P = t1205Par(), _lux = _P.luxW * Math.min(T1205_LUX_MAX, Math.max(0, stats.prestige || 0));
+      const _G = stats.happiness + _lux, _T = t1205Terr(v);
+      const _r = t1205Step(v, _G, _homeN, _T, _hsh);
+      stats.happinessGoods = _G; stats.happinessLux = _lux; stats.happinessEq = _r.target; stats.happinessSlow = _r.slow; stats.happinessBurden = _r.burden; stats.terrCells = _T; stats.happiness = _r.h;
+    } else {
     const _r = t1134Step(v, stats.happiness, _homeN, _hsh);
     stats.happinessGoods = stats.happiness; stats.happinessEq = _r.target; stats.happiness = _r.h;
+    }
   } else if (stats && T1075_HAPPY_EQ) {   // ★[T1075 ①②] 그날 값 = 평형 H* · 실제 H 는 마을 칸이 기억한다(소비자 — 일 배수 · 도적 층 — 는 H 를 읽는다)
     const _fd = T1074_FOOD_DEBT ? foodDebtOf(v) : null;
     const _hs = stats.happiness * (_fd ? (1 - Math.min(1, _fd.mean / t1197DieDays())) : 1);   // ★[T1197] 켬 = 죽음 날 수(몸 정본 유도) · 끔 = 14
@@ -17299,6 +17349,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       dP = _oth > 0 ? Math.max(0, _aft) : _oth;
       _t1075Emig = _oth > 0 ? Math.max(0, -_aft) : -_happyTerm;
       if (T1134_HAPPY_TARGET && !(stats.happiness < T1134_EMIG_H)) _t1075Emig = 0;   // ★[T1134] 이탈은 h < 0.25 일 때만(그 위는 출생만 깎인다)
+      if (T1205_HAPPY) _t1075Emig = _homeN * t1205Par().k2 * Math.max(0, T1134_EMIG_H - stats.happiness);   // ★[T1205] 떠나기 = 인구 × k₂ × (0.25 − h)(연속 · 출생 깎고 남은 몫과 무관)
     } else dP += _happyTerm + _healthTerm + _prestigeTerm;
     v.lastStats = stats;
   }
@@ -17426,9 +17477,13 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   // ★★[T1075 ④] 이탈 — 불행 압력이 1 을 채우면 가장 젊은 자유민 1명이 몸으로 이웃 마을까지 걷는다(호스트 길 위 장부 · 하루 상한 = 인구 상한과 같은 N × POP_MAX_DELTA_PCT)
   if (T1075_HAPPY_EQ || T1134_HAPPY_TARGET) {   // ★[T1134] 같은 이탈 문(호스트가 더 행복한 이웃만 받는다)
     const _cap = N * POP_MAX_DELTA_PCT, _go = v._world && typeof v._world.t1075Emigrate === 'function' ? v._world.t1075Emigrate : null;
-    if (_go) v._emigAccum = Math.min(_cap + 0.9, (v._emigAccum || 0) + Math.min(_cap, _t1075Emig));
+    //   ★[T1205] 켬 = 상한 없음 · 압력이 0 인 날 쌓인 몫은 비운다 · 그날 떠난 몸만큼 부담이 줄어 h 가 0.25 에 닿으면 멈춘다(`t1205NeedOut`)
+    const _t1205Need = (T1205_HAPPY && _t1075Emig > 0 && v.lastStats) ? t1205NeedOut(v, _homeN - (N - v.npcs.length), v.lastStats.terrCells || t1205Terr(v)) : Infinity;   // 지금 집 인구(그날 앞서 죽은 몸을 뺀 수)
+    if (T1205_HAPPY) { if (_go) v._emigAccum = _t1075Emig > 0 ? (v._emigAccum || 0) + _t1075Emig : 0; else if (_t1075Emig > 0) v._emigLost = (v._emigLost || 0) + _t1075Emig; }
+    else if (_go) v._emigAccum = Math.min(_cap + 0.9, (v._emigAccum || 0) + Math.min(_cap, _t1075Emig));
     else if (_t1075Emig > 0) v._emigLost = (v._emigLost || 0) + _t1075Emig;   // 걸을 길 없는 판 — 아무도 안 떠난다(소멸 0)
-    while (_go && v._emigAccum >= 1 && v.npcs.length > POP_MIN) {
+    let _t1205Out = 0;
+    while (_go && v._emigAccum >= 1 && v.npcs.length > POP_MIN && _t1205Out < _t1205Need) {
       let yi = -1;
       for (let i = 0; i < v.npcs.length; i++) { const p = v.npcs[i]; if (p._warDraft) continue; if (yi < 0 || p.age < v.npcs[yi].age) yi = i; }
       if (yi < 0) break;
@@ -17437,8 +17492,9 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       if (!took) { v._emigAccum = Math.min(v._emigAccum, 0.9); break; }
       { const at = v.npcs.indexOf(p); if (at >= 0) { v.npcs.splice(at, 1); v.counts[p.currentJob] = Math.max(0, (v.counts[p.currentJob] || 0) - 1); } }   // ★[T1109] 걷기 문(`walkToVillage`)이 이미 명부에서 뺐으면 두 번 빼지 않는다
       v._emigTot = (v._emigTot || 0) + 1;
-      v._emigAccum -= 1;
+      v._emigAccum -= 1; _t1205Out++;
     }
+    if (T1205_HAPPY && _t1205Out >= _t1205Need && _t1205Need < Infinity) { v._emigAccum = Math.min(v._emigAccum || 0, 0.9); v._t1205Stop = (v._t1205Stop || 0) + 1; }   // 0.25 에 닿아 그날 멈춤(계측 칸)
   }
   // 7) 직업 자율 전환 — 평소 21일 1명. 식량 위기면 빈도 ↑ + 다수 전환.
   //    foodEquiv < N*30 = 위기. picker가 farmer 강제. 매 5일 1명 (4배 빠름).
@@ -19168,6 +19224,7 @@ module.exports = {
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
   _autoSwitchJobForTest: autoSwitchJob, _switchNPCJobForTest: switchNPCJob,   // ★[T1085] 하네스가 자율 전환 그 함수를 부른다(시험 이름 · 사본 0)
   T1075_HAPPY_EQ, HAPPY_EQ_HALF_DAYS,
+  T1205_HAPPY, T1205_E_MIN, T1205_E_MAX, T1205_DEF, t1205Par, t1205Terr, t1205Burden, t1205Ev, t1205Step, t1205NeedOut,   // ★[T1205] 행복 식 다시 — 하네스 · 호스트 · war-core 가 같은 함수를 읽는다
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
   foodDebtOf, T1074_FOOD_DEBT,   // ★[T1074] 식량 빚 읽는 함수 하나(T1075 가 읽는다)
   T1206_NAT_DEATH, T1206_SILER, T1206_GRAVE, t1206Hazard, t1206DayP, t1206Bury, t1206Day, t1206Expected, _t1206IsLux,   // ★[T1206] 자연사 · 출생 다시 맞춤 · 부장 — 하네스 · 관찰기

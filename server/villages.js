@@ -6477,6 +6477,7 @@ function init(deps) {
     });
     // [T1159] econ은 지형을 몰라 몸의 집 N을 호스트에 묻는다(손잡이 끔이면 호출 0).
     world.homePopulation = (v) => { const vil = state.byEcon.get(v); return vil ? require('./home-population').homePopulation(vil, state.deps.players, SZ) : v.npcs.length; };
+    world.terrCells = (v) => { const vil = state.byEcon.get(v); return vil && vil._terrSet ? vil._terrSet.size : null; };   // ★[T1205] 영토 = 생활층 영토 셀 수(없으면 econ 이 땅 넓이로)
     econ.bindProductionActs(world);   // T1180: 모든 마을에서 세 행위의 수식 폴백을 닫는다
     world.lotsPause = (on) => { const G = _t748G(); if (G) G.suspend(on); };   // ★[T1196] 장인 작업표를 떼는 동안 곳간 로트 장부를 멈춘다(갈래가 곳간을 잠깐 바꿨다 되돌린다 — 거래소 견적과 같은 문 · 곳간은 몸이 넣고 뺄 때만 장부에 든다)
     world.villages = [];
@@ -6623,7 +6624,7 @@ function init(deps) {
       // ★★[T295 ③] **군량의 품목은 마을이 먹는 그 함수가 고른다** — econ 정본(`economy-sim.consumeFood`)을
       //   그대로 넘긴다(사본 0 · 순서표를 베끼지 않는다). 곳간 `food` 가 0 이어도 쌀·생선이 있으면 팩이 찬다.
       //   미주입(랩·v1 CLI)이면 war-core 는 종전대로 `storage.food` 한 칸만 본다 = 비트 동일.
-      food: { consumeFood: econ.consumeFood, totalFoodEquivalent: econ.totalFoodEquivalent },
+      food: { consumeFood: econ.consumeFood, totalFoodEquivalent: econ.totalFoodEquivalent, T1205_HAPPY: econ.T1205_HAPPY, t1205Ev: econ.t1205Ev },   // ★[T1205] 승전 = 좋은 일(겪은 일 문 하나)
       // ★[T1113 ②] 출정 거부 술어 — econ 정본 둘(손잡이 `T1113_REFUSE_MUSTER` 끔 기본 = war-core 가 거부하지 않는다)
       happy: { refuseMuster: () => econ.t1113On('T1113_REFUSE_MUSTER'), unhappy: econ.t1113Unhappy },
       // ★[2파 작전층] 실체 개전 훅 — assault/sortie '결단' 시점에만 호출(자동 개전 없음).
