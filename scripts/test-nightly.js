@@ -20,6 +20,9 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const REPORT = path.join(ROOT, 'scripts', 'nightly-report.js');
+// ★[T1208-K1 2026-11-07] 부르는 판의 야간 손잡이(`NIGHT_*`)는 아이에게 안 넘긴다 — 이 자는 판마다 제 `NIGHT_*` 를 손으로 준다.
+//   몫 판(`NIGHT_LIST=… nightly-run.sh` — T1208)이 이 하네스를 부르자 `NIGHT_LIST` 가 새어 들어 아이 nightly-run 이 이어 돌기 대신 목록 덮어쓰기로 갔다(빨강 둘 · 혼자 돌면 초록).
+const ENV0 = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^NIGHT_/.test(k)));
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
 
@@ -169,11 +172,11 @@ console.log('\n=== ⑤b [T1177] 이어 돌기 — 끊긴 판을 같은 로그에
     const today = execFileSync('bash', ['-c', "TZ=Asia/Seoul printf '%(%Y-%m-%d)T' -1"], { encoding: 'utf8' }).trim();
     const fix = cutPart.map((l) => today + l.slice(10));
     const LOGR = path.join(d, 'regress.log'); fs.writeFileSync(LOGR, fix.join('\n') + '\n');
-    const o = execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-run.sh')], { cwd: ROOT, encoding: 'utf8', env: Object.assign({}, process.env, { LOG: LOGR, NIGHT_DRY: '1', NIGHT_TZ: 'Asia/Seoul' }), stdio: ['ignore', 'pipe', 'pipe'] });
+    const o = execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-run.sh')], { cwd: ROOT, encoding: 'utf8', env: Object.assign({}, ENV0, { LOG: LOGR, NIGHT_DRY: '1', NIGHT_TZ: 'Asia/Seoul' }), stdio: ['ignore', 'pipe', 'pipe'] });
     const lg = fs.readFileSync(LOGR, 'utf8');
     ok(o.trim().split('\n').slice(0, 3).join(' ') === 'test-b.js test-c.js test-d.js', '★★nightly-run 이어 돌기 — 남은 셋만(끊긴 test-b 부터 · 목록 순서)', o.trim().split('\n').slice(0, 3).join(' '));
     ok((lg.match(/===== nightly-run 시작/g) || []).length === 1 && /===== nightly-run 이어서/.test(lg), '★새 `시작` 줄을 안 찍는다(`이어서` 줄 — 한 밤 한 보고)');
-    const o0 = execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-run.sh')], { cwd: ROOT, encoding: 'utf8', env: Object.assign({}, process.env, { LOG: LOGR + '.0', NIGHT_DRY: '1', NIGHT_RESUME: '0', NIGHT_LIST: 'test-x.js' }), stdio: ['ignore', 'pipe', 'pipe'] });
+    const o0 = execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-run.sh')], { cwd: ROOT, encoding: 'utf8', env: Object.assign({}, ENV0, { LOG: LOGR + '.0', NIGHT_DRY: '1', NIGHT_RESUME: '0', NIGHT_LIST: 'test-x.js' }), stdio: ['ignore', 'pipe', 'pipe'] });
     ok(/test-x\.js/.test(o0) && !/test-b\.js/.test(o0), '자명 통과 금지 — NIGHT_RESUME=0 · NIGHT_LIST 면 종전 길(이어 돌지 않는다)');
   } else console.log(`  · [건너뜀] nightly-run 이어 돌기 실행 — bash ${bv} (4 이상 필요 · 상자 bash 에서 잰다)`);
 }
@@ -193,7 +196,7 @@ console.log('\n=== ⑥ nightly-run.sh — 두 개가 뜨면 둘째가 죽는다 
   try {
     out = execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-run.sh')],
       { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
-        env: Object.assign({}, process.env, { LOG: LOGP, NIGHT_LIST: 'test-calendar.js', NIGHT_NO_REPORT: '1' }) });
+        env: Object.assign({}, ENV0, { LOG: LOGP, NIGHT_LIST: 'test-calendar.js', NIGHT_NO_REPORT: '1' }) });
   } catch (e) { rc = e.status; out = String(e.stderr || '') + String(e.stdout || ''); }
   ok(rc === 3, '★둘째가 **거부 코드 3**으로 죽는다', `rc=${rc}`);
   ok(/이미 돌고 있다/.test(out), '왜 죽었는지 말한다', out.trim().slice(0, 60));
@@ -208,7 +211,7 @@ console.log('\n=== ⑥ nightly-run.sh — 두 개가 뜨면 둘째가 죽는다 
   try {
     execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-run.sh')],
       { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
-        env: Object.assign({}, process.env, { LOG: LOGP, NIGHT_LIST: 'test-calendar.js', NIGHT_NO_REPORT: '1', NIGHT_NO_RETRY: '1', DRAIN_SEC: '0' }) });
+        env: Object.assign({}, ENV0, { LOG: LOGP, NIGHT_LIST: 'test-calendar.js', NIGHT_NO_REPORT: '1', NIGHT_NO_RETRY: '1', DRAIN_SEC: '0' }) });
   } catch (e) { rc2 = e.status; }
   ok(rc2 === 0 && fs.existsSync(LOGP), '★자명 통과 금지 — 낡은 `.pid`(죽은 프로세스)면 **그냥 돈다**', `rc=${rc2}`);
   ok(fs.readFileSync(LOGP + '.state', 'utf8').trim() === 'done', '`$LOG.state` 가 **done** 으로 끝난다', fs.readFileSync(LOGP + '.state', 'utf8').trim());
@@ -252,7 +255,7 @@ console.log('\n=== ⑦ 묶음 기계 마른 판 — 세 밤이면 e2e 가 **한 
   //   기계가 옳은지는 3시간을 걸어 보지 않고도 잴 수 있다 — `NIGHT_DATE` 로 **마른 판**을 찍으면 된다.
   //   여기서 재는 것: ⓐ 사흘이면 묶음 셋이 다 돈다 ⓑ 그 사흘의 합이 e2e 전수와 **정확히 같다**(빠짐 0 · 중복 0).
   const sh = (env, args) => execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-split.sh'), ...args],
-    { cwd: ROOT, encoding: 'utf8', env: Object.assign({}, process.env, env) });
+    { cwd: ROOT, encoding: 'utf8', env: Object.assign({}, ENV0, env) });
   const dry = (date) => {
     const out = sh(date ? { NIGHT_DATE: date } : {}, ['auto', '--list-only']);
     const g = (/→ \*\*([A-D])\*\*/.exec(out) || [])[1] || null;
@@ -309,7 +312,7 @@ console.log('\n=== ⑩ [T1029] 상자 의존 한 줄 · `[editor-layers]` 귀속
   // 러너가 실제로 `[의존]` 한 줄을 찍는가 — 예행(`NIGHT_DRY`)으로 목록만 뽑고 선다(서버 0) · 가짜 python3 면 `[상황]`
   const dry = (extraPath) => { const LP = path.join(TMP, `dep${extraPath ? 'F' : 'T'}`, 'r.log'); fs.mkdirSync(path.dirname(LP), { recursive: true });
     execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-run.sh')], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
-      env: Object.assign({}, process.env, { LOG: LP, NIGHT_LIST: 'test-calendar.js', NIGHT_DRY: '1', NIGHT_NO_FONT: '1' }, extraPath ? { PATH: extraPath + ':' + process.env.PATH } : {}) });
+      env: Object.assign({}, ENV0, { LOG: LP, NIGHT_LIST: 'test-calendar.js', NIGHT_DRY: '1', NIGHT_NO_FONT: '1' }, extraPath ? { PATH: extraPath + ':' + process.env.PATH } : {}) });
     return (fs.readFileSync(LP, 'utf8').split('\n').find((l) => / \[의존\] /.test(l)) || ''); };
   const fake = path.join(TMP, 'fakebin'); fs.mkdirSync(fake, { recursive: true });
   fs.writeFileSync(path.join(fake, 'python3'), '#!/bin/sh\necho "ModuleNotFoundError: No module named numpy" >&2\nexit 1\n', { mode: 0o755 });

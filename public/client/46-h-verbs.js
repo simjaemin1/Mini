@@ -215,6 +215,8 @@
         out.push({ label: '걷기', send: () => verbWalkTo(t.absX, t.absY) });
         out.push({ label: '살피기', send: () => verbLook(t.absX, t.absY, null) });
       }
+      // ★[T1207] 영토와 맞닿은 칸이면 넓히기 — 맞닿았는지 · 값 · 자격은 서버가 답한다(`terr_quote` · 클라는 묻고 띄울 뿐)
+      if (t1207On()) out.push({ label: '영토 넓히기', send: () => verbTerrQuote(t.absX, t.absY) });
       return out;
     }
     if (t.kind === 'nature') {
@@ -531,6 +533,68 @@
     items.push({ label: '살피기', onClick: () => (msg && msg.line) ? showNotice(msg.line) : verbLook(w.absX, w.absY, null) });
     _lastMenuX = w.cx; _lastMenuY = w.cy;
     showContextMenu(w.cx, w.cy, items);
+  }
+
+  // ══ ★★[T1207 2026-11-07] 영토 넓히기 — 우클릭 → 값 미리 보기 → 걸어가서 그 셀 곁에서 일한다(서버 시계) → 말뚝 통나무 → 영토 ══
+  //   판정은 한 줄도 여기서 안 짓는다: 맞닿음 · 값(개간 분 · 통나무) · 자격 · 나무 · 짐은 서버(`terr_quote` · `terr_work`)가 답한다.
+  //   일은 0.5초마다 한 손짓(`terr_work`) — 서버가 그 셀 곁에서 보낸 시간만 센다(곁을 두 칸 넘게 떠나면 여기서 멈춘다).
+  function t1207On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.t1207); }
+  const TERR_STROKE_MS = 500, TERR_LEAVE_PX = 80, TERR_SAY_MS = 3000;
+  let _terrAsk = null, _terrLoop = null, _terrSaidAt = 0;
+  function _terrLocal(absX, absY) {
+    const zm = (typeof zonesMeta !== 'undefined' && primaryZoneId) ? zonesMeta[primaryZoneId] : null;
+    if (!zm) return null;
+    const lx = absX - (zm.worldOffsetX || 0), ly = absY - (zm.worldOffsetY || 0);
+    if (lx < 0 || ly < 0 || lx >= (zm.zoneWidth || 0) || ly >= (zm.zoneHeight || 0)) return null;
+    const ox = zm.worldOffsetX || 0, oy = zm.worldOffsetY || 0;
+    return { lx, ly, tx: ox + Math.floor(lx / 32) * 32 + 16, ty: oy + Math.floor(ly / 32) * 32 + 16 };
+  }
+  function verbTerrQuote(absX, absY) {
+    const L = _terrLocal(absX, absY);
+    if (!L) { showNotice('경계 너머입니다. 가까이 가서 넓히십시오.'); return; }
+    _terrAsk = { lx: L.lx, ly: L.ly, tx: L.tx, ty: L.ty, cx: _lastMenuX, cy: _lastMenuY };
+    sendPrimary({ type: 'terr_quote', x: L.lx, y: L.ly });
+  }
+  function terrStop(say) {
+    if (_terrLoop) { clearInterval(_terrLoop); _terrLoop = null; }
+    if (say) showNotice(say);
+  }
+  function terrStart(a) {
+    terrStop();
+    const go = () => {
+      sendPrimary({ type: 'terr_work', x: a.lx, y: a.ly });
+      _terrLoop = setInterval(() => {
+        if (myIsDown || chatActive) { terrStop('영토 넓히기를 멈췄습니다.'); return; }
+        if (Math.hypot(a.tx - myAbsPredicted.x, a.ty - myAbsPredicted.y) > TERR_LEAVE_PX) { terrStop('넓히던 칸을 떠나 영토 넓히기를 멈췄습니다.'); return; }
+        sendPrimary({ type: 'terr_work', x: a.lx, y: a.ly });
+      }, TERR_STROKE_MS);
+    };
+    if (Math.hypot(a.tx - myAbsPredicted.x, a.ty - myAbsPredicted.y) <= WALK_ADJ_PX) go();
+    else verbWalkTo(a.tx, a.ty, WALK_ADJ_PX, go);
+  }
+  function verbsOnTerr(msg) {
+    if (msg.type === 'terr_quote') {
+      const a = _terrAsk; _terrAsk = null;
+      if (!msg.ok) { showNotice(msg.err || '영토를 넓힐 수 없는 칸입니다.'); return; }
+      if (!a) return;
+      const lab = `넓히기 — 개간 ${(+msg.laborMin).toFixed(1)}분 · 통나무 ${msg.wood}개(가진 것 ${msg.have}개) · 값 ×${(+msg.m).toFixed(2)}`;
+      const why = `크기 ×${(+msg.size).toFixed(2)} · 모양 ×${(+msg.shape).toFixed(2)} — ${msg.name} ${msg.S}칸`;
+      _lastMenuX = a.cx; _lastMenuY = a.cy;
+      showContextMenu(a.cx, a.cy, [
+        { label: lab, onClick: () => terrStart(a) },
+        { label: why, onClick: () => showNotice(`멀고(중심에서 ${msg.r}칸 · 둥근 반지름 ${msg.R}칸) 클수록 비쌉니다. ${why}.`) },
+        { label: '그만두기', onClick: () => {} },
+      ]);
+      return;
+    }
+    if (msg.type === 'terr_progress') {
+      const now = performance.now();
+      if (msg.short > 0) { terrStop(); return; }   // 개간은 끝났고 통나무가 모자란다(서버 알림이 말한다) — 손짓을 멈춘다
+      if (now - _terrSaidAt >= TERR_SAY_MS || !(msg.done > 0)) { _terrSaidAt = now; showNotice(`개간 ${msg.done}/${msg.need}분 · 말뚝 통나무 ${msg.wood}개`); }
+      return;
+    }
+    if (msg.type === 'terr_done') { terrStop(); return; }   // 알림은 서버가 낸다
+    if (msg.type === 'terr_stop') { terrStop(msg.err || '영토 넓히기를 멈췄습니다.'); }
   }
 
   // ── 커서 이름표 — `pickAt`(우클릭과 같은 층)의 이름 한 낱말 ──
