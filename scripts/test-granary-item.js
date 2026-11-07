@@ -23,7 +23,7 @@
 //   판 세계를 T1198 앞(`=0` — 출생 몸 끔 · 종전 몸 동기)으로 묶는다. 부르는 쪽이 값을 주면 그 값이 먼저(켬 세계에서 말린 것을 어떻게 셀지는 보고 T1208-K3 회부).
 //   ★[T1203 2026-11-07] 묶음 풀기 — ⑥ 의 자가 econ 말리기 · 절이기(`_t1192Preserve` → `preserveRecord` · 이름 = `fish-preserve` `driedId`/`pickledId` 정본)로 대구에서 난
 //     `dried_cod` · `pickled_cod` 를 "바뀐 품목"과 가른다(대구가 몸을 바꾼 것 — 다른 품목이 끼어든 것이 아니다). 그 밖의 품목만 바뀐 것으로 센다. 두 손잡이는 기본 그대로 탄다.
-// ★[PM land1050] 자연사(`T1206_NAT_DEATH` 켬 기본)도 같은 꼴 — 출생을 다시 맞춘 세계에서 말리기가 들어와 `dried_cod` 158 레코드-날. 같은 까닭으로 끔에 묶는다(말린 것 가르는 자 = T1203).
+// ★[PM land1050 → T1222] 자연사(`T1206_NAT_DEATH` 켬 기본) 세계도 그대로 돈다 — 말리기로 난 `dried_cod` 는 위 T1203 자가 대구의 몸으로 가른다(묶음 없음 · 켬 42/42).
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

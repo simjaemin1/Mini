@@ -13,9 +13,7 @@
 //
 // 실행: node scripts/test-events.js
 'use strict';
-// ★[T1216-K3] 자연사(T1206 · land1050 켬 기본)는 누가 죽을지를 사람 id 해시로 고르는데, 사람 id 가 프로세스 전체 마을 계수기(`sim/economy-sim.js` `_nextVillageId`)에서 나와
-//   한 프로세스 안 둘째 판은 다른 사람이 죽는다 — 이 하네스는 한 프로세스에서 두 판을 비트로 견준다. 그래서 자연사를 끔으로 묶는다(뿌리는 보고 T1216_K3 제품 회부).
-if (process.env.T1206_NAT_DEATH == null) process.env.T1206_NAT_DEATH = '0';
+// ★[T1222] 자연사(T1206 · 켬 기본) 세계 그대로 돈다 — T1216-K3 의 끔 묶음을 풀었다(한 프로세스 두 판 비트 비교는 econ 자연사 주사위 열쇠를 첫 세계 기준으로 옮겨 선다 · `_t1206Key`).
 if (process.env.T474_CARAVAN_WALK === undefined) process.env.T474_CARAVAN_WALK = '0';   // ★[PM land1045] T474 켬 기본 — 이 하네스의 판 · 픽스처(소문 ≠ 캐러밴 대조 · '교역로 4일' 이웃 표본)는 종전 캐러밴 시계(500) 위에서 짠 것이라 끔으로 묶는다(단언 무변 · 켬 세계는 test-move-soa ⑱ ⑲ · test-t1136-basket 이 잰다)
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';   // villages.js 를 정본 함수용으로만 로드
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/test-events-${process.pid}.db`;
