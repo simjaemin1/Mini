@@ -753,6 +753,51 @@ console.log('\n[⑭ T1099 셋째 묶음 — `props_render.py ITEMS_T1099`]');
   }
 }
 
+console.log('\n[⑮ T1172 어종 가공품 마흔셋 — `props_render.py ITEMS_T1172` · 정본 `server/fish-preserve.js items()`]');
+{
+  // ★★[T1172] ⑫ · ⑬ · ⑭ 와 같은 물음 — 키는 굽는 표에서 뽑고(사본 금지), 서버 정본(`fish-preserve.items()` — 낚시 어종마다 말린 것 · 절인 것 + 잡어 절임)과 **같은 집합**인지 잰다.
+  const py = fs.readFileSync(RENDER_PY, 'utf8');
+  const blk = py.match(/^ITEMS_T1172 = \[([\s\S]*?)^\]/m);
+  ok(!!blk, 'props_render.py 에서 ITEMS_T1172 표를 읽었다');
+  const NK = blk ? [...blk[1].matchAll(/\('([a-z_]+)',\s*m_/g)].map(m => m[1]) : [];
+  const FP = require(path.join(ROOT, 'server', 'fish-preserve.js'));
+  const SRV = Object.keys(FP.items());
+  ok(NK.length === SRV.length && new Set(NK).size === NK.length && SRV.every((k) => NK.includes(k)),
+     `굽는 표 ${NK.length}키 = 서버 정본 ${SRV.length}키(겹침 0 · 빠짐 0) ${SRV.filter((k) => !NK.includes(k)).join(', ')}`);
+  ok(/^ITEMS \+= ITEMS_T1172$/m.test(py), '굽는 고리가 이 표를 돈다(`ITEMS += ITEMS_T1172`)');
+  const csrc = fs.readFileSync(CLIENT_ICON, 'utf8');
+  const tbl = csrc.match(/const ICON_RENDERED = new Set\(\[([\s\S]*?)\]\);/);
+  const wanted = new Set(tbl ? [...tbl[1].matchAll(/'([\w]+)'/g)].map(m => m[1]) : []);
+  let bad = 0; const notWired = [];
+  for (const k of NK) {
+    const q = path.join(ICON_DIR, k + '.png');
+    if (!fs.existsSync(q)) { ok(false, `${k}.png 이 없다`); bad++; continue; }
+    const m = pngMeta(q);
+    if (!(m.w === 96 && m.h === 96)) { ok(false, `${k}.png ${m.w}×${m.h} (96 아님)`); bad++; }
+    else if (!(m.clear > 200 && m.solid > 200)) { ok(false, `${k}.png 알파가 죽었다 (투명 ${m.clear} · 불투명 ${m.solid})`); bad++; }
+    if (!fs.existsSync(path.join(ICON_DIR, k + '.webp'))) { ok(false, `${k}.webp 쌍둥이가 없다`); bad++; }
+    if (!wanted.has(k)) notWired.push(k);
+  }
+  ok(bad === 0, `${NK.length}장 전수 — 96×96 · 알파 살아 있음 · webp 쌍둥이 (어긋남 ${bad})`);
+  ok(notWired.length === 0, `${NK.length}키 전부 ICON_RENDERED 에 올랐다 ${notWired.length ? '— 안 오른 것: ' + notWired.join(', ') : ''}`);
+  // ★계보 — 말린 것 · 절인 것은 **원물 함수 그대로**(`_dried('<종>')` · `_pickled('<종>')` 이 `m_<종>` 을 부른다) · 원물 그림이 있다(⑥ⓑ 와 같은 물음).
+  const lin = [];
+  for (const k of NK) {
+    const sp = FP.items()[k].from;
+    const fn = (py.match(new RegExp('^def m_' + k + '\\(\\):\\s*_(\\w+)\\(\'(\\w+)\'\\)', 'm')) || []);
+    const want = FP.items()[k].kind === 'dry' ? 'dried' : 'pickled';
+    if (!(fn[1] === want && fn[2] === sp && new RegExp('^def m_' + sp + '\\(\\):', 'm').test(py) && fs.existsSync(path.join(ICON_DIR, sp + '.png')))) lin.push(k);
+  }
+  ok(lin.length === 0, `계보 ${NK.length}/${NK.length} — m_<품목> → _dried/_pickled('<원물>') · 원물 함수 · 원물 그림 있음 ${lin.length ? '— 어긋남: ' + lin.join(', ') : ''}`);
+  ok(/globals\(\)\['m_' \+ sp\]\(\)/.test(py), '가공 둘이 원물 함수를 그대로 부른다(`globals()[\'m_\' + sp]()` — 몸을 다시 짓지 않는다)');
+  // ★짐 창에서 갈리는가 — ⑩ · ⑫ · ⑬ · ⑭ 와 **같은 자 · 같은 문턱**(원물 · 서로 · 폴더 전수).
+  for (const k of NK) {
+    if (!fs.existsSync(path.join(ICON_DIR, k + '.png'))) continue;
+    const { best, who } = nearestIcon(k);
+    ok(best >= ICON_FLOOR, `${k}: 가장 닮은 아이콘 ${who} 와 |Δ| ${best.toFixed(1)} ≥ ${ICON_FLOOR}`);
+  }
+}
+
 if (SELFTEST) {
   console.log('\n[--selftest] ②가 오염(투명 화소 0)을 잡았어야 한다.');
   console.log('결과: ' + (fail ? 'PASS(검사기가 오염을 잡았다)' : 'FAIL(자명 통과 — 검사기가 눈멀었다)'));
