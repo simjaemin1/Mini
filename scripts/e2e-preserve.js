@@ -174,6 +174,9 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   //   1년 동안 아무도 못 봤다(T17 이 회부로 잡아냈다 · 족보 (99)의 사례).
   //   ⇒ 이제 **실제로 손에 오는 것**을 준다. 어종 목록의 정본은 `fishing.js` 다(하네스가 표를 안 든다).
   const FISH_SP = require(path.join(ROOT, 'server', 'fishing.js')).speciesFor('forest')[0];
+  //   ★[T1216-K2] 말린 것의 품목 = spoil 정본 레시피가 그 어종에 내는 것(T1128 어종별 가공품 · ★재민 11-03 문 9-a ㄱ · `PRESERVE.dry_fish.outBy` — 켬 기본).
+  //     끔(`T1128_KCAL_TIDY=0` 이고 `T1192_FISH_SPECIES=0`)이면 `outBy` 가 안 서서 종전 `dried_fish` 그대로. 하네스는 표를 안 든다(정본을 읽는다).
+  const DRIED = ((require(path.join(ROOT, 'server', 'spoil.js')).PRESERVE.dry_fish || {}).outBy || {})[FISH_SP] || 'dried_fish';
   await give({ items: { wood: 20, fiber: 20, meat_raw: 4 }, lots: { [FISH_SP]: [[0, 6]] } });
   ok(FISH_SP !== 'fish', '★★② 픽스처가 **낚시가 실제로 주는 어종**이다(디버그 전용 품목이 아니다)', FISH_SP);
   await page.evaluate(() => window.__sendPrimary({ type: 'build', buildType: 'drying_rack', floor: 0 }));
@@ -200,7 +203,7 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   const inv1 = await inv();
   ok((inv1[FISH_SP] || 0) === (inv0[FISH_SP] || 0) - 1, '★★② 입력이 나갔다 — **어종 그대로 말려졌다**',
     `${FISH_SP} ${inv0[FISH_SP]} → ${inv1[FISH_SP]}`);
-  ok(!inv1.dried_fish, '★★② 그리고 **즉석이 아니다** — 아직 손에 없다', String(inv1.dried_fish));
+  ok(!inv1[DRIED], '★★② 그리고 **즉석이 아니다** — 아직 손에 없다', `${DRIED} ${inv1[DRIED]}`);
   const qtxt = await page.evaluate(() => window.__panelText());
   ok(/초 남음|걸어 둔 것/.test(qtxt), '★★② 대기열에 걸렸다(오프라인에도 마른다)', (qtxt.match(/[^\n]{0,20}초 남음/) || [''])[0].trim());
   await sleep(DRY_MS + 2000);
@@ -209,11 +212,11 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   await page.evaluate(() => { const b = document.querySelector('[data-fcollect]'); if (b) b.click(); });
   await sleep(1400);
   const inv2 = await inv();
-  ok((inv2.dried_fish || 0) >= 1, '★★② **건어물을 받았다**', `건어물 ${inv2.dried_fish}`);
+  ok((inv2[DRIED] || 0) >= 1, '★★② **건어물을 받았다**', `${DRIED} ${inv2[DRIED]}`);
   const L2 = await lots();
-  ok(!!L2.dried_fish && L2.dried_fish[0] && L2.dried_fish[0].stage === 'fresh',
-    T767 ? '★★② [T767 켬] 그리고 **신선도를 이어받았다** — 갓 잡은 걸 말린 건어물은 신선' : '★★② 그리고 **부패 시계가 리셋됐다** — 갓 만든 건어물은 신선', JSON.stringify(L2.dried_fish && L2.dried_fish[0]));
-  if (T767) ok((inv2.dried_fish || 0) === 1, '★★② [T767 켬] 넣은 1마리 → 건어물 **1**(개수 그대로)', `건어물 ${inv2.dried_fish}`);
+  ok(!!L2[DRIED] && L2[DRIED][0] && L2[DRIED][0].stage === 'fresh',
+    T767 ? '★★② [T767 켬] 그리고 **신선도를 이어받았다** — 갓 잡은 걸 말린 건어물은 신선' : '★★② 그리고 **부패 시계가 리셋됐다** — 갓 만든 건어물은 신선', JSON.stringify(L2[DRIED] && L2[DRIED][0]));
+  if (T767) ok((inv2[DRIED] || 0) === 1, '★★② [T767 켬] 넣은 1마리 → 건어물 **1**(개수 그대로)', `${DRIED} ${inv2[DRIED]}`);
   await snap('pv-03-dried');
 
   // ── ③ 상한 재료는 **버튼이 꺼져 있다**(화면이 거짓말하지 않는다) ────────

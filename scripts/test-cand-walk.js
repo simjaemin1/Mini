@@ -15,6 +15,9 @@
 'use strict';
 // ★[T1147] 판 꾸밈 — ⑨ 는 T1075 불행 이탈 걷기 문(가짜 호스트 · 행복 칸 없음)을 잰다. T1134 가 켬 기본이 되어 '더 행복한 곳만' 문이 서므로 이 판은 그것을 끈다(단언 무변 · T1147 받는 곳은 test-t1147-emig-pick).
 process.env.T1134_HAPPY_TARGET = process.env.T1134_HAPPY_TARGET || '0';
+// ★[T1216-K2] 판 꾸밈 — 이 목 세계의 하루는 `DAY_MS`(30초)다. T1183 이 `T627_TRIP_DAY` 를 켬 기본으로 해서 길 위 장부 하루 걸음(`_t1079Ppd` · `_tripDayMs`)이
+//   정본 운영 하루(24분)로 셈된다(92,160px/날 — 몸은 목 시계로 걷는다). 이 하네스가 재는 건 목 하루의 걸음 장부라 끈다(PM land1048 test-t1181 · test-war-world 와 같은 묶음).
+if (process.env.T627_TRIP_DAY == null) process.env.T627_TRIP_DAY = '0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
