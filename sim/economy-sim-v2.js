@@ -2094,7 +2094,7 @@ function killTrader(c, v) {
   const t = c.trader;
   if (t && v.npcs) {
     const i = v.npcs.indexOf(t);
-    if (i >= 0) { v.npcs.splice(i, 1); if (v.counts) v.counts[t.currentJob] = Math.max(0, (v.counts[t.currentJob] || 0) - 1); }
+    if (i >= 0) { v.npcs.splice(i, 1); if (v.counts) v.counts[t.currentJob] = Math.max(0, (v.counts[t.currentJob] || 0) - 1); if (v1.T1206_NAT_DEATH) v._t1206Due = (v._t1206Due || 0) + 1; }   // ★[T1206 ③] 부장(다음 날 경계 · 같은 문)
   }
   if (v.tradeStats) v.tradeStats.tradersKilled = (v.tradeStats.tradersKilled || 0) + 1;
   c._done = true; c._abandoned = true;
@@ -2141,6 +2141,7 @@ function _killWarriors(v, n) {
   for (let z = 0; z < n; z++) {
     let idx = -1; for (let i = 0; i < v.npcs.length; i++) if (v.npcs[i].currentJob === 'warrior') { idx = i; break; }
     if (idx < 0) break; v.npcs.splice(idx, 1); if (v.counts) v.counts.warrior = Math.max(0, (v.counts.warrior || 0) - 1);
+    if (v1.T1206_NAT_DEATH) v._t1206Due = (v._t1206Due || 0) + 1;   // ★[T1206 ③] 호위 전사도 부장(다음 날 경계 · 같은 문)
   }
 }
 // =============================================================================
