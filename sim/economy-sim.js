@@ -118,7 +118,7 @@ function _computeVillageStats(v, N) {
   //   교역 기회비용(사용자 질문의 실물화): 원정 나간 인원(_tradingN, v2 발행)은 생산도 쉼도 못 하므로 여가에서 차감 —
   //   "쉬는 대신 교역"의 비용이 행복 회계에 실재. 문턱엔 안 넣음(실측: 캐러밴 이익/일이 개인 mv를 3~4자릿수 압도 → 영원히 안 물림.
   //   교역 vs 휴식의 실배분 노브는 TRADE_SPARE_UTIL=0.11 — 여유노동의 11%만 원정, 89%는 쉼).
-  const _leis = Math.max(0, (v._idleFrac || 0) - (v._tradingN || 0) / pop);
+  const _leis = Math.max(0, (T1217_MARGIN ? t1217IdleFrac(v, pop) : (v._idleFrac || 0)) - (v._tradingN || 0) / pop);   // ★[T1217] 켬 = 행위 어부의 실제 쉰 시간까지(아래 함수 · 끔 = 종전 글자)
   stats.happiness += LEISURE_HAPPY_W * _leis;
   stats.leisure = _leis;
   // ★땔감 부족 → 건강 페널티(비례). fuelCov=1이면 0, 0이면 -FUEL_HEALTH_W. 큰/숲빈약 마을이 연료를 못 대면 건강↓→인구 억제.
@@ -2300,7 +2300,8 @@ function actDemandCap(v, units, D, todayKey) {
   return amt > left ? left : amt;
 }
 // ★[T374] 품목마다 `D` 를 어디서 읽나 — 정본 칸 이름만 다르다(식은 하나).
-function fishDemandLeft(v, held) { return actDemandLeft(v, (v && v._fishOutLast) || 0, '_t312InflowToday', held); }
+//   ★[T1217] 켬 = 어부의 수요 문이 없다(Infinity — 끈 팔과 같은 값) — 어부는 그날 D 가 아니라 제 한 시간의 값(아래 `T1217_MARGIN` 머리말)으로 멈춘다.
+function fishDemandLeft(v, held) { if (T1217_MARGIN) return Infinity; return actDemandLeft(v, (v && v._fishOutLast) || 0, '_t312InflowToday', held); }
 //   ★[T1135 ①] 나무꾼 분자 — 켬 = 그날 땔감 수요(`_t1135Need`) · 끔 = 수식 몫(`_woodOutLast` · 종전 글자). 문(`actDemandLeft`)은 하나다.
 //   ★[T1207 ⑤] 영토 말뚝 몫 — 서버 생활층(`villages.js _t1207Batch`)이 그날 못 치른 통나무를 `_t1207Need` 에 적는다(끔 · 랩 = 칸 없음 → 0 · 종전 값 그대로).
 //     나무꾼 수요 문(`actDemandLeft` — 몸 · 일괄 둘 다)과 개간 그루 입구(`woodToGranary`)가 같은 D 를 본다 — 배수 0 · 수요가 는 만큼만.
@@ -2313,7 +2314,40 @@ function forageDemandLeft(v, held) {
 }
 function fishToGranary(v, units) {
   if (!T312_FISH_ACT || !v || !v.storage) return 0;
+  if (T1217_MARGIN) return actToGranary(v, 'fish', units, '_t312InflowToday', '_t312CatchN');   // ★[T1217] 켬 = 입구에서도 D 로 안 자른다(잡은 마리 그대로)
   return actToGranary(v, 'fish', actDemandCap(v, units, (v._fishOutLast || 0), '_t312InflowToday'), '_t312InflowToday', '_t312CatchN');
+}
+// ★★★[T1217 2026-11-07 · ★재민 11-07 판정대기 문 35 ⓓ] **수요 문 대신 "한 시간 더 일한 값 ↔ 한 시간 쉰 값"** — 손잡이 `T1217_MARGIN`(**끔 기본** · `=1` 만 켬 · 끔 = 종전 바이트).
+//   "그날 필요한 만큼만 일한다"(T374 수요 문 D · 어부 `_fishOutLast` · T312 마을 낚시 몫)는 추상이다 — 켬이면 어부의 문은 몸의 하루 한도(시간 · 짐 · 현장)와
+//   실제 어장 재고(`server/fishing.js` 셀 · 몸 · 일괄이 같은 장부를 깎는다)뿐이고, 사람마다 매 게임 시간 두 값을 견줘 큰 쪽을 한다(재민 "썩으면 손해 · 팔 수 있으면 과잉이 이득 · 쉬어야 행복"):
+//     일한 값 = 그 시간 잡힐 단위(입질 기댓값 ∝ 그 자리 재고 — CPUE) × 한 단위의 행복 값
+//       · 마을에 식량 빚이 있으면 먹는다 — 한 단위 = 한 사람의 하루치 빚 = 겪은 일(굶주림 날 +굶는 몫 ÷ 죽음 날 수 `t1197DieDays`)의 한 사람 몫 = 1 ÷ (N × 죽음 날 수)
+//       · 빚이 없으면 남는다 — 시세(그 마을 값 · 이웃이 사 주는 순수취 `netExportValue` 중 큰 쪽) × 다른 물건으로 바꾼 행복(가장 좋은 바꿈 · 아래 `t1217HappyMu`)
+//     쉰 값 = 여가 몫(`LEISURE_HAPPY_W` × 쉰 사람-날 ÷ N)이 한 시간만큼 오르는 양 = `LEISURE_HAPPY_W` ÷ (N × 낮 시간 수)
+//   두 값 다 행복 목표(0.5 + 좋은 것 − 겪은 일)의 같은 단위다 — 새 튜닝 수 0(행복 식의 무게만).
+//   여가 몫(`_computeVillageStats` 의 `_leis`)은 켬이면 행위 어부의 실제 쉰 시간(서버가 그날 `_t1217Rest` 에 적는다 · 사람-날)을 센다 —
+//     수식 직업의 여유노동(`_idleFrac`)은 그 사람 수만큼, 행위 어부는 쉰 몫만큼(인구 가중 평균).
+//   헤드리스 랩은 행위 호스트가 없어(`bindProductionActs` 안 부름) 이 손잡이가 아무 줄도 안 바꾼다.
+const T1217_MARGIN = (typeof process !== 'undefined' && process.env && process.env.T1217_MARGIN === '1');
+//   ★[T1217] 물건 하나의 한 단위가 좋은 것(행복 합 G)을 얼마나 올리나 — `_computeVillageStats` 의 그 꼴(1인당 충족률 min(1, 1인당 ÷ 2) × 무게)의 기울기:
+//     1인당 2 미만이면 무게 ÷ (2N) · 2 이상이면 0(이미 찼다). 무게 = 그 물건의 `contributes.happiness`(specialty 정본 · 없으면 종전 표) — 사본 0.
+function t1217HappyMu(v, id, N) {
+  if (!v || !id || (T1188_ORE_SPLIT && (id === 'ore' || OreGoods.isOre(id)))) return 0;
+  const SP = _getSpecialty();
+  const c = (SP && SP[id] && SP[id].contributes) || LEGACY_CONTRIBUTES[id] || null;
+  const w = c && c.happiness > 0 ? c.happiness : 0;
+  if (!(w > 0)) return 0;
+  const pop = Math.max(1, N || (v.npcs && v.npcs.length) || 1);
+  return ((v.storage && v.storage[id]) || 0) / pop < 2 ? w / (2 * pop) : 0;
+}
+//   ★[T1217] 여가 몫의 밑변 — 수식 직업의 여유노동(`_idleFrac` · 수식이 닫힌 행위 어부는 그 잠재 · 실제 합 `_potA` · `_actA` 에 안 든다)은 그 사람 수만큼,
+//     행위 어부는 서버가 적은 그날 쉰 사람-날(`_t1217Rest` · 낮 시간 중 안 낚은 몫의 합 · 0 ~ 어부 수)만큼 — 인구 가중 평균. 칸이 없으면(서버가 안 적은 날 · 랩) 종전 값.
+function t1217IdleFrac(v, pop) {
+  const idle = (v && v._idleFrac) || 0;
+  if (!v || typeof v._t1217Rest !== 'number' || !productionFormulaOff(v, 'fisher')) return idle;
+  const N = Math.max(1, pop || (v.npcs && v.npcs.length) || 1);
+  const Fa = Math.min(N, Math.max(0, (v.counts && v.counts.fisher) || 0));
+  return ((N - Fa) * idle + Math.max(0, Math.min(Fa, v._t1217Rest))) / N;
 }
 // ★★[T325 · 설계_생산_실체 §1·§2] **나무꾼의 곳간 입구.** 캐논: *"베는 순간 손에, 귀환하면 곳간에."*
 //   ⚠어부와 **같은 몸통 · 같은 세금 · 같은 장부 다리**다(위 `actToGranary`) — 새 회계 0.
@@ -7064,6 +7098,7 @@ module.exports = {
   T1075_HAPPY_EQ, HAPPY_EQ_HALF_DAYS,
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
   foodDebtOf, T1074_FOOD_DEBT,   // ★[T1074] 식량 빚 읽는 함수 하나(T1075 가 읽는다)
+  T1217_MARGIN, t1217HappyMu, t1217IdleFrac, LEISURE_HAPPY_W,   // ★[T1217] 한 시간 값 ↔ 쉰 값 — 물건 한 단위의 행복 기울기 · 여가 몫 밑변 · 여가 무게(v2 · 서버 · 하네스가 같은 함수를 읽는다)
   T1206_NAT_DEATH, T1206_SILER, T1206_GRAVE, t1206Hazard, t1206DayP, t1206Bury, t1206Day, t1206Expected, _t1206IsLux,   // ★[T1206] 자연사 · 출생 다시 맞춤 · 부장 — 하네스 · 관찰기
   T1198_BIRTH_BODY, _t1198Houses,   // ★[T1198] 출생 = 집 짝 곁 · 명부 ↔ 몸 1:1 — 호스트 · 하네스
   T1197_MEAL_BODY, NPC_HP_DAY, npcRegenMul, t1197Advance, t1197Meal, t1197Kill, t1197Day, t1197DieDays, __t1197: () => _t1197(),   // ★[T1197] 몸 게이지 끼니 — 호스트(몸 끼니 · 몸 흘림 · 그 자리 죽음) · 하네스가 같은 함수를 부른다
