@@ -24,6 +24,10 @@ const { ZONES } = require(path.join(ROOT, 'server', 'zone-config'));
 const ZIDS = ['hanbando', 'nippon'];
 const LIGHT = process.argv.includes('--light');
 const JI = process.argv.indexOf('--json'), JOUT = JI > 0 ? process.argv[JI + 1] : null;
+// ★[T1163] `--hf` = 첫 접속 · 관측 주소에 클라가 로비 `/terrain.json` 으로 가진 그 존 절 서명(`hf` · 정본 public/terrain-sig.js)을 싣는다 — 존 손잡이 `T1163_WELCOME_SIG=1` 이면 지형이 빠진다(바이트 전 → 후 표)
+const HFON = process.argv.includes('--hf');
+const _HFALL = HFON ? JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'hanbando-terrain.json'), 'utf8')) : null;
+const hfQ = (z) => { if (!HFON || !_HFALL || !_HFALL[z]) return ''; return '&hf=' + encodeURIComponent(require(path.join(ROOT, 'public', 'terrain-sig.js')).terrainSig(_HFALL[z])); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const procs = [];
@@ -67,12 +71,12 @@ async function oneZone(z) {
   for (const deflate of [false, true]) {
     const tag = deflate ? 'wire' : 'raw';
     // ⓐ 첫 접속(게스트)
-    { const st = openWs(`ws://127.0.0.1:${port}/?name=t1125${z.slice(0, 3)}${tag}&color=%23aa5533`, deflate);
+    { const st = openWs(`ws://127.0.0.1:${port}/?name=t1125${z.slice(0, 3)}${tag}&color=%23aa5533${hfQ(z)}`, deflate);
       const w = await waitMsg(st, isWel((m) => !m.observer), 120000);
       if (w) { if (!deflate) out.first = measure(w.raw); else out.first.wire = w.read - st.read0; out.first['head_' + tag] = st.msgs.some((x) => x.type === 'welcome_head'); }
       try { st.ws.close(); } catch (e) {} }
     // ⓑ 관측
-    const ob = openWs(`ws://127.0.0.1:${port}/?observer=1&vx=${vx}&vy=${vy}`, deflate);
+    const ob = openWs(`ws://127.0.0.1:${port}/?observer=1&vx=${vx}&vy=${vy}${hfQ(z)}`, deflate);
     const wo = await waitMsg(ob, isWel((m) => !!m.observer), 120000);
     if (wo) { if (!deflate) out.observer = measure(wo.raw); else out.observer.wire = wo.read - ob.read0; out.observer['head_' + tag] = ob.msgs.some((x) => x.type === 'welcome_head'); }
     // ⓒ 승격 — 그 존 안 문에 토큰을 걸고 관측 소켓에서 승격(보낸 존 없음 = ACK 0)
@@ -91,9 +95,9 @@ async function oneZone(z) {
 }
 
 (async () => {
-  const D = `/tmp/t1125-wb-${process.pid}`; fs.mkdirSync(D, { recursive: true });
+  const D = path.join(require('os').tmpdir(), `t1125-wb-${process.pid}`); fs.mkdirSync(D, { recursive: true });   // ★[T1163] 종전 /tmp — 샌드박스 맥에서도 돌게 os 임시 폴더
   const R = { card: 'T1125', made: new Date().toISOString().slice(0, 10), world: LIGHT ? '하네스 꼴(ENABLE_VILLAGES · WILDLIFE · BANDITS · ROADS = 0)' : '운영 꼴(기능 기본)',
-    knobs: { T1125_WS_DEFLATE: process.env.T1125_WS_DEFLATE || '(기본)', T1125_WEL_HEAD: process.env.T1125_WEL_HEAD || '(기본)', T1125_BIG: process.env.T1125_BIG || '(기본 65536)' }, zones: {} };
+    hf: HFON, knobs: { T1163_WELCOME_SIG: process.env.T1163_WELCOME_SIG || '(기본 끔)', T1125_WS_DEFLATE: process.env.T1125_WS_DEFLATE || '(기본)', T1125_WEL_HEAD: process.env.T1125_WEL_HEAD || '(기본)', T1125_BIG: process.env.T1125_BIG || '(기본 65536)' }, zones: {} };
   try {
     const c = boot('central', 'central.js', { PORT: '3010', DB_PATH: `${D}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: ZIDS.join(',') });
     await FB.waitUp(c, /central server up on/, { name: 'central' });

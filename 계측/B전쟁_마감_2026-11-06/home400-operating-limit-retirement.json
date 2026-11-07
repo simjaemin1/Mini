@@ -1,0 +1,123 @@
+{
+  "timeUTC": "2026-11-06T03:39:06.383120+00:00",
+  "reason": "OFF operating-budget400 case hit prescribed3600s cap, so a matched ON400 comparison cannot complete. Retire only the unpaired continuation before using an explicitly labeled compressed battle ruler.",
+  "retiredPIDs": [
+    202970,
+    205703,
+    211031,
+    211038,
+    211039,
+    211040,
+    211058,
+    211063,
+    211081
+  ],
+  "commands": {
+    "211040": [
+      "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+      "/tmp/act-route-code/scripts/t577-server-run.js",
+      "400",
+      "42"
+    ],
+    "211063": [
+      "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+      "-r",
+      "/tmp/act-route-code/scripts/t577-server-hook.js",
+      "/tmp/act-route-code/server/zone.js"
+    ],
+    "205703": [
+      "python3",
+      "/tmp/t1159-prefix-runner.py",
+      "/tmp/act-route-code",
+      "/tmp/t1159-active-results",
+      "--days",
+      "400",
+      "--port-base",
+      "61000"
+    ],
+    "211081": [
+      "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+      "-r",
+      "/tmp/act-route-code/scripts/t577-server-hook.js",
+      "/tmp/act-route-code/server/zone.js"
+    ],
+    "211058": [
+      "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+      "-r",
+      "/tmp/act-route-code/scripts/t577-server-hook.js",
+      "/tmp/act-route-code/server/zone.js"
+    ],
+    "211031": [
+      "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+      "scripts/server-baseline-check.js",
+      "계측/서버기준선_전쟁_2026-11-03.json",
+      "--war",
+      "--days",
+      "400",
+      "--seeds",
+      "1020,7,42",
+      "--par",
+      "3"
+    ],
+    "202970": [
+      "python3",
+      "/tmp/t1159-select-scope.py"
+    ],
+    "211038": [
+      "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+      "/tmp/act-route-code/scripts/t577-server-run.js",
+      "400",
+      "1020"
+    ],
+    "211039": [
+      "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+      "/tmp/act-route-code/scripts/t577-server-run.js",
+      "400",
+      "7"
+    ]
+  },
+  "oldOffResultPreserved": {
+    "mode": "0",
+    "exit": 124,
+    "timedOut": true,
+    "seconds": 3600.011909712004,
+    "args": [
+      "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+      "scripts/server-baseline-check.js",
+      "계측/서버기준선_전쟁_2026-11-03.json",
+      "--war",
+      "--days",
+      "400",
+      "--seeds",
+      "1020,7,42",
+      "--par",
+      "3"
+    ],
+    "env": {
+      "T790_NO_SNAP": "1",
+      "T1041_WAR_BODY": "1",
+      "T811_ARMS_BODY": "1",
+      "T449_BODY_DAY": "1",
+      "T491_BATCH_FROM_BODY": "1",
+      "T561_ROSTER_BODY": "1",
+      "T502_ODDS_REAL": "1",
+      "T815_DRAFT_FAMINE": "1",
+      "T941_BATTLE_DAY": "1",
+      "T627_TRIP_DAY": "1",
+      "T1076_ARMY_MORALE": "1",
+      "T466_LOOT_ACT": "1",
+      "T826_LOOT_BODY": "1",
+      "T1168_SORTIE_AMMO": "1",
+      "T1078_BANDIT_ALL": "1",
+      "T1079_BANDIT_CAMP": "1",
+      "T1104_BANDIT_WALK": "1",
+      "T1159_HOME_N": "0",
+      "T577_PORT_BASE": "61000",
+      "NODE_OPTIONS": "-r /tmp/act-route-code/scripts/t1159-observe.js"
+    },
+    "sbcDir": "/tmp/sbc-d0nb6t",
+    "complete": false,
+    "seeds": []
+  },
+  "retiredOnClassification": "retired unmatched continuation, not a pass or cap"
+}

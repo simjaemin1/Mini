@@ -59,14 +59,14 @@ const deadBodies = (r) => r.rows[r.rows.length - 1][6];
 const deadTot = (r) => r.rows[r.rows.length - 1][3] - (r.deadTot0 || 0);
 
 console.log('ⓐ 전원 징발 마을 — 곳간에 식량 2000 · 40일');
-const offAll = run({}, 0), onAll = run({ T815_DRAFT_FAMINE: '1' }, 0);
+const offAll = run({ T815_DRAFT_FAMINE: '0' }, 0), onAll = run({ T815_DRAFT_FAMINE: '1' }, 0);
 ok(deadBodies(onAll) === 0, '켬 — 40일 동안 몸 하나도 안 죽는다(전원 징발)', `죽은 몸 ${deadBodies(onAll)} · 인구 ${onAll.start} → ${onAll.rows[onAll.rows.length - 1][1]}`);
 ok(onAll.rows[onAll.rows.length - 1][3] === onAll.tot0, '켬 — 죽음 누계가 안 는다(몸이 안 죽었으니 셈도 0)', `누계 ${onAll.tot0} → ${onAll.rows[onAll.rows.length - 1][3]}`);
 const offGain = offAll.rows[offAll.rows.length - 1][3] - offAll.tot0;
 ok(deadBodies(offAll) === 0 && offGain > 0, '끔(대조) — 몸은 0 인데 죽음 셈은 는다(종전 · 결함 재현)', `죽음 셈 +${offGain} · 몸 ${deadBodies(offAll)}`);
 
 console.log('\nⓑ 자유민 1명 남은 마을');
-const offOne = run({}, 1), onOne = run({ T815_DRAFT_FAMINE: '1' }, 1);
+const offOne = run({ T815_DRAFT_FAMINE: '0' }, 1), onOne = run({ T815_DRAFT_FAMINE: '1' }, 1);
 const bodiesOn = deadBodies(onOne), bodiesOff = deadBodies(offOne);
 ok(bodiesOn === bodiesOff, '켬·끔 같은 몸 수가 죽는다(이 손잡이는 누가 죽는지를 안 바꾼다)', `켬 ${bodiesOn} · 끔 ${bodiesOff}`);
 ok(bodiesOn >= 1, '마지막 자유민이 기근으로 죽는다(계약 ③ 이 깨지는 자리 — 이 카드는 이 길을 고르지 않는다)', `죽은 몸 ${bodiesOn}`);
@@ -84,11 +84,11 @@ ok(onOne.rows[onOne.rows.length - 1][5] === onOne.drafted0, 'ⓒ 징발자는 �
 
 console.log('\nⓓ 끔 = 종전 — 손잡이 없음 · "0" · "" 이 같은 궤적');
 const z0 = run({ T815_DRAFT_FAMINE: '0' }, 1), z1 = run({ T815_DRAFT_FAMINE: '' }, 1);
-ok(JSON.stringify(z0) === JSON.stringify(offOne) && JSON.stringify(z1) === JSON.stringify(offOne), '세 끔 팔이 한 글자도 안 갈린다');
+ok(JSON.stringify(z0) === JSON.stringify(offOne) && JSON.stringify(z1) === JSON.stringify(onOne) && JSON.stringify(run({}, 1)) === JSON.stringify(onOne), '[T1183] =0은 종전 끔 · 미설정/빈 값은 켬과 같다');
 
 console.log('\nⓕ 풀리는 날 한꺼번에 — 쌓인 몫(`_dPAccum` −45)을 안은 전원 징발 마을이 풀린다(① 만으로는 못 막는 자리 · 판정 0 · 재민 몫)');
 {
-  const a = run({}, 0, 'release'), b = run({ T815_DRAFT_FAMINE: '1' }, 0, 'release');
+  const a = run({ T815_DRAFT_FAMINE: '0' }, 0, 'release'), b = run({ T815_DRAFT_FAMINE: '1' }, 0, 'release');
   ok(a.popHeld === a.start && b.popHeld === b.start, '묶인 3일 동안 둘 다 인구 그대로(죽을 몸이 없다)', `끔 ${a.start} → ${a.popHeld} · 켬 ${b.start} → ${b.popHeld}`);
   ok(b.heldGain === 0 && a.heldGain > 0, '묶인 3일 — 켬은 죽음 셈 0(몸이 안 죽었다) · 끔(대조)은 셈만 는다', `켬 +${b.heldGain} · 끔 +${a.heldGain}`);
   ok(a.popAfter === b.popAfter && a.popAfter < a.popHeld, '풀린 날 쌓인 몫이 몸으로 치러진다 — 켬·끔 같은 인구(① 은 몰사를 안 막는다)', `묶임 인구 ${a.popHeld} → 풀린 뒤 끔 ${a.popAfter} · 켬 ${b.popAfter} · 쌓인 몫 ${a.acc1}`);
@@ -96,7 +96,7 @@ console.log('\nⓕ 풀리는 날 한꺼번에 — 쌓인 몫(`_dPAccum` −45)�
 
 console.log('\nⓔ 정적');
 const S = fs.readFileSync(SIM, 'utf8');
-ok((S.match(/process\.env\.T815_DRAFT_FAMINE/g) || []).length === 1 && /process\.env\.T815_DRAFT_FAMINE === '1'/.test(S), '손잡이는 `=== \'1\'` 한 자리');
+ok((S.match(/process\.env\.T815_DRAFT_FAMINE/g) || []).length === 1 && /process\.env\.T815_DRAFT_FAMINE === '0'/.test(S), '손잡이는 `=== \'0\'` 되돌림 한 자리');
 {
   const iBrk = S.indexOf('if (oldestIdx < 0) break;'), iOn = S.indexOf('if (T815_DRAFT_FAMINE) { v._deathsToday++'), iOff = S.indexOf('if (!T815_DRAFT_FAMINE) { v._deathsToday++');
   ok(iOff > 0 && iBrk > iOff && iOn > iBrk, '끔 센 줄은 `break` 앞 · 켬 센 줄은 `break` 뒤');

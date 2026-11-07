@@ -1,0 +1,28 @@
+{
+  "runnerSHA256": "8ff1413ddbc7704856c3facd8a9b8eef50abae12bcd04dd1a1f3a4c462d0e361",
+  "productSourceHead": "c2bec2b4",
+  "runnerSourceCommit": "05ebafb3",
+  "selectedScope": {
+    "path": "/tmp/t1159-compressed600-results",
+    "days": 600,
+    "world": "front",
+    "battleDay": "0",
+    "complete": true,
+    "awayPersonDays": 20232,
+    "initial200DayAwayPersonDays": 0,
+    "operating400Outcome": "OFF hit prescribed3600s cap; unmatched ON continuation retired",
+    "reason": "400day compressed comparison had no actual away bodies; one extension to600days, same model and conditions",
+    "previous400": {
+      "path": "/tmp/t1159-compressed-results",
+      "days": 400,
+      "world": "front",
+      "battleDay": "0",
+      "complete": true,
+      "awayPersonDays": 0,
+      "initial200DayAwayPersonDays": 0,
+      "operating400Outcome": "OFF hit prescribed3600s cap; unmatched ON continuation retired",
+      "reason": "matched expedition-N comparison under the existing war-town body rule and compressed battle budget; distinct from operating budget Infinity cases"
+    }
+  },
+  "publicGuardUpdate": "1e8fb7a2 adds child exit validation only; all actual selected child exits also checked independently"
+}

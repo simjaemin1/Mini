@@ -50,7 +50,7 @@ console.log('\n② 손·짐에 남는 통나무 — 정적');
     'ⓐ ★★몸 갈래(`_t325Deliver`) — 켬 = 넣은 만큼만 손에서 뺀다(남긴 몫 `_t717L`) · 끔 = 옛 줄(손 0)');
   ok(/const _g = _lifeEcon\(\)\.woodToGranary\(vil\.econ, u\);\s*if \(T717_WOOD_HAND\) _t717PackPut\(vil, u - \(_g \|\| 0\)\);/.test(daily),
     'ⓐ ★★헤드리스 하루 — 입구가 돌려준 받은 몫을 읽고 나머지(`u − 받은 몫`)는 켬이면 마을 짐에(끔 = 옛 줄 · 안 읽고 버림)');
-  ok(/if \(T717_WOOD_HAND && _on\) _t717PackIn\(vil\);/.test(daily) && daily.indexOf('_t717PackIn(vil)') < daily.indexOf('for (let k = 0; k < _tr.length * 8')
+  ok(/if \(T717_WOOD_HAND && _on && !_bodyOnly\) _t717PackIn\(vil\);/.test(daily) && daily.indexOf('_t717PackIn(vil)') < daily.indexOf('for (let k = 0; k < _tr.length * 8')
      && daily.indexOf('_t717PackIn(vil)') > daily.indexOf('_t325Deliver(vil, p)'),
     'ⓐ ★짐은 **베기 전** · 손 입고 뒤에 든다(채집 `_t544PackIn` 과 같은 자리) · 켬 ∧ 행위 마을만');
   ok(/vil\.econ\._t717Pack = \+\(\(vil\.econ\._t717Pack \|\| 0\) \+ u\)\.toFixed\(6\);/.test(put) && /woodToGranary\(vil\.econ, u\)/.test(pin)
@@ -69,7 +69,7 @@ console.log('\n② 손·짐에 남는 통나무 — 정적');
 // ── ② 실행 — 몸 갈래 · 짐 · 하루(정본 `_lifeDaily`) ───────────────────────────────────────────────────────
 console.log('\n② 손·짐에 남는 통나무 — 실행(정본 함수 · 행위 층 켬 · 수요 문 켬)');
 {
-  const base = { T717_WOOD_HAND: '0', T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T374_DEMAND_STOP: '1', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T561_ROSTER_BODY: '' };
+  const base = { T717_WOOD_HAND: '0', T325_WOOD_ACT: '1', T347_FORAGE_ACT: '0', T374_DEMAND_STOP: '1', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T561_ROSTER_BODY: '' };
   //   ⓑ 몸 갈래 — 손 9 단 · 그날 몫 2
   const bodyJs = `const E=require(${EP}); const V=require(${VP}); const P=V.__labProbe._t717Probe;
     const ev=E.createVillage({initialPop:0,name:'x',fertility:1}); ev._woodOutLast=2; ev._t325InflowToday=0;
@@ -127,7 +127,7 @@ console.log('\n② 손·짐에 남는 통나무 — 실행(정본 함수 · 행�
     'ⓓ ★★남긴 몫(1단)만 든 손 — 켬: 그날 걸은 몸이 아니다(일괄이 1그루 · 사라짐 0) · 끔: 손 입고가 걸은 몸으로 세어 일괄 0(옛 줄)',
     `켬 걸음 ${lOn.days[0].walked} · 벰 ${lOn.days[0].cut} ↔ 끔 걸음 ${lOff.days[0].walked} · 벰 ${lOff.days[0].cut}`);
   //   ⓐ 행위 층 끔 — 켜도 부르는 자리가 없다(곳간 입구가 0 을 돌려주고 손도 짐도 안 생긴다 · 기본 세계 = main 바이트의 근거)
-  const noAct = probe(Object.assign({}, base, { T717_WOOD_HAND: '1', T325_WOOD_ACT: '' }), dayJs({ inventory: { wood: 3 } }));
+  const noAct = probe(Object.assign({}, base, { T717_WOOD_HAND: '1', T325_WOOD_ACT: '0' }), dayJs({ inventory: { wood: 3 } }));
   ok(noAct.cut === 0 && noAct.gran === 0 && noAct.pk === 0 && noAct.hand === 3,
     'ⓐ ★행위 층(`T325_WOOD_ACT`) 끔 세계 — 켜도 아무것도 안 한다(벰 0 · 곳간 0 · 짐 0 · 손 그대로) ⇒ 기본 세계는 main 그대로', JSON.stringify({ cut: noAct.cut, gran: noAct.gran, pk: noAct.pk, hand: noAct.hand }));
 }

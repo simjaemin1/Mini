@@ -160,7 +160,7 @@ if (SUB) {   // ── 아이 판 — 갈래 · 몸 상한은 모듈 적재 때 
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 function sub(arm, cap, N, bait) {
-  const env = Object.assign({}, process.env, { T1039_SUB: `${N},25`, BANDIT_FIXTURE: 'dissolve', BANDIT_MINDAY: '1' });
+  const env = Object.assign({}, process.env, { T1078_BANDIT_ALL: '0', T1079_BANDIT_CAMP: '0', T1104_BANDIT_WALK: '0', T627_TRIP_DAY: '0', T1039_SUB: `${N},25`, BANDIT_FIXTURE: 'dissolve', BANDIT_MINDAY: '1' });
   delete env.T1039_BANDIT_BODY; delete env.VILLAGE_NPC_CAP; delete env.T1039_BAIT;
   env.T1039_BANDIT_BODY = arm || '0';   // ★[PM land1038] walk 켬 기본 — 종전 갈래는 '0'
   if (cap) env.VILLAGE_NPC_CAP = cap;

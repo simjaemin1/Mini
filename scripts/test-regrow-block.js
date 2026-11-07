@@ -481,9 +481,10 @@ if (MODE === '--seoul') {
     const VS = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
     const body = (src, name) => { const i = src.indexOf(`function ${name}(`); if (i < 0) return ''; const j = src.indexOf('\nfunction ', i + 10); return src.slice(i, j < 0 ? undefined : j); };
     const gen = body(CS, 'generateChunkResources');
-    ok((gen.match(/_treeStage\(seedKey/g) || []).length === 2 && /harvestedSet\.regrowGate/.test(gen)
+    //   [T1175] T1107(`bc823aee` · 마을 둘레 흩어진 나무 `T1107_VILLAGE_TREES`)이 나무 갈래를 하나 보탰고 그 갈래도 같은 술어를 묻는다 — 2 → 3
+    ok((gen.match(/_treeStage\(seedKey/g) || []).length === 3 && /harvestedSet\.regrowGate/.test(gen)
        && (gen.match(/_stage\(seedKey, G\.type, null\)|_stage\(seedKey, kind, null\)|_stage\(seedKey, type, null\)/g) || []).length === 4,
-      '★ⓘ 시더 — 나무 두 갈래(흩뿌림 · 숲 격자)만 술어를 묻는다 · 덤불·풀·군락 세 갈래는 종전 `_stage` 그대로(무접촉)');
+      '★ⓘ 시더 — 나무 세 갈래(흩뿌림 · 숲 격자 · T1107 마을 둘레)만 술어를 묻는다 · 덤불·풀·군락 세 갈래는 종전 `_stage` 그대로(무접촉)');
     ok(/if \(_T566_ON\) harvestedSeeds\.regrowGate = /.test(ZS) && /regrowBlockedAt\(c\.cx, c\.cy\)/.test(body(ZS, '_t341Unharvest'))
        && !/regrowBlockedAt/.test(body(ZS, '_shapeRegrown')) && /_idxAtCell/.test(body(ZS, '_actEntitiesAtCell')),
       '★ⓘ 답 넷 — 시더(장부가 들고 가는 술어) · 색인(같은 생성기) · 되살림(막힌 셀 0) · 심은 것(`_shapeRegrown` — **안 묻는다** · 카드 ④)');

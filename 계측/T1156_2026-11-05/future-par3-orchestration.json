@@ -1,0 +1,9 @@
+{
+  "replacedOrchestratorPID": 196410,
+  "activeVerifyPID": 196411,
+  "activeVerifyUntouched": true,
+  "futureConcurrency": 3,
+  "futureHarnessesAtOnce": 1,
+  "daysAllSeeds": 400,
+  "reason": "run remaining three seeds in one harness concurrently; same source, same targets, disjoint prior war ports"
+}

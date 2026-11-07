@@ -171,7 +171,7 @@ function findForageSpots() {
   await sleep(2500);
   // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
   const enterBtn = await page.$('#enter');
-  ok(!!enterBtn, '로비에 입장 버튼(`#enter` · 「나루터로 간다」 — T84 개명)');
+  ok(!!enterBtn, '로비에 입장 버튼(`#enter` · 「나루터로 가기」 — T84 개명 · T1190 명사형)');
   if (enterBtn) await enterBtn.click();
   for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
   await sleep(2200);

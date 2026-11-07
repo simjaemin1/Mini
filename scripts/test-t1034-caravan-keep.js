@@ -4,7 +4,7 @@
 //
 // ★[T1034] econ 장부(`world.caravans`)는 메타 행(T728)에 실리고 다시 뜬 판은 T775 가 장부 자리에 몸을 세운다 — 길 위 가는 몸은 그것으로 이어진다.
 //   잃던 것은 ⓐ 하루 중에 바뀐 econ 장부(메타 행은 마감 끝에만 쓰였다)와 ⓑ 몸에만 사는 칸(돌아서는 길 · 머묾 끝 · 귀환 보간 · 지연 · 재경로 셈)이다.
-//   ① 글자 — 손잡이 켬 기본(`=0` 만 끔) · 부팅 덮기는 T775 몸 세우기 바로 뒤 한 줄 · 표 자리 다섯 · 틱 끝 저장은 저장 큐가 빈 뒤만 · 시계가 같을 때만 쥔다
+//   ① 글자 — 손잡이 켬 기본(`=0` 만 끔) · 부팅 덮기는 T775 몸 세우기 바로 뒤 한 줄 · 표 자리 다섯 · 틱 끝 저장은 저장 큐가 빈 뒤만 · 일정 몸은 시계가 같을 때만 쥔다 · 실제 좌표 몸은 다른 시계에도 복원한다
 //   ② 죽음 판(하루 중) — 고립 귀환(시험 훅 `VILLAGE_CARAVAN_BLOCKTEST=2` · 장부를 돌아서는 구간에 다시 건다 = 운영 `_t661Day` 고립과 같은 꼴)이 선 뒤 SIGKILL:
 //      켬: 다시 뜬 장부가 귀환 그대로(상태 · 귀환 날 · 버림 표) · 몸이 같은 길(돌아서는 구간 길이) · 같은 자리(장부 속도 몫 + 64px 안)
 //      끔(자명 통과 금지 · 대조): 같은 판에서 장부가 가는 길로 되돌아간다(종전 — 메타 행이 아침 것)
@@ -13,6 +13,12 @@
 //   ★값: 몸 없는 판(서버 기준선 · 캐러밴 0)엔 칸이 안 선다 — 서버 기준선 바이트 같음으로 따로 본다(보고/T1034).
 // 실행: node scripts/test-t1034-caravan-keep.js
 'use strict';
+// 종전 T661 일정 복원 대조 판. 실제 몸 좌표 보존은 T1182 하네스에서 별도 검증.
+process.env.T762_CARAVAN_BODY='0';
+process.env.T1136_ESCORT_CARRY='0';
+// 이 자는 하루를 넘겨 걷는 종전 500단위/일 다리를 요구한다.
+// T474의 1일 다리는 T762 끔의 하루 뒤 동기에서 이미 도착해 왕로 몸을 못 고른다.
+process.env.T474_CARAVAN_WALK='0';
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -34,7 +40,17 @@ ok(['ret', 'iso', 'rf', 'push'].every((w) => V.includes(`_t1034Mark('${w}')`)) &
 ok(/\.\.\.\(T1034_KEEP \? \(\(\) => \{ const P = _t1034Pack\(\); return P \? \{ t1034: P \} : \{\}; \}\)\(\) : \{\}\)/.test(V), '메타 행 칸 — 몸이 없으면 칸이 안 선다 · 끔 = 칸 없음');
 ok((Z.match(/SimVillages\.t1034Flush\(\)/g) || []).length === 2, '틱 꼬리 두 자리(잠든 틱 · 도는 틱) — T1005 줄 옆');
 ok(V.includes("if (state.saveQueue && state.saveQueue.length) { _t1034Stat.waitQ++; return 0; }") && V.includes("if (state._t731) { _t1034Stat.waitW++; return 0; }"), '틱 끝 저장 = 마을 행이 다 적힌 뒤만(저장 큐 · 현지 자정 창 — 메타 날 ≠ 마을 행 날 금지 · T728 같은 날 규약)');
-ok(V.includes("if (M.anchor && M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch) { state._t1034Saved"), '몸 칸 쥐기 = 시계(하루 길이 · epoch)가 같을 때만(벽시계 값의 뜻이 같다)');
+const savedClock = V.match(/if \((M\.anchor && .*?)\) \{ state\._t1034Saved =/);
+ok(!!savedClock, '몸 칸 쥐기 — 실제 코드의 시계 문을 찾는다');
+if (savedClock) {
+  const accepts = new Function('M', 'state', 'T762_CARAVAN_BODY', 'return !!(' + savedClock[1] + ');');
+  const nowClock = { dayMs: 100, epoch: 5 };
+  ok(accepts({anchor:{dayMs:100,epoch:5}},nowClock,false) &&
+    !accepts({anchor:{dayMs:200,epoch:5}},nowClock,false) &&
+    !accepts({anchor:{dayMs:100,epoch:6}},nowClock,false) &&
+    accepts({anchor:{dayMs:200,epoch:6}},nowClock,true) &&
+    !accepts({},nowClock,true), '일정 몸은 같은 시계만 · 실제 좌표 몸은 시계 변경에도 복원 · 앵커 없음은 거절');
+}
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 't1034-'));
 const zoneEnv = (db, port, extra) => Object.assign({}, process.env, { ZONE_ID: 'hanbando', PORT: String(port), DB_PATH: db, ENABLE_VILLAGES: '1', VILLAGE_MAX: '6',

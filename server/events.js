@@ -377,6 +377,13 @@ function pricesOf(econV2, v, day) {
 //   ⚠여전히 **정본 함수 하나**를 부를 뿐이다 — 가격을 여기서 계산하지 않는다.
 //   ⚠NPC 교역(`tickTradeV2`)은 종전대로 하루 캐시를 읽는다 — 이 접근자는 그 경로를 안 건드린다.
 function pricesFresh(econV2, v) { return econV2.computeShadowPrices(v); }
+// ★[T1161 · K13] 같은 시세의 **몇 칸만**(거래소 견적 · 실행은 낼 것 · 받을 것 두 칸만 읽는다) — 정본 `shadowPricesOf`(전 표의 그 칸과 같은 값).
+//   정본에 그 함수가 없으면(옛 엔진 · 모의 econ) 전 표 — 값은 같다. 여기서도 가격을 계산하지 않는다.
+//   손잡이 `T1161_TWO_PRICES=0` = 종전(전 표 · 같은 값 대조용).
+const T1161_TWO_PRICES = !(typeof process !== 'undefined' && process.env && process.env.T1161_TWO_PRICES === '0');
+function pricesFreshOf(econV2, v, keys) {
+  return (T1161_TWO_PRICES && typeof econV2.shadowPricesOf === 'function') ? econV2.shadowPricesOf(v, keys) : econV2.computeShadowPrices(v);
+}
 // ── ★★[T133 2026-09-06] **장부가 값을 묻는 시점** — 세션1 T130 이 잡은 계측 시점 결함 ────────
 //   증상: 곡물 가격 사건(시드 1020 800일 · 급등 1,815 · 급락 2,110)의 **21.1%**(급등의 38.5%)가
 //   "문 앞에 온 짐을 못 본 빈 곳간"의 값이었다. 표본 `d61 어촌5 wheat ×4.14` — 그날 재고는
@@ -1547,4 +1554,4 @@ function deliverToVillage(a) {
 module.exports = { createLedger, CFG, TYPES, DEED_TYPES, DEED_FOREIGN, briefLine, boardLine, newsLine, LINE_TYPES: Object.keys(LINES), NEWS_LINE_TYPES: Object.keys(NEWS_LINES), koRes, josa, seasonOf, KO_SEASON,
   blurMag,   // ★[T127] 뭉갬 정본 — 하네스·계측기가 **이 함수**를 부른다(사본 금지)
   yearDaysOf, seasonStartOf, calendarOf, yearOf, yearSpanOf, springYearOf,
-  buildDeliverable, deliverToVillage, pricesOf, pricesFresh, payableQty };
+  buildDeliverable, deliverToVillage, pricesOf, pricesFresh, pricesFreshOf, T1161_TWO_PRICES, payableQty };

@@ -58,10 +58,12 @@ console.log('\n① 평형 함수(`sim/equilibrium.js`)');
   ok(Eq.step(2, 5, 14) <= 1 && Eq.step(-1, -2, 14) >= 0, '0~1 로 자른다');
 }
 
-console.log('\n② 끔이 기본');
-const off = kid({ T1076_ARMY_MORALE: '' });
+console.log('\n② ★[T1168 K2] 켬이 기본 · `=0` 이 끔');
+const off = kid({ T1076_ARMY_MORALE: '0' });
+const dflt = (() => { const env = Object.assign({}, process.env, { T1076_SUB: '1' }); delete env.T1076_ARMY_MORALE; return JSON.parse(execFileSync(process.execPath, [__filename], { env, encoding: 'utf8' })); })();
 {
-  ok(off.on === false, '★env 없음 = 끔', off.on);
+  ok(dflt.on === true && near(dflt.empty14, 0.5, 1e-9), '★env 없음 = 켬(T1168 · 켬 기본) — 짐 0 이면 14날 뒤 0.5', `${dflt.on} · ${dflt.empty14}`);
+  ok(off.on === false, '★`T1076_ARMY_MORALE=0` = 끔(되돌림)', off.on);
   ok(off.full14 === 1 && off.empty14 === 1 && off.loss4 === 1 && off.brokeDay === null, '끔 — 하루 · 계단 · 결단 문이 무동작(사기 칸 그대로 · 철수 0)', JSON.stringify({ e: off.empty14, l: off.loss4, b: off.brokeDay }));
   const WS = fs.readFileSync(path.join(ROOT, 'sim', 'war-core.js'), 'utf8');
   ok(/if \(_t1076On\(\)\) \{ _war\._mrl = 1;/.test(WS), '선포 칸은 켬에서만 선다(`_war._mrl` — 끔이면 원정 객체 무변)');

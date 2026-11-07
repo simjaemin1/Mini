@@ -1,0 +1,404 @@
+{
+  "productHead": "c58cd674",
+  "kernelUnchangedFromT1168": true,
+  "kernelSha256": "b83bbe91f05a0707f0041942d2c5c5f57e3f2b2698f257713805e53d734a2924",
+  "context": "T1183 all-plan 1020:400/7:60/42:60 중 시드1020 진단. 벽시계(vclock=false)·압축 하루, 최대3명령. 두 번의5초 프로필 수집 요청(아래는 마지막 표본).",
+  "finishedPlanWallSec": 1239.308,
+  "sample": {
+    "warPerf": {
+      "n": 6,
+      "p50": 102.771,
+      "p95": 443.727,
+      "max": 443.727,
+      "engN": 2,
+      "engP50": 443.727,
+      "engP95": 443.727,
+      "engMax": 443.727,
+      "soldiers": 138,
+      "soldiersMax": 138,
+      "fighting": 1,
+      "bodies": 1,
+      "fights": 1,
+      "engaged": 1,
+      "wars": 1,
+      "stat": {
+        "engage": 2,
+        "standoff": 1,
+        "rout": 0,
+        "withdraw": 0,
+        "withdrawQuiet": 0,
+        "surrender": 1,
+        "walkover": 0,
+        "noArmy": 0,
+        "engageErr": 0,
+        "t811": {
+          "load": 2,
+          "sync": 1,
+          "fall": 0,
+          "pickA": 0,
+          "pickB": 0,
+          "pickKg": 0,
+          "ground": 0,
+          "groundItems": 0,
+          "back": 30.99999999999998,
+          "gap": 2.1316282072803006e-14
+        },
+        "t790Late": 5
+      }
+    },
+    "state": {
+      "day": 384,
+      "bodies": [
+        {
+          "id": 2,
+          "phase": "march",
+          "mode": "fight",
+          "wphase": "battle",
+          "q": {
+            "day": 384,
+            "left": 38227,
+            "b": 1
+          },
+          "fight": {
+            "t": 2570.5999999983196,
+            "state": "advance",
+            "adv": {
+              "side": "A",
+              "released": false,
+              "s": null
+            },
+            "holder": "B",
+            "units": {
+              "A:form": 39,
+              "A:shoot": 1,
+              "A:adv": 1,
+              "A:melee": 3,
+              "B:form": 88,
+              "B:melee": 1,
+              "B:adv": 5
+            }
+          },
+          "groups": [
+            {
+              "n": 39,
+              "cmd": {
+                "cx": 1166.155071707448,
+                "cy": 2842.8449282925517
+              },
+              "ready": false,
+              "alive": 39,
+              "worst": [
+                {
+                  "pid": "p954",
+                  "type": "archer",
+                  "cmd": false,
+                  "x": 1163.5000001360088,
+                  "y": 2882.695513823914,
+                  "tx": 1163.6095874439216,
+                  "ty": 2834.8331156059216,
+                  "lag": 47.862523675165136,
+                  "ctl": true,
+                  "hp": 16.58187775328843
+                },
+                {
+                  "pid": "p948",
+                  "type": "archer",
+                  "cmd": false,
+                  "x": 1163.5000001454234,
+                  "y": 2883.041196633605,
+                  "tx": 1162.2360816109394,
+                  "ty": 2835.913665573088,
+                  "lag": 47.144476600359056,
+                  "ctl": true,
+                  "hp": 58
+                },
+                {
+                  "pid": "p952",
+                  "type": "archer",
+                  "cmd": false,
+                  "x": 1165.4999992912915,
+                  "y": 2881.8199217542015,
+                  "tx": 1165.1301691672286,
+                  "ty": 2835.5832322225597,
+                  "lag": 46.23816857495653,
+                  "ctl": true,
+                  "hp": 58
+                },
+                {
+                  "pid": "p949",
+                  "type": "archer",
+                  "cmd": false,
+                  "x": 1168.5000013174074,
+                  "y": 2882.5958082546003,
+                  "tx": 1168.3825763736597,
+                  "ty": 2838.0700635022727,
+                  "lag": 44.52589959076459,
+                  "ctl": true,
+                  "hp": 58
+                },
+                {
+                  "pid": "p946",
+                  "type": "archer",
+                  "cmd": false,
+                  "x": 1163.5000000294924,
+                  "y": 2875.127491911841,
+                  "tx": 1164.3830326675602,
+                  "ty": 2837.6615908961016,
+                  "lag": 37.476305655187886,
+                  "ctl": true,
+                  "hp": 58
+                },
+                {
+                  "pid": "p944",
+                  "type": "archer",
+                  "cmd": false,
+                  "x": 1168.5000001358378,
+                  "y": 2871.2958625747337,
+                  "tx": 1167.1826431673414,
+                  "ty": 2839.46824826919,
+                  "lag": 31.854865590124415,
+                  "ctl": true,
+                  "hp": 58
+                },
+                {
+                  "pid": "p955",
+                  "type": "archer",
+                  "cmd": false,
+                  "x": 1169.4999999457534,
+                  "y": 2862.0947884151783,
+                  "tx": 1162.5766372632343,
+                  "ty": 2833.8414204482397,
+                  "lag": 29.089272117207287,
+                  "ctl": true,
+                  "hp": 58
+                },
+                {
+                  "pid": "p957",
+                  "type": "archer",
+                  "cmd": false,
+                  "x": 1168.5000000293035,
+                  "y": 2863.7211805723196,
+                  "tx": 1167.5203784782357,
+                  "ty": 2835.600456694685,
+                  "lag": 28.137781891710794,
+                  "ctl": true,
+                  "hp": 58
+                }
+              ]
+            },
+            {
+              "n": 88,
+              "cmd": {
+                "cx": 1128.5306070838533,
+                "cy": 2935.969105574277
+              },
+              "ready": false,
+              "alive": 88,
+              "worst": [
+                {
+                  "pid": "p1134",
+                  "type": "spear",
+                  "cmd": false,
+                  "x": 1110.3127348234375,
+                  "y": 2937.747730711563,
+                  "tx": 1145.4433223861238,
+                  "ty": 2915.1630170603794,
+                  "lag": 41.76394944453311,
+                  "ctl": true,
+                  "hp": 120
+                },
+                {
+                  "pid": "p1127",
+                  "type": "spear",
+                  "cmd": false,
+                  "x": 1111.0173421543354,
+                  "y": 2930.761630646004,
+                  "tx": 1138.3148680747267,
+                  "ty": 2911.751007062136,
+                  "lag": 33.264977535269026,
+                  "ctl": true,
+                  "hp": 120
+                },
+                {
+                  "pid": "p1125",
+                  "type": "spear",
+                  "cmd": false,
+                  "x": 1127.8849991329314,
+                  "y": 2885.3556700533677,
+                  "tx": 1146.261629736482,
+                  "ty": 2912.584619235451,
+                  "lag": 32.84990450366386,
+                  "ctl": true,
+                  "hp": 120
+                },
+                {
+                  "pid": "p1133",
+                  "type": "spear",
+                  "cmd": false,
+                  "x": 1115.736564017597,
+                  "y": 2930.170463693591,
+                  "tx": 1144.2323439480326,
+                  "ty": 2914.3181172490313,
+                  "lag": 32.608378703059856,
+                  "ctl": true,
+                  "hp": 120
+                },
+                {
+                  "pid": "p1142",
+                  "type": "spear",
+                  "cmd": false,
+                  "x": 1117.7822793630123,
+                  "y": 2935.4815848596772,
+                  "tx": 1143.4066233465699,
+                  "ty": 2916.622563757917,
+                  "lag": 31.816185841554375,
+                  "ctl": true,
+                  "hp": 120
+                },
+                {
+                  "pid": "p1203",
+                  "type": "spear",
+                  "cmd": false,
+                  "x": 1113.037445796634,
+                  "y": 2927.705101656859,
+                  "tx": 1139.142207770194,
+                  "ty": 2909.9127602720732,
+                  "lag": 31.591549655706704,
+                  "ctl": true,
+                  "hp": 120
+                },
+                {
+                  "pid": "p1205",
+                  "type": "spear",
+                  "cmd": false,
+                  "x": 1112.5452214416086,
+                  "y": 2923.912168763119,
+                  "tx": 1140.2669056234845,
+                  "ty": 2910.43277750789,
+                  "lag": 30.825083333078133,
+                  "ctl": true,
+                  "hp": 120
+                },
+                {
+                  "pid": "p1135",
+                  "type": "spear",
+                  "cmd": false,
+                  "x": 1120.6777446349968,
+                  "y": 2913.2223915314257,
+                  "tx": 1146.6903511520825,
+                  "ty": 2915.4685687240813,
+                  "lag": 26.109404623497948,
+                  "ctl": true,
+                  "hp": 120
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "profileDurationUs": 5731882,
+    "profileSha256": "e861ab26c7d0eaeda15d3bbd746cc8dfe672e13dc8b14d4db3ba8f9ef784bd3c",
+    "hot": [
+      {
+        "selfUs": 2306348,
+        "function": "(idle)",
+        "file": "",
+        "line": 0
+      },
+      {
+        "selfUs": 737380,
+        "function": "(program)",
+        "file": "",
+        "line": 0
+      },
+      {
+        "selfUs": 490642,
+        "function": "_muSeparate",
+        "file": "war-live.js",
+        "line": 217
+      },
+      {
+        "selfUs": 418096,
+        "function": "get",
+        "file": "war-live.js",
+        "line": 78
+      },
+      {
+        "selfUs": 360986,
+        "function": "get",
+        "file": "war-live.js",
+        "line": 79
+      },
+      {
+        "selfUs": 142499,
+        "function": "gGet",
+        "file": "path-core.js",
+        "line": 196
+      },
+      {
+        "selfUs": 135517,
+        "function": "(garbage collector)",
+        "file": "",
+        "line": 0
+      },
+      {
+        "selfUs": 123997,
+        "function": "_muSeparate",
+        "file": "war-live.js",
+        "line": 217
+      },
+      {
+        "selfUs": 113588,
+        "function": "_searchStep",
+        "file": "path-core.js",
+        "line": 325
+      },
+      {
+        "selfUs": 87635,
+        "function": "get",
+        "file": "war-live.js",
+        "line": 78
+      },
+      {
+        "selfUs": 79224,
+        "function": "_muStepFollow",
+        "file": "war-live.js",
+        "line": 231
+      },
+      {
+        "selfUs": 65293,
+        "function": "get",
+        "file": "war-live.js",
+        "line": 79
+      },
+      {
+        "selfUs": 46292,
+        "function": "updateMorale",
+        "file": "battle-core.js",
+        "line": 400
+      },
+      {
+        "selfUs": 37277,
+        "function": "cameSet",
+        "file": "path-core.js",
+        "line": 199
+      },
+      {
+        "selfUs": 29327,
+        "function": "buildGrid",
+        "file": "battle-core.js",
+        "line": 205
+      }
+    ],
+    "stateReadDay": 384,
+    "perfReadLastEconDay": 382
+  },
+  "limits": [
+    "warPerf 표본 n=6, 교전 표본2. 운영 시계의 정상상태 FPS로 해석하지 않는다.",
+    "하루 마감의 대량 교전 몫은 별도 _t681Flush에서 진행한다.",
+    "이 판의 시간 계측에는 중간 진단 관측을 포함한다.",
+    "실험한 별도 탐색 대안은 레포 밖에만 두었으며 제품 전투 커널은 변경하지 않았다.",
+    "perf HTTP 응답과 Inspector 상태·프로필은 서로 다른 시점에 읽었다. 각 읽기 날을 구분했다."
+  ]
+}

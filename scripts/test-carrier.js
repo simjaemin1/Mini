@@ -18,6 +18,8 @@
 //
 // 실행: node scripts/test-carrier.js
 'use strict';
+// T1188: 기존 원석/OFF 계약. 광물별 켬은 test-t1188-ore-split이 검사.
+process.env.T1188_ORE_SPLIT='0';
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
@@ -159,7 +161,8 @@ function mkBench(p) {
     H.doCraftEquipment(p, 'carrier', 'wood', null);
     const q1 = H.Facility.view(b, Date.now()).length;
     ok(q1 === 0, '★★나무만으로는 **안 걸린다**(대기열이 안 늘었다 — 족보 (57))', `대기열 ${q1}`);
-    ok(/부족/.test(p.__last()), '★★그리고 **거절 문구가 실제로 나왔다**(조용한 실패 아님)', p.__last());
+    ok(/모자랍니다/.test(p.__last()),   // ★[T1190 ①] 거절 알림 = 문장(종전 "… 부족")
+       '★★그리고 **거절 문구가 실제로 나왔다**(조용한 실패 아님)', p.__last());
     ok((p.inventory.wood || 0) === R.qty, '★거절이면 재료도 안 깎인다', `wood ${p.inventory.wood}`);
     // ⓑ 나무 + 밀삐 — 성사
     p.inventory = { wood: R.qty, fiber: R.extra.fiber };

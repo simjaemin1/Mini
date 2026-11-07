@@ -66,6 +66,7 @@ const NPC_VERBS = { talk: '말 걸기', trade: '거래' };
 
 // ★다른 정본이 없는 이름 — 여기 말고 갈 데가 있으면 거기로 옮겨라.
 const NO_CANON = {
+  jade: '옥',
   ore_chunk: '원석(kg·미확인)',   // 선광 전 미확인 덩이. `specialty` 는 무게만 알고 이름은 모른다.
   // ★[T507] 자연물 **종류**의 이름(커서 이름표 한 낱말) — 동사 표(`RESOURCE_VERBS`)는 동사지 이름이 아니고,
   //   다른 정본이 없다(`chunk.js RESOURCE_HP_TABLE` 는 키만 안다). 나무는 종이 있으면 종 이름(`tree_species.json`)이 먼저다.
@@ -77,14 +78,18 @@ const NO_CANON = {
 function koOfLabel(s) { return String(s || '').replace(/\s*\([^)]*\)\s*$/, '').trim(); }
 
 // ★품목 이름표 정본 = zone 의 표 + 자원 정본 + 건축 레시피 라벨 + 정본 없는 것 몇.
-//   순서가 규약이다: **base 가 먼저**(덮지 않는다).
-function itemLabels(base, buildingRecipes) {
+//   순서가 규약이다: base 의 유효한 이름은 보존하고, 영문 키 폴백은 정본 라벨로 채운다.
+function itemLabels(base, buildingRecipes, itemRecipes) {
   const out = Object.assign({}, base || {});
   const R = Specialty.RESOURCES || {};
   for (const k of Object.keys(R)) { const ko = R[k] && R[k].ko; if (ko && !out[k]) out[k] = ko; }
   for (const k of Object.keys(buildingRecipes || {})) {
     const ko = koOfLabel(buildingRecipes[k] && buildingRecipes[k].label);
-    if (ko && !out[k]) out[k] = ko;
+    if (ko && (!out[k] || out[k] === k)) out[k] = ko;
+  }
+  for (const k of Object.keys(itemRecipes || {})) {
+    const ko = koOfLabel(itemRecipes[k] && itemRecipes[k].label);
+    if (ko && (!out[k] || out[k] === k)) out[k] = ko;
   }
   for (const k of Object.keys(NO_CANON)) if (!out[k]) out[k] = NO_CANON[k];
   return out;
