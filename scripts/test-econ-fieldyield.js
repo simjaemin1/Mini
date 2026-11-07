@@ -456,8 +456,12 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
   //   ★[T1202 2026-11-07 · land1048 뒤 빨강 ⑫] 자리가 **둘 늘었다** — 둘 다 econ 정본 몸통의 장부 다리다(수만 올리지 않고 이름으로 못 박는다 · 아래 두 줄):
   //     ⓐ T1192 `addProduce(r, amt, exactPreserve)` — 어부가 실제로 든 그 마리를 **몸 kg 그대로** 넣는 갈래(배율 · 포만 · 세금 갈래를 안 탄다 · 곳간 · 실현 · 잠재 셋에 같은 수)
   //     ⓑ T1188 광종 원석 — 손으로 든 원석(`_t1188InByItem`)을 **광종 칸마다** 접는 줄(켜면 T724 `.ore` 한 칸 대신 · 같은 줄의 `else` 가 그 `.ore` 줄이다)
-  ok(hits.length === 12, '⑫ 잠재를 건드리는 자리는 **열둘**이다(선언 1 · 쓰기 9 · 읽기 2 · ★T312 어부 · ★T325 나무꾼 · ★T374 채집 · ★T368 밭 · ★T724 광부 · ★T1192 어종 · ★T1188 광종)', `실제 ${hits.length}`);
-  ok(writes.length === 9, '⑫ ★쓰는 곳 **아홉** — `addProduce`(끈 팔) · T183(밭) · ★T312(어부) · ★T325(나무꾼) · ★T374(채집) · ★T368(밭 품목) · ★T724(광부) · ★T1192(어종 몸 kg) · ★T1188(광종)', `실제 ${writes.length}`);
+  //   ★[T1202 · land1049 합침 · T1195 사냥 실제] 자리가 **하나 더** — 사냥 장부 다리(`_t1195InByItem` — 몸이 잡아 들여온 고기 · 가죽 · 뿔 · 뼈를 품목별로 잠재 · 실현에 같은 `q` ·
+  //     켠 호스트에서 사냥꾼은 `addProduce` 를 안 탄다 ⇒ 이중 0). 수만 올리지 않고 아래 한 줄로 이름을 못 박는다(같은 규약).
+  ok(hits.length === 13, '⑫ 잠재를 건드리는 자리는 **열셋**이다(선언 1 · 쓰기 10 · 읽기 2 · ★T312 어부 · ★T325 나무꾼 · ★T374 채집 · ★T368 밭 · ★T724 광부 · ★T1192 어종 · ★T1188 광종 · ★T1195 사냥)', `실제 ${hits.length}`);
+  ok(writes.length === 10, '⑫ ★쓰는 곳 **열** — `addProduce`(끈 팔) · T183(밭) · ★T312(어부) · ★T325(나무꾼) · ★T374(채집) · ★T368(밭 품목) · ★T724(광부) · ★T1192(어종 몸 kg) · ★T1188(광종) · ★T1195(사냥)', `실제 ${writes.length}`);
+  ok(/if \(T1195_HUNT_REAL && v\._t1195InByItem\) \{\s*\n\s*for \(const \[k, q\] of Object\.entries\(v\._t1195InByItem\)\) \{ if \(!\(q > 0\)\) continue; dailyProductionPotential\[k\] = \(dailyProductionPotential\[k\] \|\| 0\) \+ q; dailyProduction\[k\] = \(dailyProduction\[k\] \|\| 0\) \+ q; \}/.test(C),
+    '⑫ ★★[T1195] 열째 자리가 **사냥 장부 다리**다(품목별 · 잠재 · 실현에 같은 `q` · 배수 0)');
   ok(/if\(T1192_FISH_SPECIES&&exactPreserve\)\{if\(!\(amt>0\)\)return;v\.storage\[r\]=\(v\.storage\[r\]\|\|0\)\+amt;dailyProduction\[r\]=\(dailyProduction\[r\]\|\|0\)\+amt;dailyProductionPotential\[r\]=\(dailyProductionPotential\[r\]\|\|0\)\+amt;return;\}/.test(C),
     '⑫ ★★[T1192] 여덟째 자리가 **어종 몸 kg 다리**다(곳간 · 실현 · 잠재에 같은 `amt` · 배수 0 · 그 갈래는 거기서 돌아선다)');
   ok(/if\(T1188_ORE_SPLIT\)\{for\(const\[k,q\]of Object\.entries\(v\._t1188InByItem\|\|\{\}\)\)\{dailyProductionPotential\[k\]=\(dailyProductionPotential\[k\]\|\|0\)\+q;dailyProduction\[k\]=\(dailyProduction\[k\]\|\|0\)\+q;\}\}else\{\s*\n\s*dailyProductionPotential\.ore = \(dailyProductionPotential\.ore \|\| 0\) \+ _t724In;/.test(C),
@@ -536,7 +540,8 @@ console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름
   //   ★[T374] 한 줄 늘었다 — 채집 장부 다리(품목별). 이름으로 못 박는다(위 ⑫ 와 같은 규약).
   //   ★[T368] 한 줄 더 — 밭 장부 다리(품목별). 이름으로 못 박는다(위 ⑫ 와 같은 규약).
   //   ★[T1202 2026-11-07 · land1048 뒤 빨강 ⑮] 두 줄 늘었다 — 위 ⑫ 의 두 다리(T1192 어종 몸 kg · T1188 광종)가 실현 장부에도 **같은 줄에서** 같은 수를 적는다(⑫ 에서 이름으로 못 박았다).
-  ok(writes.length === 8, '⑮ ★쓰는 줄 **여덟** — 리셋 둘 + `addProduce`(끈 팔) + T193(켠 팔) + ★T374(채집) + ★T368(밭 품목) + ★T1192(어종 몸 kg) + ★T1188(광종)', `실제 ${writes.length}`);
+  //   ★[T1202 · land1049 합침 · T1195] 한 줄 더 — 위 ⑫ 의 사냥 장부 다리가 실현 장부에도 **같은 줄에서** 같은 `q` 를 적는다(⑫ 에서 이름으로 못 박았다).
+  ok(writes.length === 9, '⑮ ★쓰는 줄 **아홉** — 리셋 둘 + `addProduce`(끈 팔) + T193(켠 팔) + ★T374(채집) + ★T368(밭 품목) + ★T1192(어종 몸 kg) + ★T1188(광종) + ★T1195(사냥)', `실제 ${writes.length}`);
   ok(/dailyProduction\[c\] = \(dailyProduction\[c\] \|\| 0\) \+ u;/.test(C),
     '⑮ ★★[T368] 그 새 줄이 **밭 장부 다리**다');
   ok(/dailyProduction\[it\] = \(dailyProduction\[it\] \|\| 0\) \+ a;/.test(C),
