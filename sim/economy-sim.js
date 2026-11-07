@@ -1211,7 +1211,7 @@ function productionActsBound(v) { return !!(v && v._world && _productionActHosts
 //     남은 수요가 없으면 뷰 밖 몫은 안 받는다(장부에 되돌린다 — 몸이 그날 더 잡지 않은 것). 이월은 미리 쓴 몫(음수)만 · 못 채운 날 몫은 그날로 끝(T374 "그날 수요").
 //   헤드리스 랩은 호스트를 등록하지 않으므로 종전 수식 그대로다(랩 동일 = 격리 증명 · 몸 사냥의 증명이 아님).
 //   손잡이 `T1195_HUNT_REAL` — 켬 기본 · 되돌림 `=0`(끔 = 한 글자도 안 바뀐 종전 · 기준선 11-04c 같음).
-const T1195_HUNT_REAL = (typeof process !== 'undefined' && process.env && process.env.T1195_HUNT_REAL !== '0');
+const T1195_HUNT_REAL = (typeof process !== 'undefined' && process.env && process.env.T1195_HUNT_REAL === '1'); // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209
 function productionFormulaOff(v, job) {
   return !!(v && v._world && _productionActHosts.has(v._world) &&
     ((job === 'miner' && T1188_ORE_SPLIT) || (job === 'fisher' && T312_FISH_ACT) || (job === 'lumberjack' && T325_WOOD_ACT) || (job === 'forager' && T347_FORAGE_ACT) || (job === 'hunter' && T1195_HUNT_REAL)));
@@ -1343,7 +1343,7 @@ function foodDebtOf(v) {
 //   ④ 몸(서버 존)이 선 사람은 몸이 끼니를 먹고(`t1197Meal` · 호스트가 부른다) 게이지를 흘린다(`t1197Advance`) — 날 경계(`t1197Day`)는 그 사람의 남은 끼니 · 남은 시간만 친다.
 //      ⇒ 헤드리스 마을(몸 없음)은 이 날 경계가 몸 게이지를 일괄로 굴린다(T1185 질문 3 — 두 길이 같은 함수 · 결과 비교는 보고).
 //   수치 틀: 극단 구간 HP 적분은 게임 1시간(몸 60초) 중점 걸음(세계의 수가 아니다 — T906 `_t906Day` 의 1분 걸음과 같은 꼴 · 값 차는 하네스).
-const T1197_MEAL_BODY = T1074_FOOD_DEBT && !(typeof process !== 'undefined' && process.env && process.env.T1197_MEAL_BODY === '0');
+const T1197_MEAL_BODY = T1074_FOOD_DEBT && (typeof process !== 'undefined' && !!process.env && process.env.T1197_MEAL_BODY === '1'); // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209
 const NPC_HP_DAY = { rest: 18, work: 6 };   // ★[T1197] 몸 일일 회복(요양 · 근무) — 종전 `server/villages.js` 의 그 두 글자를 이리로 옮겼다(값 무변 · 서버 생활층이 이것을 읽는다)
 // 몸 일일 회복 배수(건강 · 행복 · 식량) — 종전 `server/villages.js` 의 그 식을 이리로 옮겼다(식 무변 · 서버 생활층과 아래 날 경계가 같은 함수)
 function npcRegenMul(econ, popAlt) {
@@ -1900,8 +1900,10 @@ function granaryEconMaterials() { const G = _granaryStages(); return G ? _econOn
 const T527_BRIDGE_ACT = process.env.T527_BRIDGE_ACT !== '0';
 // ★[T537 추신2 · 재민 캐논 09-30] 지름길 다리 후보(존 설정 `bridgeShortcuts` — 계획기 v2 지름길 규칙)도 짓는 목록에 넣는다 · 기본 끔 · `T527_BRIDGE_ACT` 가 켜져야 뜻이 있다.
 const T537_SHORTCUT = process.env.T537_SHORTCUT === '1';
+// ★[T1207 2026-11-07] 영토 말뚝도 같은 곳간 출구로 꺼낸다(서버 `villages.js _t1207Batch` · 손잡이는 서버와 같은 이름 하나 · `=1` 만 켬 · 끔 = 종전 — 위 셋이 다 꺼지면 0)
+const T1207_TERR_ACT = (typeof process !== 'undefined' && process.env && process.env.T1207_TERR_REAL === '1');   // 끔 기본(서버 손잡이와 같은 글자 — 보고/T1207 §3)
 function actFromGranary(v, item, units, deferUse = false) {
-  if (!(T400_BUILD_ACT || T435_GRANARY_ACT || T527_BRIDGE_ACT) || !v || !v.storage) return 0;   // ★[T527] 다리 크루도 같은 출구(셋 다 끔 = 종전 그대로 0)   // ★[T435] 곳간 증설 크루도 같은 출구를 쓴다(둘 다 끔 = 종전 그대로 0)
+  if (!(T400_BUILD_ACT || T435_GRANARY_ACT || T527_BRIDGE_ACT || T1207_TERR_ACT) || !v || !v.storage) return 0;   // ★[T527] 다리 크루도 같은 출구(셋 다 끔 = 종전 그대로 0)   // ★[T435] 곳간 증설 크루도 같은 출구를 쓴다(둘 다 끔 = 종전 그대로 0)
   const want = (typeof units === 'number' && units > 0) ? units : 0;
   const have = v.storage[item] || 0;
   const take = Math.min(want, have);
@@ -2343,7 +2345,9 @@ function actDemandCap(v, units, D, todayKey) {
 // ★[T374] 품목마다 `D` 를 어디서 읽나 — 정본 칸 이름만 다르다(식은 하나).
 function fishDemandLeft(v, held) { return actDemandLeft(v, (v && v._fishOutLast) || 0, '_t312InflowToday', held); }
 //   ★[T1135 ①] 나무꾼 분자 — 켬 = 그날 땔감 수요(`_t1135Need`) · 끔 = 수식 몫(`_woodOutLast` · 종전 글자). 문(`actDemandLeft`)은 하나다.
-function woodShareD(v) { return (v && (T1135_FUEL_EQ ? v._t1135Need : v._woodOutLast)) || 0; }
+//   ★[T1207 ⑤] 영토 말뚝 몫 — 서버 생활층(`villages.js _t1207Batch`)이 그날 못 치른 통나무를 `_t1207Need` 에 적는다(끔 · 랩 = 칸 없음 → 0 · 종전 값 그대로).
+//     나무꾼 수요 문(`actDemandLeft` — 몸 · 일괄 둘 다)과 개간 그루 입구(`woodToGranary`)가 같은 D 를 본다 — 배수 0 · 수요가 는 만큼만.
+function woodShareD(v) { return ((v && (T1135_FUEL_EQ ? v._t1135Need : v._woodOutLast)) || 0) + ((v && v._t1207Need) || 0); }
 function woodDemandLeft(v, held) { return actDemandLeft(v, woodShareD(v), '_t325InflowToday', held); }
 //   채집만 한 항이 더 붙는다 — 걷는 몫만 대신하므로 그 몫을 곱한다(T347 `_t347MixShare` · 계측 칸이 아니라 계약).
 function forageDemandLeft(v, held) {
@@ -5714,6 +5718,13 @@ function derivedInputTarget(v, r) {
       return Math.max(0, toolDepCount(v) * SELF_TOOL_COV - tools) * cost;
     }
   }
+  // ★★[T1207 ⑤ 2026-11-07] **영토 말뚝도 파생수요다** — 재료가 없어 그날 못 넓힌 셀의 말뚝 통나무(서버 생활층 `_t1207Batch` 가 `_t1207Need` 에 적는다)는
+  //   실제 레시피 투입이다(위 석기 · 아래 숯과 같은 문 — "재료가 없어 작업을 못 해도 실제 레시피 투입은 수요다").
+  //   통나무는 생존 재화라 흐름 목표(flowT)가 막혀 있다(v2 `subsGuard`) — 값이 영토 수요를 보는 문은 이것 하나다 ⇒ 값(그림자 가격) → 직업 고르기
+  //   (`pickDeficitJob_rational` 의 나무꾼 한계가치 `w('wood')`)가 그만큼 더 본다. 합치는 법은 v2 그대로(max · 배수 0).
+  //   칸이 없으면(끔 · 랩 · CLI) 0 — 종전 비트.
+  //   ⚠T1207 서버 판(11-04c 3시드 × 800날): 마을 모자람(평균 ~20)이 생존 몫(1인 0.05 × 30날 × 인구)을 거의 못 넘어 값이 안 움직였다 — 합치는 법(max ↔ 더하기)은 회부(보고/T1207 §6-2).
+  if (r === 'wood') return (v && v._t1207Need > 0) ? v._t1207Need : 0;
   // ★★[T463 2026-09-27] **숯도 파생수요다** — 노가 있는 마을(캐는 마을이거나 녹일 원석이 있는 마을 · `_trySmelt` 의 그 문)은
   //   숯을 **쓸 데가 실제로 있다**. 그런데 T443 연료는 곳간에 숯이 있을 때만 `_cons(charcoal)` 를 적는다 — 숯이 없는 광산 마을은
   //   노천 탄화(통나무)로 때우니 숯 흐름(flowT)이 **0** 이고, 값이 바닥(0.02)이라 캐러밴이 숯을 안 싣는다(보고 §ⓐ: 800일 숯 leg 1건).

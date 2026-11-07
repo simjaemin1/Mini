@@ -17,6 +17,9 @@
 //
 // 실행: node scripts/test-wood-act.js
 'use strict';
+// ★[T1208-K1 2026-11-07] 이 자는 나무꾼 행위(T325)를 잰다 — land1049 가 켠 `T1197_MEAL_BODY`(몸 끼니)는 이 자의 몸 판(`__labProbe` · 세계 시계 없음 — `state.world` null)에서
+//   `npcLifeTick` → `_t1197BodyMeal` → `_t1197Ix` 가 `state.world.day` 를 읽다 죽었다(TypeError · `=0` 이면 초록 · main 초록 — 제품 쪽 가드 비대칭은 보고 T1208-K1). 부르는 쪽이 값을 주면 그 값이 먼저.
+if (process.env.T1197_MEAL_BODY == null) process.env.T1197_MEAL_BODY = '0';
 process.env.T449_BODY_DAY = '0';
 process.env.T491_BATCH_FROM_BODY = '0';
 // [T1183] 옛 압축 하루 대조를 명시한다.
@@ -77,7 +80,7 @@ console.log('\n② 사본 0 — 몸통은 하나, 정본은 남의 것');
   ok(/function actDemandLeft\(v, D, todayKey, held\)/.test(C) && /function actDemandCap\(v, units, D, todayKey\)/.test(C),
     '② ★★[T374] 그날 수요 판정이 **한 몸통**이다(`actDemandLeft`/`actDemandCap` · 손에 든 것은 인자 하나)');
   //   ★[T1135] 분자는 한 함수(`woodShareD`)가 낸다 — 끔 = `_woodOutLast`(종전 글자) · 켬(`T1135_FUEL_EQ`) = 그날 땔감 수요(`_t1135Need`). 문은 그대로 하나다.
-  ok(/function woodShareD\(v\) \{ return \(v && \(T1135_FUEL_EQ \? v\._t1135Need : v\._woodOutLast\)\) \|\| 0; \}/.test(C)
+  ok(/function woodShareD\(v\) \{ return \(?\(v && \(T1135_FUEL_EQ \? v\._t1135Need : v\._woodOutLast\)\) \|\| 0\)?(?: \+ \(\(v && v\._t1207Need\) \|\| 0\))?; \}/.test(C)   /* ★[PM land1050] T1207 영토 말뚝 파생수요(끔 = 0) 한 항을 받는다 */
      && /function woodDemandLeft\(v, held\) \{ return actDemandLeft\(v, woodShareD\(v\), '_t325InflowToday', held\); \}/.test(C),
     '② ★[T374] 나무의 `D` 는 **정본 관측 칸**이다(`_woodOutLast` — 새 수 0 · ★[T1135] 켬 판만 땔감 수요)');
   //   ★[T374] 관측 나무꾼도 **같은 한 줄**로 퇴근한다(채집꾼과 한 자리 · T325 갈래 **앞**) — 손에 든 목재까지 센다.
@@ -222,8 +225,10 @@ console.log('\n⑦ 끄면 비트 동일 — 새 줄이 전부 손잡이 뒤에 �
   ok(/if \(vil\.econ && _lifeEcon\(\)\.T325_WOOD_ACT\) \{/.test(VC)
      && /const _on = _lifeEcon\(\)\.woodActOn\(vil\.econ\);/.test(VC),
     '⑦ ★하루 경계 절도 손잡이 뒤다(그 안에서 게이트를 본다 — 입력을 만드는 자리라서)');
-  ok(/if \(_on && _walked === 0 && _ln > 0 && _tr\.length\) \{/.test(VC),
-    '⑦ ★그 절이 `return` 으로 하루 경계를 끊지 않는다(뒤 일과가 그대로 돈다)');
+  //   ★[T1202] 실제 호스트(T1180 몸만)에서는 걸은 몸이 명부에서 이미 빠진다(몸 XOR 일괄을 몸마다) — 그때만 `_walked === 0` 문을 건너뛴다(그 밖 = 옛 문 그대로).
+  ok(/if \(_on && \(_t1202W \? true : _walked === 0\) && _ln > 0 && _tr\.length\) \{/.test(VC)
+     && /const _t1202W = \(_bodyOnly && _on\) \? _t1202Roster\(vil, 'lumberjack', _t561W \|\| _t491C, _walked, _t449S\) : null;/.test(VC),
+    '⑦ ★그 절이 `return` 으로 하루 경계를 끊지 않는다(뒤 일과가 그대로 돈다) · ★[T1202] 몸 XOR 일괄은 실제 호스트에서만 몸마다');
   ok(/if \(_lifeEcon\(\)\.T325_WOOD_ACT && state\.deps\.t325TreesAtCell\) \{/.test(VC),
     '⑦ ★★나무 셀 스캔도 손잡이 뒤다 — 끈 팔은 색인을 **한 셀도 안 묻는다**(벽시계 무변)');
   ok(/v\._woodOutLast = \(v\.counts\.lumberjack \|\| 0\) \* JOBS\.lumberjack\.base \* \(v\.land\.wood \|\| 0\) \* toolBoostShared;/.test(C),
@@ -579,7 +584,7 @@ console.log('\n⑫ [T561] 명부가 몸의 그날을 본다 · 몸이 하루 1�
   ok(/const _t561W = T561_ROSTER_BODY \? _t561Crew\(vil, 'lumberjack'\) : null;/.test(daily)
      && /const _t561F = T561_ROSTER_BODY \? _t561Crew\(vil, 'forager'\) : null;/.test(daily)
      && /const _fgE = _t561F \? _t561F\.length : \(\(vil\.econ\.counts && vil\.econ\.counts\.forager\) \|\| 0\);/.test(daily)
-     && daily.includes('const _ln = (_t449S || _bodyOnly) ? 0 : _lnE;') && daily.includes("const _fg = (_t449S || _lifeEcon().productionFormulaOff?.(vil.econ,'forager')) ? 0 : _fgE;"),
+     && daily.includes('const _ln = _t1202W ? _t1202W.n : ((_t449S || _bodyOnly) ? 0 : _lnE);') && daily.includes("const _fg = _t1202G ? _t1202G.n : ((_t449S || _lifeEcon().productionFormulaOff?.(vil.econ,'forager')) ? 0 : _fgE);"),   // ★[T1202] 실제 호스트만 T1202 명부(그 밖 = 옛 줄 글자 그대로)
     '⑫ ★★끔 = 옛 줄(나무꾼 = T491 명부 또는 econ 수 · 채집 = econ 수) — 켬만 **두 절**(나무꾼·채집)의 명부가 몸이 된다 · 관측 마을 줄(T449) 무변');
   const tick = (VC.match(/function npcLifeTick\([\s\S]*?\n\}/) || [''])[0];
   ok(/if \(_woodBodyDayOn\(vil\)\) \{ best = _t561Standing\(_tr, npc, h, best\); if \(!best\) \{ npc\._t325Site = \{ none: 1, day \}; _lifeGoHome\(npc, '휴식'\); return true; \} \}/.test(tick)

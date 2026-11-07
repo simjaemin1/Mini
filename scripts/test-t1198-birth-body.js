@@ -11,6 +11,8 @@
 //
 // 실행: node scripts/test-t1198-birth-body.js   (존 안 띄움 · 몇 초)
 'use strict';
+// ★[PM land1049] `T1195_HUNT_REAL` · `T1197_MEAL_BODY`(+ T1198) 끔 기본으로(켬 판 서버 빈 마을 1 → 15 · 켤 날 T1209) — 이 하네스는 켬 판의 일을 잰다 → 켬에 묶는다(기본값 줄만 끔 기본으로).
+if (process.env.T1197_MEAL_BODY == null) process.env.T1197_MEAL_BODY = '1';
 const path = require('path');
 const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
@@ -49,7 +51,7 @@ if (process.argv[2] === '--child-off') {
 }
 
 console.log('\n=== T1198 ① econ — 아이를 가질 수 있는 집 ===');
-ok(E.T1198_BIRTH_BODY === true, '켬 기본');
+ok(E.T1198_BIRTH_BODY === true, '켬(하네스가 T1197 켬에 묶음 · 제품은 끔 기본)');
 {
   const per = E.hutCapPerHut ? E.hutCapPerHut() : 6;
   const mk = (n) => { const v = { npcs: [] }; for (let i = 0; i < n; i++) v.npcs.push({ id: 'p' + i, age: 30 }); return v; };

@@ -297,6 +297,69 @@ async function waitHttp(url, tries = 900) {
     if (originCell) await gotoCenter(originCell[0], originCell[1]);
   }
 
+  // ── ★★[T1207 2026-11-07] 영토 넓히기 — 맞닿은 칸 우클릭 → 값 미리 보기 → 그 칸 곁에서 일 → 말뚝 통나무 → 한 칸 ──────────
+  //   창설 영토 = 회관 좌상 셀 둘레 반경 `PVILLAGE_TERR_R`(4) 원 ⇒ 다섯째 칸(동 · 서 · 남 · 북)이 맞닿은 칸이다.
+  //   판정은 서버 값(`/lifedbg` 영토 칸 수)과 화면(메뉴 줄 · 알림)이 같은 일을 말하는가 · 짐의 통나무가 값만큼 빠졌는가.
+  //   그 칸에 나무가 서 있으면 서버가 "먼저 베어 내십시오"라 답한다 — 다음 방향으로 넘어간다(자리는 겨냥하지 않는다 · 족보 73).
+  if (hall && originCell && process.env.T1207_TERR_REAL === '1') {   // 끔 기본 — 켠 판(`T1207_TERR_REAL=1 node scripts/e2e-village.js`)에서만 이 절이 선다
+    let OX = 0, OY = 0;
+    try { const zj = await (await fetch(`http://localhost:${CPORT}/zones`, { signal: AbortSignal.timeout(5000) })).json();
+          const zm = (zj.zones || {}).hanbando || {}; OX = zm.worldOffsetX || 0; OY = zm.worldOffsetY || 0; } catch (e) {}
+    const terrOf = async () => { try { const j = await (await fetch(`http://localhost:${ZPORT}/lifedbg`, { signal: AbortSignal.timeout(8000) })).json();
+      const r = (j.villages || []).find((v) => /의 마을$/.test(v.name || '')); return r ? r.terr : null; } catch (e) { return null; } };
+    const menuNow = () => page.evaluate(() => { const m = document.getElementById('ctxMenu'); return m ? [...m.children].map((el) => (el.textContent || '').trim()) : null; });
+    const clickMenu = (re) => page.evaluate((src) => { const m = document.getElementById('ctxMenu'); if (!m) return false; const rx = new RegExp(src);
+      for (const el of m.children) if (rx.test((el.textContent || '').trim())) { el.click(); return true; } return false; }, re);
+    const rightAt = async (wx, wy) => {
+      const pt = await page.evaluate(([x, y]) => { const s = window.__w2s(x, y); const cv = document.getElementById('canvas'); const r = cv.getBoundingClientRect();
+        return { x: r.left + s.px * (r.width / cv.width), y: r.top + s.py * (r.height / cv.height) }; }, [wx, wy]);
+      await page.mouse.move(pt.x, pt.y); await page.mouse.down({ button: 'right' }); await page.mouse.up({ button: 'right' });
+    };
+    const [VX, VY] = originCell;
+    await send({ type: '__e2e_give', items: { wood: 20 } }); await sleep(900);   // 말뚝 몫(값 미리 보기의 "가진 것"이 이 짐을 말한다)
+    let target = null, quoteLine = null, lastWhy = '';
+    //   답 = 값 줄 메뉴 또는 이 문의 거절 알림(서버 `terrQuote` · 존 `_t1207Quote` 의 말) — 그 밖의 알림(촌장 인사 등 · 다가가면 온다)은 답이 아니다
+    const _terrNo = (t) => /영토|땅입니다|땅은|칸입니다|칸이 아닙니다|나무가 서 있습니다|경계 너머/.test(t);
+    for (const [dx, dy] of [[5, 0], [-5, 0], [0, 5], [0, -5]]) {
+      const tx = VX + dx, ty = VY + dy, ix = VX + Math.sign(dx) * 4, iy = VY + Math.sign(dy) * 4;   // 그 칸 바로 안쪽(영토 안)에 선다
+      await send({ type: 'teleport_debug', x: ix * 32 + 16 - OX, y: iy * 32 + 16 - OY });
+      for (let i = 0; i < 40; i++) { const me = await page.evaluate(() => window.__getMyAbs()); if (Math.hypot(me.x - (ix * 32 + 16), me.y - (iy * 32 + 16)) <= 24) break; await sleep(250); }
+      await page.evaluate(() => { window.__notices = []; if (typeof hideContextMenu === 'function') hideContextMenu(); });
+      let menu = null;
+      for (let k = 0; k < 3 && !(menu && menu.includes('영토 넓히기')); k++) { await rightAt(tx * 32 + 16, ty * 32 + 16); for (let i = 0; i < 12 && !(menu = await menuNow()); i++) await sleep(150); }
+      if (!(menu && menu.includes('영토 넓히기'))) { lastWhy = `(${tx},${ty}) 메뉴 ${JSON.stringify(menu)}`; continue; }
+      await page.evaluate(() => { window.__notices = []; });
+      await clickMenu('^영토 넓히기$');
+      for (let i = 0; i < 40; i++) {
+        const m = await menuNow(); if (m && m.some((l) => /^넓히기 — /.test(l))) { quoteLine = m.find((l) => /^넓히기 — /.test(l)); break; }
+        const nt = (await page.evaluate(() => (window.__notices || []).slice())).filter(_terrNo); if (nt.length) { lastWhy = `(${tx},${ty}) ${nt.slice(-1)[0]}`; break; }
+        await sleep(200);
+      }
+      if (quoteLine) { target = [tx, ty]; break; }
+      if (!lastWhy) lastWhy = `(${tx},${ty}) 답 없음`;
+    }
+    ok(!!target && !!quoteLine, `★[T1207] ① 맞닿은 칸 우클릭 → "영토 넓히기" → 값 미리 보기 줄 — ${quoteLine || `(못 띄움: ${lastWhy})`}`);
+    await snap('05b-terr-quote');
+    if (target) {
+      const m = /통나무 (\d+)개/.exec(quoteLine), need = m ? +m[1] : null;
+      ok(need != null && /개간 [\d.]+분/.test(quoteLine) && /값 ×[\d.]+/.test(quoteLine), `★[T1207] ①′ 줄에 개간 분 · 말뚝 통나무 · 값 배수가 실려 있다(통나무 ${need}개)`);
+      const w0 = ((await page.evaluate(() => window.__getInv && window.__getInv())) || {}).wood || 0;
+      const t0 = await terrOf();
+      await page.evaluate(() => { window.__notices = []; });
+      ok(await clickMenu('^넓히기 — '), '★[T1207] ② 값 줄을 눌렀다(메뉴가 열린 그대로) — 그 칸 곁에서 일한다(0.5초 손짓 · 서버 시계)');
+      let done = null;
+      for (let i = 0; i < 80 && !done; i++) { await sleep(250); const nt = await page.evaluate(() => (window.__notices || []).slice()); done = nt.find((t) => /영토가 한 칸 넓어졌습니다/.test(t)) || null; }
+      await sleep(600);
+      const t1 = await terrOf();
+      const w1 = ((await page.evaluate(() => window.__getInv && window.__getInv())) || {}).wood || 0;
+      ok(!!done, `★[T1207] ③ 화면이 끝을 말한다 — ${done || JSON.stringify((await page.evaluate(() => (window.__notices || []).slice(-3))))}`);
+      ok(t0 != null && t1 === t0 + 1, `★[T1207] ③′ 서버 영토가 한 칸 늘었다 — ${t0} → ${t1}칸(/lifedbg)`);
+      ok(need != null && w0 - w1 === need, `★[T1207] ③″ 짐의 통나무가 값만큼 빠졌다 — ${w0} → ${w1}(값 ${need}개)`);
+      await snap('05c-terr-done');
+    }
+    await send({ type: 'teleport_debug', x: VX * 32 + 16 - OX, y: VY * 32 + 16 - OY }); await sleep(1200);   // 회관 곁으로 돌아온다(아래 재고 열람 거리)
+  }
+
   // ── 재고 열람 — 인구 0 인 빈 터 ─────────────────────────────────────────────
   // ★완공 직후엔 서버가 **교역 거리행렬 증분 BFS** 로 수 초 막혀 있다(실측 9.2초 — 전쌍이면 25.5초).
   //   700ms 만 기다렸다가 "응답이 없다"고 적으면 그건 결함이 아니라 **하네스가 성급한 것**이다.

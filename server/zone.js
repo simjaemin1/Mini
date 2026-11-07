@@ -28,7 +28,7 @@ const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT, T720_LON_DAY, SUNRISE_FRAC, phaseAdd, localPhase, T761_CLOCKS } = require('./zone-config');   // ★[T720] 경도 하루 1단계 손잡이 · 시각 한 식   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
-const T1197_BODY = process.env.T1074_FOOD_DEBT !== '0' && process.env.T1197_MEAL_BODY !== '0';   // ★[T1197] econ `T1197_MEAL_BODY` 와 같은 글자(켬 기본 · `=0` 끔 · T1074 끔이면 안 선다) — 마을 몸 허기 면제 자리(`_gaugeStep`)
+const T1197_BODY = process.env.T1074_FOOD_DEBT !== '0' && process.env.T1197_MEAL_BODY === '1'; // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209 ·   // ★[T1197] econ `T1197_MEAL_BODY` 와 같은 글자(켬 기본 · `=0` 끔 · T1074 끔이면 안 선다) — 마을 몸 허기 면제 자리(`_gaugeStep`)
 // ★[T484 ②③] 존 기후 — 이 존의 평년값(`server/climate-normals.js` · `apply` 인 존만)과 청동기 Δ(`T484_PALEO` 켬만)를 econ `CLIMATE` 에 얹는다.
 //   표에 없는 존 · 한반도(`apply: false`) · 손잡이 끔이면 아무것도 안 바꾼다(비트 동일). econ 이 기온을 읽기 전(기동)에 한 번.
 { try { const _c = require('./weather').applyZoneClimate(process.env.ZONE_ID || 'korea'); if (_c && _c.changed) console.log(`[${process.env.ZONE_ID}] 🌡️ T484 존 기후 — 평년값 ${_c.normals ? '얹음' : '없음'} · 청동기 Δ ${_c.paleo ? '켬' : '끔'} · ${JSON.stringify(_c.CLIMATE)}`); } catch (e) {} }
@@ -3757,7 +3757,7 @@ function _t671Shape(p) {
   p._t1196J = undefined; p._t1196W = undefined;   // ★[T1196] 장인 몸이 든 작업표 번호 · 걸음 칸(villages.js `_t1196Step` — 손잡이 `T1196_ARTISAN_ACT` 켬 · 실제 몸 호스트에서만 값이 든다)
   p._t724Site = undefined; p._t724T = undefined;   // ★[T724] 광부 몸의 그날 셀 · 선 때(villages.js `_t724BodyStep` — 손잡이 `T724_MINE_ACT` 켬일 때만 값이 든다)
   if (T1140_STUCK_INLINE && !T1140_HOT_ORDER) { p._t1140Sx = undefined; p._t1140Sy = undefined; p._t1140Sa = undefined; }   // ★[T1140 ③-다] 막힘 칸 셋(차례 리터럴엔 이미 있다 · 끔 = 이 줄 무동작)
-  p.oreLedger = undefined; p._t1180FullFish = undefined; p._t1181Haul = undefined;   // ★[PM land1048 · T1188 · T1180 · T1181] 가지들이 보탠 몸 칸 셋 — 스폰 꼴에 미리(test-body-fields · 숨은 클래스 한 벌)
+  p.oreLedger = undefined; p._t1180FullFish = undefined; p._t1181Haul = undefined; p._t1197M1 = undefined; p._t1197M0 = undefined; p._t1195At = undefined;   /* ★[PM land1050 · T1208-K4 회부 2] land1049 가 연 몸 칸 셋(T1197 끼니 · T1195 사냥) */   // ★[PM land1048 · T1188 · T1180 · T1181] 가지들이 보탠 몸 칸 셋 — 스폰 꼴에 미리(test-body-fields · 숨은 클래스 한 벌)
   if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ② · T1154] 어부 던짐 종의 지난 답(villages.js `_t1144SpGet` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)
 }
 const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT !== '0';   // ★[T1144 · T1154] villages.js 와 같은 손잡이(켬 기본 · `'0'` 만 끔) — 이 파일은 몸 칸 하나만
@@ -7501,6 +7501,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T1194_MODEL_SPRITES === '1' ? { modelSprites: true } : {}),   // [T1194] 받은 3D 모델을 구운 짐승 서 있기 그림(`/assets/animals/` · `scripts/model_render.py`) — 끔 기본 · 끔이면 칸이 없다(welcome 바이트 동일)
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
+      ...(SimVillages.T1207_TERR_REAL ? { t1207: true } : {}),   // [T1207] 땅 우클릭에 '영토 넓히기'(끔이면 칸이 없다 · welcome 바이트 동일)
       ...(process.env.T838_WD_AWAKE !== '0' ? { wdAwake: true } : {}),   // [T838 · ★T849 켬 기본 — PM 10-22] 클라 두 감시(pong · 서버 틱)가 **클라가 멈춰 있던 시간**을 서버 침묵으로 안 센다(30-n-net) · 되돌림 `T838_WD_AWAKE=0` 이면 칸이 없다(옛 welcome · 종전 감시)
       ...(process.env.T920_NAT_BUDGET !== '0' ? { natBudget: true } : {}),   // [T920 · ★T937 켬 기본 — PM 10-26] 클라 자연물 청크를 지면 굽기와 같은 판당 예산(`GT_BAKE_PER_FRAME`)으로 나눠 짓는다(첫 접속 첫 그림 · 11-r1-mountain `_natCollect`) · 되돌림 `T920_NAT_BUDGET=0` 이면 칸이 없다(옛 welcome · 종전 한 판에 전부)
       ...(process.env.T891_WATER_HALF !== '0' ? { waterHalf: true } : {}),   // [T891 · ★T912 켬 기본 — PM 10-23] 클라 물 층 셰이더를 가로세로 ½ 로 그리고 2D 에서 늘린다(10-r1-terrain `_drawWaterLayer` · 소프트웨어 GL 판당 물 층 몰림) · 되돌림 `T891_WATER_HALF=0` 이면 칸이 없다(옛 welcome · 종전 물 층)
@@ -7782,6 +7783,8 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'kiln_advance') tryKilnAdvance(player, msg.buildingId);            // ★숯가마 건설 ②·완공
   else if (msg.type === 'well_start') tryWellStart(player, +msg.atX, +msg.atY);            // ★[T509] 우물 ①(끔이면 즉시 반환)
   else if (msg.type === 'well_advance') tryWellAdvance(player, msg.buildingId);            // ★[T509] 우물 ②·완공
+  else if (msg.type === 'terr_quote') tryTerrQuote(player, msg.x, msg.y);   // ★[T1207] 영토 넓히기 — 값 미리 보기
+  else if (msg.type === 'terr_work') tryTerrWork(player, msg.x, msg.y);     // ★[T1207] 영토 넓히기 — 그 셀에서 일하기(한 번에 한 손짓 · 서버 시계)
   else if (msg.type === 'village_start') tryVillageStart(player, +msg.atX, +msg.atY);      // ★[배치 12] 마을 회관 착공 — 완공이 곧 마을 등록
   else if (msg.type === 'village_advance') tryVillageAdvance(player, msg.buildingId);      // ★[배치 12] 회관 ②③·완공
   else if (msg.type === 'shelter_start') tryShelterStart(player, +msg.atX, +msg.atY);      // ★[T62] 공용 쉼터 착공
@@ -12385,6 +12388,73 @@ function tryHutAdvance(player, buildingId) {
   }
   savePlayer(player);
   sendInventory(player);
+}
+
+// ═══ ★★[T1207 2026-11-07 · ★재민 11-07 "영토와 인접한 셀로 직접 가서 우클릭 · 멀수록 · 클수록 비싸게"] 영토 넓히기 ═══
+//   값(개간 분 · 말뚝 통나무)은 `villages.js terrQuote`(정본 `terr-cost.js`) · 자격(그 마을 사람)은 쉼터와 같은 술어 · 일은 **그 셀 곁에서 보낸 서버 시간**만 센다.
+//   ① 개간 — 그 셀에 나무가 서 있으면 먼저 벤다(정본 벌목 문 · 통나무가 나온다) · 그 뒤 손짓마다(`terr_work`) 곁에 선 시간이 쌓인다(1 실초 = 1 게임 분 · 세계 시계)
+//   ② 경계 — 다 하면 짐의 통나무(말뚝 몫 · 올림)를 내고 영토가 된다(`terrPlayerAdd`) · 모자라면 일은 남겨 두고 기다린다.
+const T1207_REACH_PX = BUILDING_SIZE * 2;                 // 그 셀 곁 — 이웃 칸(두 칸 안 · 줍기 · 손 닿는 거리와 같은 꼴)
+const T1207_STROKE_MAX_MS = 1500;                          // 한 손짓이 셀 수 있는 시간 상한(끊겼다 다시 온 손짓이 빈 시간을 일로 세지 않게)
+function _t1207Member(player, vil) {
+  if (!vil || !vil.econ || !vil.econ.founder) return false;
+  if (VillageKin.ON) return _kinIsMemberOf(player, vil.dbId);
+  const tid = vil._tribeId || null;
+  return vil.econ.founder === player.playerId || !!(tid && player.tribeId && tid === player.tribeId);
+}
+function _t1207Quote(player, x, y) {
+  if (!SimVillages.terrQuote) return { ok: false, err: '이 서버에는 마을이 돌지 않습니다.' };
+  const cx = Math.floor(x / BUILDING_SIZE), cy = Math.floor(y / BUILDING_SIZE);
+  const mine = VillageKin.ON ? _kinVilOf(player) : null;
+  const q = SimVillages.terrQuote(cx, cy, mine ? mine.dbId : null);
+  if (!q.ok) return q;
+  const vil = SimVillages.villageById ? SimVillages.villageById(q.vid) : null;
+  if (!_t1207Member(player, vil)) return { ok: false, err: `${q.name} 사람이 아니어서 이 마을 영토를 넓힐 수 없습니다.` };
+  const trees = _t325TreesAtCell(cx, cy);
+  if (trees && trees.length) return { ok: false, err: '이 칸에 나무가 서 있습니다. 먼저 베어 내십시오.', cx, cy };
+  return q;
+}
+function tryTerrQuote(player, x, y) {
+  const q = _t1207Quote(player, +x || 0, +y || 0);
+  send(player.ws, Object.assign({ type: 'terr_quote', x: +x || 0, y: +y || 0, have: Math.floor((player.inventory && player.inventory.wood) || 0) }, q));
+}
+function tryTerrWork(player, x, y) {
+  const now = Date.now();
+  const cx = Math.floor((+x || 0) / BUILDING_SIZE), cy = Math.floor((+y || 0) / BUILDING_SIZE);
+  let job = player._t1207Job;
+  if (!job || job.cx !== cx || job.cy !== cy) {
+    const q = _t1207Quote(player, +x || 0, +y || 0);
+    if (!q.ok) { player._t1207Job = null; send(player.ws, { type: 'terr_stop', cx, cy, err: q.err }); return; }
+    job = player._t1207Job = { vid: q.vid, name: q.name, cx, cy, wood: q.wood, posts: q.posts, needMs: q.laborMin * 1000, doneMs: 0, last: now };
+    send(player.ws, { type: 'terr_progress', cx, cy, done: 0, need: +q.laborMin.toFixed(2), wood: q.wood });
+    return;
+  }
+  const px = cx * BUILDING_SIZE + BUILDING_SIZE / 2, py = cy * BUILDING_SIZE + BUILDING_SIZE / 2;
+  if (Math.hypot(player.x - px, player.y - py) > T1207_REACH_PX) { job.last = now; send(player.ws, { type: 'notice', text: '넓힐 칸 곁에 서야 일할 수 있습니다.' }); return; }
+  if (job.doneMs < job.needMs) {
+    job.doneMs = Math.min(job.needMs, job.doneMs + Math.max(0, Math.min(now - job.last, T1207_STROKE_MAX_MS)));
+    job.last = now;
+    Body.onLabor(player, 1.0);   // ★[신체 상태] 개간도 노동이다(벌목 · 채광과 같은 손짓 하나)
+    if (job.doneMs < job.needMs) { send(player.ws, { type: 'terr_progress', cx, cy, done: +(job.doneMs / 1000).toFixed(2), need: +(job.needMs / 1000).toFixed(2), wood: job.wood }); return; }
+  }
+  const have = Math.floor((player.inventory && player.inventory.wood) || 0);
+  if (have < job.wood) { job.last = now; send(player.ws, { type: 'terr_progress', cx, cy, done: +(job.doneMs / 1000).toFixed(2), need: +(job.needMs / 1000).toFixed(2), wood: job.wood, short: job.wood - have });
+    send(player.ws, { type: 'notice', text: `개간은 끝났습니다. 말뚝을 박을 통나무가 모자랍니다(${have}/${job.wood}).` }); return; }
+  const vil = SimVillages.villageById ? SimVillages.villageById(job.vid) : null;
+  if (!vil || !SimVillages._t1207CanTake(vil, cx, cy)) { player._t1207Job = null; send(player.ws, { type: 'terr_stop', cx, cy, err: '이 칸은 지금 영토가 될 수 없습니다(그 사이 남의 땅이 됐거나 막혔습니다).' }); return; }   // 통나무를 내기 전에 본다
+  if (job.wood > 0) consumeItem(player, 'wood', job.wood);
+  const r = SimVillages.terrPlayerAdd(job.vid, cx, cy);
+  player._t1207Job = null;
+  if (!r.ok) {
+    console.error(`[${ZONE_ID}] 🪵 영토 넓히기 실패(통나무는 이미 냈다) ${player.name} @(${cx},${cy}): ${r.err}`);
+    send(player.ws, { type: 'terr_stop', cx, cy, err: r.err || '영토가 되지 않았습니다.' });
+  } else {
+    send(player.ws, { type: 'terr_done', cx, cy, size: r.size, wood: job.wood });
+    send(player.ws, { type: 'notice', text: job.wood > 0 ? `${r.name}의 영토가 한 칸 넓어졌습니다(${r.size}칸). 말뚝 몫 통나무 ${job.wood}개를 박았습니다.` : `${r.name}의 영토가 한 칸 넓어졌습니다(${r.size}칸). 새 경계가 늘지 않아 말뚝은 들지 않았습니다.` });
+    console.log(`[${ZONE_ID}] 🪵 ${player.name} 영토 넓히기 @(${cx},${cy}) → ${r.name} ${r.size}칸 · 통나무 ${job.wood}`);
+  }
+  sendInventory(player);
+  savePlayer(player);
 }
 
 // ═══ ★[재민 확정 2026-08-02] 노(爐) — "집이랑 비슷하게, 터를 먼저 잡고 필요 자원을 모아 투입하고

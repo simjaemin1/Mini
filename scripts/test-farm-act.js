@@ -312,7 +312,10 @@ console.log('\n⑫ [T449] 결산 문 — 켬이면 관측 마을은 팔 켜진 �
     '⑫ ★★켬 = 그 술어를 **점 · 반경 그 수**로 묻는다(옛 줄의 두 식 그대로) · 끔 = 옛 줄 그대로(수 셋 — 늘 거짓)');
   ok(/const _t449S = T449_BODY_DAY && _t449Seen\(vil\);/.test(daily) && (daily.match(/_t449Seen\(vil\)/g) || []).length === 1,
     '⑫ 관측 마을인가는 하루 경계에 **한 번** 묻는다(끔이면 묻지도 않는다 — `&&` 앞이 거짓)');
-  ok(daily.includes('const _ln = (_t449S || _bodyOnly) ? 0 : _lnE;') && daily.includes("const _fg = (_t449S || _lifeEcon().productionFormulaOff?.(vil.econ,'forager')) ? 0 : _fgE;"),
+  //   ★[T1202] 실제 호스트의 명부(`_t1202W` · `_t1202G`)도 관측 마을이면 0 — `_t1202Roster(…, _t449S)` 가 관측 마을에 `n: 0` 을 준다(test-t1202-produce-live 변이 observed)
+  ok(daily.includes('const _ln = _t1202W ? _t1202W.n : ((_t449S || _bodyOnly) ? 0 : _lnE);') && daily.includes("const _fg = _t1202G ? _t1202G.n : ((_t449S || _lifeEcon().productionFormulaOff?.(vil.econ,'forager')) ? 0 : _fgE);")
+     && daily.includes("_t1202Roster(vil, 'lumberjack', _t561W || _t491C, _walked, _t449S)") && daily.includes("_t1202Roster(vil, 'forager', _t561F, _walked, _t449S)")
+     && /  if \(observed\) return \{ n: 0, bodiless: 0, bodies: 0 \};/.test(VC),
     '⑫ ★★나무꾼·채집 — 관측 마을은 **일괄 명부에서 빠진다**(명부 한 칸 · 절의 글자는 그대로 — `test-wood-act ⑦`)');
   ok(!/_t449/.test(bodyOf(VC, '_lifeHeadlessDay')), '⑫ 헤드리스 결산 함수는 **무변**(팔로 직업을 이미 가른다 — ⑤ 글자 그대로)');
   //   ① 옛 줄이 왜 늘 거짓인가 — zone.js 의 정본 술어를 글자 그대로 돌린다(사람을 마을 한가운데 세워도 거짓)

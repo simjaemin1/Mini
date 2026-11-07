@@ -255,7 +255,7 @@ if (process.argv[2] === '--grow') { growChild().then(() => process.exit(0), (e) 
     const act = bodyIn(ZS, '_actEntitiesAtCell'), clr = bodyIn(ZS, 'clearTreesInCells'), idx = bodyIn(ZS, '_idxAtCell');
     //   ★[T566] 되살림의 몸은 `_t341UnharvestBody`(문 `_t341Unharvest` 는 막힌 셀을 거른 뒤 그 몸을 부른다)
     const mark = bodyIn(ZS, '_markHarvested'), unh = bodyIn(ZS, '_t341UnharvestBody') || bodyIn(ZS, '_t341Unharvest'), prom = bodyIn(ZS, '_promoteHarvestOnce');
-    const rac = bodyIn(CS, 'resourcesAtCell'), tg = bodyIn(VS, '_terrGrow');
+    const rac = bodyIn(CS, 'resourcesAtCell'), tg = bodyIn(VS, '_terrGrow') + bodyIn(VS, '_terrAdd');   // ★[T1207] 영토에 셀을 더하는 몸통은 `_terrAdd` 로 옮겼다(종전 고른 셀 · T1207 일괄 · 몸 완공 · 플레이어 넓히기가 같은 몸통) — 두 본문을 이어 본다
     ok(/_idxAtCell\(/.test(act) && /_idxAtCell\(cx, cy, false, _gd\)/.test(clr) && !/resourcesAtCell\(/.test(act + clr),
       '★⑦ 셀 색인의 문은 **하나**(`_idxAtCell`) — 나무꾼·채집(`_actEntitiesAtCell`)과 개간(`clearTreesInCells`)이 같은 판을 본다');
     ok(/cellChunksOf\(cellX, cellY, chunkManager\.chunkSize\)/.test(idx) && /cellChunksOf\(cellX, cellY, cs\)/.test(rac),

@@ -13,10 +13,11 @@ if (!MUT) for (const val of [undefined, '0', '1', '']) check('default ' + String
   const r = spawnSync(process.execPath, ['-e', "const E=require('./sim/economy-sim'),W=require('./server/wildlife');console.log(JSON.stringify([E.T1195_HUNT_REAL,W.preyIds]));"], { cwd: ROOT, env, encoding: 'utf8' });
   assert.strictEqual(r.status, 0, r.stderr);
   const [on, prey] = JSON.parse(r.stdout.trim().split('\n').at(-1));
-  assert.strictEqual(on, val !== '0');
+  assert.strictEqual(on, val === '1');   // ★[PM land1049] 끔 기본(`=1` 만 켬)
   assert.deepStrictEqual(prey, ['deer', 'deer', 'deer', 'wild_boar', 'arctic_hare', 'arctic_hare']);
 });
-delete process.env.T1195_HUNT_REAL;
+// ★[PM land1049] `T1195_HUNT_REAL` · `T1197_MEAL_BODY`(+ T1198) 끔 기본으로(켬 판 서버 빈 마을 1 → 15 · 켤 날 T1209) — 이 하네스는 켬 판의 일을 잰다 → 켬에 묶는다(기본값 줄만 끔 기본으로).
+process.env.T1195_HUNT_REAL = '1';
 process.env.ENABLE_VILLAGES = '0';
 if (MUT) {
   const old = Module._extensions['.js'];
