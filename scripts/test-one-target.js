@@ -130,7 +130,10 @@ const nRead = SRC.split('process.env.T726_ONE_TARGET').length - 1;
 ok(nRead === 1, 'ⓓ 손잡이를 읽는 자리 하나', `${nRead}`);
 const body = (name) => { const i = SRC.indexOf('function ' + name + '('); return i < 0 ? '' : SRC.slice(i, SRC.indexOf('\n}\n', i)); };
 const tgt = body('_targetV2');
-ok(SRC.split('= _worldStockOf(v, r)').length - 1 === 1 && tgt.includes('= _worldStockOf(v, r)') && tgt.includes('VARIETY_FOOD[r]') && tgt.includes('v1.derivedInputTarget(v, r)') && tgt.includes('LUX_ADJ_MAX'),
+// ★[T1220-K4] T1217(land1051 · `t1217Value`)이 품목마다 세계 공급이 0 인지만 본다(`ws.stock > 0` — 유효수요 상한 식이 아니다 · 손잡이 `T1217_MARGIN` 끔 기본) —
+//   그 함수 몸만 빼고 세고, 그 몸에 상한 식(`EFFDEM_SHARE`)이 없음을 같이 못 박는다(식 한 곳 그대로)
+const t1217 = body('t1217Value'), SRCX = t1217 ? SRC.replace(t1217, '') : SRC;
+ok(SRCX.split('= _worldStockOf(v, r)').length - 1 === 1 && !t1217.includes('EFFDEM_SHARE') && tgt.includes('= _worldStockOf(v, r)') && tgt.includes('VARIETY_FOOD[r]') && tgt.includes('v1.derivedInputTarget(v, r)') && tgt.includes('LUX_ADJ_MAX'),
   'ⓓ 결정층 식(유효수요 상한 · 다양성 · 파생수요 · 웃돈 상한)은 `_targetV2` 한 곳');
 ok(SRC.split('v1._SMELT_YIELD || 0.33').length - 1 === 1 && body('_oreCapV2').includes('v1._SMELT_YIELD || 0.33'), 'ⓓ 원석 상한 식은 `_oreCapV2` 한 곳');
 const csp = body('computeShadowPrices');
