@@ -256,7 +256,7 @@
   function ulRowsMine(inv) {
     const out = [];
     for (const [item, v] of Object.entries(inv || {})) {
-      const n = Math.floor(Number(v) || 0);
+      const n = item === 'stone' ? +(Number(v) || 0).toFixed(3) : Math.floor(Number(v) || 0);   // ★[T1186 ㉡] 돌은 덩이 몫까지(날을 깨고 남은 0.644 덩이 · 서버 돌 규칙 켬만 소수를 보낸다 — 끔이면 늘 정수라 종전 그대로)
       if (n <= 0 || item === 'floor' || item === 'tribe_id' || item === 'sim' || item === 'kind') continue;
       const led = myLedger && myLedger[item], lot = myLots && myLots[item];
       let kids = null;

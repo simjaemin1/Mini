@@ -1,0 +1,14 @@
+{
+  "timeUTC": "2026-11-06T01:42:39.275656+00:00",
+  "draftRevision": 3,
+  "results": [
+    {
+      "url": "https://exarc.net/issue-2026-2/rev/life-stone-axe",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "url": "https://www.emuseum.go.kr/",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+    }
+  ]
+}

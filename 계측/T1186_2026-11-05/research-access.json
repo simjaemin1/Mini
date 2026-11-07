@@ -1,0 +1,40 @@
+{
+  "status": "blocked-on-public-research-access",
+  "base": "1db22f04",
+  "queries": [
+    "磨製石斧 弥生 重量 g",
+    "돌도끼 청동기 무게 g",
+    "experimental stone axe wear sharpening kilograms Mathieu Meyer 1997"
+  ],
+  "observedError": "URLError: Tunnel connection failed: 403 Forbidden",
+  "networkRuntimeObserved": "restricted package_managers preset; no explicit egress rules",
+  "draftSaved": true,
+  "requiresPublish": true,
+  "runtimeAccessVerified": false,
+  "allowedDomainsDraft": [
+    "www.google.com",
+    "sitereports.nabunken.go.jp",
+    "www.emuseum.go.kr",
+    "www.museum.go.kr",
+    "exarc.net",
+    "tidsskrift.dk",
+    "api.crossref.org",
+    "doi.org",
+    "digilib.phil.muni.cz"
+  ],
+  "primarySourceRetries": [
+    {
+      "url": "https://exarc.net/issue-2026-2/rev/life-stone-axe",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "url": "https://tidsskrift.dk/jda/article/download/126138/172511/265779",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "url": "https://www.emuseum.go.kr/",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+    }
+  ],
+  "retryDateKST": "2026-11-06"
+}
