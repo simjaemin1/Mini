@@ -457,7 +457,7 @@ console.log('\n⑭ [T374] 수요 멈춤 (★[T544 추신 ⓐ] 손잡이 기본 �
   const lits = (dbody.match(/\b\d+(\.\d+)?\b/g) || []).filter((x) => x !== '0');
   ok(lits.length === 0, '⑭ ★★그 식에 **지어낸 수가 없다** — 상한은 수식이 그날 내겠다고 한 몫이다', lits.join(',') || '0개');
   ok(/_forageOutLast\) \|\| 0\) \* share, '_t347InflowToday'/.test(C)
-    && /function woodShareD\(v\) \{ return \(v && \(T1135_FUEL_EQ \? v\._t1135Need : v\._woodOutLast\)\) \|\| 0; \}/.test(C) && /actDemandLeft\(v, woodShareD\(v\), '_t325InflowToday'/.test(C)   // ★[T1135] 나무 분자 = 한 함수(끔 = `_woodOutLast`)
+    && /function woodShareD\(v\) \{ return \(\(v && \(T1135_FUEL_EQ \? v\._t1135Need : v\._woodOutLast\)\) \|\| 0\) \+ \(\(v && v\._t1207Need\) \|\| 0\); \}/.test(C) && /actDemandLeft\(v, woodShareD\(v\), '_t325InflowToday'/.test(C)   // ★[T1135] 나무 분자 = 한 함수(끔 = `_woodOutLast`) · ★[T1207] + 영토 말뚝 모자람(정본 칸 `_t1207Need` — 서버 생활층이 적는다 · 끔이면 칸이 없어 0)
     && /\(v && v\._fishOutLast\) \|\| 0, '_t312InflowToday'/.test(C),
     '⑭ ★★`D` 를 셋 다 **정본 칸**에서 읽는다(채집은 걷는 몫을 곱한다 · 새 수 0)');
   // ⓐ 기능 — D 에 닿으면 남은 수요가 0 이고, 곳간 입구가 더 안 받는다
