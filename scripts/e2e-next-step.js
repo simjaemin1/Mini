@@ -64,7 +64,9 @@ const overlap = (a, b) => !!(a && b && Math.min(a.right, b.right) - Math.max(a.l
   const zon = boot('zone', 'zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
     // ★[T1086] 첫 의뢰를 실제로 채운다 — 의뢰를 세우는 픽스처(`E2E_GIVE` · `e2e-onboarding` 과 같은 꼴) · 마을 4곳 · 하루 0.5초(의뢰가 빨리 선다)
-    VILLAGE_MAX: '4', VILLAGE_DAY_MS: '500', E2E_GIVE: '1' });
+    VILLAGE_MAX: '4', VILLAGE_DAY_MS: '500', E2E_GIVE: '1',
+    // ★[T1204] 이 하네스는 화살 판(종전 · `T1204_NOW_WORDS=0`)을 잰다 — 켬 기본(글로 방위 · 걸음)은 `e2e-t1204-now-words` 가 잰다(단언 무변)
+    T1204_NOW_WORDS: '0' });
   const zu = FB.waitUp(zon, /zone server up on/, { name: 'zone', capMs: 300000 });
   const c0 = await cu; ok(c0.ok, 'central 기동', c0.ok ? `${c0.ms}ms` : c0.why);
   const z0 = await zu; ok(z0.ok, 'zone 기동');
