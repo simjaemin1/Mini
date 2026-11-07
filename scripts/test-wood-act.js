@@ -17,6 +17,9 @@
 //
 // 실행: node scripts/test-wood-act.js
 'use strict';
+// ★[T1208-K1 2026-11-07] 이 자는 나무꾼 행위(T325)를 잰다 — land1049 가 켠 `T1197_MEAL_BODY`(몸 끼니)는 이 자의 몸 판(`__labProbe` · 세계 시계 없음 — `state.world` null)에서
+//   `npcLifeTick` → `_t1197BodyMeal` → `_t1197Ix` 가 `state.world.day` 를 읽다 죽었다(TypeError · `=0` 이면 초록 · main 초록 — 제품 쪽 가드 비대칭은 보고 T1208-K1). 부르는 쪽이 값을 주면 그 값이 먼저.
+if (process.env.T1197_MEAL_BODY == null) process.env.T1197_MEAL_BODY = '0';
 process.env.T449_BODY_DAY = '0';
 process.env.T491_BATCH_FROM_BODY = '0';
 // [T1183] 옛 압축 하루 대조를 명시한다.
