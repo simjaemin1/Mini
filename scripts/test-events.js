@@ -383,6 +383,9 @@ if (REQ_CTX) {
     for (const [r, e] of Object.entries(v._consEMA || {})) {
       if (r.charCodeAt(0) === 95 || !(e > 0.05)) continue;
       if (marks.some((m) => m.r === r)) continue;
+      //   ★[T1222] 장부를 세운 때 **이미 부족**이면(래치가 서 있으면) 지금 비워도 새 사건이 안 난다 — 그 품목은 고르지 않는다(풀린 래치 = 재고 ≥ 문턱 × HYST).
+      //     자연사(T1206 켬 기본) 세계에선 마을1 의 약초가 처음부터 문턱 아래(0.72 < 1.23)라 ⑥b 전제가 섰다 넘어졌다.
+      if (!((+v.storage[r] || 0) >= e * L.cfg.SHORT_DAYS * L.cfg.HYST)) continue;
       picked = r; break;
     }
     if (picked) { v.storage[picked] = (+v._consEMA[picked]) * L.cfg.SHORT_DAYS * 0.1; marks.push({ vid: i, r: picked }); }

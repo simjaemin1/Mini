@@ -10,7 +10,7 @@
 // ★[T1147] 판 꾸밈 — 이 하네스는 T1075 평형 모델을 잰다. T1134 목표 행복이 켬 기본이 되어 T1134 가 이기므로 이 판은 그것을 끈다(단언 무변 · T1134 는 test-happy-converge).
 process.env.T1134_HAPPY_TARGET = process.env.T1134_HAPPY_TARGET || '0';
 process.env.T1197_MEAL_BODY = process.env.T1197_MEAL_BODY || '0';   // ★[T1197] 이 하네스의 ④ 사망 계단 · ⑤ 이탈은 T1074 빚 죽음 판(하루 1명 · 14일)으로 짰다 — 켬(몸 게이지) 판은 `test-t1197-meal-body`
-// ★[T1222] (시험) 자연사 묶음 풂 — 아래 판을 켬 세계로 돌려 본다
+// ★[T1222] 자연사(T1206 · 켬 기본) 세계 그대로 돈다 — T1216-K1 의 끔 묶음을 풀었다. ⑤ 의 압력 식에 그날 출생 다시 맞춤(`nat` — econ `_natExp`)을 넣었다(아래 `_exp` · 끔 = 0 · 단언 정밀도 그대로).
 const path = require('path');
 const { execFileSync } = require('child_process');
 let pass = 0, fail = 0;
@@ -38,7 +38,7 @@ if (process.env.T1075_CHILD) {
       if (d > 402) zero(v);
       const st0 = v._H, n0 = v.npcs.length, fd0 = v._fdDeadTot || 0, dt0 = v._deadTot || 0;
       E.tickVillage(v, d);
-      rows.push({ d, H: v._H, Heq: v.lastStats && v.lastStats.happinessEq, Hpub: v.lastStats && v.lastStats.happiness, n0, n: v.npcs.length, fdDead: (v._fdDeadTot || 0) - fd0, dead: (v._deadTot || 0) - dt0, st0, emig: v._emigTot || 0, lost: v._emigLost || 0, dbg: Object.assign({}, v._dpDebug || {}) });
+      rows.push({ d, H: v._H, Heq: v.lastStats && v.lastStats.happinessEq, Hpub: v.lastStats && v.lastStats.happiness, n0, n: v.npcs.length, fdDead: (v._fdDeadTot || 0) - fd0, dead: (v._deadTot || 0) - dt0, st0, emig: v._emigTot || 0, lost: v._emigLost || 0, dbg: Object.assign({}, v._dpDebug || {}, { nat: +(v._natExp || 0) }) });   // ★[T1222] nat = 그날 출생 다시 맞춤(T1206 ② · `dP` 의 「나머지」에 든다 · 끔 = 0)
     }
     return { rows, left };
   };
@@ -71,7 +71,8 @@ else {
     ok(Math.abs((stepOnly - st.H) - st.fdDead / st.n0) < 0.02, '★④ 사망 계단 — 굶어 죽은 날 H 가 한 번에 약 1/N 더 내려간다', `걸음만 ${stepOnly.toFixed(4)} · 실제 ${st.H.toFixed(4)} · 1/N ${(1 / st.n0).toFixed(4)}`);
   }
   // ⑤ 압력 식 — 불행 몫(happy < 0)은 dP 를 음수로 만들지 못한다: dP = (나머지 > 0 ? max(0, 나머지 + happy) : 나머지) · 나머지 = logi + hunger + health + prestige
-  const _exp = (g) => { const o = g.logi + g.hunger + g.health + g.prestige; return g.happy < 0 ? (o > 0 ? Math.max(0, o + g.happy) : o) : o + g.happy; };
+  //   ★[T1222] 자연사 켬(T1206 기본)이면 「나머지」에 그날 출생 다시 맞춤(기대 자연사 · `nat`)이 든다(econ `dP += t1206Expected` 가 로지스틱 바로 뒤 · 불행 가르기 앞) — 끔 = 0.
+  const _exp = (g) => { const o = g.logi + (g.nat || 0) + g.hunger + g.health + g.prestige; return g.happy < 0 ? (o > 0 ? Math.max(0, o + g.happy) : o) : o + g.happy; };
   const bad = R.filter((r) => r.dbg && r.dbg.happy < 0 && !r.dbg.gated && Math.abs(r.dbg.dP - _exp(r.dbg)) > 0.002);
   ok(R.some((r) => r.dbg && r.dbg.happy < 0) && bad.length === 0, '★⑤ 불행은 죽이지 않는다 — 불행 몫은 출생만 깎고 기근 고리 압력(dP)을 음수로 못 민다', bad.length ? JSON.stringify(bad[0].dbg) : `불행 날 ${R.filter((r) => r.dbg && r.dbg.happy < 0).length}`);
   ok(on.hook.left.length > 0 && R[R.length - 1].emig === on.hook.left.length, '★⑤ 길 문이 있으면 불행 압력이 이탈로 — 문이 받은 사람만 마을을 떠난다', `떠남 ${on.hook.left.length}`);
@@ -79,7 +80,7 @@ else {
   ok(NR[NR.length - 1].emig === 0 && NR[NR.length - 1].lost > 0, '★⑤ 길 문이 없으면 아무도 안 떠난다(소멸 0) · 압력은 `_emigLost` 에 센다', `lost ${NR[NR.length - 1].lost.toFixed(2)}`);
   const OR = off.hook.rows;
   ok(OR.every((r) => r.H == null), '⑥ 끔 = H 칸이 안 선다');
-  ok(OR.some((r) => r.dbg && r.dbg.happy < 0 && Math.abs(r.dbg.dP - (r.dbg.logi + r.dbg.hunger + r.dbg.health + r.dbg.prestige + r.dbg.happy)) < 0.002 && r.dbg.dP < (r.dbg.logi + r.dbg.hunger + r.dbg.health + r.dbg.prestige)),
+  ok(OR.some((r) => r.dbg && r.dbg.happy < 0 && Math.abs(r.dbg.dP - (r.dbg.logi + (r.dbg.nat || 0) + r.dbg.hunger + r.dbg.health + r.dbg.prestige + r.dbg.happy)) < 0.002 && r.dbg.dP < (r.dbg.logi + (r.dbg.nat || 0) + r.dbg.hunger + r.dbg.health + r.dbg.prestige)),
     '⑤ 대조 — 끔이면 불행 몫이 기근 고리 압력에 그대로 더해진다(위가 자명 통과가 아니다)');
   const onD = R.reduce((a, r) => a + r.dead - r.fdDead, 0), offD = OR.reduce((a, r) => a + r.dead - r.fdDead, 0);
   ok(onD <= offD, '⑤ 빚 아닌 죽음(자리 · 연료 · 건강 몫)은 켬이 끔보다 많지 않다', `켬 ${onD} · 끔 ${offD}`);
