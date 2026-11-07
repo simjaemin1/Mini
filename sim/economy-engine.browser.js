@@ -19166,6 +19166,7 @@ module.exports = {
 
 const v1 = require('./economy-sim');
 const OreGoods=v1.OreGoods,T1188_ORE_SPLIT=v1.T1188_ORE_SPLIT;
+const T1188_HEAD_CACHE=T1188_ORE_SPLIT&&!(typeof process!=='undefined'&&process.env&&process.env.T1188_HEAD_CACHE==='0');   // ★[PM land1049] 세계 공급 · 이웃 값표 캐시를 머리에서(마을 차례 무관 — head() 주석)
 const FishGoods=v1.FishGoods;
 // T1192: observed catch energy divides the old dried-fish target once. Mixed vegetable pickle stock has no historical fish fraction: flow only.
 function _fishTarget(v,r,target){
@@ -22061,6 +22062,13 @@ function tickWorldV2Parts(world) {
       if (world._dbg?.yearShock !== false && !T761_WX) tickYearShock(world, world.day);   // ★[T792] 켬(wx) = 마을 조각에서(날씨 굴림 뒤)
       season = seasonOf(world.day);
       useSeason = world._dbg?.season !== false;
+      // ★[PM land1049 · T1188] 세계 공급 캐시(`_worldStockOf`)를 **머리에서** 세운다 — 원석 광물별 켬이면 마을 조각 안에서 값표를 묻는 길이 생겨,
+      //   그날 처음 묻는 마을이 캐시를 세우면 앞 마을들이 이미 돈 재고로 서서 마을 차례가 값을 바꿨다(test-local-clocks 차례 뒤집기 · 13일 평원 무기 · 구리 · 납).
+      //   손잡이 `T1188_HEAD_CACHE`(원석 광물별 켬일 때만 · 켬 기본 · `=0` 끔 = 이 줄 무동작 = 종전 바이트 — 끈 판 증명용).
+      if (T1188_HEAD_CACHE && TRADABLE.length && Array.isArray(world.villages) && world.villages[0]) { world._effDemCache = null; _worldStockOf(world.villages[0], TRADABLE[0]);
+        //   순수취 캐시(`netExportValue` · 이웃 값표)도 같은 까닭 — 이웃 값표를 그날 처음 묻는 순간이 마을 차례를 따라 갈렸다 → 머리에서 모든 마을 값표를 세운다(켬만).
+        const C = world._nevCache = { day: world.day || 0, px: new Map(), val: new Map() };
+        for (const b of world.villages) if (b && b.npcs && b.npcs.length >= 2) C.px.set(b, computeShadowPrices(b)); }
     },
     village(v) {
       if (T761_WX && world._dbg?.weather !== false) _weatherRollOne(v, world.day);   // ★[T761] 켬(wx) = 그 마을 조각에서 그 마을 날씨를 굴린다(씨 = T731 마을 흐름 · 끔 = 무동작)

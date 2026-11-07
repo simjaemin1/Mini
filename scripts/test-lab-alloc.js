@@ -24,6 +24,8 @@
 //
 // 실행: node scripts/test-lab-alloc.js
 'use strict';
+// ★[PM land1049] ⑩⑪ 은 T184 축 검사 — 광부 바구니가 원석 하나(`ore`)인 판을 잰다. `T1188_ORE_SPLIT`(원석 광물별 · 켬 기본) 판에선 광부 항이 `ore_*` 열다섯이라 픽스처(`ore`)가 안 맞는다 → 이 하네스는 끔 판에 묶는다(광물별 배분은 T1188 하네스 몫).
+if (process.env.T1188_ORE_SPLIT == null) process.env.T1188_ORE_SPLIT = '0';
 const path = require('path');
 const { chromium } = require('playwright');
 const LAB = path.resolve(__dirname, '..', 'lab', '전쟁실험실.html');
