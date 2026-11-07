@@ -1,0 +1,8 @@
+{
+ "note": "판 자 결함 탐침(시드 1020 · 서버 판 자 · 관찰기 탐침-관찰기.js) — 세 판의 찍은 줄을 그대로 옮겼다(T1201 보고 §0)",
+ "body_no_idle_skip_A": [{"day":30,"cred":0,"hN":0,"planted":0,"cells":5208,"farmers":496,"hl":0,"body":1479},{"day":60,"planted":0,"hN":0,"body":2864},{"day":100,"planted":0,"hN":0,"body":4361},{"day":150,"planted":0,"hN":0,"farmers":37,"body":5572}],
+ "idle_skip_no_epoch_A": [{"day":30,"planted":5310,"crops":{"curled_mallow":1032,"chive":934,"water_dropwort":805,"hemp_plant":861,"scallion":716,"lettuce":615,"yam":347},"hl":1479},{"day":60,"planted":9176,"hN":1086,"cred":4878.75,"food":287.01},{"day":100,"planted":9362,"hN":4364,"cred":17967.87,"food":868.69}],
+ "idle_skip_no_epoch_G": [{"day":30,"planted":0},{"day":60,"planted":0},{"day":100,"planted":0},{"day":5,"hlDay":7068902404,"mo":3},{"day":60,"hlDay":7068902459,"mo":3}],
+ "idle_skip_epoch_G": [{"day":5,"hlDay":4,"mo":3,"planted":0},{"day":30,"hlDay":29,"mo":3,"planted":0},{"day":45,"hlDay":44,"mo":4,"planted":6695,"crops":{"millet":1705,"foxtail_millet":1746,"sorghum":1601,"adlay":1643}}],
+ "calendarOf": {"7068902404":"1년 3월 1일","2147483647":"5879611년 9월 9일","2147483648":"1년 3월 1일"}
+}

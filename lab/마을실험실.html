@@ -5906,8 +5906,16 @@ function sowableMonth(field, month) {
 }
 // ★[T1179] 마을 특산물 고르기 — 시드 · 달 · 자리(논 1종 · 밭 2종 분담)의 순수 함수. 몸은 `server/villages.js` `_villageCropFor` 에서
 //   **글자 그대로 옮겼다**(그쪽은 이 함수를 부른다 · 결과 바이트 같음) — econ 작물 철(`T1179_CROP_SEASON`)이 같은 고르기를 부른다(사본 0).
+// ★★[T1201 2026-11-07 · ★재민 11-07 문 33 ㄴ] **청동기 작물(고증)** — 손잡이 `T1201_BRONZE_CROPS`(끔 기본 · `=1` 켬 · 그 밖 값 = 끔).
+//   켬이면 **마을 밭**(이 함수 — 생활층 `_villageCropFor` · econ 작물 철)이 고르는 후보를 한반도 청동기 유적에서 나온 작물로만 줄인다.
+//   출처(우리역사넷 「청동기시대의 농경」 · 국사편찬위원회): 밭작물 "보리 · 조 · 수수 · 기장 · 콩" + "밀 · 팥 · 피" 등 다양한 잡곡 ·
+//     벼(흔암리 · 송국리 탄화미) · 여의곡 율무(Job's tears). 이 열 가지 밖(상추 · 오이 · 가지 · 배추 · 무 · 마늘 …)은 청동기 출토 기록이 없다.
+//   ⚠고르는 산수 · 시드 · 분담(논 1 · 밭 2)은 그대로다(후보 목록만 준다 · 새 수 0). 그 달 후보가 0 이면 `null`(종전처럼 안 심는다).
+//   ⚠플레이어 밭 · 야생 채종 · 첫 수확일(`daysToFirstHarvest`)은 안 건드린다(`sowableMonth` 무변). 끄면 이 함수 글자 그대로.
+const T1201_BRONZE_CROPS = (typeof process !== 'undefined' && process.env) ? process.env.T1201_BRONZE_CROPS === '1' : false;
+const T1201_BRONZE_SET = new Set(['barley', 'foxtail_millet', 'sorghum', 'millet', 'soybean', 'wheat', 'azuki', 'barnyard_millet', 'rice', 'adlay']);
 function villageCropPick(seed, field, mo, par) {
-  const cand = sowableMonth(field, mo);
+  const cand = T1201_BRONZE_CROPS ? sowableMonth(field, mo).filter((id) => T1201_BRONZE_SET.has(id)) : sowableMonth(field, mo);
   if (!cand.length) return null;
   const pick = (salt) => { const h = (Math.imul(seed ^ salt, 2654435761) ^ Math.imul(mo + 1, 40503)) >>> 0; return cand[h % cand.length]; };
   let res; if (field !== '밭') res = pick(101);
@@ -5960,7 +5968,7 @@ module.exports = {
   keepDaysOf, seedKeepDaysOf, hungerOf, tastyOf, growDaysOf, kgOf, koOf, emojiOf,
   T594_CROP_CAL, calDaysOf,   // ★[T594] 작물 철 고증 — 손잡이 · 고증 활동일(순수 유도 · 표에 없으면 null)
   seasonOfDay, sowSeasons, canSowOn, sowableIn, sowableOn, wildSeedAt, WILD_SEED_CHANCE,
-  monthOf, sowMonthsOf, fitsField, sowableMonth, villageCropPick, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
+  monthOf, sowMonthsOf, fitsField, sowableMonth, villageCropPick, T1201_BRONZE_CROPS, T1201_BRONZE_SET, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
   lifecycleOf, isPerennial, isWinterCrop, LC_WINTER, LC_PERENNIAL,
   dormantAt, vernalDay, VERNAL, CARE_PAUSE, PER_DORMANT, T1041_CROP_MEMO, t1041Stat: () => Object.assign({ on: T1041_CROP_MEMO }, _t1041Stat), _grownDays0,   // ★[T1041] 활동일 · 계절 기억 손잡이(하네스가 읽는다) · ★[T99] 휴면 술어 하나 · 춘화일 — 마을·플레이어가 같이 부른다
   rainedOn, RAIN_WATER,   // ★[T112] 비 온 날은 물 준 날 — 상태기 셋이 같이 부른다
