@@ -2818,7 +2818,7 @@ TOOL_MAX_DURABILITY.crude_blade = Math.max(1, Math.round(TOOL_MAX_DURABILITY.swo
 //      (한 덩이 4 kg 에서 곡괭이 날 · 도끼 날을 다 깨 내고 0.644 덩이 = 2.58 kg 이 남는다 · 무게 보존). 검 · 톱 · 망치는 날 무게 미확인 — 종전 그대로.
 //   ㉠ 곡괭이 · 도끼(정품 · 조잡)는 친 횟수가 아니라 깎은 · 벤 kg 으로 닳는다(`_t1186Wear` 머리말).
 const StoneRule = require('./stone-rule');
-const T1146_STONE_RULE = process.env.T1146_STONE_RULE !== '0';   // ★[T1186] 켬 기본(`=0` = 종전 바이트) — 날 실제 무게 · kg 닳기 위에서 첫 움집 30분 켬 2/2(보고/T1186) · ★[PM land1047] 끔 기본이던 자리
+const T1146_STONE_RULE = process.env.T1146_STONE_RULE === '1';   // ★[T1186 11-07] 끔 기본(`=1` = 돌 규칙 켬 — 날 실제 무게 · kg 닳기 · T1146 바위 실측) — main 07eec54e 위 첫 움집 30분 켬 1/2라 카드 할 일 5("다 서면 켬 기본")가 안 섰다(보고/T1186_2026-11-07 회부 1) · 11-06 판(베이스 de3b7652 · 켬 2/2)은 켬 기본이었다 · ★[PM land1047] 끔 기본이던 자리
 if (T1146_STONE_RULE) {
   const _kgS = require('./weights').kgOf('stone');
   for (const t of Object.keys(StoneRule.BLADE_SRC)) {
