@@ -14156,8 +14156,9 @@ function _t1202Note(vil, k, u) { if (!(u > 0)) return; const B = vil._t1202Batch
 //     물가 현장(`_lifeJobSites().fisher` — 영토 셀 중 4방에 물) 둘레의 물 칸에 던진다 · 그 물 · 그날 · 그 칸의 종(`freshfish`/`seafish` `pick` — 몸과 같은 씨 꼴 · 주사위 0) ·
 //     한 마리 = 그 종 몸 kg · 열량 단위(`_t1128HandUnits`) · 마을 총 낚시 몫(`_t312Take` — 몸이 쓰는 그 장부)과 그날 수요 문(`fishDemandLeft`)을 넘지 않는 **온전한 마리**만.
 //     한 사람의 하루 = 낮(T627 정본 운영 하루 × 낮 비율) 동안 — 한 번 던져 입질까지 `Fishing.CFG.WAIT_BASE_MS` · 짐(`carry.CAP_KG`)이 차면 곳간 왕복(걸음 `moveSpeed`).
-//   ⚠자연 어장 재고(`fishing.js` 셀)는 **벽시계**로 다시 찬다 — 마을 하루가 압축된 판(250ms)에서는 하루치 재생이 안 들어 일괄이 그 재고를 안 깎는다.
-//     어장 한도는 econ 어장 상한(`land.fishSustain` — 마을 몫 D 가 이미 묶은 값)이 맡는다(회부 — 재고 시계를 마을 날에 맞출지).
+//   ⚠자연 어장 재고(`fishing.js` 셀 · 판 하루 시계 `Fishing.setDayMs`)는 **몸만** 깎는다 — 일괄은 마을 총 낚시 몫(`_t312Take` = 그날 수식 몫
+//     `_fishOutLast` 를 물가 셀에 나눈 것)과 그날 수요 문만 탄다. 일괄이 재고까지 깎으려면 한 자리(반경 3 · 29셀 · 약 32마리)에서 옮겨 다니는
+//     몸의 걸음까지 흉내 내야 한다(회부 — 보고/T1202 §6 ②).
 function _t1202FishBatch(vil, day) {
   const E = _lifeEcon(), v = vil && vil.econ;
   if (!T1202_BATCH || !v || !E.T312_FISH_ACT || !E.productionFormulaOff(v, 'fisher')) return 0;
