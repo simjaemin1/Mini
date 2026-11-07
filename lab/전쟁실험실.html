@@ -13919,13 +13919,23 @@ function t1206Bury(v, n, N0) {
 // 그날 기대 자연사(출생 다시 맞춤의 몫) — 명부 사람마다 p 합(징발 중 제외)
 function t1206Expected(v) { let e = 0; for (const p of v.npcs) if (!p._warDraft) e += t1206DayP(p.age); return e; }
 // 그날 자연사 — 정해진 씨(사람 id · 날)로 고른 그 사람들 · 반환 = 죽은 수
+// ★[T1222] 주사위 열쇠 = 사람 번호를 **첫 세계 기준**으로 옮긴 것. 사람 번호(`n<k>` · `nv<마을>.<k>`)의 수는 프로세스 계수기(`_nextNpcId` · `_nextVillageId`)에서 나와
+//   한 프로세스 안 둘째 세계(랩 다시 뿌리기 · 하네스 두 판)는 같은 사람이 다른 번호를 받는다 → 다른 사람이 죽었다(T1216-K3 · test-lab-stone ② ⑭).
+//   `createWorld` 가 그 세계가 시작할 때의 두 계수기와 첫 세계의 차(`_t1206Shift`)를 적고 여기서 뺀다 — 첫 세계(서버 존 · 랩 첫 판)는 차 0 = 종전 열쇠 그대로.
+function _t1206Key(v, id) {
+  const s = String(id), sh = v && v._world && v._world._t1206Shift;
+  if (!sh || (!sh.v && !sh.n)) return s;
+  let m = /^nv(\d+)\.(.+)$/.exec(s); if (m) return 'nv' + (+m[1] - sh.v) + '.' + m[2];
+  m = /^n(\d+)$/.exec(s); if (m) return 'n' + (+m[1] - sh.n);
+  return s;
+}
 function t1206Day(v, day) {
   if (!T1206_NAT_DEATH) return 0;
   const N0 = v.npcs.length; let k = 0;
   for (const p of v.npcs.slice()) {
     if (p._warDraft) continue;
     if (!(v.npcs.length > POP_MIN)) break;
-    if (!(_hashStr(p.id + '|' + day + '|t1206') < t1206DayP(p.age))) continue;
+    if (!(_hashStr(_t1206Key(v, p.id) + '|' + day + '|t1206') < t1206DayP(p.age))) continue;
     const i = v.npcs.indexOf(p); if (i < 0) continue;
     v.npcs.splice(i, 1);
     v.counts[p.currentJob] = (v.counts[p.currentJob] || 0) - 1;
@@ -19390,7 +19400,9 @@ if (require.main === module) main();
 // =============================================================================
 // 8. 모듈 인터페이스 — central 서버에서 import해서 사용
 // =============================================================================
+let _t1206B0 = null;   // ★[T1222] 이 프로세스 첫 세계가 시작할 때의 계수기(위 `_t1206Key`)
 function createWorld(opts = {}) {
+  const _t1206At = { v: _nextVillageId, n: _nextNpcId }; if (!_t1206B0) _t1206B0 = _t1206At;
   const seed = opts.seed || 42;
   const villageCount = opts.villageCount || 20;
   const namePool = opts.namePool || [
@@ -19431,6 +19443,7 @@ function createWorld(opts = {}) {
   };
   // 마을 → 월드 백참조 (rational picker에서 world 접근용)
   for (const v of world.villages) v._world = world;
+  Object.defineProperty(world, '_t1206Shift', { value: { v: _t1206At.v - _t1206B0.v, n: _t1206At.n - _t1206B0.n }, enumerable: false, writable: true });   // ★[T1222] 열거 안 됨(지문 · 저장 줄 무변)
   return world;
 }
 
