@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
-// === scripts/test-t762-sync.js — 손잡이 `T762_CARAVAN_BODY`(기본 끔): ① 그날 econ 이 띄운 캐러밴도 **그날** 몸 동기에 · ② 재라우팅 몸은 옛 길 끝에서 [T762] ==========
+// === scripts/test-t762-sync.js — 손잡이 `T762_CARAVAN_BODY`(T1182 기본 켬): ① 그날 econ 이 띄운 캐러밴도 **그날** 몸 동기에 · ② 재라우팅 몸은 옛 길 끝에서 [T762] ==========
 //
 // ★왜 [T762 실제 날 판] 하루 문은 캐러밴 동기 조각을 문을 여는 순간의 명부(`world.caravans.slice()`)로 세운다 — econ 틱(같은 문의 앞 조각)이
 //   띄운 캐러밴은 그 명부에 없어 **다음 경계**에야 몸이 선다. `T474_CARAVAN_WALK` 켬(다리 거의 다 1일)이면 가는 길이 통째로 장부만 간다.
@@ -27,8 +27,8 @@ const codeOnly = require('./code-only.js');   // 주석 제거기 정본(T171 ·
 
 console.log('\n① 술어 · 읽는 자리');
 {
-  const decl = V.match(/const T762_CARAVAN_BODY = process\.env\.T762_CARAVAN_BODY === '1';/g) || [];
-  ok(decl.length === 1, '① 선언 하나 · `=== \'1\'` 만 켬(기본 끔)', `선언 ${decl.length}`);
+  const decl = V.match(/const T762_CARAVAN_BODY = process\.env\.T762_CARAVAN_BODY !== '0';/g) || [];
+  ok(decl.length === 1, '① 선언 하나 · `0`만 끔(T1182 기본 켬)', `선언 ${decl.length}`);
   const files = [];
   const walk = (d) => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); const st = fs.statSync(p); if (st.isDirectory()) walk(p); else if (/\.js$/.test(f)) files.push(p); } };
   for (const d of ['server', 'sim', 'public']) walk(path.join(ROOT, d));

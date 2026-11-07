@@ -1,0 +1,11 @@
+{
+  "retired": [
+    196288,
+    196289,
+    196336,
+    196343
+  ],
+  "reason": "old war harness on default port39396; failed startup is not a game comparison",
+  "T577_PORT_BASE": "44000",
+  "productChanged": false
+}

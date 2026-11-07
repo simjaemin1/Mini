@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+for (const k of ['T312_FISH_ACT','T325_WOOD_ACT','T347_FORAGE_ACT']) if (process.env[k] == null) process.env[k] = '1';   // ★PM land1048: 생산 셋 끔 기본(켤 날 T1202) — 이 하네스는 몸 길 켬 판을 잰다
 if(!process.env.PHYSICAL_CYCLE_CHILD){
  const path=require('path'),{spawnSync}=require('child_process');
  const env={...process.env,PHYSICAL_CYCLE_CHILD:'1',T745_VCLOCK:'1',T577_SEED:'1020',T696_WAL:'0',NODE_OPTIONS:'--require '+path.join(__dirname,'t745-vclock.js')+' '+(process.env.NODE_OPTIONS||'')};

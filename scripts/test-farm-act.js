@@ -304,8 +304,8 @@ console.log('\n⑪ 접점 심볼');
 console.log('\n⑫ [T449] 결산 문 — 켬이면 관측 마을은 팔 켜진 직업을 **몸이** 한다 · 끔 = 종전(늘 거짓) 비트 동일');
 {
   const daily = bodyOf(VC, '_lifeDaily');
-  ok(/^const T449_BODY_DAY = process\.env\.T449_BODY_DAY === '1';$/m.test(VC) && (VC.match(/process\.env\.T449_BODY_DAY/g) || []).length === 1,
-    '⑫ ★손잡이 `T449_BODY_DAY` 는 **한 자리**에서 읽힌다 · `=== \'1\'` 이라야 켜진다(기본 끔)');
+  ok(/^const T449_BODY_DAY = process\.env\.T449_BODY_DAY !== '0';$/m.test(VC) && (VC.match(/process\.env\.T449_BODY_DAY/g) || []).length === 1,
+    '⑫ ★손잡이 `T449_BODY_DAY` 는 **한 자리**에서 읽힌다 · `!== \'0\'`(켬 기본)');
   //   ★점과 반경은 옛 줄의 두 식 **그대로**다(새 술어 0 · 새 수 0) — 옛 줄은 끈 팔을 위해 남는다
   ok(/return !!\(f && f\(\{ x: vil\.ccx \* SZ \+ SZ \/ 2, y: vil\.ccy \* SZ \+ SZ \/ 2 \}, \(vil\._maxRPx \|\| 800\) \+ 1600\)\);/.test(VC)
      && /if \(T449_BODY_DAY \|\| !\(anyNear && anyNear\(vil\.ccx \* SZ \+ SZ \/ 2, vil\.ccy \* SZ \+ SZ \/ 2, \(vil\._maxRPx \|\| 800\) \+ 1600\)\)\) \{/.test(daily),
@@ -327,7 +327,7 @@ console.log('\n⑫ [T449] 결산 문 — 켬이면 관측 마을은 팔 켜진 �
   }
   //   ② 정본 `_lifeDaily` 를 도는 판 — 나무꾼 둘(손이 빈 채 — 오늘 몸이 든 통나무 0) · 셀 12 × 3그루 · 관측자 = 마을 가운데 300px 사람
   const PX = JSON.stringify(path.join(ROOT, 'server/zone.js'));
-  const day = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '0', T449_BODY_DAY: '', T374_DEMAND_STOP: '0' }, env),   // ★[T544 추신 ⓐ] 수요 문 기본 켬 — 이 판은 수요 문 없는 일괄을 잰다(끔 `'0'` 을 박는다)
+  const day = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '0', T449_BODY_DAY: '0', T374_DEMAND_STOP: '0' }, env),   // ★[T544 추신 ⓐ] 수요 문 기본 켬 — 이 판은 수요 문 없는 일괄을 잰다(끔 `'0'` 을 박는다)
    `const E=require(${EP}); const V=require(${VP}); const fs=require('fs'); const P=V.__labProbe;
     const aSrc=(fs.readFileSync(${PX},'utf8').match(/function anyViewerNear\\(center, r\\) \\{[\\s\\S]*?\\n\\}/)||[''])[0];
     const SZ=32, ccx=400, ccy=400; const players=new Map(), observers=new Map();

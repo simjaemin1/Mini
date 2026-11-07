@@ -26,6 +26,7 @@ if (SEED) {
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const mk = Ev.createLedger;
 let names = null;
+const fdDeadRows = []; // [B전쟁] 실제 식량 빚 사망 정본 읽기(누계·날별).
 const rows = [];   // [day, npcs[], banditized[], deadTot[], tradersKilled[]]
 let done = false;
 let diag365 = null;
@@ -76,7 +77,10 @@ function finish(world, L, day) {
   };
   // 빈 마을 수는 **끝 날 인구 0** 인 마을(한 번 비었다 다시 사람이 찬 곳은 빼고 센다)
   out.empty = names.filter((_, i) => rows[rows.length - 1][1][i] === 0 && V[i]._everPop).length;
-  if (OUT) fs.writeFileSync(OUT, JSON.stringify(out));
+  if (OUT) {
+    fs.writeFileSync(OUT, JSON.stringify(out));
+    fs.writeFileSync(OUT.replace(/\.json$/, '.fd-deaths.json'), JSON.stringify({ seed: SEED || null, days: day, fdDeadTot: V.reduce((a, v) => a + (v._fdDeadTot || 0), 0), rows: fdDeadRows }));
+  }
   process.exit(0);
 }
 
@@ -88,6 +92,7 @@ Ev.createLedger = function () {
     try {
       const V = world.villages;
       if (!names) names = V.map((v) => v.name);
+      fdDeadRows.push([day | 0, V.reduce((a, v) => a + (v._fdDeadTot || 0), 0)]);
       rows.push([day | 0, V.map((v) => (v.npcs || []).length), V.map((v) => (v._banditized ? 1 : 0)),
         V.map((v) => v._deadTot || 0), V.map((v) => (v.tradeStats && v.tradeStats.tradersKilled) || 0)]);
       // ★d365 단면 — 보호기 끝 그날 마을마다 [인구 · 주거 · K · 허기 항 · 비옥 · 물 · 확장 · 확장 게이트에 닿았나(`_expandMBMC`)]

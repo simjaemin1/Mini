@@ -875,7 +875,7 @@ function onDeliver(player, r, vid) {
   if (!s.lot_ok && (s.contrib | 0) >= CFG.LOT_AFTER) {
     s.lot_ok = 1;
     out.push({ type: 'onboarding_quest', vid: vid | 0, kind: 'lot', name: (a && a.name) || '', day, quest: null,
-      lines: ['이만하면 우리 마을 사람일세.', '어귀 빈터를 쓰게 — 거기다 자네 집을 올리게.'], state: publicState(pid) });
+      lines: _LOT_LINES.slice(), state: publicState(pid) });
     out.push(_t1086With({ type: 'onboarding_state', state: publicState(pid) }, player));   // ★[T1086] 켬이면 가입 형편 칸도(끔 = 옛 바이트)
     _stSent = true;
   }
@@ -884,6 +884,24 @@ function onDeliver(player, r, vid) {
   if (T1086 && !_stSent && (done || _fjLot || _fjOffer)) out.push(_t1086With({ type: 'onboarding_state', state: publicState(pid) }, player));
   _save(pid, s);
   if (H.send && player.ws) for (const m of out) { try { H.send(player.ws, m); } catch (e) {} }
+}
+const _LOT_LINES = ['이만하면 우리 마을 사람일세.', '어귀 빈터를 쓰게 — 거기다 자네 집을 올리게.'];   // 빈터 권리 말(납품 · 재료 가져오기 두 문이 같은 말 — 사본 0)
+// ★[T1189 ⑤] 공사에 재료 가져오기 — 지금 단계 자재를 다 채운 한 번(`done`)이 부탁 하나를 다 채운 것과 같은 +1(문 24 ③ "완수 1건 = +1").
+//   계량기는 그대로 하나(`contrib`) · 빈터 문턱(`LOT_AFTER`)도 같은 줄로 본다. 밥 · 훅 대사 · 첫 의뢰 권함은 부탁의 몫이라 여기서 안 건다.
+function onSiteGive(player, done, vid) {
+  if (!ready() || !player || !done) return false;
+  const pid = player.playerId, s = stateOf(pid), out = [];
+  s.contrib = (s.contrib | 0) + 1;
+  const a = arrivalOf(vid);
+  if (!s.lot_ok && (s.contrib | 0) >= CFG.LOT_AFTER) {
+    s.lot_ok = 1;
+    out.push({ type: 'onboarding_quest', vid: vid | 0, kind: 'lot', name: (a && a.name) || '', day: (typeof H.gameDay === 'function') ? (H.gameDay() | 0) : -1, quest: null,
+      lines: _LOT_LINES.slice(), state: publicState(pid) });
+  }
+  out.push(_t1086With({ type: 'onboarding_state', state: publicState(pid) }, player));
+  _save(pid, s);
+  if (H.send && player.ws) for (const m of out) { try { H.send(player.ws, m); } catch (e) {} }
+  return true;
 }
 // 어획 마릿수 — **낚시 정본의 필드 이름 그대로**(`zone.js` `_fishStats`: casts·caught·missed·kg…).
 //   ★1차에 `f.n` 을 봤다. 그런 필드는 없다 — 하루 정산이 늘 0 이었을 것이다(조용히 틀리는 종류).
@@ -994,7 +1012,7 @@ module.exports = {
   CFG, init, ready, invalidate,
   arrivals, arrivalOf, arriveFor, startGauges,
   startInfo, httpStartInfo, characterOf, worldSectors, SECTORS, CHARS, popBand, busyBand,
-  pickFirstQuest, greetLines, sendGreet, onDeliver, handleMsg, daySummary, __isPlayerVillage: _isPlayerVillage,
+  pickFirstQuest, greetLines, sendGreet, onDeliver, onSiteGive, handleMsg, daySummary, __isPlayerVillage: _isPlayerVillage,
   noteVillage,   // ★[T19] 마을이 하나 늘었을 때 그 곳만 굽는다
   dirWord: _DIRWORD,   // ★[T56] 방위말 정본 — 쓰러짐의 외침이 촌장과 **같은 어휘**를 쓴다
   T1086, T1086_JOIN_LINE, T1086_LOT_LINE, pushState,   // ★[T1086] 첫 의뢰 = 빈터 + 마을 사람 권함 — 손잡이 · 촌장 말 두 줄(정본 · `membership.firstJoinChat` 이 부른다) · 칸 갱신

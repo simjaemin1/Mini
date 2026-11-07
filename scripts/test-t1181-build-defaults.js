@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @regress
 'use strict';
+if (process.env.T627_TRIP_DAY == null) process.env.T627_TRIP_DAY = '0';   // ★PM land1048: T1183 이 T627 켬 기본 — 이 하네스의 다리 낱날 픽스처는 옛 압축 하루 시계(T1183 이 다른 하네스에 쓴 꼴 그대로)
 process.env.T1192_FISH_SPECIES='0';
 const assert=require('assert'),{spawnSync}=require('child_process'),fs=require('fs'),path=require('path');
 const root=path.resolve(__dirname,'..'),flags=['T435_GRANARY_ACT','T527_BRIDGE_ACT','T517_HUT_STONE','T419_STONE_REAL'];let pass=0,fail=0;

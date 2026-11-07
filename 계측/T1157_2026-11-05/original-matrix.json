@@ -1,0 +1,487 @@
+{
+  "originalVariantsComplete": 18,
+  "productHead": "21ddeb06",
+  "node": "v22.23.0",
+  "runs": [
+    {
+      "mode": "off",
+      "seed": 1020,
+      "days": 800,
+      "population": 6436,
+      "empty": 0,
+      "econDeaths": 1420,
+      "outboundKgMean": null,
+      "outboundArrivals": 0,
+      "eventDensity": 1.48,
+      "valueEventDensity": 1.54,
+      "sourceSHA256": "fea3a42f4c22ec864429eaeef05b478b14a160820edfbed5ebcaa3664cd12a2a",
+      "run": {
+        "name": "off",
+        "seed": 1020,
+        "rc": 0,
+        "seconds": 225.7476232110057,
+        "env": {},
+        "output": "/tmp/t1157-results/off-1020.json"
+      },
+      "priorCanonicalKg": 143.543
+    },
+    {
+      "mode": "off",
+      "seed": 7,
+      "days": 800,
+      "population": 6008,
+      "empty": 0,
+      "econDeaths": 1466,
+      "outboundKgMean": null,
+      "outboundArrivals": 0,
+      "eventDensity": 1.59,
+      "valueEventDensity": 1.67,
+      "sourceSHA256": "40f8d02cea912c2856ad87b1a5033503e9bdbc45543f467211aa7d40aeb86448",
+      "run": {
+        "name": "off",
+        "seed": 7,
+        "rc": 0,
+        "seconds": 215.5922832179931,
+        "env": {},
+        "output": "/tmp/t1157-results/off-7.json"
+      },
+      "priorCanonicalKg": 147.496
+    },
+    {
+      "mode": "off",
+      "seed": 42,
+      "days": 800,
+      "population": 6299,
+      "empty": 0,
+      "econDeaths": 1609,
+      "outboundKgMean": null,
+      "outboundArrivals": 0,
+      "eventDensity": 1.46,
+      "valueEventDensity": 1.52,
+      "sourceSHA256": "13ba389e05410ee91651c4186a73ba78455af7cfd2bf1c0b673b95d7e8eade62",
+      "run": {
+        "name": "off",
+        "seed": 42,
+        "rc": 0,
+        "seconds": 209.6467940809962,
+        "env": {},
+        "output": "/tmp/t1157-results/off-42.json"
+      },
+      "priorCanonicalKg": 146.17
+    },
+    {
+      "mode": "basket",
+      "seed": 1020,
+      "days": 800,
+      "population": 5450,
+      "empty": 5,
+      "econDeaths": 3056,
+      "outboundKgMean": 13.532031830419497,
+      "outboundArrivals": 29343,
+      "eventDensity": 2.93,
+      "valueEventDensity": 3.23,
+      "sourceSHA256": "52b4710f7b317f9915331a89ddb307996aeca5ebc9bca56b324309c063de56f8",
+      "run": {
+        "name": "basket",
+        "seed": 1020,
+        "rc": 0,
+        "seconds": 313.4815820950025,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1"
+        },
+        "output": "/tmp/t1157-results/basket-1020.json"
+      }
+    },
+    {
+      "mode": "basket",
+      "seed": 7,
+      "days": 800,
+      "population": 5324,
+      "empty": 5,
+      "econDeaths": 2926,
+      "outboundKgMean": 14.265009642385946,
+      "outboundArrivals": 29557,
+      "eventDensity": 2.81,
+      "valueEventDensity": 3.08,
+      "sourceSHA256": "e801a026ce25ecef8401fefde49f44b4548279c64d1b5c599f4de37d442ccd8a",
+      "run": {
+        "name": "basket",
+        "seed": 7,
+        "rc": 0,
+        "seconds": 392.06998948499677,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1"
+        },
+        "output": "/tmp/t1157-results/basket-7.json"
+      }
+    },
+    {
+      "mode": "basket",
+      "seed": 42,
+      "days": 800,
+      "population": 5163,
+      "empty": 5,
+      "econDeaths": 3466,
+      "outboundKgMean": 15.755534464511426,
+      "outboundArrivals": 29291,
+      "eventDensity": 3.08,
+      "valueEventDensity": 3.43,
+      "sourceSHA256": "61f59252fa60f41210ca5196f6580e2986a5610dee75ff5166140fc9b1e4b390",
+      "run": {
+        "name": "basket",
+        "seed": 42,
+        "rc": 0,
+        "seconds": 460.08046471199486,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1"
+        },
+        "output": "/tmp/t1157-results/basket-42.json"
+      }
+    },
+    {
+      "mode": "settle",
+      "seed": 1020,
+      "days": 800,
+      "population": 5298,
+      "empty": 5,
+      "econDeaths": 2392,
+      "outboundKgMean": 17.15412618340115,
+      "outboundArrivals": 28942,
+      "eventDensity": 2.18,
+      "valueEventDensity": 2.34,
+      "sourceSHA256": "6694f948081f0b56a2d1317f329e1fd744e0c62407f1a0e0aa479d3ef695e8f9",
+      "run": {
+        "name": "settle",
+        "seed": 1020,
+        "rc": 0,
+        "seconds": 798.2655708160019,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_SETTLE_VAULT": "1"
+        },
+        "output": "/tmp/t1157-results/settle-1020.json"
+      }
+    },
+    {
+      "mode": "settle",
+      "seed": 7,
+      "days": 800,
+      "population": 5316,
+      "empty": 5,
+      "econDeaths": 2699,
+      "outboundKgMean": 20.97897753523743,
+      "outboundArrivals": 29869,
+      "eventDensity": 2.49,
+      "valueEventDensity": 2.7,
+      "sourceSHA256": "da486de0f2d435bd005fa597cc8248aa3e088870f9deff28d325362975284d2f",
+      "run": {
+        "name": "settle",
+        "seed": 7,
+        "rc": 0,
+        "seconds": 940.2990653440065,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_SETTLE_VAULT": "1"
+        },
+        "output": "/tmp/t1157-results/settle-7.json"
+      }
+    },
+    {
+      "mode": "settle",
+      "seed": 42,
+      "days": 800,
+      "population": 5244,
+      "empty": 5,
+      "econDeaths": 3085,
+      "outboundKgMean": 21.673998748653034,
+      "outboundArrivals": 28769,
+      "eventDensity": 2.2,
+      "valueEventDensity": 2.37,
+      "sourceSHA256": "8b6b7f99f180b1114d9a13c743114d6a4293117cff389112669db89c30633a11",
+      "run": {
+        "name": "settle",
+        "seed": 42,
+        "rc": 0,
+        "seconds": 1393.3982385769923,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_SETTLE_VAULT": "1"
+        },
+        "output": "/tmp/t1157-results/settle-42.json"
+      }
+    },
+    {
+      "mode": "eat",
+      "seed": 1020,
+      "days": 800,
+      "population": 5477,
+      "empty": 5,
+      "econDeaths": 2756,
+      "outboundKgMean": 15.35779244377408,
+      "outboundArrivals": 29168,
+      "eventDensity": 2.87,
+      "valueEventDensity": 3.17,
+      "sourceSHA256": "4d66daac3ec5e0bc7fe4e928a4d5ba0a2c034af8eb85f0bcd9d149b72c27dbba",
+      "run": {
+        "name": "eat",
+        "seed": 1020,
+        "rc": 0,
+        "seconds": 851.8987825499935,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_EAT_VAULT": "1"
+        },
+        "output": "/tmp/t1157-results/eat-1020.json"
+      }
+    },
+    {
+      "mode": "eat",
+      "seed": 7,
+      "days": 800,
+      "population": 5175,
+      "empty": 5,
+      "econDeaths": 2377,
+      "outboundKgMean": 13.658509534353493,
+      "outboundArrivals": 30259,
+      "eventDensity": 2.71,
+      "valueEventDensity": 2.96,
+      "sourceSHA256": "de72b83ac447152226a2aa65ea7ff2380b256e6a6beaa4c01c7066d431c95316",
+      "run": {
+        "name": "eat",
+        "seed": 7,
+        "rc": 0,
+        "seconds": 771.2970688250061,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_EAT_VAULT": "1"
+        },
+        "output": "/tmp/t1157-results/eat-7.json"
+      }
+    },
+    {
+      "mode": "eat",
+      "seed": 42,
+      "days": 800,
+      "population": 5284,
+      "empty": 6,
+      "econDeaths": 2118,
+      "outboundKgMean": 18.091152438036573,
+      "outboundArrivals": 30865,
+      "eventDensity": 2.87,
+      "valueEventDensity": 3.18,
+      "sourceSHA256": "d6ea7ccb3fead3ac9b2a6cc2f0386973a75f4afe3bb0b0e96885acbd46b8004a",
+      "run": {
+        "name": "eat",
+        "seed": 42,
+        "rc": 0,
+        "seconds": 810.8833247919974,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_EAT_VAULT": "1"
+        },
+        "output": "/tmp/t1157-results/eat-42.json"
+      }
+    },
+    {
+      "mode": "release",
+      "seed": 1020,
+      "days": 800,
+      "population": 4672,
+      "empty": 6,
+      "econDeaths": 1897,
+      "outboundKgMean": 10.738459030099639,
+      "outboundArrivals": 35880,
+      "eventDensity": 2.26,
+      "valueEventDensity": 2.5,
+      "sourceSHA256": "e2a8c28869e546b52dfc5e6ef903d87ab0716660503e785892b56aa46f48aba2",
+      "run": {
+        "name": "release",
+        "seed": 1020,
+        "rc": 0,
+        "seconds": 633.8650211599888,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_RELEASE_RESERVE": "1"
+        },
+        "output": "/tmp/t1157-results/release-1020.json"
+      }
+    },
+    {
+      "mode": "release",
+      "seed": 7,
+      "days": 800,
+      "population": 4495,
+      "empty": 5,
+      "econDeaths": 1466,
+      "outboundKgMean": 9.678724407760006,
+      "outboundArrivals": 37316,
+      "eventDensity": 2.33,
+      "valueEventDensity": 2.57,
+      "sourceSHA256": "6fb94ef8493051b452bffe6b3c87e59f1880a93643ab4617a9891f67b8f3a83b",
+      "run": {
+        "name": "release",
+        "seed": 7,
+        "rc": 0,
+        "seconds": 729.5461234169925,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_RELEASE_RESERVE": "1"
+        },
+        "output": "/tmp/t1157-results/release-7.json"
+      }
+    },
+    {
+      "mode": "release",
+      "seed": 42,
+      "days": 800,
+      "population": 4730,
+      "empty": 3,
+      "econDeaths": 1466,
+      "outboundKgMean": 10.8093845705493,
+      "outboundArrivals": 37746,
+      "eventDensity": 2.8,
+      "valueEventDensity": 3.16,
+      "sourceSHA256": "0e679ee35efb33886da440ecddbad7655d8c002a068c33922b49b18a17d96c77",
+      "run": {
+        "name": "release",
+        "seed": 42,
+        "rc": 0,
+        "seconds": 890.5053737339913,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_RELEASE_RESERVE": "1"
+        },
+        "output": "/tmp/t1157-results/release-42.json"
+      }
+    },
+    {
+      "mode": "all",
+      "seed": 1020,
+      "days": 800,
+      "population": 3948,
+      "empty": 5,
+      "econDeaths": 2487,
+      "outboundKgMean": 9.047802052397646,
+      "outboundArrivals": 34009,
+      "eventDensity": 1.62,
+      "valueEventDensity": 1.74,
+      "sourceSHA256": "8736d79a7da53828673d1f84a2636beac8757ee7db791a2b057b998fed074825",
+      "run": {
+        "name": "all",
+        "seed": 1020,
+        "rc": 0,
+        "seconds": 1864.5807534360065,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_SETTLE_VAULT": "1",
+          "T1157_EAT_VAULT": "1",
+          "T1157_RELEASE_RESERVE": "1"
+        },
+        "output": "/tmp/t1157-results/all-1020.json"
+      }
+    },
+    {
+      "mode": "all",
+      "seed": 7,
+      "days": 800,
+      "population": 4229,
+      "empty": 5,
+      "econDeaths": 1464,
+      "outboundKgMean": 10.105490681134235,
+      "outboundArrivals": 35573,
+      "eventDensity": 1.86,
+      "valueEventDensity": 2.01,
+      "sourceSHA256": "e5825eca45fb8545d9a1d80298b91e309184f514934e28e9e1ebb17f88f1fe4c",
+      "run": {
+        "name": "all",
+        "seed": 7,
+        "rc": 0,
+        "seconds": 2753.2687154229934,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_SETTLE_VAULT": "1",
+          "T1157_EAT_VAULT": "1",
+          "T1157_RELEASE_RESERVE": "1"
+        },
+        "output": "/tmp/t1157-results/all-7.json"
+      }
+    },
+    {
+      "mode": "all",
+      "seed": 42,
+      "days": 800,
+      "population": 4694,
+      "empty": 5,
+      "econDeaths": 2097,
+      "outboundKgMean": 11.378195366273262,
+      "outboundArrivals": 32544,
+      "eventDensity": 1.59,
+      "valueEventDensity": 1.71,
+      "sourceSHA256": "c27dec338f13076a264b31ef3c04c1bb43c430200d2da12cc56419b4f8dd0d73",
+      "run": {
+        "name": "all",
+        "seed": 42,
+        "rc": 0,
+        "seconds": 3323.6451690620015,
+        "env": {
+          "T1136_BASKET": "1",
+          "T1152_MARKET": "1",
+          "T1157_SETTLE_VAULT": "1",
+          "T1157_EAT_VAULT": "1",
+          "T1157_RELEASE_RESERVE": "1"
+        },
+        "output": "/tmp/t1157-results/all-42.json"
+      }
+    }
+  ],
+  "totals": {
+    "off": {
+      "population": 18743,
+      "empty": 0,
+      "econDeaths": 4495
+    },
+    "basket": {
+      "population": 15937,
+      "empty": 15,
+      "econDeaths": 9448
+    },
+    "settle": {
+      "population": 15858,
+      "empty": 15,
+      "econDeaths": 8176
+    },
+    "eat": {
+      "population": 15936,
+      "empty": 16,
+      "econDeaths": 7251
+    },
+    "release": {
+      "population": 13897,
+      "empty": 14,
+      "econDeaths": 4829
+    },
+    "all": {
+      "population": 12871,
+      "empty": 15,
+      "econDeaths": 6048
+    }
+  },
+  "metricContract": "econDeaths is _deadTot (population-pressure + food-debt deaths), NOT food-debt-only _fdDeadTot. Old starvingDays read nonexistent _fdDay and are invalid; true hunger and food-debt deaths are being measured separately, preserving exact original world outputs.",
+  "serverOffControl": "400 days x3 still running",
+  "correctedHungerControl": "18 runs in progress; no invalid zero substituted",
+  "kgSamplingNote": "Basket mean is departed cargo over accepted market arrivals. OFF priorCanonicalKg is historical all-launch average, not the same sample. OFF aligned arrival metric is being measured separately; no direct same-sample comparison until complete."
+}

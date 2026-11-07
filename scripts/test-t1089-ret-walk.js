@@ -131,7 +131,7 @@ const CW = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'war-live.js'), 'utf
 const CB = codeOf(fs.readFileSync(path.join(ROOT, 'sim', 'battle-core.js'), 'utf8'));
 const CC = codeOf(fs.readFileSync(path.join(ROOT, 'sim', 'war-core.js'), 'utf8'));
 const fnBody = (C, name) => { const i = C.indexOf('function ' + name + '('); if (i < 0) return ''; let d = 0, j = C.indexOf('{', i); for (let k = j; k < C.length; k++) { if (C[k] === '{') d++; else if (C[k] === '}') { d--; if (!d) return C.slice(i, k + 1); } } return ''; };
-const sub = (env, P) => { const E = Object.assign({}, process.env, { T1089_SUB: 'war' }); for (const k of KNOBS) delete E[k]; delete E.T1089_P; Object.assign(E, env || {}); if (P) E.T1089_P = JSON.stringify(P);
+const sub = (env, P) => { const E = Object.assign({}, process.env, { T1089_SUB: 'war' }); for (const k of KNOBS) delete E[k]; E.T790_NO_SNAP = '0'; E.T941_BATTLE_DAY = '0'; E.T627_TRIP_DAY = '0'; delete E.T1089_P; Object.assign(E, env || {}); if (P) E.T1089_P = JSON.stringify(P);
   const o = execFileSync(process.execPath, [__filename], { cwd: ROOT, env: E, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 26 }).toString(); return JSON.parse(o.slice(o.indexOf('{"end"'))); };
 const strip = (o) => JSON.stringify(Object.assign({}, o, { knob: null, knobOn: null }));
 const sum = (o) => JSON.stringify({ end: o.end, endDay: o.endDay, ret: o.ret, rel: o.rel, relT: o.relT, bad: o.bad, u: o.units.map((x) => [x.x0.join(','), x.mx, x.walked].join(':')), stat: o.stat });

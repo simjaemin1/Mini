@@ -136,7 +136,7 @@ const CV = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf
 const CW = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'war-live.js'), 'utf8'));
 const CB = codeOf(fs.readFileSync(path.join(ROOT, 'sim', 'battle-core.js'), 'utf8'));
 const fnBody = (C, name) => { const i = C.indexOf('function ' + name + '('); if (i < 0) return ''; let d = 0, j = C.indexOf('{', i); for (let k = j; k < C.length; k++) { if (C[k] === '{') d++; else if (C[k] === '}') { d--; if (!d) return C.slice(i, k + 1); } } return ''; };
-const sub = (env, P) => { const E = Object.assign({}, process.env, { T1044_SUB: 'war' }); for (const k of KNOBS) delete E[k]; delete E.T1044_P; Object.assign(E, env || {}); if (P) E.T1044_P = JSON.stringify(P);
+const sub = (env, P) => { const E = Object.assign({}, process.env, { T1044_SUB: 'war' }); for (const k of KNOBS) delete E[k]; E.T790_NO_SNAP = '0'; E.T941_BATTLE_DAY = '0'; E.T627_TRIP_DAY = '0'; delete E.T1044_P; Object.assign(E, env || {}); if (P) E.T1044_P = JSON.stringify(P);
   const o = execFileSync(process.execPath, [__filename], { cwd: ROOT, env: E, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 26 }).toString(); return JSON.parse(o.slice(o.indexOf('{'))); };
 const strip = (o) => JSON.stringify(Object.assign({}, o, { knob: null, knobOn: null }));
 const sum = (o) => JSON.stringify({ sc: o.sc, c: o.contactT, end: o.end, endT: o.endT, bad: o.bad, u: o.units.map((x) => [x.cmd ? 'C' : '', x.d0, x.mn, x.mx, x.mv10, x.arr, x.post, x.flag, x.dead, x.eng].join(':')) });
@@ -149,21 +149,21 @@ const arv = fnBody(CV, '_t1044Arrive'), way = fnBody(CV, '_t1044Way'), plc = fnB
 ok(/const T1044_SCRAM_WALK = process\.env\.T1044_SCRAM_WALK !== '0';/.test(CV) && (CV.match(/process\.env\.T1044_SCRAM_WALK/g) || []).length === 1 && !/T1044/.test(CW + CB),
   "ⓐ 손잡이 문 하나 — villages `!== '0'`(켬 기본 · 되돌림 `=0`) · war-live · battle-core 무변");
 ok(/\n  _t790Mark\(g\);\s*\n/.test(ed) && /if \(sw\) _t790Mark\(g, true\);/.test(ed) && ed.indexOf('_t790Mark(g);') < ed.indexOf('if (sw) _t790Mark(g, true);')
-  && /if \(\(T790_NO_SNAP \|\| on\) && g && sp > 0 && state\.warLive\) g\._t790Walk = sp \/ SZ \* state\.warLive\.STEP_DT;/.test(mark),
+  && /if \(\(T790_NO_SNAP \|\| on\) && g\) \{[\s\S]*if \(sp > 0 && state\.warLive\) g\._t790Walk = sp \/ SZ \* state\.warLive\.STEP_DT;/.test(mark),
   'ⓐ ① 몸 걸음 — T790 줄 글자 그대로 + 긴급 소집 한 줄(같은 문 `_t790Mark` · 같은 값 = 존 `moveSpeed` ÷ 셀 × 스텝)');
-ok(/if \(T790_NO_SNAP\) \{ det\.walk = \(u, tx, ty, st\) => _t804Way\(u, u\.x, u\.y, tx, ty, st, body\); det\.body = body; \}/.test(det)
+ok(/if \(T790_NO_SNAP\) \{\s+det\.walk = \(u, tx, ty, st\) => _t804Way\(u, u\.x, u\.y, tx, ty, st, body\); det\.body = body;/.test(det)
   && /if \(walk && !det\.walk\) \{ det\.walk = \(u, tx, ty, st\) => _t804Way\(u, u\.x, u\.y, tx, ty, st, body\); det\.body = body; \}/.test(det) && /g\.detour = _warDetourFor\(body, sw\);/.test(ed),
   'ⓐ ① 걷는 몸의 길 — T790 줄 글자 그대로 + 긴급 소집 대형만 같은 길 문(`_t804Way`)');
 ok(/const sw = T1044_SCRAM_WALK && scram;/.test(ed) && /if \(sw\) for \(const u of g\.units\) u\._t1044 = 1;/.test(ed)
   && /if \(f\.state !== 'form' \|\| scram\) state\.warLive\.setSideCtl\(f, 'B', \(f\.state === 'form' \|\| sw\) \? true : false\);/.test(ed),
   'ⓐ ② 대형이 쥔다 — 긴급 소집이면 전진 중에도 `setSideCtl(B, true)`(끔 = 종전 글자 · 응전 포진 · 출격 무변)');
-ok(/if \(fight\.holder === u\.side\) return \(T1044_SCRAM_WALK && u\.gu && u\.gu\._t1044\) \? _t1044Way\(fight, u, dirTo\) : null;/.test(ww),
+ok(/if \(fight\.holder === u\.side && !shooter\) return \(T1044_SCRAM_WALK && u\.gu && u\.gu\._t1044\) \? _t1044Way\(fight, u, dirTo\) : null;/.test(ww),
   'ⓐ ③ 지키는 쪽 전진 — 칸이 선 몸만 제 자리로(그 밖 = 종전 null · 적은 쫓지 않는다)');
 ok(/const t = _t790Place\(g, u\); if \(Math\.hypot\(t\[0\] - u\.x, t\[1\] - u\.y\) <= FS\) u\._t1044 = 0;/.test(arv) && /const FS = state\.warLive\.MU\.FOLLOW_SNAP;/.test(arv)
   && /if \(!r \|\| r\.d <= 1\) \{ gu\._t1044 = 0; return null; \}/.test(way) && /_t804Way\(gu, u\.x \/ MPC, u\.y \/ MPC, t\[0\], t\[1\], g\._t790Walk \|\| 0, body\)/.test(way)
   && /if \(T1044_SCRAM_WALK\) _t1044Arrive\(dg\);/.test(hcs) && /if \(T1044_SCRAM_WALK\) _t1044Arrive\(dg\);/.test(sfm),
   'ⓐ 칸 내리기 — 대형 걸음 = T790 늦음 셈 술어(`_t790Place` · `FOLLOW_SNAP`) · 풀린 걸음 = advance 의 "다 왔다"(1m) · 걷는 길 = 같은 `_t804Way`(그 몸의 기억)');
-ok(/const t = _t790Place\(g, u\);/.test(fnBody(CV, '_t790Lag')) && /if \(u\.cmd\) return \[g\.cmd\.cx, g\.cmd\.cy\];/.test(plc) && /return \[s\[0\] \+ \(u\.jx \|\| 0\), s\[1\] \+ \(u\.jy \|\| 0\)\];/.test(plc),
+ok(/const t = _t790Place\(g, u\);/.test(fnBody(CV, '_t790Lag')) && /u\.cmd \? \[g\.cmd\.cx, g\.cmd\.cy\] : state\.warLive\._muSlotXY\(g, u\)/.test(plc) && /u\.jy \|\| 0 : u\.jx \|\| 0/.test(plc),
   'ⓐ 제 자리 한 곳 — T790 늦음 셈과 긴급 소집 걸음이 같은 점(`_t790Place` · 지휘 = 원점 · 병사 = 슬롯 + 흔들림)');
 {
   const add = [arv, way, plc, (ed.match(/const sw = [^\n]*/) || [''])[0], (ed.match(/if \(sw\)[^\n]*/g) || []).join(' '), (det.match(/if \(walk[^\n]*/) || [''])[0],

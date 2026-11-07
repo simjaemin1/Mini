@@ -670,6 +670,7 @@ if (process.env.T17_JSON) {
   const out = {
     seed: SEED, days: DAYS, villages: seeds.length, live,
     axes: { tool: process.env.T17_TOOL !== '0', preserve: process.env.T17_PRESERVE !== '0', salt: process.env.T17_SALT !== '0' },
+    fdDeadTot: world.villages.reduce((a, v) => a + (v._fdDeadTot || 0), 0), // [B전쟁] 사망 누계와 실제 기아 사망을 구분
     base: { pop, dead, ever, weapQ: +weapQ.toFixed(0), expand, trades: world.tradeLog.length },
     //   ★[T256 관측 항 · T277 에서 정식화] 마을별 끝 인구 — 짝 Δ 의 부분집합(작은/큰 17곳 · `<20명` 꼬리)과
     //     홀드아웃을 **같은 판에서** 읽으려고 더한다. 계측기를 두 벌 돌리면 기계 시간이 두 배다(30판 → 60판).
