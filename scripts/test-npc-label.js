@@ -18,7 +18,7 @@ const B = read('public/client/80-bigmap.js');
 const spawn = Z.slice(Z.indexOf('function spawnNpc('), Z.indexOf('\nfunction ', Z.indexOf('function spawnNpc(') + 10));
 const npcFieldAt = Z.indexOf('if (o.isNpc) e.npc = true;');
 const packet = Z.slice(npcFieldAt - 600, npcFieldAt + 100);
-ok(spawn.length > 0 && /const name = opts\.name \|\| NPC_NAMES\[/.test(spawn) && !/\+\s*['"]🤖/.test(spawn),
+ok(spawn.length > 0 && /const name = opts\.name \|\| NPC_NAMES\[/.test(spawn) && !/\+\s*['"]\u{1F916}/u.test(spawn),
   '① NPC 이름 생성에 표지 문자가 붙지 않는다');
 ok(/if \(o\.isNpc\) e\.npc = true;/.test(packet), '② 첫 가시분에 boolean `npc: true` 표식이 간다');
 ok(/npc: pp\.npc !== undefined \? pp\.npc : prev\?\.npc/.test(N), '③ 클라이언트 네트워크 계층이 NPC 표식을 유지한다');
