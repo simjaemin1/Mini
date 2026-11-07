@@ -9,7 +9,7 @@ if (require('worker_threads').isMainThread && process.env.T577_SEED) {
     'fishIn', 'woodIn', 'forageIn', 'oreIn', 'fishD', 'woodD', 'forageD', 'oreD', 'foodEaten', 'fuelCov', 'foodStock', 'woodStock',
     'fishBody', 'woodBody', 'forageBody', 'fishBatch', 'woodBatch', 'forageBatch',
     'hunter', 'bHunter', 'meatIn', 'meatD',   // ★[T1202 → T1195] 사냥꾼(econ · 몸) · 그날 든 고기(econ 단위) · 사냥 그날 몫(T1195 켬일 때만 · 끔 0)
-    'rest', 'happy', 'leis', 'fishPx', 'fishStock', 'stock01', 'foodPx'];   // ★[T1217] 어부가 쉰 사람-날(`_t1217Rest`) · 행복 h · 여가 몫 · 생선 값 · 곳간 생선 · 그 마을 반경 안 판 버킷의 재고 비율 · 식량 값(그 마을 그 시간 표)
+    'rest', 'happy', 'leis', 'fishPx', 'fishStock', 'stock01', 'foodPx', 'fishBad'];   // ★[T1217] + 곳간 생선 가운데 상한 몫(신선도 0 · T732 로트 장부 · 장부가 없으면 -1)   // ★[T1217] 어부가 쉰 사람-날(`_t1217Rest`) · 행복 h · 여가 몫 · 생선 값 · 곳간 생선 · 그 마을 반경 안 판 버킷의 재고 비율 · 식량 값(그 마을 그 시간 표)
   const st = { seed: +process.env.T577_SEED, knobs: Object.fromEntries(KN.map((k) => [k, process.env[k] === undefined ? 'unset' : process.env[k]])), dayMs: process.env.VILLAGE_DAY_MS, cols, rows: {}, errors: [] };
   const S = () => { const m = require.cache[path.join(root, 'server/villages.js')]; return m && m.exports.__p3Bind ? m.exports.__p3Bind({}).state : null; };
   const E = () => require.cache[path.join(root, 'sim/economy-sim.js')]?.exports || null;
@@ -51,7 +51,8 @@ if (require('worker_threads').isMainThread && process.env.T577_SEED) {
               r4(cur.fish - (p0.fish || 0)), r4(cur.wood - (p0.wood || 0)), r4(cur.forage - (p0.forage || 0)), r4(cur.fb - (p0.fb || 0)), r4(cur.wb - (p0.wb || 0)), r4(cur.gb - (p0.gb || 0)),
               c.hunter || 0, bj.hunter, r4(dp.meat), r4(v._huntOutLast),
               r4(v._t1217Rest), r4(ls.happiness), r4(ls.leisure), r4(v._t1217Px && v._t1217Px.prices ? v._t1217Px.prices.fish : (v._priceCache ? v._priceCache.fish : 0)), r4((v.storage && v.storage.fish) || 0), r4(s01),
-              r4(v._t1217Px && v._t1217Px.prices ? v._t1217Px.prices.food : (v._priceCache ? v._priceCache.food : 0))];
+              r4(v._t1217Px && v._t1217Px.prices ? v._t1217Px.prices.food : (v._priceCache ? v._priceCache.food : 0)),
+              (() => { try { const G = require.cache[path.join(root, 'server/granary-lots.js')]?.exports, f = G && G.freshOf ? G.freshOf(v, 'fish') : null; return f ? r4(f.spoiledU) : -1; } catch (e) { return -1; } })()];
             (st.rows[v.name] || (st.rows[v.name] = [])).push(row);
           }
         }
