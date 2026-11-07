@@ -418,6 +418,25 @@ function cellKgOf(id) {   // 칸 하나 한 번 수확의 kg(물 · 발아율 �
   return T1215_KG_HA[ref] / 10000 * FIELD_CELL_M2 * gk(c) / g0;
 }
 function kgHaSrcOf(id) { return T1215_KG_HA[id] != null ? T1215_KG_HA[id] : null; }   // 출처가 있는 작물만(그 밖 null = 미확인)
+// ★★[T1221 ② 2026-11-08 · ★재민 11-07 문 37(족보 785)] **수확 = 땅 비옥에 따라 고증 범위 안** — 손잡이 `T1221_FARM_LABOR`(끔 기본 · `=1` 켬 · 칸 넓이 `T1215_FIELD_M2` 와 같이).
+//   고증 범위 kg/ha(아래 끝 = 척박 · 위 끝 = 비옥한 충적지 · 출처 한 줄씩 · 보고/T1221 §1):
+//     조 · 기장 500 ~ 800 — Cambridge *EHS* 2024(Qin & Fuller 2019): 추정 "500 ~ 650" · "수확이 높으면 ~800".
+//     벼 320 ~ 1,130 — 菊池有希子 재배 실험: 종래 추정 현미 10a 당 32 ~ 64 kg 의 아래 끝 · 포기 18/㎡ 실험 102 ~ 113 kg 의 위 끝.
+//     콩 760 ~ 760 — 범위 미확인(현대 1967 ~ 71 평균 하나 · JIRCAS).
+//   마을 자리 = 그 마을 비옥도(`land.fertility`)의 세계 안 순위(0 = 가장 척박 · 1 = 가장 비옥 — 부르는 쪽이 낸다 · 새 수 0).
+//   미확인 작물은 T1215 와 같은 다리(같은 분류 확인 작물 × 작물 표 kg 비)로 양 끝을 잇는다.
+const T1221_FARM_LABOR = (typeof process !== 'undefined' && process.env) ? process.env.T1221_FARM_LABOR === '1' : false;
+const T1221_KG_HA = { foxtail_millet: [500, 800], millet: [500, 800], rice: [320, 1130], soybean: [760, 760] };
+function cellKgAt(id, fert01) {   // 칸 하나 한 번 수확의 kg — 비옥 자리(0 ~ 1)를 고증 범위에 놓는다(물 · 발아율 앞)
+  const c = get(id); if (!c) return 0;
+  const f = Math.max(0, Math.min(1, Number(fert01) || 0));
+  const at = (r) => (r[0] + (r[1] - r[0]) * f) / 10000 * FIELD_CELL_M2;
+  if (T1221_KG_HA[id]) return at(T1221_KG_HA[id]);
+  const ref = _T1215_REF[c.group] || 'foxtail_millet', rc = get(ref);
+  const gk = (x) => (Number(x.yield) || 0) * (kgOf(x.id) || 0);
+  const g0 = gk(rc); if (!(g0 > 0)) return 0;
+  return at(T1221_KG_HA[ref]) * gk(c) / g0;
+}
 // 수확 단위 = 수확량 × 물충족 × **발아율**(씨앗 신선도). 전부 결정론 — 주사위 없음.
 //   ★[T1215] 켬 = 칸당 kg ÷ 낱개 무게 × 물 × 발아율(위 캐논) · 끔 = 종전 글자.
 function harvestUnits(id, opts) {
@@ -425,7 +444,7 @@ function harvestUnits(id, opts) {
   const o = opts || {};
   const w = waterMult(id, o.supply);
   const germ = Math.max(0, Math.min(1, o.seedFresh == null ? 1 : Number(o.seedFresh)));
-  if (T1215_FIELD_M2) { const per = kgOf(id) || 0; return per > 0 ? Math.max(0, Math.floor(cellKgOf(id) / per * w * germ + 1e-9)) : 0; }
+  if (T1215_FIELD_M2) { const per = kgOf(id) || 0; const kg = (T1221_FARM_LABOR && o.fert != null) ? cellKgAt(id, o.fert) : cellKgOf(id); return per > 0 ? Math.max(0, Math.floor(kg / per * w * germ + 1e-9)) : 0; }   // ★[T1221 ②] 켬 ∧ 비옥 자리를 준 부름(마을 밭)만 범위
   return Math.max(0, Math.floor(c.yield * w * germ + 1e-9));
 }
 
@@ -591,7 +610,7 @@ module.exports = {
   lifecycleOf, isPerennial, isWinterCrop, LC_WINTER, LC_PERENNIAL,
   dormantAt, vernalDay, VERNAL, CARE_PAUSE, PER_DORMANT, T1041_CROP_MEMO, t1041Stat: () => Object.assign({ on: T1041_CROP_MEMO }, _t1041Stat), _grownDays0,   // ★[T1041] 활동일 · 계절 기억 손잡이(하네스가 읽는다) · ★[T99] 휴면 술어 하나 · 춘화일 — 마을·플레이어가 같이 부른다
   rainedOn, RAIN_WATER,   // ★[T112] 비 온 날은 물 준 날 — 상태기 셋이 같이 부른다
-  grownDays, isReady, readyDay, waterMult, harvestUnits, T1215_FIELD_M2, FIELD_CELL_M2, T1215_KG_HA, cellKgOf, kgHaSrcOf,
+  grownDays, isReady, readyDay, waterMult, harvestUnits, T1215_FIELD_M2, FIELD_CELL_M2, T1215_KG_HA, cellKgOf, kgHaSrcOf, T1221_FARM_LABOR, T1221_KG_HA, cellKgAt,
   daysToFirstHarvest,   // ★[T100 5판] 창설 곳간의 밑변 — econ 이 45 를 지어내지 않게(사본 0)
   shelfMap, weightMap, foodMap, labelMap, emojiMap, payload,
 };

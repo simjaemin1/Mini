@@ -2115,6 +2115,8 @@ const T374_DEMAND_STOP = process.env.T374_DEMAND_STOP !== '0';
 //   ⚠끄면 **넷째 판 비트 동일** — 아래 자리가 전부 이 상수(와 켠 팔만 심는 주입 표) 뒤에 있다.
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
 const T368_FARM_ACT = process.env.T368_FARM_ACT === '1';
+// ★[T1221 2026-11-08] 농사 일손 한도 · 비옥 범위 — 손잡이 하나(끔 기본 · `=1` 켬). econ 은 값을 안 쓴다 — 생활층(`villages.js` 칸 일 시간)과 작물 정본(`crops.js` 비옥 범위)이 이 한 곳을 읽는다.
+const T1221_FARM_LABOR = (typeof process !== 'undefined' && process.env) ? process.env.T1221_FARM_LABOR === '1' : false;
 // ★★[T368] econ 이 **모르는** 작물과 그 식량 값 — 주입 표에서 econ 이 아는 품목(생곡·채집·보존식)을 **뺀** 목록.
 //   주입이 없거나 손잡이가 꺼져 있으면 `null` ⇒ 아래 세 자리(재고 환산 · 생산 환산 · 사다리)가 **아무것도 안 한다**.
 //   ⚠순서는 주입 표 순서(작물 정본 `crops.IDS` — 이름순)다. 사다리가 그 순서로 먹는다(결정론 · 새 규약 0).
@@ -7259,7 +7261,7 @@ module.exports = {
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
-  T368_FARM_ACT, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  T368_FARM_ACT, T1221_FARM_LABOR, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   T1159_HOME_N, t1159HomeN,
