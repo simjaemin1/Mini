@@ -10,6 +10,10 @@
 'use strict';
 const path = require('path');
 const { execFileSync } = require('child_process');
+// ★[T1208-K2] 묶음 — land1049 첫 판이 `T1197_MEAL_BODY`(식사 · 굶어 죽음을 몸으로)를 켬 기본으로 실었다(PM 이 eda08fd9 에서 끔 기본으로 돌림 · T1209 가 켤 날). 켬이면 이 하네스의 작은 마을(20명)이
+//   작물 철 켬(첫 수확은 가을)에서 첫 수확 앞에 다 굶어 죽어(인구 0 · 수확 0) ④ · ⑤ 가 잴 것이 없다. 이 하네스가 재는 것은 작물 철 산수라
+//   식사 손잡이는 이 가지가 쓰인 판(끔)으로 묶는다. 두 손잡이를 같이 켠 세계(T1201 농사 켤 날)는 회부(보고 T1208-K2).
+if (process.env.T1197_MEAL_BODY == null) process.env.T1197_MEAL_BODY = '0';
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x != null ? `  ${x}` : '')); };
 
