@@ -11122,7 +11122,7 @@ function setSeed(s) { _seed = s >>> 0; _seed0 = _seed; }
 function _t731StreamInit(v) {
   if (typeof v._rs === 'number') return;
   //   ★[T744] 재료 = 세계 씨 × 마을 **이름**(세계 안에서 하나 · 프로세스 계수기 `v.id` 는 앞서 만든 세계 수에 따라 바뀐다 — 같은 세계가 프로세스마다 다른 흐름을 받았다)
-  let x = _seed0 >>> 0; const id = String(v.name != null && v.name !== '' ? v.name : (v.id != null ? v.id : ''));
+  let x = _seed0 >>> 0; const id = T1187_NAME_FREE && v.coord ? _t1187Key(v) : String(v.name != null && v.name !== '' ? v.name : (v.id != null ? v.id : ''));   // ★[T1187] 켬 = 마을 자리(이름 무관 · 아래 `_t1187Key`)
   for (let i = 0; i < id.length; i++) x = ((x ^ id.charCodeAt(i)) * 1664525 + 1013904223) >>> 0;
   v._rs = x;
 }
@@ -13262,7 +13262,7 @@ const SHIELD_AGE_ON = !(typeof process !== 'undefined' && process.env && process
 //   새 수 0 — 폭은 보호막 그 자체(`SHIELD_DAYS`). 켬은 econ 3사본(정본·번들·랩)이라 3시드가 움직인다 ⇒ 켜는 건 PM(판정 0).
 const T597_SHIELD_RAMP = (typeof process !== 'undefined' && process.env && process.env.T597_SHIELD_RAMP === '1');
 function _t597ShieldExtra(v) {   // 이 마을 보호막이 SHIELD_DAYS 뒤로 더 가는 날 수(0 ~ SHIELD_DAYS−1)
-  let h0 = 0; const s = String((v && v.name) || '');
+  let h0 = 0; const s = (T1187_NAME_FREE && v && v.coord) ? _t1187Key(v) : String((v && v.name) || '');   // ★[T1187] 켬 = 마을 자리
   for (let i = 0; i < s.length; i++) h0 = (Math.imul(h0, 31) + s.charCodeAt(i)) | 0;
   const a = (h0 >>> 0) % 100003, b = 597;
   let h = (1 ^ Math.imul(a + 1, 2654435761) ^ Math.imul(b + 101, 40503)) >>> 0;   // bandits.js denRng 와 같은 섞개(씨 1)
@@ -13463,7 +13463,24 @@ const WARLIKE_THRESH = 0.72;        // 해시 > 이 값이면 호전 마을(~28%
 const WARLIKE_WT_MULT = 1.6;        // 호전 마을 위협 동원 배수(warriorTarget — 평시 무비, 위협 시만 강화라 안전)
 const WEAPON_RITE_PC = 0.0008;      // 호전 마을 봉헌검 요율(/인/일, 식량여유·잉여 비례) — 위세재 봉헌 동형
 const WEAPON_RITE_KEEP = 3;         // 봉헌검 유보 — 전사 수 + 이 버퍼 초과 *잉여*만 매납(병기고 불가침 = 무장해제 방지)
-function _warlikeMult(v) { return _hashStr('warlike|' + (v.name || '')) > WARLIKE_THRESH ? WARLIKE_WT_MULT : 1.0; }
+function _warlikeMult(v) {
+  if (T1187_NAME_FREE) { const th = _t1187FeudTh(); return (th != null && (v._grudgeMax || 0) >= th) ? WARLIKE_WT_MULT : 1.0; }   // ★[T1187] 켬 = 묵은 원한(아래)
+  return _hashStr('warlike|' + (v.name || '')) > WARLIKE_THRESH ? WARLIKE_WT_MULT : 1.0;
+}
+// ★★[T1187 2026-11-06 · ★재민 11-05 "이름이 경제를 바꾸지 않게" · 족보 760 추상 없애기 · 손잡이 `T1187_NAME_FREE`(기본 끔 · `'1'` 만 켬 · 끔 = 위 종전 줄 그대로)]
+//   **호전 마을을 이름 해시가 아니라 실물로 고른다** — 그 마을이 지금 묵은 원한을 품고 있나:
+//   전쟁 층(`war-core`)이 날마다 마을마다 가장 큰 원한(`_grudgeMax` — 원한 EMA 의 최댓값 · 그 층이 적는 칸)을 적는다.
+//   그 값이 전쟁 층의 **"묵은 원한(feud)" 문턱 `WAR_FEUD_TH`**(전쟁 층이 명분 '원한'을 세우는 그 선 · 그 파일에서 읽는다 · 새 수 0) 이상이면 호전 —
+//   위협 때 동원 배수(`WARLIKE_WT_MULT`)와 봉헌검(아래 의례 절)은 종전 그대로 그 마을에만 붙는다.
+//   ⇒ 전쟁을 당해 원한이 쌓인 마을이 더 크게 동원하고, 원한이 식으면(EMA 감쇠) 풀린다. 이름을 바꿔도 아무것도 안 바뀐다.
+//   전쟁 층이 없는 판(랩 · 하네스의 맨 econ)에선 `_grudgeMax` 가 안 적혀 호전 마을이 0 이다(보고 T1187 §3 — 종전은 이름 운으로 ~28 %).
+const T1187_NAME_FREE = (typeof process !== 'undefined' && !!process.env && process.env.T1187_NAME_FREE === '1');
+// ★[T1187] 이름 대신 쓰는 열쇠 — 마을 자리(`coord` = 가운데 칸 × 2.5 · 호스트가 세울 때와 다시 뜰 때 같은 칸에서 붙인다 · 세계 안에서 하나).
+//   쓰는 자리 셋(켬만): 마을 주사위 흐름 씨(`_t731StreamInit` — T744 가 이름을 고른 까닭 "세계 안에서 하나 · 프로세스 계수기 무관"을 자리도 지킨다) ·
+//   기근 보호막 펴기(`_t597ShieldExtra` · 끔 기본 손잡이) · (도적 보호기는 `server/bandits.js` 가 같은 손잡이로 가운데 칸을 쓴다).
+function _t1187Key(v) { return 'xy|' + v.coord.x + ',' + v.coord.y; }
+let _t1187Feud;
+function _t1187FeudTh() { if (_t1187Feud === undefined) { try { _t1187Feud = require('./war-core').WAR_FEUD_TH; } catch (e) { _t1187Feud = null; } if (!(_t1187Feud > 0)) _t1187Feud = null; } return _t1187Feud; }
 
 // 식량 부패 — 무한 비축 방지. 음식 종류별로 다름.
 const DECAY_RATES = {
@@ -13937,7 +13954,7 @@ function _hashStr(s) {
 function _tinDepositFor(opts) {
   if (opts.tin != null) return opts.tin;
   const ore = opts.ore != null ? opts.ore : 0.5;
-  const r = _hashStr('tin|' + (opts.name != null ? opts.name : ''));   // [0,1) 결정론 지터(소량)
+  const r = T1187_NAME_FREE ? 0.5 : _hashStr('tin|' + (opts.name != null ? opts.name : ''));   // [0,1) 결정론 지터(소량) · ★[T1187] 켬 = 지터 없음(가운데 0.5 — score = ore × 1.0 · 이름 무관 · 이 갈래는 `oreMix` 없는 부름만 탄다)
   // ★ore 주도(지터 소량): score = ore × (0.8 + 0.4×hash). ore~1.5(광산촌)=1.2~1.5(항상 문턱↑), ore~0.5(평균)=0.4~0.5(항상 미달).
   //   → 랩의 광산촌(ore 1.5 고정)은 이름 무관 확실히 산지 + CLI 고ore 마을도 산지 + 평균 마을은 무산지. 소표본 취약성 제거.
   const score = ore * (0.8 + 0.4 * r);
