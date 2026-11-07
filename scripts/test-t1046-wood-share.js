@@ -27,7 +27,10 @@ if (process.env.T1046_SUB === '1') {
   if (econ.setSeed) econ.setSeed(1);
   const lp = { fertility: 1.2, arable: 1, water: 0.8, wood: 0.67, game: 0.74, stone: 0.2, ore: 0.1, size: 400, baseSize: 400, woodSustain: 12.61, fishSustain: null,
     forageSustain: 9.87, marginalQ: 0.497, coastal: false };
-  const fill = (v) => { v.storage.wood = 0; v.storage.food = 5000; v.storage.tool = 40; v.storage.clothes = 40; v.storage.stone = 0; v.storage.weapon = 0; };   // 석공 · 석재 · 재봉 · 전사 문이 안전망 앞에서 서지 않게
+  //   ★[T1216-K2] 원석도 비운다 — T1188 원석 갈래(`T1188_ORE_SPLIT` · 켬 기본)가 시작 원석(종별 10 남짓)을 녹일 거리로 쳐서 제련 문(`smeltTarget`)이 안전망 앞에서 대장장이를 낸다.
+  const OG = require(path.join(ROOT, 'server', 'ore-goods'));   // `ids` = 살아 있는 배열(econ 이 `configure` 로 늘린다 — 부를 때 읽는다)
+  const fill = (v) => { v.storage.wood = 0; v.storage.food = 5000; v.storage.tool = 40; v.storage.clothes = 40; v.storage.stone = 0; v.storage.weapon = 0;
+    v.storage.ore = 0; for (const k of OG.ids) if (k in v.storage) v.storage[k] = 0; };   // 석공 · 석재 · 재봉 · 전사 · 제련 문이 안전망 앞에서 서지 않게
   const runOne = (live) => {
     const v = econ.createVillage({ ...lp, name: '시험농촌', initialPop: 20 });
     v._world = { picker: 'rational', villages: [v], day: 0 };
