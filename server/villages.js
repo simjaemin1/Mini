@@ -11381,7 +11381,7 @@ function _farmDay(vil, day) {
 //   종전(T368 · T410): 존이 깨어 있으면(`_t368ZoneAwake` — idle 문 열림이면 늘 참) 마을 밭 두 절(개간 · 작물)을 통째로 몸에 맡겼다.
 //     판 자 하루(250 ms)에서는 몸이 밭에 닿지 못해 심은 칸 0 · 거둔 건수 0(T1201 §0 · 시드 1020 · 150날 · 몸 날 5,572).
 //   켜면 몸이 오늘 한 밭 일(칸 처리 · 개간 칸 — `_t1212N` · 몸이 한 만큼 센다)을 읽어 **못 한 몫만** 일괄이 한다(T491 · T561 "일괄 = 몸의 거울" 꼴):
-//     작물 = Σ 농부(나설 수 있는 몸 · `_t561Fit` · 시공 · 집 크루 아님) max(0, 정본 하루 일감 − 오늘 한 일) · 개간 = 오늘 아무것도 못 한 농부 수 × 정본 하루 개간.
+//     작물 = Σ 농부(종전 일괄 명부 `farmerN` 과 같은 몸 — T1215 보강) max(0, 정본 하루 일감 − 오늘 한 일) · 개간 = 오늘 아무것도 못 한 농부 수 × 정본 하루 개간.
 //     정본 하루 = `_lifeTasksPerFarmerDay` · `LIFE_CLEAR_PDAY`(그 사람의 하루 · 배수 0 · 새 수 0). 센 다음 0 으로(다음 날 몫).
 //   T368 끔(기본)이면 `_body` 가 거짓이라 이 줄에 안 닿는다(종전 세 절 그대로).
 const T1212_FARM_REST = process.env.T1212_FARM_REST !== '0';
@@ -11408,7 +11408,8 @@ function _lifeHeadlessDay(vil) {
     const per = _lifeTasksPerFarmerDay();
     for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (!p || p.simJob !== 'farmer') continue;
       const did = p._t1212N || 0; p._t1212N = 0;
-      if (!_t561Fit(p) || (p._lifeTask && p._lifeTask.k === 'build') || (vil._t400Crew && vil._t400Crew.indexOf(pid) >= 0)) continue;
+      //   ★[T1215 보강] 명부 = 종전 일괄의 농부 명부 그대로(`farmerN` 과 같은 몸 · 몸 칸 거르기 0) — 첫 판(T1212 §3)은 `_t561Fit` 로 앓는 몸을 뺐다.
+      //     굶어 앓은 몸이 빠지면 밭이 멈추고 더 굶는 고리가 생겼다(T1212 A · 100날 뒤 일괄 0 · 거둔 건수 정지 — 보고/T1215 §0). 종전 일괄(T368 끔)은 앓아도 셌다.
       _t1212Rest.farmers++; _t1212Rest.bodyTasks += did;
       if (!did) { _restN++; _t1212Rest.idle++; }
       _restB += Math.max(0, per - did); }
