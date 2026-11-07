@@ -40,8 +40,11 @@ function forageK(c) { return F_MAX * 4 * c * (1 - c); }
 // 노동권(반경 150셀)을 2칸 간격으로 훑어 숲·물·임연부·바위경계 셀을 센다.
 //   pred: { isForest(x,y), isWater(x,y), isRock(x,y) } — 전부 셀 좌표.
 //   ★2칸 간격은 랩과 같다(랩 "2칸 간격 샘플") — 셀 수를 4배로 되돌려 쓰지 않는다(랩도 샘플 수를 그대로 쓴다).
+// ★[T1218] 어장 고증 손잡이(`server/fishing.js` 가 정본 — 여기서는 켬인지만 읽는다 · 이 모듈은 fishing 을 머리에서 부르지 않는다: fishing 이 이 모듈을 부른다)
+const T1218_FISH_CANON = process.env.T1218_FISH_CANON === '1';
+const _t1218Counts = new Map();   // ★[T1218] 마을 자리(ccx_ccy) → { water, sea } — 켬일 때만 · `fishWaterOf` 가 읽는다(결손 → econ 환산의 물 종류 섞임)
 function scanLabor(pred, ccx, ccy) {
-  let forest = 0, water = 0, rockEdge = 0, forageSum = 0;
+  let forest = 0, water = 0, rockEdge = 0, forageSum = 0, sea = 0;
   const R = LABOR_R;
   // ★★[T60 §0-ⓐ 2026-09-03] **물은 전수로 센다** — 랩 원본이 그렇다(복원).
   //   이 함수의 머리 주석은 *"2칸 간격은 랩과 같다 … 셀 수를 4배로 되돌려 쓰지 않는다"* 라고 적어 뒀는데,
@@ -50,19 +53,21 @@ function scanLabor(pred, ccx, ccy) {
   //   (*"forestRich·gameRich는 2칸 간격 샘플이라 ±1은 이웃 없음"*).
   //   ⇒ 그래서 서버의 `fishSustain` 은 랩의 **정확히 1/4** 이었다(실측 45마을 전수 비 중앙 4.00 · 평균 4.00).
   //   ⇒ 이건 발명이 아니라 **복원**이다. 숲·바위·임연부는 랩과 같이 2칸 그대로 둔다.
-  if (MSY_MODE !== 'legacy') {
+  //   ★[T1218] 켬 = 물을 전수로 센다(고증 kg/ha 는 실제 칸 하나하나의 몫 — 2칸 표본 1/4 은 눈금이 아니다) · 바다 칸(`pred.isSea`)을 따로 센다(민물 = 물 − 바다)
+  if (MSY_MODE !== 'legacy' || T1218_FISH_CANON) {
     for (let dy = -R; dy <= R; dy++) {
       for (let dx = -R; dx <= R; dx++) {
         if (dx * dx + dy * dy > R * R) continue;
-        if (pred.isWater(ccx + dx, ccy + dy)) water++;
+        if (pred.isWater(ccx + dx, ccy + dy)) { water++; if (T1218_FISH_CANON && pred.isSea && pred.isSea(ccx + dx, ccy + dy)) sea++; }
       }
     }
+    if (T1218_FISH_CANON) _t1218Counts.set(ccx + '_' + ccy, { water, sea });
   }
   for (let dy = -R; dy <= R; dy += 2) {
     for (let dx = -R; dx <= R; dx += 2) {
       if (dx * dx + dy * dy > R * R) continue;
       const x = ccx + dx, y = ccy + dy;
-      if (pred.isWater(x, y)) { if (MSY_MODE === 'legacy') water++; continue; }
+      if (pred.isWater(x, y)) { if (MSY_MODE === 'legacy' && !T1218_FISH_CANON) water++; continue; }
       if (pred.isRock(x, y)) {
         if (!pred.isRock(x - 1, y) || !pred.isRock(x + 1, y) || !pred.isRock(x, y - 1) || !pred.isRock(x, y + 1)) rockEdge++;
         continue;
@@ -76,8 +81,10 @@ function scanLabor(pred, ccx, ccy) {
       if (K > L_FORAGEK_MIN) forageSum += K;
     }
   }
-  return { forest, water, rockEdge, forageSum };
+  return T1218_FISH_CANON ? { forest, water, rockEdge, forageSum, sea } : { forest, water, rockEdge, forageSum };
 }
+//   ★[T1218] 그 마을 노동권 물의 종류 섞임 — 결손(재고) → econ 의 환산에(`villages.refreshFishSustain`) · 없으면 null(끔 · 안 잰 자리)
+function fishWaterOf(ccx, ccy) { return _t1218Counts.get(ccx + '_' + ccy) || null; }
 
 // ★★[T60 ① 2026-09-03 · 재민 확정] **MSY 눈금 후보 셋 — 발명 금지. 셋 다 기존 정본에서 유도한다.**
 //   T17 §5 실측: 지금 눈금으로 켜면 인구 −48~−61% · 소멸 0 → 14·16곳. "너무 낮다"의 정체가 §0-ⓐ 다.
@@ -98,7 +105,10 @@ const MSY_HEADROOM = (() => { const v = parseFloat(process.env.T60_MSY_HEADROOM 
 function sustainOf(scan, landWood) {
   const wood = scan.forest * (L_WOODREGLOG * L_WOODMAX / 4) * (0.9 * (landWood || 1) / L_CHOP);
   let fish = scan.water * (L_FISHR / 4) * FISH_ECON_PER_STOCK;
-  if (MSY_MODE === 'fishv2') {
+  if (T1218_FISH_CANON) {
+    //   ★[T1218] 고증 MSY = Σ 물셀 × r/4 × 그 물 종류의 econ 단위/재고(민물 · 바다 따로) — 상수의 주인은 `server/fishing.js`(사본 0)
+    try { const Fi = require('./fishing'), sea = Math.max(0, Math.min(scan.water, scan.sea || 0)); fish = ((scan.water - sea) * Fi.econPerStock('fresh') + sea * Fi.econPerStock('sea')) * (Fi.fishR() / 4); } catch (e) {}
+  } else if (MSY_MODE === 'fishv2') {
     // ★상수를 여기서 다시 적지 않는다 — 낚시 v2 가 그 표의 주인이다.
     try { fish = require('./fishing').stockToEcon(scan.water * require('./fishing').CFG.CELL_K); } catch (e) {}
   }
@@ -138,5 +148,5 @@ module.exports = {
   scanLabor, sustainOf, marginalQOf, specialOf, forageK,
   MSY_MODE, MSY_HEADROOM,   // ★[T60] 계측기·하네스가 '지금 어떤 눈금인가'를 서버에게 묻는다(사본 금지)
   LABOR_R, L_WOODREGLOG, L_WOODMAX, L_CHOP, L_FISHR, L_FORAGER, F_MAX, L_FORAGEK_MIN,
-  FISH_ECON_PER_STOCK, FORAGE_ECON_PER_STOCK, MINERAL_KEY,
+  FISH_ECON_PER_STOCK, FORAGE_ECON_PER_STOCK, MINERAL_KEY, T1218_FISH_CANON, fishWaterOf,
 };

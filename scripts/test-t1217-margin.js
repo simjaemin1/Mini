@@ -27,9 +27,9 @@ if (MUT) {
     if (file !== path.join(ROOT, 'server/villages.js')) return old(m, file);
     let src = fs.readFileSync(file, 'utf8');
     const swap = (a, b) => { assert(src.includes(a), 'mutant needle ' + MUT); src = src.replace(a, b); };
-    if (MUT === 'nodraw') swap('      const n = mE > 0 ? _t1217Draw(F, p.cx, p.cy, p.kgF / KPS, mE, now, vil) : 0;', '      const n = mE;');
+    if (MUT === 'nodraw') swap('      const n = mE > 0 ? _t1217Draw(F, p.cx, p.cy, p.kgF / p.kps, mE, now, vil) : 0;', '      const n = mE;');   // ★[T1218] 재고 1 의 kg 이 사람 칸(`p.kps`)으로
     else if (MUT === 'nostop') swap('      if (!(W > L)) {', '      if (false) {');
-    else if (MUT === 'nocpue') swap('      const s01 = _t1217Stock01(F, p.cx, p.cy, now), ew = F.expectedWaitMs(p.spot, s01);', '      const s01 = _t1217Stock01(F, p.cx, p.cy, now), ew = F.expectedWaitMs(p.spot, 1);');
+    else if (MUT === 'nocpue') swap('      const s01 = _t1217Stock01(F, p.cx, p.cy, now), ew = C18 ? F.villageWaitMs(p.spot, s01, p.kgF, hourMs) : F.expectedWaitMs(p.spot, s01);', '      const s01 = _t1217Stock01(F, p.cx, p.cy, now), ew = C18 ? F.villageWaitMs(p.spot, 1, p.kgF, hourMs) : F.expectedWaitMs(p.spot, 1);');   // ★[T1218] 켬 갈래가 같은 줄에
     else if (MUT === 'nochoose') swap('const r = _t1217Stock01(F, e.cx, e.cy, now); if (r > bs + 1e-12) { bs = r; best = e; }', 'const r = 1; if (r > bs + 1e-12) { bs = r; best = e; }');
     else if (MUT === 'norest') swap('  if (vil.econ) vil.econ._t1217Rest = ((r && r.rest) || 0) + bodyRest;', '  if (vil.econ) vil.econ._t1217Rest = 0;');
     m._compile(src, file);

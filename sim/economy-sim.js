@@ -2442,9 +2442,16 @@ function t1217HappyMu(v, id, N) {
   const SP = _getSpecialty();
   const c = (SP && SP[id] && SP[id].contributes) || LEGACY_CONTRIBUTES[id] || null;
   const w = c && c.happiness > 0 ? c.happiness : 0;
-  if (!(w > 0)) return 0;
+  //   ★[T1218 · T1217 회부 ② — T1205 착지 뒤] T1205 켬 = 좋은 것 G 에 사치품 항(위신 합을 1 에서 자르고 × `T1205_LUX_W`) — 그 물건이 위신에 주는 몫도 한계 행복에 든다
+  //     (위신 합이 1 밑일 때만 · 같은 `contributes.prestige` × 1인당 2개 밑 충족 · 호피는 제 줄 `TIGERHIDE_PRESTIGE_W` ÷ 인구 · 상한 밑). 청동검 위세(무기 품질)는 안 센다(물건 한 단위가 아니다).
+  const lux = T1205_HAPPY && !(((v.lastStats && v.lastStats.prestige) || 0) >= T1205_LUX_MAX);
+  const wp = lux && c && c.prestige > 0 ? c.prestige : 0;
   const pop = Math.max(1, N || (v.npcs && v.npcs.length) || 1);
-  return ((v.storage && v.storage[id]) || 0) / pop < 2 ? w / (2 * pop) : 0;
+  const th = lux && id === 'tigerhide' && ((v.storage && v.storage.tigerhide) || 0) / pop * TIGERHIDE_PRESTIGE_W < TIGERHIDE_PRESTIGE_CAP ? TIGERHIDE_PRESTIGE_W / pop : 0;
+  if (!(w > 0) && !(wp > 0) && !(th > 0)) return 0;
+  const under = ((v.storage && v.storage[id]) || 0) / pop < 2;
+  if (!(wp > 0) && !(th > 0)) return under ? w / (2 * pop) : 0;   // 종전 줄 그대로(위신 몫이 없는 물건)
+  return (under ? (w + t1205Par().luxW * wp) / (2 * pop) : 0) + t1205Par().luxW * th;
 }
 //   ★[T1217] 여가 몫의 밑변 — 수식 직업의 여유노동(`_idleFrac` · 수식이 닫힌 행위 어부는 그 잠재 · 실제 합 `_potA` · `_actA` 에 안 든다)은 그 사람 수만큼,
 //     행위 어부는 서버가 적은 그날 쉰 사람-날(`_t1217Rest` · 낮 시간 중 안 낚은 몫의 합 · 0 ~ 어부 수)만큼 — 인구 가중 평균. 칸이 없으면(서버가 안 적은 날 · 랩) 종전 값.

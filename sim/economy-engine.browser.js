@@ -1110,8 +1110,11 @@ function forageK(c) { return F_MAX * 4 * c * (1 - c); }
 // 노동권(반경 150셀)을 2칸 간격으로 훑어 숲·물·임연부·바위경계 셀을 센다.
 //   pred: { isForest(x,y), isWater(x,y), isRock(x,y) } — 전부 셀 좌표.
 //   ★2칸 간격은 랩과 같다(랩 "2칸 간격 샘플") — 셀 수를 4배로 되돌려 쓰지 않는다(랩도 샘플 수를 그대로 쓴다).
+// ★[T1218] 어장 고증 손잡이(`server/fishing.js` 가 정본 — 여기서는 켬인지만 읽는다 · 이 모듈은 fishing 을 머리에서 부르지 않는다: fishing 이 이 모듈을 부른다)
+const T1218_FISH_CANON = process.env.T1218_FISH_CANON === '1';
+const _t1218Counts = new Map();   // ★[T1218] 마을 자리(ccx_ccy) → { water, sea } — 켬일 때만 · `fishWaterOf` 가 읽는다(결손 → econ 환산의 물 종류 섞임)
 function scanLabor(pred, ccx, ccy) {
-  let forest = 0, water = 0, rockEdge = 0, forageSum = 0;
+  let forest = 0, water = 0, rockEdge = 0, forageSum = 0, sea = 0;
   const R = LABOR_R;
   // ★★[T60 §0-ⓐ 2026-09-03] **물은 전수로 센다** — 랩 원본이 그렇다(복원).
   //   이 함수의 머리 주석은 *"2칸 간격은 랩과 같다 … 셀 수를 4배로 되돌려 쓰지 않는다"* 라고 적어 뒀는데,
@@ -1120,19 +1123,21 @@ function scanLabor(pred, ccx, ccy) {
   //   (*"forestRich·gameRich는 2칸 간격 샘플이라 ±1은 이웃 없음"*).
   //   ⇒ 그래서 서버의 `fishSustain` 은 랩의 **정확히 1/4** 이었다(실측 45마을 전수 비 중앙 4.00 · 평균 4.00).
   //   ⇒ 이건 발명이 아니라 **복원**이다. 숲·바위·임연부는 랩과 같이 2칸 그대로 둔다.
-  if (MSY_MODE !== 'legacy') {
+  //   ★[T1218] 켬 = 물을 전수로 센다(고증 kg/ha 는 실제 칸 하나하나의 몫 — 2칸 표본 1/4 은 눈금이 아니다) · 바다 칸(`pred.isSea`)을 따로 센다(민물 = 물 − 바다)
+  if (MSY_MODE !== 'legacy' || T1218_FISH_CANON) {
     for (let dy = -R; dy <= R; dy++) {
       for (let dx = -R; dx <= R; dx++) {
         if (dx * dx + dy * dy > R * R) continue;
-        if (pred.isWater(ccx + dx, ccy + dy)) water++;
+        if (pred.isWater(ccx + dx, ccy + dy)) { water++; if (T1218_FISH_CANON && pred.isSea && pred.isSea(ccx + dx, ccy + dy)) sea++; }
       }
     }
+    if (T1218_FISH_CANON) _t1218Counts.set(ccx + '_' + ccy, { water, sea });
   }
   for (let dy = -R; dy <= R; dy += 2) {
     for (let dx = -R; dx <= R; dx += 2) {
       if (dx * dx + dy * dy > R * R) continue;
       const x = ccx + dx, y = ccy + dy;
-      if (pred.isWater(x, y)) { if (MSY_MODE === 'legacy') water++; continue; }
+      if (pred.isWater(x, y)) { if (MSY_MODE === 'legacy' && !T1218_FISH_CANON) water++; continue; }
       if (pred.isRock(x, y)) {
         if (!pred.isRock(x - 1, y) || !pred.isRock(x + 1, y) || !pred.isRock(x, y - 1) || !pred.isRock(x, y + 1)) rockEdge++;
         continue;
@@ -1146,8 +1151,10 @@ function scanLabor(pred, ccx, ccy) {
       if (K > L_FORAGEK_MIN) forageSum += K;
     }
   }
-  return { forest, water, rockEdge, forageSum };
+  return T1218_FISH_CANON ? { forest, water, rockEdge, forageSum, sea } : { forest, water, rockEdge, forageSum };
 }
+//   ★[T1218] 그 마을 노동권 물의 종류 섞임 — 결손(재고) → econ 의 환산에(`villages.refreshFishSustain`) · 없으면 null(끔 · 안 잰 자리)
+function fishWaterOf(ccx, ccy) { return _t1218Counts.get(ccx + '_' + ccy) || null; }
 
 // ★★[T60 ① 2026-09-03 · 재민 확정] **MSY 눈금 후보 셋 — 발명 금지. 셋 다 기존 정본에서 유도한다.**
 //   T17 §5 실측: 지금 눈금으로 켜면 인구 −48~−61% · 소멸 0 → 14·16곳. "너무 낮다"의 정체가 §0-ⓐ 다.
@@ -1168,7 +1175,10 @@ const MSY_HEADROOM = (() => { const v = parseFloat(process.env.T60_MSY_HEADROOM 
 function sustainOf(scan, landWood) {
   const wood = scan.forest * (L_WOODREGLOG * L_WOODMAX / 4) * (0.9 * (landWood || 1) / L_CHOP);
   let fish = scan.water * (L_FISHR / 4) * FISH_ECON_PER_STOCK;
-  if (MSY_MODE === 'fishv2') {
+  if (T1218_FISH_CANON) {
+    //   ★[T1218] 고증 MSY = Σ 물셀 × r/4 × 그 물 종류의 econ 단위/재고(민물 · 바다 따로) — 상수의 주인은 `server/fishing.js`(사본 0)
+    try { const Fi = require('./fishing'), sea = Math.max(0, Math.min(scan.water, scan.sea || 0)); fish = ((scan.water - sea) * Fi.econPerStock('fresh') + sea * Fi.econPerStock('sea')) * (Fi.fishR() / 4); } catch (e) {}
+  } else if (MSY_MODE === 'fishv2') {
     // ★상수를 여기서 다시 적지 않는다 — 낚시 v2 가 그 표의 주인이다.
     try { fish = require('./fishing').stockToEcon(scan.water * require('./fishing').CFG.CELL_K); } catch (e) {}
   }
@@ -1208,7 +1218,7 @@ module.exports = {
   scanLabor, sustainOf, marginalQOf, specialOf, forageK,
   MSY_MODE, MSY_HEADROOM,   // ★[T60] 계측기·하네스가 '지금 어떤 눈금인가'를 서버에게 묻는다(사본 금지)
   LABOR_R, L_WOODREGLOG, L_WOODMAX, L_CHOP, L_FISHR, L_FORAGER, F_MAX, L_FORAGEK_MIN,
-  FISH_ECON_PER_STOCK, FORAGE_ECON_PER_STOCK, MINERAL_KEY,
+  FISH_ECON_PER_STOCK, FORAGE_ECON_PER_STOCK, MINERAL_KEY, T1218_FISH_CANON, fishWaterOf,
 };
 
 ;return module.exports;})();
@@ -1291,6 +1301,35 @@ const T593_SEA = process.env.T593_SEA !== '0';
 //     (`plan` 다섯째 인자 · NPC T340 "창 = 그 종의 kg" 와 같은 결 · 미꾸라지 2kg 이 안 나온다). 큰 종이 많은 물은 창이 짧아진다(보고 T593 §2 표).
 //     `T593_KG=0` 이면 종은 물이 고르되 무게는 종전 전체 중앙값(`SIZE_MU`)이다 — 창의 어려움이 T593 전과 같다(재민 판정 몫).
 const T593_KG = T593_SEA && process.env.T593_KG !== '0';
+
+// ══ ★★[T1218 2026-11-08] **어장 고증 — 한 칸에 사는 물고기 kg · 해마다 돌아오는 몫 · 어부 한 시간**(보고/T1218 §1 · 출처 한 줄씩) ══
+//   손잡이 `T1218_FISH_CANON`(끔 기본 · `=1` 만 켬). 끔 = 종전 글자 그대로(한 칸 1.2 kg · r 0.02/날 · econ 2.5 단위 · 마을 어부 입질 = 플레이어 손맛 6초).
+//   왜(T1217 회부 ①): 같은 물셀 하나를 낚시 장부는 1.2 kg(`KG_PER_STOCK`) · econ 은 2.5 단위 ≈ 12.4 kg(`FISH_ECON_PER_STOCK` × 2,450 ÷ 495)으로 셌다 —
+//     두 눈금이 10배 어긋났고 r 0.02/날(한 해 7.3)은 랩 상수였다(출처 없음 · 아래 고증 위 끝 1.5 의 5배).
+//   켬 = **한 정본**(새 수 0 — 아래 넷은 출처 범위의 위 끝 · 칸 넓이는 T1215 캐논 `crops.FIELD_CELL_M2` · 열량은 `kcal.js` · 한 해는 달력):
+//     ① 생물량(kg/ha) — 민물 302 = 오대호 다섯 만 연안 얕은 물 120 ~ 302(Randall · Minns · Cairns · Moore 1993 Can. Tech. Rep. Fish. Aquat. Sci. 1941)의 위 끝
+//          (큰 강 Warta 80 ~ 116 — Penczak 1992 Hydrobiologia 237 · 강 ≈ 호수의 2배 — Randall · Kelso · Minns 1995 CJFAS 52 · 민물 범위 전체의 위 끝도 302).
+//        바다 1,040 = 무어로(멀리 떨어져 안 잡힌) 아열대 암초 950(860 ~ 1,040 · McClanahan et al. 2019 MEPS 612)의 위 끝 — 한반도 온대 연안 값은 미확인(가장 가까운 이웃 값).
+//     ② r(한 해) 0.8 = FishBase 회복력 '중간'(잉어 · 붕어 — 개체군 배가 1.4 ~ 4.4년)의 CMSY 사전 범위 0.2 ~ 0.8(Froese CMSY 안내 2021 표 2)의 위 끝.
+//     ③ 어부 한 시간(가득 찬 물 · 가장 좋은 자리) 7.0 kg = 아마존 원주민 어로 0.2 ~ 7.0 kg/시간(Gragson 1992 Am. Anthropol. 94 · 가운데 ≈ 0.5 — Beckerman 1989)의 위 끝.
+//   한 칸 kg = 생물량 × 칸 넓이 ÷ 10,000(민물 7.55 · 바다 26.0) · econ 단위/칸 = 그 kg × 통마리 열량 ÷ 하루치 · r(날) = r(한 해) ÷ 달력 한 해 평균 날수(400년 평균).
+//   ⚠플레이어 손맛(입질 대기 `WAIT_BASE_MS`)은 그대로다 — 켬이 바꾸는 입질은 **마을 어부**(몸 · 일괄 · `villageWaitMs`)뿐이다(회부 — 재민).
+const T1218_FISH_CANON = process.env.T1218_FISH_CANON === '1';
+const T1218_SRC = Object.freeze({ KG_HA_FRESH: 302, KG_HA_SEA: 1040, R_YEAR: 0.8, KG_HOUR: 7.0 });
+function _t1218Derive() {
+  const M2 = require('./crops').FIELD_CELL_M2, Cal = require('./calendar'), Kc = require('./kcal');
+  let yd = 0; for (let y = 1; y <= 400; y++) yd += Cal.yearLen(y);
+  const kgFresh = T1218_SRC.KG_HA_FRESH * M2 / 10000, kgSea = T1218_SRC.KG_HA_SEA * M2 / 10000, e = Kc.kcalPerKg('fish') / Kc.DAY_KCAL;
+  return Object.freeze({ cellM2: M2, yearDays: yd / 400, kgFresh, kgSea, econFresh: kgFresh * e, econSea: kgSea * e, rDay: T1218_SRC.R_YEAR / (yd / 400), kgHour: T1218_SRC.KG_HOUR });
+}
+//   처음 쓸 때 한 번 유도한다(모듈을 읽는 때 `crops` · `kcal` 을 부르면 그쪽이 이 모듈을 되부르는 고리 — 읽기 순서 무변 · 끔은 안 부른다)
+let _T1218c;
+function _t1218() { return T1218_FISH_CANON ? (_T1218c || (_T1218c = _t1218Derive())) : null; }
+//   재생률(날) — 켬 = 고증 · 끔 = 랩 정본 `L_FISHR`(종전 글자)
+function fishR() { const c = _t1218(); return c ? c.rDay : S.L_FISHR; }
+//   재고 1(= 물셀 하나가 가득 찬 몫) = 몇 kg · 몇 econ 단위 — 켬은 물 종류(`spotAt` 의 kind — 'sea' = 바다 · 그 밖 = 민물)를 본다
+function kgPerStock(kind) { const c = _t1218(); return c ? (kind === 'sea' ? c.kgSea : c.kgFresh) : CFG.KG_PER_STOCK; }
+function econPerStock(kind) { const c = _t1218(); return c ? (kind === 'sea' ? c.econSea : c.econFresh) : S.FISH_ECON_PER_STOCK; }
 
 // ── 게임일(재생 적분의 시간축) — 호출자가 주입한다(존마다 다를 수 있다) ─────────
 let DAY_MS = 24 * 60 * 1000;
@@ -1472,7 +1511,7 @@ function regen(s0, days, K) {
   if (s0 <= 0) return 0;                       // ★씨가 마르면 안 돌아온다(로지스틱의 성질 — 0은 흡수상태)
   if (s0 >= K) return K;
   const A = (K - s0) / s0;
-  return K / (1 + A * Math.exp(-S.L_FISHR * days));
+  return K / (1 + A * Math.exp(-fishR() * days));   // ★[T1218] 켬 = 고증 r · 끔 = `L_FISHR`(글자 그대로의 값)
 }
 
 function rec(key, now) {
@@ -1604,7 +1643,7 @@ function deficitBy(keyPred, now) {
   return d;
 }
 // 결손 stock → econ 어장 상한 감소분. **환산 계수는 sustain.js 정본 그대로**(사본 금지).
-const stockToEcon = (stock) => stock * (S.L_FISHR / 4) * S.FISH_ECON_PER_STOCK;
+const stockToEcon = (stock, kind) => stock * (fishR() / 4) * econPerStock(kind);   // ★[T1218] 켬 = 고증 r · 그 물 종류의 econ 단위/재고(끔 = 종전 두 상수 · kind 무시)
 
 // =============================================================================
 // ②-b ★★[T1217 2026-11-07] **마을 어부의 어장 장부 — 랩의 어장 단위(버킷)**
@@ -1783,6 +1822,15 @@ function expectedWaitMs(sp, stock01) {
   const w = CFG.WAIT_BASE_MS / _biteRate(spotScore(sp), stock01);
   return Math.max(CFG.WAIT_MIN_MS, Math.min(CFG.WAIT_MAX_MS, w));
 }
+// ★[T1218 ③] **마을 어부**(몸 · 일괄)의 입질 기댓값(ms) — 켬일 때만(끔 = 위 `expectedWaitMs` 플레이어 손맛 그대로).
+//   가장 좋은 자리(빈도 최대 1 + `SEAM_W` · 합류부 · 흐름 경계)의 가득 찬 물에서 한 시간 `KG_HOUR` kg(고증 위 끝 — 그 위로는 안 준다) ·
+//   보통 자리는 빈도 비만큼 · 빈 물은 재고 비율만큼 덜 문다(같은 `_biteRate` 한 줄 · CPUE ∝ 재고). 한 마리 kg 이 클수록 그 한 마리를 오래 기다린다(kg 당 시간이 같다).
+//   `hourMs` = 부르는 쪽 게임 1시간(ms — 사람의 정본 하루 ÷ 24 · 플레이어 손맛 6초가 게임 6분인 그 시계).
+function villageWaitMs(sp, stock01, kgF, hourMs) {
+  const c = _t1218();
+  if (!c || !(kgF > 0) || !(hourMs > 0)) return expectedWaitMs(sp, stock01);
+  return kgF / c.kgHour * hourMs * (1 + CFG.SEAM_W) / _biteRate(spotScore(sp), stock01);
+}
 // ★[T1217] 한 자리(반경 `DRAW_R` 원판)의 셀 수 — `stockRatioAt` 의 분모(남은 재고 = 비율 × 이 수 × `CELL_K`). 새 수 0(반경에서 센다).
 function discN() { let n = 0; for (let dy = -CFG.DRAW_R; dy <= CFG.DRAW_R; dy++) for (let dx = -CFG.DRAW_R; dx <= CFG.DRAW_R; dx++) if (dx * dx + dy * dy <= CFG.DRAW_R * CFG.DRAW_R) n++; return n; }
 // ★[T1217] 온전한 마리 n 까지 — 그 자리(반경 `DRAW_R`)에 한 마리 몫(`perStock`)이 남는 만큼만 같은 어장 장부에서 뺀다(`drawWholeStock` 을 n 번 부른 것과 같다 · 가운데부터).
@@ -1859,6 +1907,7 @@ module.exports = {
   plan, windowMsFor, _lognormal,
   t1214Stat: () => Object.assign({ on: T1214_STEP_FAST, verify: T1214_VERIFY }, _t1214Stat),   // ★[T1214] 계측
   expectedWaitMs, drawWholeFish, discN,   // ★[T1217]
+  T1218_FISH_CANON, T1218_SRC, t1218Canon: () => _t1218(), t1218Derive: _t1218Derive, fishR, kgPerStock, econPerStock, villageWaitMs,   // ★[T1218] 어장 고증 한 정본
   FISH_BK, fishBuckets, bucketOf, bucketRec, bucketRatioAt, drawBucketFish, bucketWholeFish, bucketDiffuse, bucketDeficitBy,   // ★[T1217 ②-b] 마을 어부의 어장 장부(랩 버킷) 몸이 없는 어부의 한 시간(입질 기댓값 · 온전한 마리 n 까지 같은 어장 장부)
   T609_BIG_WINDOW, windowFor, fightMsFor,   // ★[T609 ②] 큰 종 창 안 셋 — 표 기계(`t602-windows.js`)가 같은 함수로 잰다
 };
@@ -14702,9 +14751,16 @@ function t1217HappyMu(v, id, N) {
   const SP = _getSpecialty();
   const c = (SP && SP[id] && SP[id].contributes) || LEGACY_CONTRIBUTES[id] || null;
   const w = c && c.happiness > 0 ? c.happiness : 0;
-  if (!(w > 0)) return 0;
+  //   ★[T1218 · T1217 회부 ② — T1205 착지 뒤] T1205 켬 = 좋은 것 G 에 사치품 항(위신 합을 1 에서 자르고 × `T1205_LUX_W`) — 그 물건이 위신에 주는 몫도 한계 행복에 든다
+  //     (위신 합이 1 밑일 때만 · 같은 `contributes.prestige` × 1인당 2개 밑 충족 · 호피는 제 줄 `TIGERHIDE_PRESTIGE_W` ÷ 인구 · 상한 밑). 청동검 위세(무기 품질)는 안 센다(물건 한 단위가 아니다).
+  const lux = T1205_HAPPY && !(((v.lastStats && v.lastStats.prestige) || 0) >= T1205_LUX_MAX);
+  const wp = lux && c && c.prestige > 0 ? c.prestige : 0;
   const pop = Math.max(1, N || (v.npcs && v.npcs.length) || 1);
-  return ((v.storage && v.storage[id]) || 0) / pop < 2 ? w / (2 * pop) : 0;
+  const th = lux && id === 'tigerhide' && ((v.storage && v.storage.tigerhide) || 0) / pop * TIGERHIDE_PRESTIGE_W < TIGERHIDE_PRESTIGE_CAP ? TIGERHIDE_PRESTIGE_W / pop : 0;
+  if (!(w > 0) && !(wp > 0) && !(th > 0)) return 0;
+  const under = ((v.storage && v.storage[id]) || 0) / pop < 2;
+  if (!(wp > 0) && !(th > 0)) return under ? w / (2 * pop) : 0;   // 종전 줄 그대로(위신 몫이 없는 물건)
+  return (under ? (w + t1205Par().luxW * wp) / (2 * pop) : 0) + t1205Par().luxW * th;
 }
 //   ★[T1217] 여가 몫의 밑변 — 수식 직업의 여유노동(`_idleFrac` · 수식이 닫힌 행위 어부는 그 잠재 · 실제 합 `_potA` · `_actA` 에 안 든다)은 그 사람 수만큼,
 //     행위 어부는 서버가 적은 그날 쉰 사람-날(`_t1217Rest` · 낮 시간 중 안 낚은 몫의 합 · 0 ~ 어부 수)만큼 — 인구 가중 평균. 칸이 없으면(서버가 안 적은 날 · 랩) 종전 값.
