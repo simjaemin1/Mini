@@ -116,6 +116,9 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     VILLAGE_MAX: '2', VILLAGE_DAY_MS: '2000',
     E2E_GIVE: '1',        // ★[T159] `__e2e_body` 로 소속을 앉힌다(T11 이 낸 검사 전용 손잡이)
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
+    // ★[T1211] 짐승 0 판(`ENABLE_WILDLIFE=0`)이다 — 사냥 고기 = 몸이 잡은 마리(`T1195_HUNT_REAL` · land1050 끔 기본)를 켜면 사냥꾼 수식 산출이 닫혀
+    //   사냥꾼 마을(농촌1 · 사냥꾼 8/8)이 고기 0 으로 곳간을 다 먹고 30날 안에 빈다(⑦c2 0 · 보고/T1211). 이 판은 소속 · 곳간 문을 재므로 그 손잡이는 끔에 묶는다.
+    T1195_HUNT_REAL: '0',
   });
   // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
   //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은

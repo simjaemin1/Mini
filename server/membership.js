@@ -64,6 +64,11 @@ const CFG = {
 // ★★[T779 2026-10-18] **켬 기본**(`'0'` 만 끔). ⓐ ⓒ 는 손잡이 밖이 됐다(옛 기여 한도 인출 · 길드 곳간 잠금을 걷었다 — 끄더라도 돌아올 길이 없다).
 //   손잡이가 이제 가르는 것 = ⓑ 기부(`/기부` 명령 · 거래소 패널의 기부 품목 칸 · 존의 회관 관리자 게이트 · 기부 문 · 기부 말).
 const T769 = process.env.T769_DONATE !== '0';
+// ★★[T1211 2026-11-07 · T1208-K1 회부 1] 손잡이 `T1211_STOCK_FE`(켬 기본 · `=0` = 종전 글자) — `/곳간` 형편 줄의 "먹을 것" = **식량 등가 전체**.
+//   종전: `food` 칸 하나만 셌다 — 사냥 고기 · 곡식 · 물고기 · 견과가 곳간에 쌓여도 안 셌다(land1050 e2e-guild 실측: 농촌1 줄 339 ↔ 식량 등가 686 · 고기 345).
+//   켬: 수 = `playerVillageWithdrawStockFoodEq`(econ `totalFoodEquivalent` · 꺼내기 한도의 밑변과 같은 함수 · 같은 환산율 `PV_DEPOSIT_RATE`) ·
+//     `food` 칸이 그와 다르면 꼬리에 그 칸을 적는다(꺼내기는 품목마다 — `/곳간 식량 N` 은 그 칸에서 나간다).
+const T1211_STOCK_FE = process.env.T1211_STOCK_FE !== '0';
 
 // ★★[T1137 2026-11-04 · ★재민 11-03 · 족보 732 · 733] **가입 · 탈퇴는 언제든 · 인정 구성원.**
 //   손잡이 `T1137_MEMBER_OPEN` — 켬 기본 후보(`'0'` 만 끔 · 끔 = 종전 소속 문 — 기여 12 + 촌장 권함 + `/소속`).
@@ -509,7 +514,8 @@ function handleChat(player, text) {
       const V = H.SimVillages; const g = V.villageWithdrawGate(vid | 0, player.x, player.y);
       if (g.err) { _send(player, `🏘️ ${g.err}`); return true; }
       const st = V.playerVillageWithdrawStock(g.vil, 'food');
-      _send(player, `🏘️ ${g.vil.name || '마을'} 곳간에 먹을 것이 ${st} 있습니다. 꺼내는 것은 촌장만 할 수 있습니다.`
+      const fe = (T1211_STOCK_FE && V.playerVillageWithdrawStockFoodEq) ? V.playerVillageWithdrawStockFoodEq(g.vil) : st;   // ★[T1211] 켬 = 식량 등가 전체
+      _send(player, `🏘️ ${g.vil.name || '마을'} 곳간에 먹을 것이 ${fe} 있습니다${fe !== st ? `(그중 식량 ${st})` : ''}. 꺼내는 것은 촌장만 할 수 있습니다.`
         + (T769 ? ' 내놓는 것은 누구나 할 수 있습니다("/기부 <품목> [양]" · 대가는 없습니다).' : '')
         + (V.villageFamine && V.villageFamine(g.vil) ? ' **마을이 굶고 있습니다.**' : ''));
       return true;
