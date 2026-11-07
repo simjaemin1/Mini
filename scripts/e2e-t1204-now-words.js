@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @nightly B   ← 야간 세 밤 분할(T238) · 넣을 때 A 27 · B 24 · C 28 — 적은 쪽(실서버 판 하나 · 실클라 둘 · 판당 2 ~ 3분)
 // === scripts/e2e-t1204-now-words.js — T1204 「지금 할 일」 칸이 화살 대신 글로 방위 · 걸음 — 실서버 · 실클라 [★재민 11-07 문 29 ⓑ] ===
 //
 // ★재는 것(새 게스트 둘 — 나루터로 도착하는 마을 하나 · 길로 도착하는 마을 하나 · 손잡이 `T1204_NOW_WORDS` 켬 기본):
@@ -26,7 +27,7 @@ const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-t1204-shots';
 fs.mkdirSync(SHOTS, { recursive: true });
 const HEADED = process.argv.includes('--headed');
-const CPORT = 3011, ZPORT = 3021;
+const CPORT = 3010, ZPORT = 3020;   // 존 문(`/startinfo`)은 zone-config 의 hanbando 포트(3020)로 간다 — e2e-next-step 과 같은 자리(같이 돌리지 않는다)
 const CDB = `/tmp/e2e-t1204-central-${process.pid}.db`, ZDB = `/tmp/e2e-t1204-zone-${process.pid}.db`;
 for (const f of [CDB, ZDB]) for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} }
 let pass = 0, fail = 0;
@@ -85,7 +86,6 @@ const exp = (me, t) => { const dx = t.x - me.x, dy = t.y - me.y; return { dir: D
     await ctx.close();
   }
   const VS = (info && info.villages) || [];
-  if (process.env.T1204_DEBUG) console.log(JSON.stringify(VS.slice(0, 4)).slice(0, 900), [...SH.keys()]);
   const dock = VS.find((v) => v.arrive && v.arrive.kind === 'dock' && SH.has(v.vid));
   const road = VS.find((v) => v.arrive && v.arrive.kind !== 'dock' && SH.has(v.vid));
   pre(!!dock && !!road, '도착 꼴 둘 — 나루터 마을 하나 · 길 마을 하나(둘 다 쉼터 있음)', `${dock ? dock.name + '(나루터)' : '나루터 없음'} · ${road ? road.name + '(' + road.arrive.kind + ')' : '길 없음'}`);
