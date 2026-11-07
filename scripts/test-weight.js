@@ -35,6 +35,7 @@ process.env.PORT = String(36800 + (process.pid % 190));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '1';
 process.env.VILLAGE_MAX = process.env.VILLAGE_MAX || '2';
+if (process.env.T1192_FISH_SPECIES == null) process.env.T1192_FISH_SPECIES = '0';   // ★[T1216-K5] 어종 몸무게 정본(T1192 · land1048 켬 기본)은 물고기 kg 을 `fish-goods` 몸무게로 돌린다 — ① 의 'specialty 와 한 자리도 안 다르다' 는 그 앞 무게 표의 계약이라 끔에 묶는다(형제 하네스 test-kcal · test-fishing 과 같은 꼴 · 켬 쪽은 test-t1192-fish-species)
 process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
 
 const _l = console.log, _w = console.warn, _e = console.error;
