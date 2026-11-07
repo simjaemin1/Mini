@@ -620,6 +620,51 @@ function onbNextPlan(I) {
   }
   if (p.gate != null && near === p.gate) p.target = null;   // 그 마을 게이트 안이면 화살 없음(닿았다)
   p.place = place;
+  if (I.words) onbWordsApply(I, p, s, arr, homeName, off);   // ★[T1204] 켬 — 화살 대신 글로 방위 · 걸음(끔 · 입력에 없음 = 종전 계획 그대로)
+  return p;
+}
+// ══ ★★[T1204 2026-11-07 · ★재민 11-07 문 29 ⓑ "그러자 b"] 화살을 빼고 **글로** — "쉼터는 해 뜨는 북쪽으로 40걸음입니다." ══════════════
+//   §9.5 "화살표 · 마커 · 팝업 금지 — 안내는 촌장 대사와 도착 방향"(`server/onboarding.js` 머리 제4 규약) 그대로 — 칸 안 화살 하나도 걷는다.
+//   ★새 수 0 · 사본 0 — 방위말 = 서버 · 클라 공용 정본 `public/dir-word.js`(촌장 대사와 같은 어휘 · `I.words`) ·
+//     걸음 = 셀 거리(welcome `uiCfg.nowWords.cell` = 서버 셀 px · 1셀 = 1m = 한 걸음) · "바로 앞" 문턱 = `uiCfg.nowWords.near`(카드 T1204 ② · 10걸음) ·
+//     쉼터 자리 = 서버 `shelterOf` 가 실은 칸(인사 · 온보딩 상태 — 클라는 자리를 짓지 않는다).
+//   대상 넷(빈터 · 내 터 · 마을 · 쉼터)마다 한 문장 — 말투 = 하십시오체(족보 766 짧은 상태 칸 · 지시 T1069 — 화살표 · 괄호 기호 나열 0).
+//   ⚠순수 함수 — 계획 한 벌을 고쳐 쓴다(DOM 0). 화살 그리기는 `onbNextRender` 가 켬이면 안 한다.
+function onbWordsWhere(I, noun, t) {
+  const W = I.words, cell = (I.wordsCell > 0 ? I.wordsCell : 0), nearN = (I.wordsNear > 0 ? I.wordsNear : 0);
+  if (!W || !t || !I.me || !(cell > 0)) return null;
+  const dx = t.x - I.me.x, dy = t.y - I.me.y;
+  const steps = Math.round(Math.hypot(dx, dy) / cell);
+  const jo = (w, a, b) => (typeof vvJosa === 'function' ? vvJosa(w, a, b) : a);
+  if (steps <= nearN) return { text: `${noun}${jo(noun, '이', '가')} 바로 앞입니다.`, dir: null, steps };
+  const d = W(dx, dy);
+  return { text: `${noun}${jo(noun, '은', '는')} ${d}으로 ${steps}걸음입니다.`, dir: d, steps };
+}
+function onbWordsApply(I, p, s, arr, homeName, off) {
+  // 쉬어 가기 — 인사한 마을이 시작 마을이고 서버가 그 쉼터 자리(온보딩 상태 `shelter` · `shelterOf` 정본)를 실었을 때만 목표로 세운다
+  //   (종전엔 클라가 몰라 목표 없음 · 다른 마을 인사면 그 마을 쉼터 자리를 모르므로 종전 그대로 — 인사 한 통의 칸 순서는 T529 하네스가 잠근다)
+  const sh = s && s.shelter;
+  if (p.stage === 'rest' && sh && I.greet && I.greet.vid === s.vid && sh.vid === s.vid) p.target = { x: sh.x + off.x, y: sh.y + off.y };
+  if (!p.target) { p.where = null; return p; }
+  const vname = (vid) => { const a = (vid != null && I.anchor) ? I.anchor(vid) : null; return (a && a.name) || ''; };
+  let noun = '';
+  if (p.stage === 'rest') noun = '쉼터';
+  else if (p.stage === 'lot' || p.stage === 'claim') noun = '빈터';
+  else if (p.stage === 'build') noun = '내 터';
+  else { const n = (p.gate != null ? vname(p.gate) : '') || homeName; noun = n ? `${n} 마을` : '마을'; }
+  const w = onbWordsWhere(I, noun, p.target);
+  p.where = w;
+  if (!w) return p;
+  // 종전 글의 "화살표 쪽" 두 꼴을 그 자리에서 글로 바꾼다(문장 하나 · 나머지 글자 그대로) — 없으면 맨 앞에 한 문장을 단다
+  let swapped = false;
+  p.guide = p.guide.map((x) => {
+    if (typeof x !== 'string') return x;
+    if (x.indexOf('화살표 쪽으로 가면 빈터입니다.') >= 0) { swapped = true; return x.replace('화살표 쪽으로 가면 빈터입니다.', w.text); }
+    const m = /^(.*) 마을이 화살표 쪽에 있습니다\. $/.exec(x);
+    if (m) { swapped = true; return `${w.text} `; }
+    return x;
+  });
+  if (!swapped) p.guide = [`${w.text} `].concat(p.guide);
   return p;
 }
 // 입력 한 벌 — 이미 있는 전역에서 **읽기만** 한다(좌표: 서버가 주는 것은 존 로컬 → 1차 존 오프셋을 더해 절대).
@@ -651,6 +696,9 @@ function onbNextInputs() {
       && Array.isArray(equipment) && equipment.some((e) => e && e.id === equipSlots[slot])),
     resVerb: (typeof resourceVerbs !== 'undefined' && resourceVerbs) || null,
   };
+  // ★[T1204] 켬(welcome `uiCfg.nowWords`)이고 방위말 정본(`public/dir-word.js`)이 실렸을 때만 — 칸이 화살 대신 글로 방위 · 걸음을 말한다
+  const NW = (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.nowWords) || null;
+  if (NW && typeof DirWord !== 'undefined' && DirWord && typeof DirWord.dirWord === 'function') { I.words = DirWord.dirWord; I.wordsCell = +NW.cell || 0; I.wordsNear = +NW.near || 0; }
   I.need = I.toolCfg ? onbNeedPick(I) : null;   // ★[T1120] 안 풀린 맨 끝 막힘(풀린 것은 여기서 내려놓는다)
   return I;
 }
@@ -727,7 +775,7 @@ function onbNextRender() {
   // 화살 — 화면에서 목표 쪽(사영된 두 점의 각) · 세계에는 아무것도 안 그린다
   const ar = document.getElementById('onbNextArrow');
   let ang = null;
-  if (p.target && I.me && window.__w2s) {
+  if (p.target && I.me && window.__w2s && !I.words) {   // ★[T1204] 켬(글로 말한다)이면 화살을 안 그린다
     const a = window.__w2s(p.target.x, p.target.y), b = window.__w2s(I.me.x, I.me.y);
     if (a && b && isFinite(a.px) && isFinite(b.px)) ang = Math.atan2(a.py - b.py, a.px - b.px);
   }
@@ -740,6 +788,7 @@ function onbNextRender() {
   onbNextLast = { stage: p.stage, place: p.place, item: p.item,
     guide: p.guide.map((x) => (x && x.k != null) ? `[${x.k}]` : x).join(''),
     target: p.target ? { x: Math.round(p.target.x), y: Math.round(p.target.y) } : null, angle: ang, btn: p.btn || null,
+    ...(I.words ? { where: p.where ? { text: p.where.text, dir: p.where.dir, steps: p.where.steps } : null } : {}),   // ★[T1204] 켬 — 칸이 말한 방위 · 걸음(하네스 읽기 · 끔 = 칸 없음)
     ...(p.step ? { step: p.step } : {}) };   // ★[T1120] 다음 막힘 칸이면 그 한 칸(무엇을 · 어느 문 — 하네스 읽기 · 끔 = 칸 없음 = 종전 꼴)
   return p;
 }
