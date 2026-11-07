@@ -1,0 +1,49 @@
+diff --git a/server/villages.js b/server/villages.js
+index dd50f849..ece96912 100644
+--- a/server/villages.js
++++ b/server/villages.js
+@@ -6156,7 +6156,7 @@ function _t1207Batch(vil, picked) {
+     const time = c.laborMin + walk;
+     if (time > budget) break;                                               // 그날 몸의 낮을 다 썼다(막힌 뒤라면 — 몸의 낮이 닿는 데까지만 모자람을 센다)
+     if (!stalled && c.wood > 1e-9) {
+-      const spare = Math.max(0, E.woodSpare(e));
++      const spare = Math.max(0, E.landSpare ? E.landSpare(e) : E.woodSpare(e));   // ★[T1213 ③] 땅이 보는 잉여(기본 = `woodSpare` · 재는 자 'house' = 비축 앞)
+       if (spare + 1e-9 < c.wood) stalled = true;                            // 재료가 없다 — 그날은 여기부터 안 넓힌다(대기 · 표지)
+       else {
+         const took = E.actFromGranary(e, 'wood', c.wood, true);            // 곳간 → 손(나르는 중 = 아직 소비 아님 · T1181 문법)
+@@ -13910,7 +13910,7 @@ function _t1181Step(vil,npc,now,awake) {
+   const S=()=>{const k=t?.kind==='bridge'?'_t527Sum':t?.kind==='terr'?'_t1207Sum':'_t435Sum';return vil[k]||(vil[k]={days:0,crewDays:0,trips:0,took:0,placed:0,adv:0,stallDays:0,built:0,jobs:{}});};
+   return _t1181Haul.step(npc,t,{now,awake,reach:44,drawMs:G_DRAWW,storeMs:G_STOREW,maxGap:SCH_VG_STUCK,
+     move:(g,label)=>{npc.behavior='wander';npc.targetX=g.x;npc.targetY=g.y;npc.gatherTarget=null;_lifeAct(npc,label);},act:label=>_lifeAct(npc,(t&&t.kind==='terr'&&label==='건축')?'개간':label),home:()=>_lifeGoHome(npc,'취침'),
+-    pick:()=>{for(const[item,left]of missing()){const W=_carryCfg(),kg=require('./weights').kgOf(item),room=kg>0?Math.max(0,Math.floor((W.CFG.CAP_KG-W.totalKg(npc))/kg)):0;const spare=item==='wood'&&(t.kind==='bridge'||t.kind==='terr')?Math.max(0,t.kind==='bridge'?E.woodSpareAfterLand(vil.econ):E.woodSpare(vil.econ)):Infinity;const n=Math.min(left,_t400PerLoad(item),room,spare);if(n>0&&(vil.econ.storage[item]||0)>0)return{item,n};}return null;},
++    pick:()=>{for(const[item,left]of missing()){const W=_carryCfg(),kg=require('./weights').kgOf(item),room=kg>0?Math.max(0,Math.floor((W.CFG.CAP_KG-W.totalKg(npc))/kg)):0;const spare=item==='wood'&&(t.kind==='bridge'||t.kind==='terr')?Math.max(0,t.kind==='bridge'?E.woodSpareAfterLand(vil.econ):(E.landSpare?E.landSpare(vil.econ):E.woodSpare(vil.econ))):Infinity;const n=Math.min(left,_t400PerLoad(item),room,spare);if(n>0&&(vil.econ.storage[item]||0)>0)return{item,n};}return null;},
+     take:(k,n)=>{const q=E.actFromGranary(vil.econ,k,n,true);if(q>0){S().took+=q;S().trips++;}return q;},
+     refund:(k,n)=>E.returnActMaterials(vil.econ,k,n),
+     place:(k,n)=>{if(!(n>0))return;t.site.mat[k]=(t.site.mat[k]||0)+n;E.actMaterialsPlaced(vil.econ,k,n);S().placed=(S().placed||0)+n;if(t.kind==='bridge')_t527Save(t.site);},
+diff --git a/sim/economy-sim.js b/sim/economy-sim.js
+index 1ff16469..96094fdb 100644
+--- a/sim/economy-sim.js
++++ b/sim/economy-sim.js
+@@ -1778,6 +1778,13 @@ const T1213_ON = (typeof process !== 'undefined' && process.env && process.env.T
+ //     땅(말뚝)은 `woodSpare`(비축 · 집 몫 뒤)를 그대로 쓰고, 숯가마 · 다리 크루는 땅 몫까지 뺀 잉여를 쓴다(배수 0 · 순서만).
+ function landWoodShare(v) { return (T1213_ON && v && v._t1207Need > 0) ? v._t1207Need : 0; }
+ function woodSpareAfterLand(v) { return woodSpare(v) - landWoodShare(v); }
++//   ③ 땅이 보는 잉여 — 기본(`T1213_LAND_SLOT` 없음 · 'spare') = `woodSpare`(비축 · 집 몫 뒤) · 'house'(재는 자 전용) = 집 몫 뒤 · **비축 앞**(곳간 − 집 몫).
++//     T1213 끔이면 언제나 `woodSpare`(T1207 그대로).
++const T1213_LAND_SLOT = (typeof process !== 'undefined' && process.env && process.env.T1213_LAND_SLOT) || 'spare';
++function landSpare(v) {
++  if (!(T1213_ON && T1213_LAND_SLOT === 'house') || !v || !v.storage) return woodSpare(v);
++  return (v.storage.wood || 0) - houseWoodShare(v);
++}
+ //   ② 짓는 파생수요(econ 재화 단위) — 생존(땔감 · 1인 0.05)과 **다른 쓰임**이라 v2 목표에 큰 쪽이 아니라 **합**으로 얹는다(`economy-sim-v2` 목표 세 자리).
+ //     통나무 = 말뚝(`_t1207Need`) + 집(`houseBuildWant`) + 다리(남은 단계 몫 `_t1213Bridge` — 서버 생활층이 적는다) + 숯(노가 쓸 숯의 모자람을 구울 통나무 —
+ //     숯 파생수요 `derivedInputTarget('charcoal')` 와 같은 목표 · 숯가마가 있으면 숯가마 배치(통나무 3 → 숯 4) · 없으면 노천 탄화(숯 1 = 통나무 3 ÷ 2)).
+@@ -7063,7 +7070,7 @@ module.exports = {
+   T419_STONE_REAL, stoneRealPer, stoneRealOn, stoneWorkStock,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
+   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
+   T1050_LAB_HOUSE, crewPerLoad, houseCrewDay, labHouseAttach, labHouseDay, labHouseWorldDay, labSiteNew, labSiteCrewDay, labCrewDbg,   // ★[T1050] 집 크루 하루 정본(서버 생활층 · 랩 몸 없는 마을이 같은 함수) · 손잡이 · ★[T1056] 몸 없는 크루의 집터 하루(t17 · t176 · 랩 HTML 둘이 같은 함수)
+-  T1213_ON, houseBuildWant, landWoodShare, woodSpareAfterLand, buildInputTarget,   // ★[T1213] 땅의 차례 · 짓는 파생수요(v2 목표 세 자리 · 생활층 다리 크루가 같은 함수를 부른다)
++  T1213_ON, houseBuildWant, landWoodShare, woodSpareAfterLand, buildInputTarget, landSpare, T1213_LAND_SLOT,   // ★[T1213] 땅의 차례 · 짓는 파생수요(v2 목표 세 자리 · 생활층 다리 크루가 같은 함수를 부른다)
+   T400_BUILD_ACT, T1054_DECAY_WOOD, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, actMaterialsPlaced, returnActMaterials, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
+   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
+   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
