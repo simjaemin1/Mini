@@ -33,37 +33,28 @@ if (process.argv[2] === '--child') {
   const out = { mode: process.env.T1214_STEP_FAST || '', T400: E.T400_BUILD_ACT, crew: {}, task: [], rock: [], kg: null, body: null, bait: {} };
   const world = {}; E.bindProductionActs(world);
 
-  // ── ① 크루 명부 ──
-  { let n = 0, bad = 0, baitHit = 0; const R = lcg(1214), tasks = [];
+  // ── ① 크루 명부(다리 크루 문) — `_t1181Task` 답 · 다리 터 목록 셋(빈 목록 · 이 마을 터 · 남의 마을 터만) ──
+  const crewFix = [];
+  { const R = lcg(1214), tasks = []; let baitHit = 0;
     for (let t = 0; t < 3000; t++) {
       const k = Math.floor(R() * 9), pids = [], pl = new Map();
       for (let i = 0; i < k; i++) { const pid = 'c' + t + '_' + i; pids.push(pid); if (R() < 0.8) pl.set(pid, { pid: R() < 0.04 ? 'x' + i : pid, x: 100, y: 100, inventory: {} }); }
       if (k && R() < 0.2) pids.splice(Math.floor(R() * pids.length), 0, pids[Math.floor(R() * k)]);   // 같은 pid 두 번
       const vil = { name: 'v' + (t % 7), ccx: 5, ccy: 5, npcPids: pids, _site: R() < 0.5 ? { cx: 1 } : null, _granPend: R() < 0.5 ? { cx: 3, cy: 4, day: 9, mat: {} } : null, econ: { _world: world, storage: {}, treasury: {}, npcs: [] }, _granList: [] };
+      const mode = t % 3;   // 0 빈 목록(한반도 기본) · 1 이 마을 터(끝난 터 섞임) · 2 남의 마을 터만
+      const sites = mode === 0 ? [] : [{ i: 0, v: [mode === 1 ? vil.name : 'other'], span: 3, cells: [7, 7, 8, 7, 9, 7, 10, 8], stage: 0, mat: {}, done: R() < 0.2, day: null, adv: [], sum: null, added: null }];
       state.deps = { players: pl, isTerrainBlockedLocal: (x, y) => ((x * 7 + y * 13) % 5) === 0 };
-      const ask = [...new Set([...pl.values()].map((p) => p.pid)), 'nobody'];
-      for (const pid of ask) {
-        for (const kind of [435, 527]) {
-          const skip = kind === 435 ? ((E.T400_BUILD_ACT && vil._site) ? 2 : 0) : ((E.T400_BUILD_ACT && vil._site) ? 2 : 0) + ((E.T435_GRANARY_ACT && vil._granPend) ? 2 : 0);
-          const ref = (kind === 435 ? P14.crew435(vil) : P14.crew527(vil)).includes(pid);
-          const got = P14.crewHas(vil, pid, skip);
-          n++; if (got !== ref) bad++;
-          // 미끼 (나) — 건너뜀 없이 앞 둘
-          if (P14.crewHas(vil, pid, 0) !== ref) baitHit++;
-        }
+      state._t527Sites = sites;
+      for (const p of pl.values()) {
+        const r = LP._t1181Probe.task(vil, p);
+        tasks.push(r ? [r.kind, r.key, enc(r.target.x), enc(r.target.y)] : null);
+        if (mode === 1 && r && r.kind === 'bridge') baitHit++;   // 미끼 (나) — 목록이 있어도 명부를 건너뛰는 문은 이 답을 놓친다
       }
-      // 제품 문 — `_t1181Task`(곳간 크루 · 다리 크루) 답
-      if (t % 10 === 0) {
-        state._t527Sites = [{ i: 0, v: [vil.name], span: 3, cells: [7, 7, 8, 7, 9, 7, 10, 8], stage: 0, mat: {}, done: false, day: null, adv: [], sum: null, added: null }];
-        for (const p of pl.values()) {
-          const r = LP._t1181Probe.task(vil, p);
-          tasks.push(r ? [r.kind, r.key, enc(r.target.x), enc(r.target.y)] : null);
-        }
-        state._t527Sites = null;
-      }
+      crewFix.push({ vil, pl, sites });
+      state._t527Sites = null;
     }
-    out.crew = { n, bad }; out.task = H(JSON.stringify(tasks)); out.taskN = tasks.length; out.taskHit = tasks.filter(Boolean).length;
-    out.taskKinds = [...new Set(tasks.filter(Boolean).map((x) => x[0]))].sort(); out.bait.crewSkip0 = baitHit; }
+    out.task = H(JSON.stringify(tasks)); out.taskN = tasks.length; out.taskHit = tasks.filter(Boolean).length;
+    out.taskKinds = [...new Set(tasks.filter(Boolean).map((x) => x[0]))].sort(); out.bait.crewSkipAlways = baitHit; }
 
   // ── ② 바위 고르기 ──
   { const R = lcg(7121), fps = []; let orderN = 0, orderBad = 0, baitTie = 0, ties = 0; const kinds = { stop: 0, pick: 0, none: 0, full: 0 };
@@ -127,6 +118,12 @@ if (process.argv[2] === '--child') {
     out.mod = { carry: P14.carry() === C, weights: P14.weights() === W }; }
 
   out.stat = { villages: P14.stat(), weights: W.t1214Stat(), fishGoods: FG.t1214Stat(), on: P14.ON, verify: P14.VERIFY };
+  // ① 문 전수(제품 문 뒤 — 셈을 위 표에 안 섞는다) — 빈 목록 = 거짓 · 목록이 있으면 = 종전 명부 + some
+  { let n = 0, bad = 0;
+    for (const f of crewFix) { state.deps = { players: f.pl }; state._t527Sites = f.sites;
+      for (const p of f.pl.values()) { const ref = f.sites.length === 0 ? false : P14.crew527(f.vil).includes(p.pid); const got = P14.crew527Gate(f.vil, p); n++; if ((P14.VERIFY ? P14.crew527(f.vil).includes(p.pid) : ref) !== got) bad++; }
+      state._t527Sites = null; }
+    out.crew = { n, bad }; }
   process.stdout.write('\n@@T1214@@' + JSON.stringify(out) + '\n');
   process.exit(0);
 }
@@ -146,8 +143,9 @@ const FP = ['task', 'taskN', 'rock', 'rockN', 'kg', 'kgN', 'bodyKg', 'body'];
 for (const [lab, extra] of [['T400 기본(켬)', {}], ['T400_BUILD_ACT=0(기준선 판 조건)', { T400_BUILD_ACT: '0' }]]) {
   console.log(`── ${lab} ──`);
   const off = child(null, extra), on = child('1', extra), vf = child('verify', extra);
-  ok(`끔 아이 — 새 길 셈 0 · 손잡이 끔(villages · weights · fish-goods)`, off.stat.on === false && off.stat.villages.crewQ === 0 && off.stat.villages.rockQ === 0 && off.stat.weights.on === false && off.stat.fishGoods.on === false, JSON.stringify(off.stat));
-  ok(`① 명부 전수 — _t1214CrewHas = 배열 + some(${off.crew.n} 물음 · 어긋남 ${off.crew.bad})`, off.crew.n > 10000 && off.crew.bad === 0 && on.crew.bad === 0);
+  ok(`끔 아이 — 새 길 셈 0 · 손잡이 끔(villages · weights · fish-goods)`, off.stat.on === false && off.stat.villages.crewQ === 0 && off.stat.villages.rockQ === 0 && off.stat.villages.ptQ === 0 && off.stat.weights.on === false && off.stat.fishGoods.on === false, JSON.stringify(off.stat));
+  ok(`① 다리 크루 문 전수 — 빈 목록 = 거짓 · 목록이 있으면 종전 명부(${off.crew.n} 물음 · 어긋남 ${off.crew.bad}/${on.crew.bad}/${vf.crew.bad})`, off.crew.n > 5000 && off.crew.bad === 0 && on.crew.bad === 0 && vf.crew.bad === 0);
+  ok(`① 켬 아이 — 빈 목록 판에서 명부를 건너뛰었다(${on.stat.villages.crewSkip}/${on.stat.villages.crewQ})`, on.stat.villages.crewSkip > 0 && on.stat.villages.crewQ > on.stat.villages.crewSkip);
   ok(`① _t1181Task 답 끔 = 켬 = verify(${off.taskN} 몸 · 크루 답 ${off.taskHit} · ${off.taskKinds.join('/')})`, off.task === on.task && off.task === vf.task && off.taskHit > 0 && off.taskKinds.length === 2, `${off.task} ${on.task} ${vf.task}`);
   ok(`② 켬 차례 = 종전 안정 정렬 차례(${off.order.n} 목록 · 거리 같음 낀 목록 ${off.order.ties} · 어긋남 ${off.order.bad})`, off.order.n > 1000 && off.order.ties > 100 && off.order.bad === 0);
   ok(`② _physicalStoneWork 답 · 몸 칸 · 존 문 부름 차례 끔 = 켬 = verify(${off.rockN} 판 · ${JSON.stringify(off.rockKinds)})`, off.rock === on.rock && off.rock === vf.rock && off.rockKinds.stop > 0 && off.rockKinds.pick > 0 && off.rockKinds.full > 0 && off.rockKinds.none > 0, `${off.rock} ${on.rock} ${vf.rock}`);
@@ -158,7 +156,7 @@ for (const [lab, extra] of [['T400 기본(켬)', {}], ['T400_BUILD_ACT=0(기준�
   ok(`④ verify 아이 — 견줌 > 0 · 어긋남 0(명부 ${vf.stat.villages.crewVq} · 바위 ${vf.stat.villages.rockVq} · 설 자리 ${vf.stat.villages.ptVq} · 모듈 ${vf.stat.villages.modVq} · 무게 ${vf.stat.weights.vq} · 바다 표 ${vf.stat.fishGoods.vq})`,
     vf.stat.villages.crewVq > 0 && vf.stat.villages.rockVq > 0 && vf.stat.villages.ptVq > 0 && vf.stat.villages.modVq > 0 && vf.stat.weights.vq > 0 && vf.stat.fishGoods.vq > 0
     && (vf.stat.villages.crewBad | 0) === 0 && (vf.stat.villages.rockBad | 0) === 0 && (vf.stat.villages.ptBad | 0) === 0 && (vf.stat.villages.modBad | 0) === 0 && vf.stat.weights.bad === 0 && vf.stat.fishGoods.bad === 0, JSON.stringify(vf.stat));
-  ok(`⑤ 미끼 — 같은 거리 뒤 차례 길은 종전과 갈린다(${off.bait.rockLateTie} 목록) · 건너뜀 없는 명부는 갈린다(${off.bait.crewSkip0} 물음)`, off.bait.rockLateTie > 0 && off.bait.crewSkip0 > 0);
+  ok(`⑤ 미끼 — 같은 거리 뒤 차례 길은 종전과 갈린다(${off.bait.rockLateTie} 목록) · 목록이 있어도 명부를 건너뛰는 문은 다리 답을 놓친다(${off.bait.crewSkipAlways} 답)`, off.bait.rockLateTie > 0 && off.bait.crewSkipAlways > 0);
 }
 console.log(`\nT1214 step-fast: ${pass}/${fail}`);
 process.exitCode = fail ? 1 : 0;
