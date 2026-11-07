@@ -7,7 +7,8 @@ if (require('worker_threads').isMainThread && process.env.T577_SEED) {
   const KN = ['T312_FISH_ACT', 'T325_WOOD_ACT', 'T347_FORAGE_ACT', 'T1188_ORE_SPLIT', 'T1202_BATCH'];
   const cols = ['day', 'pop', 'dead', 'bodies', 'fisher', 'lumber', 'forager', 'miner', 'bFisher', 'bLumber', 'bForager', 'bMiner',
     'fishIn', 'woodIn', 'forageIn', 'oreIn', 'fishD', 'woodD', 'forageD', 'oreD', 'foodEaten', 'fuelCov', 'foodStock', 'woodStock',
-    'fishBody', 'woodBody', 'forageBody', 'fishBatch', 'woodBatch', 'forageBatch'];
+    'fishBody', 'woodBody', 'forageBody', 'fishBatch', 'woodBatch', 'forageBatch',
+    'hunter', 'bHunter', 'meatIn', 'meatD'];   // ★[T1202 → T1195] 사냥꾼(econ · 몸) · 그날 든 고기(econ 단위) · 사냥 그날 몫(T1195 켬일 때만 · 끔 0)
   const st = { seed: +process.env.T577_SEED, knobs: Object.fromEntries(KN.map((k) => [k, process.env[k] === undefined ? 'unset' : process.env[k]])), dayMs: process.env.VILLAGE_DAY_MS, cols, rows: {}, errors: [] };
   const S = () => { const m = require.cache[path.join(root, 'server/villages.js')]; return m && m.exports.__p3Bind ? m.exports.__p3Bind({}).state : null; };
   const E = () => require.cache[path.join(root, 'sim/economy-sim.js')]?.exports || null;
@@ -26,7 +27,7 @@ if (require('worker_threads').isMainThread && process.env.T577_SEED) {
           const pl = s && s.deps && s.deps.players;
           for (const v of (w.villages || [])) {
             const x = sv.get(v), c = v.counts || {}, dp = v.dailyProductionBuf || {};
-            const bj = { fisher: 0, lumberjack: 0, forager: 0, miner: 0 }; let nb = 0;
+            const bj = { fisher: 0, lumberjack: 0, forager: 0, miner: 0, hunter: 0 }; let nb = 0;
             if (x && pl) for (const pid of (x.npcPids || [])) { const p = pl.get(pid); if (!p) continue; nb++; if (p.simJob in bj) bj[p.simJob]++; }
             const acts = (ec && ec.forageActItemsOf) ? (ec.forageActItemsOf(v) || []) : [];
             let fIn = 0; for (const k of acts) fIn += dp[k] || 0;
@@ -39,7 +40,8 @@ if (require('worker_threads').isMainThread && process.env.T577_SEED) {
             prev.set(v.name, cur);
             const row = [d, (v.npcs || []).length, v._deadTot || 0, nb, c.fisher || 0, c.lumberjack || 0, c.forager || 0, c.miner || 0, bj.fisher, bj.lumberjack, bj.forager, bj.miner,
               r4(dp.fish), r4(dp.wood), r4(fIn), r4(oIn), r4(v._fishOutLast), r4(woodD), r4(fD), r4(v._oreOutLast), r4(eaten), r4(v._fuelCov), r4((v.storage && v.storage.food) || 0), r4((v.storage && v.storage.wood) || 0),
-              r4(cur.fish - (p0.fish || 0)), r4(cur.wood - (p0.wood || 0)), r4(cur.forage - (p0.forage || 0)), r4(cur.fb - (p0.fb || 0)), r4(cur.wb - (p0.wb || 0)), r4(cur.gb - (p0.gb || 0))];
+              r4(cur.fish - (p0.fish || 0)), r4(cur.wood - (p0.wood || 0)), r4(cur.forage - (p0.forage || 0)), r4(cur.fb - (p0.fb || 0)), r4(cur.wb - (p0.wb || 0)), r4(cur.gb - (p0.gb || 0)),
+              c.hunter || 0, bj.hunter, r4(dp.meat), r4(v._huntOutLast)];
             (st.rows[v.name] || (st.rows[v.name] = [])).push(row);
           }
         }
