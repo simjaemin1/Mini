@@ -46,3 +46,32 @@ test-winter-fx rc=0 1s :: === 61건 중 PASS 61 · FAIL 0 ===
 멧돼지 굽기 두 번 :: body_idle.png md5 692767a90bcc6ba71bd010c22daf7cc9 · wild_boar_meta.json md5 dc5362f533a0ee0e778676fcf22a2288 — 두 번 바이트 같음
 128px 비교판 넷 다시 :: 원본 · 규격판(씬 안) · 규격판 .glb · 자동 줄이기 — 첫 판과 바이트 같음 · 규격판 .glb md5 6c7028114c242642d36cc2e7250fbd9e 같음
 시험 모델(뼈 2 · 동작 2) :: 검사기 크기 0.300 × 0.800 × 0.750(glTF 뼈 모양 물체 뺀 뒤 — 빼기 전 1.902 × 2.000 × 2.350) · 굽기 body_idle 236×376(4프레임) · body_walk 472×376(8프레임)
+
+## ⑥ 11-07 최신 main(07eec54e · land1048) 합친 나무(3ddda50a)에서 다시 — 손잡이 끔 · env 없음
+test-model-intake rc=0 2s :: === 33건 중 PASS 33 · FAIL 0 ===
+test-render-common rc=0 2s :: 결과: PASS
+test-assets-audit rc=1 23s :: 결과: FAIL(1)
+      ✗ ⑪a 이미지에 실리는데 어디서도 안 닿는 파일 53장 ≤ 기준 52(T456 뒤 수) — 늘면 빨갛다  ★1장 늘었다 — 새로 실린 것을 부르는 자리를 만들거나, 산물·도구면 `.dockerignore`·`tools/_rnd_archive/` 로 빼라(정말 실어야 하면 까닭을 보고에 적고 기준을 올린다)
+test-client-globals rc=0 0s :: === PASS 26 / FAIL 0 ===
+test-regrow rc=0 17s :: === 100건 중 PASS 100 · FAIL 0 ===
+test-snow rc=0 0s :: === 43건 중 PASS 43 · FAIL 0 ===
+test-t1126-rock-yield rc=0 6s :: === T1126: 52건 중 PASS 52 · FAIL 0 ===
+test-t1125-welcome rc=0 11s :: === 26건 중 PASS 26 · FAIL 0 ===
+test-charsheet rc=0 9s :: === test-charsheet 결과: 통과 194 · 실패 0 ===
+test-t1086-first-join rc=0 1s :: === 82건 중 PASS 82 · FAIL 0 ===
+test-audio rc=0 2s :: === PASS 208 / FAIL 0 ===
+test-far-trees rc=0 92s :: 결과: PASS 19 / FAIL 0
+test-village-only rc=0 67s :: === 결과: 106 통과 · 0 실패 ===
+test-well rc=0 2s :: === 32/32 ✓ ===
+test-t1059-pick-top rc=0 0s :: === 44건 중 PASS 44 · FAIL 0 ===
+test-t1064-next-step rc=0 0s :: === 49건 중 PASS 49 · FAIL 0 ===
+test-t1120-next-tool rc=0 4s :: === T1120: 85건 중 PASS 85 · FAIL 0 ===
+test-icons rc=0 7s :: 결과: PASS
+test-props rc=0 0s :: 결과: PASS
+test-building-anchor rc=0 0s :: 결과: PASS
+test-crops-world rc=0 0s :: 결과: PASS
+test-well-art rc=0 1s :: === 33/33 ✓ ===
+test-winter-fx rc=0 1s :: === 61건 중 PASS 61 · FAIL 0 ===
+test-coast-shape rc=0 118s :: === PASS 47 / FAIL 0 ===
+test-render-common --selftest :: 결과: PASS(검사기가 오염 7건을 잡았다)
+    (test-assets-audit ⑪a — main 07eec54e 혼자서도 53장 · 같은 줄 · 합친 나무 닿음 갈래: server 112 · npm 2 · game 1,646(main 1,643 + 이 가지 3) · board 36 · root 4 · 안 닿음 53)
