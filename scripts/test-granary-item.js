@@ -18,6 +18,10 @@
 //
 // 실행: node scripts/test-granary-item.js
 'use strict';
+// ★[T1208-K3 2026-11-07] 픽스처 — ⑥ 랩 세계(5마을 · 200일 · 씨 7)는 출생 = 몸(T1198 · land1049 켬 기본)이면 122일째 습지에서 econ 말리기(`preserveRecord`)가 들어와
+//   대구 레코드에서 `dried_cod` 레코드가 난다(78 레코드-날) — ⑥ 의 "품목이 바뀐 레코드 0" 자가 그것을 센다. 이 하네스가 재는 것은 대구 레코드의 먹기 · 싣기 길이라
+//   판 세계를 T1198 앞(`=0` — 출생 몸 끔 · 종전 몸 동기)으로 묶는다. 부르는 쪽이 값을 주면 그 값이 먼저(켬 세계에서 말린 것을 어떻게 셀지는 보고 T1208-K3 회부).
+if (process.env.T1198_BIRTH_BODY == null) process.env.T1198_BIRTH_BODY = '0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
