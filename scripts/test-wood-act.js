@@ -225,8 +225,10 @@ console.log('\n⑦ 끄면 비트 동일 — 새 줄이 전부 손잡이 뒤에 �
   ok(/if \(vil\.econ && _lifeEcon\(\)\.T325_WOOD_ACT\) \{/.test(VC)
      && /const _on = _lifeEcon\(\)\.woodActOn\(vil\.econ\);/.test(VC),
     '⑦ ★하루 경계 절도 손잡이 뒤다(그 안에서 게이트를 본다 — 입력을 만드는 자리라서)');
-  ok(/if \(_on && _walked === 0 && _ln > 0 && _tr\.length\) \{/.test(VC),
-    '⑦ ★그 절이 `return` 으로 하루 경계를 끊지 않는다(뒤 일과가 그대로 돈다)');
+  //   ★[T1202] 실제 호스트(T1180 몸만)에서는 걸은 몸이 명부에서 이미 빠진다(몸 XOR 일괄을 몸마다) — 그때만 `_walked === 0` 문을 건너뛴다(그 밖 = 옛 문 그대로).
+  ok(/if \(_on && \(_t1202W \? true : _walked === 0\) && _ln > 0 && _tr\.length\) \{/.test(VC)
+     && /const _t1202W = \(_bodyOnly && _on\) \? _t1202Roster\(vil, 'lumberjack', _t561W \|\| _t491C, _walked, _t449S\) : null;/.test(VC),
+    '⑦ ★그 절이 `return` 으로 하루 경계를 끊지 않는다(뒤 일과가 그대로 돈다) · ★[T1202] 몸 XOR 일괄은 실제 호스트에서만 몸마다');
   ok(/if \(_lifeEcon\(\)\.T325_WOOD_ACT && state\.deps\.t325TreesAtCell\) \{/.test(VC),
     '⑦ ★★나무 셀 스캔도 손잡이 뒤다 — 끈 팔은 색인을 **한 셀도 안 묻는다**(벽시계 무변)');
   ok(/v\._woodOutLast = \(v\.counts\.lumberjack \|\| 0\) \* JOBS\.lumberjack\.base \* \(v\.land\.wood \|\| 0\) \* toolBoostShared;/.test(C),
@@ -582,7 +584,7 @@ console.log('\n⑫ [T561] 명부가 몸의 그날을 본다 · 몸이 하루 1�
   ok(/const _t561W = T561_ROSTER_BODY \? _t561Crew\(vil, 'lumberjack'\) : null;/.test(daily)
      && /const _t561F = T561_ROSTER_BODY \? _t561Crew\(vil, 'forager'\) : null;/.test(daily)
      && /const _fgE = _t561F \? _t561F\.length : \(\(vil\.econ\.counts && vil\.econ\.counts\.forager\) \|\| 0\);/.test(daily)
-     && daily.includes('const _ln = (_t449S || _bodyOnly) ? 0 : _lnE;') && daily.includes("const _fg = (_t449S || _lifeEcon().productionFormulaOff?.(vil.econ,'forager')) ? 0 : _fgE;"),
+     && daily.includes('const _ln = _t1202W ? _t1202W.n : ((_t449S || _bodyOnly) ? 0 : _lnE);') && daily.includes("const _fg = _t1202G ? _t1202G.n : ((_t449S || _lifeEcon().productionFormulaOff?.(vil.econ,'forager')) ? 0 : _fgE);"),   // ★[T1202] 실제 호스트만 T1202 명부(그 밖 = 옛 줄 글자 그대로)
     '⑫ ★★끔 = 옛 줄(나무꾼 = T491 명부 또는 econ 수 · 채집 = econ 수) — 켬만 **두 절**(나무꾼·채집)의 명부가 몸이 된다 · 관측 마을 줄(T449) 무변');
   const tick = (VC.match(/function npcLifeTick\([\s\S]*?\n\}/) || [''])[0];
   ok(/if \(_woodBodyDayOn\(vil\)\) \{ best = _t561Standing\(_tr, npc, h, best\); if \(!best\) \{ npc\._t325Site = \{ none: 1, day \}; _lifeGoHome\(npc, '휴식'\); return true; \} \}/.test(tick)

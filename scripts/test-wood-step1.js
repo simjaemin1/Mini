@@ -50,7 +50,7 @@ console.log('\n② 손·짐에 남는 통나무 — 정적');
     'ⓐ ★★몸 갈래(`_t325Deliver`) — 켬 = 넣은 만큼만 손에서 뺀다(남긴 몫 `_t717L`) · 끔 = 옛 줄(손 0)');
   ok(/const _g = _lifeEcon\(\)\.woodToGranary\(vil\.econ, u\);\s*if \(T717_WOOD_HAND\) _t717PackPut\(vil, u - \(_g \|\| 0\)\);/.test(daily),
     'ⓐ ★★헤드리스 하루 — 입구가 돌려준 받은 몫을 읽고 나머지(`u − 받은 몫`)는 켬이면 마을 짐에(끔 = 옛 줄 · 안 읽고 버림)');
-  ok(/if \(T717_WOOD_HAND && _on && !_bodyOnly\) _t717PackIn\(vil\);/.test(daily) && daily.indexOf('_t717PackIn(vil)') < daily.indexOf('for (let k = 0; k < _tr.length * 8')
+  ok(/if \(T717_WOOD_HAND && _on && \(!_bodyOnly \|\| T1202_BATCH\)\) _t717PackIn\(vil\);/.test(daily)   // ★[T1202] 실제 호스트도 일괄 짐(일괄 몫)은 다시 든다 · T1202 끔 = T1180 줄(몸만) && daily.indexOf('_t717PackIn(vil)') < daily.indexOf('for (let k = 0; k < _tr.length * 8')
      && daily.indexOf('_t717PackIn(vil)') > daily.indexOf('_t325Deliver(vil, p)'),
     'ⓐ ★짐은 **베기 전** · 손 입고 뒤에 든다(채집 `_t544PackIn` 과 같은 자리) · 켬 ∧ 행위 마을만');
   ok(/vil\.econ\._t717Pack = \+\(\(vil\.econ\._t717Pack \|\| 0\) \+ u\)\.toFixed\(6\);/.test(put) && /woodToGranary\(vil\.econ, u\)/.test(pin)
