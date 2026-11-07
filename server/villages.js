@@ -6289,6 +6289,7 @@ function init(deps) {
         catch (e) { state._warStat.engageErr++; console.error(`[${state.zoneId}] ⚔️ 교전 훅 실패(이 전투만 war-core 정산으로 떨어진다):`, e.message); return false; }
       },
     });
+    if (T1167_WAR && T728_KEEP) { try { _t1167Early(); } catch (e) { console.error(`[${ZONE_ID}] ⚔️ [T1167] 진행 중 전쟁 되살림 실패(종전대로 계속):`, e.message); } }   // ★[T1167] 거울 정산 앞(짐이 쥔 무기를 곳간에 두 번 안 낸다)
     state.war.rebuildFromEcon();   // 재부팅 복원: econ._warTribOut → world TRIBUTES 재구성
     if (state.war.rationActOn && state.war.rationActOn()) console.log(`[${state.zoneId}] 🍙 [T423] 짐이 먹는다 켬 — 원정 팩은 병사 몸의 짐 · 하루 경계에 몸이 먹는다 · 원정군은 마을 식사에서 빠진다`);
 
@@ -6411,6 +6412,7 @@ function init(deps) {
     else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t1025Ev')) _t862Drop(v.econ, '_t1025Ev');   // ★[T1025] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다
     if (T747_BODY) { try { _t747Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T747] 몸 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t747Body')) _t862Drop(v.econ, '_t747Body');   // ★[T747] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(main 행엔 이 칸이 없어 무동작)
+    if (T1167_WAR) { try { _t1167Bind(); } catch (e) { console.error(`[${ZONE_ID}] ⚔️ [T1167] 전쟁 몸 다시 잇기 실패(명부 없이 계속):`, e.message); } }   // ★[T1167] 몸이 선 뒤 — 자리 → 새 pid · 낡은 징발 pid 지움
     if (T822_BODY_SEED) _t833Boot();   // ★[T833] 되살림(T728 메타 · T747 몸 칸) 뒤 — 명부 자리 열쇠로 한 번(같은 판 씨 · 같은 자리면 되살린 값 그대로)
     if (_T732_ON) { try { _t732Boot(); } catch (e) { console.error(`[${ZONE_ID}] 🧺 [T732] 곳간 로트 장부 붙이기 실패(장부 없이 계속):`, e.message); } }
     // ★★[T533] 존 경계 호스트 — 팔 `T525_CROSS_ZONE`(econ 정본) 켬 + 존이 미는 문을 줬을 때만(끔 = 이 줄 무동작 · 조각 목록·몸 층 무변).
@@ -6585,7 +6587,8 @@ function _warDraftPids(vil, comp, seed, warId) {
   for (const type of order) {
     let need = Math.round(comp[type] || 0); if (need <= 0) continue;
     const cand = []; for (let i = 0; i < pool.length; i++) { if (taken.has(i)) continue; cand.push([i, _warPref(pool[i].simJob, type)]); }
-    cand.sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+    if (_t1167Pref.size && _t1167Pref.has(warId)) { for (const c of cand) c.push(_t1167Rank(warId, pool[c[0]], type)); cand.sort((a, b) => b[2] - a[2] || b[1] - a[1] || a[0] - b[0]); }   // ★[T1167] 되살린 원정 — 그 병사 몸 먼저(같은 병종 먼저 · 명부가 없으면 이 줄 무동작)
+    else cand.sort((a, b) => b[1] - a[1] || a[0] - b[0]);
     for (let s = 0; s < need && s < cand.length; s++) {
       const i = cand[s][0]; taken.add(i); const p = pool[i];
       p._muster = true; p._muType = type; p.simWar = true; npcs.delete(p.pid);   // ★AI 정지 + 이동 제외
@@ -7636,7 +7639,7 @@ function _warForageMarch(w, body, day, bearers) {
 function _warRationLoad(body) {
   const w = body && body.w, WC = state.war; if (!w || !WC || !WC.packSplit || !WC.rationActOn || !WC.rationActOn()) return 0;
   const players = state.deps.players, bearers = (body.pids || []).map(pid => players.get(pid)).filter(Boolean);
-  const one = WC.packSplit(w, bearers.length); if (!one) return 0;
+  const one = WC.packSplit(w, bearers.length); if (!one) { if (T1167_WAR && w._packOnBodies && body._fgPts == null && _t1167Pref.has(w.id)) { body._fgPts = body.pts; body._fgProg = body.prog || 0; } return 0; }   // ★[T1167] 되살린 원정 — 팩은 이미 몸에 있다(다시 안 나눈다) · 길에서 채집 시작점만 지금 자리로(지나온 길 전부를 그날 길로 세지 않게)
   const _G = _t748G(), _hand = _G ? bearers.map((p) => _t748HandOf(_G, p, w._packKeys)) : null;   // ★[T748] 몸이 이미 든 같은 칸(짐 거울이 그것도 짐으로 본다) — 그 손의 로트를 짐 줄로(아래 줄이 짐을 얹기 전에)
   for (const p of bearers) { const cur = _warBagView(p, w._packKeys); for (const k in one) cur[k] = (cur[k] || 0) + one[k]; _warBagWrite(p, w._packKeys, cur); p._warPackOf = w.id; }
   if (_G) bearers.forEach((p, i) => { _G.bagPut(p, _hand[i]); if (w._packSplitLots) _G.bagPut(p, w._packSplitLots); });   // ★[T748] 팩 레코드를 몸 짐 줄로(몸마다 고르게 · 끄면 칸이 안 선다)
@@ -7691,7 +7694,7 @@ function _warRationEat(w, day) {
   const WC = state.war; if (!w || !w._packOnBodies || !WC || !WC.bodyEat) return null;
   const body = state.warBodies && state.warBodies.get(w.id);
   const ctx = _warPackCtx(w), keys = w._packKeys || [], need = (w._packShare || 0) * (state.warCore ? state.warCore.WAR_RATION : 1);
-  const bearers = _warBearers(w, body);
+  const bearers = _warBearers(w, body || (T1167_WAR ? _t1167BodyLike(w) : null));   // ★[T1167] 몸 없이 되살린 원정(귀환 중 · 몸이 아직 안 선 날) — 그 병사 명부 몸이 먹는다(명부가 없으면 null = 종전)
   if (_forageMarchOn()) _warForageMarch(w, body, day, bearers);   // ★[T441] 먹기 전에 — 그날 지난 길에서 딴 것도 짐이다
   const eatU = {};
   const _on1076 = !!(WC.T1076_ON && WC.T1076_ON() && w._mrl != null), _dbt = _on1076 ? (w._debt || (w._debt = new Map())) : null;   // ★[T1076] 원정 사기 · 빚(끔 = 거짓 · 칸 0)
@@ -7735,7 +7738,7 @@ function _warRationLayDownBody(body) {
   return n > 0 ? (_G ? WC.rationLayDown(w, items, _lots) : WC.rationLayDown(w, items)) : 0;
 }
 function _warRationCollect(w) {
-  const body = state.warBodies && state.warBodies.get(w.id); if (!body) return null;
+  const body = (state.warBodies && state.warBodies.get(w.id)) || (T1167_WAR ? _t1167BodyLike(w) : null); if (!body) return null;   // ★[T1167] 귀환 중 되살린 원정 — 그 병사 명부에서 모은다(명부가 없으면 종전 그대로 null)
   const players = state.deps.players, keys = w._packKeys || [], items = {};
   const _G = _t748G(), _lots = _G ? _t748BagsOf(_G, body, w, keys) : null;   // ★[T748] 몸 짐 레코드를 같이 모은다(war-core 가 내려놓을 때 읽고 지운다 · 끄면 칸이 안 선다)
   if (_lots) w._layLots = _lots;
@@ -8381,6 +8384,7 @@ function tickWarBodies(now) {
     if (w.id != null) liveWid.add(w.id);
     if (w.phase !== 'march' && w.phase !== 'battle') continue;
     const body = _warEnsureBody(w, now); if (!body || body.phase === 'return') continue;
+    if (w._t1167Re) { delete w._t1167Re; if (w.phase === 'battle' && !body.fight && !body.noArmy) { _t1167Stat.reengage++; _warEngage(w, state.world.day, w._sortie ? 'sortie' : 'assault'); } }   // ★[T1167] 교전 중 되살린 원정 — 같은 개전 문으로 다시 연다(그 자리에서 다시 맞붙는다)
     body._lastOp = w.op;
     if (body.noArmy) { _warNoArmy(body, state.world.day); continue; }
     if (T681_ON && !_t681Take(body)) { if (body.fight) soldiers += body.fight.ctx.units.length; continue; }   // ★[T681] 오늘 몫을 다 썼다 — 서 있는다(다음 econ 날 몫에서)
@@ -9418,7 +9422,7 @@ function __p3Bind(mock) {
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Place, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
-    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), _t1166Flush, _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
+    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), _t1166Flush, t1167Stat, _t1167Pack, _t1167Early, _t1167Bind, _t1167Pref, _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, _t1183SurrenderDeaths, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
@@ -15961,6 +15965,111 @@ t742Bind('villages.fertBox', () => (state.ta && state.ta.fertBox ? state.ta.fert
 //     집터 점수가 갈린다(T745 가상 시계 225 날 · 어촌2 집터 자리). 값은 지형 + 상자만의 함수 → 상자만 싣고 다시 뜰 때 같은 상자로 다시 만든다(새 수 0).
 t742Bind('villages.wfBox', () => { const o = {}; for (const v of state.villages || []) if (v && v.dbId != null && v._wf && v._wf._t753B) o[v.dbId] = v._wf._t753B; return o; },
   (o) => { if (!o || typeof o !== 'object' || !state.ta) return; for (const id of Object.keys(o)) { const v = state.byDbId && state.byDbId.get(+id), b = o[id]; if (!v || !Array.isArray(b) || b.length !== 4) continue; v._wf = _lifeVL().waterEDT(state.ta, b[0] - 32, b[1] - 32, b[2] + 32, b[3] + 32); if (v._wf) Object.defineProperty(v._wf, '_t753B', { value: b.slice(), writable: true, configurable: true }); v._t620Wf = null; } });
+// ★★[T1167 2026-11-05 · K15 · T1133 회부 1 · T742 회부 1] **진행 중 전쟁 영속 — 재기동을 건너도 전쟁 · 징발 표가 산다** — 손잡이 `T1167_WAR_PERSIST`(★켬 기본 후보 · `=0` = 종전 글자).
+//   종전: 진행 중 전쟁(`_warWars`)은 재기동에 안 실렸다 — 다시 뜨면 전쟁이 사라지고 징발된 econ 주민의 표(`_warDraft` — econ 행)만 남아 **영영 생산하지 않았다**(T742 ③ W380 · 소멸).
+//     짐은 이미 날짜 · 표식째 몸에 남는다(T1133) — 그 짐을 내릴 전쟁만 없었다(일관된 물리 엔티티 캐논).
+//   켬: ① 저장 — T728 메타 행에 칸 `t1167`(진행 중 전쟁이 있을 때만 선다 · 없으면 칸 0 = 종전 글자) — 전쟁 객체의 JSON 칸 그대로 +
+//          마을 = 이름(캐러밴 `from` · `to` 문법) · econ 주민 = 주민 번호(`_vetRoster`) · 존 몸 pid = **몸 자리**(마을 dbId · `npcPids` 자리 — T747 몸 열쇠 그대로)
+//          (pid 는 프로세스마다 새로 선다 — pid 를 열쇠로 쥔 표 셋 `_armsPack` · `_starve` · `_debt` 과 병사 명부를 자리로 적는다).
+//      ② 되살림 — **그 날의 메타일 때만**(캐러밴과 같은 규칙 — 다른 날이면 이미 끝난 전쟁을 되살리게 된다 · 생성 금지).
+//          전쟁 객체는 무기 거울 정산(`rebuildFromEcon` — 거울에서 "지금 짐이 쥔 몫"을 뺀 나머지만 곳간으로) **앞**에 세운다(짐이 쥔 무기를 곳간에 두 번 안 낸다).
+//          pid 를 쥔 표는 몸이 선 뒤(T747 되살림 뒤) 같은 자리 몸의 새 pid 로 다시 잇는다 · econ 징발 표의 낡은 pid(`_warPid` — 이전 프로세스의 pid)는 지운다
+//          (지금 프로세스의 pid 와 겹칠 수 있다 · 다시 징발할 때 같은 표를 다시 묶는다 — `warDraftBind` ① 문 그대로).
+//      ③ 몸 — 행군 · 주둔 · 포위는 몸을 다시 세운다(`_warEnsureBody` — econ 날 몫 · 사본 0) · 다시 징발할 때 **같은 자리의 그 병사 몸**(같은 병종 먼저)을 먼저 뽑는다
+//          (짐 줄 · 무기 몸 짐이 그 몸에 있다 — T1133 · T811). 교전 중이었으면 같은 개전 문(`_warEngage` — 돌격 · 출격)으로 다시 연다(교전 상태 `body.fight` 는
+//          싸움 한가운데의 순간 상태라 싣지 않는다 — 다시 뜬 판은 그 자리에서 다시 맞붙는다 · 회부). 귀환 중이면 몸 없이 war-core 날 장부가 귀환을 끝내고
+//          (그 병사 몸 명부에서 짐을 모은다 — `_warRationCollect`) 징발을 푼다.
+//   ⚠소굴 토벌(`T476_PUNITIVE` · 끔 기본)은 싣지 않는다(목표가 갱 어댑터 · 도적 모듈은 마을 뒤에 선다 — 회부). 새 수 0 · 몸 필드 0.
+const T1167_WAR = process.env.T1167_WAR_PERSIST !== '0';
+const _T1167_PIDMAPS = ['_armsPack', '_starve', '_debt'];
+const _T1167_SKIP = new Set(['atk', 'def', '_capResolve', '_vetRoster'].concat(_T1167_PIDMAPS));   // `_capResolve` = 결판 한 순간의 인계 칸(같은 함수 안에서 지워진다)
+const _t1167Pref = new Map();   // 전쟁 번호 → Map(pid → 병종) — 되살린 병사 명부(다시 징발할 때 먼저 · 귀환 모으기)
+let _t1167Pend = null;          // 몸이 서기 전 — 자리로 적힌 표(전쟁 번호 → { maps, pref })
+const _t1167Stat = { saved: 0, savedWars: 0, restored: 0, lost: 0, den: 0, why: '', byPhase: {}, rebind: 0, slotMiss: 0, pidClear: 0, reengage: 0, like: 0, dropKeys: [] };
+function _t1167SlotMap() { const m = new Map(); for (const v of (state.villages || [])) { const a = v && v.npcPids; if (a) for (let i = 0; i < a.length; i++) m.set(a[i], [v.dbId, i]); } return m; }
+function _t1167Pack() {
+  if (!T1167_WAR) return null;
+  const WC = state.war; if (!WC || !WC.WARS || !WC.WARS.length) { _t1167Pref.clear(); return null; }
+  const live = new Set(), out = []; let SL = null;
+  const slot = (pid) => { if (!SL) SL = _t1167SlotMap(); return SL.get(pid) || null; };
+  for (const w of WC.WARS) {
+    if (!w || w.id == null) continue; live.add(w.id);
+    if (!w.atk || !w.def || w.atk._den || w.def._den) { _t1167Stat.den++; continue; }   // 소굴 토벌은 싣지 않는다(위 ⚠)
+    const o = { atk: w.atk.name, def: w.def.name };
+    for (const k of Object.keys(w)) {
+      if (_T1167_SKIP.has(k)) continue;
+      const x = w[k]; if (typeof x === 'function') continue;
+      try { const e = _t740Enc(x); JSON.stringify(e); o[k] = e; } catch (e) { if (!_t1167Stat.dropKeys.includes(k)) _t1167Stat.dropKeys.push(k); }
+    }
+    if (Array.isArray(w._vetRoster)) o._vetRoster = w._vetRoster.map((it) => ({ id: it && it.npc ? it.npc.id : null, wtype: it ? it.wtype : null })).filter((it) => it.id != null);
+    for (const k of _T1167_PIDMAPS) { const M = w[k]; if (!(M instanceof Map)) continue; const a = []; for (const [pid, val] of M) { const s = slot(pid); if (s) a.push([s, _t740Enc(val)]); } o[k] = { $T1167: a }; }
+    //   병사 명부 — 몸이 있으면 그 몸의 대형(병종째) · 없으면(되살린 뒤 아직 다시 징발 안 함 · 귀환) 되살린 명부 그대로
+    const body = state.warBodies && state.warBodies.get(w.id), sol = [];
+    if (body) { for (const g of [body.atkGroup, body.defGroup]) if (g && g.units) for (const u of g.units) { if (u.dead) continue; const s = slot(u.pid); if (s) sol.push([s, u.type || null]); }
+      if (!sol.length) for (const pid of (body.pids || []).concat(body.defPids || [])) { const s = slot(pid); if (s) sol.push([s, null]); } }
+    else { const P = _t1167Pref.get(w.id); if (P) for (const [pid, ty] of P) { const s = slot(pid); if (s) sol.push([s, ty]); } }
+    if (sol.length) o._t1167Sol = sol;
+    out.push(o);
+  }
+  for (const id of [..._t1167Pref.keys()]) if (!live.has(id)) _t1167Pref.delete(id);   // 끝난 전쟁의 명부는 버린다
+  if (!out.length) return null;
+  _t1167Stat.saved++; _t1167Stat.savedWars = out.length;
+  return out;
+}
+//   ② 되살림(이른 쪽) — 마을 · econ 이 선 뒤 · 무기 거울 정산(`rebuildFromEcon`) 앞. 메타 행을 직접 읽는다(T728 되살림과 같은 행 · 같은 날 규칙).
+function _t1167Early() {
+  if (!T1167_WAR) return 0;
+  const WC = state.war, W = state.world; if (!WC || !WC.WARS || !W) return 0;
+  const row = state.db && state.db.getWorldMeta ? state.db.getWorldMeta(state.zoneId) : null;
+  if (!row) { _t1167Stat.why = '메타 행 없음'; return 0; }
+  let M = null; try { M = JSON.parse(row.data); } catch (e) { _t1167Stat.why = '메타 글자 깨짐'; return 0; }
+  const A = Array.isArray(M && M.t1167) ? M.t1167 : null; if (!A || !A.length) { _t1167Stat.why = '진행 중 전쟁 없음'; return 0; }
+  const day = M.anchor ? M.anchor.day : null;
+  if (day !== (W.day | 0)) { _t1167Stat.why = `메타 날 ${day} ≠ econ 날 ${W.day | 0} — 전쟁을 안 되살린다(생성 금지)`; _t1167Stat.lost += A.length; return 0; }
+  const byName = new Map((state.villages || []).map((v) => [v.name, v]));
+  const have = new Set(WC.WARS.map((w) => w.id));
+  _t1167Pend = new Map();
+  for (const o of A) {
+    const atk = byName.get(o.atk), def = byName.get(o.def);
+    if (!atk || !def || !atk.econ || !def.econ || o.id == null || have.has(o.id)) { _t1167Stat.lost++; continue; }
+    const w = { atk, def };
+    const P = { maps: {}, sol: o._t1167Sol || null };
+    for (const k of Object.keys(o)) {
+      if (k === 'atk' || k === 'def' || k === '_t1167Sol') continue;
+      const x = o[k];
+      if (_T1167_PIDMAPS.includes(k) && x && Array.isArray(x.$T1167)) { P.maps[k] = x.$T1167; w[k] = new Map(); continue; }   // 몸이 선 뒤 새 pid 로 채운다(아래 `_t1167Bind`)
+      if (k === '_vetRoster') { const byId = new Map(atk.econ.npcs.map((n) => [n.id, n])); w._vetRoster = (x || []).map((it) => ({ npc: byId.get(it.id), wtype: it.wtype })).filter((it) => it.npc); continue; }
+      w[k] = _t740Dec(x);
+    }
+    WC.WARS.push(w); have.add(w.id);
+    if ((W._warSeq | 0) <= w.id) W._warSeq = w.id + 1;   // 번호는 앞으로만(T742 계수기 칸이 뒤에 와도 max)
+    _t1167Pend.set(w.id, P);
+    _t1167Stat.restored++; _t1167Stat.byPhase[w.phase] = (_t1167Stat.byPhase[w.phase] || 0) + 1;
+  }
+  _t1167Stat.why = `메타 날 ${day} — 되살림 ${_t1167Stat.restored}${_t1167Stat.lost ? ` · 못 이은 ${_t1167Stat.lost}` : ''}`;
+  console.log(`[${state.zoneId}] ⚔️ [T1167] 진행 중 전쟁 되살림 — ${_t1167Stat.why} · ${JSON.stringify(_t1167Stat.byPhase)}`);
+  return _t1167Stat.restored;
+}
+//   ② 되살림(몸 쪽) — T747 몸 되살림 뒤. 자리 → 새 pid · econ 징발 표의 낡은 pid 지움.
+function _t1167Bind() {
+  if (!T1167_WAR) return 0;
+  for (const v of (state.villages || [])) { const e = v && v.econ; if (!e || !e.npcs) continue; for (const n of e.npcs) if (n._warPid != null) { delete n._warPid; _t1167Stat.pidClear++; } }
+  if (!_t1167Pend || !state.war) { _t1167Pend = null; return 0; }
+  const pidAt = (s) => { const v = Array.isArray(s) ? state.byDbId.get(s[0]) : null; const pid = v && v.npcPids ? v.npcPids[s[1]] : undefined; return (pid != null && state.deps.players.has(pid)) ? pid : null; };
+  for (const w of state.war.WARS) {
+    const P = _t1167Pend.get(w.id); if (!P) continue;
+    for (const k in P.maps) { const M = w[k] = new Map(); for (const [s, val] of P.maps[k]) { const pid = pidAt(s); if (pid == null) { _t1167Stat.slotMiss++; continue; } M.set(pid, _t740Dec(val)); _t1167Stat.rebind++; } }
+    if (P.sol) { const R = new Map(); for (const [s, ty] of P.sol) { const pid = pidAt(s); if (pid == null) { _t1167Stat.slotMiss++; continue; } R.set(pid, ty); } if (R.size) _t1167Pref.set(w.id, R); }
+    if (w.phase === 'battle') w._t1167Re = 1;   // 다음 몸 틱에 같은 개전 문으로(`tickWarBodies`)
+  }
+  _t1167Pend = null;
+  return _t1167Pref.size;
+}
+//   다시 징발 — 그 전쟁의 되살린 명부 몸을 먼저(같은 병종 2 · 다른 병종 1 · 명부 밖 0). 명부가 없으면(재기동 없는 판) 0 — 정렬 무변.
+function _t1167Rank(warId, p, type) { const R = _t1167Pref.get(warId); if (!R || !R.has(p.pid)) return 0; return R.get(p.pid) === type ? 2 : 1; }
+//   귀환 중 되살린 전쟁 — 몸 없이 war-core 가 귀환을 끝낼 때 그 병사 명부에서 짐을 모은다(몸 꼴 하나 · 명부 밖 몸은 안 본다)
+function _t1167BodyLike(w) { const R = w && _t1167Pref.get(w.id); if (!R || !R.size) return null; _t1167Stat.like++; return { w, pids: [...R.keys()], phase: 'return' }; }
+function t1167Stat() { return Object.assign({ on: T1167_WAR, pref: _t1167Pref.size }, _t1167Stat, { byPhase: Object.assign({}, _t1167Stat.byPhase), dropKeys: _t1167Stat.dropKeys.slice() }); }
 function _t742MetaOut() {
   const o = Object.assign({}, _t742Pend || {});   // 아직 안 걸린 이름은 읽은 그대로 다시 싣는다(저장이 먼저 와도 잃지 않게)
   for (const [n, r] of _t742Reg) { try { o[n] = _t740Enc(r.get()); } catch (e) {} }
@@ -15989,6 +16098,7 @@ function _t728Meta() {
   return JSON.stringify({ v: 1, rng: E && E.rngState ? E.rngState() : null, caravanId: W._caravanIdCounter || 0, caravans: car,
     anchor: { day: W.day | 0, g: state.lastGameDay, epoch: state.epoch, dayMs: state.dayMs, at: Date.now() },
     ...(T742_ZONE ? { t742: _t742MetaOut() } : {}),
+    ...(T1167_WAR ? (() => { const P = _t1167Pack(); return P ? { t1167: P } : {}; })() : {}),   // ★[T1167] 진행 중 전쟁(없으면 칸 0 · 끔 = 칸 없음)
     ...(T1034_KEEP ? (() => { const P = _t1034Pack(); return P ? { t1034: P } : {}; })() : {}) });   // ★[T1034] 몸 칸(몸이 없으면 칸이 안 선다 · 끔 = 칸 없음)   // ★[T742] 존 · 모듈 메모리(끔 = 칸 없음 · 종전 글자)
 }
 const _t728Stat = { metaSaves: 0, restored: null, shutdown: null, dropKeys: [] };
@@ -16147,7 +16257,7 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes, t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), t1166Sizes: _t1166Sizes, lotsClockSet: _t1166Flush,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
+module.exports = { t1167Stat, t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes, t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), t1166Sizes: _t1166Sizes, lotsClockSet: _t1166Flush,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
   streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   T856_LAND_ELEV, _t856LandElev,   // ★[T856] 마을 고도 — 하네스(`test-land-elev`)가 같은 함수를 부른다(사본 0)
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
