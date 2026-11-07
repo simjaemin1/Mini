@@ -10190,7 +10190,7 @@ function _t733HandIn(vil, npc) {
 //     (econ 돌 수식은 채집꾼 몫이다 — 바위를 치는 몸은 광맥 없는 마을의 광부 현장 갈래 `JOB_RES.miner` 뿐 · 그 수식은 원석을 낸다).
 //   부르는 자리 둘 = 곳간에 닿는 두 순간(T720 해 질 녘 정산 `_t720Settle` · 곳간② 저장 `_lifeGranStep`) — 실물 생산에서는 돌만 든 손도 귀환 대상으로 센다.
 //   입고는 실물 생산 호스트에서도 연다. T1146의 바위 수율은 별도 스위치이며, 미수용분은 손에 남는다.
-const T1146_STONE_RULE = process.env.T1146_STONE_RULE !== '0';   // ★[T1186] 켬 기본(`=0` = 종전 — 손에 그대로) · 존과 같은 손잡이 하나 · ★[PM land1047] 끔 기본이던 자리
+const T1146_STONE_RULE = process.env.T1146_STONE_RULE === '1';   // ★[T1186 11-07] 끔 기본(`=1` = 켬 — NPC 손의 돌 → 곳간) · 존과 같은 손잡이 하나 · 첫 움집 켬 1/2(main 07eec54e · 보고/T1186_2026-11-07 회부 1) · ★[PM land1047] 끔 기본이던 자리
 const _T1146_KEYS = ['stone', 'pebble'];
 // 실물 생산에서 없앤 채집 돌 수식을 손의 입고가 대신한다. 바위 수율 스위치와는 별개다.
 function _stoneHandInOn(vil) {

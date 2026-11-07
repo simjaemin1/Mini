@@ -190,7 +190,7 @@ const fGR = fnBody(Z, 'gatherResource'), fMine = fnBody(Z, 'mineOreCell'), fCraf
 ok(/if \(eqInst\) \{ if \(T1146_STONE_RULE\) _t1186WearHit\(player, eqInst, best, _hp0\); else consumeEquippedDurability\(player, 1\); \}/.test(fGR), '★사람 문 — 켬 = 깎은 · 벤 kg 닳기 · 끔 = 종전 줄(한 타 1)');
 ok(/if \(T1146_STONE_RULE\) _t1186Wear\(player, getEquippedTool\(player\), 'rock', Specialty\.mineChunkKg\(lvlF\) \/ need, Specialty\.mineToolWear\(lvlF\)\);[^\n]*\n\s*else consumeEquippedDurability\(player, Specialty\.mineToolWear\(lvlF\)\);/.test(fMine),
   '★땅 채굴 문 — 켬 = 이 타가 판 kg(덩이 kg ÷ 문턱 타수) × 솜씨 몫 · 끔 = 종전 줄');
-ok(/const _t1186Txt = \(T1146_STONE_RULE && recipe\.bladeKg > 0\) \? _t1186Blade\(player, recipe\) : '';/.test(fCraft) && /제작 완료 \(인벤에 추가\)\$\{_t1186Txt\}/.test(fCraft), '★제작 문 — 날 kg 이 있는 레시피만 꼬리(날 kg · 남은 돌 덩이) · 끔 = 빈 꼬리(종전 글자)');
+ok(/const _t1186Txt = \(T1146_STONE_RULE && recipe\.bladeKg > 0\) \? _t1186Blade\(player, recipe\) : '';/.test(fCraft) && /을\(를\) 만들어 가방에 넣었습니다\.\$\{_t1186Txt\}/.test(fCraft), '★제작 문 — 날 kg 이 있는 레시피만 꼬리(날 kg · 남은 돌 덩이) · 끔 = 빈 꼬리(종전 글자)');
 const fW = fnBody(Z, '_t1186Wear'), fWH = fnBody(Z, '_t1186WearHit'), fPK = fnBody(Z, '_t1186PerKg'), fTK = fnBody(Z, '_t1186TreeKg'), fRest = fnBody(Z, '_t1186Blade');
 const allN = [fW, fWH, fPK, fTK, fRest].map(nums);
 ok(allN.every((a) => a.every((n) => ['0', '1', '2', '6'].includes(n))), '★새 수 0 — 다섯 함수에 0 · 1(한 번 몫) · 소수 자리(2 · 6)만', allN.map((a) => a.join()).join(' | '));
@@ -228,13 +228,13 @@ else {
   ok(ON.rc.sword.cost.stone === 8 && ON.rc.saw.cost.stone === 4 && ON.rc.hammer.cost.stone === 3 && !ON.rc.sword.bladeKg && JSON.stringify(ON.rc.crude_pick.cost) === JSON.stringify({ pebble: 3, twig: 1, fiber: 2 }),
     '검 · 톱 · 망치(날 무게 미확인) · 조잡한 석기(주운 자갈) — 종전 그대로');
   const C = ON.craftPick, X = ON.craftAxe, X2 = ON.craftAxe2;
-  ok(C.inv.wood === 5 && C.inv.stone === 0.832 && !C.inv.pebble && C.tool.length === 1 && C.tool[0][1] === 100 && /^곡괭이 제작 완료 \(인벤에 추가\) — 돌 0\.168덩이\(날 0\.67kg\) · 남은 돌 0\.832덩이\(3\.33kg\)$/.test(C.say[C.say.length - 1] || ''),
+  ok(C.inv.wood === 5 && C.inv.stone === 0.832 && !C.inv.pebble && C.tool.length === 1 && C.tool[0][1] === 100 && /^곡괭이을\(를\) 만들어 가방에 넣었습니다\. 날에 돌 0\.168덩이\(0\.67kg\)를 썼습니다\. 남은 돌은 0\.832덩이\(3\.33kg\)입니다\.$/.test(C.say[C.say.length - 1] || ''),
     '★곡괭이 — 돌 한 덩이(4 kg)에서 날 0.672 kg · 남은 돌 0.832 덩이(3.33 kg) · 내구 100(종전 칸)', C.say[C.say.length - 1]);
-  ok(X.inv.wood === 0 && X.inv.stone === 0.644 && /^도끼 제작 완료 \(인벤에 추가\) — 돌 0\.188덩이\(날 0\.75kg\) · 남은 돌 0\.644덩이\(2\.58kg\)$/.test(X.say[X.say.length - 1] || ''),
+  ok(X.inv.wood === 0 && X.inv.stone === 0.644 && /^도끼을\(를\) 만들어 가방에 넣었습니다\. 날에 돌 0\.188덩이\(0\.75kg\)를 썼습니다\. 남은 돌은 0\.644덩이\(2\.58kg\)입니다\.$/.test(X.say[X.say.length - 1] || ''),
     '★★도끼 — 같은 덩이의 나머지에서(바위를 다시 안 친다) · 남은 돌 0.644 덩이(2.58 kg)', X.say[X.say.length - 1]);
   ok(/만들려면/.test(X2.say[X2.say.length - 1] || '') && X2.inv.stone === 0.644 && X2.tools === 2, '나무가 없으면 종전 거절(돌은 그대로)', X2.say[X2.say.length - 1]);
   ok(C.sent && C.sent.stone === 0.832 && X.sent && X.sent.stone === 0.644 && C.sent.wood === 5, '★짐 전문(`inventory`)이 덩이 몫을 싣는다 — 클라 짐 · 제작 창이 남은 돌 0.832 · 0.644 를 본다(그 밖 품목은 종전 정수)', JSON.stringify([C.sent, X.sent]));
-  ok(!ON.craftSword.inv.pebble && /^검 제작 완료 \(인벤에 추가\)$/.test(ON.craftSword.say[ON.craftSword.say.length - 1] || ''), '검 — 날 무게가 없으면 꼬리 0(종전 글자)');
+  ok(!ON.craftSword.inv.pebble && /^검을\(를\) 만들어 가방에 넣었습니다\.$/.test(ON.craftSword.say[ON.craftSword.say.length - 1] || ''), '검 — 날 무게가 없으면 꼬리 0(종전 글자)');
   ok(ON.craftShort.inv.stone === 0.1 && /^곡괭이을\(를\) 만들려면 나무 3, 돌 0\.168이\(가\) 있어야 합니다\.$/.test(ON.craftShort.say[ON.craftShort.say.length - 1] || ''), '덩이 몫이 모자라면(돌 0.1) — 종전 거절 문장(재료 칸 그대로)', ON.craftShort.say[ON.craftShort.say.length - 1]);
   const S = ON.craftStat;
   ok(S.blades === 2 && near(S.blade, 0.672 + 0.752) && near(4 - S.blade, 0.644 * 4), `★무게 보존 — 한 덩이 4 kg = 날 ${S.blade.toFixed(3)} kg + 남은 돌 ${(0.644 * 4).toFixed(3)} kg`);
@@ -281,7 +281,7 @@ else {
   ok(JSON.stringify(OFF.payload) === JSON.stringify({ stone: 2, wood: 3 }) && JSON.stringify(ON.payload) === JSON.stringify({ stone: 2.644, wood: 3 }), '짐 전문 — 끔 = 종전 정수(돌 2 · 통나무 3 · 자갈 0.5 는 안 간다) · 켬 = 돌만 덩이 몫(2.644)', JSON.stringify([OFF.payload, ON && ON.payload]));
   ok(OFF.on === false && JSON.stringify(OFF.rc.pickaxe.cost) === JSON.stringify({ wood: 3, stone: 5 }) && JSON.stringify(OFF.rc.axe.cost) === JSON.stringify({ wood: 5, stone: 2 }) && OFF.rc.pickaxe.bladeKg === undefined,
     '레시피 — 곡괭이 나무 3 · 돌 5 · 도끼 나무 5 · 돌 2(종전)');
-  ok(OFF.craftPick.inv.stone === 1 && /^곡괭이을\(를\) 만들려면 나무 3, 돌 5이\(가\) 있어야 합니다\.$/.test(OFF.craftPick.say[OFF.craftPick.say.length - 1] || '') && /^검 제작 완료 \(인벤에 추가\)$/.test(OFF.craftSword.say[OFF.craftSword.say.length - 1] || ''),
+  ok(OFF.craftPick.inv.stone === 1 && /^곡괭이을\(를\) 만들려면 나무 3, 돌 5이\(가\) 있어야 합니다\.$/.test(OFF.craftPick.say[OFF.craftPick.say.length - 1] || '') && /^검을\(를\) 만들어 가방에 넣었습니다\.$/.test(OFF.craftSword.say[OFF.craftSword.say.length - 1] || ''),
     '제작 — 돌 한 덩이로는 곡괭이 못 만든다(돌 5) · 알림 꼬리 0(종전 글자)', OFF.craftPick.say[OFF.craftPick.say.length - 1]);
   ok(OFF.pick.hs.every((h) => h.gone || near(h.d0 - h.d1, 1)) && near(OFF.axe.d0 - OFF.axe.d1, 1) && OFF.ground && near(OFF.ground.d0 - OFF.ground.d1, OFF.ground.sw * OFF.ground.wear0),
     '한 타 1(바위 · 나무) · 땅 = 한 타 솜씨 몫(종전)', JSON.stringify([OFF.pick.hs[0], OFF.axe.d0 - OFF.axe.d1, OFF.ground && OFF.ground.sw]));
