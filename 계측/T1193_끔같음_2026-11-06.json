@@ -1,0 +1,1571 @@
+{
+ "_": "T1193 끔 = 종전 화면 PNG(sha256 앞 16자) — scripts/t1193-off-same.js · 판 base(종전 main dad5679c 클라) · off(이 가지 · 주소 없음) · base1/on1(화면 배율 1 · on1 = ?T1193_HIDPI=1) · base2(대조) · 자리 태어난자리 · 산1@1750:74 · 산2@2150:1959 (WebKit WPE = 태어난자리 · 들1@1004:1871 · 들2@964:1911) · 확대 1 · 2",
+ "chromium_first": {
+  "browser": "chromium",
+  "base": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1193/base",
+  "zooms": [
+   1,
+   2
+  ],
+  "vars": {
+   "base": {
+    "root": "base",
+    "q": "",
+    "dsf": 2,
+    "info": {
+     "hidpi": null,
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 2,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 41,
+    "errs": [],
+    "sec": 306
+   },
+   "off": {
+    "root": "branch",
+    "q": "",
+    "dsf": 2,
+    "info": {
+     "hidpi": {
+      "on": false,
+      "d": 1,
+      "want": false,
+      "q": null,
+      "dpr": 2,
+      "back": [
+       1100,
+       720
+      ],
+      "css": [
+       1100,
+       720
+      ],
+      "mpx": 0.79
+     },
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 2,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 41,
+    "errs": [],
+    "sec": 392
+   },
+   "base1": {
+    "root": "base",
+    "q": "",
+    "dsf": 1,
+    "info": {
+     "hidpi": null,
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 1,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 41,
+    "errs": [],
+    "sec": 402
+   },
+   "on1": {
+    "root": "branch",
+    "q": "?T1193_HIDPI=1",
+    "dsf": 1,
+    "info": {
+     "hidpi": {
+      "on": false,
+      "d": 1,
+      "want": true,
+      "q": true,
+      "dpr": 1,
+      "back": [
+       1100,
+       720
+      ],
+      "css": [
+       1100,
+       720
+      ],
+      "mpx": 0.79
+     },
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 1,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 41,
+    "errs": [],
+    "sec": 349
+   },
+   "base2": {
+    "root": "base",
+    "q": "",
+    "dsf": 2,
+    "info": {
+     "hidpi": null,
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 2,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 41,
+    "errs": [],
+    "sec": 344
+   }
+  },
+  "shots": {
+   "태어난자리-z1": {
+    "base": {
+     "a": "437b250a420072be",
+     "b": "437b250a420072be",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8643,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "437b250a420072be",
+     "b": "437b250a420072be",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8543,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "437b250a420072be",
+     "b": "437b250a420072be",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 9362,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "437b250a420072be",
+     "b": "437b250a420072be",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 10121,
+     "dayU": 0.5
+    },
+    "base2": {
+     "a": "437b250a420072be",
+     "b": "437b250a420072be",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8559,
+     "dayU": 0.5
+    }
+   },
+   "태어난자리-z2": {
+    "base": {
+     "a": "73d68fb249726fa4",
+     "b": "73d68fb249726fa4",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8643,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "73d68fb249726fa4",
+     "b": "73d68fb249726fa4",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8185,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "73d68fb249726fa4",
+     "b": "73d68fb249726fa4",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 12496,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "73d68fb249726fa4",
+     "b": "73d68fb249726fa4",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 9139,
+     "dayU": 0.5
+    },
+    "base2": {
+     "a": "73d68fb249726fa4",
+     "b": "73d68fb249726fa4",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8523,
+     "dayU": 0.5
+    }
+   },
+   "산1-z1": {
+    "base": {
+     "a": "8894ff9003db0fe9",
+     "b": "8894ff9003db0fe9",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 45010,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "8894ff9003db0fe9",
+     "b": "8894ff9003db0fe9",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 46700,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "8894ff9003db0fe9",
+     "b": "8894ff9003db0fe9",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 77267,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "8894ff9003db0fe9",
+     "b": "8894ff9003db0fe9",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 51774,
+     "dayU": 0.5
+    },
+    "base2": {
+     "a": "8894ff9003db0fe9",
+     "b": "8894ff9003db0fe9",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 35434,
+     "dayU": 0.5
+    }
+   },
+   "산1-z2": {
+    "base": {
+     "a": "874fda60f474915a",
+     "b": "874fda60f474915a",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8079,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "874fda60f474915a",
+     "b": "874fda60f474915a",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8376,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "874fda60f474915a",
+     "b": "874fda60f474915a",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8490,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "874fda60f474915a",
+     "b": "874fda60f474915a",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8540,
+     "dayU": 0.5
+    },
+    "base2": {
+     "a": "874fda60f474915a",
+     "b": "874fda60f474915a",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 9151,
+     "dayU": 0.5
+    }
+   },
+   "산2-z1": {
+    "base": {
+     "a": "4168ec4520d93af1",
+     "b": "4168ec4520d93af1",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 18919,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "4168ec4520d93af1",
+     "b": "4168ec4520d93af1",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 53119,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "4168ec4520d93af1",
+     "b": "4168ec4520d93af1",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 28890,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "4168ec4520d93af1",
+     "b": "4168ec4520d93af1",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 34481,
+     "dayU": 0.5
+    },
+    "base2": {
+     "a": "ff87b80f3af3370e",
+     "b": "ff87b80f3af3370e",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 49739,
+     "dayU": 0.5
+    }
+   },
+   "산2-z2": {
+    "base": {
+     "a": "2d83c7b65c5cc140",
+     "b": "2d83c7b65c5cc140",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 8041,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "2d83c7b65c5cc140",
+     "b": "2d83c7b65c5cc140",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 9056,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "e888c8f96fdb0b7c",
+     "b": "e888c8f96fdb0b7c",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 8216,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "e888c8f96fdb0b7c",
+     "b": "e888c8f96fdb0b7c",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 8247,
+     "dayU": 0.5
+    },
+    "base2": {
+     "a": "e888c8f96fdb0b7c",
+     "b": "e888c8f96fdb0b7c",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 8528,
+     "dayU": 0.5
+    }
+   }
+  },
+  "cmp": [
+   {
+    "pair": "base↔off",
+    "k": "태어난자리-z1",
+    "a": "437b250a420072be",
+    "b": "437b250a420072be",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "태어난자리-z2",
+    "a": "73d68fb249726fa4",
+    "b": "73d68fb249726fa4",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산1-z1",
+    "a": "8894ff9003db0fe9",
+    "b": "8894ff9003db0fe9",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산1-z2",
+    "a": "874fda60f474915a",
+    "b": "874fda60f474915a",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산2-z1",
+    "a": "4168ec4520d93af1",
+    "b": "4168ec4520d93af1",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산2-z2",
+    "a": "2d83c7b65c5cc140",
+    "b": "2d83c7b65c5cc140",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔base2",
+    "k": "태어난자리-z1",
+    "a": "437b250a420072be",
+    "b": "437b250a420072be",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔base2",
+    "k": "태어난자리-z2",
+    "a": "73d68fb249726fa4",
+    "b": "73d68fb249726fa4",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔base2",
+    "k": "산1-z1",
+    "a": "8894ff9003db0fe9",
+    "b": "8894ff9003db0fe9",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔base2",
+    "k": "산1-z2",
+    "a": "874fda60f474915a",
+    "b": "874fda60f474915a",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔base2",
+    "k": "산2-z1",
+    "a": "4168ec4520d93af1",
+    "b": "ff87b80f3af3370e",
+    "verdict": "다름",
+    "px": {
+     "px": 861,
+     "pct": 0.109,
+     "max": 161
+    }
+   },
+   {
+    "pair": "base↔base2",
+    "k": "산2-z2",
+    "a": "2d83c7b65c5cc140",
+    "b": "e888c8f96fdb0b7c",
+    "verdict": "다름",
+    "px": {
+     "px": 3168,
+     "pct": 0.4,
+     "max": 153
+    }
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "태어난자리-z1",
+    "a": "437b250a420072be",
+    "b": "437b250a420072be",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "태어난자리-z2",
+    "a": "73d68fb249726fa4",
+    "b": "73d68fb249726fa4",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산1-z1",
+    "a": "8894ff9003db0fe9",
+    "b": "8894ff9003db0fe9",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산1-z2",
+    "a": "874fda60f474915a",
+    "b": "874fda60f474915a",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산2-z1",
+    "a": "4168ec4520d93af1",
+    "b": "4168ec4520d93af1",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산2-z2",
+    "a": "e888c8f96fdb0b7c",
+    "b": "e888c8f96fdb0b7c",
+    "verdict": "바이트 같음"
+   }
+  ],
+  "sum": {
+   "same": 16,
+   "diff": 2,
+   "skip": 0
+  }
+ },
+ "chromium_final": {
+  "browser": "chromium",
+  "base": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1193/base",
+  "zooms": [
+   1,
+   2
+  ],
+  "vars": {
+   "base": {
+    "root": "base",
+    "q": "",
+    "dsf": 2,
+    "info": {
+     "hidpi": null,
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 2,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 41,
+    "errs": [],
+    "sec": 355
+   },
+   "off": {
+    "root": "branch",
+    "q": "",
+    "dsf": 2,
+    "info": {
+     "hidpi": {
+      "on": false,
+      "d": 1,
+      "want": false,
+      "q": null,
+      "dpr": 2,
+      "back": [
+       1100,
+       720
+      ],
+      "css": [
+       1100,
+       720
+      ],
+      "mpx": 0.79,
+      "nn": 0
+     },
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 2,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 41,
+    "errs": [],
+    "sec": 310
+   },
+   "base1": {
+    "root": "base",
+    "q": "",
+    "dsf": 1,
+    "info": {
+     "hidpi": null,
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 1,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 41,
+    "errs": [],
+    "sec": 255
+   },
+   "on1": {
+    "root": "branch",
+    "q": "?T1193_HIDPI=1",
+    "dsf": 1,
+    "info": {
+     "hidpi": {
+      "on": false,
+      "d": 1,
+      "want": true,
+      "q": true,
+      "dpr": 1,
+      "back": [
+       1100,
+       720
+      ],
+      "css": [
+       1100,
+       720
+      ],
+      "mpx": 0.79,
+      "nn": 0
+     },
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 1,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 41,
+    "errs": [],
+    "sec": 249
+   }
+  },
+  "shots": {
+   "태어난자리-z1": {
+    "base": {
+     "a": "142499ad865353ae",
+     "b": "142499ad865353ae",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 9533,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "142499ad865353ae",
+     "b": "142499ad865353ae",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8382,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "142499ad865353ae",
+     "b": "142499ad865353ae",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8833,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "142499ad865353ae",
+     "b": "142499ad865353ae",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8296,
+     "dayU": 0.5
+    }
+   },
+   "태어난자리-z2": {
+    "base": {
+     "a": "892cb3825854b5a2",
+     "b": "892cb3825854b5a2",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 9373,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "892cb3825854b5a2",
+     "b": "892cb3825854b5a2",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8846,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "892cb3825854b5a2",
+     "b": "892cb3825854b5a2",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8102,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "892cb3825854b5a2",
+     "b": "892cb3825854b5a2",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8110,
+     "dayU": 0.5
+    }
+   },
+   "산1-z1": {
+    "base": {
+     "a": "88bf0020a695f816",
+     "b": "88bf0020a695f816",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 31921,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "88bf0020a695f816",
+     "b": "88bf0020a695f816",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 36675,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "88bf0020a695f816",
+     "b": "88bf0020a695f816",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 17284,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "88bf0020a695f816",
+     "b": "88bf0020a695f816",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 16343,
+     "dayU": 0.5
+    }
+   },
+   "산1-z2": {
+    "base": {
+     "a": "e6ccac5cc2f0dbee",
+     "b": "e6ccac5cc2f0dbee",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 9014,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "e6ccac5cc2f0dbee",
+     "b": "e6ccac5cc2f0dbee",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8340,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "e6ccac5cc2f0dbee",
+     "b": "e6ccac5cc2f0dbee",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8059,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "e6ccac5cc2f0dbee",
+     "b": "e6ccac5cc2f0dbee",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8040,
+     "dayU": 0.5
+    }
+   },
+   "산2-z1": {
+    "base": {
+     "a": "d54c9bbc901cf49a",
+     "b": "d54c9bbc901cf49a",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 43306,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "d54c9bbc901cf49a",
+     "b": "d54c9bbc901cf49a",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 24390,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "1dcf3d1132d80130",
+     "b": "1dcf3d1132d80130",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 10084,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "088b1f04ce2203e7",
+     "b": "088b1f04ce2203e7",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 11120,
+     "dayU": 0.5
+    }
+   },
+   "산2-z2": {
+    "base": {
+     "a": "cfb7894a85e23413",
+     "b": "cfb7894a85e23413",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 8935,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "191cb287ec99f366",
+     "b": "191cb287ec99f366",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 8113,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "cfb7894a85e23413",
+     "b": "cfb7894a85e23413",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 8096,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "cfb7894a85e23413",
+     "b": "cfb7894a85e23413",
+     "self": true,
+     "cell": [
+      2147,
+      1956
+     ],
+     "settleMs": 8023,
+     "dayU": 0.5
+    }
+   }
+  },
+  "cmp": [
+   {
+    "pair": "base↔off",
+    "k": "태어난자리-z1",
+    "a": "142499ad865353ae",
+    "b": "142499ad865353ae",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "태어난자리-z2",
+    "a": "892cb3825854b5a2",
+    "b": "892cb3825854b5a2",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산1-z1",
+    "a": "88bf0020a695f816",
+    "b": "88bf0020a695f816",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산1-z2",
+    "a": "e6ccac5cc2f0dbee",
+    "b": "e6ccac5cc2f0dbee",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산2-z1",
+    "a": "d54c9bbc901cf49a",
+    "b": "d54c9bbc901cf49a",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산2-z2",
+    "a": "cfb7894a85e23413",
+    "b": "191cb287ec99f366",
+    "verdict": "다름",
+    "px": {
+     "px": 3136,
+     "pct": 0.396,
+     "max": 152
+    }
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "태어난자리-z1",
+    "a": "142499ad865353ae",
+    "b": "142499ad865353ae",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "태어난자리-z2",
+    "a": "892cb3825854b5a2",
+    "b": "892cb3825854b5a2",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산1-z1",
+    "a": "88bf0020a695f816",
+    "b": "88bf0020a695f816",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산1-z2",
+    "a": "e6ccac5cc2f0dbee",
+    "b": "e6ccac5cc2f0dbee",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산2-z1",
+    "a": "1dcf3d1132d80130",
+    "b": "088b1f04ce2203e7",
+    "verdict": "다름",
+    "px": {
+     "px": 897,
+     "pct": 0.113,
+     "max": 163
+    }
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산2-z2",
+    "a": "cfb7894a85e23413",
+    "b": "cfb7894a85e23413",
+    "verdict": "바이트 같음"
+   }
+  ],
+  "sum": {
+   "same": 10,
+   "diff": 2,
+   "skip": 0
+  }
+ },
+ "webkit_wpe_log": [
+  "",
+  "=== T1193 끔 판 = 종전 화면 · 브라우저 webkit · 판 base · off · base2 · 자리 태어난자리 · 들1@1004:1871 · 들2@964:1911 · 확대 1 · 2 ===",
+  "  · base: 뿌리 종전 · 주소 '' · 배율 2 → 캔버스 1100×720 · 손잡이 null · 스크립트 41개 · 자리 {\"x\":440848,\"y\":109872}",
+  "    base 태어난자리-z1: 0fb17767d647b83c (두 장 같음) · 다 구움 9373ms · 칸 964,1871",
+  "    base 태어난자리-z2: 4baa034607c510d6 (두 장 같음) · 다 구움 8216ms · 칸 964,1871",
+  "    base 들1-z1: 4e83a0072f422b58 (두 장 같음) · 다 구움 9500ms · 칸 1004,1871",
+  "    base 들1-z2: 8c01b32d3606fa10 (두 장 같음) · 다 구움 8479ms · 칸 1004,1871",
+  "    base 들2-z1: c44f373b29dbe628 (두 장 같음) · 다 구움 8431ms · 칸 964,1911",
+  "    base 들2-z2: 9f23b160463baff4 (두 장 같음) · 다 구움 8886ms · 칸 964,1911",
+  "  · off: 뿌리 이 가지 · 주소 '' · 배율 2 → 캔버스 1100×720 · 손잡이 {\"on\":false,\"d\":1,\"want\":false,\"q\":null,\"dpr\":2,\"back\":[1100,720],\"css\":[1100,720],\"mpx\":0.79} · 스크립트 41개 · 자리 {\"x\":440848,\"y\":109872}",
+  "    off 태어난자리-z1: 0fb17767d647b83c (두 장 같음) · 다 구움 8508ms · 칸 964,1871",
+  "    off 태어난자리-z2: 4baa034607c510d6 (두 장 같음) · 다 구움 8237ms · 칸 964,1871",
+  "    off 들1-z1: 4e83a0072f422b58 (두 장 같음) · 다 구움 8433ms · 칸 1004,1871",
+  "    off 들1-z2: 8c01b32d3606fa10 (두 장 같음) · 다 구움 8458ms · 칸 1004,1871",
+  "    off 들2-z1: c44f373b29dbe628 (두 장 같음) · 다 구움 8886ms · 칸 964,1911",
+  "실패: page.evaluate: Target crashed ",
+  "    at snap (/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1193/wt/scripts/t1193-off-same.js:108:29)",
+  "    at settle (/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1193/wt/scripts/t1193-off-same.js:109:93)",
+  "    at async /tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1193/wt/scripts/t1193-off-same.js:137:20",
+  ""
+ ],
+ "webkit_gtk_final_log": [
+  "    base 태어난자리-z1: 5bfd38c71f586c36 (두 장 같음) · 다 구움 9429ms · 칸 964,1871",
+  "    base 태어난자리-z2: fedad38e9bea7841 (두 장 같음) · 다 구움 9371ms · 칸 964,1871",
+  "    base 들1-z1: d8c611fc29e2cb96 (두 장 같음) · 다 구움 10879ms · 칸 1004,1871",
+  "    base 들1-z2: b302c024dbfa0511 (두 장 같음) · 다 구움 9331ms · 칸 1004,1871",
+  "    base 들2-z1: a1006be7cf503b0d (두 장 같음) · 다 구움 9784ms · 칸 964,1911",
+  "    base 들2-z2: 0aeb98a5d91601e5 (두 장 같음) · 다 구움 8901ms · 칸 964,1911",
+  "    off 태어난자리-z1: 5bfd38c71f586c36 (두 장 같음) · 다 구움 9128ms · 칸 964,1871",
+  "실패: page.evaluate: Target crashed "
+ ],
+ "chromium_merge_07eec54e": {
+  "browser": "chromium",
+  "base": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1193/base07",
+  "zooms": [
+   1,
+   2
+  ],
+  "vars": {
+   "base": {
+    "root": "base",
+    "q": "",
+    "dsf": 2,
+    "info": {
+     "hidpi": null,
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 2,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 42,
+    "errs": [],
+    "sec": 88
+   },
+   "off": {
+    "root": "branch",
+    "q": "",
+    "dsf": 2,
+    "info": {
+     "hidpi": {
+      "on": false,
+      "d": 1,
+      "want": false,
+      "q": null,
+      "dpr": 2,
+      "back": [
+       1100,
+       720
+      ],
+      "css": [
+       1100,
+       720
+      ],
+      "mpx": 0.79,
+      "nn": 0
+     },
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 2,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 42,
+    "errs": [],
+    "sec": 81
+   },
+   "base1": {
+    "root": "base",
+    "q": "",
+    "dsf": 1,
+    "info": {
+     "hidpi": null,
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 1,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 42,
+    "errs": [],
+    "sec": 74
+   },
+   "on1": {
+    "root": "branch",
+    "q": "?T1193_HIDPI=1",
+    "dsf": 1,
+    "info": {
+     "hidpi": {
+      "on": false,
+      "d": 1,
+      "want": true,
+      "q": true,
+      "dpr": 1,
+      "back": [
+       1100,
+       720
+      ],
+      "css": [
+       1100,
+       720
+      ],
+      "mpx": 0.79,
+      "nn": 0
+     },
+     "cv": [
+      1100,
+      720
+     ],
+     "dpr": 1,
+     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.",
+     "me": {
+      "x": 440848,
+      "y": 109872
+     },
+     "zone": "hanbando"
+    },
+    "served": 42,
+    "errs": [],
+    "sec": 69
+   }
+  },
+  "shots": {
+   "태어난자리-z1": {
+    "base": {
+     "a": "61691efa3002a00a",
+     "b": "61691efa3002a00a",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8450,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "61691efa3002a00a",
+     "b": "61691efa3002a00a",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8695,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "61691efa3002a00a",
+     "b": "61691efa3002a00a",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8738,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "61691efa3002a00a",
+     "b": "61691efa3002a00a",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8166,
+     "dayU": 0.5
+    }
+   },
+   "태어난자리-z2": {
+    "base": {
+     "a": "21468926abe2b199",
+     "b": "21468926abe2b199",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8612,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "21468926abe2b199",
+     "b": "21468926abe2b199",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8241,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "21468926abe2b199",
+     "b": "21468926abe2b199",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8169,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "21468926abe2b199",
+     "b": "21468926abe2b199",
+     "self": true,
+     "cell": [
+      964,
+      1871
+     ],
+     "settleMs": 8092,
+     "dayU": 0.5
+    }
+   },
+   "산1-z1": {
+    "base": {
+     "a": "3ec87c7d7d669659",
+     "b": "3ec87c7d7d669659",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 20019,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "3ec87c7d7d669659",
+     "b": "3ec87c7d7d669659",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 21518,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "da49450af81ca667",
+     "b": "da49450af81ca667",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 15259,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "3ec87c7d7d669659",
+     "b": "3ec87c7d7d669659",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 13239,
+     "dayU": 0.5
+    }
+   },
+   "산1-z2": {
+    "base": {
+     "a": "08ad0fae33399c56",
+     "b": "08ad0fae33399c56",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8141,
+     "dayU": 0.5
+    },
+    "off": {
+     "a": "08ad0fae33399c56",
+     "b": "08ad0fae33399c56",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8081,
+     "dayU": 0.5
+    },
+    "base1": {
+     "a": "9c21359e65878fcf",
+     "b": "9c21359e65878fcf",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8029,
+     "dayU": 0.5
+    },
+    "on1": {
+     "a": "08ad0fae33399c56",
+     "b": "08ad0fae33399c56",
+     "self": true,
+     "cell": [
+      1750,
+      74
+     ],
+     "settleMs": 8027,
+     "dayU": 0.5
+    }
+   }
+  },
+  "cmp": [
+   {
+    "pair": "base↔off",
+    "k": "태어난자리-z1",
+    "a": "61691efa3002a00a",
+    "b": "61691efa3002a00a",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "태어난자리-z2",
+    "a": "21468926abe2b199",
+    "b": "21468926abe2b199",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산1-z1",
+    "a": "3ec87c7d7d669659",
+    "b": "3ec87c7d7d669659",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base↔off",
+    "k": "산1-z2",
+    "a": "08ad0fae33399c56",
+    "b": "08ad0fae33399c56",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "태어난자리-z1",
+    "a": "61691efa3002a00a",
+    "b": "61691efa3002a00a",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "태어난자리-z2",
+    "a": "21468926abe2b199",
+    "b": "21468926abe2b199",
+    "verdict": "바이트 같음"
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산1-z1",
+    "a": "da49450af81ca667",
+    "b": "3ec87c7d7d669659",
+    "verdict": "다름",
+    "px": {
+     "px": 262,
+     "pct": 0.033,
+     "max": 10
+    }
+   },
+   {
+    "pair": "base1↔on1",
+    "k": "산1-z2",
+    "a": "9c21359e65878fcf",
+    "b": "08ad0fae33399c56",
+    "verdict": "다름",
+    "px": {
+     "px": 1048,
+     "pct": 0.132,
+     "max": 10
+    }
+   }
+  ],
+  "sum": {
+   "same": 6,
+   "diff": 2,
+   "skip": 0
+  },
+  "_note": "11-07 main 07eec54e 따라잡은 병합 나무 — base = 새 main · base1 산1 두 장의 다름은 base1(새 main 배율 1) 혼자의 산 비탈 나무 흔들림(base ↔ on1 · off ↔ on1 = 0화소)"
+ }
+}

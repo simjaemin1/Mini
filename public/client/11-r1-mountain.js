@@ -686,7 +686,7 @@
     }
     if (_on && !(J.ks && J.ks.length)) _mt3Budget--;   // ★[T870] 켬 — 띠 없는 청크(필드 없음 · 메시 0)는 그 하나로 친다(종전 단위)
     _mt3Jobs.delete(key);
-    if (_mt3Chunk.size > 260) { _mt3Chunk.clear(); _mt3Jobs.clear(); }
+    if (_mt3Chunk.size > (HIDPI > 1 ? Math.floor(260 / HIDPI) : 260)) { _mt3Chunk.clear(); _mt3Jobs.clear(); }   // ★[T1193] 켬 — 상한 ÷ D(같은 손잡이)
     _mt3Chunk.set(key, segs);
     _mt3BakeMs += J.ms + performance.now() - _bt0; _mt3BakeN++;
     return segs;
@@ -1477,7 +1477,7 @@
       if (!fg3) { g.save(); g.globalAlpha = 1 - (1 - MT_OCC_A) * _mtFadeAmt; g.drawImage(sg.img, dx3, dy3); g.restore(); return; }
       // ★걸친 띠: 발자국이 내 뒤인 쪽은 **본 캔버스에 불투명**, 앞인 쪽만 흐림 겹에.
       if (split3) {
-        if (_mt3CutDraw(sg, _mtFadeZ, g, fg3, dx3, dy3, g.canvas.height)) {
+        if (_mt3CutDraw(sg, _mtFadeZ, g, fg3, dx3, dy3, HIDPI > 1 ? H : g.canvas.height)) {   // ★[T1193] 켬 — 논리 높이(뒤판은 D 배)
           _mtSplitN++; _mtSplitSegs.push({ sg, dx: dx3, dy: dy3, z: item.z, c: _mtFadeZ });
           return;
         }
@@ -1573,13 +1573,14 @@
     if (!_mtFadeUsed || !_mtFadeCv) return;
     _mtFadeUsed = false; _mtFadeFlush++;
     const aFade = 1 - (1 - MT_OCC_A) * _mtFadeAmt;
+    const _k1193 = HIDPI > 1 ? g.getTransform().a : 1;   // ★[T1193] 켬 — 가로줄(논리 px)을 뒤판 px 로(배율 D · D·z)
     g.save();
     g.setTransform(1, 0, 0, 1, 0, 0);
     if (MT_FADE_CLIP && _mtFadeLineY != null) {
       // ★화면 가로줄로 자른다 — 줄 **위**는 반투명(플레이어가 비친다), **아래**는 불투명.
       //   같은 오프스크린을 두 번 그리므로 겹침 누적은 여전히 없다(그룹 알파 성질 유지).
       const H = _mtFadeCv.height, W = _mtFadeCv.width;
-      const ly = Math.max(0, Math.min(H, Math.round(_mtFadeLineY)));
+      const ly = Math.max(0, Math.min(H, Math.round(_k1193 === 1 ? _mtFadeLineY : _mtFadeLineY * _k1193)));
       if (ly > 0) {                                   // 위 — 반투명
         g.save(); g.beginPath(); g.rect(0, 0, W, ly); g.clip();
         g.globalAlpha = aFade; g.drawImage(_mtFadeCv, 0, 0); g.restore();

@@ -238,7 +238,8 @@
       window.__groundDbg.strips = nStrip; window.__groundDbg.gwind = _gw;
       { let sc = 0; for (const e of _groundTiles.values()) sc += (e.state || 0); window.__groundDbg.stateCells = sc; }
       window.__groundDbg.margins = _shMarginN;
-      const _cap = (_t19.windOff || _t19.windGrassOff) ? GT_MAX : GT_MAX_WIND;   // 잎 층이 있으면 타일당 2배
+      let _cap = (_t19.windOff || _t19.windGrassOff) ? GT_MAX : GT_MAX_WIND;   // 잎 층이 있으면 타일당 2배
+      if (HIDPI > 1) _cap = Math.max(drawn, Math.floor(_cap / HIDPI));   // ★[T1193] 켬 — 상한 ÷ D(본 판이 D² 배 — 같은 손잡이) · 이번 판에 그린 타일 수 밑으로는 안 내린다(큰 화면에서 매 판 다시 굽기 방지 — 새 수 0)
       if (_groundTiles.size > _cap) {   // 오래 안 쓴 타일부터 버린다(카메라가 멀어진 것)
         const ks = [..._groundTiles.entries()].sort((a, b) => (a[1].used || 0) - (b[1].used || 0));
         for (let i = 0; i < ks.length - _cap; i++) _groundTiles.delete(ks[i][0]);
@@ -1843,7 +1844,7 @@
         const a = _evVillageAnchorAbs(vid);
         if (!a) continue;
         const p0 = w2i(a.x, a.y), sp = toScreen(p0.x, p0.y);
-        if (sp.x < -260 || sp.y < -160 || sp.x > canvas.width + 260 || sp.y > canvas.height + 160) continue;
+        if (sp.x < -260 || sp.y < -160 || sp.x > cvW() + 260 || sp.y > cvH() + 160) continue;   // ★[T1193] cvW · cvH = 끔이면 canvas.width · height 그대로
         let y = sp.y - 54;
         for (let i = bb.lines.length - 1; i >= 0; i--) { y -= bubbleStep(drawSpeechBubble(sp.x, y, bb.lines[i])); }   // ★[T1086] 켬이면 판 높이만큼(41-h-bubble `bubbleStep` · 끔 = 종전 26)
       }
@@ -1854,7 +1855,7 @@
     if (fishState) {
       const nowMs = performance.now();
       const p0 = w2i(fishState.x, fishState.y), sp = toScreen(p0.x, p0.y);
-      if (!(sp.x < -80 || sp.y < -80 || sp.x > canvas.width + 80 || sp.y > canvas.height + 80)) {
+      if (!(sp.x < -80 || sp.y < -80 || sp.x > cvW() + 80 || sp.y > cvH() + 80)) {   // ★[T1193] 켬이면 CSS 크기
         const bite = fishState.state === 'bite' || fishState.state === 'fight';   // ★[T609 ②] 싸움 단계(서버 손잡이 켬만)도 찌가 잠긴다
         const t = (nowMs - fishState.since) / 1000;
         // 대기: 느린 상하 1px. 입질: 빠르게 흔들리며 아래로 잠긴다(잠김 깊이가 남은 시간을 말한다).
@@ -1882,7 +1883,7 @@
       if (nowMs >= fishFx.until) fishFx = null;
       else {
         const k = 1 - (fishFx.until - nowMs) / 2200;
-        const cx = canvas.width / 2, cy = canvas.height / 2 - 70 - k * 34;
+        const cx = cvW() / 2, cy = cvH() / 2 - 70 - k * 34;   // ★[T1193] 켬이면 CSS 크기(뒤판 가운데가 아니다)
         const size = Math.round(20 + Math.min(34, fishFx.kg * 7));
         ctx.save();
         ctx.globalAlpha = Math.max(0, 1 - k * k);

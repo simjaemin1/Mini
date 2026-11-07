@@ -427,8 +427,8 @@
     // Phase 14.30 + 14.51: 캔버스 mousemove → placement cursor + hover building
     canvas.addEventListener('mousemove', (e) => {
       const rect = canvas.getBoundingClientRect();
-      const px = (e.clientX - rect.left) * (canvas.width / rect.width);
-      const py = (e.clientY - rect.top) * (canvas.height / rect.height);
+      const px = (e.clientX - rect.left) * (cvW() / rect.width);    // ★[T1193] 켬이면 CSS 크기(뒤판은 D 배) · 끔 = 종전 canvas.width
+      const py = (e.clientY - rect.top) * (cvH() / rect.height);
       lastMouseSx = px; lastMouseSy = py;
       const _m = screenToWorldAbs(px, py);
       const wx = _m.wx, wy = _m.wy;
@@ -602,8 +602,8 @@
     canvas.addEventListener('click', (e) => {
       const rect = canvas.getBoundingClientRect();
       // 캔버스 안 픽셀 좌표 (canvas.width/height와 css width/height 다를 수 있으니 스케일)
-      const px = (e.clientX - rect.left) * (canvas.width / rect.width);
-      const py = (e.clientY - rect.top) * (canvas.height / rect.height);
+      const px = (e.clientX - rect.left) * (cvW() / rect.width);    // ★[T1193] 켬이면 CSS 크기(뒤판은 D 배) · 끔 = 종전 canvas.width
+      const py = (e.clientY - rect.top) * (cvH() / rect.height);
       // ★[줌 2026-08-31] 투영을 **`screenToWorldAbs` 한 군데로** 모았다.
       //   종전엔 여기서 같은 식을 손으로 다시 썼는데, 원점이 `myAbsPredicted` 라
       //   조준 시야 밀기(최대 180px)가 켜지면 **커서와 클릭 지점이 갈렸다** — 조준 배치가
@@ -1032,6 +1032,7 @@
         inventory = msg.inventory;
         myLedger = msg.ledger || {}; myLots = msg.lots || {};      // ★[원장 승격] 인벤과 같은 스냅샷
         if (msg.uiCfg) uiCfg = Object.assign(uiCfg, msg.uiCfg);    // ★클라 손잡이는 서버 env 가 정본
+        if (msg.uiCfg && (msg.uiCfg.hidpi === true || HIDPI > 1)) _t1193Apply();   // ★[T1193] 서버 env `T1193_HIDPI` — 뒤판을 다시 잡는다(칸 없음 · 끔이면 안 부른다)
         if (((uiCfg && uiCfg.coast588) || '') !== _coast588At) { try { precomputeAllWaterTiles(); } catch (e) { console.warn('water tile recompute fail:', e); } }   // ★[T588] 해안 손잡이가 부트 때와 다르면 같은 파일로 다시 굽는다(★T604 추신3 — 클라 기본 'b' = 서버 기본이라 보통 무동작 · 서버 '0' 이면 지금 식으로)
         if (msg.uiCfg && msg.uiCfg.streams) { try { loadStreams(); } catch (e) {} }   // ★[T585] 개울 래스터(존마다 한 번)
         for (const _wb of document.querySelectorAll('[data-action="well_start"]')) _wb.style.display = (uiCfg && uiCfg.wellAct) ? '' : 'none';   // ★[T557] 우물 버튼 — 서버 손잡이(`T509_WELL`)가 정한다
