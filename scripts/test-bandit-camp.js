@@ -21,6 +21,9 @@
 // ★[T1143 2026-11-04] 이 하네스가 재는 것은 해체 문 그 자체다(운영 픽스처가 NPC 마을을 해체로 세운다) — 판 세계를 T1143 앞(`T1143_NO_DISSOLVE=0` = 종전 바이트)으로 묶는다.
 //   T1143 이 NPC 마을 해체 없음을 켬 기본으로 바꾼 뒤 해체가 안 서 단언이 빨개졌다(main 에선 초록 · 보고 T1143 §0). 부르는 쪽이 값을 주면 그 값이 먼저다.
 if (process.env.T1143_NO_DISSOLVE == null) process.env.T1143_NO_DISSOLVE = '0';
+// ★[T1208-K1 2026-11-07] 이 하네스는 도적 단 해산 · 합류 몸을 센다(④ "새 몸 0" · "새 몸 = 소굴에서 난 사람 수뿐") — land1049 가 켠 `T1198_BIRTH_BODY`(마을 출생 = 몸)가
+//   같은 판에 마을 아기 몸을 더해 `newBodies` 가 갈렸다(`=0` 이면 초록 · main 초록 · `T1197_MEAL_BODY=0` 도 초록 = T1198 이 그 위에 선다). 출생은 이 자의 물음이 아니다. 부르는 쪽이 값을 주면 그 값이 먼저.
+if (process.env.T1198_BIRTH_BODY == null) process.env.T1198_BIRTH_BODY = '0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
