@@ -29,6 +29,17 @@
 #              (원본에서 색 · 요철을 옮겨 굽기 — 리토폴로지 + 베이크의 자동판 · 비교용).
 #   --naive  : 비교용 "자동 줄이기만"(옛 UV 그대로 Decimate + 텍스처 축소) — UV 가 찢어진 얼룩을 보이려는 판.
 #   ⚠우분투 apt 블렌더(4.0.2)의 FBX 가져오기는 numpy 가 필요하다 — `apt-get install -y python3-numpy`.
+#
+# ★★[T1210 · ★재민 11-07] 동작이 **파일마다 따로** 온다(VARCO 3D — 뼈대 하나 + 동작 파일 넷 · 같은 뼈대) — 한 뼈대에 묶어 굽는다:
+#   --anim=<키>=<파일>      : 그 파일의 동작을 클립 <키>(idle · walk · run · eat · die)로 — 뼈 이름 · 쉬는 자세가 같아야 한다(다르면 멈춘다)
+#   --clip=<키>=<구간>      : 클립에 쓸 때(초 · 그 동작의 첫 키 = 0) — `2.5-3.4+5.7-6.4` 처럼 이어 붙인다 · `cycle` = 한 고리(`model_gait.cycle`)
+#                             걷기 · 뛰기는 주지 않으면 `cycle` 이다(받은 클립엔 고리가 여럿 — 8판을 여러 고리에 펴면 다리가 뭉갠다) · 나머지는 통째
+#   --frames=<키>=<n>       : 판 수(없으면 아래 `CLIP_TABLE` — 사람 시트와 같은 수)
+#   --face=<키>=<뼈A>><뼈B> : 그 클립의 **첫 판**에서 몸(뼈A 머리 → 뼈B 꼬리) 방향 · 가운데를 쉬는 자세의 것으로 돌려 놓는다(클립 내내 같은 돌림 하나) —
+#                             말용 쓰러짐처럼 쓰러지며 몸이 돌면 행(방향)이 틀어지므로
+#   --species=<게임 키>     : 목록(`index.json`)에서 이 시트가 설 **게임 짐승 칸**(`public/animals.js` 의 키) — 없으면 폴더 이름(종전)
+#   걷기 · 뛰기 클립은 메타에 `strideM`(한 고리 보폭 m) · `speedMps`(제 빠르기) · `slipCm`(발마다 미끄러짐) 을 적는다 — 재는 법은 `model_gait.py` 머리말.
+#   시간 0 = 동작의 첫 키 · 판의 때는 소수 프레임까지(`frame_set(subframe)`) — 받은 키가 씬 fps 와 안 맞아도 그때 그 자세다.
 # =============================================================================
 
 import bpy, os, sys, json, math, mathutils, importlib.util
@@ -41,6 +52,7 @@ import render_common as rc
 _spec = importlib.util.spec_from_file_location("model_check", os.path.join(HERE, "model-check.py"))
 mc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mc)
+import model_gait as mg                # [T1210] 걸음 재기(고리 · 보폭 · 미끄러짐 · 몸 방향) — 재는 함수는 그 파일 하나(사본 0)
 
 V = mathutils.Vector
 M = mathutils.Matrix
@@ -57,13 +69,24 @@ CLIP_TABLE = {"idle": (4, True), "walk": (8, True), "run": (8, True), "eat": (6,
 def _args():
     a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     o = {"model": None, "name": None, "class": "animals", "front": None, "length": None, "height": None, "sizeSrc": None,
-         "out": None, "preview": None, "previewDir": 1, "respec": None, "respecOut": None, "naive": None, "noSheet": False, "raw": None}
+         "out": None, "preview": None, "previewDir": 1, "respec": None, "respecOut": None, "naive": None, "noSheet": False, "raw": None,
+         "anim": [], "clip": {}, "frames": {}, "face": {}, "species": None}
     for x in a:
         if not x.startswith("--"):
             o["model"] = x
             continue
         k, _, v = x[2:].partition("=")
-        if k == "name": o["name"] = v
+        if k in ("anim", "clip", "frames", "face"):     # [T1210] <키>=<값>
+            ck, _, cv = v.partition("=")
+            if ck not in CLIP_TABLE:
+                raise SystemExit(f"[model] --{k}: 클립 키 '{ck}' 를 모른다(키 {' · '.join(CLIP_TABLE)})")
+            if k == "anim": o["anim"].append((ck, cv))
+            elif k == "clip": o["clip"][ck] = cv
+            elif k == "frames": o["frames"][ck] = int(cv)
+            else: o["face"][ck] = tuple(cv.split(">"))
+            continue
+        if k == "species": o["species"] = v
+        elif k == "name": o["name"] = v
         elif k == "class": o["class"] = v
         elif k == "front": o["front"] = mc.parse_front(v)
         elif k == "length": o["length"] = float(v)
@@ -95,6 +118,49 @@ MESHES = [o for o in imported if o.type == 'MESH']
 ARMS = [o for o in imported if o.type == 'ARMATURE']
 if not MESHES:
     raise SystemExit("[model] 메시가 없다")
+
+
+def merge_anims(specs, arm):
+    """[T1210] 동작 파일마다 그 동작만 남기고(뼈대 · 메시 · 텍스처는 지운다) 클립 키에 묶는다. → {키: (동작 이름, 파일 지문)}"""
+    out = {}
+    for key, path in specs:
+        if arm is None:
+            raise SystemExit("[model] --anim: 바탕 모델에 뼈대가 없다")
+        pools = (bpy.data.objects, bpy.data.meshes, bpy.data.materials, bpy.data.images, bpy.data.armatures)
+        before = [set(p) for p in pools]
+        acts0 = set(bpy.data.actions)
+        mc.import_model(path)
+        new = [[x for x in p if x not in b] for p, b in zip(pools, before)]
+        arms2 = [o for o in new[0] if o.type == 'ARMATURE']
+        acts = [a for a in bpy.data.actions if a not in acts0]
+        if len(arms2) != 1 or len(acts) != 1:
+            raise SystemExit(f"[model] --anim {key}: 뼈대 {len(arms2)} · 동작 {len(acts)} — 하나씩이어야 한다({os.path.basename(path)})")
+        a2 = arms2[0]
+        n1, n2 = {b.name: b for b in arm.data.bones}, {b.name: b for b in a2.data.bones}
+        if set(n1) != set(n2):
+            raise SystemExit(f"[model] --anim {key}: 뼈 이름이 다르다 — 없는 뼈 {sorted(set(n1) ^ set(n2))[:6]}")
+        # 쉬는 자세 — 뼈마다 같은 **옮김 하나**만 허락한다(받은 파일마다 모델 전체가 조금씩 옮겨져 나온다 · 모양은 같다).
+        #   동작은 쉬는 자세에서의 차로 읽히므로 바탕 뼈대에 얹으면 그 옮김만 빠진 같은 자세다 — 모양이 다르면(옮김 하나로 안 맞으면) 멈춘다.
+        off = n2[next(iter(n1))].head_local - n1[next(iter(n1))].head_local
+        gap = max(max((n2[k].head_local - n1[k].head_local - off).length, (n2[k].tail_local - n1[k].tail_local - off).length) for k in n1)
+        if gap > 1e-4:
+            raise SystemExit(f"[model] --anim {key}: 쉬는 자세의 모양이 다르다(옮김 {off.length:.4f} 을 빼고도 뼈 끝 최대 {gap:.5f}) — 같은 뼈대가 아니다")
+        act = acts[0]
+        act.use_fake_user = True
+        act.name = f"{key}|{os.path.basename(path)}"
+        for o in new[0]:
+            bpy.data.objects.remove(o, do_unlink=True)
+        for pool, xs in zip(pools[1:], new[1:]):
+            for x in xs:
+                if x.users == 0:
+                    pool.remove(x)
+        out[key] = (act.name, {"file": os.path.basename(path), "md5": mc.md5(path), "bytes": os.path.getsize(path),
+                               "restOffset": [round(x, 5) for x in off]})
+        print(f"[model] 동작 묶음 {key} ← {os.path.basename(path)} · 뼈 {len(n1)} 이름 같음 · 쉬는 자세 = 바탕 + 옮김 {off.length:.4f}(모양 차 {gap:.1e})")
+    return out
+
+
+ANIMS = merge_anims(OPT["anim"], ARMS[0] if ARMS else None)
 
 
 def mesh_bbox(objs):
@@ -301,30 +367,95 @@ print(f"[model] {OPT['name']} · {VARIANT} · 삼각형 {TRIS:,}(원본 {SRC_TRI
 
 # ═══════════════ 동작 → 클립 ═══════════════
 _names, FOUND = mc.action_names()
+FOUND.update({k: v[0] for k, v in ANIMS.items()})     # [T1210] --anim 이 이름표보다 앞선다(키를 사람이 적었다)
 ARM = ARMS[0] if ARMS else None
+ARM_BASE = ARM.matrix_basis.copy() if ARM else None
 CLIPS = []
+
+
+def _segments(key, act):
+    """[T1210] 클립에 쓸 구간들 [(t0, t1)](초) · 한 고리 값 — `--clip` 또는 걷기 · 뛰기 = 한 고리 · 나머지 = 통째."""
+    _f0, sp = mg.span(act)
+    spec = OPT["clip"].get(key) or ("cycle" if key in mg.LOCO else None)
+    if spec is None:
+        return [(0.0, sp)], None
+    if spec == "cycle":
+        cy = mg.cycle(ARM, act, ARM_BASE)
+        return [(cy["t0"], cy["t0"] + cy["P"])], cy
+    segs = []
+    for part in spec.split("+"):
+        a, _, b = part.partition("-")
+        segs.append((float(a), float(b)))
+    if any(b <= a for a, b in segs):
+        raise SystemExit(f"[model] --clip {key}: 구간이 거꾸로다 {spec}")
+    return segs, None
+
+
+def _times(segs, n, loop):
+    """판 n 개의 때(초) — 구간들을 이어 붙인 길이 위에 고르게(고리 = 끝 칸 안 셈 · 한 번 = 끝 칸까지)."""
+    tot = sum(b - a for a, b in segs)
+    out = []
+    for i in range(n):
+        u = tot * (i / n if loop else i / max(1, n - 1))
+        acc = 0.0
+        for a, b in segs:
+            if u <= acc + (b - a) + 1e-9 or (a, b) == segs[-1]:
+                out.append(a + min(u - acc, b - a))
+                break
+            acc += b - a
+    return out, tot
+
+
 if ARM and FOUND:
-    fps_scene = scene.render.fps / scene.render.fps_base
+    FXY = None
     for key in mc.ACTIONS:
-        if key in FOUND:
-            act = bpy.data.actions[FOUND[key]]
-            n, loop = CLIP_TABLE[key]
-            f0, f1 = act.frame_range
-            dur = max(1e-6, (f1 - f0) / fps_scene)
-            CLIPS.append({"key": key, "action": act.name, "frames": n, "loop": loop, "fps": round(n / dur, 3), "f0": f0, "f1": f1})
+        if key not in FOUND:
+            continue
+        act = bpy.data.actions[FOUND[key]]
+        n, loop = CLIP_TABLE[key]
+        n = OPT["frames"].get(key, n)
+        segs, cy = _segments(key, act)
+        times, dur = _times(segs, n, loop)
+        c = {"key": key, "action": act.name, "frames": n, "loop": loop, "times": times, "segs": segs, "dur": dur,
+             "fps": round((n if loop else max(1, n - 1)) / max(1e-6, dur), 3), "comp": None, "cycle": cy}
+        CLIPS.append(c)
 if not CLIPS:
     CLIPS = [{"key": "idle", "action": None, "frames": 1, "loop": False, "fps": 1.0}]   # 서 있기 한 장(사람 `down` · `carry` 의 한 판 꼴)
+
+# [T1210] 걸음 값(걷기 · 뛰기) · 몸 돌림(--face) — 다 모델 공간(맞춤 앞 · 실제 m = × S)
+for c in CLIPS:
+    if c["action"] is None:
+        continue
+    act = bpy.data.actions[c["action"]]
+    if c["key"] in mg.LOCO and len(c["segs"]) == 1:
+        a, b = c["segs"][0]
+        g = mg.loop_gait(ARM, act, a, b - a, (fx, fy), ARM_BASE)
+        c["gait"] = {"strideM": round(g["stride"] * S, 4), "speedMps": round(g["speed"] * S, 4),
+                     "slipCm": {f: round(v["slip"] * S * 100, 2) for f, v in sorted(g["feet"].items())},
+                     "stanceS": {f: round(v["stanceS"], 4) for f, v in sorted(g["feet"].items())}}
+        print(f"[model] {c['key']} 한 고리 {a:.4f}~{b:.4f}초 · 보폭 {c['gait']['strideM']} m · 제 빠르기 {c['gait']['speedMps']} m/s · 미끄러짐(cm) {c['gait']['slipCm']}")
+    if c["key"] in OPT["face"]:
+        A, B = OPT["face"][c["key"]]
+        _k = mc.rest_pose(ARMS)
+        h_r, c_r = mg.heading(ARM, A, B, (fx, fy), ARM_BASE)
+        mc.rest_pose(ARMS, _k)
+        mg.set_time(ARM, act, c["times"][0], wrap=c["loop"])
+        h_0, c_0 = mg.heading(ARM, A, B, (fx, fy), ARM_BASE)
+        c["comp"] = M.Translation(c_r) @ M.Rotation(h_r - h_0, 4, 'Z') @ M.Translation(-c_0)
+        hs = []
+        for t in c["times"]:
+            mg.set_time(ARM, act, t, wrap=c["loop"])
+            hs.append(math.degrees(mg.heading(ARM, A, B, (fx, fy), ARM_BASE)[0] - h_0))
+        c["face"] = {"bones": [A, B], "turnDeg": round(math.degrees(h_0 - h_r), 2), "shiftM": round((c_0 - c_r).length * S, 4),
+                     "driftDeg": [round(min(hs), 1), round(max(hs), 1)]}
+        print(f"[model] {c['key']} 몸 돌림 — 첫 판 방향 {c['face']['turnDeg']:+.1f}° · 가운데 {c['face']['shiftM']} m 를 쉬는 자세로 · 판마다 남는 돌음 {c['face']['driftDeg']}°")
 
 
 def pose(clip, fi):
     if clip["action"] is None or ARM is None:
         return
-    if ARM.animation_data is None:
-        ARM.animation_data_create()
-    ARM.animation_data.action = bpy.data.actions[clip["action"]]
-    n = clip["frames"]
-    u = (fi / n) if clip["loop"] else (fi / max(1, n - 1))
-    scene.frame_set(int(round(clip["f0"] + u * (clip["f1"] - clip["f0"]))))
+    ARM.matrix_basis = clip["comp"] @ ARM_BASE if clip.get("comp") is not None else ARM_BASE   # [T1210] 몸 돌림은 모델 공간에서(왼쪽 곱)
+    mg.set_time(ARM, bpy.data.actions[clip["action"]], clip["times"][fi], wrap=clip["loop"])
 
 
 def set_dir(d):
@@ -456,7 +587,12 @@ META = {
     "dirOrder": "d = round(atan2(fy,fx)/(PI/4)) mod 8 — 월드 방향. d=0 은 +x(동).",
     "rowOrder": "행 0 = 방향 0, 위에서 아래로. 열 = 프레임 0..n-1, 왼쪽에서 오른쪽으로.",
     "heightM": round(HGT_M, 4), "lengthM": round(LEN_M, 4), "widthM": round(WID_M, 4),
-    "clips": {c["key"]: {"frames": c["frames"], "loop": c["loop"], "fps": c["fps"]} for c in CLIPS},
+    "clips": {c["key"]: dict({"frames": c["frames"], "loop": c["loop"], "fps": c["fps"]},
+                             **({"durS": round(c["dur"], 4), "srcS": [[round(a, 4), round(b, 4)] for a, b in c["segs"]]} if c.get("segs") else {}),
+                             **(c.get("gait") or {}), **({"face": c["face"]} if c.get("face") else {}),
+                             **({"cycle": {"k": c["cycle"]["k"], "periodS": round(c["cycle"]["P"], 4), "seamCm": round(c["cycle"]["seam"] * S * 100, 2)}}
+                                if c.get("cycle") else {}))
+              for c in CLIPS},
     "layers": ["body"],
     "sheets": {f"body_{c['key']}": {"w": SW, "h": SH, "cols": c["frames"], "rows": DIRS, "layer": "body", "clip": c["key"]}
                for c, _s, SW, SH in built},
@@ -464,7 +600,9 @@ META = {
     "source": {"file": os.path.basename(OPT["model"]), "md5": mc.md5(OPT["model"]), "bytes": os.path.getsize(OPT["model"]),
                "variant": VARIANT, "tris": TRIS, "srcTris": SRC_TRIS, "front": FRONT, "frontSrc": FRONT_SRC,
                "scale": round(S, 6), "sizeSrc": SIZE_SRC, "bones": sum(len(a.data.bones) for a in ARMS),
-               "actions": {c["key"]: c["action"] for c in CLIPS if c["action"]}, "bpy": bpy.app.version_string},
+               "actions": {c["key"]: c["action"] for c in CLIPS if c["action"]}, "bpy": bpy.app.version_string,
+               **({"anims": {k: v[1] for k, v in ANIMS.items()}} if ANIMS else {})},
+    **({"species": OPT["species"]} if OPT["species"] else {}),
 }
 os.makedirs(OPT["out"], exist_ok=True)
 with open(META_PATH, "w", encoding="utf-8") as f:
@@ -477,7 +615,10 @@ idx = {"_": "model_render.py 산물 — 종 키 → 메타 경로(이 폴더 기
 for nm in sorted(os.listdir(cls_dir)):
     mp = os.path.join(cls_dir, nm, f"{nm}_meta.json")
     if os.path.isdir(os.path.join(cls_dir, nm)) and os.path.exists(mp):
-        idx[nm] = f"{nm}/{nm}_meta.json"
+        key = json.load(open(mp, encoding="utf-8")).get("species") or nm   # [T1210] 메타의 게임 칸(`--species`) — 없으면 폴더 이름(종전)
+        if key in idx:
+            raise SystemExit(f"[model] 목록: 게임 칸 '{key}' 에 시트가 둘이다({idx[key]} · {nm}) — 하나만 둔다")
+        idx[key] = f"{nm}/{nm}_meta.json"
 with open(os.path.join(cls_dir, "index.json"), "w", encoding="utf-8") as f:
     json.dump(idx, f, ensure_ascii=False, indent=1, sort_keys=True)
 print("[model] 목록:", os.path.join(cls_dir, "index.json"), [k for k in idx if k != "_"])
