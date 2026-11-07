@@ -434,6 +434,18 @@ function windowMsFor(kg) {
 //       종 kg 가 없으면(`T593_KG=0` · 하네스의 네 인자) 지금 식.
 //   ⚠싸움 단계는 존이 돈다(`zone.tryFishStrike` → `_fishPoll`): 건 뒤 `fightMs` 동안 끌어올리고 그 뒤 손에 든다 · 그 사이 줄을 거두면 놓친다.
 //   ⚠NPC 어부의 창은 그대로다(어부의 놓침은 반사신경이 아니라 자리 비움 — T340 · 보고 회부).
+// ★[T1214 ③ µs 줄기] 손잡이 `T1214_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 매번 `require` 도 받아 같은 객체인가 견줌 · 답은 `require` 쪽 · 머리 주석 = villages.js `T1214`).
+//   `plan` 이 던짐마다 하던 `require('./fish-goods')` 를 한 번 받은 모듈 칸으로(다 실린 모듈 — `bodyKg` 함수가 선 객체만). 끔 = 종전 글자.
+const T1214_STEP_FAST = typeof process !== 'undefined' && !!process.env && (process.env.T1214_STEP_FAST === '1' || process.env.T1214_STEP_FAST === 'verify');
+const T1214_VERIFY = T1214_STEP_FAST && process.env.T1214_STEP_FAST === 'verify';
+const _t1214Stat = { vq: 0, bad: 0 };   // 계측 전용
+let _t1214FGM = null;
+function _t1214FG() {
+  const m = _t1214FGM;
+  if (!m) { const b = require('./fish-goods'); if (b && typeof b.bodyKg === 'function') _t1214FGM = b; return b; }
+  if (T1214_VERIFY) { const b = require('./fish-goods'); _t1214Stat.vq++; if (b !== m) { if (++_t1214Stat.bad <= 5) console.error('[T1214] verify 어긋남 fishing → fish-goods'); return b; } }
+  return m;
+}
 const T609_BIG_WINDOW = (() => { const v = process.env.T609_BIG_WINDOW; return (v === 'a' || v === 'b' || v === 'c') ? v : null; })();
 function windowFor(kg, kg0, mode) {
   const m = mode === undefined ? T609_BIG_WINDOW : mode;
@@ -457,7 +469,7 @@ function plan(sp, stock01, now, rng, kg0) {
   const waitMs = Math.max(CFG.WAIT_MIN_MS, Math.min(CFG.WAIT_MAX_MS, Math.round(raw)));
   let kg = _lognormal(rng, (kg0 > 0 ? Math.log(kg0) : CFG.SIZE_MU) + Math.log(sc.size), CFG.SIZE_SIGMA);
   kg = Math.min(CFG.SIZE_MAX, +kg.toFixed(3));
-  if(require('./fish-goods').ON&&kg0>0)kg=kg0;
+  if((T1214_STEP_FAST?_t1214FG():require('./fish-goods')).ON&&kg0>0)kg=kg0;   // ★[T1214 ③]
   if (!T609_BIG_WINDOW) return { biteAt: now + waitMs, waitMs, kg, windowMs: windowMsFor(kg) };
   return { biteAt: now + waitMs, waitMs, kg, windowMs: windowFor(kg, kg0), fightMs: fightMsFor(kg) };   // ★[T609 ②] 켬만
 }
@@ -507,6 +519,7 @@ module.exports = {
   spotAt, spotScore, _riverU, _lakeR, _seaSpot,
   regen, rec, stockRatioAt, drawStock, drawWholeStock, deficitStock, deficitBy, stockToEcon, diffuse,
   plan, windowMsFor, _lognormal,
+  t1214Stat: () => Object.assign({ on: T1214_STEP_FAST, verify: T1214_VERIFY }, _t1214Stat),   // ★[T1214] 계측
   T609_BIG_WINDOW, windowFor, fightMsFor,   // ★[T609 ②] 큰 종 창 안 셋 — 표 기계(`t602-windows.js`)가 같은 함수로 잰다
 };
 // ★[T818 ②] 접근자 하나가 리터럴에 있으면 V8 이 내보내기 객체를 통째로 사전 모드로 짓는다(T806 ② 와 같은 까닭) — 같은 이름 · 같은 몸통 · 열거 · 고칠 수 있음으로 리터럴 밖에 단다(값 무변 · 키 차례만 이 하나가 끝)
