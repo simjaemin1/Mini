@@ -43,7 +43,7 @@ function portFree(port) {
   return new Promise((res) => { const s = net.createServer(); s.once('error', () => res(false)); s.once('listening', () => s.close(() => res(true))); s.listen(port, '127.0.0.1'); });
 }
 function boot(name, file, env) {
-  const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], { cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'] });
+  const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], { cwd: ROOT, env: Object.assign({ T565_MAP_LIVE: '1' }, process.env, env)   /* ★[PM land1048 · T1165] 지도 실시간 점은 개발 팔(끔 기본) — 이 e2e 는 그 팔을 잰다 */, stdio: ['ignore', 'pipe', 'pipe'] });
   p._name = name;
   procs.push(p); return p;
 }

@@ -90,10 +90,10 @@ if (process.env.T1146_CHILD === '1') {
   // ③-ⓐ 곡괭이 한 벌(내구 100)
   {
     const r = nextRock(), p = mkPlayer(r.x + 20, r.y);
-    give(p, { wood: 3 }); make(p, 'pickaxe');
+    give(p, { wood: 3 }); make(p, 'pickaxe'); p.inventory.stone = 0; p.inventory.pebble = 0;   // ★[T1186] 켬이면 제작이 깬 덩이의 나머지(자갈)를 돌려준다 — 캔 몫만 센다
     const hits = [];
     for (let i = 0; i < 100 && H.getEquippedTool(p); i++) hits.push(hit(p, r));
-    out.pick = { hp0: r.maxHp, hits, stone: p.inventory.stone || 0, chip: +H.t1146Chip(r.id).toFixed(4), hp: r.hp, left: !!H.getEquippedTool(p) };
+    out.pick = { hp0: r.maxHp, hits, stone: p.inventory.stone || 0, chip: +H.t1146Chip(r.id).toFixed(4), hp: r.hp, left: !!H.getEquippedTool(p), d: H.getEquippedTool(p) ? H.getEquippedTool(p).d : null };
     H.players.delete(p.pid);
   }
   // ③-ⓑ 조잡한 돌괭이 두 벌 — 한 벌(25타)은 돌 0 · 장부는 바위의 몫이라 두 벌째가 잇는다
@@ -106,7 +106,7 @@ if (process.env.T1146_CHILD === '1') {
     make(p, 'crude_pick');
     const b = [];
     for (let i = 0; i < 20 && H.getEquippedTool(p); i++) { b.push(hit(p, r)); if ((p.inventory.stone || 0) > stoneA) break; }
-    out.crude = { a: a.length, chipA, stoneA, b: b.length, stoneB: p.inventory.stone || 0, firstB: b.findIndex((h) => h.ds > 0) + 1, hpB: r.hp };
+    out.crude = { a: a.length, chipA, stoneA, firstA: a.findIndex((h) => h.ds > 0) + 1, b: b.length, stoneB: p.inventory.stone || 0, firstB: b.findIndex((h) => h.ds > 0) + 1, hpB: r.hp };
     H.players.delete(p.pid);
   }
   // ③-ⓒ 둘이 한 바위 — 곡괭이 A 12타 · B 12타(넘긴 타의 주인이 돌을 든다)
@@ -129,7 +129,7 @@ if (process.env.T1146_CHILD === '1') {
   // ③-ⓔ 다 캔 바위 — 남은 돌 1 인 바위를 곡괭이로 끝까지
   if (!MUT) {
     const r = nextRock(), p = mkPlayer(r.x + 20, r.y);
-    give(p, { wood: 3 }); make(p, 'pickaxe');
+    give(p, { wood: 3 }); make(p, 'pickaxe'); p.inventory.stone = 0; p.inventory.pebble = 0;   // ★[T1186] 제작이 돌려준 자갈은 이 판의 전리품이 아니다
     r.hp = 1;
     const hs = []; for (let i = 0; i < 60 && H.resources.has(r.id); i++) hs.push(hit(p, r));
     out.brk = { n: hs.length, stone: p.inventory.stone || 0, pebble: p.inventory.pebble || 0, gone: !H.resources.has(r.id), chip: H.t1146Chip(r.id), last: hs[hs.length - 1] };
@@ -225,7 +225,7 @@ const SRS = rd('server/stone-rule.js');
 const SR = require(path.join(ROOT, 'server', 'stone-rule.js'));
 
 sec('① 글자 — 손잡이 · 정본 모듈 하나 · 새 수 0 · 두 문 · 땅 채굴 무접촉 · 곳간 두 순간');
-ok(/const T1146_STONE_RULE = process\.env\.T1146_STONE_RULE === '1';/.test(Z) && /const T1146_STONE_RULE = process\.env\.T1146_STONE_RULE === '1';/.test(VIL), '손잡이 — 존 · 마을 둘 다 끔 기본(`=1` 만 켬 · PM land1047)');
+ok(/const T1146_STONE_RULE = process\.env\.T1146_STONE_RULE === '1';/.test(Z) && /const T1146_STONE_RULE = process\.env\.T1146_STONE_RULE === '1';/.test(VIL), '손잡이 — 존 · 마을 둘 다 끔 기본(`=1` 만 켬 · PM land1047 · ★[T1186 11-07] main 07eec54e 위 첫 움집 켬 1/2 — "다 서면 켬 기본" 안 섬)');
 ok(/const T1146_ROCK = T1146_STONE_RULE && T1126_ROCK_YIELD;/.test(Z), '바위 규칙은 T1126 위에서만 선다(hp = 돌 수 정본 — T1126 끔이면 hp 4 는 돌 수가 아니다)');
 ok(/const StoneRule = require\('\.\/stone-rule'\);/.test(Z) && /const T1146_K_BED = StoneRule\.kIntact\(Specialty\.CHUNK_KG, Specialty\.MINE_SWINGS_PER, TOOL_EFFECTS\.pickaxe\.gatherStoneMult\);/.test(Z),
   '★암반 한 타 kg 은 채굴 정본 셋(덩이 kg · 덩이당 타수 · 곡괭이 배수)에서 — 손으로 적은 수 0');
@@ -238,7 +238,7 @@ ok(/if \(best\.hp !== _hp0\) \{/.test(fGR) && /\} else if \(r\.hp !== _hp0\) \{/
 ok(/if \(k === 'stone' && T1146_STONE_RULE\) \{ _t1146Kg \+= kg; continue; \}/.test(fSort) && /const _t1146Txt = T1146_STONE_RULE \? _t1146Gangue\(player, _t1146Kg\) : '';/.test(fSort)
    && /if \(k === 'stone'\) \{ got\.stone_waste = /.test(fSort), '★선광 — 켬이면 맥석 kg 을 모아 돌 · 자갈 · 부스러기로(끔 = 다음 줄 — 종전 폐석 글자 그대로)');
 ok(/StoneRule\.split\(kg, Weights\.kgOf\('stone'\), Weights\.kgOf\('pebble'\)\)/.test(fGan) && /Lots\.note\(player, it, n, zoneGameDay\(\)\)/.test(fGan), '맥석 나눔 = 정본 모듈 · 돌 · 자갈 kg = `weights` · 얻은 순간 줄(T732)');
-ok(fMine.length > 0 && !/1146/.test(fMine), '★땅 채굴(`mineOreCell`) 글자 무접촉 — 암반은 같은 식의 정본 그 자체(★재민 채굴 속도 고정)');
+ok(fMine.length > 0 && !/1146/.test(fMine.replace(/\n  if \(T1146_STONE_RULE\) _t1186Wear\([^\n]*/, '')), '★땅 채굴(`mineOreCell`) 글자 무접촉 — 암반은 같은 식의 정본 그 자체(★재민 채굴 속도 고정 · 닳기 한 줄만 T1186 문)');
 const fHand = fnBody(VIL, '_t1146HandIn'), fSet = fnBody(VIL, '_t720Settle'), fGran = fnBody(VIL, '_lifeGranStep'), fHeld = fnBody(VIL, '_t720Held');
 ok(/_lifeEcon\(\)\.actToGranary\(vil\.econ, k, u, null, null\)/.test(fHand) && /const _T1146_KEYS = \['stone', 'pebble'\];/.test(VIL), '★곳간 입구 — T733 부산물 문과 같은 몸통(`actToGranary` · 오늘치 · 건수 칸 없음) · 돌 · 자갈 두 칸');
 const HIN = /if \(npc\.inventory && \(npc\.inventory\.stone > 0 \|\| npc\.inventory\.pebble > 0\) && _stoneHandInOn\(vil\)\) _t1146HandIn\(vil, npc\);/;
@@ -271,7 +271,7 @@ sec('② 유도 — 출처 표의 비 · 땅 채굴 정본 · 무게 보존');
   ok(a.stone === 1 && a.pebble === 5 && Math.abs(a.crumbKg - 0.3) < 1e-9 && b.stone === 2 && b.pebble === 0 && b.crumbKg === 0 && c.stone === 1, '나눔 표본 — 7.3 kg = 돌 1 · 자갈 5 · 0.3 kg · 8 kg = 돌 2 · 끝 자리 소수(4 − 1e-9)는 돌 하나', JSON.stringify([a, b, c]));
 }
 
-const ON = run({ T1146_STONE_RULE: '1' }), OFF = run({ T1146_STONE_RULE: '0' }), NOGATE = run({ T1146_STONE_RULE: '1', T1065_TOOL_GATE: '0' });   // ★[PM land1047] 끔 기본 — 켬 판은 손잡이를 준다
+const ON = run({ T1146_STONE_RULE: '1' }), OFF = run({ T1146_STONE_RULE: '0' }), NOGATE = run({ T1146_STONE_RULE: '1', T1065_TOOL_GATE: '0' });   // 두 판 다 손잡이를 글로 준다(기본값과 무관)
 const kb = ON ? ON.kBed : 0, kPick = 3 * kb * SR.CRACK_X, kCrude = 2 * kb * SR.CRACK_X, kBare = kb * SR.CRACK_X;
 const firstAt = (k, kg) => Math.ceil(kg / k - 1e-9);
 
@@ -282,17 +282,17 @@ else {
     `전제 — 손잡이 켬 · 도구 배수(곡괭이 3 · 조잡한 돌괭이 2) · 내구(100 · 25) · 돌 4 kg · 자갈 0.6 kg · 바위 하나 돌 ${ON.N}`);
   const P = ON.pick, firsts = P.hits.map((h, i) => (h.ds > 0 ? i + 1 : 0)).filter(Boolean);
   const wantF = [1, 2, 3, 4].map((n) => firstAt(kPick, n * 4));
-  ok(P.hits.length === 100 && !P.left && P.stone === 4 && JSON.stringify(firsts) === JSON.stringify(wantF) && P.hp === P.hp0 - 4,
-    `★★곡괭이 한 벌(100타) = 돌 ${P.stone} — 돌이 난 타 ${firsts.join(' · ')}(한 타 ${(kPick * 1000).toFixed(1)} g · 4 kg 마다) · 남은 돌 ${P.hp}/${P.hp0}`, `기대 ${wantF.join(' · ')}`);
+  ok(P.hits.length === 100 && P.left && Math.abs(P.d - (100 - 100 * kPick * 100 / 1500)) < 1e-3 && P.stone === 4 && JSON.stringify(firsts) === JSON.stringify(wantF) && P.hp === P.hp0 - 4,
+    `★★곡괭이 100타 = 돌 ${P.stone} — 돌이 난 타 ${firsts.join(' · ')}(한 타 ${(kPick * 1000).toFixed(1)} g · 4 kg 마다) · 남은 돌 ${P.hp}/${P.hp0} · ★[T1186] 깎은 kg 으로 닳아 내구 ${P.d}(종전 100타에 깨짐)`, `기대 ${wantF.join(' · ')}`);
   ok(Math.abs(P.chip - (100 * kPick - 16)) < 1e-3, `바위 장부 — 100타 뒤 깎였지만 돌이 안 된 ${P.chip} kg(= 100 × ${(kPick * 1000).toFixed(1)} g − 16 kg)`);
   const idle = P.hits.filter((h) => h.ds === 0), give = P.hits.filter((h) => h.ds > 0);
   ok(idle.length === 96 && idle.every((h) => !h.m.includes('resource_update') && !h.m.includes('inventory') && h.say.length === 1 && /^바위 깎는 중 \d+\.\d\/4kg · 남은 돌 \d+$/.test(h.say[0]) && h.hp === P.hp0 - P.hits.slice(0, P.hits.indexOf(h)).reduce((a, x) => a + x.ds, 0)),
     '★돌이 안 난 타 96 — 방송 · 짐 알림 · 저장 0 · 깎인 kg 한 줄("바위 깎는 중 x/4kg · 남은 돌 n" · 종류 gather) · hp 그대로', idle[0] && `${idle[0].m.join()} · ${idle[0].say[0]}`);
   ok(give.length === 4 && give.every((h) => h.m.join() === 'resource_update,inventory,notice' && /^바위 — 돌 1개 떼어 냄 · 다음 돌 \d+\.\d\/4kg · 남은 돌 \d+$/.test(h.say[0])),
     '돌이 난 타 4 — 방송 hp · 짐 알림 · 한 줄("바위 — 돌 1개 떼어 냄 · 다음 돌 x/4kg · 남은 돌 n")', give[0] && `${give[0].m.join()} · ${give[0].say[0]}`);
-  const C = ON.crude, b1 = firstAt(kCrude, 4 - C.chipA);
-  ok(C && C.a === 25 && C.stoneA === 0 && Math.abs(C.chipA - 25 * kCrude) < 1e-3 && C.firstB === b1 && C.stoneB === 1,
-    `★★조잡한 돌괭이 한 벌(${C && C.a}타) = 돌 ${C && C.stoneA} — 장부 ${C && C.chipA} kg 가 바위에 남고 두 벌째 ${C && C.firstB}타에 첫 돌(기대 ${b1})`);
+  const C = ON.crude, a1 = firstAt(kCrude, 4);
+  ok(C && C.a === 40 && C.stoneA === 1 && C.firstA === a1 && Math.abs(C.chipA - (40 * kCrude - 4)) < 1e-3,
+    `★★조잡한 돌괭이 한 벌 40타 = 돌 ${C && C.stoneA}(${C && C.firstA}타째 · 기대 ${a1}) · 장부 ${C && C.chipA} kg — ★[T1186] 깎은 kg 으로 닳아 안 깨진다(종전 25타에 깨져 돌 0)`);
   const Sh = ON.share, bWant = firstAt(kPick, 4) - 12;
   ok(Sh && Sh.a === 0 && Sh.b === 1 && Sh.bFirst === bWant && Math.abs(Sh.chipA - 12 * kPick) < 1e-3, `둘이 한 바위 — 장부 하나(A 12타 ${Sh && Sh.chipA} kg · B ${Sh && Sh.bFirst}타째에 넘겨 돌은 B) · 광맥 셀 타수와 같은 꼴`);
   ok(ON.bare && ON.bare.stone === 0 && ON.bare.n === 80 && ON.bare.refused && ON.bare.refused.say.length === 0, '맨손(도구 문 켬) — 거절(깎인 kg 0 · 돌 0)');

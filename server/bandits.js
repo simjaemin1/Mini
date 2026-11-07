@@ -128,11 +128,15 @@ const T1079_CAMP = T1078_ALL && !(typeof process !== 'undefined' && process.env 
 //   새 수 0 · 주사위 새 흐름 0(econ 약탈은 그 판의 `v1.srand` 차례 · 토벌은 종전 `_rb` 그대로).
 const T1104_WALK = T1079_CAMP && !(typeof process !== 'undefined' && process.env && process.env.T1104_BANDIT_WALK === '0');
 const T577_RAMP = process.env.T577_RAMP !== '0';   // ★[T577 추신] 기본 켬
+const T1187_NAME_FREE = process.env.T1187_NAME_FREE === '1';   // ★[T1187] 아래 `_bdtOpenDay` 주석
 function _t577Hash(name) { let h = 0; const s = String(name || ''); for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0; return h >>> 0; }
 function _bdtOpenDay(vil) {   // 이 마을의 보호기가 끝나는 날(끔이면 모두 BDT_MIN_DAY — 종전) · ★[T984] 이 날부터 그 마을이 해체 · 절망 이탈 문을 탄다(소굴 습격은 이 날과 무관)
   if (!T577_RAMP) return BDT_MIN_DAY;
-  return BDT_MIN_DAY + Math.floor(denRng(_t577Hash(vil && vil.name) % 100003, 577) * BDT_MIN_DAY);
+  const key = T1187_NAME_FREE ? (vil ? ((vil.ccx | 0) + ',' + (vil.ccy | 0)) : '') : (vil && vil.name);   // ★[T1187] 켬 = 마을 자리(가운데 칸)로 흩는다 — 이름 무관
+  return BDT_MIN_DAY + Math.floor(denRng(_t577Hash(key) % 100003, 577) * BDT_MIN_DAY);
 }
+// ★[T1187 2026-11-06 · 손잡이 `T1187_NAME_FREE`(econ 과 같은 손잡이 · 기본 끔)] 보호기 끝 날을 마을마다 흩는 열쇠 — 종전 = 마을 이름 해시(이름을 바꾸면 그 마을의 해체 · 이탈 문 여는 날이 바뀐다).
+//   켬 = 마을 가운데 칸(ccx · ccy — 땅의 자리 · 같은 해시 · 같은 흩는 폭). 자리가 바뀌면(T1178 재배치) 그 자리로 다시 흩는다.
 // ★★[T765 2026-10-15 · 세션1 · 추상 가2 F8 · 캐논 "몸 XOR 일괄 · 소멸 · 생성 금지"] **후보는 몸으로 걸어가 붙는다** — 손잡이 `T577_CAND_WALK=1` 안에서만.
 //   종전 켬(T577 ⓐ + T590): 해체 그 순간 남은 사람의 econ 항목을 받는 마을 econ 에 **한꺼번에** 넣었다(일괄). 몸은 따로 하루 2명씩
 //   (`POP_SYNC_PER_DAY`) 그 마을까지 걸었고, 닿으면 **거둬졌다**(소멸) — 받는 마을은 econ 수를 따라 집 앞에 **새 몸**을 세웠다(생성).
@@ -1623,7 +1627,7 @@ function _dayRun(day) {
   }
 }
 
-module.exports = { init, onGameTick, dayTick, t986: () => ({ on: T986_BANDIT_DAY, lastDay: S.lastDay }), clientCamps, stats: () => S.stats, incomingFood, t766On: () => T766_INCOMING, t1143On: () => T1143_NO_DISSOLVE, armsHeld, ARMS_RES, lotsBoot, gangs: () => S.GANGS,
+module.exports = { t1187OpenDay: (vil) => _bdtOpenDay(vil), init, onGameTick, dayTick, t986: () => ({ on: T986_BANDIT_DAY, lastDay: S.lastDay }), clientCamps, stats: () => S.stats, incomingFood, t766On: () => T766_INCOMING, t1143On: () => T1143_NO_DISSOLVE, armsHeld, ARMS_RES, lotsBoot, gangs: () => S.GANGS,
   t765: () => ({ on: T577_WALK, road: S.WALK.length, rows: (S.t765Rows || []).map((r) => Object.assign({}, r)) }),   // ★[T765] 길 위 장부 증인(관측 자 `t765-obs` · 하네스)
   walkToVillage,   // ★[T1080 · T1108] 걷기 문 하나(해체 남은 사람 · T1079 해산 몸 · T1075 불행 이탈)
   t1080: () => ({ on: _t1080On(), road: S.WALK.length, dead: S.stats.t1080Dead || 0, reroute: S.stats.t1080Reroute || 0, roadDays: S.stats.t1080RoadDays || 0,

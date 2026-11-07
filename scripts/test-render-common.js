@@ -284,13 +284,14 @@ console.log('\n[⑧ 먹선·셀·상자 못박기 — 공용 한 벌 · 캐릭�
   // ⓔ **아직 캐릭터에만 건다** — 자연물·소품·건물 적용은 별도 카드(세션8)
   //   ⚠세션8 이 실제로 걸면 이 줄이 빨개진다. 그때 지우지 말고 **여기 목록을 같이 늘려라**
   //     (어느 자산군에 후처리가 걸려 있는지가 이 한 줄로 읽혀야 한다).
-  const WIRED = ['char_render.py', 'ink_repost.py', 'char_mpfb_screen.py'];
+  const WIRED = ['char_render.py', 'ink_repost.py', 'char_mpfb_screen.py',
+    'model_render.py'];   // ★[T1194] 짐승(받은 3D 모델) — 사람과 같은 붓(`char_meta.json` 의 shape) · 게임은 손잡이 `T1194_MODEL_SPRITES` 끔 뒤 · 짐승에 붓을 거는지는 재민 눈 판정(회부)
   const callers = fs3.readdirSync(dir).filter(f => f.endsWith('.py') && f !== 'render_common.py')
     .filter(f => /rc\.(post_all|ink_outline|cel_quantize|edge_darken)\(/.test(
       fs3.readFileSync(path.join(dir, f), 'utf8')));
   const extra = callers.filter(f => !WIRED.includes(f));
   ok(extra.length === 0,
-     `후처리를 실제로 거는 스크립트 = 캐릭터 ${callers.length}개뿐 ` +
+     `후처리를 실제로 거는 스크립트 = 목록 ${callers.length}개뿐(${callers.join(' · ')}) ` +
      (extra.length ? `→ 새로 생김: ${extra.join(', ')} (세션8이면 WIRED 목록을 늘려라)` : '(자연물·소품·건물 0 — 세션8 카드)'));
 
   // ⓕ 못박기 서식 둘을 다 읽는다 — 캐릭터(frameW/frameH) · 자산별(w/h/ox/oy)
@@ -309,6 +310,7 @@ console.log('\n[⑧ 먹선·셀·상자 못박기 — 공용 한 벌 · 캐릭�
     'props_render.py': 'assert_pinned_box',
     'fields_render.py': 'assert_pinned_box',
     'nature-postprocess.py': 'assert_pinned_box',   // 크롭 뒤가 규격이 정해지는 자리
+    'model_render.py': 'fit_pinned_box',       // ★[T1194] 짐승(받은 3D 모델) — 사람과 같은 재는 상자
   };
   {
     const miss = [], wrong = [];
@@ -322,7 +324,7 @@ console.log('\n[⑧ 먹선·셀·상자 못박기 — 공용 한 벌 · 캐릭�
       if (new RegExp(`^def ${fn}\\(`, 'm').test(src)) wrong.push(f);
     }
     ok(miss.length === 0,
-       `상자 못박기가 걸린 굽기 ${Object.keys(PINNED).length}곳 ${miss.length ? '— 안 걸린 것: ' + miss.join(', ') : '(char·건물·소품·밭·자연물)'}`);
+       `상자 못박기가 걸린 굽기 ${Object.keys(PINNED).length}곳 ${miss.length ? '— 안 걸린 것: ' + miss.join(', ') : '(char·건물·소품·밭·자연물·짐승)'}`);
     ok(wrong.length === 0, `못박기 함수 사본 0 ${wrong.length ? '→ ' + wrong.join(', ') : ''}`);
     // ★자명 통과 금지 — 못박기를 **안 건** 굽기가 남아 있으면 이름을 찍는다(실패로는 안 센다).
     const bakers = fs3.readdirSync(dir).filter((f) => /_render\.py$|^bake-|postprocess\.py$/.test(f));

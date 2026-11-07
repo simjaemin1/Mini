@@ -1,0 +1,152 @@
+== 카드 묶음(켬 기본 트리 · 15:20 · 올림 덩이 설계 때)
+== test-t1186-blade-wear 15:20:56
+rc=0 === T1186: 35건 중 PASS 35 · FAIL 0 ===
+== test-t1146-stone-rule 15:20:59
+rc=0 === T1146: 45건 중 PASS 45 · FAIL 0 ===
+== test-mining 15:21:04
+rc=0 결과: PASS
+== test-t1126-rock-yield 15:21:09
+rc=0 === T1126: 52건 중 PASS 52 · FAIL 0 ===
+== test-craft 15:21:15
+rc=0 
+== test-t1065-tool-gate 15:21:22
+rc=1 === T1065: 통과 42 · 실패 1 ===
+== test-t1120-next-tool 15:21:24
+rc=0 === T1120: 85건 중 PASS 85 · FAIL 0 ===
+== test-emptystart 15:21:28
+rc=0 
+== test-stone-real 15:21:42
+rc=0 === 67/67 ✓ ===
+== test-weight 15:21:48
+rc=1 
+== test-carrier 15:22:02
+rc=0 
+== test-onboarding 15:22:03
+rc=0 === PASS 38 / FAIL 0 ===  (총 57초)
+== test-t1064-next-step 15:22:59
+rc=0 === 49건 중 PASS 49 · FAIL 0 ===
+== test-fell-loot 15:22:59
+rc=0 
+== test-lab-mining 15:23:01
+rc=1   · 광맥 재고가 실제로 줄어든다
+== test-lab-stone 15:34:48
+rc=1 접점 심볼: cargoTwoOn|cargoTwoGateOn|L_CARGO_TWO|L_CARGO_TWO_GATE|L_CARGO_TWO_BEST|_legProfitPerUnit|candidates|cand.res|surplus|best.profit|TRADABLE|N_units|CARGO_PER_TRIP|onTradeLeg|_gateBlocked
+== test-e2e-src 15:38:41
+rc=0 
+== test-itemlabel 15:38:41
+rc=0 
+== test-icons 15:38:42
+rc=0 결과: PASS
+== test-trees 15:38:51
+rc=0 === 결과: 91 PASS / 0 FAIL ===
+== test-floor-stone 15:38:51
+rc=0 === 10건 중 PASS 10 · FAIL 0 ===
+== test-hp-src 15:39:14
+rc=1 
+== test-physical-stone-return 15:39:15
+rc=0 PASS 13 / FAIL 0
+== test-physical-stone-cycle 15:39:15
+rc=0 [t745] 끝 — V 1767225642100 (+42.1s) · 콜백 2574 · 양보 6 · 줄 최대 24 · 오류 0
+== test-stone-independent-budget 15:39:17
+rc=0 PASS independent mineral budget and body-only host
+== test-t1181-build-defaults 15:39:18
+rc=0 PASS 18 / FAIL 0
+== test-granary-haul 15:39:18
+rc=0 결과: PASS
+== test-tidal 15:39:18
+rc=0 
+== test-clothes 15:39:19
+rc=0 
+== test-preserve 15:39:19
+rc=0 === 결과: 70 PASS / 0 FAIL ===
+== test-salt 15:39:24
+rc=0 === 결과: 73 PASS / 0 FAIL ===
+== test-food-sick 15:39:25
+rc=0 
+== test-game-meat 15:39:40
+rc=0 
+== test-kcal 15:39:46
+rc=0 
+== test-build-act 15:39:48
+rc=0 === 82/82 ✓ ===
+== test-bridge-act 15:39:50
+rc=0 === 48/48 ✓ ===
+== test-rock-los 15:39:56
+rc=0 결과: PASS
+== test-regrow 15:39:57
+rc=0 
+== test-t1086-first-join 15:40:13
+rc=0 === 82건 중 PASS 82 · FAIL 0 ===
+== test-t1125-welcome 15:40:14
+rc=0 
+== test-harness-lint 15:40:26
+rc=0 
+== test-notice 15:41:54
+rc=0 
+== test-inv-ground 15:41:55
+rc=0 
+== test-forage-act 15:41:56
+rc=0 === 결과: 251 PASS / 0 FAIL ===
+== test-fishing 15:42:07
+rc=0 
+DONE 15:42:28
+
+== 덩이 몫으로 바꾼 뒤 다시 돈 판(19:00 · 최종 트리)
+== test-fell-loot 18:54:15
+rc=0 
+== test-e2e-src 18:54:18
+rc=0 
+== test-itemlabel 18:54:18
+rc=0 
+== test-icons 18:54:18
+rc=0 결과: PASS
+== test-trees 18:54:25
+rc=0 === 결과: 91 PASS / 0 FAIL ===
+== test-floor-stone 18:54:25
+rc=0 === 10건 중 PASS 10 · FAIL 0 ===
+== test-hp-src 18:54:49
+rc=1 
+== test-physical-stone-return 18:54:50
+rc=0 PASS 13 / FAIL 0
+== test-physical-stone-cycle 18:54:50
+rc=0 [t745] 끝 — V 1767225642100 (+42.1s) · 콜백 2574 · 양보 6 · 줄 최대 24 · 오류 0
+== test-stone-independent-budget 18:54:53
+rc=0 PASS independent mineral budget and body-only host
+== test-t1181-build-defaults 18:54:53
+rc=0 PASS 18 / FAIL 0
+== test-granary-haul 18:54:53
+rc=0 결과: PASS
+== test-tidal 18:54:53
+rc=0 
+== test-clothes 18:54:55
+rc=0 
+== test-salt 18:54:55
+rc=0 === 결과: 73 PASS / 0 FAIL ===
+== test-food-sick 18:54:56
+rc=0 
+== test-game-meat 18:55:11
+rc=0 
+== test-kcal 18:55:18
+rc=0 
+== test-build-act 18:55:19
+rc=0 === 82/82 ✓ ===
+== test-bridge-act 18:55:22
+rc=0 === 48/48 ✓ ===
+== test-rock-los 18:55:29
+rc=0 결과: PASS
+== test-regrow 18:55:30
+rc=0 
+== test-t1086-first-join 18:55:47
+rc=0 === 82건 중 PASS 82 · FAIL 0 ===
+== test-t1125-welcome 18:55:47
+rc=0 
+== test-notice 18:55:59
+rc=0 
+== test-forage-act 18:56:00
+rc=0 === 결과: 251 PASS / 0 FAIL ===
+== test-fishing 18:56:13
+rc=0 
+DONE 18:56:36
+
+== 베이스 de3b7652 워크트리 같은 자리(이 카드 밖 빨강 확인)
+test-weight 62/2 · test-hp-src 39/15 · test-lab-mining 2건(광부가 광맥 셀에 배치됨 · 광맥 재고가 실제로 줄어든다) · test-lab-stone 63/5 · 125/7

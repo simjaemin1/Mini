@@ -5,6 +5,15 @@
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
 console.log('%c[durango-mini] client build = Phase 5-K26 (길드 영토 셀 집합 렌더 — 격자 단위)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
+// ★★[T1193 2026-11-06] 주소 `lag=<초>`(재민 Safari 링크) 일 때만 — 만든 캔버스를 약하게 쥐어(WeakRef) 렉 보고에 **살아 있는 캔버스 넓이**를 싣는다(T926 계측 자의 갈고리와 같은 셈).
+//   주소에 `lag` 이 없으면 이 줄은 아무 일도 안 한다(종전 그대로).
+const _t1193Cv = (() => { try { if (!/[?&]lag=\d/.test(location.search) || typeof WeakRef !== 'function') return null;
+  const live = new Set(), mk = document.createElement.bind(document);
+  document.createElement = function (tag, o) { const el = mk(tag, o); if (String(tag).toLowerCase() === 'canvas') live.add(new WeakRef(el)); return el; };
+  return { live, sum() { let n = 0, px = 0; for (const r of live) { const c = r.deref(); if (!c) { live.delete(r); continue; } n++; px += (c.width | 0) * (c.height | 0); }
+    for (const c of document.getElementsByTagName('canvas')) { let seen = false; for (const r of live) if (r.deref() === c) { seen = true; break; } if (!seen) { n++; px += (c.width | 0) * (c.height | 0); } }
+    return { n, mpx: +(px / 1e6).toFixed(1) }; } }; } catch (e) { return null; } })();
+
 // ★★[부패·보존 배치 2026-08-31] 신선도 3단계의 **표시**(값은 서버가 준다 — 여기 문턱을 적지 않는다).
 //   `server/spoil.js` 의 STAGE_KO/STAGE_EMO 와 짝이다. 클라는 곡선을 계산하지 않는다.
 const PRESERVE_STAGE_KO = { fresh: '신선', wilt: '시듦', spoiled: '상함' };
@@ -141,12 +150,67 @@ function cropSprite(stage, crop) {
   const _mainCtx = ctx;
   let W = canvas.width, H = canvas.height;      // ★월드 패스 중에는 **가상 뷰포트** 크기가 된다
   let W0 = W, H0 = H;                           // 실제 캔버스 크기(HUD·마우스는 이걸 쓴다)
+  // ★★[T1193 2026-11-06 · ★재민 11-06 "그래픽 좀 상향시킬까"] **레티나 2배** — 손잡이 `T1193_HIDPI`(끔 기본 · 끔 = 종전 코드 경로 그대로).
+  //   종전: 뒤판 = 창 크기(CSS px) — 화면 배율 2(레티나)에서는 브라우저가 이 그림을 2배로 늘려 보인다(`#canvas` image-rendering: pixelated).
+  //   켬: 뒤판 = CSS 크기 × D(D = 화면 배율을 정수로 — 1 또는 2 · 상한 2 · 맥 화면은 2배 넘게 못 보인다) · 그리기 변환에 배율 한 번(본 문맥 `setTransform(D…)`) ·
+  //     W0 · H0 · W · H 는 CSS px 그대로 ⇒ 그리기 코드 · HUD · 마우스 · 컬링이 한 줄도 안 바뀐다 · 보이는 범위 그대로(셀 64px) · 화면 크기는 CSS(`100vw · 100vh`)가 그대로 잡는다.
+  //     ⓘ D 를 정수로 — 배율이 정수가 아니면 지면 512×256 판이 반화소에 걸려 이음새가 선다(아래 줌 머리말) · 1.5 → 2(브라우저가 줄인다) · 1.25 → 1(종전).
+  //     확대(`ZOOM_STEPS`)는 켬이면 오프스크린을 안 만든다 — 본 캔버스에 배율 D·z(2 · 3 · 4 — 정수)로 바로 그린다(확대도 실제 픽셀로).
+  //   켜는 길: 주소 `?T1193_HIDPI=1`(짧게 `?t1193=1` · `=0` 은 끔 강제) · 서버 env `T1193_HIDPI=1`(welcome `uiCfg.hidpi` — 주소가 이긴다).
+  //   ⓘ 그림 파일(사람 시트 · 나무 · 아이콘 · 지면 결)과 구워 두는 판(산 청크 · 지면 타일 · 자연물 청크)은 1배 그대로 — 그리기 변환이 늘린다(보고 T1193 표).
+  //     켬이면 산 청크 · 지면 타일 캐시 상한을 D 로 나눈다(같은 손잡이 — 본 판 · 산 흐림 겹이 D² 배로 는 몫을 덜어 낸다).
+  const _t1193Q = (() => { try { const q = new URLSearchParams(location.search); const v = q.has('T1193_HIDPI') ? q.get('T1193_HIDPI') : q.get('t1193');
+    return v === '1' ? true : v === '0' ? false : null; } catch (e) { return null; } })();
+  let HIDPI = 1;                                // 지금 뒤판 배율(1 = 종전 · 켬이면 2)
+  function _t1193Want() { if (_t1193Q != null) return _t1193Q; try { return !!(uiCfg && uiCfg.hidpi === true); } catch (e) { return false; } }   // uiCfg 는 아래(369)에서 선다 — 그 전엔 주소만
+  function _t1193D() { const r = window.devicePixelRatio || 1; return Math.max(1, Math.min(2, Math.round(r))); }
+  function cvW() { return HIDPI > 1 ? W0 : canvas.width; }    // ★[T1193] 본 캔버스 CSS 폭 · 높이(끔 = 종전 `canvas.width` · `canvas.height` 그대로)
+  function cvH() { return HIDPI > 1 ? H0 : canvas.height; }
+  // ★[T1193] 켬 — **1배 그림은 종전처럼 큰 화소로**: 본 문맥 drawImage 중 논리 크기 그대로(그린 폭 = 원본 폭 ±1%) 그리는 것은 그 한 번만 보간을 끈다.
+  //   종전 줌 계약(인계 R2 ② "확대는 보간 끔(큰 화소가 계약) · 축소는 켬")을 배율 D 에 그대로 건 것 — 1배 그림이 화면에서 D 배로 커지는 것도 확대다.
+  //   ⇒ 1배 시트 · 구운 판(지면 · 산 · 마을 바닥)은 종전 화면과 같은 큰 화소(마름모 바닥 판의 보간 이음새 0 — 첫 켬 판 실측 · 보고 T1193 §4) ·
+  //     원본보다 작게 그리는 그림(나무 · 풀 · 바위 — 원본이 그린 크기보다 크다)과 원본보다 크게 그리는 그림(물 층 ½ 판)은 부른 쪽 보간 그대로(또렷 · 부드럽게).
+  //   끔이면 이 감싸기가 없다(본 문맥 drawImage = 원형 그대로).
+  const _t1193DI = CanvasRenderingContext2D.prototype.drawImage;
+  let _t1193NN = 0;                             // 보간을 끄고 그린 수(누적 · `__hidpiDbg().nn`)
+  function _t1193Draw(img) {
+    const n = arguments.length, sw = n >= 9 ? arguments[3] : (img && (img.naturalWidth || img.width)), dw = n >= 9 ? arguments[7] : n >= 5 ? arguments[3] : sw;
+    if (this.imageSmoothingEnabled && sw > 0 && Math.abs(Math.abs(dw) - sw) <= sw * 0.01) {
+      _t1193NN++; this.imageSmoothingEnabled = false;
+      try { return _t1193DI.apply(this, arguments); } finally { this.imageSmoothingEnabled = true; }
+    }
+    return _t1193DI.apply(this, arguments);
+  }
   // Phase 14.19: 전체화면 — viewport 가득. resize 시 동적 재조정.
   function resizeCanvas() {
+    if (_t1193Want() && _t1193D() > 1) {          // ★[T1193] 켬 — 뒤판 × D · 본 문맥 배율 D · 논리 크기(W0 · H0)는 CSS 그대로
+      const D = _t1193D(), cw = window.innerWidth, ch = window.innerHeight;
+      HIDPI = D;
+      canvas.width = cw * D; canvas.height = ch * D;
+      W0 = cw; H0 = ch; W = W0; H = H0;
+      _mainCtx.setTransform(D, 0, 0, D, 0, 0);
+      _mainCtx.drawImage = _t1193Draw;              //   1배 그림 = 큰 화소(위 머리말)
+      return;
+    }
+    if (HIDPI > 1) { HIDPI = 1; delete _mainCtx.drawImage; }   // ★[T1193] 켬 → 끔(뒤판을 아래에서 새로 잡으면 문맥 배율도 1 로 · drawImage 원형으로)
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     W0 = canvas.width; H0 = canvas.height;
     W = W0; H = H0;
+  }
+  // ★[T1193] 손잡이 · 화면 배율이 바뀌면 뒤판을 다시 잡는다 — welcome(uiCfg) 뒤 한 번(30-n-net) · 켬인 동안 화면 배율 바뀜(창을 다른 화면으로 옮김 · 확대/축소)
+  let _t1193Mq = null;
+  function _t1193Apply() {
+    const want = (_t1193Want() && _t1193D() > 1) ? _t1193D() : 1;
+    if (want !== HIDPI) resizeCanvas();
+    if (HIDPI > 1 && !_t1193Mq && typeof matchMedia === 'function') {
+      try { _t1193Mq = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+        _t1193Mq.addEventListener('change', () => { _t1193Mq = null; resizeCanvas(); _t1193Apply(); }, { once: true }); } catch (e) { _t1193Mq = null; }
+    }
+  }
+  function _hidpiDbg() {   // ★[T1193] 시험 손잡이 `window.__hidpiDbg()`(99-main 이 건다) — 손잡이 · 화면 배율 · 뒤판 · CSS 크기 · 뒤판 넓이
+    return { on: HIDPI > 1, d: HIDPI, want: _t1193Want(), q: _t1193Q, dpr: window.devicePixelRatio, back: [canvas.width, canvas.height], css: [W0, H0],
+             mpx: +((canvas.width * canvas.height) / 1e6).toFixed(2), nn: _t1193NN };
   }
 
   // ═══════════════ 줌 [재민 확정 2026-08-31 · 갈래 A "큰 화소"] ═══════════════
@@ -173,6 +237,11 @@ function cropSprite(stage, crop) {
   let _zoomCv = null, _zoomCtx = null;
 
   function zoomBegin() {
+    if (HIDPI > 1) {                                    // ★[T1193] 켬 — 오프스크린 없이 본 캔버스에 배율 D·z(정수 — 2 · 3 · 4)로 바로(확대도 실제 픽셀)
+      ctx = _mainCtx; W = W0 / ZOOM; H = H0 / ZOOM;    //   가상 뷰포트 = 화면 ÷ z(마우스 투영 `(px − W0/2)/ZOOM` 과 같은 가운데)
+      _mainCtx.setTransform(HIDPI * ZOOM, 0, 0, HIDPI * ZOOM, 0, 0);
+      return false;
+    }
     if (ZOOM === 1) return false;                       // ★종전 경로 그대로
     const vw = Math.max(1, Math.ceil(W0 / ZOOM)), vh = Math.max(1, Math.ceil(H0 / ZOOM));
     if (!_zoomCv) { _zoomCv = document.createElement('canvas'); _zoomCtx = _zoomCv.getContext('2d'); }
@@ -185,6 +254,7 @@ function cropSprite(stage, crop) {
   }
 
   function zoomEnd(on) {
+    if (HIDPI > 1) { _mainCtx.setTransform(HIDPI, 0, 0, HIDPI, 0, 0); W = W0; H = H0; return; }   // ★[T1193] 켬 — 월드 패스 끝 · 본 문맥 배율 D 로
     if (!on) return;
     ctx = _mainCtx; W = W0; H = H0;
     const prev = ctx.imageSmoothingEnabled;
@@ -747,6 +817,48 @@ function cropSprite(stage, crop) {
       try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => console.log('[렉 보고] 클립보드에도 넣었다'), () => {}); } catch (e) {}
       return res;
     });
+  }
+  // ★★[T1193 2026-11-06] **재민 Safari 링크 한 줄** — 주소 `lag=<초>`(예: `/?t1193=1&lag=30`)면 들어간 뒤 3초 쉬고 위 렉 보고를 그 초만큼 돌려
+  //   **화면에 표 + 복사 단추**를 띄운다(콘솔을 안 열어도 된다). 글 끝에 그림판 한 줄(손잡이 · 화면 배율 · 뒤판 · 살아 있는 캔버스 넓이)을 붙인다.
+  //   주소에 `lag` 이 없으면 아무 일도 안 한다(종전 `__lagReport()` 글 · 동작 그대로). 부르는 곳 = 99-main(최상위 실행문은 그 파일 하나 — T0-b).
+  function _t1193Line() {
+    const D = _hidpiDbg(), C = _t1193Cv ? _t1193Cv.sum() : null;
+    const fade = (typeof _mtFadeCv !== 'undefined' && _mtFadeCv) ? +((_mtFadeCv.width * _mtFadeCv.height) / 1e6).toFixed(2) : 0;
+    return `그림판(T1193): 손잡이 ${D && D.on ? '켬' : '끔'}(${_t1193Q != null ? '주소' : '서버'}) · 화면 배율 ${window.devicePixelRatio} → 뒤판 ×${HIDPI} · 본 판 ${canvas.width}×${canvas.height}(${D ? D.mpx : '-'}M화소)`
+      + ` · 산 흐림 겹 ${fade}M화소 · 확대 ${ZOOM}` + (C ? ` · 살아 있는 캔버스 ${C.n}장 ${C.mpx}M화소` : '');
+  }
+  function _t1193LagLink() {
+    const m = /[?&]lag=(\d+)/.exec(location.search); if (!m) return;
+    const sec = Math.max(5, Math.min(600, +m[1] || 30));
+    let el = null;
+    const box = () => { if (el) return el; el = document.createElement('div'); el.id = 't1193Lag';
+      el.style.cssText = 'position:fixed;left:12px;top:12px;z-index:99999;max-width:min(92vw,980px);max-height:80vh;overflow:auto;background:rgba(10,12,14,0.94);color:#e8e2d0;font:12px/1.5 ui-monospace,Menlo,monospace;padding:10px 12px;border:1px solid #8a7a50;white-space:pre-wrap';
+      document.body.appendChild(el); return el; };
+    const t0 = performance.now();
+    const wait = setInterval(() => {
+      if (typeof primaryZoneId === 'undefined' || !primaryZoneId || !_renderReady) return;   // 들어간 뒤(첫 그림)부터
+      clearInterval(wait);
+      setTimeout(() => {
+        const tA = performance.now();
+        const tick = setInterval(() => { box().textContent = `렉 보고 — ${sec}초 재는 중입니다(남은 ${Math.max(0, Math.ceil(sec - (performance.now() - tA) / 1000))}초). 탭을 앞에 두고 평소처럼 노십시오.`; }, 500);
+        _lagReport(sec).then((R) => {
+          clearInterval(tick);
+          const txt = R ? `${R.text}\n${_t1193Line()}` : `렉 보고를 못 냈습니다(캡처가 이미 도는 중) · ${_t1193Line()}`;
+          if (R) { R.text = txt; window.__lagReportText = txt; R.t1193 = { line: _t1193Line(), hidpi: _hidpiDbg(), canvases: _t1193Cv ? _t1193Cv.sum() : null }; }
+          const b = box(); b.textContent = '';
+          const pre = document.createElement('pre'); pre.style.cssText = 'margin:0 0 8px;white-space:pre-wrap'; pre.textContent = txt; b.appendChild(pre);
+          const btn = (label, fn) => { const x = document.createElement('button'); x.textContent = label; x.style.cssText = 'margin-right:8px;padding:4px 12px;font:13px system-ui;cursor:pointer'; x.onclick = fn; b.appendChild(x); return x; };
+          const say = document.createElement('span'); say.style.cssText = 'margin-left:6px;color:#c9b77a';
+          btn('복사', () => { const done = () => { say.textContent = '복사했습니다 — 채팅에 붙여 주십시오'; };
+            try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(done, () => { selectAll(); }); return; } } catch (e) {}
+            selectAll(); });
+          const selectAll = () => { try { const r = document.createRange(); r.selectNodeContents(pre); const s2 = getSelection(); s2.removeAllRanges(); s2.addRange(r); document.execCommand && document.execCommand('copy'); say.textContent = '글을 골라 두었습니다 — ⌘C 로 복사해 주십시오'; } catch (e) {} };
+          btn('닫기', () => { b.remove(); el = null; });
+          b.appendChild(say);
+        });
+      }, 3000);
+    }, 250);
+    window.__t1193LagT0 = t0;
   }
   // ★★[T920 2026-10-24] **첫 접속 표** — 접속 눌림 → welcome → 첫 그림 → 첫 입력 가능까지 갈래별 ms · 받은 글자(welcome · 갈래별 메시지) ·
   //   페이지 적재(스크립트 · 그림 · 소리 · json — Resource Timing). 보는 법: 콘솔 `__loadReport()`(T913 `__lagReport` 와 같은 꼴 · 새 수 0).

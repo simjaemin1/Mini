@@ -64,7 +64,7 @@ console.log(JSON.stringify({a:E.t1148Cold(mk(10,0)),b:E.t1148Cold(mk(1e6,0)),c:E
   ok(i > 0 && f > i && f - i < 900, '④ 기근 블록 바로 앞이다(블록 안팎 같은 잣대)');
   const blk = S.slice(i, f);
   ok(/if \(T1148_FUEL_JOB && foodEquiv > N \* 6 && hasSlot\(v, 'lumberjack', cap, counts\) && !\(T325_WOOD_ACT && v\._t325Cells === 0\)\) \{/.test(blk), '④ 켬 ∧ 하드 플로어 N × 6 ∧ 자리 ∧ 나무 칸 0 아님(없으면 못 벤다)');
-  ok(/if \(_c && _c\.debt > 0 && _c\.fuelDays < foodEquiv \/ N \+ FD_DEATH_DAYS\) return 'lumberjack';/.test(blk), '④ 빚 > 0 ∧ 땔감 며칠치 < 식량 며칠치 + 빚 죽음 문턱(`FD_DEATH_DAYS`)');
+  ok(/if \(_c && _c\.debt > 0 && _c\.fuelDays < foodEquiv \/ N \+ t1197DieDays\(\)\) return 'lumberjack';/.test(blk), '④ 빚 > 0 ∧ 땔감 며칠치 < 식량 며칠치 + 굶어 죽기까지 날(`t1197DieDays` — ★[T1197] 켬 = 몸 정본 유도 · 끔 = `FD_DEATH_DAYS` 14)');
   const lits = (blk.replace(/\/\/.*$/gm, '').match(/\b\d+(\.\d+)?\b/g) || []).filter((x) => x !== '0');
   ok(lits.length === 1 && lits[0] === '6', '④ 새 수 0 — 하드 플로어 6(기근 블록의 그 수)뿐', lits.join(','));
   ok(/fuelGateOn\(\) && v\._fuelCov !== undefined && v\._fuelCov < 1 && \(counts\.lumberjack \|\| 0\) < 1 && foodEquiv > N \* 6/.test(S), '④ T717 한 명 문은 그대로(끔 기본 · 표에서 비교만)');

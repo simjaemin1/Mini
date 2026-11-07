@@ -43,7 +43,7 @@ const KB = (n) => (n / 1024).toFixed(1);
       ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', T1163_WELCOME_SIG: OFF ? '0' : '1' });
     const zu = await FB.waitUp(z, /zone server up on/, { name: 'hanbando', capMs: 600000 });
     ok(cu.ok && zu.ok, '전제: central · 한반도 기동');
-    for (let i = 0; i < 60; i++) { try { const r = await (await fetch(`http://localhost:${CPORT}/zones`)).json(); const h = (r.zones || {}).hanbando || {}; if (h.population != null) break; } catch (e) {} await sleep(1000); }
+    for (let i = 0; i < 60; i++) { try { const r = await (await fetch(`http://localhost:${CPORT}/zones`, { signal: AbortSignal.timeout(5000) })).json(); const h = (r.zones || {}).hanbando || {}; if (h.population != null) break; } catch (e) {} await sleep(1000); }
 
     browser = await require('./e2e-browser').launch({ headless: true });
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -63,8 +63,7 @@ const KB = (n) => (n / 1024).toFixed(1);
       let hf = null;
       for (let i = 0; i < 120 && !hf; i++) { hf = await page.evaluate(() => (typeof _t1163Hf !== 'undefined' && _t1163Hf.hanbando) || null); if (!hf) await sleep(500); }
       const btn = await page.$('#enter'); if (btn) await btn.click();
-      let inW = false;
-      for (let i = 0; i < 120 && !inW; i++) { inW = await page.evaluate(() => !!(window.__inWorld && window.__inWorld())); if (!inW) await sleep(500); }
+      const inW = !!(await require('./fixture-clock.js').waitInWorld(page, { timeoutMs: 60000 })).ok;   // ★[PM land1048] 입장 기다리기 정본(test-harness-lint ⑧c)
       await sleep(2000);
       return { hf, inW };
     };

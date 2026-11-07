@@ -63,7 +63,7 @@ console.log('② 겪은 일');
   ok(Math.abs(hit.end - base.end) < 0.001, `②-2 ${D}날 뒤 같은 끝값으로 돌아온다(겪은 일은 반감기 30날로 사라진다)`, { base: +base.end.toFixed(6), hit: +hit.end.toFixed(6) });
   const v = { _H: 0.5, _t1134E: 0 };
   E.t1134Step(v, 0.5, 10, 1);
-  ok(Math.abs(v._t1134E - 1 / 14) < 1e-12, '②-3 굶주림 날 하루(마을 전체) = 1/14(빚 죽음 문턱 14날에 한 사람 몫)', { E: v._t1134E });
+  ok(Math.abs(v._t1134E - 1 / E.t1197DieDays()) < 1e-12, '②-3 굶주림 날 하루(마을 전체) = 1/굶어 죽기까지 날(★[T1197] 켬 = 몸 정본 유도 · 끔 = 빚 죽음 문턱 14) — 그날에 한 사람 몫', { E: v._t1134E, die: E.t1197DieDays() });
 }
 
 console.log('③ 목표 식');

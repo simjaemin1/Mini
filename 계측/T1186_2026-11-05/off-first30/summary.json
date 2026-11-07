@@ -1,0 +1,108 @@
+{
+  "source": "origin/main 1db22f04",
+  "node": "22.23.0",
+  "chromium": "155.0.8059.79 Debian",
+  "phaseAtBoot": 0.933,
+  "waitMinutes": 1.6,
+  "arrivalKST": "2026-11-06 07:00:04",
+  "season": "spring",
+  "start": "day",
+  "panelBot": true,
+  "capMinutes": 30,
+  "env": {
+    "T1146_STONE_RULE": "0"
+  },
+  "milestones": {
+    "물": {
+      "t": 61.7,
+      "min": 1.03,
+      "thirst": "84→100",
+      "how": "map"
+    },
+    "첫 열매": {
+      "t": 132.8,
+      "min": 2.21,
+      "how": "berry_bush",
+      "berry": 2
+    },
+    "첫 섬유": {
+      "t": 132.8,
+      "min": 2.21,
+      "how": "berry_bush"
+    },
+    "첫 밥": {
+      "t": 133.2,
+      "min": 2.22,
+      "how": "berry",
+      "hunger": "50→55"
+    },
+    "칸 다음 막힘": {
+      "t": 164.4,
+      "min": 2.74,
+      "item": "조잡한 돌괭이 만들기"
+    },
+    "첫 도구": {
+      "t": 337,
+      "min": 5.62,
+      "tool": "crude_axe",
+      "cost": {
+        "pebble": 2,
+        "twig": 1,
+        "fiber": 2
+      }
+    },
+    "첫 통나무": {
+      "t": 348.3,
+      "min": 5.81,
+      "how": "tree",
+      "wood": 7
+    },
+    "첫 불": {
+      "t": 349.1,
+      "min": 5.82,
+      "how": "J 모닥불(통나무 3)"
+    },
+    "조잡한 돌괭이(칸 따라 손 제작)": {
+      "t": 389.9,
+      "min": 6.5
+    },
+    "첫 돌": {
+      "t": 454.3,
+      "min": 7.57,
+      "how": "rock"
+    },
+    "곡괭이(손 제작)": {
+      "t": 454.8,
+      "min": 7.58
+    },
+    "움집터(① 굴착)": {
+      "t": 455.7,
+      "min": 7.59
+    },
+    "도끼(손 제작)": {
+      "t": 464.9,
+      "min": 7.75
+    },
+    "움집 ② 단계": {
+      "t": 535.1,
+      "min": 8.92
+    },
+    "움집 ③ 단계": {
+      "t": 1654.5,
+      "min": 27.57
+    }
+  },
+  "firstHutCompletedWithinCap": null,
+  "fps": {
+    "min": 11.2,
+    "p10": 23.2,
+    "med": 37.4,
+    "under20": 19,
+    "n": 315
+  },
+  "sourceJSONSHA256": "77628fc34c8c852a854c1c933c0586dc14ab98aa5dce610134ee5cd316eb4986",
+  "gateInterpretation": "OFF single actual run: phase3 at27.57min, no completed first-hut milestone; not a paired ON gate",
+  "firstHutCompletionMilestoneRecorded": false,
+  "gatePassed": false,
+  "interpretation": "No completion milestone was recorded within30min; manual completion is unconfirmed and this run is not counted as a success."
+}

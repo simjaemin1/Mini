@@ -28,6 +28,7 @@ const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT, T720_LON_DAY, SUNRISE_FRAC, phaseAdd, localPhase, T761_CLOCKS } = require('./zone-config');   // ★[T720] 경도 하루 1단계 손잡이 · 시각 한 식   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
+const T1197_BODY = process.env.T1074_FOOD_DEBT !== '0' && process.env.T1197_MEAL_BODY !== '0';   // ★[T1197] econ `T1197_MEAL_BODY` 와 같은 글자(켬 기본 · `=0` 끔 · T1074 끔이면 안 선다) — 마을 몸 허기 면제 자리(`_gaugeStep`)
 // ★[T484 ②③] 존 기후 — 이 존의 평년값(`server/climate-normals.js` · `apply` 인 존만)과 청동기 Δ(`T484_PALEO` 켬만)를 econ `CLIMATE` 에 얹는다.
 //   표에 없는 존 · 한반도(`apply: false`) · 손잡이 끔이면 아무것도 안 바꾼다(비트 동일). econ 이 기온을 읽기 전(기동)에 한 번.
 { try { const _c = require('./weather').applyZoneClimate(process.env.ZONE_ID || 'korea'); if (_c && _c.changed) console.log(`[${process.env.ZONE_ID}] 🌡️ T484 존 기후 — 평년값 ${_c.normals ? '얹음' : '없음'} · 청동기 Δ ${_c.paleo ? '켬' : '끔'} · ${JSON.stringify(_c.CLIMATE)}`); } catch (e) {} }
@@ -2811,6 +2812,23 @@ const TOOL_MAX_DURABILITY = {
 TOOL_MAX_DURABILITY.crude_axe   = Math.max(1, Math.round(TOOL_MAX_DURABILITY.axe * CRUDE_DURA_FRAC));
 TOOL_MAX_DURABILITY.crude_pick  = Math.max(1, Math.round(TOOL_MAX_DURABILITY.pickaxe * CRUDE_DURA_FRAC));
 TOOL_MAX_DURABILITY.crude_blade = Math.max(1, Math.round(TOOL_MAX_DURABILITY.sword * CRUDE_DURA_FRAC));
+// ★★[T1146 · T1186] 돌 규칙 하나 — 손잡이 `T1146_STONE_RULE`(끔 = 종전 바이트) · 정본 `server/stone-rule.js`(출처 · 유도 · 무게 보존)
+//   바위 한 타 kg · 맥석 = 돌 · NPC 손의 돌(T1146 — 아래 `_t1146Cut` 머리말) 위에 T1186 두 정본(★재민 11-05 "내구도도 좀 천천히 닳게"):
+//   ㉡ 정품 곡괭이 · 도끼 레시피의 돌 = 날의 출토 실측 무게(`StoneRule.bladeKg` — 곡괭이 0.671 kg · 도끼 0.753 kg) ÷ 돌 한 덩이 kg(`weights` 석괴 4 kg)
+//      = 덩이의 몫(소수 셋째 자리 — 천분의 일 덩이 = 4 g 에서 반올림: 곡괭이 0.168 · 도끼 0.188). 덩이를 깨서 날 kg 만 쓰고 나머지는 돌로 짐에 남는다
+//      (한 덩이 4 kg 에서 곡괭이 날 · 도끼 날을 다 깨 내고 0.644 덩이 = 2.58 kg 이 남는다 · 무게 보존). 검 · 톱 · 망치는 날 무게 미확인 — 종전 그대로.
+//   ㉠ 곡괭이 · 도끼(정품 · 조잡)는 친 횟수가 아니라 깎은 · 벤 kg 으로 닳는다(`_t1186Wear` 머리말).
+const StoneRule = require('./stone-rule');
+const T1146_STONE_RULE = process.env.T1146_STONE_RULE === '1';   // ★[T1186 11-07] 끔 기본(`=1` = 돌 규칙 켬 — 날 실제 무게 · kg 닳기 · T1146 바위 실측) — main 07eec54e 위 첫 움집 30분 켬 1/2라 카드 할 일 5("다 서면 켬 기본")가 안 섰다(보고/T1186_2026-11-07 회부 1) · 11-06 판(베이스 de3b7652 · 켬 2/2)은 켬 기본이었다 · ★[PM land1047] 끔 기본이던 자리
+if (T1146_STONE_RULE) {
+  const _kgS = require('./weights').kgOf('stone');
+  for (const t of Object.keys(StoneRule.BLADE_SRC)) {
+    const R = RECIPES[t], bk = StoneRule.bladeKg(t);
+    if (!R || !(bk > 0) || !(_kgS > 0)) continue;
+    const n = +(bk / _kgS).toFixed(3);
+    R.stone = n; R.cost = Object.assign({}, R.cost, { stone: n }); R.bladeKg = +(n * _kgS).toFixed(6);
+  }
+}
 // 14.53: 도구는 instance 기반. player.toolItems = [{id, type, d, max}].
 // 같은 종류 여러 개 OK, 각각 다른 내구도. equipped = toolItemId.
 let _nextToolId = 1;
@@ -3736,8 +3754,10 @@ function _t671Shape(p) {
   p._warPackOf = undefined;   // 전쟁 짐(villages.js `_t671Unpack` — 끔이면 `delete`)
   p._t717L = undefined;   // ★[PM 10-14 · T717 ②] 손에 남긴 통나무 몫(villages.js `_t325Deliver` · `_t717NewWood` — test-body-fields 규약)
   p._t733F = undefined;   // ★[T733 ②] 손에 남긴 걷는 채집 몫(villages.js `_t347Deliver` · `_t733NewForage` — 손잡이 `T733_FELL_LOOT` 켬일 때만 값이 든다)
+  p._t1196J = undefined; p._t1196W = undefined;   // ★[T1196] 장인 몸이 든 작업표 번호 · 걸음 칸(villages.js `_t1196Step` — 손잡이 `T1196_ARTISAN_ACT` 켬 · 실제 몸 호스트에서만 값이 든다)
   p._t724Site = undefined; p._t724T = undefined;   // ★[T724] 광부 몸의 그날 셀 · 선 때(villages.js `_t724BodyStep` — 손잡이 `T724_MINE_ACT` 켬일 때만 값이 든다)
   if (T1140_STUCK_INLINE && !T1140_HOT_ORDER) { p._t1140Sx = undefined; p._t1140Sy = undefined; p._t1140Sa = undefined; }   // ★[T1140 ③-다] 막힘 칸 셋(차례 리터럴엔 이미 있다 · 끔 = 이 줄 무동작)
+  p.oreLedger = undefined; p._t1180FullFish = undefined; p._t1181Haul = undefined;   // ★[PM land1048 · T1188 · T1180 · T1181] 가지들이 보탠 몸 칸 셋 — 스폰 꼴에 미리(test-body-fields · 숨은 클래스 한 벌)
   if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ② · T1154] 어부 던짐 종의 지난 답(villages.js `_t1144SpGet` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)
 }
 const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT !== '0';   // ★[T1144 · T1154] villages.js 와 같은 손잡이(켬 기본 · `'0'` 만 끔) — 이 파일은 몸 칸 하나만
@@ -5554,6 +5574,8 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★★[T333] 바위 술어도 넘긴다 — 생활층 지형 어댑터(`villages.js isRock`)가 여태 `terrain.isRockCellLocal` 을
   //   **직접** 불러 메모를 지나쳤다(T324 프로파일: 남은 지형 시간의 9.6%). 같은 양자화(셀 중심)라 답은 같다.
   isRockTileLocal,
+  // ★[T1196] 장인 작업 자리 — 그 창(kind: tool · smelt · cook)을 여는 가장 가까운 시설(작업대 · 노 · 숯가마 · 모닥불 · 움집 화덕) · 반경 안 · 없으면 null(시설 목록 · 창 표는 정본 하나 — `_facilities` · `Facility.KIND_TYPES`)
+  facilityNear: (kind, x, y, r) => { const ty = Facility.KIND_TYPES[kind] || []; let best = null, bd = Infinity; for (const b of _facilities()) { if (!ty.includes(b.type) || (b.floor | 0) !== 0) continue; const d = Math.hypot(b.x - x, b.y - y); if (d <= r && d < bd) { bd = d; best = b; } } return best ? { x: best.x, y: best.y, type: best.type, id: best.id } : null; },
   isSeaTileLocal,   // ★[T593 ④] 바다 술어 — NPC 어부가 선 물가가 바다 칸 곁인지(`villages._t593SeaBank` · 손잡이 `T593_SEA` 끔이면 안 읽는다)
   standCellNear: _standCellNear,   // ★[T541 ⓑ] 설 수 있는 가장 가까운 칸 — 나선은 한 자리(T83) · 전쟁 대형 슬롯이 막혔을 때 부른다(술어는 호출측)
   npcReachBegin, npcReachStep, npcReachHas, collGenAround, collGenAll, decBudgetOver,   // ★★[T562] 집마다 닿는 칸 집합(같은 술어·같은 반경) · 그 기억의 도장 · 사람 안의 결정 예산
@@ -6145,6 +6167,7 @@ const server = http.createServer((req, res) => {
       // ★[T324] 걷는 몸 관측 — 두 팔이 같은 창으로 보인다(손잡이 뒤가 아니다 · `?reset=1` 이 영점 조정).
       walk: walkPerf(_rst),
       wood: (() => { try { return SimVillages.woodPerf ? SimVillages.woodPerf() : null; } catch (e) { return null; } })(),   // ★[T325] 나무꾼 관측(끔이면 null)
+      artisan: (() => { try { return SimVillages.artisanPerf ? SimVillages.artisanPerf() : null; } catch (e) { return null; } })(),   // ★[T1196] 장인 작업장 관측(끔이면 null)
       forage: (() => { try { return SimVillages.foragePerf ? SimVillages.foragePerf() : null; } catch (e) { return null; } })(),   // ★[T347] 채집 관측(끔이면 null)
       farm: (() => { try { return SimVillages.farmPerf ? SimVillages.farmPerf() : null; } catch (e) { return null; } })(),   // ★[T368] 농부 관측(끔이면 null)
       xzone: (() => { try { return SimVillages.xzonePerf ? SimVillages.xzonePerf() : null; } catch (e) { return null; } })(),   // ★[T533] 존 경계 관측(팔 끔이면 null)
@@ -7475,6 +7498,7 @@ async function _acceptConnection(ws, req, C) {
       charSprite: process.env.CHAR_SPRITE !== 'off',
       charWalkMin: parseFloat(process.env.CHAR_WALK_MIN || '') || 4,
       charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
+      ...(process.env.T1194_MODEL_SPRITES === '1' ? { modelSprites: true } : {}),   // [T1194] 받은 3D 모델을 구운 짐승 서 있기 그림(`/assets/animals/` · `scripts/model_render.py`) — 끔 기본 · 끔이면 칸이 없다(welcome 바이트 동일)
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(process.env.T838_WD_AWAKE !== '0' ? { wdAwake: true } : {}),   // [T838 · ★T849 켬 기본 — PM 10-22] 클라 두 감시(pong · 서버 틱)가 **클라가 멈춰 있던 시간**을 서버 침묵으로 안 센다(30-n-net) · 되돌림 `T838_WD_AWAKE=0` 이면 칸이 없다(옛 welcome · 종전 감시)
@@ -7483,6 +7507,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T1052_WATER_CHEAP === '1' ? { waterCheap: true } : {}),   // [T1052] 클라 물 셰이더가 마른 화소를 머리에서 먼저 버린다(같은 화소 · 10-r1 `_t1052Cheap`) — 기본 끔 · 끔이면 칸이 없다(welcome 바이트 동일) · `1` 켬
       ...(process.env.T898_MT_READPX !== '0' ? { mtReadPx: true } : {}),   // [T898 · ★T912 켬 기본 — PM 10-23] 클라 산 띠 굽기 옮기기를 띠 상자 readPixels 로(T863 §4 #1 · 11-r1-mountain `_mt3ReadBox`) · 되돌림 `T898_MT_READPX=0` 이면 칸이 없다(옛 welcome · 종전 drawImage 옮기기)
       ...(process.env.T926_CELL_NEAR !== '0' ? { cellNear: true } : {}),   // [T926 · ★T936 켬 기본 — PM 10-26] 클라 물 · 바위 칸 캐시를 카메라 둘레 자리 칸(한 변 = 렌더 반경)만 남긴다(00-const `_cellBkSweep` · 지나간 자리 칸이 상한 300,000 까지 쌓이던 것) · 되돌림 `T926_CELL_NEAR=0` 이면 칸이 없다(옛 welcome · 종전 캐시)
+      ...(process.env.T1193_HIDPI === '1' ? { hidpi: true } : {}),   // [T1193] 레티나 2배 — 본 캔버스 뒤판 = CSS × 화면 배율(정수 · 상한 2 · 00-const `resizeCanvas`) · 끔 기본(칸 없음 = 옛 welcome) · 주소 `?T1193_HIDPI=1|0` 이 이긴다
       ...(process.env.T870_MT_BAND !== '0' ? { mtBand: true } : {}),   // [T870 · ★T880 켬 기본 — PM 10-23] 클라 산 청크 굽기 예산을 **띠** 단위로(한 판 상한 = 띠 `MT3_BUDGET` 개 · 청크는 여러 판에 걸쳐 완성 · 반쯤 구운 산 0 · 11-r1-mountain) · 되돌림 `T870_MT_BAND=0` 이면 칸이 없다(옛 welcome · 청크 단위)
       ...(process.env.T813_RMB_PRESS !== '0' ? { rmbPress: true } : {}),   // [T813 · ★T819 켬 기본 — PM 10-20] 우클릭 탭 메뉴는 **누른 순간의 화면**으로 짚는다(46-h-verbs) · 되돌림 `T813_RMB_PRESS=0` 이면 칸이 없다(옛 welcome · 뗄 때의 화면)
       ...(process.env.T947_CELL_BOX !== '0' ? { cellBox: true } : {}),   // [T947 · ★T961 켬 기본 — PM 10-27] 클라 물 · 바위 칸 첫 조회 — 정본 술어가 거짓을 낼 칸(물 · 능선 피처 상자 밖)은 정본을 안 부른다(public/cell-env.js · 00-const `isWaterAtAbs` · `isRockAtAbs` · 값 같음 · 첫 그림 다음 1위) · 되돌림 `T947_CELL_BOX=0` 이면 칸이 없다(옛 welcome · 칸마다 정본)
@@ -9894,6 +9919,7 @@ function doCraft(player, recipeName) {
     return;
   }
   for (const [k, v] of Object.entries(cost)) player.inventory[k] = (player.inventory[k] || 0) - v;
+  const _t1186Txt = (T1146_STONE_RULE && recipe.bladeKg > 0) ? _t1186Blade(player, recipe) : '';   // ★[T1186 ㉡] 덩이에서 날 kg 만 깨 낸다 · 남은 돌 덩이 몫(끔 = 빈 글자)
   // 14.53: 새 instance 추가 (자동 장착 X — 사용자가 인벤에서 직접 착용)
   if (!player.toolItems) player.toolItems = [];
   const mx = TOOL_MAX_DURABILITY[recipeName] || 100;
@@ -9901,7 +9927,7 @@ function doCraft(player, recipeName) {
   player.toolItems.push(inst);
   sendInventory(player);
   send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
-  send(player.ws, { type: 'notice', text: `${recipe.label}을(를) 만들어 가방에 넣었습니다.` });
+  send(player.ws, { type: 'notice', text: `${recipe.label}을(를) 만들어 가방에 넣었습니다.${_t1186Txt}` });   // ★[T1190 하십시오체 · T1186 날 무게 덧붙임]
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어
 }
 
@@ -10404,7 +10430,8 @@ function mineOreCell(player) {
   //   (필요 타수는 셀 공용 카운터라 개인차를 두면 저렙이 고렙 진척에 무임승차한다 — 재민 지적)
   const f = rec.s / Specialty.ORE_K;
   const need = Specialty.mineSwingsNeeded(f);   // 깊이만 본다(셀 속성) — 레벨 안 들어감
-  consumeEquippedDurability(player, Specialty.mineToolWear(lvlF));   // ★①만렙은 곡괭이를 절반만 축낸다
+  if (T1146_STONE_RULE) _t1186Wear(player, getEquippedTool(player), 'rock', Specialty.mineChunkKg(lvlF) / need, Specialty.mineToolWear(lvlF));   // ★[T1186 ㉠] 켬 = 이 타가 판 kg 만큼(덩이 kg ÷ 문턱 타수 · 솜씨 몫 그대로)
+  else consumeEquippedDurability(player, Specialty.mineToolWear(lvlF));   // ★①만렙은 곡괭이를 절반만 축낸다
   // ★★[재민 지적] 타수는 **모두가 같이 넣는다**(rec.w 는 셀 공용). 그런데 덩이 무게를
   //   *막타 친 사람*의 레벨로 정하면 lvl0 이 59타 치고 lvl10 이 1타 쳐도 5.25kg 를 lvl10 이 가져간다.
   //   ⇒ 타격마다 **그 사람의 kg 기여**를 따로 누적하고, 덩이가 나올 때 **가중평균**을 쓴다.
@@ -11266,7 +11293,7 @@ function gatherResource(player, best) {
   if (T1146_ROCK && best.type === 'rock') dmg = _t1146Cut(best, dmg);   // ★[T1146] 바위 — 한 타 kg(배수 × 금 간 돌 한 타 kg)을 바위에 쌓아 돌 한 개 kg 이 찬 만큼만 hp 점(0 이면 이 타는 깎기만)
   best.hp -= dmg;
   // 장착 도구 내구도 -1
-  if (eqInst) consumeEquippedDurability(player, 1);
+  if (eqInst) { if (T1146_STONE_RULE) _t1186WearHit(player, eqInst, best, _hp0); else consumeEquippedDurability(player, 1); }   // ★[T1186 ㉠] 켬 = 깎은 · 벤 kg 만큼(끔 = 종전 한 타 1)
   const _t1126Y = _t1126HitYield(best, _hp0);   // ★[T1126] 정본 하나(NPC 직접 채집과 같은 문)
   if (_t1126Y > 0) _t1126Give(player, _t1126Y);
   _t1126Note(player, best, _t1126Y);   // ★[T1126] 계측 한 줄(켬 · 끔 둘 다 — 세계 0)
@@ -11541,7 +11568,7 @@ function consumeItem(player, item, n) {
 function invPayload(inv) {
   const out = {};
   for (const [k, v] of Object.entries(inv || {})) {
-    const n = Math.floor(Number(v) || 0);
+    const n = (T1146_STONE_RULE && k === 'stone') ? +Math.max(0, Number(v) || 0).toFixed(3) : Math.floor(Number(v) || 0);   // ★[T1186 ㉡] 켬 = 돌은 덩이 몫까지(날을 깨고 남은 0.832 덩이가 짐 · 제작 창에 보이게 — 천분의 일 덩이) · 그 밖 · 끔 = 종전 정수
     if (n > 0) out[k] = n;
   }
   return out;
@@ -12608,12 +12635,26 @@ const WellStages = require('./well-stages');
 // ★[T557 · #88] 지하수 가용도 — `WellStages.WELL_VILLAGES`(재민 결정 데이터)의 **후보 자리**(`terrain.siteCandidates` — 시딩이 부르는 문 하나)에서
 //   노동권(`sustain.LABOR_R` 셀) 안이면 판다. 바깥이면 사유지를 묻기 **전에** 거절한다(재료·도구 무변). 마을 이름은 알림에만.
 let _wellSpots = null;
+// ★[T1187 2026-11-06 · 손잡이 `T1187_NAMES`(villages 시딩과 같은 손잡이 · 기본 끔)] 우물 알림의 마을 이름 — 켬이면 시딩이 지은 이름(`village-names` 정본 · 같은 후보 · 같은 반경)으로 보인다. 끔 = 표 글자 그대로.
+let _t1187Nm;
+function _t1187WellNames(cand) {
+  if (process.env.T1187_NAMES !== '1') return null;
+  if (_t1187Nm === undefined) { try { const zt = (_terrain.ZONE_TERRAIN && _terrain.ZONE_TERRAIN[ZONE_ID]) || {}; _t1187Nm = require('./village-names').nameMap(ZONE_ID, Object.assign({}, zt, { villages: cand }), SimVillages.LAND_SCAN_R); } catch (e) { _t1187Nm = null; } }
+  return _t1187Nm;
+}
+function _t1187WellList() {
+  const L = WellStages.WELL_VILLAGES || [];
+  const nm = _t1187WellNames((_terrain.siteCandidates ? _terrain.siteCandidates(ZONE_ID) : []) || []);
+  return nm ? L.map((n) => nm.get(n) || n) : L;
+}
 function _wellGroundAt(x0, y0) {
   if (!_wellSpots) {
     _wellSpots = [];
     try {
       const want = new Set(WellStages.WELL_VILLAGES || []);
-      for (const v of (_terrain.siteCandidates ? _terrain.siteCandidates(ZONE_ID) : []) || []) if (v && want.has(v.name)) _wellSpots.push({ name: v.name, cx: Math.round(v.x / BUILDING_SIZE), cy: Math.round(v.y / BUILDING_SIZE) });
+      const _cand = (_terrain.siteCandidates ? _terrain.siteCandidates(ZONE_ID) : []) || [];
+      const _nm = _t1187WellNames(_cand);   // ★[T1187] 켬 = 알림에 땅이름 꼴(자리는 후보 이름 그대로 — 표는 재민 결정 데이터)
+      for (const v of _cand) if (v && want.has(v.name)) _wellSpots.push({ name: _nm ? (_nm.get(v.name) || v.name) : v.name, cx: Math.round(v.x / BUILDING_SIZE), cy: Math.round(v.y / BUILDING_SIZE) });
     } catch (e) { _wellSpots = []; }
   }
   const R = require('./sustain').LABOR_R;
@@ -12623,7 +12664,7 @@ function _wellGroundAt(x0, y0) {
 const WELL_SPEC = { siteType: 'well_site', doneType: 'well', ko: '우물', icon: '🪣', stages: WellStages.WELL_STAGES, kind: 'well',
                     claim: (player, x0, y0, x1, y1) => _wellGroundAt(x0, y0)
                       ? _claimFootprint(player, x0, y0, x1, y1)
-                      : { err: `이 땅에는 우물을 팔 물줄기가 없습니다. 우물은 ${(WellStages.WELL_VILLAGES || []).join('·')} 마을 땅에서 팝니다.` },
+                      : { err: `이 땅에는 우물을 팔 물줄기가 없습니다. 우물은 ${_t1187WellList().join('·')} 마을 땅에서 팝니다.` },
                     // ★[T519 ③] 그릇 이름은 **이름표 정본**에서 — 물가 문구(`🏺 ${…[Salt.VESSEL]}이 있어야 물을 뜬다`)와 같은 문법(글자 무변 · 사본 0).
                     doneHint: `우물가에서 E를 누르면 목을 축이고, ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있으면 민물을 담습니다.` };
 function tryWellStart(player, atX, atY) { if (!T509_WELL) return; return _siteStart(player, atX, atY, WELL_SPEC); }
@@ -13490,6 +13531,7 @@ function __testBind() {
     T1120_NEXT_TOOL, _t1120Cfg, tryHutStart,   // ★[T1120] 다음 막힘 하네스(`test-t1120-next-tool` — 거절 알림 `need` · welcome 표 · 움집 터파기 문 · 내보내기만)
     GATHER_RANGE, T1126_ROCK_YIELD, T1126_ROCK_HP0, _t1126Rho, _t1126RockStones, _t1126HitYield, _t1126Give, t1126Stat: () => Object.assign({}, _t1126Stat),   // ★[T1126] 바위 하나에서 돌 여러 개 하네스(`test-t1126-rock-yield` — 내보내기만)
     T1146_STONE_RULE, T1146_ROCK, T1146_K_BED, _t1146Cut, _t1146Gangue, t1146Chip: (id) => _t1146Chip.get(id) || 0, t1146Stat: () => Object.assign({}, _t1146Stat),   // ★[T1146] 돌 규칙 하나 하네스(`test-t1146-stone-rule` — 내보내기만)
+    _t1186PerKg, _t1186TreeKg, _t1186Wear, t1186Stat: () => JSON.parse(JSON.stringify(_t1186Stat)), StoneRule, invPayload,   // ★[T1186] 날 무게 · kg 닳기 하네스(`test-t1186-blade-wear` — 내보내기만)
     // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
     spawnCorpse, butcherCorpse, corpses, t1025Corpse: _t1025Corpse,   // ★[T1025] 사체 장부 미룸 셈(탐침이 읽는다)
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
@@ -15225,19 +15267,72 @@ function _t1126Give(body, n) {
 //   ② 선광 — 맥석 kg 을 버리지 않는다: 돌 · 자갈 · 부스러기(`StoneRule.split` · 아래 `trySortOre`)
 //   ③ NPC 손의 돌 · 자갈 — 곳간에 닿는 순간 곳간으로(`villages.js` `_t1146HandIn` · T733 부산물 문과 같은 몸통)
 //   ⚠깎였지만 돌 한 개가 안 된 kg 은 저장하지 않는다(재시작이면 돌 한 개 안쪽을 잃는다 · 보고 회부).
-const StoneRule = require('./stone-rule');
-const T1146_STONE_RULE = process.env.T1146_STONE_RULE === '1';   // ★[PM land1047] 끔 기본 — 첫 움집 30분 게이트 켬 0/3(T1146 회부 1 · 재민 판정 전)
+//   ★[T1186] 정본 모듈(`StoneRule`) · 손잡이(`T1146_STONE_RULE`) 선언은 레시피 표 곁으로 올렸다 — 레시피 돌 · 닳기(T1186)가 모듈을 읽을 때 이미 서 있어야 한다.
 const T1146_ROCK = T1146_STONE_RULE && T1126_ROCK_YIELD;
 // 암반 한 타 kg(배수 1) — 채굴 정본 셋(덩이 kg · 덩이당 타수 · 곡괭이 배수)에서 · 바위는 그 × 금 간 돌 배수(`StoneRule.CRACK_X`)
 const T1146_K_BED = StoneRule.kIntact(Specialty.CHUNK_KG, Specialty.MINE_SWINGS_PER, TOOL_EFFECTS.pickaxe.gatherStoneMult);
 const _t1146Chip = new Map();   // 바위 id → 깎였지만 아직 돌 한 개가 안 된 kg
+let _t1146Last = 0;   // ★[T1186] 마지막 `_t1146Cut` 한 타에 실제로 떨어진 kg(사람 문의 닳기가 그 자리에서 읽는다 · 세계 0)
+// ★★[T1186 ㉠] 곡괭이 · 도끼는 깎은 · 벤 kg 으로 닳는다 — 친 횟수가 아니다(★재민 11-05 "내구도도 좀 천천히 닳게").
+//   한 kg 의 닳기 = 정품 최대 내구(`TOOL_MAX_DURABILITY` 종전 칸 그대로 — 곡괭이 · 도끼 100) ÷ (출처 수명 kg × 게임 허용 배수 `StoneRule.WEAR_ALLOW`)
+//     · 곡괭이(바위 · 땅): 수명 = 바위 1.5 t(채광 망치 실험 — `StoneRule.LIFE_SRC`) · 조잡한 돌괭이도 같은 한 kg 닳기 → 최대 내구가 1/4(`CRUDE_DURA_FRAC`)라 수명도 1/4
+//     · 도끼(나무 · 어린나무): 수명 = 원래 날로 100그루(드라베드 숲 실험) × 나무 한 그루 kg(전리품 정본 `lootOfResource` 의 기본 나무 통나무 × `weights`)
+//       벤 kg = 그 나무 통나무 kg × 이 타에 깎인 hp ÷ 그 나무 최대 hp(다 베면 그 나무 한 그루 무게)
+//   도구와 일이 안 맞으면(문 끔 판의 검으로 바위 등) · 그 밖의 자연물 · 싸움 · 낚시는 종전 한 번 1(그 일의 수명 출처가 없다).
+//   ⚠자루 · 묶음 수명(출처 — 반 시간마다 고침)은 kg 으로 못 바꿔 넣지 않았다 · 내구 표시는 소수(백만분의 일 자리).
+const _T1186_JOB = { pickaxe: 'rock', crude_pick: 'rock', axe: 'wood', crude_axe: 'wood' };
+const _T1186_GEN = { pickaxe: 'pickaxe', crude_pick: 'pickaxe', axe: 'axe', crude_axe: 'axe' };
+const _t1186Stat = { kg: {}, units: {}, bladeKg: 0, blades: 0 };   // 계측 전용(세계 0) — 도구 종류별 깎은 · 벤 kg · 닳은 내구 · 제작한 날 kg · 날 수
+let _t1186TreeMemo = null;
+function _t1186TreeKg() {   // 기본 나무 한 그루 통나무 kg(반경 기본값 — `lootOfResource` 가 크기 없는 나무에 쓰는 그 값)
+  if (_t1186TreeMemo === null) { const l = lootOfResource({ type: 'tree', x: 0, y: 0 }) || {}; _t1186TreeMemo = (l.wood || 0) * Weights.kgOf('wood'); }
+  return _t1186TreeMemo;
+}
+function _t1186PerKg(type) {   // 한 kg 의 닳기(도구 종류) — 0 = 이 도구는 kg 으로 안 닳는다
+  const job = _T1186_JOB[type], gen = _T1186_GEN[type];
+  const L = job ? StoneRule.lifeKg(job, _t1186TreeKg()) * StoneRule.WEAR_ALLOW : 0;
+  return (L > 0 && TOOL_MAX_DURABILITY[gen] > 0) ? TOOL_MAX_DURABILITY[gen] / L : 0;
+}
+// 한 번 닳기 — `job` 이 그 도구의 일이면 kg × 한 kg 닳기 × 몫(`f` — 땅 채굴 솜씨 · 그 밖 1) · 아니면 종전 몫 그대로
+function _t1186Wear(player, inst, job, kg, f) {
+  const k = (f > 0 || f === 0) ? f : 1;
+  if (!inst) return false;
+  const per = _T1186_JOB[inst.type] === job ? _t1186PerKg(inst.type) : 0;
+  if (!(per > 0)) return consumeEquippedDurability(player, k);
+  const S = _t1186Stat, w = (kg > 0 ? kg : 0);
+  S.kg[inst.type] = +((S.kg[inst.type] || 0) + w).toFixed(6);
+  const nd = +(inst.d - w * per * k).toFixed(6), amt = inst.d - nd;   // 남은 내구를 백만분의 일 자리에서 끊는다(표시 · 저장이 긴 소수가 안 되게)
+  S.units[inst.type] = +((S.units[inst.type] || 0) + amt).toFixed(6);
+  return consumeEquippedDurability(player, amt);
+}
+// 사람 문 한 타 — 바위(T1146 장부가 떼어 낸 kg) · 나무 · 어린나무(벤 kg) · 그 밖은 종전 1
+function _t1186WearHit(player, inst, r, hp0) {
+  const t = r && r.type;
+  if (t === 'rock' && T1146_ROCK) return _t1186Wear(player, inst, 'rock', _t1146Last, 1);
+  if ((t === 'tree' || t === 'sapling') && r.maxHp > 0) {
+    const l = lootOfResource(r) || {}, cut = Math.max(0, Math.min(hp0, hp0 - Math.max(0, r.hp)));
+    return _t1186Wear(player, inst, 'wood', (l.wood || 0) * Weights.kgOf('wood') * cut / r.maxHp, 1);
+  }
+  return consumeEquippedDurability(player, 1);
+}
+// ㉡ 제작 — 레시피가 뺀 덩이 몫(= 날 kg)의 끝 자리를 백만분의 일에서 끊고(소수 덩이가 긴 소수가 안 되게) · 알림 꼬리
+function _t1186Blade(player, recipe) {
+  const kgS = Weights.kgOf('stone'), n = (recipe.cost && recipe.cost.stone) || 0;
+  player.inventory.stone = +Math.max(0, player.inventory.stone || 0).toFixed(6);
+  const S = _t1186Stat; S.bladeKg = +(S.bladeKg + recipe.bladeKg).toFixed(6); S.blades = (S.blades || 0) + 1;
+  const left = player.inventory.stone;
+  const L = ITEM_LABEL_SERVER.stone;
+  return ` 날에 ${L} ${n}덩이(${recipe.bladeKg.toFixed(2)}kg)를 썼습니다. 남은 ${L}${require('./events').josa(L, '은', '는')} ${left}덩이(${(left * kgS).toFixed(2)}kg)입니다.`;   // ★[T1190 ①] 알림은 하십시오체 문장
+}
 const _t1146Stat = { pKg: 0, nKg: 0, sortKg: 0, sortStone: 0, sortPebble: 0, crumbKg: 0 };   // 계측 전용(세계 0) — 바위에서 깎인 kg(사람 · NPC) · 선광 맥석 kg → 돌 · 자갈 · 부스러기
 // 이번 타에 바위에서 떨어지는 hp 점 수(= 돌 수) — `mult` = 그 몸이 친 배수 · 장부(`_t1146Chip`)를 고친다 · hp 는 부르는 쪽이 종전 줄로 깎는다
 function _t1146Cut(r, mult, isNpc) {
   const kgS = Weights.kgOf('stone');
+  _t1146Last = 0;
   if (!r || !(kgS > 0) || !(r.hp > 0)) return 0;
   const kg = StoneRule.kgPerSwing(mult, 'cracked', T1146_K_BED);
   if (isNpc) _t1146Stat.nKg += kg; else _t1146Stat.pKg += kg;
+  _t1146Last = Math.min(kg, +(r.hp * kgS - (_t1146Chip.get(r.id) || 0)).toFixed(6));   // ★[T1186] 이 타에 바위에서 실제로 떨어진 kg(남은 바위 무게 위로는 못 깎는다 — 닳기가 읽는다)
   const sp = StoneRule.split((_t1146Chip.get(r.id) || 0) + kg, kgS, 0);
   const cut = Math.min(r.hp, sp.stone);
   if (cut >= r.hp) _t1146Chip.delete(r.id); else _t1146Chip.set(r.id, +(sp.crumbKg + (sp.stone - cut) * kgS).toFixed(6));
@@ -16330,7 +16425,10 @@ setInterval(() => {
     // ★NPC 전면 면제(랩 100% 동형 — 사용자 확정): 랩 NPC에는 개체 허기·갈증이 없다 — 식량은 econ 소유(기근=econ 인구감소가
     //   유일한 식량 사망 경로). 기존엔 canadia만 면제라 활성 청크의 마을 NPC가 게이지 드레인→기아 hp 드레인을 맞았고,
     //   이것이 '관측할수록 마을이 굶는' 임업3 요양 사태(24/24 hp<60%)의 원인이었다. 도적·캐러밴·병사도 랩에 개체 허기 없음.
-    if (p.isNpc) { p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX; return; }
+    //   ★★[T1197 2026-11-06 · 추상 걷기 C] 켬(econ `T1197_MEAL_BODY` — 같은 글자) = 마을 몸의 허기는 **그 사람의 몸 게이지**가 쥔다(곳간에서 꺼내 먹고 · 굶으면 그 몸이 쓰러진다 —
+    //     `villages.js` T1197 머리글 · 흘림은 `t1197BodyStep` 하나) · **보이는 몸만**(활성 칸 — 안 보이는 몸의 사람은 날 경계 일괄이 친다 · 벽시계 무관 = 헤드리스 판 결정론) ·
+    //     갈증은 면제 그대로 · 짝 없는 몸 · 마을 밖 몸 · 끔 = 종전 줄.
+    if (p.isNpc) { if (!(T1197_BODY && p.simVillageId != null && SimVillages.t1197BodyStep && SimVillages.t1197BodyStep(p, now, isPositionActive(p.x, p.y)))) p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX; return; }
     // ★★[신체 상태 §7 · 2026-08-26] 여기 있던 허기·갈증·밤추위 계산을 **`server/body.js` 로 옮겼다.**
     //   종전엔 감쇠는 여기, 추위는 여기 안 지역변수(`p._cold`), 효과는 여기저기 흩어져 있었다.
     //   축이 다섯이 되면 그 흩어짐이 곧 사고다 ⇒ **정본 하나**로 모은다. 여기 남는 건 **맥락 수집**뿐이다.

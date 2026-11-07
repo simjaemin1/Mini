@@ -115,6 +115,13 @@
     'crude_rod', 'oats', 'rye', 'pine_log', 'oak_log', 'birch_log', 'cedar_log', 'ebony_log', 'mahogany_log', 'teak_log',
     'basil', 'mint', 'coriander', 'thyme', 'rosemary', 'sage_herb', 'lavender', 'bauxite', 'chromium', 'cobalt',
     'magnesite', 'manganese', 'tungsten', 'zinc', 'flint', 'granite', 'limestone', 'marble', 'phosphate',
+    // ★[T1172] 어종 가공품 마흔셋(T1128 §4 — 말린 것 21 · 절인 것 21 · 생선 절임) · 굽는 곳 `props_render.py` `ITEMS_T1172` · `test-icons ⑮` 가 대조한다.
+    'dried_anchovy', 'pickled_anchovy', 'dried_carp', 'pickled_carp', 'dried_cod', 'pickled_cod', 'dried_crab', 'pickled_crab',
+    'dried_herring', 'pickled_herring', 'dried_octopus', 'pickled_octopus', 'dried_pollock', 'pickled_pollock', 'dried_salmon', 'pickled_salmon',
+    'dried_sardine', 'pickled_sardine', 'dried_shrimp', 'pickled_shrimp', 'dried_squid', 'pickled_squid', 'dried_trout', 'pickled_trout',
+    'dried_barbel', 'pickled_barbel', 'dried_catfish', 'pickled_catfish', 'dried_crucian', 'pickled_crucian', 'dried_eel', 'pickled_eel',
+    'dried_loach', 'pickled_loach', 'dried_mandarin', 'pickled_mandarin', 'dried_minnow', 'pickled_minnow', 'dried_snakehead', 'pickled_snakehead',
+    'dried_sweetfish', 'pickled_sweetfish', 'pickled_fish',
   ]);
   // ★★[T66 2차 · 재민 확정 2026-09-03] 옛 **거부 목록** `ICON_NO_RENDER` 은 **없앴다** — 뒤집혔다.
   //   종전: "여기 있으면 렌더가 없다"(빠뜨리면 404). 지금: `ICON_RENDERED` 에 **있으면 그림, 없으면 점선 칸**.

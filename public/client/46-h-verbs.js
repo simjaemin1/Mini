@@ -427,8 +427,8 @@
       //   `e2e-verbs` 의 "왜 안 떴나" 한 줄이었고, 그 답(고정 대기 → 기다림)은 이미 하네스에 박혔다.
       if (held > RMB_TAP_MS || moved > RMB_TAP_PX) return;   // 홀드였다 = 조준(종전)
       const rect = cv.getBoundingClientRect();
-      const px = (e.clientX - rect.left) * (cv.width / rect.width);
-      const py = (e.clientY - rect.top) * (cv.height / rect.height);
+      const px = (e.clientX - rect.left) * ((cv === canvas ? cvW() : cv.width) / rect.width);    // ★[T1193] 본 캔버스면 CSS 크기(끔 = 종전 cv.width)
+      const py = (e.clientY - rect.top) * ((cv === canvas ? cvH() : cv.height) / rect.height);
       const w = screenToWorldAbs(px, py, _rmbCam);   // ★[T813] 끔 = `_rmbCam` null → 종전 그대로(직전 프레임 원점)
       const t = pickAt(w.wx, w.wy, { live: true, drawn: _rmbPeople });   // ★[T1059] 끔(`pickTop` 없음)이면 `drawn` 은 안 읽힌다
       // ★★[T507] **물 칸**이면 메뉴를 서버의 답으로 짓는다 — 민물이냐 짠물이냐는 서버 술어(`isSeaTileLocal`)가 가른다.
@@ -558,7 +558,7 @@
     if (now - _tagAt < TAG_EVERY_MS) return;
     _tagAt = now;
     const cv = canvas, rect = cv.getBoundingClientRect();
-    const w = screenToWorldAbs((e.clientX - rect.left) * (cv.width / rect.width), (e.clientY - rect.top) * (cv.height / rect.height));
+    const w = screenToWorldAbs((e.clientX - rect.left) * (cvW() / rect.width), (e.clientY - rect.top) * (cvH() / rect.height));   // ★[T1193] cv = canvas — 켬이면 CSS 크기
     const name = verbTagName(pickAt(w.wx, w.wy, { live: true }));
     if (!name) { verbTagHide(); return; }
     if (!_tagEl) {

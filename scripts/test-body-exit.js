@@ -18,6 +18,7 @@ const ROOT = path.join(__dirname, '..');
 const R = (p) => require(path.join(ROOT, p));
 
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
+process.env.T1198_BIRTH_BODY = process.env.T1198_BIRTH_BODY || '0';   // ★[T1198] 이 하네스는 종전 따라가기(하루 ±2 · 까닭 줄 차례 몸 — T590)를 잰다 · 켬(명부 ↔ 몸 1:1)은 `test-t1198-birth-body`
 const econ = R('sim/economy-sim');
 const V = R('server/villages');
 const Events = R('server/events');

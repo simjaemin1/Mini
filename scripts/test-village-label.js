@@ -142,7 +142,9 @@ console.log('\n⑤ 실지도 — 한반도 51 + 닛폰 50(서버 시딩과 같�
 console.log('\n⑥ 배선 — 서버 시딩·두 자가 같은 함수 · 끄면 후보 이름');
 {
   const V = codeOf(fs.readFileSync(VP, 'utf8'));
-  ok(/const _t593 = T593_LABEL \? _t593Namer\(hard\) : null;/.test(V) && /const vName = _lab \? _lab\.name : hv\.name;/.test(V),
+  // ★[T1187 2026-11-06] 시딩 이름 줄 앞에 `T1187_NAMES` 갈래가 붙었다(켬 = 땅이름 꼴 · 끔 = `_t1187` null 이라 뒤쪽 종전 식 그대로) — 글자 자를 그 줄에 맞춘다.
+  ok(/const _t593 = T593_LABEL \? _t593Namer\(hard\) : null;/.test(V) && /const vName = \(_t1187 && _t1187\.get\(hv\.name\)\) \|\| \(_lab \? _lab\.name : hv\.name\);/.test(V)
+     && /const _t1187 = T1187_NAMES \? _t1187Names\(terrain, hard\) : null;/.test(V),
      '⑥ ★★서버 시딩이 그 함수로 이름을 짓고, 끄면 **후보 이름 그대로**다');
   ok(/zone: state\.zoneId, name: vName,/.test(V) && /rows\.push\(\{ dbId, name: vName,/.test(V), '⑥ DB 이름과 econ 이름이 **같은 새 이름**이다(econ 은 DB 이름으로 선다)');
   ok(/for \(const v of state\.villages\) if \(v\._seedName\) state\.claimedNames\.add\(v\._seedName\);/.test(V), '⑥ 이름을 바꾼 마을은 후보 이름으로도 차지한다(레거시 디듀프)');

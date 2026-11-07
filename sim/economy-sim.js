@@ -173,7 +173,7 @@ function setSeed(s) { _seed = s >>> 0; _seed0 = _seed; }
 function _t731StreamInit(v) {
   if (typeof v._rs === 'number') return;
   //   ★[T744] 재료 = 세계 씨 × 마을 **이름**(세계 안에서 하나 · 프로세스 계수기 `v.id` 는 앞서 만든 세계 수에 따라 바뀐다 — 같은 세계가 프로세스마다 다른 흐름을 받았다)
-  let x = _seed0 >>> 0; const id = String(v.name != null && v.name !== '' ? v.name : (v.id != null ? v.id : ''));
+  let x = _seed0 >>> 0; const id = T1187_NAME_FREE && v.coord ? _t1187Key(v) : String(v.name != null && v.name !== '' ? v.name : (v.id != null ? v.id : ''));   // ★[T1187] 켬 = 마을 자리(이름 무관 · 아래 `_t1187Key`)
   for (let i = 0; i < id.length; i++) x = ((x ^ id.charCodeAt(i)) * 1664525 + 1013904223) >>> 0;
   v._rs = x;
 }
@@ -1201,9 +1201,34 @@ const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';   // ★PM land1048
 const _productionActHosts = new WeakSet();
 function bindProductionActs(world) { if (world && typeof world === 'object') _productionActHosts.add(world); }
 function productionActsBound(v) { return !!(v && v._world && _productionActHosts.has(v._world)); }
+// ★★[T1195 2026-11-06 · 추상 걷기 A · ★재민 11-05 "추상 다 없애자고 했는데 왜 아직도 남겨둔 거야"] **사냥 고기 = 몸이 잡은 마리 × kg.**
+//   종전: 사냥꾼 산출 = 공식 `0.7 × land.game × 숙련 × 도구`(+ 부산물 비율) — 개체 장부(T146)가 빼는 마리 · 보이는 몸 사냥(T158)과 따로 놀았다.
+//   켬: 실제 호스트(위 `bindProductionActs`)에서 사냥꾼의 수식 산출(고기 · 부산물 다)을 닫고(아래 `productionFormulaOff` 한 항),
+//     몸이 잡은 짐승만 `huntToGranary` 로 들어온다(T1180 어부 · 나무꾼 · 채집꾼과 같은 문법 · 같은 몸통 `actToGranary`).
+//     마리 → 고기 · 가죽 · 뿔 · 뼈는 서버가 정본(`animals.dropsOf` · `weights` · `kcal`)에서 바꾼다 — 이 파일은 수를 안 짓는다.
+//   ★수요 문(T374 · 같은 꼴): 그날 몫 D = 수식이 내던 마을 몫(`_huntOutLast` — 어부 `_fishOutLast` 와 같은 항들).
+//     짐승은 낱개로 나뉘지 않으므로 **온전한 마리**를 받는다 — 남은 수요가 있으면 한 마리를 다 받고(넘친 몫은 다음 날들의 몫을 미리 쓴 것 · 음수로 이월),
+//     남은 수요가 없으면 뷰 밖 몫은 안 받는다(장부에 되돌린다 — 몸이 그날 더 잡지 않은 것). 이월은 미리 쓴 몫(음수)만 · 못 채운 날 몫은 그날로 끝(T374 "그날 수요").
+//   헤드리스 랩은 호스트를 등록하지 않으므로 종전 수식 그대로다(랩 동일 = 격리 증명 · 몸 사냥의 증명이 아님).
+//   손잡이 `T1195_HUNT_REAL` — 켬 기본 · 되돌림 `=0`(끔 = 한 글자도 안 바뀐 종전 · 기준선 11-04c 같음).
+const T1195_HUNT_REAL = (typeof process !== 'undefined' && process.env && process.env.T1195_HUNT_REAL !== '0');
 function productionFormulaOff(v, job) {
   return !!(v && v._world && _productionActHosts.has(v._world) &&
-    ((job === 'miner' && T1188_ORE_SPLIT) || (job === 'fisher' && T312_FISH_ACT) || (job === 'lumberjack' && T325_WOOD_ACT) || (job === 'forager' && T347_FORAGE_ACT)));
+    ((job === 'miner' && T1188_ORE_SPLIT) || (job === 'fisher' && T312_FISH_ACT) || (job === 'lumberjack' && T325_WOOD_ACT) || (job === 'forager' && T347_FORAGE_ACT) || (job === 'hunter' && T1195_HUNT_REAL)));
+}
+function huntActOn(v) { return !!(T1195_HUNT_REAL && productionActsBound(v)); }
+// [T1195] 남은 그날 수요(econ 고기 단위 · 음수 = 미리 쓴 몫). 켬이 아니면 Infinity(문이 없다).
+function huntDemandLeft(v) { if (!T374_DEMAND_STOP || !huntActOn(v)) return Infinity; return (typeof v._t1195Bal === 'number' ? v._t1195Bal : 0); }
+// [T1195] 사냥꾼의 곳간 입구 — 몸통은 어부 · 나무꾼과 같은 `actToGranary`(세금 · 곳간 · 국고 순서 그대로).
+//   `meat` 이면 그날 수요에서 뺀다(넘치면 음수로 남는다 = 미리 쓴 몫). 들어온 품목은 오늘치(`_t1195InByItem`)로 남겨 틱이 실현 장부에 한 번 적는다.
+function huntToGranary(v, item, units) {
+  if (!huntActOn(v) || !v.storage || !item) return 0;
+  const g = actToGranary(v, item, units, null, null);
+  if (!(g > 0)) return 0;
+  const by = v._t1195InByItem || (v._t1195InByItem = {});
+  by[item] = (by[item] || 0) + g;
+  if (item === 'meat') v._t1195Bal = (typeof v._t1195Bal === 'number' ? v._t1195Bal : 0) - g;
+  return g;
 }
 // ★★★[T724 2026-10-13] **채굴 행위 이식 — 기본 끔.** 끄면 이 파일은 **오늘 main 과 비트 동일**이다
 //   (아래 네 자리가 전부 이 상수 뒤에 있다: 곳간 입구 `mineToGranary` · `addProduce('ore')` 게이트 · 수요 칸 `_oreOutLast` · 장부 다리).
@@ -1296,8 +1321,194 @@ function _fdDeathIdx(v) {
 // ★읽는 함수 하나(T1075 · 진단 · UI) — 마을 사람들의 빚(징발 중 포함 · 제 짐 빚도 그 사람 칸이다)
 function foodDebtOf(v) {
   const a = (v && v.npcs) || []; let sum = 0, max = 0, starving = 0;
-  for (const p of a) { const d = p._fd || 0; sum += d; if (d > max) max = d; if (d > FD_DEATH_DAYS) starving++; }
+  const M = _t1197();   // ★[T1197] 켬 = 굶는 사람 = 허기가 극단(3단계 문턱 아래)인 사람(빚 > 14 대신 — 몸 정본이 죽음을 정한다) · 끔 = null = 종전 줄
+  for (const p of a) { const d = p._fd || 0; sum += d; if (d > max) max = d; if (M ? (p._mh != null && p._mh < M.AT) : d > FD_DEATH_DAYS) starving++; }
   return { n: a.length, mean: a.length ? sum / a.length : 0, max, starving };
+}
+// ════════════════════════════════════════════════════════════════
+// ★★[T1197 2026-11-06 · 추상 걷기 C · ★재민 11-05 "추상 다 없애자고 했는데 왜 아직도 남겨둔 거야"] **식사 = 몸이 꺼내 먹음 · 굶어 죽음 = 그 몸**
+//   손잡이 `T1197_MEAL_BODY`(켬 기본 · `=0` 만 끔 = 종전 바이트 · T1074 끔이면 안 선다 · 몸 정본 `server/body.js` 를 못 읽는 판도 안 선다).
+//   종전(T1074): 하루 한 번 마을 몫(`consumeFood`)을 사람마다 나눈 빚 장부 · 죽음 = 빚 > 14 인 사람 가운데 가장 늙은 1명/일 · 몸은 그 수의 거울(T590 — 명부 맨 앞 몸).
+//   켬 — 사람마다 **몸 게이지**를 명부 칸에 둔다(플레이어 몸과 같은 정본 함수 `Body.decayStep` · `Body.extremeness` + `CFG.EXTREME_HP_HUNGER` — 사본 0 · 새 수 0):
+//     `_mh` 허기(0 ~ 100) · `_mhp` 몸 HP(0 ~ 100) · `_mD` 게이지를 마지막으로 흘린 econ 시각(날 + 그날 몫) · `_mS` 마지막으로 먹은 끼니 번호(날 × 2 + 끼니).
+//   ① 끼니 둘 = 몸 일과의 두 집 문(`server/villages.js npcLifeTick` — 기상 · 귀가) · 시각 = 날 머리 · 날 + `dayPhaseRatio`(zone-config 정본 · 낮 몫).
+//      한 끼 = 다음 끼니까지 몸이 쓸 몫(하루치 × 그 사이 몫 × (1 − 적응)) + 갚기(게이지가 배부른 띠 아래인 만큼 · 하루 상한 `FD_REPAY_MAX` 의 그 사이 몫).
+//      곳간이 모자라면 그 끼니를 먹는 사람 모두 같은 비율(한 솥 — T1074 ①의 그 꼴). 곳간 장부는 **먹은 만큼만** 준다(`consumeFood` 그대로).
+//      허기 ↔ 식량 = `kcal.dayHunger`(하루치 1단위 = 하루 허기 · 정본) · 몸 하루 = 운영 하루(`kcal.DAY_MS_DEFAULT` — T906 원정 몸과 같은 시계).
+//   ② 굶어 죽음 = 그 사람의 허기가 극단(정본 단계 표의 3단계 문턱)을 넘은 동안 `_mhp` 가 깎여 0 → **그 사람**이 죽는다(가장 늙은 이 아님 · 하루 상한 없음).
+//      보호막(첫 365일 NPC 마을) · `POP_MIN` · 원정 팩 병사 제외는 T1074 그대로. 극단 밖이면 하루 회복(몸 일일 회복의 요양 몫 — 정본 `NPC_HP_DAY` · `npcRegenMul`).
+//   ③ T1074 빚 = 게이지의 장부 거울(날 단위): `_fd` = (배부른 띠 − 지금 허기) ÷ 하루 허기 + 잃은 HP ÷ 극단 최심의 하루 감소(≥ 0 · 죽음에서 ≈ 죽음 날 수) ·
+//      `_fdS` = 그날 못 먹은 하루치 몫 · 적응 `_fdA` 는 같은 수로 오르내리며 감쇠를 늦춘다.
+//      배부른 띠(끼니 앞 허기 둘) · 죽음 날 수(배부른 몸이 굶기 시작해 HP 0 까지)는 **유도값** — 제 몫을 다 먹는 몸을 아래 함수로 굴려 얻는다(새 수 0).
+//   ④ 몸(서버 존)이 선 사람은 몸이 끼니를 먹고(`t1197Meal` · 호스트가 부른다) 게이지를 흘린다(`t1197Advance`) — 날 경계(`t1197Day`)는 그 사람의 남은 끼니 · 남은 시간만 친다.
+//      ⇒ 헤드리스 마을(몸 없음)은 이 날 경계가 몸 게이지를 일괄로 굴린다(T1185 질문 3 — 두 길이 같은 함수 · 결과 비교는 보고).
+//   수치 틀: 극단 구간 HP 적분은 게임 1시간(몸 60초) 중점 걸음(세계의 수가 아니다 — T906 `_t906Day` 의 1분 걸음과 같은 꼴 · 값 차는 하네스).
+const T1197_MEAL_BODY = T1074_FOOD_DEBT && !(typeof process !== 'undefined' && process.env && process.env.T1197_MEAL_BODY === '0');
+const NPC_HP_DAY = { rest: 18, work: 6 };   // ★[T1197] 몸 일일 회복(요양 · 근무) — 종전 `server/villages.js` 의 그 두 글자를 이리로 옮겼다(값 무변 · 서버 생활층이 이것을 읽는다)
+// 몸 일일 회복 배수(건강 · 행복 · 식량) — 종전 `server/villages.js` 의 그 식을 이리로 옮겼다(식 무변 · 서버 생활층과 아래 날 경계가 같은 함수)
+function npcRegenMul(econ, popAlt) {
+  const st = econ.lastStats;
+  const hpF = Math.max(0.4, Math.min(1.5, 0.5 + (st ? st.health : 0.5)));
+  const hapF = Math.max(0.4, Math.min(1.5, 0.5 + (st ? st.happiness : 0.5)));
+  const _food = (econ.storage && econ.storage.food) || 0;
+  const _pop = (econ.npcs && econ.npcs.length) || popAlt;   // 랩 s.pop=econ 인구 동형
+  const foodF = Math.max(0.35, Math.min(1.4, _food / Math.max(1, _pop * 30)));
+  return hpF * hapF * foodF;   // 식량 하한 0.35(기근에도 소량 회복 → 죽음 나선 방지 — 랩 동형)
+}
+let _t1197M;
+function _t1197() {
+  if (_t1197M !== undefined) return _t1197M;
+  _t1197M = null;
+  if (!T1197_MEAL_BODY) return null;
+  let B = null, K = null, Z = null;
+  try { B = require('../server/body'); } catch (e) { B = null; }
+  try { K = require('../server/kcal'); } catch (e) { K = null; }
+  try { Z = require('../server/zone-config'); } catch (e) { Z = null; }
+  if (!B || typeof B.decayStep !== 'function' || typeof B.extremeness !== 'function' || typeof B.extremeAt !== 'function' || !B.CFG) return null;
+  if (!K || typeof K.dayHunger !== 'function' || !(K.DAY_MS_DEFAULT > 0)) return null;
+  const R = Z && Z.WORLD ? +Z.WORLD.dayPhaseRatio : NaN;
+  if (!(R > 0 && R < 1)) return null;
+  const M = { B, HS: B.CFG.HUNGER_SEC, RATE: B.CFG.EXTREME_HP_HUNGER, DAY_S: K.DAY_MS_DEFAULT / 1000, DH: K.dayHunger(), R,
+              AT: 100 * (1 - B.extremeAt('hunger')), STEP: 60, fed: [100, 100], dieDays: FD_DEATH_DAYS };
+  if (!(M.HS > 0) || !(M.DH > 0) || !(M.DAY_S > 0)) return null;
+  _t1197M = M;
+  // 유도 ① 배부른 띠 — 제 몫(갚기 0)을 다 먹는 몸을 굴려 끼니 앞 허기가 멎는 자리(수렴 · 0.4 ㎍ 아래)
+  const q = { _mh: 100, _mhp: 100, _mD: 0, _fdA: 0 };
+  for (let d = 0; d < 400; d++) {
+    const f0 = q._mh; q._mh = Math.min(100, q._mh + DAILY_FOOD_CONSUMPTION * R * M.DH); t1197Advance(q, d + R);
+    const f1 = q._mh; q._mh = Math.min(100, q._mh + DAILY_FOOD_CONSUMPTION * (1 - R) * M.DH); t1197Advance(q, d + 1);
+    if (Math.abs(f0 - M.fed[0]) < 1e-9 && Math.abs(f1 - M.fed[1]) < 1e-9) break;
+    M.fed[0] = f0; M.fed[1] = f1;
+  }
+  // 유도 ② 죽음 날 수 — 배부른 띠(끼니 앞)에서 굶기 시작한 몸이 HP 0 에 닿는 날(시간 몫 1/24 · 위 수치 틀과 같은 걸음)
+  const z = { _mh: M.fed[0], _mhp: 100, _mD: 0, _fdA: 0 };
+  let t = 0; while (z._mhp > 0 && t < 400) { t += 1 / 24; t1197Advance(z, t); }
+  M.dieDays = t;
+  return M;
+}
+function _t1197Init(p, d) {
+  if (p._mh != null) return;
+  const M = _t1197();
+  p._mh = M.fed[0]; p._mhp = 100; p._mD = d; p._mS = Math.floor(d) * 2 - 1;   // 처음 보는 사람 = 배부른 띠(끼니 앞) · 그날 끼니부터 먹는다
+}
+// 게이지를 econ 시각 `toD` 까지 흘린다 — 감쇠(적응만큼 느리게) · 극단이면 HP. 반환 = 깎인 HP.
+function t1197Advance(p, toD) {
+  const M = _t1197(); if (!M) return 0;
+  _t1197Init(p, Math.floor(toD));   // 처음 보는 사람은 그날 머리부터(몸이 낮에 처음 짚어도 일괄과 같은 출발 — 벽시계 무관)
+  const dd = toD - p._mD; if (!(dd > 0)) return 0;
+  p._mD = toD;
+  const sec = dd * M.DAY_S, a = 1 - (p._fdA || 0), h0 = p._mh;
+  const h1 = M.B.decayStep(h0, M.HS, sec * a);
+  if (!(h1 < M.AT)) { p._mh = h1; return 0; }
+  const n = Math.max(1, Math.ceil(sec / M.STEP)), ds = sec / n;
+  let h = h0, L = 0;
+  for (let i = 0; i < n; i++) {
+    const hn = M.B.decayStep(h, M.HS, ds * a);
+    L += M.RATE * M.B.extremeness('hunger', 1 - (h + hn) / 200) * ds;   // 정본 합산기의 허기 줄(`extremeHpRate` — 갈증 · 추위는 NPC 면제 그대로 0)
+    h = hn;
+  }
+  p._mh = h;
+  if (L > 0) p._mhp = Math.max(0, (p._mhp == null ? 100 : p._mhp) - L);
+  return L;
+}
+// 한 끼에 먹으려는 몫(하루치 단위) — 끼니 k 의 사이 몫 × (1 − 적응) + 갚기(배부른 띠 아래만큼 · 상한)
+function _t1197Want(p, k) {
+  const M = _t1197(), fr = k === 0 ? M.R : 1 - M.R;
+  const owe = Math.max(0, M.fed[k] - p._mh) / M.DH;
+  return DAILY_FOOD_CONSUMPTION * fr * (1 - (p._fdA || 0)) + Math.min(owe, FD_REPAY_MAX * fr);
+}
+// 곳간에서 꺼낸다(섭식 정본 `consumeFood` 그대로) — 식단 기록은 그날 끼니를 모은다(몸 끼니는 다음 날 경계의 식단에 든다 · 날 경계 사이에 지난 날 기록을 안 건드린다)
+function _t1197Eat(v, need, body) {
+  const fe = v._foodEaten, before = {};
+  if (fe) for (const r in fe) before[r] = fe[r];
+  const gap = consumeFood(v, need);
+  const now = v._foodEaten;
+  if (body) {
+    const b = v._t1197Body || (v._t1197Body = {});
+    for (const r in now) { b[r] = (b[r] || 0) + now[r]; now[r] = 0; }
+    for (const r in before) now[r] = before[r];
+  } else for (const r in before) now[r] = (now[r] || 0) + before[r];
+  return gap;
+}
+// 한 끼 — 끼니 번호 s(날 × 2 + k)를 아직 안 먹은 사람들에게 한 솥으로. 반환 { need(제 몫), want, got, short(제 몫 가운데 못 먹은 것) }.
+function t1197Meal(v, who, s, body) {
+  const M = _t1197(); if (!M || !who.length) return { need: 0, want: 0, got: 0, short: 0 };
+  const k = ((s % 2) + 2) % 2, fr = k === 0 ? M.R : 1 - M.R;
+  let W = 0, N0 = 0; const ws = new Array(who.length);
+  for (let i = 0; i < who.length; i++) { const w = _t1197Want(who[i], k); ws[i] = w; W += w; N0 += DAILY_FOOD_CONSUMPTION * fr * (1 - (who[i]._fdA || 0)); }
+  if (body && W > 0) {   // 몸 끼니도 한 솥 — 이 끼니를 아직 안 먹은 사람 모두의 몫 가운데 제 몫만큼(곳간이 모자라면 같은 비율 · 먼저 온 몸이 다 먹지 않는다)
+    let Wall = W; const mine = new Set(who);
+    for (const q of _fdEaters(v)) if (!mine.has(q) && q._mh != null && q._mS < s) Wall += _t1197Want(q, k);
+    const F = totalFoodEquivalent(v);
+    if (F < Wall) { const r = Math.max(0, F) / Wall; W = 0; for (let i = 0; i < ws.length; i++) { ws[i] *= r; W += ws[i]; } }
+  }
+  const w0 = body ? who.map((p) => _t1197Want(p, k)) : ws;   // 제 몫(솥 비율 앞) — 못 먹은 몫의 자
+  const gap = W > 0 ? _t1197Eat(v, W, body) : 0;
+  const f = W > 0 ? Math.max(0, W - gap) / W : 1;
+  let short = 0;
+  for (let i = 0; i < who.length; i++) {
+    const p = who[i], got = ws[i] * f;
+    const sh = DAILY_FOOD_CONSUMPTION * fr * (1 - (p._fdA || 0)) * (w0[i] > 0 ? Math.max(0, 1 - got / w0[i]) : 0);
+    p._mh = Math.min(100, p._mh + got * M.DH); p._mS = s;
+    p._fdS = (p._fdS || 0) + sh; short += sh;
+  }
+  return { need: N0, want: W, got: W - gap, short };
+}
+// 그 사람이 굶어 죽는다(명부에서 뺀다 · 셈은 T1074 빚 죽음 그 칸들). `body` = 몸이 그 자리에서 이미 쓰러졌다(호스트가 부른다 — 날 경계 목록에 안 싣는다).
+function t1197Kill(v, p, body) {
+  const i = v.npcs.indexOf(p); if (i < 0) return false;
+  _t1075Starved(v, v.npcs.length);   // ★[T1075 ③] 사망 계단(끔 = 무동작)
+  v.npcs.splice(i, 1);
+  v.counts[p.currentJob] = (v.counts[p.currentJob] || 0) - 1;
+  v._deathsToday = (v._deathsToday || 0) + 1; v._deadTot = (v._deadTot || 0) + 1; v._fdDeadTot = (v._fdDeadTot || 0) + 1;
+  if (!body) (v._t1197Dead || (v._t1197Dead = [])).push(p.id);
+  return true;
+}
+// 날 경계 — 지난 하루(날 머리 `day − 1` ~ `day`)를 친다: 끼니 둘(몸이 이미 먹은 끼니는 건너뜀) · 남은 시간 흘림 · 빚 거울 · 적응 · 회복.
+function t1197Day(v, day) {
+  const M = _t1197(); const d0 = day - 1, d1 = day;
+  v._t1197Dead = null; v._t1198Gone = null;   // 그날 빠진 사람 목록(호스트가 날 경계 뒤 읽는다)
+  { const fe = v._foodEaten || (v._foodEaten = {}), b = v._t1197Body; for (const r in fe) fe[r] = 0; if (b) for (const r in b) fe[r] = (fe[r] || 0) + b[r]; v._t1197Body = null; }   // 몸 끼니가 그날 식단의 앞 몫
+  const E = _fdEaters(v), eat = new Set(E);
+  for (const p of v.npcs) { _t1197Init(p, d0); if (!eat.has(p) && p._mD < d1) p._mD = d1; }   // 원정 팩 병사 — 시간은 흐르되 게이지는 제 짐(T906)이 정한다
+  for (const p of E) p._fdS = 0;
+  let need = 0, short = 0;
+  for (let k = 0; k < 2; k++) {
+    const t = d0 + (k ? M.R : 0), s = d0 * 2 + k, who = [];
+    for (const p of E) { if (p._mD < t) t1197Advance(p, t); if (p._mS < s) who.push(p); }
+    if (who.length) short += t1197Meal(v, who, s, false).short;
+  }
+  const rm = npcRegenMul(v, v.npcs.length);
+  for (const p of E) {
+    need += DAILY_FOOD_CONSUMPTION * (1 - (p._fdA || 0));
+    if (p._mD < d1) t1197Advance(p, d1);
+    const fd = Math.max(0, M.fed[0] - p._mh) / M.DH + (100 - (p._mhp == null ? 100 : p._mhp)) / (M.RATE * M.DAY_S);   // 허기 몫(하루치) + 잃은 HP 를 극단 최심에서 잃는 날(같은 정본 수) — 죽음에서 ≈ `dieDays`
+    p._fd = fd > 1e-9 ? fd : 0;
+    p._fdA = p._fd > 0 ? Math.min(FD_ADAPT_MAX, (p._fdA || 0) + FD_ADAPT_MAX / FD_ADAPT_DOWN_DAYS)
+                       : Math.max(0, (p._fdA || 0) - FD_ADAPT_MAX / FD_ADAPT_UP_DAYS);
+    if (p._mh >= M.AT && p._mhp < 100) p._mhp = Math.min(100, p._mhp + NPC_HP_DAY.rest * rm);   // 극단 밖이면 하루 회복(요양 몫 · 몸 일일 회복과 같은 수 · 배수 같은 함수) — 보호막이 잡아 둔 HP 0 도 여기서 오른다
+  }
+  return { need, short };
+}
+function t1197DieDays() { const M = _t1197(); return M ? M.dieDays : FD_DEATH_DAYS; }   // 굶어 죽기까지 날(켬 = 몸 정본에서 유도 · 끔 = 14)
+const T1198_BIRTH_BODY = T1197_MEAL_BODY && !(typeof process !== 'undefined' && process.env && process.env.T1198_BIRTH_BODY === '0');
+// ════════════════════════════════════════════════════════════════
+// ★★[T1198 2026-11-06 · 추상 걷기 D · ★재민 11-05] **출생 = 집의 짝 곁 몸 · 명부 ↔ 몸 1:1** — 손잡이 `T1198_BIRTH_BODY`(켬 기본 · `=0` 만 끔 = 종전 바이트 · T1197 끔이면 안 선다).
+//   종전: 출생 = θ-로지스틱 누적 ≥ 1 이면 `createNPC`(부모 무관) · 몸은 서버가 하루 ±2(`POP_SYNC_PER_DAY`)로 econ 수를 따라 스폰(사람과 몸 사이 짝 0).
+//   켬(econ 쪽):
+//     ① 아이를 가질 수 있는 집 = 침상 있는 집(주거 상한 ÷ 채당 정원 — `hutCapPerHut` 정본) 가운데 사는 사람이 둘 이상인 집.
+//        사는 곳 = 명부 차례로 채당 정원씩(원정 팩 병사 제외 · 몸 층의 집 배정 `spawnOneNpc` 이 명부 자리로 집을 고르는 그 꼴).
+//     ② 출생 누적(`_dPAccum`)은 그 집 수를 넘지 않고 · 한 집에 하루 한 아이 · 아이의 부모 칸 `_pa` = 그 집 첫 사람 · `_born` = 그날(호스트가 그 몸 곁에 아이 몸을 세운다).
+//        어느 집부터 = 날 % 집 수(차례 돌림 · 주사위 0).
+//     ③ 로지스틱 음수로 빠진 사람(가장 늙은 이 — 나이 칸 그대로)의 id 를 `_t1198Gone` 에 싣는다(호스트가 **그 사람의 몸**을 그 자리에서 눕힌다).
+function _t1198Houses(v, hcap, day) {
+  const per = hutCapPerHut(); if (!(per > 0)) return null;
+  const E = v.npcs.filter((p) => !(p._warPack && p._warDraft));
+  const bedHouses = hcap === Infinity ? Infinity : Math.floor(hcap / per);
+  const out = [];
+  for (let h = 0; h * per < E.length && h < bedHouses; h++) if (Math.min(per, E.length - h * per) >= 2) out.push(E[h * per]);
+  if (out.length > 1) { const k = ((day | 0) % out.length + out.length) % out.length; return out.slice(k).concat(out.slice(0, k)); }
+  return out;
 }
 // ★★[T1075 2026-11-02 · ★재민 11-02] **행복 = 평형 회귀(배너로드식) · 굶주림 평형 · 사망 계단** — 손잡이 `T1075_HAPPY_EQ`(**기본 끔** · `=1` 만 켬 · 끔 = 종전 바이트).
 //   재민 11-02: 마운트앤블레이드 배너로드의 안보 · 충성도처럼 "현재가 높으면 기본 변화량이 마이너스, 낮으면 플러스" · 굶는 동안 평형을 내려
@@ -1338,7 +1549,7 @@ function t1134C() { const x = (typeof process !== 'undefined' && process.env) ? 
 function t1134Half() { const x = (typeof process !== 'undefined' && process.env) ? parseFloat(process.env.T1134_HALF) : NaN; return Number.isFinite(x) && x > 0 ? x : HAPPY_EQ_HALF_DAYS; }
 //   하루 한 걸음 — 좋은 것 G · 인구 N · 오늘 굶주림 몫 hungerShare(0~1) → { target, h }. 마을 칸 둘(`_t1134E` · `_H`)만 쓴다(하네스가 이 함수를 그대로 부른다).
 function t1134Step(v, G, N, hungerShare) {
-  v._t1134E = (v._t1134E || 0) * Equilibrium.keep(HAPPY_EQ_HALF_DAYS) + (hungerShare > 0 ? hungerShare / FD_DEATH_DAYS : 0);
+  v._t1134E = (v._t1134E || 0) * Equilibrium.keep(HAPPY_EQ_HALF_DAYS) + (hungerShare > 0 ? hungerShare / t1197DieDays() : 0);   // ★[T1197] 켬 = 죽음 날 수(몸 정본 유도) · 끔 = 14
   const target = Math.max(0, Math.min(1, 0.5 + G - t1134C() * N - v._t1134E));
   v._H = v._H == null ? target : Equilibrium.step(v._H, target, t1134Half());
   return { target, h: v._H };
@@ -2088,6 +2299,143 @@ function mineToGranary(v, units, mineral) {
 function mineDemandLeft(v, held) { return actDemandLeft(v, (v && v._oreOutLast) || 0, '_t724InflowToday', held); }
 // ★[T724] 이 마을의 원석이 **오늘 몸에서** 오는가 — 손잡이 ∧ 그날 광부 몸이 한 번이라도 쳤다(생활층이 심는다 · 헤드리스는 0 = 종전).
 function mineActOn(v) { return !!(T724_MINE_ACT && v && ((v._t724Walk | 0) > 0 || (T1188_ORE_SPLIT && productionActsBound(v)))); }
+// ★★★[T1196 2026-11-06 · 추상 걷기 B · ★재민 11-05 "추상 다 없애자"] **장인 작업장 — 장인 다섯(석공 · 대장장이 · 갑옷장 · 재봉 · 요리)은 몸이 만든다.**
+//   손잡이 `T1196_ARTISAN_ACT`(켬 기본 · 되돌림 `=0` = 종전 바이트). 실제 몸 호스트(`bindProductionActs` — 서버)에서만 선다 — 랩 · CLI · 하네스는 호스트가 없어 종전 수식 그대로(비트 동일).
+//   종전: 장인 갈래(`produceSpecial` · 갑옷장은 범용 갈래)가 곳간 장부에서 재료를 깎고 산출을 넣었다 — 몸은 회관 안에서 서성이며 라벨만 달았다.
+//   켬: **같은 갈래 · 같은 식**이 그날 그 장인이 할 일을 정한다(얼마나 · 무엇을 · 품질 — 새 수 0 · 레시피 정본 그대로). 다만 곳간은 안 움직인다 —
+//     갈래가 곳간 · 금고에 낸 차(差)를 **작업표**(`_t1196Q`)로 떼어 두고 곳간을 되돌린다. 곳간이 움직이는 것은 몸뿐이다:
+//     몸이 곳간 사다리에서 재료를 꺼내 들고(`artisanTake` — 그때 있는 만큼 · 모자라면 그 비율로) → 작업 자리에서 만들고 → 곳간에 넣는다(`artisanGive` · 든 비율 그대로).
+//   ★명부(T449 · T491 문법): 그날 그 직업의 **빈 몸 수**(`_t1196Seats` — 생활층이 econ 틱 앞에 심는다)만큼만 작업표가 된다. 자리가 없는 장인(몸 상한 · 몸이 다 바쁨)은
+//     종전 수식 그대로 그날 곳간에 든다(일괄). 몸이 그날 안 집어 간 작업표는 이튿날 머리에 일괄로 든다 — 한 작업표 = 몸 XOR 일괄(이중 0 · 소멸 0).
+//   ★예약: 집어 가기 전 작업표의 재료는 같은 날 다음 장인 갈래가 못 쓰게 그 갈래 동안만 곳간에서 빼고 본다(`_t1196R` — 갈래가 끝나면 되돌린다).
+//   ⚠장부 밖 칸(오늘 생산 · 소비 흐름 `_cons` · 품질 누적 · 숙련 `workNPC` · 계측 누계)은 갈래가 정하는 그 자리에서 종전대로 선다 — 곳간 · 금고만 몸을 기다린다.
+const T1196_ARTISAN_ACT = (typeof process !== 'undefined' && process.env && process.env.T1196_ARTISAN_ACT !== '0');
+const T1196_SET = { mason: 1, smith: 1, armorsmith: 1, tailor: 1, cook: 1 };
+const T1196_EPS = 1e-9;
+function artisanActOn(v) { return !!(T1196_ARTISAN_ACT && productionActsBound(v)); }
+//   이 장인이 오늘 작업표를 받는가 — 그 직업 빈 몸 자리가 남았나(자리 하나 = 작업표 하나)
+function _t1196Seat(v, job, day) {
+  const S = v._t1196Seats; if (!S || !(S[job] > 0)) return false;
+  if (v._t1196UsedDay !== day) { v._t1196UsedDay = day; v._t1196Used = {}; }
+  const u = v._t1196Used[job] | 0;
+  if (u >= S[job]) return false;
+  v._t1196Used[job] = u + 1;
+  return true;
+}
+function _t1196Begin(v, job, day) {
+  if (!_t1196Seat(v, job, day)) return null;
+  const P = v._world && v._world.lotsPause; if (typeof P === 'function') P(true);   // 서버 곳간 로트 장부 — 되돌릴 바뀜은 안 적는다(End 가 푼다)
+  const st = Object.assign({}, v.storage), tr = Object.assign({}, v.treasury || {});
+  return { st, tr };
+}
+function _t1196Back(obj, base) { for (const k in obj) if (!(k in base)) delete obj[k]; for (const k in base) obj[k] = base[k]; }
+function _t1196End(v, npc, S, day) {
+  const take = {}, give = {}, tre = {};
+  let any = false;
+  for (const k in v.storage) {
+    const before = S.st[k] || 0, d = (v.storage[k] || 0) - before;
+    if (d < -T1196_EPS) { take[k] = -d; any = true; } else if (d > T1196_EPS) { give[k] = d; any = true; }
+  }
+  const T = v.treasury || {};
+  for (const k in T) { const d = (T[k] || 0) - (S.tr[k] || 0); if (d > T1196_EPS) { tre[k] = d; any = true; } }
+  _t1196Back(v.storage, S.st); if (v.treasury) _t1196Back(v.treasury, S.tr);
+  if (any) {   // 그 재료는 그날 마을 틱 동안 다른 쓰임에서 비켜 둔다(장인 몫 — 마을 하루 꼬리 `t1196Unhide` 가 곳간에 그대로 되돌린다 · 갈래가 먼저 쓰던 종전 차례를 지킨다)
+    const H = v._t1196H || (v._t1196H = {});
+    for (const k in take) { v.storage[k] = (v.storage[k] || 0) - take[k]; H[k] = (H[k] || 0) + take[k]; }
+  }
+  { const P = v._world && v._world.lotsPause; if (typeof P === 'function') P(false); }
+  if (!any) { v._t1196Used[npc.currentJob]--; return; }   // 오늘 만들 것이 없었다 — 자리를 돌려준다(그 몸은 쉰다)
+  const id = (v._t1196N = (v._t1196N | 0) + 1);
+  (v._t1196Q || (v._t1196Q = [])).push({ id, job: npc.currentJob, day, take, give, tre, st: 0, f: 0, pid: null });
+  const R = v._t1196R || (v._t1196R = {});
+  for (const k in take) R[k] = (R[k] || 0) + take[k];
+  const C = v._t1196C || (v._t1196C = { made: 0, body: 0, batch: 0, late: 0, short: 0 }); C.made++;
+}
+function _t1196Unres(v, t) {
+  const R = v._t1196R; if (!R) return;
+  for (const k in t.take) { const x = (R[k] || 0) - t.take[k]; if (x > T1196_EPS) R[k] = x; else delete R[k]; }
+}
+//   비켜 둠 — 마을 틱 머리(일괄 뒤)에 아직 몸이 안 집어 간 작업표의 재료를 그날 틱 동안 곳간에서 비켜 두고(`_t1196H`), 마을 하루 꼬리(먹기 뒤 · 썩기 앞)에 그대로 되돌린다.
+//   ⚠곳간 로트 장부는 그동안 멈춘다(되돌릴 바뀜) — 틱 밖(몸 시간)의 곳간은 늘 실물 그대로다(꺼낼 때 · 넣을 때만 움직인다).
+function _t1196Pause(v, on) { const P = v._world && v._world.lotsPause; if (typeof P === 'function') P(on); }
+function _t1196Hide(v) {
+  const R = v._t1196R; if (!R) return;
+  let H = null;
+  _t1196Pause(v, true);
+  for (const k in R) { const h = Math.min(R[k], Math.max(0, v.storage[k] || 0)); if (h > 0) { v.storage[k] -= h; (H || (H = v._t1196H || (v._t1196H = {})))[k] = ((H && H[k]) || 0) + h; } }
+  _t1196Pause(v, false);
+}
+function t1196Unhide(v) {
+  const H = v && v._t1196H; if (!H) return;
+  _t1196Pause(v, true);
+  for (const k in H) v.storage[k] = (v.storage[k] || 0) + H[k];
+  _t1196Pause(v, false);
+  delete v._t1196H;
+}
+function _t1196Find(v, id) { const Q = v && v._t1196Q; if (!Q) return -1; for (let i = 0; i < Q.length; i++) if (Q[i].id === id) return i; return -1; }
+//   재료를 꺼낸다 — 그때 곳간에 있는 만큼. 비율 `f` 는 그 레시피가 **없으면 못 만드는** 재료로 잰다(정본 정의 그대로 · 새 수 0):
+//     ⓐ 요리 — 식량(`food`)이 본재료 · 곁재료(`COOK_SIDE_INGREDIENTS`)는 있는 만큼(요리 갈래도 곁재료는 "있으면" 쓴다)
+//     ⓑ 갑옷 — `JOBS.armorsmith.inputs` 가 본재료 · `aux`(삼끈 · 모피)는 있는 만큼(갈래 주석 "있으면 소비, 없어도 제작 성립")
+//     ⓒ 재봉 — 옷감은 서로 바꿔 쓴다(`CLOTH_MATS` 보온 가중 — 갈래가 그 합으로 잰다) ⇒ f = 있는 보온 ÷ 든 보온
+//     ⓓ 석공 · 대장장이 — 든 재료 전부(가장 모자란 재료의 비율)
+//   각 재료는 min(있는 것, 든 것 × f) 만큼 나간다 · 받은 비율을 돌려준다.
+function _t1196Frac(t, have) {
+  const tk = t.take, need = (k) => tk[k] || 0;
+  if (t.job === 'tailor') {
+    let n = 0, h = 0;
+    for (const k in tk) { const wgt = CLOTH_MATS[k] || 0; if (!(wgt > 0)) continue; n += need(k) * wgt; h += Math.min(have(k), need(k)) * wgt; }
+    return n > 0 ? Math.min(1, h / n) : 1;
+  }
+  let f = 1;
+  for (const k in tk) {
+    if (t.job === 'cook' && COOK_SIDE_INGREDIENTS.indexOf(k) >= 0) continue;
+    if (t.job === 'armorsmith' && JOBS.armorsmith.aux && (k in JOBS.armorsmith.aux) && !(k in (JOBS.armorsmith.inputs || {}))) continue;
+    const n = need(k); if (!(n > 0)) continue;
+    const h = have(k); if (h < n) f = Math.min(f, h > 0 ? h / n : 0);
+  }
+  return f;
+}
+function artisanTake(v, id) {
+  const i = _t1196Find(v, id); if (i < 0) return -1;
+  const t = v._t1196Q[i]; if (t.st !== 0) return t.f;
+  _t1196Unres(v, t);
+  const H = v._t1196H;   // 틱 조각 사이(비켜 둔 채)에 몸이 오면 제 몫부터 곳간에 되돌린다
+  if (H) { _t1196Pause(v, true); for (const k in t.take) { const b = Math.min(H[k] || 0, t.take[k]); if (b > 0) { v.storage[k] = (v.storage[k] || 0) + b; H[k] -= b; if (!(H[k] > T1196_EPS)) delete H[k]; } } _t1196Pause(v, false); }
+  const have = (k) => Math.max(0, v.storage[k] || 0);
+  const f = _t1196Frac(t, have);
+  const sub = t.job === 'tailor';
+  for (const k in t.take) { const q = Math.min(have(k), t.take[k] * (sub ? 1 : f)); if (q > 0) v.storage[k] = Math.max(0, (v.storage[k] || 0) - q); }
+  t.st = 1; t.f = f;
+  if (f < 1 - T1196_EPS) (v._t1196C || (v._t1196C = { made: 0, body: 0, batch: 0, late: 0, short: 0 })).short++;
+  return f;
+}
+//   만든 것을 넣는다 — 든 비율 그대로(곳간 · 금고 · 작업표를 지운다)
+function _t1196Put(v, t) {
+  const f = t.f;
+  for (const k in t.give) { const q = t.give[k] * f; if (q > 0) v.storage[k] = (v.storage[k] || 0) + q; }
+  if (v.treasury) for (const k in t.tre) { const q = t.tre[k] * f; if (q > 0) v.treasury[k] = (v.treasury[k] || 0) + q; }
+  const G = v._t1196G || (v._t1196G = {});
+  for (const k in t.give) G[k] = (G[k] || 0) + t.give[k] * f;   // 계측 전용 누계(몸 · 일괄 합 — 품목별)
+}
+function artisanGive(v, id) {
+  const i = _t1196Find(v, id); if (i < 0) return false;
+  const t = v._t1196Q[i]; if (t.st !== 1) return false;
+  _t1196Put(v, t); v._t1196Q.splice(i, 1);
+  const C = v._t1196C || (v._t1196C = { made: 0, body: 0, batch: 0, late: 0, short: 0 }); C.body++;
+  const B = v._t1196B || (v._t1196B = {}); for (const k in t.give) B[k] = (B[k] || 0) + t.give[k] * t.f;   // 계측 전용(몸이 넣은 몫 — 품목별)
+  return true;
+}
+//   하루 머리 — 몸이 어제까지 안 집어 간 작업표는 일괄로(그때 있는 재료 비율 · 예약을 푼다) · 손에 든 지 사흘 넘은 작업표도 일괄로 마친다(몸을 잃었을 때 — 계측 `late`)
+function _t1196Day(v, day) {
+  const Q = v._t1196Q; if (!Q || !Q.length) return;
+  const C = v._t1196C || (v._t1196C = { made: 0, body: 0, batch: 0, late: 0, short: 0 });
+  for (let i = 0; i < Q.length;) {
+    const t = Q[i];
+    if (t.st === 0 && t.day < day) { t.pid = null; artisanTake(v, t.id); _t1196Put(v, t); Q.splice(i, 1); C.batch++; continue; }
+    if (t.st === 1 && day - t.day > 3) { _t1196Put(v, t); Q.splice(i, 1); C.late++; continue; }
+    i++;
+  }
+}
 // ★★[T347] **걷는 목록** — 이 파일이 안 짓는다. 군락 실체가 대는 품목을 생활층이 세어 주입하고
 //   (`world.forageActItems` · `lootOfResource` → `PV_DEPOSIT_MAP` 를 지나 econ 재화로 · 사본 0),
 //   여기서는 그 목록과 채집 믹스의 **교집합**만 걷는다. 목록이 없으면 아무것도 안 걷는다(비트 동일).
@@ -2313,7 +2661,7 @@ const SHIELD_AGE_ON = !(typeof process !== 'undefined' && process.env && process
 //   새 수 0 — 폭은 보호막 그 자체(`SHIELD_DAYS`). 켬은 econ 3사본(정본·번들·랩)이라 3시드가 움직인다 ⇒ 켜는 건 PM(판정 0).
 const T597_SHIELD_RAMP = (typeof process !== 'undefined' && process.env && process.env.T597_SHIELD_RAMP === '1');
 function _t597ShieldExtra(v) {   // 이 마을 보호막이 SHIELD_DAYS 뒤로 더 가는 날 수(0 ~ SHIELD_DAYS−1)
-  let h0 = 0; const s = String((v && v.name) || '');
+  let h0 = 0; const s = (T1187_NAME_FREE && v && v.coord) ? _t1187Key(v) : String((v && v.name) || '');   // ★[T1187] 켬 = 마을 자리
   for (let i = 0; i < s.length; i++) h0 = (Math.imul(h0, 31) + s.charCodeAt(i)) | 0;
   const a = (h0 >>> 0) % 100003, b = 597;
   let h = (1 ^ Math.imul(a + 1, 2654435761) ^ Math.imul(b + 101, 40503)) >>> 0;   // bandits.js denRng 와 같은 섞개(씨 1)
@@ -2514,7 +2862,24 @@ const WARLIKE_THRESH = 0.72;        // 해시 > 이 값이면 호전 마을(~28%
 const WARLIKE_WT_MULT = 1.6;        // 호전 마을 위협 동원 배수(warriorTarget — 평시 무비, 위협 시만 강화라 안전)
 const WEAPON_RITE_PC = 0.0008;      // 호전 마을 봉헌검 요율(/인/일, 식량여유·잉여 비례) — 위세재 봉헌 동형
 const WEAPON_RITE_KEEP = 3;         // 봉헌검 유보 — 전사 수 + 이 버퍼 초과 *잉여*만 매납(병기고 불가침 = 무장해제 방지)
-function _warlikeMult(v) { return _hashStr('warlike|' + (v.name || '')) > WARLIKE_THRESH ? WARLIKE_WT_MULT : 1.0; }
+function _warlikeMult(v) {
+  if (T1187_NAME_FREE) { const th = _t1187FeudTh(); return (th != null && (v._grudgeMax || 0) >= th) ? WARLIKE_WT_MULT : 1.0; }   // ★[T1187] 켬 = 묵은 원한(아래)
+  return _hashStr('warlike|' + (v.name || '')) > WARLIKE_THRESH ? WARLIKE_WT_MULT : 1.0;
+}
+// ★★[T1187 2026-11-06 · ★재민 11-05 "이름이 경제를 바꾸지 않게" · 족보 760 추상 없애기 · 손잡이 `T1187_NAME_FREE`(기본 끔 · `'1'` 만 켬 · 끔 = 위 종전 줄 그대로)]
+//   **호전 마을을 이름 해시가 아니라 실물로 고른다** — 그 마을이 지금 묵은 원한을 품고 있나:
+//   전쟁 층(`war-core`)이 날마다 마을마다 가장 큰 원한(`_grudgeMax` — 원한 EMA 의 최댓값 · 그 층이 적는 칸)을 적는다.
+//   그 값이 전쟁 층의 **"묵은 원한(feud)" 문턱 `WAR_FEUD_TH`**(전쟁 층이 명분 '원한'을 세우는 그 선 · 그 파일에서 읽는다 · 새 수 0) 이상이면 호전 —
+//   위협 때 동원 배수(`WARLIKE_WT_MULT`)와 봉헌검(아래 의례 절)은 종전 그대로 그 마을에만 붙는다.
+//   ⇒ 전쟁을 당해 원한이 쌓인 마을이 더 크게 동원하고, 원한이 식으면(EMA 감쇠) 풀린다. 이름을 바꿔도 아무것도 안 바뀐다.
+//   전쟁 층이 없는 판(랩 · 하네스의 맨 econ)에선 `_grudgeMax` 가 안 적혀 호전 마을이 0 이다(보고 T1187 §3 — 종전은 이름 운으로 ~28 %).
+const T1187_NAME_FREE = (typeof process !== 'undefined' && !!process.env && process.env.T1187_NAME_FREE === '1');
+// ★[T1187] 이름 대신 쓰는 열쇠 — 마을 자리(`coord` = 가운데 칸 × 2.5 · 호스트가 세울 때와 다시 뜰 때 같은 칸에서 붙인다 · 세계 안에서 하나).
+//   쓰는 자리 셋(켬만): 마을 주사위 흐름 씨(`_t731StreamInit` — T744 가 이름을 고른 까닭 "세계 안에서 하나 · 프로세스 계수기 무관"을 자리도 지킨다) ·
+//   기근 보호막 펴기(`_t597ShieldExtra` · 끔 기본 손잡이) · (도적 보호기는 `server/bandits.js` 가 같은 손잡이로 가운데 칸을 쓴다).
+function _t1187Key(v) { return 'xy|' + v.coord.x + ',' + v.coord.y; }
+let _t1187Feud;
+function _t1187FeudTh() { if (_t1187Feud === undefined) { try { _t1187Feud = require('./war-core').WAR_FEUD_TH; } catch (e) { _t1187Feud = null; } if (!(_t1187Feud > 0)) _t1187Feud = null; } return _t1187Feud; }
 
 // 식량 부패 — 무한 비축 방지. 음식 종류별로 다름.
 const DECAY_RATES = {
@@ -2988,7 +3353,7 @@ function _hashStr(s) {
 function _tinDepositFor(opts) {
   if (opts.tin != null) return opts.tin;
   const ore = opts.ore != null ? opts.ore : 0.5;
-  const r = _hashStr('tin|' + (opts.name != null ? opts.name : ''));   // [0,1) 결정론 지터(소량)
+  const r = T1187_NAME_FREE ? 0.5 : _hashStr('tin|' + (opts.name != null ? opts.name : ''));   // [0,1) 결정론 지터(소량) · ★[T1187] 켬 = 지터 없음(가운데 0.5 — score = ore × 1.0 · 이름 무관 · 이 갈래는 `oreMix` 없는 부름만 탄다)
   // ★ore 주도(지터 소량): score = ore × (0.8 + 0.4×hash). ore~1.5(광산촌)=1.2~1.5(항상 문턱↑), ore~0.5(평균)=0.4~0.5(항상 미달).
   //   → 랩의 광산촌(ore 1.5 고정)은 이름 무관 확실히 산지 + CLI 고ore 마을도 산지 + 평균 마을은 무산지. 소표본 취약성 제거.
   const score = ore * (0.8 + 0.4 * r);
@@ -3557,6 +3922,7 @@ function tickVillage(v, day) {
     }
   }
   if (T692_SEED_RESERVE && v._seedReserve > 0) v._seedReserve = Math.min(v._seedReserve, v.storage.wood || 0);   // ★[T692] 비축은 곳간을 넘지 않는다(하루 머리)
+  if (T1196_ARTISAN_ACT && v._t1196Q && v._t1196Q.length) { _t1196Day(v, day); _t1196Hide(v); }   // ★[T1196] 어제까지 몸이 안 집어 간 작업표 = 일괄 · 남은 작업표 재료는 그날 틱 동안 비켜 둔다(끔 · 랩 = 작업표가 안 선다)
 
   // 1) 각 NPC 일하기 → 산출물 storage에 + skill xp
   //    매일 새 객체 만들지 말고 버퍼 재사용 (GC 부하 ↓)
@@ -3696,6 +4062,10 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   //   ⚠`stone` 가산은 이 수에 **안 든다**(믹스 밖에서 따로 더해지는 산출이다 — 보고 §표가 그 줄을 따로 적는다).
   //   ⚠읽는 쪽이 손잡이 뒤(`forageRegrow…`)라 끈 팔은 이 수를 **안 본다**(관측 칸).
   v._forageOutLast = _forageRaw * _forageScale;
+  if (huntActOn(v)) {   // ★[T1195] 사냥 그날 수요 — 어부 `_fishOutLast` 와 같은 꼴(자리 수 × base × 땅 × 공유 도구 · 숙련은 사람마다라 안 든다) · 끔 = 이 칸이 안 생긴다
+    v._huntOutLast = (v.counts.hunter || 0) * JOBS.hunter.base * JOBS.hunter.landBoost(v) * toolBoostShared;
+    v._t1195Bal = Math.min(typeof v._t1195Bal === 'number' ? v._t1195Bal : 0, 0) + v._huntOutLast;   // 미리 쓴 몫(음수)만 잇고 못 채운 몫은 그날로 끝(T374)
+  }
   v._forageScale = _forageScale;   // ★저장(§9): 채집 한계가치(픽커·기회비용)가 임연부 MSY 포화를 보게 — 포화 임연부에 herb 가격이 채집꾼을 무한 유인(공유지 비극)하는 것 차단
   if (T1179_CROP_SEASON) t1179FieldDay(v, day);   // ★[T1179] 익은 밭을 거두고 빈 자리에 심는다(생산 앞 · 끔 = 무동작)
   for (const npc of v.npcs) {
@@ -3775,6 +4145,8 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       v.treasury[r] = (v.treasury[r] || 0) + tax;
       dailyProduction[r] = (dailyProduction[r] || 0) + amt;   // ★NaN 가드(유령 감사서 발견): 버퍼 리셋은 v1 RESOURCES 키만 돌아 specialty 부산물(wheat 등)이 undefined+amt=NaN 영구 오염 — 흐름 진단·식량환산 편입의 지뢰였음
     };
+    const _t1196S = (T1196_ARTISAN_ACT && T1196_SET[npc.currentJob] === 1 && productionActsBound(v)) ? _t1196Begin(v, npc.currentJob, day) : null;   // ★[T1196] 빈 몸 자리가 있으면 작업표(끔 · 랩 = null — 종전 글자)
+    try {
     if (jdef.produceSpecial === 'forager') {
       if (baseAmt > 0) {
         const yields = foragerYieldsFor(v);
@@ -3996,22 +4368,9 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       }
       // 청동/철 자격 없으면 오늘 제작 없음(돌칼은 대장장이가 안 만듦 — 석공 담당). 교역으로 청동 자격 갖추면 재개.
     } else if (jdef.produceSpecial === 'weaponsmith') {
-      // ★S2 weaponsmith = 대장장이(smith)로 통합·폐지(capacity 0 → 도달 불가). 아래는 잔존 안전코드(만약 남은 weaponsmith가 있으면 청동검만).
-      const amt = jdef.base * skillMul;
-      if ((v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
-        v.storage.copper -= 0.3; v.storage.tin -= 0.12; _cons(v, 'copper', 0.3); _cons(v, 'tin', 0.12);   // ★flow-EMA
-        v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt;
-        addProduce('weapon', amt);
-        workNPC(npc);
-      } else if ((v.storage.iron || 0) >= 0.4 && (v.storage.stone || 0) >= 0.2) {
-        v.storage.iron -= 0.4; v.storage.stone -= 0.2;   // ★철검=희소(청동 재료 없을 때만)
-        addProduce('weapon', amt);
-        workNPC(npc);
-      } else if ((v.storage.stone || 0) >= 0.5) {
-        v.storage.stone -= 0.5;
-        addProduce('weapon', amt);
-        workNPC(npc);
-      }
+      // ★S2 weaponsmith = 대장장이(smith)로 통합·폐지(capacity 0 → 아무도 안 뽑힌다 · 차출 1순위).
+      // ★[T1196 ④] 셈 밖 잔존 안전코드(청동검 · 철검 · 돌칼 셋)를 걷었다 — 남은 무기장이 있어도 **아무것도 안 만든다**(일하지 않는 자리 · 이튿날 차출).
+      //   ⚠이 갈래를 지우면 아래 범용 갈래(`jdef.output` = weapon)가 재료 없이 무기를 낸다 — 그래서 빈 갈래로 남긴다.
     } else if (jdef.produceSpecial === 'tailor') {
       // ★의복(2026-07-12): 재봉 — 옷감을 보온 가중·재고 비례로 소비(대체 투입: 모피 있으면 모피, 없으면 삼베).
       //   절반이라도 있으면 부분 제작(frac) — 옷감 반입이 끊긴 마을은 산출이 자연 감소(게이트 절벽 없음).
@@ -4166,6 +4525,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       if (_t860) _t860Dry(v, npc, _t860, _potA, _actA, addProduce);   // ★[T860] 잡은 날 제 손으로 말린다(끔 = 이 줄 무동작)
       workNPC(npc);
     }
+    } finally { if (_t1196S) _t1196End(v, npc, _t1196S, day); }   // ★[T1196] 갈래가 곳간 · 금고에 낸 차를 작업표로 떼고 곳간을 되돌린다(`continue` · `return` 길도 여기를 지난다)
   }
   // ★여유노동 비율 저장 — 교역 동시성 상한(tickTradeV2 spareCap)에서 사용.
   v._idleFrac = _potA > 0 ? Math.max(0, 1 - _actA / _potA) : 0;
@@ -4220,6 +4580,11 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     v._t325InflowToday = 0;
     dailyProductionPotential.wood = (dailyProductionPotential.wood || 0) + _t325In;
     dailyProduction.wood = (dailyProduction.wood || 0) + _t325In;
+  }
+  // ★★[T1195] 몸이 잡아 들여온 고기 · 가죽 · 뿔 · 뼈도 **같은 자리에서** 장부에 적는다(T312 · T325 와 같은 꼴 · 이중 0 — 켠 호스트에서 사냥꾼은 `addProduce` 를 안 탄다).
+  if (T1195_HUNT_REAL && v._t1195InByItem) {
+    for (const [k, q] of Object.entries(v._t1195InByItem)) { if (!(q > 0)) continue; dailyProductionPotential[k] = (dailyProductionPotential[k] || 0) + q; dailyProduction[k] = (dailyProduction[k] || 0) + q; }
+    v._t1195InByItem = {};
   }
   // ★★[T724] 손으로 들여온 원석도 **같은 자리에서** 장부에 적는다(T312 · T325 와 같은 꼴 · 이중 0 — 몸이 친 날 `ore` 는 `addProduce` 를 안 탄다).
   //   그리고 수식이 오늘 낼 원석(광부 갈래가 모은 `_t724OutAcc`)을 내일의 수요 칸 `_oreOutLast` 로 넘긴다.
@@ -4348,11 +4713,13 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   //   빠진다"의 소비판 · 이중 계산 닫힘: 종전엔 팩 1 + 마을 1 = 1인 하루 2단위). 표식 `_warPack` 은 war-core 가 **손잡이 켤 때만**
   //   공격 징발에 붙인다(방어 소집은 안 붙는다 — 제 마을 곳간을 먹는다) ⇒ 끔이면 이 줄은 `N` 그대로 = 비트 동일.
   // ★[T1074] 켬 = 하루 몫은 사람마다(적응만큼 덜) + 남은 식량으로 갚을 빚 — 한 번의 섭식 정본 호출(식단 기록 한 번) · 먹은 몫을 사람마다 나눈다
-  const _fdE = T1074_FOOD_DEBT ? _fdEaters(v) : null, _fdN = _fdE ? _fdNeed(_fdE) : null;
-  const foodNeed = _fdN ? _fdN.need : _t423EatN(v, N) * DAILY_FOOD_CONSUMPTION;
+  // ★[T1197] 켬 = 끼니 둘 · 몸 게이지(위 T1197 머리글) — 빚 장부(T1074)는 게이지의 거울로 그 안에서 선다 · 끔 = null = 아래 종전 줄
+  const _t97 = (T1197_MEAL_BODY && _t1197()) ? t1197Day(v, day) : null;
+  const _fdE = (!_t97 && T1074_FOOD_DEBT) ? _fdEaters(v) : null, _fdN = _fdE ? _fdNeed(_fdE) : null;
+  const foodNeed = _t97 ? _t97.need : _fdN ? _fdN.need : _t423EatN(v, N) * DAILY_FOOD_CONSUMPTION;
   const _fdGap = _fdN ? consumeFood(v, _fdN.need + _fdN.debt) : 0;
   const _fdDay = _fdN ? _fdSettle(_fdE, _fdN.need, _fdN.debt, Math.max(0, _fdN.need + _fdN.debt - _fdGap)) : null;
-  const foodGap = _fdDay ? _fdDay.shortTotal : consumeFood(v, foodNeed);  // 남으면 굶주림
+  const foodGap = _t97 ? _t97.short : _fdDay ? _fdDay.shortTotal : consumeFood(v, foodNeed);  // 남으면 굶주림
   // 도구 마모 — tool dependent NPC만
   // ★★★[T180 2026-09-12 · 이 파일의 유일한 접점] **도구 수명을 밖에서 물어본다.**
   //   T163(②)·T173(①)이 서로 다른 방향에서 같은 곳을 가리켰다 — 움직이는 것은 `도구≈0` 일수다.
@@ -4747,7 +5114,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     stats.happinessGoods = stats.happiness; stats.happinessEq = _r.target; stats.happiness = _r.h;
   } else if (stats && T1075_HAPPY_EQ) {   // ★[T1075 ①②] 그날 값 = 평형 H* · 실제 H 는 마을 칸이 기억한다(소비자 — 일 배수 · 도적 층 — 는 H 를 읽는다)
     const _fd = T1074_FOOD_DEBT ? foodDebtOf(v) : null;
-    const _hs = stats.happiness * (_fd ? (1 - Math.min(1, _fd.mean / FD_DEATH_DAYS)) : 1);
+    const _hs = stats.happiness * (_fd ? (1 - Math.min(1, _fd.mean / t1197DieDays())) : 1);   // ★[T1197] 켬 = 죽음 날 수(몸 정본 유도) · 끔 = 14
     v._H = v._H == null ? _hs : _hs + (v._H - _hs) * Equilibrium.keep(HAPPY_EQ_HALF_DAYS);
     stats.happinessEq = _hs; stats.happiness = v._H;
   }
@@ -4779,6 +5146,10 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
 
   // 6) 인구 적용 — 정수 단위. 분수는 누적해서 처리.
   v._dPAccum = (v._dPAccum || 0) + dP;
+  // ★[T1198 ①②] 켬 = 출생 누적은 아이를 가질 수 있는 집 수를 넘지 않는다(한 집 하루 한 아이) · 끔 = null = 종전 줄
+  const _t98 = (T1198_BIRTH_BODY && _t1197()) ? _t1198Houses(v, _hcap, day) : null;
+  let _t98k = 0;
+  if (_t98 && v._dPAccum > _t98.length) v._dPAccum = _t98.length;
   while (v._dPAccum >= 1 && (!T1159_HOME_N || _homeN > 0)) {
     // 인구 cap — N² 폭발 방지
     if (v.npcs.length >= POP_MAX) {
@@ -4799,7 +5170,9 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       v._dPAccum = Math.min(v._dPAccum, 0.9);
       break;
     }
+    if (_t98 && _t98k >= _t98.length) { v._dPAccum = Math.min(v._dPAccum, 0.9); break; }   // ★[T1198] 아이를 가질 집이 다 찼다
     const npc = createNPC({ job: newJob, inheritSkill: apprenticeInherit(v, newJob) });   // ★S4 명장 견습(세대 전승)
+    if (_t98) { npc._pa = _t98[_t98k++].id; npc._born = day; }   // ★[T1198 ②] 그 집 짝 곁에서 선다(호스트가 부모 몸 곁에 세운다)
     v.npcs.push(npc);
     v.counts[newJob] = (v.counts[newJob] || 0) + 1;
     v._dPAccum -= 1;
@@ -4845,12 +5218,22 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     if (!T1074_FOOD_DEBT) _t1075Starved(v, v.npcs.length);   // ★[T1075 ③] 빚 판이 아니면 이 고리가 기근 길이다(빚 판에선 굶어 죽음 = 빚 죽음 · 끔 = 무동작)
     const dead = v.npcs.splice(oldestIdx, 1)[0];
     v.counts[dead.currentJob] = (v.counts[dead.currentJob] || 0) - 1;
+    if (T1198_BIRTH_BODY && _t1197()) (v._t1198Gone || (v._t1198Gone = [])).push(dead.id);   // ★[T1198 ③] 그 사람의 몸이 눕는다(호스트)
     v._dPAccum += 1;
   }
   // ★[T924] 켬 = 고리가 몸이 없어 멈춘 날(빚이 −1 아래로 남았는데 사람은 있다 = 남은 사람이 다 징발 중) 못 치른 몫을 넘기지 않는다 — 출생 줄의 `0.9` 거울(끔 = 종전 바이트)
   if (T924_DEBT_CAP && v._dPAccum <= -1 && v.npcs.length > POP_MIN) v._dPAccum = Math.max(v._dPAccum, -0.9);
   // ★★[T1074 ④] 켬 = 식량 빚 죽음 — 빚 > 14(하루치) **이고** 그날도 적자인 사람 가운데 가장 늙은 1명/일(그날 제 몫을 다 먹으면 안 죽는다).
   //   보호막(첫 365일 · NPC 마을)이 선 날은 위 고리와 같이 이 죽음도 막는다(`_fdShield` 에 센다 — ⑦ 보호막 켬 ↔ 끔 표의 자).
+  // ★★[T1197 ②] 켬 = 굶어 죽음은 HP 가 0 이 된 **그 사람** — 하루 상한 없음 · 보호막 · POP_MIN · 징발 제외는 아래 T1074 줄 그대로
+  if (T1197_MEAL_BODY && _t1197()) {
+    for (const p of v.npcs.slice()) {
+      if (!(p._mhp != null && p._mhp <= 0) || p._warDraft) continue;
+      if (!(v.npcs.length > POP_MIN)) break;
+      if (!v.founder && _shieldT < SHIELD_DAYS) { v._fdShield = (v._fdShield || 0) + 1; continue; }
+      t1197Kill(v, p, false);
+    }
+  } else
   if (T1074_FOOD_DEBT && v.npcs.length > POP_MIN) {
     const _fdk = _fdDeathIdx(v);
     if (_fdk >= 0) {
@@ -5612,7 +5995,7 @@ function pickDeficitJob_rational(v, world) {
   // ★★[T1148] 추위 빚 — 땔감도 생존 필요(위 `T1148_FUEL_JOB` 머리말 · 끔 = 이 줄 무동작). 기근 블록 **앞**이다(블록 안팎 같은 잣대).
   if (T1148_FUEL_JOB && foodEquiv > N * 6 && hasSlot(v, 'lumberjack', cap, counts) && !(T325_WOOD_ACT && v._t325Cells === 0)) {
     const _c = t1148Cold(v);
-    if (_c && _c.debt > 0 && _c.fuelDays < foodEquiv / N + FD_DEATH_DAYS) return 'lumberjack';
+    if (_c && _c.debt > 0 && _c.fuelDays < foodEquiv / N + t1197DieDays()) return 'lumberjack';   // ★[T1197] 켬 = 죽음 날 수(몸 정본 유도) · 끔 = 14
   }
   // 진짜 기근 (food < N*30일치) — 식량 직업 강제. ★경제적 정당성: 자급경제는 맬서스 상한에서 돌고,
   //   강제 30일버퍼가 ①식량안보→특화 노동 해방 ②식량생산 최대화→인구 상한 달성. (게이트 완화 실험 시 인구·특화 둘다 악화 확인)
@@ -6604,6 +6987,8 @@ module.exports = {
   T1075_HAPPY_EQ, HAPPY_EQ_HALF_DAYS,
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
   foodDebtOf, T1074_FOOD_DEBT,   // ★[T1074] 식량 빚 읽는 함수 하나(T1075 가 읽는다)
+  T1198_BIRTH_BODY, _t1198Houses,   // ★[T1198] 출생 = 집 짝 곁 · 명부 ↔ 몸 1:1 — 호스트 · 하네스
+  T1197_MEAL_BODY, NPC_HP_DAY, npcRegenMul, t1197Advance, t1197Meal, t1197Kill, t1197Day, t1197DieDays, __t1197: () => _t1197(),   // ★[T1197] 몸 게이지 끼니 — 호스트(몸 끼니 · 몸 흘림 · 그 자리 죽음) · 하네스가 같은 함수를 부른다
   __t1074: { _fdEaters, _fdNeed, _fdSettle, _fdDeathIdx, FD_ADAPT_MAX, FD_ADAPT_DOWN_DAYS, FD_ADAPT_UP_DAYS, FD_DEATH_DAYS, FD_REPAY_MAX, T1117_FD_EVID },   // 하네스 훅(test-t1074-food-debt)
   T860_ON, CATCH_FROM, PRESERVE_FROM, _preserveSurplus, _t860Begin, _t860Dry, T877_ON, _t860Unit, PRESERVED_FOODS, PRESERVE_YIELD, PRESERVE_FOOD_FACTOR, FORAGE_FOOD_FACTOR,   // ★[T860] 잡은 날 말리기 — 손잡이 · 잡은 칸 표(하네스가 spoil 정본과 대조한다 · 사본 0) · 갈무리 한 걸음
   STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
@@ -6625,6 +7010,7 @@ module.exports = {
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
   bindProductionActs, productionActsBound, productionFormulaOff,   // T1180: 물리 생산 호스트 등록 · 수식 대체 문
+  T1195_HUNT_REAL, huntActOn, huntDemandLeft, huntToGranary,   // T1195: 사냥 고기 = 몸이 잡은 마리 × kg(서버가 부른다)
   T452_KILN_ACT, kilnActOn, kilnWant, kilnDay, furnaceCharcoalTarget,   // ★[T452] 숯가마 행위
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn, stoneWorkStock,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
@@ -6634,6 +7020,8 @@ module.exports = {
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
   mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT,
+  T1196_ARTISAN_ACT, T1196_SET, artisanActOn, artisanTake, artisanGive, t1196Unhide,   // ★[T1196] 장인 작업장
+  __t1196: { begin: _t1196Begin, end: _t1196End, day: _t1196Day, seat: _t1196Seat },   // ★[T1196] 하네스 문(운영 경로는 안 부른다)
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)

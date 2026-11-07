@@ -1020,11 +1020,14 @@ async function sleepStep() {
 // 움집 사다리 — 곡괭이(손 제작) → 터파기 → 도끼 → 기둥 6 → 서까래 8·풀 6 → 이엉 8
 let site = null;   // {id,x,y}
 const toolHas = (s, t) => (s.tools || []).some((x) => x.type === t && x.d > 0);
+// ★[T1186] 곡괭이 · 도끼 재료는 서버 레시피 표(`Z.RECIPES` — 같은 손잡이 env 로 읽은 같은 정본)에서 — 손으로 적은 돌 5 · 2 를 걷었다(끔이면 그 값 그대로)
+const PICK_COST = Object.assign({}, Z.RECIPES.pickaxe.cost), AXE_COST = Object.assign({}, Z.RECIPES.axe.cost);
+const haveAll = (s, c) => Object.entries(c).every(([k, v]) => (s.inv[k] || 0) >= v);
 async function hutStep() {
   const s = await state();
   if (!toolHas(s, 'pickaxe') && !site) {
-    if ((s.inv.wood || 0) >= 3 && (s.inv.stone || 0) >= 5) { if (await craft('craft', 'pickaxe', (q) => toolHas(q, 'pickaxe'))) mark('곡괭이(손 제작)'); return true; }
-    return fetchMissing({ wood: 3, stone: 5 });
+    if (haveAll(s, PICK_COST)) { if (await craft('craft', 'pickaxe', (q) => toolHas(q, 'pickaxe'))) mark('곡괭이(손 제작)'); return true; }   // ★[T1186] 레시피 표 그대로(돌 규칙 켬 = 날 kg 을 담는 덩이 · 끔 = 종전 돌 5)
+    return fetchMissing(PICK_COST);
   }
   if (!site) {
     await look();
@@ -1055,11 +1058,11 @@ async function hutStep() {
   const stage = b.stage | 0;
   let need = null;
   if (stage === 1) {
-    if (!toolHas(s, 'axe')) { if ((s.inv.wood || 0) >= 5 && (s.inv.stone || 0) >= 2) { if (await craft('craft', 'axe', (q) => toolHas(q, 'axe'))) mark('도끼(손 제작)'); return true; } return fetchMissing({ wood: 5, stone: 2 }); }
+    if (!toolHas(s, 'axe')) { if (haveAll(s, AXE_COST)) { if (await craft('craft', 'axe', (q) => toolHas(q, 'axe'))) mark('도끼(손 제작)'); return true; } return fetchMissing(AXE_COST); }
     if ((s.inv.pillar || 0) < 6) { if ((s.inv.wood || 0) >= 3) { await craft('craft_item', 'pillar', (q) => (q.inv.pillar || 0) > (s.inv.pillar || 0)); return true; } return fetchMissing({ wood: 3 }); }
     need = 'pillar';
   } else if (stage === 2) {
-    if ((s.inv.rafter || 0) < 8) { if (!toolHas(s, 'axe')) return fetchMissing({ wood: 5, stone: 2 }); if ((s.inv.wood || 0) >= 1) { await craft('craft_item', 'rafter', (q) => (q.inv.rafter || 0) > (s.inv.rafter || 0)); return true; } return fetchMissing({ wood: 1 }); }
+    if ((s.inv.rafter || 0) < 8) { if (!toolHas(s, 'axe')) return fetchMissing(AXE_COST); if ((s.inv.wood || 0) >= 1) { await craft('craft_item', 'rafter', (q) => (q.inv.rafter || 0) > (s.inv.rafter || 0)); return true; } return fetchMissing({ wood: 1 }); }
     if ((s.inv.fiber || 0) < 6) return fetchMissing({ fiber: 6 });
     need = 'rafter';
   } else if (stage === 3) {
@@ -1142,7 +1145,7 @@ async function sampleOnce() {
   const perf0 = await jget(`http://localhost:${ZPORT}/perf?reset=1`); void perf0;
 
   const { chromium } = require('playwright');
-  const browser = await chromium.launch({ headless: !HEADED, executablePath: require('playwright').chromium.executablePath() });
+  const browser = await chromium.launch({ headless: !HEADED, executablePath: process.env.MINI_CHROMIUM_EXECUTABLE || require('playwright').chromium.executablePath() });
   const ctx = await browser.newContext({ viewport: { width: VW, height: VH } });
   page = await ctx.newPage();
   page.on('pageerror', (e) => R.errors.push('page: ' + String(e.message).slice(0, 140)));

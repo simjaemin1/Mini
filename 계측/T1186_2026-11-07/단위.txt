@@ -1,0 +1,144 @@
+== 합친 트리 d41d0b9a(11-06 켬 기본 그대로 · 11-07 01:49Z ~ · 카드 묶음 45 — 랩 둘 포함)
+== test-t1186-blade-wear 01:49:08
+rc=0 === T1186: 40건 중 PASS 40 · FAIL 0 ===
+== test-t1146-stone-rule 01:49:12
+rc=0 === T1146: 45건 중 PASS 45 · FAIL 0 ===
+== test-mining 01:49:18
+rc=0 결과: PASS
+== test-t1126-rock-yield 01:49:24
+rc=0 === T1126: 52건 중 PASS 52 · FAIL 0 ===
+== test-craft 01:49:32
+rc=0 
+== test-t1065-tool-gate 01:49:39
+rc=0 === T1065: 통과 43 · 실패 0 ===
+== test-t1120-next-tool 01:49:42
+rc=0 === T1120: 85건 중 PASS 85 · FAIL 0 ===
+== test-emptystart 01:49:47
+rc=0 
+== test-stone-real 01:50:02
+rc=0 === 67/67 ✓ ===
+== test-weight 01:50:11
+rc=1 
+== test-carrier 01:50:27
+rc=0 
+== test-onboarding 01:50:28
+rc=0 === PASS 38 / FAIL 0 ===  (총 75초)
+== test-t1064-next-step 01:51:43
+rc=0 === 49건 중 PASS 49 · FAIL 0 ===
+== test-fell-loot 01:51:43
+rc=0 
+== test-lab-mining 01:51:45
+rc=1   · 광맥 재고가 실제로 줄어든다
+DONE 02:13:57
+
+== 합친 트리 d41d0b9a — 글자 · 린트(02:15Z)
+== test-itemlabel 02:15:09
+rc=0 
+== test-notice 02:15:09
+rc=0 
+== test-lint-harness-words 02:15:10
+rc=0 === PASS 6 / FAIL 0 ===
+== test-harness-lint 02:15:10
+rc=1 === 69건 중 PASS 66 · FAIL 3 ===
+== test-e2e-src 02:17:36
+rc=0 
+== test-icons 02:17:36
+rc=0 결과: PASS
+DONE 02:17:46
+
+== 합친 트리 d41d0b9a — 남은 것 + 클라(짝 f 새벽 전 · 02:54Z ~)
+== test-trees 02:54:34
+rc=0 === 결과: 91 PASS / 0 FAIL ===
+== test-floor-stone 02:54:35
+rc=0 === 10건 중 PASS 10 · FAIL 0 ===
+== test-hp-src 02:55:02
+rc=1 
+== test-physical-stone-return 02:55:03
+rc=0 PASS 13 / FAIL 0
+== test-physical-stone-cycle 02:55:03
+rc=0 [t745] 끝 — V 1767225642100 (+42.1s) · 콜백 2574 · 양보 6 · 줄 최대 24 · 오류 0
+== test-stone-independent-budget 02:55:06
+rc=0 PASS independent mineral budget and body-only host
+== test-t1181-build-defaults 02:55:07
+rc=0 PASS 18 / FAIL 0
+== test-granary-haul 02:55:07
+rc=0 결과: PASS
+== test-tidal 02:55:07
+rc=0 
+== test-clothes 02:55:09
+rc=0 
+== test-preserve 02:55:09
+rc=0 === 결과: 70 PASS / 0 FAIL ===
+== test-salt 02:55:15
+rc=0 === 결과: 73 PASS / 0 FAIL ===
+== test-food-sick 02:55:18
+rc=0 
+== test-game-meat 02:55:41
+rc=0 
+== test-kcal 02:55:53
+rc=0 
+== test-build-act 02:55:56
+rc=0 === 82/82 ✓ ===
+== test-bridge-act 02:55:59
+rc=0 === 48/48 ✓ ===
+== test-rock-los 02:56:10
+rc=0 결과: PASS
+== test-regrow 02:56:11
+rc=0 
+== test-t1086-first-join 02:56:29
+rc=0 === 82건 중 PASS 82 · FAIL 0 ===
+== test-t1125-welcome 02:56:29
+rc=0 
+== test-inv-ground 02:56:46
+rc=0 
+== test-forage-act 02:56:48
+rc=0 === 결과: 251 PASS / 0 FAIL ===
+== test-fishing 02:57:03
+rc=0 
+== test-static-cache 02:57:27
+rc=0 === 46/0 ===
+== test-client-globals 02:57:44
+rc=0 === PASS 26 / FAIL 0 ===
+== test-lab-stone 02:57:45
+rc=1 접점 심볼: cargoTwoOn|cargoTwoGateOn|L_CARGO_TWO|L_CARGO_TWO_GATE|L_CARGO_TWO_BEST|_legProfitPerUnit|candidates|cand.res|surplus|best.profit|TRADABLE|N_units|CARGO_PER_TRIP|onTradeLeg|_gateBlocked
+DONE 03:03:05
+
+== main 07eec54e 워크트리 — 빨강 맞대기
+== test-weight 03:03:05
+rc=1 
+== test-harness-lint 03:03:21
+rc=1 
+DONE 03:05:47
+== test-hp-src 03:06Z
+rc=1 === 40 통과 / 14 실패 ===
+== test-lab-stone 03:06Z (timeout 300 — 앞 묶음까지)
+=== 바닥 마을의 돌 — 관 굵기를 실물 바위에서 (T163 · 랩) ===
+=== T163·T173·T180·T179 랩 석재: 통과 63 · 실패 5 ===
+
+== 끔 기본 트리 b4117b82 — 카드 하네스 다시(04:32Z)
+== test-t1186-blade-wear
+=== T1186: 40건 중 PASS 40 · FAIL 0 ===
+== test-t1146-stone-rule
+=== T1146: 45건 중 PASS 45 · FAIL 0 ===
+== test-mining
+결과: PASS
+== test-t1126-rock-yield
+=== T1126: 52건 중 PASS 52 · FAIL 0 ===
+== test-craft
+=== 38건 중 PASS 38 · FAIL 0 ===
+== test-t1065-tool-gate
+=== T1065: 통과 43 · 실패 0 ===
+== test-t1120-next-tool
+=== T1120: 85건 중 PASS 85 · FAIL 0 ===
+== test-stone-real
+=== 67/67 ✓ ===
+== test-emptystart
+=== 41건 중 PASS 41 · FAIL 0 ===
+== test-t1064-next-step
+=== 49건 중 PASS 49 · FAIL 0 ===
+== test-carrier
+=== 54건 중 PASS 54 · FAIL 0 ===
+== test-inv-ground
+=== 28건 중 PASS 28 · FAIL 0 ===
+== test-lint-harness-words
+=== PASS 6 / FAIL 0 ===

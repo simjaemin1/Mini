@@ -380,6 +380,8 @@ const ENABLED = process.env.ENABLE_WILDLIFE !== '0';   // 기본 켜짐. '0'만 
 // 랩 종 → 본체 animals.js 카탈로그 id (클라 렌더·사체 drops가 카탈로그 기반이라 본체 파이프 그대로 탐).
 // hp 스케일: 랩 hp ×10 ≈ 카탈로그 hp (사슴 3→30, 토끼 1→10, 멧돼지 6→60, 늑대 4→40, 호랑이 14→140≈130).
 const MAIN_TYPE = { '🦌': 'deer', '🐇': 'arctic_hare', '🐗': 'wild_boar', '🐺': 'wolf', '🐯': 'tiger' };
+// ★[T1195] 사냥 고기 = 몸이 잡은 마리 × kg — econ 정본 손잡이(`sim/economy-sim.js T1195_HUNT_REAL` · 켬 기본 · `=0` = 종전)와 같은 env 를 읽는다(종 기록만 · 세계 규칙 0).
+const T1195_HUNT_REAL = process.env.T1195_HUNT_REAL !== '0';
 const HP_SCALE = 10;
 const Animals = require('./animals');   // ★[T622] 존 짐승 칸(`faunaOn`·`faunaOut`) — 아래 5a 가 부른다
 
@@ -487,7 +489,8 @@ function _hunterBrain(a, s, dt) {
   //   그러니 **관객이 보는 사냥과 세계가 세는 사냥이 다른 수**였다. 이제 하루 예산을 장부에서 읽는다.
   //   ⓐ 잡은 수 세기 — 실행층(287행 블록 · **원문 무수정**)이 사체를 물리면 `a._carc` 가 새로 앉는다.
   //      그 갈림을 여기서 본다(블록을 안 고치고 세는 유일한 자리).
-  if (a._carc && a._carc !== a._carcSeen) { a._carcSeen = a._carc; const rp0 = a._real; if (rp0) rp0._huntKil = (rp0._huntKil || 0) + 1; }
+  if (a._carc && a._carc !== a._carcSeen) { a._carcSeen = a._carc; const rp0 = a._real; if (rp0) { rp0._huntKil = (rp0._huntKil || 0) + 1; if (T1195_HUNT_REAL) { const sp = MAIN_TYPE[a._carc.type]; if (sp) { const o = rp0._t1195Sp || (rp0._t1195Sp = {}); o[sp] = (o[sp] || 0) + 1; } } } }
+  //   ★[T1195] 켬 = 쓰러뜨린 그 짐승의 종도 같은 자리에서 적는다 — 하루 경계에 그 마리 그대로 곳간에 든다(`villages._t1195HuntIn` · 끔 = 이 칸이 안 선다)
   //   ⓑ 예산 소진 — **새 표적을 안 잡는다**. 이미 물어 둔 사체는 마저 바른다(그건 어제 센 그 마리다).
   //      예산을 못 읽는 판(주입 없음·되돌림)은 `Infinity` 라 종전 그대로다.
   if (typeof H.huntBudgetOf === 'function' && !(a._carc && a._carc.st === 'dead' && a._carc.rot > 0)) {
@@ -835,3 +838,5 @@ function tick(now) {
 module.exports = { init, tick, onMobHit, _debug: { S, stats: _stats, get lifeGM() { return lifeGM; } } };
 // ★[T818 ②] 접근자 `enabled` 를 리터럴 밖으로(T806 ② 꼴 — 리터럴 안 접근자 하나 = 사전 모드 · 값 무변 · 키 차례만 이 하나가 끝 · `_debug` 안 접근자는 그 안쪽 객체 몫이라 그대로)
 Object.defineProperty(module.exports, 'enabled', { get() { return ENABLED; }, enumerable: true, configurable: true });
+// ★[T1195] 보이는 사냥의 먹잇감 섞음을 종 id 로(초식 스폰 가중치 `MOB_PREY` 그대로 · 사슴3 · 멧돼지1 · 토끼2) — 뷰 밖 사냥꾼이 든 마리의 종 차례(`villages._t1195HuntIn`).
+module.exports.preyIds = Object.freeze(MOB_PREY.map((t) => MAIN_TYPE[t]));
