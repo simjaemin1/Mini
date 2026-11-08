@@ -6514,27 +6514,6 @@ function _t1226Net(vt, vc, N, D, since) {
 }
 function _t1226In(x, n, k) { return x * n / (n + (k || 0)); }
 function _t1226Out(x, n, k) { return x * n / Math.max(1, n - (k || 0)); }
-// ★[T1228] 식량 곳간 길 — 식량 일꾼(피커 기근 문의 넷) 한 사람이 식량 밖 일로 빠지면 하루 식량 흐름이
-//   (흐름 EMA `surplusEMA.food` − 식량 일꾼 1인당 산출)이 되고, 그 흐름으로 D 날 뒤 곳간(식량 등가)이 N × 30(피커 기근 문 · 종전 보류 문의 그 30일치) 밑이면 빼지 않는다.
-//   값(시세)은 곳간 재고를 보고 매겨져 곳간이 두둑할 땐 식량 일이 싸 보인다 — 흐름이 마이너스면 곳간이 다 비는 날까지 시세가 늦게 따라온다(T1228 빈 마을 표). 새 수 0.
-function _t1228FoodShort(v, N, D) {
-  const c = v.counts || {}; const fw = (c.farmer || 0) + (c.fisher || 0) + (c.hunter || 0) + (c.forager || 0);
-  if (fw <= 0) return false;
-  const F = (v.surplusEMA && v.surplusEMA.food) || 0;
-  const prod = F + N * DAILY_FOOD_CONSUMPTION;
-  const F1 = F - Math.max(0, prod) / fw;
-  if (!(F1 < 0)) return false;
-  return totalFoodEquivalent(v) + F1 * D < N * 30;
-}
-// ★[T1228 ⑥] 후보 밖 일의 지금 값 — 노동 목표 장인(석공 · 대장장이 · 갑옷장이 · 재봉사 · 요리사)은 고정 값(목표 안 50 × 숙련 · 넘으면 0.005)
-//   대신 그 일이 내는 물건의 값(전환 보류 문 가치표 `_needValueOf` = 하루 산출 × 그 물건 시세) × 그 사람 숙련 배수 — 갈 값(모자란 일로 갈 때)과 같은 자.
-//   굶으면 식량 시세가 장인 물건 시세보다 뛰어 장인도 식량 일로 끌리고, 도구가 바닥나면 도구 시세가 뛰어 석공이 남는다(새 수 0).
-//   전사(방어 — 시장 밖 값) · 그 밖 일은 종전 `opportunityCost` 그대로.
-const _T1228_CRAFT = { mason: 1, smith: 1, armorsmith: 1, tailor: 1, cook: 1 };
-function _t1228Fixed(p, v, c, w, D) {
-  if (_T1228_CRAFT[c] && _allocKnob('T1228_CRAFT_VAL') !== '0') return _needValueOf(v, c, w) * _t1226Sk(p, c, D);
-  return opportunityCost(p, v, w);
-}
 function _t1226V(T, p, j, D) {
   if (T.val[j] === undefined) return null;
   return T.val[j] * _t1226Sk(p, j, D) / (T.fb[j] ? 1 : (T.skm[j] || 1));
@@ -6602,9 +6581,8 @@ function _t1226FlexBody(v, day, world, interval, multi) {
       if (t === c || (p.captive && CAPTIVE_JOB_BAN[t])) return;
       if (T.wait[t] && (T.counts[t] || 0) >= 1) { _t1226Stat.waitFirst++; return; }   // 사람 없던 일 — 첫 한 명의 실현이 설 때까지
       if (_T1085_FOOD[t] === undefined && p._chiefAssignDay != null && p._chiefAssignDay === p.lastJobChangeDay && day - p._chiefAssignDay < JOB_SWITCH_COOLDOWN) return;
-      if (_T1085_FOOD[c] && !_T1085_FOOD[t] && _allocKnob('T1228_FOOD_ROAD') !== '0' && _t1228FoodShort(v, N, Dt)) { _t1226Stat.foodHold = (_t1226Stat.foodHold || 0) + 1; return; }   // ★[T1228] 식량 일꾼이 빠지면 D 날 안에 곳간이 30일치 밑
       const vt0 = _t1226V(T, p, t, Dt), vt = vt0 !== null ? _t1226In(vt0, ne1(t), mvIn[t]) : _needValueOf(v, t, T.w) * _t1226Sk(p, t, Dt);
-      const vc0 = _t1226V(T, p, c, Dt), vc = vc0 !== null ? _t1226Out(vc0, ne1(c), mvOut[c]) : _t1228Fixed(p, v, c, T.w, Dt);
+      const vc0 = _t1226V(T, p, c, Dt), vc = vc0 !== null ? _t1226Out(vc0, ne1(c), mvOut[c]) : opportunityCost(p, v, T.w);
       const net = _t1226Net(vt, vc, N, Dt, since);
       if (T1226_DIAG) ev.push([c, t, +vt.toFixed(3), +vc.toFixed(3), Dt, +net.toFixed(2)]);
       if (net > bestNet) { bestNet = net; best = t; }
@@ -7429,7 +7407,7 @@ module.exports = {
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
   _autoSwitchJobForTest: autoSwitchJob, _switchNPCJobForTest: switchNPCJob,
-  _t1228Fixed, t1226On, t1226Flex, _t1226Table, _t1226V, _t1226Sk, _t1226Net, _t1226LookDay, _t1226In, _t1226Out, _t1226FarmersOf, _t1226Stat, T1226_SWITCH_DAYS, opportunityCost, _needValueOf, villageMasterSkill, apprenticeInherit,   // ★[T1226] 직업 바꾸기 유연 — 하네스 · 계측이 같은 함수를 읽는다(사본 0)   // ★[T1085] 하네스가 자율 전환 그 함수를 부른다(시험 이름 · 사본 0)
+  t1226On, t1226Flex, _t1226Table, _t1226V, _t1226Sk, _t1226Net, _t1226LookDay, _t1226In, _t1226Out, _t1226FarmersOf, _t1226Stat, T1226_SWITCH_DAYS, opportunityCost, _needValueOf, villageMasterSkill, apprenticeInherit,   // ★[T1226] 직업 바꾸기 유연 — 하네스 · 계측이 같은 함수를 읽는다(사본 0)   // ★[T1085] 하네스가 자율 전환 그 함수를 부른다(시험 이름 · 사본 0)
   T1075_HAPPY_EQ, HAPPY_EQ_HALF_DAYS,
   T1205_HAPPY, T1205_E_MIN, T1205_E_MAX, T1205_DEF, t1205Par, t1205Terr, t1205Burden, t1205Ev, t1205Step, t1205NeedOut,   // ★[T1205] 행복 식 다시 — 하네스 · 호스트 · war-core 가 같은 함수를 읽는다
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
