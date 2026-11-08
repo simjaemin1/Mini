@@ -38,8 +38,8 @@ Module.prototype._compile = function (content, filename) {
 };
 
 // ── ⓑ 상태 가르기 ──
-const WORK = new Set(['경작', '수확', '낚시', '드리움', '놓침', '낚음', '벌목', '채석', '채광', '제작', '수색', '채집', '파종', '모내기', '김매기', '추수', '사냥']);
-const WALK = new Set(['출근', '귀가', '운반', '저장']);
+const WORK = new Set(['경작', '수확', '낚시', '드리움', '놓침', '낚음', '벌목', '채석', '채광', '제작', '수색', '채집', '파종', '모내기', '김매기', '추수', '사냥', '건축', '개간']);
+const WALK = new Set(['출근', '귀가', '운반', '저장', '인출']);
 const REST = new Set(['휴식', '요양']);
 const OTHER = new Set(['대피', '장마당']);
 function stateOf(npc) {

@@ -6,7 +6,8 @@ import json, sys, collections
 
 STATES = ['work', 'walk', 'wander', 'rest', 'sleep', 'eat', 'other']
 KO = {'work': '일', 'walk': '걸음', 'wander': '배회', 'rest': '쉼', 'sleep': '잠', 'eat': '먹기', 'other': '그 밖'}
-WORK = {'경작', '수확', '낚시', '드리움', '놓침', '낚음', '벌목', '채석', '채광', '제작', '수색', '채집', '파종', '모내기', '김매기', '추수', '사냥'}
+WALK = {'출근', '귀가', '운반', '저장', '인출'}
+WORK = {'경작', '수확', '낚시', '드리움', '놓침', '낚음', '벌목', '채석', '채광', '제작', '수색', '채집', '파종', '모내기', '김매기', '추수', '사냥', '건축', '개간'}
 
 def load(paths):
     tot = {'calls': 0, 'ns': 0, 'overNs': 0, 'overN': 0}
@@ -29,7 +30,11 @@ def fix(tabs):
         dn, st = dn_st.split(':')
         if lab in WORK and st in ('rest', 'wander'):
             ns = 'work' if st == 'rest' else 'walk'
-            moved[(dn, st, ns)][0] += v[0]; moved[(dn, st, ns)][1] += v[1]
+        elif lab in WALK and st in ('rest', 'wander'):
+            ns = 'walk'
+        else:
+            continue
+        moved[(dn, st, ns)][0] += v[0]; moved[(dn, st, ns)][1] += v[1]
     for (dn, st, ns), v in moved.items():
         for src, dst in ((dn + ':' + st, dn + ':' + ns),):
             tabs['byState'][src][0] -= v[0]; tabs['byState'][src][1] -= v[1]
