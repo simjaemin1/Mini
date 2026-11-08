@@ -30,4 +30,4 @@ setTimeout(function poll() {
   } catch (e) { /* 관찰 실패는 세계에 0 */ }
   setTimeout(poll, 100);
 }, 2000).unref();
-process.on('exit', () => { if (OUT) try { fs.writeFileSync(OUT, JSON.stringify({ cols: ['day', 'villages', 'econPop', 'econFarmer', 'bodies', 'bodyFarmer', 'bodiesMaxPerVil', 'rosterIfOn'], rows, t1224: (SV && SV.__p3Bind) ? Object.assign({}, SV.__p3Bind({})._t1224Stat) : null, t1212: (SV && SV.__p3Bind) ? Object.assign({}, SV.__p3Bind({})._t1212Rest) : null })); } catch (e) {} });
+process.on('exit', () => { if (OUT) try { fs.writeFileSync(OUT, JSON.stringify({ cols: ['day', 'villages', 'econPop', 'econFarmer', 'bodies', 'bodyFarmer', 'bodiesMaxPerVil', 'rosterIfOn'], rows, t1224: (SV && SV.__p3Bind) ? Object.assign({}, SV.__p3Bind({})._t1224Stat) : null, t1212: (SV && SV.__p3Bind) ? Object.assign({}, SV.__p3Bind({})._t1212Rest) : null, t1229: (SV && SV.__p3Bind && SV.__p3Bind({})._t1229Stat) ? Object.assign({}, SV.__p3Bind({})._t1229Stat) : null })); } catch (e) {} });

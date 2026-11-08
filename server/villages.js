@@ -9771,7 +9771,7 @@ function __p3Bind(mock) {
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
     t1197BodyStep, _t1197Person, _t1197BodyMeal, _t1197DieBody, _t1197Stat, _t1197On, econDayToMs, _t1198Sync, _t1198Jobs, _t1198Stat, _t1198On, syncVillageJobs,   // ★[T1197] 몸 게이지 끼니 문(하네스 `test-t1197-meal-body` 가 운영과 같은 문을 부른다)
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
-    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On, T1224_ECON_FARM, _t1224Stat,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
+    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On, T1224_ECON_FARM, _t1224Stat, T1229_FIELD_GROW, _t1229Stat, _t1229Need, _t1229Short,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
     _oreMineDaily, T1095_MINE_DEMAND, _t1095Stat,   // ★[T1095] 채굴 일괄 수요 문 — 하네스(`test-t1095-mine-demand`)가 운영과 같은 문을 부른다(내보내기만)
     _t1039Depart, _t1039Join, _t1039Leave,   // ★[T1039] 도적 전환 몸 문 셋(하네스 `test-bandit-body` 가 운영과 같은 문을 부른다)
     _t1078Walkers, _t1078Die, _t1078Out, _t1078Life,   // ★[T1078] 단원 = 몸 문 넷(하네스 `test-bandit-all` 이 운영과 같은 문을 부른다)
@@ -11506,11 +11506,11 @@ function lifeFarmDay(vil, day, farmerN, onDid, budget0) {
     let _ks = vil._farmSet;
     if (_L) { const a = []; for (const k of vil._farmSet) { const t = _cellTask(vil, k, day); if (t > 0) a.push([k, t]); } a.sort((x, y) => y[1] - x[1]); _ks = a.map((x) => x[0]); }
     for (const k of _ks) {
-      if (budget <= 0) break;
+      if (budget <= 0) { if (T1229_FIELD_GROW && _cellTask(vil, k, day) > 0) _t1229Short(vil, day); break; }   // ★[T1229] 할 일을 남기고 몫이 다 됐다(끔 = 종전 break)
       const t = _cellTask(vil, k, day);
       if (t <= 0) continue;
       const _c = _L ? _t1221Cost(t) : 1;
-      if (_L && _c > budget) continue;   // ★[T1221] 그 일을 할 시간이 남지 않았다(더 짧은 일은 한다)
+      if (_L && _c > budget) { if (T1229_FIELD_GROW) _t1229Short(vil, day); continue; }   // ★[T1221] 그 일을 할 시간이 남지 않았다(더 짧은 일은 한다) · ★[T1229] 일손 모자람
       let e0c = null, e0p = -1;
       if (onDid) { const e0 = vil._crop.get(k); if (e0) { e0c = e0.c; e0p = e0.p; } }
       if (_lifeDoTask(vil, null, k, day)) {
@@ -12576,9 +12576,35 @@ function _lifeFrontier(vil) {   // 랩 getFrontier 동형(일 캐시): 기개간
   for (const k of vil._farmSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); addBat(x + 1, y); addBat(x - 1, y); addBat(x, y + 1); addBat(x, y - 1); }
   vil._frontier = fr; vil._frontDay = state.world.day; return fr;
 }
+// ★★[T1229 2026-11-08 · ★재민 문 37 규칙 1 「농부 한 명이 가는 밭 = 일손 한도」 · "척박하면 그만큼 많은 땅을 개간하면 됐던 거 아냐?"]
+//   손잡이 `T1229_FIELD_GROW`(끔 기본 · `=1` 켬 · 끔 = 아래 종전 줄 그대로 · 종전 값).
+//   밭 넓이를 사람당 고정 칸(`LAND_NEED` 12 × 보즈럽 `landNeedPer`)이 아니라 **마을 농부의 남는 일손**으로 정한다 — 켜면 개간 문(종전 곳간 120일치 글럿 정지는 그대로)은 둘:
+//     ① 곡식 덮음 < 1 — 지난 360날(30날 찍음 열둘 · 첫해는 처음부터) 밭이 곳간에 넣은 식량등가(econ `_t368FoodTot` 차) ÷ 같은 창 사람-날. 1 이면 밭만으로 다 먹는다.
+//     ② 지난 365날 안에 일손이 모자란 날이 없다 — `lifeFarmDay` 가 할 일을 남기고 그날 몫(초 · 일감)을 다 쓴 날(`_t1229Short`)이 그 날이다(김매기를 못 한 날 = 일손 한도에 닿음).
+//   개간 자리 · 속도는 종전 그대로(`_lifeFrontier` — 기개간 인접 · 영토 안 · 크루 상한 · T1221 켬 = 고증 개간 초). 칸마다의 비옥은 없다(마을 단위 `land.fertility` 뿐) — 자리 차례는 종전.
+//   휴경(묵히는 밭)은 비율 근거가 미확인(보고/T1221 §1 고증 표)이라 새 수를 안 세운다 — 회부(보고/T1229).
+//   영토가 막은 날(문은 열렸는데 프론티어가 비었다)은 `_t1229Stat.blocked` 로 센다(영토를 켜지 않는다 · T1207 · T1213 잇는 자리).
+const T1229_FIELD_GROW = process.env.T1229_FIELD_GROW === '1';
+const _t1229Stat = { days: 0, open: 0, covStop: 0, laborStop: 0, blocked: 0, shortDays: 0 };
+function _t1229S(vil) { return vil._t1229 || (vil._t1229 = { d: -1, pd: 0, snaps: [], short: -1e9, cov: null }); }
+function _t1229Short(vil, day) { if (!T1229_FIELD_GROW || !vil) return; const s = _t1229S(vil); if (s.short !== day) { s.short = day; _t1229Stat.shortDays++; } }
+function _t1229Need(vil) {
+  const e = vil.econ, s = _t1229S(vil), day = (state.world && state.world.day) | 0;
+  if (s.d !== day) { s.d = day; s.pd += e.npcs.length; if (day % 30 === 0) { s.snaps.push([day, +e._t368FoodTot || 0, s.pd]); if (s.snaps.length > 12) s.snaps.shift(); } }
+  const a = s.snaps[0] || [day, +e._t368FoodTot || 0, s.pd];
+  const dPd = s.pd - a[2], dF = (+e._t368FoodTot || 0) - a[1];
+  s.cov = dPd > 0 ? dF / dPd : 0;
+  _t1229Stat.days++;
+  if (s.cov >= 1) { _t1229Stat.covStop++; return false; }
+  if (day - s.short < 365) { _t1229Stat.laborStop++; return false; }
+  _t1229Stat.open++;
+  if (!_lifeFrontier(vil).length) { _t1229Stat.blocked++; return false; }
+  return true;
+}
 function _lifeNeedClear(vil) {   // 랩 needLand 동형: 보즈럽 수요 게이트 + 목표 미달
   const e = vil.econ; if (!e || !vil._potSet) return false;
   if (((e.storage && e.storage.food) || 0) > e.npcs.length * 120) return false;
+  if (T1229_FIELD_GROW) return _t1229Need(vil);   // ★[T1229] 켬 = 일손 · 덮음 문(끔 = 아래 종전 목표)
   const fert = (e.land && e.land.fertility != null) ? e.land.fertility : 0.55;
   return vil._farmSet.size < Math.ceil(e.npcs.length * _lifeVL().landNeedPer(fert, _landNeed()));
 }
