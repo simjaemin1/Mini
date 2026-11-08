@@ -1891,6 +1891,19 @@ function expectedWaitMs(sp, stock01) {
   const w = CFG.WAIT_BASE_MS / _biteRate(spotScore(sp), stock01);
   return Math.max(CFG.WAIT_MIN_MS, Math.min(CFG.WAIT_MAX_MS, w));
 }
+// ★★[T1225 덧붙임 ① · ★재민 11-08] **어부 한 시간 효율 = 자리의 성질** — 손잡이 `T1225_SITE_EFF`(끔 기본 · `'1'` 만 켬 · `T1218_FISH_CANON` 켬일 때만 뜻이 있다).
+//   평형(반쯤 찬 물 · 물속 자본 T1225 의 황금률 재고)에서 좋은 어장(합류부 · 흐름 경계 — 큰 강어귀 · 물고기 몰리는 물)은 손농사 한 시간의 절반 가까이,
+//   평범한 물가는 고증 가운데 값: 좋은 어장 **2.2 kg/시간**(≈ 1,090 kcal — 조 · 기장 손농사 0.5 ~ 0.8 kg ≈ 1,800 ~ 2,900 kcal 의 절반 쪽 · 재민 11-08) ·
+//   평범한 물가 **0.5 kg/시간**(남미 저지 원주민 어로 가운데 ≈ 0.5 · Beckerman 1989 — Gragson 1992 · 보고 T1218 §1 · 농사의 1/8 ~ 1/10).
+//   어장 좋음 q = 그 자리의 흐름 경계 · 합류부(`spotScore` 의 seam 과 같은 값 · 0 ~ 1 — 밭 비옥도와 따로 · 지형에서 정해진다).
+//   한 시간 kg = (0.5 + (2.2 − 0.5) × q) × 재고 비율 ÷ 0.5(반쯤 찬 물 기준 · 가득 찬 물 = 두 배 · 빈 물은 그만큼 덜 — CPUE ∝ 재고 · 바닥 0.05 는 `_biteRate` 와 같다).
+const T1225_SITE_EFF = process.env.T1225_SITE_EFF === '1';
+const T1225_SITE_SRC = Object.freeze({ KG_H_GOOD_EQ: 2.2, KG_H_ORD_EQ: 0.5, S_EQ: 0.5 });
+function siteQuality(sp) { return sp ? Math.max(Math.min(1, Math.max(0, sp.seam01 || 0)), sp.conflu ? 1 : 0) : 0; }
+function t1225KgHour(sp, stock01) {
+  const S = T1225_SITE_SRC, q = siteQuality(sp);
+  return (S.KG_H_ORD_EQ + (S.KG_H_GOOD_EQ - S.KG_H_ORD_EQ) * q) * Math.max(0.05, +stock01 || 0) / S.S_EQ;
+}
 // ★[T1218 ③] **마을 어부**(몸 · 일괄)의 입질 기댓값(ms) — 켬일 때만(끔 = 위 `expectedWaitMs` 플레이어 손맛 그대로).
 //   가장 좋은 자리(빈도 최대 1 + `SEAM_W` · 합류부 · 흐름 경계)의 가득 찬 물에서 한 시간 `KG_HOUR` kg(고증 위 끝 — 그 위로는 안 준다) ·
 //   보통 자리는 빈도 비만큼 · 빈 물은 재고 비율만큼 덜 문다(같은 `_biteRate` 한 줄 · CPUE ∝ 재고). 한 마리 kg 이 클수록 그 한 마리를 오래 기다린다(kg 당 시간이 같다).
@@ -1898,6 +1911,7 @@ function expectedWaitMs(sp, stock01) {
 function villageWaitMs(sp, stock01, kgF, hourMs) {
   const c = _t1218();
   if (!c || !(kgF > 0) || !(hourMs > 0)) return expectedWaitMs(sp, stock01);
+  if (T1225_SITE_EFF) return kgF / t1225KgHour(sp, stock01) * hourMs;   // ★[T1225 덧붙임 ①] 켬 = 자리 효율(아래)
   return kgF / c.kgHour * hourMs * (1 + CFG.SEAM_W) / _biteRate(spotScore(sp), stock01);
 }
 // ★[T1217] 한 자리(반경 `DRAW_R` 원판)의 셀 수 — `stockRatioAt` 의 분모(남은 재고 = 비율 × 이 수 × `CELL_K`). 새 수 0(반경에서 센다).
@@ -1980,6 +1994,7 @@ module.exports = {
   t1214Stat: () => Object.assign({ on: T1214_STEP_FAST, verify: T1214_VERIFY }, _t1214Stat),   // ★[T1214] 계측
   t1219Stat: () => Object.assign({ on: T1219_STEP_FAST, verify: T1219_VERIFY, posN: _t1219Pos.size }, _t1219Stat), _t1219DiscKeys, _t1219RecS, _stockRatioAt0,   // ★[T1219] 계측 · 하네스 문
   expectedWaitMs, drawWholeFish, discN,   // ★[T1217]
+  T1225_SITE_EFF, T1225_SITE_SRC, siteQuality, t1225KgHour,   // ★[T1225 덧붙임 ①] 자리 효율
   T1218_FISH_CANON, T1218_SRC, t1218Canon: () => _t1218(), t1218Derive: _t1218Derive, fishR, kgPerStock, econPerStock, villageWaitMs,   // ★[T1218] 어장 고증 한 정본
   FISH_BK, fishBuckets, bucketOf, bucketRec, bucketRatioAt, drawBucketFish, bucketWholeFish, bucketDiffuse, bucketDeficitBy,   // ★[T1217 ②-b] 마을 어부의 어장 장부(랩 버킷) 몸이 없는 어부의 한 시간(입질 기댓값 · 온전한 마리 n 까지 같은 어장 장부)
   T609_BIG_WINDOW, windowFor, fightMsFor,   // ★[T609 ②] 큰 종 창 안 셋 — 표 기계(`t602-windows.js`)가 같은 함수로 잰다
