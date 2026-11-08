@@ -76,9 +76,9 @@ console.log('\n① 손잡이');
     const env = { ...process.env }; delete env.T1200_KG_FAST; if (v !== undefined) env.T1200_KG_FAST = v;
     return JSON.parse(execFileSync(process.execPath, ['-e', "const s=require('./server/carry').t1200Stat();console.log(JSON.stringify([s.on,s.verify]))"], { cwd: ROOT, env, encoding: 'utf8' }).trim().split('\n').pop());
   };
-  ok('미설정 = 끔', util.isDeepStrictEqual(arm(undefined), [false, false]));
+  ok('미설정 = 켬(★[PM land1052] 켬 기본)', util.isDeepStrictEqual(arm(undefined), [true, false]));
   ok("'0' = 끔", util.isDeepStrictEqual(arm('0'), [false, false]));
-  ok("'' = 끔", util.isDeepStrictEqual(arm(''), [false, false]));
+  ok("'' = 켬(★[PM land1052] `=0` 만 끔)", util.isDeepStrictEqual(arm(''), [true, false]));
   ok("'1' = 켬", util.isDeepStrictEqual(arm('1'), [true, false]));
   ok("'verify' = 켬 + 견줌", util.isDeepStrictEqual(arm('verify'), [true, true]));
 }
@@ -138,7 +138,7 @@ console.log('\n⑥ 공개 문 — 끔 · 켬 · verify 아이 같은 수');
     console.log(JSON.stringify({h:h.digest('hex').slice(0,16),s:C.t1200Stat()}));`;
   const arm = (v) => { const env = { ...process.env }; delete env.T1200_KG_FAST; if (v !== undefined) env.T1200_KG_FAST = v;
     return JSON.parse(execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim().split('\n').pop()); };
-  const off = arm(undefined), on = arm('1'), ver = arm('verify');
+  const off = arm('0'), on = arm(undefined), ver = arm('verify');   // ★[PM land1052] 켬 기본
   ok(`지문 끔 ${off.h} = 켬 ${on.h} = verify ${ver.h}`, off.h === on.h && on.h === ver.h);
   ok(`켬 아이가 얕은 길을 탔다(${on.s.fast} · 종전 ${on.s.slow})`, on.s.fast > 0);
   ok(`verify 견줌 ${ver.s.vq} · 어긋남 ${ver.s.vbad}`, ver.s.vq === 1500 && ver.s.vbad === 0);

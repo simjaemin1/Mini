@@ -68,7 +68,7 @@ console.log('\n[② 건당 실초의 물리 근거 — 체류식 + 곳간 훅의
   // ★그런데 실측 건당 실초는 5.0초로 **체류 하한보다 짧다**. 처음엔 "상수가 물리와 어긋난다"고 봤지만,
   //   원인은 곳간 운반 훅(`npc._jobT = 0`)이 짐 상한마다 대기를 풀어 버리기 때문이었다 — 즉 이 훅이
   //   사라지면 건당 실초가 늘어 재보정이 필요하다. 그래서 '대역'이 아니라 **그 훅의 존재**를 고정한다.
-  const m = src.match(/_jobT = now \+ (\d+) \+ \(_pidHash\(npc\.pid\) % (\d+)\) \* (\d+)/);
+  const m = src.match(/_jobT = now \+ (\d+) \+ \((?:_pidHash\(npc\.pid\)|h) % (\d+)\) \* (\d+)/);   /* ★[PM land1052] 같은 해시를 `h` 에 받아 둔 글자(T1221) */
   chk(!!m, '실걸음 체류식 발견: ' + (m ? `${m[1]}ms + (h%${m[2]})×${m[3]}ms` : '없음'));
   chk(/_granGo\(vil, npc, false\)\) \{ npc\._jobT = 0;/.test(src),
     '곳간 운반 훅이 체류를 해제한다(_jobT = 0) — 건당 실초가 체류 하한보다 짧은 이유');
@@ -99,7 +99,7 @@ console.log('\n[③ 개간·건설 결산은 실걸음 상한과 같은 식이�
   chk(/_lifeTasksPerFarmerDay\(\)/.test(fd), '작물 결산이 날 길이 파생 함수를 쓴다(고정 상수 아님)');
   chk(!/_lifeTasksPerFarmerDay\s*=\s*\d|budget\s*=\s*\w+\s*\*\s*\d+/.test(fd), '작물 예산에 **고정 숫자가 없다**(T58b 계측기가 100 이라 적었던 자리)');
   // 실걸음 쪽: 개간 1셀 = dayMs / LIFE_CLEAR_PDAY 노동, 크루 상한 LIFE_CREW → 하루 상한 동일
-  chk(/t\.prog >= dayMs \/ LIFE_CLEAR_PDAY/.test(src), '실걸음 개간 1셀 = dayMs / LIFE_CLEAR_PDAY 노동(동일 근거)');
+  chk(/t\.prog >= (?:\(_t1221On\(\) \? _t1221ClearS\(\) \* 1000 : )?dayMs \/ LIFE_CLEAR_PDAY/.test(src),   /* ★[PM land1052] T1221 켬 갈래(끔 = 종전 식) */ '실걸음 개간 1셀 = dayMs / LIFE_CLEAR_PDAY 노동(동일 근거)');
   chk(/t\.prog >= dayMs \/ LIFE_STAGE_PDAY/.test(src), '실걸음 건설 1단계 = dayMs / LIFE_STAGE_PDAY 노동(동일 근거)');
 }
 

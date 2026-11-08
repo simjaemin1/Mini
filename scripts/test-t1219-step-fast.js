@@ -96,7 +96,7 @@ function child(mode) {
   const i = s.lastIndexOf('@@T1219@@'); if (i < 0) throw new Error('아이 출력에 표가 없다: ' + s.slice(-400));
   return JSON.parse(s.slice(i + 9).trim());
 }
-const off = child(null), on = child('1'), vf = child('verify');
+const off = child('0'), on = child(null), vf = child('verify');   // ★[PM land1052] 켬 기본 — 끔 팔 '0' · 켬 팔 = 기본
 ok(`끔 아이 — 손잡이 끔 · 새 길 셈 0`, off.stat.on === false && off.stat.q === 0, JSON.stringify(off.stat));
 ok(`① 원판 열쇠 배열 = 종전 고리 글자 · 차례(${off.key.n} 자리 · 반경 3 → 2 → 3 · 배열 없이 종전 식 ${off.key.nul} · 어긋남 ${on.key.bad})`, off.key.bad === 0 && on.key.bad === 0 && vf.key.bad === 0 && off.key.n >= 45 && off.key.nul > 0);
 ok(`② 답 차례 끔 = 켬 = verify(${off.logN} 부름 · 읽기 ${off.kinds.r} · 뺀 판 ${off.kinds.w} · 마리 ${off.kinds.f})`, off.log === on.log && off.log === vf.log && off.kinds.w > 0 && off.kinds.f > 0, `${off.log} ${on.log} ${vf.log}`);

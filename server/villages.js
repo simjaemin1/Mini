@@ -78,7 +78,7 @@
 const T1214_STEP_FAST = process.env.T1214_STEP_FAST !== '0';   // ★[PM land1051] 켬 기본(값 0 · 기준선 11-07b 같음 3/3 — T1214 보고 · `=0` 끔 · `=verify` 두 길 견줌)
 const T1214_VERIFY = process.env.T1214_STEP_FAST === 'verify';
 // ★[T1219 µs 줄기] 손잡이 `T1219_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 두 길 견줌 · 답은 종전 길 · 어장 칸 읽기는 `fishing.js` 머리 주석 · 해 질 녘 머리는 `_t720Step` 앞).
-const T1219_STEP_FAST = process.env.T1219_STEP_FAST === '1' || process.env.T1219_STEP_FAST === 'verify';
+const T1219_STEP_FAST = process.env.T1219_STEP_FAST !== '0';   // ★[PM land1052] 켬 기본(값 0 — T1219 보고)
 const T1219_VERIFY = process.env.T1219_STEP_FAST === 'verify';
 const _t1219Stat = { t720: 0, t720Skip: 0, t720Vq: 0, t720Bad: 0 };   // 계측 전용
 // ★[T732 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔)] 로트 장부는 **늦게 · 켬일 때만** 부른다 — 끄면(랩 포함) `lots.js` 를 싣지도 않는다(main 바이트 · 랩 모듈 무변).

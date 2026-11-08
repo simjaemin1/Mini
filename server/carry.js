@@ -281,7 +281,7 @@ function _npcTotalKg0(p) {
 //   ★같은 값: ⓐ 고칠 것이 없으면 `_norm` 은 아무것도 안 쓴다 ⇒ 얕은 사본이어도 진짜 몸에 쓰기 0. 겉 객체(장부 · 로트 · 인벤)는 새 객체라
 //     `delete …ore_chunk` · `Lots.of` 의 빈 배열 달기는 사본에만 선다(종전과 같음). ⓑ 유한 수는 JSON 왕복에서 비트 그대로다(−0 → 0 은 합 · toFixed 에서 같다).
 //     ⓒ 하나라도 고칠 꼴(수 항목 · NaN · 빈칸 · id 없음 · 로트 n 이 유한 수가 아님)이면 종전 길 그대로다.
-const T1200_KG_FAST = process.env.T1200_KG_FAST === '1' || process.env.T1200_KG_FAST === 'verify';
+const T1200_KG_FAST = process.env.T1200_KG_FAST !== '0';   // ★[PM land1052] 켬 기본(값 0 — T1219 보고 기준선 11-08 같음 3/3 · verify 어긋남 0 · `=0` 끔)
 const T1200_VERIFY = process.env.T1200_KG_FAST === 'verify';
 const _t1200Stat = { fast: 0, slow: 0, vq: 0, vbad: 0 };   // 계측 전용
 function _t1200Plain(L, lot) {   // 고칠 것이 없는 꼴인가(장부: 항목 객체 · kg · id 유한 / 로트: 항목 객체 · n 유한)
