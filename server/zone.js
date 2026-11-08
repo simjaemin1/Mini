@@ -5645,7 +5645,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   gatherRange: GATHER_RANGE,
   stoneResources: (x,y,r) => _physicalRocksInCircle(x,y,r),
   stoneHit: (npc,r) => _physicalStoneHit(npc,r),
-  t312DrawFishAt: (cx,cy,kg,now) => { const want=kg/Fishing.CFG.KG_PER_STOCK;return Fishing.drawWholeStock(cx,cy,want,now,_fishSave)>=want-1e-12; },   // T1180: 사람과 같은 어장·환산·저장 문
+  t312DrawFishAt: (cx,cy,kg,now) => { const want=kg/(Fishing.T1218_FISH_CANON?Fishing.kgPerStock(isSeaTileLocal(cx*BUILDING_SIZE+BUILDING_SIZE/2,cy*BUILDING_SIZE+BUILDING_SIZE/2)?'sea':'fresh'):Fishing.CFG.KG_PER_STOCK);return Fishing.drawWholeStock(cx,cy,want,now,_fishSave)>=want-1e-12; },   // ★[T1218] 켬 = 그 물 종류의 kg   // T1180: 사람과 같은 어장·환산·저장 문
   t1217DrawFish: (cx, cy, perStock, n, now, kFn) => Fishing.drawBucketFish(cx, cy, perStock, n, now, kFn, _fishSave),   // ★[T1217 ②-b] 마을 어부(몸 · 일괄)의 마리 — 버킷 장부 · 같은 저장 문(온전한 마리 n 까지)
   t312FishTargetAt: (p,spot) => _castTargetFor(p,spot),
   t312FishSpotAt: (x,y) => Fishing.spotAt(_terrain,ZONE_ID,x,y,_fishSea()),
@@ -10293,9 +10293,10 @@ function _fishLand(player, f, now) {
   const kg = f.kg;
   // ★어장에서 **실제로 뺀 만큼만** 준다 — 없는 물고기를 주사위로 만들지 않는다.
   //   재고가 모자라면 잡히는 양도 그만큼 준다(빈 자리는 빈 바늘로 답한다).
-  const wantStock = kg / Fishing.CFG.KG_PER_STOCK;
+  const _kps = Fishing.T1218_FISH_CANON ? Fishing.kgPerStock(f.sp && f.sp.kind) : Fishing.CFG.KG_PER_STOCK;   // ★[T1218] 켬 = 재고 1 의 kg 이 그 물 종류(바다 · 민물 · 고증) · 끔 = 종전 한 수
+  const wantStock = kg / _kps;
   const took = (require('./fish-goods').ON?Fishing.drawWholeStock:Fishing.drawStock)(f.cx, f.cy, wantStock, now, _fishSave);
-  const gotKg = took <= 0 ? 0 : +(took * Fishing.CFG.KG_PER_STOCK).toFixed(3);
+  const gotKg = took <= 0 ? 0 : +(took * _kps).toFixed(3);
   player._fish = null;
   send(player.ws, { type: 'fish_state', state: 'idle' });
   // ★[T593] 켬이면 종이 무게를 정한다 — 미꾸라지·피라미는 원래 10g 안팎이다. 물고기를 **통째로** 뺐으면(재고가 다 받쳤다) 작아도 잡힌 것이다.

@@ -4,7 +4,7 @@
 //   판 끝에 `$T577_OUT.t1202.json` — 머리 `cols` · 마을마다 날 줄(`rows[이름]`) · 판 통계.
 if (require('worker_threads').isMainThread && process.env.T577_SEED) {
   const fs = require('fs'), path = require('path'), root = path.resolve(__dirname, '..');
-  const KN = ['T312_FISH_ACT', 'T325_WOOD_ACT', 'T347_FORAGE_ACT', 'T1188_ORE_SPLIT', 'T1202_BATCH', 'T1217_MARGIN'];
+  const KN = ['T312_FISH_ACT', 'T325_WOOD_ACT', 'T347_FORAGE_ACT', 'T1188_ORE_SPLIT', 'T1202_BATCH', 'T1217_MARGIN', 'T1218_FISH_CANON'];
   const cols = ['day', 'pop', 'dead', 'bodies', 'fisher', 'lumber', 'forager', 'miner', 'bFisher', 'bLumber', 'bForager', 'bMiner',
     'fishIn', 'woodIn', 'forageIn', 'oreIn', 'fishD', 'woodD', 'forageD', 'oreD', 'foodEaten', 'fuelCov', 'foodStock', 'woodStock',
     'fishBody', 'woodBody', 'forageBody', 'fishBatch', 'woodBatch', 'forageBatch',
@@ -65,7 +65,7 @@ if (require('worker_threads').isMainThread && process.env.T577_SEED) {
   const dump = () => { try { const m = require.cache[path.join(root, 'server/villages.js')]; if (m && m.exports.t1202Stat) st.stat = m.exports.t1202Stat(); if (m && m.exports.t1217Stat) st.t1217 = m.exports.t1217Stat(); if (m && m.exports.t1217SharedTable) st.shared = m.exports.t1217SharedTable(); } catch (e) {}
     try { const FM = require.cache[path.join(root, 'server/fishing.js')]?.exports; if (FM) { let def = 0; for (const [, r] of FM.fishCells) def += Math.max(0, FM.CFG.CELL_K - r.s);
       let bd = 0, bk = 0, bn = 0, low = 0; if (FM.fishBuckets) for (const [, b] of FM.fishBuckets) { bn++; bk += b.K || 0; bd += Math.max(0, 1 - b.s) * (b.K || 0); if (b.s < 0.05) low++; }
-      st.fish = { cells: FM.fishCells.size, deficit: +def.toFixed(4), kgPerStock: FM.CFG.KG_PER_STOCK, buckets: bn, bucketK: bk, bucketDeficit: +bd.toFixed(4), bucketLow: low }; } } catch (e) {}
+      st.fish = { cells: FM.fishCells.size, deficit: +def.toFixed(4), kgPerStock: FM.CFG.KG_PER_STOCK, buckets: bn, bucketK: bk, bucketDeficit: +bd.toFixed(4), bucketLow: low, canon: FM.t1218Canon ? FM.t1218Canon() : null, rDay: FM.fishR ? FM.fishR() : null }; } } catch (e) {}
     try { const v2 = require.cache[path.join(root, 'sim/economy-sim-v2.js')]?.exports; if (v2 && v2.t1217PxStat) st.px = v2.t1217PxStat(); } catch (e) {}
     try { const G = require.cache[path.join(root, 'server/granary-lots.js')]?.exports; if (G && G.rotOf) st.rot = G.rotOf(); } catch (e) {}
     try { const s = S(), w = s && s.world; if (w && w._tradeAudit) st.trade = { n: w._tradeAudit.n, bail: w._tradeAudit.bail, reroute: w._tradeAudit.reroute }; } catch (e) {}
