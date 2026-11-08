@@ -42,7 +42,7 @@ ok(/const T1205_HAPPY = T1134_HAPPY_TARGET && !\(typeof process !== 'undefined' 
 ok(/if \(T1205_HAPPY\) \{[\s\S]{0,600}t1205Step\(v, _G, _homeN, _T, _hsh\)[\s\S]{0,400}\} else \{\s*const _r = t1134Step\(v, stats\.happiness, _homeN, _hsh\);/.test(SRC), '⓪-3 끔 = T1134 걸음 그대로(같은 자리 else)');
 ok(/world\.terrCells = \(v\) => \{ const vil = state\.byEcon\.get\(v\); return vil && vil\._terrSet \? vil\._terrSet\.size : null; \};/.test(VIL), '⓪-4 서버가 영토(생활층 `_terrSet` 넓이)를 준다');
 ok(/T1205_HAPPY: econ\.T1205_HAPPY, t1205Ev: econ\.t1205Ev/.test(VIL) && /FOOD\.t1205Ev\(A, -got \/ Math\.max\(feA, got\)\)/.test(WAR), '⓪-5 승전 = 좋은 일 — war-core 약탈 문 하나(빼앗아 온 식량 ÷ 우리 곳간) · 서버가 econ 문을 넘긴다');
-{ const P = E.t1205Par(); ok(P.a === 2 && P.b === 0.5 && P.c === 0.0046 && P.luxW === 0.15 && Math.abs(P.k2 - 0.06 / 0.25) < 1e-12, '⓪-6 기본(보고 §2 판에서 고름) a = 2 · b = ½ · c = 0.0046 · 사치품 0.15 · k₂ = 하루 상한 0.06 ÷ 0.25(새 수 0)', P); }
+{ const P = E.t1205Par(); ok(P.a === 2 && P.b === 0.5 && P.c === 0.003 && P.luxW === 0.15 && Math.abs(P.k2 - 0.06 / 0.25) < 1e-12, '⓪-6 기본(보고 §2 판에서 고름) a = 2 · b = ½ · c = 0.003 · 사치품 0.15 · k₂ = 하루 상한 0.06 ÷ 0.25(새 수 0)', P); }
 
 console.log('① 식');
 {
@@ -127,10 +127,10 @@ console.log('⑥ 과잉 이탈 0 — 0.25 에 닿는 사람에서 멈춘다');
   E.setSeed(9);
   const v = E.createVillage({ name: '멈춤', initialPop: 80, fertility: 3, water: 1, game: 1, wood: 1.5, ore: 0.5, stone: 1 });
   v.land.baseSize = 4;
-  let out = 0, nLast = 0; v._world = { terrCells: () => 900, t1075Emigrate: (vv) => { out++; nLast = vv.npcs.length; return true; } };   // 떠나는 순간의 인구(그 사람 포함)
+  let out = 0, nLast = 0; v._world = { terrCells: () => 400, t1075Emigrate: (vv) => { out++; nLast = vv.npcs.length; return true; } };   // 떠나는 순간의 인구(그 사람 포함)
   v.storage.food = 20000; v.storage.wood = 5000;
   E.tickVillage(v, 1);
-  const n1 = nLast - 1, S1 = v._t1205S, T = 900;   // 마지막 사람이 떠난 뒤 인구(그날 다른 일 앞)
+  const n1 = nLast - 1, S1 = v._t1205S, T = 400;   // 마지막 사람이 떠난 뒤 인구(그날 다른 일 앞)
   const hAfter = Math.max(0, Math.min(1, S1 - E.t1205Burden(n1, T, P))), hOneLess = Math.max(0, Math.min(1, S1 - E.t1205Burden(n1 + 1, T, P)));
   ok(out > 0 && (v._t1205Stop || 0) === 1, '⑥-1 그날 떠남이 필요 수에서 멈췄다(멈춤 칸 1)', { out, n1 });
   ok(hAfter >= 0.25 - 1e-9 && hOneLess < 0.25, '⑥-2 떠난 뒤 h ≥ 0.25 · 한 사람 덜 떠났으면 0.25 밑(필요한 수만큼만)', { hAfter: r4(hAfter), hOneLess: r4(hOneLess) });
