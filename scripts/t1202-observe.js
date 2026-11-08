@@ -4,7 +4,7 @@
 //   판 끝에 `$T577_OUT.t1202.json` — 머리 `cols` · 마을마다 날 줄(`rows[이름]`) · 판 통계.
 if (require('worker_threads').isMainThread && process.env.T577_SEED) {
   const fs = require('fs'), path = require('path'), root = path.resolve(__dirname, '..');
-  const KN = ['T312_FISH_ACT', 'T325_WOOD_ACT', 'T347_FORAGE_ACT', 'T1188_ORE_SPLIT', 'T1202_BATCH', 'T1217_MARGIN', 'T1218_FISH_CANON', 'T1225_FISH_CAPITAL'];
+  const KN = ['T312_FISH_ACT', 'T325_WOOD_ACT', 'T347_FORAGE_ACT', 'T1188_ORE_SPLIT', 'T1202_BATCH', 'T1217_MARGIN', 'T1218_FISH_CANON', 'T1225_FISH_CAPITAL', 'T1225_SITE_EFF'];
   const cols = ['day', 'pop', 'dead', 'bodies', 'fisher', 'lumber', 'forager', 'miner', 'bFisher', 'bLumber', 'bForager', 'bMiner',
     'fishIn', 'woodIn', 'forageIn', 'oreIn', 'fishD', 'woodD', 'forageD', 'oreD', 'foodEaten', 'fuelCov', 'foodStock', 'woodStock',
     'fishBody', 'woodBody', 'forageBody', 'fishBatch', 'woodBatch', 'forageBatch',
@@ -24,6 +24,7 @@ if (require('worker_threads').isMainThread && process.env.T577_SEED) {
         const d = (w.day | 0);
         if (d !== last) {
           last = d;
+          if (d === 100 || d === 200 || d === 400) { try { const m = require.cache[path.join(root, 'server/villages.js')]; if (m && m.exports.t1225SiteTable) (st.site || (st.site = {}))[d] = m.exports.t1225SiteTable(d); } catch (e) { st.errors.push('site ' + e.message); } }   // ★[T1225 덧붙임] 마을 자리 표
           const s = S(), ec = E(), sv = new Map(); if (s && s.villages) for (const v of s.villages) if (v.econ) sv.set(v.econ, v);
           const pl = s && s.deps && s.deps.players;
           for (const v of (w.villages || [])) {

@@ -15142,6 +15142,22 @@ function t1225Keep(F, vil, day, cx, cy, now) {
   const St = _t1225Stat; St.n++; St.lamSum += lam; if (lam > 0) St.lamPos++; else if (lam < 0) St.lamNeg++; if (sh < 1) St.shareLt1++; St.rhoSum += rho; St.sSum += s; St.hist[Math.min(9, Math.max(0, Math.floor(s * 10)))]++;
   return 1 - lam;
 }
+//   ★[T1225 덧붙임 ② ③] 마을 자리 표(계측 전용 · 세계 0) — 마을마다 노동권 물 칸(민물 · 바다 · `sustain.fishWaterOf`) · 어부 현장의 어장 좋음(q · `fishing.siteQuality`) ·
+//     땅(비옥 · 경작) · 직업 수(어부 · 농부) · 인구. 판 관찰기가 100 · 200 · 400날에 찍는다.
+function t1225SiteTable(day) {
+  const F = _fishingMod(), Sus = require('./sustain'), isW = state.deps && state.deps.isWaterTileLocal, out = [];
+  for (const vil of (state.villages || [])) {
+    const v = vil.econ; if (!v) continue;
+    const wc = Sus.fishWaterOf ? Sus.fishWaterOf(vil.ccx, vil.ccy) : null;
+    let qs = [];
+    try { const sites = (_lifeJobSites(vil, day).fisher) || []; if (F && typeof isW === 'function') for (const e of _t1217Sites(vil, day, sites, isW)) { const sp = _t677Spot(F, e.cx, e.cy); if (sp && sp.water) qs.push(F.siteQuality ? F.siteQuality(sp) : 0); } } catch (e) {}
+    qs.sort((a, b) => a - b);
+    const c = v.counts || {}, L = v.land || {};
+    out.push({ name: vil.name, water: wc ? wc.water : null, sea: wc ? wc.sea : null, sites: qs.length, qMax: qs.length ? +qs[qs.length - 1].toFixed(3) : null, qMed: qs.length ? +qs[qs.length >> 1].toFixed(3) : null,
+      fert: L.fertility != null ? +(+L.fertility).toFixed(3) : null, arable: L.arable != null ? +(+L.arable).toFixed(3) : null, pop: (v.npcs || []).length, fisher: c.fisher || 0, farmer: c.farmer || 0 });
+  }
+  return out;
+}
 function t1225Stat() { const S = _t1225Stat, n = S.n || 1; return { mode: T1225_MODE, n: S.n, lamMean: +(S.lamSum / n).toFixed(5), lamPos: S.lamPos, lamNeg: S.lamNeg, flip: S.flip, shareLt1: S.shareLt1, rhoMean: +(S.rhoSum / n).toExponential(4), sMean: +(S.sSum / n).toFixed(4), sHist: S.hist.slice() }; }
 //   그 자리의 입질 비율(CPUE) — 셀 원판(플레이어가 판 자리) × 버킷(마을 어부가 판 물)
 function _t1217Stock01(F, cx, cy, now) { return F.stockRatioAt(cx, cy, now) * F.bucketRatioAt(cx, cy, now, _t1217BucketK); }
@@ -17550,7 +17566,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
-  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1225Stat, t1225Keep, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
+  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1225Stat, t1225Keep, t1225SiteTable, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
   t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
   // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
