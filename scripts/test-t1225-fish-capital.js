@@ -95,5 +95,17 @@ check('⑥ 자명 통과 금지 — r 두 배면 λ 두 배 · 늙은 어부(ρ 
   assert(on.stat.n > 0 && on.stat.mode === 'life');
 });
 
+//   ⑦ 덧붙임 ① 자리 효율(`T1225_SITE_EFF` · 고증 켬일 때만) — 반쯤 찬 물: 평범 0.5 · 좋은 어장 2.2 kg/시간 · 가득 찬 물 두 배 · 끔 = T1218 식 그대로
+const SITE = `const F=require('./server/fishing');const h=60000,k=2.5;const kg=(sp,s)=>k/F.villageWaitMs(sp,s,k,h)*h;
+console.log(JSON.stringify({on:F.T1225_SITE_EFF,ord:[kg({seam01:0},0.5),kg({seam01:0},1)],good:[kg({seam01:1},0.5),kg({conflu:true,seam01:0},0.5)],mid:kg({seam01:0.5},0.5),q:[F.siteQuality({seam01:0.3}),F.siteQuality({conflu:true})],t1218:kg({seam01:1},1)}));`;
+function site(env) { const e = { ...process.env, ENABLE_VILLAGES: '0', T1218_FISH_CANON: '1' }; delete e.T1225_SITE_EFF; Object.assign(e, env); const r = spawnSync(process.execPath, ['-e', SITE], { cwd: ROOT, env: e, encoding: 'utf8' }); assert.strictEqual(r.status, 0, r.stderr); return lastJson(r); }
+check('⑦ 자리 효율 켬 — 반쯤 찬 물 평범 0.5 · 좋은 어장 2.2 kg/시간(합류부도 좋은 어장) · 가운데 q 0.5 = 1.35 · 가득 찬 물 두 배', () => {
+  const o = site({ T1225_SITE_EFF: '1' }); assert.strictEqual(o.on, true);
+  near(o.ord[0], 0.5, 1e-9); near(o.ord[1], 1.0, 1e-9); near(o.good[0], 2.2, 1e-9); near(o.good[1], 2.2, 1e-9); near(o.mid, 1.35, 1e-9);
+  near(o.q[0], 0.3); assert.strictEqual(o.q[1], 1);
+});
+check('⑦ 자리 효율 끔 = T1218 식 그대로(가장 좋은 자리 가득 찬 물 7 kg/시간)', () => {
+  const o = site({}); assert.strictEqual(o.on, false); near(o.t1218, 7.0, 1e-9);
+});
 console.log(`\n=== T1225 결과: ${pass} 통과 · ${fail} 실패 ===`);
 process.exit(fail ? 1 : 0);
