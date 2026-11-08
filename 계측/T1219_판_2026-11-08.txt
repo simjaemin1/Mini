@@ -1,0 +1,80 @@
+# T1219 판 — t1140-sum(둘째 글자 자 · 자가 표시)
+
+판 · 창 · npcStep · live · pre · nsDec · rem · totUs · moveGate · decGate · dec · life · path · astar · self · lnStuck · lnGate · lnArrive · req · p50 · p99 · ctrl · ratio (µs/사람 · p50/p99 ms)
+  C1   day   1.313       —       —   0.805   1.013   3.595   0.298   1.631   0.793   0.695   0.103   0.002     0.4   0.173   0.025   0.065   0.001   3.801   9.284       1   1.313
+  C1 night   3.759   2.217   1.049   1.694   3.459   4.683   0.341   2.219    1.43   1.058   0.464       0   1.816   0.421   0.134   0.278       0    4.18  17.601   1.027    3.66
+  C2   day   1.514       —       —   0.806   1.214   4.142   0.322   1.879   0.867   0.747    0.13       0   0.501   0.168   0.045   0.085   0.001   4.434    9.99   1.165     1.3
+  C2 night   1.774     1.6   0.901   0.843   1.474   4.285   0.301   2.103   0.693   0.513    0.21       0   0.847   0.182   0.079   0.135       0   3.535  16.506   0.965   1.838
+  D1   day   1.193       —       —   0.754   0.893    3.24   0.333   1.582   0.615   0.501     0.1   0.001   0.449    0.15   0.035   0.087       0   3.455   7.095   0.633   1.885
+  D1 night   1.323       —   0.808   0.681   1.023   3.817   0.251   1.944   0.398   0.262   0.164       0   0.705   0.194   0.077   0.099       0   3.284   9.547   0.812   1.629
+  F1   day   1.118       —       —   0.761   0.818   3.064   0.324   1.469   0.618   0.512     0.1   0.001   0.369    0.12   0.028   0.058       0   3.295     7.3   0.619   1.806
+  F1 night   1.766   1.626   1.031   0.773   1.466   4.682   0.307   2.284   0.534   0.349   0.258       0   0.905   0.256   0.065   0.149       0   4.508  13.403   1.074   1.644
+  F2   day    1.18       —       —   0.738    0.88   3.345   0.337   1.599   0.604   0.494   0.098   0.001   0.446   0.164   0.042   0.089       0   3.712   7.929   0.688   1.715
+  F2 night   1.531   1.438    0.92   0.757   1.231   4.154   0.273   2.021   0.454   0.287   0.203       0   0.823   0.232   0.091   0.116       0   3.758  11.312   0.932   1.643
+  K1   day   3.883   1.238       —   2.302   3.583   3.692   0.295   1.687   2.284   1.972    0.31   0.001   1.245   0.497   0.127   0.194   0.003   4.153   8.137   1.019   3.811
+  K1 night   1.797       —   1.117   0.756   1.497   4.816    0.34   2.377   0.686   0.495   0.216       0   0.875   0.208   0.069    0.12       0   4.033  19.572   1.064   1.689
+  V1   day       —       —       —       —       —   4.773   0.363   1.975       0       0       0       0       —       0       0       0       0   4.183   17.06   1.601     NaN
+  V1 night       —       —       —       —       —    4.52   0.326   1.938       0       0       0       0       —       0       0       0       0   3.816  23.582    1.23     NaN
+
+자가 표시(T1219) — 줄맞춤 = 조각마다 [T646] 줄 수가 1 이 아님(밤 = 하루 닫힘 조각) · 결정표본 = 환산 비 ≥ 0.86 · 결정표본? = 같은 창 중앙 + 0.07 넘음 · 결정표본 빠짐 = 결정 표본 0 인 조각이 있음(live = 그 조각 뺀 npcStep) · pre = 밤 닫힘 앞 조각만 다시 센 npcStep
+  C1 night — 결정표본 · 결정표본 빠짐 · 조각 줄 [1,1,1,1,1,1] · 환산 비 1.694 · 결정 표본 0 조각 [0,2,3] · 조각 결정 표본 [0,2079,0,0,1549,1296] · live 2.217 · pre 1.049
+  C2 night — 결정표본 빠짐 · 결정표본? · 조각 줄 [1,1,1,1,1,1] · 환산 비 0.843 · 결정 표본 0 조각 [0] · 조각 결정 표본 [0,1779,1667,1343,1196,1306] · live 1.6 · pre 0.901
+  F1 night — 결정표본 빠짐 · 조각 줄 [1,1,1,1,1,1] · 환산 비 0.773 · 결정 표본 0 조각 [0] · 조각 결정 표본 [0,2238,1937,1828,1839,1585] · live 1.626 · pre 1.031
+  F2 night — 결정표본 빠짐 · 조각 줄 [1,1,1,1,1,1] · 환산 비 0.757 · 결정 표본 0 조각 [0] · 조각 결정 표본 [0,1942,1898,1690,1758,1593] · live 1.438 · pre 0.92
+  K1 day — 결정표본 · 결정표본 빠짐 · 조각 줄 [1,1,1,1,1,1] · 환산 비 2.302 · 결정 표본 0 조각 [2,3,4,5] · 조각 결정 표본 [2123,2525,0,0,0,0] · live 1.238
+
+팔 중앙(범위)
+   C   day n2 npcStep 1.413[1.313~1.514] · live null[null~null] · pre null[null~null] · nsDec 0.806[0.805~0.806] · rem 1.113[1.013~1.214] · totUs 3.869[3.595~4.142] · moveGate 0.31[0.298~0.322] · decGate 1.755[1.631~1.879] · dec 0.83[0.793~0.867] · life 0.721[0.695~0.747] · path 0.116[0.103~0.13] · astar 0.001[0~0.002] · self 0.451[0.4~0.501] · lnStuck 0.17[0.168~0.173] · lnGate 0.035[0.025~0.045] · lnArrive 0.075[0.065~0.085] · req 0.001[0.001~0.001] · p50 4.117[3.801~4.434] · p99 9.637[9.284~9.99] · ctrl 1.083[1~1.165] · ratio 1.306[1.3~1.313]
+   C night n2 npcStep 2.766[1.774~3.759] · live 1.909[1.6~2.217] · pre 0.975[0.901~1.049] · nsDec 1.268[0.843~1.694] · rem 2.466[1.474~3.459] · totUs 4.484[4.285~4.683] · moveGate 0.321[0.301~0.341] · decGate 2.161[2.103~2.219] · dec 1.061[0.693~1.43] · life 0.786[0.513~1.058] · path 0.337[0.21~0.464] · astar 0[0~0] · self 1.332[0.847~1.816] · lnStuck 0.301[0.182~0.421] · lnGate 0.107[0.079~0.134] · lnArrive 0.207[0.135~0.278] · req 0[0~0] · p50 3.857[3.535~4.18] · p99 17.053[16.506~17.601] · ctrl 0.996[0.965~1.027] · ratio 2.749[1.838~3.66]
+   D   day n1 npcStep 1.193[1.193~1.193] · live null[null~null] · pre null[null~null] · nsDec 0.754[0.754~0.754] · rem 0.893[0.893~0.893] · totUs 3.24[3.24~3.24] · moveGate 0.333[0.333~0.333] · decGate 1.582[1.582~1.582] · dec 0.615[0.615~0.615] · life 0.501[0.501~0.501] · path 0.1[0.1~0.1] · astar 0.001[0.001~0.001] · self 0.449[0.449~0.449] · lnStuck 0.15[0.15~0.15] · lnGate 0.035[0.035~0.035] · lnArrive 0.087[0.087~0.087] · req 0[0~0] · p50 3.455[3.455~3.455] · p99 7.095[7.095~7.095] · ctrl 0.633[0.633~0.633] · ratio 1.885[1.885~1.885]
+   D night n1 npcStep 1.323[1.323~1.323] · live null[null~null] · pre 0.808[0.808~0.808] · nsDec 0.681[0.681~0.681] · rem 1.023[1.023~1.023] · totUs 3.817[3.817~3.817] · moveGate 0.251[0.251~0.251] · decGate 1.944[1.944~1.944] · dec 0.398[0.398~0.398] · life 0.262[0.262~0.262] · path 0.164[0.164~0.164] · astar 0[0~0] · self 0.705[0.705~0.705] · lnStuck 0.194[0.194~0.194] · lnGate 0.077[0.077~0.077] · lnArrive 0.099[0.099~0.099] · req 0[0~0] · p50 3.284[3.284~3.284] · p99 9.547[9.547~9.547] · ctrl 0.812[0.812~0.812] · ratio 1.629[1.629~1.629]
+   F   day n2 npcStep 1.149[1.118~1.18] · live null[null~null] · pre null[null~null] · nsDec 0.75[0.738~0.761] · rem 0.849[0.818~0.88] · totUs 3.205[3.064~3.345] · moveGate 0.331[0.324~0.337] · decGate 1.534[1.469~1.599] · dec 0.611[0.604~0.618] · life 0.503[0.494~0.512] · path 0.099[0.098~0.1] · astar 0.001[0.001~0.001] · self 0.407[0.369~0.446] · lnStuck 0.142[0.12~0.164] · lnGate 0.035[0.028~0.042] · lnArrive 0.073[0.058~0.089] · req 0[0~0] · p50 3.503[3.295~3.712] · p99 7.614[7.3~7.929] · ctrl 0.653[0.619~0.688] · ratio 1.76[1.715~1.806]
+   F night n2 npcStep 1.648[1.531~1.766] · live 1.532[1.438~1.626] · pre 0.976[0.92~1.031] · nsDec 0.765[0.757~0.773] · rem 1.349[1.231~1.466] · totUs 4.418[4.154~4.682] · moveGate 0.29[0.273~0.307] · decGate 2.152[2.021~2.284] · dec 0.494[0.454~0.534] · life 0.318[0.287~0.349] · path 0.231[0.203~0.258] · astar 0[0~0] · self 0.864[0.823~0.905] · lnStuck 0.244[0.232~0.256] · lnGate 0.078[0.065~0.091] · lnArrive 0.133[0.116~0.149] · req 0[0~0] · p50 4.133[3.758~4.508] · p99 12.357[11.312~13.403] · ctrl 1.003[0.932~1.074] · ratio 1.643[1.643~1.644]
+   K   day n1 npcStep 3.883[3.883~3.883] · live 1.238[1.238~1.238] · pre null[null~null] · nsDec 2.302[2.302~2.302] · rem 3.583[3.583~3.583] · totUs 3.692[3.692~3.692] · moveGate 0.295[0.295~0.295] · decGate 1.687[1.687~1.687] · dec 2.284[2.284~2.284] · life 1.972[1.972~1.972] · path 0.31[0.31~0.31] · astar 0.001[0.001~0.001] · self 1.245[1.245~1.245] · lnStuck 0.497[0.497~0.497] · lnGate 0.127[0.127~0.127] · lnArrive 0.194[0.194~0.194] · req 0.003[0.003~0.003] · p50 4.153[4.153~4.153] · p99 8.137[8.137~8.137] · ctrl 1.019[1.019~1.019] · ratio 3.811[3.811~3.811]
+   K night n1 npcStep 1.797[1.797~1.797] · live null[null~null] · pre 1.117[1.117~1.117] · nsDec 0.756[0.756~0.756] · rem 1.497[1.497~1.497] · totUs 4.816[4.816~4.816] · moveGate 0.34[0.34~0.34] · decGate 2.377[2.377~2.377] · dec 0.686[0.686~0.686] · life 0.495[0.495~0.495] · path 0.216[0.216~0.216] · astar 0[0~0] · self 0.875[0.875~0.875] · lnStuck 0.208[0.208~0.208] · lnGate 0.069[0.069~0.069] · lnArrive 0.12[0.12~0.12] · req 0[0~0] · p50 4.033[4.033~4.033] · p99 19.572[19.572~19.572] · ctrl 1.064[1.064~1.064] · ratio 1.689[1.689~1.689]
+   V   day n1 npcStep null[null~null] · live null[null~null] · pre null[null~null] · nsDec null[null~null] · rem null[null~null] · totUs 4.773[4.773~4.773] · moveGate 0.363[0.363~0.363] · decGate 1.975[1.975~1.975] · dec 0[0~0] · life 0[0~0] · path 0[0~0] · astar 0[0~0] · self null[null~null] · lnStuck 0[0~0] · lnGate 0[0~0] · lnArrive 0[0~0] · req 0[0~0] · p50 4.183[4.183~4.183] · p99 17.06[17.06~17.06] · ctrl 1.601[1.601~1.601] · ratio null[NaN~NaN]
+   V night n1 npcStep null[null~null] · live null[null~null] · pre null[null~null] · nsDec null[null~null] · rem null[null~null] · totUs 4.52[4.52~4.52] · moveGate 0.326[0.326~0.326] · decGate 1.938[1.938~1.938] · dec 0[0~0] · life 0[0~0] · path 0[0~0] · astar 0[0~0] · self null[null~null] · lnStuck 0[0~0] · lnGate 0[0~0] · lnArrive 0[0~0] · req 0[0~0] · p50 3.816[3.816~3.816] · p99 23.582[23.582~23.582] · ctrl 1.23[1.23~1.23] · ratio null[NaN~NaN]
+
+
+# 어장 · 짐 무게 · 해 질 녘 몫(npcStep 표본 % · 창 조각 전부 · 밤 = 닫힘 앞)
+D1 day    ns 19110 · _t340Try 9.96 · stockRatioAt 2.54 · drawWholeStock 6.28 · drawWholeFish 0 · drawStock 4.84 · _fishSave 4.36 · upsertFishCell 4.36 · rec 3.5 · _t1219Disc 0 · _t1219RecS 0 · _t1219DiscKeys 0 · _t1219Key 0 · _t312Catch 9.64 · t312DrawFishAt 6.6 · npcTotalKg 2.4 · _npcTotalKg0 2.25 · _npcTotalKgFast 0 · totalKg 1.11 · _t720Step 0.14 · _t720Held 0 · _t737Held 0 · discRead 3.98
+D1 night  ns 9598 · _t340Try 2.09 · stockRatioAt 0.63 · drawWholeStock 0.04 · drawWholeFish 0 · drawStock 0.02 · _fishSave 0.02 · upsertFishCell 0.02 · rec 0.5 · _t1219Disc 0 · _t1219RecS 0 · _t1219DiscKeys 0 · _t1219Key 0 · _t312Catch 0.51 · t312DrawFishAt 0.05 · npcTotalKg 0.39 · _npcTotalKg0 0.38 · _npcTotalKgFast 0 · totalKg 0.17 · _t720Step 2.58 · _t720Held 1.07 · _t737Held 0.21 · discRead 0.65
+F1 day    ns 17792 · _t340Try 12.12 · stockRatioAt 4.61 · drawWholeStock 8.05 · drawWholeFish 0 · drawStock 5.09 · _fishSave 4.56 · upsertFishCell 4.56 · rec 0.01 · _t1219Disc 6.64 · _t1219RecS 3.67 · _t1219DiscKeys 0 · _t1219Key 2.61 · _t312Catch 10.68 · t312DrawFishAt 8.17 · npcTotalKg 1.98 · _npcTotalKg0 0 · _npcTotalKgFast 1.83 · totalKg 1.3 · _t720Step 0.19 · _t720Held 0 · _t737Held 0 · discRead 7.57
+F1 night  ns 12924 · _t340Try 2.09 · stockRatioAt 0.65 · drawWholeStock 0.05 · drawWholeFish 0 · drawStock 0.02 · _fishSave 0.02 · upsertFishCell 0.02 · rec 0 · _t1219Disc 0.6 · _t1219RecS 0.41 · _t1219DiscKeys 0 · _t1219Key 0.19 · _t312Catch 0.5 · t312DrawFishAt 0.05 · npcTotalKg 0.41 · _npcTotalKg0 0 · _npcTotalKgFast 0.38 · totalKg 0.28 · _t720Step 2.34 · _t720Held 1 · _t737Held 0.15 · discRead 0.68
+F2 day    ns 19054 · _t340Try 9.45 · stockRatioAt 2.39 · drawWholeStock 6.8 · drawWholeFish 0 · drawStock 5.3 · _fishSave 4.7 · upsertFishCell 4.7 · rec 0.01 · _t1219Disc 2.8 · _t1219RecS 2.32 · _t1219DiscKeys 0 · _t1219Key 0 · _t312Catch 9.3 · t312DrawFishAt 6.88 · npcTotalKg 1.9 · _npcTotalKg0 0 · _npcTotalKgFast 1.73 · totalKg 1.2 · _t720Step 0.11 · _t720Held 0 · _t737Held 0 · discRead 3.89
+F2 night  ns 11834 · _t340Try 1.86 · stockRatioAt 0.45 · drawWholeStock 0.04 · drawWholeFish 0 · drawStock 0.03 · _fishSave 0.03 · upsertFishCell 0.03 · rec 0 · _t1219Disc 0.37 · _t1219RecS 0.36 · _t1219DiscKeys 0 · _t1219Key 0 · _t312Catch 0.46 · t312DrawFishAt 0.04 · npcTotalKg 0.39 · _npcTotalKg0 0 · _npcTotalKgFast 0.35 · totalKg 0.25 · _t720Step 2.37 · _t720Held 0.91 · _t737Held 0.14 · discRead 0.46
+K1 day    ns 21837 · _t340Try 8.76 · stockRatioAt 2.61 · drawWholeStock 5.88 · drawWholeFish 0 · drawStock 4.48 · _fishSave 4.02 · upsertFishCell 4.02 · rec 3.57 · _t1219Disc 0 · _t1219RecS 0 · _t1219DiscKeys 0 · _t1219Key 0 · _t312Catch 8.27 · t312DrawFishAt 6.23 · npcTotalKg 4.98 · _npcTotalKg0 4.8 · _npcTotalKgFast 0 · totalKg 2.51 · _t720Step 1.67 · _t720Held 0 · _t737Held 0 · discRead 4.01
+K1 night  ns 12890 · _t340Try 1.83 · stockRatioAt 0.52 · drawWholeStock 0.04 · drawWholeFish 0 · drawStock 0.02 · _fishSave 0.02 · upsertFishCell 0.02 · rec 0.46 · _t1219Disc 0 · _t1219RecS 0 · _t1219DiscKeys 0 · _t1219Key 0 · _t312Catch 0.4 · t312DrawFishAt 0.05 · npcTotalKg 3.3 · _npcTotalKg0 3.14 · _npcTotalKgFast 0 · totalKg 1.69 · _t720Step 9.81 · _t720Held 5.48 · _t737Held 4.18 · discRead 0.54
+C1 day    ns 20685 · _t340Try 10.11 · stockRatioAt 3.99 · drawWholeStock 6.78 · drawWholeFish 0 · drawStock 4.56 · _fishSave 4.1 · upsertFishCell 4.1 · rec 0.01 · _t1219Disc 5.25 · _t1219RecS 2.88 · _t1219DiscKeys 0 · _t1219Key 1.96 · _t312Catch 8.61 · t312DrawFishAt 6.85 · npcTotalKg 4.15 · _npcTotalKg0 0 · _npcTotalKgFast 3.95 · totalKg 2.74 · _t720Step 1.3 · _t720Held 0.01 · _t737Held 0.01 · discRead 6.21
+C1 night  ns 11705 · _t340Try 2.18 · stockRatioAt 1.06 · drawWholeStock 0.03 · drawWholeFish 0 · drawStock 0 · _fishSave 0 · upsertFishCell 0 · rec 0 · _t1219Disc 0.89 · _t1219RecS 0.55 · _t1219DiscKeys 0 · _t1219Key 0.28 · _t312Catch 0.32 · t312DrawFishAt 0.03 · npcTotalKg 2.83 · _npcTotalKg0 0 · _npcTotalKgFast 2.66 · totalKg 1.99 · _t720Step 9.39 · _t720Held 5.11 · _t737Held 4 · discRead 1.09
+C2 day    ns 24280 · _t340Try 8.05 · stockRatioAt 1.94 · drawWholeStock 5.93 · drawWholeFish 0 · drawStock 4.45 · _fishSave 4 · upsertFishCell 4 · rec 0.02 · _t1219Disc 2.45 · _t1219RecS 2.13 · _t1219DiscKeys 0 · _t1219Key 0 · _t312Catch 7.77 · t312DrawFishAt 6 · npcTotalKg 4.17 · _npcTotalKg0 0 · _npcTotalKgFast 3.97 · totalKg 2.62 · _t720Step 1.36 · _t720Held 0 · _t737Held 0 · discRead 3.42
+C2 night  ns 11031 · _t340Try 1.73 · stockRatioAt 0.55 · drawWholeStock 0.04 · drawWholeFish 0 · drawStock 0.02 · _fishSave 0.01 · upsertFishCell 0.01 · rec 0.01 · _t1219Disc 0.45 · _t1219RecS 0.44 · _t1219DiscKeys 0 · _t1219Key 0 · _t312Catch 0.36 · t312DrawFishAt 0.04 · npcTotalKg 2.93 · _npcTotalKg0 0 · _npcTotalKgFast 2.75 · totalKg 1.99 · _t720Step 9.66 · _t720Held 5.44 · _t737Held 4.06 · discRead 0.57
+
+# 미세 판(ns/부름 중앙)
+off     stockRatioAt 2384.3 · drawWholeStock 원판 2422.5 · 답 합 566809.85793
+first   stockRatioAt 2269 · drawWholeStock 원판 2237.7 · 답 합 566809.85793
+second  stockRatioAt 991.8 · drawWholeStock 원판 1002.7 · 답 합 566809.85793
+alt     stockRatioAt 981.8 · drawWholeStock 원판 1026.4 · 답 합 566809.85793
+
+# 돌 합 held 고치는 자리 전수(88446e6d)
+{"a":7,"b":89,"c":19,"d":8,"e":12,"f":20,"total":155}
+손 돌은 소수(zone.js 15398 toFixed(6) · 12035 sign*cost.stone) — 사건 칸 합의 차례 ≠ 명부 차례(소수 덧셈 결합 법칙 없음)
+열쇠가 변수인 쓰기 89 · 그릇 · 지움 · 명부 · 몸 표 59 — 한 자리라도 빠지면 합이 어긋남
+
+# 서버 기준선 11-08 켬
+
+=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 집 행위 끔 · 가상 시계 · 동시 2 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-Kgaj7p ===
+  · 시드 1020 400일 판 711초(종료 0)
+  · 시드 7 400일 판 783초(종료 0)
+  · 시드 42 400일 판 658초(종료 0)
+  판 모두 1369초
+  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2835) · 마을 칸 지문 400일 같음
+  ○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 3162) · 마을 칸 지문 400일 같음
+  ○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 3663) · 마을 칸 지문 400일 같음
+
+=== 같음 3/3 · 판 1369초 ===
+
+# 산 존 verify V1(마지막 줄)
+[T1219] verify fish 견줌 32768 · 어긋남 0 · 자리 표 586
+[T1200] verify 견줌 155648 · 어긋남 0 · 얕은 길 155648 · 종전 길 0
+어긋남 줄: 0
