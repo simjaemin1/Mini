@@ -18936,7 +18936,15 @@ function _t1226V(T, p, j, D) {
 }
 // 계측(세계 밖 · 상태 0) — 하네스 · 계측 자가 읽는다.
 const _t1226Stat = { days: 0, looks: 0, switches: 0, toNeed: 0, toOther: 0, heldGain: 0, waitFirst: 0, chief: 0, draft: 0 };
+//   진단(계측 전용 · `T1226_DIAG=1` · 세계 밖 표 — 마을마다 그날 모자란 일 · 본 사람 · 가장 큰 몫 · 옮긴 사람)
+const T1226_DIAG = (typeof process !== 'undefined' && process.env && process.env.T1226_DIAG === '1');
+function _t1226Diag(v, row) { const M = _t1226Stat.vtr || (_t1226Stat.vtr = {}); const A = M[v.name] || (M[v.name] = []); A.push(row); if (A.length > 400) A.shift(); }
 function t1226Flex(v, day, world, interval, multi) {
+  if (!T1226_DIAG) return _t1226FlexBody(v, day, world, interval, multi);
+  const h0 = process.hrtime.bigint();   // 진단 판만 — 마을 하루 켬 전환 시간(T1228 ③)
+  try { return _t1226FlexBody(v, day, world, interval, multi); } finally { _t1226Stat.ns = (_t1226Stat.ns || 0) + Number(process.hrtime.bigint() - h0); _t1226Stat.calls = (_t1226Stat.calls || 0) + 1; }
+}
+function _t1226FlexBody(v, day, world, interval, multi) {
   if (v.npcs.length < (SWITCH2_ON ? 2 : 3) || !world || world.picker !== 'rational') {   // 두 사람 마을 · 합리 피커 밖 = 종전 길
     if (day % interval === 0) for (let i = 0; i < multi; i++) autoSwitchJob(v, day, world);
     return;
@@ -18970,8 +18978,13 @@ function t1226Flex(v, day, world, interval, multi) {
   }
   if (!look.length || !need) return;
   const N = v.npcs.length, cap = jobCapacity(v);
+  //   ★[T1228] 마을 빠르기 — 곳간이 30일치(피커 기근 문) 넘게 있으면 종전 전환 간격(7날 · `autoSwitchInterval`)에 한 사람, 밑이면 하루 한 사람
+//   (손잡이 `T1228_PACE=0` 끔 · `=10` = 종전 "진짜 기근 — 날마다" 10일치 문턱 — 서버 빈 마을 7 로 더 나빠 기본 아님).
+  //   값이 곳간 재고를 보고 매겨져 곳간이 두둑할 땐 식량 일이 싸 보인다 — 날마다 옮기면 식량 일꾼이 시세보다 빨리 빠져 곳간이 비고서야 돌아온다(T1228 빈 마을 표).
+  if (_allocKnob('T1228_PACE') !== '0' && S.mv != null && totalFoodEquivalent(v) >= N * (_allocKnob('T1228_PACE') === '10' ? 10 : 30) && day - S.mv < P) return;
   const Dneed = Math.min(100, day - S.since + 1);
   let hungry = null, pick = null, pickJob = null, pickNet = 0;
+  const ev = [];
   const mvIn = PIN, mvOut = POUT;   // 이미 옮긴 수(위 · 오늘 몫 포함): 갈 일 1인당 몫은 n ÷ (n + 들어옴) · 떠난 일은 n ÷ (n − 나감)
   const ne1 = (j) => Math.max(1, T.ne[j] || T.counts[j] || 0);
   for (const p of look) {
@@ -18988,6 +19001,7 @@ function t1226Flex(v, day, world, interval, multi) {
       const vt0 = _t1226V(T, p, t, Dt), vt = vt0 !== null ? _t1226In(vt0, ne1(t), mvIn[t]) : _needValueOf(v, t, T.w) * _t1226Sk(p, t, Dt);
       const vc0 = _t1226V(T, p, c, Dt), vc = vc0 !== null ? _t1226Out(vc0, ne1(c), mvOut[c]) : opportunityCost(p, v, T.w);
       const net = _t1226Net(vt, vc, N, Dt, since);
+      if (T1226_DIAG) ev.push([c, t, +vt.toFixed(3), +vc.toFixed(3), Dt, +net.toFixed(2)]);
       if (net > bestNet) { bestNet = net; best = t; }
     };
     // 모자란 일(피커) — D = 그 일이 모자란 일로 이어져 온 날과 (두 일이 다 값 표에 있으면) 평활 값 차의 부호가 이어져 온 날 중 짧은 것(둘 다 이어져야 이어진다)
@@ -19004,7 +19018,9 @@ function t1226Flex(v, day, world, interval, multi) {
     if (bestNet > pickNet) { pick = p; pickJob = best; pickNet = bestNet; }
   }
   // 몰림 — 마을 하루에 한 사람: 그날 보는 사람 가운데 얻는 것 − 비용이 가장 큰 사람만 옮긴다(나머지는 다음 보는 날 다시 잰다 · 차례 무관).
+  if (T1226_DIAG) { ev.sort((a, b) => b[5] - a[5]); _t1226Diag(v, [day, need, Dneed, look.length, pick ? pick.currentJob + '>' + pickJob : '-', +(totalFoodEquivalent(v) / N).toFixed(1), ev.slice(0, 2)]); }
   if (!pick) return;
+  S.mv = day;   // ★[T1228] 마을이 마지막으로 옮긴 날(빠르기)
   const c = pick.currentJob;
   mvOut[c] = (mvOut[c] || 0) + 1; mvIn[pickJob] = (mvIn[pickJob] || 0) + 1;
   switchNPCJob(pick, pickJob, day, v);

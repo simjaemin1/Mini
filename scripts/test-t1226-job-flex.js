@@ -7,7 +7,7 @@
 //   ② 처음 해 보는 일 — 값 = 그 사람 숙련 몫 + D 날 배워 늘 몫(경험치 곡선 80 + 숙련 × 30 · 하루 1 xp)
 //   ③ 마지막 한 사람 — 떠날 값 = 그 일 1인당 몫(한 명이면 그 일 전체) · 숙련은 마을에 남아 장인 이어받기가 그대로
 //   ④ 사람 없는 일 — 첫 한 명은 종전 폴백 값으로 가고, 그 사람의 실현이 설 때까지 둘째는 기다린다
-//   ⑤ 몰림 — 엇갈린 날(7날에 한 번씩 꼭 한 번) · 이미 옮긴 수가 갈 일 값을 깎는다 · 최근에 바꾼 사람 문턱
+//   ⑤ 몰림 — 엇갈린 날(7날에 한 번씩 꼭 한 번) · 이미 옮긴 수가 갈 일 값을 깎는다 · 최근에 바꾼 사람 문턱 · ⑤b 마을 빠르기(T1228)
 //   ⑥ 굶을 때 — 노동 목표 안 장인(석공)은 식량직으로 안 빠진다
 //   ⑦ 작은 마을 — 같은 값이면 사람이 적을수록 문턱이 높다
 //   ⑧ 촌장이 맡긴 사람 — 맡긴 30날 동안 빠진다
@@ -155,6 +155,31 @@ console.log('\n=== ⑤ 몰림 — 엇갈린 날 · 이미 옮긴 수 · 최근 �
   OFF();
 }
 
+console.log('\n=== ⑤b 마을 빠르기(T1228) — 곳간 30일치 넘으면 7날에 한 사람 · 밑이면 날마다 ===');
+{
+  const days = (rich) => {
+    ON();
+    const T = mk(36, { fertility: 2.5, water: 0.2, game: 0.2 }, rich ? '빠촌가' : '빠촌나');
+    for (const p of T.v.npcs) if (p.currentJob === 'farmer') E._switchNPCJobForTest(p, 'fisher', -100, T.v);   // 땅과 거꾸로(옮길 까닭)
+    const out = [];
+    quiet(() => { for (let d = 1; d <= 90; d++) {
+      T.W.day = d;
+      for (const k of Object.keys(T.v.storage)) if (/food|fish|meat|wheat|rice|barley|vegetable|cooked/.test(k)) T.v.storage[k] = rich ? (k === 'food' ? 1e5 : T.v.storage[k]) : 0;
+      const before = T.v.npcs.map((p) => p.currentJob).join();
+      E.tickVillage(T.v, d);
+      if (T.v.npcs.map((p) => p.currentJob).join() !== before && T.v._t1226 && T.v._t1226.mv === d) out.push(d);
+    } });
+    OFF();
+    return out;
+  };
+  const r = days(true), h = days(false);
+  const gapR = r.slice(1).map((d, i) => d - r[i]), gapH = h.slice(1).map((d, i) => d - h[i]);
+  ok(r.length >= 2 && Math.min(...gapR) >= 7, '곳간 두둑(30일치 넘음) — 옮긴 날 사이 ≥ 7날', `${r.length}번 · 가장 짧은 사이 ${Math.min(...gapR)}`);
+  ok(h.length >= 2 && Math.min(...gapH) < 7, '굶는 마을 — 7날 안에도 또 옮긴다(자명 통과 아님)', `${h.length}번 · 가장 짧은 사이 ${Math.min(...gapH)}`);
+  const src = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
+  ok(/if \(_allocKnob\('T1228_PACE'\) !== '0' && S\.mv != null && totalFoodEquivalent\(v\) >= N \* \(_allocKnob\('T1228_PACE'\) === '10' \? 10 : 30\) && day - S\.mv < P\) return;/.test(src), '빠르기 문 글자(30일치 · 손잡이 `T1228_PACE=0` 끔 · `=10` 10일치)');
+}
+
 console.log('\n=== ⑥ 굶을 때 — 노동 목표 안 장인은 안 빠진다 ===');
 {
   ON();
@@ -251,7 +276,10 @@ console.log('\n=== ⑫ 결정론 · 마을 차례 ===');
   const o = { counts: { farmer: 5 }, _t1226F0: 3, _t1226F0d: 50 };
   ok(E._t1226FarmersOf(o, 50) === 3 && E._t1226FarmersOf(o, 51) === 5, '이웃 농부 수 — 그날 틱을 돈 마을은 틱 머리 값 · 아직 안 돈 마을은 지금 값(= 그날 머리)');
   ON();
-  const A = mk(18, { fertility: 2 }, '차촌가'), B = mk(18, { fertility: 0.6, water: 2 }, '차촌나');
+  const A = mk(18, { fertility: 2, water: 0.3 }, '차촌가'), B = mk(18, { fertility: 0.3, water: 2.5 }, '차촌나');
+  // 옮김이 생기게 — 두 마을 다 땅과 거꾸로 시작(A 는 어부 · B 는 농부로 몰아 둔다 · 식량 일끼리라 곳간 길 문은 안 막는다)
+  for (const p of A.v.npcs) if (p.currentJob === 'farmer') E._switchNPCJobForTest(p, 'fisher', -100, A.v);
+  for (const p of B.v.npcs) if (p.currentJob === 'fisher') E._switchNPCJobForTest(p, 'farmer', -100, B.v);
   const W = { villages: [A.v, B.v], picker: 'rational', day: 0, tradeLog: [], events: [], caravans: [], infoRange: 1e9 };
   A.v._world = W; B.v._world = W; W.autoSwitchInterval = 1;
   const T = { W };
