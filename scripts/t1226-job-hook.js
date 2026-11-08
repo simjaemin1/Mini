@@ -4,7 +4,7 @@
 // 쓰는 법(프리로드 — 세계에 손대지 않는다 · 판 갈래 `T1226_SCEN` 만 땅을 바꾼다):
 //   랩(econ 판):  NODE_OPTIONS="--require scripts/t1226-job-hook.js" T1226_OUT=/tmp/x.json node scripts/t17-metrics.js 400 1020
 //   서버 판:      NODE_OPTIONS="--require $PWD/scripts/t1226-job-hook.js" T1226_OUT=/tmp/x node scripts/server-baseline-check.js --make /tmp/b.json --vclock ...
-//                 (아이 판마다 `<T1226_OUT>.<시드>.json` — 시드는 t577 인자)
+//                 (존 아이마다 `<T1226_OUT>.<시드>.json` — 시드는 t577 이 넘기는 `T577_SEED`)
 //   판 갈래(랩 전용): T1226_SCEN=harvest — D0(`T1226_D0` · 기본 100)부터 365날 비옥도 × 0.5(한 해 수확 반)
 //                    T1226_SCEN=fish    — D0 부터 끝까지 물(어획 CPUE) × 0.5 · 어장 MSY 칸(있으면) × 0.5(어장 재고 반 — 쉐퍼: 어획 ∝ 재고)
 //
@@ -71,8 +71,9 @@ if (OUT) {
         const d = day | 0;
         if (d !== last && world && Array.isArray(world.villages)) {
           last = d; M.days++;
+          const VL = world.villages.map((x) => (x && x.econ && Array.isArray(x.econ.npcs)) ? Object.assign(Object.create(x.econ), { name: x.name || x.econ.name }) : x);   // 서버 판 = 마을 줄의 econ
           const sn = seas(d); const SB = M.sharesBySeason[sn] || (M.sharesBySeason[sn] = { n: 0 });
-          for (const v of world.villages) {
+          for (const v of VL) {
             const npcs = v.npcs || []; const N = npcs.length;
             const c = {}, net = {}; let swV = 0;
             for (const p of npcs) {
@@ -108,10 +109,10 @@ if (OUT) {
             }
           }
           scen(world, d);
-          let pop = 0, empty = 0; for (const v of world.villages) { const n = (v.npcs || []).length; pop += n; if (!n) empty++; }
-          M.popEnd = pop; M.emptyEnd = empty; M.villages = world.villages.length;
-          for (const v of world.villages) { const n = (v.npcs || []).length; if (n > 0 && (n <= 6 || (TRACE.includes(v.name) && d % 5 === 0))) { const T = M.small[v.name] || (M.small[v.name] = []); const c = {}; for (const p of v.npcs) c[p.currentJob] = (c[p.currentJob] || 0) + 1; T.push([d, n, Object.entries(c).map((x) => x.join(':')).join(' '), TRACE.includes(v.name) ? ['food', 'tool', 'stone', 'wood'].map((k) => k + '=' + Math.round((v.storage || {})[k] || 0)).join(' ') : '']); if (T.length > (TRACE.includes(v.name) ? 400 : 40)) T.shift(); } }
-          M.emptyNames = world.villages.filter((v) => !(v.npcs || []).length).map((v) => v.name);
+          let pop = 0, empty = 0; for (const v of VL) { const n = (v.npcs || []).length; pop += n; if (!n) empty++; }
+          M.popEnd = pop; M.emptyEnd = empty; M.villages = VL.length;
+          for (const v of VL) { const n = (v.npcs || []).length; if (n > 0 && (n <= 6 || (TRACE.includes(v.name) && d % 5 === 0))) { const T = M.small[v.name] || (M.small[v.name] = []); const c = {}; for (const p of v.npcs) c[p.currentJob] = (c[p.currentJob] || 0) + 1; T.push([d, n, Object.entries(c).map((x) => x.join(':')).join(' '), TRACE.includes(v.name) ? ['food', 'tool', 'stone', 'wood'].map((k) => k + '=' + Math.round((v.storage || {})[k] || 0)).join(' ') : '']); if (T.length > (TRACE.includes(v.name) ? 400 : 40)) T.shift(); } }
+          M.emptyNames = VL.filter((v) => !(v.npcs || []).length).map((v) => v.name);
         }
       } catch (e) { M.err = String(e && e.stack || e).slice(0, 400); }
       return sd.apply(this, arguments);
@@ -131,8 +132,9 @@ if (OUT) {
       }
       if (E._t1226Stat) M.stat = Object.assign({}, E._t1226Stat);
       for (const sn of Object.keys(M.sharesBySeason)) { const S = M.sharesBySeason[sn]; const n = S.n || 1; const o = {}; for (const k of Object.keys(S)) if (k !== 'n') o[k] = +(S[k] / n).toFixed(4); M.sharesBySeason[sn] = o; }
+      if (!M.days) return;   // 장부를 안 돈 프로세스(판 자 부모 · 견주기 부모) — 쓰지 않는다
       let file = OUT;
-      if (process.env.T577_OUT || /t577-server-run/.test(process.argv[1] || '')) file = OUT + '.' + (process.argv[3] || 'x') + '.json';
+      if (process.env.T577_SEED) file = OUT + '.' + process.env.T577_SEED + '.json';   // 서버 판 = 존 아이(시드는 t577 이 env 로 준다)
       fs.writeFileSync(file, JSON.stringify(M, null, 1));
     } catch (e) { /* 계측 실패는 판을 안 막는다 */ }
   };
