@@ -17,7 +17,8 @@ const w=E.createWorldV2({seed:7,villageCount:2,picker:'rational',infoRange:5000,
 const [a,b]=w.villages,c={id:1,from:a,to:b,trader:a.npcs[0],state:'inbound',returnArriveDay:10000,_returningRes:'wood',_returningAmt:10,escort:0};
 w.caravans=[c];w.day=100;w.caravanBodyReady=P.ready;
 const p={pid:'merchant',x:0,y:0,hp:100,hunger:100,thirst:100};
-Object.assign(S,{world:w,ready:false,dayMs:W.dayLengthMs,deps:{players:new Map([[p.pid,p]]),npcs:new Map(),moveSpeed:64,isPositionActive:()=>true,isBlockedByWall:()=>false},caravanBodies:new Map(),_carTickAt:1000});
+// ★[T1220] 픽스처 — T1203(land1051)이 몸 되살림의 hp 를 존의 문(`deps.setHp`)으로 쓴다 · 이 판은 존을 안 띄우므로 같은 문의 목(값만 · test-bandit-* 와 같은 꼴)을 deps 에 둔다(단언 무변)
+Object.assign(S,{world:w,ready:false,dayMs:W.dayLengthMs,deps:{players:new Map([[p.pid,p]]),npcs:new Map(),moveSpeed:64,isPositionActive:()=>true,isBlockedByWall:()=>false,setHp:(p,v)=>{p.hp=Math.max(0,Math.min(p.maxHp||100,v));return p.hp;}},caravanBodies:new Map(),_carTickAt:1000});
 const stock=a.storage.wood;
 for(let i=0;i<20;i++)E.tickWorldV2Parts(w).caravans();
 ok(a.storage.wood===stock && !c._done,'몸이 없으면 시계가 지나도 입금 0');

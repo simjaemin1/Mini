@@ -94,7 +94,8 @@ console.log('\n[③ 개간·건설 결산은 실걸음 상한과 같은 식이�
   //   그래서 검사도 따라간다 — 그리고 **계약을 강화한다**: 결산이 그 함수를 부르는지, 그리고
   //   그 함수가 날 길이 파생을 쓰는지 **둘 다** 본다. (세션1 T100 이 개간 추출에서 한 것과 같은 문법.)
   const fd = cut('lifeFarmDay');
-  chk(/lifeFarmDay\(vil, day, farmerN\)/.test(hl), '작물 결산이 `lifeFarmDay` 정본을 부른다(추출 뒤)');
+  //   ★[T1220] 옛 글자 — T1212 ① 이 작물 절의 날을 밭 날(`_farmDay(vil, day)` · 끔 = `day` 그대로)로 바꿨다(부르는 함수 · 농부 수 그대로).
+  chk(/lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\)/.test(hl), '작물 결산이 `lifeFarmDay` 정본을 부른다(추출 뒤)');
   chk(/_lifeTasksPerFarmerDay\(\)/.test(fd), '작물 결산이 날 길이 파생 함수를 쓴다(고정 상수 아님)');
   chk(!/_lifeTasksPerFarmerDay\s*=\s*\d|budget\s*=\s*\w+\s*\*\s*\d+/.test(fd), '작물 예산에 **고정 숫자가 없다**(T58b 계측기가 100 이라 적었던 자리)');
   // 실걸음 쪽: 개간 1셀 = dayMs / LIFE_CLEAR_PDAY 노동, 크루 상한 LIFE_CREW → 하루 상한 동일
