@@ -9771,7 +9771,7 @@ function __p3Bind(mock) {
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
     t1197BodyStep, _t1197Person, _t1197BodyMeal, _t1197DieBody, _t1197Stat, _t1197On, econDayToMs, _t1198Sync, _t1198Jobs, _t1198Stat, _t1198On, syncVillageJobs,   // ★[T1197] 몸 게이지 끼니 문(하네스 `test-t1197-meal-body` 가 운영과 같은 문을 부른다)
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
-    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
+    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On, T1224_ECON_FARM, _t1224Stat,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
     _oreMineDaily, T1095_MINE_DEMAND, _t1095Stat,   // ★[T1095] 채굴 일괄 수요 문 — 하네스(`test-t1095-mine-demand`)가 운영과 같은 문을 부른다(내보내기만)
     _t1039Depart, _t1039Join, _t1039Leave,   // ★[T1039] 도적 전환 몸 문 셋(하네스 `test-bandit-body` 가 운영과 같은 문을 부른다)
     _t1078Walkers, _t1078Die, _t1078Out, _t1078Life,   // ★[T1078] 단원 = 몸 문 넷(하네스 `test-bandit-all` 이 운영과 같은 문을 부른다)
@@ -11397,6 +11397,15 @@ function _farmDay(vil, day) {
 const T1212_FARM_REST = process.env.T1212_FARM_REST !== '0';
 const _t1212Rest = { days: 0, farmers: 0, idle: 0, bodyTasks: 0, restBudget: 0, batchTasks: 0, batchClear: 0 };
 function _t1212Note(npc, w) { if (npc && T1212_FARM_REST && _t368Walk()) npc._t1212N = (npc._t1212N || 0) + (w == null ? 1 : w); }   // ★[T1221] `w` = 그 일의 초(켬) · 안 주면 1(종전)   // T368 끔(기본)이면 몸 칸을 안 만든다(종전 바이트)
+// ★★[T1224 2026-11-08 · T1221 회부 1 · 차이 표 ㄱ] **몸 없는 econ 농부의 하루 = 일괄이 그 사람의 정본 하루로** — 손잡이 `T1224_ECON_FARM`(끔 기본 · `=1` 켬 · 끔 = 종전 글자 · 종전 값).
+//   일괄 명부 `farmerN` 은 이 마을 **몸**(`npcPids`) 가운데 농부만 센다. 몸이 econ 인구보다 적은 판(판 자 `VILLAGE_NPC_CAP` = `LIFE_CREW` 2 ·
+//   운영 몸 상한 · 몸이 아직 덜 선 날)에선 나머지 econ 농부(`econ.counts.farmer`)가 아무 데서도 밭 일을 안 한다 —
+//   서버 판 시드 1020 60날: econ 농부 = 사람의 27 → 64% · 몸 농부 = 4 ~ 5%(몸 102 = 51곳 × 2) · T1221 의 「서버 농부 4%」가 이것이다(보고/T1224 §1).
+//   켜면 그 몫 `_gh = max(0, econ 농부 − 몸 농부)` 를 명부에 더한다: 일괄 갈래(존 잠) = 명부 `farmerN` + `_gh` ·
+//   몸 갈래(존 깸 · T1212 ② 켬 위에서) = 「몸이 못 한 몫」에 그 사람들의 하루 전부(오늘 아무것도 못 한 몸과 같은 꼴 — 작물 하루 · 개간 한 사람).
+//   그 사람의 하루 = `_lifeTasksPerFarmerDay`(T1221 켬 = 낮 초) · 배수 0 · 새 수 0. T1212 ② 끔이면 몸 갈래엔 안 얹는다(그 판은 몸 XOR 일괄 종전).
+const T1224_ECON_FARM = process.env.T1224_ECON_FARM === '1';
+const _t1224Stat = { vilDays: 0, ghost: 0, ghostBudget: 0, body: 0, batch: 0 };
 function _lifeHeadlessDay(vil) {
   _lifeVL();   // lazy 로드 방어(단독 호출 경로 — 5e8d5f5 'is not defined' 클래스 재발 금지)
   const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
@@ -11414,6 +11423,13 @@ function _lifeHeadlessDay(vil) {
   if (_t368Walk()) { if (_body) vil._t368HlBody = (vil._t368HlBody || 0) + 1; else vil._t368HlBatch = (vil._t368HlBatch || 0) + 1; }   // 계측 전용(켠 팔만 · 회계 아님) — 이 마을 오늘 밭을 누가 했나(몸 · 일괄) · `/perf farm.hl`
   // ① 개간 — 실걸음과 동일: 크루 상한 2 × 3셀/인일, 프론티어 최근접부터(마을 중심 기준)
   let _restN = 0, _restB = 0;   // ★[T1212 ②] 몸이 못 한 몫(켬 · 몸 갈래만)
+  if (T1224_ECON_FARM) {   // ★[T1224] 몸 없는 econ 농부(끔 = 이 블록 없음)
+    const _gh = Math.max(0, (((vil.econ && vil.econ.counts && vil.econ.counts.farmer) | 0) - farmerN));
+    const _per = _t1221On() ? _t1221DayS() : _lifeTasksPerFarmerDay();
+    _t1224Stat.vilDays++;
+    if (_gh && _body && T1212_FARM_REST) { _restN += _gh; _restB += _gh * _per; _t1224Stat.ghost += _gh; _t1224Stat.ghostBudget += _gh * _per; _t1224Stat.body++; }
+    else if (_gh && !_body) { farmerN += _gh; _t1224Stat.ghost += _gh; _t1224Stat.ghostBudget += _gh * _per; _t1224Stat.batch++; }
+  }
   if (_body && T1212_FARM_REST) {
     const per = _t1221On() ? _t1221DayS() : _lifeTasksPerFarmerDay();   // ★[T1221] 켬 = 하루 낮 초 · 몸이 한 일도 초로 센다(`_t1212Note`)
     for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (!p || p.simJob !== 'farmer') continue;
