@@ -3,7 +3,7 @@
 // === scripts/test-t1212-farm-clock.js — 판 자 결함 둘: 생활층 밭 달력 = econ 날 · 몸이 못 한 밭 몫은 일괄이(T1212) ==================
 //
 // 지키는 것:
-//   ① `T1212_LIFE_CAL` 끔(미설정 · '0' · 그 밖 값) = 종전 — 밭 날 = 생활 날 그대로 · 켬(`1`) = econ 날(`econDayToMs` 의 역 — world.day + (생활 날 − 앵커))
+//   ① `T1212_LIFE_CAL` ★[T1223] 켬 기본(미설정 · `1` · 그 밖 값) = econ 날(`econDayToMs` 의 역 — world.day + (생활 날 − 앵커)) · 끔(`0`) = 종전 — 밭 날 = 생활 날 그대로
 //      ★자명 통과 금지: 생활 날 70억(판 자) · 290만(운영) 둘 다에서 켬 = econ 날 · 달력이 3월에 서지 않는다(2³¹ 넘는 날)
 //   ② 이어받기 — 켠 뒤 처음 만지는 마을의 밭 칸 날 셋(p · td · w)에서 그 차를 한 번 뺀다(나이 · 물때 그대로) · 표식 `_t1212Cal` ·
 //      끈 판이 표식 선 마을을 만나면 다시 더하고 표식을 뗀다(왕복 = 원래 값) · 표식은 T740 곁 칸이다
@@ -31,10 +31,11 @@ const DAY = `const V=require('./server/villages');const C=require('./server/crop
 for(const [L,E] of [[7068902409,10],[2903155,400]]){const B=V.__p3Bind({world:{day:E},lastGameDay:L});o[L]={on:B.T1212_LIFE_CAL,fd:B._farmDay(null,L),mo:C.monthOf(B._farmDay(null,L)),moE:C.monthOf(E),moL:C.monthOf(L)};}
 console.log(JSON.stringify(o));`;
 const d0 = sub({}, DAY), dz = sub({ T1212_LIFE_CAL: '0' }, DAY), dx = sub({ T1212_LIFE_CAL: 'yes' }, DAY), d1 = sub({ T1212_LIFE_CAL: '1' }, DAY);
-ok(!d0[7068902409].on && !dz[7068902409].on && !dx[7068902409].on && d1[7068902409].on, '① 미설정 · 0 · 그 밖 값 = 끔 · `1` = 켬');
-ok(d0[7068902409].fd === 7068902409 && d0[2903155].fd === 2903155, '① 끔 — 밭 날 = 생활 날 그대로(종전)');
+ok(d0[7068902409].on && !dz[7068902409].on && dx[7068902409].on && d1[7068902409].on, '① ★[T1223] 켬 기본 — 미설정 · `1` · 그 밖 값 = 켬 · `0` = 끔');
+ok(dz[7068902409].fd === 7068902409 && dz[2903155].fd === 2903155, '① 끔(`0`) — 밭 날 = 생활 날 그대로(종전)');
+ok(d0[7068902409].fd === 10 && d0[2903155].fd === 400, '① ★[T1223] 미설정(기본) = 켬과 같은 밭 날', `${d0[7068902409].fd} · ${d0[2903155].fd}`);
 ok(d1[7068902409].fd === 10 && d1[2903155].fd === 400, '① 켬 — 밭 날 = econ 날(판 자 70억 · 운영 290만 둘 다)', `${d1[7068902409].fd} · ${d1[2903155].fd}`);
-ok(d0[7068902409].moL === 3 && d1[2903155].mo === d1[2903155].moE && d1[7068902409].mo === d1[7068902409].moE, '① ★자명 통과 금지 — 끔이면 판 자 생활 날의 달이 3월(2³¹ 넘는 날) · 켬이면 econ 날의 달', `끔 ${d0[7068902409].moL}월 · 켬 econ 400날 ${d1[2903155].mo}월`);
+ok(dz[7068902409].moL === 3 && d1[2903155].mo === d1[2903155].moE && d1[7068902409].mo === d1[7068902409].moE, '① ★자명 통과 금지 — 끔이면 판 자 생활 날의 달이 3월(2³¹ 넘는 날) · 켬이면 econ 날의 달', `끔 ${dz[7068902409].moL}월 · 켬 econ 400날 ${d1[2903155].mo}월`);
 // ── ② 이어받기 ──
 const MIG = (vilJson) => `const V=require('./server/villages');const B=V.__p3Bind({world:{day:10},lastGameDay:1000});
 const vil=${vilJson};vil._crop=new Map(vil._crop);const fd=B._farmDay(vil,1000);
@@ -46,7 +47,7 @@ ok(m1.cal === 990 && e1.p === -40 && e1.td === 0 && e1.w === 5 && e1.wd === 2 &&
 ok(1000 - 950 === m1.fd - e1.p && 1000 - 995 === m1.fd - e1.w, '② 나이 · 물때가 그대로(오늘 − 심은 날 · 오늘 − 물 댄 날)');
 const m2 = sub({ T1212_LIFE_CAL: '1' }, MIG(JSON.stringify({ _crop: m1.crop, _t1212Cal: 990 })));
 ok(m2.crop[0][1].p === -40, '② 표식 선 마을은 다시 빼지 않는다(한 번만)');
-const m3 = sub({}, MIG(JSON.stringify({ _crop: m1.crop, _t1212Cal: 990 })));
+const m3 = sub({ T1212_LIFE_CAL: '0' }, MIG(JSON.stringify({ _crop: m1.crop, _t1212Cal: 990 })));   // ★[T1223] 끈 판 = `=0`(미설정은 이제 켬)
 ok(m3.cal === null && JSON.stringify(m3.crop) === JSON.stringify(vil0._crop), '② 끈 판이 표식 선 마을을 만나면 되돌린다(왕복 = 원래 값 · 표식 뗌)');
 ok(/'_granPend',[^\n]*\n\s*'_t1212Cal'\];/.test(S), '② 표식은 T740 곁 칸(다시 떠도 한 번만 옮긴다)');
 // ── ③ 몸 XOR 일괄 ──
