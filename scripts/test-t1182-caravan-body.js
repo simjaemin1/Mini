@@ -17,7 +17,8 @@ const w=E.createWorldV2({seed:7,villageCount:2,picker:'rational',infoRange:5000,
 const [a,b]=w.villages,c={id:1,from:a,to:b,trader:a.npcs[0],state:'inbound',returnArriveDay:10000,_returningRes:'wood',_returningAmt:10,escort:0};
 w.caravans=[c];w.day=100;w.caravanBodyReady=P.ready;
 const p={pid:'merchant',x:0,y:0,hp:100,hunger:100,thirst:100};
-Object.assign(S,{world:w,ready:false,dayMs:W.dayLengthMs,deps:{players:new Map([[p.pid,p]]),npcs:new Map(),moveSpeed:64,isPositionActive:()=>true,isBlockedByWall:()=>false},caravanBodies:new Map(),_carTickAt:1000});
+// ★[T1220-K4] 몸 HP 문(`deps.setHp` — 존 `setHp` 의 자리)을 픽스처에 준다: T1203(land1051)이 되살림 `put`(`server/villages.js:4473`)의 hp 쓰기를 문(`_setHp`)으로 옮겼다(값 = 저장한 그 hp)
+Object.assign(S,{world:w,ready:false,dayMs:W.dayLengthMs,deps:{players:new Map([[p.pid,p]]),npcs:new Map(),moveSpeed:64,isPositionActive:()=>true,isBlockedByWall:()=>false,setHp:(q,v)=>{q.hp=v;return v;}},caravanBodies:new Map(),_carTickAt:1000});
 const stock=a.storage.wood;
 for(let i=0;i<20;i++)E.tickWorldV2Parts(w).caravans();
 ok(a.storage.wood===stock && !c._done,'몸이 없으면 시계가 지나도 입금 0');

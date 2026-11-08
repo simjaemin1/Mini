@@ -12,6 +12,8 @@
 'use strict';
 if (process.env.T1074_FOOD_DEBT == null) process.env.T1074_FOOD_DEBT = '0';   // 거래소 형제 하네스(t988 · t835)와 같은 판 세계
 if (process.env.T858_NO_SHIELD == null) process.env.T858_NO_SHIELD = '0';
+// ★[T1220-K4] 행복 식(T1205 · land1051 켬 기본)이 이 판 세계(시드 7 · 120날)를 바꿔 ④-2 자명 통과 금지 문턱(성사 실행 > 10)이 6 으로 내려갔다 — 이 하네스는 두 칸 = 전 표만 잰다(행복 밖) · 끔으로 묶는다
+if (process.env.T1205_HAPPY == null) process.env.T1205_HAPPY = '0';
 const path = require('path');
 const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
