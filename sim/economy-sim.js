@@ -6583,6 +6583,9 @@ function _t1226FlexBody(v, day, world, interval, multi) {
   }
   if (!look.length || !need) return;
   const N = v.npcs.length, cap = jobCapacity(v);
+  //   ★[T1228] 마을 빠르기 — 곳간이 30일치(피커 기근 문) 넘게 있으면 종전 전환 간격(7날 · `autoSwitchInterval`)에 한 사람, 밑이면 하루 한 사람.
+  //   값이 곳간 재고를 보고 매겨져 곳간이 두둑할 땐 식량 일이 싸 보인다 — 날마다 옮기면 식량 일꾼이 시세보다 빨리 빠져 곳간이 비고서야 돌아온다(T1228 빈 마을 표).
+  if (_allocKnob('T1228_PACE') !== '0' && S.mv != null && totalFoodEquivalent(v) >= N * 30 && day - S.mv < P) return;
   const Dneed = Math.min(100, day - S.since + 1);
   let hungry = null, pick = null, pickJob = null, pickNet = 0;
   const ev = [];
@@ -6622,6 +6625,7 @@ function _t1226FlexBody(v, day, world, interval, multi) {
   // 몰림 — 마을 하루에 한 사람: 그날 보는 사람 가운데 얻는 것 − 비용이 가장 큰 사람만 옮긴다(나머지는 다음 보는 날 다시 잰다 · 차례 무관).
   if (T1226_DIAG) { ev.sort((a, b) => b[5] - a[5]); _t1226Diag(v, [day, need, Dneed, look.length, pick ? pick.currentJob + '>' + pickJob : '-', +(totalFoodEquivalent(v) / N).toFixed(1), ev.slice(0, 2)]); }
   if (!pick) return;
+  S.mv = day;   // ★[T1228] 마을이 마지막으로 옮긴 날(빠르기)
   const c = pick.currentJob;
   mvOut[c] = (mvOut[c] || 0) + 1; mvIn[pickJob] = (mvIn[pickJob] || 0) + 1;
   switchNPCJob(pick, pickJob, day, v);
