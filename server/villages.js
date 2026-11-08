@@ -11130,11 +11130,13 @@ function cropDayTick(e, nong, day, cellKey) {
   if (_cropDormant(e, day)) return;           // ★★[T99] 휴면 — 품질도 안 깎이고 병충해도 안 붙는다.
   //   ★봄에 **멈춘 자리에서 재개**한다: `wd`(김맨 차례)·`q`·`ps` 를 겨울이 한 글자도 안 건드리므로.
   const wd = e.wd || 0, gf = _cropGrowFrac(e, day);
+  let _wm;   // ★[T1229] 김매기 늦음 벌점을 매긴 날이면 1(부르는 쪽이 일손 한도로 센다 · 값 무변 · 종전 부르는 쪽은 안 읽는다)
   if (e.ps) e.q -= L_QP;
-  else if (wd < L_WEEDS.length && gf >= L_WEEDS[wd] + 0.06) e.q -= L_QW;
+  else if (wd < L_WEEDS.length && gf >= L_WEEDS[wd] + 0.06) { e.q -= L_QW; _wm = 1; }
   if (nong && day - (e.w || e.p) >= L_WATERGAP + 8) e.q -= L_QW;
   if (!e.ps && _pestAt(cellKey, e.c, day)) e.ps = 1;
   if (e.q < L_QMIN) e.q = L_QMIN;
+  return _wm;
 }
 // ★★★[T91 2026-09-04] **다년생은 수확해도 밭이 비지 않는다 — 그루터기가 남아 다시 자란다.**
 //   §0ⓐ 실측: 카탈로그 `재배유형` 축의 네 값 중 상태기가 읽는 것은 **0개**였다(월동은 빌드가
@@ -11506,11 +11508,11 @@ function lifeFarmDay(vil, day, farmerN, onDid, budget0) {
     let _ks = vil._farmSet;
     if (_L) { const a = []; for (const k of vil._farmSet) { const t = _cellTask(vil, k, day); if (t > 0) a.push([k, t]); } a.sort((x, y) => y[1] - x[1]); _ks = a.map((x) => x[0]); }
     for (const k of _ks) {
-      if (budget <= 0) { if (T1229_FIELD_GROW && _cellTask(vil, k, day) > 0) _t1229Short(vil, day); break; }   // ★[T1229] 할 일을 남기고 몫이 다 됐다(끔 = 종전 break)
+      if (budget <= 0) break;
       const t = _cellTask(vil, k, day);
       if (t <= 0) continue;
       const _c = _L ? _t1221Cost(t) : 1;
-      if (_L && _c > budget) { if (T1229_FIELD_GROW) _t1229Short(vil, day); continue; }   // ★[T1221] 그 일을 할 시간이 남지 않았다(더 짧은 일은 한다) · ★[T1229] 일손 모자람
+      if (_L && _c > budget) continue;   // ★[T1221] 그 일을 할 시간이 남지 않았다(더 짧은 일은 한다)
       let e0c = null, e0p = -1;
       if (onDid) { const e0 = vil._crop.get(k); if (e0) { e0c = e0.c; e0p = e0.p; } }
       if (_lifeDoTask(vil, null, k, day)) {
@@ -12580,7 +12582,9 @@ function _lifeFrontier(vil) {   // 랩 getFrontier 동형(일 캐시): 기개간
 //   손잡이 `T1229_FIELD_GROW`(끔 기본 · `=1` 켬 · 끔 = 아래 종전 줄 그대로 · 종전 값).
 //   밭 넓이를 사람당 고정 칸(`LAND_NEED` 12 × 보즈럽 `landNeedPer`)이 아니라 **마을 농부의 남는 일손**으로 정한다 — 켜면 개간 문(종전 곳간 120일치 글럿 정지는 그대로)은 둘:
 //     ① 곡식 덮음 < 1 — 지난 360날(30날 찍음 열둘 · 첫해는 처음부터) 밭이 곳간에 넣은 식량등가(econ `_t368FoodTot` 차) ÷ 같은 창 사람-날. 1 이면 밭만으로 다 먹는다.
-//     ② 지난 365날 안에 일손이 모자란 날이 없다 — `lifeFarmDay` 가 할 일을 남기고 그날 몫(초 · 일감)을 다 쓴 날(`_t1229Short`)이 그 날이다(김매기를 못 한 날 = 일손 한도에 닿음).
+//     ② 지난 30날(찍음 한 칸 — 그 철) 안에 일손이 모자란 날이 없다 — **김매기를 못 한 날**(`cropDayTick` 이 김매기 늦음 벌점 `L_QW` 를 매긴 칸이 있는 날 · `_t1229Short`).
+//        김매기는 급한 일 차례의 맨 끝이라(T1221 ⓪) 하루 몫이 모자라면 먼저 밀린다 — 그 칸이 벌점을 받으면 그 마을은 일손 한도에 닿았다.
+//        (첫 판은 「할 일을 남기고 그날 몫을 다 쓴 날」 + 365날로 쟀다 — 파종 철엔 칸을 며칠에 나눠 심는 것이 보통이라 그 하루 남김이 한 해 개간을 막아 밭이 종전보다 작아졌다 · 보고/T1229 §1)
 //   개간 자리 · 속도는 종전 그대로(`_lifeFrontier` — 기개간 인접 · 영토 안 · 크루 상한 · T1221 켬 = 고증 개간 초). 칸마다의 비옥은 없다(마을 단위 `land.fertility` 뿐) — 자리 차례는 종전.
 //   휴경(묵히는 밭)은 비율 근거가 미확인(보고/T1221 §1 고증 표)이라 새 수를 안 세운다 — 회부(보고/T1229).
 //   영토가 막은 날(문은 열렸는데 프론티어가 비었다)은 `_t1229Stat.blocked` 로 센다(영토를 켜지 않는다 · T1207 · T1213 잇는 자리).
@@ -12596,7 +12600,7 @@ function _t1229Need(vil) {
   s.cov = dPd > 0 ? dF / dPd : 0;
   _t1229Stat.days++;
   if (s.cov >= 1) { _t1229Stat.covStop++; return false; }
-  if (day - s.short < 365) { _t1229Stat.laborStop++; return false; }
+  if (day - s.short < 30) { _t1229Stat.laborStop++; return false; }
   _t1229Stat.open++;
   if (!_lifeFrontier(vil).length) { _t1229Stat.blocked++; return false; }
   return true;
@@ -15574,7 +15578,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
     const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
     if (T1144_LIFE_EVENT) _t1144Reset(vil);   // ★[T1144 ⓒ] 하루 틱 — 칸 전부
     const fday = _farmDay(vil, day);   // ★[T1212 ①] 밭 날(끔 = `day` 그대로)
-    for (const [k, e] of vil._crop) cropDayTick(e, !vil._drySet.has(k), fday, k);   // ★[T58b] 정본 하나(플레이어 농지도 이걸 재생한다)
+    for (const [k, e] of vil._crop) if (cropDayTick(e, !vil._drySet.has(k), fday, k) && T1229_FIELD_GROW) _t1229Short(vil, fday);   // ★[T58b] 정본 하나(플레이어 농지도 이걸 재생한다) · ★[T1229] 김매기 못 한 칸 = 일손 한도(끔 = 종전 그대로)
   }
   _sub('cropDay');   // ★[T523] 계측 전용 — 둘째 토막(아래 `gran` 은 이제 사냥 하루만)
   if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
@@ -17754,7 +17758,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
           const ev = vil.econ; if (!ev || !ev.npcs || !ev.npcs.length) continue;
           n += lifeFarmDay(vil, day, (ev.counts && ev.counts.farmer) || 0, onDid ? (k, t, c0, p0, e1) => onDid(vil, k, t, c0, p0, e1) : null);
           if (T1144_LIFE_EVENT) _t1144Reset(vil);   // ★[T1144 ⓒ] 라이브 하루 경계와 같은 문
-          for (const [k, e] of vil._crop) cropDayTick(e, !vil._drySet.has(k), day, k);   // 라이브 하루 경계와 같은 줄
+          for (const [k, e] of vil._crop) if (cropDayTick(e, !vil._drySet.has(k), day, k) && T1229_FIELD_GROW) _t1229Short(vil, day);   // 라이브 하루 경계와 같은 줄 · ★[T1229]
         }
         return n;
       },
