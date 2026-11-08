@@ -22,6 +22,7 @@
 // 실행: node scripts/test-farm-act.js
 'use strict';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
+if (process.env.T1212_FARM_REST == null) process.env.T1212_FARM_REST = '0';   // ★[T1220-K1] T1212 ② 켬 기본(land1051) — 켬이면 몸 갈래에서도 「몸이 못 한 몫」을 `lifeFarmDay` 일괄이 거든다(설계) · 이 하네스의 ⑤ · ⑫ 는 그 앞 「몸 XOR 일괄」(몸 날 작물 절 호출 0)을 재므로 끔으로 묶는다(단언 무변 · 켬 세계는 test-t1212-farm-clock 이 잰다)
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
@@ -150,7 +151,8 @@ console.log('\n④ 장부 다리 — 밭 입고가 **품목으로** 잠재·실�
 console.log('\n⑤ ⓑ 헤드리스 — 켜면 이 마을 밭은 **몸이 한다**(농부 몫 두 절 호출 0) · 존이 통째로 자면 일괄이 그 몫(몸 XOR 일괄) · ★T410 문을 열면(기본) 존이 안 잔다');
 {
   const hl = bodyOf(VC, '_lifeHeadlessDay');
-  ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /if \(!_body\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /if \(!_body\) lifeFarmDay\(vil, day, farmerN\);/.test(hl),
+  //   ★[T1220-K1] 옛 글자 — T1212 ① 이 작물 절의 날을 밭 날(`_farmDay(vil, day)` · 끔 = `day` 그대로)로 바꿨다 — 판정(`!_body`)은 그대로라 글자만 새로.
+  ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /if \(!_body\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /if \(!_body\) lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\);/.test(hl),
     '⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 작물');
   //   ★[T400] 집 절에 집 행위 손잡이 가드(`&& !_lifeEcon().T400_BUILD_ACT`)가 붙었다 — 농부 판정(`_body`)과 무관한 것은 그대로다.
   ok(/if \(vil\._site(?: && !_lifeEcon\(\)\.T400_BUILD_ACT)?\) \{ let st = Math\.min\(LIFE_CREW, popN\) \* LIFE_STAGE_PDAY;/.test(hl) && !/_body[^\n]*LIFE_STAGE_PDAY/.test(hl),
