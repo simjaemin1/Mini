@@ -14167,7 +14167,7 @@ function t1134Step(v, G, N, hungerShare) {
 const T1205_HAPPY = T1134_HAPPY_TARGET && !(typeof process !== 'undefined' && process.env && process.env.T1205_HAPPY === '0');
 const T1205_E_MIN = -0.2, T1205_E_MAX = 1;   // ★재민 11-07 카드(겪은 일 범위)
 const T1205_LUX_MAX = 1;                     // 사치품 1인당 충족률 자름(다른 항목과 같은 1)
-const T1205_DEF = { C: 0.0046, A: 2, B: 0.5, LUX_W: 0.15, K2: POP_MAX_DELTA_PCT / T1134_EMIG_H };   // ★[T1205 §2] c · a · b · 사치품 무게 = 판에서 고른 값(보고) · k₂ = 하루 인구 상한 ÷ 0.25(h = 0 에서 하루 떠남 = 종전 하루 상한 N × 6 %)
+const T1205_DEF = { C: 0.003, A: 2, B: 0.5, LUX_W: 0.15, K2: POP_MAX_DELTA_PCT / T1134_EMIG_H };   // ★[T1205 §2] c · a · b · 사치품 무게 = 판에서 고른 값(보고) · k₂ = 하루 인구 상한 ÷ 0.25(h = 0 에서 하루 떠남 = 종전 하루 상한 N × 6 %)
 function _t1205Env(k) { const x = (typeof process !== 'undefined' && process.env) ? parseFloat(process.env['T1205_' + k]) : NaN; return Number.isFinite(x) && x >= 0 ? x : T1205_DEF[k]; }
 function t1205Par() { return { c: _t1205Env('C'), a: _t1205Env('A'), b: _t1205Env('B'), luxW: _t1205Env('LUX_W'), k2: _t1205Env('K2') }; }
 //   영토 셀 수(바닥 = 창설 영토)
