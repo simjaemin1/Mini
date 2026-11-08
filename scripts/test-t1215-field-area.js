@@ -46,7 +46,7 @@ ok(JSON.stringify(on.kg) === JSON.stringify(off.kg), '③ 칸당 kg(`cellKgOf`)�
 const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
 const Z = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 const BUN = fs.readFileSync(path.join(ROOT, 'sim', 'economy-engine.browser.js'), 'utf8');
-ok(/C\.harvestUnits\(e\.c, \{ supply: vil\._drySet\.has\(k\) \? 1 : 5, seedFresh: 1 \}\)/.test(V), '④ 서버 마을 밭이 같은 함수');
+ok(/C\.harvestUnits\(e\.c, \{ supply: vil\._drySet\.has\(k\) \? 1 : 5, seedFresh: 1(, fert: _t1221On\(\) \? _t1221Fert\(vil\) : undefined)? \}\)/.test(V), '④ 서버 마을 밭이 같은 함수');
 ok((Z.match(/Crops\.harvestUnits\(/g) || []).length >= 5, '④ 플레이어 밭(존) 다섯 자리가 같은 함수', `${(Z.match(/Crops\.harvestUnits\(/g) || []).length}`);
 ok(/const FIELD_CELL_M2 = 250;/.test(BUN) && /if \(T1215_FIELD_M2\) \{ const per = kgOf\(id\)/.test(BUN), '④ 번들(랩)에 같은 정본이 실렸다(다시 굽기)');
 console.log(`\n${pass} 통과 · ${fail} 실패`);

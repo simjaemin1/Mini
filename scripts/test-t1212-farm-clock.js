@@ -56,9 +56,9 @@ const R0 = sub({ T1212_FARM_REST: '0' }, `const V=require('./server/villages');c
 ok(R.rest === true && R0.rest === false, '③ `T1212_FARM_REST` 켬 기본 · `0` 끔');
 const hb = S.slice(S.indexOf('function _lifeHeadlessDay(vil) {'), S.indexOf('// ★★★[T117 2026-09-05] **하루치 작물 노동 — 정본 하나.**'));
 ok(/if \(_body && T1212_FARM_REST\) \{/.test(hb) && /_restB \+= Math\.max\(0, per - did\);/.test(hb) && /if \(!did\) \{ _restN\+\+;/.test(hb) && /_lifeClearDay\(vil, _restN\)/.test(hb), '③ 몸 갈래 — 작물 = Σ max(0, 정본 하루 − 한 일) · 개간 = 아무것도 못 한 농부 수');
-ok(/const per = _lifeTasksPerFarmerDay\(\);/.test(hb) && !/_t561Fit\(p\)/.test(hb), '③ 정본 하루 = `_lifeTasksPerFarmerDay`(배수 0) · 명부 = 종전 일괄 농부 명부(몸 칸 거르기 0 — T1215 보강)');
+ok(/const per = _t1221On\(\) \? _t1221DayS\(\) : _lifeTasksPerFarmerDay\(\);/.test(hb) && !/_t561Fit\(p\)/.test(hb), '③ 정본 하루 = `_lifeTasksPerFarmerDay`(배수 0) · 명부 = 종전 일괄 농부 명부(몸 칸 거르기 0 — T1215 보강)');
 ok(/if \(!_body\) _lifeClearDay\(vil, farmerN\);/.test(hb) && /if \(!_body\) lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\);/.test(hb), '③ 몸 갈래가 아니면 종전 두 절 그대로(밭 날만 ①)');
-ok(/if \(_lifeDoTask\(vil, npc, k, _farmDay\(vil, day\)\)\) _t1212Note\(npc\);/.test(S) && /if \(npc\.simJob === 'farmer'\) _t1212Note\(npc\);/.test(S), '③ 몸이 한 일 = 칸 처리 · 개간 칸에서만 센다');
-ok(/let budget = \(budget0 != null\) \? Math\.max\(0, budget0 \| 0\) : Math\.max\(0, farmerN \| 0\) \* _lifeTasksPerFarmerDay\(\);/.test(S), '③ `lifeFarmDay` 일감 몫(안 주면 종전 식)');
+ok(/const _ok = _lifeDoTask\(vil, npc, k, _fd\);\s*if \(_ok\) _t1212Note\(npc, _L \? _c : 1\);/.test(S) && /const _fd = _farmDay\(vil, day\)/.test(S) && /if \(npc\.simJob === 'farmer'\) _t1212Note\(npc, _t1221On\(\) \? _t1221ClearS\(\) : 1\);/.test(S), '③ 몸이 한 일 = 칸 처리 · 개간 칸에서만 센다');
+ok(/let budget = \(budget0 != null\) \? Math\.max\(0, _L \? \+budget0 : \(budget0 \| 0\)\) : Math\.max\(0, farmerN \| 0\) \* \(_L \? _t1221DayS\(\) : _lifeTasksPerFarmerDay\(\)\);/.test(S), '③ `lifeFarmDay` 일감 몫(안 주면 종전 식)');
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);
