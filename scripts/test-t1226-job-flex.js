@@ -155,7 +155,7 @@ console.log('\n=== ⑤ 몰림 — 엇갈린 날 · 이미 옮긴 수 · 최근 �
   OFF();
 }
 
-console.log('\n=== ⑤b 마을 빠르기(T1228) — 곳간 30일치 넘으면 7날에 한 사람 · 밑이면 날마다 ===');
+console.log('\n=== ⑤b 마을 빠르기(T1228) — 곳간 10일치 넘으면 7날에 한 사람 · 밑이면 날마다 ===');
 {
   const days = (rich) => {
     ON();
@@ -174,10 +174,10 @@ console.log('\n=== ⑤b 마을 빠르기(T1228) — 곳간 30일치 넘으면 7�
   };
   const r = days(true), h = days(false);
   const gapR = r.slice(1).map((d, i) => d - r[i]), gapH = h.slice(1).map((d, i) => d - h[i]);
-  ok(r.length >= 2 && Math.min(...gapR) >= 7, '곳간 두둑(30일치 넘음) — 옮긴 날 사이 ≥ 7날', `${r.length}번 · 가장 짧은 사이 ${Math.min(...gapR)}`);
+  ok(r.length >= 2 && Math.min(...gapR) >= 7, '곳간 두둑(10일치 넘음) — 옮긴 날 사이 ≥ 7날', `${r.length}번 · 가장 짧은 사이 ${Math.min(...gapR)}`);
   ok(h.length >= 2 && Math.min(...gapH) < 7, '굶는 마을 — 7날 안에도 또 옮긴다(자명 통과 아님)', `${h.length}번 · 가장 짧은 사이 ${Math.min(...gapH)}`);
   const src = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
-  ok(/if \(_allocKnob\('T1228_PACE'\) !== '0' && S\.mv != null && totalFoodEquivalent\(v\) >= N \* 30 && day - S\.mv < P\) return;/.test(src), '빠르기 문 글자(손잡이 `T1228_PACE=0` 끔)');
+  ok(/if \(_allocKnob\('T1228_PACE'\) !== '0' && S\.mv != null && totalFoodEquivalent\(v\) >= N \* \(_allocKnob\('T1228_PACE'\) === '30' \? 30 : 10\) && day - S\.mv < P\) return;/.test(src), '빠르기 문 글자(10일치 · 손잡이 `T1228_PACE=0` 끔 · `=30` 30일치)');
 }
 
 console.log('\n=== ⑥ 굶을 때 — 노동 목표 안 장인은 안 빠진다 ===');
