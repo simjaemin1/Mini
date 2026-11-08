@@ -6514,6 +6514,18 @@ function _t1226Net(vt, vc, N, D, since) {
 }
 function _t1226In(x, n, k) { return x * n / (n + (k || 0)); }
 function _t1226Out(x, n, k) { return x * n / Math.max(1, n - (k || 0)); }
+// ★[T1228] 식량 곳간 길 — 식량 일꾼(피커 기근 문의 넷) 한 사람이 식량 밖 일로 빠지면 하루 식량 흐름이
+//   (흐름 EMA `surplusEMA.food` − 식량 일꾼 1인당 산출)이 되고, 그 흐름으로 D 날 뒤 곳간(식량 등가)이 N × 30(피커 기근 문 · 종전 보류 문의 그 30일치) 밑이면 빼지 않는다.
+//   값(시세)은 곳간 재고를 보고 매겨져 곳간이 두둑할 땐 식량 일이 싸 보인다 — 흐름이 마이너스면 곳간이 다 비는 날까지 시세가 늦게 따라온다(T1228 빈 마을 표). 새 수 0.
+function _t1228FoodShort(v, N, D) {
+  const c = v.counts || {}; const fw = (c.farmer || 0) + (c.fisher || 0) + (c.hunter || 0) + (c.forager || 0);
+  if (fw <= 0) return false;
+  const F = (v.surplusEMA && v.surplusEMA.food) || 0;
+  const prod = F + N * DAILY_FOOD_CONSUMPTION;
+  const F1 = F - Math.max(0, prod) / fw;
+  if (!(F1 < 0)) return false;
+  return totalFoodEquivalent(v) + F1 * D < N * 30;
+}
 // ★[T1228 ⑥] 후보 밖 일의 지금 값 — 노동 목표 장인(석공 · 대장장이 · 갑옷장이 · 재봉사 · 요리사)은 고정 값(목표 안 50 × 숙련 · 넘으면 0.005)
 //   대신 그 일이 내는 물건의 값(전환 보류 문 가치표 `_needValueOf` = 하루 산출 × 그 물건 시세) × 그 사람 숙련 배수 — 갈 값(모자란 일로 갈 때)과 같은 자.
 //   굶으면 식량 시세가 장인 물건 시세보다 뛰어 장인도 식량 일로 끌리고, 도구가 바닥나면 도구 시세가 뛰어 석공이 남는다(새 수 0).
@@ -6582,6 +6594,7 @@ function t1226Flex(v, day, world, interval, multi) {
       if (t === c || (p.captive && CAPTIVE_JOB_BAN[t])) return;
       if (T.wait[t] && (T.counts[t] || 0) >= 1) { _t1226Stat.waitFirst++; return; }   // 사람 없던 일 — 첫 한 명의 실현이 설 때까지
       if (_T1085_FOOD[t] === undefined && p._chiefAssignDay != null && p._chiefAssignDay === p.lastJobChangeDay && day - p._chiefAssignDay < JOB_SWITCH_COOLDOWN) return;
+      if (_T1085_FOOD[c] && !_T1085_FOOD[t] && _t1228FoodShort(v, N, Dt)) { _t1226Stat.foodHold = (_t1226Stat.foodHold || 0) + 1; return; }   // ★[T1228] 식량 일꾼이 빠지면 D 날 안에 곳간이 30일치 밑
       const vt0 = _t1226V(T, p, t, Dt), vt = vt0 !== null ? _t1226In(vt0, ne1(t), mvIn[t]) : _needValueOf(v, t, T.w) * _t1226Sk(p, t, Dt);
       const vc0 = _t1226V(T, p, c, Dt), vc = vc0 !== null ? _t1226Out(vc0, ne1(c), mvOut[c]) : _t1228Fixed(p, v, c, T.w, Dt);
       const net = _t1226Net(vt, vc, N, Dt, since);

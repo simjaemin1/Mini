@@ -251,7 +251,10 @@ console.log('\n=== ⑫ 결정론 · 마을 차례 ===');
   const o = { counts: { farmer: 5 }, _t1226F0: 3, _t1226F0d: 50 };
   ok(E._t1226FarmersOf(o, 50) === 3 && E._t1226FarmersOf(o, 51) === 5, '이웃 농부 수 — 그날 틱을 돈 마을은 틱 머리 값 · 아직 안 돈 마을은 지금 값(= 그날 머리)');
   ON();
-  const A = mk(18, { fertility: 2 }, '차촌가'), B = mk(18, { fertility: 0.6, water: 2 }, '차촌나');
+  const A = mk(18, { fertility: 2, water: 0.3 }, '차촌가'), B = mk(18, { fertility: 0.3, water: 2.5 }, '차촌나');
+  // 옮김이 생기게 — 두 마을 다 땅과 거꾸로 시작(A 는 어부 · B 는 농부로 몰아 둔다 · 식량 일끼리라 곳간 길 문은 안 막는다)
+  for (const p of A.v.npcs) if (p.currentJob === 'farmer') E._switchNPCJobForTest(p, 'fisher', -100, A.v);
+  for (const p of B.v.npcs) if (p.currentJob === 'fisher') E._switchNPCJobForTest(p, 'farmer', -100, B.v);
   const W = { villages: [A.v, B.v], picker: 'rational', day: 0, tradeLog: [], events: [], caravans: [], infoRange: 1e9 };
   A.v._world = W; B.v._world = W; W.autoSwitchInterval = 1;
   const T = { W };
