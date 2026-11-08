@@ -30,10 +30,11 @@ const CREW = +src.match(/const LIFE_CREW = (\d+)/)[1];
 // ★[T751 · T627 `203c767b` 10-04] `_lifeTasksPerFarmerDay` 의 하루 길이가 `_tripDayMs()` 를 거친다(손잡이 T627_TRIP_DAY ·
 //   끔 = `state.dayMs` 그대로). 그 함수와 손잡이 줄을 **이름으로** 같이 떼어 온다 — 손잡이는 끔으로 못 박는다
 //   (켬이면 정본 운영 하루라 아래 ①의 "날 길이 2배 = 처리량 2배"가 뜻을 잃는다 · 이 하네스는 판 시계 쪽을 잰다).
-const t627 = src.match(/const T627_TRIP_DAY = process\.env\.T627_TRIP_DAY === '1';/);
+//   ★[T1216-K3] T1183 이 손잡이를 켬 기본으로 바꿨다(`!== '0'` · 되돌림 `=0`) — 두 글자 꼴을 다 받고, 떼어 온 쪽 env 에 `=0` 을 넣어 **끔으로 묶는다**(이 하네스가 재는 판 시계 쪽 · 위 뜻 그대로)
+const t627 = src.match(/const T627_TRIP_DAY = process\.env\.T627_TRIP_DAY (?:=== '1'|!== '0');/);
 if (!t627) throw new Error('손잡이 줄 없음: T627_TRIP_DAY');
 const state = { dayMs: 0, deps: { dayPhaseRatio: 0.7 } };
-const ctx = vm.createContext({ state, Math, console, process: { env: {} }, require });
+const ctx = vm.createContext({ state, Math, console, process: { env: { T627_TRIP_DAY: '0' } }, require });
 vm.runInContext([consts, t627[0], cut('_tripDayMs'), cut('_lifeTasksPerFarmerDay'),
   'globalThis.__api = { _lifeTasksPerFarmerDay, LIFE_TASK_SEC };'].join('\n'), ctx);
 const A = ctx.__api;

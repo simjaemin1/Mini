@@ -172,10 +172,11 @@ console.log('\n⑦ [T537] 잉여 식 — 다리 크루는 **숯가마와 같은 
 {
   const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
   const kb = ESRC.slice(ESRC.indexOf('function kilnDay('), ESRC.indexOf('function kilnDay(') + 1400);
-  ok(typeof E.woodSpare === 'function' && /const spare = woodSpare\(v\);/.test(kb) && !/const reserve = \(RESERVE_PC\.wood/.test(kb), '⑦ 숯가마 잉여가 함수 하나(`woodSpare`)로 — 옛 두 줄은 그 함수 속(사본 0 · 산술 순서 그대로)');
+  //   ★[T1213] 숯가마 · 다리 크루는 땅 몫 뒤 잉여(`woodSpareAfterLand` = `woodSpare` − 땅 몫 · T1213 끔이면 땅 몫 0 = 종전 값 그대로)
+  ok(typeof E.woodSpare === 'function' && /const spare = woodSpareAfterLand\(v\);/.test(kb) && /function woodSpareAfterLand\(v\) \{ return woodSpare\(v\) - landWoodShare\(v\); \}/.test(ESRC) && !/const reserve = \(RESERVE_PC\.wood/.test(kb), '⑦ 숯가마 잉여가 함수 하나(`woodSpare` · T1213 땅 몫 뒤)로 — 옛 두 줄은 그 함수 속(사본 0 · 산술 순서 그대로)');
   ok(/function woodSpare\(v\) \{[\s\S]{0,200}const reserve = \(RESERVE_PC\.wood \|\| 0\) \* N;\s*return \(v\.storage\.wood \|\| 0\) - reserve - houseWoodShare\(v\);/.test(ESRC), '⑦ 식 = 재고 − `RESERVE_PC.wood × 인구` − `houseWoodShare`(T488 그대로 · 새 상수 0)');
   const body = VSRC.slice(VSRC.indexOf('function _t527BridgeDay('), VSRC.indexOf('function _t527BridgeDay(') + 4000);
-  ok(/const room = k === 'wood' \? Math\.max\(0, E\.woodSpare\(vil\.econ\)\) : Infinity;/.test(body) && /Math\.min\(_t400PerLoad\(k\), need\[k\] - \(site\.mat\[k\] \|\| 0\), room\)/.test(body), '⑦ 다리 크루의 한 짐 = min(짐 · 모자란 몫 · **잉여**) — 같은 함수를 부른다');
+  ok(/const room = k === 'wood' \? Math\.max\(0, E\.woodSpareAfterLand\(vil\.econ\)\) : Infinity;/.test(body) && /Math\.min\(_t400PerLoad\(k\), need\[k\] - \(site\.mat\[k\] \|\| 0\), room\)/.test(body), '⑦ 다리 크루의 한 짐 = min(짐 · 모자란 몫 · **잉여**) — 같은 함수를 부른다');
   ok(/E\.woodSpare\(v\)/.test(rd('scripts/t527-bridge-demand.js')), '⑦ 800일 계측기도 같은 함수(생활층과 한 규칙)');
   const sp = probe({ T527_BRIDGE_ACT: '1', T537_SHORTCUT: '1' }, WORLD({}) + `
 const vil=mk(${JSON.stringify(SCB)},100); vil.econ.npcs=new Array(10).fill(0).map((_,i)=>({id:i}));

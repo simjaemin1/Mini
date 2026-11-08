@@ -91,7 +91,8 @@ console.log('\n① 잔가지 · 도토리 → 곳간 — 정적');
   ok(/if \(T733_FELL_LOOT\) _wood\(\);\s*if \(E\.T347_FORAGE_ACT && E\.forageActOn\(vil\.econ\)\) \{[\s\S]*?\}\s*if \(!T733_FELL_LOOT\) _wood\(\);/.test(hands)
      && settle.indexOf('_t325Deliver(vil, npc)') < settle.indexOf('_t347Deliver(vil, npc)'),
     'ⓓ ★틱 앞 손 입고 — 켬이면 통나무 손(두 칸 함께)이 채집 손보다 **먼저**(끔 = 옛 차례) · 해 질 녘 정산은 이미 통나무가 먼저');
-  ok(!/Ground|Drop/.test(hin + lin + put + pin + gran), 'ⓔ 바닥에 놓는 문은 안 불린다(손 · 짐뿐)');
+  // ★[T1203] 짐 칸 지우기는 T862 ② 문(`_t862Drop` — 켬 `undefined` · 끔 `delete`) — 바닥 문(`Drop`) 낱말이 아니다
+  ok(!/Ground|Drop/.test((hin + lin + put + pin + gran).replace(/_t862Drop\(/g, '')), 'ⓔ 바닥에 놓는 문은 안 불린다(손 · 짐뿐)');
   ok(noNum(gran + hin + lin + put + pin), 'ⓔ ★새 수 0 — 넣는 줄 · 남기는 줄에 상수가 없다(0 · 소수 자리 · 0 비교만)');
 }
 

@@ -1,0 +1,638 @@
+{
+ "서버_끔": [
+  {
+   "file": "off-1020.t1209.json",
+   "days": 400,
+   "pop": 3576,
+   "empty": 2,
+   "villages": 51,
+   "starved": 559,
+   "dead": 1153,
+   "emig": 0,
+   "born": 0,
+   "emptyVD": 2030,
+   "runs3": 161,
+   "maxRun": 105,
+   "shortShare": 0.0385,
+   "bySeason": {
+    "spring": {
+     "short": 0.013,
+     "prod": null
+    },
+    "summer": {
+     "short": 0.0207,
+     "prod": null
+    },
+    "autumn": {
+     "short": 0.0374,
+     "prod": null
+    },
+    "winter": {
+     "short": 0.0752,
+     "prod": null
+    }
+   },
+   "starvedBy": {
+    "empty": 391,
+    "some": 129,
+    "plenty": 39
+   },
+   "massShare": 0
+  },
+  {
+   "file": "off-7.t1209.json",
+   "days": 400,
+   "pop": 3502,
+   "empty": 1,
+   "villages": 51,
+   "starved": 340,
+   "dead": 995,
+   "emig": 548,
+   "born": 4491,
+   "emptyVD": 1337,
+   "runs3": 106,
+   "maxRun": 65,
+   "shortShare": 0.0237,
+   "bySeason": {
+    "spring": {
+     "short": 0.0158,
+     "prod": 1.508
+    },
+    "summer": {
+     "short": 0.0063,
+     "prod": 1.041
+    },
+    "autumn": {
+     "short": 0.0189,
+     "prod": 1.412
+    },
+    "winter": {
+     "short": 0.0495,
+     "prod": 1.057
+    }
+   },
+   "starvedBy": {
+    "empty": 248,
+    "some": 84,
+    "plenty": 8
+   },
+   "massShare": 0
+  },
+  {
+   "file": "off-42.t1209.json",
+   "days": 400,
+   "pop": 3417,
+   "empty": 1,
+   "villages": 51,
+   "starved": 631,
+   "dead": 1286,
+   "emig": 511,
+   "born": 4679,
+   "emptyVD": 2124,
+   "runs3": 170,
+   "maxRun": 60,
+   "shortShare": 0.0353,
+   "bySeason": {
+    "spring": {
+     "short": 0.0127,
+     "prod": 1.474
+    },
+    "summer": {
+     "short": 0.0455,
+     "prod": 1.005
+    },
+    "autumn": {
+     "short": 0.0242,
+     "prod": 1.379
+    },
+    "winter": {
+     "short": 0.056,
+     "prod": 1.032
+    }
+   },
+   "starvedBy": {
+    "empty": 425,
+    "some": 176,
+    "plenty": 30
+   },
+   "massShare": 0
+  }
+ ],
+ "서버_켬": [
+  {
+   "file": "on-1020.t1209.json",
+   "days": 400,
+   "pop": 2850,
+   "empty": 12,
+   "villages": 51,
+   "starved": 1008,
+   "dead": 1426,
+   "emig": 0,
+   "born": 0,
+   "emptyVD": 342,
+   "runs3": 45,
+   "maxRun": 27,
+   "shortShare": 0.0099,
+   "bySeason": {
+    "spring": {
+     "short": 0.0023,
+     "prod": null
+    },
+    "summer": {
+     "short": 0.0166,
+     "prod": null
+    },
+    "autumn": {
+     "short": 0.0078,
+     "prod": null
+    },
+    "winter": {
+     "short": 0.0122,
+     "prod": null
+    }
+   },
+   "starvedBy": {
+    "empty": 386,
+    "some": 488,
+    "plenty": 134
+   },
+   "massShare": 0.908
+  },
+  {
+   "file": "on-42.t1209.json",
+   "days": 400,
+   "pop": 2851,
+   "empty": 15,
+   "villages": 51,
+   "starved": 1614,
+   "dead": 2142,
+   "emig": 596,
+   "born": 5171,
+   "emptyVD": 430,
+   "runs3": 54,
+   "maxRun": 17,
+   "shortShare": 0.0153,
+   "bySeason": {
+    "spring": {
+     "short": 0.0038,
+     "prod": 1.495
+    },
+    "summer": {
+     "short": 0.0196,
+     "prod": 1.034
+    },
+    "autumn": {
+     "short": 0.0094,
+     "prod": 1.341
+    },
+    "winter": {
+     "short": 0.0271,
+     "prod": 1.048
+    }
+   },
+   "starvedBy": {
+    "empty": 962,
+    "some": 457,
+    "plenty": 195
+   },
+   "massShare": 0.886
+  }
+ ],
+ "서버_순번": [
+  {
+   "file": "tri-1020.t1209.json",
+   "days": 400,
+   "pop": 2460,
+   "empty": 12,
+   "villages": 51,
+   "starved": 1584,
+   "dead": 2004,
+   "emig": 385,
+   "born": 4499,
+   "emptyVD": 941,
+   "runs3": 103,
+   "maxRun": 31,
+   "shortShare": 0.0179,
+   "bySeason": {
+    "spring": {
+     "short": 0.0013,
+     "prod": 1.64
+    },
+    "summer": {
+     "short": 0.0168,
+     "prod": 1.135
+    },
+    "autumn": {
+     "short": 0.0162,
+     "prod": 1.479
+    },
+    "winter": {
+     "short": 0.0335,
+     "prod": 1.086
+    }
+   },
+   "starvedBy": {
+    "empty": 717,
+    "some": 692,
+    "plenty": 175
+   },
+   "massShare": 0.809
+  },
+  {
+   "file": "tri-7.t1209.json",
+   "days": 400,
+   "pop": 2331,
+   "empty": 10,
+   "villages": 51,
+   "starved": 2131,
+   "dead": 2493,
+   "emig": 232,
+   "born": 4661,
+   "emptyVD": 1022,
+   "runs3": 115,
+   "maxRun": 29,
+   "shortShare": 0.0213,
+   "bySeason": {
+    "spring": {
+     "short": 0.0023,
+     "prod": 1.626
+    },
+    "summer": {
+     "short": 0.0224,
+     "prod": 1.138
+    },
+    "autumn": {
+     "short": 0.0214,
+     "prod": 1.443
+    },
+    "winter": {
+     "short": 0.0362,
+     "prod": 1.082
+    }
+   },
+   "starvedBy": {
+    "empty": 778,
+    "some": 891,
+    "plenty": 462
+   },
+   "massShare": 0.802
+  }
+ ],
+ "랩_끔": [
+  {
+   "file": "off-1020.json",
+   "days": 400,
+   "pop": 4013,
+   "empty": 0,
+   "villages": 51,
+   "starved": 187,
+   "dead": 611,
+   "emig": 0,
+   "born": 4216,
+   "emptyVD": 1211,
+   "runs3": 115,
+   "maxRun": 54,
+   "shortShare": 0.0177,
+   "bySeason": {
+    "spring": {
+     "short": 0.008,
+     "prod": 1.509
+    },
+    "summer": {
+     "short": 0.0359,
+     "prod": 1.018
+    },
+    "autumn": {
+     "short": 0.0232,
+     "prod": 1.471
+    },
+    "winter": {
+     "short": 0.0046,
+     "prod": 1.143
+    }
+   },
+   "starvedBy": {
+    "empty": 126,
+    "some": 51,
+    "plenty": 10
+   },
+   "massShare": 0
+  },
+  {
+   "file": "off-7.json",
+   "days": 400,
+   "pop": 3630,
+   "empty": 2,
+   "villages": 51,
+   "starved": 214,
+   "dead": 688,
+   "emig": 0,
+   "born": 3909,
+   "emptyVD": 950,
+   "runs3": 95,
+   "maxRun": 48,
+   "shortShare": 0.0212,
+   "bySeason": {
+    "spring": {
+     "short": 0.0146,
+     "prod": 1.544
+    },
+    "summer": {
+     "short": 0.0075,
+     "prod": 1.061
+    },
+    "autumn": {
+     "short": 0.0167,
+     "prod": 1.348
+    },
+    "winter": {
+     "short": 0.0426,
+     "prod": 1.052
+    }
+   },
+   "starvedBy": {
+    "empty": 134,
+    "some": 56,
+    "plenty": 24
+   },
+   "massShare": 0
+  },
+  {
+   "file": "off-42.json",
+   "days": 400,
+   "pop": 3614,
+   "empty": 2,
+   "villages": 51,
+   "starved": 472,
+   "dead": 967,
+   "emig": 0,
+   "born": 4173,
+   "emptyVD": 1747,
+   "runs3": 135,
+   "maxRun": 60,
+   "shortShare": 0.0309,
+   "bySeason": {
+    "spring": {
+     "short": 0.0084,
+     "prod": 1.5
+    },
+    "summer": {
+     "short": 0.0331,
+     "prod": 1.032
+    },
+    "autumn": {
+     "short": 0.0392,
+     "prod": 1.369
+    },
+    "winter": {
+     "short": 0.0386,
+     "prod": 1.057
+    }
+   },
+   "starvedBy": {
+    "empty": 318,
+    "some": 112,
+    "plenty": 42
+   },
+   "massShare": 0
+  }
+ ],
+ "랩_켬": [
+  {
+   "file": "on-1020.json",
+   "days": 400,
+   "pop": 2282,
+   "empty": 22,
+   "villages": 51,
+   "starved": 2081,
+   "dead": 2394,
+   "emig": 0,
+   "born": 4268,
+   "emptyVD": 414,
+   "runs3": 52,
+   "maxRun": 26,
+   "shortShare": 0.0189,
+   "bySeason": {
+    "spring": {
+     "short": 0.0026,
+     "prod": 1.543
+    },
+    "summer": {
+     "short": 0.0274,
+     "prod": 1.041
+    },
+    "autumn": {
+     "short": 0.013,
+     "prod": 1.363
+    },
+    "winter": {
+     "short": 0.0296,
+     "prod": 1.046
+    }
+   },
+   "starvedBy": {
+    "empty": 1209,
+    "some": 852,
+    "plenty": 20
+   },
+   "massShare": 0.999
+  },
+  {
+   "file": "on-7.json",
+   "days": 400,
+   "pop": 3291,
+   "empty": 12,
+   "villages": 51,
+   "starved": 784,
+   "dead": 1107,
+   "emig": 0,
+   "born": 3990,
+   "emptyVD": 237,
+   "runs3": 23,
+   "maxRun": 36,
+   "shortShare": 0.0105,
+   "bySeason": {
+    "spring": {
+     "short": 0.0008,
+     "prod": 1.549
+    },
+    "summer": {
+     "short": 0.0225,
+     "prod": 1.061
+    },
+    "autumn": {
+     "short": 0.0091,
+     "prod": 1.367
+    },
+    "winter": {
+     "short": 0.0088,
+     "prod": 1.13
+    }
+   },
+   "starvedBy": {
+    "empty": 250,
+    "some": 467,
+    "plenty": 67
+   },
+   "massShare": 1
+  },
+  {
+   "file": "on-42.json",
+   "days": 400,
+   "pop": 2712,
+   "empty": 25,
+   "villages": 51,
+   "starved": 1860,
+   "dead": 2273,
+   "emig": 0,
+   "born": 4577,
+   "emptyVD": 455,
+   "runs3": 58,
+   "maxRun": 17,
+   "shortShare": 0.021,
+   "bySeason": {
+    "spring": {
+     "short": 0,
+     "prod": 1.563
+    },
+    "summer": {
+     "short": 0.0129,
+     "prod": 1.013
+    },
+    "autumn": {
+     "short": 0.0274,
+     "prod": 1.281
+    },
+    "winter": {
+     "short": 0.0408,
+     "prod": 1.142
+    }
+   },
+   "starvedBy": {
+    "empty": 970,
+    "some": 870,
+    "plenty": 20
+   },
+   "massShare": 1
+  }
+ ],
+ "랩_순번": [
+  {
+   "file": "tri-1020.json",
+   "days": 400,
+   "pop": 3550,
+   "empty": 5,
+   "villages": 51,
+   "starved": 2090,
+   "dead": 2609,
+   "emig": 0,
+   "born": 5748,
+   "emptyVD": 682,
+   "runs3": 79,
+   "maxRun": 30,
+   "shortShare": 0.0181,
+   "bySeason": {
+    "spring": {
+     "short": 0.0021,
+     "prod": 1.525
+    },
+    "summer": {
+     "short": 0.0302,
+     "prod": 1.034
+    },
+    "autumn": {
+     "short": 0.0176,
+     "prod": 1.366
+    },
+    "winter": {
+     "short": 0.0208,
+     "prod": 1.06
+    }
+   },
+   "starvedBy": {
+    "empty": 1158,
+    "some": 866,
+    "plenty": 66
+   },
+   "massShare": 0.899
+  },
+  {
+   "file": "tri-7.json",
+   "days": 400,
+   "pop": 3350,
+   "empty": 9,
+   "villages": 51,
+   "starved": 1365,
+   "dead": 1845,
+   "emig": 0,
+   "born": 4787,
+   "emptyVD": 505,
+   "runs3": 62,
+   "maxRun": 19,
+   "shortShare": 0.0125,
+   "bySeason": {
+    "spring": {
+     "short": 0.004,
+     "prod": 1.535
+    },
+    "summer": {
+     "short": 0.0213,
+     "prod": 1.058
+    },
+    "autumn": {
+     "short": 0.0063,
+     "prod": 1.443
+    },
+    "winter": {
+     "short": 0.0176,
+     "prod": 1.031
+    }
+   },
+   "starvedBy": {
+    "empty": 690,
+    "some": 520,
+    "plenty": 155
+   },
+   "massShare": 0.869
+  },
+  {
+   "file": "tri-42.json",
+   "days": 400,
+   "pop": 3236,
+   "empty": 8,
+   "villages": 51,
+   "starved": 2270,
+   "dead": 2766,
+   "emig": 0,
+   "born": 5594,
+   "emptyVD": 896,
+   "runs3": 111,
+   "maxRun": 30,
+   "shortShare": 0.0188,
+   "bySeason": {
+    "spring": {
+     "short": 0.0014,
+     "prod": 1.549
+    },
+    "summer": {
+     "short": 0.0162,
+     "prod": 1.014
+    },
+    "autumn": {
+     "short": 0.0209,
+     "prod": 1.321
+    },
+    "winter": {
+     "short": 0.0319,
+     "prod": 1.068
+    }
+   },
+   "starvedBy": {
+    "empty": 995,
+    "some": 864,
+    "plenty": 411
+   },
+   "massShare": 0.859
+  }
+ ]
+}

@@ -22,6 +22,9 @@
 // 기존 날 머리 장 일정 대조. 실제 몸 도착 시점의 개장은 T1182 자가 잰다.
 process.env.T762_CARAVAN_BODY='0';
 process.env.T1136_ESCORT_CARRY='0';
+// ★[T1203 2026-11-07] ⑤ 의 명부는 곳간 · 다리 크루를 **그날 일이 있을 때만** 빼는 세계(`T1203_CREW_ROSTER=1`)로 잰다 — 손잡이 끔(기본 · 종전)은 land1048 에서 둘 다 켬 기본이 된 뒤
+//   곳간 터도 다리 자리도 없는 날 크루 둘씩을 늘 빼서 ⑤ 가 빨갛다(제품 결함 · 켬은 세계 값을 바꿔 켤지 = 판정 · 보고 T1203 §2.4). 부르는 쪽 값이 먼저.
+if (process.env.T1203_CREW_ROSTER == null) process.env.T1203_CREW_ROSTER = '1';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/tsm-${process.pid}.db`;
 const path = require('path');

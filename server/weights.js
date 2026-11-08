@@ -21,6 +21,20 @@
 'use strict';
 const Specialty = require('./specialty');
 const OreGoods = require('./ore-goods');
+// ★[T1214 ③ µs 줄기] 손잡이 `T1214_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 매번 `require` 도 받아 같은 객체인가 견줌 · 답은 `require` 쪽 · 머리 주석 = villages.js `T1214`).
+//   `kgOf` 가 부를 때마다 하던 `require('./fish-goods')`(NPC 짐 무게가 품목마다 부른다)를 한 번 받은 모듈 칸으로 — `require` 는 실린 모듈이면 같은 객체다.
+//   다 실린 모듈(`bodyKg` 함수가 선 객체)만 칸에 둔다 — 맞물려 실리는 도중의 빈 객체는 안 둔다(그때는 종전처럼 매번 부른다). 끔 = 종전 글자.
+//   ⚠파일 머리에 둔다 — 이 파일은 싣는 도중(유도 표 · 사냥 고기 표)에 `kgOf` 를 부른다(상수가 그보다 먼저 서야 한다).
+const T1214_STEP_FAST = typeof process !== 'undefined' && !!process.env && process.env.T1214_STEP_FAST !== '0';
+const T1214_VERIFY = T1214_STEP_FAST && process.env.T1214_STEP_FAST === 'verify';
+const _t1214Stat = { vq: 0, bad: 0 };   // 계측 전용
+let _t1214FG = null;
+function _t1214Fg() {
+  const m = _t1214FG;
+  if (!m) { const b = require('./fish-goods'); if (b && typeof b.bodyKg === 'function') _t1214FG = b; return b; }
+  if (T1214_VERIFY) { const b = require('./fish-goods'); _t1214Stat.vq++; if (b !== m) { if (++_t1214Stat.bad <= 5) console.error('[T1214] verify 어긋남 weights → fish-goods'); return b; } }
+  return m;
+}
 // ★★[작물 층 2026-08-31] 작물 34종 + 씨앗의 kg — **`server/crops.js` 가 파생 정본**이다.
 //   12종은 specialty 가 무게를 갖고 있고(그쪽이 정본), 없는 22종만 분류 앵커에서 유도한다.
 //   여기서 표를 다시 적지 않는다 — 읽기만 한다(이 파일의 머리 규약 그대로).
@@ -150,7 +164,7 @@ function _fp() { if (_FP === null) { try { _FP = require('./fish-preserve'); } c
 function kgOf(id, noFp) {
   if(OreGoods.isOre(id))return CORE_KG.ore;
   if (!id) return null;
-  const FG=require('./fish-goods');if(FG.ON){const b=FG.bodyKg(id);if(b>0)return b;if(!noFp&&FG.isItem(id)){const k=_fp().kgOf(id,kgOf);if(k>0)return k;}}
+  const FG=T1214_STEP_FAST?_t1214Fg():require('./fish-goods');if(FG.ON){const b=FG.bodyKg(id);if(b>0)return b;if(!noFp&&FG.isItem(id)){const k=_fp().kgOf(id,kgOf);if(k>0)return k;}}
   const key = ITEM_ALIAS[id] || id;
   const sp = Specialty.RESOURCES && Specialty.RESOURCES[key];
   if (sp && sp.weight > 0) return sp.weight;
@@ -181,4 +195,4 @@ function catalog() {
 // 알려진 아이디 전부(하네스 전수 스윕용)
 function allIds() { return Object.keys(catalog()); }
 
-module.exports = { CORE_KG, ITEM_ALIAS, DERIVED_KG, DEFAULT_KG, kgOf, kgOfOrDefault, catalog, allIds };
+module.exports = { CORE_KG, ITEM_ALIAS, DERIVED_KG, DEFAULT_KG, kgOf, kgOfOrDefault, catalog, allIds, t1214Stat: () => Object.assign({ on: T1214_STEP_FAST, verify: T1214_VERIFY }, _t1214Stat) };

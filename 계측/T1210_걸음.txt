@@ -1,0 +1,25 @@
+[gait] idle · water_deer_idle.glb · 길이 3.7333초 · 발 f_hoof.L · f_hoof.R · r_hoof.L · r_hoof.R
+[gait]   시간표(0.1초) 몸 방향 spine.001→spine.006 · 뿌리 높이:
+[gait]     0.0s -0° z0.45 · 0.5s -0° z0.45 · 1.0s -1° z0.45 · 1.5s -1° z0.45 · 2.0s -1° z0.45 · 2.5s -0° z0.45 · 3.0s -1° z0.45 · 3.5s -0° z0.45
+[gait] walk · water_deer_walk.glb · 길이 3.2000초 · 발 f_hoof.L · f_hoof.R · r_hoof.L · r_hoof.R
+[gait]   고리 k 3(발마다 디딤 수 [3, 3, 3, 3]) · 주기 1.0667초 · 한 고리 시작 1.4384초 · 이음 0.0372 단위 = 3.0 cm
+[gait]   제 빠르기 0.5426 단위/초 = 0.439 m/s · 보폭(한 고리) 0.5787 단위 = 0.469 m
+[gait]     f_hoof.L   디딤 0.763초 · 뒤로  28.5 cm · 0.373 m/s · 미끄러짐  5.1 cm
+[gait]     f_hoof.R   디딤 0.763초 · 뒤로  28.6 cm · 0.374 m/s · 미끄러짐  5.0 cm
+[gait]     r_hoof.L   디딤 0.753초 · 뒤로  38.5 cm · 0.512 m/s · 미끄러짐  5.4 cm
+[gait]     r_hoof.R   디딤 0.732초 · 뒤로  36.5 cm · 0.499 m/s · 미끄러짐  4.3 cm
+[gait]   시간표(0.1초) 몸 방향 spine.001→spine.006 · 뿌리 높이:
+[gait]     0.0s +0° z0.44 · 0.5s -0° z0.45 · 1.0s +2° z0.45 · 1.5s -0° z0.45 · 2.0s -0° z0.46 · 2.5s -1° z0.46 · 3.0s -0° z0.45
+[gait] run · water_deer_run.glb · 길이 1.6667초 · 발 f_hoof.L · f_hoof.R · r_hoof.L · r_hoof.R
+[gait]   고리 k 4(발마다 디딤 수 [4, 4, 4, 4]) · 주기 0.4167초 · 한 고리 시작 0.8542초 · 이음 0.0373 단위 = 3.0 cm
+[gait]   제 빠르기 2.9305 단위/초 = 2.373 m/s · 보폭(한 고리) 1.2210 단위 = 0.989 m
+[gait]     f_hoof.L   디딤 0.177초 · 뒤로  44.6 cm · 2.521 m/s · 미끄러짐  2.6 cm
+[gait]     f_hoof.R   디딤 0.156초 · 뒤로  42.8 cm · 2.739 m/s · 미끄러짐  5.7 cm
+[gait]     r_hoof.L   디딤 0.167초 · 뒤로  39.6 cm · 2.374 m/s · 미끄러짐  0.0 cm
+[gait]     r_hoof.R   디딤 0.167초 · 뒤로  31.0 cm · 1.858 m/s · 미끄러짐  8.6 cm
+[gait]   시간표(0.1초) 몸 방향 spine.001→spine.006 · 뿌리 높이:
+[gait]     0.0s -1° z0.42 · 0.5s -0° z0.43 · 1.0s -0° z0.46 · 1.5s -2° z0.49
+[gait] die · water_deer_death_horse.glb · 길이 6.9667초 · 발 f_hoof.L · f_hoof.R · r_hoof.L · r_hoof.R
+[gait]   시간표(0.1초) 몸 방향 spine.001→spine.006 · 뿌리 높이:
+[gait]     0.0s -0° z0.44 · 0.5s +32° z0.40 · 1.0s +69° z0.39 · 1.5s +93° z0.40 · 2.0s +109° z0.40 · 2.5s +119° z0.41 · 3.0s +128° z0.30 · 3.5s +124° z0.15 · 4.0s +127° z0.16 · 4.5s +131° z0.16 · 5.0s +133° z0.16 · 5.5s +132° z0.15 · 6.0s +119° z-0.02 · 6.5s +114° z0.00 · 7.0s +114° z0.01
+[gait] JSON: 계측/T1210_걸음.json

@@ -50,6 +50,7 @@ let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined ? '  ' + JSON.stringify(x) : '')); };
 const _l = console.log; console.log = () => {};
 const econV2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
+const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));   // ★[T1203] ② 판마다 흐름 상태 되돌리기(`rngState` · `setRngState`)
 const Events = require(SV('events.js'));
 console.log = _l;
 
@@ -84,7 +85,9 @@ for (const days of [0, 60, 200]) {
     }
     // 원석 + 금속 짝 · 같은 이름 두 번 · 빈 목록
     const t1 = econV2.shadowPricesOf(v, ['ore', 'ore']), t0 = econV2.shadowPricesOf(v, []);
-    if (!Object.is(t1.ore, full.ore) || Object.keys(t1).length !== 1 || Object.keys(t0).length !== 0) bad.push({ days, v: v.id, oreDup: t1, empty: t0 });
+    // ★[T1203 2026-11-07] T1188 원석 쪼개기 켬(land1048 뒤 기본)이면 옛 `ore` 는 값표 칸이 아니다(`TRADABLE` 에서 빠진다 · 전 표에 칸 없음) — 칸 수는 전 표를 따른다.
+    const oreN = Object.prototype.hasOwnProperty.call(full, 'ore') ? 1 : 0;
+    if (!Object.is(t1.ore, full.ore) || Object.keys(t1).length !== oreN || Object.keys(t0).length !== 0) bad.push({ days, v: v.id, oreDup: t1, empty: t0 });
   }
 }
 ok(bad.length === 0, '①-1 두 칸 = 전 표의 그 칸(비트 같음 · 날 0 · 60 · 200 · 마을 5 · 전 칸 + 원석 · 값표 밖 이름)', { checked, oreSeen, outside, bad: bad.slice(0, 3) });
@@ -93,7 +96,12 @@ ok(oreSeen > 0 && outside > 0, '①-2 판이 원석 상한 · 값표 밖 이름�
 // ② 세계 공급 캐시의 순간 — 새 날 첫 물음이 전 표인 판(A) · 두 칸인 판(B) · 아무것도 안 묻는 판(C · 미끼 = 두 칸이 캐시를 안 세우는 꼴) ·
 //    그 뒤 같은 날 세계 공급을 바꾸고 마을 0 의 전 표를 묻는다. 칸마다 B = A 여야 하고, 미끼 C 는 어딘가에서 A 와 갈려야 한다(캐시 순간이 값에 닿는 판이 있다).
 {
+  // ★[T1203 2026-11-07] 판 넷이 **같은 세계**여야 견준다 — econ 마을 번호 계수기(`_nextVillageId` · 프로세스 전역)가 앞 판(① 의 세계 셋 · 이 절의 앞 판)마다 늘어
+  //   같은 시드라도 마을 id 가 달라진다(v6 … ↔ v21 …) — id 에 묶인 칸이 값에 닿아 판끼리 갈렸다(①을 안 돈 프로세스에선 초록 · 보고 T1203 §2).
+  //   판마다 econ 흐름 상태(`rngState` — 씨 · 사람 · 마을 계수기)를 같은 값으로 되돌린 뒤 세계를 짓는다(정본 접근자 · 세계 흐름 무변).
+  const S0 = V1.rngState();
   const run = (mode) => {
+    V1.setRngState(S0);
     const w = mkWorld(60); const v = w.villages[0];
     w.day += 1; delete w._effDemCache;   // 새 날 — 캐시 없음
     if (mode === 'A') econV2.computeShadowPrices(v);

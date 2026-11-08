@@ -873,7 +873,8 @@ function _targetV2(v, r, ctx) {
     // ★[2026-08-02f ①-2] 파생 투입수요 — 판정은 v1 한 곳에서만(사본 금지). 손잡이 OFF 면 항상 0.
     //   동기 계약: 아래 `_priceParamsV2`·`tickDecay` 도 같은 줄을 갖는다.
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;
-    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT));
+    const buildT = v1.buildInputTarget ? v1.buildInputTarget(v, r) : 0;   // ★[T1213] 짓는 파생수요(말뚝 · 집 · 다리 · 숯가마) — 생존과 다른 쓰임이라 **더한다**(T1207 끔 = 0 · 종전 비트) · 동기 계약 세 자리
+    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);
     // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
     //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
@@ -967,17 +968,74 @@ function computeShadowPrices(v) {
 //   · 원석 상한은 금속 칸을 같은 함수(`_priceFromV2(_targetV2)`)로 매겨 견준다 — 전 표의 `prices[k]` 와 같은 값 · 표 밖 금속 = 0(전 표의 `|| 0`).
 //   · 세계 공급 캐시(`_worldStockOf` · 하루 한 번 세계 곳간을 센다)를 전 표와 **같은 순간**에 세운다 — 전 표는 부를 때마다 그 캐시를 묻는다(값표 밖
 //     두 칸만 묻는 판이 그 순간을 늦추면 그날 캐시가 다른 재고로 서서 뒤 값이 갈린다). 계산이지 세계를 안 바꾼다(전 표와 같은 쓰기 한 곳).
+// ★★[T1203 2026-11-07 · T1161 ↔ T1188 만남 결함] 손잡이 `T1188_ORE_SPLIT` 켬(land1048 뒤 기본)에선 전 표가 세 가지를 더 한다 —
+//   ⓐ 값표 칸 = `TRADABLE`(옛 `ore` 를 빼고 광물별 원석을 넣는다 · 251 줄) — `ELASTICITY` 에는 옛 `ore` 가 남아 있어 그것으로 물으면 전 표에 없는 `ore` 칸을 매긴다
+//   ⓑ 광물별 원석 칸마다 금속 값 상한(`_oreCapV2(v, 금속 값, 원석)` — 금속 칸은 상한이 없는 칸이라 순서 무관)
+//   ⓒ 머리에서 옛 원석 곳간을 광물별로 옮긴다(`v1.migrateOre` — 세계에 쓴다 · 전 표와 같은 순간)
+//   종전 두 칸 길은 셋 다 없어 견적 · 실행의 원석 값이 전 표와 갈렸다(`test-t1161-two-prices` ①-1 · ②-1 · ④-1). 셋을 전 표와 같은 길로 탄다(새 수 0).
+//   끔(`T1188_ORE_SPLIT=0`)이면 `TRADABLE` 과 `ELASTICITY` 열쇠가 같고(86 줄) ⓑ ⓒ 가 안 돌아 종전 값 그대로다.
+let _t1203TrSet = null, _t1203TrN = -1;
+function _t1203Tradable() { if (_t1203TrN !== TRADABLE.length) { _t1203TrSet = new Set(TRADABLE); _t1203TrN = TRADABLE.length; } return _t1203TrSet; }
 function shadowPricesOf(v, keys) {
+  if (T1188_ORE_SPLIT) v1.migrateOre(v);   // ★[T1203 ⓒ] 전 표 머리와 같은 쓰기
   const prices = {};
   const ctx = _targetCtxV2(v);
   if (TRADABLE.length) _worldStockOf(v, TRADABLE[0]);
-  const own = Object.prototype.hasOwnProperty;
-  for (const r of keys) if (own.call(ELASTICITY, r) && !own.call(prices, r)) prices[r] = _priceFromV2(_targetV2(v, r, ctx));
+  const own = Object.prototype.hasOwnProperty, inT = _t1203Tradable();
+  const base = (k) => (inT.has(k) ? _priceFromV2(_targetV2(v, k, ctx)) : undefined);   // ★[T1203 ⓐ] 전 표의 `prices[k]`(상한 앞)
+  for (const r of keys) {
+    if (own.call(prices, r) || !inT.has(r)) continue;
+    if (T1188_ORE_SPLIT && OreGoods.isOre(r)) prices[r] = Math.min(base(r) || 0, _oreCapV2(v, base, r));   // ★[T1203 ⓑ] 전 표의 그 줄 그대로
+    else prices[r] = base(r);
+  }
   if (prices.ore != null) {
-    const cap = _oreCapV2(v, (k) => own.call(prices, k) ? prices[k] : (own.call(ELASTICITY, k) ? _priceFromV2(_targetV2(v, k, ctx)) : undefined));
+    const cap = _oreCapV2(v, (k) => own.call(prices, k) ? prices[k] : base(k));
     if (cap != null) prices.ore = Math.min(prices.ore, cap);
   }
   return prices;
+}
+
+// =============================================================================
+// ★★★[T1217 2026-11-07 · ★재민 11-07 "시세가 하루 한 번이면 하루 안 변화를 못 따라간다 · 자주 하면 안 돼?"] **시세 하루 안 갱신** — 손잡이 v1 `T1217_MARGIN`(끔 기본).
+//   곳간이 바뀐 마을만 · 게임 1시간에 한 번까지 다시 매긴다(같은 함수 `computeShadowPrices` · 새 수 0). 시각은 호스트가 준다(`world.t1217Hour()` — 서버 게임 시간 번호 ·
+//   가상 시계 판이면 결정론). 호스트가 시각을 안 주면(랩 · 헤드리스 · 끔) `null` — 부르는 쪽이 종전 길(그날 값)을 그대로 간다.
+//   같은 날 · 같은 곳간(지문 `_t1217Fp`)이면 지난 시간의 표를 그대로 쓴다(값을 다시 안 매긴다 — 날이 바뀌면 다시: 이웃 공급 · 소비 흐름이 하루 단위로 바뀐다).
+//   캐러밴 주문(`tickTradeV2` 출발 마을 표 · 이웃 표 `pricesFor`)과 순수출가(`netExportValue`)도 켬이면 이 표를 읽는다 — 어부의 한 시간 값과 주문 · 시세 해상도가 같다
+//   (`netExportValue` 머리말의 경고: 한쪽만 더 자주 재면 정합이 아니라 불일치).
+const _t1217PxStat = { n: 0, hit: 0, same: 0 };
+function _t1217Fp(v) { let h = 0, i = 0; const st = v.storage || {}; for (const k in st) { const q = st[k]; if (q) h = (h * 31 + Math.round(q * 1000) + i) % 2147483647; i++; } return h; }
+function t1217Hour(v) { const w = v && v._world; return (v1.T1217_MARGIN && w && typeof w.t1217Hour === 'function') ? w.t1217Hour() : null; }
+function t1217PricesOf(v, key) {   // key = 시간 열쇠를 부르는 쪽이 줄 때(서버 일괄이 흉내 내는 시간 · 없으면 호스트 시각)
+  const H = key != null ? key : t1217Hour(v);
+  if (H == null || !v || !v._world) return null;
+  const w = v._world, C = v._t1217Px;
+  if (C && C.hour === H) { _t1217PxStat.hit++; return C.prices; }
+  const fp = _t1217Fp(v);
+  if (C && C.day === w.day && C.fp === fp) { C.hour = H; _t1217PxStat.same++; return C.prices; }
+  const prices = computeShadowPrices(v);
+  v._t1217Px = { hour: H, day: w.day, fp, prices };
+  _t1217PxStat.n++;
+  return prices;
+}
+//   ★[T1217] 어부 한 단위 · 한 시간의 값(행복 목표 단위 · v1 머리말) — 서버가 낮 시간 수 H(정본 운영 하루 × 낮 비율 ÷ 게임 1시간)를 준다.
+//     unit = 빚이 있으면 1 ÷ (N × 죽음 날 수) · 없으면 max(그 마을 생선 값, 순수출가) × λ (λ = 행복 물건 하나의 기울기 ÷ 그 값 중 가장 큰 것 — 세계 어디에도 없는 물건은 뺀다)
+//     rest = 한 사람이 한 시간 쉰 값 = `LEISURE_HAPPY_W` ÷ (N × H)
+function t1217Value(v, H, key) {
+  if (!v || !v.npcs) return null;
+  const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
+  const fd = v1.T1074_FOOD_DEBT ? v1.foodDebtOf(v) : null, debt = fd ? fd.mean : 0;
+  const vEat = debt > 0 ? 1 / (N * v1.t1197DieDays()) : 0;
+  let lam = 0, best = null;
+  for (const r of TRADABLE) {
+    const p = px[r]; if (!(p > 0)) continue;
+    const mu = v1.t1217HappyMu(v, r, N); if (!(mu > 0)) continue;
+    const ws = _worldStockOf(v, r); if (ws && !(ws.stock > 0)) continue;
+    const l = mu / p; if (l > lam) { lam = l; best = r; }
+  }
+  //   생선 한 단위 = 곳간 식량 한 단위(econ `totalFoodEquivalent` 1:1 — 먹으면 그만큼 다른 식량이 남는다) ⇒ 그 시세 = 생선 값 · 식량 값 중 큰 쪽(· 이웃이 사 주는 순수취)
+  const pFish = px.fish || 0, pFood = px.food || 0, nev = v._world ? netExportValue(v._world, v, 'fish') : 0;
+  const vSur = Math.max(pFish, pFood, nev) * lam;
+  return { N, H, unit: vEat > 0 ? vEat : vSur, vEat, vSur, lam, best, pFish, pFood, nev, debt, rest: H > 0 ? v1.LEISURE_HAPPY_W / (N * H) : Infinity };
 }
 
 // =============================================================================
@@ -1015,7 +1073,8 @@ function _priceParamsV2(v, r) {
     const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약: computeShadowPrices와 동일 공식·subs 가드)
     const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2);
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
-    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT));
+    const buildT = v1.buildInputTarget ? v1.buildInputTarget(v, r) : 0;   // ★[T1213] 동기 계약(결정층 `_targetV2` 와 같은 항)
+    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
         && (v.storage.food || 0) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
     stock = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(v, r) : (v.storage[r] || 0));   // ★[T859] 켬 — food 는 곳간 식량 환산(결정층과 같은 칸)
@@ -1136,6 +1195,7 @@ function lowestProducer(v, prices, day) {
 // =============================================================================
 // ★가격표 캐시 — 마을 시세를 TRADE_INTERVAL일마다만 재계산(매일 전 마을 재계산 방지 = 스케일). 결정 마을은 아래서 fresh로 덮음.
 function pricesFor(v, day) {
+  const _t1217 = t1217PricesOf(v); if (_t1217) return _t1217;   // ★[T1217] 켬(서버가 시각을 줄 때) = 그 시간의 표(어부와 같은 해상도) · 끔 = 아래 종전 줄
   if (!v._priceCache || (day - (v._priceCacheDay == null ? -99 : v._priceCacheDay)) >= TRADE_INTERVAL) {
     v._priceCache = computeShadowPrices(v);
     v._priceCacheDay = day;
@@ -1772,7 +1832,7 @@ function* tickTradeV2Steps(world, day) {
     // ★★[T329] 포위 봉쇄 훅(`_siegeBlock`)은 걷어냈다 — 상태도 금지도 없다. 대신 **같은 위협 T** 가
     //   아래 기대손실(`expectedLossRatio`)에 연속으로 들어간다(전쟁이 없으면 T 미설치 = 종전 비트).
     if (a.v.npcs.length < 2) continue;
-    a.prices = computeShadowPrices(a.v);   // 매일 fresh 시세로 결정(출발-도착 불일치↓)
+    a.prices = t1217PricesOf(a.v) || computeShadowPrices(a.v);   // 매일 fresh 시세로 결정(출발-도착 불일치↓) · ★[T1217] 켬 = 그 시간의 표(어부와 같은 표)
     a.v._priceCache = a.prices; a.v._priceCacheDay = day;
     const N = a.v.npcs.length;
     const currentlyTrading = a.v.npcs.filter(n => n._tradingUntil && n._tradingUntil > day).length;
@@ -2814,7 +2874,8 @@ function tickDecay(v) {
     const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약·subs 가드) — 롱테일 작업 재고는 과잉부패에서 보호
     const buffer = N * (util * 1.2);
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
-    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT));
+    const buildT = v1.buildInputTarget ? v1.buildInputTarget(v, r) : 0;   // ★[T1213] 동기 계약(결정층 `_targetV2` 와 같은 항)
+    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);
     }
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;
@@ -3058,11 +3119,12 @@ const FORWARD_PRICE_MARGIN_NEV = 0.95;   // ★tickTradeV2 지역상수 FORWARD_
 function netExportValue(world, from, res) {
   if (!world || !from || !res) return 0;
   const day = world.day || 0;
+  const _t1217H = t1217Hour(from), ck = _t1217H != null ? 'h' + _t1217H : day;   // ★[T1217] 켬 = 캐시 열쇠가 그 시간(시세 해상도 = 어부 · 주문과 같다) · 끔 = 그날(종전 값 그대로)
   let C = world._nevCache;
-  if (!C || C.day !== day) C = world._nevCache = { day, px: new Map(), val: new Map() };
+  if (!C || C.day !== ck) C = world._nevCache = { day: ck, px: new Map(), val: new Map() };
   const vk = from.name + ' ' + res;
   if (C.val.has(vk)) return C.val.get(vk);
-  const px = (b) => { let t = C.px.get(b); if (!t) { t = computeShadowPrices(b); C.px.set(b, t); } return t; };
+  const px = (b) => { let t = C.px.get(b); if (!t) { t = (_t1217H != null && t1217PricesOf(b)) || computeShadowPrices(b); C.px.set(b, t); } return t; };
   let _mv = null; const _nevMv = () => (_mv != null ? _mv : (_mv = (C.mv || (C.mv = new Map())).get(from) != null ? C.mv.get(from) : (() => { const x = lowestProducer(from, px(from), day).mv; C.mv.set(from, isFinite(x) ? x : 0); return C.mv.get(from); })()));   // ★[T1152 ②] 그날 그 마을 상인 하루 몫(끔 = 안 부른다)
   const infoR = world.infoRange || 400;
   const near = (from._near20 && from._near20.length) ? from._near20 : (world.villages || []);
@@ -3335,6 +3397,7 @@ module.exports = {
   createWorldV2,
   tickWorldV2, tickWorldV2Parts,   // ★[T513] 하루 틱 조각(서버 하루 마감이 여러 프레임에 흘린다 · 정본 한 벌)
   computeShadowPrices,
+  t1217PricesOf, t1217Value, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
   shadowPricesOf,   // ★[T1161 · K13] 값표의 몇 칸만(전 표의 그 칸과 같은 값) — 거래소 견적 · 실행이 부른다
   netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
   haulMul, HORSE_HAUL_MUL, TRANSPORT_COST_PER_1000,   // ★말 사역(2026-08-02e ⑥) — 시대 전/후 비트 동일 검증용

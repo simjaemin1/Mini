@@ -4,7 +4,12 @@
   //   산물은 `scripts/model_render.py` 하나다: 목록 `/assets/animals/index.json`(종 키 → 메타) · 종 메타(사람 `char_meta.json` 문법) · `body_idle.png`.
   //   **클라는 규격을 하나도 안 든다** — 프레임 크기 · 앵커 · 행 차례는 메타에서, 방향 행은 사람 시트와 같은 함수(`charDirRow`)에서.
   //   손잡이가 꺼져 있으면 이 함수들은 불리지 않는다(요청 0). 켜도 목록 · 메타 · 그림이 다 뜨기 전엔 null — 부르는 쪽이 점선 칸을 그린다.
-  const _mdl = { idx: null, tried: false, sp: new Map() };
+  // ★★[T1210 · ★재민 11-07] 클립이 여럿이면(서기 · 걷기 · 뛰기 · 쓰러짐 — 고라니) 시트도 여럿이다 — 메타 `sheets` 의 것을 다 받는다.
+  //   어느 클립인가 = 서버가 준 속도(px/s · 30-n-net 이 `mob.vx/vy` 로 둔다)를 **사람과 같은 문턱**(`charRunMin` · `charWalkMin`)에 대어 —
+  //   몇째 판인가 = 걷기 · 뛰기는 **간 거리**로 돈다(메타 `strideM` = 한 고리 보폭 · 1칸 = 1m = 32px) — 몸이 간 만큼 다리가 돌아 발이 땅에 붙는다.
+  //   서기는 메타 `fps`(시간). 쓰러짐(`die`)은 주검(34-m-renderloop 의 corpse 자리)이 한 번 돌고 마지막 판에 눕는다 — 방향은 그 주검에서
+  //   한 몸길이(메타 `lengthM`) 안에 마지막으로 그려진 같은 종의 것(없으면 = 들어오기 전에 죽은 주검 = 처음부터 누운 판).
+  const _mdl = { idx: null, tried: false, sp: new Map(), anim: new Map(), seen: new Map(), dead: new Map() };
   function modelSpriteIndex() {
     if (_mdl.idx || _mdl.tried) return _mdl.idx;
     _mdl.tried = true;
@@ -22,25 +27,71 @@
       fetch('/assets/animals/' + rel).then((r) => (r.ok ? r.json() : null)).then((m) => {
         if (!m || !m.frameW || !m.sheets || !m.sheets.body_idle) return;
         e.meta = m;
-        const im = new Image();
-        im.onload = () => { e.ok = true; };
-        im.src = '/assets/animals/' + dir + 'body_idle.png';
-        e.img = im;
+        e.imgs = {};
+        for (const sk of Object.keys(m.sheets)) {   // [T1210] 시트마다(클립마다) 한 장 — 서기가 뜨면 그린다 · 다른 클립은 뜨는 대로
+          const clip = m.sheets[sk].clip, im = new Image();
+          im.onload = () => { im._ok = true; if (clip === 'idle') e.ok = true; };
+          im.src = '/assets/animals/' + dir + sk + '.png';
+          e.imgs[clip] = im;
+        }
+        e.img = e.imgs.idle;
       }).catch(() => {});
     }
     return e.ok ? e : null;
   }
-  /** 서 있기 그림을 발밑 (x, y) 에 그린다. 그렸으면 그림 위 끝의 화면 y, 못 그렸으면 null(→ 점선 칸). */
+  /** [T1210] 이 짐승의 클립 · 판 — 속도로 클립(사람 문턱) · 걷기 · 뛰기는 간 거리로, 서기는 시간으로 돈다. 아직 안 뜬 클립은 서기로. */
+  function modelClipFrame(e, mob) {
+    const m = e.meta, sp = Math.hypot(mob.vx || 0, mob.vy || 0);   // px/s(서버 실측)
+    let clip = sp > (uiCfg.charRunMin || 102) ? 'run' : sp > (uiCfg.charWalkMin || 4) ? 'walk' : 'idle';
+    if (!(m.clips[clip] && e.imgs[clip] && e.imgs[clip]._ok)) clip = 'idle';
+    const c = m.clips[clip], key = mob.mid != null ? mob.mid : mob.type, now = performance.now();
+    let st = _mdl.anim.get(key);
+    if (!st) { st = { clip, ph: 0, t: now }; _mdl.anim.set(key, st); }
+    const dt = Math.min(0.25, (now - st.t) / 1000);   // 사람 시트와 같은 막이(42-r2-char — 탭이 쉬다 오면 한 번에 튀지 않게)
+    st.t = now;
+    if (st.clip !== clip) { st.clip = clip; st.ph = 0; }
+    st.ph += (c.strideM && sp > 0) ? (sp / 32) * dt / c.strideM : dt * c.fps / c.frames;   // 걷기 · 뛰기 = 간 m ÷ 보폭 · 서기 = 시간 × fps
+    st.ph -= Math.floor(st.ph);
+    return { clip, frame: Math.min(c.frames - 1, Math.floor(st.ph * c.frames)) };
+  }
+  /** 그 짐승의 그림을 발밑 (x, y) 에 그린다. 그렸으면 그림 위 끝의 화면 y, 못 그렸으면 null(→ 점선 칸 · 도형). */
   function drawModelSprite(x, y, mob) {
     const e = modelSpriteOf(mob.type);
     if (!e) return null;
     const m = e.meta, fw = m.frameW, fh = m.frameH;
     const row = charDirRow(mob._fvx ?? 1, mob._fvy ?? 0);
+    const k = modelClipFrame(e, mob);
     const dx = Math.round(x - m.anchorX), dy = Math.round(y - m.anchorY);
-    ctx.drawImage(e.img, 0, row * fh, fw, fh, dx, dy, fw, fh);
+    ctx.drawImage(e.imgs[k.clip], k.frame * fw, row * fh, fw, fh, dx, dy, fw, fh);
+    if (mob.mid != null) _mdl.seen.set(mob.mid, { type: mob.type, x: mob.x, y: mob.y, row });   // [T1210] 주검이 제 방향을 찾는 자리(세계 좌표)
     if (!window.__mdlDbg) window.__mdlDbg = {};
-    window.__mdlDbg[mob.mid != null ? mob.mid : mob.type] = { type: mob.type, row, dx, dy, fw, fh };   // 진단 훅(하네스 · 화면 대조)
+    window.__mdlDbg[mob.mid != null ? mob.mid : mob.type] = { type: mob.type, row, dx, dy, fw, fh, clip: k.clip, frame: k.frame };   // 진단 훅(하네스 · 화면 대조)
     return dy;
+  }
+  /** [T1210] 주검 — 그 종 시트에 쓰러짐(`die`)이 있으면 그 자리 (x, y)(산 몸을 그리던 점) 그림자 위에 한 번 돌고 마지막 판에 눕는다. 그렸으면 true(아니면 false → 부르는 쪽 '×').
+   *  방향 = 이 주검에서 **한 몸길이**(메타 `lengthM` · 1칸 = 1m = 32px) 안에 마지막으로 그려진 같은 종 가운데 가장 가까운 것 —
+   *  주검은 그 몸이 쓰러진 자리에 선다(서버 한 틱 1/30초면 질주 13 m/s 도 0.43 m). 없으면 0행 · 처음부터 누운 판. */
+  function drawModelCorpse(x, y, co) {
+    const e = modelSpriteOf(co.mobType);
+    if (!e || !e.meta.clips.die || !e.imgs.die || !e.imgs.die._ok) return false;
+    const m = e.meta, c = m.clips.die, fw = m.frameW, fh = m.frameH, now = performance.now();
+    const fy = mobShadow(x, y);   // 산 몸과 같은 그림자 · 같은 발밑
+    let d = _mdl.dead.get(co.cid);
+    if (!d) {
+      let best = null, bd = (m.lengthM || 0) * 32;
+      for (const [mid, s] of _mdl.seen) {
+        if (s.type !== co.mobType) continue;
+        const dd = Math.hypot(s.x - co.x, s.y - co.y);
+        if (dd <= bd) { bd = dd; best = mid; }
+      }
+      const s = best != null ? _mdl.seen.get(best) : null;
+      if (s) _mdl.seen.delete(best);
+      d = { row: s ? s.row : 0, t0: s ? now : -Infinity };
+      _mdl.dead.set(co.cid, d);
+    }
+    const fi = Math.min(c.frames - 1, Math.floor(((now - d.t0) / 1000) * c.fps));
+    ctx.drawImage(e.imgs.die, fi * fw, d.row * fh, fw, fh, Math.round(x - m.anchorX), Math.round(fy - m.anchorY), fw, fh);
+    return true;
   }
   // ═══ ★[T1194] 끝 ═══
 
@@ -94,9 +145,13 @@
     const facingX = fdx / flen, facingY = fdy / flen;
     // 머리 위치: 몸통 중심에서 facing 방향으로 6px 앞
     const headOX = facingX * 6, headOY = facingY * 3 - 4; // y는 살짝 위
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath(); ctx.ellipse(x, y + 5, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
-    if (isWolf) {
+    const _foot = mobShadow(x, y);
+    // ★★[T1210] 받은 3D 모델 시트(미리보기) — 손잡이 `uiCfg.modelSprites` 이고 이 칸에 시트가 서면(목록 `index.json` — 고라니 = `deer` 칸)
+    //   도형 몸 · 머리 · 뿔 대신 그림. 발밑 = 위 그림자 가운데(T1194 와 같은 꼴 · 새 수 0). 끄면 이 줄이 아무것도 안 부른다(요청 0 · 아래 도형 그대로).
+    const _mdlTop = uiCfg.modelSprites ? drawModelSprite(x, _foot, mob) : null;
+    if (_mdlTop != null) {
+      // 그림이 섰다 — 도형은 안 그린다
+    } else if (isWolf) {
       // 회색 늑대
       ctx.fillStyle = '#666';
       ctx.beginPath();
@@ -119,19 +174,26 @@
       ctx.beginPath(); ctx.moveTo(dhx - 1, dhy - 2); ctx.lineTo(dhx - 2, dhy - 5); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(dhx + 1, dhy - 2); ctx.lineTo(dhx + 2, dhy - 5); ctx.stroke();
     }
-    // HP bar
+    // HP bar — [T1210] 그림이 서면 그 머리 위(막대 높이 3 만큼 · T1194 와 같은 식) · 없으면 종전 y − 16
+    const _hy = _mdlTop == null ? y - 16 : Math.min(y - 16, _mdlTop - 3);
     if (mob.hp < mob.maxHp) {
-      ctx.fillStyle = '#222'; ctx.fillRect(x - 10, y - 16, 20, 3);
-      ctx.fillStyle = '#d85a5a'; ctx.fillRect(x - 10, y - 16, 20 * (mob.hp / mob.maxHp), 3);
+      ctx.fillStyle = '#222'; ctx.fillRect(x - 10, _hy, 20, 3);
+      ctx.fillStyle = '#d85a5a'; ctx.fillRect(x - 10, _hy, 20 * (mob.hp / mob.maxHp), 3);
     }
-    // 이름
+    // 이름 — 막대 자리의 4 위(종전 y − 20 = 막대 y − 16 의 4 위 그대로)
     ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
     ctx.fillStyle = mob.tameOwner ? '#ffb0c0' : '#cdd6e3';
     ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
     const baseLabel = isWolf ? '늑대' : '사슴';
     const label = mob.tameOwner ? `${baseLabel} (${mob.tameOwnerName || ''})` : baseLabel;
-    ctx.strokeText(label, x, y - 20); ctx.fillText(label, x, y - 20);
+    ctx.strokeText(label, x, _hy - 4); ctx.fillText(label, x, _hy - 4);
     ctx.textAlign = 'start';
+  }
+  /** 옛 사슴 · 늑대 그림자(종전 그 두 줄 그대로) — 그 가운데(= 발밑) y 를 돌려준다. [T1210] 주검 그림도 이것을 부른다(한 벌). */
+  function mobShadow(x, y) {
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.ellipse(x, y + 5, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
+    return y + 5;
   }
 
   // Phase 5-8: 입체 나무 — r(반경) + h(높이) 사용. 사실적 줄기+캐노피.

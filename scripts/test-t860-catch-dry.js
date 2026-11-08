@@ -99,10 +99,14 @@ console.log('\n④ 한 걸음 — 가짜 마을');
   //   ⓒ 칸 상한 = 그날 잡은 양 — 생선 0.2 만 잡았으면 0.2 만 · 남은 손은 새우로 · 새우 산출은 열량 보존(× 0.35)
   v = mk(1000); b = E._t860Begin(v, E.CATCH_FROM.fisher, 0, 0); v.storage.fish += 0.2; v.storage.shrimp += 10; s = sink(v);
   E._t860Dry(v, npc, b, 30, 15, s.f);
-  const fe = (r, a) => (r === 'dried_fish' ? a * 2.5 : 0);
-  ok(s.got.length === 2 && Math.abs(s.got[0][1] - 0.2 * 0.4) < 1e-12 && Math.abs(s.got[1][1] - 0.55 * 0.4 * 0.35) < 1e-12,
-    '④ⓒ 칸 상한 = 그날 잡은 양(생선 0.2) · 남은 손 0.55 는 새우', JSON.stringify(s.got));
-  ok(Math.abs(fe('dried_fish', s.got[1][1]) - 0.55 * 0.35) < 1e-12, '④ⓒ 열량 보존 — 새우 0.55(식량 0.1925) → 건어물 0.077(× 2.5 = 0.1925) · 생성 0');
+  //   ★[T1216-K2] T1192 어종 보존식(`T1192_FISH_SPECIES` 켬 기본 · `server/fish-goods.js`)이 켜지면 새우는 제 보존식(`fish-preserve.driedId`) 낱개로 말린다 —
+  //     낱개 수 = 식량 0.55 × 0.35 ÷ 낱개 열량(`FishGoods.factor`) · 그 낱개의 열량 = `FishGoods.factor`(econ `_t1192Preserve` 그 식). 끔 = 종전 글자(건어물 · 수율 0.4 · 환산 2.5).
+  const FG = require(path.join(ROOT, 'server', 'fish-goods')), FP = require(path.join(ROOT, 'server', 'fish-preserve'));
+  const shId = FG.ON ? FP.driedId('shrimp') : 'dried_fish', shAmt = FG.ON ? 0.55 * 0.35 / FG.factor('shrimp') : 0.55 * 0.4 * 0.35;
+  const fe = (r, a) => (FG.ON && FG.isItem(r) ? a * FG.factor(r) : r === 'dried_fish' ? a * 2.5 : 0);
+  ok(s.got.length === 2 && Math.abs(s.got[0][1] - 0.2 * 0.4) < 1e-12 && s.got[1][0] === shId && Math.abs(s.got[1][1] - shAmt) < 1e-12 * Math.max(1, shAmt),
+    `④ⓒ 칸 상한 = 그날 잡은 양(생선 0.2) · 남은 손 0.55 는 새우(→ ${shId})`, JSON.stringify(s.got));
+  ok(Math.abs(fe(s.got[1][0], s.got[1][1]) - 0.55 * 0.35) < 1e-12, `④ⓒ 열량 보존 — 새우 0.55(식량 0.1925) → ${shId} ${+(shAmt.toFixed(4))}(열량 0.1925) · 생성 0`);
   //   ⓓ 남는 시간 0 · 문턱 닫힘(식량 30일치 이하) · 잡은 것 0 → 무동작
   v = mk(1000); b = E._t860Begin(v, E.CATCH_FROM.fisher, 0, 0); v.storage.fish += 20; s = sink(v); E._t860Dry(v, npc, b, 30, 30, s.f);
   const a0 = s.got.length;

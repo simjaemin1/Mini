@@ -3,9 +3,32 @@
 const ON=typeof process==='undefined'||!process.env||process.env.T1192_FISH_SPECIES!=='0';
 const Fresh=require('./freshfish'),Sea=require('./seafish');
 let SEA_BODY_IDS=null;
-function bodyKg(id,fallback=0){const f=Fresh.kgOf(id);if(f>0)return f;const row=Sea.TABLE?.find(r=>r.id===id);if(row?.kg?.length===2){if(!SEA_BODY_IDS){const ids=require('./fishing').FISH_ITEMS;if(!Array.isArray(ids))return fallback;SEA_BODY_IDS=new Set(ids);}if(SEA_BODY_IDS.has(id))return(row.kg[0]+row.kg[1])/2;}return fallback;}
-function species(){return require('./fish-preserve').species();}
-function items(){return require('./fish-preserve').items();}
+// ★[T1214 ③ µs 줄기] 손잡이 `T1214_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 두 길을 다 재고 견줌 · 답은 종전 길 · 머리 주석 = villages.js `T1214`).
+//   ⓐ `bodyKg` 의 바다 표 `find`(무게를 물을 때마다 25줄 훑기 — 물고기가 아닌 품목은 끝까지) → 한 번 지은 id 표. 처음 찾은 줄을 둔다(`find` 와 같은 줄) ·
+//     id 가 NaN 인 줄은 안 둔다(`===` 로는 영영 안 맞는다) · 표 배열이 바뀌면(다른 배열) 다시 짓는다 · 줄이 객체가 아닌 표는 종전 `find` 그대로(던짐까지 같게).
+//   ⓑ `items()` · `species()` 의 `require('./fish-preserve')` → 한 번 받은 모듈 칸(다 실린 모듈만 · 그 함수가 선 객체). 끔 = 종전 글자.
+const T1214=typeof process!=='undefined'&&!!process.env&&process.env.T1214_STEP_FAST!=='0';
+const T1214V=T1214&&process.env.T1214_STEP_FAST==='verify';
+const _t1214Stat={vq:0,bad:0};
+function _t1214Bad(m){if(++_t1214Stat.bad<=5)console.error('[T1214] verify 어긋남 fish-goods '+m);}
+let _seaOf,_seaMap=null,_fpM=null;
+function _seaRow(id){
+  const T=Sea.TABLE;
+  if(_seaOf!==T){_seaOf=T;_seaMap=null;if(Array.isArray(T)){const M=new Map();let ok=true;for(let i=0;i<T.length;i++){const r=T[i];if(!r||typeof r!=='object'){ok=false;break;}const k=r.id;if(k===k&&!M.has(k))M.set(k,r);}if(ok)_seaMap=M;}}
+  if(!_seaMap)return T?.find(r=>r.id===id);
+  const a=_seaMap.get(id);
+  if(T1214V){const b=T.find(r=>r.id===id);_t1214Stat.vq++;if(a!==b){_t1214Bad('바다 표 '+id);return b;}}
+  return a;
+}
+function _fp(){
+  const m=_fpM;
+  if(!m){const b=require('./fish-preserve');if(b&&typeof b.items==='function'&&typeof b.species==='function')_fpM=b;return b;}
+  if(T1214V){const b=require('./fish-preserve');_t1214Stat.vq++;if(b!==m){_t1214Bad('fish-preserve');return b;}}
+  return m;
+}
+function bodyKg(id,fallback=0){const f=Fresh.kgOf(id);if(f>0)return f;const row=T1214?_seaRow(id):Sea.TABLE?.find(r=>r.id===id);if(row?.kg?.length===2){if(!SEA_BODY_IDS){const ids=require('./fishing').FISH_ITEMS;if(!Array.isArray(ids))return fallback;SEA_BODY_IDS=new Set(ids);}if(SEA_BODY_IDS.has(id))return(row.kg[0]+row.kg[1])/2;}return fallback;}
+function species(){return (T1214?_fp():require('./fish-preserve')).species();}
+function items(){return (T1214?_fp():require('./fish-preserve')).items();}
 function isItem(id){return ON&&!!items()[id];}
 const FACTORS=new Map(); // 표준 품목 kg·T59 밀도·하루 열량은 이 프로세스에서 고정, 나이/실제 개체 kg를 캐시하지 않는다.
 function factor(id){if(!FACTORS.has(id)){const K=require('./kcal');FACTORS.set(id,K.kcalOf(id)/K.DAY_KCAL);}return FACTORS.get(id);}
@@ -14,4 +37,4 @@ function note(v,id,n){if(!ON||!species().includes(id)||!(n>0))return;const m=v._
 function shares(v){const m=v?._t1192CatchMix||null,c=v&&SHARE_CACHE.get(v);if(c&&c.mix===m)return {...c.value};const o={};let sum=0;for(const id of species()){if(!(m?.[id]>0))continue;const u=m[id]*factor(id);if(u>0){o[id]=u;sum+=u;}}if(sum>0)for(const id in o)o[id]/=sum;if(v)SHARE_CACHE.set(v,{mix:m,value:o});return {...o};}
 function reserve(v,id,oldDry,oldPickle,oldFactor){const it=items()[id];if(!it)return 0;const s=shares(v)[it.from]||0;if(!(s>0))return 0;const f=factor(id);return f>0?s*(it.kind==='dry'?oldDry:oldPickle)*oldFactor/f:0;}
 function audit(){const Sp=require('./specialty'),W=require('./weights');return species().map(id=>{const fr=Fresh.kgOf(id),r=Sea.TABLE?.find(x=>x.id===id),old=Sp.RESOURCES[id]?.weight||W.CORE_KG[id]||fr||0;return{id,ko:require('./fish-preserve').koOf(id),parcelKg:old,bodyKg:bodyKg(id,old),source:fr?'설계/설계_민물고기.md §1 (T603 kg 미확인 · 현행 몸 크기 유지)':r?.kg?'설계/고증_바닷물고기.md T592/T602 기존 몸 앵커 · kg 미확인(low:kg, 구체 kg 출처 없음)':'미확인 · 현행 값 유지',verified:false,hasExistingSeaKgField:!fr&&!!r?.kg,tableLow:r?.low||[],tableSource:r?.src||null};});}
-module.exports={ON,bodyKg,species,items,isItem,factor,note,shares,reserve,audit};
+module.exports={ON,bodyKg,species,items,isItem,factor,note,shares,reserve,audit,t1214Stat:()=>Object.assign({on:T1214,verify:T1214V},_t1214Stat)};

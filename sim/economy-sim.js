@@ -118,7 +118,7 @@ function _computeVillageStats(v, N) {
   //   교역 기회비용(사용자 질문의 실물화): 원정 나간 인원(_tradingN, v2 발행)은 생산도 쉼도 못 하므로 여가에서 차감 —
   //   "쉬는 대신 교역"의 비용이 행복 회계에 실재. 문턱엔 안 넣음(실측: 캐러밴 이익/일이 개인 mv를 3~4자릿수 압도 → 영원히 안 물림.
   //   교역 vs 휴식의 실배분 노브는 TRADE_SPARE_UTIL=0.11 — 여유노동의 11%만 원정, 89%는 쉼).
-  const _leis = Math.max(0, (v._idleFrac || 0) - (v._tradingN || 0) / pop);
+  const _leis = Math.max(0, (T1217_MARGIN ? t1217IdleFrac(v, pop) : (v._idleFrac || 0)) - (v._tradingN || 0) / pop);   // ★[T1217] 켬 = 행위 어부의 실제 쉰 시간까지(아래 함수 · 끔 = 종전 글자)
   stats.happiness += LEISURE_HAPPY_W * _leis;
   stats.leisure = _leis;
   // ★땔감 부족 → 건강 페널티(비례). fuelCov=1이면 0, 0이면 -FUEL_HEALTH_W. 큰/숲빈약 마을이 연료를 못 대면 건강↓→인구 억제.
@@ -1343,7 +1343,7 @@ function foodDebtOf(v) {
 //   ④ 몸(서버 존)이 선 사람은 몸이 끼니를 먹고(`t1197Meal` · 호스트가 부른다) 게이지를 흘린다(`t1197Advance`) — 날 경계(`t1197Day`)는 그 사람의 남은 끼니 · 남은 시간만 친다.
 //      ⇒ 헤드리스 마을(몸 없음)은 이 날 경계가 몸 게이지를 일괄로 굴린다(T1185 질문 3 — 두 길이 같은 함수 · 결과 비교는 보고).
 //   수치 틀: 극단 구간 HP 적분은 게임 1시간(몸 60초) 중점 걸음(세계의 수가 아니다 — T906 `_t906Day` 의 1분 걸음과 같은 꼴 · 값 차는 하네스).
-const T1197_MEAL_BODY = T1074_FOOD_DEBT && (typeof process !== 'undefined' && !!process.env && process.env.T1197_MEAL_BODY === '1'); // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209
+const T1197_MEAL_BODY = T1074_FOOD_DEBT && (typeof process !== 'undefined' && !!process.env && process.env.T1197_MEAL_BODY === '1'); // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209 — ★[T1209] 게이트 못 넘음(곳간은 두 판 같이 빈다 · 정본 몸이 3.6날에 한꺼번에 죽인다 · 회부) · 끔 기본 그대로
 const NPC_HP_DAY = { rest: 18, work: 6 };   // ★[T1197] 몸 일일 회복(요양 · 근무) — 종전 `server/villages.js` 의 그 두 글자를 이리로 옮겼다(값 무변 · 서버 생활층이 이것을 읽는다)
 // 몸 일일 회복 배수(건강 · 행복 · 식량) — 종전 `server/villages.js` 의 그 식을 이리로 옮겼다(식 무변 · 서버 생활층과 아래 날 경계가 같은 함수)
 function npcRegenMul(econ, popAlt) {
@@ -1430,6 +1430,18 @@ function _t1197Eat(v, need, body) {
   } else for (const r in before) now[r] = (now[r] || 0) + before[r];
   return gap;
 }
+// ★★[T1209 2026-11-07 · ★재민 11-07 "몸이 꺼내 먹어도 마을이 비지 않는다"] **모자란 솥은 가장 위태로운 사람부터** — 손잡이 `T1209_MEAL_TRIAGE`(끔 기본 · `=1` 켬 · 끔 = T1197 한 솥 같은 비율 그대로 · T1197 끔이면 이 줄을 안 탄다).
+//   까닭(계측 · 보고 T1209 §1): 켬 판 · 끔 판의 곳간은 **같이** 빈다(보릿고개 — 여름 · 늦여름 생산 ≈ 제 몫 · 두 판의 못 먹은 몫 비율이 같다). 갈린 것은 나눔이다 —
+//     같은 비율 한 솥은 모두를 같은 게이지로 끌어내려 정본 몸(배부른 띠 → HP 0 이 3.6날)이 **한날 한꺼번에** 죽인다(마을 통째 — 서버 1020 400날 켬 판 굶어 죽음 1,008 가운데 915 가 한 마을 하루 다섯 넘게 죽은 날 · 끔 판 559 가운데 0).
+//   켬 — 곳간이 그 끼니의 몫(아직 안 먹은 사람 모두)을 못 채우면, 몸 HP 가 낮은 사람 → 허기가 낮은 사람 → id 순으로 제 몫(한 끼 + 갚기)을 다 먹고, 곳간이 다한 데서 멎는다.
+//     위태로운 사람이 먼저 먹으니 짧은 모자람은 아무도 극단에 오래 두지 않고(돌아가며 먹는다), 긴 모자람은 곳간이 먹일 수 있는 만큼을 살린다(모두가 아니라 넘친 몫이 굶는다).
+//     구호 급식의 우선(중증 영양실조 먼저 — Sphere Handbook 2018 영양실조 관리 표준 · 새 수 0) · 몸 끼니는 앞 순번 사람들의 몫을 곳간에 남겨 두고 먹는다(먼저 온 몸이 남의 몫을 안 먹는다).
+const T1209_MEAL_TRIAGE = typeof process !== 'undefined' && !!process.env && process.env.T1209_MEAL_TRIAGE === '1';   // 끔 기본(`=1` 켬) — 랩 1020 은 나아졌으나(빈 마을 22 → 5) 서버 1020 은 나빠졌다(인구 2,850 → 2,460 · 굶어 죽음 1,008 → 1,584) · 보고 T1209 §3
+function _t1209Before(a, b) {   // 먼저 먹는 사람 — HP 낮은 · 허기 낮은 · id(정해진 순 · 주사위 0)
+  const d = (a._mhp == null ? 100 : a._mhp) - (b._mhp == null ? 100 : b._mhp); if (d) return d;
+  const e = (a._mh || 0) - (b._mh || 0); if (e) return e;
+  const x = String(a.id), y = String(b.id); return x < y ? -1 : x > y ? 1 : 0;
+}
 // 한 끼 — 끼니 번호 s(날 × 2 + k)를 아직 안 먹은 사람들에게 한 솥으로. 반환 { need(제 몫), want, got, short(제 몫 가운데 못 먹은 것) }.
 function t1197Meal(v, who, s, body) {
   const M = _t1197(); if (!M || !who.length) return { need: 0, want: 0, got: 0, short: 0 };
@@ -1437,17 +1449,32 @@ function t1197Meal(v, who, s, body) {
   let W = 0, N0 = 0; const ws = new Array(who.length);
   for (let i = 0; i < who.length; i++) { const w = _t1197Want(who[i], k); ws[i] = w; W += w; N0 += DAILY_FOOD_CONSUMPTION * fr * (1 - (who[i]._fdA || 0)); }
   if (body && W > 0) {   // 몸 끼니도 한 솥 — 이 끼니를 아직 안 먹은 사람 모두의 몫 가운데 제 몫만큼(곳간이 모자라면 같은 비율 · 먼저 온 몸이 다 먹지 않는다)
-    let Wall = W; const mine = new Set(who);
-    for (const q of _fdEaters(v)) if (!mine.has(q) && q._mh != null && q._mS < s) Wall += _t1197Want(q, k);
+    let Wall = W; const mine = new Set(who), oth = [];
+    const now = T1209_MEAL_TRIAGE ? who[0]._mD : null;   // ★[T1209] 앞 순번을 가리려면 아직 안 먹은 사람들의 게이지도 이 끼니 시각까지(시간만 흐른다 · 일괄 길과 같은 자리)
+    for (const q of _fdEaters(v)) if (!mine.has(q) && q._mh != null && q._mS < s) { if (now != null && q._mD < now) t1197Advance(q, now); const w = _t1197Want(q, k); Wall += w; oth.push([q, w]); }
     const F = totalFoodEquivalent(v);
-    if (F < Wall) { const r = Math.max(0, F) / Wall; W = 0; for (let i = 0; i < ws.length; i++) { ws[i] *= r; W += ws[i]; } }
+    if (F < Wall && T1209_MEAL_TRIAGE) {   // ★[T1209] 앞 순번(더 위태로운 · 아직 안 먹은) 사람들의 몫을 남기고 남은 만큼만
+      W = 0;
+      for (let i = 0; i < who.length; i++) {
+        let ahead = 0;
+        for (const [q, w] of oth) if (_t1209Before(q, who[i]) < 0) ahead += w;
+        for (let j = 0; j < who.length; j++) if (j !== i && _t1209Before(who[j], who[i]) < 0) ahead += ws[j];
+        ws[i] = Math.min(ws[i], Math.max(0, F - ahead)); W += ws[i];
+      }
+    } else if (F < Wall) { const r = Math.max(0, F) / Wall; W = 0; for (let i = 0; i < ws.length; i++) { ws[i] *= r; W += ws[i]; } }
   }
   const w0 = body ? who.map((p) => _t1197Want(p, k)) : ws;   // 제 몫(솥 비율 앞) — 못 먹은 몫의 자
   const gap = W > 0 ? _t1197Eat(v, W, body) : 0;
   const f = W > 0 ? Math.max(0, W - gap) / W : 1;
+  let gv = null;   // ★[T1209] 켬 · 모자란 일괄 솥 = 먹은 것(W − gap)을 앞 순번부터 제 몫까지 · 끔 = 같은 비율(f)
+  if (T1209_MEAL_TRIAGE && !body && gap > 0 && W > 0) {
+    gv = new Array(who.length).fill(0); let G = Math.max(0, W - gap);
+    const ord = who.map((p, i) => i).sort((a, b) => _t1209Before(who[a], who[b]));
+    for (const i of ord) { if (!(G > 0)) break; const g = Math.min(ws[i], G); gv[i] = g; G -= g; }
+  }
   let short = 0;
   for (let i = 0; i < who.length; i++) {
-    const p = who[i], got = ws[i] * f;
+    const p = who[i], got = gv ? gv[i] : ws[i] * f;
     const sh = DAILY_FOOD_CONSUMPTION * fr * (1 - (p._fdA || 0)) * (w0[i] > 0 ? Math.max(0, 1 - got / w0[i]) : 0);
     p._mh = Math.min(100, p._mh + got * M.DH); p._mS = s;
     p._fdS = (p._fdS || 0) + sh; short += sh;
@@ -1853,8 +1880,14 @@ function houseDayBuild(v, N, fe) {
 //   집 몫(통나무) — 숯가마가 태우지 말고 남겨 둘 양. ★집(T400)이 끔이면 0 = 숯가마 종전 그대로(비트 동일 · 손잡이 0).
 function houseWoodShare(v) {
   if (!T400_BUILD_ACT || !v || !v.npcs || v.housing === undefined) return 0;
+  return houseBuildWant(v, 'wood');
+}
+//   ★[T1213] 그날 집이 올릴 양(`houseDayBuild` — 목재 제약 전) × 자재 단가(`houseCostPerCap` — T400 끔이면 종전 상수 HOUSE_WOOD · HOUSE_STONE).
+//     집 몫(위 · T400 켬만)과 짓는 파생수요(아래 `buildInputTarget` — 집 행위가 꺼진 판도 econ 이 곳간 목재로 짓는다)가 같은 몸통을 부른다(사본 0).
+function houseBuildWant(v, res) {
+  if (!v || !v.npcs || v.housing === undefined) return 0;
   const N = v.npcs.length;
-  return houseDayBuild(v, N, totalFoodEquivalent(v)) * houseCostPerCap('wood');
+  return houseDayBuild(v, N, totalFoodEquivalent(v)) * houseCostPerCap(res);
 }
 // ★[T537 2026-09-30] 통나무 **잉여** — T488 숯가마 식을 함수 하나로 뺐다(재고 − 비축 `RESERVE_PC.wood × 인구` − 집 몫 `houseWoodShare`).
 //   숯가마(`kilnDay`)와 다리 크루(villages `_t527BridgeDay`)가 **같은 함수**를 부른다 — 사본 0 · 새 상수 0 · 숯가마 산술 불변(같은 순서의 같은 뺄셈).
@@ -1863,6 +1896,36 @@ function woodSpare(v) {
   const N = (v.npcs && v.npcs.length) || 0;
   const reserve = (RESERVE_PC.wood || 0) * N;
   return (v.storage.wood || 0) - reserve - houseWoodShare(v);
+}
+// ══ ★★[T1213 2026-11-07 · T1207 회부 2 · ★재민 11-07 "나무나 돌 공급량을 늘려줘야겠네"] 땅의 차례 · 짓는 파생수요는 목표에 **더한다** ══
+//   T1207 켬 판(11-04c 3시드 × 800날): 넓히려 한 날의 99.6% 가 통나무 막힘 · 나무꾼 −20% — 말뚝 모자람이 v2 목표에서 생존 목표와 **큰 쪽**으로만
+//   합쳐져(`max`) 값이 안 움직였다. 이 절은 T1207 이 켜진 판에서만 선다(`T1207_TERR_REAL=1` · 끔 = 이 절 전부 0 = 종전 비트).
+//   `T1213_DERIV_ADD=0` 은 재는 자 전용(T1207 켬 · 이 절 끔 — 카드 T1213 의 앞 판을 같은 판 자로 잰다).
+const T1213_ON = (typeof process !== 'undefined' && process.env && process.env.T1207_TERR_REAL === '1' && process.env.T1213_DERIV_ADD !== '0');
+//   ① 땅의 차례 — 1인 비축 → 집 몫 → **땅 몫**(그날 못 치른 말뚝 `_t1207Need` — 서버 생활층이 적는다) → 숯가마 · 다리.
+//     땅(말뚝)은 `woodSpare`(비축 · 집 몫 뒤)를 그대로 쓰고, 숯가마 · 다리 크루는 땅 몫까지 뺀 잉여를 쓴다(배수 0 · 순서만).
+function landWoodShare(v) { return (T1213_ON && v && v._t1207Need > 0) ? v._t1207Need : 0; }
+function woodSpareAfterLand(v) { return woodSpare(v) - landWoodShare(v); }
+//   ② 짓는 파생수요(econ 재화 단위) — 생존(땔감 · 1인 0.05)과 **다른 쓰임**이라 v2 목표에 큰 쪽이 아니라 **합**으로 얹는다(`economy-sim-v2` 목표 세 자리).
+//     통나무 = 말뚝(`_t1207Need`) + 집(`houseBuildWant`) + 다리(남은 단계 몫 `_t1213Bridge` — 서버 생활층이 적는다) + 숯(노가 쓸 숯의 모자람을 구울 통나무 —
+//     숯 파생수요 `derivedInputTarget('charcoal')` 와 같은 목표 · 숯가마가 있으면 숯가마 배치(통나무 3 → 숯 4) · 없으면 노천 탄화(숯 1 = 통나무 3 ÷ 2)).
+//     돌 = 집(`houseBuildWant`) + 다리. 석기 · 구리 · 숯 자체의 파생수요는 그 재화의 흐름과 같은 쓰임이라 종전 `max` 그대로(이 항 밖).
+function buildInputTarget(v, r) {
+  if (!T1213_ON || !v || !v.storage) return 0;
+  const br = v._t1213Bridge || null;
+  if (r === 'wood') {
+    let t = (v._t1207Need > 0 ? v._t1207Need : 0) + houseBuildWant(v, 'wood') + ((br && br.wood) || 0);
+    const chT = derivedInputTarget(v, 'charcoal');
+    const gap = chT - (v.storage.charcoal || 0);
+    const S = gap > 0 ? _smeltUses() : null;
+    if (S) {
+      const wpc = v._kiln ? S.woodPerCharcoalKiln() : S.woodPerCharcoal();   // 정본 두 식(숯가마 · 노천 탄화) — 옮겨 적지 않는다
+      if (wpc > 0) t += gap * wpc;
+    }
+    return t;
+  }
+  if (r === 'stone') return houseBuildWant(v, 'stone') + ((br && br.stone) || 0);
+  return 0;
 }
 //   ★곳간 **출구** — `actToGranary` 의 역. 크루가 집터로 들고 가는 자재가 여기서 빠진다(있는 만큼만 · 세금 없음 — 마을 제 것이다).
 //     흐름 EMA 는 종전 주거 갈래가 찍던 **그 칸**(`_cons(v, 'wood', …)`)에 찍는다 — 수요 신호가 같은 자리에서 나온다.
@@ -2343,7 +2406,8 @@ function actDemandCap(v, units, D, todayKey) {
   return amt > left ? left : amt;
 }
 // ★[T374] 품목마다 `D` 를 어디서 읽나 — 정본 칸 이름만 다르다(식은 하나).
-function fishDemandLeft(v, held) { return actDemandLeft(v, (v && v._fishOutLast) || 0, '_t312InflowToday', held); }
+//   ★[T1217] 켬 = 어부의 수요 문이 없다(Infinity — 끈 팔과 같은 값) — 어부는 그날 D 가 아니라 제 한 시간의 값(아래 `T1217_MARGIN` 머리말)으로 멈춘다.
+function fishDemandLeft(v, held) { if (T1217_MARGIN) return Infinity; return actDemandLeft(v, (v && v._fishOutLast) || 0, '_t312InflowToday', held); }
 //   ★[T1135 ①] 나무꾼 분자 — 켬 = 그날 땔감 수요(`_t1135Need`) · 끔 = 수식 몫(`_woodOutLast` · 종전 글자). 문(`actDemandLeft`)은 하나다.
 //   ★[T1207 ⑤] 영토 말뚝 몫 — 서버 생활층(`villages.js _t1207Batch`)이 그날 못 치른 통나무를 `_t1207Need` 에 적는다(끔 · 랩 = 칸 없음 → 0 · 종전 값 그대로).
 //     나무꾼 수요 문(`actDemandLeft` — 몸 · 일괄 둘 다)과 개간 그루 입구(`woodToGranary`)가 같은 D 를 본다 — 배수 0 · 수요가 는 만큼만.
@@ -2356,7 +2420,40 @@ function forageDemandLeft(v, held) {
 }
 function fishToGranary(v, units) {
   if (!T312_FISH_ACT || !v || !v.storage) return 0;
+  if (T1217_MARGIN) return actToGranary(v, 'fish', units, '_t312InflowToday', '_t312CatchN');   // ★[T1217] 켬 = 입구에서도 D 로 안 자른다(잡은 마리 그대로)
   return actToGranary(v, 'fish', actDemandCap(v, units, (v._fishOutLast || 0), '_t312InflowToday'), '_t312InflowToday', '_t312CatchN');
+}
+// ★★★[T1217 2026-11-07 · ★재민 11-07 판정대기 문 35 ⓓ] **수요 문 대신 "한 시간 더 일한 값 ↔ 한 시간 쉰 값"** — 손잡이 `T1217_MARGIN`(**끔 기본** · `=1` 만 켬 · 끔 = 종전 바이트).
+//   "그날 필요한 만큼만 일한다"(T374 수요 문 D · 어부 `_fishOutLast` · T312 마을 낚시 몫)는 추상이다 — 켬이면 어부의 문은 몸의 하루 한도(시간 · 짐 · 현장)와
+//   실제 어장 재고(`server/fishing.js` 셀 · 몸 · 일괄이 같은 장부를 깎는다)뿐이고, 사람마다 매 게임 시간 두 값을 견줘 큰 쪽을 한다(재민 "썩으면 손해 · 팔 수 있으면 과잉이 이득 · 쉬어야 행복"):
+//     일한 값 = 그 시간 잡힐 단위(입질 기댓값 ∝ 그 자리 재고 — CPUE) × 한 단위의 행복 값
+//       · 마을에 식량 빚이 있으면 먹는다 — 한 단위 = 한 사람의 하루치 빚 = 겪은 일(굶주림 날 +굶는 몫 ÷ 죽음 날 수 `t1197DieDays`)의 한 사람 몫 = 1 ÷ (N × 죽음 날 수)
+//       · 빚이 없으면 남는다 — 시세(그 마을 값 · 이웃이 사 주는 순수취 `netExportValue` 중 큰 쪽) × 다른 물건으로 바꾼 행복(가장 좋은 바꿈 · 아래 `t1217HappyMu`)
+//     쉰 값 = 여가 몫(`LEISURE_HAPPY_W` × 쉰 사람-날 ÷ N)이 한 시간만큼 오르는 양 = `LEISURE_HAPPY_W` ÷ (N × 낮 시간 수)
+//   두 값 다 행복 목표(0.5 + 좋은 것 − 겪은 일)의 같은 단위다 — 새 튜닝 수 0(행복 식의 무게만).
+//   여가 몫(`_computeVillageStats` 의 `_leis`)은 켬이면 행위 어부의 실제 쉰 시간(서버가 그날 `_t1217Rest` 에 적는다 · 사람-날)을 센다 —
+//     수식 직업의 여유노동(`_idleFrac`)은 그 사람 수만큼, 행위 어부는 쉰 몫만큼(인구 가중 평균).
+//   헤드리스 랩은 행위 호스트가 없어(`bindProductionActs` 안 부름) 이 손잡이가 아무 줄도 안 바꾼다.
+const T1217_MARGIN = (typeof process !== 'undefined' && process.env && process.env.T1217_MARGIN === '1');
+//   ★[T1217] 물건 하나의 한 단위가 좋은 것(행복 합 G)을 얼마나 올리나 — `_computeVillageStats` 의 그 꼴(1인당 충족률 min(1, 1인당 ÷ 2) × 무게)의 기울기:
+//     1인당 2 미만이면 무게 ÷ (2N) · 2 이상이면 0(이미 찼다). 무게 = 그 물건의 `contributes.happiness`(specialty 정본 · 없으면 종전 표) — 사본 0.
+function t1217HappyMu(v, id, N) {
+  if (!v || !id || (T1188_ORE_SPLIT && (id === 'ore' || OreGoods.isOre(id)))) return 0;
+  const SP = _getSpecialty();
+  const c = (SP && SP[id] && SP[id].contributes) || LEGACY_CONTRIBUTES[id] || null;
+  const w = c && c.happiness > 0 ? c.happiness : 0;
+  if (!(w > 0)) return 0;
+  const pop = Math.max(1, N || (v.npcs && v.npcs.length) || 1);
+  return ((v.storage && v.storage[id]) || 0) / pop < 2 ? w / (2 * pop) : 0;
+}
+//   ★[T1217] 여가 몫의 밑변 — 수식 직업의 여유노동(`_idleFrac` · 수식이 닫힌 행위 어부는 그 잠재 · 실제 합 `_potA` · `_actA` 에 안 든다)은 그 사람 수만큼,
+//     행위 어부는 서버가 적은 그날 쉰 사람-날(`_t1217Rest` · 낮 시간 중 안 낚은 몫의 합 · 0 ~ 어부 수)만큼 — 인구 가중 평균. 칸이 없으면(서버가 안 적은 날 · 랩) 종전 값.
+function t1217IdleFrac(v, pop) {
+  const idle = (v && v._idleFrac) || 0;
+  if (!v || typeof v._t1217Rest !== 'number' || !productionFormulaOff(v, 'fisher')) return idle;
+  const N = Math.max(1, pop || (v.npcs && v.npcs.length) || 1);
+  const Fa = Math.min(N, Math.max(0, (v.counts && v.counts.fisher) || 0));
+  return ((N - Fa) * idle + Math.max(0, Math.min(Fa, v._t1217Rest))) / N;
 }
 // ★★[T325 · 설계_생산_실체 §1·§2] **나무꾼의 곳간 입구.** 캐논: *"베는 순간 손에, 귀환하면 곳간에."*
 //   ⚠어부와 **같은 몸통 · 같은 세금 · 같은 장부 다리**다(위 `actToGranary`) — 새 회계 0.
@@ -2475,7 +2572,7 @@ function t1196Unhide(v) {
   _t1196Pause(v, true);
   for (const k in H) v.storage[k] = (v.storage[k] || 0) + H[k];
   _t1196Pause(v, false);
-  delete v._t1196H;
+  v._t1196H = undefined;   // ★[T1203 · T862 ② 캐논] 날 `delete` 는 마을 econ 객체를 V8 사전 모드로 내린다(날마다 · 작업표 든 마을 — `test-econ-fast` ③ 켬 판 최대 9) — 읽는 자리가 전부 참거짓이라 `undefined` = 지운 칸 · 저장(`JSON.stringify`)도 안 싣는다
 }
 function _t1196Find(v, id) { const Q = v && v._t1196Q; if (!Q) return -1; for (let i = 0; i < Q.length; i++) if (Q[i].id === id) return i; return -1; }
 //   재료를 꺼낸다 — 그때 곳간에 있는 만큼. 비율 `f` 는 그 레시피가 **없으면 못 만드는** 재료로 잰다(정본 정의 그대로 · 새 수 0):
@@ -3593,7 +3690,7 @@ function kilnDay(v) {
     v._kiln = { built: (v._day || 0) };
     return { built: 1 };
   }
-  const spare = woodSpare(v);   // ★[T488] 잉여 = 재고 − 비축 − **집 몫**(집이 끔이면 0 · 순서 집 → 숯가마 무변) · ★[T537] 식은 한 함수(다리 크루도 부른다)
+  const spare = woodSpareAfterLand(v);   // ★[T488] 잉여 = 재고 − 비축 − **집 몫**(집이 끔이면 0 · 순서 집 → 숯가마 무변) · ★[T537] 식은 한 함수(다리 크루도 부른다) · ★[T1213] 땅 몫 뒤(끔 = 0 · `woodSpare` 그대로)
   const target = furnaceCharcoalTarget(v);   // ★[T463] 식 한 곳 — 파생수요(`derivedInputTarget`)가 같은 함수를 부른다(산술 불변)
   const gap = target - (v.storage.charcoal || 0);
   if (!(spare >= S.CHARCOAL_KILN_WOOD) || !(gap > 0)) return { batches: 0 };
@@ -5724,7 +5821,7 @@ function derivedInputTarget(v, r) {
   //   (`pickDeficitJob_rational` 의 나무꾼 한계가치 `w('wood')`)가 그만큼 더 본다. 합치는 법은 v2 그대로(max · 배수 0).
   //   칸이 없으면(끔 · 랩 · CLI) 0 — 종전 비트.
   //   ⚠T1207 서버 판(11-04c 3시드 × 800날): 마을 모자람(평균 ~20)이 생존 몫(1인 0.05 × 30날 × 인구)을 거의 못 넘어 값이 안 움직였다 — 합치는 법(max ↔ 더하기)은 회부(보고/T1207 §6-2).
-  if (r === 'wood') return (v && v._t1207Need > 0) ? v._t1207Need : 0;
+  if (r === 'wood') return (!T1213_ON && v && v._t1207Need > 0) ? v._t1207Need : 0;   // ★[T1213] 켬이면 말뚝은 더하는 항(`buildInputTarget`)에 — 여기선 0(두 번 세지 않는다)
   // ★★[T463 2026-09-27] **숯도 파생수요다** — 노가 있는 마을(캐는 마을이거나 녹일 원석이 있는 마을 · `_trySmelt` 의 그 문)은
   //   숯을 **쓸 데가 실제로 있다**. 그런데 T443 연료는 곳간에 숯이 있을 때만 `_cons(charcoal)` 를 적는다 — 숯이 없는 광산 마을은
   //   노천 탄화(통나무)로 때우니 숯 흐름(flowT)이 **0** 이고, 값이 바닥(0.02)이라 캐러밴이 숯을 안 싣는다(보고 §ⓐ: 800일 숯 leg 1건).
@@ -7121,9 +7218,10 @@ module.exports = {
   T1205_HAPPY, T1205_E_MIN, T1205_E_MAX, T1205_DEF, t1205Par, t1205Terr, t1205Burden, t1205Ev, t1205Step, t1205NeedOut,   // ★[T1205] 행복 식 다시 — 하네스 · 호스트 · war-core 가 같은 함수를 읽는다
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
   foodDebtOf, T1074_FOOD_DEBT,   // ★[T1074] 식량 빚 읽는 함수 하나(T1075 가 읽는다)
+  T1217_MARGIN, t1217HappyMu, t1217IdleFrac, LEISURE_HAPPY_W,   // ★[T1217] 한 시간 값 ↔ 쉰 값 — 물건 한 단위의 행복 기울기 · 여가 몫 밑변 · 여가 무게(v2 · 서버 · 하네스가 같은 함수를 읽는다)
   T1206_NAT_DEATH, T1206_SILER, T1206_GRAVE, t1206Hazard, t1206DayP, t1206Bury, t1206Day, t1206Expected, _t1206IsLux,   // ★[T1206] 자연사 · 출생 다시 맞춤 · 부장 — 하네스 · 관찰기
   T1198_BIRTH_BODY, _t1198Houses,   // ★[T1198] 출생 = 집 짝 곁 · 명부 ↔ 몸 1:1 — 호스트 · 하네스
-  T1197_MEAL_BODY, NPC_HP_DAY, npcRegenMul, t1197Advance, t1197Meal, t1197Kill, t1197Day, t1197DieDays, __t1197: () => _t1197(),   // ★[T1197] 몸 게이지 끼니 — 호스트(몸 끼니 · 몸 흘림 · 그 자리 죽음) · 하네스가 같은 함수를 부른다
+  T1197_MEAL_BODY, T1209_MEAL_TRIAGE, NPC_HP_DAY, npcRegenMul, t1197Advance, t1197Meal, t1197Kill, t1197Day, t1197DieDays, __t1197: () => _t1197(),   // ★[T1197] 몸 게이지 끼니 — 호스트(몸 끼니 · 몸 흘림 · 그 자리 죽음) · 하네스가 같은 함수를 부른다
   __t1074: { _fdEaters, _fdNeed, _fdSettle, _fdDeathIdx, FD_ADAPT_MAX, FD_ADAPT_DOWN_DAYS, FD_ADAPT_UP_DAYS, FD_DEATH_DAYS, FD_REPAY_MAX, T1117_FD_EVID },   // 하네스 훅(test-t1074-food-debt)
   T860_ON, CATCH_FROM, PRESERVE_FROM, _preserveSurplus, _t860Begin, _t860Dry, T877_ON, _t860Unit, PRESERVED_FOODS, PRESERVE_YIELD, PRESERVE_FOOD_FACTOR, FORAGE_FOOD_FACTOR,   // ★[T860] 잡은 날 말리기 — 손잡이 · 잡은 칸 표(하네스가 spoil 정본과 대조한다 · 사본 0) · 갈무리 한 걸음
   STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
@@ -7151,6 +7249,7 @@ module.exports = {
   T419_STONE_REAL, stoneRealPer, stoneRealOn, stoneWorkStock,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
   T1050_LAB_HOUSE, crewPerLoad, houseCrewDay, labHouseAttach, labHouseDay, labHouseWorldDay, labSiteNew, labSiteCrewDay, labCrewDbg,   // ★[T1050] 집 크루 하루 정본(서버 생활층 · 랩 몸 없는 마을이 같은 함수) · 손잡이 · ★[T1056] 몸 없는 크루의 집터 하루(t17 · t176 · 랩 HTML 둘이 같은 함수)
+  T1213_ON, houseBuildWant, landWoodShare, woodSpareAfterLand, buildInputTarget,   // ★[T1213] 땅의 차례 · 짓는 파생수요(v2 목표 세 자리 · 생활층 다리 크루가 같은 함수를 부른다)
   T400_BUILD_ACT, T1054_DECAY_WOOD, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, actMaterialsPlaced, returnActMaterials, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
