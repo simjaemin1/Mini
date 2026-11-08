@@ -21,7 +21,7 @@ const rec = { cols: ['day', 'vil', 'pop', 'born', 'dead', 'emig', 'logi', 'hunge
 let cur = null;
 const seen = new WeakSet();
 function flush() { if (cur) { const r = cur; rec.rows.push(rec.cols.map((k) => (typeof r[k] === 'number' ? +r[k].toFixed(4) : r[k]))); } }
-let lastWrite = 0;
+let lastWrite = -1;
 const _t = V1.tickVillage;
 V1.tickVillage = function (v, day) {
   let pre = null;
@@ -33,7 +33,7 @@ V1.tickVillage = function (v, day) {
         const j = {}; for (const w of v._world.villages) for (const k of Object.keys(w.counts || {})) j[k] = (j[k] || 0) + (w.counts[k] | 0);
         rec.jobs.push([day, j]);
       }
-      if (Date.now() - lastWrite > 20000) { lastWrite = Date.now(); try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} }
+      if (day % 50 === 0 && day !== lastWrite) { lastWrite = day; try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} }   // 50날마다(가상 시계 판은 `Date.now` 가 econ 날에 묶여 벽시계 간격이 안 선다)
     }
     for (const n of (v.npcs || [])) seen.add(n);
     pre = { dead: v._deadTot || 0, emig: v._emigTot || 0, floor: v._t100FloorTot || 0, eat: (v._consDay && v._consDay.food) || 0 };
