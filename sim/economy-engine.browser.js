@@ -15798,6 +15798,7 @@ function npcField(npc) { return JOBS[npc.currentJob].field; }
 
 // 일하면 skill xp 증가. 차면 skill +1. skill == trait && skill < 10 이면 trait +1.
 // xp_to_next(skill) = 80 + skill * 30
+const T1227_TRAIT_FREE = !(typeof process !== 'undefined' && process.env && process.env.T1227_TRAIT_FREE === '0');
 function workNPC(npc) {
   const f = npc.currentJob === 'hunter' ? ((npc._wAlt = !npc._wAlt) ? 'hunting' : 'archery') : npcField(npc);   // ★사냥꾼 xp 교차 배분(격일 사냥/활) — 총 xp율은 타 직업과 동일
   const skill = npc.skills[f];
@@ -15815,7 +15816,7 @@ function workNPC(npc) {
     return;
   }
   // skill == trait && skill < 10 → trait 1점 찍기 (xp 못 얻으니까)
-  if (skill === trait && trait < 10 && npc.spentTraits < 30) {
+  if (skill === trait && trait < 10 && (T1227_TRAIT_FREE || npc.spentTraits < 30)) {   // ★[PM land1053 · ★재민 11-08] 특성 합 30 제한 걷음(자연사가 들어가 끝없이 세지지 않음 · 분야마다 10 은 그대로 · `T1227_TRAIT_FREE=0` = 종전)
     npc.traits[f] += 1;
     npc.spentTraits += 1;
     // 다음 day부터 다시 xp 누적 가능
