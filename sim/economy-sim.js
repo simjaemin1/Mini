@@ -4131,6 +4131,7 @@ function pickInitialJob(v) {
 // 마을 일일 처리
 function tickVillage(v, day) {
   migrateOre(v);
+  if (t1226On()) { v._t1226F0 = (v.counts && v.counts.farmer) || 0; v._t1226F0d = day; }   // ★[T1226 ⑫] 켬 = 이 마을 틱 머리 농부 수(이웃 피커가 마을 차례와 무관하게 읽는다 · 끔 = 무동작)
   if (v.npcs.length === 0) return;
 
   // ★flow-EMA 일 경계 폴드(2026-07-12): 어제 _consDay → _consEMA(α=1/30, ~30일 관성 — prodK EMA 동형).
@@ -4218,7 +4219,8 @@ function tickVillage(v, day) {
   // ★여유노동 측정 — 포만으로 감산된 생산능력의 비율(_idleFrac). 교역 동시성 상한에 씀(tickTradeV2).
   //   글럿(잉여 폭발)이면 스로틀↑ → 여유노동↑ → 교역 여력↑. 다 needed면 스로틀0 → 교역 자제.
   let _potA = 0, _actA = 0;
-  const dailyProductionPotential = {};   // ★조인 전(잠재) 생산 — 부양력 prodK가 satiation(여가)에 안 속게(창고 많으면 생산 게을러도 부양력은 잠재력 기준)
+  const dailyProductionPotential = {};   if (t1226On()) v._t1226Pot = dailyProductionPotential;   // ★[T1226 ⑪] 켬 = 직업 값이 읽을 잠재 산출(같은 객체 — 아래에서 다 쌓인다 · 끔 = 무동작)
+  // ★조인 전(잠재) 생산 — 부양력 prodK가 satiation(여가)에 안 속게(창고 많으면 생산 게을러도 부양력은 잠재력 기준)
   // ★건강 → 작업량(생산성) — 지난 틱 health로 실제 생산 스케일(±10% 상한). 잠재력(dailyProductionPotential)엔 미적용 → K 오염·아사 스파이럴 방지.
   const _hpm = (v.lastStats && typeof v.lastStats.health === 'number')
     ? Math.max(0.9, Math.min(1.1, 1 + (v.lastStats.health - 0.5) * HEALTH_PROD_W)) : 1;
@@ -5515,7 +5517,8 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   let multiSwitch = 1;
   if (foodEquiv_for_switch < N_pop * 10) { switchInterval = 1; multiSwitch = 2; }       // 진짜 기근 — 즉시 다수 전환
   else if (foodEquiv_for_switch < N_pop * 30) { switchInterval = 10; multiSwitch = 1; }  // 식량 부족 — 가속하되 완만(5→10일, 만성 수입마을 churn 억제)
-  if (day % switchInterval === 0) {
+  if (t1226On()) t1226Flex(v, day, v._world, switchInterval, multiSwitch);   // ★[T1226] 켬 = 사람마다 엇갈린 날 · 얻는 것 > 비용(아래 `t1226Flex` · 끔 = 아래 종전 줄)
+  else if (day % switchInterval === 0) {
     for (let i = 0; i < multiSwitch; i++) autoSwitchJob(v, day, v._world);
   }
 
@@ -6150,8 +6153,14 @@ function allocRealCandidates(v, world, cands, ctx) {
   const dd = (prev === null) ? 1 : Math.max(1, day - prev);
   const win = ctx.period * allocRealWin();
   const a = (win > 0) ? Math.min(1, dd / win) : 1;   // 창 0 = 평활 없음(돌연변이)
-  const dp = v.dailyProductionBuf || {};
-  for (const r in dp) { const x = dp[r] || 0; e[r] = (e[r] === undefined) ? x : (1 - a) * e[r] + a * x; }
+  // ★[T1226 ⑪] 켬 = 잠재 산출(포만 · 건강 깎기 전 — 그날 낼 수 있었던 양 · `v._t1226Pot`)을 접는다 · 하루 두 번 부르면 두 번째는 안 접는다(값 표 · 피커가 같은 날 같은 EMA).
+  //   끔 = 종전 글자(실현 버퍼 · 부를 때마다 접기).
+  const _t26 = t1226On();
+  const dp = (_t26 && v._t1226Pot) || v.dailyProductionBuf || {};
+  if (!(_t26 && prev === day)) for (const r in dp) { const x = dp[r] || 0; e[r] = (e[r] === undefined) ? x : (1 - a) * e[r] + a * x; }
+  //   ★[T1226] 켬 = 일꾼 수도 같은 창으로 접는다 — 1인당 = 접은 산출 ÷ 접은 일꾼(그 산출을 낸 사람 수 · 막 옮긴 사람으로 나누면 옛 일은 부풀고 새 일은 눌려 되돌아온다).
+  const _ne = _t26 ? (v._t1226NE || (v._t1226NE = {})) : null;
+  if (_ne && prev !== day) { const cc = ctx.counts || {}; for (const j of new Set([...Object.keys(_ne), ...Object.keys(cc)])) { const x = cc[j] || 0; _ne[j] = (_ne[j] === undefined) ? x : (1 - a) * _ne[j] + a * x; } }
   v._allocDay = day;
   if (prev === null) return null;                   // ★첫 정산 전 — 종전 그대로(폴백)
 
@@ -6180,9 +6189,9 @@ function allocRealCandidates(v, world, cands, ctx) {
         const keys = terms[t][0];
         let q = 0;
         for (let k = 0; k < keys.length; k++) q += (e[keys[k]] || 0);
-        if (q > 0) { g += (q / n) * terms[t][1]() * ctx.period; any = true; }
+        if (q > 0) { g += (q / (_ne ? Math.max(1, _ne[job] || 0) : n)) * terms[t][1]() * ctx.period; any = true; }   // ★[T1226] 켬 = 접은 일꾼 수로(위 · 끔 = 종전 글자)
       }
-      if (!any) { _fb.push(out.length); out.push([job, gain]); continue; }            // 폴백 — 아직 실현이 0
+      if (!any) { if (_t26) (ctx._t1226NoReal || (ctx._t1226NoReal = [])).push(job); _fb.push(out.length); out.push([job, gain]); continue; }            // 폴백 — 아직 실현이 0 · ★[T1226 ④] 켬 = 그 직업을 적어 둔다(첫 한 명 뒤 실현이 설 때까지 기다림)
     }
 
     // ★사냥 위험 프리미엄은 생산이 아니라 **기회비용**이라 실현 산출에 안 들어 있다 — 종전식 그대로 곱한다.
@@ -6205,6 +6214,79 @@ function allocRealCandidates(v, world, cands, ctx) {
     for (let k = 0; k < _fb.length; k++) out[_fb[k]][1] *= med;
   }
   return out;
+}
+
+// ★[T1226] 한계 가치 후보 목록 — `pickDeficitJob_rational` 의 그 줄을 그대로 옮긴 것(사본 0 · 끔 = 같은 계산 같은 차례).
+//   `slot(job)` = 자리 문(피커는 `hasSlot` · T1226 켬 값 표는 지금 직업의 떠날 값도 재야 해서 자리 없는 직업도 센다).
+function _ratCandsOf(v, world, counts, forageLandMean, slot) {
+  const _t1226F = t1226On(), _t1226D = (world && world.day) || 0;
+  // === 한계 효용 계산 — 각 직업 1명 추가 시 기대 가치 (식량 환산 단위) ===
+  const period = 100;  // 평가 윈도우 100일
+  const FOOD_VALUE = 1;
+  const ts = v.tradeStats || { caravansSent: 0, caravansRaided: 0, cargoSent: 0, foodImported: 0 };
+  const caravansSeen = Math.max(0.5, ts.caravansSent);
+  const raidRate = Math.min(0.9, ts.caravansRaided / caravansSeen);
+  const avgCargo = ts.cargoSent / caravansSeen || 30;
+  // v2 hook: world.priceFn 있으면 가격 가중치로 한계가치 조정 (긴 공급 탄력성).
+  //   v2 r9: cap 풀기 (0.05~200). 진짜 시장 — 가격 폭락 자원의 직업은 거의 매력 0,
+  //   가격 폭등 자원은 압도적 매력. Lewis 모델식 노동 이동.
+  const priceTbl = (world && typeof world.priceFn === 'function') ? world.priceFn(v) : null;
+  const w = oreWeights(v,priceTbl ? (r => Math.max(0.05, Math.min(200, (T1188_ORE_SPLIT&&OreGoods.isOre(r)?(priceTbl[r]??1):(priceTbl[r]||1)) / 1.0))) : (_ => 1.0));
+
+  // 인근 마을 식량 공급 — world.villages에서 infoRange 안의 마을 jobs.farmer 합계
+  let nearbyFoodCapacity = 0;
+  if (world && world.villages) {
+    const infoR = world.infoRange || INFO_RANGE;
+    for (const o of world.villages) {
+      if (o === v) continue;
+      const d = villageDist(v, o);
+      if (d > infoR) continue;
+      nearbyFoodCapacity += (_t1226F ? _t1226FarmersOf(o, _t1226D) : (o.counts?.farmer || 0)) * o.land.fertility * 0.4;   // ★[T1226 ⑫] 켬 = 이웃의 그날 틱 머리 농부 수(마을 차례 무관) · 끔 = 종전 글자
+    }
+  }
+  // (1) 농부 한계가치 — 우리 토지의 farmer 1명당 생산 × food 가격
+  const farmerGain = v.land.fertility * 0.4 * period * FOOD_VALUE * w('food');
+  // (2) 광부 한계가치 — stone 생산 × stone 가격
+  const minerGain = Math.max((v.land.ore || 0) * w('ore') * (1 - (v._metalGlut || 0)), (v.land.obsidian || 0) * w('obsidian'), (v.land.jade || 0) * w('jade'), (v.land.tin || 0) * TIN_DEPOSIT_YIELD_FLAT * w('tin') * (1 - (v._tinGlut || 0))) * 0.3 * period;   // ★S1 광부=금속 전담 ★S2 금속글럿↓ ★S5 흑요석·옥 ★청동 희소성 +주석산지
+  // (3) 상인 한계가치 — 새 캐러밴 1대 capacity 추가
+  const expectedNewTrade = avgCargo * (period / 7) * (1 - raidRate);
+  const merchantGain = nearbyFoodCapacity > 0 ? expectedNewTrade * 0.3 * FOOD_VALUE * w('food') : 0;
+  // (4) 전사 한계가치 — sqrt 체감, 약탈 손실 줄임
+  const curEscort = counts.warrior || 0;
+  const dProtection = (Math.sqrt(curEscort + 1) - Math.sqrt(curEscort)) * 0.08;
+  const warriorGain = caravansSeen * (period / Math.max(1, ts.windowStartDay ? 100 : 100)) *
+                      avgCargo * dProtection * FOOD_VALUE * w('food');
+
+  // 선택지 빌딩 — v2 hook: 모든 산출에 가격 가중치
+  const candidates = [];
+  if (slot('farmer'))     candidates.push(['farmer',     farmerGain]);
+  if (slot('miner'))      candidates.push(['miner',      minerGain]);
+  if (slot('lumberjack')) candidates.push(['lumberjack', v.land.wood * 0.3 * period * w('wood')]);
+  if (slot('fisher'))     candidates.push(['fisher',     v.land.water * 1.2 * period * w('fish')]);
+  if (slot('hunter')) {   // ★사냥 위험 프리미엄(기회비용): 생활층이 관측한 부상·호환 사망으로 학습한 v._huntRisk(0~0.6, 미공급 기본 8%)만큼 기대소득 할인 — 위험한 숲은 사냥꾼 배분↓. (위 기근 게이트의 사냥은 무할인 — 절박하면 위험 감수)
+    const _hr = Math.min(0.6, Math.max(0, v._huntRisk !== undefined ? v._huntRisk : 0.08));
+    candidates.push(['hunter',     v.land.game * 0.7 * period * (w('meat') + 0.3 * w('hide')) * (1 - _hr)]);
+  }
+  if (slot('forager'))   // ★약재(§9 2차): 채집꾼 한계가치 — 약초 그림자가격이 채집 노동을 끌어당김(hide 패턴 복제). 0.6 = herb 산출비중 15% / 식량계수 0.25. ★S1: +돌 채집 가치(돌밭 마을 채집꾼 매력·석재 조달).
+    candidates.push(['forager',    (forageLandMean * 0.25 * (w('vegetable') + 0.6 * w('herb')) + (v.land.stone || 0) * 0.9 * w('stone')) * period * (v._forageScale != null ? v._forageScale : 1)]);   // ×MSY 포화 — 임연부가 차면(CPUE↓) 한계가치도 함께 하락 → 채집 과잉고용 차단
+  if (slot('merchant') && nearbyFoodCapacity > 0)
+    candidates.push(['merchant', merchantGain]);
+  // warrior — 약탈 자주 일어나는 마을에서만 의미. 추가로 weapon/armor 가용성이 호위 효과 결정.
+  //   장비 비싸면 호위 운용 어려움 (가격에 음 반응) + stock 적으면 운용 어려움.
+  if (slot('warrior') && caravansSeen > 1 && raidRate > 0.05 &&
+      (counts.warrior || 0) < warriorTarget(v) &&   // ★readiness 목표(약탈률×교역량) 이내 — 글럿 마을 전사 과잉 방지
+      (v.storage.weapon || 0) >= (counts.warrior || 0) + 1) {   // ★전사 게이트: 1인 1무기(돌칼/철칼) 보유 필수
+    const curWarrior = counts.warrior || 0;
+    const equipStock = (v.storage.weapon || 0) + (v.storage.armor || 0);
+    const equipReady = Math.min(1, equipStock / Math.max(1, (curWarrior + 1) * 2));
+    // 가격 비쌀수록 신규 무장 부담 (1/sqrt(price))
+    const equipCostMult = 1 / Math.sqrt(Math.max(1, (w('weapon') + w('armor')) / 2));
+    const adjustedWarriorGain = warriorGain * (0.3 + 0.7 * equipReady) * equipCostMult;
+    candidates.push(['warrior', adjustedWarriorGain]);
+  }
+  // ★대장장이·무기장·갑옷장은 marginal 후보에서 제외 — 위의 스톡-플로우 노동목표(smithTarget 등)가
+  //   전담 결정. 자본재 장인을 식량·자원직과 한계가치로 경쟁시키면 글럿 마을서 과잉(도구가격 floor 탓).
+  return { candidates, period, w };
 }
 
 function pickDeficitJob_rational(v, world) {
@@ -6350,72 +6432,7 @@ function pickDeficitJob_rational(v, world) {
   //   → 전사가 무기·갑옷 수요 → 광석·석재 수요 → 채광. (도적→전사→광업 사슬을 닫음)
   if (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 3 && (counts.warrior || 0) < warriorTarget(v) && foodEquiv > N * 40 && (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';   // ★무기(돌칼/철칼) 있어야 전사 + readiness 목표 이내
 
-  // === 한계 효용 계산 — 각 직업 1명 추가 시 기대 가치 (식량 환산 단위) ===
-  const period = 100;  // 평가 윈도우 100일
-  const FOOD_VALUE = 1;
-  const ts = v.tradeStats || { caravansSent: 0, caravansRaided: 0, cargoSent: 0, foodImported: 0 };
-  const caravansSeen = Math.max(0.5, ts.caravansSent);
-  const raidRate = Math.min(0.9, ts.caravansRaided / caravansSeen);
-  const avgCargo = ts.cargoSent / caravansSeen || 30;
-  // v2 hook: world.priceFn 있으면 가격 가중치로 한계가치 조정 (긴 공급 탄력성).
-  //   v2 r9: cap 풀기 (0.05~200). 진짜 시장 — 가격 폭락 자원의 직업은 거의 매력 0,
-  //   가격 폭등 자원은 압도적 매력. Lewis 모델식 노동 이동.
-  const priceTbl = (world && typeof world.priceFn === 'function') ? world.priceFn(v) : null;
-  const w = oreWeights(v,priceTbl ? (r => Math.max(0.05, Math.min(200, (T1188_ORE_SPLIT&&OreGoods.isOre(r)?(priceTbl[r]??1):(priceTbl[r]||1)) / 1.0))) : (_ => 1.0));
-
-  // 인근 마을 식량 공급 — world.villages에서 infoRange 안의 마을 jobs.farmer 합계
-  let nearbyFoodCapacity = 0;
-  if (world && world.villages) {
-    const infoR = world.infoRange || INFO_RANGE;
-    for (const o of world.villages) {
-      if (o === v) continue;
-      const d = villageDist(v, o);
-      if (d > infoR) continue;
-      nearbyFoodCapacity += (o.counts?.farmer || 0) * o.land.fertility * 0.4;
-    }
-  }
-  // (1) 농부 한계가치 — 우리 토지의 farmer 1명당 생산 × food 가격
-  const farmerGain = v.land.fertility * 0.4 * period * FOOD_VALUE * w('food');
-  // (2) 광부 한계가치 — stone 생산 × stone 가격
-  const minerGain = Math.max((v.land.ore || 0) * w('ore') * (1 - (v._metalGlut || 0)), (v.land.obsidian || 0) * w('obsidian'), (v.land.jade || 0) * w('jade'), (v.land.tin || 0) * TIN_DEPOSIT_YIELD_FLAT * w('tin') * (1 - (v._tinGlut || 0))) * 0.3 * period;   // ★S1 광부=금속 전담 ★S2 금속글럿↓ ★S5 흑요석·옥 ★청동 희소성 +주석산지
-  // (3) 상인 한계가치 — 새 캐러밴 1대 capacity 추가
-  const expectedNewTrade = avgCargo * (period / 7) * (1 - raidRate);
-  const merchantGain = nearbyFoodCapacity > 0 ? expectedNewTrade * 0.3 * FOOD_VALUE * w('food') : 0;
-  // (4) 전사 한계가치 — sqrt 체감, 약탈 손실 줄임
-  const curEscort = counts.warrior || 0;
-  const dProtection = (Math.sqrt(curEscort + 1) - Math.sqrt(curEscort)) * 0.08;
-  const warriorGain = caravansSeen * (period / Math.max(1, ts.windowStartDay ? 100 : 100)) *
-                      avgCargo * dProtection * FOOD_VALUE * w('food');
-
-  // 선택지 빌딩 — v2 hook: 모든 산출에 가격 가중치
-  const candidates = [];
-  if (hasSlot(v, 'farmer', cap, counts))     candidates.push(['farmer',     farmerGain]);
-  if (hasSlot(v, 'miner', cap, counts))      candidates.push(['miner',      minerGain]);
-  if (hasSlot(v, 'lumberjack', cap, counts)) candidates.push(['lumberjack', v.land.wood * 0.3 * period * w('wood')]);
-  if (hasSlot(v, 'fisher', cap, counts))     candidates.push(['fisher',     v.land.water * 1.2 * period * w('fish')]);
-  if (hasSlot(v, 'hunter', cap, counts)) {   // ★사냥 위험 프리미엄(기회비용): 생활층이 관측한 부상·호환 사망으로 학습한 v._huntRisk(0~0.6, 미공급 기본 8%)만큼 기대소득 할인 — 위험한 숲은 사냥꾼 배분↓. (위 기근 게이트의 사냥은 무할인 — 절박하면 위험 감수)
-    const _hr = Math.min(0.6, Math.max(0, v._huntRisk !== undefined ? v._huntRisk : 0.08));
-    candidates.push(['hunter',     v.land.game * 0.7 * period * (w('meat') + 0.3 * w('hide')) * (1 - _hr)]);
-  }
-  if (hasSlot(v, 'forager', cap, counts))   // ★약재(§9 2차): 채집꾼 한계가치 — 약초 그림자가격이 채집 노동을 끌어당김(hide 패턴 복제). 0.6 = herb 산출비중 15% / 식량계수 0.25. ★S1: +돌 채집 가치(돌밭 마을 채집꾼 매력·석재 조달).
-    candidates.push(['forager',    (forageLandMean * 0.25 * (w('vegetable') + 0.6 * w('herb')) + (v.land.stone || 0) * 0.9 * w('stone')) * period * (v._forageScale != null ? v._forageScale : 1)]);   // ×MSY 포화 — 임연부가 차면(CPUE↓) 한계가치도 함께 하락 → 채집 과잉고용 차단
-  if (hasSlot(v, 'merchant', cap, counts) && nearbyFoodCapacity > 0)
-    candidates.push(['merchant', merchantGain]);
-  // warrior — 약탈 자주 일어나는 마을에서만 의미. 추가로 weapon/armor 가용성이 호위 효과 결정.
-  //   장비 비싸면 호위 운용 어려움 (가격에 음 반응) + stock 적으면 운용 어려움.
-  if (hasSlot(v, 'warrior', cap, counts) && caravansSeen > 1 && raidRate > 0.05 &&
-      (counts.warrior || 0) < warriorTarget(v) &&   // ★readiness 목표(약탈률×교역량) 이내 — 글럿 마을 전사 과잉 방지
-      (v.storage.weapon || 0) >= (counts.warrior || 0) + 1) {   // ★전사 게이트: 1인 1무기(돌칼/철칼) 보유 필수
-    const curWarrior = counts.warrior || 0;
-    const equipStock = (v.storage.weapon || 0) + (v.storage.armor || 0);
-    const equipReady = Math.min(1, equipStock / Math.max(1, (curWarrior + 1) * 2));
-    // 가격 비쌀수록 신규 무장 부담 (1/sqrt(price))
-    const equipCostMult = 1 / Math.sqrt(Math.max(1, (w('weapon') + w('armor')) / 2));
-    const adjustedWarriorGain = warriorGain * (0.3 + 0.7 * equipReady) * equipCostMult;
-    candidates.push(['warrior', adjustedWarriorGain]);
-  }
-  // ★대장장이·무기장·갑옷장은 marginal 후보에서 제외 — 위의 스톡-플로우 노동목표(smithTarget 등)가
-  //   전담 결정. 자본재 장인을 식량·자원직과 한계가치로 경쟁시키면 글럿 마을서 과잉(도구가격 floor 탓).
+  const { candidates, period, w } = _ratCandsOf(v, world, counts, forageLandMean, (j) => hasSlot(v, j, cap, counts));
 
   // ★★★[T164 2026-09-10 · T161 이식] **실현 배분 — 정본은 이 파일 하나다.**
   //   T151 이 잡은 결함: 위 후보 목록의 "양" 자리가 **실현 산출이 아니라 땅의 상수**다
@@ -6442,6 +6459,156 @@ function pickDeficitJob_rational(v, world) {
   _cands.sort((a, b) => b[1] - a[1]);
   if (_cands.length > 0) return _cands[0][0];
   return null;
+}
+
+// ═══ ★★★[T1226 · ★재민 11-08] 직업 바꾸기를 유연하게 — 사람마다 · 날마다 "바꿔서 얻는 것 > 바꾸는 비용"일 때만 ═══
+//   손잡이 `T1226_JOB_FLEX`(**끔 기본** · `=1` 켬 · 랩 `window.T1226_JOB_FLEX = 1` · 끔 · `=0` = 종전 바이트 — 위 7) 전환일 줄 그대로).
+//   ① 보는 날 — 사람마다 엇갈린다: `_hashStr(사람 id)`([0,1)) × 종전 전환 간격(7 · `autoSwitchInterval`)의 내림 = 그 사람이 보는 날(날 % 7)(마을이 한날에 몰리지 않는다 · 주사위 0).
+//   ② 얻는 것 = (그 사람이 갈 일의 값 − 지금 일의 값 − 불확실 몫) × 이어질 날 D.
+//      값 = 하루 1인당 한계 값 — 피커의 한계 가치 후보(`_ratCandsOf` · 실현 배분 `allocRealCandidates` · 켬 = 잠재 산출 EMA × 시세)를 하루로 나눈 것 ×
+//           그 사람의 그 분야 숙련 배수 ÷ 그 일 지금 사람들의 평균 숙련 배수(배수 = `opportunityCost` 의 1 + 숙련 × 0.05 · 앞으로 D 날 배워 늘 몫까지 —
+//           경험치 곡선 `80 + 숙련 × 30` · 하루 1 xp · `workNPC` 그대로). 후보 밖 일(장인 · 무장 못 한 전사 등)의 지금 값 = `opportunityCost`(노동 목표 안 50 · 넘으면 0.005),
+//           피커 안전망이 부른 장인 일의 갈 값 = 전환 보류 문 가치표(`_needValueOf` · OUT1 × 시세) × 숙련 배수.
+//      D = 그 마을에서 "갈 일 값 > 지금 일 값"이 이어져 온 날 수(이어져 온 만큼 더 이어진다 · 피커 평가 창 100 으로 자름) — 값이 오르내리기만 하면 D 가 짧아 비용을 못 넘는다.
+//      불확실 몫 = (두 값 합) ÷ √(마을 사람 수) — 표본이 작은 마을일수록 문턱이 높다(평균의 표준오차 꼴 · 새 수 0).
+//   ③ 바꾸는 비용 = 지금 일 값 × 바꾸는 시간(하루 — 몸은 그날 땅거미 곳간 길에 옛 짐을 다 내리고(`_lifeGranStep` 은 직업을 안 묻는다) 이튿날 새 일터로 걸어간다).
+//      최근 전환 — 30날 잠금 대신 얻는 것에 (1 − 2^(−지난 날 ÷ 30))를 곱한다(30 = 행복 반감기 `HAPPY_EQ_HALF_DAYS`): 막 바꾼 사람은 0 · 30날 뒤 ½ · 60날 뒤 ¾ —
+//      막 바꾼 사람일수록 문턱이 높고 시간이 지나며 낮아진다(바꾼 적 없는 사람은 1).
+//      숙련은 잃지 않는다 — `switchNPCJob` 은 직업 이름만 바꾸고 숙련 · 특성 · 경험치를 둔다(새 분야 숙련이 낮아 덜 내는 몫은 갈 값에 이미 들어 있다).
+//   ④ 급할 때 — 따로 규칙 없음: 굶으면 식량 시세가 뛰어 식량 직업 값이 저절로 오른다(피커 기근 안전망은 그대로 "모자란 일"을 고른다).
+//   ⑤ 몰림 — 마을 하루에 한 사람(그날 보는 사람 가운데 얻는 것 − 비용이 가장 큰 사람) · 옮긴 수는 반감기 30날로 줄며 다음 사람의 값에 든다(갈 일 n ÷ (n + 들어옴) · 떠난 일 n ÷ (n − 나감)).
+//   빠지는 사람: 징발(`_warDraft` — 마을에 없다) · 촌장이 맡긴 사람(맡긴 날부터 `JOB_SWITCH_COOLDOWN` 동안 · 굶는 날 식량직만 T1085 ② 그대로) · 포로 무기 직 금지.
+//   사람 없는 직업(실현 0) — 종전 폴백 값으로 첫 한 명만 · 그 사람의 실현이 설 때까지 둘째는 기다린다.
+//   두 사람 마을 · 합리 피커가 아닌 세계는 종전 길 그대로(작은 마을 식량 안전망).
+function t1226On() { const x = _allocKnob('T1226_JOB_FLEX'); return x !== null && x !== '' && x !== '0'; }   // 빈 글자 · `0` = 끔
+function _t1226FarmersOf(o, day) { return (o._t1226F0d === day) ? (o._t1226F0 || 0) : ((o.counts && o.counts.farmer) || 0); }
+const T1226_SWITCH_DAYS = 1;   // 바꾸는 시간(하루 — 위 ③ · 하루 단위 그 자체)
+function _t1226Skill(p, job) {
+  if (job === 'hunter') return ((p.skills.hunting || 0) + (p.skills.archery || 0)) / 2;   // `opportunityCost` 그 꼴(활 · 사냥 평균)
+  const f = JOBS[job] && JOBS[job].field; return f ? (p.skills[f] || 0) : 0;
+}
+function _t1226Sk(p, job, D) { const s = _t1226Skill(p, job); return 1 + 0.05 * Math.min(10, s + 0.5 * D / (80 + 30 * s)); }
+// 마을 값 표 — 하루 1인당 한계 값(평균 숙련 일꾼) · 폴백(실현 없음) 직업 · 직업별 평균 숙련 배수.
+function _t1226Table(v, world) {
+  const counts = jobCounts(v);
+  const flm = Math.max(0.3, (v.land.fertility + v.land.wood + v.land.stone) / 3);   // 피커 `forageLandMean` 그 식
+  const R = _ratCandsOf(v, world, counts, flm, () => true);
+  let cands = R.candidates, real = false;
+  const ctx = { period: R.period, counts, w: R.w, forageYields: () => foragerYieldsFor(v), JOBS };
+  if (allocRealOn()) { const alt = allocRealCandidates(v, world, cands, ctx); if (Array.isArray(alt) && alt.length > 0) { cands = alt; real = true; } }
+  const val = {}, fb = {}, wait = {};
+  for (const c of cands) { val[c[0]] = c[1] / R.period; if (!real || (counts[c[0]] || 0) <= 0) fb[c[0]] = 1; }
+  if (ctx._t1226NoReal) for (const j of ctx._t1226NoReal) { fb[j] = 1; wait[j] = 1; }
+  const skm = {}, skn = {};
+  for (const n of v.npcs) { if (n._warDraft) continue; const j = n.currentJob; skm[j] = (skm[j] || 0) + 1 + 0.05 * _t1226Skill(n, j); skn[j] = (skn[j] || 0) + 1; }
+  for (const j in skm) skm[j] /= skn[j];
+  return { val, fb, wait, skm, w: R.w, counts, ne: v._t1226NE || {} };
+}
+// 보는 날(사람 id 해시 [0,1) × 간격의 내림) · 얻는 것 − 비용(위 ② ③ · 불확실 몫 · 최근 전환 몫) · 이미 옮긴 수 배수(들어옴 n ÷ (n + k) · 나감 n ÷ (n − k)).
+function _t1226LookDay(id, P) { return Math.floor(_hashStr(id + '|t1226') * P); }
+function _t1226Net(vt, vc, N, D, since) {
+  const unc = (Math.abs(vt) + Math.abs(vc)) / Math.sqrt(N);
+  const r = Math.pow(2, -since / HAPPY_EQ_HALF_DAYS);
+  return (vt - vc - unc) * D * (1 - r) - vc * T1226_SWITCH_DAYS;
+}
+function _t1226In(x, n, k) { return x * n / (n + (k || 0)); }
+function _t1226Out(x, n, k) { return x * n / Math.max(1, n - (k || 0)); }
+function _t1226V(T, p, j, D) {
+  if (T.val[j] === undefined) return null;
+  return T.val[j] * _t1226Sk(p, j, D) / (T.fb[j] ? 1 : (T.skm[j] || 1));
+}
+// 계측(세계 밖 · 상태 0) — 하네스 · 계측 자가 읽는다.
+const _t1226Stat = { days: 0, looks: 0, switches: 0, toNeed: 0, toOther: 0, heldGain: 0, waitFirst: 0, chief: 0, draft: 0 };
+function t1226Flex(v, day, world, interval, multi) {
+  if (v.npcs.length < (SWITCH2_ON ? 2 : 3) || !world || world.picker !== 'rational') {   // 두 사람 마을 · 합리 피커 밖 = 종전 길
+    if (day % interval === 0) for (let i = 0; i < multi; i++) autoSwitchJob(v, day, world);
+    return;
+  }
+  _t1226Stat.days++;
+  const P = world.autoSwitchInterval || 7;
+  const S = v._t1226 || (v._t1226 = { need: null, since: day, pr: {} });
+  // 하루 머리 — 모자란 일(피커 · 안전망 그대로) · 값 표 · 두 일 사이 부호가 이어져 온 날
+  const need = pickDeficitJob_rational(v, world);
+  if (need !== S.need) { S.need = need; S.since = day; }
+  let T = _t1226Table(v, world);
+  //   값은 하루 값의 반감기 30날 평활(`HAPPY_EQ_HALF_DAYS` — 행복이 겪은 일을 잊는 그 빠르기) — 시세가 하루 이틀 튄 몫은 거의 안 남고 이어지는 차이만 남는다.
+  const VS = S.vs || (S.vs = {}), al = 1 - Math.pow(2, -1 / HAPPY_EQ_HALF_DAYS);
+  for (const j in T.val) VS[j] = (VS[j] === undefined) ? T.val[j] : VS[j] + al * (T.val[j] - VS[j]);
+  const smooth = (X) => { for (const j in X.val) if (VS[j] !== undefined) X.val[j] = VS[j]; return X; };
+  smooth(T);
+  //   아직 값에 안 든 옮김 — 옮긴 사람마다 1 을 같은 반감기로 줄여 센다(평활 값이 그 옮김을 다 반영하기 전에 같은 쪽으로 또 몰리지 않게 · 몰림 ⑤).
+  const PIN = S.pin || (S.pin = {}), POUT = S.pout || (S.pout = {});
+  if (S.pd !== day) { const k = Math.pow(2, -((S.pd == null ? day : day - S.pd)) / HAPPY_EQ_HALF_DAYS); for (const j in PIN) PIN[j] *= k; for (const j in POUT) POUT[j] *= k; S.pd = day; }
+  const js = Object.keys(T.val);
+  for (let a = 0; a < js.length; a++) for (let b = 0; b < js.length; b++) {
+    if (a === b) continue;
+    const k = js[a] + '>' + js[b], sg = T.val[js[b]] > T.val[js[a]] ? 1 : 0, o = S.pr[k];
+    if (!o || o[0] !== sg) S.pr[k] = [sg, day];
+  }
+  const look = [];
+  for (const n of v.npcs) {
+    if (_t1226LookDay(n.id, P) !== (day % P)) continue;   // [0,1) 해시 × 간격 = 그 사람이 보는 날의 나머지
+    if (n._warDraft) { _t1226Stat.draft++; continue; }
+    look.push(n);
+  }
+  if (!look.length || !need) return;
+  const N = v.npcs.length, cap = jobCapacity(v);
+  const Dneed = Math.min(100, day - S.since + 1);
+  let hungry = null, pick = null, pickJob = null, pickNet = 0;
+  const mvIn = PIN, mvOut = POUT;   // 이미 옮긴 수(위 · 오늘 몫 포함): 갈 일 1인당 몫은 n ÷ (n + 들어옴) · 떠난 일은 n ÷ (n − 나감)
+  const ne1 = (j) => Math.max(1, T.ne[j] || T.counts[j] || 0);
+  for (const p of look) {
+    _t1226Stat.looks++;
+    const c = p.currentJob;
+    if (p._chiefAssignDay != null && p._chiefAssignDay === p.lastJobChangeDay && day - p._chiefAssignDay < JOB_SWITCH_COOLDOWN
+        && !(_T1085_FOOD[need] && (hungry === null ? (hungry = _t1085Hungry(v)) : hungry))) { _t1226Stat.chief++; continue; }
+    const since = day - (p.lastJobChangeDay == null ? -999 : p.lastJobChangeDay);
+    let best = null, bestNet = 0;
+    const tryJob = (t, Dt) => {
+      if (t === c || (p.captive && CAPTIVE_JOB_BAN[t])) return;
+      if (T.wait[t] && (T.counts[t] || 0) >= 1) { _t1226Stat.waitFirst++; return; }   // 사람 없던 일 — 첫 한 명의 실현이 설 때까지
+      if (_T1085_FOOD[t] === undefined && p._chiefAssignDay != null && p._chiefAssignDay === p.lastJobChangeDay && day - p._chiefAssignDay < JOB_SWITCH_COOLDOWN) return;
+      const vt0 = _t1226V(T, p, t, Dt), vt = vt0 !== null ? _t1226In(vt0, ne1(t), mvIn[t]) : _needValueOf(v, t, T.w) * _t1226Sk(p, t, Dt);
+      const vc0 = _t1226V(T, p, c, Dt), vc = vc0 !== null ? _t1226Out(vc0, ne1(c), mvOut[c]) : opportunityCost(p, v, T.w);
+      const net = _t1226Net(vt, vc, N, Dt, since);
+      if (net > bestNet) { bestNet = net; best = t; }
+    };
+    // 모자란 일(피커) — D = 그 일이 모자란 일로 이어져 온 날과 (두 일이 다 값 표에 있으면) 평활 값 차의 부호가 이어져 온 날 중 짧은 것(둘 다 이어져야 이어진다)
+    { const o = S.pr[c + '>' + need]; const inV = T.val[need] !== undefined && T.val[c] !== undefined;
+      const Dp = !inV ? Dneed : ((o && o[0] === 1) ? Math.min(100, day - o[1] + 1) : 0);
+      if (Math.min(Dneed, Dp) > 0) tryJob(need, Math.min(Dneed, Dp)); }
+    // 그 밖 자리 있는 한계 가치 직업 — 손잡이 값 `2` 일 때만(계측 판 · D = 두 일 값 부호가 이어져 온 날 · 마을 값이 거꾸로면 1).
+    //   켬(`1`)은 마을이 고른 "가장 나은 다른 직업"(피커 — 한계 가치 1위 또는 안전망)으로만 간다: 사람마다 다른 것은 언제 · 누가 · 갈지 말지다.
+    if (_allocKnob('T1226_JOB_FLEX') === '2') for (const t of js) {
+      if (t === need || !hasSlot(v, t, cap, T.counts)) continue;
+      const o = S.pr[c + '>' + t]; tryJob(t, (o && o[0] === 1) ? Math.min(100, day - o[1] + 1) : 1);
+    }
+    if (!best) { _t1226Stat.heldGain++; continue; }
+    if (bestNet > pickNet) { pick = p; pickJob = best; pickNet = bestNet; }
+  }
+  // 몰림 — 마을 하루에 한 사람: 그날 보는 사람 가운데 얻는 것 − 비용이 가장 큰 사람만 옮긴다(나머지는 다음 보는 날 다시 잰다 · 차례 무관).
+  if (!pick) return;
+  const c = pick.currentJob;
+  mvOut[c] = (mvOut[c] || 0) + 1; mvIn[pickJob] = (mvIn[pickJob] || 0) + 1;
+  switchNPCJob(pick, pickJob, day, v);
+  _t1226Stat.switches++; if (pickJob === need) _t1226Stat.toNeed++; else _t1226Stat.toOther++;
+  { const k = c + '>' + pickJob; const F = _t1226Stat.flow || (_t1226Stat.flow = {}); F[k] = (F[k] || 0) + 1; }
+}
+// ★[T1226] 전환 보류 문의 가치표(OUT1 · OUTRES) — `autoSwitchJob` 안에 있던 그 표 그대로(키 · 값 · 주석 무변 · `test-picker-tables` 가 이 글자를 읽는다).
+function _needValueOf(v, need, w) {
+  const OUT1 = { farmer: 1.5 * (v.land.fertility || 0), fisher: 1.2 * (v.land.water || 0), hunter: 0.7 * (v.land.game || 0),
+    lumberjack: 0.9 * (v.land.wood || 0), miner: 0.7 * (v.land.ore || 0), forager: 0.8,
+    mason: 1.0, smith: 0.9, weaponsmith: 0.8, armorsmith: 0.8, cook: 1.0, warrior: 0.3,
+    tailor: 0.5 };   // ★[재민 지시 "결함 전부 수정"] tailor 누락 보수 — jdef.base 0.5(하루 옷 0.5벌)
+  const OUTRES = { farmer: 'food', fisher: 'fish', hunter: 'meat', lumberjack: 'wood', miner: 'ore', forager: 'food',
+    mason: 'tool', smith: 'weapon', weaponsmith: 'weapon', armorsmith: 'armor', cook: 'cooked_food', warrior: 'weapon',
+    tailor: 'clothes' };   // ★S2 mason 산출=석기(tool) · smith 산출=청동/철 무기(weapon)
+  // ★★[재민 지시 "결함 전부 수정" 2026-08-01] tailor가 이 두 표에 없어서 needValue가 폴백
+  //   (0.5 × w('food'))로 계산됐다 — 재봉 전환의 가치를 **옷 가격이 아니라 식량 가격**으로 재던 것.
+  //   실측(시드7 rational): need='tailor' 92회 중 68회가 hold(0.50<…)로 보류 → 6마을 CLI 세계에선
+  //   800일 내내 재봉사 0·옷 0벌(의복 축 전체 사망 — 요리사 '유령 박멸 #4'와 같은 계열의 표 누락).
+  //   표 누락은 test-picker-tables.js가 상시 감시한다(merchant는 산출재 없음 — 명시 예외).
+  return (OUT1[need] || 0.5) * w(OUTRES[need] || 'food');
 }
 
 // 자율 직업 전환 — 매 7일 1명만
@@ -6513,19 +6680,7 @@ function autoSwitchJob(v, day, world) {
     //    시드7 농업촌 N=21 고착: 목재 0→주거게이트 dP=0 영구. 부족 재화의 그림자가격이 needValue를 키워 스스로 뚫는다.)
     const foodSec = totalFoodEquivalent(v) > (v.npcs.length || 1) * 30;
     if (foodSec && bestCost > 0.15) {
-      const OUT1 = { farmer: 1.5 * (v.land.fertility || 0), fisher: 1.2 * (v.land.water || 0), hunter: 0.7 * (v.land.game || 0),
-        lumberjack: 0.9 * (v.land.wood || 0), miner: 0.7 * (v.land.ore || 0), forager: 0.8,
-        mason: 1.0, smith: 0.9, weaponsmith: 0.8, armorsmith: 0.8, cook: 1.0, warrior: 0.3,
-        tailor: 0.5 };   // ★[재민 지시 "결함 전부 수정"] tailor 누락 보수 — jdef.base 0.5(하루 옷 0.5벌)
-      const OUTRES = { farmer: 'food', fisher: 'fish', hunter: 'meat', lumberjack: 'wood', miner: 'ore', forager: 'food',
-        mason: 'tool', smith: 'weapon', weaponsmith: 'weapon', armorsmith: 'armor', cook: 'cooked_food', warrior: 'weapon',
-        tailor: 'clothes' };   // ★S2 mason 산출=석기(tool) · smith 산출=청동/철 무기(weapon)
-      // ★★[재민 지시 "결함 전부 수정" 2026-08-01] tailor가 이 두 표에 없어서 needValue가 폴백
-      //   (0.5 × w('food'))로 계산됐다 — 재봉 전환의 가치를 **옷 가격이 아니라 식량 가격**으로 재던 것.
-      //   실측(시드7 rational): need='tailor' 92회 중 68회가 hold(0.50<…)로 보류 → 6마을 CLI 세계에선
-      //   800일 내내 재봉사 0·옷 0벌(의복 축 전체 사망 — 요리사 '유령 박멸 #4'와 같은 계열의 표 누락).
-      //   표 누락은 test-picker-tables.js가 상시 감시한다(merchant는 산출재 없음 — 명시 예외).
-      const needValue = (OUT1[need] || 0.5) * w(OUTRES[need] || 'food');
+      const needValue = _needValueOf(v, need, w);   // ★[T1226] 표 둘을 위 함수(`_needValueOf`)로 옮김(값 · 차례 그대로 — T1226 켬 값 표도 같은 표를 읽는다 · 사본 0)
       if (needValue < bestCost * 1.3) { v._dbgSwitch.did = 'hold(' + needValue.toFixed(2) + '<' + (bestCost * 1.3).toFixed(2) + ')'; return; }
     }
     switchNPCJob(v.npcs[bestIdx], need, day, v);
@@ -7235,7 +7390,8 @@ module.exports = {
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
-  _autoSwitchJobForTest: autoSwitchJob, _switchNPCJobForTest: switchNPCJob,   // ★[T1085] 하네스가 자율 전환 그 함수를 부른다(시험 이름 · 사본 0)
+  _autoSwitchJobForTest: autoSwitchJob, _switchNPCJobForTest: switchNPCJob,
+  t1226On, t1226Flex, _t1226Table, _t1226V, _t1226Sk, _t1226Net, _t1226LookDay, _t1226In, _t1226Out, _t1226FarmersOf, _t1226Stat, T1226_SWITCH_DAYS, opportunityCost, _needValueOf, villageMasterSkill, apprenticeInherit,   // ★[T1226] 직업 바꾸기 유연 — 하네스 · 계측이 같은 함수를 읽는다(사본 0)   // ★[T1085] 하네스가 자율 전환 그 함수를 부른다(시험 이름 · 사본 0)
   T1075_HAPPY_EQ, HAPPY_EQ_HALF_DAYS,
   T1205_HAPPY, T1205_E_MIN, T1205_E_MAX, T1205_DEF, t1205Par, t1205Terr, t1205Burden, t1205Ev, t1205Step, t1205NeedOut,   // ★[T1205] 행복 식 다시 — 하네스 · 호스트 · war-core 가 같은 함수를 읽는다
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
