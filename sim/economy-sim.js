@@ -6562,9 +6562,10 @@ function _t1226FlexBody(v, day, world, interval, multi) {
   }
   if (!look.length || !need) return;
   const N = v.npcs.length, cap = jobCapacity(v);
-  //   ★[T1228] 마을 빠르기 — 곳간이 10일치(종전 전환일 줄의 "진짜 기근 — 날마다" 문턱) 넘게 있으면 종전 전환 간격(7날 · `autoSwitchInterval`)에 한 사람, 밑이면 하루 한 사람(손잡이 `T1228_PACE=30` = 30일치 문턱 · `=0` 끔).
+  //   ★[T1228] 마을 빠르기 — 곳간이 30일치(피커 기근 문) 넘게 있으면 종전 전환 간격(7날 · `autoSwitchInterval`)에 한 사람, 밑이면 하루 한 사람
+//   (손잡이 `T1228_PACE=0` 끔 · `=10` = 종전 "진짜 기근 — 날마다" 10일치 문턱 — 서버 빈 마을 7 로 더 나빠 기본 아님).
   //   값이 곳간 재고를 보고 매겨져 곳간이 두둑할 땐 식량 일이 싸 보인다 — 날마다 옮기면 식량 일꾼이 시세보다 빨리 빠져 곳간이 비고서야 돌아온다(T1228 빈 마을 표).
-  if (_allocKnob('T1228_PACE') !== '0' && S.mv != null && totalFoodEquivalent(v) >= N * (_allocKnob('T1228_PACE') === '30' ? 30 : 10) && day - S.mv < P) return;
+  if (_allocKnob('T1228_PACE') !== '0' && S.mv != null && totalFoodEquivalent(v) >= N * (_allocKnob('T1228_PACE') === '10' ? 10 : 30) && day - S.mv < P) return;
   const Dneed = Math.min(100, day - S.since + 1);
   let hungry = null, pick = null, pickJob = null, pickNet = 0;
   const ev = [];
