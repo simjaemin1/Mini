@@ -4,7 +4,7 @@
 //   판 끝에 `$T577_OUT.t1202.json` — 머리 `cols` · 마을마다 날 줄(`rows[이름]`) · 판 통계.
 if (require('worker_threads').isMainThread && process.env.T577_SEED) {
   const fs = require('fs'), path = require('path'), root = path.resolve(__dirname, '..');
-  const KN = ['T312_FISH_ACT', 'T325_WOOD_ACT', 'T347_FORAGE_ACT', 'T1188_ORE_SPLIT', 'T1202_BATCH', 'T1217_MARGIN', 'T1218_FISH_CANON'];
+  const KN = ['T312_FISH_ACT', 'T325_WOOD_ACT', 'T347_FORAGE_ACT', 'T1188_ORE_SPLIT', 'T1202_BATCH', 'T1217_MARGIN', 'T1218_FISH_CANON', 'T1225_FISH_CAPITAL'];
   const cols = ['day', 'pop', 'dead', 'bodies', 'fisher', 'lumber', 'forager', 'miner', 'bFisher', 'bLumber', 'bForager', 'bMiner',
     'fishIn', 'woodIn', 'forageIn', 'oreIn', 'fishD', 'woodD', 'forageD', 'oreD', 'foodEaten', 'fuelCov', 'foodStock', 'woodStock',
     'fishBody', 'woodBody', 'forageBody', 'fishBatch', 'woodBatch', 'forageBatch',
@@ -62,7 +62,7 @@ if (require('worker_threads').isMainThread && process.env.T577_SEED) {
     return L;
   };
   //   ★[T1217] 판 통계 — 어장 장부(파인 셀 수 · 결손 합) · 일괄 · 몸 멈춤 · 시세 다시 매김 · 곳간에서 썩어 없어진 품목(T789) · 교역 도착 수
-  const dump = () => { try { const m = require.cache[path.join(root, 'server/villages.js')]; if (m && m.exports.t1202Stat) st.stat = m.exports.t1202Stat(); if (m && m.exports.t1217Stat) st.t1217 = m.exports.t1217Stat(); if (m && m.exports.t1217SharedTable) st.shared = m.exports.t1217SharedTable(); } catch (e) {}
+  const dump = () => { try { const m = require.cache[path.join(root, 'server/villages.js')]; if (m && m.exports.t1202Stat) st.stat = m.exports.t1202Stat(); if (m && m.exports.t1217Stat) st.t1217 = m.exports.t1217Stat(); if (m && m.exports.t1217SharedTable) st.shared = m.exports.t1217SharedTable(); if (m && m.exports.t1225Stat) st.t1225 = m.exports.t1225Stat(); } catch (e) {}
     try { const FM = require.cache[path.join(root, 'server/fishing.js')]?.exports; if (FM) { let def = 0; for (const [, r] of FM.fishCells) def += Math.max(0, FM.CFG.CELL_K - r.s);
       let bd = 0, bk = 0, bn = 0, low = 0; if (FM.fishBuckets) for (const [, b] of FM.fishBuckets) { bn++; bk += b.K || 0; bd += Math.max(0, 1 - b.s) * (b.K || 0); if (b.s < 0.05) low++; }
       st.fish = { cells: FM.fishCells.size, deficit: +def.toFixed(4), kgPerStock: FM.CFG.KG_PER_STOCK, buckets: bn, bucketK: bk, bucketDeficit: +bd.toFixed(4), bucketLow: low, canon: FM.t1218Canon ? FM.t1218Canon() : null, rDay: FM.fishR ? FM.fishR() : null }; } } catch (e) {}

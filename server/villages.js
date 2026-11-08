@@ -15062,7 +15062,11 @@ function _t1217BodyKeep(vil, npc, ws0, day) {
   const now = Date.now(), s01 = _t1217Stock01(F, q.cx, q.cy, now), ew = C18 ? F.villageWaitMs(q.spot, s01, q.kgF, hourMs) : F.expectedWaitMs(q.spot, s01), o = _t1217HourFish(0, hourMs, ew, q.kgF, cap, round, npc._t312Kg || 0);
   const whole = F.bucketWholeFish(q.cx, q.cy, q.kgF / (C18 ? _t1218Kps(F, q.cx, q.cy) : ((F.CFG && F.CFG.KG_PER_STOCK) || 1)), now, _t1217BucketK);
   const mE = C18 ? _t1218HourExpect(0, hourMs, 0, o, ew, whole) : Math.min(o.m, whole);   // 그 물에 남은 온전한 마리를 넘지 않는다(일괄과 같은 줄) · ★[T1218] 켬 = 기댓값 마리
-  return mE * q.units * val.unit > val.rest;
+  const W0 = mE * q.units * val.unit;
+  if (!T1225_MODE) return W0 > val.rest;
+  const W = W0 * t1225Keep(F, vil, day, q.cx, q.cy, now);   // ★[T1225] 몸도 같은 몫
+  if ((W0 > val.rest) !== (W > val.rest)) _t1225Stat.flip++;
+  return W > val.rest;
 }
 //   ★[T1217 ②-b] 버킷 하나의 물셀 수(K · `fishing.js` 마을 어부 장부의 분모) — 그 버킷(`FISH_BK` 셀 한 변)의 셀 가운데 물(존 `isWaterTileLocal` · 셀 가운데 점) · 버킷마다 한 번 센다.
 const _t1217BK = new Map();
@@ -15090,6 +15094,55 @@ function t1217SharedTable() {
   for (const [key, e] of _t1217Shared) { const users = Object.keys(e.v); if (users.length < 2) continue; const i = key.indexOf('_'); out.push({ b: key, users: users.length, n: e.n, top: users.sort((a, b) => e.v[b] - e.v[a]).slice(0, 4).map((u) => u + ':' + e.v[u]), s: F ? +F.bucketRec(+key.slice(0, i), +key.slice(i + 1), now, null).s.toFixed(4) : null }); }
   return { buckets: _t1217Shared.size, shared: out.length, rows: out.sort((a, b) => b.n - a.n).slice(0, 40) };
 }
+// ════════════════════════════════════════════════════════════════════════════
+// ★★★[T1225 2026-11-08 · ★재민 11-08 판정대기 문 38 ⓒ · 족보 787] **물속 자본** — 손잡이 `T1225_FISH_CAPITAL`(끔 기본 · `'1'` = 켬 · `'h30'` = 견줌 판 · 그 밖 끔).
+//   한 시간 값 = 그 시간 잡힐 마리 × 한 마리 단위 × 한 단위 값 × (1 − 물에 둔 값의 몫) — T1217 멈춤 술어(`_t1217FishDay` · `_t1217BodyKeep`)의 일한 쪽에만 곱한다.
+//   물에 둔 값: 지금 한 마리를 빼면 그 버킷 재고가 한 마리만큼 낮아져, 그 뒤 날마다 로지스틱 성장 g(s) = r·s·(1 − s)(버킷 비율 · `fishing.regen` 의 그 식)이
+//     g′(s) = r·(1 − 2s) 만큼(한 마리 몫마다) 덜 는다. 남긴 고기는 나중에도 낚을 수 있으니(그 몫은 값이 그대로) 잃는 것은 **이자(성장)뿐** —
+//     그 흐름을 그 사람의 할인율 ρ(하루)로 오늘 값에 = 한 단위 값 × r·(1 − 2s) ÷ ρ. 몫 λ = r·(1 − 2s)/ρ × 제 마을 몫(공유 어장 — 아래).
+//     ⇒ 일한 값이 쉰 값을 넘는 한 낚되, 물이 반보다 차 있으면(1 − 2s < 0) 한 마리를 빼는 것이 성장을 늘려 값이 붙고(λ < 0),
+//       반보다 비면 남긴 값이 붙는다(λ > 0) — 사람마다 r(1 − 2s) = ρ 인 재고(어장 경제학 황금률 s* = (1 − ρ/r)/2)에서 멈춘다. 반쯤 찬 물이 가장 많이 돌려준다(로지스틱의 성질 · 새 수 0).
+//   ρ(그 사람의 할인 · 새 튜닝 0):
+//     '1'   = 그 사람이 내일까지 살아 있지 못할 몫 — T1206 생명표(`t1206DayP(나이)` · Gurven & Kaplan 2007 Siler · 자연사 손잡이와 무관한 표)를 그 마을 어부(econ 명부)의 나이로 평균.
+//             어른 하루 0.00004 ~ 0.0001 — r(고증 0.00219)의 2 ~ 5 % ⇒ s* ≈ 0.49.
+//     'h30' = 행복 평형 반감기(`HAPPY_EQ_HALF_DAYS` 30날 — 기분이 잊히는 빠르기) ρ = 1 − 0.5^(1/30) = 0.0228 — r 의 10배 ⇒ λ ≤ r/ρ = 0.096(물이 텅 비어도 값의 1/10)
+//             · s* < 0(어디서도 안 멈춘다). 카드가 든 예라 견줌 판으로만 둔다.
+//   공유 어장(카드 ②): 사람마다 **제 마을이 그 물에서 앞으로 가져갈 몫**만 센다 — 그 버킷에서 지금까지 낚인 마리 가운데 제 마을 몫(`_t1217Shared` 장부 · 처음이면 1).
+//     남은 몫(1 − 제 몫)은 이웃이 가져갈 앞날이라 제 판단에 안 든다(공유지의 비극이 그대로 남는다 — 표만 · `_t1225Stat.shared`).
+//     ⚠그 장부는 프로세스 메모리다(저장 줄 없음) — 재기동 뒤엔 다시 쌓인다(지금 판들은 두 마을이 같은 버킷을 쓴 적이 0 — T1218 §3-3).
+//   끔 = 이 블록을 아무도 안 부른다(종전 바이트).
+const T1225_MODE = (() => { const x = process.env.T1225_FISH_CAPITAL; return x === '1' ? 'life' : x === 'h30' ? 'h30' : null; })();
+const _t1225Stat = { n: 0, lamSum: 0, lamPos: 0, lamNeg: 0, flip: 0, shareLt1: 0, rhoSum: 0, sSum: 0, hist: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+//   그 마을 어부의 하루 할인율 ρ — 하루에 한 번 마을에 적어 둔다(명부가 날마다 바뀐다)
+function _t1225Rho(vil, day) {
+  const c = vil._t1225Rho; if (c && c.day === day) return c.rho;
+  const E = _lifeEcon(); let rho;
+  if (T1225_MODE === 'h30') rho = 1 - Math.pow(0.5, 1 / (E.HAPPY_EQ_HALF_DAYS || 30));
+  else {
+    let sum = 0, n = 0;
+    for (const p of ((vil.econ && vil.econ.npcs) || [])) if (p && p.currentJob === 'fisher') { sum += E.t1206DayP(p.age); n++; }
+    if (!n) for (const p of ((vil.econ && vil.econ.npcs) || [])) if (p) { sum += E.t1206DayP(p.age); n++; }   // 어부가 아직 없으면 마을 사람 평균
+    rho = n ? sum / n : E.t1206DayP(30);
+  }
+  vil._t1225Rho = { day, rho };
+  return rho;
+}
+//   제 마을 몫 — 그 버킷에서 낚인 마리 가운데 제 마을 것(없으면 1)
+function _t1225Share(F, cx, cy, vil) {
+  const [bx, by] = F.bucketOf(cx, cy), e = _t1217Shared.get(bx + '_' + by);
+  if (!e || !(e.n > 0)) return 1;
+  return (e.v[vil.name] || 0) / e.n;
+}
+//   한 시간 값에 곱할 몫(1 − λ) — λ = r(1 − 2s)/ρ × 제 몫. 끔이면 1.
+function t1225Keep(F, vil, day, cx, cy, now) {
+  if (!T1225_MODE) return 1;
+  const s = F.bucketRatioAt(cx, cy, now, _t1217BucketK), r = F.fishR(), rho = _t1225Rho(vil, day), sh = _t1225Share(F, cx, cy, vil);
+  if (!(rho > 0)) return 1;
+  const lam = r * (1 - 2 * s) / rho * sh;
+  const St = _t1225Stat; St.n++; St.lamSum += lam; if (lam > 0) St.lamPos++; else if (lam < 0) St.lamNeg++; if (sh < 1) St.shareLt1++; St.rhoSum += rho; St.sSum += s; St.hist[Math.min(9, Math.max(0, Math.floor(s * 10)))]++;
+  return 1 - lam;
+}
+function t1225Stat() { const S = _t1225Stat, n = S.n || 1; return { mode: T1225_MODE, n: S.n, lamMean: +(S.lamSum / n).toFixed(5), lamPos: S.lamPos, lamNeg: S.lamNeg, flip: S.flip, shareLt1: S.shareLt1, rhoMean: +(S.rhoSum / n).toExponential(4), sMean: +(S.sSum / n).toFixed(4), sHist: S.hist.slice() }; }
 //   그 자리의 입질 비율(CPUE) — 셀 원판(플레이어가 판 자리) × 버킷(마을 어부가 판 물)
 function _t1217Stock01(F, cx, cy, now) { return F.stockRatioAt(cx, cy, now) * F.bucketRatioAt(cx, cy, now, _t1217BucketK); }
 //   한 시간 값 표 — 그 시간 그 마을(v2 `t1217Value` · 일괄은 시간을 흉내 내므로 시세 열쇠를 그 흉내 시간으로 준다)
@@ -15144,7 +15197,9 @@ function _t1217FishDay(vil, day) {
       const o = _t1217HourFish(Math.min(p.t, h1), h1, ew, p.kgF, cap, p.round, p.carried);
       const whole = F.bucketWholeFish(p.cx, p.cy, p.kgF / p.kps, now, _t1217BucketK);
       const mE = Math.min(o.m, whole);   // 그 물(버킷)에 남은 온전한 마리를 넘지 않는다
-      const W = (C18 ? _t1218HourExpect(h0, h1, p.t, o, ew, whole) : mE) * p.units * val.unit, L = val.rest * frac;   // ★[T1218] 켬 = 그 시간 기댓값 마리(분수)
+      const W0 = (C18 ? _t1218HourExpect(h0, h1, p.t, o, ew, whole) : mE) * p.units * val.unit, L = val.rest * frac;   // ★[T1218] 켬 = 그 시간 기댓값 마리(분수)
+      const W = T1225_MODE ? W0 * t1225Keep(F, vil, day, p.cx, p.cy, now) : W0;   // ★[T1225] 켬 = 물에 둔 값을 뺀 한 시간 값(끔 = W0 그대로)
+      if (T1225_MODE && (W0 > L) !== (W > L)) _t1225Stat.flip++;   // 물에 둔 값이 그 시간 판단을 바꾼 수(계측)
       _t1217Stat.hours++;
       if (!(W > L)) { p.done = true; p.stopH = k; _t1217Stat.stopN++; _t1217Stat.stopH += k; if (_t1217Samp.length < 400 && (_t1217Stat.stopN % 97 === 1)) _t1217Samp.push({ v: vil.name, day, k, m: o.m, mE, units: +p.units.toFixed(4), kg: p.kgF, s01: +s01.toFixed(4), W: +W.toExponential(3), L: +L.toExponential(3), unit: +val.unit.toExponential(3), lam: +val.lam.toExponential(3), best: val.best, pFish: +val.pFish.toFixed(4), pFood: +val.pFood.toFixed(4), nev: +val.nev.toFixed(4), N: val.N, debt: +val.debt.toFixed(3) }); continue; }   // 이 시간부터 쉰다 · (계측 표본 — 멈춘 사람 97명마다 한 줄 · 회계 0)
       const n = mE > 0 ? _t1217Draw(F, p.cx, p.cy, p.kgF / p.kps, mE, now, vil) : 0;
@@ -17495,7 +17550,8 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
-  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
+  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1225Stat, t1225Keep, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
+  t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
   // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
   noteRescue,
