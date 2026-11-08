@@ -1,0 +1,25 @@
+{
+  "baseCommit": "af4750aeeb70861296ef86ff1ce4cce1e1f5234f",
+  "branch": "batch/evidence-farm-1108",
+  "reportDate": "2026-11-09",
+  "reportTimezone": "Asia/Seoul",
+  "scope": "Research documents only; no product, harness, baseline or model changes.",
+  "newPrimarySourcesVerified": 0,
+  "inheritedCalendarPairs": 6,
+  "unresolvedQuantitativeCells": 14,
+  "quantitativeCells": 20,
+  "sourceFiles": {
+    "지시/지시_T1232.md": "88f018a2d8fc1b6b655fc76475956a6e2bf139346278fb64853f858694354201",
+    "server/crops.js": "87e934e98bee7ae43e8d46c7215ca2b8f7d267f2248b91c6c0854acdfc1b091e",
+    "server/crops.json": "5e677175ec5c99d5350c9cbccedea3fcd68ffb3062530dc243dc887294e5ce91",
+    "server/crop-cal.js": "1330bba7f7f20cc7ae73955f930a9b367c1e3ea62e849cc15ce2518f8e60bf6d",
+    "server/calendar.js": "6cabe1b1270dd4794659acd9566243b3454acba38db03ea4cc055b60464da3e3",
+    "server/villages.js": "9f7b310c771445a3a34463fbd27ed151ac4b9a4488a7c4e1530ce1f67a3edb77",
+    "server/zone.js": "90806ae92cba8e7850a65b82341b63f8b36498525988645dbe79661d5b81900a",
+    "보고/T1201_2026-11-07.md": "50f27af47c7aa97d600e6672357b63f589b46099341abe36c82eddb0ee74cb22",
+    "보고/T1215_2026-11-07.md": "29757d7d9a445a2f3a979508088fe9490ae2c4fec9c3d4a800bf469b43266898",
+    "보고/T1221_2026-11-08.md": "449a55d3c0b493b0bfbff301286cdebf6414163cd1156f0122bab528753069f5",
+    "보고/T1229_2026-11-08.md": "2b9629f9760908d5820489cb1484c4a9d39f8056b653e6e9a86f267de4d88c67"
+  },
+  "calendarPairDefinition": "5 direct-sown crop windows + rice nursery sowing/harvest (transplanting separate); rice direct-seeding remains separately unknown"
+}
