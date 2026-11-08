@@ -6545,6 +6545,11 @@ const _t1226Stat = { days: 0, looks: 0, switches: 0, toNeed: 0, toOther: 0, held
 const T1226_DIAG = (typeof process !== 'undefined' && process.env && process.env.T1226_DIAG === '1');
 function _t1226Diag(v, row) { const M = _t1226Stat.vtr || (_t1226Stat.vtr = {}); const A = M[v.name] || (M[v.name] = []); A.push(row); if (A.length > 400) A.shift(); }
 function t1226Flex(v, day, world, interval, multi) {
+  if (!T1226_DIAG) return _t1226FlexBody(v, day, world, interval, multi);
+  const h0 = process.hrtime.bigint();   // 진단 판만 — 마을 하루 켬 전환 시간(T1228 ③)
+  try { return _t1226FlexBody(v, day, world, interval, multi); } finally { _t1226Stat.ns = (_t1226Stat.ns || 0) + Number(process.hrtime.bigint() - h0); _t1226Stat.calls = (_t1226Stat.calls || 0) + 1; }
+}
+function _t1226FlexBody(v, day, world, interval, multi) {
   if (v.npcs.length < (SWITCH2_ON ? 2 : 3) || !world || world.picker !== 'rational') {   // 두 사람 마을 · 합리 피커 밖 = 종전 길
     if (day % interval === 0) for (let i = 0; i < multi; i++) autoSwitchJob(v, day, world);
     return;
@@ -6594,7 +6599,7 @@ function t1226Flex(v, day, world, interval, multi) {
       if (t === c || (p.captive && CAPTIVE_JOB_BAN[t])) return;
       if (T.wait[t] && (T.counts[t] || 0) >= 1) { _t1226Stat.waitFirst++; return; }   // 사람 없던 일 — 첫 한 명의 실현이 설 때까지
       if (_T1085_FOOD[t] === undefined && p._chiefAssignDay != null && p._chiefAssignDay === p.lastJobChangeDay && day - p._chiefAssignDay < JOB_SWITCH_COOLDOWN) return;
-      if (_T1085_FOOD[c] && !_T1085_FOOD[t] && _t1228FoodShort(v, N, Dt)) { _t1226Stat.foodHold = (_t1226Stat.foodHold || 0) + 1; return; }   // ★[T1228] 식량 일꾼이 빠지면 D 날 안에 곳간이 30일치 밑
+      if (_T1085_FOOD[c] && !_T1085_FOOD[t] && _allocKnob('T1228_FOOD_ROAD') !== '0' && _t1228FoodShort(v, N, Dt)) { _t1226Stat.foodHold = (_t1226Stat.foodHold || 0) + 1; return; }   // ★[T1228] 식량 일꾼이 빠지면 D 날 안에 곳간이 30일치 밑
       const vt0 = _t1226V(T, p, t, Dt), vt = vt0 !== null ? _t1226In(vt0, ne1(t), mvIn[t]) : _needValueOf(v, t, T.w) * _t1226Sk(p, t, Dt);
       const vc0 = _t1226V(T, p, c, Dt), vc = vc0 !== null ? _t1226Out(vc0, ne1(c), mvOut[c]) : _t1228Fixed(p, v, c, T.w, Dt);
       const net = _t1226Net(vt, vc, N, Dt, since);
