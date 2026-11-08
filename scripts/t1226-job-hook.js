@@ -111,7 +111,7 @@ if (OUT) {
           scen(world, d);
           let pop = 0, empty = 0; for (const v of VL) { const n = (v.npcs || []).length; pop += n; if (!n) empty++; }
           M.popEnd = pop; M.emptyEnd = empty; M.villages = VL.length;
-          for (const v of VL) { const n = (v.npcs || []).length; if (n > 0 && (n <= 6 || (TRACE.includes(v.name) && d % 5 === 0))) { const T = M.small[v.name] || (M.small[v.name] = []); const c = {}; for (const p of v.npcs) c[p.currentJob] = (c[p.currentJob] || 0) + 1; T.push([d, n, Object.entries(c).map((x) => x.join(':')).join(' '), TRACE.includes(v.name) ? ['food', 'tool', 'stone', 'wood'].map((k) => k + '=' + Math.round((v.storage || {})[k] || 0)).join(' ') : '']); if (T.length > (TRACE.includes(v.name) ? 400 : 40)) T.shift(); } }
+          for (const v of VL) { const n = (v.npcs || []).length; if (n > 0 && (n <= 6 || ((TRACE.includes(v.name) || TRACE.includes('*')) && d % 5 === 0))) { const T = M.small[v.name] || (M.small[v.name] = []); const c = {}; for (const p of v.npcs) c[p.currentJob] = (c[p.currentJob] || 0) + 1; T.push([d, n, Object.entries(c).map((x) => x.join(':')).join(' '), (TRACE.includes(v.name) || TRACE.includes('*')) ? ['food', 'tool', 'stone', 'wood'].map((k) => k + '=' + Math.round((v.storage || {})[k] || 0)).join(' ') : '']); if (T.length > ((TRACE.includes(v.name) || TRACE.includes('*')) ? 400 : 40)) T.shift(); } }
           M.emptyNames = VL.filter((v) => !(v.npcs || []).length).map((v) => v.name);
         }
       } catch (e) { M.err = String(e && e.stack || e).slice(0, 400); }

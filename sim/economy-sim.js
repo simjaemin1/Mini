@@ -6514,12 +6514,24 @@ function _t1226Net(vt, vc, N, D, since) {
 }
 function _t1226In(x, n, k) { return x * n / (n + (k || 0)); }
 function _t1226Out(x, n, k) { return x * n / Math.max(1, n - (k || 0)); }
+// ★[T1228 ⑥] 후보 밖 일의 지금 값 — 노동 목표 장인(석공 · 대장장이 · 갑옷장이 · 재봉사 · 요리사)은 고정 값(목표 안 50 × 숙련 · 넘으면 0.005)
+//   대신 그 일이 내는 물건의 값(전환 보류 문 가치표 `_needValueOf` = 하루 산출 × 그 물건 시세) × 그 사람 숙련 배수 — 갈 값(모자란 일로 갈 때)과 같은 자.
+//   굶으면 식량 시세가 장인 물건 시세보다 뛰어 장인도 식량 일로 끌리고, 도구가 바닥나면 도구 시세가 뛰어 석공이 남는다(새 수 0).
+//   전사(방어 — 시장 밖 값) · 그 밖 일은 종전 `opportunityCost` 그대로.
+const _T1228_CRAFT = { mason: 1, smith: 1, armorsmith: 1, tailor: 1, cook: 1 };
+function _t1228Fixed(p, v, c, w, D) {
+  if (_T1228_CRAFT[c] && _allocKnob('T1228_CRAFT_VAL') !== '0') return _needValueOf(v, c, w) * _t1226Sk(p, c, D);
+  return opportunityCost(p, v, w);
+}
 function _t1226V(T, p, j, D) {
   if (T.val[j] === undefined) return null;
   return T.val[j] * _t1226Sk(p, j, D) / (T.fb[j] ? 1 : (T.skm[j] || 1));
 }
 // 계측(세계 밖 · 상태 0) — 하네스 · 계측 자가 읽는다.
 const _t1226Stat = { days: 0, looks: 0, switches: 0, toNeed: 0, toOther: 0, heldGain: 0, waitFirst: 0, chief: 0, draft: 0 };
+//   진단(계측 전용 · `T1226_DIAG=1` · 세계 밖 표 — 마을마다 그날 모자란 일 · 본 사람 · 가장 큰 몫 · 옮긴 사람)
+const T1226_DIAG = (typeof process !== 'undefined' && process.env && process.env.T1226_DIAG === '1');
+function _t1226Diag(v, row) { const M = _t1226Stat.vtr || (_t1226Stat.vtr = {}); const A = M[v.name] || (M[v.name] = []); A.push(row); if (A.length > 400) A.shift(); }
 function t1226Flex(v, day, world, interval, multi) {
   if (v.npcs.length < (SWITCH2_ON ? 2 : 3) || !world || world.picker !== 'rational') {   // 두 사람 마을 · 합리 피커 밖 = 종전 길
     if (day % interval === 0) for (let i = 0; i < multi; i++) autoSwitchJob(v, day, world);
@@ -6556,6 +6568,7 @@ function t1226Flex(v, day, world, interval, multi) {
   const N = v.npcs.length, cap = jobCapacity(v);
   const Dneed = Math.min(100, day - S.since + 1);
   let hungry = null, pick = null, pickJob = null, pickNet = 0;
+  const ev = [];
   const mvIn = PIN, mvOut = POUT;   // 이미 옮긴 수(위 · 오늘 몫 포함): 갈 일 1인당 몫은 n ÷ (n + 들어옴) · 떠난 일은 n ÷ (n − 나감)
   const ne1 = (j) => Math.max(1, T.ne[j] || T.counts[j] || 0);
   for (const p of look) {
@@ -6570,8 +6583,9 @@ function t1226Flex(v, day, world, interval, multi) {
       if (T.wait[t] && (T.counts[t] || 0) >= 1) { _t1226Stat.waitFirst++; return; }   // 사람 없던 일 — 첫 한 명의 실현이 설 때까지
       if (_T1085_FOOD[t] === undefined && p._chiefAssignDay != null && p._chiefAssignDay === p.lastJobChangeDay && day - p._chiefAssignDay < JOB_SWITCH_COOLDOWN) return;
       const vt0 = _t1226V(T, p, t, Dt), vt = vt0 !== null ? _t1226In(vt0, ne1(t), mvIn[t]) : _needValueOf(v, t, T.w) * _t1226Sk(p, t, Dt);
-      const vc0 = _t1226V(T, p, c, Dt), vc = vc0 !== null ? _t1226Out(vc0, ne1(c), mvOut[c]) : opportunityCost(p, v, T.w);
+      const vc0 = _t1226V(T, p, c, Dt), vc = vc0 !== null ? _t1226Out(vc0, ne1(c), mvOut[c]) : _t1228Fixed(p, v, c, T.w, Dt);
       const net = _t1226Net(vt, vc, N, Dt, since);
+      if (T1226_DIAG) ev.push([c, t, +vt.toFixed(3), +vc.toFixed(3), Dt, +net.toFixed(2)]);
       if (net > bestNet) { bestNet = net; best = t; }
     };
     // 모자란 일(피커) — D = 그 일이 모자란 일로 이어져 온 날과 (두 일이 다 값 표에 있으면) 평활 값 차의 부호가 이어져 온 날 중 짧은 것(둘 다 이어져야 이어진다)
@@ -6588,6 +6602,7 @@ function t1226Flex(v, day, world, interval, multi) {
     if (bestNet > pickNet) { pick = p; pickJob = best; pickNet = bestNet; }
   }
   // 몰림 — 마을 하루에 한 사람: 그날 보는 사람 가운데 얻는 것 − 비용이 가장 큰 사람만 옮긴다(나머지는 다음 보는 날 다시 잰다 · 차례 무관).
+  if (T1226_DIAG) { ev.sort((a, b) => b[5] - a[5]); _t1226Diag(v, [day, need, Dneed, look.length, pick ? pick.currentJob + '>' + pickJob : '-', +(totalFoodEquivalent(v) / N).toFixed(1), ev.slice(0, 2)]); }
   if (!pick) return;
   const c = pick.currentJob;
   mvOut[c] = (mvOut[c] || 0) + 1; mvIn[pickJob] = (mvIn[pickJob] || 0) + 1;
@@ -7392,7 +7407,7 @@ module.exports = {
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
   _autoSwitchJobForTest: autoSwitchJob, _switchNPCJobForTest: switchNPCJob,
-  t1226On, t1226Flex, _t1226Table, _t1226V, _t1226Sk, _t1226Net, _t1226LookDay, _t1226In, _t1226Out, _t1226FarmersOf, _t1226Stat, T1226_SWITCH_DAYS, opportunityCost, _needValueOf, villageMasterSkill, apprenticeInherit,   // ★[T1226] 직업 바꾸기 유연 — 하네스 · 계측이 같은 함수를 읽는다(사본 0)   // ★[T1085] 하네스가 자율 전환 그 함수를 부른다(시험 이름 · 사본 0)
+  _t1228Fixed, t1226On, t1226Flex, _t1226Table, _t1226V, _t1226Sk, _t1226Net, _t1226LookDay, _t1226In, _t1226Out, _t1226FarmersOf, _t1226Stat, T1226_SWITCH_DAYS, opportunityCost, _needValueOf, villageMasterSkill, apprenticeInherit,   // ★[T1226] 직업 바꾸기 유연 — 하네스 · 계측이 같은 함수를 읽는다(사본 0)   // ★[T1085] 하네스가 자율 전환 그 함수를 부른다(시험 이름 · 사본 0)
   T1075_HAPPY_EQ, HAPPY_EQ_HALF_DAYS,
   T1205_HAPPY, T1205_E_MIN, T1205_E_MAX, T1205_DEF, t1205Par, t1205Terr, t1205Burden, t1205Ev, t1205Step, t1205NeedOut,   // ★[T1205] 행복 식 다시 — 하네스 · 호스트 · war-core 가 같은 함수를 읽는다
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
