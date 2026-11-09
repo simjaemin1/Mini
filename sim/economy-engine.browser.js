@@ -8250,10 +8250,10 @@ module.exports = { CFG, CATCH, phaseAt, levelAt, isOpen, untilOpenMs, tideKo, __
 
 ;return module.exports;})();
   modules["animals"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["animals"];},set:function(v){modules["animals"]=v;}});module.exports={};var exports=module.exports;var require=req;var window=undefined;
-// === server/animals.js — 동물 mob 카탈로그 36종 ===
+// === server/animals.js — 동물 mob 카탈로그 37종 ===
 // Phase 5-6
 //
-// 분류: 사냥감(wild) 23 + 가축(domestic) 13
+// 분류: 사냥감(wild) 24 + 가축(domestic) 13   ★[T1237] 고라니 하나를 더했다(야생 블록만 낳는 종 — 아래 그 줄)
 //
 // 각 mob:
 //   ko, emoji
@@ -8335,6 +8335,20 @@ const ANIMALS = {
     drops: { meat_game: 3, leather: 2, horn: 1 },
     spawn_biome: ['forest', 'plains'],
     spawn_density: 0.05,
+  },
+  // ★[T1237 · ★재민 11-09 "새 종"] 고라니(물사슴 · *Hydropotes inermis argyropus*) — 위 사슴(꽃사슴 쪽) 자리와 **따로** 선다(사슴 칸 무변).
+  //   **야생 블록(`server/wildlife.js` · 손잡이 `T1237_WATER_DEER` · 끔 기본)만 낳는다** — `spawn_biome` 비움 = 존 첫 스폰 · DB 몹 목록에 안 든다
+  //   (가축 줄과 같은 꼴 · `huntableInBiome` 이 거른다) ⇒ 손잡이를 끄면 세계에 0마리 · 이 줄은 이름 · 드롭 · 그림 칸으로만 읽힌다.
+  //   hp 20 = 이 표의 같은 몸 칸(`small`) 넷(북극 여우 18 · 여우 18 · 자칼 25 · 염소 25)의 가운데 21.5 → 랩 hp 2(× `HP_SCALE` 10 · wildlife 머리말 규약).
+  //   speed 6 · pack 2 = 존 DB 몹 칸(이 종은 DB 몹으로 안 난다 — speed 는 사슴 값 · pack 은 랩 무리 [1, 2] 의 끝).
+  //   drops: 고기 1 = 꺼진 kg 판(`T636_DROP_KG=0`)의 낱개(사슴 3 × 몸무게 18.5/88.5 = 0.63 → 1) · 켬(기본)이면 아래 `DROP_KG` 가 kg 로 고친다(7) ·
+  //   가죽 1 = 사슴 가죽 2(지금 값) × 넓이 비(몸무게^⅔ = (18.5/88.5)^⅔ = 0.35) = 0.71 → 1 · 뿔 없음(*inermis* = 맨머리 · 수컷은 송곳니 — 맞는 품목이 없다).
+  water_deer: {
+    ko: '고라니', emoji: '🦌', hp: 20, speed: 6, size: 'small',
+    aggressive: false, pack: 2,
+    drops: { meat_game: 1, leather: 1 },
+    spawn_biome: [],
+    spawn_density: 0,
   },
   wild_boar: {
     ko: '멧돼지', emoji: '🐗', hp: 60, speed: 4, size: 'medium',
@@ -8586,12 +8600,15 @@ const ZONE_FAUNA = Object.freeze([
   { id: 'quail',     t607: '메추라기',                hb: '있음', np: '있음', st: '약',   ev: '두 존 다 "있음(추정)" — 통설 수준(전용 1차 출처 못 엶)' },
   { id: 'bear',      t607: '반달가슴곰',              hb: '있음', np: '있음', st: '확실',
     ev: '[T636] 재민 10-04 "곰은 한반도니까 반달곰" · 한반도: 지리산·설악산 극희귀 · 열도: 혼슈·시코쿠·규슈(동쪽 조몬 조기 출토 — T625 하시다테 바위그늘)' },
+  // ★[T1237 · ★재민 11-09 "새 종"] 고라니 — 아래 새 종 후보 줄을 게임 id 짝(water_deer)이 선 이 표로 옮겼다(칸 글자는 T607 그대로 · 줄 수 18 무변).
+  { id: 'water_deer', t607: '고라니(물사슴)', hb: '있음', np: '없음', st: '확실',
+    ev: '[T1237] 재민 11-09 "새 종" · 한반도: 전국(T607) · 청동기 조개더미 출토(안면도 고남리 패총 — 한국민족문화대백과 「동물」 · 원 보고서 미열람) · 열도: 없음(한국·중국 고유)' },
 ]);
-// T607 ① 표에서 **게임에 짝이 없는** 줄 — 켬에서도 안 넣는다(그림·드롭이 없다 → 재민 판정 칸 · 보고 "새 종 후보")
+// T607 ① 표에서 **게임에 짝이 없는** 줄 — 켬에서도 안 넣는다(그림·드롭이 없다 → 재민 판정 칸 · 보고 "새 종 후보") · ★[T1237] 고라니가 빠져 일곱
 const FAUNA_NEW = Object.freeze([
   { t607: '스라소니',              hb: '있음', np: '없음' },
   { t607: '노루',                  hb: '있음', np: '없음' },
-  { t607: '고라니(물사슴)',        hb: '있음', np: '없음' },
+  // ★[T1237] 고라니(물사슴) 줄은 위 표(`ZONE_FAUNA` · id water_deer)로 옮겼다 — 이제 게임에 짝이 있다.
   { t607: '수달',                  hb: '있음', np: '없음', note: '열도 일본수달은 별도 아종·이미 멸종 — 청동기 당시 서식은 미확인' },
   { t607: '일본원숭이',            hb: '없음', np: '있음' },
   { t607: '너구리',                hb: '있음', np: '있음', diff: true, note: '다른 종(대륙 N. procyonoides ↔ 일본 N. viverrinus)' },
@@ -8647,6 +8664,12 @@ const DROP_KG = Object.freeze([
     live: { m: 1.2, f: 0.9 }, liveSrc: 'T607 꿩 "수컷평균1.2·암컷0.9(0.5~3)"',
     yld: [0.70], yldSrc: 'T629 꿩 생체→지육 ≈70%(밀 69.9%·배합 70.2%)',
     ref: '사육 꿩 — 사육종 참고치' },
+  // ★[T1237] 고라니 — 몸무게 = T607 고라니 칸에 T1237 이 보탠 **한국아종** 범위(종 전체 9~14 는 중국 · 영국 쪽 수 — 이 게임 존은 한반도다) ·
+  //   수율 = T629 사슴 줄 그대로(고라니 수율은 미확인 — 같은 사슴과 · 다른 종 참고치). 가운데 18.5kg × 37.44% = 6.93kg → 고기 7.
+  { id: 'water_deer', item: 'meat_game',
+    live: [16, 21], liveSrc: 'T607 고라니 칸(T1237 보탬) "한국아종 16~21" — Jo·Baccus·Koprowski 2018 『Mammals of Korea』 293~295쪽(Bae 외 2025 Animals 15:2148 재인용) · 한국민족문화대백과 「고라니」(2024) · 암수 칸 미확인',
+    yld: [0.78, 0.48], yldSrc: 'T629 사슴 생체→지육 ≈78% × 지육→뼈 없는 살코기 ≈48%(고라니 칸 미확인 — 사슴 줄을 그대로)',
+    ref: '북미 화이트테일 — 다른 종(사슴과) 참고치' },
 ]);
 const _DKG = new Map(DROP_KG.map((r) => [r.id, r]));
 // ★[T647] 없음(·빈 값) = 켬 · '0' 하나만 끔(되돌림) — T574_REGION 과 같은 문법(없음 = 기본값)
