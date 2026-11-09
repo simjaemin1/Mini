@@ -89,7 +89,7 @@ console.log('\n=== ⑤ 끔 = 종전 글자 ===');
   //   부르는 자리(함수 몸 밖)는 손잡이 문 뒤에만 있어야 한다 — 함수 몸 안의 부름은 그 함수가 손잡이 뒤에서만 불린다.
   const sites = z.filter((l) => /^\s{4}if \(T1241_DES && npc\._des && _desHold|^\s{4}if \(T1241_DES\) _desTry|^\s{4}if \(T1241_PROBE && _desClk\) \{ _desTimed|^\s{2}if \(T1241_DES && p\._des\) return;|^\s{6}if \(T1241_DES && p\._des\) continue;|^\s{2}if \(_T1241\) \{ _desStat\.ticks\+\+/.test(l));
   ok(sites.length === 6, '부르는 자리 여섯이 모두 손잡이 뒤(결정 문 셋 · 걸음 문 둘 · 틱 끝 하나)', `${sites.length}`);
-  ok(/const T1241_DES = process\.env\.T1241_DES === '1';/.test(z.join('\n')) && /const _DES = T1241_DES \? require\('\.\/des'\) : null;/.test(z.join('\n')), '손잡이 끔 기본(`=== \'1\'`) · 모듈은 켬에서만 싣는다', '');
+  ok(/const T1241_DES = process\.env\.T1241_DES === '1' \|\| process\.env\.T1241_DES === 'sleep';/.test(z.join('\n')) && /const _DES = T1241_DES \? require\('\.\/des'\) : null;/.test(z.join('\n')), '손잡이 끔 기본(`=== \'1\'`) · 모듈은 켬에서만 싣는다', '');
 }
 
 if (!process.argv.includes('--quick')) {

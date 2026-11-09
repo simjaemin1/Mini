@@ -5083,7 +5083,8 @@ function _npcGatherResource(npc,r) {
 //       도착 시각 · 몸 자리 = `Route.posAt(t)`(틱마다 보간해 몸 칸에 쓰고 답압 도장을 찍는다 — 결정 · 길 찾기 · 걸음 커널은 안 돈다). 끝 = 도착 또는 다음 일과 문턱(기상 · 농부 출근 창 · 반일 · 해 질 녘) 중 먼저.
 //   ★넘김(사건 → 틱) — 피신 · 교전 · 원정 · 행상 · 다침(hp 바뀜) · econ 날이 바뀜 · 관측자 시야(활성 청크)에 듦 — 그 틱부터 종전 `npcStep` 이 몸을 쥔다.
 //   ★끔 = 종전 글자(아래 함수는 안 불린다 · 부르는 자리 셋이 `T1241_DES` 뒤).
-const T1241_DES = process.env.T1241_DES === '1';
+const T1241_DES = process.env.T1241_DES === '1' || process.env.T1241_DES === 'sleep';
+const T1241_WALK = process.env.T1241_DES === '1';   // `sleep` = 잠 · 쉼 토막만(걸음 토막 끔 — 갈림 가르기 판)
 const T1241_PROBE = process.env.T1241_PROBE === '1';
 const _T1241 = T1241_DES || T1241_PROBE;
 const _DES = T1241_DES ? require('./des') : null;
@@ -5175,6 +5176,7 @@ function _desTry(npc, now) {
     else return;
     if (_desWolfNear(npc.x, npc.y)) return;
   } else {
+    if (!T1241_WALK || npc.simJob === 'hunter') return;   // 사냥꾼 걸음은 순찰(결정마다 7 ~ 12초에 목표가 바뀐다 — 정해진 토막이 아니다)
     const pts = [npc.x, npc.y];
     for (let i = npc.pathIndex; i < pn; i++) { const w = P[i]; pts.push(w.x, w.y); }
     if (pts.length < 4) return;
