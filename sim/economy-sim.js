@@ -874,7 +874,23 @@ function consumeFood(v, need) {
 }
 
 // 총 식량 환산 (K 계산용)
+// T1246: 밭 세계의 곳간 합계는 이 입구 하나. 씨는 제외하고 로트의
+// 실제 가식 재고를 읽는다. 품목 단위/생곡 상태 환산은 t368FoodPer 정본.
+let _t1246Lots;
 function totalFoodEquivalent(v) {
+  if (T1243_FARM_ON) {
+    if (_t1246Lots === undefined) { try { _t1246Lots = require('../server/granary-lots'); } catch (e) { _t1246Lots = null; } }
+    const G = _t1246Lots, st = (v && v.storage) || {};
+    const lots = G && typeof G.edibleOf === 'function' && G.attached(v);
+    let sum = 0;
+    for (const r of Object.keys(st)) {
+      const f = _t368FoodPer(v, r);
+      if (!(f > 0)) continue;
+      const q = lots ? G.edibleOf(v, r) : Math.max(0, Number(st[r]) || 0);
+      sum += q * f;
+    }
+    return sum;
+  }
   let total = v.storage.food + v.storage.fish + v.storage.meat + v.storage.cooked_food * 1.12;
   for (const r of Object.keys(FORAGE_FOOD_FACTOR)) {
     total += (v.storage[r] || 0) * FORAGE_FOOD_FACTOR[r];
@@ -1375,7 +1391,7 @@ function npcRegenMul(econ, popAlt) {
   const st = econ.lastStats;
   const hpF = Math.max(0.4, Math.min(1.5, 0.5 + (st ? st.health : 0.5)));
   const hapF = Math.max(0.4, Math.min(1.5, 0.5 + (st ? st.happiness : 0.5)));
-  const _food = (econ.storage && econ.storage.food) || 0;
+  const _food = T1243_FARM_ON ? totalFoodEquivalent(econ) : ((econ.storage && econ.storage.food) || 0);
   const _pop = (econ.npcs && econ.npcs.length) || popAlt;   // 랩 s.pop=econ 인구 동형
   const foodF = Math.max(0.35, Math.min(1.4, _food / Math.max(1, _pop * 30)));
   return hpF * hapF * foodF;   // 식량 하한 0.35(기근에도 소량 회복 → 죽음 나선 방지 — 랩 동형)
@@ -2171,10 +2187,20 @@ function _t368Crops(v) {
 // ★[T368] 작물 낱개 하나의 **식량등가** — econ 이 아는 품목은 econ 정본(생곡 = 도정 수율 · `totalFoodEquivalent` 와 같은 규칙),
 //   모르는 품목은 주입된 열량 정본. 특용(삼·쪽·뽕·차)은 열량 0 이라 0 이다(품목은 곳간에 들고 식량은 아니다).
 function _t368FoodPer(v, crop) {
+  if (T1243_FARM_ON) {
+    if (crop === 'seed' || String(crop).startsWith('seed_')) return 0;
+    if (PRESERVED_FOODS.indexOf(crop) >= 0) return T17_PRESERVE ? preservedFactor(crop) : 0;
+  }
   const f = _t86Factor(crop);
   if (f > 0) return (RAW_GRAINS.indexOf(crop) >= 0 && !T73_RAWGRAIN) ? 0 : f;
   const W = v ? v._world : null, T = W ? W.cropFoodEq : null;
-  return (T && T[crop] > 0) ? +T[crop] : 0;
+  if (T && T[crop] > 0) return +T[crop];
+  // T1246: 호스트가 없는 정본 조회도 같은 작물 열량을 읽는다.
+  if (T1243_FARM_ON) {
+    const K = _kcalM();
+    return K && typeof K.econUnitsOf === 'function' ? (+K.econUnitsOf(crop, 1) || 0) : 0;
+  }
+  return 0;
 }
 
 // 마을 하루 농사 **용량**(부양력 prodK 가 읽는 밑변) — 두 세계가 이 함수 하나로 갈린다.
@@ -5629,7 +5655,7 @@ function pickDeficitJob(v) {
   if (v.storage.stone < N * 3 && hasSlot(v, 'forager', cap, counts)) return 'forager';   // ★S1: 돌은 채집(foraging)으로 조달 — 부족 시 채집꾼(광부 아님)
 
   // 5) cook — 부재료 있을 때
-  const foodRich = v.storage.food > N * 8;
+  const foodRich = (T1243_FARM_ON ? totalFoodEquivalent(v) : v.storage.food) > N * 8;
   const sideTotal = COOK_SIDE_INGREDIENTS.reduce((s, r) => s + (v.storage[r] || 0), 0);
   if (foodRich && sideTotal > N * 2 && hasSlot(v, 'cook', cap, counts)) return 'cook';
 
@@ -6021,7 +6047,7 @@ function tailorTarget(v) {
 //   + 채집·부산물 더미(과일·채소·버섯)의 자연 소비처. 식량 불안 마을은 부엌이 사치(게이트).
 function cookTarget(v) {
   const N = v.npcs.length || 1;
-  if (totalFoodEquivalent(v) < N * 35 || (v.storage.food || 0) < N * 8) return 0;   // 식량 안보 게이트
+  if (totalFoodEquivalent(v) < N * 35 || (T1243_FARM_ON ? totalFoodEquivalent(v) : (v.storage.food || 0)) < N * 8) return 0;   // 식량 안보 게이트
   const dp = v.dailyProductionBuf || {};
   let sideFlow = 0, sideStock = 0;
   for (const r of COOK_SIDE_INGREDIENTS) { sideFlow += dp[r] || 0; sideStock += v.storage[r] || 0; }

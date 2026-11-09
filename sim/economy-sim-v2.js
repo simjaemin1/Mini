@@ -60,7 +60,7 @@ function _t825FoodPer(v, r) {   // 품목 1 단위의 식량 환산(정본 `tota
 //   `food` 그림자가격의 유효 재고는 `storage.food` 한 칸이었다(T842 뿌리 · T842 하한 `T842_FOOD_FLOOR` 은 T879 · T928 에서 걷었다 — 두 판 다 띠 밖 나빠짐 — 쌀 · 생선을 쌓은 배부른 마을도 `food` 칸이 얇으면 값이 높고, 곳간 0.9일 마을은 그보다 낮았다).
 //   켬: `food` 값의 유효 재고 = 곳간 식량 환산(정본 `v1.totalFoodEquivalent` — 식량류 · 생곡 · 채집 · 보존식 · 작물 전부) · 흐름 선반영(`surplusEMA.food × 30`)은 그대로 더한다.
 //   값이 서는 자리 전부(결정층 `_targetV2` · 정산 종전 식 `_priceParamsV2` · 출발 직후 종전 축약식 둘) · 3사본(번들 · 랩 두 개). 물리 재고(`physical` — 살 수 있는 양)는 `storage.food` 그대로다. 새 수 0.
-const T859_FOOD_HUNGER = (typeof process !== 'undefined' && process.env && process.env.T859_FOOD_HUNGER === '1');   // ★[T928] '1' 만 켬 — 켬 기본은 회부
+const T859_FOOD_HUNGER = (typeof process !== 'undefined' && process.env && process.env.T859_FOOD_HUNGER === '1') || v1.T1243_FARM_ON;   // T1246: 밭 묶음 켬은 정본 합계, 묶음 끔은 T928의 명시적 =1 규칙 그대로
 function _t859Stock(v, r) { return (T859_FOOD_HUNGER && r === 'food') ? (+v1.totalFoodEquivalent(v) || 0) : (v.storage[r] || 0); }   // 값의 재고 칸(끔 = 그 품목 곳간)
 
 // === 새 상수 — v1과 분리 ===
@@ -741,7 +741,7 @@ function _t1152Rho(x) {
   const L = _LOTH; _LOTH = null;   // 가짜 마을은 호스트 곳간 장부에 없다(장부 훅을 잠깐 내린다 · 랩은 늘 null)
   _t1152Probing = true;            // (T726 켬이면 부패 목표가 `_targetV2` 를 부른다 — 재는 동안 식량 곡선 훅은 쉰다 · 되부름 0 · 부패 물리 = 종전 목표 30날)
   try { tickDecay(v); } finally { _LOTH = L; _t1152Probing = false; }
-  return 1 - v.storage.food / (x * N);
+  return 1 - (v1.T1243_FARM_ON ? v1.totalFoodEquivalent(v) : v.storage.food) / (x * N);
 }
 const _t1152HalfX = new Map();
 function _t1152Half(H) {   // ∫_H^X ρ = ln 2 인 X(사다리꼴 · 걸음 0.25날 · 결정론)
@@ -878,7 +878,7 @@ function _targetV2(v, r, ctx) {
     // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
     //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
-        && (v.storage.food || 0) / N > 25) {
+        && (v1.T1243_FARM_ON ? v1.totalFoodEquivalent(v) : (v.storage.food || 0)) / N > 25) {
       target = Math.max(target, N * VARIETY_TARGET_PC);
     }
     // ★[T1149 ⓒ 가을 사 모으기 · `T1149_WINTER` 의 `buy` 갈래 · 끔 = 무동작] 가을 · 겨울엔 주식 목표가 **다가오는 겨울**을 안다 —
@@ -1076,7 +1076,7 @@ function _priceParamsV2(v, r) {
     const buildT = v1.buildInputTarget ? v1.buildInputTarget(v, r) : 0;   // ★[T1213] 동기 계약(결정층 `_targetV2` 와 같은 항)
     target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
-        && (v.storage.food || 0) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
+        && (v1.T1243_FARM_ON ? v1.totalFoodEquivalent(v) : (v.storage.food || 0)) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
     stock = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(v, r) : (v.storage[r] || 0));   // ★[T859] 켬 — food 는 곳간 식량 환산(결정층과 같은 칸)
     if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
   }

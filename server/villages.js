@@ -13329,7 +13329,7 @@ function _t1229Need(vil) {
 }
 function _lifeNeedClear(vil) {   // 랩 needLand 동형: 보즈럽 수요 게이트 + 목표 미달
   const e = vil.econ; if (!e || !vil._potSet) return false;
-  if (((e.storage && e.storage.food) || 0) > e.npcs.length * 120) return false;
+  if ((_t1243On() ? _lifeEcon().totalFoodEquivalent(e) : ((e.storage && e.storage.food) || 0)) > e.npcs.length * 120) return false;
   if (T1229_FIELD_GROW) return _t1229Need(vil);   // ★[T1229] 켬 = 일손 · 덮음 문(끔 = 아래 종전 목표)
   const fert = (e.land && e.land.fertility != null) ? e.land.fertility : 0.55;
   return vil._farmSet.size < Math.ceil(e.npcs.length * _lifeVL().landNeedPer(fert, _landNeed()));
@@ -14979,7 +14979,7 @@ function _lifeGranAdd(vil) {
     return;
   }
   // ② 재고 비례 목표 대비 부족분 1동 착공
-  const food = (vil.econ.storage && vil.econ.storage.food) || 0;
+  const food = _t1243On() ? _lifeEcon().totalFoodEquivalent(vil.econ) : ((vil.econ.storage && vil.econ.storage.food) || 0);
   const _gn = Math.max(1, Math.min(G_MAX, Math.ceil(food / G_CAP)));
   if (vil._granList.length >= _gn) return;
   // 런타임엔 시딩 레이아웃 객체가 없으므로 영속 집합으로 동형 컨테이너를 구성(값·규칙 동일).

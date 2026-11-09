@@ -841,6 +841,17 @@ function dump(v) {
 function ledger(v, res) { const L = LED.get(v); return L ? (res == null ? L : (L[res] || [])) : null; }
 function attached(v) { return LED.has(v); }
 // 그 재화의 곳간 몫 신선도(단위 가중 · 상한 몫) — 화면 · 하네스가 읽는다
+// T1246: 순수 가식 재고 조회. 이미 열린 가시 재고 창에서도 중복 차감하지 않는다.
+// 썩음 술어·절대 시계·품목 별칭·고도는 원래 곳간 로트와 같은 함수다.
+function edibleOf(v, res) {
+  const q = Math.max(0, Number(v && v.storage && v.storage[res]) || 0);
+  const L = LED.get(v), arr = L && L[res];
+  if (!arr || !arr.length) return q;
+  const nf = _nowFrac(), ge = _gElev(v);
+  let live = 0;
+  for (const r of arr) if (r && r.u > 0 && !_rotten(r, res, nf, ge)) live += r.u;
+  return Math.min(q, live);
+}
 function freshOf(v, res) {
   const L = LED.get(v), arr = L && L[res]; if (!arr || !arr.length) return null;
   const today = Math.floor(_nowFrac());
@@ -919,7 +930,7 @@ module.exports = { preserveRecord, ON, T840, T856, legSettle: _legSettle, elevOf
   recsFromPlayer, recsToPlayer, recsToItems, byCount, countOf: _t1128CountOf, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
   itemSums, checkItems, itemFlow, eaten,   // ★[T768] 품목 칸 · 품목 불변식 · 마을이 먹은 품목
   T789, viewBegin, viewEnd, rotOf,         // ★[T789] 손잡이 · 사람의 눈(시세 · 견적) · 썩어 없어진 품목
-  dump, ledger, attached, freshOf, stats, check,
+  dump, ledger, attached, freshOf, edibleOf, stats, check,
   // ★[T748] 켬 전용 일곱 길
   POCK_KEYS, handRecs, doorOpen, doorShut, pockPut, pockTake, pendIn, pendOut, pock: (v, key, res) => _pock(v, key, res, false),
   bagPut, bagNote, bagOut, bagTake, bagOf, bagDump, bagLoad, lotsAdd, lotsTake, checkBag,
