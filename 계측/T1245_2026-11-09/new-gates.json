@@ -1,0 +1,18 @@
+{
+  "clock-before-expected-failure": {
+    "exit": 1,
+    "expected": 1
+  },
+  "lot-clock-on": {
+    "exit": 0,
+    "expected": 0
+  },
+  "lot-clock-off": {
+    "exit": 0,
+    "expected": 0
+  },
+  "t1245-seeds": {
+    "exit": 0,
+    "expected": 0
+  }
+}

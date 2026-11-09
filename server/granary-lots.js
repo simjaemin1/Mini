@@ -405,7 +405,10 @@ function tickBegin(econVillages, econDay) {
     // ★[T803 ②] 켬(T789)이면 마감의 순간 = **econ 날의 머리**(`econDay` × 하루 — 부르는 쪽이 여는 econ 날을 넘긴다 · 랩 자 시계와 같은 꼴).
     //   종전(벽시계 `_now()`)은 마감이 열린 벽시계 순간이라 같은 트리 두 판이 econ 날 3~4 에 갈렸다(T789 §4-3′ — 빠른 시계에선 마감이 경계보다 늦게 열린다 · 그 늦음이 판마다 다르다).
     //   끔 · 날을 안 넘긴 부름(랩 자 · 옛 부름 꼴) = 종전 그대로.
-    _tickK = (T789 && Number.isFinite(econDay)) ? econDay * _day() : _now();
+    // T1245: 밭 세계의 econ 1일차와 로트의 절대 게임일을 섞지 않는다.
+    // 첫 로트/사람의 물건은 Lots 시계로 찍히므로 같은 시계의 실제 마감 순간을 쓴다.
+    const useEconDay = process.env.T1243_FARM_ON !== '1' && T789 && Number.isFinite(econDay);
+    _tickK = useEconDay ? econDay * _day() : _now();
     if (T789 && econVillages) { _vw = null; _rot(econVillages, _tickK / _day()); }   // 마감엔 사람의 눈이 없다(남은 눈은 닫는다)
   }
 }

@@ -5895,6 +5895,22 @@ function kgOf(id) {
 }
 // 씨앗 무게 — 한 줌. `weights.DERIVED_KG.seed_berry`(0.02) 와 같은 급이다.
 const SEED_KG = _num('CROP_SEED_KG', 0.02);
+// T1245: 생산량에서 실제 씨 질량을 분리한다. 파종량 고증 6종은 아직 미확인이다.
+// 증거 없는 kg/ha를 만들지 않고 기존 한 줌(SEED_KG/칸)을 호환 단위로 유지한다.
+// NPC와 플레이어는 같은 함수에 실제 다음 파종 자리 수와 이미 보유한 씨를 준다.
+function seedKgPerCell(id) { return get(id) ? SEED_KG : 0; }
+function seedUnitsPerCell(id) { return SEED_KG > 0 ? seedKgPerCell(id) / SEED_KG : 0; }
+function reserveSeed(id, grossUnits, heldSeeds = 0, targetCells = 1) {
+  const finite = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+  const gross = Math.max(0, finite(grossUnits));
+  if (!T1243_FARM_ON) return { cropUnits: gross, seedUnits: isPerennial(id) ? 0 : 1, seedKg: 0, evidence: 'legacy' };
+  const kg = kgOf(id);
+  if (!get(id) || isPerennial(id) || !(gross > 0) || !(kg > 0) || !(SEED_KG > 0)) return { cropUnits: gross, seedUnits: 0, seedKg: 0, evidence: 'unverified' };
+  const need = Math.max(0, Math.ceil(Math.max(0, finite(targetCells)) * seedUnitsPerCell(id) - Math.max(0, finite(heldSeeds)) - 1e-9));
+  const seedUnits = Math.min(need, Math.floor(gross * kg / SEED_KG + 1e-9));
+  const seedKg = Math.min(gross * kg, seedUnits * SEED_KG);
+  return { cropUnits: Math.max(0, gross - seedKg / kg), seedUnits, seedKg, evidence: 'unverified-legacy-packet' };
+}
 function koOf(id) { const c = get(id); return c ? c.ko : id; }
 function emojiOf(id) {
   const c = get(id); if (!c) return '🌱';
@@ -6344,7 +6360,7 @@ function payload() {
 
 module.exports = {
   DATA, CROPS, IDS, SEED_PREFIX, _day, SEED_KG, KEEP_DAYS, GROUP_KG, GROUP_EMOJI, NON_FOOD_GROUPS,
-  get, list, isCrop, isSeed, seedOf, cropOfSeed, isFood, kcalOf,
+  get, list, isCrop, isSeed, seedOf, cropOfSeed, isFood, kcalOf, seedKgPerCell, seedUnitsPerCell, reserveSeed,
   keepDaysOf, seedKeepDaysOf, hungerOf, tastyOf, growDaysOf, kgOf, koOf, emojiOf,
   T594_CROP_CAL, calDaysOf,   // ★[T594] 작물 철 고증 — 손잡이 · 고증 활동일(순수 유도 · 표에 없으면 null)
   seasonOfDay, sowSeasons, canSowOn, sowableIn, sowableOn, wildSeedAt, WILD_SEED_CHANCE,

@@ -28,6 +28,8 @@
 // 실행: node scripts/t17-metrics.js [일수=800] [시드=1020]
 //   T17_JSON=/tmp/x.json  … 표를 JSON 으로도 남긴다(옛/새 비교 표를 손으로 옮겨 적지 않게)
 'use strict';
+// T1245: 밭 묶음은 실제 생활층을 붙인 정본 자로 잰다. 끔의 기존 자는 무변.
+if (process.env.T1243_FARM_ON === '1') { require('./t176-ab'); return; }
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/t17-metrics-${process.pid}.db`;
 

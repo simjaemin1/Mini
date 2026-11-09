@@ -1,0 +1,10 @@
+
+=== T1201 — 마을 밭 후보 = 청동기 작물 ===
+  ✓ ① 미설정 · 0 · 그 밖 값 = 끔 · `1` = 켬
+  ✓ ① 끔 셋은 같은 고르기
+  ✓ ① 끔 — 고른 작물은 그 달 후보 안 · 청동기 밖 작물도 나온다(자명 통과 금지)  청동기 밖 924/2880
+  ✓ ② 켬 — 고른 작물 ⊂ 청동기 ∩ 그 달 후보 · 교집합이 빌 때만 null  어긋남 0 · 빈 달 null 1680
+  ✓ ③ 청동기 열두 가지(T1243 추신 12 — 들깨 · 박 더함) — 작물 표에 있고 먹을 것  barley,foxtail_millet,sorghum,millet,soybean,wheat,azuki,barnyard_millet,rice,adlay,perilla,gourd
+  ✓ ④ 파종 후보(`sowableMonth` — 플레이어 · 첫 수확일)는 켜도 같다
+
+6 통과 · 0 실패
