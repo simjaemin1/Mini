@@ -60,7 +60,7 @@ if (OUT && process.env.T577_SEED && /zone\.js$/.test(process.argv[1] || '')) {
           fs.appendFileSync(dayf, JSON.stringify([last, +sec.toFixed(2), pop, bodies, houses, farm]) + '\n');
           last = d;
           if (prof && d >= profEnd) stopProf();
-          if (!profiled && ((PAT != null && d >= PAT) || (PAT == null && sec > SLOW))) startProf(d);
+          if (!profiled && ((PAT != null && d >= PAT) || (PAT == null && last >= 50 && sec > SLOW))) startProf(d);   // 부팅 몫(첫 줄)은 빼고
         }
       } catch (e) { /* 계측 실패는 판을 안 막는다 */ }
       return sd.apply(this, arguments);
