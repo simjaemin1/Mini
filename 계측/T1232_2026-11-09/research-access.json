@@ -1,0 +1,104 @@
+{
+  "purpose": "Exact inherited source URLs and source-discovery host connectivity; a discovery homepage is not a bibliographic citation.",
+  "requests": [
+    {
+      "url": "https://contents.history.go.kr/",
+      "utc": "2026-11-08T17:08:04.748345+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://edepot.wur.nl/",
+      "utc": "2026-11-08T17:08:04.749221+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://folkency.nfm.go.kr/",
+      "utc": "2026-11-08T17:08:04.749748+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://library.wur.nl/",
+      "utc": "2026-11-08T17:08:04.750127+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://openknowledge.fao.org/",
+      "utc": "2026-11-08T17:08:04.767215+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://www.cambridge.org/",
+      "utc": "2026-11-08T17:08:04.769350+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://www.fao.org/",
+      "utc": "2026-11-08T17:08:04.771325+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://www.jircas.go.jp/",
+      "utc": "2026-11-08T17:08:04.773288+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30697",
+      "utc": "2026-11-08T17:08:04.775088+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30707",
+      "utc": "2026-11-08T17:08:04.776824+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30708",
+      "utc": "2026-11-08T17:08:04.778411+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30712",
+      "utc": "2026-11-08T17:08:04.780490+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30713",
+      "utc": "2026-11-08T17:08:04.782234+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30715",
+      "utc": "2026-11-08T17:08:04.784590+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30716",
+      "utc": "2026-11-08T17:08:04.786761+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    },
+    {
+      "url": "https://www.nongsaro.go.kr/portal/ps/psz/psza/contentSub.ps?menuId=PS00078&pageIndex=1&pageSize=10&cntntsNo=207071&sType=sCntntsSj",
+      "utc": "2026-11-08T17:08:04.788895+00:00",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "primaryContentVerified": false
+    }
+  ],
+  "draftSaved": true,
+  "draftRequiresPublish": true,
+  "runtimeChangeConfirmed": false
+}

@@ -1,0 +1,9 @@
+id	작물	기존전사_심기단계	파종창	참고_이앙창	수확창	파종창_양끝포함_날	이앙창_양끝포함_날	수확창_양끝포함_날	지역_작형	자료등급	URL	NPC_현재파종월	플레이어_현재철	카탈로그_활동일	현재_활동일	성숙뒤_지연손실_시작날	성숙뒤_지연손실_감소율	수확창을_지연허용일로_전용
+foxtail_millet	조	파종	6월 상순~6월 중순	해당없음	10월 상순~10월 중순	20	해당없음	20	중부내륙평야지(괴산) / 조	기존게임전사본·이번원문미확인	https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30713	4~6월	spring,summer	58	122	미확인	미확인	불가
+millet	기장	미확인	미확인	해당없음	미확인	미확인	해당없음	미확인	미확인	미확인	원문주소미확인	4~6월	spring,summer	48	48	미확인	미확인	불가
+sorghum	수수	미확인	미확인	해당없음	미확인	미확인	해당없음	미확인	미확인	미확인	원문주소미확인	4~6월	spring,summer	62	62	미확인	미확인	불가
+soybean	콩(대두)	파종	5월 하순~6월 상순	해당없음	10월 상순~10월 중순	21	해당없음	20	중북부 / 콩 단작	기존게임전사본·이번원문미확인	https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30715	5~7월	spring,summer	62	133	미확인	미확인	불가
+azuki	팥	파종	6월 중순~6월 하순	해당없음	10월 상순~10월 중순	20	해당없음	20	중북부 / 팥	기존게임전사본·이번원문미확인	https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30716	6~7월	summer	58	112	미확인	미확인	불가
+rice	쌀(벼)	못자리파종(주석) / 이앙(행)	4.15~5.10(못자리; 직파 미확인)	5.15~6.10	10월 상순~10월 중순	26	27	20	중북부(이앙) · 중부(수확) / 기계이앙 중모	기존게임전사본·이번원문미확인	https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30697 ; https://www.nongsaro.go.kr/portal/ps/psz/psza/contentSub.ps?menuId=PS00078&pageIndex=1&pageSize=10&cntntsNo=207071&sType=sCntntsSj	5~6월	spring,summer	78	136	미확인	미확인	불가
+barley	보리	파종	10월 중순	해당없음	5월 하순~6월 상순	10	해당없음	21	중부 평야지 / 일반보리	기존게임전사본·이번원문미확인	https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30712	10~11월	autumn	88	91	미확인	미확인	불가
+wheat	밀	파종	10.20~10.30	해당없음	6.5~6.20	11	해당없음	16	충남 평야지(파종 적기~한계) · 수확은 생육과정 표 / 밀	기존게임전사본·이번원문미확인	https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30707	10~11월	autumn	90	104	미확인	미확인	불가
