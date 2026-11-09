@@ -1,0 +1,79 @@
+{
+  "task": "T1233",
+  "date": "2026-11-09",
+  "timezone": "Asia/Seoul",
+  "status": "PARTIAL_BLOCKED_EXTERNAL_PRIMARY_TEXT",
+  "base_commit": "af4750aeeb70861296ef86ff1ce4cce1e1f5234f",
+  "requested_metric_count": 24,
+  "requested_metric_primary_verified": 0,
+  "product_or_harness_changes": false,
+  "game_checks_run": false,
+  "document_files": {
+    "계측/T1233_2026-11-09/README.md": {
+      "bytes": 2755,
+      "sha256": "ba9af2cfb215f06b8150f1798133232786ff14825eeb573ab4636f2b78edea30"
+    },
+    "계측/T1233_2026-11-09/aggregation_reproduction.md": {
+      "bytes": 3888,
+      "sha256": "2c99dd4f70b7a823c6917e4dbacba8cf2302f938caa866b15150a141599eacfc"
+    },
+    "계측/T1233_2026-11-09/dplace_codes.csv": {
+      "bytes": 13217,
+      "sha256": "657dc971e94b10b43d88482d6b9ad873d0d53f3e54e443e4584b6800294e2ec1"
+    },
+    "계측/T1233_2026-11-09/game_gap_map.csv": {
+      "bytes": 3987,
+      "sha256": "247f534e42ea5152216dfaad607ca845f204e717c7bd7a972d824afc69564902"
+    },
+    "계측/T1233_2026-11-09/hgc_descriptive.csv": {
+      "bytes": 10541,
+      "sha256": "b489721dc954ea45ec46e308ca730baea6c45bca08ccaa783a6dbc3ceffabeb6"
+    },
+    "계측/T1233_2026-11-09/network_access.csv": {
+      "bytes": 2022,
+      "sha256": "4d4e628c691a3b7e8406f75ec3f0604daec45d2216cf6fe549afda9ec469f9ba"
+    },
+    "계측/T1233_2026-11-09/prior_number_audit.csv": {
+      "bytes": 1906,
+      "sha256": "1765003b6d3536455d04dbf25e87814e9be13c831bac39cbe367419308f2b75c"
+    },
+    "계측/T1233_2026-11-09/provenance.json": {
+      "bytes": 4870,
+      "sha256": "e8974778f26764b1167bd71afa94e0012c592cbbe291a1451ecd288401077c89"
+    },
+    "계측/T1233_2026-11-09/public_data_method.md": {
+      "bytes": 3397,
+      "sha256": "65fe402e382d0b1f7d4564bc4b335b015fdde60dd0962092707ec0da96d6609b"
+    },
+    "계측/T1233_2026-11-09/requested_metrics.csv": {
+      "bytes": 3494,
+      "sha256": "9d43f36444fb5b989ae3526c8de92ee569110988350b266e7b175b45240b54b8"
+    },
+    "계측/T1233_2026-11-09/search_plan.md": {
+      "bytes": 2107,
+      "sha256": "ad674c53d6c09ba9c3b4791710b50d85deadf8279480bbc60ca239717742e2e9"
+    },
+    "계측/T1233_2026-11-09/sources.csv": {
+      "bytes": 4008,
+      "sha256": "a5165f20b6fffac843234e95a105944a1deab2c320e42466e99b0c0a0c837d54"
+    },
+    "계측/T1233_2026-11-09/unit_rules.md": {
+      "bytes": 3969,
+      "sha256": "ee12287351da1860caa3d06469c6d07baf146614807810435dc9cab1cf9f3c0f"
+    },
+    "보고/T1233_2026-11-09.md": {
+      "bytes": 9609,
+      "sha256": "f3dcdd41325ccee3cc5accf21987db5d3b1218af5ec798df5a69ab34d3203ddc"
+    }
+  },
+  "game_and_prior_report_snapshot": {
+    "sim/economy-sim.js": "973e741d45b81f8cf9cb7d5d0210dce60c701ebe32e4b8f1365df5dc2879f024",
+    "server/villages.js": "9f7b310c771445a3a34463fbd27ed151ac4b9a4488a7c4e1530ce1f67a3edb77",
+    "server/weights.js": "f371f0cad31c946f176e5f3ec6f10926b29d37c8ec00d3c8c6991b8a9774c769",
+    "server/specialty.js": "e68a1602ee6cff4599e46f235221ad0d975ed44d3dfacf11888135dcd4e032c2",
+    "server/zone-config.js": "7b3872c0888d78a8d3440fc724994db77b18d1cc71aa35f62e9838a821480a21",
+    "보고/T1221_2026-11-08.md": "449a55d3c0b493b0bfbff301286cdebf6414163cd1156f0122bab528753069f5",
+    "보고/T1135_2026-11-04.md": "02096d4c9db285b8dd94d9f2d4acc907967f6fee0b4fd1ac3bd38db1d71dddc2"
+  },
+  "verification": "Input20 SHA-256 rechecked; HGC48 aggregates recomputed; SCCS6 variables each186 rows/societies; all24 requested values remain unconfirmed."
+}
