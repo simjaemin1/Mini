@@ -15,7 +15,10 @@ const crypto = require('crypto');
 const OUT = process.env.T1241_OUT;
 if (OUT && process.env.T577_SEED && /zone\.js$/.test(process.argv[1] || '')) {
   //   진짜 시계 — 이 훅을 가상 시계보다 **먼저** 싣는다(`--require t1241-hook --require t745-vclock`). 존이 µs 를 이 시계로 잰다(세계는 가상 시계 그대로).
-  { const RB = process.hrtime.bigint; global.__t1241Clock = () => RB(); }   // 함수를 붙잡는다(가상 시계가 `hrtime.bigint` 칸을 갈아 끼워도 이 참조는 진짜)
+  { const RB = process.hrtime.bigint; global.__t1241Clock = () => RB();
+    //   시계 한 번 잰 몫(빈 감싸기 — 시계 둘 · 뺄셈 · Number) — 표가 µs 에서 뺀다(T1231 꼴)
+    let acc = 0; const N = 200000; for (let i = 0; i < N; i++) { const t0 = RB(); acc += Number(RB() - t0); }
+    global.__t1241ClkNs = acc / N; }   // 함수를 붙잡는다(가상 시계가 `hrtime.bigint` 칸을 갈아 끼워도 이 참조는 진짜)
   const ROOT = path.join(__dirname, '..');
   const SEED = process.env.T577_SEED;
   const f = `${OUT}.${SEED}.jsonl`;
@@ -37,7 +40,7 @@ if (OUT && process.env.T577_SEED && /zone\.js$/.test(process.argv[1] || '')) {
         if (d !== last) {
           const c = process.cpuUsage(cpu0); cpu0 = process.cpuUsage();
           const S = global.__t1241Stat || {};
-          const row = { d: last, cpu: +((c.user + c.system) / 1e6).toFixed(3), st: JSON.parse(JSON.stringify(S)) };
+          const row = { d: last, cpu: +((c.user + c.system) / 1e6).toFixed(3), clk: +(global.__t1241ClkNs || 0).toFixed(2), st: JSON.parse(JSON.stringify(S)) };
           let pop = 0, sto = {}, stoSum = 0, crop = [], farm = 0, harvN = 0;
           for (const v of (world.villages || [])) {
             pop += (v.npcs || []).length; harvN += (v._t100HarvestN || 0);

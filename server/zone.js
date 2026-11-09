@@ -5153,13 +5153,13 @@ function _desTimed(npc, dt, now) {
 }
 // 틱 갈래 걸음 뒤 — 사건 토막을 열 수 있나
 function _desTry(npc, now) {
+  const act = npc._lifeAct;
+  if (!_DES_WALK.has(act)) return;   // 싼 거름 먼저(일 라벨 몸이 대부분)
   if (!npc.simVillageId || npc.canadiaVillage || npc.simWar || npc.simCaravan || npc._bdtGid != null || npc.handingOff) return;
   if (npc.behavior !== 'wander' || npc._huntSpd || npc.floor || npc.onStairId || npc.canadiaTask) return;
   if (npc.simEvacUntil && now < npc.simEvacUntil) return;
   if (npc._granTask || (npc._t720 && npc._t720.k) || npc._rest) return;
   if (npc._dOff == null || npc.simLonOff == null) return;
-  const act = npc._lifeAct;
-  if (!_DES_WALK.has(act)) return;
   if (isPositionActive(npc.x, npc.y)) return;
   if (!_desSch) { _desSch = SimVillages.T1241_SCH; if (!_desSch) return; }   // 일과 문턱 정본(villages `SCH_*` — 사본 0)
   const dayR = WORLD.dayPhaseRatio, dOff = npc._dOff;
