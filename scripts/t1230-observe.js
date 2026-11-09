@@ -17,9 +17,15 @@ if (!OUT) return;
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
 const rec = { cols: ['day', 'vil', 'pop', 'born', 'dead', 'emig', 'logi', 'hunger', 'health', 'happy', 'prestige', 'dP', 'gHouse', 'gGran', 'hW', 'GW', 'luxW', 'EW', 'BW', 'floor', 'eat',
-  'zHouse', 'zGran', 'zK', 'zH', 'zOther'], rows: [], jobs: [], err: null };
+  'zHouse', 'zGran', 'zK', 'zH', 'zOther',
+  'pxN', 'pxPop', 'pxWoodW', 'pxFoodW', 'woodSt', 'lumber', 'farmer', 'houseDef', 'fieldFood', 'harvN', 'harvIn'], rows: [], jobs: [], err: null };
+//   ★[T1234] 덧붙인 칸: 시세(그날 세계 공급 캐시가 이미 선 마을만 — 관찰기가 캐시를 먼저 세우지 않는다 · `pxN` = 잰 마을 수 · 사람 가중 목재 · 식량 값) ·
+//     곳간 목재 · 나무꾼 · 농부 · 침상 모자람(Σ max(0, 사람 − min(주거, 지도 침상))) · 밭 식량(econ `_t368FoodTot` — 마을마다 틱 머리끼리의 차) ·
+//     거둔 건수(`_t100HarvestN` — 같은 차) · 밭이 곳간에 넣은 양(그날 틱 앞 `_t100InflowToday` — 생활층 수확이 틱 사이에 적고 틱이 읽어 비운다)
+let V2 = null; try { V2 = require(path.join(ROOT, 'sim', 'economy-sim-v2')); } catch (e) { V2 = null; }
 let cur = null;
 const seen = new WeakSet();
+const lastHv = new WeakMap();   // ★[T1234] 마을마다 앞 틱 머리의 누계(밭 식량 · 거둔 건수) — 생활층 수확은 틱 **사이**에 들므로 틱 머리끼리의 차로 센다
 function flush() { if (cur) { const r = cur; rec.rows.push(rec.cols.map((k) => (typeof r[k] === 'number' ? +r[k].toFixed(4) : r[k]))); } }
 let lastWrite = -1;
 const _t = V1.tickVillage;
@@ -36,7 +42,7 @@ V1.tickVillage = function (v, day) {
       if (day % 50 === 0 && day !== lastWrite) { lastWrite = day; try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} }   // 50날마다(가상 시계 판은 `Date.now` 가 econ 날에 묶여 벽시계 간격이 안 선다)
     }
     for (const n of (v.npcs || [])) seen.add(n);
-    pre = { dead: v._deadTot || 0, emig: v._emigTot || 0, floor: v._t100FloorTot || 0, eat: (v._consDay && v._consDay.food) || 0 };
+    pre = { dead: v._deadTot || 0, emig: v._emigTot || 0, floor: v._t100FloorTot || 0, eat: (v._consDay && v._consDay.food) || 0, ff: +v._t368FoodTot || 0, hn: +v._t100HarvestN || 0, hin: +v._t100InflowToday || 0 };
   } catch (e) { rec.err = rec.err || String(e && e.stack || e).slice(0, 400); }
   const ret = _t.apply(this, arguments);
   try {
@@ -57,6 +63,15 @@ V1.tickVillage = function (v, day) {
         else if ((+g.logi || 0) <= 0) c.zK++;
         else if ((+g.happy || 0) < 0 && (+g.logi || 0) + (+g.hunger || 0) + (+g.health || 0) + (+g.prestige || 0) > 0 && (+g.dP || 0) <= 0) c.zH++;
         else c.zOther++;
+      }
+      c.woodSt += (v.storage && v.storage.wood) || 0; c.lumber += (v.counts && v.counts.lumberjack) | 0; c.farmer += (v.counts && v.counts.farmer) | 0;
+      const cap = Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity);
+      if (cap !== Infinity) c.houseDef += Math.max(0, N - cap);
+      { const L = lastHv.get(v); if (L) { c.fieldFood += pre.ff - L.ff; c.harvN += pre.hn - L.hn; } lastHv.set(v, { ff: pre.ff, hn: pre.hn }); }   // 앞 틱 머리 → 이 틱 머리(그 사이 생활층 수확 · 앞 틱 안의 하한 · 고르게 풀림 포함)
+      c.harvIn += pre.hin;
+      const W = v._world, dc = W && W._effDemCache;
+      if (V2 && V2.computeShadowPrices && dc && dc.day === W.day) {
+        const px = V2.computeShadowPrices(v); c.pxN++; c.pxPop += N; c.pxWoodW += (+px.wood || 0) * N; c.pxFoodW += (+px.food || 0) * N;
       }
     }
   } catch (e) { rec.err = rec.err || String(e && e.stack || e).slice(0, 400); }
