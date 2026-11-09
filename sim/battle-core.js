@@ -203,16 +203,42 @@ const BK=2.5;
 const SEP_CORE=0.5;   // ★[몸=단단한 하한 0.5m — 고증(성인 어깨폭)] 랩 정본 NPC_BODY와 수동 동기(battle-core는 독립 파일). 1.0m는 몸이 아니라 전투 간격(행동) — 압착 시 몸까지 압축, 그 밑은 불가
 function gkey(x,y){return ((Math.floor(x/BK)+256)*8192)+(Math.floor(y/BK)+256);}
 function buildGrid(ctx){ctx._grid.clear(); let ax=0,ay=0,an=0,bxx=0,byy=0,bn=0,aM=1e9,bM=1e9;
+  const gl=ctx._gl||(ctx._gl=[]); gl.length=0;   // ★[T1235] 칸에 든 몸 줄(몸 차례 · 지은 때 칸) — nearestEnemy 빠른 길(아래)
   for(const u of ctx.units){if(u.hp<=0)continue; const k=gkey(u.x,u.y); const c=ctx._grid.get(k); if(c)c.push(u); else ctx._grid.set(k,[u]);
+    gl.push(u, Math.floor(u.x/BK), Math.floor(u.y/BK));
     const mn=(u.type==='spear'||u.type==='pike'||u.type==='greataxe'||u.type==='champion');
     if(u.side==='A'){ax+=u.x;ay+=u.y;an++; if(mn&&UNITS[u.type].spd<aM)aM=UNITS[u.type].spd;}else{bxx+=u.x;byy+=u.y;bn++; if(mn&&UNITS[u.type].spd<bM)bM=UNITS[u.type].spd;}}
   ctx._cen.A.x=an?ax/an:0;ctx._cen.A.y=an?ay/an:0;ctx._cen.A.n=an;ctx._cen.A.march=aM<1e9?aM:2.2; ctx._cen.B.x=bn?bxx/bn:0;ctx._cen.B.y=bn?byy/bn:0;ctx._cen.B.n=bn;ctx._cen.B.march=bM<1e9?bM:2.2;}
+// ★★[T1235 · 큰 인구 전쟁 몸 성능 — 값 0] 고리 찾기는 적이 멀면 고리 80(161² ≈ 2만 6천 칸)까지 칸마다 Map 을 묻는다(몸 1천 · 걸음마다 → 하루 40초).
+//   고리 찾기의 답 = 고리 0, 1, 2 … 차례로 그 고리 안 적을 (ix · iy · 칸 안 차례)로 훑어 더 가까운(엄격히 작은) 것으로 바꾸고(사선 술어는 바꿀 때만),
+//   고리 r 을 마치면 bd ≤ (r·BK)² 일 때 멈춘 것이다. 칸은 지은 때 칸(걸음 사이 몸이 옮겨 칸과 자리가 어긋날 수 있다) · 거리는 지금 자리.
+//   그래서 훑은 칸 수(× 16)가 칸에 든 몸 수를 넘으면 몸 줄을 한 번 훑어 적을 고리별 통에 나누고, 고리 차례 · 고리 안 (거리 · ix · iy · 몸 차례) 열쇠로
+//   같은 바꿈 · 같은 멈춤을 그대로 되풀이한다(같은 답 · 하네스 `test-t1235-nearest`).
+function _neDirect(ctx,u,R,los,bx,by){ const gl=ctx._gl; const B=ctx._neB||(ctx._neB=[]);
+  for(let r=0;r<=R;r++){ if(B[r])B[r].length=0; else B[r]=[]; }
+  for(let k=0;k<gl.length;k+=3){ const e=gl[k]; if(e.side===u.side||e.hp<=0)continue;
+    const r=Math.max(Math.abs(gl[k+1]-bx),Math.abs(gl[k+2]-by)); if(r>R)continue; B[r].push(k); }
+  let best=null,bd=1e18;
+  for(let r=0;r<=R;r++){ const L=B[r];
+    if(L.length){ let rb=null,rd=1e18,rix=0,riy=0;
+      for(let q=0;q<L.length;q++){ const k=L[q],e=gl[k],ix=gl[k+1],iy=gl[k+2]; const dx=u.x-e.x,dy=u.y-e.y,d=dx*dx+dy*dy;
+        if(d>=bd)continue;   // 앞 고리의 답보다 엄격히 가깝지 않으면 고리 찾기도 안 바꾼다
+        if(rb!==null&&!(d<rd||(d===rd&&(ix<rix||(ix===rix&&iy<riy)))))continue;
+        if(los&&ctx.world&&treeBlocks(ctx,u.x,u.y,e.x,e.y))continue;
+        rb=e;rd=d;rix=ix;riy=iy; }
+      if(rb!==null){ best=rb; bd=rd; } }
+    if(best){const rm=r*BK; if(bd<=rm*rm)break;}
+  }
+  return best?{e:best,d:Math.sqrt(bd)}:null; }
 function nearestEnemy(ctx,u,maxR,los){const bx=Math.floor(u.x/BK),by=Math.floor(u.y/BK); let best=null,bd=1e18;
+  const nG=ctx._gl?ctx._gl.length/3:Infinity;
   for(let r=0;r<=(maxR||80);r++){
-    for(let ix=bx-r;ix<=bx+r;ix++)for(let iy=by-r;iy<=by+r;iy++){
-      if(r>0&&ix>bx-r&&ix<bx+r&&iy>by-r&&iy<by+r)continue;
+    if((2*r+1)*(2*r+1)*16>nG) return _neDirect(ctx,u,(maxR||80),los,bx,by);   // ★[T1235] 훑은 칸 × 16 이 몸 수를 넘으면 몸 줄로(같은 답 · 위 · 칸 하나 Map 묻기 ≈ 몸 줄 열여섯 칸 — 잰 값)
+    //   ★[T1235] 고리 테만 돈다 — 옛 글자는 (2r+1)² 네모를 다 돌며 속을 건너뛰었다(같은 차례: ix 오름 · 가장자리 열은 iy 다 · 가운데 열은 iy 위 · 아래 끝 둘만)
+    for(let ix=bx-r;ix<=bx+r;ix++){ const edge=(ix===bx-r||ix===bx+r), st=edge?1:2*r;
+    for(let iy=by-r;iy<=by+r;iy+=(st||1)){
       const c=ctx._grid.get(((ix+256)*8192)+(iy+256)); if(!c)continue;
-      for(const e of c){if(e.side===u.side||e.hp<=0)continue; const dx=u.x-e.x,dy=u.y-e.y,d=dx*dx+dy*dy; if(d<bd&&!(los&&ctx.world&&treeBlocks(ctx,u.x,u.y,e.x,e.y))){bd=d;best=e;}}}
+      for(const e of c){if(e.side===u.side||e.hp<=0)continue; const dx=u.x-e.x,dy=u.y-e.y,d=dx*dx+dy*dy; if(d<bd&&!(los&&ctx.world&&treeBlocks(ctx,u.x,u.y,e.x,e.y))){bd=d;best=e;}}}}
     if(best){const rm=r*BK; if(bd<=rm*rm)break;}
   }
   return best?{e:best,d:Math.sqrt(bd)}:null;}
