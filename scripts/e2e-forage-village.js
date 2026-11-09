@@ -53,6 +53,12 @@ async function waitHttp(url, tries = 900) {
 }
 
 // ── 자리 찾기 — 전부 정본에게 ───────────────────────────────────────────────
+// ★[T1240] 빈손 판의 재료 자리는 **맨손이 캐는 자리**만 — T1065(`fd4d7c61` · 11-02) 도구 문 켬(기본)부터 나무 개체는 맨손 E 가 안 벤다(벌목 문 · 바위 곁 자갈은 맨손 — 표의 힌트).
+//   그 전에 태어난 이 판은 가장 가까운 잔가지 자리로 나무(141px)를 골라 +0 이었다(보충 줍기는 다른 자리에서 채웠다). 술어는 서버 정본 글자를 그대로 읽는다(사본 0).
+const _ZSRC = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+const _gateM = _ZSRC.match(/const _t1065ResKind = (\(r\) => \{[^\n]*\});/);
+const gateKind = _gateM ? new Function('return ' + _gateM[1])() : null;
+const GATE_ON = process.env.T1065_TOOL_GATE !== '0';
 function plan() {
   process.env.ZONE_ID = process.env.ZONE_ID || 'hanbando';
   const { ZONES } = require(path.join(ROOT, 'server', 'zone-config'));
@@ -82,6 +88,9 @@ function plan() {
       for (const e of (CH.generateChunkResources('hanbando', ZONES.hanbando.biome, cx, cy, CS, null) || [])) {
         if (e.type === 'water_pool') { const d = Math.hypot(e.x - v.x, e.y - v.y);
           if (d <= R && d < pool.d) { pool.d = d; pool.x = e.x; pool.y = e.y; } continue; }
+        //   ★[T1240] 벌목 문(나무 · 묘목 — T1065)에 걸린 개체는 맨손 자리가 아니다(맨손 E = 그 자리 줍기 · 이 마을 나무 곁엔 잔가지 0 — 첫 판 +0).
+        //     채석 문(바위)은 남긴다 — 서버 표가 「자갈은 바위 곁에서 맨손으로 주울 수 있습니다」(T1065_NEED.quarry.hint)고 하고 실제로 +1 이다.
+        if (GATE_ON && gateKind({ type: e.type }) === 'chop') continue;
         const l = lootOf({ type: e.type, r: e.r });
         for (const k of ['twig', 'pebble', 'fiber']) if ((l[k] || 0) > 0) put(k, e.x, e.y, `${e.type} 개체`);
       }
@@ -112,6 +121,8 @@ function plan() {
     ['twig', 'pebble', 'fiber'].map((k) => `${k} ${best[k] ? Math.round(best[k].d) + 'px[' + best[k].how + ']' : '없음'}`).join(' · ') +
     ` · 둠벙 ${Number.isFinite(pool.d) ? Math.round(pool.d) + 'px' : '없음'}`);
   console.log(`    후보 수: ` + ['twig', 'pebble', 'fiber'].map((k) => `${k} ${cand[k].length}곳`).join(' · '));
+  ok(typeof gateKind === 'function' && gateKind({ type: 'tree' }) === 'chop' && gateKind({ type: 'berry_bush' }) === null,
+    '★전제 — 도구 문 술어를 서버 정본에서 읽었다(나무 = 벌목 · 덤불 = 맨손 · ★[T1240] 자명 통과 금지 — 술어가 실제로 가른다)');
   ok(['twig', 'pebble', 'fiber'].every((k) => best[k]), '★전제 — 감사 반경(960px) 안에 세 재료가 다 있다');
 
   const _central = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
@@ -212,9 +223,11 @@ function plan() {
   await snap('fv-01-center');
 
   // ── ② 걸어서 세 재료 ───────────────────────────────────────────────────────
-  const legs = [];
+  const legs = [], used = [];
   for (const k of ['twig', 'pebble', 'fiber']) {
-    const t = best[k];
+    //   ★[T1240] 앞 다리가 캔 자리는 건너뛴다 — 덤불(파괴형)이 잔가지 · 풀을 둘 다 주면 두 다리가 한 자리를 가리켜 둘째가 +0 이었다(나무를 빼고 생긴 겹침)
+    const t = cand[k].find((c) => !used.some((u) => Math.hypot(u.x - c.x, u.y - c.y) < 40)) || best[k];
+    used.push(t);
     const before = { ...(await inv()) };
     const w = await walkTo(t.x, t.y);
     let got = 0;

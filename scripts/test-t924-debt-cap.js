@@ -21,6 +21,7 @@
 //   T1127 이 두 손잡이를 켬 기본으로 바꾼 뒤 이 하네스의 작은 판 세계(인구 · 곳간 · 교역)가 갈려 단언이 빨개졌다(main 에선 초록 · 보고 T1127 §4). 켬 기본 세계에서 같은 단언을 다시 세우는 일은 회부. 부르는 쪽이 값을 주면 그 값이 먼저다.
 if (process.env.T1074_FOOD_DEBT == null) process.env.T1074_FOOD_DEBT = '0';
 if (process.env.T858_NO_SHIELD == null) process.env.T858_NO_SHIELD = '0';
+if (process.env.T1205_HAPPY == null) process.env.T1205_HAPPY = '0';   // ★[T1240] T1205 행복 식 켬 기본(land1053 `cb8577b9` 착지) — 켬이면 이 판의 작은 마을(인구 · 곳간)이 갈려 끔 대조의 「빚이 쌓인다」(−2.5 아래)가 안 선다(40날 끝 −1.03) · 재는 것은 빚 상한이지 행복이 아니다 — 위 T1127 묶음 · t988(T1220-K1)과 같은 까닭으로 끔(단언 무변)
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');

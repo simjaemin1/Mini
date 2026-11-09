@@ -239,10 +239,13 @@ const Y = E.yearDaysOf();
     //   ★★[T510 2026-09-29 · 족보 434] 이 자는 **코드**를 문다 — 주석은 설명할 자유가 있다(파일 머리 `codeOnly` 규약).
     //     원문을 물던 종전 판은 T490 이 `villages.js` 에 적은 **주석**("그 종의 제 주기(T122 `_stage`)")에 걸려 빨갰다(코드 0 · 자의 과잉).
     //     ⇒ 코드만 본다 · 그리고 같은 줄에서 **미끼**를 문다: 코드에 `'stump'` 를 넣은 원문은 이 자가 실제로 잡는다(자명 통과 금지).
-    const REGROW_WORDS = /T122|regrow|stump|sapling/g;
+    //   ★[T1240] `T122` 는 **낱말**로만 문다 — 경계 없는 자는 뒤 카드 번호(T1221 `3017de6d` 부터 · T1224 · T1225 · T1229 …)의 코드 이름에 걸려 빨갰다(그루터기 · 묘목 글자 0).
+    const REGROW_WORDS = /\bT122\b|regrow|stump|sapling/g;
     const nOf = (t) => (String(t).match(REGROW_WORDS) || []).length;
     const vCode = codeOnly(vSrc);
     const baitN = nOf(codeOnly(vSrc + "\n;if (globalThis.__t510bait === 'stump') {}\n"));
+    ok(nOf(codeOnly("const T1224_X = 1; const T1229_Y = 2;")) === 0 && nOf(codeOnly("const T122 = 1;")) === 1,
+      '⑤ [자명 통과 금지] 자는 뒤 카드 번호(`T1224` · `T1229`)를 안 물고 `T122` 낱말은 문다(★[T1240])');
     ok(nOf(vCode) === 0 && baitN > 0,
       '★★⑤ 그래서 `villages.js` **코드**를 한 글자도 안 만졌다(랩 모듈 · 여덟 수가 움직일 이유가 없다 · 주석 제외 · 미끼 — 코드에 `stump` 를 넣으면 문다)',
       `코드 ${nOf(vCode)} · 주석 ${nOf(vSrc) - nOf(vCode)} · 미끼 ${baitN}`);

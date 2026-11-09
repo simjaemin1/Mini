@@ -35,6 +35,9 @@ if (process.env.T1054_SUB === '1') {
   const mk = (pop, housing, beds, wood, live) => {
     const v = econ.createVillage({ ...lp, name: '시험마을', initialPop: pop });
     v.housing = housing; v.storage.wood = wood; v.storage.food = 50000; v.storage.twig = 1e6;
+    //   ★[T1240] 원석은 비운다 — T1188(`d1017945` · 광맥 이름별 원석)부터 창설 곳간에 `ore_*` 가 들어 제련 · 대장장이가 목재를 쓴다(29날부터 · 끔 판 끝 59.58).
+    //     이 하네스의 전제는 「곳간 목재가 집 줄로만 움직인다」(위 숲 0 · 잔가지와 같은 뜻) — 그 전제를 다시 세운다. `T1054_KEEP_ORE=1` = 미끼(비우지 않는다 · 아래 ⓑ′).
+    if (process.env.T1054_KEEP_ORE !== '1') for (const k of Object.keys(v.storage)) if (/^ore_/.test(k)) v.storage[k] = 0;
     if (live) { v._t400Live = true; v._mapBeds = beds; }
     return v;
   };
@@ -76,6 +79,8 @@ ok(Math.max(...r.hs) <= 20 + 1e-9 && r.hs[r.hs.length - 1] > 20 - 1e-6 * 0 - 0.0
 ok(ro.wood.every((x) => x === 100), 'ⓑ ★끔(기본) — 같은 마을 곳간 목재가 100 그대로(노후 메움이 목재 없이 — 결함이 보인다)', `끝 ${ro.wood[ro.wood.length - 1]}`);
 ok(JSON.stringify(ro.hs) === JSON.stringify(r.hs), 'ⓑ 목재가 넉넉하면 주거 궤적은 켬 · 끔 같다(바뀌는 것은 목재뿐)');
 ok(ro.wear.every((x) => x === null), 'ⓑ 끔 — `_t1054Wear` 칸이 안 선다(종전 글자)');
+{ const bait = sub({ T1054_KEEP_ORE: '1' }).rep;   // ★[T1240] 자명 통과 금지 — 원석을 남기면 끔 판 목재가 집 줄 밖(제련 · 대장장이)으로 준다 = 위 비움이 실제로 문다
+  ok(bait.wood[bait.wood.length - 1] < 100 - 1e-6, "ⓑ′ [자명 통과 금지] 원석을 남긴 미끼(`T1054_KEEP_ORE=1`) — 끔 판 목재가 집 줄 밖으로 준다(픽스처 비움이 문다)", `끝 ${bait.wood[bait.wood.length - 1]}`); }
 
 console.log('③ 새 침상(주거 20 · 침상 26 · 목재 0 → 40날 뒤 목재 60)');
 const A = on.nb.a, Ao = off.nb.a, Bn = on.nb.b, Bo = off.nb.b;
