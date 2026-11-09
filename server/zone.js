@@ -5075,6 +5075,118 @@ function _npcGatherResource(npc,r) {
         }
   return {hit:true};
 }
+// ★★[T1241 2026-11-09 · 이벤트 기반 시뮬(DES) 시제품 · 재민 족보 798] 손잡이 `T1241_DES`(끔 기본 · `=1` 켬) · 계측 `T1241_PROBE`(끔 기본 · `=1` 켬 = 셈 · 탐침만).
+//   ★무엇 — 마을 몸의 하루에서 **구간마다 정해진 동작**인 토막(잠 · 집에서 쉼 · 정해진 길 걷기)을 틱마다 걸리지 않고 사건 하나로 넘긴다:
+//     · 잠(`취침` · 침대에 섬 · 현지 해 몫 fv ≥ 해 질 녘 또는 < 기상 시차) — 사건 = 깸(fv 가 `_dOff` 에 닿는 시각).
+//     · 쉼(`휴식` · 집에 섬 · 낮) — 사건 = 해 질 녘(fv 가 `dayPhaseRatio` 에 닿는 시각).
+//     · 걸음(`출근` · `귀가` · `취침` · `휴식` 라벨로 길 위) — 출발 시각 + 지금 길(`npc.path` — 존 길 찾기 그대로) + 칸마다 빠르기(답압 길 · 개울) →
+//       도착 시각 · 몸 자리 = `Route.posAt(t)`(틱마다 보간해 몸 칸에 쓰고 답압 도장을 찍는다 — 결정 · 길 찾기 · 걸음 커널은 안 돈다). 끝 = 도착 또는 다음 일과 문턱(기상 · 농부 출근 창 · 반일 · 해 질 녘) 중 먼저.
+//   ★넘김(사건 → 틱) — 피신 · 교전 · 원정 · 행상 · 다침(hp 바뀜) · econ 날이 바뀜 · 관측자 시야(활성 청크)에 듦 — 그 틱부터 종전 `npcStep` 이 몸을 쥔다.
+//   ★끔 = 종전 글자(아래 함수는 안 불린다 · 부르는 자리 셋이 `T1241_DES` 뒤).
+const T1241_DES = process.env.T1241_DES === '1';
+const T1241_PROBE = process.env.T1241_PROBE === '1';
+const _T1241 = T1241_DES || T1241_PROBE;
+const _DES = T1241_DES ? require('./des') : null;
+const _desStat = { steps: 0, ticks: 0, held: 0, heldWalk: 0, begin: { sleep: 0, rest: 0, walk: 0 }, end: { due: 0, intr: 0 }, intrWhy: {}, walkMs: 0, sleepMs: 0, restMs: 0, routePts: 0 };
+if (_T1241) global.__t1241Stat = _desStat;
+const _desTmp = {};
+const _DES_WALK = new Set(['출근', '귀가', '취침', '휴식']);
+let _desSch = null;
+function _desPut(npc, x, y) { if (T1145_XY_COLS) BC.w(npc, x, y); else { npc.x = x; npc.y = y; } }
+function _desNext(npc, now, target) { return _DES.nextPhaseAt(now, WORLD.worldEpoch, WORLD.dayLengthMs, npc.simLonOff || 0, target) + 1; }   // +1ms — 문턱을 넘은 첫 틱
+function _desSpeed(x, y) {   // 그 자리 걸음 빠르기 px/s — `followNpcPath`(MOVE_SPEED × 배회 배율) × 이동 문의 칸 배율(답압 길 등급 · 개울)
+  const cx = Math.floor(x / 32), cy = Math.floor(y / 32);
+  const rd = (Roads.SPD && Roads.levelOf) ? (Roads.SPD[Roads.levelOf(cx, cy)] || 1) : 1;
+  const st = (Streams.ON && Streams.isStreamCell(ZONE_ID, cx, cy)) ? Streams.STREAM_SLOW0 : 1;
+  return MOVE_SPEED * NPC_WALK_MULT * rd * st;
+}
+function _desWolfNear(x, y) {
+  const ms = qtMobs ? qtMobs.queryCircle(x, y, NPC_FLEE_RANGE) : [];
+  for (const m of ms) if (m.type === 'wolf' && !m.tameOwner) return true;
+  return false;
+}
+function _desIntr(npc, now) {
+  const S = npc._des;
+  if (!(npc.hp > 0)) return 'hp0';
+  if (npc.simWar || npc.simCaravan || npc.handingOff) return 'away';
+  if (npc.simEvacUntil && now < npc.simEvacUntil) return 'evac';
+  if (npc.hp !== S.hp) return 'hurt';
+  if (npc.behavior !== 'wander') return 'beh';
+  if (SimVillages.econDay && SimVillages.econDay() !== S.d) return 'day';
+  if (isPositionActive(npc.x, npc.y)) return 'view';
+  return null;
+}
+function _desEnd(npc, now, why) {
+  const S = npc._des; npc._des = null;
+  if (why === 'due') _desStat.end.due++; else { _desStat.end.intr++; _desStat.intrWhy[why] = (_desStat.intrWhy[why] || 0) + 1; }
+  const dt = Math.min(now, S.until) - S.t0;
+  if (S.k === 'walk') _desStat.walkMs += dt; else if (S.k === 'sleep') _desStat.sleepMs += dt; else _desStat.restMs += dt;
+  if (S.r) {
+    const o = S.r.posAt(Math.min(now, S.r.t1), _desTmp);
+    _desPut(npc, o.x, o.y);
+    if (o.done) { npc.pathIndex = S.P ? S.P.length : 0; npc.vx = 0; npc.vy = 0; }
+    else npc.pathIndex = S.pi + S.r.L[o.k + 1] - 1;   // 지금 걷는 다리의 끝 점(길 점 번호 — 다리 j 의 끝 = 길 점 pi + j − 1)
+    _t670Stuck(npc, now);
+  }
+}
+// 사건 갈래에 든 몸 — 이 틱은 쥐고 있나(true = 결정 · 걸음 문을 건너뛴다)
+function _desHold(npc, now) {
+  const S = npc._des;
+  const why = _desIntr(npc, now);
+  if (why) { _desEnd(npc, now, why); return false; }
+  if (now < S.until) {
+    if (S.r) { const o = S.r.posAt(now, _desTmp); _desPut(npc, o.x, o.y); Roads.stampEntityPx(npc, o.x, o.y); _desStat.heldWalk++; }
+    _desStat.held++; return true;
+  }
+  _desEnd(npc, now, 'due'); return false;
+}
+// ★[T1241 계측] 진짜 시계(훅이 가상 시계보다 먼저 붙잡아 `global.__t1241Clock` 에 둔다 — ns BigInt) · 몸 하나 결정 문 몫을 갈래별로(쥔 · 걸린)
+const _desClk = T1241_PROBE ? (global.__t1241Clock || null) : null;
+if (_desClk) Object.assign(_desStat, { nsHeld: 0, nHeld: 0, nsStep: 0, nStep: 0, nsMove: 0, nMoveTicks: 0 });
+function _desTimed(npc, dt, now) {
+  const t0 = _desClk();
+  if (T1241_DES && npc._des && _desHold(npc, now)) { _desStat.nsHeld += Number(_desClk() - t0); _desStat.nHeld++; return; }
+  _desStat.steps++;
+  npcStep(npc, dt, now);
+  if (T1241_DES) _desTry(npc, now);
+  _desStat.nsStep += Number(_desClk() - t0); _desStat.nStep++;
+}
+// 틱 갈래 걸음 뒤 — 사건 토막을 열 수 있나
+function _desTry(npc, now) {
+  if (!npc.simVillageId || npc.canadiaVillage || npc.simWar || npc.simCaravan || npc._bdtGid != null || npc.handingOff) return;
+  if (npc.behavior !== 'wander' || npc._huntSpd || npc.floor || npc.onStairId || npc.canadiaTask) return;
+  if (npc.simEvacUntil && now < npc.simEvacUntil) return;
+  if (npc._granTask || (npc._t720 && npc._t720.k) || npc._rest) return;
+  if (npc._dOff == null || npc.simLonOff == null) return;
+  const act = npc._lifeAct;
+  if (!_DES_WALK.has(act)) return;
+  if (isPositionActive(npc.x, npc.y)) return;
+  if (!_desSch) { _desSch = SimVillages.T1241_SCH; if (!_desSch) return; }   // 일과 문턱 정본(villages `SCH_*` — 사본 0)
+  const dayR = WORLD.dayPhaseRatio, dOff = npc._dOff;
+  const fv = phaseAdd(worldPhase(now), npc.simLonOff);
+  const P = npc.path, pn = P ? (P === npc._t791P ? npc._t791Pn : P.length) : 0, done = !P || npc.pathIndex >= pn;
+  const d = SimVillages.econDay ? SimVillages.econDay() : null;
+  let k = null, until = 0, r = null;
+  if (done) {
+    if (npc.targetX == null || !_t671Lt(npc.x - npc.targetX, npc.y - npc.targetY, 12)) return;   // 목표에 섰다(막힘 판정의 "선 몸" 그 문)
+    if (npc.vx !== 0 || npc.vy !== 0) return;
+    if (act === '취침' && (fv >= dayR || fv < dOff)) { k = 'sleep'; until = _desNext(npc, now, dOff); }
+    else if (act === '휴식' && fv < dayR && fv >= dOff) { k = 'rest'; until = _desNext(npc, now, dayR); }
+    else return;
+    if (_desWolfNear(npc.x, npc.y)) return;
+  } else {
+    const pts = [npc.x, npc.y];
+    for (let i = npc.pathIndex; i < pn; i++) { const w = P[i]; pts.push(w.x, w.y); }
+    if (pts.length < 4) return;
+    if (_desWolfNear(npc.x, npc.y) || _desWolfNear(pts[pts.length - 2], pts[pts.length - 1])) return;
+    r = new _DES.Route(pts, _desSpeed, now, 16);
+    k = 'walk'; until = r.t1;
+    for (const th of [dOff, dayR * _desSch.SCH_FARMW_R, dayR * _desSch.SCH_HALF_R, dayR]) { const t = _desNext(npc, now, th); if (t < until) until = t; }
+    _desStat.routePts += r.T.length;
+  }
+  npc._des = { k, t0: now, until, r, P, pi: npc.pathIndex, d, hp: npc.hp };
+  _desStat.begin[k]++;
+}
 function npcStep(npc, dt, now) {
   if (T738_SOA_XY) _t738Adopt(npc);   // ★[T738] 끔 = 종전 그대로
   npc._t540StepAt = now;   // ★[T540 관측] 이 몸이 마지막으로 걸음 문을 받은 때(`/walkdbg stepAge` — 새벽 멎음을 이것으로 잡았다)
@@ -15504,6 +15616,7 @@ let _wwCut = false;   // ★[T689] `_wwPreOne` 이 읽는 그 틱의 `cut`(forEa
 function _wwPreOne(p) {   // 종전 `_wwPre` 고리 몸통 글자 그대로(`continue` → `return`) — 끔이면 고리가, 켬이면 `forEach` 가 부른다
   const _si = T774_ACTIVE_COL ? _t774I++ : 0;   // ★[T774] 슬롯 번호(players 차례 — 공간 색인과 같은 차례)
   if (p.handingOff || !p.isNpc || p.simCaravan || p.simWar) return;
+  if (T1241_DES && p._des) return;   // ★[T1241] 사건 갈래가 쥔 몸은 걸음 문 밖(아래 `_moveOne` 과 같은 거름)
   const cut = _wwCut;
   let c = 1;
   if (!p.canadiaVillage && !_t316WalkAlways(p) && !(T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(p.x, p.y))) c = 0;   // 이동 문의 그 거름(몸이 안 움직인 자리에서)
@@ -15964,7 +16077,11 @@ setInterval(() => {
     //     예산을 늘리지도, 새로 걸지도 않는다: 놓는 수가 곧 설계 판정이라 PM 몫이다(T316 §3 회부).
     if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
     if ((Date.now() - _decT0) > 15 || TB.out(15, 'decide')) { _stopAt = pid; break; }   // ★[T687] 켬 = 이 틱 공용 몫이 바닥나도 여기서 멈춘다(커서 그대로)   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
+    if (T1241_PROBE && _desClk) { _desTimed(npc, dt, now); continue; }   // ★[T1241 계측] 같은 몸통을 진짜 시계로 잰다(아래 세 줄 그대로)
+    if (T1241_DES && npc._des && _desHold(npc, now)) continue;   // ★[T1241] 사건 갈래가 쥔 몸(끔 = 이 줄 무동작)
+    if (_T1241) _desStat.steps++;
     npcStep(npc, dt, now);
+    if (T1241_DES) _desTry(npc, now);   // ★[T1241] 사건 토막을 열 수 있나
   } while (false); return _stopAt !== null; };
   if (T689_GC) { let _decStop = false; npcs.forEach((pid) => { if (!_decStop && _decOne(pid)) _decStop = true; }); }
   else for (const pid of npcs) if (_decOne(pid)) break;
@@ -16199,6 +16316,7 @@ setInterval(() => {
   } // ← movePlayerStep 함수 끝
 
   // ★[T461] 걸음 커널(켬·견줌일 때만) — 이동 문 앞에서 한 번에
+  const _desM0 = _desClk ? _desClk() : 0n;   // ★[T1241 계측] 걸음 문 몫(커널 앞일 · 몸 고리 · 뒷일)
   let _wwCur = 0, _wwK = 0;
   if (_WW) _wwPre(moveDt);
   const _wwSteps0 = _walk.steps;   // [T461 견줌] 이동 문이 실제로 부른 걸음 수(갈래 표와 견준다)
@@ -16210,6 +16328,7 @@ setInterval(() => {
     if (p.handingOff) continue;
     if (p.isNpc) {
       if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
+      if (T1241_DES && p._des) continue;   // ★[T1241] 사건 갈래가 쥔 몸(자리는 결정 문에서 보간했다)
       if (p.simWar) continue;     // §4-4 P3: 출정(징발) 병사 — 이동은 villages.js 실체 전쟁(행군 대형 페이싱·전투유닛 미러)이 전담(이중 이동 방지)
       if (_wwOn && p === _wwSeq[_wwCur]) {   // ★[T461] 앞문이 적은 갈래 — 커널 몸은 뒷일만(차례 그대로) · 잠든 몸은 건너뜀 · 2 는 아래 정본 문으로
         const _c = _wwCode[_wwCur++];
@@ -16263,7 +16382,9 @@ setInterval(() => {
   if (T689_GC) players.forEach(_moveOne);
   else for (const p of players.values()) _moveOne(p);
   if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);   // ★[T461] 견줌 — JS 정본이 옮긴 몸을 커널 답과 비트로(분리 전 · 같은 자리)
+  if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; }
   sepNpcs(dt);   // ★[생활 층 ①] NPC 상호 분리 — 이동 적용 직후(같은 틱 위치에 보정) 틱당 1회
+  if (_T1241) { _desStat.ticks++; if (T1241_PROBE && global.__t1241Probe) global.__t1241Probe(now, players); }   // ★[T1241] 셈 · 탐침(끔 = 무동작)
 
   // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===
   // stair (b) — anchor (b.x, b.y) = 낮은 발판. dir = 위로 가는 방향.

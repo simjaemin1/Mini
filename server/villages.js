@@ -17597,6 +17597,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
+  T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
   init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
