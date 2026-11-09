@@ -5085,6 +5085,7 @@ function _npcGatherResource(npc,r) {
 //   ★끔 = 종전 글자(아래 함수는 안 불린다 · 부르는 자리 셋이 `T1241_DES` 뒤).
 const T1241_DES = process.env.T1241_DES === '1' || process.env.T1241_DES === 'sleep';
 const T1241_WALK = process.env.T1241_DES === '1';   // `sleep` = 잠 · 쉼 토막만(걸음 토막 끔 — 갈림 가르기 판)
+const _DES_NOWALK = new Set(String(process.env.T1241_DES_NOWALK != null ? process.env.T1241_DES_NOWALK : 'hunter').split(',').map((x) => x.trim()).filter(Boolean));   // 걸음 토막을 안 여는 직업(기본 사냥꾼 — 순찰은 결정마다 목표가 바뀐다 · 갈림 가르기 판은 `farmer` 를 더한다)
 const T1241_PROBE = process.env.T1241_PROBE === '1';
 const _T1241 = T1241_DES || T1241_PROBE;
 const _DES = T1241_DES ? require('./des') : null;
@@ -5176,7 +5177,7 @@ function _desTry(npc, now) {
     else return;
     if (_desWolfNear(npc.x, npc.y)) return;
   } else {
-    if (!T1241_WALK || npc.simJob === 'hunter') return;   // 사냥꾼 걸음은 순찰(결정마다 7 ~ 12초에 목표가 바뀐다 — 정해진 토막이 아니다)
+    if (!T1241_WALK || _DES_NOWALK.has(npc.simJob)) return;   // 사냥꾼 걸음은 순찰(결정마다 7 ~ 12초에 목표가 바뀐다 — 정해진 토막이 아니다)
     const pts = [npc.x, npc.y];
     for (let i = npc.pathIndex; i < pn; i++) { const w = P[i]; pts.push(w.x, w.y); }
     if (pts.length < 4) return;
