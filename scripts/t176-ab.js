@@ -324,6 +324,8 @@ CP.setup(ta, world, null);
 if (CL) CL.setup(ta, world, null);
 const vils = seeds.map((s, i) => CP.attach({ dbId: i + 1, name: s.name, ccx: s.ccx, ccy: s.ccy, layout: s.layout, econ: world.villages[i] }));
 const cells0 = vils.map((v) => v._farmSet.size);
+// ★[T1243 ⓒ · 추신 14] 켬 묶음 — 서버 첫 시작과 같은 첫 곳간(지난해 곡식) · 첫 해 씨를 랩 마을에도(정본 함수 그대로 · 끔 = 무동작)
+{ const _B = Villages.__p3Bind({}); if (_B._t1243On && _B._t1243On()) vils.forEach((v, i) => { _B._t1243Seed(world.villages[i], i + 1); _B._t1243SeedCells(v); }); }
 
 const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap: Villages.playerVillageDepositMap() });
 L.prime(world);
@@ -682,7 +684,11 @@ const live = world.villages.filter((v) => (v.npcs || []).length > 0).length;
 const dens = (n) => (n > 0 ? (live * DAYS / n) : Infinity);
 const firsts = M.map((m) => m.first).filter((x) => x != null);
 
+const _t1243Crops = vils.map((v) => { const by = {}; for (const e of (v._crop || new Map()).values()) if (e && e.c) by[e.c] = (by[e.c] || 0) + 1; const pv = {}; for (const x of ((v._t1243Prev || new Map()).values())) pv[x.c] = (pv[x.c] || 0) + 1;
+  const sd = {}; for (const [k2, n] of Object.entries((v.econ && v.econ.storage) || {})) if (k2.startsWith('seed_')) sd[k2] = +(+n).toFixed(2);
+  return { n: v.name, f: +((((v.econ || {}).land || {}).fertility) || 0).toFixed(3), farm: v._farmSet.size, dry: v._drySet.size, stand: by, prev: pv, seed: sd }; });   // ★[T1243] 마을별 작물 · 씨(표 칸 · 계측 전용)
 const out = {
+  t1243Crops: _t1243Crops, t1243Pick: (Villages.__p3Bind({})._t1243PStat) || null,
   days: DAYS, seed: SEED, base: process.env.T176_BASE || '',
   arm: econ.T100_FIELD_YIELD ? 'on' : 'off', knob: econ.T100_FIELD_YIELD,
   k: econ.T100_K, anchorN: econ.T100_ANCHOR_N, seedFoodDays: econ.seedFoodDays(0),

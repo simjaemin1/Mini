@@ -50,7 +50,7 @@ console.log('\n① 손잡이 — 기본 끔 · 끄면 곳간 입구가 **종전 
 {
   const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
   ok(E.T368_FARM_ACT === false, '① ★★손잡이 `T368_FARM_ACT` 가 **기본 끔**이다');
-  ok(/const T368_FARM_ACT = process\.env\.T368_FARM_ACT === '1';/.test(C), '① `=== \'1\'` 이라야 켜진다(되돌림이 기본)');
+  ok(/const T368_FARM_ACT = process\.env\.T368_FARM_ACT === '1' \|\| T1243_FARM_ON;/.test(C) && /const T1243_FARM_ON = \(typeof process !== 'undefined' && process\.env\) \? process\.env\.T1243_FARM_ON === '1' : false;/.test(C), '① `=== \'1\'` 이라야 켜진다(되돌림이 기본 · ★[T1243] 밭 세계 한 손잡이도 `=== \'1\'`)');
   const off = probe({ T100_FIELD_YIELD: '1' }, `const E=require(${EP}); const V=require(${VP}); const B=V.__farmBind();
     const mk=()=>{ const v=E.createVillage({initialPop:0,name:'x',fertility:1}); v._world={}; return v; };
     const a=mk(), b=mk(); const vil={econ:a,_drySet:new Set(['1,1'])};
@@ -152,7 +152,7 @@ console.log('\n⑤ ⓑ 헤드리스 — 켜면 이 마을 밭은 **몸이 한다
 {
   const hl = bodyOf(VC, '_lifeHeadlessDay');
   //   ★[T1220-K1] 옛 글자 — T1212 ① 이 작물 절의 날을 밭 날(`_farmDay(vil, day)` · 끔 = `day` 그대로)로 바꿨다 — 판정(`!_body`)은 그대로라 글자만 새로.
-  ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /if \(!_body\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /if \(!_body\) lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\);/.test(hl),
+  ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /if \(!_body && !_cut\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /else if \(!_body\) lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\);/.test(hl) && /const _cut = _t1243On\(\) && _t1243Live\(\);/.test(hl),   // ★[T1243] 켬 + 라이브 = 두 절 걷음(`_cut`)
     '⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 작물');
   //   ★[T400] 집 절에 집 행위 손잡이 가드(`&& !_lifeEcon().T400_BUILD_ACT`)가 붙었다 — 농부 판정(`_body`)과 무관한 것은 그대로다.
   ok(/if \(vil\._site(?: && !_lifeEcon\(\)\.T400_BUILD_ACT)?\) \{ let st = Math\.min\(LIFE_CREW, popN\) \* LIFE_STAGE_PDAY;/.test(hl) && !/_body[^\n]*LIFE_STAGE_PDAY/.test(hl),

@@ -45,8 +45,8 @@ ok(on.u.foxtail_millet[2] === off.u.foxtail_millet[2], '③ 비옥 자리를 안
 // ── ④ ⑤ 글자 ──
 const Vs = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
 ok(/r = A\.length > 1 \? \(\(lo \+ hi - 1\) \/ 2\) \/ \(A\.length - 1\) : 0\.5;/.test(Vs), '④ 비옥 자리 = 세계 안 순위(같으면 가운데)');
-ok(/if \(_L && _c > budget\) continue;/.test(Vs) && /budget -= _c; did\+\+; total\+\+;/.test(Vs) && /const _c = _L \? _t1221Cost\(t\) : 1;/.test(Vs), '⑤ 일괄 — 초를 일 시간만큼 쓴다 · 모자라면 그 일은 건너뛴다 · 끔 = 1');
+ok(/if \(_L && _c > budget\) continue;/.test(Vs) && /budget -= _c; did\+\+; total\+\+;/.test(Vs) && /const _c = _L \? _t1221Cost\(t, vil, k\) : 1;/.test(Vs), '⑤ 일괄 — 초를 일 시간만큼 쓴다 · 모자라면 그 일은 건너뛴다 · 끔 = 1');
 ok(/let _ks = vil\._farmSet;\s*if \(_L\) \{ const a = \[\]; for \(const k of vil\._farmSet\) \{ const t = _cellTask\(vil, k, day\); if \(t > 0\) a\.push\(\[k, t\]\); \} a\.sort\(\(x, y\) => y\[1\] - x\[1\]\); _ks = a\.map\(\(x\) => x\[0\]\); \}\s*for \(const k of _ks\)/.test(Vs), '⑤ 켬 = 급한 일부터(`_cellTask` 차례 큰 것 먼저 · 안정 정렬) · 끔 = 종전 칸 차례');
-ok(/npc\._jobT = \(_L && _ok\) \? now \+ _c \* 1000 : now \+ 9000 \+ \(_pidHash\(npc\.pid\) % 7\) \* 1500;/.test(Vs), '⑤ 몸 — 켬이면 일 시간만큼 머문다 · 끔 = 종전 9 ~ 18 초');
+ok(/npc\._jobT = \(_L && _ok\) \? now \+ _c \* _t1243MinMs\(\) : now \+ 9000 \+ \(_pidHash\(npc\.pid\) % 7\) \* 1500;/.test(Vs) && /function _t1243MinMs\(\) \{ return \(\(state\.dayMs > 0\) \? state\.dayMs : 1440000\) \/ 1440; \}/.test(Vs) && /t\.prog >= \(_t1221On\(\) \? _t1221ClearS\(vil, t\.cx \+ ',' \+ t\.cy\) \* dayMs \/ 1440 : dayMs \/ LIFE_CLEAR_PDAY\)/.test(Vs), '⑤ 몸 — 켬이면 일 시간(게임 분 × 하루 ÷ 1,440 ms)만큼 머문다 · 개간 칸도 같은 단위 · 끔 = 종전 9 ~ 18 초(T1243 고침 — 1,000 ms 박음은 판 자 하루에서 일 하나 2,280날)');
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);

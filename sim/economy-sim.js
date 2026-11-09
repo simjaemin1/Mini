@@ -637,6 +637,26 @@ const RAW_GRAIN_FOOD_FACTOR = (() => {
   return (isFinite(v) && v > 0 && v <= 1) ? v : 0.72;    // ★새 수 하나 — 쌀 도정 수율. 위 근거 표에서 유도
 })();
 const T73_RAWGRAIN = process.env.T73_RAWGRAIN !== '0';   // 되돌림: T73_RAWGRAIN=0 → T60 기준선 비트 재현
+// ★★[T1243 추신 1 · T1239 회부 5 · 족보 801] **도정 0.72 는 한 곳에서 한 번만** — 켬 묶음(`T1243_FARM_ON`)에서 생곡 셋의 낱개 식량 값 =
+//   열량 정본(`kcal.econUnitsOf` — kg × 작물 표 kcal/kg ÷ 2,450) × 상태 몫(수확 kg 의 상태 ↔ 작물 표 kcal 의 상태 — 아래 표 · 껍질 · 도정 몫은 그 둘의 차이로만).
+//   ⚠수확 kg(T1215 · T1221 출처)과 작물 표 kcal 이 같은 상태면 몫 1 — 0.72 를 또 곱하지 않는다(T1239 §1-② "econ 0.72 를 또 곱함").
+//   상태를 못 맞춘 작물은 몫 1 · `st: '미확인'`(새 수 0 — 보고 표). 끔 = `RAW_GRAIN_FOOD_FACTOR` 그대로(오늘 바이트).
+//   먹는 쪽(사다리 · 재고 환산 · 생산 환산 · `_t86Factor`)과 거두는 쪽(`_t368FoodPer`)이 이 함수 하나를 읽는다(사본 0).
+const T1243_GRAIN_STATE = {
+  rice:   { harvest: '현미(T1221 범위 — 야요이 현미 10a 당 100 kg 이하 · 寺沢)', kcal: '쌀 낟알 3,500 kcal/kg(kcal.js 앵커 · xlsx)', ratio: 1, st: '확인' },
+  wheat:  { harvest: '겉밀 명목(R02 — 껍질 포함 여부 표기 없음)', kcal: '밀 낟알(xlsx)', ratio: 1, st: '미확인' },
+  barley: { harvest: '보리 낟알(R02 북터키 실험 — 겉보리 껍질 몫 표기 없음)', kcal: '보리 낟알(xlsx)', ratio: 1, st: '미확인' },
+};
+let _kcalMod;
+function _kcalM() { if (_kcalMod === undefined) { try { _kcalMod = require('../server/kcal'); } catch (e) { _kcalMod = null; } } return _kcalMod; }
+const _t1243GrainF = {};
+function _rawGrainF(r) {
+  if (!T1243_FARM_ON) return RAW_GRAIN_FOOD_FACTOR;
+  if (_t1243GrainF[r] != null) return _t1243GrainF[r];
+  const K = _kcalM(), S = T1243_GRAIN_STATE[r];
+  const u = (K && typeof K.econUnitsOf === 'function') ? +K.econUnitsOf(r, 1) || 0 : 0;
+  return (_t1243GrainF[r] = (u > 0 && S) ? u * S.ratio : RAW_GRAIN_FOOD_FACTOR);
+}
 const T17_TOOL     = process.env.T17_TOOL     !== '0';   // ① 도구 마모를 흐름으로 기록
 const T17_PRESERVE = process.env.T17_PRESERVE !== '0';   // ② 보존식 편입
 const T17_SALT     = process.env.T17_SALT     !== '0';   // ③ 자염 편입
@@ -792,9 +812,9 @@ function consumeFood(v, need) {
   if (T73_RAWGRAIN) {
     for (const r of RAW_GRAINS) {
       if (remaining > 0 && v.storage[r] > 0) {
-        const need = remaining / RAW_GRAIN_FOOD_FACTOR;
+        const need = remaining / _rawGrainF(r);
         const consumed = Math.min(need, v.storage[r]);
-        v.storage[r] -= consumed; remaining -= consumed * RAW_GRAIN_FOOD_FACTOR; eaten[r] = (eaten[r] || 0) + consumed;
+        v.storage[r] -= consumed; remaining -= consumed * _rawGrainF(r); eaten[r] = (eaten[r] || 0) + consumed;
       }
     }
   }
@@ -863,7 +883,7 @@ function totalFoodEquivalent(v) {
   //   — 첫 판에서 실제로 그랬다(위 `PRESERVE_FOOD_FACTOR` 주석). 끄면 이 줄은 0 을 더한다.
   if (T17_PRESERVE) for (const r of PRESERVED_FOODS) { const q=v.storage[r]||0;if(q||!T1192_FISH_SPECIES)total+=q*preservedFactor(r); }
   // ★[T73] 곳간의 생곡도 식량이다 — 도정 수율만큼(위 근거 표). 끄면 이 줄은 0 을 더한다.
-  if (T73_RAWGRAIN) for (const r of RAW_GRAINS) total += (v.storage[r] || 0) * RAW_GRAIN_FOOD_FACTOR;
+  if (T73_RAWGRAIN) for (const r of RAW_GRAINS) total += (v.storage[r] || 0) * _rawGrainF(r);
   // ★★[T368] 곳간의 작물도 식량이다 — **econ 이 모르는 것만**(위 줄들이 센 생곡은 빼고 · 이중 0). 끈 팔은 `null` ⇒ 0.
   const _own = _t368Crops(v);
   if (_own) for (const [r, f] of _own) total += (v.storage[r] || 0) * f;
@@ -879,7 +899,7 @@ function totalFoodProductionEquivalent(prod, v) {
   //     (하루 생산 버퍼는 순증분만 담는다).
   if (T17_PRESERVE) for (const r of PRESERVED_FOODS) { const q=prod[r]||0;if(q||!T1192_FISH_SPECIES)total+=q*preservedFactor(r); }
   // ★[T73] 생산 쪽도 같은 자로 — 오늘 거둔 생곡도 식량 생산이다.
-  if (T73_RAWGRAIN) for (const r of RAW_GRAINS) total += (prod[r] || 0) * RAW_GRAIN_FOOD_FACTOR;
+  if (T73_RAWGRAIN) for (const r of RAW_GRAINS) total += (prod[r] || 0) * _rawGrainF(r);
   // ★★[T368] 생산 쪽도 같은 자로 — 오늘 밭이 낸 작물(장부 다리가 품목별로 적은 것). 둘째 인수(마을)가 없으면 0.
   const _own = v ? _t368Crops(v) : null;
   if (_own) for (const [r, f] of _own) total += (prod[r] || 0) * f;
@@ -1115,7 +1135,7 @@ function _t86Factor(r) {
   if (T635_SEA_SPECIES && _t635Sea[r] != null) return _t635Sea[r];   // ★[T635 ②] 나눠 낸 종 = 그 kg 만큼의 fish
   if (r === 'cooked_food') return 1.12;
   if (r === 'food' || r === 'fish' || r === 'meat') return 1;
-  if (RAW_GRAINS.indexOf(r) >= 0) return RAW_GRAIN_FOOD_FACTOR;
+  if (RAW_GRAINS.indexOf(r) >= 0) return _rawGrainF(r);   // ★[T1243 추신 1] 켬 = 열량 정본 × 상태 몫 · 끔 = 0.72
   return FORAGE_FOOD_FACTOR[r] || 0;
 }
 // ★[T635 ②] 식단 후보 열쇠 — 종전 표 + 나눠 낸 종(이미 표에 있는 종은 한 번만)
@@ -1174,7 +1194,12 @@ const T100_HARVEST_PER_FARMER_YEAR = 90.88;
 //        k = N × (하루 1인 식량 `DAILY_FOOD_CONSUMPTION` × 365) ÷ 농부 1인 연간 수확 건수
 //      뜻: 수확 한 번이 곳간에 넣는 식량등가. `k` 를 손으로 적으면 하네스가 빨개진다.
 const T100_K = T100_ANCHOR_N * DAILY_FOOD_CONSUMPTION * 365 / T100_HARVEST_PER_FARMER_YEAR;
-const T100_FIELD_YIELD = process.env.T100_FIELD_YIELD === '1';   // 되돌림: 끄면 T86 세계 **비트 동일**
+// ★★★[T1243 2026-11-09 · ★재민 11-09 "정본 안 켜?" · 족보 796 · 797] **밭 세계 한 손잡이** — `T1243_FARM_ON`(끔 기본 · `=1` 켬 · 그 밖 값 = 끔).
+//   켜면 밭 묶음 다섯(`T100_FIELD_YIELD` · `T368_FARM_ACT` · `T1201_BRONZE_CROPS` · `T1215_FIELD_M2` · `T1221_FARM_LABOR`)이 켜진다(각 손잡이의 `=1` 과 같은 갈래 · 새 갈래 0) +
+//   ⓑ 한 번 거둔 식량 = 작물 낱개 값 하나 — 텃밭 하한(`T100_K` 를 쓰는 산출 갈래)을 걷고 품목 없는 수확 갈래(`n × T100_K`)를 닫는다(사본 0) ·
+//   ⓒ NPC 마을 첫 곳간 = 지난해 곡식(생활층 `villages.js` `_t1243Seed`) · 797 밭 일괄 걷음(생활층 `_lifeHeadlessDay`). 끔 = 오늘 바이트.
+const T1243_FARM_ON = (typeof process !== 'undefined' && process.env) ? process.env.T1243_FARM_ON === '1' : false;
+const T100_FIELD_YIELD = process.env.T100_FIELD_YIELD === '1' || T1243_FARM_ON;   // 되돌림: 끄면 T86 세계 **비트 동일**   // ★[T1243] 묶음
 // ★★★[T312 2026-09-19] **어부 행위 이식 — T1180 켬 기본.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
 //   (아래 세 자리가 전부 이 상수 뒤에 있다: 곳간 입구 · `addProduce('fish')` 게이트 · 장부 다리).
 //   T1180: 켬 기본으로 전환 · 기존 수식의 계수는 바꾸지 않는다.
@@ -2124,9 +2149,9 @@ const T374_DEMAND_STOP = process.env.T374_DEMAND_STOP !== '0';
 //   ⚠**`T100_K` 는 안 지운다** — 끈 팔의 입구 그대로이고, 켠 팔에서는 **대조 자**다(보고 §표 — 작물 표 ↔ 앵커).
 //   ⚠끄면 **넷째 판 비트 동일** — 아래 자리가 전부 이 상수(와 켠 팔만 심는 주입 표) 뒤에 있다.
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
-const T368_FARM_ACT = process.env.T368_FARM_ACT === '1';
+const T368_FARM_ACT = process.env.T368_FARM_ACT === '1' || T1243_FARM_ON;   // ★[T1243] 묶음
 // ★[T1221 2026-11-08] 농사 일손 한도 · 비옥 범위 — 손잡이 하나(끔 기본 · `=1` 켬). econ 은 값을 안 쓴다 — 생활층(`villages.js` 칸 일 시간)과 작물 정본(`crops.js` 비옥 범위)이 이 한 곳을 읽는다.
-const T1221_FARM_LABOR = (typeof process !== 'undefined' && process.env) ? process.env.T1221_FARM_LABOR === '1' : false;
+const T1221_FARM_LABOR = ((typeof process !== 'undefined' && process.env) ? process.env.T1221_FARM_LABOR === '1' : false) || T1243_FARM_ON;   // ★[T1243] 묶음
 // ★★[T368] econ 이 **모르는** 작물과 그 식량 값 — 주입 표에서 econ 이 아는 품목(생곡·채집·보존식)을 **뺀** 목록.
 //   주입이 없거나 손잡이가 꺼져 있으면 `null` ⇒ 아래 세 자리(재고 환산 · 생산 환산 · 사다리)가 **아무것도 안 한다**.
 //   ⚠순서는 주입 표 순서(작물 정본 `crops.IDS` — 이름순)다. 사다리가 그 순서로 먹는다(결정론 · 새 규약 0).
@@ -2301,6 +2326,7 @@ function harvestToGranary(v, n, mul, crop, ev) {
     if (T227_EVEN) { const P = v._t368Pend || (v._t368Pend = {}); P[crop] = (P[crop] || 0) + units; return units; }
     return _t368Credit(v, crop, units);
   }
+  if (T1243_FARM_ON) { v._t1243NoCrop = (v._t1243NoCrop || 0) + 1; return 0; }   // ★[T1243 ⓑ] 켬 = 품목 없는 수확(`n × T100_K`)은 없다 — 한 번 거둔 식량은 작물 낱개 값 하나(위 갈래)뿐 · 계측 칸(회계 아님)
   const amt = ((n > 0 ? n : 1)) * T100_K * _m;
   v._t100HarvestN = (v._t100HarvestN || 0) + (n > 0 ? n : 1);   // 계측 전용 누계(회계 아님 · 표가 스스로 말하게) · ★[T179] **건수는 배율에 안 물린다**(수확 횟수지 양이 아니다)
   // ★[T227] 고르게 — 덩어리를 **대기 두지**(`_t100Pend`) 하루치씩 위 크레딧으로 흘린다(아래 `t100EvenRelease`).
@@ -2767,7 +2793,7 @@ function seedFoodDays(bornDay) {
 //   ⚠이 하한은 "밭이 실제로 낸 것만 들어간다"는 4판 규약의 **구멍**이다. 그래서 손잡이로 끌 수 있고
 //     (`T100_GARDEN=0`), 보고가 **하한이 낸 몫 ÷ 수확이 낸 몫**을 적는다.
 const T100_GARDEN_CELLS = 3;         // = server/villages.js LIFE_CLEAR_PDAY (하네스가 두 값을 대조한다)
-const T100_GARDEN = process.env.T100_GARDEN !== '0';   // 되돌림: ⓑ 만 보려면 T100_GARDEN=0
+const T100_GARDEN = process.env.T100_GARDEN !== '0' && !T1243_FARM_ON;   // ★[T1243 ⓑ] 켬 = 하한 걷음(`T100_K` 산출 갈래 — 사본 0)   // 되돌림: ⓑ 만 보려면 T100_GARDEN=0
 // ★★[T193 2026-09-12] **장부가 밭을 본다** — 손잡이 하나(기본 **끔**).
 //   T186 §0-ⓑ' 가 잰 것: 켠 팔에서 `dailyProductionBuf.food` 가 **정확히 0** 이다(`food` 를 내는 직업은
 //   농부뿐인데 켠 팔 농부는 `addProduce` 를 안 탄다) ⇒ `surplusEMA.food` 가 무너져 **마을의 3분의 2가
@@ -7437,7 +7463,7 @@ module.exports = {
   T931_SLOTK_EMA, T931_SLOTK_SEASON, totalFoodSlots,   // ★[T931] 식량 자리 K 관성 손잡이 + 자리 함수(하네스 · 관찰기 `t931-observe` 가 그날 자리를 다시 센다 — 읽기만 · 사본 0 · 동작 무변)
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
   consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)
-  RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
+  RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR, T1243_GRAIN_STATE, rawGrainF: _rawGrainF,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
   bindProductionActs, productionActsBound, productionFormulaOff,   // T1180: 물리 생산 호스트 등록 · 수식 대체 문
@@ -7457,7 +7483,7 @@ module.exports = {
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
-  T368_FARM_ACT, T1221_FARM_LABOR, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   T1159_HOME_N, t1159HomeN,
