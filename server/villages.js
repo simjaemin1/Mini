@@ -6513,6 +6513,7 @@ function init(deps) {
         { const _fb = (lp && lp.fishSustain != null) ? lp.fishSustain : null; if (_fb != null) ev.land._fishBase = _fb; }
       }
       ev._world = world;
+      if (!row.econ_state) _t1243Seed(ev, row.id);   // ★[T1243 ⓒ] 서버 첫 시작만(복원 갈래는 안 닿는다 · 끔 = 무동작)
       _t856LandElev(ev, row.cx, row.cy);   // ★[T856] 마을 고도 — 새로 세운 마을 · 복원한 마을 둘 다(복원한 칸은 지금 지형으로 다시 · 끔 = 무동작)
       // econ 좌표 = 셀×2.5 — 랩(4804행)과 동일 스케일: villageDist·운반비·약탈 확률이 랩 검증 범위에 머묾
       ev.coord = { x: row.cx * 2.5, y: row.cy * 2.5 };
@@ -9771,7 +9772,7 @@ function __p3Bind(mock) {
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
     t1197BodyStep, _t1197Person, _t1197BodyMeal, _t1197DieBody, _t1197Stat, _t1197On, econDayToMs, _t1198Sync, _t1198Jobs, _t1198Stat, _t1198On, syncVillageJobs,   // ★[T1197] 몸 게이지 끼니 문(하네스 `test-t1197-meal-body` 가 운영과 같은 문을 부른다)
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
-    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On, T1224_ECON_FARM, _t1224Stat, T1229_FIELD_GROW, _t1229Stat, _t1229Need, _t1229Short,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
+    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On, T1224_ECON_FARM, _t1224Stat, _t1243On, _t1243Live, _t1243Stat, _t1243Seed, T1229_FIELD_GROW, _t1229Stat, _t1229Need, _t1229Short,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
     _oreMineDaily, T1095_MINE_DEMAND, _t1095Stat,   // ★[T1095] 채굴 일괄 수요 문 — 하네스(`test-t1095-mine-demand`)가 운영과 같은 문을 부른다(내보내기만)
     _t1039Depart, _t1039Join, _t1039Leave,   // ★[T1039] 도적 전환 몸 문 셋(하네스 `test-bandit-body` 가 운영과 같은 문을 부른다)
     _t1078Walkers, _t1078Die, _t1078Out, _t1078Life,   // ★[T1078] 단원 = 몸 문 넷(하네스 `test-bandit-all` 이 운영과 같은 문을 부른다)
@@ -11422,17 +11423,22 @@ function _lifeHeadlessDay(vil) {
   //     재민 "아무도 안 보는 마을도 일과가 작동해야" 767b827e). 일은 밭 상태기가 정하므로(익은 칸만 거둔다) 깨고 자는
   //     경계 하루에도 같은 칸을 두 번 거두지 않는다. 판정은 `_t368ZoneAwake` 하나(위 · 새 문 0).
   const _body = _t368Walk() && _t368ZoneAwake(vil);
+  // ★★[T1243 · 캐논 797 "거두는 건 몸만"] 켬 묶음 + 라이브(존이 몸을 걷기는 서버 — `zoneAwake` 주입이 있다) = 밭 길 일괄이 **안 돈다** —
+  //   몸이 못 한 몫(T1212 ②) · 몸 없는 econ 농부(T1224) · 존이 잔 날의 일괄(개간 ① · 작물 ③) 셋 다. 몸이 그날 못 한 일은 0 이다.
+  //   ⚠존이 없는 판(랩 · CLI · 하네스 — 몸 자체가 없다)은 종전 그대로(이 줄이 거짓). 끔 = 이 줄 거짓 = 종전 바이트.
+  const _cut = _t1243On() && _t1243Live();
+  if (_cut) { _t1243Stat.cutDays++; if (!_body) _t1243Stat.cutAsleep++; }
   if (_t368Walk()) { if (_body) vil._t368HlBody = (vil._t368HlBody || 0) + 1; else vil._t368HlBatch = (vil._t368HlBatch || 0) + 1; }   // 계측 전용(켠 팔만 · 회계 아님) — 이 마을 오늘 밭을 누가 했나(몸 · 일괄) · `/perf farm.hl`
   // ① 개간 — 실걸음과 동일: 크루 상한 2 × 3셀/인일, 프론티어 최근접부터(마을 중심 기준)
   let _restN = 0, _restB = 0;   // ★[T1212 ②] 몸이 못 한 몫(켬 · 몸 갈래만)
-  if (T1224_ECON_FARM) {   // ★[T1224] 몸 없는 econ 농부(끔 = 이 블록 없음)
+  if (T1224_ECON_FARM && !_cut) {   // ★[T1224] 몸 없는 econ 농부(끔 = 이 블록 없음) · ★[T1243] 걷음
     const _gh = Math.max(0, (((vil.econ && vil.econ.counts && vil.econ.counts.farmer) | 0) - farmerN));
     const _per = _t1221On() ? _t1221DayS() : _lifeTasksPerFarmerDay();
     _t1224Stat.vilDays++;
     if (_gh && _body && T1212_FARM_REST) { _restN += _gh; _restB += _gh * _per; _t1224Stat.ghost += _gh; _t1224Stat.ghostBudget += _gh * _per; _t1224Stat.body++; }
     else if (_gh && !_body) { farmerN += _gh; _t1224Stat.ghost += _gh; _t1224Stat.ghostBudget += _gh * _per; _t1224Stat.batch++; }
   }
-  if (_body && T1212_FARM_REST) {
+  if (_body && T1212_FARM_REST && !_cut) {   // ★[T1243] 걷음
     const per = _t1221On() ? _t1221DayS() : _lifeTasksPerFarmerDay();   // ★[T1221] 켬 = 하루 낮 초 · 몸이 한 일도 초로 센다(`_t1212Note`)
     for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (!p || p.simJob !== 'farmer') continue;
       const did = p._t1212N || 0; p._t1212N = 0;
@@ -11444,12 +11450,13 @@ function _lifeHeadlessDay(vil) {
     _t1212Rest.days++; _t1212Rest.restBudget += _restB;
     if (_restN) _t1212Rest.batchClear += _lifeClearDay(vil, _restN);
   }
-  if (!_body) _lifeClearDay(vil, farmerN);
+  if (!_body && !_cut) _lifeClearDay(vil, farmerN);   // ★[T1243] 걷음
   // ② 신축 — 크루 인일=단계(실걸음과 동일 속도). 완공 시 _lifeCompleteHouse가 실체화(집·마당·침대 명부)
   //   ★[T400] 켬이면 이 절은 **안 돈다**(호출 0) — 집은 `_t400BuildDay`(자재를 나르는 크루)가 모든 마을에서 올린다(관측자 무관).
   if (vil._site && !_lifeEcon().T400_BUILD_ACT) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }
   // ③ 작물 — `lifeFarmDay` 정본 하나(아래). 계측기도 **이 함수를 부른다**(사본 0 · T117).
-  if (!_body) lifeFarmDay(vil, _farmDay(vil, day), farmerN);   // ★[T1212 ①] 밭 날(끔 = `day` 그대로)
+  if (_cut) { /* ★[T1243] 몸만 — 일괄 0 */ }
+  else if (!_body) lifeFarmDay(vil, _farmDay(vil, day), farmerN);   // ★[T1212 ①] 밭 날(끔 = `day` 그대로)
   else if (T1212_FARM_REST && _restB > 0) _t1212Rest.batchTasks += lifeFarmDay(vil, _farmDay(vil, day), 0, null, _restB);   // ★[T1212 ②] 몸이 못 한 몫
   vil._hlDay = day;   // lifeDebug 노출용(결산 도장)
 }
@@ -11472,6 +11479,33 @@ const _T1221_HA_H = { prep: 300, sow: 80, weed: 350, harvest: 210, thresh: 75 };
 const _T1221_CLEAR_M2_H = (5000 * 0.09290304) / (3 * 4);
 const _t1221Stat = { budgetS: 0, usedS: 0, tasks: 0, byKind: {}, clearS: 0, bodyS: 0, days: 0 };
 function _t1221On() { const E = _lifeEcon(); return !!(E && E.T1221_FARM_LABOR); }
+// ★★[T1243] 밭 세계 한 손잡이 — econ 이 정본(`T1243_FARM_ON`). `_t1243Live` = 몸을 걷기는 존이 붙은 판(서버 — `zoneAwake` 주입).
+// ★[T1243] 게임 1분의 실 ms = 하루 길이 ÷ 1,440(라이브 하루 1,440,000 ms ⇒ 1,000 · 판 자 250 ms ⇒ 0.17) — T1221 몸 머묾 · 개간이 "실초 = 게임분"을 1,000 ms 로 박아 판 자 하루에서 일 하나가 2,280날이 됐다(보고 §0).
+function _t1243MinMs() { return ((state.dayMs > 0) ? state.dayMs : 1440000) / 1440; }
+function _t1243On() { const E = _lifeEcon(); return !!(E && E.T1243_FARM_ON); }
+function _t1243Live() { return !!(state.deps && typeof state.deps.zoneAwake === 'function'); }
+const _t1243Stat = { cutDays: 0, cutAsleep: 0, seeded: 0, seedFood: 0, seedUnits: {} };   // 계측 전용(회계 아님)
+// ★★[T1243 ⓒ · ★재민 11-09 족보 796] **NPC 마을 첫 곳간 = 지난해 곡식.** 서버 첫 시작(`econ_state` 없는 행 — 재시작 · 이어받기는 복원 갈래라 안 닿는다)에서만.
+//   양 = econ 창설 곳간 그대로(`createVillage` — 사람 × `seedFoodDays(bornDay)` = `crops.daysToFirstHarvest` · 겨울 창이면 다음 수확까지 · 새 수 0).
+//   품목 = 그 마을 밭 철 작물(작물 정본 `villageCropPick` — 밭 두 구획 · 열두 달 · 청동기 묶음) 가운데 식량 값 > 0 인 것 · 이름순 · 사람-날을 고르게 나눠
+//   낱개 = 몫 ÷ 그 작물 낱개 식량 값(econ `t368FoodPer` — 거둔 식량과 같은 값 · 사본 0). 부패는 곳간 품목 그대로. 플레이어 마을은 `initialPop: 0` 이라 0 이다.
+//   ⚠작물 0(그 자리 밭에 심을 철 작물이 없다)이면 종전 `food` 그대로 둔다(계측 `noCrop`).
+function _t1243Seed(ev, dbId) {
+  if (!_t1243On() || !ev || !ev.storage) return 0;
+  const E = _lifeEcon(), C = _Crops(), food = +ev.storage.food || 0;
+  if (!(food > 0) || !C || !E || typeof E.t368FoodPer !== 'function') return 0;
+  _t368Attach({ econ: ev });
+  const ids = new Set();
+  for (let mo = 1; mo <= 12; mo++) for (const par of [0, 1]) { const id = C.villageCropPick(dbId | 0, '밭', mo, par); if (id) ids.add(id); }
+  const crops = [...ids].filter((id) => E.t368FoodPer(ev, id) > 0).sort();
+  if (!crops.length) { _t1243Stat.noCrop = (_t1243Stat.noCrop || 0) + 1; return 0; }
+  const share = food / crops.length;
+  ev.storage.food = 0;
+  for (const id of crops) { const u = share / E.t368FoodPer(ev, id); ev.storage[id] = (ev.storage[id] || 0) + u; _t1243Stat.seedUnits[id] = (_t1243Stat.seedUnits[id] || 0) + u; }
+  ev._t1243Seed = { food, crops };
+  _t1243Stat.seeded++; _t1243Stat.seedFood += food;
+  return food;
+}
 function _t1221Ha() { const C = _Crops(); return ((C && C.FIELD_CELL_M2) || 1) / 10000; }
 function _t1221Cost(t) {   // 칸 일 하나의 초(= 게임 분) — 5 수확 · 4 방제 · 3 물대기 · 2 파종 · 1 김매기
   const H = _T1221_HA_H, ha = _t1221Ha();
@@ -15823,7 +15857,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     _lifeAct(npc, t.k === 'clear' ? '개간' : '건축');
     npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py;
     const dayMs = state.dayMs || 600000;
-    if (t.k === 'clear' && t.prog >= (_t1221On() ? _t1221ClearS() * 1000 : dayMs / LIFE_CLEAR_PDAY)) {   // ★[T1221 ⓪] 켬 = 칸 개간 시간(실초 = 게임분)
+    if (t.k === 'clear' && t.prog >= (_t1221On() ? _t1221ClearS() * dayMs / 1440 : dayMs / LIFE_CLEAR_PDAY)) {   // ★[T1221 ⓪] 켬 = 칸 개간 시간(실초 = 게임분)
       _lifeLiveFarmTile(vil, t.cx, t.cy, t.f === '밭' ? 'dryfield' : 'farmland');
       if (npc.simJob === 'farmer') _t1212Note(npc, _t1221On() ? _t1221ClearS() : 1);   // ★[T1212 ②] 몸이 한 개간 칸(그날 몫 · ★T1221 켬 = 초)
       vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); npc._lifeTask = null;
@@ -15872,7 +15906,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         const _ok = _lifeDoTask(vil, npc, k, _fd);
         if (_ok) _t1212Note(npc, _L ? _c : 1);   // ★[T1212 ①] 밭 날 · ② 몸이 한 일(★T1221 켬 = 초)
         vil._cropClaim.delete(k); npc._farmK = null;
-        npc._jobT = (_L && _ok) ? now + _c * 1000 : now + 9000 + (_pidHash(npc.pid) % 7) * 1500;   // ★[T1221] 켬 = 일 시간만큼 그 칸에 머문다
+        npc._jobT = (_L && _ok) ? now + _c * _t1243MinMs() : now + 9000 + (_pidHash(npc.pid) % 7) * 1500;   // ★[T1221] 켬 = 일 시간만큼 그 칸에 머문다
         if (_L && _ok) _t1221Stat.bodyS += _c;
         // ★[곳간②] 짐이 상한에 닿으면 곳간으로 운반(자리 없으면 false → 기존 흐름 그대로)
         if (_handFull(npc) && _granGo(vil, npc, false)) { npc._jobT = 0; return true; }   // ★[T316] 칸 문턱 ∨ kg 상한(먼저 걸리는 쪽)

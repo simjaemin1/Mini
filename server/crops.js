@@ -369,7 +369,8 @@ function daysToFirstHarvest(fromDay, maxScanDays) {
   const cap = Math.max(1, maxScanDays || 900);
   for (let p = d0; p < d0 + cap; p++) {
     const mo = monthOf(p);
-    const cand = [...new Set([...sowableMonth('논', mo), ...sowableMonth('밭', mo)])].sort();
+    let cand = [...new Set([...sowableMonth('논', mo), ...sowableMonth('밭', mo)])].sort();
+    if (T1243_FARM_ON) cand = cand.filter((id) => T1201_BRONZE_SET.has(id));   // ★[T1243 ⓒ] 켬 = 마을이 실제로 심는 작물(청동기 묶음)의 첫 수확 — 창설 곳간 · 고르게 주기가 이 날을 읽는다(끔 = 글자 그대로)
     if (!cand.length) continue;                       // ⓐ 겨울 — 심을 수 있는 날까지 굴러간다
     const rd = [];
     for (const id of cand) { const r = readyDay(id, p, cap); if (r != null) rd.push(r - d0); }
@@ -404,7 +405,9 @@ function waterMult(id, supply) {
 //     미확인 작물: 같은 분류(`group`)의 확인 작물(곡물 → 조 · 콩류 → 콩), 분류에 없으면 조를 잡고, 작물 표가 두 작물에 준 kg 비(등급 × 낱개 무게)로 잇는다
 //       (등급은 같은 표 안의 상대 값이라 비로는 쓴다 — 새 수 0).
 //   ⚠한 정본: 서버 생활층 마을 밭(`villages._t368Item`) · 플레이어 밭(`zone.js` 다섯 자리) · 랩(번들 · 인라인)이 모두 이 함수를 부른다.
-const T1215_FIELD_M2 = (typeof process !== 'undefined' && process.env) ? process.env.T1215_FIELD_M2 === '1' : false;
+// ★[T1243] 밭 세계 한 손잡이(econ `T1243_FARM_ON` 과 같은 env 한 칸) — 켜면 아래 셋(`T1215_FIELD_M2` · `T1221_FARM_LABOR` · `T1201_BRONZE_CROPS`)이 켜진다 · 끔 = 각 손잡이 글자 그대로.
+const T1243_FARM_ON = (typeof process !== 'undefined' && process.env) ? process.env.T1243_FARM_ON === '1' : false;
+const T1215_FIELD_M2 = ((typeof process !== 'undefined' && process.env) ? process.env.T1215_FIELD_M2 === '1' : false) || T1243_FARM_ON;
 const FIELD_CELL_M2 = 250;
 const T1215_KG_HA = { foxtail_millet: 650, millet: 650, rice: 1000, soybean: 760 };
 const _T1215_REF = { '곡물': 'foxtail_millet', '콩류': 'soybean' };
@@ -425,7 +428,7 @@ function kgHaSrcOf(id) { return T1215_KG_HA[id] != null ? T1215_KG_HA[id] : null
 //     콩 760 ~ 760 — 범위 미확인(현대 1967 ~ 71 평균 하나 · JIRCAS).
 //   마을 자리 = 그 마을 비옥도(`land.fertility`)의 세계 안 순위(0 = 가장 척박 · 1 = 가장 비옥 — 부르는 쪽이 낸다 · 새 수 0).
 //   미확인 작물은 T1215 와 같은 다리(같은 분류 확인 작물 × 작물 표 kg 비)로 양 끝을 잇는다.
-const T1221_FARM_LABOR = (typeof process !== 'undefined' && process.env) ? process.env.T1221_FARM_LABOR === '1' : false;
+const T1221_FARM_LABOR = ((typeof process !== 'undefined' && process.env) ? process.env.T1221_FARM_LABOR === '1' : false) || T1243_FARM_ON;
 const T1221_KG_HA = { foxtail_millet: [500, 800], millet: [500, 800], rice: [320, 1130], soybean: [760, 760] };
 function cellKgAt(id, fert01) {   // 칸 하나 한 번 수확의 kg — 비옥 자리(0 ~ 1)를 고증 범위에 놓는다(물 · 발아율 앞)
   const c = get(id); if (!c) return 0;
@@ -550,7 +553,7 @@ function sowableMonth(field, month) {
 //     벼(흔암리 · 송국리 탄화미) · 여의곡 율무(Job's tears). 이 열 가지 밖(상추 · 오이 · 가지 · 배추 · 무 · 마늘 …)은 청동기 출토 기록이 없다.
 //   ⚠고르는 산수 · 시드 · 분담(논 1 · 밭 2)은 그대로다(후보 목록만 준다 · 새 수 0). 그 달 후보가 0 이면 `null`(종전처럼 안 심는다).
 //   ⚠플레이어 밭 · 야생 채종 · 첫 수확일(`daysToFirstHarvest`)은 안 건드린다(`sowableMonth` 무변). 끄면 이 함수 글자 그대로.
-const T1201_BRONZE_CROPS = (typeof process !== 'undefined' && process.env) ? process.env.T1201_BRONZE_CROPS === '1' : false;
+const T1201_BRONZE_CROPS = ((typeof process !== 'undefined' && process.env) ? process.env.T1201_BRONZE_CROPS === '1' : false) || T1243_FARM_ON;
 const T1201_BRONZE_SET = new Set(['barley', 'foxtail_millet', 'sorghum', 'millet', 'soybean', 'wheat', 'azuki', 'barnyard_millet', 'rice', 'adlay']);
 function villageCropPick(seed, field, mo, par) {
   const cand = T1201_BRONZE_CROPS ? sowableMonth(field, mo).filter((id) => T1201_BRONZE_SET.has(id)) : sowableMonth(field, mo);
@@ -606,7 +609,7 @@ module.exports = {
   keepDaysOf, seedKeepDaysOf, hungerOf, tastyOf, growDaysOf, kgOf, koOf, emojiOf,
   T594_CROP_CAL, calDaysOf,   // ★[T594] 작물 철 고증 — 손잡이 · 고증 활동일(순수 유도 · 표에 없으면 null)
   seasonOfDay, sowSeasons, canSowOn, sowableIn, sowableOn, wildSeedAt, WILD_SEED_CHANCE,
-  monthOf, sowMonthsOf, fitsField, sowableMonth, villageCropPick, T1201_BRONZE_CROPS, T1201_BRONZE_SET, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
+  monthOf, sowMonthsOf, fitsField, sowableMonth, villageCropPick, T1201_BRONZE_CROPS, T1201_BRONZE_SET, T1243_FARM_ON, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
   lifecycleOf, isPerennial, isWinterCrop, LC_WINTER, LC_PERENNIAL,
   dormantAt, vernalDay, VERNAL, CARE_PAUSE, PER_DORMANT, T1041_CROP_MEMO, t1041Stat: () => Object.assign({ on: T1041_CROP_MEMO }, _t1041Stat), _grownDays0,   // ★[T1041] 활동일 · 계절 기억 손잡이(하네스가 읽는다) · ★[T99] 휴면 술어 하나 · 춘화일 — 마을·플레이어가 같이 부른다
   rainedOn, RAIN_WATER,   // ★[T112] 비 온 날은 물 준 날 — 상태기 셋이 같이 부른다
