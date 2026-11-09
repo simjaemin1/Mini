@@ -1962,8 +1962,8 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
   const WW = require(path.join(ROOT, 'server', 'walk-wasm.js')).create({ zw: ZW, zh: ZH, iceN: true, iceS: true, iceBand: ICE, speed: 64,
     terrMiss: (x, y) => terr0(x, y), wallQ: (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy) });
   const mkPrePost = (players, W, resList) => new Function('players', '_t316WalkAlways', 'isPositionActive', 'qtResources', '_wwRes', '_wwList', '_wwSeq', '_wwCode', '_WW', '_walk', '_wwOn', '_wwStat',
-    'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', 'T585_WALK_STAT', '_t585WalkCount', ...T672P, PRE + '\n' + ISS + '\n' + POST + '\nreturn { _wwPre, _wwPost };')(
-    players, () => true, () => true, {}, resList, [], [], [], WW, W, true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1, false, () => {}, ...t672A(false));   // ★[T585] 개울 ×1 · 걸음 관측 끔
+    'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', 'T585_WALK_STAT', '_t585WalkCount', 'T1241_DES', ...T672P, PRE + '\n' + ISS + '\n' + POST + '\nreturn { _wwPre, _wwPost };')(
+    players, () => true, () => true, {}, resList, [], [], [], WW, W, true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1, false, () => {}, false, ...t672A(false));   // ★[T1241] 사건 갈래 끔(제품 기본 — 앞문 글자의 거름 한 줄이 묻는 이름)   // ★[T585] 개울 ×1 · 걸음 관측 끔
   // 주민 — 뭍·물 안(탈출)·빙하 곁·존 끝(클램프)·길 배속
   const mkNpcs = (N, seed) => { _s = seed; const a = []; for (let i = 0; i < N; i++) {
     const k = i % 10; let x = 400 + rnd() * (ZW - 800), y = 1600 + rnd() * (ZH - 3200);
@@ -2029,8 +2029,8 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
       P.push({ pid: 'h' + i, isNpc: true, x: qx + 1, y: qy, vx: -30, vy: 0, floor: 0 });   // −30px/s × 1/30s = −1px(바깥에서 반경 끝으로)
       want.push(!(Math.hypot(RK.x - qx, RK.y - qy) < 20)); }
     const { _wwPre } = new Function('players', '_t316WalkAlways', 'isPositionActive', 'qtResources', '_wwRes', '_wwList', '_wwSeq', '_wwCode', '_WW', '_walk', '_wwOn', '_wwStat',
-      'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', ...T672P, PRE + '\n' + ISS + '\nreturn { _wwPre };')(
-      new Map(P.map((p) => [p.pid, p])), () => true, () => true, {}, [RK], [], [], [], WH, mkWalk(), true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1, ...t672A(false));   // ★[T585] 개울 ×1
+      'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', 'T1241_DES', ...T672P, PRE + '\n' + ISS + '\nreturn { _wwPre };')(
+      new Map(P.map((p) => [p.pid, p])), () => true, () => true, {}, [RK], [], [], [], WH, mkWalk(), true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1, false, ...t672A(false));   // ★[T1241] 사건 갈래 끔   // ★[T585] 개울 ×1
     const n = _wwPre(1 / 30);
     let agree = 0, blockedN = 0, startOpen = 0;
     for (let i = 0; i < n; i++) { const moved = WH.X[i] !== P[i].x; if (moved === want[i]) agree++; if (!want[i]) blockedN++;
@@ -2059,10 +2059,10 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
     const mkCut = (players, W, resList, WWx, on, still) => { const seq = [], code = [], tc = t672A(on)[4];
       const f = new Function('players', '_t316WalkAlways', 'isPositionActive', 'qtResources', '_wwRes', '_wwList', '_wwSeq', '_wwCode', '_WW', '_walk', '_wwOn', '_wwStat',
         'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', 'T585_WALK_STAT', '_t585WalkCount',
-        'T672_WALK_CUT', '_wwStill', '_wwStill0', '_wwNoRes', '_wwTC', '_wwVerify',
+        'T672_WALK_CUT', '_wwStill', '_wwStill0', '_wwNoRes', '_wwTC', '_wwVerify', 'T1241_DES',
         'let _wwResGen = 0;\n' + PRE + '\n' + (still || ISS) + '\n' + POST + '\n' + SPOST + '\nreturn { _wwPre, _wwPost, _wwStillPost, bump: () => { _wwResGen++; } };')(
         players, () => true, () => true, {}, resList, [], seq, code, WWx, W, true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1, false, () => {},
-        !!on, [], [], [], tc, false);
+        !!on, [], [], [], tc, false, false);   // ★[T1241] 사건 갈래 끔(마지막 인자)
       return Object.assign(f, { seq, code, tc }); };
     const mkWW = () => require(path.join(ROOT, 'server', 'walk-wasm.js')).create({ zw: ZW, zh: ZH, iceN: true, iceS: true, iceBand: ICE, speed: 64,
       terrMiss: (x, y) => terr0(x, y), wallQ: (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy) });

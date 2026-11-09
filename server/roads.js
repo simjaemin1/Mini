@@ -566,4 +566,5 @@ function dayTick() {
 // ★[T566] 다져진 길 셀 수 · 키(읽기만 — 존의 부팅 걷기 · 자)
 function pavedCount() { return S.ready ? S.paved.size : 0; }
 function pavedKeys() { return S.ready ? [...S.paved] : []; }
-module.exports = { setEconDay, dayTick, roadDayPerf, retouchCell, unpaveSoonKeys, init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
+module.exports = { SPD,   // ★[T1241] 사건 시뮬 걸음 토막이 칸 빠르기를 읽는다(도장 없이 — `levelOf` 등급 → 배율 · 읽기만)
+  setEconDay, dayTick, roadDayPerf, retouchCell, unpaveSoonKeys, init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
