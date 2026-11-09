@@ -15,6 +15,7 @@
 //
 // 실행: node scripts/test-t860-catch-dry.js   (존 안 띄움 · 약 1분)
 'use strict';
+if (process.env.T1205_HAPPY == null) process.env.T1205_HAPPY = '0';   // ★[T1240] T1205 행복 식 켬 기본(land1053 `cb8577b9` 착지) — 켬이면 이 판 세계의 잡이가 갈려 ⑤ 전제(보존식이 실제로 선다 · 끔 0.00 → 켬 0.00)가 안 선다 · 재는 것은 잡은 날 말리기지 행복이 아니다 — t924 · t988(T1220-K1)과 같은 까닭으로 끔(단언 무변)
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
