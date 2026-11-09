@@ -7,7 +7,7 @@
 //   이 하네스는 그 칸이 **표 그대로** 옮겨졌는지, 켜면 **없음 = 안 남**이 세 자리(첫 스폰 · DB 적재 · 야생 블록)에서
 //   실제로 서는지, 끄면 **옛 줄 그대로**인지를 잰다.
 //
-//  ① 표 = T607 그대로 — 고증 문서 ① 표를 **읽어서** 칸마다 대조(사본 0) · 문서 18줄 = 표 줄 9 + 새 종 후보 8 + 나중 존 1
+//  ① 표 = T607 그대로 — 고증 문서 ① 표를 **읽어서** 칸마다 대조(사본 0) · 문서 18줄 = 표 줄 10 + 새 종 후보 7 + 나중 존 1(★[T1237] 고라니 → 표 줄)
 //     (★[T636 · 재민 10-04] 곰 = 반달가슴곰 줄 · 불곰은 나중 존 `FAUNA_LATER`)
 //  ② 끔 = 옛 줄 — 손잡이 없음이면 모든 biome × 존에서 목록이 옛 함수(존 없음)와 **같은 배열** · `faunaOut` 늘 false
 //     · 배선(zone.js 첫 스폰 · DB 적재 · wildlife.js 5a)이 손잡이 뒤에 있다 · 블록(B)은 무수정
@@ -127,8 +127,12 @@ say('\n① 표 = T607 그대로 — 고증 문서 ① 표를 읽어 칸마다 �
   }
   pre(h > 0 && rows.length > 0, '문서 ① 표를 찾았다', `${rows.length}줄`);
   const mine = [...A.ZONE_FAUNA, ...A.FAUNA_NEW, ...A.FAUNA_LATER];
-  ok(rows.length === 18 && mine.length === 18, '★① 문서 18줄 = 표 줄 9 + 새 종 후보 8 + 나중 존 1(불곰 · T636)',
+  ok(rows.length === 18 && mine.length === 18 && A.ZONE_FAUNA.length === 10 && A.FAUNA_NEW.length === 7 && A.FAUNA_LATER.length === 1,
+    '★① 문서 18줄 = 표 줄 10 + 새 종 후보 7 + 나중 존 1(불곰 · T636) — ★[T1237] 고라니가 새 종 후보에서 표 줄로(게임 id water_deer)',
     `문서 ${rows.length} · 표 ${A.ZONE_FAUNA.length} + 새 종 ${A.FAUNA_NEW.length} + 나중 존 ${A.FAUNA_LATER.length}`);
+  const wdRow = A.ZONE_FAUNA.find((r) => r.id === 'water_deer');
+  ok(!!wdRow && wdRow.t607 === '고라니(물사슴)' && !A.FAUNA_NEW.some((r) => /고라니/.test(r.t607)) && A.ANIMALS.water_deer && A.ANIMALS.water_deer.ko === '고라니',
+    '★① [T1237] 고라니 줄 = 표 줄 하나(id water_deer · 카탈로그 이름 고라니) · 새 종 후보엔 없다', wdRow ? `${wdRow.hb}/${wdRow.np}` : '없음');
   const miss = [], bad = [];
   for (const r of rows) {
     const m = mine.filter((x) => x.t607 === r.name);
@@ -142,7 +146,7 @@ say('\n① 표 = T607 그대로 — 고증 문서 ① 표를 읽어 칸마다 �
     '① 표 줄의 id 는 전부 카탈로그의 야생 종이다(유령 0 · 겹침 0)', ids.join(','));
   const kos = new Set(Object.values(A.ANIMALS).map((m) => m.ko));
   const ghost = A.FAUNA_NEW.filter((r) => kos.has(r.t607.split(/[ (/]/)[0]));
-  ok(ghost.length === 0, '① 새 종 후보 8은 카탈로그에 이름이 없다(게임에 없는 종 — 켬에서도 안 넣는다)', ghost.map((r) => r.t607).join(',') || '0');
+  ok(ghost.length === 0, '① 새 종 후보 7은 카탈로그에 이름이 없다(게임에 없는 종 — 켬에서도 안 넣는다)', ghost.map((r) => r.t607).join(',') || '0');
   const bearRow = A.ZONE_FAUNA.find((r) => r.id === 'bear');
   ok(!!bearRow && bearRow.t607 === '반달가슴곰' && !ids.includes('ibex'), '★① [T636] 곰 = 반달가슴곰 줄(재민 10-04) · 아이벡스는 표에 줄이 없다(T607 재민 칸 → 지금 값)', bearRow ? `${bearRow.hb}/${bearRow.np}` : '없음');
   ok(A.FAUNA_LATER.length === 1 && A.FAUNA_LATER[0].t607 === '불곰' && !kos.has('불곰'), '① [T636] 불곰은 나중 존 줄 하나 — 게임 id 없음(지금 존에 안 남)');

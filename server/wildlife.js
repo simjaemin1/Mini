@@ -400,6 +400,125 @@ let _warProxyPool = null;           // §4-4 P3: 실체 전쟁 병사 위협 프
 const _stats = { ms: 0, peak: 0, ticks: 0, spawned: 0, deaths: 0, hits: 0, charges: 0, flees: 0, maxSpd: {} };
 let _lastStatLog = 0;
 
+// ═══ [C] ★[T1237 · ★재민 11-09 "새 종"] 고라니 — 손잡이 `T1237_WATER_DEER`('1' 만 켬 · 끔 기본 · 부팅 때 읽는다) ═══
+//   ★무엇: 사슴(🦌 → `deer` · 꽃사슴 쪽) 자리는 그대로 두고 **고라니가 제 자리(물가)에서 따로** 선다. 블록(B)은 **한 글자도 안 고친다** —
+//     블록의 `updateMobs(s, step)` 는 상태 `s` 하나를 받는 함수다 ⇒ 고라니는 **둘째 상태 `SW`** 로 같은 함수를 한 번 더 부른다(규칙 사본 0 ·
+//     풀뜯기 · 경계 · 도주 · 지침 · 출혈 · 부상 눕기 · 잠 · 무리 웨이포인트 · 분리가 사슴과 같은 줄이다 — "같은 몸 · 같은 규칙").
+//   ★왜 둘째 상태인가(한 상태에 섞으면): 블록의 초식 마릿수 식(`preyN` ↔ 숲 서식 `target` · 넘치면 아무 초식이나 지운다)이 고라니를 사슴 몫으로 센다 —
+//     ⓐ 고라니가 서는 만큼 사슴 · 멧돼지 · 토끼가 덜 서고(카드 "지금 사슴과 겹치지 않게"의 반대) ⓑ 물가 고라니가 넘치면 숲 사슴이 지워진다(서로 밀어내기).
+//     둘째 상태면 마릿수 · 서식 · 무리 번호 · 웨이포인트가 따로다 ⇒ 같은 칸에 둘이 서도 서로의 몫을 안 건드린다(보고 §6 코너 케이스 표).
+//   ★둘째 상태가 다른 것 셋(이 판 동안만 · `finally` 로 되돌린다):
+//     ① 먹잇감 섞음 `MOB_PREY` = [고라니] — 블록 스폰이 고르는 종(사슴3 · 멧돼지1 · 토끼2 → 고라니). 내보내는 `preyIds`(T1195)는 모듈 적재 때 이미 지었다(무변).
+//     ② 숨을 곳 `TR.forest` = 고라니 칸(물가 ∪ 숲) — 블록이 숲을 읽는 세 자리가 고라니에겐 "숨을 곳"이다: 서식 칸 거름 · 도주 방향(숲 쪽 먼저) · 잠자리.
+//        서식 칸(스폰 · 웨이포인트) = 물가(`chunk._wildClass` 'riverside' — `decideVillageType` 의 220px 네 방향 물 · 사본 0) ∩ 마을 100m(`MOB_AV0`) 밖(숲 밴드와 같은 규칙).
+//        습지 · 갈대 술어는 세계에 없다(T450 머리말) → 물가 하나(회부).
+//     ③ 위협 = 사람 · NPC · 병사 프록시를 **그대로 비춘 그림자**(같은 자리 · 같은 소음 칸 · 일은 'idle' — 사냥꾼 실행층(287행)은 이 판에서 안 돈다 ·
+//        실행은 첫 판이 이미 했다) + 첫 판의 맹수(늑대 · 호랑이 — 사람과 같은 무게 1). 둘째 상태엔 맹수가 안 선다: 지킴이 둘(🐺 · 🐯 · 굴속 `hide` ·
+//        무한 대기 · 그림자 0)이 블록의 맹수 출현 문(`!wolfN` · `!tigN`)을 닫는다(굴림 0).
+//   ★고라니 값(랩 단위 · 새 수 = 출처 · 셈 · 보고 §1 고증 표):
+//     hp 2 = 카탈로그 같은 몸 칸(small) 가운데 21.5 → ÷ HP_SCALE · spd 5.4 = 질주 14.1 m/s(Garland 1983 곡선식 · 18.5kg — 종 실측 없음) ÷ 블록 질주 배 2.6 ·
+//     flee 36 = 도주 개시 평균 36m(Cooke & Farrell 1981 · 야생 22번) · alert 44 = 36 × 쳐다봄 23m ÷ 도주 19m(Tian · 둘 다 그 연구의 평균) ·
+//     grp [1, 2] = 혼자 · 짝(발정기 짝 · 어미와 새끼 — Deer Initiative · 위키 "solitary") · r 0.59 = 사슴 r 1 × (18.5 ÷ 88.5)^⅓(몸 크기 비 · 같은 꼴 몸) ·
+//     slp [0.42, 0.67] = 멧돼지 칸 그대로(낮 쉼) — 북한산 무인 카메라(정상민 · 신금철 · 김의경 2025 『농업생명과학연구』 59(5) 111~118): 숲에서 밤 몫이 고라니 70.27% ·
+//       멧돼지 70.85%(거의 같다 · 습지 83.64 · 77.03%) · 두 종 다 해 진 직후 · 해 뜨기 전 봉우리. (Δ 0.92 · 0.93 은 초록에 종마다 따로 적힌 값 — 두 종 사이 겹침이 아니다 ·
+//       종 사이 겹침은 미확인) · 백과(2024) "낮에도 하지만 교란이 있는 곳에서는 주로 밤" ·
+//     col = 사슴 색(랩 그림 전용 · 서버 미사용) · atk 0 · brave 0(사람에게 대들지 않는다 — Tian "공격 반응 0").
+//   ★몸짓 칸 `_ps`(그림자 → 존 몹 칸 `ps` · 끔이면 안 선다): 1 = 엎드림(잠 · 숨을 곳에서 경계 — "덤불에 낮게 엎드려 버티다 마지막에 튄다" ·
+//     "뛰고 나서 조금 가서 엎드린다" — 보고 §1) · 2 = 풀 뜯기(풀뜯기 중 서 있는 때 `pause > 0`) · 0 = 그 밖(서기 · 걷기 · 뛰기는 클라가 속도로).
+//   ⚠끔 = 아래 함수들이 한 번도 안 불린다(훑기 · 재합성 · 틱 · 동기 자리마다 `if (T1237)` 하나) — 블록 굴림 · 그림자 · 로그 · 존 몹 칸 그대로.
+const T1237 = process.env.T1237_WATER_DEER === '1';
+const WD = '고라니';                // 랩 종 키(이모지가 없는 종 — 블록은 종 키를 MOB_DEF 조회 · 몇 종 비교에만 쓴다)
+const WD_DEF = { hp: 2, atk: 0, spd: 5.4, flee: 36, alert: 44, brave: 0, grp: [1, 2], pred: 0, col: '#cd9b63', r: 0.59, slp: [0.42, 0.67] };
+if (T1237) { MOB_DEF[WD] = WD_DEF; MAIN_TYPE[WD] = 'water_deer'; }
+const _wdSentinel = (type, gid) => ({ px: -99, py: -99, type, gid, hp: MOB_DEF[type].hp, tmp: 1, stam: 1, hun: 0, ang: 0, pause: 0, cd: 0, fcd: 0, cvo: 0, cvt: 0, flk: 0, st: 'hide', _hid: Infinity, _t1237Sentinel: 1 });
+const SW = { mobs: [_wdSentinel('🐺', -1), _wdSentinel('🐯', -2)], agents: [], gameRich: null, crop: new Map(), forestCells: [], huntCells: [], day: '', V: null, _gid: 1e9 };
+let _wdCov = null, _wdVer = 0, _wcF = null;
+const _wdAg = new WeakMap(), _wdPredPool = [];
+const _wdStats = { runs: 0, skips: 0, cut: 0, maxN: 0, lastN: 0, habitat: 0, scanned: 0, riverside: 0 };
+/** 그 자리(px)의 야생 서식 — 호스트가 주면 그것(하네스의 가짜 땅), 아니면 정본 `chunk._wildClass`(사본 0). */
+function _wdClassOf(px, py) {
+  if (!_wcF) { const C = require('./chunk'); _wcF = (typeof H.wildClass === 'function') ? H.wildClass : ((x, y) => C._wildClass(H.ZONE_ID, x, y)); }
+  return _wcF(px, py);
+}
+/** 고라니 훑기 — 첫 판 훑기(`_stepScans` · 숲 · 바위)가 끝낸 청크를 **따로** 한 줄씩 · 숨을 곳 격자(물가 ∪ 숲 — 숲은 첫 판이 이미 잰 `_forM`)와
+ *  서식 칸(물가 ∩ 마을 100m 완충 밖 — 숲 밴드와 같은 완충 규칙).
+ *  ★몫 = 첫 판 훑기와 **한 주머니 4ms**(같은 수 · 새 수 0): `t0` = 이 틱 첫 판 훑기를 열기 전 시각 — 첫 판이 쓰고 남은 만큼만 돈다
+ *    (첫 판이 4ms 를 다 쓴 틱엔 0줄 · 첫 판 큐가 비면 4ms 통째). 실존 판(보고 §6 µs 표 — 훑는 동안 고라니 몫을 따로 두면 그 틱이 4 → 8ms) 뒤 고쳤다.
+ *  ⚠첫 판 훑기 안에 끼우지 않는다 — 그 고리는 벽시계 4ms 로 줄을 끊는다(칸마다 일이 늘면 판마다 끝내는 줄 수가 바뀌어 사슴 서식이 서는 판이 밀린다 ·
+ *    하네스 ④ 가 잡은 그 자리). 첫 판이 먼저 제 4ms 를 다 돌고 나서 이 고리가 남은 시간만 본다 → 첫 판 줄 수 · 차례 그대로. 끝낸 청크가 있으면 true(→ 서식 재합성). */
+let _wdJob = null;
+function _t1237StepScans(keys, t0) {
+  const cc = H.chunkManager.chunkSize / 32, vils = _villageCells(), AV2 = MOB_AV0 * MOB_AV0;
+  let done = false;
+  while (Date.now() - t0 < 4) {
+    if (!_wdJob) {   // 다음 일감 = 첫 판이 끝냈고 고라니 몫이 아직 없는 활성 청크
+      for (const k of keys) { const e = _chunkForest.get(k); if (e && !e.wd) { const p = k.split('_'); _wdJob = { e, cx: +p[0], cy: +p[1], row: 0, wd: [] }; break; } }
+      if (!_wdJob) break;
+    }
+    const j = _wdJob, y = j.cy * cc + j.row;
+    if (y < NY) for (let x = j.cx * cc, xe = Math.min(NX, j.cx * cc + cc); x < xe; x++) {
+      const i = y * NX + x, riv = _wdClassOf(x * 32 + 16, y * 32 + 16) === 'riverside';
+      _wdCov[i] = (riv || _forM[i]) ? 1 : 0;
+      _wdStats.scanned++;
+      if (!riv) continue;
+      _wdStats.riverside++;
+      let inBuf = false;
+      for (const v of vils) { const dx = x - v.cx, dy = y - v.cy; if (dx * dx + dy * dy < AV2) { inBuf = true; break; } }
+      if (!inBuf) j.wd.push({ cx: x, cy: y });
+    }
+    if (++j.row >= cc) { j.e.wd = j.wd; _wdJob = null; done = true; }
+  }
+  return done;
+}
+/** 서식 재합성 — 숲 밴드 재합성(`_rebuildHabitat`)과 같은 때 · 같은 청크. */
+function _t1237Habitat(keys) {
+  const wc = [];
+  for (const k of keys) { const e = _chunkForest.get(k); if (e && e.wd) for (const c of e.wd) wc.push(c); }
+  SW.huntCells = wc; SW.forestCells = wc; SW._wild = null; _wdVer++;
+  _wdStats.habitat = wc.length;
+}
+/** 고라니 판 — 첫 판(사슴 · 멧돼지 · 토끼 · 맹수 · 사냥꾼) 뒤에 같은 블록 함수를 둘째 상태로 한 번. */
+function _t1237Tick() {
+  if (Animals.faunaOut('water_deer', H.ZONE_ID)) {   // [T622] 존 칸 — 열도는 고라니 '없음'(손잡이 켬일 때만 참) · 낳지도 않는다(5a 처럼 낳고 거두는 되풀이 0)
+    let cut = 0;
+    for (const lm of SW.mobs) if (lm.type === WD) { lm.rot = -1; if (lm._shadow) _dropShadow(lm); cut++; }
+    if (cut) { SW.mobs = SW.mobs.filter((lm) => lm.type !== WD); _wdStats.cut += cut; }
+    return;
+  }
+  let live = 0;
+  for (const lm of SW.mobs) if (lm.type === WD) live++;
+  if (!live && !SW.huntCells.length) { _wdStats.skips++; return; }   // 뷰에 물가도 고라니도 없으면 판을 안 연다(굴림 0)
+  SW.agents.length = 0;
+  for (const pr of S.agents) {
+    let c = _wdAg.get(pr);
+    if (!c) { c = { job: pr.job, state: 'idle', home: pr.home || { cx: 0, cy: 0 }, _arm: 0 }; _wdAg.set(pr, c); }
+    c.job = pr.job; c.px = pr.px; c.py = pr.py; c.hp = pr.hp; c.sneak = pr.sneak; c._sp2 = pr._sp2; c._hold = pr._hold; c._esk = pr._esk || null; c._hsk = pr._hsk;
+    SW.agents.push(c);
+  }
+  let np = 0;
+  for (const m of S.mobs) {
+    if (m.st === 'dead' || m.st === 'hide') continue;
+    const D = MOB_DEF[m.type]; if (!D || !D.pred) continue;
+    let c = _wdPredPool[np]; if (!c) { c = { job: 'pred', state: 'idle', home: { cx: 0, cy: 0 }, _arm: 0, hp: 1 }; _wdPredPool[np] = c; }
+    c.px = m.px; c.py = m.py; np++;
+    SW.agents.push(c);
+  }
+  SW.gameRich = S.gameRich; SW.V = S.V; SW.day = S.day + '/' + _wdVer;
+  const keep = MOB_PREY.slice(), f0 = TR.forest;
+  MOB_PREY.length = 0; MOB_PREY.push(WD); TR.forest = _wdCov;
+  try { updateMobs(SW, 1 / H.TICK_HZ); }
+  finally { TR.forest = f0; MOB_PREY.length = 0; for (const t of keep) MOB_PREY.push(t); }
+  _wdStats.runs++;
+  let n = 0; for (const lm of SW.mobs) if (lm.type === WD && lm.st !== 'dead') n++;
+  _wdStats.lastN = n; if (n > _wdStats.maxN) _wdStats.maxN = n;
+}
+/** 몸짓 칸 — 1 엎드림 · 2 풀 뜯기 · 0 그 밖(머리말 ★몸짓 칸). */
+function _wdPose(lm) {
+  if (lm.st === 'sleep') return 1;
+  if (lm.st === 'alert') { const x = Math.floor(lm.px), y = Math.floor(lm.py); return (inG(x, y) && _wdCov[idx(x, y)]) ? 1 : 0; }
+  return (lm.st === 'graze' && lm.pause > 0) ? 2 : 0;
+}
+
 // ★어댑터 주입점: 랩 카메라 뷰 → 본체 '활성 청크 bbox'(셀). 블록 텍스트 무수정 — 함수 선언 바인딩 재할당.
 //   (랩 원본 _mobView도 전역 view/CELL을 typeof 가드로 읽는 주입 설계 — 본체에선 이 재바인딩이 그 주입.)
 _mobView = function () { return _viewRect; };
@@ -460,6 +579,7 @@ function _rebuildHabitat(keys) {
   S.huntCells = fc;
   S.forestCells = fc;
   S._wild = null; _setVer++;   // 서식지 재계산 트리거(블록 if(!s._wild) 경로) + _vfs 서명 무효화
+  if (T1237) _t1237Habitat(keys);   // ★[T1237] 고라니 서식 칸도 같은 때 같은 청크에서(끔 = 이 줄 안 돈다)
 }
 
 // 마을 완충(MOB_AV0/AV1) 기준점: 뷰 중심 최근접 마을(시뮬 마을 → 없으면 레거시 마을) — 랩은 단일 마을 설계라
@@ -631,10 +751,49 @@ function init(host) {
   //   미활성 영역은 0(=없음)으로 읽힘: LoS·숲 판정이 완화되는 fail-open — 몹은 뷰(활성 bbox) 안에만 존재해 영향 미미.
   TR.rock = _rockM;
   TR.forest = _forM;
+  if (T1237) { _wdCov = new Uint8Array(NX * NY); SW.gameRich = S.gameRich; _wcF = null; }   // ★[T1237] 숨을 곳 격자(물가 ∪ 숲 · 훑은 칸만 1) — 켬일 때만 짓는다
   // ★[T350] 흐름 주입 — 호스트가 주면 그걸, 안 주면 종전 그대로(`Math.random` · 랩·하네스 전용 가지)
   _rw = (typeof host.rng === 'function') ? host.rng : Math.random;
   _ready = true;
-  console.log(`[${host.ZONE_ID}] 🐾 wildlife ON — 동물 AI 블록(마을실험실 §4-4) 이식: 5종(🦌🐇🐗🐺🐯), 그리드 ${NX}×${NY}셀, dt=1/${host.TICK_HZ}유닛(1유닛=1초=1게임분)`);
+  console.log(`[${host.ZONE_ID}] 🐾 wildlife ON — 동물 AI 블록(마을실험실 §4-4) 이식: 5종(🦌🐇🐗🐺🐯)${T1237 ? ' + 고라니(T1237 · 둘째 상태)' : ''}, 그리드 ${NX}×${NY}셀, dt=1/${host.TICK_HZ}유닛(1유닛=1초=1게임분)`);
+}
+
+// 6) 의 몸통 — 랩몹 하나 → shadow 동기(+신규 스폰 로그·상태 전이 계측·사망/hide/디스폰 처리). ★[T1237] 두 상태(첫 판 `S` · 고라니 `SW`)가 같은 이 함수를 지난다
+//   (종전 6) 고리의 몸통 글자 그대로 — `continue` → `return` · 무리 마릿수를 세는 목록만 인자 `list`).
+function _syncLab(lm, liveSet, list) {
+  if (lm.st === 'dead') {
+    if (!lm._corpsed) {   // 랩 내부 사인(포식·돌진 반격 등) — 본체 사체 생성(도살 가능·💀 렌더)
+      lm._corpsed = 1; _stats.deaths++;
+      _dropShadow(lm);
+      try { H.spawnCorpse({ type: MAIN_TYPE[lm.type] || 'deer', x: lm.px * 32, y: lm.py * 32 }, null); } catch (e) {}
+    }
+    return;   // 사체는 랩에만 잔존(늑대 feed) — rot 소진 시 랩 필터가 정리
+  }
+  if (lm.st === 'hide') { if (lm._shadow) _dropShadow(lm); lm._sx = lm._sy = undefined; liveSet.add(lm); return; }   // 🐇 굴속 — 본체에선 사라짐(재등장 시 속도 측정 리셋)
+  const sh = lm._shadow || _makeShadow(lm);
+  sh.x = lm.px * 32; sh.y = lm.py * 32;
+  // 실측 속도 = 틱간 변위 × TICK_HZ (m/s). ※랩 내부 m._spd는 dt를 max(0.05,dt)로 나누는 '표시용 지표'라
+  //   dt=1/30에선 ×0.667 저평가(실제 이동량은 정확) — 브리지·속도 검증은 변위 실측을 쓴다.
+  const dxp = lm.px - (lm._sx !== undefined ? lm._sx : lm.px), dyp = lm.py - (lm._sy !== undefined ? lm._sy : lm.py);
+  lm._sx = lm.px; lm._sy = lm.py;
+  const rl = Math.hypot(dxp, dyp), rSpd = rl * H.TICK_HZ;
+  sh.vx = rl > 1e-9 ? (dxp / rl) * rSpd * 32 : 0; sh.vy = rl > 1e-9 ? (dyp / rl) * rSpd * 32 : 0;   // px/s(클라 facing)
+  H.setMobHp(sh, Math.max(1, Math.round(lm.hp * HP_SCALE)), 'wild'); lm._lsh = sh.hp;   // ★[T954] 존 몹 hp 는 존의 짐승 HP 문으로(조용한 낱말 · 하한 1 은 이 식 그대로)
+  H.chunkManager.updateMobChunk(sh);
+  liveSet.add(lm);
+  // 계측: 상태 전이(도주·돌진) + 종별 최고 실측 속도(검증: 🦌 질주 ≈13m/s=416px/s). <60 가드=텔레포트성 잡값 배제
+  if (rSpd > (_stats.maxSpd[lm.type] || 0) && rSpd < 60) _stats.maxSpd[lm.type] = rSpd;
+  if (lm.st !== lm._pst) {
+    if (lm.st === 'flee') _stats.flees++;
+    if (lm.st === 'charge' || lm.st === 'huff') { _stats.charges++; if (process.env.WILDLIFE_DEBUG) console.log(`[wl] ${lm.type} ${lm._pst || '?'}→${lm.st} @(${lm.px | 0},${lm.py | 0})`); }
+    lm._pst = lm.st;
+  }
+  if (!_gidSeen.has(lm.gid)) {   // 무리 스폰 로그(gid당 1회)
+    _gidSeen.add(lm.gid); if (_gidSeen.size > 800) _gidSeen.clear();
+    let n = 0; for (const o of list) if (o.gid === lm.gid) n++;
+    const hd = S.V ? Math.round(Math.hypot(lm.px - S.V.hall.cx, lm.py - S.V.hall.cy)) : -1;
+    console.log(`[${H.ZONE_ID}] 🐾 spawn ${lm.type}×${n} gid=${lm.gid} @(${lm.px | 0},${lm.py | 0})셀${hd >= 0 ? ` 마을거리 ${hd}m` : ''}`);
+  }
 }
 
 function tick(now) {
@@ -675,7 +834,9 @@ function tick(now) {
     _rebuildHabitat(keys);   // 이미 캐시된 청크 분으로 즉시 재합성(미완성분은 완성 시 재합성)
     _updateVillageAnchor();
   }
+  const _tS = T1237 ? Date.now() : 0;   // ★[T1237] 훑기 한 주머니(4ms)의 시작 — 켬만 시각 한 번(끔 = 이 틱 시각 읽기 그대로)
   if (_stepScans()) _rebuildHabitat(keys);   // 청크 완성분 반영 — 스폰 점진 개시
+  if (T1237 && _t1237StepScans(keys, _tS)) _t1237Habitat(keys);   // ★[T1237] 고라니 훑기 — 첫 판 훑기 뒤 따로 · 첫 판이 남긴 몫만(첫 판 줄 수 · 차례 무접촉)
   S.day = _dayI * 100000 + _setVer;   // _vfs 서명 재료(뷰·날짜 변화 시 서식 캐시 갱신)
   // 3) 사람(플레이어)+활성 NPC → agents 프록시. job:'hunter'(지각 가중 — 랩 소음 모델), state:'idle'(사냥 AI 미발동).
   S.agents.length = 0; _tickAgents.length = 0;
@@ -775,43 +936,12 @@ function tick(now) {
       _stats.arrowFx = (_stats.arrowFx || 0) + 1;
     }
   }
+  // 5c) ★[T1237] 고라니 판 — 첫 판 뒤 같은 블록 함수를 둘째 상태로(끔 = 이 줄 안 돈다 · 머리말 [C] T1237)
+  if (T1237) _t1237Tick();
   // 6) 랩몹 → shadow 동기 (+신규 스폰 로그·상태 전이 계측·사망/hide/디스폰 처리)
   const liveSet = new Set();
-  for (const lm of S.mobs) {
-    if (lm.st === 'dead') {
-      if (!lm._corpsed) {   // 랩 내부 사인(포식·돌진 반격 등) — 본체 사체 생성(도살 가능·💀 렌더)
-        lm._corpsed = 1; _stats.deaths++;
-        _dropShadow(lm);
-        try { H.spawnCorpse({ type: MAIN_TYPE[lm.type] || 'deer', x: lm.px * 32, y: lm.py * 32 }, null); } catch (e) {}
-      }
-      continue;   // 사체는 랩에만 잔존(늑대 feed) — rot 소진 시 랩 필터가 정리
-    }
-    if (lm.st === 'hide') { if (lm._shadow) _dropShadow(lm); lm._sx = lm._sy = undefined; liveSet.add(lm); continue; }   // 🐇 굴속 — 본체에선 사라짐(재등장 시 속도 측정 리셋)
-    const sh = lm._shadow || _makeShadow(lm);
-    sh.x = lm.px * 32; sh.y = lm.py * 32;
-    // 실측 속도 = 틱간 변위 × TICK_HZ (m/s). ※랩 내부 m._spd는 dt를 max(0.05,dt)로 나누는 '표시용 지표'라
-    //   dt=1/30에선 ×0.667 저평가(실제 이동량은 정확) — 브리지·속도 검증은 변위 실측을 쓴다.
-    const dxp = lm.px - (lm._sx !== undefined ? lm._sx : lm.px), dyp = lm.py - (lm._sy !== undefined ? lm._sy : lm.py);
-    lm._sx = lm.px; lm._sy = lm.py;
-    const rl = Math.hypot(dxp, dyp), rSpd = rl * H.TICK_HZ;
-    sh.vx = rl > 1e-9 ? (dxp / rl) * rSpd * 32 : 0; sh.vy = rl > 1e-9 ? (dyp / rl) * rSpd * 32 : 0;   // px/s(클라 facing)
-    H.setMobHp(sh, Math.max(1, Math.round(lm.hp * HP_SCALE)), 'wild'); lm._lsh = sh.hp;   // ★[T954] 존 몹 hp 는 존의 짐승 HP 문으로(조용한 낱말 · 하한 1 은 이 식 그대로)
-    H.chunkManager.updateMobChunk(sh);
-    liveSet.add(lm);
-    // 계측: 상태 전이(도주·돌진) + 종별 최고 실측 속도(검증: 🦌 질주 ≈13m/s=416px/s). <60 가드=텔레포트성 잡값 배제
-    if (rSpd > (_stats.maxSpd[lm.type] || 0) && rSpd < 60) _stats.maxSpd[lm.type] = rSpd;
-    if (lm.st !== lm._pst) {
-      if (lm.st === 'flee') _stats.flees++;
-      if (lm.st === 'charge' || lm.st === 'huff') { _stats.charges++; if (process.env.WILDLIFE_DEBUG) console.log(`[wl] ${lm.type} ${lm._pst || '?'}→${lm.st} @(${lm.px | 0},${lm.py | 0})`); }
-      lm._pst = lm.st;
-    }
-    if (!_gidSeen.has(lm.gid)) {   // 무리 스폰 로그(gid당 1회)
-      _gidSeen.add(lm.gid); if (_gidSeen.size > 800) _gidSeen.clear();
-      let n = 0; for (const o of S.mobs) if (o.gid === lm.gid) n++;
-      const hd = S.V ? Math.round(Math.hypot(lm.px - S.V.hall.cx, lm.py - S.V.hall.cy)) : -1;
-      console.log(`[${H.ZONE_ID}] 🐾 spawn ${lm.type}×${n} gid=${lm.gid} @(${lm.px | 0},${lm.py | 0})셀${hd >= 0 ? ` 마을거리 ${hd}m` : ''}`);
-    }
-  }
+  for (const lm of S.mobs) _syncLab(lm, liveSet, S.mobs);
+  if (T1237) for (const lm of SW.mobs) { _syncLab(lm, liveSet, SW.mobs); if (lm._shadow) lm._shadow._ps = _wdPose(lm); }   // ★[T1237] 고라니(둘째 상태) — 같은 동기 + 몸짓 칸
   for (const [mid, sh] of _shadows) {   // 랩에서 디스폰(뷰 밖·정리)된 shadow 제거
     if (liveSet.has(sh._wildRef)) continue;
     _shadows.delete(mid);
@@ -830,12 +960,12 @@ function tick(now) {
     _lastStatLog = now;
     const cnt = {}; let nAll = 0; for (const lm of S.mobs) { if (lm.st === 'dead') continue; cnt[lm.type] = (cnt[lm.type] || 0) + 1; nAll++; }
     const sp = Object.entries(_stats.maxSpd).map(([t, v]) => `${t}${v.toFixed(1)}`).join(' ');
-    console.log(`[${H.ZONE_ID}] 🐾 mobs=${nAll}(${Object.entries(cnt).map(([t, n]) => t + n).join(' ')}) flee=${_stats.flees} chg=${_stats.charges} kill=${_stats.deaths} hit사람=${_stats.hits} tick avg=${(_stats.ms / Math.max(1, _stats.ticks)).toFixed(2)}ms peak=${_stats.peak}ms maxSpd[m/s]=${sp}`);
+    console.log(`[${H.ZONE_ID}] 🐾 mobs=${nAll}(${Object.entries(cnt).map(([t, n]) => t + n).join(' ')}) flee=${_stats.flees} chg=${_stats.charges} kill=${_stats.deaths} hit사람=${_stats.hits} tick avg=${(_stats.ms / Math.max(1, _stats.ticks)).toFixed(2)}ms peak=${_stats.peak}ms maxSpd[m/s]=${sp}${T1237 ? ` · 고라니=${_wdStats.lastN}(서식 ${_wdStats.habitat}칸)` : ''}`);
     _stats.ms = 0; _stats.ticks = 0; _stats.peak = 0;
   }
 }
 
-module.exports = { init, tick, onMobHit, _debug: { S, stats: _stats, get lifeGM() { return lifeGM; } } };
+module.exports = { init, tick, onMobHit, _debug: { S, stats: _stats, get lifeGM() { return lifeGM; }, SW, t1237: _wdStats, get wdCov() { return _wdCov; } } };   // ★[T1237] 고라니 둘째 상태 · 셈(읽기 · 하네스)
 // ★[T818 ②] 접근자 `enabled` 를 리터럴 밖으로(T806 ② 꼴 — 리터럴 안 접근자 하나 = 사전 모드 · 값 무변 · 키 차례만 이 하나가 끝 · `_debug` 안 접근자는 그 안쪽 객체 몫이라 그대로)
 Object.defineProperty(module.exports, 'enabled', { get() { return ENABLED; }, enumerable: true, configurable: true });
 // ★[T1195] 보이는 사냥의 먹잇감 섞음을 종 id 로(초식 스폰 가중치 `MOB_PREY` 그대로 · 사슴3 · 멧돼지1 · 토끼2) — 뷰 밖 사냥꾼이 든 마리의 종 차례(`villages._t1195HuntIn`).

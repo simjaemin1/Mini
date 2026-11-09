@@ -22,7 +22,10 @@ const SS = require('./static-serve');
 
 const PUB = path.join(__dirname, '..', 'public');
 // 문을 지나는 무리(00-const `_gsrc` · `_gfetch` — T1123 §1 문 목록) · 산은 이미 webp(앵커 뒤)
-const GROUPS = ['trees', 'nature', 'buildings', 'bridge', 'crops', 'terrain', 'icons', 'mountains'];
+const GROUPS = ['trees', 'nature', 'buildings', 'bridge', 'crops', 'terrain', 'icons', 'mountains', 'animals'];
+// ★[T1237 · T1210 회부 7] 짐승 시트(`animals` — 받은 3D 모델을 구운 8방향 시트 · 클라 40-r2 가 `_gfetch` · `_gsrc` 로 받는다)도 문을 지난다.
+//   짐승은 **종마다 폴더 하나**(`animals/water_deer/body_idle.png` …)라 무리 안 폴더를 **한 겹** 더 훑는다(아래 `scan`) —
+//   다른 무리엔 폴더가 없어(T1237 실측 0) 그 무리들의 표 칸 · 차례는 그대로다.
 const EXTRA = [['/assets/icons.lock.json', path.join(PUB, 'assets', 'icons.lock.json')],   // 무리 밖 문 json 둘
                ['/terrain.json', path.join(__dirname, 'hanbando-terrain.json')]];
 const HASH = SS.HASH_MIN;   // 10 — static-serve 가 받는 앞자리와 같은 수(한 자리)
@@ -36,21 +39,26 @@ function build() {
   const map = {};
   let twin = 0, png = 0, other = 0;
   const pin = (served, file) => served + '?v=' + SS.entry(file).sha.slice(0, HASH);
-  for (const g of GROUPS) {
-    const d = path.join(PUB, 'assets', g);
-    if (!fs.existsSync(d)) continue;
+  const scan = (base, d) => {   // 한 폴더 — 주소 바탕 `base`(/assets/<무리>[/<폴더>])
     const files = fs.readdirSync(d).sort();
     const has = new Set(files);
     for (const f of files) {
-      const u = `/assets/${g}/${f}`, ext = path.extname(f).toLowerCase(), stem = f.slice(0, f.length - ext.length);
+      const u = `${base}/${f}`, ext = path.extname(f).toLowerCase(), stem = f.slice(0, f.length - ext.length);
       if (ext === '.png') {
         const w = stem + '.webp';
-        if (has.has(w)) { map[u] = pin(`/assets/${g}/${w}`, path.join(d, w)); twin++; }
+        if (has.has(w)) { map[u] = pin(`${base}/${w}`, path.join(d, w)); twin++; }
         else { map[u] = pin(u, path.join(d, f)); png++; }
       } else if ((ext === '.webp' && !has.has(stem + '.png')) || ext === '.json') {   // 쌍둥이 webp 는 png 칸이 낸다(두 번 안 적는다)
         map[u] = pin(u, path.join(d, f)); other++;
       }
     }
+    return files;
+  };
+  for (const g of GROUPS) {
+    const d = path.join(PUB, 'assets', g);
+    if (!fs.existsSync(d)) continue;
+    const files = scan(`/assets/${g}`, d);
+    for (const f of files) { const dd = path.join(d, f); if (fs.statSync(dd).isDirectory()) scan(`/assets/${g}/${f}`, dd); }   // ★[T1237] 한 겹 아래(짐승 종 폴더)
   }
   for (const [u, f] of EXTRA) if (fs.existsSync(f)) { map[u] = pin(u, f); other++; }
   const body = Buffer.from(JSON.stringify(map));

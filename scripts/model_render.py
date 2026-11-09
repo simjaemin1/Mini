@@ -40,6 +40,15 @@
 #   --species=<게임 키>     : 목록(`index.json`)에서 이 시트가 설 **게임 짐승 칸**(`public/animals.js` 의 키) — 없으면 폴더 이름(종전)
 #   걷기 · 뛰기 클립은 메타에 `strideM`(한 고리 보폭 m) · `speedMps`(제 빠르기) · `slipCm`(발마다 미끄러짐) 을 적는다 — 재는 법은 `model_gait.py` 머리말.
 #   시간 0 = 동작의 첫 키 · 판의 때는 소수 프레임까지(`frame_set(subframe)`) — 받은 키가 씬 fps 와 안 맞아도 그때 그 자세다.
+# ★★[T1237 · ★재민 11-09 "새 종"] 받은 동작에 **없는 자세**를 이 뼈대로 짓는다(키) — 셋:
+#   --key=<키>=<원천>@<초>:<때>|…  : 키 클립 — 받은 동작(`--anim` 의 키)의 그 초 자세를 새 클립의 그 때(초)에 두고 사이는 뼈마다 보간
+#                                    (옮김 · 크기 = 곧게 · 돎 = 구면 · 짧은 쪽). 첫 때 = 0 · 때는 늘어나야 한다. `--face` 가 있으면 **키마다** 몸 방향 · 가운데를
+#                                    쉬는 자세의 것으로 돌려 놓고(뿌리 뼈에 구워) 보간하고, 판마다 한 번 더 맞춘다(쓰러지며 도는 원천도 행이 안 틀어진다).
+#                                    예: 쓰러짐 1.2초 = 서기 0초 → 말용 쓰러짐 2.85 · 3.25(엎드림) · 5.95(옆으로 넘어감) · 6.4초(누움) — 원천이 엎드려 머리를 드는
+#                                    3.4 ~ 5.7초를 건너뛴다(T1210 회부 4 "이은 자리 머리 들림").
+#   --bend=<키>=<뼈>:<도>,…        : 그 클립의 판마다 뼈를 제 X 축(옆 축 — 목뼈는 몸 옆)으로 더 돌린다(풀 뜯기 = 서기 동작 위에 목 · 머리 숙임).
+#   --loop=<키>=0|1                 : 고리 여부(없으면 아래 `CLIP_TABLE`) — 풀 뜯기는 서기처럼 돈다.
+#   새 클립 키 `lie`(엎드림 · 한 판) — 검사기 동작 이름표(`model-check.ACTIONS` — 받는 이름 다섯)엔 없다: 받는 동작이 아니라 굽는 쪽이 짓는 클립이다.
 # =============================================================================
 
 import bpy, os, sys, json, math, mathutils, importlib.util
@@ -63,26 +72,29 @@ P = PPU0 * SS                      # 굽기 px/m
 MARGIN = 3                         # 공유 상자 여백(굽기 px) — 사람 시트(`char_render.MARGIN`)와 같은 값
 DIRS = 8
 # 동작 → (프레임 수, 루프) — 사람 시트 표(`char_render.CLIPS`)의 같은 꼴: 서기 4 · 걷기 8 · 뛰기 8 · 원샷 6(휘두르기와 같은 칸)
-CLIP_TABLE = {"idle": (4, True), "walk": (8, True), "run": (8, True), "eat": (6, False), "die": (6, False)}
+CLIP_TABLE = {"idle": (4, True), "walk": (8, True), "run": (8, True), "eat": (6, False), "die": (6, False), "lie": (1, True)}   # [T1237] lie = 엎드림(한 판)
 
 
 def _args():
     a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     o = {"model": None, "name": None, "class": "animals", "front": None, "length": None, "height": None, "sizeSrc": None,
          "out": None, "preview": None, "previewDir": 1, "respec": None, "respecOut": None, "naive": None, "noSheet": False, "raw": None,
-         "anim": [], "clip": {}, "frames": {}, "face": {}, "species": None}
+         "anim": [], "clip": {}, "frames": {}, "face": {}, "species": None, "key": {}, "bend": {}, "loop": {}}
     for x in a:
         if not x.startswith("--"):
             o["model"] = x
             continue
         k, _, v = x[2:].partition("=")
-        if k in ("anim", "clip", "frames", "face"):     # [T1210] <키>=<값>
+        if k in ("anim", "clip", "frames", "face", "key", "bend", "loop"):     # [T1210] <키>=<값> · [T1237] key · bend · loop
             ck, _, cv = v.partition("=")
             if ck not in CLIP_TABLE:
                 raise SystemExit(f"[model] --{k}: 클립 키 '{ck}' 를 모른다(키 {' · '.join(CLIP_TABLE)})")
             if k == "anim": o["anim"].append((ck, cv))
             elif k == "clip": o["clip"][ck] = cv
             elif k == "frames": o["frames"][ck] = int(cv)
+            elif k == "key": o["key"][ck] = cv
+            elif k == "bend": o["bend"][ck] = [(b, float(a)) for b, _, a in (t.partition(":") for t in cv.split(","))]
+            elif k == "loop": o["loop"][ck] = cv not in ("0", "false", "")
             else: o["face"][ck] = tuple(cv.split(">"))
             continue
         if k == "species": o["species"] = v
@@ -406,14 +418,51 @@ def _times(segs, n, loop):
     return out, tot
 
 
-if ARM and FOUND:
+def _keyed(key, spec):
+    """[T1237] `--key` 글자 → [(원천 키, 원천 초, 때)] · 키마다 뼈 자세(뼈대 공간 기준 `matrix_basis`)."""
+    ks = []
+    for part in spec.split("|"):
+        src, _, rest = part.partition("@")
+        ts, _, at = rest.partition(":")
+        if src not in FOUND:
+            raise SystemExit(f"[model] --key {key}: 원천 '{src}' 가 없다(`--anim={src}=…` 로 먼저 묶는다)")
+        ks.append((src, float(ts), float(at)))
+    if ks[0][2] != 0.0 or any(b[2] <= a[2] for a, b in zip(ks, ks[1:])):
+        raise SystemExit(f"[model] --key {key}: 때는 0 에서 시작해 늘어나야 한다 {spec}")
+    poses = []
+    for src, ts, _at in ks:
+        _rest_bones()
+        mg.set_time(ARM, bpy.data.actions[FOUND[src]], ts)
+        poses.append({pb.name: pb.matrix_basis.copy() for pb in ARM.pose.bones})
+    return ks, poses
+
+
+def _rest_bones():
+    """[T1237] 뼈마다 쉬는 자세로 — 손으로 쓴 자세(키 클립 · 굽힘)가 남아 **동작이 키를 안 박은 뼈**(받은 서기 · 걷기 · 뛰기는 뿌리 뼈를 안 움직인다)를
+    다음 클립까지 틀어 놓지 않게. 동작 클립은 늘 쉬는 자세 위에 그 동작을 얹는다(종전 굽기 = 손 자세가 없던 판과 같은 자세)."""
+    if ARM is None:
+        return
+    for pb in ARM.pose.bones:
+        pb.matrix_basis = M.Identity(4)
+
+
+if ARM and (FOUND or OPT["key"]):
     FXY = None
-    for key in mc.ACTIONS:
+    for key in list(mc.ACTIONS) + [k for k in CLIP_TABLE if k not in mc.ACTIONS]:   # [T1237] 받는 이름 다섯 + 굽는 쪽 클립(lie)
+        n, loop = CLIP_TABLE[key]
+        n = OPT["frames"].get(key, n)
+        loop = OPT["loop"].get(key, loop)
+        if key in OPT["key"]:                                  # [T1237] 키 클립 — 받은 동작의 자세들을 이어 짓는다
+            ks, kp = _keyed(key, OPT["key"][key])
+            dur = ks[-1][2]
+            times, _d = _times([(0.0, dur)], n, loop)
+            c = {"key": key, "action": None, "frames": n, "loop": loop, "times": times, "segs": None, "dur": dur,
+                 "fps": round((n if loop else max(1, n - 1)) / max(1e-6, dur), 3), "comp": None, "cycle": None, "keyed": ks, "kposes": kp}
+            CLIPS.append(c)
+            continue
         if key not in FOUND:
             continue
         act = bpy.data.actions[FOUND[key]]
-        n, loop = CLIP_TABLE[key]
-        n = OPT["frames"].get(key, n)
         segs, cy = _segments(key, act)
         times, dur = _times(segs, n, loop)
         c = {"key": key, "action": act.name, "frames": n, "loop": loop, "times": times, "segs": segs, "dur": dur,
@@ -451,11 +500,97 @@ for c in CLIPS:
         print(f"[model] {c['key']} 몸 돌림 — 첫 판 방향 {c['face']['turnDeg']:+.1f}° · 가운데 {c['face']['shiftM']} m 를 쉬는 자세로 · 판마다 남는 돌음 {c['face']['driftDeg']}°")
 
 
+# [T1237] 키 클립의 몸 돌림 — 키마다 몸 방향 · 가운데를 쉬는 자세의 것으로 **뿌리 뼈에 구워**(보간이 원천의 돎을 안 따라 돌게) · 판마다 나머지를 한 번 더(`_face_frame`)
+def _keyed_face():
+    RB = mg.root_bone(ARM)
+    for c in CLIPS:
+        if not c.get("keyed") or c["key"] not in OPT["face"]:
+            continue
+        A, B = OPT["face"][c["key"]]
+        _k = mc.rest_pose(ARMS)
+        h_r, c_r = mg.heading(ARM, A, B, (fx, fy), ARM_BASE)
+        mc.rest_pose(ARMS, _k)
+        c["faceRef"] = (A, B, h_r, c_r)
+        turns, shifts = [], []
+        L = ARM.data.bones[RB].matrix_local
+        for kp in c["kposes"]:
+            ARM.matrix_basis = ARM_BASE
+            _set_pose(kp)
+            h, cc = mg.heading(ARM, A, B, (fx, fy), ARM_BASE)
+            comp = M.Translation(c_r) @ M.Rotation(h_r - h, 4, 'Z') @ M.Translation(-cc)
+            Ca = ARM_BASE.inverted() @ comp @ ARM_BASE
+            kp[RB] = L.inverted() @ Ca @ L @ kp[RB]
+            turns.append(round(math.degrees(h - h_r), 1)); shifts.append(round((cc - c_r).length * S, 4))
+        c["face"] = {"bones": [A, B], "keyTurnDeg": turns, "keyShiftM": shifts, "per": "키마다 뿌리 뼈 + 판마다 나머지"}
+        print(f"[model] {c['key']} 키 몸 돌림 — 키마다 방향 {turns}° · 가운데 {shifts} m 를 쉬는 자세로")
+
+
+def _set_pose(mats):
+    """[T1237] 뼈마다 자세를 손으로 — 동작을 떼고 쓴다(굽는 동안 동작 평가가 손 자세를 덮지 않게)."""
+    if ARM.animation_data is not None:
+        ARM.animation_data.action = None
+    for pb in ARM.pose.bones:
+        pb.matrix_basis = mats[pb.name]
+    bpy.context.view_layer.update()
+
+
+def _lerp_pose(a, b, u):
+    """[T1237] 두 자세 사이 u(0~1) — 뼈마다 옮김 · 크기 = 곧게 · 돎 = 구면(짧은 쪽)."""
+    out = {}
+    for k in a:
+        la, ra, sa = a[k].decompose()
+        lb, rb, sb = b[k].decompose()
+        if ra.dot(rb) < 0:
+            rb = rb.copy(); rb.negate()
+        out[k] = M.LocRotScale(la.lerp(lb, u), ra.slerp(rb, u), sa.lerp(sb, u))
+    return out
+
+
+def _bend(key):
+    """[T1237] `--bend` — 그 뼈를 제 X 축으로 더 돌린다(판마다 · 동작 위에)."""
+    bs = OPT["bend"].get(key)
+    if not bs:
+        return
+    for bone, deg in bs:
+        pb = ARM.pose.bones[bone]
+        pb.matrix_basis = pb.matrix_basis @ M.Rotation(math.radians(deg), 4, 'X')
+    bpy.context.view_layer.update()
+
+
+def _face_frame(clip):
+    """[T1237] 키 클립 — 판마다 몸 방향 · 가운데를 쉬는 자세의 것으로(키에 구운 돌림의 나머지)."""
+    fr = clip.get("faceRef")
+    if not fr:
+        return
+    A, B, h_r, c_r = fr
+    h, cc = mg.heading(ARM, A, B, (fx, fy), ARM_BASE)
+    ARM.matrix_basis = M.Translation(c_r) @ M.Rotation(h_r - h, 4, 'Z') @ M.Translation(-cc) @ ARM_BASE
+
+
 def pose(clip, fi):
-    if clip["action"] is None or ARM is None:
+    if ARM is None:
+        return
+    if clip.get("keyed"):                                      # [T1237] 키 클립 — 키 자세 사이를 보간
+        t, ks, kp = clip["times"][fi], clip["keyed"], clip["kposes"]
+        i = max(j for j in range(len(ks)) if ks[j][2] <= t + 1e-9)
+        mats = kp[-1] if i >= len(ks) - 1 else _lerp_pose(kp[i], kp[i + 1], (t - ks[i][2]) / (ks[i + 1][2] - ks[i][2]))
+        ARM.matrix_basis = ARM_BASE
+        _set_pose(mats)
+        _bend(clip["key"])
+        _face_frame(clip)
+        return
+    if clip["action"] is None:
         return
     ARM.matrix_basis = clip["comp"] @ ARM_BASE if clip.get("comp") is not None else ARM_BASE   # [T1210] 몸 돌림은 모델 공간에서(왼쪽 곱)
+    _rest_bones()                                                # [T1237] 앞 클립의 손 자세가 키 없는 뼈에 남지 않게
     mg.set_time(ARM, bpy.data.actions[clip["action"]], clip["times"][fi], wrap=clip["loop"])
+    if clip["key"] in OPT["bend"]:                            # [T1237] 동작 위에 굽힘(풀 뜯기 = 서기 + 목 숙임)
+        _set_pose({pb.name: pb.matrix_basis.copy() for pb in ARM.pose.bones})
+        _bend(clip["key"])
+
+
+if ARM is not None:
+    _keyed_face()
 
 
 def set_dir(d):
@@ -576,6 +711,10 @@ for c, sheet, SW, SH in built:
                 ink_px=SHAPE["inkPx"], cel_bands=SHAPE["celBands"], edge_a=SHAPE["edgeA"], edge_k=SHAPE["edgeK"])
     rc.save_png(sheet, SW, SH, os.path.join(OPT["out"], f"body_{c['key']}.png"))
     print(f"[model] body_{c['key']}.png {SW}x{SH}")
+# [T1237 · T1210 회부 7] 시트 옆 같은 화소 무손실 webp 쌍둥이(T1131 — 매니페스트가 webp 주소를 낸다) — png 만 새로 굽고 쌍둥이를 안 다시 쓰면
+#   낡은 webp 가 배포에 남는다(T1131 `asset-lock` 규약) ⇒ 굽기가 같은 자리에서 다시 쓴다(실패는 삼키지 않는다 — `webp_twins.run`).
+import webp_twins
+webp_twins.run([os.path.join(OPT["out"], f"body_{c['key']}.png") for c, _s, _w, _h in built])
 
 # ═══════════════ 메타(사람 `char_meta.json` 문법) · 분류 목록 ═══════════════
 META = {
@@ -589,6 +728,8 @@ META = {
     "heightM": round(HGT_M, 4), "lengthM": round(LEN_M, 4), "widthM": round(WID_M, 4),
     "clips": {c["key"]: dict({"frames": c["frames"], "loop": c["loop"], "fps": c["fps"]},
                              **({"durS": round(c["dur"], 4), "srcS": [[round(a, 4), round(b, 4)] for a, b in c["segs"]]} if c.get("segs") else {}),
+                             **({"durS": round(c["dur"], 4), "keys": [[k[0], round(k[1], 4), round(k[2], 4)] for k in c["keyed"]]} if c.get("keyed") else {}),   # [T1237] 키 클립
+                             **({"bend": [[b, d] for b, d in OPT["bend"][c["key"]]]} if c["key"] in OPT["bend"] else {}),
                              **(c.get("gait") or {}), **({"face": c["face"]} if c.get("face") else {}),
                              **({"cycle": {"k": c["cycle"]["k"], "periodS": round(c["cycle"]["P"], 4), "seamCm": round(c["cycle"]["seam"] * S * 100, 2)}}
                                 if c.get("cycle") else {}))
@@ -611,7 +752,7 @@ print("[model] 메타:", META_PATH)
 
 # 분류 목록 — 디스크를 훑어 세운다(한 종만 다시 구워도 다른 종이 안 사라진다 · 사람 `rebuild_sheets` 와 같은 까닭)
 cls_dir = os.path.dirname(os.path.abspath(OPT["out"]))
-idx = {"_": "model_render.py 산물 — 종 키 → 메타 경로(이 폴더 기준). 클라는 손잡이 T1194_MODEL_SPRITES 가 켜졌을 때만 읽는다."}
+idx = {"_": "model_render.py 산물 — 종 키 → 메타 경로(이 폴더 기준). 클라는 손잡이 T1194_MODEL_SPRITES(미리보기 · 모든 종) 또는 T1237_WATER_DEER(고라니)가 켜졌을 때만 읽는다."}
 for nm in sorted(os.listdir(cls_dir)):
     mp = os.path.join(cls_dir, nm, f"{nm}_meta.json")
     if os.path.isdir(os.path.join(cls_dir, nm)) and os.path.exists(mp):

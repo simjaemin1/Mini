@@ -1821,7 +1821,7 @@
         ctx.globalAlpha = vis;
         // ★★[T1210] 받은 모델 시트에 쓰러짐(`die`)이 있는 종이면 누운 그림(한 번 쓰러지고 눕는다 · 40-r2-sprites `drawModelCorpse`) —
         //   손잡이 `uiCfg.modelSprites`(끔 = 이 줄이 아무것도 안 부른다 · '×' 그대로) · 시트가 안 떴거나 그 종에 쓰러짐이 없으면 '×'.
-        if (!(uiCfg.modelSprites && drawModelCorpse(s.x, s.y, item.co))) {
+        if (!(modelSpriteOn(item.co.mobType) && drawModelCorpse(s.x, s.y, item.co))) {   // ★[T1237] 손잡이 둘(T1194 미리보기 · 고라니) — `modelSpriteOn` 한 곳
           ctx.font = '24px sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';

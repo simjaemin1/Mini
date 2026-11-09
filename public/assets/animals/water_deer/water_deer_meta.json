@@ -1,33 +1,89 @@
 {
  "_": "model_render.py 산물 — 손편집 금지. 규약은 그 파일이 정본(사람 시트 char_meta.json 과 같은 문법).",
- "anchorX": 24.5,
- "anchorY": 30.97,
+ "anchorX": 23.5,
+ "anchorY": 31.202,
  "clips": {
   "die": {
-   "durS": 1.6,
+   "durS": 1.2,
    "face": {
     "bones": [
      "spine.001",
      "spine.006"
     ],
-    "driftDeg": [
-     -5.3,
-     11.8
+    "keyShiftM": [
+     0.0021,
+     0.3089,
+     0.3288,
+     0.3185,
+     0.3028
     ],
-    "shiftM": 0.3122,
-    "turnDeg": 119.02
+    "keyTurnDeg": [
+     -0.6,
+     125.1,
+     126.1,
+     119.1,
+     113.7
+    ],
+    "per": "키마다 뿌리 뼈 + 판마다 나머지"
    },
-   "fps": 3.125,
+   "fps": 4.167,
    "frames": 6,
-   "loop": false,
+   "keys": [
+    [
+     "idle",
+     0.0,
+     0.0
+    ],
+    [
+     "die",
+     2.85,
+     0.3
+    ],
+    [
+     "die",
+     3.25,
+     0.55
+    ],
+    [
+     "die",
+     6.0,
+     0.9
+    ],
+    [
+     "die",
+     6.4,
+     1.2
+    ]
+   ],
+   "loop": false
+  },
+  "eat": {
+   "bend": [
+    [
+     "spine.006",
+     15.0
+    ],
+    [
+     "neck.001",
+     10.0
+    ],
+    [
+     "neck.002",
+     50.0
+    ],
+    [
+     "head",
+     -50.0
+    ]
+   ],
+   "durS": 3.7333,
+   "fps": 1.071,
+   "frames": 4,
+   "loop": true,
    "srcS": [
     [
-     2.5,
-     3.4
-    ],
-    [
-     5.7,
-     6.4
+     0.0,
+     3.7333
     ]
    ]
   },
@@ -43,6 +99,30 @@
     ]
    ]
   },
+  "lie": {
+   "durS": 0.1,
+   "face": {
+    "bones": [
+     "spine.001",
+     "spine.006"
+    ],
+    "driftDeg": [
+     0.0,
+     0.0
+    ],
+    "shiftM": 0.3342,
+    "turnDeg": 131.59
+   },
+   "fps": 10.0,
+   "frames": 1,
+   "loop": true,
+   "srcS": [
+    [
+     4.6,
+     4.7
+    ]
+   ]
+  },
   "run": {
    "cycle": {
     "k": 4,
@@ -50,8 +130,8 @@
     "seamCm": 3.02
    },
    "durS": 0.4167,
-   "fps": 19.2,
-   "frames": 8,
+   "fps": 9.6,
+   "frames": 4,
    "loop": true,
    "slipCm": {
     "f_hoof.L": 2.63,
@@ -109,7 +189,7 @@
  "dirOrder": "d = round(atan2(fy,fx)/(PI/4)) mod 8 — 월드 방향. d=0 은 +x(동).",
  "dirs": 8,
  "frameH": 42,
- "frameW": 49,
+ "frameW": 47,
  "heightM": 0.7213,
  "layers": [
   "body"
@@ -133,7 +213,15 @@
    "h": 336,
    "layer": "body",
    "rows": 8,
-   "w": 294
+   "w": 282
+  },
+  "body_eat": {
+   "clip": "eat",
+   "cols": 4,
+   "h": 336,
+   "layer": "body",
+   "rows": 8,
+   "w": 188
   },
   "body_idle": {
    "clip": "idle",
@@ -141,15 +229,23 @@
    "h": 336,
    "layer": "body",
    "rows": 8,
-   "w": 196
+   "w": 188
   },
-  "body_run": {
-   "clip": "run",
-   "cols": 8,
+  "body_lie": {
+   "clip": "lie",
+   "cols": 1,
    "h": 336,
    "layer": "body",
    "rows": 8,
-   "w": 392
+   "w": 47
+  },
+  "body_run": {
+   "clip": "run",
+   "cols": 4,
+   "h": 336,
+   "layer": "body",
+   "rows": 8,
+   "w": 188
   },
   "body_walk": {
    "clip": "walk",
@@ -157,13 +253,14 @@
    "h": 336,
    "layer": "body",
    "rows": 8,
-   "w": 392
+   "w": 376
   }
  },
  "source": {
   "actions": {
-   "die": "die|water_deer_death_horse.glb",
+   "eat": "eat|water_deer_idle.glb",
    "idle": "idle|water_deer_idle.glb",
+   "lie": "lie|water_deer_death_horse.glb",
    "run": "run|water_deer_run.glb",
    "walk": "walk|water_deer_walk.glb"
   },
@@ -178,6 +275,16 @@
      0.0
     ]
    },
+   "eat": {
+    "bytes": 25659816,
+    "file": "water_deer_idle.glb",
+    "md5": "7c79114162db56b2e4f5897fae631b8a",
+    "restOffset": [
+     0.00029,
+     0.00924,
+     -0.0
+    ]
+   },
    "idle": {
     "bytes": 25659816,
     "file": "water_deer_idle.glb",
@@ -186,6 +293,16 @@
      0.00029,
      0.00924,
      -0.0
+    ]
+   },
+   "lie": {
+    "bytes": 25745768,
+    "file": "water_deer_death_horse.glb",
+    "md5": "bd7ccdfa787cc0f4f408c1e78fc5f134",
+    "restOffset": [
+     0.00347,
+     0.00984,
+     0.0
     ]
    },
    "run": {
@@ -217,12 +334,11 @@
   "frontSrc": "인자",
   "md5": "7ba1c1ac20a25d04d4e06ae29519fad5",
   "scale": 0.80973,
-  "sizeSrc": "Ultimate Ungulate · Hydropotes inermis(Bützler 1990 · Nowak 1991 · Whitehead 1993): 몸길이 75–100 cm · 어깨높이 45–55 cm — 이 모델(어깨 0.662 · 머리–몸 0.951 단위)이 두 범위를 다 맞추는 배 0.789–0.831 의 가운데 0.8097 → 몸(코–꼬리끝) 0.809 m · 머리–몸 0.770 m · 어깨 0.536 m",
+  "sizeSrc": "Ultimate Ungulate · Hydropotes inermis(Bützler 1990 · Nowak 1991 · Whitehead 1993): 몸길이 75–100 cm · 어깨높이 45–55 cm — 이 모델(어깨 0.662 · 머리–몸 0.951 단위)이 두 범위를 다 맞추는 배 0.789–0.831 의 가운데 0.8097 → 몸(코–꼬리끝) 0.809 m · 머리–몸 0.770 m · 어깨 0.536 m(T1210 · ★T1237 PM 판정 ② 그대로 — 한국아종 몸길이 85–115 cm(백과)와의 차는 회부)",
   "srcTris": 60909,
   "tris": 60909,
   "variant": "원본"
  },
- "species": "deer",
  "ss": 3,
  "widthM": 0.2053,
  "zsq": 0.8165

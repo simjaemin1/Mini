@@ -1,7 +1,7 @@
-// === server/animals.js — 동물 mob 카탈로그 36종 ===
+// === server/animals.js — 동물 mob 카탈로그 37종 ===
 // Phase 5-6
 //
-// 분류: 사냥감(wild) 23 + 가축(domestic) 13
+// 분류: 사냥감(wild) 24 + 가축(domestic) 13   ★[T1237] 고라니 하나를 더했다(야생 블록만 낳는 종 — 아래 그 줄)
 //
 // 각 mob:
 //   ko, emoji
@@ -83,6 +83,20 @@ const ANIMALS = {
     drops: { meat_game: 3, leather: 2, horn: 1 },
     spawn_biome: ['forest', 'plains'],
     spawn_density: 0.05,
+  },
+  // ★[T1237 · ★재민 11-09 "새 종"] 고라니(물사슴 · *Hydropotes inermis argyropus*) — 위 사슴(꽃사슴 쪽) 자리와 **따로** 선다(사슴 칸 무변).
+  //   **야생 블록(`server/wildlife.js` · 손잡이 `T1237_WATER_DEER` · 끔 기본)만 낳는다** — `spawn_biome` 비움 = 존 첫 스폰 · DB 몹 목록에 안 든다
+  //   (가축 줄과 같은 꼴 · `huntableInBiome` 이 거른다) ⇒ 손잡이를 끄면 세계에 0마리 · 이 줄은 이름 · 드롭 · 그림 칸으로만 읽힌다.
+  //   hp 20 = 이 표의 같은 몸 칸(`small`) 넷(북극 여우 18 · 여우 18 · 자칼 25 · 염소 25)의 가운데 21.5 → 랩 hp 2(× `HP_SCALE` 10 · wildlife 머리말 규약).
+  //   speed 6 · pack 2 = 존 DB 몹 칸(이 종은 DB 몹으로 안 난다 — speed 는 사슴 값 · pack 은 랩 무리 [1, 2] 의 끝).
+  //   drops: 고기 1 = 꺼진 kg 판(`T636_DROP_KG=0`)의 낱개(사슴 3 × 몸무게 18.5/88.5 = 0.63 → 1) · 켬(기본)이면 아래 `DROP_KG` 가 kg 로 고친다(7) ·
+  //   가죽 1 = 사슴 가죽 2(지금 값) × 넓이 비(몸무게^⅔ = (18.5/88.5)^⅔ = 0.35) = 0.71 → 1 · 뿔 없음(*inermis* = 맨머리 · 수컷은 송곳니 — 맞는 품목이 없다).
+  water_deer: {
+    ko: '고라니', emoji: '🦌', hp: 20, speed: 6, size: 'small',
+    aggressive: false, pack: 2,
+    drops: { meat_game: 1, leather: 1 },
+    spawn_biome: [],
+    spawn_density: 0,
   },
   wild_boar: {
     ko: '멧돼지', emoji: '🐗', hp: 60, speed: 4, size: 'medium',

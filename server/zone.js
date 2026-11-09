@@ -7500,6 +7500,7 @@ async function _acceptConnection(ws, req, C) {
       charWalkMin: parseFloat(process.env.CHAR_WALK_MIN || '') || 4,
       charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
       ...(process.env.T1194_MODEL_SPRITES === '1' ? { modelSprites: true } : {}),   // [T1194] 받은 3D 모델을 구운 짐승 서 있기 그림(`/assets/animals/` · `scripts/model_render.py`) — 끔 기본 · 끔이면 칸이 없다(welcome 바이트 동일)
+      ...(process.env.T1237_WATER_DEER === '1' ? { waterDeer: true } : {}),   // [T1237] 고라니(새 종 · 야생 블록 둘째 상태) — 클라는 이 종의 그림을 받은 모델 시트로만 그린다(그림이 그것뿐 · `T1194_MODEL_SPRITES` 와 따로) · 끔이면 칸이 없다(welcome 바이트 동일)
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(SimVillages.T1207_TERR_REAL ? { t1207: true } : {}),   // [T1207] 땅 우클릭에 '영토 넓히기'(끔이면 칸이 없다 · welcome 바이트 동일)
@@ -16916,6 +16917,7 @@ setInterval(() => {
     // Phase 14.38: mob facing — vx/vy 포함. 14.49-d: floor + z
     const e = { mid: o.mid, x: o.x, y: o.y, hp: o.hp, vx: (o.vx || 0) | 0, vy: (o.vy || 0) | 0, floor: o.floor || 0 };
     if (o.z) e.z = Math.round(o.z);
+    if (o._ps) e.ps = o._ps;   // ★[T1237] 고라니 몸짓(1 엎드림 · 2 풀 뜯기 — wildlife `_wdPose`) · 매틱 동적 칸 · 0 이면 안 싣는다(클라 미수신 = 0) · 손잡이 끔이면 이 칸이 서는 몹이 없다(틱 바이트 동일)
     if (isNew) { e.type = o.type; e.maxHp = o.maxHp; e.tameOwner = o.tameOwner || null; e.tameOwnerName = o.tameOwnerName || null; }
     return e;
   }
