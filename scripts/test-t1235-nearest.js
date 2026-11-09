@@ -3,7 +3,7 @@
 // === scripts/test-t1235-nearest.js — 전투 가장 가까운 적 찾기 빠른 길(T1235)이 고리 찾기와 같은 답인가 ===
 //
 // ★무엇을 보나
-//   ① 같은 답 — 몸 수 · 흩어짐(가까이 · 멀리 · 고리 80 밖) · 같은 거리(칸 안 · 칸 사이 동률) · 사선 술어(나무가 막음) · 죽은 몸 · 한 편만 남은 판에서
+//   ① 같은 답 — (몸 줄 켬 · 끔 둘 다) 몸 수 · 흩어짐(가까이 · 멀리 · 고리 80 밖) · 같은 거리(칸 안 · 칸 사이 동률) · 사선 술어(나무가 막음) · 죽은 몸 · 한 편만 남은 판에서
 //      `nearestEnemy` 의 답(적 · 거리)이 고리 찾기(이 파일의 대조 오라클 — T1235 앞 글자 그대로)와 모두 같다
 //   ② 자명 통과 금지 — 빠른 길이 실제로 탄 부름이 있다(몸 줄로 넘어간 수 > 0) · 고리 찾기로 끝난 부름도 있다
 //   ③ 판 — 같은 씨 전투(`buildArmies` · `stepBattle`)를 빠른 길 켬 · 끔(몸 줄을 지운 ctx)으로 돌려 매 걸음 몸 자리 · hp 가 같다
@@ -47,7 +47,7 @@ const treeBlocks = (ctx, x1, y1, x2, y2) => !!(ctx.world && ctx.world.losBlocked
 
 console.log('\n=== ① 같은 답 · ② 자명 통과 금지 ===');
 {
-  let calls = 0, same = 0, direct = 0, ring = 0, nul = 0;
+  let calls = 0, same = 0, direct = 0, ring = 0, nul = 0, ringCalls = 0, ringSame = 0;
   const cases = [
     [40, 30, {}], [200, 60, {}], [600, 120, { split: 150 }], [1000, 40, { split: 250 }], [300, 600, {}],
     [120, 20, { grid: true }], [400, 50, { grid: true, split: 60 }], [250, 80, { los: true }], [500, 80, { los: true, split: 120, dead: true }],
@@ -62,13 +62,17 @@ console.log('\n=== ① 같은 답 · ② 자명 통과 금지 ===');
       calls++;
       if ((a === null && b === null) || (a && b && a.e === b.e && a.d === b.d)) same++;
       if (b === null) nul++;
-      let r0 = 0; while ((2 * r0 + 1) * (2 * r0 + 1) <= nG && r0 <= (maxR || 80)) r0++;
+      // 고리만(몸 줄 없음) — 고리 테만 도는 새 글자가 옛 네모 돌기와 같은 답
+      const gl = ctx._gl; ctx._gl = null; const c = BC._nearestEnemy(ctx, u, maxR, !!opt.los); ctx._gl = gl;
+      ringCalls++; if ((c === null && b === null) || (c && b && c.e === b.e && c.d === b.d)) ringSame++;
+      let r0 = 0; while ((2 * r0 + 1) * (2 * r0 + 1) * 16 <= nG && r0 <= (maxR || 80)) r0++;   // 빠른 길로 넘어가는 고리(battle-core 와 같은 문)
       if (r0 <= (maxR || 80)) direct++; else ring++;
     }
     for (const u of ctx.units) { u.x += (rnd() - 0.5) * 3; u.y += (rnd() - 0.5) * 3; }
     for (const u of ctx.units) { const a = BC._nearestEnemy(ctx, u, 80, !!opt.los), b = oracle(ctx, u, 80, !!opt.los, treeBlocks); calls++; if ((a === null && b === null) || (a && b && a.e === b.e && a.d === b.d)) same++; }
   }
   ok(same === calls, '빠른 길 = 고리 찾기(적 · 거리 · 같은 거리 차례 · 사선 · 죽은 몸 · 한 편 · 걸음 뒤 옮김)', `${same}/${calls}`);
+  ok(ringSame === ringCalls, '고리만 판(몸 줄 끔) — 고리 테 돌기 = 옛 네모 돌기', `${ringSame}/${ringCalls}`);
   ok(direct > 0 && ring > 0 && nul > 0, '자명 통과 금지 — 몸 줄로 간 부름 · 고리로 끝난 부름 · 적 없음 답이 다 있다', `몸 줄 ${direct} · 고리 ${ring} · 없음 ${nul}`);
 }
 
