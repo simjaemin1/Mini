@@ -1,7 +1,7 @@
 {
  "_": "model_render.py 산물 — 손편집 금지. 규약은 그 파일이 정본(사람 시트 char_meta.json 과 같은 문법).",
- "anchorX": 23.5,
- "anchorY": 31.202,
+ "anchorX": 26.0,
+ "anchorY": 34.35,
  "clips": {
   "die": {
    "durS": 1.2,
@@ -11,11 +11,11 @@
      "spine.006"
     ],
     "keyShiftM": [
-     0.0021,
-     0.3089,
-     0.3288,
-     0.3185,
-     0.3028
+     0.0023,
+     0.3436,
+     0.3658,
+     0.3543,
+     0.3368
     ],
     "keyTurnDeg": [
      -0.6,
@@ -110,7 +110,7 @@
      0.0,
      0.0
     ],
-    "shiftM": 0.3342,
+    "shiftM": 0.3718,
     "turnDeg": 131.59
    },
    "fps": 10.0,
@@ -127,19 +127,19 @@
    "cycle": {
     "k": 4,
     "periodS": 0.4167,
-    "seamCm": 3.02
+    "seamCm": 3.36
    },
    "durS": 0.4167,
    "fps": 9.6,
    "frames": 4,
    "loop": true,
    "slipCm": {
-    "f_hoof.L": 2.63,
-    "f_hoof.R": 5.72,
+    "f_hoof.L": 2.92,
+    "f_hoof.R": 6.36,
     "r_hoof.L": 0.02,
-    "r_hoof.R": 8.59
+    "r_hoof.R": 9.55
    },
-   "speedMps": 2.3729,
+   "speedMps": 2.6398,
    "srcS": [
     [
      0.8542,
@@ -152,25 +152,25 @@
     "r_hoof.L": 0.1667,
     "r_hoof.R": 0.1667
    },
-   "strideM": 0.9887
+   "strideM": 1.0999
   },
   "walk": {
    "cycle": {
     "k": 3,
     "periodS": 1.0667,
-    "seamCm": 3.01
+    "seamCm": 3.35
    },
    "durS": 1.0667,
    "fps": 7.5,
    "frames": 8,
    "loop": true,
    "slipCm": {
-    "f_hoof.L": 5.08,
-    "f_hoof.R": 4.96,
-    "r_hoof.L": 5.45,
-    "r_hoof.R": 4.34
+    "f_hoof.L": 5.66,
+    "f_hoof.R": 5.52,
+    "r_hoof.L": 6.06,
+    "r_hoof.R": 4.83
    },
-   "speedMps": 0.4393,
+   "speedMps": 0.4888,
    "srcS": [
     [
      1.4384,
@@ -183,18 +183,18 @@
     "r_hoof.L": 0.7529,
     "r_hoof.R": 0.732
    },
-   "strideM": 0.4686
+   "strideM": 0.5213
   }
  },
  "dirOrder": "d = round(atan2(fy,fx)/(PI/4)) mod 8 — 월드 방향. d=0 은 +x(동).",
  "dirs": 8,
- "frameH": 42,
- "frameW": 47,
- "heightM": 0.7213,
+ "frameH": 46,
+ "frameW": 52,
+ "heightM": 0.8025,
  "layers": [
   "body"
  ],
- "lengthM": 0.809,
+ "lengthM": 0.9,
  "ppu": 45.2548,
  "pxPerMeterH": 32.0,
  "renderPpu": 135.7645,
@@ -210,50 +210,50 @@
   "body_die": {
    "clip": "die",
    "cols": 6,
-   "h": 336,
+   "h": 368,
    "layer": "body",
    "rows": 8,
-   "w": 282
+   "w": 312
   },
   "body_eat": {
    "clip": "eat",
    "cols": 4,
-   "h": 336,
+   "h": 368,
    "layer": "body",
    "rows": 8,
-   "w": 188
+   "w": 208
   },
   "body_idle": {
    "clip": "idle",
    "cols": 4,
-   "h": 336,
+   "h": 368,
    "layer": "body",
    "rows": 8,
-   "w": 188
+   "w": 208
   },
   "body_lie": {
    "clip": "lie",
    "cols": 1,
-   "h": 336,
+   "h": 368,
    "layer": "body",
    "rows": 8,
-   "w": 47
+   "w": 52
   },
   "body_run": {
    "clip": "run",
    "cols": 4,
-   "h": 336,
+   "h": 368,
    "layer": "body",
    "rows": 8,
-   "w": 188
+   "w": 208
   },
   "body_walk": {
    "clip": "walk",
    "cols": 8,
-   "h": 336,
+   "h": 368,
    "layer": "body",
    "rows": 8,
-   "w": 376
+   "w": 416
   }
  },
  "source": {
@@ -333,13 +333,13 @@
   "front": "-y",
   "frontSrc": "인자",
   "md5": "7ba1c1ac20a25d04d4e06ae29519fad5",
-  "scale": 0.80973,
-  "sizeSrc": "Ultimate Ungulate · Hydropotes inermis(Bützler 1990 · Nowak 1991 · Whitehead 1993): 몸길이 75–100 cm · 어깨높이 45–55 cm — 이 모델(어깨 0.662 · 머리–몸 0.951 단위)이 두 범위를 다 맞추는 배 0.789–0.831 의 가운데 0.8097 → 몸(코–꼬리끝) 0.809 m · 머리–몸 0.770 m · 어깨 0.536 m(T1210 · ★T1237 PM 판정 ② 그대로 — 한국아종 몸길이 85–115 cm(백과)와의 차는 회부)",
+  "scale": 0.900812,
+  "sizeSrc": "★재민 11-09 0.9 m(T1242 · T1237 회부 1) — 앞 축(코–꼬리끝) 0.900 m · 이 모델(앞 축 0.999 · 머리–몸 0.951 · 어깨 0.662 단위) → 머리–몸 0.857 m · 어깨 0.596 m · 한국민족문화대백과 「고라니」(2024): 한국아종 몸길이 85–115 cm · 몸무게 16–21 kg(머리–몸 0.857 = 그 범위 아래 끝 안) · 종 전체 몸길이 75–100 cm · 어깨높이 45–55 cm(Ultimate Ungulate) · 42–65 cm(위키 표)",
   "srcTris": 60909,
   "tris": 60909,
   "variant": "원본"
  },
  "ss": 3,
- "widthM": 0.2053,
+ "widthM": 0.2284,
  "zsq": 0.8165
 }
