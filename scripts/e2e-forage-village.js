@@ -53,6 +53,12 @@ async function waitHttp(url, tries = 900) {
 }
 
 // ── 자리 찾기 — 전부 정본에게 ───────────────────────────────────────────────
+// ★[T1240] 빈손 판의 재료 자리는 **맨손이 캐는 자리**만 — T1065(`fd4d7c61` · 11-02) 도구 문 켬(기본)부터 나무 · 바위 개체는 맨손 E 가 안 캔다(벌목 · 채석).
+//   그 전에 태어난 이 판은 가장 가까운 잔가지 자리로 나무(141px)를 골라 +0 이었다(보충 줍기는 다른 자리에서 채웠다). 술어는 서버 정본 글자를 그대로 읽는다(사본 0).
+const _ZSRC = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+const _gateM = _ZSRC.match(/const _t1065ResKind = (\(r\) => \{[^\n]*\});/);
+const gateKind = _gateM ? new Function('return ' + _gateM[1])() : null;
+const GATE_ON = process.env.T1065_TOOL_GATE !== '0';
 function plan() {
   process.env.ZONE_ID = process.env.ZONE_ID || 'hanbando';
   const { ZONES } = require(path.join(ROOT, 'server', 'zone-config'));
@@ -82,6 +88,7 @@ function plan() {
       for (const e of (CH.generateChunkResources('hanbando', ZONES.hanbando.biome, cx, cy, CS, null) || [])) {
         if (e.type === 'water_pool') { const d = Math.hypot(e.x - v.x, e.y - v.y);
           if (d <= R && d < pool.d) { pool.d = d; pool.x = e.x; pool.y = e.y; } continue; }
+        if (GATE_ON && gateKind({ type: e.type })) continue;   // ★[T1240] 맨손이 못 캐는 개체(나무 · 바위 — T1065 도구 문)는 빈손 판의 자리가 아니다
         const l = lootOf({ type: e.type, r: e.r });
         for (const k of ['twig', 'pebble', 'fiber']) if ((l[k] || 0) > 0) put(k, e.x, e.y, `${e.type} 개체`);
       }
@@ -112,6 +119,8 @@ function plan() {
     ['twig', 'pebble', 'fiber'].map((k) => `${k} ${best[k] ? Math.round(best[k].d) + 'px[' + best[k].how + ']' : '없음'}`).join(' · ') +
     ` · 둠벙 ${Number.isFinite(pool.d) ? Math.round(pool.d) + 'px' : '없음'}`);
   console.log(`    후보 수: ` + ['twig', 'pebble', 'fiber'].map((k) => `${k} ${cand[k].length}곳`).join(' · '));
+  ok(typeof gateKind === 'function' && gateKind({ type: 'tree' }) === 'chop' && gateKind({ type: 'berry_bush' }) === null,
+    '★전제 — 도구 문 술어를 서버 정본에서 읽었다(나무 = 벌목 · 덤불 = 맨손 · ★[T1240] 자명 통과 금지 — 술어가 실제로 가른다)');
   ok(['twig', 'pebble', 'fiber'].every((k) => best[k]), '★전제 — 감사 반경(960px) 안에 세 재료가 다 있다');
 
   const _central = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });

@@ -69,8 +69,9 @@ process.on('exit', () => { try { fs.writeFileSync(OUT, JSON.stringify(rec)); } c
 `);
 const runOne = (tag, on) => {
   const dir = path.join(TMP, tag), out = path.join(TMP, tag + '.json');
-  const env = Object.assign({}, process.env, { T577_DIR: dir, T577_PAR: '1', T846_PROBE_OUT: out, VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0',   // 판 조건 = 서버 기준선 자(T650 — econ 바이트 결정론이 선 판)
-    NODE_OPTIONS: `--require ${PROBE}` });
+  //   ★[T1240] 시계도 지금 서버 기준선 자처럼 **가상 시계**(T745 `--vclock` — 11-08 기준선 교체 뒤 기준선은 이 판만 바이트 결정론이다 · 벽시계 판은 판끼리 갈린다 — T1220 §2)
+  const env = Object.assign({}, process.env, { T577_DIR: dir, T577_PAR: '1', T846_PROBE_OUT: out, VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0', T745_VCLOCK: '1',   // 판 조건 = 서버 기준선 자(T650 — econ 바이트 결정론이 선 판)
+    NODE_OPTIONS: `--require ${path.join(ROOT, 'scripts', 't745-vclock.js')} --require ${PROBE}` });
   if (on === '') delete env.T846_VIL_FAST; else env.T846_VIL_FAST = on;   // ★[T862 ①] 끔 = '0' · 켬 = 빈 값(기본) · '1'
   execFileSync(process.execPath, [path.join(ROOT, 'scripts', 't577-server-run.js'), '6', '1020'], { cwd: ROOT, env, stdio: 'ignore', timeout: 900000 });
   const runJ = fs.readdirSync(dir).find((f) => /-1020\.json$/.test(f));
