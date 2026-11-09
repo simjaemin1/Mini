@@ -34,6 +34,14 @@ if (OUT && process.env.T577_SEED && /zone\.js$/.test(process.argv[1] || '')) {
     try { s.post('Profiler.stop', (err, r) => { try { if (!err && r && r.profile) fs.writeFileSync(`${OUT}.${SEED}.cpuprofile`, JSON.stringify(r.profile)); } catch (e) {} try { s.disconnect(); } catch (e) {} }); } catch (e) {}
   };
   let Pl = null;
+  //   힙 표본(`T1235_HEAP_AT=<날>` · `T1235_HEAP_DAYS` 기본 100) — 그 사이 할당되어 살아남은 것의 자리(`<OUT>.<시드>.heapprofile`)
+  const HAT = process.env.T1235_HEAP_AT ? parseInt(process.env.T1235_HEAP_AT, 10) : null;
+  const HDAYS = parseInt(process.env.T1235_HEAP_DAYS || '100', 10);
+  let heapOn = null, heapEnd = -1, heapDone = false;
+  const startHeap = () => { try { const inspector = require('inspector'); const s = new inspector.Session(); s.connect();
+    s.post('HeapProfiler.enable', () => s.post('HeapProfiler.startSampling', { samplingInterval: 262144 })); heapOn = s; heapEnd = last + HDAYS; } catch (e) { heapOn = null; } };
+  const stopHeap = () => { const s = heapOn; heapOn = null; heapDone = true;
+    try { s.post('HeapProfiler.stopSampling', (err, r) => { try { if (!err && r && r.profile) fs.writeFileSync(`${OUT}.${SEED}.heapprofile`, JSON.stringify(r.profile)); } catch (e) {} }); } catch (e) {} };
   const Ev = require(path.join(ROOT, 'server', 'events'));
   const mk = Ev.createLedger;
   Ev.createLedger = function () {
@@ -57,7 +65,10 @@ if (OUT && process.env.T577_SEED && /zone\.js$/.test(process.argv[1] || '')) {
               if (vil._crop) farm += (vil._crop.size != null ? vil._crop.size : Object.keys(vil._crop).length);
             }
           } catch (e) { /* 읽기만 */ }
-          fs.appendFileSync(dayf, JSON.stringify([last, +sec.toFixed(2), pop, bodies, houses, farm]) + '\n');
+          const mu = process.memoryUsage();
+          fs.appendFileSync(dayf, JSON.stringify([last, +sec.toFixed(2), pop, bodies, houses, farm, Math.round(mu.heapUsed / 1048576), Math.round(mu.rss / 1048576)]) + '\n');
+          if (HAT != null && d >= HAT && !heapOn && !heapDone) startHeap();
+          if (heapOn && d >= heapEnd) stopHeap();
           last = d;
           if (prof && d >= profEnd) stopProf();
           if (!profiled && ((PAT != null && d >= PAT) || (PAT == null && last >= 50 && sec > SLOW))) startProf(d);   // 부팅 몫(첫 줄)은 빼고
