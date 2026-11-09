@@ -13478,9 +13478,11 @@ function totalFoodEquivalent(v) {
     const lots = G && typeof G.edibleOf === 'function' && G.attached(v);
     let sum = 0;
     for (const r of Object.keys(st)) {
+      const visible = Math.max(0, Number(st[r]) || 0);
+      if (!(visible > 0)) continue;
       const f = _t368FoodPer(v, r);
       if (!(f > 0)) continue;
-      const q = lots ? G.edibleOf(v, r) : Math.max(0, Number(st[r]) || 0);
+      const q = lots ? G.edibleOf(v, r) : visible;
       sum += q * f;
     }
     return sum;
@@ -14788,7 +14790,7 @@ function _t368FoodPer(v, crop) {
   const f = _t86Factor(crop);
   if (f > 0) return (RAW_GRAINS.indexOf(crop) >= 0 && !T73_RAWGRAIN) ? 0 : f;
   const W = v ? v._world : null, T = W ? W.cropFoodEq : null;
-  if (T && T[crop] > 0) return +T[crop];
+  if (T) return T[crop] > 0 ? +T[crop] : 0;
   // T1246: 호스트가 없는 정본 조회도 같은 작물 열량을 읽는다.
   if (T1243_FARM_ON) {
     const K = _kcalM();
