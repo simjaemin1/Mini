@@ -1549,6 +1549,7 @@
           for (let a2 = 0; a2 <= 28; a2++) { const th = a2 / 28 * Math.PI * 2; const p = sc(v.cx * S + 16 + Math.cos(th) * v.tr, v.cy * S + 16 + Math.sin(th) * v.tr); if (a2 === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); }
           ctx.stroke(); ctx.setLineDash([]);
         }
+        if (typeof t1238DrawOverlay === 'function') t1238DrawOverlay(ctx, v, sc, S, _cellSeen);   // ★[T1238] 고른 칸 진척 · 끄는 네모 · 빠지는 칸 · 박힌 말뚝(끔이면 함수가 바로 돌아간다)
         if (_cellSeen(v.cx, v.cy)) { // 라벨 — 회관 위. ★안 가본 마을의 이름·인구는 안 알려 준다(정찰이 공짜가 되면 안 된다)
           const ctr = sc(v.cx * S + 16, v.cy * S + 16);
           ctx.fillStyle = stroke; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
