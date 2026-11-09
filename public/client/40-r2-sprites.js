@@ -9,11 +9,15 @@
   //   몇째 판인가 = 걷기 · 뛰기는 **간 거리**로 돈다(메타 `strideM` = 한 고리 보폭 · 1칸 = 1m = 32px) — 몸이 간 만큼 다리가 돌아 발이 땅에 붙는다.
   //   서기는 메타 `fps`(시간). 쓰러짐(`die`)은 주검(34-m-renderloop 의 corpse 자리)이 한 번 돌고 마지막 판에 눕는다 — 방향은 그 주검에서
   //   한 몸길이(메타 `lengthM`) 안에 마지막으로 그려진 같은 종의 것(없으면 = 들어오기 전에 죽은 주검 = 처음부터 누운 판).
+  // ★★[T1237 · ★재민 11-09 "새 종"] 고라니(`water_deer`)는 사슴 칸이 아니라 제 칸이다(목록 별칭 없음) — 그림이 이 시트뿐이라 `uiCfg.waterDeer`(서버
+  //   `T1237_WATER_DEER`)면 `T1194` 미리보기 손잡이와 따로 그린다(`modelSpriteOn`). 그림자 = 메타 몸 크기(`lengthM` · `widthM`)를 땅 위 타원으로 그 행(여덟 방향)에
+  //   눕혀 아이소 화면에 비춘 꼴(`modelShadow` — 옛 사슴 타원 대신 · 주검도 같은 크기). 몸짓 = 서버 `ps`(1 엎드림 `lie` · 2 풀 뜯기 `eat` — 뛸 때 말고).
+  //   목록 · 메타 · 시트는 그림 문(T1123 `_gfetch` · `_gsrc`)을 지나 매니페스트(T1131 — webp 쌍둥이 · `?v=`)가 정한 주소로 받는다.
   const _mdl = { idx: null, tried: false, sp: new Map(), anim: new Map(), seen: new Map(), dead: new Map() };
   function modelSpriteIndex() {
     if (_mdl.idx || _mdl.tried) return _mdl.idx;
     _mdl.tried = true;
-    fetch('/assets/animals/index.json').then((r) => (r.ok ? r.json() : null)).then((j) => { if (j) _mdl.idx = j; }).catch(() => {});
+    _gfetch('/assets/animals/index.json').then((r) => (r.ok ? r.json() : null)).then((j) => { if (j) _mdl.idx = j; }).catch(() => {});   // [T1237] 그림 문(T1123) · 매니페스트(T1131)
     return null;
   }
   function modelSpriteOf(type) {
@@ -24,14 +28,14 @@
       e = { meta: null, img: null, ok: false };
       _mdl.sp.set(type, e);
       const rel = idx[type], dir = rel.slice(0, rel.lastIndexOf('/') + 1);
-      fetch('/assets/animals/' + rel).then((r) => (r.ok ? r.json() : null)).then((m) => {
+      _gfetch('/assets/animals/' + rel).then((r) => (r.ok ? r.json() : null)).then((m) => {
         if (!m || !m.frameW || !m.sheets || !m.sheets.body_idle) return;
         e.meta = m;
         e.imgs = {};
         for (const sk of Object.keys(m.sheets)) {   // [T1210] 시트마다(클립마다) 한 장 — 서기가 뜨면 그린다 · 다른 클립은 뜨는 대로
           const clip = m.sheets[sk].clip, im = new Image();
           im.onload = () => { im._ok = true; if (clip === 'idle') e.ok = true; };
-          im.src = '/assets/animals/' + dir + sk + '.png';
+          _gsrc(im, '/assets/animals/' + dir + sk + '.png');   // [T1237] 문을 지난다 — 열렸으면 곧바로(매니페스트 주소 · webp) · 아니면 줄에 선다
           e.imgs[clip] = im;
         }
         e.img = e.imgs.idle;
@@ -39,10 +43,32 @@
     }
     return e.ok ? e : null;
   }
+  /** [T1237] 이 종을 받은 모델 시트로 그리나 — `T1194` 미리보기(모든 종 · 끔 기본) 또는 고라니(`T1237` — 이 종의 그림은 시트뿐). */
+  function modelSpriteOn(type) { return !!(uiCfg.modelSprites || (uiCfg.waterDeer && type === 'water_deer')); }
+  /** [T1237] 발밑 — 그 종이 그려지는 갈래의 옛 그림자 가운데(사슴 · 늑대 y + 5 · 카탈로그 종 y + 6 · 크기 표) · 산 몸 · 주검이 같은 식. */
+  function modelFootDy(type) {
+    if (type === 'deer' || type === 'wolf') return 5;
+    const a = window.Animals?.ANIMALS?.[type];
+    return 6 * (a ? _mobSz(a) : 1);
+  }
+  /** [T1237] 받은 모델의 그림자 — 메타 몸 크기(코 → 꼬리 `lengthM` · 폭 `widthM`)의 땅 위 타원을 행 `row`(월드 방향 row × 45°)로 눕혀
+   *  아이소 화면(w2i: sx = wx − wy · sy = (wx + wy) ÷ 2)에 비춘 타원 — 발밑 (x, y) 가운데 · 짙기 = 옛 사슴 그림자 0.4. 2×2 특잇값(닫힌 꼴)으로 반지름 · 기울기. */
+  function modelShadow(x, y, m, row) {
+    const a = (m.lengthM || 0) * 16, b = (m.widthM || 0) * 16, th = row * Math.PI / 4, c = Math.cos(th), s = Math.sin(th);
+    const p = a * (c - s), q = a * (c + s) * 0.5, r = b * (-s - c), t = b * (c - s) * 0.5;   // 열 = 몸 축(a·u) · 옆 축(b·v)의 화면 상
+    const E = (p + t) / 2, F = (p - t) / 2, G = (q + r) / 2, Hh = (q - r) / 2, Q = Math.hypot(E, Hh), R = Math.hypot(F, G);
+    const rot = (Math.atan2(Hh, E) + Math.atan2(G, F)) / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.ellipse(x, y, Q + R, Math.abs(Q - R), rot, 0, Math.PI * 2); ctx.fill();
+    return y;
+  }
   /** [T1210] 이 짐승의 클립 · 판 — 속도로 클립(사람 문턱) · 걷기 · 뛰기는 간 거리로, 서기는 시간으로 돈다. 아직 안 뜬 클립은 서기로. */
   function modelClipFrame(e, mob) {
     const m = e.meta, sp = Math.hypot(mob.vx || 0, mob.vy || 0);   // px/s(서버 실측)
     let clip = sp > (uiCfg.charRunMin || 102) ? 'run' : sp > (uiCfg.charWalkMin || 4) ? 'walk' : 'idle';
+    // [T1237] 몸짓(서버 `ps`) — 뛸 때 말고: 1 엎드림 · 2 풀 뜯기. 엎드린 · 뜯는 몸의 잔걸음(경계 뒷걸음 · 무리 모임 · 관성)은 걷기로 안 바꾼다.
+    const ps = mob.ps | 0;
+    if (ps && clip !== 'run') { const pc = ps === 1 ? 'lie' : ps === 2 ? 'eat' : null; if (pc && m.clips[pc] && e.imgs[pc] && e.imgs[pc]._ok) clip = pc; }
     if (!(m.clips[clip] && e.imgs[clip] && e.imgs[clip]._ok)) clip = 'idle';
     const c = m.clips[clip], key = mob.mid != null ? mob.mid : mob.type, now = performance.now();
     let st = _mdl.anim.get(key);
@@ -75,7 +101,7 @@
     const e = modelSpriteOf(co.mobType);
     if (!e || !e.meta.clips.die || !e.imgs.die || !e.imgs.die._ok) return false;
     const m = e.meta, c = m.clips.die, fw = m.frameW, fh = m.frameH, now = performance.now();
-    const fy = mobShadow(x, y);   // 산 몸과 같은 그림자 · 같은 발밑
+    const fy = y + modelFootDy(co.mobType);   // [T1237] 산 몸과 같은 발밑(그 종의 갈래) · 그림자는 방향을 안 뒤(아래)
     let d = _mdl.dead.get(co.cid);
     if (!d) {
       let best = null, bd = (m.lengthM || 0) * 32;
@@ -90,6 +116,7 @@
       _mdl.dead.set(co.cid, d);
     }
     const fi = Math.min(c.frames - 1, Math.floor(((now - d.t0) / 1000) * c.fps));
+    modelShadow(x, fy, m, d.row);   // [T1237] 산 몸과 같은 그림자(메타 몸 크기 · 그 행) — 주검도 같은 크기
     ctx.drawImage(e.imgs.die, fi * fw, d.row * fh, fw, fh, Math.round(x - m.anchorX), Math.round(fy - m.anchorY), fw, fh);
     return true;
   }
@@ -100,12 +127,17 @@
     if (mob.type !== 'deer' && mob.type !== 'wolf') {
       const animal = window.Animals?.ANIMALS?.[mob.type];
       if (animal) {
-        // 그림자
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath();
-        const sz = animal.size === 'tiny' ? 0.5 : animal.size === 'small' ? 0.7 : animal.size === 'medium' ? 1.0 : animal.size === 'large' ? 1.3 : 1.6;
-        ctx.ellipse(x, y + 6 * sz, 10 * sz, 4 * sz, 0, 0, Math.PI * 2);
-        ctx.fill();
+        const sz = _mobSz(animal);
+        // ★[T1237] 받은 모델 시트가 뜬 종이면 그림자도 그 메타(몸 크기 · 이 행)에서 — 아니면(끔 · 시트 없음 · 아직 안 뜸) 종전 크기 표 그림자 그대로
+        const _mE = modelSpriteOn(mob.type) ? modelSpriteOf(mob.type) : null;
+        if (_mE) modelShadow(x, y + 6 * sz, _mE.meta, charDirRow(mob._fvx ?? 1, mob._fvy ?? 0));
+        else {
+          // 그림자
+          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+          ctx.beginPath();
+          ctx.ellipse(x, y + 6 * sz, 10 * sz, 4 * sz, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
         // ★★[T66] 렌더 없음 = **점선 빈 칸**(재민 확정 4 — 이모지로 메우지 않는다).
         //   ⚠이모지만 지우면 짐승이 **화면에서 사라진다**(그림자만 남는다) — 자리는 남겨야
         //     "여기 뭔가 있는데 그림이 아직 없다"가 보이고, 굽는 날 그 자리가 채워진다.
@@ -113,7 +145,7 @@
         ctx.textBaseline = 'middle';
         // ★★[T1194] 받은 3D 모델을 구운 **서 있기 그림**이 그 자리를 채운다 — 손잡이 `uiCfg.modelSprites`(서버 env `T1194_MODEL_SPRITES=1` · 끔 기본).
         //   끄면 칸이 없어 이 줄이 아무것도 안 부른다(목록 · 메타 · 시트 요청 0 · 점선 칸 그대로). 켜도 그 종의 시트가 아직 없으면 점선 칸.
-        const _mdlTop = uiCfg.modelSprites ? drawModelSprite(x, y + 6 * sz, mob) : null;   // 발밑 = 위 그림자 가운데(같은 식 · 새 수 0)
+        const _mdlTop = _mE ? drawModelSprite(x, y + 6 * sz, mob) : null;   // 발밑 = 위 그림자 가운데(같은 식 · 새 수 0) · [T1237] 손잡이 둘(`modelSpriteOn`) · 뜬 시트만
         if (_mdlTop == null) {
           const half = Math.round(11 * sz);
           ctx.save();
@@ -145,10 +177,11 @@
     const facingX = fdx / flen, facingY = fdy / flen;
     // 머리 위치: 몸통 중심에서 facing 방향으로 6px 앞
     const headOX = facingX * 6, headOY = facingY * 3 - 4; // y는 살짝 위
-    const _foot = mobShadow(x, y);
-    // ★★[T1210] 받은 3D 모델 시트(미리보기) — 손잡이 `uiCfg.modelSprites` 이고 이 칸에 시트가 서면(목록 `index.json` — 고라니 = `deer` 칸)
+    const _mE = modelSpriteOn(mob.type) ? modelSpriteOf(mob.type) : null;   // [T1237] 시트가 뜬 종 — 그림자는 메타(몸 크기 · 이 행) · 발밑은 옛 그림자 가운데(y + 5) 그대로
+    const _foot = _mE ? modelShadow(x, y + 5, _mE.meta, charDirRow(fvx, fvy)) : mobShadow(x, y);
+    // ★★[T1210] 받은 3D 모델 시트(미리보기) — 손잡이 `uiCfg.modelSprites` 이고 이 칸에 시트가 서면(목록 `index.json` — ★[T1237] 고라니는 제 칸 `water_deer` 로 옮겨 사슴 칸엔 시트가 없다)
     //   도형 몸 · 머리 · 뿔 대신 그림. 발밑 = 위 그림자 가운데(T1194 와 같은 꼴 · 새 수 0). 끄면 이 줄이 아무것도 안 부른다(요청 0 · 아래 도형 그대로).
-    const _mdlTop = uiCfg.modelSprites ? drawModelSprite(x, _foot, mob) : null;
+    const _mdlTop = _mE ? drawModelSprite(x, _foot, mob) : null;
     if (_mdlTop != null) {
       // 그림이 섰다 — 도형은 안 그린다
     } else if (isWolf) {
@@ -189,7 +222,9 @@
     ctx.strokeText(label, x, _hy - 4); ctx.fillText(label, x, _hy - 4);
     ctx.textAlign = 'start';
   }
-  /** 옛 사슴 · 늑대 그림자(종전 그 두 줄 그대로) — 그 가운데(= 발밑) y 를 돌려준다. [T1210] 주검 그림도 이것을 부른다(한 벌). */
+  /** 카탈로그 종의 크기 배(그림자 · 발밑 · 점선 칸) — 종전 `drawMobIso` 안 그 표 그대로(★[T1237] 주검 발밑이 같은 표를 읽게 꺼냈다 · 새 수 0). */
+  function _mobSz(animal) { return animal.size === 'tiny' ? 0.5 : animal.size === 'small' ? 0.7 : animal.size === 'medium' ? 1.0 : animal.size === 'large' ? 1.3 : 1.6; }
+  /** 옛 사슴 · 늑대 그림자(종전 그 두 줄 그대로) — 그 가운데(= 발밑) y 를 돌려준다. [T1210] 주검 그림도 이것을 불렀다 → [T1237] 받은 모델은 `modelShadow`. */
   function mobShadow(x, y) {
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath(); ctx.ellipse(x, y + 5, 11, 4, 0, 0, Math.PI * 2); ctx.fill();

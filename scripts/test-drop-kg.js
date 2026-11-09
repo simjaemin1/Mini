@@ -10,7 +10,7 @@
 //
 //  ① 곰 짝 — 존 칸 표에 곰 = 반달가슴곰(있음/있음) · 떼 = 반달가슴곰 칸(1 = 카탈로그 pack) · 불곰은 나중 존 한 줄(게임 id 없음)
 //  ② 수 = 문서 — 몸무게는 T607 칸 글자 · 수율은 T629 칸 글자(새 수 0 · 문서를 읽어 대조) · 사슴 존 → 아종 칸
-//  ③ 되돌림(`=0`) = 옛 줄 — 36종 전부 `dropsOf` 가 카탈로그 `drops` **그 객체**(같은 참조) · 없음·빈 값·'1' 은 켬
+//  ③ 되돌림(`=0`) = 옛 줄 — 37종(★[T1237] 고라니) 전부 `dropsOf` 가 카탈로그 `drops` **그 객체**(같은 참조) · 없음·빈 값·'1' 은 켬
 //  ④ 켬(기본) — 고기 칸만 kg: 사슴 한반도 33 · 닛폰 21 · 존 모름 27(두 아종 가운데) · 곰 36 · 꿩 1 · 가죽·뼈·뿔·모피 그대로 ·
 //     표 밖 종 그대로(같은 참조) · 켬 드롭 객체는 얼어 있다
 //  ⑤ 따라오는 것 — 사체 고기 열량(`kcal.js` meat_game 1,200/kg · USDA) ÷ 하루치 2,450 → 한 번 사냥 몇 날치 · 짐 무게(T618 지게 50~70kg)
@@ -49,7 +49,7 @@ if (process.env.T636_SUB === 'butcher') {
     inventory: {}, toolItems: [], equipment: [], equipSlots: {}, craftSkill: {}, oreLedger: {}, oreCarry: {}, dishes: [], lots: {},
     isNpc: false, isDown: false, vx: 0, vy: 0,
     ws: { readyState: 1, send: (s) => { try { const o = JSON.parse(s); if (o.type === 'notice') notes.push(o.text); } catch (e) {} } } });
-  for (const type of ['deer', 'bear', 'pheasant', 'wolf']) {
+  for (const type of ['deer', 'bear', 'pheasant', 'wolf', 'water_deer']) {   // ★[T1237] 고라니 — 야생 블록만 낳는 종이지만 사체 · 도살은 같은 문
     const p = mkP(type);
     const c = H.spawnCorpse({ type, x: 5010, y: 5000 }, p.playerId);
     H.butcherCorpse(p, c.cid);
@@ -103,8 +103,8 @@ const rowOf = (doc, head, name) => {
 };
 const nums = (v) => (typeof v === 'number' ? [v] : Array.isArray(v) ? v.slice() : Object.values(v).flatMap(nums));
 const hasNum = (cell, n) => new RegExp('(^|[^0-9.])' + String(n).replace('.', '\\.') + '($|[^0-9])').test(cell);
-const T607_NAME = { deer: '사슴(꽃사슴/시카디어)', bear: '반달가슴곰', pheasant: '꿩' };
-const T629_NAME = { deer: '사슴', bear: '곰(반달가슴곰)', pheasant: '꿩' };
+const T607_NAME = { deer: '사슴(꽃사슴/시카디어)', bear: '반달가슴곰', pheasant: '꿩', water_deer: '고라니(물사슴)' };
+const T629_NAME = { deer: '사슴', bear: '곰(반달가슴곰)', pheasant: '꿩', water_deer: '사슴' };   // ★[T1237] 고라니 수율 = 사슴 줄(고라니 칸 미확인 · 같은 사슴과 참고치)
 
 say('\n=== 곰 = 반달가슴곰 · 사냥 드롭 kg · 켬 기본 · 사슴 존별 · 사체 고기 먹기 (T636 · T647) ===');
 
@@ -125,7 +125,7 @@ say('\n① 곰 짝 — 곰 = 반달가슴곰(재민 10-04) · 불곰은 나중 �
 // ── ② 수 = 문서 ─────────────────────────────────────────────────────────────────────────
 say('\n② 수 = 문서 — 몸무게는 T607 칸 · 수율은 T629 칸(새 수 0) · 사슴 존 → 아종 칸');
 {
-  ok(A.DROP_KG.length === 3 && A.DROP_KG.map((r) => r.id).join() === 'deer,bear,pheasant', '② 표 줄 = T607 무게 칸과 T629 수율 칸이 둘 다 있는 게임 종 셋(사슴·곰·꿩)');
+  ok(A.DROP_KG.length === 4 && A.DROP_KG.map((r) => r.id).join() === 'deer,bear,pheasant,water_deer', '② 표 줄 = T607 무게 칸과 T629 수율 칸이 둘 다 있는 게임 종 넷(사슴·곰·꿩 · ★[T1237] 고라니 — 무게 = T607 고라니 칸의 한국아종 · 수율 = T629 사슴 줄)');
   for (const r of A.DROP_KG) {
     const c607 = rowOf(D607, /^\|\s*종\s*\|\s*한반도\s*\|/, T607_NAME[r.id]);
     const c629 = rowOf(D629, /^\|\s*종\s*\|\s*지육/, T629_NAME[r.id]);
@@ -163,7 +163,7 @@ say('\n③ 되돌림(T636_DROP_KG=0) = 옛 줄 — dropsOf 가 카탈로그 drop
     ok(A.dropKgOn() === false, "★③ '0' 하나만 끔(되돌림)");
     const bad = [];
     for (const id of ids) for (const z of [undefined, 'hanbando', 'nippon']) if (A.dropsOf(id, z) !== A.ANIMALS[id].drops) bad.push(id + (z ? '@' + z : ''));
-    ok(bad.length === 0, '★★③ 되돌림 — 36종 × 존 셋 전부 카탈로그 drops 그 객체(글자가 아니라 객체째 · main 바이트)', `다른 것 ${bad.length}`);
+    ok(bad.length === 0 && ids.length === 37, '★★③ 되돌림 — 37종(★[T1237] 고라니 더함) × 존 셋 전부 카탈로그 drops 그 객체(글자가 아니라 객체째 · main 바이트)', `${ids.length}종 · 다른 것 ${bad.length}`);
   });
   ok(/const drops = \(def && def\.drops\) \? dropsOf\(mob\.type, ZONE_ID\) : \{ meat_game: 1, leather: 1 \};/.test(ZSRC), '③ 배선 — zone.js spawnCorpse 가 dropsOf 하나를 존 id 와 함께 부른다(옛 대체값 그대로)');
   ok((ZSRC.match(/def\.drops/g) || []).length === 1, '③ 사체 드롭을 읽는 자리는 그 한 곳뿐(다른 길 0)');
@@ -193,7 +193,10 @@ for (const id of Object.keys(A.ANIMALS)) { ON[id] = A.dropsOf(id); ONZ[id] = { h
   ok(same, '④ 표 밖 종은 켬에서도 카탈로그 그 객체');
   ok(Object.isFrozen(ONZ.deer.hanbando) && !Object.isFrozen(A.ANIMALS.deer.drops) && ONZ.deer.hanbando !== ONZ.deer.nippon, '④ 켬 드롭은 아종 칸마다 얼린 사본(카탈로그는 안 건드린다)');
   const changed = Object.keys(A.ANIMALS).filter((id) => JSON.stringify(ON[id]) !== JSON.stringify(A.ANIMALS[id].drops));
-  ok(changed.join() === 'bear,deer', '★④ 켬에서 드롭이 바뀌는 종 = 둘(곰 · 사슴)', changed.join(',') || '0');
+  ok(changed.join() === 'bear,deer,water_deer', '★④ 켬에서 드롭이 바뀌는 종 = 셋(곰 · 사슴 · ★[T1237] 고라니)', changed.join(',') || '0');
+  const Rw = A.dropKgRow('water_deer', 'hanbando');
+  ok(ONZ.water_deer.hanbando.meat_game === 7 && ONZ.water_deer.nippon.meat_game === 7 && ON.water_deer.leather === 1 && !('horn' in ON.water_deer) && Rw.liveKg === 18.5 && Rw.sub === null,
+    '★★④ [T1237] 고라니 = 한국아종 18.5kg × 37.44% → 고기 7 · 가죽 1(카탈로그) · 뿔 없음(맨머리) · 존 안 가름', `${Rw.meatKg.toFixed(2)}kg`);
   let round = 0; for (const r of [...Object.values(R), Rh, Rn]) if (Math.abs(r.units * r.unitKg - r.meatKg) > r.unitKg / 2 + 1e-9) round++;
   ok(round === 0, '④ 낱개 × 한 개 kg 은 셈한 고기 kg 의 반올림 안(반 개 이내)', `어긋남 ${round}`);
 }
@@ -232,6 +235,9 @@ say('\n⑥ 실기 — 존을 띄워 사체 → 도살(butcherCorpse) → 먹기(
   ok(np.out.deer.inv.meat_game === 21, '★★⑥ 닛폰 — 사슴 도살 고기 21(일본아종)', JSON.stringify(np.out.deer.inv));
   ok(hb.out.bear.inv.meat_bear === 36 && np.out.bear.inv.meat_bear === 36 && !hb.out.bear.inv.meat_game && off.out.bear.inv.meat_game === 6,
     '⑥ 곰 도살 고기 = 곰고기 36(두 존 · T694) · 되돌림 사슴·들짐승고기 6', JSON.stringify(hb.out.bear.inv));
+  ok(hb.out.water_deer && hb.out.water_deer.inv.meat_game === 7 && hb.out.water_deer.inv.leather === 1 && !hb.out.water_deer.inv.horn && np.out.water_deer.inv.meat_game === 7 && off.out.water_deer.inv.meat_game === 1,
+    '★⑥ [T1237] 고라니 도살 — 고기 7 · 가죽 1(두 존) · 되돌림 고기 1(카탈로그) · 같은 사체 · 도살 문', hb.out.water_deer ? JSON.stringify(hb.out.water_deer.inv) : '없음');
+  ok(hb.notes.some((t) => /^고라니을\(를\) 손질해 사슴·들짐승고기 7, 무두질 가죽 1을\(를\) 얻었습니다\.$/.test(t)), '⑥ [T1237] 도살 알림 — 이름 고라니(카탈로그 ko)', hb.notes.filter((t) => /고라니/.test(t)).join(' | ') || '없음');
   ok(JSON.stringify(hb.out.wolf.inv) === JSON.stringify(off.out.wolf.inv) && JSON.stringify(hb.out.pheasant.inv) === JSON.stringify(off.out.pheasant.inv),
     '⑥ 늑대(표 밖) · 꿩(반올림 같음)은 켬 · 되돌림 인벤이 같다', JSON.stringify(hb.out.wolf.inv));
   ok((hb.notes || []).some((s) => /손질해 사슴·들짐승고기 33[ ,을]/.test(s)), '⑥ 도살 알림이 켬 수를 말한다(★T1190 ① 문장 · 이름표)', (hb.notes || []).find((s) => /손질해/.test(s)) || '');

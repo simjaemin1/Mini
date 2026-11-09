@@ -1,0 +1,762 @@
+{
+ "what": "T1237 실존 판(한반도 존 · 벽시계 · 마을 켬) — scripts/t1237-wd-run.js 산물 줄임(단계 평균 · µs · 사냥 · 틱 글)",
+ "spots": {
+  "far": [
+   55680,
+   38784,
+   470
+  ],
+  "mid": [
+   49536,
+   384,
+   164
+  ]
+ },
+ "runs": {
+  "far-off": {
+   "knob": false,
+   "vil": true,
+   "spot": [
+    55680,
+    38784
+   ],
+   "bootMs": 14560,
+   "wallS": 123,
+   "habitat": {
+    "wd": 0,
+    "riverside": 0,
+    "scanned": 0,
+    "first": 0
+   },
+   "t1237": {
+    "runs": 0,
+    "skips": 0,
+    "cut": 0,
+    "maxN": 0,
+    "lastN": 0,
+    "habitat": 0,
+    "scanned": 0,
+    "riverside": 0
+   },
+   "phases": {
+    "warm": {
+     "n": 15,
+     "lab": {},
+     "wd": 0,
+     "wdMin": 0,
+     "wdMax": 0,
+     "wdSt": {},
+     "zoneMobs": 449,
+     "shadows": 0,
+     "us": {
+      "n": 450,
+      "mean": 136.1,
+      "p50": 67,
+      "p95": 132.8,
+      "p99": 3486.6,
+      "max": 6352.3
+     }
+    },
+    "steady": {
+     "n": 60,
+     "lab": {},
+     "wd": 0,
+     "wdMin": 0,
+     "wdMax": 0,
+     "wdSt": {},
+     "zoneMobs": 449,
+     "shadows": 0,
+     "us": {
+      "n": 1816,
+      "mean": 48.3,
+      "p50": 42.5,
+      "p95": 90,
+      "p99": 129.9,
+      "max": 396.8
+     }
+    },
+    "player": {
+     "n": 31,
+     "lab": {},
+     "wd": 0,
+     "wdMin": 0,
+     "wdMax": 0,
+     "wdSt": {},
+     "zoneMobs": 449,
+     "shadows": 0,
+     "us": {
+      "n": 907,
+      "mean": 57.6,
+      "p50": 45.2,
+      "p95": 106.1,
+      "p99": 169.9,
+      "max": 3719.2
+     }
+    }
+   },
+   "hunt": null
+  },
+  "far-on": {
+   "knob": true,
+   "vil": true,
+   "spot": [
+    55680,
+    38784
+   ],
+   "bootMs": 14768,
+   "wallS": 216,
+   "habitat": {
+    "wd": 615,
+    "riverside": 615,
+    "scanned": 25600,
+    "first": 0
+   },
+   "t1237": {
+    "runs": 5971,
+    "skips": 13,
+    "cut": 0,
+    "maxN": 8,
+    "lastN": 8,
+    "habitat": 615,
+    "scanned": 25600,
+    "riverside": 615
+   },
+   "phases": {
+    "warm": {
+     "n": 15,
+     "lab": {},
+     "wd": 7.47,
+     "wdMin": 0,
+     "wdMax": 8,
+     "wdSt": {
+      "graze": 112
+     },
+     "zoneMobs": 456.47,
+     "shadows": 7.47,
+     "us": {
+      "n": 450,
+      "mean": 762.8,
+      "p50": 215.9,
+      "p95": 4231.8,
+      "p99": 4795.6,
+      "max": 7204.2
+     }
+    },
+    "steady": {
+     "n": 60,
+     "lab": {},
+     "wd": 8,
+     "wdMin": 8,
+     "wdMax": 8,
+     "wdSt": {
+      "graze": 96,
+      "sleep": 384
+     },
+     "zoneMobs": 457,
+     "shadows": 8,
+     "us": {
+      "n": 1814,
+      "mean": 127.8,
+      "p50": 112.6,
+      "p95": 234.8,
+      "p99": 316.5,
+      "max": 679.3
+     }
+    },
+    "player": {
+     "n": 31,
+     "lab": {},
+     "wd": 8,
+     "wdMin": 8,
+     "wdMax": 8,
+     "wdSt": {
+      "sleep": 248
+     },
+     "zoneMobs": 457,
+     "shadows": 8,
+     "us": {
+      "n": 907,
+      "mean": 152.6,
+      "p50": 136.1,
+      "p95": 252.6,
+      "p99": 348.2,
+      "max": 1603.7
+     }
+    },
+    "hunt": {
+     "n": 60,
+     "lab": {},
+     "wd": 7.37,
+     "wdMin": 7,
+     "wdMax": 8,
+     "wdSt": {
+      "sleep": 236,
+      "alert": 147,
+      "graze": 35,
+      "flee": 24
+     },
+     "zoneMobs": 456.37,
+     "shadows": 7.37,
+     "us": {
+      "n": 2813,
+      "mean": 220.4,
+      "p50": 198.9,
+      "p95": 370.7,
+      "p99": 589.6,
+      "max": 4418.4
+     }
+    }
+   },
+   "hunt": {
+    "tries": 30,
+    "dead": 30,
+    "hits": [
+     2
+    ],
+    "drops": [
+     "{\"meat_game\":7,\"leather\":1}"
+    ],
+    "inv": {
+     "meat_game": 210,
+     "leather": 30
+    },
+    "notes": [
+     "고라니을(를) 사냥했습니다. 주검은 E로 손질하십시오.",
+     "고라니을(를) 손질해 사슴·들짐승고기 7, 무두질 가죽 1을(를) 얻었습니다."
+    ]
+   }
+  },
+  "mix-off": {
+   "knob": false,
+   "vil": true,
+   "spot": [
+    56448,
+    50304
+   ],
+   "bootMs": 14780,
+   "wallS": 123,
+   "habitat": {
+    "wd": 0,
+    "riverside": 0,
+    "scanned": 0,
+    "first": 8094
+   },
+   "t1237": {
+    "runs": 0,
+    "skips": 0,
+    "cut": 0,
+    "maxN": 0,
+    "lastN": 0,
+    "habitat": 0,
+    "scanned": 0,
+    "riverside": 0
+   },
+   "phases": {
+    "warm": {
+     "n": 15,
+     "lab": {
+      "🐗": 2.4,
+      "🦌": 28.93,
+      "🐇": 17.67
+     },
+     "wd": 0,
+     "wdMin": 0,
+     "wdMax": 0,
+     "wdSt": {},
+     "zoneMobs": 498,
+     "shadows": 49,
+     "us": {
+      "n": 452,
+      "mean": 631.2,
+      "p50": 373.7,
+      "p95": 1009.5,
+      "p99": 8390,
+      "max": 12382.3
+     }
+    },
+    "steady": {
+     "n": 60,
+     "lab": {
+      "🐗": 3,
+      "🦌": 30.43,
+      "🐇": 17.37
+     },
+     "wd": 0,
+     "wdMin": 0,
+     "wdMax": 0,
+     "wdSt": {},
+     "zoneMobs": 499.8,
+     "shadows": 50.8,
+     "us": {
+      "n": 1813,
+      "mean": 374.3,
+      "p50": 341.4,
+      "p95": 602.7,
+      "p99": 744.1,
+      "max": 1776.5
+     }
+    },
+    "player": {
+     "n": 31,
+     "lab": {
+      "🐗": 3,
+      "🦌": 32.32,
+      "🐇": 15.71
+     },
+     "wd": 0,
+     "wdMin": 0,
+     "wdMax": 0,
+     "wdSt": {},
+     "zoneMobs": 500.03,
+     "shadows": 51.03,
+     "us": {
+      "n": 906,
+      "mean": 409.1,
+      "p50": 330.3,
+      "p95": 783.3,
+      "p99": 1104,
+      "max": 8706.3
+     }
+    }
+   },
+   "hunt": null
+  },
+  "mix-on": {
+   "knob": true,
+   "vil": true,
+   "spot": [
+    56448,
+    50304
+   ],
+   "bootMs": 13863,
+   "wallS": 215,
+   "habitat": {
+    "wd": 2197,
+    "riverside": 2197,
+    "scanned": 25600,
+    "first": 8094
+   },
+   "t1237": {
+    "runs": 5965,
+    "skips": 17,
+    "cut": 0,
+    "maxN": 27,
+    "lastN": 27,
+    "habitat": 2197,
+    "scanned": 25600,
+    "riverside": 2197
+   },
+   "phases": {
+    "warm": {
+     "n": 15,
+     "lab": {
+      "🐇": 9.33,
+      "🐗": 3.73,
+      "🦌": 35.8
+     },
+     "wd": 23.07,
+     "wdMin": 0,
+     "wdMax": 26,
+     "wdSt": {
+      "sleep": 331,
+      "graze": 15
+     },
+     "zoneMobs": 520.93,
+     "shadows": 71.93,
+     "us": {
+      "n": 450,
+      "mean": 1298.1,
+      "p50": 548.2,
+      "p95": 5785.8,
+      "p99": 8004.9,
+      "max": 9973.4
+     }
+    },
+    "steady": {
+     "n": 60,
+     "lab": {
+      "🐇": 9.13,
+      "🐗": 4,
+      "🦌": 38.32
+     },
+     "wd": 26,
+     "wdMin": 26,
+     "wdMax": 26,
+     "wdSt": {
+      "sleep": 1560
+     },
+     "zoneMobs": 526.45,
+     "shadows": 77.45,
+     "us": {
+      "n": 1814,
+      "mean": 440.3,
+      "p50": 396,
+      "p95": 691.7,
+      "p99": 920.2,
+      "max": 1506.4
+     }
+    },
+    "player": {
+     "n": 31,
+     "lab": {
+      "🐇": 9,
+      "🐗": 4,
+      "🦌": 38.19
+     },
+     "wd": 26,
+     "wdMin": 26,
+     "wdMax": 26,
+     "wdSt": {
+      "sleep": 780,
+      "graze": 26
+     },
+     "zoneMobs": 526.19,
+     "shadows": 77.19,
+     "us": {
+      "n": 906,
+      "mean": 540.8,
+      "p50": 468.9,
+      "p95": 936.9,
+      "p99": 1452.7,
+      "max": 3976.4
+     }
+    },
+    "hunt": {
+     "n": 60,
+     "lab": {
+      "🐇": 10.35,
+      "🐗": 2.08,
+      "🦌": 39.42
+     },
+     "wd": 26.27,
+     "wdMin": 26,
+     "wdMax": 27,
+     "wdSt": {
+      "graze": 1403,
+      "alert": 146,
+      "flee": 27
+     },
+     "zoneMobs": 527.12,
+     "shadows": 78.12,
+     "us": {
+      "n": 2812,
+      "mean": 764.8,
+      "p50": 699.4,
+      "p95": 1342.4,
+      "p99": 1841.9,
+      "max": 5127.8
+     }
+    }
+   },
+   "hunt": {
+    "tries": 30,
+    "dead": 30,
+    "hits": [
+     2
+    ],
+    "drops": [
+     "{\"meat_game\":7,\"leather\":1}"
+    ],
+    "inv": {
+     "meat_game": 210,
+     "leather": 30
+    },
+    "notes": [
+     "고라니을(를) 사냥했습니다. 주검은 E로 손질하십시오.",
+     "고라니을(를) 손질해 사슴·들짐승고기 7, 무두질 가죽 1을(를) 얻었습니다."
+    ]
+   }
+  },
+  "mid-off": {
+   "knob": false,
+   "vil": true,
+   "spot": [
+    49536,
+    384
+   ],
+   "bootMs": 14319,
+   "wallS": 123,
+   "habitat": {
+    "wd": 0,
+    "riverside": 0,
+    "scanned": 0,
+    "first": 0
+   },
+   "t1237": {
+    "runs": 0,
+    "skips": 0,
+    "cut": 0,
+    "maxN": 0,
+    "lastN": 0,
+    "habitat": 0,
+    "scanned": 0,
+    "riverside": 0
+   },
+   "phases": {
+    "warm": {
+     "n": 15,
+     "lab": {},
+     "wd": 0,
+     "wdMin": 0,
+     "wdMax": 0,
+     "wdSt": {},
+     "zoneMobs": 449,
+     "shadows": 0,
+     "us": {
+      "n": 450,
+      "mean": 112.1,
+      "p50": 60.9,
+      "p95": 136.5,
+      "p99": 2058,
+      "max": 6065.4
+     }
+    },
+    "steady": {
+     "n": 60,
+     "lab": {},
+     "wd": 0,
+     "wdMin": 0,
+     "wdMax": 0,
+     "wdSt": {},
+     "zoneMobs": 449,
+     "shadows": 0,
+     "us": {
+      "n": 1816,
+      "mean": 52.5,
+      "p50": 44.2,
+      "p95": 101,
+      "p99": 140.6,
+      "max": 1298.5
+     }
+    },
+    "player": {
+     "n": 31,
+     "lab": {},
+     "wd": 0,
+     "wdMin": 0,
+     "wdMax": 0,
+     "wdSt": {},
+     "zoneMobs": 449,
+     "shadows": 0,
+     "us": {
+      "n": 906,
+      "mean": 48.2,
+      "p50": 42.8,
+      "p95": 90,
+      "p99": 157.3,
+      "max": 401.6
+     }
+    }
+   },
+   "hunt": null
+  },
+  "mid-on": {
+   "knob": true,
+   "vil": true,
+   "spot": [
+    49536,
+    384
+   ],
+   "bootMs": 13727,
+   "wallS": 122,
+   "habitat": {
+    "wd": 1653,
+    "riverside": 1934,
+    "scanned": 15360,
+    "first": 0
+   },
+   "t1237": {
+    "runs": 3163,
+    "skips": 11,
+    "cut": 0,
+    "maxN": 21,
+    "lastN": 20,
+    "habitat": 1653,
+    "scanned": 15360,
+    "riverside": 1934
+   },
+   "phases": {
+    "warm": {
+     "n": 15,
+     "lab": {},
+     "wd": 19.4,
+     "wdMin": 0,
+     "wdMax": 21,
+     "wdSt": {
+      "graze": 291
+     },
+     "zoneMobs": 468.4,
+     "shadows": 19.4,
+     "us": {
+      "n": 452,
+      "mean": 631.5,
+      "p50": 340.1,
+      "p95": 3705.7,
+      "p99": 5193.4,
+      "max": 7546.5
+     }
+    },
+    "steady": {
+     "n": 60,
+     "lab": {},
+     "wd": 21,
+     "wdMin": 21,
+     "wdMax": 21,
+     "wdSt": {
+      "graze": 1260
+     },
+     "zoneMobs": 470,
+     "shadows": 21,
+     "us": {
+      "n": 1816,
+      "mean": 237.1,
+      "p50": 219.1,
+      "p95": 395.9,
+      "p99": 525.4,
+      "max": 2443
+     }
+    },
+    "player": {
+     "n": 31,
+     "lab": {},
+     "wd": 20.16,
+     "wdMin": 20,
+     "wdMax": 21,
+     "wdSt": {
+      "graze": 473,
+      "flee": 36,
+      "alert": 116
+     },
+     "zoneMobs": 469.16,
+     "shadows": 20.16,
+     "us": {
+      "n": 906,
+      "mean": 373.1,
+      "p50": 332.9,
+      "p95": 576.6,
+      "p99": 1184.4,
+      "max": 4105.5
+     }
+    }
+   },
+   "hunt": null
+  }
+ },
+ "before_fix": {
+  "far-on": {
+   "note": "훑기 주머니 고치기 앞(고라니 훑기 제 4 ms) · 사냥 판은 한 틱 안 거듭 치기(주검 겹침을 찾은 판)",
+   "warm": {
+    "n": 452,
+    "mean": 715,
+    "p50": 193.8,
+    "p95": 4191.5,
+    "p99": 7751.6,
+    "max": 11695.1
+   },
+   "steady": {
+    "n": 1814,
+    "mean": 128,
+    "p50": 116.8,
+    "p95": 203.3,
+    "p99": 286.1,
+    "max": 1026.7
+   }
+  },
+  "mix-on": {
+   "note": "훑기 주머니 고치기 앞(고라니 훑기 제 4 ms) · 사냥 판은 한 틱 안 거듭 치기(주검 겹침을 찾은 판)",
+   "warm": {
+    "n": 448,
+    "mean": 1288.1,
+    "p50": 517.3,
+    "p95": 5573.6,
+    "p99": 12503.7,
+    "max": 33627.9
+   },
+   "steady": {
+    "n": 1815,
+    "mean": 417.4,
+    "p50": 386.1,
+    "p95": 666.9,
+    "p99": 839.3,
+    "max": 1990.7
+   }
+  },
+  "mid-on": {
+   "note": "훑기 주머니 고치기 앞(고라니 훑기 제 4 ms) · 사냥 판은 한 틱 안 거듭 치기(주검 겹침을 찾은 판)",
+   "warm": {
+    "n": 448,
+    "mean": 639.5,
+    "p50": 281.2,
+    "p95": 3970.3,
+    "p99": 7265.2,
+    "max": 11651.3
+   },
+   "steady": {
+    "n": 1817,
+    "mean": 212.2,
+    "p50": 195.9,
+    "p95": 350.3,
+    "p99": 445.8,
+    "max": 1009.2
+   }
+  }
+ },
+ "net": {
+  "far-off": {
+   "warm": {
+    "ticks": 451,
+    "bytesPerTick": 141
+   },
+   "steady": {
+    "ticks": 909,
+    "bytesPerTick": 101
+   },
+   "player": {
+    "ticks": 454,
+    "bytesPerTick": 65
+   }
+  },
+  "far-on": {
+   "warm": {
+    "ticks": 451,
+    "bytesPerTick": 144
+   },
+   "steady": {
+    "ticks": 908,
+    "bytesPerTick": 144
+   },
+   "player": {
+    "ticks": 454,
+    "bytesPerTick": 65
+   }
+  },
+  "mix-off": {
+   "warm": {
+    "ticks": 450,
+    "bytesPerTick": 56
+   },
+   "steady": {
+    "ticks": 907,
+    "bytesPerTick": 56
+   },
+   "player": {
+    "ticks": 455,
+    "bytesPerTick": 65
+   }
+  },
+  "mix-on": {
+   "warm": {
+    "ticks": 449,
+    "bytesPerTick": 417
+   },
+   "steady": {
+    "ticks": 906,
+    "bytesPerTick": 487
+   },
+   "player": {
+    "ticks": 455,
+    "bytesPerTick": 463
+   }
+  }
+ }
+}

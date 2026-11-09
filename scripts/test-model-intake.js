@@ -17,6 +17,11 @@
 //   게임 칸 별칭(`--species` → 목록 `deer` 가 `water_deer/` 를 가리킨다) · 클라는 속도로 클립 · 간 거리로 판 · 주검은 쓰러짐 한 번 뒤 눕는다.
 //  ③ 걸음 재기는 model_gait 한 벌 · ④ 고라니 메타(보폭 · 제 빠르기 · 미끄러짐 · 쓰러짐 길이 1.5 ~ 2초 · 몸 돌림)와 칸마다 그림 ·
 //  ⑤ 끔 = 사슴 · 늑대 그리기가 종전(66bf163d)과 호출 · 속성 차례까지 같다(sha1) · 켬 = 클립 · 판 · 막대 · 이름 · 주검
+// ★[T1237 · ★재민 11-09 "새 종"] 고라니 = 제 종 — 목록 별칭 `deer` 를 뺐다(사슴 자리는 사슴 그림) · 시트 여섯(서기 · 걷기 8 · 뛰기 4 · 풀 뜯기 · 쓰러짐 키 1.2초 · 엎드림) ·
+//   클라 손잡이 둘(`modelSprites` 미리보기 · `waterDeer` 고라니만 — `modelSpriteOn`) · 몸짓 칸 `ps`(1 엎드림 · 2 풀 뜯기 — 뛸 땐 안 바꾼다) ·
+//   그림자 = 몸 크기 메타(발자국 타원을 행 방향으로 돌려 아이소에 — 무차별 대입과 견줌 · 주검도 같은 식)
+//  ④ 고라니 목록 · 메타(클립 여섯 · 키 쓰러짐 1 ~ 1.5초 · 3.4 ~ 5.7초 키 0 · 뜯기 꺾음 · 엎드림) · 칸마다 그림 · webp 쌍 화소 같음
+//  ⑤ 카탈로그 갈래(고라니) — 켬 = 클립 · 몸짓 · 그림자 · 막대 · 방향 · 주검 · 끔 = 사슴 · 늑대 종전 sha 그대로(손잡이 둘 다)
 // 실행: node scripts/test-model-intake.js
 'use strict';
 const fs = require('fs');
@@ -102,18 +107,27 @@ try {
   const mid = rows.slice().sort((a, b) => a - b);
   ok(mid[7] / mid[0] < 3, '여덟 행의 그림 크기가 한 짐승이다(가장 큰 ÷ 가장 작은 < 3 — 옆모습 · 앞모습 차만)', (mid[7] / mid[0]).toFixed(2));
 } catch (e) { ok(false, '시트 풀기', e.message); }
-// [T1210] 고라니 — 게임 칸 별칭 · 걸음 값 · 쓰러짐 길이 · 칸마다 그림
+// [T1210] 고라니 — 걸음 값 · 칸마다 그림 · ★[T1237 · ★재민 11-09 "새 종"] 제 칸(water_deer) · 키 쓰러짐 1 ~ 1.5초 · 풀 뜯기 · 엎드림 · 뛰기 판 수 · webp 쌍둥이
 {
-  ok(idx.deer === 'water_deer/water_deer_meta.json' && !('water_deer' in idx), '[T1210] 목록 — 게임 칸 deer → 고라니 폴더(water_deer 는 게임 키가 아니라 목록에 없다)', idx.deer);
-  const m = JSON.parse(fs.readFileSync(path.join(A, idx.deer), 'utf8'));
-  ok(m.species === 'deer' && m.source && m.source.anims && ['idle', 'walk', 'run', 'die'].every((k) => m.source.anims[k] && /^[0-9a-f]{32}$/.test(m.source.anims[k].md5)),
-    '[T1210] 고라니 메타 — 칸 deer · 동작 파일 넷의 지문(md5)', Object.keys((m.source && m.source.anims) || {}).join(' '));
-  const W = m.clips.walk, R = m.clips.run, Dc = m.clips.die, I = m.clips.idle;
+  ok(idx.water_deer === 'water_deer/water_deer_meta.json' && !('deer' in idx), '[T1237] 목록 — 고라니는 제 칸 water_deer(사슴 칸 별칭 없음 — 사슴 자리는 옛 도형 그대로)', JSON.stringify(Object.keys(idx)));
+  const m = JSON.parse(fs.readFileSync(path.join(A, idx.water_deer), 'utf8'));
+  const SIX = ['idle', 'walk', 'run', 'eat', 'die', 'lie'];
+  ok(!m.species && m.source && m.source.anims && SIX.every((k) => m.source.anims[k] && /^[0-9a-f]{32}$/.test(m.source.anims[k].md5)),
+    '[T1237] 고라니 메타 — 게임 칸 = 폴더 이름(별칭 칸 없음) · 클립 여섯의 원천 동작 파일 지문(md5)', Object.keys((m.source && m.source.anims) || {}).join(' '));
+  const W = m.clips.walk, R = m.clips.run, Dc = m.clips.die, I = m.clips.idle, E = m.clips.eat, L = m.clips.lie;
   const feet4 = (c) => c && c.slipCm && Object.keys(c.slipCm).length === 4 && Object.values(c.slipCm).every((v) => v >= 0);
   ok(W && R && W.loop && R.loop && W.strideM > 0 && R.strideM > W.strideM && W.speedMps > 0 && R.speedMps > W.speedMps && feet4(W) && feet4(R) && W.cycle && R.cycle && W.durS === W.cycle.periodS && R.durS === R.cycle.periodS,
     '[T1210] 걷기 · 뛰기 = 한 고리(길이 = 주기) · 보폭 · 제 빠르기(뛰기 > 걷기) · 발 넷의 미끄러짐', W && R ? `보폭 ${W.strideM} · ${R.strideM} m · ${W.speedMps} · ${R.speedMps} m/s` : '');
-  ok(Dc && !Dc.loop && Dc.durS >= 1.5 && Dc.durS <= 2.0 && Dc.face && Dc.face.bones.length === 2 && Math.abs(Dc.fps - (Dc.frames - 1) / Dc.durS) < 1e-3,
-    '[T1210] 쓰러짐 — 한 번 · 1.5 ~ 2초(카드) · 첫 판 몸 돌림 · fps = (판 − 1) ÷ 길이(마지막 판이 끝에 선다)', Dc ? `${Dc.durS}초 · ${Dc.frames}판 · 구간 ${JSON.stringify(Dc.srcS)}` : '');
+  ok(W && R && W.frames === 8 && R.frames === 4, '[T1237] 판 수 — 걷기 8 · 뛰기 4(질주 14 m/s 에서 한 고리 = 60 Hz 화면 4.2판 → 4판이면 판마다 보인다 · 보고 §3 표)', W && R ? `${W.frames} · ${R.frames}` : '');
+  const skip = (Dc && Dc.keys) ? Dc.keys.filter(([src, t]) => src === 'die' && t > 3.4 && t < 5.7) : null;
+  ok(Dc && !Dc.loop && Dc.keys && Dc.keys[0][0] === 'idle' && Dc.keys[0][2] === 0 && Dc.durS >= 1.0 && Dc.durS <= 1.5 && skip.length === 0 && Dc.face && Dc.face.keyTurnDeg.length === Dc.keys.length
+    && Math.abs(Dc.fps - (Dc.frames - 1) / Dc.durS) < 1e-3,
+    '★[T1237] 쓰러짐 = 키(이 뼈대) 한 번 · 1 ~ 1.5초(카드) · 서기 자세에서 시작 · 원천이 엎드려 머리 드는 3.4 ~ 5.7초 키 0(이은 자리 머리 들림 없앰) · 키마다 몸 돌림', Dc ? `${Dc.durS}초 · ${Dc.frames}판 · 키 ${JSON.stringify(Dc.keys)}` : '');
+  const bendDown = E && E.bend && E.bend.filter(([b]) => /^neck|^spine/.test(b)).every(([, d]) => d > 0) && E.bend.some(([b]) => b === 'head');
+  ok(E && E.loop && E.frames === 4 && bendDown && E.durS === I.durS && JSON.stringify(E.srcS) === JSON.stringify(I.srcS),
+    '[T1237] 풀 뜯기 = 서기 동작(같은 구간 · 고리 4판) 위에 목 · 등뼈 숙임(+) · 머리 받침(−) — 받은 먹기 동작이 없어 키로(카드)', E ? JSON.stringify(E.bend) : '');
+  ok(L && L.frames === 1 && L.face && Math.abs(L.face.turnDeg) > 90 && L.srcS[0][0] > 3.4 && L.srcS[0][1] < 5.7,
+    '[T1237] 엎드림 = 말용 쓰러짐의 엎드려 쉬는 구간(3.4 ~ 5.7초) 한 판 · 몸 방향을 쉬는 자세로(행이 안 틀어진다)', L ? `${JSON.stringify(L.srcS)} · 돌림 ${L.face.turnDeg}°` : '');
   ok(I && I.loop && I.frames === 4, '[T1210] 서기 — 고리 4판(사람 시트와 같은 수)');
   try {
     const { PNG } = require('pngjs');
@@ -129,8 +143,17 @@ try {
       const lo = Math.min(...cells), hi = Math.max(...cells);
       if (!(lo > 0 && hi / lo < 3)) bad.push(`${sk} ${lo}~${hi}`);
     }
-    ok(bad.length === 0, '[T1210] 고라니 시트 넷 — 칸(방향 × 판)마다 그림이 있고 한 클립 안 크기가 한 짐승(가장 큰 ÷ 가장 작은 < 3)', bad.join(' · ') || Object.keys(m.sheets).join(' '));
+    ok(bad.length === 0, '[T1237] 고라니 시트 여섯 — 칸(방향 × 판)마다 그림이 있고 한 클립 안 크기가 한 짐승(가장 큰 ÷ 가장 작은 < 3)', bad.join(' · ') || Object.keys(m.sheets).join(' '));
   } catch (e) { ok(false, '고라니 시트 풀기', e.message); }
+
+  // [T1237 · T1131] webp 쌍둥이 — 시트마다 같은 어간 webp 가 있고 화소가 같다(잠금 자 정본 `asset-lock` 화소 해시 · 굽기가 같이 쓴다)
+  try {
+    const AL = require('./asset-lock.js');
+    const tw = Object.keys(m.sheets).map((sk) => { const p = path.join(A, 'water_deer', sk + '.png'), w = p.replace(/\.png$/, '.webp');
+      return [sk, fs.existsSync(w) && AL.pixelHash(p) === AL.pixelHash(w), fs.statSync(p).size, fs.existsSync(w) ? fs.statSync(w).size : 0]; });
+    const kb = (n) => Math.round(n / 1024);
+    ok(tw.length === 6 && tw.every((r) => r[1]), '★[T1237] 시트 여섯 다 같은 화소 webp 쌍둥이(잠금 자 화소 해시 같음)', `png ${kb(tw.reduce((a, r) => a + r[2], 0))} KB → webp ${kb(tw.reduce((a, r) => a + r[3], 0))} KB`);
+  } catch (e) { ok(false, 'webp 쌍둥이', e.message); }
 }
 
 console.log('\n⑤ 클라(정본 함수를 잘라 vm 에서)');
@@ -147,6 +170,8 @@ function world(knob, files, opt) {
     ctx, uiCfg: Object.assign({ modelSprites: knob }, (opt && opt.ui) || {}), Math, JSON, console, Promise, performance: { now: () => clock.t },
     window: { Animals: { ANIMALS: ANIM } },
     fetch: (u) => { fetched.push(u); const f = files[u]; return Promise.resolve({ ok: !!f, json: () => Promise.resolve(f ? JSON.parse(JSON.stringify(f)) : null) }); },
+    _gfetch: (u, o) => sandbox.fetch(u, o),   // [T1237] 그림 문(T1123) — 하네스 판은 문이 열린 꼴(곧바로 · 주소 그대로)
+    _gsrc: (im, u) => { im.src = u; },
     Image: function () { const self = this; Object.defineProperty(this, 'src', { set(v) { self._src = v; Promise.resolve().then(() => self.onload && self.onload()); }, get() { return self._src; } }); },
   };
   vm.createContext(sandbox);
@@ -212,9 +237,9 @@ const settle = () => new Promise((r) => setTimeout(r, 0));
     ok(di2 && di2[7] === Math.round(100 + 6 * 1.3 - META.anchorY), '크기 표가 다른 종(large 1.3)도 발밑 = 그 그림자 가운데', di2 ? `y ${di2[7]}` : '');
   }
 
-  // ═══ [T1210] 고라니 — 사슴 칸(옛 도형 갈래) ═══
-  const DM = JSON.parse(fs.readFileSync(path.join(A, idx.deer), 'utf8'));
-  const DFILES = { '/assets/animals/index.json': idx, ['/assets/animals/' + idx.deer]: DM };
+  // ═══ [T1210] 사슴 · 늑대 옛 도형 갈래 — ★[T1237] 고라니가 제 칸(water_deer)으로 가서 사슴 칸엔 시트가 없다 ═══
+  const DM = JSON.parse(fs.readFileSync(path.join(A, idx.water_deer), 'utf8'));
+  const WFILES = { '/assets/animals/index.json': idx, ['/assets/animals/' + idx.water_deer]: DM };
   const MOBS4 = [
     { mid: 1, type: 'deer', _fvx: 1, _fvy: 0, hp: 30, maxHp: 30 },
     { mid: 2, type: 'deer', _fvx: -1, _fvy: 1, hp: 12, maxHp: 30, vx: -40, vy: 40 },
@@ -226,32 +251,52 @@ const settle = () => new Promise((r) => setTimeout(r, 0));
   {
     // 끔 = 종전 바이트 — 66bf163d 의 drawMobIso(사슴 · 늑대 갈래)가 그리던 호출 · 속성 쓰기 차례(네 판 30 · 34 · 30 · 26)의 sha1
     const OLD = '1d560ddace373c96880d414301b6eb54a532ed56';
-    const W0 = world(undefined, DFILES, { sets: true });
+    const W0 = world(undefined, WFILES, { sets: true });
     const off = draw4(W0);
     ok(sha(off) === OLD && W0.fetched.length === 0, '[T1210] 끔 — 사슴 · 늑대 그리기가 종전(66bf163d)과 호출 · 속성 차례까지 같다 · 요청 0', `${off.map((l) => l.length).join(' · ')} · ${sha(off).slice(0, 8)}`);
-    const W1 = world(true, DFILES, { sets: true });
+    const W1 = world(true, WFILES, { sets: true });
     const on0 = draw4(W1);
-    ok(sha(on0) === OLD && W1.fetched.includes('/assets/animals/index.json'), '[T1210] 켬 · 시트가 아직 안 뜸 — 그리기는 끔과 같다(도형으로 버틴다) · 목록을 부른다', sha(on0).slice(0, 8));
+    ok(sha(on0) === OLD && W1.fetched.includes('/assets/animals/index.json'), '[T1210] 켬(T1194) · 목록이 아직 안 뜸 — 그리기는 끔과 같다 · 목록을 부른다', sha(on0).slice(0, 8));
     for (let k = 0; k < 3; k++) { W1.sb.drawMobIso(100, 100, { mid: 9, type: 'deer', _fvx: 1, _fvy: 0, hp: 30, maxHp: 30 }); for (let i = 0; i < 6; i++) await settle(); }
     W1.calls.length = 0;
     const on1 = draw4(W1);
-    ok(sha(on1) !== OLD && on1[0].some((c) => c[0] === 'drawImage') && !on1[3].some((c) => c[0] === 'drawImage') && sha(on1[3]) === sha(off[3]),
-      '[T1210] 자명 통과 금지 — 시트가 뜨면 사슴은 그림(같은 판 · 손잡이만 다르다) · 시트 없는 늑대는 종전 그대로');
+    ok(sha(on1) === OLD && !on1.some((l) => l.some((c) => c[0] === 'drawImage')), '★[T1237] 목록이 떠도 사슴 칸엔 시트가 없다(고라니는 제 칸 · ★재민 "새 종") — 사슴 · 늑대는 옛 도형 그대로(같은 sha)');
+    const W2 = world(undefined, WFILES, { sets: true, ui: { waterDeer: true } });
+    const wd0 = draw4(W2);
+    ok(sha(wd0) === OLD && W2.fetched.length === 0, '★[T1237] 고라니 손잡이(`waterDeer`)만 켜도 사슴 · 늑대 그리기는 종전 그대로 · 목록 요청 0(사슴 · 늑대 칸은 그 손잡이와 무관)');
+  }
+  // ═══ [T1237] 고라니 — 제 칸(카탈로그 갈래 · small 0.7) ═══
+  const BFILES = Object.assign({}, FILES, WFILES);
+  {
+    const W0 = world(undefined, BFILES);
+    for (let k = 0; k < 2; k++) { W0.sb.drawMobIso(100, 100, { mid: 1, type: 'water_deer', _fvx: 1, _fvy: 0, hp: 20, maxHp: 20 }); for (let i = 0; i < 6; i++) await settle(); }
+    ok(W0.fetched.length === 0 && W0.calls.filter((c) => c[0] === 'strokeRect').length === 2 && !W0.calls.some((c) => c[0] === 'drawImage'), '[T1237] 두 손잡이 다 끔 — 고라니 칸은 점선 칸(요청 0 · 세계에 고라니가 0 이라 실제론 안 불린다)');
+    const W = world(undefined, BFILES, { ui: { waterDeer: true } });
+    for (let k = 0; k < 3; k++) {
+      W.sb.drawMobIso(100, 100, { mid: 1, type: 'water_deer', _fvx: 1, _fvy: 0, hp: 20, maxHp: 20 });
+      W.sb.drawMobIso(100, 100, { mid: 2, type: 'wild_boar', _fvx: 1, _fvy: 0, hp: 60, maxHp: 60 });
+      for (let i = 0; i < 6; i++) await settle();
+    }
+    W.calls.length = 0;
+    W.sb.drawMobIso(100, 100, { mid: 1, type: 'water_deer', _fvx: 1, _fvy: 0, hp: 20, maxHp: 20 });
+    const n1 = W.calls.length;
+    W.sb.drawMobIso(100, 100, { mid: 2, type: 'wild_boar', _fvx: 1, _fvy: 0, hp: 60, maxHp: 60 });
+    ok(W.calls.slice(0, n1).some((c) => c[0] === 'drawImage') && !W.calls.slice(n1).some((c) => c[0] === 'drawImage') && W.calls.slice(n1).some((c) => c[0] === 'strokeRect'),
+      '★[T1237] 고라니 손잡이(`waterDeer`) — 고라니는 시트로(T1194 와 따로 · 그림이 시트뿐) · 멧돼지(T1194 미리보기)는 점선 그대로');
   }
   {
-    const W = world(true, DFILES);
-    const mob = (o) => Object.assign({ mid: 5, type: 'deer', _fvx: 1, _fvy: 0, hp: 30, maxHp: 30, vx: 0, vy: 0, x: 3200, y: 3200 }, o);
+    const W = world(undefined, BFILES, { ui: { waterDeer: true } });
+    const SZ = 0.7, mob = (o) => Object.assign({ mid: 5, type: 'water_deer', _fvx: 1, _fvy: 0, hp: 20, maxHp: 20, vx: 0, vy: 0, x: 3200, y: 3200 }, o);
     for (let k = 0; k < 3; k++) { W.sb.drawMobIso(200, 150, mob()); for (let i = 0; i < 6; i++) await settle(); }
     const last = () => W.calls.filter((c) => c[0] === 'drawImage').pop();
-    const fw = DM.frameW, fh = DM.frameH, C = DM.clips;
-    // 서기 — 시간으로(fps): 0 판 → 1/fps 초 뒤 1 판(화면은 한 판 60분의 1초씩 — 막이 0.25초는 사람 시트 그대로)
+    const fw = DM.frameW, fh = DM.frameH, C = DM.clips, FOOT = 150 + 6 * SZ;
+    // 서기 — 시간으로(fps): 0 판 → 1/fps 초 뒤 1 판
     W.sb.drawMobIso(200, 150, mob({ mid: 6 })); const i0 = last();
     const tEnd = W.clock.t + 1000 / C.idle.fps + 1;
     while (W.clock.t < tEnd) { W.clock.t = Math.min(tEnd, W.clock.t + 1000 / 60); W.sb.drawMobIso(200, 150, mob({ mid: 6 })); }
     const i1 = last();
-    ok(i0 && i1 && i0[1] && i0[1]._src.endsWith('/body_idle.png') && i0[2] === 0 && i1[2] === fw && i0[3] === 0,
-      '[T1210] 서 있는 고라니(속도 0) — 서기 시트 · 시간으로 판이 넘어간다(1 ÷ fps 초에 한 판)', i1 ? `열 ${i0[2] / fw} → ${i1[2] / fw}` : '');
-    // 걷기 — 간 거리로: dt 0.1 초 · 40 px/s(1.25 m/s · 평시 풀뜯기 걸음 0.22 ~ 0.5 × 5 m/s 안) → 판 = ⌊(1.25 × 0.1 ÷ 보폭) × 판 수⌋
+    ok(i0 && i1 && i0[1]._src.endsWith('/body_idle.png') && i0[2] === 0 && i1[2] === fw && i0[3] === 0, '[T1210] 서 있는 고라니(속도 0) — 서기 시트 · 시간으로 판이 넘어간다(1 ÷ fps 초에 한 판)', i1 ? `열 ${i0[2] / fw} → ${i1[2] / fw}` : '');
+    // 걷기 — 간 거리로: 40 px/s(1.25 m/s · 고라니 풀뜯기 걸음 0.22 ~ 0.5 × 5.4 m/s 안)
     const sp = 40, dt = 0.1;
     W.sb.drawMobIso(200, 150, mob({ mid: 7, vx: sp })); W.clock.t += dt * 1000; W.sb.drawMobIso(200, 150, mob({ mid: 7, vx: sp })); const w1 = last();
     const want = Math.floor(((sp / 32) * dt / C.walk.strideM) * C.walk.frames) % C.walk.frames;
@@ -259,55 +304,74 @@ const settle = () => new Promise((r) => setTimeout(r, 0));
     W.clock.t += dt * 1000; W.sb.drawMobIso(200, 150, mob({ mid: 7, vx: sp * 2 })); const w2 = last();
     const want2 = Math.floor((((sp / 32) * dt + (sp * 2 / 32) * dt) / C.walk.strideM) * C.walk.frames) % C.walk.frames;
     ok(w2 && w2[2] === want2 * fw, '[T1210] 두 배 빠르면 두 배 돈다(같은 dt · 걸음 두 배 — 발이 안 끌린다)', w2 ? `판 ${w2[2] / fw}(식 ${want2})` : '');
-    // 뛰기 · 문턱 — 사람과 같은 charRunMin(102 px/s): 102 = 걷기 · 103 = 뛰기 · 서버가 문턱을 주면 그것
+    // 뛰기 · 문턱 — 사람과 같은 charRunMin(102 px/s)
     W.sb.drawMobIso(200, 150, mob({ mid: 8, vx: 102 })); const r0 = last();
     W.sb.drawMobIso(200, 150, mob({ mid: 8, vx: 103 })); const r1 = last();
     W.sb.uiCfg.charRunMin = 150; W.sb.drawMobIso(200, 150, mob({ mid: 8, vx: 120 })); const r2 = last(); delete W.sb.uiCfg.charRunMin;
-    ok(r0[1]._src.endsWith('/body_walk.png') && r1[1]._src.endsWith('/body_run.png') && r2[1]._src.endsWith('/body_walk.png'),
-      '[T1210] 클립 문턱 = 사람 시트의 것(charRunMin 102 · 서버 값이 오면 그 값) — 새 수 0');
-    // 그리는 자리 · 막대 · 이름 — 발밑 = 옛 그림자 가운데(x, y + 5) · 막대 = 그림 머리 위 3 · 이름 = 막대 4 위
+    ok(r0[1]._src.endsWith('/body_walk.png') && r1[1]._src.endsWith('/body_run.png') && r2[1]._src.endsWith('/body_walk.png'), '[T1210] 클립 문턱 = 사람 시트의 것(charRunMin 102 · 서버 값이 오면 그 값) — 새 수 0');
+    // ★[T1237] 몸짓 — 서버 `ps`: 1 엎드림 · 2 풀 뜯기(뛸 때 말고 · 잔걸음은 몸짓 그대로)
+    W.sb.drawMobIso(200, 150, mob({ mid: 20, ps: 1 })); const l0 = last();
+    W.sb.drawMobIso(200, 150, mob({ mid: 21, ps: 1, vx: 20 })); const l1 = last();
+    W.sb.drawMobIso(200, 150, mob({ mid: 22, ps: 2 })); const e0 = last();
+    W.sb.drawMobIso(200, 150, mob({ mid: 23, ps: 2, vx: 200 })); const e1 = last();
+    W.sb.drawMobIso(200, 150, mob({ mid: 24, ps: 0 })); const n0 = last();
+    ok(l0[1]._src.endsWith('/body_lie.png') && l1[1]._src.endsWith('/body_lie.png') && e0[1]._src.endsWith('/body_eat.png') && e1[1]._src.endsWith('/body_run.png') && n0[1]._src.endsWith('/body_idle.png'),
+      '★[T1237] 몸짓 — ps 1 엎드림(잔걸음 20 px/s 에도) · ps 2 풀 뜯기 · 뛰면(200 px/s) 뛰기 · ps 0 서기');
+    // ★[T1237] 그림자 = 메타 몸 크기의 땅 위 타원을 그 행으로 눕혀 아이소에 비춘 것(발밑 가운데) — 행 0(동) · 행 3(서남 = 화면 옆) · 행 1(동남 = 화면 정면)
+    const ell = (row) => { W.calls.length = 0; const f = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]][row]; W.sb.drawMobIso(200, 150, mob({ mid: 30 + row, _fvx: f[0], _fvy: f[1] })); return W.calls.find((c) => c[0] === 'ellipse'); };
+    const brute = (row) => { const a = DM.lengthM * 16, b = DM.widthM * 16, th = row * Math.PI / 4; let mx = 0, mn = 1e9;
+      for (let i = 0; i < 3600; i++) { const u = i / 3600 * 2 * Math.PI, wx = a * Math.cos(u) * Math.cos(th) - b * Math.sin(u) * Math.sin(th), wy = a * Math.cos(u) * Math.sin(th) + b * Math.sin(u) * Math.cos(th);
+        const r = Math.hypot(wx - wy, (wx + wy) / 2); if (r > mx) mx = r; if (r < mn) mn = r; } return [mx, mn]; };
+    const sh = [0, 1, 3].map((row) => [row, ell(row), brute(row)]);
+    ok(sh.every(([, e, [mx, mn]]) => e && e[1] === 200 && Math.abs(e[2] - FOOT) < 1e-9 && Math.abs(e[3] - mx) < 0.01 && Math.abs(e[4] - mn) < 0.01),
+      '★[T1237] 그림자 — 발밑(x, y + 6 · 0.7) 가운데 · 반지름 = 몸 길이 · 폭 타원을 그 행으로 눕혀 비춘 것(전수 표본과 0.01px 안)', sh.map(([r, e]) => `행${r} ${e[3].toFixed(1)}×${e[4].toFixed(1)}`).join(' · '));
+    ok(!W.calls.some((c) => c[0] === 'ellipse' && c[3] === 10 * SZ && c[4] === 4 * SZ), '[T1237] (자명 통과 금지) 옛 크기 표 그림자(10 · 4 × 0.7)는 안 그린다 — 그림자가 메타를 읽는다');
+    // 그리는 자리 · 막대 — 발밑 = 그림자 가운데(x, y + 6 · 0.7) · 막대 = 그림 머리 위 3(카탈로그 갈래 식 · 이름 줄 없음)
     W.calls.length = 0;
-    W.sb.drawMobIso(200, 150, mob({ mid: 10, hp: 10 }));
-    const di = W.calls.find((c) => c[0] === 'drawImage'), top = Math.round(155 - DM.anchorY);
-    const bar = W.calls.find((c) => c[0] === 'fillRect'), lab = W.calls.find((c) => c[0] === 'fillText');
-    const hy = Math.min(150 - 16, top - 3);
-    ok(di && di[6] === Math.round(200 - DM.anchorX) && di[7] === top && di[4] === fw && di[5] === fh && bar && bar[2] === hy && lab && lab[3] === hy - 4 && !W.calls.some((c) => c[0] === 'arc'),
-      '[T1210] 발밑 = 옛 그림자 가운데(x, y + 5) · 막대 = 그림 머리 위 · 이름 = 막대 4 위 · 도형 머리(arc) 0', di ? `그림 (${di[6]}, ${di[7]}) · 막대 y ${bar && bar[2]} · 이름 y ${lab && lab[3]}` : '');
+    W.sb.drawMobIso(200, 150, mob({ mid: 10, hp: 8 }));
+    const di = W.calls.find((c) => c[0] === 'drawImage'), top = Math.round(FOOT - DM.anchorY);
+    const bar = W.calls.find((c) => c[0] === 'fillRect');
+    ok(di && di[6] === Math.round(200 - DM.anchorX) && di[7] === top && di[4] === fw && di[5] === fh && bar && bar[2] === Math.min(150 - 18 * SZ, top - 3) && !W.calls.some((c) => c[0] === 'strokeRect'),
+      '[T1237] 발밑 = 그림자 가운데 · 막대 = 그림 머리 위(카탈로그 갈래 식) · 점선 칸 0', di ? `그림 (${di[6]}, ${di[7]}) · 막대 y ${bar && bar[2]}` : '');
     // 방향 — 여덟 방향이 행 0 ~ 7(사람과 같은 함수)
     const facings = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]], rows = [];
     for (const [fx, fy] of facings) { W.sb.drawMobIso(200, 150, mob({ mid: 11, _fvx: fx, _fvy: fy })); rows.push(last()[3] / fh); }
     ok(rows.join(',') === '0,1,2,3,4,5,6,7', '[T1210] 고라니 방향 여덟 = 시트 행 0 ~ 7(charDirRow)', rows.join(' '));
     // 주검 — 방금 사라진 같은 종의 방향으로 쓰러짐 한 번 · 마지막 판에 눕는다 / 모르는 주검 = 처음부터 누운 판 0행 / 쓰러짐 없는 종 = '×'
-    const R = DM.lengthM * 32;   // 한 몸길이(px)
-    W.sb.drawMobIso(200, 150, mob({ mid: 12, _fvx: -1, _fvy: 0, x: 4000, y: 4000 }));            // 쓰러진 몸 — 행 4(서쪽)
-    W.sb.drawMobIso(200, 150, mob({ mid: 13, _fvx: 0, _fvy: 1, x: 4000 + R * 0.9, y: 4000 }));   // 무리 이웃 — 한 몸길이 안이지만 더 멀다
+    const R = DM.lengthM * 32;
+    W.sb.drawMobIso(200, 150, mob({ mid: 12, _fvx: -1, _fvy: 0, x: 4000, y: 4000 }));
+    W.sb.drawMobIso(200, 150, mob({ mid: 13, _fvx: 0, _fvy: 1, x: 4000 + R * 0.9, y: 4000 }));
     W.calls.length = 0;
-    const co = { cid: 'c1', mobType: 'deer', x: 4000 + R * 0.25, y: 4000 };
+    const co = { cid: 'c1', mobType: 'water_deer', x: 4000 + R * 0.25, y: 4000 };
     const got = [];
     for (let i = 0; i <= C.die.frames + 1; i++) { W.sb.drawModelCorpse(300, 200, co); got.push(last()); W.clock.t += 1000 / C.die.fps; }
     const cols = got.map((g) => g[2] / fw), crow = got[0][3] / fh;
     ok(got.every((g) => g[1]._src.endsWith('/body_die.png')) && crow === 4 && cols.slice(0, C.die.frames).join(',') === [...Array(C.die.frames).keys()].join(',') && cols[C.die.frames] === C.die.frames - 1 && cols[C.die.frames + 1] === C.die.frames - 1,
       '[T1210] 주검 — 한 몸길이 안 가장 가까운 같은 종(쓰러진 그 몸)의 방향 · 쓰러짐 판 0 → 끝 · 그 뒤 마지막 판에 눕는다', `행 ${crow} · 판 ${cols.join(' ')}`);
-    const e1 = W.calls.find((c) => c[0] === 'ellipse');
-    ok(e1 && e1[1] === 300 && e1[2] === 205 && got[0][7] === Math.round(205 - DM.anchorY), '[T1210] 주검 그림 = 산 몸과 같은 그림자 · 같은 발밑(y + 5)');
-    W.sb.drawModelCorpse(300, 200, { cid: 'c2', mobType: 'deer', x: 4000 + R * 0.9 + R * 1.01, y: 4000 });   // 이웃(13)에서 한 몸길이 밖 · 쓰러진 몸(12)은 이미 c1 이 가져갔다
+    const e1c = W.calls.find((c) => c[0] === 'ellipse'), cf = 200 + 6 * SZ, [mx4, mn4] = brute(4);
+    ok(e1c && e1c[1] === 300 && Math.abs(e1c[2] - cf) < 1e-9 && Math.abs(e1c[3] - mx4) < 0.01 && Math.abs(e1c[4] - mn4) < 0.01 && got[0][7] === Math.round(cf - DM.anchorY),
+      '★[T1237] 주검 그림 = 산 몸과 같은 그림자(메타 몸 크기 · 그 행 — 같은 크기) · 같은 발밑(y + 6 · 0.7)', e1c ? `(${e1c[1]}, ${e1c[2].toFixed(1)}) ${e1c[3].toFixed(1)}×${e1c[4].toFixed(1)}` : '');
+    W.sb.drawModelCorpse(300, 200, { cid: 'c2', mobType: 'water_deer', x: 4000 + R * 0.9 + R * 1.01, y: 4000 });
     const old = last();
     ok(old[2] === (C.die.frames - 1) * fw && old[3] === 0, '[T1210] 한 몸길이 안에 그려진 몸이 없는 주검(들어오기 전에 죽은 것) — 처음부터 누운 판 · 0행', `열 ${old[2] / fw} · 행 ${old[3] / fh}`);
-    W.sb.drawModelCorpse(300, 200, { cid: 'c4', mobType: 'deer', x: 4000 + R * 0.9, y: 4000 + R * 0.5 });
+    W.sb.drawModelCorpse(300, 200, { cid: 'c4', mobType: 'water_deer', x: 4000 + R * 0.9, y: 4000 + R * 0.5 });
     const nb = last();
     ok(nb[2] === 0 && nb[3] / fh === W.sb.charDirRow(0, 1), '[T1210] (자명 통과 금지) 한 몸길이 안에 몸이 있으면 그 방향으로 쓰러짐 0 판부터 — 위 판과 거리만 다르다', `열 ${nb[2] / fw} · 행 ${nb[3] / fh}`);
     ok(W.sb.drawModelCorpse(300, 200, { cid: 'c3', mobType: 'wild_boar', x: 1, y: 1 }) === false, "[T1210] 쓰러짐 없는 종(멧돼지) — 주검은 그리지 않는다(부르는 쪽 '×')");
   }
   {
     const RL = rd('public/client/34-m-renderloop.js');
-    ok(/if \(!\(uiCfg\.modelSprites && drawModelCorpse\(s\.x, s\.y, item\.co\)\)\) \{\n\s+ctx\.font = '24px sans-serif';\n\s+ctx\.textAlign = 'center';\n\s+ctx\.textBaseline = 'middle';\n\s+ctx\.fillText\('×', s\.x, s\.y\);\n\s+\}/.test(RL),
-      "[T1210] 주검 자리 — 손잡이가 꺼지면(또는 시트가 없으면) '×' 그 줄 그대로 · 켜고 쓰러짐이 있으면 그림");
+    ok(/if \(!\(modelSpriteOn\(item\.co\.mobType\) && drawModelCorpse\(s\.x, s\.y, item\.co\)\)\) \{[^\n]*\n\s+ctx\.font = '24px sans-serif';\n\s+ctx\.textAlign = 'center';\n\s+ctx\.textBaseline = 'middle';\n\s+ctx\.fillText\('×', s\.x, s\.y\);\n\s+\}/.test(RL)
+      && /function modelSpriteOn\(type\) \{ return !!\(uiCfg\.modelSprites \|\| \(uiCfg\.waterDeer && type === 'water_deer'\)\); \}/.test(S40),
+      "[T1210 · T1237] 주검 자리 — 손잡이 둘(T1194 미리보기 · 고라니 `waterDeer` — `modelSpriteOn` 한 곳)이 꺼지면(또는 시트가 없으면) '×' 그 줄 그대로 · 켜고 쓰러짐이 있으면 그림");
   }
 
   console.log('\n⑥ 서버 손잡이');
   const Z = rd('server/zone.js');
   const reads = Z.split('process.env.T1194_MODEL_SPRITES').length - 1;
   ok(reads === 1 && Z.includes("...(process.env.T1194_MODEL_SPRITES === '1' ? { modelSprites: true } : {})"), "읽는 자리 하나 · '1' 만 켬 · 끄면 칸이 없다(welcome 바이트 동일)", `${reads}곳`);
+  const reads2 = Z.split('process.env.T1237_WATER_DEER').length - 1;
+  ok(reads2 === 1 && Z.includes("...(process.env.T1237_WATER_DEER === '1' ? { waterDeer: true } : {})"), "[T1237] 고라니 손잡이도 존이 읽는 자리 하나 · '1' 만 켬 · 끄면 welcome 칸이 없다", `${reads2}곳`);
 
   console.log('\n⑦ 레포 — 큰 파일 0');
   let big = [];

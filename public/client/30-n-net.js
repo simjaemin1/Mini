@@ -1227,6 +1227,7 @@
             lastX: prev?.x ?? m.x, lastY: prev?.y ?? m.y,
             lastT: now,
           });
+          if (m.ps) c.mobs.get(m.mid).ps = m.ps;   // ★[T1237] 고라니 몸짓(1 엎드림 · 2 풀 뜯기) — 서버가 0 이면 안 싣는다(매틱 새 객체라 미수신 = 0) · 끔이면 이 칸이 서는 몹이 없다
         }
         // AOI 시야 밖으로 나간 mob 정리 (tick에 없으면 제거)
         for (const mid of c.mobs.keys()) if (!aliveMobs.has(mid)) c.mobs.delete(mid);
