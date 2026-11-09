@@ -1,0 +1,123 @@
+{
+  "task": "T1233",
+  "status": "PARTIAL_BLOCKED_EXTERNAL_PRIMARY_TEXT",
+  "date": "2026-11-09",
+  "timezone": "Asia/Seoul",
+  "base_commit": "af4750aeeb70861296ef86ff1ce4cce1e1f5234f",
+  "product_or_harness_changed": false,
+  "requested_metric_count": 24,
+  "requested_metric_primary_verified": 0,
+  "sources": {
+    "hgc": {
+      "repository": "https://github.com/sheinalewlevy/HGC-TA",
+      "commit": "dffa7fa883fbf2a4b8d8f90c8a7fe30c0bc3126b",
+      "files": {
+        "README.md": {
+          "sha256": "151b804dc8319520ec06b626d2f79cf1bfcbbdb650663c17092010df8ca8e2a6",
+          "bytes": 2437
+        },
+        "0_datapreparation.R": {
+          "sha256": "9a2293bb80fe3609f50a15a8822ec942bf5a06388f32ab4befcc5d508589f7f9",
+          "bytes": 29059
+        },
+        "Agta_Hagen.csv": {
+          "sha256": "1911bf8fa1a7cab2c3d13df07268f945ef131a5af8c7dccc882ce6d0fde0305c",
+          "bytes": 616
+        },
+        "Aka_Boyette.csv": {
+          "sha256": "f5a4b30192b7562943c86e528582d9fc8f1406ae02f1dcd1978fe18f91d4ac8f",
+          "bytes": 2009
+        },
+        "BaYaka_Lew-Levy.csv": {
+          "sha256": "423d5750624e3ba8cf8510f639894b7d550acfae537bc40c6ee4cab7c070420e",
+          "bytes": 2664
+        },
+        "Baka_Sonoda.csv": {
+          "sha256": "9c7159106084f5127557b517f2658253777dd096211e174241aa41b9be977f34",
+          "bytes": 672
+        },
+        "Dukha_Randall_Obrien_Surovell.csv": {
+          "sha256": "6da955d73bf1fc0a4d6e02b5d9afa768e8f31e649c6f58e8107d6ef7c64911db",
+          "bytes": 1002
+        },
+        "Hadza_Crittenden.csv": {
+          "sha256": "e41d360323c98a5b0780cfb3f7f2ef3e99d0a76c2364a83b0f4f40bea7bb296b",
+          "bytes": 774
+        },
+        "Matsigenka_Camana_Baksh.csv": {
+          "sha256": "5f797858ae71646e8e3db77b5d66b10c056a99277a551244200d2b6a34e17a77",
+          "bytes": 4919
+        },
+        "Matsigenka_Shimaa_Johnson.csv": {
+          "sha256": "b4b2d80da86f003a45de182927e92250a9efc566d1059a97b9ee6ce8f4d06fd8",
+          "bytes": 2366
+        },
+        "Maya_Kramer.csv": {
+          "sha256": "eee6913e4b81f61143b561ce9ab8c9c92e67a70818dc2b548387faed297292a3",
+          "bytes": 2044
+        },
+        "Mayangna_Koster.csv": {
+          "sha256": "ced4ec0bd92daf670da8e1a4976935b4d47001afff3631155f914f085427c151",
+          "bytes": 5402
+        },
+        "Mikea_Tucker.csv": {
+          "sha256": "7cb3735303e46db43c08af05148c1b563efc3826638e0e86759bcf691b91ce82",
+          "bytes": 2643
+        },
+        "Pume_Kramer.csv": {
+          "sha256": "8474794fb8759aac9bb66e19abd3c0e7c205b595a0bde012cf7e40483e273b5c",
+          "bytes": 2351
+        }
+      }
+    },
+    "dplace": {
+      "repository": "https://github.com/D-PLACE/dplace-dataset-sccs",
+      "commit": "734044bf96880420d64156625e869c6d57a734a7",
+      "files": {
+        "README.md": {
+          "sha256": "ff50891c8a175976a2238fae0f7485fd7253ce73a9ec49c6c31e8c1cd3a011d4",
+          "bytes": 952
+        },
+        "LICENSE": {
+          "sha256": "b1d636fddd729d8185d89af1e41e21a311866fcf3d4040cc4906a64837d0f218",
+          "bytes": 19342
+        },
+        "cldf/variables.csv": {
+          "sha256": "477d9da39fd6480d827e93ae7046765f38e3565f8f28efee29a28db8d0191828",
+          "bytes": 541736
+        },
+        "cldf/codes.csv": {
+          "sha256": "1d98c647284baceb77b6dd39fea4a088ed6f5725e5f1f5cba0de96948e54dccb",
+          "bytes": 755750
+        },
+        "cldf/data.csv": {
+          "sha256": "9c948569221994b3556da53c5eb5e7dad987ef82a93e51536ac666d5258b7d36",
+          "bytes": 35351943
+        },
+        "cldf/sources.bib": {
+          "sha256": "75c05a5dbf282052e7b96c66ba859b32eec6dbd832e86da88c4df220e500f6e7",
+          "bytes": 106551
+        }
+      }
+    }
+  },
+  "notes": [
+    "Author public CSV descriptive summaries only; no individual-level research data copied into repository.",
+    "HGC raw files are ages3..20 by floored age, not adult time budgets. Tsimane withheld by authors and not requested. Published statistical models were not run.",
+    "D-PLACE code counts are categories of sexual division of labour, not work duration. Original ethnographic pages not independently read.",
+    "Old game-report rates are secondary citations and are not promoted to newly verified facts.",
+    "Original PDF pages and process-specific rates remain unconfirmed because public scholar/FAO/WHO hosts return proxy CONNECT403.",
+    "Source licenses/provenance retained in repository metadata; no full papers copied."
+  ],
+  "continuation_review": {
+    "date": "2026-11-09",
+    "source_files_rehashed": 20,
+    "network_draft_revision_read": 4,
+    "external_primary_access": "CONNECT403 persists",
+    "product_or_harness_changed": false,
+    "requested_metrics_verified": 0,
+    "public_aggregate_rows": 48,
+    "dplace_variables": 6,
+    "dplace_rows_per_variable": 186
+  }
+}

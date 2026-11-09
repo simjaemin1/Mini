@@ -1,0 +1,13 @@
+metric_ids,activity,game_job,source_location,current_value,observed_gap,interpretation_limit
+G01–G04,곡식 탈곡/도정/제분,farmer / cook,sim/economy-sim.js:629–639; server/villages.js:11465–11484,RAW_GRAIN_FOOD_FACTOR=0.72; T1221 thresh=75 h/ha(켜진 팔),영양 등가·밭 탈곡 시간은 존재; 조/기장/벼 kg별 가정 탈각·제분 시간은 별도 없음,기존 수확+탈곡을 다시 과금하지 않도록 공정 경계 필요
+F01–F02,가정 연료,lumberjack,"sim/economy-sim.js:1759–1765,2995–2996,5206–5225; server/weights.js:56",0.085 wood/인-날; wood=3 kg; FUEL_COLD_W=0.6,수요·대체 연료·물리 벌목은 있음; 가구·철·거리별 실측 시간으로 연결되지 않음,"실제 소비와 규정 수요, 취사/난방/제련 구분"
+W01–W02,가정용 물 긷기,해당 JOBS 없음,"sim/economy-sim.js:JOBS,storage.water 검색; server/villages.js:npcLifeTick",작물 물대기는 존재; NPC 가정용 water 소비 경로는 해당 파일에서 찾지 못함,독립 물 운반 과업·L/집-날·용기 용량·수원 왕복 시간 없음,관개를 음용·조리 용수로 읽지 않음
+T01–T03,섬유→실,farmer byproduct / tailor,"sim/economy-sim.js:220–223,3006–3008,4597–4620; server/specialty.js:94,193; server/weights.js:61",hemp 0.4 kg/개; ramie 0.35 kg/개; wool 0.3 kg/개(품목표),원료/옷감이 바로 재봉 재료; NPC JOBS에 잣기·삼삼기·정련의 kg별 노동 없음,hemp/ramie의 원료·실·천 단계 단위 식별 필요
+T04–T05,실→천→옷·수선,tailor,"sim/economy-sim.js:298–302,3008–3038,4597–4620",tailor base=0.5 clothes/표준 날; 3 warmth-eq/벌; wear=0.004/인-날,재봉·의복 마모는 있음; 천 m²·실 번수·연간 사람-시간은 없음,clothes 단위를 h/m²로 역산하지 않음
+N01–N05,도토리 줍기·우리기·저장,lumberjack / forager,"sim/economy-sim.js:251,457–458; server/zone.js:3271–3303; server/specialty.js:327",acorn 부산물=0.06; 식량등가=0.25,실물 산출 경로는 있음; 임분 ha·해거리·가식부·우리기 시간·저장 유구 연결 없음,식량등가 0.25는 경과시간/사람-시간이 아님
+N06,밤,forager,"sim/economy-sim.js:438,458; server/specialty.js:328",chestnut forage 가중 wood*0.18; 식량등가=0.5,품목은 있음; kg/ha와 h/kg 고증 시간 없음,도토리 처리 공정을 밤에 일괄 적용하지 않음
+D01–D05,비수기 농부 일과,farmer,server/villages.js:15864–15891,할 밭일이 없으면 밭 셀 순찰; _jobT=9000+(hash%7)*1500 ms,가정 가공·물·실 등의 일과 선택 문이 별도 없음,경작 라벨/체류는 실제 가공 진척의 증거가 아님
+D04,식사·잠·요양·휴식,전 주민,"server/villages.js:1589–1598,15735–15816; server/zone-config.js:543–544",아침/저녁 식사 문; dayPhaseRatio=0.7; 요양/반일/귀가 상태,스케줄 상태는 있음; 관측 민족지의 활동 범주·분모와 일치 여부 미확인,낮 70%=밭일 70%가 아니며 휴식 상태=자유시간 실측도 아님
+D04,집 수리·짓기,생활층 크루,server/villages.js:15815–15861; sim/economy-sim.js:주거/유지 분기,개간/건축 크루와 집터 작업 존재,반일 남는 크루의 건축 합류는 있음; 정기 집안 수리 시간과 구분 필요,한집 일과와 공동 건설 사람-시간 별도
+D04,돌봄·아이·잔치,JOBS 독립 항목 없음,sim/economy-sim.js:JOBS; server/villages.js:npcLifeTick/_otRole,장마당·인사·휴식 등은 있음,양육·동시 돌봄·잔치를 노동/여가 시간 예산으로 나누는 단위 없음,HGC 아동 놀이를 부모의 휴식으로 대입하지 않음
+T04,재봉 직업의 생활층 표시,tailor / 실내 기타 직업,"server/villages.js:16180–16190,16310–16315",회관 내부 대기·역할 라벨; _otRole에 tailor 전용 명칭 없음,econ 산출과 실내 라벨을 구분해야 함,서성임 체류 ms를 방적·직조 실측으로 쓰지 않음

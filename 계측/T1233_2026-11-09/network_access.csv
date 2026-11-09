@@ -1,0 +1,17 @@
+url,result,note
+https://www.google.com/search?q=experimental+archaeology+saddle+quern+millet+grinding+kg+hour,403 CONNECT,검색 불가
+https://www.bing.com/search?q=millet+grinding+hours+kilogram,403 CONNECT,검색 불가
+https://api.crossref.org/works?query=grinding%20quern%20experiment&rows=2,403 CONNECT,학술 색인 불가
+https://www.fao.org/4/w4095e/w4095e00.htm,403 CONNECT,원문 접근 probe
+https://www.fao.org/4/x6788e/X6788E05.htm,403 CONNECT; 초안 저장 후 재확인도 동일,T1135 인용 원문 미열람
+https://iris.who.int/handle/10665/43844,403 CONNECT,호스트 접속 probe; 물 문헌의 검증된 식별자로 인용하지 않음
+https://github.com/sheinalewlevy/HGC-TA,200 / git clone 성공,저자 공개 자료 확인
+https://github.com/D-PLACE/dplace-dataset-sccs,200 / git clone 성공,공개 코드북 확인
+https://www.google.com/search?q=experimental+archaeology+grain+grinding+millet+kilograms+hour,403 CONNECT,2026-11-09 현재 환경 재확인; 검색 원문 미확보
+https://www.fao.org/4/x6788e/X6788E05.htm,403 CONNECT,2026-11-09 현재 환경 재확인; 원문 미열람
+https://www.fs.usda.gov/psw/publications/documents/psw_gtr100/psw_gtr100_006.pdf,403 CONNECT,접속 후보 경로; 정확한 문헌 주소/쪽으로 확인한 것이 아님
+https://iris.who.int/bitstream/handle/10665/338044/9789240015241-eng.pdf,403 CONNECT,접속 후보 경로; 원문 식별자 검증 아님
+https://pmc.ncbi.nlm.nih.gov/articles/PMC6547993/,403 CONNECT,호스트 접근 후보; 논문 식별·내용 검증 아님
+https://api.github.com/search/repositories?q=Agta+leisure,403 CONNECT,검색 API 차단; github.com 공개 저장소 검색은 200
+https://raw.githubusercontent.com/sheinalewlevy/HGC-TA/master/README.md,200,저자 README 다시 열람; 분석 입력은 provenance의 고정 커밋
+https://github.com/search,200,"Agta/agriculture, quern, spinning/archaeology, acorns/Bainbridge, Domestic water quantity, Dyble 여섯 공개 저장소 검색; 원문 확보 성과 없음"

@@ -1,0 +1,10 @@
+id	title	locator	evidence	scope	status	url
+S01	van Heemst, Crop calendar, workability and labour requirements	앞 보고: 표61~68. 원본 쪽·판본·파일 URL 미확인	T1215 §진단표, T1221 §0·§1의 재인용	손·괭이 millet 노동으로 앞 보고가 표기; 종·토양·깊이·지역·연대 원문 확인 필요	원문 미확인; 300 h/ha 검증 불가	https://edepot.wur.nl/ (검색 출발 호스트, 해당 문헌 주소 아님)
+S02	Millets, dogs, pigs and permanent settlement, Evolutionary Human Sciences (2024)	T1201 §1 넓이·휴경 표; 원문 쪽·표·DOI 미확인	T1201의 Qin & Fuller 2019 / Ho 1975 재인용	중국 북부 신석기 생산성 추정; 한반도 청동기 직접 측정 아님	원문 미확인; 휴경 시계·분모 재확인 필요	https://www.cambridge.org/ (검색 출발 호스트)
+S03	국사편찬위원회 신편 한국사 「호구당 경작 면적의 추계」 / 이호철(1986)	T1201 §1. 원문 쪽·절 URL 미확인	신라3년1작·고려2년1작을 앞 보고가 재인용	청동기보다 후대. 명칭·시대·연간 분모 원문 확인 필요	원문 미확인; 청동기 휴경 비율로 전용 불가	https://contents.history.go.kr/ (검색 출발 호스트)
+S04	우리역사넷 「청동기시대의 농경」	T1201 §1: 대평리 어은120×50m, 옥방42×24m·39×30m; 원문 쪽·절 URL 미확인	앞 보고의 유구 면적·질적 휴경 설명	면적은 단위시간 일꾼 수·작부연수 관측이 아님	원문 미확인; 작부비율·동시 인원 역산 불가	https://contents.history.go.kr/ (검색 출발 호스트)
+S05	한국민속대백과사전 두레·품앗이 항목(후속 검색 대상)	원문 항목 URL·쪽·표 미확인	이번에 본문 확보 못 함; 인원 수 전사 없음	후대 공동 노동의 조직 인원과 같은250m² 동시 작업 인원 구별	자료 후보만. 정량 근거로 사용하지 않음	https://folkency.nfm.go.kr/
+S06	농사로 농작업일정 · 조/콩/팥/보리/밀	30713 / 30715 / 30716 / 30712 / 30707 · 표 위치는 기존 crop-cal 행	server/crop-cal.js의 기존 전사본. 이번 원문 재확인0	현대 한국 지역·작형별 적기; 청동기 가능 한계 폭 아님	기존 전사본 5작물; 원문은 프록시403	철창.tsv의 작물별 원 URL
+S07	농사로 벼: 30697 / 수확207071	기계이앙 중모 중북부 / 중부 수확; crop-cal 벼 행·주석	기존 전사본: 이앙5.15~6.10, 못자리4.15~5.10, 수확10월상~중	이앙·못자리·직파는 다른 단계. 직파 파종창은 미확인	기존 전사본; 원문 재확인0·프록시403	철창.tsv의 벼 원 URL
+S08	농사로 수수 농작업일정 30708	crop-cal.NOT_IN_TABLE.sorghum: 앞 판독 세 번 세 답	미확인 판독을 계승; 새 범위를 만들지 않음	생육과정 그림의 범례·지역·품종·파종/정식 구분 필요	원문 프록시403; 기장도 기존 표에 원문 없음	https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30708
+S09	FAO 노동·수확 후/수확 전 손실 문헌(후속 검색 대상)	정확한 문헌·쪽·표 미확인	농업 노동 및 밭에 선 작물의 수확 지연 자료 탐색 출발점	저장 부패율을 밭의 탈립·도복·조류 손실로 대체하지 않음	호스트 프록시403. 정량 근거로 사용하지 않음	https://www.fao.org/ ; https://openknowledge.fao.org/
