@@ -102,5 +102,15 @@ ok(p5.noSeed.length === 1 && p5.noSeed[0] === 'millet' && p5.noSeedLeft === 0, '
   const used = Object.values(p5.seedEnd).reduce((a, n) => a + (100 - n), 0);
   ok(used === sown1 - reap1, '⑥ 추신 14 — 씨 셈: 심은 칸 − 거둔 칸 = 곳간 씨가 준 수(몸 없는 수확은 그 자리 곳간에 · 다년생 0)', `심음 ${sown1} · 거둠 ${reap1} · 줄어든 씨 ${used}`); }
 ok(/if \(!row\.econ_state\) _t1243SeedCells\(state\.villages\[state\.villages\.length - 1\]\);/.test(VS), '⑥ 추신 14 — 첫 해 씨는 서버 첫 시작만(곳간 첫 곡식과 같은 자리)');
+// ── ⑦ 추신 5 — 밭 내기 ──
+const Q7 = `const T=require('./server/terr-cost');const V=require('./server/villages');const B=V.__p3Bind({villages:[]});
+const v={_t1243Cl:new Set(['3,4'])};console.log(JSON.stringify({f0:T.fieldClearMin(0),f1:T.fieldClearMin(1),map:T.cellM2('map'),fld:T.cellM2('field'),rate:T.clearMinPerM2(),a:B._t1221ClearS(v,'3,4'),b:B._t1221ClearS(v,'9,9'),c:B._t1221ClearS()}));`;
+const c7 = sub({ T1243_FARM_ON: '1' }, Q7), c70 = sub({}, Q7);
+ok(c7.f0 === c7.rate * c7.fld && Math.abs(c7.f0 - 360) < 1e-9 && Math.abs(c7.f1 - (360 - c7.rate * c7.map)) < 1e-9 && c7.map === 1 && c7.fld === 250, '⑦ 추신 5 — 밭 내기 = 개간 1.44 사람·분/m² × (밭 250 m² − 이미 개간한 넓이) · 영토 칸은 지도 1 m²', `${c7.f0} · ${c7.f1.toFixed(2)} 분`);
+ok(Math.abs(c7.a - c7.f1) < 1e-9 && Math.abs(c7.b - 360) < 1e-9 && Math.abs(c7.c - 360) < 1e-9, '⑦ 추신 5 — 켬: NPC 칸 개간 = 같은 정본(영토 넓히기에서 몸이 개간한 칸은 그 넓이를 뺀다 · 칸을 모르면 뺄 것 없음)');
+ok(Math.abs(c70.a - 250 / (5000 * 0.09290304 / 12) * 60) < 1e-9 && c70.a === c70.c, '⑦ 추신 5 — 끔: T1221 그대로(38.7 m²/사람-시간 · 387.5 분)');
+ok(/if \(T1207_TERR_REAL && _t1243On\(\)\) \{ if \(!vil\._t1243Cl\) vil\._t1243Cl = new Set\(\); for \(const k of keys\) vil\._t1243Cl\.add\(k\); \}/.test(VS) && /'_t1243Prev', '_t1243Cl'\];/.test(VS), '⑦ 추신 5 — 몸이 개간해 넓힌 칸 표식은 영토 넓히기 문(`_terrAdd` · 영토 실물화 켬) 한 곳 · 재기동 곁 칸');
+const ZS = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+ok(/if \(Crops\.T1243_FARM_ON\) \{   \/\/ ★\[T1243 추신 5\] 켬 = 새 밭은 몸으로 먼저 일군다/.test(ZS) && /if \(b\.data && b\.data\.clr\) continue;/.test(ZS) && /if \(Crops\.T1243_FARM_ON\) \{ const _cb = _t1243ClrNear\(player\); if \(_cb\) \{ _t1243ClrWork\(player, _cb\); return; \} \}/.test(ZS) && /SimVillages\.t1243FieldClearMinAt\(cx, cy\)/.test(ZS), '⑦ 추신 5 — 플레이어 같은 규칙: 새 밭 = 일굴 밭(씨 안 씀) · 곁에서 E 손짓 시간이 쌓여야 빈 밭 · 같은 정본 · 끔 = 종전');
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);

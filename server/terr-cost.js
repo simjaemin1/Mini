@@ -73,4 +73,10 @@ function cellCost(o) {
   return { m: M.m, size: M.size, shape: M.shape, R: M.R, laborMin, posts, wood, area };
 }
 
-module.exports = { CLEAR_SRC, POST_SRC, K, ALPHA, CELL_READING, cellM2, edgeM, clearMinPerM2, woodPerPost, radiusOf, mult, boundaryGrowth, cellCost };
+// ★★[T1243 추신 5 · ★재민 11-09 칸 넓이 · T1238 회부] **밭 내기** — 영토 칸은 지도 넓이(`CELL_READING` 'map' 그대로) · 그 칸을 밭으로 만들 때
+//   밭 넓이(`crops.FIELD_CELL_M2` · 250 m²)만큼 개간을 따로 치른다 = 개간 1.44 사람·분/m²(위 출처 ① · 드라베드) × (밭 넓이 − 이미 개간한 넓이).
+//   이미 개간한 넓이 = 영토 넓히기에서 그 칸을 몸이 개간했으면 그 칸의 지도 넓이(`cellM2('map')`) · 아니면 0 — 부르는 쪽이 준다(정본 한 곳 · 사본 0).
+//   ⇒ 새 밭 한 칸 = 1.44 × 250 = 360 사람·분(6 사람·시간) — 수확(250 m² 어치)과 같은 넓이. NPC · 플레이어가 이 함수 하나를 읽는다.
+function fieldClearMin(clearedM2) { return clearMinPerM2() * Math.max(0, cellM2('field') - Math.max(0, +clearedM2 || 0)); }
+
+module.exports = { CLEAR_SRC, POST_SRC, K, ALPHA, CELL_READING, cellM2, edgeM, clearMinPerM2, woodPerPost, radiusOf, mult, boundaryGrowth, cellCost, fieldClearMin };

@@ -8163,6 +8163,7 @@ function _waterSupplyAt(x, y) {
 }
 // 농지 초기 데이터 — **작물을 심었으면 작물 농지, 아니면 종전 그대로**(NPC·기존 저장 무영향).
 function _farmlandData(player) {
+  if (player && player._t1243Clr) return { crop: null, ready: false, farmStage: 0, supply: _waterSupplyAt(player.x, player.y), clr: _t1243ClrNew(player) };   // ★[T1243 추신 5] 일굴 밭
   const cid = player && player._plantCrop;
   if (cid && Crops.get(cid)) {
     // ★[T58b] 돌봄 축 넷은 **NPC 작물 칸과 같은 이름·같은 뜻**이다(`w` 마지막 물댄 날 · `wd` 김맨 차례 ·
@@ -8175,6 +8176,37 @@ function _farmlandData(player) {
   // ★★[T108] 작물 없이 지은 농지는 **빈 밭**이다(종전엔 60초 베리밭이었다 — 벽시계 마지막 자리).
   //   비어 있으니 바로 심을 수 있고(`doPlant` 가 재사용), 그림도 갈은 흙으로 뜬다(T79c 기본값).
   return { crop: null, ready: false, farmStage: 0, supply: _waterSupplyAt(player.x, player.y), emptiedDay: zoneGameDay() };
+}
+// ★★[T1243 추신 5 · ★재민 11-09 칸 넓이] **밭 내기 = 몸이 그 칸에서 일한 시간** — 켬 묶음(`Crops.T1243_FARM_ON`)에서만 · 끔 = 종전(심는 순간 밭이 선다).
+//   새 밭 칸 하나 = 개간 360 사람·분(`terr-cost.fieldClearMin` — 드라베드 1.44 × 밭 넓이 250 m² − 그 칸 영토 개간 몫 · NPC 와 같은 함수).
+//   심기(`doPlant`)가 곁에 일군 빈 밭이 없으면 **일굴 밭**(`data.clr`)을 세우고 씨는 안 쓴다 · E(수확 · 돌보기 문)를 누를 때마다 곁에 선 시간이 쌓인다(영토 넓히기 손짓과 같은 꼴 ·
+//   1 실초 = 1 게임 분 · 한 손짓 상한 1.5 초) · 다 일구면 빈 밭 — 그때 심는다. 일굴 밭은 심을 자리로 안 친다.
+const T1243_CLR_STROKE_MS = 1500;   // 영토 넓히기 손짓 상한(`T1207_STROKE_MAX_MS`)과 같은 값 — 끊겼다 다시 온 손짓이 빈 시간을 일로 세지 않게
+function _t1243ClrNew(player) {
+  const cx = Math.floor(player.x / BUILDING_SIZE), cy = Math.floor(player.y / BUILDING_SIZE);
+  const need = SimVillages.t1243FieldClearMinAt ? SimVillages.t1243FieldClearMinAt(cx, cy) : 360;
+  return { need: +need.toFixed(2), done: 0 };
+}
+function _t1243ClrNear(player) {   // 곁의 제 일굴 밭(가장 가까운)
+  const near = qtBuildings ? qtBuildings.queryCircle(player.x, player.y, 96) : Array.from(buildings.values());
+  let best = null, bd = 96;
+  for (const b of near) { if (b.type !== 'farmland' || b.ownerId !== player.playerId || !(b.data && b.data.clr)) continue; const d = Math.hypot(b.x - player.x, b.y - player.y); if (d < bd) { bd = d; best = b; } }
+  return best;
+}
+function _t1243ClrWork(player, b) {
+  const now = Date.now(), last = (player._t1243ClrAt && player._t1243ClrAt.id === b.id) ? player._t1243ClrAt.t : now;
+  const dt = Math.max(0, Math.min(now - last, T1243_CLR_STROKE_MS));
+  player._t1243ClrAt = { id: b.id, t: now };
+  b.data.clr.done = +(b.data.clr.done + dt / 1000).toFixed(3);
+  Body.onLabor(player, 1.0);   // 개간도 노동이다(영토 넓히기 손짓과 같은 한 손짓)
+  if (b.data.clr.done + 1e-9 < b.data.clr.need) {
+    send(player.ws, { type: 'notice', text: `밭을 일구고 있습니다(${Math.floor(b.data.clr.done)} / ${Math.ceil(b.data.clr.need)} 분).` }); return;
+  }
+  delete b.data.clr; b.data.emptiedDay = zoneGameDay();
+  if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
+  broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
+  player._t1243ClrAt = null;
+  send(player.ws, { type: 'notice', text: '밭을 다 일구었습니다. 이제 씨를 심을 수 있습니다.' });
 }
 
 // === ★★★돌보기 [T58b 2026-09-03] — 플레이어 농지도 **마을과 같은 일**을 한다 ==========
@@ -8270,6 +8302,7 @@ function _nearestEmptyFarmland(player) {
   for (const b of near) {
     if (b.type !== 'farmland' || b.ownerId !== player.playerId) continue;
     if (b.data && b.data.crop) continue;                       // 이미 심긴 밭
+    if (b.data && b.data.clr) continue;                        // ★[T1243 추신 5] 아직 일굴 밭
     const d = Math.hypot(b.x - player.x, b.y - player.y);
     if (d < bd) { bd = d; best = b; }
   }
@@ -8318,6 +8351,14 @@ function doPlant(player, cropId) {
   //   개간은 한 번이고 농사는 여러 해다. 자리·비용 판정은 종전 건립 경로가 그대로 맡는다(여기선 재사용만).
   const _empty = _nearestEmptyFarmland(player);
   if (_empty) { _plantInto(player, _empty, cropId, today); return; }
+  if (Crops.T1243_FARM_ON) {   // ★[T1243 추신 5] 켬 = 새 밭은 몸으로 먼저 일군다(씨는 일군 뒤에 쓴다)
+    if (_t1243ClrNear(player)) { send(player.ws, { type: 'notice', text: '곁에 일구다 만 밭이 있습니다. E 를 눌러 먼저 일구십시오.' }); return; }
+    player._t1243Clr = true;
+    let ok = false;
+    try { ok = _tryBuildAt(player, 'farmland', 0, null, null, { skipCost: true }) !== false; } finally { player._t1243Clr = false; }
+    if (ok) send(player.ws, { type: 'notice', text: '밭을 일굴 자리를 잡았습니다. 곁에서 E 를 눌러 일구십시오(새 밭 한 칸 = 6 사람·시간).' });
+    return;
+  }
   // ★발아율 = 씨앗 신선도. **차감 전에** 재고 실행과 견적이 같은 수를 쓰게 한다.
   const off = Spoil.peekOffer(seed, Lots.of(player, seed), 1, today);
   const got = Lots.consume(player, seed, 1, player.inventory, today);
@@ -8369,6 +8410,7 @@ function plantMenuPayload(player) {
 
 // === 농사 수확 ===
 function tryHarvest(player, confirm) {
+  if (Crops.T1243_FARM_ON) { const _cb = _t1243ClrNear(player); if (_cb) { _t1243ClrWork(player, _cb); return; } }   // ★[T1243 추신 5] 곁에 일굴 밭 = 그 일이 먼저
   const nearby = qtBuildings ? qtBuildings.queryCircle(player.x, player.y, 96) : Array.from(buildings.values());
   let best = null, bestDist = 96;
   for (const b of nearby) {

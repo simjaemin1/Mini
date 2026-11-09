@@ -1070,7 +1070,7 @@ const _T740_KEYS = ['_crop', '_mkt', '_potSet', '_siteMissDay', '_siteDirty', '_
   '_t400Crew', '_t400Dbg', '_t400Sum', '_t400Log',   // T400 집 행위(기본 켬) — 그날 크루 명부 · 계측 셋
   '_granPend',   // 착공한 곳간(자리 · 완공 날)
   '_t1212Cal',   // ★[T1212 ①] 밭 날 = econ 날로 옮긴 표식(켬일 때만 선다 · 끄면 칸이 없다)
-  '_t1243Prev'];   // ★[T1243 추신 3 · 6] 칸의 앞 작물 · 거둔 해(켬일 때만 선다 · 끄면 칸이 없다)   // ★[T1212 ①] 밭 날 = econ 날로 옮긴 표식(켬일 때만 선다 · 끄면 칸이 없다)
+  '_t1243Prev', '_t1243Cl'];   // ★[T1243 추신 3 · 6] 칸의 앞 작물 · 거둔 해(켬일 때만 선다 · 끄면 칸이 없다)   // ★[T1212 ①] 밭 날 = econ 날로 옮긴 표식(켬일 때만 선다 · 끄면 칸이 없다)
 //   Map · Set 을 어느 깊이에서든 표식 붙은 배열로(차례 그대로) — 객체 참조는 이 칸들에 없다(전수 표 ①).
 function _t740Enc(x) {
   if (x instanceof Map) { const a = []; for (const [k, v] of x) a.push(_t740Enc(k), _t740Enc(v)); return { $M: a }; }
@@ -6874,6 +6874,7 @@ function _terrAdd(vil, keys, target, fell) {
   const added = new Set();
   const _rn0 = own.size;
   for (const k of keys) { own.add(k); added.add(k); }
+  if (T1207_TERR_REAL && _t1243On()) { if (!vil._t1243Cl) vil._t1243Cl = new Set(); for (const k of keys) vil._t1243Cl.add(k); }   // ★[T1243 추신 5] 몸이 개간해 넓힌 칸(값을 치른 문 — 부팅 처음 땅은 이 문을 안 탄다) · 밭 내기가 그 넓이를 뺀다
   if (vil._t569RN === _rn0) {   // ★[T569] 이웃 거르기 반지름 — 더한 셀로 바로 늘린다(다시 재지 않는다)
     for (const k of keys) { const ci = k.indexOf(','), d = Math.hypot(+k.slice(0, ci) - ccx, +k.slice(ci + 1) - ccy); if (d > vil._t569R) vil._t569R = d; }
     vil._t569RN = own.size;
@@ -10318,7 +10319,7 @@ function __p3Bind(mock) {
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
     t1197BodyStep, _t1197Person, _t1197BodyMeal, _t1197DieBody, _t1197Stat, _t1197On, econDayToMs, _t1198Sync, _t1198Jobs, _t1198Stat, _t1198On, syncVillageJobs,   // ★[T1197] 몸 게이지 끼니 문(하네스 `test-t1197-meal-body` 가 운영과 같은 문을 부른다)
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
-    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On, T1224_ECON_FARM, _t1224Stat, _t1243On, _t1243Live, _t1243Stat, _t1243Seed, _t1243HarvH, _T1243_HT, _t1243Pick, _t1243Sown, _t1243Reaped, _t1243PStat, _t1243Memo, _t1243SeedCells, T1229_FIELD_GROW, _t1229Stat, _t1229Need, _t1229Short,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
+    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On, T1224_ECON_FARM, _t1224Stat, _t1243On, _t1243Live, _t1243Stat, _t1243Seed, _t1243HarvH, _T1243_HT, _t1243Pick, _t1243Sown, _t1243Reaped, _t1243PStat, _t1243Memo, _t1243SeedCells, _t1243ClearedM2, _t1243CStat, T1229_FIELD_GROW, _t1229Stat, _t1229Need, _t1229Short,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
     _oreMineDaily, T1095_MINE_DEMAND, _t1095Stat,   // ★[T1095] 채굴 일괄 수요 문 — 하네스(`test-t1095-mine-demand`)가 운영과 같은 문을 부른다(내보내기만)
     _t1039Depart, _t1039Join, _t1039Leave,   // ★[T1039] 도적 전환 몸 문 셋(하네스 `test-bandit-body` 가 운영과 같은 문을 부른다)
     _t1078Walkers, _t1078Die, _t1078Out, _t1078Life,   // ★[T1078] 단원 = 몸 문 넷(하네스 `test-bandit-all` 이 운영과 같은 문을 부른다)
@@ -12160,7 +12161,19 @@ function _t1221Cost(t, vil, k) {   // 칸 일 하나의 초(= 게임 분) — 5 
   if (t === 5) { const h = (vil && k != null) ? _t1243HarvH(vil, k) : null; return (h != null ? h : (H.harvest + H.thresh) * ha) * 60; }
   return LIFE_TASK_SEC;
 }
-function _t1221ClearS() { const C = _Crops(); return ((C && C.FIELD_CELL_M2) || 1) / _T1221_CLEAR_M2_H * 3600 / 60; }
+function _t1221ClearS(vil, k) {   // 밭 한 칸 개간의 초(= 게임 분) · ★[T1243 추신 5] 켬 = 밭 내기 정본(`terr-cost.fieldClearMin` — 드라베드 1.44 × 250 m² − 그 칸 영토 개간 몫) · 끔 = T1221 그대로(Budiansky 38.7 m²/사람-시간)
+  if (_t1243On()) return require('./terr-cost').fieldClearMin(_t1243ClearedM2(vil, k));
+  const C = _Crops(); return ((C && C.FIELD_CELL_M2) || 1) / _T1221_CLEAR_M2_H * 3600 / 60;
+}
+// ★[T1243 추신 5] 그 칸이 영토 넓히기에서 몸으로 개간된 칸이면 그 지도 넓이(1 m²) — 표식 `vil._t1243Cl`(영토 넓히기 실물화 `T1207_TERR_REAL` 의 `_terrAdd` 가 켬일 때만 세운다)
+function _t1243ClearedM2(vil, k) { return (vil && k != null && vil._t1243Cl && vil._t1243Cl.has(k)) ? require('./terr-cost').cellM2('map') : 0; }
+const _t1243CStat = { bodyCells: 0, bodyMin: 0, batchCells: 0, deducted: 0 };
+// ★[T1243 추신 5] 플레이어 밭 내기 — 같은 정본(그 칸을 영토 넓히기에서 개간한 마을이 있으면 그 넓이를 뺀다 · 마을 51 훑기)
+function t1243FieldClearMinAt(cx, cy) {
+  const k = (cx | 0) + ',' + (cy | 0);
+  let m2 = 0; for (const v of (state.villages || [])) { const c = _t1243ClearedM2(v, k); if (c > 0) { m2 = c; break; } }
+  return require('./terr-cost').fieldClearMin(m2);
+}   // 계측 전용 — 밭 내기 칸 · 사람·분(몸) · 영토 개간 몫 뺀 칸
 function _t1221DayS() { return _lifeTasksPerFarmerDay() * LIFE_TASK_SEC; }
 // ★[T1221 ②] 마을 비옥 자리 — 그 마을 `land.fertility` 의 세계 안 순위(0 = 가장 척박 · 1 = 가장 비옥 · 같으면 가운데) · 그날 한 번 잰다
 let _t1221FR = null;
@@ -16512,9 +16525,10 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     _lifeAct(npc, t.k === 'clear' ? '개간' : '건축');
     npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py;
     const dayMs = state.dayMs || 600000;
-    if (t.k === 'clear' && t.prog >= (_t1221On() ? _t1221ClearS() * dayMs / 1440 : dayMs / LIFE_CLEAR_PDAY)) {   // ★[T1221 ⓪] 켬 = 칸 개간 시간(실초 = 게임분)
+    if (t.k === 'clear' && t.prog >= (_t1221On() ? _t1221ClearS(vil, t.cx + ',' + t.cy) * dayMs / 1440 : dayMs / LIFE_CLEAR_PDAY)) {   // ★[T1221 ⓪] 켬 = 칸 개간 시간(실초 = 게임분)
       _lifeLiveFarmTile(vil, t.cx, t.cy, t.f === '밭' ? 'dryfield' : 'farmland');
-      if (npc.simJob === 'farmer') _t1212Note(npc, _t1221On() ? _t1221ClearS() : 1);   // ★[T1212 ②] 몸이 한 개간 칸(그날 몫 · ★T1221 켬 = 초)
+      if (_t1243On()) { const _m = _t1221ClearS(vil, t.cx + ',' + t.cy); _t1243CStat.bodyCells++; _t1243CStat.bodyMin += _m; if (_t1243ClearedM2(vil, t.cx + ',' + t.cy) > 0) _t1243CStat.deducted++; }   // ★[T1243 추신 5] 계측
+      if (npc.simJob === 'farmer') _t1212Note(npc, _t1221On() ? _t1221ClearS(vil, t.cx + ',' + t.cy) : 1);   // ★[T1212 ②] 몸이 한 개간 칸(그날 몫 · ★T1221 켬 = 초)
       vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); npc._lifeTask = null;
     } else if (t.k === 'build' && t.prog >= dayMs / LIFE_STAGE_PDAY) {
       t.prog = 0; _lifeAdvanceSite(vil, t.ps ? 'p' : null);
@@ -18269,7 +18283,7 @@ function __rumorProbe() {
 }
 
 module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
-  T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
+  t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
   T1238_TERR_V2, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,
   _t1238Batch, _t1238DayPre, _t1238DayPost, _t1238GoOk, _t1238Use, _t1238Remove, _t1238Boot, _t1238JobToLand, _t1238JobFromLand, _t1238JobsOf, landSizeOfCells, _t1238Struct, _t1238Land, _t1238St,
