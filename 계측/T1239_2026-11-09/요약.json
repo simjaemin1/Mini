@@ -1,0 +1,502 @@
+{
+ "gameCellH": 25.375,
+ "gameHaH": 1015,
+ "ratioA": [
+  [
+   "foxtail_millet",
+   0.453
+  ],
+  [
+   "sorghum",
+   0.588
+  ],
+  [
+   "soybean",
+   0.618
+  ]
+ ],
+ "RA": [
+  0.453,
+  0.618
+ ],
+ "ratioB": [
+  [
+   "barley",
+   0.308
+  ],
+  [
+   "foxtail_millet",
+   0.257
+  ],
+  [
+   "millet",
+   0.25
+  ],
+  [
+   "rice",
+   0.14
+  ],
+  [
+   "sorghum",
+   0.207
+  ]
+ ],
+ "RB": [
+  0.14,
+  0.308
+ ],
+ "cells": {
+  "확인": 41,
+  "이웃": 40,
+  "미확인": 89
+ },
+ "kgHaSourced": 23,
+ "kgHaPre": 7,
+ "labN": 17,
+ "domNow": {
+  "dom": [
+   "adlay",
+   "azuki",
+   "barnyard_millet",
+   "buckwheat",
+   "cabbage",
+   "chive",
+   "cucumber",
+   "curled_mallow",
+   "eggplant",
+   "garlic",
+   "ginger",
+   "gourd",
+   "korean_melon",
+   "lettuce",
+   "mungbean",
+   "perilla",
+   "radish",
+   "scallion",
+   "sesame",
+   "sorghum",
+   "taro",
+   "turnip",
+   "yam"
+  ],
+  "free": [
+   "barley",
+   "foxtail_millet",
+   "millet",
+   "rice",
+   "soybean",
+   "water_dropwort",
+   "wheat"
+  ],
+  "unk": []
+ },
+ "domEv": {
+  "dom": [
+   "azuki",
+   "radish",
+   "sesame"
+  ],
+  "free": [
+   "barley",
+   "barnyard_millet",
+   "cabbage",
+   "foxtail_millet",
+   "millet",
+   "rice",
+   "soybean",
+   "wheat"
+  ],
+  "unk": [
+   "adlay",
+   "buckwheat",
+   "chive",
+   "cucumber",
+   "curled_mallow",
+   "eggplant",
+   "garlic",
+   "ginger",
+   "gourd",
+   "korean_melon",
+   "lettuce",
+   "mungbean",
+   "perilla",
+   "scallion",
+   "sorghum",
+   "taro",
+   "turnip",
+   "water_dropwort",
+   "yam"
+  ]
+ },
+ "domEvFirm": {
+  "dom": [],
+  "free": [
+   "azuki",
+   "barley",
+   "barnyard_millet",
+   "cabbage",
+   "foxtail_millet",
+   "millet",
+   "radish",
+   "rice",
+   "sesame",
+   "soybean",
+   "wheat"
+  ],
+  "unk": [
+   "adlay",
+   "buckwheat",
+   "chive",
+   "cucumber",
+   "curled_mallow",
+   "eggplant",
+   "garlic",
+   "ginger",
+   "gourd",
+   "korean_melon",
+   "lettuce",
+   "mungbean",
+   "perilla",
+   "scallion",
+   "sorghum",
+   "taro",
+   "turnip",
+   "water_dropwort",
+   "yam"
+  ]
+ },
+ "domEv3": {
+  "dom": [
+   "azuki",
+   "cabbage",
+   "ginger",
+   "mungbean",
+   "perilla",
+   "radish",
+   "rice",
+   "sesame"
+  ],
+  "free": [
+   "barley",
+   "barnyard_millet",
+   "buckwheat",
+   "foxtail_millet",
+   "garlic",
+   "millet",
+   "soybean",
+   "wheat"
+  ],
+  "unk": [
+   "adlay",
+   "chive",
+   "cucumber",
+   "curled_mallow",
+   "eggplant",
+   "gourd",
+   "korean_melon",
+   "lettuce",
+   "scallion",
+   "sorghum",
+   "taro",
+   "turnip",
+   "water_dropwort",
+   "yam"
+  ]
+ },
+ "domEv3Firm": {
+  "dom": [
+   "azuki",
+   "mungbean",
+   "perilla",
+   "sesame"
+  ],
+  "free": [
+   "barley",
+   "barnyard_millet",
+   "buckwheat",
+   "cabbage",
+   "foxtail_millet",
+   "garlic",
+   "ginger",
+   "millet",
+   "radish",
+   "rice",
+   "soybean",
+   "wheat"
+  ],
+  "unk": [
+   "adlay",
+   "chive",
+   "cucumber",
+   "curled_mallow",
+   "eggplant",
+   "gourd",
+   "korean_melon",
+   "lettuce",
+   "scallion",
+   "sorghum",
+   "taro",
+   "turnip",
+   "water_dropwort",
+   "yam"
+  ]
+ },
+ "arms": [
+  {
+   "tag": "청동기 켬 · 3월 1일 시작",
+   "steady": {
+    "피": {
+     "홀": 25,
+     "짝": 0
+    },
+    "벼": {
+     "홀": 0,
+     "짝": 25
+    },
+    "미나리": {
+     "홀": 0,
+     "짝": 0
+    },
+    "섞임": {
+     "홀": 0,
+     "짝": 0
+    },
+    "없음": {
+     "홀": 0,
+     "짝": 0
+    }
+   },
+   "chk": [
+    200,
+    0,
+    200,
+    0
+   ],
+   "nongPi": [
+    0,
+    44.44444444444444,
+    44.44444444444444
+   ],
+   "nongPiAll": 0,
+   "nongPiNone": 25,
+   "batPi": [
+    0,
+    5,
+    33.333333333333336
+   ],
+   "batAd": [
+    0,
+    5,
+    22.22222222222222
+   ],
+   "nongPd": [
+    41.49387755102041,
+    64.22244897959183,
+    64.22244897959183
+   ],
+   "batPd": [
+    40.18571428571429,
+    48.4139455782313,
+    60.542857142857144
+   ],
+   "batN": [
+    2,
+    2.166666666666667,
+    2.6666666666666665
+   ],
+   "n": 50
+  },
+  {
+   "tag": "청동기 끔 · 3월 1일 시작",
+   "steady": {
+    "피": {
+     "홀": 0,
+     "짝": 0
+    },
+    "벼": {
+     "홀": 0,
+     "짝": 0
+    },
+    "미나리": {
+     "홀": 25,
+     "짝": 25
+    },
+    "섞임": {
+     "홀": 0,
+     "짝": 0
+    },
+    "없음": {
+     "홀": 0,
+     "짝": 0
+    }
+   },
+   "chk": [
+    200,
+    0,
+    200,
+    0
+   ],
+   "nongPi": [
+    0,
+    0,
+    0
+   ],
+   "nongPiAll": 0,
+   "nongPiNone": 50,
+   "batPi": [
+    0,
+    0,
+    21.428571428571427
+   ],
+   "batAd": [
+    0,
+    0,
+    7.6923076923076925
+   ],
+   "nongPd": [
+    4.224489795918368,
+    4.224489795918368,
+    4.224489795918368
+   ],
+   "batPd": [
+    3.524489795918367,
+    25.03061224489796,
+    50.15408163265306
+   ],
+   "batN": [
+    2,
+    3.5,
+    5
+   ],
+   "n": 50
+  },
+  {
+   "tag": "청동기 켬 · 9월 1일 시작",
+   "steady": {
+    "피": {
+     "홀": 25,
+     "짝": 0
+    },
+    "벼": {
+     "홀": 0,
+     "짝": 25
+    },
+    "미나리": {
+     "홀": 0,
+     "짝": 0
+    },
+    "섞임": {
+     "홀": 0,
+     "짝": 0
+    },
+    "없음": {
+     "홀": 0,
+     "짝": 0
+    }
+   },
+   "chk": [
+    200,
+    0,
+    200,
+    0
+   ],
+   "nongPi": [
+    0,
+    50,
+    50
+   ],
+   "nongPiAll": 0,
+   "nongPiNone": 25,
+   "batPi": [
+    0,
+    0,
+    36.8421052631579
+   ],
+   "batAd": [
+    0,
+    0,
+    25
+   ],
+   "nongPd": [
+    41.49387755102041,
+    64.22244897959183,
+    64.22244897959183
+   ],
+   "batPd": [
+    36.31224489795919,
+    47.93469387755103,
+    60.542857142857144
+   ],
+   "batN": [
+    2,
+    2.166666666666667,
+    2.6666666666666665
+   ],
+   "n": 50
+  },
+  {
+   "tag": "청동기 끔 · 9월 1일 시작",
+   "steady": {
+    "피": {
+     "홀": 25,
+     "짝": 0
+    },
+    "벼": {
+     "홀": 0,
+     "짝": 25
+    },
+    "미나리": {
+     "홀": 0,
+     "짝": 0
+    },
+    "섞임": {
+     "홀": 0,
+     "짝": 0
+    },
+    "없음": {
+     "홀": 0,
+     "짝": 0
+    }
+   },
+   "chk": [
+    200,
+    0,
+    200,
+    0
+   ],
+   "nongPi": [
+    0,
+    50,
+    50
+   ],
+   "nongPiAll": 0,
+   "nongPiNone": 25,
+   "batPi": [
+    0,
+    0,
+    19.047619047619047
+   ],
+   "batAd": [
+    0,
+    0,
+    0
+   ],
+   "nongPd": [
+    41.49387755102041,
+    64.22244897959183,
+    64.22244897959183
+   ],
+   "batPd": [
+    13.5465306122449,
+    32.477551020408164,
+    50.15408163265306
+   ],
+   "batN": [
+    2,
+    3,
+    4.166666666666667
+   ],
+   "n": 50
+  }
+ ]
+}
