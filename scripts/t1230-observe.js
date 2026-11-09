@@ -39,7 +39,7 @@ V1.tickVillage = function (v, day) {
         const j = {}; for (const w of v._world.villages) for (const k of Object.keys(w.counts || {})) j[k] = (j[k] || 0) + (w.counts[k] | 0);
         rec.jobs.push([day, j]);
       }
-      if (day % 50 === 0 && day !== lastWrite) { lastWrite = day; try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} }   // 50날마다(가상 시계 판은 `Date.now` 가 econ 날에 묶여 벽시계 간격이 안 선다)
+      if (day % 10 === 0 && day !== lastWrite) { lastWrite = day; try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} }   // ★[T1244] 10날마다(종전 50날 · 끝 꼴 무변) (가상 시계 판은 `Date.now` 가 econ 날에 묶여 벽시계 간격이 안 선다)
     }
     for (const n of (v.npcs || [])) seen.add(n);
     pre = { dead: v._deadTot || 0, emig: v._emigTot || 0, floor: v._t100FloorTot || 0, eat: (v._consDay && v._consDay.food) || 0, ff: +v._t368FoodTot || 0, hn: +v._t100HarvestN || 0, hin: +v._t100InflowToday || 0 };
