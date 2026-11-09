@@ -3335,6 +3335,9 @@ function tryExpandTerritory(v, day) {
   const N = v.npcs.length;
   const slotK = totalFoodSlots(v);
   if (N / Math.max(1, slotK) < 0.85) return;
+  // ★★[T1238 ①] 서버가 영토를 몸으로 치르는 판(`v._t1238Land` — 서버가 켬에서만 심는다)이면 금고로 땅을 안 산다(같은 땅을 두 번 치르지 않는다 ·
+  //   econ 땅 크기는 서버 영토에서 읽는다). 표지가 없으면(끔 · 랩 · 헤드리스 하네스) 종전 그대로. 위 세 줄은 읽기만이다(자리 셈 — 부작용 0).
+  if (v._t1238Land) return;
   for (let ci = 0; ci < EXPAND_CELLS_PER_DAY; ci++) {
     const cost = expandCost(v);   // 슬롯(size +1) 명목 비용 — 셀 지불은 아래서 ÷25
     // ★MB/MC 투자 게이트(K_MAX 천장 대체) — 확장은 '금고 차면 무조건'이 아니라 수지 맞을 때만.

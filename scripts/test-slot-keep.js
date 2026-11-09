@@ -24,6 +24,10 @@
 //
 // 실행: node scripts/test-slot-keep.js      (되돌림 탐침: T1026_SLOT_KEEP=0 node scripts/test-slot-keep.js → ③ · ④ · ⑤ 빨강이어야 한다)
 'use strict';
+//   ★[T1240] 판 세계 — 캐러밴 몸 상태 저장(T1034 · `T1034_CARAVAN_KEEP`)을 끈다. T1182(`6e0396fd` · 11-05 「저장 경로로 즉시 복원」)부터 되살린 몸은
+//     저장된 길로 바로 서서 되살림 줄이 교역로 슬롯을 안 부른다 → 이 판의 ③ 전제(두 문이 다툰다 · 기다림 0 · 0)가 안 섰다.
+//     이 하네스가 지키는 것은 「저장 칸이 없는 재기동(업그레이드 첫 부팅 · 칸 유실)에서 두 문이 슬롯을 서로 버리지 않는다」 — 그 판을 이 묶음이 다시 세운다(켜면 ③ 기다림 0 · 0). 부르는 쪽이 값을 주면 그 값이 먼저다.
+if (process.env.T1034_CARAVAN_KEEP == null) process.env.T1034_CARAVAN_KEEP = '0';
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

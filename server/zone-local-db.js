@@ -762,6 +762,41 @@ function getTerrContestOwners() {
     "SELECT cx, cy, village_id FROM village_buildings WHERE id IN (SELECT MIN(id) FROM village_buildings WHERE type = 'terr' GROUP BY cx, cy HAVING COUNT(DISTINCT village_id) > 1)");
   return _stmtTerrContest.all();
 }
+// ★★[T1238 2026-11-09 · 영토 v2] 표 둘 · 문장 넷 — **처음 부를 때** 세운다(손잡이 `T1238_TERR_V2` 켬에서만 불린다 · 끔 = 표 0 · 문장 0 · main 바이트).
+//   `t1238_use`  — 칸마다 마지막으로 쓴 날(달 단위로만 다시 쓴다 · 묵힘 판정) · cx = cy = −2³¹ 행 = 그 마을이 켬을 처음 본 날
+//   `t1238_land` — 영토 밖 칸에 남은 일(개간 몫 c · 그 날 · 박은 말뚝 통나무 w · 박은 날) — 마을 무관(땅에 남는다)
+//   `deleteVillageCell` — 마을 칸 행 하나 지우기(묵혀 빠진 영토 칸 · 그 칸의 미개간 논 존닝) · 종전엔 영토 행을 지우는 문이 없었다(영토는 늘기만 했다)
+let _t1238Ready = false, _t1238Up = null, _t1238Gone = null, _t1238LandUp = null, _t1238LandDel = null, _t1238DelCell = null;
+function _t1238Tables() {
+  if (_t1238Ready) return;
+  db.exec('CREATE TABLE IF NOT EXISTS t1238_use (zone TEXT NOT NULL, vid INTEGER NOT NULL, cx INTEGER NOT NULL, cy INTEGER NOT NULL, day INTEGER NOT NULL, PRIMARY KEY (zone, vid, cx, cy))');
+  db.exec('CREATE TABLE IF NOT EXISTS t1238_land (zone TEXT NOT NULL, cx INTEGER NOT NULL, cy INTEGER NOT NULL, c REAL NOT NULL, c_day INTEGER NOT NULL, w REAL NOT NULL, w_day INTEGER NOT NULL, by_vid INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (zone, cx, cy))');
+  _t1238Up = db.prepare('INSERT INTO t1238_use (zone, vid, cx, cy, day) VALUES (?, ?, ?, ?, ?) ON CONFLICT(zone, vid, cx, cy) DO UPDATE SET day = excluded.day');
+  _t1238Gone = db.prepare('DELETE FROM t1238_use WHERE zone = ? AND vid = ? AND cx = ? AND cy = ?');
+  _t1238LandUp = db.prepare('INSERT INTO t1238_land (zone, cx, cy, c, c_day, w, w_day, by_vid) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(zone, cx, cy) DO UPDATE SET c = excluded.c, c_day = excluded.c_day, w = excluded.w, w_day = excluded.w_day, by_vid = excluded.by_vid');
+  _t1238LandDel = db.prepare('DELETE FROM t1238_land WHERE zone = ? AND cx = ? AND cy = ?');
+  _t1238Ready = true;
+}
+//   하루 몫을 한 거래로(바깥 거래가 열려 있어도 안전 — SAVEPOINT) · use = [[vid, cx, cy, day]] · gone = [[vid, cx, cy]] · land = [[cx, cy, c, cDay, w, wDay, byVid]] · landDel = [[cx, cy]]
+function t1238SaveDay(zone, use, gone, land, landDel) {
+  _t1238Tables();
+  db.exec('SAVEPOINT t1238_day');
+  try {
+    for (const r of (use || [])) _t1238Up.run(zone, r[0] | 0, r[1] | 0, r[2] | 0, r[3] | 0);
+    for (const r of (gone || [])) _t1238Gone.run(zone, r[0] | 0, r[1] | 0, r[2] | 0);
+    for (const r of (land || [])) _t1238LandUp.run(zone, r[0] | 0, r[1] | 0, +r[2] || 0, r[3] | 0, +r[4] || 0, r[5] | 0, r[6] | 0);
+    for (const r of (landDel || [])) _t1238LandDel.run(zone, r[0] | 0, r[1] | 0);
+    db.exec('RELEASE t1238_day');
+  } catch (e) { try { db.exec('ROLLBACK TO t1238_day'); db.exec('RELEASE t1238_day'); } catch (x) {} throw e; }
+}
+function t1238Load(zone) {
+  _t1238Tables();
+  return { use: db.prepare('SELECT vid, cx, cy, day FROM t1238_use WHERE zone = ?').all(zone), land: db.prepare('SELECT cx, cy, c, c_day, w, w_day, by_vid FROM t1238_land WHERE zone = ?').all(zone) };
+}
+function deleteVillageCell(villageId, type, cx, cy) {
+  if (!_t1238DelCell) _t1238DelCell = db.prepare('DELETE FROM village_buildings WHERE village_id = ? AND type = ? AND cx = ? AND cy = ?');
+  return _t1238DelCell.run(villageId | 0, String(type), cx | 0, cy | 0).changes;
+}
 function getVillageFarthest(villageId, ccx, ccy) { return stmtVbFar.all(villageId, ccx, ccx, ccy, ccy, ccx, ccx, ccy, ccy, villageId); }   // [T1176] 순번 인자 — 질의 속 `?` 순서대로
 function getVillageFarmInCellRect(cx0, cx1, cy0, cy1) { return stmtGetVillageFarmInCellRect.all(cx0, cx1, cy0, cy1); }
 
@@ -784,6 +819,7 @@ module.exports = {
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings, updateVillageBuildingData,
   getVillageFarmInCellRect, getVillageStructRows,
   eachVillageCell, getVillageStructAll, getVillageFarthest, getTerrContestOwners,   // ★[T538] 경계 있는 부팅 로드
+  t1238SaveDay, t1238Load, deleteVillageCell,   // ★[T1238] 영토 v2 — 쓰는 날 · 땅에 남은 일 · 묵혀 빠진 칸(켬에서만 불린다 · 표는 처음 부를 때)
   // [2026-08-25 사건 레이어] 사건 장부·게시판 (events.js / villages.js)
   insertVillageEvent, getVillageEventsSince, pruneVillageEvents,
   insertVillageChronicle, getVillageChronicle, countVillageChronicle,   // ★[T18] 연대기(prune 없음)

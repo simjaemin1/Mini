@@ -1032,6 +1032,7 @@
         inventory = msg.inventory;
         myLedger = msg.ledger || {}; myLots = msg.lots || {};      // ★[원장 승격] 인벤과 같은 스냅샷
         if (msg.uiCfg) uiCfg = Object.assign(uiCfg, msg.uiCfg);    // ★클라 손잡이는 서버 env 가 정본
+        if (msg.uiCfg && msg.uiCfg.t1238 && typeof t1238AskInfo === 'function') setTimeout(() => { try { t1238AskInfo(); } catch (e) {} }, 1200);   // ★[T1238] 맞닿은 칸 · 고른 칸 목록(우클릭 메뉴가 읽는다)
         if (msg.uiCfg && (msg.uiCfg.hidpi === true || HIDPI > 1)) _t1193Apply();   // ★[T1193] 서버 env `T1193_HIDPI` — 뒤판을 다시 잡는다(칸 없음 · 끔이면 안 부른다)
         if (((uiCfg && uiCfg.coast588) || '') !== _coast588At) { try { precomputeAllWaterTiles(); } catch (e) { console.warn('water tile recompute fail:', e); } }   // ★[T588] 해안 손잡이가 부트 때와 다르면 같은 파일로 다시 굽는다(★T604 추신3 — 클라 기본 'b' = 서버 기본이라 보통 무동작 · 서버 '0' 이면 지금 식으로)
         if (msg.uiCfg && msg.uiCfg.streams) { try { loadStreams(); } catch (e) {} }   // ★[T585] 개울 래스터(존마다 한 번)
@@ -1833,8 +1834,9 @@
       //   ★[T235] 다섯 문의 답 — 한 종류다. 기다리던 자리에 그대로 건네고 끝(새 화면 0).
       const r = _centralWait.get(msg.door);
       if (r) { _centralWait.delete(msg.door); r(msg.data || (msg.ok ? { ok: true } : { error: '실패' })); }
-    } else if (msg.type === 'terr_quote' || msg.type === 'terr_progress' || msg.type === 'terr_done' || msg.type === 'terr_stop') {
-      if (typeof verbsOnTerr === 'function') verbsOnTerr(msg);   // ★[T1207] 영토 넓히기 — 값 · 진척 · 끝 · 멈춤(`46-h-verbs`)
+    } else if (msg.type === 'terr_quote' || msg.type === 'terr_progress' || msg.type === 'terr_done' || msg.type === 'terr_stop'
+      || msg.type === 'terr_info' || msg.type === 'terr_pick' || msg.type === 'terr_pull_progress' || msg.type === 'harvest_confirm') {
+      if (typeof verbsOnTerr === 'function') verbsOnTerr(msg);   // ★[T1207] 영토 넓히기 — 값 · 진척 · 끝 · 멈춤(`46-h-verbs`) · ★[T1238] 칸 목록 · 끌어 고르기 · 뽑기 · 남의 작물 확인
     } else if (msg.type === 'village_bnd') {
       // ★[T1207] 플레이어가 넓힌 영토의 지금 외곽선(하루 방송 `bnd` 와 같은 칸 · 같은 꼴)
       if (c.simVillages && msg.bnd) { for (const v of c.simVillages) { const nb = msg.bnd[v.id]; if (Array.isArray(nb) && nb.length) { v.b = nb; delete v.approx; } } needsRedraw = true; }

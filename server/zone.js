@@ -28,6 +28,7 @@ const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT, T720_LON_DAY, SUNRISE_FRAC, phaseAdd, localPhase, T761_CLOCKS } = require('./zone-config');   // ★[T720] 경도 하루 1단계 손잡이 · 시각 한 식   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
+const T1238_ON = !!SimVillages.T1238_TERR_V2;   // ★[T1238] 영토 v2 손잡이(villages.js 가 정한다 — T1207 켬 위에서만) · 맨 위에 둔다(부팅 중 콜라이더 술어가 읽어도 TDZ 0)
 const T1197_BODY = process.env.T1074_FOOD_DEBT !== '0' && process.env.T1197_MEAL_BODY === '1'; // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209 ·   // ★[T1197] econ `T1197_MEAL_BODY` 와 같은 글자(켬 기본 · `=0` 끔 · T1074 끔이면 안 선다) — 마을 몸 허기 면제 자리(`_gaugeStep`)
 // ★[T484 ②③] 존 기후 — 이 존의 평년값(`server/climate-normals.js` · `apply` 인 존만)과 청동기 Δ(`T484_PALEO` 켬만)를 econ `CLIMATE` 에 얹는다.
 //   표에 없는 존 · 한반도(`apply: false`) · 손잡이 끔이면 아무것도 안 바꾼다(비트 동일). econ 이 기온을 읽기 전(기동)에 한 번.
@@ -426,7 +427,9 @@ const _t566Stat = { q: 0, gone: 0, unharvestNo: 0, paved: 0, pavedCut: 0, ringNe
   t426Skip: 0, recutSkip: 0, plantedKeep: 0, bootPaved: 0, bootPavedCut: 0, bootUnpaved: 0, cellPatch: 0, relFlushMs: 0, relFlushTicks: 0, bootPavedMs: 0, relEmpty: 0 };
 function regrowBlockedAt(cx, cy) {
   if (!_T566_ON) return false;
-  try { if (SimVillages.villageOfCell && SimVillages.villageOfCell(cx | 0, cy | 0)) return true; } catch (e) {}
+  //   ★[T1238 ①] 켬 = 숲은 숲 그대로 — 영토 전부가 아니라 쓰는 칸(회관 · 마당 · 집 부지 · 곳간 · 환호)과 영토 안 논밭만 막는다(끔 = 아래 종전 줄)
+  if (SimVillages.T1238_TERR_V2) { try { if (SimVillages.t1238RegrowBlocked && SimVillages.t1238RegrowBlocked(cx | 0, cy | 0)) return true; } catch (e) {} }
+  else try { if (SimVillages.villageOfCell && SimVillages.villageOfCell(cx | 0, cy | 0)) return true; } catch (e) {}
   try { if (Roads.pavedNear && Roads.pavedNear(cx | 0, cy | 0, _T566_R)) return true; } catch (e) {}
   return false;
 }
@@ -2700,6 +2703,12 @@ const VP_ATTACK_PLAYER   = 8;   // PvP 공격 한 번
 const VP_DECAY_PER_SEC   = 10 / 3600; // 시간당 -10
 const VP_THRESHOLD       = 50;  // 이 이상이면 본인 사유지 보호 해제
 const VP_MAX             = 100;
+// ★★[T1238 2026-11-09 · ★재민 11-09 영토 v2 ⑦ ⑧ ⑪] 벌점 칸 둘 — **자리값**(세기 · 결과는 이 카드 밖 · 판정대기 문 39 · ★재민 "조만간 다시 튜닝").
+//   지금 눈금(채집 +3 · 공격 +8 · 시간당 −10 · 50 · 100)의 두 값을 그대로 빌린다(새 수 0):
+//     남의 작물 한 칸 한 번 거두기 = 남의 땅에서 거두기(`VP_TRESPASS_GATHER`) · 남의 울타리 하나 부수기 = 공격 한 번(`VP_ATTACK_PLAYER` — 물건을 부순다).
+//   손잡이 `T1238_TERR_V2` 끔이면 아무도 안 읽는다.
+const VP_STEAL_CROP      = VP_TRESPASS_GATHER;   // 남의 영토 · 사유지 칸의 작물 — 칸마다 · 거둘 때마다(빈 땅 작물은 0)
+const VP_BREAK_FENCE     = VP_ATTACK_PLAYER;     // 남의 울타리를 부수거나(내구 0) 분해 — 갇힘 풀기는 0
 
 // Phase 5-6b: MOB_DEFS를 ANIMALS catalog에서 동적 생성 (36종 다 zone에 spawn 가능)
 const MOB_DEFS = {};
@@ -3630,6 +3639,13 @@ function wildHit(m, dmg, attacker, ledger) {
 const T1032_NPC_KILL = process.env.T1032_NPC_KILL !== '0';
 // ★[T1032] 잡은 짐승의 존 사체 문 하나 — `spawnCorpse` + (T1025 켬 · 장부 몫이 섰으면) 사체에 자리(`huntAt` — 도살 · 부패 때 `_t1025CorpseEnd` 가 뺀다).
 //   부르는 자리 셋: 사람 공격 · 화살(T1025 × T1009 land1034 의 두 줄을 이 문으로 옮겼다 · 글자 · 차례 그대로 · 손잡이와 무관) · NPC 잡음(켬).
+// ★★[T1240 2026-11-09 · T1237 회부 9 · 전 종 결함] **한 짐승은 한 번만 잡힌다** — 손잡이 `T1240_KILL_ONCE`(켬 기본 · 되돌림 `=0` = 종전 글자).
+//   사람 공격(`tryAttack`)은 가까운 몹을 공간 색인(`qtMobs` — 틱 머리에서만 다시 짓는다)으로 고른다. 잡힌 몹은 `mobs.delete` 로만 빠지니
+//   다음 틱 머리까지 색인에 남고, 그 사이 둘째 공격이 같은 몹을 또 골라 `killCorpse` 를 또 불렀다(주검 둘 · 드롭 두 몫 · 장부 −2 — `scripts/t1237-same-tick-kill.js`).
+//   ⇒ 짐승을 고르는 세 길(사람 공격 · 화살 · NPC 싸움)이 **같은 술어 하나**를 본다: 세계에 아직 있고(`mobs.has`) 살아 있다(hp > 0).
+//   화살(`mobs.values()` 를 돈다)과 NPC 싸움(`mobs.get` + hp)은 종전에도 이 둘을 지켰다 — 같은 문으로 옮길 뿐 값 무변(구멍은 사람 공격 하나).
+const T1240_KILL_ONCE = process.env.T1240_KILL_ONCE !== '0';
+function mobLive(m) { return !!m && mobs.has(m.mid) && m.hp > 0; }
 function killCorpse(m, killerPid) {
   const c = spawnCorpse(m, killerPid);
   if (m._t1025Hunt && c) { c.huntAt = { x: m.x, y: m.y }; _t1025Corpse.deferred++; }
@@ -5117,7 +5133,7 @@ function npcStep(npc, dt, now) {
   // === fight 모드: 늑대 직접 공격 (target 사라지면 자동 해제) ===
   if (npc.behavior === 'fight') {
     const target = npc.fightTarget ? mobs.get(npc.fightTarget) : null;
-    if (!target || target.hp <= 0) {
+    if (!target || (T1240_KILL_ONCE ? !mobLive(target) : target.hp <= 0)) {   // ★[T1240] 같은 문(`mobs.get` + hp — 종전과 같은 답)
       npc.behavior = 'wander';
       npc.fightTarget = null;
       npc.nextDecisionAt = 0;
@@ -5656,6 +5672,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   //   ★[T495] 부분 수확 문 둘 — 단위로 딴다 · 남은 전리품(생활층은 손잡이가 켜져 있을 때만 부른다)
   t495PickAt: (cx, cy, order, want, worth) => _t495PickAt(cx, cy, order, want, worth),
   t495RestOf: (r) => _t495RestOf(r),
+  t1238TrapVillage: (vil) => _t1238TrapVillage(vil), t1238BuiltCells: (vil) => _t1238BuiltCells(vil),   // ★[T1238] NPC 마을 갇힘(하루 한 번) · 묵힘의 건물 칸(켬에서만 불린다)
   t347LootOf: (r) => lootOfResource(r, { day: zoneGameDay() }) });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
 // ★[11차 T3 환호] 도랑 콜라이더 적재 — SimVillages.init이 시범 마을 도랑을 실체화한 **직후**여야 한다.
 //   (이 줄이 없으면 도랑 행은 DB에 있는데 통행 판정은 열려 있는 '유령 도랑'이 된다.)
@@ -7504,6 +7521,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(SimVillages.T1207_TERR_REAL ? { t1207: true } : {}),   // [T1207] 땅 우클릭에 '영토 넓히기'(끔이면 칸이 없다 · welcome 바이트 동일)
+      ...(T1238_ON ? { t1238: true } : {}),   // [T1238] 끌어 고르기 · 칸 진척 · 취소 · 뽑기 · 빠지는 칸 · 남의 작물 확인(끔이면 칸이 없다 · welcome 바이트 동일)
       ...(process.env.T838_WD_AWAKE !== '0' ? { wdAwake: true } : {}),   // [T838 · ★T849 켬 기본 — PM 10-22] 클라 두 감시(pong · 서버 틱)가 **클라가 멈춰 있던 시간**을 서버 침묵으로 안 센다(30-n-net) · 되돌림 `T838_WD_AWAKE=0` 이면 칸이 없다(옛 welcome · 종전 감시)
       ...(process.env.T920_NAT_BUDGET !== '0' ? { natBudget: true } : {}),   // [T920 · ★T937 켬 기본 — PM 10-26] 클라 자연물 청크를 지면 굽기와 같은 판당 예산(`GT_BAKE_PER_FRAME`)으로 나눠 짓는다(첫 접속 첫 그림 · 11-r1-mountain `_natCollect`) · 되돌림 `T920_NAT_BUDGET=0` 이면 칸이 없다(옛 welcome · 종전 한 판에 전부)
       ...(process.env.T891_WATER_HALF !== '0' ? { waterHalf: true } : {}),   // [T891 · ★T912 켬 기본 — PM 10-23] 클라 물 층 셰이더를 가로세로 ½ 로 그리고 2D 에서 늘린다(10-r1-terrain `_drawWaterLayer` · 소프트웨어 GL 판당 물 층 몰림) · 되돌림 `T891_WATER_HALF=0` 이면 칸이 없다(옛 welcome · 종전 물 층)
@@ -7788,6 +7806,11 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'well_advance') tryWellAdvance(player, msg.buildingId);            // ★[T509] 우물 ②·완공
   else if (msg.type === 'terr_quote') tryTerrQuote(player, msg.x, msg.y);   // ★[T1207] 영토 넓히기 — 값 미리 보기
   else if (msg.type === 'terr_work') tryTerrWork(player, msg.x, msg.y);     // ★[T1207] 영토 넓히기 — 그 셀에서 일하기(한 번에 한 손짓 · 서버 시계)
+  else if (T1238_ON && msg.type === 'terr_pick') tryT1238Pick(player, msg, false);   // ★[T1238] 끌어 고르기 — 미리 보기(칸마다 값 · 묶음 합)
+  else if (T1238_ON && msg.type === 'terr_go') tryT1238Pick(player, msg, true);      // ★[T1238] 고른 칸을 일감 묶음에
+  else if (T1238_ON && msg.type === 'terr_cancel') tryT1238Cancel(player, !!msg.all); // ★[T1238] 취소(한 일은 땅에 남는다)
+  else if (T1238_ON && msg.type === 'terr_pull') tryT1238Pull(player, msg.x, msg.y); // ★[T1238] 박은 말뚝 뽑기(손짓 · 서버 시계)
+  else if (T1238_ON && msg.type === 'terr_info') tryT1238Info(player);               // ★[T1238] 맞닿은 칸 · 진척 · 빠지는 칸 · 박힌 말뚝
   else if (msg.type === 'village_start') tryVillageStart(player, +msg.atX, +msg.atY);      // ★[배치 12] 마을 회관 착공 — 완공이 곧 마을 등록
   else if (msg.type === 'village_advance') tryVillageAdvance(player, msg.buildingId);      // ★[배치 12] 회관 ②③·완공
   else if (msg.type === 'shelter_start') tryShelterStart(player, +msg.atX, +msg.atY);      // ★[T62] 공용 쉼터 착공
@@ -8006,7 +8029,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'fish_cast') tryFishCast(player);      // ★[낚시 v2] 던지기 — 이미 던져 뒀으면 챔질로 넘어간다
   else if (msg.type === 'fish_strike') tryFishStrike(player);  // ★[낚시 v2] 챔질(서버 시각으로만 판정)
   else if (msg.type === 'fish_reel') { if (player._fish) { player._fish = null; send(player.ws, { type: 'fish_state', state: 'idle' }); send(player.ws, { type: 'notice', text: '🎣 낚싯줄을 거두었습니다.' }); } }
-  else if (msg.type === 'harvest') tryHarvest(player);
+  else if (msg.type === 'harvest') tryHarvest(player, msg.confirm);   // ★[T1238] `confirm` = 남의 작물 "벌점 ○" 에 예(끔이면 안 읽는다)
   // ★[T148 2026-09-07] 개명 `feed` → `tame_feed`(짐승 길들이기). **옛 이름 폴백 0.**
   //   사람 먹이기는 `{type:'verb', name:'feed'}`(`Rescue.verb`)라 봉투가 다르고, 이제 이름도 안 겹친다.
   else if (msg.type === 'tame_feed') tryFeed(player);
@@ -8254,6 +8277,7 @@ function _nearestEmptyFarmland(player) {
 }
 // 그 빈 밭에 심는다 — 씨앗 차감·안내는 `doPlant` 와 **같은 산수**를 쓴다(아래에서 부른다).
 function _plantInto(player, b, cropId, today) {
+  if (T1238_ON) _t1238PlayerUse(player, b.x, b.y);   // ★[T1238 ③] 심기 = 그 칸을 썼다(밭 — 휴경 2년 < 묵힘 3년)
   const c = Crops.get(cropId), seed = Crops.seedOf(cropId);
   const off = Spoil.peekOffer(seed, Lots.of(player, seed), 1, today);
   Lots.consume(player, seed, 1, player.inventory, today);
@@ -8344,7 +8368,7 @@ function plantMenuPayload(player) {
 }
 
 // === 농사 수확 ===
-function tryHarvest(player) {
+function tryHarvest(player, confirm) {
   const nearby = qtBuildings ? qtBuildings.queryCircle(player.x, player.y, 96) : Array.from(buildings.values());
   let best = null, bestDist = 96;
   for (const b of nearby) {
@@ -8353,7 +8377,20 @@ function tryHarvest(player) {
     const d = Math.hypot(b.x - player.x, b.y - player.y);
     if (d < bestDist) { best = b; bestDist = d; }
   }
-  if (!best) { send(player.ws, { type: 'notice', text: '근처에 자기 농지가 없습니다' }); return; }
+  //   ★★[T1238 ⑦ 2026-11-09 · ★재민 11-09] 켬 = 제 밭이 곁에 없으면 **남의 밭도** 거둔다(익은 것만 · 돌보기는 제 밭만) ·
+  //     남의 영토 · 사유지 칸이면 거두기 전에 "벌점 ○" 을 묻고(`harvest_confirm` → 클라 확인 → `confirm`) 칸마다 · 거둘 때마다 벌점 · 빈 땅은 0.
+  //     끔 = 종전 그대로(제 밭만 · 이 줄들은 안 선다).
+  let _t1238Other = false;
+  if (!best && T1238_ON) {
+    for (const b of nearby) {
+      if (b.type !== 'farmland' || b.ownerId === player.playerId) continue;
+      const d = Math.hypot(b.x - player.x, b.y - player.y);
+      if (d < bestDist) { best = b; bestDist = d; }
+    }
+    if (best) _t1238Other = true;
+  }
+  if (!best) { send(player.ws, { type: 'notice', text: T1238_ON ? '근처에 거둘 밭이 없습니다' : '근처에 자기 농지가 없습니다' }); return; }
+  if (_t1238Other && best.sim) { _t1238HarvestVillage(player, best, !!confirm); return; }   // ★[T1238] 마을 밭 — 작물은 마을 표에
   // ★★[작물 층 2026-08-31] **작물 농지는 게임일로 자란다**(종전 베리 농지는 벽시계 그대로).
   //   왜 날로 세나: 카탈로그의 성장일이 **활동일**이고, 월동 작물은 겨울에 안 자라기 때문이다.
   //   ★lazy — 틱이 없다. 볼 때 `오늘 − 심은 날` 을 계절과 함께 적분한다(부패·광맥과 같은 문법).
@@ -8363,7 +8400,19 @@ function tryHarvest(player) {
     const today = zoneGameDay();
     // ★★[T58b] 익기 전 E 는 **돌보기**다 — 새 동사를 만들지 않았다(E 하나 · 클라 무접촉).
     //   서버가 그 밭의 일을 고른다(`cropTaskOf` 정본) — 화면이 무엇을 할지 정하지 않는다.
-    if (!Crops.isReady(_cid, best.data.plantedDay, today)) { _cropTend(player, best, today); return; }
+    if (!Crops.isReady(_cid, best.data.plantedDay, today)) {
+      if (_t1238Other) { send(player.ws, { type: 'notice', text: `${_crop.ko}이(가) 아직 익지 않았습니다. 남의 작물은 돌볼 수 없습니다.` }); return; }   // ★[T1238]
+      _cropTend(player, best, today); _t1238PlayerUse(player, best.x, best.y); return;
+    }
+    let _t1238Pen = null;
+    if (_t1238Other) {   // ★[T1238 ⑦] 남의 작물 — 벌점이 있으면 먼저 묻는다(낱개는 지금 값으로 미리 보인다)
+      _t1238Pen = _t1238StealCheck(player, Math.floor(best.x / BUILDING_SIZE), Math.floor(best.y / BUILDING_SIZE));
+      if (_t1238Pen.vp > 0 && !confirm) {
+        const _q0 = best.data.q == null ? 1 : Math.max(0, Math.min(1, best.data.q));
+        _t1238StealAsk(player, best, _t1238Pen, _cid, Math.max(0, Math.floor(Crops.harvestUnits(_cid, { supply: best.data.supply, seedFresh: best.data.seedFresh }) * _q0 + 1e-9)));
+        return;
+      }
+    }
     _cropSettle(best, today);                        // 수확 직전 정산 — 품질이 오늘 값이어야 한다
     // ★수확량 = 수확량축 × 물충족(관리난이도 가중) × 발아율. 전부 심을 때 박아 둔 값 — 결정론.
     // ★[T58b] **품질이 수확에 든다** — NPC 와 같은 `q`(돌보기가 올리고 방치가 깎는다 · 바닥 25%).
@@ -8404,9 +8453,11 @@ function tryHarvest(player) {
         + (_stump
             ? ` 여러해살이라 그루터기가 남아 ${Crops.growDaysOf(_cid)}일 뒤 다시 납니다. 씨앗은 나오지 않습니다.`
             : ' 밭은 그대로 남아 다시 심을 수 있습니다.') });
+    if (_t1238Other) _t1238StealApply(player, _t1238Pen); else _t1238PlayerUse(player, best.x, best.y);   // ★[T1238] 남의 작물 = 벌점 · 제 밭 = 그 칸을 썼다(끔이면 둘 다 무동작)
     savePlayer(player);
     return;
   }
+  if (_t1238Other) { send(player.ws, { type: 'notice', text: '빈 밭입니다.' }); return; }   // ★[T1238] 남의 빈 밭에는 심지 않는다
   // ★★[T108 2026-09-05] **옛 베리 농지 갈래를 지웠다.** 여기가 `readyAt` 을 읽어 60초 밭을 거두고
   //   **농지를 통째로 지우던** 자리다(T58b 회부 3 — "수확하면 사라진다"는 그 레거시).
   //   승격(`_promoteLegacyFarm`)이 옛 행을 빈 밭으로 바꿔 올리므로 이 갈래에 닿을 행이 이제 없다.
@@ -9083,6 +9134,8 @@ function doDismantleBuilding(player, buildingId) {
   if (d > 80) {
     send(player.ws, { type: 'notice', text: '건축물이 너무 멉니다' }); return;
   }
+  //   ★[T1238 ⑧] 켬 = 남의 울타리를 분해해도 부수기와 같은 벌점(분해는 누구나 · 즉시라 벌점이 없으면 부수기 벌점을 분해로 피한다) · 갇힘이면 0
+  if (T1238_ON && b.type === 'fence') { const _fc = _t1238FenceCost(player, b); if (_fc) _t1238FenceApply(player, b, _fc, 'dismantle'); }
   // 소유자 체크 (자기 길드 영지 안이면 OK)
   // — 일단 누구든 가능 (PZ 스타일). 추후 chest 등은 잠금 체크 필요할 수도.
   const itemType = BUILDING_TYPE_TO_ITEM[b.type];
@@ -10409,6 +10462,7 @@ function _mineIdentify(player, mineral, isOre, lvlF) {
 }
 function mineOreCell(player) {
   Body.onLabor(player, 1.0);   // ★[신체 상태] 채광 1타 = 노동 1. 하루 종일 파면 저녁에 손이 느려진다.
+  if (T1238_ON) _t1238PlayerUse(player, player.x, player.y);   // ★[T1238 ③] 캔 자리 = 쓴 칸
   const eq = getEquippedTool(player);
   if (!eq || eq.type !== 'pickaxe') return false;
   const now = Date.now();
@@ -11284,6 +11338,7 @@ function gatherResource(player, best) {
     send(player.ws, { type: 'notice', text: '물을 마셨습니다 (+갈증 회복)' });
     return;
   }
+  if (T1238_ON) _t1238PlayerUse(player, best.x, best.y);   // ★[T1238 ③] 마을 사람이 제 영토 칸에서 거두기(벌목 · 채집 · 채석) = 그 칸을 썼다
 
   // ★[T1065] 벌목 · 채석은 손에 든 도구가 있어야 — 없으면 이유 한 줄(끔 · 그 밖의 자연물 = 이 줄 통과 · 종전)
   { const why = _t1065ResGate(player, best); if (why) { if (T1120_NEXT_TOOL) (player._t1120Told || (player._t1120Told = {}))[_t1065ResKind(best)] = 1; send(player.ws, { type: 'notice', text: why, kind: 'gather', stop: 'gather', ..._t1120N({ verb: _t1065ResKind(best) }) }); return; } }   // `stop` = 클라 채집 반복을 멈춘다(될 수 없는 일을 1초마다 다시 보내지 않게)
@@ -12356,6 +12411,7 @@ function tryRequestVillageHouse(player, atX, atY) {
 }
 function tryHutAdvance(player, buildingId) {
   Body.onLabor(player, 1.5);   // ★[신체 상태] 건설이 제일 고되다
+  if (T1238_ON) _t1238PlayerUse(player, player.x, player.y);   // ★[T1238 ③] 짓는 자리 = 쓴 칸
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'hut_site') return;
   if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '움집터에서 너무 멀리 있습니다' }); return; }
@@ -12428,6 +12484,7 @@ function tryTerrQuote(player, x, y) {
   send(player.ws, Object.assign({ type: 'terr_quote', x: +x || 0, y: +y || 0, have: Math.floor((player.inventory && player.inventory.wood) || 0) }, q));
 }
 function tryTerrWork(player, x, y) {
+  if (T1238_ON) return _t1238Work(player, x, y);   // ★[T1238] 켬 = 고른 칸 일(진척이 땅에 남는다 · 끔 = 아래 종전 줄 그대로)
   const now = Date.now();
   const cx = Math.floor((+x || 0) / BUILDING_SIZE), cy = Math.floor((+y || 0) / BUILDING_SIZE);
   let job = player._t1207Job;
@@ -12465,6 +12522,323 @@ function tryTerrWork(player, x, y) {
   sendInventory(player);
   savePlayer(player);
 }
+
+// ═══ ★★[T1238 2026-11-09 · ★재민 11-09 영토 v2 · 족보 794 · 문 36 마감] 끌어 고르기 · 칸 일 · 말뚝 · 취소 · 뽑기 · 남의 작물 · 울타리 벌점 · 갇힘 ═══
+//   손잡이 `T1238_TERR_V2`(villages.js — T1207 켬 위에서만 뜻 · 끔 = 아래 갈래 하나도 안 선다 · welcome 바이트 동일).
+//   ① 끌어 고르기 — 클라가 네모(칸)를 보내면 `t1238Pick`(미리 보기 · 칸마다 남은 개간 분 · 말뚝 통나무 · 합) → `terr_go`(묶음에 싣는다).
+//      메뉴는 제 영토와 맞닿은 빈 칸에서만 뜬다(`terr_info.frontier` — 클라가 그 칸에서만 우클릭 칸을 낸다).
+//   ② 칸 일 — 고른 칸 곁에서 손짓(`terr_work`)마다 곁에 선 서버 시간이 그 칸 개간 몫에 쌓인다(1 실초 = 1 게임 분 · T1207 과 같은 시계) ·
+//      개간이 다 되면 짐의 통나무를 있는 만큼 박는다(모자라면 박은 만큼 땅에 남는다) · 다 박으면 영토 · 한 칸에 몸 하나(`bodiesPerCell` — 지도 읽기 1).
+//   ③ 취소 — 묶음에서 뺀다(한 일은 땅에) · 박은 말뚝은 뽑는 일(`terr_pull` — 말뚝 부피만큼 흙을 다시 판다 · EXARC 2006)을 들여 거둔다(썩은 몫은 부러진다).
+//   ④ 남의 작물 — `tryHarvest` 가 제 밭이 없으면 남의 밭도 거둔다 · 남의 영토 · 사유지 칸이면 거두기 전에 "벌점 ○" 을 묻고(클라 확인) 칸마다 벌점.
+//   ⑤ 울타리 — 남의 울타리를 부수면(내구 0) · 분해하면 벌점 · 갇힘(집 · 마을에서 바깥 들판까지 울타리 없이는 못 나감)이면 막은 울타리는 벌점 0.
+//   ⑥ NPC 갇힘 — 마을마다 하루 한 번(`t1238TrapVillage` — villages.js 하루 끝이 부른다) · 갇혔으면 그 길의 울타리를 허문다(벌점 0).
+const _T1238V2 = require('./terr-v2');
+const _T1238Cost = require('./terr-cost');
+const _t1238Z = { pick: 0, go: 0, work: 0, workMs: 0, busy: 0, place: 0, placeLogs: 0, done: 0, cancel: 0, pull: 0, pullMs: 0, pullBack: 0, pullBroke: 0, info: 0,
+  steal: 0, stealAsk: 0, stealVp: 0, stealFree: 0, stealLifted: 0, fenceBreak: 0, fenceVp: 0, fenceFree: 0, dismantle: 0, use: 0,
+  trapQ: 0, trapNoFence: 0, trapBfs: 0, trapUs: 0, trapMaxUs: 0, trapVisited: 0, trapNpc: 0, trapNpcBroke: 0, builtQ: 0, builtUs: 0 };
+const _t1238Busy = new Map();                        // 칸 → { pid, at } — 그 칸에 붙어 일하는 몸(한 칸 한 몸)
+const T1238_BUSY_MS = T1207_STROKE_MAX_MS * 2;       // 손짓 둘 사이가 이보다 길면 그 몸은 떠난 것(손짓 상한 × 2 — 새 수 0)
+const _T1238_NOT_USE = new Set(['fence', 'wall', 'door', 'farmland']);   // 쓰임이 아닌 건물 — 둘러막기(울타리 · 담 · 문) · 밭(밭 일이 쓰는 날을 찍는다)
+function _t1238Cell(px) { return Math.floor((+px || 0) / BUILDING_SIZE); }
+//   그 사람이 넓히는 마을 — 플레이어 마을(창설 · 같은 무리 · 마을 사람)만(NPC 마을은 몸이 스스로 넓힌다)
+function _t1238VilOf(player) {
+  if (!T1238_ON || !player) return null;
+  if (VillageKin.ON) { const v = _kinVilOf(player); const vv = v && SimVillages.villageById ? SimVillages.villageById(v.dbId) : null; return (vv && _t1207Member(player, vv)) ? vv : null; }
+  for (const v of (SimVillages.playerVillages ? SimVillages.playerVillages() : [])) if (_t1207Member(player, v)) return v;
+  return null;
+}
+//   마을 사람이 제 마을 영토 칸에서 일했다 — 그 칸을 썼다(묵힘 시계를 오늘로)
+function _t1238PlayerUse(player, px, py) {
+  if (!T1238_ON || !player || !SimVillages.villageOfCell) return;
+  const cx = _t1238Cell(px), cy = _t1238Cell(py);
+  const v = SimVillages.villageOfCell(cx, cy);
+  if (!v || !_t1207Member(player, v)) return;
+  if (SimVillages.t1238MarkUse(v.dbId, cx, cy)) _t1238Z.use++;
+}
+function tryT1238Info(player) {
+  _t1238Z.info++;
+  const vil = _t1238VilOf(player);
+  const info = vil && SimVillages.t1238Info ? SimVillages.t1238Info(vil.dbId) : null;
+  send(player.ws, Object.assign({ type: 'terr_info' }, info || { none: 1 }));
+}
+//   끌어 고르기 — `commit` 이 거짓이면 미리 보기 · 참이면 묶음에 싣는다
+function tryT1238Pick(player, msg, commit) {
+  const vil = _t1238VilOf(player);
+  if (!vil) { send(player.ws, { type: 'terr_pick', ok: false, commit: !!commit, err: '마을 사람이어야 마을 영토를 넓힐 수 있습니다.' }); return; }
+  const n = (v) => Math.floor(+v || 0);
+  const r = commit ? SimVillages.t1238Go(vil.dbId, player.playerId, n(msg.x0), n(msg.y0), n(msg.x1), n(msg.y1)) : SimVillages.t1238Pick(vil.dbId, n(msg.x0), n(msg.y0), n(msg.x1), n(msg.y1));
+  _t1238Z[commit ? 'go' : 'pick']++;
+  send(player.ws, Object.assign({ type: 'terr_pick', commit: !!commit, have: Math.floor((player.inventory && player.inventory.wood) || 0) }, r));
+  if (commit && r.ok) {
+    send(player.ws, { type: 'notice', text: `${r.cells.length}칸을 골랐습니다. 고른 칸 곁에서 일하면 칸마다 진척이 찹니다(개간 합 ${Math.round(r.laborMin)}분 · 1분 = 실제 1초 · 말뚝 통나무 합 ${r.wood}개).` });
+    tryT1238Info(player);
+  }
+}
+function tryT1238Cancel(player, all) {
+  const vil = _t1238VilOf(player);
+  if (!vil) { send(player.ws, { type: 'notice', text: '마을 사람이 아닙니다.' }); return; }
+  const r = SimVillages.t1238Cancel(vil.dbId, player.playerId, !!all);
+  _t1238Z.cancel++;
+  player._t1238Job = null;
+  send(player.ws, { type: 'notice', text: r.n ? `고른 칸 ${r.n}칸을 내려놓았습니다. 한 개간은 땅에 그대로 남고, 박은 말뚝은 뽑아야 돌아옵니다.` : '내려놓을 칸이 없습니다.' });
+  tryT1238Info(player);
+}
+//   칸 일 — 개간(곁에 선 시간) → 말뚝(짐의 통나무 · 있는 만큼) → 다 박으면 영토
+function _t1238Work(player, x, y) {
+  const now = Date.now();
+  const cx = _t1238Cell(x), cy = _t1238Cell(y);
+  const vil = _t1238VilOf(player);
+  if (!vil) { send(player.ws, { type: 'terr_stop', cx, cy, err: '마을 사람이어야 마을 영토를 넓힐 수 있습니다.' }); return; }
+  const n = SimVillages.t1238CellNeed(vil.dbId, cx, cy);
+  if (!n) { send(player.ws, { type: 'terr_stop', cx, cy, err: '고른 칸이 아닙니다. 영토와 맞닿은 칸을 끌어서 먼저 고르십시오.' }); return; }
+  if (n.gone) {
+    SimVillages.t1238Drop(vil.dbId, cx, cy); player._t1238Job = null;
+    send(player.ws, { type: 'terr_stop', cx, cy, err: n.why === 'taken' ? `그 사이 ${n.name}의 땅이 되었습니다. 한 일은 땅에 남습니다.` : n.why === 'own' ? '이미 영토입니다.' : '물이나 바위라 영토가 될 수 없는 칸입니다.' });
+    tryT1238Info(player); return;
+  }
+  const trees = _t325TreesAtCell(cx, cy);
+  if (trees && trees.length) { send(player.ws, { type: 'notice', text: '이 칸에 나무가 서 있습니다. 먼저 베어 내십시오.' }); return; }
+  const px = cx * BUILDING_SIZE + BUILDING_SIZE / 2, py = cy * BUILDING_SIZE + BUILDING_SIZE / 2;
+  if (Math.hypot(player.x - px, player.y - py) > T1207_REACH_PX) { if (player._t1238Job) player._t1238Job.last = now; send(player.ws, { type: 'notice', text: '고른 칸 곁에 서야 일할 수 있습니다.' }); return; }
+  const key = cx + ',' + cy, busy = _t1238Busy.get(key), cap = _T1238V2.bodiesPerCell(_T1238Cost.cellM2());
+  if (cap <= 1 && busy && busy.pid !== player.playerId && now - busy.at < T1238_BUSY_MS) { _t1238Z.busy++; send(player.ws, { type: 'notice', text: '다른 사람이 이 칸에서 일하고 있습니다. 다른 칸을 하십시오.' }); return; }
+  _t1238Busy.set(key, { pid: player.playerId, at: now });
+  let job = player._t1238Job;
+  if (!job || job.cx !== cx || job.cy !== cy || job.vid !== vil.dbId) {
+    job = player._t1238Job = { vid: vil.dbId, cx, cy, last: now };
+    send(player.ws, { type: 'terr_progress', cx, cy, done: +(n.c * n.laborMin).toFixed(2), need: +n.laborMin.toFixed(2), wood: n.wood, placed: n.w, pct: Math.floor(n.c * 100) });
+    return;
+  }
+  const add = Math.max(0, Math.min(now - job.last, T1207_STROKE_MAX_MS));
+  job.last = now;
+  let c = n.c;
+  if (c < 1 - 1e-9) {
+    const r = SimVillages.t1238Clear(vil.dbId, cx, cy, add / 1000);
+    Body.onLabor(player, 1.0);   // ★[신체 상태] 개간도 노동이다(T1207 과 같은 손짓 하나)
+    _t1238Z.work++; _t1238Z.workMs += add;
+    c = r && r.c != null ? r.c : c;
+    send(player.ws, { type: 'terr_progress', cx, cy, done: +(c * n.laborMin).toFixed(2), need: +n.laborMin.toFixed(2), wood: n.wood, placed: n.w, pct: Math.floor(c * 100) });
+    if (!(r && r.done)) return;
+  }
+  if (!n.adj) { send(player.ws, { type: 'notice', text: '개간은 끝났습니다. 말뚝은 영토와 맞닿은 칸부터 박습니다(이 칸은 그 뒤에).' }); return; }
+  if (!n.go) { send(player.ws, { type: 'notice', text: '이 칸을 가지면 이웃 마을이 빈 땅과 끊깁니다. 말뚝을 박을 수 없습니다.' }); return; }
+  const owe = Math.max(0, n.wood - n.w), have = Math.floor((player.inventory && player.inventory.wood) || 0), put = Math.min(have, owe);
+  if (owe > 0 && put <= 0) {
+    send(player.ws, { type: 'terr_progress', cx, cy, done: +n.laborMin.toFixed(2), need: +n.laborMin.toFixed(2), wood: n.wood, placed: n.w, pct: 100, short: owe });
+    send(player.ws, { type: 'notice', text: `개간은 끝났습니다. 말뚝을 박을 통나무가 모자랍니다(박은 것 ${n.w}/${n.wood}).` }); return;
+  }
+  if (put > 0) consumeItem(player, 'wood', put);
+  const r = SimVillages.t1238Place(vil.dbId, cx, cy, put);
+  if (!r || !r.ok) {
+    if (put > 0) player.inventory.wood = (player.inventory.wood || 0) + put;   // 박지 못했다 — 짐으로 그대로
+    send(player.ws, { type: 'terr_stop', cx, cy, err: (r && r.err) || '영토가 되지 않았습니다.' });
+    sendInventory(player); return;
+  }
+  _t1238Z.place++; _t1238Z.placeLogs += put;
+  if (r.done) {
+    player._t1238Job = null; _t1238Busy.delete(key); _t1238Z.done++;
+    _t1238PlayerUse(player, px, py);
+    send(player.ws, { type: 'terr_done', cx, cy, size: r.size, wood: r.wood });
+    send(player.ws, { type: 'notice', text: r.wood > 0 ? `${r.name}의 영토가 한 칸 넓어졌습니다(${r.size}칸). 말뚝 몫 통나무 ${r.wood}개를 박았습니다.` : `${r.name}의 영토가 한 칸 넓어졌습니다(${r.size}칸). 새 경계가 늘지 않아 말뚝은 들지 않았습니다.` });
+    console.log(`[${ZONE_ID}] 🪵 [T1238] ${player.name} 영토 넓히기 @(${cx},${cy}) → ${r.name} ${r.size}칸 · 통나무 ${r.wood}`);
+    tryT1238Info(player);
+  } else {
+    send(player.ws, { type: 'terr_progress', cx, cy, done: +n.laborMin.toFixed(2), need: +n.laborMin.toFixed(2), wood: r.wood, placed: r.w, pct: 100, short: r.wood - r.w });
+    send(player.ws, { type: 'notice', text: `말뚝 통나무 ${put}개를 박았습니다(${r.w}/${r.wood}). 나머지는 통나무를 더 가져와 박으십시오.` });
+  }
+  sendInventory(player);
+  savePlayer(player);
+}
+//   박은 말뚝 뽑기 — 곁에 선 시간(말뚝 수 × 말뚝 하나 뽑는 분)이 차면 거둔다(썩은 몫은 부러진다) · 박은 마을 사람만
+function tryT1238Pull(player, x, y) {
+  const now = Date.now();
+  const cx = _t1238Cell(x), cy = _t1238Cell(y);
+  const need = SimVillages.t1238PullNeed ? SimVillages.t1238PullNeed(cx, cy) : null;
+  if (!need) { send(player.ws, { type: 'notice', text: '이 칸에 박힌 말뚝이 없습니다.' }); return; }
+  if (SimVillages.villageOfCell(cx, cy)) { send(player.ws, { type: 'notice', text: '영토가 된 칸의 말뚝은 뽑을 수 없습니다.' }); return; }
+  const vil = _t1238VilOf(player);
+  if (need.by && (!vil || (vil.dbId | 0) !== (need.by | 0))) { send(player.ws, { type: 'notice', text: '다른 마을이 박은 말뚝입니다. 박은 마을 사람만 뽑을 수 있습니다.' }); return; }
+  const px = cx * BUILDING_SIZE + BUILDING_SIZE / 2, py = cy * BUILDING_SIZE + BUILDING_SIZE / 2;
+  if (Math.hypot(player.x - px, player.y - py) > T1207_REACH_PX) { if (player._t1238Pull) player._t1238Pull.last = now; send(player.ws, { type: 'notice', text: '말뚝 곁에 서야 뽑을 수 있습니다.' }); return; }
+  const key = cx + ',' + cy, busy = _t1238Busy.get(key);
+  if (busy && busy.pid !== player.playerId && now - busy.at < T1238_BUSY_MS) { _t1238Z.busy++; send(player.ws, { type: 'notice', text: '다른 사람이 이 칸에서 일하고 있습니다.' }); return; }
+  _t1238Busy.set(key, { pid: player.playerId, at: now });
+  let job = player._t1238Pull;
+  if (!job || job.cx !== cx || job.cy !== cy) {
+    job = player._t1238Pull = { cx, cy, doneMs: 0, last: now };
+    send(player.ws, { type: 'terr_pull_progress', cx, cy, done: 0, need: +need.needMin.toFixed(2), logs: need.logs, back: need.back });
+    return;
+  }
+  const add = Math.max(0, Math.min(now - job.last, T1207_STROKE_MAX_MS));
+  job.last = now; job.doneMs += add; _t1238Z.pullMs += add;
+  Body.onLabor(player, 1.0);   // ★[신체 상태] 흙을 파서 뽑는다 — 개간과 같은 손짓
+  if (job.doneMs < need.needMin * 1000) { send(player.ws, { type: 'terr_pull_progress', cx, cy, done: +(job.doneMs / 1000).toFixed(2), need: +need.needMin.toFixed(2), logs: need.logs, back: need.back }); return; }
+  const r = SimVillages.t1238Pull(cx, cy, vil ? vil.dbId : null);
+  player._t1238Pull = null; _t1238Busy.delete(key);
+  if (!r || !r.ok) { send(player.ws, { type: 'notice', text: (r && r.err) || '말뚝을 뽑지 못했습니다.' }); return; }
+  _t1238Z.pull++; _t1238Z.pullBack += r.back; _t1238Z.pullBroke += r.broke;
+  if (r.back > 0) player.inventory.wood = (player.inventory.wood || 0) + r.back;
+  send(player.ws, { type: 'notice', text: r.broke > 0 ? `말뚝을 뽑았습니다. 통나무 ${r.back}개를 거두었고 ${r.broke}개는 썩어 부러졌습니다(박은 지 ${r.ageDays}날).` : `말뚝을 뽑았습니다. 통나무 ${r.back}개를 거두었습니다.` });
+  sendInventory(player);
+  savePlayer(player);
+  tryT1238Info(player);
+}
+//   ── 남의 작물 · 사유지 · 영토 ──
+//   그 칸에서 남의 작물을 거두면 몇 점인가 — 남의 사유지(주인 적대감이 문턱 이상이면 보호가 풀려 0 · 오프라인이면 보호된 것으로 — 채집과 같은 규약) ·
+//   남의 마을 영토(그 마을 사람이 아니면) · 빈 땅은 0
+function _t1238StealCheck(player, cx, cy) {
+  const x = cx * BUILDING_SIZE + BUILDING_SIZE / 2, y = cy * BUILDING_SIZE + BUILDING_SIZE / 2;
+  for (const c of claims.values()) {
+    if (c.ownerPid === player.playerId) continue;
+    if (!(x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h)) continue;
+    let ownerOnline = null; for (const p of players.values()) if (p.playerId === c.ownerPid) { ownerOnline = p; break; }
+    if (ownerOnline && (ownerOnline.vp ?? 0) >= VP_THRESHOLD) return { vp: 0, owner: c.ownerName, kind: 'claim', lifted: true };
+    return { vp: VP_STEAL_CROP, owner: c.ownerName, kind: 'claim' };
+  }
+  const v = SimVillages.villageOfCell ? SimVillages.villageOfCell(cx, cy) : null;
+  if (v && !_t1207Member(player, v)) return { vp: VP_STEAL_CROP, owner: v.name, kind: 'terr' };
+  return { vp: 0, owner: null, kind: 'free' };
+}
+function _t1238StealApply(player, pen) {
+  _t1238Z.steal++;
+  if (!pen || !(pen.vp > 0)) { if (pen && pen.lifted) _t1238Z.stealLifted++; else _t1238Z.stealFree++; return; }
+  player.vp = Math.min(VP_MAX, (player.vp ?? 0) + pen.vp);
+  _t1238Z.stealVp += pen.vp;
+  send(player.ws, { type: 'notice', text: `${pen.owner}의 ${pen.kind === 'claim' ? '사유지' : '영토'}에서 남의 작물을 거두어 적대감이 ${pen.vp} 올랐습니다.` });
+  send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), vp: Math.round(player.vp) });
+}
+function _t1238StealAsk(player, b, pen, crop, units) {
+  _t1238Z.stealAsk++;
+  const C = Crops.get(crop);
+  send(player.ws, { type: 'harvest_confirm', vp: pen.vp, owner: pen.owner, kind: pen.kind, crop, cropKo: C ? C.ko : crop, units, x: b.x, y: b.y });
+}
+//   마을 밭(생활층 칸 · `b.sim`) — 작물은 마을 표(`vil._crop`)에 있다 · 거둔 것은 거둔 사람 짐으로(곳간에 안 간다 — 마을이 잃는다)
+function _t1238HarvestVillage(player, b, confirm) {
+  const cx = _t1238Cell(b.x), cy = _t1238Cell(b.y);
+  const p = SimVillages.t1238PeekVillageCrop ? SimVillages.t1238PeekVillageCrop(cx, cy) : null;
+  if (!p) { send(player.ws, { type: 'notice', text: '빈 밭입니다.' }); return; }
+  const C = Crops.get(p.crop), ko = C ? C.ko : p.crop;
+  if (!p.ripe) { send(player.ws, { type: 'notice', text: `${ko}이(가) 아직 익지 않았습니다. 남의 작물은 돌볼 수 없습니다.` }); return; }
+  const pen = _t1238StealCheck(player, cx, cy);
+  if (pen.vp > 0 && !confirm) { _t1238StealAsk(player, b, pen, p.crop, p.units); return; }
+  const r = SimVillages.t1238TakeVillageCrop(cx, cy);
+  if (!r || !r.ok) { send(player.ws, { type: 'notice', text: (r && r.err) || '거두지 못했습니다.' }); return; }
+  const today = zoneGameDay();
+  if (r.units > 0) { player.inventory[r.crop] = (player.inventory[r.crop] || 0) + r.units; Lots.note(player, r.crop, r.units, today); }
+  if (!r.stays) { const seed = Crops.seedOf(r.crop); if (seed) { player.inventory[seed] = (player.inventory[seed] || 0) + 1; Lots.note(player, seed, 1, today); } }
+  send(player.ws, { type: 'notice', text: `${r.name}의 밭에서 ${ko} ${r.units}단위를 거두었습니다${r.stays ? '' : '(씨앗 1)'}.` });
+  _t1238StealApply(player, pen);
+  sendInventory(player, 'harvest');
+  savePlayer(player);
+}
+//   ── 갇힘 — 0-1 너비 우선(정본 `terr-v2.trapBfs`) · 울타리 = 1(부서진 것 = 0) · 담 변 · 물 · 바위 = 못 감 · 문 = 감(열 수 있다) ──
+//   상자 = 출발 칸 ± (마을 반지름 + 한 청크 32칸) — 그 밖에 친 우리는 "너무 큰 우리"(판정 밖 · 안에 들판이 한 청크 넘게 남는다).
+//   울타리가 상자에 하나도 없으면 길 찾기를 안 한다(갇힐 수 없다 · 비용 0 — NPC 만 사는 판은 늘 여기서 끝).
+const T1238_TRAP_PAD = 32;
+//   `list` = 하네스가 건물 목록을 직접 줄 때(안 주면 콜라이더 격자 — 깨어 있는 청크의 그 건물들 · 걸음이 부딪히는 그것)
+function _t1238Trap(sx, sy, R, list) {
+  const t0 = process.cpuUsage();   // CPU 시계(가상 시계 판에서도 흐른다)
+  _t1238Z.trapQ++;
+  const BS = BUILDING_SIZE;
+  const fences = new Map(), walls = new Set();
+  const near = list || (qtColl ? qtColl.queryRect((sx - R) * BS, (sy - R) * BS, (2 * R + 1) * BS, (2 * R + 1) * BS) : []);
+  for (const b of near) {
+    if ((b.floor || 0) !== 0) continue;
+    if (b.type === 'fence') { if (!(b.data && b.data.damaged)) fences.set(_t1238Cell(b.x) + ',' + _t1238Cell(b.y), b); }
+    else if (b.type === 'wall') { if (!(b.data && b.data.damaged)) walls.add(_t1238Cell(b.x) + ',' + _t1238Cell(b.y) + ',' + ((b.data && b.data.side) || 'N')); }
+  }
+  if (!fences.size) { _t1238Z.trapNoFence++; const cu = process.cpuUsage(t0), us = cu.user + cu.system; _t1238Z.trapUs += us; return { reached: true, cost: 0, fences: [], visited: 0, free: () => true, fenceAt: () => null }; }
+  const blockedCell = (x, y) => isTerrainBlockedLocal(x * BS + BS / 2, y * BS + BS / 2);
+  const wallEdge = (ax, ay, bx, by) => {
+    if (bx === ax + 1) return walls.has(ax + ',' + ay + ',E');
+    if (bx === ax - 1) return walls.has((ax - 1) + ',' + ay + ',E');
+    if (by === ay + 1) return walls.has(ax + ',' + (ay + 1) + ',N');
+    return walls.has(ax + ',' + ay + ',N');
+  };
+  const r = _T1238V2.trapBfs({ sx, sy, maxR: R,
+    step: (ax, ay, bx, by) => { if (blockedCell(bx, by) || wallEdge(ax, ay, bx, by)) return -1; return fences.has(bx + ',' + by) ? 1 : 0; },
+    isOut: (x, y) => Math.max(Math.abs(x - sx), Math.abs(y - sy)) >= R });
+  const cu = process.cpuUsage(t0), us = cu.user + cu.system;
+  _t1238Z.trapBfs++; _t1238Z.trapUs += us; _t1238Z.trapVisited += r.visited; if (us > _t1238Z.trapMaxUs) _t1238Z.trapMaxUs = us;
+  r.fenceAt = (x, y) => fences.get(x + ',' + y) || null;
+  return r;
+}
+//   그 사람이 갇혔나(집 · 제 마을 회관 앞에서) — 갇혔고 이 울타리(fx, fy)가 그 우리의 안쪽에 맞닿아 있으면(= 막은 울타리) 벌점 없이 허문다
+function _t1238TrapStarts(player) {
+  const out = [];
+  if (player._homeX != null && player._homeY != null) out.push({ x: _t1238Cell(player._homeX), y: _t1238Cell(player._homeY), R: Math.ceil(_lifeLOT_R()) + T1238_TRAP_PAD, from: '집' });
+  const v = _t1238VilOf(player);
+  if (v) out.push(Object.assign(_t1238HallFront(v), { R: Math.ceil(SimVillages.t1238VilRadius(v)) + T1238_TRAP_PAD, from: '마을' }));
+  return out;
+}
+function _lifeLOT_R() { try { return require('./village-layout').LOT_R || 7; } catch (e) { return 7; } }
+//   회관 앞 마당(남문 밖 · 큰집 8×8 [-4..3]² 의 남벽 너머 한 칸) — 막혔으면 회관 가운데
+function _t1238HallFront(v) {
+  const x = v.ccx, y = v.ccy + 5;
+  if (!isTerrainBlockedLocal(x * BUILDING_SIZE + BUILDING_SIZE / 2, y * BUILDING_SIZE + BUILDING_SIZE / 2)) return { x, y };
+  return { x: v.ccx, y: v.ccy };
+}
+function _t1238TrapWaiver(player, fx, fy, list) {
+  for (const s of _t1238TrapStarts(player)) {
+    if (Math.abs(fx - s.x) > s.R || Math.abs(fy - s.y) > s.R) continue;   // 이 울타리는 그 상자 밖 — 그 갇힘과 무관
+    const t = _t1238Trap(s.x, s.y, s.R, list);
+    if (!(t && t.cost >= 1)) continue;
+    if (t.free(fx - 1, fy) || t.free(fx + 1, fy) || t.free(fx, fy - 1) || t.free(fx, fy + 1)) return { from: s.from, cost: t.cost };
+  }
+  return null;
+}
+//   남의 울타리를 부쉈다(내구 0) · 분해했다 — 갇힘이면 0 · 아니면 벌점(제 울타리는 0)
+function _t1238FenceCost(player, b, list) {
+  if (!T1238_ON || !b || b.type !== 'fence' || b.ownerId === player.playerId) return null;
+  const w = _t1238TrapWaiver(player, _t1238Cell(b.x), _t1238Cell(b.y), list);
+  return w ? { vp: 0, waiver: w } : { vp: VP_BREAK_FENCE };
+}
+function _t1238FenceApply(player, b, cost, how) {
+  if (!cost) return;
+  if (how === 'dismantle') _t1238Z.dismantle++; else _t1238Z.fenceBreak++;
+  if (cost.waiver) { _t1238Z.fenceFree++; send(player.ws, { type: 'notice', text: `${cost.waiver.from}에서 바깥 들판까지 길이 막혀 있어, 막은 울타리를 벌점 없이 허물었습니다.` }); return; }
+  player.vp = Math.min(VP_MAX, (player.vp ?? 0) + cost.vp);
+  _t1238Z.fenceVp += cost.vp;
+  send(player.ws, { type: 'notice', text: `${b.ownerName || '남'}의 울타리를 ${how === 'dismantle' ? '허물어' : '부수어'} 적대감이 ${cost.vp} 올랐습니다.` });
+  send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), vp: Math.round(player.vp) });
+}
+//   NPC 마을 갇힘 — villages.js 하루 끝이 마을마다 부른다(NPC 마을만) · 갇혔으면 그 길의 울타리를 허문다(부서짐 — 사람이 부순 것과 같은 상태 · 고치면 다시 막힌다)
+function _t1238TrapVillage(vil, list) {
+  if (!T1238_ON || !vil || !vil._terrSet || !vil._terrSet.size) return null;
+  const s = _t1238HallFront(vil), R = Math.ceil(SimVillages.t1238VilRadius(vil)) + T1238_TRAP_PAD;
+  const t = _t1238Trap(s.x, s.y, R, list);
+  if (!(t && t.cost >= 1)) return t ? { cost: t.cost } : null;
+  _t1238Z.trapNpc++;
+  let broke = 0;
+  for (const [fx, fy] of t.fences) {
+    const b = t.fenceAt(fx, fy); if (!b) continue;
+    if (typeof b.data !== 'object' || b.data === null) b.data = {};
+    b.data.hp = 0; b.data.damaged = true;
+    try { _collBump(b); } catch (e) {}
+    try { if (b.dbId) db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {}
+    try { broadcast({ type: 'building_damaged', id: b.id, hp: 0, maxHp: BUILDING_MAX_HP.fence || 30, damaged: true }); } catch (e) {}
+    try { roomsTouchBuilding(b); } catch (e) {}
+    try { SimVillages.invalidateTradeDistances(fx, fy); } catch (e) {}
+    broke++;
+  }
+  _t1238Z.trapNpcBroke += broke;
+  console.log(`[${ZONE_ID}] 🪵 [T1238] ${vil.name} 갇힘 — 회관 앞에서 바깥 들판까지 울타리 ${t.cost}겹 · 그 길의 울타리 ${broke}개를 허물었다(벌점 0)`);
+  return { cost: t.cost, broke };
+}
+//   그 마을 상자의 건물 칸(쓰임 — 울타리 · 담 · 문 · 밭 빼고) + 다져진 길 — 묵힘의 "쓰는 땅" 술어(잠든 청크도 DB 정본에서)
+function _t1238BuiltCells(vil) {
+  const t0 = process.cpuUsage();
+  _t1238Z.builtQ++;
+  const R = Math.ceil(SimVillages.t1238VilRadius(vil)) + 1, BS = BUILDING_SIZE;
+  const x0 = (vil.ccx - R) * BS, y0 = (vil.ccy - R) * BS, x1 = (vil.ccx + R + 1) * BS, y1 = (vil.ccy + R + 1) * BS;
+  const set = new Set();
+  try { for (const b of db.getBuildingsInRect(x0, y0, x1, y1)) if (!_T1238_NOT_USE.has(b.type)) set.add(_t1238Cell(b.x) + ',' + _t1238Cell(b.y)); } catch (e) {}   // 사람이 지은 건물은 지을 때 행이 선다(메모리만 있는 것은 마을 실체 — 쓰는 칸 표가 이미 든다)
+  { const cu = process.cpuUsage(t0); _t1238Z.builtUs += cu.user + cu.system; }
+  return { has: (k) => { if (set.has(k)) return true; const ci = k.indexOf(','); return !!(Roads.pavedNear && Roads.pavedNear(+k.slice(0, ci), +k.slice(ci + 1), 0)); }, size: set.size };
+}
+function t1238ZoneStat() { return Object.assign({ on: T1238_ON, busy: _t1238Busy.size }, _t1238Z); }
 
 // ═══ ★[재민 확정 2026-08-02] 노(爐) — "집이랑 비슷하게, 터를 먼저 잡고 필요 자원을 모아 투입하고
 //     시간을 들여 진척도를 채우면 건설. 길드 사유지 또는 개인 사유지에만. 개인 것엔 타인 관여 불가." ═══
@@ -13584,6 +13958,7 @@ function tryFurnaceSmelt(player, buildingId) {
 //     지어 봐야 안다 — 실제로 이 하네스가 "노를 아예 못 짓는다"를 처음 잡아냈다.
 function __testBind() {
   return {
+    T1240_KILL_ONCE, mobLive,   // ★[T1240] 한 짐승 한 번 잡기(하네스가 진짜 술어를 본다)
     npcs, _physicalRocksInCircle, _physicalStoneHit, _npcGatherResource,
     claims, buildings, players, BUILDING_SIZE, Specialty, tryAssignJob, tryVillageBoard, JOB_KR_NPC, tryVillageSiteGive,   // ★[T1189 ⑤]   // ★[T1085] 촌장 일 맡기기(하네스가 진짜 문을 부른다)
     _t738Adopt, _t738: () => _t738, observers, isPositionActive: (x, y) => isPositionActive(x, y), _t774: () => ({ X: _t774X, Y: _t774Y, n: _t774N, src: _t774Src, ref: _spInc.ref, act: _spInc.act, hit: _t774Stat.hit, miss: _t774Stat.miss, same: _t774Src === activeChunkKeys }),   // ★[T774] 활성 열 증인(읽기)
@@ -13711,6 +14086,10 @@ function __testBind() {
     Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
     findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
     CLAIM_SLOT_PERSONAL_START, CLAIM_SLOT_TEMPORARY_START, CLAIM_SLOT_GUILD_START,
+    // ★[T1238] 영토 v2 존 몫 — 하네스(`test-t1238-terr-v2`)가 정본 함수를 그대로 부른다(벌점 · 갇힘 · 작물 · 칸 일)
+    T1238_ON, VP_STEAL_CROP, VP_BREAK_FENCE, VP_TRESPASS_GATHER, VP_ATTACK_PLAYER, VP_THRESHOLD, VP_MAX,
+    _t1238StealCheck, _t1238StealApply, _t1238Trap, _t1238TrapWaiver, _t1238FenceCost, _t1238FenceApply, _t1238TrapVillage, _t1238BuiltCells, _t1238VilOf, _t1238Work,
+    tryT1238Pick, tryT1238Cancel, tryT1238Pull, tryT1238Info, tryHarvest, t1238ZoneStat, findCellFence,
   };
 }
 module.exports = { __testBind, __furnaceBind: __testBind };
@@ -14039,6 +14418,7 @@ function stepArrows(dt) {
     }
     // 2) 자기 zone mob
     if (!hit) for (const m of mobs.values()) {
+      if (T1240_KILL_ONCE && !mobLive(m)) continue;   // ★[T1240] 같은 문(이 고리는 `mobs` 를 돌아 종전에도 지켰다 · 값 무변)
       if (Math.hypot(m.x - a.x, m.y - a.y) < ARROW_HIT_R) {
         setMobHp(m, Math.max(0, m.hp - a.dmg), 'arrow');   // ★[T954] 문으로(하한 0 은 이 자리 식 그대로 · 저장 표는 ★[T967] 켬이면 문이 세운다 · 끔 = 종전처럼 안 세운다)
         // §4-4 wildlife 브리지: 화살 피격 — 랩 hp 동기 + 놀람/반격(사수가 이 존 플레이어면 반격 표적)
@@ -14148,6 +14528,7 @@ async function tryAttack(player) {
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(player.x, player.y, PLAYER_ATTACK_RANGE) : Array.from(mobs.values());
   let bestMob = null, bestDist = PLAYER_ATTACK_RANGE;
   for (const m of nearbyMobs) {
+    if (T1240_KILL_ONCE && !mobLive(m)) continue;   // ★[T1240] 색인에 남은 죽은 몹은 안 고른다(같은 틱 두 번 잡기 · 끔 = 종전 글자)
     const d = Math.hypot(m.x - player.x, m.y - player.y);
     if (d < bestDist) { bestMob = m; bestDist = d; }
   }
@@ -14254,7 +14635,9 @@ async function tryAttack(player) {
     if (typeof bestWall.data !== 'object' || bestWall.data === null) bestWall.data = {};
     bestWall.data.hp = (bestWall.data.hp ?? maxHp) - atk;
     if (bestWall.data.hp <= 0) {
+      const _t1238Fc = T1238_ON ? _t1238FenceCost(player, bestWall) : null;   // ★[T1238 ⑧ ⑨] 부수기 전에 잰다(갇힘은 아직 서 있는 울타리로 본다)
       bestWall.data.damaged = true;
+      if (_t1238Fc) _t1238FenceApply(player, bestWall, _t1238Fc, 'break');
       _collBump(bestWall);   // ★[T562] 부서진 벽은 통과 — 도장
       bestWall.data.hp = 0;
       send(player.ws, { type: 'notice', text: `💥 ${bestWall.type}이(가) 부서져 지나갈 수 있습니다. 고치면 다시 막힙니다.` });
@@ -15224,6 +15607,7 @@ function findCellFence(cx, cy, floor) {
   for (const b of nearby) {
     if (b.type !== 'fence') continue;
     if ((b.floor || 0) !== floor) continue;
+    if (T1238_ON && b.data && b.data.damaged) continue;   // ★[T1238 ⑨] 켬 = 부서진 울타리는 통과(공격 알림 "부서져 지나갈 수 있습니다"의 그 뜻 · 끔 = 종전 그대로 — 부서져도 막았다 · 회부)
     const bcx = Math.floor(b.x / BUILDING_SIZE);
     const bcy = Math.floor(b.y / BUILDING_SIZE);
     if (bcx === cx && bcy === cy) return true;
