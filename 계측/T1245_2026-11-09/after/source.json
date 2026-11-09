@@ -1,0 +1,8 @@
+{
+  "server/crops.js": "06db46cabd46c7e541bf0a21e43bc3546e588fd425da48cf6b907dd16b2a7d9d",
+  "server/villages.js": "95979d91027e510313818e6767aad794c1118fc0c6f415aa0de5b6538c3eb5a0",
+  "server/zone.js": "123691ced97ea935302f356df095a2f86649016e6706d6c5bf2ef85bb48ed15c",
+  "scripts/t17-metrics.js": "1b72de19dfbaef92b0e3def1f0eae5bcc0a2956cfc594c47760db8e4d85b86b3",
+  "scripts/t176-ab.js": "929a16dfa2b1a8924bf4a21040c7d90f26f5a727886fb7485902ee35a4fad398",
+  "server/granary-lots.js": "58f23e42c38dce1a1dd11ebac7aeec70d0c5bff24399151f0dcdc7d19260d71e"
+}

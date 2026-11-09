@@ -1,0 +1,37 @@
+[
+  {
+    "url": "https://www.fao.org/4/x5036e/x5036E0g.htm",
+    "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+    "body_read": false
+  },
+  {
+    "url": "https://www.fao.org/4/t1838e/T1838E00.htm",
+    "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+    "body_read": false
+  },
+  {
+    "url": "https://edepot.wur.nl/172074",
+    "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+    "body_read": false
+  },
+  {
+    "url": "https://arxiv.org/pdf/1505.05121",
+    "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+    "body_read": false
+  },
+  {
+    "url": "https://contents.history.go.kr/mobile/km/view.do?levelId=km_027_0030_0010_0020",
+    "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+    "body_read": false
+  },
+  {
+    "url": "https://www.journals.uchicago.edu/doi/10.1086/658488",
+    "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+    "body_read": false
+  },
+  {
+    "url": "https://www.frontiersin.org/articles/10.3389/fevo.2022.1017909",
+    "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+    "body_read": false
+  }
+]

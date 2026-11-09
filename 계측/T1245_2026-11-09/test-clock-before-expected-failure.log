@@ -1,0 +1,23 @@
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+node:assert:150
+  throw new AssertionError(obj);
+  ^
+
+AssertionError [ERR_ASSERTION]: new receipt must carry the correct timestamp, not just the existing startup record
+    at Object.<anonymous> (/tmp/t1245/base/scripts/test-t1245-lot-clock.js:9:23)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 10,
+  expected: 12,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.23.4

@@ -1,0 +1,12 @@
+{
+  "baseCommit": "9e9ea133",
+  "verifiedAgainstGitAfterRun": true,
+  "sha256": {
+    "server/crops.js": "f66aeed50280eafc5df332db83d0e1c0540bd2695f3740aee46bc0801516e3e9",
+    "server/villages.js": "2e69bd0f4d8524942599c88ed1c3725ff4b27f55e339362131a6ba9dfadcce78",
+    "server/zone.js": "c8b2e7f84165cc2f6bee1ffd63356e41b24f9641a6778212ff26324194d47131",
+    "server/granary-lots.js": "f054f320e7924679a1026376448cd75453cecd367da9b233fcda6a34842dca2e",
+    "scripts/t176-ab.js": "929a16dfa2b1a8924bf4a21040c7d90f26f5a727886fb7485902ee35a4fad398",
+    "scripts/t17-metrics.js": "38a8a9eeef7fd840db0fa03accbc68d09c3ea41e21abf7ff8dc08b32f5536661"
+  }
+}

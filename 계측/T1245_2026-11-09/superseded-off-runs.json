@@ -1,0 +1,16 @@
+{
+  "reason": "final source must include clock fix and crop-demand reservation target",
+  "stopped_own_processes": [
+    158236,
+    158229,
+    158222,
+    160199,
+    160192,
+    160185
+  ],
+  "logs": [
+    "off-baseline.log",
+    "off-baseline-final.log"
+  ],
+  "primary_evidence": false
+}

@@ -69,8 +69,8 @@ const o={g:['rice','wheat','barley'].map(r=>[E.rawGrainF(r),K.econUnitsOf(r,1),E
 gd:['barnyard_millet','millet','foxtail_millet'].map(i=>C.growDaysOf(i)),keep:C.keepDaysOf('barnyard_millet'),kh:C.T1221_KG_HA.barnyard_millet||null,k15:C.T1215_KG_HA.barnyard_millet||null};
 const mk=(id,fert)=>{const fs=new Set(),ds=new Set();for(let i=0;i<12;i++){const k=(id*100+i)+',5';fs.add(k);if(i>=4)ds.add(k);}const st={};for(const c of C.T1201_BRONZE_SET)st[C.seedOf(c)]=100;return {dbId:id,name:'v'+id,_farmSet:fs,_drySet:ds,_crop:new Map(),econ:{land:{fertility:fert},storage:st}};};
 const vs=[mk(1,0.3),mk(2,1.2),mk(3,0.8),mk(4,0.9)];const B=V.__p3Bind({villages:vs,world:{day:0}});const F=V.__farmBind();
-const log=[];for(let day=0;day<365*3;day++){B.state.world.day=day;for(const v of vs.slice(0,2))for(const k of v._farmSet){const e0=v._crop.get(k);if(F._cellTask(v,k,day)>0&&F._lifeDoTask0(v,null,k,day)){const e=v._crop.get(k);if(!e0&&e)log.push([v.dbId,k,day,e.c]);else if(e0&&!e)log.push([v.dbId,k,day,'H:'+e0.c]);}}}
-o.log=log;o.stat=B._t1243PStat;o.bron=[...C.T1201_BRONZE_SET];
+let seedReturnV1=0;const log=[];for(let day=0;day<365*3;day++){B.state.world.day=day;for(const v of vs.slice(0,2))for(const k of v._farmSet){const e0=v._crop.get(k),sd0=Object.entries(v.econ.storage).filter(([k])=>k.startsWith('seed_')).reduce((n,[k,u])=>n+u,0);if(F._cellTask(v,k,day)>0&&F._lifeDoTask0(v,null,k,day)){const e=v._crop.get(k);if(!e0&&e)log.push([v.dbId,k,day,e.c]);else if(e0&&!e){log.push([v.dbId,k,day,'H:'+e0.c]);if(v.dbId===1)seedReturnV1+=Object.entries(v.econ.storage).filter(([k])=>k.startsWith('seed_')).reduce((n,[k,u])=>n+u,0)-sd0;}}}}
+o.seedReturnV1=seedReturnV1;o.log=log;o.stat=B._t1243PStat;o.bron=[...C.T1201_BRONZE_SET];
 const SD=new Set([...C.T1201_BRONZE_SET].map(c=>C.seedOf(c)));o.seedEnd=Object.fromEntries(Object.entries(vs[0].econ.storage).filter(([k,n])=>SD.has(k)&&n!==100));
 const w=mk(7,0.5);for(const c of C.T1201_BRONZE_SET)w.econ.storage[C.seedOf(c)]=0;w.econ.storage[C.seedOf('millet')]=1;
 o.noSeed=[];for(const k of w._farmSet){const d=40;if(F._cellTask(w,k,d)>0&&F._lifeDoTask0(w,null,k,d))o.noSeed.push(w._crop.get(k).c);}o.noSeedLeft=w.econ.storage[C.seedOf('millet')];
@@ -100,7 +100,7 @@ ok(p5.bron.includes('perilla') && p5.bron.includes('gourd') && p5.bron.length ==
 ok(p5.noSeed.length === 1 && p5.noSeed[0] === 'millet' && p5.noSeedLeft === 0, '⑥ 추신 14 — 씨가 없는 작물은 후보에서 빠진다 · 심으면 곳간 씨 하나(씨 하나뿐이면 한 칸만)', JSON.stringify(p5.noSeed));
 { const sown1 = p5.log.filter((x) => x[0] === 1 && !String(x[3]).startsWith('H:')).length, reap1 = p5.log.filter((x) => x[0] === 1 && String(x[3]).startsWith('H:')).length;
   const used = Object.values(p5.seedEnd).reduce((a, n) => a + (100 - n), 0);
-  ok(used === sown1 - reap1, '⑥ 추신 14 — 씨 셈: 심은 칸 − 거둔 칸 = 곳간 씨가 준 수(몸 없는 수확은 그 자리 곳간에 · 다년생 0)', `심음 ${sown1} · 거둠 ${reap1} · 줄어든 씨 ${used}`); }
+  ok(used === sown1 - p5.seedReturnV1, '⑥ T1245 씨 셈: 심은 씨 − 실제 부족분 반환 = 곳간 씨가 준 수(재고 충분이면 반환 0)', `심음 ${sown1} · 거둠 ${reap1} · 줄어든 씨 ${used}`); }
 ok(/if \(!row\.econ_state\) _t1243SeedCells\(state\.villages\[state\.villages\.length - 1\]\);/.test(VS), '⑥ 추신 14 — 첫 해 씨는 서버 첫 시작만(곳간 첫 곡식과 같은 자리)');
 // ── ⑦ 추신 5 — 밭 내기 ──
 const Q7 = `const T=require('./server/terr-cost');const V=require('./server/villages');const B=V.__p3Bind({villages:[]});

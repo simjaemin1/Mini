@@ -1,0 +1,19 @@
+PASS legacy seed mass is explicit, not historical sowing evidence
+PASS foxtail_millet crop + seed mass conserved and can refill expanded fields
+PASS millet crop + seed mass conserved and can refill expanded fields
+PASS rice crop + seed mass conserved and can refill expanded fields
+PASS soybean crop + seed mass conserved and can refill expanded fields
+PASS barley crop + seed mass conserved and can refill expanded fields
+PASS wheat crop + seed mass conserved and can refill expanded fields
+PASS no harvest creates no seed
+PASS existing seed stock stops unnecessary reservation
+PASS small harvest cannot reserve more seed than its mass
+PASS perennial keeps its crop and returns no seed
+PASS headless and body use the same reserve plan without stock minting
+PASS seed target follows existing crop cap instead of all compatible fields
+PASS inflight seed prevents duplicate reservation
+PASS actual player harvest splits crop and seed from one mass
+PASS private NPC and player plan share the canonical calculation
+PASS generic berry seed cannot masquerade as a crop seed under farm mode
+PASS typed seed is available to private NPC sowing
+PASS 18 / FAIL 0

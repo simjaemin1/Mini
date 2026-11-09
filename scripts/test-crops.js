@@ -464,7 +464,7 @@ function dayOfSeason(season) {
     // ⓕ 빈 밭 — 수확이 밭을 안 지운다(소스 검사)
     //   ⚠**작물 갈래만** 본다 — 옛 베리 농지(벽시계 · `cropType:'berry'`)는 종전대로 지운다(이 카드 밖).
     const _h0 = zsrc2.indexOf('function tryHarvest');
-    const _hCrop = zsrc2.indexOf('const units = Math.max(0, Math.floor(_base * _q', _h0);
+    const _hCrop = zsrc2.indexOf('const _gross = Math.max(0, Math.floor(_base * _q', _h0);
     const _hEnd = zsrc2.indexOf('savePlayer(player);', _hCrop);
     pre(_h0 > 0 && _hCrop > _h0 && _hEnd > _hCrop, '수확의 **작물 갈래**를 소스에서 찾았다', `${_hEnd - _hCrop}자`);
     const hsec = zsrc2.slice(_hCrop, _hEnd);
@@ -625,10 +625,12 @@ function dayOfSeason(season) {
     const zsrc = require('fs').readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
     ok(/did === 'harvest'[\s\S]{0,120}cropAfterHarvest\(/.test(vsrc),
       '★★⑩ⓕ 마을 수확 갈래가 `cropAfterHarvest` 정본을 부른다');
-    const hSec = zsrc.slice(zsrc.indexOf('function tryHarvest'), zsrc.indexOf('function tryHarvest') + 4000);
+    const hStart = zsrc.indexOf('function tryHarvest');
+    const hNext = zsrc.indexOf('\nfunction ', hStart + 1);
+    const hSec = zsrc.slice(hStart, hNext < 0 ? undefined : hNext);
     ok(/SimVillages\.cropAfterHarvest\(/.test(hSec), '★★⑩ⓕ 플레이어 수확도 같은 정본을 부른다(zone 이 다시 안 쓴다)');
     // 씨앗 — 다년생은 안 돌려준다(뿌리가 밭에 남았다)
-    ok(/if \(!_stump\) \{ player\.inventory\[seed\]/.test(hSec),
+    ok(/if \(!_stump\) \{ const n = _seedPlan \? _seedPlan\.seedUnits : 1; if \(n > 0\) \{ player\.inventory\[seed\]/.test(hSec),
       '★★⑩ⓕ 다년생은 **씨앗을 안 돌려준다**(그루터기 + 씨앗 = 무한 발생기)');
 
     // ⓖ ★돌연변이 — 축을 안 읽게 만들면 빨강이어야 한다(검사가 실제로 그 갈래를 밟는 증거)

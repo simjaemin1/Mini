@@ -4295,12 +4295,14 @@ function decideNpcBehavior(npc, now) {
     }
   }
   // ③ seed 있고 농지 슬롯 빈 데 → 농사. 마을 농부는 개인 사유지 없어도 집 근처에 농사 (가시 표현)
-  if ((npc.inventory.seed_berry || 0) >= 1 && (npc.myClaim || npc.npcJob === 'farmer')) {
+  if ((Crops.T1243_FARM_ON ? !!_npcSeedCrop(npc, zoneGameDay()) : (npc.inventory.seed_berry || 0) >= 1) && (npc.myClaim || npc.npcJob === 'farmer')) {
     const cl = npc.myClaim;
     let myFarmCount = 0;
     for (const b of _nearBld) if (b.type === 'farmland' && b.ownerId === npc.playerId) myFarmCount++;
-    if (myFarmCount < 3) {
+    const _emptyFarm = Crops.T1243_FARM_ON ? _nearBld.find(b => b.type === 'farmland' && b.ownerId === npc.playerId && b.data && !b.data.crop && !b.data.clr) : null;
+    if (myFarmCount < 3 || _emptyFarm) {
       npc.behavior = 'plant';
+      if (_emptyFarm) { npc.targetX = _emptyFarm.x; npc.targetY = _emptyFarm.y; return; }
       if (cl) {                          // 개인 사유지 안 빈 자리
         npc.targetX = cl.x + 40 + _dn() * (cl.w - 80);
         npc.targetY = cl.y + 40 + _dn() * (cl.h - 80);
@@ -5341,7 +5343,8 @@ function npcStep(npc, dt, now) {
       }
     } else if (npc.behavior === 'plant') {
       // 농지 짓기 — 마을 농부는 개인 사유지 없어도 OK (decide ③와 일치)
-      if ((npc.inventory.seed_berry || 0) >= 1 && (npc.myClaim || npc.npcJob === 'farmer')) {
+      if ((Crops.T1243_FARM_ON ? !!_npcSeedCrop(npc, zoneGameDay()) : (npc.inventory.seed_berry || 0) >= 1) && (npc.myClaim || npc.npcJob === 'farmer')) {
+        if (Crops.T1243_FARM_ON) { const empty = _nearestEmptyFarmland(npc), crop = _npcSeedCrop(npc, zoneGameDay()); if (empty && crop) { _plantInto(npc, empty, crop, zoneGameDay()); npc.nextDecisionAt = 0; return; } }
         const gx = Math.floor(npc.x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
         const gy = Math.floor(npc.y / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
         // 같은 타일 중복 체크
@@ -5355,10 +5358,12 @@ function npcStep(npc, dt, now) {
           const _cx = Math.round(gx / BUILDING_SIZE), _cy = Math.round(gy / BUILDING_SIZE);
           const _today = zoneGameDay();
           const _seed = Crops.wildSeedAt(_cx, _cy, _today, 1);      // 이 철에 못 심으면 null
-          const _cid = _seed ? Crops.cropOfSeed(_seed) : null;
+          const _cid = Crops.T1243_FARM_ON ? _npcSeedCrop(npc, _today) : (_seed ? Crops.cropOfSeed(_seed) : null);
           if (!_cid) { npc.nextDecisionAt = 0; return; }             // 철이 아니다 — 밭을 안 만든다
-          npc.inventory.seed_berry -= 1;
-          const data = { crop: _cid, plantedDay: _today, seedFresh: 1, farmStage: 0,
+          let seedFresh = 1;
+          if (Crops.T1243_FARM_ON) { const sd = Crops.seedOf(_cid), n = Crops.seedUnitsPerCell(_cid); Lots.reconcile(npc, sd, npc.inventory, _today); seedFresh = Spoil.peekOffer(sd, Lots.of(npc, sd), n, _today).fresh; Lots.consume(npc, sd, n, npc.inventory, _today); }
+          else npc.inventory.seed_berry -= 1;
+          const data = { crop: _cid, plantedDay: _today, seedFresh, farmStage: 0,
                          supply: _waterSupplyAt(gx, gy), ready: false,
                          w: _today, td: _today, wd: 0, ps: 0, q: 1, qd: _today };
           const dbId = db.insertBuilding({ type: 'farmland', owner_id: npc.playerId, owner_name: npc.name, x: gx, y: gy, data: JSON.stringify(data) });
@@ -5377,7 +5382,9 @@ function npcStep(npc, dt, now) {
       if (b && b.type === 'farmland' && b.ownerId === npc.playerId && b.data && b.data.crop
           && Crops.isReady(b.data.crop, b.data.plantedDay, zoneGameDay())) {
         const _t = zoneGameDay(), _cid = b.data.crop;
-        const _units = Crops.harvestUnits(_cid, { supply: b.data.supply, seedFresh: b.data.seedFresh });
+        const _gross = Crops.harvestUnits(_cid, { supply: b.data.supply, seedFresh: b.data.seedFresh });
+        const _seedPlan = Crops.T1243_FARM_ON ? _harvestSeedPlan(npc, _cid, _gross) : null;
+        const _units = _seedPlan ? _seedPlan.cropUnits : _gross;
         if (_units > 0) { npc.inventory[_cid] = (npc.inventory[_cid] || 0) + _units; if (T732_MOMENT) Lots.note(npc, _cid, _units, _t); }   // ★[T732] 거둔 순간
         const _e = _cropEntryOf(b.data);
         if (SimVillages.cropAfterHarvest(_e, _t)) {                  // 다년생 — 그루터기로 남는다
@@ -5385,7 +5392,8 @@ function npcStep(npc, dt, now) {
                      supply: b.data.supply, ready: false, stumpDay: _t };
           _cropWriteBack(b.data, _e, _t);
         } else {
-          npc.inventory.seed_berry = (npc.inventory.seed_berry || 0) + 1;   // 한해살이는 씨를 남긴다(종전 그대로)
+          if (_seedPlan) { const sd = Crops.seedOf(_cid), n = _seedPlan.seedUnits; if (n > 0) { npc.inventory[sd] = (npc.inventory[sd] || 0) + n; if (T732_MOMENT) Lots.note(npc, sd, n, _t); } }
+          else npc.inventory.seed_berry = (npc.inventory.seed_berry || 0) + 1;   // 끔 = 종전 그대로
           b.data = { crop: null, ready: false, farmStage: 0, supply: b.data.supply, emptiedDay: _t };
         }
         if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
@@ -8424,11 +8432,21 @@ function _nearestEmptyFarmland(player) {
   return best;
 }
 // 그 빈 밭에 심는다 — 씨앗 차감·안내는 `doPlant` 와 **같은 산수**를 쓴다(아래에서 부른다).
+// T1245: 실제 소유 밭의 다음 파종 수요. 파종량의 원문 고증은 미확인(기존 씨 한 줌 단위).
+function _npcSeedCrop(npc, day) {
+  return Crops.list().find(c => Crops.canSowOn(c.id, day) && ((npc.inventory && npc.inventory[Crops.seedOf(c.id)]) || 0) >= Crops.seedUnitsPerCell(c.id))?.id || null;
+}
+function _harvestSeedPlan(player, id, gross) {
+  let cells = 0;
+  for (const b of buildings.values()) if (b.type === 'farmland' && b.ownerId === player.playerId) cells++;
+  return Crops.reserveSeed(id, gross, (player.inventory && player.inventory[Crops.seedOf(id)]) || 0, Math.max(1, cells));
+}
 function _plantInto(player, b, cropId, today) {
   if (T1238_ON) _t1238PlayerUse(player, b.x, b.y);   // ★[T1238 ③] 심기 = 그 칸을 썼다(밭 — 휴경 2년 < 묵힘 3년)
   const c = Crops.get(cropId), seed = Crops.seedOf(cropId);
-  const off = Spoil.peekOffer(seed, Lots.of(player, seed), 1, today);
-  Lots.consume(player, seed, 1, player.inventory, today);
+  const cost = Crops.T1243_FARM_ON ? Crops.seedUnitsPerCell(cropId) : 1;
+  const off = Spoil.peekOffer(seed, Lots.of(player, seed), cost, today);
+  Lots.consume(player, seed, cost, player.inventory, today);
   const supply = (b.data && b.data.supply != null) ? b.data.supply : _waterSupplyAt(b.x, b.y);
   b.data = { crop: cropId, plantedDay: today, seedFresh: off.fresh, farmStage: 0,
              supply, ready: false, w: today, wd: 0, ps: 0, q: 1, qd: today };
@@ -8459,7 +8477,7 @@ function doPlant(player, cropId) {
   }
   const seed = Crops.seedOf(cropId);
   Lots.reconcile(player, seed, player.inventory, today);
-  if (Lots.sum(player, seed) < 1) {
+  if (Lots.sum(player, seed) < (Crops.T1243_FARM_ON ? Crops.seedUnitsPerCell(cropId) : 1)) {
     send(player.ws, { type: 'notice', text: `${c.ko} 씨앗이 없습니다.` }); return;
   }
   // ★★[T58b] **빈 밭이 곁에 있으면 거기 심는다** — 수확이 밭을 남기므로(회부 G 해소) 새로 갈 이유가 없다.
@@ -8575,7 +8593,9 @@ function tryHarvest(player, confirm) {
     // ★[T58b] **품질이 수확에 든다** — NPC 와 같은 `q`(돌보기가 올리고 방치가 깎는다 · 바닥 25%).
     const _q = best.data.q == null ? 1 : Math.max(0, Math.min(1, best.data.q));
     const _base = Crops.harvestUnits(_cid, { supply: best.data.supply, seedFresh: best.data.seedFresh });
-    const units = Math.max(0, Math.floor(_base * _q + 1e-9));
+    const _gross = Math.max(0, Math.floor(_base * _q + 1e-9));
+    const _seedPlan = Crops.T1243_FARM_ON ? _harvestSeedPlan(player, _cid, _gross) : null;
+    const units = _seedPlan ? _seedPlan.cropUnits : _gross;
     const seed = Crops.seedOf(_cid);
     if (units > 0) {
       player.inventory[_cid] = (player.inventory[_cid] || 0) + units;
@@ -8590,7 +8610,7 @@ function tryHarvest(player, confirm) {
     // ★[T91] **다년생은 씨앗을 안 돌려준다** — 뿌리가 밭에 남았기 때문이다(한해살이는 죽으면서
     //   씨를 남기고, 다년생은 살아서 남는다). 둘 다 주면 부추 한 포기가 씨앗 무한 발생기가 된다
     //   (그루터기는 그대로 다시 여무는데 씨까지 나오는 길). 물리가 그대로 규칙이 된다.
-    if (!_stump) { player.inventory[seed] = (player.inventory[seed] || 0) + 1; Lots.note(player, seed, 1, today); }
+    if (!_stump) { const n = _seedPlan ? _seedPlan.seedUnits : 1; if (n > 0) { player.inventory[seed] = (player.inventory[seed] || 0) + n; Lots.note(player, seed, n, today); } }
     // ★★★[T58b] **밭은 남는다.** 여태 수확이 농지 건물을 지웠다(회부 G) — 랩은 셀을 비우고 구획을 남긴다.
     //   ⇒ 작물만 비우고 **빈 밭으로 되돌린다**. 다시 심으면 그 자리에 그대로 선다(`doPlant` 가 재사용).
     const _supply = best.data.supply, _fresh = best.data.seedFresh;
@@ -14177,7 +14197,7 @@ function __testBind() {
     // ★[부패·보존 배치 2026-08-31] 하네스가 잡을 손잡이들
     Spoil, doPreserve, preserveMenuPayload, _spoiledGuardItems, _spoiledGuardRes, _gameDayAt, __e2eFreezeZoneDay,
     // ★[작물 층 2026-08-31]
-    Crops, doPlant, plantMenuPayload, tryHarvest, _waterSupplyAt, _farmlandData, lootOfResource,
+    Crops, doPlant, plantMenuPayload, tryHarvest, _harvestSeedPlan, _npcSeedCrop, _waterSupplyAt, _farmlandData, lootOfResource,
     _promoteLegacyFarm, _farmStageOf,   // ★[T108] 옛 밭 승격 · 밭 단계(게임일 정본)
     _cropTend, _cropSettle, _cropNeedsWater, _cropEntryOf, _nearestEmptyFarmland, _plantInto,   // ★[T58b] 플레이어 돌보기
     PRESERVED_EFFECTS, BUILDING_COST, BUILDING_RECIPES, ITEM_LABEL_SERVER,
