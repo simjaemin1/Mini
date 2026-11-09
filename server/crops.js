@@ -135,8 +135,12 @@ const _calDaysCache = new Map();
 function calDaysOf(id) {
   if (_calDaysCache.has(id)) return _calDaysCache.get(id);
   let v = null;
-  const M = _cropCal(), row = M && M.rowOf(id);
-  if (row && get(id) && require('./calendar').ON) {
+  const M = _cropCal();
+  let row = M && M.rowOf(id);
+  if (!row && T1243_FARM_ON && M && M.rowT1243Of) row = M.rowT1243Of(id);   // ★[T1243 추신 7] 켬 묶음 = 농사로 표 밖 둘(피 · 기장)도 고증 철에서 · 끔 = 글자 그대로(null → 카탈로그)
+  if (row && row.days && get(id) && require('./calendar').ON) {   // ★[T1243 추신 7] 기장 — 파종 뒤 날수 범위(R13)의 가운데(파종창은 xlsx · 여름 작물이라 휴면 0)
+    const r = M.daysSpanOf(row); v = Math.max(1, Math.round((r[0] + r[1]) / 2));
+  } else if (row && get(id) && require('./calendar').ON) {
     const sp = M.spanOf(row);
     const a = vernalDay(id, sp.sDay), b = sp.hDay;   // 월동이면 겨울 지난 다음 날부터(T99) · 1년생이면 심은 날 그대로
     let n = 0;
@@ -409,7 +413,8 @@ function waterMult(id, supply) {
 const T1243_FARM_ON = (typeof process !== 'undefined' && process.env) ? process.env.T1243_FARM_ON === '1' : false;
 const T1215_FIELD_M2 = ((typeof process !== 'undefined' && process.env) ? process.env.T1215_FIELD_M2 === '1' : false) || T1243_FARM_ON;
 const FIELD_CELL_M2 = 250;
-const T1215_KG_HA = { foxtail_millet: 650, millet: 650, rice: 1000, soybean: 760 };
+// ★[T1243 추신 9 · T1239 §1-②] 피 747 ~ 1,020 kg/ha — 일본 1987 평균 165 kg/10a(S09 · 2차) × 다리A(근대 직전 ÷ 1970s · 조 0.45 ~ 콩 0.62 — 이웃) · ★가장 약한 다리(T1239 §2) · 칸 넓이 갈래는 그 가운데(883.5).
+const T1215_KG_HA = { foxtail_millet: 650, millet: 650, rice: 1000, soybean: 760, barnyard_millet: (747 + 1020) / 2 };
 const _T1215_REF = { '곡물': 'foxtail_millet', '콩류': 'soybean' };
 function cellKgOf(id) {   // 칸 하나 한 번 수확의 kg(물 · 발아율 앞) — 캐논 켬 · 끔 둘 다에서 같은 답(계측 · 표가 읽는다)
   const c = get(id); if (!c) return 0;
@@ -429,7 +434,7 @@ function kgHaSrcOf(id) { return T1215_KG_HA[id] != null ? T1215_KG_HA[id] : null
 //   마을 자리 = 그 마을 비옥도(`land.fertility`)의 세계 안 순위(0 = 가장 척박 · 1 = 가장 비옥 — 부르는 쪽이 낸다 · 새 수 0).
 //   미확인 작물은 T1215 와 같은 다리(같은 분류 확인 작물 × 작물 표 kg 비)로 양 끝을 잇는다.
 const T1221_FARM_LABOR = ((typeof process !== 'undefined' && process.env) ? process.env.T1221_FARM_LABOR === '1' : false) || T1243_FARM_ON;
-const T1221_KG_HA = { foxtail_millet: [500, 800], millet: [500, 800], rice: [320, 1130], soybean: [760, 760] };
+const T1221_KG_HA = { foxtail_millet: [500, 800], millet: [500, 800], rice: [320, 1130], soybean: [760, 760], barnyard_millet: [747, 1020] };   // ★[T1243 추신 9] 피 — 위 T1215 줄과 같은 출처(가장 약한 다리)
 function cellKgAt(id, fert01) {   // 칸 하나 한 번 수확의 kg — 비옥 자리(0 ~ 1)를 고증 범위에 놓는다(물 · 발아율 앞)
   const c = get(id); if (!c) return 0;
   const f = Math.max(0, Math.min(1, Number(fert01) || 0));

@@ -21,7 +21,7 @@
   "파종철": "sowSeasons"
  },
  "_note": "생성물 — 손으로 고치지 마라. 원천은 재민의 xlsx, 통로는 scripts/build-crops.py.",
- "_source": "crops.xlsx",
+ "_source": "한국작물_카탈로그.xlsx",
  "crops": {
   "adlay": {
    "care": 2,
@@ -103,7 +103,7 @@
    "health": 1,
    "id": "barnyard_millet",
    "kcal": 3400,
-   "keep": 3,
+   "keep": 5,
    "ko": "피",
    "lifecycle": "1년생",
    "note": "극한 구황작물, 침수에도 견딤",

@@ -594,7 +594,7 @@ console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름
      && T635_GATE_BODY.test(C),   // ★[T751] 게이트 뒤 몸 = T635 블록(주석 뺀 판에서도 같은 꼴)
     '⑮ ★이중 0 — 켠 팔에서 농부의 `food` 는 `addProduce` 를 **안 탄다**(들어오는 길이 하나뿐이다)');
   // ⓓ `totalFoodProductionEquivalent` 이 보는 것 — `food` 만이 아니다(§0-ⓐ 의 셋째 물음)
-  ok(/if \(T73_RAWGRAIN\) for \(const r of RAW_GRAINS\) total \+= \(prod\[r\] \|\| 0\) \* RAW_GRAIN_FOOD_FACTOR;/.test(C),
+  ok(/if \(T73_RAWGRAIN\) for \(const r of RAW_GRAINS\) total \+= \(prod\[r\] \|\| 0\) \* _rawGrainF\(r\);/.test(C) && /if \(!T1243_FARM_ON\) return RAW_GRAIN_FOOD_FACTOR;/.test(C),   // ★[T1243 추신 1] 생곡 값은 `_rawGrainF` 하나(끔 = 0.72)
     '⑮ 장부를 읽는 자는 `food` 말고 **생곡도 본다**(T73) — 켠 팔이 통째로 눈먼 건 아니었다(부산물은 두 팔이 같은 길)');
 }
 

@@ -138,4 +138,27 @@ const BY_ID = Object.freeze(ROWS.reduce((o, r) => (o[r.id] = r, o), {}));
 function rowOf(id) { return BY_ID[id] || null; }
 function ids() { return ROWS.map((r) => r.id); }
 
-module.exports = { ROWS, NOT_IN_TABLE, rowOf, ids, parseSpan, spanOf };
+// ★★[T1243 추신 7 · ★재민 11-09 피 ⓑ · 족보 803] **농사로 표 밖 둘(피 · 기장)** — 켬 묶음(`T1243_FARM_ON`)에서만 `crops.calDaysOf` 가 읽는다.
+//   끔 = 위 표(16줄 · 농사로 1차) 그대로 · 두 작물은 위 `NOT_IN_TABLE` 그대로(기본 판 바이트 · 카탈로그 성장일 — 피 60 · 기장 48).
+//   xlsx 성장일 칸은 손대지 않는다(추신 7) — 자라는 날은 이 표가 갖는다. 출처 열쇠는 T1239 `출처.tsv`.
+//   · 피 — 파종창 · 수확창 글자(S10): 한지 5월 중~하순 · 난지 6월 상~중순 → 한 칸 "5월 중순~6월 중순"(T1239 고증.tsv 철_파종창 · 두 창을 이은 범위) · 수확 9~10월.
+//     유도(위 규칙 그대로 — 파종 가운데날 → 수확 가운데날)가 S10 의 100~140일 안에 드는지 하네스가 잰다(이웃).
+//   · 기장 — 출처에 파종창이 없다(R13 은 "파종 뒤 75~90일" 만). 그래서 `days` 칸 하나 — 유도는 그 범위의 가운데(파종창은 게임 xlsx 그대로).
+const ROWS_T1243 = [
+  { id: 'barnyard_millet', kind: '피', region: '한지 · 난지(두 창을 한 칸으로)', from: '파종',
+    sow: '5월 중순~6월 중순', harvest: '9월~10월',
+    src: ['S10 이성우 「피」 한국민족문화대백과사전(1995 · 2026-02-05 수정)'],
+    note: '한지 5월 중~하순 · 난지 6월 상~중순 · 수확 9~10월(S10) · 저온 · 과습 · 냉수답 · 산간에 강함' },
+  { id: 'millet', kind: '기장', region: '제주(R13 파종기 시험 2006~07)', from: '파종', days: '75~90',
+    src: ['R13 김성택 「식량작물(기장)」 제주특별자치도 농업기술원 https://agri.jeju.go.kr/files/board/%EC%8B%9D%EB%9F%89%EC%9E%91%EB%AC%BC%28%EA%B8%B0%EC%9E%A5%29.pdf'],
+    note: '수확 = 파종 뒤 75~90일(R13 본문) · 파종창은 출처에 없다' },
+];
+const BY_ID_T1243 = Object.freeze(ROWS_T1243.reduce((o, r) => (o[r.id] = r, o), {}));
+function rowT1243Of(id) { return BY_ID_T1243[id] || null; }
+function daysSpanOf(row) {   // "75~90" → [75, 90] (기장 줄 · `days` 칸)
+  const m = /^(\d+)~(\d+)$/.exec(String(row && row.days || ''));
+  if (!m) throw new Error(`crop-cal: days 칸 글자 "${row && row.days}"`);
+  return [+m[1], +m[2]];
+}
+
+module.exports = { ROWS, NOT_IN_TABLE, rowOf, ids, parseSpan, spanOf, ROWS_T1243, rowT1243Of, daysSpanOf };

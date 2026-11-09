@@ -63,5 +63,35 @@ ok(/ev\._world = world;\s*if \(!row\.econ_state\) _t1243Seed\(ev, row\.id\);/.te
 ok(!on.live0 && on.live1, '④ 라이브 = 존 주입(`zoneAwake`)이 있는 판 · 없으면(랩 · CLI · 하네스) 종전');
 ok(/const _cut = _t1243On\(\) && _t1243Live\(\);/.test(VS) && /if \(T1224_ECON_FARM && !_cut\)/.test(VS) && /if \(_body && T1212_FARM_REST && !_cut\)/.test(VS), '④ 켬 + 라이브 = 몸 없는 econ 농부(T1224) · 몸이 못 한 몫(T1212 ②) 안 돈다');
 ok(/if \(!_body && !_cut\) _lifeClearDay\(vil, farmerN\);/.test(VS) && /if \(_cut\) \{ \/\* ★\[T1243\] 몸만 — 일괄 0 \*\/ \}\s*else if \(!_body\) lifeFarmDay\(/.test(VS), '④ 켬 + 라이브 = 존이 잔 날의 개간 · 작물 일괄도 안 돈다(몸이 못 한 일은 0)');
+// ── ⑤ 추신 ──
+const Q5 = `const E=require('./sim/economy-sim');const C=require('./server/crops');const V=require('./server/villages');const K=require('./server/kcal');
+const o={g:['rice','wheat','barley'].map(r=>[E.rawGrainF(r),K.econUnitsOf(r,1),E.RAW_GRAIN_FOOD_FACTOR]),st:E.T1243_GRAIN_STATE,
+gd:['barnyard_millet','millet','foxtail_millet'].map(i=>C.growDaysOf(i)),keep:C.keepDaysOf('barnyard_millet'),kh:C.T1221_KG_HA.barnyard_millet||null,k15:C.T1215_KG_HA.barnyard_millet||null};
+const mk=(id,fert)=>{const fs=new Set(),ds=new Set();for(let i=0;i<12;i++){const k=(id*100+i)+',5';fs.add(k);if(i>=4)ds.add(k);}return {dbId:id,name:'v'+id,_farmSet:fs,_drySet:ds,_crop:new Map(),econ:{land:{fertility:fert}}};};
+const vs=[mk(1,0.3),mk(2,1.2),mk(3,0.8),mk(4,0.9)];const B=V.__p3Bind({villages:vs,world:{day:0}});const F=V.__farmBind();
+const log=[];for(let day=0;day<365*3;day++){B.state.world.day=day;for(const v of vs.slice(0,2))for(const k of v._farmSet){const e0=v._crop.get(k);if(F._cellTask(v,k,day)>0&&F._lifeDoTask0(v,null,k,day)){const e=v._crop.get(k);if(!e0&&e)log.push([v.dbId,k,day,e.c]);else if(e0&&!e)log.push([v.dbId,k,day,'H:'+e0.c]);}}}
+o.log=log;o.stat=B._t1243PStat;o.bron=[...C.T1201_BRONZE_SET];
+const v9=mk(9,0.5);v9._crop.set('900,5',{c:'soybean',p:0,td:0,w:0,wd:6,ps:0,q:1});v9._crop.set('904,5',{c:'foxtail_millet',p:0,td:0,w:0,wd:6,ps:0,q:1});
+o.hc=[B._t1243HarvH?B._t1243HarvH(v9,'900,5'):null,B._t1243HarvH?B._t1243HarvH(v9,'904,5'):null];o.c5=[B._t1221Cost(5),B._t1221Cost(5,v9,'900,5')];
+console.log(JSON.stringify(o));`;
+const p5 = sub({ T1243_FARM_ON: '1' }, Q5), p50 = sub({}, Q5);
+ok(p5.g.every(([f, u]) => Math.abs(f - u) < 1e-12) && p50.g.every(([f, , r]) => f === r && r === 0.72), '⑤ 추신 1 — 켬 = 생곡 셋 낱개 값 = 열량 정본 × 상태 몫(0.72 를 또 곱하지 않는다) · 끔 = 0.72', p5.g.map((x) => x[0].toFixed(3)).join(' · '));
+ok(p5.st.rice.st === '확인' && p5.st.wheat.st === '미확인' && p5.st.barley.st === '미확인' && [p5.st.rice, p5.st.wheat, p5.st.barley].every((x) => x.ratio === 1), '⑤ 추신 1 — 상태 표(벼 확인 · 밀 · 보리 미확인 = 몫 1 · 새 수 0)');
+ok(p5.hc[0] > 0 && p5.hc[1] > 0 && Math.abs(p5.c5[1] - p5.hc[0] * 60) < 1e-9 && p5.c5[0] !== p5.c5[1], '⑤ 추신 2 — 수확 + 털기 = 산물 t 당(칸을 주면) · 칸을 모르면 종전 h/ha', `콩 칸 ${p5.hc[0].toFixed(2)} h · 조 칸 ${p5.hc[1].toFixed(2)} h`);
+const sown = p5.log.filter((x) => !String(x[3]).startsWith('H:')), reap = p5.log.filter((x) => String(x[3]).startsWith('H:'));
+ok(sown.length > 0 && sown.every((x) => p5.bron.includes(x[3])), '⑤ 추신 6 — 고른 작물은 청동기 묶음 · 철(그 달 심을 수 있는 것)만', `심음 ${sown.length}`);
+const byCell = {}; for (const x of p5.log) (byCell[x[0] + '|' + x[1]] = byCell[x[0] + '|' + x[1]] || []).push(x);
+let yearOk = true;
+for (const L of Object.values(byCell)) { const H = L.filter((x) => String(x[3]).startsWith('H:')); for (let i = 1; i < H.length; i++) if (H[i][2] - H[i - 1][2] < 365) yearOk = false; }
+ok(yearOk && reap.length > 0, '⑤ 추신 3 — 한 칸 두 수확 사이 ≥ 한 해(365날)', `거둠 ${reap.length}`);
+const v1M = sown.filter((x) => x[0] === 1 && +x[1].split(',')[0] < 104 && x[2] < 200).map((x) => x[3]), v2M = sown.filter((x) => x[0] === 2 && +x[1].split(',')[0] < 204 && x[2] < 200).map((x) => x[3]);
+ok(v1M[0] === 'barnyard_millet' && v2M[0] === 'rice', '⑤ 추신 6 — 땅을 본다: 가장 척박한 마을 논의 첫 작물 = 피 · 가장 비옥한 마을 = 벼(번호 홀짝이 아니다)', `척박 ${v1M.join(',')} · 비옥 ${v2M.join(',')}`);
+ok(new Set(v1M).size > 1, '⑤ 추신 6 — 나눠 심기(한 작물이 그 자리 칸의 1/후보 수를 넘지 않는다)');
+const p5b = sub({ T1243_FARM_ON: '1' }, Q5);
+ok(JSON.stringify(p5b.log) === JSON.stringify(p5.log), '⑤ 추신 6 — 결정론(같은 입력 = 같은 답)');
+ok(/if \(_t1243On\(\)\) return _t1243Pick\(vil, k, day\) \? 2 : 0;/.test(VS) && /const cr = _P \? _t1243Pick\(vil, k, day\) : _villageCropFor\(/.test(VS), '⑤ 추신 6 — 끔 = `_villageCropFor` 해시 그대로');
+ok(p5.gd[0] === 123 && p5.gd[1] === 83 && p50.gd[0] === 60 && p50.gd[1] === 48 && p5.gd[0] >= 100 && p5.gd[0] <= 140 && p5.gd[1] >= 75 && p5.gd[1] <= 90, '⑤ 추신 7 — 켬 = 피 · 기장 자라는 날 고증(S10 100 ~ 140 · R13 75 ~ 90 안) · 끔 = 카탈로그(60 · 48)', `켬 ${p5.gd[0]} · ${p5.gd[1]}`);
+ok(p5.keep === p50.keep && p5.keep >= 180, '⑤ 추신 8 — 피 저장성 5(xlsx → crops.json) · 켬 · 끔 같은 값', `${p5.keep}일`);
+ok(JSON.stringify(p5.kh) === '[747,1020]' && p5.k15 === 883.5, '⑤ 추신 9 — 피 747 ~ 1,020 kg/ha(T1221 범위) · 칸 넓이 갈래는 그 가운데');
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);

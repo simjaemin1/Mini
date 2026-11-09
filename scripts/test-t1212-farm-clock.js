@@ -49,7 +49,7 @@ const m2 = sub({ T1212_LIFE_CAL: '1' }, MIG(JSON.stringify({ _crop: m1.crop, _t1
 ok(m2.crop[0][1].p === -40, '② 표식 선 마을은 다시 빼지 않는다(한 번만)');
 const m3 = sub({ T1212_LIFE_CAL: '0' }, MIG(JSON.stringify({ _crop: m1.crop, _t1212Cal: 990 })));   // ★[T1223] 끈 판 = `=0`(미설정은 이제 켬)
 ok(m3.cal === null && JSON.stringify(m3.crop) === JSON.stringify(vil0._crop), '② 끈 판이 표식 선 마을을 만나면 되돌린다(왕복 = 원래 값 · 표식 뗌)');
-ok(/'_granPend',[^\n]*\n\s*'_t1212Cal'\];/.test(S), '② 표식은 T740 곁 칸(다시 떠도 한 번만 옮긴다)');
+ok(/'_granPend',[^\n]*\n\s*'_t1212Cal',[^\n]*\n\s*'_t1243Prev'\];/.test(S), '② 표식은 T740 곁 칸(다시 떠도 한 번만 옮긴다)');
 // ── ③ 몸 XOR 일괄 ──
 const R = sub({}, `const V=require('./server/villages');const B=V.__p3Bind({});console.log(JSON.stringify({rest:B.T1212_FARM_REST}));`);
 const R0 = sub({ T1212_FARM_REST: '0' }, `const V=require('./server/villages');const B=V.__p3Bind({});console.log(JSON.stringify({rest:B.T1212_FARM_REST}));`);
