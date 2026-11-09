@@ -50,14 +50,27 @@ function mult(S, r, S0, alpha, k) {
 // 새로 생긴 경계 길이(m) — 넓히는 셀의 네 변 중 영토와 맞닿은 변이 nb 개면, 바깥으로 남는 변 4 − nb 가 새 경계 · 맞닿은 nb 변은 경계에서 빠진다
 //   ⇒ 둘레가 늘어난 만큼 = 4 − 2·nb(빠진 변의 말뚝은 뽑아 새 변에 다시 세운다 — 0 밑은 0 · 돌려받지 않는다)
 const boundaryGrowth = (nb) => Math.max(0, 4 - 2 * (nb | 0));
+// ── ★★[T1238 할 일 1 · 회부] 칸 넓이 — 읽기 둘을 **상수 하나**로 바꾼다 ─────────────────────────────────
+//   지도: 1셀 = 1 m(32 px · `village-layout` "1셀 = 1m") ⇒ 셀 하나 = 1 m² — T1207 이 쓴 읽기(종전 값 그대로).
+//   밭 넓이 정본(문 34 ㄱ · ★재민 11-07 · T1215): 밭 칸 하나 = `crops.FIELD_CELL_M2`(250 m²) — 그 수를 여기서 다시 적지 않는다(사본 0).
+//   ⇒ `CELL_READING` = 'map'(종전 · 기본) | 'field'. 개간 분은 넓이에(m²) · 말뚝은 변 길이에(√넓이 m) 걸린다. **정하지 않는다 — 재민 판정(회부).**
+const CELL_READING = 'map';
+const _crops = (() => { try { return require('./crops'); } catch (e) { return null; } })();
+function cellM2(reading) {
+  const r = reading || CELL_READING;
+  if (r === 'field') return (_crops && _crops.FIELD_CELL_M2 > 0) ? _crops.FIELD_CELL_M2 : 1;
+  return 1;
+}
+const edgeM = (reading) => Math.sqrt(cellM2(reading));
 // 셀 하나의 값 — { m, laborMin(사람 · 분), posts(말뚝 수), wood(통나무) }
+//   ★[T1238] 넓이(`o.area` m²)를 안 주면 칸 넓이 읽기(`cellM2()` — 기본 'map' = 1 m²)를 쓴다 · 새 경계 길이 = 변 수 × 변 길이(√넓이) — 'map' 이면 1 m(종전 산수 그대로).
 function cellCost(o) {
   const M = mult(o.S, o.r, o.S0, o.alpha, o.k);
-  const area = o.area > 0 ? o.area : 1;                       // 셀 하나 = 1 m²(`village-layout` "1셀 = 1m")
+  const area = o.area > 0 ? o.area : cellM2(o.reading);       // 셀 하나 = 1 m²(`village-layout` "1셀 = 1m") · 'field' = 250 m²
   const laborMin = clearMinPerM2() * area * M.m;
-  const posts = boundaryGrowth(o.nb) / POST_SRC.spacingM * M.m;
+  const posts = boundaryGrowth(o.nb) * Math.sqrt(area) / POST_SRC.spacingM * M.m;
   const wood = posts * woodPerPost();
-  return { m: M.m, size: M.size, shape: M.shape, R: M.R, laborMin, posts, wood };
+  return { m: M.m, size: M.size, shape: M.shape, R: M.R, laborMin, posts, wood, area };
 }
 
-module.exports = { CLEAR_SRC, POST_SRC, K, ALPHA, clearMinPerM2, woodPerPost, radiusOf, mult, boundaryGrowth, cellCost };
+module.exports = { CLEAR_SRC, POST_SRC, K, ALPHA, CELL_READING, cellM2, edgeM, clearMinPerM2, woodPerPost, radiusOf, mult, boundaryGrowth, cellCost };

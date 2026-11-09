@@ -216,7 +216,9 @@
         out.push({ label: '살피기', send: () => verbLook(t.absX, t.absY, null) });
       }
       // ★[T1207] 영토와 맞닿은 칸이면 넓히기 — 맞닿았는지 · 값 · 자격은 서버가 답한다(`terr_quote` · 클라는 묻고 띄울 뿐)
-      if (t1207On()) out.push({ label: '영토 넓히기', send: () => verbTerrQuote(t.absX, t.absY) });
+      //   ★[T1238] 켬 = 메뉴는 **제 영토와 맞닿은 칸 · 고른 칸 · 말뚝 박힌 칸에서만** 뜬다(칸 목록은 서버 `terr_info` — 클라는 들고 보일 뿐)
+      if (t1238On()) { for (const it of t1238Verbs(t.absX, t.absY)) out.push(it); }
+      else if (t1207On()) out.push({ label: '영토 넓히기', send: () => verbTerrQuote(t.absX, t.absY) });
       return out;
     }
     if (t.kind === 'nature') {
@@ -594,8 +596,150 @@
       return;
     }
     if (msg.type === 'terr_done') { terrStop(); return; }   // 알림은 서버가 낸다
-    if (msg.type === 'terr_stop') { terrStop(msg.err || '영토 넓히기를 멈췄습니다.'); }
+    if (msg.type === 'terr_stop') { terrStop(msg.err || '영토 넓히기를 멈췄습니다.'); return; }
+    if (msg.type === 'terr_info' || msg.type === 'terr_pick' || msg.type === 'terr_pull_progress' || msg.type === 'harvest_confirm') t1238OnMsg(msg);
   }
+
+  // ══ ★★[T1238 2026-11-09 · ★재민 11-09 영토 v2] 끌어 고르기 · 칸 진척 · 값 묶음 합 · 취소 · 말뚝 뽑기 · 빠지는 칸 · 남의 작물 확인 ══
+  //   판정은 한 줄도 여기서 안 짓는다 — 맞닿은 칸 · 고를 수 있는 칸 · 값 · 진척 · 빠지는 날 · 벌점은 서버(`terr_info` · `terr_pick` · `harvest_confirm`)가 답한다.
+  //   손잡이 = welcome `uiCfg.t1238`(서버 `T1238_TERR_V2` — 끔이면 칸이 없어 아래가 하나도 안 선다).
+  function t1238On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.t1238); }
+  let _t1238Info = null, _t1238Front = null, _t1238Jobs = null, _t1238Posts = null, _t1238Decay = null;
+  let _t1238Drag = null, _t1238Rect = null, _t1238PullLoop = null, _t1238InfoAt = 0;
+  function t1238AskInfo() { if (t1238On()) { _t1238InfoAt = performance.now(); sendPrimary({ type: 'terr_info' }); } }
+  function _t1238Key(cx, cy) { return cx + ',' + cy; }
+  function _t1238CellAt(absX, absY) { const L = _terrLocal(absX, absY); return L ? { cx: Math.floor(L.lx / 32), cy: Math.floor(L.ly / 32), L } : null; }
+  function _t1238Index(info) {
+    _t1238Info = info && !info.none ? info : null;
+    _t1238Front = new Set(); _t1238Jobs = new Map(); _t1238Posts = new Map(); _t1238Decay = new Map();
+    if (!_t1238Info) return;
+    const f = info.frontier || []; for (let i = 0; i < f.length; i += 2) _t1238Front.add(_t1238Key(f[i], f[i + 1]));
+    const j = info.jobs || []; for (let i = 0; i < j.length; i += 5) _t1238Jobs.set(_t1238Key(j[i], j[i + 1]), { pct: j[i + 2], w: j[i + 3], wood: j[i + 4] });
+    const p = info.posts || []; for (let i = 0; i < p.length; i += 3) _t1238Posts.set(_t1238Key(p[i], p[i + 1]), p[i + 2]);
+    const d = info.decay || []; for (let i = 0; i < d.length; i += 3) _t1238Decay.set(_t1238Key(d[i], d[i + 1]), d[i + 2]);
+  }
+  //   우클릭 칸 — 맞닿은 칸이면 끌어 고르기 · 고른 칸이면 일 · 말뚝 박힌 칸이면 뽑기 · 고른 칸이 있으면 내려놓기
+  function t1238Verbs(absX, absY) {
+    const out = [];
+    if (!_t1238Info && performance.now() - _t1238InfoAt > 2000) t1238AskInfo();
+    const c = _t1238CellAt(absX, absY); if (!c || !_t1238Info) return out;
+    const k = _t1238Key(c.cx, c.cy);
+    const job = _t1238Jobs.get(k);
+    if (job) out.push({ label: `개간 · 말뚝 — 진척 ${job.pct}% · 박은 통나무 ${job.w}/${job.wood}`, send: () => terrStart({ lx: c.L.lx, ly: c.L.ly, tx: c.L.tx, ty: c.L.ty }) });
+    if (_t1238Posts.has(k)) out.push({ label: `말뚝 뽑기 — 박힌 통나무 ${_t1238Posts.get(k)}개(썩은 몫은 부러집니다)`, send: () => t1238PullStart(c.L) });
+    if (_t1238Front.has(k)) out.push({ label: '영토 넓히기 — 끌어서 고르기', send: () => t1238DragBegin() });
+    if (_t1238Jobs.size) out.push({ label: `고른 칸 내려놓기(${_t1238Jobs.size}칸 · 한 일은 땅에 남습니다)`, send: () => sendPrimary({ type: 'terr_cancel', all: false }) });
+    if (_t1238Decay.has(k)) out.push({ label: `묵히는 칸 — ${_t1238Decay.get(k)}날 뒤 영토에서 빠집니다(쓰면 그날부터 다시 셉니다)`, send: () => {} });
+    return out;
+  }
+  //   끌어 고르기 — 왼쪽 단추를 누른 채 끈다(창 단계 잡이 — 그 사이 걷기 클릭은 먹힌다) · Esc = 그만두기
+  function _t1238Px(e) {
+    const cv = canvas, rect = cv.getBoundingClientRect();
+    return { px: (e.clientX - rect.left) * (cvW() / rect.width), py: (e.clientY - rect.top) * (cvH() / rect.height) };
+  }
+  function _t1238CellOfEvent(e) { const q = _t1238Px(e), w = screenToWorldAbs(q.px, q.py); return _t1238CellAt(w.wx, w.wy); }
+  function t1238DragBegin() {
+    t1238DragEnd();
+    showNotice('넓힐 땅을 끌어서 고르십시오 — 왼쪽 단추를 누른 채 끄십시오(Esc 그만두기).');
+    const st = { a: null, b: null };
+    const down = (e) => { if (e.button !== 0) return; e.stopImmediatePropagation(); e.preventDefault(); st.a = _t1238CellOfEvent(e); st.b = st.a; _t1238Rect = st.a ? [st.a.cx, st.a.cy, st.a.cx, st.a.cy] : null; };
+    const move = (e) => { if (!st.a) return; const c = _t1238CellOfEvent(e); if (c) { st.b = c; _t1238Rect = [st.a.cx, st.a.cy, c.cx, c.cy]; needsRedraw = true; } };
+    const up = (e) => {
+      if (e.button !== 0 || !st.a) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      const r = _t1238Rect; t1238DragEnd(true);
+      if (!r) return;
+      _t1238Drag = { rect: r, mx: e.clientX, my: e.clientY };
+      sendPrimary({ type: 'terr_pick', x0: r[0], y0: r[1], x1: r[2], y1: r[3] });
+    };
+    const click = (e) => { if (e.button === 0) { e.stopImmediatePropagation(); e.preventDefault(); } };
+    const key = (e) => { if (e.key === 'Escape') { t1238DragEnd(); showNotice('끌어 고르기를 그만두었습니다.'); } };
+    _t1238Drag = { st, down, move, up, click, key, live: true };
+    window.addEventListener('mousedown', down, true); window.addEventListener('mousemove', move, true);
+    window.addEventListener('mouseup', up, true); window.addEventListener('click', click, true); window.addEventListener('keydown', key, true);
+  }
+  function t1238DragEnd(keepRect) {
+    const d = _t1238Drag;
+    if (d && d.live) {
+      window.removeEventListener('mousedown', d.down, true); window.removeEventListener('mousemove', d.move, true);
+      window.removeEventListener('mouseup', d.up, true); window.removeEventListener('keydown', d.key, true);
+      setTimeout(() => window.removeEventListener('click', d.click, true), 0);   // 뗀 뒤 오는 클릭 하나까지 먹는다(걷기로 새지 않게)
+    }
+    _t1238Drag = null;
+    if (!keepRect) _t1238Rect = null;
+    needsRedraw = true;
+  }
+  //   말뚝 뽑기 — 영토 넓히기와 같은 손짓(0.5초마다 · 곁을 떠나면 멈춘다)
+  function t1238PullStop(say) { if (_t1238PullLoop) { clearInterval(_t1238PullLoop); _t1238PullLoop = null; } if (say) showNotice(say); }
+  function t1238PullStart(L) {
+    t1238PullStop(); terrStop();
+    const go = () => {
+      sendPrimary({ type: 'terr_pull', x: L.lx, y: L.ly });
+      _t1238PullLoop = setInterval(() => {
+        if (myIsDown || chatActive) { t1238PullStop('말뚝 뽑기를 멈췄습니다.'); return; }
+        if (Math.hypot(L.tx - myAbsPredicted.x, L.ty - myAbsPredicted.y) > TERR_LEAVE_PX) { t1238PullStop('말뚝 곁을 떠나 뽑기를 멈췄습니다.'); return; }
+        sendPrimary({ type: 'terr_pull', x: L.lx, y: L.ly });
+      }, TERR_STROKE_MS);
+    };
+    if (Math.hypot(L.tx - myAbsPredicted.x, L.ty - myAbsPredicted.y) <= WALK_ADJ_PX) go();
+    else verbWalkTo(L.tx, L.ty, WALK_ADJ_PX, go);
+  }
+  function t1238OnMsg(msg) {
+    if (msg.type === 'terr_info') { _t1238Index(msg); t1238PullStop(); needsRedraw = true; return; }
+    if (msg.type === 'terr_pull_progress') {
+      const now = performance.now();
+      if (now - _terrSaidAt >= TERR_SAY_MS || !(msg.done > 0)) { _terrSaidAt = now; showNotice(`말뚝 뽑기 ${msg.done}/${msg.need}분 · 박힌 통나무 ${msg.logs}개 중 ${msg.back}개를 거둡니다`); }
+      return;
+    }
+    if (msg.type === 'terr_pick') {
+      if (msg.commit) { _t1238Rect = null; needsRedraw = true; if (!msg.ok) showNotice(msg.err || '고르지 못했습니다.'); return; }
+      const d = _t1238Drag; _t1238Drag = null;
+      if (!msg.ok) { _t1238Rect = null; needsRedraw = true; showNotice(msg.err || '고를 칸이 없습니다.'); return; }
+      const r = d && d.rect ? d.rect : msg.rect;
+      _t1238Rect = msg.rect || r; needsRedraw = true;
+      const lab = `고르기 — ${msg.cells.length}칸 · 개간 ${Math.round(msg.laborMin)}분(1분 = 실제 1초) · 말뚝 통나무 ${msg.wood}개(가진 것 ${msg.have}개)`;
+      const mx = d ? d.mx : _lastMenuX, my = d ? d.my : _lastMenuY;
+      showContextMenu(mx, my, [
+        { label: lab, onClick: () => sendPrimary({ type: 'terr_go', x0: r[0], y0: r[1], x1: r[2], y1: r[3] }) },
+        { label: '그만두기', onClick: () => { _t1238Rect = null; needsRedraw = true; } },
+      ]);
+      return;
+    }
+    if (msg.type === 'harvest_confirm') {
+      const lab = `거두기 — ${msg.owner}의 ${msg.kind === 'claim' ? '사유지' : '영토'} · ${msg.cropKo} ${msg.units}단위 · 벌점 ${msg.vp}`;
+      showContextMenu(_lastMenuX || Math.round(innerWidth / 2), _lastMenuY || Math.round(innerHeight / 2), [
+        { label: lab, onClick: () => sendPrimary({ type: 'harvest', confirm: 1 }) },
+        { label: '그만두기', onClick: () => {} },
+      ]);
+    }
+  }
+  //   화면 — 고른 칸(진척) · 끄는 네모 · 맞닿은 칸(끄는 동안만) · 빠지는 칸(한 해 안) · 박힌 말뚝 — 렌더 루프의 마을 영토 갈래가 그 마을에서 부른다
+  function t1238DrawOverlay(ctx, v, sc, S, seen) {
+    if (!t1238On() || !_t1238Info) return;
+    if ((v.id | 0) !== (_t1238Info.vid | 0)) return;
+    const quad = (cx, cy) => { const a = sc(cx * S, cy * S), b = sc((cx + 1) * S, cy * S), c = sc((cx + 1) * S, (cy + 1) * S), d = sc(cx * S, (cy + 1) * S); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath(); };
+    const each = (m, fn) => { for (const [k, val] of m) { const i = k.indexOf(','), cx = +k.slice(0, i), cy = +k.slice(i + 1); if (seen(cx, cy)) fn(cx, cy, val); } };
+    if (_t1238Rect || (_t1238Drag && _t1238Drag.live)) {   // 끄는 동안 — 고를 수 있는 맞닿은 칸
+      ctx.fillStyle = 'rgba(240,230,160,0.10)'; ctx.beginPath(); each(new Map([..._t1238Front].map((k) => [k, 1])), (cx, cy) => quad(cx, cy)); ctx.fill();
+    }
+    if (_t1238Decay.size) { ctx.fillStyle = 'rgba(200,120,60,0.18)'; ctx.beginPath(); each(_t1238Decay, (cx, cy) => quad(cx, cy)); ctx.fill(); }
+    if (_t1238Jobs.size) {
+      ctx.fillStyle = 'rgba(120,170,230,0.22)'; ctx.beginPath(); each(_t1238Jobs, (cx, cy) => quad(cx, cy)); ctx.fill();
+      ctx.fillStyle = 'rgba(230,240,255,0.95)'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+      each(_t1238Jobs, (cx, cy, j) => { const p = sc(cx * S + S / 2, cy * S + S / 2); ctx.fillText(`${j.pct}%`, p.x, p.y + 3); });
+      ctx.textAlign = 'start';
+    }
+    if (_t1238Posts.size) { ctx.fillStyle = 'rgba(120,80,40,0.9)'; each(_t1238Posts, (cx, cy) => { const p = sc(cx * S + S / 2, cy * S + S / 2); ctx.fillRect(p.x - 2, p.y - 8, 4, 10); }); }
+    if (_t1238Rect) {
+      const r = _t1238Rect, x0 = Math.min(r[0], r[2]), x1 = Math.max(r[0], r[2]) + 1, y0 = Math.min(r[1], r[3]), y1 = Math.max(r[1], r[3]) + 1;
+      const a = sc(x0 * S, y0 * S), b = sc(x1 * S, y0 * S), c = sc(x1 * S, y1 * S), d = sc(x0 * S, y1 * S);
+      ctx.strokeStyle = 'rgba(250,235,150,0.95)'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+  // ★[T1238] 시험 손잡이 `window.__t1238()`(e2e-village 켬 절이 읽는다) — 대입이 아니라 함수 선언이다: 최상위 실행문 0(클라 감사 ③ · 새 실행문은 99-main 에만)
+  //   classic 스크립트의 최상위 함수 선언은 그대로 window 이름이 된다(① 중복 · ② 브라우저 전역 감사가 그 이름을 본다)
+  function __t1238() { return { on: t1238On(), info: _t1238Info ? { vid: _t1238Info.vid, size: _t1238Info.size, front: _t1238Front.size, jobs: _t1238Jobs.size, posts: _t1238Posts.size, decay: _t1238Decay.size } : null, rect: _t1238Rect, drag: !!(_t1238Drag && _t1238Drag.live) }; }
 
   // ── 커서 이름표 — `pickAt`(우클릭과 같은 층)의 이름 한 낱말 ──
   //   이름은 **서버 이름표**(`itemKo` · 없으면 안 띄운다 — 영문 키가 뜨느니 없는 게 낫다) · 나무는 종 표(`tree_species.json`)가 먼저.

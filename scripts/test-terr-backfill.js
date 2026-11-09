@@ -46,6 +46,7 @@ const logs = [];
 const state = { ta, zoneId: 'test', villages: [], world: { day: 10 } };
 const ctx = vm.createContext({
   state, LIFE_ON, console: { log: (...a) => logs.push(a.join(' ')), warn: (...a) => logs.push('WARN ' + a.join(' ')), error: (...a) => logs.push('ERR ' + a.join(' ')) },
+  T1238_TERR_V2: false,   // ★[T1238] 원문 함수가 읽는 손잡이 하나(끔 = 종전 글자의 답 — 켬 갈래는 `test-t1238-terr-v2` 가 잰다)
   require: (m) => require(path.join(ROOT, 'server', m.replace('./', ''))),
   Math, Set, Map, Array, Object, JSON, Number, Date,
 });

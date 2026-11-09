@@ -210,7 +210,9 @@
 
     // ── 1. 영토: core 작은 disk + 확장(타입별 score, max-heap). 경계=공간 고정 워프(유기 요철)
     const own = new Set(); const addOrder = [[ccx, ccy]]; const q = [[ccx, ccy]]; own.add(key(ccx, ccy)); let head = 0;
-    while (head < q.length) { const [x, y] = q[head++]; for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy; if (t.isBlocked(nx, ny) || Math.hypot(nx - ccx, ny - ccy) > 5) continue; const k = key(nx, ny); if (own.has(k)) continue; own.add(k); q.push([nx, ny]); addOrder.push([nx, ny]); } }
+    //   ★[T1238 ①] `opts.avoid` — 이미 남(앞서 심은 마을)의 영토인 칸(열쇠 Set)은 안 든다. 안 주면 종전 그대로(바이트 동일).
+    const avoid = opts.avoid || null;
+    while (head < q.length) { const [x, y] = q[head++]; for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy; if (t.isBlocked(nx, ny) || Math.hypot(nx - ccx, ny - ccy) > 5) continue; const k = key(nx, ny); if (own.has(k) || (avoid && avoid.has(k))) continue; own.add(k); q.push([nx, ny]); addOrder.push([nx, ny]); } }
     const core = new Set(own);
     const nbCount = (c) => { let nb = 0; for (const [dx, dy] of N4) if (own.has(key(c.x + dx, c.y + dy))) nb++; return nb; };
     const SHAPE_AMP = opts.organic != null ? opts.organic : 1;
@@ -223,7 +225,7 @@
     const inF = new Set(), heap = [];
     const hup = (i) => { while (i > 0) { const p = (i - 1) >> 1; if (heap[p].s >= heap[i].s) break; const tt = heap[p]; heap[p] = heap[i]; heap[i] = tt; i = p; } };
     const hdown = () => { let i = 0; const n = heap.length; for (;;) { let m = i, l = 2 * i + 1, r = l + 1; if (l < n && heap[l].s > heap[m].s) m = l; if (r < n && heap[r].s > heap[m].s) m = r; if (m === i) break; const tt = heap[m]; heap[m] = heap[i]; heap[i] = tt; i = m; } };
-    const pushF = (x, y) => { if (t.isBlocked(x, y)) return; const k = key(x, y); if (own.has(k) || inF.has(k)) return; inF.add(k); heap.push({ x, y, s: scoreOf({ x, y }) }); hup(heap.length - 1); };
+    const pushF = (x, y) => { if (t.isBlocked(x, y)) return; const k = key(x, y); if (own.has(k) || inF.has(k) || (avoid && avoid.has(k))) return; inF.add(k); heap.push({ x, y, s: scoreOf({ x, y }) }); hup(heap.length - 1); };
     for (const k of own) { const [x, y] = k.split(',').map(Number); for (const [dx, dy] of N4) pushF(x + dx, y + dy); }
     while (own.size < target && heap.length) { const c = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; hdown(); } const k = key(c.x, c.y); if (own.has(k)) continue; own.add(k); addOrder.push([c.x, c.y]); for (const [dx, dy] of N4) pushF(c.x + dx, c.y + dy); }
 

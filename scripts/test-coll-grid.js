@@ -82,10 +82,12 @@ const scope = (bl, qt) => {
   const buildings = new Map(bl.map((b) => [b.id, b]));
   //   ★[T703] T689(`T689_GC` · 기본 끔)가 술어 글자에 손잡이 하나와 빌려 쓰는 칸 둘을 넣었다 — 제품 머리(zone.js)와 같은 뜻으로 넘긴다(켬이면 같은 답인지도 이 판이 잰다)
   return new Function('qtColl', 'buildings', 'BUILDING_SIZE', 'ghostBuildings', 'ZONE', '_walk', 'DEBUG_COLLIDER', 'ZONE_ID', 'isBlockedByStairSide', 'isTerrainBlockedLocal',
-    'T689_GC', '_t689WOC', '_t689WNC',
+    'T689_GC', '_t689WOC', '_t689WNC', 'T1238_ON',
     SRC + '\nreturn { isBlockedByWall, findFloorTile, findCellFence, hasFloorSupportAt, straightPathClear };')(
     qt, buildings, SZ, new Map(), { worldOffsetX: 0, worldOffsetY: 0 }, { wallQ: 0 }, false, 't', () => false, () => false,
-    process.env.T689_GC === '1', { cx: 0, cy: 0 }, { cx: 0, cy: 0 });
+    process.env.T689_GC === '1', { cx: 0, cy: 0 }, { cx: 0, cy: 0 },
+    //   ★[T1238] 울타리 술어에 손잡이 하나(켬 = 부서진 울타리는 통과) — 제품 머리(zone.js `T1238_ON`)와 같은 뜻으로 넘긴다(끔 = 종전 글자의 답)
+    process.env.T1207_TERR_REAL === '1' && process.env.T1238_TERR_V2 === '1');
 };
 const tree = (bl, keep) => { const q = new Quadtree(0, 0, W, H); for (const b of bl) if (keep(b)) q.insert({ x: b.x, y: b.y, ref: b }); return q; };
 
