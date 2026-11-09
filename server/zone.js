@@ -3630,6 +3630,13 @@ function wildHit(m, dmg, attacker, ledger) {
 const T1032_NPC_KILL = process.env.T1032_NPC_KILL !== '0';
 // ★[T1032] 잡은 짐승의 존 사체 문 하나 — `spawnCorpse` + (T1025 켬 · 장부 몫이 섰으면) 사체에 자리(`huntAt` — 도살 · 부패 때 `_t1025CorpseEnd` 가 뺀다).
 //   부르는 자리 셋: 사람 공격 · 화살(T1025 × T1009 land1034 의 두 줄을 이 문으로 옮겼다 · 글자 · 차례 그대로 · 손잡이와 무관) · NPC 잡음(켬).
+// ★★[T1240 2026-11-09 · T1237 회부 9 · 전 종 결함] **한 짐승은 한 번만 잡힌다** — 손잡이 `T1240_KILL_ONCE`(켬 기본 · 되돌림 `=0` = 종전 글자).
+//   사람 공격(`tryAttack`)은 가까운 몹을 공간 색인(`qtMobs` — 틱 머리에서만 다시 짓는다)으로 고른다. 잡힌 몹은 `mobs.delete` 로만 빠지니
+//   다음 틱 머리까지 색인에 남고, 그 사이 둘째 공격이 같은 몹을 또 골라 `killCorpse` 를 또 불렀다(주검 둘 · 드롭 두 몫 · 장부 −2 — `scripts/t1237-same-tick-kill.js`).
+//   ⇒ 짐승을 고르는 세 길(사람 공격 · 화살 · NPC 싸움)이 **같은 술어 하나**를 본다: 세계에 아직 있고(`mobs.has`) 살아 있다(hp > 0).
+//   화살(`mobs.values()` 를 돈다)과 NPC 싸움(`mobs.get` + hp)은 종전에도 이 둘을 지켰다 — 같은 문으로 옮길 뿐 값 무변(구멍은 사람 공격 하나).
+const T1240_KILL_ONCE = process.env.T1240_KILL_ONCE !== '0';
+function mobLive(m) { return !!m && mobs.has(m.mid) && m.hp > 0; }
 function killCorpse(m, killerPid) {
   const c = spawnCorpse(m, killerPid);
   if (m._t1025Hunt && c) { c.huntAt = { x: m.x, y: m.y }; _t1025Corpse.deferred++; }
@@ -5117,7 +5124,7 @@ function npcStep(npc, dt, now) {
   // === fight 모드: 늑대 직접 공격 (target 사라지면 자동 해제) ===
   if (npc.behavior === 'fight') {
     const target = npc.fightTarget ? mobs.get(npc.fightTarget) : null;
-    if (!target || target.hp <= 0) {
+    if (!target || (T1240_KILL_ONCE ? !mobLive(target) : target.hp <= 0)) {   // ★[T1240] 같은 문(`mobs.get` + hp — 종전과 같은 답)
       npc.behavior = 'wander';
       npc.fightTarget = null;
       npc.nextDecisionAt = 0;
@@ -13584,6 +13591,7 @@ function tryFurnaceSmelt(player, buildingId) {
 //     지어 봐야 안다 — 실제로 이 하네스가 "노를 아예 못 짓는다"를 처음 잡아냈다.
 function __testBind() {
   return {
+    T1240_KILL_ONCE, mobLive,   // ★[T1240] 한 짐승 한 번 잡기(하네스가 진짜 술어를 본다)
     npcs, _physicalRocksInCircle, _physicalStoneHit, _npcGatherResource,
     claims, buildings, players, BUILDING_SIZE, Specialty, tryAssignJob, tryVillageBoard, JOB_KR_NPC, tryVillageSiteGive,   // ★[T1189 ⑤]   // ★[T1085] 촌장 일 맡기기(하네스가 진짜 문을 부른다)
     _t738Adopt, _t738: () => _t738, observers, isPositionActive: (x, y) => isPositionActive(x, y), _t774: () => ({ X: _t774X, Y: _t774Y, n: _t774N, src: _t774Src, ref: _spInc.ref, act: _spInc.act, hit: _t774Stat.hit, miss: _t774Stat.miss, same: _t774Src === activeChunkKeys }),   // ★[T774] 활성 열 증인(읽기)
@@ -14039,6 +14047,7 @@ function stepArrows(dt) {
     }
     // 2) 자기 zone mob
     if (!hit) for (const m of mobs.values()) {
+      if (T1240_KILL_ONCE && !mobLive(m)) continue;   // ★[T1240] 같은 문(이 고리는 `mobs` 를 돌아 종전에도 지켰다 · 값 무변)
       if (Math.hypot(m.x - a.x, m.y - a.y) < ARROW_HIT_R) {
         setMobHp(m, Math.max(0, m.hp - a.dmg), 'arrow');   // ★[T954] 문으로(하한 0 은 이 자리 식 그대로 · 저장 표는 ★[T967] 켬이면 문이 세운다 · 끔 = 종전처럼 안 세운다)
         // §4-4 wildlife 브리지: 화살 피격 — 랩 hp 동기 + 놀람/반격(사수가 이 존 플레이어면 반격 표적)
@@ -14148,6 +14157,7 @@ async function tryAttack(player) {
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(player.x, player.y, PLAYER_ATTACK_RANGE) : Array.from(mobs.values());
   let bestMob = null, bestDist = PLAYER_ATTACK_RANGE;
   for (const m of nearbyMobs) {
+    if (T1240_KILL_ONCE && !mobLive(m)) continue;   // ★[T1240] 색인에 남은 죽은 몹은 안 고른다(같은 틱 두 번 잡기 · 끔 = 종전 글자)
     const d = Math.hypot(m.x - player.x, m.y - player.y);
     if (d < bestDist) { bestMob = m; bestDist = d; }
   }
