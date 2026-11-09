@@ -559,7 +559,10 @@ function sowableMonth(field, month) {
 //   ⚠고르는 산수 · 시드 · 분담(논 1 · 밭 2)은 그대로다(후보 목록만 준다 · 새 수 0). 그 달 후보가 0 이면 `null`(종전처럼 안 심는다).
 //   ⚠플레이어 밭 · 야생 채종 · 첫 수확일(`daysToFirstHarvest`)은 안 건드린다(`sowableMonth` 무변). 끄면 이 함수 글자 그대로.
 const T1201_BRONZE_CROPS = ((typeof process !== 'undefined' && process.env) ? process.env.T1201_BRONZE_CROPS === '1' : false) || T1243_FARM_ON;
-const T1201_BRONZE_SET = new Set(['barley', 'foxtail_millet', 'sorghum', 'millet', 'soybean', 'wheat', 'azuki', 'barnyard_millet', 'rice', 'adlay']);
+// ★[T1243 추신 4 · ★재민 11-09 "최대한 많을수록 좋지" · 족보 803 뒤] 들깨 · 박을 더한다 — 근거가 하나라도 있으면 넣는다 · 근거 0 은 안 넣는다(보고 넣고 뺀 표).
+//   들깨 — 기원전 1000년쯤 저장 씨 · 재배형(T1239 S05) · 무문 순화종으로 벼와 함께(S04) — 확인.
+//   박 — 근거 약함(T1239 S06 — 출처 줄 "약함"). 안의 약한 셋(수수 · 피 · 율무)은 그대로.
+const T1201_BRONZE_SET = new Set(['barley', 'foxtail_millet', 'sorghum', 'millet', 'soybean', 'wheat', 'azuki', 'barnyard_millet', 'rice', 'adlay', 'perilla', 'gourd']);
 function villageCropPick(seed, field, mo, par) {
   const cand = T1201_BRONZE_CROPS ? sowableMonth(field, mo).filter((id) => T1201_BRONZE_SET.has(id)) : sowableMonth(field, mo);
   if (!cand.length) return null;

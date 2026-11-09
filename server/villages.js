@@ -6587,6 +6587,7 @@ function init(deps) {
       { const _k = hallData && (hallData.t593 || hallData.seedType); if (_k && _T593_WORD[_k]) state.villages[state.villages.length - 1]._kindKo = _T593_WORD[_k]; }
       if (T785) VillageKin.attach(state.villages[state.villages.length - 1], hallData, _t785Row);   // ★[T785] 켬 — 회관 행의 마을 칸을 되살린다(표지 없는 사람 마을 = 이행 대기)
       _fieldBridge({ econ: ev, _farmSet: farmSet, _potSet: potSet, _drySet: drySet });   // ★[T100] 밭 브리지 초기값(영속 행에서 — 개간 전에도 밭은 있다) · ★[T198] 두 칸도 같은 줄에서
+      if (!row.econ_state) _t1243SeedCells(state.villages[state.villages.length - 1]);   // ★[T1243 추신 14] 첫 해 씨(서버 첫 시작만 · 끔 = 무동작)
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
       //   부팅 때마다 부르지만 이미 벤 나무는 harvestedSeeds 에 있어 다시 생성되지 않는다(멱등).
       try { if (state.deps.clearTreesInCells) { const n2 = state.deps.clearTreesInCells(terrSet); if (n2) console.log(`[${state.zoneId}] 🏘️ ${row.name} 영토 개간 — 나무 ${n2}그루`); } } catch (e) {}   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면). _crop=작물 상태머신(랩 life.crop 동형 — 인메모리 관용: 재부팅=재파종)
@@ -9773,7 +9774,7 @@ function __p3Bind(mock) {
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
     t1197BodyStep, _t1197Person, _t1197BodyMeal, _t1197DieBody, _t1197Stat, _t1197On, econDayToMs, _t1198Sync, _t1198Jobs, _t1198Stat, _t1198On, syncVillageJobs,   // ★[T1197] 몸 게이지 끼니 문(하네스 `test-t1197-meal-body` 가 운영과 같은 문을 부른다)
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
-    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On, T1224_ECON_FARM, _t1224Stat, _t1243On, _t1243Live, _t1243Stat, _t1243Seed, _t1243HarvH, _T1243_HT, _t1243Pick, _t1243Sown, _t1243Reaped, _t1243PStat, _t1243Memo, T1229_FIELD_GROW, _t1229Stat, _t1229Need, _t1229Short,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
+    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On, T1224_ECON_FARM, _t1224Stat, _t1243On, _t1243Live, _t1243Stat, _t1243Seed, _t1243HarvH, _T1243_HT, _t1243Pick, _t1243Sown, _t1243Reaped, _t1243PStat, _t1243Memo, _t1243SeedCells, T1229_FIELD_GROW, _t1229Stat, _t1229Need, _t1229Short,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
     _oreMineDaily, T1095_MINE_DEMAND, _t1095Stat,   // ★[T1095] 채굴 일괄 수요 문 — 하네스(`test-t1095-mine-demand`)가 운영과 같은 문을 부른다(내보내기만)
     _t1039Depart, _t1039Join, _t1039Leave,   // ★[T1039] 도적 전환 몸 문 셋(하네스 `test-bandit-body` 가 운영과 같은 문을 부른다)
     _t1078Walkers, _t1078Die, _t1078Out, _t1078Life,   // ★[T1078] 단원 = 몸 문 넷(하네스 `test-bandit-all` 이 운영과 같은 문을 부른다)
@@ -11289,6 +11290,7 @@ function _t368Deliver(vil, npc, why) {
     if (npc.inventory && inv > 0) npc.inventory[c] = inv - u;
   }
   npc._t368H = null; npc._t368N = null;
+  if (npc._t1243S) { const st = vil.econ && vil.econ.storage; for (const sd of Object.keys(npc._t1243S)) { const inv = (npc.inventory && npc.inventory[sd]) || 0, u = Math.min(npc._t1243S[sd], inv); if (st && u > 0) st[sd] = (st[sd] || 0) + u; if (npc.inventory && u > 0) npc.inventory[sd] = inv - u; } npc._t1243S = null; }   // ★[T1243 추신 14] 손의 씨도 곳간에(손 · 곳간 이중 0)
   if (got > 0) vil._t368Deliv = +((vil._t368Deliv || 0) + got).toFixed(6);
   if (why === 'gran') vil._t368Trips = (vil._t368Trips || 0) + 1;   // 계측 전용 — 곳간 왕복 수(보고 걸음 표)
   return got;
@@ -11308,7 +11310,7 @@ function _lifeDoTask0(vil, npc, k, day) {
   //   (여기엔 숫자가 없다 — 사본 0). 끄면 안 부른 것과 같다(비트 동일).
   //   ★★[T368] 켜면 **그 밭의 작물**(`_t368Item` — 작물 표 낱개 × 품질)이 간다: 몸(`npc`)이 있으면 **손에**(귀환 때 곳간),
   //     몸이 없으면(계측 자의 헤드리스 하루) 그 자리에서 곳간에. 곳간에 닿는 줄은 `_farmGranary` **하나**다(사본 0).
-  if (did === 'harvest') { if (_t1243On()) _t1243Reaped(vil, k, e.c, day); const _it = _t368Item(vil, k, e); if (!cropAfterHarvest(e, day)) vil._crop.delete(k); if (npc) { _handAdd(npc, 1); _lifeAct(npc, '수확'); } if (vil.econ) { if (_it && npc) _t368Hold(npc, _it); else _farmGranary(vil, npc, _it); } return true; }   // ★곳간② 물리 짐 1칸분 적재(회계 아님) · ★[T91] 다년생은 그루터기로 남는다 · ★[T190] 셋째 인수 = 그 농부의 배율(없으면 econ 이 1 로 받는다 — 사본 0)
+  if (did === 'harvest') { if (_t1243On()) _t1243Reaped(vil, k, e.c, day, npc); const _it = _t368Item(vil, k, e); if (!cropAfterHarvest(e, day)) vil._crop.delete(k); if (npc) { _handAdd(npc, 1); _lifeAct(npc, '수확'); } if (vil.econ) { if (_it && npc) _t368Hold(npc, _it); else _farmGranary(vil, npc, _it); } return true; }   // ★곳간② 물리 짐 1칸분 적재(회계 아님) · ★[T91] 다년생은 그루터기로 남는다 · ★[T190] 셋째 인수 = 그 농부의 배율(없으면 econ 이 1 로 받는다 — 사본 0)
   if (npc) _lifeAct(npc, did === 'pest' ? '방제' : did === 'water' ? '물대기' : (nong ? '논매기' : '김매기'));
   return true;
 }
@@ -11492,6 +11494,18 @@ const _t1243Stat = { cutDays: 0, cutAsleep: 0, seeded: 0, seedFood: 0, seedUnits
 //   품목 = 그 마을 밭 철 작물(작물 정본 `villageCropPick` — 밭 두 구획 · 열두 달 · 청동기 묶음) 가운데 식량 값 > 0 인 것 · 이름순 · 사람-날을 고르게 나눠
 //   낱개 = 몫 ÷ 그 작물 낱개 식량 값(econ `t368FoodPer` — 거둔 식량과 같은 값 · 사본 0). 부패는 곳간 품목 그대로. 플레이어 마을은 `initialPop: 0` 이라 0 이다.
 //   ⚠작물 0(그 자리 밭에 심을 철 작물이 없다)이면 종전 `food` 그대로 둔다(계측 `noCrop`).
+function _t1243SeedCells(vil) {   // 부팅 첫 시작 — 마을 칸(논 · 밭)을 센 뒤 첫 해 씨를 곳간에
+  if (!_t1243On() || !vil || !vil.econ || !vil.econ._t1243Seed || vil.econ._t1243Seed.seeds) return 0;
+  const C = _Crops(), st = vil.econ.storage; if (!C || !st) return 0;
+  const nD = vil._drySet ? [...vil._farmSet].filter((k) => vil._drySet.has(k)).length : 0, nN = vil._farmSet.size - nD;
+  const seeds = {};
+  for (const fld of ['논', '밭']) { const n = fld === '논' ? nN : nD; if (!(n > 0)) continue;
+    const ids = new Set(); for (let mo = 1; mo <= 12; mo++) for (const id of C.sowableMonth(fld, mo)) if (C.T1201_BRONZE_SET.has(id)) ids.add(id);
+    for (const id of ids) seeds[C.seedOf(id)] = Math.max(seeds[C.seedOf(id)] || 0, n); }
+  for (const [sd, n] of Object.entries(seeds)) { st[sd] = (st[sd] || 0) + n; _t1243Stat.seedItems = (_t1243Stat.seedItems || 0) + n; }
+  vil.econ._t1243Seed.seeds = seeds;
+  return Object.keys(seeds).length;
+}
 function _t1243Seed(ev, dbId) {
   if (!_t1243On() || !ev || !ev.storage) return 0;
   const E = _lifeEcon(), C = _Crops(), food = +ev.storage.food || 0;
@@ -11504,6 +11518,8 @@ function _t1243Seed(ev, dbId) {
   const share = food / crops.length;
   ev.storage.food = 0;
   for (const id of crops) { const u = share / E.t368FoodPer(ev, id); ev.storage[id] = (ev.storage[id] || 0) + u; _t1243Stat.seedUnits[id] = (_t1243Stat.seedUnits[id] || 0) + u; }
+  // ★[T1243 추신 14] 첫 해 씨 — 그 마을이 첫 해 고를 수 있는 작물(청동기 묶음 · 논 · 밭 열두 달 후보) 하나마다 씨 = 그 작물을 심을 수 있는 자리의 칸 수(`_t1243SeedCells` — 부팅이 마을 칸을 센 뒤 채운다)
+  //   ⚠씨 몫의 고증(파종량 kg/ha)은 미확인 — 플레이어와 같은 수(칸 하나 씨 하나)를 쓴다(회부). 씨는 먹지 않는다(econ 사다리는 씨 품목을 안 먹는다).
   ev._t1243Seed = { food, crops };
   _t1243Stat.seeded++; _t1243Stat.seedFood += food;
   return food;
@@ -11559,7 +11575,9 @@ function _t1243Pick(vil, k, day) {
   if (!L.length) return null;
   const C = _Crops(), Cal = require('./calendar');
   const P = vil._t1243Prev && vil._t1243Prev.get(k);
-  const ok = L.filter(([id]) => { if (!P || P.hd == null) return true; const r = C.readyDay(id, day); return r != null && r - P.hd >= Cal.yearLen(Cal.dateOf(P.hd).year); });
+  const st = (vil.econ && vil.econ.storage) || {};
+  const ok = L.filter(([id]) => { if (!((st[C.seedOf(id)] || 0) >= 1)) return false;   // ★[T1243 추신 4 · 14] 씨가 없는 작물은 후보에서 빠진다(플레이어와 같은 규칙 — 칸 하나 씨 하나)
+    if (!P || P.hd == null) return true; const r = C.readyDay(id, day); return r != null && r - P.hd >= Cal.yearLen(Cal.dateOf(P.hd).year); });
   if (!ok.length) { _t1243PStat.yearBlock++; return null; }
   const rot = (P && P.c && ok.length > 1) ? ok.filter(([id]) => id !== P.c) : ok;
   const cap = Math.ceil(M.tot[fld] / L.length);
@@ -11569,12 +11587,19 @@ function _t1243Pick(vil, k, day) {
 function _t1243Sown(vil, k, c, day) {   // 심은 칸을 그날 셈에 더한다(같은 날 다음 칸이 나눠 심기를 본다)
   const M = _t1243Memo(vil, day), fld = vil._drySet.has(k) ? '밭' : '논';
   M.cnt[fld].set(c, (M.cnt[fld].get(c) || 0) + 1);
+  { const st = vil.econ && vil.econ.storage, sd = _Crops().seedOf(c); if (st) { st[sd] = Math.max(0, (st[sd] || 0) - 1); _t1243PStat.seedUse = (_t1243PStat.seedUse || 0) + 1; } }   // ★[T1243 추신 14] 심으면 곳간 씨 하나(플레이어 `doPlant` 와 같은 수 · ⚠몸이 씨를 가지러 곳간에 가는 걸음은 없다 — 회부)
   _t1243PStat.pick++; _t1243PStat.sown[c] = (_t1243PStat.sown[c] || 0) + 1;
 }
-function _t1243Reaped(vil, k, c, day) {   // 거둔 칸 — 앞 작물 · 거둔 해(달력 정본)
+function _t1243Reaped(vil, k, c, day, npc) {   // 거둔 칸 — 앞 작물 · 거둔 해(달력 정본) · ★[추신 14] 씨 하나가 돌아온다(플레이어 수확과 같은 수 — 몸이면 손에 · 귀환 때 곳간)
   if (!vil._t1243Prev) vil._t1243Prev = new Map();
   vil._t1243Prev.set(k, { c, hd: day });
   _t1243PStat.reaped++;
+  const C = _Crops(), C0 = C.get(c), sd = C.seedOf(c);
+  if (C0 && !C.isPerennial(c)) {
+    if (npc) { if (!npc.inventory) npc.inventory = {}; npc.inventory[sd] = (npc.inventory[sd] || 0) + 1; const S = npc._t1243S || (npc._t1243S = {}); S[sd] = (S[sd] || 0) + 1; }
+    else if (vil.econ && vil.econ.storage) vil.econ.storage[sd] = (vil.econ.storage[sd] || 0) + 1;
+    _t1243PStat.seedBack = (_t1243PStat.seedBack || 0) + 1;
+  }
 }
 function _t1221Cost(t, vil, k) {   // 칸 일 하나의 초(= 게임 분) — 5 수확 · 4 방제 · 3 물대기 · 2 파종 · 1 김매기 · ★[T1243 추신 2] 수확은 칸(`vil` · `k`)을 주면 산물 t 당
   const H = _T1221_HA_H, ha = _t1221Ha();
