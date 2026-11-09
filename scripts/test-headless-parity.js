@@ -99,7 +99,7 @@ console.log('\n[③ 개간·건설 결산은 실걸음 상한과 같은 식이�
   chk(/_lifeTasksPerFarmerDay\(\)/.test(fd), '작물 결산이 날 길이 파생 함수를 쓴다(고정 상수 아님)');
   chk(!/_lifeTasksPerFarmerDay\s*=\s*\d|budget\s*=\s*\w+\s*\*\s*\d+/.test(fd), '작물 예산에 **고정 숫자가 없다**(T58b 계측기가 100 이라 적었던 자리)');
   // 실걸음 쪽: 개간 1셀 = dayMs / LIFE_CLEAR_PDAY 노동, 크루 상한 LIFE_CREW → 하루 상한 동일
-  chk(/t\.prog >= (?:\(_t1221On\(\) \? _t1221ClearS\(\) \* 1000 : )?dayMs \/ LIFE_CLEAR_PDAY/.test(src),   /* ★[PM land1052] T1221 켬 갈래(끔 = 종전 식) */ '실걸음 개간 1셀 = dayMs / LIFE_CLEAR_PDAY 노동(동일 근거)');
+  chk(/t\.prog >= (?:\(_t1221On\(\) \? _t1221ClearS\(\) \* dayMs \/ 1440 : )?dayMs \/ LIFE_CLEAR_PDAY/.test(src),   /* ★[T1243] T1221 켬 갈래 단위 = 게임 분(하루 ÷ 1,440) */   /* ★[PM land1052] T1221 켬 갈래(끔 = 종전 식) */ '실걸음 개간 1셀 = dayMs / LIFE_CLEAR_PDAY 노동(동일 근거)');
   chk(/t\.prog >= dayMs \/ LIFE_STAGE_PDAY/.test(src), '실걸음 건설 1단계 = dayMs / LIFE_STAGE_PDAY 노동(동일 근거)');
 }
 

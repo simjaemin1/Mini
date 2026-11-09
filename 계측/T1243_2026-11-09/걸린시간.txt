@@ -1,0 +1,9 @@
+T30on 30 1020 203s exit=0
+N100on 100 1020 350s exit=0
+N100off 100 1020 394s exit=0
+N100on2 100 1020 319s exit=0
+L1on 2 1020 274s exit=0
+L10on 10 1020 526s exit=0
+LV20on 20 1020 2413s exit=0
+LV20off 20 1020 2453s exit=0
+N100on3 100 1020 264s exit=0

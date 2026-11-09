@@ -31,7 +31,10 @@ function snap(day) {
   }
   rec.rows.push([day, pop, vils, +tfe.toFixed(1), harvN, +kg.toFixed(1), noCrop, bf, ef, lj, bodies]);
   if (!rec.seed) rec.seed = (P.villages || []).map((v) => ({ n: v.name, pop: ((v.econ || {}).npcs || []).length, s: (v.econ || {})._t1243Seed || null }));
-  rec.stat = { t1243: B._t1243Stat || null, t1221: B._t1221Stat || null, rest: B._t1212Rest || null, t1224: B._t1224Stat || null };
+  rec.stat = { t1243: B._t1243Stat || null, t1221: B._t1221Stat || null, rest: B._t1212Rest || null, t1224: B._t1224Stat || null, pick: B._t1243PStat || null };
+  if (day % 10 === 0) rec.crops = (P.villages || []).map((v) => { const by = {}; for (const e of (v._crop || new Map()).values()) if (e && e.c) by[e.c] = (by[e.c] || 0) + 1; const pv = {}; for (const x of ((v._t1243Prev || new Map()).values())) pv[x.c] = (pv[x.c] || 0) + 1;
+    const sd = {}; for (const [k, n] of Object.entries((v.econ || {}).storage || {})) if (/^seed_|_seed$|씨/.test(k) || (C.seedOf && k.startsWith(C.seedOf('')))) sd[k] = +(+n).toFixed(2);
+    return { n: v.name, f: +((((v.econ || {}).land || {}).fertility) || 0).toFixed(3), farm: v._farmSet ? v._farmSet.size : 0, dry: v._drySet ? v._drySet.size : 0, stand: by, prev: pv, seed: sd, day }; });
   if (day % 5 === 0) fs.writeFileSync(OUT, JSON.stringify(rec));
 }
 const _t = V1.tickVillage;

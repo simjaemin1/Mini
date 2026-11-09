@@ -30,7 +30,7 @@ const o={on:E.T1243_FARM_ON,con:C.T1243_FARM_ON,fy:E.T100_FIELD_YIELD,fa:E.T368_
 const W={villages:[]};
 const mk=(pop,born)=>{const v=E.createVillage({initialPop:pop,name:'h'+pop+'_'+born,bornDay:born});v._world=W;return v;};
 const v1=mk(20,0);const f0=v1.storage.food;const r=B._t1243Seed(v1,7);
-o.seed={food0:f0,ret:r,foodAfter:v1.storage.food,crops:(v1._t1243Seed||{}).crops||[],sum:((v1._t1243Seed||{}).crops||[]).reduce((a,id)=>a+v1.storage[id]*E.t368FoodPer(v1,id),0),days:f0/20,d0:C.daysToFirstHarvest(0)};
+o.grp=Object.fromEntries(C.IDS.map(id=>[id,C.get(id).group]));o.seed={food0:f0,ret:r,foodAfter:v1.storage.food,crops:(v1._t1243Seed||{}).crops||[],sum:((v1._t1243Seed||{}).crops||[]).reduce((a,id)=>a+v1.storage[id]*E.t368FoodPer(v1,id),0),days:f0/20,d0:C.daysToFirstHarvest(0)};
 const v1b=mk(20,0);B._t1243Seed(v1b,7);o.seedSame=JSON.stringify((v1b._t1243Seed||{}).crops)===JSON.stringify(o.seed.crops)&&o.seed.crops.every(id=>v1b.storage[id]===v1.storage[id]);
 const v2=mk(20,250);o.winter={days:v2.storage.food/20,d:C.daysToFirstHarvest(250)};
 const v3=mk(0,0);o.player={ret:B._t1243Seed(v3,9),food:v3.storage.food};
@@ -52,7 +52,7 @@ ok(on.crop.ret === 10 && Math.abs(on.crop.per - on.crop.kc) < 1e-9 && Math.abs(o
 // ── ③ ⓒ ──
 const S = on.seed;
 ok(S.ret > 0 && S.foodAfter === 0 && Math.abs(S.sum - S.food0) < 1e-6 && S.days === S.d0, '③ 첫 곳간 — 식량 = 사람 × 첫 수확까지(정본) · `food` → 곡식 품목 · Σ 낱개 × 값 = 그 식량', `${S.food0} = 20 × ${S.d0} · 품목 ${S.crops.length}`);
-ok(S.crops.length > 0 && S.crops.every((id) => on.bron.includes(id)) && on.seedSame, '③ 품목 = 마을 밭 철 작물(청동기 묶음 안) · 같은 마을 = 같은 답(결정론)', S.crops.join(' · '));
+ok(S.crops.length > 0 && S.crops.every((id) => on.bron.includes(id) && (on.grp[id] === '곡물' || on.grp[id] === '콩류')) && on.seedSame, '③ 품목 = 마을 밭 철 곡식(청동기 묶음 안 · 곡물 · 콩류 — 박 · 들깨는 곡식이 아니다) · 같은 마을 = 같은 답(결정론)', S.crops.join(' · '));
 ok(S.d0 > off.seed.d0, '③ 켬 = 첫 수확이 마을이 심는 작물(청동기 묶음)의 첫 수확 — 끔 = 34종 그대로', `켬 ${S.d0} · 끔 ${off.seed.d0} 날`);
 ok(on.winter.days === on.winter.d && on.winter.d > S.d0, '③ 겨울 창설 = 다음 수확까지(봄 창설보다 길다)', `${on.winter.d} > ${S.d0}`);
 ok(on.player.ret === 0 && on.player.food === 0, '③ 플레이어 마을(사람 0) = 빈 곳간');

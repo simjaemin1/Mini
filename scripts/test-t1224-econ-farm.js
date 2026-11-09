@@ -45,8 +45,8 @@ const few = sub({ T1224_ECON_FARM: '1' }, probe(1, false, 0));
 ok(few.st.ghost === 0 && Math.abs(few.bud - few.dayS) < 1e-6, '④ 몸 농부 ≥ econ 농부 — 몸 없는 농부 0 · 켬 = 끔 몫', { st: few.st, bud: few.bud });
 const S = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
 const hb = S.slice(S.indexOf('function _lifeHeadlessDay(vil) {'), S.indexOf('// ★★★[T117 2026-09-05] **하루치 작물 노동 — 정본 하나.**'));
-ok(/if \(_body && T1212_FARM_REST\) \{/.test(hb) && /if \(!_body\) _lifeClearDay\(vil, farmerN\);/.test(hb) && /if \(!_body\) lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\);/.test(hb),
-  '⑤ 종전 줄 그대로 — 몸 갈래 문 · 일괄 개간 · 일괄 작물(새 줄은 `if (T1224_ECON_FARM) {` 블록 하나)');
+ok(/if \(_body && T1212_FARM_REST && !_cut\) \{/.test(hb) && /if \(!_body && !_cut\) _lifeClearDay\(vil, farmerN\);/.test(hb) && /else if \(!_body\) lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\);/.test(hb) && /if \(T1224_ECON_FARM && !_cut\) \{/.test(hb),
+  '⑤ 종전 줄 그대로 — 몸 갈래 문 · 일괄 개간 · 일괄 작물(새 줄은 `if (T1224_ECON_FARM && !_cut) {` 블록 하나 · T1243 켬 + 라이브면 `_cut` 이 셋 다 걷는다)');
 ok((S.match(/process\.env\.T1224_ECON_FARM/g) || []).length === 1 && /const T1224_ECON_FARM = process\.env\.T1224_ECON_FARM === '1';/.test(S), '⑤ 손잡이 읽는 자리 하나 · `=== \'1\'` 만 켬');
 console.log(`\n=== T1224 몸 없는 농부: 통과 ${pass} · 실패 ${fail} ===`);
 process.exit(fail ? 1 : 0);

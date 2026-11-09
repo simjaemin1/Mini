@@ -11494,6 +11494,7 @@ const _t1243Stat = { cutDays: 0, cutAsleep: 0, seeded: 0, seedFood: 0, seedUnits
 //   품목 = 그 마을 밭 철 작물(작물 정본 `villageCropPick` — 밭 두 구획 · 열두 달 · 청동기 묶음) 가운데 식량 값 > 0 인 것 · 이름순 · 사람-날을 고르게 나눠
 //   낱개 = 몫 ÷ 그 작물 낱개 식량 값(econ `t368FoodPer` — 거둔 식량과 같은 값 · 사본 0). 부패는 곳간 품목 그대로. 플레이어 마을은 `initialPop: 0` 이라 0 이다.
 //   ⚠작물 0(그 자리 밭에 심을 철 작물이 없다)이면 종전 `food` 그대로 둔다(계측 `noCrop`).
+const _T1243_GRAIN_GROUPS = new Set(['곡물', '콩류']);   // ⓒ "지난해 곡식" — 작물 표 분류(오곡 = 쌀 · 보리 · 조 · 콩 · 기장)
 function _t1243SeedCells(vil) {   // 부팅 첫 시작 — 마을 칸(논 · 밭)을 센 뒤 첫 해 씨를 곳간에
   if (!_t1243On() || !vil || !vil.econ || !vil.econ._t1243Seed || vil.econ._t1243Seed.seeds) return 0;
   const C = _Crops(), st = vil.econ.storage; if (!C || !st) return 0;
@@ -11513,7 +11514,7 @@ function _t1243Seed(ev, dbId) {
   _t368Attach({ econ: ev });
   const ids = new Set();
   for (let mo = 1; mo <= 12; mo++) for (const par of [0, 1]) { const id = C.villageCropPick(dbId | 0, '밭', mo, par); if (id) ids.add(id); }
-  const crops = [...ids].filter((id) => E.t368FoodPer(ev, id) > 0).sort();
+  const crops = [...ids].filter((id) => E.t368FoodPer(ev, id) > 0 && _T1243_GRAIN_GROUPS.has((C.get(id) || {}).group)).sort();   // ★곡식(곡물 · 콩류)만 — 박 · 들깨(추신 12)는 곡식이 아니다
   if (!crops.length) { _t1243Stat.noCrop = (_t1243Stat.noCrop || 0) + 1; return 0; }
   const share = food / crops.length;
   ev.storage.food = 0;
@@ -11552,6 +11553,8 @@ function _t1243HarvH(vil, k) {   // 그 칸 수확 + 털기 사람-시간 · 모
 //     ⓓ 돌려짓기 — 그 칸 앞 작물과 같은 작물은 다른 후보가 있으면 안 잇는다
 //     ⓔ 나눠 심기 — 한 작물이 그 마을 그 자리 칸의 1/후보 수(같은 몫 · 고증 농가 몫 미확인 → 회부)를 넘으면 다음 점수 작물로
 //   결정론: 난수 0 · 같은 입력 = 같은 답 · 점수가 같으면 작물 id 차례. 플레이어 밭은 손대지 않는다(아무 작물 · 같은 칸 규칙).
+// ★[T1243 추신 13] 나눠 심기 상한 몫 — 고증 몫 미확인 → 후보 셋을 표로 회부: `n`(기본 · 1/후보 수) · `half`(1/2) · `none`(상한 없음 — 점수 · 돌려짓기만). 재는 손잡이(판정 0).
+const T1243_CAP = (process.env.T1243_CAP === 'none' || process.env.T1243_CAP === 'half') ? process.env.T1243_CAP : 'n';
 const _t1243PM = new WeakMap();   // vil → { day, cand: { 논: [[id, 점수]], 밭: [...] }, cnt: { 논: Map, 밭: Map }, tot: { 논, 밭 } }
 const _t1243PStat = { pick: 0, none: 0, yearBlock: 0, rotSkip: 0, capSkip: 0, capFall: 0, sown: {}, reaped: 0 };
 function _t1243Memo(vil, day) {
@@ -11580,7 +11583,7 @@ function _t1243Pick(vil, k, day) {
     if (!P || P.hd == null) return true; const r = C.readyDay(id, day); return r != null && r - P.hd >= Cal.yearLen(Cal.dateOf(P.hd).year); });
   if (!ok.length) { _t1243PStat.yearBlock++; return null; }
   const rot = (P && P.c && ok.length > 1) ? ok.filter(([id]) => id !== P.c) : ok;
-  const cap = Math.ceil(M.tot[fld] / L.length);
+  const cap = T1243_CAP === 'none' ? Infinity : Math.ceil(M.tot[fld] / (T1243_CAP === 'half' ? Math.min(2, L.length) : L.length));   // ★[추신 13] 상한 몫 후보(재민 판정 · 기본 = 1/후보 수)
   for (const [id] of rot) { if ((M.cnt[fld].get(id) || 0) < cap) return id; }
   return rot[0][0];   // 모두 몫이 찼으면 점수 첫 작물(같은 몫 반올림 끝)
 }
