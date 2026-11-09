@@ -16331,8 +16331,7 @@ setInterval(() => {
     if (p.handingOff) continue;
     if (p.isNpc) {
       if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
-      if (T1241_DES && p._des) continue;   // ★[T1241] 사건 갈래가 쥔 몸(자리는 결정 문에서 보간했다)
-      if (p.simWar) continue;     // §4-4 P3: 출정(징발) 병사 — 이동은 villages.js 실체 전쟁(행군 대형 페이싱·전투유닛 미러)이 전담(이중 이동 방지)
+      if (p.simWar || (T1241_DES && p._des)) continue;     // ★[T1241] 사건 갈래가 쥔 몸도(자리는 결정 문에서 보간했다 · 끔 = 앞 항 그대로) · §4-4 P3: 출정(징발) 병사 — 이동은 villages.js 실체 전쟁(행군 대형 페이싱·전투유닛 미러)이 전담(이중 이동 방지)
       if (_wwOn && p === _wwSeq[_wwCur]) {   // ★[T461] 앞문이 적은 갈래 — 커널 몸은 뒷일만(차례 그대로) · 잠든 몸은 건너뜀 · 2 는 아래 정본 문으로
         const _c = _wwCode[_wwCur++];
         if (_c === 1) { _wwPost(p, _wwK++); continue; }
