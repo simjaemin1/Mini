@@ -22,6 +22,7 @@
 //   그림자 = 몸 크기 메타(발자국 타원을 행 방향으로 돌려 아이소에 — 무차별 대입과 견줌 · 주검도 같은 식)
 //  ④ 고라니 목록 · 메타(클립 여섯 · 키 쓰러짐 1 ~ 1.5초 · 3.4 ~ 5.7초 키 0 · 뜯기 꺾음 · 엎드림) · 칸마다 그림 · webp 쌍 화소 같음
 //  ⑤ 카탈로그 갈래(고라니) — 켬 = 클립 · 몸짓 · 그림자 · 막대 · 방향 · 주검 · 끔 = 사슴 · 늑대 종전 sha 그대로(손잡이 둘 다)
+// ★[T1242 · ★재민 11-09 "0.9 m"] 고라니 다시 굽기 — 앞 축 0.9 m(머리–몸 0.857 · 한국아종 85 ~ 115 cm 아래 끝 안) · ④ 크기 한 줄(길이 · 키 · 폭 · 보폭이 한 배)
 // 실행: node scripts/test-model-intake.js
 'use strict';
 const fs = require('fs');
@@ -129,6 +130,13 @@ try {
   ok(L && L.frames === 1 && L.face && Math.abs(L.face.turnDeg) > 90 && L.srcS[0][0] > 3.4 && L.srcS[0][1] < 5.7,
     '[T1237] 엎드림 = 말용 쓰러짐의 엎드려 쉬는 구간(3.4 ~ 5.7초) 한 판 · 몸 방향을 쉬는 자세로(행이 안 틀어진다)', L ? `${JSON.stringify(L.srcS)} · 돌림 ${L.face.turnDeg}°` : '');
   ok(I && I.loop && I.frames === 4, '[T1210] 서기 — 고리 4판(사람 시트와 같은 수)');
+  // ★[T1242 · ★재민 11-09 "0.9 m"] 크기 — 앞 축(코 → 꼬리 끝 · `--length`) 0.9 m · 몸 전체가 한 배로(키 · 몸폭이 길이와 같은 비 — T1237 판 0.809 의 비 그대로 ·
+  //   그림자 메타 = 몸길이 · 몸폭 비례) · 걸음 보폭도 같은 배(걸음 꼴은 그대로 · 간 거리로 돌림)
+  const r0 = { h: 0.7213 / 0.809, w: 0.2053 / 0.809, sw: 0.4686 / 0.809, sr: 0.9887 / 0.809 };   // T1237 판(0.809) 메타의 비
+  const near = (a, b2) => Math.abs(a - b2) < 0.002;
+  ok(m.lengthM === 0.9 && /T1242/.test(m.source.sizeSrc) && near(m.heightM / m.lengthM, r0.h) && near(m.widthM / m.lengthM, r0.w) && W && R && near(W.strideM / m.lengthM, r0.sw) && near(R.strideM / m.lengthM, r0.sr),
+    '★[T1242] 크기 0.9 m(★재민 11-09) — 키 · 몸폭 · 보폭이 길이와 같은 배(T1237 판 비 그대로 — 몸이 찌그러지지 않았다 · 그림자 메타가 몸 크기를 따른다)',
+    `길이 ${m.lengthM} · 키 ${m.heightM} · 폭 ${m.widthM} · 보폭 ${W && W.strideM} · ${R && R.strideM} m`);
   try {
     const { PNG } = require('pngjs');
     const bad = [];
