@@ -1,0 +1,10 @@
+URL	결과	대신 쓴 것
+https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30708	안 읽힘(사이트 robots 금지 — WebFetch 거절)	R12(작물학회지 파종기 시험) · R13(제주 농업기술원 자료)
+https://digi.ub.uni-heidelberg.de/diglit/tools_tillage1972_1975/150	안 읽힘(봇 차단 페이지)	R02 · R03(Semenov 재인용)
+https://hal.archives-ouvertes.fr/hal-00927144	안 읽힘(봇 차단 페이지) — Hamon & Le Gall 2013(말리 미냥카 맷돌)	R18 · R21
+https://pmc.ncbi.nlm.nih.gov/articles/PMC9623170	안 읽힘(reCAPTCHA)	R33
+https://www.nature.com/articles/s41562-019-0614-6	안 읽힘(사이트 client_error)	R37 = 케임브리지대 보도자료
+https://www.ebsco.com/articles/…gambel-oak…	안 읽힘(주소가 너무 김 — 프록시 거절)	R34 · 유타대 초록 쪽(kcal/h 만)
+https://www.duo.uio.no/bitstream/handle/10852/61205/ATR59_Veleder%2BHammarlund.pdf	다른 곳으로 넘김(따라가지 않음)	R29 = 학술지 초록 쪽
+https://openaccess.leidenuniv.nl/bitstream/handle/1887/9140/ASC-1253933-084.pdf	목록 쪽으로 넘김(따라가지 않음)	—(땔감 나르는 시간 미확인)
+https://scielosp.org/article/bwho/2002.v80n1/63-73	본문 없음(서지만)	R25(DOW II)
