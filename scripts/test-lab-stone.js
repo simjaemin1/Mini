@@ -64,8 +64,8 @@ console.log('\n① 문 — `sim/economy-sim.js` 의 접점은 한 곳뿐인가')
   ok(hitLines === 1, '① ★★엔진에서 `stoneBudgetFn` 을 읽는 **줄이 하나**다(문 하나)', `${hitLines}줄`);
   ok(/const _sbFn = \(v\._world && typeof v\._world\.stoneBudgetFn === 'function'\) \? v\._world\.stoneBudgetFn : null;/.test(CODE),
     '① 문 문법이 T135/T157/T161 선례와 같다(`v._world` 백참조 · typeof 검사)');
-  ok(/const stoneYield = _stoneK \* skillMul \* _forageScale \* 0\.9;/.test(CODE),
-    '① ★산출식은 **한 줄 그대로**다 — 바뀐 것은 첫 인자 하나뿐');
+  ok(/const stoneYield = _stoneK \* skillMul \* \(stoneRealOn\(\) \? 1 : _forageScale\) \* 0\.9;/.test(CODE),
+    '① ★산출식은 **한 줄 그대로**다 — 바뀐 것은 첫 인자 하나뿐(★[T1240] T1181 후속 `51e5a68a` — 실제 채석 켬이면 식물 MSY 배수 `_forageScale` 를 뺀다 · 끔 = 종전 곱)');
   ok(!/stoneBudgetFn/.test(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8')),
     '① ★★서버(`server/villages.js`)는 이 문을 **안 연다**(= 라이브 무변)');
 }
@@ -313,8 +313,9 @@ const LAB_NET = (() => { const m = LCODE.match(/L_STONE_NET_THRESH\s*=\s*([0-9.]
   const canonNet = econ.STONE_NET_STOCK;
   pre(typeof canonNet === 'number', '엔진 정본이 `STONE_NET_STOCK` 을 내준다', String(canonNet));
   ok(LAB_NET === canonNet, '⑪ ★★★랩 문턱 = 엔진 STONE_NET 1차 문턱(새 수 0)', `${LAB_NET} vs ${canonNet}`);
-  ok(/\(v\.storage\.stone \|\| 0\) < STONE_NET_STOCK\b/.test(CODE),
-    '⑪ ★엔진의 1차 게이트가 **그 이름**을 쓴다(리터럴이 아니다)');
+  //   ★[T1240] T1181 후속(`cb71b92d`)이 게이트를 `stoneWorkStock(v)` 로 옮겼다 — 실제 석기 재료비 켬이면 한 작업일 투입량 · 끔이면 `STONE_NET_STOCK` 그 이름 그대로.
+  ok(/\(v\.storage\.stone \|\| 0\) >= stoneWorkStock\(v\)/.test(CODE) && /function stoneWorkStock\(v\) \{\n\s+if \(!stoneRealOn\(\)\) return STONE_NET_STOCK;/.test(CODE),
+    '⑪ ★엔진의 1차 게이트가 **그 이름**을 쓴다(리터럴이 아니다 — `stoneWorkStock(v)` · 끔 갈래 = `STONE_NET_STOCK`)');
   ok(/if \(window\.L_STONE_TRADE === undefined\) window\.L_STONE_TRADE = 0;/.test(LCODE),
     '⑪ ★★손잡이 기본 **0**(문을 안 연다 = 다른 세션 기준선 무변)');
   ok(/if\(\+window\.L_STONE_TRADE!==0\)ECON_WORLD\.returnPullFn=stoneTradePullFn;/.test(LCODE),
@@ -394,7 +395,7 @@ console.log('\n⑭ 도구 마모 — 배수가 실제로 도구 궤적을 바꾸
 
 console.log('\n⑮ ㉢ 한 줄(T180) — 굶는 마을은 제 돌을 팔지 않나');
 {
-  ok(/if \(r === 'stone' && T180_STONE_EXPORT && stock < v1\.STONE_NET_STOCK\) continue;/.test(V2CODE),
+  ok(/if \(r === 'stone' && T180_STONE_EXPORT && stock < v1\.stoneWorkStock\(a\.v\)\) continue;/.test(V2CODE),   // ★[T1240] T1181 후속 `cb71b92d` — 문턱 = v1 `stoneWorkStock`(끔 = `STONE_NET_STOCK`)
     '⑮ ★★수출 후보에서 **문턱 아래 돌을 뺀다**(한 줄)');
   ok(/const T180_STONE_EXPORT = !\(typeof process !== 'undefined' && process\.env && process\.env\.T180_STONE_EXPORT === '0'\);/.test(V2CODE),
     '⑮ ★되돌림이 `=== \'0\'` 꼴이다(기본 ON = 채택값 · lab-wiring-check 문법)');
@@ -402,8 +403,10 @@ console.log('\n⑮ ㉢ 한 줄(T180) — 굶는 마을은 제 돌을 팔지 않�
   const canon = econ.STONE_NET_STOCK;
   pre(typeof canon === 'number', 'v1 정본이 `STONE_NET_STOCK` 을 내준다', String(canon));
   ok(canon === 0.2, '⑮ 정본 문턱 값이 그대로다(0.2 · 값 무변 hoist)', String(canon));
-  const lit = (V2CODE.match(/r === 'stone' && T180_STONE_EXPORT && stock < ([^)]+)\)/) || [])[1];
-  ok(lit === 'v1.STONE_NET_STOCK', '⑮ ★★★수를 **옮겨 적지 않았다** — v1 정본을 읽는다(사본 0)', String(lit));
+  const litOf = (T) => (T.match(/r === 'stone' && T180_STONE_EXPORT && stock < (v1\.[A-Za-z_]+)\(/) || [])[1];
+  const lit = litOf(V2CODE);
+  ok(lit === 'v1.stoneWorkStock', '⑮ ★★★수를 **옮겨 적지 않았다** — v1 정본을 읽는다(사본 0 · `v1.stoneWorkStock`)', String(lit));
+  ok(litOf(V2CODE.replace('stock < v1.stoneWorkStock(a.v)', 'stock < 0.2')) === undefined, '⑮ [자명 통과 금지] 문턱을 리터럴 0.2 로 바꾼 사본은 위 검사가 문다', 'undefined');
   // 엔진 두 게이트도 같은 이름을 쓰는가(수가 한 곳뿐인가)
   const gates = (CODE.match(/STONE_NET_STOCK/g) || []).length;
   ok(gates >= 3, '⑮ ★엔진의 STONE_NET 게이트들도 **그 이름**을 쓴다(정의 1 + 게이트 2 이상)', `${gates}회`);
@@ -422,7 +425,7 @@ console.log('\n⑯ 배율 자리 [T179] — 문이 `skillMul` 을 삼키지 않�
   //   석재 문(T163)은 그 꼴이 아니다 — **관 굵기(`_stoneK`)만** 갈아 끼우고 곱은 문 **뒤에** 온다.
   //   뒤 카드가 이 줄을 T154 꼴로 바꾸면 여기가 빨개진다(3사본 둘 다 본다).
   for (const [nm, C] of [['소스', CODE], ['랩 사본', LCODE]]) {
-    ok(/const stoneYield = _stoneK \* skillMul \* _forageScale \* 0\.9;/.test(C),
+    ok(/const stoneYield = _stoneK \* skillMul \* \(stoneRealOn\(\) \? 1 : _forageScale\) \* 0\.9;/.test(C),
       `⑯ ★★[${nm}] 문 **뒤에** skillMul 이 남는다(숙련 10 채집꾼이 돌을 더 캔다)`);
     ok(/let _stoneK = \(v\.land\.stone \|\| 0\);/.test(C) && !/baseAmt = [^\n]*_sbFn/.test(C),
       `⑯ ★[${nm}] 문이 덮는 것은 **관 굵기 하나**다(baseAmt 무접촉 — 폴백이 곧 종전)`);
