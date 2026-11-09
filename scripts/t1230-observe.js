@@ -17,7 +17,11 @@ if (!OUT) return;
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
 const rec = { cols: ['day', 'vil', 'pop', 'born', 'dead', 'emig', 'logi', 'hunger', 'health', 'happy', 'prestige', 'dP', 'gHouse', 'gGran', 'hW', 'GW', 'luxW', 'EW', 'BW', 'floor', 'eat',
-  'zHouse', 'zGran', 'zK', 'zH', 'zOther'], rows: [], jobs: [], err: null };
+  'zHouse', 'zGran', 'zK', 'zH', 'zOther',
+  'pxN', 'pxPop', 'pxWoodW', 'pxFoodW', 'woodSt', 'lumber', 'farmer', 'houseDef', 'fieldFood'], rows: [], jobs: [], err: null };
+//   ★[T1234] 덧붙인 칸: 시세(그날 세계 공급 캐시가 이미 선 마을만 — 관찰기가 캐시를 먼저 세우지 않는다 · `pxN` = 잰 마을 수 · 사람 가중 목재 · 식량 값) ·
+//     곳간 목재 · 나무꾼 · 농부 · 침상 모자람(Σ max(0, 사람 − min(주거, 지도 침상))) · 밭 식량(econ `_t368FoodTot` 차)
+let V2 = null; try { V2 = require(path.join(ROOT, 'sim', 'economy-sim-v2')); } catch (e) { V2 = null; }
 let cur = null;
 const seen = new WeakSet();
 function flush() { if (cur) { const r = cur; rec.rows.push(rec.cols.map((k) => (typeof r[k] === 'number' ? +r[k].toFixed(4) : r[k]))); } }
@@ -36,7 +40,7 @@ V1.tickVillage = function (v, day) {
       if (day % 50 === 0 && day !== lastWrite) { lastWrite = day; try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} }   // 50날마다(가상 시계 판은 `Date.now` 가 econ 날에 묶여 벽시계 간격이 안 선다)
     }
     for (const n of (v.npcs || [])) seen.add(n);
-    pre = { dead: v._deadTot || 0, emig: v._emigTot || 0, floor: v._t100FloorTot || 0, eat: (v._consDay && v._consDay.food) || 0 };
+    pre = { dead: v._deadTot || 0, emig: v._emigTot || 0, floor: v._t100FloorTot || 0, eat: (v._consDay && v._consDay.food) || 0, ff: +v._t368FoodTot || 0 };
   } catch (e) { rec.err = rec.err || String(e && e.stack || e).slice(0, 400); }
   const ret = _t.apply(this, arguments);
   try {
@@ -57,6 +61,14 @@ V1.tickVillage = function (v, day) {
         else if ((+g.logi || 0) <= 0) c.zK++;
         else if ((+g.happy || 0) < 0 && (+g.logi || 0) + (+g.hunger || 0) + (+g.health || 0) + (+g.prestige || 0) > 0 && (+g.dP || 0) <= 0) c.zH++;
         else c.zOther++;
+      }
+      c.woodSt += (v.storage && v.storage.wood) || 0; c.lumber += (v.counts && v.counts.lumberjack) | 0; c.farmer += (v.counts && v.counts.farmer) | 0;
+      const cap = Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity);
+      if (cap !== Infinity) c.houseDef += Math.max(0, N - cap);
+      c.fieldFood += (+v._t368FoodTot || 0) - pre.ff;
+      const W = v._world, dc = W && W._effDemCache;
+      if (V2 && V2.computeShadowPrices && dc && dc.day === W.day) {
+        const px = V2.computeShadowPrices(v); c.pxN++; c.pxPop += N; c.pxWoodW += (+px.wood || 0) * N; c.pxFoodW += (+px.food || 0) * N;
       }
     }
   } catch (e) { rec.err = rec.err || String(e && e.stack || e).slice(0, 400); }
