@@ -6,7 +6,7 @@
 //     몸이 들여온 목재(`_t325InflowToday` — 생활층 귀환이 틱 사이에 적고 틱이 장부로 옮기며 비운다 · 틱 머리 값 = 그 사이 몸 몫) ·
 //     벤 횟수(`_t325CutN` — 곳간에 든 귀환 건수 누계의 차 · 마을마다 틱 머리끼리) · econ 식 몫(`_woodOutLast` — 나무꾼 × base × land.wood × 도구 · 끔 판에선 이것이 곳간에 드는 양) ·
 //     행위 마을 수(`woodActOn`) · 나무 칸 있는 마을(`_t325Cells > 0`) · 곳간 목재 · 나무꾼 · 주거 · 사람
-//   10날마다: 존 자원표의 선 나무 · 묘목 수(`resources` — 활성 청크에 올라온 것만 · 재생 · 고갈의 거친 자) · 직업 합
+//   10날마다: 존 자원표의 선 나무 · 묘목 수(`resources` — 활성 청크에 올라온 것만 · 재생 · 고갈의 거친 자) · 직업 합 · 영토 넓히기 누계(T1207 — 넓히려 한 날 · 통나무 막힘 · 몸 막힘 · 선 칸)
 const path = require('path');
 const fs = require('fs');
 const A1 = process.argv[1] || '';
@@ -28,6 +28,15 @@ function trees() {
     return { tree: t, sapling: s };
   } catch (e) { return { err: String(e && e.message).slice(0, 120) }; }
 }
+//   영토 넓히기(T1207 켬 판만) — 마을마다 `vil._t1207`(생활층 · 넓히려 한 날 · 통나무 막힘 · 몸 막힘 · 선 칸)의 세계 합
+function terr() {
+  try {
+    const VIL = require(path.join(ROOT, 'server', 'villages'));
+    const P = VIL.__labProbe._t569Probe.setup(); const o = { days: 0, stallWood: 0, stallBody: 0, cells: 0, wood: 0, woodIn: 0 };
+    for (const vil of (P.villages || [])) { const T = vil._t1207; if (!T) continue; for (const k of Object.keys(o)) o[k] += +T[k] || 0; }
+    return o;
+  } catch (e) { return { err: String(e && e.message).slice(0, 120) }; }
+}
 const _t = V1.tickVillage;
 V1.tickVillage = function (v, day) {
   try {
@@ -35,7 +44,7 @@ V1.tickVillage = function (v, day) {
       flush(); cur = { day }; for (const k of rec.cols) if (k !== 'day') cur[k] = 0;
       if (day % 10 === 0 && v._world && v._world.villages) {
         const j = {}; for (const w of v._world.villages) for (const k of Object.keys(w.counts || {})) j[k] = (j[k] || 0) + (w.counts[k] | 0);
-        rec.ten.push({ day, jobs: j, trees: trees() });
+        rec.ten.push({ day, jobs: j, trees: trees(), terr: terr() });
       }
       if (day % 10 === 0 && day !== lastWrite) { lastWrite = day; try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} }
     }
