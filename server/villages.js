@@ -18699,14 +18699,28 @@ function _desFarmReady(vil,npc,k,day,now,cost) {
   if(w.progress+1e-6<w.total)return false;
   P.delete(sig);npc._desFarm=null;return true;
 }
-function desAdvance(npc,now) {
+function desCheckpoint(npc,now,pause=false) {
   if(npc._desWait){if(npc._workT!=null){npc._workT=now;npc._desWorkElapsed=0;}if(npc._desFarm)npc._desFarm.at=null;return;}
-  if(npc._desFarm){const vil=state.byDbId.get(npc.simVillageId),F=vil&&vil._t1248Farm,w=F&&F.get(npc._desFarm.sig);if(w&&npc._desFarm.at!=null){w.progress=Math.min(w.total,w.progress+Math.max(0,now-npc._desFarm.at));npc._desFarm.at=null;}}
+  if(npc._desFarm){const vil=state.byDbId.get(npc.simVillageId),F=vil&&vil._t1248Farm,w=F&&F.get(npc._desFarm.sig);if(w&&npc._desFarm.at!=null){w.progress=Math.min(w.total,w.progress+Math.max(0,now-npc._desFarm.at));npc._desFarm.at=pause?null:now;}}
   if(npc._lifeTask&&npc._workT!=null){const t=npc._lifeTask;t.prog=(t.prog||0)+Math.max(0,now-npc._workT);npc._workT=now;npc._desWorkElapsed=0;const vil=state.byDbId.get(npc.simVillageId);if(vil&&t.k==='clear')_desClearRemember(vil,t);}
+}
+function desAdvance(npc,now) { desCheckpoint(npc,now,true); }
+function desCaptureWork(npc) {
+  const vil=state.byDbId.get(npc.simVillageId);if(!vil)return null;
+  const out={},t=npc._lifeTask;
+  if(t&&t.k==='clear'){const key=t.cx+','+t.cy;if(!vil._farmSet||!vil._farmSet.has(key))out.clear={key,progress:Math.max(t.prog||0,vil._t1248Clear?.get(key)||0)};}
+  if(npc._desFarm){const w=vil._t1248Farm?.get(npc._desFarm.sig);if(w)out.farm={...w};}
+  return out;
+}
+function desRestoreWork(npc,saved,now) {
+  const vil=state.byDbId.get(npc.simVillageId);if(!vil||!saved)return;
+  if(saved.clear&&(!vil._farmSet||!vil._farmSet.has(saved.clear.key))){const m=vil._t1248Clear||(vil._t1248Clear=new Map());m.set(saved.clear.key,Math.max(m.get(saved.clear.key)||0,saved.clear.progress));}
+  if(saved.farm){const m=vil._t1248Farm||(vil._t1248Farm=new Map()),w=saved.farm,old=m.get(w.sig);m.set(w.sig,{...w,at:now,progress:Math.min(w.total,Math.max(w.progress,old?.progress||0))});}
 }
 function desWorkOf(npc,now) {
   if(!_desHost||!_desHost.work)return null;
   const vil=state.byDbId.get(npc.simVillageId);if(!vil)return null;
+  if(npc._lifeAct==='취침'||npc._lifeAct==='휴식'||npc._lifeAct==='요양'||npc._lifeAct==='귀가')return null;
   if(npc._desWait)return {kind:'queue',until:Infinity};
   const t=npc._lifeTask;
   if(t&&(t.k==='clear'||t.k==='build')&&Math.hypot(npc.x-t.px,npc.y-t.py)<=44&&npc._workT!=null)return {kind:t.k,until:now+Math.max(0,_desWorkGoal(vil,t)-(t.prog||0))};
@@ -18719,3 +18733,4 @@ function desWorkOf(npc,now) {
   return null;
 }
 module.exports.desInstall=desInstall;module.exports.desWorkOf=desWorkOf;module.exports.desAdvance=desAdvance;
+module.exports.desCheckpoint=desCheckpoint;module.exports.desCaptureWork=desCaptureWork;module.exports.desRestoreWork=desRestoreWork;

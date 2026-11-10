@@ -123,20 +123,20 @@ class Work {
 }
 const actorCompare=(a,b)=>typeof a==='number'&&typeof b==='number'?a-b:(String(a)<String(b)?-1:String(a)>String(b)?1:0);
 class WakeQueue extends EventQueue {
-  _lt(i,j) { const a=this.t[i],b=this.t[j];if(a!==b)return a<b;const c=actorCompare(this.v[i].id,this.v[j].id);return c<0||(c===0&&this.s[i]<this.s[j]); }
+  _lt(i,j) { const a=this.t[i],b=this.t[j];if(a!==b)return a<b;const c=actorCompare(this.v[i].order??this.v[i].id,this.v[j].order??this.v[j].id);return c<0||(c===0&&this.s[i]<this.s[j]); }
 }
 class Dispatcher {
   constructor() { this.queue=new WakeQueue();this.actors=new Map();this.generation=0;this.stats={parked:0,woken:0,canceled:0,stale:0}; }
-  park(id,at,data) {
+  park(id,at,data,order=id) {
     if(!Number.isFinite(at))throw new RangeError('invalid event time');
-    const e={id,at,generation:++this.generation,data};this.actors.set(id,e);this.queue.push(at,{id,generation:e.generation});this.stats.parked++;return e;
+    const e={id,at,order,generation:++this.generation,data};this.actors.set(id,e);this.queue.push(at,{id,order,generation:e.generation});this.stats.parked++;return e;
   }
   cancel(id) { const e=this.actors.get(id);if(!e)return null;this.actors.delete(id);this.stats.canceled++;return e; }
   runUntil(at,wake) {
     return this.queue.runUntil(at,(time,key)=>{const e=this.actors.get(key.id);if(!e||e.generation!==key.generation){this.stats.stale++;return;}this.actors.delete(key.id);this.stats.woken++;wake(e.id,time,e.data);});
   }
-  snapshot() { return {version:1,generation:this.generation,actors:[...this.actors.values()].map(e=>({id:e.id,at:e.at,data:e.data})).sort((a,b)=>a.at-b.at||actorCompare(a.id,b.id)),stats:{...this.stats}}; }
-  static restore(s,shift=0) { if(!s||s.version!==1||!Array.isArray(s.actors))throw new Error('invalid dispatcher snapshot');const d=new Dispatcher();for(const e of s.actors)d.park(e.id,e.at+shift,e.data);d.generation=Math.max(d.generation,s.generation||0);if(s.stats)d.stats={...s.stats};return d; }
+  snapshot() { return {version:1,generation:this.generation,actors:[...this.actors.values()].map(e=>({id:e.id,order:e.order,at:e.at,data:e.data})).sort((a,b)=>a.at-b.at||actorCompare(a.order,b.order)),stats:{...this.stats}}; }
+  static restore(s,shift=0) { if(!s||s.version!==1||!Array.isArray(s.actors))throw new Error('invalid dispatcher snapshot');const d=new Dispatcher();for(const e of s.actors)d.park(e.id,e.at+shift,e.data,e.order??e.id);d.generation=Math.max(d.generation,s.generation||0);if(s.stats)d.stats={...s.stats};return d; }
 }
 // Facility order and in-service ownership survive a restart. Queued identity is
 // kept separately from the actor heap; releasing a slot explicitly wakes its head.
