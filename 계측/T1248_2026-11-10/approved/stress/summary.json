@@ -1,0 +1,74 @@
+{
+  "source": "e1e65d6a",
+  "scene": "One village with normal candidate seeding; actual N, initial sleep interval, warm300+measure1000; concurrent jobs on4CPU quota. All startup diagnostic budgets300sec exceeded; actual boot later succeeded and sample counts/child exits validated. Not a completed1day simulation.",
+  "cases": {
+    "stress16000tick": {
+      "target": 16000,
+      "actualNPCs": 16000,
+      "warmupTicks": 300,
+      "measuredTicks": 1000,
+      "meanMs": 55.93923984699988,
+      "p50Ms": 56.095275,
+      "p95Ms": 94.627186,
+      "maxMs": 599.185639,
+      "actualChild": {
+        "pid": 606802,
+        "code": 0,
+        "signal": null
+      },
+      "wrapperRc": 1,
+      "startupBudgetWithin300Sec": false
+    },
+    "stress3900tick": {
+      "target": 3900,
+      "actualNPCs": 3900,
+      "warmupTicks": 300,
+      "measuredTicks": 1000,
+      "meanMs": 14.995747913999995,
+      "p50Ms": 6.273985,
+      "p95Ms": 61.072954,
+      "maxMs": 110.807691,
+      "actualChild": {
+        "pid": 606204,
+        "code": 0,
+        "signal": null
+      },
+      "wrapperRc": 1,
+      "startupBudgetWithin300Sec": false
+    },
+    "stress3900des": {
+      "target": 3900,
+      "actualNPCs": 3900,
+      "warmupTicks": 300,
+      "measuredTicks": 1000,
+      "meanMs": 10.274892474000001,
+      "p50Ms": 0.091438,
+      "p95Ms": 67.95751,
+      "maxMs": 135.810525,
+      "actualChild": {
+        "pid": 606462,
+        "code": 0,
+        "signal": null
+      },
+      "wrapperRc": 1,
+      "startupBudgetWithin300Sec": false
+    },
+    "stress16000des": {
+      "target": 16000,
+      "actualNPCs": 16000,
+      "warmupTicks": 300,
+      "measuredTicks": 1000,
+      "meanMs": 13.346912263999998,
+      "p50Ms": 0.11277,
+      "p95Ms": 57.03388,
+      "maxMs": 124.608889,
+      "actualChild": {
+        "pid": 607240,
+        "code": 0,
+        "signal": null
+      },
+      "wrapperRc": 1,
+      "startupBudgetWithin300Sec": false
+    }
+  }
+}

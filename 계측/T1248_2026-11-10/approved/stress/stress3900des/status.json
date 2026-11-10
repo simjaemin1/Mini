@@ -1,0 +1,26 @@
+{
+  "tag": "stress3900des",
+  "args": [
+    "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+    "scripts/t577-server-run.js",
+    "1",
+    "1020"
+  ],
+  "env": {
+    "ENABLE_BANDITS": "0",
+    "T1241_DES": "1",
+    "T1241_OUT": "/tmp/t1248-v6-aux/stress3900des/legacy",
+    "T1241_PROBE": "1",
+    "T1243_FARM_ON": "1",
+    "T1248_CHILD_STATUS": "/tmp/t1248-v6-aux/stress3900des/child.json",
+    "T1248_DUMP_DAY": "31",
+    "T1248_STRESS_N": "3900",
+    "T577_CAND_SEEDPOP": "3900",
+    "T745_VCLOCK": "1",
+    "VILLAGE_DAY_MS": "1440000",
+    "VILLAGE_MAX": "1",
+    "VILLAGE_NPC_CAP": "Infinity"
+  },
+  "wrapperRc": 1,
+  "seconds": 360.61008525500074
+}
