@@ -1,0 +1,14 @@
+{
+  "remote": "https://github.com/simjaemin1/Mini.git",
+  "branch": "batch/des-work-1110-independent",
+  "preCommitHEAD": "49f019b0cbd528d215b08db92ff078816ae391b6",
+  "scope": "Deterministic synthetic seed1020 local simulation evidence, experiment recipes and report; no database or external user content",
+  "indexedArtifactsScanned": 810,
+  "decodedBytesScanned": 278112526,
+  "credentialPatternFileHits": [],
+  "scanLimit": "Supplementary pattern scan, not a proof of every sensitivity",
+  "finalValidation": "selected29TimedMeasurementCasesComplete",
+  "worldActualDays": 100,
+  "worldClockErrors": 0,
+  "restartBindingRequirementPassed": false
+}

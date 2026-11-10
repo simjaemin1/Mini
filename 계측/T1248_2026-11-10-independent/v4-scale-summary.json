@@ -1,0 +1,138 @@
+[
+  {
+    "run": "v4-controlled-scale-3900-0",
+    "actualBodies": {
+      "min": 3927,
+      "max": 3927
+    },
+    "cpu": {
+      "samples": 1000,
+      "medianMs": 4.33,
+      "p95Ms": 20.172,
+      "maxMs": 44.988,
+      "meanMs": 6.0759690000000015
+    },
+    "wall": {
+      "samples": 1000,
+      "medianMs": 4.1298,
+      "p95Ms": 15.831725,
+      "maxMs": 36.213089,
+      "meanMs": 5.404671997
+    },
+    "ownedMean": 0,
+    "virtualExitV": 1767225643533.2275,
+    "status": {
+      "valid": true,
+      "fullDaysCompleted": false,
+      "benchmarkFixtureCompleted": true,
+      "runnerExit": 1,
+      "note": "Intentional tick-window fixture shutdown; not a completed T577 day",
+      "days": 1,
+      "seed": "1020",
+      "cpuSeconds": 131.056592,
+      "wallSeconds": 123.293996076
+    }
+  },
+  {
+    "run": "v4-controlled-scale-3900-1",
+    "actualBodies": {
+      "min": 3927,
+      "max": 3927
+    },
+    "cpu": {
+      "samples": 1000,
+      "medianMs": 3.408,
+      "p95Ms": 15.713,
+      "maxMs": 30.816,
+      "meanMs": 4.719119999999998
+    },
+    "wall": {
+      "samples": 1000,
+      "medianMs": 3.002501,
+      "p95Ms": 11.10966,
+      "maxMs": 29.316465,
+      "meanMs": 4.118983024999998
+    },
+    "ownedMean": 3585.63,
+    "virtualExitV": 1767225643533.2275,
+    "status": {
+      "valid": true,
+      "fullDaysCompleted": false,
+      "benchmarkFixtureCompleted": true,
+      "runnerExit": 1,
+      "note": "Intentional tick-window fixture shutdown; not a completed T577 day",
+      "days": 1,
+      "seed": "1020",
+      "cpuSeconds": 121.660062,
+      "wallSeconds": 113.667380308
+    }
+  },
+  {
+    "run": "v4-controlled-scale-16000-0",
+    "actualBodies": {
+      "min": 16014,
+      "max": 16014
+    },
+    "cpu": {
+      "samples": 1000,
+      "medianMs": 50.222,
+      "p95Ms": 74.372,
+      "maxMs": 335.389,
+      "meanMs": 49.72733099999992
+    },
+    "wall": {
+      "samples": 1000,
+      "medianMs": 46.308896,
+      "p95Ms": 67.059179,
+      "maxMs": 191.273249,
+      "meanMs": 45.33742551400007
+    },
+    "ownedMean": 0,
+    "virtualExitV": 1767225643533.2275,
+    "status": {
+      "valid": true,
+      "fullDaysCompleted": false,
+      "benchmarkFixtureCompleted": true,
+      "runnerExit": 1,
+      "note": "Intentional tick-window fixture shutdown; not a completed T577 day",
+      "days": 1,
+      "seed": "1020",
+      "cpuSeconds": 229.328749,
+      "wallSeconds": 212.744481593
+    }
+  },
+  {
+    "run": "v4-controlled-scale-16000-1",
+    "actualBodies": {
+      "min": 16014,
+      "max": 16014
+    },
+    "cpu": {
+      "samples": 1000,
+      "medianMs": 32.896,
+      "p95Ms": 59.065,
+      "maxMs": 170.491,
+      "meanMs": 33.461995999999964
+    },
+    "wall": {
+      "samples": 1000,
+      "medianMs": 31.309166,
+      "p95Ms": 53.82297,
+      "maxMs": 79.246539,
+      "meanMs": 30.98090586100003
+    },
+    "ownedMean": 15202.619,
+    "virtualExitV": 1767225643533.2275,
+    "status": {
+      "valid": true,
+      "fullDaysCompleted": false,
+      "benchmarkFixtureCompleted": true,
+      "runnerExit": 1,
+      "note": "Intentional tick-window fixture shutdown; not a completed T577 day",
+      "days": 1,
+      "seed": "1020",
+      "cpuSeconds": 215.323531,
+      "wallSeconds": 200.516726093
+    }
+  }
+]
