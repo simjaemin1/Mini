@@ -8324,6 +8324,10 @@ module.exports = { CFG, CATCH, phaseAt, levelAt, isOpen, untilOpenMs, tideKo, __
 //   taiga, tundra, forest, plains, desert, jungle, savanna,
 //   archipelago, mountain, ocean
 
+// T1255: one boot-time predicate for wildlife and the welcome capability.
+const WATER_DEER_ON = typeof process === 'undefined' || !process.env || process.env.T1237_WATER_DEER !== '0';
+function waterDeerOn() { return WATER_DEER_ON; }
+
 const ANIMALS = {
   // ═══════════════════════════════════════════════════════════════════
   // 🦌 사냥감 23종 (wild)
@@ -8389,7 +8393,7 @@ const ANIMALS = {
     spawn_density: 0.05,
   },
   // ★[T1237 · ★재민 11-09 "새 종"] 고라니(물사슴 · *Hydropotes inermis argyropus*) — 위 사슴(꽃사슴 쪽) 자리와 **따로** 선다(사슴 칸 무변).
-  //   **야생 블록(`server/wildlife.js` · 손잡이 `T1237_WATER_DEER` · 끔 기본)만 낳는다** — `spawn_biome` 비움 = 존 첫 스폰 · DB 몹 목록에 안 든다
+  //   **야생 블록(`server/wildlife.js` · 손잡이 `T1237_WATER_DEER` · 켬 기본 · `=0` 끔)만 낳는다** — `spawn_biome` 비움 = 존 첫 스폰 · DB 몹 목록에 안 든다
   //   (가축 줄과 같은 꼴 · `huntableInBiome` 이 거른다) ⇒ 손잡이를 끄면 세계에 0마리 · 이 줄은 이름 · 드롭 · 그림 칸으로만 읽힌다.
   //   hp 20 = 이 표의 같은 몸 칸(`small`) 넷(북극 여우 18 · 여우 18 · 자칼 25 · 염소 25)의 가운데 21.5 → 랩 hp 2(× `HP_SCALE` 10 · wildlife 머리말 규약).
   //   speed 6 · pack 2 = 존 DB 몹 칸(이 종은 DB 몹으로 안 난다 — speed 는 사슴 값 · pack 은 랩 무리 [1, 2] 의 끝).
@@ -8802,7 +8806,7 @@ function huntableInBiome(biome, zone) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { ANIMALS, _summary, huntableInBiome,
+  module.exports = { ANIMALS, _summary, huntableInBiome, waterDeerOn,
     FAUNA_ZONES, ZONE_FAUNA, FAUNA_NEW, FAUNA_LATER, faunaOn, faunaCell, faunaOut,
     DROP_KG, dropKgOn, dropsOf, dropKgRow };
 }
