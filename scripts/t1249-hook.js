@@ -4,7 +4,7 @@
 // 쓰는 법(존 아이 프리로드 · 세계에 손대지 않는다):
 //   NODE_OPTIONS="--require $PWD/scripts/t745-vclock.js --require $PWD/scripts/t1249-hook.js" T745_VCLOCK=1 \
 //     T1249_OUT=/tmp/t1249/srv node scripts/t577-server-run.js 400 1020
-//   → `<OUT>.<시드>.jsonl` 한 줄 = 하루 { d · pop · miners(전 마을) · m: [[이름 · land.ore · 인구 · 광부 · 원석 합 · 종류별 원석 · 그날 원석 산출 · 금속 글럿]] }
+//   → `<OUT>.<시드>.jsonl` 한 줄 = 하루 { d · pop · miners(전 마을) · m: [[이름 · land.ore · 인구 · 광부 · 원석 합 · 종류별 원석 · 그날 원석 산출(수식 `dailyProductionBuf`) · 금속 글럿 · 몸 원석 누계 · 그날 몸 원석]] }
 //   광산 마을 = land.ore > 0.15 또는 land.tin > 0.15(광부 정원이 서는 땅).
 'use strict';
 const path = require('path');
@@ -36,7 +36,8 @@ if (OUT && process.env.T577_SEED && /zone\.js$/.test(process.argv[1] || '')) {
             for (const k of OG.ids) if ((st[k] || 0) > 0) typed[k] = +st[k].toFixed(2);
             const tot = (st.ore || 0) + OG.ids.reduce((s, k) => s + (st[k] || 0), 0);
             const dp = v.dailyProductionBuf || {}; const out = (dp.ore || 0) + OG.ids.reduce((s, k) => s + (dp[k] || 0), 0);   // 그날 econ 산출(`dailyProductionBuf` — 날 머리에 0 으로 지운다)
-            m.push([v.name, +(L0.ore || 0).toFixed(2), N, mn, +tot.toFixed(2), typed, +(+out).toFixed(3), +(v._metalGlut || 0).toFixed(3)]);
+            const inCum = v._t1188InByItem ? Object.values(v._t1188InByItem).reduce((s, q) => s + (q || 0), 0) : 0;   // 몸이 곳간에 넣은 원석 누계(쪼개기 판 · `mineToGranary`)
+            m.push([v.name, +(L0.ore || 0).toFixed(2), N, mn, +tot.toFixed(2), typed, +(+out).toFixed(3), +(v._metalGlut || 0).toFixed(3), +inCum.toFixed(3), +(v._t724InflowToday || 0).toFixed(3)]);
           }
           fs.appendFileSync(f, JSON.stringify({ d, pop, miners, m }) + '\n');
         }
