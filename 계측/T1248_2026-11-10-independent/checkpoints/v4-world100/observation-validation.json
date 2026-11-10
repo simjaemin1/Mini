@@ -1,0 +1,9 @@
+{
+  "observedUTC": "2026-11-10T08:21:10.591274+00:00",
+  "kind": "immutable checkpoint30 inside running100day case",
+  "validObservation": true,
+  "independent30DayChildCompleted": false,
+  "hundredDayCompletionClaim": false,
+  "clockErrors": 0,
+  "counterexamples": "partial actual raw canonical schema; official full fingerprints pending child completion"
+}

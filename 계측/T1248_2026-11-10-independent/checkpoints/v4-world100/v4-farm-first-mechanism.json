@@ -1,0 +1,21 @@
+{
+  "scanDay": 68,
+  "raw": {
+    "v4-farm-tick400": {
+      "d": 67,
+      "farm": 296,
+      "cropN": 39,
+      "harvN": 0,
+      "pop": 39
+    },
+    "v4-farm-candidate400": {
+      "d": 67,
+      "farm": 259,
+      "cropN": 38,
+      "harvN": 0,
+      "pop": 39
+    }
+  },
+  "directBalance": "warehouse seed differs by1; canonical sowing consumes1 per cell; crop count differs by1 and no harvest in either trace",
+  "upperCause": "work/walk/claim-order contribution not isolated"
+}

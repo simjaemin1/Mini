@@ -1,0 +1,19 @@
+{
+  "provisional": true,
+  "firstDay": 18,
+  "firstValue": {
+    "path": "/villages/6/parts/0/ore_copper",
+    "tick": 1.410779,
+    "des": 1.42201
+  },
+  "villages": [
+    {
+      "name": "\uad11\uc0b06",
+      "firstValue": {
+        "path": "/parts/0/ore_copper",
+        "tick": 1.410779,
+        "des": 1.42201
+      }
+    }
+  ]
+}

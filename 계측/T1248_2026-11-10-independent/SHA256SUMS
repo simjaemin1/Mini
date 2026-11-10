@@ -1,4 +1,14 @@
 f175865acb5a0e52bff6ec5d6a6539c5db952628dcd41b9228e34876153ba28e  계측/T1248_2026-11-10-independent/METHODS.md
+00306e3e7acbad4b16f8083f39eae80723b828bb78e910fe58c3360b1015f9fa  계측/T1248_2026-11-10-independent/checkpoints/v4-world100/days.jsonl.checkpoint-30.json.gz
+9a6450f917a7abb8ded960bb39220b75f40926b920e78d0c85a612511fd1bb76  계측/T1248_2026-11-10-independent/checkpoints/v4-world100/observation-validation.json
+e5400d2c6c89f3afd9c711119a0bc41db717d9e2fde26d190e13789ae6ebe5d5  계측/T1248_2026-11-10-independent/checkpoints/v4-world100/source.json.gz
+80e209a9f9240b34cfeb8daf970da8584eb404f12224623f40ba867eeb1e7237  계측/T1248_2026-11-10-independent/checkpoints/v4-world100/v4-farm-candidate400-day68.json.gz
+724aa1761dd4924e4b0b76d769dc386a4c56c290e5f41fca75cf624ff5d723c1  계측/T1248_2026-11-10-independent/checkpoints/v4-world100/v4-farm-first-mechanism.json
+f2c5dbfc5bf55e9e8a0683f71a7e018393b44e56ff68733c7ca0b0746752cc8c  계측/T1248_2026-11-10-independent/checkpoints/v4-world100/v4-farm-first-provisional.json
+7d3ddf95f48a4ca66cb2e8f2aa37f63881dd76f36ac9148783dbc5256e51ee9b  계측/T1248_2026-11-10-independent/checkpoints/v4-world100/v4-farm-tick400-day68.json.gz
+acdb73059c4cc308e0afaf3f83c2964377fc9fab075e083a366611afcfb09de7  계측/T1248_2026-11-10-independent/checkpoints/v4-world100/v4-world-first-provisional.json
+1153cbbde9e48d956b0b3d4e51dbc728fed2994f9c75e385c2f709607556a7cb  계측/T1248_2026-11-10-independent/checkpoints/v4-world100/v4-world-tick30-day18.json.gz
+541b11be3728b2db2efc23cb03e84a2a97b73ef56b3a320047f00ccc2c9833b6  계측/T1248_2026-11-10-independent/checkpoints/v4-world100/v4-world100-day18.json.gz
 f1fad79a2707d824a98a0e54c1d7d846fe8604a3b6b5eaff125aa91068b5af4b  계측/T1248_2026-11-10-independent/comparisons/compare-v4-candidate400.json
 4899d7cb3cee26355404e9be2807fa951af68e05556a92d7441189a5c0a95a02  계측/T1248_2026-11-10-independent/controller-handoff-correction.json
 005c7f73dd9f9a912a2d740ec52507943aed21762ad761dbd09669e0f6daa076  계측/T1248_2026-11-10-independent/farm-first-diff.json
