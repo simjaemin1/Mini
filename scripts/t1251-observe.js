@@ -6,7 +6,7 @@
 //     몸이 들여온 목재(`_t325InflowToday` — 생활층 귀환이 틱 사이에 적고 틱이 장부로 옮기며 비운다 · 틱 머리 값 = 그 사이 몸 몫) ·
 //     벤 횟수(`_t325CutN` — 곳간에 든 귀환 건수 누계의 차 · 마을마다 틱 머리끼리) · econ 식 몫(`_woodOutLast` — 나무꾼 × base × land.wood × 도구 · 끔 판에선 이것이 곳간에 드는 양) ·
 //     행위 마을 수(`woodActOn`) · 나무 칸 있는 마을(`_t325Cells > 0`) · 곳간 목재 · 나무꾼 · 주거 · 사람
-//   10날마다: 존 자원표의 선 나무 · 묘목 수(`resources` — 활성 청크에 올라온 것만 · 재생 · 고갈의 거친 자) · 직업 합 · 영토 넓히기 누계(T1207 — 넓히려 한 날 · 통나무 막힘 · 몸 막힘 · 선 칸)
+//   10날마다: 선 나무(`woodPerf` — 아래) · 직업 합 · 영토 넓히기 누계(T1207 — 넓히려 한 날 · 통나무 막힘 · 몸 막힘 · 선 칸)
 const path = require('path');
 const fs = require('fs');
 const A1 = process.argv[1] || '';
@@ -19,13 +19,16 @@ const rec = { cols: ['day', 'pop', 'vils', 'bodyWood', 'cutN', 'woodD', 'actVils
 let cur = null, lastWrite = -1;
 const lastCut = new WeakMap();
 function flush() { if (cur) rec.rows.push(rec.cols.map((k) => (typeof cur[k] === 'number' ? +cur[k].toFixed(3) : cur[k]))); }
+//   ★선 나무 = 생활층 관측 창구 `woodPerf()`(`/perf` 가 내주는 그것 — 행위 마을 · 나무 칸 · 선 그루 · K · 되살아난 그루 누계 · 걸음 한도 · 그날 벤 수 · 손 짐).
+//     헤드리스 존은 활성 청크가 없어 존 자원표(`resources`)가 비어 있다(첫 판에서 0 — 그래서 이 창구를 읽는다). 끔 판 = null.
 function trees() {
   try {
-    const Z = require.cache[require.resolve(path.join(ROOT, 'server', 'zone.js'))];
-    const B = Z && Z.exports && Z.exports.__testBind ? Z.exports.__testBind() : null;
-    if (!B || !B.resources) return null;
-    let t = 0, s = 0; for (const r of B.resources.values()) { if (r.type === 'tree') t++; else if (r.type === 'sapling') s++; }
-    return { tree: t, sapling: s };
+    const VIL = require(path.join(ROOT, 'server', 'villages'));
+    const w = VIL.woodPerf ? VIL.woodPerf() : null;
+    if (!w) return null;
+    const o = {}; for (const k of Object.keys(w)) if (k !== 'rows' && k !== 'thin') o[k] = w[k];
+    o.vil = (w.rows || []).map((r) => [r.n, r.trees, r.K, r.back, r.lj, r.cut, r.pop, r.dbg ? r.dbg.walked : null, r.dbg ? r.dbg.cap : null, r.dbg ? r.dbg.dem : null]);
+    return o;
   } catch (e) { return { err: String(e && e.message).slice(0, 120) }; }
 }
 //   영토 넓히기(T1207 켬 판만) — 마을마다 `vil._t1207`(생활층 · 넓히려 한 날 · 통나무 막힘 · 몸 막힘 · 선 칸)의 세계 합
