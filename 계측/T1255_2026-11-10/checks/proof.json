@@ -1,0 +1,23 @@
+{
+  "Node": "v22.23.0",
+  "productCommit": "83a44e55",
+  "deer": {
+    "pass": 38,
+    "fail": 0,
+    "rc": 0
+  },
+  "bodyFields": {
+    "pass": 7,
+    "fail": 3,
+    "identicalBeforeAfter": true,
+    "preexistingBase": "bc096dc9",
+    "assignedCard": "T1252"
+  },
+  "lab": {
+    "days": 800,
+    "seed": 1020,
+    "population": 5929,
+    "rc": 0,
+    "waterDeerFlag": "unset-default-on"
+  }
+}

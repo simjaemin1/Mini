@@ -113,7 +113,7 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const pre = (c, m, x) => { if (!c) { fail++; console.log('  ✗ [상황] ' + m + (x !== undefined ? `  ${x}` : '')); } else console.log('  · [상황] ' + m + (x !== undefined ? `  ${x}` : '')); };
 const say = (m) => console.log(m);
 const sub = (env) => {
-  const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: Object.assign({}, process.env, { T1237_WATER_DEER: '' }, env), encoding: 'utf8', timeout: 300000 });
+  const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: Object.assign({}, process.env, { T1237_WATER_DEER: '0' }, env), encoding: 'utf8', timeout: 300000 });
   const line = (r.stdout || '').trim().split('\n').pop();
   try { return JSON.parse(line); } catch (e) { return { err: (r.stderr || '').slice(-400) || line }; }
 };
@@ -124,8 +124,21 @@ const ZSRC = fs.readFileSync(SV('zone.js'), 'utf8');
 const WSRC = fs.readFileSync(SV('wildlife.js'), 'utf8');
 const NSRC = fs.readFileSync(path.join(ROOT, 'public', 'client', '30-n-net.js'), 'utf8');
 
-say('\n=== 고라니 = 새 종 (T1237 · 손잡이 T1237_WATER_DEER 끔 기본) ===');
+say('\n=== 고라니 = 새 종 (T1237 · 손잡이 T1237_WATER_DEER 켬 기본 · =0 끔) ===');
 
+say('\n⓪ T1255 기본 켬 · 명시 끔 · 부팅 고정');
+{
+ const code="const A=require('./server/animals');const first=A.waterDeerOn();process.env.T1237_WATER_DEER=first?'0':'1';console.log(JSON.stringify([first,A.waterDeerOn()]));";
+ for(const [label,value,want]of [['unset',null,true],['empty','',true],['on','1',true],['off','0',false]]){
+  const env={...process.env};if(value==null)delete env.T1237_WATER_DEER;else env.T1237_WATER_DEER=value;
+  const r=spawnSync(process.execPath,['-e',code],{cwd:ROOT,env,encoding:'utf8'});
+  ok(r.status===0&&r.stdout.trim()===JSON.stringify([want,want]),'⓪ '+label+' — 술어 한 번 읽기 · 런타임 env 변경 무효',r.stdout.trim());
+ }
+ const D=sub({T1237_SUB:'1',T1237_WATER_DEER:'',T1237_SUB_AGENTS:JSON.stringify([[80,30]])});
+ const E=sub({T1237_SUB:'1',T1237_WATER_DEER:'1',T1237_SUB_AGENTS:JSON.stringify([[80,30]])});
+ const clean=x=>{const y={...x};delete y.knob;return JSON.stringify(y);};
+ ok(!D.err&&!E.err&&D.wdSh>0&&clean(D)===clean(E),'⓪ 기본 켬의 실제 생태·고라니 그림자 = 명시 켬');
+}
 say('\n① 표 — 카탈로그 · 존 칸 · 드롭 kg');
 {
   const w = A.ANIMALS.water_deer;
@@ -157,14 +170,14 @@ const OFF = sub({ T1237_SUB: '1', T1237_SUB_AGENTS: JSON.stringify([[80, 30]]) }
     [/if \(T1237\) \{ _wdCov = new Uint8Array/, '격자'], [/if \(T1237\) _t1237Tick\(\);/, '틱'], [/if \(T1237\) for \(const lm of SW\.mobs\)/, '동기'],
   ];
   const miss = gates.filter(([re]) => !re.test(WSRC)).map(([, n]) => n);
-  ok(miss.length === 0 && /const T1237 = process\.env\.T1237_WATER_DEER === '1';/.test(WSRC), "② 부르는 자리 여섯이 다 손잡이 뒤 · '1' 만 켬(부팅 때 읽는다)", miss.join(' · ') || '여섯');
+  ok(miss.length === 0 && /const T1237 = Animals\.waterDeerOn\(\);/.test(WSRC), "② 부르는 자리 여섯이 다 손잡이 뒤 · 공통 술어(부팅 때 읽는다)", miss.join(' · ') || '여섯');
   ok(/const _tS = T1237 \? Date\.now\(\) : 0;[^\n]*\n  if \(_stepScans\(\)\) _rebuildHabitat\(keys\);/.test(WSRC) && /function _t1237StepScans\(keys, t0\) \{\n  const cc = /.test(WSRC),
     '② 훑기 주머니 — 시작 시각은 첫 판 훑기 바로 앞에서 켬만 한 번 읽고(끔 = 시각 읽기 그대로) · 고라니 고리는 그 시각부터 같은 4ms(제 시계를 새로 안 연다)');
   const sc = WSRC.slice(WSRC.indexOf('function _stepScans()'), WSRC.indexOf('function _rebuildHabitat('));
   ok(sc.length > 0 && !/T1237|_wd|wildClass/.test(sc), '★② 첫 판 훑기(`_stepScans` — 벽시계 4ms 로 줄을 끊는 고리)엔 고라니 일이 없다 — 판마다 끝내는 줄 수 · 사슴 서식이 서는 판이 끔과 같다');
   const ib = WSRC.indexOf('function updateMobs('), ie = WSRC.indexOf('// ═══ [C] 본체 브리지');
   ok(ib > 0 && ie > ib && !/T1237|고라니|_wd|SW\b/.test(WSRC.slice(ib, ie)), '★② 블록(B)은 무수정 — 이 카드의 글자가 블록 안에 없다');
-  ok(/if \(o\._ps\) e\.ps = o\._ps;/.test(ZSRC) && /\.\.\.\(process\.env\.T1237_WATER_DEER === '1' \? \{ waterDeer: true \} : \{\}\)/.test(ZSRC),
+  ok(/if \(o\._ps\) e\.ps = o\._ps;/.test(ZSRC) && /\.\.\.\(waterDeerOn\(\) \? \{ waterDeer: true \} : \{\}\)/.test(ZSRC),
     '② 존 — 몹 칸 `ps` 는 그림자에 몸짓이 선 때만(끔 = 서는 몹 0) · welcome `waterDeer` 는 켬에서만(끔 = 칸 없음)');
   ok(/if \(m\.ps\) c\.mobs\.get\(m\.mid\)\.ps = m\.ps;/.test(NSRC), '② 클라 — 받은 몹 칸에 `ps` 가 있을 때만 싣는다(끔 = 몹 객체 그대로)');
 }

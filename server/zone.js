@@ -102,7 +102,7 @@ const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, cellC
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 if (process.env.T697_DAY_GC === '1') PathCore.setLean(true);   // ★[T697] 손잡이 `T697_DAY_GC=1` — 경로 커널 알뜰 판(같은 답 · 숫자 상자·문자열 열쇠 0 · `sim/path-core.js` 머리). 끔 = 종전 글자
-const { ANIMALS, dropsOf, dropKgOn } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog · ★[T636] dropsOf = 사체 드롭 정본(끔이면 카탈로그 그대로) · ★[T647] dropKgOn = 사체 고기 먹기 문
+const { ANIMALS, dropsOf, dropKgOn, waterDeerOn } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog · ★[T636] dropsOf = 사체 드롭 정본(끔이면 카탈로그 그대로) · ★[T647] dropKgOn = 사체 고기 먹기 문
 const GuildTreasury = require('./guild-treasury'); // 길드 곳간(물리) ↔ central 금고(회계) 정합 — 장부 계약은 그 파일 상단 참조
 const PlayerItems = require('./player-items'); // 플레이어 아이템 인스턴스(품질·속성·내구) — econ 무접촉·본체 서버층(설계: 플레이어_아이템_속성_설계.md)
 // ★[부패·보존 배치 2026-08-31] 부패 곡선·보존 가공의 정본. 여기(아래 FOOD_EFFECTS 보다 위)에서
@@ -7643,7 +7643,7 @@ async function _acceptConnection(ws, req, C) {
       charWalkMin: parseFloat(process.env.CHAR_WALK_MIN || '') || 4,
       charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
       ...(process.env.T1194_MODEL_SPRITES === '1' ? { modelSprites: true } : {}),   // [T1194] 받은 3D 모델을 구운 짐승 서 있기 그림(`/assets/animals/` · `scripts/model_render.py`) — 끔 기본 · 끔이면 칸이 없다(welcome 바이트 동일)
-      ...(process.env.T1237_WATER_DEER === '1' ? { waterDeer: true } : {}),   // [T1237] 고라니(새 종 · 야생 블록 둘째 상태) — 클라는 이 종의 그림을 받은 모델 시트로만 그린다(그림이 그것뿐 · `T1194_MODEL_SPRITES` 와 따로) · 끔이면 칸이 없다(welcome 바이트 동일)
+      ...(waterDeerOn() ? { waterDeer: true } : {}),   // [T1237 · T1255] 고라니 공통 부팅 술어 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(SimVillages.T1207_TERR_REAL ? { t1207: true } : {}),   // [T1207] 땅 우클릭에 '영토 넓히기'(끔이면 칸이 없다 · welcome 바이트 동일)
