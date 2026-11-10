@@ -1065,7 +1065,7 @@ const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheD
 //     · T400 그날 크루 명부 `_t400Crew` · 계측 셋 — 마감이 정한 명부라 다시 뜨면 다음 마감까지 몸이 집터로 안 갔다.
 //     · 착공한 곳간 `_granPend`(자리 · 완공 날) — 종전: 착공이 사라져 다른 자리에서 6일을 다시 셌다.
 const T740_SIDE = process.env.T740_SIDE_KEEP !== '0';   // ★[PM 10-14] 켬 기본(T728 과 같은 곁 칸 문법 · 다시 뜰 때만) · 되돌림 `=0`
-const _T740_KEYS = ['_t1248Farm', '_crop', '_mkt', '_potSet', '_siteMissDay', '_siteDirty', '_siteRejS', '_siteRejL', '_maxRPx', '_hEvD', '_mineLvl', '_t724Hit', '_t724Cut', '_granStock',
+const _T740_KEYS = ['_t1248Farm', '_t1248Clear', '_crop', '_mkt', '_potSet', '_siteMissDay', '_siteDirty', '_siteRejS', '_siteRejL', '_maxRPx', '_hEvD', '_mineLvl', '_t724Hit', '_t724Cut', '_granStock',
   '_mCl', '_mSt', '_mTk', '_dCl', '_dSt', '_dTk', '_gameTook', '_hlDay',   // 계측 셈 여덟
   '_t400Crew', '_t400Dbg', '_t400Sum', '_t400Log',   // T400 집 행위(기본 켬) — 그날 크루 명부 · 계측 셋
   '_granPend',   // 착공한 곳간(자리 · 완공 날)
@@ -10313,7 +10313,7 @@ function _warFixtureOne(kind, V, U, bd) {
 function __p3Bind(mock) {
   Object.assign(state, mock);
   return {
-    state, tickWarBodies, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
+    state, _lifeDropTask, _desClearProgress, tickWarBodies, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
     _t1196Step, _t1196Seats, _t1196Stat, T1196_KIND, artisanPerf,   // ★[T1196] 장인 몸 문 — 하네스(`test-t1196-artisan`)가 운영과 같은 문을 부른다(내보내기만)
     T1063_TERR_BUILD, _t1063Bnd, _t1063DayBnd, _t1063Msg, territoryBoundary,   // ★[T1063] 화면 영토 = 서버 영토(하네스 `test-t1063-terr-draw` 가 운영과 같은 문을 부른다)
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
@@ -11605,6 +11605,7 @@ function _lifeDropTask(vil, npc) {
   if (_desHost) _desHost.releaseAll(npc);
    // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
   const t = npc._lifeTask; if (!t) return null;
+  if(_desHost&&_desHost.work&&t.k==='clear')_desClearRemember(vil,t);
   if (t.k === 'clear') { vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); }
   else if (t.k === 'build') vil._buildCrew = Math.max(0, vil._buildCrew - 1);
   npc._lifeTask = null; return null;
@@ -16553,6 +16554,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (t) {
     if (t.k === 'build' && !(t.ps ? vil._psite : vil._site)) { npc._lifeTask = null; return false; }   // 완공/소멸 → 해산
     if (t.k === 'build' && !t.ps && _lifeEcon().T400_BUILD_ACT) { _lifeDropTask(vil, npc); return true; }   // ★[T400] 마을 집터 시공은 하루 장부가 진다(몸의 진척 0 — 이중 진척 금지)
+    if(_desHost&&t.k==='clear'&&vil._farmSet.has(t.cx+','+t.cy)){_lifeDropTask(vil,npc);return true;}
     if (t.k === 'clear' && !_desAcquire(vil, npc, 'clear', t.cx + ',' + t.cy, 1, now)) return true;
     const d = Math.hypot(npc.x - t.px, npc.y - t.py);
     if (d > 44) { npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py; npc.gatherTarget = null; npc._workT = now; _lifeAct(npc, '출근'); return true; }
@@ -16565,7 +16567,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       _lifeLiveFarmTile(vil, t.cx, t.cy, t.f === '밭' ? 'dryfield' : 'farmland');
       if (_t1243On()) { const _m = _t1221ClearS(vil, t.cx + ',' + t.cy); _t1243CStat.bodyCells++; _t1243CStat.bodyMin += _m; if (_t1243ClearedM2(vil, t.cx + ',' + t.cy) > 0) _t1243CStat.deducted++; }   // ★[T1243 추신 5] 계측
       if (npc.simJob === 'farmer') _t1212Note(npc, _t1221On() ? _t1221ClearS(vil, t.cx + ',' + t.cy) : 1);   // ★[T1212 ②] 몸이 한 개간 칸(그날 몫 · ★T1221 켬 = 초)
-      vil._claim.delete(t.cx + ',' + t.cy); _desRelease(vil, npc, 'clear', t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); npc._lifeTask = null;
+      if(_desHost&&vil._t1248Clear)vil._t1248Clear.delete(t.cx+','+t.cy); vil._claim.delete(t.cx + ',' + t.cy); _desRelease(vil, npc, 'clear', t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); npc._lifeTask = null;
     } else if (t.k === 'build' && t.prog >= _desWorkGoal(vil, t)) {
       t.prog = 0; _lifeAdvanceSite(vil, t.ps ? 'p' : null);
       if (!(t.ps ? vil._psite : vil._site)) npc._lifeTask = null;   // 완공 시 해산(카운터는 complete가 리셋)
@@ -16582,7 +16584,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (isFarmer && vil._clearCrew < LIFE_CREW && _lifeNeedClear(vil)) {
     const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
     for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (((!_desHost || !_desHost.queues) && vil._claim.has(k)) || vil._farmSet.has(k)) continue; const dx = c2.cx * SZ + 16 - npc.x, dy = c2.cy * SZ + 16 - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
-    if (best) { if (!_desAcquire(vil, npc, 'clear', best.cx + ',' + best.cy, 1, now)) return true; vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }; npc._workT = now;
+    if (best) { if (!_desAcquire(vil, npc, 'clear', best.cx + ',' + best.cy, 1, now)) return true; vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: _desClearProgress(vil,best.cx+','+best.cy) }; npc._workT = now;
       npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }   // ★배정 틱에도 즉시 이동 목표(미세팅 시 신선 NPC target NaN)
   }
   if (_lifeEcon().T400_BUILD_ACT) { if (_t400BodyStep(vil, npc, now)) return true; }   // ★[T400] 오늘의 크루는 곳간 ↔ 집터를 오간다(보여 주기만)
@@ -16995,8 +16997,13 @@ function _t1196Step(vil, npc, now, job) {
   let t = null;
   if (npc._t1196J != null) { for (const x of Q) if (x.id === npc._t1196J) { t = x; break; } if (!t || t.pid !== npc.pid) { t = null; npc._t1196J = null; npc._t1196W = null; } }
   if (!t) {
-    if(npc._desArtisanId!=null){_desRelease(vil,npc,'artisan',npc._desArtisanId);npc._desArtisanId=null;}
-    for (const x of Q) if (x.pid == null && x.job === job) { t = x; break; }
+    if(npc._desArtisanId!=null){
+      t=Q.find(x=>x.id===npc._desArtisanId)||null;
+      if(!t){_desRelease(vil,npc,'artisan',npc._desArtisanId);npc._desArtisanId=null;}
+      else if(!_desAcquire(vil,npc,'artisan',t.id,1,now))return true;
+      else if(t.pid!=null&&t.pid!==npc.pid){_desRelease(vil,npc,'artisan',t.id);npc._desArtisanId=null;t=null;}
+    }
+    if(!t)for (const x of Q) if (x.pid == null && x.job === job) { t = x; break; }
     if(!t&&_desHost&&_desHost.queues)t=Q.find(x=>x.job===job)||null;
     if (!t) return null;
     if(_desHost&&_desHost.queues){npc._desArtisanId=t.id;if(!_desAcquire(vil,npc,'artisan',t.id,1,now))return true;}
@@ -18679,6 +18686,8 @@ function _desWorkGoal(vil,t) {
   const dayMs=state.dayMs||600000;
   return t.k==='clear'?(_t1221On()?_t1221ClearS(vil,t.cx+','+t.cy)*dayMs/1440:dayMs/LIFE_CLEAR_PDAY):dayMs/LIFE_STAGE_PDAY;
 }
+function _desClearProgress(vil,key){return _desHost&&_desHost.work&&vil._t1248Clear?(vil._t1248Clear.get(key)||0):0;}
+function _desClearRemember(vil,t){const m=vil._t1248Clear||(vil._t1248Clear=new Map());m.set(t.cx+','+t.cy,t.prog||0);}
 function _desFarmReady(vil,npc,k,day,now,cost) {
   const e=vil._crop.get(k),type=_cellTask(vil,k,day);
   const sig=k+':'+type+':'+(e?e.c+':'+e.p+':'+(e.wd||0):'empty');
@@ -18692,7 +18701,7 @@ function _desFarmReady(vil,npc,k,day,now,cost) {
 }
 function desAdvance(npc,now) {
   if(npc._desFarm){const vil=state.byDbId.get(npc.simVillageId),F=vil&&vil._t1248Farm,w=F&&F.get(npc._desFarm.sig);if(w&&npc._desFarm.at!=null){w.progress=Math.min(w.total,w.progress+Math.max(0,now-npc._desFarm.at));npc._desFarm.at=null;}}
-  if(npc._lifeTask&&npc._workT!=null)npc._desWorkElapsed=Math.max(0,now-npc._workT);
+  if(npc._lifeTask&&npc._workT!=null){const t=npc._lifeTask;t.prog=(t.prog||0)+Math.max(0,now-npc._workT);npc._workT=now;npc._desWorkElapsed=0;const vil=state.byDbId.get(npc.simVillageId);if(vil&&t.k==='clear')_desClearRemember(vil,t);}
 }
 function desWorkOf(npc,now) {
   if(!_desHost||!_desHost.work)return null;
