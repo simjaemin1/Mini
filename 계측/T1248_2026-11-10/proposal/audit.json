@@ -1,0 +1,86 @@
+{
+  "file": "server/zone.js",
+  "audit": [
+    {
+      "label": "AOI human viewers; body-chunk loop retained",
+      "sites": 1
+    },
+    {
+      "label": "anyViewerNear",
+      "sites": 1
+    },
+    {
+      "label": "zoneAwake",
+      "sites": 1
+    },
+    {
+      "label": "tickDowned",
+      "sites": 1
+    },
+    {
+      "label": "_rebuildSpatialInc",
+      "sites": 2
+    },
+    {
+      "label": "rebuildSpatialIndex",
+      "sites": 1
+    },
+    {
+      "label": "NPC separation",
+      "sites": 1
+    },
+    {
+      "label": "human fixed bodies",
+      "sites": 1
+    },
+    {
+      "label": "human-only periodic saves",
+      "sites": 1
+    },
+    {
+      "label": "fishing callback",
+      "sites": 1
+    },
+    {
+      "label": "fishing iterator",
+      "sites": 1
+    },
+    {
+      "label": "main tick body iterators",
+      "sites": 10
+    },
+    {
+      "label": "unified maintenance",
+      "sites": 1
+    },
+    {
+      "label": "human network viewers",
+      "sites": 1
+    },
+    {
+      "label": "same-frame AOI handoff",
+      "sites": 1
+    },
+    {
+      "label": "human membership map",
+      "sites": 1
+    },
+    {
+      "label": "human membership insert",
+      "sites": 1
+    },
+    {
+      "label": "human membership remove",
+      "sites": 1
+    },
+    {
+      "label": "inert maintenance admission",
+      "sites": 1
+    }
+  ],
+  "originalSHA256": "459bdafc1f04a604b1dd71da4764d1eb3de4e77e80808ee6430169394d9c4cc7",
+  "proposedSHA256": "30f7a848b2879d1db6d98a11cd4f07af69a338af60f2c25230680b1b009f71e4",
+  "syntaxParsed": true,
+  "applied": false,
+  "executed": false
+}
