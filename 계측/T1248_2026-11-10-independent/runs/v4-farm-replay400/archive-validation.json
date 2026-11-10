@@ -1,0 +1,15 @@
+{
+  "originalStatus": {
+    "valid": true,
+    "fullDaysCompleted": true,
+    "benchmarkFixtureCompleted": false,
+    "runnerExit": 1,
+    "note": "T577 fixed 40-village assertion; subset validated independently",
+    "days": 400,
+    "seed": "1020",
+    "cpuSeconds": 1693.271542,
+    "wallSeconds": 3436.448235024
+  },
+  "files": 12,
+  "dbExcluded": true
+}
