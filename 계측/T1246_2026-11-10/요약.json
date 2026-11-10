@@ -1,0 +1,234 @@
+{
+  "baseCommit": "87b63d2c",
+  "days": 800,
+  "seeds": [
+    1020,
+    7,
+    42
+  ],
+  "records": {
+    "before": {
+      "1020": {
+        "seed": 1020,
+        "population": 2017,
+        "empty": 6,
+        "priceMean": 999.6092730493857,
+        "lumberjackSharePeriod": 0.01237359336569227,
+        "lumberjacksEnd": 48,
+        "lumberjackShareEnd": 0.023797719385225583,
+        "births": 6136,
+        "zeroBirthVillageDays": 34173,
+        "reasons": {
+          "fraction-or-other-birth-gate": 5642,
+          "housing": 28498,
+          "nonpositive-or-rounded-growth": 33
+        }
+      },
+      "7": {
+        "seed": 7,
+        "population": 3317,
+        "empty": 11,
+        "priceMean": 999.5674758866998,
+        "lumberjackSharePeriod": 0.025278707881389164,
+        "lumberjacksEnd": 68,
+        "lumberjackShareEnd": 0.020500452215857702,
+        "births": 11401,
+        "zeroBirthVillageDays": 29335,
+        "reasons": {
+          "fraction-or-other-birth-gate": 7427,
+          "housing": 21108,
+          "nonpositive-or-rounded-growth": 800
+        }
+      },
+      "42": {
+        "seed": 42,
+        "population": 2636,
+        "empty": 15,
+        "priceMean": 999.6330386723134,
+        "lumberjackSharePeriod": 0.023100767584605306,
+        "lumberjacksEnd": 77,
+        "lumberjackShareEnd": 0.02921092564491654,
+        "births": 11448,
+        "zeroBirthVillageDays": 27782,
+        "reasons": {
+          "fraction-or-other-birth-gate": 7133,
+          "housing": 19891,
+          "nonpositive-or-rounded-growth": 758
+        }
+      }
+    },
+    "after": {
+      "1020": {
+        "seed": 1020,
+        "population": 4010,
+        "empty": 3,
+        "priceMean": 408.45210563306983,
+        "lumberjackSharePeriod": 0.03311855462491743,
+        "lumberjacksEnd": 88,
+        "lumberjackShareEnd": 0.021945137157107233,
+        "births": 21173,
+        "zeroBirthVillageDays": 27769,
+        "reasons": {
+          "fraction-or-other-birth-gate": 9628,
+          "housing": 15308,
+          "nonpositive-or-rounded-growth": 2833
+        }
+      },
+      "7": {
+        "seed": 7,
+        "population": 3508,
+        "empty": 4,
+        "priceMean": 387.22184867428183,
+        "lumberjackSharePeriod": 0.035597902925687624,
+        "lumberjacksEnd": 104,
+        "lumberjackShareEnd": 0.029646522234891677,
+        "births": 17446,
+        "zeroBirthVillageDays": 29396,
+        "reasons": {
+          "fraction-or-other-birth-gate": 8394,
+          "housing": 18881,
+          "nonpositive-or-rounded-growth": 2121
+        }
+      },
+      "42": {
+        "seed": 42,
+        "population": 2899,
+        "empty": 4,
+        "priceMean": 329.1303200327444,
+        "lumberjackSharePeriod": 0.03763112444861817,
+        "lumberjacksEnd": 98,
+        "lumberjackShareEnd": 0.03380476026215937,
+        "births": 12335,
+        "zeroBirthVillageDays": 31839,
+        "reasons": {
+          "fraction-or-other-birth-gate": 7693,
+          "housing": 22332,
+          "nonpositive-or-rounded-growth": 1814
+        }
+      }
+    },
+    "control": {
+      "1020": {
+        "seed": 1020,
+        "population": 5929,
+        "empty": 0,
+        "priceMean": 13.82990664030682,
+        "lumberjackSharePeriod": 0.07002926384542567,
+        "lumberjacksEnd": 724,
+        "lumberjackShareEnd": 0.12211165457918705,
+        "births": 3968,
+        "zeroBirthVillageDays": 37562,
+        "reasons": {
+          "fraction-or-other-birth-gate": 8782,
+          "housing": 21589,
+          "nonpositive-or-rounded-growth": 7191
+        }
+      },
+      "7": {
+        "seed": 7,
+        "population": 6642,
+        "empty": 0,
+        "priceMean": 33.56388575860216,
+        "lumberjackSharePeriod": 0.06516414817368099,
+        "lumberjacksEnd": 683,
+        "lumberjackShareEnd": 0.10283047274917194,
+        "births": 6143,
+        "zeroBirthVillageDays": 36439,
+        "reasons": {
+          "fraction-or-other-birth-gate": 11362,
+          "housing": 16384,
+          "nonpositive-or-rounded-growth": 8693
+        }
+      },
+      "42": {
+        "seed": 42,
+        "population": 6171,
+        "empty": 0,
+        "priceMean": 31.28555679319592,
+        "lumberjackSharePeriod": 0.06798764857253956,
+        "lumberjacksEnd": 511,
+        "lumberjackShareEnd": 0.08280667638956409,
+        "births": 6138,
+        "zeroBirthVillageDays": 36371,
+        "reasons": {
+          "fraction-or-other-birth-gate": 10607,
+          "housing": 17332,
+          "nonpositive-or-rounded-growth": 8432
+        }
+      }
+    }
+  },
+  "totals": {
+    "before": {
+      "pop": 7970,
+      "empty": 32,
+      "villageDays": 109393,
+      "priceSum": 109349566.93889171,
+      "priceAt1000": 108684,
+      "populationDays": 3824530,
+      "lumberjackDays": 79061,
+      "lumberjacksEnd": 193,
+      "births": 28985,
+      "zeroBirthVillageDays": 91290,
+      "foodDaysSum": 3330193.5114236185,
+      "reasons": {
+        "fraction-or-other-birth-gate": 20202,
+        "housing": 69497,
+        "nonpositive-or-rounded-growth": 1591
+      },
+      "priceMean": 999.602963067945,
+      "capShare": 0.993518780909199,
+      "ljPeriod": 0.020672082582696438,
+      "ljEnd": 0.024215809284818066,
+      "foodDaysMean": 30.442473571651007
+    },
+    "after": {
+      "pop": 10417,
+      "empty": 11,
+      "villageDays": 118508,
+      "priceSum": 44445609.656811334,
+      "priceAt1000": 43441,
+      "populationDays": 5878030,
+      "lumberjackDays": 207137,
+      "lumberjacksEnd": 290,
+      "births": 50954,
+      "zeroBirthVillageDays": 89004,
+      "foodDaysSum": 3078491.1128348797,
+      "reasons": {
+        "fraction-or-other-birth-gate": 25715,
+        "housing": 56521,
+        "nonpositive-or-rounded-growth": 6768
+      },
+      "priceMean": 375.04311655593995,
+      "capShare": 0.3665659702298579,
+      "ljPeriod": 0.03523918727873114,
+      "ljEnd": 0.02783910914850725,
+      "foodDaysMean": 25.9770742298822
+    },
+    "control": {
+      "pop": 18742,
+      "empty": 0,
+      "villageDays": 122400,
+      "priceSum": 3210117.44703788,
+      "priceAt1000": 2828,
+      "populationDays": 9565984,
+      "lumberjackDays": 647101,
+      "lumberjacksEnd": 1918,
+      "births": 16249,
+      "zeroBirthVillageDays": 110372,
+      "foodDaysSum": 4709704.73472923,
+      "reasons": {
+        "fraction-or-other-birth-gate": 30751,
+        "housing": 55305,
+        "nonpositive-or-rounded-growth": 24316
+      },
+      "priceMean": 26.22644973070163,
+      "capShare": 0.023104575163398693,
+      "ljPeriod": 0.06764604665866052,
+      "ljEnd": 0.10233699711877067,
+      "foodDaysMean": 38.47797985889894
+    }
+  },
+  "beforeOffPopulationPercent": 42.52481058584996,
+  "afterOffPopulationPercent": 55.581047913776544
+}

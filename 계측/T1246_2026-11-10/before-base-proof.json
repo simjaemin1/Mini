@@ -1,0 +1,10 @@
+{
+  "commit": "87b63d2c",
+  "verifiedAfterRunAgainstGit": true,
+  "sha256": {
+    "sim/economy-sim.js": "312141bf5ab097b51fee8a6e25163f454f66b1fcd768c3f0916b7bdfe9b094c9",
+    "sim/economy-sim-v2.js": "ef2f9557ec3b1f113ccf0c84beee244a65a5f48355bc62bc1721680eb9c42240",
+    "server/granary-lots.js": "58f23e42c38dce1a1dd11ebac7aeec70d0c5bff24399151f0dcdc7d19260d71e",
+    "scripts/t176-ab.js": "929a16dfa2b1a8924bf4a21040c7d90f26f5a727886fb7485902ee35a4fad398"
+  }
+}

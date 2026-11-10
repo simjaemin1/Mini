@@ -1,0 +1,18 @@
+id	file	site	before	after_ON	change
+P1	sim/economy-sim-v2.js	_targetV2: food 가격	food 한 품목(기본 T859 끔)	_t859Stock → totalFoodEquivalent	변경
+P2	sim/economy-sim-v2.js	_priceParamsV2: 종전 정산 갈래	food 한 품목	같음	변경
+P3	sim/economy-sim-v2.js	tickTradeV2Steps: 첫 출발 축약 가격	food 한 품목	같음	변경
+P4	sim/economy-sim-v2.js	tickTradeV2Steps: 두번째 출발 축약 가격	food 한 품목	같음	변경
+V1	sim/economy-sim-v2.js	_targetV2: 다양성 25일 문	food 한 품목	totalFoodEquivalent	변경
+V2	sim/economy-sim-v2.js	_priceParamsV2: 다양성 25일 문	food 한 품목	totalFoodEquivalent	변경
+F1	sim/economy-sim.js	pickDeficitJob: 기근 30일 문	totalFoodEquivalent	같음; 켬 정본 합계로 연결	기존 호출
+F2	sim/economy-sim.js	pickDeficitJob_rational: 기근 30일 문	totalFoodEquivalent	같음	기존 호출
+J1	sim/economy-sim.js	pickDeficitJob: foodRich 직업 문	food 한 품목	totalFoodEquivalent	변경
+J2	sim/economy-sim.js	T1228 전직 속도 30일 문	totalFoodEquivalent	같음	기존 호출
+B1	sim/economy-sim.js	tickVillage: 출생 식량 부족 항(3일)	totalFoodEquivalent	같음	기존 호출
+B2	sim/economy-sim.js	tickVillage: T1149 겨울 출생 문	totalFoodEquivalent	같음	기존 호출
+H1	sim/economy-sim.js	T958 주거 계획 증축 여유	totalFoodEquivalent → houseDayBuild	같음	기존 호출
+H2	sim/economy-sim.js	주거 실제 증축 여유	totalFoodEquivalent → houseDayBuild	같음	기존 호출
+H3	sim/economy-sim.js	houseWoodShare 등 건축 자재 유보	totalFoodEquivalent → houseDayBuild	같음	기존 호출
+R1	sim/economy-sim.js	npcRegenMul: 곳간 30일 회복 배수	food 한 품목	totalFoodEquivalent	변경
+K1	sim/economy-sim.js	totalFoodProductionEquivalent: 출생 부양력 흐름	별도 합계	storageFoodEquivalent(fresh=false)	변경
