@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-/opt/Mini}"
-CENTRAL_IP="${CENTRAL_IP:-141.164.35.114}"
+CENTRAL_IP="${CENTRAL_IP:-49.247.194.130}"   # ★[PM 11-10] 서울 iwinv(11-03 이전) — 옛 Vultr 141.164.35.114 는 지울 예정
 
 cd "$REPO_DIR"
 echo "[1/4] git pull"

@@ -10,7 +10,7 @@
 set -euo pipefail
 
 # === 설정 (서버 IP만 환경에 따라 바꾸면 됨) ===
-CENTRAL_IP="${CENTRAL_IP:-141.164.35.114}"
+CENTRAL_IP="${CENTRAL_IP:-49.247.194.130}"   # ★[PM 11-10] 서울 iwinv(11-03 이전) — 옛 Vultr 141.164.35.114 는 지울 예정
 PLAYER_CAP="${PLAYER_CAP:-150}"
 
 # zone id : 호스트 port (3010은 central용이라 skip)

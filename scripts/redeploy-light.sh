@@ -18,7 +18,7 @@
 #   ★[T1048 2026-11-01] 옛 컨테이너(같은 이름)에 `ZONE_HOST_<ID>`(이웃 존 다른 호스트 주소)가 있으면 **이어 싣는다** — 서울 한반도의 `ZONE_HOST_NIPPON` 이
 #     이 스크립트 한 번에 빠져 한반도 → 닛폰이 서울:3021(닫힘) = ECONNREFUSED 였다. EXTRA_ENV 가 이긴다 · 옛 컨테이너가 없으면 종전 그대로(`test-xhost-env` Ⓐ).
 set -euo pipefail
-CENTRAL_IP="${CENTRAL_IP:-141.164.35.114}"
+CENTRAL_IP="${CENTRAL_IP:-49.247.194.130}"   # ★[PM 11-10] 서울 iwinv(11-03 이전) — 옛 Vultr 141.164.35.114 는 지울 예정
 PLAYER_CAP="${PLAYER_CAP:-150}"
 BOOT_GAP="${BOOT_GAP:-4}"   # 존 사이 대기(초) — 1GB면 4~6 권장
 

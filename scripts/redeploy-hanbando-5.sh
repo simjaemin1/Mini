@@ -4,7 +4,7 @@
 # 사용법: bash /opt/Mini/durango-mini/scripts/redeploy-hanbando-5.sh
 set -euo pipefail
 
-CENTRAL_IP="${CENTRAL_IP:-141.164.35.114}"
+CENTRAL_IP="${CENTRAL_IP:-49.247.194.130}"   # ★[PM 11-10] 서울 iwinv(11-03 이전) — 옛 Vultr 141.164.35.114 는 지울 예정
 PLAYER_CAP="${PLAYER_CAP:-150}"
 
 # 전체 26 zone (ENABLED_ZONES / ZONE_HOSTS 생성용 — 핸드오프 라우팅 유지)
