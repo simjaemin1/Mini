@@ -1,0 +1,125 @@
+{
+  "commit": "5ad9d3b82415cf5a25a4f96ecfbb8543d3455986",
+  "remote": "https://github.com/simjaemin1/Mini.git",
+  "destinationMatchesUserRepository": true,
+  "newFilesInspected": 39,
+  "credentialPatternFileHits": [
+    "server/zone.js"
+  ],
+  "generatedFixtures": "Only deterministic synthetic seed1020 local simulation logs, numeric body IDs and timings; no DB files and no external user content included. Paths/fixtureJSON/logs inspected. Pattern scan is supplementary, not proof of all sensitivity.",
+  "decodedArtifacts": [
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-harness.log.gz",
+      "decodedBytes": 4622,
+      "sha256": "1a98c8ed6b30b08ab6bdeb8d27f43822138d9728563042c8967acb23c24ec7d4"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-move-soa.log.gz",
+      "decodedBytes": 45608,
+      "sha256": "1f55fe195ef22f7c095b5e3b5e09a8a64106b41d4afaf6256615d84dec9ef681"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll.log.gz",
+      "decodedBytes": 831,
+      "sha256": "52204b340f9f9122887513750c3e454cb5fe127fb1c23c616b8bbe67b32fc40c"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/alternate/base-1020.json.child.json.gz",
+      "decodedBytes": 193,
+      "sha256": "d0fa470c49e7cb9bbf312bfd8f6bc5b5243c1f011531ba4ac984074ac7e7aa7f"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/alternate/base-1020.json.nopoll.json.gz",
+      "decodedBytes": 205,
+      "sha256": "bc6a008419f08c2d4cd59a98546dfa315362d4eed6edc3745f6a93eb177f95fc"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/alternate/base-1020.log.gz",
+      "decodedBytes": 14708,
+      "sha256": "2aeba833924e01e18569b8b14e2c57a9aa5d95ceb7828cdf609d4562d4b48cef"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/alternate/check.json.gz",
+      "decodedBytes": 714,
+      "sha256": "c786ddef8de0bb86e93df307426842f1d07690a1c3b614ed693c3d9d9b709ee2"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/alternate/wrapper.log.gz",
+      "decodedBytes": 695,
+      "sha256": "ba6f977ca5d7c7bd08022eee0c163b5699b3417962b8275cebcca4d5420565a5"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/bait/base-1020.json.child.json.gz",
+      "decodedBytes": 193,
+      "sha256": "d145af59d1fb7b4e06cd9f40b9f9eb7f76c02ce3592e27470aaae76f6f15024f"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/bait/base-1020.json.nopoll.json.gz",
+      "decodedBytes": 218,
+      "sha256": "c93dce626131f5c1eb4dc599ea05a054a646b3a860a622d627df514815f8368d"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/bait/base-1020.log.gz",
+      "decodedBytes": 14703,
+      "sha256": "cbf344b2a761fc82cfd2643ba3c061c5335420297fc1a44d6351548baa40aa18"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/bait/check.json.gz",
+      "decodedBytes": 739,
+      "sha256": "78cf0da17a4f7e722a6c7f61658c2076ceded30ce946f2f806217a860ad237c0"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/bait/wrapper.log.gz",
+      "decodedBytes": 675,
+      "sha256": "f488ebcbb599e5656a061e5c6d192e83e6395ac4e895309f73f72984883d6776"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/normal/base-1020.json.child.json.gz",
+      "decodedBytes": 193,
+      "sha256": "d0fa470c49e7cb9bbf312bfd8f6bc5b5243c1f011531ba4ac984074ac7e7aa7f"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/normal/base-1020.json.nopoll.json.gz",
+      "decodedBytes": 205,
+      "sha256": "bc6a008419f08c2d4cd59a98546dfa315362d4eed6edc3745f6a93eb177f95fc"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/normal/base-1020.log.gz",
+      "decodedBytes": 14747,
+      "sha256": "84b5ed92b9f0832232dd857cefbfacfae4053bc4602356f9d57cb7b219dbcddc"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/normal/check.json.gz",
+      "decodedBytes": 714,
+      "sha256": "c786ddef8de0bb86e93df307426842f1d07690a1c3b614ed693c3d9d9b709ee2"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-nopoll/normal/wrapper.log.gz",
+      "decodedBytes": 683,
+      "sha256": "ea725862b8dea1dcc72eaadc52b5e7a7f4ee3209ff8cf14b267d1a25a2430ac9"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-role-before/base-1020.json.child.json.gz",
+      "decodedBytes": 193,
+      "sha256": "d145af59d1fb7b4e06cd9f40b9f9eb7f76c02ce3592e27470aaae76f6f15024f"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-role-before/base-1020.json.nopoll.json.gz",
+      "decodedBytes": 208,
+      "sha256": "70cf194977a28169627d1b984e721cef04264132340bb22ff0df7343e30de525"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-role-before/base-1020.log.gz",
+      "decodedBytes": 14703,
+      "sha256": "32b0e815871a75e4f2e1e2bc7ab2d45ceeb4812ffa8c8546f0b9d66e4001859e"
+    },
+    {
+      "path": "\uacc4\uce21/T1248_2026-11-10-independent/v4-verification/v4-role-before/wrapper.log.gz",
+      "decodedBytes": 675,
+      "sha256": "0d9e932c07f76a5da6e67ab9ba9d42fc54ef11aa28b2f0c6eab225c548790668"
+    }
+  ],
+  "credentialPatternFileHitsExplained": {
+    "server/zone.js": "unchanged existing password masking regular expression, not a credential; new product diff is a single body-index deletion removal and comment"
+  }
+}

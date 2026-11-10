@@ -1,0 +1,659 @@
+{
+  "capturedUTC": "2026-11-10T07:15:46.312074+00:00",
+  "processes": [
+    {
+      "pid": 238379,
+      "run": "/tmp/t1248/v4-world100",
+      "command": "node scripts/t1248-run.js 100 1020 ",
+      "threads": [
+        {
+          "tid": 238379,
+          "cpus": "0"
+        },
+        {
+          "tid": 238385,
+          "cpus": "0"
+        },
+        {
+          "tid": 238387,
+          "cpus": "0"
+        },
+        {
+          "tid": 238389,
+          "cpus": "0"
+        },
+        {
+          "tid": 238391,
+          "cpus": "0"
+        },
+        {
+          "tid": 238393,
+          "cpus": "0"
+        },
+        {
+          "tid": 238411,
+          "cpus": "0"
+        }
+      ]
+    },
+    {
+      "pid": 238381,
+      "run": "/tmp/t1248/v4-world-tick30",
+      "command": "node scripts/t1248-run.js 30 1020 ",
+      "threads": [
+        {
+          "tid": 238381,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238395,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238396,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238397,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238398,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238399,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238412,
+          "cpus": "1-3"
+        }
+      ]
+    },
+    {
+      "pid": 238382,
+      "run": "/tmp/t1248/v4-candidate400",
+      "command": "node scripts/t1248-run.js 400 1020 ",
+      "threads": [
+        {
+          "tid": 238382,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238386,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238388,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238390,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238392,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238394,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238410,
+          "cpus": "1-3"
+        }
+      ]
+    },
+    {
+      "pid": 238383,
+      "run": "/tmp/t1248/v4-farm-tick400",
+      "command": "node scripts/t1248-run.js 400 1020 ",
+      "threads": [
+        {
+          "tid": 238383,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238400,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238402,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238403,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238404,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238405,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238413,
+          "cpus": "1-3"
+        }
+      ]
+    },
+    {
+      "pid": 238384,
+      "run": "/tmp/t1248/v4-tick400",
+      "command": "node scripts/t1248-run.js 400 1020 ",
+      "threads": [
+        {
+          "tid": 238384,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238401,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238406,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238407,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238408,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238409,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238432,
+          "cpus": "1-3"
+        }
+      ]
+    },
+    {
+      "pid": 238414,
+      "run": "/tmp/t1248/v4-candidate400",
+      "command": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node /tmp/t1248/frozen-v4/scripts/t577-server-run.js 400 1020 ",
+      "threads": [
+        {
+          "tid": 238414,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238416,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238417,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238418,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238419,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238420,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238433,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238475,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238476,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238477,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238480,
+          "cpus": "1-3"
+        }
+      ]
+    },
+    {
+      "pid": 238415,
+      "run": "/tmp/t1248/v4-world100",
+      "command": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node /tmp/t1248/frozen-v4/scripts/t577-server-run.js 100 1020 ",
+      "threads": [
+        {
+          "tid": 238415,
+          "cpus": "0"
+        },
+        {
+          "tid": 238422,
+          "cpus": "0"
+        },
+        {
+          "tid": 238423,
+          "cpus": "0"
+        },
+        {
+          "tid": 238424,
+          "cpus": "0"
+        },
+        {
+          "tid": 238425,
+          "cpus": "0"
+        },
+        {
+          "tid": 238426,
+          "cpus": "0"
+        },
+        {
+          "tid": 238434,
+          "cpus": "0"
+        },
+        {
+          "tid": 238450,
+          "cpus": "0"
+        },
+        {
+          "tid": 238452,
+          "cpus": "0"
+        },
+        {
+          "tid": 238453,
+          "cpus": "0"
+        },
+        {
+          "tid": 238454,
+          "cpus": "0"
+        }
+      ]
+    },
+    {
+      "pid": 238421,
+      "run": "/tmp/t1248/v4-world-tick30",
+      "command": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node /tmp/t1248/frozen-v4/scripts/t577-server-run.js 30 1020 ",
+      "threads": [
+        {
+          "tid": 238421,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238427,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238428,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238429,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238430,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238431,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238436,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238462,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238463,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238464,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238465,
+          "cpus": "1-3"
+        }
+      ]
+    },
+    {
+      "pid": 238435,
+      "run": "/tmp/t1248/v4-farm-tick400",
+      "command": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node /tmp/t1248/frozen-v4/scripts/t577-server-run.js 400 1020 ",
+      "threads": [
+        {
+          "tid": 238435,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238437,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238439,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238440,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238441,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238442,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238479,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238493,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238496,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238497,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238498,
+          "cpus": "1-3"
+        }
+      ]
+    },
+    {
+      "pid": 238438,
+      "run": "/tmp/t1248/v4-tick400",
+      "command": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node /tmp/t1248/frozen-v4/scripts/t577-server-run.js 400 1020 ",
+      "threads": [
+        {
+          "tid": 238438,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238443,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238444,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238445,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238446,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238447,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238459,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238482,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238483,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238484,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238485,
+          "cpus": "1-3"
+        }
+      ]
+    },
+    {
+      "pid": 238448,
+      "run": "/tmp/t1248/v4-world100",
+      "command": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node -r /tmp/t1248/frozen-v4/scripts/t577-server-hook.js /tmp/t1248/frozen-v4/server/zone.js ",
+      "threads": [
+        {
+          "tid": 238448,
+          "cpus": "0"
+        },
+        {
+          "tid": 238451,
+          "cpus": "0"
+        },
+        {
+          "tid": 238455,
+          "cpus": "0"
+        },
+        {
+          "tid": 238456,
+          "cpus": "0"
+        },
+        {
+          "tid": 238457,
+          "cpus": "0"
+        },
+        {
+          "tid": 238458,
+          "cpus": "0"
+        },
+        {
+          "tid": 238478,
+          "cpus": "0"
+        }
+      ]
+    },
+    {
+      "pid": 238449,
+      "run": "/tmp/t1248/v4-world-tick30",
+      "command": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node -r /tmp/t1248/frozen-v4/scripts/t577-server-hook.js /tmp/t1248/frozen-v4/server/zone.js ",
+      "threads": [
+        {
+          "tid": 238449,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238461,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238466,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238467,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238468,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238469,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238492,
+          "cpus": "1-3"
+        }
+      ]
+    },
+    {
+      "pid": 238460,
+      "run": "/tmp/t1248/v4-candidate400",
+      "command": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node -r /tmp/t1248/frozen-v4/scripts/t577-server-hook.js /tmp/t1248/frozen-v4/server/zone.js ",
+      "threads": [
+        {
+          "tid": 238460,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238470,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238471,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238472,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238473,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238474,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238494,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238538,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238539,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238540,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238541,
+          "cpus": "1-3"
+        }
+      ]
+    },
+    {
+      "pid": 238481,
+      "run": "/tmp/t1248/v4-tick400",
+      "command": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node -r /tmp/t1248/frozen-v4/scripts/t577-server-hook.js /tmp/t1248/frozen-v4/server/zone.js ",
+      "threads": [
+        {
+          "tid": 238481,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238486,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238488,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238489,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238490,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238491,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238503,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238530,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238531,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238532,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238533,
+          "cpus": "1-3"
+        }
+      ]
+    },
+    {
+      "pid": 238487,
+      "run": "/tmp/t1248/v4-farm-tick400",
+      "command": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node -r /tmp/t1248/frozen-v4/scripts/t577-server-hook.js /tmp/t1248/frozen-v4/server/zone.js ",
+      "threads": [
+        {
+          "tid": 238487,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238495,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238499,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238500,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238501,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238502,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238504,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238534,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238535,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238536,
+          "cpus": "1-3"
+        },
+        {
+          "tid": 238537,
+          "cpus": "1-3"
+        }
+      ]
+    }
+  ],
+  "note": "world100 CPU0 from launch; other V4 measurements share CPUs1,2,3; process CPU/wall reported separately."
+}
