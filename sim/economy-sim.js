@@ -875,6 +875,7 @@ function consumeFood(v, need) {
 
 // 총 식량 환산 (K 계산용)
 function totalFoodEquivalent(v) {
+  if (T1243_FARM_ON) return storageFoodEquivalent(v);
   let total = v.storage.food + v.storage.fish + v.storage.meat + v.storage.cooked_food * 1.12;
   for (const r of Object.keys(FORAGE_FOOD_FACTOR)) {
     total += (v.storage[r] || 0) * FORAGE_FOOD_FACTOR[r];
@@ -889,7 +890,35 @@ function totalFoodEquivalent(v) {
   if (_own) for (const [r, f] of _own) total += (v.storage[r] || 0) * f;
   return total;
 }
+// T1246: 한 곳간 질문은 한 합계를 읽는다. econ 기본 식량은 이미 하루치 단위이고,
+// 보존식은 econ 수율 단위다. 낟알의 낱개만 kg × kcal / DAY_KCAL로 환산한다.
+// 이 단위 경계를 건너 이미 환산한 fish 등을 낱개 열량으로 다시 곱하지 않는다.
+function storageFoodPer(v, r) {
+  const K = _kcalM();
+  if (!K || r.startsWith('seed_')) return 0;
+  if (K.isFoodRes(r)) return r === 'cooked_food' ? K.COOKED_FACTOR : 1;
+  if (PRESERVED_FOODS.includes(r)) return preservedFactor(r);
+  if (Object.prototype.hasOwnProperty.call(FORAGE_FOOD_FACTOR, r)) return FORAGE_FOOD_FACTOR[r];
+  if (RAW_GRAINS.includes(r)) return _rawGrainF(r); // 상태·도정 정본, 한 번만
+  const f = _t368FoodPer(v, r);
+  return f > 0 ? f : Math.max(0, K.econUnitsOf(r, 1));
+}
+function storageFoodEquivalent(v, storage = v.storage, fresh = true) {
+  let total = 0;
+  for (const [r, quantity] of Object.entries(storage || {})) {
+    const n = Math.max(0, Number(quantity) || 0);
+    if (!(n > 0)) continue;
+    const f = storageFoodPer(v, r);
+    if (!(f > 0)) continue;
+    // 호스트 로트가 있으면 썩은 몫만 제외. 숫자 랩은 로트가 없고 일일 부패로 재고가 준다.
+    const lots = fresh && _LOTH && _LOTH.freshOf ? _LOTH.freshOf(v, r) : null;
+    const usable = lots ? Math.max(0, n - Math.min(n, lots.spoiledU || 0)) : n;
+    total += usable * f;
+  }
+  return total;
+}
 function totalFoodProductionEquivalent(prod, v) {
+  if (T1243_FARM_ON) return storageFoodEquivalent(v || {}, prod, false);
   let total = (prod.food || 0) + (prod.fish || 0) + (prod.meat || 0) + (prod.cooked_food || 0) * 1.12;
   for (const r of Object.keys(FORAGE_FOOD_FACTOR)) {
     total += (prod[r] || 0) * FORAGE_FOOD_FACTOR[r];
@@ -1375,7 +1404,7 @@ function npcRegenMul(econ, popAlt) {
   const st = econ.lastStats;
   const hpF = Math.max(0.4, Math.min(1.5, 0.5 + (st ? st.health : 0.5)));
   const hapF = Math.max(0.4, Math.min(1.5, 0.5 + (st ? st.happiness : 0.5)));
-  const _food = (econ.storage && econ.storage.food) || 0;
+  const _food = T1243_FARM_ON ? totalFoodEquivalent(econ) : ((econ.storage && econ.storage.food) || 0);
   const _pop = (econ.npcs && econ.npcs.length) || popAlt;   // 랩 s.pop=econ 인구 동형
   const foodF = Math.max(0.35, Math.min(1.4, _food / Math.max(1, _pop * 30)));
   return hpF * hapF * foodF;   // 식량 하한 0.35(기근에도 소량 회복 → 죽음 나선 방지 — 랩 동형)
@@ -5629,7 +5658,7 @@ function pickDeficitJob(v) {
   if (v.storage.stone < N * 3 && hasSlot(v, 'forager', cap, counts)) return 'forager';   // ★S1: 돌은 채집(foraging)으로 조달 — 부족 시 채집꾼(광부 아님)
 
   // 5) cook — 부재료 있을 때
-  const foodRich = v.storage.food > N * 8;
+  const foodRich = (T1243_FARM_ON ? totalFoodEquivalent(v) : v.storage.food) > N * 8;
   const sideTotal = COOK_SIDE_INGREDIENTS.reduce((s, r) => s + (v.storage[r] || 0), 0);
   if (foodRich && sideTotal > N * 2 && hasSlot(v, 'cook', cap, counts)) return 'cook';
 
@@ -7461,7 +7490,7 @@ module.exports = {
   T932_SMELT_CONT, t932Stat,   // ★[T932] 제련 날 마을 하루 결함 손잡이(켬 기본) + 계측 칸(관찰기 `t932-smelt-probe` 가 읽는다 — 행동 무관)
   T924_DEBT_CAP, _computeVillageStats,   // ★[T924] 빚 손잡이 + 마을 stat 함수(관찰기 `t924-observe` 가 건강 · 행복 항을 가른다 — 읽기만 · 사본 0 · 동작 무변)
   T931_SLOTK_EMA, T931_SLOTK_SEASON, totalFoodSlots,   // ★[T931] 식량 자리 K 관성 손잡이 + 자리 함수(하네스 · 관찰기 `t931-observe` 가 그날 자리를 다시 센다 — 읽기만 · 사본 0 · 동작 무변)
-  totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
+  totalFoodEquivalent, storageFoodPer, storageFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
   consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR, T1243_GRAIN_STATE, rawGrainF: _rawGrainF,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다

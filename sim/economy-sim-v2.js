@@ -61,7 +61,7 @@ function _t825FoodPer(v, r) {   // 품목 1 단위의 식량 환산(정본 `tota
 //   켬: `food` 값의 유효 재고 = 곳간 식량 환산(정본 `v1.totalFoodEquivalent` — 식량류 · 생곡 · 채집 · 보존식 · 작물 전부) · 흐름 선반영(`surplusEMA.food × 30`)은 그대로 더한다.
 //   값이 서는 자리 전부(결정층 `_targetV2` · 정산 종전 식 `_priceParamsV2` · 출발 직후 종전 축약식 둘) · 3사본(번들 · 랩 두 개). 물리 재고(`physical` — 살 수 있는 양)는 `storage.food` 그대로다. 새 수 0.
 const T859_FOOD_HUNGER = (typeof process !== 'undefined' && process.env && process.env.T859_FOOD_HUNGER === '1');   // ★[T928] '1' 만 켬 — 켬 기본은 회부
-function _t859Stock(v, r) { return (T859_FOOD_HUNGER && r === 'food') ? (+v1.totalFoodEquivalent(v) || 0) : (v.storage[r] || 0); }   // 값의 재고 칸(끔 = 그 품목 곳간)
+function _t859Stock(v, r) { return ((T859_FOOD_HUNGER || v1.T1243_FARM_ON) && r === 'food') ? (+v1.totalFoodEquivalent(v) || 0) : (v.storage[r] || 0); }   // 값의 재고 칸(끔 = 그 품목 곳간)
 
 // === 새 상수 — v1과 분리 ===
 // v2 round 2: 가격 완화 + weapon/tool BASE 낮춤 + 외곽 살리기 + cargo↑
@@ -878,13 +878,13 @@ function _targetV2(v, r, ctx) {
     // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
     //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
-        && (v.storage.food || 0) / N > 25) {
+        && (v1.T1243_FARM_ON ? v1.totalFoodEquivalent(v) : (v.storage.food || 0)) / N > 25) {
       target = Math.max(target, N * VARIETY_TARGET_PC);
     }
     // ★[T1149 ⓒ 가을 사 모으기 · `T1149_WINTER` 의 `buy` 갈래 · 끔 = 무동작] 가을 · 겨울엔 주식 목표가 **다가오는 겨울**을 안다 —
     //   목표 = max(종전, 하루 생존량 × 겨울에 남은 날)(종전 `subs × 30` 과 같은 꼴 · 30 대신 달력이 준 날 · 새 수 0). 모자란 마을은 값이 올라 가을에 사 모은다.
     if (r === 'food') { const _wd = _t1149Wd(v); if (_wd > 0) target = Math.max(target, subs * _wd); }
-    stock = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(v, r) : (v.storage[r] || 0));   // ★[T859] 켬 — food 는 곳간 식량 환산
+    stock = Math.max(0.1, (T859_FOOD_HUNGER || v1.T1243_FARM_ON) ? _t859Stock(v, r) : (v.storage[r] || 0));   // ★[T859] 켬 — food 는 곳간 식량 환산
     // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
     //   재고(stock)만 보면 근시안 — 큰 buffer에 가려 적자가 안 보여 교역이 stock에 휘둘림(경제적 오류).
     //   surplusEMA.food = 자체생산−소비(수입 제외) → 구조적 비교우위 적자를 정확히 포착.
@@ -1076,8 +1076,8 @@ function _priceParamsV2(v, r) {
     const buildT = v1.buildInputTarget ? v1.buildInputTarget(v, r) : 0;   // ★[T1213] 동기 계약(결정층 `_targetV2` 와 같은 항)
     target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
-        && (v.storage.food || 0) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
-    stock = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(v, r) : (v.storage[r] || 0));   // ★[T859] 켬 — food 는 곳간 식량 환산(결정층과 같은 칸)
+        && (v1.T1243_FARM_ON ? v1.totalFoodEquivalent(v) : (v.storage.food || 0)) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
+    stock = Math.max(0.1, (T859_FOOD_HUNGER || v1.T1243_FARM_ON) ? _t859Stock(v, r) : (v.storage[r] || 0));   // ★[T859] 켬 — food 는 곳간 식량 환산(결정층과 같은 칸)
     if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
   }
   const maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
@@ -1976,7 +1976,7 @@ function* tickTradeV2Steps(world, day) {
       if (T726_ONE_TARGET) a.prices[cand.res] = _priceNowV2(a.v, cand.res);
       else { const r = cand.res, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
           subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5*_orePart(r), ((T1188_ORE_SPLIT&&OreGoods.isOre(r))||FishGoods.isItem(r)?(UTILITY_WEIGHT[r]??0):(UTILITY_WEIGHT[r]||0.1)) * 1.2),
-          tg = Math.max(subs * 30, buf), st = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(a.v, r) : (a.v.storage[r] || 0));   // ★[T859]
+          tg = Math.max(subs * 30, buf), st = Math.max(0.1, (T859_FOOD_HUNGER || v1.T1243_FARM_ON) ? _t859Stock(a.v, r) : (a.v.storage[r] || 0));   // ★[T859]
         a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
       if (!T726_ONE_TARGET && _t1152Own(a.v, cand.res)) a.prices[cand.res] = _priceNowV2(a.v, cand.res);   // ★[T1152 ①] 그 곡선이 선 품목은 출발 직후 값도 결정층 한 함수(종전 축약식은 목표 30날 · 탄력을 글자로 가진다 · 끔 = 무동작)
 
@@ -2033,7 +2033,7 @@ function* tickTradeV2Steps(world, day) {
         if (T726_ONE_TARGET) a.prices[_res2] = _priceNowV2(a.v, _res2);   // ★[T726] 켬 — 첫 품목과 같은 값 문
         else { const r = _res2, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
             subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5*_orePart(r), ((T1188_ORE_SPLIT&&OreGoods.isOre(r))||FishGoods.isItem(r)?(UTILITY_WEIGHT[r]??0):(UTILITY_WEIGHT[r]||0.1)) * 1.2),
-            tg = Math.max(subs * 30, buf), st = Math.max(0.1, T859_FOOD_HUNGER ? _t859Stock(a.v, r) : (a.v.storage[r] || 0));   // ★[T859]
+            tg = Math.max(subs * 30, buf), st = Math.max(0.1, (T859_FOOD_HUNGER || v1.T1243_FARM_ON) ? _t859Stock(a.v, r) : (a.v.storage[r] || 0));   // ★[T859]
           a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
         if (!T726_ONE_TARGET && _t1152Own(a.v, _res2)) a.prices[_res2] = _priceNowV2(a.v, _res2);   // ★[T1152 ①] 첫 품목과 같은 문(끔 = 무동작)
       }

@@ -809,7 +809,7 @@ function denSync(e, g) {   // 싸운 뒤 — 어댑터 줄(식량 칸 다 · 갱
 function xzOut(c) { const K = cargoDump(c); if (K) ST.xzOut++; return K; }
 function xzIn(c, saved) { if (c && saved && typeof saved === 'object') { cargoLoad(c, saved); ST.xzIn++; } }
 const hooks = { capBegin, capEnd, cargo, unload, unloadPart, bounce, pushIn, clearIn, packFrom, packKeep, giveBegin, giveEnd, giveNoRec,   // ★[T1136] unloadPart = 바구니 판 몫만
-  pendIn, pendOut, xzOut, xzIn };   // ★[T748] 대기 칸(econ 고르게) · 존 경계 기록
+  pendIn, pendOut, xzOut, xzIn, freshOf };   // T1246: 식량 합계가 로트의 상한 몫을 제외한다
 // ★★[T803 ① 2026-10-19 · T789 손잡이 안 · 새 손잡이 0] **부패는 한 길.** 켬이면 장부 버림(`_rot` · spoil 정본 보관일)이 곳간 로트 칸의 썩음을 맡는다 —
 //   econ 일일 부패(`tickDecay` · 품목별 일일률)가 같은 칸을 또 깎으면 이중 셈이다(T789 §4-2: 장부가 FIFO 로 econ 부패 몫을 떼고 그 위에 보관일 버림이 또 뗐다).
 //   ⇒ econ 은 감싼 마을의 로트 칸에서 일일 부패를 건너뛴다(훅 한 줄 — `sim/economy-sim-v2.js` `tickDecay`). 로트가 아닌 칸(옹기 진흙 흐름 등)은 econ 그대로.
@@ -843,10 +843,11 @@ function attached(v) { return LED.has(v); }
 // 그 재화의 곳간 몫 신선도(단위 가중 · 상한 몫) — 화면 · 하네스가 읽는다
 function freshOf(v, res) {
   const L = LED.get(v), arr = L && L[res]; if (!arr || !arr.length) return null;
-  const today = Math.floor(_nowFrac());
+  const farm = process.env.T1243_FARM_ON === '1';
+  const today = farm ? _nowFrac() : Math.floor(_nowFrac());
   let U = 0, wf = 0, bad = 0;
   const ge = _gElev(v);   // ★[T856] 그 곳간의 고도
-  for (const r of arr) { const f = Spoil.freshnessOf(res, Spoil.exposureOf(Object.assign({}, r, { k: r.k }), today, ge)); U += r.u; wf += f * r.u; if (f <= 0) bad += r.u; }
+  for (const r of arr) { const f = Spoil.freshnessOf(farm && r.it != null ? r.it : res, Spoil.exposureOf(Object.assign({}, r, { k: r.k }), today, ge)); U += r.u; wf += f * r.u; if (f <= 0) bad += r.u; }
   return { u: +U.toFixed(6), fresh: U > 0 ? +(wf / U).toFixed(6) : 1, spoiledU: +bad.toFixed(6), lots: arr.length };
 }
 function stats(reset) { const o = Object.assign({}, ST); if (reset) for (const k of Object.keys(ST)) ST[k] = 0; return o; }
