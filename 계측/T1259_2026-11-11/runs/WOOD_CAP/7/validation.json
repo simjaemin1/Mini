@@ -1,0 +1,32 @@
+{
+  "arm": "WOOD_CAP",
+  "seed": 7,
+  "pop": 2566,
+  "empty": 0,
+  "foodDebtDeaths": 39,
+  "bodyStarveDeaths": 0,
+  "famineVillageDays": 0,
+  "woodStock": 1129.948629082692,
+  "felledTrees": 11534,
+  "felledWood": 73088,
+  "bodyWoodIn": 72725.93240728707,
+  "econWoodD": 73184.82682875078,
+  "lowK": {
+    "60": {
+      "villages": 37,
+      "lumber": 45,
+      "allLumber": 77
+    },
+    "400": {
+      "villages": 37,
+      "lumber": 55,
+      "allLumber": 156
+    }
+  },
+  "cpuSeconds": 1098.682901,
+  "observerVirtualElapsedSeconds": 99.966422607,
+  "runnerWallSecondsRounded": 1033.0,
+  "clockErrors": 0,
+  "childExit": 0,
+  "sourceValidated": true
+}
