@@ -1,0 +1,124 @@
+{
+  "labelConvention": "T1241 row.d is previous scanDay; actual canonical scanDay = row.d+1",
+  "firstDifferences": {
+    "farm": {
+      "scanDay": 31,
+      "legacyLabel": 30,
+      "tick": 129,
+      "des": 130
+    },
+    "crop": {
+      "scanDay": 32,
+      "legacyLabel": 31,
+      "tick": "5581e76653226768",
+      "des": "a988a0823a8f910b"
+    },
+    "cropN": {
+      "scanDay": 68,
+      "legacyLabel": 67,
+      "tick": 39,
+      "des": 38
+    },
+    "harvN": null,
+    "sto": {
+      "scanDay": 68,
+      "legacyLabel": 67,
+      "tick": "16042a92d276201c",
+      "des": "c6928cfb143e5b80"
+    }
+  },
+  "aroundOfficialFirst": [
+    {
+      "scanDay": 66,
+      "farm": [
+        287,
+        252
+      ],
+      "cropN": [
+        36,
+        36
+      ],
+      "harvN": [
+        0,
+        0
+      ],
+      "crop": [
+        "c45db18c14337429",
+        "3fbceaed4cda81e8"
+      ],
+      "stoSum": [
+        3619.666,
+        3619.666
+      ]
+    },
+    {
+      "scanDay": 67,
+      "farm": [
+        291,
+        256
+      ],
+      "cropN": [
+        37,
+        37
+      ],
+      "harvN": [
+        0,
+        0
+      ],
+      "crop": [
+        "e218813cef723910",
+        "d1c8a79c8113de73"
+      ],
+      "stoSum": [
+        3650.092,
+        3650.092
+      ]
+    },
+    {
+      "scanDay": 68,
+      "farm": [
+        296,
+        259
+      ],
+      "cropN": [
+        39,
+        38
+      ],
+      "harvN": [
+        0,
+        0
+      ],
+      "crop": [
+        "bc85e27c12057d29",
+        "50c8ccdf248d7370"
+      ],
+      "stoSum": [
+        3679.204,
+        3680.204
+      ]
+    },
+    {
+      "scanDay": 69,
+      "farm": [
+        301,
+        263
+      ],
+      "cropN": [
+        39,
+        39
+      ],
+      "harvN": [
+        0,
+        0
+      ],
+      "crop": [
+        "b3bc0318710620ff",
+        "c5aabef95a1a60a3"
+      ],
+      "stoSum": [
+        3711.69,
+        3711.69
+      ]
+    }
+  ]
+}

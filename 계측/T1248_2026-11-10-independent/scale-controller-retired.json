@@ -1,0 +1,6 @@
+{
+  "pid": 222492,
+  "command": "python3 /tmp/t1248/scale.py ",
+  "reason": "Keep active 3900 full-day child; use explicit 300 warmup + 1000 full tick samples for 16000, since the card asks tick cost, not a full 16000-body year/day. Controller only is retired; no process group signal.",
+  "at": 1794286834.9173174
+}

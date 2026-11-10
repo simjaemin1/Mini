@@ -1,0 +1,10 @@
+{
+  "day": 68,
+  "differences": [
+    {
+      "path": "/villages/0/parts/0/seed_barnyard_millet",
+      "tick": 78,
+      "des": 79
+    }
+  ]
+}

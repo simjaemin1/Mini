@@ -1,0 +1,26 @@
+--- 8c02124c/server/zone.js
++++ historical/server/zone.js
+@@ -5129,6 +5129,8 @@
+     if (o.done) { npc.pathIndex = S.P ? S.P.length : 0; npc.vx = 0; npc.vy = 0; }
+     else npc.pathIndex = S.pi + S.r.L[o.k + 1] - 1;   // 지금 걷는 다리의 끝 점(길 점 번호 — 다리 j 의 끝 = 길 점 pi + j − 1)
+     _t670Stuck(npc, now);
++    if (process.env.T1241_DES_WALK_WORKT === '1' && npc._lifeTask) npc._workT = now;
++    if (process.env.T1241_DES_DAWN === '1') npc.nextDecisionAt = 0;
+   }
+ }
+ // 사건 갈래에 든 몸 — 이 틱은 쥐고 있나(true = 결정 · 걸음 문을 건너뛴다)
+@@ -5182,6 +5184,14 @@
+     for (let i = npc.pathIndex; i < pn; i++) { const w = P[i]; pts.push(w.x, w.y); }
+     if (pts.length < 4) return;
+     if (_desWolfNear(npc.x, npc.y) || _desWolfNear(pts[pts.length - 2], pts[pts.length - 1])) return;
++    if (process.env.T1241_DES_STOP44 === '1' && npc._lifeTask) {
++      const task = npc._lifeTask;
++      for (let j = 2; j < pts.length; j += 2) {
++        const ax = pts[j-2] - task.px, ay = pts[j-1] - task.py, dx = pts[j]-pts[j-2], dy = pts[j+1]-pts[j-1];
++        const A = dx*dx+dy*dy, B = 2*(ax*dx+ay*dy), C = ax*ax+ay*ay-44*44, D = B*B-4*A*C;
++        if (A && D >= 0) { const f = (-B-Math.sqrt(D))/(2*A); if (f>=0&&f<=1) { pts[j]=task.px+ax+dx*f;pts[j+1]=task.py+ay+dy*f;pts.length=j+2;break; } }
++      }
++    }
+     r = new _DES.Route(pts, _desSpeed, now, 16);
+     k = 'walk'; until = r.t1;
+     for (const th of [dOff, dayR * _desSch.SCH_FARMW_R, dayR * _desSch.SCH_HALF_R, dayR]) { const t = _desNext(npc, now, th); if (t < until) until = t; }
