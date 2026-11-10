@@ -1,0 +1,14 @@
+{
+  "originalStatus": {
+    "valid": true,
+    "runnerExit": 0,
+    "note": null,
+    "days": 3,
+    "seed": "1020",
+    "cpuSeconds": 359.663019,
+    "wallSeconds": 1023.830696141
+  },
+  "independentValidation": null,
+  "files": 11,
+  "dbExcluded": true
+}

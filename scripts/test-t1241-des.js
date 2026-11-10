@@ -157,7 +157,7 @@ console.log('\n=== ⑧ 존의 실제 넘김 함수 — 격리된 어댑터 검�
   const c={process:{env:{}},Date:{now:()=>now},Map,Set,Number,Math,
     players,npcs:new Set(['a']),buildings:new Map(),activeChunkKeys:new Set(),
     _desQ:new BodyQueue(),_desBodies:new Map(),_desTickIds:new Set(),_desPending:new Map(),
-    _desSaved:null,_desView:'',_desDay:1,_desClk:null,_desTmp:{},T1145_XY_COLS:false,
+    _desSaved:null,_desView:'',_desDay:1,_desClk:null,_desTmp:{},_desFullTick:false,T1145_XY_COLS:false,
     _desStat:{end:{due:0,intr:0},intrWhy:{},workMs:0,walkMs:0,sleepMs:0,restMs:0},
     _DW:{BodyQueue},_DES:DES,_t670Stuck:()=>{},Roads:{stampEntityPx:()=>{}},
     SimVillages:{econDay:()=>day,t1248SettleWork:(b,w,t,start)=>settled.push([b.pid,t,start])}};

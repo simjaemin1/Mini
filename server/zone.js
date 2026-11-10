@@ -2534,7 +2534,7 @@ function anyViewerNear(center, r) {
 const ZONE_IDLE_SKIP = process.env.ZONE_IDLE_SKIP === '1';
 function zoneAwake() {
   if (!ZONE_IDLE_SKIP) return true;
-  for (const p of players.values()) { if (!p.isNpc) return true; }
+  for (const p of (_desQ ? _desBodies : players).values()) { if (!p.isNpc) return true; }
   return observers.size > 0;
 }
 // Phase 5-I: 경계 전투 — 이웃 zone 플레이어 ghost(절대좌표) + 화살 발사체
@@ -4967,7 +4967,8 @@ function sepNpcs(dt) {
     G = _sepG; movers = _sepMovers; movers.length = 0;
   } else { G = new Map(); movers = []; }
   const gkey = (x, y) => ((x / SEP_BK) | 0) * 100000 + ((y / SEP_BK) | 0) + 5000000;
-  for (const pid of npcs) {
+  // 밀기는 처리 차례에 민감하다. 소유 몸은 열거하지 않고 깬 몸만 원래 NPC 차례로 정렬한다.
+  for (const pid of (_desQ ? [..._desTickIds].sort((a,b) => _desOrder.get(a)-_desOrder.get(b)) : npcs)) {
     const p = players.get(pid);
     if (!p || p.hp <= 0 || p.handingOff) continue;
     if (!p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;   // dormant 스킵(비용·기존 정지 규약 동일)
@@ -4977,7 +4978,7 @@ function sepNpcs(dt) {
     if (p.simCaravan || p.simWar) continue;   // 단일 작성자 계약 — 고정체로만 참여
     movers.push(p);
   }
-  for (const p of players.values()) {   // 사람 = 밀리지 않는 고정체 등록(NPC가 비켜감)
+  for (const p of (_desQ ? _desBodies : players).values()) {   // 사람 = 밀리지 않는 고정체 등록(NPC가 비켜감)
     if (p.isNpc || p.handingOff) continue;
     const k = gkey(p.x, p.y);
     if (T676_STAMP) _sepPut(G, k, p);
@@ -5112,6 +5113,8 @@ const _DW = T1241_DES && process.env.T1241_DES_QUEUE !== '0' ? require('./des-wo
 const _desQ = _DW ? new _DW.BodyQueue() : null;
 const _desBodies = _DW ? new Map(players) : null;
 const _desTickIds = _DW ? new Set(npcs) : null;
+// 개별 생존/열 좌표 모드는 틱에서 정본을 유지한다. 이 모드의 몸을 사건 소유로 두고 순회하지 않는다.
+const _desFullTick = _DW && (T1145_XY_COLS || SimVillages.t1248NeedsGauge());
 let _desView = '', _desDay = null;
 const _desOrder = _DW ? new Map([...npcs].map((id,i) => [id,i])) : null;
 let _desOrderSeq = npcs.size;
@@ -5125,7 +5128,7 @@ if (_DW) {
   npcs.add = id => { if (!_desOrder.has(id)) _desOrder.set(id, _desOrderSeq++); if (!_desQ.owned.has(id)) _desTickIds.add(id); return add(id); };
   npcs.delete = id => { const body = players.get(id); if (body && body._des) _desEnd(body, Date.now(), 'remove'); _desQ.remove(id); _desPending.delete(id); _desTickIds.delete(id); _desBodies.delete(id); _desOrder.delete(id); return del(id); };
   const put = players.set.bind(players), remove = players.delete.bind(players);
-  players.set = (id, body) => { const old = players.get(id); if (old && old !== body && old._des) _desEnd(old, Date.now(), 'replace'); _desBodies.set(id, body); if (_desPending.has(id)) { _desApplySaved(body, _desPending.get(id)); _desPending.delete(id); const old = _desQ.owned.get(id); if (old) _desQ.heap.push(old.time, { id, generation: old.generation }); } _desWatch(body); return put(id, body); };
+  players.set = (id, body) => { const old = players.get(id); if (old && old !== body && old._des) _desEnd(old, Date.now(), 'replace'); _desBodies.set(id, body); if (_desPending.has(id)) { _desApplySaved(body, _desPending.get(id)); _desPending.delete(id); const old = _desQ.owned.get(id); if (old) _desQ.heap.push(old.time, { id, generation: old.generation }); } _desWatch(body); if (body._des && _desQ.owned.has(id)) _desBodies.delete(id); return put(id, body); };
   players.delete = id => { const body = players.get(id); if (body && body._des) _desEnd(body, Date.now(), 'remove'); _desQ.remove(id); _desPending.delete(id); _desBodies.delete(id); _desTickIds.delete(id); return remove(id); };
   const clear = players.clear.bind(players); players.clear = () => { for (const id of [...players.keys()]) players.delete(id); _desPending.clear(); return clear(); };
   global.__t1248Interrupt = (id, why, now = Date.now()) => { const body = players.get(id); if (body && body._des) _desEnd(body, now, why); };
@@ -5161,6 +5164,7 @@ function _desApplySaved(body, row) {
   if (body._des && body._des.r) body._des.r = Object.assign(Object.create(_DES.Route.prototype), body._des.r);
   if (body._des) { _desTickIds.delete(id); _desBodies.delete(id); }
   _desWatch(body);
+  if (_desFullTick && body._des) _desEnd(body, Date.now(), 'legacy-mode');
 }
 function _desRestore() {
   if (!_desSaved || !npcs.size) return;
@@ -5279,6 +5283,7 @@ function _desTimed(npc, dt, now) {
 }
 // 틱 갈래 걸음 뒤 — 사건 토막을 열 수 있나
 function _desTry(npc, now) {
+  if (_desFullTick) return;
   if (_desQ && (npc.floor || npc.onStairId || npc.z > 0 || npc.fallVz || npc._fish)) return;
   if (_desQ && process.env.T1241_DES_WORK !== '0' && process.env.T1241_DES === '1' && npc.simVillageId && npc.behavior === 'wander' && npc.vx === 0 && npc.vy === 0 && npc.hp > 0 && !npc.simWar && !npc.simCaravan && !npc.handingOff && !npc._rest && !isPositionActive(npc.x, npc.y)) {
     const work = SimVillages.t1248WorkPlan(npc, now);
@@ -15744,7 +15749,7 @@ function tickDowned(now) {
   if (now - _downedTickAt < 1000) return;
   const dt = _downedTickAt ? (now - _downedTickAt) : 1000;
   _downedTickAt = now;
-  for (const p of players.values()) {
+  for (const p of (_desQ ? _desBodies : players).values()) {
     if (p.isNpc) continue;
     // ⓞ 업고 있던 사람이 **사라졌다**(접속 종료·존 이동). 업은 이의 60kg 이 영원히 남으면
     //   그 사람은 평생 비틀거린다 — 짐은 사람이 있을 때만 짐이다.
@@ -16625,7 +16630,7 @@ setInterval(() => {
   // 입력 타임아웃 — 2.5초 동안 입력 없으면 정지
   // 14.46-b-smooth: 1000 → 2500. 평지에서 짧은 네트워크 hiccup으로 server가 멈췄다가 클라 예측이 앞서면
   // 다음 snapshot으로 사용자가 뒤로 밀려나는 느낌 받음. 2.5초로 늘려서 잠깐 끊겨도 server는 계속 이동.
-  if (!T385_ONE_SWEEP) for (const p of players.values()) _inputTOStep(p, now);   // ★[T385] 몸통은 `_inputTOStep` 하나(켬이면 위 격자 바퀴가 이미 했다)
+  if (!T385_ONE_SWEEP) for (const p of (_desQ ? _desBodies : players).values()) _inputTOStep(p, now);   // ★[T385] 몸통은 `_inputTOStep` 하나(켬이면 위 격자 바퀴가 이미 했다)
 
   // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===
   // 비활성 청크 NPC는 멈춤 (CPU 절약). 가까이 player 오면 자동 재개.
@@ -17387,7 +17392,7 @@ setInterval(() => {
       m.aggroTarget = null;
       // 주인이 현재 zone에 접속 중이면 따라가기
       let ownerP = null;
-      for (const p of players.values()) if (p.playerId === m.tameOwner) { ownerP = p; break; }
+      for (const p of (_desQ ? _desBodies : players).values()) if (p.playerId === m.tameOwner) { ownerP = p; break; }
       if (ownerP) {
         const dx = ownerP.x - m.x, dy = ownerP.y - m.y;
         const dd = Math.hypot(dx, dy);
@@ -17558,7 +17563,7 @@ setInterval(() => {
   // === AOI 필터링: per-viewer tick ===
   // 각 viewer(player+observer)에 자기 시야(AOI_RADIUS) 안 player만 송신.
   // 대역폭 절감 + observer를 통한 정보 누출 차단.
-  const allPlayers = Array.from(players.values());
+  const allPlayers = Array.from((_desQ ? _desBodies : players).values());
   const allMobs = Array.from(mobs.values());
   // viewer별 "이전 tick에 본 entity pid/mid" 추적 — 새로 보이는 것만 메타 포함
   // 이미 본 것은 위치/HP만. payload ~70% 감소.
@@ -17712,7 +17717,7 @@ const _fishStats2 = { bites: 0, expired: 0 };
 let _fishNow = 0;
 function _fishPoll(now) {
   if (T689_GC) { _fishNow = now; (_desQ ? _desBodies : players).forEach(_fishPollOne); return; }   // ★[T689] 같은 차례(살아 있는 순회) · [키, 값] 배열 0
-  for (const [, p] of players) _fishPollOne(p, now);
+  for (const [, p] of (_desQ ? _desBodies : players)) _fishPollOne(p, now);
 }
 function _fishPollOne(p, now) {   // 종전 `_fishPoll` 고리 몸통 글자 그대로(`continue` → `return`)
   if (typeof now !== 'number') now = _fishNow;   // forEach 는 (값, 키, 지도)를 넘긴다 — 둘째 인자는 키라 버린다

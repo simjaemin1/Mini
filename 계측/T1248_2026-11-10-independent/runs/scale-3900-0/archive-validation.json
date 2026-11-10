@@ -1,0 +1,31 @@
+{
+  "originalStatus": {
+    "valid": false,
+    "runnerExit": 0,
+    "note": null,
+    "days": 1,
+    "seed": "1020",
+    "cpuSeconds": 367.616209,
+    "wallSeconds": 585.528268283
+  },
+  "independentValidation": {
+    "valid": true,
+    "originalStatus": {
+      "valid": false,
+      "runnerExit": 0,
+      "note": null,
+      "days": 1,
+      "seed": "1020",
+      "cpuSeconds": 367.616209,
+      "wallSeconds": 585.528268283
+    },
+    "resultFile": "server/seedpop77-1020.json",
+    "reason": "Runner initially searched base-1020.json; CAND_SEEDPOP uses seedpop77-1020.json. Original status retained. Independent validation only.",
+    "days": 1,
+    "villages": 51,
+    "seedPopulation": 4073,
+    "exitPopulation": 4073
+  },
+  "files": 12,
+  "dbExcluded": true
+}

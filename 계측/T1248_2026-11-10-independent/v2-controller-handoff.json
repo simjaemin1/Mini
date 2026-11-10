@@ -1,0 +1,22 @@
+{
+  "at": 1794287705.8304365,
+  "why": "Freeze v2 sources for current diagnostics; fix residual per-frame sep/snapshot ownership polling in v3. Active diagnostics keep their loaded v2 code. Future diagnostic cases use frozen-v2 root.",
+  "controllers": [
+    {
+      "pid": 221822,
+      "command": "python3 /tmp/t1248/batch.py ",
+      "signal": "SIGTERM controller only; active Node children remain"
+    },
+    {
+      "pid": 225654,
+      "command": "python3 /tmp/t1248/scale16000.py ",
+      "signal": "SIGTERM controller only; active Node children remain"
+    }
+  ],
+  "v2Source": {
+    "server/zone.js": "ad1f4855a87044a3926c8e96d4dd65a5ef75eb0aa66edab272246a60b95212be",
+    "server/villages.js": "e210cfc820c3e888b04b3ee7353be8c1985faebf2b98897907137297abfd6d43",
+    "server/des.js": "ef56f80a897dad9d72c20436b6a9655f24add17a5fdad72ce5bd95c19aac55d0",
+    "server/des-work.js": "40b927873bff9f1e8a97368f6f1d9ca77f3b1e6d1d12c67c99d2889a141179f3"
+  }
+}
