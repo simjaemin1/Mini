@@ -5147,8 +5147,9 @@ function _desEnd(npc, now, why) {
   if (why === 'due') _desStat.end.due++; else { _desStat.end.intr++; _desStat.intrWhy[why] = (_desStat.intrWhy[why] || 0) + 1; }
   const dt = Math.min(now, S.until) - S.t0;
   if (S.k === 'walk') _desStat.walkMs += dt; else if (S.k === 'sleep') _desStat.sleepMs += dt; else if(S.k === 'rest') _desStat.restMs += dt; else if(S.k === 'queue') _desStat.waitMs=(_desStat.waitMs||0)+dt; else _desStat.workMs=(_desStat.workMs||0)+dt;
-  if (S.r) {
+  if (S.r && why !== 'blocked') {
     const o = S.r.posAt(Math.min(now, S.r.t1), _desTmp);
+    if(_terrBlocked0(o.x,o.y)||isBlockedByWall(o.x,o.y,npc.x,npc.y,0,null)){npc.path=null;npc.nextDecisionAt=0;npc.vx=0;npc.vy=0;return;}
     _desPut(npc, o.x, o.y);
     if (o.done) { npc.pathIndex = S.pn != null ? S.pn : (S.P ? S.P.length : 0); npc.vx = 0; npc.vy = 0; }
     else npc.pathIndex = S.pi + S.r.L[o.k + 1] - 1;   // 지금 걷는 다리의 끝 점(길 점 번호 — 다리 j 의 끝 = 길 점 pi + j − 1)
