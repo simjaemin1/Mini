@@ -1,0 +1,30 @@
+{
+  "tag": "world30tick",
+  "source": "/tmp/t1248-final-v6",
+  "args": [
+    "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+    "scripts/t577-server-run.js",
+    "30",
+    "1020"
+  ],
+  "env": {
+    "T1241_DES": "0",
+    "T1241_OUT": "/tmp/t1248-v6-results/world30tick/legacy",
+    "T1241_PROBE": "1",
+    "T1243_FARM_ON": "1",
+    "T1248_CHILD_STATUS": "/tmp/t1248-v6-results/world30tick/child.json",
+    "T1248_DUMP_DAY": "31",
+    "T745_VCLOCK": "1",
+    "VILLAGE_DAY_MS": "1440000",
+    "VILLAGE_NPC_CAP": "Infinity"
+  },
+  "budgetExpired": false,
+  "sourceSHA256": {
+    "server/zone.js": "1006029544ca5a373dc7638239db2111099a128fbd295ccb95727577e8970aac",
+    "server/villages.js": "458900474ab01ea489a7db549cc67f07c9b369db2bf0281ec51e6797f13d5113",
+    "server/des.js": "2275e08a257f0251cd50c7b66311c5b7efde9277473fa38593386477df0942cf",
+    "scripts/t1248-observe.js": "1cfe02181c4581640a1964a7491cfcbfb488f25c35d9f7887c8d7fc7d58a60a0"
+  },
+  "rc": 0,
+  "seconds": 3907.527516209986
+}
