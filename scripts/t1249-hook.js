@@ -42,8 +42,11 @@ if (OUT && process.env.T577_SEED && /zone\.js$/.test(process.argv[1] || '')) {
           let t724 = null, outLast = null;
           try { const V = require(path.join(ROOT, 'server', 'villages')); const tp = V.tickPerf ? V.tickPerf() : null; const P = tp && tp.t724;
             if (P) t724 = { pulse: P.pulse, sw: P.sw, kg: +(+P.kg).toFixed(2), bodies: P.bodies, gran: P.gran, granU: +(+P.granU).toFixed(3), dusk: P.dusk, duskU: +(+P.duskU).toFixed(3), done: P.done, none: P.none, walk: P.walk, wait: P.wait, repick: P.repick, full: P.full, picks: P.picks }; } catch (e) {}
+          let bodyMiners = 0; const acts = {};
+          try { const V = require(path.join(ROOT, 'server', 'villages')); const st = V.__labProbe._t740Probe.setup(); const pl = st && st.deps && st.deps.players;   // 인자 없이 = 읽기만
+            if (pl) for (const p of pl.values()) if (p && p.isNpc && p.simJob === 'miner') { bodyMiners++; const a = p._lifeAct || '(없음)'; acts[a] = (acts[a] || 0) + 1; } } catch (e) {}
           outLast = (world.villages || []).filter((v) => ((v.land || {}).ore || 0) > 0.15).map((v) => +((v._oreOutLast || 0)).toFixed(3));
-          fs.appendFileSync(f, JSON.stringify({ d, pop, miners, m, t724, outLast }) + '\n');
+          fs.appendFileSync(f, JSON.stringify({ d, pop, miners, m, t724, outLast, bodyMiners, acts }) + '\n');
         }
       } catch (e) { /* 계측 실패는 판을 안 막는다 */ }
       return sd.apply(this, arguments);
