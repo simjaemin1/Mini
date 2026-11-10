@@ -1,0 +1,16 @@
+{
+  "observedDays": 30,
+  "wallSecAt30": 4289.695607423782,
+  "wallMinAt30": 71.49492679039638,
+  "projected400MinFrom30": 953.2656905386183,
+  "checkpoint": {
+    "day": 30,
+    "observedUTC": 1794280080.48559,
+    "fileMtimeUTC": 1794280079.9509826,
+    "cpuSec": 110.886985,
+    "bodyCount": 1180,
+    "lateStart": false
+  },
+  "estimateOnly": true,
+  "source": "e1e65d6a"
+}
