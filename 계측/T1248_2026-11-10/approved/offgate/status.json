@@ -1,0 +1,27 @@
+{
+  "tag": "offgate",
+  "source": "/tmp/t1248-final-v6",
+  "args": [
+    "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+    "scripts/server-baseline-check.js",
+    "\uacc4\uce21/\uc11c\ubc84\uae30\uc900\uc120_2026-11-08c.json",
+    "--vclock",
+    "--plan",
+    "1020:400"
+  ],
+  "env": {
+    "T1241_DES": "0",
+    "T1241_OUT": "/tmp/t1248-v6-results/offgate/legacy",
+    "T1248_CHILD_STATUS": "/tmp/t1248-v6-results/offgate/child.json",
+    "T1248_DUMP_DAY": "31"
+  },
+  "budgetExpired": false,
+  "sourceSHA256": {
+    "server/zone.js": "1006029544ca5a373dc7638239db2111099a128fbd295ccb95727577e8970aac",
+    "server/villages.js": "458900474ab01ea489a7db549cc67f07c9b369db2bf0281ec51e6797f13d5113",
+    "server/des.js": "2275e08a257f0251cd50c7b66311c5b7efde9277473fa38593386477df0942cf",
+    "scripts/t1248-observe.js": "1cfe02181c4581640a1964a7491cfcbfb488f25c35d9f7887c8d7fc7d58a60a0"
+  },
+  "rc": 0,
+  "seconds": 1793.4312446549884
+}
