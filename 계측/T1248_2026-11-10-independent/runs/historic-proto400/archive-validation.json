@@ -1,0 +1,14 @@
+{
+  "originalStatus": {
+    "valid": true,
+    "runnerExit": 1,
+    "note": "T577 fixed 40-village assertion; subset validated independently",
+    "days": 400,
+    "seed": "1020",
+    "cpuSeconds": 1563.372635,
+    "wallSeconds": 5083.273756632
+  },
+  "independentValidation": null,
+  "files": 11,
+  "dbExcluded": true
+}

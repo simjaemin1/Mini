@@ -1,41 +1,67 @@
-# T1248 측정 재현 메모
+# T1248 V4 측정 방법
 
-기준 main 25591a58. Node v22.23.4. 라이브 시계 1440000 ms/날, 몸 상한 Infinity. 가상 시계 T745. 시드 1020.
+## 소스와 런타임
 
-현재 코드: /workspace/Mini. 예전 시제품: git 8c02124c(server,sim,scripts) + historical-ablation.patch. 당시 원본 틱·사건 판도 같은 패치 소스에서 손잡이만 끔.
+- 저장소 simjaemin1/Mini, main25591a58에서 시작. 제품 V4는5ad9d3b8의 네 게임 파일이며 이후 커밋은 관측/보고/원자료다. `v4-game-source.json`으로 구분한다.
+- Node22.23.4: `source /workspace/.toolchains/activate-mini-node.sh`. 최초 온보딩의 검증된 설치/시작 지침은 환경 초안에 저장돼 있다. Node24의 다른 기존 기준선 결과를 이 런타임 결과와 섞지 않는다.
+- 계측에는 frozen-v4의 server/sim/scripts 복사와 같은 public/node_modules를 사용했다. 재현은 같은 게임 파일 해시의 기존 체크아웃에서 가능하다. 새 Git worktree는 필요하지 않다. 긴 판 중 제품/관측 소스를 바꾸지 않는다.
+- `source.json`은 게임/기존 T577와 관측 hook/runner의 SHA256을 남긴다. 종료 시 소스 검증은 별도 파일에 둔다.
 
-실행 순서와 분기: cases.json, historic-cases.json, batch.py, historic-batch.py, scale.py 참조.
-- 기본 밭 끔: tick400 / candidate400-final / proto400 및 나머지 6개 원인 분리 판, 마을1.
-- 같은 판 반복: candidate400-replay. 끔 기존 코드: tick-old, main25591a58 복사본.
-- 밭 켬: farm-tick400 / farm-candidate400, 마을1.
-- 전체51마을 밭 켬: full-des30 / full-des100. prefix 동일성도 별도 비교.
-- 실제 부하: scale-3900-{0,1}, scale-16000-{0,1}. T577_CAND_SEEDPOP=77/314, T315_MAPBEDS=0, 밭 끔. 자연 인구 판과 구분.
-- 공식 OFF: T1241_DES=0 node scripts/server-baseline-check.js 계측/서버기준선_2026-11-08c.json --vclock --plan 1020:400. 원본 /tmp/sbc-7OXw5p, off-source.json.
+## 재현 명령
 
-환경 실행은 source /workspace/.toolchains/activate-mini-node.sh 후 수행. NODE_OPTIONS는 t1248-run.js가 t1248-hook → t745-vclock → 공식 SBC 순으로 설정한다.
+아래는 저장소 루트에서 실행한다. 출력 경로는 매번 새 디렉터리를 쓴다. 이 문서는 실행 기록의 실제 ROOT/OUT 값과 함께 읽는다.
 
-공통 관측 PROBE=1. CPU=process.cpuUsage(user+system), wall=실제 hrtime. 여러 판 동시 실행 때문에 wall 비교에는 CPU 경합이 포함된다. 몸 한 틱 계측은 결정/이동/힙의 범위만이며 전체 존 tick 값과 다르다.
+```bash
+source /workspace/.toolchains/activate-mini-node.sh
+mini_task_out=$(mktemp -d /tmp/mini-t1248.XXXXXX)
+T1248_OUT="$mini_task_out" T1241_DES=1 T1243_FARM_ON=1 T1248_CHECKPOINTS=30,100 node scripts/t1248-run.js 100 1020
+```
 
-큰 인구 tick 관측은 실제 onGameTick 콜백 전체를 감싼다. 3,900명은 첫 scanDay까지 wall 매 틱, CPU 256틱당1회. 16,000명은 실제 인구 >=기대90% 이후 300틱 예열·1,000틱 표본이며 CPU도 매 틱이다. 틱 window 종료는 의도한 SIGTERM 정상 종료로, T577 하루 완주와 구분한다. >=기대 인구90%인 샘플만 사용. 기존 마이크로타이머 포함. 1일 판은 첫 scanDay까지의 기동/첫날 구간이며 정상 연간 평균이 아니다. tick-observer3/passivity.json은 관측 켬/끔 공식 지문3일 비교.
+틱30일은 DES=0/FARM=1/인수30, 1마을400일은 VILLAGE_MAX=1/인수400, 기본 대조는 FARM=0이다. 독립 반복은 새 OUT/새 프로세스로 처음부터 실행한다. 전체51마을 판에서는 VILLAGE_MAX를 설정하지 않는다.
 
-마을1에서 T577 부모는 고정된 >=40마을 시딩 단언 때문에 exit1. 자식 종료0, JSON400일, 가상 시계 오류0, 양수 시딩을 독립 검사한다. 부모 성공으로 바꾸어 기록하지 않는다.
+runner는 VILLAGE_DAY_MS=1440000, VILLAGE_NPC_CAP=Infinity를 T577에 전달한다. T577가 Infinity 문자열을 자식 env에서 제거해 운영 무제한 기본을 적용한다. villages.js에 문자열 Infinity를 직접 넘기면 같은 뜻이 아니므로 이 정규화 경로를 사용한다. 집 행위/캐러밴은 제품 기본 켬이며 T1244의 집/캐러밴끔 시간과 직접 배속 비교하지 않는다.
 
-scale-3900-0 최초 status.valid=false는 결과 파일 이름 가정(base 대신 seedpop77) 버그다. 원본 status를 보존하고 independent-validation.json에 실제 자식 JSON/종료/시계 오류를 재검사한 결과를 남겼다. 이후 러너는 파일 접미사로 찾는다.
+공식 OFF의 종료 시계 로그는 stdout 파이프 끝부분 절단으로 확보되지 않아 오류 수를0으로 간주하지 않는다. checker0/400일JSON/1:1일치를 확인한 게이트이며 다른 계측 hook의 clock0 증거와 구분한다. 공식 OFF는 다음 별도 게이트다(빠른 기준선 시계이며 라이브 연간 비용 아님).
 
-중단/실패 초안: superseded-candidate.json, superseded-v1-processes.json, superseded-v1/ 및 smoke*. 최종 증명에는 사용하지 않는다. 중간 v1은 공통 crop dwell 키 문제와 잔여 순회를 고친 뒤 다시 시작했다. 원본 로그와 소스 사본의 계보를 남긴다.
+```bash
+T1241_DES=0 T1243_FARM_ON=0 node scripts/server-baseline-check.js 계측/서버기준선_2026-11-08c.json --vclock --plan 1020:400
+```
 
-전체 DB 파일은 저장소에 넣지 않는다. gzip은 원본 JSON/JSONL/로그를 압축할 뿐 지문값을 고치지 않는다. SHA256SUMS로 보관 파일을 확인한다.
+관련 하네스: `node scripts/test-t1241-des.js`, `node scripts/test-move-soa.js`, `node scripts/test-t1248-nopoll.js`. 실제 V4 결과는58/0,286/0,3/0. 미끼의 자식1은 의도한 검출이며 정상 검사의 실패를 숨긴 것이 아니다.
 
-16,000명 제어기 scale16000.py는 명시적 T1248_BENCH_TICKS=1000, WARMUP=300. 기존 scale.py 제어기만 종료했고 3,900명 자식은 계속 완주했다(scale-controller-retired.json). tick-window-check는 실제 8명·1000 CPU/wall 표본·자식0·시계오류0, 부모 T5771(의도한 조기 종료)을 확인했다.
+## 완주와 중간 관측
 
-원격 동일 카드 가지 기존 작업을 보존했다. 2026-11-10 04:46 UTC a47e08a5가 이미 원격 batch/des-work-1110에 있어 최초 푸시가 거절됐다. 이번 코드는 batch/des-work-1110-independent/3b852a5e로 분리 푸시했으며 기존 코드와 증명을 혼용하지 않는다.
+- 실제400/30/100일: 자식0·요청 일수 이상 결과JSON·가상 시계오류0·양수 시딩을 모두 확인한다.
+- 1마을 진단은 T577의 고정40마을 단언 때문에 부모1을 그대로 남기고 위 조건을 독립 검증한다. 부모1을0으로 고쳐 쓰지 않는다.
+- 사건30일은 실제100일 판의 immutable checkpoint30이다. 별도30일 자식 완주가 아니다. 100일 종료 검증이 뒤따른다.
+- V3의 시작 전 취소 세 판은 skip77/validfalse다. V4의 새 완주 판으로 대체했으며 통과 수에 넣지 않는다.
 
-최종 v3(998fe42d): 남은 밀기/비GC낚시/스냅샷/입력 순회 제거, 동일 몸 재등록 제외, 생존/열좌표 모드 전체 틱 폴백. v3-game-source.json으로 제품고정. v3-full-des30/100, v3-full-tick30, v3-{farm-}tick400/candidate400 및 farm-replay400, v3-scale4판, v3-off를 새로 실행한다. v2 전체세계12/7일은 중단해 최종30/100증명에서 제외했다.
-제어기만 종료하려던 v2 handoff는 실행세션 정리로 자식도 종료됐다. controller-handoff-correction.json 참조. tick400335/candidate295/proto355 및 scale3900DES 미완료는 완주로 세지 않는다. 진행 중 제어기는 더 이상 종료하지 않고 최종소스 대조를 새로 수행한다.
-새 부하4판은 전부 실제51마을, 초기77/314명씩, 침상제한끔, 밭끔, 300예열+1000틱 CPU/wall 동시표본으로 통일했다. 타이머는 측정함수 전후의 process CPU와 hrtime wall이며 소유수 집계는 함수시간 밖이다. 이 부하판의 body_count 집계를 생산 경로의 몸 순회0 증명으로 사용하지 않는다(별도 실제100틱 미방문/미끼 하네스3/0).
+## 실제 N 전체 틱 비용
 
-2026-11-10 06:16:30 UTC: 네 V3부하 판이 모두 완료된 뒤,4 CPU 할당량을 위해 100일판 전체 스레드를CPU0으로, 다른 이번 작업의 제어기/엔진을CPU1,2,3으로 배정했다. 당시 세계판은각8일이었다. affinity-transition.json 및 실제100일엔진11스레드CPU0 확인 affinity-verification.json 참조. 게임/가상시계/소스는 바꾸지 않았다. 30일·100일의wall은 서로 다른 자원 조건이고,100일 자체도 전/후 혼합 조건이다. CPU와wall을 나누고400일 외삽은실측과구분한다. unreadable /proc목록은 대상이 아닌 종료/다른 프로세스의 읽기 실패이며 실제100일엔진은 별도 확인했다.
+51마을·FARM0·T315_MAPBEDS0·인위 시딩77/314명으로 실제3927/16014명을 만든다. T1248_TICK_BENCH=1, EXPECT_N=3900/16000, BENCH_WARMUP=300, BENCH_TICKS=1000, T577_CAND_SEEDPOP=77/314, 인수1이다.
 
-## V4 current source and execution lifetime
-V4 changes only npcs.delete body index retention; original AI-set deletion is not players body deletion. Before/after role fixtures and 58/0,286/0,3/0 logs are preserved. Queue metrics are wall instrumentation, process user+system is CPU. Thirty-day DES observation is an immutable checkpoint inside one actual100-day run, not an independent completed30-day child. Checkpoints cannot replace completed100-day exit validation. Old V3 queued FARM cases explicitly skip77/validfalse and are replaced by V4.
-All old active sessions disappeared around07:11UTC, cause unestablished. session-loss-v4.json records exact partial daily counts. Detached probe died; fully awaited foreground probe completed. New orchestration keeps the outer call alive until every child finishes. No partial run is spliced or counted complete. V4world100 CPU0; remaining V4 measurements share CPUs1,2,3. A valid N3927 OFF1000tick fixture completed before interruption and remains usable; no unfinished V4 case is reused.
+실제 onGameTick 콜백 전후의 process CPU와 hrtime wall을 매 틱 읽는다. 관측 소유 몸 수는 시간 창 뒤에서 세고, 표본의 실제 몸 수·소유 수·1000 CPU/wall 표본·자식0/시계오류0을 확인한다. 기존 PROBE1 비용 포함이다. 창 완료 SIGTERM은 정상 fixture 종료이며 T577 하루 완주로 세지 않는다. `benchmarkFixtureCompleted`와 `fullDaysCompleted`를 분리한다.
+
+최종 표는 `v4-controlled-scale-*`: 나머지 비핵심 판 모두 종료 후 CPU1–3에서 네 창을 순서대로 잰다. 전체100일 판은 CPU0에서 계속될 수 있고 각 시작 조건을 기록한다. 혼합 부하 `v4-scale-*` 및 V3 비용은 원자료로 보존하지만 최종 표에 섞지 않는다. 공유 캐시/메모리 영향은 남으므로 CPU와 wall을 함께 제시한다. 빈 큐 커널 벤치는 실제 전체 존 비용의 대체가 아니다.
+
+## 시간·부하·자리
+
+전체100일은 시작부터 모든 스레드 CPU0, 다른 초기 판은CPU1–3에서 공유 실행했다. 초반30일의 경과64.387분/400일 외삽858.488분은 이 조건의 실제 관측/단순 외삽이다. 400일 실측이 아니며,100일 이후 인구·작업 비용 변화는 예측에 없다. 최종100일 외삽도 같은 한계를 적는다.
+
+CPU는 zone process user+system(부모·중앙stub 제외). meta의 wall은 preload 시작부터 종료까지 real hrtime이다. nsStep/nsMove/nsQueue는 벽시계 구간이며 CPU 비율로 빼거나 나누지 않는다. V2 inspector self 표본은 첫3일/기동을 포함한 이전 소스 진단이다.
+
+body trace의 첫 d=-1은 기동+첫 부분 날이며 기동만의 비용이 아니다. 이후 d=scanDay-1이고 d=0행은 없다. 누적/증분 구간을 섞지 않는다. 자리 CP는 원래 T1241의10일마다 현지 한낮, 안정 신원,32px=1m,좌표0.01px 기록이다. 실제 CP/짝 수·가운데/p90/최대·신원누락과 시점별 가운데를 함께 제시한다.
+
+## 공식 동일성과 원인
+
+SBC의 econ 날/전체12자리 지문·마을 곳간/사람/집/금고4자리씩을 그대로 쓴다. 일치 기준은 바꾸지 않는다. 정본 R6 원문에서 첫 마을/필드/값을 함께 저장한다. 원시 개간칸/작물 장부는 공식 네 칸과 별도 관측이다. 밭끔 공식400/400과 개간235/222가 공존하는 이유다.
+
+과거−5.1%는8c02124c의 고정 server/sim/scripts와 세 실험 갈래만 넣은 historical 소스에서 재현한다. 농부 걸음 제외는 보조 대조. 첫 결정 즉시는 아침 창 자체 제거가 아니며44px은 건축에도 영향을 준다. 추가 아침 창 대조는 같은historical-window 소스의 DAWN1 대조와 DAWN1+NATIVE_MORNING1을 비교한다. 정본0.137 문턱의 사건 기한을 정본TICK_MS 하나 앞당기며 실제 선택된 windowCuts/windowCutMs를 남긴다. 다른 판과 큰 인구 순차 계측이 끝난 뒤 실행한다. 전체 아침 창 제거와 구분한다. 농부 전용 후속 한 판은 해당 술어에simJob===farmer 한 줄만 더한 별도 소스이며, 공통 첫결정 대조와 비교하고 소스가 동일하다고 보지 않는다. 추가 반경 대조는 개간 출근만 대상으로 원래Route를 자르지 않고, 위치별빠르기/시각과 기존nextDecisionAt을 써44px에서 가능한 첫 결정에 깨운다. 모든작업 경로를 자른 기존STOP44와 구분한다. 기한 조정 카운터들은 최소 토막 수락 전 선택 수여서 실제 새 사건 수와 다르다. 준비 몸 순서는 별도 frozen-v2 쌍으로 권한 배정 전체의 인과를 확정하지 않는다. 다른 소스의 수치를 현재 V4 성공으로 쓰지 않는다.
+
+## 증거의 한계와 보존
+
+FIFO는 기존 선점 뒤에 연결했고 정본 권한/수량 예약 전체를 교체하지 않았다.30일 실제 시설 대기삽입0을 커널 경쟁 fixture와 구분한다. 작물은 시작 효과+후속 체류 종료다. 중앙 미방문 fixture0은 화살/유령 동기화 등 남은 전체 players 열거를 포함한 전역0의 증명이 아니다. 실제 native 재시작 바인딩 진단은 자연8/8/번호변경0/8로 요구 실패를 재현했다(네 자식0/clock0, 하네스1). SQLite 큐+몸 한 행 저장은 다운타임/세계 원자 재시작 전체 검증이 아니다. PID fixture overlay를 포함한 코드를 기록했고 장기 판/게임 파일은 그대로다.
+
+V1/V2/V3 대체 판·컨트롤러 종료 시 자식이 남는다는 틀린 추정·07:11 세션 소실의 실제 부분 날수와 종료 메타 부재를 보존했다. 중단 판을 이어 붙이거나 완주로 세지 않았다. 새 foreground 호출을 끝까지 await해 자식이 유지되는 것을 확인한 후 처음부터 재실행했다.
+
+JSON/JSONL/log는 gzip mtime0으로 보존하고 DB는 제외한다. 유효 완주/fixture 폴더에는 archive-validation marker, 부분 판에는 validfalse interruption marker를 둔다. SHA256SUMS는 커밋에 포함한 파일만 대상으로 만들고 확인한다. 소스/측정 조건/타이밍과 원문을 보존하며 이전 실패를 최종 성공으로 덮지 않는다.

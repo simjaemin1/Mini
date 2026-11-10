@@ -1,0 +1,15 @@
+{
+  "originalStatus": {
+    "valid": true,
+    "fullDaysCompleted": false,
+    "benchmarkFixtureCompleted": true,
+    "runnerExit": 1,
+    "note": "Intentional tick-window fixture shutdown; not a completed T577 day",
+    "days": 1,
+    "seed": "1020",
+    "cpuSeconds": 229.328749,
+    "wallSeconds": 212.744481593
+  },
+  "files": 10,
+  "dbExcluded": true
+}
