@@ -16173,12 +16173,23 @@ const SMELT_PLACER = { iron: 0.9, gold: 0.1 };
 const ORE_MIX_EFF_ON = !(typeof process !== 'undefined' && process.env && process.env.ORE_MIX_EFF === '0');
 function oreMixOf(v) {
   if(T1188_ORE_SPLIT){const m=OreGoods.heldMix(v?.storage);return Object.keys(m).length?m:oreSourceMix(v);}
+  return _oreMapMix(v);
+}
+// 지도 · 수입이 아는 원석 조성(유효 조성 → 땅 조성 · 없으면 null) — 원석 쪼개기 전 `oreMixOf` 의 몸 그대로(T1249 가 나눠 냄 · 사본 0).
+//   null = 이 마을의 원석이 무엇인지 모른다(지도 정보 없는 호출부 — 랩 · CLI) ⇒ 쪼개기 전엔 녹이지 않았다(`_trySmelt` · `smeltTarget` 첫 줄).
+function _oreMapMix(v) {
   if (ORE_MIX_EFF_ON) {
     const e = v && v._oreMixEff;
     if (e && typeof e === 'object') { for (const k in e) if (e[k] > 0) return e; }
   }
   return (v && v.land && v.land.oreMix) || null;
 }
+// ★★[T1249 2026-11-10 · 손잡이 `T1249_ORE_FIX` — 끔 기본 · 켬 후보] 원석 쪼개기(T1188)는 조성을 모르는 마을(`_oreMapMix` = null)의 원석을
+//   광종 풀(`OreGoods.POOL` — 은 · 납 · 금 · 흑요석 …)로 나눠 곧장 녹였다. 쪼개기 전엔 그런 마을은 녹이지 않았다 ⇒ 랩 광산촌이 첫날부터
+//   대장장이 6 명을 뽑고(제련 문) 그 숯이 목재를 먹어 목재값 ≈ 700 · 나무꾼 한계가치가 광부의 100 배 — 광부가 안 선다(보고 T1249 §1).
+//   켬 = 쪼개기 판에서도 조성을 모르는 마을은 안 녹인다(쪼개기 전 규칙 그대로 · 새 수 0). 끔 = 종전.
+function t1249On() { const x = _allocKnob('T1249_ORE_FIX'); return x !== null && x !== '' && x !== '0'; }
+function _t1249NoSmelt(v) { return T1188_ORE_SPLIT && t1249On() && !_oreMapMix(v); }
 // 들어온 원석 addQty(조성 srcMix)를 곳간의 기존 원석 haveQty 에 섞는다.
 //   srcMix 가 없거나 비면 폴드하지 않는다(모르는 건 섞을 수 없다 — 기존 조성 유지).
 function foldOreMix(v, haveQty, addQty, srcMix) {
@@ -16289,6 +16300,7 @@ function _tryTypedSmelt(v,laborBase) {
   v._smeltedToday=(v._smeltedToday||0)+used;v._smeltedTotal=(v._smeltedTotal||0)+used;return used;
 }
 function _trySmelt(v, laborBase) {
+  if (_t1249NoSmelt(v)) { migrateOre(v); return 0; }   // ★[T1249] 켬 = 조성 모르는 마을은 안 녹인다
   if(T1188_ORE_SPLIT){migrateOre(v);return _tryTypedSmelt(v,laborBase);}
   const om = oreMixOf(v);                              // ★유효 조성 우선(수입 원석 포함) — 없으면 땅 조성
   if (!om) return 0;                                   // 지도 정보 없는 호출부(랩·CLI)는 옛 경로
@@ -18440,6 +18452,7 @@ function derivedInputTarget(v, r) {
   return (best.take.copper || _MELT_TOTAL) * COPPER_DERIV_DAYS;
 }
 function smeltTarget(v) {
+  if (_t1249NoSmelt(v)) { migrateOre(v); return 0; }   // ★[T1249] 켬 = 조성 모르는 마을은 안 녹인다(위 머리 주석)
   if(T1188_ORE_SPLIT){migrateOre(v);const a=_typedSmeltCandidates(v),have=a.reduce((n,x)=>n+x.qty,0);if(have<SMELT_MIN_ORE)return 0;
     const value=a.reduce((n,x)=>n+x.qty*(BASE_VALUE[x.id]||1),0)/have;if(!(SMELT_YIELD*value-(BASE_VALUE.ore||1)>0))return 0;
     const per=0.45*SMELT_PER_LABOR,need=Math.max(1,Math.round(have/(per*30)));return Math.min(Math.max(1,Math.ceil((v.npcs.length||1)*SMELT_LABOR_CAP_PC)),need);
