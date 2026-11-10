@@ -1,0 +1,11 @@
+{
+  "sourceModuleMatchesActualEntry": true,
+  "actualDay": 0,
+  "actualVillageCount": 1,
+  "farmObserved": 87,
+  "corners": {
+    "pass": 6,
+    "fail": 0
+  },
+  "note": "Read-only observer QA fixture; not3day completion. Legacy400 early terminal files were invalid and excluded; canonical daily observer data used for their final farm235."
+}

@@ -1,0 +1,4 @@
+PASS 100 real ticks: held actor never enters eight central per-body helpers {"ticks":100,"visits":{},"humanMapAddDelete":true,"pass":true,"originalMaps":true,"heap":true}
+PASS full spatial polling bait is caught {"ticks":100,"visits":{"_inputTOStep":100},"humanMapAddDelete":true,"pass":false,"originalMaps":true,"heap":true}
+RESULT 2 passed / 0 failed
+ARTIFACTS /tmp/t1248-nopoll-hRDzrG

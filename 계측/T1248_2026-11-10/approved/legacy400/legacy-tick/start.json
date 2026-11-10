@@ -1,0 +1,6 @@
+{
+  "wrapperPID": 612544,
+  "wrapperStartUTC": 1794280163.1165454,
+  "method": "/proc/PID/stat starttime / CLK_TCK + (UTC-uptime)",
+  "observedUTC": 1794280550.135604
+}
