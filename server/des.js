@@ -81,6 +81,24 @@ class Route {
     }
     this.X = X; this.Y = Y; this.T = T; this.L = LG; this.t0 = t0; this.t1 = t; this.len = len; this._k = 1;
   }
+  // 셀 진입만 사건으로 만든다. 같은 셀 안의 30Hz 표본은 만들지 않는다.
+  cellEntries(size = 32) {
+    const out = []; let previous = null;
+    const add = (time, x, y) => { const cx = (x / size) | 0, cy = (y / size) | 0, key = cx + ',' + cy;
+      if (key !== previous) { out.push({ time, cx, cy, x: (cx + (cx < 0 ? -0.5 : 0.5)) * size, y: (cy + (cy < 0 ? -0.5 : 0.5)) * size }); previous = key; } };
+    for (let i = 1; i < this.T.length; i++) {
+      const ax = this.X[i - 1], ay = this.Y[i - 1], dx = this.X[i] - ax, dy = this.Y[i] - ay, cuts = [0, 1];
+      for (const [a, d] of [[ax, dx], [ay, dy]]) if (d) {
+        const lo = Math.ceil(Math.min(a, a + d) / size), hi = Math.floor(Math.max(a, a + d) / size);
+        for (let k = lo; k <= hi; k++) { const f = (k * size - a) / d; if (f > 0 && f < 1) cuts.push(f); }
+      }
+      cuts.sort((a,b) => a-b);
+      for (let k = 0; k < cuts.length - 1; k++) { const f = (cuts[k] + cuts[k + 1]) / 2;
+        add(this.T[i - 1] + cuts[k] * (this.T[i] - this.T[i - 1]), ax + dx * f, ay + dy * f); }
+    }
+    if (this.T.length) add(this.t1, this.X[this.X.length - 1], this.Y[this.Y.length - 1]);
+    return out;
+  }
   // t 때 자리 → out{x, y, k(지난 조각 끝 번호)} — 시각이 오르기만 하면 커서가 앞으로만 간다(O(1) 몫)
   posAt(t, out) {
     const X = this.X, Y = this.Y, T = this.T, n = T.length;

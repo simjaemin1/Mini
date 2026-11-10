@@ -16462,6 +16462,58 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   const _lms = Date.now() - _lt0;
   if (_lms > _lifeMax) { _lifeMax = _lms; _lifeMaxName = vil.name; }
 }
+// T1248: 완료 효과는 기존 생활층에 둔다. 같은 문턱의 읽기만 노출한다.
+function t1248WorkPlan(npc, now) {
+  if (process.env.T1241_DES !== '1' || ['취침', '휴식', '귀가', '대피'].includes(npc._lifeAct)) return null;
+  const vil = state.byDbId && state.byDbId.get(npc.simVillageId);
+  if (!vil) return null;
+  const key = String(vil.dbId), t = npc._lifeTask, dayMs = state.dayMs || 600000;
+  if (t && (npc._lifeAct === '개간' || npc._lifeAct === '건축') && Math.hypot(npc.x - t.px, npc.y - t.py) <= 44) {
+    const target = t.k === 'clear' ? (_t1221On() ? _t1221ClearS(vil, t.cx + ',' + t.cy) * dayMs / 1440 : dayMs / LIFE_CLEAR_PDAY) : dayMs / LIFE_STAGE_PDAY;
+    return { kind: t.k, progress: t.prog || 0, target, rate: 1, key: t.k === 'clear' ? 'clear:' + key + ':' + t.cx + ',' + t.cy : 'crew:' + key + ':build', capacity: t.k === 'clear' ? 1 : LIFE_CREW,
+      cell: t.k === 'clear' ? t.cx + ',' + t.cy : null, signature: t.k + ':' + t.cx + ':' + t.cy + ':' + !!t.ps };
+  }
+  const W = npc._t1196W;
+  if (W && W.at) {
+    const duration = W.ph === 'draw' ? G_DRAWW : W.ph === 'back' ? G_STOREW : _t1196CraftMs(T1196_KIND[npc.simJob]);
+    if (duration > 0) return { kind: 'artisan', progress: Math.max(0, now - W.at), target: Math.max(duration, now - W.at), rate: 1, key: 'artisan:' + key + ':' + npc._t1196J, capacity: 1, signature: W.ph + ':' + npc._t1196J };
+  }
+  const g = npc._granTask;
+  if (g && g.at) { const duration = g.draw ? G_DRAWW : G_STOREW;
+    return { kind: 'transport', progress: Math.max(0, now - g.at), target: Math.max(duration, now - g.at), rate: 1, key: 'granary:' + key + ':' + g.cx + ',' + g.cy, capacity: 1, signature: g.draw + ':' + g.cx + ',' + g.cy };
+  }
+  if (npc._t724T && npc._t724Site && npc._lifeAct === '채광') {
+    const duration = require('./specialty').MINE_SWING_MS, elapsed = Math.max(0, now - npc._t724T);
+    return { kind: 'ore', progress: elapsed, target: Math.max(duration, elapsed), rate: 1, signature: npc._t724Site.cx + ',' + npc._t724Site.cy };
+  }
+  if (npc._jobT > now && npc.targetX != null && Math.hypot(npc.x - npc.targetX, npc.y - npc.targetY) <= 44) {
+    return { kind: npc.simJob === 'farmer' ? 'crop' : 'job', progress: 0, target: npc._jobT - now, rate: 1,
+      key: npc.simJob === 'farmer' ? 'crop:' + key + ':' + (npc._farmK || npc._t1248FarmK || ('body:' + npc.pid)) : null, capacity: 1,
+      signature: String(npc._jobT), precommitted: true };
+  }
+  const leg = npc._t400Leg;
+  if (leg && leg.at) { const elapsed = Math.max(0, now - leg.at);
+    return { kind: 'crew', progress: elapsed, target: Math.max(G_DRAWW, elapsed), rate: 1, key: 'crew:' + key + ':house', capacity: LIFE_CREW, signature: leg.to };
+  }
+  return null;
+}
+function t1248SettleWork(npc, plan, now, start) {
+  if (process.env.T1241_DES !== '1' || !plan) return;
+  if (plan.waiting) {
+    const elapsed = Math.max(0, now - start);
+    if (npc._lifeTask) npc._workT = now;
+    if (plan.kind === 'artisan' && npc._t1196W && npc._t1196W.at) npc._t1196W.at += elapsed;
+    if (plan.kind === 'transport' && npc._granTask && npc._granTask.at) npc._granTask.at += elapsed;
+    if (plan.kind === 'crew' && npc._t400Leg && npc._t400Leg.at) npc._t400Leg.at += elapsed;
+    if (plan.kind === 'crop') npc._jobT += elapsed;
+    return;
+  }
+  if (!['clear', 'build'].includes(plan.kind)) return;
+  const t = npc._lifeTask;
+  if (!t || plan.signature !== t.k + ':' + t.cx + ':' + t.cy + ':' + !!t.ps) return;
+  t.prog = Math.min(plan.target, plan.progress + Math.max(0, now - start) * plan.rate);
+  npc._workT = now; // 다음 정본 호출이 같은 시간을 두 번 더하지 않는다.
+}
 function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도주 뒤·야간 귀가 게이트 앞) — true=일과 소유(레거시 차단)
   if (!LIFE_ON) return false;
   if (T698_BOUNDARY_SLICE && state.tickJobs) return true;   // ★[T698] 마감 중 마을 몸 결정 얼림(위 손잡이 주석 ①) — 이 결정은 쉰다(일과 소유 · 레거시도 막는다)
@@ -16602,7 +16654,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         const _fd = _farmDay(vil, day), _L = _t1221On(), _c = _L ? _t1221Cost(_cellTask(vil, k, _fd), vil, k) : 0;   // ★[T1221 ⓪] 켬 = 그 일의 고증 시간(하기 전에 잰다)
         const _ok = _lifeDoTask(vil, npc, k, _fd);
         if (_ok) _t1212Note(npc, _L ? _c : 1);   // ★[T1212 ①] 밭 날 · ② 몸이 한 일(★T1221 켬 = 초)
-        vil._cropClaim.delete(k); npc._farmK = null;
+        if (process.env.T1241_DES === '1') npc._t1248FarmK = k; vil._cropClaim.delete(k); npc._farmK = null;
         npc._jobT = (_L && _ok) ? now + _c * _t1243MinMs() : now + 9000 + (_pidHash(npc.pid) % 7) * 1500;   // ★[T1221] 켬 = 일 시간만큼 그 칸에 머문다
         if (_L && _ok) _t1221Stat.bodyS += _c;
         // ★[곳간②] 짐이 상한에 닿으면 곳간으로 운반(자리 없으면 false → 기존 흐름 그대로)
@@ -18332,6 +18384,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
+  t1248WorkPlan, t1248SettleWork, t1248NeedsGauge: () => !!_lifeEcon().T1197_MEAL_BODY,
   T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
   init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
