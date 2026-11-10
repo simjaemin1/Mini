@@ -111,12 +111,13 @@ if (!process.argv.includes('--quick')) {
   const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 't1241-'));
   const run = (mode) => {
     const env = Object.assign({}, process.env, {
-      NODE_OPTIONS: `--require ${path.join(ROOT, 'scripts', 't1241-hook.js')} --require ${path.join(ROOT, 'scripts', 't745-vclock.js')}`,
-      T745_VCLOCK: '1', T1241_PROBE: '1', T1241_OUT: path.join(tmp, mode), T1241_DES: mode === 'des' ? '1' : '0',
+      NODE_OPTIONS: `--require ${path.join(ROOT, 'scripts', 't1248-child-status.js')} --require ${path.join(ROOT, 'scripts', 't1241-hook.js')} --require ${path.join(ROOT, 'scripts', 't745-vclock.js')}`,
+      T1248_CHILD_STATUS:path.join(tmp,mode+'.child.json'), T745_VCLOCK: '1', T1241_PROBE: '1', T1241_OUT: path.join(tmp, mode), T1241_DES: mode === 'des' ? '1' : '0',
       VILLAGE_MAX: '1', VILLAGE_DAY_MS: '1440000', VILLAGE_NPC_CAP: 'Infinity', T577_DIR: path.join(tmp, 'runs-' + mode), T577_PAR: '1' });
     const child=spawnSync(process.execPath, [path.join(ROOT, 'scripts', 't577-server-run.js'), '3', '1020'], { env, cwd: ROOT, stdio: 'ignore', timeout: 900000 });
-    ok(child.status===0, mode+' 실제 서버 정상 종료', String(child.status));
-    if(child.status!==0)return[];
+    let cs=null;try{cs=JSON.parse(fs.readFileSync(env.T1248_CHILD_STATUS,'utf8'));}catch(e){}
+    ok(cs&&cs.code===0&&!cs.signal, mode+' 실제 서버 정상 종료(일반40마을 검사는 별도)', JSON.stringify({wrapper:child.status,zone:cs}));
+    if(!cs||cs.code!==0||cs.signal)return[];
     try { return fs.readFileSync(path.join(tmp, `${mode}.1020.jsonl`), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((o) => o.d != null && o.d >= 0); } catch (e) { return []; }
   };
   const A = run('tick'), B = run('des');
