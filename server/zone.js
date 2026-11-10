@@ -5299,7 +5299,7 @@ function _desRestore(now) {
     if(p.body)for(const key of Object.keys(p.body))if(key.endsWith('Until')&&p.body[key]>0)p.body[key]+=shift;
     if(a.position)_desPut(p,a.position.x,a.position.y);
     SimVillages.desRestoreWork(p,a.workState,now);
-    if(!ownerRestored(p,a.id))p._desRestoreUnsafe=true;
+    if(!ownerRestored(p,a.id)||(S&&S.r&&!a.position))p._desRestoreUnsafe=true;
     if(S){const policy=_DES_BODY.survivalPlan(p,now,isPositionActive(p.x,p.y),_desSurvivalServices);if(!policy.ok||(S.r&&!a.position)||!ownerRestored(p,a.id)){p._des=null;_desStat.fallbackRestore=(_desStat.fallbackRestore||0)+1;continue;}if(!S.survival)S.survival=policy;if(!S.survival.ok||!_desSpace.park(p,S)){p._des=null;_desStat.fallbackRestore=(_desStat.fallbackRestore||0)+1;continue;}p._des=S;_desRuntime.park(p.pid,(a.wakeAt!=null?a.wakeAt+shift:S.until),{kind:S.k},a.orderId??p._sh??p.pid);_desTick.delete(p.pid);_desMovers.delete(p.pid);}
   }
   for(const x of s.facilities||[]){const f=_DES.Facility.restore({...x,busy:x.busy.filter(id=>old.has(id)).map(id=>old.get(id)),q:x.q.filter(e=>old.has(e.who)).map(e=>({...e,who:old.get(e.who)}))},shift);_desFacilities.set(f.name,f);while(f.busy.size<f.cap&&f.q.length){const e=f.q.shift();f.busy.add(e.who);f.served++;_desWake(e.who,now,'resource');}for(const id of [...f.busy,...f.q.map(e=>e.who)]){let a=_desLeases.get(id);if(!a){a=new Set();_desLeases.set(id,a);}a.add(f.name);}}

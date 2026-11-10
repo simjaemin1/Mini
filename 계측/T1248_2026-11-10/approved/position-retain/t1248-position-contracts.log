@@ -1,0 +1,10 @@
+PASS space: moving held body is found by real near query at posAt(now), including bait
+PASS space: separation finds the moving held body as a fixed neighbor; removing index is caught
+PASS survival: canonical whole-day NPC values equal ordinary ticks; removing catch-up is caught
+PASS survival: nonzero individual metabolism falls back to ticks, preserving all four axes
+PASS save: mid-walk snapshot restores exact position, survival, FIFO and next event; omitted position bait fails
+ZONE exact actual child=0; fixture stops after contract checks; generic wrapper=1
+PASS individual-survival body stays in both tick maps; disabling fallback is caught
+ZONE nonzero actual child=0; fixture stops after contract checks; generic wrapper=1
+RESULT 6 passed / 0 failed
+ARTIFACTS /tmp/t1248-contracts-5qAnel

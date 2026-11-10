@@ -19,7 +19,7 @@ for(const [label,db,code] of [['resume',s.db,0],['missing-position-bait',bait,1]
  if(label==='missing-owner-bait')e.T1248_STORAGE_DISABLE_REKEY=String(s.artisanJob);
  const r=run([path.join(root,'server/zone.js')],e,label),proof=JSON.parse(fs.readFileSync(e.T577_OUT+'.storage.json'));
  assert.equal(r.status,code,JSON.stringify(proof));assert.equal(proof.pass,code===0,JSON.stringify(proof));
- if(label==='missing-position-bait')assert.match(proof.error,/walking event restored|saved walking position/);
+ if(label==='missing-position-bait'){assert.match(proof.error,/walking event restored|saved walking position/);assert.deepEqual(JSON.parse(fs.readFileSync(e.T577_OUT+'.fallback.json')),{held:false,tick:true,mover:true,unsafe:true});}
  if(label==='missing-owner-bait'){assert.match(proof.error,/artisan event restored/);const links=JSON.parse(fs.readFileSync(e.T577_OUT+'.links.json'));assert.equal(links.artisanHeld,false);assert.equal(links.artisanTick,true);assert.equal(links.artisanMover,true);assert.notEqual(links.jobPid,links.newArtisanPid);}
  console.log('PASS '+label+': actual new zone process='+code+(code?' (expected invariant failure)':''));
 }

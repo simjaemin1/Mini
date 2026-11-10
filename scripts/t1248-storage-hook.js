@@ -32,7 +32,7 @@ global.__t1241Probe=function(now,players){
    fs.writeFileSync(file,JSON.stringify({now:saveAt,day:state.world.day,actor:a,remaining:a.wakeAt-saveAt,rows:rows.length,db:process.env.DB_PATH,waiter:snap.actors.find(a=>a.identity===String(waiter._sh)),worker:workRow,artisan:snap.actors.find(a=>a.identity===String(artisan._sh)),artisanJob:artisanJob.id,walkingJob:walkingJob.id,facility:snap.facilities.find(f=>f.name===key)}));
   }else{
    const saved=JSON.parse(fs.readFileSync(file)),a=saved.actor,q=[...players.values()].find(q=>String(q._sh)===a.identity);
-   assert(q,'stable identity respawned');assert.notEqual(q.pid,a.id,'fixture really remapped runtime pid');assert(q._des&&q._des.k==='walk','walking event restored');
+   assert(q,'stable identity respawned');fs.writeFileSync(process.env.T577_OUT+'.fallback.json',JSON.stringify({held:!!q._des,tick:F.tick.has(q.pid),mover:F.movers.has(q.pid),unsafe:!!q._desRestoreUnsafe}));assert.notEqual(q.pid,a.id,'fixture really remapped runtime pid');assert(q._des&&q._des.k==='walk','walking event restored');
    assert.equal(q.x,a.position.x,'saved walking position x');assert.equal(q.y,a.position.y,'saved walking position y');
    assert.equal(F.heap.actors.get(q.pid).at-now,saved.remaining);
    assert.equal(F.heap.actors.get(q.pid).order,a.orderId);
