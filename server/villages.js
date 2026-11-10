@@ -14953,6 +14953,7 @@ function _t1181Step(vil,npc,now,awake) {
   if(npc._t1181Returns?.length&&!(npc._t1181Haul?.n>0))npc._t1181Haul={...npc._t1181Returns.shift(),returning:true,at:null};
   const t=_t1181Task(vil,npc);if(!t&&!npc._t1181Haul)return false;
   if(t&&!npc._t1181Haul)_lifeDropTask(vil,npc);
+  if(t&&_desHost&&npc._desCrewKey&&npc._desCrewKey!==_desResource(vil,'crew',t.key)){_desHost.release(npc,npc._desCrewKey);npc._desCrewKey=null;}
   if(t&&!_desAcquire(vil,npc,'crew',t.key,LIFE_CREW,now))return true;
   if(!t&&_desHost&&npc._desCrewKey){_desHost.release(npc,npc._desCrewKey);npc._desCrewKey=null;}
   if(t&&_desHost)npc._desCrewKey=_desResource(vil,'crew',t.key);
@@ -16553,7 +16554,6 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (t.k === 'build' && !(t.ps ? vil._psite : vil._site)) { npc._lifeTask = null; return false; }   // 완공/소멸 → 해산
     if (t.k === 'build' && !t.ps && _lifeEcon().T400_BUILD_ACT) { _lifeDropTask(vil, npc); return true; }   // ★[T400] 마을 집터 시공은 하루 장부가 진다(몸의 진척 0 — 이중 진척 금지)
     if (t.k === 'clear' && !_desAcquire(vil, npc, 'clear', t.cx + ',' + t.cy, 1, now)) return true;
-    if (t.k === 'clear' && !_desAcquire(vil, npc, 'clear', t.cx + ',' + t.cy, 1, now)) return true;
     const d = Math.hypot(npc.x - t.px, npc.y - t.py);
     if (d > 44) { npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py; npc.gatherTarget = null; npc._workT = now; _lifeAct(npc, '출근'); return true; }
     const el = _desHost && npc._desWorkElapsed != null ? npc._desWorkElapsed : Math.min(3000, now - (npc._workT || now)); if (_desHost) delete npc._desWorkElapsed; npc._workT = now;   // 현장 도착 — 실시간 노동 누적(틱 간격 캡)
@@ -16991,13 +16991,13 @@ function _t1196Spot(vil, npc, job) {
 function _t1196Step(vil, npc, now, job) {
   if (!_t1196On(vil)) return null;
   const E = _lifeEcon(), e = vil.econ, Q = e._t1196Q;
-  if (!Q || !Q.length) { if (npc._t1196J != null) { npc._t1196J = null; npc._t1196W = null; } return null; }
+  if (!Q || !Q.length) { _desRelease(vil, npc, 'artisan', job); if (npc._t1196J != null) { npc._t1196J = null; npc._t1196W = null; } return null; }
   let t = null;
   if (npc._t1196J != null) { for (const x of Q) if (x.id === npc._t1196J) { t = x; break; } if (!t || t.pid !== npc.pid) { t = null; npc._t1196J = null; npc._t1196W = null; } }
   if (!t) {
+    if (_desHost && _desHost.queues && Q.some(x => x.job === job)) { if (!_desAcquire(vil, npc, 'artisan', job, 1, now)) return true; }
     for (const x of Q) if (x.pid == null && x.job === job) { t = x; break; }
-    if (!t) return null;
-    if (!_desAcquire(vil, npc, 'artisan', t.id, 1, now)) return true;
+    if (!t) { _desRelease(vil, npc, 'artisan', job); return null; }
     t.pid = npc.pid; npc._t1196J = t.id; npc._t1196W = { ph: t.st === 0 ? 'draw' : 'go', at: 0, tx: 0, ty: 0, fac: null };
     _t1196Stat.claim++;
   }
@@ -17017,7 +17017,7 @@ function _t1196Step(vil, npc, now, job) {
       W.ph = 'go'; W.at = 0; W.tx = sp.x; W.ty = sp.y; W.fac = sp.fac;
       return true;
     }
-    E.artisanGive(e, t.id); _desRelease(vil, npc, 'artisan', t.id); _t1196Stat.give++;
+    E.artisanGive(e, t.id); _desRelease(vil, npc, 'artisan', job); _t1196Stat.give++;
     npc._t1196J = null; npc._t1196W = null;
     return true;
   }
