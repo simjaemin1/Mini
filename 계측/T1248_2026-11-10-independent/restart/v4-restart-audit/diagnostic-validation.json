@@ -1,0 +1,24 @@
+{
+  "diagnosticCompleted": true,
+  "bindingRequirementPassed": false,
+  "naturalPassed": true,
+  "renumberedPassed": false,
+  "controllerExitCode": 1,
+  "gamesourceUnchanged": true,
+  "nativeProcessCodes": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "clockErrors": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "files": 17,
+  "dbExcluded": true,
+  "initialProbe": true,
+  "note": "Initial result predicate was corrected to accept remapped runtime IDs and reanalyzed without altering raw audits; final fixture reran the current scripts from fresh DBs."
+}

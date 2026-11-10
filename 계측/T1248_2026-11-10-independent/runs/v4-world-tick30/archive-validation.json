@@ -1,0 +1,15 @@
+{
+  "originalStatus": {
+    "valid": true,
+    "fullDaysCompleted": true,
+    "benchmarkFixtureCompleted": false,
+    "runnerExit": 0,
+    "note": null,
+    "days": 30,
+    "seed": "1020",
+    "cpuSeconds": 3697.673824,
+    "wallSeconds": 7383.792235435
+  },
+  "files": 12,
+  "dbExcluded": true
+}

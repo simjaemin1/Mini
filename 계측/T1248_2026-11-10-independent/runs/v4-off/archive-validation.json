@@ -1,0 +1,29 @@
+{
+  "originalStatus": {
+    "valid": true,
+    "kind": "official-off-gate",
+    "exitCode": 0,
+    "officialSame": "1/1",
+    "days": 400,
+    "gameHashesAtStart": {
+      "server/zone.js": "d20b3037472e9599e87b286172801b5a711234385b9e229f7cf6fb530b2e93fd",
+      "server/villages.js": "e210cfc820c3e888b04b3ee7353be8c1985faebf2b98897907137297abfd6d43",
+      "server/des.js": "ef56f80a897dad9d72c20436b6a9655f24add17a5fdad72ce5bd95c19aac55d0",
+      "server/des-work.js": "40b927873bff9f1e8a97368f6f1d9ca77f3b1e6d1d12c67c99d2889a141179f3"
+    },
+    "gameHashesAtCompletion": {
+      "server/zone.js": "d20b3037472e9599e87b286172801b5a711234385b9e229f7cf6fb530b2e93fd",
+      "server/villages.js": "e210cfc820c3e888b04b3ee7353be8c1985faebf2b98897907137297abfd6d43",
+      "server/des.js": "ef56f80a897dad9d72c20436b6a9655f24add17a5fdad72ce5bd95c19aac55d0",
+      "server/des-work.js": "40b927873bff9f1e8a97368f6f1d9ca77f3b1e6d1d12c67c99d2889a141179f3"
+    },
+    "sourceUnchanged": true,
+    "elapsedWallSeconds": 1547.7901976790163,
+    "clockLogLines": [],
+    "scope": "official baseline clock, not live-clock annual performance",
+    "clockErrors": null,
+    "clockErrorEvidence": "Exit clock line missing from truncated stdout pipe log; separate clock hook not configured in official checker. Do not infer zero from absence."
+  },
+  "files": 9,
+  "dbExcluded": true
+}
