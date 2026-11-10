@@ -5107,6 +5107,9 @@ const _DES_NOWALK = new Set(String(process.env.T1241_DES_NOWALK != null ? proces
 const T1241_PROBE = process.env.T1241_PROBE === '1';
 const _T1241 = T1241_DES || T1241_PROBE;
 const _DES = T1241_DES ? require('./des') : null;
+const _desHeapOn = T1241_DES && process.env.T1241_DES_HEAP !== '0';
+const _desWorkOn = T1241_WALK && process.env.T1241_DES_WORK !== '0';
+const _desQueuesOn = T1241_DES && process.env.T1241_DES_QUEUES !== '0';
 const _desStat = { steps: 0, ticks: 0, held: 0, heldWalk: 0, begin: { sleep: 0, rest: 0, walk: 0 }, end: { due: 0, intr: 0 }, intrWhy: {}, walkMs: 0, sleepMs: 0, restMs: 0, routePts: 0 };
 if (_T1241) global.__t1241Stat = _desStat;
 const _desTmp = {};
@@ -5137,14 +5140,17 @@ function _desIntr(npc, now) {
   return null;
 }
 function _desEnd(npc, now, why) {
-  const S = npc._des; npc._des = null;
+  const S = npc._des; if (!S) return; npc._des = null;
+  if (_desHeapOn) { _desRuntime.cancel(npc.pid); _desTick.add(npc.pid); _desMovers.set(npc.pid,npc); }
+  if (S.work) SimVillages.desAdvance(npc,Math.min(now,S.until));
+  if (why === 'hurt' || why === 'away' || why === 'remove') _desReleaseAll(npc);
   if (why === 'due') _desStat.end.due++; else { _desStat.end.intr++; _desStat.intrWhy[why] = (_desStat.intrWhy[why] || 0) + 1; }
   const dt = Math.min(now, S.until) - S.t0;
   if (S.k === 'walk') _desStat.walkMs += dt; else if (S.k === 'sleep') _desStat.sleepMs += dt; else _desStat.restMs += dt;
   if (S.r) {
     const o = S.r.posAt(Math.min(now, S.r.t1), _desTmp);
     _desPut(npc, o.x, o.y);
-    if (o.done) { npc.pathIndex = S.P ? S.P.length : 0; npc.vx = 0; npc.vy = 0; }
+    if (o.done) { npc.pathIndex = S.pn != null ? S.pn : (S.P ? S.P.length : 0); npc.vx = 0; npc.vy = 0; }
     else npc.pathIndex = S.pi + S.r.L[o.k + 1] - 1;   // 지금 걷는 다리의 끝 점(길 점 번호 — 다리 j 의 끝 = 길 점 pi + j − 1)
     _t670Stuck(npc, now);
   }
@@ -5165,7 +5171,7 @@ const _desClk = T1241_PROBE ? (global.__t1241Clock || null) : null;
 if (_desClk) Object.assign(_desStat, { nsHeld: 0, nHeld: 0, nsStep: 0, nStep: 0, nsMove: 0, nMoveTicks: 0 });
 function _desTimed(npc, dt, now) {
   const t0 = _desClk();
-  if (T1241_DES && npc._des && _desHold(npc, now)) { _desStat.nsHeld += Number(_desClk() - t0); _desStat.nHeld++; return; }
+  if (T1241_DES && !_desHeapOn && npc._des && _desHold(npc, now)) { _desStat.nsHeld += Number(_desClk() - t0); _desStat.nHeld++; return; }
   _desStat.steps++;
   npcStep(npc, dt, now);
   if (T1241_DES) _desTry(npc, now);
@@ -5174,11 +5180,12 @@ function _desTimed(npc, dt, now) {
 // 틱 갈래 걸음 뒤 — 사건 토막을 열 수 있나
 function _desTry(npc, now) {
   const act = npc._lifeAct;
-  if (!_DES_WALK.has(act)) return;   // 싼 거름 먼저(일 라벨 몸이 대부분)
+  const work = _desWorkOn ? SimVillages.desWorkOf(npc,now) : null;
+  if (!work && !_DES_WALK.has(act) && !(_desWorkOn && (act === '운반' || act === '저장' || act === '인출'))) return;   // 싼 거름 먼저(일 라벨 몸이 대부분)
   if (!npc.simVillageId || npc.canadiaVillage || npc.simWar || npc.simCaravan || npc._bdtGid != null || npc.handingOff) return;
   if (npc.behavior !== 'wander' || npc._huntSpd || npc.floor || npc.onStairId || npc.canadiaTask) return;
   if (npc.simEvacUntil && now < npc.simEvacUntil) return;
-  if (npc._granTask || (npc._t720 && npc._t720.k) || npc._rest) return;
+  if ((!_desWorkOn && npc._granTask) || (npc._t720 && npc._t720.k) || npc._rest) return;
   if (npc._dOff == null || npc.simLonOff == null) return;
   if (isPositionActive(npc.x, npc.y)) return;
   if (!_desSch) { _desSch = SimVillages.T1241_SCH; if (!_desSch) return; }   // 일과 문턱 정본(villages `SCH_*` — 사본 0)
@@ -5187,7 +5194,7 @@ function _desTry(npc, now) {
   const P = npc.path, pn = P ? (P === npc._t791P ? npc._t791Pn : P.length) : 0, done = !P || npc.pathIndex >= pn;
   const d = SimVillages.econDay ? SimVillages.econDay() : null;
   let k = null, until = 0, r = null;
-  if (done) {
+  if (work) { k=work.kind; until=work.until; } else if (done) {
     if (npc.targetX == null || !_t671Lt(npc.x - npc.targetX, npc.y - npc.targetY, 12)) return;   // 목표에 섰다(막힘 판정의 "선 몸" 그 문)
     if (npc.vx !== 0 || npc.vy !== 0) return;
     if (act === '취침' && (fv >= dayR || fv < dOff)) { k = 'sleep'; until = _desNext(npc, now, dOff); }
@@ -5205,9 +5212,95 @@ function _desTry(npc, now) {
     for (const th of [dOff, dayR * _desSch.SCH_FARMW_R, dayR * _desSch.SCH_HALF_R, dayR]) { const t = _desNext(npc, now, th); if (t < until) until = t; }
     _desStat.routePts += r.T.length;
   }
-  npc._des = { k, t0: now, until, r, P, pi: npc.pathIndex, d, hp: npc.hp };
-  _desStat.begin[k]++;
+  const bound = _DES.nextPhaseAt(now,WORLD.worldEpoch,WORLD.dayLengthMs,0,0);
+  let phase = false;
+  if (work) for (const th of [dOff,dayR*_desSch.SCH_FARMW_R,dayR*_desSch.SCH_HALF_R,dayR]) { const at=_desNext(npc,now,th);if(at<until){until=at;phase=true;} }
+  if(bound<until){until=bound;phase=true;}
+  if (!(until>now) || !Number.isFinite(until)) return;
+  if (r) for(let i=1;i<r.X.length;i++)if(isPositionActive(r.X[i],r.Y[i])){until=Math.min(until,r.T[i]);phase=true;break;}
+  npc._des = { k, t0: now, until, r, P, pn, pi: npc.pathIndex, d, hp: npc.hp, work:!!work, phase };
+  _desStat.begin[k]=(_desStat.begin[k]||0)+1;
+  if(_desHeapOn){_desRuntime.park(npc.pid,r?Math.min(until,r.T[1]):until,{kind:k});_desTick.delete(npc.pid);_desMovers.delete(npc.pid);}
+
 }
+// T1248: all parked bodies stay in players, but leave both tick work sets.
+// Global changes (AOI, collision edits, death and day boundaries) invalidate an
+// event; ordinary ticks visit only the heap root and already active bodies.
+const _desRuntime = _desHeapOn ? new _DES.Dispatcher() : null;
+const _desTick = _desHeapOn ? new Set(npcs) : null;
+const _desMovers = _desHeapOn ? new Map(players) : null;
+const _desFacilities = T1241_DES ? new Map() : null;
+const _desLeases = T1241_DES ? new Map() : null;
+let _desPending = null, _desView = null;
+function _desWake(id,at,why='due') { const p=players.get(id);if(p&&p._des)_desEnd(p,at,why); }
+function _desRelease(p,key) {
+  const f=_desFacilities&&_desFacilities.get(key);if(!f)return;
+  const a=_desLeases.get(p.pid);if(a){a.delete(key);if(!a.size)_desLeases.delete(p.pid);}
+  if(p._desWait===key)delete p._desWait;
+  const next=f.release(p.pid);if(next!=null)_desWake(next,Date.now(),'resource');
+}
+function _desReleaseAll(p) { const a=_desLeases&&_desLeases.get(p.pid);if(a)for(const key of [...a])_desRelease(p,key); }
+function _desAcquire(p,key,cap,now) {
+  let f=_desFacilities.get(key);if(!f){f=new _DES.Facility(key,cap);_desFacilities.set(key,f);}
+  if(p._desWait&&p._desWait!==key)_desRelease(p,p._desWait);
+  let a=_desLeases.get(p.pid);if(!a){a=new Set();_desLeases.set(p.pid,a);}a.add(key);
+  const yes=f.request(p.pid,now);
+  if(yes){if(p._desWait===key)delete p._desWait;return true;}
+  p._desWait=key;return false;
+}
+function _desInvalidate(why,now) { if(!_desRuntime)return;for(const id of [..._desRuntime.actors.keys()])_desWake(id,now,why); }
+function _desSerial(p,now) {
+  const S=p._des;
+  const data=S?{...S,P:null,r:S.r?S.r.snapshot():null}:null;
+  const fields={};for(const key of ['_lifeTask','_workT','_jobT','_farmK','_desFarm','_desWorkElapsed','_granTask','_t724T','_t1196W','_t1196J','_t1181Haul','_desWait','_desCrewKey'])if(p[key]!=null)fields[key]=JSON.parse(JSON.stringify(p[key]));
+  return {id:p.pid,identity:p._sh!=null?String(p._sh):String(p.pid),data,fields,wakeAt:_desRuntime.actors.get(p.pid)?.at};
+}
+function _desSnapshot() {
+  const now=Date.now(),actors=[];
+  for(const id of new Set([..._desRuntime.actors.keys(),..._desLeases.keys()])){const p=players.get(id);if(p)actors.push(_desSerial(p,now));}
+  return {version:1,now,actors,facilities:[..._desFacilities.values()].map(f=>f.snapshot()),generation:_desRuntime.generation};
+}
+function _desRestore(now) {
+  const s=_desPending;if(!s)return;_desPending=null;
+  if(s.version!==1||!Array.isArray(s.actors))throw new Error('invalid DES runtime');
+  const shift=now-s.now,ids=new Map();for(const p of players.values())if(p.isNpc)ids.set(p._sh!=null?String(p._sh):String(p.pid),p);
+  const old=new Map();for(const a of s.actors){const p=ids.get(a.identity);if(p)old.set(a.id,p.pid);}
+  for(const a of s.actors){const p=ids.get(a.identity);if(!p)continue;const S=a.data?{...a.data}:null;if(S){S.t0+=shift;S.until+=shift;if(S.r)S.r=_DES.Route.restore(S.r,shift);S.P=p.path||null;}
+    for(const[key,value]of Object.entries(a.fields||{}))p[key]=value;
+    for(const key of ['_workT','_jobT','_t724T'])if(p[key]!=null)p[key]+=shift;
+    for(const key of ['_desFarm','_granTask','_t1196W','_t1181Haul'])if(p[key]&&p[key].at!=null)p[key].at+=shift;
+    if(S){p._des=S;_desRuntime.park(p.pid,(a.wakeAt!=null?a.wakeAt+shift:S.until),{kind:S.k});_desTick.delete(p.pid);_desMovers.delete(p.pid);}
+  }
+  for(const x of s.facilities||[]){const f=_DES.Facility.restore({...x,busy:x.busy.filter(id=>old.has(id)).map(id=>old.get(id)),q:x.q.filter(e=>old.has(e.who)).map(e=>({...e,who:old.get(e.who)}))},shift);_desFacilities.set(f.name,f);for(const id of [...f.busy,...f.q.map(e=>e.who)]){let a=_desLeases.get(id);if(!a){a=new Set();_desLeases.set(id,a);}a.add(f.name);}}
+}
+function _desPulse(now) {
+  if(_desPending)_desRestore(now);
+  _desRuntime.runUntil(now,(id,at)=>{
+    const p=players.get(id),S=p&&p._des;
+    if(S&&S.r&&at<S.until){
+      const q=S.r.posAt(at,{});
+      if(_terrBlocked0(q.x,q.y)||isBlockedByWall(q.x,q.y,p.x,p.y,0,null)){p.path=null;p.nextDecisionAt=0;_desWake(id,at,'blocked');return;}
+      _desPut(p,q.x,q.y);Roads.stampEntityPx(p,q.x,q.y);_desStat.routeEvents=(_desStat.routeEvents||0)+1;
+      let n=q.k+1;while(n<S.r.T.length&&S.r.T[n]<=at)n++;
+      _desRuntime.park(id,Math.min(S.until,n<S.r.T.length?S.r.T[n]:S.until),{kind:S.k});
+    }else _desWake(id,at);
+  });
+  // activeChunkKeys is replaced by the AOI builder, rather than changing each
+  // parked actor. Route admission also schedules its first currently visible point.
+  const viewKey=activeChunkKeys.size?[...activeChunkKeys].sort().join(';'):'';
+  if(_desView!==viewKey){_desView=viewKey;for(const id of [..._desRuntime.actors.keys()]){const p=players.get(id),S=p&&p._des;if(!S)continue;const q=S.r?S.r.posAt(now,{}):p;if(isPositionActive(q.x,q.y)){if(S.r)_desPut(p,q.x,q.y);_desWake(id,now,'view');}}}
+}
+if(_desHeapOn) {
+  const add=npcs.add.bind(npcs),del=npcs.delete.bind(npcs),set=players.set.bind(players),drop=players.delete.bind(players);
+  npcs.add=function(id){add(id);const p=players.get(id);if(!p||!p._des)_desTick.add(id);return this;};
+  npcs.delete=function(id){const p=players.get(id);if(p&&p._des)_desEnd(p,Date.now(),'away');if(p)_desReleaseAll(p);_desRuntime.cancel(id);_desTick.delete(id);return del(id);};
+  players.set=function(id,p){set(id,p);if(!p._des)_desMovers.set(id,p);return this;};
+  players.delete=function(id){const p=players.get(id);if(p){if(p._des)_desEnd(p,Date.now(),'remove');_desReleaseAll(p);}_desRuntime.cancel(id);_desMovers.delete(id);_desTick.delete(id);return drop(id);};
+  SimVillages.t742Bind('zone.desWork',_desSnapshot,s=>{_desPending=s;});
+}
+if(T1241_DES)SimVillages.desInstall({work:_desWorkOn,queues:_desQueuesOn,acquire:_desAcquire,release:_desRelease,releaseAll:_desReleaseAll});
+if(_T1241)global.__t1248Runtime={stats:()=>({heap:_desRuntime?_desRuntime.stats:null,parked:_desRuntime?_desRuntime.actors.size:0,active:_desTick?_desTick.size:npcs.size,facilities:_desFacilities?[..._desFacilities.values()].map(f=>({name:f.name,cap:f.cap,busy:f.busy.size,waiting:f.q.length,served:f.served,maxQ:f.maxQ})):[]}),snapshot:_desHeapOn?_desSnapshot:null};
+
 function npcStep(npc, dt, now) {
   if (T738_SOA_XY) _t738Adopt(npc);   // ★[T738] 끔 = 종전 그대로
   npc._t540StepAt = now;   // ★[T540 관측] 이 몸이 마지막으로 걸음 문을 받은 때(`/walkdbg stepAge` — 새벽 멎음을 이것으로 잡았다)
@@ -14917,6 +15010,7 @@ function setHp(p, v, why) {
   const next = Math.max(0, Math.min(max, v));
   if (next === prev) return prev;
   p.hp = next;
+  if (T1241_DES && next < prev && p._des) _desEnd(p,Date.now(),'hurt');
   if (Math.round(next) === Math.round(prev)) return next;
   if (HP_QUIET.has(why)) return next;
   // ★[T131 2026-09-06] 이름을 사실에 맞췄다: `player_damaged` → **`hp_changed`**.
@@ -16081,8 +16175,8 @@ function _wwPre(moveDt) {
   const cut = T672_WALK_CUT && Number.isFinite(moveDt);                                    // ★[T672 ⓑ] 서 있는 몸 거름(끔이면 안 열린다)
   _wwCut = cut;
   _wwStill.length = 0; _wwStill0.length = 0;
-  if (T689_GC) { _wwCut = cut; players.forEach(_wwPreOne); }   // ★[T689] 같은 차례 · 같은 몸통(아래) — 반복 결과 객체 0
-  else for (const p of players.values()) _wwPreOne(p);
+  if (T689_GC) { _wwCut = cut; (_desHeapOn ? _desMovers : players).forEach(_wwPreOne); }   // ★[T689] 같은 차례 · 같은 몸통(아래) — 반복 결과 객체 0
+  else for (const p of (_desHeapOn ? _desMovers : players).values()) _wwPreOne(p);
   const n = _wwList.length, S = cut ? _wwStill.length : 0;
   _wwStat.ticks++; _wwStat.steps += n + S;
   if (S) { _wwTC.still += S; if (_wwOn) { _walk.steps += S; _walk.terrQ += 4 * S; _walk.wallQ += 3 * S; } }   // ★[T672 ⓑ] 커널이 그 몸에 셀 수 그대로
@@ -16448,6 +16542,7 @@ setInterval(() => {
   //   그 무거운 순간을 남긴다(동작은 안 바꾼다 — 관측자).
   // ★[T1 2026-09-01] 조각내기 뒤로 이 값은 **한 프레임 몫**이다(하루 총합이 아니다) — 그래서 이름을 갈랐다.
   //   하루 총합은 villages.js 가 마감 시점에 `econ_day` 로 직접 찍는다(deps.perfMark).
+  if (_desHeapOn) _desPulse(now);
   { const _t0 = Date.now(); SimVillages.onGameTick(now); const _d = Date.now() - _t0; if (_d >= 5) perfMark('econ_frame', _d); }
   // §11 도적 일일 훅 — villages 옆(econ 틱이 world.day를 민 직후 같은 경계에서 데일리 1회). 평시 O(1) 정수 비교.
   Bandits.onGameTick(now);
@@ -16527,13 +16622,14 @@ setInterval(() => {
     if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
     if ((Date.now() - _decT0) > 15 || TB.out(15, 'decide')) { _stopAt = pid; break; }   // ★[T687] 켬 = 이 틱 공용 몫이 바닥나도 여기서 멈춘다(커서 그대로)   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
     if (T1241_PROBE && _desClk) { _desTimed(npc, dt, now); continue; }   // ★[T1241 계측] 같은 몸통을 진짜 시계로 잰다(아래 세 줄 그대로)
-    if (T1241_DES && npc._des && _desHold(npc, now)) continue;   // ★[T1241] 사건 갈래가 쥔 몸(끔 = 이 줄 무동작)
+    if (T1241_DES && !_desHeapOn && npc._des && _desHold(npc, now)) continue;   // ★[T1241] 사건 갈래가 쥔 몸(끔 = 이 줄 무동작)
     if (_T1241) _desStat.steps++;
     npcStep(npc, dt, now);
     if (T1241_DES) _desTry(npc, now);   // ★[T1241] 사건 토막을 열 수 있나
   } while (false); return _stopAt !== null; };
-  if (T689_GC) { let _decStop = false; npcs.forEach((pid) => { if (!_decStop && _decOne(pid)) _decStop = true; }); }
-  else for (const pid of npcs) if (_decOne(pid)) break;
+  const _decPids = _desHeapOn ? _desTick : npcs;
+  if (T689_GC) { let _decStop = false; _decPids.forEach((pid) => { if (!_decStop && _decOne(pid)) _decStop = true; }); }
+  else for (const pid of _decPids) if (_decOne(pid)) break;
   _npcCursor = _curHit ? _stopAt : null;   // 한 바퀴를 다 돌았거나(=null) 커서가 사라졌으면 처음부터
   TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);   // ★[T695] 다음 틱 결정 몫 = 이번에 쓴 시간(끊겼으면 제 예산 15 — 이 문의 그 수)
   _decT0 = 0;
@@ -16827,8 +16923,9 @@ setInterval(() => {
       if (consumed === 0 && MOVE_PARAMS.model !== 'accel') { p.vx = 0; p.vy = 0; }
     }
   } while (false); };
-  if (T689_GC) players.forEach(_moveOne);
-  else for (const p of players.values()) _moveOne(p);
+  const _movePids = _desHeapOn ? _desMovers : players;
+  if (T689_GC) _movePids.forEach(_moveOne);
+  else for (const p of _movePids.values()) _moveOne(p);
   if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);   // ★[T461] 견줌 — JS 정본이 옮긴 몸을 커널 답과 비트로(분리 전 · 같은 자리)
   if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; }
   sepNpcs(dt);   // ★[생활 층 ①] NPC 상호 분리 — 이동 적용 직후(같은 틱 위치에 보정) 틱당 1회
@@ -17959,6 +18056,7 @@ function sendWelcome(ws, obj) {
   else go();
 }
 function broadcast(obj) {
+  if (_desHeapOn && /^(building_added|building_removed|building_updated|tree_felled|resource_removed)$/.test(obj.type||'')) _desInvalidate('world',Date.now());
   const str = JSON.stringify(obj);
   const doSend = () => {
     for (const p of players.values()) rawSend(p.ws, str);

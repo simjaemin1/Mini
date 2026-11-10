@@ -1065,7 +1065,7 @@ const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheD
 //     · T400 그날 크루 명부 `_t400Crew` · 계측 셋 — 마감이 정한 명부라 다시 뜨면 다음 마감까지 몸이 집터로 안 갔다.
 //     · 착공한 곳간 `_granPend`(자리 · 완공 날) — 종전: 착공이 사라져 다른 자리에서 6일을 다시 셌다.
 const T740_SIDE = process.env.T740_SIDE_KEEP !== '0';   // ★[PM 10-14] 켬 기본(T728 과 같은 곁 칸 문법 · 다시 뜰 때만) · 되돌림 `=0`
-const _T740_KEYS = ['_crop', '_mkt', '_potSet', '_siteMissDay', '_siteDirty', '_siteRejS', '_siteRejL', '_maxRPx', '_hEvD', '_mineLvl', '_t724Hit', '_t724Cut', '_granStock',
+const _T740_KEYS = ['_t1248Farm', '_crop', '_mkt', '_potSet', '_siteMissDay', '_siteDirty', '_siteRejS', '_siteRejL', '_maxRPx', '_hEvD', '_mineLvl', '_t724Hit', '_t724Cut', '_granStock',
   '_mCl', '_mSt', '_mTk', '_dCl', '_dSt', '_dTk', '_gameTook', '_hlDay',   // 계측 셈 여덟
   '_t400Crew', '_t400Dbg', '_t400Sum', '_t400Log',   // T400 집 행위(기본 켬) — 그날 크루 명부 · 계측 셋
   '_granPend',   // 착공한 곳간(자리 · 완공 날)
@@ -11601,7 +11601,9 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
               ...(T707_ON ? { t707: Object.assign({}, _t707Stat) } : {}), ...(T772_ON ? { t772: Object.assign({}, _t772Stat) } : {}), ...(T1144_VERIFY ? { t1144: Object.assign({}, _t1144Stat) } : {}) },   // ★[T1154] verify 판만 — 사건 셋 셈(증인 `t1144-witness`)   // ★[T707] 켬만 — 장 · 명부 · 몸 없는 장 · 정산 누계
     villages: out };
 }
-function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
+function _lifeDropTask(vil, npc) {
+  if (_desHost) _desHost.releaseAll(npc);
+   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
   const t = npc._lifeTask; if (!t) return null;
   if (t.k === 'clear') { vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); }
   else if (t.k === 'build') vil._buildCrew = Math.max(0, vil._buildCrew - 1);
@@ -12290,7 +12292,7 @@ function _t1144NextFarmCell(vil, npc, day) {
     let p = P[i];
     if (p === 0) { _t1144Stat.skip++; continue; }   // 오늘 일 없는 칸(사건 없음 — 종전도 0 을 냈다 · 클레임이어도 같다)
     const k = K[i];
-    if (cl.has(k)) continue;
+    if ((!_desHost || !_desHost.queues) && cl.has(k)) continue;
     if (p < 0) { p = P[i] = _cellTask(vil, k, day); _t1144Stat.ask++; if (p === 0) continue; }
     const dx = X[i] - npc.x, dy = Y[i] - npc.y, d = dx * dx + dy * dy;
     if (p > bp || (p === bp && d < bd)) { bp = p; bd = d; best = k; }
@@ -12302,7 +12304,7 @@ function _lifeNextFarmCell(vil, npc, day) {   // 랩 nextTask 동형(구역 대�
   if (T1144_LIFE_EVENT) { _t1144Stat.q++; _t1144A = _t1144NextFarmCell(vil, npc, day); if (!T1144_VERIFY) return _t1144A; }   // ★[T1144 ①] 켬 = 사건 때만 · verify = 아래 종전 줄과 견준다(답은 종전)
   let best = null, bp = 0, bd = 1e9;
   for (const k of vil._farmSet) {
-    if (vil._cropClaim.has(k)) continue;   // 다른 농부 진행 중(랩은 plot 담당제로 분산 — 서버는 셀 클레임)
+    if ((!_desHost || !_desHost.queues) && vil._cropClaim.has(k)) continue;   // 다른 농부 진행 중(랩은 plot 담당제로 분산 — 서버는 셀 클레임)
     const p = _cellTask(vil, k, day); if (p === 0) continue;
     const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
     const dx = x * SZ + SZ / 2 - npc.x, dy = y * SZ + SZ / 2 - npc.y, d = dx * dx + dy * dy;
@@ -14539,7 +14541,7 @@ function _lifeGranStep(vil, npc, now) {
   if (!t.at) {                                                       // ① 사다리로 이동
     npc.behavior = 'wander'; npc.targetX = L.x; npc.targetY = L.y; npc.gatherTarget = null;
     _lifeAct(npc, t.draw ? '인출' : '운반');
-    if (Math.hypot(npc.x - L.x, npc.y - L.y) <= 44) { t.at = now; _lifeAct(npc, t.draw ? '인출' : '저장'); }
+    if (Math.hypot(npc.x - L.x, npc.y - L.y) <= 44) { if (!_desAcquire(vil, npc, 'stock', t.cx + ',' + t.cy, 1, now)) return true; t.at = now; _lifeAct(npc, t.draw ? '인출' : '저장'); }
     return true;
   }
   if (now - t.at < (t.draw ? G_DRAWW : G_STOREW)) {                  // ② 사다리 체류 = 저장/인출 행위
@@ -14552,6 +14554,7 @@ function _lifeGranStep(vil, npc, now) {
   //   퇴근 훅이 저장(짐>0)↔인출(빈손)을 무한 왕복시킨다 — 집에 못 간다.
   if (t.draw) { const q = Math.min(G_DRAW, _granStockOf(vil, g)); _granStockAdd(vil, g, -q); _handAdd(npc, q); npc._granD = state.dayMs ? _bodyDay(npc, now) : 0; }
   else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); if (npc._t368H) _t368Deliver(vil, npc, 'gran'); if (npc.inventory && (npc.inventory.wood || 0) > 0) _t561Ladder(vil, npc, now); if (npc.inventory && npc.inventory.ore_chunk > 0) _t724Deliver(vil, npc, 'gran', now); if (npc.inventory && (npc.inventory.stone > 0 || npc.inventory.pebble > 0) && _stoneHandInOn(vil)) _t1146HandIn(vil, npc); }   // ★[T1146 ③] 손의 돌 · 자갈도(손에 있을 때만 묻는다 — 옆 갈래들과 같은 꼴 · 끔 = 손에) · ★[T724 ②] 켠 팔은 원석도(끄면 몸 손에 원석이 없다 · `_t724Deliver` 첫 줄도 손잡이) · ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`) · ★[T368] 켠 팔은 **이 귀환이 곳간 입고**다(손의 작물 → `_farmGranary`) · ★[T561 ②ⓑ] 켠 팔은 통나무도(끄면 `_t561Ladder` 첫 줄에서 돌아간다)
+  _desRelease(vil, npc, 'stock', t.cx + ',' + t.cy);
   npc._granTask = null;
   return false;                                                      // 소유권 반납 → 이번 틱부터 평소 일과
 }
@@ -14950,6 +14953,9 @@ function _t1181Step(vil,npc,now,awake) {
   if(npc._t1181Returns?.length&&!(npc._t1181Haul?.n>0))npc._t1181Haul={...npc._t1181Returns.shift(),returning:true,at:null};
   const t=_t1181Task(vil,npc);if(!t&&!npc._t1181Haul)return false;
   if(t&&!npc._t1181Haul)_lifeDropTask(vil,npc);
+  if(t&&!_desAcquire(vil,npc,'crew',t.key,LIFE_CREW,now))return true;
+  if(!t&&_desHost&&npc._desCrewKey){_desHost.release(npc,npc._desCrewKey);npc._desCrewKey=null;}
+  if(t&&_desHost)npc._desCrewKey=_desResource(vil,'crew',t.key);
   if(t){let bd=Infinity,source={x:vil.ccx*SZ+SZ/2,y:vil.ccy*SZ+SZ/2};for(const g of(vil._granList||[])){const L=_granLadder(g),d=Math.hypot(L.x-t.target.x,L.y-t.target.y);if(d<bd){source=L;bd=d;}}t.source=source;}
   const missing=()=>{if(!t)return[];const mat=t.site.mat||(t.site.mat={}),a=[];for(const[k,n]of Object.entries(t.need())){let reserved=0;for(const p of state.deps.players.values()){const s=p._t1181Haul;if(s&&s.key===t.key&&s.item===k)reserved+=Math.min(s.n,p.inventory?.[k]||0);}const left=n-(mat[k]||0)-reserved;if(left>1e-9)a.push([k,left]);}return a;};
   const S=()=>{const k=t?.kind==='bridge'?'_t527Sum':t?.kind==='terr'?'_t1207Sum':'_t435Sum';return vil[k]||(vil[k]={days:0,crewDays:0,trips:0,took:0,placed:0,adv:0,stallDays:0,built:0,jobs:{}});};
@@ -16546,19 +16552,21 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (t) {
     if (t.k === 'build' && !(t.ps ? vil._psite : vil._site)) { npc._lifeTask = null; return false; }   // 완공/소멸 → 해산
     if (t.k === 'build' && !t.ps && _lifeEcon().T400_BUILD_ACT) { _lifeDropTask(vil, npc); return true; }   // ★[T400] 마을 집터 시공은 하루 장부가 진다(몸의 진척 0 — 이중 진척 금지)
+    if (t.k === 'clear' && !_desAcquire(vil, npc, 'clear', t.cx + ',' + t.cy, 1, now)) return true;
+    if (t.k === 'clear' && !_desAcquire(vil, npc, 'clear', t.cx + ',' + t.cy, 1, now)) return true;
     const d = Math.hypot(npc.x - t.px, npc.y - t.py);
     if (d > 44) { npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py; npc.gatherTarget = null; npc._workT = now; _lifeAct(npc, '출근'); return true; }
-    const el = Math.min(3000, now - (npc._workT || now)); npc._workT = now;   // 현장 도착 — 실시간 노동 누적(틱 간격 캡)
+    const el = _desHost && npc._desWorkElapsed != null ? npc._desWorkElapsed : Math.min(3000, now - (npc._workT || now)); if (_desHost) delete npc._desWorkElapsed; npc._workT = now;   // 현장 도착 — 실시간 노동 누적(틱 간격 캡)
     t.prog += el;
     _lifeAct(npc, t.k === 'clear' ? '개간' : '건축');
     npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py;
     const dayMs = state.dayMs || 600000;
-    if (t.k === 'clear' && t.prog >= (_t1221On() ? _t1221ClearS(vil, t.cx + ',' + t.cy) * dayMs / 1440 : dayMs / LIFE_CLEAR_PDAY)) {   // ★[T1221 ⓪] 켬 = 칸 개간 시간(실초 = 게임분)
+    if (t.k === 'clear' && t.prog >= _desWorkGoal(vil, t)) {   // ★[T1221 ⓪] 켬 = 칸 개간 시간(실초 = 게임분)
       _lifeLiveFarmTile(vil, t.cx, t.cy, t.f === '밭' ? 'dryfield' : 'farmland');
       if (_t1243On()) { const _m = _t1221ClearS(vil, t.cx + ',' + t.cy); _t1243CStat.bodyCells++; _t1243CStat.bodyMin += _m; if (_t1243ClearedM2(vil, t.cx + ',' + t.cy) > 0) _t1243CStat.deducted++; }   // ★[T1243 추신 5] 계측
       if (npc.simJob === 'farmer') _t1212Note(npc, _t1221On() ? _t1221ClearS(vil, t.cx + ',' + t.cy) : 1);   // ★[T1212 ②] 몸이 한 개간 칸(그날 몫 · ★T1221 켬 = 초)
-      vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); npc._lifeTask = null;
-    } else if (t.k === 'build' && t.prog >= dayMs / LIFE_STAGE_PDAY) {
+      vil._claim.delete(t.cx + ',' + t.cy); _desRelease(vil, npc, 'clear', t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); npc._lifeTask = null;
+    } else if (t.k === 'build' && t.prog >= _desWorkGoal(vil, t)) {
       t.prog = 0; _lifeAdvanceSite(vil, t.ps ? 'p' : null);
       if (!(t.ps ? vil._psite : vil._site)) npc._lifeTask = null;   // 완공 시 해산(카운터는 complete가 리셋)
     }
@@ -16573,8 +16581,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   }
   if (isFarmer && vil._clearCrew < LIFE_CREW && _lifeNeedClear(vil)) {
     const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
-    for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (vil._claim.has(k) || vil._farmSet.has(k)) continue; const dx = c2.cx * SZ + 16 - npc.x, dy = c2.cy * SZ + 16 - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
-    if (best) { vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }; npc._workT = now;
+    for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (((!_desHost || !_desHost.queues) && vil._claim.has(k)) || vil._farmSet.has(k)) continue; const dx = c2.cx * SZ + 16 - npc.x, dy = c2.cy * SZ + 16 - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
+    if (best) { if (!_desAcquire(vil, npc, 'clear', best.cx + ',' + best.cy, 1, now)) return true; vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }; npc._workT = now;
       npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }   // ★배정 틱에도 즉시 이동 목표(미세팅 시 신선 NPC target NaN)
   }
   if (_lifeEcon().T400_BUILD_ACT) { if (_t400BodyStep(vil, npc, now)) return true; }   // ★[T400] 오늘의 크루는 곳간 ↔ 집터를 오간다(보여 주기만)
@@ -16595,15 +16603,16 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (isFarmer && vil._farmSet.size) {   // 농부=작물 상태머신(랩 nextTask→doTask: 수확>방제>물대기>파종>김매기, 우선순위+최근접)
     if (npc._jobT && now < npc._jobT) return true;   // 체류 중(target 유지)
     if (npc._farmK) {   // 배정 셀로 이동 중/도착
-      const k = npc._farmK, ci = k.indexOf(','), px2 = +k.slice(0, ci) * SZ + SZ / 2, py2 = +k.slice(ci + 1) * SZ + SZ / 2;
+      const k = npc._farmK; if (!_desAcquire(vil, npc, 'crop', k, 1, now)) return true; const ci = k.indexOf(','), px2 = +k.slice(0, ci) * SZ + SZ / 2, py2 = +k.slice(ci + 1) * SZ + SZ / 2;
       npc.behavior = 'wander'; npc.targetX = px2; npc.targetY = py2; npc.gatherTarget = null;
       _lifeAct(npc, '경작');   // 이동 구간 라벨(도착 순간 doTask의 구체 라벨이 덮고, 체류 중엔 위 _jobT 조기 리턴이 유지)
       if (Math.hypot(npc.x - px2, npc.y - py2) <= 44) {   // 도착 — 셀 처리(파종·수확·방제·물대기·김매기) + 체류
         const _fd = _farmDay(vil, day), _L = _t1221On(), _c = _L ? _t1221Cost(_cellTask(vil, k, _fd), vil, k) : 0;   // ★[T1221 ⓪] 켬 = 그 일의 고증 시간(하기 전에 잰다)
-        const _ok = _lifeDoTask(vil, npc, k, _fd);
+        if (_desHost && _desHost.work && _L && !_desFarmReady(vil, npc, k, _fd, now, _c)) return true;
+      const _ok = _lifeDoTask(vil, npc, k, _fd);
         if (_ok) _t1212Note(npc, _L ? _c : 1);   // ★[T1212 ①] 밭 날 · ② 몸이 한 일(★T1221 켬 = 초)
-        vil._cropClaim.delete(k); npc._farmK = null;
-        npc._jobT = (_L && _ok) ? now + _c * _t1243MinMs() : now + 9000 + (_pidHash(npc.pid) % 7) * 1500;   // ★[T1221] 켬 = 일 시간만큼 그 칸에 머문다
+        vil._cropClaim.delete(k); _desRelease(vil, npc, 'crop', k); npc._farmK = null;
+        npc._jobT = (_desHost && _desHost.work && _L && _ok) ? now : ((_L && _ok) ? now + _c * _t1243MinMs() : now + 9000 + (_pidHash(npc.pid) % 7) * 1500);   // ★[T1221] 켬 = 일 시간만큼 그 칸에 머문다
         if (_L && _ok) _t1221Stat.bodyS += _c;
         // ★[곳간②] 짐이 상한에 닿으면 곳간으로 운반(자리 없으면 false → 기존 흐름 그대로)
         if (_handFull(npc) && _granGo(vil, npc, false)) { npc._jobT = 0; return true; }   // ★[T316] 칸 문턱 ∨ kg 상한(먼저 걸리는 쪽)
@@ -16611,7 +16620,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       return true;
     }
     const k2 = _lifeNextFarmCell(vil, npc, _farmDay(vil, day));   // ★[T1212 ①] 밭 날
-    if (k2) { vil._cropClaim.add(k2); npc._farmK = k2; const ci = k2.indexOf(','); npc.behavior = 'wander'; npc.targetX = +k2.slice(0, ci) * SZ + SZ / 2; npc.targetY = +k2.slice(ci + 1) * SZ + SZ / 2; npc.gatherTarget = null; _lifeAct(npc, '경작'); return true; }
+    if (k2) { if (!_desAcquire(vil, npc, 'crop', k2, 1, now)) return true; vil._cropClaim.add(k2); npc._farmK = k2; const ci = k2.indexOf(','); npc.behavior = 'wander'; npc.targetX = +k2.slice(0, ci) * SZ + SZ / 2; npc.targetY = +k2.slice(ci + 1) * SZ + SZ / 2; npc.gatherTarget = null; _lifeAct(npc, '경작'); return true; }
     const arr = (vil._farmArr && vil._farmArr.length) ? vil._farmArr : (vil._farmArr = [...vil._farmSet]);   // 일감 없음(비수기·전부 생육 중) — 결정론 밭 순찰(구 ④ 유지)
     npc._jobN = ((npc._jobN || 0) + 1);
     const h = _pidHash(npc.pid);
@@ -16988,6 +16997,7 @@ function _t1196Step(vil, npc, now, job) {
   if (!t) {
     for (const x of Q) if (x.pid == null && x.job === job) { t = x; break; }
     if (!t) return null;
+    if (!_desAcquire(vil, npc, 'artisan', t.id, 1, now)) return true;
     t.pid = npc.pid; npc._t1196J = t.id; npc._t1196W = { ph: t.st === 0 ? 'draw' : 'go', at: 0, tx: 0, ty: 0, fac: null };
     _t1196Stat.claim++;
   }
@@ -17007,7 +17017,7 @@ function _t1196Step(vil, npc, now, job) {
       W.ph = 'go'; W.at = 0; W.tx = sp.x; W.ty = sp.y; W.fac = sp.fac;
       return true;
     }
-    E.artisanGive(e, t.id); _t1196Stat.give++;
+    E.artisanGive(e, t.id); _desRelease(vil, npc, 'artisan', t.id); _t1196Stat.give++;
     npc._t1196J = null; npc._t1196W = null;
     return true;
   }
@@ -18652,3 +18662,48 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
 //   ⇒ 접근자만 리터럴 밖에서 같은 이름 · 같은 꼴(열거 · 고칠 수 있음 · 같은 몸통)로 단다(값 · 함수 · 이름 무변 · 사본 0 · 키 차례만 이 하나가 끝으로).
 Object.defineProperty(module.exports, 'eventLedger', { get() { return state.ledger; }, enumerable: true, configurable: true });
 
+
+
+// T1248: work timing/progress stays next to the existing work bodies. Zone owns
+// the scheduler; this module has no second DES switch or duplicated rate table.
+let _desHost = null;
+function desInstall(host) { _desHost = host || null; }
+function _desResource(vil,kind,key) { return String(vil.dbId)+':'+kind+':'+String(key); }
+function _desAcquire(vil,npc,kind,key,cap,now) {
+  return !_desHost || !_desHost.queues || _desHost.acquire(npc,_desResource(vil,kind,key),cap,now);
+}
+function _desRelease(vil,npc,kind,key) { if(_desHost&&_desHost.queues)_desHost.release(npc,_desResource(vil,kind,key)); }
+function _desWorkGoal(vil,t) {
+  const dayMs=state.dayMs||600000;
+  return t.k==='clear'?(_t1221On()?_t1221ClearS(vil,t.cx+','+t.cy)*dayMs/1440:dayMs/LIFE_CLEAR_PDAY):dayMs/LIFE_STAGE_PDAY;
+}
+function _desFarmReady(vil,npc,k,day,now,cost) {
+  const e=vil._crop.get(k),type=_cellTask(vil,k,day);
+  const sig=k+':'+type+':'+(e?e.c+':'+e.p+':'+(e.wd||0):'empty');
+  const P=vil._t1248Farm||(vil._t1248Farm=new Map());
+  let w=P.get(sig);
+  if(!w){w={sig,k,type,total:cost*_t1243MinMs(),progress:0,at:now};P.set(sig,w);}
+  if(npc._desFarm&&npc._desFarm.sig===sig&&npc._desFarm.at!=null)w.progress=Math.min(w.total,w.progress+Math.max(0,now-npc._desFarm.at));
+  npc._desFarm={sig,k,at:now};
+  if(w.progress+1e-6<w.total)return false;
+  P.delete(sig);npc._desFarm=null;return true;
+}
+function desAdvance(npc,now) {
+  if(npc._desFarm){const vil=state.byDbId.get(npc.simVillageId),F=vil&&vil._t1248Farm,w=F&&F.get(npc._desFarm.sig);if(w&&npc._desFarm.at!=null){w.progress=Math.min(w.total,w.progress+Math.max(0,now-npc._desFarm.at));npc._desFarm.at=null;}}
+  if(npc._lifeTask&&npc._workT!=null)npc._desWorkElapsed=Math.max(0,now-npc._workT);
+}
+function desWorkOf(npc,now) {
+  if(!_desHost||!_desHost.work)return null;
+  const vil=state.byDbId.get(npc.simVillageId);if(!vil)return null;
+  if(npc._desWait)return {kind:'queue',until:Infinity};
+  const t=npc._lifeTask;
+  if(t&&(t.k==='clear'||t.k==='build')&&Math.hypot(npc.x-t.px,npc.y-t.py)<=44&&npc._workT!=null)return {kind:t.k,until:now+Math.max(0,_desWorkGoal(vil,t)-(t.prog||0))};
+  if(npc._desFarm){const F=vil._t1248Farm,w=F&&F.get(npc._desFarm.sig);if(w)return {kind:'farm',until:now+Math.max(0,w.total-w.progress)};}
+  if(npc._t1196W&&npc._t1196W.ph==='work'&&npc._t1196W.at)return {kind:'artisan',until:npc._t1196W.at+_t1196CraftMs(T1196_KIND[npc.simJob])};
+  if(npc._t724T&&npc._t724Site&&!npc._t724Site.none&&!npc._t724Site.wait)return {kind:'mine',until:npc._t724T+_spec().MINE_SWING_MS};
+  if(npc._granTask&&npc._granTask.at)return {kind:'haul',until:npc._granTask.at+(npc._granTask.draw?G_DRAWW:G_STOREW)};
+  const h=npc._t1181Haul;if(h&&h.at!=null)return {kind:'haul',until:h.at+(h.leg==='source'?G_DRAWW:G_STOREW)};
+  if(npc._jobT>now&&npc.simJob==='farmer')return {kind:'farm-wait',until:npc._jobT};
+  return null;
+}
+module.exports.desInstall=desInstall;module.exports.desWorkOf=desWorkOf;module.exports.desAdvance=desAdvance;

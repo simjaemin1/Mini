@@ -107,3 +107,41 @@ function nextPhaseAt(now, epoch, L, off, target) {
 }
 
 module.exports = { EventQueue, Facility, Route, phaseAt, nextPhaseAt, frac };
+
+// T1248: deterministic work progress and an actor wake heap. Event payloads are
+// data, never callbacks, so the same queue can be saved with T742 world metadata.
+class Work {
+  constructor(goal, progress, rate, at) {
+    if (!(Number.isFinite(goal) && goal >= 0 && Number.isFinite(rate) && rate > 0 && Number.isFinite(at))) throw new RangeError('invalid work');
+    this.goal=goal;this.progress=Math.min(goal,Math.max(0,Number(progress)||0));this.rate=rate;this.at=at;
+  }
+  valueAt(t) { return Math.min(this.goal,this.progress+Math.max(0,t-this.at)*this.rate); }
+  dueAt() { return this.at+(this.goal-this.progress)/this.rate; }
+  advance(t) { if(t<this.at)throw new RangeError('work clock went backwards');this.progress=this.valueAt(t);this.at=t;return this.progress; }
+  snapshot(t=this.at) { return {goal:this.goal,progress:this.valueAt(t),rate:this.rate,at:t}; }
+  static restore(s,at=s.at) { return new Work(s.goal,s.progress,s.rate,at); }
+}
+const actorCompare=(a,b)=>typeof a==='number'&&typeof b==='number'?a-b:(String(a)<String(b)?-1:String(a)>String(b)?1:0);
+class WakeQueue extends EventQueue {
+  _lt(i,j) { const a=this.t[i],b=this.t[j];if(a!==b)return a<b;const c=actorCompare(this.v[i].id,this.v[j].id);return c<0||(c===0&&this.s[i]<this.s[j]); }
+}
+class Dispatcher {
+  constructor() { this.queue=new WakeQueue();this.actors=new Map();this.generation=0;this.stats={parked:0,woken:0,canceled:0,stale:0}; }
+  park(id,at,data) {
+    if(!Number.isFinite(at))throw new RangeError('invalid event time');
+    const e={id,at,generation:++this.generation,data};this.actors.set(id,e);this.queue.push(at,{id,generation:e.generation});this.stats.parked++;return e;
+  }
+  cancel(id) { const e=this.actors.get(id);if(!e)return null;this.actors.delete(id);this.stats.canceled++;return e; }
+  runUntil(at,wake) {
+    return this.queue.runUntil(at,(time,key)=>{const e=this.actors.get(key.id);if(!e||e.generation!==key.generation){this.stats.stale++;return;}this.actors.delete(key.id);this.stats.woken++;wake(e.id,time,e.data);});
+  }
+  snapshot() { return {version:1,generation:this.generation,actors:[...this.actors.values()].map(e=>({id:e.id,at:e.at,data:e.data})).sort((a,b)=>a.at-b.at||actorCompare(a.id,b.id)),stats:{...this.stats}}; }
+  static restore(s,shift=0) { if(!s||s.version!==1||!Array.isArray(s.actors))throw new Error('invalid dispatcher snapshot');const d=new Dispatcher();for(const e of s.actors)d.park(e.id,e.at+shift,e.data);d.generation=Math.max(d.generation,s.generation||0);if(s.stats)d.stats={...s.stats};return d; }
+}
+// Facility order and in-service ownership survive a restart. Queued identity is
+// kept separately from the actor heap; releasing a slot explicitly wakes its head.
+Facility.prototype.snapshot=function(){return {name:this.name,cap:this.cap,busy:[...this.busy],q:this.q.map(e=>({...e})),seq:this.seq,served:this.served,maxQ:this.maxQ};};
+Facility.restore=function(s,shift=0){if(!s||!(s.cap>0)||!Array.isArray(s.q)||!Array.isArray(s.busy))throw new Error('invalid facility snapshot');const f=new Facility(s.name,s.cap);f.busy=new Set(s.busy);if(f.busy.size>f.cap)throw new Error('facility over capacity');f.q=s.q.map(e=>({...e,t:e.t+shift}));f.seq=s.seq;f.served=s.served;f.maxQ=s.maxQ;return f;};
+Route.prototype.snapshot=function(){return {X:[...this.X],Y:[...this.Y],T:[...this.T],L:[...this.L],t0:this.t0,t1:this.t1,len:this.len,_k:this._k};};
+Route.restore=function(s,shift=0){if(!s||!Array.isArray(s.X)||!s.X.length||s.X.length!==s.Y.length||s.X.length!==s.T.length||s.X.length!==s.L.length)throw new Error('invalid route snapshot');const r=Object.create(Route.prototype);Object.assign(r,s,{X:[...s.X],Y:[...s.Y],T:s.T.map(t=>t+shift),L:[...s.L],t0:s.t0+shift,t1:s.t1+shift});return r;};
+module.exports.Work=Work;module.exports.Dispatcher=Dispatcher;module.exports.WakeQueue=WakeQueue;

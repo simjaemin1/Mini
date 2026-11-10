@@ -88,8 +88,22 @@ console.log('\n=== ⑤ 끔 = 종전 글자 ===');
   const z = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8').split('\n');
   //   부르는 자리(함수 몸 밖)는 손잡이 문 뒤에만 있어야 한다 — 함수 몸 안의 부름은 그 함수가 손잡이 뒤에서만 불린다.
   const sites = z.filter((l) => /^\s{4}if \(T1241_DES && npc\._des && _desHold|^\s{4}if \(T1241_DES\) _desTry|^\s{4}if \(T1241_PROBE && _desClk\) \{ _desTimed|^\s{2}if \(T1241_DES && p\._des\) return;|^\s{6}if \(p\.simWar \|\| \(T1241_DES && p\._des\)\) continue;|^\s{2}if \(_T1241\) \{ _desStat\.ticks\+\+/.test(l));
-  ok(sites.length === 6, '부르는 자리 여섯이 모두 손잡이 뒤(결정 문 셋 · 걸음 문 둘 · 틱 끝 하나)', `${sites.length}`);
+  ok(sites.length === 5 && /if \(T1241_DES && !_desHeapOn && npc\._des && _desHold/.test(z.join('\n')), '기존 여섯 문은 손잡이 뒤, 보류 검사는 heap-off 진단에서만', `${sites.length} + heap-off`);
+  ok(/const _desHeapOn = T1241_DES &&/.test(z.join('\n')) && /const _decPids = _desHeapOn \? _desTick : npcs/.test(z.join('\n')) && /const _movePids = _desHeapOn \? _desMovers : players/.test(z.join('\n')) && /if \(_desHeapOn\) _desPulse\(now\)/.test(z.join('\n')), 'T1248 결정·이동·힙 모두 끔에서 종전 순회', '');
   ok(/const T1241_DES = process\.env\.T1241_DES === '1' \|\| process\.env\.T1241_DES === 'sleep';/.test(z.join('\n')) && /const _DES = T1241_DES \? require\('\.\/des'\) : null;/.test(z.join('\n')), '손잡이 끔 기본(`=== \'1\'`) · 모듈은 켬에서만 싣는다', '');
+}
+
+console.log('\n=== T1248 일 진척·힙·대기 줄·재시작 ===');
+{
+  const W=new DES.Work(100,20,2,1000);ok(W.dueAt()===1040&&W.valueAt(1010)===40,'남은 진척/정본 빠르기로 끝 시각', '');
+  W.advance(1010);const F=DES.Work.restore(W.snapshot(),2000);ok(F.progress===40&&F.dueAt()===2030,'중단은 진척만 남기고 재개는 남은 양만', '');
+  let bad=false;try{W.advance(1000);}catch(e){bad=true;}ok(bad,'지난 시각 적산은 거부(이중 진척 없음)', '');
+  const D=new DES.Dispatcher(),order=[];D.park('b',10,{kind:'farm'});D.park('a',10,{kind:'mine'});D.park('c',11,{kind:'haul'});D.cancel('c');D.runUntil(20,(id)=>order.push(id));ok(order.join(',')==='a,b','같은 시각 id순·취소 사건 무효',order.join(','));
+  const D1=new DES.Dispatcher();D1.park('p',30,{kind:'clear',progress:5});D1.park('p',40,{kind:'clear',progress:8});const got=[];D1.runUntil(35,(id)=>got.push(id));ok(!got.length,'바뀐 예정 시각의 낡은 사건은 실행 안 함','');
+  const D2=DES.Dispatcher.restore(JSON.parse(JSON.stringify(D1.snapshot())),1000);D2.runUntil(1039,(id)=>got.push(id));ok(!got.length,'재시작 때 멈춘 동안의 공짜 노동 없음','');D2.runUntil(1040,(id,t,data)=>got.push(id+':'+data.progress));ok(got.join(',')==='p:8','대기열 DB 표현의 다음 사건·진척 보존',got.join(','));
+  const Q=new DES.Facility('crop',1);Q.request('owner',0);Q.request('second',2);Q.request('first',1);const S=DES.Facility.restore(JSON.parse(JSON.stringify(Q.snapshot())),1000);ok(S.release('owner')==='first'&&S.release('first')==='second','대기 줄 재시작에도 요청 시각·차례 유지','');
+  S.release('second');S.request('dead',0);S.request('alive',1);ok(S.release('dead')==='alive','사건 사이 죽은 몸의 자리는 다음 몸이 받음','');
+  const R=new DES.Route([0,0,64,0],()=>32,0,16),RR=DES.Route.restore(JSON.parse(JSON.stringify(R.snapshot())),1000);ok(R.posAt(750,{}).x===RR.posAt(1750,{}).x,'AOI/재시작 넘김의 같은 시각 자리 보간','');
 }
 
 if (!process.argv.includes('--quick')) {
@@ -100,7 +114,9 @@ if (!process.argv.includes('--quick')) {
       NODE_OPTIONS: `--require ${path.join(ROOT, 'scripts', 't1241-hook.js')} --require ${path.join(ROOT, 'scripts', 't745-vclock.js')}`,
       T745_VCLOCK: '1', T1241_PROBE: '1', T1241_OUT: path.join(tmp, mode), T1241_DES: mode === 'des' ? '1' : '0',
       VILLAGE_MAX: '1', VILLAGE_DAY_MS: '1440000', VILLAGE_NPC_CAP: 'Infinity', T577_DIR: path.join(tmp, 'runs-' + mode), T577_PAR: '1' });
-    spawnSync(process.execPath, [path.join(ROOT, 'scripts', 't577-server-run.js'), '3', '1020'], { env, cwd: ROOT, stdio: 'ignore', timeout: 900000 });
+    const child=spawnSync(process.execPath, [path.join(ROOT, 'scripts', 't577-server-run.js'), '3', '1020'], { env, cwd: ROOT, stdio: 'ignore', timeout: 900000 });
+    ok(child.status===0, mode+' 실제 서버 정상 종료', String(child.status));
+    if(child.status!==0)return[];
     try { return fs.readFileSync(path.join(tmp, `${mode}.1020.jsonl`), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((o) => o.d != null && o.d >= 0); } catch (e) { return []; }
   };
   const A = run('tick'), B = run('des');
@@ -108,9 +124,9 @@ if (!process.argv.includes('--quick')) {
   const same = A.filter((a, i) => B[i] && a.d === B[i].d && a.sto === B[i].sto && a.crop === B[i].crop && a.pop === B[i].pop && a.farm === B[i].farm).length;
   ok(A.length && same === A.length, 'econ 지문 날마다 같음(곳간 정확 지문 · 작물 장부 · 인구 · 밭 칸)', `${same}/${A.length}`);
   const lb = B[B.length - 1] || { st: {} }, la = A[A.length - 1] || { st: {} };
-  ok((lb.st.held || 0) > 0 && (lb.st.begin && lb.st.begin.sleep > 0) && (lb.st.steps || 0) < (la.st.steps || 0), '자명 통과 금지 — 사건 갈래가 몸을 실제로 쥐었다(잠 토막 · 걸린 npcStep 이 줄었다)', `쥔 몸-틱 ${lb.st.held || 0} · npcStep ${la.st.steps || 0} → ${lb.st.steps || 0}`);
+  ok(((lb.st.held || 0) > 0 || (lb.st.end && lb.st.end.due > 0)) && (lb.st.begin && lb.st.begin.sleep > 0) && (lb.st.steps || 0) < (la.st.steps || 0), '자명 통과 금지 — 사건 갈래가 몸을 실제로 쥐었다(잠 토막 · 걸린 npcStep 이 줄었다)', `쥔 몸-틱 ${lb.st.held || 0} · npcStep ${la.st.steps || 0} → ${lb.st.steps || 0}`);
   ok((la.st.held || 0) === 0, '틱 판(끔)은 사건 갈래가 몸을 안 쥔다', `${la.st.held || 0}`);
-  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  if(process.env.T1241_KEEP==='1')console.log('ARTIFACTS '+tmp);else try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
 }
 console.log(`\n결과: ${pass} 통과 / ${fail} 실패`);
 process.exit(fail ? 1 : 0);
