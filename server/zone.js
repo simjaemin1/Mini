@@ -5126,7 +5126,8 @@ if (_DW) {
   setInterval(_desSave, WORLD.dayLengthMs);
   const add = npcs.add.bind(npcs), del = npcs.delete.bind(npcs);
   npcs.add = id => { if (!_desOrder.has(id)) _desOrder.set(id, _desOrderSeq++); if (!_desQ.owned.has(id)) _desTickIds.add(id); return add(id); };
-  npcs.delete = id => { const body = players.get(id); if (body && body._des) _desEnd(body, Date.now(), 'remove'); _desQ.remove(id); _desPending.delete(id); _desTickIds.delete(id); _desBodies.delete(id); _desOrder.delete(id); return del(id); };
+  // npcs는 AI 집합이다. 상단·병사·시신도 players에 있는 동안 실제 몸 인덱스에는 남는다.
+  npcs.delete = id => { const body = players.get(id); if (body && body._des) _desEnd(body, Date.now(), 'remove'); _desQ.remove(id); _desPending.delete(id); _desTickIds.delete(id); _desOrder.delete(id); return del(id); };
   const put = players.set.bind(players), remove = players.delete.bind(players);
   players.set = (id, body) => { const old = players.get(id); if (old && old !== body && old._des) _desEnd(old, Date.now(), 'replace'); _desBodies.set(id, body); if (_desPending.has(id)) { _desApplySaved(body, _desPending.get(id)); _desPending.delete(id); const old = _desQ.owned.get(id); if (old) _desQ.heap.push(old.time, { id, generation: old.generation }); } _desWatch(body); if (body._des && _desQ.owned.has(id)) _desBodies.delete(id); return put(id, body); };
   players.delete = id => { const body = players.get(id); if (body && body._des) _desEnd(body, Date.now(), 'remove'); _desQ.remove(id); _desPending.delete(id); _desBodies.delete(id); _desTickIds.delete(id); return remove(id); };

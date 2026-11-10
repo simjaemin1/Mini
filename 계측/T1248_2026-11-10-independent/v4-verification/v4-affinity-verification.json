@@ -1,0 +1,5 @@
+{
+  "capturedUTC": "2026-11-10T07:11:13.846156+00:00",
+  "processes": [],
+  "note": "world100 CPU0 from launch; other V4 measurements share CPUs1,2,3; process user+system CPU and wall reported separately; no cross-version wall speed comparison"
+}

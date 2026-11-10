@@ -1,0 +1,27 @@
+{
+  "atUTC": "2026-11-10 06:52:33 UTC",
+  "runs": [
+    {
+      "name": "v3-full-des30",
+      "pid": 227881,
+      "cmd": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node -r /workspace/Mini/scripts/t577-server-hook.js /workspace/Mini/server/zone.js ",
+      "completedScanDays": 12,
+      "reason": "Role-index defect reproduced: AI departure incorrectly dropped extant players body. Superseded by V4. NewV4world100 records30/100 checkpoints in one run."
+    },
+    {
+      "name": "v3-full-des100",
+      "pid": 227911,
+      "cmd": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node -r /workspace/Mini/scripts/t577-server-hook.js /workspace/Mini/server/zone.js ",
+      "completedScanDays": 27,
+      "reason": "Role-index defect reproduced: AI departure incorrectly dropped extant players body. Superseded by V4. NewV4world100 records30/100 checkpoints in one run."
+    },
+    {
+      "name": "v3-full-tick30",
+      "pid": 229410,
+      "cmd": "/workspace/.toolchains/node-v22.23.4-linux-x64/bin/node -r /tmp/t1248/frozen-v3/scripts/t577-server-hook.js /tmp/t1248/frozen-v3/server/zone.js ",
+      "completedScanDays": 15,
+      "reason": "Use same V4 source for directworld30control; oldOFFrolebranchsemanticallyunchanged but sourceversions kept explicit."
+    }
+  ],
+  "noCompleted30or100Claim": true
+}

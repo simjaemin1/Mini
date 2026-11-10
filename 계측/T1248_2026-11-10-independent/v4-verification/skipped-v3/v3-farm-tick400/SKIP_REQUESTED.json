@@ -1,0 +1,5 @@
+{
+  "atUTC": "2026-11-10 06:50:24 UTC",
+  "reason": "V3 role-index bug reproduced in real fixture; replace queued diagnostic candidates with V4. No running child is killed by this marker. These are skipped/nonvalid, not passed400 cases.",
+  "replacement": "v4 main cases + V4 world100 with30 checkpoint"
+}

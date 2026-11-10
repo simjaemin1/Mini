@@ -10,7 +10,7 @@ for(const [name,flags,bait] of [['normal',{},false],['alternate',{T385_ONE_SWEEP
     NODE_OPTIONS:`--require ${path.join(root,'scripts/t1248-nopoll-hook.js')} --require ${path.join(root,'scripts/t745-vclock.js')}`};
   const fd=fs.openSync(path.join(dir,'wrapper.log'),'w'),run=spawnSync(process.execPath,['scripts/t577-server-run.js','1','1020'],{cwd:root,env,stdio:['ignore',fd,fd],timeout:900000});fs.closeSync(fd);
   let result=null,child=null;try{result=JSON.parse(fs.readFileSync(path.join(dir,'base-1020.json.nopoll.json')));child=JSON.parse(fs.readFileSync(path.join(dir,'base-1020.json.child.json')));}catch(e){}
-  const owned=result&&result.ticks===100&&result.stillOwned&&result.originalMaps&&result.heap&&result.sameBodyResetExcluded;
+  const owned=result&&result.ticks===100&&result.stillOwned&&result.originalMaps&&result.heap&&result.sameBodyResetExcluded&&result.roleExitPreservesBody&&result.roleReturnPreservesBody&&result.realRemovalClearsBody;
   const valid=!!(owned&&child&&child.clock.errs===0&&(bait?child.code===1&&!result.pass&&result.visits.sepNPC===100:child.code===0&&result.pass&&Object.keys(result.visits).length===0));
   fs.writeFileSync(path.join(dir,'check.json'),JSON.stringify({valid,bait,wrapperExit:run.status,child,result,note:'100-tick fixture; no full T577 day claim'},null,2));
   if(valid)pass++;else fail++;console.log((valid?'PASS ':'FAIL ')+name+' '+JSON.stringify({wrapperExit:run.status,childCode:child&&child.code,result}));

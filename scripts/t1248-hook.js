@@ -45,6 +45,7 @@ function benchSummary() {
 }
 const output = process.env.T1248_TRACE;
 if (!output) throw Error('T1248_TRACE required');
+const checkpoints=new Set(String(process.env.T1248_CHECKPOINTS||'').split(',').filter(Boolean).map(Number));
 let profile = null;
 if (process.env.T1248_CPU_PROFILE) {
   const { Session } = require('node:inspector'); profile = new Session(); profile.connect();
@@ -64,6 +65,10 @@ Ev.createLedger = function () {
     if ((day|0) !== last) { last = day|0;
     const villages = (world.villages || []).map(v => ({ name:v.name, parts:[stor(v.storage),[(v.npcs||[]).length,(v.npcs||[]).map(n=>n&&typeof n==='object'?[n.id!=null?n.id:n.pid,R6(n.age),n.currentJob||null,R6(n.hunger),R6(n.hp)]:n)],[R6(v.housing),v.expansions||0,v._banditized?1:0],v.treasury&&typeof v.treasury==='object'?stor(v.treasury):R6(v.treasury)] }));
     fs.appendFileSync(output,JSON.stringify({day:day|0,villages})+'\n');
+    if(checkpoints.has(day|0)){
+      const used=process.cpuUsage(cpu);
+      fs.writeFileSync(output+'.checkpoint-'+(day|0)+'.json',JSON.stringify({day:day|0,cpuSeconds:(used.user+used.system)/1e6,wallSeconds:Number(realTime()-started)/1e9,stats:global.__t1241Stat||{},clock:global.__t745?global.__t745():null},null,2));
+    }
     }
     return scan.apply(this,arguments);
   };

@@ -3,6 +3,9 @@
 const fs=require('fs'),path=require('path'),crypto=require('crypto'),{spawnSync}=require('child_process');
 const root=process.env.T1248_ROOT||path.resolve(__dirname,'..'),out=path.resolve(process.env.T1248_OUT||'/tmp/t1248/run');
 const days=Number(process.argv[2]||30),seed=String(process.argv[3]||1020);fs.mkdirSync(out,{recursive:true});
+// 대체된 후보의 아직 시작하지 않은 진단만 명시적으로 취소한다. 완료/통과로 세지 않는다.
+const skip=path.join(out,'SKIP_REQUESTED.json');
+if(fs.existsSync(skip)){const reason=JSON.parse(fs.readFileSync(skip,'utf8'));fs.writeFileSync(path.join(out,'status.json'),JSON.stringify({valid:false,skipped:true,days,seed,root,reason},null,2));console.log('SKIP '+JSON.stringify(reason));process.exit(77);}
 const source={};for(const name of ['server/zone.js','server/villages.js','server/des.js','server/des-work.js','scripts/t577-server-run.js'])if(fs.existsSync(path.join(root,name)))source[name]=crypto.createHash('sha256').update(fs.readFileSync(path.join(root,name))).digest('hex');
 const observationSource={};for(const name of ['t1248-hook.js','t1248-run.js'])observationSource[name]=crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,name))).digest('hex');
 fs.writeFileSync(path.join(out,'source.json'),JSON.stringify({root,days,seed,source,observationSource},null,2));

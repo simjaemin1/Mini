@@ -38,6 +38,11 @@ global.__t1241Probe=function(now,players){
   }
   if(++ticks<100)return;
   const result={ticks,visits,stillOwned:!!held._des,originalMaps:F.players.has(held.pid)&&F.npcs.has(held.pid),heap:F.q.owned.has(held.pid),sameBodyResetExcluded:!F.movers.has(held.pid)};
-  result.pass=result.stillOwned&&result.originalMaps&&result.heap&&result.sameBodyResetExcluded&&Object.keys(visits).length===0;
+  // NPC AI 집합 이탈은 실제 몸 제거가 아니다(상단·징발·시신). 표시/공통 처리 집합에 남아야 한다.
+  F.npcs.delete(held.pid);
+  result.roleExitPreservesBody=F.players.has(held.pid)&&F.movers.get(held.pid)===held&&!F.awake.has(held.pid)&&!F.q.owned.has(held.pid)&&!held._des;
+  F.npcs.add(held.pid);result.roleReturnPreservesBody=F.awake.has(held.pid)&&F.movers.get(held.pid)===held;
+  F.players.delete(held.pid);result.realRemovalClearsBody=!F.movers.has(held.pid)&&!F.q.owned.has(held.pid);F.npcs.delete(held.pid);
+  result.pass=result.stillOwned&&result.originalMaps&&result.heap&&result.sameBodyResetExcluded&&result.roleExitPreservesBody&&result.roleReturnPreservesBody&&result.realRemovalClearsBody&&Object.keys(visits).length===0;
   fs.writeFileSync(process.env.T577_OUT+'.nopoll.json',JSON.stringify(result));process.exit(result.pass?0:1);
 };

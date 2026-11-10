@@ -1,0 +1,90 @@
+{
+  "observedUTC": "2026-11-10T07:12:55.987176+00:00",
+  "reason": "Process sessions and all engine PIDs disappeared; old write_stdin IDs return Unknown process id. No exit metadata. Cause not established. A detached 15second file writer also died; awaited foreground tool call completed. No interrupted run is counted as complete.",
+  "runs": [
+    {
+      "name": "v4-world100",
+      "preserved": "interrupted-session-v4-world100",
+      "completedDailyRecords": 13,
+      "valid": false,
+      "exitMetadataPresent": false
+    },
+    {
+      "name": "v4-world-tick30",
+      "preserved": "interrupted-session-v4-world-tick30",
+      "completedDailyRecords": 1,
+      "valid": false,
+      "exitMetadataPresent": false
+    },
+    {
+      "name": "v4-tick400",
+      "preserved": "interrupted-session-v4-tick400",
+      "completedDailyRecords": 65,
+      "valid": false,
+      "exitMetadataPresent": false
+    },
+    {
+      "name": "v4-candidate400",
+      "preserved": "interrupted-session-v4-candidate400",
+      "completedDailyRecords": 63,
+      "valid": false,
+      "exitMetadataPresent": false
+    },
+    {
+      "name": "v4-farm-tick400",
+      "preserved": "interrupted-session-v4-farm-tick400",
+      "completedDailyRecords": 63,
+      "valid": false,
+      "exitMetadataPresent": false
+    },
+    {
+      "name": "v4-scale-3900-1",
+      "preserved": "interrupted-session-v4-scale-3900-1",
+      "completedDailyRecords": 0,
+      "valid": false,
+      "exitMetadataPresent": false
+    },
+    {
+      "name": "v4-off",
+      "preserved": "interrupted-session-v4-off",
+      "completedDailyRecords": 0,
+      "valid": false,
+      "exitMetadataPresent": false
+    },
+    {
+      "name": "historic-workt400",
+      "preserved": "interrupted-session-historic-workt400",
+      "completedDailyRecords": 260,
+      "valid": false,
+      "exitMetadataPresent": false
+    },
+    {
+      "name": "historic-stop44400",
+      "preserved": "interrupted-session-historic-stop44400",
+      "completedDailyRecords": 254,
+      "valid": false,
+      "exitMetadataPresent": false
+    },
+    {
+      "name": "queue-nowork400",
+      "preserved": "interrupted-session-queue-nowork400",
+      "completedDailyRecords": 74,
+      "valid": false,
+      "exitMetadataPresent": false
+    },
+    {
+      "name": "queue-order400",
+      "preserved": "interrupted-session-queue-order400",
+      "completedDailyRecords": 66,
+      "valid": false,
+      "exitMetadataPresent": false
+    },
+    {
+      "name": "nofarmer400",
+      "preserved": "interrupted-session-nofarmer400",
+      "completedDailyRecords": 88,
+      "valid": false,
+      "exitMetadataPresent": false
+    }
+  ]
+}

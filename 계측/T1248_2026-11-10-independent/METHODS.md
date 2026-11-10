@@ -29,3 +29,13 @@ scale-3900-0 최초 status.valid=false는 결과 파일 이름 가정(base 대�
 16,000명 제어기 scale16000.py는 명시적 T1248_BENCH_TICKS=1000, WARMUP=300. 기존 scale.py 제어기만 종료했고 3,900명 자식은 계속 완주했다(scale-controller-retired.json). tick-window-check는 실제 8명·1000 CPU/wall 표본·자식0·시계오류0, 부모 T5771(의도한 조기 종료)을 확인했다.
 
 원격 동일 카드 가지 기존 작업을 보존했다. 2026-11-10 04:46 UTC a47e08a5가 이미 원격 batch/des-work-1110에 있어 최초 푸시가 거절됐다. 이번 코드는 batch/des-work-1110-independent/3b852a5e로 분리 푸시했으며 기존 코드와 증명을 혼용하지 않는다.
+
+최종 v3(998fe42d): 남은 밀기/비GC낚시/스냅샷/입력 순회 제거, 동일 몸 재등록 제외, 생존/열좌표 모드 전체 틱 폴백. v3-game-source.json으로 제품고정. v3-full-des30/100, v3-full-tick30, v3-{farm-}tick400/candidate400 및 farm-replay400, v3-scale4판, v3-off를 새로 실행한다. v2 전체세계12/7일은 중단해 최종30/100증명에서 제외했다.
+제어기만 종료하려던 v2 handoff는 실행세션 정리로 자식도 종료됐다. controller-handoff-correction.json 참조. tick400335/candidate295/proto355 및 scale3900DES 미완료는 완주로 세지 않는다. 진행 중 제어기는 더 이상 종료하지 않고 최종소스 대조를 새로 수행한다.
+새 부하4판은 전부 실제51마을, 초기77/314명씩, 침상제한끔, 밭끔, 300예열+1000틱 CPU/wall 동시표본으로 통일했다. 타이머는 측정함수 전후의 process CPU와 hrtime wall이며 소유수 집계는 함수시간 밖이다. 이 부하판의 body_count 집계를 생산 경로의 몸 순회0 증명으로 사용하지 않는다(별도 실제100틱 미방문/미끼 하네스3/0).
+
+2026-11-10 06:16:30 UTC: 네 V3부하 판이 모두 완료된 뒤,4 CPU 할당량을 위해 100일판 전체 스레드를CPU0으로, 다른 이번 작업의 제어기/엔진을CPU1,2,3으로 배정했다. 당시 세계판은각8일이었다. affinity-transition.json 및 실제100일엔진11스레드CPU0 확인 affinity-verification.json 참조. 게임/가상시계/소스는 바꾸지 않았다. 30일·100일의wall은 서로 다른 자원 조건이고,100일 자체도 전/후 혼합 조건이다. CPU와wall을 나누고400일 외삽은실측과구분한다. unreadable /proc목록은 대상이 아닌 종료/다른 프로세스의 읽기 실패이며 실제100일엔진은 별도 확인했다.
+
+## V4 current source and execution lifetime
+V4 changes only npcs.delete body index retention; original AI-set deletion is not players body deletion. Before/after role fixtures and 58/0,286/0,3/0 logs are preserved. Queue metrics are wall instrumentation, process user+system is CPU. Thirty-day DES observation is an immutable checkpoint inside one actual100-day run, not an independent completed30-day child. Checkpoints cannot replace completed100-day exit validation. Old V3 queued FARM cases explicitly skip77/validfalse and are replaced by V4.
+All old active sessions disappeared around07:11UTC, cause unestablished. session-loss-v4.json records exact partial daily counts. Detached probe died; fully awaited foreground probe completed. New orchestration keeps the outer call alive until every child finishes. No partial run is spliced or counted complete. V4world100 CPU0; remaining V4 measurements share CPUs1,2,3. A valid N3927 OFF1000tick fixture completed before interruption and remains usable; no unfinished V4 case is reused.
