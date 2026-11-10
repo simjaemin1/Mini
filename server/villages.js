@@ -16991,13 +16991,15 @@ function _t1196Spot(vil, npc, job) {
 function _t1196Step(vil, npc, now, job) {
   if (!_t1196On(vil)) return null;
   const E = _lifeEcon(), e = vil.econ, Q = e._t1196Q;
-  if (!Q || !Q.length) { _desRelease(vil, npc, 'artisan', job); if (npc._t1196J != null) { npc._t1196J = null; npc._t1196W = null; } return null; }
+  if (!Q || !Q.length) { if(npc._desArtisanId!=null){_desRelease(vil,npc,'artisan',npc._desArtisanId);npc._desArtisanId=null;} if (npc._t1196J != null) { npc._t1196J = null; npc._t1196W = null; } return null; }
   let t = null;
   if (npc._t1196J != null) { for (const x of Q) if (x.id === npc._t1196J) { t = x; break; } if (!t || t.pid !== npc.pid) { t = null; npc._t1196J = null; npc._t1196W = null; } }
   if (!t) {
-    if (_desHost && _desHost.queues && Q.some(x => x.job === job)) { if (!_desAcquire(vil, npc, 'artisan', job, 1, now)) return true; }
+    if(npc._desArtisanId!=null){_desRelease(vil,npc,'artisan',npc._desArtisanId);npc._desArtisanId=null;}
     for (const x of Q) if (x.pid == null && x.job === job) { t = x; break; }
-    if (!t) { _desRelease(vil, npc, 'artisan', job); return null; }
+    if(!t&&_desHost&&_desHost.queues)t=Q.find(x=>x.job===job)||null;
+    if (!t) return null;
+    if(_desHost&&_desHost.queues){npc._desArtisanId=t.id;if(!_desAcquire(vil,npc,'artisan',t.id,1,now))return true;}
     t.pid = npc.pid; npc._t1196J = t.id; npc._t1196W = { ph: t.st === 0 ? 'draw' : 'go', at: 0, tx: 0, ty: 0, fac: null };
     _t1196Stat.claim++;
   }
@@ -17011,13 +17013,13 @@ function _t1196Step(vil, npc, now, job) {
     if (now - W.at < (W.ph === 'draw' ? G_DRAWW : G_STOREW)) return true;
     if (W.ph === 'draw') {
       const f = E.artisanTake(e, t.id); _t1196Stat.take++;
-      if (!(f > 0)) { E.artisanGive(e, t.id); npc._t1196J = null; npc._t1196W = null; return true; }   // 재료가 하나도 없었다 — 빈손 작업표를 닫는다(넣을 것 0)
+      if (!(f > 0)) { E.artisanGive(e, t.id); _desRelease(vil,npc,'artisan',t.id);npc._desArtisanId=null; npc._t1196J = null; npc._t1196W = null; return true; }   // 재료가 하나도 없었다 — 빈손 작업표를 닫는다(넣을 것 0)
       const sp = _t1196Spot(vil, npc, job); if (sp.fac) _t1196Stat.fac++; else _t1196Stat.hall++;
       { const A = _t1196Stat.at || (_t1196Stat.at = {}); const k = job + ':' + (sp.fac || 'hall'); A[k] = (A[k] || 0) + 1; }   // 계측 전용 — 직업 × 작업 자리
       W.ph = 'go'; W.at = 0; W.tx = sp.x; W.ty = sp.y; W.fac = sp.fac;
       return true;
     }
-    E.artisanGive(e, t.id); _desRelease(vil, npc, 'artisan', job); _t1196Stat.give++;
+    E.artisanGive(e, t.id); _desRelease(vil, npc, 'artisan', t.id); npc._desArtisanId=null; _t1196Stat.give++;
     npc._t1196J = null; npc._t1196W = null;
     return true;
   }

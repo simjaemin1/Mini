@@ -5252,7 +5252,7 @@ function _desInvalidate(why,now) { if(!_desRuntime)return;for(const id of [..._d
 function _desSerial(p,now) {
   const S=p._des;
   const data=S?{...S,P:null,r:S.r?S.r.snapshot():null}:null;
-  const fields={};for(const key of ['_lifeTask','_workT','_jobT','_farmK','_desFarm','_desWorkElapsed','_granTask','_t724T','_t1196W','_t1196J','_t1181Haul','_desWait','_desCrewKey'])if(p[key]!=null)fields[key]=JSON.parse(JSON.stringify(p[key]));
+  const fields={};for(const key of ['_lifeTask','_workT','_jobT','_farmK','_desFarm','_desWorkElapsed','_granTask','_t724T','_t1196W','_t1196J','_t1181Haul','_desWait','_desCrewKey','_desArtisanId'])if(p[key]!=null)fields[key]=JSON.parse(JSON.stringify(p[key]));
   return {id:p.pid,identity:p._sh!=null?String(p._sh):String(p.pid),data,fields,wakeAt:_desRuntime.actors.get(p.pid)?.at};
 }
 function _desSnapshot() {
@@ -5271,7 +5271,7 @@ function _desRestore(now) {
     for(const key of ['_desFarm','_granTask','_t1196W','_t1181Haul'])if(p[key]&&p[key].at!=null)p[key].at+=shift;
     if(S){p._des=S;_desRuntime.park(p.pid,(a.wakeAt!=null?a.wakeAt+shift:S.until),{kind:S.k});_desTick.delete(p.pid);_desMovers.delete(p.pid);}
   }
-  for(const x of s.facilities||[]){const f=_DES.Facility.restore({...x,busy:x.busy.filter(id=>old.has(id)).map(id=>old.get(id)),q:x.q.filter(e=>old.has(e.who)).map(e=>({...e,who:old.get(e.who)}))},shift);_desFacilities.set(f.name,f);for(const id of [...f.busy,...f.q.map(e=>e.who)]){let a=_desLeases.get(id);if(!a){a=new Set();_desLeases.set(id,a);}a.add(f.name);}}
+  for(const x of s.facilities||[]){const f=_DES.Facility.restore({...x,busy:x.busy.filter(id=>old.has(id)).map(id=>old.get(id)),q:x.q.filter(e=>old.has(e.who)).map(e=>({...e,who:old.get(e.who)}))},shift);_desFacilities.set(f.name,f);while(f.busy.size<f.cap&&f.q.length){const e=f.q.shift();f.busy.add(e.who);f.served++;_desWake(e.who,now,'resource');}for(const id of [...f.busy,...f.q.map(e=>e.who)]){let a=_desLeases.get(id);if(!a){a=new Set();_desLeases.set(id,a);}a.add(f.name);}}
 }
 function _desPulse(now) {
   if(_desPending)_desRestore(now);
