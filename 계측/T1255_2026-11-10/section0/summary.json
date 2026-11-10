@@ -1,0 +1,68 @@
+{
+  "refs": {
+    "landed": "419049de",
+    "review": "2036ff57"
+  },
+  "bases": {
+    "landed": "87b63d2c",
+    "review": "675f54a8"
+  },
+  "baseFilesIdentical": [
+    "sim/economy-sim.js",
+    "sim/economy-sim-v2.js",
+    "server/villages.js",
+    "server/granary-lots.js",
+    "server/kcal.js",
+    "scripts/t176-ab.js",
+    "scripts/t17-metrics.js"
+  ],
+  "seeds": [
+    1020,
+    7,
+    42
+  ],
+  "days": 800,
+  "offPopTotal": 18742,
+  "rows": [
+    {
+      "seed": 1020,
+      "days": 800,
+      "landedPop": 4010,
+      "reviewPop": 3193,
+      "landedEmpty": 3,
+      "reviewEmpty": 2,
+      "reviewThreeGatesRevertedPop": 3583
+    },
+    {
+      "seed": 7,
+      "days": 800,
+      "landedPop": 3508,
+      "reviewPop": 2727,
+      "landedEmpty": 4,
+      "reviewEmpty": 3,
+      "reviewThreeGatesRevertedPop": 3506
+    },
+    {
+      "seed": 42,
+      "days": 800,
+      "landedPop": 2899,
+      "reviewPop": 2770,
+      "landedEmpty": 4,
+      "reviewEmpty": 3,
+      "reviewThreeGatesRevertedPop": 3996
+    }
+  ],
+  "totals": {
+    "landed": 10417,
+    "review": 8690,
+    "threeGatesReverted": 11085
+  },
+  "reviewFresh1020BaseEightVpopExact": true,
+  "intervention": "cookTarget food8day, _lifeNeedClear food120day, _lifeGranAdd stock target; 3 memory-only reversions together, not independent single-gate estimates",
+  "remainingDifference": "Three reversions do not reproduce landed world; remaining code/cached-input interactions not isolated. No T1246 code imported into T1255.",
+  "priceStatisticDifference": {
+    "landed": "800day village-day mean 375.04",
+    "review": "day800 population-weighted mean 387.99"
+  },
+  "probesCaveat": "Without-village production API differs for foxtail millet and soybean; main production calls pass v, so this probe alone is not the measured population cause."
+}
