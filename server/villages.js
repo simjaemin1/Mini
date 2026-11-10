@@ -18717,6 +18717,21 @@ function desRestoreWork(npc,saved,now) {
   if(saved.clear&&(!vil._farmSet||!vil._farmSet.has(saved.clear.key))){const m=vil._t1248Clear||(vil._t1248Clear=new Map());m.set(saved.clear.key,Math.max(m.get(saved.clear.key)||0,saved.clear.progress));}
   if(saved.farm){const m=vil._t1248Farm||(vil._t1248Farm=new Map()),w=saved.farm,old=m.get(w.sig);m.set(w.sig,{...w,at:now,progress:Math.min(w.total,Math.max(w.progress,old?.progress||0))});}
 }
+// Runtime pids are recreated at boot. Rekey canonical requests once (including
+// pid swaps), then require both the saved and restored owner before parking.
+function desRestoreOwners(ids) {
+  if(!_desHost)return ()=>true;
+  const owners=new Map();
+  for(const vil of state.byDbId.values())for(const job of vil.econ?._t1196Q||[]){
+    owners.set(job,job.pid);
+    if(ids.has(job.pid))job.pid=ids.get(job.pid);
+  }
+  return (npc,oldId)=>{
+    if(npc._t1196J==null)return true;
+    const job=state.byDbId.get(npc.simVillageId)?.econ?._t1196Q?.find(j=>j.id===npc._t1196J);
+    return !!job&&owners.get(job)===oldId&&job.pid===npc.pid;
+  };
+}
 function desWorkOf(npc,now) {
   if(!_desHost||!_desHost.work)return null;
   const vil=state.byDbId.get(npc.simVillageId);if(!vil)return null;
@@ -18734,3 +18749,4 @@ function desWorkOf(npc,now) {
 }
 module.exports.desInstall=desInstall;module.exports.desWorkOf=desWorkOf;module.exports.desAdvance=desAdvance;
 module.exports.desCheckpoint=desCheckpoint;module.exports.desCaptureWork=desCaptureWork;module.exports.desRestoreWork=desRestoreWork;
+module.exports.desRestoreOwners=desRestoreOwners;

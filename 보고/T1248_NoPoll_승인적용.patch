@@ -121,10 +121,10 @@ index c866c8d4..57d085d9 100644
  // Facility order and in-service ownership survive a restart. Queued identity is
  // kept separately from the actor heap; releasing a slot explicitly wakes its head.
 diff --git a/server/villages.js b/server/villages.js
-index 469f4458..0431ae7d 100644
+index 469f4458..8ab92632 100644
 --- a/server/villages.js
 +++ b/server/villages.js
-@@ -18699,14 +18699,28 @@ function _desFarmReady(vil,npc,k,day,now,cost) {
+@@ -18699,14 +18699,43 @@ function _desFarmReady(vil,npc,k,day,now,cost) {
    if(w.progress+1e-6<w.total)return false;
    P.delete(sig);npc._desFarm=null;return true;
  }
@@ -148,6 +148,21 @@ index 469f4458..0431ae7d 100644
 +  if(saved.clear&&(!vil._farmSet||!vil._farmSet.has(saved.clear.key))){const m=vil._t1248Clear||(vil._t1248Clear=new Map());m.set(saved.clear.key,Math.max(m.get(saved.clear.key)||0,saved.clear.progress));}
 +  if(saved.farm){const m=vil._t1248Farm||(vil._t1248Farm=new Map()),w=saved.farm,old=m.get(w.sig);m.set(w.sig,{...w,at:now,progress:Math.min(w.total,Math.max(w.progress,old?.progress||0))});}
 +}
++// Runtime pids are recreated at boot. Rekey canonical requests once (including
++// pid swaps), then require both the saved and restored owner before parking.
++function desRestoreOwners(ids) {
++  if(!_desHost)return ()=>true;
++  const owners=new Map();
++  for(const vil of state.byDbId.values())for(const job of vil.econ?._t1196Q||[]){
++    owners.set(job,job.pid);
++    if(ids.has(job.pid))job.pid=ids.get(job.pid);
++  }
++  return (npc,oldId)=>{
++    if(npc._t1196J==null)return true;
++    const job=state.byDbId.get(npc.simVillageId)?.econ?._t1196Q?.find(j=>j.id===npc._t1196J);
++    return !!job&&owners.get(job)===oldId&&job.pid===npc.pid;
++  };
++}
  function desWorkOf(npc,now) {
    if(!_desHost||!_desHost.work)return null;
    const vil=state.byDbId.get(npc.simVillageId);if(!vil)return null;
@@ -155,13 +170,14 @@ index 469f4458..0431ae7d 100644
    if(npc._desWait)return {kind:'queue',until:Infinity};
    const t=npc._lifeTask;
    if(t&&(t.k==='clear'||t.k==='build')&&Math.hypot(npc.x-t.px,npc.y-t.py)<=44&&npc._workT!=null)return {kind:t.k,until:now+Math.max(0,_desWorkGoal(vil,t)-(t.prog||0))};
-@@ -18719,3 +18733,4 @@ function desWorkOf(npc,now) {
+@@ -18719,3 +18748,5 @@ function desWorkOf(npc,now) {
    return null;
  }
  module.exports.desInstall=desInstall;module.exports.desWorkOf=desWorkOf;module.exports.desAdvance=desAdvance;
 +module.exports.desCheckpoint=desCheckpoint;module.exports.desCaptureWork=desCaptureWork;module.exports.desRestoreWork=desRestoreWork;
++module.exports.desRestoreOwners=desRestoreOwners;
 diff --git a/server/zone.js b/server/zone.js
-index 0ca54c07..c68c0587 100644
+index 0ca54c07..a5e25e20 100644
 --- a/server/zone.js
 +++ b/server/zone.js
 @@ -754,7 +754,7 @@ let _t432Tick = 0;
@@ -266,7 +282,13 @@ index 0ca54c07..c68c0587 100644
    if (_desHeapOn) { _desRuntime.cancel(npc.pid); _desTick.add(npc.pid); _desMovers.set(npc.pid,npc); }
    if (S.work) SimVillages.desAdvance(npc,Math.min(now,S.until));
    if (why === 'hurt' || why === 'away' || why === 'remove') _desReleaseAll(npc);
-@@ -5185,6 +5196,7 @@ function _desTry(npc, now) {
+@@ -5180,11 +5191,13 @@ function _desTimed(npc, dt, now) {
+ }
+ // 틱 갈래 걸음 뒤 — 사건 토막을 열 수 있나
+ function _desTry(npc, now) {
++  if(npc._desRestoreUnsafe)return; // An unverified restored owner stays on ticks for this process.
+   const act = npc._lifeAct;
+   const work = _desWorkOn ? SimVillages.desWorkOf(npc,now) : null;
    if (!work && !_DES_WALK.has(act) && !(_desWorkOn && (act === '운반' || act === '저장' || act === '인출'))) return;   // 싼 거름 먼저(일 라벨 몸이 대부분)
    if (!npc.simVillageId || npc.canadiaVillage || npc.simWar || npc.simCaravan || npc._bdtGid != null || npc.handingOff) return;
    if (npc.behavior !== 'wander' || npc._huntSpd || npc.floor || npc.onStairId || npc.canadiaTask) return;
@@ -274,7 +296,7 @@ index 0ca54c07..c68c0587 100644
    if (npc.simEvacUntil && now < npc.simEvacUntil) return;
    if ((!_desWorkOn && npc._granTask) || (npc._t720 && npc._t720.k) || npc._rest) return;
    if (npc._dOff == null || npc.simLonOff == null) return;
-@@ -5219,9 +5231,14 @@ function _desTry(npc, now) {
+@@ -5219,9 +5232,14 @@ function _desTry(npc, now) {
    if(bound<until){until=bound;phase=true;}
    if (!(until>now) || !Number.isFinite(until)) return;
    if (r) for(let i=1;i<r.X.length;i++)if(isPositionActive(r.X[i],r.Y[i])){until=Math.min(until,r.T[i]);phase=true;break;}
@@ -291,7 +313,7 @@ index 0ca54c07..c68c0587 100644
  
  }
  // T1248: all parked bodies stay in players, but leave both tick work sets.
-@@ -5230,6 +5247,12 @@ function _desTry(npc, now) {
+@@ -5230,6 +5248,12 @@ function _desTry(npc, now) {
  const _desRuntime = _desHeapOn ? new _DES.Dispatcher() : null;
  const _desTick = _desHeapOn ? new Set(npcs) : null;
  const _desMovers = _desHeapOn ? new Map(players) : null;
@@ -304,7 +326,7 @@ index 0ca54c07..c68c0587 100644
  const _desFacilities = T1241_DES ? new Map() : null;
  const _desLeases = T1241_DES ? new Map() : null;
  let _desPending = null, _desView = null;
-@@ -5251,10 +5274,11 @@ function _desAcquire(p,key,cap,now) {
+@@ -5251,10 +5275,11 @@ function _desAcquire(p,key,cap,now) {
  }
  function _desInvalidate(why,now) { if(!_desRuntime)return;for(const id of [..._desRuntime.actors.keys()])_desWake(id,now,why); }
  function _desSerial(p,now) {
@@ -320,24 +342,27 @@ index 0ca54c07..c68c0587 100644
  }
  function _desSnapshot() {
    const now=Date.now(),actors=[];
-@@ -5266,11 +5290,14 @@ function _desRestore(now) {
+@@ -5266,11 +5291,16 @@ function _desRestore(now) {
    if(s.version!==1||!Array.isArray(s.actors))throw new Error('invalid DES runtime');
    const shift=now-s.now,ids=new Map();for(const p of players.values())if(p.isNpc)ids.set(p._sh!=null?String(p._sh):String(p.pid),p);
    const old=new Map();for(const a of s.actors){const p=ids.get(a.identity);if(p)old.set(a.id,p.pid);}
 -  for(const a of s.actors){const p=ids.get(a.identity);if(!p)continue;const S=a.data?{...a.data}:null;if(S){S.t0+=shift;S.until+=shift;if(S.r)S.r=_DES.Route.restore(S.r,shift);S.P=p.path||null;}
++  const ownerRestored=SimVillages.desRestoreOwners(old);
 +  for(const a of s.actors){const p=ids.get(a.identity);if(!p)continue;const S=a.data?{...a.data}:null;if(S){S.t0+=shift;S.until+=shift;if(S.r)S.r=_DES.Route.restore(S.r,shift);if(S.survival)S.survival={...S.survival,at:S.survival.at+shift};S.P=p.path||null;}
      for(const[key,value]of Object.entries(a.fields||{}))p[key]=value;
      for(const key of ['_workT','_jobT','_t724T'])if(p[key]!=null)p[key]+=shift;
-     for(const key of ['_desFarm','_granTask','_t1196W','_t1181Haul'])if(p[key]&&p[key].at!=null)p[key].at+=shift;
+-    for(const key of ['_desFarm','_granTask','_t1196W','_t1181Haul'])if(p[key]&&p[key].at!=null)p[key].at+=shift;
 -    if(S){p._des=S;_desRuntime.park(p.pid,(a.wakeAt!=null?a.wakeAt+shift:S.until),{kind:S.k});_desTick.delete(p.pid);_desMovers.delete(p.pid);}
++    for(const key of ['_desFarm','_granTask','_t1196W','_t1181Haul'])if(p[key]&&p[key].at!=null&&(key!=='_t1196W'||p[key].at!==0))p[key].at+=shift;
 +    if(p.body)for(const key of Object.keys(p.body))if(key.endsWith('Until')&&p.body[key]>0)p.body[key]+=shift;
 +    if(a.position)_desPut(p,a.position.x,a.position.y);
 +    SimVillages.desRestoreWork(p,a.workState,now);
-+    if(S){const policy=_DES_BODY.survivalPlan(p,now,isPositionActive(p.x,p.y),_desSurvivalServices);if(!policy.ok||(S.r&&!a.position)){p._des=null;_desStat.fallbackRestore=(_desStat.fallbackRestore||0)+1;continue;}if(!S.survival)S.survival=policy;if(!S.survival.ok||!_desSpace.park(p,S)){p._des=null;_desStat.fallbackRestore=(_desStat.fallbackRestore||0)+1;continue;}p._des=S;_desRuntime.park(p.pid,(a.wakeAt!=null?a.wakeAt+shift:S.until),{kind:S.k},a.orderId??p._sh??p.pid);_desTick.delete(p.pid);_desMovers.delete(p.pid);}
++    if(!ownerRestored(p,a.id))p._desRestoreUnsafe=true;
++    if(S){const policy=_DES_BODY.survivalPlan(p,now,isPositionActive(p.x,p.y),_desSurvivalServices);if(!policy.ok||(S.r&&!a.position)||!ownerRestored(p,a.id)){p._des=null;_desStat.fallbackRestore=(_desStat.fallbackRestore||0)+1;continue;}if(!S.survival)S.survival=policy;if(!S.survival.ok||!_desSpace.park(p,S)){p._des=null;_desStat.fallbackRestore=(_desStat.fallbackRestore||0)+1;continue;}p._des=S;_desRuntime.park(p.pid,(a.wakeAt!=null?a.wakeAt+shift:S.until),{kind:S.k},a.orderId??p._sh??p.pid);_desTick.delete(p.pid);_desMovers.delete(p.pid);}
    }
    for(const x of s.facilities||[]){const f=_DES.Facility.restore({...x,busy:x.busy.filter(id=>old.has(id)).map(id=>old.get(id)),q:x.q.filter(e=>old.has(e.who)).map(e=>({...e,who:old.get(e.who)}))},shift);_desFacilities.set(f.name,f);while(f.busy.size<f.cap&&f.q.length){const e=f.q.shift();f.busy.add(e.who);f.served++;_desWake(e.who,now,'resource');}for(const id of [...f.busy,...f.q.map(e=>e.who)]){let a=_desLeases.get(id);if(!a){a=new Set();_desLeases.set(id,a);}a.add(f.name);}}
  }
-@@ -5283,7 +5310,7 @@ function _desPulse(now) {
+@@ -5283,7 +5313,7 @@ function _desPulse(now) {
        if(_terrBlocked0(q.x,q.y)||isBlockedByWall(q.x,q.y,p.x,p.y,0,null)){p.path=null;p.nextDecisionAt=0;_desWake(id,at,'blocked');return;}
        _desPut(p,q.x,q.y);Roads.stampEntityPx(p,q.x,q.y);_desStat.routeEvents=(_desStat.routeEvents||0)+1;
        let n=q.k+1;while(n<S.r.T.length&&S.r.T[n]<=at)n++;
@@ -346,7 +371,7 @@ index 0ca54c07..c68c0587 100644
      }else _desWake(id,at);
    });
    // activeChunkKeys is replaced by the AOI builder, rather than changing each
-@@ -5295,8 +5322,8 @@ if(_desHeapOn) {
+@@ -5295,8 +5325,8 @@ if(_desHeapOn) {
    const add=npcs.add.bind(npcs),del=npcs.delete.bind(npcs),set=players.set.bind(players),drop=players.delete.bind(players);
    npcs.add=function(id){add(id);const p=players.get(id);if(!p||!p._des)_desTick.add(id);return this;};
    npcs.delete=function(id){const p=players.get(id);if(p&&p._des)_desEnd(p,Date.now(),'away');if(p)_desReleaseAll(p);_desRuntime.cancel(id);_desTick.delete(id);return del(id);};
@@ -357,7 +382,7 @@ index 0ca54c07..c68c0587 100644
    SimVillages.t742Bind('zone.desWork',_desSnapshot,s=>{_desPending=s;});
  }
  if(T1241_DES)SimVillages.desInstall({work:_desWorkOn,queues:_desQueuesOn,acquire:_desAcquire,release:_desRelease,releaseAll:_desReleaseAll});
-@@ -15708,7 +15735,7 @@ function tickDowned(now) {
+@@ -15708,7 +15738,7 @@ function tickDowned(now) {
    if (now - _downedTickAt < 1000) return;
    const dt = _downedTickAt ? (now - _downedTickAt) : 1000;
    _downedTickAt = now;
@@ -366,7 +391,7 @@ index 0ca54c07..c68c0587 100644
      if (p.isNpc) continue;
      // ⓞ 업고 있던 사람이 **사라졌다**(접속 종료·존 이동). 업은 이의 60kg 이 영원히 남으면
      //   그 사람은 평생 비틀거린다 — 짐은 사람이 있을 때만 짐이다.
-@@ -16579,15 +16606,17 @@ setInterval(() => {
+@@ -16579,15 +16609,17 @@ setInterval(() => {
  
    // === 활성 청크 갱신 (player·observer 위치 기반) ===
    updateActiveChunks();
@@ -385,7 +410,7 @@ index 0ca54c07..c68c0587 100644
  
    // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===
    // 비활성 청크 NPC는 멈춤 (CPU 절약). 가까이 player 오면 자동 재개.
-@@ -17042,7 +17071,7 @@ setInterval(() => {
+@@ -17042,7 +17074,7 @@ setInterval(() => {
      stepStairFor(p);
    }
    let _stairNone = false;
@@ -394,7 +419,7 @@ index 0ca54c07..c68c0587 100644
    // ★[T421 ③] 몹 한 걸음 — 종전 루프 몸통 그대로(`continue` → `return`). `act` 를 받으면 술어를 다시 안 부른다.
    function _stairStepM(m, act) {
      if (m.hp <= 0) return;
-@@ -17139,7 +17168,7 @@ setInterval(() => {
+@@ -17139,7 +17171,7 @@ setInterval(() => {
      if (p.isNpc && !p.canadiaVillage && !(act !== undefined ? act : isPositionActive(p.x, p.y))) return;  // dormant NPC 낙하 스킵
      processFalling(p);
    }
@@ -403,7 +428,7 @@ index 0ca54c07..c68c0587 100644
    function _fallStepM(m, act) {   // ★[T421 ③] 몹 한 걸음 — 종전 루프 몸통 그대로
      if (m.hp <= 0) return;
      if (!(act !== undefined ? act : isPositionActive(m.x, m.y))) return;
-@@ -17174,7 +17203,7 @@ setInterval(() => {
+@@ -17174,7 +17206,7 @@ setInterval(() => {
      //   ★★[T1197 2026-11-06 · 추상 걷기 C] 켬(econ `T1197_MEAL_BODY` — 같은 글자) = 마을 몸의 허기는 **그 사람의 몸 게이지**가 쥔다(곳간에서 꺼내 먹고 · 굶으면 그 몸이 쓰러진다 —
      //     `villages.js` T1197 머리글 · 흘림은 `t1197BodyStep` 하나) · **보이는 몸만**(활성 칸 — 안 보이는 몸의 사람은 날 경계 일괄이 친다 · 벽시계 무관 = 헤드리스 판 결정론) ·
      //     갈증은 면제 그대로 · 짝 없는 몸 · 마을 밖 몸 · 끔 = 종전 줄.
@@ -412,7 +437,7 @@ index 0ca54c07..c68c0587 100644
      // ★★[신체 상태 §7 · 2026-08-26] 여기 있던 허기·갈증·밤추위 계산을 **`server/body.js` 로 옮겼다.**
      //   종전엔 감쇠는 여기, 추위는 여기 안 지역변수(`p._cold`), 효과는 여기저기 흩어져 있었다.
      //   축이 다섯이 되면 그 흩어짐이 곧 사고다 ⇒ **정본 하나**로 모은다. 여기 남는 건 **맥락 수집**뿐이다.
-@@ -17235,7 +17264,7 @@ setInterval(() => {
+@@ -17235,7 +17267,7 @@ setInterval(() => {
      // ★아사(기아 hp 드레인) 제거 — 사용자 확정: 식량 사망은 econ 기근 인구감소가 유일, 별도 아사 기능은 중복이라 폐지.
      //   기갈 0/0은 디버프만: 달리기 불가(위 sprint 게이트)·자연 회복 정지(아래 회복 루프 게이지 조건)·클라 지침/시야 축소.
    }
@@ -421,7 +446,7 @@ index 0ca54c07..c68c0587 100644
  
    // === HP 회복 (out-of-combat 1초 후) — 단 hunger/thirst 모두 0이상일 때만 ===
    // ★[T385] 몸통을 함수 하나로 — `act` 를 받으면 술어를 다시 안 부른다(`continue` → `return`)
-@@ -17259,7 +17288,7 @@ setInterval(() => {
+@@ -17259,7 +17291,7 @@ setInterval(() => {
        if (_rm > 0 && _extreme <= 0) setHp(p, p.hp + 2 * dt * 5 * _rm, 'regen'); // 만복 기준 초당 ~10hp · `gauges` 가 초당 하나로 나른다
      }
    }
@@ -430,7 +455,7 @@ index 0ca54c07..c68c0587 100644
  
    // === 게이지 변화 주기 broadcast (1초 간격, self에만) ===
    // ★[T385] 몸통을 함수 하나로(`continue` → `return`)
-@@ -17307,7 +17336,7 @@ setInterval(() => {
+@@ -17307,7 +17339,7 @@ setInterval(() => {
        });
      }
    }
@@ -439,7 +464,7 @@ index 0ca54c07..c68c0587 100644
  
    // === [T385] 한 바퀴 — 뒤 묶음 다섯(계단·낙하·게이지·HP·방송) ===
    //   ★몸마다 **종전 순서 그대로** 다섯 단계를 밟는다. 몹의 계단·낙하는 위 제자리에서 이미 돌았다(의존 표: 몹과 주민은 서로 안 읽는다).
-@@ -17325,8 +17354,8 @@ setInterval(() => {
+@@ -17325,8 +17357,8 @@ setInterval(() => {
        _hpRegenStep(p, act);
        _gaugeNetStep(p);
      };
@@ -450,7 +475,7 @@ index 0ca54c07..c68c0587 100644
    }
  
    // === Mob AI ===
-@@ -17350,7 +17379,7 @@ setInterval(() => {
+@@ -17350,7 +17382,7 @@ setInterval(() => {
        m.aggroTarget = null;
        // 주인이 현재 zone에 접속 중이면 따라가기
        let ownerP = null;
@@ -459,7 +484,7 @@ index 0ca54c07..c68c0587 100644
        if (ownerP) {
          const dx = ownerP.x - m.x, dy = ownerP.y - m.y;
          const dd = Math.hypot(dx, dy);
-@@ -17402,7 +17431,7 @@ setInterval(() => {
+@@ -17402,7 +17434,7 @@ setInterval(() => {
      if (m.type === 'wolf' && !m.aggroTarget) {
        const homeDist = Math.hypot(m.x - m.homeX, m.y - m.homeY);
        if (homeDist < WOLF_TERRITORY_RADIUS) {
@@ -468,7 +493,7 @@ index 0ca54c07..c68c0587 100644
          let best = null, bestD = sight;
          for (const p of nearby) {
            if (p.hp <= 0) continue;
-@@ -17521,7 +17550,7 @@ setInterval(() => {
+@@ -17521,7 +17553,7 @@ setInterval(() => {
    // === AOI 필터링: per-viewer tick ===
    // 각 viewer(player+observer)에 자기 시야(AOI_RADIUS) 안 player만 송신.
    // 대역폭 절감 + observer를 통한 정보 누출 차단.
@@ -477,7 +502,7 @@ index 0ca54c07..c68c0587 100644
    const allMobs = Array.from(mobs.values());
    // viewer별 "이전 tick에 본 entity pid/mid" 추적 — 새로 보이는 것만 메타 포함
    // 이미 본 것은 위치/HP만. payload ~70% 감소.
-@@ -17674,8 +17703,8 @@ setInterval(() => {
+@@ -17674,8 +17706,8 @@ setInterval(() => {
  const _fishStats2 = { bites: 0, expired: 0 };
  let _fishNow = 0;
  function _fishPoll(now) {
@@ -488,7 +513,7 @@ index 0ca54c07..c68c0587 100644
  }
  function _fishPollOne(p, now) {   // 종전 `_fishPoll` 고리 몸통 글자 그대로(`continue` → `return`)
    if (typeof now !== 'number') now = _fishNow;   // forEach 는 (값, 키, 지도)를 넘긴다 — 둘째 인자는 키라 버린다
-@@ -17710,7 +17739,7 @@ let _saveCursor = 0;
+@@ -17710,7 +17742,7 @@ let _saveCursor = 0;
  const _saveStats = { saved: 0, skippedClean: 0, skippedSuperseded: 0, ms: 0 };
  function _periodicSave(now) {
    if (!players.size) return;

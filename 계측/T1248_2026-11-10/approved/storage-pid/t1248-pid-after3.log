@@ -1,0 +1,6 @@
+PASS production SQLite save at mid-segment; actual child=0, fixture wrapper=1
+PASS resume: actual new zone process=0
+PASS missing-position-bait: actual new zone process=1 (expected invariant failure)
+PASS missing-owner-bait: actual new zone process=1 (expected invariant failure)
+RESULT 4 passed / 0 failed
+ARTIFACTS /tmp/t1248-storage-c5qSlW

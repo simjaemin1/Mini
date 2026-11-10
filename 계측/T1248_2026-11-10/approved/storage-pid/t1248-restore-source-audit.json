@@ -1,0 +1,27 @@
+{
+  "baseCommit": "e1e65d6abf75363982061dad6d540db80811198c",
+  "currentSnapshot": "/tmp/t1248-final-v7",
+  "files": {
+    "server/des.js": {
+      "baseSHA256": "2275e08a257f0251cd50c7b66311c5b7efde9277473fa38593386477df0942cf",
+      "currentSHA256": "2275e08a257f0251cd50c7b66311c5b7efde9277473fa38593386477df0942cf",
+      "unchangedOutsideRestoreAndUnsafeGuard": true
+    },
+    "server/des-body.js": {
+      "baseSHA256": "da1f4604da61460e86032361f2bef42753552ef204ea8634df33552ba7ecab79",
+      "currentSHA256": "da1f4604da61460e86032361f2bef42753552ef204ea8634df33552ba7ecab79",
+      "unchangedOutsideRestoreAndUnsafeGuard": true
+    },
+    "server/zone.js": {
+      "baseSHA256": "1006029544ca5a373dc7638239db2111099a128fbd295ccb95727577e8970aac",
+      "currentSHA256": "92cfade3feffb2dcd2dd1e4e349a385510cf2901f1a2694974a697ee4ad931d8",
+      "unchangedOutsideRestoreAndUnsafeGuard": true
+    },
+    "server/villages.js": {
+      "baseSHA256": "458900474ab01ea489a7db549cc67f07c9b369db2bf0281ec51e6797f13d5113",
+      "currentSHA256": "7315c57a81219a1dfc7b43e2a83a62d54534f3a911a92c81ba82c6e60034d8f7",
+      "unchangedOutsideRestoreAndUnsafeGuard": true
+    }
+  },
+  "limit": "Long performance measurements remain baseCommit measurements; added guard cost was not measured there. Fresh run counters prove the restore-only functions and unsafe branch are unentered, not equal timing."
+}

@@ -9,7 +9,9 @@ const vil={dbId:123,econ:{storage:{},npcs:[]},_t1248Farm:new Map()},npc={pid:'ac
 state.byDbId=new Map([[123,vil]]);state.dayMs=1440000;
 try{
  ok('OFF host never admits work',()=>{V.desInstall(null);npc._jobT=5000;npc.simJob='farmer';assert.equal(V.desWorkOf(npc,1000),null);});
+ ok('OFF owner restore leaves canonical requests unchanged',()=>{const job={id:1,pid:'old'};vil.econ._t1196Q=[job];const valid=V.desRestoreOwners(new Map([['old','new']]));assert.equal(job.pid,'old');assert(valid(npc,'old'));delete vil.econ._t1196Q;});
  V.desInstall({work:true,queues:false,releaseAll(){}});
+ ok('restart owner mapping handles pid swaps exactly once',()=>{const a={id:1,pid:'a'},b={id:2,pid:'b'};vil.econ._t1196Q=[a,b];const valid=V.desRestoreOwners(new Map([['a','b'],['b','a']]));assert.equal(a.pid,'b');assert.equal(b.pid,'a');assert(valid({pid:'b',simVillageId:123,_t1196J:1},'a'));assert(valid({pid:'a',simVillageId:123,_t1196J:2},'b'));assert(!valid({pid:'b',simVillageId:123,_t1196J:1},'b'));assert(!valid({pid:'b',simVillageId:123,_t1196J:99},'a'));delete vil.econ._t1196Q;});
  ok('farmer cooldown keeps its existing deadline',()=>assert.deepEqual(V.desWorkOf(npc,1000),{kind:'farm-wait',until:5000}));
  delete npc._jobT;
  ok('clear finish uses canonical field cost and retained progress',()=>{npc._lifeTask={k:'clear',cx:0,cy:0,px:16,py:16,prog:25};npc._workT=1000;assert.deepEqual(V.desWorkOf(npc,1000),{kind:'clear',until:1000+B._t1221ClearS(vil,'0,0')*state.dayMs/1440-25});});

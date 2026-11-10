@@ -5191,6 +5191,7 @@ function _desTimed(npc, dt, now) {
 }
 // 틱 갈래 걸음 뒤 — 사건 토막을 열 수 있나
 function _desTry(npc, now) {
+  if(npc._desRestoreUnsafe)return; // An unverified restored owner stays on ticks for this process.
   const act = npc._lifeAct;
   const work = _desWorkOn ? SimVillages.desWorkOf(npc,now) : null;
   if (!work && !_DES_WALK.has(act) && !(_desWorkOn && (act === '운반' || act === '저장' || act === '인출'))) return;   // 싼 거름 먼저(일 라벨 몸이 대부분)
@@ -5290,14 +5291,16 @@ function _desRestore(now) {
   if(s.version!==1||!Array.isArray(s.actors))throw new Error('invalid DES runtime');
   const shift=now-s.now,ids=new Map();for(const p of players.values())if(p.isNpc)ids.set(p._sh!=null?String(p._sh):String(p.pid),p);
   const old=new Map();for(const a of s.actors){const p=ids.get(a.identity);if(p)old.set(a.id,p.pid);}
+  const ownerRestored=SimVillages.desRestoreOwners(old);
   for(const a of s.actors){const p=ids.get(a.identity);if(!p)continue;const S=a.data?{...a.data}:null;if(S){S.t0+=shift;S.until+=shift;if(S.r)S.r=_DES.Route.restore(S.r,shift);if(S.survival)S.survival={...S.survival,at:S.survival.at+shift};S.P=p.path||null;}
     for(const[key,value]of Object.entries(a.fields||{}))p[key]=value;
     for(const key of ['_workT','_jobT','_t724T'])if(p[key]!=null)p[key]+=shift;
-    for(const key of ['_desFarm','_granTask','_t1196W','_t1181Haul'])if(p[key]&&p[key].at!=null)p[key].at+=shift;
+    for(const key of ['_desFarm','_granTask','_t1196W','_t1181Haul'])if(p[key]&&p[key].at!=null&&(key!=='_t1196W'||p[key].at!==0))p[key].at+=shift;
     if(p.body)for(const key of Object.keys(p.body))if(key.endsWith('Until')&&p.body[key]>0)p.body[key]+=shift;
     if(a.position)_desPut(p,a.position.x,a.position.y);
     SimVillages.desRestoreWork(p,a.workState,now);
-    if(S){const policy=_DES_BODY.survivalPlan(p,now,isPositionActive(p.x,p.y),_desSurvivalServices);if(!policy.ok||(S.r&&!a.position)){p._des=null;_desStat.fallbackRestore=(_desStat.fallbackRestore||0)+1;continue;}if(!S.survival)S.survival=policy;if(!S.survival.ok||!_desSpace.park(p,S)){p._des=null;_desStat.fallbackRestore=(_desStat.fallbackRestore||0)+1;continue;}p._des=S;_desRuntime.park(p.pid,(a.wakeAt!=null?a.wakeAt+shift:S.until),{kind:S.k},a.orderId??p._sh??p.pid);_desTick.delete(p.pid);_desMovers.delete(p.pid);}
+    if(!ownerRestored(p,a.id))p._desRestoreUnsafe=true;
+    if(S){const policy=_DES_BODY.survivalPlan(p,now,isPositionActive(p.x,p.y),_desSurvivalServices);if(!policy.ok||(S.r&&!a.position)||!ownerRestored(p,a.id)){p._des=null;_desStat.fallbackRestore=(_desStat.fallbackRestore||0)+1;continue;}if(!S.survival)S.survival=policy;if(!S.survival.ok||!_desSpace.park(p,S)){p._des=null;_desStat.fallbackRestore=(_desStat.fallbackRestore||0)+1;continue;}p._des=S;_desRuntime.park(p.pid,(a.wakeAt!=null?a.wakeAt+shift:S.until),{kind:S.k},a.orderId??p._sh??p.pid);_desTick.delete(p.pid);_desMovers.delete(p.pid);}
   }
   for(const x of s.facilities||[]){const f=_DES.Facility.restore({...x,busy:x.busy.filter(id=>old.has(id)).map(id=>old.get(id)),q:x.q.filter(e=>old.has(e.who)).map(e=>({...e,who:old.get(e.who)}))},shift);_desFacilities.set(f.name,f);while(f.busy.size<f.cap&&f.q.length){const e=f.q.shift();f.busy.add(e.who);f.served++;_desWake(e.who,now,'resource');}for(const id of [...f.busy,...f.q.map(e=>e.who)]){let a=_desLeases.get(id);if(!a){a=new Set();_desLeases.set(id,a);}a.add(f.name);}}
 }

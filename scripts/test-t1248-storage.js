@@ -12,13 +12,16 @@ const s=JSON.parse(fs.readFileSync(expected));assert(s.rows>0);assert.equal(s.re
 console.log('PASS production SQLite save at mid-segment; actual child=0, fixture wrapper='+first.status);
 // A SQLite backup captures a consistent database, including any journal state.
 const bait=path.join(dir,'bait.db'),py=spawnSync('python3',['-c',"import sqlite3,json,sys\ns=sqlite3.connect(sys.argv[1]);d=sqlite3.connect(sys.argv[2]);s.backup(d)\nr=d.execute('select zone,data from world_meta').fetchone();m=json.loads(r[1]);a=next(a for a in m['t742']['zone.desWork']['actors'] if a['identity']==sys.argv[3]);del a['position'];d.execute('update world_meta set data=? where zone=?',(json.dumps(m),r[0]));d.commit()",s.db,bait,s.actor.identity],{encoding:'utf8'});assert.equal(py.status,0,py.stderr);
-for(const [label,db,code] of [['resume',s.db,0],['missing-position-bait',bait,1]]){
+const ownerBait=path.join(dir,'owner-bait.db');const backup=spawnSync('python3',['-c',"import sqlite3,sys\ns=sqlite3.connect(sys.argv[1]);d=sqlite3.connect(sys.argv[2]);s.backup(d)",s.db,ownerBait],{encoding:'utf8'});assert.equal(backup.status,0,backup.stderr);
+for(const [label,db,code] of [['resume',s.db,0],['missing-position-bait',bait,1],['missing-owner-bait',ownerBait,1]]){
  const e={...env,T1248_STORAGE_STAGE:'resume',T745_V0:String(s.now+90000),T577_SEED:'1020',T577_DAYS:String(s.day+10),T577_OUT:path.join(dir,label+'.json'),DB_PATH:db,ZONE_ID:'hanbando',PORT:'0',ENABLE_VILLAGES:'1',CENTRAL_URL:'http://localhost:1',T640_BOOT_SLICE:'0',T696_WAL:'0',T315_MAPBEDS:'1',T941_BATTLE_DAY:'1',T1013_BAND_DAY:'1',T990_ECON_DAY:'1'};
  delete e.VILLAGE_NPC_CAP;
+ if(label==='missing-owner-bait')e.T1248_STORAGE_DISABLE_REKEY=String(s.artisanJob);
  const r=run([path.join(root,'server/zone.js')],e,label),proof=JSON.parse(fs.readFileSync(e.T577_OUT+'.storage.json'));
  assert.equal(r.status,code,JSON.stringify(proof));assert.equal(proof.pass,code===0,JSON.stringify(proof));
- if(code)assert.match(proof.error,/walking event restored/);
+ if(label==='missing-position-bait')assert.match(proof.error,/walking event restored|saved walking position/);
+ if(label==='missing-owner-bait'){assert.match(proof.error,/artisan event restored/);const links=JSON.parse(fs.readFileSync(e.T577_OUT+'.links.json'));assert.equal(links.artisanHeld,false);assert.equal(links.artisanTick,true);assert.equal(links.artisanMover,true);assert.notEqual(links.jobPid,links.newArtisanPid);}
  console.log('PASS '+label+': actual new zone process='+code+(code?' (expected invariant failure)':''));
 }
-console.log('RESULT 3 passed / 0 failed');console.log('ARTIFACTS '+dir);
+console.log('RESULT 4 passed / 0 failed');console.log('ARTIFACTS '+dir);
 if(process.env.T1248_KEEP!=='1')fs.rmSync(dir,{recursive:true,force:true});
