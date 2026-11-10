@@ -293,9 +293,14 @@ console.log('\n⑦ 주석 제거기 정본 하나 [T171]');
   // 그리고 옛 "블록 먼저" 판이었다면 이 파일이 반토막이라는 것 — 대조군
   const OLDB = V.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
   const nw = (s) => { let n = 0; for (const c of s) if (c !== ' ' && c !== '\t' && c !== '\n' && c !== '\r') n++; return n; };
-  ok(nw(OLDB) < nw(VC) * 0.6,
-     '★★⑦i 대조군 — **옛 "블록 먼저" 판이라면 코드 글자가 절반 아래로 떨어진다**(이 검사가 지키는 것이 그것이다)',
-     `옛 ${nw(OLDB)} < 정본 ${nw(VC)} × 0.6`);
+  //   ★[T1252] 대조군을 글자 비율(옛 < 정본 × 0.6)에서 **삼킨 함수**로 바꿨다 — 옛 판은 줄 주석 안의 `/*` 를 블록으로 열어 다음 `*/` 까지 삼키는데,
+  //     그 "다음 `*/`" 가 어디 오느냐에 비율이 기댄다(T1243 추신 5 가 villages.js:12012 에 `/* … */` 한 줄을 넣자 셋째 덩이가 일찍 닫혀 0.571 → 0.622 로 문턱을 넘었다).
+  //     지키는 것은 같다: 옛 판이라면 ⑦h 의 앵커 함수가 사라지고, 함수 정의의 1/4 넘게가 사라진다(파일을 삼킨다).
+  const fnames = (s) => new Set([...s.matchAll(/\bfunction ([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1]));
+  const fC = fnames(VC), fO = fnames(OLDB), lostFn = [...fC].filter((x) => !fO.has(x));
+  ok(fC.has(ANCH.replace('function ', '')) && !fO.has(ANCH.replace('function ', '')) && lostFn.length > fC.size * 0.25,
+     '★★⑦i 대조군 — **옛 "블록 먼저" 판이라면 파일을 삼킨다**: ⑦h 앵커(`' + ANCH + '`)가 사라지고 함수 정의의 1/4 넘게가 사라진다(이 검사가 지키는 것이 그것이다)',
+     `사라진 함수 ${lostFn.length}/${fC.size} · 코드 글자 옛 ${nw(OLDB)} : 정본 ${nw(VC)}`);
   console.log('    접점: codeOnly · acorn · onComment · code-only.js · villages.js:20');
 }
 

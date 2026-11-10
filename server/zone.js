@@ -3775,6 +3775,9 @@ function _t671Shape(p) {
   if (T1140_STUCK_INLINE && !T1140_HOT_ORDER) { p._t1140Sx = undefined; p._t1140Sy = undefined; p._t1140Sa = undefined; }   // ★[T1140 ③-다] 막힘 칸 셋(차례 리터럴엔 이미 있다 · 끔 = 이 줄 무동작)
   p.oreLedger = undefined; p._t1180FullFish = undefined; p._t1181Haul = undefined; p._t1197M1 = undefined; p._t1197M0 = undefined; p._t1195At = undefined; p._t1212N = undefined; p._t1217H = undefined; p._t1217Stop = undefined;   /* ★[PM land1052 · T1220-K3] T1212 · T1217 몸 칸 셋 */   /* ★[PM land1050 · T1208-K4 회부 2] land1049 가 연 몸 칸 셋(T1197 끼니 · T1195 사냥) */   // ★[PM land1048 · T1188 · T1180 · T1181] 가지들이 보탠 몸 칸 셋 — 스폰 꼴에 미리(test-body-fields · 숨은 클래스 한 벌)
   if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ② · T1154] 어부 던짐 종의 지난 답(villages.js `_t1144SpGet` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)
+  if (T1241_DES) p._des = undefined;   // ★[T1252] T1241 몸 토막(`_desBegin` · `_desEnd` — 손잡이 `T1241_DES` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
+  if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
+  if (_t316Econ && _t316Econ.T1243_FARM_ON) p._t1243S = undefined;   // ★[T1252] T1243 추신 14 손에 든 씨 몫(villages.js `_t1243Reaped` · `_t368Deliver` — econ 손잡이 `T1243_FARM_ON` 켬일 때만 서는 칸 · 끔 = 무동작)
 }
 const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT !== '0';   // ★[T1144 · T1154] villages.js 와 같은 손잡이(켬 기본 · `'0'` 만 끔) — 이 파일은 몸 칸 하나만
 // ★★[T1140 ③-가 2026-11-04 · 손잡이 `T1140_HOT_ORDER`(기본 끔 · `'1'` 만 켬 · 끔 = 아래 함수가 안 불린다 = 종전 글자)] **걸음 머리 칸을 x · y 곁에** — T791 회부 2 의 남은 몫.
@@ -5183,7 +5186,7 @@ function _desTry(npc, now) {
   if (isPositionActive(npc.x, npc.y)) return;
   if (!_desSch) { _desSch = SimVillages.T1241_SCH; if (!_desSch) return; }   // 일과 문턱 정본(villages `SCH_*` — 사본 0)
   const dayR = WORLD.dayPhaseRatio, dOff = npc._dOff;
-  const fv = phaseAdd(worldPhase(now), npc.simLonOff);
+  const fv = T720_LON_DAY ? phaseAdd(worldPhase(now), npc.simLonOff) : (worldPhase(now) + npc.simLonOff) % 1;   // ★[T1252] 현지 해 몫 — 걸음 문(`npcStep`)과 같은 손잡이 꼴(test-lon-day 규약 · 켬 기본 = 값 같음)
   const P = npc.path, pn = P ? (P === npc._t791P ? npc._t791Pn : P.length) : 0, done = !P || npc.pathIndex >= pn;
   const d = SimVillages.econDay ? SimVillages.econDay() : null;
   let k = null, until = 0, r = null;

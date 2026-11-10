@@ -62,7 +62,12 @@ ok(/ev\._world = world;\s*if \(!row\.econ_state\) _t1243Seed\(ev, row\.id\);/.te
 // ── ④ 797 ──
 ok(!on.live0 && on.live1, '④ 라이브 = 존 주입(`zoneAwake`)이 있는 판 · 없으면(랩 · CLI · 하네스) 종전');
 ok(/const _cut = _t1243On\(\) && _t1243Live\(\);/.test(VS) && /if \(T1224_ECON_FARM && !_cut\)/.test(VS) && /if \(_body && T1212_FARM_REST && !_cut\)/.test(VS), '④ 켬 + 라이브 = 몸 없는 econ 농부(T1224) · 몸이 못 한 몫(T1212 ②) 안 돈다');
-ok(/if \(!_body && !_cut\) _lifeClearDay\(vil, farmerN\);/.test(VS) && /if \(_cut\) \{ \/\* ★\[T1243\] 몸만 — 일괄 0 \*\/ \}\s*else if \(!_body\) lifeFarmDay\(/.test(VS), '④ 켬 + 라이브 = 존이 잔 날의 개간 · 작물 일괄도 안 돈다(몸이 못 한 일은 0)');
+//   ★[T1252] 주석 글자(`몸만 — 일괄 0`)로 갈래를 짚지 않는다 — `_cut` 갈래가 **코드 0**(주석만 · 빈 몸)이고 바로 뒤가 일괄(`else if (!_body) lifeFarmDay(`)인 꼴을 본다.
+//     미끼: 그 갈래에 일괄 한 줄을 넣은 사본은 빨강이어야 한다(글자만 맞추는 자명 통과 금지).
+const CUT_EMPTY = /if \(_cut\) \{\s*(?:\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/\s*)?\}\s*else if \(!_body\) lifeFarmDay\(/;
+ok(/if \(!_body && !_cut\) _lifeClearDay\(vil, farmerN\);/.test(VS) && CUT_EMPTY.test(VS), '④ 켬 + 라이브 = 존이 잔 날의 개간 · 작물 일괄도 안 돈다(몸이 못 한 일은 0 · `_cut` 갈래 코드 0)');
+{ const bait = VS.replace(/if \(_cut\) \{\s*(\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/)?\s*\}/, (m, c) => `if (_cut) { ${c || ''} lifeFarmDay(vil, _farmDay(vil, day), farmerN); }`);
+  ok(bait !== VS && !CUT_EMPTY.test(bait), '④ 미끼 — `_cut` 갈래에 일괄(`lifeFarmDay`)을 넣은 사본은 잡힌다(빈 갈래만 지나간다)'); }
 // ── ⑤ 추신 ──
 const Q5 = `const E=require('./sim/economy-sim');const C=require('./server/crops');const V=require('./server/villages');const K=require('./server/kcal');
 const o={g:['rice','wheat','barley'].map(r=>[E.rawGrainF(r),K.econUnitsOf(r,1),E.RAW_GRAIN_FOOD_FACTOR]),st:E.T1243_GRAIN_STATE,
