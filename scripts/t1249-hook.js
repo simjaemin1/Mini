@@ -39,7 +39,11 @@ if (OUT && process.env.T577_SEED && /zone\.js$/.test(process.argv[1] || '')) {
             const inCum = v._t1188InByItem ? Object.values(v._t1188InByItem).reduce((s, q) => s + (q || 0), 0) : 0;   // 몸이 곳간에 넣은 원석 누계(쪼개기 판 · `mineToGranary`)
             m.push([v.name, +(L0.ore || 0).toFixed(2), N, mn, +tot.toFixed(2), typed, +(+out).toFixed(3), +(v._metalGlut || 0).toFixed(3), +inCum.toFixed(3), +(v._t724InflowToday || 0).toFixed(3)]);
           }
-          fs.appendFileSync(f, JSON.stringify({ d, pop, miners, m }) + '\n');
+          let t724 = null, outLast = null;
+          try { const V = require(path.join(ROOT, 'server', 'villages')); const tp = V.tickPerf ? V.tickPerf() : null; const P = tp && tp.t724;
+            if (P) t724 = { pulse: P.pulse, sw: P.sw, kg: +(+P.kg).toFixed(2), bodies: P.bodies, gran: P.gran, granU: +(+P.granU).toFixed(3), dusk: P.dusk, duskU: +(+P.duskU).toFixed(3), done: P.done, none: P.none, walk: P.walk, wait: P.wait, repick: P.repick, full: P.full, picks: P.picks }; } catch (e) {}
+          outLast = (world.villages || []).filter((v) => ((v.land || {}).ore || 0) > 0.15).map((v) => +((v._oreOutLast || 0)).toFixed(3));
+          fs.appendFileSync(f, JSON.stringify({ d, pop, miners, m, t724, outLast }) + '\n');
         }
       } catch (e) { /* 계측 실패는 판을 안 막는다 */ }
       return sd.apply(this, arguments);
