@@ -1,0 +1,28 @@
+{
+  "originalStatus": {
+    "valid": true,
+    "kind": "official-off-gate",
+    "exitCode": 0,
+    "officialSame": "1/1",
+    "days": 400,
+    "clockErrors": 0,
+    "gameHashesAtStart": {
+      "server/zone.js": "997d49a75b50cf66f67528d66ec75759774d350a46ecf8067d3d896a7fda9909",
+      "server/villages.js": "e210cfc820c3e888b04b3ee7353be8c1985faebf2b98897907137297abfd6d43",
+      "server/des.js": "ef56f80a897dad9d72c20436b6a9655f24add17a5fdad72ce5bd95c19aac55d0",
+      "server/des-work.js": "40b927873bff9f1e8a97368f6f1d9ca77f3b1e6d1d12c67c99d2889a141179f3"
+    },
+    "gameHashesAtCompletion": {
+      "server/zone.js": "997d49a75b50cf66f67528d66ec75759774d350a46ecf8067d3d896a7fda9909",
+      "server/villages.js": "e210cfc820c3e888b04b3ee7353be8c1985faebf2b98897907137297abfd6d43",
+      "server/des.js": "ef56f80a897dad9d72c20436b6a9655f24add17a5fdad72ce5bd95c19aac55d0",
+      "server/des-work.js": "40b927873bff9f1e8a97368f6f1d9ca77f3b1e6d1d12c67c99d2889a141179f3"
+    },
+    "sourceUnchanged": true,
+    "elapsedWallSecondsFromChecker": 2987,
+    "scope": "official baseline fast clock, not live-clock all-body annual performance"
+  },
+  "independentValidation": null,
+  "files": 10,
+  "dbExcluded": true
+}

@@ -1,0 +1,290 @@
+{
+  "left": "/tmp/t1248/clear-wake-control400",
+  "right": "/tmp/t1248/clear-wake-native400",
+  "sourceHashesEqual": true,
+  "official": {
+    "compared": 400,
+    "same": 400,
+    "first": null
+  },
+  "positions": {
+    "checkpoints": 39,
+    "bodies": 1519,
+    "medianM": 0,
+    "p90M": 0,
+    "maxM": 38.22360781167353,
+    "labelShare": 0.9993416721527321,
+    "onlyTick": 0,
+    "onlyDes": 0,
+    "rows": [
+      {
+        "day": 10,
+        "n": 12,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 20,
+        "n": 20,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 30,
+        "n": 24,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 40,
+        "n": 30,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 50,
+        "n": 30,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 60,
+        "n": 30,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 70,
+        "n": 32,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 80,
+        "n": 39,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 90,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 100,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 110,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 120,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 130,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 140,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 150,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 160,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 170,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 180,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 190,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 200,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 210,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 220,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 230,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 240,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 250,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 260,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 270,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0.2906782545294492
+      },
+      {
+        "day": 280,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 5.58740094466167
+      },
+      {
+        "day": 290,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 1.1331293953307262
+      },
+      {
+        "day": 300,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 38.22360781167353
+      },
+      {
+        "day": 310,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0.0009882117689140664
+      },
+      {
+        "day": 320,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0.059663771461351704
+      },
+      {
+        "day": 330,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 340,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0.00031249999983629095
+      },
+      {
+        "day": 350,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0
+      },
+      {
+        "day": 360,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 3.108758827138536
+      },
+      {
+        "day": 370,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 4.876385510245358
+      },
+      {
+        "day": 380,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0.8641849483761829
+      },
+      {
+        "day": 390,
+        "n": 42,
+        "medianM": 0,
+        "maxM": 0.0009882117689140664
+      }
+    ]
+  },
+  "costs": {
+    "tick": {
+      "lastDay": 399,
+      "farm": 223,
+      "pop": 42,
+      "cpuSeconds": 1428.357553,
+      "wallSeconds": 1432.964966196,
+      "bodyTicks": 666553379,
+      "steps": 418518474,
+      "holdChecks": 0,
+      "awakeStepShare": 0.6278844083393357,
+      "bodyDispatchUs": 0.4468230934870109,
+      "clockAdjustedBodyDispatchUs": 0.40700745570489416,
+      "nsStep": 164355823178,
+      "nsMove": 103116239364,
+      "nsQueue": 0
+    },
+    "des": {
+      "lastDay": 399,
+      "farm": 224,
+      "pop": 42,
+      "cpuSeconds": 1501.317028,
+      "wallSeconds": 1505.163327976,
+      "bodyTicks": 666553379,
+      "steps": 418531332,
+      "holdChecks": 0,
+      "awakeStepShare": 0.6279036986173616,
+      "bodyDispatchUs": 0.46996232504733876,
+      "clockAdjustedBodyDispatchUs": 0.4252838652325698,
+      "nsStep": 171206831006,
+      "nsMove": 110859849877,
+      "nsQueue": 0
+    }
+  }
+}
