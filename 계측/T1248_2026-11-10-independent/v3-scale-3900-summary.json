@@ -1,0 +1,56 @@
+{
+  "0": {
+    "expected": 3900,
+    "fixtureStop": true,
+    "window": {
+      "warmup": 300,
+      "requestedTicks": 1000,
+      "measuredTicks": 1000
+    },
+    "actualBodies": {
+      "min": 3927,
+      "max": 3927
+    },
+    "cpu": {
+      "samples": 1000,
+      "medianMs": 6.258,
+      "p95Ms": 21.986,
+      "maxMs": 42.682,
+      "meanMs": 7.811344999999994
+    },
+    "wall": {
+      "samples": 1000,
+      "medianMs": 16.170136,
+      "p95Ms": 58.520251,
+      "maxMs": 151.158645,
+      "meanMs": 22.70995539900001
+    }
+  },
+  "1": {
+    "expected": 3900,
+    "fixtureStop": true,
+    "window": {
+      "warmup": 300,
+      "requestedTicks": 1000,
+      "measuredTicks": 1000
+    },
+    "actualBodies": {
+      "min": 3927,
+      "max": 3927
+    },
+    "cpu": {
+      "samples": 1000,
+      "medianMs": 5.298,
+      "p95Ms": 19.226,
+      "maxMs": 41.439,
+      "meanMs": 6.730195999999998
+    },
+    "wall": {
+      "samples": 1000,
+      "medianMs": 14.795637,
+      "p95Ms": 61.402834,
+      "maxMs": 187.949635,
+      "meanMs": 21.006230693999992
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "observedAt": 1794288573.0492427,
+  "reason": "Signaled only controller PID, but execution-session cleanup terminated active descendants as well. Prior intended child-preservation note was not achieved. Partial logs retained; none count as completed400 or completed scale day. Final v3 primary cases re-run both controls and candidates.",
+  "runs": [
+    {
+      "name": "tick400",
+      "days": 335,
+      "statusExists": false,
+      "metaExists": false,
+      "validFullRun": false
+    },
+    {
+      "name": "candidate400-final",
+      "days": 295,
+      "statusExists": false,
+      "metaExists": false,
+      "validFullRun": false
+    },
+    {
+      "name": "proto400",
+      "days": 355,
+      "statusExists": false,
+      "metaExists": false,
+      "validFullRun": false
+    },
+    {
+      "name": "scale-3900-1",
+      "days": 0,
+      "statusExists": false,
+      "metaExists": false,
+      "validFullRun": false
+    }
+  ]
+}

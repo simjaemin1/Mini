@@ -1,0 +1,14 @@
+{
+  "0": {
+    "ownedMin": 0,
+    "ownedMax": 0,
+    "ownedMean": 0.0,
+    "samples": 1000
+  },
+  "1": {
+    "ownedMin": 3370,
+    "ownedMax": 3788,
+    "ownedMean": 3585.63,
+    "samples": 1000
+  }
+}

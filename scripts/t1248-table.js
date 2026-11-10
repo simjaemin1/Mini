@@ -25,7 +25,7 @@ function firstValue(a,b,key='') {
 const byDay=new Map(B.sbc.days.map(r=>[r[0],r]));let compared=0,same=0,first=null;
 for(const a of A.sbc.days) {
   const b=byDay.get(a[0]);if(!b)continue;compared++;
-  if(a[2]===b[2] && JSON.stringify(a[3])===JSON.stringify(b[3])){same++;continue;}
+  if(a[1]===b[1] && a[2]===b[2] && JSON.stringify(a[3])===JSON.stringify(b[3])){same++;continue;}
   if(first)continue;
   first={day:a[0],econ:[a[1],b[1]],villages:[]};
   for(let i=0;i<Math.max(a[3].length,b[3].length);i++) {
