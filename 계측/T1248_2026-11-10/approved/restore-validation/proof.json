@@ -1,0 +1,18 @@
+{
+  "productionCommit": "a47e08a5",
+  "frozenSnapshot": "/tmp/t1248-final-v7",
+  "OFF": "8c 1020:400 같음1/1",
+  "OFFwallSeconds": 690.5189518470434,
+  "OFFrawDirectory": "/tmp/sbc-jJV5iV",
+  "freshWorld": {
+    "days": 13,
+    "villages": 51,
+    "allDailyHashesEqualE1E": true,
+    "entryCounters": {
+      "restoreEntries": 0,
+      "ownerEntries": 0,
+      "unsafeAdmissions": 0
+    }
+  },
+  "performanceLimit": "Long speed and 400day comparisons remain explicitly e1e65d6a. Additional unsafe guard cost is not measured by those runs."
+}
