@@ -1,0 +1,26 @@
+PASS OFF host never admits work
+PASS farmer cooldown keeps its existing deadline
+PASS clear finish uses canonical field cost and retained progress
+PASS leaving the work site prevents stationary admission
+PASS clear interruption keeps exact elapsed time beyond old tick clamp
+PASS clear task drop retains progress for the next owner
+PASS queue time never becomes free clear or farm work
+PASS farm interruption retains partial shared-cell work once
+PASS farm side-state roundtrip preserves Map and progress
+PASS save checkpoints keep partial farm work running, and restore excludes offline time
+PASS sleeping bodies never advertise stale work timers
+PASS queued actor parks until an explicit wake/phase boundary
+PASS mine event deadline comes from specialty canonical
+PASS granary draw/store deadlines use the production constants
+PASS hauling source wait uses the same draw deadline
+PASS artisan event deadline comes from facility canonical
+PASS two independent artisan requests retain parallel service
+PASS extra artisan joins the occupied request FIFO
+PASS artisan retry retains original queue time and sequence
+PASS zero-material completion releases its request lease
+PASS equal-deadline restart order uses stable identity despite new runtime pids
+[null] 🏘️ [T742] 모듈 메모리 되돌림 — villages.fertBox
+[null] 🏘️ [T742] 모듈 메모리 되돌림 — villages.wfBox
+[null] 🏘️ [T742] 모듈 메모리 되돌림 — test.t1248
+PASS T742 production codec preserves heap and FIFO data
+RESULT 22 passed / 0 failed

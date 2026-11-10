@@ -1,0 +1,69 @@
+[hanbando/db] 로컬 zone DB 준비됨: /tmp/t1248-storage-9KFIWS/bait.db
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+[hanbando] 🏘️ 레거시 마을 실체화 OFF (zone-config legacyVillages:false) — 하드코딩 후보 51곳은 시딩 후보로만 살아 있다(실체화 0)
+[hanbando] 🌊 해안선: 221796 water tiles (ocean=edge only)
+[hanbando] 🧮 해안선 비트 색인 — 1.06MB (2188×4063)
+[hanbando] 🗺️ 타일 지형 메모 ON — 2188×4063 타일 · 8.5MB
+[hanbando] 채집된 시드 자원 437개 로드 (procedural 모드) · ★[T122] 벤 날 없는 옛 행 437개 — 첫 청크 활성화 때 오늘로 승격한다
+[hanbando] ★[T495] 부분 수확 개체 0개 로드(남은 단위를 들고 서 있다)
+[hanbando] ★[T978] 덜 벤 시드 자연물 0개 로드(0ms · 남은 hp 로 선다)
+[hanbando] DB에서 claim 0개 로드
+[hanbando] DB에서 mob 449마리 로드
+[hanbando] DB wipe: NPC 건축물 209개
+[hanbando] DB 건축물 3개 (lazy-load — 활성청크 진입 시 메모리로 올림)
+[hanbando] 🛤️ 답압 길 준비(§16): 복원 0셀(등급 0) · T1=8/T2=28/감쇠 0.995/일 · 0ms
+[hanbando] 📜 사건 장부 — 과거 0건 복구 · 마을 1곳 프라이밍 · 문턱 부족 5일치·글럿 45일치·가격 ±90%
+[hanbando] 🕐 경도 시차(§19): 마을 1곳 스프레드 -79~-79분/일(원통 경도 · T720 — 동쪽이 먼저 잔다)
+[hanbando] 🍙 [T423] 짐이 먹는다 켬 — 원정 팩은 병사 몸의 짐 · 하루 경계에 몸이 먹는다 · 원정군은 마을 식사에서 빠진다
+[hanbando] 🏘️ 영토 백필: 대상 없음(전 마을 terr 보유)
+[hanbando] 🏰 환호 시범: 1/1개 마을 [농촌1] — 나머지 무영향(소급 없음)
+[hanbando] 🏘️ Stage4A 실물화: 큰집 1·움집 2채(6×4)·곳간 → buildings 209행(wall/floor, owner npc_simvil_*) + 농지·마당 타일은 청크 활성화 시 비영속(vb*) · 0ms
+[hanbando] 🏘️ Stage4A 영토: 경계 1/1곳(셀 186, ≈2KB — welcome 1회) · 원근사 폴백 0곳
+[hanbando] 🏘️ 교역 BFS 거리행렬: 1마을 0쌍 0ms (그리드 547×1016·step 4셀·지형판정 1·다리구제 0) — 유클리드 대비 평균 ×- 최대 ×1.00 우회쌍(>1.02배) 0 · 최장 0 · 도달불능 0쌍
+[hanbando] 🤖 NPC 스폰: 루나 @ (13493,77589) (집 없음)
+[hanbando] 🤖 NPC 스폰: 아라 @ (13540,78411) (집 없음)
+[hanbando] 🤖 NPC 스폰: 루나 @ (13595,77588) (집 없음)
+[hanbando] 🤖 NPC 스폰: 에코 @ (13572,78411) (집 없음)
+[hanbando] 🤖 NPC 스폰: 미라 @ (13665,77602) (집 없음)
+[hanbando] 🤖 NPC 스폰: 오리온 @ (13678,78369) (집 없음)
+[hanbando] 🤖 NPC 스폰: 베가 @ (13506,77629) (집 없음)
+[hanbando] 🤖 NPC 스폰: 미라 @ (13499,78445) (집 없음)
+[hanbando] 🏘️ Stage4A NPC 직업 배정(simJob — econ counts 비례·npcJob과 분리): hunter8
+[hanbando] 🕛 [T731] 현지 자정 정산 — 부팅 시계에서 마을 날 {"1227240":1} · 닫힌 날 1227240 · 다음 창 1227241: 동 농촌1 0.1951 00:19:19 → 서 농촌1 0.1951 00:19:19 · 퍼짐 0초 · econ 날 0
+[hanbando] 🏘️ [T742] 모듈 메모리 되돌림 — world.warSeq
+[hanbando] 🏘️ [T742] 모듈 메모리 되돌림 — villages.fertBox
+[hanbando] 🏘️ [T742] 모듈 메모리 되돌림 — villages.wfBox
+[hanbando] 🏘️ [T742] 모듈 메모리 되돌림 — bandits.bTick
+[hanbando] 🏘️ [T742] 모듈 메모리 되돌림 — zone.desWork
+[hanbando] 🏘️ [T728] 재기동 영속 — 마을 곁 칸 1 · 메타 되돌림(날 0 · 캐러밴 0) · 날 뜀 0
+[hanbando] 🏘️ [T740] 메모리 전용 마을 칸 되돌림 — 마을 1 · 작물 0 · 장 0 · 집터 0 · 의뢰 집터 0
+[hanbando] 📜 [T1025] 사건 대기 줄 되돌림 — 마을 0 · 구조 0 · 완공 0 · 굶음 0
+[hanbando] 🏘️ [T747] 몸 칸 되돌림 — 마을 1 · 몸 8 · 손 든 몸 0 · 진행 작업 이음 0 · 풂 0 · 직업 다시 맞춤 0 · 남은 손 0
+[hanbando] 🏘️ 마을 시뮬 준비: 마을 1, econ 인구 8, 스폰 NPC 8, econ day 0, 게임일 1440s (VILLAGE_DAY_MS 테스트 오버라이드)
+[hanbando] 🏰 환호 콜라이더: 386셀 적재
+[hanbando] 🏴 [도적] 복원: 소굴 3곳(생존 3) · 도적단 0(총원 0) · 저장 day 0
+[hanbando] 🏴 [도적] 배회 실체 0명(단 0곳 — 연출 전용·econ 무접촉)
+[hanbando] 🏴 도적 시뮬 준비(§11 1파: 경제·수명주기): 소굴 3곳 · 도적단 0 · econ 훅(banditRouteRisk/onBanditLoot) 설치 · day 0
+[hanbando] 🐾 wildlife ON — 동물 AI 블록(마을실험실 §4-4) 이식: 5종(🦌🐇🐗🐺🐯), 그리드 2188×4063셀, dt=1/30유닛(1유닛=1초=1게임분)
+[hanbando] 🏘️ 레거시 스폰 스킵 — 한옥 0채·농지 0칸·NPC 0명·길드영토 0(설정 legacyVillages:false)
+[hanbando] DB+mem wipe: public/debug chest 3/0개
+[hanbando] 📦 DB에 chest 0개
+[hanbando] 📦 디버그 public chest 3개 @ (5120,5120) 옆
+[hanbando] 🛶 도착 지점 1곳 산출(부팅) — 0ms (나루터 0 · 길목 0 · 들 0 · 어귀 1)
+[hanbando] 🌱 동적 토양치 준비(배치 20 B): 복원 0셀(산터 0) · 채굴 거울 0셀 · 리젠 12/일 · 0ms
+[hanbando] 광맥 787개 — lead, lead, copper, obsidian, copper, tin, copper, obsidian, tin, jade_raw, gold, lead, lead, obsidian, copper, lead, gold, gold, lead, gold, lead, copper, obsidian, copper, tin, gold, tin, copper, obsidian, copper, copper, copper, lead, copper, lead, gold, obsidian, lead, copper, gold, lead, lead, lead, gold, lead, copper, lead, copper, tin, copper, copper, copper, tin, lead, lead, copper, gold, lead, obsidian, sulfur, lead, copper, copper, iron, jade_raw, gold, iron, lead, obsidian, lead, iron, lead, lead, iron, obsidian, iron, obsidian, obsidian, iron, copper, gold, lead, lead, iron, obsidian, iron, gold, iron, iron, iron, iron, gold, iron, copper, gold, iron, lead, gold, gold, lead, tin, iron, iron, obsidian, lead, copper, gold, copper, iron, gold, iron, iron, copper, copper, iron, iron, obsidian, gold, obsidian, gold, lead, lead, lead, copper, lead, copper, iron, lead, copper, lead, iron, iron, gold, copper, lead, copper, obsidian, iron, iron, iron, tin, copper, lead, iron, copper, lead, copper, iron, iron, iron, lead, gold, iron, iron, obsidian, tin, gold, obsidian, sulfur, iron, gold, iron, lead, copper, iron, gold, gold, copper, iron, iron, lead, copper, iron, copper, iron, copper, obsidian, iron, gold, lead, iron, sulfur, lead, lead, lead, lead, copper, iron, iron, iron, lead, gold, copper, iron, copper, iron, lead, lead, lead, lead, obsidian, obsidian, lead, gold, iron, copper, lead, sulfur, copper, copper, iron, lead, copper, gold, lead, copper, copper, lead, lead, copper, copper, lead, lead, lead, copper, copper, sulfur, obsidian, lead, iron, iron, iron, lead, gold, copper, sulfur, copper, lead, lead, copper, gold, lead, sulfur, lead, iron, copper, obsidian, gold, iron, copper, copper, lead, lead, lead, iron, lead, iron, obsidian, iron, gold, lead, iron, iron, lead, obsidian, gold, iron, obsidian, gold, iron, gold, iron, gold, iron, iron, iron, lead, iron, iron, lead, copper, iron, iron, sulfur, iron, copper, gold, lead, jade_raw, copper, copper, lead, lead, gold, lead, lead, gold, copper, iron, copper, lead, copper, obsidian, lead, iron, copper, obsidian, gold, iron, gold, copper, obsidian, sulfur, lead, lead, lead, iron, lead, lead, iron, lead, copper, copper, gold, copper, gold, lead, iron, obsidian, gold, lead, gold, jade_raw, jade_raw, iron, obsidian, iron, obsidian, lead, lead, gold, lead, iron, copper, obsidian, iron, copper, gold, iron, lead, gold, lead, iron, iron, copper, copper, iron, lead, lead, lead, copper, jade_raw, sulfur, iron, obsidian, gold, iron, iron, iron, lead, iron, iron, iron, copper, obsidian, iron, tin, gold, lead, gold, iron, gold, iron, gold, gold, gold, lead, obsidian, copper, obsidian, iron, gold, gold, gold, lead, obsidian, iron, lead, obsidian, iron, copper, sulfur, tin, lead, lead, copper, gold, gold, lead, lead, iron, copper, lead, lead, lead, copper, lead, copper, obsidian, lead, copper, lead, lead, gold, copper, gold, iron, iron, sulfur, gold, iron, sulfur, iron, iron, iron, copper, iron, obsidian, copper, copper, obsidian, gold, lead, tin, obsidian, iron, lead, lead, lead, tin, gold, copper, obsidian, obsidian, copper, iron, iron, copper, copper, iron, iron, iron, iron, obsidian, lead, gold, lead, copper, iron, gold, gold, lead, obsidian, copper, lead, lead, iron, obsidian, tin, copper, iron, lead, lead, lead, copper, copper, iron, copper, copper, iron, obsidian, gold, copper, copper, iron, lead, tin, obsidian, iron, jade_raw, lead, gold, iron, iron, gold, iron, obsidian, jade_raw, lead, lead, iron, iron, copper, lead, iron, gold, iron, copper, gold, gold, copper, iron, iron, iron, obsidian, iron, lead, copper, gold, copper, lead, lead, lead, gold, iron, obsidian, lead, iron, tin, obsidian, iron, lead, iron, lead, copper, iron, iron, gold, lead, gold, lead, copper, gold, gold, sulfur, lead, copper, jade_raw, lead, iron, gold, lead, iron, lead, iron, obsidian, sulfur, iron, lead, copper, iron, copper, iron, lead, iron, copper, copper, obsidian, lead, copper, tin, copper, copper, lead, lead, copper, obsidian, obsidian, lead, lead, obsidian, jade_raw, copper, iron, lead, gold, lead, copper, gold, iron, lead, lead, lead, obsidian, iron, copper, copper, copper, obsidian, lead, iron, iron, copper, lead, iron, gold, iron, iron, copper, copper, copper, iron, lead, gold, copper, iron, copper, lead, iron, copper, lead, lead, gold, copper, iron, iron, iron, iron, obsidian, obsidian, gold, lead, lead, lead, iron, iron, iron, obsidian, jade_raw, iron, gold, gold, gold, gold, iron, iron, lead, lead, gold, lead, iron, copper, iron, obsidian, iron, copper, obsidian, lead, lead, lead, obsidian, lead, copper, iron, lead, copper, lead, lead, lead, iron, gold, iron, copper, iron, sulfur, iron, iron, copper, obsidian, lead, lead, lead, lead, copper, copper, iron, copper, lead, gold, lead, iron, iron, lead, copper, iron, iron, obsidian, lead, iron, obsidian, iron, gold, lead, iron, lead, copper, gold, lead, lead, copper, lead, lead, iron, lead, copper, iron, gold, iron, gold, gold, gold, lead, lead, gold, iron, lead, iron, lead, iron, iron, gold, copper, jade_raw, iron, copper, lead, gold, copper, obsidian, lead, lead, obsidian, iron, copper, iron, gold, iron, copper, iron, lead, copper, iron, lead, lead, copper, lead, lead, lead, iron, lead, iron, gold, lead, copper, gold, gold, gold, iron, gold, lead, gold, gold, copper, obsidian, lead, iron, sulfur
+[hanbando] 🏘️ [T742] 모듈 메모리 되돌림 — zone.fruitStore
+[hanbando] 🦶 T461 걸음 커널 켬 — WASM 5642B · 메모리 2.3MB
+[hanbando] 🌏 zone server up on :0  latency=0ms (RTT≈0ms)  [netcode=K19 입력1개=1스텝]
+        biome=forest  rect=(409984,49984,70016x130016)  neighbors=W:✓ E:✓ N:✓ S:✓
+[hanbando] 🏘️ [T785] 마을 칸 이행 — 옮김 0 · 못 물음 0
+[hanbando] ⛏ [T735] 광맥 장부 부팅 로드 — T 1767225690283.3333 · 셀 0 · 지문 da39a3ee5e6b
+[t745] 가상 시계 돈다 — V0 1767225690283.3333 (2026-01-01T00:01:30.283Z) · 줄 21 · listen 뒤
+[hanbando] ⚠️ GC 정지 31ms (kind=1)
+[hanbando] 🚪 문 그래프 표 미리 굽기 — 마을 1곳 · 청크 25 · 2ms · 걸음 1(최대 0.0ms) · 그 사이 표 기다림 0 · 칸 A* 0(기동 뒤 배경)
+[hanbando] ⏱ [T687] 한 틱 공용 예산 켬 — 16ms(문들이 차례로 남은 몫을 쓴다)
+[hanbando] 🧺 [T732] 곳간 로트 장부 — 마을 1곳(저장된 장부 1) · 캐러밴 · 군량 짐 훅 · [T748] 대기 칸 · 갱 비축
+[hanbando] 🏘️ [T996] 거리행렬 바탕 다시 세움: 1마을 같은 격자(BFS 0) · 판정 1칸 · 0ms(주입 0 · 공유 메모 무접촉)
+[t745] 끝 — V 1767225690316.6665 (+0.0s) · 콜백 37 · 양보 0 · 줄 최대 21 · 오류 0
+(node:604589) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
