@@ -6,18 +6,24 @@ if (!process.env.T577_SEED || !/zone\.js$/.test(process.argv[1] || '')) return;
 const realTime = process.hrtime.bigint, started = realTime(), cpu = process.cpuUsage();
 const tickBench = process.env.T1248_TICK_BENCH === '1';
 const tickWall = [], tickCpu = []; let tickCalls = 0, framePlayers = null;
+const tickLimit=Number(process.env.T1248_BENCH_TICKS||0),warmup=Number(process.env.T1248_BENCH_WARMUP||300);
+let eligibleTicks=0,measuredTicks=0,fixtureStop=false;
 if (tickBench) {
   const Module = require('module'), compile = Module.prototype._compile;
   const probe = global.__t1241Probe;
   global.__t1241Probe = (now, players) => { framePlayers = players; if (probe) probe(now, players); };
   global.__t1248TickWrap = fn => function () {
-    const sample = (++tickCalls % 256) === 0, cpu0 = sample ? process.cpuUsage() : null, t0 = realTime();
+    const sample = (++tickCalls % 256) === 0 || tickLimit > 0, cpu0 = sample ? process.cpuUsage() : null, t0 = realTime();
     try { return fn.apply(this, arguments); }
     finally {
       const wallMs = Number(realTime() - t0) / 1e6, n = framePlayers ? framePlayers.size : 0;
-      tickWall.push([n, wallMs]);
-      if (sample) { const c = process.cpuUsage(cpu0); let owned = 0; if (framePlayers) for (const b of framePlayers.values()) if (b._des) owned++;
+      const eligible=n>=Number(process.env.T1248_EXPECT_N||0)*.9;
+      if(eligible)eligibleTicks++;
+      const keep=!fixtureStop&&(!tickLimit||(eligible&&eligibleTicks>warmup));
+      if(keep)tickWall.push([n, wallMs]);
+      if (sample && keep) { const c = process.cpuUsage(cpu0); let owned = 0; if (framePlayers) for (const b of framePlayers.values()) if (b._des) owned++;
         tickCpu.push({ bodies:n, owned, cpuMs:(c.user+c.system)/1000, wallMs }); }
+      if(keep&&tickLimit&&++measuredTicks>=tickLimit){fixtureStop=true;process.kill(process.pid,'SIGTERM');}
     }
   };
   Module.prototype._compile = function (text, filename) {
@@ -35,7 +41,7 @@ function benchSummary() {
   const expected = Number(process.env.T1248_EXPECT_N || 0), minimum = expected * .9;
   const cpu = tickCpu.filter(x=>x.bodies>=minimum), wall = tickWall.filter(x=>x[0]>=minimum);
   const summarize = values => { values.sort((a,b)=>a-b);return values.length?{samples:values.length,medianMs:values[values.length>>1],p95Ms:values[Math.floor(values.length*.95)],maxMs:values.at(-1),meanMs:values.reduce((a,b)=>a+b,0)/values.length}:null; };
-  return { expected, actualBodies:cpu.length?{min:Math.min(...cpu.map(x=>x.bodies)),max:Math.max(...cpu.map(x=>x.bodies))}:null, cpu:summarize(cpu.map(x=>x.cpuMs)),wall:summarize(wall.map(x=>x[1])),rawCpuSamples:cpu };
+  return { expected, fixtureStop,window:tickLimit?{warmup,requestedTicks:tickLimit,measuredTicks}:null, actualBodies:cpu.length?{min:Math.min(...cpu.map(x=>x.bodies)),max:Math.max(...cpu.map(x=>x.bodies))}:null, cpu:summarize(cpu.map(x=>x.cpuMs)),wall:summarize(wall.map(x=>x[1])),rawCpuSamples:cpu };
 }
 const output = process.env.T1248_TRACE;
 if (!output) throw Error('T1248_TRACE required');
