@@ -19,6 +19,8 @@ const { spawnSync } = require('child_process');
 //   "수식 판과 같은 자릿수" ③ 이 장인 밖 까닭(사냥꾼 몸이 없는 가짜 판의 고기 0 · 인구 218/421)으로 갈린다(land1049 첫 판 · 사냥 켬 기본이던 때).
 //   이 하네스가 재는 것은 장인 다섯의 몸 작업이라 사냥 손잡이를 끔으로 묶는다(지금 기본도 끔 — T1202 가 켜도 이 하네스는 장인만 잰다). 두 손잡이를 같이 켠 판은 회부(보고 T1208-K2).
 if (process.env.T1195_HUNT_REAL == null) process.env.T1195_HUNT_REAL = '0';
+// ★[T1258] 묶음 — ④ ⑤ 는 몸 걸음 시각을 인수 `now`(가짜 시계 · 1초씩)로 몰아 머묾 순서를 잰다 — 켬(`T1258_ARTISAN_CLOCK` 기본)은 머묾을 econ 날 시계(`_t1253Now`)로 재 인수를 안 본다. 켬은 집 켬 판 자 벽 = 가상 게이트(보고 T1258)가 잰다.
+if (process.env.T1258_ARTISAN_CLOCK == null) process.env.T1258_ARTISAN_CLOCK = '0';
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };

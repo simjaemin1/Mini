@@ -61,7 +61,7 @@ function grab(name) {
   { const eol = V.indexOf('\n', at + 1), one = V.slice(at, eol); if (/\}\s*$/.test(one) && (one.match(/\{/g) || []).length === (one.match(/\}/g) || []).length) return one + '\n'; }   // ★[PM 10-23] 한 줄 함수(T871 `_econDayFrac`)
   const end = V.indexOf('\n}\n', at); return V.slice(at, end + 3);
 }
-const SRC = ['econDayToMs', '_econDayFrac', 'setBodyPts', 'caravanPointAt', '_t661Path', '_t661End', '_t661Target', '_t661Vis', 'startReturnLeg', 'tickCaravanBodies', '_caravanSyncSweep'].map(grab).join('\n');
+const SRC = ['econDayToMs', '_econDayFrac', 'setBodyPts', 'caravanPointAt', '_t661Path', '_t661End', '_t661Target', '_t661Vis', 'startReturnLeg', 'tickCaravanBodies', '_caravanSyncSweep', '_t1253Now'].map(grab).join('\n');   // ★[T1258] T1253 econ 날 시계(`tickCaravanBodies` 가 읽는다 — 이 판은 `T762_CARAVAN_BODY=0` 이라 몸 정본 갈래 밖 · 켬 · 끔 같은 걸음)
 const MS = 64;   // 존 `MOVE_SPEED` 정본(zone.js) — 아래는 그 값을 deps 로 넘긴다
 const zoneMove = +((fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8').match(/const MOVE_SPEED = (\d+);/) || [])[1]);
 const _BC = require(path.join(ROOT, 'server', 'body-cols'));   // ★[T1177] T1145 몸 x · y 열 정본(제품과 같은 손잡이 · 같은 모듈)
@@ -70,10 +70,10 @@ function world(on, lenPx) {
   const state = { caravanBodies: new Map(), deps: { players: new Map(), isPositionActive: null, isBlockedByWall: null, moveSpeed: zoneMove }, world: { day: D, caravans: [] },
     dayMs: DAY, epoch: 0, lastGameDay: D, zoneId: 't', roads: null, _carTickAt: 0, byEcon: new Map() };
   const stat = { legs: 0, home: 0, late: 0, lateMaxPx: 0, lateSumPx: 0 };
-  const names = ['state', 'T772_ON', '_t772Stat', 'T661_ON', 'T707_ON', 'T731_ON', 'CARAVAN_BLOCKTEST', 'SZ', '_escortMarch', 'despawnCaravanNpc', '_t707Tally', '_t661Stamp', 'console', 'T775_RESUME', '_t1034Mark', 'T1145_XY_COLS', 'BC'];   // ★[T1177] T1145 가 이 함수들에 몸 x · y 쓰기 길(`BC` · 손잡이)을 보탰다 — 제품 정본 모듈 그대로 넘긴다   // ★[T775 · PM 착지 10-17] 다시 뜬 판   // ★[T1034] 귀환 출발 표(메타 행 한 줄 — 가짜 세계엔 저장이 없다 · 값 무변) 갈래 — ★[T782] 제품 기본 = 켬(가짜 세계엔 `state.ready` 가 없어 다시 뜸 문은 안 연다)
+  const names = ['state', 'T772_ON', '_t772Stat', 'T661_ON', 'T707_ON', 'T731_ON', 'CARAVAN_BLOCKTEST', 'SZ', '_escortMarch', 'despawnCaravanNpc', '_t707Tally', '_t661Stamp', 'console', 'T775_RESUME', '_t1034Mark', 'T1145_XY_COLS', 'BC', 'T1253_CLOCK_FIX'];   // ★[T1177] T1145 가 이 함수들에 몸 x · y 쓰기 길(`BC` · 손잡이)을 보탰다 — 제품 정본 모듈 그대로 넘긴다   // ★[T775 · PM 착지 10-17] 다시 뜬 판   // ★[T1034] 귀환 출발 표(메타 행 한 줄 — 가짜 세계엔 저장이 없다 · 값 무변) 갈래 — ★[T782] 제품 기본 = 켬(가짜 세계엔 `state.ready` 가 없어 다시 뜸 문은 안 연다)
   const F = new Function(...names, SRC + '\nreturn { econDayToMs, setBodyPts, _t661Path, _t661Vis, startReturnLeg, tickCaravanBodies, _caravanSyncSweep };');
   const quiet = { log: () => {} };
-  const K = F(state, on, stat, true, false, false, 0, 32, () => {}, () => {}, () => {}, () => {}, quiet, true, () => {}, _BC.ON, _BC);   // ★[T782] T775 = 제품 기본(켬)
+  const K = F(state, on, stat, true, false, false, 0, 32, () => {}, () => {}, () => {}, () => {}, quiet, true, () => {}, _BC.ON, _BC, process.env.T1253_CLOCK_FIX !== '0');   // ★[T1258] T1253 손잡이 = 제품 글자(켬 기본 · `=0` 끔)   // ★[T782] T775 = 제품 기본(켬)
   const head = K.econDayToMs(D), lingerEnd = head + DAY * 4 / 24;   // T707 장 머묾 하루 4/24(보고 T762)
   const pts = [{ x: 0, y: 0 }, { x: lenPx * 0.5, y: 0 }, { x: lenPx * 0.5, y: lenPx * 0.5 }];
   const c = { id: 1, from: { name: 'A' }, to: { name: 'B' }, arriveDay: D, returnArriveDay: D + 1 };

@@ -10198,7 +10198,7 @@ function villagesBusy() { return !!state.tickJobs; }
 //   볼 수 있다(하루가 짧은 하네스에선 실제로 갈렸다 — `test-tick-slicer ⑧`). 조각내기는
 //   *언제*를 바꾸지 *무엇을*은 안 바꾸기로 했으므로, 하루 안의 벽시계 파생은 **경계 시각으로 얼린다.**
 function _dayNow() { return (state.tickCtx && state.tickCtx.now) || Date.now(); }
-// ★★[T1253 2026-11-10 · 손잡이 `T1253_CLOCK_FIX`(기본 끔 · `'1'` 만 켬 · 끔 = 아래 자리들이 종전 글자 그대로 = main 바이트)] **캐러밴 몸 정본(T1182)의 시계를 econ 날 시계 하나로.**
+// ★★[T1253 2026-11-10 · 손잡이 `T1253_CLOCK_FIX`(★[T1258] 켬 기본 · 되돌림 `=0` · 끔 = 아래 자리들이 종전 글자 그대로 = land1064 바이트)] **캐러밴 몸 정본(T1182)의 시계를 econ 날 시계 하나로.**
 //   결함(보고/T1253 §1): 같은 시드 · 같은 날 수인데 판 자 벽시계 판 ≠ 가상 시계 판 — 처음 갈림 5날 광산2 곳간 `hemp`(+ 임업4 `fish`) · 귀환 캐러밴이
 //     가상 시계 판은 5날 머리에 집에 닿고 벽시계 판은 6날에 닿는다. T1182 켬(`T762_CARAVAN_BODY` 기본)이면 econ 도착 · 귀환은 **몸이 실제로 닿아야** 선다
 //     (`_t1182BodyReady`). 몸 걸음은 벽시계 틱 간격(`now − _t1182At` · 상한 500ms)으로 가는데, 하루 마감 동안 몸은 선다(T1 "마감 중 실체 정지").
@@ -10212,7 +10212,8 @@ function _dayNow() { return (state.tickCtx && state.tickCtx.now) || Date.now(); 
 //     라이브(하루 24분 · econ 이 안 밀린다)에선 그날 몫이 벽시계 그대로 흐른다(경계 순간 · 마감 몇 초만 선다) · 가상 시계 판은 V 그대로 흐른다.
 //   ⚠켜면 가상 시계 판 지문도 바뀔 수 있다 — 종전엔 몸이 마감 사이 틱 수(7 또는 8 × 33.3ms)만큼 걸었고 켬은 꼭 하루치다(보고 §3 · 회부).
 //   ⚠몸 아닌 자리(교역로 몫 · 마감 몫 · 계측 · 로그)는 그대로 벽시계다 — *언제*만 바꾸는 줄이다(전수 표 `계측/T1253_시계자리.md`).
-const T1253_CLOCK_FIX = process.env.T1253_CLOCK_FIX === '1';
+// [T1258] 켬 기본(PM T1253 회부 1 판정 ⓐ — 라이브 벽시계 판 = 기준선 가상 시계 판) · 되돌림 `T1253_CLOCK_FIX=0`(= 종전 글자).
+const T1253_CLOCK_FIX = process.env.T1253_CLOCK_FIX !== '0';
 function _t1253Now() {
   const M = state.dayMs || 1, D = state.world ? (state.world.day | 0) : 0;
   if (state.tickJobs || state._t731 || state._t1253Edge) return D * M;   // 마감 · 창 · 마감 끝 몸 틱 = 경계 한 순간
@@ -17013,8 +17014,17 @@ function _t1196Spot(vil, npc, job) {
   return { x: (vil.ccx + ((idx % 6) - 3)) * SZ + SZ / 2, y: (vil.ccy + ((((idx / 6) | 0) % 6) - 3)) * SZ + SZ / 2, fac: null };   // 회관 안 작업 앵커(아래 villager 분기와 같은 식)
 }
 //   ⓑ 몸 한 걸음 — 이번 틱 소유권을 가지면 true · 집을 작업표가 없으면 null(종전 서성임으로)
-function _t1196Step(vil, npc, now, job) {
+// ★★[T1258 2026-11-10 · T1253 회부 3 · PM 판정 ⓐ · 손잡이 `T1258_ARTISAN_CLOCK`(켬 기본 · 되돌림 `=0` = 종전 글자)] **장인 일 시간은 econ 날 시계로 잰다.**
+//   결함(보고/T1253 §6 · T1258): 집 켬 판에서 장인 몸의 머묾(`인출` `G_DRAWW` · `저장` `G_STOREW` · `제작` `CRAFT_MS`)을 벽시계 `now − W.at` 로 쟀다 —
+//     하루 마감 동안(몸이 선다)에도 벽시계는 흐르고 econ 이 밀린 판에선 마감 사이 창 길이가 판마다 달라, 머묾이 econ 날 안에 끝나느냐(몸이 꺼냄 · 일괄이 꺼냄)가
+//     틱 빠르기에 기댔다(관찰기를 실어 느린 판 — 14~15날 광산6 `copper` · `silver` 부터 벽 ↔ 가상 · 벽 ↔ 벽 갈림).
+//   ⇒ 켜면 머묾 시각을 T1182 몸과 같은 **econ 날 시계** `_t1253Now()` 하나로 잰다(마감 · 창 · 경계 순간엔 선다 · econ 하루에 꼭 하루치 · 새 수 0 · 사본 0).
+//     라이브(하루 24분 · econ 이 안 밀린다)에선 그날 몫이 벽시계 그대로 흐른다 — 마감 몇 초만 선다. 걸음(생활층 존 틱)은 그대로다(회부 3 ⓑ 는 안 씀).
+//   ⚠`W.at` 은 몸 런타임 칸이다(저장 안 함 · `zone.js` 몸 초기화가 지운다) — 켬 ↔ 끔 사이에 옛 축 값이 남지 않는다.
+const T1258_ARTISAN_CLOCK = process.env.T1258_ARTISAN_CLOCK !== '0';
+function _t1196Step(vil, npc, now0, job) {
   if (!_t1196On(vil)) return null;
+  const now = T1258_ARTISAN_CLOCK ? _t1253Now() : now0;   // ★[T1258] 켬 = 이 함수의 시각(머묾 세 자리 `W.at` · `now − W.at`)은 econ 날 시계(끔 = 종전 벽시계 `now` 그대로)
   const E = _lifeEcon(), e = vil.econ, Q = e._t1196Q;
   if (!Q || !Q.length) { if (npc._t1196J != null) { npc._t1196J = null; npc._t1196W = null; } return null; }
   let t = null;
