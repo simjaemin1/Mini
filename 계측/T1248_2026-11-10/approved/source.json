@@ -1,0 +1,12 @@
+{
+  "commit": "e1e65d6abf75363982061dad6d540db80811198c",
+  "production": {
+    "server/zone.js": "1006029544ca5a373dc7638239db2111099a128fbd295ccb95727577e8970aac",
+    "server/villages.js": "458900474ab01ea489a7db549cc67f07c9b369db2bf0281ec51e6797f13d5113",
+    "server/des.js": "2275e08a257f0251cd50c7b66311c5b7efde9277473fa38593386477df0942cf",
+    "server/des-body.js": "da1f4604da61460e86032361f2bef42753552ef204ea8634df33552ba7ecab79"
+  },
+  "frozen": "/tmp/t1248-final-v6",
+  "beforeSource": "20651c1f",
+  "note": "Only current short tests complete; official OFF400, ON/tick400 and world100 still running."
+}
