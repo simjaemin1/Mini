@@ -18700,6 +18700,7 @@ function _desFarmReady(vil,npc,k,day,now,cost) {
   P.delete(sig);npc._desFarm=null;return true;
 }
 function desAdvance(npc,now) {
+  if(npc._desWait){if(npc._workT!=null){npc._workT=now;npc._desWorkElapsed=0;}if(npc._desFarm)npc._desFarm.at=null;return;}
   if(npc._desFarm){const vil=state.byDbId.get(npc.simVillageId),F=vil&&vil._t1248Farm,w=F&&F.get(npc._desFarm.sig);if(w&&npc._desFarm.at!=null){w.progress=Math.min(w.total,w.progress+Math.max(0,now-npc._desFarm.at));npc._desFarm.at=null;}}
   if(npc._lifeTask&&npc._workT!=null){const t=npc._lifeTask;t.prog=(t.prog||0)+Math.max(0,now-npc._workT);npc._workT=now;npc._desWorkElapsed=0;const vil=state.byDbId.get(npc.simVillageId);if(vil&&t.k==='clear')_desClearRemember(vil,t);}
 }

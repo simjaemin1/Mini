@@ -16,6 +16,7 @@ try{
  ok('leaving the work site prevents stationary admission',()=>{npc.x=1000;assert.equal(V.desWorkOf(npc,1000),null);npc.x=16;});
  ok('clear interruption keeps exact elapsed time beyond old tick clamp',()=>{V.desAdvance(npc,11000);assert.equal(npc._lifeTask.prog,10025);assert.equal(npc._desWorkElapsed,0);assert.equal(vil._t1248Clear.get('0,0'),10025);});
  ok('clear task drop retains progress for the next owner',()=>{vil._claim=new Set(['0,0']);vil._clearCrew=1;B._lifeDropTask(vil,npc);assert.equal(B._desClearProgress(vil,'0,0'),10025);});
+ ok('queue time never becomes free clear or farm work',()=>{npc._lifeTask={k:'clear',prog:7};npc._workT=1000;npc._desWait='busy';npc._desFarm={sig:'crop',at:1000};vil._t1248Farm.set('crop',{total:100,progress:10});V.desAdvance(npc,9000);assert.equal(npc._lifeTask.prog,7);assert.equal(vil._t1248Farm.get('crop').progress,10);assert.equal(npc._workT,9000);delete npc._desWait;delete npc._desFarm;});
  delete npc._lifeTask;delete npc._workT;delete npc._desWorkElapsed;
  ok('farm interruption retains partial shared-cell work once',()=>{vil._t1248Farm.set('crop',{total:100,progress:10});npc._desFarm={sig:'crop',at:1000};V.desAdvance(npc,1040);assert.equal(vil._t1248Farm.get('crop').progress,50);V.desAdvance(npc,1040);assert.equal(vil._t1248Farm.get('crop').progress,50);assert.equal(V.desWorkOf(npc,2000).until,2050);});
  ok('farm side-state roundtrip preserves Map and progress',()=>{const P=V.__labProbe._t740Probe,s=P.pack(vil);assert.deepEqual(P.dec(s._t1248Farm),vil._t1248Farm);});
