@@ -1,0 +1,81 @@
+{
+  "days": 13,
+  "villages": 51,
+  "fingerprintsReproduceOriginal": {
+    "tick13": true,
+    "des13": true
+  },
+  "same": 12,
+  "firstDifference": {
+    "day": 13,
+    "fields": [
+      {
+        "village": "어촌9",
+        "field": "st",
+        "values": {
+          "hide": [
+            47.019927,
+            0
+          ]
+        },
+        "tickRaw": "{\"acorn\":0,\"adlay\":134.666667,\"anchovy\":0,\"apple\":0,\"armor\":0,\"azuki\":222.177493,\"banana\":0,\"barley\":51.650281,\"bone\":0,\"bread\":0,\"bronze_tool\":0,\"buckwheat\":0,\"cabbage\":0,\"carp\":0,\"cassava\":0,\"cheese\":0,\"chestnut\":0,\"chickpea\":0,\"clothes\":7.877402,\"coconut\":0,\"cod\":0,\"cooked_food\":0,\"copper\":0,\"corn\":0,\"cotton\":0,\"crab\":5.816804,\"dates\":0,\"dried_anchovy\":0,\"dried_barbel\":0,\"dried_carp\":0,\"dried_catfish\":0,\"dried_cod\":0,\"dried_crab\":0,\"dried_crucian\":0,\"dried_eel\":0,\"dried_fish\":0,\"dried_fruit\":0,\"dried_herring\":0,\"dried_loach\":0,\"dried_mandarin\":0,\"dried_minnow\":0,\"dried_octopus\":0,\"dried_oyster\":0,\"dried_pollock\":0,\"dried_salmon\":0,\"dried_sardine\":0,\"dried_seaweed\":0,\"dried_shrimp\":0,\"dried_snakehead\":0,\"dried_squid\":0,\"dried_sweetfish\":0,\"dried_trout\":0,\"duck_meat\":0,\"egg\":0,\"fig\":0,\"fish\":0,\"flax\":0,\"food\":0,\"foxtail_millet\":130.92598,\"fruit\":0,\"fruit_berries\":0,\"fur\":0,\"goat_milk\":0,\"hemp\":1.106353,\"herb\":3.109679,\"herring\":0,\"hide\":47.019927,\"honey\":0,\"iron\":0,\"iron_tool\":0,\"jade\":0,\"kimchi\":0,\"leather\":0,\"lentil\":0,\"meat\":0,\"meat_beef\":0,\"meat_chicken\":0,\"meat_game\":0,\"meat_mutton\":0,\"meat_pork\":0,\"milk\":0,\"millet\":234.097015,\"mulberry_fruit\":0,\"mushroom\":0,\"nuts\":0,\"oats\":0,\"obsidian\":0,\"octopus\":0,\"olive\":0,\"onion\":0,\"ore\":0,\"ore_bauxite\":0,\"ore_clay\":0,\"ore_coal\":0,\"ore_cobalt\":0,\"ore_copper\":0,\"ore_diamond\":0,\"ore_emerald\":0,\"ore_gold\":0.39586,\"ore_granite\":0,\"ore_iron\":3.515318,\"ore_jade_raw\":0,\"ore_lead\":0,\"ore_limestone\":0,\"ore_manganese\":0,\"ore_marble\":0,\"ore_nickel\":0,\"ore_nitrate\":0,\"ore_obsidian\":0,\"ore_phosphate\":0,\"ore_ruby\":0,\"ore_salt\":0,\"ore_sand\":0,\"ore_silver\":0,\"ore_sulfur\":0,\"ore_tin\":0,\"ore_tungsten\":0,\"ore_zinc\":0,\"oyster\":6.683098,\"peanut\":0,\"pebble\":0,\"pickled_anchovy\":0,\"pickled_barbel\":0,\"pickled_carp\":0,\"pickled_catfish\":0,\"pickled_cod\":0,\"pickled_crab\":0,\"pickled_crucian\":0,\"pickled_eel\":0,\"pickled_fish\":0,\"pickled_herring\":0,\"pickled_loach\":0,\"pickled_mandarin\":0,\"pickled_minnow\":0,\"pickled_octopus\":0,\"pickled_pollock\":0,\"pickled_salmon\":0,\"pickled_sardine\":0,\"pickled_shrimp\":0,\"pickled_snakehead\":0,\"pickled_squid\":0,\"pickled_sweetfish\":0,\"pickled_trout\":0,\"pickled_veg\":0,\"pollock\":0,\"potato\":0,\"pumpkin\":0,\"rice\":9.75,\"rye\":0,\"salmon\":7.845682,\"salt\":0,\"sardine\":0,\"seaweed\":2.215016,\"seed_adlay\":20,\"seed_azuki\":20,\"seed_barley\":42,\"seed_barnyard_millet\":42,\"seed_foxtail_millet\":20,\"seed_gourd\":20,\"seed_millet\":20,\"seed_perilla\":20,\"seed_rice\":42,\"seed_sorghum\":20,\"seed_soybean\":20,\"seed_wheat\":20,\"shrimp\":6.403251,\"smoked_meat\":0,\"sorghum\":0.968778,\"soybean\":458.914706,\"squid\":0,\"stone\":77.744729,\"sweet_potato\":0,\"tigerhide\":0,\"tin\":0,\"tomato\":0,\"tool\":46.378822,\"trout\":0,\"twig\":0,\"vegetable\":0,\"weapon\":2.369131,\"wheat\":73.544171,\"wood\":106.63274,\"yam\":0}",
+        "desRaw": "{\"acorn\":0,\"adlay\":134.666667,\"anchovy\":0,\"apple\":0,\"armor\":0,\"azuki\":222.177493,\"banana\":0,\"barley\":51.650281,\"bone\":0,\"bread\":0,\"bronze_tool\":0,\"buckwheat\":0,\"cabbage\":0,\"carp\":0,\"cassava\":0,\"cheese\":0,\"chestnut\":0,\"chickpea\":0,\"clothes\":7.877402,\"coconut\":0,\"cod\":0,\"cooked_food\":0,\"copper\":0,\"corn\":0,\"cotton\":0,\"crab\":5.816804,\"dates\":0,\"dried_anchovy\":0,\"dried_barbel\":0,\"dried_carp\":0,\"dried_catfish\":0,\"dried_cod\":0,\"dried_crab\":0,\"dried_crucian\":0,\"dried_eel\":0,\"dried_fish\":0,\"dried_fruit\":0,\"dried_herring\":0,\"dried_loach\":0,\"dried_mandarin\":0,\"dried_minnow\":0,\"dried_octopus\":0,\"dried_oyster\":0,\"dried_pollock\":0,\"dried_salmon\":0,\"dried_sardine\":0,\"dried_seaweed\":0,\"dried_shrimp\":0,\"dried_snakehead\":0,\"dried_squid\":0,\"dried_sweetfish\":0,\"dried_trout\":0,\"duck_meat\":0,\"egg\":0,\"fig\":0,\"fish\":0,\"flax\":0,\"food\":0,\"foxtail_millet\":130.92598,\"fruit\":0,\"fruit_berries\":0,\"fur\":0,\"goat_milk\":0,\"hemp\":1.106353,\"herb\":3.109679,\"herring\":0,\"hide\":0,\"honey\":0,\"iron\":0,\"iron_tool\":0,\"jade\":0,\"kimchi\":0,\"leather\":0,\"lentil\":0,\"meat\":0,\"meat_beef\":0,\"meat_chicken\":0,\"meat_game\":0,\"meat_mutton\":0,\"meat_pork\":0,\"milk\":0,\"millet\":234.097015,\"mulberry_fruit\":0,\"mushroom\":0,\"nuts\":0,\"oats\":0,\"obsidian\":0,\"octopus\":0,\"olive\":0,\"onion\":0,\"ore\":0,\"ore_bauxite\":0,\"ore_clay\":0,\"ore_coal\":0,\"ore_cobalt\":0,\"ore_copper\":0,\"ore_diamond\":0,\"ore_emerald\":0,\"ore_gold\":0.39586,\"ore_granite\":0,\"ore_iron\":3.515318,\"ore_jade_raw\":0,\"ore_lead\":0,\"ore_limestone\":0,\"ore_manganese\":0,\"ore_marble\":0,\"ore_nickel\":0,\"ore_nitrate\":0,\"ore_obsidian\":0,\"ore_phosphate\":0,\"ore_ruby\":0,\"ore_salt\":0,\"ore_sand\":0,\"ore_silver\":0,\"ore_sulfur\":0,\"ore_tin\":0,\"ore_tungsten\":0,\"ore_zinc\":0,\"oyster\":6.683098,\"peanut\":0,\"pebble\":0,\"pickled_anchovy\":0,\"pickled_barbel\":0,\"pickled_carp\":0,\"pickled_catfish\":0,\"pickled_cod\":0,\"pickled_crab\":0,\"pickled_crucian\":0,\"pickled_eel\":0,\"pickled_fish\":0,\"pickled_herring\":0,\"pickled_loach\":0,\"pickled_mandarin\":0,\"pickled_minnow\":0,\"pickled_octopus\":0,\"pickled_pollock\":0,\"pickled_salmon\":0,\"pickled_sardine\":0,\"pickled_shrimp\":0,\"pickled_snakehead\":0,\"pickled_squid\":0,\"pickled_sweetfish\":0,\"pickled_trout\":0,\"pickled_veg\":0,\"pollock\":0,\"potato\":0,\"pumpkin\":0,\"rice\":9.75,\"rye\":0,\"salmon\":7.845682,\"salt\":0,\"sardine\":0,\"seaweed\":2.215016,\"seed_adlay\":20,\"seed_azuki\":20,\"seed_barley\":42,\"seed_barnyard_millet\":42,\"seed_foxtail_millet\":20,\"seed_gourd\":20,\"seed_millet\":20,\"seed_perilla\":20,\"seed_rice\":42,\"seed_sorghum\":20,\"seed_soybean\":20,\"seed_wheat\":20,\"shrimp\":6.403251,\"smoked_meat\":0,\"sorghum\":0.968778,\"soybean\":458.914706,\"squid\":0,\"stone\":77.744729,\"sweet_potato\":0,\"tigerhide\":0,\"tin\":0,\"tomato\":0,\"tool\":46.378822,\"trout\":0,\"twig\":0,\"vegetable\":0,\"weapon\":2.369131,\"wheat\":73.544171,\"wood\":106.63274,\"yam\":0}"
+      },
+      {
+        "village": "어촌9",
+        "field": "tr",
+        "values": {
+          "hide": [
+            1.454225,
+            0
+          ]
+        },
+        "tickRaw": "{\"_cash\":18.66513,\"armor\":0,\"barley\":0.070505,\"bone\":0,\"bronze_tool\":0,\"cooked_food\":0,\"copper\":0,\"crab\":0.393364,\"dried_anchovy\":0,\"dried_barbel\":0,\"dried_carp\":0,\"dried_catfish\":0,\"dried_cod\":0,\"dried_crab\":0,\"dried_crucian\":0,\"dried_eel\":0,\"dried_herring\":0,\"dried_loach\":0,\"dried_mandarin\":0,\"dried_minnow\":0,\"dried_octopus\":0,\"dried_pollock\":0,\"dried_salmon\":0,\"dried_sardine\":0,\"dried_shrimp\":0,\"dried_snakehead\":0,\"dried_squid\":0,\"dried_sweetfish\":0,\"dried_trout\":0,\"fish\":0,\"food\":0,\"fruit\":0,\"hemp\":0.041844,\"herb\":0.013778,\"hide\":1.454225,\"iron\":0,\"iron_tool\":0,\"jade\":0,\"meat\":0,\"millet\":4.528114,\"mushroom\":0,\"obsidian\":0,\"ore_bauxite\":0,\"ore_clay\":0,\"ore_coal\":0,\"ore_cobalt\":0,\"ore_copper\":0,\"ore_diamond\":0,\"ore_emerald\":0,\"ore_gold\":0,\"ore_granite\":0,\"ore_iron\":0,\"ore_jade_raw\":0,\"ore_lead\":0,\"ore_limestone\":0,\"ore_manganese\":0,\"ore_marble\":0,\"ore_nickel\":0,\"ore_nitrate\":0,\"ore_obsidian\":0,\"ore_phosphate\":0,\"ore_ruby\":0,\"ore_salt\":0,\"ore_sand\":0,\"ore_silver\":0,\"ore_sulfur\":0,\"ore_tin\":0,\"ore_tungsten\":0,\"ore_zinc\":0,\"oyster\":0.269638,\"pebble\":0,\"pickled_anchovy\":0,\"pickled_barbel\":0,\"pickled_carp\":0,\"pickled_catfish\":0,\"pickled_cod\":0,\"pickled_crab\":0,\"pickled_crucian\":0,\"pickled_eel\":0,\"pickled_fish\":0,\"pickled_herring\":0,\"pickled_loach\":0,\"pickled_mandarin\":0,\"pickled_minnow\":0,\"pickled_octopus\":0,\"pickled_pollock\":0,\"pickled_salmon\":0,\"pickled_sardine\":0,\"pickled_shrimp\":0,\"pickled_snakehead\":0,\"pickled_squid\":0,\"pickled_sweetfish\":0,\"pickled_trout\":0,\"rice\":0.232781,\"salmon\":0.677816,\"seaweed\":0.539276,\"shrimp\":0.449397,\"stone\":0,\"tigerhide\":0,\"tin\":0,\"tool\":0,\"twig\":0,\"vegetable\":0,\"weapon\":0.038766,\"wheat\":0.096292,\"wood\":0}",
+        "desRaw": "{\"_cash\":18.66513,\"armor\":0,\"barley\":0.070505,\"bone\":0,\"bronze_tool\":0,\"cooked_food\":0,\"copper\":0,\"crab\":0.393364,\"dried_anchovy\":0,\"dried_barbel\":0,\"dried_carp\":0,\"dried_catfish\":0,\"dried_cod\":0,\"dried_crab\":0,\"dried_crucian\":0,\"dried_eel\":0,\"dried_herring\":0,\"dried_loach\":0,\"dried_mandarin\":0,\"dried_minnow\":0,\"dried_octopus\":0,\"dried_pollock\":0,\"dried_salmon\":0,\"dried_sardine\":0,\"dried_shrimp\":0,\"dried_snakehead\":0,\"dried_squid\":0,\"dried_sweetfish\":0,\"dried_trout\":0,\"fish\":0,\"food\":0,\"fruit\":0,\"hemp\":0.041844,\"herb\":0.013778,\"hide\":0,\"iron\":0,\"iron_tool\":0,\"jade\":0,\"meat\":0,\"millet\":4.528114,\"mushroom\":0,\"obsidian\":0,\"ore_bauxite\":0,\"ore_clay\":0,\"ore_coal\":0,\"ore_cobalt\":0,\"ore_copper\":0,\"ore_diamond\":0,\"ore_emerald\":0,\"ore_gold\":0,\"ore_granite\":0,\"ore_iron\":0,\"ore_jade_raw\":0,\"ore_lead\":0,\"ore_limestone\":0,\"ore_manganese\":0,\"ore_marble\":0,\"ore_nickel\":0,\"ore_nitrate\":0,\"ore_obsidian\":0,\"ore_phosphate\":0,\"ore_ruby\":0,\"ore_salt\":0,\"ore_sand\":0,\"ore_silver\":0,\"ore_sulfur\":0,\"ore_tin\":0,\"ore_tungsten\":0,\"ore_zinc\":0,\"oyster\":0.269638,\"pebble\":0,\"pickled_anchovy\":0,\"pickled_barbel\":0,\"pickled_carp\":0,\"pickled_catfish\":0,\"pickled_cod\":0,\"pickled_crab\":0,\"pickled_crucian\":0,\"pickled_eel\":0,\"pickled_fish\":0,\"pickled_herring\":0,\"pickled_loach\":0,\"pickled_mandarin\":0,\"pickled_minnow\":0,\"pickled_octopus\":0,\"pickled_pollock\":0,\"pickled_salmon\":0,\"pickled_sardine\":0,\"pickled_shrimp\":0,\"pickled_snakehead\":0,\"pickled_squid\":0,\"pickled_sweetfish\":0,\"pickled_trout\":0,\"rice\":0.232781,\"salmon\":0.677816,\"seaweed\":0.539276,\"shrimp\":0.449397,\"stone\":0,\"tigerhide\":0,\"tin\":0,\"tool\":0,\"twig\":0,\"vegetable\":0,\"weapon\":0.038766,\"wheat\":0.096292,\"wood\":0}"
+      }
+    ]
+  },
+  "controls": {
+    "workoff13": {
+      "days": 13,
+      "sameAsTick": 12,
+      "firstDifferenceToTick": 13,
+      "day13StorageHide": 0,
+      "day13TreasuryHide": 0,
+      "caravan273Log": [
+        "[hanbando] 🐂 캐러밴#273 출발: 어촌9→임업5 crab×3 호위1(실체 1) — 경로 215정점 9899px 1게임일(econ d11→d12)",
+        "[hanbando] 🐂 캐러밴#273 도착: 어촌9→임업5 crab 매도 — 1게임시간 머묾 후 귀환",
+        "[hanbando] 🐂 캐러밴#273 귀환 출발: 임업5→어촌9 hide×48 — econ d13 도착 예정"
+      ]
+    },
+    "queueoff13": {
+      "days": 13,
+      "sameAsTick": 12,
+      "firstDifferenceToTick": 13,
+      "day13StorageHide": 0,
+      "day13TreasuryHide": 0,
+      "caravan273Log": [
+        "[hanbando] 🐂 캐러밴#273 출발: 어촌9→임업5 crab×3 호위1(실체 1) — 경로 215정점 9899px 1게임일(econ d11→d12)",
+        "[hanbando] 🐂 캐러밴#273 도착: 어촌9→임업5 crab 매도 — 1게임시간 머묾 후 귀환",
+        "[hanbando] 🐂 캐러밴#273 귀환 출발: 임업5→어촌9 hide×48 — econ d13 도착 예정"
+      ]
+    },
+    "walkoff13": {
+      "days": 13,
+      "sameAsTick": 12,
+      "firstDifferenceToTick": 13,
+      "day13StorageHide": 0,
+      "day13TreasuryHide": 0,
+      "caravan273Log": [
+        "[hanbando] 🐂 캐러밴#273 출발: 어촌9→임업5 crab×3 호위1(실체 1) — 경로 219정점 9873px 1게임일(econ d11→d12)",
+        "[hanbando] 🐂 캐러밴#273 도착: 어촌9→임업5 crab 매도 — 1게임시간 머묾 후 귀환",
+        "[hanbando] 🐂 캐러밴#273 귀환 출발: 임업5→어촌9 hide×48 — econ d13 도착 예정"
+      ],
+      "comparisonWithWorkoff13": {
+        "onlyMechanismChanged": "walking events (work0, queues1, sleep/rest/heap unchanged)",
+        "sameDays": 13
+      }
+    }
+  },
+  "controlsComplete": true
+}

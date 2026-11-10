@@ -1,0 +1,65 @@
+{
+  "sourceCommit": "e1e65d6a",
+  "day": 13,
+  "caravan": 273,
+  "from": "어촌9",
+  "to": "임업5",
+  "destinationOfReturn": "어촌9",
+  "tick": {
+    "logLines": [
+      "[hanbando] 🐂 캐러밴#273 출발: 어촌9→임업5 crab×3 호위1(실체 1) — 경로 220정점 9817px 1게임일(econ d11→d12)",
+      "[hanbando] 🐂 캐러밴#273 도착: 어촌9→임업5 crab 매도 — 1게임시간 머묾 후 귀환",
+      "[hanbando] 🐂 캐러밴#273 귀환 출발: 임업5→어촌9 hide×48 — econ d13 도착 예정",
+      "[hanbando] 🐂 캐러밴#273 귀환 완료 — 상인 회수"
+    ],
+    "plannedVertices": 220,
+    "plannedPixels": 9817,
+    "returnCompletedInRun": true
+  },
+  "des": {
+    "logLines": [
+      "[hanbando] 🐂 캐러밴#273 출발: 어촌9→임업5 crab×3 호위1(실체 1) — 경로 215정점 9899px 1게임일(econ d11→d12)",
+      "[hanbando] 🐂 캐러밴#273 도착: 어촌9→임업5 crab 매도 — 1게임시간 머묾 후 귀환",
+      "[hanbando] 🐂 캐러밴#273 귀환 출발: 임업5→어촌9 hide×48 — econ d13 도착 예정"
+    ],
+    "plannedVertices": 215,
+    "plannedPixels": 9899,
+    "returnCompletedInRun": false
+  },
+  "firstDifference": [
+    {
+      "village": "어촌9",
+      "field": "st",
+      "values": {
+        "hide": [
+          47.019927,
+          0
+        ]
+      }
+    },
+    {
+      "village": "어촌9",
+      "field": "tr",
+      "values": {
+        "hide": [
+          1.454225,
+          0
+        ]
+      }
+    }
+  ],
+  "homeDepositCode": {
+    "file": "sim/economy-sim-v2.js",
+    "function": "_homeDepositV2",
+    "taxRate": 0.03,
+    "returnCondition": "caravanBodyDue(...inbound...)",
+    "sha256": "ef2f9557ec3b1f113ccf0c84beee244a65a5f48355bc62bc1721680eb9c42240"
+  },
+  "interpretation": "Tick received the return hide cargo before day13 snapshot; DES did not. Logs show different planned outbound geometry. Root traffic/route mechanism is being isolated; no economic value patched.",
+  "roundedReceiptSplit": {
+    "total": 48.474152000000004,
+    "storage": 47.019927,
+    "treasury": 1.454225,
+    "cashSame": true
+  }
+}
