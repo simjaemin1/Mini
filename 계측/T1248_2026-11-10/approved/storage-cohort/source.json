@@ -1,0 +1,10 @@
+{
+  "productionCommit": "e1e65d6a",
+  "hooks": {
+    "scripts/t1248-storage-hook.js": "4cd72f4fd13e3ab8125daa8d32db969db59e763ed001a78c18d978221c86defd",
+    "scripts/test-t1248-storage.js": "c451965d2254b8c187c07fe75a330762f0c2cef5a0cb3fefb80e52f78152a3c4",
+    "scripts/t1248-body-hook.js": "d02df5b34e59813bdfdd2743c31058757792b625714c9cd2dfe5f5c89ac1d396"
+  },
+  "controlledFixture": "Three existing stable NPC identities; walking body, canonical clear-work clock and FIFO waiter. Actual SQLite transaction and new process.",
+  "failedEarlierFixture": "Expected queue time used (t+now)-savedNow instead of t+(now-savedNow), causing0.000244140625ms floating-association difference. Expected-clock expression corrected, no tolerance/production change; rerun3/0."
+}
