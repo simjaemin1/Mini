@@ -58,15 +58,20 @@ delete process.env.T896_RESUME_ONE;
   await Promise.race([zx, sleep(30000)]); try { z.kill('SIGKILL'); } catch (e) {} await zx;
   let mc = 0; try { const db = new DatabaseSync(S, { readOnly: true }); const m = db.prepare('select data from world_meta').get(); mc = m ? (JSON.parse(m.data).caravans || []).length : 0; db.close(); } catch (e) {}
   ok(mc >= 10, '[상황] 저장된 세계 — 길 위 캐러밴이 메타에 실렸다', `캐러밴 ${mc}`);
+  //   ★[T1261] 관측 창은 시간이 아니라 **켬 팔의 되살림 끝 신호**(`/perf` `t775.done`)를 기다린다 — 종전 창(표본 18 ≈ 191초)은 세계가 커지자
+  //     켬 판이 같은 일을 다 하기 전에 닫혔다(첫 빨강 착지 land1058 `9783cbea` · 끝 160초 → 480초 · 창 2배 안 끝남 · 4배 끝 — 보고 T1261).
+  //     끔 팔은 켬 팔이 끝나는 그 순간까지(또는 저 스스로 끝날 때까지) 같이 잰다 — 두 팔이 **같은 창**을 본다(단언 무변).
+  //     상한 1,500초는 그물이다(판정 밖 · 못 끝나면 ★★ 줄이 `done:false` 로 빨강).
+  const NET_MS = 1500000; const ev = { onDone: false };
   const again = async (tag, on, k) => {
     const db = path.join(TMP, tag + '.db'); for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(S + s, db + s); } catch (e) {} }
     const port = base + 401 + k; const env = zoneEnv(db, port, Object.assign({ T910_SIG_PURE: '0', T1026_SLOT_KEEP: '0', T1061_RESUME_SLICE: '0', T762_CARAVAN_BODY: '0' }, on ? {} : { T896_RESUME_ONE: '0' }));   // ★[PM land1034] T1026_SLOT_KEEP 켬 기본이면 끔 판도 안 버린다(T896 이 고친 꼴을 T1026 이 문 전부로 넓힘) — 이 판은 T896 한 손잡이만 가르므로 둘 다 0 · ★[PM 착지 10-24d] 판 꾸밈: T910 켬 기본이면 다시 뜬 판이 길 캐시를 지켜 빈 쌍이 안 선다 — 이 하네스가 재는 상황(캐시를 버린 재기동 · 빈 쌍 줄)은 `T910_SIG_PURE=0` 으로 세운다(두 팔 같게 · 단언 무변)   // ★[T910 ⓪] 켬 = 빈 값(기본) · 끔 = '0'
-    const c = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env, stdio: 'ignore' }); const cx = exitOf(c, 900000);
+    const c = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env, stdio: 'ignore' }); const cx = exitOf(c, NET_MS + 300000);
     const rows = []; const t0 = Date.now();
-    while (Date.now() - t0 < 420000) { await sleep(10000); const p = await perf(port); if (!p || !p.econTick) continue;
+    while (Date.now() - t0 < NET_MS) { await sleep(10000); const p = await perf(port); if (!p || !p.econTick) continue;
       const pr = p.econTick.probe || {}, sb = p.sharedBudget || {};
       rows.push({ s: (Date.now() - t0) / 1000 | 0, t775: pr.t775 || null, jobs: pr.pathJobs | 0, drop: pr.pathDrop | 0, ticks: sb.ticks | 0, over: sb.over | 0, p50: p.tick && p.tick.ms && p.tick.ms.p50 });
-      const L = rows[rows.length - 1]; if (rows.length >= 6 && L.t775 && (L.t775.done || rows.length >= 18)) break; }
+      const L = rows[rows.length - 1]; if (rows.length >= 6 && L.t775 && (L.t775.done || (!on && ev.onDone))) { if (on) ev.onDone = true; break; } }
     try { c.kill('SIGKILL'); } catch (e) {} await cx; return rows; };
   const [A, B] = await Promise.all([again('off', false, 0), again('on', true, 1)]);
   const last = (R) => R[R.length - 1] || {}, first = (R) => R.find((r) => r.t775) || {};
