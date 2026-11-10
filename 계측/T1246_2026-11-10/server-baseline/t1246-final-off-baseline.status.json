@@ -1,0 +1,17 @@
+{
+  "source": "/tmp/t1246-after-v2",
+  "args": [
+    "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+    "scripts/server-baseline-check.js",
+    "\uacc4\uce21/\uc11c\ubc84\uae30\uc900\uc120_2026-11-08c.json",
+    "--vclock",
+    "--plan",
+    "1020:400"
+  ],
+  "env": {
+    "T1243_FARM_ON": "0",
+    "T577_PORT_BASE": "46500"
+  },
+  "rc": 0,
+  "seconds": 1071.8679889299674
+}
