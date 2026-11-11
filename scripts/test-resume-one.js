@@ -15,6 +15,8 @@
 //     (T1261 빨강 1/10 = 끔 1,311 · 켬 1,312초 — 자의 해상도보다 고운 차이를 판정에 쓰지 않는다 · PM 판정 T1261 회부 1). 한 표본 이상 늦으면 빨강.
 //     ③ 미끼 — 같은 판의 실제 표본 줄을 고쳐 켬 끝을 **한 표본 늦게** 둔 사본은 빨강 · 한 표본 안(1초 모자람) 늦은 사본은 "같이"(초록).
 //   [T1267] `T1267_JSON=<파일>` — 부팅 세계 지문(마을 · 몸 · 되살릴 줄 · 쌍) · 두 팔 표본 줄을 적는다(판정 밖 · 두 봉우리 가르기).
+//   ★[T1269] 두 팔 다 교역로 선계산을 판 밖으로 민다(`VILLAGE_ROUTE_WARM_IDLE_MS`) — 두 팔이 `T1026_SLOT_KEEP=0` 이라 선계산이 뜨면 되살림 줄과 슬롯을
+//     맞버려(T1267) 이 판이 T896 이 아니라 그 맞버림을 쟀다. [상황] 줄이 두 팔 `warm` 일 시작 0 을 확인한다.
 // 실행: node scripts/test-resume-one.js
 'use strict';
 const path = require('path');
@@ -94,9 +96,13 @@ delete process.env.T896_RESUME_ONE;
   //     끔 팔은 켬 팔이 끝나는 그 순간까지(또는 저 스스로 끝날 때까지) 같이 잰다 — 두 팔이 **같은 창**을 본다(단언 무변).
   //     상한 1,500초는 그물이다(판정 밖 · 못 끝나면 ★★ 줄이 `done:false` 로 빨강).
   const NET_MS = 1500000; const ev = { onDone: false };
+  //   ★[T1269 · T1267 회부 1 — PM 판정 (가)] 두 팔 다 교역로 선계산(`_routeWarmStep` — 부팅 뒤 `VILLAGE_ROUTE_WARM_IDLE_MS` 기본 30초부터 프레임마다)을 판 밖으로 민다.
+  //     T1026 끈 두 팔에서 선계산이 뜨면 되살림 줄과 길 슬롯을 프레임마다 서로 버려(T1267 — 날 9 세계 15/15 빨강) 이 판이 T896 말고 그 맞버림을 쟀다.
+  //     값 = 아이 수명 상한(`exitOf` = 그물 + 300초)의 두 배 — 판 안에서는 선계산이 못 뜬다(아래 [상황] 줄이 `warm` 일 시작 0 으로 확인).
+  const WARM_OFF_MS = String(2 * (NET_MS + 300000));
   const again = async (tag, on, k) => {
     const db = path.join(TMP, tag + '.db'); for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(S + s, db + s); } catch (e) {} }
-    const port = PORTS[1 + k]; const env = zoneEnv(db, port, Object.assign({ T910_SIG_PURE: '0', T1026_SLOT_KEEP: '0', T1061_RESUME_SLICE: '0', T762_CARAVAN_BODY: '0' }, on ? {} : { T896_RESUME_ONE: '0' }));   // ★[PM land1034] T1026_SLOT_KEEP 켬 기본이면 끔 판도 안 버린다(T896 이 고친 꼴을 T1026 이 문 전부로 넓힘) — 이 판은 T896 한 손잡이만 가르므로 둘 다 0 · ★[PM 착지 10-24d] 판 꾸밈: T910 켬 기본이면 다시 뜬 판이 길 캐시를 지켜 빈 쌍이 안 선다 — 이 하네스가 재는 상황(캐시를 버린 재기동 · 빈 쌍 줄)은 `T910_SIG_PURE=0` 으로 세운다(두 팔 같게 · 단언 무변)   // ★[T910 ⓪] 켬 = 빈 값(기본) · 끔 = '0'
+    const port = PORTS[1 + k]; const env = zoneEnv(db, port, Object.assign({ T910_SIG_PURE: '0', T1026_SLOT_KEEP: '0', T1061_RESUME_SLICE: '0', T762_CARAVAN_BODY: '0', VILLAGE_ROUTE_WARM_IDLE_MS: WARM_OFF_MS }, on ? {} : { T896_RESUME_ONE: '0' }));   // ★[PM land1034] T1026_SLOT_KEEP 켬 기본이면 끔 판도 안 버린다(T896 이 고친 꼴을 T1026 이 문 전부로 넓힘) — 이 판은 T896 한 손잡이만 가르므로 둘 다 0 · ★[PM 착지 10-24d] 판 꾸밈: T910 켬 기본이면 다시 뜬 판이 길 캐시를 지켜 빈 쌍이 안 선다 — 이 하네스가 재는 상황(캐시를 버린 재기동 · 빈 쌍 줄)은 `T910_SIG_PURE=0` 으로 세운다(두 팔 같게 · 단언 무변)   // ★[T910 ⓪] 켬 = 빈 값(기본) · 끔 = '0'
     const c = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env, stdio: 'ignore' }); const cx = exitOf(c, NET_MS + 300000);
     const rows = []; const t0 = Date.now();
     while (Date.now() - t0 < NET_MS) { await sleep(SAMPLE_MS); const p = await perf(port); if (!p || !p.econTick) continue;
@@ -109,6 +115,10 @@ delete process.env.T896_RESUME_ONE;
   const last = (R) => R[R.length - 1] || {}, first = (R) => R.find((r) => r.t775) || {};
   const a0 = first(A), a1 = last(A), b1 = last(B);
   //   ★[T1267] 팔 정체 — `/perf` 의 `held896` 칸은 켬(T896_RESUME_ONE)일 때만 선다: 끔 팔 표본엔 없고 켬 팔 표본엔 있어야 제 서버를 읽은 것이다
+  //   ★[T1269] 선계산이 정말 안 떴나 — 두 팔 표본의 슬롯 일 시작(`t1026.start`)에 `warm` 이 0(떴으면 이 판은 T896 이 아니라 맞버림을 잰다)
+  const warmN = (R) => R.reduce((m, r) => Math.max(m, (r.d1026 && r.d1026.start && r.d1026.start.warm) | 0), 0);
+  const seen1026 = A.some((r) => r.d1026) && B.some((r) => r.d1026);
+  ok(seen1026 && warmN(A) === 0 && warmN(B) === 0, '[상황] 교역로 선계산이 판 안에 안 떴다(두 팔 슬롯 일 시작 `warm` 0 — T896 한 손잡이만 가른다)', `warm 일 시작 끔 ${warmN(A)} · 켬 ${warmN(B)} · 문 셈 ${seen1026 ? '읽음' : '못 읽음'}`);
   const armOk = A.every((r) => !r.t775 || !('held896' in r.t775)) && B.every((r) => !r.t775 || ('held896' in r.t775));
   ok(A.length >= 6 && B.length >= 1 && a1.t775 && b1.t775 && armOk, '[상황] 두 판이 떴고 되살림 줄이 섰다(관측 실패 0 · 팔마다 제 서버 — 끔 = `held896` 칸 없음 · 켬 = 있음)', `표본 ${A.length} · ${B.length} · 팔 정체 ${armOk ? '맞음' : '어긋남'}`);
   const aQ = a1.t775 ? a1.t775.wait : -1, aTicks = a1.ticks - a0.ticks, aJobs = a1.jobs - a0.jobs, aOver = a1.over - a0.over;
