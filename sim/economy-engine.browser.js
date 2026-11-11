@@ -12613,7 +12613,7 @@ function _computeVillageStats(v, N) {
   //   교역 기회비용(사용자 질문의 실물화): 원정 나간 인원(_tradingN, v2 발행)은 생산도 쉼도 못 하므로 여가에서 차감 —
   //   "쉬는 대신 교역"의 비용이 행복 회계에 실재. 문턱엔 안 넣음(실측: 캐러밴 이익/일이 개인 mv를 3~4자릿수 압도 → 영원히 안 물림.
   //   교역 vs 휴식의 실배분 노브는 TRADE_SPARE_UTIL=0.11 — 여유노동의 11%만 원정, 89%는 쉼).
-  const _leis = Math.max(0, (T1217_MARGIN ? t1217IdleFrac(v, pop) : (v._idleFrac || 0)) - (v._tradingN || 0) / pop);   // ★[T1217] 켬 = 행위 어부의 실제 쉰 시간까지(아래 함수 · 끔 = 종전 글자)
+  const _leis = Math.max(0, ((T1217_MARGIN || T1266_ORE_BODY) ? t1217IdleFrac(v, pop) : (v._idleFrac || 0)) - (v._tradingN || 0) / pop);   // ★[T1217] 켬 = 행위 어부의 실제 쉰 시간까지(아래 함수 · 끔 = 종전 글자) · ★[T1271] `T1266_ORE_BODY` 켬 = 행위 광부의 쉰 시간도 같은 함수로
   stats.happiness += LEISURE_HAPPY_W * _leis;
   stats.leisure = _leis;
   // ★땔감 부족 → 건강 페널티(비례). fuelCov=1이면 0, 0이면 -FUEL_HEALTH_W. 큰/숲빈약 마을이 연료를 못 대면 건강↓→인구 억제.
@@ -15034,12 +15034,19 @@ function t1217HappyMu(v, id, N) {
 }
 //   ★[T1217] 여가 몫의 밑변 — 수식 직업의 여유노동(`_idleFrac` · 수식이 닫힌 행위 어부는 그 잠재 · 실제 합 `_potA` · `_actA` 에 안 든다)은 그 사람 수만큼,
 //     행위 어부는 서버가 적은 그날 쉰 사람-날(`_t1217Rest` · 낮 시간 중 안 낚은 몫의 합 · 0 ~ 어부 수)만큼 — 인구 가중 평균. 칸이 없으면(서버가 안 적은 날 · 랩) 종전 값.
+//   ★[T1271 · T1266 회부 1 — PM 판정 "광부만 다른 쉼 값을 둘 까닭이 없다"] `T1266_ORE_BODY` 켬 = 행위 광부(수식이 닫히고 몸이 친 마을)도 같은 꼴 —
+//     서버가 적은 그날 쉰 사람-날(`_t1271Rest` · 몸이 한 시간 문에서 멈춘 시각부터 해 질 녘까지의 낮 몫 합 · 0 ~ 광부 수)만큼. 어부만 선 날은 종전 셈 그대로(같은 산술).
 function t1217IdleFrac(v, pop) {
   const idle = (v && v._idleFrac) || 0;
-  if (!v || typeof v._t1217Rest !== 'number' || !productionFormulaOff(v, 'fisher')) return idle;
+  if (!v) return idle;
+  const fOn = typeof v._t1217Rest === 'number' && productionFormulaOff(v, 'fisher');
+  const mOn = T1266_ORE_BODY && typeof v._t1271Rest === 'number' && productionFormulaOff(v, 'miner') && mineActOn(v);
+  if (!fOn && !mOn) return idle;
   const N = Math.max(1, pop || (v.npcs && v.npcs.length) || 1);
-  const Fa = Math.min(N, Math.max(0, (v.counts && v.counts.fisher) || 0));
-  return ((N - Fa) * idle + Math.max(0, Math.min(Fa, v._t1217Rest))) / N;
+  let A = 0, R = 0;
+  if (fOn) { const Fa = Math.min(N, Math.max(0, (v.counts && v.counts.fisher) || 0)); A += Fa; R += Math.max(0, Math.min(Fa, v._t1217Rest)); }
+  if (mOn) { const Ma = Math.min(N - A, Math.max(0, (v.counts && v.counts.miner) || 0)); A += Ma; R += Math.max(0, Math.min(Ma, v._t1271Rest)); }
+  return ((N - A) * idle + R) / N;
 }
 // ★★[T325 · 설계_생산_실체 §1·§2] **나무꾼의 곳간 입구.** 캐논: *"베는 순간 손에, 귀환하면 곳간에."*
 //   ⚠어부와 **같은 몸통 · 같은 세금 · 같은 장부 다리**다(위 `actToGranary`) — 새 회계 0.
@@ -15768,6 +15775,11 @@ function effectiveLandSize(v) {
 const T1259_WOOD_CAP = (typeof process !== 'undefined' && process.env && process.env.T1259_WOOD_CAP === '1');
 let _t1259WoodReader = null;
 function setT1259WoodReader(reader) { _t1259WoodReader = typeof reader === 'function' ? reader : null; }
+// ★[T1271 · T1266 회부 4 — PM 판정] 광부 자리 = 몸이 집(회관)에서 닿는 광맥 셀(재고 ≥ 1) × 종전 계수 0.30 — T1259 나무 자리와 같은 꼴(서버가 읽는 수 · 사본 0).
+//   손잡이 `T1271_ORE_CAP`(끔 기본 · `=1` 만 켬). 읽개가 없으면(랩 · 헤드리스) 종전 땅 모형 그대로. 닿는 셀 0 = 광부 자리 0(강제 아님 — 자리가 안 선다).
+const T1271_ORE_CAP = (typeof process !== 'undefined' && process.env && process.env.T1271_ORE_CAP === '1');
+let _t1271OreReader = null;
+function setT1271OreReader(reader) { _t1271OreReader = typeof reader === 'function' ? reader : null; }
 function jobCapacity(v) {
   const s = effectiveLandSize(v);
   // ★비옥도 이중산입 분리: 농부 '자리'=경작지 *면적*(arable, 공간 실측·폴백 min(1,fert)) — 지력(fertility)은 1인 산출에만.
@@ -15775,12 +15787,13 @@ function jobCapacity(v) {
   //    숲·사냥·어장은 밀도=면적이라 이중산입이 의미 있음 — 유지. 광맥도 크기∝노동력 — 유지.)
   const arable = v.land.arable != null ? v.land.arable : Math.min(1, v.land.fertility);
   const standing = T1259_WOOD_CAP && _t1259WoodReader ? _t1259WoodReader(v) : null;
+  const oreReach = T1271_ORE_CAP && _t1271OreReader ? _t1271OreReader(v) : null;   // ★[T1271] 닿는 광맥 셀 수(null = 읽개 없음 · 종전)
   const c = {
     farmer:     Math.floor(s * arable * 0.4),
     fisher:     Math.floor(s * v.land.water     * 0.25),
     hunter:     Math.floor(s * v.land.game      * 0.30),
     lumberjack: Math.floor((standing == null ? s * v.land.wood : standing) * 0.30),
-    miner:      Math.floor(s * Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0) * 0.30),   // ★S1 광부=금속 전담: 광맥(ore) ★S5 +특수산지(흑요석·옥) ★청동 희소성 +주석산지
+    miner:      Math.floor((oreReach == null ? s * Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0) : oreReach) * 0.30),   // ★S1 광부=금속 전담: 광맥(ore) ★S5 +특수산지(흑요석·옥) ★청동 희소성 +주석산지
     forager:    Math.floor(s * 0.30),
     // ★인구비율 정원(하드캡) 전부 폐지 — 직업 수는 한계가치 vs 그림자가격으로 *자연 수렴*.
     //   대장장이: 도구 쌓이면 도구가격↓→한계가치↓→안 뽑힘 + 글럿 시 차출(opportunityCost=시장가치).
@@ -19997,7 +20010,7 @@ function computeVillagePrices(v) {
 }
 
 module.exports = {
-  T1259_WOOD_CAP, setT1259WoodReader, jobCapacity,
+  T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
   T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
   T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
@@ -21158,6 +21171,8 @@ function _t1217Lam(v, px, N) {
   }
   return { lam, best };
 }
+//   ★[T1271 · T1266 회부 1] 한 사람이 한 시간 쉰 값 — 어부 · 광부가 같은 함수(종전 두 줄의 같은 식을 하나로 · 값 무변).
+function t1217RestValue(N, H) { return H > 0 ? v1.LEISURE_HAPPY_W / (N * H) : Infinity; }
 function t1217Value(v, H, key) {
   if (!v || !v.npcs) return null;
   const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
@@ -21167,7 +21182,7 @@ function t1217Value(v, H, key) {
   //   생선 한 단위 = 곳간 식량 한 단위(econ `totalFoodEquivalent` 1:1 — 먹으면 그만큼 다른 식량이 남는다) ⇒ 그 시세 = 생선 값 · 식량 값 중 큰 쪽(· 이웃이 사 주는 순수취)
   const pFish = px.fish || 0, pFood = px.food || 0, nev = v._world ? netExportValue(v._world, v, 'fish') : 0;
   const vSur = Math.max(pFish, pFood, nev) * lam;
-  return { N, H, unit: vEat > 0 ? vEat : vSur, vEat, vSur, lam, best, pFish, pFood, nev, debt, rest: H > 0 ? v1.LEISURE_HAPPY_W / (N * H) : Infinity };
+  return { N, H, unit: vEat > 0 ? vEat : vSur, vEat, vSur, lam, best, pFish, pFood, nev, debt, rest: t1217RestValue(N, H) };
 }
 //   ★★[T1266 · 캐논 797 "몸이 한 일만 센다"] 광부 원석 한 단위 · 한 시간의 값 — 어부(위)와 같은 꼴 · 같은 단위(행복 목표). 원석은 먹지 못한다(빚 칸 없음):
 //     unit = Σ 그 자리 광물 몫 × max(그 마을 원석 값, 순수출가) × λ · rest = 한 사람이 한 시간 쉰 값(어부와 같은 줄).
@@ -21179,7 +21194,7 @@ function t1266OreValue(v, H, key, mix) {
   const M = mix && Object.keys(mix).length ? mix : { ore: 1 };
   let p = 0;
   for (const id in M) { const f = M[id]; if (!(f > 0)) continue; const nev = v._world ? netExportValue(v._world, v, id) : 0; p += f * Math.max(px[id] || 0, nev || 0); }
-  return { N, H, unit: p * lam, p, lam, best, rest: H > 0 ? v1.LEISURE_HAPPY_W / (N * H) : Infinity };
+  return { N, H, unit: p * lam, p, lam, best, rest: t1217RestValue(N, H) };
 }
 
 // =============================================================================
@@ -23541,7 +23556,7 @@ module.exports = {
   createWorldV2,
   tickWorldV2, tickWorldV2Parts,   // ★[T513] 하루 틱 조각(서버 하루 마감이 여러 프레임에 흘린다 · 정본 한 벌)
   computeShadowPrices,
-  t1217PricesOf, t1217Value, t1266OreValue, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
+  t1217PricesOf, t1217Value, t1266OreValue, t1217RestValue, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
   shadowPricesOf,   // ★[T1161 · K13] 값표의 몇 칸만(전 표의 그 칸과 같은 값) — 거래소 견적 · 실행이 부른다
   netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
   haulMul, HORSE_HAUL_MUL, TRANSPORT_COST_PER_1000,   // ★말 사역(2026-08-02e ⑥) — 시대 전/후 비트 동일 검증용

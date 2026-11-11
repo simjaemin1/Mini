@@ -51,14 +51,16 @@ function snap(day) {
   let pk = null, t66 = null;
   try { const tp = VIL.tickPerf ? VIL.tickPerf() : null; const Q = tp && tp.probe && tp.probe.t724; if (Q && Q.pk) pk = JSON.parse(JSON.stringify(Q.pk)); } catch (e) {}
   try { t66 = VIL.t1266Stat ? VIL.t1266Stat() : null; if (t66) for (const k in t66) t66[k] = r4(t66[k]); } catch (e) {}
+  let t71 = null; try { t71 = VIL.t1271Stat ? VIL.t1271Stat() : null; } catch (e) {}   // ★[T1271] 자리 읽개 누계(마을별 [광맥 셀 · 닿는 셀])
   const px = {}, tot = {};
   for (const vil of (P.villages || [])) {
     if (!MINES.has(vil.name)) continue;
     const e = vil.econ || {}, c = e._priceCache || null;
     if (c) { const o = {}; for (const k of (rec.split ? OG.ids : ['ore'])) if (c[k] > 0) o[k] = r4(c[k]); px[vil.name] = o; }
-    tot[vil.name] = [r4(e._smeltedTotal || 0), r4(e._bronzeWeaponMade || 0), e._t1196C ? Object.assign({}, e._t1196C) : null, (e.npcs || []).length];   // 녹임 누계 · 청동 무기 누계 · 작업표 셈 · 인구
+    tot[vil.name] = [r4(e._smeltedTotal || 0), r4(e._bronzeWeaponMade || 0), e._t1196C ? Object.assign({}, e._t1196C) : null, (e.npcs || []).length,
+      (e.counts && e.counts.miner) || 0, vil._t1271C ? vil._t1271C.n : null, typeof e._t1271Rest === 'number' ? r4(e._t1271Rest) : null];   // 녹임 누계 · 청동 무기 누계 · 작업표 셈 · 인구 · ★[T1271] econ 광부 · 닿는 광맥 셀(읽개 캐시 — 읽기만 · 부르지 않는다) · 어제 쉰 사람-날
   }
-  rec.g[day] = { pk, t66, px, tot };
+  rec.g[day] = { pk, t66, t71, px, tot };
   if (day % 10 === 0) write();
 }
 function write() { try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) { /* 자리 */ } }
