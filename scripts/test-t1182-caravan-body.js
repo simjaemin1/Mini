@@ -1,6 +1,8 @@
 'use strict';
 // @regress
 // 몸을 멈추면 시계만 흘러도 귀환 입금/출고/경계 통과가 없어야 한다.
+// ★[T1258] 묶음 — 이 하네스는 몸 틱을 인수 시각(`P.tick(2000)` · `102000` …)으로 몬다. 켬(`T1253_CLOCK_FIX` 기본)은 몸 시각을 econ 날 시계(`_t1253Now`)로 재 인수를 안 본다 — 켬은 판 자 벽 = 가상 게이트(보고 T1253 · T1258)가 잰다.
+if (process.env.T1253_CLOCK_FIX == null) process.env.T1253_CLOCK_FIX = '0';
 const assert=require('assert/strict'),path=require('path'),fs=require('fs'),Module=require('module');
 const {spawnSync}=require('child_process');
 if(process.argv.includes('--mutant')) {
