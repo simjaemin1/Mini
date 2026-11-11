@@ -8,11 +8,12 @@
 //     ⓑ econ 원석 산출 누계(`dailyProductionBuf` 원석 칸 · 날 머리 줄 = 어제) ≤ 몸 원석 곳간 단위 누계 — 수식 원석 0(몸이 안 친 원석이 안 든다).
 //     ⚠"몸이 안 친 마을-날에 든 원석" 은 칸이 될 수 없다 — 전날 친 손이 이튿날 곳간에 든다(끔 판에도 선다 · 첫 표 판에서 확인).
 const fs = require('fs');
-const [onH, offH, outMd, outJson] = process.argv.slice(2);
-if (!onH || !offH) { console.error('쓰는 법: node scripts/t1266-table.js <켬 머리> <끔 머리> [표.md] [요약.json]'); process.exit(2); }
+const MAIN = require.main === module;   // ★[T1271] 다른 표 자(`t1271-table.js`)가 아래 함수를 그대로 쓴다(사본 0)
+const [onH, offH, outMd, outJson] = MAIN ? process.argv.slice(2) : [];
+if (MAIN && (!onH || !offH)) { console.error('쓰는 법: node scripts/t1266-table.js <켬 머리> <끔 머리> [표.md] [요약.json]'); process.exit(2); }
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
 const load = (h) => ({ a: rd(h + '.t1256.json'), b: rd(h + '.t1266.json'), c: rd(h + '.t1243.json'), j: rd(h + '.json') });
-const R = { on: load(onH), off: load(offH) };
+const R = MAIN ? { on: load(onH), off: load(offH) } : null;
 const sum = (a) => a.reduce((s, x) => s + (+x || 0), 0);
 const f1 = (x) => x == null ? '—' : (+x).toFixed(1), f2 = (x) => x == null ? '—' : (+x).toFixed(2), f0 = (x) => x == null ? '—' : Math.round(+x).toLocaleString('en-US');
 const pc = (x) => x == null ? '—' : (100 * x).toFixed(1);
@@ -59,6 +60,8 @@ function summary(X) {
   return { last: L, kgDay: bodyU * kgU / (nD || 1), bodyKg: bodyU * kgU, byV, st, consv: { inKg: bodyU * kgU, swingKg: g.kg, prodU, inU: bodyU, ok: bodyU * kgU <= (g.kg || 0) + 1e-6 && prodU <= bodyU + 1e-6 }, mineVillageDays: mvDays, sw: g.sw, done: g.done, none: g.none, bronze: head ? sum(head.map((r) => r[I('bronzeW')])) : null, smelt: head ? sum(head.map((r) => r[I('smeltTot')])) : null,
     oreStock: head ? sum(head.map((r) => r[I('oreStock')])) : null, t66, art: art(X), pick14: pick(X, '어촌14'), st14: states(X, 11, L - 1, '어촌14'), pop: X.j && X.j.pop != null ? X.j.pop : null, j: X.j };
 }
+module.exports = { load, cells, summary, states, art, pick, f0, f1, f2, pc };
+if (MAIN) {
 const S = { on: summary(R.on), off: summary(R.off) };
 const out = [];
 out.push('| 칸(켬 : 끔) | ' + [10, 20, 30, 40, 50, 60].map((d) => '날 ' + d).join(' | ') + ' |');
@@ -82,3 +85,4 @@ console.log('\n요약 켬:', JSON.stringify({ ...S.on, j: undefined }));
 console.log('요약 끔:', JSON.stringify({ ...S.off, j: undefined }));
 if (outMd) fs.writeFileSync(outMd, md + '\n');
 if (outJson) fs.writeFileSync(outJson, JSON.stringify({ on: { ...S.on, j: undefined }, off: { ...S.off, j: undefined } }, null, 1));
+}
