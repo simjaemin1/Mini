@@ -43,7 +43,4 @@ test-tick-slicer.js | 기계 의존 | 공통.md §2 ⑥ (T185 2026-09-12) · 부
 #   · `test-body` ⑯㉧ — 야간엔 물때를 못 박지 않는다(PM 10-31 회부 2 · CI 만 `TIDE_FREEZE_MS`). 다시 빨개지면 카드로.
 #   · 셈은 보고기가 한다 — 야간 보고 §1b(상시 줄마다 연속 초록 · 10밤이면 "뺄 차례" · 상시 밖 2밤 이상 빨강은 "올릴지 · 카드").
 test-lab-mining.js | 켬 대기(T1249_ORE_FIX 끔 기본 · 끔 판 빨강이 맞다) | PM land1064 · T1254 표(끔 빨강 · 켬 초록 1,347 · 1,366초) · T1249 회부 2 재민 판정 뒤 내린다
-test-t1043-gate-house.js | 켬 대기(T1253_CLOCK_FIX 끔 기본) | PM land1064 · T1253 켬 초록 · T1258(S14)이 켬 기본 + 새 기준선 — 착지하면 내린다
-test-t969-shelter-day.js | 켬 대기(T1253_CLOCK_FIX 끔 기본) | PM land1064 · T1253 켬 초록 · T1258 착지하면 내린다
-test-t986-bandit-day.js | 켬 대기(T1253_CLOCK_FIX 끔 기본) | PM land1064 · T1253 켬 초록 · T1258 착지하면 내린다
-test-resume-one.js | 귀속 다시(T896 되살림 창 · 시계 갈래 아님) | PM land1064 · T1253 §4-ㄴ · T1261(S12)
+test-resume-one.js | 창 고침 뒤 1/10 빨강(두 팔 같이 끝난 판 · 초 단위 비교) | PM land1066 · T1261 9/10 · 회부 1 → T1267

@@ -90,7 +90,7 @@ ENABLED_ZONES="hanbando" npm start          # 일부 존만
 
 ```bash
 bash scripts/run-regress.sh                 # 하네스 전수
-node scripts/server-baseline-check.js 계측/서버기준선_2026-11-08c.json --vclock --plan 1020:400   # 회귀 지문 대조
+node scripts/server-baseline-check.js 계측/서버기준선_2026-11-11.json --vclock --plan 1020:400   # 회귀 지문 대조
 ```
 
 ## 디렉터리
