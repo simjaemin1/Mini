@@ -1,0 +1,8 @@
+{
+  "days": 1,
+  "rawWorldEqual": true,
+  "smokeVersion": "v2, before native-event-loop restoration/GC-observer attribution correction",
+  "bothValid": true,
+  "smoke": "/tmp/t1270-smoke-v2",
+  "control": "/tmp/t1270-plain-final"
+}

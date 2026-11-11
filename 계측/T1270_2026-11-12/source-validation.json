@@ -1,0 +1,82 @@
+{
+  "measuredMain": "b17f6089",
+  "status": {
+    "valid": true,
+    "exit": 0,
+    "days": 30,
+    "clock": {
+      "V": 1767268547528.4807,
+      "V0": 1767225600000,
+      "fired": 1783477,
+      "timers": 25282,
+      "intervals": 15,
+      "started": true,
+      "startAt": 1767225600000,
+      "paused": false,
+      "yields": 4458,
+      "maxQ": 21,
+      "errs": 0,
+      "q": 15
+    },
+    "cpuSeconds": 2524.896583,
+    "wallSeconds": 2452.680181121
+  },
+  "sourceChecks": {
+    "server/zone.js": {
+      "fixedMainMatches": true,
+      "unchangedAfterRun": true
+    },
+    "server/villages.js": {
+      "fixedMainMatches": true,
+      "unchangedAfterRun": true
+    },
+    "server/events.js": {
+      "fixedMainMatches": true,
+      "unchangedAfterRun": true
+    },
+    "server/rumor.js": {
+      "fixedMainMatches": true,
+      "unchangedAfterRun": true
+    },
+    "sim/path-core.js": {
+      "fixedMainMatches": true,
+      "unchangedAfterRun": true
+    },
+    "sim/economy-sim-v2.js": {
+      "fixedMainMatches": true,
+      "unchangedAfterRun": true
+    },
+    "scripts/t577-server-run.js": {
+      "fixedMainMatches": true,
+      "unchangedAfterRun": true
+    },
+    "scripts/t745-vclock.js": {
+      "fixedMainMatches": true,
+      "unchangedAfterRun": true
+    },
+    "package-lock.json": {
+      "fixedMainMatches": true,
+      "unchangedAfterRun": true
+    }
+  },
+  "observationSourceChecks": {
+    "profile.cjs": true,
+    "run.cjs": true,
+    "world-hook.cjs": true
+  },
+  "firstDayWorldEqual": true,
+  "bodyWorld": {
+    "days": 30,
+    "villages": 51,
+    "seedPopulationAllPositive": true
+  },
+  "traceRotations": [
+    "trace-80413-1.json",
+    "trace-80413-2.json",
+    "trace-80413-3.json",
+    "trace-80413-4.json",
+    "trace-80413-5.json"
+  ],
+  "coveragePercent": 96.97859521734377,
+  "nativeCPUClosure": true
+}

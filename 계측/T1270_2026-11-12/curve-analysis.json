@@ -1,0 +1,60 @@
+{
+  "dailyDrivers": [
+    {
+      "key": "other::villages:tickCaravanBodies",
+      "first10MeanMinutes": 0.11502449666666667,
+      "last10MeanMinutes": 0.2387250783333333,
+      "lastVsFirst": 2.0754281501021707,
+      "correlationWithBodiesExcludingFirstDay": 0.37199650552949654,
+      "correlationWithPopulationExcludingFirstDay": 0.44558256539494234,
+      "first10MeanUsPerOuterFrame": 159.79201589091196,
+      "last10MeanUsPerOuterFrame": 331.56165350869577
+    },
+    {
+      "key": "other::zone:body:movement-preparation",
+      "first10MeanMinutes": 0.045098341666666666,
+      "last10MeanMinutes": 0.13188773666666667,
+      "lastVsFirst": 2.924447591476479,
+      "correlationWithBodiesExcludingFirstDay": 0.9456009343942654,
+      "correlationWithPopulationExcludingFirstDay": 0.971583322356977,
+      "first10MeanUsPerOuterFrame": 63.40494514981775,
+      "last10MeanUsPerOuterFrame": 183.17695833976322
+    },
+    {
+      "key": "other::frame:setup-and-dispatch",
+      "first10MeanMinutes": 0.0489285,
+      "last10MeanMinutes": 0.06067641666666666,
+      "lastVsFirst": 1.2401037568424673,
+      "correlationWithBodiesExcludingFirstDay": 0.5717933093697671,
+      "correlationWithPopulationExcludingFirstDay": 0.5740338106918484,
+      "first10MeanUsPerOuterFrame": 69.1858590599666,
+      "last10MeanUsPerOuterFrame": 84.27260566209887
+    },
+    {
+      "key": "other::zone:body:gauges-stairs-regeneration",
+      "first10MeanMinutes": 0.028844525,
+      "last10MeanMinutes": 0.07381087333333333,
+      "lastVsFirst": 2.558921435985974,
+      "correlationWithBodiesExcludingFirstDay": 0.9404492174214014,
+      "correlationWithPopulationExcludingFirstDay": 0.9744227179934736,
+      "first10MeanUsPerOuterFrame": 40.49652695440908,
+      "last10MeanUsPerOuterFrame": 102.51483456722967
+    },
+    {
+      "key": "other::zone:space:rebuild-index",
+      "first10MeanMinutes": 0.018397445000000002,
+      "last10MeanMinutes": 0.05646253666666666,
+      "lastVsFirst": 3.069042286397196,
+      "correlationWithBodiesExcludingFirstDay": 0.9454326028797775,
+      "correlationWithPopulationExcludingFirstDay": 0.9715562574765914,
+      "first10MeanUsPerOuterFrame": 25.78635095025273,
+      "last10MeanUsPerOuterFrame": 78.41998328281582
+    }
+  ],
+  "dailyAverages": {
+    "first10CpuMinutesStartupExcluded": 0.88089092,
+    "last10CpuMinutes": 1.8437756266666667,
+    "first10OtherMinutes": 0.4778023416666667,
+    "last10OtherMinutes": 0.8583574333333333
+  }
+}

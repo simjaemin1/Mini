@@ -1,0 +1,34 @@
+{
+  "experiment": "Node22 forced allocations and GC; separate mechanism experiment, not a completed world",
+  "cpuFields": [
+    "tts",
+    "tdur"
+  ],
+  "elapsedFields": [
+    "ts",
+    "dur"
+  ],
+  "rule": "union CPU intervals per tid, never sum overlapping phase scopes",
+  "examples": [
+    {
+      "background": false,
+      "name": "V8.GC_TIME_TO_SAFEPOINT",
+      "cat": "devtools.timeline,disabled-by-default-v8.gc",
+      "tid": 77988,
+      "ts": 66333441584,
+      "dur": 2,
+      "tts": 13938,
+      "tdur": 2
+    },
+    {
+      "background": true,
+      "name": "V8.GC_BACKGROUND_SAFEPOINT",
+      "cat": "devtools.timeline,disabled-by-default-v8.gc",
+      "tid": 77991,
+      "ts": 66333451650,
+      "dur": 1199,
+      "tts": 220,
+      "tdur": 25
+    }
+  ]
+}

@@ -1,0 +1,180 @@
+{
+  "scope": "frame:setup-and-dispatch is the self CPU of this callback after measured statements, including local initialization and meter bookkeeping",
+  "declarations": [
+    {
+      "line": 16409,
+      "kind": "VariableDeclaration",
+      "text": "const now = Date.now();"
+    },
+    {
+      "line": 16411,
+      "kind": "VariableDeclaration",
+      "text": "const _tickHr0 = process.hrtime();"
+    },
+    {
+      "line": 16424,
+      "kind": "VariableDeclaration",
+      "text": "const _elapsed = (now - lastTick) / 1000;"
+    },
+    {
+      "line": 16425,
+      "kind": "VariableDeclaration",
+      "text": "const _want = TICK_DEBT_ON ? (_elapsed + _tickDebt) : _elapsed;"
+    },
+    {
+      "line": 16426,
+      "kind": "VariableDeclaration",
+      "text": "const dt = Math.min(DT_MAX, _want);"
+    },
+    {
+      "line": 16427,
+      "kind": "VariableDeclaration",
+      "text": "const _left = _want - dt;"
+    },
+    {
+      "line": 16447,
+      "kind": "VariableDeclaration",
+      "text": "const moveDt = 1 / TICK_HZ;"
+    },
+    {
+      "line": 16510,
+      "kind": "VariableDeclaration",
+      "text": "let _curHit = (_npcCursor === null), _stopAt = null;"
+    },
+    {
+      "line": 16519,
+      "kind": "VariableDeclaration",
+      "text": "const _decOne = (pid) => { do {\n    if (!_curHit) { if (pid !== _npcCursor) continue; _curHit = true; }   // 지난 틱에 **못 한** 그 사람부터 한다\n    const npc = players.get(pid);\n    if (!npc || npc.hp <= 0) continue;\n    // Phase 4d-9 fix: canadia NPC"
+    },
+    {
+      "line": 16592,
+      "kind": "FunctionDeclaration",
+      "text": "function movePlayerStep(p, inp) {   // ★[T194] `inp` 는 **그 틱의 입력**(플레이어만) — NPC 는 안 넘긴다(종전 비트)\n    // === auto-eject: 어떤 이유로든(핸드오프 착지·지형변경·관통) 중심이 물/바위에 빠졌으면,\n    //   \"자유이동(escape valve)\" 대신 가장 가까운 통행가능 셀로 밀어낸다 → 강 안에서 헤엄치는 버그 차단.\n    _wal"
+    },
+    {
+      "line": 16773,
+      "kind": "VariableDeclaration",
+      "text": "const _desM0 = _desClk ? _desClk() : 0n;"
+    },
+    {
+      "line": 16774,
+      "kind": "VariableDeclaration",
+      "text": "let _wwCur = 0, _wwK = 0;"
+    },
+    {
+      "line": 16776,
+      "kind": "VariableDeclaration",
+      "text": "const _wwSteps0 = _walk.steps;"
+    },
+    {
+      "line": 16781,
+      "kind": "VariableDeclaration",
+      "text": "const _moveOne = (p) => { do {   // ★[T689] 한 바퀴 `do … while (false)` — 몸통 글자 그대로(`continue` = 이 몸 끝 · 안쪽 입력 고리의 `break` 는 그 고리만)\n    if (p.handingOff) continue;\n    if (p.isNpc) {\n      if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 "
+    },
+    {
+      "line": 16848,
+      "kind": "FunctionDeclaration",
+      "text": "function dirVec(dir) {\n    if (dir === 'N') return { x: 0, y: -1 };\n    if (dir === 'S') return { x: 0, y: 1 };\n    if (dir === 'E') return { x: 1, y: 0 };\n    if (dir === 'W') return { x: -1, y: 0 };\n    return { x: 0, y: -1 };\n  }"
+    },
+    {
+      "line": 16856,
+      "kind": "FunctionDeclaration",
+      "text": "function findStairStepFor(entity) {\n    // 14.49-e3-perf4: O(1) cache 활용 (findStairBuildingForCell와 통합)\n    const ex = Math.floor(entity.x / BUILDING_SIZE);\n    const ey = Math.floor(entity.y / BUILDING_SIZE);\n    return findStairBuildingFo"
+    },
+    {
+      "line": 16862,
+      "kind": "FunctionDeclaration",
+      "text": "function stepStairFor(entity) {\n    const cur = findStairStepFor(entity);\n    if (!cur) {\n      // stair 벗어남 — 어느 방향으로 벗어났는지 보고 floor 결정\n      if (entity.onStairId) {\n        const stair = buildings.get(entity.onStairId);\n        if (stair)"
+    },
+    {
+      "line": 16946,
+      "kind": "FunctionDeclaration",
+      "text": "function _stairStepP(p) {\n    if (p.handingOff || p.isDown) return;\n    if (T385_ONE_SWEEP && _stairNone && !p.onStairId && !((p.z || 0) > 0)) return;   // ★[T385 ③] 있음/없음 한 비트\n    stepStairFor(p);\n  }"
+    },
+    {
+      "line": 16951,
+      "kind": "VariableDeclaration",
+      "text": "let _stairNone = false;"
+    },
+    {
+      "line": 16954,
+      "kind": "FunctionDeclaration",
+      "text": "function _stairStepM(m, act) {\n    if (m.hp <= 0) return;\n    // 14.49-e perf: 비활성 chunk mob은 skip. 정지 mob은 onStairId 있을 때만 (방향 변경 가능)\n    if (!(act !== undefined ? act : isPositionActive(m.x, m.y))) return;\n    const moving = (m.vx || 0) !"
+    },
+    {
+      "line": 16967,
+      "kind": "FunctionDeclaration",
+      "text": "function hasFloorSupportAt(absX, absY, floor) {\n    if (floor === 0) return true; // 0층은 항상 땅\n    const cx = Math.floor(absX / BUILDING_SIZE);\n    const cy = Math.floor(absY / BUILDING_SIZE);\n    const near = qtColl ? (T689_GC ? qtColl.quer"
+    },
+    {
+      "line": 16989,
+      "kind": "FunctionDeclaration",
+      "text": "function processFalling(entity) {\n    if ((entity.floor || 0) === 0) {\n      // 0층 — 낙하 없음, falling 상태 정리\n      if (entity.falling) { entity.falling = false; entity.fallVz = 0; }\n      return;\n    }\n    if (entity.onStairId) {\n      // 계단 위"
+    },
+    {
+      "line": 17044,
+      "kind": "FunctionDeclaration",
+      "text": "function _fallStepP(p, act) {\n    if (p.handingOff || p.isDown) return;\n    if (p.isNpc && !p.canadiaVillage && !(act !== undefined ? act : isPositionActive(p.x, p.y))) return;  // dormant NPC 낙하 스킵\n    processFalling(p);\n  }"
+    },
+    {
+      "line": 17050,
+      "kind": "FunctionDeclaration",
+      "text": "function _fallStepM(m, act) {   // ★[T421 ③] 몹 한 걸음 — 종전 루프 몸통 그대로\n    if (m.hp <= 0) return;\n    if (!(act !== undefined ? act : isPositionActive(m.x, m.y))) return;\n    processFalling(m);\n  }"
+    },
+    {
+      "line": 17075,
+      "kind": "FunctionDeclaration",
+      "text": "function _gaugeStep(p) {\n    if (T823_FREEZE_SHELL && p.handingOff) return;   // ★[T823] 켬 — 떠난 몸 껍데기는 게이지가 안 흐른다\n    if (p.hp <= 0 || p.isDown) return;\n    // ★NPC 전면 면제(랩 100% 동형 — 사용자 확정): 랩 NPC에는 개체 허기·갈증이 없다 — 식량은 econ 소유(기근=econ 인구감소가"
+    },
+    {
+      "line": 17149,
+      "kind": "FunctionDeclaration",
+      "text": "function _hpRegenStep(p, act) {\n    if (T823_FREEZE_SHELL && p.handingOff) return;   // ★[T823] 켬 — 떠난 몸 껍데기는 안 아문다\n    if (p.isNpc && !p.canadiaVillage && !(act !== undefined ? act : isPositionActive(p.x, p.y))) return;  // dormant NPC HP회"
+    },
+    {
+      "line": 17173,
+      "kind": "FunctionDeclaration",
+      "text": "function _gaugeNetStep(p) {\n    if (T823_FREEZE_SHELL && p.handingOff) return;   // ★[T823] 켬 — 떠난 몸 껍데기엔 게이지를 안 보내고 장부도 안 맞댄다\n    if (p.isNpc) return;  // NPC는 클라(ws) 없음 — 게이지 전송 불필요. 600명 순회·메시지 생성 절약\n    if (!p._lastGaugeSentAt || now - "
+    },
+    {
+      "line": 17241,
+      "kind": "VariableDeclaration",
+      "text": "const night = isNight(now);"
+    },
+    {
+      "line": 17242,
+      "kind": "VariableDeclaration",
+      "text": "const sightMult = night ? 1.5 : 1.0;"
+    },
+    {
+      "line": 17243,
+      "kind": "VariableDeclaration",
+      "text": "const dmgMult = night ? 1.3 : 1.0;"
+    },
+    {
+      "line": 17431,
+      "kind": "VariableDeclaration",
+      "text": "const allPlayers = Array.from(players.values());"
+    },
+    {
+      "line": 17432,
+      "kind": "VariableDeclaration",
+      "text": "const allMobs = Array.from(mobs.values());"
+    },
+    {
+      "line": 17435,
+      "kind": "FunctionDeclaration",
+      "text": "function makeEntry(o, isNew, kind, viewer) {\n    if (kind === 'player') {\n      // Phase 14.35: 걷기 모션 동기화 — vx/vy 포함 (이동 중인지 클라가 판단)\n      // Phase 14.41: isDown — 다운된 플레이어는 클라에서 누워있게 렌더\n      // 14.49-d: z (계단 위 0~32)도 매 tick 전송\n      cons"
+    },
+    {
+      "line": 17498,
+      "kind": "FunctionDeclaration",
+      "text": "function visiblePlayers(vx, vy, selfPid, viewerState) {\n    const nearby = qtPlayers.queryCircle(vx, vy, AOI_RADIUS);\n    const prevSeen = viewerState.seenPlayers;\n    const newSeen = new Set();\n    const result = [];\n    // ★[T115] 보는 사람의 "
+    },
+    {
+      "line": 17517,
+      "kind": "FunctionDeclaration",
+      "text": "function visibleMobs(vx, vy, viewerState) {\n    const nearby = qtMobs.queryCircle(vx, vy, AOI_RADIUS);\n    const prevSeen = viewerState.seenMobs;\n    const newSeen = new Set();\n    const result = [];\n    for (const m of nearby) {\n      newS"
+    }
+  ]
+}

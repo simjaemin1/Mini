@@ -1,0 +1,10 @@
+{
+  "measuredMain": "b17f6089c343021c090d2ec0f7485a8682aeef2b",
+  "branch": "batch/body-profile-2-1111",
+  "node": "v22.23.0",
+  "clientDate": "2026-11-12",
+  "timezone": "Asia/Seoul",
+  "cpuAffinity": "0,1",
+  "sourceRoot": "/tmp/t1270-main",
+  "output": "/tmp/t1270-main30"
+}
