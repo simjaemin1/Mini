@@ -15860,17 +15860,23 @@ function effectiveLandSize(v) {
   v._effSizeCache = { s, val };
   return val;
 }
+// T1259: slot geometry comes from the server's canonical standing-tree reader.
+// No reader in a standalone lab: preserve its non-spatial land model.
+const T1259_WOOD_CAP = (typeof process !== 'undefined' && process.env && process.env.T1259_WOOD_CAP === '1');
+let _t1259WoodReader = null;
+function setT1259WoodReader(reader) { _t1259WoodReader = typeof reader === 'function' ? reader : null; }
 function jobCapacity(v) {
   const s = effectiveLandSize(v);
   // ★비옥도 이중산입 분리: 농부 '자리'=경작지 *면적*(arable, 공간 실측·폴백 min(1,fert)) — 지력(fertility)은 1인 산출에만.
   //   (옛 s×fert×0.4는 fert가 자리와 산출에 제곱으로 들어가 극비옥지 인구 폭증[250~400]의 뿌리.
   //    숲·사냥·어장은 밀도=면적이라 이중산입이 의미 있음 — 유지. 광맥도 크기∝노동력 — 유지.)
   const arable = v.land.arable != null ? v.land.arable : Math.min(1, v.land.fertility);
+  const standing = T1259_WOOD_CAP && _t1259WoodReader ? _t1259WoodReader(v) : null;
   const c = {
     farmer:     Math.floor(s * arable * 0.4),
     fisher:     Math.floor(s * v.land.water     * 0.25),
     hunter:     Math.floor(s * v.land.game      * 0.30),
-    lumberjack: Math.floor(s * v.land.wood      * 0.30),
+    lumberjack: Math.floor((standing == null ? s * v.land.wood : standing) * 0.30),
     miner:      Math.floor(s * Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0) * 0.30),   // ★S1 광부=금속 전담: 광맥(ore) ★S5 +특수산지(흑요석·옥) ★청동 희소성 +주석산지
     forager:    Math.floor(s * 0.30),
     // ★인구비율 정원(하드캡) 전부 폐지 — 직업 수는 한계가치 vs 그림자가격으로 *자연 수렴*.
@@ -20088,6 +20094,7 @@ function computeVillagePrices(v) {
 }
 
 module.exports = {
+  T1259_WOOD_CAP, setT1259WoodReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
   T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
   T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
