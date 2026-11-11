@@ -101,7 +101,8 @@ delete process.env.T896_RESUME_ONE;
     const rows = []; const t0 = Date.now();
     while (Date.now() - t0 < NET_MS) { await sleep(SAMPLE_MS); const p = await perf(port); if (!p || !p.econTick) continue;
       const pr = p.econTick.probe || {}, sb = p.sharedBudget || {};
-      rows.push({ s: (Date.now() - t0) / 1000 | 0, t775: pr.t775 || null, jobs: pr.pathJobs | 0, drop: pr.pathDrop | 0, ticks: sb.ticks | 0, over: sb.over | 0, p50: p.tick && p.tick.ms && p.tick.ms.p50 });
+      rows.push({ s: (Date.now() - t0) / 1000 | 0, t775: pr.t775 || null, jobs: pr.pathJobs | 0, drop: pr.pathDrop | 0, ticks: sb.ticks | 0, over: sb.over | 0, p50: p.tick && p.tick.ms && p.tick.ms.p50,
+        d1026: pr.t1026 ? { drop: pr.t1026.drop, start: pr.t1026.start, held: pr.t1026.held } : null });   // ★[T1267] 셈만 — 슬롯 버림 문 짝(두 봉우리 까닭 · 판정 밖)
       const L = rows[rows.length - 1]; if (rows.length >= 6 && L.t775 && (L.t775.done || (!on && ev.onDone))) { if (on) ev.onDone = true; break; } }
     try { c.kill('SIGKILL'); } catch (e) {} await cx; return rows; };
   const [A, B] = await Promise.all([again('off', false, 0), again('on', true, 1)]);
