@@ -878,7 +878,7 @@ function _targetV2(v, r, ctx) {
     // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
     //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
-        && (v1.T1243_FARM_ON ? v1.totalFoodEquivalent(v) : (v.storage.food || 0)) / N > 25) {
+        && ((v1.T1243_FARM_ON || v1.T1260_FOOD_READS) ? v1.totalFoodEquivalent(v) : (v.storage.food || 0)) / N > 25) {
       target = Math.max(target, N * VARIETY_TARGET_PC);
     }
     // ★[T1149 ⓒ 가을 사 모으기 · `T1149_WINTER` 의 `buy` 갈래 · 끔 = 무동작] 가을 · 겨울엔 주식 목표가 **다가오는 겨울**을 안다 —
@@ -1076,7 +1076,7 @@ function _priceParamsV2(v, r) {
     const buildT = v1.buildInputTarget ? v1.buildInputTarget(v, r) : 0;   // ★[T1213] 동기 계약(결정층 `_targetV2` 와 같은 항)
     target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
-        && (v1.T1243_FARM_ON ? v1.totalFoodEquivalent(v) : (v.storage.food || 0)) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
+        && ((v1.T1243_FARM_ON || v1.T1260_FOOD_READS) ? v1.totalFoodEquivalent(v) : (v.storage.food || 0)) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
     stock = Math.max(0.1, (T859_FOOD_HUNGER || v1.T1243_FARM_ON) ? _t859Stock(v, r) : (v.storage[r] || 0));   // ★[T859] 켬 — food 는 곳간 식량 환산(결정층과 같은 칸)
     if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
   }

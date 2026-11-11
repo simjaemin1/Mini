@@ -666,6 +666,10 @@ function createWar(opts) {
   const HAPPY = (opts.happy && typeof opts.happy.unhappy === 'function') ? opts.happy : null;
   // 곳간 식량등가 — 주입돼 있으면 econ 정본(`totalFoodEquivalent`), 아니면 종전 근사(`warFE` 5품목).
   const _feOf = (e) => (FOOD && typeof FOOD.totalFoodEquivalent === 'function') ? FOOD.totalFoodEquivalent(e) : warFE(e);
+  // ★[T1260 ⑥] 손잡이 `T1260_FOOD_READS`(끔 기본 · `'1'` 만 켬 · econ 과 같은 글자) — 켬 = 정찰 · 몸값 · 조공 거부 · 출정의 식량 추정도 `_feOf`(주입 정본)를 읽는다.
+  //   끔 = `warFE`(다섯 품목 근사 — 밭 세계 곡식 품목 · 생곡 · 보존식을 못 센다) 그대로 = 종전 바이트.
+  const _T1260 = typeof process !== 'undefined' && !!process.env && process.env.T1260_FOOD_READS === '1';
+  const _feD = (e) => (_T1260 ? _feOf(e) : warFE(e));
 
   world._warWars = world._warWars || [];
   world._warTributes = world._warTributes || [];
@@ -1047,7 +1051,7 @@ function createWar(opts) {
     const pWin = _opAtkOdds(w);
     const rng = makeRng((((w.id || 1) * 7919 + (day | 0) * 131 + 17) >>> 0));
     const D = w.def && w.def.econ;
-    const defFoodEst = (D ? warFE(D) / Math.max(1, D.npcs.length) : 99) * (0.75 + 0.5 * rng());   // 정찰 추정(±25% 결정론 노이즈 — 정보 비대칭)
+    const defFoodEst = (D ? _feD(D) / Math.max(1, D.npcs.length) : 99) * (0.75 + 0.5 * rng());   // 정찰 추정(±25% 결정론 노이즈 — 정보 비대칭)
     // ★[T295 ②] 결단이 보는 군량 = 팩 잔량 − **귀환 행군 몫**(marchDays). 한 적재로 바뀌어도 문턱(WAR_PACK_CRIT
     //   ·소모전 비교)이 보던 수는 그대로다: 도착일 잔량 = marchDays+공성분 − 귀환 몫 = 공성분(종전 값).
     const pack = Math.max(0, ((w._packRem != null) ? w._packRem : 0) - (w.marchDays || 0));
@@ -1072,7 +1076,7 @@ function createWar(opts) {
     const D = w.def && w.def.econ; if (!D) return false;
     if (w.op !== 'siege') return false;
     if (w.def._defPolicy === 'respond') return false;   // 결사 항전 정책(프로브 훅)이면 항복 없음
-    const fd = warFE(D) / Math.max(1, D.npcs.length);
+    const fd = _feD(D) / Math.max(1, D.npcs.length);
     if (fd >= WAR_SURR_FOODD) return false;
     const _oddsTh = fd < 2 ? WAR_SURR_ODDS * 2.2 : WAR_SURR_ODDS;   // ★절박 항복(랩 수리): 곳간 2일 미만이면 문턱 완화 — 곳간 음수 추락·공납 불능 결함 차단
     if (_opDefOdds(w.def, w.force || 0) >= _oddsTh) return false;
@@ -1090,7 +1094,7 @@ function createWar(opts) {
     if (pDef >= WAR_DEF_RESPOND_ODDS) return 'respond';          // ①전력비 유리 → 나가서 맞선다
     const mo = lMonth(day);
     if ((mo >= 4 && mo <= 9) && pDef >= 0.40) return 'respond';  // ①농번·수확 임박 — 봉쇄 손실이 커 응전 하한 완화
-    const fd = warFE(D) / Math.max(1, D.npcs.length);
+    const fd = _feD(D) / Math.max(1, D.npcs.length);
     const sieged = Math.max(0, day - ((w && w._arriveDay != null) ? w._arriveDay : day));
     if (fd > _opDefEstPack(atkForce) - sieged + 2) return 'hold';   // ②열세·곳간이 상대 군량 추정보다 오래감 → 농성
     return (pDef >= 0.35) ? 'respond' : 'hold';                  // 못 버티면: 승산 어느 정도면 응전, 절망이면 농성(→항복 수렴)
@@ -1108,7 +1112,7 @@ function createWar(opts) {
     if (w._defMode === 'respond' && !w._sortie && (w._sortieEval == null || day > w._sortieEval)) {
       w._sortieEval = day;
       const pDef = _opDefOdds(w.def, w.force || 0, _t1168AmmoOn() ? w._defAmmo : null);   // ★[T1168 K5] 몸의 탄(칸이 없으면 종전)
-      const fd = (w.def.econ) ? warFE(w.def.econ) / Math.max(1, w.def.econ.npcs.length) : 99;
+      const fd = (w.def.econ) ? _feD(w.def.econ) / Math.max(1, w.def.econ.npcs.length) : 99;
       if (pDef >= WAR_SORTIE_ODDS || (fd < 8 && pDef >= 0.42)) { w._sortie = true; const st = stats(); st.sortie = (st.sortie || 0) + 1; log(day, w.def.name + ' 출격(sortie) 결단 — 응전 승산 ' + (pDef * 100 | 0) + '%'); }
     }
   }
@@ -1152,7 +1156,7 @@ function createWar(opts) {
         for (const [hn, list] of byHome) {
           const home = villages.find(v2 => v2 && v2 !== hv && v2.name === hn && v2.econ && v2.econ.npcs && v2.econ.npcs.length > 0);
           if (!home) continue; const he = home.econ, HN = Math.max(1, he.npcs.length);
-          if (warFE(he) / HN <= WAR_CAP_RANSOM_FD) continue;               // 고향 식량 여유(>60일치)만 지불
+          if (_feD(he) / HN <= WAR_CAP_RANSOM_FD) continue;               // 고향 식량 여유(>60일치)만 지불
           if (warGrudge(he, hv.name) >= WAR_CAP_RANSOM_GR) continue;       // 원한 깊으면 지불 거부
           if (rng() >= WAR_CAP_RANSOM_P) continue;
           // ★[T329 ③] 몸값도 **곳간 품목**이다 — `storage.food` 한 칸이 아니라 섭식 정본 순서로 떼고 그 품목 그대로 준다(T295 ③ 문법).
@@ -1273,7 +1277,7 @@ function createWar(opts) {
     // 2) 조공 징수(90일마다 곳간 8%)
     for (let i = TRIBUTES.length - 1; i >= 0; i--) {
       const t = TRIBUTES[i]; if (day >= t.until) { TRIBUTES.splice(i, 1); _syncTribToEcon(t.payer); continue; }
-      if (day >= t.next) { const P = t.payer.econ, Q = t.payee.econ; if (P && Q) { const _want = Math.max(0, _feOf(P)) * WAR_TRIB_RATE; if (_want > 1) { const take = _warFoodMove(P, Q, _want);   /* ★[T295 ③] */ t.next = day + WAR_TRIB_INT; st.tribute++; if (warFE(P) / Math.max(1, P.npcs.length) > WAR_FOOD_RICH * 0.7) { warAddGrudge(Q, t.payer.name, WAR_GRUDGE_UP); TRIBUTES.splice(i, 1); _syncTribToEcon(t.payer); log(day, t.payer.name + ' 조공 거부(회복) → ' + t.payee.name + ' 원한'); } else { _syncTribToEcon(t.payer); log(day, '조공 ' + t.payer.name + '→' + t.payee.name + ' 곡물' + take.toFixed(0)); } } } }
+      if (day >= t.next) { const P = t.payer.econ, Q = t.payee.econ; if (P && Q) { const _want = Math.max(0, _feOf(P)) * WAR_TRIB_RATE; if (_want > 1) { const take = _warFoodMove(P, Q, _want);   /* ★[T295 ③] */ t.next = day + WAR_TRIB_INT; st.tribute++; if (_feD(P) / Math.max(1, P.npcs.length) > WAR_FOOD_RICH * 0.7) { warAddGrudge(Q, t.payer.name, WAR_GRUDGE_UP); TRIBUTES.splice(i, 1); _syncTribToEcon(t.payer); log(day, t.payer.name + ' 조공 거부(회복) → ' + t.payee.name + ' 원한'); } else { _syncTribToEcon(t.payer); log(day, '조공 ' + t.payer.name + '→' + t.payee.name + ' 곡물' + take.toFixed(0)); } } } }
     }
     // 2.5) ★[3파 포로] 일일 처리(동화·탈출·몸값·이송 — 포로 0이면 사실상 no-op·랩 warDaily 위치 정합)
     warCaptiveDaily(day);
@@ -1328,7 +1332,7 @@ function createWar(opts) {
     const mo = lMonth(day), seasonMul = (mo >= 4 && mo <= 8) ? 0.12 : 1;
     for (const V of villages) {
       const e = V.econ; if (!e || e.npcs.length < 6 || day < (e._warCd || 0) || WARS.some(w => w.atk === V) || (e._warFatigue || 0) > WAR_FAT_GATE) continue;
-      const c = e.counts || {}, warriors = Math.round(c.warrior || 0), NV = e.npcs.length, fdV = warFE(e) / NV, prV = (e.lastStats && e.lastStats.prestige) || 0;
+      const c = e.counts || {}, warriors = Math.round(c.warrior || 0), NV = e.npcs.length, fdV = _feD(e) / NV, prV = (e.lastStats && e.lastStats.prestige) || 0;
       if (warriors < 1) continue;
       const mb = e._expandMBMC ? e._expandMBMC.mb : 0, mc = e._expandMBMC ? e._expandMBMC.mc : 1;
       const Vc = centerOf(V);
@@ -1336,9 +1340,9 @@ function createWar(opts) {
       for (const U of villages) {
         if (U === V || !U.econ || U.econ.npcs.length < 3) continue;
         const eu = U.econ, NU = eu.npcs.length, Uc = centerOf(U), d = Math.hypot(Vc.cx - Uc.cx, Vc.cy - Uc.cy); if (d > WAR_RANGE) continue;
-        const fdU = warFE(eu) / NU, prU = (eu.lastStats && eu.lastStats.prestige) || 0, gr = warGrudge(e, U.name);
+        const fdU = _feD(eu) / NU, prU = (eu.lastStats && eu.lastStats.prestige) || 0, gr = warGrudge(e, U.name);
         let casus = null, raw = 0;
-        if (fdV < WAR_FOOD_CRISIS && fdU > WAR_FOOD_RICH) { casus = 'trade'; raw = warFE(eu) * WAR_LOOT / NV * (1 + gr); }
+        if (fdV < WAR_FOOD_CRISIS && fdU > WAR_FOOD_RICH) { casus = 'trade'; raw = _feD(eu) * WAR_LOOT / NV * (1 + gr); }
         if (mb > mc * 1.15 && day > (e._terrSat || 0) && d < warTerrR(V) + warTerrR(U) + 180) { const u = (mb - mc) * 0.05 * (1 + gr); if (u > raw) { casus = 'territory'; raw = u; } }
         if (fdV > WAR_FOOD_RICH && warriors >= 2 && prU > prV + 0.15) { const u = (prU - prV) * 8 * (1 + gr); if (u > raw) { casus = 'prestige'; raw = u; } }
         if (gr > WAR_FEUD_TH) { const u = gr * 16; if (u > raw) { casus = 'feud'; raw = u; } }
