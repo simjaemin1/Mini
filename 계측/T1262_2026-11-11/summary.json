@@ -1,0 +1,640 @@
+{
+  "tick": {
+    "totalMinutes": 39.91695071666667,
+    "startupMinutes": 1.8035539,
+    "projection400Minutes": 509.9821781222223,
+    "naive400Minutes": 532.2260095555556,
+    "requiredSpeedup": 8.499702968703705,
+    "blocks": {
+      "body_tick": {
+        "minutes": 16.87000481666667,
+        "percent": 42.262759338535524,
+        "zero_this_30_minutes": 23.0469459,
+        "zero_this_400_minutes": 285.0487805666667,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "econ": {
+        "minutes": 0.44226951666666664,
+        "percent": 1.1079742032549702,
+        "zero_this_30_minutes": 39.4746812,
+        "zero_this_400_minutes": 504.0852512333334,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "life_daily": {
+        "minutes": 0.46197103333333334,
+        "percent": 1.1573304699861378,
+        "zero_this_30_minutes": 39.454979683333335,
+        "zero_this_400_minutes": 503.8225643444445,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "pathfinding": {
+        "minutes": 0.8563377666666667,
+        "percent": 2.145298554353544,
+        "zero_this_30_minutes": 39.06061295,
+        "zero_this_400_minutes": 498.56434123333344,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "trade_routes": {
+        "minutes": 0.18000395,
+        "percent": 0.4509461438517204,
+        "zero_this_30_minutes": 39.73694676666667,
+        "zero_this_400_minutes": 507.5821254555556,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "storage": {
+        "minutes": 1.6197423,
+        "percent": 4.057780644360951,
+        "zero_this_30_minutes": 38.29720841666667,
+        "zero_this_400_minutes": 488.3856141222223,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "observers": {
+        "minutes": 0.0460452,
+        "percent": 0.11535249855839962,
+        "zero_this_30_minutes": 39.87090551666667,
+        "zero_this_400_minutes": 509.3682421222223,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "startup": {
+        "minutes": 1.8035539,
+        "percent": 4.518265718245246,
+        "zero_this_30_minutes": 38.11339681666667,
+        "zero_this_400_minutes": 508.1786242222223,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "other": {
+        "minutes": 17.637022233333333,
+        "percent": 44.1842924288535,
+        "zero_this_30_minutes": 22.279928483333336,
+        "zero_this_400_minutes": 274.82188167777787,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      }
+    },
+    "paths": {
+      "path:routePathBegin": {
+        "n": 2676,
+        "inclusiveUs": 80453,
+        "categoryUs": 80453,
+        "meanInclusiveUs": 30.064648729446937
+      },
+      "path:pathStep": {
+        "n": 936024,
+        "inclusiveUs": 107624957,
+        "categoryUs": 107624957,
+        "meanInclusiveUs": 114.98098018854218
+      },
+      "path:localPath": {
+        "n": 250396,
+        "inclusiveUs": 18810254,
+        "categoryUs": 18810254,
+        "meanInclusiveUs": 75.12202271601782
+      },
+      "path:smoothPath": {
+        "n": 142403,
+        "inclusiveUs": 7214373,
+        "categoryUs": 7214373,
+        "meanInclusiveUs": 50.66166443122687
+      }
+    },
+    "largestCalls": [
+      [
+        "body:decision",
+        {
+          "n": 1288428,
+          "inclusiveUs": 812090735,
+          "categoryUs": 810618137
+        }
+      ],
+      [
+        "villages:onGameTick",
+        {
+          "n": 1288428,
+          "inclusiveUs": 522398657,
+          "categoryUs": 433508153
+        }
+      ],
+      [
+        "body:movement",
+        {
+          "n": 1288428,
+          "inclusiveUs": 120527793,
+          "categoryUs": 120507682
+        }
+      ],
+      [
+        "path:pathStep",
+        {
+          "n": 936024,
+          "inclusiveUs": 107624957,
+          "categoryUs": 107624957
+        }
+      ],
+      [
+        "body:separation",
+        {
+          "n": 1288428,
+          "inclusiveUs": 81074470,
+          "categoryUs": 81074470
+        }
+      ],
+      [
+        "sqlite:run",
+        {
+          "n": 2974042,
+          "inclusiveUs": 40946239,
+          "categoryUs": 40946239
+        }
+      ],
+      [
+        "sqlite:exec",
+        {
+          "n": 2465915,
+          "inclusiveUs": 36807013,
+          "categoryUs": 36807013
+        }
+      ],
+      [
+        "save:periodic",
+        {
+          "n": 1288428,
+          "inclusiveUs": 20932964,
+          "categoryUs": 20932964
+        }
+      ],
+      [
+        "path:localPath",
+        {
+          "n": 250396,
+          "inclusiveUs": 18810254,
+          "categoryUs": 18810254
+        }
+      ],
+      [
+        "job:caravan:caravan_sync",
+        {
+          "n": 2202,
+          "inclusiveUs": 43195749,
+          "categoryUs": 15246930
+        }
+      ],
+      [
+        "job:econ:econ:vil",
+        {
+          "n": 1530,
+          "inclusiveUs": 9511602,
+          "categoryUs": 9511602
+        }
+      ],
+      [
+        "econ:village",
+        {
+          "n": 1530,
+          "inclusiveUs": 9420009,
+          "categoryUs": 9420009
+        }
+      ],
+      [
+        "route:_t968DistBg",
+        {
+          "n": 1288428,
+          "inclusiveUs": 7600009,
+          "categoryUs": 7600009
+        }
+      ],
+      [
+        "path:smoothPath",
+        {
+          "n": 142403,
+          "inclusiveUs": 7214373,
+          "categoryUs": 7214373
+        }
+      ],
+      [
+        "econ:caravans",
+        {
+          "n": 30,
+          "inclusiveUs": 6372374,
+          "categoryUs": 6372374
+        }
+      ],
+      [
+        "job:econ:econ:caravan",
+        {
+          "n": 30,
+          "inclusiveUs": 6372374,
+          "categoryUs": 6372374
+        }
+      ],
+      [
+        "route:_t996Step",
+        {
+          "n": 1,
+          "inclusiveUs": 5994659,
+          "categoryUs": 5994659
+        }
+      ],
+      [
+        "villages:deferLate",
+        {
+          "n": 1288428,
+          "inclusiveUs": 38013654,
+          "categoryUs": 4940362
+        }
+      ],
+      [
+        "job:econ:econ:trade",
+        {
+          "n": 30,
+          "inclusiveUs": 4229279,
+          "categoryUs": 4229279
+        }
+      ],
+      [
+        "econ:trade",
+        {
+          "n": 30,
+          "inclusiveUs": 4228721,
+          "categoryUs": 4228721
+        }
+      ]
+    ],
+    "dailyStats": {
+      "first10_daily_mean": 0.93526937,
+      "middle10_daily_mean": 1.2000722666666666,
+      "last10_daily_mean": 1.6759976983333336,
+      "cpu_population_pearson_excluding_boot_day": 0.9257270005839596,
+      "cpu_bodies_pearson_excluding_boot_day": 0.8872553124888534,
+      "cpuVsBodiesOLS": {
+        "slopeCpuMinPerCount": 0.0010678030815384305,
+        "interceptCpuMin": 0.25387885756696194,
+        "rSquared": 0.7872219895396928
+      },
+      "cpuVsPopulationOLS": {
+        "slopeCpuMinPerCount": 0.001177217211050623,
+        "interceptCpuMin": 0.3059064126461052,
+        "rSquared": 0.8569704796101744
+      }
+    },
+    "first": {
+      "steps": 14535000,
+      "body_visits": 14535000,
+      "npc_step_calls": 14535000,
+      "movement_ticks": 35625,
+      "day": 1,
+      "population": 408,
+      "bodies": 458,
+      "npcs": 408,
+      "held": 0,
+      "cpu_minutes": 2.6452960666666665,
+      "body_tick": 0.2557366166666667,
+      "econ": 0.012289216666666667,
+      "life_daily": 0.039620383333333335,
+      "pathfinding": 0.01306485,
+      "trade_routes": 0.1025136,
+      "storage": 0.010694033333333334,
+      "observers": 0.0019555166666666668,
+      "startup": 1.8035539,
+      "other": 0.40586795
+    },
+    "last": {
+      "steps": 52558717,
+      "body_visits": 52558717,
+      "npc_step_calls": 52558717,
+      "movement_ticks": 43201,
+      "day": 30,
+      "population": 1228,
+      "bodies": 1328,
+      "npcs": 1228,
+      "held": 0,
+      "cpu_minutes": 1.7815362,
+      "body_tick": 0.8771297,
+      "econ": 0.014304466666666666,
+      "life_daily": 0.011449416666666667,
+      "pathfinding": 0.018311466666666668,
+      "trade_routes": 0.003134566666666667,
+      "storage": 0.07015588333333334,
+      "observers": 0.0030443,
+      "startup": 0.0,
+      "other": 0.7840064
+    }
+  },
+  "event": {
+    "totalMinutes": 54.15342125,
+    "startupMinutes": 1.7300538333333333,
+    "projection400Minutes": 700.7082860555555,
+    "naive400Minutes": 722.0456166666667,
+    "requiredSpeedup": 11.678471434259258,
+    "blocks": {
+      "body_tick": {
+        "minutes": 22.726833733333333,
+        "percent": 41.96749385124644,
+        "zero_this_30_minutes": 31.426587516666668,
+        "zero_this_400_minutes": 397.68383627777774,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "econ": {
+        "minutes": 0.4181086,
+        "percent": 0.7720815977069962,
+        "zero_this_30_minutes": 53.735312650000004,
+        "zero_this_400_minutes": 695.1335047222221,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "life_daily": {
+        "minutes": 0.4459083833333333,
+        "percent": 0.8234168276733453,
+        "zero_this_30_minutes": 53.70751286666667,
+        "zero_this_400_minutes": 694.7628409444444,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "pathfinding": {
+        "minutes": 0.7737755833333333,
+        "percent": 1.4288581690179607,
+        "zero_this_30_minutes": 53.37964566666667,
+        "zero_this_400_minutes": 690.3912782777777,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "trade_routes": {
+        "minutes": 0.17304241666666667,
+        "percent": 0.31954106069829646,
+        "zero_this_30_minutes": 53.98037883333333,
+        "zero_this_400_minutes": 698.4010538333333,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "storage": {
+        "minutes": 2.78104655,
+        "percent": 5.135495571297815,
+        "zero_this_30_minutes": 51.3723747,
+        "zero_this_400_minutes": 663.6276653888889,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "observers": {
+        "minutes": 0.0495383,
+        "percent": 0.0914776921873611,
+        "zero_this_30_minutes": 54.10388295,
+        "zero_this_400_minutes": 700.0477753888888,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "startup": {
+        "minutes": 1.7300538333333333,
+        "percent": 3.194726747450575,
+        "zero_this_30_minutes": 52.423367416666665,
+        "zero_this_400_minutes": 698.9782322222221,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      },
+      "other": {
+        "minutes": 25.05511385,
+        "percent": 46.266908482721206,
+        "zero_this_30_minutes": 29.0983074,
+        "zero_this_400_minutes": 366.6401013888888,
+        "requiredFactorIfOnlyThisBlockOptimized": null
+      }
+    },
+    "paths": {
+      "path:routePathBegin": {
+        "n": 2678,
+        "inclusiveUs": 95951,
+        "categoryUs": 95951,
+        "meanInclusiveUs": 35.829350261389095
+      },
+      "path:pathStep": {
+        "n": 937932,
+        "inclusiveUs": 99190540,
+        "categoryUs": 99190540,
+        "meanInclusiveUs": 105.75451098800339
+      },
+      "path:smoothPath": {
+        "n": 141501,
+        "inclusiveUs": 6850595,
+        "categoryUs": 6850595,
+        "meanInclusiveUs": 48.41375679323821
+      },
+      "path:localPath": {
+        "n": 250861,
+        "inclusiveUs": 17770130,
+        "categoryUs": 17770130,
+        "meanInclusiveUs": 70.83655889117878
+      }
+    },
+    "largestCalls": [
+      [
+        "body:decision",
+        {
+          "n": 1288428,
+          "inclusiveUs": 1029723643,
+          "categoryUs": 1028285438
+        }
+      ],
+      [
+        "villages:onGameTick",
+        {
+          "n": 1288428,
+          "inclusiveUs": 650928621,
+          "categoryUs": 565750694
+        }
+      ],
+      [
+        "body:separation",
+        {
+          "n": 1288428,
+          "inclusiveUs": 135785235,
+          "categoryUs": 135785235
+        }
+      ],
+      [
+        "body:events",
+        {
+          "n": 3865285,
+          "inclusiveUs": 106795924,
+          "categoryUs": 106795924
+        }
+      ],
+      [
+        "path:pathStep",
+        {
+          "n": 937932,
+          "inclusiveUs": 99190540,
+          "categoryUs": 99190540
+        }
+      ],
+      [
+        "body:movement",
+        {
+          "n": 1288428,
+          "inclusiveUs": 92763610,
+          "categoryUs": 92743427
+        }
+      ],
+      [
+        "save:periodic",
+        {
+          "n": 1288428,
+          "inclusiveUs": 90593722,
+          "categoryUs": 90593722
+        }
+      ],
+      [
+        "sqlite:run",
+        {
+          "n": 2990607,
+          "inclusiveUs": 40199987,
+          "categoryUs": 40199987
+        }
+      ],
+      [
+        "sqlite:exec",
+        {
+          "n": 2467278,
+          "inclusiveUs": 37572463,
+          "categoryUs": 37572463
+        }
+      ],
+      [
+        "path:localPath",
+        {
+          "n": 250861,
+          "inclusiveUs": 17770130,
+          "categoryUs": 17770130
+        }
+      ],
+      [
+        "job:caravan:caravan_sync",
+        {
+          "n": 2202,
+          "inclusiveUs": 41086023,
+          "categoryUs": 14316043
+        }
+      ],
+      [
+        "job:econ:econ:vil",
+        {
+          "n": 1530,
+          "inclusiveUs": 10090575,
+          "categoryUs": 10090575
+        }
+      ],
+      [
+        "econ:village",
+        {
+          "n": 1530,
+          "inclusiveUs": 9990059,
+          "categoryUs": 9990059
+        }
+      ],
+      [
+        "route:_t968DistBg",
+        {
+          "n": 1288428,
+          "inclusiveUs": 7382849,
+          "categoryUs": 7382849
+        }
+      ],
+      [
+        "path:smoothPath",
+        {
+          "n": 141501,
+          "inclusiveUs": 6850595,
+          "categoryUs": 6850595
+        }
+      ],
+      [
+        "route:_t996Step",
+        {
+          "n": 1,
+          "inclusiveUs": 6194639,
+          "categoryUs": 6194639
+        }
+      ],
+      [
+        "econ:caravans",
+        {
+          "n": 30,
+          "inclusiveUs": 5204685,
+          "categoryUs": 5204685
+        }
+      ],
+      [
+        "job:econ:econ:caravan",
+        {
+          "n": 30,
+          "inclusiveUs": 5204685,
+          "categoryUs": 5204685
+        }
+      ],
+      [
+        "villages:deferLate",
+        {
+          "n": 1288428,
+          "inclusiveUs": 33822698,
+          "categoryUs": 4828172
+        }
+      ],
+      [
+        "job:life:life:\uc27c\ud45c",
+        {
+          "n": 15908,
+          "inclusiveUs": 5071738,
+          "categoryUs": 4339717
+        }
+      ]
+    ],
+    "dailyStats": {
+      "first10_daily_mean": 1.240182585,
+      "middle10_daily_mean": 1.6192808183333334,
+      "last10_daily_mean": 2.38287293,
+      "cpu_population_pearson_excluding_boot_day": 0.9397947175559377,
+      "cpu_bodies_pearson_excluding_boot_day": 0.8876257772193046,
+      "cpuVsBodiesOLS": {
+        "slopeCpuMinPerCount": 0.0016324493786105106,
+        "interceptCpuMin": 0.18688483408458367,
+        "rSquared": 0.7878795203841745
+      },
+      "cpuVsPopulationOLS": {
+        "slopeCpuMinPerCount": 0.0018263076029511615,
+        "interceptCpuMin": 0.24430677110815724,
+        "rSquared": 0.8832141111460446
+      }
+    },
+    "first": {
+      "steps": 6170776,
+      "body_visits": 14535000,
+      "npc_step_calls": 6170776,
+      "movement_ticks": 35625,
+      "day": 1,
+      "population": 408,
+      "bodies": 458,
+      "npcs": 408,
+      "held": 408,
+      "cpu_minutes": 3.0088498833333333,
+      "body_tick": 0.6292737833333333,
+      "econ": 0.011678683333333334,
+      "life_daily": 0.035047683333333336,
+      "pathfinding": 0.012194333333333333,
+      "trade_routes": 0.10579255,
+      "storage": 0.014786033333333334,
+      "observers": 0.0019394333333333333,
+      "startup": 1.7300538333333333,
+      "other": 0.46808355
+    },
+    "last": {
+      "steps": 7189960,
+      "body_visits": 52558717,
+      "npc_step_calls": 7189960,
+      "movement_ticks": 43201,
+      "day": 30,
+      "population": 1228,
+      "bodies": 1328,
+      "npcs": 1228,
+      "held": 1227,
+      "cpu_minutes": 2.6107419833333334,
+      "body_tick": 1.15640525,
+      "econ": 0.014190283333333333,
+      "life_daily": 0.013340416666666667,
+      "pathfinding": 0.0163134,
+      "trade_routes": 0.00256685,
+      "storage": 0.14550391666666668,
+      "observers": 0.003777766666666667,
+      "startup": 0.0,
+      "other": 1.2586441
+    }
+  }
+}

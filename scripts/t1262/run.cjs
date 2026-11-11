@@ -1,0 +1,12 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),{spawnSync}=require('node:child_process');
+const root=process.env.T1248_ROOT||'/tmp/t1262-v4',out=path.resolve(process.argv[2]),days=Number(process.argv[3]||30),mode=process.argv[4]||'0',instrument=process.argv[5]!=='plain';
+fs.mkdirSync(out,{recursive:true});
+const files=['server/zone.js','server/villages.js','server/events.js','server/des.js','server/des-work.js','sim/path-core.js','scripts/t577-server-run.js','scripts/t1248-hook.js'];
+const source=Object.fromEntries(files.map(n=>[n,crypto.createHash('sha256').update(fs.readFileSync(path.join(root,n))).digest('hex')]));
+const env={...process.env,T1241_DES:mode,T1241_PROBE:'1',T1241_OUT:path.join(out,'body'),T1248_TRACE:path.join(out,'days.jsonl'),T1248_ROOT:root,T745_VCLOCK:'1',VILLAGE_DAY_MS:'1440000',VILLAGE_NPC_CAP:'Infinity',T577_PAR:'1',T577_DIR:path.join(out,'server'),SBC_HOOK:'1',T1262_OUT:out,T1262_DEPS:path.resolve(__dirname,'../../node_modules'),NODE_OPTIONS:[...(instrument?['--require',path.join(__dirname,'profile.cjs')]:[]),'--require',path.join(root,'scripts/t1248-hook.js'),'--require',path.join(root,'scripts/t745-vclock.js'),'--require',path.join(root,'scripts/server-baseline-check.js')].join(' ')};
+fs.writeFileSync(path.join(out,'source.json'),JSON.stringify({root,days,mode,instrument,source,measurement:Object.fromEntries(['profile.cjs','run.cjs'].map(n=>[n,crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,n))).digest('hex')])),node:process.version,env:Object.fromEntries(Object.entries(env).filter(([k])=>/^(T12|T577|T745|VILLAGE|SBC|NODE_OPTIONS)/.test(k)))},null,2));
+const fd=fs.openSync(path.join(out,'controller.log'),'w');const r=spawnSync(process.execPath,[path.join(root,'scripts/t577-server-run.js'),String(days),'1020'],{cwd:root,env,stdio:['ignore',fd,fd]});fs.closeSync(fd);
+const read=n=>fs.existsSync(path.join(out,n))?JSON.parse(fs.readFileSync(path.join(out,n),'utf8')):null;
+const m=read('days.jsonl.meta.json'),p=read('profile.json'),valid=!!(r.status===0&&m?.code===0&&m.clock?.errs===0&&(!instrument||p?.days.includes(days)));
+fs.writeFileSync(path.join(out,'status.json'),JSON.stringify({valid,exit:r.status,days,mode,cpuSeconds:m?.cpuSeconds,wallSeconds:m?.wallSeconds,signal:r.signal},null,2));process.exit(valid?0:1);

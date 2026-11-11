@@ -1,0 +1,16 @@
+{
+  "exit": 0,
+  "baseline": "계측/서버기준선_2026-11-08c.json",
+  "days": 400,
+  "seed": 1020,
+  "population": 3867,
+  "same": "1/1",
+  "main": "7f5696bcb238d6dd64c99c5e2b312af5dbbdcf99",
+  "flags": {
+    "T1253_CLOCK_FIX": "0",
+    "T1258_ARTISAN_CLOCK": "0",
+    "T1241_DES": "0"
+  },
+  "elapsedReportedSeconds": 956,
+  "rawDirectory": "/tmp/sbc-uQ351Z"
+}

@@ -1,0 +1,138 @@
+{
+  "tick30": {
+    "status": {
+      "valid": true,
+      "exit": 0,
+      "days": 30,
+      "mode": "0",
+      "cpuSeconds": 2394.356301,
+      "wallSeconds": 2446.936411,
+      "signal": null
+    },
+    "sourceChecks": {
+      "server/zone.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "server/villages.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "server/events.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "server/des.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "server/des-work.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "sim/path-core.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "scripts/t577-server-run.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "scripts/t1248-hook.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      }
+    },
+    "meterHashMatches": true,
+    "runnerHashMatches": true,
+    "actualWorld": {
+      "days": 30,
+      "villages": 51,
+      "allSeedPopulationPositive": true
+    },
+    "clock": {
+      "V": 1767268547528.4807,
+      "V0": 1767225600000,
+      "fired": 1783477,
+      "timers": 25282,
+      "intervals": 15,
+      "started": true,
+      "startAt": 1767225600000,
+      "paused": false,
+      "yields": 4458,
+      "maxQ": 21,
+      "errs": 0,
+      "q": 15
+    },
+    "finalDailySnapshotTailUs": 208,
+    "processStartVsOriginalHookWindowUs": 660742
+  },
+  "event30": {
+    "status": {
+      "valid": true,
+      "exit": 0,
+      "days": 30,
+      "mode": "1",
+      "cpuSeconds": 3248.490396,
+      "wallSeconds": 3239.078769968,
+      "signal": null
+    },
+    "sourceChecks": {
+      "server/zone.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "server/villages.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "server/events.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "server/des.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "server/des-work.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "sim/path-core.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "scripts/t577-server-run.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      },
+      "scripts/t1248-hook.js": {
+        "matchesFixedCommit": true,
+        "unchangedAfterRun": true
+      }
+    },
+    "meterHashMatches": true,
+    "runnerHashMatches": true,
+    "actualWorld": {
+      "days": 30,
+      "villages": 51,
+      "allSeedPopulationPositive": true
+    },
+    "clock": {
+      "V": 1767268547528.4807,
+      "V0": 1767225600000,
+      "fired": 1783506,
+      "timers": 25282,
+      "intervals": 16,
+      "started": true,
+      "startAt": 1767225600000,
+      "paused": false,
+      "yields": 4458,
+      "maxQ": 22,
+      "errs": 0,
+      "q": 16
+    },
+    "finalDailySnapshotTailUs": 245,
+    "processStartVsOriginalHookWindowUs": 714879
+  }
+}

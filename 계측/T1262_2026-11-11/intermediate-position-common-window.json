@@ -1,0 +1,35 @@
+{
+  "checkpoints": [
+    10,
+    20
+  ],
+  "method": "Common checkpoint window only, stable identity, 32px/m, sorted floor quantiles. No product changes.",
+  "per": [
+    {
+      "day": 10,
+      "pairs": 713,
+      "unmatchedTick": 0,
+      "unmatchedEvent": 0,
+      "p50M": 0.2642871772901287,
+      "p90M": 28.82895360242592,
+      "maxM": 60.38717024500511,
+      "virtualTimeDifferenceMs": 0.0
+    },
+    {
+      "day": 20,
+      "pairs": 1023,
+      "unmatchedTick": 0,
+      "unmatchedEvent": 0,
+      "p50M": 1.748323875850339,
+      "p90M": 33.59710249949137,
+      "maxM": 58.63666769121522,
+      "virtualTimeDifferenceMs": 0.0
+    }
+  ],
+  "aggregate": {
+    "pairs": 1736,
+    "p50M": 0.6969984977454854,
+    "p90M": 32.29889702072341,
+    "maxM": 60.38717024500511
+  }
+}

@@ -1,0 +1,604 @@
+{
+  "code": 0,
+  "days": [
+    1
+  ],
+  "rawWorldMatchesPlain": true,
+  "definition": "Supplemental FARM1 tick one-day attribution only; not the 30-day block table. Nested non-other categories excluded.",
+  "rows": [
+    {
+      "id": "residual:39",
+      "line": 16913,
+      "statement": "if (_WW) _wwPre(moveDt);",
+      "n": 35625,
+      "inclusiveUs": 2693523,
+      "categoryUs": 2693523,
+      "meanCategoryUs": 75.60766315789473
+    },
+    {
+      "id": "residual:12",
+      "line": 16591,
+      "statement": "{ const _t0 = Date.now(); SimVillages.onGameTick(now); const _d = Date.now() - _t0; if (_d >= 5) perfMark('econ_frame', _d); }",
+      "n": 35625,
+      "inclusiveUs": 3155074,
+      "categoryUs": 1391577,
+      "meanCategoryUs": 39.06181052631579
+    },
+    {
+      "id": "residual:60",
+      "line": 17707,
+      "statement": "if (T719_REACH_PRE_Z) { const _h7 = process.hrtime(_tickHr0), _el = _h7[0] * 1e3 + _h7[1] / 1e6; if (_el < 10) SimVillages.t719ReachPre(Math.min(2, 10 - _el)); }",
+      "n": 35625,
+      "inclusiveUs": 1225599,
+      "categoryUs": 1225599,
+      "meanCategoryUs": 34.40277894736842
+    },
+    {
+      "id": "residual:50",
+      "line": 17360,
+      "statement": "if (T385_ONE_SWEEP) {\n    if (stairCellDirty) rebuildStairCellCache();   // \u2462 \uc788\uc74c/\uc5c6\uc74c\uc744 \uc7ac\uae30 \uc804\uc5d0 \uce90\uc2dc\ub97c \ub9de\ucd98\ub2e4(\uc885\uc804\uc5d4 \uccab \uc870\ud68c\uac00 \ud588\ub2e4 \u2014 \uac19\uc740 \uc77c)\n    _stairNone = stairCellCache.size === 0;\n    if (T774_ACTIVE_COL) _t774I = 0;\n    const _sweepOne = (p) => {\n      co",
+      "n": 35625,
+      "inclusiveUs": 1204280,
+      "categoryUs": 1204280,
+      "meanCategoryUs": 33.80435087719298
+    },
+    {
+      "id": "residual:51",
+      "line": 17382,
+      "statement": "for (const m of mobs.values()) {\n    //   \u2605[T761] \ucf2c(`T761_LOCAL_CLOCKS` \uc758 `mob`)\uc774\uba74 \ubab9\ub9c8\ub2e4 **\uadf8 \uc790\ub9ac\uc758 \ud604\uc9c0 \ubc24**(`localPhase(\uc874 \uc6d0\uc810 + x)` > \ub0ae \ubaab \u2014 `isNight` \uc640 \uac19\uc740 \uc2dd\uc758 \ud604\uc9c0\ud310 \u00b7 \uc0c8 \uc218 0) \u00b7 \ub054 = \uc704 \uc138 \uc904 \uadf8\ub300\ub85c\n    const _mN = T761_CLOCKS.mob ? (localPhase(ZONE.worldOffs",
+      "n": 35625,
+      "inclusiveUs": 969911,
+      "categoryUs": 969911,
+      "meanCategoryUs": 27.22557192982456
+    },
+    {
+      "id": "residual:26",
+      "line": 16630,
+      "statement": "rebuildSpatialIndex(T385_ONE_SWEEP ? now : undefined);",
+      "n": 35625,
+      "inclusiveUs": 800925,
+      "categoryUs": 800925,
+      "meanCategoryUs": 22.482105263157894
+    },
+    {
+      "id": "residual:46",
+      "line": 17196,
+      "statement": "if (T385_ONE_SWEEP && T689_GC) mobs.forEach((m) => {   // \u2605[T689] \uac19\uc740 \ubab8\ud1b5 \u00b7 \uac19\uc740 \ucc28\ub840(Map.forEach \ub3c4 \uc0b4\uc544 \uc788\ub294 \uc21c\ud68c \u2014 \ub3c4\ub294 \uc911 \uc9c0\uc6c0\u00b7\ub354\ud568\uc774 for\u2026of \uc640 \uac19\ub2e4) \u00b7 \ubc18\ubcf5 \uacb0\uacfc \uac1d\uccb4 0\n    if (m.hp <= 0) return;\n    const act = isPositionActive(m.x, m.y);\n    if (!act) return;\n    ",
+      "n": 35625,
+      "inclusiveUs": 720313,
+      "categoryUs": 720313,
+      "meanCategoryUs": 20.219312280701754
+    },
+    {
+      "id": "residual:14",
+      "line": 16594,
+      "statement": "if (T678_ON || T678_VERIFY) _t678Tick();",
+      "n": 35625,
+      "inclusiveUs": 620407,
+      "categoryUs": 620407,
+      "meanCategoryUs": 17.414933333333334
+    },
+    {
+      "id": "residual:61",
+      "line": 17708,
+      "statement": "if (T750_CAST_SLICE_Z) { const _h8 = process.hrtime(_tickHr0), _el8 = _h8[0] * 1e3 + _h8[1] / 1e6; if (_el8 < 10) SimVillages.t750CastPre(Math.min(2, 10 - _el8)); }",
+      "n": 35625,
+      "inclusiveUs": 430060,
+      "categoryUs": 430060,
+      "meanCategoryUs": 12.071859649122807
+    },
+    {
+      "id": "residual:21",
+      "line": 16602,
+      "statement": "_fruitSeasonSweep();",
+      "n": 35625,
+      "inclusiveUs": 334168,
+      "categoryUs": 334168,
+      "meanCategoryUs": 9.380154385964913
+    },
+    {
+      "id": "residual:54",
+      "line": 17699,
+      "statement": "_fishPoll(now);",
+      "n": 35625,
+      "inclusiveUs": 272901,
+      "categoryUs": 272901,
+      "meanCategoryUs": 7.660378947368421
+    },
+    {
+      "id": "residual:52",
+      "line": 17667,
+      "statement": "for (const p of allPlayers) {\n    if (p.isNpc) continue;  // NPC\ub294 \ud074\ub77c(ws) \uc5c6\uc74c \u2014 \uc2dc\uc57c\uacc4\uc0b0(queryCircle)\u00b7tick \uc1a1\uc2e0 \ubd88\ud544\uc694. 600 NPC \u00d7 queryCircle \ud56b\uc2a4\ud31f \uc81c\uac70 (\ub7ec\ubc84\ubc34\ub529 \uc8fc\uc6d0\uc778)\n    if (!p.viewerState) p.viewerState = { seenPlayers: new Set(), seenMobs: new Set() };\n  ",
+      "n": 35625,
+      "inclusiveUs": 245835,
+      "categoryUs": 245835,
+      "meanCategoryUs": 6.900631578947368
+    },
+    {
+      "id": "residual:34",
+      "line": 16683,
+      "statement": "if (SimVillages.deferLate) SimVillages.deferLate(now);",
+      "n": 35625,
+      "inclusiveUs": 8194889,
+      "categoryUs": 229554,
+      "meanCategoryUs": 6.443621052631579
+    },
+    {
+      "id": "residual:16",
+      "line": 16597,
+      "statement": "Roads.onGameTick(now);",
+      "n": 35625,
+      "inclusiveUs": 436460,
+      "categoryUs": 183870,
+      "meanCategoryUs": 5.161263157894737
+    },
+    {
+      "id": "residual:24",
+      "line": 16626,
+      "statement": "updateActiveChunks();",
+      "n": 35625,
+      "inclusiveUs": 160723,
+      "categoryUs": 160723,
+      "meanCategoryUs": 4.511522807017544
+    },
+    {
+      "id": "residual:55",
+      "line": 17700,
+      "statement": "{ const _t0 = Date.now(); _periodicSave(now); const _d = Date.now() - _t0; if (_d >= 5) perfMark('save', _d); }",
+      "n": 35625,
+      "inclusiveUs": 392475,
+      "categoryUs": 73694,
+      "meanCategoryUs": 2.06860350877193
+    },
+    {
+      "id": "residual:7",
+      "line": 16575,
+      "statement": "_diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));",
+      "n": 35626,
+      "inclusiveUs": 56075,
+      "categoryUs": 56075,
+      "meanCategoryUs": 1.5739909055184416
+    },
+    {
+      "id": "residual:18",
+      "line": 16599,
+      "statement": "if (T696) _t696Prebuild();",
+      "n": 35625,
+      "inclusiveUs": 51499,
+      "categoryUs": 51499,
+      "meanCategoryUs": 1.4455859649122806
+    },
+    {
+      "id": "residual:27",
+      "line": 16631,
+      "statement": "roomsFlush();",
+      "n": 35625,
+      "inclusiveUs": 49036,
+      "categoryUs": 49036,
+      "meanCategoryUs": 1.3764491228070175
+    },
+    {
+      "id": "residual:1",
+      "line": 16546,
+      "statement": "TB.begin(SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : 0);",
+      "n": 35626,
+      "inclusiveUs": 47167,
+      "categoryUs": 47167,
+      "meanCategoryUs": 1.3239488014371525
+    },
+    {
+      "id": "residual:41",
+      "line": 16976,
+      "statement": "if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; }",
+      "n": 35625,
+      "inclusiveUs": 44226,
+      "categoryUs": 44226,
+      "meanCategoryUs": 1.2414315789473684
+    },
+    {
+      "id": "residual:31",
+      "line": 16680,
+      "statement": "_npcCursor = _curHit ? _stopAt : null;",
+      "n": 35625,
+      "inclusiveUs": 44086,
+      "categoryUs": 44086,
+      "meanCategoryUs": 1.237501754385965
+    },
+    {
+      "id": "residual:59",
+      "line": 17706,
+      "statement": "if (SimVillages.t1034Flush) SimVillages.t1034Flush();",
+      "n": 35625,
+      "inclusiveUs": 41487,
+      "categoryUs": 41487,
+      "meanCategoryUs": 1.1645473684210526
+    },
+    {
+      "id": "residual:20",
+      "line": 16601,
+      "statement": "Soil.onGameTick(now);",
+      "n": 35625,
+      "inclusiveUs": 37921,
+      "categoryUs": 37921,
+      "meanCategoryUs": 1.0644491228070176
+    },
+    {
+      "id": "residual:64",
+      "line": 17711,
+      "statement": "{ const _h = process.hrtime(_tickHr0); _tickMs.ring[_tickMs.i++ % _tickMs.ring.length] = _h[0] * 1e3 + _h[1] / 1e6; _tickMs.n++;   // \u2605[T284 \u2463]\n    if (_t678G) _t678WarmTick(_h[0] * 1e3 + _h[1] / 1e6); }",
+      "n": 35625,
+      "inclusiveUs": 37231,
+      "categoryUs": 37231,
+      "meanCategoryUs": 1.045080701754386
+    },
+    {
+      "id": "residual:38",
+      "line": 16723,
+      "statement": "{ const now2 = Date.now();\n    for (const [gid, g] of ghostPlayers) if (now2 - g.recvAt > GHOST_TTL_MS) ghostPlayers.delete(gid);\n    for (const [bid, g] of ghostBuildings) if (now2 - g.recvAt > GHOST_TTL_MS) ghostBuildings.delete(bid);\n  }",
+      "n": 35625,
+      "inclusiveUs": 36412,
+      "categoryUs": 36412,
+      "meanCategoryUs": 1.0220912280701755
+    },
+    {
+      "id": "residual:58",
+      "line": 17705,
+      "statement": "if (SimVillages.t1005Flush) SimVillages.t1005Flush();",
+      "n": 35625,
+      "inclusiveUs": 34183,
+      "categoryUs": 34183,
+      "meanCategoryUs": 0.9595228070175439
+    },
+    {
+      "id": "residual:32",
+      "line": 16681,
+      "statement": "TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);",
+      "n": 35625,
+      "inclusiveUs": 32137,
+      "categoryUs": 32137,
+      "meanCategoryUs": 0.9020912280701754
+    },
+    {
+      "id": "residual:13",
+      "line": 16593,
+      "statement": "Bandits.onGameTick(now);",
+      "n": 35625,
+      "inclusiveUs": 31901,
+      "categoryUs": 31901,
+      "meanCategoryUs": 0.8954666666666666
+    },
+    {
+      "id": "residual:28",
+      "line": 16636,
+      "statement": "if (!T385_ONE_SWEEP) for (const p of (_desQ ? _desBodies : players).values()) _inputTOStep(p, now);",
+      "n": 35625,
+      "inclusiveUs": 31823,
+      "categoryUs": 31823,
+      "meanCategoryUs": 0.8932771929824561
+    },
+    {
+      "id": "residual:19",
+      "line": 16600,
+      "statement": "if (T696) db.walTick();",
+      "n": 35625,
+      "inclusiveUs": 31007,
+      "categoryUs": 31007,
+      "meanCategoryUs": 0.8703719298245614
+    },
+    {
+      "id": "residual:23",
+      "line": 16612,
+      "statement": "if (!zoneAwake()) {\n    // idle zone: 5\ucd08\ub9c8\ub2e4\ub9cc \uac00\ubcbc\uc6b4 \uc791\uc5c5. 26 zone \uc911 25\uac1c\uac00 idle\uc774\uba74 CPU \uac70\uc758 0.\n    if (!global._idleSkipAt || now - global._idleSkipAt > 5000) {\n      global._idleSkipAt = now;\n      // \uc785\ub825 \ud0c0\uc784\uc544\uc6c3 \uc815\ub9ac\ub9cc (NPC AI\u00b7\uc774\ub3d9\u00b7broadcast \ubaa8\ub450 skip)\n    }\n ",
+      "n": 35625,
+      "inclusiveUs": 30779,
+      "categoryUs": 30779,
+      "meanCategoryUs": 0.8639719298245614
+    },
+    {
+      "id": "residual:56",
+      "line": 17701,
+      "statement": "if (_vein) _veinTick(now);",
+      "n": 35625,
+      "inclusiveUs": 30206,
+      "categoryUs": 30206,
+      "meanCategoryUs": 0.8478877192982456
+    },
+    {
+      "id": "residual:44",
+      "line": 17187,
+      "statement": "if (!T385_ONE_SWEEP) for (const p of (_desQ && !SimVillages.t1248NeedsGauge() ? _desBodies : players).values()) _fallStepP(p);",
+      "n": 35625,
+      "inclusiveUs": 25363,
+      "categoryUs": 25363,
+      "meanCategoryUs": 0.7119438596491228
+    },
+    {
+      "id": "residual:37",
+      "line": 16722,
+      "statement": "stepArrows(dt);",
+      "n": 35625,
+      "inclusiveUs": 24006,
+      "categoryUs": 24006,
+      "meanCategoryUs": 0.6738526315789474
+    },
+    {
+      "id": "residual:57",
+      "line": 17704,
+      "statement": "tickDowned(now);",
+      "n": 35625,
+      "inclusiveUs": 22929,
+      "categoryUs": 22929,
+      "meanCategoryUs": 0.643621052631579
+    },
+    {
+      "id": "residual:36",
+      "line": 16696,
+      "statement": "{\n    const _gd = zoneGameDay();\n    if (_gd !== _lastFarmStageDay) {\n      _lastFarmStageDay = _gd;\n      _farmStageQ = []; _farmStageQi = 0; _farmStageQd = _gd;\n      for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k)",
+      "n": 35625,
+      "inclusiveUs": 22849,
+      "categoryUs": 22849,
+      "meanCategoryUs": 0.6413754385964913
+    },
+    {
+      "id": "residual:2",
+      "line": 16562,
+      "statement": "if (TICK_DEBT_ON) {\n    _tickDebt = Math.min(TICK_DEBT_MAX, _left);\n    if (_left > TICK_DEBT_MAX) { _tick.dropN++; _tick.dropped += _left - TICK_DEBT_MAX;\n      perfMark('tick_debt_drop', (_left - TICK_DEBT_MAX) * 1000); }\n  }",
+      "n": 35626,
+      "inclusiveUs": 20123,
+      "categoryUs": 20123,
+      "meanCategoryUs": 0.5648402851849773
+    },
+    {
+      "id": "residual:29",
+      "line": 16652,
+      "statement": "_decT0 = Date.now();",
+      "n": 35625,
+      "inclusiveUs": 20012,
+      "categoryUs": 20012,
+      "meanCategoryUs": 0.561740350877193
+    },
+    {
+      "id": "residual:10",
+      "line": 16582,
+      "statement": "lastTick = now;",
+      "n": 35626,
+      "inclusiveUs": 19990,
+      "categoryUs": 19990,
+      "meanCategoryUs": 0.561107056644024
+    },
+    {
+      "id": "residual:9",
+      "line": 16577,
+      "statement": "if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;",
+      "n": 35626,
+      "inclusiveUs": 19940,
+      "categoryUs": 19940,
+      "meanCategoryUs": 0.5597035872677258
+    },
+    {
+      "id": "residual:6",
+      "line": 16568,
+      "statement": "_tick.debt = _tickDebt;",
+      "n": 35626,
+      "inclusiveUs": 18325,
+      "categoryUs": 18325,
+      "meanCategoryUs": 0.5143715264132936
+    },
+    {
+      "id": "residual:65",
+      "line": 17713,
+      "statement": "TB.end();",
+      "n": 35625,
+      "inclusiveUs": 16636,
+      "categoryUs": 16636,
+      "meanCategoryUs": 0.4669754385964912
+    },
+    {
+      "id": "residual:0",
+      "line": 16544,
+      "statement": "if (BC.VERIFY) BC.check(players);",
+      "n": 35626,
+      "inclusiveUs": 16073,
+      "categoryUs": 16073,
+      "meanCategoryUs": 0.45115926570482234
+    },
+    {
+      "id": "residual:22",
+      "line": 16605,
+      "statement": "if (T487_SNOW) { try { require('./snow').at(gameDayNow()); } catch (e) {} }",
+      "n": 35625,
+      "inclusiveUs": 16018,
+      "categoryUs": 16018,
+      "meanCategoryUs": 0.4496280701754386
+    },
+    {
+      "id": "residual:45",
+      "line": 17193,
+      "statement": "if (!T385_ONE_SWEEP) for (const m of mobs.values()) _fallStepM(m);",
+      "n": 35625,
+      "inclusiveUs": 15999,
+      "categoryUs": 15999,
+      "meanCategoryUs": 0.44909473684210527
+    },
+    {
+      "id": "residual:33",
+      "line": 16682,
+      "statement": "_decT0 = 0;",
+      "n": 35625,
+      "inclusiveUs": 15961,
+      "categoryUs": 15961,
+      "meanCategoryUs": 0.4480280701754386
+    },
+    {
+      "id": "residual:42",
+      "line": 17090,
+      "statement": "if (!T385_ONE_SWEEP) for (const p of (_desQ && !SimVillages.t1248NeedsGauge() ? _desBodies : players).values()) _stairStepP(p);",
+      "n": 35625,
+      "inclusiveUs": 15899,
+      "categoryUs": 15899,
+      "meanCategoryUs": 0.4462877192982456
+    },
+    {
+      "id": "residual:17",
+      "line": 16598,
+      "statement": "if (_t566RelPend.length) _t566FlushRel();",
+      "n": 35625,
+      "inclusiveUs": 14618,
+      "categoryUs": 14618,
+      "meanCategoryUs": 0.4103298245614035
+    },
+    {
+      "id": "residual:43",
+      "line": 17100,
+      "statement": "if (!T385_ONE_SWEEP) for (const m of mobs.values()) _stairStepM(m);",
+      "n": 35625,
+      "inclusiveUs": 14271,
+      "categoryUs": 14271,
+      "meanCategoryUs": 0.40058947368421055
+    },
+    {
+      "id": "residual:48",
+      "line": 17307,
+      "statement": "if (!T385_ONE_SWEEP) for (const p of (_desQ && !SimVillages.t1248NeedsGauge() ? _desBodies : players).values()) _hpRegenStep(p);",
+      "n": 35625,
+      "inclusiveUs": 12897,
+      "categoryUs": 12897,
+      "meanCategoryUs": 0.36202105263157897
+    },
+    {
+      "id": "residual:63",
+      "line": 17710,
+      "statement": "{ const _td = Date.now() - now; global._tt = (global._tt||0)+_td; global._tn = (global._tn||0)+1; if (_td > (global._tmx||0)) global._tmx = _td; }",
+      "n": 35625,
+      "inclusiveUs": 12255,
+      "categoryUs": 12255,
+      "meanCategoryUs": 0.344
+    },
+    {
+      "id": "residual:25",
+      "line": 16627,
+      "statement": "if (_desQ) _desPulse(now);",
+      "n": 35625,
+      "inclusiveUs": 11994,
+      "categoryUs": 11994,
+      "meanCategoryUs": 0.3366736842105263
+    },
+    {
+      "id": "residual:30",
+      "line": 16653,
+      "statement": "TB.lateBegin();",
+      "n": 35625,
+      "inclusiveUs": 11210,
+      "categoryUs": 11210,
+      "meanCategoryUs": 0.31466666666666665
+    },
+    {
+      "id": "residual:49",
+      "line": 17355,
+      "statement": "if (!T385_ONE_SWEEP) for (const p of (_desQ && !SimVillages.t1248NeedsGauge() ? _desBodies : players).values()) _gaugeNetStep(p);",
+      "n": 35625,
+      "inclusiveUs": 11089,
+      "categoryUs": 11089,
+      "meanCategoryUs": 0.3112701754385965
+    },
+    {
+      "id": "residual:53",
+      "line": 17688,
+      "statement": "for (const [ws, data] of observers) {\n    if (!data.viewerState) data.viewerState = { seenPlayers: new Set(), seenMobs: new Set() };\n    send(ws, {\n      type: 'tick', t: now,\n      players: visiblePlayers(data.viewerX, data.viewerY, null, ",
+      "n": 35625,
+      "inclusiveUs": 9336,
+      "categoryUs": 9336,
+      "meanCategoryUs": 0.26206315789473683
+    },
+    {
+      "id": "residual:47",
+      "line": 17283,
+      "statement": "if (!T385_ONE_SWEEP) for (const p of (_desQ && !SimVillages.t1248NeedsGauge() ? _desBodies : players).values()) _gaugeStep(p);",
+      "n": 35625,
+      "inclusiveUs": 9054,
+      "categoryUs": 9054,
+      "meanCategoryUs": 0.2541473684210526
+    },
+    {
+      "id": "residual:15",
+      "line": 16596,
+      "statement": "if (_desQ) _desPulse(now);",
+      "n": 35625,
+      "inclusiveUs": 8011,
+      "categoryUs": 8011,
+      "meanCategoryUs": 0.2248701754385965
+    },
+    {
+      "id": "residual:8",
+      "line": 16576,
+      "statement": "if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }",
+      "n": 35626,
+      "inclusiveUs": 8005,
+      "categoryUs": 8005,
+      "meanCategoryUs": 0.22469544714534329
+    },
+    {
+      "id": "residual:40",
+      "line": 16975,
+      "statement": "if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);",
+      "n": 35625,
+      "inclusiveUs": 8005,
+      "categoryUs": 8005,
+      "meanCategoryUs": 0.2247017543859649
+    },
+    {
+      "id": "residual:11",
+      "line": 16590,
+      "statement": "if (_desQ) _desPulse(now);",
+      "n": 35626,
+      "inclusiveUs": 5226,
+      "categoryUs": 5226,
+      "meanCategoryUs": 0.14669061921068882
+    },
+    {
+      "id": "residual:3",
+      "line": 16568,
+      "statement": "_tick.n++;",
+      "n": 35626,
+      "inclusiveUs": 4117,
+      "categoryUs": 4117,
+      "meanCategoryUs": 0.11556166844439454
+    },
+    {
+      "id": "residual:4",
+      "line": 16568,
+      "statement": "_tick.wall += _elapsed;",
+      "n": 35626,
+      "inclusiveUs": 4002,
+      "categoryUs": 4002,
+      "meanCategoryUs": 0.11233368887890867
+    },
+    {
+      "id": "residual:5",
+      "line": 16568,
+      "statement": "_tick.sim += dt;",
+      "n": 35626,
+      "inclusiveUs": 4002,
+      "categoryUs": 4002,
+      "meanCategoryUs": 0.11233368887890867
+    },
+    {
+      "id": "residual:35",
+      "line": 16684,
+      "statement": "if (_stopAt !== null) _walk.cut++;",
+      "n": 35625,
+      "inclusiveUs": 13,
+      "categoryUs": 13,
+      "meanCategoryUs": 0.0003649122807017544
+    },
+    {
+      "id": "residual:62",
+      "line": 17709,
+      "statement": "{ const _tot = Date.now() - now; if (_tot >= 33) perfMark('tick', _tot); }",
+      "n": 35625,
+      "inclusiveUs": 0,
+      "categoryUs": 0,
+      "meanCategoryUs": 0.0
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "node": "v22.23.0",
+  "rounds": [
+    {
+      "n": 200000,
+      "cpuUs": 156823,
+      "usPerPair": 0.784115
+    },
+    {
+      "n": 200000,
+      "cpuUs": 140896,
+      "usPerPair": 0.70448
+    },
+    {
+      "n": 200000,
+      "cpuUs": 143840,
+      "usPerPair": 0.7192
+    },
+    {
+      "n": 200000,
+      "cpuUs": 129949,
+      "usPerPair": 0.649745
+    },
+    {
+      "n": 200000,
+      "cpuUs": 129555,
+      "usPerPair": 0.647775
+    }
+  ],
+  "definition": "Empty enter/leave pair including CPU reads and maps; not an exact correction for real callbacks or AST deoptimization."
+}
