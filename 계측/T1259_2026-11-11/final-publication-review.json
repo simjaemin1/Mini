@@ -1,0 +1,18 @@
+{
+  "destination": "https://github.com/simjaemin1/Mini.git",
+  "branch": "batch/wood-3seed-1110",
+  "preCommitHEAD": "af42d080255b4ca025ae5f72f6bfee3ece8aed24",
+  "scope": "Deterministic synthetic local seed1020/7/42 simulation evidence and implementation report; no external user content or databases",
+  "indexedArtifactsScanned": 183,
+  "decodedBytesScanned": 110481411,
+  "credentialPatternFileHits": [],
+  "scanLimit": "Supplementary pattern scan, not proof of every possible sensitivity",
+  "completedSeedCases": 15,
+  "daysEach": 400,
+  "gate": "1/1",
+  "labPopulation": 5929,
+  "actualWalkCalibrationBodyDays": 9,
+  "actualWalkCalibrationMaxDistancePx": 71788.81192017069,
+  "interimWalkSampleDescriptionCorrected": true,
+  "productSourceUnchangedSince1880230e": true
+}

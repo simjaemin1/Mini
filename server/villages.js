@@ -7162,6 +7162,7 @@ function init(deps) {
     if (T762_CARAVAN_BODY) world.caravanBodyReady = _t1182BodyReady;
     state.byDbId = new Map(state.villages.map(v => [v.dbId, v]));
     state.byEcon = new Map(state.villages.map(v => [v.econ, v])); // Stage 4B: econ 마을 객체 → 공간 마을(캐러밴 from/to 해석)
+    if (_lifeEcon().T1259_WOOD_CAP) _lifeEcon().setT1259WoodReader(_t1259WoodCells);
     if (T1238_TERR_V2) { try { _t1238Boot(); } catch (e) { console.error(`[${state.zoneId}] 🏘️ [T1238] 부팅 실패(켬이지만 표 없이 계속):`, e.message); } }   // ★[T1238] 쓰는 칸 표 · 쓰는 날 · 땅에 남은 일 · econ 표지
     else for (const v of state.villages) if (v.econ && v.econ._t1238Land) delete v.econ._t1238Land;   // ★[T1238] 켰다 끈 세계 — econ 저장 줄에 남은 표지를 걷는다(금고 땅 사기가 돌아온다 · 처음부터 끈 세계는 칸이 없어 무동작)
     state.claimedNames = new Set(state.villages.map(v => v.name)); // 레거시 디듀프 대상(이름 유니크 — 50곳 검증됨)
@@ -12483,7 +12484,7 @@ function _t325Scan(vil, day) {
   //     (33×33 = 1,089셀 × 마을 × 하루 — 실측 p95 5.0 → 30.0ms 가 그 값이었다). 그래서 캐시한다.
   //   ⚠`> 0` 이 아니라 `== null` 로 묻는다 — 나무 0 마을(K = 0)도 **한 번 재고 끝나야** 한다
   //     (`> 0` 이면 그 마을만 영원히 두 벌로 스캔한다 · 나무 0 마을은 3~24곳이다).
-  if (_lifeEcon().T325_WOOD_ACT && state.deps.t325TreesAtCell) {
+  if ((_lifeEcon().T325_WOOD_ACT || _lifeEcon().T1259_WOOD_CAP) && state.deps.t325TreesAtCell) {
     //   ★★[T398] 후보 셀 — 영토 밖 고리(영토 0셀이면 종전 네모 · 같은 순서) · 손잡이 뒤에서만 센다(끈 팔 비트 동일).
     const C = _t398Cells(vil);
     //   ★[T398] `K` 는 **그 셀 집합의 수**다 — 영토가 자라 고리가 옮겨 간 날 **한 번** 다시 잰다(키가 바뀐 날).
@@ -12524,6 +12525,29 @@ function _tripDayMs() {   // 하루 몫을 셀 때의 하루 길이(ms) — 끔 
   if (!T627_TRIP_DAY) return state.dayMs || 0;
   const W = (T1140_LIFE_REQ ? _zc720() : require('./zone-config')).WORLD;   // 정본 게임일(이 파일의 다른 자리처럼 그 자리에서 읽는다 · require 캐시) · ★[T1140 ③-나] 켬 = 같은 모듈 객체(`_zc720` 칸)
   return (W && W.dayLengthMs) || state.dayMs || 0;
+}
+// T1259: observed full body-day walking / round trip, scaled only by canonical day.
+// This never expands the native T398 target ring. Re-read live trees after cuts.
+function _t1259WoodRadius() {
+  const measured = require('./wood-walk-evidence.json');
+  return measured.maxFullDayDistancePx * (_tripDayMs() / measured.dayMs) / 2;
+}
+function _t1259WoodCells(econ) {
+  const vil = state.byEcon && state.byEcon.get(econ);
+  const dp = state.deps;
+  if (!vil || !dp || typeof dp.t325TreesAtCell !== 'function') return null;
+  const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
+  const radius = _t1259WoodRadius();
+  let count = 0;
+  for (const t of _t325Scan(vil, day)) {
+    if (!_lifeJobSiteOK(vil, t.x, t.y, radius)) continue;
+    const standing = dp.t325TreesAtCell(t.cx, t.cy);
+    if (!standing || !standing.length) continue;
+    // Same town-centre origin as the native headless wood-day trip budget.
+    if (_t427On() && !_t427Reach(vil, null, t.x, t.y, day)) continue;
+    count++;
+  }
+  return count;
 }
 function _t341TripsPerDay(vil, distPx, unitsPerTree) {
   const sp = (state.deps && state.deps.moveSpeed) || 0;              // px/초 — zone 정본
@@ -18347,6 +18371,7 @@ function __rumorProbe() {
 }
 
 module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
+  _t1259WoodRadius, _t1259WoodCells,
   t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
   T1238_TERR_V2, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,

@@ -1,0 +1,23 @@
+[
+  {
+    "seed": 1020,
+    "pop": 3867,
+    "referencePresent": true,
+    "sameDailyFingerprint": true,
+    "sameEight": true
+  },
+  {
+    "seed": 7,
+    "pop": 3891,
+    "referencePresent": true,
+    "sameDailyFingerprint": true,
+    "sameEight": true
+  },
+  {
+    "seed": 42,
+    "pop": 3517,
+    "referencePresent": true,
+    "sameDailyFingerprint": true,
+    "sameEight": true
+  }
+]

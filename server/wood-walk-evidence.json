@@ -1,0 +1,35 @@
+{
+  "task": "T1259",
+  "seed": 1020,
+  "days": 60,
+  "villages": 1,
+  "naturalJobs": true,
+  "dayMs": 1440000,
+  "moveSpeed": 64,
+  "dayPhaseRatio": 0.7,
+  "maxFullDayDistancePx": 71788.81192017069,
+  "fullBodyDays": 9,
+  "actors": 3,
+  "samplesPerFullBodyDay": 43200,
+  "maxSampleStepPx": 2.4533333333401415,
+  "chosenBodyDay": {
+    "day": 1227258,
+    "pid": "p16",
+    "village": 1,
+    "distancePx": 71788.81192017069,
+    "movingMs": 980964.2717285156,
+    "observedMs": 1439996.484375,
+    "samples": 43200,
+    "nonfinite": 0,
+    "fasterThanBaseFrames": 28556,
+    "maxStepPx": 2.4533333333343097
+  },
+  "rawSHA256": "1b9cf0c6a810abb1161cfa649de12382ec85e7e0fa5154273ed170810164d76e",
+  "source": {
+    "sim/economy-sim.js": "52208c8e10876b6bf2b677c9c71e8e6c57a509aeca80792f3825eb9ce67915da",
+    "server/villages.js": "e6337cf7e512bc597cc947fd487c388a187c52c12fb2efab14aaf8707ba009c8",
+    "server/zone.js": "068f6956847515e46926c4fcbcd285200a9d8c7410823ca4b27a49f7ce5c77f9",
+    "scripts/t1259-walk-observe.js": "b1c9e9d3e7387f6fedf37cba57fa444ecd82fdeaf6f6f4cf28b3ed0edb042771"
+  },
+  "scope": "Observed maximum, not a population estimate or a proof of geographic path length. Every finite adjacent native tick displacement is included. A boundary tick is absent in each full day. The job reader intersects this round-trip budget with existing native candidate cells and native reachability; it does not enlarge body targets."
+}

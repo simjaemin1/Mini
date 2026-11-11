@@ -1,0 +1,17 @@
+{
+  "days": 800,
+  "seed": 1020,
+  "exit": 0,
+  "population": 5929,
+  "nativeMetricLine": "ⓐ 기준선   인구 5929 · 소멸 0/51 · 무기Q 1045 · 확장셀 3480 · 거래 5000",
+  "source": {
+    "sim/economy-sim.js": "152dbd8219a2f89ce01a4415b9057928675f8cd457040b64dd974c85e5e6f6e7",
+    "server/villages.js": "fe5c85eb691768a6ec2556462494acabf78d83952c15c28a0b3591e4ebba1c01",
+    "server/zone.js": "068f6956847515e46926c4fcbcd285200a9d8c7410823ca4b27a49f7ce5c77f9",
+    "server/wood-walk-evidence.json": "846a8322c726c63033c438a7a21cda4fed52ea703f029a30ba35ee6a9c0aeefa",
+    "scripts/t1259-observe.js": "f375a082499dbf37fcd524239d48a89559fc29a758ac01cff67e28e511419d29",
+    "scripts/server-baseline-check.js": "eb219d9454295e6b6252be5d6fba533e0a7133b84b691800cd61fdf314586bbf",
+    "scripts/t577-server-run.js": "38d2546858d23bfb2b6a8aa1a052bb3db62c471b043a0c44e62c27820e04a400"
+  },
+  "entrySHA256": "1b72de19dfbaef92b0e3def1f0eae5bcc0a2956cfc594c47760db8e4d85b86b3"
+}

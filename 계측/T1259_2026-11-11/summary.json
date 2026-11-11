@@ -1,0 +1,516 @@
+{
+  "completeSeedCases": 15,
+  "requiredSeedCases": 15,
+  "rows": [
+    {
+      "arm": "OFF",
+      "seed": 1020,
+      "pop": 3867,
+      "empty": 0,
+      "foodDebtDeaths": 31,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 1901.798942498565,
+      "felledTrees": 0,
+      "felledWood": 0,
+      "bodyWoodIn": 0,
+      "econWoodD": 70568.71209677565,
+      "lowK": {
+        "60": {
+          "villages": 37,
+          "lumber": 117,
+          "allLumber": 161
+        },
+        "400": {
+          "villages": 37,
+          "lumber": 175,
+          "allLumber": 229
+        }
+      },
+      "cpuSeconds": 779.186442,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 833.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": 0,
+      "popRatioToOff": 1.0
+    },
+    {
+      "arm": "OFF",
+      "seed": 7,
+      "pop": 3891,
+      "empty": 0,
+      "foodDebtDeaths": 231,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 820.7810403971629,
+      "felledTrees": 0,
+      "felledWood": 0,
+      "bodyWoodIn": 0,
+      "econWoodD": 71226.2063216301,
+      "lowK": {
+        "60": {
+          "villages": 37,
+          "lumber": 125,
+          "allLumber": 188
+        },
+        "400": {
+          "villages": 35,
+          "lumber": 72,
+          "allLumber": 152
+        }
+      },
+      "cpuSeconds": 808.062176,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 749.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": 0,
+      "popRatioToOff": 1.0
+    },
+    {
+      "arm": "OFF",
+      "seed": 42,
+      "pop": 3517,
+      "empty": 2,
+      "foodDebtDeaths": 245,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 502.3965471553837,
+      "felledTrees": 0,
+      "felledWood": 0,
+      "bodyWoodIn": 0,
+      "econWoodD": 64443.07186740924,
+      "lowK": {
+        "60": {
+          "villages": 37,
+          "lumber": 106,
+          "allLumber": 170
+        },
+        "400": {
+          "villages": 35,
+          "lumber": 122,
+          "allLumber": 186
+        }
+      },
+      "cpuSeconds": 700.174804,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 640.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": 0,
+      "popRatioToOff": 1.0
+    },
+    {
+      "arm": "WOOD",
+      "seed": 1020,
+      "pop": 3561,
+      "empty": 2,
+      "foodDebtDeaths": 440,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 3209.936561509515,
+      "felledTrees": 12903,
+      "felledWood": 80686,
+      "bodyWoodIn": 80345.96799291544,
+      "econWoodD": 81612.54877470563,
+      "lowK": {
+        "60": {
+          "villages": 37,
+          "lumber": 147,
+          "allLumber": 183
+        },
+        "400": {
+          "villages": 35,
+          "lumber": 65,
+          "allLumber": 147
+        }
+      },
+      "cpuSeconds": 1208.081031,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 1235.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -306,
+      "popRatioToOff": 0.9208688906128782
+    },
+    {
+      "arm": "WOOD",
+      "seed": 7,
+      "pop": 3312,
+      "empty": 0,
+      "foodDebtDeaths": 387,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 839.5210409574943,
+      "felledTrees": 9723,
+      "felledWood": 60346,
+      "bodyWoodIn": 60077.949046005764,
+      "econWoodD": 62886.17139944213,
+      "lowK": {
+        "60": {
+          "villages": 37,
+          "lumber": 131,
+          "allLumber": 206
+        },
+        "400": {
+          "villages": 35,
+          "lumber": 100,
+          "allLumber": 132
+        }
+      },
+      "cpuSeconds": 1041.794815,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 973.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -579,
+      "popRatioToOff": 0.851195065535852
+    },
+    {
+      "arm": "WOOD",
+      "seed": 42,
+      "pop": 3181,
+      "empty": 2,
+      "foodDebtDeaths": 356,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 166.1895430927565,
+      "felledTrees": 8525,
+      "felledWood": 52655,
+      "bodyWoodIn": 52395.910523709594,
+      "econWoodD": 55168.371696387556,
+      "lowK": {
+        "60": {
+          "villages": 37,
+          "lumber": 168,
+          "allLumber": 225
+        },
+        "400": {
+          "villages": 36,
+          "lumber": 88,
+          "allLumber": 153
+        }
+      },
+      "cpuSeconds": 1070.510729,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 1003.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -336,
+      "popRatioToOff": 0.9044640318453228
+    },
+    {
+      "arm": "WOOD_CAP",
+      "seed": 1020,
+      "pop": 3024,
+      "empty": 0,
+      "foodDebtDeaths": 0,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 1684.7443091765654,
+      "felledTrees": 13081,
+      "felledWood": 82909,
+      "bodyWoodIn": 82517.3312622074,
+      "econWoodD": 82860.11674174663,
+      "lowK": {
+        "60": {
+          "villages": 37,
+          "lumber": 60,
+          "allLumber": 112
+        },
+        "400": {
+          "villages": 35,
+          "lumber": 48,
+          "allLumber": 196
+        }
+      },
+      "cpuSeconds": 1152.928351,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 1197.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -843,
+      "popRatioToOff": 0.7820015515903801
+    },
+    {
+      "arm": "WOOD_CAP",
+      "seed": 7,
+      "pop": 2566,
+      "empty": 0,
+      "foodDebtDeaths": 39,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 1129.948629082692,
+      "felledTrees": 11534,
+      "felledWood": 73088,
+      "bodyWoodIn": 72725.93240728707,
+      "econWoodD": 73184.82682875078,
+      "lowK": {
+        "60": {
+          "villages": 37,
+          "lumber": 45,
+          "allLumber": 77
+        },
+        "400": {
+          "villages": 37,
+          "lumber": 55,
+          "allLumber": 156
+        }
+      },
+      "cpuSeconds": 1098.682901,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 1033.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -1325,
+      "popRatioToOff": 0.6594705731174505
+    },
+    {
+      "arm": "WOOD_CAP",
+      "seed": 42,
+      "pop": 2608,
+      "empty": 0,
+      "foodDebtDeaths": 20,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 689.4143686615666,
+      "felledTrees": 10300,
+      "felledWood": 65338,
+      "bodyWoodIn": 65048.03277401142,
+      "econWoodD": 65224.46964592795,
+      "lowK": {
+        "60": {
+          "villages": 37,
+          "lumber": 48,
+          "allLumber": 120
+        },
+        "400": {
+          "villages": 35,
+          "lumber": 43,
+          "allLumber": 114
+        }
+      },
+      "cpuSeconds": 1140.814864,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 1078.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -909,
+      "popRatioToOff": 0.7415410861529713
+    },
+    {
+      "arm": "TERR",
+      "seed": 1020,
+      "pop": 3025,
+      "empty": 1,
+      "foodDebtDeaths": 224,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 3153.0479626218626,
+      "felledTrees": 3129,
+      "felledWood": 20060,
+      "bodyWoodIn": 0,
+      "econWoodD": 83056.28972667822,
+      "lowK": {
+        "60": {
+          "villages": 39,
+          "lumber": 151,
+          "allLumber": 183
+        },
+        "400": {
+          "villages": 39,
+          "lumber": 34,
+          "allLumber": 123
+        }
+      },
+      "cpuSeconds": 616.438591,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 564.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -842,
+      "popRatioToOff": 0.78226014998707
+    },
+    {
+      "arm": "TERR",
+      "seed": 7,
+      "pop": 3157,
+      "empty": 0,
+      "foodDebtDeaths": 229,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 2641.321047789086,
+      "felledTrees": 2822,
+      "felledWood": 18079,
+      "bodyWoodIn": 0,
+      "econWoodD": 76472.81911273931,
+      "lowK": {
+        "60": {
+          "villages": 39,
+          "lumber": 160,
+          "allLumber": 223
+        },
+        "400": {
+          "villages": 39,
+          "lumber": 76,
+          "allLumber": 184
+        }
+      },
+      "cpuSeconds": 560.934582,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 506.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -734,
+      "popRatioToOff": 0.8113595476741198
+    },
+    {
+      "arm": "TERR",
+      "seed": 42,
+      "pop": 3219,
+      "empty": 0,
+      "foodDebtDeaths": 247,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 904.9238010896416,
+      "felledTrees": 3256,
+      "felledWood": 20866,
+      "bodyWoodIn": 0,
+      "econWoodD": 88022.29623288388,
+      "lowK": {
+        "60": {
+          "villages": 39,
+          "lumber": 141,
+          "allLumber": 214
+        },
+        "400": {
+          "villages": 39,
+          "lumber": 51,
+          "allLumber": 109
+        }
+      },
+      "cpuSeconds": 554.419788,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 497.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -298,
+      "popRatioToOff": 0.915268694910435
+    },
+    {
+      "arm": "ALL",
+      "seed": 1020,
+      "pop": 2211,
+      "empty": 0,
+      "foodDebtDeaths": 490,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 1303.4886179472912,
+      "felledTrees": 19538,
+      "felledWood": 125556,
+      "bodyWoodIn": 124852.09254031813,
+      "econWoodD": 15487.92761993919,
+      "lowK": {
+        "60": {
+          "villages": 39,
+          "lumber": 18,
+          "allLumber": 58
+        },
+        "400": {
+          "villages": 36,
+          "lumber": 4,
+          "allLumber": 7
+        }
+      },
+      "cpuSeconds": 1080.023913,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 995.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -1656,
+      "popRatioToOff": 0.5717610550814585
+    },
+    {
+      "arm": "ALL",
+      "seed": 7,
+      "pop": 2467,
+      "empty": 2,
+      "foodDebtDeaths": 707,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 1940.4378147471448,
+      "felledTrees": 22166,
+      "felledWood": 142709,
+      "bodyWoodIn": 142628.06028372675,
+      "econWoodD": 20864.857716898285,
+      "lowK": {
+        "60": {
+          "villages": 38,
+          "lumber": 16,
+          "allLumber": 74
+        },
+        "400": {
+          "villages": 36,
+          "lumber": 12,
+          "allLumber": 22
+        }
+      },
+      "cpuSeconds": 1159.163415,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 1060.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -1424,
+      "popRatioToOff": 0.6340272423541506
+    },
+    {
+      "arm": "ALL",
+      "seed": 42,
+      "pop": 1908,
+      "empty": 6,
+      "foodDebtDeaths": 602,
+      "bodyStarveDeaths": 0,
+      "famineVillageDays": 0,
+      "woodStock": 25.815691847226862,
+      "felledTrees": 18779,
+      "felledWood": 120722,
+      "bodyWoodIn": 120695.01480745706,
+      "econWoodD": 12160.464359335761,
+      "lowK": {
+        "60": {
+          "villages": 38,
+          "lumber": 15,
+          "allLumber": 66
+        },
+        "400": {
+          "villages": 38,
+          "lumber": 2,
+          "allLumber": 2
+        }
+      },
+      "cpuSeconds": 1023.378913,
+      "observerVirtualElapsedSeconds": 99.966422607,
+      "runnerWallSecondsRounded": 937.0,
+      "clockErrors": 0,
+      "childExit": 0,
+      "sourceValidated": true,
+      "popDeltaFromOff": -1609,
+      "popRatioToOff": 0.5425078191640603
+    }
+  ]
+}

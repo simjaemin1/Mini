@@ -1,0 +1,137 @@
+[
+  {
+    "arm": "OFF",
+    "seed": 1020,
+    "day": 365,
+    "villages": 51,
+    "pop": 3574,
+    "housing": 3748.7,
+    "populationCapacitySum": 4309.3
+  },
+  {
+    "arm": "OFF",
+    "seed": 7,
+    "day": 365,
+    "villages": 51,
+    "pop": 3642,
+    "housing": 3842.9,
+    "populationCapacitySum": 4304.8
+  },
+  {
+    "arm": "OFF",
+    "seed": 42,
+    "day": 365,
+    "villages": 51,
+    "pop": 3263,
+    "housing": 3334.4,
+    "populationCapacitySum": 4203.5
+  },
+  {
+    "arm": "WOOD",
+    "seed": 1020,
+    "day": 365,
+    "villages": 51,
+    "pop": 3373,
+    "housing": 3622.0,
+    "populationCapacitySum": 4409.1
+  },
+  {
+    "arm": "WOOD",
+    "seed": 7,
+    "day": 365,
+    "villages": 51,
+    "pop": 3318,
+    "housing": 3057.1,
+    "populationCapacitySum": 4307.1
+  },
+  {
+    "arm": "WOOD",
+    "seed": 42,
+    "day": 365,
+    "villages": 51,
+    "pop": 3145,
+    "housing": 2738.9,
+    "populationCapacitySum": 4438.8
+  },
+  {
+    "arm": "WOOD_CAP",
+    "seed": 1020,
+    "day": 365,
+    "villages": 51,
+    "pop": 2885,
+    "housing": 3333.5,
+    "populationCapacitySum": 2940.3
+  },
+  {
+    "arm": "WOOD_CAP",
+    "seed": 7,
+    "day": 365,
+    "villages": 51,
+    "pop": 2464,
+    "housing": 3109.2,
+    "populationCapacitySum": 2597.6
+  },
+  {
+    "arm": "WOOD_CAP",
+    "seed": 42,
+    "day": 365,
+    "villages": 51,
+    "pop": 2563,
+    "housing": 3053.8,
+    "populationCapacitySum": 2788.7
+  },
+  {
+    "arm": "TERR",
+    "seed": 1020,
+    "day": 365,
+    "villages": 51,
+    "pop": 2755,
+    "housing": 3397.4,
+    "populationCapacitySum": 3364.2
+  },
+  {
+    "arm": "TERR",
+    "seed": 7,
+    "day": 365,
+    "villages": 51,
+    "pop": 2843,
+    "housing": 3212.3,
+    "populationCapacitySum": 3256.7
+  },
+  {
+    "arm": "TERR",
+    "seed": 42,
+    "day": 365,
+    "villages": 51,
+    "pop": 3088,
+    "housing": 3728.9,
+    "populationCapacitySum": 3576.7
+  },
+  {
+    "arm": "ALL",
+    "seed": 1020,
+    "day": 365,
+    "villages": 51,
+    "pop": 2266,
+    "housing": 4007.3,
+    "populationCapacitySum": 4118.5
+  },
+  {
+    "arm": "ALL",
+    "seed": 7,
+    "day": 365,
+    "villages": 51,
+    "pop": 2699,
+    "housing": 4399.2,
+    "populationCapacitySum": 4920.7
+  },
+  {
+    "arm": "ALL",
+    "seed": 42,
+    "day": 365,
+    "villages": 51,
+    "pop": 1953,
+    "housing": 4125.6,
+    "populationCapacitySum": 4075.0
+  }
+]
