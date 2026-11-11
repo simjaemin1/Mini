@@ -15179,10 +15179,16 @@ function forageActOn(v) { return !!(T347_FORAGE_ACT && v && (v._t347Cells | 0) >
 //   ⚠수요 문도 같은 몸통이다(`actDemandCap` · D = 그 마을이 오늘 수식으로 낼 원석 `_oreOutLast`) — 곳간이 안 받은 몫은 부르는 쪽 손에 남는다(T544 꼴).
 //   ⚠조성(`oreMix`)은 **넣는 몫만큼** 접는다 — 종전 수식 갈래가 `addProduce` 앞에서 하던 그 접기(같은 함수 · 같은 자리 순서: 재고 가산 전).
 //   ★새 수 0.
+// ★★★[T1266 2026-11-11 · 캐논 797 "몸이 한 일만 센다" · T1256 회부 4] **광부 원석의 양 = 몸이 친 만큼** — 손잡이 `T1266_ORE_BODY`(**끔 기본** · `=1` 만 켬 · 끔 = 종전 바이트).
+//   종전: 몸은 그날 수식 몫 D(`_oreOutLast`)에 닿으면 집에 가고(`mineDemandLeft`) 곳간 입구도 D 로 잘랐다 — 원석 양의 크기는 수식이 정했다(T1256: 몸 원석 = D 1 : 1).
+//   켬: 곳간 입구가 D 로 안 자른다(친 만큼 다 든다 · 어부 T1217 `fishToGranary` 그 꼴). 몸이 그날 일을 그만두는 문은 서버 몸 걸음(`_t724BodyStep`)이
+//     게임 한 시간마다 견주는 "다음 한 시간 캔 값 ↔ 한 시간 쉰 값"(v2 `t1266OreValue` — 어부 `t1217Value` 와 같은 λ · 같은 쉰 값)이다.
+//   수요는 몸이 일을 고르는 값(시세 · 그림자 값)으로만 닿는다. 헤드리스 랩은 몸 호스트가 없어 이 손잡이가 아무 줄도 안 바꾼다(곳간 입구는 몸만 부른다).
+const T1266_ORE_BODY = (typeof process !== 'undefined' && process.env && process.env.T1266_ORE_BODY === '1');
 function mineToGranary(v, units, mineral) {
   if (!T724_MINE_ACT || !v || !v.storage) return 0;
   if(T1188_ORE_SPLIT&&!OreGoods.idOf(mineral))return 0;
-  const u = actDemandCap(v, units, (v._oreOutLast || 0), '_t724InflowToday');
+  const u = T1266_ORE_BODY ? ((typeof units === 'number' && units > 0) ? units : 0) : actDemandCap(v, units, (v._oreOutLast || 0), '_t724InflowToday');   // ★[T1266] 켬 = 친 만큼 다 든다
   if (!(u > 0)) return 0;
   if(T1188_ORE_SPLIT){const k=OreGoods.idOf(mineral),g=actToGranary(v,k,u,'_t724InflowToday','_t724InN');if(g>0){const d=v._t1188InByItem||(v._t1188InByItem={});d[k]=(d[k]||0)+g;}return g;}
   if (v.land && v.land.oreMix) foldOreMix(v, oreTotal(v), u, v.land.oreMix);
@@ -20143,7 +20149,7 @@ module.exports = {
   T400_BUILD_ACT, T1054_DECAY_WOOD, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, actMaterialsPlaced, returnActMaterials, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
-  mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT,
+  mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT, T1266_ORE_BODY,   // ★[T1266] 광부 원석 양 = 몸이 친 만큼(끔 기본)
   T1196_ARTISAN_ACT, T1196_SET, artisanActOn, artisanTake, artisanGive, t1196Unhide,   // ★[T1196] 장인 작업장
   __t1196: { begin: _t1196Begin, end: _t1196End, day: _t1196Day, seat: _t1196Seat },   // ★[T1196] 하네스 문(운영 경로는 안 부른다)
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
@@ -21245,11 +21251,8 @@ function t1217PricesOf(v, key) {   // key = 시간 열쇠를 부르는 쪽이 �
 //   ★[T1217] 어부 한 단위 · 한 시간의 값(행복 목표 단위 · v1 머리말) — 서버가 낮 시간 수 H(정본 운영 하루 × 낮 비율 ÷ 게임 1시간)를 준다.
 //     unit = 빚이 있으면 1 ÷ (N × 죽음 날 수) · 없으면 max(그 마을 생선 값, 순수출가) × λ (λ = 행복 물건 하나의 기울기 ÷ 그 값 중 가장 큰 것 — 세계 어디에도 없는 물건은 뺀다)
 //     rest = 한 사람이 한 시간 쉰 값 = `LEISURE_HAPPY_W` ÷ (N × H)
-function t1217Value(v, H, key) {
-  if (!v || !v.npcs) return null;
-  const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
-  const fd = v1.T1074_FOOD_DEBT ? v1.foodDebtOf(v) : null, debt = fd ? fd.mean : 0;
-  const vEat = debt > 0 ? 1 / (N * v1.t1197DieDays()) : 0;
+//   ★[T1217] 행복 물건 하나의 기울기 ÷ 그 값 중 가장 큰 것(λ · 세계 어디에도 없는 물건은 뺀다) — 어부 · ★[T1266] 광부 한 시간 값이 같은 함수를 읽는다(사본 0 · 종전 줄을 함수로 옮김 · 값 무변).
+function _t1217Lam(v, px, N) {
   let lam = 0, best = null;
   for (const r of TRADABLE) {
     const p = px[r]; if (!(p > 0)) continue;
@@ -21257,10 +21260,30 @@ function t1217Value(v, H, key) {
     const ws = _worldStockOf(v, r); if (ws && !(ws.stock > 0)) continue;
     const l = mu / p; if (l > lam) { lam = l; best = r; }
   }
+  return { lam, best };
+}
+function t1217Value(v, H, key) {
+  if (!v || !v.npcs) return null;
+  const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
+  const fd = v1.T1074_FOOD_DEBT ? v1.foodDebtOf(v) : null, debt = fd ? fd.mean : 0;
+  const vEat = debt > 0 ? 1 / (N * v1.t1197DieDays()) : 0;
+  const { lam, best } = _t1217Lam(v, px, N);
   //   생선 한 단위 = 곳간 식량 한 단위(econ `totalFoodEquivalent` 1:1 — 먹으면 그만큼 다른 식량이 남는다) ⇒ 그 시세 = 생선 값 · 식량 값 중 큰 쪽(· 이웃이 사 주는 순수취)
   const pFish = px.fish || 0, pFood = px.food || 0, nev = v._world ? netExportValue(v._world, v, 'fish') : 0;
   const vSur = Math.max(pFish, pFood, nev) * lam;
   return { N, H, unit: vEat > 0 ? vEat : vSur, vEat, vSur, lam, best, pFish, pFood, nev, debt, rest: H > 0 ? v1.LEISURE_HAPPY_W / (N * H) : Infinity };
+}
+//   ★★[T1266 · 캐논 797 "몸이 한 일만 센다"] 광부 원석 한 단위 · 한 시간의 값 — 어부(위)와 같은 꼴 · 같은 단위(행복 목표). 원석은 먹지 못한다(빚 칸 없음):
+//     unit = Σ 그 자리 광물 몫 × max(그 마을 원석 값, 순수출가) × λ · rest = 한 사람이 한 시간 쉰 값(어부와 같은 줄).
+//     mix = { 원석 품목: 몫 }(쪼개기 켬 — 그 셀에서 나올 광물의 기댓값 몫 · 몫 합 1) · 없으면 `ore` 한 칸(쪼개기 끔). 새 수 0 · 주사위 0.
+function t1266OreValue(v, H, key, mix) {
+  if (!v || !v.npcs) return null;
+  const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
+  const { lam, best } = _t1217Lam(v, px, N);
+  const M = mix && Object.keys(mix).length ? mix : { ore: 1 };
+  let p = 0;
+  for (const id in M) { const f = M[id]; if (!(f > 0)) continue; const nev = v._world ? netExportValue(v._world, v, id) : 0; p += f * Math.max(px[id] || 0, nev || 0); }
+  return { N, H, unit: p * lam, p, lam, best, rest: H > 0 ? v1.LEISURE_HAPPY_W / (N * H) : Infinity };
 }
 
 // =============================================================================
@@ -23622,7 +23645,7 @@ module.exports = {
   createWorldV2,
   tickWorldV2, tickWorldV2Parts,   // ★[T513] 하루 틱 조각(서버 하루 마감이 여러 프레임에 흘린다 · 정본 한 벌)
   computeShadowPrices,
-  t1217PricesOf, t1217Value, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
+  t1217PricesOf, t1217Value, t1266OreValue, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
   shadowPricesOf,   // ★[T1161 · K13] 값표의 몇 칸만(전 표의 그 칸과 같은 값) — 거래소 견적 · 실행이 부른다
   netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
   haulMul, HORSE_HAUL_MUL, TRANSPORT_COST_PER_1000,   // ★말 사역(2026-08-02e ⑥) — 시대 전/후 비트 동일 검증용

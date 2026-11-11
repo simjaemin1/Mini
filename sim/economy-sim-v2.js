@@ -1020,11 +1020,8 @@ function t1217PricesOf(v, key) {   // key = 시간 열쇠를 부르는 쪽이 �
 //   ★[T1217] 어부 한 단위 · 한 시간의 값(행복 목표 단위 · v1 머리말) — 서버가 낮 시간 수 H(정본 운영 하루 × 낮 비율 ÷ 게임 1시간)를 준다.
 //     unit = 빚이 있으면 1 ÷ (N × 죽음 날 수) · 없으면 max(그 마을 생선 값, 순수출가) × λ (λ = 행복 물건 하나의 기울기 ÷ 그 값 중 가장 큰 것 — 세계 어디에도 없는 물건은 뺀다)
 //     rest = 한 사람이 한 시간 쉰 값 = `LEISURE_HAPPY_W` ÷ (N × H)
-function t1217Value(v, H, key) {
-  if (!v || !v.npcs) return null;
-  const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
-  const fd = v1.T1074_FOOD_DEBT ? v1.foodDebtOf(v) : null, debt = fd ? fd.mean : 0;
-  const vEat = debt > 0 ? 1 / (N * v1.t1197DieDays()) : 0;
+//   ★[T1217] 행복 물건 하나의 기울기 ÷ 그 값 중 가장 큰 것(λ · 세계 어디에도 없는 물건은 뺀다) — 어부 · ★[T1266] 광부 한 시간 값이 같은 함수를 읽는다(사본 0 · 종전 줄을 함수로 옮김 · 값 무변).
+function _t1217Lam(v, px, N) {
   let lam = 0, best = null;
   for (const r of TRADABLE) {
     const p = px[r]; if (!(p > 0)) continue;
@@ -1032,10 +1029,30 @@ function t1217Value(v, H, key) {
     const ws = _worldStockOf(v, r); if (ws && !(ws.stock > 0)) continue;
     const l = mu / p; if (l > lam) { lam = l; best = r; }
   }
+  return { lam, best };
+}
+function t1217Value(v, H, key) {
+  if (!v || !v.npcs) return null;
+  const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
+  const fd = v1.T1074_FOOD_DEBT ? v1.foodDebtOf(v) : null, debt = fd ? fd.mean : 0;
+  const vEat = debt > 0 ? 1 / (N * v1.t1197DieDays()) : 0;
+  const { lam, best } = _t1217Lam(v, px, N);
   //   생선 한 단위 = 곳간 식량 한 단위(econ `totalFoodEquivalent` 1:1 — 먹으면 그만큼 다른 식량이 남는다) ⇒ 그 시세 = 생선 값 · 식량 값 중 큰 쪽(· 이웃이 사 주는 순수취)
   const pFish = px.fish || 0, pFood = px.food || 0, nev = v._world ? netExportValue(v._world, v, 'fish') : 0;
   const vSur = Math.max(pFish, pFood, nev) * lam;
   return { N, H, unit: vEat > 0 ? vEat : vSur, vEat, vSur, lam, best, pFish, pFood, nev, debt, rest: H > 0 ? v1.LEISURE_HAPPY_W / (N * H) : Infinity };
+}
+//   ★★[T1266 · 캐논 797 "몸이 한 일만 센다"] 광부 원석 한 단위 · 한 시간의 값 — 어부(위)와 같은 꼴 · 같은 단위(행복 목표). 원석은 먹지 못한다(빚 칸 없음):
+//     unit = Σ 그 자리 광물 몫 × max(그 마을 원석 값, 순수출가) × λ · rest = 한 사람이 한 시간 쉰 값(어부와 같은 줄).
+//     mix = { 원석 품목: 몫 }(쪼개기 켬 — 그 셀에서 나올 광물의 기댓값 몫 · 몫 합 1) · 없으면 `ore` 한 칸(쪼개기 끔). 새 수 0 · 주사위 0.
+function t1266OreValue(v, H, key, mix) {
+  if (!v || !v.npcs) return null;
+  const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
+  const { lam, best } = _t1217Lam(v, px, N);
+  const M = mix && Object.keys(mix).length ? mix : { ore: 1 };
+  let p = 0;
+  for (const id in M) { const f = M[id]; if (!(f > 0)) continue; const nev = v._world ? netExportValue(v._world, v, id) : 0; p += f * Math.max(px[id] || 0, nev || 0); }
+  return { N, H, unit: p * lam, p, lam, best, rest: H > 0 ? v1.LEISURE_HAPPY_W / (N * H) : Infinity };
 }
 
 // =============================================================================
@@ -3397,7 +3414,7 @@ module.exports = {
   createWorldV2,
   tickWorldV2, tickWorldV2Parts,   // ★[T513] 하루 틱 조각(서버 하루 마감이 여러 프레임에 흘린다 · 정본 한 벌)
   computeShadowPrices,
-  t1217PricesOf, t1217Value, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
+  t1217PricesOf, t1217Value, t1266OreValue, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
   shadowPricesOf,   // ★[T1161 · K13] 값표의 몇 칸만(전 표의 그 칸과 같은 값) — 거래소 견적 · 실행이 부른다
   netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
   haulMul, HORSE_HAUL_MUL, TRANSPORT_COST_PER_1000,   // ★말 사역(2026-08-02e ⑥) — 시대 전/후 비트 동일 검증용

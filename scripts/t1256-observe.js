@@ -107,6 +107,7 @@ function stateOf(npc) {   // t1243-observe `stateOf`(= t1231) 가름 + '채광'(
   if (REST.has(act)) return mv ? 'wander' : 'rest';
   return mv ? 'wander' : 'rest';
 }
+module.exports.stateOf = stateOf;   // ★[T1266] 관찰기 `t1266-observe.js` 가 같은 가름을 읽는다(사본 0 · 이 파일 동작 무변)
 const _cellSets = new Map();   // 마을 이름 → { arr, set }
 function _oreSet(vil) {
   const arr = vil._oreCells || null; let o = _cellSets.get(vil.name);
