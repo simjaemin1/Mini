@@ -4,7 +4,9 @@
 //   쓰는 법: node scripts/t1266-table.js <켬 머리> <끔 머리> [표.md] [요약.json]   (머리 = 판 JSON 경로에서 `.json` 을 뗀 것)
 //   날 d 칸 = 날 d 머리(econ 틱 앞)의 값 · 흐름 칸은 그 앞 10날(d−9 … d 머리 줄 = d−10 … d−1 몫)의 합 · 평균.
 //   몸 상태(t1256 `stateOf`) → 채광(mine) · 걸음(walk) · 쉼(rest + wander) · 잠(sleep) · 그 밖(eat · work · other).
-//   ★미끼 칸(`noSwingIn`): 몸이 안 친 마을-날(`_t724Walk` 0)에 몸 원석이 곳간에 든 마을-날 수 — 0 이어야 한다(켬 판 · 끔 판 둘 다).
+//   ★보존 칸(미끼 칸 — 둘 다 참이어야 한다 · 켬 판 · 끔 판): ⓐ 곳간에 든 몸 원석 kg 누계 ≤ 몸이 친 kg 누계(`probe.t724.kg` — 차 = 아직 손에 든 몫)
+//     ⓑ econ 원석 산출 누계(`dailyProductionBuf` 원석 칸 · 날 머리 줄 = 어제) ≤ 몸 원석 곳간 단위 누계 — 수식 원석 0(몸이 안 친 원석이 안 든다).
+//     ⚠"몸이 안 친 마을-날에 든 원석" 은 칸이 될 수 없다 — 전날 친 손이 이튿날 곳간에 든다(끔 판에도 선다 · 첫 표 판에서 확인).
 const fs = require('fs');
 const [onH, offH, outMd, outJson] = process.argv.slice(2);
 if (!onH || !offH) { console.error('쓰는 법: node scripts/t1266-table.js <켬 머리> <끔 머리> [표.md] [요약.json]'); process.exit(2); }
@@ -24,8 +26,12 @@ function states(X, d0, d1, vname) {   // 날 d0 … d1(포함) 표본 몫
 function cells(X, d) {
   const A = X.a, I = (n) => A.dcols.indexOf(n), kgU = A.kgU || 5, head = A.day[d]; if (!head) return null;
   const at = (k) => sum(head.map((r) => r[I(k)]));
-  let bodyU = 0, nW = 0, noSwingIn = 0;
-  for (let k = d - 9; k <= d; k++) { const rows = A.day[k]; if (!rows) continue; nW++; for (const r of rows) { const u = sum(Object.values(r[I('bodyInY')] || {})); bodyU += u; if (u > 1e-9 && !(r[I('walkY')] > 0)) noSwingIn++; } }
+  let bodyU = 0, nW = 0, cumIn = 0, cumProd = 0;
+  for (let k = d - 9; k <= d; k++) { const rows = A.day[k]; if (!rows) continue; nW++; for (const r of rows) { const u = sum(Object.values(r[I('bodyInY')] || {})); bodyU += u; } }
+  for (let k = 1; k <= d; k++) { const rows = A.day[k]; if (!rows) continue; for (const r of rows) { cumIn += sum(Object.values(r[I('bodyInY')] || {})); cumProd += r[I('oreProdY')] || 0; } }
+  const cumKg = (A.g[d] && A.g[d].t724 && A.g[d].t724.kg) || 0;
+  const noSwingIn = (cumIn * kgU <= cumKg + 1e-6 && cumProd <= cumIn + 1e-6) ? '참' : '✗';
+  const consv = f0(cumIn * kgU) + ' ≤ ' + f0(cumKg) + ' kg · ' + f1(cumProd) + ' ≤ ' + f1(cumIn) + ' 단위 ' + noSwingIn;
   const g = A.g[d] && A.g[d].t724, g0 = A.g[d - 10] && A.g[d - 10].t724;
   const sw = g ? (g.sw || 0) - ((g0 && g0.sw) || 0) : null;
   const st = states(X, d - 10, d - 1);
@@ -33,7 +39,7 @@ function cells(X, d) {
   const popM = B.tot ? sum(Object.values(B.tot).map((t) => t[3])) : null;
   const cpu = X.c && X.c.cpu ? X.c.cpu.filter((r) => r[0] > d - 10 && r[0] <= d).map((r) => r[1]) : [];
   const t66 = B.t66 || null, t660 = (X.b.g[d - 10] || {}).t66 || null;
-  return { d, miners: at('eMiner'), bMiner: at('bMiner'), oreStock: at('oreStock'), kgDay: bodyU * kgU / (nW || 1), sw, st, bronze: at('bronzeW'), smelt: at('smeltTot'), px: pxN ? pxS / pxN : null, popM, cpu: cpu.length ? cpu.sort((a, b) => a - b)[cpu.length >> 1] : null, noSwingIn,
+  return { d, consv, miners: at('eMiner'), bMiner: at('bMiner'), oreStock: at('oreStock'), kgDay: bodyU * kgU / (nW || 1), sw, st, bronze: at('bronzeW'), smelt: at('smeltTot'), px: pxN ? pxS / pxN : null, popM, cpu: cpu.length ? cpu.sort((a, b) => a - b)[cpu.length >> 1] : null, noSwingIn,
     hours: t66 ? t66.hours - ((t660 && t660.hours) || 0) : null, stop: t66 ? t66.stop - ((t660 && t660.stop) || 0) : null };
 }
 function art(X) {   // 대장장이 작업표 — 몸 · 이튿날 일괄 · 사흘 넘김 · 선 것(명목) · 원석 재료(녹임) · 무기(청동) 낸 것
@@ -46,11 +52,11 @@ function pick(X, name) {   // 마을 하나의 셀 고르기 까닭(끝 날 누�
 }
 function summary(X) {
   const L = lastDay(X), A = X.a, I = (n) => A.dcols.indexOf(n), kgU = A.kgU || 5;
-  let bodyU = 0, nD = 0, noSwingIn = 0, mvDays = 0; const byV = {};
-  for (let k = 2; k <= L; k++) { const rows = A.day[k]; if (!rows) continue; nD++; for (const r of rows) { const u = sum(Object.values(r[I('bodyInY')] || {})); bodyU += u; byV[r[0]] = (byV[r[0]] || 0) + u * kgU; if (u > 1e-9 && !(r[I('walkY')] > 0)) noSwingIn++; if (r[I('walkY')] > 0) mvDays++; } }
+  let bodyU = 0, nD = 0, mvDays = 0, prodU = 0; const byV = {};
+  for (let k = 2; k <= L; k++) { const rows = A.day[k]; if (!rows) continue; nD++; for (const r of rows) { const u = sum(Object.values(r[I('bodyInY')] || {})); bodyU += u; prodU += r[I('oreProdY')] || 0; byV[r[0]] = (byV[r[0]] || 0) + u * kgU; if (r[I('walkY')] > 0) mvDays++; } }
   const st = states(X, 11, L - 1), t66 = (X.b.g[L] || {}).t66, g = (A.g[L] || {}).t724 || {};
   const head = A.day[L];
-  return { last: L, kgDay: bodyU * kgU / (nD || 1), bodyKg: bodyU * kgU, byV, st, noSwingIn, mineVillageDays: mvDays, sw: g.sw, done: g.done, none: g.none, bronze: head ? sum(head.map((r) => r[I('bronzeW')])) : null, smelt: head ? sum(head.map((r) => r[I('smeltTot')])) : null,
+  return { last: L, kgDay: bodyU * kgU / (nD || 1), bodyKg: bodyU * kgU, byV, st, consv: { inKg: bodyU * kgU, swingKg: g.kg, prodU, inU: bodyU, ok: bodyU * kgU <= (g.kg || 0) + 1e-6 && prodU <= bodyU + 1e-6 }, mineVillageDays: mvDays, sw: g.sw, done: g.done, none: g.none, bronze: head ? sum(head.map((r) => r[I('bronzeW')])) : null, smelt: head ? sum(head.map((r) => r[I('smeltTot')])) : null,
     oreStock: head ? sum(head.map((r) => r[I('oreStock')])) : null, t66, art: art(X), pick14: pick(X, '어촌14'), st14: states(X, 11, L - 1, '어촌14'), pop: X.j && X.j.pop != null ? X.j.pop : null, j: X.j };
 }
 const S = { on: summary(R.on), off: summary(R.off) };
@@ -68,7 +74,7 @@ row('청동 무기 누계', (c) => f2(c.bronze));
 row('원석 시세(광산 마을 · 품목 평균 `_priceCache`)', (c) => f2(c.px));
 row('광산 마을 인구', (c) => f0(c.popM));
 row('한 시간 값 물음 · 멈춤(10날 · 켬만)', (c) => c.hours == null ? '—' : f0(c.hours) + ' · ' + f0(c.stop));
-row('미끼 칸: 몸이 안 친 날 원석 든 마을-날(10날)', (c) => String(c.noSwingIn));
+row('보존(누계): 곳간 든 kg ≤ 몸이 친 kg · econ 원석 산출 ≤ 몸 원석 단위', (c) => c.consv);
 row('하루 CPU 초(10날 가운데)', (c) => f1(c.cpu));
 const md = out.join('\n');
 console.log(md);
