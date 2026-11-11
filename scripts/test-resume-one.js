@@ -11,6 +11,10 @@
 //      끔: 빈 쌍이 둘 이상 줄에 서서 교역로 일을 서로 버린다(자명 통과 금지 — 세계에 따라 몇 분 ~ 25분 묶인다 · 시간은 단언 안 함)
 //      켬: 줄이 끝난다(`done` · 기다림 0) · 끔보다 일찍(또는 같이) · 덜 버린다 · 끝난 뒤 공유 예산 넘침이 틱의 일부
 //   ★값: 이 손잡이는 몸이 서는 때를 바꾼다(끔은 몸이 안 선다 — 그래서 고친다). econ 장부는 몸을 안 읽는다 — 서버 기준선(캐러밴 0 판) 바이트 같음으로 따로 본다.
+//   ★[T1267] ★ 줄의 "일찍(또는 같이)"는 **표본 해상도**로 가른다 — 두 팔은 10초 표본(`SAMPLE_MS`)으로 따로 잰다. 끝 시각 차가 한 표본 안이면 "같이"
+//     (T1261 빨강 1/10 = 끔 1,311 · 켬 1,312초 — 자의 해상도보다 고운 차이를 판정에 쓰지 않는다 · PM 판정 T1261 회부 1). 한 표본 이상 늦으면 빨강.
+//     ③ 미끼 — 같은 판의 실제 표본 줄을 고쳐 켬 끝을 **한 표본 늦게** 둔 사본은 빨강 · 한 표본 안(1초 모자람) 늦은 사본은 "같이"(초록).
+//   [T1267] `T1267_JSON=<파일>` — 부팅 세계 지문(마을 · 몸 · 되살릴 줄 · 쌍) · 두 팔 표본 줄을 적는다(판정 밖 · 두 봉우리 가르기).
 // 실행: node scripts/test-resume-one.js
 'use strict';
 const path = require('path');
@@ -44,6 +48,15 @@ const perf = (port) => new Promise((res) => { const q = http.get({ host: '127.0.
 //     길을 새로 파는 빈 쌍이 안 생긴다(끔 판 "첫 기다림 0 · 버림 0" — 자명 통과 금지 ✗). T896 이 다루는 판은 몸 걸음 상태 없는 되살림이다.
 //   [T1174] 두 팔에 `T1061_RESUME_SLICE=0` 도 묶는다 — T1061 이 켬 기본이 되어 끔 팔도 틱 몫이 바닥나면 빈 쌍을 붙들어 "버림 0"(자명 통과 금지 ✗)이 됐다. 이 하네스는 T896 한 손잡이만 가른다.
 const base = 38000 + (process.pid % 400);
+//   ★[T1267] 표본 해상도 판정 — 켬 끝(b) · 끔 끝(a · 없으면 창 안 안 끝남)을 초로 받아 'early' | 'same' | 'late' | 'none'(켬 안 끝남)
+const SAMPLE_MS = 10000, RES_S = SAMPLE_MS / 1000;
+function doneOrder(a, b) {
+  if (!b) return 'none';
+  if (!a) return 'early';   // 끔이 창 안에 안 끝났다(켬이 끝난 그 표본에서 같이 멈춘다)
+  const d = b - a;
+  return d <= -RES_S ? 'early' : d < RES_S ? 'same' : 'late';
+}
+const doneAt = (R) => (R.find((r) => r.t775 && r.t775.done) || {}).s;
 delete process.env.T896_RESUME_ONE;
 
 (async () => {
@@ -58,6 +71,19 @@ delete process.env.T896_RESUME_ONE;
   await Promise.race([zx, sleep(30000)]); try { z.kill('SIGKILL'); } catch (e) {} await zx;
   let mc = 0; try { const db = new DatabaseSync(S, { readOnly: true }); const m = db.prepare('select data from world_meta').get(); mc = m ? (JSON.parse(m.data).caravans || []).length : 0; db.close(); } catch (e) {}
   ok(mc >= 10, '[상황] 저장된 세계 — 길 위 캐러밴이 메타에 실렸다', `캐러밴 ${mc}`);
+  //   ★[T1267] 부팅 세계 지문(판정 밖) — 저장 DB 에서: 마을 수 · 인구 합 · 저장 날 · 되살릴 줄(캐러밴) 수 · 가는/귀환 · 다른 쌍 수 · 쌍 거리(칸 — 마을 자리 견줌)
+  const FP = { villages: 0, pop: 0, day: null, caravans: mc, out: 0, inb: 0, pairs: 0, pairMax: 0, pairMean: 0 };
+  try {
+    const db = new DatabaseSync(S, { readOnly: true });
+    const vs = db.prepare('select name, cx, cy, population, day from villages').all(); FP.villages = vs.length;
+    const at = new Map(vs.map((v) => [v.name, v])); for (const v of vs) { FP.pop += v.population | 0; FP.day = Math.max(FP.day | 0, v.day | 0); }
+    const m = db.prepare('select data from world_meta').get(); const cs = m ? (JSON.parse(m.data).caravans || []) : [];
+    const pr = new Map();
+    for (const c of cs) { if (c.state === 'inbound') FP.inb++; else FP.out++; const k = [c.from, c.to].sort().join('|'); if (!pr.has(k)) { const A = at.get(c.from), B = at.get(c.to); pr.set(k, A && B ? Math.hypot(A.cx - B.cx, A.cy - B.cy) : null); } }
+    const ds = [...pr.values()].filter((d) => d != null); FP.pairs = pr.size; FP.pairMax = ds.length ? Math.round(Math.max(...ds)) : 0; FP.pairMean = ds.length ? Math.round(ds.reduce((x, y) => x + y, 0) / ds.length) : 0;
+    db.close();
+  } catch (e) { FP.err = String(e.message).slice(0, 80); }
+  console.log(`  [지문] 마을 ${FP.villages} · 인구 ${FP.pop} · 저장 날 ${FP.day} · 되살릴 줄 ${FP.caravans}(가는 ${FP.out} · 귀환 ${FP.inb}) · 쌍 ${FP.pairs}(거리 평균 ${FP.pairMean} · 최장 ${FP.pairMax})`);
   //   ★[T1261] 관측 창은 시간이 아니라 **켬 팔의 되살림 끝 신호**(`/perf` `t775.done`)를 기다린다 — 종전 창(표본 18 ≈ 191초)은 세계가 커지자
   //     켬 판이 같은 일을 다 하기 전에 닫혔다(첫 빨강 착지 land1058 `9783cbea` · 끝 160초 → 480초 · 창 2배 안 끝남 · 4배 끝 — 보고 T1261).
   //     끔 팔은 켬 팔이 끝나는 그 순간까지(또는 저 스스로 끝날 때까지) 같이 잰다 — 두 팔이 **같은 창**을 본다(단언 무변).
@@ -68,7 +94,7 @@ delete process.env.T896_RESUME_ONE;
     const port = base + 401 + k; const env = zoneEnv(db, port, Object.assign({ T910_SIG_PURE: '0', T1026_SLOT_KEEP: '0', T1061_RESUME_SLICE: '0', T762_CARAVAN_BODY: '0' }, on ? {} : { T896_RESUME_ONE: '0' }));   // ★[PM land1034] T1026_SLOT_KEEP 켬 기본이면 끔 판도 안 버린다(T896 이 고친 꼴을 T1026 이 문 전부로 넓힘) — 이 판은 T896 한 손잡이만 가르므로 둘 다 0 · ★[PM 착지 10-24d] 판 꾸밈: T910 켬 기본이면 다시 뜬 판이 길 캐시를 지켜 빈 쌍이 안 선다 — 이 하네스가 재는 상황(캐시를 버린 재기동 · 빈 쌍 줄)은 `T910_SIG_PURE=0` 으로 세운다(두 팔 같게 · 단언 무변)   // ★[T910 ⓪] 켬 = 빈 값(기본) · 끔 = '0'
     const c = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env, stdio: 'ignore' }); const cx = exitOf(c, NET_MS + 300000);
     const rows = []; const t0 = Date.now();
-    while (Date.now() - t0 < NET_MS) { await sleep(10000); const p = await perf(port); if (!p || !p.econTick) continue;
+    while (Date.now() - t0 < NET_MS) { await sleep(SAMPLE_MS); const p = await perf(port); if (!p || !p.econTick) continue;
       const pr = p.econTick.probe || {}, sb = p.sharedBudget || {};
       rows.push({ s: (Date.now() - t0) / 1000 | 0, t775: pr.t775 || null, jobs: pr.pathJobs | 0, drop: pr.pathDrop | 0, ticks: sb.ticks | 0, over: sb.over | 0, p50: p.tick && p.tick.ms && p.tick.ms.p50 });
       const L = rows[rows.length - 1]; if (rows.length >= 6 && L.t775 && (L.t775.done || (!on && ev.onDone))) { if (on) ev.onDone = true; break; } }
@@ -78,18 +104,27 @@ delete process.env.T896_RESUME_ONE;
   const a0 = first(A), a1 = last(A), b1 = last(B);
   ok(A.length >= 6 && B.length >= 1 && a1.t775 && b1.t775, '[상황] 두 판이 떴고 되살림 줄이 섰다(관측 실패 0)', `표본 ${A.length} · ${B.length}`);
   const aQ = a1.t775 ? a1.t775.wait : -1, aTicks = a1.ticks - a0.ticks, aJobs = a1.jobs - a0.jobs, aOver = a1.over - a0.over;
-  const bDoneAt = (B.find((r) => r.t775 && r.t775.done) || {}).s, aDoneAt = (A.find((r) => r.t775 && r.t775.done) || {}).s;
+  const bDoneAt = doneAt(B), aDoneAt = doneAt(A);
   const aDrop = a1.drop - a0.drop, b0 = first(B), bDrop = (B.find((r) => r.t775 && r.t775.done) || b1).drop - (b0.drop | 0);
   //   ★판마다 저장된 세계가 다르다(되살릴 쌍의 길이 · 수) — 끔이 몇 분 묶이는 판도(실측 47 대 25분) 1분 남짓에 풀리는 판도 있다. 그래서 시간이 아니라
   //     꼴을 본다: 끔은 되살림 줄이 슬롯을 서로 버린다(버림 > 0 · 일 시작이 몸 수를 크게 넘는다) · 켬은 그보다 일찍 끝나고 덜 버린다.
   ok(a0.t775 && a0.t775.wait >= 2 && aDrop > 0, '[상황 · 자명 통과 금지] 끔: 빈 쌍이 둘 이상 줄에 서서 교역로 일을 서로 버렸다', `첫 기다림 ${a0.t775 && a0.t775.wait} · 버림 ${aDrop} · 일 시작 ${a1.jobs - a0.jobs}`);
-  ok(bDoneAt && (!aDoneAt || bDoneAt <= aDoneAt) && bDrop < aDrop, '★켬: 끔보다 일찍(또는 같이) 끝나고 덜 버린다', `끝 끔 ${aDoneAt || '안 끝남(' + a1.s + '초)'} · 켬 ${bDoneAt}초 · 버림 끔 ${aDrop} · 켬 ${bDrop}`);
+  const ord = doneOrder(aDoneAt, bDoneAt);
+  ok((ord === 'early' || ord === 'same') && bDrop < aDrop, `★켬: 끔보다 일찍(또는 같이 — 표본 ${RES_S}초 해상도) 끝나고 덜 버린다`, `끝 끔 ${aDoneAt || '안 끝남(' + a1.s + '초)'} · 켬 ${bDoneAt}초 → ${ord} · 버림 끔 ${aDrop} · 켬 ${bDrop}`);
+  //   ③ 미끼 — 같은 판의 실제 줄을 고친 사본에 같은 자(`doneOrder`)를 댄다: 켬 끝을 끔 끝(없으면 켬 끝 그 자리)보다 **한 표본** 늦게 → 빨강 · 한 표본에 1초 모자라게 → 같이
+  {
+    const ref = aDoneAt || bDoneAt;
+    const late = (dt) => { const B2 = B.map((r) => Object.assign({}, r, { t775: r.t775 && Object.assign({}, r.t775, { done: false }) })); const L = B2[B2.length - 1]; B2.push(Object.assign({}, L, { s: ref + dt, t775: Object.assign({}, L.t775, { done: true }) })); return doneOrder(ref, doneAt(B2)); };
+    const lt = bDoneAt ? late(RES_S) : 'x', sm = bDoneAt ? late(RES_S - 1) : 'x';
+    ok(lt === 'late' && sm === 'same', '③ 미끼 — 켬 끝이 한 표본 늦은 사본은 빨강(late) · 한 표본 안(1초 모자람)은 같이(same) — 같은 자', `한 표본 늦음 → ${lt} · ${RES_S - 1}초 늦음 → ${sm}`);
+  }
   console.log(`  (끔 기다림 ${a0.t775 && a0.t775.wait} → ${aQ} · 틱 ${aTicks} · 일 시작 ${aJobs} · 넘침 ${aOver})`);
   ok(b1.t775 && b1.t775.done === true && b1.t775.wait === 0, '★★켬: 되살림 줄이 끝났다(기다림 0)', JSON.stringify(b1.t775));
   ok(b1.t775 && b1.t775.placed + b1.t775.lost + (b1.t775.cap | 0) >= 1 && (b1.t775.held896 | 0) > 0, '켬: 몸을 세웠고(자리 잡음) 빈 쌍을 실제로 미뤘다(자명 통과 금지 — 켬 줄이 돈다)', `자리 ${b1.t775 && b1.t775.placed} · 잃음 ${b1.t775 && b1.t775.lost} · 미룸 ${b1.t775 && b1.t775.held896}`);
   const bL = B.slice(-3); const bTicks = bL.length >= 2 ? bL[bL.length - 1].ticks - bL[0].ticks : 0, bOver = bL.length >= 2 ? bL[bL.length - 1].over - bL[0].over : 0;
   ok(bTicks > 0 && bOver < 0.5 * bTicks, '켬: 줄이 끝난 뒤 공유 예산 넘침이 틱의 절반 아래(사람 결정 문이 틱마다 잘리지 않는다)', `틱 ${bTicks} · 넘침 ${bOver}`);
   console.log(`  (틱 p50 ms — 끔 ${a1.p50} · 켬 ${b1.p50})`);
+  if (process.env.T1267_JSON) { try { fs.writeFileSync(process.env.T1267_JSON, JSON.stringify({ fp: FP, aDoneAt: aDoneAt || null, bDoneAt: bDoneAt || null, ord, aDrop, bDrop, A, B })); } catch (e) {} }
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {}
   console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);
   process.exit(fail ? 1 : 0);
