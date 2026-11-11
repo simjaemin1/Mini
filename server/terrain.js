@@ -594,6 +594,21 @@ function oreMineralAt(zoneId, x, y, rnd) {
   for (const e of c) { r -= e.p; if (r <= 0) return _veinMineralPick(e.o, rnd); }
   return _veinMineralPick(c[c.length - 1].o, rnd);
 }
+// ★[T1266] `oreMineralAt` 추첨의 기댓값 몫 — { 광물: 몫 }(몫 합 1 · 같은 p_i 비례 · 같은 광맥 안 2차 분포 · 주사위 0). 광부 몸의 한 시간 값이 읽는다(값을 매길 뿐 · 캐는 광물은 여전히 추첨).
+function oreMixAt(zoneId, x, y) {
+  const c = oreCandidatesAt(zoneId, x, y);
+  if (!c.length) return null;
+  const out = {};
+  const vein = (o, w) => {
+    const dist = o && o.minerals;
+    let tot = 0; if (dist && typeof dist === 'object') for (const k in dist) { const v = dist[k]; if (v > 0) tot += v; }
+    if (!(tot > 0)) { const m = (o && o.mineral) || 'iron'; out[m] = (out[m] || 0) + w; return; }
+    for (const k in dist) { const v = dist[k]; if (v > 0) out[k] = (out[k] || 0) + w * v / tot; }
+  };
+  let s = 0; for (const e of c) s += e.p;
+  if (!(s > 0)) vein(c[0].o, 1); else for (const e of c) if (e.p > 0) vein(e.o, e.p / s);
+  return out;
+}
 // ★[11차 재민 확인 "모든 광맥이 원 모양이 아니라 무작위 모양인 거 맞지?"]
 //   ...아니었다. p(품위)만 무작위였고 **경계는 완벽한 원**이었다(셀맵·oreShare·villages 전부 원을 봄).
 //   이제 반경을 저주파 노이즈로 **왜곡**해 경계 자체를 무작위로 만든다:
@@ -743,7 +758,7 @@ if (typeof module !== 'undefined' && module.exports) {
     oreProbAt,
     oreProbMajorAt,
     oreCandidatesAt,
-    oreMineralAt,
+    oreMineralAt, oreMixAt,
     getTileType,
   };
 }
@@ -762,7 +777,7 @@ if (typeof window !== 'undefined') {
     oreProbAt,
     oreProbMajorAt,
     oreCandidatesAt,
-    oreMineralAt,
+    oreMineralAt, oreMixAt,
     getTileType,
   };
 }

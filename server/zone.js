@@ -5761,6 +5761,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   },
   // ★NPC 경제가 보는 p 는 **자잘을 뺀 합성**이다(isMajorOreAt 과 짝) — 자잘은 플레이어 전용
   oreMineralAt:(px,py,rng)=>_terrain.oreMineralAt?_terrain.oreMineralAt(ZONE_ID,px,py,rng):null,   // T1188: 사람과 같은 실제 광맥의 광물
+  oreMixAt:(px,py)=>_terrain.oreMixAt?_terrain.oreMixAt(ZONE_ID,px,py):null,   // ★[T1266] 그 자리 광물 몫의 기댓값(광부 몸의 한 시간 값 · 켬일 때만 부른다)
   oreProbAt: (px, py) => (_terrain.oreProbMajorAt ? _terrain.oreProbMajorAt(ZONE_ID, px, py) : 0.3),
   ORE_K: require('./specialty').ORE_K, NPC_MINE_PER_DAY: require('./specialty').NPC_MINE_PER_DAY,
   // ★NPC 광부도 **플레이어와 같은 공식**으로 깊이 페널티를 겪고 숙련으로 상쇄한다(축이 하나다)

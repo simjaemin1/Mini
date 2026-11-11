@@ -2580,10 +2580,16 @@ function forageActOn(v) { return !!(T347_FORAGE_ACT && v && (v._t347Cells | 0) >
 //   ⚠수요 문도 같은 몸통이다(`actDemandCap` · D = 그 마을이 오늘 수식으로 낼 원석 `_oreOutLast`) — 곳간이 안 받은 몫은 부르는 쪽 손에 남는다(T544 꼴).
 //   ⚠조성(`oreMix`)은 **넣는 몫만큼** 접는다 — 종전 수식 갈래가 `addProduce` 앞에서 하던 그 접기(같은 함수 · 같은 자리 순서: 재고 가산 전).
 //   ★새 수 0.
+// ★★★[T1266 2026-11-11 · 캐논 797 "몸이 한 일만 센다" · T1256 회부 4] **광부 원석의 양 = 몸이 친 만큼** — 손잡이 `T1266_ORE_BODY`(**끔 기본** · `=1` 만 켬 · 끔 = 종전 바이트).
+//   종전: 몸은 그날 수식 몫 D(`_oreOutLast`)에 닿으면 집에 가고(`mineDemandLeft`) 곳간 입구도 D 로 잘랐다 — 원석 양의 크기는 수식이 정했다(T1256: 몸 원석 = D 1 : 1).
+//   켬: 곳간 입구가 D 로 안 자른다(친 만큼 다 든다 · 어부 T1217 `fishToGranary` 그 꼴). 몸이 그날 일을 그만두는 문은 서버 몸 걸음(`_t724BodyStep`)이
+//     게임 한 시간마다 견주는 "다음 한 시간 캔 값 ↔ 한 시간 쉰 값"(v2 `t1266OreValue` — 어부 `t1217Value` 와 같은 λ · 같은 쉰 값)이다.
+//   수요는 몸이 일을 고르는 값(시세 · 그림자 값)으로만 닿는다. 헤드리스 랩은 몸 호스트가 없어 이 손잡이가 아무 줄도 안 바꾼다(곳간 입구는 몸만 부른다).
+const T1266_ORE_BODY = (typeof process !== 'undefined' && process.env && process.env.T1266_ORE_BODY === '1');
 function mineToGranary(v, units, mineral) {
   if (!T724_MINE_ACT || !v || !v.storage) return 0;
   if(T1188_ORE_SPLIT&&!OreGoods.idOf(mineral))return 0;
-  const u = actDemandCap(v, units, (v._oreOutLast || 0), '_t724InflowToday');
+  const u = T1266_ORE_BODY ? ((typeof units === 'number' && units > 0) ? units : 0) : actDemandCap(v, units, (v._oreOutLast || 0), '_t724InflowToday');   // ★[T1266] 켬 = 친 만큼 다 든다
   if (!(u > 0)) return 0;
   if(T1188_ORE_SPLIT){const k=OreGoods.idOf(mineral),g=actToGranary(v,k,u,'_t724InflowToday','_t724InN');if(g>0){const d=v._t1188InByItem||(v._t1188InByItem={});d[k]=(d[k]||0)+g;}return g;}
   if (v.land && v.land.oreMix) foldOreMix(v, oreTotal(v), u, v.land.oreMix);
@@ -7544,7 +7550,7 @@ module.exports = {
   T400_BUILD_ACT, T1054_DECAY_WOOD, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, actMaterialsPlaced, returnActMaterials, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
-  mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT,
+  mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT, T1266_ORE_BODY,   // ★[T1266] 광부 원석 양 = 몸이 친 만큼(끔 기본)
   T1196_ARTISAN_ACT, T1196_SET, artisanActOn, artisanTake, artisanGive, t1196Unhide,   // ★[T1196] 장인 작업장
   __t1196: { begin: _t1196Begin, end: _t1196End, day: _t1196Day, seat: _t1196Seat },   // ★[T1196] 하네스 문(운영 경로는 안 부른다)
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)

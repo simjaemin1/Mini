@@ -40,7 +40,7 @@ if (OUT && process.env.T577_SEED && /zone\.js$/.test(process.argv[1] || '')) {
             m.push([v.name, +(L0.ore || 0).toFixed(2), N, mn, +tot.toFixed(2), typed, +(+out).toFixed(3), +(v._metalGlut || 0).toFixed(3), +inCum.toFixed(3), +(v._t724InflowToday || 0).toFixed(3)]);
           }
           let t724 = null, outLast = null;
-          try { const V = require(path.join(ROOT, 'server', 'villages')); const tp = V.tickPerf ? V.tickPerf() : null; const P = tp && tp.t724;
+          try { const V = require(path.join(ROOT, 'server', 'villages')); const tp = V.tickPerf ? V.tickPerf() : null; const P = tp && tp.probe && tp.probe.t724;   // ★[T1266 · T1256 회부 3] 채굴 셈은 `probeStats()` 안(`tickPerf().probe.t724`) — 겉 `tickPerf().t724` 는 늘 없다(종전 글자가 읽던 자리)
             if (P) t724 = { pulse: P.pulse, sw: P.sw, kg: +(+P.kg).toFixed(2), bodies: P.bodies, gran: P.gran, granU: +(+P.granU).toFixed(3), dusk: P.dusk, duskU: +(+P.duskU).toFixed(3), done: P.done, none: P.none, walk: P.walk, wait: P.wait, repick: P.repick, full: P.full, picks: P.picks }; } catch (e) {}
           let bodyMiners = 0; const acts = {};
           try { const V = require(path.join(ROOT, 'server', 'villages')); const st = V.__labProbe._t740Probe.setup(); const pl = st && st.deps && st.deps.players;   // 인자 없이 = 읽기만
