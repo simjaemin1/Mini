@@ -21,6 +21,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const http = require('http');
+const net = require('net');
 const { spawn } = require('child_process');
 const { DatabaseSync } = require('node:sqlite');
 const ROOT = path.join(__dirname, '..');
@@ -47,7 +48,10 @@ const perf = (port) => new Promise((res) => { const q = http.get({ host: '127.0.
 //   [T1203] 두 팔에 `T762_CARAVAN_BODY=0` 도 묶는다 — 캐러밴 몸(land1048 켬 기본)이면 다시 뜬 캐러밴이 저장된 걸음 상태(T1182 · `_t1182 = T762`)로 곧장 서서
 //     길을 새로 파는 빈 쌍이 안 생긴다(끔 판 "첫 기다림 0 · 버림 0" — 자명 통과 금지 ✗). T896 이 다루는 판은 몸 걸음 상태 없는 되살림이다.
 //   [T1174] 두 팔에 `T1061_RESUME_SLICE=0` 도 묶는다 — T1061 이 켬 기본이 되어 끔 팔도 틱 몫이 바닥나면 빈 쌍을 붙들어 "버림 0"(자명 통과 금지 ✗)이 됐다. 이 하네스는 T896 한 손잡이만 가른다.
-const base = 38000 + (process.pid % 400);
+//   ★[T1267] 포트는 OS 가 고른다 — 종전 `38000 + pid % 400`(팔 = +401 · +402)은 pid 가 1 차이 나는 두 판을 나란히 돌리면 한 판의 켬 포트 = 다른 판의 끔 포트라
+//     뒤에 뜬 서버는 못 묶고 두 판의 표본이 남의 서버를 읽었다(T1267 20판 첫 묶음 — 판 3~9 빨강 7 이 그 꼴 · 끔 팔에 `held896` · 켬 팔에 없음).
+const freePorts = (n) => Promise.all(Array.from({ length: n }, () => new Promise((res, rej) => { const s = net.createServer(); s.on('error', rej); s.listen(0, '127.0.0.1', () => res(s)); })))
+  .then((S) => Promise.all(S.map((s) => new Promise((res) => { const p = s.address().port; s.close(() => res(p)); }))));
 //   ★[T1267] 표본 해상도 판정 — 켬 끝(b) · 끔 끝(a · 없으면 창 안 안 끝남)을 초로 받아 'early' | 'same' | 'late' | 'none'(켬 안 끝남)
 const SAMPLE_MS = 10000, RES_S = SAMPLE_MS / 1000;
 function doneOrder(a, b) {
@@ -60,9 +64,10 @@ const doneAt = (R) => (R.find((r) => r.t775 && r.t775.done) || {}).s;
 delete process.env.T896_RESUME_ONE;
 
 (async () => {
+  const PORTS = await freePorts(3);
   console.log('\n② 판 — 저장 → 끔 · 켬 나란히 다시 띄움');
   const S = path.join(TMP, 'save.db');
-  const z = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env: zoneEnv(S, base, { VILLAGE_DAY_MS: '250' }), stdio: 'ignore' });
+  const z = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env: zoneEnv(S, PORTS[0], { VILLAGE_DAY_MS: '250' }), stdio: 'ignore' });
   const zx = exitOf(z, 900000);
   { const t0 = Date.now();   // 저장 날이 8 을 넘으면(캐러밴이 길에 섰다) SIGTERM — 종료 저장이 마을 행과 메타 행을 한 날로 같이 쓴다 · 상한 10분
     while (Date.now() - t0 < 600000) { await sleep(5000);
@@ -91,7 +96,7 @@ delete process.env.T896_RESUME_ONE;
   const NET_MS = 1500000; const ev = { onDone: false };
   const again = async (tag, on, k) => {
     const db = path.join(TMP, tag + '.db'); for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(S + s, db + s); } catch (e) {} }
-    const port = base + 401 + k; const env = zoneEnv(db, port, Object.assign({ T910_SIG_PURE: '0', T1026_SLOT_KEEP: '0', T1061_RESUME_SLICE: '0', T762_CARAVAN_BODY: '0' }, on ? {} : { T896_RESUME_ONE: '0' }));   // ★[PM land1034] T1026_SLOT_KEEP 켬 기본이면 끔 판도 안 버린다(T896 이 고친 꼴을 T1026 이 문 전부로 넓힘) — 이 판은 T896 한 손잡이만 가르므로 둘 다 0 · ★[PM 착지 10-24d] 판 꾸밈: T910 켬 기본이면 다시 뜬 판이 길 캐시를 지켜 빈 쌍이 안 선다 — 이 하네스가 재는 상황(캐시를 버린 재기동 · 빈 쌍 줄)은 `T910_SIG_PURE=0` 으로 세운다(두 팔 같게 · 단언 무변)   // ★[T910 ⓪] 켬 = 빈 값(기본) · 끔 = '0'
+    const port = PORTS[1 + k]; const env = zoneEnv(db, port, Object.assign({ T910_SIG_PURE: '0', T1026_SLOT_KEEP: '0', T1061_RESUME_SLICE: '0', T762_CARAVAN_BODY: '0' }, on ? {} : { T896_RESUME_ONE: '0' }));   // ★[PM land1034] T1026_SLOT_KEEP 켬 기본이면 끔 판도 안 버린다(T896 이 고친 꼴을 T1026 이 문 전부로 넓힘) — 이 판은 T896 한 손잡이만 가르므로 둘 다 0 · ★[PM 착지 10-24d] 판 꾸밈: T910 켬 기본이면 다시 뜬 판이 길 캐시를 지켜 빈 쌍이 안 선다 — 이 하네스가 재는 상황(캐시를 버린 재기동 · 빈 쌍 줄)은 `T910_SIG_PURE=0` 으로 세운다(두 팔 같게 · 단언 무변)   // ★[T910 ⓪] 켬 = 빈 값(기본) · 끔 = '0'
     const c = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env, stdio: 'ignore' }); const cx = exitOf(c, NET_MS + 300000);
     const rows = []; const t0 = Date.now();
     while (Date.now() - t0 < NET_MS) { await sleep(SAMPLE_MS); const p = await perf(port); if (!p || !p.econTick) continue;
@@ -102,7 +107,9 @@ delete process.env.T896_RESUME_ONE;
   const [A, B] = await Promise.all([again('off', false, 0), again('on', true, 1)]);
   const last = (R) => R[R.length - 1] || {}, first = (R) => R.find((r) => r.t775) || {};
   const a0 = first(A), a1 = last(A), b1 = last(B);
-  ok(A.length >= 6 && B.length >= 1 && a1.t775 && b1.t775, '[상황] 두 판이 떴고 되살림 줄이 섰다(관측 실패 0)', `표본 ${A.length} · ${B.length}`);
+  //   ★[T1267] 팔 정체 — `/perf` 의 `held896` 칸은 켬(T896_RESUME_ONE)일 때만 선다: 끔 팔 표본엔 없고 켬 팔 표본엔 있어야 제 서버를 읽은 것이다
+  const armOk = A.every((r) => !r.t775 || !('held896' in r.t775)) && B.every((r) => !r.t775 || ('held896' in r.t775));
+  ok(A.length >= 6 && B.length >= 1 && a1.t775 && b1.t775 && armOk, '[상황] 두 판이 떴고 되살림 줄이 섰다(관측 실패 0 · 팔마다 제 서버 — 끔 = `held896` 칸 없음 · 켬 = 있음)', `표본 ${A.length} · ${B.length} · 팔 정체 ${armOk ? '맞음' : '어긋남'}`);
   const aQ = a1.t775 ? a1.t775.wait : -1, aTicks = a1.ticks - a0.ticks, aJobs = a1.jobs - a0.jobs, aOver = a1.over - a0.over;
   const bDoneAt = doneAt(B), aDoneAt = doneAt(A);
   const aDrop = a1.drop - a0.drop, b0 = first(B), bDrop = (B.find((r) => r.t775 && r.t775.done) || b1).drop - (b0.drop | 0);
@@ -115,7 +122,7 @@ delete process.env.T896_RESUME_ONE;
   {
     const ref = aDoneAt || bDoneAt;
     const late = (dt) => { const B2 = B.map((r) => Object.assign({}, r, { t775: r.t775 && Object.assign({}, r.t775, { done: false }) })); const L = B2[B2.length - 1]; B2.push(Object.assign({}, L, { s: ref + dt, t775: Object.assign({}, L.t775, { done: true }) })); return doneOrder(ref, doneAt(B2)); };
-    const lt = bDoneAt ? late(RES_S) : 'x', sm = bDoneAt ? late(RES_S - 1) : 'x';
+    const lt = ref ? late(RES_S) : 'x', sm = ref ? late(RES_S - 1) : 'x';   // ★[T1267] 미끼는 ★ 줄과 따로 문다(켬이 안 끝난 판에도 끔 끝이 있으면 댄다)
     ok(lt === 'late' && sm === 'same', '③ 미끼 — 켬 끝이 한 표본 늦은 사본은 빨강(late) · 한 표본 안(1초 모자람)은 같이(same) — 같은 자', `한 표본 늦음 → ${lt} · ${RES_S - 1}초 늦음 → ${sm}`);
   }
   console.log(`  (끔 기다림 ${a0.t775 && a0.t775.wait} → ${aQ} · 틱 ${aTicks} · 일 시작 ${aJobs} · 넘침 ${aOver})`);
