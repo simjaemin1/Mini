@@ -1,0 +1,12 @@
+{
+  "HEAD": "7f5696bcb238d6dd64c99c5e2b312af5dbbdcf99",
+  "origin/main": "7f5696bcb238d6dd64c99c5e2b312af5dbbdcf99",
+  "origin/batch/des-work-1110": "3c1793b0e805ec91a076d4ea19e18b0930ceee0a",
+  "origin/batch/des-work-1110-independent": "08bf759726a14218b1bc8e43672132a253c0b2d0",
+  "fixedV4": "08bf7597",
+  "runtime": "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+  "cpuAffinity": {
+    "tick": "0,1",
+    "event": "2,3"
+  }
+}

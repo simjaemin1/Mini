@@ -1,0 +1,30 @@
+{
+  "tick": {
+    "day": 1,
+    "rawWorldEqual": true,
+    "control": {
+      "valid": true,
+      "exit": 0,
+      "days": 1,
+      "mode": "0",
+      "cpuSeconds": 192.237833,
+      "wallSeconds": 265.806685465,
+      "signal": null
+    },
+    "sha256": "75ec43573356c20daa1cada11c40474dd00cc2a71defe2b6cba36fc121892a45"
+  },
+  "event": {
+    "day": 1,
+    "rawWorldEqual": true,
+    "control": {
+      "valid": true,
+      "exit": 0,
+      "days": 1,
+      "mode": "1",
+      "cpuSeconds": 219.678223,
+      "wallSeconds": 288.06391885,
+      "signal": null
+    },
+    "sha256": "75ec43573356c20daa1cada11c40474dd00cc2a71defe2b6cba36fc121892a45"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "tick": {
+    "newDays": 30,
+    "same": 30,
+    "firstMismatch": null,
+    "positionCheckpointBodiesMatchHistorical": {
+      "10": true,
+      "20": true
+    }
+  },
+  "event": {
+    "newDays": 30,
+    "same": 30,
+    "firstMismatch": null,
+    "positionCheckpointBodiesMatchHistorical": {
+      "10": true,
+      "20": true
+    }
+  }
+}

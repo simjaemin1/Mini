@@ -1,0 +1,48 @@
+{
+  "days": 30,
+  "sameDays": 17,
+  "firstDifferenceDay": 18,
+  "firstVillage": "광산6",
+  "firstStorageDifferences": {
+    "ore_copper": [
+      1.410779,
+      1.42201
+    ],
+    "ore_gold": [
+      0.041253,
+      0.02998
+    ],
+    "ore_silver": [
+      0.101612,
+      0.101654
+    ]
+  },
+  "position": {
+    "per": [
+      {
+        "day": 10,
+        "pairs": 726,
+        "unmatchedTick": 0,
+        "unmatchedEvent": 0,
+        "p50M": 0.2146549738824784,
+        "p90M": 8.884718985162754,
+        "maxM": 35.64212991671513,
+        "virtualTimeDifferenceMs": 0.0
+      },
+      {
+        "day": 20,
+        "pairs": 1098,
+        "unmatchedTick": 0,
+        "unmatchedEvent": 0,
+        "p50M": 0.6888197559957766,
+        "p90M": 12.000797829109368,
+        "maxM": 51.62550529508312,
+        "virtualTimeDifferenceMs": 0.0
+      }
+    ],
+    "pairs": 1824,
+    "p50M": 0.35261107514157863,
+    "p90M": 10.275296020104781,
+    "maxM": 51.62550529508312
+  }
+}
