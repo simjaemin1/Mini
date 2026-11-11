@@ -1,0 +1,1093 @@
+{
+  "oldVsNewMetricDifferences": {
+    "1020": {},
+    "7": {},
+    "42": {}
+  },
+  "productCommit": "83a44e55",
+  "base": "bc096dc9",
+  "seeds": [
+    1020,
+    7,
+    42
+  ],
+  "days": 400,
+  "offOldGate": 3,
+  "newIndependentChecks": [
+    3,
+    3
+  ],
+  "oldVsNew": {
+    "1020": {
+      "sameDaily": 400,
+      "sameRunHash": true,
+      "sameEight": true,
+      "sameSide": true,
+      "sameEmpty": true
+    },
+    "7": {
+      "sameDaily": 400,
+      "sameRunHash": true,
+      "sameEight": true,
+      "sameSide": true,
+      "sameEmpty": true
+    },
+    "42": {
+      "sameDaily": 400,
+      "sameRunHash": true,
+      "sameEight": true,
+      "sameSide": true,
+      "sameEmpty": true
+    }
+  },
+  "metrics": {
+    "off_old": {
+      "1020": {
+        "population": 3867,
+        "empty": 0,
+        "fdDeaths": 31,
+        "foodKcal": 301462599.40839845,
+        "legacyMeatEconUnits400": 213454.5054887919,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 2,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 216
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 478
+          },
+          "rot": 0,
+          "arrive": 32,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 890,
+          "trimmed": 888,
+          "lying": 34,
+          "walking": 458
+        }
+      },
+      "7": {
+        "population": 3891,
+        "empty": 0,
+        "fdDeaths": 231,
+        "foodKcal": 345628362.91191393,
+        "legacyMeatEconUnits400": 210229.69953006168,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 10,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 479
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 621
+          },
+          "rot": 0,
+          "arrive": 41,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 1377,
+          "trimmed": 1367,
+          "lying": 42,
+          "walking": 593
+        }
+      },
+      "42": {
+        "population": 3517,
+        "empty": 2,
+        "fdDeaths": 245,
+        "foodKcal": 272156651.0995576,
+        "legacyMeatEconUnits400": 227199.91017689434,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 30,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 434
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 428
+          },
+          "rot": 0,
+          "arrive": 29,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 1227,
+          "trimmed": 1194,
+          "lying": 62,
+          "walking": 414
+        }
+      }
+    },
+    "make_new": {
+      "1020": {
+        "population": 3867,
+        "empty": 0,
+        "fdDeaths": 31,
+        "foodKcal": 301462599.40839845,
+        "legacyMeatEconUnits400": 213454.5054887919,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 2,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 216
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 478
+          },
+          "rot": 0,
+          "arrive": 32,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 890,
+          "trimmed": 888,
+          "lying": 34,
+          "walking": 458
+        }
+      },
+      "7": {
+        "population": 3891,
+        "empty": 0,
+        "fdDeaths": 231,
+        "foodKcal": 345628362.91191393,
+        "legacyMeatEconUnits400": 210229.69953006168,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 10,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 479
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 621
+          },
+          "rot": 0,
+          "arrive": 41,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 1377,
+          "trimmed": 1367,
+          "lying": 42,
+          "walking": 593
+        }
+      },
+      "42": {
+        "population": 3517,
+        "empty": 2,
+        "fdDeaths": 245,
+        "foodKcal": 272156651.0995576,
+        "legacyMeatEconUnits400": 227199.91017689434,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 30,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 434
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 428
+          },
+          "rot": 0,
+          "arrive": 29,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 1227,
+          "trimmed": 1194,
+          "lying": 62,
+          "walking": 414
+        }
+      }
+    },
+    "repeat1": {
+      "1020": {
+        "population": 3867,
+        "empty": 0,
+        "fdDeaths": 31,
+        "foodKcal": 301462599.40839845,
+        "legacyMeatEconUnits400": 213454.5054887919,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 2,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 216
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 478
+          },
+          "rot": 0,
+          "arrive": 32,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 890,
+          "trimmed": 888,
+          "lying": 34,
+          "walking": 458
+        }
+      },
+      "7": {
+        "population": 3891,
+        "empty": 0,
+        "fdDeaths": 231,
+        "foodKcal": 345628362.91191393,
+        "legacyMeatEconUnits400": 210229.69953006168,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 10,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 479
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 621
+          },
+          "rot": 0,
+          "arrive": 41,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 1377,
+          "trimmed": 1367,
+          "lying": 42,
+          "walking": 593
+        }
+      },
+      "42": {
+        "population": 3517,
+        "empty": 2,
+        "fdDeaths": 245,
+        "foodKcal": 272156651.0995576,
+        "legacyMeatEconUnits400": 227199.91017689434,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 30,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 434
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 428
+          },
+          "rot": 0,
+          "arrive": 29,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 1227,
+          "trimmed": 1194,
+          "lying": 62,
+          "walking": 414
+        }
+      }
+    },
+    "repeat2": {
+      "1020": {
+        "population": 3867,
+        "empty": 0,
+        "fdDeaths": 31,
+        "foodKcal": 301462599.40839845,
+        "legacyMeatEconUnits400": 213454.5054887919,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 2,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 216
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 478
+          },
+          "rot": 0,
+          "arrive": 32,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 890,
+          "trimmed": 888,
+          "lying": 34,
+          "walking": 458
+        }
+      },
+      "7": {
+        "population": 3891,
+        "empty": 0,
+        "fdDeaths": 231,
+        "foodKcal": 345628362.91191393,
+        "legacyMeatEconUnits400": 210229.69953006168,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 10,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 479
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 621
+          },
+          "rot": 0,
+          "arrive": 41,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 1377,
+          "trimmed": 1367,
+          "lying": 42,
+          "walking": 593
+        }
+      },
+      "42": {
+        "population": 3517,
+        "empty": 2,
+        "fdDeaths": 245,
+        "foodKcal": 272156651.0995576,
+        "legacyMeatEconUnits400": 227199.91017689434,
+        "mobsAlive": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "mobsPresent": {
+          "moose": 18,
+          "deer": 61,
+          "red_fox": 49,
+          "pheasant": 73,
+          "quail": 98,
+          "wild_boar": 51,
+          "wolf": 64,
+          "bear": 22,
+          "tiger": 13
+        },
+        "waterDeerAlive": 0,
+        "waterDeerPeakDaily": 0,
+        "maxActiveChunks": 0,
+        "wildlifeTicks": 0,
+        "realHuntEnabled": false,
+        "huntStats": {
+          "calls": 0,
+          "bodies": 0,
+          "seenN": 0,
+          "seenU": 0,
+          "reachN": 0,
+          "reachU": 0,
+          "refuse": 0,
+          "noReach": 0,
+          "refund": 0,
+          "over": 0,
+          "lostCell": 0,
+          "sp": {},
+          "items": {}
+        },
+        "huntingKgBySpecies": null,
+        "huntingKgReason": "T1195 physical-hunt path disabled; abstract meat has no species attribution",
+        "bodyExit": {
+          "died": {
+            "starve": 0,
+            "old": 30,
+            "bandit_starve": 32
+          },
+          "walk": {
+            "bandit": 0,
+            "desert": 6,
+            "move": 434
+          },
+          "other": {
+            "expedition": 0,
+            "road": 0,
+            "unknown": 428
+          },
+          "rot": 0,
+          "arrive": 29,
+          "straight": 0,
+          "lost": 0,
+          "vanish": 0,
+          "noted": 1227,
+          "trimmed": 1194,
+          "lying": 62,
+          "walking": 414
+        }
+      }
+    }
+  },
+  "groups": {
+    "off_old": {
+      "tag": "off_old",
+      "rc": 0,
+      "seconds": 1448.4728422220214,
+      "sourceUnchanged": true,
+      "sourceCommit": "83a44e55",
+      "sourceSHA256": {
+        "server/animals.js": "a872ffbe0bb4749fa1a5fd9d0d89ed18129652920c88e802e75b04c1b222dfb8",
+        "server/wildlife.js": "e151a241d410f2320139cd91d015e823959d865a8379a30d91190ca35b9ef45c",
+        "server/zone.js": "864b06c27867dc0760b57343574686637aefb1eef81678d2a041b2abfe532994",
+        "scripts/t1255-baseline-observe.js": "c06f25aa4848bbbcf3ba28b4e29dca6aae92f3bcecada6ba8bcb6dd18f0b05d3"
+      },
+      "raw": "/tmp/sbc-q6m6oF",
+      "args": [
+        "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+        "scripts/server-baseline-check.js",
+        "계측/서버기준선_2026-11-08c.json",
+        "--vclock",
+        "--days",
+        "400",
+        "--seeds",
+        "1020,7,42",
+        "--par",
+        "2"
+      ]
+    },
+    "make_new": {
+      "tag": "make_new",
+      "rc": 0,
+      "seconds": 1437.1877601279994,
+      "sourceUnchanged": true,
+      "sourceCommit": "83a44e55",
+      "sourceSHA256": {
+        "server/animals.js": "a872ffbe0bb4749fa1a5fd9d0d89ed18129652920c88e802e75b04c1b222dfb8",
+        "server/wildlife.js": "e151a241d410f2320139cd91d015e823959d865a8379a30d91190ca35b9ef45c",
+        "server/zone.js": "864b06c27867dc0760b57343574686637aefb1eef81678d2a041b2abfe532994",
+        "scripts/t1255-baseline-observe.js": "c06f25aa4848bbbcf3ba28b4e29dca6aae92f3bcecada6ba8bcb6dd18f0b05d3"
+      },
+      "raw": "/tmp/sbc-oo8G9Z",
+      "args": [
+        "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+        "scripts/server-baseline-check.js",
+        "--make",
+        "계측/서버기준선_2026-11-10.json",
+        "--vclock",
+        "--days",
+        "400",
+        "--seeds",
+        "1020,7,42",
+        "--par",
+        "2"
+      ]
+    },
+    "repeat1": {
+      "tag": "repeat1",
+      "rc": 0,
+      "seconds": 1431.294490160013,
+      "sourceUnchanged": true,
+      "sourceCommit": "83a44e55",
+      "sourceSHA256": {
+        "server/animals.js": "a872ffbe0bb4749fa1a5fd9d0d89ed18129652920c88e802e75b04c1b222dfb8",
+        "server/wildlife.js": "e151a241d410f2320139cd91d015e823959d865a8379a30d91190ca35b9ef45c",
+        "server/zone.js": "864b06c27867dc0760b57343574686637aefb1eef81678d2a041b2abfe532994",
+        "scripts/t1255-baseline-observe.js": "c06f25aa4848bbbcf3ba28b4e29dca6aae92f3bcecada6ba8bcb6dd18f0b05d3"
+      },
+      "raw": "/tmp/sbc-CyTMIl",
+      "args": [
+        "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+        "scripts/server-baseline-check.js",
+        "계측/서버기준선_2026-11-10.json",
+        "--vclock",
+        "--days",
+        "400",
+        "--seeds",
+        "1020,7,42",
+        "--par",
+        "2"
+      ]
+    },
+    "repeat2": {
+      "tag": "repeat2",
+      "rc": 0,
+      "seconds": 1433.0635140580125,
+      "sourceUnchanged": true,
+      "sourceCommit": "83a44e55",
+      "sourceSHA256": {
+        "server/animals.js": "a872ffbe0bb4749fa1a5fd9d0d89ed18129652920c88e802e75b04c1b222dfb8",
+        "server/wildlife.js": "e151a241d410f2320139cd91d015e823959d865a8379a30d91190ca35b9ef45c",
+        "server/zone.js": "864b06c27867dc0760b57343574686637aefb1eef81678d2a041b2abfe532994",
+        "scripts/t1255-baseline-observe.js": "c06f25aa4848bbbcf3ba28b4e29dca6aae92f3bcecada6ba8bcb6dd18f0b05d3"
+      },
+      "raw": "/tmp/sbc-TDIqPk",
+      "args": [
+        "/workspace/.tools/node-v22.23.0-linux-x64/bin/node",
+        "scripts/server-baseline-check.js",
+        "계측/서버기준선_2026-11-10.json",
+        "--vclock",
+        "--days",
+        "400",
+        "--seeds",
+        "1020,7,42",
+        "--par",
+        "2"
+      ]
+    }
+  },
+  "sourceSHA256": {
+    "server/animals.js": "a872ffbe0bb4749fa1a5fd9d0d89ed18129652920c88e802e75b04c1b222dfb8",
+    "server/wildlife.js": "e151a241d410f2320139cd91d015e823959d865a8379a30d91190ca35b9ef45c",
+    "server/zone.js": "864b06c27867dc0760b57343574686637aefb1eef81678d2a041b2abfe532994",
+    "scripts/t1255-baseline-observe.js": "c06f25aa4848bbbcf3ba28b4e29dca6aae92f3bcecada6ba8bcb6dd18f0b05d3"
+  },
+  "candidateOnly": true,
+  "candidateBaselineSHA256": "151319b754d6e52587fc77983ca0e16803f780916eebb1c4d510a593a6494115",
+  "oldBaselineSHA256": "8ff7ed3806fb1459a31dc1450341be27a491e8c4ab23e468969eb78d2a890a01"
+}

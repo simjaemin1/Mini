@@ -91,8 +91,15 @@ const ITEM_KEYS = (view) => {   // 품목이 서는 자리 전부(④)
   // 세계를 며칠 굴린다 — 가뭄 하나(테스트 전용 손 `__e2eForceDeed` · 상황만 세운다 · 사건은 장부가 스스로 낸다) → 소식이 설 때까지.
   const fd0 = V.__e2eForceDeed(VID, '가뭄');
   let rolled = 0;
-  for (let i = 0; i < 60; i++) { const b = V.villageBoard(VID, AX, AY); if (!b.err && b.news.length && V.villageViewSrc(VID).day >= 3) break; await sleep(1000); rolled++; }
+  //   ★[T1254] 얼리기 전 조건에 **짓는 중인 마을 집터**(`vil._site`)를 더한다 — ②-T1084 의 자명 통과 금지 줄이 그 집터를 잰다.
+  //     종전엔 날 3 · 소식만 기다려, 얼린 날에 집터가 없으면(벽시계 2.5초 하루 · 집터가 서고 끝나는 때가 판마다 다르다) 빨강이었다(T1254 재현 단독 3/20 · 전수 조건 2/20).
+  //     상한(150번 · 1초)은 그물이다 — 판정에 안 든다(못 서면 그 줄이 이름을 붙여 빨강이 된다).
+  for (let i = 0; i < 150; i++) { const b = V.villageBoard(VID, AX, AY), S0 = V.villageViewSrc(VID); if (!b.err && b.news.length && S0.day >= 3 && S0.vil && S0.vil._site) break; await sleep(1000); rolled++; }
   V.__e2eDayFreeze(true);   // 여기서 econ 날을 얼린다 — 아래 대조가 같은 날을 본다
+  //   ★[T1254] 얼린 순간 이미 돌던 하루 장부 마감(조각내기)이 끝날 때까지 기다린다 — 마감 중에 온 마을 장부 메시지(`village_view` 포함)는
+  //     줄에 섰다가 마감 뒤에 처리된다(제품 규약 · 버리지 않는다 · zone `VILLAGE_BOOK_MSG`). 그 창에 ① 을 보내면 답이 그 자리에서 안 와 빨강이었다
+  //     (야간 11-10 · 증인: 마감 창 안에서 보낸 열기 38번 중 31번이 그 자리에서 안 오고 줄 뒤에 왔다). 상한 30초는 그물(판정 밖).
+  for (let i = 0; i < 3000 && V.villagesBusy && V.villagesBusy(); i++) await sleep(10);
   // 부탁 — 장부의 **복구 문**(`ledger.loadRequest` — 재기동이 DB 진척을 되돌리는 그 문)으로 둘을 건다: 갚는 것이 구체(돌) · 뭉뚱그린 것(곡식).
   //   자연 발생 의뢰는 거의 곡식으로 갚아 ② 의 "게시판 문장 그대로" 갈래가 빈 대조가 된다(실측 · 보고 §⑥).
   const L0 = V.villageViewSrc(VID).ledger, d0 = V.villageViewSrc(VID).day;
@@ -111,6 +118,7 @@ const ITEM_KEYS = (view) => {   // 품목이 서는 자리 전부(④)
   // ═══ ① 열기 ═══
   say('\n① 열기 — 진짜 메시지 문으로');
   send({ type: 'village_view', vid: VID });
+  for (let i = 0; i < 2000 && !lastView(); i++) await sleep(10);   // ★[T1254] 답(사건)을 기다린다 — 줄에 섰으면 마감 뒤에 온다(위 주석 · 상한 20초 = 그물)
   const m1 = lastView();
   ok(!!(m1 && m1.full === true && m1.vid === VID && m1.seq === 1), '열면 `full:true` 한 통(vid · seq 1)', m1 ? `seq ${m1.seq}` : '안 왔다');
   const view = m1 ? m1.view : {};

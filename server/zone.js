@@ -102,7 +102,7 @@ const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, cellC
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 if (process.env.T697_DAY_GC === '1') PathCore.setLean(true);   // ★[T697] 손잡이 `T697_DAY_GC=1` — 경로 커널 알뜰 판(같은 답 · 숫자 상자·문자열 열쇠 0 · `sim/path-core.js` 머리). 끔 = 종전 글자
-const { ANIMALS, dropsOf, dropKgOn } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog · ★[T636] dropsOf = 사체 드롭 정본(끔이면 카탈로그 그대로) · ★[T647] dropKgOn = 사체 고기 먹기 문
+const { ANIMALS, dropsOf, dropKgOn, waterDeerOn } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog · ★[T636] dropsOf = 사체 드롭 정본(끔이면 카탈로그 그대로) · ★[T647] dropKgOn = 사체 고기 먹기 문
 const GuildTreasury = require('./guild-treasury'); // 길드 곳간(물리) ↔ central 금고(회계) 정합 — 장부 계약은 그 파일 상단 참조
 const PlayerItems = require('./player-items'); // 플레이어 아이템 인스턴스(품질·속성·내구) — econ 무접촉·본체 서버층(설계: 플레이어_아이템_속성_설계.md)
 // ★[부패·보존 배치 2026-08-31] 부패 곡선·보존 가공의 정본. 여기(아래 FOOD_EFFECTS 보다 위)에서
@@ -3775,6 +3775,9 @@ function _t671Shape(p) {
   if (T1140_STUCK_INLINE && !T1140_HOT_ORDER) { p._t1140Sx = undefined; p._t1140Sy = undefined; p._t1140Sa = undefined; }   // ★[T1140 ③-다] 막힘 칸 셋(차례 리터럴엔 이미 있다 · 끔 = 이 줄 무동작)
   p.oreLedger = undefined; p._t1180FullFish = undefined; p._t1181Haul = undefined; p._t1197M1 = undefined; p._t1197M0 = undefined; p._t1195At = undefined; p._t1212N = undefined; p._t1217H = undefined; p._t1217Stop = undefined;   /* ★[PM land1052 · T1220-K3] T1212 · T1217 몸 칸 셋 */   /* ★[PM land1050 · T1208-K4 회부 2] land1049 가 연 몸 칸 셋(T1197 끼니 · T1195 사냥) */   // ★[PM land1048 · T1188 · T1180 · T1181] 가지들이 보탠 몸 칸 셋 — 스폰 꼴에 미리(test-body-fields · 숨은 클래스 한 벌)
   if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ② · T1154] 어부 던짐 종의 지난 답(villages.js `_t1144SpGet` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)
+  if (T1241_DES) p._des = undefined;   // ★[T1252] T1241 몸 토막(`_desBegin` · `_desEnd` — 손잡이 `T1241_DES` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
+  if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
+  if (_t316Econ && _t316Econ.T1243_FARM_ON) p._t1243S = undefined;   // ★[T1252] T1243 추신 14 손에 든 씨 몫(villages.js `_t1243Reaped` · `_t368Deliver` — econ 손잡이 `T1243_FARM_ON` 켬일 때만 서는 칸 · 끔 = 무동작)
 }
 const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT !== '0';   // ★[T1144 · T1154] villages.js 와 같은 손잡이(켬 기본 · `'0'` 만 끔) — 이 파일은 몸 칸 하나만
 // ★★[T1140 ③-가 2026-11-04 · 손잡이 `T1140_HOT_ORDER`(기본 끔 · `'1'` 만 켬 · 끔 = 아래 함수가 안 불린다 = 종전 글자)] **걸음 머리 칸을 x · y 곁에** — T791 회부 2 의 남은 몫.
@@ -5183,7 +5186,7 @@ function _desTry(npc, now) {
   if (isPositionActive(npc.x, npc.y)) return;
   if (!_desSch) { _desSch = SimVillages.T1241_SCH; if (!_desSch) return; }   // 일과 문턱 정본(villages `SCH_*` — 사본 0)
   const dayR = WORLD.dayPhaseRatio, dOff = npc._dOff;
-  const fv = phaseAdd(worldPhase(now), npc.simLonOff);
+  const fv = T720_LON_DAY ? phaseAdd(worldPhase(now), npc.simLonOff) : (worldPhase(now) + npc.simLonOff) % 1;   // ★[T1252] 현지 해 몫 — 걸음 문(`npcStep`)과 같은 손잡이 꼴(test-lon-day 규약 · 켬 기본 = 값 같음)
   const P = npc.path, pn = P ? (P === npc._t791P ? npc._t791Pn : P.length) : 0, done = !P || npc.pathIndex >= pn;
   const d = SimVillages.econDay ? SimVillages.econDay() : null;
   let k = null, until = 0, r = null;
@@ -7640,7 +7643,7 @@ async function _acceptConnection(ws, req, C) {
       charWalkMin: parseFloat(process.env.CHAR_WALK_MIN || '') || 4,
       charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
       ...(process.env.T1194_MODEL_SPRITES === '1' ? { modelSprites: true } : {}),   // [T1194] 받은 3D 모델을 구운 짐승 서 있기 그림(`/assets/animals/` · `scripts/model_render.py`) — 끔 기본 · 끔이면 칸이 없다(welcome 바이트 동일)
-      ...(process.env.T1237_WATER_DEER === '1' ? { waterDeer: true } : {}),   // [T1237] 고라니(새 종 · 야생 블록 둘째 상태) — 클라는 이 종의 그림을 받은 모델 시트로만 그린다(그림이 그것뿐 · `T1194_MODEL_SPRITES` 와 따로) · 끔이면 칸이 없다(welcome 바이트 동일)
+      ...(waterDeerOn() ? { waterDeer: true } : {}),   // [T1237 · T1255] 고라니 공통 부팅 술어 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(SimVillages.T1207_TERR_REAL ? { t1207: true } : {}),   // [T1207] 땅 우클릭에 '영토 넓히기'(끔이면 칸이 없다 · welcome 바이트 동일)

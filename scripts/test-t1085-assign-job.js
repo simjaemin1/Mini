@@ -77,11 +77,16 @@ console.log('② 서버 — 진짜 문(tryAssignJob · tryVillageBoard)');
 (async () => {
   const TMP = `/tmp/test-t1085-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-  process.env.ZONE_ID = 'hanbando'; process.env.PORT = String(43000 + (process.pid % 900)); process.env.DB_PATH = TMP;
+  //   ★[T1254] 포트 = 커널이 고른 빈 포트(`fixture-boot` `freePort` 정본 · 종전 `43000 + pid % 900` — 지어낸 번호는 임시 포트 범위 안이라 남이 쥐고 있을 수 있다).
+  process.env.ZONE_ID = 'hanbando'; process.env.PORT = String(await require(path.join(__dirname, 'fixture-boot.js')).freePort()); process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '1'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0';
   process.env.LATENCY_MS = '0';
   const _l = console.log, _w = console.warn, _e = console.error;
-  console.log = () => {}; console.warn = () => {}; console.error = () => {};
+  //   ★[T1254] 존 기동 중 오류 줄은 버리지 않고 모은다 — ② 에 닿기 전에 프로세스가 끝나면(야간 11-10: 결과줄 17 = ① 만 · RC 1 — 존의 `uncaughtException` 이
+  //     막힌 `console.error` 로 까닭을 찍고 `exit(1)`) 그 까닭을 찍는다. 기동 잡음(`console.log` · `warn`)은 종전대로 버린다.
+  const _bootErr = []; let _bootDone = false;
+  process.on('exit', (code) => { if (!_bootDone && code) { _l('  ✗ ②-부팅 존이 뜨다 끝났다(그 까닭 줄)  ' + JSON.stringify(_bootErr.slice(-5))); } });
+  console.log = () => {}; console.warn = () => {}; console.error = (...a) => { _bootErr.push(a.map(String).join(' ').slice(0, 300)); };
   const Zone = require(path.join(ROOT, 'server', 'zone.js'));
   const H = Zone.__testBind();
   const SV = require(path.join(ROOT, 'server', 'villages.js'));
@@ -94,7 +99,7 @@ console.log('② 서버 — 진짜 문(tryAssignJob · tryVillageBoard)');
       if (x && x.econ && x.econ.npcs && x.econ.npcs.length >= 6 && x.npcPids && x.npcPids.some((p) => H.players.has(p))) { vil = x; break; }
     }
   }
-  console.log = _l; console.warn = _w; console.error = _e;
+  console.log = _l; console.warn = _w; console.error = _e; _bootDone = true;
   ok(!!vil, '②-0 마을과 그 몸이 섰다');
   if (!vil) return done();
   const vid = vil.dbId;

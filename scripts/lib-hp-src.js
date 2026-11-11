@@ -46,6 +46,7 @@ const SPECS = {
       'best.data.hp = Math.min(maxHp, (best.data.hp || 0) + 25);': 1,      // 건물 — 고치기
       'bestWall.data.hp = (bestWall.data.hp ?? maxHp) - atk;': 1,          // 벽 — 부수기
       'bestWall.data.hp = 0;': 1,                                          // 벽 — 무너짐
+      'b.data.hp = 0; b.data.damaged = true;': 1,                          // 울타리 — 부서짐(T1238 영토 v2 `_t1238Fence…` · 몸 아님 · 건물 · 벽 셋과 같은 꼴 · ★[T1252] 표에 올림)
       'if (e && e[0] === r.type && e[1] > 0 && e[1] < r.hp) r.hp = e[1];': 1,   // 자원 — 시드 개체 벤 hp 되살림(T978 `seed_hp` 장부 · PM 10-30 표에 더함)
       'if(!resources.has(r.id)&&r.isSeed&&r.maxHp!==RESOURCE_HP_TABLE.rock&&!seedHp.has(r.seedKey)&&r.hp===r.maxHp)r.hp=r.maxHp=RESOURCE_HP_TABLE.rock;': 1,   // 자원 — 바위 시드 개체의 정본 hp 를 처음 세움(T1180 · T1181 후속 `2c18de89` · 몸 아님 · T1203 표에 더함)
     },
