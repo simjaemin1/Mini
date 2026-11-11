@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @nightly C   ← 야간 분할(T238) — 게이트 짧은 판 둘(판당 2~4분 · 굽기 + 견줌 · 둘 같이)
+// @nightly C   ← 야간 분할(T238) — 게이트 짧은 판 둘(판당 2~4분 · 굽기 + 견줌 · 둘 같이) + ★[T1268] 느린 틱 판 둘(코어 0 · 1 · 같이 · 판당 약 7분 반)
 // === scripts/test-t1043-gate-house.js — 판 자 결정론 착지 게이트 한 줄(`scripts/gate-house.js` · T1043 · 2026-11-01) ==========================
 //
 // 판정 사본 0: 게이트 파일 그대로를 짧은 판(시드 42 · 20날)으로 부른다. 게이트가 부르는 자(`server-baseline-check.js --house` 굽기 → `--vclock` 견줌)는
@@ -10,6 +10,10 @@
 //     ① 판 자 기본 + 부하 고리 1 — 나감 0 · 끝 줄 `GATE-HOUSE PASS` · 부하 고리 pid 가 판 뒤 살아 있지 않다 · 임시 판 폴더가 지워졌다
 //     ② ★미끼 — 벽시계 굽기 아이만 다른 세계(이 파일이 프리로드로 실려 아이 존 · 가상 시계 아님일 때만 `T400_BUILD_ACT=0`)면
 //        나감 1 · 끝 줄 `GATE-HOUSE FAIL · 벽시계 ≠ 가상 시계` (게이트가 갈림을 본다 — 자명 통과 금지)
+//     ③ ★[T1268 · T1258 회부 6] 느린 틱 판(`--slow` — 굽기 판을 코어 0 에 고리와 묶고 존 본 틱 머리마다 바쁜 ms) — 지금 판(켬 기본) 나감 0 · 끝 줄 PASS ·
+//        틱이 실제로 느렸다(끝 줄 틱 자 — econ 날 벽시계 · 틱 간격 평균이 ① 넉넉한 판보다 길다 · 틱 늦춘 수 > 0)
+//     ④ ★[T1268 미끼] 같은 느린 틱 판 + `T1258_ARTISAN_CLOCK=0`(T1258 고치기 전 장인 머묾 = 벽시계) — 나감 1 · 끝 줄 `GATE-HOUSE FAIL · 벽시계 ≠ 가상 시계`
+//        (진짜 벽시계 자리 미끼 — 넉넉한 판에선 초록이던 그 갈림을 느린 틱 판이 잡는다 · 자명 통과 금지). ③ ④ 는 같이 돈다(③ 코어 0 · ④ 코어 1 — 서로 안 늦춘다).
 //   진짜 벽시계 자리 미끼(`T146_BUILD_MS=1 T1013_BAND_DAY=0` — 사냥터 짓기를 내일로)는 날 281 에야 갈려 짧은 판에 안 닿는다 — 400날 판은 보고/T1043 §3.
 'use strict';
 if (require.main !== module) {   // ★프리로드 갈래 — 게이트 · 기준선 자 · 판 자 부모 · 부하 고리에도 실린다: 아무것도 안 한다(본문이 돌면 판이 판을 낳는다)
@@ -49,6 +53,16 @@ const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { 
   ok(p.code === 0 && /^GATE-HOUSE PASS · 벽시계 = 가상 시계 같음 1\/1 · /.test(p.last), '★① 판 자 기본 + 부하 고리 1 — 나감 0 · 끝 줄 PASS', p.last);
   ok(pids.length === 1 && pids.every((x) => !alive(x)) && !!tmpd && !fs.existsSync(tmpd), '① 판 뒤 — 부하 고리 남은 것 0 · 임시 판 폴더 지움', `고리 ${pids.join(',') || '?'} · 폴더 ${tmpd || '?'}`);
   ok(b.code === 1 && /^GATE-HOUSE FAIL · 벽시계 ≠ 가상 시계 다름 1\/1 · /.test(b.last), '[미끼 · ②] 벽시계 굽기 아이만 다른 세계 — 나감 1 · 끝 줄 FAIL', b.last);
+  // ③ ④ ★[T1268] 느린 틱 판 — 지금 판 초록 · 고치기 전 판(`T1258_ARTISAN_CLOCK=0`) 빨강 · 틱이 실제로 느렸다(끝 줄 틱 자 ↔ ① 넉넉한 판)
+  const tick = (line) => { const m = (line || '').match(/틱 간격 p50 ([\d.]+)ms · 평균 ([\d.]+)ms · p95 ([\d.]+)ms · 본문 평균 ([\d.]+)ms · econ 날 ([\d.]+)ms\((\d+)틱(?: · 늦춘 틱 (\d+))?/);
+    return m ? { p50: +m[1], mean: +m[2], p95: +m[3], body: +m[4], day: +m[5], n: +m[6], stalled: +(m[7] || 0) } : null; };
+  const [s, r] = await Promise.all([gate([...A, '--slow', '--slow-core', '0'], {}), gate([...A, '--slow', '--slow-core', '1'], { T1258_ARTISAN_CLOCK: '0' })]);   // 코어 둘(서로 안 늦춘다 — 판마다 혼자 돈 판과 같은 조건)
+  const T0 = tick(p.last), T1 = tick(s.last), T2 = tick(r.last);
+  ok(s.code === 0 && /^GATE-HOUSE PASS · 벽시계 = 가상 시계 같음 1\/1 · /.test(s.last) && /느린 틱\(/.test(s.last), '★③ 느린 틱 판(지금 판 · 켬 기본) — 나감 0 · 끝 줄 PASS', s.last);
+  ok(!!T0 && !!T1 && !!T2 && T1.stalled > 0 && T2.stalled > 0 && T1.mean > T0.mean && T1.day > T0.day && T2.day > T0.day,
+    '③ 틱이 실제로 느렸다 — 느린 판 둘의 econ 날 벽시계 · 틱 간격 평균이 ① 넉넉한 판보다 길다(끝 줄 틱 자)',
+    T0 && T1 && T2 ? `넉넉 간격 ${T0.mean}ms · 날 ${T0.day}ms ↔ 느림 간격 ${T1.mean}ms · 날 ${T1.day}ms(+${(T1.mean - T0.mean).toFixed(1)}ms) · 미끼 판 날 ${T2.day}ms` : '틱 자 없음');
+  ok(r.code === 1 && /^GATE-HOUSE FAIL · 벽시계 ≠ 가상 시계 다름 1\/1 · /.test(r.last), '[미끼 · ④] 느린 틱 판 + `T1258_ARTISAN_CLOCK=0`(고치기 전 장인 머묾 벽시계) — 나감 1 · 끝 줄 FAIL', r.last);
   console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
   process.exit(fail ? 1 : 0);
 })();
