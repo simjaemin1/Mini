@@ -27,11 +27,19 @@
 #   NIGHT_RESUME=auto|1|0        ★[T1177] 이어 돌기 — 로그의 마지막 판이 `nightly-run 끝` 없이 멈췄으면(컨테이너 재시작 · 11-05 191/322)
 #                                그 판의 목록에서 **판정이 난 것만 빼고** 이어 돈다(같은 로그 · 보고는 한 밤 한 장).
 #                                auto(기본) = 그 판이 오늘 시작했을 때만 · 1 = 날짜 무관 · 0 = 끔(종전). NIGHT_LIST 를 주면 안 잇는다.
+#   NIGHT_UNSHALLOW=0            얕은 클론을 전체 이력으로 늘리지 않는다(기본 1 · land1067)
 #   TIMEOUT_SEC · DRAIN_SEC      러너의 것 그대로 — 여기서 새로 정하지 않는다(`e2e-thirst` 15~20분은 러너가 안다)
 #
 # ⚠stdin 을 안 읽는다(`nohup` 으로 띄워도 멈추지 않게 · 러너 자식도 `</dev/null`).
 set -u
 cd "$(dirname "$0")/.."
+
+# ★[PM land1067 · 재민 11-11 "해" · 족보 821] 얕은 클론이면 전체 이력으로 — `test-harness-lint` ⑭ 는 하네스가 태어난 판까지
+#   거슬러 본다. 얕은 클론(망고링고 A-1 `--depth 50`)이면 그 판에 못 닿아 수백 줄을 "못 잼"으로 넘긴다(T1257 회부 2 · 약 36초).
+#   실패해도 판은 돈다(못 잼 수만 늘어난다) · 끄기 `NIGHT_UNSHALLOW=0`.
+if [ "${NIGHT_UNSHALLOW:-1}" != "0" ] && [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+  git fetch -q --unshallow origin 2>/dev/null </dev/null && echo "[nightly-run] 얕은 클론 → 전체 이력 ($(git rev-list --count HEAD) 커밋)" || echo "[nightly-run] ⚠unshallow 실패 — 얕은 클론 그대로 돈다"
+fi
 
 export TZ="${NIGHT_TZ:-Asia/Seoul}"
 LOG="${LOG:-/tmp/night/regress.log}"
