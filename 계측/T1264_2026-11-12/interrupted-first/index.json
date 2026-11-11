@@ -1,0 +1,53 @@
+{
+  "reason": "Previous turn was interrupted; no original controllers survived. These partial cases are excluded from final comparisons. A new complete matrix starts from day zero.",
+  "cases": [
+    {
+      "arm": "OFF",
+      "seed": 1020,
+      "lastObserverDay": 390,
+      "completed400": false,
+      "includedInFinalComparison": false,
+      "clockErrors": null
+    },
+    {
+      "arm": "WOOD",
+      "seed": 1020,
+      "lastObserverDay": 290,
+      "completed400": false,
+      "includedInFinalComparison": false,
+      "clockErrors": null
+    },
+    {
+      "arm": "TERR",
+      "seed": 7,
+      "lastObserverDay": 150,
+      "completed400": false,
+      "includedInFinalComparison": false,
+      "clockErrors": null
+    },
+    {
+      "arm": "TERR",
+      "seed": 1020,
+      "lastObserverDay": 400,
+      "completed400": true,
+      "includedInFinalComparison": false,
+      "clockErrors": 0
+    },
+    {
+      "arm": "V2_WOOD",
+      "seed": 1020,
+      "lastObserverDay": 270,
+      "completed400": false,
+      "includedInFinalComparison": false,
+      "clockErrors": null
+    },
+    {
+      "arm": "OFF_GATE",
+      "seed": 1020,
+      "lastObserverDay": 390,
+      "completed400": false,
+      "includedInFinalComparison": false,
+      "clockErrors": null
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+[
+  {
+    "arm": "wood",
+    "file": "계측/T1251_2026-11-10/빠른400/wood.json.gz",
+    "SHA256": "d1860df1951189efc1d21abe63307a8af87034ff8419c624874d95ee9ffba0e8",
+    "head": "5c0d34ed",
+    "condition": {
+      "VILLAGE_CARAVAN_MAX": "0",
+      "T400_BUILD_ACT": "0"
+    },
+    "clock": "VILLAGE_DAY_MS=250(t577 기본) · 가상 시계(T745 --vclock) · 교전 몫 T941_BATTLE_DAY=1(t577 기본 · T959) · 길의 날 · 광맥 시각 T990_ECON_DAY=1(t577 기본 · T990)",
+    "days": 400,
+    "eight": {
+      "pop": 3561,
+      "dead": 2,
+      "ever": 51,
+      "weapQ": 237,
+      "expand": 674,
+      "board": 1962,
+      "toolQ": 3238.6,
+      "preserve": 0,
+      "grain": 8853
+    },
+    "runHash": "a73ab5a1f2e71420"
+  },
+  {
+    "arm": "v2",
+    "file": "계측/T1251_2026-11-10/빠른400/v2.json.gz",
+    "SHA256": "1999b410173f889f2cf2885558a7df342f8d073deb691904687edb1229e449bd",
+    "head": "5c0d34ed",
+    "condition": {
+      "VILLAGE_CARAVAN_MAX": "0",
+      "T400_BUILD_ACT": "0"
+    },
+    "clock": "VILLAGE_DAY_MS=250(t577 기본) · 가상 시계(T745 --vclock) · 교전 몫 T941_BATTLE_DAY=1(t577 기본 · T959) · 길의 날 · 광맥 시각 T990_ECON_DAY=1(t577 기본 · T990)",
+    "days": 400,
+    "eight": {
+      "pop": 3025,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 215,
+      "expand": 0,
+      "board": 2575,
+      "toolQ": 2854.6,
+      "preserve": 3.9,
+      "grain": 7185.4
+    },
+    "runHash": "dc485625da1ec80c"
+  },
+  {
+    "arm": "v2wood",
+    "file": "계측/T1251_2026-11-10/빠른400/v2wood.json.gz",
+    "SHA256": "8cdae1350c28719985422c7a4bc6b764c6df019e77c40318c9aa0c4cec54555d",
+    "head": "5c0d34ed",
+    "condition": {
+      "VILLAGE_CARAVAN_MAX": "0",
+      "T400_BUILD_ACT": "0"
+    },
+    "clock": "VILLAGE_DAY_MS=250(t577 기본) · 가상 시계(T745 --vclock) · 교전 몫 T941_BATTLE_DAY=1(t577 기본 · T959) · 길의 날 · 광맥 시각 T990_ECON_DAY=1(t577 기본 · T990)",
+    "days": 400,
+    "eight": {
+      "pop": 4642,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 214,
+      "expand": 0,
+      "board": 2657,
+      "toolQ": 4716.4,
+      "preserve": 0,
+      "grain": 20807.5
+    },
+    "runHash": "6b0bd3e5dd92ebcb"
+  }
+]
