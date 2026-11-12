@@ -11,6 +11,11 @@
 //   ★느린 틱 판 갈래(`T1268_TICK_STALL_MS=N` — 게이트 `--slow` 가 준다) — 첫 econ 날(첫 `scanDay`) 뒤부터 존 본 틱(가장 무거운 30Hz 고리) 머리마다
 //     N ms 를 바쁘게 쓰고 나서 틱 본문을 부른다(부하 고리를 틱 안에 넣은 꼴 · 부팅은 안 늦춘다 · 틱 본문 · 차례 · 값은 그대로 — *언제*만 늦어진다).
 //     이 갈래가 쓴 ms 는 본문 길이에 안 든다(간격에는 든다 — 그것이 "느린 틱"이다).
+//   ★[T1287 · T1280 회부 2] 머묾 멈춤 갈래(`T1287_DWELL_STALL_MS=N` — 게이트 `--slow` 가 준다) — 장인 몸이 사다리 머묾(인출 · 저장 · `_t1196W.at` 이 선 때)에
+//     든 것을 보면 **econ 날마다 한 번**(그날 처음 본 머묾 · 마감 창 밖), 존 본 틱 머리에서 N ms 를 바쁘게 쓴다. 벽시계로 머묾을 재는 자리(고치기 전 `T1258_ARTISAN_CLOCK=0`)는 다음 틱에 머묾이 끝나
+//     econ 날 안에 몸이 꺼낸다 — 가상 시계 판(같은 손잡이)은 머묾이 날을 넘겨 일괄이 꺼낸다 → 상자 빠르기와 무관하게 갈린다.
+//     종전 미끼 ④ 는 마감 사이 창 길이(상자 부하에 따라 달라진다)가 머묾(5 ~ 6초)보다 기냐에 기대, 바쁜 상자에서 '같음'이 났다(T1280 6/1).
+//     몸 칸은 읽기만(villages 공식 자리 `__t740` → `state.deps.players`) · 틱 본문 · 차례 · 값은 그대로(*언제*만).
 // 쓰는 법: NODE_OPTIONS="--require $PWD/scripts/t1268-tick-meter.js" node scripts/server-baseline-check.js --make <out.json> --days 20 --seeds 42 --house
 if (!process.env.T577_OUT || process.env.T745_VCLOCK === '1') return;
 const fs = require('fs');
@@ -19,6 +24,15 @@ const { performance } = require('perf_hooks');
 const OUT = process.env.T577_OUT + '.t1268tick.json';
 const T30 = (ms) => Math.abs(+ms - 1000 / 30) < 2;
 const STALL = Math.max(0, parseFloat(process.env.T1268_TICK_STALL_MS || '0') || 0);
+const DWELL = Math.max(0, parseFloat(process.env.T1287_DWELL_STALL_MS || '0') || 0);   // ★[T1287] 머묾마다 한 번
+const VILL = path.join(__dirname, '..', 'server', 'villages.js');
+let dwellN = 0; const dwellSeen = new Set();
+const dwellNow = () => { try { const m = require.cache[VILL]; const st = m && m.exports && m.exports.__t740 ? m.exports.__t740() : null;
+  const P = st && st.deps && st.deps.players; if (!P || !P.forEach) return false; let hit = false;
+  const d = st.world ? (st.world.day | 0) : -1; if (dwellSeen.has(d) || st.tickJobs) return false;   // econ 날마다 한 번 · 마감 창 밖에서만
+  P.forEach((p) => { const W = p && p._t1196W; if (!hit && W && W.at && (W.ph === 'draw' || W.ph === 'back')) hit = true; });
+  if (hit) dwellSeen.add(d);
+  return hit; } catch (e) { return false; } };
 let stallOn = false, stallN = 0;
 const loops = [];   // 30Hz 고리마다 { gaps, body, last, sum }
 {
@@ -32,6 +46,7 @@ const loops = [];   // 30Hz 고리마다 { gaps, body, last, sum }
       if (L.last) L.gaps.push(t0 - L.last);
       L.last = t0;
       if (STALL && stallOn && L.first) { const e = t0 + STALL; while (performance.now() < e) { /* 바쁜 고리 */ } stallN++; t0 = performance.now(); }
+      if (DWELL && stallOn && L.first && dwellNow()) { const e = t0 + DWELL; while (performance.now() < e) { /* 머묾 멈춤 */ } dwellN++; t0 = performance.now(); }   // ★[T1287]
       try { return fn.apply(this, arguments); } finally { const d = performance.now() - t0; L.body.push(d); L.sum += d; }
     }, ms, ...a);
   };
@@ -56,6 +71,6 @@ process.on('exit', () => {
   try {
     const main = loops.slice().sort((x, y) => y.sum - x.sum)[0] || { gaps: [], body: [] };
     const dg = []; for (let i = 1; i < dayAt.length; i++) dg.push(dayAt[i] - dayAt[i - 1]);
-    fs.writeFileSync(OUT, JSON.stringify({ loops30: loops.length, stallMs: STALL, stalled: stallN, gap: stat(main.gaps), body: stat(main.body), day: stat(dg) }));
+    fs.writeFileSync(OUT, JSON.stringify({ loops30: loops.length, stallMs: STALL, stalled: stallN, dwellMs: DWELL, dwellStalled: dwellN, gap: stat(main.gaps), body: stat(main.body), day: stat(dg) }));
   } catch (e) { /* 계측 실패는 세계에 0 */ }
 });
