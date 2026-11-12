@@ -66,6 +66,9 @@ const _stubs = {
   noteVillageBuilt() {},           // T50 사건 장부 접점 — 여기선 무시한다
   _t435On() { return false; },     // ★[T435] 곳간 증설 행위 손잡이 — 이 하네스는 **끈 판**(종전 날짜 규칙)을 잰다 · 켠 판은 `test-build-act ⑥`
   _t1053Deforest() { return 0; },  // ★[T1053] 곳간 자리 벌채 → 사냥터 장부(랩 `deforestArea(±3)`) — 이 하네스가 재는 층이 아니다(장부 몫은 `test-deforest-game` 이 잰다)
+  //   ★[T1291] T1260 ③(`325a12481`)이 `_lifeGranAdd` 의 식량 읽기를 econ 문 `_lifeEcon().t1260FoodOf(vil.econ)` 로 옮겼다 — 샌드박스에 그 이름이 없어 ② 에서 죽었다(제품은 멀쩡).
+  //     econ 정본 모듈을 그대로 넘긴다(사본 0 · 문의 끔 기본 = `food` 칸 — 이 하네스가 재는 종전 판 그대로 · 켠 판은 `test-t1260-food-reads`).
+  _lifeEcon: (() => { const E = require(path.join(__dirname, '..', 'sim', 'economy-sim.js')); return () => E; })(),
   T1238_TERR_V2: false,            // ★[T1238] 영토 v2 손잡이(villages.js 한 자리 · 끔 기본) — 잘라낸 두 함수가 그 이름을 읽는다(켬 = 곳간 터 5×3 만 벤다 · 켠 판은 `test-t1238-terr-v2`) · 이 하네스는 끈 판
 };
 const ctx = vm.createContext(Object.assign({ state, SZ, console, Math, Set, Map, Array, Object, JSON, Number }, _stubs));
@@ -185,6 +188,15 @@ console.log('\n[⑥ 목표 도달 후 추가 증설 없음]');
   vil._granList = [{ cx: CCX + 12, cy: CCY - 5 }];
   for (let d = 0; d <= 30; d++) { state.world.day = d; API._lifeGranAdd(vil); }
   chk(vil._granList.length === 1 && !vil._granPend, '식량 2500(목표 1동)·기존 1동 → 착공 0');
+}
+
+// --- ★[T1291] 식량이 목표를 정하는 길 — 원문 함수 안의 econ 문 `t1260FoodOf` 를 지나서 ---
+//   ① 은 목표 식을 하네스 쪽에서 다시 셀 뿐이고 ② · 뒤 판은 목표 1 또는 8 의 한 판씩이라, 식량 읽기가 0 이 되어도(목표 1동) 초록이었다(T1291 미끼 G-a).
+console.log('\n[★ 식량 → 목표 동 수(원문 함수 · econ 문)]');
+{
+  const lo = newVil(2400), hi = newVil(20000);
+  for (let d = 0; d <= 40; d++) { state.world.day = d; API._lifeGranAdd(lo); API._lifeGranAdd(hi); }
+  chk(lo._granList.length === 1 && hi._granList.length > 1, `식량 2,400 → ${lo._granList.length}동(목표 1) · 20,000 → ${hi._granList.length}동(목표 8 · 40날에 7날 간격)`);
 }
 
 console.log('\n' + (fail === 0 ? '결과: PASS (전 항목)' : `결과: FAIL (${fail}건)`));

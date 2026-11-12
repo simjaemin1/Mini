@@ -378,8 +378,12 @@ const settle = () => new Promise((r) => setTimeout(r, 0));
   const Z = rd('server/zone.js');
   const reads = Z.split('process.env.T1194_MODEL_SPRITES').length - 1;
   ok(reads === 1 && Z.includes("...(process.env.T1194_MODEL_SPRITES === '1' ? { modelSprites: true } : {})"), "읽는 자리 하나 · '1' 만 켬 · 끄면 칸이 없다(welcome 바이트 동일)", `${reads}곳`);
-  const reads2 = Z.split('process.env.T1237_WATER_DEER').length - 1;
-  ok(reads2 === 1 && Z.includes("...(process.env.T1237_WATER_DEER === '1' ? { waterDeer: true } : {})"), "[T1237] 고라니 손잡이도 존이 읽는 자리 하나 · '1' 만 켬 · 끄면 welcome 칸이 없다", `${reads2}곳`);
+  //   ★[T1291] T1255(`83a44e55f`)가 고라니 손잡이 읽기를 `server/animals.js` 한 곳(`WATER_DEER_ON` · 공통 부팅 술어 `waterDeerOn()` · 켬 기본 `=0` 끔)으로 옮겼다 —
+  //     존은 env 를 안 읽고 그 술어로 welcome 칸을 건다. 지키던 것 = "읽는 자리 하나 · 끄면 welcome 칸이 없다(바이트 동일)".
+  const AN = rd('server/animals.js');
+  const reads2 = Z.split('process.env.T1237_WATER_DEER').length - 1, readsA = AN.split('process.env.T1237_WATER_DEER').length - 1;
+  ok(reads2 === 0 && readsA === 1 && AN.includes("const WATER_DEER_ON = typeof process === 'undefined' || !process.env || process.env.T1237_WATER_DEER !== '0';")
+     && Z.includes("...(waterDeerOn() ? { waterDeer: true } : {})"), "[T1237 · T1255] 고라니 손잡이는 읽는 자리 하나(animals.js · 켬 기본 · `=0` 끔) · 존은 그 술어로만 · 끄면 welcome 칸이 없다", `존 ${reads2}곳 · animals ${readsA}곳`);
 
   console.log('\n⑦ 레포 — 큰 파일 0');
   let big = [];
