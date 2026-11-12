@@ -13,6 +13,8 @@
 //   ② 날 머리(econ `tickVillage` 그날 첫 부름) 광산 마을 원석 품목별: 곳간 · 흐름 목표(`_consEMA × 30` — v2 `_targetV2` 의 flowT) · 값표 칸(`_priceCache`) · 녹임 누계
 //   ③ 몸 셀(`T1256_BODY_MS` 가상 시계 표본 — t1256 · t1266 과 같은 박자): 광산 마을 광부 몸 가운데 '채광'(t1256 `stateOf`)인 몸의 자리 셀(`_t724Site`) —
 //      날 · 마을별 다른 셀 수 · 다른 몸 수 · 표본 수 · 셀 하나에 선 몸 수(그날 · 셀마다 다른 몸)
+//   ④ 몸 모양 셈(날 머리 · 회부 3 — 날 52 CPU 뜀 덩이 짚기): 몸(`deps.players`)마다 `Object.keys` 차례의 해시 → 날마다 모양별 몸 수 ·
+//      처음 본 모양은 그 날 · 열쇠 목록을 한 번 적는다(숨은 클래스가 갈리면 틱마다 모든 몸을 짚는 자리가 느려진다 — T671 몸 모양 고정의 그 까닭).
 //   ⚠값을 바꾸지 않는다 — 감쌈은 인자 · 돌려준 값 그대로 · 다시 부르는 두 함수는 그 물음이 방금 채운 캐시만 읽는다(세계 무변 · 계측 칸 `_t1217PxStat.hit` 만 오른다).
 const path = require('path');
 const fs = require('fs');
@@ -27,7 +29,7 @@ const O56 = require(path.join(__dirname, 't1256-observe.js'));
 const stateOf = O56 && O56.stateOf;
 const V2PATH = require.resolve(path.join(ROOT, 'sim', 'economy-sim-v2'));
 let VIL = null, MINES = null, V2 = null;
-const rec = { on: !!V1.T1266_ORE_BODY, cap: !!V1.T1271_ORE_CAP, split: !!V1.T1188_ORE_SPLIT, q: {}, ore: {}, cell: {}, err: null, wrapped: 0 };
+const rec = { on: !!V1.T1266_ORE_BODY, cap: !!V1.T1271_ORE_CAP, split: !!V1.T1188_ORE_SPLIT, q: {}, ore: {}, cell: {}, shape: {}, shapeKeys: {}, err: null, wrapped: 0 };
 const r6 = (x) => +(+x || 0).toFixed(6);
 const _nameOf = new Map();
 let _today = 0;
@@ -108,6 +110,13 @@ function snap(day) {
     for (const k of ids) { const s = st[k] || 0, t = (ema[k] || 0) * 30; if (s > 0 || t > 0) o[k] = [r6(s), r6(t), r6(c[k] || 0)]; }
     D[vil.name] = { o, smelt: r6(e._smeltedTotal || 0), pop: (e.npcs || []).length, miner: (e.counts && e.counts.miner) || 0 };
   }
+  //   ④ 몸 모양 셈
+  try {
+    const B = VIL.__p3Bind({}), pl = (B.state.deps && B.state.deps.players) || new Map(), H = {};
+    for (const p of pl.values()) { if (!p || typeof p !== 'object') continue; const ks = Object.keys(p), str = ks.join(','); let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+      const hk = h.toString(36) + '.' + ks.length; H[hk] = (H[hk] || 0) + 1; if (!rec.shapeKeys[hk]) rec.shapeKeys[hk] = { day, n: ks.length, npc: !!p.isNpc, job: p.simJob || null, keys: ks }; }
+    rec.shape[day] = H;
+  } catch (e) { rec.err = rec.err || String(e && e.stack || e).slice(0, 400); }
   if (day % 10 === 0) write();
 }
 function write() {
