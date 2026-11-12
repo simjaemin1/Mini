@@ -1,0 +1,10 @@
+{
+  "validFull30": false,
+  "reason": "trace filename omitted ${rotation}; early trace overwritten at rotation; explicit SIGTERM then full rerun",
+  "partialDays": 18,
+  "lastDay": 18,
+  "lastCPUSeconds": 1124.921958,
+  "source": "b17f6089",
+  "partialOutput": "/tmp/t1270-main30",
+  "replacement": "/tmp/t1270-main30-final"
+}

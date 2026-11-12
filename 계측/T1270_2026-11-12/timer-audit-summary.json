@@ -1,0 +1,19 @@
+{
+  "code": 0,
+  "days": 1,
+  "rawWorldEqualPlain": true,
+  "intervals": 15,
+  "missingFromStaticRegistry": {
+    "periodMs": 30000,
+    "source": "function () { [native code] }",
+    "stack": [
+      "    at Server.setupConnectionsTracking (node:_http_server:548:5)",
+      "    at Server.emit (node:events:531:35)",
+      "    at emitListeningNT (node:net:1984:10)",
+      "    at process.processTicksAndRejections (node:internal/process/task_queues:88:21)"
+    ],
+    "calls": 39
+  },
+  "cpuScope": "this native callback CPU is inside clock:virtual-timer-pump in the main sample, not measured independently",
+  "fullInvocationFormula": "clock.fired - sum(static timer calls excluding real setImmediate)"
+}

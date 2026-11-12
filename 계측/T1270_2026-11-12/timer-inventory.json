@@ -1,0 +1,31 @@
+{
+  "staticRegistry": {
+    "interval": {
+      "sites": 14,
+      "registrations": 14,
+      "calls": 1756764
+    },
+    "timeout": {
+      "sites": 11,
+      "registrations": 25282,
+      "calls": 25282
+    },
+    "immediate": {
+      "sites": 1,
+      "registrations": 1,
+      "calls": 1
+    }
+  },
+  "clockRegisteredIntervals": 15,
+  "clockRegisteredTimeouts": 25282,
+  "httpCoreInterval": {
+    "periodMs": 30000,
+    "registrations": 1,
+    "calls": 1431,
+    "cpuGroup": "clock:virtual-timer-pump"
+  },
+  "gameTickIntervals": 1,
+  "outsideGameTickIntervals": 14,
+  "virtualPumpCompletedCalls": 4458,
+  "note": "registration counts are not an assertion of active timers at exit"
+}

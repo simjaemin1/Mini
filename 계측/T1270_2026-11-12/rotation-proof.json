@@ -1,0 +1,23 @@
+{
+  "kind": "trace filename rotation mechanism only, AsyncResource init/destroy; not a simulation",
+  "initRequested": 600000,
+  "initRecorded": 600000,
+  "files": [
+    {
+      "file": "trace-81146-1.json",
+      "bytes": 109611218,
+      "initEvents": 524288
+    },
+    {
+      "file": "trace-81146-2.json",
+      "bytes": 88514841,
+      "initEvents": 75712
+    },
+    {
+      "file": "trace-81146-3.json",
+      "bytes": 24538649,
+      "initEvents": 0
+    }
+  ],
+  "allInitRetained": true
+}

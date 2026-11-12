@@ -1,0 +1,4473 @@
+{
+  "processCpuMinutes": 42.105528383333336,
+  "mainThreadCpuMinutes": 40.2684479,
+  "otherThreadCpuMinutes": 1.8370804833333334,
+  "otherCpuMinutes": 20.25495845,
+  "coveragePercent": 96.97859521734377,
+  "identifiedOtherCpuMinutes": 19.642974166666665,
+  "unknownCpuMinutes": 0.6119842833333333,
+  "coarseUs": {
+    "startup": 81192164,
+    "other": 1215297507,
+    "body_tick": 982153892,
+    "storage": 103265430,
+    "trade_routes": 10167996,
+    "observers": 28571085,
+    "pathfinding": 49339330,
+    "econ": 25984215,
+    "life_daily": 30360084
+  },
+  "gc": {
+    "clock": "trace event thread CPU tts/tdur in microseconds, union within each thread; never ts/dur as CPU",
+    "traceFiles": [
+      "trace-80413-1.json",
+      "trace-80413-2.json",
+      "trace-80413-3.json",
+      "trace-80413-4.json",
+      "trace-80413-5.json"
+    ],
+    "mainUs": 67878758,
+    "backgroundUs": 77809477,
+    "mainAssignedUs": 54927909,
+    "mainUnassignedUs": 12950849,
+    "byThreadUs": {
+      "80413": 67878758,
+      "80420": 19263847,
+      "80421": 19576127,
+      "80419": 19653077,
+      "80422": 19316426
+    },
+    "threadNames": {
+      "80413": "JavaScriptMainThread"
+    },
+    "eventsByName": {
+      "MinorGC": 112860,
+      "V8.GC_HEAP_PROLOGUE": 56573,
+      "V8.GCScavenger": 56430,
+      "V8.GC_TIME_TO_SAFEPOINT": 56716,
+      "V8.GC_SCAVENGER": 56430,
+      "V8.GC_HEAP_PROLOGUE_SAFEPOINT": 56573,
+      "V8.GC_SCAVENGER_SCAVENGE": 56430,
+      "V8.GC_SCAVENGER_SCAVENGE_WEAK_GLOBAL_HANDLES_IDENTIFY": 56430,
+      "V8.GC_SCAVENGER_SCAVENGE_ROOTS": 56430,
+      "V8.GC_SCAVENGER_SCAVENGE_PARALLEL_PHASE": 56430,
+      "Parallel scavenge started": 56430,
+      "V8.GC_SCAVENGER_BACKGROUND_SCAVENGE_PARALLEL": 68955,
+      "V8.GC_SCAVENGER_SCAVENGE_PARALLEL": 56455,
+      "V8.GC_SCAVENGER_SCAVENGE_WEAK_GLOBAL_HANDLES_PROCESS": 56430,
+      "V8.GC_SCAVENGER_SCAVENGE_FINALIZE": 56430,
+      "V8.GC_SCAVENGER_SCAVENGE_UPDATE_REFS": 56430,
+      "V8.GC_SCAVENGER_FREE_REMEMBERED_SET": 56430,
+      "V8.GC_SCAVENGER_SWEEP_ARRAY_BUFFERS": 56430,
+      "V8.GC_MINOR_MS_FINISH_SWEEP_ARRAY_BUFFERS": 39654,
+      "V8.GC_HEAP_EPILOGUE_SAFEPOINT": 56573,
+      "V8.GC_HEAP_EPILOGUE_REDUCE_NEW_SPACE": 56573,
+      "V8.GC_HEAP_EPILOGUE": 56573,
+      "V8.GC_HEAP_DUMP_STATISTICS": 56573,
+      "V8.GC_Heap_Stats": 56573,
+      "V8.GC_HEAP_EXTERNAL_EPILOGUE": 56573,
+      "V8.GC_MINOR_MS_BACKGROUND_SWEEPING": 39651,
+      "V8.GC_BACKGROUND_YOUNG_ARRAY_BUFFER_SWEEP": 39652,
+      "V8.GC_HEAP_EXTERNAL_PROLOGUE": 56572,
+      "V8.GC_HEAP_EXTERNAL_WEAK_GLOBAL_HANDLES": 76,
+      "V8.GC_SCAVENGER_COMPLETE_SWEEP_ARRAY_BUFFERS": 3262,
+      "V8.GC_BACKGROUND_SAFEPOINT": 174,
+      "V8.GC_BACKGROUND_UNPARK": 165,
+      "V8.GCIncrementalMarkingStart": 143,
+      "V8.GC_MC_INCREMENTAL_START": 143,
+      "V8.GC_MC_INCREMENTAL_EXTERNAL_PROLOGUE": 143,
+      "V8.GC_MC_MARK_EMBEDDER_PROLOGUE": 286,
+      "V8.GC_MC_MARK_ROOTS": 429,
+      "Major concurrent marking started": 311,
+      "V8.GC_MC_BACKGROUND_MARKING": 1692,
+      "V8.GC_MC_INCREMENTAL_EXTERNAL_EPILOGUE": 143,
+      "V8.GCIncrementalMarking": 106078,
+      "V8.GC_MC_INCREMENTAL": 106078,
+      "V8.GC_MC_INCREMENTAL_EMBEDDER_TRACING": 105659,
+      "Major concurrent marking rescheduled": 106201,
+      "V8.GCHandleGCRequest": 90,
+      "MajorGC": 286,
+      "V8.GCFinalizeMC": 141,
+      "V8.GC_MARK_COMPACTOR": 143,
+      "V8.GC_MC_PROLOGUE": 143,
+      "V8.GC_MC_MARK": 143,
+      "V8.GC_MC_MARK_FINISH_INCREMENTAL": 143,
+      "V8.GC_MC_MARK_CLIENT_HEAPS": 143,
+      "V8.GC_MC_MARK_RETAIN_MAPS": 143,
+      "V8.GC_MC_MARK_FULL_CLOSURE_PARALLEL": 143,
+      "V8.GC_MC_MARK_EMBEDDER_TRACING": 496,
+      "V8.GC_MC_MARK_WEAK_CLOSURE_EPHEMERON_MARKING": 496,
+      "V8.GC_MC_MARK_FULL_CLOSURE_PARALLEL_JOIN": 143,
+      "V8.GC_CONSERVATIVE_STACK_SCANNING": 143,
+      "V8.GC_MC_MARK_FULL_CLOSURE": 143,
+      "V8.GC_MC_CLEAR": 143,
+      "V8.GC_MC_CLEAR_STRING_FORWARDING_TABLE": 143,
+      "ClearStringTableJob started": 143,
+      "V8.GC_MC_CLEAR_STRING_TABLE": 143,
+      "V8.GC_MC_CLEAR_EXTERNAL_STRING_TABLE": 143,
+      "V8.GC_MC_CLEAR_WEAK_GLOBAL_HANDLES": 143,
+      "V8.GC_MC_CLEAR_FLUSHABLE_BYTECODE": 143,
+      "V8.GC_MC_CLEAR_FLUSHED_JS_FUNCTIONS": 143,
+      "V8.GC_MC_CLEAR_WEAK_LISTS": 143,
+      "V8.GC_MC_CLEAR_MAPS": 143,
+      "V8.GC_MC_CLEAR_WEAK_REFERENCES": 286,
+      "V8.GC_MC_CLEAR_WEAK_COLLECTIONS": 143,
+      "V8.GC_MC_CLEAR_JOIN_JOB": 143,
+      "V8.GC_MC_SWEEP": 1202,
+      "V8.GC_MC_EVACUATE": 286,
+      "V8.GC_MC_EVACUATE_PROLOGUE": 143,
+      "V8.GC_MC_EVACUATE_COPY": 143,
+      "MarkCompactCollector::EvacuatePagesInParallel": 143,
+      "PageEvacuationJob started": 143,
+      "V8.GC_MC_EVACUATE_COPY_PARALLEL": 143,
+      "Evacuator::EvacuatePage": 43171,
+      "FullEvacuator::RawEvacuatePage": 43171,
+      "LiveObjectVisitor::VisitMarkedObjectsNoFail": 4303,
+      "V8.GC_MC_EVACUATE_UPDATE_POINTERS": 143,
+      "V8.GC_MC_EVACUATE_UPDATE_POINTERS_TO_NEW_ROOTS": 143,
+      "V8.GC_MC_EVACUATE_UPDATE_POINTERS_CLIENT_HEAPS": 143,
+      "V8.GC_MC_EVACUATE_UPDATE_POINTERS_SLOTS_MAIN": 143,
+      "PointersUpdatingJob started": 143,
+      "V8.GC_MC_BACKGROUND_EVACUATE_UPDATE_POINTERS": 406,
+      "RememberedSetUpdatingItem::Process": 59049,
+      "EphemeronTableUpdatingItem::Process": 143,
+      "V8.GC_MC_EVACUATE_UPDATE_POINTERS_PARALLEL": 143,
+      "V8.GC_MC_EVACUATE_UPDATE_POINTERS_WEAK": 143,
+      "V8.GC_MC_EVACUATE_UPDATE_POINTERS_POINTER_TABLES": 143,
+      "V8.GC_MC_EVACUATE_CLEAN_UP": 143,
+      "V8.GC_MC_EVACUATE_EPILOGUE": 143,
+      "V8.GC_MC_SWEEP_NEW_LO": 143,
+      "V8.GC_MC_EVACUATE_REBALANCE": 143,
+      "V8.GC_MC_FINISH": 143,
+      "V8.GC_MC_FINISH_SWEEP_ARRAY_BUFFERS": 143,
+      "V8.GC_BACKGROUND_FULL_ARRAY_BUFFER_SWEEP": 141,
+      "V8.GC_MC_SWEEP_START_JOBS": 143,
+      "V8.GC_MC_BACKGROUND_SWEEPING": 1984,
+      "V8.GC_MC_EPILOGUE": 143,
+      "V8.GC_HEAP_EMBEDDER_TRACING_EPILOGUE": 143,
+      "V8.GCMarkCompactorSummary": 143,
+      "V8.GCMarkCompactorMarkingSummary": 143,
+      "V8.GC_MC_COMPLETE_SWEEP_ARRAY_BUFFERS": 45,
+      "V8.GC_MC_COMPLETE_SWEEPING": 286,
+      "V8.GCDeoptMarkedAllocationSites": 90,
+      "V8.GC_MC_BACKGROUND_EVACUATE_COPY": 335,
+      "LiveObjectVisitor::VisitMarkedObjects": 38860,
+      "ConcurrentMarking::RunMajor Preempted": 619,
+      "Major concurrent marking paused": 168,
+      "Major concurrent marking resumed": 168,
+      "V8.GC_MINOR_MS_SWEEP": 2,
+      "V8.GC_YOUNG_ARRAY_BUFFER_SWEEP": 2,
+      "V8.GCFinalizeMCReduceMemory": 2,
+      "V8.GC_FULL_ARRAY_BUFFER_SWEEP": 2
+    },
+    "removedByOriginalBucketUs": {
+      "startup::main": 1926910,
+      "body_tick::body:decision": 14141019,
+      "trade_routes::route:_t996Step": 649729,
+      "other::zone:path:reachability-prebuild": 662137,
+      "other::timer:timeout:server/villages.js:5775": 14197,
+      "other::unattributed-native": 329824,
+      "other::zone:body:gauges-stairs-regeneration": 5243661,
+      "other::timer:timeout:server/zone.js:5841": 1359,
+      "other::zone:tickDowned(now);": 23906,
+      "other::zone:animals:AI": 2153999,
+      "other::timer:timeout:server/villages.js:5759": 1219,
+      "other::zone:space:rebuild-index": 1044926,
+      "other::villages:tickCaravanBodies": 6227244,
+      "other::zone:body:movement-preparation": 3392110,
+      "body_tick::body:movement": 3504701,
+      "observers::observer:GC-context": 768864,
+      "other::zone:if (SimVillages.t1005Flush) SimVillages.t1005Flush();": 45219,
+      "other::villages:deferLate:if (state._t695W) { state._t695W = false; if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')": 140142,
+      "other::frame:setup-and-dispatch": 2957004,
+      "other::zone:villages:frame-call": 163187,
+      "other::zone:path:raycast-prebuild": 118926,
+      "other::zone:if (T696) db.walTick();": 14281,
+      "other::villages:_t731Tick": 256831,
+      "other::zone:path:resident-precompute": 58045,
+      "other::villages:onGameTick:if (!state.tickJobs) { // Stage 4B: \uce90\ub7ec\ubc34 \uc2e4\uccb4 30Hz \uc804\uc9c4 \u2014 zone.js idle \uc874 \uc2a4\ud0b5\ubcf4\ub2e4 \uc55e(\ud638\ucd9c \uc704\uce58)\uc774\ub77c \ubb34\uc778 \uc874\uc5d0\uc11c\ub3c4 econ\uacfc \ub3d9\ud589": 26374,
+      "other::zone:villages:late-call": 180154,
+      "other::zone:observer:frame-statistics": 69083,
+      "other::villages:onGameTick:try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfea \uc7a5\ub9c8\ub2f9 \ud50c\ub798\uadf8 \ubc29\uc1a1 \uc2e4\ud328:`, e.message)": 5772,
+      "other::zone:lastTick = now;": 28729,
+      "other::timer:interval:server/zone.js:17654": 66292,
+      "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _stairStepP(p);": 79003,
+      "other::zone:if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; }": 106439,
+      "other::villages:onGameTick:if (_t732BootWait) { try { _t732Boot(); } catch (e) { _t732BootWait = false; console.error(`[${state": 15699,
+      "other::zone:stepArrows(dt);": 29452,
+      "other::villages:onGameTick:if (state.saveQueue && state.saveQueue.length) { const vil = state.saveQueue.shift(); try { state.db": 17341,
+      "body_tick::body:separation": 5295761,
+      "other::zone:storage:periodic-call": 33046,
+      "other::clock:virtual-timer-pump": 88450,
+      "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _gaugeNetStep(p);": 48938,
+      "pathfinding::path:smoothPath": 14621,
+      "storage::save:periodic": 289638,
+      "other::zone:roads:raw-prebuild": 22117,
+      "other::zone:roads:frame": 92999,
+      "other::zone:if (T487_SNOW) { try { require('./snow').at(gameDayNow()); } catch (e) {} }": 10340,
+      "other::zone:roomsFlush();": 22991,
+      "trade_routes::route:_routeRedigStep": 47593,
+      "other::villages:onGameTick:if (T695_LATE()) { if (!state.tickJobs) state._t695W = true; } else if (!state.tickJobs) { if (!TB.o": 1617,
+      "other::zone:TB.begin(SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : 0);": 37929,
+      "other::zone:if (BC.VERIFY) BC.check(players);": 16066,
+      "other::zone:{ const _gd = zoneGameDay(); if (_gd !== _lastFarmStageDay) { _lastFarmStageDay = _gd; _farmStageQ =": 24255,
+      "observers::observer:body-probe": 198349,
+      "other::zone:_tick.n++;": 5109,
+      "other::zone:_npcCursor = _curHit ? _stopAt : null;": 31290,
+      "other::zone:if (SimVillages.t1034Flush) SimVillages.t1034Flush();": 15332,
+      "other::zone:try { Wildlife.tick(now); } catch (e) { global._wlErr = (global._wlErr || 0) + 1; if (global._wlErr ": 83018,
+      "other::zone:soil:frame": 18213,
+      "other::villages:_granBroadcast": 3867,
+      "other::zone:plants:season-sweep": 123178,
+      "other::zone:if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);": 37204,
+      "other::zone:_tick.debt = _tickDebt;": 13786,
+      "trade_routes::route:_routeWarmStep": 39110,
+      "other::zone:_diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));": 30332,
+      "other::zone:space:active-chunks": 278410,
+      "other::villages:_mktBroadcast": 48642,
+      "econ::econ:head": 16687,
+      "life_daily::day:life:life:\uc27c\ud45c": 152596,
+      "econ::day:econ:econ:vil": 3550,
+      "other::zone:body:fishing-poll": 397492,
+      "econ::econ:village": 380646,
+      "storage::sqlite:run": 235903,
+      "storage::sqlite:exec": 232687,
+      "econ::econ:trade": 9647,
+      "pathfinding::path:localPath": 351253,
+      "life_daily::day:caravan:caravan_sync": 268035,
+      "econ::events:scanDay": 64181,
+      "life_daily::day:events:": 28550,
+      "pathfinding::path:pathStep": 93867,
+      "other::villages:tickWarBodies": 8095,
+      "other::villages:tickBodyExits": 11404,
+      "other::zone:_decT0 = 0;": 17762,
+      "other::zone:network:observers-AOI": 18522,
+      "other::villages:deferLate:if (state._t695C) { state._t695C = false; if (state.tickJobs) { if (TB.out(TICK_SLICE_MS, 'close')) ": 28556,
+      "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _hpRegenStep(p);": 82121,
+      "other::villages:onGameTick:if (T731_ON) { _t731Tick(now); return; }": 2887,
+      "other::zone:TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);": 40075,
+      "other::zone:network:players-AOI": 522825,
+      "other::zone:_decT0 = Date.now();": 27404,
+      "other::villages:onGameTick:if (!state.ready) return;": 5932,
+      "other::zone:if (_stopAt !== null) _walk.cut++;": 164387,
+      "other::villages:onGameTick:try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfd8\ufe0f \uacf3\uac04 \uc7ac\uace0 \ubc29\uc1a1 \uc2e4\ud328:`, e.messa": 7069,
+      "other::villages:onGameTick:_t1026Seq++;": 26384,
+      "life_daily::day:roads:": 2767,
+      "other::zone:if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }": 6703,
+      "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _inputTOStep(p, now);": 11590,
+      "other::timer:interval:server/zone.js:17657": 784,
+      "other::zone:bandits:frame": 4346,
+      "other::zone:if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;": 15585,
+      "trade_routes::route:_t968DistBg": 36272,
+      "other::zone:network:ghosts": 15753,
+      "other::villages:onGameTick:if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();": 14636,
+      "other::villages:onGameTick:if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && (T731_ON ? _t731Due(now) : game": 3275,
+      "other::zone:_tick.wall += _elapsed;": 31943,
+      "other::villages:deferLate:if (!TB.DEC_FIRST) return;": 13710,
+      "other::timer:interval:server/zone.js:5454": 1813,
+      "other::zone:if (_t566RelPend.length) _t566FlushRel();": 7068,
+      "other::zone:TB.end();": 10853,
+      "other::zone:TB.lateBegin();": 10139,
+      "other::zone:if (_vein) _veinTick(now);": 19440,
+      "other::zone:_tick.sim += dt;": 4467,
+      "observers::observer:ledger": 5425,
+      "other::timer:interval:server/village-view.js:50": 677,
+      "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _fallStepP(p);": 53060,
+      "life_daily::day:pop:": 3302,
+      "life_daily::day:t731:": 525,
+      "other::timer:interval:server/zone.js:16357": 564,
+      "econ::econ:caravans": 6114,
+      "life_daily::day:terr:": 8264,
+      "life_daily::day:wx:": 4338
+    }
+  },
+  "otherBlocks": [
+    {
+      "key": "other::villages:tickCaravanBodies",
+      "coarse": "other",
+      "name": "villages:tickCaravanBodies",
+      "cpuUs": 356071408,
+      "cpuMinutes": 5.934523466666667,
+      "percentOfProcess": 14.094404451211528,
+      "percentOfOther": 29.299114492464767,
+      "zeroOnlyThisMinutes": 36.17100491666667,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "other::zone:body:movement-preparation",
+      "coarse": "other",
+      "name": "zone:body:movement-preparation",
+      "cpuUs": 151530032,
+      "cpuMinutes": 2.525500533333333,
+      "percentOfProcess": 5.998025984476197,
+      "percentOfOther": 12.468554500210951,
+      "zeroOnlyThisMinutes": 39.58002785,
+      "known": true,
+      "source": "server/zone.js:16775"
+    },
+    {
+      "key": "other::frame:setup-and-dispatch",
+      "coarse": "other",
+      "name": "frame:setup-and-dispatch",
+      "cpuUs": 94313214,
+      "cpuMinutes": 1.5718869,
+      "percentOfProcess": 3.733207871634741,
+      "percentOfOther": 7.760504193974291,
+      "zeroOnlyThisMinutes": 40.533641483333334,
+      "known": true,
+      "source": "server/zone.js:16408"
+    },
+    {
+      "key": "other::zone:body:gauges-stairs-regeneration",
+      "coarse": "other",
+      "name": "zone:body:gauges-stairs-regeneration",
+      "cpuUs": 86353403,
+      "cpuMinutes": 1.4392233833333334,
+      "percentOfProcess": 3.418134004234518,
+      "percentOfOther": 7.105536093229229,
+      "zeroOnlyThisMinutes": 40.666305,
+      "known": true,
+      "source": "server/zone.js:17145"
+    },
+    {
+      "key": "other::GC:background-threads",
+      "coarse": "other",
+      "name": "GC:background-threads",
+      "cpuUs": 77809477,
+      "cpuMinutes": 1.2968246166666666,
+      "percentOfProcess": 3.0799390637263437,
+      "percentOfOther": 6.402504452763598,
+      "zeroOnlyThisMinutes": 40.80870376666667,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "other::zone:space:rebuild-index",
+      "coarse": "other",
+      "name": "zone:space:rebuild-index",
+      "cpuUs": 67028393,
+      "cpuMinutes": 1.1171398833333333,
+      "percentOfProcess": 2.653190510193269,
+      "percentOfOther": 5.515389656764926,
+      "zeroOnlyThisMinutes": 40.9883885,
+      "known": true,
+      "source": "server/zone.js:16493"
+    },
+    {
+      "key": "other::zone:animals:AI",
+      "coarse": "other",
+      "name": "zone:animals:AI",
+      "cpuUs": 42243672,
+      "cpuMinutes": 0.7040612,
+      "percentOfProcess": 1.6721348170486068,
+      "percentOfOther": 3.475994294128014,
+      "zeroOnlyThisMinutes": 41.40146718333333,
+      "known": true,
+      "source": "server/zone.js:16962"
+    },
+    {
+      "key": "other::unattributed-background",
+      "coarse": "other",
+      "name": "unattributed-background",
+      "cpuUs": 32415352,
+      "cpuMinutes": 0.5402558666666667,
+      "percentOfProcess": 1.2830996009552909,
+      "percentOfOther": 2.667277091682539,
+      "zeroOnlyThisMinutes": 41.56527251666667,
+      "known": false,
+      "source": null
+    },
+    {
+      "key": "other::GC:main-thread",
+      "coarse": "other",
+      "name": "GC:main-thread",
+      "cpuUs": 26147005,
+      "cpuMinutes": 0.43578341666666665,
+      "percentOfProcess": 1.0349790951422027,
+      "percentOfOther": 2.151490054854527,
+      "zeroOnlyThisMinutes": 41.66974496666667,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "other::zone:body:fishing-poll",
+      "coarse": "other",
+      "name": "zone:body:fishing-poll",
+      "cpuUs": 25435923,
+      "cpuMinutes": 0.42393205,
+      "percentOfProcess": 1.0068322766086113,
+      "percentOfOther": 2.092979114454811,
+      "zeroOnlyThisMinutes": 41.68159633333333,
+      "known": true,
+      "source": "server/zone.js:17561"
+    },
+    {
+      "key": "other::villages:_t731Tick",
+      "coarse": "other",
+      "name": "villages:_t731Tick",
+      "cpuUs": 24906180,
+      "cpuMinutes": 0.415103,
+      "percentOfProcess": 0.9858634149436551,
+      "percentOfOther": 2.0493895409595373,
+      "zeroOnlyThisMinutes": 41.690425383333334,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "other::zone:space:active-chunks",
+      "coarse": "other",
+      "name": "zone:space:active-chunks",
+      "cpuUs": 21876881,
+      "cpuMinutes": 0.36461468333333336,
+      "percentOfProcess": 0.865954418179583,
+      "percentOfOther": 1.8001255555936888,
+      "zeroOnlyThisMinutes": 41.7409137,
+      "known": true,
+      "source": "server/zone.js:16490"
+    },
+    {
+      "key": "other::zone:path:reachability-prebuild",
+      "coarse": "other",
+      "name": "zone:path:reachability-prebuild",
+      "cpuUs": 20777645,
+      "cpuMinutes": 0.34629408333333334,
+      "percentOfProcess": 0.822443267260855,
+      "percentOfOther": 1.7096756045596004,
+      "zeroOnlyThisMinutes": 41.7592343,
+      "known": true,
+      "source": "server/zone.js:17569"
+    },
+    {
+      "key": "other::zone:villages:frame-call",
+      "coarse": "other",
+      "name": "zone:villages:frame-call",
+      "cpuUs": 16645683,
+      "cpuMinutes": 0.27742805,
+      "percentOfProcess": 0.6588874683492028,
+      "percentOfOther": 1.369679679594702,
+      "zeroOnlyThisMinutes": 41.82810033333333,
+      "known": true,
+      "source": "server/zone.js:16456"
+    },
+    {
+      "key": "other::zone:network:players-AOI",
+      "coarse": "other",
+      "name": "zone:network:players-AOI",
+      "cpuUs": 16558904,
+      "cpuMinutes": 0.2759817333333333,
+      "percentOfProcess": 0.655452487903169,
+      "percentOfOther": 1.3625391235168558,
+      "zeroOnlyThisMinutes": 41.82954665,
+      "known": true,
+      "source": "server/zone.js:17529"
+    },
+    {
+      "key": "other::zone:path:resident-precompute",
+      "coarse": "other",
+      "name": "zone:path:resident-precompute",
+      "cpuUs": 15570343,
+      "cpuMinutes": 0.25950571666666666,
+      "percentOfProcess": 0.616322194805628,
+      "percentOfOther": 1.2811959960681463,
+      "zeroOnlyThisMinutes": 41.84602266666667,
+      "known": true,
+      "source": "server/zone.js:16459"
+    },
+    {
+      "key": "other::zone:roads:frame",
+      "coarse": "other",
+      "name": "zone:roads:frame",
+      "cpuUs": 13342698,
+      "cpuMinutes": 0.2223783,
+      "percentOfProcess": 0.5281451356587754,
+      "percentOfOther": 1.097895611827335,
+      "zeroOnlyThisMinutes": 41.883150083333334,
+      "known": true,
+      "source": "server/zone.js:16461"
+    },
+    {
+      "key": "other::villages:_mktBroadcast",
+      "coarse": "other",
+      "name": "villages:_mktBroadcast",
+      "cpuUs": 11746399,
+      "cpuMinutes": 0.19577331666666667,
+      "percentOfProcess": 0.4649586982600598,
+      "percentOfOther": 0.9665451407858439,
+      "zeroOnlyThisMinutes": 41.90975506666667,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "other::zone:plants:season-sweep",
+      "coarse": "other",
+      "name": "zone:plants:season-sweep",
+      "cpuUs": 9004960,
+      "cpuMinutes": 0.15008266666666667,
+      "percentOfProcess": 0.3564440880548931,
+      "percentOfOther": 0.7409675366017188,
+      "zeroOnlyThisMinutes": 41.95544571666667,
+      "known": true,
+      "source": "server/zone.js:16466"
+    },
+    {
+      "key": "other::zone:path:raycast-prebuild",
+      "coarse": "other",
+      "name": "zone:path:raycast-prebuild",
+      "cpuUs": 7712431,
+      "cpuMinutes": 0.12854051666666666,
+      "percentOfProcess": 0.3052818040814492,
+      "percentOfOther": 0.6346125912031514,
+      "zeroOnlyThisMinutes": 41.97698786666667,
+      "known": true,
+      "source": "server/zone.js:17570"
+    },
+    {
+      "key": "other::zone:villages:late-call",
+      "coarse": "other",
+      "name": "zone:villages:late-call",
+      "cpuUs": 6261991,
+      "cpuMinutes": 0.10436651666666667,
+      "percentOfProcess": 0.24786891573121347,
+      "percentOfOther": 0.5152640373185593,
+      "zeroOnlyThisMinutes": 42.00116186666666,
+      "known": true,
+      "source": "server/zone.js:16476"
+    },
+    {
+      "key": "other::villages:onGameTick:if (!state.tickJobs) { // Stage 4B: \uce90\ub7ec\ubc34 \uc2e4\uccb4 30Hz \uc804\uc9c4 \u2014 zone.js idle \uc874 \uc2a4\ud0b5\ubcf4\ub2e4 \uc55e(\ud638\ucd9c \uc704\uce58)\uc774\ub77c \ubb34\uc778 \uc874\uc5d0\uc11c\ub3c4 econ\uacfc \ub3d9\ud589",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (!state.tickJobs) { // Stage 4B: \uce90\ub7ec\ubc34 \uc2e4\uccb4 30Hz \uc804\uc9c4 \u2014 zone.js idle \uc874 \uc2a4\ud0b5\ubcf4\ub2e4 \uc55e(\ud638\ucd9c \uc704\uce58)\uc774\ub77c \ubb34\uc778 \uc874\uc5d0\uc11c\ub3c4 econ\uacfc \ub3d9\ud589",
+      "cpuUs": 5097043,
+      "cpuMinutes": 0.08495071666666666,
+      "percentOfProcess": 0.20175668119698215,
+      "percentOfOther": 0.41940701520751167,
+      "zeroOnlyThisMinutes": 42.02057766666667,
+      "known": true,
+      "source": "server/villages.js:9558"
+    },
+    {
+      "key": "other::clock:virtual-timer-pump",
+      "coarse": "other",
+      "name": "clock:virtual-timer-pump",
+      "cpuUs": 4585136,
+      "cpuMinutes": 0.07641893333333333,
+      "percentOfProcess": 0.18149382341816736,
+      "percentOfOther": 0.3772850658863402,
+      "zeroOnlyThisMinutes": 42.02910945,
+      "known": true,
+      "source": "scripts/t745-vclock.js pump"
+    },
+    {
+      "key": "other::villages:deferLate:if (state._t695W) { state._t695W = false; if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')",
+      "coarse": "other",
+      "name": "villages:deferLate:if (state._t695W) { state._t695W = false; if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')",
+      "cpuUs": 4574493,
+      "cpuMinutes": 0.07624155,
+      "percentOfProcess": 0.18107254065520467,
+      "percentOfOther": 0.376409313246456,
+      "zeroOnlyThisMinutes": 42.02928683333333,
+      "known": true,
+      "source": "server/villages.js:165"
+    },
+    {
+      "key": "other::unattributed-native",
+      "coarse": "other",
+      "name": "unattributed-native",
+      "cpuUs": 4303705,
+      "cpuMinutes": 0.07172841666666667,
+      "percentOfProcess": 0.17035391650626805,
+      "percentOfOther": 0.35412769097369673,
+      "zeroOnlyThisMinutes": 42.03379996666666,
+      "known": false,
+      "source": null
+    },
+    {
+      "key": "other::zone:observer:frame-statistics",
+      "coarse": "other",
+      "name": "zone:observer:frame-statistics",
+      "cpuUs": 4228305,
+      "cpuMinutes": 0.07047175,
+      "percentOfProcess": 0.1673693519730176,
+      "percentOfOther": 0.34792344883827697,
+      "zeroOnlyThisMinutes": 42.03505663333333,
+      "known": true,
+      "source": "server/zone.js:16428"
+    },
+    {
+      "key": "other::villages:onGameTick:if (state.saveQueue && state.saveQueue.length) { const vil = state.saveQueue.shift(); try { state.db",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (state.saveQueue && state.saveQueue.length) { const vil = state.saveQueue.shift(); try { state.db",
+      "cpuUs": 3886276,
+      "cpuMinutes": 0.06477126666666666,
+      "percentOfProcess": 0.15383078933716723,
+      "percentOfOther": 0.31977980516008747,
+      "zeroOnlyThisMinutes": 42.04075711666667,
+      "known": true,
+      "source": "server/villages.js:9583"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:17654",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:17654",
+      "cpuUs": 3532791,
+      "cpuMinutes": 0.05887985,
+      "percentOfProcess": 0.139838762891066,
+      "percentOfOther": 0.2906935116423307,
+      "zeroOnlyThisMinutes": 42.04664853333333,
+      "known": true,
+      "source": "server/zone.js:17654"
+    },
+    {
+      "key": "other::villages:tickWarBodies",
+      "coarse": "other",
+      "name": "villages:tickWarBodies",
+      "cpuUs": 2811935,
+      "cpuMinutes": 0.046865583333333335,
+      "percentOfProcess": 0.11130505929450389,
+      "percentOfOther": 0.23137832372760722,
+      "zeroOnlyThisMinutes": 42.0586628,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "other::zone:storage:periodic-call",
+      "coarse": "other",
+      "name": "zone:storage:periodic-call",
+      "cpuUs": 2701036,
+      "cpuMinutes": 0.04501726666666667,
+      "percentOfProcess": 0.10691533486250202,
+      "percentOfOther": 0.22225306844145448,
+      "zeroOnlyThisMinutes": 42.06051111666667,
+      "known": true,
+      "source": "server/zone.js:17562"
+    },
+    {
+      "key": "other::zone:try { Wildlife.tick(now); } catch (e) { global._wlErr = (global._wlErr || 0) + 1; if (global._wlErr ",
+      "coarse": "other",
+      "name": "zone:try { Wildlife.tick(now); } catch (e) { global._wlErr = (global._wlErr || 0) + 1; if (global._wlErr ",
+      "cpuUs": 2599777,
+      "cpuMinutes": 0.04332961666666667,
+      "percentOfProcess": 0.10290719136021545,
+      "percentOfOther": 0.21392103456359676,
+      "zeroOnlyThisMinutes": 42.06219876666667,
+      "known": true,
+      "source": "server/zone.js:17426"
+    },
+    {
+      "key": "other::zone:if (SimVillages.t1005Flush) SimVillages.t1005Flush();",
+      "coarse": "other",
+      "name": "zone:if (SimVillages.t1005Flush) SimVillages.t1005Flush();",
+      "cpuUs": 2072967,
+      "cpuMinutes": 0.03454945,
+      "percentOfProcess": 0.08205442688061775,
+      "percentOfOther": 0.17057280115032772,
+      "zeroOnlyThisMinutes": 42.070978933333336,
+      "known": true,
+      "source": "server/zone.js:17567"
+    },
+    {
+      "key": "other::villages:onGameTick:try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfd8\ufe0f \uacf3\uac04 \uc7ac\uace0 \ubc29\uc1a1 \uc2e4\ud328:`, e.messa",
+      "coarse": "other",
+      "name": "villages:onGameTick:try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfd8\ufe0f \uacf3\uac04 \uc7ac\uace0 \ubc29\uc1a1 \uc2e4\ud328:`, e.messa",
+      "cpuUs": 1760572,
+      "cpuMinutes": 0.029342866666666665,
+      "percentOfProcess": 0.069688869355886,
+      "percentOfOther": 0.14486757274323941,
+      "zeroOnlyThisMinutes": 42.07618551666667,
+      "known": true,
+      "source": "server/villages.js:9574"
+    },
+    {
+      "key": "other::villages:onGameTick:try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfea \uc7a5\ub9c8\ub2f9 \ud50c\ub798\uadf8 \ubc29\uc1a1 \uc2e4\ud328:`, e.message)",
+      "coarse": "other",
+      "name": "villages:onGameTick:try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfea \uc7a5\ub9c8\ub2f9 \ud50c\ub798\uadf8 \ubc29\uc1a1 \uc2e4\ud328:`, e.message)",
+      "cpuUs": 1735560,
+      "cpuMinutes": 0.028926,
+      "percentOfProcess": 0.06869881725899396,
+      "percentOfOther": 0.1428094758693519,
+      "zeroOnlyThisMinutes": 42.07660238333333,
+      "known": true,
+      "source": "server/villages.js:9576"
+    },
+    {
+      "key": "other::zone:_diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));",
+      "coarse": "other",
+      "name": "zone:_diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));",
+      "cpuUs": 1726580,
+      "cpuMinutes": 0.028776333333333334,
+      "percentOfProcess": 0.0683433611647156,
+      "percentOfOther": 0.14207056215083635,
+      "zeroOnlyThisMinutes": 42.07675205,
+      "known": true,
+      "source": "server/zone.js:16441"
+    },
+    {
+      "key": "other::villages:_granBroadcast",
+      "coarse": "other",
+      "name": "villages:_granBroadcast",
+      "cpuUs": 1698457,
+      "cpuMinutes": 0.028307616666666667,
+      "percentOfProcess": 0.06723016609351397,
+      "percentOfOther": 0.13975647857557894,
+      "zeroOnlyThisMinutes": 42.07722076666667,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "other::zone:roads:raw-prebuild",
+      "coarse": "other",
+      "name": "zone:roads:raw-prebuild",
+      "cpuUs": 1561818,
+      "cpuMinutes": 0.0260303,
+      "percentOfProcess": 0.06182157307947142,
+      "percentOfOther": 0.1285132233880243,
+      "zeroOnlyThisMinutes": 42.079498083333334,
+      "known": true,
+      "source": "server/zone.js:16463"
+    },
+    {
+      "key": "other::zone:TB.begin(SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : 0);",
+      "coarse": "other",
+      "name": "zone:TB.begin(SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : 0);",
+      "cpuUs": 1551006,
+      "cpuMinutes": 0.0258501,
+      "percentOfProcess": 0.06139360077531355,
+      "percentOfOther": 0.1276235646881813,
+      "zeroOnlyThisMinutes": 42.07967828333334,
+      "known": true,
+      "source": "server/zone.js:16412"
+    },
+    {
+      "key": "other::zone:if (_vein) _veinTick(now);",
+      "coarse": "other",
+      "name": "zone:if (_vein) _veinTick(now);",
+      "cpuUs": 1507510,
+      "cpuMinutes": 0.025125166666666667,
+      "percentOfProcess": 0.059671894953851196,
+      "percentOfOther": 0.12404452336295298,
+      "zeroOnlyThisMinutes": 42.08040321666667,
+      "known": true,
+      "source": "server/zone.js:17563"
+    },
+    {
+      "key": "other::villages:onGameTick:if (T731_ON) { _t731Tick(now); return; }",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (T731_ON) { _t731Tick(now); return; }",
+      "cpuUs": 1479748,
+      "cpuMinutes": 0.024662466666666667,
+      "percentOfProcess": 0.0585729893759719,
+      "percentOfOther": 0.12176014444831738,
+      "zeroOnlyThisMinutes": 42.08086591666667,
+      "known": true,
+      "source": "server/villages.js:9621"
+    },
+    {
+      "key": "other::zone:tickDowned(now);",
+      "coarse": "other",
+      "name": "zone:tickDowned(now);",
+      "cpuUs": 1447040,
+      "cpuMinutes": 0.024117333333333334,
+      "percentOfProcess": 0.05727830586465154,
+      "percentOfOther": 0.11906878699784909,
+      "zeroOnlyThisMinutes": 42.08141105,
+      "known": true,
+      "source": "server/zone.js:17566"
+    },
+    {
+      "key": "other::zone:TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);",
+      "coarse": "other",
+      "name": "zone:TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);",
+      "cpuUs": 1404176,
+      "cpuMinutes": 0.023402933333333334,
+      "percentOfProcess": 0.055581616552274254,
+      "percentOfOther": 0.11554174939980355,
+      "zeroOnlyThisMinutes": 42.08212545,
+      "known": true,
+      "source": "server/zone.js:16543"
+    },
+    {
+      "key": "other::zone:soil:frame",
+      "coarse": "other",
+      "name": "zone:soil:frame",
+      "cpuUs": 1380298,
+      "cpuMinutes": 0.023004966666666668,
+      "percentOfProcess": 0.05463645167263295,
+      "percentOfOther": 0.11357696301108268,
+      "zeroOnlyThisMinutes": 42.08252341666667,
+      "known": true,
+      "source": "server/zone.js:16465"
+    },
+    {
+      "key": "other::villages:tickBodyExits",
+      "coarse": "other",
+      "name": "villages:tickBodyExits",
+      "cpuUs": 1361481,
+      "cpuMinutes": 0.02269135,
+      "percentOfProcess": 0.053891616781092194,
+      "percentOfOther": 0.11202861786171671,
+      "zeroOnlyThisMinutes": 42.082837033333334,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "other::zone:_npcCursor = _curHit ? _stopAt : null;",
+      "coarse": "other",
+      "name": "zone:_npcCursor = _curHit ? _stopAt : null;",
+      "cpuUs": 1268463,
+      "cpuMinutes": 0.02114105,
+      "percentOfProcess": 0.050209677474011415,
+      "percentOfOther": 0.10437468954669715,
+      "zeroOnlyThisMinutes": 42.08438733333333,
+      "known": true,
+      "source": "server/zone.js:16542"
+    },
+    {
+      "key": "other::zone:bandits:frame",
+      "coarse": "other",
+      "name": "zone:bandits:frame",
+      "cpuUs": 1264381,
+      "cpuMinutes": 0.021073016666666666,
+      "percentOfProcess": 0.050048099325142335,
+      "percentOfOther": 0.10403880471384855,
+      "zeroOnlyThisMinutes": 42.08445536666667,
+      "known": true,
+      "source": "server/zone.js:16458"
+    },
+    {
+      "key": "other::zone:roomsFlush();",
+      "coarse": "other",
+      "name": "zone:roomsFlush();",
+      "cpuUs": 1223083,
+      "cpuMinutes": 0.020384716666666667,
+      "percentOfProcess": 0.0484133971223018,
+      "percentOfOther": 0.10064062445246175,
+      "zeroOnlyThisMinutes": 42.08514366666667,
+      "known": true,
+      "source": "server/zone.js:16494"
+    },
+    {
+      "key": "other::zone:stepArrows(dt);",
+      "coarse": "other",
+      "name": "zone:stepArrows(dt);",
+      "cpuUs": 1208531,
+      "cpuMinutes": 0.020142183333333334,
+      "percentOfProcess": 0.04783738408400126,
+      "percentOfOther": 0.09944322217720142,
+      "zeroOnlyThisMinutes": 42.0853862,
+      "known": true,
+      "source": "server/zone.js:16584"
+    },
+    {
+      "key": "other::zone:if (SimVillages.t1034Flush) SimVillages.t1034Flush();",
+      "coarse": "other",
+      "name": "zone:if (SimVillages.t1034Flush) SimVillages.t1034Flush();",
+      "cpuUs": 1204793,
+      "cpuMinutes": 0.020079883333333333,
+      "percentOfProcess": 0.04768942251602659,
+      "percentOfOther": 0.09913564317054095,
+      "zeroOnlyThisMinutes": 42.0854485,
+      "known": true,
+      "source": "server/zone.js:17568"
+    },
+    {
+      "key": "other::zone:if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; }",
+      "coarse": "other",
+      "name": "zone:if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; }",
+      "cpuUs": 1183536,
+      "cpuMinutes": 0.0197256,
+      "percentOfProcess": 0.04684800489953714,
+      "percentOfOther": 0.09738652413774762,
+      "zeroOnlyThisMinutes": 42.085802783333335,
+      "known": true,
+      "source": "server/zone.js:16838"
+    },
+    {
+      "key": "other::villages:deferLate:if (state._t695C) { state._t695C = false; if (state.tickJobs) { if (TB.out(TICK_SLICE_MS, 'close')) ",
+      "coarse": "other",
+      "name": "villages:deferLate:if (state._t695C) { state._t695C = false; if (state.tickJobs) { if (TB.out(TICK_SLICE_MS, 'close')) ",
+      "cpuUs": 1102470,
+      "cpuMinutes": 0.0183745,
+      "percentOfProcess": 0.043639162612368956,
+      "percentOfOther": 0.09071605871400837,
+      "zeroOnlyThisMinutes": 42.087153883333336,
+      "known": true,
+      "source": "server/villages.js:166"
+    },
+    {
+      "key": "other::zone:if (T696) db.walTick();",
+      "coarse": "other",
+      "name": "zone:if (T696) db.walTick();",
+      "cpuUs": 1055205,
+      "cpuMinutes": 0.01758675,
+      "percentOfProcess": 0.04176826814732808,
+      "percentOfOther": 0.08682688756638748,
+      "zeroOnlyThisMinutes": 42.08794163333334,
+      "known": true,
+      "source": "server/zone.js:16464"
+    },
+    {
+      "key": "other::zone:if (_t566RelPend.length) _t566FlushRel();",
+      "coarse": "other",
+      "name": "zone:if (_t566RelPend.length) _t566FlushRel();",
+      "cpuUs": 1047966,
+      "cpuMinutes": 0.0174661,
+      "percentOfProcess": 0.041481726202285636,
+      "percentOfOther": 0.08623123095076012,
+      "zeroOnlyThisMinutes": 42.088062283333336,
+      "known": true,
+      "source": "server/zone.js:16462"
+    },
+    {
+      "key": "other::zone:TB.end();",
+      "coarse": "other",
+      "name": "zone:TB.end();",
+      "cpuUs": 1026797,
+      "cpuMinutes": 0.017113283333333333,
+      "percentOfProcess": 0.040643791897187774,
+      "percentOfOther": 0.0844893529432707,
+      "zeroOnlyThisMinutes": 42.0884151,
+      "known": true,
+      "source": "server/zone.js:17575"
+    },
+    {
+      "key": "other::zone:{ const _gd = zoneGameDay(); if (_gd !== _lastFarmStageDay) { _lastFarmStageDay = _gd; _farmStageQ =",
+      "coarse": "other",
+      "name": "zone:{ const _gd = zoneGameDay(); if (_gd !== _lastFarmStageDay) { _lastFarmStageDay = _gd; _farmStageQ =",
+      "cpuUs": 964898,
+      "cpuMinutes": 0.016081633333333335,
+      "percentOfProcess": 0.03819363858095874,
+      "percentOfOther": 0.07939603220135627,
+      "zeroOnlyThisMinutes": 42.08944675,
+      "known": true,
+      "source": "server/zone.js:16558"
+    },
+    {
+      "key": "other::zone:if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);",
+      "coarse": "other",
+      "name": "zone:if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);",
+      "cpuUs": 953468,
+      "cpuMinutes": 0.015891133333333335,
+      "percentOfProcess": 0.03774120393089173,
+      "percentOfOther": 0.07845552175562885,
+      "zeroOnlyThisMinutes": 42.08963725,
+      "known": true,
+      "source": "server/zone.js:16837"
+    },
+    {
+      "key": "other::zone:network:observers-AOI",
+      "coarse": "other",
+      "name": "zone:network:observers-AOI",
+      "cpuUs": 886837,
+      "cpuMinutes": 0.014780616666666666,
+      "percentOfProcess": 0.03510374346119663,
+      "percentOfOther": 0.07297283133487083,
+      "zeroOnlyThisMinutes": 42.09074776666667,
+      "known": true,
+      "source": "server/zone.js:17550"
+    },
+    {
+      "key": "other::zone:_decT0 = Date.now();",
+      "coarse": "other",
+      "name": "zone:_decT0 = Date.now();",
+      "cpuUs": 859959,
+      "cpuMinutes": 0.01433265,
+      "percentOfProcess": 0.034039829329569234,
+      "percentOfOther": 0.07076119181078844,
+      "zeroOnlyThisMinutes": 42.091195733333336,
+      "known": true,
+      "source": "server/zone.js:16515"
+    },
+    {
+      "key": "other::zone:lastTick = now;",
+      "coarse": "other",
+      "name": "zone:lastTick = now;",
+      "cpuUs": 814440,
+      "cpuMinutes": 0.013574,
+      "percentOfProcess": 0.032238046929184264,
+      "percentOfOther": 0.06701568918794795,
+      "zeroOnlyThisMinutes": 42.09195438333333,
+      "known": true,
+      "source": "server/zone.js:16448"
+    },
+    {
+      "key": "other::zone:network:ghosts",
+      "coarse": "other",
+      "name": "zone:network:ghosts",
+      "cpuUs": 813700,
+      "cpuMinutes": 0.013561666666666666,
+      "percentOfProcess": 0.0322087554470277,
+      "percentOfOther": 0.0669547987478921,
+      "zeroOnlyThisMinutes": 42.09196671666667,
+      "known": true,
+      "source": "server/zone.js:16585"
+    },
+    {
+      "key": "other::zone:if (BC.VERIFY) BC.check(players);",
+      "coarse": "other",
+      "name": "zone:if (BC.VERIFY) BC.check(players);",
+      "cpuUs": 799751,
+      "cpuMinutes": 0.013329183333333333,
+      "percentOfProcess": 0.03165661100837636,
+      "percentOfOther": 0.06580701395283946,
+      "zeroOnlyThisMinutes": 42.0921992,
+      "known": true,
+      "source": "server/zone.js:16410"
+    },
+    {
+      "key": "other::villages:onGameTick:if (T695_LATE()) { if (!state.tickJobs) state._t695W = true; } else if (!state.tickJobs) { if (!TB.o",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (T695_LATE()) { if (!state.tickJobs) state._t695W = true; } else if (!state.tickJobs) { if (!TB.o",
+      "cpuUs": 772426,
+      "cpuMinutes": 0.012873766666666666,
+      "percentOfProcess": 0.03057500323820304,
+      "percentOfOther": 0.0635585933115882,
+      "zeroOnlyThisMinutes": 42.092654616666664,
+      "known": true,
+      "source": "server/villages.js:9579"
+    },
+    {
+      "key": "other::villages:deferLate:if (!TB.DEC_FIRST) return;",
+      "coarse": "other",
+      "name": "villages:deferLate:if (!TB.DEC_FIRST) return;",
+      "cpuUs": 724876,
+      "cpuMinutes": 0.012081266666666667,
+      "percentOfProcess": 0.02869282759422348,
+      "percentOfOther": 0.05964597111610795,
+      "zeroOnlyThisMinutes": 42.09344711666667,
+      "known": true,
+      "source": "server/villages.js:164"
+    },
+    {
+      "key": "other::zone:_decT0 = 0;",
+      "coarse": "other",
+      "name": "zone:_decT0 = 0;",
+      "cpuUs": 681466,
+      "cpuMinutes": 0.011357766666666666,
+      "percentOfProcess": 0.02697452591798473,
+      "percentOfOther": 0.056074006247426623,
+      "zeroOnlyThisMinutes": 42.094170616666666,
+      "known": true,
+      "source": "server/zone.js:16544"
+    },
+    {
+      "key": "other::villages:onGameTick:if (_t732BootWait) { try { _t732Boot(); } catch (e) { _t732BootWait = false; console.error(`[${state",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (_t732BootWait) { try { _t732Boot(); } catch (e) { _t732BootWait = false; console.error(`[${state",
+      "cpuUs": 676693,
+      "cpuMinutes": 0.011278216666666667,
+      "percentOfProcess": 0.026785595858074857,
+      "percentOfOther": 0.05568126290906643,
+      "zeroOnlyThisMinutes": 42.09425016666667,
+      "known": true,
+      "source": "server/villages.js:9549"
+    },
+    {
+      "key": "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _inputTOStep(p, now);",
+      "coarse": "other",
+      "name": "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _inputTOStep(p, now);",
+      "cpuUs": 654252,
+      "cpuMinutes": 0.0109042,
+      "percentOfProcess": 0.025897311870134894,
+      "percentOfOther": 0.05383471917218374,
+      "zeroOnlyThisMinutes": 42.09462418333333,
+      "known": true,
+      "source": "server/zone.js:16499"
+    },
+    {
+      "key": "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _fallStepP(p);",
+      "coarse": "other",
+      "name": "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _fallStepP(p);",
+      "cpuUs": 653744,
+      "cpuMinutes": 0.010895733333333333,
+      "percentOfProcess": 0.02587720366346525,
+      "percentOfOther": 0.05379291870792919,
+      "zeroOnlyThisMinutes": 42.09463265,
+      "known": true,
+      "source": "server/zone.js:17049"
+    },
+    {
+      "key": "other::zone:if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;",
+      "coarse": "other",
+      "name": "zone:if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;",
+      "cpuUs": 650417,
+      "cpuMinutes": 0.010840283333333334,
+      "percentOfProcess": 0.02574551074301267,
+      "percentOfOther": 0.053519158580813256,
+      "zeroOnlyThisMinutes": 42.0946881,
+      "known": true,
+      "source": "server/zone.js:16443"
+    },
+    {
+      "key": "other::zone:_tick.wall += _elapsed;",
+      "coarse": "other",
+      "name": "zone:_tick.wall += _elapsed;",
+      "cpuUs": 646629,
+      "cpuMinutes": 0.01077715,
+      "percentOfProcess": 0.025595570020838232,
+      "percentOfOther": 0.05320746535523009,
+      "zeroOnlyThisMinutes": 42.094751233333334,
+      "known": true,
+      "source": "server/zone.js:16434"
+    },
+    {
+      "key": "other::villages:onGameTick:if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && (T731_ON ? _t731Due(now) : game",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && (T731_ON ? _t731Due(now) : game",
+      "cpuUs": 636471,
+      "cpuMinutes": 0.01060785,
+      "percentOfProcess": 0.025193485053613327,
+      "percentOfOther": 0.05237162063889596,
+      "zeroOnlyThisMinutes": 42.09492053333334,
+      "known": true,
+      "source": "server/villages.js:9619"
+    },
+    {
+      "key": "other::timer:timeout:server/villages.js:5775",
+      "coarse": "other",
+      "name": "timer:timeout:server/villages.js:5775",
+      "cpuUs": 631592,
+      "cpuMinutes": 0.010526533333333333,
+      "percentOfProcess": 0.025000359186799943,
+      "percentOfOther": 0.05197015515641966,
+      "zeroOnlyThisMinutes": 42.09500185,
+      "known": true,
+      "source": "server/villages.js:5775"
+    },
+    {
+      "key": "other::zone:if (T487_SNOW) { try { require('./snow').at(gameDayNow()); } catch (e) {} }",
+      "coarse": "other",
+      "name": "zone:if (T487_SNOW) { try { require('./snow').at(gameDayNow()); } catch (e) {} }",
+      "cpuUs": 625640,
+      "cpuMinutes": 0.010427333333333334,
+      "percentOfProcess": 0.02476476067085954,
+      "percentOfOther": 0.05148039853586238,
+      "zeroOnlyThisMinutes": 42.09510105,
+      "known": true,
+      "source": "server/zone.js:16469"
+    },
+    {
+      "key": "other::zone:_tick.n++;",
+      "coarse": "other",
+      "name": "zone:_tick.n++;",
+      "cpuUs": 611942,
+      "cpuMinutes": 0.010199033333333333,
+      "percentOfProcess": 0.024222551586291042,
+      "percentOfOther": 0.050353267119801634,
+      "zeroOnlyThisMinutes": 42.09532935,
+      "known": true,
+      "source": "server/zone.js:16434"
+    },
+    {
+      "key": "other::zone:_tick.sim += dt;",
+      "coarse": "other",
+      "name": "zone:_tick.sim += dt;",
+      "cpuUs": 609424,
+      "cpuMinutes": 0.010157066666666667,
+      "percentOfProcess": 0.024122881380790714,
+      "percentOfOther": 0.050146075054854855,
+      "zeroOnlyThisMinutes": 42.095371316666665,
+      "known": true,
+      "source": "server/zone.js:16434"
+    },
+    {
+      "key": "other::villages:onGameTick:if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();",
+      "cpuUs": 584061,
+      "cpuMinutes": 0.00973435,
+      "percentOfProcess": 0.023118935621416297,
+      "percentOfOther": 0.048059096364130034,
+      "zeroOnlyThisMinutes": 42.095794033333334,
+      "known": true,
+      "source": "server/villages.js:9550"
+    },
+    {
+      "key": "other::villages:onGameTick:_t1026Seq++;",
+      "coarse": "other",
+      "name": "villages:onGameTick:_t1026Seq++;",
+      "cpuUs": 580245,
+      "cpuMinutes": 0.00967075,
+      "percentOfProcess": 0.02296788657288999,
+      "percentOfOther": 0.04774509917595018,
+      "zeroOnlyThisMinutes": 42.09585763333333,
+      "known": true,
+      "source": "server/villages.js:9548"
+    },
+    {
+      "key": "other::villages:onGameTick:if (!state.ready) return;",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (!state.ready) return;",
+      "cpuUs": 576882,
+      "cpuMinutes": 0.0096147,
+      "percentOfProcess": 0.02283476866141358,
+      "percentOfOther": 0.0474683768112099,
+      "zeroOnlyThisMinutes": 42.095913683333336,
+      "known": true,
+      "source": "server/villages.js:9547"
+    },
+    {
+      "key": "other::zone:if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }",
+      "coarse": "other",
+      "name": "zone:if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }",
+      "cpuUs": 569084,
+      "cpuMinutes": 0.009484733333333334,
+      "percentOfProcess": 0.02252609977241773,
+      "percentOfOther": 0.04682672322802683,
+      "zeroOnlyThisMinutes": 42.09604365,
+      "known": true,
+      "source": "server/zone.js:16442"
+    },
+    {
+      "key": "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _hpRegenStep(p);",
+      "coarse": "other",
+      "name": "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _hpRegenStep(p);",
+      "cpuUs": 568487,
+      "cpuMinutes": 0.009474783333333334,
+      "percentOfProcess": 0.022502468671272497,
+      "percentOfOther": 0.04677759945408989,
+      "zeroOnlyThisMinutes": 42.0960536,
+      "known": true,
+      "source": "server/zone.js:17169"
+    },
+    {
+      "key": "other::zone:_tick.debt = _tickDebt;",
+      "coarse": "other",
+      "name": "zone:_tick.debt = _tickDebt;",
+      "cpuUs": 549762,
+      "cpuMinutes": 0.0091627,
+      "percentOfProcess": 0.02176127542345931,
+      "percentOfOther": 0.045236824467541674,
+      "zeroOnlyThisMinutes": 42.09636568333333,
+      "known": true,
+      "source": "server/zone.js:16434"
+    },
+    {
+      "key": "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _stairStepP(p);",
+      "coarse": "other",
+      "name": "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _stairStepP(p);",
+      "cpuUs": 547591,
+      "cpuMinutes": 0.009126516666666667,
+      "percentOfProcess": 0.021675340548105375,
+      "percentOfOther": 0.04505818508191838,
+      "zeroOnlyThisMinutes": 42.09640186666667,
+      "known": true,
+      "source": "server/zone.js:16952"
+    },
+    {
+      "key": "other::zone:TB.lateBegin();",
+      "coarse": "other",
+      "name": "zone:TB.lateBegin();",
+      "cpuUs": 542936,
+      "cpuMinutes": 0.009048933333333333,
+      "percentOfProcess": 0.021491081292106952,
+      "percentOfOther": 0.044675151300215744,
+      "zeroOnlyThisMinutes": 42.09647945,
+      "known": true,
+      "source": "server/zone.js:16516"
+    },
+    {
+      "key": "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _gaugeNetStep(p);",
+      "coarse": "other",
+      "name": "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _gaugeNetStep(p);",
+      "cpuUs": 540444,
+      "cpuMinutes": 0.0090074,
+      "percentOfProcess": 0.021392440246790507,
+      "percentOfOther": 0.044470098629108765,
+      "zeroOnlyThisMinutes": 42.096520983333335,
+      "known": true,
+      "source": "server/zone.js:17217"
+    },
+    {
+      "key": "other::zone:if (_stopAt !== null) _walk.cut++;",
+      "coarse": "other",
+      "name": "zone:if (_stopAt !== null) _walk.cut++;",
+      "cpuUs": 536107,
+      "cpuMinutes": 0.008935116666666666,
+      "percentOfProcess": 0.02122076841150261,
+      "percentOfOther": 0.04411323127975445,
+      "zeroOnlyThisMinutes": 42.096593266666666,
+      "known": true,
+      "source": "server/zone.js:16546"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:5454",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:5454",
+      "cpuUs": 209426,
+      "cpuMinutes": 0.0034904333333333334,
+      "percentOfProcess": 0.008289726948813103,
+      "percentOfOther": 0.01723248824207454,
+      "zeroOnlyThisMinutes": 42.10203795,
+      "known": true,
+      "source": "server/zone.js:5454"
+    },
+    {
+      "key": "other::timer:timeout:server/zone.js:5841",
+      "coarse": "other",
+      "name": "timer:timeout:server/zone.js:5841",
+      "cpuUs": 178765,
+      "cpuMinutes": 0.0029794166666666667,
+      "percentOfProcess": 0.007076070010431247,
+      "percentOfOther": 0.014709566914301257,
+      "zeroOnlyThisMinutes": 42.10254896666667,
+      "known": true,
+      "source": "server/zone.js:5841"
+    },
+    {
+      "key": "other::timer:timeout:server/villages.js:5759",
+      "coarse": "other",
+      "name": "timer:timeout:server/villages.js:5759",
+      "cpuUs": 85868,
+      "cpuMinutes": 0.0014311333333333334,
+      "percentOfProcess": 0.0033989202565139166,
+      "percentOfOther": 0.007065595009074596,
+      "zeroOnlyThisMinutes": 42.10409725,
+      "known": true,
+      "source": "server/villages.js:5759"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:12224",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:12224",
+      "cpuUs": 53090,
+      "cpuMinutes": 0.0008848333333333333,
+      "percentOfProcess": 0.0021014659293138753,
+      "percentOfOther": 0.004368477652114529,
+      "zeroOnlyThisMinutes": 42.10464355,
+      "known": true,
+      "source": "server/zone.js:12224"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:17657",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:17657",
+      "cpuUs": 37566,
+      "cpuMinutes": 0.0006261,
+      "percentOfProcess": 0.0014869781333698444,
+      "percentOfOther": 0.0030910949609970688,
+      "zeroOnlyThisMinutes": 42.10490228333333,
+      "known": true,
+      "source": "server/zone.js:17657"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:16357",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:16357",
+      "cpuUs": 35212,
+      "cpuMinutes": 0.0005868666666666667,
+      "percentOfProcess": 0.0013937995536447575,
+      "percentOfOther": 0.002897397534116722,
+      "zeroOnlyThisMinutes": 42.10494151666666,
+      "known": true,
+      "source": "server/zone.js:16357"
+    },
+    {
+      "key": "other::timer:interval:server/village-view.js:50",
+      "coarse": "other",
+      "name": "timer:interval:server/village-view.js:50",
+      "cpuUs": 25508,
+      "cpuMinutes": 0.00042513333333333333,
+      "percentOfProcess": 0.001009685306553745,
+      "percentOfOther": 0.002098909925600629,
+      "zeroOnlyThisMinutes": 42.10510325,
+      "known": true,
+      "source": "server/village-view.js:50"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:5446",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:5446",
+      "cpuUs": 18075,
+      "cpuMinutes": 0.00030125,
+      "percentOfProcess": 0.0007154642432162045,
+      "percentOfOther": 0.0014872901405532134,
+      "zeroOnlyThisMinutes": 42.10522713333334,
+      "known": true,
+      "source": "server/zone.js:5446"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:10376",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:10376",
+      "cpuUs": 12792,
+      "cpuMinutes": 0.0002132,
+      "percentOfProcess": 0.0005063468104686965,
+      "percentOfOther": 0.0010525817691815606,
+      "zeroOnlyThisMinutes": 42.10531518333333,
+      "known": true,
+      "source": "server/zone.js:10376"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:1849",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:1849",
+      "cpuUs": 9487,
+      "cpuMinutes": 0.00015811666666666667,
+      "percentOfProcess": 0.00037552471786401836,
+      "percentOfOther": 0.0007806318983916092,
+      "zeroOnlyThisMinutes": 42.10537026666667,
+      "known": true,
+      "source": "server/zone.js:1849"
+    },
+    {
+      "key": "other::timer:interval:server/newcomers.js:171",
+      "coarse": "other",
+      "name": "timer:interval:server/newcomers.js:171",
+      "cpuUs": 7260,
+      "cpuMinutes": 0.000121,
+      "percentOfProcess": 0.0002873731898063427,
+      "percentOfOther": 0.0005973845875749007,
+      "zeroOnlyThisMinutes": 42.105407383333336,
+      "known": true,
+      "source": "server/newcomers.js:171"
+    },
+    {
+      "key": "other::rumor:rowOf",
+      "coarse": "other",
+      "name": "rumor:rowOf",
+      "cpuUs": 6902,
+      "cpuMinutes": 0.00011503333333333333,
+      "percentOfProcess": 0.00027320244573600237,
+      "percentOfOther": 0.0005679267800884249,
+      "zeroOnlyThisMinutes": 42.10541335,
+      "known": true,
+      "source": "server/rumor.js"
+    },
+    {
+      "key": "other::timer:timeout:server/villages.js:5777",
+      "coarse": "other",
+      "name": "timer:timeout:server/villages.js:5777",
+      "cpuUs": 4404,
+      "cpuMinutes": 7.34e-05,
+      "percentOfProcess": 0.0001743239019155831,
+      "percentOfOther": 0.0003623804027107249,
+      "zeroOnlyThisMinutes": 42.10545498333333,
+      "known": true,
+      "source": "server/villages.js:5777"
+    },
+    {
+      "key": "other::timer:timeout:server/zone.js:16355",
+      "coarse": "other",
+      "name": "timer:timeout:server/zone.js:16355",
+      "cpuUs": 3999,
+      "cpuMinutes": 6.665e-05,
+      "percentOfProcess": 0.00015829275289746067,
+      "percentOfOther": 0.00032905522943691844,
+      "zeroOnlyThisMinutes": 42.105461733333335,
+      "known": true,
+      "source": "server/zone.js:16355"
+    },
+    {
+      "key": "other::timer:timeout:server/newcomers.js:170",
+      "coarse": "other",
+      "name": "timer:timeout:server/newcomers.js:170",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": 0.0,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "server/newcomers.js:170"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:2618",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:2618",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": 0.0,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "server/zone.js:2618"
+    },
+    {
+      "key": "other::timer:timeout:server/claims.js:296",
+      "coarse": "other",
+      "name": "timer:timeout:server/claims.js:296",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": 0.0,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "server/claims.js:296"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:10809",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:10809",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": 0.0,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "server/zone.js:10809"
+    },
+    {
+      "key": "other::timer:interval:server/claims.js:297",
+      "coarse": "other",
+      "name": "timer:interval:server/claims.js:297",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": 0.0,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "server/claims.js:297"
+    }
+  ],
+  "allBlocks": [
+    {
+      "key": "body_tick::body:decision",
+      "coarse": "body_tick",
+      "name": "body:decision",
+      "cpuUs": 777513697,
+      "cpuMinutes": 12.958561616666668,
+      "percentOfProcess": 30.776389975897,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 29.146966766666665,
+      "known": true,
+      "source": "server/zone.js:16540"
+    },
+    {
+      "key": "other::villages:tickCaravanBodies",
+      "coarse": "other",
+      "name": "villages:tickCaravanBodies",
+      "cpuUs": 356071408,
+      "cpuMinutes": 5.934523466666667,
+      "percentOfProcess": 14.094404451211528,
+      "percentOfOther": 29.299114492464767,
+      "zeroOnlyThisMinutes": 36.17100491666667,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "other::zone:body:movement-preparation",
+      "coarse": "other",
+      "name": "zone:body:movement-preparation",
+      "cpuUs": 151530032,
+      "cpuMinutes": 2.525500533333333,
+      "percentOfProcess": 5.998025984476197,
+      "percentOfOther": 12.468554500210951,
+      "zeroOnlyThisMinutes": 39.58002785,
+      "known": true,
+      "source": "server/zone.js:16775"
+    },
+    {
+      "key": "body_tick::body:movement",
+      "coarse": "body_tick",
+      "name": "body:movement",
+      "cpuUs": 109744665,
+      "cpuMinutes": 1.82907775,
+      "percentOfProcess": 4.344032292738085,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 40.27645063333333,
+      "known": true,
+      "source": "server/zone.js:16835"
+    },
+    {
+      "key": "other::frame:setup-and-dispatch",
+      "coarse": "other",
+      "name": "frame:setup-and-dispatch",
+      "cpuUs": 94313214,
+      "cpuMinutes": 1.5718869,
+      "percentOfProcess": 3.733207871634741,
+      "percentOfOther": 7.760504193974291,
+      "zeroOnlyThisMinutes": 40.533641483333334,
+      "known": true,
+      "source": "server/zone.js:16408"
+    },
+    {
+      "key": "other::zone:body:gauges-stairs-regeneration",
+      "coarse": "other",
+      "name": "zone:body:gauges-stairs-regeneration",
+      "cpuUs": 86353403,
+      "cpuMinutes": 1.4392233833333334,
+      "percentOfProcess": 3.418134004234518,
+      "percentOfOther": 7.105536093229229,
+      "zeroOnlyThisMinutes": 40.666305,
+      "known": true,
+      "source": "server/zone.js:17145"
+    },
+    {
+      "key": "startup::main",
+      "coarse": "startup",
+      "name": "main",
+      "cpuUs": 79265254,
+      "cpuMinutes": 1.3210875666666666,
+      "percentOfProcess": 3.1375632069958628,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 40.78444081666667,
+      "known": true,
+      "source": null
+    },
+    {
+      "key": "other::GC:background-threads",
+      "coarse": "other",
+      "name": "GC:background-threads",
+      "cpuUs": 77809477,
+      "cpuMinutes": 1.2968246166666666,
+      "percentOfProcess": 3.0799390637263437,
+      "percentOfOther": 6.402504452763598,
+      "zeroOnlyThisMinutes": 40.80870376666667,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "body_tick::body:separation",
+      "coarse": "body_tick",
+      "name": "body:separation",
+      "cpuUs": 71954049,
+      "cpuMinutes": 1.19923415,
+      "percentOfProcess": 2.8481631653735375,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 40.906294233333334,
+      "known": true,
+      "source": "server/zone.js:16839"
+    },
+    {
+      "key": "other::zone:space:rebuild-index",
+      "coarse": "other",
+      "name": "zone:space:rebuild-index",
+      "cpuUs": 67028393,
+      "cpuMinutes": 1.1171398833333333,
+      "percentOfProcess": 2.653190510193269,
+      "percentOfOther": 5.515389656764926,
+      "zeroOnlyThisMinutes": 40.9883885,
+      "known": true,
+      "source": "server/zone.js:16493"
+    },
+    {
+      "key": "other::zone:animals:AI",
+      "coarse": "other",
+      "name": "zone:animals:AI",
+      "cpuUs": 42243672,
+      "cpuMinutes": 0.7040612,
+      "percentOfProcess": 1.6721348170486068,
+      "percentOfOther": 3.475994294128014,
+      "zeroOnlyThisMinutes": 41.40146718333333,
+      "known": true,
+      "source": "server/zone.js:16962"
+    },
+    {
+      "key": "storage::sqlite:run",
+      "coarse": "storage",
+      "name": "sqlite:run",
+      "cpuUs": 39688072,
+      "cpuMinutes": 0.6614678666666667,
+      "percentOfProcess": 1.5709762875900546,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 41.44406051666667,
+      "known": true,
+      "source": "native SQLite"
+    },
+    {
+      "key": "storage::sqlite:exec",
+      "coarse": "storage",
+      "name": "sqlite:exec",
+      "cpuUs": 37899688,
+      "cpuMinutes": 0.6316614666666667,
+      "percentOfProcess": 1.5001865335020894,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 41.473866916666665,
+      "known": true,
+      "source": "native SQLite"
+    },
+    {
+      "key": "other::unattributed-background",
+      "coarse": "other",
+      "name": "unattributed-background",
+      "cpuUs": 32415352,
+      "cpuMinutes": 0.5402558666666667,
+      "percentOfProcess": 1.2830996009552909,
+      "percentOfOther": 2.667277091682539,
+      "zeroOnlyThisMinutes": 41.56527251666667,
+      "known": false,
+      "source": null
+    },
+    {
+      "key": "other::GC:main-thread",
+      "coarse": "other",
+      "name": "GC:main-thread",
+      "cpuUs": 26147005,
+      "cpuMinutes": 0.43578341666666665,
+      "percentOfProcess": 1.0349790951422027,
+      "percentOfOther": 2.151490054854527,
+      "zeroOnlyThisMinutes": 41.66974496666667,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "other::zone:body:fishing-poll",
+      "coarse": "other",
+      "name": "zone:body:fishing-poll",
+      "cpuUs": 25435923,
+      "cpuMinutes": 0.42393205,
+      "percentOfProcess": 1.0068322766086113,
+      "percentOfOther": 2.092979114454811,
+      "zeroOnlyThisMinutes": 41.68159633333333,
+      "known": true,
+      "source": "server/zone.js:17561"
+    },
+    {
+      "key": "storage::save:periodic",
+      "coarse": "storage",
+      "name": "save:periodic",
+      "cpuUs": 24919442,
+      "cpuMinutes": 0.41532403333333334,
+      "percentOfProcess": 0.9863883658036017,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 41.69020435,
+      "known": true,
+      "source": "server/zone.js"
+    },
+    {
+      "key": "other::villages:_t731Tick",
+      "coarse": "other",
+      "name": "villages:_t731Tick",
+      "cpuUs": 24906180,
+      "cpuMinutes": 0.415103,
+      "percentOfProcess": 0.9858634149436551,
+      "percentOfOther": 2.0493895409595373,
+      "zeroOnlyThisMinutes": 41.690425383333334,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "observers::observer:GC-context",
+      "coarse": "observers",
+      "name": "observer:GC-context",
+      "cpuUs": 24520173,
+      "cpuMinutes": 0.40866955,
+      "percentOfProcess": 0.9705840674398567,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 41.69685883333333,
+      "known": true,
+      "source": "T1270"
+    },
+    {
+      "key": "pathfinding::path:pathStep",
+      "coarse": "pathfinding",
+      "name": "path:pathStep",
+      "cpuUs": 23116913,
+      "cpuMinutes": 0.38528188333333335,
+      "percentOfProcess": 0.9150387089925222,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 41.7202465,
+      "known": true,
+      "source": "sim/path-core.js"
+    },
+    {
+      "key": "body_tick::GC:main-thread",
+      "coarse": "body_tick",
+      "name": "GC:main-thread",
+      "cpuUs": 22941481,
+      "cpuMinutes": 0.3823580166666667,
+      "percentOfProcess": 0.9080945694010474,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 41.723170366666665,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "other::zone:space:active-chunks",
+      "coarse": "other",
+      "name": "zone:space:active-chunks",
+      "cpuUs": 21876881,
+      "cpuMinutes": 0.36461468333333336,
+      "percentOfProcess": 0.865954418179583,
+      "percentOfOther": 1.8001255555936888,
+      "zeroOnlyThisMinutes": 41.7409137,
+      "known": true,
+      "source": "server/zone.js:16490"
+    },
+    {
+      "key": "other::zone:path:reachability-prebuild",
+      "coarse": "other",
+      "name": "zone:path:reachability-prebuild",
+      "cpuUs": 20777645,
+      "cpuMinutes": 0.34629408333333334,
+      "percentOfProcess": 0.822443267260855,
+      "percentOfOther": 1.7096756045596004,
+      "zeroOnlyThisMinutes": 41.7592343,
+      "known": true,
+      "source": "server/zone.js:17569"
+    },
+    {
+      "key": "pathfinding::path:localPath",
+      "coarse": "pathfinding",
+      "name": "path:localPath",
+      "cpuUs": 18962937,
+      "cpuMinutes": 0.31604895,
+      "percentOfProcess": 0.7506115280697959,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 41.789479433333334,
+      "known": true,
+      "source": "sim/path-core.js"
+    },
+    {
+      "key": "life_daily::day:caravan:caravan_sync",
+      "coarse": "life_daily",
+      "name": "day:caravan:caravan_sync",
+      "cpuUs": 17781475,
+      "cpuMinutes": 0.29635791666666667,
+      "percentOfProcess": 0.7038456184864652,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 41.809170466666664,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "other::zone:villages:frame-call",
+      "coarse": "other",
+      "name": "zone:villages:frame-call",
+      "cpuUs": 16645683,
+      "cpuMinutes": 0.27742805,
+      "percentOfProcess": 0.6588874683492028,
+      "percentOfOther": 1.369679679594702,
+      "zeroOnlyThisMinutes": 41.82810033333333,
+      "known": true,
+      "source": "server/zone.js:16456"
+    },
+    {
+      "key": "other::zone:network:players-AOI",
+      "coarse": "other",
+      "name": "zone:network:players-AOI",
+      "cpuUs": 16558904,
+      "cpuMinutes": 0.2759817333333333,
+      "percentOfProcess": 0.655452487903169,
+      "percentOfOther": 1.3625391235168558,
+      "zeroOnlyThisMinutes": 41.82954665,
+      "known": true,
+      "source": "server/zone.js:17529"
+    },
+    {
+      "key": "other::zone:path:resident-precompute",
+      "coarse": "other",
+      "name": "zone:path:resident-precompute",
+      "cpuUs": 15570343,
+      "cpuMinutes": 0.25950571666666666,
+      "percentOfProcess": 0.616322194805628,
+      "percentOfOther": 1.2811959960681463,
+      "zeroOnlyThisMinutes": 41.84602266666667,
+      "known": true,
+      "source": "server/zone.js:16459"
+    },
+    {
+      "key": "other::zone:roads:frame",
+      "coarse": "other",
+      "name": "zone:roads:frame",
+      "cpuUs": 13342698,
+      "cpuMinutes": 0.2223783,
+      "percentOfProcess": 0.5281451356587754,
+      "percentOfOther": 1.097895611827335,
+      "zeroOnlyThisMinutes": 41.883150083333334,
+      "known": true,
+      "source": "server/zone.js:16461"
+    },
+    {
+      "key": "other::villages:_mktBroadcast",
+      "coarse": "other",
+      "name": "villages:_mktBroadcast",
+      "cpuUs": 11746399,
+      "cpuMinutes": 0.19577331666666667,
+      "percentOfProcess": 0.4649586982600598,
+      "percentOfOther": 0.9665451407858439,
+      "zeroOnlyThisMinutes": 41.90975506666667,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "econ::econ:village",
+      "coarse": "econ",
+      "name": "econ:village",
+      "cpuUs": 9076981,
+      "cpuMinutes": 0.15128301666666666,
+      "percentOfProcess": 0.35929490134732317,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 41.95424536666667,
+      "known": true,
+      "source": "sim/economy-sim-v2.js"
+    },
+    {
+      "key": "other::zone:plants:season-sweep",
+      "coarse": "other",
+      "name": "zone:plants:season-sweep",
+      "cpuUs": 9004960,
+      "cpuMinutes": 0.15008266666666667,
+      "percentOfProcess": 0.3564440880548931,
+      "percentOfOther": 0.7409675366017188,
+      "zeroOnlyThisMinutes": 41.95544571666667,
+      "known": true,
+      "source": "server/zone.js:16466"
+    },
+    {
+      "key": "other::zone:path:raycast-prebuild",
+      "coarse": "other",
+      "name": "zone:path:raycast-prebuild",
+      "cpuUs": 7712431,
+      "cpuMinutes": 0.12854051666666666,
+      "percentOfProcess": 0.3052818040814492,
+      "percentOfOther": 0.6346125912031514,
+      "zeroOnlyThisMinutes": 41.97698786666667,
+      "known": true,
+      "source": "server/zone.js:17570"
+    },
+    {
+      "key": "pathfinding::path:smoothPath",
+      "coarse": "pathfinding",
+      "name": "path:smoothPath",
+      "cpuUs": 6761993,
+      "cpuMinutes": 0.11269988333333333,
+      "percentOfProcess": 0.26766053689506347,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 41.9928285,
+      "known": true,
+      "source": "sim/path-core.js"
+    },
+    {
+      "key": "econ::econ:caravans",
+      "coarse": "econ",
+      "name": "econ:caravans",
+      "cpuUs": 6268727,
+      "cpuMinutes": 0.10447878333333334,
+      "percentOfProcess": 0.24813554738500623,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.0010496,
+      "known": true,
+      "source": "sim/economy-sim-v2.js"
+    },
+    {
+      "key": "other::zone:villages:late-call",
+      "coarse": "other",
+      "name": "zone:villages:late-call",
+      "cpuUs": 6261991,
+      "cpuMinutes": 0.10436651666666667,
+      "percentOfProcess": 0.24786891573121347,
+      "percentOfOther": 0.5152640373185593,
+      "zeroOnlyThisMinutes": 42.00116186666666,
+      "known": true,
+      "source": "server/zone.js:16476"
+    },
+    {
+      "key": "other::villages:onGameTick:if (!state.tickJobs) { // Stage 4B: \uce90\ub7ec\ubc34 \uc2e4\uccb4 30Hz \uc804\uc9c4 \u2014 zone.js idle \uc874 \uc2a4\ud0b5\ubcf4\ub2e4 \uc55e(\ud638\ucd9c \uc704\uce58)\uc774\ub77c \ubb34\uc778 \uc874\uc5d0\uc11c\ub3c4 econ\uacfc \ub3d9\ud589",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (!state.tickJobs) { // Stage 4B: \uce90\ub7ec\ubc34 \uc2e4\uccb4 30Hz \uc804\uc9c4 \u2014 zone.js idle \uc874 \uc2a4\ud0b5\ubcf4\ub2e4 \uc55e(\ud638\ucd9c \uc704\uce58)\uc774\ub77c \ubb34\uc778 \uc874\uc5d0\uc11c\ub3c4 econ\uacfc \ub3d9\ud589",
+      "cpuUs": 5097043,
+      "cpuMinutes": 0.08495071666666666,
+      "percentOfProcess": 0.20175668119698215,
+      "percentOfOther": 0.41940701520751167,
+      "zeroOnlyThisMinutes": 42.02057766666667,
+      "known": true,
+      "source": "server/villages.js:9558"
+    },
+    {
+      "key": "other::clock:virtual-timer-pump",
+      "coarse": "other",
+      "name": "clock:virtual-timer-pump",
+      "cpuUs": 4585136,
+      "cpuMinutes": 0.07641893333333333,
+      "percentOfProcess": 0.18149382341816736,
+      "percentOfOther": 0.3772850658863402,
+      "zeroOnlyThisMinutes": 42.02910945,
+      "known": true,
+      "source": "scripts/t745-vclock.js pump"
+    },
+    {
+      "key": "other::villages:deferLate:if (state._t695W) { state._t695W = false; if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')",
+      "coarse": "other",
+      "name": "villages:deferLate:if (state._t695W) { state._t695W = false; if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')",
+      "cpuUs": 4574493,
+      "cpuMinutes": 0.07624155,
+      "percentOfProcess": 0.18107254065520467,
+      "percentOfOther": 0.376409313246456,
+      "zeroOnlyThisMinutes": 42.02928683333333,
+      "known": true,
+      "source": "server/villages.js:165"
+    },
+    {
+      "key": "trade_routes::route:_t996Step",
+      "coarse": "trade_routes",
+      "name": "route:_t996Step",
+      "cpuUs": 4362389,
+      "cpuMinutes": 0.07270648333333334,
+      "percentOfProcess": 0.17267681020745201,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.0328219,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "other::unattributed-native",
+      "coarse": "other",
+      "name": "unattributed-native",
+      "cpuUs": 4303705,
+      "cpuMinutes": 0.07172841666666667,
+      "percentOfProcess": 0.17035391650626805,
+      "percentOfOther": 0.35412769097369673,
+      "zeroOnlyThisMinutes": 42.03379996666666,
+      "known": false,
+      "source": null
+    },
+    {
+      "key": "other::zone:observer:frame-statistics",
+      "coarse": "other",
+      "name": "zone:observer:frame-statistics",
+      "cpuUs": 4228305,
+      "cpuMinutes": 0.07047175,
+      "percentOfProcess": 0.1673693519730176,
+      "percentOfOther": 0.34792344883827697,
+      "zeroOnlyThisMinutes": 42.03505663333333,
+      "known": true,
+      "source": "server/zone.js:16428"
+    },
+    {
+      "key": "econ::econ:trade",
+      "coarse": "econ",
+      "name": "econ:trade",
+      "cpuUs": 3910452,
+      "cpuMinutes": 0.0651742,
+      "percentOfProcess": 0.1547877499758392,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.040354183333335,
+      "known": true,
+      "source": "sim/economy-sim-v2.js"
+    },
+    {
+      "key": "other::villages:onGameTick:if (state.saveQueue && state.saveQueue.length) { const vil = state.saveQueue.shift(); try { state.db",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (state.saveQueue && state.saveQueue.length) { const vil = state.saveQueue.shift(); try { state.db",
+      "cpuUs": 3886276,
+      "cpuMinutes": 0.06477126666666666,
+      "percentOfProcess": 0.15383078933716723,
+      "percentOfOther": 0.31977980516008747,
+      "zeroOnlyThisMinutes": 42.04075711666667,
+      "known": true,
+      "source": "server/villages.js:9583"
+    },
+    {
+      "key": "econ::events:scanDay",
+      "coarse": "econ",
+      "name": "events:scanDay",
+      "cpuUs": 3866811,
+      "cpuMinutes": 0.06444685,
+      "percentOfProcess": 0.1530603046071975,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.04108153333333,
+      "known": true,
+      "source": "server/events ledger"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:17654",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:17654",
+      "cpuUs": 3532791,
+      "cpuMinutes": 0.05887985,
+      "percentOfProcess": 0.139838762891066,
+      "percentOfOther": 0.2906935116423307,
+      "zeroOnlyThisMinutes": 42.04664853333333,
+      "known": true,
+      "source": "server/zone.js:17654"
+    },
+    {
+      "key": "life_daily::day:life:life:\uc27c\ud45c",
+      "coarse": "life_daily",
+      "name": "day:life:life:\uc27c\ud45c",
+      "cpuUs": 3007397,
+      "cpuMinutes": 0.05012328333333333,
+      "percentOfProcess": 0.11904204805840574,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.0554051,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "other::villages:tickWarBodies",
+      "coarse": "other",
+      "name": "villages:tickWarBodies",
+      "cpuUs": 2811935,
+      "cpuMinutes": 0.046865583333333335,
+      "percentOfProcess": 0.11130505929450389,
+      "percentOfOther": 0.23137832372760722,
+      "zeroOnlyThisMinutes": 42.0586628,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "life_daily::day:terr:",
+      "coarse": "life_daily",
+      "name": "day:terr:",
+      "cpuUs": 2796346,
+      "cpuMinutes": 0.046605766666666666,
+      "percentOfProcess": 0.11068799859810016,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.05892261666666,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "other::zone:storage:periodic-call",
+      "coarse": "other",
+      "name": "zone:storage:periodic-call",
+      "cpuUs": 2701036,
+      "cpuMinutes": 0.04501726666666667,
+      "percentOfProcess": 0.10691533486250202,
+      "percentOfOther": 0.22225306844145448,
+      "zeroOnlyThisMinutes": 42.06051111666667,
+      "known": true,
+      "source": "server/zone.js:17562"
+    },
+    {
+      "key": "other::zone:try { Wildlife.tick(now); } catch (e) { global._wlErr = (global._wlErr || 0) + 1; if (global._wlErr ",
+      "coarse": "other",
+      "name": "zone:try { Wildlife.tick(now); } catch (e) { global._wlErr = (global._wlErr || 0) + 1; if (global._wlErr ",
+      "cpuUs": 2599777,
+      "cpuMinutes": 0.04332961666666667,
+      "percentOfProcess": 0.10290719136021545,
+      "percentOfOther": 0.21392103456359676,
+      "zeroOnlyThisMinutes": 42.06219876666667,
+      "known": true,
+      "source": "server/zone.js:17426"
+    },
+    {
+      "key": "life_daily::day:events:",
+      "coarse": "life_daily",
+      "name": "day:events:",
+      "cpuUs": 2344404,
+      "cpuMinutes": 0.0390734,
+      "percentOfProcess": 0.09279874045106737,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.06645498333334,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "trade_routes::route:_routeRedigStep",
+      "coarse": "trade_routes",
+      "name": "route:_routeRedigStep",
+      "cpuUs": 2337624,
+      "cpuMinutes": 0.0389604,
+      "percentOfProcess": 0.09253036714157879,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.066567983333336,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "econ::econ:head",
+      "coarse": "econ",
+      "name": "econ:head",
+      "cpuUs": 2227825,
+      "cpuMinutes": 0.037130416666666666,
+      "percentOfProcess": 0.08818418410197182,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.068397966666666,
+      "known": true,
+      "source": "sim/economy-sim-v2.js"
+    },
+    {
+      "key": "other::zone:if (SimVillages.t1005Flush) SimVillages.t1005Flush();",
+      "coarse": "other",
+      "name": "zone:if (SimVillages.t1005Flush) SimVillages.t1005Flush();",
+      "cpuUs": 2072967,
+      "cpuMinutes": 0.03454945,
+      "percentOfProcess": 0.08205442688061775,
+      "percentOfOther": 0.17057280115032772,
+      "zeroOnlyThisMinutes": 42.070978933333336,
+      "known": true,
+      "source": "server/zone.js:17567"
+    },
+    {
+      "key": "life_daily::day:roads:",
+      "coarse": "life_daily",
+      "name": "day:roads:",
+      "cpuUs": 1939653,
+      "cpuMinutes": 0.03232755,
+      "percentOfProcess": 0.07677744762085979,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.07320083333333,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "startup::GC:main-thread",
+      "coarse": "startup",
+      "name": "GC:main-thread",
+      "cpuUs": 1926910,
+      "cpuMinutes": 0.03211516666666667,
+      "percentOfProcess": 0.07627304038150685,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.073413216666665,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "other::villages:onGameTick:try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfd8\ufe0f \uacf3\uac04 \uc7ac\uace0 \ubc29\uc1a1 \uc2e4\ud328:`, e.messa",
+      "coarse": "other",
+      "name": "villages:onGameTick:try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfd8\ufe0f \uacf3\uac04 \uc7ac\uace0 \ubc29\uc1a1 \uc2e4\ud328:`, e.messa",
+      "cpuUs": 1760572,
+      "cpuMinutes": 0.029342866666666665,
+      "percentOfProcess": 0.069688869355886,
+      "percentOfOther": 0.14486757274323941,
+      "zeroOnlyThisMinutes": 42.07618551666667,
+      "known": true,
+      "source": "server/villages.js:9574"
+    },
+    {
+      "key": "other::villages:onGameTick:try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfea \uc7a5\ub9c8\ub2f9 \ud50c\ub798\uadf8 \ubc29\uc1a1 \uc2e4\ud328:`, e.message)",
+      "coarse": "other",
+      "name": "villages:onGameTick:try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfea \uc7a5\ub9c8\ub2f9 \ud50c\ub798\uadf8 \ubc29\uc1a1 \uc2e4\ud328:`, e.message)",
+      "cpuUs": 1735560,
+      "cpuMinutes": 0.028926,
+      "percentOfProcess": 0.06869881725899396,
+      "percentOfOther": 0.1428094758693519,
+      "zeroOnlyThisMinutes": 42.07660238333333,
+      "known": true,
+      "source": "server/villages.js:9576"
+    },
+    {
+      "key": "other::zone:_diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));",
+      "coarse": "other",
+      "name": "zone:_diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));",
+      "cpuUs": 1726580,
+      "cpuMinutes": 0.028776333333333334,
+      "percentOfProcess": 0.0683433611647156,
+      "percentOfOther": 0.14207056215083635,
+      "zeroOnlyThisMinutes": 42.07675205,
+      "known": true,
+      "source": "server/zone.js:16441"
+    },
+    {
+      "key": "observers::observer:body-probe",
+      "coarse": "observers",
+      "name": "observer:body-probe",
+      "cpuUs": 1706135,
+      "cpuMinutes": 0.028435583333333334,
+      "percentOfProcess": 0.06753408501243037,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.0770928,
+      "known": true,
+      "source": "server/zone.js:16840"
+    },
+    {
+      "key": "other::villages:_granBroadcast",
+      "coarse": "other",
+      "name": "villages:_granBroadcast",
+      "cpuUs": 1698457,
+      "cpuMinutes": 0.028307616666666667,
+      "percentOfProcess": 0.06723016609351397,
+      "percentOfOther": 0.13975647857557894,
+      "zeroOnlyThisMinutes": 42.07722076666667,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "other::zone:roads:raw-prebuild",
+      "coarse": "other",
+      "name": "zone:roads:raw-prebuild",
+      "cpuUs": 1561818,
+      "cpuMinutes": 0.0260303,
+      "percentOfProcess": 0.06182157307947142,
+      "percentOfOther": 0.1285132233880243,
+      "zeroOnlyThisMinutes": 42.079498083333334,
+      "known": true,
+      "source": "server/zone.js:16463"
+    },
+    {
+      "key": "other::zone:TB.begin(SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : 0);",
+      "coarse": "other",
+      "name": "zone:TB.begin(SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : 0);",
+      "cpuUs": 1551006,
+      "cpuMinutes": 0.0258501,
+      "percentOfProcess": 0.06139360077531355,
+      "percentOfOther": 0.1276235646881813,
+      "zeroOnlyThisMinutes": 42.07967828333334,
+      "known": true,
+      "source": "server/zone.js:16412"
+    },
+    {
+      "key": "trade_routes::route:_routeWarmStep",
+      "coarse": "trade_routes",
+      "name": "route:_routeWarmStep",
+      "cpuUs": 1511665,
+      "cpuMinutes": 0.025194416666666667,
+      "percentOfProcess": 0.05983636266785194,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.080333966666664,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "other::zone:if (_vein) _veinTick(now);",
+      "coarse": "other",
+      "name": "zone:if (_vein) _veinTick(now);",
+      "cpuUs": 1507510,
+      "cpuMinutes": 0.025125166666666667,
+      "percentOfProcess": 0.059671894953851196,
+      "percentOfOther": 0.12404452336295298,
+      "zeroOnlyThisMinutes": 42.08040321666667,
+      "known": true,
+      "source": "server/zone.js:17563"
+    },
+    {
+      "key": "other::villages:onGameTick:if (T731_ON) { _t731Tick(now); return; }",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (T731_ON) { _t731Tick(now); return; }",
+      "cpuUs": 1479748,
+      "cpuMinutes": 0.024662466666666667,
+      "percentOfProcess": 0.0585729893759719,
+      "percentOfOther": 0.12176014444831738,
+      "zeroOnlyThisMinutes": 42.08086591666667,
+      "known": true,
+      "source": "server/villages.js:9621"
+    },
+    {
+      "key": "other::zone:tickDowned(now);",
+      "coarse": "other",
+      "name": "zone:tickDowned(now);",
+      "cpuUs": 1447040,
+      "cpuMinutes": 0.024117333333333334,
+      "percentOfProcess": 0.05727830586465154,
+      "percentOfOther": 0.11906878699784909,
+      "zeroOnlyThisMinutes": 42.08141105,
+      "known": true,
+      "source": "server/zone.js:17566"
+    },
+    {
+      "key": "other::zone:TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);",
+      "coarse": "other",
+      "name": "zone:TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);",
+      "cpuUs": 1404176,
+      "cpuMinutes": 0.023402933333333334,
+      "percentOfProcess": 0.055581616552274254,
+      "percentOfOther": 0.11554174939980355,
+      "zeroOnlyThisMinutes": 42.08212545,
+      "known": true,
+      "source": "server/zone.js:16543"
+    },
+    {
+      "key": "other::zone:soil:frame",
+      "coarse": "other",
+      "name": "zone:soil:frame",
+      "cpuUs": 1380298,
+      "cpuMinutes": 0.023004966666666668,
+      "percentOfProcess": 0.05463645167263295,
+      "percentOfOther": 0.11357696301108268,
+      "zeroOnlyThisMinutes": 42.08252341666667,
+      "known": true,
+      "source": "server/zone.js:16465"
+    },
+    {
+      "key": "other::villages:tickBodyExits",
+      "coarse": "other",
+      "name": "villages:tickBodyExits",
+      "cpuUs": 1361481,
+      "cpuMinutes": 0.02269135,
+      "percentOfProcess": 0.053891616781092194,
+      "percentOfOther": 0.11202861786171671,
+      "zeroOnlyThisMinutes": 42.082837033333334,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "observers::observer:ledger",
+      "coarse": "observers",
+      "name": "observer:ledger",
+      "cpuUs": 1329664,
+      "cpuMinutes": 0.022161066666666666,
+      "percentOfProcess": 0.05263220179761169,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.08336731666667,
+      "known": true,
+      "source": "server/events ledger"
+    },
+    {
+      "key": "other::zone:_npcCursor = _curHit ? _stopAt : null;",
+      "coarse": "other",
+      "name": "zone:_npcCursor = _curHit ? _stopAt : null;",
+      "cpuUs": 1268463,
+      "cpuMinutes": 0.02114105,
+      "percentOfProcess": 0.050209677474011415,
+      "percentOfOther": 0.10437468954669715,
+      "zeroOnlyThisMinutes": 42.08438733333333,
+      "known": true,
+      "source": "server/zone.js:16542"
+    },
+    {
+      "key": "other::zone:bandits:frame",
+      "coarse": "other",
+      "name": "zone:bandits:frame",
+      "cpuUs": 1264381,
+      "cpuMinutes": 0.021073016666666666,
+      "percentOfProcess": 0.050048099325142335,
+      "percentOfOther": 0.10403880471384855,
+      "zeroOnlyThisMinutes": 42.08445536666667,
+      "known": true,
+      "source": "server/zone.js:16458"
+    },
+    {
+      "key": "other::zone:roomsFlush();",
+      "coarse": "other",
+      "name": "zone:roomsFlush();",
+      "cpuUs": 1223083,
+      "cpuMinutes": 0.020384716666666667,
+      "percentOfProcess": 0.0484133971223018,
+      "percentOfOther": 0.10064062445246175,
+      "zeroOnlyThisMinutes": 42.08514366666667,
+      "known": true,
+      "source": "server/zone.js:16494"
+    },
+    {
+      "key": "other::zone:stepArrows(dt);",
+      "coarse": "other",
+      "name": "zone:stepArrows(dt);",
+      "cpuUs": 1208531,
+      "cpuMinutes": 0.020142183333333334,
+      "percentOfProcess": 0.04783738408400126,
+      "percentOfOther": 0.09944322217720142,
+      "zeroOnlyThisMinutes": 42.0853862,
+      "known": true,
+      "source": "server/zone.js:16584"
+    },
+    {
+      "key": "other::zone:if (SimVillages.t1034Flush) SimVillages.t1034Flush();",
+      "coarse": "other",
+      "name": "zone:if (SimVillages.t1034Flush) SimVillages.t1034Flush();",
+      "cpuUs": 1204793,
+      "cpuMinutes": 0.020079883333333333,
+      "percentOfProcess": 0.04768942251602659,
+      "percentOfOther": 0.09913564317054095,
+      "zeroOnlyThisMinutes": 42.0854485,
+      "known": true,
+      "source": "server/zone.js:17568"
+    },
+    {
+      "key": "other::zone:if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; }",
+      "coarse": "other",
+      "name": "zone:if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; }",
+      "cpuUs": 1183536,
+      "cpuMinutes": 0.0197256,
+      "percentOfProcess": 0.04684800489953714,
+      "percentOfOther": 0.09738652413774762,
+      "zeroOnlyThisMinutes": 42.085802783333335,
+      "known": true,
+      "source": "server/zone.js:16838"
+    },
+    {
+      "key": "trade_routes::route:_t968DistBg",
+      "coarse": "trade_routes",
+      "name": "route:_t968DistBg",
+      "cpuUs": 1183316,
+      "cpuMinutes": 0.019721933333333334,
+      "percentOfProcess": 0.04683929662105816,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.08580645,
+      "known": true,
+      "source": "server/villages.js"
+    },
+    {
+      "key": "other::villages:deferLate:if (state._t695C) { state._t695C = false; if (state.tickJobs) { if (TB.out(TICK_SLICE_MS, 'close')) ",
+      "coarse": "other",
+      "name": "villages:deferLate:if (state._t695C) { state._t695C = false; if (state.tickJobs) { if (TB.out(TICK_SLICE_MS, 'close')) ",
+      "cpuUs": 1102470,
+      "cpuMinutes": 0.0183745,
+      "percentOfProcess": 0.043639162612368956,
+      "percentOfOther": 0.09071605871400837,
+      "zeroOnlyThisMinutes": 42.087153883333336,
+      "known": true,
+      "source": "server/villages.js:166"
+    },
+    {
+      "key": "other::zone:if (T696) db.walTick();",
+      "coarse": "other",
+      "name": "zone:if (T696) db.walTick();",
+      "cpuUs": 1055205,
+      "cpuMinutes": 0.01758675,
+      "percentOfProcess": 0.04176826814732808,
+      "percentOfOther": 0.08682688756638748,
+      "zeroOnlyThisMinutes": 42.08794163333334,
+      "known": true,
+      "source": "server/zone.js:16464"
+    },
+    {
+      "key": "other::zone:if (_t566RelPend.length) _t566FlushRel();",
+      "coarse": "other",
+      "name": "zone:if (_t566RelPend.length) _t566FlushRel();",
+      "cpuUs": 1047966,
+      "cpuMinutes": 0.0174661,
+      "percentOfProcess": 0.041481726202285636,
+      "percentOfOther": 0.08623123095076012,
+      "zeroOnlyThisMinutes": 42.088062283333336,
+      "known": true,
+      "source": "server/zone.js:16462"
+    },
+    {
+      "key": "other::zone:TB.end();",
+      "coarse": "other",
+      "name": "zone:TB.end();",
+      "cpuUs": 1026797,
+      "cpuMinutes": 0.017113283333333333,
+      "percentOfProcess": 0.040643791897187774,
+      "percentOfOther": 0.0844893529432707,
+      "zeroOnlyThisMinutes": 42.0884151,
+      "known": true,
+      "source": "server/zone.js:17575"
+    },
+    {
+      "key": "life_daily::day:wx:",
+      "coarse": "life_daily",
+      "name": "day:wx:",
+      "cpuUs": 979141,
+      "cpuMinutes": 0.016319016666666665,
+      "percentOfProcess": 0.03875742044630471,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.089209366666665,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "observers::GC:main-thread",
+      "coarse": "observers",
+      "name": "GC:main-thread",
+      "cpuUs": 972638,
+      "cpuMinutes": 0.016210633333333332,
+      "percentOfProcess": 0.038500011651082855,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.08931775,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "other::zone:{ const _gd = zoneGameDay(); if (_gd !== _lastFarmStageDay) { _lastFarmStageDay = _gd; _farmStageQ =",
+      "coarse": "other",
+      "name": "zone:{ const _gd = zoneGameDay(); if (_gd !== _lastFarmStageDay) { _lastFarmStageDay = _gd; _farmStageQ =",
+      "cpuUs": 964898,
+      "cpuMinutes": 0.016081633333333335,
+      "percentOfProcess": 0.03819363858095874,
+      "percentOfOther": 0.07939603220135627,
+      "zeroOnlyThisMinutes": 42.08944675,
+      "known": true,
+      "source": "server/zone.js:16558"
+    },
+    {
+      "key": "other::zone:if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);",
+      "coarse": "other",
+      "name": "zone:if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);",
+      "cpuUs": 953468,
+      "cpuMinutes": 0.015891133333333335,
+      "percentOfProcess": 0.03774120393089173,
+      "percentOfOther": 0.07845552175562885,
+      "zeroOnlyThisMinutes": 42.08963725,
+      "known": true,
+      "source": "server/zone.js:16837"
+    },
+    {
+      "key": "life_daily::day:pop:",
+      "coarse": "life_daily",
+      "name": "day:pop:",
+      "cpuUs": 925633,
+      "cpuMinutes": 0.015427216666666667,
+      "percentOfProcess": 0.03663940878788077,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.09010116666666,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "other::zone:network:observers-AOI",
+      "coarse": "other",
+      "name": "zone:network:observers-AOI",
+      "cpuUs": 886837,
+      "cpuMinutes": 0.014780616666666666,
+      "percentOfProcess": 0.03510374346119663,
+      "percentOfOther": 0.07297283133487083,
+      "zeroOnlyThisMinutes": 42.09074776666667,
+      "known": true,
+      "source": "server/zone.js:17550"
+    },
+    {
+      "key": "other::zone:_decT0 = Date.now();",
+      "coarse": "other",
+      "name": "zone:_decT0 = Date.now();",
+      "cpuUs": 859959,
+      "cpuMinutes": 0.01433265,
+      "percentOfProcess": 0.034039829329569234,
+      "percentOfOther": 0.07076119181078844,
+      "zeroOnlyThisMinutes": 42.091195733333336,
+      "known": true,
+      "source": "server/zone.js:16515"
+    },
+    {
+      "key": "other::zone:lastTick = now;",
+      "coarse": "other",
+      "name": "zone:lastTick = now;",
+      "cpuUs": 814440,
+      "cpuMinutes": 0.013574,
+      "percentOfProcess": 0.032238046929184264,
+      "percentOfOther": 0.06701568918794795,
+      "zeroOnlyThisMinutes": 42.09195438333333,
+      "known": true,
+      "source": "server/zone.js:16448"
+    },
+    {
+      "key": "other::zone:network:ghosts",
+      "coarse": "other",
+      "name": "zone:network:ghosts",
+      "cpuUs": 813700,
+      "cpuMinutes": 0.013561666666666666,
+      "percentOfProcess": 0.0322087554470277,
+      "percentOfOther": 0.0669547987478921,
+      "zeroOnlyThisMinutes": 42.09196671666667,
+      "known": true,
+      "source": "server/zone.js:16585"
+    },
+    {
+      "key": "other::zone:if (BC.VERIFY) BC.check(players);",
+      "coarse": "other",
+      "name": "zone:if (BC.VERIFY) BC.check(players);",
+      "cpuUs": 799751,
+      "cpuMinutes": 0.013329183333333333,
+      "percentOfProcess": 0.03165661100837636,
+      "percentOfOther": 0.06580701395283946,
+      "zeroOnlyThisMinutes": 42.0921992,
+      "known": true,
+      "source": "server/zone.js:16410"
+    },
+    {
+      "key": "trade_routes::GC:main-thread",
+      "coarse": "trade_routes",
+      "name": "GC:main-thread",
+      "cpuUs": 772704,
+      "cpuMinutes": 0.0128784,
+      "percentOfProcess": 0.03058600733555375,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.09264998333333,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "other::villages:onGameTick:if (T695_LATE()) { if (!state.tickJobs) state._t695W = true; } else if (!state.tickJobs) { if (!TB.o",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (T695_LATE()) { if (!state.tickJobs) state._t695W = true; } else if (!state.tickJobs) { if (!TB.o",
+      "cpuUs": 772426,
+      "cpuMinutes": 0.012873766666666666,
+      "percentOfProcess": 0.03057500323820304,
+      "percentOfOther": 0.0635585933115882,
+      "zeroOnlyThisMinutes": 42.092654616666664,
+      "known": true,
+      "source": "server/villages.js:9579"
+    },
+    {
+      "key": "storage::GC:main-thread",
+      "coarse": "storage",
+      "name": "GC:main-thread",
+      "cpuUs": 758228,
+      "cpuMinutes": 0.012637133333333333,
+      "percentOfProcess": 0.030013002611636863,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.09289125,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "other::villages:deferLate:if (!TB.DEC_FIRST) return;",
+      "coarse": "other",
+      "name": "villages:deferLate:if (!TB.DEC_FIRST) return;",
+      "cpuUs": 724876,
+      "cpuMinutes": 0.012081266666666667,
+      "percentOfProcess": 0.02869282759422348,
+      "percentOfOther": 0.05964597111610795,
+      "zeroOnlyThisMinutes": 42.09344711666667,
+      "known": true,
+      "source": "server/villages.js:164"
+    },
+    {
+      "key": "other::zone:_decT0 = 0;",
+      "coarse": "other",
+      "name": "zone:_decT0 = 0;",
+      "cpuUs": 681466,
+      "cpuMinutes": 0.011357766666666666,
+      "percentOfProcess": 0.02697452591798473,
+      "percentOfOther": 0.056074006247426623,
+      "zeroOnlyThisMinutes": 42.094170616666666,
+      "known": true,
+      "source": "server/zone.js:16544"
+    },
+    {
+      "key": "other::villages:onGameTick:if (_t732BootWait) { try { _t732Boot(); } catch (e) { _t732BootWait = false; console.error(`[${state",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (_t732BootWait) { try { _t732Boot(); } catch (e) { _t732BootWait = false; console.error(`[${state",
+      "cpuUs": 676693,
+      "cpuMinutes": 0.011278216666666667,
+      "percentOfProcess": 0.026785595858074857,
+      "percentOfOther": 0.05568126290906643,
+      "zeroOnlyThisMinutes": 42.09425016666667,
+      "known": true,
+      "source": "server/villages.js:9549"
+    },
+    {
+      "key": "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _inputTOStep(p, now);",
+      "coarse": "other",
+      "name": "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _inputTOStep(p, now);",
+      "cpuUs": 654252,
+      "cpuMinutes": 0.0109042,
+      "percentOfProcess": 0.025897311870134894,
+      "percentOfOther": 0.05383471917218374,
+      "zeroOnlyThisMinutes": 42.09462418333333,
+      "known": true,
+      "source": "server/zone.js:16499"
+    },
+    {
+      "key": "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _fallStepP(p);",
+      "coarse": "other",
+      "name": "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _fallStepP(p);",
+      "cpuUs": 653744,
+      "cpuMinutes": 0.010895733333333333,
+      "percentOfProcess": 0.02587720366346525,
+      "percentOfOther": 0.05379291870792919,
+      "zeroOnlyThisMinutes": 42.09463265,
+      "known": true,
+      "source": "server/zone.js:17049"
+    },
+    {
+      "key": "other::zone:if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;",
+      "coarse": "other",
+      "name": "zone:if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;",
+      "cpuUs": 650417,
+      "cpuMinutes": 0.010840283333333334,
+      "percentOfProcess": 0.02574551074301267,
+      "percentOfOther": 0.053519158580813256,
+      "zeroOnlyThisMinutes": 42.0946881,
+      "known": true,
+      "source": "server/zone.js:16443"
+    },
+    {
+      "key": "other::zone:_tick.wall += _elapsed;",
+      "coarse": "other",
+      "name": "zone:_tick.wall += _elapsed;",
+      "cpuUs": 646629,
+      "cpuMinutes": 0.01077715,
+      "percentOfProcess": 0.025595570020838232,
+      "percentOfOther": 0.05320746535523009,
+      "zeroOnlyThisMinutes": 42.094751233333334,
+      "known": true,
+      "source": "server/zone.js:16434"
+    },
+    {
+      "key": "other::villages:onGameTick:if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && (T731_ON ? _t731Due(now) : game",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && (T731_ON ? _t731Due(now) : game",
+      "cpuUs": 636471,
+      "cpuMinutes": 0.01060785,
+      "percentOfProcess": 0.025193485053613327,
+      "percentOfOther": 0.05237162063889596,
+      "zeroOnlyThisMinutes": 42.09492053333334,
+      "known": true,
+      "source": "server/villages.js:9619"
+    },
+    {
+      "key": "other::timer:timeout:server/villages.js:5775",
+      "coarse": "other",
+      "name": "timer:timeout:server/villages.js:5775",
+      "cpuUs": 631592,
+      "cpuMinutes": 0.010526533333333333,
+      "percentOfProcess": 0.025000359186799943,
+      "percentOfOther": 0.05197015515641966,
+      "zeroOnlyThisMinutes": 42.09500185,
+      "known": true,
+      "source": "server/villages.js:5775"
+    },
+    {
+      "key": "other::zone:if (T487_SNOW) { try { require('./snow').at(gameDayNow()); } catch (e) {} }",
+      "coarse": "other",
+      "name": "zone:if (T487_SNOW) { try { require('./snow').at(gameDayNow()); } catch (e) {} }",
+      "cpuUs": 625640,
+      "cpuMinutes": 0.010427333333333334,
+      "percentOfProcess": 0.02476476067085954,
+      "percentOfOther": 0.05148039853586238,
+      "zeroOnlyThisMinutes": 42.09510105,
+      "known": true,
+      "source": "server/zone.js:16469"
+    },
+    {
+      "key": "other::zone:_tick.n++;",
+      "coarse": "other",
+      "name": "zone:_tick.n++;",
+      "cpuUs": 611942,
+      "cpuMinutes": 0.010199033333333333,
+      "percentOfProcess": 0.024222551586291042,
+      "percentOfOther": 0.050353267119801634,
+      "zeroOnlyThisMinutes": 42.09532935,
+      "known": true,
+      "source": "server/zone.js:16434"
+    },
+    {
+      "key": "other::zone:_tick.sim += dt;",
+      "coarse": "other",
+      "name": "zone:_tick.sim += dt;",
+      "cpuUs": 609424,
+      "cpuMinutes": 0.010157066666666667,
+      "percentOfProcess": 0.024122881380790714,
+      "percentOfOther": 0.050146075054854855,
+      "zeroOnlyThisMinutes": 42.095371316666665,
+      "known": true,
+      "source": "server/zone.js:16434"
+    },
+    {
+      "key": "other::villages:onGameTick:if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();",
+      "cpuUs": 584061,
+      "cpuMinutes": 0.00973435,
+      "percentOfProcess": 0.023118935621416297,
+      "percentOfOther": 0.048059096364130034,
+      "zeroOnlyThisMinutes": 42.095794033333334,
+      "known": true,
+      "source": "server/villages.js:9550"
+    },
+    {
+      "key": "other::villages:onGameTick:_t1026Seq++;",
+      "coarse": "other",
+      "name": "villages:onGameTick:_t1026Seq++;",
+      "cpuUs": 580245,
+      "cpuMinutes": 0.00967075,
+      "percentOfProcess": 0.02296788657288999,
+      "percentOfOther": 0.04774509917595018,
+      "zeroOnlyThisMinutes": 42.09585763333333,
+      "known": true,
+      "source": "server/villages.js:9548"
+    },
+    {
+      "key": "other::villages:onGameTick:if (!state.ready) return;",
+      "coarse": "other",
+      "name": "villages:onGameTick:if (!state.ready) return;",
+      "cpuUs": 576882,
+      "cpuMinutes": 0.0096147,
+      "percentOfProcess": 0.02283476866141358,
+      "percentOfOther": 0.0474683768112099,
+      "zeroOnlyThisMinutes": 42.095913683333336,
+      "known": true,
+      "source": "server/villages.js:9547"
+    },
+    {
+      "key": "other::zone:if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }",
+      "coarse": "other",
+      "name": "zone:if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }",
+      "cpuUs": 569084,
+      "cpuMinutes": 0.009484733333333334,
+      "percentOfProcess": 0.02252609977241773,
+      "percentOfOther": 0.04682672322802683,
+      "zeroOnlyThisMinutes": 42.09604365,
+      "known": true,
+      "source": "server/zone.js:16442"
+    },
+    {
+      "key": "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _hpRegenStep(p);",
+      "coarse": "other",
+      "name": "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _hpRegenStep(p);",
+      "cpuUs": 568487,
+      "cpuMinutes": 0.009474783333333334,
+      "percentOfProcess": 0.022502468671272497,
+      "percentOfOther": 0.04677759945408989,
+      "zeroOnlyThisMinutes": 42.0960536,
+      "known": true,
+      "source": "server/zone.js:17169"
+    },
+    {
+      "key": "other::zone:_tick.debt = _tickDebt;",
+      "coarse": "other",
+      "name": "zone:_tick.debt = _tickDebt;",
+      "cpuUs": 549762,
+      "cpuMinutes": 0.0091627,
+      "percentOfProcess": 0.02176127542345931,
+      "percentOfOther": 0.045236824467541674,
+      "zeroOnlyThisMinutes": 42.09636568333333,
+      "known": true,
+      "source": "server/zone.js:16434"
+    },
+    {
+      "key": "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _stairStepP(p);",
+      "coarse": "other",
+      "name": "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _stairStepP(p);",
+      "cpuUs": 547591,
+      "cpuMinutes": 0.009126516666666667,
+      "percentOfProcess": 0.021675340548105375,
+      "percentOfOther": 0.04505818508191838,
+      "zeroOnlyThisMinutes": 42.09640186666667,
+      "known": true,
+      "source": "server/zone.js:16952"
+    },
+    {
+      "key": "other::zone:TB.lateBegin();",
+      "coarse": "other",
+      "name": "zone:TB.lateBegin();",
+      "cpuUs": 542936,
+      "cpuMinutes": 0.009048933333333333,
+      "percentOfProcess": 0.021491081292106952,
+      "percentOfOther": 0.044675151300215744,
+      "zeroOnlyThisMinutes": 42.09647945,
+      "known": true,
+      "source": "server/zone.js:16516"
+    },
+    {
+      "key": "other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _gaugeNetStep(p);",
+      "coarse": "other",
+      "name": "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _gaugeNetStep(p);",
+      "cpuUs": 540444,
+      "cpuMinutes": 0.0090074,
+      "percentOfProcess": 0.021392440246790507,
+      "percentOfOther": 0.044470098629108765,
+      "zeroOnlyThisMinutes": 42.096520983333335,
+      "known": true,
+      "source": "server/zone.js:17217"
+    },
+    {
+      "key": "other::zone:if (_stopAt !== null) _walk.cut++;",
+      "coarse": "other",
+      "name": "zone:if (_stopAt !== null) _walk.cut++;",
+      "cpuUs": 536107,
+      "cpuMinutes": 0.008935116666666666,
+      "percentOfProcess": 0.02122076841150261,
+      "percentOfOther": 0.04411323127975445,
+      "zeroOnlyThisMinutes": 42.096593266666666,
+      "known": true,
+      "source": "server/zone.js:16546"
+    },
+    {
+      "key": "econ::GC:main-thread",
+      "coarse": "econ",
+      "name": "GC:main-thread",
+      "cpuUs": 480825,
+      "cpuMinutes": 0.00801375,
+      "percentOfProcess": 0.0190325363620709,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.09751463333333,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "life_daily::GC:main-thread",
+      "coarse": "life_daily",
+      "name": "GC:main-thread",
+      "cpuUs": 468377,
+      "cpuMinutes": 0.007806283333333333,
+      "percentOfProcess": 0.018539806132496606,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.0977221,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "pathfinding::GC:main-thread",
+      "coarse": "pathfinding",
+      "name": "GC:main-thread",
+      "cpuUs": 459741,
+      "cpuMinutes": 0.00766235,
+      "percentOfProcess": 0.018197966619112643,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.09786603333333,
+      "known": true,
+      "source": "native trace GC"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:5454",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:5454",
+      "cpuUs": 209426,
+      "cpuMinutes": 0.0034904333333333334,
+      "percentOfProcess": 0.008289726948813103,
+      "percentOfOther": 0.01723248824207454,
+      "zeroOnlyThisMinutes": 42.10203795,
+      "known": true,
+      "source": "server/zone.js:5454"
+    },
+    {
+      "key": "other::timer:timeout:server/zone.js:5841",
+      "coarse": "other",
+      "name": "timer:timeout:server/zone.js:5841",
+      "cpuUs": 178765,
+      "cpuMinutes": 0.0029794166666666667,
+      "percentOfProcess": 0.007076070010431247,
+      "percentOfOther": 0.014709566914301257,
+      "zeroOnlyThisMinutes": 42.10254896666667,
+      "known": true,
+      "source": "server/zone.js:5841"
+    },
+    {
+      "key": "econ::day:econ:econ:vil",
+      "coarse": "econ",
+      "name": "day:econ:econ:vil",
+      "cpuUs": 129490,
+      "cpuMinutes": 0.0021581666666666667,
+      "percentOfProcess": 0.005125613546559686,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.10337021666667,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "other::timer:timeout:server/villages.js:5759",
+      "coarse": "other",
+      "name": "timer:timeout:server/villages.js:5759",
+      "cpuUs": 85868,
+      "cpuMinutes": 0.0014311333333333334,
+      "percentOfProcess": 0.0033989202565139166,
+      "percentOfOther": 0.007065595009074596,
+      "zeroOnlyThisMinutes": 42.10409725,
+      "known": true,
+      "source": "server/villages.js:5759"
+    },
+    {
+      "key": "life_daily::day:ore:",
+      "coarse": "life_daily",
+      "name": "day:ore:",
+      "cpuUs": 84578,
+      "cpuMinutes": 0.0014096333333333334,
+      "percentOfProcess": 0.003347858078159897,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.10411875,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:12224",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:12224",
+      "cpuUs": 53090,
+      "cpuMinutes": 0.0008848333333333333,
+      "percentOfProcess": 0.0021014659293138753,
+      "percentOfOther": 0.004368477652114529,
+      "zeroOnlyThisMinutes": 42.10464355,
+      "known": true,
+      "source": "server/zone.js:12224"
+    },
+    {
+      "key": "observers::observer:daily-profile",
+      "coarse": "observers",
+      "name": "observer:daily-profile",
+      "cpuUs": 42475,
+      "cpuMinutes": 0.0007079166666666667,
+      "percentOfProcess": 0.0016812914927030864,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.104820466666666,
+      "known": true,
+      "source": "T1270"
+    },
+    {
+      "key": "pathfinding::path:routePathBegin",
+      "coarse": "pathfinding",
+      "name": "path:routePathBegin",
+      "cpuUs": 37746,
+      "cpuMinutes": 0.0006291,
+      "percentOfProcess": 0.0014941030884890098,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.10489928333333,
+      "known": true,
+      "source": "sim/path-core.js"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:17657",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:17657",
+      "cpuUs": 37566,
+      "cpuMinutes": 0.0006261,
+      "percentOfProcess": 0.0014869781333698444,
+      "percentOfOther": 0.0030910949609970688,
+      "zeroOnlyThisMinutes": 42.10490228333333,
+      "known": true,
+      "source": "server/zone.js:17657"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:16357",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:16357",
+      "cpuUs": 35212,
+      "cpuMinutes": 0.0005868666666666667,
+      "percentOfProcess": 0.0013937995536447575,
+      "percentOfOther": 0.002897397534116722,
+      "zeroOnlyThisMinutes": 42.10494151666666,
+      "known": true,
+      "source": "server/zone.js:16357"
+    },
+    {
+      "key": "other::timer:interval:server/village-view.js:50",
+      "coarse": "other",
+      "name": "timer:interval:server/village-view.js:50",
+      "cpuUs": 25508,
+      "cpuMinutes": 0.00042513333333333333,
+      "percentOfProcess": 0.001009685306553745,
+      "percentOfOther": 0.002098909925600629,
+      "zeroOnlyThisMinutes": 42.10510325,
+      "known": true,
+      "source": "server/village-view.js:50"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:5446",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:5446",
+      "cpuUs": 18075,
+      "cpuMinutes": 0.00030125,
+      "percentOfProcess": 0.0007154642432162045,
+      "percentOfOther": 0.0014872901405532134,
+      "zeroOnlyThisMinutes": 42.10522713333334,
+      "known": true,
+      "source": "server/zone.js:5446"
+    },
+    {
+      "key": "econ::day:econ:econ:tail",
+      "coarse": "econ",
+      "name": "day:econ:econ:tail",
+      "cpuUs": 17542,
+      "cpuMinutes": 0.00029236666666666665,
+      "percentOfProcess": 0.0006943664594466754,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.105236016666666,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "life_daily::day:bcast:",
+      "coarse": "life_daily",
+      "name": "day:bcast:",
+      "cpuUs": 14365,
+      "cpuMinutes": 0.00023941666666666667,
+      "percentOfProcess": 0.000568611001593404,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.10528896666667,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:10376",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:10376",
+      "cpuUs": 12792,
+      "cpuMinutes": 0.0002132,
+      "percentOfProcess": 0.0005063468104686965,
+      "percentOfOther": 0.0010525817691815606,
+      "zeroOnlyThisMinutes": 42.10531518333333,
+      "known": true,
+      "source": "server/zone.js:10376"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:1849",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:1849",
+      "cpuUs": 9487,
+      "cpuMinutes": 0.00015811666666666667,
+      "percentOfProcess": 0.00037552471786401836,
+      "percentOfOther": 0.0007806318983916092,
+      "zeroOnlyThisMinutes": 42.10537026666667,
+      "known": true,
+      "source": "server/zone.js:1849"
+    },
+    {
+      "key": "life_daily::day:caravan:caravan_fish",
+      "coarse": "life_daily",
+      "name": "day:caravan:caravan_fish",
+      "cpuUs": 7978,
+      "cpuMinutes": 0.00013296666666666666,
+      "percentOfProcess": 0.0003157938441150141,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.10539541666667,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "other::timer:interval:server/newcomers.js:171",
+      "coarse": "other",
+      "name": "timer:interval:server/newcomers.js:171",
+      "cpuUs": 7260,
+      "cpuMinutes": 0.000121,
+      "percentOfProcess": 0.0002873731898063427,
+      "percentOfOther": 0.0005973845875749007,
+      "zeroOnlyThisMinutes": 42.105407383333336,
+      "known": true,
+      "source": "server/newcomers.js:171"
+    },
+    {
+      "key": "other::rumor:rowOf",
+      "coarse": "other",
+      "name": "rumor:rowOf",
+      "cpuUs": 6902,
+      "cpuMinutes": 0.00011503333333333333,
+      "percentOfProcess": 0.00027320244573600237,
+      "percentOfOther": 0.0005679267800884249,
+      "zeroOnlyThisMinutes": 42.10541335,
+      "known": true,
+      "source": "server/rumor.js"
+    },
+    {
+      "key": "life_daily::day:bandit:",
+      "coarse": "life_daily",
+      "name": "day:bandit:",
+      "cpuUs": 4874,
+      "cpuMinutes": 8.123333333333333e-05,
+      "percentOfProcess": 0.00019292795139340418,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.10544715,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "other::timer:timeout:server/villages.js:5777",
+      "coarse": "other",
+      "name": "timer:timeout:server/villages.js:5777",
+      "cpuUs": 4404,
+      "cpuMinutes": 7.34e-05,
+      "percentOfProcess": 0.0001743239019155831,
+      "percentOfOther": 0.0003623804027107249,
+      "zeroOnlyThisMinutes": 42.10545498333333,
+      "known": true,
+      "source": "server/villages.js:5777"
+    },
+    {
+      "key": "life_daily::day:life:",
+      "coarse": "life_daily",
+      "name": "day:life:",
+      "cpuUs": 4013,
+      "cpuMinutes": 6.688333333333334e-05,
+      "percentOfProcess": 0.00015884691607339577,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.1054615,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "econ::econ:tail",
+      "coarse": "econ",
+      "name": "econ:tail",
+      "cpuUs": 4002,
+      "cpuMinutes": 6.67e-05,
+      "percentOfProcess": 0.00015841150214944676,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.10546168333333,
+      "known": true,
+      "source": "sim/economy-sim-v2.js"
+    },
+    {
+      "key": "other::timer:timeout:server/zone.js:16355",
+      "coarse": "other",
+      "name": "timer:timeout:server/zone.js:16355",
+      "cpuUs": 3999,
+      "cpuMinutes": 6.665e-05,
+      "percentOfProcess": 0.00015829275289746067,
+      "percentOfOther": 0.00032905522943691844,
+      "zeroOnlyThisMinutes": 42.105461733333335,
+      "known": true,
+      "source": "server/zone.js:16355"
+    },
+    {
+      "key": "life_daily::day:t731:",
+      "coarse": "life_daily",
+      "name": "day:t731:",
+      "cpuUs": 1850,
+      "cpuMinutes": 3.0833333333333335e-05,
+      "percentOfProcess": 7.322870539142341e-05,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.10549755,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "econ::day:econ:",
+      "coarse": "econ",
+      "name": "day:econ:",
+      "cpuUs": 1560,
+      "cpuMinutes": 2.6e-05,
+      "percentOfProcess": 6.174961103276785e-05,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.10550238333333,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "trade_routes::day:dist:",
+      "coarse": "trade_routes",
+      "name": "day:dist:",
+      "cpuUs": 298,
+      "cpuMinutes": 4.966666666666667e-06,
+      "percentOfProcess": 1.1795759030618473e-05,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.105523416666664,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "storage::sqlite:all",
+      "coarse": "storage",
+      "name": "sqlite:all",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "native SQLite"
+    },
+    {
+      "key": "other::timer:timeout:server/newcomers.js:170",
+      "coarse": "other",
+      "name": "timer:timeout:server/newcomers.js:170",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": 0.0,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "server/newcomers.js:170"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:2618",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:2618",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": 0.0,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "server/zone.js:2618"
+    },
+    {
+      "key": "other::timer:timeout:server/claims.js:296",
+      "coarse": "other",
+      "name": "timer:timeout:server/claims.js:296",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": 0.0,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "server/claims.js:296"
+    },
+    {
+      "key": "other::timer:interval:server/zone.js:10809",
+      "coarse": "other",
+      "name": "timer:interval:server/zone.js:10809",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": 0.0,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "server/zone.js:10809"
+    },
+    {
+      "key": "econ::day:econ:econ:head",
+      "coarse": "econ",
+      "name": "day:econ:econ:head",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "econ::day:econ:econ:trade",
+      "coarse": "econ",
+      "name": "day:econ:econ:trade",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "econ::day:econ:econ:caravan",
+      "coarse": "econ",
+      "name": "day:econ:econ:caravan",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "life_daily::day:caravan:caravan_body",
+      "coarse": "life_daily",
+      "name": "day:caravan:caravan_body",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "storage::day:save:",
+      "coarse": "storage",
+      "name": "day:save:",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": null,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "villages daily scheduler"
+    },
+    {
+      "key": "other::timer:interval:server/claims.js:297",
+      "coarse": "other",
+      "name": "timer:interval:server/claims.js:297",
+      "cpuUs": 0,
+      "cpuMinutes": 0.0,
+      "percentOfProcess": 0.0,
+      "percentOfOther": 0.0,
+      "zeroOnlyThisMinutes": 42.105528383333336,
+      "known": true,
+      "source": "server/claims.js:297"
+    }
+  ],
+  "days": 30,
+  "first": {
+    "day": 1,
+    "population": 408,
+    "bodies": 458,
+    "npcs": 408,
+    "frames": 35626,
+    "cpuMinutes": 2.094499716666667,
+    "otherMinutes": 0.43341966666666665,
+    "backgroundMinutes": 0.19696836666666667,
+    "startupMinutes": 1.3532027333333334
+  },
+  "last": {
+    "day": 30,
+    "population": 1233,
+    "bodies": 1346,
+    "npcs": 1233,
+    "frames": 1288429,
+    "cpuMinutes": 1.9917262333333334,
+    "otherMinutes": 0.966283,
+    "backgroundMinutes": 0.11333265,
+    "startupMinutes": 0.0
+  },
+  "timers": {
+    "interval:server/zone.js:1849": {
+      "kind": "interval",
+      "site": "server/zone.js:1849",
+      "registrations": 1,
+      "calls": 1431,
+      "periods": {
+        "30000": 1
+      }
+    },
+    "interval:server/zone.js:2618": {
+      "kind": "interval",
+      "site": "server/zone.js:2618",
+      "registrations": 1,
+      "calls": 1431,
+      "periods": {
+        "30000": 1
+      }
+    },
+    "interval:server/zone.js:5446": {
+      "kind": "interval",
+      "site": "server/zone.js:5446",
+      "registrations": 1,
+      "calls": 4294,
+      "periods": {
+        "10000": 1
+      }
+    },
+    "interval:server/zone.js:5454": {
+      "kind": "interval",
+      "site": "server/zone.js:5454",
+      "registrations": 1,
+      "calls": 8589,
+      "periods": {
+        "5000": 1
+      }
+    },
+    "interval:server/village-view.js:50": {
+      "kind": "interval",
+      "site": "server/village-view.js:50",
+      "registrations": 1,
+      "calls": 8589,
+      "periods": {
+        "5000": 1
+      }
+    },
+    "timeout:server/claims.js:296": {
+      "kind": "timeout",
+      "site": "server/claims.js:296",
+      "registrations": 1,
+      "calls": 1,
+      "periods": {
+        "60000": 1
+      }
+    },
+    "interval:server/claims.js:297": {
+      "kind": "interval",
+      "site": "server/claims.js:297",
+      "registrations": 1,
+      "calls": 23,
+      "periods": {
+        "1800000": 1
+      }
+    },
+    "timeout:server/newcomers.js:170": {
+      "kind": "timeout",
+      "site": "server/newcomers.js:170",
+      "registrations": 1,
+      "calls": 1,
+      "periods": {
+        "20000": 1
+      }
+    },
+    "interval:server/newcomers.js:171": {
+      "kind": "interval",
+      "site": "server/newcomers.js:171",
+      "registrations": 1,
+      "calls": 143,
+      "periods": {
+        "300000": 1
+      }
+    },
+    "immediate:server/zone.js:10315": {
+      "kind": "immediate",
+      "site": "server/zone.js:10315",
+      "registrations": 1,
+      "calls": 1,
+      "periods": {
+        "null": 1
+      }
+    },
+    "interval:server/zone.js:10376": {
+      "kind": "interval",
+      "site": "server/zone.js:10376",
+      "registrations": 1,
+      "calls": 715,
+      "periods": {
+        "60000": 1
+      }
+    },
+    "interval:server/zone.js:10809": {
+      "kind": "interval",
+      "site": "server/zone.js:10809",
+      "registrations": 1,
+      "calls": 47,
+      "periods": {
+        "900000": 1
+      }
+    },
+    "interval:server/zone.js:12224": {
+      "kind": "interval",
+      "site": "server/zone.js:12224",
+      "registrations": 1,
+      "calls": 8589,
+      "periods": {
+        "5000": 1
+      }
+    },
+    "timeout:server/zone.js:16355": {
+      "kind": "timeout",
+      "site": "server/zone.js:16355",
+      "registrations": 1,
+      "calls": 1,
+      "periods": {
+        "8000": 1
+      }
+    },
+    "interval:server/zone.js:16357": {
+      "kind": "interval",
+      "site": "server/zone.js:16357",
+      "registrations": 1,
+      "calls": 715,
+      "periods": {
+        "60000": 1
+      }
+    },
+    "interval:server/zone.js:16408": {
+      "kind": "interval",
+      "site": "server/zone.js:16408",
+      "registrations": 1,
+      "calls": 1288429,
+      "periods": {
+        "33.333333333333336": 1
+      }
+    },
+    "interval:server/zone.js:17654": {
+      "kind": "interval",
+      "site": "server/zone.js:17654",
+      "registrations": 1,
+      "calls": 429475,
+      "periods": {
+        "100": 1
+      }
+    },
+    "interval:server/zone.js:17657": {
+      "kind": "interval",
+      "site": "server/zone.js:17657",
+      "registrations": 1,
+      "calls": 4294,
+      "periods": {
+        "10000": 1
+      }
+    },
+    "timeout:server/zone.js:5843": {
+      "kind": "timeout",
+      "site": "server/zone.js:5843",
+      "registrations": 1,
+      "calls": 1,
+      "periods": {
+        "0": 1
+      }
+    },
+    "timeout:server/zone.js:4614": {
+      "kind": "timeout",
+      "site": "server/zone.js:4614",
+      "registrations": 1,
+      "calls": 1,
+      "periods": {
+        "0": 1
+      }
+    },
+    "timeout:server/zone.js:2220": {
+      "kind": "timeout",
+      "site": "server/zone.js:2220",
+      "registrations": 1,
+      "calls": 1,
+      "periods": {
+        "0": 1
+      }
+    },
+    "timeout:server/zone.js:5841": {
+      "kind": "timeout",
+      "site": "server/zone.js:5841",
+      "registrations": 10199,
+      "calls": 10199,
+      "periods": {
+        "0": 10199
+      }
+    },
+    "timeout:server/zone.js:4612": {
+      "kind": "timeout",
+      "site": "server/zone.js:4612",
+      "registrations": 1,
+      "calls": 1,
+      "periods": {
+        "0": 1
+      }
+    },
+    "timeout:server/villages.js:5777": {
+      "kind": "timeout",
+      "site": "server/villages.js:5777",
+      "registrations": 1,
+      "calls": 1,
+      "periods": {
+        "0": 1
+      }
+    },
+    "timeout:server/villages.js:5775": {
+      "kind": "timeout",
+      "site": "server/villages.js:5775",
+      "registrations": 15024,
+      "calls": 15024,
+      "periods": {
+        "0": 15024
+      }
+    },
+    "timeout:server/villages.js:5759": {
+      "kind": "timeout",
+      "site": "server/villages.js:5759",
+      "registrations": 51,
+      "calls": 51,
+      "periods": {
+        "0": 51
+      }
+    }
+  },
+  "functions": {
+    "sqlite:prepare": {
+      "n": 91,
+      "inclusiveUs": 3137,
+      "categoryUs": 3137
+    },
+    "sqlite:close": {
+      "n": 1,
+      "inclusiveUs": 0,
+      "categoryUs": 0
+    },
+    "sqlite:exec": {
+      "n": 2465923,
+      "inclusiveUs": 38178054,
+      "categoryUs": 38178054
+    },
+    "sqlite:all": {
+      "n": 129,
+      "inclusiveUs": 154094,
+      "categoryUs": 154094
+    },
+    "sqlite:run": {
+      "n": 2957990,
+      "inclusiveUs": 41190936,
+      "categoryUs": 41190936
+    },
+    "sqlite:get": {
+      "n": 5,
+      "inclusiveUs": 0,
+      "categoryUs": 0
+    },
+    "sqlite:iterate": {
+      "n": 156,
+      "inclusiveUs": 0,
+      "categoryUs": 0
+    },
+    "rumor:invalidate": {
+      "n": 1,
+      "inclusiveUs": 382,
+      "categoryUs": 382
+    },
+    "path:routePathBegin": {
+      "n": 2678,
+      "inclusiveUs": 135128,
+      "categoryUs": 135128
+    },
+    "path:pathStep": {
+      "n": 931716,
+      "inclusiveUs": 81666720,
+      "categoryUs": 81666720
+    },
+    "timer:immediate:server/zone.js:10315": {
+      "n": 1,
+      "inclusiveUs": 2235,
+      "categoryUs": 2235
+    },
+    "observer:GC-context": {
+      "n": 4426,
+      "inclusiveUs": 25546218,
+      "categoryUs": 25546218
+    },
+    "timer:timeout:server/zone.js:5843": {
+      "n": 1,
+      "inclusiveUs": 0,
+      "categoryUs": 0
+    },
+    "timer:timeout:server/zone.js:4614": {
+      "n": 1,
+      "inclusiveUs": 903302,
+      "categoryUs": 903302
+    },
+    "timer:timeout:server/zone.js:2220": {
+      "n": 1,
+      "inclusiveUs": 469379,
+      "categoryUs": 469379
+    },
+    "timer:timeout:server/zone.js:5841": {
+      "n": 10199,
+      "inclusiveUs": 185026,
+      "categoryUs": 185026
+    },
+    "timer:timeout:server/zone.js:4612": {
+      "n": 1,
+      "inclusiveUs": 2987,
+      "categoryUs": 2987
+    },
+    "zone:if (BC.VERIFY) BC.check(players);": {
+      "n": 1288429,
+      "inclusiveUs": 815817,
+      "categoryUs": 815817
+    },
+    "zone:TB.begin(SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : 0);": {
+      "n": 1288429,
+      "inclusiveUs": 1588935,
+      "categoryUs": 1588935
+    },
+    "zone:observer:frame-statistics": {
+      "n": 5153713,
+      "inclusiveUs": 4297388,
+      "categoryUs": 4297388
+    },
+    "zone:_tick.n++;": {
+      "n": 1288429,
+      "inclusiveUs": 617051,
+      "categoryUs": 617051
+    },
+    "zone:_tick.wall += _elapsed;": {
+      "n": 1288429,
+      "inclusiveUs": 678572,
+      "categoryUs": 678572
+    },
+    "zone:_tick.sim += dt;": {
+      "n": 1288429,
+      "inclusiveUs": 613891,
+      "categoryUs": 613891
+    },
+    "zone:_tick.debt = _tickDebt;": {
+      "n": 1288429,
+      "inclusiveUs": 563548,
+      "categoryUs": 563548
+    },
+    "zone:_diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));": {
+      "n": 1288429,
+      "inclusiveUs": 1756912,
+      "categoryUs": 1756912
+    },
+    "zone:if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }": {
+      "n": 1288429,
+      "inclusiveUs": 575787,
+      "categoryUs": 575787
+    },
+    "zone:if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;": {
+      "n": 1288429,
+      "inclusiveUs": 666002,
+      "categoryUs": 666002
+    },
+    "zone:lastTick = now;": {
+      "n": 1288429,
+      "inclusiveUs": 843169,
+      "categoryUs": 843169
+    },
+    "villages:onGameTick:if (!state.ready) return;": {
+      "n": 1288429,
+      "inclusiveUs": 582814,
+      "categoryUs": 582814
+    },
+    "villages:onGameTick:_t1026Seq++;": {
+      "n": 1288429,
+      "inclusiveUs": 606629,
+      "categoryUs": 606629
+    },
+    "villages:onGameTick:if (_t732BootWait) { try { _t732Boot(); } catch (e) { _t732BootWait = false; console.error(`[${state": {
+      "n": 1288429,
+      "inclusiveUs": 692392,
+      "categoryUs": 692392
+    },
+    "villages:onGameTick:if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();": {
+      "n": 1288429,
+      "inclusiveUs": 598697,
+      "categoryUs": 598697
+    },
+    "villages:tickCaravanBodies": {
+      "n": 1289688,
+      "inclusiveUs": 362298652,
+      "categoryUs": 362298652
+    },
+    "villages:tickBodyExits": {
+      "n": 1288429,
+      "inclusiveUs": 1372885,
+      "categoryUs": 1372885
+    },
+    "villages:tickWarBodies": {
+      "n": 1148439,
+      "inclusiveUs": 2820030,
+      "categoryUs": 2820030
+    },
+    "villages:onGameTick:if (!state.tickJobs) { // Stage 4B: \uce90\ub7ec\ubc34 \uc2e4\uccb4 30Hz \uc804\uc9c4 \u2014 zone.js idle \uc874 \uc2a4\ud0b5\ubcf4\ub2e4 \uc55e(\ud638\ucd9c \uc704\uce58)\uc774\ub77c \ubb34\uc778 \uc874\uc5d0\uc11c\ub3c4 econ\uacfc \ub3d9\ud589": {
+      "n": 1288429,
+      "inclusiveUs": 371537544,
+      "categoryUs": 5123417
+    },
+    "villages:_granBroadcast": {
+      "n": 1288429,
+      "inclusiveUs": 1702324,
+      "categoryUs": 1702324
+    },
+    "villages:onGameTick:try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfd8\ufe0f \uacf3\uac04 \uc7ac\uace0 \ubc29\uc1a1 \uc2e4\ud328:`, e.messa": {
+      "n": 1288429,
+      "inclusiveUs": 3469965,
+      "categoryUs": 1767641
+    },
+    "villages:_mktBroadcast": {
+      "n": 1288429,
+      "inclusiveUs": 11795041,
+      "categoryUs": 11795041
+    },
+    "villages:onGameTick:try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] \ud83c\udfea \uc7a5\ub9c8\ub2f9 \ud50c\ub798\uadf8 \ubc29\uc1a1 \uc2e4\ud328:`, e.message)": {
+      "n": 1288429,
+      "inclusiveUs": 13536373,
+      "categoryUs": 1741332
+    },
+    "villages:onGameTick:if (T695_LATE()) { if (!state.tickJobs) state._t695W = true; } else if (!state.tickJobs) { if (!TB.o": {
+      "n": 1288429,
+      "inclusiveUs": 774043,
+      "categoryUs": 774043
+    },
+    "villages:onGameTick:if (state.saveQueue && state.saveQueue.length) { const vil = state.saveQueue.shift(); try { state.db": {
+      "n": 1288429,
+      "inclusiveUs": 4907128,
+      "categoryUs": 3903617
+    },
+    "villages:onGameTick:if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && (T731_ON ? _t731Due(now) : game": {
+      "n": 1288429,
+      "inclusiveUs": 639746,
+      "categoryUs": 639746
+    },
+    "villages:_t731Tick": {
+      "n": 1288428,
+      "inclusiveUs": 115373084,
+      "categoryUs": 25163011
+    },
+    "villages:onGameTick:if (T731_ON) { _t731Tick(now); return; }": {
+      "n": 1288428,
+      "inclusiveUs": 116855719,
+      "categoryUs": 1482635
+    },
+    "zone:villages:frame-call": {
+      "n": 1288428,
+      "inclusiveUs": 531009920,
+      "categoryUs": 16808870
+    },
+    "zone:bandits:frame": {
+      "n": 1288428,
+      "inclusiveUs": 1268727,
+      "categoryUs": 1268727
+    },
+    "zone:path:resident-precompute": {
+      "n": 1288428,
+      "inclusiveUs": 15628388,
+      "categoryUs": 15628388
+    },
+    "zone:roads:frame": {
+      "n": 1288428,
+      "inclusiveUs": 83339900,
+      "categoryUs": 13435697
+    },
+    "zone:if (_t566RelPend.length) _t566FlushRel();": {
+      "n": 1288428,
+      "inclusiveUs": 1055034,
+      "categoryUs": 1055034
+    },
+    "zone:roads:raw-prebuild": {
+      "n": 1288428,
+      "inclusiveUs": 1583935,
+      "categoryUs": 1583935
+    },
+    "zone:if (T696) db.walTick();": {
+      "n": 1288428,
+      "inclusiveUs": 1069486,
+      "categoryUs": 1069486
+    },
+    "zone:soil:frame": {
+      "n": 1288428,
+      "inclusiveUs": 1398511,
+      "categoryUs": 1398511
+    },
+    "zone:plants:season-sweep": {
+      "n": 1288428,
+      "inclusiveUs": 9128138,
+      "categoryUs": 9128138
+    },
+    "zone:if (T487_SNOW) { try { require('./snow').at(gameDayNow()); } catch (e) {} }": {
+      "n": 1288428,
+      "inclusiveUs": 635980,
+      "categoryUs": 635980
+    },
+    "zone:villages:late-call": {
+      "n": 2576856,
+      "inclusiveUs": 43699613,
+      "categoryUs": 6442145
+    },
+    "zone:space:active-chunks": {
+      "n": 1288428,
+      "inclusiveUs": 22155291,
+      "categoryUs": 22155291
+    },
+    "zone:space:rebuild-index": {
+      "n": 1288428,
+      "inclusiveUs": 68073319,
+      "categoryUs": 68073319
+    },
+    "zone:roomsFlush();": {
+      "n": 1288428,
+      "inclusiveUs": 1246074,
+      "categoryUs": 1246074
+    },
+    "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _inputTOStep(p, now);": {
+      "n": 1288428,
+      "inclusiveUs": 665842,
+      "categoryUs": 665842
+    },
+    "zone:_decT0 = Date.now();": {
+      "n": 1288428,
+      "inclusiveUs": 887363,
+      "categoryUs": 887363
+    },
+    "zone:TB.lateBegin();": {
+      "n": 1288428,
+      "inclusiveUs": 553075,
+      "categoryUs": 553075
+    },
+    "body:decision": {
+      "n": 1288428,
+      "inclusiveUs": 792971167,
+      "categoryUs": 791654716
+    },
+    "zone:_npcCursor = _curHit ? _stopAt : null;": {
+      "n": 1288428,
+      "inclusiveUs": 1299753,
+      "categoryUs": 1299753
+    },
+    "zone:TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);": {
+      "n": 1288428,
+      "inclusiveUs": 1444251,
+      "categoryUs": 1444251
+    },
+    "zone:_decT0 = 0;": {
+      "n": 1288428,
+      "inclusiveUs": 699228,
+      "categoryUs": 699228
+    },
+    "villages:deferLate:if (!TB.DEC_FIRST) return;": {
+      "n": 1288428,
+      "inclusiveUs": 738586,
+      "categoryUs": 738586
+    },
+    "route:_routeWarmStep": {
+      "n": 1288428,
+      "inclusiveUs": 1550775,
+      "categoryUs": 1550775
+    },
+    "route:_routeRedigStep": {
+      "n": 1288428,
+      "inclusiveUs": 22890740,
+      "categoryUs": 2385217
+    },
+    "route:_t996Step": {
+      "n": 1,
+      "inclusiveUs": 5012118,
+      "categoryUs": 5012118
+    },
+    "route:_t968DistBg": {
+      "n": 1288428,
+      "inclusiveUs": 6231706,
+      "categoryUs": 1219588
+    },
+    "villages:deferLate:if (state._t695W) { state._t695W = false; if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')": {
+      "n": 1288428,
+      "inclusiveUs": 35387856,
+      "categoryUs": 4714635
+    },
+    "villages:deferLate:if (state._t695C) { state._t695C = false; if (state.tickJobs) { if (TB.out(TICK_SLICE_MS, 'close')) ": {
+      "n": 1288428,
+      "inclusiveUs": 1131026,
+      "categoryUs": 1131026
+    },
+    "zone:if (_stopAt !== null) _walk.cut++;": {
+      "n": 1288428,
+      "inclusiveUs": 700494,
+      "categoryUs": 700494
+    },
+    "zone:{ const _gd = zoneGameDay(); if (_gd !== _lastFarmStageDay) { _lastFarmStageDay = _gd; _farmStageQ =": {
+      "n": 1288428,
+      "inclusiveUs": 989153,
+      "categoryUs": 989153
+    },
+    "zone:stepArrows(dt);": {
+      "n": 1288428,
+      "inclusiveUs": 1237983,
+      "categoryUs": 1237983
+    },
+    "zone:network:ghosts": {
+      "n": 1288428,
+      "inclusiveUs": 829453,
+      "categoryUs": 829453
+    },
+    "zone:body:movement-preparation": {
+      "n": 1288428,
+      "inclusiveUs": 154922142,
+      "categoryUs": 154922142
+    },
+    "body:movement": {
+      "n": 1288428,
+      "inclusiveUs": 113263507,
+      "categoryUs": 113249366
+    },
+    "zone:if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);": {
+      "n": 1288428,
+      "inclusiveUs": 990672,
+      "categoryUs": 990672
+    },
+    "zone:if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; }": {
+      "n": 1288428,
+      "inclusiveUs": 1289975,
+      "categoryUs": 1289975
+    },
+    "body:separation": {
+      "n": 1288428,
+      "inclusiveUs": 77249810,
+      "categoryUs": 77249810
+    },
+    "observer:body-probe": {
+      "n": 1288428,
+      "inclusiveUs": 1904484,
+      "categoryUs": 1904484
+    },
+    "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _stairStepP(p);": {
+      "n": 1288428,
+      "inclusiveUs": 626594,
+      "categoryUs": 626594
+    },
+    "zone:animals:AI": {
+      "n": 5153712,
+      "inclusiveUs": 44397671,
+      "categoryUs": 44397671
+    },
+    "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _fallStepP(p);": {
+      "n": 1288428,
+      "inclusiveUs": 706804,
+      "categoryUs": 706804
+    },
+    "zone:body:gauges-stairs-regeneration": {
+      "n": 2576856,
+      "inclusiveUs": 91597064,
+      "categoryUs": 91597064
+    },
+    "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _hpRegenStep(p);": {
+      "n": 1288428,
+      "inclusiveUs": 650608,
+      "categoryUs": 650608
+    },
+    "zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _gaugeNetStep(p);": {
+      "n": 1288428,
+      "inclusiveUs": 589382,
+      "categoryUs": 589382
+    },
+    "zone:try { Wildlife.tick(now); } catch (e) { global._wlErr = (global._wlErr || 0) + 1; if (global._wlErr ": {
+      "n": 1288428,
+      "inclusiveUs": 2682795,
+      "categoryUs": 2682795
+    },
+    "zone:network:players-AOI": {
+      "n": 1288428,
+      "inclusiveUs": 17081729,
+      "categoryUs": 17081729
+    },
+    "zone:network:observers-AOI": {
+      "n": 1288428,
+      "inclusiveUs": 905359,
+      "categoryUs": 905359
+    },
+    "zone:body:fishing-poll": {
+      "n": 1288428,
+      "inclusiveUs": 25833415,
+      "categoryUs": 25833415
+    },
+    "save:periodic": {
+      "n": 1288428,
+      "inclusiveUs": 25209080,
+      "categoryUs": 25209080
+    },
+    "zone:storage:periodic-call": {
+      "n": 1288428,
+      "inclusiveUs": 27943162,
+      "categoryUs": 2734082
+    },
+    "zone:if (_vein) _veinTick(now);": {
+      "n": 1288428,
+      "inclusiveUs": 1534945,
+      "categoryUs": 1526950
+    },
+    "zone:tickDowned(now);": {
+      "n": 1288428,
+      "inclusiveUs": 1470946,
+      "categoryUs": 1470946
+    },
+    "zone:if (SimVillages.t1005Flush) SimVillages.t1005Flush();": {
+      "n": 1288428,
+      "inclusiveUs": 2279166,
+      "categoryUs": 2118186
+    },
+    "zone:if (SimVillages.t1034Flush) SimVillages.t1034Flush();": {
+      "n": 1288428,
+      "inclusiveUs": 1224127,
+      "categoryUs": 1220125
+    },
+    "zone:path:reachability-prebuild": {
+      "n": 1288428,
+      "inclusiveUs": 21439782,
+      "categoryUs": 21439782
+    },
+    "zone:path:raycast-prebuild": {
+      "n": 1288428,
+      "inclusiveUs": 7831357,
+      "categoryUs": 7831357
+    },
+    "zone:TB.end();": {
+      "n": 1288428,
+      "inclusiveUs": 1037650,
+      "categoryUs": 1037650
+    },
+    "frame:setup-and-dispatch": {
+      "n": 1288428,
+      "inclusiveUs": 2293310514,
+      "categoryUs": 97270218
+    },
+    "timer:timeout:server/villages.js:5777": {
+      "n": 1,
+      "inclusiveUs": 4404,
+      "categoryUs": 4404
+    },
+    "timer:timeout:server/villages.js:5775": {
+      "n": 15024,
+      "inclusiveUs": 645789,
+      "categoryUs": 645789
+    },
+    "timer:interval:server/zone.js:17654": {
+      "n": 429475,
+      "inclusiveUs": 3599083,
+      "categoryUs": 3599083
+    },
+    "clock:virtual-timer-pump": {
+      "n": 4458,
+      "inclusiveUs": 2303949991,
+      "categoryUs": 6054156
+    },
+    "timer:interval:server/zone.js:5454": {
+      "n": 8589,
+      "inclusiveUs": 211239,
+      "categoryUs": 211239
+    },
+    "timer:interval:server/village-view.js:50": {
+      "n": 8589,
+      "inclusiveUs": 26185,
+      "categoryUs": 26185
+    },
+    "timer:interval:server/zone.js:12224": {
+      "n": 8589,
+      "inclusiveUs": 53090,
+      "categoryUs": 53090
+    },
+    "path:localPath": {
+      "n": 244723,
+      "inclusiveUs": 19314190,
+      "categoryUs": 19314190
+    },
+    "path:smoothPath": {
+      "n": 142495,
+      "inclusiveUs": 6776614,
+      "categoryUs": 6776614
+    },
+    "timer:timeout:server/zone.js:16355": {
+      "n": 1,
+      "inclusiveUs": 3999,
+      "categoryUs": 3999
+    },
+    "timer:interval:server/zone.js:5446": {
+      "n": 4294,
+      "inclusiveUs": 18075,
+      "categoryUs": 18075
+    },
+    "timer:interval:server/zone.js:17657": {
+      "n": 4294,
+      "inclusiveUs": 38350,
+      "categoryUs": 38350
+    },
+    "timer:timeout:server/villages.js:5759": {
+      "n": 51,
+      "inclusiveUs": 87087,
+      "categoryUs": 87087
+    },
+    "timer:timeout:server/newcomers.js:170": {
+      "n": 1,
+      "inclusiveUs": 0,
+      "categoryUs": 0
+    },
+    "timer:interval:server/zone.js:1849": {
+      "n": 1431,
+      "inclusiveUs": 9487,
+      "categoryUs": 9487
+    },
+    "timer:interval:server/zone.js:2618": {
+      "n": 1431,
+      "inclusiveUs": 0,
+      "categoryUs": 0
+    },
+    "timer:timeout:server/claims.js:296": {
+      "n": 1,
+      "inclusiveUs": 0,
+      "categoryUs": 0
+    },
+    "timer:interval:server/zone.js:10376": {
+      "n": 715,
+      "inclusiveUs": 12792,
+      "categoryUs": 12792
+    },
+    "timer:interval:server/zone.js:16357": {
+      "n": 715,
+      "inclusiveUs": 35776,
+      "categoryUs": 35776
+    },
+    "timer:interval:server/newcomers.js:171": {
+      "n": 143,
+      "inclusiveUs": 7260,
+      "categoryUs": 7260
+    },
+    "timer:interval:server/zone.js:10809": {
+      "n": 47,
+      "inclusiveUs": 0,
+      "categoryUs": 0
+    },
+    "day:econ:": {
+      "n": 30,
+      "inclusiveUs": 1560,
+      "categoryUs": 1560
+    },
+    "econ:head": {
+      "n": 30,
+      "inclusiveUs": 2244512,
+      "categoryUs": 2244512
+    },
+    "day:econ:econ:head": {
+      "n": 30,
+      "inclusiveUs": 2244512,
+      "categoryUs": 0
+    },
+    "day:roads:": {
+      "n": 30,
+      "inclusiveUs": 6863297,
+      "categoryUs": 1942420
+    },
+    "day:bandit:": {
+      "n": 30,
+      "inclusiveUs": 54090,
+      "categoryUs": 4874
+    },
+    "day:life:": {
+      "n": 30,
+      "inclusiveUs": 4013,
+      "categoryUs": 4013
+    },
+    "econ:village": {
+      "n": 1530,
+      "inclusiveUs": 9457627,
+      "categoryUs": 9457627
+    },
+    "day:econ:econ:vil": {
+      "n": 1530,
+      "inclusiveUs": 9590667,
+      "categoryUs": 133040
+    },
+    "day:pop:": {
+      "n": 1530,
+      "inclusiveUs": 928935,
+      "categoryUs": 928935
+    },
+    "day:life:life:\uc27c\ud45c": {
+      "n": 15940,
+      "inclusiveUs": 3875141,
+      "categoryUs": 3159993
+    },
+    "econ:trade": {
+      "n": 30,
+      "inclusiveUs": 3920099,
+      "categoryUs": 3920099
+    },
+    "day:econ:econ:trade": {
+      "n": 30,
+      "inclusiveUs": 3920099,
+      "categoryUs": 0
+    },
+    "econ:caravans": {
+      "n": 30,
+      "inclusiveUs": 6274841,
+      "categoryUs": 6274841
+    },
+    "day:econ:econ:caravan": {
+      "n": 30,
+      "inclusiveUs": 6274841,
+      "categoryUs": 0
+    },
+    "econ:tail": {
+      "n": 30,
+      "inclusiveUs": 4002,
+      "categoryUs": 4002
+    },
+    "day:econ:econ:tail": {
+      "n": 30,
+      "inclusiveUs": 21544,
+      "categoryUs": 17542
+    },
+    "day:terr:": {
+      "n": 1530,
+      "inclusiveUs": 3141417,
+      "categoryUs": 2804610
+    },
+    "day:ore:": {
+      "n": 1560,
+      "inclusiveUs": 84578,
+      "categoryUs": 84578
+    },
+    "day:wx:": {
+      "n": 30,
+      "inclusiveUs": 983479,
+      "categoryUs": 983479
+    },
+    "day:bcast:": {
+      "n": 30,
+      "inclusiveUs": 14365,
+      "categoryUs": 14365
+    },
+    "day:caravan:caravan_body": {
+      "n": 30,
+      "inclusiveUs": 0,
+      "categoryUs": 0
+    },
+    "day:caravan:caravan_fish": {
+      "n": 30,
+      "inclusiveUs": 7978,
+      "categoryUs": 7978
+    },
+    "day:caravan:caravan_sync": {
+      "n": 2251,
+      "inclusiveUs": 45940101,
+      "categoryUs": 18049510
+    },
+    "events:scanDay": {
+      "n": 30,
+      "inclusiveUs": 4046092,
+      "categoryUs": 3930992
+    },
+    "observer:ledger": {
+      "n": 59,
+      "inclusiveUs": 9192238,
+      "categoryUs": 1234069
+    },
+    "observer:daily-profile": {
+      "n": 30,
+      "inclusiveUs": 42475,
+      "categoryUs": 42475
+    },
+    "day:events:": {
+      "n": 58,
+      "inclusiveUs": 7491818,
+      "categoryUs": 2372954
+    },
+    "day:save:": {
+      "n": 29,
+      "inclusiveUs": 0,
+      "categoryUs": 0
+    },
+    "day:dist:": {
+      "n": 29,
+      "inclusiveUs": 298,
+      "categoryUs": 298
+    },
+    "day:t731:": {
+      "n": 29,
+      "inclusiveUs": 2375,
+      "categoryUs": 2375
+    },
+    "timer:interval:server/claims.js:297": {
+      "n": 23,
+      "inclusiveUs": 0,
+      "categoryUs": 0
+    },
+    "rumor:rowOf": {
+      "n": 844,
+      "inclusiveUs": 6902,
+      "categoryUs": 6902
+    }
+  }
+}

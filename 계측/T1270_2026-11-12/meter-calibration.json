@@ -1,0 +1,32 @@
+{
+  "kind": "meter only, not a world or completed day",
+  "node": "v22.23.0",
+  "profileSha256": "6571c666a4bf7ead9266747f9a578b808af487b41e363da1787a6a19b0b0da44",
+  "rounds": [
+    {
+      "n": 100000,
+      "cpuUs": 205553,
+      "usPerPair": 2.05553
+    },
+    {
+      "n": 100000,
+      "cpuUs": 195595,
+      "usPerPair": 1.95595
+    },
+    {
+      "n": 100000,
+      "cpuUs": 135970,
+      "usPerPair": 1.3597
+    },
+    {
+      "n": 100000,
+      "cpuUs": 196524,
+      "usPerPair": 1.96524
+    },
+    {
+      "n": 100000,
+      "cpuUs": 155321,
+      "usPerPair": 1.55321
+    }
+  ]
+}

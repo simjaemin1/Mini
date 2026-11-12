@@ -1,0 +1,160 @@
+key,coarse,name,cpuUs,cpuMinutes,percentOfProcess,percentOfOther,zeroOnlyThisMinutes,known,source
+body_tick::body:decision,body_tick,body:decision,777513697,12.958561616666668,30.776389975897,,29.146966766666665,True,server/zone.js:16540
+other::villages:tickCaravanBodies,other,villages:tickCaravanBodies,356071408,5.934523466666667,14.094404451211528,29.299114492464767,36.17100491666667,True,server/villages.js
+other::zone:body:movement-preparation,other,zone:body:movement-preparation,151530032,2.525500533333333,5.998025984476197,12.468554500210951,39.58002785,True,server/zone.js:16775
+body_tick::body:movement,body_tick,body:movement,109744665,1.82907775,4.344032292738085,,40.27645063333333,True,server/zone.js:16835
+other::frame:setup-and-dispatch,other,frame:setup-and-dispatch,94313214,1.5718869,3.733207871634741,7.760504193974291,40.533641483333334,True,server/zone.js:16408
+other::zone:body:gauges-stairs-regeneration,other,zone:body:gauges-stairs-regeneration,86353403,1.4392233833333334,3.418134004234518,7.105536093229229,40.666305,True,server/zone.js:17145
+startup::main,startup,main,79265254,1.3210875666666666,3.1375632069958628,,40.78444081666667,True,
+other::GC:background-threads,other,GC:background-threads,77809477,1.2968246166666666,3.0799390637263437,6.402504452763598,40.80870376666667,True,native trace GC
+body_tick::body:separation,body_tick,body:separation,71954049,1.19923415,2.8481631653735375,,40.906294233333334,True,server/zone.js:16839
+other::zone:space:rebuild-index,other,zone:space:rebuild-index,67028393,1.1171398833333333,2.653190510193269,5.515389656764926,40.9883885,True,server/zone.js:16493
+other::zone:animals:AI,other,zone:animals:AI,42243672,0.7040612,1.6721348170486068,3.475994294128014,41.40146718333333,True,server/zone.js:16962
+storage::sqlite:run,storage,sqlite:run,39688072,0.6614678666666667,1.5709762875900546,,41.44406051666667,True,native SQLite
+storage::sqlite:exec,storage,sqlite:exec,37899688,0.6316614666666667,1.5001865335020894,,41.473866916666665,True,native SQLite
+other::unattributed-background,other,unattributed-background,32415352,0.5402558666666667,1.2830996009552909,2.667277091682539,41.56527251666667,False,
+other::GC:main-thread,other,GC:main-thread,26147005,0.43578341666666665,1.0349790951422027,2.151490054854527,41.66974496666667,True,native trace GC
+other::zone:body:fishing-poll,other,zone:body:fishing-poll,25435923,0.42393205,1.0068322766086113,2.092979114454811,41.68159633333333,True,server/zone.js:17561
+storage::save:periodic,storage,save:periodic,24919442,0.41532403333333334,0.9863883658036017,,41.69020435,True,server/zone.js
+other::villages:_t731Tick,other,villages:_t731Tick,24906180,0.415103,0.9858634149436551,2.0493895409595373,41.690425383333334,True,server/villages.js
+observers::observer:GC-context,observers,observer:GC-context,24520173,0.40866955,0.9705840674398567,,41.69685883333333,True,T1270
+pathfinding::path:pathStep,pathfinding,path:pathStep,23116913,0.38528188333333335,0.9150387089925222,,41.7202465,True,sim/path-core.js
+body_tick::GC:main-thread,body_tick,GC:main-thread,22941481,0.3823580166666667,0.9080945694010474,,41.723170366666665,True,native trace GC
+other::zone:space:active-chunks,other,zone:space:active-chunks,21876881,0.36461468333333336,0.865954418179583,1.8001255555936888,41.7409137,True,server/zone.js:16490
+other::zone:path:reachability-prebuild,other,zone:path:reachability-prebuild,20777645,0.34629408333333334,0.822443267260855,1.7096756045596004,41.7592343,True,server/zone.js:17569
+pathfinding::path:localPath,pathfinding,path:localPath,18962937,0.31604895,0.7506115280697959,,41.789479433333334,True,sim/path-core.js
+life_daily::day:caravan:caravan_sync,life_daily,day:caravan:caravan_sync,17781475,0.29635791666666667,0.7038456184864652,,41.809170466666664,True,villages daily scheduler
+other::zone:villages:frame-call,other,zone:villages:frame-call,16645683,0.27742805,0.6588874683492028,1.369679679594702,41.82810033333333,True,server/zone.js:16456
+other::zone:network:players-AOI,other,zone:network:players-AOI,16558904,0.2759817333333333,0.655452487903169,1.3625391235168558,41.82954665,True,server/zone.js:17529
+other::zone:path:resident-precompute,other,zone:path:resident-precompute,15570343,0.25950571666666666,0.616322194805628,1.2811959960681463,41.84602266666667,True,server/zone.js:16459
+other::zone:roads:frame,other,zone:roads:frame,13342698,0.2223783,0.5281451356587754,1.097895611827335,41.883150083333334,True,server/zone.js:16461
+other::villages:_mktBroadcast,other,villages:_mktBroadcast,11746399,0.19577331666666667,0.4649586982600598,0.9665451407858439,41.90975506666667,True,server/villages.js
+econ::econ:village,econ,econ:village,9076981,0.15128301666666666,0.35929490134732317,,41.95424536666667,True,sim/economy-sim-v2.js
+other::zone:plants:season-sweep,other,zone:plants:season-sweep,9004960,0.15008266666666667,0.3564440880548931,0.7409675366017188,41.95544571666667,True,server/zone.js:16466
+other::zone:path:raycast-prebuild,other,zone:path:raycast-prebuild,7712431,0.12854051666666666,0.3052818040814492,0.6346125912031514,41.97698786666667,True,server/zone.js:17570
+pathfinding::path:smoothPath,pathfinding,path:smoothPath,6761993,0.11269988333333333,0.26766053689506347,,41.9928285,True,sim/path-core.js
+econ::econ:caravans,econ,econ:caravans,6268727,0.10447878333333334,0.24813554738500623,,42.0010496,True,sim/economy-sim-v2.js
+other::zone:villages:late-call,other,zone:villages:late-call,6261991,0.10436651666666667,0.24786891573121347,0.5152640373185593,42.00116186666666,True,server/zone.js:16476
+other::villages:onGameTick:if (!state.tickJobs) { // Stage 4B: 캐러밴 실체 30Hz 전진 — zone.js idle 존 스킵보다 앞(호출 위치)이라 무인 존에서도 econ과 동행,other,villages:onGameTick:if (!state.tickJobs) { // Stage 4B: 캐러밴 실체 30Hz 전진 — zone.js idle 존 스킵보다 앞(호출 위치)이라 무인 존에서도 econ과 동행,5097043,0.08495071666666666,0.20175668119698215,0.41940701520751167,42.02057766666667,True,server/villages.js:9558
+other::clock:virtual-timer-pump,other,clock:virtual-timer-pump,4585136,0.07641893333333333,0.18149382341816736,0.3772850658863402,42.02910945,True,scripts/t745-vclock.js pump
+"other::villages:deferLate:if (state._t695W) { state._t695W = false; if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')",other,"villages:deferLate:if (state._t695W) { state._t695W = false; if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')",4574493,0.07624155,0.18107254065520467,0.376409313246456,42.02928683333333,True,server/villages.js:165
+trade_routes::route:_t996Step,trade_routes,route:_t996Step,4362389,0.07270648333333334,0.17267681020745201,,42.0328219,True,server/villages.js
+other::unattributed-native,other,unattributed-native,4303705,0.07172841666666667,0.17035391650626805,0.35412769097369673,42.03379996666666,False,
+other::zone:observer:frame-statistics,other,zone:observer:frame-statistics,4228305,0.07047175,0.1673693519730176,0.34792344883827697,42.03505663333333,True,server/zone.js:16428
+econ::econ:trade,econ,econ:trade,3910452,0.0651742,0.1547877499758392,,42.040354183333335,True,sim/economy-sim-v2.js
+other::villages:onGameTick:if (state.saveQueue && state.saveQueue.length) { const vil = state.saveQueue.shift(); try { state.db,other,villages:onGameTick:if (state.saveQueue && state.saveQueue.length) { const vil = state.saveQueue.shift(); try { state.db,3886276,0.06477126666666666,0.15383078933716723,0.31977980516008747,42.04075711666667,True,server/villages.js:9583
+econ::events:scanDay,econ,events:scanDay,3866811,0.06444685,0.1530603046071975,,42.04108153333333,True,server/events ledger
+other::timer:interval:server/zone.js:17654,other,timer:interval:server/zone.js:17654,3532791,0.05887985,0.139838762891066,0.2906935116423307,42.04664853333333,True,server/zone.js:17654
+life_daily::day:life:life:쉼표,life_daily,day:life:life:쉼표,3007397,0.05012328333333333,0.11904204805840574,,42.0554051,True,villages daily scheduler
+other::villages:tickWarBodies,other,villages:tickWarBodies,2811935,0.046865583333333335,0.11130505929450389,0.23137832372760722,42.0586628,True,server/villages.js
+life_daily::day:terr:,life_daily,day:terr:,2796346,0.046605766666666666,0.11068799859810016,,42.05892261666666,True,villages daily scheduler
+other::zone:storage:periodic-call,other,zone:storage:periodic-call,2701036,0.04501726666666667,0.10691533486250202,0.22225306844145448,42.06051111666667,True,server/zone.js:17562
+other::zone:try { Wildlife.tick(now); } catch (e) { global._wlErr = (global._wlErr || 0) + 1; if (global._wlErr ,other,zone:try { Wildlife.tick(now); } catch (e) { global._wlErr = (global._wlErr || 0) + 1; if (global._wlErr ,2599777,0.04332961666666667,0.10290719136021545,0.21392103456359676,42.06219876666667,True,server/zone.js:17426
+life_daily::day:events:,life_daily,day:events:,2344404,0.0390734,0.09279874045106737,,42.06645498333334,True,villages daily scheduler
+trade_routes::route:_routeRedigStep,trade_routes,route:_routeRedigStep,2337624,0.0389604,0.09253036714157879,,42.066567983333336,True,server/villages.js
+econ::econ:head,econ,econ:head,2227825,0.037130416666666666,0.08818418410197182,,42.068397966666666,True,sim/economy-sim-v2.js
+other::zone:if (SimVillages.t1005Flush) SimVillages.t1005Flush();,other,zone:if (SimVillages.t1005Flush) SimVillages.t1005Flush();,2072967,0.03454945,0.08205442688061775,0.17057280115032772,42.070978933333336,True,server/zone.js:17567
+life_daily::day:roads:,life_daily,day:roads:,1939653,0.03232755,0.07677744762085979,,42.07320083333333,True,villages daily scheduler
+startup::GC:main-thread,startup,GC:main-thread,1926910,0.03211516666666667,0.07627304038150685,,42.073413216666665,True,native trace GC
+"other::villages:onGameTick:try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 곳간 재고 방송 실패:`, e.messa",other,"villages:onGameTick:try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 곳간 재고 방송 실패:`, e.messa",1760572,0.029342866666666665,0.069688869355886,0.14486757274323941,42.07618551666667,True,server/villages.js:9574
+"other::villages:onGameTick:try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] 🏪 장마당 플래그 방송 실패:`, e.message)",other,"villages:onGameTick:try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] 🏪 장마당 플래그 방송 실패:`, e.message)",1735560,0.028926,0.06869881725899396,0.1428094758693519,42.07660238333333,True,server/villages.js:9576
+"other::zone:_diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));",other,"zone:_diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));",1726580,0.028776333333333334,0.0683433611647156,0.14207056215083635,42.07675205,True,server/zone.js:16441
+observers::observer:body-probe,observers,observer:body-probe,1706135,0.028435583333333334,0.06753408501243037,,42.0770928,True,server/zone.js:16840
+other::villages:_granBroadcast,other,villages:_granBroadcast,1698457,0.028307616666666667,0.06723016609351397,0.13975647857557894,42.07722076666667,True,server/villages.js
+other::zone:roads:raw-prebuild,other,zone:roads:raw-prebuild,1561818,0.0260303,0.06182157307947142,0.1285132233880243,42.079498083333334,True,server/zone.js:16463
+other::zone:TB.begin(SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : 0);,other,zone:TB.begin(SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : 0);,1551006,0.0258501,0.06139360077531355,0.1276235646881813,42.07967828333334,True,server/zone.js:16412
+trade_routes::route:_routeWarmStep,trade_routes,route:_routeWarmStep,1511665,0.025194416666666667,0.05983636266785194,,42.080333966666664,True,server/villages.js
+other::zone:if (_vein) _veinTick(now);,other,zone:if (_vein) _veinTick(now);,1507510,0.025125166666666667,0.059671894953851196,0.12404452336295298,42.08040321666667,True,server/zone.js:17563
+other::villages:onGameTick:if (T731_ON) { _t731Tick(now); return; },other,villages:onGameTick:if (T731_ON) { _t731Tick(now); return; },1479748,0.024662466666666667,0.0585729893759719,0.12176014444831738,42.08086591666667,True,server/villages.js:9621
+other::zone:tickDowned(now);,other,zone:tickDowned(now);,1447040,0.024117333333333334,0.05727830586465154,0.11906878699784909,42.08141105,True,server/zone.js:17566
+"other::zone:TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);",other,"zone:TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);",1404176,0.023402933333333334,0.055581616552274254,0.11554174939980355,42.08212545,True,server/zone.js:16543
+other::zone:soil:frame,other,zone:soil:frame,1380298,0.023004966666666668,0.05463645167263295,0.11357696301108268,42.08252341666667,True,server/zone.js:16465
+other::villages:tickBodyExits,other,villages:tickBodyExits,1361481,0.02269135,0.053891616781092194,0.11202861786171671,42.082837033333334,True,server/villages.js
+observers::observer:ledger,observers,observer:ledger,1329664,0.022161066666666666,0.05263220179761169,,42.08336731666667,True,server/events ledger
+other::zone:_npcCursor = _curHit ? _stopAt : null;,other,zone:_npcCursor = _curHit ? _stopAt : null;,1268463,0.02114105,0.050209677474011415,0.10437468954669715,42.08438733333333,True,server/zone.js:16542
+other::zone:bandits:frame,other,zone:bandits:frame,1264381,0.021073016666666666,0.050048099325142335,0.10403880471384855,42.08445536666667,True,server/zone.js:16458
+other::zone:roomsFlush();,other,zone:roomsFlush();,1223083,0.020384716666666667,0.0484133971223018,0.10064062445246175,42.08514366666667,True,server/zone.js:16494
+other::zone:stepArrows(dt);,other,zone:stepArrows(dt);,1208531,0.020142183333333334,0.04783738408400126,0.09944322217720142,42.0853862,True,server/zone.js:16584
+other::zone:if (SimVillages.t1034Flush) SimVillages.t1034Flush();,other,zone:if (SimVillages.t1034Flush) SimVillages.t1034Flush();,1204793,0.020079883333333333,0.04768942251602659,0.09913564317054095,42.0854485,True,server/zone.js:17568
+other::zone:if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; },other,zone:if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; },1183536,0.0197256,0.04684800489953714,0.09738652413774762,42.085802783333335,True,server/zone.js:16838
+trade_routes::route:_t968DistBg,trade_routes,route:_t968DistBg,1183316,0.019721933333333334,0.04683929662105816,,42.08580645,True,server/villages.js
+"other::villages:deferLate:if (state._t695C) { state._t695C = false; if (state.tickJobs) { if (TB.out(TICK_SLICE_MS, 'close')) ",other,"villages:deferLate:if (state._t695C) { state._t695C = false; if (state.tickJobs) { if (TB.out(TICK_SLICE_MS, 'close')) ",1102470,0.0183745,0.043639162612368956,0.09071605871400837,42.087153883333336,True,server/villages.js:166
+other::zone:if (T696) db.walTick();,other,zone:if (T696) db.walTick();,1055205,0.01758675,0.04176826814732808,0.08682688756638748,42.08794163333334,True,server/zone.js:16464
+other::zone:if (_t566RelPend.length) _t566FlushRel();,other,zone:if (_t566RelPend.length) _t566FlushRel();,1047966,0.0174661,0.041481726202285636,0.08623123095076012,42.088062283333336,True,server/zone.js:16462
+other::zone:TB.end();,other,zone:TB.end();,1026797,0.017113283333333333,0.040643791897187774,0.0844893529432707,42.0884151,True,server/zone.js:17575
+life_daily::day:wx:,life_daily,day:wx:,979141,0.016319016666666665,0.03875742044630471,,42.089209366666665,True,villages daily scheduler
+observers::GC:main-thread,observers,GC:main-thread,972638,0.016210633333333332,0.038500011651082855,,42.08931775,True,native trace GC
+other::zone:{ const _gd = zoneGameDay(); if (_gd !== _lastFarmStageDay) { _lastFarmStageDay = _gd; _farmStageQ =,other,zone:{ const _gd = zoneGameDay(); if (_gd !== _lastFarmStageDay) { _lastFarmStageDay = _gd; _farmStageQ =,964898,0.016081633333333335,0.03819363858095874,0.07939603220135627,42.08944675,True,server/zone.js:16558
+other::zone:if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);,other,zone:if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);,953468,0.015891133333333335,0.03774120393089173,0.07845552175562885,42.08963725,True,server/zone.js:16837
+life_daily::day:pop:,life_daily,day:pop:,925633,0.015427216666666667,0.03663940878788077,,42.09010116666666,True,villages daily scheduler
+other::zone:network:observers-AOI,other,zone:network:observers-AOI,886837,0.014780616666666666,0.03510374346119663,0.07297283133487083,42.09074776666667,True,server/zone.js:17550
+other::zone:_decT0 = Date.now();,other,zone:_decT0 = Date.now();,859959,0.01433265,0.034039829329569234,0.07076119181078844,42.091195733333336,True,server/zone.js:16515
+other::zone:lastTick = now;,other,zone:lastTick = now;,814440,0.013574,0.032238046929184264,0.06701568918794795,42.09195438333333,True,server/zone.js:16448
+other::zone:network:ghosts,other,zone:network:ghosts,813700,0.013561666666666666,0.0322087554470277,0.0669547987478921,42.09196671666667,True,server/zone.js:16585
+other::zone:if (BC.VERIFY) BC.check(players);,other,zone:if (BC.VERIFY) BC.check(players);,799751,0.013329183333333333,0.03165661100837636,0.06580701395283946,42.0921992,True,server/zone.js:16410
+trade_routes::GC:main-thread,trade_routes,GC:main-thread,772704,0.0128784,0.03058600733555375,,42.09264998333333,True,native trace GC
+other::villages:onGameTick:if (T695_LATE()) { if (!state.tickJobs) state._t695W = true; } else if (!state.tickJobs) { if (!TB.o,other,villages:onGameTick:if (T695_LATE()) { if (!state.tickJobs) state._t695W = true; } else if (!state.tickJobs) { if (!TB.o,772426,0.012873766666666666,0.03057500323820304,0.0635585933115882,42.092654616666664,True,server/villages.js:9579
+storage::GC:main-thread,storage,GC:main-thread,758228,0.012637133333333333,0.030013002611636863,,42.09289125,True,native trace GC
+other::villages:deferLate:if (!TB.DEC_FIRST) return;,other,villages:deferLate:if (!TB.DEC_FIRST) return;,724876,0.012081266666666667,0.02869282759422348,0.05964597111610795,42.09344711666667,True,server/villages.js:164
+other::zone:_decT0 = 0;,other,zone:_decT0 = 0;,681466,0.011357766666666666,0.02697452591798473,0.056074006247426623,42.094170616666666,True,server/zone.js:16544
+other::villages:onGameTick:if (_t732BootWait) { try { _t732Boot(); } catch (e) { _t732BootWait = false; console.error(`[${state,other,villages:onGameTick:if (_t732BootWait) { try { _t732Boot(); } catch (e) { _t732BootWait = false; console.error(`[${state,676693,0.011278216666666667,0.026785595858074857,0.05568126290906643,42.09425016666667,True,server/villages.js:9549
+"other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _inputTOStep(p, now);",other,"zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _inputTOStep(p, now);",654252,0.0109042,0.025897311870134894,0.05383471917218374,42.09462418333333,True,server/zone.js:16499
+other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _fallStepP(p);,other,zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _fallStepP(p);,653744,0.010895733333333333,0.02587720366346525,0.05379291870792919,42.09463265,True,server/zone.js:17049
+other::zone:if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;,other,zone:if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;,650417,0.010840283333333334,0.02574551074301267,0.053519158580813256,42.0946881,True,server/zone.js:16443
+other::zone:_tick.wall += _elapsed;,other,zone:_tick.wall += _elapsed;,646629,0.01077715,0.025595570020838232,0.05320746535523009,42.094751233333334,True,server/zone.js:16434
+other::villages:onGameTick:if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && (T731_ON ? _t731Due(now) : game,other,villages:onGameTick:if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && (T731_ON ? _t731Due(now) : game,636471,0.01060785,0.025193485053613327,0.05237162063889596,42.09492053333334,True,server/villages.js:9619
+other::timer:timeout:server/villages.js:5775,other,timer:timeout:server/villages.js:5775,631592,0.010526533333333333,0.025000359186799943,0.05197015515641966,42.09500185,True,server/villages.js:5775
+other::zone:if (T487_SNOW) { try { require('./snow').at(gameDayNow()); } catch (e) {} },other,zone:if (T487_SNOW) { try { require('./snow').at(gameDayNow()); } catch (e) {} },625640,0.010427333333333334,0.02476476067085954,0.05148039853586238,42.09510105,True,server/zone.js:16469
+other::zone:_tick.n++;,other,zone:_tick.n++;,611942,0.010199033333333333,0.024222551586291042,0.050353267119801634,42.09532935,True,server/zone.js:16434
+other::zone:_tick.sim += dt;,other,zone:_tick.sim += dt;,609424,0.010157066666666667,0.024122881380790714,0.050146075054854855,42.095371316666665,True,server/zone.js:16434
+other::villages:onGameTick:if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();,other,villages:onGameTick:if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();,584061,0.00973435,0.023118935621416297,0.048059096364130034,42.095794033333334,True,server/villages.js:9550
+other::villages:onGameTick:_t1026Seq++;,other,villages:onGameTick:_t1026Seq++;,580245,0.00967075,0.02296788657288999,0.04774509917595018,42.09585763333333,True,server/villages.js:9548
+other::villages:onGameTick:if (!state.ready) return;,other,villages:onGameTick:if (!state.ready) return;,576882,0.0096147,0.02283476866141358,0.0474683768112099,42.095913683333336,True,server/villages.js:9547
+other::zone:if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; },other,zone:if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; },569084,0.009484733333333334,0.02252609977241773,0.04682672322802683,42.09604365,True,server/zone.js:16442
+other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _hpRegenStep(p);,other,zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _hpRegenStep(p);,568487,0.009474783333333334,0.022502468671272497,0.04677759945408989,42.0960536,True,server/zone.js:17169
+other::zone:_tick.debt = _tickDebt;,other,zone:_tick.debt = _tickDebt;,549762,0.0091627,0.02176127542345931,0.045236824467541674,42.09636568333333,True,server/zone.js:16434
+other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _stairStepP(p);,other,zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _stairStepP(p);,547591,0.009126516666666667,0.021675340548105375,0.04505818508191838,42.09640186666667,True,server/zone.js:16952
+other::zone:TB.lateBegin();,other,zone:TB.lateBegin();,542936,0.009048933333333333,0.021491081292106952,0.044675151300215744,42.09647945,True,server/zone.js:16516
+other::zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _gaugeNetStep(p);,other,zone:if (!T385_ONE_SWEEP) for (const p of players.values()) _gaugeNetStep(p);,540444,0.0090074,0.021392440246790507,0.044470098629108765,42.096520983333335,True,server/zone.js:17217
+other::zone:if (_stopAt !== null) _walk.cut++;,other,zone:if (_stopAt !== null) _walk.cut++;,536107,0.008935116666666666,0.02122076841150261,0.04411323127975445,42.096593266666666,True,server/zone.js:16546
+econ::GC:main-thread,econ,GC:main-thread,480825,0.00801375,0.0190325363620709,,42.09751463333333,True,native trace GC
+life_daily::GC:main-thread,life_daily,GC:main-thread,468377,0.007806283333333333,0.018539806132496606,,42.0977221,True,native trace GC
+pathfinding::GC:main-thread,pathfinding,GC:main-thread,459741,0.00766235,0.018197966619112643,,42.09786603333333,True,native trace GC
+other::timer:interval:server/zone.js:5454,other,timer:interval:server/zone.js:5454,209426,0.0034904333333333334,0.008289726948813103,0.01723248824207454,42.10203795,True,server/zone.js:5454
+other::timer:timeout:server/zone.js:5841,other,timer:timeout:server/zone.js:5841,178765,0.0029794166666666667,0.007076070010431247,0.014709566914301257,42.10254896666667,True,server/zone.js:5841
+econ::day:econ:econ:vil,econ,day:econ:econ:vil,129490,0.0021581666666666667,0.005125613546559686,,42.10337021666667,True,villages daily scheduler
+other::timer:timeout:server/villages.js:5759,other,timer:timeout:server/villages.js:5759,85868,0.0014311333333333334,0.0033989202565139166,0.007065595009074596,42.10409725,True,server/villages.js:5759
+life_daily::day:ore:,life_daily,day:ore:,84578,0.0014096333333333334,0.003347858078159897,,42.10411875,True,villages daily scheduler
+other::timer:interval:server/zone.js:12224,other,timer:interval:server/zone.js:12224,53090,0.0008848333333333333,0.0021014659293138753,0.004368477652114529,42.10464355,True,server/zone.js:12224
+observers::observer:daily-profile,observers,observer:daily-profile,42475,0.0007079166666666667,0.0016812914927030864,,42.104820466666666,True,T1270
+pathfinding::path:routePathBegin,pathfinding,path:routePathBegin,37746,0.0006291,0.0014941030884890098,,42.10489928333333,True,sim/path-core.js
+other::timer:interval:server/zone.js:17657,other,timer:interval:server/zone.js:17657,37566,0.0006261,0.0014869781333698444,0.0030910949609970688,42.10490228333333,True,server/zone.js:17657
+other::timer:interval:server/zone.js:16357,other,timer:interval:server/zone.js:16357,35212,0.0005868666666666667,0.0013937995536447575,0.002897397534116722,42.10494151666666,True,server/zone.js:16357
+other::timer:interval:server/village-view.js:50,other,timer:interval:server/village-view.js:50,25508,0.00042513333333333333,0.001009685306553745,0.002098909925600629,42.10510325,True,server/village-view.js:50
+other::timer:interval:server/zone.js:5446,other,timer:interval:server/zone.js:5446,18075,0.00030125,0.0007154642432162045,0.0014872901405532134,42.10522713333334,True,server/zone.js:5446
+econ::day:econ:econ:tail,econ,day:econ:econ:tail,17542,0.00029236666666666665,0.0006943664594466754,,42.105236016666666,True,villages daily scheduler
+life_daily::day:bcast:,life_daily,day:bcast:,14365,0.00023941666666666667,0.000568611001593404,,42.10528896666667,True,villages daily scheduler
+other::timer:interval:server/zone.js:10376,other,timer:interval:server/zone.js:10376,12792,0.0002132,0.0005063468104686965,0.0010525817691815606,42.10531518333333,True,server/zone.js:10376
+other::timer:interval:server/zone.js:1849,other,timer:interval:server/zone.js:1849,9487,0.00015811666666666667,0.00037552471786401836,0.0007806318983916092,42.10537026666667,True,server/zone.js:1849
+life_daily::day:caravan:caravan_fish,life_daily,day:caravan:caravan_fish,7978,0.00013296666666666666,0.0003157938441150141,,42.10539541666667,True,villages daily scheduler
+other::timer:interval:server/newcomers.js:171,other,timer:interval:server/newcomers.js:171,7260,0.000121,0.0002873731898063427,0.0005973845875749007,42.105407383333336,True,server/newcomers.js:171
+other::rumor:rowOf,other,rumor:rowOf,6902,0.00011503333333333333,0.00027320244573600237,0.0005679267800884249,42.10541335,True,server/rumor.js
+life_daily::day:bandit:,life_daily,day:bandit:,4874,8.123333333333333e-05,0.00019292795139340418,,42.10544715,True,villages daily scheduler
+other::timer:timeout:server/villages.js:5777,other,timer:timeout:server/villages.js:5777,4404,7.34e-05,0.0001743239019155831,0.0003623804027107249,42.10545498333333,True,server/villages.js:5777
+life_daily::day:life:,life_daily,day:life:,4013,6.688333333333334e-05,0.00015884691607339577,,42.1054615,True,villages daily scheduler
+econ::econ:tail,econ,econ:tail,4002,6.67e-05,0.00015841150214944676,,42.10546168333333,True,sim/economy-sim-v2.js
+other::timer:timeout:server/zone.js:16355,other,timer:timeout:server/zone.js:16355,3999,6.665e-05,0.00015829275289746067,0.00032905522943691844,42.105461733333335,True,server/zone.js:16355
+life_daily::day:t731:,life_daily,day:t731:,1850,3.0833333333333335e-05,7.322870539142341e-05,,42.10549755,True,villages daily scheduler
+econ::day:econ:,econ,day:econ:,1560,2.6e-05,6.174961103276785e-05,,42.10550238333333,True,villages daily scheduler
+trade_routes::day:dist:,trade_routes,day:dist:,298,4.966666666666667e-06,1.1795759030618473e-05,,42.105523416666664,True,villages daily scheduler
+storage::sqlite:all,storage,sqlite:all,0,0.0,0.0,,42.105528383333336,True,native SQLite
+other::timer:timeout:server/newcomers.js:170,other,timer:timeout:server/newcomers.js:170,0,0.0,0.0,0.0,42.105528383333336,True,server/newcomers.js:170
+other::timer:interval:server/zone.js:2618,other,timer:interval:server/zone.js:2618,0,0.0,0.0,0.0,42.105528383333336,True,server/zone.js:2618
+other::timer:timeout:server/claims.js:296,other,timer:timeout:server/claims.js:296,0,0.0,0.0,0.0,42.105528383333336,True,server/claims.js:296
+other::timer:interval:server/zone.js:10809,other,timer:interval:server/zone.js:10809,0,0.0,0.0,0.0,42.105528383333336,True,server/zone.js:10809
+econ::day:econ:econ:head,econ,day:econ:econ:head,0,0.0,0.0,,42.105528383333336,True,villages daily scheduler
+econ::day:econ:econ:trade,econ,day:econ:econ:trade,0,0.0,0.0,,42.105528383333336,True,villages daily scheduler
+econ::day:econ:econ:caravan,econ,day:econ:econ:caravan,0,0.0,0.0,,42.105528383333336,True,villages daily scheduler
+life_daily::day:caravan:caravan_body,life_daily,day:caravan:caravan_body,0,0.0,0.0,,42.105528383333336,True,villages daily scheduler
+storage::day:save:,storage,day:save:,0,0.0,0.0,,42.105528383333336,True,villages daily scheduler
+other::timer:interval:server/claims.js:297,other,timer:interval:server/claims.js:297,0,0.0,0.0,0.0,42.105528383333336,True,server/claims.js:297
