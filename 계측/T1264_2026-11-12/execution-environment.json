@@ -1,0 +1,11 @@
+{
+  "base": "05b66c731df7a6a96c8fd0d7feb3627df58f2d01",
+  "node": "v22.23.4",
+  "python": "Python 3.12.14",
+  "cpus": 5,
+  "inheritedExperimentVariables": {},
+  "previousInterruptedCaptureUTC": "2026-11-11T07:09:47Z",
+  "capturedUTC": "2026-11-11T19:05:58Z",
+  "userFacingDate": "2026-11-12 Asia/Seoul",
+  "cgroupCPUQuota": "400000 100000"
+}
