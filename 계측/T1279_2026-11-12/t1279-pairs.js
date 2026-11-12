@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// T1279 — 열 시드 짝 Δ(읽기만) · 끔 F1(밭 켬 · 손잡이 끔) · 켬 F1R(T1260) = T1272 판(R0 · 같은 바이트 — §1 의 다섯 시드 대조) · 고침 G(T1260 + T1279) = 이 카드 판(R)
+// T1279 — 열 시드 짝 Δ(읽기만) · 끔 F1(밭 켬 · 손잡이 끔) · 켬 F1R(T1260) = T1272 판(R0 · 같은 바이트 — §1 의 다섯 시드 대조) · 고침 G(T1260 + T1279) · 영 흔들기 Z = 이 카드 판(R)
 //   쓰는 법: node t1279-pairs.js [시드들] [--json] · env R0(기본 /dev/shm/t1272x) · R(기본 /dev/shm/t1279)
 'use strict';
 const fs = require('fs');
 const R0 = process.env.R0 || '/dev/shm/t1272x', R = process.env.R || '/dev/shm/t1279';
 const SEEDS = (process.argv.slice(2).find((a) => !a.startsWith('--')) || '1020,7,42,1,2,3,4,5,6,8').split(',').map(Number);
-const SRC = { F1: R0, F1R: R0, G: R };
+const SRC = { F1: R0, F1R: R0, G: R, Z: R };   // Z = 영 흔들기(끈 판 + 50날째 난수 하나 · t1279-split.js Z)
 const rd = (a, s) => { try { return JSON.parse(fs.readFileSync(`${SRC[a]}/${a}-${s}/farm.json`, 'utf8')); } catch (e) { return null; } };
 const live = (f) => f.per.filter((p) => p.everPop);
 const wmean = (f, k) => { let n = 0, w = 0; for (const p of live(f)) { const x = +p[k]; if (!Number.isFinite(x)) continue; const ww = p.popDays || 0; n += x * ww; w += ww; } return w ? n / w : 0; };
@@ -15,7 +15,7 @@ const q = (xs, p) => { const a = xs.slice().sort((x, y) => x - y); if (!a.length
 const pct = (a, b) => (b / a - 1) * 100;
 const out = { seeds: SEEDS, arms: {}, pairs: {} };
 for (const a of Object.keys(SRC)) { out.arms[a] = {}; for (const s of SEEDS) { const f = rd(a, s); if (f) out.arms[a][s] = met(f); } }
-for (const [name, A, B] of [['T1260', 'F1', 'F1R'], ['T1260+T1279', 'F1', 'G'], ['T1279 몫(켬 → 고침)', 'F1R', 'G']]) {
+for (const [name, A, B] of [['T1260', 'F1', 'F1R'], ['T1260+T1279', 'F1', 'G'], ['T1279 몫(켬 → 고침)', 'F1R', 'G'], ['영 흔들기(난수 하나)', 'F1', 'Z']]) {
   const rows = []; for (const s of SEEDS) { const x = out.arms[A][s], y = out.arms[B][s]; if (!x || !y) continue;
     const r = { seed: s, a: x.pop, b: y.pop }; for (const k of Object.keys(x)) { r[k] = y[k] - x[k]; r[k + 'Pct'] = x[k] ? pct(x[k], y[k]) : null; } rows.push(r); }
   const sum = {}; for (const k of ['pop', 'farmer', 'harvest', 'houseUp', 'gated', 'price']) { const xs = rows.map((r) => r[k + 'Pct']).filter((v) => v != null && Number.isFinite(v));
