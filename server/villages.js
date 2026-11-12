@@ -6184,6 +6184,20 @@ function _t569Resolve(owners) {
 //      개간한 셀에 서 있던 그루는 정본 벌목 문(`t325CutTreeAt` → `woodToGranary`)으로 곳간에 — 나무가 **나온다**.
 //   ② 플레이어 — 영토와 맞닿은 셀 우클릭 → 값 미리 보기(`terrQuote`) → 몸이 그 셀에서 일한 시간 → 말뚝 통나무 → 영토(`terrPlayerAdd`) · 집을 지어도 영토가 저절로 안 붙는다.
 const T1207_TERR_REAL = process.env.T1207_TERR_REAL === '1';
+//   ★★[T1283 (나) · T1275 회부 2] 손잡이 `T1283_CLEAR_HAUL`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트) — **개간 통나무를 몸이 곳간까지 진다.**
+//     종전: 넓힌 칸에 서 있던 그루를 베면(`_t1207Fell`) 통나무가 곧장 곳간(`woodToGranary`) · 못 받은 몫은 마을 짐(`_t717PackPut`)으로 접혔다 — 칸 → 곳간 걸음 0.
+//     켬 = 나무꾼 몸 행위가 켜진 세계(T325)에서만, 일괄 몸(`_t1238Batch` — 개간 · 말뚝을 하는 그 몸의 낮)이 그 칸의 통나무를 짐(`_t400PerLoad('wood')`)으로 나눠
+//       칸 ↔ 곳간 사다리(`_t1207From`)를 왕복한다 — 걸음 = 짐 수 × 2 × 거리 ÷ 몸 빠르기(말뚝 줄과 같은 식 · 새 수 0). 낮이 모자라면 그 칸은 오늘 영토가 안 되고 내일 다시(한 일은 땅에 남는다).
+//     수식 나무꾼 세계(T325 끔)는 한 글자도 안 닿는다(그 세계엔 나무꾼 몸이 없다 — 카드 "나무꾼 몸 켬 세계에서만").
+const T1283_CLEAR_HAUL = process.env.T1283_CLEAR_HAUL === '1';
+function _t1283Haul(x, y, from, sp, perLoad) {
+  if (!T1283_CLEAR_HAUL || !_lifeEcon().T325_WOOD_ACT || !(sp > 0) || !state.deps || !state.deps.t325TreesAtCell) return 0;
+  let trees = null; try { trees = state.deps.t325TreesAtCell(x, y); } catch (_) { trees = null; }
+  if (!trees || !trees.length) return 0;
+  let u = 0; for (const t of trees) u += _lifeLootWood(t) || 0;
+  const loads = u > 0 ? Math.ceil(u / perLoad - 1e-9) : 0;
+  return loads > 0 ? loads * 2 * Math.hypot(x * SZ + SZ / 2 - from.x, y * SZ + SZ / 2 - from.y) / sp : 0;
+}
 const _terrCost = require('./terr-cost');
 const _t1207S0 = () => _lifeVL().TERR_CORE;
 const _T1207_N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -6324,7 +6338,7 @@ function _t1207Fell(vil, added) {
       let loot = null; try { loot = state.deps.t325CutTreeAt(x, y); } catch (_) { loot = null; }
       if (!loot) break;
       n++;
-      if (u > 0) { const g = E.woodToGranary(e, u) || 0; T.woodIn = +(T.woodIn + g).toFixed(6); if (T717_WOOD_HAND) _t717PackPut(vil, u - g); }
+      if (u > 0) { const g = E.woodToGranary(e, u) || 0; T.woodIn = +(T.woodIn + g).toFixed(6); if (E.T1283_WOOD_DEMAND) e._t1283Clear = (e._t1283Clear || 0) + g; if (T717_WOOD_HAND) _t717PackPut(vil, u - g); }   // ★[T1283] 켬 = 개간 통나무를 따로 센다(나무꾼이 오늘 벤 몫과 가른다 · 짐에서 든 몫도 `_t717PackIn` 이 같은 칸에)
       if (T733_FELL_LOOT) _t733LootIn(vil, loot);
     }
   }
@@ -6573,12 +6587,14 @@ function _t1238Batch(vil, picked, cap) {
     //   개간은 됐다 — 오늘 영토가 안 되는 칸만 땅에 적는다(되는 칸은 `_terrAdd` 가 곧 지운다 · 쓰기 0)
     const _keepCleared = () => { if (c0 < 1 - 1e-9) _t1238LandSet(k, 1, w, _t1238Land.has(k) ? _t1238Land.get(k).wDay : null, vil.dbId); keep.push(k); plus.add(k); };
     if (!edge) { _keepCleared(); continue; }                                  // 말뚝은 맞닿은 뒤에
+    const hw = _t1283Haul(x, y, from, sp, perLoad);                           // ★[T1283 (나)] 이 칸 그루를 곳간까지 지는 걸음(끔 = 0)
+    if (hw > budget) { T.haulWait = (T.haulWait || 0) + 1; _keepCleared(); continue; }   // 오늘 낮으로는 통나무를 못 나른다 — 내일(끔 = 0 이라 안 선다)
     const owe = Math.max(0, c.wood - w);
     if (owe > 1e-9) {
       if (stalled) { need += owe; _keepCleared(); continue; }
       const loads = Math.ceil(owe / perLoad - 1e-9);
       const walk = (sp > 0 && loads > 0) ? loads * 2 * Math.hypot(x * SZ + SZ / 2 - from.x, y * SZ + SZ / 2 - from.y) / sp : 0;
-      if (walk > budget) { _keepCleared(); continue; }                      // 오늘 낮으로는 말뚝을 못 나른다 — 내일
+      if (walk + hw > budget) { _keepCleared(); continue; }                 // 오늘 낮으로는 말뚝을 못 나른다 — 내일(★[T1283 (나)] 켬 = 통나무 걸음까지 · 끔 = hw 0 · 종전 식)
       const spare = Math.max(0, E.woodSpare(e));
       if (spare + 1e-9 < owe) { stalled = true; need += owe; _keepCleared(); continue; }
       const took = E.actFromGranary(e, 'wood', owe, true);
@@ -6586,6 +6602,7 @@ function _t1238Batch(vil, picked, cap) {
       E.actMaterialsPlaced(e, 'wood', took);
       budget -= walk; w += took;
     }
+    if (hw > 0) { budget -= hw; T.haulMin = +((T.haulMin || 0) + hw).toFixed(3); }   // ★[T1283 (나)] 켬만
     done.add(k); plus.add(k); out.push(k);
     T.cells++; T.wood += c.wood; _t1238St.bodyCells++;
   }
@@ -11043,6 +11060,7 @@ function _t717PackIn(vil) {
   const r = +(u - g).toFixed(6);
   if (r > 1e-9) vil.econ._t717Pack = r; else _t862Drop(vil.econ, '_t717Pack');   // ★[T1203] T862 ② 문(켬 = `undefined` · 읽기는 `|| 0`)
   vil._t717PkIn = +((vil._t717PkIn || 0) + g).toFixed(6);   // 계측 전용 누계(짐에서 곳간으로 든 단 · 켠 팔에만 선다)
+  if (_lifeEcon().T1283_WOOD_DEMAND) vil.econ._t1283Clear = (vil.econ._t1283Clear || 0) + g;   // ★[T1283] 켬 = 짐에서 든 몫도 "오늘 나무꾼이 벤 것"이 아니다(개간 통나무와 같은 칸)
   return g;
 }
 //   그 몸이 **새로** 벤 통나무를 들었나 — 몸이 그날 걸었나를 세는 두 자리(`_lifeHandsIn` · `_lifeDaily` — T475 `_t325PreWalked` 규약)가 쓴다.
