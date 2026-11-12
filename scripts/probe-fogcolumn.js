@@ -5,6 +5,7 @@
 // 사용: CX=1909 CY=172 node scripts/probe-fogcolumn.js
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path=require('path'), fs=require('fs');
 const { spawn }=require('child_process');
 const path0=require('path');const ROOT=path0.join(__dirname,'..'), CPORT=3010, ZPORT=3020;

@@ -12,6 +12,7 @@
 //   결정론 고정 — 물 · 바람 시각(`__terrain19.freezeT` · `windOff`) · 비 0 · 해 몫 한낮(1초마다) · 같은 자리 · 같은 걸음.
 // 실행: [E2E_BROWSER=webkit] node scripts/t926-near-check.js [--out /tmp/t926/near]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

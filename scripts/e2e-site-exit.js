@@ -13,6 +13,7 @@
 //     (터가 선 뒤 "안내대로 누르면 시공"은 `e2e-well` 이 켬 판에서 잰다).
 // 실행: node scripts/e2e-site-exit.js [--headed]    (Chromium /opt/pw-browsers — playwright install 금지)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

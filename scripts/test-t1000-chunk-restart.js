@@ -28,7 +28,7 @@ const { spawn } = require('child_process');
 const FB = require('./fixture-boot');
 const WS = require(path.join(__dirname, '..', 'node_modules', 'ws'));
 const ROOT = path.join(__dirname, '..');
-const CPORT = 3410, ZPORT = 3420;
+const CPORT = require('./lib-port').port(3410), ZPORT = require('./lib-port').port(3420);
 const CDB = `/tmp/t1000-c-${process.pid}.db`, ZDB = `/tmp/t1000-z-${process.pid}.db`;
 const clean = () => { for (const f of [CDB, ZDB]) for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
 let pass = 0, fail = 0;

@@ -10,6 +10,7 @@
 // 쓰는 법: node scripts/t1139-slice-hist.js [--out <json>] [--one]    (env: T1139_SLICE_ZONE 존 · 기본 hanbando)
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs'), os = require('os');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');

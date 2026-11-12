@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // 3D 산 라이브 스모크 — 진짜 게임을 띄워 "3D 로 그려지고 있나"를 정본 훅으로 확인한다.
 //   ★자명 통과 금지: mt3dOff 로 끈 판과 **픽셀 차이**가 나야 한다. 안 나면 안 켜진 것이다.
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path=require('path'),fs=require('fs');const {spawn}=require('child_process');const {PNG}=require('pngjs');
 const ROOT=path.join(__dirname,'..'),CPORT=3010,ZPORT=3020;
 const SITE={cx:+process.env.CX||1914,cy:+process.env.CY||202};

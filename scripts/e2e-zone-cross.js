@@ -21,6 +21,7 @@
 //     그때 존 로그는 `ZX_DOCKER=1` 이면 `docker logs durango-zone-<id>` 로 읽는다. 없으면(기본) 종전 그대로 제가 띄운다.
 //   ★[T564] `ZX_ZONES=hanbando,nippon` — 존 둘만(서쪽 중원북 절을 건너뛴다 · 기본은 셋 = 종전 46건).
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3016, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const net = require('net');

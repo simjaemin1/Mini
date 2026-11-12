@@ -27,7 +27,7 @@ const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(�
 
 const ROOT = path.join(__dirname, '..');
 const LR = require(path.join(ROOT, 'scripts', 'lib-routes'));
-const CPORT = 3310, ZPORT = 3320;
+const CPORT = require('./lib-port').port(3310), ZPORT = require('./lib-port').port(3320);
 const CDB = `/tmp/doors-c-${process.pid}.db`, ZDB = `/tmp/doors-z-${process.pid}.db`;
 for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 

@@ -12,6 +12,7 @@
 // 실행: node scripts/t1125-welcome-bytes.js [--light] [--json <파일>]   (존 둘 기동 · 운영 꼴 약 30초 + 잼 수 초)
 // 판정 0 — 표 기계(단언 없음). 수는 그 판(로컬 기동 세계)의 수다 — 라이브는 짓고 쌓인 만큼 더 크다(도쿄 약 1.7 MB).
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');

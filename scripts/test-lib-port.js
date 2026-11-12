@@ -82,6 +82,48 @@ const deadPid = () => { const r = spawnSync(process.execPath, ['-e', 'console.lo
     ok(r.code === 0 && r.v >= L.LO, '★④ⓐ 죽은 주인의 잠금 · 띠 전체 범위를 치우고 잡는다', `${r.v} · ${Date.now() - t0}ms`);
     ok(!files(dir).some((f) => f.includes(`-${dead}-`)), '④ⓑ 죽은 주인의 범위 파일이 장부에서 사라졌다');
   }
+  console.log('\n⑤ 고정 포트 쥐기 `hold` [T1288] — 제품이 박은 포트는 혼자 쥐고 줄 선다');
+  {
+    const dir = fresh();
+    // 띠 밖 고정 수 하나를 고른다(이 판에서만 쓰는 빈 포트 — 실제 3010 은 남의 판이 쓸 수 있어 건드리지 않는다)
+    const P = await new Promise((res) => { const s = net.createServer(); s.listen(0, () => { const p = s.address().port; s.close(() => res(p)); }); });
+    const holder = spawn(process.execPath, ['-e', `const L=require(${JSON.stringify(LIB)});L.hold(${P});console.log('held',process.env.LIB_PORT_HELD);` +
+      `const {spawnSync}=require('child_process');const r=spawnSync(process.execPath,['-e',"const L=require(${JSON.stringify(LIB).replace(/"/g, '\\"')});const t=Date.now();L.hold(${P});console.log('kid',Date.now()-t)"],{encoding:'utf8'});console.log(r.stdout.trim());setTimeout(()=>{},2500);`],
+      { env: Object.assign({}, process.env, { LIB_PORT_DIR: dir }), stdio: ['ignore', 'pipe', 'pipe'] });
+    let ho = ''; holder.stdout.on('data', (d) => { ho += d; });
+    for (let i = 0; i < 100 && !/kid \d+/.test(ho); i++) await new Promise((r) => setTimeout(r, 50));
+    const kidMs = +((/kid (\d+)/.exec(ho) || [])[1]);
+    ok(/held .*\b/.test(ho) && kidMs < 1000, '⑤ⓐ 쥔 판의 자식(env 물려받음)은 **기다리지 않는다**(자기 부모를 기다리는 교착 0)', `자식 ${kidMs}ms · ${ho.trim().split('\n')[0]}`);
+    const t0 = Date.now();
+    const r1 = await kid(dir, `(L) => { process.env.LIB_PORT_HOLD_MS = '600'; try { L.hold(${P}); return 'got'; } catch (e) { return String(e.message).slice(0, 80); } }`);
+    ok(r1.v && /기다려도 못 쥐었다/.test(r1.v) && /장부 pid/.test(r1.v), '★⑤ⓑ 남(env 안 물려받은 판)이 쥔 고정 포트는 **기다리다 크게 실패**한다(조용히 남의 central 에 붙지 않는다)', `${r1.v} · ${Date.now() - t0}ms`);
+    const r2 = await kid(dir, `(L) => { const t = Date.now(); L.hold(${P}); return Date.now() - t; }`);
+    ok(r2.code === 0 && r2.v >= 200, '★⑤ⓒ 쥔 판이 나가면 기다리던 판이 쥔다(줄 서기)', `기다림 ${r2.v}ms`);
+    try { holder.kill('SIGKILL'); } catch (e) { /* 이미 끝 */ }
+    // 장부 밖 서버가 묶은 고정 포트 — 닫힐 때까지 기다렸다 쥔다
+    const srv = await new Promise((res) => { const s = net.createServer(); s.listen(P, () => res(s)); });
+    setTimeout(() => srv.close(), 1200);
+    const r3 = await kid(dir, `(L) => { const t = Date.now(); L.hold(${P}); return Date.now() - t; }`);
+    ok(r3.code === 0 && r3.v >= 800, '⑤ⓓ 장부 밖 서버(OS)가 묶은 고정 포트는 닫힐 때까지 기다렸다 쥔다', `기다림 ${r3.v}ms`);
+    ok(files(dir).length === 0, '⑤ⓔ 다 나간 뒤 쥔 기록 0');
+  }
+  console.log('\n⑥ X 화면 번호 `displays` [T1288] — 포트와 다른 머리 · 잠금 파일 있는 번호는 건너뛴다');
+  {
+    const dir = fresh();
+    const R = await Promise.all(Array.from({ length: 8 }, () => kid(dir, "(L) => ({ d: L.displays(4, 'x'), p: L.port('x') })", 300)));
+    const sp = R.filter((r) => r.v).map((r) => r.v.d);
+    let clash = 0; for (let i = 0; i < sp.length; i++) for (let j = i + 1; j < sp.length; j++) if (sp[i] < sp[j] + 4 && sp[j] < sp[i] + 4) clash++;
+    ok(sp.length === 8 && clash === 0 && sp.every((d) => d >= L.DLO && d + 3 <= L.DHI), '★⑥ⓐ 동시 여덟이 화면 넷씩 — 겹침 0 · 화면 띠 안', `겹침 ${clash} · ${sp.join(',')}`);
+    ok(R.every((r) => r.v && r.v.p >= L.LO), '⑥ⓑ 같은 판의 포트는 포트 띠에서(화면 번호와 섞이지 않는다)');
+    // 잠금 파일이 있는 번호는 건너뛴다 — 띠를 장부로 한 칸만 남기고 그 칸에 가짜 잠금을 둔다
+    const dir2 = fresh(), free1 = L.DHI - 1;
+    fs.writeFileSync(path.join(dir2, `d-${L.DLO}-${free1 - L.DLO}-${process.pid}-0`), '');
+    const lockF = `/tmp/.X${free1}-lock`; let made = false;
+    if (!fs.existsSync(lockF)) { fs.writeFileSync(lockF, 'lib-port-test'); made = true; }
+    const r = await kid(dir2, '(L) => L.displays(1, 1)');
+    if (made) fs.unlinkSync(lockF);
+    ok(made && r.v === L.DHI, '★⑥ⓒ `/tmp/.X<n>-lock` 이 있는 번호는 건너뛴다', `잠금 ${free1} · 받음 ${r.v}`);
+  }
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   process.exit(fail ? 1 : 0);
 })();

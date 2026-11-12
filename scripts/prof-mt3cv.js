@@ -2,6 +2,7 @@
 // 대조군 — "굽기 폭주가 GL 캔버스 **넓이**에 비례하나?"
 //   비례하면 원인은 띠마다 표면 전체를 스냅샷하는 GL→2D 전송이다(작게 잡으면 줄어든다).
 //   비례 안 하면 원인은 다른 데 있다. 추측 대신 손잡이로 가른다.
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs'); const { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..'), CPORT = 3010, ZPORT = 3020;
 const SITE = { cx: +process.env.CX || 1914, cy: +process.env.CY || 202 };

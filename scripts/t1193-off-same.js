@@ -19,6 +19,7 @@
 //       [--only base,off,...] [--zooms 1,1.5,2] [--spots 태어난자리,산1@1750:74,산2@2150:1959]
 //       [--headed] — 머리 있는 브라우저(WebKit = GTK · `xvfb-run -a -s '-screen 0 2400x1600x24'` 밑에서 — 이 상자의 헤드리스 WebKit(WPE)은 몇 분 안에 웹 프로세스가 죽는다)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');

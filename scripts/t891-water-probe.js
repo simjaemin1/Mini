@@ -11,6 +11,7 @@
 //       끔↔끔(잡음 바닥) · 끔↔켬 화소 차(평균 |Δ| · 차 > 24 인 화소 비율)를 낸다. 사람 눈 비교용 PNG 도 남긴다.
 // 실행: node scripts/t891-water-probe.js [--env 0|1](없음 = 서버 기본 · ★T912 켬 기본) [--out /tmp/t891] [--village 어촌1]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

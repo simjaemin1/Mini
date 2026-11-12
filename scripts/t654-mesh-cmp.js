@@ -148,7 +148,7 @@ if (require.main === module) (async () => {
   const R = { before: BEFORE, after: ROOT };
   const shots = {}, size = {};
   const browser = await chromium.launch({ headless: true });
-  let port = 3141;
+  let port = require('./lib-port').ports(3, 3141);   // [T1288] 뿌리 둘이 ++port 로 다음 두 자리를 쓴다
   for (const [nm, root] of Object.entries(R)) {
     size[nm] = sizes(root);
     await bootCentral(root, ++port);

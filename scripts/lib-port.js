@@ -55,10 +55,11 @@ function lock() {
 }
 function unlock() { try { fs.rmSync(MUTEX, { recursive: true, force: true }); } catch (e) { /* 이미 없음 */ } }
 
-function ledger() {
+function ledger(kind) {
   const out = [];
+  const re = kind === 'd' ? /^d-(\d+)-(\d+)-(\d+)-\d+$/ : /^r-(\d+)-(\d+)-(\d+)-\d+$/;   // r = 포트 · d = X 화면 번호(섞이지 않는다)
   for (const f of fs.readdirSync(DIR)) {
-    const m = /^r-(\d+)-(\d+)-(\d+)-\d+$/.exec(f);
+    const m = re.exec(f);
     if (!m) continue;
     const r = { f, lo: +m[1], n: +m[2], pid: +m[3] };
     if (r.pid !== process.pid && !alive(r.pid)) { try { fs.unlinkSync(path.join(DIR, f)); } catch (e) { /* 남이 먼저 */ } continue; }
@@ -80,7 +81,7 @@ function grab(n) {
   lock();
   try {
     const held = ledger();
-    const span = HI - LO + 1 - n;
+    const span = HI - LO + 2 - n;   // 시작 자리 수(끝 자리 HI 까지 n 칸이 들어가는 첫 수 = HI - n + 1)
     let at = (process.pid * 7919 + SEQ * 104729) % span;   // 시작점만 흩는다(겹침은 장부가 막는다)
     for (let tries = 0; tries < 200; tries++) {
       let lo = LO + at;
@@ -99,6 +100,70 @@ function grab(n) {
   } finally { unlock(); }
 }
 
+// ── 고정 포트 쥐기 [T1288] — 제품이 박은 포트(존 설정 `zone-config` 의 존 포트 · central 기본 3010)는 하네스가 못 옮긴다.
+//   ⇒ 그 수를 **이 기계에서 혼자** 쥔다: 장부에 [p, 1] 을 적고(남이 쥐었으면 비울 때까지 기다린다) OS 에도 비었을 때만 받는다.
+//   · 자식 프로세스는 부모가 쥔 포트를 다시 기다리지 않는다 — 부모가 `LIB_PORT_HELD` 에 적어 env 로 물려준다(자기 자신을 기다리는 교착 0).
+//   · 기다림 상한 `LIB_PORT_HOLD_MS`(기본 15분) — 넘으면 **크게 실패**(조용히 남의 central 에 붙지 않는다).
+const HELD = new Set(String(process.env.LIB_PORT_HELD || '').split(',').filter(Boolean).map(Number));
+function hold(...want) {
+  const ps = [...new Set(want.flat().map(Number))].filter((p) => !HELD.has(p) && !MEMO.has('h:' + p));
+  if (!ps.length) return +want.flat()[0];
+  for (const p of ps) if (!(p >= 1 && p <= 65535)) throw new Error('lib-port: 쥘 포트가 아니다 — ' + p);
+  const limit = +(process.env.LIB_PORT_HOLD_MS || 900000), t0 = Date.now();
+  let said = false;
+  for (;;) {
+    lock();
+    let who = null;
+    try {
+      const held = ledger();
+      const clash = held.find((r) => r.pid !== process.pid && ps.some((p) => p >= r.lo && p < r.lo + r.n));
+      const bad = clash ? [] : busy(ps);
+      if (!clash && !bad.length) {
+        for (const p of ps) {
+          const f = `r-${p}-1-${process.pid}-${SEQ++}`;
+          fs.writeFileSync(path.join(DIR, f), '');
+          MINE.push(f); MEMO.set('h:' + p, p); HELD.add(p);
+          if (process.env.LIB_PORT_LOG) fs.appendFileSync(process.env.LIB_PORT_LOG, JSON.stringify({ lo: p, n: 1, hold: true, pid: process.pid, t: Date.now(), waited: Date.now() - t0, argv: path.basename(process.argv[1] || '-e') }) + '\n');
+        }
+        process.env.LIB_PORT_HELD = [...HELD].join(',');
+        return +want.flat()[0];
+      }
+      who = clash ? `장부 pid ${clash.pid}` : `OS(장부 밖) ${bad.join(',')}`;
+    } finally { unlock(); }
+    if (!said) { process.stderr.write(`[lib-port] 고정 포트 ${ps.join(',')} 를 기다린다 — 쥔 것: ${who}\n`); said = true; }
+    if (Date.now() - t0 > limit) throw new Error(`lib-port: 고정 포트 ${ps.join(',')} 를 ${Math.round(limit / 1000)}초 기다려도 못 쥐었다 — 쥔 것: ${who}`);
+    sleepMs(500);
+  }
+}
+
+// ── X 화면 번호 [T1288] — Xvfb `:<n>` 은 포트가 아니라 `/tmp/.X<n>-lock` · `/tmp/.X11-unix/X<n>` 으로 겹친다.
+//   같은 장부에 **다른 머리(d-)** 로 적는다(포트와 섞이지 않는다) · 띠 100 ~ 899 · 이미 잠금 파일이 있는 번호는 건너뛴다.
+const DLO = 100, DHI = 899;
+const xBusy = (n) => fs.existsSync(`/tmp/.X${n}-lock`) || fs.existsSync(`/tmp/.X11-unix/X${n}`);
+function displays(n, key) {
+  const k = 'd' + n + ':' + (key === undefined ? '' : String(key));
+  if (MEMO.has(k)) return MEMO.get(k);
+  if (!(n >= 1 && n <= 64)) throw new Error('lib-port: 화면 수가 1 ~ 64 가 아니다 — ' + n);
+  lock();
+  try {
+    const held = ledger('d'), span = DHI - DLO + 2 - n;
+    let at = (process.pid * 31 + SEQ * 97) % span;
+    for (let tries = 0; tries < 400; tries++) {
+      const lo = DLO + at;
+      const clash = held.find((r) => lo < r.lo + r.n && r.lo < lo + n);
+      if (clash) { at = (clash.lo + clash.n - DLO) % span; continue; }
+      const bad = Array.from({ length: n }, (_, i) => lo + i).filter(xBusy);
+      if (bad.length) { at = (Math.max(...bad) + 1 - DLO) % span; continue; }
+      const f = `d-${lo}-${n}-${process.pid}-${SEQ++}`;
+      fs.writeFileSync(path.join(DIR, f), '');
+      MINE.push(f); MEMO.set(k, lo);
+      if (process.env.LIB_PORT_LOG) fs.appendFileSync(process.env.LIB_PORT_LOG, JSON.stringify({ lo, n, display: true, pid: process.pid, t: Date.now(), argv: path.basename(process.argv[1] || '-e') }) + '\n');
+      return lo;
+    }
+    throw new Error(`lib-port: 이어진 X 화면 ${n} 개를 못 찾았다(장부 ${held.length})`);
+  } finally { unlock(); }
+}
+
 function release() {
   for (const f of MINE.splice(0)) { try { fs.unlinkSync(path.join(DIR, f)); } catch (e) { /* 이미 없음 */ } }
   MEMO.clear();
@@ -113,4 +178,4 @@ function ports(n, key) {
 }
 const port = (key) => ports(1, key);
 
-module.exports = { port, ports, release, DIR, LO, HI, _ledger: () => { fs.mkdirSync(DIR, { recursive: true }); return ledger(); }, _busy: busy };
+module.exports = { port, ports, hold, displays, release, DIR, LO, HI, DLO, DHI, _ledger: (kind) => { fs.mkdirSync(DIR, { recursive: true }); return ledger(kind); }, _busy: busy };

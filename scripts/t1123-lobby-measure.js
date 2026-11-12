@@ -21,6 +21,7 @@
 //            --persistent = 판마다 영속 문맥(빈 임시 폴더) — ⚠Playwright WebKit 은 영속 문맥이 아니면 HTTP 캐시를 안 쓴다(T1123 §1 실측) · webkit 이면 저절로 켠다
 //            줄마다 `game` = 게임 그림 주소(나무 · 산 · 자연물 · 지면 · 밭 · 건물 · 다리 · 아이콘 · 그 json · terrain.json) 요청 · 네트 · 304 · png · webp · `?v=` 붙은 것
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3011, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

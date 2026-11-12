@@ -3,6 +3,7 @@
 //   ★[타 세션 지적 2026-08-09] "0.47~0.77ms 는 목업 스크립트가 만든 숫자다.
 //     실클라 프레임 루프에서 한 번 더 찍지 않으면 같은 계측 경로를 두 번 믿는 셈이다." 맞다.
 //   그래서 여기선 **진짜 게임 페이지**의 rAF 간격을 잰다(목업 캔버스가 아니라).
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path=require('path'),fs=require('fs');const {spawn}=require('child_process');
 const ROOT=path.join(__dirname,'..'),CPORT=3010,ZPORT=3020;
 const SITE={cx:+process.env.CX||1914,cy:+process.env.CY||202};

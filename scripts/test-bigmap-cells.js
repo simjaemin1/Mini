@@ -18,6 +18,7 @@
 // 실행: node scripts/test-bigmap-cells.js
 //   central(3010) + 새벌(3020 · 기본 끔) + 닛폰(3021 · `T565_MAP_LIVE=1` 켬 · 레거시 마을 주민이 선다) — 마을 시뮬 끔(지형만 본다).
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const net = require('net');

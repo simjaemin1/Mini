@@ -29,6 +29,7 @@
 //      답은 전 쌍 한 벌과 글자 같다 — `scripts/t1139-lazy-proof.js`). 종전(전 쌍 한 벌)은 `T1139_XZ_LAZY=0`. 서버 기본은 끔(전 쌍)이다.
 // 실행: node scripts/e2e-xzone-caravan.js     (env: XZ_DAYMS 마을 하루 ms · 기본 3000 · XZ_WAIT_S 왕복 기다림 상한 · 기본 600 · T1139_XZ_LAZY 기본 1)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3016, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 process.env.HANDOFF_ACK_MS = process.env.HANDOFF_ACK_MS || '3000'; process.env.HANDOFF_TOKEN_MS = process.env.HANDOFF_TOKEN_MS || '5000';   // ★[PM 11-03] 이 하네스는 종전 넘기 시한(3초 · 5초)으로 잰다 — 제품 기본은 12초 · 15초(server/zone.js HANDOFF_ACK_MS)
 const path = require('path');
 const fs = require('fs');

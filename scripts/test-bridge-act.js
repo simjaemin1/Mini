@@ -226,7 +226,7 @@ process.stdout.write(String.fromCharCode(10)+JSON.stringify({cnt:H.bridgeCellCou
   ok(c.sig === b.sig && c.sites === null, '⑧ C 다리 셀 집합 해시 = 완공 직후 판과 같다 · 끔이면 진척 표는 안 선다(지은 다리만 남는다)', `${c.sig}`);
   const d = boot({ T527_BRIDGE_ACT: '1', T537_SHORTCUT: '1' }, `process.stdout.write(String.fromCharCode(10)+JSON.stringify({done:S0.done,stage:S0.stage,cnt:H.bridgeCellCount()})+String.fromCharCode(10));`);
   ok(d.done === true && d.stage === 2 && d.cnt === 850 + SCN - SCDUP, '⑧ D 재기동(켬) — 완공 후보는 완공으로 이어진다(다시 짓지 않는다)', JSON.stringify(d));
-  const e = probe({ ZONE_ID: 'hanbando', PORT: String(38995), DB_PATH: `/tmp/test-bridge-persist-e-${process.pid}.db`, ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' }, `console.log=()=>{};console.warn=()=>{};console.error=()=>{};const H=require(${ZP}).__testBind(); const {ZONES}=require(${ZCP});
+  const e = probe({ ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(38995)), DB_PATH: `/tmp/test-bridge-persist-e-${process.pid}.db`, ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' }, `console.log=()=>{};console.warn=()=>{};console.error=()=>{};const H=require(${ZP}).__testBind(); const {ZONES}=require(${ZCP});
 process.stdout.write(String.fromCharCode(10)+JSON.stringify({cnt:H.bridgeCellCount(),same:H.bridgePayload()===ZONES.hanbando.bridges})+String.fromCharCode(10)); setTimeout(()=>process.exit(0),10);`);
   ok(e.cnt === 850 && e.same === true, '⑧ 미끼 — 빈 DB 로 부팅하면 종전 그대로(850 · ★T631 836→816 · ★T639 →850 · welcome 같은 참조)', JSON.stringify(e));
   for (const f of [DB, DB + '-wal', DB + '-shm', `/tmp/test-bridge-persist-e-${process.pid}.db`]) { try { fs.unlinkSync(f); } catch (e2) {} }

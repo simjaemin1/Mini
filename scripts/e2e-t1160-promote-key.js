@@ -22,6 +22,7 @@
 // 실행: node scripts/e2e-t1160-promote-key.js            (판 둘)
 //       node scripts/e2e-t1160-promote-key.js --only on   (켬 판만 · `off` = 끔 판만)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 process.env.HANDOFF_ACK_MS = process.env.HANDOFF_ACK_MS || '3000'; process.env.HANDOFF_TOKEN_MS = process.env.HANDOFF_TOKEN_MS || '5000';   // e2e-handoff-proto 와 같은 넘기 시한
 const path = require('path');
 const fs = require('fs');

@@ -2,6 +2,7 @@
 // 그림/성능 — 같은 자리에서 흐림 방식 세 판 + 성능 짝(PERF=1).
 //   ⓐ 띠 z(옛) · ⓑ 화면 가로줄(MT_FADE_CLIP) · ⓒ 픽셀 절단(v4 수직 평면, 채택)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs');
 const { spawn } = require('child_process');
 const { PNG } = require('pngjs');

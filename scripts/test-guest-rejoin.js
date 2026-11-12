@@ -56,7 +56,7 @@ function portFree(port) {
   });
 }
 async function pickPorts() {
-  const base = 34000 + ((process.pid * 2) % 8000);   // 같은 순간 두 하네스가 겹칠 확률을 낮춘다
+  const base = require('./lib-port').ports(2, 34000);   // [T1288] 장부가 쌍을 쥔다(옛 pid 나머지 · '겹칠 확률을 낮춘다' → 겹침 0)
   for (let i = 0; i < 500; i++) {
     const c = base + i * 2, z = c + 1;
     if (await portFree(c) && await portFree(z)) return [c, z];

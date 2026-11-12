@@ -12,6 +12,7 @@
 //   central env 는 이 자를 부른 env 를 물려받는다(`T937_GT_PREWARM=0` = 끔 판).
 // 실행: [E2E_BROWSER=webkit] [T937_GT_PREWARM=0] node scripts/t948-lobby-type.js [--n 3] [--out /tmp/t948] [--tag 이름]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

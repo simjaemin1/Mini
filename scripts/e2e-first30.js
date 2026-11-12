@@ -56,6 +56,7 @@
 //     두 판을 같이 돌리려면 판마다 네트워크 이름공간을 따로 준다(`unshare -n` + 루프백 켜기 · 보고 §5).
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const ENV0 = Object.assign({}, process.env);   // ★아이(central·zone)는 **이 스냅샷**을 받는다 — 아래 안쪽 존 적재가 env 를 건드린다
 const path = require('path');
 const fs = require('fs');

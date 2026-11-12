@@ -2,6 +2,7 @@
 // probe-roof — 마을 실화면 재현: 시딩 마을 1곳의 중심(광장 스폰)에서 스크린샷을 찍는다.
 // 재민 라이브 관측: "집 한 채에 지붕 날아감" — 로컬에서 같은 화면이 나오는지 본다.
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

@@ -255,7 +255,7 @@ async function bootZones(ids) {
     const db = `/tmp/t565a-${id}-${process.pid}.db`;
     for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(db + s); } catch (e) {} }
     const proc = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-      env: Object.assign({}, process.env, { PORT: String(port), ZONE_ID: id, DB_PATH: db, CENTRAL_HOST: 'localhost', CENTRAL_PORT: '3999', CENTRAL_URL: 'http://localhost:3999',
+      env: Object.assign({}, process.env, { PORT: String(port), ZONE_ID: id, DB_PATH: db, CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(require('./lib-port').port(3999)), CENTRAL_URL: `http://localhost:${require('./lib-port').port(3999)}`,
         ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', ENABLE_VILLAGES: '0' }) });
     out.push({ id, port, proc, db, up: FB.waitUp(proc, /zone server up on/, { name: id }) });
   }

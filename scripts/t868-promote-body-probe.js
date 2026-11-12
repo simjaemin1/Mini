@@ -14,6 +14,7 @@
 //   도착 존 주기 저장 10분(`SAVE_INTERVAL_MS` — 이미 있는 손잡이 · 판 안에서 도착 존 쓰기는 닫힐 때 저장 하나).
 // 실행: node scripts/t868-promote-body-probe.js [--knob 0|1] [--t498 0|1] [--runs N] [--kills M]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

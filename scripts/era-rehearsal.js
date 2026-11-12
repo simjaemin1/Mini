@@ -108,7 +108,7 @@ function bootProbe(env, label) {
     process.exit(0);
   `;
   const r = spawnSync(process.execPath, ['-e', code], {
-    env: { ...env, ZONE_ID: 'hanbando', PORT: String(37000 + (Math.abs(hash(label)) % 900)), DB_PATH: tmp,
+    env: { ...env, ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port('37000:' + label)), DB_PATH: tmp,
            ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' },
     encoding: 'utf8', timeout: 120000,
   });

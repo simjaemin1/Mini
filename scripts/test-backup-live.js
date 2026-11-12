@@ -14,6 +14,7 @@
 //     ⑧ [T1142] 단계 보관 — 날 14 · 주 12 · 달 영구 · BACKUP_KEEP 이면 종전
 //     ⑦ [T919] 갱신 앞 사본 — BACKUP_LABEL 이 meta · ✓ 줄에 · 글자 거름 · --dry 는 아무것도 안 쓴다(뗄 옛것은 찍는다) · --last 앞머리 · `bash -s`(서울 판을 흘림)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const fs = require('fs'), os = require('os'), path = require('path'), crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');

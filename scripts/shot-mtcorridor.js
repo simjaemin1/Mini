@@ -10,6 +10,7 @@
 //   z = (wx+wy)/2 이고 z 가 큰 띠가 나중에(=앞에) 그려진다. 통로를 −i 로 파면
 //   남쪽 옆벽 (i,j+1) 은 i+j 가 나보다 크므로 **앞 벽**, 북쪽 옆벽 (i,j−1) 은 **뒤 벽**이 된다.
 //   즉 한 자리에서 앞·뒤가 동시에 보인다.
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs'); const { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..'), CPORT = 3010, ZPORT = 3020;
 const OUT = process.env.OUTDIR || '/tmp/corr'; fs.mkdirSync(OUT, { recursive: true });

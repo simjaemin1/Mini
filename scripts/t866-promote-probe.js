@@ -13,6 +13,7 @@
 //   ★[T869] `--path token` — 관측 소켓 없이 넘기 토큰으로 새 소켓을 연다(일반 넘기 · 토큰 경로 · `?handoff_token=`) — 같은 읽음 셋으로 두 경로를 한 표에 놓는다(T866 손잡이 켬 · 끔 × 승격 · 토큰).
 // 실행: node scripts/t866-promote-probe.js [--knob 0|1] [--t498 0|1] [--runs N] [--kills M] [--path promote|token]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

@@ -10,6 +10,7 @@
 //            --root <트리> = 서버(central · 존)를 다른 트리에서 띄운다(main 작업트리 견줌) ·
 //            판마다 `img` = 눌림 뒤 게임 그림: 눌림 때 아직 안 온 것 · 눌림 뒤 받은 KB · 마지막 그림 도착(눌림 기준) · 나무 열둘이 다 뜬 때(눌림 기준)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

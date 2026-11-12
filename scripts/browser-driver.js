@@ -34,7 +34,7 @@ async function webkitGtkDriver(boot) {
   const which = (b) => spawnSync('sh', ['-c', `command -v ${b}`]).stdout.toString().trim();
   if (!which('WebKitWebDriver') || !which('Xvfb')) throw new Error('WebKitGTK 길이 없다 — apt-get install webkit2gtk-driver xvfb');
   const MB = ['/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/MiniBrowser', '/usr/lib/x86_64-linux-gnu/webkitgtk-6.0/MiniBrowser'].find((p) => fs.existsSync(p));
-  const DISP = ':' + (90 + (process.pid % 9)), WPORT = require('./lib-port').port(4444);   // lib-port: 포트 아님(DISP = X 화면 번호 · WPORT 는 lib-port)
+  const DISP = ':' + require('./lib-port').displays(1, 90), WPORT = require('./lib-port').port(4444);   // [T1288] X 화면 번호 = 장부의 화면 띠
   boot('Xvfb', [DISP, '-screen', '0', '1700x1300x24']);
   await sleep(800);
   boot('WebKitWebDriver', [`--port=${WPORT}`], { DISPLAY: DISP });

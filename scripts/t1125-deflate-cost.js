@@ -13,6 +13,7 @@
 // 실행: node scripts/t1125-deflate-cost.js [--n 8] [--every 2000] [--win 60] [--json <파일>]   (판 둘 · 약 4분)
 // 판정 0 — 표 기계. 이 상자 CPU 하나(라이브 vCPU 와 같은 칩이 아니다) — 끔 ↔ 켬 **차이**를 본다.
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const http = require('http');

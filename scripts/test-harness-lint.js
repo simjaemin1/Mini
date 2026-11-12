@@ -827,7 +827,7 @@ console.log('\n⑭ 판정 글자 ↔ 제품 소스 [T1097]');
 console.log('\n⑮ 하네스 포트 = 공용 할당기 `lib-port` [T1281]');
 {
   const CO = require(path.join(SCRIPTS, 'code-only.js'));
-  const PID_MOD = new RegExp('process\\.pid\\s*' + '%');
+  const PID_MOD = new RegExp('process\\.pid\\s*' + '%|\\(\\s*process\\.pid\\b[^;\\n]*?\\)\\s*' + '%');   // ★[T1288] `(process.pid * 7 + …) %` 꼴도(T1281 이 놓친 열) · 정본 `lib-port.js` 제 흩음은 밖
   const MARK = 'lib-port: 포트 ' + '아님';
   const scan = (src) => {
     const code = CO(src).split('\n'), raw = src.split('\n'), hit = [], marked = [];
@@ -837,6 +837,7 @@ console.log('\n⑮ 하네스 포트 = 공용 할당기 `lib-port` [T1281]');
   const bad = [], marks = [];
   let users = 0;
   for (const f of fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js')).sort()) {
+    if (f === 'lib-port.js') continue;   // 정본 제 흩음(`(process.pid * 7919 + …) % span`)은 포트 고르기가 아니다
     const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
     if (src.includes("require('./lib-port')")) users++;
     const r = scan(src);
@@ -846,20 +847,73 @@ console.log('\n⑮ 하네스 포트 = 공용 할당기 `lib-port` [T1281]');
   ok(fs.existsSync(path.join(SCRIPTS, 'lib-port.js')) && users > 0, '⑮ [전제] 정본 `lib-port.js` 가 있고 그것을 부르는 하네스가 실제로 있다(0 이면 아래가 자명 통과다)', `부르는 파일 ${users}`);
   ok(bad.length === 0, '★★⑮a 포트를 pid 나머지(`pid` 를 `%` 로 자름)로 고르는 자리 0 — `lib-port` 의 `port(key)` · `ports(n, key)` 를 쓴다',
      bad.length ? `${bad.length}곳: ${bad.slice(0, 6).join(' · ')}` : '0');
-  const XOK = ['browser-driver.js(1)', 'e2e-browser.js(1)', 'e2e-t1160-promote-key.js(1)'];   // X 화면 번호 둘 · 계정 이름 하나
+  const XOK = ['e2e-t1160-promote-key.js(1)'];   // 계정 이름 하나 — ★[T1288] X 화면 번호 둘은 `lib-port.displays` 로 옮겨 표지가 사라졌다(새 화면 번호 표지 = 빨강)
   const extra = marks.filter((x) => !XOK.includes(x)), gone = XOK.filter((x) => !marks.includes(x));
-  ok(!extra.length && !gone.length, '★⑮b `lib-port: 포트 아님` 표지는 표에 적은 자리뿐(X 화면 번호 둘 · 계정 이름 하나)',
+  ok(!extra.length && !gone.length, '★⑮b `lib-port: 포트 아님` 표지는 표에 적은 자리뿐(계정 이름 하나 · X 화면 번호는 `displays`)',
      `표지 ${marks.join(' ')}${extra.length ? ' · ★표에 없는 것 ' + extra.join(' ') : ''}${gone.length ? ' · ★표에서 사라진 것 ' + gone.join(' ') : ''}`);
   // ★자명 통과 금지 — 같은 자로 미끼 넷을 재면 **각각 다르게** 답한다(글자를 조각내 자기 자신을 안 문다)
   const P = 'process.' + 'pid';
   const bait = {
     old: `process.env.PORT = String(37200 + (${P} % 190));`,
     marked: `const DISP = ':' + (90 + (${P} % 9)); // ${MARK}(X 화면 번호)`,
+    mul: `PORT: String(36000 + ((${P} * 7 + 1) % 1500))`,
     comment: `// 옛 꼴: 37200 + (${P} % 190)`,
     lib: "process.env.PORT = String(require('./lib-port').port(37200));",
   };
   const ans = Object.entries(bait).map(([k, v]) => { const r = scan(v); return k + '=' + (r.hit.length ? 'hit' : r.marked.length ? 'mark' : 'none'); }).join(',');
-  ok(ans === 'old=hit,marked=mark,comment=none,lib=none', '★⑮ 자명 통과 금지 — 옛 식 미끼는 **물고** · 표지 단 줄은 표지로 · 주석 안 · 정본 호출은 보낸다', ans);
+  ok(ans === 'old=hit,marked=mark,mul=hit,comment=none,lib=none', '★⑮ 자명 통과 금지 — 옛 식 미끼는 **물고** · 표지 단 줄은 표지로 · 주석 안 · 정본 호출은 보낸다', ans);
+}
+
+// ── ⑯ 고정 포트 리터럴 — 띄우는 파일은 **쥐거나 옮긴다** [T1288 2026-11-12 · T1281 회부 1 · 2] ──────────────
+//   서버를 띄우는 파일(central · zone 을 spawn/boot · zone 을 같은 프로세스로 require · listen)이 고정 포트를 쓰면 —
+//   · 제품이 박은 포트(존 설정 `zone-config` 의 존 포트 · central 기본 3010)는 머리 줄 `lib-port.hold(…)` 에 **그 수가 다 있어야** 한다(나란히 돌면 줄 선다).
+//     `ZONES.<id>` · `ZONES['<id>']` 로 읽는 존의 포트도 센다.
+//   · 그 밖의 고정 수(옛 `CPORT = 3310` 꼴)는 금지 — `lib-port.port/ports` 로 옮긴다.
+//   띄우지 않고 붙기만 하는 도구(남이 띄운 서버를 찍는 shot · probe)와 개발 띄우개 `launch-all.js` 는 이 자 밖이다(쥐면 개발 서버 뒤에서 영영 기다린다).
+console.log('\n⑯ 고정 포트 — 띄우는 파일은 `hold` 로 쥐거나 `port` 로 옮긴다 [T1288]');
+{
+  const { judge } = require(path.join(SCRIPTS, 'lib-fixed-ports.js'));   // 자 정본 하나(변환 판 · 이 린트가 같이 쓴다 — 사본 0)
+  const OUTSIDE = new Set(['launch-all.js']);
+  const bad = [], cust = []; let booters = 0, holders = 0;
+  for (const f of fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js')).sort()) {
+    if (OUTSIDE.has(f) || f === 'test-harness-lint.js') continue;
+    const r = judge(fs.readFileSync(path.join(SCRIPTS, f), 'utf8'));
+    if (!r.boots) continue;
+    booters++; if (r.held.length) holders++;
+    if (r.need.length) bad.push(`${f}(${r.need.join(',')})`);
+    if (r.custom.length) cust.push(`${f}(${r.custom.join(',')})`);
+  }
+  ok(booters > 0 && holders > 0, '⑯ [전제] 서버를 띄우는 파일이 있고 그중 `hold` 를 단 파일이 있다(0 이면 아래가 자명 통과다)', `띄우는 파일 ${booters} · hold ${holders}`);
+  ok(bad.length === 0, '★★⑯a 제품 고정 포트를 쓰며 띄우는 파일은 그 포트를 **다** `hold` 머리 줄에 둔다(나란히 돌면 남의 central 에 붙는다)',
+     bad.length ? `${bad.length}곳: ${bad.slice(0, 6).join(' · ')}` : '0');
+  ok(cust.length === 0, '★★⑯b 띄우는 파일에 제품 밖 고정 포트 리터럴 0 — `lib-port.port(key)` 로 옮긴다', cust.length ? `${cust.length}곳: ${cust.slice(0, 6).join(' · ')}` : '0');
+  // ★⑯c `lib-port: 묶지 않음` 표지(포트 글자가 묶는 자리가 아닌 줄 — 도커 env 픽스처)는 표에 적은 자리뿐(표지로 숨기기 금지)
+  {
+    const { UNBOUND } = require(path.join(SCRIPTS, 'lib-fixed-ports.js'));
+    const got = [];
+    for (const f of fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js')).sort()) {
+      if (f === 'lib-fixed-ports.js' || f === 'test-harness-lint.js') continue;
+      const n = fs.readFileSync(path.join(SCRIPTS, f), 'utf8').split('\n').filter((L) => L.includes(UNBOUND)).length;
+      if (n) got.push(`${f}(${n})`);
+    }
+    const UOK = ['test-redeploy.js(1)', 'test-reset-world.js(2)', 'test-update-snap.js(1)', 'test-xhost-env.js(3)'];   // 도커 env 픽스처 글자(PORT=3010 · 3020 · 3021)
+    const ex = got.filter((x) => !UOK.includes(x)), gone = UOK.filter((x) => !got.includes(x));
+    ok(!ex.length && !gone.length, '★⑯c `lib-port: 묶지 않음` 표지는 표에 적은 픽스처 줄뿐(도커 env 글자 일곱 줄)',
+       `표지 ${got.join(' ')}${ex.length ? ' · ★표에 없는 것 ' + ex.join(' ') : ''}${gone.length ? ' · ★표에서 사라진 것 ' + gone.join(' ') : ''}`);
+  }
+  // ★자명 통과 금지 — 같은 자로 미끼 다섯을 재면 **각각 다르게** 답한다(글자를 조각내 자기 자신을 안 문다)
+  const SP = "spawn(process.execPath, ['server/cen" + "tral.js']);\n";
+  const H = "require('./lib-port').ho" + "ld(";
+  const bait = {
+    noHold: SP + 'const CPORT = 30' + '10;',
+    hold: H + '3010);\n' + SP + 'const CPORT = 30' + '10;',
+    custom: H + '3010);\n' + SP + "env.PORT = '33" + "33';",
+    connectOnly: "const u = 'http://localhost:30" + "10/';",
+    zoneRef: H + '3010);\n' + SP + 'const Z = ZONES.nip' + 'pon; env.PORT = String(Z.po' + 'rt);',
+  };
+  const ans = Object.entries(bait).map(([k, v]) => { const r = judge(v); return k + '=' + (!r.boots ? 'out' : r.need.length ? 'need' : r.custom.length ? 'custom' : 'ok'); }).join(',');
+  ok(ans === 'noHold=need,hold=ok,custom=custom,connectOnly=out,zoneRef=need',
+     '★⑯ 자명 통과 금지 — 쥐지 않은 3010 은 **물고** · 쥐면 보내고 · 제품 밖 수는 물고 · 붙기만 하는 도구는 밖 · 존 설정을 읽은 존 포트도 문다', ans);
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

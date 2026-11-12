@@ -25,6 +25,7 @@
 //   ⚠실서버라 판마다 벽시계에 흔들린다(T533 §0 그 문법). 마을 하루가 마감을 못 끝내면 econ 날이 건너뛴다(T533 `skip`).
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

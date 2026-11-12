@@ -26,6 +26,7 @@
 // ★★[T80 2026-09-03] 게시판은 **판**이다(`#boardPane` · `public/client/47-s-board.js`).
 //   종전의 `BOARD_RE`(토스트 첫 줄 정규식)는 지웠다 — 잴 자리가 `#notice` 가 아니라 판이기 때문이다.
 //   뜻은 그대로다: "게시판이 화면에 실제로 그려졌다". 자리만 옮겼다(족보 (116)).
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

@@ -85,8 +85,8 @@ function row(tag, what, phys, tr, extra) {
 }
 (async () => {
   const tmp = fs.mkdtempSync('/tmp/t546-');
-  await up(3810, {}, tmp);
-  const cc = client(3810, '');
+  await up(require('./lib-port').port(3810), {}, tmp);
+  const cc = client(require('./lib-port').port(3810), '');
   // 길드 둘(npc_upsert = 사람 행 없이 길드를 세우는 안 문)
   const A = (await cc.tribeNpcUpsert('T546_대조', 'passive')).tribe_id;
   const B = (await cc.tribeNpcUpsert('T546_해산', 'passive')).tribe_id;
@@ -99,7 +99,7 @@ function row(tag, what, phys, tr, extra) {
   { const b = { type: 'guild_granary', data: { tribe_id: B } };
     b.data.wood = 7; await GT.syncGranary(b, optsOf(cc));
     const Database = require(path.join(ROOT, 'node_modules', 'better-sqlite3'));
-    const cdb = new Database(path.join(tmp, 'c3810.db')); cdb.prepare('DELETE FROM tribes WHERE id = ?').run(B); cdb.close();   // = /tribe/leave 마지막 멤버의 그 한 줄
+    const cdb = new Database(path.join(tmp, `c${require('./lib-port').port(3810)}.db`)); cdb.prepare('DELETE FROM tribes WHERE id = ?').run(B); cdb.close();   // = /tribe/leave 마지막 멤버의 그 한 줄
     b.data.wood = 12; const r = await GT.syncGranary(b, optsOf(cc));
     row('ⓑ', '해산된 길드의 곳간에 5 더 넣음', GT.granaryItems(b.data), await treasuryOf(cc, B), `syncGranary ok=${r && r.ok} · _tr=${JSON.stringify(b.data._tr)}(보고했다고 믿음)`); }
   // ⓒ 비밀이 틀린 존
@@ -117,7 +117,7 @@ function row(tag, what, phys, tr, extra) {
   // ⓔ 곳간 분해(존 안)
   { const E = (await cc.tribeNpcUpsert('T546_분해', 'passive')).tribe_id;
     const out = path.join(tmp, 'e.json');
-    const z = spawn('node', ['server/zone.js'], { cwd: ROOT, env: { ...env0, PORT: '3820', ZONE_ID: 'hanbando', DB_PATH: path.join(tmp, 'h.db'), CENTRAL_HOST: '127.0.0.1', CENTRAL_PORT: '3810', PUBLIC_HOST: 'localhost',
+    const z = spawn('node', ['server/zone.js'], { cwd: ROOT, env: { ...env0, PORT: String(require('./lib-port').port(3820)), ZONE_ID: 'hanbando', DB_PATH: path.join(tmp, 'h.db'), CENTRAL_HOST: '127.0.0.1', CENTRAL_PORT: String(require('./lib-port').port(3810)), PUBLIC_HOST: 'localhost',
       T546_DRIFT_OUT: out, T546_TRIBE: String(E), NODE_OPTIONS: '--require=' + __filename }, stdio: ['ignore', fs.openSync(path.join(tmp, 'z.log'), 'w'), fs.openSync(path.join(tmp, 'z.log'), 'a')] });
     kids.push(z);
     for (let i = 0; i < 240 && !fs.existsSync(out); i++) await sleep(500);

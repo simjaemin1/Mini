@@ -24,6 +24,7 @@
 // 실행: node scripts/test-xhost-env.js                    # 작업 트리의 두 스크립트
 //       node scripts/test-xhost-env.js --against origin/main   # 그 커밋의 두 스크립트(고침 앞 = 빨강이어야 한다 — 자명 통과 금지 증인)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -83,7 +84,7 @@ exec bash -c "$*"
 const baseEnv = () => ({ PATH: `${BIN}:${path.dirname(process.execPath)}:/usr/bin:/bin`, HOME: TMP, FAKE_APP: ROOT, LANG: 'C.UTF-8' });
 function oldEnv(lines) { const f = path.join(TMP, 'oldenv-' + Math.random().toString(36).slice(2)); if (lines) fs.writeFileSync(f, lines.join('\n') + '\n'); return f; }
 const zh = (host) => 'ZONE_HOSTS=' + JSON.stringify({ hanbando: SEOUL, nippon: host, jungwon_n: SEOUL });
-const HAN = (extra) => ['ZONE_ID=hanbando', 'PORT=3020', 'DB_PATH=/data/world-hanbando.db', 'CENTRAL_HOST=' + SEOUL, 'ENABLED_ZONES=hanbando,nippon,jungwon_n', 'PLAYER_CAP=150', 'CENTRAL_SECRET=' + SECRET, ...extra];
+const HAN = (extra) => ['ZONE_ID=hanbando', 'PORT=3020', 'DB_PATH=/data/world-hanbando.db', 'CENTRAL_HOST=' + SEOUL, 'ENABLED_ZONES=hanbando,nippon,jungwon_n', 'PLAYER_CAP=150', 'CENTRAL_SECRET=' + SECRET, ...extra];   // lib-port: 묶지 않음(도커 env 픽스처 글자 — 이 판이 묶는 포트가 아니다)
 
 // 이웃 존(자식 프로세스 — execFileSync 가 이 루프를 막아도 답한다)
 function startNeighbor(port = 3021, host = OPEN) {   // ★[T1077] 서울 한반도 대역도 같은 꼴(:3020 · SEOUL_LIVE)
@@ -140,12 +141,12 @@ function zoneSees(env, id) {
   console.log('\nⒷ update-live ⑧ — 서울 한반도 env 키 + 존 안에서 도쿄 존 /health(읽기만 · 값 0)');
   const live = subj('update-live.sh');
   // ★[T1077] central · 도쿄 닛폰 env(기본 = 맞는 판: central 에 닛폰 키 · 도쿄 26존 표 한반도 = 서울 대역)
-  const CEN = (extra) => ['PORT=3010', 'DB_PATH=/data/central.db', 'PUBLIC_HOST=' + SEOUL_LIVE, 'ENABLED_ZONES=hanbando,nippon,jungwon_n', 'CENTRAL_SECRET=' + SECRET, ...extra];
+  const CEN = (extra) => ['PORT=3010', 'DB_PATH=/data/central.db', 'PUBLIC_HOST=' + SEOUL_LIVE, 'ENABLED_ZONES=hanbando,nippon,jungwon_n', 'CENTRAL_SECRET=' + SECRET, ...extra];   // lib-port: 묶지 않음(도커 env 픽스처 글자 — 이 판이 묶는 포트가 아니다)
   const zhc = () => 'ZONE_HOSTS=' + JSON.stringify({ hanbando: SEOUL_LIVE, nippon: SEOUL, jungwon_n: SEOUL_LIVE });   // central 26존 표 꼴 — 닛폰 = 서울(닫힘)
   //   도쿄 옛 존의 `CENTRAL_HOST` 는 update-live 가 머리 줄에 **일부러 찍는** 비밀 아닌 칸(종전 · 그 스크립트 '도쿄 옛 존 컨테이너 — 비밀 아닌 칸 둘(값)')
   //   — ⑧ 줄의 값 0 셈(clean)과 섞이지 않게 따로 둔 대역 주소(이 판에선 아무도 붙지 않는다)
   const TOKC = '127.0.0.6';
-  const TOK = (hanHost, extra) => ['ZONE_ID=nippon', 'PORT=3021', 'CENTRAL_HOST=' + TOKC, 'ENABLED_ZONES=hanbando,nippon,jungwon_n', 'CENTRAL_SECRET=' + SECRET,
+  const TOK = (hanHost, extra) => ['ZONE_ID=nippon', 'PORT=3021', 'CENTRAL_HOST=' + TOKC, 'ENABLED_ZONES=hanbando,nippon,jungwon_n', 'CENTRAL_SECRET=' + SECRET,   // lib-port: 묶지 않음(도커 env 픽스처 글자 — 이 판이 묶는 포트가 아니다)
     'ZONE_HOSTS=' + JSON.stringify({ hanbando: hanHost, nippon: hanHost, jungwon_n: hanHost }), ...(extra || [])];
   function runLive(envLines, args, opt) {
     const o = Object.assign({ central: CEN([zhc(), 'ZONE_HOST_NIPPON=' + OPEN]), tokyo: TOK(SEOUL_LIVE) }, opt || {});

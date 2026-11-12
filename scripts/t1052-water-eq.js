@@ -8,6 +8,7 @@
 //   그리고 같은 자리에서 끔 · 켬 각 --rep 번 `drawArrays` + `gl.finish()` 를 재서 셰이더 시간을 견준다. 자만 부른다 — 화면 그리기 판은 그대로 돈다.
 // 실행: [E2E_BROWSER=webkit] node scripts/t1052-water-eq.js [--spots 9] [--step 600] [--rep 5] [--n 1] [--out /tmp/t1052] [--tag 이름]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const net = require('net');

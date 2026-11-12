@@ -8,6 +8,7 @@
 //   ★두 손잡이(T891 · T898)는 main 에 있고 T912 부터 켬 기본이다 — 이 자는 서버 env 와 무관하게 페이지에서 칸을 끔 · 켬으로 바꿔 잰다.
 // 실행: [E2E_BROWSER=webkit] node scripts/t902-gl-shots.js [--out /tmp/t902/shots]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

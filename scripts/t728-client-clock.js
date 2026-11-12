@@ -8,6 +8,7 @@
 //     ② 차를 일부러 +60초 틀어 놓고 2초 뒤 — 켬이면 pong 이 다시 맞춘다(끔이면 틀린 채 남는다)
 //     ③ 날짜 경계(VILLAGE_DAY_MS 20초 날) 둘 — 클라 날짜가 넘어간 순간의 서버 시각 − 그 경계 시각(켬) · 방송 도착까지(끔)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

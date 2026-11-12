@@ -27,7 +27,7 @@ function boot(phase, extra) {
   return new Promise((resolve) => {
     const out = path.join(DIR, `${phase}`);
     const env = Object.assign({}, process.env, {
-      ZONE_ID: 'hanbando', PORT: String(39100 + ((process.pid * 7 + (phase === 'p1' ? 0 : 1)) % 700)), DB_PATH: DB,
+      ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(phase === 'p1' ? 39100 : 39101)), DB_PATH: DB,
       ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1', VILLAGE_DAY_MS: '250', T315_MAPBEDS: '0', VILLAGE_NPC_CAP: '1',
       T400_BUILD_ACT: '0', VILLAGE_CARAVAN_MAX: '0', T640_BOOT_SLICE: '0',
       T577_SEED: String(SEED), T577_DAYS: String(DAYS), T577_OUT: out + '.json',

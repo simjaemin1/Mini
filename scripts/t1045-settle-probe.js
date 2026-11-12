@@ -13,6 +13,7 @@
 //   손잡이 env 는 이 자를 부른 env 를 서버가 물려받는다(끔 판은 env 를 얹는다).
 // 실행: [E2E_BROWSER=webkit] [손잡이 env] node scripts/t1045-settle-probe.js [--n 5] [--cap 60] [--out /tmp/t1045] [--tag 이름] [--wrap 함수,함수(긴 판 안 배타 ms 를 '·이름' 칸으로)]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const net = require('net');
