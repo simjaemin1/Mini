@@ -281,7 +281,7 @@ function runZone() {
   const TMP = `/tmp/t1238-z-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.env.ZONE_ID = process.env.ZONE_ID || 'hanbando';
-  process.env.PORT = String(39500 + (process.pid % 400));
+  process.env.PORT = String(require('./lib-port').port(39500));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
   const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};

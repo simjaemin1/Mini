@@ -31,7 +31,7 @@ const TMP = `/tmp/test-t1093-roof-${process.pid}.db`;
 const rmDb = () => { for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} } };
 rmDb();
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(37800 + (process.pid % 150));
+process.env.PORT = String(require('./lib-port').port(37800));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '1';
 process.env.VILLAGE_MAX = process.env.VILLAGE_MAX || '2';   // 마을 둘이면 잰다(쉼터 한 채의 벽 · 바닥 · 행)

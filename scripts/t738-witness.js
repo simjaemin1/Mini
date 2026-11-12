@@ -14,7 +14,7 @@ if (process.env.T738_SOA_XY !== '1' && !T774) { console.error('T738_SOA_XY=1 또
 const TMP = `/tmp/t738w-${process.pid}.db`;
 const rm = () => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(TMP + s); } catch (e) {} } };
 rm(); process.on('exit', rm);
-Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(39300 + (process.pid % 300)), DB_PATH: TMP, ENABLE_VILLAGES: '1', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', VILLAGE_DAY_MS: '4000' });
+Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(39300)), DB_PATH: TMP, ENABLE_VILLAGES: '1', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', VILLAGE_DAY_MS: '4000' });
 const log = console.log; console.log = () => {}; console.warn = () => {};
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; log((c ? '  ✓ ' : '  ✗ ') + m + (d ? '  ' + d : '')); };

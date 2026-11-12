@@ -26,7 +26,7 @@ const META_TRACKS = (() => {                         // ★[T323] BGM 곡 수 �
   try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'public/assets/audio/bgm/render-meta.json'), 'utf8')).tracks || {}; }
   catch (e) { return {}; }
 })();
-const PORT = +(process.env.PORT || 0) || (3800 + (process.pid % 120));
+const PORT = +(process.env.PORT || 0) || (require('./lib-port').port(3800));
 
 let pass = 0, fail = 0;
 function ok(cond, label, detail) {

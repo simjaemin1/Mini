@@ -29,7 +29,7 @@ const SV = (p) => path.join(ROOT, 'server', p);
 // ══ 아이 판 — 한 손잡이 조합으로 장면 셋(ⓑ · ⓒ · ⓓ)을 같이 돈다(마지막 줄 = JSON) ═════════════════════
 if (process.env.T1118_SUB === 'run') {
   process.env.ZONE_ID = 'hanbando';
-  process.env.PORT = String(37100 + (process.pid % 140));
+  process.env.PORT = String(require('./lib-port').port(37100));
   process.env.DB_PATH = `/tmp/test-t1118-${process.pid}.db`;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
   process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

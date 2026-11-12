@@ -20,7 +20,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const say = console.log.bind(console);
 (async () => {
   const DB = `/tmp/t619h-${process.pid}.db`;
-  Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(42000 + (process.pid % 500)), DB_PATH: DB, ENABLE_WILDLIFE: '0', E2E_GIVE: '1',
+  Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(42000)), DB_PATH: DB, ENABLE_WILDLIFE: '0', E2E_GIVE: '1',
     ENABLE_VILLAGES: '1', VILLAGE_ROUTE_WARM: '0' });
   const log = [];
   console.log = (...a) => log.push(a.join(' ')); console.warn = console.log; console.error = console.log;

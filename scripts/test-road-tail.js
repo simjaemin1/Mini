@@ -60,7 +60,7 @@ if (process.argv[2] === '--real') {
   // 아이(⑥): 실제 크기 틀을 이 프로세스 안에 띄워(마을 켬 · 관측자 0) 다져진 길 셀 수백 개를 한 경계에 풀고 장부를 적어 낸다.
   //   팔 둘 — off(T696 끔 = 오늘 main 글자) · on(켬 · 술어 차례 + 원시 판 미리 짓기) — 둘의 결과가 같아야 한다.
   const [db, arm] = [process.argv[3], process.argv[4]];
-  Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(41200 + (process.pid % 150)), DB_PATH: db, ENABLE_VILLAGES: '1', ENABLE_WILDLIFE: '0',
+  Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(41200)), DB_PATH: db, ENABLE_VILLAGES: '1', ENABLE_WILDLIFE: '0',
     ENABLE_BANDITS: '0', E2E_GIVE: '1', ENABLE_ROADS: '1', VILLAGE_WAR_LOG: '0', T696_ROAD_TAIL: arm === 'off' ? '0' : '1' });
   const _o = process.stdout.write.bind(process.stdout);
   console.log = () => {}; console.warn = () => {}; console.error = () => {};

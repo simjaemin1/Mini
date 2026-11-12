@@ -31,7 +31,7 @@ const pre = (c, m, x) => { if (!c) { fail++; console.log('  ✗ [상황] ' + m +
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(36700 + (process.pid % 150));
+process.env.PORT = String(require('./lib-port').port(36700));
 process.env.DB_PATH = `/tmp/test-preserve-${process.pid}.db`;
 process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
 process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

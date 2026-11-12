@@ -24,7 +24,7 @@ const SV = (p) => path.join(ROOT, 'server', p);
 if (process.env.T622_PROBE === 'boot') {
   const TMP = `/tmp/t622-table-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-  process.env.PORT = String(42100 + (process.pid % 800));
+  process.env.PORT = String(require('./lib-port').port(42100));
   process.env.DB_PATH = TMP;
   const _log = console.log, logs = [];
   console.log = (...a) => { logs.push(a.join(' ')); };

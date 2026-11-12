@@ -48,7 +48,7 @@ async function launchWebKitGTK() {
   const procs = [];
   process.on('exit', () => { for (const q of procs) { try { q.kill('SIGKILL'); } catch (e) {} } });
   // ★화면(Xvfb)은 **페이지마다 하나** — 마우스는 진짜 X 입력(xdotool)으로 넣는데(아래 mouse), 창이 한 화면에 겹치면 맨 위 창이 받는다.
-  let dispN = 60 + (process.pid % 20) * 8;
+  let dispN = 60 + (process.pid % 20) * 8; // lib-port: 포트 아님(X 화면 번호)
   const pages = [];
   const newPage = async (ctxOpts, ctx) => {
     const disp = ':' + (dispN++);

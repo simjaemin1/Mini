@@ -820,5 +820,47 @@ console.log('\n⑭ 판정 글자 ↔ 제품 소스 [T1097]');
     r.status === 0 ? last : out.filter((l) => /^  ✗/.test(l)).slice(0, 4).join(' ; ') || last);
 }
 
+// ── ⑮ 하네스 포트는 **공용 할당기 하나**로 [T1281 2026-11-12 · T1267 회부 3] ──────────────
+//   T1267: 포트를 `기준 + process.pid % M` 으로 고르는 하네스 107곳 — 나란히 돌면 두 하네스가 같은 포트를 잡아 **남의 서버를 읽는다**.
+//   ⇒ 정본 `lib-port.js`(장부 하나 · OS 에 묶어 봄). 자 = 주석 뺀 코드(`code-only` 정본)에 `process.pid %` 가 있으면 빨강.
+//   포트가 아닌 자리(X 화면 번호 · 계정 이름)는 그 줄에 `lib-port: 포트 아님` 표지를 달고, **표지 단 자리는 아래 표와 맞아야** 한다(표지 남용 금지).
+console.log('\n⑮ 하네스 포트 = 공용 할당기 `lib-port` [T1281]');
+{
+  const CO = require(path.join(SCRIPTS, 'code-only.js'));
+  const PID_MOD = new RegExp('process\\.pid\\s*' + '%');
+  const MARK = 'lib-port: 포트 ' + '아님';
+  const scan = (src) => {
+    const code = CO(src).split('\n'), raw = src.split('\n'), hit = [], marked = [];
+    code.forEach((L, i) => { if (!PID_MOD.test(L)) return; (raw[i].includes(MARK) ? marked : hit).push(i + 1); });
+    return { hit, marked };
+  };
+  const bad = [], marks = [];
+  let users = 0;
+  for (const f of fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js')).sort()) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    if (src.includes("require('./lib-port')")) users++;
+    const r = scan(src);
+    r.hit.forEach((n) => bad.push(`${f}:${n}`));
+    if (r.marked.length) marks.push(`${f}(${r.marked.length})`);
+  }
+  ok(fs.existsSync(path.join(SCRIPTS, 'lib-port.js')) && users > 0, '⑮ [전제] 정본 `lib-port.js` 가 있고 그것을 부르는 하네스가 실제로 있다(0 이면 아래가 자명 통과다)', `부르는 파일 ${users}`);
+  ok(bad.length === 0, '★★⑮a 포트를 pid 나머지(`pid` 를 `%` 로 자름)로 고르는 자리 0 — `lib-port` 의 `port(key)` · `ports(n, key)` 를 쓴다',
+     bad.length ? `${bad.length}곳: ${bad.slice(0, 6).join(' · ')}` : '0');
+  const XOK = ['browser-driver.js(1)', 'e2e-browser.js(1)', 'e2e-t1160-promote-key.js(1)'];   // X 화면 번호 둘 · 계정 이름 하나
+  const extra = marks.filter((x) => !XOK.includes(x)), gone = XOK.filter((x) => !marks.includes(x));
+  ok(!extra.length && !gone.length, '★⑮b `lib-port: 포트 아님` 표지는 표에 적은 자리뿐(X 화면 번호 둘 · 계정 이름 하나)',
+     `표지 ${marks.join(' ')}${extra.length ? ' · ★표에 없는 것 ' + extra.join(' ') : ''}${gone.length ? ' · ★표에서 사라진 것 ' + gone.join(' ') : ''}`);
+  // ★자명 통과 금지 — 같은 자로 미끼 넷을 재면 **각각 다르게** 답한다(글자를 조각내 자기 자신을 안 문다)
+  const P = 'process.' + 'pid';
+  const bait = {
+    old: `process.env.PORT = String(37200 + (${P} % 190));`,
+    marked: `const DISP = ':' + (90 + (${P} % 9)); // ${MARK}(X 화면 번호)`,
+    comment: `// 옛 꼴: 37200 + (${P} % 190)`,
+    lib: "process.env.PORT = String(require('./lib-port').port(37200));",
+  };
+  const ans = Object.entries(bait).map(([k, v]) => { const r = scan(v); return k + '=' + (r.hit.length ? 'hit' : r.marked.length ? 'mark' : 'none'); }).join(',');
+  ok(ans === 'old=hit,marked=mark,comment=none,lib=none', '★⑮ 자명 통과 금지 — 옛 식 미끼는 **물고** · 표지 단 줄은 표지로 · 주석 안 · 정본 호출은 보낸다', ans);
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

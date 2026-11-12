@@ -28,7 +28,7 @@ const TYPES = ['tree', 'rock', 'ore', 'berry_bush', 'meteorite'];
 if (process.env.T978_SUB) {
   (async () => {
     const MODE = process.env.T978_SUB, DBP = process.env.T978_DBP, KILL = process.env.T978_KILL || 'SIGKILL';
-    process.env.ZONE_ID = 'hanbando'; process.env.PORT = String(39400 + (process.pid % 500)); process.env.DB_PATH = DBP;
+    process.env.ZONE_ID = 'hanbando'; process.env.PORT = String(require('./lib-port').port(39400)); process.env.DB_PATH = DBP;
     process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
     process.env.E2E_GIVE = '1';
     const _l = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
