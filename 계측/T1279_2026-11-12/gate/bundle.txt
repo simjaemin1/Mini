@@ -1,0 +1,15 @@
+[build] economy-engine.browser.js 생성: 1413 KB
+  🌈풍요 Day 381: 가 (7일)
+[check] 회귀검증 16 일치 / 0 불일치 ✅
+[inline] 완료: /home/user/Mini/lab/마을실험실.html (2403283 bytes)
+[inline] 전쟁실험실.html: 기존 엔진 블록 교체
+[inline] 완료: /home/user/Mini/lab/전쟁실험실.html (2815499 bytes)
+[inline] 마을실험실.html: 최신 ✅
+[inline] 전쟁실험실.html: 최신 ✅
+  ✅ ⓓ [자명 통과 금지] 번들에서 LifeCrew 를 뺀 사본 · 방아쇠에서 `_t958Want` 를 뺀 사본 · 랩 글에 곳간 출구를 부른 사본 · 크루 문을 둘로 늘린 사본 — 넷 다 문다
+
+=== 배선 검사: 실패 0 · 경고 1 ===
+ M "lab/\353\247\210\354\235\204\354\213\244\355\227\230\354\213\244.html"
+ M "lab/\354\240\204\354\237\201\354\213\244\355\227\230\354\213\244.html"
+
+[exited with code 0]
