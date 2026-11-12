@@ -13,7 +13,7 @@ globalThis.__T1286Tr = (v, day, E) => {
   let tre = 0; for (const k in (v.treasury || {})) tre += +v.treasury[k] || 0;
   const c = v.counts || {}; const jobs = Object.keys(c).sort().map((k) => k + c[k]).join(',');
   rows.push([day, v.name, v.npcs.length, c.farmer || 0, c.cook || 0, +E.totalFoodEquivalent(v).toFixed(4), +(st.food || 0).toFixed(4), +sum.toFixed(3),
-    +(((v.surplusEMA || {}).food) || 0).toFixed(4), +tre.toFixed(3), jobs]);
+    +(((v.surplusEMA || {}).food) || 0).toFixed(4), +tre.toFixed(3), jobs, +((v._t1286C && v._t1286C.cooked) || 0).toFixed(3), (v._t1286C && v._t1286C.days) || 0, +(st.cooked_food || 0).toFixed(3)]);
 };
 //        T1286_NUDGE=<이름>:<날>:<품목>:<양> → 그 날 그 마을 틱 머리에서 곳간 그 품목에 양을 더한다(요리 무관 영 판 — 교역 흔들림 자)
 const NUDGE = process.env.T1286_NUDGE ? process.env.T1286_NUDGE.split(':') : null;
@@ -31,4 +31,4 @@ Module.prototype._compile = function (src, file) {
   }
   return compile.call(this, src, file);
 };
-process.on('exit', () => { if (OUT) try { fs.writeFileSync(OUT, JSON.stringify({ S, cols: ['d', 'name', 'N', 'farmer', 'cook', 'fe', 'food', 'stSum', 'sp', 'tre', 'jobs'], rows })); } catch (e) {} });
+process.on('exit', () => { if (OUT) try { fs.writeFileSync(OUT, JSON.stringify({ S, cols: ['d', 'name', 'N', 'farmer', 'cook', 'fe', 'food', 'stSum', 'sp', 'tre', 'jobs', 'ck', 'ckDays', 'cookedSt'], rows })); } catch (e) {} });

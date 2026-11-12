@@ -587,6 +587,26 @@ function _t860Dry(v, npc, b, potA, actA, addProduce) {
   const budget = JOBS.cook.base * (1 + ((npc.skills && npc.skills.cooking) || 0) * 0.05) * spare;
   _preserveSurplus(v, b.from, budget, addProduce, cap, _t860Unit);
 }
+// ★[T1286] 남는 시간 요리 한 번(위 손잡이 주석) — 요리사 갈래(`produceSpecial === 'cook'`)의 요리 한 번을 남는 손 s 의 몫으로:
+//   재료 s 단(`food` 칸 · 모자라면 `_t1260CookStaple` 곡식 품목) · 부재료 0.5 × s 씩(있는 것 다섯까지) · 조리식 `JOBS.cook.base` × 숙련 배율 × 다양성 × s
+function _t1286Cook(v, npc, b, potA, actA, dailyProduction) {
+  const dPot = potA - b[0], dAct = actA - b[1];
+  const s = dPot > 0 ? Math.max(0, 1 - dAct / dPot) : 0;
+  if (!(s > 0)) return;
+  const day = (v._world && v._world.day) || 0;
+  if (v._t1286Gd !== day) { const N = v.npcs.length || 1; v._t1286Gd = day; v._t1286G = totalFoodEquivalent(v) >= N * 35 && t1260FoodOf(v) >= N * 8; }   // 정원 요리사와 같은 식량 안보 문(하루 한 번)
+  if (!v._t1286G) return;
+  let ck = null;
+  if (!((v.storage.food || 0) >= s)) { ck = _t1260CookStaple(v); if (!ck || ((v.storage[ck[0]] || 0) * ck[1]) < s) return; }
+  const used = COOK_SIDE_INGREDIENTS.filter((r) => (v.storage[r] || 0) >= 0.5 * s).slice(0, 5);
+  const inEq = s + used.reduce((a, r) => a + 0.5 * s * (storageFoodPer(v, r) || 0), 0), per = storageFoodPer(v, 'cooked_food') || 0;
+  const cooked = Math.min(JOBS.cook.base * (1 + ((npc.skills && npc.skills.cooking) || 0) * 0.05) * (1.0 + 0.04 * used.length) * s, per > 0 ? inEq / per : 0);   // 요리는 식량을 늘리지 않는다 — 조리식 환산 ≤ 든 환산(같은 자 `storageFoodPer`)
+  if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;
+  for (const r of used) v.storage[r] -= 0.5 * s;
+  v.storage.cooked_food = (v.storage.cooked_food || 0) + cooked;
+  dailyProduction.cooked_food = (dailyProduction.cooked_food || 0) + cooked;
+  const C = v._t1286C || (v._t1286C = { n: 0, s: 0, cooked: 0, days: 0, lastD: -1 }); C.n++; C.s += s; C.cooked += cooked; if (C.lastD !== day) { C.days++; C.lastD = day; }
+}
 // ★[T17 ③] 소금 일상 소비(인구 비례) — 위 소비처 주석의 두 근거가 만나는 값.
 const SALT_DAILY_PC = 0.01;
 // ★[T60 ① 후보ⓑ] 흐름 눈금 손잡이 — 지리 눈금(ⓐⓒ)은 `server/sustain.js` 가 갖는다(사본 금지).
@@ -1250,6 +1270,16 @@ function t1260FoodOf(v) { return T1260_FOOD_READS ? totalFoodEquivalent(v) : ((v
 //     이미 선 요리사는 정원 초과(`case 'cook'` 0.005)로 먼저 차출된다 · 정원 밖 길(빈자리 줄 · legacy 줄)은 그대로(그 길에 선 요리사의 조리식은 ① 장부 규약을 탄다).
 //   ⚠곳간 · 조리식 · 다양성 · 부양력(prodK 잠재 생산)은 그대로다(부양력 쪽 · 남는 시간 요리는 회부).
 const T1279_COOK = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1279_COOK === '1' : false);
+// ★★[T1286 2026-11-12 · T1279 회부 2 · 3] 손잡이 둘(끔 기본 · `'1'` 만 · **`T1279_COOK` 켠 판 안에서만** · 끔 = 종전 바이트):
+//   `T1286_COOK_SPARE` — **남는 시간 요리**(집 부엌 · 직업 아님 · 정원 0). T860 잡은 날 말리기 꼴: 수식 생산 몸 하나가 그날 포만으로 깎인 몫
+//     `1 − 실제/잠재`(여유노동 `_idleFrac` 과 같은 식 · 그 몸 하나)가 그 몸의 남는 손이다. 그 손 × 요리사 하루 처리(`JOBS.cook.base`) × 요리 숙련 배율(`1 + 숙련 × 0.05`)만큼
+//     요리사 갈래와 **같은 요리 한 번**(재료 한 단 · 부재료 0.5 씩 다섯까지 · 다양성 `1 + 0.04 × 가짓수`)을 남는 손의 몫으로 줄여 한다(`_t1286Cook`).
+//     문은 정원 요리사와 같은 식량 안보 문(`cookTarget` 첫 문 — 합계 N×35 · 둘째 문 N×8)이다. 재료 · 부재료는 곳간에서 떼고 조리식은 같은 곳간에 넣는다.
+//     조리식 환산은 든 환산(재료 + 부재료 · 같은 자 `storageFoodPer`)을 넘지 않는다 — 요리는 먹기 좋게 할 뿐 식량을 늘리지 않는다(숙련 · 다양성은 그 상한 안에서만 산다).
+//     그날 생산 칸에도 적되 ① 장부 규약(조리식 칸 0)을 그대로 탄다 — 요리는 옮김이다. 잠재 생산(prodK) 칸에는 안 적는다. 새 수 0.
+//   `T1286_PRODK` — 부양력(prodK)의 잠재 생산 환산(`dailyFoodProdPotential`)에서도 조리식 칸 0(① 과 같은 규약 · 회부 3).
+const T1286_COOK_SPARE = T1279_COOK && ((typeof process !== 'undefined' && process.env) ? process.env.T1286_COOK_SPARE === '1' : false);
+const T1286_PRODK = T1279_COOK && ((typeof process !== 'undefined' && process.env) ? process.env.T1286_PRODK === '1' : false);
 //   ④ 요리 재료 한 단 — `food` 칸이 1 밑일 때(켬만) 곡식 품목(생곡 `RAW_GRAINS` · 밭 작물 `_t368Crops`) 중 하루치 환산이 가장 큰 것 · 하루치 1 이 안 되면 없음
 function _t1260CookStaple(v) {
   const cand = RAW_GRAINS.slice(), own = _t368Crops(v);
@@ -4810,6 +4840,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       //   (노동은 놀지만 job-switch 재배치 경로가 곧 데려간다 — mason taper와 달리 이 직군엔 잉여 전용처가 없다.)
       if (jdef.stockCap && (v.storage[jdef.output] || 0) >= jdef.stockCap(v)) { continue; }
       const _t860 = (T860_ON && T17_PRESERVE && CATCH_FROM[npc.currentJob]) ? _t860Begin(v, CATCH_FROM[npc.currentJob], _potA, _actA) : null;   // ★[T860] 잡기 전 곳간 · 잠재/실제(끔 = null)
+      const _t1286 = T1286_COOK_SPARE ? [_potA, _actA] : null;   // ★[T1286] 이 몸의 잠재/실제 머리(끔 = null)
       for (const [inp, need] of Object.entries(jdef.inputs || {})) {
         if(T1188_ORE_SPLIT&&inp==='ore'){takeOre(v,need);continue;}
         _cons(v, inp, Math.min(v.storage[inp] || 0, need));   // ★flow-EMA(실차감분)
@@ -4873,6 +4904,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
         if (T635_SHELL_ORNAMENT && npc.currentJob === 'fisher' && v.land && v.land.shellBangle > 0 && _t635ShellItem()) addProduce('shell_bangle', baseAmt * (jdef.byproduct.oyster || 0) * v.land.shellBangle);
       }
       if (_t860) _t860Dry(v, npc, _t860, _potA, _actA, addProduce);   // ★[T860] 잡은 날 제 손으로 말린다(끔 = 이 줄 무동작)
+      if (_t1286) _t1286Cook(v, npc, _t1286, _potA, _actA, dailyProduction);   // ★[T1286] 남는 손으로 집 부엌 요리(끔 = 이 줄 무동작)
       workNPC(npc);
     }
     } finally { if (_t1196S) _t1196End(v, npc, _t1196S, day); }   // ★[T1196] 갈래가 곳간 · 금고에 낸 차를 작업표로 떼고 곳간을 되돌린다(`continue` · `return` 길도 여기를 지난다)
@@ -5269,7 +5301,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   const dailyImport = v._importEMA || 0;
   // ★부양력은 생산 *잠재력*으로 — satiation(창고 글럿 시 여가)이 실제생산을 줄여도 K는 안 낮아짐.
   //   (옛 실제생산 기준: 초기 300일치 식량 글럿→생산 12%로 조임→prodK≈4→N8>K→로지스틱이 인구 끌어내려 초반 진동)
-  const dailyFoodProdPotential = totalFoodProductionEquivalent(dailyProductionPotential, v);   // ★[T368] 같은 자
+  const dailyFoodProdPotential = totalFoodProductionEquivalent(T1286_PRODK ? Object.assign({}, dailyProductionPotential, { cooked_food: 0 }) : dailyProductionPotential, v);   // ★[T368] 같은 자   // ★[T1286] 켬 = 잠재 조리식 칸 0(① 과 같은 규약 · 끔 = 종전 글자)
   // ★prodK 신뢰 관성(EMA ~33일): 날씨 이벤트(가뭄 7~14일)가 K를 직접 때려 θ=4 로지스틱이 과잉반응(대촌 ±100명 스윙)하지 않게.
   //   진짜 기근은 별도 실시간 항(hunger)이 처리하므로 안전성 손실 없음 — K만 계절·이벤트 노이즈에 둔감해짐.
   // ★★[2026-08-02c 소멸 0] PRODK_CAP — 용량 기준 식량흐름. **fuelK 와 완전 동형**(같은 모양·같은 MSY 처리):
@@ -7583,7 +7615,7 @@ module.exports = {
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
-  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1260_FOOD_READS, T1279_COOK, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   T1159_HOME_N, t1159HomeN,
