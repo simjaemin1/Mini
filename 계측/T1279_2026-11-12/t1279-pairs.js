@@ -5,7 +5,7 @@
 const fs = require('fs');
 const R0 = process.env.R0 || '/dev/shm/t1272x', R = process.env.R || '/dev/shm/t1279';
 const SEEDS = (process.argv.slice(2).find((a) => !a.startsWith('--')) || '1020,7,42,1,2,3,4,5,6,8').split(',').map(Number);
-const SRC = { F1: R0, F1R: R0, G: R, Z: R, L: R, I: R };   // Z = 영 흔들기(끈 판 + 50날째 난수 하나 · t1279-split.js Z)
+const SRC = { F1: R0, F1R: R0, F1off1: R0, G1: R, G: R, Z: R, L: R, I: R };   // G1 = 첫 고침(① 장부만) · G = 고친 판(① + ② 정원 0)   // Z = 영 흔들기(끈 판 + 50날째 난수 하나 · t1279-split.js Z)
 const rd = (a, s) => { try { return JSON.parse(fs.readFileSync(`${SRC[a]}/${a}-${s}/farm.json`, 'utf8')); } catch (e) { return null; } };
 const live = (f) => f.per.filter((p) => p.everPop);
 const wmean = (f, k) => { let n = 0, w = 0; for (const p of live(f)) { const x = +p[k]; if (!Number.isFinite(x)) continue; const ww = p.popDays || 0; n += x * ww; w += ww; } return w ? n / w : 0; };
@@ -15,7 +15,7 @@ const q = (xs, p) => { const a = xs.slice().sort((x, y) => x - y); if (!a.length
 const pct = (a, b) => (b / a - 1) * 100;
 const out = { seeds: SEEDS, arms: {}, pairs: {} };
 for (const a of Object.keys(SRC)) { out.arms[a] = {}; for (const s of SEEDS) { const f = rd(a, s); if (f) out.arms[a][s] = met(f); } }
-for (const [name, A, B] of [['T1260', 'F1', 'F1R'], ['T1260+T1279', 'F1', 'G'], ['T1279 몫(켬 → 고침)', 'F1R', 'G'], ['영 흔들기(난수 하나)', 'F1', 'Z'], ['요리사 일손만(L)', 'F1', 'L'], ['요리 공짜(I)', 'F1', 'I']]) {
+for (const [name, A, B] of [['T1260', 'F1', 'F1R'], ['T1260+T1279(G1 · ① 장부만)', 'F1', 'G1'], ['T1260+T1279', 'F1', 'G'], ['① 문만 종전(T1272 F1off1)', 'F1', 'F1off1'], ['G ↔ F1off1', 'F1off1', 'G'], ['T1279 몫(켬 → 고침)', 'F1R', 'G'], ['영 흔들기(난수 하나)', 'F1', 'Z'], ['요리사 일손만(L)', 'F1', 'L'], ['요리 공짜(I)', 'F1', 'I']]) {
   const rows = []; for (const s of SEEDS) { const x = out.arms[A][s], y = out.arms[B][s]; if (!x || !y) continue;
     const r = { seed: s, a: x.pop, b: y.pop }; for (const k of Object.keys(x)) { r[k] = y[k] - x[k]; r[k + 'Pct'] = x[k] ? pct(x[k], y[k]) : null; } rows.push(r); }
   const sum = {}; for (const k of ['pop', 'farmer', 'harvest', 'houseUp', 'gated', 'price']) { const xs = rows.map((r) => r[k + 'Pct']).filter((v) => v != null && Number.isFinite(v));
