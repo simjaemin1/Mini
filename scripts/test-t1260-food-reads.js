@@ -6,6 +6,8 @@
 //   ② 켬 = 합계 — 요리 문 섬 · 개간 문 닫힘(120일치 넘는 곳간) · 요리 재료 한 단을 가장 많이 쌓인 곡식 품목에서
 //   ③ 글자 — 손잡이 읽는 자리 하나(econ) + 전쟁 층 하나 · 문 셋(요리 · 개간 · 곳간 증설)이 같은 함수(`t1260FoodOf`)를 부른다 · 전쟁 층 추정 문이 `_feD`
 //   ④ [자명 통과 금지 · 미끼] 문 셋 중 하나를 `storage.food` 로 되돌린 사본은 ③ 의 검사에서 빠진다(검사가 실제로 문다)
+//   ⑤ [T1279] 손잡이 `T1279_COOK`(끔 기본 · `'1'` 만 · T1260 켬 안에서만) — 켜면 식량 흐름 장부(`dailyFoodProd`)가 조리식 칸을 0 으로 센다(요리는 옮김)
+//      · 장부 자리 하나 · 끔 = 종전 글자 · [미끼] 장부 자리를 종전으로 되돌린 사본 · T1260 과 떼어 놓은 사본을 검사가 문다
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -22,7 +24,7 @@ if (process.argv[2] === '--child') {
     storage: { food: 0, fish: N * 200, meat: 0, cooked_food: 0, rice: N * 300, wheat: N * 10, vegetable: N * 5, fruit: N * 5 },
     dailyProductionBuf: { vegetable: 30, fruit: 30 } });
   const v = mk();
-  const out = { on: E.T1260_FOOD_READS, foodOf: E.t1260FoodOf(v), total: E.totalFoodEquivalent(v), cook: E.cookTarget(v) };
+  const out = { on: E.T1260_FOOD_READS, cook79: E.T1279_COOK, foodOf: E.t1260FoodOf(v), total: E.totalFoodEquivalent(v), cook: E.cookTarget(v) };
   const st = E.t1260CookStaple(v); out.staple = st ? st[0] : null;
   const vil = { econ: mk(), _potSet: new Set(['0,0']), _farmSet: new Set() };
   try { out.needClear = VIL.__labProbe._clearProbe.needClear(vil); } catch (e) { out.needClear = 'err ' + String(e && e.message).slice(0, 80); }
@@ -32,6 +34,7 @@ if (process.argv[2] === '--child') {
 const run = (env) => {
   const e = Object.assign({}, process.env, env); delete e.NODE_OPTIONS;
   if (env.T1260_FOOD_READS == null) delete e.T1260_FOOD_READS;
+  if (env.T1279_COOK == null) delete e.T1279_COOK;
   delete e.T1243_FARM_ON; delete e.T1229_FIELD_GROW;
   const r = spawnSync(process.execPath, [__filename, '--child'], { cwd: ROOT, env: e, encoding: 'utf8', timeout: 120000, maxBuffer: 16 << 20 });
   const line = String(r.stdout || '').split('\n').filter((l) => l.startsWith('{')).pop();
@@ -76,5 +79,24 @@ const baitGran = VS.replace('const food = _lifeEcon().t1260FoodOf(vil.econ);', '
 const b1 = gates(baitCook, VS), b2 = gates(ES, baitClear), b3 = gates(ES, baitGran);
 ok(baitCook !== ES && baitClear !== VS && baitGran !== VS && !b1.cook && !b2.clear && !b3.gran,
   '④ [자명 통과 금지] 요리 · 개간 · 곳간 증설 문을 하나씩 `storage.food` 로 되돌린 사본 셋 — ③ 의 검사가 셋 다 문다', { cook: b1.cook, clear: b2.clear, gran: b3.gran });
+//   ⑤ T1279 — 요리는 옮김(식량 흐름 장부에서 조리식 칸 0)
+const k1 = run({ T1260_FOOD_READS: '1', T1279_COOK: '1' }), k2 = run({ T1279_COOK: '1' }), k3 = run({ T1260_FOOD_READS: '1', T1279_COOK: 'yes' });
+ok(!off.err && !on.err && off.cook79 === false && on.cook79 === false, '⑤ T1279 끔(기본) — T1260 끔 · 켬 둘 다 `T1279_COOK` 꺼짐', { off: off.cook79, on: on.cook79 });
+ok(!k1.err && k1.cook79 === true && !k2.err && k2.cook79 === false && !k3.err && k3.cook79 === false,
+  "⑤ T1279 켬 = `'1'` · T1260 켠 판 안에서만(T1260 끔 + `'1'` = 꺼짐 · `yes` = 꺼짐)", { k1: k1.cook79, k2: k2.cook79, k3: k3.cook79 });
+{ const E = require(path.join(ROOT, 'sim', 'economy-sim'));   // 장부 자(같은 환산 함수)가 조리식 칸을 실제로 세는지 — 0 으로 만든 자리가 무동작이 아님을 보인다
+  const v = { storage: {}, npcs: [{}], land: {}, counts: {} }, prod = { cooked_food: 10, fish: 5 };
+  const a = E.totalFoodProductionEquivalent(prod, v), b = E.totalFoodProductionEquivalent(Object.assign({}, prod, { cooked_food: 0 }), v);
+  ok(a > b && b > 0, '⑤ 장부 자가 조리식 칸을 센다(조리식 10 + 생선 5 > 생선 5 > 0) — 칸 0 이 실제로 장부를 바꾼다', { a, b }); }
+const ledger = (es) => (es.match(/process\.env\.T1279_COOK/g) || []).length === 1
+  && /const T1279_COOK = T1260_FOOD_READS && \(\(typeof process !== 'undefined' && process\.env\) \? process\.env\.T1279_COOK === '1' : false\);/.test(es)
+  && /const dailyFoodProd = totalFoodProductionEquivalent\(T1279_COOK \? Object\.assign\(\{\}, dailyProduction, \{ cooked_food: 0 \}\) : dailyProduction, v\);/.test(es)
+  && (es.match(/T1279_COOK \?/g) || []).length === 1;
+ok(ledger(ES), '⑤ 글자 — 손잡이 읽는 자리 하나(T1260 켬과 곱) · 장부 자리 하나(`dailyFoodProd` · 켬 = 조리식 칸 0 · 끔 = `dailyProduction` 그대로) · 다른 자리 0');
+const baitL = ES.replace('totalFoodProductionEquivalent(T1279_COOK ? Object.assign({}, dailyProduction, { cooked_food: 0 }) : dailyProduction, v)', 'totalFoodProductionEquivalent(dailyProduction, v)');
+const baitK = ES.replace('const T1279_COOK = T1260_FOOD_READS && (', 'const T1279_COOK = (');
+const baitP = ES.replace("{ cooked_food: 0 }", "{ fish: 0 }");
+ok(baitL !== ES && baitK !== ES && baitP !== ES && !ledger(baitL) && !ledger(baitK) && !ledger(baitP),
+  '⑤ [자명 통과 금지 · 미끼] 장부 자리를 종전으로 · 손잡이를 T1260 과 떼어 · 0 으로 만드는 칸을 딴 품목으로 바꾼 사본 셋 — 글자 검사가 셋 다 문다', { L: ledger(baitL), K: ledger(baitK), P: ledger(baitP) });
 console.log(`\n=== T1260 식량 한 품목 읽는 문: 통과 ${pass} · 실패 ${fail} ===`);
 process.exit(fail ? 1 : 0);
