@@ -1237,6 +1237,14 @@ const T1243_FARM_ON = (typeof process !== 'undefined' && process.env) ? process.
 //     ⑥ 전쟁 층의 식량 추정(`sim/war-core.js warFE` 다섯 품목 근사 — 정찰 · 몸값 · 조공 거부 · 출정)이 주입된 정본(`_feOf`)을 읽는다.
 const T1260_FOOD_READS = (typeof process !== 'undefined' && process.env) ? process.env.T1260_FOOD_READS === '1' : false;
 function t1260FoodOf(v) { return T1260_FOOD_READS ? totalFoodEquivalent(v) : ((v && v.storage && v.storage.food) || 0); }
+// ★★[T1279 2026-11-12 · T1272 회부] 손잡이 `T1279_COOK`(끔 기본 · `'1'` 만 켬 · **`T1260_FOOD_READS` 켠 판 안에서만** 산다 · 끔 = 종전 바이트) — **요리는 식량을 늘리지 않는다.**
+//   T1260 문 ① 이 요리사를 세우자 밭 세계 인구가 짝 Δ 가운데 −12.5% 였다(T1272). 갈라 재기(T1279 §1): 요리사가 서는 일 자체가 손해의 전부(ⓐ · ⓒ 몫 100%)이고,
+//   요리사의 일손은 그 몫에 못 미친다(세계 하루 요리사 ≈ 10 사람 · 줄어든 농부 날의 1/8). 손해가 닿는 길은 **식량 흐름 장부**(`surplusEMA.food` — 생산 − 하루 수요)다:
+//   조리식은 `addProduce` 로 그날 생산 칸에 **새 식량**처럼 들어가는데, 조리식을 만든 곡식 · 부재료는 이미 거둘 때 생산으로 셌거나(채집 · 어로 · 사냥) 밭 세계에선 장부에 안 들어온 것이다.
+//   ⇒ 장부가 "남는다"를 읽고 식량 값의 선반영(`surplusEMA.food × 30`)이 줄어 값이 내리고 농부가 덜 선다.
+//   켜면 장부의 그날 생산에서 조리식 칸만 뺀다 — **요리는 곳간 안의 옮김이다**(T17 ② 갈무리 주석과 같은 규약 · 새 수 0 · 새 사본 0 · 같은 환산 함수).
+//   ⚠장부 한 자리(`dailyFoodProd`)만 — 곳간 · 조리식 · 다양성 · 요리사 정원 · 부양력(prodK 잠재 생산)은 그대로다(부양력 쪽은 회부).
+const T1279_COOK = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1279_COOK === '1' : false);
 //   ④ 요리 재료 한 단 — `food` 칸이 1 밑일 때(켬만) 곡식 품목(생곡 `RAW_GRAINS` · 밭 작물 `_t368Crops`) 중 하루치 환산이 가장 큰 것 · 하루치 1 이 안 되면 없음
 function _t1260CookStaple(v) {
   const cand = RAW_GRAINS.slice(), own = _t368Crops(v);
@@ -5231,7 +5239,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   // 2.6) 봉쇄 시 직접 NPC 사망 없음. 봉쇄 효과는 교역 차단으로 식량 부족 → 자연스러운 사망 유도.
 
   // 3) Surplus EMA (식량 흐름) — food_equivalent 기준
-  const dailyFoodProd = totalFoodProductionEquivalent(dailyProduction, v);   // ★[T368] 둘째 인수 = 이 마을(주입 작물 값 · 끈 팔 0)
+  const dailyFoodProd = totalFoodProductionEquivalent(T1279_COOK ? Object.assign({}, dailyProduction, { cooked_food: 0 }) : dailyProduction, v);   // ★[T368] 둘째 인수 = 이 마을(주입 작물 값 · 끈 팔 0)   // ★[T1279] 켬 = 조리식 칸 0(요리는 옮김 · 끔 = 종전 글자)
   const dailySurplus = dailyFoodProd - foodNeed;
   v.surplusEMA.food = 0.95 * v.surplusEMA.food + 0.05 * dailySurplus;
 
@@ -7569,7 +7577,7 @@ module.exports = {
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
-  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1260_FOOD_READS, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1260_FOOD_READS, T1279_COOK, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   T1159_HOME_N, t1159HomeN,
