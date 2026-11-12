@@ -113,7 +113,7 @@ console.log(`     한 사람이 ${F.CFG.CAP}줌씩 훑어도 ${med.tot}자리가
 //   조잡한 돌도끼 = pebble 2 · twig 1 · fiber 2 (정본 RECIPES 에서 읽는다)
 //   ⚠`zone.js` 는 require 만으로 마을·교역로·도적을 깨운다(도적 배치 하나가 48초다).
 //     `test-emptystart` 가 쓰는 **조용한 적재 규약**을 그대로 따른다 — 하위계를 끄고 로그를 막는다.
-process.env.PORT = String(36400 + (process.pid % 150));
+process.env.PORT = String(require('./lib-port').port(36400));
 process.env.DB_PATH = `/tmp/es-metrics-${process.pid}.db`;
 process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
 process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

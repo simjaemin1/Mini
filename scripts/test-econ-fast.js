@@ -132,7 +132,7 @@ async function again(tag, db, days, on) {
   const out = path.join(TMP, tag + '.json'), run = path.join(TMP, tag + '-run.json'), mydb = path.join(TMP, tag + '.db');
   for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(db + s, mydb + s); } catch (e) {} }
   const env = knob(Object.assign({}, process.env, BASE, {
-    ZONE_ID: 'hanbando', PORT: String(39800 + (process.pid % 90) + (on ? 1 : 0) * 97), DB_PATH: mydb, ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
+    ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(on ? 39897 : 39800)), DB_PATH: mydb, ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
     VILLAGE_DAY_MS: '250', T315_MAPBEDS: '0', VILLAGE_NPC_CAP: '1', T640_BOOT_SLICE: '0', T577_SEED: '1020', T577_DAYS: String(days), T577_OUT: run,
     T862_PROBE_OUT: out, T745_VCLOCK: '1', NODE_OPTIONS: `${VCLOCK} --require ${PROBE}` }, v0Of(mydb) ? { T745_V0: v0Of(mydb) } : {}), on);
   const c = spawn(process.execPath, ['-r', path.join(ROOT, 'scripts', 't577-server-hook.js'), path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env, stdio: 'ignore' });

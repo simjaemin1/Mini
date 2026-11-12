@@ -67,6 +67,7 @@ const _stubs = {
   _t435On() { return false; },     // ★[T435] 곳간 증설 행위 손잡이 — 이 하네스는 **끈 판**(종전 날짜 규칙)을 잰다 · 켠 판은 `test-build-act ⑥`
   _t1053Deforest() { return 0; },  // ★[T1053] 곳간 자리 벌채 → 사냥터 장부(랩 `deforestArea(±3)`) — 이 하네스가 재는 층이 아니다(장부 몫은 `test-deforest-game` 이 잰다)
   T1238_TERR_V2: false,            // ★[T1238] 영토 v2 손잡이(villages.js 한 자리 · 끔 기본) — 잘라낸 두 함수가 그 이름을 읽는다(켬 = 곳간 터 5×3 만 벤다 · 켠 판은 `test-t1238-terr-v2`) · 이 하네스는 끈 판
+  _lifeEcon: () => require(path.join(__dirname, '..', 'sim', 'economy-sim.js')),   // ★[T1275 · main 빨강 고침] T1260 ③ 이 잘라낸 `_lifeGranAdd` 안에서 econ 정본 `t1260FoodOf` 를 부른다 — 바깥 이름을 econ 정본 모듈로 받아 준다(재구현 0 · 끔 기본 = `food` 칸)
 };
 const ctx = vm.createContext(Object.assign({ state, SZ, console, Math, Set, Map, Array, Object, JSON, Number }, _stubs));
 // ★[PM 2026-09-19 · 야간 09-19 빨강] T284 가 `_lifeCompleteGranary` 안에서 `_vbFootprint`(같은 파일 top-level)를 부른다 — 원문 그대로 같이 잘라 넣는다(사본 0 · 하네스 계약 그대로).

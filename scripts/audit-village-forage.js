@@ -87,7 +87,7 @@ function entsNear(x0, y0, rad) {
 // ★개체가 무엇을 주는지도 **하네스가 다시 정하지 않는다** — `zone.lootOfResource` 정본에게 물어본다.
 //   (zone.js 는 require 만으로 서버를 깨우므로 조용한 적재 규약을 쓴다 — `test-emptystart` 와 같은 방식.)
 const ZoneLoot = (() => {
-  process.env.PORT = process.env.PORT || String(36600 + (process.pid % 120));
+  process.env.PORT = process.env.PORT || String(require('./lib-port').port(36600));
   process.env.DB_PATH = process.env.DB_PATH || `/tmp/audit-vf-${process.pid}.db`;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
   process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

@@ -1,0 +1,383 @@
+{
+ "list": [
+  "test-npc-wild-sync.js",
+  "test-mob-respawn.js",
+  "test-wild-door.js",
+  "test-mob-hp-restart.js",
+  "test-route-sig.js",
+  "test-car-fast.js",
+  "test-return-resume.js",
+  "test-bigmap-cells.js"
+ ],
+ "solo": [
+  {
+   "h": "test-npc-wild-sync.js",
+   "code": 0,
+   "sum": "=== 10건 중 PASS 10 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 3
+  },
+  {
+   "h": "test-mob-respawn.js",
+   "code": 0,
+   "sum": "=== 16건 중 PASS 16 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 4.8
+  },
+  {
+   "h": "test-wild-door.js",
+   "code": 0,
+   "sum": "=== 26건 중 PASS 26 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 7.8
+  },
+  {
+   "h": "test-mob-hp-restart.js",
+   "code": 0,
+   "sum": "=== 20건 중 PASS 20 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 14.5
+  },
+  {
+   "h": "test-route-sig.js",
+   "code": 0,
+   "sum": "=== 10 통과 / 0 실패 ===",
+   "inuse": 0,
+   "sec": 111.8
+  },
+  {
+   "h": "test-car-fast.js",
+   "code": 0,
+   "sum": "=== 11 통과 / 0 실패 ===",
+   "inuse": 0,
+   "sec": 109.3
+  },
+  {
+   "h": "test-return-resume.js",
+   "code": 0,
+   "sum": "=== 11 통과 / 0 실패 ===",
+   "inuse": 0,
+   "sec": 107.5
+  },
+  {
+   "h": "test-bigmap-cells.js",
+   "code": 0,
+   "sum": "=== 30건 중 PASS 30 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 18.7
+  }
+ ],
+ "rounds": [
+  {
+   "k": 1,
+   "sec": 165,
+   "runs": [
+    {
+     "h": "test-npc-wild-sync.js",
+     "code": 0,
+     "sum": "=== 10건 중 PASS 10 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 11
+    },
+    {
+     "h": "test-mob-respawn.js",
+     "code": 0,
+     "sum": "=== 16건 중 PASS 16 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 15.8
+    },
+    {
+     "h": "test-wild-door.js",
+     "code": 0,
+     "sum": "=== 26건 중 PASS 26 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 24.4
+    },
+    {
+     "h": "test-mob-hp-restart.js",
+     "code": 0,
+     "sum": "=== 20건 중 PASS 20 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 35.9
+    },
+    {
+     "h": "test-route-sig.js",
+     "code": 0,
+     "sum": "=== 10 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 148.2
+    },
+    {
+     "h": "test-car-fast.js",
+     "code": 0,
+     "sum": "=== 11 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 154.5
+    },
+    {
+     "h": "test-return-resume.js",
+     "code": 0,
+     "sum": "=== 11 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 165.2
+    },
+    {
+     "h": "test-bigmap-cells.js",
+     "code": 0,
+     "sum": "=== 30건 중 PASS 30 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 43.4
+    }
+   ],
+   "ports": {
+    "n": 8,
+    "ports": 484,
+    "clash": 0,
+    "pairs": []
+   },
+   "listen": {
+    "n": 9,
+    "ports": 9,
+    "dup": 0
+   },
+   "same": true,
+   "diff": []
+  },
+  {
+   "k": 2,
+   "sec": 166,
+   "runs": [
+    {
+     "h": "test-npc-wild-sync.js",
+     "code": 0,
+     "sum": "=== 10건 중 PASS 10 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 10.3
+    },
+    {
+     "h": "test-mob-respawn.js",
+     "code": 0,
+     "sum": "=== 16건 중 PASS 16 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 15.7
+    },
+    {
+     "h": "test-wild-door.js",
+     "code": 0,
+     "sum": "=== 26건 중 PASS 26 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 22.7
+    },
+    {
+     "h": "test-mob-hp-restart.js",
+     "code": 0,
+     "sum": "=== 20건 중 PASS 20 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 34.8
+    },
+    {
+     "h": "test-route-sig.js",
+     "code": 0,
+     "sum": "=== 10 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 151.2
+    },
+    {
+     "h": "test-car-fast.js",
+     "code": 0,
+     "sum": "=== 11 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 152
+    },
+    {
+     "h": "test-return-resume.js",
+     "code": 0,
+     "sum": "=== 11 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 165.6
+    },
+    {
+     "h": "test-bigmap-cells.js",
+     "code": 0,
+     "sum": "=== 30건 중 PASS 30 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 41.9
+    }
+   ],
+   "ports": {
+    "n": 8,
+    "ports": 484,
+    "clash": 0,
+    "pairs": []
+   },
+   "listen": {
+    "n": 9,
+    "ports": 9,
+    "dup": 0
+   },
+   "same": true,
+   "diff": []
+  },
+  {
+   "k": 3,
+   "sec": 169,
+   "runs": [
+    {
+     "h": "test-npc-wild-sync.js",
+     "code": 0,
+     "sum": "=== 10건 중 PASS 10 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 10.9
+    },
+    {
+     "h": "test-mob-respawn.js",
+     "code": 0,
+     "sum": "=== 16건 중 PASS 16 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 16.2
+    },
+    {
+     "h": "test-wild-door.js",
+     "code": 0,
+     "sum": "=== 26건 중 PASS 26 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 23.5
+    },
+    {
+     "h": "test-mob-hp-restart.js",
+     "code": 0,
+     "sum": "=== 20건 중 PASS 20 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 36.2
+    },
+    {
+     "h": "test-route-sig.js",
+     "code": 0,
+     "sum": "=== 10 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 151.7
+    },
+    {
+     "h": "test-car-fast.js",
+     "code": 0,
+     "sum": "=== 11 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 153.4
+    },
+    {
+     "h": "test-return-resume.js",
+     "code": 0,
+     "sum": "=== 11 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 168.8
+    },
+    {
+     "h": "test-bigmap-cells.js",
+     "code": 0,
+     "sum": "=== 30건 중 PASS 30 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 42.6
+    }
+   ],
+   "ports": {
+    "n": 8,
+    "ports": 484,
+    "clash": 0,
+    "pairs": []
+   },
+   "listen": {
+    "n": 9,
+    "ports": 9,
+    "dup": 0
+   },
+   "same": true,
+   "diff": []
+  },
+  {
+   "k": 4,
+   "sec": 163,
+   "runs": [
+    {
+     "h": "test-npc-wild-sync.js",
+     "code": 0,
+     "sum": "=== 10건 중 PASS 10 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 12
+    },
+    {
+     "h": "test-mob-respawn.js",
+     "code": 0,
+     "sum": "=== 16건 중 PASS 16 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 16
+    },
+    {
+     "h": "test-wild-door.js",
+     "code": 0,
+     "sum": "=== 26건 중 PASS 26 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 23.3
+    },
+    {
+     "h": "test-mob-hp-restart.js",
+     "code": 0,
+     "sum": "=== 20건 중 PASS 20 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 34.9
+    },
+    {
+     "h": "test-route-sig.js",
+     "code": 0,
+     "sum": "=== 10 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 149.6
+    },
+    {
+     "h": "test-car-fast.js",
+     "code": 0,
+     "sum": "=== 11 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 154.3
+    },
+    {
+     "h": "test-return-resume.js",
+     "code": 0,
+     "sum": "=== 11 통과 / 0 실패 ===",
+     "inuse": 0,
+     "sec": 162.6
+    },
+    {
+     "h": "test-bigmap-cells.js",
+     "code": 0,
+     "sum": "=== 30건 중 PASS 30 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 44.3
+    }
+   ],
+   "ports": {
+    "n": 8,
+    "ports": 484,
+    "clash": 0,
+    "pairs": []
+   },
+   "listen": {
+    "n": 9,
+    "ports": 9,
+    "dup": 0
+   },
+   "same": true,
+   "diff": []
+  }
+ ],
+ "soloPorts": {
+  "n": 8,
+  "ports": 484,
+  "clash": 0,
+  "pairs": []
+ },
+ "soloListen": {
+  "n": 9,
+  "ports": 9,
+  "dup": 0
+ }
+}

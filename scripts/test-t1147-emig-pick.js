@@ -14,7 +14,7 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  âœ“ ' : '  âœ
 (async () => {
   const TMP = `/tmp/test-t1147-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-  Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(44000 + (process.pid % 900)), DB_PATH: TMP, ENABLE_VILLAGES: '1', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', LATENCY_MS: '0' });
+  Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(44000)), DB_PATH: TMP, ENABLE_VILLAGES: '1', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', LATENCY_MS: '0' });
   const _l = console.log, _w = console.warn, _e = console.error;
   console.log = () => {}; console.warn = () => {}; console.error = () => {};
   require(path.join(ROOT, 'server', 'zone.js'));

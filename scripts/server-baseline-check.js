@@ -24,6 +24,10 @@
 //     만들기 `--make 계측/서버기준선_전쟁_<날짜>.json --war` · 견주기 `계측/서버기준선_전쟁_<날짜>.json --war` · 판 끝 전쟁 누계(선포 · 전투 · 사상 · 포로)를 곁에 적는다.
 //   env 는 아이 판에 그대로 간다 — 손잡이를 켠 트리를 재려면 env 를 얹으면 된다(그 판은 갈려야 맞다).
 //   종료 코드: 같음 0 · 다름 1 · 판 실패 2.
+//   ★[T1280 · T1264 회부 3] **칸별 날 수** — 견준 날 수를 칸마다 센다: 경제(날 지문 · scanDay) · 생활층(= 마을 칸 지문 · t740-side-hook · `side`).
+//     기준선에 있는 칸을 기준선보다 적은 날(0일 포함) 견줬으면 **같음이 아니라 판 실패(2)** 다 — 종전엔 생활층 훅이 안 걸린 판(관찰기가 villages 를 먼저 실음)이
+//     '마을 칸 지문 0일 같음' · '없음(판)' 으로 같음을 냈다(T1259 끈 판 · T1264 OFF_GATE). 기대 날 수는 기준선 파일의 그 칸 날 줄에서 읽는다(새 수 0).
+//     결과줄 · 끝 줄에 `경제 n/N · 생활층 m/M` 을 찍는다. 만들기(--make)도 칸 날 수가 판 날보다 적으면 안 쓴다(2).
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -200,7 +204,11 @@ if (MAKE) {
   const seeds = {};
   for (const s of SEEDS) { const o = R.out[s]; if (!o) { console.log(`  ✗ 시드 ${s} 판 실패`); process.exit(2); } seeds[s] = { eight: o.eight, dissolved: o.dissolved, empty: o.empty, runHash: o.runHash, names: o.names, days: o.days };
     if (WAR) seeds[s].war = o.war;   // ★[T1041] 전쟁 누계(기록 · 견줌은 날 지문)
-    if (SIDE) { if (!o.side) { console.log(`  ✗ 시드 ${s} 마을 칸 지문 없음`); process.exit(2); } seeds[s].side = o.side; } }
+    if (SIDE) { if (!o.side) { console.log(`  ✗ 시드 ${s} 마을 칸 지문 없음`); process.exit(2); } seeds[s].side = o.side; }
+    //   ★[T1280] 칸별 날 수 — 판 날보다 적게 찍힌 칸은 기준선으로 쓰지 않는다(생활층 훅이 안 걸린 판 · 짧게 죽은 판)
+    const sd = SIDE ? o.side.days.filter((r) => r[0] <= DAYS).length : null;
+    console.log(`  · 시드 ${s} 칸별 날 수: 경제 ${o.days.length}/${DAYS}${SIDE ? ` · 생활층(마을 칸) ${sd}/${DAYS}` : ''}`);
+    if (o.days.length < DAYS || (SIDE && sd < DAYS)) { console.log(`  ✗ 시드 ${s}: 판 실패 — 칸 날 수가 판 날(${DAYS})보다 적다 · 기준선을 쓰지 않는다`); process.exit(2); } }
   let head = ''; try { head = require('child_process').execSync('git rev-parse --short=8 HEAD', { cwd: ROOT, encoding: 'utf8' }).trim(); } catch (e) {}
   const doc = { made: new Date().toISOString().slice(0, 10), head, days: DAYS, seeds: SEEDS, cond: COND, clock: 'VILLAGE_DAY_MS=250(t577 기본)' + (VCLOCK ? ' · 가상 시계(T745 --vclock)' : '')
       + ` · 교전 몫 T941_BATTLE_DAY=${process.env.T941_BATTLE_DAY != null ? process.env.T941_BATTLE_DAY : '1(t577 기본 · T959)'}`
@@ -218,27 +226,44 @@ if (MAKE) {
 
 // 견주기
 const PARTS = ['st(곳간)', 'pp(인구·주민)', 'hs(주거·확장·해체)', 'tr(금고)'];
-let bad = 0, firstBad = null;
+let bad = 0, failed = 0, firstBad = null;
 const res = {};
+//   ★[T1280] 칸별 날 수 — [견준 날, 기준선 날] · 생활층은 기준선에 `side` 가 있을 때만 칸이다(없으면 null)
+const covTot = { econ: [0, 0], side: [0, 0], sideAny: false };
+function coverage(o, b, DS) {
+  const econ = [Math.min(o.days.length, b.days.length, DS), Math.min(b.days.length, DS)];
+  let side = null;
+  if (b.side) {
+    const exp = b.side.days.filter((r) => r[0] <= DS).length;
+    let got = 0;
+    if (SIDE && o.side) { const bd = new Set(b.side.days.map((r) => r[0])); for (const r of o.side.days) if (r[0] <= DS && bd.has(r[0])) got++; }
+    side = [got, exp];
+  }
+  return { econ, side, short: econ[0] < econ[1] || (side && side[0] < side[1]) };
+}
+const covTxt = (c) => `칸별 날 수: 경제 ${c.econ[0]}/${c.econ[1]} · 생활층(마을 칸) ${c.side ? `${c.side[0]}/${c.side[1]}` : '기준선에 없음'}`;
 for (const s of SEEDS) {
   const b = base.byseed[s], o = R.out[s];
   if (!b) { console.log(`  ? 시드 ${s}: 기준선에 없음`); continue; }
-  if (!o) { console.log(`  ✗ 시드 ${s}: 판 실패`); bad++; continue; }
+  if (!o) { console.log(`  ✗ 시드 ${s}: 판 실패`); failed++; continue; }
   const DS = DAYS_OF[s];
-  const n = Math.min(o.days.length, b.days.length, DS);
+  const cov = coverage(o, b, DS);
+  covTot.econ[0] += cov.econ[0]; covTot.econ[1] += cov.econ[1]; if (cov.side) { covTot.sideAny = true; covTot.side[0] += cov.side[0]; covTot.side[1] += cov.side[1]; }
+  const n = cov.econ[0];
   let fd = null;
   for (let i = 0; i < n; i++) if (o.days[i][2] !== b.days[i][2]) { fd = i; break; }
   const full = DS >= base.days;
   const endSame = full ? (o.runHash === b.runHash && JSON.stringify(o.eight) === JSON.stringify(b.eight)) : null;
-  if (fd == null && o.days.length < Math.min(DS, b.days.length)) fd = o.days.length;   // 판이 짧게 끝났다
   //   ★[T754] 마을 칸 지문(기준선에 있고 이 판이 가상 시계 · 마을 칸 판일 때)
   const sc = (b.side && SIDE) ? sideCompare(o.side, b.side, DS) : null;
-  if (sc && sc.day != null) { bad++; console.log(`  ✗ 시드 ${s}: econ 날 지문 ${fd == null ? n + '일 같음' : '날 ' + o.days[fd][0] + ' 갈림'} · 마을 칸 첫 갈림 = 날 ${sc.day} · 칸 ${sc.fields.length} — ${sc.fields.slice(0, 8).join(' · ')}${sc.fields.length > 8 ? ' …' : ''}`);
-    res[s] = { same: false, sideDay: sc.day, sideFields: sc.fields, econDay: fd == null ? null : o.days[fd][0] }; if (!firstBad || sc.day < firstBad.day) firstBad = { seed: s, day: sc.day }; continue; }
-  const sideTxt = sc ? (sc.same ? ` · 마을 칸 지문 ${sc.cmpd}일 같음` : ' · 마을 칸 지문 없음(판)') : '';
-  if (fd == null && endSame !== false) { console.log(`  ○ 시드 ${s}: 날 지문 ${n}일 같음${full ? ` · 판 JSON · 여덟 수 같음(인구 ${o.eight.pop})` : ' (짧은 판 — 앞 날만)'}${sideTxt}`); res[s] = { same: true, days: n }; continue; }
+  if (sc && sc.day != null) { bad++; console.log(`  ✗ 시드 ${s}: econ 날 지문 ${fd == null ? n + '일 같음' : '날 ' + o.days[fd][0] + ' 갈림'} · 마을 칸 첫 갈림 = 날 ${sc.day} · 칸 ${sc.fields.length} — ${sc.fields.slice(0, 8).join(' · ')}${sc.fields.length > 8 ? ' …' : ''} · ${covTxt(cov)}`);
+    res[s] = { same: false, sideDay: sc.day, sideFields: sc.fields, econDay: fd == null ? null : o.days[fd][0], cov }; if (!firstBad || sc.day < firstBad.day) firstBad = { seed: s, day: sc.day }; continue; }
+  //   ★[T1280] 견준 날 안에서 갈림이 없는데 칸 하나라도 기준선보다 적은 날을 견줬다 → 같음이 아니라 판 실패
+  if (fd == null && cov.short) { failed++; console.log(`  ✗ 시드 ${s}: 판 실패 — 견준 날이 기준선보다 적다(같음 아님) · ${covTxt(cov)}${cov.side && cov.side[0] === 0 ? (SIDE ? ' — 생활층 훅이 안 걸렸다(t740 · villages 를 먼저 실은 프리로드?)' : ' — 이 판은 생활층을 안 쟀다(--vclock · --side on 이어야 한다)') : ''}`);
+    res[s] = { same: false, short: true, cov }; continue; }
+  if (fd == null && endSame !== false) { console.log(`  ○ 시드 ${s}: 날 지문 ${n}일 같음${full ? ` · 판 JSON · 여덟 수 같음(인구 ${o.eight.pop})` : ' (짧은 판 — 앞 날만)'}${sc ? ` · 마을 칸 지문 ${sc.cmpd}일 같음` : ''} · ${covTxt(cov)}`); res[s] = { same: true, days: n, cov }; continue; }
   bad++;
-  if (fd == null) { console.log(`  ✗ 시드 ${s}: 날 지문 ${n}일은 같은데 판 끝이 다르다(판 JSON ${o.runHash} / ${b.runHash} · 인구 ${o.eight.pop} / ${b.eight.pop})`); res[s] = { same: false, end: true }; continue; }
+  if (fd == null) { console.log(`  ✗ 시드 ${s}: 날 지문 ${n}일은 같은데 판 끝이 다르다(판 JSON ${o.runHash} / ${b.runHash} · 인구 ${o.eight.pop} / ${b.eight.pop}) · ${covTxt(cov)}`); res[s] = { same: false, end: true, cov }; continue; }
   const od = o.days[fd], bd = b.days[fd];
   const diffs = [];
   for (let v = 0; v < Math.max(od[3].length, bd[3].length); v++) {
@@ -251,12 +276,13 @@ for (const s of SEEDS) {
   if (o.dump && o.dump.length) {   // SBC_DUMP_DAY 판 — 갈린 마을의 그날 칸 값(지금 트리)
     for (const nm of diffs.slice(0, 3).map((x) => x.split('[')[0])) { const r = o.dump.find((q) => q.name === nm); if (r) console.log(`      지금 ${nm}: 인구 ${r.pop} · 직업 ${JSON.stringify(r.jobs)} · 주거·확장·해체 ${JSON.stringify(r.hs)} · 곳간 통나무 ${r.st.wood} · 식량 ${r.st.food}`); }
   }
-  res[s] = { same: false, day: od[0], diffs };
+  res[s] = { same: false, day: od[0], diffs, cov };
   if (!firstBad || od[0] < firstBad.day) firstBad = { seed: s, day: od[0] };
 }
 if (WAR) for (const s of SEEDS) { const w = (R.out[s] && R.out[s].war) || {}, b = (base.byseed[s] && base.byseed[s].war) || {}; console.log(`  시드 ${s} 전쟁(지금 / 기준선): 선포 ${w.decl}/${b.decl} · 전투 ${w.battle}/${b.battle} · 사상 ${w.cas}/${b.cas} · 포로 ${w.captured}/${b.captured}`); }
 if (firstBad && !process.env.SBC_DUMP_DAY) console.log(`\n  (그날 칸 값을 보려면: SBC_DUMP_DAY=${firstBad.day} 로 시드 ${firstBad.seed} 한 판 — 판 JSON 옆 .sbc.json 의 dump)`);
-console.log(`\n=== ${bad ? `다름 ${bad}/${SEEDS.length}` : `같음 ${SEEDS.length}/${SEEDS.length}`} · 판 ${R.sec}초 ===`);
+const covAll = `경제 ${covTot.econ[0]}/${covTot.econ[1]} · 생활층 ${covTot.sideAny ? `${covTot.side[0]}/${covTot.side[1]}` : '기준선에 없음'}`;   // ★[T1280] 끝 줄에 칸별 날 수
+console.log(`\n=== ${failed ? `판 실패 ${failed}/${SEEDS.length}${bad ? ` · 다름 ${bad}` : ''}` : bad ? `다름 ${bad}/${SEEDS.length}` : `같음 ${SEEDS.length}/${SEEDS.length}`} · ${covAll} · 판 ${R.sec}초 ===`);
 fs.writeFileSync(path.join(tmp, 'check.json'), JSON.stringify({ base: BASE, plan: DAYS_OF, seeds: SEEDS, sec: R.sec, per: R.per, res }, null, 1));
-process.exit(bad ? 1 : 0);
+process.exit(failed ? 2 : bad ? 1 : 0);   // ★[T1280] 판 실패(칸 날 수 모자람 · 판 없음) 2 가 다름 1 보다 앞선다
 })();

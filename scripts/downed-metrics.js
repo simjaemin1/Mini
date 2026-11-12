@@ -22,7 +22,7 @@ const N = Math.max(20, parseInt(process.argv[2], 10) || 200);
 const TMP = `/tmp/downed-metrics-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(37600 + (process.pid % 150));
+process.env.PORT = String(require('./lib-port').port(37600));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '1';
 process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

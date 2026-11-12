@@ -89,7 +89,7 @@ function zoneRun() {
   const TMP = `/tmp/t789-granary-rot-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.env.ZONE_ID = 'hanbando';
-  process.env.PORT = String(42900 + (process.pid % 90));
+  process.env.PORT = String(require('./lib-port').port(42900));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
   process.env.MEMBER_WD_MIN = '100000'; process.env.MEMBER_WD_FRAC = '1';   // 한도 손잡이만(곳간 · 환산 · 나이는 그대로)

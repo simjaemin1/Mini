@@ -1,0 +1,17 @@
+① 홀로 — 8개 차례로
+  test-npc-wild-sync.js rc=0 3s · === 10건 중 PASS 10 · FAIL 0 ===
+  test-mob-respawn.js rc=0 4.8s · === 16건 중 PASS 16 · FAIL 0 ===
+  test-wild-door.js rc=0 7.8s · === 26건 중 PASS 26 · FAIL 0 ===
+  test-mob-hp-restart.js rc=0 14.5s · === 20건 중 PASS 20 · FAIL 0 ===
+  test-route-sig.js rc=0 111.8s · === 10 통과 / 0 실패 ===
+  test-car-fast.js rc=0 109.3s · === 11 통과 / 0 실패 ===
+  test-return-resume.js rc=0 107.5s · === 11 통과 / 0 실패 ===
+  test-bigmap-cells.js rc=0 18.7s · === 30건 중 PASS 30 · FAIL 0 ===
+  홀로 묶음: 포트 9(listen 9) · 할당 8
+② 동시 판 1: 165s · 범위 8(포트 484) · 겹침 0 · 묶음 9(listen 9 · 두 하네스 같은 포트 0) · EADDRINUSE 0 · 홀로와 같음 8/8
+② 동시 판 2: 166s · 범위 8(포트 484) · 겹침 0 · 묶음 9(listen 9 · 두 하네스 같은 포트 0) · EADDRINUSE 0 · 홀로와 같음 8/8
+② 동시 판 3: 169s · 범위 8(포트 484) · 겹침 0 · 묶음 9(listen 9 · 두 하네스 같은 포트 0) · EADDRINUSE 0 · 홀로와 같음 8/8
+② 동시 판 4: 163s · 범위 8(포트 484) · 겹침 0 · 묶음 9(listen 9 · 두 하네스 같은 포트 0) · EADDRINUSE 0 · 홀로와 같음 8/8
+
+=== 동시 8 × 4판 · 겹침 0 · 홀로와 같음 전부 ===
+rc=0

@@ -42,7 +42,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const exitOf = (c, ms) => new Promise((res) => { const k = setTimeout(() => { try { c.kill('SIGKILL'); } catch (e) {} }, ms); c.on('exit', (code) => { clearTimeout(k); res(code); }); });
 const jget = (port, p, ms) => new Promise((res) => { const q = http.get({ host: '127.0.0.1', port, path: p, headers: { 'x-zone-secret': 't929' }, timeout: ms || 15000 }, (r) => {
   let b = ''; r.on('data', (d) => { b += d; }); r.on('end', () => { try { res(JSON.parse(b)); } catch (e) { res(null); } }); }); q.on('error', () => res(null)); q.on('timeout', () => { q.destroy(); res(null); }); });
-const base = 39000 + (process.pid % 400);
+const base = require('./lib-port').ports(2, 39000);
 delete process.env.T929_RET_RESUME;
 
 async function arm(tag, on, k) {

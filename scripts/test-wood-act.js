@@ -121,7 +121,8 @@ console.log("\n③ ⓒ 이중 0 — 켠 마을에서 `addProduce('wood')` 가 �
     '③ ★부산물(수지·껍질·도토리)은 **손 안 댔다** — `baseAmt` 를 그대로 타고 나간다');
   ok(/if \(npc\.currentJob === 'lumberjack' && woodActOn\(v\)\) npc\._t172mul = skillMul \* toolBoost \* inputMult;/.test(C),
     '③ ★걷어낸 자리에 **배율만 남겨 둔다**(T179 규약 · 실체 쪽이 읽는다)');
-  ok(/const _t325In = T325_WOOD_ACT \? \(v\._t325InflowToday \|\| 0\) : 0;/.test(C)
+  //   ★[T1275] 영토 v2 표지 마을(`_t1238Land`)은 수식 나무꾼 세계에서도 개간 통나무가 이 칸으로 든다 — 같은 한 줄에 표지가 붙었다(끔 세계 = 표지 없음 = 종전 값)
+  ok(/const _t325In = \(T325_WOOD_ACT \|\| v\._t1238Land\) \? \(v\._t325InflowToday \|\| 0\) : 0;/.test(C)
      && /dailyProductionPotential\.wood = \(dailyProductionPotential\.wood \|\| 0\) \+ _t325In;/.test(C)
      && /dailyProduction\.wood = \(dailyProduction\.wood \|\| 0\) \+ _t325In;/.test(C),
     '③ ★★장부 다리가 **틱 안 한 줄**이다(T193·T312 가 연 그 자리 — 생활층에서 적으면 리셋이 지운다)');
@@ -216,7 +217,8 @@ console.log('\n⑥ ⓐ 관측자 무관 · ⓕ 벤 그루는 없어지고 벤 �
 console.log('\n⑦ 끄면 비트 동일 — 새 줄이 전부 손잡이 뒤에 있다');
 {
   const C = codeOf(SRC), VC = codeOf(VSRC);
-  ok(/if \(!T325_WOOD_ACT \|\| !v \|\| !v\.storage\) return 0;/.test(C), '⑦ ★곳간 입구 첫 줄이 손잡이다');
+  //   ★[T1275] 곳간 입구 — 손잡이가 꺼지면 0 이 종전 그대로이고, 영토 v2 표지 마을(`_t1238Land` — 서버가 켬에서만 심는다)만 개간 통나무를 말뚝 모자람까지 받는다(끔 세계 · 랩 = 표지 없음 = 0)
+  ok(/function woodToGranary\(v, units\) \{\n  if \(!v \|\| !v\.storage\) return 0;\n  if \(!T325_WOOD_ACT\) return v\._t1238Land \? actToGranary\(v, 'wood', actDemandCap\(v, units, v\._t1207Need \|\| 0, '_t325InflowToday'\), '_t325InflowToday', '_t325CutN'\) : 0;/.test(C), '⑦ ★곳간 입구 — 손잡이 끔이면 0(영토 v2 표지 마을만 T1275 개간 통나무 입구)');
   ok(/function woodActOn\(v\) \{ return !!\(T325_WOOD_ACT/.test(C), '⑦ ★게이트도 손잡이가 첫 항이다');
   ok(/if \(job === 'lumberjack' && vil\.econ && _lifeEcon\(\)\.woodActOn\(vil\.econ\)\) \{/.test(VC),
     '⑦ ★★생활층 벌목 블록이 **통째로** 손잡이 뒤다(끄면 종전 갈래가 그대로 돈다)');

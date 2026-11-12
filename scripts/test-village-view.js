@@ -43,7 +43,7 @@ const codeOnly = require('./code-only.js');   // 주석 제거기 정본(사본 
 const TMP = `/tmp/test-village-view-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(36000 + (process.pid % 800));
+process.env.PORT = String(require('./lib-port').port(36000));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '1'; process.env.VILLAGE_MAX = process.env.VILLAGE_MAX || '2';
 process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

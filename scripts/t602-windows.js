@@ -21,7 +21,7 @@ const path = require('path'), fs = require('fs');
 const ROOT = path.join(__dirname, '..');
 const ZID = process.env.ZONE_ID || 'hanbando';
 const TMP = `/tmp/t602-win-${process.pid}.db`;
-process.env.ZONE_ID = ZID; process.env.PORT = String(42000 + (process.pid % 800)); process.env.DB_PATH = TMP;
+process.env.ZONE_ID = ZID; process.env.PORT = String(require('./lib-port').port(42000)); process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
 process.env.FISH_TICK_MS = '999000';
 if (process.env.T602_NEW_FISH == null) process.env.T602_NEW_FISH = '1';   // 새 어종 일곱도 줄로 낸다(그 종의 자리만 — 다른 종은 무변)

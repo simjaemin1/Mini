@@ -113,7 +113,7 @@ function parent() {
   const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
   const seen = (m) => console.log(`  [관찰] ${m}`);
   const TMPD = fs.mkdtempSync('/tmp/t987-rs-');
-  let port = 38300 + (process.pid % 12) * 4;   // 판 넷 = 네 자리(다른 하네스가 안 쓰는 띠)
+  let port = require('./lib-port').ports(4, 38300);   // 판 넷 = 네 자리(다른 하네스가 안 쓰는 띠)
   const R = {};
   for (const knob of ['on', 'off']) for (const host of ['meek', 'hostile']) {
     const key = `${knob}-${host}`, db = path.join(TMPD, `${key}.db`), out = path.join(TMPD, `${key}.json`);

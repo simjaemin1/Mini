@@ -54,7 +54,7 @@ if (process.env.T1128_SUB === 'zone') {
   const TMP = `/tmp/t1128-kcal-tidy-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.env.ZONE_ID = 'hanbando';
-  process.env.PORT = String(42800 + (process.pid % 90));
+  process.env.PORT = String(require('./lib-port').port(42800));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
   const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
