@@ -53,8 +53,12 @@ const STALL = SLOW ? Math.max(0, parseFloat(opt('--slow-stall', '40')) || 0) : 0
 //   ★[T1287 · T1280 회부 2] 머묾 멈춤 — 느린 틱 판은 장인 몸의 사다리 머묾마다 한 번 존 틱 머리에서 이 ms 를 바쁘게 쓴다(틱 자 `T1287_DWELL_STALL_MS`).
 //     기본 6000 = 장인 머묾 가장 긴 것(`G_STOREW` 6초 · villages.js) — 벽시계로 머묾을 재면 다음 틱에 끝난다(상자 빠르기와 무관 · `--slow-dwell 0` = 종전).
 const CLOSE = SLOW ? Math.max(0, parseFloat(opt('--slow-dwell', '6000')) || 0) : 0;   // ★[T1268] 느린 틱 판 — 존 본 틱 머리마다 바쁜 ms(첫 econ 날 뒤 · 틱 자 `T1268_TICK_STALL_MS`)
+//   ★[T1287 · T1280 회부 2 — 미끼 ④ 가 판마다 뒤집힌 진짜 까닭] 낮밤 위상 고정 — 굽기(벽시계) 판 아이 존의 벽시계를 상수 하나만큼 당겨 게임 0시에서 출발시킨다
+//     (가상 시계 판 V0 = 2026-01-01T00:00Z 와 같은 위상 · 틱 자 `T1287_PHASE0=1`). 종전엔 띄운 실제 시각의 게임 시각에서 출발해, 굽기가 게임 저녁 ~ 밤(16.8시 ~)에 걸리면
+//     몸의 일과가 내내 취침이라 장인 머묾 0 → 미끼 ④ 같음(T1287 20판 중 6판 — 부하가 아니라 띄운 시각). `--phase real` = 종전(실제 시각 위상).
+const PHASE_REAL = A.includes('--phase') && opt('--phase', '') === 'real';
 const METER = path.join(__dirname, 't1268-tick-meter.js');
-if (!(DAYS > 0) || !/^\d+(,\d+)*$/.test(SEEDS)) { console.error('쓰는 법: [--days 400] [--seeds 1020,7,42] [--load N] [--keep <out.json>] [--slow [--slow-loops N]]'); process.exit(2); }
+if (!(DAYS > 0) || !/^\d+(,\d+)*$/.test(SEEDS)) { console.error('쓰는 법: [--days 400] [--seeds 1020,7,42] [--load N] [--keep <out.json>] [--slow [--slow-loops N]] [--phase real]'); process.exit(2); }
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-house-'));
 const BAKE = KEEP ? path.resolve(KEEP) : path.join(TMP, 'house.json');
@@ -78,6 +82,7 @@ function sbc(args, tag, how) {
     const env = Object.assign({}, process.env, { TMPDIR: TMP });
     if (how.meter) env.NODE_OPTIONS = `${process.env.NODE_OPTIONS || ''} --require ${METER}`.trim();   // ★[T1268] 굽기 판 아이 존 틱 자(읽기만)
     if (how.stall) env.T1268_TICK_STALL_MS = String(how.stall); else delete env.T1268_TICK_STALL_MS;
+    if (how.meter && !PHASE_REAL) env.T1287_PHASE0 = '1'; else delete env.T1287_PHASE0;   // ★[T1287] 낮밤 위상 고정(굽기 판 · 틱 자가 아이 존에서 건다)
     if (how.close) env.T1287_DWELL_STALL_MS = String(how.close); else delete env.T1287_DWELL_STALL_MS;   // ★[T1287] 머묾 멈춤(느린 틱 판만)   // ★[T1268] 느린 틱 판만(틱 자가 틱 머리에서 쓴다)
     const t0 = Date.now();
     const ch = how.pin ? spawn('taskset', ['-c', CORE, process.execPath, SBC, ...args], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
@@ -97,7 +102,7 @@ function readMeters() {
   const walk = (d) => { let es = []; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; } for (const e of es) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (/\.t1268tick\.json$/.test(e.name)) { try { out.push(JSON.parse(fs.readFileSync(p, 'utf8'))); } catch (x) {} } } };
   walk(TMP);
   const avg = (f) => { const v = out.map(f).filter((x) => Number.isFinite(x)); return v.length ? +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : null; };
-  return { n: out.length, ticks: out.reduce((a, m) => a + ((m.gap && m.gap.n) || 0), 0), stalled: out.reduce((a, m) => a + (m.stalled || 0), 0), closed: out.reduce((a, m) => a + (m.dwellStalled || 0), 0), p50: avg((m) => m.gap.p50), mean: avg((m) => m.gap.mean), p95: avg((m) => m.gap.p95), body: avg((m) => m.body.mean), day: avg((m) => m.day.mean) };
+  return { n: out.length, ticks: out.reduce((a, m) => a + ((m.gap && m.gap.n) || 0), 0), stalled: out.reduce((a, m) => a + (m.stalled || 0), 0), closed: out.reduce((a, m) => a + (m.dwellStalled || 0), 0), phase0: out.length > 0 && out.every((m) => m.phase0 && m.phaseOk), hour0: avg((m) => m.hour0), p50: avg((m) => m.gap.p50), mean: avg((m) => m.gap.mean), p95: avg((m) => m.gap.p95), body: avg((m) => m.body.mean), day: avg((m) => m.day.mean) };
 }
 (async () => {
   const knobs = Object.keys(process.env).filter((k) => /^T\d+_/.test(k)).sort().map((k) => `${k}=${process.env[k]}`);
@@ -111,7 +116,7 @@ function readMeters() {
   const mk = await sbc(['--make', BAKE, '--days', String(DAYS), '--seeds', SEEDS, '--house'], '굽기', { pin: PIN, meter: true, stall: STALL, close: CLOSE });
   stopLoops();
   const M = readMeters();
-  const tickTxt = M.n ? `틱 간격 p50 ${M.p50}ms · 평균 ${M.mean}ms · p95 ${M.p95}ms · 본문 평균 ${M.body}ms · econ 날 ${M.day}ms(${M.ticks}틱${M.stalled ? ` · 늦춘 틱 ${M.stalled}` : ''}${M.closed ? ` · 머묾 멈춤 ${M.closed}` : ''} · 판 ${M.n})` : '틱 자 없음';
+  const tickTxt = M.n ? `틱 간격 p50 ${M.p50}ms · 평균 ${M.mean}ms · p95 ${M.p95}ms · 본문 평균 ${M.body}ms · econ 날 ${M.day}ms(${M.ticks}틱${M.stalled ? ` · 늦춘 틱 ${M.stalled}` : ''}${M.closed ? ` · 머묾 멈춤 ${M.closed}` : ''} · 판 ${M.n}) · 낮밤 ${M.phase0 ? '0시 고정' : '실제 시각'}(첫 날 게임 ${M.hour0}시)` : '틱 자 없음';
   console.log(`  [틱 자] ${slowTxt} · ${tickTxt}`);
   if (mk.code !== 0) { console.log(`GATE-HOUSE FAIL · 굽기 판 실패(나감 ${mk.code}) · ${mk.sec}초`); process.exit(2); }
   // ② 그 판 ↔ 가상 시계

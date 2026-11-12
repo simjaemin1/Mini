@@ -22,6 +22,24 @@ const fs = require('fs');
 const path = require('path');
 const { performance } = require('perf_hooks');
 const OUT = process.env.T577_OUT + '.t1268tick.json';
+// ★[T1287 · T1280 회부 2 — 미끼 ④ 가 판마다 뒤집힌 진짜 까닭] 낮밤 위상 고정 갈래(`T1287_PHASE0=1` — 게이트 `gate-house.js` 가 굽기 판에 늘 준다 · `--phase real` = 종전).
+//   몸의 일과(`villages.js` 스케줄 게이트 · `worldPhase(now)` ≥ `dayPhaseRatio` 0.7 = 밤 → 귀가 · 취침)는 **벽시계 시각**의 낮밤을 읽는다(`zone-config` WORLD
+//   `worldEpoch` 0 · `dayLengthMs` 24분). 가상 시계 판(`t745-vclock` V0 = 2026-01-01T00:00Z)은 늘 게임 0시에서 출발하는데, 벽시계 굽기 판은 **띄운 실제 시각**의
+//   게임 시각에서 출발했다 — 20날 굽기(≈ 2 ~ 4 게임 시간)가 게임 16 ~ 23시에 걸리면 장인 몸이 내내 자서 사다리 머묾이 0이고 미끼 ④ 가 갈릴 거리가 없었다
+//   (T1287 바쁜 상자 10판 · 한가한 상자 10판: 굽기 게임 시각 16.1 ~ 22.9시에 걸린 6판 = 머묾 멈춤 0 · 미끼 ④ 같음 / 나머지 14판 = 머묾 멈춤 섬 · 갈림).
+//   ⇒ 켜면 이 아이 존의 벽시계(`Date.now` · 인수 없는 `new Date()`)를 **상수 하나**만큼 당겨 프리로드 순간을 게임 0시(V0 와 같은 위상)에 둔다 —
+//     흐름 · 간격 · 단조 시계(`performance.now`)는 그대로(상수 차만) · 세계 값 · 차례 무변 · 제품 0. 하루 길이는 아래 상수(끝에 `zone-config` 와 맞대 `phaseOk` 로 적는다).
+const PHASE0 = process.env.T1287_PHASE0 === '1';
+const PHASE_DAY = 24 * 60 * 1000;   // zone-config WORLD.dayLengthMs (판 끝에 맞대 본다 — 프리로드는 zone-config 를 먼저 안 싣는다)
+let phaseOff = 0, hour0 = null;
+if (PHASE0) {
+  const RD = Date, rnow = RD.now.bind(RD);
+  phaseOff = -(rnow() % PHASE_DAY);
+  const PDate = function (...a) { if (!new.target) return new RD(rnow() + phaseOff).toString(); return a.length ? new RD(...a) : new RD(rnow() + phaseOff); };
+  PDate.prototype = RD.prototype; Object.setPrototypeOf(PDate, RD);
+  PDate.now = () => rnow() + phaseOff; PDate.parse = RD.parse; PDate.UTC = RD.UTC;
+  global.Date = PDate;
+}
 const T30 = (ms) => Math.abs(+ms - 1000 / 30) < 2;
 const STALL = Math.max(0, parseFloat(process.env.T1268_TICK_STALL_MS || '0') || 0);
 const DWELL = Math.max(0, parseFloat(process.env.T1287_DWELL_STALL_MS || '0') || 0);   // ★[T1287] 머묾마다 한 번
@@ -57,7 +75,7 @@ const dayAt = [];
   const mk = Ev.createLedger;
   Ev.createLedger = function () {
     const L = mk.apply(this, arguments); const sd = L.scanDay; let last = -1;
-    L.scanDay = function (world, day) { try { if ((day | 0) !== last) { last = day | 0; dayAt.push(performance.now()); stallOn = true; } } catch (e) {} return sd.apply(this, arguments); };
+    L.scanDay = function (world, day) { try { if ((day | 0) !== last) { last = day | 0; dayAt.push(performance.now()); stallOn = true; if (hour0 == null) hour0 = +(((Date.now() % PHASE_DAY) + PHASE_DAY) % PHASE_DAY / PHASE_DAY * 24).toFixed(2); } } catch (e) {} return sd.apply(this, arguments); };
     return L;
   };
 }
@@ -71,6 +89,7 @@ process.on('exit', () => {
   try {
     const main = loops.slice().sort((x, y) => y.sum - x.sum)[0] || { gaps: [], body: [] };
     const dg = []; for (let i = 1; i < dayAt.length; i++) dg.push(dayAt[i] - dayAt[i - 1]);
-    fs.writeFileSync(OUT, JSON.stringify({ loops30: loops.length, stallMs: STALL, stalled: stallN, dwellMs: DWELL, dwellStalled: dwellN, gap: stat(main.gaps), body: stat(main.body), day: stat(dg) }));
+    fs.writeFileSync(OUT, JSON.stringify({ loops30: loops.length, stallMs: STALL, stalled: stallN, dwellMs: DWELL, dwellStalled: dwellN, phase0: PHASE0, hour0,
+      phaseOk: (() => { try { const z = require.cache[path.join(__dirname, '..', 'server', 'zone-config.js')]; return !!(z && z.exports.WORLD && z.exports.WORLD.dayLengthMs === PHASE_DAY && !z.exports.WORLD.worldEpoch); } catch (e) { return false; } })(), gap: stat(main.gaps), body: stat(main.body), day: stat(dg) }));
   } catch (e) { /* 계측 실패는 세계에 0 */ }
 });
