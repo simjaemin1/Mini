@@ -4177,7 +4177,32 @@ function getRouteResumable(aVil, bVil, budgetMs) {
 //   실체→econ 역방향은 차단(지연·고립)뿐 — 모듈 헤더 'Stage 4B' 참조.
 // =============================================================================
 function econDayToMs(econDay) { // econ world.day D의 게임일 경계 절대시각(ms) — 앵커: 현 lastGameDay↔world.day 정렬
-  return state.epoch + ((T731_ON && state._t731Anchor != null ? state._t731Anchor : state.lastGameDay) + (econDay - state.world.day)) * state.dayMs;   // ★[T731] 켬 = 창이 열린 순간(동쪽 끝 자정)에 앵커
+  const _wd = (T1253_CLOCK_FIX && state._t1282D === (state.world.day | 0) && (state.tickJobs || state._t731 || state._t1253Edge)) ? state.world.day + 1 : state.world.day;   // ★[T1289] 켬 · 마감 틈(앵커는 이미 새 날 · world.day 는 아직 닫는 날) = econ 머리 뒤와 같은 정렬(끔 = 종전 `world.day`)
+  return state.epoch + ((T731_ON && state._t731Anchor != null ? state._t731Anchor : state.lastGameDay) + (econDay - _wd)) * state.dayMs;   // ★[T731] 켬 = 창이 열린 순간(동쪽 끝 자정)에 앵커
+}
+// ★★[T1289 2026-11-12 · 켬 갈래만(`T1253_CLOCK_FIX`) — 끔 = 아래 줄들이 안 불린다 · `econDayToMs` 는 `_t1282D` 가 안 서서 종전 셈] **캐러밴 몸 시각 칸을 econ 날 시계 축 하나로.**
+//   ① 마감 틈(T1282 회부 3): 마감을 연 순간 앵커(`lastGameDay` · `_t731Anchor`)가 먼저 오르고 world.day 는 econ 머리에서 오른다 — 그 틈에 `econDayToMs(D)` 는
+//      하루 늦은 경계(닫는 날 D 의 머리 대신 끝)를 줬다(`_econDayFrac` 0 → 기온 `econDayT` · 허기 게이지가 그 틈에 하루를 거꾸로 · `t728CalNext` · 전쟁 귀환 `arriveAt` 이 하루 앞으로 · `_t1282Wall` 은 T1282 가 따로 보정 — 전수 표 `계측/T1289_2026-11-12/전수표.md`).
+//      ⇒ 틈(닫는 날 적힘 · world.day = 닫는 날 · 마감 · 창 · 경계 틱)에는 econ 머리 뒤와 같은 정렬(world.day + 1)로 센다 — 머리 뒤 값과 바이트 같다.
+//   ② 세 칸(T1273 회부 1): T1182 몸의 `departAt` · `arriveAt` · `nomPxMs` 를 econ 날 시계 축으로(머묾 끝 `lingerUntil` · 귀환 보간 `_t661.t0` · 걸음 원점과 같은 축) —
+//      출발 = econ 날 시계 '지금' · 도착 = econ 날 경계(d × 하루) · 명목 = 길 ÷ (도착 − 출발). 끔 · T1182 아닌 몸 = 종전 벽시계 · 경계 축 그대로.
+//   ③ 저장(T1282 회부 5): 몸 칸에 축 표지 `ax`('e' econ 날 시계 · 'w' 벽시계 — 켬만 적는다). 되살림은 이 판이 읽는 축으로 옮긴다(`_t1289In`).
+function _t1289ToE(b) { const M = state.dayMs || 1, D = state.world ? (state.world.day | 0) : 0; return b - econDayToMs(D) + D * M; }   // 벽시계 경계 축 → econ 날 시계 축(지금 앵커 · 같은 순간)
+function _t1289ToB(e) { const M = state.dayMs || 1, D = state.world ? (state.world.day | 0) : 0; return e - D * M + econDayToMs(D); }   // econ 날 시계 축 → 벽시계 경계 축(같은 econ 순간)
+function _t1289Leg(body, arrE) { const e = _t1253Now(); body.departAt = e; body.arriveAt = Math.max(e + 1, arrE); body.nomPxMs = body.len / Math.max(1, body.arriveAt - e); }   // 켬 · T1182 몸만 부른다 — 세 칸을 econ 날 시계 축으로
+//   되살림 — 저장 칸(머묾 끝 `lg` · 출발 `da` · 도착 `aa` · 귀환 보간 시작 `T.t0`)을 이 판이 읽는 축(켬 · T1182 몸 = econ 날 시계 · 그 밖 = 벽시계)으로.
+//     축 = 표지 `ax` · 표지 없는 옛 저장은 칸마다 크기로 가린다(저장 순간 벽시계 `at` 에 더 가까우면 벽시계 · 아니면 econ 날 시계 — 둘은 10^12 ms 넘게 떨어져 있다).
+//     같은 축 = 그대로(종전 바이트) · econ → 벽 = 같은 econ 순간(`_t1289ToB` — econ 날 시계는 다시 떠도 그 econ 날 위 자리다) ·
+//     벽 → econ = 저장 순간부터 남은 몫을 지금 econ 날 시계에(꺼진 동안은 안 센다 — T1034 "꺼진 동안 걸은 것으로 치지 않는다").
+//     끔 판은 표지가 있는 저장(켬이 쓴 것)만 옮긴다 — 표지 없는 저장(끔이 쓴 것 · 옛 판)은 종전 그대로.
+function _t1289In(S, t1182) {
+  if (!S || (!S.ax && !T1253_CLOCK_FIX)) return S;
+  const to = (T1253_CLOCK_FIX && t1182) ? 'e' : 'w';
+  const mv = (v) => { if (!Number.isFinite(v)) return v; const f = S.ax || (Math.abs(v - S.at) < Math.abs(v) ? 'w' : 'e'); return f === to ? v : (to === 'e' ? _t1253Now() + (v - S.at) : _t1289ToB(v)); };
+  S.lg = mv(S.lg); S.da = mv(S.da); S.aa = mv(S.aa);
+  if (T772_ON && S.T && S.T.t0 != null) S.T.t0 = mv(S.T.t0);   // 귀환 보간 시작(T772 켬 판만 저장에 선다)
+  S.ax = to;
+  return S;
 }
 // ★[T871] econ 날 D 안에서 흐른 몫 [0, 1] — 그 날 경계(`econDayToMs(D)`)에서 벽시계 몫 · econ 이 다음 날로 넘기 전엔 1 에서 선다(밀린 마감 · 머리 전 한 틱).
 //   캐러밴 몸 보간 둘(`_t661Vis` · `_t681BxVis`)이 쓰던 그 식 그대로(한 함수로 올림 · 값 무변) — 몸 기온 시계(`econDayT` · 손잡이 `T871_ONE_CLOCK`)도 이것을 읽는다.
@@ -4463,6 +4488,7 @@ function _t1034Pack() {
     const T = body._t661;
     b[String(id)] = { ph: body.phase, dd: body.delayedDays | 0, seen: body._evSeenDelay | 0, rf: body.repairFailN | 0, lg: Number.isFinite(body.lingerUntil) ? body.lingerUntil : null,
       da: body.departAt, aa: body.arriveAt, ppd: body.pxPerDay, nom: body.nomPxMs, pg: body.prog, at: Date.now(),
+      ...(T1253_CLOCK_FIX ? { ax: body._t1182 ? 'e' : 'w' } : {}),   // ★[T1289] 켬만 — 시각 칸(lg · da · aa · T.t0)의 축 표지('e' econ 날 시계 · 'w' 벽시계 · 끔 = 칸 없음 · 종전 바이트)
       ...(body._t1182 ? { act: { pts:body.pts.map(q=>[q.x,q.y]), pg:body.prog,
         ...(body._xzInPts?{xzIn:body._xzInPts.map(q=>[q.x,q.y])}:{}),
         p:(()=>{const p=state.deps.players.get(body.pid);return p?[p.x,p.y,p.hp]:null;})(),
@@ -4482,6 +4508,7 @@ function _t1034Apply(body, now) {
   const k = body && String(body.id), S = k && state._t1034Saved && state._t1034Saved.get(k);
   if (!S) return;
   state._t1034Saved.delete(k);
+  _t1289In(S, body._t1182);   // ★[T1289] 시각 칸을 이 몸이 읽는 축으로(켬 · 또는 표지 있는 저장만 — 끔 + 표지 없음 = 무동작)
   body.delayedDays = S.dd | 0; body._evSeenDelay = S.seen | 0; body.repairFailN = S.rf | 0;
   if(body._t1182 && S.act) {
     body._t1182At=T1253_CLOCK_FIX ? _t1253Now() : now;if(T1253_CLOCK_FIX)body._t1253N=0;const A=S.act;if(A.xzIn)body._xzInPts=A.xzIn.map(q=>({x:q[0],y:q[1]}));setBodyPts(body,A.pts.map(q=>({x:q[0],y:q[1]})));body.phase=S.ph;body.prog=Math.max(0,Math.min(body.len,A.pg));   // ★[T1253] 켬 = 걸음 시계는 econ 날 시계
@@ -4618,7 +4645,8 @@ function spawnCaravanBody(c, now, budgetMs) {
     if(saved && saved.act) {
       const vil=state.byEcon.get(c.from)||state.byEcon.get(c.to);if(!vil)return false;
       const pts=saved.act.pts.map(q=>({x:q[0],y:q[1]}));
-      const b=_xzMakeBody(c.id,c,pts,saved.ph,now,saved.aa,c.to,{tribeId:`simvil_${vil.dbId}`,tribeName:vil.name,simVid:vil.dbId});
+      _t1289In(saved, T762_CARAVAN_BODY);   // ★[T1289] 시각 칸을 이 판 축으로(아래 `_t1034Apply` 가 다시 불러도 같은 축이면 무동작) — `_xzMakeBody` 는 도착을 벽시계 경계 축으로 받는다
+      const b=_xzMakeBody(c.id,c,pts,saved.ph,now,saved.ax==='e'?_t1289ToB(saved.aa):saved.aa,c.to,{tribeId:`simvil_${vil.dbId}`,tribeName:vil.name,simVid:vil.dbId});
       _t1034Apply(b,now);return true;
     }
     return _xzSpawnBody(c, now);
@@ -4658,6 +4686,7 @@ function spawnCaravanBody(c, now, budgetMs) {
   body.arriveAt = Math.max(now + 1, econDayToMs(outbound ? c.arriveDay : c.returnArriveDay));
   body.pxPerDay = body.len / legDays;                        // 지연 환산용 명목 속도(이 캐러밴의 일정에서 역산)
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now); // 페이싱 상한(×4)의 기준
+  if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, (outbound ? c.arriveDay : c.returnArriveDay) * state.dayMs);   // ★[T1289] 켬 · T1182 몸 = 세 칸 econ 날 시계 축(끔 = 위 줄 그대로)
   body.escorts = N.escorts;   // ★[convoy 물리 행군] 호위 전사 실체(위 `_caravanNpcs` 가 상인 뒤에 세웠다 — 주석은 그 자리에)
   if (T661_ON) _t661Anchor(body, pts, body.phase);   // ★[T661] 장부는 오늘(econ 날)부터 — 세운 날은 안 움직인다
   if (T775_RESUME && T661_ON && !_t707Mk) _t775Place(body, c, outbound, p, now);   // ★[T775] 오늘 앞에 시작한 구간 = 장부 자리에 선다(끔 = 이 줄 무동작)
@@ -4695,6 +4724,7 @@ function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 
     body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
     body.pxPerDay = body._t661.ppd;
     body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+    if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, c.returnArriveDay * state.dayMs);   // ★[T1289] 켬 · T1182 몸 = 세 칸 econ 날 시계 축(끔 = 위 줄 그대로)
     if (T772_ON) { const _t0n = (T1253_CLOCK_FIX && body._t1182) ? _t1253Now() : now; body._t661.t0 = Number.isFinite(body.lingerUntil) ? Math.min(_t0n, body.lingerUntil) : _t0n; _t772Stat.legs++; }   // ★[T1282] 켬 · T1182 몸 = 머묾 끝(econ 날 시계)과 같은 시계로 견준다(끔 = 종전 벽시계 `now`)
     _t1034Mark('ret');   // ★[T1034] 머묾 → 귀환(몸 단계 · 귀환 보간 시작) — 그 틱 끝 메타 행   // ★[T772 ①] 귀환 보간은 장 끝에서 연다(끔 = 이 줄 무동작)
     console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발: ${c.to.name}→${c.from.name}${c._t707 ? ' (정산은 다음 econ 틱 · T707)' : (c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)')} — econ d${c.returnArriveDay} 도착 예정`);
@@ -4708,6 +4738,7 @@ function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 
   body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
   body.pxPerDay = body.len / legDays;
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, c.returnArriveDay * state.dayMs);   // ★[T1289] 켬 · T1182 몸 = 세 칸 econ 날 시계 축(끔 = 위 줄 그대로)
   _t1034Mark('ret');   // ★[T1034] 머묾 → 귀환(장부 끔 갈래)
   console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발: ${c.to.name}→${c.from.name}${c._t707 ? ' (정산은 다음 econ 틱 · T707)' : (c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)')} — econ d${c.returnArriveDay} 도착 예정`);
 }
@@ -4740,6 +4771,7 @@ function isolateCaravanReturn(body, p, now) {
   body.departAt = now;
   body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, c.returnArriveDay * state.dayMs);   // ★[T1289] 켬 · T1182 몸 = 세 칸 econ 날 시계 축(끔 = 위 줄 그대로)
   body.repairFailN = 0;
   _t1034Mark('iso');   // ★[T1034] 고립 → 화물 보존 귀환(econ 장부 · 몸 길이 하루 중에 바뀐다)
   if (world._tradeAudit) world._tradeAudit.isolated = (world._tradeAudit.isolated || 0) + 1; // 감사 확장(additive)
@@ -4765,6 +4797,7 @@ function _t1136Isolate(body, p, now) {
   body.departAt = now;
   body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, c.returnArriveDay * state.dayMs);   // ★[T1289] 켬 · T1182 몸 = 세 칸 econ 날 시계 축(끔 = 위 줄 그대로)
   body.repairFailN = 0;
   _t1034Mark('iso');
   if (world._tradeAudit) world._tradeAudit.isolated = (world._tradeAudit.isolated || 0) + 1;
@@ -5150,7 +5183,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
       body.lingerUntil = ((T1253_CLOCK_FIX && body._t1182) ? _t1253Now() : now) + state.dayMs * CARAVAN_LINGER_DAY_FRAC;   // ★[T1253] 켬 = T1182 몸 머묾 끝은 econ 날 시계
       if (T661_ON && body._t661) { const _m929 = _t929Mark(); _t661Anchor(body, _t661ReturnPts(body), 'inbound'); body._t661.L = 0; _t929Note(_m929); }   // ★[T929] 앞뒤 셈만 · ★[T661] 돌아가는 구간의 장부는 도착한 이 경계에서 연다(머묾은 보이는 것)
       if (T707_ON) _t707Linger(body, c, p);   // ★[T707] 장 끝까지 머문다 · 남문 앞 마당에 선다(끔 = 이 줄 무동작)
-      if (T1136_ON && c.basket) body.lingerUntil = now;   // ★[T1136] 바구니 — 머묾 0(닿은 시각에 거래하고 곧장 돌아선다 · 몸 시계가 놓친 도착을 econ 날 머리가 치른 판)
+      if (T1136_ON && c.basket) body.lingerUntil = (T1253_CLOCK_FIX && body._t1182) ? _t1253Now() : now;   // ★[T1289] 켬 · T1182 몸 = 머묾 끝은 econ 날 시계 축(종전 벽시계 `now` 는 몸 틱의 econ 날 시계와 견줘 머묾이 안 끝났다 · 끔 = 종전)   // ★[T1136] 바구니 — 머묾 0(닿은 시각에 거래하고 곧장 돌아선다 · 몸 시계가 놓친 도착을 econ 날 머리가 치른 판)
       if (T952_XZ_ON && T707_ON && c._xzHome) _t952XzStay(body, c, now);   // ★[T952] 교차 존 상인의 머묾 = 그 마을 장 끝(끔 = 이 줄 무동작)
       if (T707_ON && c._xzHome && _t1030On()) body._t1030 = { at: now };   // ★[T1030] 켬만 — 머묾을 연 시각(덤프 · 하네스 ⓘ 가 머묾 길이를 잰다 · 값 무변)
       S.arrived++;
@@ -5186,6 +5219,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
       body.arriveAt = Math.max(now + 1, econDayToMs(c.arriveDay));
       body.pxPerDay = body.len / legDays;
       body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+      if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, c.arriveDay * state.dayMs);   // ★[T1289] 켬 · T1182 몸 = 세 칸 econ 날 시계 축(끔 = 위 줄 그대로)
       console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} econ 재라우팅 → ${c.to.name} (${legDays}일) — 실체 재출발`);
     }
   }
@@ -5315,6 +5349,7 @@ function _xzMakeBody(key, c, pts, phase, now, arriveAt, toV, who) {
   body.arriveAt = Math.max(now + 1, arriveAt);
   body.pxPerDay = body.len / legDays;
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, _t1289ToE(arriveAt));   // ★[T1289] 켬 · T1182 몸 = 세 칸 econ 날 시계 축(받은 `arriveAt` 은 벽시계 경계 축 — 같은 순간으로 옮김 · 끔 = 위 줄 그대로)
   body.escorts = N.escorts;
   state.caravanBodies.set(key, body);
   //   spawnNpc 는 존 가장자리에서 안쪽으로 당겨 세운다(클레임 크기) — 길이 위치의 진실이라 첫 점으로 되돌린다(다음 틱 스냅과 같은 뜻 · 한 틱 앞당김).
@@ -5368,6 +5403,7 @@ function _xzStartReturnLeg(body, now) {
   body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
   body.pxPerDay = body.len / legDays;
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, c.returnArriveDay * state.dayMs);   // ★[T1289] 켬 · T1182 몸 = 세 칸 econ 날 시계 축(끔 = 위 줄 그대로)
   console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발(경계로): ${c.to.name}→경계 칸(집 ${c.from && c.from.name}@${c._xzHome.zone})${c._t707 ? ' (정산은 다음 econ 틱 · T707)' : (c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)')} — econ d${c.returnArriveDay} 경계`);
 }
 // 이웃 존 캐러밴이 이 존 안에서 완전히 막혔다 — 판 것 없이(짐 보존) 넘어온 경계 칸으로 되짚어 집 존에 돌려준다.
@@ -5387,6 +5423,7 @@ function _xzIsolate(body, p, now) {
   body.phase = 'inbound'; body.departAt = now;
   body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, c.returnArriveDay * state.dayMs);   // ★[T1289] 켬 · T1182 몸 = 세 칸 econ 날 시계 축(끔 = 위 줄 그대로)
   body.repairFailN = 0;
   console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 완전 고립 → 짐 보존 · 넘어온 경계 칸으로 되짚는다(${days}일 · 집 ${c._xzHome.zone})`);
 }
@@ -5443,6 +5480,7 @@ function _xzBorderOf(body, r) {
 }
 const _xzNear2 = (a, b) => !!(a && b && Math.abs(a.x - b.x) <= 2 && Math.abs(a.y - b.y) <= 2);
 function _xzWalkToBorder(body, r, now) {
+  if (T1253_CLOCK_FIX && body._t1182) now = _t1253Now();   // ★[T1289] 켬 · T1182 몸 = 출발 · 도착 칸이 econ 날 시계 축 — 그 축의 '지금'으로 잰다(끔 = 인수 벽시계 그대로)
   const P = state.deps.players.get(body.pid); if (!P) return false;
   const tgt = _xzBorderOf(body, r); if (!tgt) return false;
   if (Math.hypot(P.x - tgt.x, P.y - tgt.y) <= 2) return false;   // 이미 경계 칸 — 종전대로 바로 민다
@@ -5545,6 +5583,7 @@ function _xzAfterSend(r, key, ok, why, answered, tries) {
         body.arriveAt = Math.max(body.departAt + 1, econDayToMs(c.returnArriveDay));
         body.pxPerDay = body.len / Math.max(1, c.returnArriveDay - state.world.day);
         body.nomPxMs = body.len / Math.max(1, body.arriveAt - body.departAt);
+        if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, c.returnArriveDay * state.dayMs);   // ★[T1289] 켬 · T1182 몸 = 세 칸 econ 날 시계 축(끔 = 위 줄 그대로)
       }
     } else if (body) { despawnCaravanNpc(body); state.caravanBodies.delete(key); }
     _xzTrace('bounce', { id: r.id, toZone: r.toZone, why: String(why || '') });
@@ -10290,10 +10329,10 @@ function _t1253Now() {
 function _t1282Open() { state._t1282D = state.world ? (state.world.day | 0) : 0; }   // ★[T1282] 닫는 날 — 하루 마감 · 현지 자정 창을 여는 순간의 econ 날(켬만 부른다)
 //   ★[T1282] econ 날 시계 '지금'을 벽시계 경계 축(`econDayToMs` · `arriveAt` 이 선 축)으로 — 그날 머리 경계 + econ 날 몫.
 //     econ 머리 앞 마감이면 앵커(`lastGameDay` · `_t731Anchor`)가 이미 새 날이라 `econDayToMs(D)` 가 닫는 날의 끝 경계다 — 거기서 하루를 빼 머리로 둔다.
+//   ★[T1289] `econDayToMs` 가 틈에도 머리 뒤 정렬로 세니(위 ①) 여기서 하루를 빼던 보정은 뺐다(값 = T1282 그대로).
 function _t1282Wall() {
   const M = state.dayMs || 1, D = state.world ? (state.world.day | 0) : 0;
-  const pend = !!(state.tickJobs || state._t731 || state._t1253Edge) && state._t1282D === D;
-  return econDayToMs(D) - (pend ? M : 0) + (_t1253Now() - D * M);
+  return econDayToMs(D) + (_t1253Now() - D * M);
 }
 function villageWait(fn) {
   if (!state.tickJobs) return false;                 // 마감 중이 아니다 — 부른 쪽이 그냥 처리하면 된다
@@ -14817,6 +14856,7 @@ function _t952XzStay(body, c, now) {   // ★[T952] 장 기록에 안 드는 교
   const d0 = econDayToMs(D), end = (rec && rec.d === D) ? rec.end : d0 + state.dayMs * _lifeVL().MKT_LINGER_DAY_FRAC;
   body.lingerUntil = end;
   body._t952 = { at: now, d0, end, joined: !!(rec && rec.d === D) };
+  if (T1253_CLOCK_FIX && body._t1182 && !body._t952.joined) { body.lingerUntil = _t1289ToE(end); body._t952.d0 = _t1289ToE(d0); body._t952.end = body.lingerUntil; }   // ★[T1289] 켬 · T1182 몸 = 장 기록 없는 머묾 끝(벽시계 경계 축 `d0 + …`)을 econ 날 시계 축으로 · 기록 칸(`d0` · `end`)도 같은 축(장 기록 끝은 이미 econ 날 시계 · 끔 = 종전)
   _t952Stat.stays++; if (body._t952.joined) _t952Stat.joined++;
 }
 function _t707Linger(body, c, p) {   // 상인 머묾 = 장 끝 · 남문 앞 마당(귀환 길 첫 점)에 선다 · 호위는 `_escortMarch` 가 그 자리로(진척 0)
@@ -18761,7 +18801,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
       get L_WATERGAP() { return L_WATERGAP; },
       get TASKS_PER_FARMER() { return _lifeTasksPerFarmerDay(); },
     },
-    _caravanBodyProbe: { on: T762_CARAVAN_BODY, pack: _t1034Pack, restore: _t1034Apply, ready: _t1182BodyReady, tick: tickCaravanBodies, pts: setBodyPts, walk: _t1182Walk, returnLeg: startReturnLeg, linger: _t707Linger, sweep: _caravanSyncSweep, openMarket: _t707Open, sendXz: _xzSend, afterSendXz: _xzAfterSend, closeOpen: _t1282Open, econNow: _t1253Now,   // ★[T1282] `closeOpen` · `econNow` 내보내기만(하네스 `test-t1273-clock-rest` ⑤ — 마감을 여는 순간 · econ 날 시계 · 값 무변)
+    _caravanBodyProbe: { on: T762_CARAVAN_BODY, pack: _t1034Pack, restore: _t1034Apply, ready: _t1182BodyReady, tick: tickCaravanBodies, pts: setBodyPts, walk: _t1182Walk, returnLeg: startReturnLeg, linger: _t707Linger, sweep: _caravanSyncSweep, openMarket: _t707Open, sendXz: _xzSend, afterSendXz: _xzAfterSend, closeOpen: _t1282Open, econNow: _t1253Now, econDay: econDayToMs, toE: _t1289ToE, toB: _t1289ToB, axIn: _t1289In, vis: _t661Vis, wall: _t1282Wall,   // ★[T1282] `closeOpen` · `econNow` 내보내기만(하네스 `test-t1273-clock-rest` ⑤ — 마감을 여는 순간 · econ 날 시계 · 값 무변) · ★[T1289] `econDay` · `toE` · `toB` · `axIn` · `vis` · `wall` 내보내기만(하네스 ⑦ ⑧ ⑨ — 마감 틈 경계 · 축 옮김 · 되살림 축 · 종전 보간 · 값 무변)
       spawn: spawnCaravanBody, syncOne: _caravanSyncOne, xzMakeBody: _xzMakeBody },   // ★[T1273] 내보내기만(하네스 `test-t1273-clock-rest` — `_t1253Now()` 읽는 단위 판 밖 자리 · 값 무변)
     _distProbe: {
       compute: (reason, opts) => computeAndInjectDistMatrix(reason, opts),
