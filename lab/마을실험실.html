@@ -13186,8 +13186,11 @@ function _t860Dry(v, npc, b, potA, actA, addProduce) {
   const budget = JOBS.cook.base * (1 + ((npc.skills && npc.skills.cooking) || 0) * 0.05) * spare;
   _preserveSurplus(v, b.from, budget, addProduce, cap, _t860Unit);
 }
-// ★[T1286] 남는 시간 요리 한 번(위 손잡이 주석) — 요리사 갈래(`produceSpecial === 'cook'`)의 요리 한 번을 남는 손 s 의 몫으로:
-//   재료 s 단(`food` 칸 · 모자라면 `_t1260CookStaple` 곡식 품목) · 부재료 0.5 × s 씩(있는 것 다섯까지) · 조리식 `JOBS.cook.base` × 숙련 배율 × 다양성 × s
+// ★[T1286] 남는 시간 요리 한 번(위 손잡이 주석) — 요리사 갈래의 요리 한 번을 남는 손 s 의 몫으로 · **재료 한 단만**(부재료는 안 쓴다):
+//   재료 s 단(`food` 칸 · 모자라면 `_t1260CookStaple` 곡식 품목) → 조리식 `JOBS.cook.base` × 숙련 배율 × s (조리식 환산 ≤ 든 환산 s)
+//   ⚠부재료를 안 쓰는 까닭(T1286 §2 — 열 시드 갈라 재기): 생선 · 고기 · 과일 · 남새는 곳간에 있을 때 마을 건강에 기여한다(`LEGACY_CONTRIBUTES` health 0.3 ~ 0.4)
+//     · 조리식은 기여가 없다(subsistence · happiness 만). 부재료를 조리식으로 바꾸면 영양이 사라져 건강 · 출생이 준다(G 대비 −11.0% → 부재료 뺌 +0.2%).
+//     요리는 먹기 좋게 할 뿐 영양을 지우지 않는다 — 집 부엌 끼니는 곡식을 익히는 일로 두고, 부재료는 그대로 먹는다(다양성 배율은 환산 상한 밑이라 원래 안 산다).
 function _t1286Cook(v, npc, b, potA, actA, dailyProduction) {
   const dPot = potA - b[0], dAct = actA - b[1];
   const s = dPot > 0 ? Math.max(0, 1 - dAct / dPot) : 0;
@@ -13197,11 +13200,9 @@ function _t1286Cook(v, npc, b, potA, actA, dailyProduction) {
   if (!v._t1286G) return;
   let ck = null;
   if (!((v.storage.food || 0) >= s)) { ck = _t1260CookStaple(v); if (!ck || ((v.storage[ck[0]] || 0) * ck[1]) < s) return; }
-  const used = COOK_SIDE_INGREDIENTS.filter((r) => (v.storage[r] || 0) >= 0.5 * s).slice(0, 5);
-  const inEq = s + used.reduce((a, r) => a + 0.5 * s * (storageFoodPer(v, r) || 0), 0), per = storageFoodPer(v, 'cooked_food') || 0;
-  const cooked = Math.min(JOBS.cook.base * (1 + ((npc.skills && npc.skills.cooking) || 0) * 0.05) * (1.0 + 0.04 * used.length) * s, per > 0 ? inEq / per : 0);   // 요리는 식량을 늘리지 않는다 — 조리식 환산 ≤ 든 환산(같은 자 `storageFoodPer`)
+  const per = storageFoodPer(v, 'cooked_food') || 0;
+  const cooked = Math.min(JOBS.cook.base * (1 + ((npc.skills && npc.skills.cooking) || 0) * 0.05) * s, per > 0 ? s / per : 0);   // 요리는 식량을 늘리지 않는다 — 조리식 환산 ≤ 든 환산 s(같은 자 `storageFoodPer`)
   if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;
-  for (const r of used) v.storage[r] -= 0.5 * s;
   v.storage.cooked_food = (v.storage.cooked_food || 0) + cooked;
   dailyProduction.cooked_food = (dailyProduction.cooked_food || 0) + cooked;
   const C = v._t1286C || (v._t1286C = { n: 0, s: 0, cooked: 0, days: 0, lastD: -1 }); C.n++; C.s += s; C.cooked += cooked; if (C.lastD !== day) { C.days++; C.lastD = day; }
@@ -13872,9 +13873,9 @@ const T1279_COOK = T1260_FOOD_READS && ((typeof process !== 'undefined' && proce
 // ★★[T1286 2026-11-12 · T1279 회부 2 · 3] 손잡이 둘(끔 기본 · `'1'` 만 · **`T1279_COOK` 켠 판 안에서만** · 끔 = 종전 바이트):
 //   `T1286_COOK_SPARE` — **남는 시간 요리**(집 부엌 · 직업 아님 · 정원 0). T860 잡은 날 말리기 꼴: 수식 생산 몸 하나가 그날 포만으로 깎인 몫
 //     `1 − 실제/잠재`(여유노동 `_idleFrac` 과 같은 식 · 그 몸 하나)가 그 몸의 남는 손이다. 그 손 × 요리사 하루 처리(`JOBS.cook.base`) × 요리 숙련 배율(`1 + 숙련 × 0.05`)만큼
-//     요리사 갈래와 **같은 요리 한 번**(재료 한 단 · 부재료 0.5 씩 다섯까지 · 다양성 `1 + 0.04 × 가짓수`)을 남는 손의 몫으로 줄여 한다(`_t1286Cook`).
+//     요리사 갈래의 요리 한 번을 남는 손의 몫으로 줄여 한다(`_t1286Cook` · **재료 한 단만** — 부재료는 영양을 지키려 그대로 둔다 · 아래 함수 주석).
 //     문은 정원 요리사와 같은 식량 안보 문(`cookTarget` 첫 문 — 합계 N×35 · 둘째 문 N×8)이다. 재료 · 부재료는 곳간에서 떼고 조리식은 같은 곳간에 넣는다.
-//     조리식 환산은 든 환산(재료 + 부재료 · 같은 자 `storageFoodPer`)을 넘지 않는다 — 요리는 먹기 좋게 할 뿐 식량을 늘리지 않는다(숙련 · 다양성은 그 상한 안에서만 산다).
+//     조리식 환산은 든 환산(재료 · 같은 자 `storageFoodPer`)을 넘지 않는다 — 요리는 먹기 좋게 할 뿐 식량을 늘리지 않는다(숙련은 그 상한 안에서만 산다).
 //     그날 생산 칸에도 적되 ① 장부 규약(조리식 칸 0)을 그대로 탄다 — 요리는 옮김이다. 잠재 생산(prodK) 칸에는 안 적는다. 새 수 0.
 //   `T1286_PRODK` — 부양력(prodK)의 잠재 생산 환산(`dailyFoodProdPotential`)에서도 조리식 칸 0(① 과 같은 규약 · 회부 3).
 const T1286_COOK_SPARE = T1279_COOK && ((typeof process !== 'undefined' && process.env) ? process.env.T1286_COOK_SPARE === '1' : false);
