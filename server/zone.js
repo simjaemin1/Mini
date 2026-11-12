@@ -3778,7 +3778,10 @@ function _t671Shape(p) {
   if (T1241_DES) p._des = undefined;   // ★[T1252] T1241 몸 토막(`_desBegin` · `_desEnd` — 손잡이 `T1241_DES` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
   if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
   if (_t316Econ && _t316Econ.T1243_FARM_ON) p._t1243S = undefined;   // ★[T1252] T1243 추신 14 손에 든 씨 몫(villages.js `_t1243Reaped` · `_t368Deliver` — econ 손잡이 `T1243_FARM_ON` 켬일 때만 서는 칸 · 끔 = 무동작)
-  if (_t316Econ && _t316Econ.T1266_ORE_BODY) { p._t1266H = undefined; p._t1266Stop = undefined; }   // ★[PM land1067] T1266 광부 몸 한 시간 칸 · 멈춘 날(villages.js `_t1266Keep` — econ 손잡이 `T1266_ORE_BODY` 켬일 때만 서는 칸 · 끔 = 무동작 · test-body-fields 규약)
+  if (_t316Econ && _t316Econ.T1266_ORE_BODY) { p._t1266H = undefined; p._t1266Stop = undefined; p._granTask = undefined; }   // ★[PM land1067] T1266 광부 몸 한 시간 칸 · 멈춘 날(villages.js `_t1266Keep` — econ 손잡이 `T1266_ORE_BODY` 켬일 때만 서는 칸 · 끔 = 무동작 · test-body-fields 규약)
+  //   ★★[T1277 ③ · 날 52 CPU 뜀] `_granTask`(곳간 사다리 짐 길 — villages `_granGo`)도 이 켬 줄에 — T1266 켬이면 광부가 짐 상한(25 kg)을 날마다 채워 곳간에 간다(끔 판 곳간행 0 · 켬 판 날 12 부터).
+  //     그 몸만 `_granTask` 를 뒤에 붙여 모양이 갈렸다(몸 모양 셈 `t1277-observe` ④ — 날 12 넷째 모양) · 날 51 다섯째 모양이 서자 몸마다 짚는 자리(`_decOne` · `_wwPre` · `_moveOne`)가
+  //     메가모픽이 되어 하루 CPU 가 +60 초 뛰었다(T1271 회부 3). 값은 `undefined` 그대로 — 읽는 자리(`if (npc._granTask)` · `npc._granTask = null`)의 답 무변 · 판 날 줄 같음(보고 §3).
 }
 const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT !== '0';   // ★[T1144 · T1154] villages.js 와 같은 손잡이(켬 기본 · `'0'` 만 끔) — 이 파일은 몸 칸 하나만
 // ★★[T1140 ③-가 2026-11-04 · 손잡이 `T1140_HOT_ORDER`(기본 끔 · `'1'` 만 켬 · 끔 = 아래 함수가 안 불린다 = 종전 글자)] **걸음 머리 칸을 x · y 곁에** — T791 회부 2 의 남은 몫.
