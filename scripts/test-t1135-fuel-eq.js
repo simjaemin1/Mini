@@ -44,7 +44,7 @@ ok(on.leftB === 4 && off.leftB === 0, '② ★자명 통과 금지 — 수식 �
 ok(on.offA === true && on.offU === false && on.offC === true && onNoAct.offA === false, '③ 켬 ∧ 행위 층 ∧ 나무 칸 0 = 수식 목재 0 · 안 센 마을 · 행위 층 끔 = 종전');
 {
   const S = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
-  ok(/function woodToGranary\(v, units\) \{[\s\S]{0,120}actDemandCap\(v, units, woodShareD\(v\), '_t325InflowToday'\)/.test(S), '② 곳간 입구도 같은 분자(`woodShareD`)');
+  ok(/function woodToGranary\(v, units\) \{[\s\S]{0,400}actDemandCap\(v, units, woodShareD\(v\), '_t325InflowToday'\)/.test(S), '② 곳간 입구도 같은 분자(`woodShareD`)');   // ★[T1275] 창 120 → 400(몸 세계 줄 앞에 영토 v2 수식 나무꾼 세계 줄 한 줄이 섰다)
   ok(/const fuelNeed = _homeN \* _firewoodPC\(\) \* \(1 \+ FUEL_COLD_W/.test(S) && /if \(T1135_FUEL_EQ\) v\._t1135Need = fuelNeed;/.test(S), '② 틱이 그날 `fuelNeed` 를 남긴다(1인 수요 = `_firewoodPC()`)');
   const SC = S.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');   // 주석 뺀 판(부름만 센다)
   const uses = (SC.match(/\bFIREWOOD_PC\b(?!_SRC)/g) || []).length, fn = (SC.match(/_firewoodPC\(\)/g) || []).length;

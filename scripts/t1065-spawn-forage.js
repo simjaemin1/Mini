@@ -14,7 +14,7 @@ const A = process.argv.slice(2);
 const RMAX = +(A.find((x) => /^\d+$/.test(x)) || 1200);
 const TMP = `/tmp/t1065-spawn-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-process.env.ZONE_ID = 'hanbando'; process.env.PORT = String(42000 + (process.pid % 900)); process.env.DB_PATH = TMP;
+process.env.ZONE_ID = 'hanbando'; process.env.PORT = String(require('./lib-port').port(42000)); process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '1'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0';
 const _l = console.log, _w = console.warn, _e = console.error;
 console.log = () => {}; console.warn = () => {}; console.error = () => {};

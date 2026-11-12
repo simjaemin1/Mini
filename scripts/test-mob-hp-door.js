@@ -23,7 +23,7 @@ const fs = require('fs');
 const TMP = `/tmp/test-mob-hp-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = process.env.ZONE_ID || 'hanbando';
-process.env.PORT = process.env.PORT || String(39800 + (process.pid % 90));
+process.env.PORT = process.env.PORT || String(require('./lib-port').port(39800));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '0';
 process.env.ENABLE_WILDLIFE = '0';   // 존 안의 야생은 끈다 — ⑤ 는 야생 모듈을 따로 새로 적재해 존의 문을 host 로 넣는다
@@ -224,7 +224,7 @@ if (!CHILD) {
   ];
   const { spawnSync } = require('child_process');
   const r = spawnSync(process.execPath, [__filename], { encoding: 'utf8', timeout: 120000,
-    env: Object.assign({}, process.env, { T967_MOB_HP: '0', T967_DOOR_CHILD: '1', PORT: String(38600 + (process.pid % 90)) }) });
+    env: Object.assign({}, process.env, { T967_MOB_HP: '0', T967_DOOR_CHILD: '1', PORT: String(require('./lib-port').port(38600)) }) });
   const out = String(r.stdout || '');
   const got = out.split('\n').filter((l) => /\[관찰\]/.test(l)).map((l) => l.replace(/^\s*\[관찰\]\s*/, ''));
   const tail = (out.match(/=== (\d+)건 중 PASS (\d+) · FAIL (\d+) ===/) || []);

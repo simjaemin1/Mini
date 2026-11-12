@@ -2,7 +2,7 @@
 'use strict';
 process.env.T1243_FARM_ON='1';
 process.env.ENABLE_VILLAGES='0';process.env.ENABLE_WILDLIFE='0';process.env.ENABLE_BANDITS='0';process.env.ENABLE_ROADS='0';
-process.env.DB_PATH='/tmp/t1245-seeds-'+process.pid+'.db';process.env.PORT=String(47000+process.pid%700);
+process.env.DB_PATH='/tmp/t1245-seeds-'+process.pid+'.db';process.env.PORT=String(require('./lib-port').port(47000));
 const assert=require('assert'),C=require('../server/crops'),V=require('../server/villages'),B=V.__p3Bind({});
 let passed=0;const check=(s,f)=>{f();passed++;console.log('PASS '+s);};
 check('legacy seed mass is explicit, not historical sowing evidence',()=>{assert.equal(C.seedKgPerCell('millet'),C.SEED_KG);assert.equal(C.seedUnitsPerCell('millet'),1);});

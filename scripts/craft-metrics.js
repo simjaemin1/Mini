@@ -13,7 +13,7 @@
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(36500 + (process.pid % 90));
+process.env.PORT = String(require('./lib-port').port(36500));
 process.env.DB_PATH = `/tmp/craft-metrics-${process.pid}.db`;
 process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
 process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

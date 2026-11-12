@@ -31,7 +31,7 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
 const TMP = `/tmp/test-weight-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(36800 + (process.pid % 190));
+process.env.PORT = String(require('./lib-port').port(36800));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '1';
 process.env.VILLAGE_MAX = process.env.VILLAGE_MAX || '2';

@@ -140,7 +140,7 @@ console.log('\n[⑧ 관측 — /lifedbg가 의뢰 상태를 노출]');
   const TMP = `/tmp/test-psite-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fsx.unlinkSync(f); } catch (e) {} }
   process.env.ZONE_ID = 'hanbando';
-  process.env.PORT = String(37600 + (process.pid % 180));
+  process.env.PORT = String(require('./lib-port').port(37600));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '1'; process.env.VILLAGE_MAX = process.env.VILLAGE_MAX || '2';
   process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

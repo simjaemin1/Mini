@@ -19,7 +19,7 @@ const TPL = process.env.T763_TPL || '/tmp/t740/t368/tpl-t100.db';
 const DB = path.join(DIR, 'w.db');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(DB + s); } catch (e) {} try { fs.copyFileSync(TPL + s, DB + s); } catch (e) {} }
-const CP = 4170 + (process.pid % 400) * 2, ZP = CP + 1, SECRET = 't763-' + TAG;
+const CP = require('./lib-port').ports(2, 4170), ZP = CP + 1, SECRET = 't763-' + TAG;
 const getj = async (p) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, { headers: { 'x-zone-secret': SECRET } }); return await r.json(); } catch (e) { return null; } };
 const health = async () => { try { return (await fetch(`http://localhost:${ZP}/health`)).ok; } catch (e) { return false; } };
 (async () => {

@@ -20,7 +20,7 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  âœ“ ' : '  âœ
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(36300 + (process.pid % 150));
+process.env.PORT = String(require('./lib-port').port(36300));
 process.env.DB_PATH = `/tmp/test-craft-${process.pid}.db`;
 process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
 process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

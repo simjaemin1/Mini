@@ -17,7 +17,7 @@ const OUT = process.argv[2] || '/tmp/t509-fresh-water.json';
 const TMP = `/tmp/t509-fw-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = process.env.ZONE_ID || 'hanbando';
-process.env.PORT = String(38100 + (process.pid % 150));
+process.env.PORT = String(require('./lib-port').port(38100));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '1';
 process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

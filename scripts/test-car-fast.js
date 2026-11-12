@@ -54,7 +54,7 @@ const zoneEnv = (db, port, extra) => Object.assign({}, process.env, { ZONE_ID: '
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const exitOf = (c, ms) => new Promise((res) => { const k = setTimeout(() => { try { c.kill('SIGKILL'); } catch (e) {} }, ms); c.on('exit', (code) => { clearTimeout(k); res(code); }); });
 const readJ = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
-const base = 39000 + (process.pid % 400);
+const base = require('./lib-port').ports(403, 39000);
 
 (async () => {
   console.log('\n② 다시 뜬 판 — 캐러밴이 길 위에 선 세계를 저장 → 같은 DB 로 끔 · 켬 다시 띄움');

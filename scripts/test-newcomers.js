@@ -25,7 +25,7 @@ const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
 
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(37400 + (process.pid % 150));
+process.env.PORT = String(require('./lib-port').port(37400));
 process.env.DB_PATH = `/tmp/test-newcomer-${process.pid}.db`;
 process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
 process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
