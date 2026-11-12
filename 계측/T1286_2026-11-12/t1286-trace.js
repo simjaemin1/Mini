@@ -26,6 +26,8 @@ globalThis.__T1286One = (v) => !ONE || v.name === ONE;
 const SITES = [['/sim/economy-sim.js', 'function tickVillage(v, day) {\n', 'function tickVillage(v, day) {\n  if (globalThis.__T1286Nudge) globalThis.__T1286Nudge(v, day);\n  if (globalThis.__T1286Tr) globalThis.__T1286Tr(v, day, module.exports);\n', 'trace']];
 //        T1286_NOPRES=1 → 요리사 갈무리 줄(`_preserveSurplus(v, PRESERVE_FROM, jdef.base * skillMul, …)`)을 뺀다
 if (process.env.T1286_NOPRES === '1') SITES.push(['/sim/economy-sim.js', '      if (T17_PRESERVE) _preserveSurplus(v, PRESERVE_FROM, jdef.base * skillMul, addProduce, null, T877_ON ? _t860Unit : null);', '      ;', 'nopres']);
+//        T1286_NOSIDE=1 → 남는 시간 요리가 부재료를 안 쓴다(재료 한 단만 · 다양성 0 — 부재료 · 잔가지 소비 가르는 자)
+if (process.env.T1286_NOSIDE === '1') SITES.push(['/sim/economy-sim.js', "  const used = COOK_SIDE_INGREDIENTS.filter((r) => (v.storage[r] || 0) >= 0.5 * s).slice(0, 5);", '  const used = [];', 'noside']);
 if (ONE) SITES.push(['/sim/economy-sim.js', 'function cookTarget(v) {\n', 'function cookTarget(v) {\n  if (!globalThis.__T1286One(v)) return 0;\n', 'one']);
 Module.prototype._compile = function (src, file) {
   const f = file.replace(/\\/g, '/');
