@@ -7,8 +7,8 @@ P=$ROOT/계측/T1279_2026-11-12/t1279-split.js
 job() { name=$1; seed=$2; shift 2; d=$R/$name-$seed; mkdir -p $d
   pre=""; case "$*" in *T1279_SPLIT*) pre="-r $P";; esac
   s=$(date +%s)
-  ( cd $ROOT && env -u NODE_OPTIONS "$@" T1279_AUDIT=$d/audit.json T17_JSON=$d/world.json T176_JSON=$d/farm.json LAB_SEEDCACHE=$d/seedcache.json node $pre scripts/t176-ab.js 800 $seed > $d/run.log 2>&1 )
+  ( cd $ROOT && env -u NODE_OPTIONS "$@" T1279_AUDIT=$d/audit.json T17_JSON=$d/world.json T176_JSON=$d/farm.json LAB_SEEDCACHE=$d/seedcache.json node $pre scripts/t176-ab.js ${DAYS:-800} $seed > $d/run.log 2>&1 )
   echo "$name $seed rc=$? $(( $(date +%s)-s ))s" >> $LOG; }
-export -f job; export R LOG P ROOT
+export -f job; export R LOG P ROOT DAYS
 cat "$1" | xargs -P $PAR -L 1 bash -c 'job "$@"' _
 echo done >> $LOG
