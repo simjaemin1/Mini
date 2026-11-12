@@ -10,6 +10,7 @@
 //   쓰는 법: `T449_MODE_FILE` 에 `old`|`new` 를 쓰고 존에 `SIGWINCH` → 그 틱 사이에 바뀐다. 지금 몸은 `T449_MODE_FILE.ack` 에 적는다.
 //   ★`scripts/t432-probe.js` 를 같이 싣는다(GC 뒤 메모리 · 활성 청크 · 건물 — SIGUSR2).
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 require('./t432-probe.js');
 const Module = require('module');
 const fs = require('fs');

@@ -19,6 +19,7 @@
 'use strict';
 // ★[T716 ⑥ · 2026-10-13] ⑧ 은 **켬 세계**(T705 배탈 지수 · PM 10-13 켬 기본)의 단언이다 — PM 이 걸어 둔 끔 묶음(`T705_FOOD_SICK=0`)을 걷었다.
 //   음식의 해는 이제 즉시 −3 이 아니라 잠복 뒤의 배탈(극단 합산기 → 정본 피해 경로)이다. 되돌림 세계는 `test-food-sick` ① 이 지킨다.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

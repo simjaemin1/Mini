@@ -209,7 +209,7 @@ const call = async (port, meth, p, hdr, body) => {
   //   ★둘째 팔 — **비밀 없이** 띄운 존: 사설 주소 폴백이 살아난다(T217 조건 · 지금 배포가 그 판이다).
   say('\n[ⓒ3 비밀 없는 팔 — 사설 주소 폴백]');
   {
-    const ZP2 = 3321, ZDB2 = `/tmp/doors-z2-${process.pid}.db`;
+    const ZP2 = require('./lib-port').port(3321), ZDB2 = `/tmp/doors-z2-${process.pid}.db`;
     const _zone2 = boot('zone.js', {
       PORT: String(ZP2), ZONE_ID: 'hanbando', DB_PATH: ZDB2, CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CPORT),
       ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1',

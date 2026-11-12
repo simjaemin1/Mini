@@ -17,6 +17,7 @@
 //       node scripts/t455-repeats.js table          (/tmp/t455 의 판 전부 → 표 · /tmp/t455/table.json)
 //   T455_DIR=/tmp/t455 · T455_TPL=/tmp/t444/tpl-inf.db · T455_LEAD_S=150(fixed 원점 = 경계 앞 몇 초)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { spawnSync, spawn } = require('child_process');

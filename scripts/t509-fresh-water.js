@@ -10,6 +10,7 @@
 //   · 단위: 1셀 = 32px = 1m(`zone.js MOVE_SPEED` 주석) · 걸음 초 = 칸 × 32 ÷ `MOVE_SPEED`(64px/s)
 // 쓰는 법: node scripts/t509-fresh-water.js [out.json]      (존 hanbando · 임시 DB · 마을 켬 · 1~3분)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

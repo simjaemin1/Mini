@@ -26,6 +26,7 @@
 // 실행: node scripts/t360-border.js [--zone nippon] [--from <cx,cy>] [--png /tmp/x.png]
 //   --from 없으면 존 안에서 **본토 다음으로 큰 덩어리**를 스스로 찾는다.
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 

@@ -29,6 +29,7 @@
 // 실행: node scripts/test-village-view.js   (존 한 벌을 이 프로세스 안에서 띄운다 · 마을 2곳)
 'use strict';
 // T1188: 기존 원석/OFF 계약. 광물별 켬은 test-t1188-ore-split이 검사.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.T1188_ORE_SPLIT='0';
 const path = require('path');
 const fs = require('fs');

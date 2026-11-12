@@ -24,7 +24,7 @@ const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSyn
 const say = (...a) => console.log(`[t735 ${MODE}]`, ...a);
 rmdb(DB); rmdb(CDB);
 for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(TPL + s, DB + s); } catch (e) { } }
-const CP = 4210, ZP = 4211, SECRET = 't735';
+const CP = require('./lib-port').port(4210), ZP = require('./lib-port').port(4211), SECRET = 't735';
 const ENV = Object.assign({}, process.env, { T735_VEIN_BATCH: process.env.T735_VEIN_BATCH || '1', T374_DEMAND_STOP: '0', T312_FISH_ACT: '1' });
 //   존의 `_veinDigest(T)` 와 같은 식 — 기준 시각 T 로 리젠을 다시 적분한 재고(소수 6자리) · 정본 `specialty.oreRegen` · 하루 = `WORLD.dayLengthMs`
 const Spec = require(path.join(ROOT, 'server', 'specialty'));

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.T1243_FARM_ON='1';
 process.env.ENABLE_VILLAGES='0';process.env.ENABLE_WILDLIFE='0';process.env.ENABLE_BANDITS='0';process.env.ENABLE_ROADS='0';
 process.env.DB_PATH='/tmp/t1245-seeds-'+process.pid+'.db';process.env.PORT=String(require('./lib-port').port(47000));

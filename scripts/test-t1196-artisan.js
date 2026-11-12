@@ -13,6 +13,7 @@
 //   ④ 몸 걸음 — 곳간 사다리(인출 · 머묾) → 작업 자리(시설 있으면 그 앞 · 없으면 회관 앵커) → 제작(정본 시간) → 곳간(저장) · 곳간은 꺼낼 때 · 넣을 때만 움직인다
 //   ⑤ 명부 — 빈 몸만 자리 · 손에 든 몸은 자리 밖 · 몸을 잃은 작업표는 주인을 지운다(다른 몸이 잇는다)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path'), fs = require('fs');
 const { spawnSync } = require('child_process');
 // ★[T1208-K2] 묶음 — `T1195_HUNT_REAL`(사냥 고기 = 사냥꾼 몸이 잡은 짐승)을 켜면 서버 호스트가 사냥 수식을 닫아, "빈 몸 자리 없는 호스트 = 호스트 없음" ② ·

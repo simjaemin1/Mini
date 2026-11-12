@@ -13,6 +13,7 @@
 //   · 속도 판정은 절대 시간이 아니라 **비율**이다(2코어 컨테이너 부하에 안 흔들리게).
 //   · zone.js 검사는 정규식 한 방이 아니라 두 가지 인자식을 **뽑아서 비교**한다.
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 

@@ -24,6 +24,7 @@
 //   ★[T1203 2026-11-07] 묶음 풀기 — ⑥ 의 자가 econ 말리기 · 절이기(`_t1192Preserve` → `preserveRecord` · 이름 = `fish-preserve` `driedId`/`pickledId` 정본)로 대구에서 난
 //     `dried_cod` · `pickled_cod` 를 "바뀐 품목"과 가른다(대구가 몸을 바꾼 것 — 다른 품목이 끼어든 것이 아니다). 그 밖의 품목만 바뀐 것으로 센다. 두 손잡이는 기본 그대로 탄다.
 // ★[PM land1050 → T1222] 자연사(`T1206_NAT_DEATH` 켬 기본) 세계도 그대로 돈다 — 말리기로 난 `dried_cod` 는 위 T1203 자가 대구의 몸으로 가른다(묶음 없음 · 켬 42/42).
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

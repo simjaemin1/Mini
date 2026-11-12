@@ -14,6 +14,7 @@
 //   ★`T1138_CMP=0` — 견줌(그림자 짓기 · 견줌 A*)을 끄고 틱 표본만 — 부팅 4분 최대 틱 판은 이것으로 따로 돌린다(견줌 몫이 틱에 든다).
 //   ★SIGHUP(t686 이 관측자 붙고 10초 뒤 보낸다)에 지우지 않는다 — 부팅부터 센다(때 `hupAt` 을 적어 T756 과 같은 창도 가른다).
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 

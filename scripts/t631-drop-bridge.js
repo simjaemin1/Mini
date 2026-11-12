@@ -2,6 +2,7 @@
 // (@regress 없음 — 러너 밖 · T631 ② 뜬 다리 빼기 · zone-config 존 `bridges` 한 줄에서 주어진 셀만 뺀다 · 차례 그대로 · 기본 표만)
 // 쓰는 법: node scripts/t631-drop-bridge.js <존> <셀 flat json(T614 작업 파일 _t614.bridgesRemoved.<존>)> [--apply]
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs'), path = require('path');
 const [Z, F] = process.argv.slice(2), APPLY = process.argv.includes('--apply');
 const ZC = path.join(__dirname, '..', 'server', 'zone-config.js');

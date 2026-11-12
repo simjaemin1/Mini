@@ -33,6 +33,7 @@
 // 쓰는 법: node scripts/t717-equilibrium.js --audit /tmp/t702/audit.json --trees /tmp/t702/trees.json [--runs <판 JSON 폴더(.t717.json)>] [--json out.json]
 //   ★[T1135] `--nstar <판 디렉터리>` = 마을별 N* 표(땔감 평형 · k 열 · 세계 합 · 숯) — 아래 T1135 절
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

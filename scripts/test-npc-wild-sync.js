@@ -19,6 +19,7 @@
 // 실행: node scripts/test-npc-wild-sync.js   (임시 DB · 임시 포트 · 라이브 무접촉)
 'use strict';
 // ★[T1065 판 꾸밈] 이 하네스가 재는 것 = NPC · 사람 공격의 야생 그림자 동기(맨손 픽스처) — 도구 문(`T1065_TOOL_GATE` · 맨손 거부 · 활 없음)은 `test-t1065-tool-gate` 가 잰다. 단언 무변 · 손으로 켜 볼 수 있다(env 를 주면 그 값).
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.T1065_TOOL_GATE = process.env.T1065_TOOL_GATE || '0';
 const path = require('path');
 const fs = require('fs');

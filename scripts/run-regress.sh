@@ -105,6 +105,7 @@ run_one() {
   # ★[T1161 · K14] 내리기 **전에** 묻는다 — 내 무리에 산 것이 남았나(신호 0 = 묻기만). 남았으면 다음 판 앞에서 쉰다(위 `drain` 머리).
   if kill -0 -- "-$tp" 2>/dev/null; then NEED_DRAIN=1; echo "  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 ${DRAIN_SEC}초 쉰다"; fi
   kill -KILL -- "-$tp" 2>/dev/null || true   # ★[T773] 내가 띄운 무리만 — 남은 아이(존 · central)까지 · 남의 판은 무접촉
+  [ -n "${RUN_REGRESS_KEEP:-}" ] && { mkdir -p "$RUN_REGRESS_KEEP"; cp "$tmp" "$RUN_REGRESS_KEEP/$f.out" 2>/dev/null || true; }   # ★[T1288] 하네스 전체 출력 남기기(켬만 · 판정 0)
   out="$(cat "$tmp")"; rm -f "$tmp"
   # ★실패한 줄이 **자기 이름을 말하게** 한다 [2026-08-26] —
   #   종전엔 요약줄만 `tail -5` 로 남아서 "72/1 실패"만 보이고 **무엇이** 실패했는지는

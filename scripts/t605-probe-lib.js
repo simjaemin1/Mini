@@ -10,6 +10,7 @@
 //   bandits   : 도적 교역로 표본(`routePts`) · 소굴 스캔(`denScan`) · 일 훅
 //   roads     : 일 훅
 // ⚠감싼 함수끼리 안에서 서로 부르면(예: `walkFor` 안의 경로) 몫이 **포함**으로 겹친다 — 표는 포함 값이라고 적는다.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');

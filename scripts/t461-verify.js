@@ -17,7 +17,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
 
 async function one(tpl, idx) {
-  const CP = 4700 + idx * 4, ZP = CP + 1, SECRET = 't461v-' + idx;
+  const CP = require('./lib-port').port(4700) + idx * 4, ZP = CP + 1, SECRET = 't461v-' + idx;
   const DB = `/tmp/t461v-z-${idx}.db`, CDB = `/tmp/t461v-c-${idx}.db`;
   rmdb(DB); rmdb(CDB); for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(tpl + s, DB + s); } catch (e) {} }
   const cap = /inf/.test(tpl) ? { VILLAGE_NPC_CAP: '999999' } : {};

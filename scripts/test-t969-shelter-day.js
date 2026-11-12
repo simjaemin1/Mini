@@ -12,6 +12,7 @@
 //     ② 그리고 두 판의 판 JSON 이 **바이트 같다**(econ · 마을 칸 · 판 끝 수)
 //     ③ ★자명 통과 금지 — 끔(`=0` · 종전 벽시계 타이머)이면 벽시계 판의 쉼터가 켬 판과 다른 날에 선다(기동 · 마감이 실제 시간을 먹는다 — 이 판이 잡은 갈림의 첫 칸)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs'), os = require('os'), path = require('path');
 const { spawn } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');

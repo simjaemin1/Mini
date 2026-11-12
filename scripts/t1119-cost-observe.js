@@ -7,6 +7,7 @@
 //     ⓐ zone.js 게임 틱(`setInterval(…, TICK_MS)` — 첫 1000/30 간격 하나 · T805 몸 길 자 ③ 그 꼴)의 본문 실제 소요 → 0.01 ms 칸 히스토그램 → 평균 · p50 · p99 · 최대.
 //     ⓑ econ 하루 끝(`scanDay`)마다 몸 수 — 호스트 `players` 의 NPC 몸 전부 · 그중 누운 몸(`isDown`) · 마을 몸(`simVillageId`) · 도적 몸(`_bdtGid`) → 평균 · 최대 · 끝 날.
 //   ⚠값을 안 바꾼다: 틱 감싸개는 원 함수를 같은 인자로 부르고 그 돌려줌을 그대로 돌려준다 · 하루 줄은 원 `scanDay` 를 먼저 부른 뒤 읽기만.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const A1 = process.argv[1] || '';

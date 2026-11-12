@@ -17,6 +17,7 @@
 //   **같은 무게 굴림**에 대 본다(팔 = 이 가지 기본 kg 앵커 · 지금 식 / a / b / c · 싸움 길이 중앙). 표 기계는 그대로다.
 // 실행: node scripts/t602-windows.js [--md] [--json 파일] [--t609]   (존: ZONE_ID=nippon)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path'), fs = require('fs');
 const ROOT = path.join(__dirname, '..');
 const ZID = process.env.ZONE_ID || 'hanbando';

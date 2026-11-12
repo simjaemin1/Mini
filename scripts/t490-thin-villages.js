@@ -21,6 +21,7 @@
 //   node scripts/t490-thin-villages.js --reseed <존 DB> <ha당 개체>    ④ⓐ 예측 — 그 밀도로 다시 심으면 원판 K
 //   <존 DB> = 자가 남긴 틀(`T347_KEEP_DB` 의 `wNN-warm.db`) — 마을 중심 셀(`villages.cx/cy`)과 econ 칸을 거기서 읽는다(정본 = 존이 심은 자리).
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

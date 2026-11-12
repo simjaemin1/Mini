@@ -21,6 +21,7 @@
 //
 // 실행: node scripts/test-farm-act.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 if (process.env.T1212_FARM_REST == null) process.env.T1212_FARM_REST = '0';   // ★[T1220-K1] T1212 ② 켬 기본(land1051) — 켬이면 몸 갈래에서도 「몸이 못 한 몫」을 `lifeFarmDay` 일괄이 거든다(설계) · 이 하네스의 ⑤ · ⑫ 는 그 앞 「몸 XOR 일괄」(몸 날 작물 절 호출 0)을 재므로 끔으로 묶는다(단언 무변 · 켬 세계는 test-t1212-farm-clock 이 잰다)
 const path = require('path');

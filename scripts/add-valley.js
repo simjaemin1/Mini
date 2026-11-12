@@ -11,6 +11,7 @@
 // 이 스크립트는 **재기만 하고**, --apply 라야 hanbando-terrain.json 에 쓴다.
 // 실행: node scripts/add-valley.js --name 오지계곡 --path 1818,236 1832,240 1846,246 1858,250 1872,254 --width 10 [--apply]
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 

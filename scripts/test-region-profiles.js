@@ -20,6 +20,7 @@
 //   ⓘ 추신4 — L 500 으로 구운 정본: 자리 칸은 그대로(광종 칸만) · 정본 = 굽기(옛 기록) 자기일치(한반도 덜 흔드는 굽기 ·
 //      닛폰 다 굽기) · 재민 08-01 규칙 셋 위반 0(두 존) · 끔이면 옛 기록으로 통째 되돌림 · 켬이면 그대로
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.resolve(__dirname, '..');

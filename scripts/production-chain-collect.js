@@ -2,6 +2,7 @@
 'use strict';
 // Completed production-card matrices only; retain original bytes and per-member hashes, no DB.
 // node scripts/production-chain-collect.js T1181 /tmp/t1181 계측/T1181_2026-11-06
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs=require('fs'),path=require('path'),crypto=require('crypto'),zlib=require('zlib'),cp=require('child_process');
 const[task,root,out]=process.argv.slice(2),cfg={T1181:{server:27,lab:21,commit:'c9f7bc5e',end:'all3 800 exit=0',labEnd:'all3 42 exit=0'},T1188:{server:9,lab:6,commit:'a2d883e9',core:'d1017945',end:'on 800 exit=0',labEnd:'on 42 exit=0'},T1192:{server:9,lab:6,commit:'6e549a48',end:'on 800 exit=0',labEnd:'on 42 exit=0'}}[task];if(!cfg||!root||!out)throw Error('task, root, output stem required');
 const suffix='.'+task.toLowerCase()+'.json',sha=b=>crypto.createHash('sha256').update(b).digest('hex'),read=p=>JSON.parse(fs.readFileSync(p,'utf8')),files={},members={},server=[],lab=[];

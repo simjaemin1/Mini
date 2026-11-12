@@ -125,7 +125,7 @@ async function phaseB() {
   for (let i = 0; i < CAPS.length; i++) {
     const c = CAPS[i], f = F(c);
     if (process.env.T376_REUSE === '1') { try { if (fs.statSync(f.load).size > 100) { console.log(`  · ⓑ 상한 ${c} — 이미 있다(재사용)`); continue; } } catch (e) {} }
-    const CP = 3820 + i * 4, ZP = CP + 1, SECRET = 't376-' + tag(c);
+    const CP = require('./lib-port').port(3820) + i * 4, ZP = CP + 1, SECRET = 't376-' + tag(c);
     const DB = `/tmp/t376-load-${tag(c)}-z.db`, CDB = `/tmp/t376-load-${tag(c)}-c.db`;
     rmdb(DB); rmdb(CDB);
     for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(f.zdb + s, DB + s); } catch (e) {} }

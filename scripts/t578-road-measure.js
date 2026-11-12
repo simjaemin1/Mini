@@ -10,6 +10,7 @@
 //   ⑥ 교역로끼리 겹침 — 교역로 래스터 셀 합 ÷ 합집합 · 둘 이상이 지나는 셀 비율(같은 표의 노드열)
 // 실행: node scripts/t578-road-measure.js --db <zone.db> [--out f.json] [--pairs 임업2-어촌12,광산3-임업5,임업3-농촌22]
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

@@ -11,6 +11,7 @@
 //   ⑥ 판 — 마을 하나 · 몸 전부 · 3날(가상 시계) 틱 판 ↔ 사건 판: econ 지문(곳간 · 작물 장부 · 인구) 같음 · 사건 갈래가 실제로 몸을 쥐었다(자명 통과 금지)
 // 실행: node scripts/test-t1241-des.js   (⑥ 이 판 둘 — 2 ~ 4분) · `--quick` = ① ~ ⑤ 만
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { spawnSync } = require('child_process');

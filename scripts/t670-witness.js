@@ -12,6 +12,7 @@
 //   대역: 지금 main 의 `detectStuck` 는 `_t671Lt`/`_t671Gt` 술어를 부르므로 그 두 줄을 같이 싣는다(T671 이 같은 답으로 바꾼 것 — 아래 ⓐ 가 그 위에서도 같음을 본다).
 // 실행: node scripts/t670-witness.js [ref=23b2fcc4]
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const { execFileSync } = require('child_process');
 const fs = require('fs');

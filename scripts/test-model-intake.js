@@ -25,6 +25,7 @@
 // ★[T1242 · ★재민 11-09 "0.9 m"] 고라니 다시 굽기 — 앞 축 0.9 m(머리–몸 0.857 · 한국아종 85 ~ 115 cm 아래 끝 안) · ④ 크기 한 줄(길이 · 키 · 폭 · 보폭이 한 배)
 // 실행: node scripts/test-model-intake.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');

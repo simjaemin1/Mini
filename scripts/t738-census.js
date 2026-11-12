@@ -8,6 +8,7 @@
 //   ⚠정적 자의 한계: `p` 가 사람 아닌 것(점 · 몹)을 가리키는 자리도 섞일 수 있다 — 표의 "함수" 열로 사람이 읽는 자리를 고른다(보고 §1).
 // 실행: node scripts/t738-census.js [--json out.json]
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs'), path = require('path');
 const acorn = require(path.join(__dirname, '..', 'node_modules', 'acorn'));
 const ROOT = path.join(__dirname, '..');

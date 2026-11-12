@@ -12,6 +12,7 @@
 //   반폭 + 2칸 사각 · 호수 기각 상자 + 2칸 · 경계 이웃 피처도) ② 고른 표본 `--rand` 칸. 어긋남이 있으면 첫 몇 칸을 찍고 끝 코드 1.
 // 실행: node scripts/t947-cell-box-eq.js [--full hanbando] [--rand 200000] [--zones a,b] [--metas a,b] [--out /tmp/t947/eq.json]
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

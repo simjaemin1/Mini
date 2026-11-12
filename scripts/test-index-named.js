@@ -19,6 +19,7 @@
 // ⚠존을 **이 프로세스 안에서** 띄운다(`test-regrow ⑦` · `test-ghost-tree` 와 같은 문법 · `Zone.__testBind`).
 // 실행: node scripts/test-index-named.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

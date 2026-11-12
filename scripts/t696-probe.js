@@ -4,6 +4,7 @@
 //   ② 존 `_t566Release` 속 — 장부 거르기 · 막힘 술어 · 원시 판 · 벤 날 적기(그 안 판 고침 · DB) ms · 횟수
 //   ③ 존 DB 모든 COMMIT/자동 커밋은 따로 못 잰다 — 길 묶음 COMMIT 은 ① 이 잰다
 //   쓰기: `T688_PROBE_OUT` 의 길 기록마다 `z`(직전 경계 뒤 존 풀림 몫)를 붙인다
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs'), path = require('path');
 const roadsPatch = require('./t688-probe.js');
 module.exports = function patch(dir) {

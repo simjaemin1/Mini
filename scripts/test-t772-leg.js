@@ -18,6 +18,7 @@
 // 실행: node scripts/test-t772-leg.js   (존 안 띄움 · 1초)
 'use strict';
 // T1182: 이 자는 종전 일정 보간 길을 재며 실제 몸 정본은 별도 자가 잰다.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.T762_CARAVAN_BODY='0';
 process.env.T1136_ESCORT_CARRY='0';
 const path = require('path');

@@ -12,6 +12,7 @@
 //   ★[T973] 마을 NPC 몸 hp 칸 = `SPECS.npc` · 검사 = `npcSourceChecks`(종전 `test-npc-hp-door` ⓪ ~ ④ 글자 · 말 그대로 옮김 —
 //     그 하네스와 `test-hp-src` ⑤ 가 같은 함수를 부른다 · 사본 0). 이로써 hp 문 셋(사람 · 짐승 · 마을 몸)의 소스 검사가 이 파일 한 벌이다.
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '..');

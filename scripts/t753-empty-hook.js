@@ -8,6 +8,7 @@
 //     wf   — 물거리 EDT `vil._wf` · 미리 굽기 `vil._t620Wf`(마을마다). 다시 뜬 판은 비어 있어 다음 쓸 때 **지금 영토 상자**로 다시 만든다.
 //   ⇒ 이 판 ↔ 다시 뜬 판(제품 그대로)이 같아지면 비운 칸이 주인이다.
 //   T753_DROP=bandits.bTick,… (다시 뜬 판 쪽 · 거꾸로 하나씩) — 메타 행의 T742 이름표 칸에서 그 이름만 빼고 읽힌다(그 칸만 "안 실은 꼴" · 나머지는 켬 그대로).
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const EMPTY = new Set(String(process.env.T753_EMPTY || '').split(',').filter(Boolean));
 if (EMPTY.size) {

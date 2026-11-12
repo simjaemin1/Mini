@@ -14,6 +14,7 @@
 //        ★[T1001] 제품도 켬 기본(zone 상수 `!== '0'` 하나 · 되돌림 `=0`) · 미끼: T990 줄을 뺀 사본은 기본을 안 싣는다(판 자는 그래도 제품 기본 켬을 탄다 — 이 줄은 '부르는 값 먼저' 자리를 지킨다)
 'use strict';
 // ── 프리로드 갈래(아이 바꿔 치기) ──
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 if (process.env.T941_CAPTURE && require.main !== module) {
   const cp = require('child_process'); const real = cp.spawn;
   cp.spawn = function (cmd, args, opts) {

@@ -16,6 +16,7 @@
 //
 // 실행: node scripts/t326-eochon2.js <존DB> [마을이름 …]        (이름 없으면 정지 마을을 스스로 고른다)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const VL = require(path.join(__dirname, '..', 'server', 'village-layout.js'));
 const CAP = VL.HOUSE_CAP_PER_FLOOR;

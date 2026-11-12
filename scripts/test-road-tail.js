@@ -10,6 +10,7 @@
 //   ⑥ [`T696_REAL_DB=<틀>`] 실제 크기 틀에서 한 경계에 다져진 길 수백 셀을 풀 때 끔 ↔ 켬의 풀림 셈 · 메모리 장부 · DB 행이 같다
 //   (아이 프로세스 — 모듈이 env 를 적재 때 읽는다)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

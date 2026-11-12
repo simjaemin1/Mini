@@ -164,7 +164,15 @@ function displays(n, key) {
   } finally { unlock(); }
 }
 
+// ── central 없는 판 [T1288] — 존은 `CENTRAL_*` 가 없으면 기본 localhost:3010 에 붙는다. 나란히 돌면 그 자리에 **남의 central** 이 있다.
+//   ⇒ central 을 안 띄우는 하네스는 머리에서 닿지 않는 주소(`http://localhost:1` — 이미 여러 하네스가 쓰는 꼴)를 준다. 이미 준 값은 그대로.
+function noCentral() {
+  if (!process.env.CENTRAL_URL && !process.env.CENTRAL_PORT && !process.env.CENTRAL_HOST) process.env.CENTRAL_URL = 'http://localhost:1';
+  return process.env.CENTRAL_URL;
+}
+
 function release() {
+  if (MINE.length && process.env.LIB_PORT_LOG) { try { fs.appendFileSync(process.env.LIB_PORT_LOG, JSON.stringify({ release: true, pid: process.pid, t: Date.now(), n: MINE.length }) + '\n'); } catch (e) { /* 적기만 */ } }
   for (const f of MINE.splice(0)) { try { fs.unlinkSync(path.join(DIR, f)); } catch (e) { /* 이미 없음 */ } }
   MEMO.clear();
 }
@@ -178,4 +186,4 @@ function ports(n, key) {
 }
 const port = (key) => ports(1, key);
 
-module.exports = { port, ports, hold, displays, release, DIR, LO, HI, DLO, DHI, _ledger: (kind) => { fs.mkdirSync(DIR, { recursive: true }); return ledger(kind); }, _busy: busy };
+module.exports = { port, ports, hold, displays, noCentral, release, DIR, LO, HI, DLO, DHI, _ledger: (kind) => { fs.mkdirSync(DIR, { recursive: true }); return ledger(kind); }, _busy: busy };

@@ -7,6 +7,7 @@
 //   청크 해시 = `generateChunkResources` + `overflowInto` 의 id·종류·좌표·종·단계(T406 자와 같다).
 //   ★술어 해시도 같이 — 경계에서 2,048px 안 셀 중심(32px 격자 1/4 표본)의 물·바위·숲배수 답.
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');

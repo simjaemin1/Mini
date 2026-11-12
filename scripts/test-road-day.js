@@ -10,6 +10,7 @@
 //   ④ 하루 훅에서 다시 잰 셀 수 ≪ 밟힌 셀 전부(바뀐 셀만 보는가)
 //   ⑤ 자명 통과 금지 — 문턱 날을 하루 늦게 · 문턱 날 셀을 안 봄 · 스탬프 자리에서 등급을 안 고침 · 쓰기 전 복사를 뺌 — 다 문다
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

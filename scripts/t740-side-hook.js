@@ -11,6 +11,7 @@
 //     T740_FORCE_JUMP=K      (계측 사본) 다시 뜬 판의 날 뜀을 벽시계 대신 K 로 고정(빠른 시계 자에선 부팅 시간만으로 수백 날이 뛴다).
 //   해시 규약(`canon`): Map → ['M', [[k, v] …]](차례 그대로) · Set → ['S', […]] · 마을 · econ 마을 · econ 주민 · 몸 · world 는 이름표(@v · @e · @n · @p · @W) ·
 //     함수 · undefined 는 'ƒ' · 'u' · 깊이 10 · 순환은 '@cyc'.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const OUT0 = process.env.T577_OUT || '';
 const path = require('path');
 const fs = require('fs');

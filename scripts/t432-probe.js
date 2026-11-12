@@ -20,6 +20,7 @@
 //   actN · deactN    누계 — 청크 켜기(`activateChunk`) · 끄기(`deactivateChunk`) 호출 수(되풀이 = 켜고 끄기의 값)
 //   actDistinct · reN · reMax   켜진 적 있는 청크 수 · 두 번 이상 켜진 청크 수(되풀이) · 한 청크가 가장 많이 켜진 횟수
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const Module = require('module');
 const fs = require('fs');
 const path = require('path');

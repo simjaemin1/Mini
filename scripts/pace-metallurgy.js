@@ -21,6 +21,7 @@
 // 실행: node scripts/pace-metallurgy.js      (임시 DB·임시 포트 — 라이브 무접촉. ~8분)
 //       PACE_FAST=1 → 대기 건너뜀(배선 점검용. 계측값 무효)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 

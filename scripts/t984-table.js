@@ -7,6 +7,7 @@
 //   도적 보호기 끝나는 날 = `server/bandits.js` `_bdtOpenDay` 정본 그대로(그 파일 원문을 컴파일해 부른다 · 사본 0 — T951 표 기계와 같은 문).
 //   굶주림 몫 = 죽음이 난 마을-날의 음수 칸(logi · hunger · health · happy · prestige) 크기 비(T934 · T951 근사).
 //   소멸 = 그 마을 인구가 0 이 된 첫 날(t934 rows · 판 끝까지 0).
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 const Module = require('module');

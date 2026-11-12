@@ -9,6 +9,7 @@
 //   4) 200셀 초과 = 대양. 다리가 아니라 배가 답이다 → "항해 층 필요"로 분류만 하고 놓지 않는다.
 //
 // 실행: node scripts/plan-bridges-v2.js [zoneId]
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const terrain = require(path.join(__dirname, '..', 'server', 'terrain'));
 const { ZONES } = require(path.join(__dirname, '..', 'server', 'zone-config'));

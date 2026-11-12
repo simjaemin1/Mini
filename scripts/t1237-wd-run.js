@@ -19,6 +19,7 @@
 //   칠 때마다 그 짐승 곁으로 다시 옮긴다(맞으면 튄다 — 쫓아가 붙은 사냥꾼). ⚠한 틱 안에 거듭 치면 존 공간 색인(틱 머리에만 다시 짓는다)에 남은
 //   죽은 몹을 또 잡아 주검이 겹으로 선다 — 이 판이 처음 그렇게 돌다 찾았다(보고 §6 · 회부 · `scripts/t1237-same-tick-kill.js`).
 // 보고 표의 재료만 낸다(판정 0) — 끝에 JSON 한 줄(`T1237_RUN_OUT` 파일)과 표.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

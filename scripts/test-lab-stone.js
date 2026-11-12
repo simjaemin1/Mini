@@ -23,6 +23,7 @@
 //   ⑨ 끝 줄 · ㉓ 은 픽스처를 켬 세계에 맞췄다(⑨ 돌 남는 판을 픽스처가 세운다 · ㉓ 인구 120 — 보고 T1222).
 // ★[T1127 2026-11-04] 이 하네스가 재는 것은 굶주림 길(식량 빚 · 보호막) 밖이다 — 판 세계를 T1127 앞(`T1074_FOOD_DEBT=0 T858_NO_SHIELD=0` = 종전 바이트)으로 묶는다.
 //   T1127 이 두 손잡이를 켬 기본으로 바꾼 뒤 이 하네스의 작은 판 세계(인구 · 곳간 · 교역)가 갈려 단언이 빨개졌다(main 에선 초록 · 보고 T1127 §4). 켬 기본 세계에서 같은 단언을 다시 세우는 일은 회부. 부르는 쪽이 값을 주면 그 값이 먼저다.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 if (process.env.T1074_FOOD_DEBT == null) process.env.T1074_FOOD_DEBT = '0';
 if (process.env.T858_NO_SHIELD == null) process.env.T858_NO_SHIELD = '0';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';

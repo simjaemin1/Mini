@@ -9,6 +9,7 @@
 //   ③ 값 — 켬 팔에서 `_cellTask` 를 부른 수(물음) ÷ 끔 팔이 불렀을 수(훑은 칸) · 사건 셈(칸 지움 · 통째로).
 //   ④ 미끼 — 사건 밖에서 칸 항목을 고치면(`e.ps = 1` 을 몰래) verify 가 문다 · 켬 팔 지문이 끔과 갈린다(이 자가 잡는다).
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');

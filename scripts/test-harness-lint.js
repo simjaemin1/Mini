@@ -873,8 +873,8 @@ console.log('\n⑮ 하네스 포트 = 공용 할당기 `lib-port` [T1281]');
 console.log('\n⑯ 고정 포트 — 띄우는 파일은 `hold` 로 쥐거나 `port` 로 옮긴다 [T1288]');
 {
   const { judge } = require(path.join(SCRIPTS, 'lib-fixed-ports.js'));   // 자 정본 하나(변환 판 · 이 린트가 같이 쓴다 — 사본 0)
-  const OUTSIDE = new Set(['launch-all.js']);
-  const bad = [], cust = []; let booters = 0, holders = 0;
+  const OUTSIDE = new Set(['launch-all.js', 'lib-fixed-ports.js', 'lib-port.js']);   // 개발 띄우개 · 자 정본 둘(제 정규식 글자가 자를 문다)
+  const bad = [], cust = [], loose = []; let booters = 0, holders = 0, guards = 0;
   for (const f of fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js')).sort()) {
     if (OUTSIDE.has(f) || f === 'test-harness-lint.js') continue;
     const r = judge(fs.readFileSync(path.join(SCRIPTS, f), 'utf8'));
@@ -882,11 +882,15 @@ console.log('\n⑯ 고정 포트 — 띄우는 파일은 `hold` 로 쥐거나 `p
     booters++; if (r.held.length) holders++;
     if (r.need.length) bad.push(`${f}(${r.need.join(',')})`);
     if (r.custom.length) cust.push(`${f}(${r.custom.join(',')})`);
+    if (r.centralLess && !r.guarded) loose.push(f);
+    if (r.guarded) guards++;
   }
   ok(booters > 0 && holders > 0, '⑯ [전제] 서버를 띄우는 파일이 있고 그중 `hold` 를 단 파일이 있다(0 이면 아래가 자명 통과다)', `띄우는 파일 ${booters} · hold ${holders}`);
   ok(bad.length === 0, '★★⑯a 제품 고정 포트를 쓰며 띄우는 파일은 그 포트를 **다** `hold` 머리 줄에 둔다(나란히 돌면 남의 central 에 붙는다)',
      bad.length ? `${bad.length}곳: ${bad.slice(0, 6).join(' · ')}` : '0');
   ok(cust.length === 0, '★★⑯b 띄우는 파일에 제품 밖 고정 포트 리터럴 0 — `lib-port.port(key)` 로 옮긴다', cust.length ? `${cust.length}곳: ${cust.slice(0, 6).join(' · ')}` : '0');
+  ok(loose.length === 0, '★★⑯d central 없이 존을 띄우는 파일은 `lib-port.noCentral()` 머리 줄을 단다(존이 기본 3010 = 남의 central 에 등록하지 않게)',
+     loose.length ? `${loose.length}곳: ${loose.slice(0, 6).join(' · ')}` : `0 · 단 파일 ${guards}`);
   // ★⑯c `lib-port: 묶지 않음` 표지(포트 글자가 묶는 자리가 아닌 줄 — 도커 env 픽스처)는 표에 적은 자리뿐(표지로 숨기기 금지)
   {
     const { UNBOUND } = require(path.join(SCRIPTS, 'lib-fixed-ports.js'));
@@ -910,10 +914,12 @@ console.log('\n⑯ 고정 포트 — 띄우는 파일은 `hold` 로 쥐거나 `p
     custom: H + '3010);\n' + SP + "env.PORT = '33" + "33';",
     connectOnly: "const u = 'http://localhost:30" + "10/';",
     zoneRef: H + '3010);\n' + SP + 'const Z = ZONES.nip' + 'pon; env.PORT = String(Z.po' + 'rt);',
+    loose: "require(path.join(ROOT, 'server', 'zo" + "ne.js'));",
+    guard: "require('./lib-port').noCen" + "tral();\nrequire(path.join(ROOT, 'server', 'zo" + "ne.js'));",
   };
-  const ans = Object.entries(bait).map(([k, v]) => { const r = judge(v); return k + '=' + (!r.boots ? 'out' : r.need.length ? 'need' : r.custom.length ? 'custom' : 'ok'); }).join(',');
-  ok(ans === 'noHold=need,hold=ok,custom=custom,connectOnly=out,zoneRef=need',
-     '★⑯ 자명 통과 금지 — 쥐지 않은 3010 은 **물고** · 쥐면 보내고 · 제품 밖 수는 물고 · 붙기만 하는 도구는 밖 · 존 설정을 읽은 존 포트도 문다', ans);
+  const ans = Object.entries(bait).map(([k, v]) => { const r = judge(v); return k + '=' + (!r.boots ? 'out' : r.need.length ? 'need' : r.custom.length ? 'custom' : r.centralLess && !r.guarded ? 'loose' : 'ok'); }).join(',');
+  ok(ans === 'noHold=need,hold=ok,custom=custom,connectOnly=out,zoneRef=need,loose=loose,guard=ok',
+     '★⑯ 자명 통과 금지 — 쥐지 않은 3010 은 **물고** · 쥐면 보내고 · 제품 밖 수는 물고 · 붙기만 하는 도구는 밖 · 존 설정을 읽은 존 포트도 문다 · central 없는 존은 가드가 있어야', ans);
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

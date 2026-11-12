@@ -19,6 +19,7 @@
 //   기본 = 표만(정본 무변) · --apply = 정본에 쓴다 · --out = 다른 파일에 쓴다(예행 비교용) · rc 0 = 왕복 같음 · 3 = 왕복 다름 · 2 = 입력 오류
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const os = require('os');
 const path = require('path');

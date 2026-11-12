@@ -7,6 +7,7 @@
 // 팔 셋째 `kill`: 가지 판을 어느 날 첫 묶음만 쓴 뒤 ⓐ 정상 종료(`process.exit` — `exit` 훅이 남은 묶음을 쓴다) ⓑ SIGKILL — 다음 부팅의 DB 를 종전 판의 그날 끝과 견준다.
 // 실행: node scripts/t630-flush-gate.js <종전 레포 루트> [--days 6] [--stamps 12000]
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');

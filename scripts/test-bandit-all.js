@@ -19,6 +19,7 @@
 'use strict';
 // ★[T1143 2026-11-04] 이 하네스가 재는 것은 해체 문 그 자체다(운영 픽스처가 NPC 마을을 해체로 세운다) — 판 세계를 T1143 앞(`T1143_NO_DISSOLVE=0` = 종전 바이트)으로 묶는다.
 //   T1143 이 NPC 마을 해체 없음을 켬 기본으로 바꾼 뒤 해체가 안 서 단언이 빨개졌다(main 에선 초록 · 보고 T1143 §0). 부르는 쪽이 값을 주면 그 값이 먼저다.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 if (process.env.T1143_NO_DISSOLVE == null) process.env.T1143_NO_DISSOLVE = '0';
 const path = require('path');
 const fs = require('fs');

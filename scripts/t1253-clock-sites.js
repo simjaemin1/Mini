@@ -9,6 +9,7 @@
 //     일꾼 스레드 · 다른 프로세스(central) · 브라우저 묶음(`economy-engine.browser.js`) · 랩 도구(`sim/_*` · `bandit-lab`)는 '아니오/해당 없음'.
 //   결과에 닿나 — 판 자 두 판(벽시계 · 가상 시계 · 시드 42)으로 잰 것이 `HAND` 표(보고/T1253 §1) · 나머지는 갈래 추정(로그 · 계측 = 아니오 · 몫 = 언제만 · 시각 = 후보).
 // 쓰는 법: node scripts/t1253-clock-sites.js [--md out.md] [--json out.json]
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
 const A = process.argv.slice(2);

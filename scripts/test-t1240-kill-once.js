@@ -8,6 +8,7 @@
 //   ③ 대조 — 틱 셋 사이는 켬 · 끔 다 주검 하나(종전 길 무변)
 //   ④ 글자 — 술어 하나(`mobLive` = `mobs.has` ∧ hp > 0) · 짐승을 고르는 세 길(사람 공격 · 화살 · NPC 싸움)이 그것을 부른다 · 손잡이 읽는 자리 하나
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { spawnSync } = require('child_process');
