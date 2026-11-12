@@ -7,7 +7,11 @@ const fs = require('fs');
 const Module = require('module'), compile = Module.prototype._compile;
 const OUT = process.env.T1286_TRACE, DAYS = +(process.env.T1286_TRACE_DAYS || 200), ONE = process.env.T1286_ONE || null;
 const rows = []; const S = { hit: {}, one: ONE };
+//        T1286_SUM=<파일> → 판 끝 요약(마을마다 집 부엌 요리 셈 `_t1286C` · 다양성 칸 `stats.foodGroups` 날 평균 · 사람-날 가중)
+const SUMF = process.env.T1286_SUM; const SUM = {};
 globalThis.__T1286Tr = (v, day, E) => {
+  if (SUMF) { const o = SUM[v.name] || (SUM[v.name] = { days: 0, popDays: 0, fg: 0, fgW: 0 }); const N = v.npcs.length; if (N > 0) { o.days++; o.popDays += N; const g = v.stats && v.stats.foodGroups; if (g != null) { o.fg += g * N; o.fgW += N; } }
+    o.C = v._t1286C ? { n: v._t1286C.n, s: +v._t1286C.s.toFixed(3), cooked: +v._t1286C.cooked.toFixed(3), days: v._t1286C.days } : null; o.cookN = (v.counts && v.counts.cook) || 0; }
   if (!OUT || day > DAYS) return;
   const st = v.storage || {}; let sum = 0; for (const k in st) sum += +st[k] || 0;
   let tre = 0; for (const k in (v.treasury || {})) tre += +v.treasury[k] || 0;
@@ -31,4 +35,5 @@ Module.prototype._compile = function (src, file) {
   }
   return compile.call(this, src, file);
 };
-process.on('exit', () => { if (OUT) try { fs.writeFileSync(OUT, JSON.stringify({ S, cols: ['d', 'name', 'N', 'farmer', 'cook', 'fe', 'food', 'stSum', 'sp', 'tre', 'jobs', 'ck', 'ckDays', 'cookedSt'], rows })); } catch (e) {} });
+process.on('exit', () => { if (SUMF) try { fs.writeFileSync(SUMF, JSON.stringify({ S, SUM })); } catch (e) {}
+  if (OUT) try { fs.writeFileSync(OUT, JSON.stringify({ S, cols: ['d', 'name', 'N', 'farmer', 'cook', 'fe', 'food', 'stSum', 'sp', 'tre', 'jobs', 'ck', 'ckDays', 'cookedSt'], rows })); } catch (e) {} });
