@@ -6774,6 +6774,9 @@ function _t1238Remove(vil, k) {
 }
 function _t1238DayPre(vil) {
   if (!vil || !vil._terrSet || !vil._terrSet.size) return 0;
+  //   ★[T1275] 수식 나무꾼 세계(나무꾼 몸 행위 끔) — 어제까지 개간 그루가 남긴 짐(곳간 입구가 그날 몫만 받고 남긴 통나무)을 오늘 일괄 앞에 먼저 넣는다
+  //     (몸 세계는 나무꾼 하루 절이 같은 함수를 같은 자리 — 베기 전 — 에서 부른다 · 입구 · 수요 문은 econ `woodToGranary` 하나 · 그날 몫만큼 · 나머지는 짐에 그대로)
+  if (T717_WOOD_HAND && vil.econ && !_lifeEcon().T325_WOOD_ACT && (vil.econ._t717Pack || 0) > 0) _t717PackIn(vil);
   const d = _t1238Today(), lim = _tv2.DECAY_YEARS * _t1238YD();
   if (d - (vil._t1238Since | 0) < lim) return 0;                         // 아직 아무 칸도 그만큼 묵을 수 없다(스캔 0)
   const t0 = process.cpuUsage();

@@ -15053,9 +15053,16 @@ function t1217IdleFrac(v, pop) {
 //   ⚠단위는 econ 단위다(그루가 아니다). 부르는 쪽(`server/villages.js`)이 손에 든 낱개를 단위로 바꾼다 —
 //     목재는 **낱개 = 단위**다(`weights.js wood 3.00kg` 이 "장작·목재 단(段)" 하나의 무게다 · 환산식 0).
 function woodToGranary(v, units) {
-  if (!T325_WOOD_ACT || !v || !v.storage) return 0;
+  if (!v || !v.storage) return 0;
+  if (!T325_WOOD_ACT) return v._t1238Land ? actToGranary(v, 'wood', actDemandCap(v, units, v._t1207Need || 0, '_t325InflowToday'), '_t325InflowToday', '_t325CutN') : 0;   // ★[T1275] 아래 머리말
   return actToGranary(v, 'wood', actDemandCap(v, units, woodShareD(v), '_t325InflowToday'), '_t325InflowToday', '_t325CutN');
 }
+// ★★[T1275 2026-11-12 · T1264 회부 2] **영토 v2 · 수식 나무꾼 세계의 개간 통나무 입구.** 영토 v2(`_t1238Land` — 서버가 켬에서만 econ 마을에 심는 표지) ∧ 나무꾼 몸 행위 끔이면
+//   개간이 벤 그루의 통나무(`villages.js _t1207Fell` · 짐 `_t717PackIn`)가 곳간에 든다 — 종전엔 이 입구가 0 이라 통나무가 마을 짐에 쌓이기만 했다(T1264 1020 1/3 · 짐 25,560 단 · 말뚝에 쓴 5,927 의 4.3 배).
+//   같은 입구 몸통(`actToGranary` — 같은 세금 · 같은 장부 다리 `_t325InflowToday` · 아래 틱이 표지 마을에서도 옮긴다) · 같은 수요 문(`actDemandCap`).
+//   수요 = 그날 D(`woodShareD` = 나무꾼 몫 + 말뚝 모자람 `_t1207Need`) 중 수식이 이미 낸 몫(나무꾼 몫 — 이 세계는 수식 나무꾼이 낸다)을 뺀 남은 몫 = `_t1207Need`
+//   — 몸 세계(T325 켬)에서 나무꾼 몸 + 개간 그루가 함께 D 를 채우는 것과 같은 합(배수 0 · 새 수 0). 안 받은 몫은 짐에 남아 이튿날 먼저 든다(T717 소멸 금지 그대로).
+//   ⚠표지가 없는 마을(영토 v2 끔 · 랩)은 종전 그대로 0 — 끔 세계 바이트 같음.
 // ★[T325] 이 마을이 **행위 벌목**으로 도는가 — 손잡이 ∧ 나무 셀이 있다(생활층이 `resourceAt` 로 세어 심는다).
 //   ⚠둘 다여야 한다. 나무 없는 마을(T309 ⓒ: 반경 16셀에서 3/51)은 켜도 종전 수식 그대로다 — 몸이 갈 자리가 없다.
 //   ★[T334] 셀 수는 이제 **분모가 아니다** — *"갈 자리가 있나"* 만 답한다.
@@ -17407,7 +17414,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   }
   // ★★[T325] 어제 손으로 들여온 목재도 **같은 자리에서** 장부에 적는다 — 이유도 T193·T312 와 같다.
   //   ★새 수 0 · 이중 0 — 켠 마을에서 `wood` 는 `addProduce` 를 안 탄다(위 게이트) ⇒ 들어오는 길은 이 줄 하나다.
-  const _t325In = T325_WOOD_ACT ? (v._t325InflowToday || 0) : 0;
+  const _t325In = (T325_WOOD_ACT || v._t1238Land) ? (v._t325InflowToday || 0) : 0;   // ★[T1275] 영토 v2 표지 마을은 수식 나무꾼 세계에서도 개간 통나무가 이 칸으로 든다(위 `woodToGranary` 머리말)
   if (_t325In > 0) {
     v._t325InflowToday = 0;
     dailyProductionPotential.wood = (dailyProductionPotential.wood || 0) + _t325In;
