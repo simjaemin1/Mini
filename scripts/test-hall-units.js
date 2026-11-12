@@ -29,7 +29,7 @@ if (process.env.T725_SUB === 'zone') {
   const TMP = `/tmp/t725-hall-units-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.env.ZONE_ID = 'hanbando';
-  process.env.PORT = String(42700 + (process.pid % 90));
+  process.env.PORT = String(require('./lib-port').port(42700));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
   //   ★[T779] 옛 한도 손잡이(`MEMBER_WD_*` — 넣은 만큼 다 꺼내 보려고 풀던 둘)는 걷었다 — 꺼내기는 촌장 · 한도 없음.

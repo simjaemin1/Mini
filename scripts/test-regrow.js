@@ -314,7 +314,7 @@ const Y = E.yearDaysOf();
     const TMP7 = `/tmp/test-regrow-${process.pid}.db`;
     for (const f of [TMP7, TMP7 + '-wal', TMP7 + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
     process.env.ZONE_ID = 'hanbando';
-    process.env.PORT = String(38400 + (process.pid % 500));
+    process.env.PORT = String(require('./lib-port').port(38400));
     process.env.DB_PATH = TMP7;
     process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
     process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
@@ -514,7 +514,7 @@ const Y = E.yearDaysOf();
       ].join('\n'));
       const run7 = (env) => { try { fs.unlinkSync(out); } catch (e) {}
         execFileSync(process.execPath, [probe, out], { encoding: 'utf8', stdio: 'ignore', timeout: 180000,
-          env: Object.assign({}, process.env, { DB_PATH: cdb, PORT: String(38900 + (process.pid % 400) + (env.T124_PLANT ? 1 : 0)) }, env) });
+          env: Object.assign({}, process.env, { DB_PATH: cdb, PORT: String(require('./lib-port').port(env.T124_PLANT ? 38901 : 38900)) }, env) });
         return JSON.parse(fs.readFileSync(out, 'utf8')); };
       const boot = run7({});
       ok(boot.mem && boot.mem.type === 'sapling' && Math.abs(boot.mem.x - planted.x) < 1e-9,

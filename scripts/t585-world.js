@@ -13,7 +13,7 @@ const { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const DAYS = +(process.argv[2] || 100), OUT = process.argv[3] || '/tmp/t585-world.json';
 const DAY_MS = +(process.env.T585_DAY_MS || 4000);
-const PORT = 30600 + (process.pid % 300), ZDB = `/tmp/t585w-zone-${process.pid}.db`;
+const PORT = require('./lib-port').port(30600), ZDB = `/tmp/t585w-zone-${process.pid}.db`;
 for (const f of [ZDB, ZDB + '-wal', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const say = (s) => process.stdout.write(s + '\n');

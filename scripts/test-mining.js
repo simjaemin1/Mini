@@ -491,7 +491,7 @@ console.log('\n⑨ 다광종 선광 E2E (실서버 mineOreCell → trySortOre)')
   const TMP = `/tmp/test-mining-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fsx.unlinkSync(f); } catch (e) {} }
   process.env.ZONE_ID = 'hanbando';
-  process.env.PORT = String(38000 + (process.pid % 900));
+  process.env.PORT = String(require('./lib-port').port(38000));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
   process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

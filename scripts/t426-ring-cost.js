@@ -187,7 +187,7 @@ async function zoneMode() {
   const rmW = () => { for (const x of ['', '-wal', '-shm']) { try { fs.unlinkSync(WORK + x); } catch (e) {} } };
   rmW(); for (const x of ['', '-wal', '-shm']) { try { fs.copyFileSync(DB + x, WORK + x); } catch (e) {} }
   process.on('exit', rmW);
-  Object.assign(process.env, { ZONE_ID: ZID, PORT: String(40700 + (process.pid % 200)), DB_PATH: WORK,
+  Object.assign(process.env, { ZONE_ID: ZID, PORT: String(require('./lib-port').port(40700)), DB_PATH: WORK,
     ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1' });
   const logs = [];
   const _l = console.log, _w = console.warn, _e = console.error;

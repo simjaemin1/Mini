@@ -4695,7 +4695,7 @@ function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 
     body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
     body.pxPerDay = body._t661.ppd;
     body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
-    if (T772_ON) { body._t661.t0 = Number.isFinite(body.lingerUntil) ? Math.min(now, body.lingerUntil) : now; _t772Stat.legs++; }
+    if (T772_ON) { const _t0n = (T1253_CLOCK_FIX && body._t1182) ? _t1253Now() : now; body._t661.t0 = Number.isFinite(body.lingerUntil) ? Math.min(_t0n, body.lingerUntil) : _t0n; _t772Stat.legs++; }   // ★[T1282] 켬 · T1182 몸 = 머묾 끝(econ 날 시계)과 같은 시계로 견준다(끔 = 종전 벽시계 `now`)
     _t1034Mark('ret');   // ★[T1034] 머묾 → 귀환(몸 단계 · 귀환 보간 시작) — 그 틱 끝 메타 행   // ★[T772 ①] 귀환 보간은 장 끝에서 연다(끔 = 이 줄 무동작)
     console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발: ${c.to.name}→${c.from.name}${c._t707 ? ' (정산은 다음 econ 틱 · T707)' : (c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)')} — econ d${c.returnArriveDay} 도착 예정`);
     return;
@@ -4930,8 +4930,11 @@ function _t1182BodyReady(c, leg) {
   return !body._t1182 || (body.escorts || []).every(e => { const ep=state.deps.players.get(e.pid); return !ep || ep.hp<=0 || Math.hypot(ep.x-goal.x,ep.y-goal.y)<=0.5; });
 }
 // 속도는 몸 정본. 시험용 하루 단축만 운영 하루와의 비로 환산한다.
+//   ★[T1278] 모듈 두 개를 처음 한 번만 잡는다 — 종전엔 몸 · 호위 · 알갱이마다 `require()` 를 불러, 캐시에 든 모듈이어도 경로 풀기(`internalModuleStat`)가
+//     캐러밴 전진 CPU 의 ~73 %(5날 표본)였다. 잡는 것은 그 모듈 객체 그 자체(`require` 가 돌려주는 같은 객체)라 읽는 칸 · 값 · 차례가 종전과 같다(결과 바이트 같음).
+let _t1182ZC = null, _t1182MM = null;
 function _t1182Step(dtMs) {
-  const W=require('./zone-config').WORLD, speed=state.deps.moveSpeed || require('../public/move-model').DEFAULTS.baseSpeed;
+  const W=(_t1182ZC || (_t1182ZC = require('./zone-config'))).WORLD, speed=state.deps.moveSpeed || (_t1182MM || (_t1182MM = require('../public/move-model'))).DEFAULTS.baseSpeed;
   return speed*dtMs/1000*W.dayLengthMs/state.dayMs;
 }
 // 같은 보행 커널을 상인과 짐 진 호위가 쓴다. 벽 검사 간격은 기존 SZ/4.
@@ -5307,7 +5310,7 @@ function _xzMakeBody(key, c, pts, phase, now, arriveAt, toV, who) {
   const dest = state.byEcon && state.byEcon.get(c.to);
   if (T762_CARAVAN_BODY && T707_ON && phase === 'outbound' && dest) pts = pts.concat([_t707Yard(dest)]);
   const N = _caravanNpcs(c, pts[0].x, pts[0].y, who.tribeId, who.tribeName, who.simVid == null ? null : who.simVid);
-  const legDays = Math.max(1, Math.round((arriveAt - now) / state.dayMs));
+  const legDays = Math.max(1, Math.round((arriveAt - (T1253_CLOCK_FIX ? _t1282Wall() : now)) / state.dayMs));   // ★[T1282] 켬 = 남은 날 수는 econ 날 시계로(`arriveAt` 축 — 벽시계 `now` 는 econ 밀림 · 마감 길이만큼 갈렸다 · 끔 = 종전)
   const body = { id: key, pid: N.p.pid, c, phase, toV, delayedDays: 0, repairFailN: 0, lastRepairAt: 0,
     _t1182: T762_CARAVAN_BODY, _t1182At: T1253_CLOCK_FIX ? _t1253Now() : now, pinHunger: N.p.hunger, pinThirst: N.p.thirst, _xz: true };   // ★[T1253] 켬 = econ 날 시계
   setBodyPts(body, pts);
@@ -6771,6 +6774,9 @@ function _t1238Remove(vil, k) {
 }
 function _t1238DayPre(vil) {
   if (!vil || !vil._terrSet || !vil._terrSet.size) return 0;
+  //   ★[T1275] 수식 나무꾼 세계(나무꾼 몸 행위 끔) — 어제까지 개간 그루가 남긴 짐(곳간 입구가 그날 몫만 받고 남긴 통나무)을 오늘 일괄 앞에 먼저 넣는다
+  //     (몸 세계는 나무꾼 하루 절이 같은 함수를 같은 자리 — 베기 전 — 에서 부른다 · 입구 · 수요 문은 econ `woodToGranary` 하나 · 그날 몫만큼 · 나머지는 짐에 그대로)
+  if (T717_WOOD_HAND && vil.econ && !_lifeEcon().T325_WOOD_ACT && (vil.econ._t717Pack || 0) > 0) _t717PackIn(vil);
   const d = _t1238Today(), lim = _tv2.DECAY_YEARS * _t1238YD();
   if (d - (vil._t1238Since | 0) < lim) return 0;                         // 아직 아무 칸도 그만큼 묵을 수 없다(스캔 0)
   const t0 = process.cpuUsage();
@@ -10014,6 +10020,7 @@ function _lifeDayJobs(vils, add) {
 
 // 하루 경계: 그날 할 일을 조각 목록으로 **세우기만** 한다(아무것도 실행하지 않는다).
 function _openDayJobs(now, T) {
+  if (T1253_CLOCK_FIX && (!T || T.head)) _t1282Open();   // ★[T1282] 켬 = 닫는 날을 적는다(하루 마감 · 창 머리 — 창 가운데 · 꼬리 조각은 안 바꾼다 · 끔 = 이 줄 무동작)
   if (_T732_ON) { const G = _t732Gran(); if (G) G.tickBegin(state.world && state.world.villages, state.world ? state.world.day + 1 : undefined); }   // ★[T803 ②] 여는 econ 날(켬이면 마감의 순간 = 그 날의 머리 · 끄면 안 읽힌다)   // ★[T732] 하루 마감 = 한 순간 — 마감 동안 econ 이 얻은 것의 열쇠 · ★[T789] 켬이면 그 순간 상한 레코드를 버린다(econ 마을 목록 · 끄면 안 읽힌다)   // ★[PM 10-14 합침] T731 켬 판에도 같은 머리에서(둘 다 기본 끔 — 짝 켬 판은 미검)
   if (T) return _t731Jobs(now, T);   // ★[T731] 켬 — 창의 머리 · 마을 · 꼬리 조각(끔이면 T 가 없다 = 아래 종전 그대로)
   const t0 = Date.now();
@@ -10276,10 +10283,23 @@ function _dayNow() { return (state.tickCtx && state.tickCtx.now) || Date.now(); 
 //   ⚠몸 아닌 자리(교역로 몫 · 마감 몫 · 계측 · 로그)는 그대로 벽시계다 — *언제*만 바꾸는 줄이다(전수 표 `계측/T1253_시계자리.md`).
 // [T1258] 켬 기본(PM T1253 회부 1 판정 ⓐ — 라이브 벽시계 판 = 기준선 가상 시계 판) · 되돌림 `T1253_CLOCK_FIX=0`(= 종전 글자).
 const T1253_CLOCK_FIX = process.env.T1253_CLOCK_FIX !== '0';
+// ★★[T1282 2026-11-12 · 켬 갈래만 — 끔(`T1253_CLOCK_FIX=0`) = `_t1282D` 가 안 서서 아래 셋이 종전 값 그대로] **마감 중 econ 날 시계 = "닫는 날의 끝"(다음 날 머리 아님 · 그날 머리 아님).**
+//   정의(한 줄): econ 날 시계 = 마감 · 창 · 마감 끝 몸 틱엔 닫는 날 Dc 의 끝 (Dc + 1) × 하루 · 그 밖엔 D × 하루 + 그날 흐른 몫(0 ~ 하루).
+//   결함(T1273 회부 3): 마감이 열린 뒤 econ 머리(`world.day += 1`)가 돌기 전 틱엔 world.day 가 아직 닫는 날이라 종전 줄(D × 하루)이 그날 **머리**로 되돌아갔다 —
+//     그날 이미 진 장이 장마당 그림(`marketVillages`)에 다시 들고 · 그 틈에 걷는 장인 몸 머묾(`_t1196Step`)이 하루를 거꾸로 봤다.
+//   ⇒ 마감(하루 · 창)을 여는 순간의 econ 날을 적어 두고(`_t1282Open` — `_openDayJobs` 머리) 그날이 아직 world.day 면 하루를 더한다(econ 머리 뒤엔 world.day 가 이미 Dc + 1 — 종전 값과 같다).
 function _t1253Now() {
   const M = state.dayMs || 1, D = state.world ? (state.world.day | 0) : 0;
-  if (state.tickJobs || state._t731 || state._t1253Edge) return D * M;   // 마감 · 창 · 마감 끝 몸 틱 = 경계 한 순간
+  if (state.tickJobs || state._t731 || state._t1253Edge) return (state._t1282D === D ? D + 1 : D) * M;   // 마감 · 창 · 마감 끝 몸 틱 = 닫는 날의 끝 한 순간(★[T1282] econ 머리 앞이면 world.day = 닫는 날 → + 1)
   return D * M + Math.min(M, Math.max(0, Date.now() - econDayToMs(D)));
+}
+function _t1282Open() { state._t1282D = state.world ? (state.world.day | 0) : 0; }   // ★[T1282] 닫는 날 — 하루 마감 · 현지 자정 창을 여는 순간의 econ 날(켬만 부른다)
+//   ★[T1282] econ 날 시계 '지금'을 벽시계 경계 축(`econDayToMs` · `arriveAt` 이 선 축)으로 — 그날 머리 경계 + econ 날 몫.
+//     econ 머리 앞 마감이면 앵커(`lastGameDay` · `_t731Anchor`)가 이미 새 날이라 `econDayToMs(D)` 가 닫는 날의 끝 경계다 — 거기서 하루를 빼 머리로 둔다.
+function _t1282Wall() {
+  const M = state.dayMs || 1, D = state.world ? (state.world.day | 0) : 0;
+  const pend = !!(state.tickJobs || state._t731 || state._t1253Edge) && state._t1282D === D;
+  return econDayToMs(D) - (pend ? M : 0) + (_t1253Now() - D * M);
 }
 function villageWait(fn) {
   if (!state.tickJobs) return false;                 // 마감 중이 아니다 — 부른 쪽이 그냥 처리하면 된다
@@ -18777,7 +18797,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
       get L_WATERGAP() { return L_WATERGAP; },
       get TASKS_PER_FARMER() { return _lifeTasksPerFarmerDay(); },
     },
-    _caravanBodyProbe: { on: T762_CARAVAN_BODY, pack: _t1034Pack, restore: _t1034Apply, ready: _t1182BodyReady, tick: tickCaravanBodies, pts: setBodyPts, walk: _t1182Walk, returnLeg: startReturnLeg, linger: _t707Linger, sweep: _caravanSyncSweep, openMarket: _t707Open, sendXz: _xzSend, afterSendXz: _xzAfterSend,
+    _caravanBodyProbe: { on: T762_CARAVAN_BODY, pack: _t1034Pack, restore: _t1034Apply, ready: _t1182BodyReady, tick: tickCaravanBodies, pts: setBodyPts, walk: _t1182Walk, returnLeg: startReturnLeg, linger: _t707Linger, sweep: _caravanSyncSweep, openMarket: _t707Open, sendXz: _xzSend, afterSendXz: _xzAfterSend, closeOpen: _t1282Open, econNow: _t1253Now,   // ★[T1282] `closeOpen` · `econNow` 내보내기만(하네스 `test-t1273-clock-rest` ⑤ — 마감을 여는 순간 · econ 날 시계 · 값 무변)
       spawn: spawnCaravanBody, syncOne: _caravanSyncOne, xzMakeBody: _xzMakeBody },   // ★[T1273] 내보내기만(하네스 `test-t1273-clock-rest` — `_t1253Now()` 읽는 단위 판 밖 자리 · 값 무변)
     _distProbe: {
       compute: (reason, opts) => computeAndInjectDistMatrix(reason, opts),

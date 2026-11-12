@@ -28,7 +28,7 @@ if (process.env.T705_SUB === 'zone') {
   const TMP = `/tmp/t705-food-sick-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.env.ZONE_ID = 'hanbando';
-  process.env.PORT = String(42300 + (process.pid % 90));
+  process.env.PORT = String(require('./lib-port').port(42300));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
   process.env.CRAFT_COOK_MS = process.env.CRAFT_COOK_MS || '300';

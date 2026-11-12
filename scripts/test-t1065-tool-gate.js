@@ -22,7 +22,7 @@ if (process.env.T1065_CHILD === '1') {
   const TMP = `/tmp/test-t1065-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.env.ZONE_ID = 'hanbando';
-  process.env.PORT = String(41000 + (process.pid % 900));
+  process.env.PORT = String(require('./lib-port').port(41000));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
   process.env.LATENCY_MS = '0';

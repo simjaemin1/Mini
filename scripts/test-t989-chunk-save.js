@@ -25,7 +25,7 @@ if (process.env.T989_SUB === '1') {
     const TMP = `/tmp/test-t989-${process.pid}.db`;
     for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
     process.on('exit', () => { for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} } });
-    Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(39700 + (process.pid % 90)), DB_PATH: TMP, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1' });
+    Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(39700)), DB_PATH: TMP, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1' });
     const CC = require(path.join(ROOT, 'server', 'central-client.js'));
     const saves = [];
     CC.updatePlayer = async (id, patch) => { if (id === 'acc_t989t') saves.push({ t: Date.now(), x: patch.last_x, y: patch.last_y }); return { ok: true }; };

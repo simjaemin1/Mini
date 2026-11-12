@@ -14,7 +14,7 @@
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 Object.assign(process.env, { ZONE_ID: 'hanbando', DB_PATH: `/tmp/t1237-same-tick-${process.pid}.db`, ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
-  ENABLE_WILDLIFE: '0', LATENCY_MS: '0', PORT: String(39500 + (process.pid % 50)), T1065_TOOL_GATE: '0' });
+  ENABLE_WILDLIFE: '0', LATENCY_MS: '0', PORT: String(require('./lib-port').port(39500)), T1065_TOOL_GATE: '0' });
 const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
 const Zone = require(path.join(ROOT, 'server', 'zone.js'));
 const H = Zone.__testBind();

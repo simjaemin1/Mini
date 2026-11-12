@@ -18,7 +18,7 @@ const TMP = `/tmp/trade-metrics-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 const NV = parseInt(process.argv[2], 10) || 4;
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(38000 + (process.pid % 800));
+process.env.PORT = String(require('./lib-port').port(38000));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '1'; process.env.VILLAGE_MAX = String(NV);
 process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

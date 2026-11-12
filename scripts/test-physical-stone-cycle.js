@@ -8,7 +8,7 @@ if(!process.env.PHYSICAL_CYCLE_CHILD){
 }
 
 process.env.ENABLE_VILLAGES='0';process.env.ENABLE_WILDLIFE='0';process.env.ENABLE_BANDITS='0';process.env.ENABLE_ROADS='0';process.env.T1146_STONE_RULE='0';process.env.T419_STONE_REAL='1';
-process.env.ZONE_ID='hanbando';process.env.PORT=String(46000+process.pid%900);process.env.DB_PATH='/tmp/physical-stone-cycle-'+process.pid+'.db';
+process.env.ZONE_ID='hanbando';process.env.PORT=String(require('./lib-port').port(46000));process.env.DB_PATH='/tmp/physical-stone-cycle-'+process.pid+'.db';
 const assert=require('assert'),fs=require('fs'),log=console.log;console.log=(...a)=>{if(String(a[0]).includes('zone server up on'))log(...a);};console.warn=console.error=()=>{};
 try{
  const Z=require('../server/zone'),H=Z.__testBind(),V=require('../server/villages'),E=require('../sim/economy-sim'),C=require('../server/carry'),CH=require('../server/chunk'),cfg=require('../server/zone-config'),P=V.__labProbe._t1180Probe,Q=V.__labProbe._t1146Probe,S=V.__p3Bind({}).state;

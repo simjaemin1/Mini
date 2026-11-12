@@ -546,7 +546,7 @@ console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름
     '⑮ ★★[T368] 그 새 줄이 **밭 장부 다리**다');
   ok(/dailyProduction\[it\] = \(dailyProduction\[it\] \|\| 0\) \+ a;/.test(C),
     '⑮ ★★[T374] 그 새 줄이 **채집 장부 다리**다');
-  ok(/const dailyFoodProd = totalFoodProductionEquivalent\(dailyProduction, v\);/.test(C),
+  ok(/const dailyFoodProd = totalFoodProductionEquivalent\((?:T1279_COOK \? Object\.assign\(\{\}, dailyProduction, \{ cooked_food: 0 \}\) : )?dailyProduction, v\);/.test(C),   // ★[PM land1069] T1279 켬 갈래(조리식 칸 0)도 같은 한 자리
     '⑮ 읽는 곳은 하나 — `totalFoodProductionEquivalent` → `dailySurplus` → `surplusEMA.food` · ★[T368] 둘째 인수 = 이 마을(주입 작물 값)');
   ok(/if \(T193_LEDGER\) dailyProduction\.food = \(dailyProduction\.food \|\| 0\) \+ _t100Pot;/.test(C),
     '⑮ ★★★적는 수는 **잠재에 적는 그 수 그대로**다(`_t100Pot`) — 배수 0 · 새 수 0(`* 2` 를 끼우면 여기가 빨개진다)');
@@ -631,7 +631,7 @@ console.log('\n⑱ 볏짚 — 밭 수확이 **아궁이 밑변**(`_grainToday`)�
     '⑱ ★이월을 끈 가지는 **종전 식 그대로** `min(상한, 원량)` 이다(T240 비트 동일의 뿌리)');
   // ★T193 의 `dailyProduction` 과 **정확히 갈리는 지점**: 그쪽은 리셋이 틱 **머리**라 생활층 쓰기가 죽는다.
   const dpReset = C.split('\n').findIndex((l) => /for \(const r in dailyProduction\) dailyProduction\[r\] = 0;/.test(l)) + 1;
-  const dpRead = C.split('\n').findIndex((l) => /const dailyFoodProd = totalFoodProductionEquivalent\(dailyProduction(, v)?\);/.test(l)) + 1;
+  const dpRead = C.split('\n').findIndex((l) => /const dailyFoodProd = totalFoodProductionEquivalent\((?:T1279_COOK \? Object\.assign\(\{\}, dailyProduction, \{ cooked_food: 0 \}\) : )?dailyProduction(, v)?\);/.test(l)) + 1;
   ok(dpReset > 0 && dpRead > 0 && dpReset < dpRead,
     '⑱ ★대조 — `dailyProduction` 은 리셋이 **읽는 줄 앞**이라 생활층 쓰기가 죽는다(그래서 T193 은 줄이 필요했다)',
     `리셋 :${dpReset} < 읽기 :${dpRead}`);

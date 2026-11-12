@@ -55,7 +55,7 @@ const zoneEnv = (db, port, extra) => Object.assign({}, process.env, { ZONE_ID: '
   T315_MAPBEDS: '0', VILLAGE_NPC_CAP: '1', T640_BOOT_SLICE: '0' }, extra || {});
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const exitOf = (c, ms) => new Promise((res) => { const k = setTimeout(() => { try { c.kill('SIGKILL'); } catch (e) {} }, ms); c.on('exit', (code) => { clearTimeout(k); res(code); }); });
-const base = 37000 + (process.pid % 400);
+const base = require('./lib-port').ports(55, 37000);
 delete process.env.T910_SIG_PURE;
 const rows = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }); const n = d.prepare('select count(*) as n from trade_routes').get().n; d.close(); return n; } catch (e) { return -1; } };
 async function save(tag, on, k) {   // 새 세계 → 저장 날 8 → SIGTERM(종료 저장)

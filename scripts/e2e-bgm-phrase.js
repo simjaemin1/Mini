@@ -43,7 +43,7 @@ catch (first) {
   catch (second) { throw new Error('playwright 또는 playwright-core가 필요하다 (새 package dependency는 추가하지 않는다)'); }
 }
 const ROOT = path.resolve(__dirname, '..');
-const PORT = +(process.env.PORT || 0) || (3900 + (process.pid % 120));
+const PORT = +(process.env.PORT || 0) || (require('./lib-port').port(3900));
 let pass = 0, fail = 0;
 function ok(cond, label, detail) {
   if (cond) pass++; else fail++;

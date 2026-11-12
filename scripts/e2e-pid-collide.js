@@ -21,7 +21,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const ROOT = path.resolve(__dirname, '..');
-const PORT = +(process.env.PORT || 0) || (3920 + (process.pid % 60));
+const PORT = +(process.env.PORT || 0) || (require('./lib-port').port(3920));
 let pass = 0, fail = 0;
 function ok(cond, label, detail) {
   if (cond) pass++; else fail++;

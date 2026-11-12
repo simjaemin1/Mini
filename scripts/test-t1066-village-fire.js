@@ -28,7 +28,7 @@ if (process.env.T1066_SUB === '1') {
     const TMP = `/tmp/test-t1066-${process.pid}.db`;
     const rmTmp = () => { for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} } };
     rmTmp(); process.on('exit', rmTmp);
-    Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(38400 + (process.pid % 90)), DB_PATH: TMP, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0',
+    Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(38400)), DB_PATH: TMP, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0',
       ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CRAFT_COOK_MS: '300' });
     const _l = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
     const Zone = require(path.join(ROOT, 'server', 'zone.js'));
