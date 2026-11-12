@@ -405,7 +405,8 @@ for (let day = 0; day < DAYS; day++) {
     t.forDays += ((v.counts || {}).forager || 0);
     t.masonDays += ((v.counts || {}).mason || 0);
   }
-  if (CL) clearedTot += CL.tickDay(vils) || 0;
+  const _T84 = !!econ.T1284_FARM_YIELD;   // ★[T1284 ③] 켬 = 개간은 작물 탐침 뒤(작물 일을 하고 남은 낮 — 라이브 헤드리스 하루와 같은 차례) · 끔 = 여기 그대로
+  if (CL && !_T84) clearedTot += CL.tickDay(vils) || 0;
   for (const v of vils) {
     const ev = v.econ; if (!ev) continue;
     const m = M[IX.get(v)];
@@ -572,6 +573,7 @@ for (let day = 0; day < DAYS; day++) {
       if (m.first == null) m.first = day;
     }
   });
+  if (CL && _T84) clearedTot += CL.tickDay(vils) || 0;
   if (day === 39) GRAN.d40 = _foodSum();
   if (day === 54) GRAN.d55 = _foodSum();
   if (day === 99) GRAN.d100 = _foodSum();
@@ -689,6 +691,7 @@ const _t1243Crops = vils.map((v) => { const by = {}; for (const e of (v._crop ||
   return { n: v.name, f: +((((v.econ || {}).land || {}).fertility) || 0).toFixed(3), farm: v._farmSet.size, dry: v._drySet.size, stand: by, prev: pv, seed: sd }; });   // ★[T1243] 마을별 작물 · 씨(표 칸 · 계측 전용)
 const out = {
   t1243Crops: _t1243Crops, t1243Pick: (Villages.__p3Bind({})._t1243PStat) || null,
+  t1221: (Villages.__p3Bind({})._t1221Stat) || null,   // ★[T1284] 농사 일 시간(초 = 게임 분 · 일괄 하루 몫 · 쓴 몫 · 일 종류별) — 맞대기 표
   days: DAYS, seed: SEED, base: process.env.T176_BASE || '',
   arm: econ.T100_FIELD_YIELD ? 'on' : 'off', knob: econ.T100_FIELD_YIELD,
   k: econ.T100_K, anchorN: econ.T100_ANCHOR_N, seedFoodDays: econ.seedFoodDays(0),

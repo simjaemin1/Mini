@@ -10416,7 +10416,7 @@ function __p3Bind(mock) {
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
     t1197BodyStep, _t1197Person, _t1197BodyMeal, _t1197DieBody, _t1197Stat, _t1197On, econDayToMs, _t1198Sync, _t1198Jobs, _t1198Stat, _t1198On, syncVillageJobs,   // ★[T1197] 몸 게이지 끼니 문(하네스 `test-t1197-meal-body` 가 운영과 같은 문을 부른다)
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
-    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On, T1224_ECON_FARM, _t1224Stat, _t1243On, _t1243Live, _t1243Stat, _t1243Seed, _t1243HarvH, _T1243_HT, _t1243Pick, _t1243Sown, _t1243Reaped, _t1245SeedTarget, _t1243PStat, _t1243Memo, _t1243SeedCells, _t1243ClearedM2, _t1243CStat, _t1276Stand, T1229_FIELD_GROW, _t1229Stat, _t1229Need, _t1229Short,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
+    _farmDay, _t1212Off, _t1212Stat, _t1212Rest, T1212_LIFE_CAL, T1212_FARM_REST, _lifeHeadlessDay, _t1221Cost, _t1221ClearS, _t1221DayS, _t1221Fert, _t1221Stat, _t1221On, _t1284Stat, T1224_ECON_FARM, _t1224Stat, _t1243On, _t1243Live, _t1243Stat, _t1243Seed, _t1243HarvH, _T1243_HT, _t1243Pick, _t1243Sown, _t1243Reaped, _t1245SeedTarget, _t1243PStat, _t1243Memo, _t1243SeedCells, _t1243ClearedM2, _t1243CStat, _t1276Stand, T1229_FIELD_GROW, _t1229Stat, _t1229Need, _t1229Short,   // ★[T1212] 밭 날 = econ 날 · 몸이 못 한 몫 — 하네스(`test-t1212-farm-clock`)가 운영과 같은 문을 부른다
     _oreMineDaily, T1095_MINE_DEMAND, _t1095Stat,   // ★[T1095] 채굴 일괄 수요 문 — 하네스(`test-t1095-mine-demand`)가 운영과 같은 문을 부른다(내보내기만)
     _t1039Depart, _t1039Join, _t1039Leave,   // ★[T1039] 도적 전환 몸 문 셋(하네스 `test-bandit-body` 가 운영과 같은 문을 부른다)
     _t1078Walkers, _t1078Die, _t1078Out, _t1078Life,   // ★[T1078] 단원 = 몸 문 넷(하네스 `test-bandit-all` 이 운영과 같은 문을 부른다)
@@ -11998,6 +11998,13 @@ function _lifeClearDay(vil, farmerN) {
   if (!(farmerN && _lifeNeedClear(vil))) return 0;
   let done = 0;
   let n = _t1221On() ? Math.floor(Math.min(LIFE_CREW, farmerN) * _t1221DayS() / _t1221ClearS()) : Math.min(LIFE_CREW, farmerN) * LIFE_CLEAR_PDAY;   // ★[T1221 ⓪] 켬 = 크루 하루 낮 초 ÷ 칸 개간 시간(돌도끼 벌목)
+  // ★★[T1284 ③ 2026-11-12 · T1276 회부 4] 켬(`T1284_FARM_YIELD` · 밭 켬 위에서만) = **개간 크루 = 그날 농부 전부 · 시간 = 작물 일을 하고 남은 낮** —
+  //   종전 크루 상한 `LIFE_CREW` 2(추상 — 마을 사람 수와 무관)가 개간을 마을당 하루 5칸(2 × 1,008분 ÷ 360분)에 묶었다.
+  //   랩 1020 800날: 농부 낮 예산의 9%만 썼는데 밭 칸은 사람당 7.7 ~ 10.7(고증 12 · T1215 LAND_NEED) — 밭이 사람을 못 따라갔다(보고/T1284 §1).
+  //   고증: 칸 개간 360분(드라베드 1.44분/m² × 250 m² · `terr-cost.fieldClearMin`) · 농부 하루 낮 1,008분(T1221) ⇒ 한가한 농부 하루 2.8칸.
+  //   몸 일관(시간 이중 셈 0): 작물 일(`lifeFarmDay` · 급한 것부터)이 먼저 그날 낮을 쓰고 남은 초(`_t1284Left`)만 개간에 쓴다 — 그래서 이 갈래는
+  //   그날 작물 뒤에 부른다(헤드리스 하루 ③ 뒤 · 랩 작물 탐침 뒤). 남은 초가 없는 판(몸 갈래 — 작물 몫을 따로 준다)은 종전 줄. 새 수 0 · 배수 0. 끔 = 위 줄 그대로.
+  if (_t1284On() && _t1221On() && vil._t1284Left != null) { n = Math.floor(vil._t1284Left / _t1221ClearS()); _t1284Stat.leftS += vil._t1284Left; vil._t1284Left = null; _t1284Stat.days++; }
   while (n-- > 0 && _lifeNeedClear(vil)) {
     const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
     for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (vil._farmSet.has(k)) continue; const dx = c2.cx - vil.ccx, dy = c2.cy - vil.ccy, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
@@ -12005,8 +12012,10 @@ function _lifeClearDay(vil, farmerN) {
     _lifeLiveFarmTile(vil, best.cx, best.cy, best.f === '밭' ? 'dryfield' : 'farmland');
     done++;
   }
+  if (_t1284On()) _t1284Stat.clearCells += done;
   return done;
 }
+const _t1284Stat = { days: 0, leftS: 0, clearCells: 0 };   // 계측 전용(T1284 켬만 · 회계 아님)
 // ★★[T1212 ① 2026-11-07 · T1201 회부 2] **생활층 밭 달력 = econ 날** — 손잡이 `T1212_LIFE_CAL`(★[T1223] **켬 기본** · 되돌림 `=0` = 종전 글자 그대로).
 //   생활층 날(`gameDayOf` · `_ledgerDay`)은 벽시계 날이다 — (지금 − `worldEpoch` 0) ÷ 하루 길이. 두 탈이 났다(보고/T1201 §0 · T1212 §1):
 //     ⓐ 판 자(하루 250 ms)에서는 그 날이 70억 남짓이라 달력 정본(`events.calendarOf`)이 2³¹ 을 넘는 날을 1년 3월 1일로 돌린다 ⇒ 마을 밭이 늘 3월.
@@ -12110,13 +12119,14 @@ function _lifeHeadlessDay(vil) {
     _t1212Rest.days++; _t1212Rest.restBudget += _restB;
     if (_restN) _t1212Rest.batchClear += _lifeClearDay(vil, _restN);
   }
-  if (!_body && !_cut) _lifeClearDay(vil, farmerN);   // ★[T1243] 걷음
+  const _t84 = _t1284On() && _t1221On();   // ★[T1284 ③] 켬 = 일괄 개간은 작물(③) 뒤 — 남은 낮만 쓴다(끔 = 여기 그대로)
+  if (!_body && !_cut && !_t84) _lifeClearDay(vil, farmerN);   // ★[T1243] 걷음
   // ② 신축 — 크루 인일=단계(실걸음과 동일 속도). 완공 시 _lifeCompleteHouse가 실체화(집·마당·침대 명부)
   //   ★[T400] 켬이면 이 절은 **안 돈다**(호출 0) — 집은 `_t400BuildDay`(자재를 나르는 크루)가 모든 마을에서 올린다(관측자 무관).
   if (vil._site && !_lifeEcon().T400_BUILD_ACT) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }
   // ③ 작물 — `lifeFarmDay` 정본 하나(아래). 계측기도 **이 함수를 부른다**(사본 0 · T117).
   if (_cut) { /* ★[T1243] 몸만 — 일괄 0 */ }
-  else if (!_body) lifeFarmDay(vil, _farmDay(vil, day), farmerN);   // ★[T1212 ①] 밭 날(끔 = `day` 그대로)
+  else if (!_body) { lifeFarmDay(vil, _farmDay(vil, day), farmerN); if (_t84) _lifeClearDay(vil, farmerN); }   // ★[T1212 ①] 밭 날(끔 = `day` 그대로) · ★[T1284 ③] 켬 = 남은 낮으로 개간
   else if (T1212_FARM_REST && _restB > 0) _t1212Rest.batchTasks += lifeFarmDay(vil, _farmDay(vil, day), 0, null, _restB);   // ★[T1212 ②] 몸이 못 한 몫
   vil._hlDay = day;   // lifeDebug 노출용(결산 도장)
 }
@@ -12142,6 +12152,7 @@ function _t1221On() { const E = _lifeEcon(); return !!(E && E.T1221_FARM_LABOR);
 // ★★[T1243] 밭 세계 한 손잡이 — econ 이 정본(`T1243_FARM_ON`). `_t1243Live` = 몸을 걷기는 존이 붙은 판(서버 — `zoneAwake` 주입).
 // ★[T1243] 게임 1분의 실 ms = 하루 길이 ÷ 1,440(라이브 하루 1,440,000 ms ⇒ 1,000 · 판 자 250 ms ⇒ 0.17) — T1221 몸 머묾 · 개간이 "실초 = 게임분"을 1,000 ms 로 박아 판 자 하루에서 일 하나가 2,280날이 됐다(보고 §0).
 function _t1243MinMs() { return ((state.dayMs > 0) ? state.dayMs : 1440000) / 1440; }
+function _t1284On() { const E = _lifeEcon(); return !!(E && E.T1284_FARM_YIELD); }   // ★[T1284] econ 이 정본
 function _t1243On() { const E = _lifeEcon(); return !!(E && E.T1243_FARM_ON); }
 function _t1243Live() { return !!(state.deps && typeof state.deps.zoneAwake === 'function'); }
 const _t1243Stat = { cutDays: 0, cutAsleep: 0, seeded: 0, seedFood: 0, seedUnits: {} };   // 계측 전용(회계 아님)
@@ -12236,7 +12247,12 @@ function _t1243Pick(vil, k, day) {
   const P = vil._t1243Prev && vil._t1243Prev.get(k);
   const st = (vil.econ && vil.econ.storage) || {};
   const ok = L.filter(([id]) => { if (!((st[C.seedOf(id)] || 0) >= C.seedUnitsPerCell(id))) return false;   // ★[T1243 추신 4 · 14] 씨가 없는 작물은 후보에서 빠진다(플레이어와 같은 규칙 — 칸 하나 씨 하나)
-    if (!P || P.hd == null) return true; const r = C.readyDay(id, day); return r != null && r - P.hd >= Cal.yearLen(Cal.dateOf(P.hd).year); });
+    if (!P || P.hd == null) return true;
+    //   ★[T1284 ①] 켬 = 1년 1작을 **농사 해**(봄 해 3월 ~ 2월 · 달력 정본 `springYearOf`)로 센다 — 앞 수확과 다른 농사 해면 심는다.
+    //     종전 "다음 익는 날 − 앞 수확 ≥ 365날" 은 익는 날이 해마다 며칠 앞서는 작물(돌려짓기 · 늦게 연 씨)을 그해 통째로 막아 칸이 한 해를 쉰다
+    //     (랩 1020 800날 칸-해당 수확 0.64 · 고증 1 = 청동기 1년 1작 · 그루갈이 0 — T1239 · T1215 "사람당 **심는** 밭 3,000 m²"). 새 수 0. 끔 = 아래 줄 그대로.
+    if (_t1284On()) return Cal.springYearOf(day) > Cal.springYearOf(P.hd);
+    const r = C.readyDay(id, day); return r != null && r - P.hd >= Cal.yearLen(Cal.dateOf(P.hd).year); });
   if (!ok.length) { _t1243PStat.yearBlock++; return null; }
   const rot = (P && P.c && ok.length > 1) ? ok.filter(([id]) => id !== P.c) : ok;
   const cap = T1243_CAP === 'none' ? Infinity : Math.ceil(M.tot[fld] / (T1243_CAP === 'half' ? Math.min(2, L.length) : L.length));   // ★[추신 13] 상한 몫 후보(재민 판정 · 기본 = 1/후보 수)
@@ -12350,6 +12366,7 @@ function lifeFarmDay(vil, day, farmerN, onDid, budget0) {
     }
     if (!did) break;   // 일감 소진(비수기·전부 생육 중)
   }
+  if (_L && budget0 == null && _t1284On()) vil._t1284Left = Math.max(0, budget);   // ★[T1284 ③] 작물 일을 하고 남은 낮(초) — 그날 개간이 쓴다
   return total;
 }
 // ★★[T1144 ① 2026-11-04 · ★재민 11-04 문 18 ㄱ · 족보 741 · 손잡이 `T1144_LIFE_EVENT`(기본 끔 · `'1'` 켬 · `'verify'` = 두 길 대조 · 끔 = 아래 종전 줄 그대로)]
@@ -13483,6 +13500,9 @@ function _lifeNeedClear(vil) {   // 랩 needLand 동형: 보즈럽 수요 게이
   const e = vil.econ; if (!e || !vil._potSet) return false;
   if (_lifeEcon().t1260FoodOf(e) > e.npcs.length * 120) return false;   // ★[T1260 ②] 켬 = 곳간 식량 합계(끔 = `food` 칸 · 종전 글자)
   if (T1229_FIELD_GROW) return _t1229Need(vil);   // ★[T1229] 켬 = 일손 · 덮음 문(끔 = 아래 종전 목표)
+  //   ★[T1284 ④] 켬 = 목표 = 사람 × `LAND_NEED` 12칸 그대로(T1215 고증 "사람당 **심는** 밭 3,000 m²" ÷ 250 m²) — 보즈럽 몫(0.55 ÷ 비옥 · 0.6 ~ 2.5 · 출처 없음)을 안 곱한다.
+  //     비옥은 이미 칸 소출(`cellKgAt` — 비옥 자리 → 500 ~ 800 kg/ha · T1221)에 들어 있다 — 몫을 또 곱하면 비옥한 마을이 사람당 7.2칸으로 줄어 두 번 센다(랩 51곳 목표 가운데 9.7칸 · 보고/T1284 §1). 끔 = 아래 줄 그대로.
+  if (_t1284On()) return vil._farmSet.size < e.npcs.length * _landNeed();
   const fert = (e.land && e.land.fertility != null) ? e.land.fertility : 0.55;
   return vil._farmSet.size < Math.ceil(e.npcs.length * _lifeVL().landNeedPer(fert, _landNeed()));
 }
