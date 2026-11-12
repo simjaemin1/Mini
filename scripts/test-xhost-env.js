@@ -24,7 +24,7 @@
 // 실행: node scripts/test-xhost-env.js                    # 작업 트리의 두 스크립트
 //       node scripts/test-xhost-env.js --against origin/main   # 그 커밋의 두 스크립트(고침 앞 = 빨강이어야 한다 — 자명 통과 금지 증인)
 'use strict';
-if (require.main === module) require('./lib-port').hold(3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
+if (require.main === module) require('./lib-port').hold(3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const fs = require('fs');
 const os = require('os');
 const path = require('path');

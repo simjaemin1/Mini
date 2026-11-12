@@ -905,7 +905,7 @@ console.log('\n⑯ 고정 포트 — 띄우는 파일은 `hold` 로 쥐거나 `p
     ok(!ex.length && !gone.length, '★⑯c `lib-port: 묶지 않음` 표지는 표에 적은 픽스처 줄뿐(도커 env 글자 일곱 줄)',
        `표지 ${got.join(' ')}${ex.length ? ' · ★표에 없는 것 ' + ex.join(' ') : ''}${gone.length ? ' · ★표에서 사라진 것 ' + gone.join(' ') : ''}`);
   }
-  // ★자명 통과 금지 — 같은 자로 미끼 다섯을 재면 **각각 다르게** 답한다(글자를 조각내 자기 자신을 안 문다)
+  // ★자명 통과 금지 — 같은 자로 미끼 여덟을 재면 **각각 다르게** 답한다(글자를 조각내 자기 자신을 안 문다)
   const SP = "spawn(process.execPath, ['server/cen" + "tral.js']);\n";
   const H = "require('./lib-port').ho" + "ld(";
   const bait = {
@@ -916,10 +916,11 @@ console.log('\n⑯ 고정 포트 — 띄우는 파일은 `hold` 로 쥐거나 `p
     zoneRef: H + '3010);\n' + SP + 'const Z = ZONES.nip' + 'pon; env.PORT = String(Z.po' + 'rt);',
     loose: "require(path.join(ROOT, 'server', 'zo" + "ne.js'));",
     guard: "require('./lib-port').noCen" + "tral();\nrequire(path.join(ROOT, 'server', 'zo" + "ne.js'));",
+    callArg: H + '3021);\n' + SP + 'await startNeighbor(30' + '20, host);',   // ★[T1288] 부르는 자리 인자의 제품 포트(test-xhost-env 가 3021 만 쥐고 3020 을 묶었다)
   };
   const ans = Object.entries(bait).map(([k, v]) => { const r = judge(v); return k + '=' + (!r.boots ? 'out' : r.need.length ? 'need' : r.custom.length ? 'custom' : r.centralLess && !r.guarded ? 'loose' : 'ok'); }).join(',');
-  ok(ans === 'noHold=need,hold=ok,custom=custom,connectOnly=out,zoneRef=need,loose=loose,guard=ok',
-     '★⑯ 자명 통과 금지 — 쥐지 않은 3010 은 **물고** · 쥐면 보내고 · 제품 밖 수는 물고 · 붙기만 하는 도구는 밖 · 존 설정을 읽은 존 포트도 문다 · central 없는 존은 가드가 있어야', ans);
+  ok(ans === 'noHold=need,hold=ok,custom=custom,connectOnly=out,zoneRef=need,loose=loose,guard=ok,callArg=need',
+     '★⑯ 자명 통과 금지 — 쥐지 않은 3010 은 **물고** · 쥐면 보내고 · 제품 밖 수는 물고 · 붙기만 하는 도구는 밖 · 존 설정을 읽은 존 포트도 문다 · central 없는 존은 가드가 있어야 · 부르는 자리 인자 포트도 문다', ans);
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

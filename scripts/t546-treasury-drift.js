@@ -103,8 +103,9 @@ function row(tag, what, phys, tr, extra) {
     b.data.wood = 12; const r = await GT.syncGranary(b, optsOf(cc));
     row('ⓑ', '해산된 길드의 곳간에 5 더 넣음', GT.granaryItems(b.data), await treasuryOf(cc, B), `syncGranary ok=${r && r.ok} · _tr=${JSON.stringify(b.data._tr)}(보고했다고 믿음)`); }
   // ⓒ 비밀이 틀린 존
-  { await up(3811, { CENTRAL_SECRET: 't546-right' }, tmp);
-    const good = client(3811, 't546-right'), bad = client(3811, 't546-wrong');
+  { const P2 = require('./lib-port').port(3811);   // [T1288] 둘째 central 도 장부에서(종전 3811 고정 — 첫 판 자가 못 봤다 · 부르는 자리 인자)
+    await up(P2, { CENTRAL_SECRET: 't546-right' }, tmp);
+    const good = client(P2, 't546-right'), bad = client(P2, 't546-wrong');
     const C = (await good.tribeNpcUpsert('T546_열쇠', 'passive')).tribe_id;
     const b = { type: 'guild_granary', data: { tribe_id: C } };
     b.data.wood = 9; const r = await GT.syncGranary(b, optsOf(bad));

@@ -20,6 +20,7 @@ const PORTLIT = [
   /\bport\s*[:=]\s*(\d{4,5})\b/g,
   /--port[= ](\d{4,5})\b/g,
   /\.listen\(\s*(\d{4,5})\b/g,
+  /\b(?:start|boot|serve|listen|spawn|launch|up)\w*\(\s*(\d{4,5})\b/gi,   // ★부르는 자리 인자(`startNeighbor(3020, …)` · `up(3811, …)` — T1288 -j4 첫 판이 찾았다)
 ];
 const BOOT = (code) => (/(?:'central(?:\.js)?'|server['"],\s*['"]central|central\.js|'zone\.js'|server['"],\s*['"]zone|zone\.js)/.test(code) && /\b(?:spawn|fork|boot|sp|execFile)\w*\s*\(/.test(code))
   || /require\(\s*(?:path\.join\([^)]*['"]server['"],\s*['"]zone(?:\.js)?['"]\)|['"]\.\.\/server\/zone(?:\.js)?['"])\s*\)/.test(code) || /\.listen\(/.test(code);
