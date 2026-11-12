@@ -4930,8 +4930,11 @@ function _t1182BodyReady(c, leg) {
   return !body._t1182 || (body.escorts || []).every(e => { const ep=state.deps.players.get(e.pid); return !ep || ep.hp<=0 || Math.hypot(ep.x-goal.x,ep.y-goal.y)<=0.5; });
 }
 // 속도는 몸 정본. 시험용 하루 단축만 운영 하루와의 비로 환산한다.
+//   ★[T1278] 모듈 두 개를 처음 한 번만 잡는다 — 종전엔 몸 · 호위 · 알갱이마다 `require()` 를 불러, 캐시에 든 모듈이어도 경로 풀기(`internalModuleStat`)가
+//     캐러밴 전진 CPU 의 ~73 %(5날 표본)였다. 잡는 것은 그 모듈 객체 그 자체(`require` 가 돌려주는 같은 객체)라 읽는 칸 · 값 · 차례가 종전과 같다(결과 바이트 같음).
+let _t1182ZC = null, _t1182MM = null;
 function _t1182Step(dtMs) {
-  const W=require('./zone-config').WORLD, speed=state.deps.moveSpeed || require('../public/move-model').DEFAULTS.baseSpeed;
+  const W=(_t1182ZC || (_t1182ZC = require('./zone-config'))).WORLD, speed=state.deps.moveSpeed || (_t1182MM || (_t1182MM = require('../public/move-model'))).DEFAULTS.baseSpeed;
   return speed*dtMs/1000*W.dayLengthMs/state.dayMs;
 }
 // 같은 보행 커널을 상인과 짐 진 호위가 쓴다. 벽 검사 간격은 기존 SZ/4.
