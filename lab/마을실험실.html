@@ -15916,6 +15916,8 @@ const T1259_WOOD_CAP = (typeof process !== 'undefined' && process.env && process
 let _t1259WoodReader = null;
 function setT1259WoodReader(reader) { _t1259WoodReader = typeof reader === 'function' ? reader : null; }
 // ★[T1271 · T1266 회부 4 — PM 판정] 광부 자리 = 몸이 집(회관)에서 닿는 광맥 셀(재고 ≥ 1) × 종전 계수 0.30 — T1259 나무 자리와 같은 꼴(서버가 읽는 수 · 사본 0).
+//   ★★[T1277 · T1271 회부 2 — PM 판정 "광부 한 몸이 하루 실제로 치는 셀 수에서 유도 · T1259 0.30 을 광맥에 쓰지 않는다"] 읽개가 **자리**를 준다 —
+//     닿는 셀 × 조 사람 수(서버 `_t1277OreSlots` · 2인 1조 · 한 몸이 하루 치는 셀 = 1/2 실측). econ 은 0.30 을 안 곱한다. 읽개 없음(null)은 종전 땅 모형 × 0.30 그대로.
 //   손잡이 `T1271_ORE_CAP`(끔 기본 · `=1` 만 켬). 읽개가 없으면(랩 · 헤드리스) 종전 땅 모형 그대로. 닿는 셀 0 = 광부 자리 0(강제 아님 — 자리가 안 선다).
 const T1271_ORE_CAP = (typeof process !== 'undefined' && process.env && process.env.T1271_ORE_CAP === '1');
 let _t1271OreReader = null;
@@ -15933,7 +15935,7 @@ function jobCapacity(v) {
     fisher:     Math.floor(s * v.land.water     * 0.25),
     hunter:     Math.floor(s * v.land.game      * 0.30),
     lumberjack: Math.floor((standing == null ? s * v.land.wood : standing) * 0.30),
-    miner:      Math.floor((oreReach == null ? s * Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0) : oreReach) * 0.30),   // ★S1 광부=금속 전담: 광맥(ore) ★S5 +특수산지(흑요석·옥) ★청동 희소성 +주석산지
+    miner:      oreReach == null ? Math.floor(s * Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0) * 0.30) : Math.floor(oreReach),   // ★S1 광부=금속 전담: 광맥(ore) ★S5 +특수산지(흑요석·옥) ★청동 희소성 +주석산지 · ★[T1277] 읽개 = 자리 그대로(닿는 셀 × 조 사람 수 — 서버가 센다 · 0.30 안 곱한다)
     forager:    Math.floor(s * 0.30),
     // ★인구비율 정원(하드캡) 전부 폐지 — 직업 수는 한계가치 vs 그림자가격으로 *자연 수렴*.
     //   대장장이: 도구 쌓이면 도구가격↓→한계가치↓→안 뽑힘 + 글럿 시 차출(opportunityCost=시장가치).
@@ -21327,7 +21329,10 @@ function t1217Value(v, H, key) {
   return { N, H, unit: vEat > 0 ? vEat : vSur, vEat, vSur, lam, best, pFish, pFood, nev, debt, rest: t1217RestValue(N, H) };
 }
 //   ★★[T1266 · 캐논 797 "몸이 한 일만 센다"] 광부 원석 한 단위 · 한 시간의 값 — 어부(위)와 같은 꼴 · 같은 단위(행복 목표). 원석은 먹지 못한다(빚 칸 없음):
-//     unit = Σ 그 자리 광물 몫 × max(그 마을 원석 값, 순수출가) × λ · rest = 한 사람이 한 시간 쉰 값(어부와 같은 줄).
+//     unit = Σ 그 자리 광물 몫 × 그 마을 원석 그림자 값 × λ · rest = 한 사람이 한 시간 쉰 값(어부와 같은 줄).
+//   ★★[T1277 · PM 판정 (가) "일한 값이 그 원석의 그림자 값(곳간 재고 ÷ 목표 — 정본 computeShadowPrices)을 읽는다"] 값 칸 = 그 마을 값표(`t1217PricesOf` → `computeShadowPrices` —
+//     목표 = 녹임 흐름 × 30날 · 유효 재고 = 곳간) 그 원석 칸 하나. 종전 줄은 순수출가(`netExportValue` — 이웃 한 곳이 첫 한 단위에 줄 값)와 큰 쪽을 썼다 —
+//     곳간이 녹임 목표를 몇 배 넘어도 이웃 값이 크면 덩이 값이 안 떨어진다. 이 함수에서 순수출가를 안 읽는다(사본 0 · 새 수 0).
 //     mix = { 원석 품목: 몫 }(쪼개기 켬 — 그 셀에서 나올 광물의 기댓값 몫 · 몫 합 1) · 없으면 `ore` 한 칸(쪼개기 끔). 새 수 0 · 주사위 0.
 function t1266OreValue(v, H, key, mix) {
   if (!v || !v.npcs) return null;
@@ -21335,7 +21340,7 @@ function t1266OreValue(v, H, key, mix) {
   const { lam, best } = _t1217Lam(v, px, N);
   const M = mix && Object.keys(mix).length ? mix : { ore: 1 };
   let p = 0;
-  for (const id in M) { const f = M[id]; if (!(f > 0)) continue; const nev = v._world ? netExportValue(v._world, v, id) : 0; p += f * Math.max(px[id] || 0, nev || 0); }
+  for (const id in M) { const f = M[id]; if (!(f > 0)) continue; p += f * (px[id] || 0); }   // ★[T1277] 그림자 값 한 칸(순수출가 안 읽음)
   return { N, H, unit: p * lam, p, lam, best, rest: t1217RestValue(N, H) };
 }
 

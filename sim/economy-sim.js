@@ -3317,6 +3317,8 @@ const T1259_WOOD_CAP = (typeof process !== 'undefined' && process.env && process
 let _t1259WoodReader = null;
 function setT1259WoodReader(reader) { _t1259WoodReader = typeof reader === 'function' ? reader : null; }
 // ★[T1271 · T1266 회부 4 — PM 판정] 광부 자리 = 몸이 집(회관)에서 닿는 광맥 셀(재고 ≥ 1) × 종전 계수 0.30 — T1259 나무 자리와 같은 꼴(서버가 읽는 수 · 사본 0).
+//   ★★[T1277 · T1271 회부 2 — PM 판정 "광부 한 몸이 하루 실제로 치는 셀 수에서 유도 · T1259 0.30 을 광맥에 쓰지 않는다"] 읽개가 **자리**를 준다 —
+//     닿는 셀 × 조 사람 수(서버 `_t1277OreSlots` · 2인 1조 · 한 몸이 하루 치는 셀 = 1/2 실측). econ 은 0.30 을 안 곱한다. 읽개 없음(null)은 종전 땅 모형 × 0.30 그대로.
 //   손잡이 `T1271_ORE_CAP`(끔 기본 · `=1` 만 켬). 읽개가 없으면(랩 · 헤드리스) 종전 땅 모형 그대로. 닿는 셀 0 = 광부 자리 0(강제 아님 — 자리가 안 선다).
 const T1271_ORE_CAP = (typeof process !== 'undefined' && process.env && process.env.T1271_ORE_CAP === '1');
 let _t1271OreReader = null;
@@ -3334,7 +3336,7 @@ function jobCapacity(v) {
     fisher:     Math.floor(s * v.land.water     * 0.25),
     hunter:     Math.floor(s * v.land.game      * 0.30),
     lumberjack: Math.floor((standing == null ? s * v.land.wood : standing) * 0.30),
-    miner:      Math.floor((oreReach == null ? s * Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0) : oreReach) * 0.30),   // ★S1 광부=금속 전담: 광맥(ore) ★S5 +특수산지(흑요석·옥) ★청동 희소성 +주석산지
+    miner:      oreReach == null ? Math.floor(s * Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0) * 0.30) : Math.floor(oreReach),   // ★S1 광부=금속 전담: 광맥(ore) ★S5 +특수산지(흑요석·옥) ★청동 희소성 +주석산지 · ★[T1277] 읽개 = 자리 그대로(닿는 셀 × 조 사람 수 — 서버가 센다 · 0.30 안 곱한다)
     forager:    Math.floor(s * 0.30),
     // ★인구비율 정원(하드캡) 전부 폐지 — 직업 수는 한계가치 vs 그림자가격으로 *자연 수렴*.
     //   대장장이: 도구 쌓이면 도구가격↓→한계가치↓→안 뽑힘 + 글럿 시 차출(opportunityCost=시장가치).
