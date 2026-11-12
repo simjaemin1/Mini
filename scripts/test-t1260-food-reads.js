@@ -6,7 +6,7 @@
 //   ② 켬 = 합계 — 요리 문 섬 · 개간 문 닫힘(120일치 넘는 곳간) · 요리 재료 한 단을 가장 많이 쌓인 곡식 품목에서
 //   ③ 글자 — 손잡이 읽는 자리 하나(econ) + 전쟁 층 하나 · 문 셋(요리 · 개간 · 곳간 증설)이 같은 함수(`t1260FoodOf`)를 부른다 · 전쟁 층 추정 문이 `_feD`
 //   ④ [자명 통과 금지 · 미끼] 문 셋 중 하나를 `storage.food` 로 되돌린 사본은 ③ 의 검사에서 빠진다(검사가 실제로 문다)
-//   ⑤ [T1279] 손잡이 `T1279_COOK`(끔 기본 · `'1'` 만 · T1260 켬 안에서만) — 켜면 식량 흐름 장부(`dailyFoodProd`)가 조리식 칸을 0 으로 센다(요리는 옮김)
+//   ⑤ [T1279] 손잡이 `T1279_COOK`(끔 기본 · `'1'` 만 · T1260 켬 안에서만) — 켜면 ① 식량 흐름 장부(`dailyFoodProd`)가 조리식 칸을 0 으로 센다(요리는 옮김) · ② 정원 요리사 0(`cookTarget`)
 //      · 장부 자리 하나 · 끔 = 종전 글자 · [미끼] 장부 자리를 종전으로 되돌린 사본 · T1260 과 떼어 놓은 사본을 검사가 문다
 'use strict';
 const path = require('path');
@@ -93,6 +93,13 @@ const ledger = (es) => (es.match(/process\.env\.T1279_COOK/g) || []).length === 
   && /const dailyFoodProd = totalFoodProductionEquivalent\(T1279_COOK \? Object\.assign\(\{\}, dailyProduction, \{ cooked_food: 0 \}\) : dailyProduction, v\);/.test(es)
   && (es.match(/T1279_COOK \?/g) || []).length === 1;
 ok(ledger(ES), '⑤ 글자 — 손잡이 읽는 자리 하나(T1260 켬과 곱) · 장부 자리 하나(`dailyFoodProd` · 켬 = 조리식 칸 0 · 끔 = `dailyProduction` 그대로) · 다른 자리 0');
+ok(!k1.err && !on.err && on.cook > 0 && k1.cook === 0 && k2.cook === off.cook && k3.cook === on.cook,
+  '⑤ T1279 ② 정원 — 켬 = 부자 마을(쌀 N×300)에도 `cookTarget` 0 · T1260 켬 · 손잡이 끔은 종전 정원 그대로 · `yes` = 종전', { on: on.cook, k1: k1.cook, k2: k2.cook, k3: k3.cook });
+const quota = (es) => (es.match(/if \(T1279_COOK\) return 0;/g) || []).length === 1
+  && /function cookTarget\(v\) \{\n  if \(T1279_COOK\) return 0;/.test(es);
+ok(quota(ES), '⑤ 글자 — 정원 자리 하나(`cookTarget` 첫 줄 · 켬 = 0) · 다른 자리 0');
+const baitQ = ES.replace('  if (T1279_COOK) return 0;', '');
+ok(baitQ !== ES && !quota(baitQ), '⑤ [자명 통과 금지 · 미끼] 정원 줄을 뺀 사본 — 글자 검사가 문다', { Q: quota(baitQ) });
 const baitL = ES.replace('totalFoodProductionEquivalent(T1279_COOK ? Object.assign({}, dailyProduction, { cooked_food: 0 }) : dailyProduction, v)', 'totalFoodProductionEquivalent(dailyProduction, v)');
 const baitK = ES.replace('const T1279_COOK = T1260_FOOD_READS && (', 'const T1279_COOK = (');
 const baitP = ES.replace("{ cooked_food: 0 }", "{ fish: 0 }");
