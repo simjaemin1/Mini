@@ -11147,7 +11147,7 @@ function _t1214Crew527(vil, npc) {
   const S = _t527Sites();
   const empty = !!S && S.length === 0;
   _t1214Stat.crewQ++;
-  if (!T1214_VERIFY) { if (empty) { _t1214Stat.crewSkip++; return false; } return _t527Crew(vil).some(p=>p.pid===npc.pid); }
+  if (!T1214_VERIFY) { if (empty) { _t1214Stat.crewSkip++; return false; } return _t527CrewHas(vil, npc.pid); }   // ★[T1290 ②] 배열 없는 같은 훑기
   const b = _t527Crew(vil).some(p=>p.pid===npc.pid);
   _t1214Tick('crew'); if (empty && b && (S || []).find(s=>!s.done&&s.v.includes(vil.name))) _t1214Bad('crew', `${vil.name} ${npc.pid} 빈 목록인데 터`);
   if (empty) _t1214Stat.crewSkip++;
@@ -12316,11 +12316,11 @@ function _t1221Cost(t, vil, k) {   // 칸 일 하나의 초(= 게임 분) — 5 
   return LIFE_TASK_SEC;
 }
 function _t1221ClearS(vil, k) {   // 밭 한 칸 개간의 초(= 게임 분) · ★[T1243 추신 5] 켬 = 밭 내기 정본(`terr-cost.fieldClearMin` — 드라베드 1.44 × 250 m² − 그 칸 영토 개간 몫) · 끔 = T1221 그대로(Budiansky 38.7 m²/사람-시간)
-  if (_t1243On()) return require('./terr-cost').fieldClearMin(_t1243ClearedM2(vil, k));
+  if (_t1243On()) return _terrCost.fieldClearMin(_t1243ClearedM2(vil, k));   // ★[T1290 ③] 파일 머리에서 잡은 같은 모듈(`_terrCost` — 부를 때마다 경로 풀기 0)
   const C = _Crops(); return ((C && C.FIELD_CELL_M2) || 1) / _T1221_CLEAR_M2_H * 3600 / 60;
 }
 // ★[T1243 추신 5] 그 칸이 영토 넓히기에서 몸으로 개간된 칸이면 그 지도 넓이(1 m²) — 표식 `vil._t1243Cl`(영토 넓히기 실물화 `T1207_TERR_REAL` 의 `_terrAdd` 가 켬일 때만 세운다)
-function _t1243ClearedM2(vil, k) { return (vil && k != null && vil._t1243Cl && vil._t1243Cl.has(k)) ? require('./terr-cost').cellM2('map') : 0; }
+function _t1243ClearedM2(vil, k) { return (vil && k != null && vil._t1243Cl && vil._t1243Cl.has(k)) ? _terrCost.cellM2('map') : 0; }   // ★[T1290 ③] 같은 모듈 객체
 const _t1243CStat = { bodyCells: 0, bodyMin: 0, batchCells: 0, deducted: 0 };
 // ★[T1243 추신 5] 플레이어 밭 내기 — 같은 정본(그 칸을 영토 넓히기에서 개간한 마을이 있으면 그 넓이를 뺀다 · 마을 51 훑기)
 function t1243FieldClearMinAt(cx, cy) {
@@ -14886,6 +14886,14 @@ function _mktBroadcast() {                   // onGameTick 훅 — **바뀔 때�
 //   시공 시간은 그대로다 — 착공일 + `G_BUILDD`(랩 6일)이 차고 **재료도 다 놓였을 때** 선다. 재료가 모자라면 그날은 안 선다(기다린다).
 //   ★관측자 무관 — `_lifeGranAdd` 는 `_lifeDaily` 의 관측자 문 **앞**에서 모든 마을이 부른다(이 함수도 관측자를 안 읽는다). 주사위 0.
 function _t435On() { return !!_lifeEcon().T435_GRANARY_ACT; }
+// ★[T1290 ②] `_t435Crew(vil).some(p => p.pid === pid)` 와 같은 답 — 같은 명부 차례 · 같은 건너뜀 · 같은 끊음(LIFE_CREW)을 배열 없이 훑는다.
+function _t435CrewHas(vil, pid) {
+  const skip = (_lifeEcon().T400_BUILD_ACT && vil._site) ? LIFE_CREW : 0;
+  const pl = state.deps && state.deps.players;
+  let i = 0, n = 0;
+  for (const k of (vil.npcPids || [])) { const p = pl && pl.get(k); if (!p) continue; if (i++ < skip) continue; if (n >= LIFE_CREW) break; n++; if (p.pid === pid) return true; }
+  return false;
+}
 function _t435Crew(vil) {
   const skip = (_lifeEcon().T400_BUILD_ACT && vil._site) ? LIFE_CREW : 0;   // 집 크루가 일하는 날은 그다음 둘
   const out = [], pl = state.deps && state.deps.players;
@@ -15016,6 +15024,15 @@ function _t527Save(site) {
       JSON.stringify({ v: site.v, span: site.span, cells: site.cells, stage: site.stage, mat: site.mat, workMs: site.workMs || 0, adv: site.adv, sum: site.sum, added: site.added }), site.done, site.day || 0);
   } catch (e) { console.error(`[${state.zoneId}] 🌉 다리 행 저장 실패:`, e.message); }
 }
+// ★[T1290 ②] `_t527Crew(vil).some(p => p.pid === pid)` 와 같은 답(배열 없음 · 같은 훑기)
+function _t527CrewHas(vil, pid) {
+  const E = _lifeEcon();
+  const skip = ((E.T400_BUILD_ACT && vil._site) ? LIFE_CREW : 0) + ((E.T435_GRANARY_ACT && vil._granPend) ? LIFE_CREW : 0);
+  const pl = state.deps && state.deps.players;
+  let i = 0, n = 0;
+  for (const k of (vil.npcPids || [])) { const p = pl && pl.get(k); if (!p) continue; if (i++ < skip) continue; if (n >= LIFE_CREW) break; n++; if (p.pid === pid) return true; }
+  return false;
+}
 function _t527Crew(vil) {   // 여유 크루 — 집 크루(T400 · 집터가 있으면)·곳간 크루(T435 · 곳간 터가 있으면)가 먼저 가져간 뒤의 둘
   const E = _lifeEcon();
   const skip = ((E.T400_BUILD_ACT && vil._site) ? LIFE_CREW : 0) + ((E.T435_GRANARY_ACT && vil._granPend) ? LIFE_CREW : 0);
@@ -15096,9 +15113,10 @@ function _t527BridgeDay(vil) {
 }
 // T1181: 실제 호스트의 곳간·다리 크루. 재료 표·출구·짐 상한은 기존 정본.
 const _t1181Haul = require('./build-haul');
-function _t1181Task(vil,npc) {
-  const E=_lifeEcon();if(!E.productionActsBound(vil.econ))return null;
-  if(E.T435_GRANARY_ACT && vil._granPend && _t435Crew(vil).some(p=>p.pid===npc.pid)) {
+// ★[T1290 ②] `bound` = 부른 쪽(`_t1181Step`)이 같은 술어를 방금 물었다(참) — 다시 안 묻는다. 크루 물음은 배열을 안 짓는 같은 훑기(`_t435CrewHas`).
+function _t1181Task(vil,npc,bound) {
+  const E=_lifeEcon();if(!bound&&!E.productionActsBound(vil.econ))return null;
+  if(E.T435_GRANARY_ACT && vil._granPend && _t435CrewHas(vil,npc.pid)) {
     const p=vil._granPend,target={x:p.cx*SZ+SZ/2,y:(p.cy+2)*SZ+SZ/2};
     return {kind:'granary',key:'g/'+p.cx+','+p.cy+'/'+p.day,site:p,target,need:()=>E.granaryEconMaterials()||{}};
   }
@@ -15120,7 +15138,7 @@ function _t1181Task(vil,npc) {
 function _t1181Step(vil,npc,now,awake) {
   const E=_lifeEcon();if(!E.productionActsBound(vil.econ))return false;
   if(npc._t1181Returns?.length&&!(npc._t1181Haul?.n>0))npc._t1181Haul={...npc._t1181Returns.shift(),returning:true,at:null};
-  const t=_t1181Task(vil,npc);if(!t&&!npc._t1181Haul)return false;
+  const t=_t1181Task(vil,npc,true);if(!t&&!npc._t1181Haul)return false;   // ★[T1290 ②] 위에서 물은 술어(참)를 넘긴다 — 사이에 바뀌는 것은 몸 칸(`_t1181Haul`)뿐
   if(t&&!npc._t1181Haul)_lifeDropTask(vil,npc);
   if(t){let bd=Infinity,source={x:vil.ccx*SZ+SZ/2,y:vil.ccy*SZ+SZ/2};for(const g of(vil._granList||[])){const L=_granLadder(g),d=Math.hypot(L.x-t.target.x,L.y-t.target.y);if(d<bd){source=L;bd=d;}}t.source=source;}
   const missing=()=>{if(!t)return[];const mat=t.site.mat||(t.site.mat={}),a=[];for(const[k,n]of Object.entries(t.need())){let reserved=0;for(const p of state.deps.players.values()){const s=p._t1181Haul;if(s&&s.key===t.key&&s.item===k)reserved+=Math.min(s.n,p.inventory?.[k]||0);}const left=n-(mat[k]||0)-reserved;if(left>1e-9)a.push([k,left]);}return a;};
@@ -18648,6 +18666,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
     //   하네스가 "D − 오늘 − 손" 을 다시 적으면 그게 사본이다 — 정본 `_t374Done`·`_t374Held` 를 그대로 부른다.
     // ★[T400] 집 행위 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 걸음·자재 규칙을 다시 적지 않는다 — 정본 함수를 그대로 부른다.
     _t1188Probe: {mine:(v,p,n,d)=>_t724BodyStep(v,p,n,d),deliver:(v,p,n)=>_t724Deliver(v,p,'gran',n),bulk:v=>_oreMineDaily(v)},
+    _t1290Probe: { crew435:(v)=>_t435Crew(v), crew435Has:(v,pid)=>_t435CrewHas(v,pid), crew527:(v)=>_t527Crew(v), crew527Has:(v,pid)=>_t527CrewHas(v,pid), crew:()=>LIFE_CREW },   // ★[T1290 ②] 하네스(`test-t1290-perf`) — 배열 판 ↔ 배열 없는 판
     _t1181Probe: { step:(v,p,n,a)=>_t1181Step(v,p,n,a),task:(v,p)=>_t1181Task(v,p),drawMs:()=>G_DRAWW,storeMs:()=>G_STOREW },
     _t1219Probe: { get ON() { return T1219_STEP_FAST; }, get VERIFY() { return T1219_VERIFY; }, stat: () => Object.assign({}, _t1219Stat) },   // ★[T1219] 하네스 문
     _t1214Probe: { get ON() { return T1214_STEP_FAST; }, get VERIFY() { return T1214_VERIFY; }, stat: () => { const R = _T1214R, P = _T1214P; return Object.assign({}, _t1214Stat, { rockQ: R.q, rockFirst: R.first, rockRest: R.rest, rockNaN: R.nan, rockVq: R.vq, rockBad: R.bad, ptQ: P.q, ptFirst: P.first, ptRest: P.rest, ptNaN: P.nan, ptVq: P.vq, ptBad: P.bad }); }, crew435: (v) => _t435Crew(v).map((p) => p.pid), crew527: (v) => _t527Crew(v).map((p) => p.pid), crew527Gate: (v, p) => _t1214Crew527(v, p), order: (arr, npc) => _t1214Order(arr, npc, { d: new Float64Array(4) }), carry: () => _t1214Carry(), weights: () => _t1214Weights(), fishGoods: () => _t1214FG() },   // ★[T1214] 하네스 문(정본 그대로 부름)
