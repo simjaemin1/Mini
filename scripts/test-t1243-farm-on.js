@@ -19,7 +19,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };
-const KNOBS = ['T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
+const KNOBS = ['T1284_FARM_YIELD', 'T1276_FARM_K', 'T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
 const sub = (env, code) => {
   const e = Object.assign({}, process.env); delete e.NODE_OPTIONS; for (const k of KNOBS) delete e[k]; Object.assign(e, env);
   return JSON.parse(execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: e, encoding: 'utf8', maxBuffer: 64 << 20 }).trim().split('\n').filter((l) => l.startsWith('{')).pop());
@@ -64,8 +64,8 @@ ok(!on.live0 && on.live1, '④ 라이브 = 존 주입(`zoneAwake`)이 있는 판
 ok(/const _cut = _t1243On\(\) && _t1243Live\(\);/.test(VS) && /if \(T1224_ECON_FARM && !_cut\)/.test(VS) && /if \(_body && T1212_FARM_REST && !_cut\)/.test(VS), '④ 켬 + 라이브 = 몸 없는 econ 농부(T1224) · 몸이 못 한 몫(T1212 ②) 안 돈다');
 //   ★[T1252] 주석 글자(`몸만 — 일괄 0`)로 갈래를 짚지 않는다 — `_cut` 갈래가 **코드 0**(주석만 · 빈 몸)이고 바로 뒤가 일괄(`else if (!_body) lifeFarmDay(`)인 꼴을 본다.
 //     미끼: 그 갈래에 일괄 한 줄을 넣은 사본은 빨강이어야 한다(글자만 맞추는 자명 통과 금지).
-const CUT_EMPTY = /if \(_cut\) \{\s*(?:\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/\s*)?\}\s*else if \(!_body\) lifeFarmDay\(/;
-ok(/if \(!_body && !_cut\) _lifeClearDay\(vil, farmerN\);/.test(VS) && CUT_EMPTY.test(VS), '④ 켬 + 라이브 = 존이 잔 날의 개간 · 작물 일괄도 안 돈다(몸이 못 한 일은 0 · `_cut` 갈래 코드 0)');
+const CUT_EMPTY = /if \(_cut\) \{\s*(?:\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/\s*)?\}\s*else if \(!_body\) \{? ?lifeFarmDay\(/;   // ★[T1284] 일괄 갈래가 `{ lifeFarmDay(…); if (_t84) _lifeClearDay(…); }` 로 감싸였다(같은 갈래)
+ok(/if \(!_body && !_cut && !_t84\) _lifeClearDay\(vil, farmerN\);/.test(VS) && CUT_EMPTY.test(VS), '④ 켬 + 라이브 = 존이 잔 날의 개간 · 작물 일괄도 안 돈다(몸이 못 한 일은 0 · `_cut` 갈래 코드 0)');
 { const bait = VS.replace(/if \(_cut\) \{\s*(\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/)?\s*\}/, (m, c) => `if (_cut) { ${c || ''} lifeFarmDay(vil, _farmDay(vil, day), farmerN); }`);
   ok(bait !== VS && !CUT_EMPTY.test(bait), '④ 미끼 — `_cut` 갈래에 일괄(`lifeFarmDay`)을 넣은 사본은 잡힌다(빈 갈래만 지나간다)'); }
 // ── ⑤ 추신 ──
@@ -117,5 +117,64 @@ ok(Math.abs(c70.a - 250 / (5000 * 0.09290304 / 12) * 60) < 1e-9 && c70.a === c70
 ok(/if \(T1207_TERR_REAL && _t1243On\(\)\) \{ if \(!vil\._t1243Cl\) vil\._t1243Cl = new Set\(\); for \(const k of keys\) vil\._t1243Cl\.add\(k\); \}/.test(VS) && /'_t1243Prev', '_t1243Cl'\];/.test(VS), '⑦ 추신 5 — 몸이 개간해 넓힌 칸 표식은 영토 넓히기 문(`_terrAdd` · 영토 실물화 켬) 한 곳 · 재기동 곁 칸');
 const ZS = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 ok(/if \(Crops\.T1243_FARM_ON\) \{   \/\/ ★\[T1243 추신 5\] 켬 = 새 밭은 몸으로 먼저 일군다/.test(ZS) && /if \(b\.data && b\.data\.clr\) continue;/.test(ZS) && /if \(Crops\.T1243_FARM_ON\) \{ const _cb = _t1243ClrNear\(player\); if \(_cb\) \{ _t1243ClrWork\(player, _cb\); return; \} \}/.test(ZS) && /SimVillages\.t1243FieldClearMinAt\(cx, cy\)/.test(ZS), '⑦ 추신 5 — 플레이어 같은 규칙: 새 밭 = 일굴 밭(씨 안 씀) · 곁에서 E 손짓 시간이 쌓여야 빈 밭 · 같은 정본 · 끔 = 종전');
+// ── ⑧ T1276 — 밭 세계 부양력 = 몸이 일군 밭 ──
+const Q8 = `const E=require('./sim/economy-sim');const V=require('./server/villages');const C=require('./server/crops');const B=V.__p3Bind({villages:[]});
+const v={_t368FoodTot:0};const out={on:E.T1276_FARM_K};
+for(let d=0;d<400;d++){v._t368FoodTot+=(d%100===50?3650:0);if(E.t1276Note)E.t1276Note(v);}
+out.H=v._t1276H;out.hist=(v._t1276Hist||[]).length;v._t1276Stand=1000;out.f1=E.t1276FieldFlow?E.t1276FieldFlow(v):null;v._t1276Stand=99999;out.f2=E.t1276FieldFlow?E.t1276FieldFlow(v):null;
+const W={villages:[]};const ev=E.createVillage({initialPop:5,name:'s'});ev._world=W;const vil={econ:ev,_drySet:new Set(['1,1','2,1']),_crop:new Map([['1,1',{c:'foxtail_millet',p:0,td:0,w:0,wd:6,ps:0,q:1}],['2,1',{c:'soybean',p:0,td:0,w:0,wd:6,ps:0,q:0.5}]])};
+B.state.villages=[vil];out.S=B._t1276Stand(vil);const it1=V.__farmBind?null:null;
+out.exp=['1,1','2,1'].reduce((a,k)=>{const e=vil._crop.get(k);const u=Math.max(0,Math.floor(C.harvestUnits(e.c,{supply:1,seedFresh:1,fert:0.5})*e.q+1e-9));return a+u*E.t368FoodPer(ev,e.c);},0);
+console.log(JSON.stringify(out));`;
+const k0 = sub({ T1243_FARM_ON: '1' }, Q8), kx = sub({ T1276_FARM_K: '1' }, Q8), k1 = sub({ T1243_FARM_ON: '1', T1276_FARM_K: '1' }, Q8);
+ok(!k0.on && !kx.on && k1.on, '⑧ T1276 — `T1276_FARM_K` 끔 기본 · `=1` 이어도 밭 세계(`T1243_FARM_ON`) 켬일 때만 선다');
+ok(k1.H === 3650 * 4 && k1.hist === 366 && Math.abs(k1.f1 - k1.H / 365) < 1e-9 && Math.abs(k1.f2 - 99999 / 365) < 1e-9, '⑧ T1276 — 밭 흐름 = max(지난 한 해 거둔 식량(지금 − 365날 전 · 400날 중 100날마다 거둔 넷이 다 창 안) · 선 작물이 낼 식량) ÷ 365(한 해 창 366 칸)', `H ${k1.H} · ${k1.f1.toFixed(2)} 단위/날`);
+ok(k0.H === undefined && k0.hist === 0, '⑧ T1276 — 끔 = 기록 0(종전)');
+ok(k1.S > 0 && Math.abs(k1.S - k1.exp) < 1e-9 && k0.S === 0, '⑧ T1276 — 선 작물 식량 = 심은 칸마다 정본 수확 낱개(비옥 · 물 · 품질) × 낱개 값 · 끔 = 0', `${k1.S.toFixed(2)} 단위`);
+const ES = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
+const capRe = /const _capFlow = \(T1276_FARM_K \? t1276FieldFlow\(v\) : farmFlowPerDay\(v, _cf\.farmer \|\| 0\) \* _paddyMul \* \(v\._clearedFrac != null \? v\._clearedFrac : 1\)\)/;
+const strawRe = /\+ \(T1276_FARM_K \? t1276FieldFlow\(v\) : \(dailyProductionPotential\.food \|\| 0\)\) \* STRAW_FUEL_PER_FOOD/;
+ok(capRe.test(ES) && strawRe.test(ES), '⑧ T1276 — K 의 식량 흐름(prodK 농사 몫) · 땔감 볏짚 몫이 밭 흐름 하나를 읽는다(사본 0)');
+{ const bait = ES.replace('(T1276_FARM_K ? t1276FieldFlow(v) : farmFlowPerDay(v, _cf.farmer || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1))', 'farmFlowPerDay(v, _cf.farmer || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1)');
+  ok(bait !== ES && !capRe.test(bait), '⑧ T1276 미끼 — 켬 세계에서 K 가 econ 농사 셈(농부 × 1.33)만 읽는 사본이면 빨강'); }
+ok(/function _lifeHeadlessDay\(vil\) \{\n  _t1276Stand\(vil\);/.test(VS) && /_t1276Stand\(vil\);   \/\/ ★\[T1276\] 랩 하루도 같은 함수/.test(VS), '⑧ T1276 — 선 작물 셈은 라이브(헤드리스 하루) · 랩(작물 탐침 하루) 같은 함수');
+// ── ⑨ T1284 — 밭이 한 해에 먹이는 사람(고증과 맞대 고친 칸) ──
+const Q9 = `const E=require('./sim/economy-sim');const C=require(process.env.T1284_CROPS||'./server/crops');const V=require('./server/villages');const B=V.__p3Bind({villages:[]});const TC=require('./server/terr-cost');
+const o={on:E.T1284_FARM_YIELD,con:C.T1284_FARM_YIELD,keep:{},kd:C.KEEP_DAYS};for(const id of ['foxtail_millet','millet','rice','soybean','barley','gourd'])o.keep[id]={d:C.keepDaysOf(id),k:(C.get(id)||{}).keep,g:(C.get(id)||{}).group};
+o.y=[];for(const id of Object.keys(C.T1221_KG_HA||{}))for(const f of [0,0.5,1]){const u=C.harvestUnits(id,{supply:5,seedFresh:1,fert:f});const r=C.T1221_KG_HA[id];o.y.push([id,f,u*C.kgOf(id),r[0]/10000*C.FIELD_CELL_M2,r[1]/10000*C.FIELD_CELL_M2,C.kgOf(id)]);}
+o.cs=B._t1221ClearS();o.fc=TC.fieldClearMin(0);o.ds=B._t1221DayS();
+const vil={_farmSet:new Set(),_crop:new Map(),_drySet:new Set()};const b0=B._t1221Stat.budgetS;
+const LF=V.__farmBind().lifeFarmDay||null;o.hasLF=!!LF;if(LF){LF(vil,100,3);o.dB=B._t1221Stat.budgetS-b0;o.left=vil._t1284Left;}
+console.log(JSON.stringify(o));`;
+const y0 = sub({ T1243_FARM_ON: '1' }, Q9), yx = sub({ T1284_FARM_YIELD: '1' }, Q9), y1 = sub({ T1243_FARM_ON: '1', T1284_FARM_YIELD: '1' }, Q9);
+ok(!y0.on && !yx.on && !yx.con && y1.on && y1.con, '⑨ T1284 — `T1284_FARM_YIELD` 끔 기본 · `=1` 이어도 밭 세계(`T1243_FARM_ON`) 켬일 때만 선다(econ · 작물 정본 같은 답)');
+const g9 = (o, id) => o.keep[id];
+ok(g9(y1, 'foxtail_millet').d === Math.floor(9 * 365.25) && ['millet', 'rice', 'soybean', 'barley'].every((id) => g9(y1, id).d === Math.floor(3 * 365.25)) && g9(y1, 'gourd').d === y1.kd[g9(y1, 'gourd').k],
+  '⑨ T1284 ② 마른 낟알 저장 = 唐六典 太倉署(조 9년 · 쌀 · 잡곡 3년) · 곡물 · 콩류만(박 = 카탈로그 그대로)', `조 ${g9(y1, 'foxtail_millet').d} · 기장 ${g9(y1, 'millet').d} · 박 ${g9(y1, 'gourd').d}날`);
+ok(Object.keys(y0.keep).every((id) => y0.keep[id].d === y0.kd[y0.keep[id].k]), '⑨ T1284 ② 끔 = 카탈로그 저장성 축(`KEEP_DAYS`) 그대로');
+const CS = fs.readFileSync(path.join(ROOT, 'server', 'crops.js'), 'utf8');
+ok(/唐六典 卷19 太倉署 「凡粟支九年，米及雜種三年」\(T1247 K01/.test(CS) && /T1284_GRAIN_KEEP_Y = \{ foxtail_millet: 9 \};/.test(CS), '⑨ T1284 ② 출처 줄 — 새 수(9 · 3)는 출처 줄과 함께만');
+ok(Math.abs(y1.cs - y1.fc) < 1e-9 && Math.abs(y1.cs - 1.44 * 250) < 1e-6 && y1.ds > 0, '⑨ T1284 ③ 개간 칸 시간 = `terr-cost.fieldClearMin`(드라베드 1.44분/m² × 250 m²) · 농부 낮 = T1221 정본', `${y1.cs}분 · 낮 ${y1.ds}분`);
+ok(/\/\/   고증: 칸 개간 360분\(드라베드 1\.44분\/m² × 250 m² · `terr-cost\.fieldClearMin`\) · 농부 하루 낮 1,008분\(T1221\)/.test(VS)
+  && /if \(_t1284On\(\) && _t1221On\(\) && vil\._t1284Left != null\) \{ n = Math\.floor\(vil\._t1284Left \/ _t1221ClearS\(\)\);/.test(VS),
+  '⑨ T1284 ③ 개간 칸 수 = 그날 작물 일을 하고 남은 낮 ÷ 칸 개간 시간(크루 상한 2 없음 · 배수 0 · 출처 줄)');
+ok(y1.hasLF && Math.abs(y1.dB - 3 * y1.ds) < 1e-6 && Math.abs(y1.left - 3 * y1.ds) < 1e-6 && y0.left === undefined,
+  '⑨ T1284 ③ 몸 일관 — 작물 일이 그날 낮을 먼저 쓰고 남은 초만 개간 몫(일감 없는 날 = 농부 셋의 낮 전부) · 끔 = 남은 초 기록 0', `켬 남은 ${y1.left} = 3 × ${y1.ds}`);
+ok(/else if \(!_body\) \{ lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\); if \(_t84\) _lifeClearDay\(vil, farmerN\); \}/.test(VS) && /if \(!_body && !_cut && !_t84\) _lifeClearDay\(vil, farmerN\);/.test(VS)
+  && /if \(CL && !_T84\) clearedTot \+= CL\.tickDay\(vils\)/.test(fs.readFileSync(path.join(ROOT, 'scripts', 't176-ab.js'), 'utf8')),
+  '⑨ T1284 ③ 차례 — 켬 = 개간은 작물 뒤(라이브 헤드리스 하루 · 랩 자 같은 차례) · 끔 = 종전 차례(개간 → 작물)');
+ok(/    if \(_t1284On\(\)\) return Cal\.springYearOf\(day\) > Cal\.springYearOf\(P\.hd\);\n    const r = C\.readyDay\(id, day\); return r != null && r - P\.hd >= Cal\.yearLen\(Cal\.dateOf\(P\.hd\)\.year\); \}\);/.test(VS)
+  && /T1239 · T1215 "사람당 \*\*심는\*\* 밭 3,000 m²"/.test(VS), '⑨ T1284 ① 한 칸 1년 1작 = 앞 수확과 다른 농사 해(봄 해 · 달력 정본) · 끔 = 종전 365날 줄 그대로(출처 줄)');
+{ const Q1 = `const Cal=require('./server/calendar');const o={};o.sy=[0,59,60,364,365,424,425].map(d=>Cal.springYearOf(d));console.log(JSON.stringify(o));`;
+  const c1 = sub({}, Q1); ok(Array.isArray(c1.sy) && c1.sy.every((x, i, A) => i === 0 || x >= A[i - 1]) && new Set(c1.sy).size >= 2, '⑨ T1284 ① 농사 해는 날이 가면 줄지 않고 바뀐다(한 칸이 해마다 한 번 다시 심긴다)', c1.sy.join(' · ')); }
+ok(/  if \(_t1284On\(\)\) return vil\._farmSet\.size < e\.npcs\.length \* _landNeed\(\);\n  const fert = /.test(VS) && /T1215 고증 "사람당 \*\*심는\*\* 밭 3,000 m²" ÷ 250 m²/.test(VS) && /const LAND_NEED = 12;/.test(fs.readFileSync(path.join(ROOT, 'server', 'village-layout.js'), 'utf8')),
+  '⑨ T1284 ④ 개간 목표 = 사람 × LAND_NEED 12칸(T1215 · 비옥은 칸 소출에만 — 보즈럽 몫을 두 번 안 곱한다) · 끔 = 종전 줄(출처 줄)');
+const yOk = (o) => o.y.length >= 15 && o.y.every(([, , kg, lo, hi, per]) => kg <= hi + 1e-9 && kg > lo - per - 1e-9);
+ok(yOk(y1) && yOk(y0), '⑨ T1284 — 몸이 거둔 칸의 소출 = 고증 kg/ha 범위(T1221 · 비옥 자리 0 · ½ · 1 · 물 넉넉 · 발아 1) — 칸 넓이 250 m² 를 넘어 늘리는 배수 0', y1.y.filter((x) => x[1] === 0.5).map((x) => `${x[0]} ${x[2].toFixed(1)}kg`).join(' · '));
+{ const bp = path.join(ROOT, 'server', '.t1284-bait-crops.js');
+  const bait = CS.replace('return per > 0 ? Math.max(0, Math.floor(kg / per * w * germ + 1e-9)) : 0;', 'return per > 0 ? Math.max(0, Math.floor(kg / per * w * germ * 1.5 + 1e-9)) : 0;');
+  let yb = null; try { fs.writeFileSync(bp, bait); yb = sub({ T1243_FARM_ON: '1', T1284_FARM_YIELD: '1', T1284_CROPS: bp }, Q9); } finally { try { fs.unlinkSync(bp); } catch (e) { /* 없음 */ } }
+  ok(bait !== CS && yb && !yOk(yb), '⑨ T1284 미끼 — 수확에 배수(× 1.5)를 건 작물 정본 사본은 빨강'); }
+ok(!/harvestToGranary|_t368FoodTot/.test(VS.slice(VS.indexOf('function _lifeClearDay('), VS.indexOf('const _t1284Stat'))), '⑨ T1284 — 개간은 칸만 낸다(곳간에 식량을 넣지 않는다 · 식량은 몸이 거둔 칸에서만 — 캐논 797)');
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);

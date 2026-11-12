@@ -20,7 +20,7 @@ const fs = require('fs');
 const TMP = `/tmp/test-tame-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = process.env.ZONE_ID || 'hanbando';
-process.env.PORT = process.env.PORT || String(39900 + (process.pid % 90));
+process.env.PORT = process.env.PORT || String(require('./lib-port').port(39900));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '0';
 process.env.ENABLE_WILDLIFE = '0';   // 야생 스폰 없이 — 우리가 직접 심는다(결정론)

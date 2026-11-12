@@ -140,7 +140,7 @@ function parent() {
   const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
   const seen = (m) => console.log(`  [관찰] ${m}`);
   const TMPD = fs.mkdtempSync('/tmp/t967-rs-');
-  const PORT0 = 38200 + (process.pid % 8) * 12;   // 판 여섯 × 자식 둘 = 열두 자리(다른 하네스가 안 쓰는 띠)
+  const PORT0 = require('./lib-port').ports(12, 38200);   // 판 여섯 × 자식 둘 = 열두 자리(다른 하네스가 안 쓰는 띠)
   let port = PORT0;
   function run(board, end, d975) {
     const key = `${board}-${end}${d975 ? '-d0' : ''}`;

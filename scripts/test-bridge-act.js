@@ -137,7 +137,7 @@ process.stdout.write(JSON.stringify({crew,crewH,n0,n1,d1,mat1,w1,dOther,done:S0.
 
 console.log('\n⑤ 존 — 단일 술어의 다리 집합 · welcome · 끔 = 같은 참조(자식 프로세스 · 존 부팅)');
 {
-  const ZJ = (env) => probe(Object.assign({ ZONE_ID: 'hanbando', PORT: String(38700 + (process.pid % 200)), DB_PATH: `/tmp/test-bridge-act-${process.pid}-${Math.random().toString(36).slice(2)}.db`,
+  const ZJ = (env) => probe(Object.assign({ ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(38700)), DB_PATH: `/tmp/test-bridge-act-${process.pid}-${Math.random().toString(36).slice(2)}.db`,
     ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' }, env), `
 const _l=console.log; console.log=()=>{}; console.warn=()=>{}; console.error=()=>{};
 const Z=require(${JSON.stringify(path.join(ROOT, 'server', 'zone.js'))}); const H=Z.__testBind(); const {ZONES}=require(${JSON.stringify(path.join(ROOT, 'server', 'zone-config.js'))});
@@ -195,7 +195,7 @@ console.log('\n⑧ [T537] 영속 — 존 DB `village_bridges` · 재기동 뒤 �
   const DB = `/tmp/test-bridge-persist-${process.pid}.db`;
   for (const f of [DB, DB + '-wal', DB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   const ZP = JSON.stringify(path.join(ROOT, 'server', 'zone.js')), DBP = JSON.stringify(path.join(ROOT, 'server', 'zone-local-db.js')), ZCP = JSON.stringify(path.join(ROOT, 'server', 'zone-config.js'));
-  const boot = (env, js) => probe(Object.assign({ ZONE_ID: 'hanbando', PORT: String(38900 + (process.pid % 90)), DB_PATH: DB, ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' }, env), `
+  const boot = (env, js) => probe(Object.assign({ ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(38900)), DB_PATH: DB, ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' }, env), `
 const _l=console.log; const LOG=[]; console.log=(...a)=>LOG.push(a.join(' ')); console.warn=()=>{}; console.error=()=>{};
 const Z=require(${ZP}); const H=Z.__testBind(); const D=require(${DBP}); const {ZONES}=require(${ZCP}); const ZC=ZONES.hanbando;
 const V=require(${VP}), E=require(${EP}), P=V.__labProbe._t400Probe, Q=V.__labProbe._t527Probe;

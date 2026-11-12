@@ -33,7 +33,7 @@ if (process.env.T636_SUB === 'butcher') {
   const TMP = `/tmp/t636-drop-kg-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.env.ZONE_ID = process.env.T636_SUB_ZONE || 'hanbando';
-  process.env.PORT = String(41900 + (process.pid % 90));
+  process.env.PORT = String(require('./lib-port').port(41900));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
   const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};

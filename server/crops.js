@@ -99,7 +99,15 @@ function cropOfSeed(item) { return isSeed(item) ? item.slice(SEED_PREFIX.length)
 function isFood(id) { const c = get(id); return !!c && !NON_FOOD_GROUPS.has(c.group); }
 
 // ── 파생 ────────────────────────────────────────────────────────────────────
-function keepDaysOf(id) { const c = get(id); return c ? (KEEP_DAYS[c.keep] || KEEP_DAYS[3]) : 0; }
+// ★[T1284 ②] 켬(`T1284_FARM_YIELD` · 밭 세계에서만) = 곡물 · 콩류 마른 낟알 저장 = 唐六典 卷19 太倉署 「凡粟支九年，米及雜種三年」(T1247 K01 · 재현본) — 조(粟) 9년 · 쌀 · 잡곡 3년(날 = 해 × 365.25 내림).
+//   끔 = 카탈로그 저장성 축(`KEEP_DAYS`) 그대로. ⚠청동기 한반도 곳간 수치는 못 찾았다(T1245 회부 1) — 이웃(당 화북 나라 곳간) 값이다.
+const T1284_FARM_YIELD = (typeof process !== 'undefined' && process.env) ? (process.env.T1243_FARM_ON === '1' && process.env.T1284_FARM_YIELD === '1') : false;
+const T1284_GRAIN_KEEP_Y = { foxtail_millet: 9 };   // 粟 = 조(겉곡) · 그 밖 곡물 · 콩류 = 米及雜種 3
+function keepDaysOf(id) {
+  const c = get(id); if (!c) return 0;
+  if (T1284_FARM_YIELD && (c.group === '곡물' || c.group === '콩류')) return Math.floor((T1284_GRAIN_KEEP_Y[id] || 3) * 365.25);
+  return KEEP_DAYS[c.keep] || KEEP_DAYS[3];
+}
 function seedKeepDaysOf(id) {
   const c = get(id); if (!c) return 0;
   return +(SEED_KEEP_DAYS * (SEED_KEEP_FLOOR + (1 - SEED_KEEP_FLOOR) * (c.keep / 5))).toFixed(1);
@@ -630,7 +638,7 @@ function payload() {
 module.exports = {
   DATA, CROPS, IDS, SEED_PREFIX, _day, SEED_KG, KEEP_DAYS, GROUP_KG, GROUP_EMOJI, NON_FOOD_GROUPS,
   get, list, isCrop, isSeed, seedOf, cropOfSeed, isFood, kcalOf, seedKgPerCell, seedUnitsPerCell, reserveSeed,
-  keepDaysOf, seedKeepDaysOf, hungerOf, tastyOf, growDaysOf, kgOf, koOf, emojiOf,
+  keepDaysOf, T1284_FARM_YIELD, T1284_GRAIN_KEEP_Y, seedKeepDaysOf, hungerOf, tastyOf, growDaysOf, kgOf, koOf, emojiOf,
   T594_CROP_CAL, calDaysOf,   // ★[T594] 작물 철 고증 — 손잡이 · 고증 활동일(순수 유도 · 표에 없으면 null)
   seasonOfDay, sowSeasons, canSowOn, sowableIn, sowableOn, wildSeedAt, WILD_SEED_CHANCE,
   monthOf, sowMonthsOf, fitsField, sowableMonth, villageCropPick, T1201_BRONZE_CROPS, T1201_BRONZE_SET, T1243_FARM_ON, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,

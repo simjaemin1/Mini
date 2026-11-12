@@ -1,27 +1,27 @@
-# T1291 고친 일곱 — 이 가지 러너(순차)
+# T1291 고친 일곱 — 이 가지 러너(순차) · main land1070 합친 뒤
 ##### test-headless-parity.js #####
   [소요] 0초
   ✓ RC=0
 ##### test-wood-act.js #####
-  [소요] 7초
+  [소요] 6초
   ✓ RC=0
 ##### test-granary-add.js #####
   [소요] 0초
   ✓ RC=0
 ##### test-model-intake.js #####
-  [소요] 0초
-  ✓ RC=0
-##### test-t1259-wood-cap.js #####
   [소요] 1초
   ✓ RC=0
+##### test-t1259-wood-cap.js #####
+  [소요] 0초
+  ✓ RC=0
 ##### e2e-next-step.js #####
-  [소요] 35초
+  [소요] 34초
   ✓ RC=0
 ##### e2e-trade.js #####
-  [소요] 119초
+  [소요] 135초
   ✓ RC=0
 === 러너 요약 ===
   통과 7: test-headless-parity.js test-wood-act.js test-granary-add.js test-model-intake.js test-t1259-wood-cap.js e2e-next-step.js e2e-trade.js
   실패 0: 없음
-  걸린 시간 상위(초): e2e-trade.js 119 · e2e-next-step.js 35 · test-wood-act.js 7 · test-t1259-wood-cap.js 1 · test-granary-add.js 0 · test-headless-parity.js 0 · test-model-intake.js 0
-  걸린 시간 합: 하네스 162초 · 러너 전체 186초(그 사이 = 배수 · 정리 기다림 · 머리)
+  걸린 시간 상위(초): e2e-trade.js 135 · e2e-next-step.js 34 · test-wood-act.js 6 · test-model-intake.js 1 · test-granary-add.js 0 · test-headless-parity.js 0 · test-t1259-wood-cap.js 0
+  걸린 시간 합: 하네스 176초 · 러너 전체 200초(그 사이 = 배수 · 정리 기다림 · 머리)

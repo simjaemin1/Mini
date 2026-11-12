@@ -205,8 +205,9 @@ console.log('\n⓪ 글자');
 {
   const codeOnly = require('./code-only.js');
   const V = fs.readFileSync(VFILE, 'utf8'), C = codeOnly(V);
-  const def = C.match(/function _t1253Now\(\) \{\n  const M = state\.dayMs \|\| 1, D = state\.world \? \(state\.world\.day \| 0\) : 0;\n  if \(state\.tickJobs \|\| state\._t731 \|\| state\._t1253Edge\) return D \* M;[^\n]*\n  return D \* M \+ Math\.min\(M, Math\.max\(0, Date\.now\(\) - econDayToMs\(D\)\)\);\n\}/g) || [];
-  ok(def.length === 1 && (C.match(/function _t1253Now\(/g) || []).length === 1, '⓪ `_t1253Now` 한 벌 — econ 날 경계 D × 하루 + 그날 흐른 몫(0 ~ 하루) · 마감 · 창 · 경계 틱엔 D × 하루', `정의 ${def.length}`);
+  //   ★[T1282] 마감 · 창 · 경계 틱 줄이 "닫는 날의 끝"으로 바뀌었다(종전 `return D * M;` = econ 머리 앞 마감 틱엔 그날 머리 — 진 장이 다시 그려졌다 · T1273 회부 3 · 보고 T1282) — 정의 글자를 새 줄로 고정
+  const def = C.match(/function _t1253Now\(\) \{\n  const M = state\.dayMs \|\| 1, D = state\.world \? \(state\.world\.day \| 0\) : 0;\n  if \(state\.tickJobs \|\| state\._t731 \|\| state\._t1253Edge\) return \(state\._t1282D === D \? D \+ 1 : D\) \* M;[^\n]*\n  return D \* M \+ Math\.min\(M, Math\.max\(0, Date\.now\(\) - econDayToMs\(D\)\)\);\n\}/g) || [];
+  ok(def.length === 1 && (C.match(/function _t1253Now\(/g) || []).length === 1, '⓪ `_t1253Now` 한 벌 — econ 날 경계 D × 하루 + 그날 흐른 몫(0 ~ 하루) · 마감 · 창 · 경계 틱엔 닫는 날의 끝(★[T1282] econ 머리 앞이면 (D + 1) × 하루 · 뒤면 D × 하루)', `정의 ${def.length}`);
   const k1 = (C.match(/^const T1253_CLOCK_FIX = process\.env\.T1253_CLOCK_FIX !== '0';$/gm) || []).length, k2 = (C.match(/^const T1258_ARTISAN_CLOCK = process\.env\.T1258_ARTISAN_CLOCK !== '0';$/gm) || []).length;
   ok(k1 === 1 && k2 === 1, '⓪ 손잡이 둘 — `!== \'0\'`(켬 기본 · 되돌림 `=0`) 한 줄씩', `T1253 ${k1} · T1258 ${k2}`);
   const once = BAITS.map(([n, , from]) => V.split(from).length - 1);

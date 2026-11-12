@@ -33,7 +33,7 @@ const OUT = val('--out', '/tmp/t640-boot.json'), GRADE = argv.includes('--grade'
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 (async () => {
   const DB = `/tmp/t640b-${process.pid}.db`;
-  Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(43000 + (process.pid % 500)), DB_PATH: DB, ENABLE_WILDLIFE: '0', E2E_GIVE: '1', ENABLE_VILLAGES: '1' });
+  Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(43000)), DB_PATH: DB, ENABLE_WILDLIFE: '0', E2E_GIVE: '1', ENABLE_VILLAGES: '1' });
   const log = [];
   console.log = (...a) => log.push(a.join(' ')); console.warn = console.log; console.error = console.log;
   const t0 = Date.now();

@@ -52,7 +52,7 @@ if (process.argv[2] === '--grow') { growChild().then(() => process.exit(0), (e) 
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.on('exit', () => { for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} } });
   process.env.ZONE_ID = 'hanbando';
-  process.env.PORT = String(39100 + (process.pid % 200));
+  process.env.PORT = String(require('./lib-port').port(39100));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
   process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
@@ -326,7 +326,7 @@ async function growChild() {
   const TMPG = `/tmp/test-recut-g-${process.pid}.db`;
   const rm = () => { for (const f of [TMPG, TMPG + '-wal', TMPG + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} } };
   rm(); process.on('exit', rm);
-  Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(39600 + (process.pid % 300)), DB_PATH: TMPG,
+  Object.assign(process.env, { ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(39600)), DB_PATH: TMPG,
     ENABLE_VILLAGES: '1', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1', VILLAGE_DAY_MS: '2500' });
   console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

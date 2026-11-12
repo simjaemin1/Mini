@@ -233,7 +233,7 @@ const DIR = `/tmp/t732-check-${process.pid}`;
 fs.mkdirSync(DIR, { recursive: true });
 const DB = path.join(DIR, 'zone.db');
 const base = Object.assign({}, process.env, {
-  ZONE_ID: 'hanbando', PORT: String(39800 + (process.pid % 150)), DB_PATH: DB, ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
+  ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port(39800)), DB_PATH: DB, ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
   T640_BOOT_SLICE: '0',
   T577_SEED: String(SEED), T577_DAYS: '999999', T732_MOMENT_LOT: '1',
 }, WALL_MS > 0 ? { T732C_WALL_MS: String(WALL_MS), T732C_DAYS: '999999' } : {

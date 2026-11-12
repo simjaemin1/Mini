@@ -8,7 +8,7 @@ const fs = require('fs');
 const TMP = `/tmp/probe-neg-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(39000 + (process.pid % 900));
+process.env.PORT = String(require('./lib-port').port(39000));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '1';
 process.env.VILLAGE_MAX = '1';

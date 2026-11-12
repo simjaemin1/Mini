@@ -163,7 +163,7 @@ if (MODE === '--arm') {
   (async () => {
     const DB = process.argv[3], CHECK = JSON.parse(fs.readFileSync(process.argv[4], 'utf8')), OUT = process.argv[5];
     const res = { checks: [] };
-    const Z = await bootZone(DB, 39800 + (process.pid % 150));
+    const Z = await bootZone(DB, require('./lib-port').port(39800));
     //   ★[T426] 부팅이 미룬 일(setImmediate · 다시 훑기)을 **제품처럼** 동기 부팅 바로 뒤에 흘려보낸다.
     //     안 그러면 아래 동기 세기(22.7만 칸)와 첫 검문의 시계 당기기가 그보다 먼저 돌아, 다시 훑기가 당긴 시계를 본다
     //     (첫 판이 그걸로 ⓐ 검문에 "런타임에 묘목 14 다시 벰"을 헛셌다 — 런타임 개간이 아니라 늦게 돈 부팅 개간이었다).
@@ -275,7 +275,7 @@ if (MODE === '--reboot') {
     //   ⚠팔이 끝에 센 **그 영토 셀**로 센다(팔이 내려가기 직전 하루가 셀을 더했을 수 있다 — 그 셀은 대조군이 아니다)
     if (process.argv[6]) { try { pre.terr = JSON.parse(fs.readFileSync(process.argv[6], 'utf8')).map((a) => ({ village_id: a[0], cx: a[1], cy: a[2] })); } catch (e) {} }
     //   ★[T426] 그날에 선다 — 시계를 부팅 틱에(`bootZone` 셋째 인자) · 부팅이 미룬 일(setImmediate)을 한 번 흘려보낸 뒤 센다
-    const Z = await bootZone(DB, 39960 + (process.pid % 30), DAY);
+    const Z = await bootZone(DB, require('./lib-port').port(39960), DAY);
     await new Promise((r) => setImmediate(r));
     const boot = bootCut(Z.log);
     const recut = recutLine(Z.log);
@@ -301,7 +301,7 @@ if (MODE === '--recut') {
     const OBS = process.argv[6] ? JSON.parse(process.argv[6]) : null;   // { vid, name, px, py }
     const pre = readDb(DB);
     const preIdx = countIdx(pre.terr, pre.ledger, DAY);                 // = 부팅이 메모리에 올릴 그것
-    const Z = await bootZone(DB, 40100 + (process.pid % 300), DAY);
+    const Z = await bootZone(DB, require('./lib-port').port(40100), DAY);
     const tS = Date.now();
     await new Promise((r) => setImmediate(r));                           // 부팅이 미룬 일(다시 훑기 · 옛 행 승격)이 먼저 돈다
     const settleMs = Date.now() - tS;                                    // = 부팅 뒤 첫 틱 앞에 선 일의 벽시계(가지 = 다시 훑기 한 판)
@@ -387,7 +387,7 @@ if (MODE === '--run') {
     const DB = process.argv[3], DAYS = JSON.parse(process.argv[4]), N = +process.argv[5], OUT = process.argv[6];
     //   TRK = { vid, name, px, py, observe } — 그 마을의 씨를 두 팔 다 적는다 · `observe` 면 창마다 그 마을 한가운데 선다
     const TRK = process.argv[7] ? JSON.parse(process.argv[7]) : null;
-    const Z = await bootZone(DB, 40500 + (process.pid % 300));
+    const Z = await bootZone(DB, require('./lib-port').port(40500));
     await new Promise((r) => setImmediate(r));
     const { H } = Z;
     const Database = require(path.join(ROOT, 'node_modules', 'better-sqlite3'));

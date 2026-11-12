@@ -29,7 +29,7 @@ const FROZEN = {
   rare: ['_canadiaSubAt', '_caughtFish', '_lastFishAt', 'canadiaCaravanKey', 'canadiaCaravanSpeed', 'canadiaTaskAt', 'canadiaTaskEndAt',
     'canadiaWorkX', 'canadiaWorkY', 'farmClaimId'],
   // `server/villages.js` 의 `npc` 가 econ 사람(장부)이거나 생활층 드문 갈래인 자리 — 존 몸 모양과 무관하거나 드물다
-  econ: ['_carryOn', '_granD', '_granTask', '_rest', '_t325Ei', '_t325Site', '_t325U', '_t368H', '_t368N', '_t529Since', '_t529StepAt', '_t529X', '_t529Y',
+  econ: ['_carryOn', '_granD', '_rest', '_t325Ei', '_t325Site', '_t325U', '_t368H', '_t368N', '_t529Since', '_t529StepAt', '_t529X', '_t529Y',
     '_t561Hall', '_t561Wd', 'currentJob',
     'age'],   // ★[PM land1044] econ 사람 나이 — 도적 길 위 늙기(T1049 ④ · T1080 `_t1080RoadDay` · bandits 걷기 장부)가 쓰는 `npc` 는 존 몸이 아니라 econ 사람(장부 줄) · land1041 부터 main 빨강
 };

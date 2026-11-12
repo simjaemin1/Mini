@@ -120,7 +120,7 @@ console.log('\n⑥ 우물가 E 문구 = 물가 E 문구 (실서버 함수 왕복
   const TMP = `/tmp/test-well-art-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.env.T509_WELL = '1';
-  process.env.ZONE_ID = 'hanbando'; process.env.PORT = String(38100 + (process.pid % 300)); process.env.DB_PATH = TMP;
+  process.env.ZONE_ID = 'hanbando'; process.env.PORT = String(require('./lib-port').port(38100)); process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
   const _l = console.log, _w = console.warn, _e = console.error;
   console.log = () => {}; console.warn = () => {}; console.error = () => {};

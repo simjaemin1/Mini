@@ -1306,6 +1306,8 @@ let resourcesDirty = true;  // 자원(나무·돌)은 static — 변경됐을 �
 let _lastResRebuild = 0;    // qtResources 전체 재구축 throttle (5Hz 상한)
 // ★[T461] 걸음 문 WASM 커널 — 선언만 여기(아래 `refreshDitchCells`·`_rebuildResources` 가 부른다) · 만드는 자리는 `isBlockedByTree` 뒤
 let _WW = null;             // 커널(끔이면 null — 아래 세 자리가 전부 무동작)
+let _wwTbGen = 0, _wwStN = 0;   // ★[T1278] 지형 비트 세대(`clearTerrain` 마다 +1) · 기억 칸 수
+let _wwStRef = [], _wwStX = new Float64Array(0), _wwStY = new Float64Array(0), _wwStG = new Uint32Array(0), _wwStR = new Uint8Array(0);
 let _wwRes = null;          // `qtResources` 가 **지금 든** 자원 목록(마지막 재구축 · 안에 든 것만) — 커널의 나무 열 원천
 let _wwResGen = 0;          // ★[T672] 자원 항목의 충돌 필드(종류·반경)를 **제자리에서** 바꾸는 자리가 올린다(`_shapeRegrown`) — 커널 나무 열 다시 채우기의 열쇠 하나
 // ★★★[T421 2026-09-26 · T371 회부 · T375 §4-4 · T385 §4-4 세 번 미룬 자리] **격자 증분.** `T421_SPATIAL_INC=1` 일 때만.
@@ -2107,7 +2109,7 @@ function addBridgeCells(flat) {
   _bridgeGen++;
   if (_t678G) _t678G.invalidateAll();   // ★[T678] 다리가 놓이면 문 표는 전부 낡는다(다시 짓기는 조각)
   if (_BLK_BITS) _BLK_BITS.fill(0);
-  if (_WW) _WW.clearTerrain();
+  if (_WW) { _WW.clearTerrain(); _wwTbGen++; }   // ★[T1278] 서 있는 몸 답 기억의 세대
   try { broadcast({ type: 'bridges_add', cells: add }); } catch (e) {}
   _t565OnCells(add);   // ★[T565] 큰 지도 — 표본 셀만 다시 묻고 버전을 새로 낸다(클라는 `bridges_add` 를 보고 다시 받는다)
   return add.length / 2;
@@ -2125,7 +2127,7 @@ function isDitchTileLocal(localX, localY) {
 function refreshDitchCells() {
   DITCH_CELLS.clear();
   if (_BLK_BITS) _BLK_BITS.fill(0);   // ★[T356 ②] 환호가 바뀌면 막힘 비트를 통째로 영점(유도값이라 다시 구우면 된다)
-  if (_WW) _WW.clearTerrain();        // ★[T461] 커널의 지형 비트도 같은 까닭으로 영점
+  if (_WW) { _WW.clearTerrain(); _wwTbGen++; }   // ★[T461] 커널의 지형 비트도 같은 까닭으로 영점 · ★[T1278] 서 있는 몸 답 기억의 세대
   if (_t678G) _t678G.invalidateAll();  // ★[T678] 환호가 바뀌면 문 표도 전부 낡는다
   try {
     const flat = SimVillages.ditchCells ? SimVillages.ditchCells() : [];
@@ -3778,7 +3780,10 @@ function _t671Shape(p) {
   if (T1241_DES) p._des = undefined;   // ★[T1252] T1241 몸 토막(`_desBegin` · `_desEnd` — 손잡이 `T1241_DES` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
   if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
   if (_t316Econ && _t316Econ.T1243_FARM_ON) p._t1243S = undefined;   // ★[T1252] T1243 추신 14 손에 든 씨 몫(villages.js `_t1243Reaped` · `_t368Deliver` — econ 손잡이 `T1243_FARM_ON` 켬일 때만 서는 칸 · 끔 = 무동작)
-  if (_t316Econ && _t316Econ.T1266_ORE_BODY) { p._t1266H = undefined; p._t1266Stop = undefined; }   // ★[PM land1067] T1266 광부 몸 한 시간 칸 · 멈춘 날(villages.js `_t1266Keep` — econ 손잡이 `T1266_ORE_BODY` 켬일 때만 서는 칸 · 끔 = 무동작 · test-body-fields 규약)
+  if (_t316Econ && _t316Econ.T1266_ORE_BODY) { p._t1266H = undefined; p._t1266Stop = undefined; p._granTask = undefined; }   // ★[PM land1067] T1266 광부 몸 한 시간 칸 · 멈춘 날(villages.js `_t1266Keep` — econ 손잡이 `T1266_ORE_BODY` 켬일 때만 서는 칸 · 끔 = 무동작 · test-body-fields 규약)
+  //   ★★[T1277 ③ · 날 52 CPU 뜀] `_granTask`(곳간 사다리 짐 길 — villages `_granGo`)도 이 켬 줄에 — T1266 켬이면 광부가 짐 상한(25 kg)을 날마다 채워 곳간에 간다(끔 판 곳간행 0 · 켬 판 날 12 부터).
+  //     그 몸만 `_granTask` 를 뒤에 붙여 모양이 갈렸다(몸 모양 셈 `t1277-observe` ④ — 날 12 넷째 모양) · 날 51 다섯째 모양이 서자 몸마다 짚는 자리(`_decOne` · `_wwPre` · `_moveOne`)가
+  //     메가모픽이 되어 하루 CPU 가 +60 초 뛰었다(T1271 회부 3). 값은 `undefined` 그대로 — 읽는 자리(`if (npc._granTask)` · `npc._granTask = null`)의 답 무변 · 판 날 줄 같음(보고 §3).
 }
 const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT !== '0';   // ★[T1144 · T1154] villages.js 와 같은 손잡이(켬 기본 · `'0'` 만 끔) — 이 파일은 몸 칸 하나만
 // ★★[T1140 ③-가 2026-11-04 · 손잡이 `T1140_HOT_ORDER`(기본 끔 · `'1'` 만 켬 · 끔 = 아래 함수가 안 불린다 = 종전 글자)] **걸음 머리 칸을 x · y 곁에** — T791 회부 2 의 남은 몫.
@@ -16051,11 +16056,26 @@ const T672_WALK_CUT = process.env.T672_WALK_CUT !== '0';   // ★PM 10-07 켬 �
 const _wwStill = [], _wwStill0 = [];    // 서 있는 몸(차례대로) · 견줌일 때 그 처음 값(x, y, vx, vy)
 const _wwNoRes = [];                    // 빈 목록의 정체(새 배열을 틱마다 안 만든다 — 나무 열 열쇠가 서게)
 const _wwTC = { src: null, rx: null, gen: -1, k: 0, hit: 0, miss: 0, treeBad: 0, still: 0, stillBad: 0 };
-function _wwIsStill(p) {   // 커널 `terr()` 와 같은 칸 셈(정수 · 타일 2비트) — 구웠고(1) 안 막힘(2 아님)
+function _wwIsStill(p, i) {   // 커널 `terr()` 와 같은 칸 셈(정수 · 타일 2비트) — 구웠고(1) 안 막힘(2 아님)
   const x = T1145_XY_COLS ? _xyX(p) : p.x, y = T1145_XY_COLS ? _xyY(p) : p.y;   // ★[T1145] 켬 = 열
-  if (!(x > 0 && y > 0 && x < _WW.zw && y < _WW.zh)) return false;   // ±0 · NaN · 범위 밖은 커널로(±0 은 +0 속도와 더하면 부호가 바뀔 수 있다)
-  const b = (Math.floor(y / 32) * _WW.tw + Math.floor(x / 32)) << 1;
-  return ((_WW.TB[b >> 3] >> (b & 7)) & 3) === 1;
+  //   ★[T1278] 서 있는 몸 답 기억 — 슬롯 i(players 차례 · T774 슬롯)에 지난 답을 둔다. 같은 몸 · 같은 x · y · 같은 지형 비트 세대면 지난 답 그대로.
+  //     지형 비트는 커널이 0(모름) → 1 · 2 로 한 번만 쓰고, 지우는 곳은 `clearTerrain` 둘뿐(세대 `_wwTbGen` 을 올린다) ⇒ 1 · 2 와 범위 밖 답은 세대 안에서 안 바뀐다.
+  //     0(아직 안 구움)은 기억하지 않는다(뒤에 구워지면 답이 바뀐다). 답 · 차례 · 커널에 넘기는 것이 종전과 같다(결과 바이트 같음).
+  if (i !== undefined && i < _wwStN && _wwStRef[i] === p && _wwStX[i] === x && _wwStY[i] === y && _wwStG[i] === _wwTbGen && _wwStR[i] !== 0) return _wwStR[i] === 1;
+  let v;   // 1 = 참 · 2 = 거짓(굳은 답) · 0 = 거짓(기억 안 함)
+  if (!(x > 0 && y > 0 && x < _WW.zw && y < _WW.zh)) v = 2;   // ±0 · NaN · 범위 밖은 커널로(±0 은 +0 속도와 더하면 부호가 바뀔 수 있다)
+  else { const b = (Math.floor(y / 32) * _WW.tw + Math.floor(x / 32)) << 1, t = (_WW.TB[b >> 3] >> (b & 7)) & 3; v = t === 1 ? 1 : (t === 0 ? 0 : 2); }
+  if (i !== undefined) {
+    if (i >= _wwStN) _wwStGrow(i + 1);
+    _wwStRef[i] = p; _wwStX[i] = x; _wwStY[i] = y; _wwStG[i] = _wwTbGen; _wwStR[i] = v;
+  }
+  return v === 1;
+}
+function _wwStGrow(need) {
+  let cap = _wwStX.length || 1024; while (cap < need) cap *= 2;
+  const X = new Float64Array(cap), Y = new Float64Array(cap), G = new Uint32Array(cap), R = new Uint8Array(cap);
+  X.set(_wwStX); Y.set(_wwStY); G.set(_wwStG); R.set(_wwStR);
+  _wwStX = X; _wwStY = Y; _wwStG = G; _wwStR = R; _wwStN = cap;
 }
 if ((_wwOn || _wwVerify) && !ZONE.isOcean) {
   _WW = require('./walk-wasm').create({ zw: ZONE.zoneWidth, zh: ZONE.zoneHeight, iceN: !NEIGHBOR.hasNorth, iceS: !NEIGHBOR.hasSouth,
@@ -16075,7 +16095,7 @@ function _wwPreOne(p) {   // 종전 `_wwPre` 고리 몸통 글자 그대로(`con
   let c = 1;
   if (!p.canadiaVillage && !_t316WalkAlways(p) && !(T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(p.x, p.y))) c = 0;   // 이동 문의 그 거름(몸이 안 움직인 자리에서)
   else if (p.floor || p.onStairId) c = 2;                                                // 위층·계단 = JS 정본
-  else if (cut && p.vx === 0 && p.vy === 0 && _wwIsStill(p)) { c = 3; _streamWalkMul(p); }   // ★[T672 ⓑ] 서 있는 몸 = 뒷일만(개울 메모는 종전처럼 갱신)
+  else if (cut && p.vx === 0 && p.vy === 0 && _wwIsStill(p, T774_ACTIVE_COL ? _si : undefined)) { c = 3; _streamWalkMul(p); }   // ★[T1278] 슬롯 = T774 슬롯(끔이면 기억 없음)   // ★[T672 ⓑ] 서 있는 몸 = 뒷일만(개울 메모는 종전처럼 갱신)
   _wwSeq.push(p); _wwCode.push(c);
   if (c === 1) _wwList.push(p);
   else if (c === 3) { _wwStill.push(p); if (!_wwOn) _wwStill0.push(p.x, p.y, p.vx, p.vy); }
