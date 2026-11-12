@@ -6,7 +6,7 @@
 const fs = require('fs');
 const R0 = process.env.R0 || '/dev/shm/t1272x', R = process.env.R || '/dev/shm/t1286';
 const SEEDS = (process.argv.slice(2).find((a) => !a.startsWith('--')) || '1020,7,42,1,2,3,4,5,6,8').split(',').map(Number);
-const SRC = { F1: R0, F1R: R0, F1off1: R0, G: R, GS: R, GS3: R, ZsP: R, LP: R, GSN: R };   // LP = 요리사 일손만 + 갈무리 뺌 · GSN = GS 부재료 뺌
+const SRC = { F1: R0, F1R: R0, F1off1: R0, G: R, GS: R, GS3: R, ZsP: R, LP: R, GSN: R, GST: R };   // LP = 요리사 일손만 + 갈무리 뺌 · GSN = GS 부재료 뺌
 const rd = (a, s) => { try { return JSON.parse(fs.readFileSync(`${SRC[a]}/${a}-${s}/farm.json`, 'utf8')); } catch (e) { return null; } };
 const live = (f) => f.per.filter((p) => p.everPop);
 const wmean = (f, k) => { let n = 0, w = 0; for (const p of live(f)) { const x = +p[k]; if (!Number.isFinite(x)) continue; const ww = p.popDays || 0; n += x * ww; w += ww; } return w ? n / w : 0; };
@@ -18,7 +18,7 @@ const q = (xs, p) => { const a = xs.slice().sort((x, y) => x - y); if (!a.length
 const pct = (a, b) => (b / a - 1) * 100;
 const out = { seeds: SEEDS, arms: {}, pairs: {} };
 for (const a of Object.keys(SRC)) { out.arms[a] = {}; for (const s of SEEDS) { const f = rd(a, s); if (f) out.arms[a][s] = met(f, sumOf(a, s)); } }
-for (const [name, A, B] of [['T1260', 'F1', 'F1R'], ['T1260+T1279(G)', 'F1', 'G'], ['G ↔ F1off1(T1279 판 그대로인가)', 'F1off1', 'G'], ['G + T1286', 'F1', 'GS'], ['G + T1286 + 3', 'F1', 'GS3'], ['T1286 몫(G → GS)', 'G', 'GS'], ['3 몫(GS → GS3)', 'GS', 'GS3'], ['곳간 흔들기(영 판)', 'F1', 'ZsP'], ['요리사 일손만 + 갈무리 뺌(LP)', 'F1', 'LP'], ['남는 시간 요리 부재료 뺌(GSN)', 'G', 'GSN'], ['부재료 몫(GS → GSN)', 'GS', 'GSN']]) {
+for (const [name, A, B] of [['T1260', 'F1', 'F1R'], ['T1260+T1279(G)', 'F1', 'G'], ['G ↔ F1off1(T1279 판 그대로인가)', 'F1off1', 'G'], ['G + T1286', 'F1', 'GS'], ['G + T1286 + 3', 'F1', 'GS3'], ['T1286 몫(G → GS)', 'G', 'GS'], ['3 몫(GS → GS3)', 'GS', 'GS3'], ['곳간 흔들기(영 판)', 'F1', 'ZsP'], ['요리사 일손만 + 갈무리 뺌(LP)', 'F1', 'LP'], ['G + T1286 고친 판(F1 → GSN)', 'F1', 'GSN'], ['남는 시간 요리 부재료 뺌(GSN)', 'G', 'GSN'], ['잔가지만 뺌(GST)', 'G', 'GST'], ['부재료 몫(GS → GSN)', 'GS', 'GSN']]) {
   const rows = []; for (const s of SEEDS) { const x = out.arms[A][s], y = out.arms[B][s]; if (!x || !y) continue;
     const r = { seed: s, a: x.pop, b: y.pop }; for (const k of Object.keys(x)) { r[k] = y[k] - x[k]; r[k + 'Pct'] = x[k] ? pct(x[k], y[k]) : null; } rows.push(r); }
   const sum = {}; for (const k of ['pop', 'farmer', 'harvest', 'houseUp', 'gated', 'price', 'famine', 'fg']) { const xs = rows.map((r) => r[k + 'Pct']).filter((v) => v != null && Number.isFinite(v));
