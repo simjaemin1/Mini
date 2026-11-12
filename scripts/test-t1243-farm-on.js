@@ -19,7 +19,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };
-const KNOBS = ['T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
+const KNOBS = ['T1276_FARM_K', 'T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
 const sub = (env, code) => {
   const e = Object.assign({}, process.env); delete e.NODE_OPTIONS; for (const k of KNOBS) delete e[k]; Object.assign(e, env);
   return JSON.parse(execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: e, encoding: 'utf8', maxBuffer: 64 << 20 }).trim().split('\n').filter((l) => l.startsWith('{')).pop());
@@ -117,5 +117,26 @@ ok(Math.abs(c70.a - 250 / (5000 * 0.09290304 / 12) * 60) < 1e-9 && c70.a === c70
 ok(/if \(T1207_TERR_REAL && _t1243On\(\)\) \{ if \(!vil\._t1243Cl\) vil\._t1243Cl = new Set\(\); for \(const k of keys\) vil\._t1243Cl\.add\(k\); \}/.test(VS) && /'_t1243Prev', '_t1243Cl'\];/.test(VS), '⑦ 추신 5 — 몸이 개간해 넓힌 칸 표식은 영토 넓히기 문(`_terrAdd` · 영토 실물화 켬) 한 곳 · 재기동 곁 칸');
 const ZS = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 ok(/if \(Crops\.T1243_FARM_ON\) \{   \/\/ ★\[T1243 추신 5\] 켬 = 새 밭은 몸으로 먼저 일군다/.test(ZS) && /if \(b\.data && b\.data\.clr\) continue;/.test(ZS) && /if \(Crops\.T1243_FARM_ON\) \{ const _cb = _t1243ClrNear\(player\); if \(_cb\) \{ _t1243ClrWork\(player, _cb\); return; \} \}/.test(ZS) && /SimVillages\.t1243FieldClearMinAt\(cx, cy\)/.test(ZS), '⑦ 추신 5 — 플레이어 같은 규칙: 새 밭 = 일굴 밭(씨 안 씀) · 곁에서 E 손짓 시간이 쌓여야 빈 밭 · 같은 정본 · 끔 = 종전');
+// ── ⑧ T1276 — 밭 세계 부양력 = 몸이 일군 밭 ──
+const Q8 = `const E=require('./sim/economy-sim');const V=require('./server/villages');const C=require('./server/crops');const B=V.__p3Bind({villages:[]});
+const v={_t368FoodTot:0};const out={on:E.T1276_FARM_K};
+for(let d=0;d<400;d++){v._t368FoodTot+=(d%100===50?3650:0);if(E.t1276Note)E.t1276Note(v);}
+out.H=v._t1276H;out.hist=(v._t1276Hist||[]).length;v._t1276Stand=1000;out.f1=E.t1276FieldFlow?E.t1276FieldFlow(v):null;v._t1276Stand=99999;out.f2=E.t1276FieldFlow?E.t1276FieldFlow(v):null;
+const W={villages:[]};const ev=E.createVillage({initialPop:5,name:'s'});ev._world=W;const vil={econ:ev,_drySet:new Set(['1,1','2,1']),_crop:new Map([['1,1',{c:'foxtail_millet',p:0,td:0,w:0,wd:6,ps:0,q:1}],['2,1',{c:'soybean',p:0,td:0,w:0,wd:6,ps:0,q:0.5}]])};
+B.state.villages=[vil];out.S=B._t1276Stand(vil);const it1=V.__farmBind?null:null;
+out.exp=['1,1','2,1'].reduce((a,k)=>{const e=vil._crop.get(k);const u=Math.max(0,Math.floor(C.harvestUnits(e.c,{supply:1,seedFresh:1,fert:0.5})*e.q+1e-9));return a+u*E.t368FoodPer(ev,e.c);},0);
+console.log(JSON.stringify(out));`;
+const k0 = sub({ T1243_FARM_ON: '1' }, Q8), kx = sub({ T1276_FARM_K: '1' }, Q8), k1 = sub({ T1243_FARM_ON: '1', T1276_FARM_K: '1' }, Q8);
+ok(!k0.on && !kx.on && k1.on, '⑧ T1276 — `T1276_FARM_K` 끔 기본 · `=1` 이어도 밭 세계(`T1243_FARM_ON`) 켬일 때만 선다');
+ok(k1.H === 3650 * 4 && k1.hist === 366 && Math.abs(k1.f1 - k1.H / 365) < 1e-9 && Math.abs(k1.f2 - 99999 / 365) < 1e-9, '⑧ T1276 — 밭 흐름 = max(지난 한 해 거둔 식량(지금 − 365날 전 · 400날 중 100날마다 거둔 넷이 다 창 안) · 선 작물이 낼 식량) ÷ 365(한 해 창 366 칸)', `H ${k1.H} · ${k1.f1.toFixed(2)} 단위/날`);
+ok(k0.H === undefined && k0.hist === 0, '⑧ T1276 — 끔 = 기록 0(종전)');
+ok(k1.S > 0 && Math.abs(k1.S - k1.exp) < 1e-9 && k0.S === 0, '⑧ T1276 — 선 작물 식량 = 심은 칸마다 정본 수확 낱개(비옥 · 물 · 품질) × 낱개 값 · 끔 = 0', `${k1.S.toFixed(2)} 단위`);
+const ES = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
+const capRe = /const _capFlow = \(T1276_FARM_K \? t1276FieldFlow\(v\) : farmFlowPerDay\(v, _cf\.farmer \|\| 0\) \* _paddyMul \* \(v\._clearedFrac != null \? v\._clearedFrac : 1\)\)/;
+const strawRe = /\+ \(T1276_FARM_K \? t1276FieldFlow\(v\) : \(dailyProductionPotential\.food \|\| 0\)\) \* STRAW_FUEL_PER_FOOD/;
+ok(capRe.test(ES) && strawRe.test(ES), '⑧ T1276 — K 의 식량 흐름(prodK 농사 몫) · 땔감 볏짚 몫이 밭 흐름 하나를 읽는다(사본 0)');
+{ const bait = ES.replace('(T1276_FARM_K ? t1276FieldFlow(v) : farmFlowPerDay(v, _cf.farmer || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1))', 'farmFlowPerDay(v, _cf.farmer || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1)');
+  ok(bait !== ES && !capRe.test(bait), '⑧ T1276 미끼 — 켬 세계에서 K 가 econ 농사 셈(농부 × 1.33)만 읽는 사본이면 빨강'); }
+ok(/function _lifeHeadlessDay\(vil\) \{\n  _t1276Stand\(vil\);/.test(VS) && /_t1276Stand\(vil\);   \/\/ ★\[T1276\] 랩 하루도 같은 함수/.test(VS), '⑧ T1276 — 선 작물 셈은 라이브(헤드리스 하루) · 랩(작물 탐침 하루) 같은 함수');
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);
