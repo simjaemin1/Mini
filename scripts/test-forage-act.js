@@ -1118,7 +1118,7 @@ console.log('\n⑲ [T495] 부분 수확 — 개체가 아니라 단위로 딴다
   rm();
   const ZP = JSON.stringify(path.join(ROOT, 'server', 'zone.js'));
   const zenv = (on) => ({ ZONE_ID: 'hanbando', DB_PATH: TMP, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
-    PORT: String(39300 + (process.pid % 400)), T495_PARTIAL_PICK: on ? undefined : '0' });   // ★[T510] 켬 = 기본(안 줌) · 끔 = `0`
+    PORT: String(require('./lib-port').port(39300)), T495_PARTIAL_PICK: on ? undefined : '0' });   // ★[T510] 켬 = 기본(안 줌) · 끔 = `0`
   //   존은 부팅 말을 stdout 에 쓴다 — 답은 표지(`@@T495@@`) 뒤 한 줄만 읽는다
   const zprobe = (env, js) => { const o = execFileSync(process.execPath, ['-e', js], { env: Object.assign({}, process.env, env), stdio: 'pipe' }).toString(); const i = o.lastIndexOf('@@T495@@'); return JSON.parse(o.slice(i + 8).split('\n')[0]); };
   const zboot = `const _l=console.log; console.log=()=>{}; console.warn=()=>{}; const Z=require(${ZP}); const H=Z.__testBind(); console.log=_l;
@@ -1241,7 +1241,7 @@ console.log('\n⑳ [T544] 넘침의 행방 — 곳간이 안 받은 몫은 짐�
       let F=null; for (let y=1000; y<1400 && !F; y++) for (let x=500; x<900 && !F; x++) { const a=H._t347GrovesAtCell(x,y); if (a && a.length && a[0].type==='berry_bush') F={x,y,k:a[0].seedKey}; }
       const O=['berry','twig','herb']; const full=H.lootOfResource(H._t347GrovesAtCell(F.x,F.y)[0],{day:0}); const p=H._t495PickAt(F.x,F.y,O,9,O);
       process.stdout.write('\\n@@T544@@'+JSON.stringify({ full, took:p.took, extra:p.extra||null, emptied:p.emptied })+'\\n'); process.exit(0);`],
-      { env: Object.assign({}, process.env, { ZONE_ID: 'hanbando', DB_PATH: TMP, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', PORT: String(39700 + (process.pid % 200)), T495_PARTIAL_PICK: undefined }), stdio: 'pipe' }).toString();
+      { env: Object.assign({}, process.env, { ZONE_ID: 'hanbando', DB_PATH: TMP, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', PORT: String(require('./lib-port').port(39700)), T495_PARTIAL_PICK: undefined }), stdio: 'pipe' }).toString();
     const i = o.lastIndexOf('@@T544@@'); rz = JSON.parse(o.slice(i + 8).split('\n')[0]);
   } catch (e) { console.log('  · [상황] 존 자식 프로세스 실패: ' + String(e.message || e).slice(0, 200)); }
   rm();

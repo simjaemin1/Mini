@@ -67,7 +67,7 @@ if (SUB === 'boot') {
   const TMP = `/tmp/t622-zone-fauna-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.env.ZONE_ID = 'nippon';
-  process.env.PORT = String(41100 + (process.pid % 800));
+  process.env.PORT = String(require('./lib-port').port(41100));
   process.env.DB_PATH = TMP;
   const _log = console.log, logs = [];
   console.log = (...a) => { logs.push(a.join(' ')); };

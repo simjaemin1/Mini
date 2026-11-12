@@ -14,7 +14,7 @@ const ROOT = path.join(__dirname, '..');
 const DB0 = process.argv[2];
 const DB = '/tmp/t722/clock.db';
 fs.copyFileSync(DB0, DB); for (const s of ['-wal', '-shm']) { try { fs.copyFileSync(DB0 + s, DB + s); } catch (e) { try { fs.unlinkSync(DB + s); } catch (x) {} } }
-const PORT = 39900 + (process.pid % 90);
+const PORT = require('./lib-port').port(39900);
 const env = Object.assign({}, process.env, { ZONE_ID: 'hanbando', PORT: String(PORT), DB_PATH: DB, ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
   VILLAGE_NPC_CAP: '1', T486_PONG_SPLIT: '1', T640_BOOT_SLICE: '0' });
 const child = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });

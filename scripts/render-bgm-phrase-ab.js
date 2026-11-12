@@ -13,7 +13,7 @@ const { randomInt } = require('crypto');
 
 const ROOT = path.resolve(__dirname, '..');
 const PUBLIC = path.join(ROOT, 'public');
-const PORT = +(process.env.PORT || 0) || (4010 + (process.pid % 120));
+const PORT = +(process.env.PORT || 0) || (require('./lib-port').port(4010));
 
 function usage() {
   console.log(`

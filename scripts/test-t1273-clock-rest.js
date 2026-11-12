@@ -26,6 +26,14 @@
 //   ④ ★미끼 — `server/villages.js` 사본(아이 프로세스 안 · 실을 때 글자 한 자리만 바꿈 · 파일 무변):
 //      자리 여섯 각각 `_t1253Now()` → 벽시계(인수 `now` · `Date.now()`) ⇒ 그 판이 흔들림에 갈린다 ·
 //      세 칸 읽기 미끼 둘(몸 틱이 T1182 몸 줄을 건너 종전 페이싱으로 · 몸 걸음이 명목 상한 `nomPxMs` 를 읽음) ⇒ 독 판이 갈린다 — 잡은 수 ○/○ 를 끝 줄에 적는다.
+//   ⑤ ★[T1282 · T1273 회부 2 · 3 · 4] 켬 갈래에 남은 두 시계 축 섞임 셋 — 고친 뒤 0:
+//      mg 판(장마당 마감 틈): 마감을 운영 차례 그대로 연다(경계에서 `lastGameDay` ↑ · `tickJobs` · 닫는 날 적기 `closeOpen` → econ 머리 앞 틈 0.7초 → econ 머리 `world.day` ↑ → 마감 끝 경계 틱) ·
+//         그날 진 장이 그림(`marketVillages`)에 다시 든 틱 수 = 0 · 이튿날 새 장은 선다(대조) · 흔들림 A ↔ B 바이트 같음
+//      lg 판(`_xzMakeBody` 걸음 날 수): 같은 econ 상태(econ 밀림 · 머리 앞 마감 · 머리 뒤 마감 · 마감 끝 경계 틱)에서 벽시계만 econ 보다 0 ~ 0.97일 앞선 몸 60 —
+//         `legDays`(= 길 ÷ `pxPerDay`)가 벽시계 앞섬에 갈린 몸 수 = 0 · 다 econ 날 수(받을 경계 − 닫는 날 끝)와 같다
+//      t0 판(`startReturnLeg` T772 `_t661.t0`): 머묾 끝 귀환 몸 26 — 흔들림 A ↔ B 에서 `t0` 가 갈린 몸 수 = 0 · `t0` = 머묾 끝(econ 날 시계 축)
+//   ⑥ ★[T1282] 미끼 넷 — 고친 줄 하나씩 종전 글자로 되돌린 사본(마감 중 시계 `D × 하루` · `legDays` 벽시계 `now` · `t0` 벽시계 `now` · 닫는 날 적기 없음) ⇒ 그 판이 빨강.
+//      종전 셋을 한꺼번에 되돌린 사본이 "고치기 전" 수다(보고 T1282 첫 줄 ○ → 0 의 ○).
 //
 // 실행: node scripts/test-t1273-clock-rest.js   (존 안 띄움 · 아이 프로세스 열 · 몇 초)
 'use strict';
@@ -59,19 +67,32 @@ const READERS = {
 //   켬 판에서 실제로 읽어도 되는 함수(접근자 셈) — 저장 · 세 칸끼리 · 경계 기다림 상한
 const READ_OK = new Set(['_t1034Pack', 'spawnCaravanBody', 'startReturnLeg', '_caravanSyncOne', '_xzMakeBody', '_xzWalkToBorder', '_xzSend', '_xzAfterSend', '_xzStartReturnLeg']);
 const F3 = ['departAt', 'arriveAt', 'nomPxMs'];
+//   ★[T1282] 미끼 — 고친 줄을 종전 글자로(판 'mg' · 'lg' · 't0' = ⑤ 의 그 판이 빨강 · 0 이 아니게 된다)
+const MIX_BAITS = [
+  ['K1 마감 중 econ 날 시계 = 그날 머리(종전 `D × 하루`)', 'mg', 'if (state.tickJobs || state._t731 || state._t1253Edge) return (state._t1282D === D ? D + 1 : D) * M;', 'if (state.tickJobs || state._t731 || state._t1253Edge) return D * M;'],
+  ['K2 `_xzMakeBody` 걸음 날 수 econ → 벽시계 `now`(종전)', 'lg', 'Math.round((arriveAt - (T1253_CLOCK_FIX ? _t1282Wall() : now)) / state.dayMs)', 'Math.round((arriveAt - (T1253_CLOCK_FIX ? now : now)) / state.dayMs)'],
+  ['K3 `startReturnLeg` 귀환 보간 t0 econ → 벽시계 `now`(종전)', 't0', 'const _t0n = (T1253_CLOCK_FIX && body._t1182) ? _t1253Now() : now;', 'const _t0n = (T1253_CLOCK_FIX && body._t1182) ? now : now;'],
+  ['K4 닫는 날 적기 없음(`_t1282Open` 무동작)', 'mg', 'function _t1282Open() { state._t1282D = state.world ? (state.world.day | 0) : 0; }', 'function _t1282Open() { }'],
+];
 const ROLE = process.argv[2];
 
 // ══ 아이: 판 셋(A · B · 독) 돌고 결과 한 줄 ═══════════════════════════════════════════════
 if (ROLE === '--child') {
-  const bi = process.argv[3] != null && process.argv[3] !== '-' ? +process.argv[3] : -1;
-  const want = process.argv[4] || 'shake';   // 'shake' = A · B 흔들림 · 'tf' = 접근자 셈 + 독 판 · 'tfp' = 독 판만(미끼)
-  if (bi >= 0) {   // 미끼 — 이 아이가 실을 때만 villages.js 글자 한 자리를 바꾼다(파일은 안 만진다)
-    const [, , from, to] = BAITS[bi], old = Module._extensions['.js'];
+  //   미끼 — 숫자 = `BAITS` 하나 · 'm0,m1,…' = ★[T1282] `MIX_BAITS` 여럿(한꺼번에)
+  const spec = process.argv[3] != null && process.argv[3] !== '-' ? String(process.argv[3]) : '';
+  const want = process.argv[4] || 'shake';   // 'shake' = A · B 흔들림 · 'tf' = 접근자 셈 + 독 판 · 'tfp' = 독 판만(미끼) · 'mix' = ★[T1282] ⑤ 판 셋
+  const swaps = spec ? spec.split(',').map((t) => (t[0] === 'm' ? MIX_BAITS[+t.slice(1)] : BAITS[+t])) : [];
+  if (swaps.length) {   // 미끼 — 이 아이가 실을 때만 villages.js 글자 한 자리를 바꾼다(파일은 안 만진다)
+    const old = Module._extensions['.js'];
     Module._extensions['.js'] = function (m, f) {
       if (f !== VFILE) return old(m, f);
-      const src = fs.readFileSync(f, 'utf8'), n = src.split(from).length - 1;
-      if (n !== 1) { process.stdout.write('@@' + JSON.stringify({ err: `미끼 자리 ${n}곳` }) + '\n'); process.exit(3); }
-      m._compile(src.replace(from, to), f);
+      let src = fs.readFileSync(f, 'utf8');
+      for (const [, , from, to] of swaps) {
+        const n = src.split(from).length - 1;
+        if (n !== 1) { process.stdout.write('@@' + JSON.stringify({ err: `미끼 자리 ${n}곳` }) + '\n'); process.exit(3); }
+        src = src.replace(from, to);
+      }
+      m._compile(src, f);
     };
   }
   const mute = (fn) => { const l = console.log, w = console.warn; console.log = () => {}; console.warn = () => {}; try { return fn(); } finally { console.log = l; console.warn = w; } };
@@ -92,7 +113,7 @@ if (ROLE === '--child') {
   const OFF = [3.1e11, -7.7e11, 9.9e12, -1.2e9, 4.4e13, 2.5e10, -1.6e12, 7e12, 1.3e9, -9e11, 5e6 - BASE, 3.6e6 - BASE, -BASE + 1];
   const gaps = [33, 34, 33, 50, 17, 80, 33, 21, 66, 33];
   const POISON = [NaN, -1e300, 1e300, 0, -7.5e12, 3.3e15, 1e-300, -1];
-  function world(mode, poison) {
+  function world(mode, poison, pend) {   // ★[T1282] pend = 마감을 운영 차례로 연다(경계 → 닫는 날 적기 → econ 머리 앞 틈 0.7초 → econ 머리) · 없으면 종전 꼴(경계에서 날을 올린 뒤 마감)
     const w = mute(() => E2.createWorldV2({ seed: 7, villageCount: 2, picker: 'rational', infoRange: 5000, raidPer100: 0 }));
     const [a, b] = w.villages; w.day = D0; w.caravans = [];
     const vA = { dbId: 1, name: '가', ccx: 10, ccy: 10, npcPids: [], econ: a }, vB = { dbId: 2, name: '나', ccx: 40, ccy: 22, npcPids: [], econ: b };
@@ -124,7 +145,9 @@ if (ROLE === '--child') {
     //   한 걸음 — 벽시계를 민다 · 하루 끝 뒤 econ 밀림 · 마감(몸 틱 쉼 · 경계에서 날 넘김) · 마감 끝 경계 틱 · 그 밖엔 몸 틱(존 틱 머리의 `now`)
     const step = (bodies) => {
       wall += gaps[k % gaps.length]; k++; setClock();
-      if (phase === 'day' && wall >= DAY_END + 1500) { phase = 'close'; w.day++; S.lastGameDay++; S.tickJobs = [{}]; }
+      if (pend && phase === 'day' && wall >= DAY_END + 1500) { phase = 'pend'; S.lastGameDay++; S.tickJobs = [{}]; P.closeOpen(); }   // ★[T1282] `onGameTick` → `_openDayJobs` 머리(닫는 날 적기) — world.day 는 아직 닫는 날
+      else if (pend && phase === 'pend' && wall >= DAY_END + 2200) { phase = 'close'; w.day++; }   // econ 머리(`world.day += 1`)
+      else if (phase === 'day' && wall >= DAY_END + 1500) { phase = 'close'; w.day++; S.lastGameDay++; S.tickJobs = [{}]; }
       else if (phase === 'close' && wall >= DAY_END + 3000) { phase = 'next'; S.tickJobs = null; if (bodies) { S._t1253Edge = true; try { mute(() => P.tick(Date.now())); } finally { S._t1253Edge = false; } } return 'edge'; }
       if (bodies && !S.tickJobs) mute(() => P.tick(Date.now()));
       doPoison();
@@ -215,6 +238,65 @@ if (ROLE === '--child') {
     }
     return { h: sha(tr), n: tr.length, trace: tr, seenA, seenB, seenClose, flips, opened };
   }
+  // ── ★[T1282] ⑤ 판 셋 ─────────────────────────────────────────────────────────────────
+  //   mg 판 — 장마당 그림 마감 틈: 그날 진 장이 마감(econ 머리 앞) 틱에 다시 그려지나
+  function mgRun(mode) {
+    const G = world(mode, false, true), { a, b } = G, tr = [];
+    G.S.ready = true;
+    const shown = new Map(), gone = new Map();
+    let redraw = 0, pendTicks = 0, opened = 0, seenNew = 0, closedBefore = 0;
+    const open = (c) => { mute(() => P.openMarket(c)); opened++; };
+    while (G.phase !== 'next' || G.wall < DAY_END + 70000) {
+      const ph = G.step(false);
+      if (opened === 0 && G.k >= 3) open(car(61, a, b, 'inbound'));                              // 나 마을 장 — 그날 이른 때 · 그날 안에 진다
+      if (opened === 1 && ph === 'day' && G.wall >= -20000) open(car(62, b, a, 'inbound'));         // 가 마을 장 — 하루 끝 40초 전 · 하루 끝 20초 전에 진다
+      if (opened === 2 && ph === 'next' && G.wall >= DAY_END + 5000) open(car(63, a, b, 'inbound'));   // 이튿날 나 마을 새 장(대조 — 선다)
+      if (ph === 'pend') pendTicks++;
+      const m = mute(() => V.marketVillages()), set = new Set();
+      for (let i = 0; i + 1 < m.length; i += 2) set.add(m[i] + ',' + m[i + 1]);
+      for (const vil of G.S.villages) {
+        const key = vil.ccx + ',' + vil.ccy, rec = vil._mkt;
+        if (set.has(key)) { if (gone.get(key) === rec) redraw++; shown.set(key, rec); if (ph === 'next' && rec && rec.d === D0 + 1) seenNew++; }
+        else if (shown.get(key) === rec && rec) { if (gone.get(key) !== rec && ph === 'day') closedBefore++; gone.set(key, rec); }
+      }
+      tr.push([G.k, ph, m.join(',')]);
+    }
+    return { h: sha(tr), n: tr.length, trace: tr, redraw, pendTicks, opened, seenNew, closedBefore };
+  }
+  //   lg 판 — `_xzMakeBody` 걸음 날 수: econ 상태는 같고 벽시계만 앞선 몸들
+  function lgRun() {
+    const G = world('A', false, true), S = G.S, { b } = G, rows = [];
+    const end = E0 + (G0 + 1) * M;   // econ 날 D0 의 끝(벽시계 경계 축 · 게임일 G0 + 1 머리)
+    const px = (id) => ({ id, _xzPending: true, _push: 0, giveRes: 'wood', giveAmt: 3, escort: 0, state: 'outbound', from: { name: '저쪽', zone: 'nip', _xz: true }, to: b });
+    const LEAD = [0, 0.3, 0.55, 0.8, 0.97].map((f) => Math.round(f * M));
+    let n = 0;
+    for (const ph of ['delay', 'pend', 'head', 'edge']) for (const lead of LEAD) for (const j of [1, 2, 3]) {
+      S.world.day = D0; S.lastGameDay = G0; S.tickJobs = null; S._t1253Edge = false; S._t731 = null; S._t1282D = undefined; S.epoch = E0;
+      if (ph !== 'delay') { S.lastGameDay = G0 + 1; S.tickJobs = [{}]; P.closeOpen(); }              // 마감을 연다(경계 · 닫는 날 적기)
+      if (ph === 'head' || ph === 'edge') S.world.day = D0 + 1;                                        // econ 머리 뒤
+      if (ph === 'edge') { S.tickJobs = null; S._t1253Edge = true; }                                   // 마감 끝 경계 틱
+      CLK = end + lead;                                                                                 // 벽시계 = econ 날 끝 + 앞섬(econ 은 그 자리에 선다)
+      const key = 'xz:nip:' + (++n), arr = end + j * M;                                                 // 받은 몸 꼴(`_xzBodyIn` — epoch + (보낸 경계 + 남은 날) × 하루)
+      const bd = mute(() => P.xzMakeBody(key, px(key), [{ x: 40, y: 700 }, { x: 900, y: 700 }, { x: 1296, y: 720 }], 'outbound', Date.now(), arr, b, { tribeId: 'xz_nip', tribeName: '저쪽' }));
+      rows.push([ph, lead, j, Math.round(bd.len / bd.pxPerDay), R9(mute(() => P.econNow()))]);
+      S.caravanBodies.delete(key);
+    }
+    S._t1253Edge = false; S.tickJobs = null;
+    const split = rows.filter((r) => r[3] !== r[2]).length, bad = rows.filter((r) => r[4] !== (D0 + 1) * M).length;
+    return { rows, n: rows.length, split, econAtEnd: rows.length - bad };
+  }
+  //   t0 판 — `startReturnLeg` 귀환 보간 시작(T772 `_t661.t0`): 머묾 끝 귀환 몸이 흔들림에 갈리나
+  function t0Run(mode) {
+    const G = world(mode, false), { a, b } = G, t0 = {};
+    let made = 0;
+    while (G.phase !== 'next' || G.wall < DAY_END + 30000) {
+      const ph = G.step(true);
+      //   장 기록 없는 장 마당 몸(S2 꼴 — 머묾 끝 = 지금 + 1게임시간) 스물여섯 — 걸음마다 한 대(흔들림 13가지를 두 바퀴) · 마지막 몇은 머묾이 하루 끝 · 마감을 넘는다
+      if (made < 26 && ph === 'day' && G.wall >= -100000 + made * 6000) { const c = car(70 + made, b, a, 'inbound', { _mktD: D0 }); G.w.caravans.push(c); mute(() => P.spawn(c, Date.now(), 16)); made++; }
+      for (const [id, bd] of G.S.caravanBodies) if (bd._t661 && bd._t661.t0 != null && !(id in t0)) t0[id] = [R9(bd._t661.t0), R9(bd.lingerUntil), ph];
+    }
+    return { t0, made, n: Object.keys(t0).length, eqLinger: Object.values(t0).filter((r) => r[0] === r[1]).length };
+  }
   let out;
   try {
     const firstDiff = (x, y) => { for (let i = 0; i < Math.max(x.length, y.length); i++) if (JSON.stringify(x[i]) !== JSON.stringify(y[i])) return [i, x[i], y[i]]; return null; };
@@ -227,7 +309,12 @@ if (ROLE === '--child') {
       acc.add(pre.join('.')); return acc;
     };
     const saveDiff = (A, B) => { if (!A.pack || !B.pack) return null; const a = JSON.parse(A.pack).b, b = JSON.parse(B.pack).b, acc = new Set(); for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) keyDiff(a[id], b[id], ['*'], acc); return [...acc].sort(); };
-    if (want === 'tf' || want === 'tfp') {
+    if (want === 'mix') {   // ★[T1282]
+      const gA = mgRun('A'), gB = mgRun('B'), L = lgRun(), tA = t0Run('A'), tB = t0Run('B');
+      const ids = [...new Set([...Object.keys(tA.t0), ...Object.keys(tB.t0)])].sort();
+      const t0split = ids.filter((id) => JSON.stringify((tA.t0[id] || [])[0]) !== JSON.stringify((tB.t0[id] || [])[0]));
+      out = { knob: process.env.T1253_CLOCK_FIX !== '0', mg: cmp(gA, gB), lg: L, t0: { A: tA, B: tB, ids: ids.length, split: t0split.length, ex: t0split.slice(0, 3).map((id) => [id, tA.t0[id], tB.t0[id]]) } };
+    } else if (want === 'tf' || want === 'tfp') {
       const c0 = carRun('A', false), x0 = xzRun('A', false), r0 = JSON.parse(JSON.stringify(census));
       const c1 = carRun('A', true), x1 = xzRun('A', true);
       out = { knob: process.env.T1253_CLOCK_FIX !== '0', census: r0, censusPoison: census, car: cmp(c0, c1), xz: cmp(x0, x1) };
@@ -247,7 +334,7 @@ let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };
 const child = (bait, env, want) => {
   const E = Object.assign({}, process.env); delete E.T1253_CLOCK_FIX; Object.assign(E, env || {});
-  const r = spawnSync(process.execPath, [__filename, '--child', bait == null ? '-' : String(bait), want || 'shake'], { encoding: 'utf8', env: E, timeout: 180000, maxBuffer: 1 << 27 });
+  const r = spawnSync(process.execPath, [__filename, '--child', bait == null || bait === '' ? '-' : String(bait), want || 'shake'], { encoding: 'utf8', env: E, timeout: 180000, maxBuffer: 1 << 27 });
   const line = ((r.stdout || '') + '').split('\n').find((l) => l.startsWith('@@'));
   return line ? JSON.parse(line.slice(2)) : { err: ((r.stderr || '') + (r.stdout || '')).slice(-900) };
 };
@@ -265,10 +352,18 @@ const fnOf = (i) => { const j = VC.lastIndexOf('\nfunction ', i); return j < 0 ?
   ok(once.every((x) => x === 1), `⓪ 미끼 ${BAITS.length}자리가 제품 소스에 꼭 한 번씩(미끼가 실제 줄을 바꾼다)`, once.join(' · '));
   const fns = [...VC.matchAll(/(?<!function )_t1253Now\(\)/g)].map((m) => fnOf(m.index)), cnt = {};
   for (const f of fns) cnt[f] = (cnt[f] || 0) + 1;
-  ok(fns.length === 11 && cnt.spawnCaravanBody === 3 && cnt._caravanSyncOne === 1 && cnt._xzMakeBody === 1 && cnt.marketVillages === 1,
-    '⓪ [전제] `_t1253Now()` 읽는 자리 11곳 중 이 판의 여섯(몸 세우기 셋 · 도착 동기 · 이웃 존 몸 · 장마당 그림) — 나머지 다섯은 T1268 판', `${fns.length}곳 · 몸 세우기 ${cnt.spawnCaravanBody} · 동기 ${cnt._caravanSyncOne} · 이웃 ${cnt._xzMakeBody} · 장마당 ${cnt.marketVillages}`);
+  //   ★[T1282] 11 → 13곳 — 고침 둘이 읽는 자리를 더했다(`startReturnLeg` 귀환 보간 t0 · `_t1282Wall` = `_xzMakeBody` 걸음 날 수의 econ 날 시계 · 보고 T1282 자리 표)
+  ok(fns.length === 13 && cnt.spawnCaravanBody === 3 && cnt._caravanSyncOne === 1 && cnt._xzMakeBody === 1 && cnt.marketVillages === 1 && cnt.startReturnLeg === 1 && cnt._t1282Wall === 1,
+    '⓪ [전제] `_t1253Now()` 읽는 자리 13곳 중 이 판의 여섯(몸 세우기 셋 · 도착 동기 · 이웃 존 몸 · 장마당 그림) + T1282 둘(귀환 t0 · 걸음 날 수) — 나머지 다섯은 T1268 판', `${fns.length}곳 · 몸 세우기 ${cnt.spawnCaravanBody} · 동기 ${cnt._caravanSyncOne} · 이웃 ${cnt._xzMakeBody} · 장마당 ${cnt.marketVillages} · 귀환 ${cnt.startReturnLeg} · 날 수 ${cnt._t1282Wall}`);
   const site = BAITS.slice(0, 6).map(([, , from]) => fnOf(VC.indexOf(from)));
   ok(site.join() === 'spawnCaravanBody,spawnCaravanBody,spawnCaravanBody,_caravanSyncOne,_xzMakeBody,marketVillages', '⓪ 미끼 여섯이 그 여섯 자리(함수)를 바꾼다', site.join(' · '));
+  //   ★[T1282] 닫는 날 적기 — 운영 마감 문(`_openDayJobs` 머리 · 하루 마감 또는 창 머리)에서만 · 켬 뒤 · 하네스 mg 판은 같은 함수를 부른다
+  const oj = VC.indexOf('\nfunction _openDayJobs('), ojl = VC.slice(VC.indexOf('{', oj) + 1).split('\n')[1] || '';
+  const opens = [...VC.matchAll(/(?<!function )_t1282Open\(\)/g)].map((m) => fnOf(m.index));
+  ok(/^\s*if \(T1253_CLOCK_FIX && \(!T \|\| T\.head\)\) _t1282Open\(\);/.test(ojl) && opens.join() === '_openDayJobs' && (VC.match(/state\._t1282D = /g) || []).length === 1,
+    '⓪ ★[T1282] 닫는 날 적기 — `_openDayJobs` 첫 줄 · 켬 뒤 · 하루 마감 또는 창 머리에서만(창 가운데 · 꼬리 조각은 안 적는다) · 적는 자리 하나', `부르는 곳 ${opens.join(' · ')}`);
+  const monce = MIX_BAITS.map(([, , from]) => VSRC.split(from).length - 1), msite = MIX_BAITS.map(([, , from]) => fnOf(VC.indexOf(from)));
+  ok(monce.every((x) => x === 1) && msite.join() === '_t1253Now,_xzMakeBody,startReturnLeg,_t1282Open', `⓪ ★[T1282] 미끼 ${MIX_BAITS.length}자리가 제품 소스에 꼭 한 번씩 · 그 함수를 바꾼다`, `${monce.join(' · ')} · ${msite.join(' · ')}`);
 }
 
 const on = child(null, {}), off = child(null, { T1253_CLOCK_FIX: '0' });
@@ -346,5 +441,40 @@ for (let i = 0; i < BAITS.length; i++) {
   ok(red, `④ 미끼 ${name} — ${kind === 'tf' ? '독 판' : kind + ' 판'}이 갈린다(잡음)`, d);
 }
 console.log(`\n  미끼 ${caught}/${BAITS.length}`);
+
+// ══ ★[T1282] ⑤ ⑥ — 켬 갈래에 남은 두 시계 축 섞임 셋(T1273 회부 2 · 3 · 4) ═════════════════════════════
+const MIXN = (r) => r.err ? null : { mg: r.mg.A.redraw + r.mg.B.redraw, lg: r.lg.split, t0: r.t0.split };
+console.log('\n⑤ ★[T1282] 축 섞임 셋 — 마감 틈 진 장 다시 듦 · `legDays` 갈림 · `t0` 갈림(켬 = 고친 판)');
+const mx = child(null, {}, 'mix'), mxOld = child(MIX_BAITS.slice(0, 3).map((_, i) => 'm' + i).join(','), {}, 'mix'), mxOff = child(null, { T1253_CLOCK_FIX: '0' }, 'mix');
+if (mx.err) ok(false, '⑤ 켬 판이 돌았다', mx.err);
+else {
+  const g = mx.mg.A, L = mx.lg, T0 = mx.t0;
+  ok(mx.knob && g.pendTicks >= 10 && g.opened === 3 && g.closedBefore === 2 && g.seenNew > 0,
+    '⑤ [전제] mg 판 — 마감을 운영 차례로 열었다(econ 머리 앞 틈 틱이 있다) · 그날 장 둘이 하루 안에 졌다 · 이튿날 새 장은 선다(대조)', `틈 ${g.pendTicks}틱 · 장 ${g.opened} · 진 장 ${g.closedBefore} · 새 장 ${g.seenNew}틱`);
+  ok(mx.mg.A.redraw === 0 && mx.mg.B.redraw === 0, '★⑤ mg — 마감 틈에 그날 진 장이 그림(`marketVillages`)에 다시 든 틱 = 0(A · B)', `A ${mx.mg.A.redraw} · B ${mx.mg.B.redraw}`);
+  ok(mx.mg.same, '⑤ mg — 흔들림 A ↔ B 바이트 같음(마감 틈도 econ 날 시계 하나)', mx.mg.same ? `${g.n}틱` : dtxt(mx.mg.diff));
+  ok(L.n === 60 && L.split === 0 && L.econAtEnd === 60, '★⑤ lg — 같은 econ 상태(밀림 · 머리 앞 · 머리 뒤 · 경계 틱) · 벽시계만 0 ~ 0.97일 앞선 몸 60 — `legDays` 갈림 0 · 다 econ 날 수(받을 경계 − 닫는 날 끝)',
+    `몸 ${L.n} · 갈림 ${L.split} · econ 날 시계 = 닫는 날 끝 ${L.econAtEnd}/${L.n}`);
+  ok(T0.A.made === 26 && T0.ids >= 20 && T0.A.n === T0.B.n, '⑤ [전제] t0 판 — 머묾 끝 귀환 몸이 `t0` 를 적었다(T772 귀환 보간 · T1182 몸)', `몸 ${T0.A.made} · t0 ${T0.A.n} · ${T0.B.n}`);
+  ok(T0.split === 0 && T0.A.eqLinger === T0.A.n && T0.B.eqLinger === T0.B.n, '★⑤ t0 — 흔들림 A ↔ B 에서 `t0` 갈림 0 · `t0` = 머묾 끝(econ 날 시계 축)', `갈림 ${T0.split} · = 머묾 끝 A ${T0.A.eqLinger}/${T0.A.n} · B ${T0.B.eqLinger}/${T0.B.n}`);
+}
+if (mxOld.err) ok(false, '⑤ 고치기 전(종전 셋 되돌린 사본) 판이 돌았다', mxOld.err);
+else {
+  const b = MIXN(mxOld), a = MIXN(mx) || {};
+  console.log(`    [표] 고치기 전(K1 · K2 · K3 종전 글자 사본) → 지금: 마감 틈 진 장 다시 듦 ${b.mg} → ${a.mg}틱 · legDays 갈림 ${b.lg} → ${a.lg}몸 · t0 갈림 ${b.t0} → ${a.t0}몸`);
+  ok(b.mg > 0 && b.lg > 0 && b.t0 > 0, '⑤ 고치기 전 사본은 셋 다 0 이 아니다(자명 통과 금지 — 판이 그 갈림을 실제로 낸다)', `${b.mg} · ${b.lg} · ${b.t0}`);
+}
+if (mxOff.err) ok(false, '⑤ 끔 판이 돌았다', mxOff.err);
+else { const o = MIXN(mxOff); console.log(`    [표·정보] 끔(\`T1253_CLOCK_FIX=0\` — 종전 벽시계 갈래 · 이 카드 손 밖): 마감 틈 진 장 다시 듦 A ${mxOff.mg.A.redraw} · B ${mxOff.mg.B.redraw}틱(끔 장 끝은 벽시계라 B 흔들림이 장을 여닫는다) · legDays 갈림 ${o.lg}몸 · t0 갈림 ${o.t0}몸`); ok(!mxOff.knob, '⑤ [전제] 끔 판 손잡이 = 끔'); }
+
+console.log('\n⑥ ★[T1282] 미끼 — 고친 줄 하나씩 종전 글자로 되돌린 사본이 빨강');
+let mcaught = 0;
+for (let i = 0; i < MIX_BAITS.length; i++) {
+  const [name, kind] = MIX_BAITS[i], r = child('m' + i, {}, 'mix'), n = MIXN(r);
+  const red = !!n && n[kind] > 0;
+  if (red) mcaught++;
+  ok(red, `⑥ 미끼 ${name} — ${kind} 판 갈림 > 0(잡음)`, r.err ? r.err.slice(0, 200) : `마감 틈 ${n.mg} · legDays ${n.lg} · t0 ${n.t0}`);
+}
+console.log(`\n  T1282 미끼 ${mcaught}/${MIX_BAITS.length}`);
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

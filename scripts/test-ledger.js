@@ -27,7 +27,7 @@ const say = (m) => console.log(m);
 const TMP = `/tmp/test-ledger-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(37200 + (process.pid % 190));
+process.env.PORT = String(require('./lib-port').port(37200));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '0';
 process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

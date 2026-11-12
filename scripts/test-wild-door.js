@@ -184,7 +184,7 @@ function parent() {
   const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
   const seen = (m) => console.log(`  [관찰] ${m}`);
   const TMPD = fs.mkdtempSync('/tmp/t1009-wd-');
-  let port = 35400 + (process.pid % 40) * 5;   // 판 다섯 = 다섯 자리
+  let port = require('./lib-port').ports(5, 35400);   // 판 다섯 = 다섯 자리
   const R = {};
   //   판 = 손잡이 env(지운 뒤 판마다 세운다 — 없음 = 켬 기본). `on` · `off` = T1009 판(잡은 순간 · T1032 끔) 그 글자 · `k*` = T1032 판.
   const BOARDS = {
