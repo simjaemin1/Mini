@@ -14,6 +14,7 @@
 //   ⓘ 존 — 남의 작물 벌점(사유지 · 영토 · 빈 땅 · 보호 풀림) · 울타리 벌점 · 갇힘 풀기(플레이어 0 점 · NPC 마을이 허묾)
 //   ⓙ 끔 — 손잡이 끔이면 종전 그대로(영토 v2 함수는 꺼짐 · econ 표지 0)
 //   ⓚ 글자 — 손잡이 하나 · econ 출구 · 존 문 · 클라 · 출처 줄
+//   ⓛ [T1275] 나무꾼 몸 행위 끔 세계 — 개간 통나무 입구(곳간 · 수요 = 말뚝 모자람) · 짐이 이튿날 먼저 든다 · 그 통나무로 말뚝 · 미끼(입구 0 사본 → 빨강) · 몸 세계 그대로
 //
 // 실행: node scripts/test-t1238-terr-v2.js
 'use strict';
@@ -226,6 +227,56 @@ function runOff() {
   F.P._t569Probe.grow(D);
   return { on: V.T1238_TERR_V2, t1207: V.T1207_TERR_REAL, pick: pk, canTake: V._t1207CanTake(Pv, 5004, 5000), flag: D.econ._t1238Land === undefined, regrowFn: typeof V.t1238RegrowBlocked };
 }
+// ── ⓛ [T1275] 나무꾼 몸 행위 끔(수식 나무꾼) 세계의 개간 통나무 입구 — econ 단위 · 마을 이틀 · 미끼(입구 0 사본) ──────────────
+//   마을 W: 영토 55×55(반 27) · 바깥 칸마다 그루 서른(고정물 그루 한 그루 = 통나무 5 — 빽빽한 숲) · 곳간 = 1인 비축 + 30(첫날 말뚝 몇 칸만 치르고 막힌다).
+//   ⚠고정물엔 econ 틱이 없다 — 하루 경계에 틱이 하는 일(오늘 든 몫 칸 `_t325InflowToday` 를 장부로 옮기고 0)을 손으로 한다.
+function runT1275() {
+  const F = fixture(), { V, E, P } = F;
+  const out = { t325: !!E.T325_WOOD_ACT, on: V.T1238_TERR_V2 };
+  // ① econ 입구 단위 — 표지 없음 = 0(끔 세계) · 표지 = 말뚝 모자람까지 · 같은 날 둘째 몫은 남은 몫만 · 모자람 0 = 0 · 세금은 금고로(곳간 + 금고 = 든 몫)
+  const ev = F.mkEcon(40); ev.storage.wood = 0; ev._t1207Need = 10; ev.treasury = ev.treasury || {};
+  const tr0 = ev.treasury.wood || 0;
+  const off0 = E.woodToGranary(ev, 7);
+  ev._t1238Land = 1;
+  const g1 = E.woodToGranary(ev, 7), s1 = ev.storage.wood, t1 = (ev.treasury.wood || 0) - tr0, in1 = ev._t325InflowToday;
+  const g2 = E.woodToGranary(ev, 7), g3 = E.woodToGranary(ev, 7);
+  ev._t1207Need = 0; ev._t325InflowToday = 0;
+  const g4 = E.woodToGranary(ev, 7);
+  out.unit = { off0, g1, s1, t1, in1, g2, g3, g4, store: ev.storage.wood };
+  // ② 마을 사흘 — 첫날: 곳간 잉여로 말뚝 → 영토가 된 칸의 그루를 벤다(개간) · 말뚝 모자람 0 이면 통나무는 곳간에 안 들고 짐에(소멸 0)
+  //   이튿날: 일괄이 막혀 모자람이 서면 그날 벤 통나무가 모자람까지 곳간에 · 사흘째: 일괄 앞에서 짐이 먼저 곳간에(그날 모자람까지) → 그 통나무로 말뚝을 더 친다
+  const days3 = () => {
+    F.trees.clear();
+    const W = F.mk(11, 'W', 11000, 11000, 27, {});
+    W.econ.land.size = 400; W.econ.housing = 600; F.body(111); W.npcPids = [111];
+    const N = W.econ.npcs.length;
+    W.econ.storage.wood = 5 * N + 30;
+    for (let x = 10960; x <= 11040; x++) for (let y = 10960; y <= 11040; y++) { const d = Math.max(Math.abs(x - 11000), Math.abs(y - 11000)); if (d >= 28) F.trees.set(x + ',' + y, 30); }
+    setWorld(F, [W], 600);
+    F.deps.dayPhaseRatio = 0.7;
+    const snap = (s0) => { const T = W._t1207 || {}; return { added: W._terrSet.size - s0, felled: T.felled || 0, woodIn: +(T.woodIn || 0).toFixed(4), pack: +(W.econ._t717Pack || 0).toFixed(4),
+      packIn: +(W._t717PkIn || 0).toFixed(4), store: +W.econ.storage.wood.toFixed(4), need: +(W.econ._t1207Need || 0).toFixed(4), postW: +(T.wood || 0).toFixed(4), cells: T.cells || 0 }; };
+    const r = { reserve: 5 * N };
+    let s0 = W._terrSet.size; P._t569Probe.grow(W); r.d1 = snap(s0);
+    for (const [k, day] of [['d2', 601], ['d3', 602]]) {
+      W.econ._t325InflowToday = 0;   // 하루 경계(econ 틱 몫 — 오늘 든 몫 칸을 장부로 옮기고 0)
+      F.P._t1238Probe.setup({ day });
+      s0 = W._terrSet.size; P._t569Probe.grow(W); r[k] = snap(s0);
+    }
+    return r;
+  };
+  out.real = days3();
+  // ③ 미끼 — 입구가 0 인 사본(고치기 전 글자: 나무꾼 몸 행위 끔이면 `woodToGranary` = 0)을 같은 판에 끼운다 → 곳간에 든 통나무 0 · 이튿날 말뚝 0 이어야 한다(그래서 위 판정이 빨개진다)
+  const PP = path.join(ROOT, 'sim', 'economy-sim.js'), src = fs.readFileSync(PP, 'utf8');
+  const fixed = "  if (!T325_WOOD_ACT) return v._t1238Land ? actToGranary(v, 'wood', actDemandCap(v, units, v._t1207Need || 0, '_t325InflowToday'), '_t325InflowToday', '_t325CutN') : 0;";
+  out.baitHasLine = src.includes(fixed);
+  const Module = require('module'); const m = new Module(PP, null); m.filename = PP; m.paths = Module._nodeModulePaths(path.dirname(PP));
+  m._compile(src.replace(fixed, '  if (!T325_WOOD_ACT) return 0;'), PP);
+  const keep = E.woodToGranary;
+  E.woodToGranary = m.exports.woodToGranary;
+  try { out.bait = days3(); } finally { E.woodToGranary = keep; }
+  return out;
+}
 function runZone() {
   const TMP = `/tmp/t1238-z-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
@@ -290,6 +341,7 @@ function runZone() {
 
 if (MODE === 'vil') { const o = runVil(); process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 'off') { const o = runOff(); process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
+if (MODE === 't1275') { let o; try { o = runT1275(); } catch (e) { o = { err: e.stack }; } process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 'zone') { let o; try { o = runZone(); } catch (e) { o = { err: e.stack }; } process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 
 let pass = 0, fail = 0;
@@ -441,6 +493,32 @@ sec('ⓚ 글자 — 손잡이 하나 · econ 출구 · 존 문 · 클라 · 출�
   ok(/function t1238On\(\)/.test(C46) && /function t1238DragBegin\(\)/.test(C46) && /function t1238DrawOverlay\(/.test(C46) && /harvest_confirm/.test(C30) && /t1238DrawOverlay\(ctx, v, sc, S, _cellSeen\)/.test(C34), '클라 — 끌어 고르기 네모 · 칸 진척 · 묶음 합 · 취소 · 뽑기 · 빠지는 칸 · 확인 말');
   ok(/過三年陳田|경국대전/.test(TV) && /이규송 2006/.test(TV) && /Carson et al\. 1981/.test(TV) && /EXARC/.test(TV), '출처 줄 — 경국대전 진전 · 이규송 2006 · Carson 1981 · EXARC 2006');
   ok(/CREATE TABLE IF NOT EXISTS t1238_use/.test(DB) && /function deleteVillageCell/.test(DB), 'DB — 표 둘은 처음 부를 때(끔 = 표 0)');
+}
+sec('ⓛ [T1275] 나무꾼 몸 행위 끔 세계 — 개간 통나무 입구 · 짐이 이튿날 먼저 · 그 통나무로 말뚝 · 미끼');
+{
+  const L = child('t1275', { T1207_TERR_REAL: '1', T1238_TERR_V2: '1', T1213_DERIV_ADD: '0', T325_WOOD_ACT: '0' });
+  const LB = child('t1275', { T1207_TERR_REAL: '1', T1238_TERR_V2: '1', T1213_DERIV_ADD: '0', T325_WOOD_ACT: '1' });
+  if (!L || L.err || !LB || LB.err) ok(false, 'T1275 자식 판이 안 섰다', (L && L.err) || (LB && LB.err));
+  else {
+    const u = L.unit, tax = u.g1 > 0 ? u.t1 / u.g1 : 0;
+    ok(L.t325 === false && L.on === true && u.off0 === 0, '수식 나무꾼 세계 · 영토 v2 표지가 없는 마을(끔 세계 · 랩)은 입구 0 그대로(종전)', u);
+    ok(u.g1 === 7 && near(u.s1 + u.t1, 7, 1e-9) && u.in1 === 7 && tax > 0 && tax < 0.5, `★표지 마을 — 말뚝 모자람(10)까지 곳간에 든다 · 같은 세금(곳간 ${u.s1} + 금고 ${+u.t1.toFixed(4)} = 7) · 오늘 든 몫 칸(econ 틱이 장부로 옮긴다)`);
+    ok(u.g2 === 3 && u.g3 === 0 && u.g4 === 0, '같은 날 둘째 몫은 남은 3 만 · 다 차면 0 · 모자람 0 이면 0(수요 문 하나 — `actDemandCap`)', u);
+    const R = L.real, B = L.bait;
+    ok(R.d1.felled > 0 && R.d1.need === 0 && R.d1.woodIn === 0 && near(R.d1.pack, R.d1.felled * 5, 1e-6), `첫날 — 말뚝이 다 치러져 모자람 0 이면 벤 통나무(${R.d1.felled} 그루 · ${R.d1.pack} 단)는 곳간에 안 들고 마을 짐에(소멸 0)`, R.d1);
+    ok(R.d2.need > 0 && near(R.d2.woodIn, R.d2.need, 1e-6) && near(R.d2.store - R.d1.store, R.d2.woodIn * (1 - tax), 1e-3), `★이튿날 — 일괄이 막혀 모자람(${R.d2.need})이 서면 그날 벤 통나무가 모자람까지 곳간에(세금 뒤 ${+(R.d2.store - R.d1.store).toFixed(3)})`, R.d2);
+    ok(near(R.d3.packIn, R.d2.need, 1e-6) && R.d3.postW > R.d2.postW && R.d3.added > B.d3.added, `★사흘째 — 일괄 앞에서 짐이 먼저 곳간에(어제 모자람 ${R.d2.need} 까지) → 그 통나무로 말뚝(${R.d2.postW} → ${R.d3.postW} 단) · 넓힘 ${R.d3.added} 칸`, R.d3);
+    const pred = (x) => x.d2.woodIn > 0 && x.d3.packIn > 0 && x.d3.postW > x.d2.postW;
+    ok(L.baitHasLine && pred(R) && !pred(B) && B.d2.woodIn === 0 && B.d3.packIn === 0 && B.d3.postW === B.d2.postW && B.d3.store === B.d1.store,
+      `★미끼 — 입구 0 사본(고치기 전 글자)을 끼우면 곳간에 든 통나무 0 · 짐 넣기 0 · 사흘째 말뚝 0(${B.d2.postW} → ${B.d3.postW}) · 넓힘 ${B.d3.added} 칸 → 위 두 판정이 빨갛다`, B);
+    const UB = LB.unit;
+    ok(LB.t325 === true && UB.off0 === 7 && UB.g1 === 3 && UB.g2 === 0 && UB.g3 === 0, '몸 세계(나무꾼 몸 행위 켬)는 종전 입구 그대로 — 표지와 무관하게 D = `woodShareD`(나무꾼 몫 + 말뚝 모자람 · 표지 전 7 · 표지 뒤 남은 3)', UB);
+    ok(LB.real.d3.packIn === 0, '몸 세계에서 일괄 앞 짐 넣기는 안 선다 — 짐은 나무꾼 하루 절이 같은 함수로 넣는다(한 자리)', LB.real.d3);
+  }
+  const EC = fs.readFileSync(path.join(ROOT, 'sim/economy-sim.js'), 'utf8'), VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+  ok(/const _t325In = \(T325_WOOD_ACT \|\| v\._t1238Land\) \? \(v\._t325InflowToday \|\| 0\) : 0;/.test(EC) && /return actToGranary\(v, 'wood', actDemandCap\(v, units, woodShareD\(v\), '_t325InflowToday'\), '_t325InflowToday', '_t325CutN'\);/.test(EC)
+    && /if \(T717_WOOD_HAND && vil\.econ && !_lifeEcon\(\)\.T325_WOOD_ACT && \(vil\.econ\._t717Pack \|\| 0\) > 0\) _t717PackIn\(vil\);/.test(VS),
+    '글자 — econ 틱이 표지 마을의 오늘 든 몫을 장부로 옮긴다 · 몸 세계 입구 줄 그대로 · 일괄 앞 짐 넣기는 수식 나무꾼 세계에서만');
 }
 console.log(`\n=== T1238: ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
