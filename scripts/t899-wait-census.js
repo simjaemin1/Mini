@@ -23,6 +23,7 @@ const SH_SPAWN = /(^|\s)node\b[^#]*server\/(central|zone)\.js[^#]*&\s*$|docker\s
 const READY0 = /waitUp\s*\(|\/health|waitHttp\s*\(|server up on|zone server up|central server up|['"`]up on|waitReady|waitUntilUp|waitServer|waitZone\s*\(|waitCentral\s*\(|waitPort\s*\(|\.waitFor(Up|Ready)\s*\(|\/zones\b|\bwait_?health\b/;
 const EXIT = /(?<!process)\.on\s*\(\s*['"]exit['"]|exitOf\s*\(|\bwait\s*\(\s*\w+\s*,|once\s*\(\s*['"]exit['"]|\bexitP\b|waitExit\s*\(/;
 const FIXED = /\bsleep\s*\(\s*([0-9_]+(?:\s*\*\s*[0-9_]+)?)\s*\)|setTimeout\s*\([^;]*?,\s*([0-9_]+(?:\s*\*\s*[0-9_]+)?)\s*\)/;
+const SLEEP_ID = /\bsleep\s*\(\s*[A-Za-z_$][\w$.]*\s*\)/;
 const SH_FIXED = /(^|[;&|\s])sleep\s+([0-9.]+)\b/;
 const num = (s) => s.replace(/_/g, '').split('*').map((x) => +x.trim()).reduce((a, b) => a * b, 1);
 const LOOP = /\b(while|for)\s*\(|\bfor\s+\w+\s+in\b|\bwhile\b.*;\s*do\b|\bdo\b\s*$/;
@@ -49,6 +50,8 @@ function scanSrc(f, src) {
       if (READY.test(l)) { first = { kind: 'ready', line: j + 1, text: l.trim().slice(0, 120) }; break; }
       // 끝 기다림은 **기다릴 때**만 — `const zx = exitOf(z)` 처럼 약속만 잡아 두고 고정 sleep 을 먼저 기다리면 부팅 가정이다(PM 10-23b 전 test-car-fast)
       if (!sh && EXIT.test(l) && (/\bawait\b|\breturn\b|\bres(olve)?\s*\(/.test(l) || /\bres(olve)?\s*\(/.test(L.slice(j + 1, j + 8).join('\n')))) { first = { kind: 'exit', line: j + 1, text: l.trim().slice(0, 120) }; break; }
+      //   ★[T1267] 고리 안의 `sleep(이름)`(표본 간격 상수 · `sleep(SAMPLE_MS)`)도 두드림이다 — 길이를 숫자로 안 적었을 뿐 고리가 증인을 두드린다
+      if (!sh && SLEEP_ID.test(l) && (LOOP.test(l) || LOOP.test(L[j - 1] || ''))) { first = { kind: 'poll', line: j + 1, text: l.trim().slice(0, 120) }; break; }
       const m = sh ? l.match(SH_FIXED) : l.match(FIXED);
       if (m) {
         const ms = sh ? Math.round(+m[2] * 1000) : num(m[1] || m[2]);

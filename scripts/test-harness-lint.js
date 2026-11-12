@@ -799,8 +799,9 @@ console.log('\n⑫ 세계 자리에 `Math.random` 0 [T350]');
   // ★자명 통과 금지 — 같은 자로 미끼 넷을 재면 **각각 다르게** 답한다(글자를 조각내 자기 자신을 안 문다)
   const S = "const z = spa" + "wn(process.execPath, [path.join(ROOT, 'server', 'zone.js')]);\n";
   const kinds = [S + "const zx = exit" + "Of(z, 600000);\nawait sle" + "ep(100000);\n", S + "await FB.wait" + "Up(z, /zone server up on/, { capMs: 300000 });\n",
-    S + "z.on('ex" + "it', (c) => resolve(c));\n", S + "const x = 1;\n"].map((src) => (C.scanSrc('bait.js', src)[0] || { first: {} }).first.kind).join(',');
-  ok(kinds === 'fixed,ready,exit,none', '★⑬ 자명 통과 금지 — 고정 sleep(PM 10-23b 전 test-car-fast 꼴 — 끝 약속만 잡고 sleep) · 아이의 입 · 끝 기다림 · 맨몸 미끼를 같은 자로 재면 각각 다르게 답한다', kinds);
+    S + "z.on('ex" + "it', (c) => resolve(c));\n", S + "const x = 1;\n",
+    S + "while (Date.now() - t0 < NET) { await sle" + "ep(SAMPLE_MS); const p = await perf(port); }\n", S + "await sle" + "ep(SAMPLE_MS);\n"].map((src) => (C.scanSrc('bait.js', src)[0] || { first: {} }).first.kind).join(',');
+  ok(kinds === 'fixed,ready,exit,none,poll,none', '★⑬ 자명 통과 금지 — 고정 sleep(PM 10-23b 전 test-car-fast 꼴 — 끝 약속만 잡고 sleep) · 아이의 입 · 끝 기다림 · 맨몸 · 고리 안 `sleep(이름)`(두드림 — T1267) · 고리 밖 `sleep(이름)`(증인 없음) 미끼를 같은 자로 재면 각자 답한다', kinds);
   const K = (k) => rows.filter((r) => r.first.kind === k).length;
   console.log(`    [표] @regress 띄우는 자리 ${rows.length} — 준비 증인 ${K('ready')} · 끝 기다림 ${K('exit')} · 두드림 ${K('poll')} · 고정 대기 ${K('fixed')} · 증인 없음 ${K('none')}`);
   console.log('    접점: t899-wait-census · fixture-boot.waitUp · /health · test-car-fast(PM 10-23b)');
