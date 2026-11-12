@@ -5690,6 +5690,7 @@ function xzonePerf() {
 const ORE_LABOR_R = 150;             // 광부 노동권(셀) — 랩 R=150 동형
 const ORE_CELL_CAP = 6000;           // 마을당 추적 광맥 셀 상한(대형 광맥이면 수만 셀 — 표본으로 충분)
 const ORE_FLOOR = 0.4;               // land.ore 바닥 40% — ★이주가 없으므로 마을은 안 떠나고 광부만 다른 직업으로 빠진다
+const MINE_TEAM = 2;                 // 2인 1조(위 고증) — 셀 하나에 한 조. 조 나누기(`_oreMineDaily` · `_t724Team`)와 ★[T1277] 광부 자리(닿는 셀 × 조 사람 수 · `_t1277OreSlots`)가 이 수 하나를 읽는다
 // 마을 생활권의 광맥 셀 목록(일 캐시). p(광석확률)까지 들고 있어 품위 높은 자리부터 판다.
 // ★★[T620 ② 2026-10-04] **식은 광맥은 미리 굽는다** — T605 §4-4: 닛폰 하루 마감의 큰 조각 `ore` 51ms(이 판 75ms)는 전부
 //   **첫 하루**의 식은 캐시였다(마을마다 R=150 원판 7만 칸을 한 조각에서 훑는다 · 광부 0 인 마을도 oFrac 표본 때문에 훑는다).
@@ -5827,9 +5828,9 @@ function _oreMineDaily(vil) {
   const _t1095Dug0 = consumed;
   if (nMiner > 0 && !_t724Skip) {
     // 2인 1조: 짝(2명)당 셀 하나. 조는 서로 다른 셀에 붙는다(랩 조 단위 분산 동형).
-    const teams = Math.max(1, Math.ceil(nMiner / 2));
+    const teams = Math.max(1, Math.ceil(nMiner / MINE_TEAM));
     for (let t = 0; t < teams; t++) {
-      const inTeam = Math.min(2, nMiner - t * 2);
+      const inTeam = Math.min(MINE_TEAM, nMiner - t * MINE_TEAM);
       let want = PER * inTeam;
       // 그 조의 셀 — 품위 순으로 조마다 다른 자리. 고갈되면 다음 자리로 밀린다.
       for (let k = t; k < cells.length && want > 0.001 && _t1095Left > 1e-9; k += teams) {   // ★[T1095] 켬 = 수요가 찼으면 다음 셀로 안 간다
@@ -5902,9 +5903,9 @@ function _t724Team(vil, npc, day) {
     for (const pid of (vil.npcPids || [])) { const p = pl && pl.get(pid); if (p && p.simJob === 'miner') ids.push(pid); }
     R = vil._t724R = { day, ids };
   }
-  const n = R.ids.length || 1, teams = Math.max(1, Math.ceil(n / 2));
+  const n = R.ids.length || 1, teams = Math.max(1, Math.ceil(n / MINE_TEAM));
   let i = R.ids.indexOf(npc.pid); if (i < 0) i = _pidHash(npc.pid) % n;
-  return { t: (i >> 1) % teams, teams };
+  return { t: Math.floor(i / MINE_TEAM) % teams, teams };
 }
 // 조 t 의 셀 — 품위 순 목록(`_oreCellsOf`)에서 t, t+조수, … 중 덩이가 남은 첫 셀(`_oreMineDaily` 의 그 차례 · 고갈되면 다음 자리로 밀린다)
 //   ⚠"남은" = 재고 ≥ 1(플레이어 채굴의 "다 팠다" 문턱 `rec.s < 1`) — 첫 판(스모크)에서 다 판 셀이 재생으로 0.0001 씩 돋는 자리에 몸이 서서
@@ -7221,7 +7222,7 @@ function init(deps) {
     state.byDbId = new Map(state.villages.map(v => [v.dbId, v]));
     state.byEcon = new Map(state.villages.map(v => [v.econ, v])); // Stage 4B: econ 마을 객체 → 공간 마을(캐러밴 from/to 해석)
     if (_lifeEcon().T1259_WOOD_CAP) _lifeEcon().setT1259WoodReader(_t1259WoodCells);
-    if (_lifeEcon().T1271_ORE_CAP) _lifeEcon().setT1271OreReader(_t1271OreCells);   // ★[T1271] 광부 자리 = 닿는 광맥 셀(끔 = 읽개 없음 · 종전)
+    if (_lifeEcon().T1271_ORE_CAP) _lifeEcon().setT1271OreReader(_t1277OreSlots);   // ★[T1271] 광부 자리 = 닿는 광맥 셀 ★[T1277] × 조 사람 수(끔 = 읽개 없음 · 종전)
     if (T1238_TERR_V2) { try { _t1238Boot(); } catch (e) { console.error(`[${state.zoneId}] 🏘️ [T1238] 부팅 실패(켬이지만 표 없이 계속):`, e.message); } }   // ★[T1238] 쓰는 칸 표 · 쓰는 날 · 땅에 남은 일 · econ 표지
     else for (const v of state.villages) if (v.econ && v.econ._t1238Land) delete v.econ._t1238Land;   // ★[T1238] 켰다 끈 세계 — econ 저장 줄에 남은 표지를 걷는다(금고 땅 사기가 돌아온다 · 처음부터 끈 세계는 칸이 없어 무동작)
     state.claimedNames = new Set(state.villages.map(v => v.name)); // 레거시 디듀프 대상(이름 유니크 — 50곳 검증됨)
@@ -12632,6 +12633,10 @@ function _t1271OreCells(econ) {
   return n;
 }
 function t1271Stat() { return JSON.parse(JSON.stringify(_t1271Stat)); }
+// ★★[T1277 · T1271 회부 2 — PM 판정 "광부 한 몸이 하루 실제로 치는 셀 수에서 유도 · T1259 0.30 을 광맥에 쓰지 않는다"] 광부 자리 = 닿는 광맥 셀 × 조 사람 수(`MINE_TEAM`).
+//   몸은 그날 처음 고른 셀 하나에 선다 — 셀 하나가 덩이 `ORE_K`(1,000)를 들고 한 몸은 하루 열몇 덩이를 캐니 하루 안에 셀이 비지 않는다(다시 고르기 0) ·
+//   한 셀에 한 조(2인 1조)가 붙는다 ⇒ 한 몸이 하루 치는 셀 = 1 ÷ 조 사람 수(T1277 판 실측 표 — 보고 §2) ⇒ 닿는 셀 C 가 받는 몸 = C ÷ (1 ÷ 2) = 2C. 새 수 0.
+function _t1277OreSlots(econ) { const n = _t1271OreCells(econ); return n == null ? null : n * MINE_TEAM; }
 function _t341TripsPerDay(vil, distPx, unitsPerTree) {
   const sp = (state.deps && state.deps.moveSpeed) || 0;              // px/초 — zone 정본
   const dayR = (state.deps && state.deps.dayPhaseRatio) || 0;        // 낮 비율 — zone-config 정본
@@ -18513,7 +18518,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
   gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1225Stat, t1225Keep, t1225SiteTable, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
-  t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, t1266Stat, _t1266Keep, _t1271Day, _t1271OreCells, t1271Stat, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
+  t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, t1266Stat, _t1266Keep, _t1271Day, _t1271OreCells, _t1277OreSlots, MINE_TEAM, t1271Stat, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
   // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
   noteRescue,

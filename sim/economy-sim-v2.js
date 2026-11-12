@@ -1045,7 +1045,10 @@ function t1217Value(v, H, key) {
   return { N, H, unit: vEat > 0 ? vEat : vSur, vEat, vSur, lam, best, pFish, pFood, nev, debt, rest: t1217RestValue(N, H) };
 }
 //   ★★[T1266 · 캐논 797 "몸이 한 일만 센다"] 광부 원석 한 단위 · 한 시간의 값 — 어부(위)와 같은 꼴 · 같은 단위(행복 목표). 원석은 먹지 못한다(빚 칸 없음):
-//     unit = Σ 그 자리 광물 몫 × max(그 마을 원석 값, 순수출가) × λ · rest = 한 사람이 한 시간 쉰 값(어부와 같은 줄).
+//     unit = Σ 그 자리 광물 몫 × 그 마을 원석 그림자 값 × λ · rest = 한 사람이 한 시간 쉰 값(어부와 같은 줄).
+//   ★★[T1277 · PM 판정 (가) "일한 값이 그 원석의 그림자 값(곳간 재고 ÷ 목표 — 정본 computeShadowPrices)을 읽는다"] 값 칸 = 그 마을 값표(`t1217PricesOf` → `computeShadowPrices` —
+//     목표 = 녹임 흐름 × 30날 · 유효 재고 = 곳간) 그 원석 칸 하나. 종전 줄은 순수출가(`netExportValue` — 이웃 한 곳이 첫 한 단위에 줄 값)와 큰 쪽을 썼다 —
+//     곳간이 녹임 목표를 몇 배 넘어도 이웃 값이 크면 덩이 값이 안 떨어진다. 이 함수에서 순수출가를 안 읽는다(사본 0 · 새 수 0).
 //     mix = { 원석 품목: 몫 }(쪼개기 켬 — 그 셀에서 나올 광물의 기댓값 몫 · 몫 합 1) · 없으면 `ore` 한 칸(쪼개기 끔). 새 수 0 · 주사위 0.
 function t1266OreValue(v, H, key, mix) {
   if (!v || !v.npcs) return null;
@@ -1053,7 +1056,7 @@ function t1266OreValue(v, H, key, mix) {
   const { lam, best } = _t1217Lam(v, px, N);
   const M = mix && Object.keys(mix).length ? mix : { ore: 1 };
   let p = 0;
-  for (const id in M) { const f = M[id]; if (!(f > 0)) continue; const nev = v._world ? netExportValue(v._world, v, id) : 0; p += f * Math.max(px[id] || 0, nev || 0); }
+  for (const id in M) { const f = M[id]; if (!(f > 0)) continue; p += f * (px[id] || 0); }   // ★[T1277] 그림자 값 한 칸(순수출가 안 읽음)
   return { N, H, unit: p * lam, p, lam, best, rest: t1217RestValue(N, H) };
 }
 
