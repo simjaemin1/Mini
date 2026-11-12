@@ -6003,16 +6003,35 @@ function _t724BodyStep(vil, npc, now, day) {
   return true;
 }
 // ★★[T1266] 광부 몸의 한 시간 — 지금 선 셀에서 다음 한 시간을 치면(정본 `MINE_SWING_MS` · 깊이 타수 `mineSwingsNeeded` · 숙련 덩이 `mineChunkKg` · 셀 재고) 캘 원석 단위 ×
-//   한 단위 값(v2 `t1266OreValue` — 그 셀 광물 몫의 기댓값 `oreMixAt` × 그 마을 원석 값 · 순수출가 × λ) ↔ 한 시간 쉰 값(어부와 같은 줄). 짐 왕복은 안 뺀다(짐 상한에 닿은 날 0 · T1256 §1).
+//   한 단위 값(v2 `t1266OreValue` — 그 셀 광물 몫의 기댓값 `oreMixAt` × 그 마을 원석 값 · 순수출가 × λ) ↔ 한 시간 쉰 값(어부와 같은 함수 `t1217RestValue`).
+//   ★[T1271 · T1266 회부 2 — PM 판정 "몸이 실제로 쓴 시간"] 짐 왕복 걸음을 그 시간에서 뺀다: 짐 하나를 채우는 타 시간(짐 상한 `CAP_KG` ÷ 한 타 kg × `MINE_SWING_MS`)
+//     ↔ 셀 → 가장 가까운 곳간 사다리(`_granPick` · `_granLadder` — 몸이 짐이 차면 가는 그 자리) 왕복(2 × 직선 거리 ÷ 존 걸음 `moveSpeed` — T341 왕복의 그 식).
+//     한 시간 중 치는 몫 = 타 시간 ÷ (타 시간 + 왕복). 곳간이 없는 마을은 짐이 차면 그날 퇴근이다 — 그 시간에 칠 수 있는 것은 짐에 남은 자리까지.
 //   값을 못 매기면(값 함수 없음 · 시세 없음) 종전처럼 친다(참). 계측 `_t1266Stat`(회계 0).
-const _t1266Stat = { hours: 0, keep: 0, stop: 0, restStep: 0, noVal: 0, zeroVal: 0, w: 0, r: 0, u: 0 };
+const _t1266Stat = { hours: 0, keep: 0, stop: 0, restStep: 0, noVal: 0, zeroVal: 0, w: 0, r: 0, u: 0, walkF: 0, walkN: 0, noGran: 0, restDays: 0 };
 function _t1266Keep(vil, npc, s, hk, S, kgU) {
   const dep = state.deps, E = _lifeEcon(), St = _t1266Stat;
   if (!vil.econ || !(state.dayMs > 0)) return true;
   const st = dep.oreStockAt(s.cx, s.cy) || 0;
   if (!(st >= 1)) return true;                                          // 다 판 셀 — 아래 줄이 다음 셀로(repick)
   const need = S.mineSwingsNeeded(st / S.ORE_K), ck = S.mineChunkKg(vil._mineLvl || 0);
-  const chunks = Math.min(Math.floor(state.dayMs / 24 / S.MINE_SWING_MS) / need, st);
+  const swH = Math.floor(state.dayMs / 24 / S.MINE_SWING_MS);          // 한 시간 타수(판 시계)
+  let chunks = Math.min(swH / need, st);
+  //   ★[T1271] 짐 왕복 걸음(위 머리말)
+  const _cc = _carryCfg(), cap = (_cc && _cc.CFG && _cc.CFG.CAP_KG) || 0;
+  if (cap > 0) {
+    const g = _granPick(vil, npc, false);
+    if (g) {
+      const L = _granLadder(g), sp = (dep && dep.moveSpeed) || 0;
+      const walkMs = sp > 0 ? 2 * Math.hypot(L.x - s.x, L.y - s.y) / sp * 1000 : 0;
+      const loadMs = cap / (ck / need) * S.MINE_SWING_MS;
+      const f = loadMs > 0 ? loadMs / (loadMs + walkMs) : 1;
+      chunks = Math.min(swH * f / need, st); St.walkF += f; St.walkN++;
+    } else {
+      const hand = (npc.inventory && npc.inventory.ore_chunk) || 0;
+      chunks = Math.min(chunks, Math.max(0, cap - hand) / ck); St.noGran++;
+    }
+  }
   const units = chunks * ck / kgU;
   let mix = null;
   if (E.T1188_ORE_SPLIT) { const m = dep.oreMixAt ? dep.oreMixAt(s.x, s.y) : null; if (m) { mix = {}; for (const k in m) { const id = E.OreGoods.idOf(k); if (id) mix[id] = (mix[id] || 0) + m[k]; } } }
@@ -7202,6 +7221,7 @@ function init(deps) {
     state.byDbId = new Map(state.villages.map(v => [v.dbId, v]));
     state.byEcon = new Map(state.villages.map(v => [v.econ, v])); // Stage 4B: econ 마을 객체 → 공간 마을(캐러밴 from/to 해석)
     if (_lifeEcon().T1259_WOOD_CAP) _lifeEcon().setT1259WoodReader(_t1259WoodCells);
+    if (_lifeEcon().T1271_ORE_CAP) _lifeEcon().setT1271OreReader(_t1271OreCells);   // ★[T1271] 광부 자리 = 닿는 광맥 셀(끔 = 읽개 없음 · 종전)
     if (T1238_TERR_V2) { try { _t1238Boot(); } catch (e) { console.error(`[${state.zoneId}] 🏘️ [T1238] 부팅 실패(켬이지만 표 없이 계속):`, e.message); } }   // ★[T1238] 쓰는 칸 표 · 쓰는 날 · 땅에 남은 일 · econ 표지
     else for (const v of state.villages) if (v.econ && v.econ._t1238Land) delete v.econ._t1238Land;   // ★[T1238] 켰다 끈 세계 — econ 저장 줄에 남은 표지를 걷는다(금고 땅 사기가 돌아온다 · 처음부터 끈 세계는 칸이 없어 무동작)
     state.claimedNames = new Set(state.villages.map(v => v.name)); // 레거시 디듀프 대상(이름 유니크 — 50곳 검증됨)
@@ -12589,6 +12609,29 @@ function _t1259WoodCells(econ) {
   }
   return count;
 }
+// ★[T1271 · T1266 회부 4] 광부 자리 읽개 — 그 마을 광맥 셀 목록(`_oreCellsOf` — 몸이 고르는 그 목록) 중 재고 ≥ 1(몸의 "다 팠다" 문턱)이고
+//   회관에서 닿는(T427/T562 같은 술어 · T1259 나무 자리와 같은 시작 점) 셀 수. 하루 캐시(마을 · 날) — `jobCapacity` 는 하루에 여러 번 묻는다.
+const _t1271Stat = { calls: 0, scans: 0, cells: 0, reach: 0, vils: {} };   // 계측 전용
+function _t1271OreCells(econ) {
+  const vil = state.byEcon && state.byEcon.get(econ);
+  const dp = state.deps;
+  if (!vil || !dp || typeof dp.oreStockAt !== 'function') return null;
+  const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
+  _t1271Stat.calls++;
+  if (vil._t1271C && vil._t1271C.day === day) return vil._t1271C.n;
+  const cells = _oreCellsOf(vil) || [];
+  const reach = _t427On();
+  let n = 0;
+  for (const c of cells) {
+    if (!((dp.oreStockAt(c.cx, c.cy) || 0) >= 1)) continue;
+    if (reach && !_t427Reach(vil, null, c.cx * SZ + SZ / 2, c.cy * SZ + SZ / 2, day)) continue;
+    n++;
+  }
+  vil._t1271C = { day, n };
+  _t1271Stat.scans++; _t1271Stat.cells += cells.length; _t1271Stat.reach += n; _t1271Stat.vils[vil.name] = [cells.length, n];
+  return n;
+}
+function t1271Stat() { return JSON.parse(JSON.stringify(_t1271Stat)); }
 function _t341TripsPerDay(vil, distPx, unitsPerTree) {
   const sp = (state.deps && state.deps.moveSpeed) || 0;              // px/초 — zone 정본
   const dayR = (state.deps && state.deps.dayPhaseRatio) || 0;        // 낮 비율 — zone-config 정본
@@ -16119,6 +16162,16 @@ function _t1217Day(vil, day) {
   if (vil.econ) vil.econ._t1217Rest = ((r && r.rest) || 0) + bodyRest;
   return r;
 }
+//   ★[T1271 · T1266 회부 1] 그날 광부의 쉰 몫 — 몸이 한 시간 문에서 멈춘 시각(낮 몫 `f` · 판 시계)부터 해 질 녘까지 → econ `_t1271Rest`(사람-날 · `t1217IdleFrac` 이 어부와 같은 셈으로 읽는다).
+//     어부 몸 줄(`_t1217Day` 의 bodyRest)과 같은 식 · 같은 경계(어제 멈춘 것을 센다).
+function _t1271Day(vil, day) {
+  const _pl = state.deps.players, dayR = (state.deps && state.deps.dayPhaseRatio) || 0;
+  let rest = 0;
+  if (_pl && dayR > 0) for (const pid of (vil.npcPids || [])) { const p = _pl.get(pid), st = p && p._t1266Stop; if (st && st.day === day - 1) rest += Math.max(0, Math.min(1, (dayR - st.f) / dayR)); }
+  _t1266Stat.restDays += rest;
+  vil.econ._t1271Rest = rest;
+  return rest;
+}
 // ★[T561 ②ⓐ] 첫 고르기(옛 줄의 셀)에 그루가 없으면 **다음으로 가까운** 셀 — 옛 줄과 같은 순서(`(i + h) % n`)·같은 동점 규칙(먼저 본 것)으로 한 칸씩 건넌다.
 //   반환: 그루가 서 있는 셀 · 그날 목록 전부가 비었으면 null(호출측 — 그날은 끝이다: 퇴근 `_lifeGoHome(npc, '휴식')` · T374 가 "그날 쓸 만큼 찼으면" 쓰는 그 한 줄 ·
 //     레거시 폴스루(`return false` — 존의 "가까운 자원 채집")가 아닌 까닭도 T374 의 그것이다: 그 갈래는 아무 자원이나 딴다 · 그날 다시 안 묻는다).
@@ -16192,6 +16245,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   //   ★★[T1217] 켬 = 같은 명부의 하루를 한 시간씩(한 시간 값 ↔ 쉰 값 · 수요 문 없음) + 그날 쉰 몫을 econ 여가에(위 `_t1217FishDay` 머리말) · 끔 = 아래 T1202 줄 그대로.
   if (vil.econ && _t1217On()) _t1217Day(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0); else
   if (T1202_BATCH && vil.econ && _lifeEcon().T312_FISH_ACT) _t1202FishBatch(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0);
+  if (vil.econ && _lifeEcon().T1266_ORE_BODY) _t1271Day(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0);   // ★[T1271] 그날 광부의 쉰 몫 → econ 여가(어부 `_t1217Day` 그 자리 · 끔 = 무동작)
   // ★★[T368] **낮이 끝나면 들고 있던 작물을 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고 · 어부 절과 같은 꼴).
   //   볏단이 차서(`G_CARRY`) 곳간에 다녀온 농부는 그때 이미 넣었다(`_lifeGranStep`) — 손이 비어 이 줄이 무해하다.
   if (vil.econ && _t368ItemsOn()) {
@@ -18459,7 +18513,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
   gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1225Stat, t1225Keep, t1225SiteTable, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
-  t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, t1266Stat, _t1266Keep, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
+  t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, t1266Stat, _t1266Keep, _t1271Day, _t1271OreCells, t1271Stat, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
   // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
   noteRescue,

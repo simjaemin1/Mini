@@ -10,6 +10,11 @@
 //   ⑤ 값 함수: `t1266OreValue` 의 λ 는 어부 `t1217Value` 의 λ 와 같은 함수다(사본 0) · unit = Σ 몫 × 값 × λ.
 //   ⑥ `oreMixAt` = `oreMineralAt` 추첨의 기댓값 몫(같은 자리 · 씨 고정 추첨 4만 번과 0.01 안).
 //   ⑦ 미끼 셋(사본 · `T1266_MUTANT`) — 각각 빨강이어야 한다: D 문이 남은 사본 · 입구가 D 로 자르는 사본 · 몸이 안 친 날 수식 원석이 드는 사본.
+//   ★[T1271] ⑧ 쉰 값 = 어부와 같은 함수(`t1217RestValue` · 광부 값 함수에 쉰 값 식 사본 0) · 광부 쉰 사람-날이 econ 여가 밑변(`t1217IdleFrac`)에 어부와 같은 셈으로 든다 ·
+//              서버가 그날 멈춘 몸의 쉰 몫을 적는다(`_t1271Day` — 어부 몸 줄 그 식).
+//     ⑨ 한 시간 값에 짐 왕복 걸음이 든다 — 곳간이 멀면 그 시간 캘 단위가 타 시간 ÷ (타 시간 + 왕복) 배로 준다 · 곳간 없는 마을은 짐에 남은 자리까지.
+//     ⑩ 광부 자리(`T1271_ORE_CAP` 켬) = 닿는 광맥 셀 × 0.30 — 닿는 셀 0 인 마을은 자리 0 · 읽개가 없으면 종전 땅 모형.
+//     미끼 셋 더: 광부 값 함수에 쉰 값 식 사본(`restcopy`) · 닿지 않는 광맥을 세는 읽개(`capreach`) · 읽개를 안 보는 자리 식(`capform`).
 const assert = require('assert'), fs = require('fs'), path = require('path'), { spawnSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..'); let pass = 0, fail = 0;
 function test(n, f) { try { f(); pass++; console.log('  ✓ ' + n); } catch (e) { fail++; console.log('  ✗ ' + n + ': ' + (e && e.message || e)); } }
@@ -23,6 +28,7 @@ if (!SUB) {
     assert.strictEqual(r.status, 0, r.stderr); assert.strictEqual(JSON.parse(r.stdout.trim().split('\n').at(-1)), val === '1');
   });
 }
+process.env.T1271_ORE_CAP = '1';   // ★[T1271] 읽개를 하네스가 직접 심는다(서버 부팅 없음 — 심지 않은 판은 종전 땅 모형)
 process.env.T1188_ORE_SPLIT = '1'; process.env.T724_MINE_ACT = '1'; process.env.T427_WORK_REACH = '0'; process.env.ENABLE_VILLAGES = '0'; process.env.T1192_FISH_SPECIES = '0';
 if (process.env.T1266_ARM !== '0') process.env.T1266_ORE_BODY = '1';
 if (MUT) {   // 미끼 — 정본 파일을 읽어 한 줄만 바꾼 사본으로 싣는다(파일 무변)
@@ -32,9 +38,13 @@ if (MUT) {   // 미끼 — 정본 파일을 읽어 한 줄만 바꾼 사본으�
     cap: ['sim/economy-sim.js', "const u = T1266_ORE_BODY ? ((typeof units === 'number' && units > 0) ? units : 0) : actDemandCap(", 'const u = actDemandCap('],
     formula: ['sim/economy-sim.js', "(job === 'miner' && T1188_ORE_SPLIT)", "(job === 'miner' && T1188_ORE_SPLIT && !T1266_ORE_BODY)",
       'function mineActOn(v) { return !!(T724_MINE_ACT && v && ((v._t724Walk | 0) > 0 || (T1188_ORE_SPLIT && productionActsBound(v)))); }', 'function mineActOn(v) { return !!(T724_MINE_ACT && v && ((v._t724Walk | 0) > 0 || (T1188_ORE_SPLIT && productionActsBound(v) && !T1266_ORE_BODY))); }'],   // 켬이면 몸이 안 친 날 수식이 원석을 낸다
+    restcopy: ['sim/economy-sim-v2.js', 'return { N, H, unit: p * lam, p, lam, best, rest: t1217RestValue(N, H) };', 'return { N, H, unit: p * lam, p, lam, best, rest: H > 0 ? v1.LEISURE_HAPPY_W / (N * H) : Infinity };'],   // 같은 값의 사본 식(값은 같다 — 함수가 하나여야 한다)
+    capreach: ['server/villages.js', '    if (reach && !_t427Reach(vil, null, c.cx * SZ + SZ / 2, c.cy * SZ + SZ / 2, day)) continue;\n', ''],   // 닿지 않는 광맥도 센다
+    capform: ['sim/economy-sim.js', 'Math.floor((oreReach == null ? s * Math.max(', 'Math.floor((true ? s * Math.max('],   // 읽개를 안 본다
   }[MUT];
-  M._extensions['.js'] = function (m, f) { if (f !== path.join(ROOT, R[0])) return old(m, f); let x = fs.readFileSync(f, 'utf8'); for (let i = 1; i < R.length; i += 2) { assert(x.includes(R[i]), '미끼 자리 없음 ' + MUT); x = x.replace(R[i], R[i + 1]); } m._compile(x, f); };
+  M._extensions['.js'] = function (m, f) { if (f !== path.join(ROOT, R[0])) return old(m, f); let x = fs.readFileSync(f, 'utf8'); for (let i = 1; i < R.length; i += 2) { assert(x.includes(R[i]), '미끼 자리 없음 ' + MUT); x = x.replace(R[i], R[i + 1]); } (global.__t1266Src || (global.__t1266Src = {}))[R[0]] = x; m._compile(x, f); };
 }
+const srcOf = (rel) => (global.__t1266Src && global.__t1266Src[rel]) || fs.readFileSync(path.join(ROOT, rel), 'utf8');   // 실린 글(미끼면 그 사본)
 const E = require('../sim/economy-sim'), E2 = require('../sim/economy-sim-v2'), O = E.OreGoods, Sp = require('../server/specialty'), W = require('../server/weights'), V = require('../server/villages'), Tr = require('../server/terrain');
 const H = V.__p3Bind({}), S = H.state, P = V.__labProbe._t1188Probe;
 const KGU = W.kgOf('ore');
@@ -83,7 +93,65 @@ if (ARM) {
     for (const k of O.ids) close(a.dailyProductionBuf[k] || 0, 0); for (const k of O.ids) assert(!((a.storage[k] || 0) > 1e-9), `몸 없이 ${k} ${a.storage[k]}`);
   });
 }
+if (ARM) {
+  console.log('⑧ 쉰 값 = 어부와 같은 함수 · 광부 쉰 시간이 econ 여가에 든다');
+  test('쉰 값 식은 v2 에 한 자리(`t1217RestValue`) — 어부 `t1217Value` · 광부 `t1266OreValue` 둘 다 그 함수를 부른다(사본 0) · 값 같음', () => {
+    const src = srcOf('sim/economy-sim-v2.js');
+    const body = (name) => { const i = src.indexOf('function ' + name + '('); assert(i >= 0, name + ' 없음'); const j = src.indexOf('\n}', i); return src.slice(i, j < 0 ? undefined : j); };
+    assert.strictEqual(src.split('LEISURE_HAPPY_W / (N * H)').length - 1, 1, '쉰 값 식이 한 자리가 아니다');
+    assert(body('t1217RestValue').includes('LEISURE_HAPPY_W / (N * H)'), '정본 함수에 식이 없다');
+    for (const f of ['t1217Value', 't1266OreValue']) assert(body(f).includes('rest: t1217RestValue(N, H)'), f + ' 가 같은 함수를 안 부른다');
+    const v = E.createVillage({ initialPop: 12, oreMix: { copper: 1 } });
+    close(E2.t1266OreValue(v, 10, null, null).rest, E2.t1217Value(v, 10, null).rest); close(E2.t1217RestValue(12, 10), E.LEISURE_HAPPY_W / 120);
+  });
+  test('econ 여가 밑변(`t1217IdleFrac`) — 행위 광부 3 · 쉰 사람-날 1.5 · 수식 여유 0.2 · 10명 → (7 × 0.2 + 1.5) ÷ 10 · 칸이 없으면 종전 값', () => {
+    const w = { day: 1 }; E.bindProductionActs(w);
+    const v = { _world: w, _idleFrac: 0.2, counts: { miner: 3 }, npcs: new Array(10).fill(0).map(() => ({})), _t724Walk: 1 };
+    close(E.t1217IdleFrac(v, 10), 0.2);
+    v._t1271Rest = 1.5; close(E.t1217IdleFrac(v, 10), (7 * 0.2 + 1.5) / 10);
+    v._t1271Rest = 9; close(E.t1217IdleFrac(v, 10), (7 * 0.2 + 3) / 10);   // 광부 수에서 자른다(어부 줄 그 꼴)
+  });
+  test('서버 `_t1271Day` — 어제 낮 몫 0.35 에서 멈춘 광부 몸(낮 비율 0.7) → 쉰 사람-날 0.5 · econ `_t1271Rest` · 다른 날 멈춘 몸은 0', () => {
+    const { v, p } = fixture({ unit: 1, rest: 0 }); p._t1266Stop = { day: 1, f: 0.35 };
+    close(V._t1271Day(v, 2), 0.5); close(v.econ._t1271Rest, 0.5); close(V._t1271Day(v, 3), 0); close(v.econ._t1271Rest, 0);
+  });
+  console.log('⑨ 한 시간 값에 짐 왕복 걸음');
+  test('곳간 사다리가 셀 곁이면 칠 몫 1 · 3,200 px 떨어지면 타 시간 ÷ (타 시간 + 왕복) · 곳간이 없으면 짐에 남은 자리까지', () => {
+    const { v, p } = fixture({ unit: 1, rest: 0 }); S.deps.moveSpeed = 100;
+    const s0 = { cx: 2, cy: 0, x: 80, y: 16 }, cap = require('../server/carry').CFG.CAP_KG, ck = Sp.mineChunkKg(5), need = Sp.mineSwingsNeeded(1000 / Sp.ORE_K);
+    const swH = Math.floor(S.dayMs / 24 / Sp.MINE_SWING_MS), U = (f) => Math.min(swH * f / need, 1000) * ck / KGU;
+    const u = (gl, hand) => { v._granList = gl; p.inventory.ore_chunk = hand || 0; const a = V.t1266Stat().u; V._t1266Keep(v, p, s0, 1, Sp, KGU); return V.t1266Stat().u - a; };
+    close(u([{ cx: 2, cy: -2 }]), U(1), 1e-9);
+    const load = cap / (ck / need) * Sp.MINE_SWING_MS, walk = 2 * 3200 / 100 * 1000;
+    close(u([{ cx: 102, cy: -2 }]), U(load / (load + walk)), 1e-9); assert(load / (load + walk) < 1);
+    close(u([], 20), Math.min(swH / need, 1000, (cap - 20) / ck) * ck / KGU, 1e-9);
+  });
+  console.log('⑩ 광부 자리 = 닿는 광맥 셀(`T1271_ORE_CAP`)');
+  test('econ `jobCapacity` — 읽개 0 → 광부 자리 0 · 40 → 12 · 읽개 없음(null) → 종전 땅 모형', () => {
+    assert.strictEqual(E.T1271_ORE_CAP, true);
+    const v = E.createVillage({ initialPop: 12, oreMix: { copper: 1 } }); v.land.ore = 1;
+    E.setT1271OreReader(null); const base = E.jobCapacity(v).miner; assert(base > 0, '종전 자리 0 — 아래가 자명 통과');
+    try {
+      E.setT1271OreReader(() => 0); assert.strictEqual(E.jobCapacity(v).miner, 0);
+      E.setT1271OreReader(() => 40); assert.strictEqual(E.jobCapacity(v).miner, 12);
+      E.setT1271OreReader(() => null); assert.strictEqual(E.jobCapacity(v).miner, base);
+    } finally { E.setT1271OreReader(null); }
+  });
+  test('서버 읽개 `_t1271OreCells` — 광맥 셀 셋 · 회관에서 하나도 안 닿으면 0 · 다 닿으면 재고 ≥ 1 인 셀만(둘)', () => {
+    const { v } = fixture({ unit: 1, rest: 0 }); v._oreCells = [{ cx: 2, cy: 0, p: .5 }, { cx: 3, cy: 0, p: .4 }, { cx: 4, cy: 0, p: .3 }];
+    S.byEcon = new Map([[v.econ, v]]); let can = false;
+    Object.assign(S.deps, { oreStockAt: (cx) => (cx === 4 ? 0.5 : 1000), npcCanReach: () => can, collGenAround: () => 0, npcReachBegin: () => ({ done: true }), npcReachStep: () => true, npcReachHas: () => can });
+    delete v._t1271C; v._t427R = null; assert.strictEqual(V._t1271OreCells(v.econ), 0, '안 닿는 광맥을 셌다');
+    can = true; delete v._t1271C; v._t427R = null; assert.strictEqual(V._t1271OreCells(v.econ), 2);
+  });
+}
 if (!SUB) {
+  console.log('⑩′ 손잡이 `T1271_ORE_CAP`');
+  for (const val of [undefined, '0', '1', '']) test('T1271 손잡이 ' + String(val) + ' → ' + (val === '1' ? '켬' : '끔'), () => {
+    const env = { ...process.env }; delete env.T1271_ORE_CAP; if (val !== undefined) env.T1271_ORE_CAP = val;
+    const r = spawnSync(process.execPath, ['-e', "console.log(JSON.stringify(require('./sim/economy-sim').T1271_ORE_CAP))"], { cwd: ROOT, env, encoding: 'utf8' });
+    assert.strictEqual(r.status, 0, r.stderr); assert.strictEqual(JSON.parse(r.stdout.trim().split('\n').at(-1)), val === '1');
+  });
   console.log('⑤ 값 함수');
   test('t1266OreValue λ = t1217Value λ(같은 함수) · unit = Σ 몫 × max(값, 순수출가) × λ · rest = 어부와 같다', () => {
     const v = E.createVillage({ initialPop: 12, oreMix: { copper: 1 } });
@@ -101,7 +169,7 @@ if (!SUB) {
     }
   });
   console.log('⑦ 미끼(사본) — 빨강이어야 한다');
-  for (const [kind, name] of [['dgate', 'D(0.01 단위'], ['cap', 'D(0.01 단위'], ['formula', '몸 호스트에 묶인 광산 마을']]) test('미끼 ' + kind + ' 가 걸린다', () => {
+  for (const [kind, name] of [['dgate', 'D(0.01 단위'], ['cap', 'D(0.01 단위'], ['formula', '몸 호스트에 묶인 광산 마을'], ['restcopy', '쉰 값 식은 v2 에 한 자리'], ['capreach', '서버 읽개'], ['capform', 'econ `jobCapacity`']]) test('미끼 ' + kind + ' 가 걸린다', () => {
     const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, T1266_MUTANT: kind }, encoding: 'utf8' });
     assert.strictEqual(r.status, 1, r.stdout + r.stderr); assert(r.stdout.split('\n').some((l) => l.includes('✗') && l.includes(name)), r.stdout);
   });
