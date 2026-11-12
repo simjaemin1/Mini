@@ -22,6 +22,7 @@
 #   bash scripts/run-regress.sh            # 전 회귀 순차 단독
 #   bash scripts/run-regress.sh --selftest # ★러너 자신이 크래시를 실패로 잡는지 검사
 #   bash scripts/run-regress.sh a.js b.js  # 지정한 것만
+#   bash scripts/run-regress.sh -j 4 [a.js …]  # ★[T1288] 넷을 나란히(기본 1 = 종전 순차 · 아래 `-j` 절)
 #
 # ★★[2026-08-26] **러너는 이 파일 하나다.** 한때 `run-regressions.sh`(복수형)가 따로 있었고
 #   목록이 갈려서, 어느 쪽을 돌리든 **상대편 하네스 5~7종을 통째로 빼먹었다**.
@@ -31,6 +32,17 @@
 #
 # ⚠CPU 2코어다. **순차 단독**이 규약이고 이 스크립트가 그걸 강제한다.
 set -u
+# ═══ ★[T1288 2026-11-12] `-j N` — 하네스 N 개를 나란히(기본 1 = 종전 순차 · 이 갈래 무접촉) ═══
+#   왜 이제 되나: 포트가 겹치지 않는다 — pid 나머지 107곳(T1281) · 제품 밖 고정 수(T1288)는 `lib-port` 장부가 나누고,
+#   제품이 박은 포트(존 설정 존 포트 · central 3010)는 하네스 머리 줄 `lib-port.hold(…)` 로 **혼자 쥔다**.
+#   ⇒ 이 러너는 머리 줄의 수를 읽어 **같은 고정 포트를 쥐는 둘을 같이 띄우지 않는다**(하네스 안 기다림이 상한 시계를 먹지 않게).
+#   · 출력: 하네스마다 제 임시 파일에 받고 **끝난 순서대로** 덩어리째 찍는다(줄이 섞이지 않는다) · 요약은 종전 꼴 그대로.
+#   · 배수(앞 판 남은 아이 기다림)는 나란히 갈래에선 쉬지 않는다 — 남은 포트는 `lib-port` 가 OS 에 묶어 보고 피한다.
+#   · 환경 `RUN_REGRESS_JOBS` 로도 준다(인자가 이긴다).
+JOBS="${RUN_REGRESS_JOBS:-1}"
+if [ "${1:-}" = "-j" ] || [ "${1:-}" = "--jobs" ]; then JOBS="${2:-}"; shift 2 || true; fi
+case "$JOBS" in ''|*[!0-9]*) echo "  ✗ -j 는 1 이상 정수다 — '$JOBS'" >&2; exit 2 ;; esac
+[ "$JOBS" -ge 1 ] || { echo "  ✗ -j 는 1 이상 정수다 — '$JOBS'" >&2; exit 2; }
 
 DRAIN_SEC="${DRAIN_SEC:-8}"
 TIMEOUT_SEC="${TIMEOUT_SEC:-2400}"
@@ -119,6 +131,51 @@ run_one() {
     echo "  ✓ RC=0"
     PASSED+=("$f")
   fi
+}
+
+# ═══ ★[T1288] 나란히 갈래 — 같은 고정 포트(`lib-port.hold` 머리 줄)를 쥐는 둘은 같이 안 띄운다 ═══
+holds_of() { grep -oE "require\('\./lib-port'\)\.hold\([0-9, ]+\)" "scripts/$1" 2>/dev/null | head -1 | grep -oE "[0-9]+" | tr '\n' ' '; }
+run_par() {
+  local WD; WD="$(mktemp -d)"
+  local -a pend=("${LIST[@]}")
+  local -A run_f=() run_h=() busy=()
+  echo "  [나란히] -j ${JOBS} · ${#pend[@]}개 · 고정 포트 쥔 하네스는 같은 포트끼리 차례로"
+  while [ "${#pend[@]}" -gt 0 ] || [ "${#run_f[@]}" -gt 0 ]; do
+    # ① 빈 자리에 띄울 수 있는 첫 것(쥐는 포트가 지금 쥔 것과 안 겹치는)을 띄운다
+    local started=1
+    while [ "${#run_f[@]}" -lt "$JOBS" ] && [ "$started" = "1" ]; do
+      started=0
+      local i
+      for i in "${!pend[@]}"; do
+        local f="${pend[$i]}" hs clash=0 p
+        hs="$(holds_of "$f")"
+        for p in $hs; do [ -n "${busy[$p]:-}" ] && clash=1; done
+        [ "$clash" = "1" ] && continue
+        for p in $hs; do busy[$p]="$f"; done
+        ( NEED_DRAIN=0; export RUN_REGRESS_HARNESS="$f"; run_one "$f" ) > "$WD/$f.out" 2>&1 &
+        run_f[$!]="$f"; run_h[$!]="$hs"
+        unset 'pend[$i]'; pend=("${pend[@]}")
+        started=1
+        break
+      done
+    done
+    # ② 하나 끝나기를 기다려 그 덩어리를 찍고 셈에 넣는다
+    local done_pid=""
+    wait -n -p done_pid "${!run_f[@]}" 2>/dev/null || true
+    [ -n "$done_pid" ] || continue
+    local f="${run_f[$done_pid]}" p
+    for p in ${run_h[$done_pid]}; do unset 'busy[$p]'; done
+    unset 'run_f[$done_pid]' 'run_h[$done_pid]'
+    cat "$WD/$f.out"
+    local el; el="$(grep -oE '\[소요\] [0-9]+초' "$WD/$f.out" | tail -1 | grep -oE '[0-9]+')"
+    TIMES+=("${el:-0} $f")
+    if grep -qE '^  ✓ RC=0$' "$WD/$f.out"; then PASSED+=("$f")
+    else
+      local rc; rc="$(grep -oE '✗ RC=[0-9]+' "$WD/$f.out" | tail -1 | grep -oE '[0-9]+$')"
+      FAILED+=("$f(rc=${rc:-?})")
+    fi
+  done
+  rm -rf "$WD"
 }
 
 # ═══ ★[T49 2026-09-02] 선행 점검 — 의존성이 없으면 **여기서** 죽는다 ═══════════
@@ -217,8 +274,12 @@ else
   echo "  [자동 발견] ${#LIST[@]}개 (표 // @regress 기준)"
 fi
 
-for f in "${LIST[@]}"; do run_one "$f"; done
-drain
+if [ "$JOBS" -le 1 ]; then
+  for f in "${LIST[@]}"; do run_one "$f"; done
+  drain
+else
+  run_par
+fi
 
 echo
 echo "=== 러너 요약 ==="
@@ -231,5 +292,6 @@ if [ "${#TIMES[@]}" -gt 0 ]; then
   echo "  걸린 시간 상위(초): ${_top% · }"
   echo "  걸린 시간 합: 하네스 ${_sum}초 · 러너 전체 ${SECONDS}초(그 사이 = 배수 · 정리 기다림 · 머리)"
 fi
+[ "$JOBS" -gt 1 ] && echo "  나란히(T1288): -j ${JOBS} · 배수 쉼 없음(남은 포트는 lib-port 가 피한다)"
 echo "  배수(T1161): 쉼 ${DRAINED}번 × ${DRAIN_SEC}초 · 건넘 ${SKIPPED}번(앞 판이 남긴 아이 없음)"
 [ "${#FAILED[@]}" -eq 0 ] || exit 1
