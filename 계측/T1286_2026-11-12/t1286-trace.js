@@ -10,7 +10,7 @@ const rows = []; const S = { hit: {}, one: ONE };
 //        T1286_SUM=<파일> → 판 끝 요약(마을마다 집 부엌 요리 셈 `_t1286C` · 다양성 칸 `stats.foodGroups` 날 평균 · 사람-날 가중)
 const SUMF = process.env.T1286_SUM; const SUM = {};
 globalThis.__T1286Tr = (v, day, E) => {
-  if (SUMF) { const o = SUM[v.name] || (SUM[v.name] = { days: 0, popDays: 0, fg: 0, fgW: 0 }); const N = v.npcs.length; if (N > 0) { o.days++; o.popDays += N; const g = v.stats && v.stats.foodGroups; if (g != null) { o.fg += g * N; o.fgW += N; } }
+  if (SUMF) { const o = SUM[v.name] || (SUM[v.name] = { days: 0, popDays: 0, fg: 0, fgW: 0 }); const N = v.npcs.length; if (N > 0) { o.days++; o.popDays += N; const L = v.lastStats || {}; const g = L.foodGroups; if (g != null) { o.fg += g * N; o.fgW += N; } if (L.happiness != null) { o.h = (o.h || 0) + L.happiness * N; o.hW = (o.hW || 0) + N; } if (L.health != null) { o.he = (o.he || 0) + L.health * N; } const E = v._foodEaten || {}; o.eat = o.eat || {}; for (const k in E) o.eat[k] = (o.eat[k] || 0) + (+E[k] || 0); }
     o.C = v._t1286C ? { n: v._t1286C.n, s: +v._t1286C.s.toFixed(3), cooked: +v._t1286C.cooked.toFixed(3), days: v._t1286C.days } : null; o.cookN = (v.counts && v.counts.cook) || 0; }
   if (!OUT || day > DAYS) return;
   const st = v.storage || {}; let sum = 0; for (const k in st) sum += +st[k] || 0;
