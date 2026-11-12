@@ -478,7 +478,7 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
     '⑫ ★[T724 · PM 10-14] 일곱째 자리가 **광부 다리**다(같은 문법 · 이름으로 못 박는다)');
   ok(reads.length === 2, '⑫ 읽는 곳 **둘** — `totalFoodProductionEquivalent`(prodK) · 볏짚(fuelK)', `실제 ${reads.length}`);
   ok(/const dailyFoodProdPotential = totalFoodProductionEquivalent\(dailyProductionPotential, v\);/.test(C)
-     && /\(dailyProductionPotential\.food \|\| 0\) \* STRAW_FUEL_PER_FOOD/.test(C),
+     && /\(T1276_FARM_K \? t1276FieldFlow\(v\) : \(dailyProductionPotential\.food \|\| 0\)\) \* STRAW_FUEL_PER_FOOD/.test(C),   // ★[T1276] 켬 갈래(밭 세계 · 끔 기본)만 밭 흐름 — 끔 = 종전 다리
     '⑫ 읽는 두 곳의 꼴이 그대로다(prodK 다리 · 볏짚 다리)');
 
   // ⓑ T183 자리 — **정확한 꼴**로 있다(배수·중복을 끼워 넣으면 여기가 빨개진다)
@@ -492,7 +492,7 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
     '⑫ 텃밭을 끈 판에서도 오늘치로 비운다(누적 누수 차단)');
   ok(!hits.some(([, l]) => /farmFlowPerDay|JOBS\.farmer\.base/.test(l)),
     '⑫ ★잠재를 채우는 자리에 **추상식이 없다**(4판이 걷어낸 `base × 지력` 으로 잠재를 메우지 않는다 — 사본 0)');
-  ok(/const _capFlow = farmFlowPerDay\(v, _cf\.farmer \|\| 0\)/.test(C),
+  ok(/const _capFlow = \(T1276_FARM_K \? t1276FieldFlow\(v\) : farmFlowPerDay\(v, _cf\.farmer \|\| 0\)/.test(C),   // ★[T1276] 켬 갈래만 밭 흐름(끔 = 종전 용량 다리)
     '⑫ 그 추상식이 사는 곳은 **`PRODK_CAP` 의 용량 다리** 하나다(T100 4판이 밭 밑변으로 갈아 끼운 그 자리 · 무변)');
 
   // ⓒ 기능 — 잠재가 실제로 움직이나(`_kDbg.fuel` 의 볏짚 다리로 본다 · 상수 사본 0)
