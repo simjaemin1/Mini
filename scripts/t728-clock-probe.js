@@ -21,7 +21,7 @@ const DB0 = args[0], MBPS = +opt('mbps', '5'), DAYS = +opt('days', '3');
 const DIR = process.env.T728_PROBE_DIR || '/tmp/t728';
 const DB = path.join(DIR, `clock-${process.pid}.db`);
 fs.copyFileSync(DB0, DB); for (const s of ['-wal', '-shm']) { try { fs.copyFileSync(DB0 + s, DB + s); } catch (e) { try { fs.unlinkSync(DB + s); } catch (x) {} } }
-const PORT = 39900 + (process.pid % 90);
+const PORT = require('./lib-port').port(39900);
 const env = Object.assign({}, process.env, { ZONE_ID: 'hanbando', PORT: String(PORT), DB_PATH: DB, ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
   VILLAGE_NPC_CAP: '1', T640_BOOT_SLICE: '0', VILLAGE_DAY_MS: process.env.VILLAGE_DAY_MS || '20000' });
 const child = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });

@@ -169,7 +169,7 @@ function parent() {
   }
   console.log(`자리: far ${JSON.stringify(far)} · mix ${JSON.stringify(mix)} · mid ${JSON.stringify(mid)}  (px · px · 가장 가까운 마을 칸 [· 숲 · 물가 표본 /625])`);
   const TMPD = fs.mkdtempSync('/tmp/t1237-run-');
-  let port = 38700 + (process.pid % 12) * 4;
+  let port = require('./lib-port').ports(6, 38700);
   const all = {};
   const only = process.env.T1237_RUN_ONLY || '';
   for (const [name, spot] of [['far', far], ['mix', mix], ['mid', mid]]) for (const knob of ['0', '1']) {

@@ -60,7 +60,7 @@ const exitOf = (c, ms) => new Promise((res) => { const k = setTimeout(() => { tr
 const perf = (port) => new Promise((res) => { const q = http.get({ host: '127.0.0.1', port, path: '/perf', headers: { 'x-zone-secret': 't1034' }, timeout: 15000 }, (r) => {
   let b = ''; r.on('data', (d) => { b += d; }); r.on('end', () => { try { res(JSON.parse(b)); } catch (e) { res(null); } }); }); q.on('error', () => res(null)); q.on('timeout', () => { q.destroy(); res(null); }); });
 const car = async (port) => { const t = Date.now(); const p = await perf(port); return p && p.econTick && p.econTick.t1034car ? Object.assign(p.econTick.t1034car, { at: t }) : null; };   // at = 물은 벽시계(옮김 몫)
-const base = 39000 + (process.pid % 400);
+const base = require('./lib-port').ports(23, 39000);
 delete process.env.T1034_CARAVAN_KEEP;
 const until = async (fn, ms, every) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = await fn(); if (v) return v; await sleep(every || 1000); } return null; };
 const health = (port) => new Promise((res) => { const q = http.get({ host: '127.0.0.1', port, path: '/health', timeout: 5000 }, (r) => { r.resume(); res(r.statusCode === 200); }); q.on('error', () => res(false)); q.on('timeout', () => { q.destroy(); res(false); }); });

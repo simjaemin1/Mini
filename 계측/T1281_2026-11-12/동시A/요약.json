@@ -1,0 +1,383 @@
+{
+ "list": [
+  "test-drop-kg.js",
+  "test-t1146-stone-rule.js",
+  "test-bridge-act.js",
+  "test-game-meat.js",
+  "test-t1126-rock-yield.js",
+  "test-granary-rot.js",
+  "test-granary-item.js",
+  "test-food-sick.js"
+ ],
+ "solo": [
+  {
+   "h": "test-drop-kg.js",
+   "code": 0,
+   "sum": "=== 56건 중 PASS 56 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 5.9
+  },
+  {
+   "h": "test-t1146-stone-rule.js",
+   "code": 0,
+   "sum": "=== T1146: 45건 중 PASS 45 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 7.1
+  },
+  {
+   "h": "test-bridge-act.js",
+   "code": 0,
+   "sum": "(결과 줄 없음)",
+   "inuse": 0,
+   "sec": 8.4
+  },
+  {
+   "h": "test-game-meat.js",
+   "code": 0,
+   "sum": "=== 54건 중 PASS 54 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 7.7
+  },
+  {
+   "h": "test-t1126-rock-yield.js",
+   "code": 0,
+   "sum": "=== T1126: 52건 중 PASS 52 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 8.3
+  },
+  {
+   "h": "test-granary-rot.js",
+   "code": 0,
+   "sum": "=== 28건 중 PASS 28 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 11.2
+  },
+  {
+   "h": "test-granary-item.js",
+   "code": 0,
+   "sum": "=== 42건 중 PASS 42 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 11.2
+  },
+  {
+   "h": "test-food-sick.js",
+   "code": 0,
+   "sum": "=== 42건 중 PASS 42 · FAIL 0 ===",
+   "inuse": 0,
+   "sec": 15
+  }
+ ],
+ "rounds": [
+  {
+   "k": 1,
+   "sec": 24,
+   "runs": [
+    {
+     "h": "test-drop-kg.js",
+     "code": 0,
+     "sum": "=== 56건 중 PASS 56 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 15
+    },
+    {
+     "h": "test-t1146-stone-rule.js",
+     "code": 0,
+     "sum": "=== T1146: 45건 중 PASS 45 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 18.3
+    },
+    {
+     "h": "test-bridge-act.js",
+     "code": 0,
+     "sum": "(결과 줄 없음)",
+     "inuse": 0,
+     "sec": 18.8
+    },
+    {
+     "h": "test-game-meat.js",
+     "code": 0,
+     "sum": "=== 54건 중 PASS 54 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 14
+    },
+    {
+     "h": "test-t1126-rock-yield.js",
+     "code": 0,
+     "sum": "=== T1126: 52건 중 PASS 52 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 19.3
+    },
+    {
+     "h": "test-granary-rot.js",
+     "code": 0,
+     "sum": "=== 28건 중 PASS 28 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 23.5
+    },
+    {
+     "h": "test-granary-item.js",
+     "code": 0,
+     "sum": "=== 42건 중 PASS 42 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 24.4
+    },
+    {
+     "h": "test-food-sick.js",
+     "code": 0,
+     "sum": "=== 42건 중 PASS 42 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 21.9
+    }
+   ],
+   "ports": {
+    "n": 28,
+    "ports": 28,
+    "clash": 0,
+    "pairs": []
+   },
+   "listen": {
+    "n": 13,
+    "ports": 10,
+    "dup": 0
+   },
+   "same": true,
+   "diff": []
+  },
+  {
+   "k": 2,
+   "sec": 23,
+   "runs": [
+    {
+     "h": "test-drop-kg.js",
+     "code": 0,
+     "sum": "=== 56건 중 PASS 56 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 13.8
+    },
+    {
+     "h": "test-t1146-stone-rule.js",
+     "code": 0,
+     "sum": "=== T1146: 45건 중 PASS 45 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 16.4
+    },
+    {
+     "h": "test-bridge-act.js",
+     "code": 0,
+     "sum": "(결과 줄 없음)",
+     "inuse": 0,
+     "sec": 18.4
+    },
+    {
+     "h": "test-game-meat.js",
+     "code": 0,
+     "sum": "=== 54건 중 PASS 54 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 14.7
+    },
+    {
+     "h": "test-t1126-rock-yield.js",
+     "code": 0,
+     "sum": "=== T1126: 52건 중 PASS 52 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 18.3
+    },
+    {
+     "h": "test-granary-rot.js",
+     "code": 0,
+     "sum": "=== 28건 중 PASS 28 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 21.6
+    },
+    {
+     "h": "test-granary-item.js",
+     "code": 0,
+     "sum": "=== 42건 중 PASS 42 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 22.8
+    },
+    {
+     "h": "test-food-sick.js",
+     "code": 0,
+     "sum": "=== 42건 중 PASS 42 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 21.8
+    }
+   ],
+   "ports": {
+    "n": 28,
+    "ports": 28,
+    "clash": 0,
+    "pairs": []
+   },
+   "listen": {
+    "n": 13,
+    "ports": 10,
+    "dup": 0
+   },
+   "same": true,
+   "diff": []
+  },
+  {
+   "k": 3,
+   "sec": 23,
+   "runs": [
+    {
+     "h": "test-drop-kg.js",
+     "code": 0,
+     "sum": "=== 56건 중 PASS 56 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 14.1
+    },
+    {
+     "h": "test-t1146-stone-rule.js",
+     "code": 0,
+     "sum": "=== T1146: 45건 중 PASS 45 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 17
+    },
+    {
+     "h": "test-bridge-act.js",
+     "code": 0,
+     "sum": "(결과 줄 없음)",
+     "inuse": 0,
+     "sec": 17.7
+    },
+    {
+     "h": "test-game-meat.js",
+     "code": 0,
+     "sum": "=== 54건 중 PASS 54 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 14.9
+    },
+    {
+     "h": "test-t1126-rock-yield.js",
+     "code": 0,
+     "sum": "=== T1126: 52건 중 PASS 52 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 17.7
+    },
+    {
+     "h": "test-granary-rot.js",
+     "code": 0,
+     "sum": "=== 28건 중 PASS 28 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 21.7
+    },
+    {
+     "h": "test-granary-item.js",
+     "code": 0,
+     "sum": "=== 42건 중 PASS 42 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 22.9
+    },
+    {
+     "h": "test-food-sick.js",
+     "code": 0,
+     "sum": "=== 42건 중 PASS 42 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 22.3
+    }
+   ],
+   "ports": {
+    "n": 28,
+    "ports": 28,
+    "clash": 0,
+    "pairs": []
+   },
+   "listen": {
+    "n": 13,
+    "ports": 10,
+    "dup": 0
+   },
+   "same": true,
+   "diff": []
+  },
+  {
+   "k": 4,
+   "sec": 23,
+   "runs": [
+    {
+     "h": "test-drop-kg.js",
+     "code": 0,
+     "sum": "=== 56건 중 PASS 56 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 15
+    },
+    {
+     "h": "test-t1146-stone-rule.js",
+     "code": 0,
+     "sum": "=== T1146: 45건 중 PASS 45 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 17.1
+    },
+    {
+     "h": "test-bridge-act.js",
+     "code": 0,
+     "sum": "(결과 줄 없음)",
+     "inuse": 0,
+     "sec": 17.9
+    },
+    {
+     "h": "test-game-meat.js",
+     "code": 0,
+     "sum": "=== 54건 중 PASS 54 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 14.5
+    },
+    {
+     "h": "test-t1126-rock-yield.js",
+     "code": 0,
+     "sum": "=== T1126: 52건 중 PASS 52 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 18.7
+    },
+    {
+     "h": "test-granary-rot.js",
+     "code": 0,
+     "sum": "=== 28건 중 PASS 28 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 22.2
+    },
+    {
+     "h": "test-granary-item.js",
+     "code": 0,
+     "sum": "=== 42건 중 PASS 42 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 22.9
+    },
+    {
+     "h": "test-food-sick.js",
+     "code": 0,
+     "sum": "=== 42건 중 PASS 42 · FAIL 0 ===",
+     "inuse": 0,
+     "sec": 22.1
+    }
+   ],
+   "ports": {
+    "n": 28,
+    "ports": 28,
+    "clash": 0,
+    "pairs": []
+   },
+   "listen": {
+    "n": 13,
+    "ports": 10,
+    "dup": 0
+   },
+   "same": true,
+   "diff": []
+  }
+ ],
+ "soloPorts": {
+  "n": 28,
+  "ports": 28,
+  "clash": 0,
+  "pairs": []
+ },
+ "soloListen": {
+  "n": 13,
+  "ports": 10,
+  "dup": 0
+ }
+}

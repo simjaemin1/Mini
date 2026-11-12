@@ -116,7 +116,7 @@ function parent() {
   const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
   const seen = (m) => console.log(`  [관찰] ${m}`);
   const TMPD = fs.mkdtempSync('/tmp/t998-ws-');
-  let port = 38400 + (process.pid % 20) * 2;   // 판 둘 = 두 자리(다른 하네스가 안 쓰는 띠)
+  let port = require('./lib-port').ports(2, 38400);   // 판 둘 = 두 자리(다른 하네스가 안 쓰는 띠)
   const R = {};
   for (const knob of ['on', 'off']) {
     const db = path.join(TMPD, `${knob}.db`), out = path.join(TMPD, `${knob}.json`);

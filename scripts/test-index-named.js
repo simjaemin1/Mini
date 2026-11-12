@@ -32,7 +32,7 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  âœ“ ' : '  âœ
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.on('exit', () => { for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} } });
   process.env.ZONE_ID = 'hanbando';
-  process.env.PORT = String(39400 + (process.pid % 500));
+  process.env.PORT = String(require('./lib-port').port(39400));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
   process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

@@ -31,7 +31,7 @@ const say = (m) => console.log(m);
 const TMP = `${require('os').tmpdir()}/test-downed-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(37200 + (process.pid % 150));
+process.env.PORT = String(require('./lib-port').port(37200));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '1';     // ★마을 반경 술어를 재려면 마을이 서 있어야 한다
 process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

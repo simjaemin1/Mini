@@ -151,7 +151,7 @@ async function runCase(tag, knobOn, C) {
     ok(pid4 === pid1 && /^[0-9a-f]{64}$/.test(key4 || '') && (ROT ? key4 !== key1 : key4 === key1), `[${tag}] ④ ★재접속해도 같은 사람 — 같은 playerId · 열쇠는 ${ROT ? '회전한 새 열쇠(T217)' : '같은 열쇠(회전 끔)'}`, `${pid4} ${pid4 === pid1 ? '=' : '≠'} ${pid1} · 열쇠 ${key4 == null ? '없음' : (key4 === key1 ? '같음' : '다름')}`);
 
     // ⑤ 승계 — 열쇠를 든 채 이름 · 비밀번호
-    const ACC = `t1160${tag}${process.pid % 10000}`, PW = 'pw-t1160';
+    const ACC = `t1160${tag}${process.pid % 10000}`, PW = 'pw-t1160'; // lib-port: 포트 아님(계정 이름)
     const st5 = await ctx.storageState();
     await ctx.close();
     ctx = await newCtx(st5); page = await openPage(ctx);

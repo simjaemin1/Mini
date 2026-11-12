@@ -43,7 +43,7 @@ const perf = (port) => new Promise((res) => { const q = http.get({ host: '127.0.
 //   [T1203] 두 팔에 `T762_CARAVAN_BODY=0` 도 묶는다 — 캐러밴 몸(land1048 켬 기본)이면 다시 뜬 캐러밴이 저장된 걸음 상태(T1182 · `_t1182 = T762`)로 곧장 서서
 //     길을 새로 파는 빈 쌍이 안 생긴다(끔 판 "첫 기다림 0 · 버림 0" — 자명 통과 금지 ✗). T896 이 다루는 판은 몸 걸음 상태 없는 되살림이다.
 //   [T1174] 두 팔에 `T1061_RESUME_SLICE=0` 도 묶는다 — T1061 이 켬 기본이 되어 끔 팔도 틱 몫이 바닥나면 빈 쌍을 붙들어 "버림 0"(자명 통과 금지 ✗)이 됐다. 이 하네스는 T896 한 손잡이만 가른다.
-const base = 38000 + (process.pid % 400);
+const base = require('./lib-port').ports(403, 38000);
 const W = +(process.env.T1261_W || 1);
 delete process.env.T896_RESUME_ONE;
 

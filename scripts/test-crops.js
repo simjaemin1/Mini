@@ -23,7 +23,7 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const pre = (c, m, x) => { if (!c) { fail++; console.log('  ✗ [상황] ' + m + (x !== undefined ? `  ${x}` : '')); } else console.log('  · [상황] ' + m + (x !== undefined ? `  ${x}` : '')); };
 
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(36850 + (process.pid % 120));
+process.env.PORT = String(require('./lib-port').port(36850));
 process.env.DB_PATH = `/tmp/test-crops-${process.pid}.db`;
 process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
 process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

@@ -23,7 +23,7 @@ fs.mkdirSync(DIR, { recursive: true });
 const DB = path.join(DIR, `rs-${process.pid}.db`);
 const rmdb = () => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(DB + s); } catch (e) {} } };
 rmdb(); fs.copyFileSync(DB0, DB); for (const s of ['-wal', '-shm']) { try { fs.copyFileSync(DB0 + s, DB + s); } catch (e) {} }
-const PORT = 39800 + (process.pid % 90);
+const PORT = require('./lib-port').port(39800);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const env = Object.assign({}, process.env, { ZONE_ID: 'hanbando', PORT: String(PORT), DB_PATH: DB, ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
   VILLAGE_DAY_MS: String(DAYMS), T731_LOCAL_MIDNIGHT: '1', T731_WIT: '1' });
