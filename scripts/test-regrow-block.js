@@ -98,7 +98,7 @@ if (MODE === '--w40') {
     //     영토가 자란 날의 훑기 비용(ⓔ)은 상한을 끈 팔에서만 잴 수 있다(제품 손잡이 그대로 · 이 팔은 재기만 한다)
     const envX = { ENABLE_VILLAGES: '1', ENABLE_ROADS: '0', VILLAGE_DAY_MS: '2500', T566_REGROW_BLOCK: ARM === 'off' ? '0' : '1' };
     if (OPT === 'nocap') envX.T538_TERR_CAP = '0';
-    const Z = await bootZone(DB, 41000 + (process.pid % 300), envX);
+    const Z = await bootZone(DB, require('./lib-port').port(41000), envX);
     const { H } = Z;
     const out = { arm: ARM, opt: OPT, bootMs: Z.bootMs, econ0: H.SimVillages.econDay(), on: H._t566On, windows: [] };
     //   창 날 — 영토 셀의 장부 나무 씨가 묘목·성목이 되는 첫날(정본 유도 · 수를 안 적는다 — T398 projection 문법)
@@ -185,7 +185,7 @@ if (MODE === '--reboot') {
   (async () => {
     const DB = process.argv[3], OUT = process.argv[4], DAY = +process.argv[5];
     const PL = process.argv[6] ? JSON.parse(process.argv[6]) : null;
-    const Z = await bootZone(DB, 41400 + (process.pid % 300), { ENABLE_VILLAGES: '1', ENABLE_ROADS: '0', VILLAGE_DAY_MS: '2500' }, DAY);
+    const Z = await bootZone(DB, require('./lib-port').port(41400), { ENABLE_VILLAGES: '1', ENABLE_ROADS: '0', VILLAGE_DAY_MS: '2500' }, DAY);
     const { H } = Z;
     Z.clock(DAY);
     const c = countStanding(H, terrCellsOf(H), DAY);
@@ -202,7 +202,7 @@ if (MODE === '--reboot') {
 if (MODE === '--seoul') {
   (async () => {
     const DB = process.argv[3], OUT = process.argv[4], ARM = process.argv[5];
-    const Z = await bootZone(DB, 41700 + (process.pid % 200), { ENABLE_VILLAGES: '1', ENABLE_ROADS: '1', T566_REGROW_BLOCK: ARM === 'off' ? '0' : '1' });
+    const Z = await bootZone(DB, require('./lib-port').port(41700), { ENABLE_VILLAGES: '1', ENABLE_ROADS: '1', T566_REGROW_BLOCK: ARM === 'off' ? '0' : '1' });
     const { H } = Z;
     //   시계가 선 첫 틱을 기다린다(풀린 길 · 옛 행 승격 — 부팅이 미룬 일)
     for (let i = 0; i < 400 && H._t566RelPend && H._t566RelPend.length; i++) await sleep(100);
@@ -260,7 +260,7 @@ if (MODE === '--seoul') {
   const TMP = `/tmp/test-regrow-block-${process.pid}.db`;
   const rmDb = (f) => { for (const x of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + x); } catch (e) {} } };
   rmDb(TMP); process.on('exit', () => rmDb(TMP));
-  Object.assign(process.env, { ZONE_ID: ZID, PORT: String(40800 + (process.pid % 150)), DB_PATH: TMP,
+  Object.assign(process.env, { ZONE_ID: ZID, PORT: String(require('./lib-port').port(40800)), DB_PATH: TMP,
     ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '1', E2E_GIVE: '1' });
   delete process.env.T566_REGROW_BLOCK;   // 제품 기본(켬)으로 잰다
   // ★[T696] ⓑⓖ 는 길 셀의 `d` 를 **뒤로** 고쳐 써서(현실엔 없는 일 — 밟으면 `d` 는 늘기만 한다) 경계 재구축이 내림을 보는지 잰다.

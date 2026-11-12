@@ -25,7 +25,7 @@ const say = (m) => console.log(m);
 const TMP = `/tmp/test-body-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(37000 + (process.pid % 800));
+process.env.PORT = String(require('./lib-port').port(37000));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
 process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

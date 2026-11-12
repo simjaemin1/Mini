@@ -27,7 +27,7 @@ const TMP = `/tmp/test-streams-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 delete process.env.T585_STREAMS;
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(38700 + (process.pid % 200));
+process.env.PORT = String(require('./lib-port').port(38700));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
 let pass = 0, fail = 0;

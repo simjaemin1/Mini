@@ -29,7 +29,7 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
 const TMP = `/tmp/test-inv-ground-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(39300 + (process.pid % 150));
+process.env.PORT = String(require('./lib-port').port(39300));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '0';   // 이 절은 마을이 필요 없다 — 바닥과 가방의 이야기다
 process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';

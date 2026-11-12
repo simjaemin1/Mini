@@ -33,7 +33,7 @@ const say = (m) => console.log(m);
 const TMP = `/tmp/test-fishing-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(39000 + (process.pid % 800));
+process.env.PORT = String(require('./lib-port').port(39000));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '1';   // ④ 자원 정합엔 마을이 필요하다
 process.env.VILLAGE_MAX = process.env.VILLAGE_MAX || '2';

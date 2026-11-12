@@ -251,7 +251,7 @@ function auditZoneMap(zid, png, flip) {
       const cx = BB.sampleCell(bx, 4, T.W), cy = BB.sampleCell(by, 4, T.H);
       if (T.at(cx, cy) === BB.K.water && T.at(cx + 1, cy) === BB.K.water) pick = { cx, cy };
     }
-    const port = 3690 + (process.pid % 50);
+    const port = require('./lib-port').port(3690);
     const code = `const _l=console.log; console.log=()=>{}; console.warn=()=>{}; console.error=()=>{};
 const Z=require(${JSON.stringify(path.join(ROOT, 'server', 'zone.js'))}); const H=Z.__testBind();
 const out=(o)=>{ process.stdout.write(String.fromCharCode(10)+'T565OUT'+JSON.stringify(o)+String.fromCharCode(10)); process.exit(0); };

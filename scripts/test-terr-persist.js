@@ -27,7 +27,7 @@ const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 
 const ROOT = path.join(__dirname, '..');
-const CPORT = parseInt(process.env.TP_CPORT || '', 10) || (3960 + (process.pid % 20));
+const CPORT = parseInt(process.env.TP_CPORT || '', 10) || (require('./lib-port').ports(2, 3960));
 const ZPORT = CPORT + 1;
 const DAYS = parseInt(process.env.TP_DAYS || '', 10) || 40;
 const DAY_MS = parseInt(process.env.TP_DAY_MS || '', 10) || 2500;

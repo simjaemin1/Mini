@@ -22,7 +22,7 @@ const DB = path.join(DIR, 'w.db');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
 rmdb(DB); for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(TPL + s, DB + s); } catch (e) {} }
-const CP = 3970 + (process.pid % 10) * 2, ZP = CP + 1, SECRET = 't740-' + TAG;
+const CP = require('./lib-port').ports(2, 3970), ZP = CP + 1, SECRET = 't740-' + TAG;
 const pre = ['t722-stop-hook.js', 't740-side-hook.js'].map((f) => `--require ${path.join(__dirname, f)}`).join(' ');
 function bootZone(phase, extra) {
   const lf = fs.openSync(path.join(DIR, phase + '.log'), 'w');

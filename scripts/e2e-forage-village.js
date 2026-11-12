@@ -72,7 +72,7 @@ function plan() {
                 isWater: (x, y) => T.isWaterCellLocal('hanbando', x, y) };
   // 개체가 무엇을 주는지 — zone 정본(조용한 적재)
   const _l = console.log, _w = console.warn, _e = console.error;
-  process.env.PORT = String(36800 + (process.pid % 100)); process.env.DB_PATH = `/tmp/e2e-fv-inproc-${process.pid}.db`;
+  process.env.PORT = String(require('./lib-port').port(36800)); process.env.DB_PATH = `/tmp/e2e-fv-inproc-${process.pid}.db`;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
   console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const lootOf = require(path.join(ROOT, 'server', 'zone.js')).__testBind().lootOfResource;

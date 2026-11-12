@@ -19,7 +19,7 @@ if (!OFF) delete process.env.T509_WELL; else process.env.T509_WELL = '0';   // â
 const TMP = `/tmp/test-well-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
-process.env.PORT = String(38400 + (process.pid % 300));
+process.env.PORT = String(require('./lib-port').port(38400));
 process.env.DB_PATH = TMP;
 process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
 const _l = console.log, _w = console.warn, _e = console.error;
