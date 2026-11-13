@@ -13578,6 +13578,13 @@ function _t1229Need(vil) {
   if (!_lifeFrontier(vil).length) { _t1229Stat.blocked++; return false; }
   return true;
 }
+// ★★[T1294 ⓑ · 손잡이 `T1294_LIFE_MEMO`(끔 기본 · `'1'` 만 켬 · 셈이 바뀐다)] **생활층 다시 묻기 줄임** — 결정 사이 안 바뀐 입력이면 지난 답.
+//   ① 농부 개간 수요(`_lifeNeedClear`) — 같은 틱(같은 `now`)에 같은 마을 농부들이 차례로 묻는 답을 마을마다 한 번. 바뀌는 입력: 곳간 식량 · 사람 수 · 밭 수(`_farmSet`) ·
+//      비옥도 — 같은 틱 안에서 앞 몸이 밭을 끝내면(밭 수 +1) 뒤 몸은 지난 답을 본다(그래서 셈이 바뀐다).
+//   ② 어부 던질 자리(zone `_t1294Cast`) — 켬이면 열쇠가 몸의 정확한 x · y 대신 그 칸(32px)이다.
+const T1294_LIFE_MEMO = process.env.T1294_LIFE_MEMO === '1';
+const _t1294NC = new WeakMap(), _t1294NCStat = { q: 0, hit: 0 };
+function _t1294NeedClear(vil, now) { _t1294NCStat.q++; const m = _t1294NC.get(vil); if (m && m.now === now) { _t1294NCStat.hit++; return m.v; } const v = _lifeNeedClear(vil); if (m) { m.now = now; m.v = v; } else _t1294NC.set(vil, { now, v }); return v; }
 function _lifeNeedClear(vil) {   // 랩 needLand 동형: 보즈럽 수요 게이트 + 목표 미달
   const e = vil.econ; if (!e || !vil._potSet) return false;
   if (_lifeEcon().t1260FoodOf(e) > e.npcs.length * 120) return false;   // ★[T1260 ②] 켬 = 곳간 식량 합계(끔 = `food` 칸 · 종전 글자)
@@ -16855,7 +16862,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (dayFrac > SCH_FARMW_R && npc._fOutD !== bday) { _lifeGoHome(npc, '휴식'); return true; }
     npc._fOutD = bday;   // 창 안 진입 — 오늘 출근 도장(창 지나도 계속 근무)
   }
-  if (isFarmer && vil._clearCrew < LIFE_CREW && _lifeNeedClear(vil)) {
+  if (isFarmer && vil._clearCrew < LIFE_CREW && (T1294_LIFE_MEMO ? _t1294NeedClear(vil, now) : _lifeNeedClear(vil))) {   // ★[T1294 ⓑ 켬] 같은 틱(같은 `now`)의 마을 답 하나
     const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
     for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (vil._claim.has(k) || vil._farmSet.has(k)) continue; const dx = c2.cx * SZ + 16 - npc.x, dy = c2.cy * SZ + 16 - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
     if (best) { vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }; npc._workT = now;

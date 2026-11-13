@@ -13922,7 +13922,10 @@ const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';   // ★PM land1048
 // 헤드리스 랩은 이 문을 등록하지 않으므로 기존 경제 자를 그대로 쓴다.
 const _productionActHosts = new WeakSet();
 function bindProductionActs(world) { if (world && typeof world === 'object') _productionActHosts.add(world); }
-function productionActsBound(v) { return !!(v && v._world && _productionActHosts.has(v._world)); }
+// ★[T1294 · T1290 회부 4] 같은 답 기억 — 등록 집합은 늘기만 한다(`add` 뿐 · 지우는 자리 0) ⇒ 한 번 참이었던 세계는 늘 참이다. 마지막 참 세계 하나를 들고
+//   같은 세계면 집합을 다시 묻지 않는다(존 몸 걸음마다 두 번씩 불린다 — T1290 표본 1.1 ~ 1.8 %). 답 · 차례 무변.
+let _pabLast = null;
+function productionActsBound(v) { const w = v && v._world; if (!w) return false; if (w === _pabLast) return true; if (_productionActHosts.has(w)) { _pabLast = w; return true; } return false; }
 // ★★[T1195 2026-11-06 · 추상 걷기 A · ★재민 11-05 "추상 다 없애자고 했는데 왜 아직도 남겨둔 거야"] **사냥 고기 = 몸이 잡은 마리 × kg.**
 //   종전: 사냥꾼 산출 = 공식 `0.7 × land.game × 숙련 × 도구`(+ 부산물 비율) — 개체 장부(T146)가 빼는 마리 · 보이는 몸 사냥(T158)과 따로 놀았다.
 //   켬: 실제 호스트(위 `bindProductionActs`)에서 사냥꾼의 수식 산출(고기 · 부산물 다)을 닫고(아래 `productionFormulaOff` 한 항),
