@@ -1,7 +1,7 @@
 """Read-only progress for the bounded T1302 measurement supervisor."""
 from pathlib import Path
 import sys,json
-P=Path(sys.argv[1] if len(sys.argv)>1 else '/tmp/t1302-r1')
+P=Path(sys.argv[1] if len(sys.argv)>1 else '/tmp/t1302-r2')
 parts=[]
 for d in sorted(P.iterdir()):
  if not d.is_dir() or not (d/'input.json').exists():continue
@@ -17,5 +17,5 @@ for d in sorted(P.iterdir()):
  except (ValueError,IndexError):pass
  parts.append(name)
 print(' | '.join(parts))
-for f in ['complete.json','failure.json']:
- if (P/f).exists():print('SUPERVISOR',json.loads((P/f).read_text())['state'])
+for f in ['complete.json','failure.json','interrupted.json']:
+ if (P/f).exists():print('SUPERVISOR',json.loads((P/f).read_text()).get('state','interrupted'))

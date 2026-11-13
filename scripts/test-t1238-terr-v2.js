@@ -410,7 +410,7 @@ function runZone() {
 
 function t1302People(V,E) {
   const players=new Map(),npcs=new Set();let serial=0;
-  const deps={players,npcs,broadcast:()=>{},moveSpeed:64,dayPhaseRatio:.7,isTerrainBlockedLocal:()=>false,
+  const deps={players,npcs,broadcast:()=>{},moveSpeed:64,dayPhaseRatio:.7,isTerrainBlockedLocal:()=>false,corpseMs:300000,deathDrop:()=>0,setHp:require('./lib-hp-door').makeSetHp(()=>{}),
     spawnNpc:q=>{const p={pid:'person'+(++serial),x:q.x,y:q.y,hp:100,maxHp:100,isNpc:true,inventory:{}};players.set(p.pid,p);npcs.add(p.pid);return p;}};
   const make=(id,name,x)=>({dbId:id,name,ccx:x,ccy:200,housesPx:[],_houseCells:[],_granList:[],npcPids:[],econ:E.createVillage({name,initialPop:2,size:60,fertility:1,water:1,wood:1,game:1,stone:1,ore:1})});
   const a=make(1,'A',200),b=make(2,'B',240),world={day:10,seed:1020};
@@ -429,7 +429,13 @@ function t1302People(V,E) {
   b.econ.npcs.push(person);
   const joined=H._t765Join(leaving.pids[0],b,person);
   H.syncVillagePop(a,2);H.syncVillagePop(b,2);H.syncVillageJobs(a);H.syncVillageJobs(b);
-  return {full,selectedSame:!!body&&leaving.pids[0]===body.pid,joined,
+  const dead=a.econ.npcs[0],oldBody=a.npcPids.map(pid=>players.get(pid)).find(p=>p._econId===dead.id);
+  H._t1197Person(a,oldBody); // Populate today's same-N cache before replacing a person.
+  a.econ.npcs.splice(0,1);a.econ.npcs.push(E.createNPC({job:'farmer'}));a.econ._deadTot=(a.econ._deadTot||0)+1;
+  V.banditHost().t1302Prepare(a);
+  const freshIndex=a.econ.npcs.every(q=>a.npcPids.some(pid=>players.get(pid)?._econId===q.id));
+  const deathObserved=H.state.bodyExits.get(oldBody.pid)?.cat==='died';
+  return {full,freshIndex,deathObserved,selectedSame:!!body&&leaving.pids[0]===body.pid,joined,
     arrivalSame:players.get(leaving.pids[0])?._econId===person.id,
     ratio:Math.min(a.npcPids.length/a.econ.npcs.length,b.npcPids.length/b.econ.npcs.length),
     meals:E.T1197_MEAL_BODY,bodyBirthFlag:E.T1198_BIRTH_BODY};
@@ -699,7 +705,7 @@ sec('ⓝ [T1302] 관측자 없이 몸이 개간·귀환·말뚝 · 관측자 미
   const bodyCheck=x=>!!(x&&!x.err&&x.body>0&&x.body===x.grew&&x.cells===x.grew&&x.batch===0);
   ok(bodyCheck(n),'관측자0: 영토 증가는 전부 몸 완공 · 일괄 호출0',n);
   ok(n&&!n.err&&n.far.work===0&&n.far.tree===1&&n.far.stock===n.stock&&n.heldBeforeReturn&&n.felled===1&&n.tree===0,'멀리선 일·벌목·입고0 · 벤 짐은 귀환 전에 손에',n);
-  ok(n?.people?.full && n.people.selectedSame && n.people.joined && n.people.arrivalSame && n.people.ratio===1 && !n.people.meals && !n.people.bodyBirthFlag,'하루+5도 몸 전부 · 떠난 사람=걷는 몸=도착 사람 · 식사 켬 없이 1:1',n?.people);
+  ok(n?.people?.full && n.people.selectedSame && n.people.joined && n.people.arrivalSame && n.people.ratio===1 && n.people.freshIndex && n.people.deathObserved && !n.people.meals && !n.people.bodyBirthFlag,'하루+5도 몸 전부 · 떠난 사람=걷는 몸=도착 사람 · 식사 켬 없이 1:1',n?.people);
   ok(v&&!v.err&&v.body===n?.body&&v.grew===n?.grew&&v.batch===0,'관측자1도 같은 몸 경로',v);
   ok(b && b.batch>0 && /did not queue/.test(b.err||'') && !bodyCheck(b),'미끼: 관측자 갈래를 되살리면 위 완공 검사가 빨강',b);
 }
