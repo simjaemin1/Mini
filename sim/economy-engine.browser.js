@@ -14850,6 +14850,27 @@ function t1149WinterNeed(v, day) {
   const N = v.npcs.length; if (!(N > 0)) return 0;
   return Math.max(0, N * DAILY_FOOD_CONSUMPTION * t1149WinterDays(day) - totalFoodEquivalent(v));
 }
+// ★★★[T1297 2026-11-13 · T1283 회부 1 · 3] 손잡이 `T1297_BIRTH_FOOD`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트 · 세계 갈래 0) — **출생 문이 그 마을 곳간 식량 일치를 본다.**
+//   T1283 관찰: 끔 세계에서 출생을 붙잡은 것은 주거 문 하나였다(마을-날의 61 ~ 68%). 나무를 대는 고침(T1275 · T1283 · 영토 v2)마다 그 문이 열리고,
+//     풀린 출생은 K(땅 · 일자리 만충 부양력 — 곳간을 안 본다)로 간다 — 묶음 + T1283 늘림의 45 ~ 49% 가 곳간 10일치 밑 날에 섰다 → 꼭대기 뒤 25 ~ 30% 내림.
+//   켬 — 그날 늘림(dP > 0)은 곳간 식량 환산 ≥ (사람 + 1) × 하루 소비 × 문턱 날 수일 때만 선다(아니면 0 — 주거 문 · T1149 출생 문과 같은 꼴 · 그 둘 뒤).
+//     문턱 날 수 = max(기근 문 날 수, 겨울에 남은 날)
+//       · 기근 문 날 수 = 피커 기근 블록(`pickDeficitJob_rational` 의 `foodEquiv < N * 30` — "강제 30일버퍼")의 그 30. 그 줄은 하네스 셋
+//         (`test-t1148-fuel-job` · `test-wood-step1` · `test-t1238-terr-v2`)이 글자로 핀이라 그대로 두고 이름만 붙인다 — `test-t1198-birth-body` ⑤ 가 두 수가 같은지 본다(사본 0).
+//       · 겨울에 남은 날 = 겨울 들머리 규약(재민 "겨울은 모아 둔 식량으로" · 족보 762 — 겨울 들머리 곳간 = 마을 사람 × 겨울 날 수) — 겨울 안이면 다음 봄까지 남은 날
+//         (달력 정본 `t1149LeanDays` · 겨울 들머리 = 겨울 한 철 90날) · 겨울 밖이면 0(기근 문만). T1149 ⓑ 와 다른 점: 그 문은 겨울 밖에서도 다가오는 겨울 한 철(90일치)을
+//         늘 요구해 곳간 가운데 29 ~ 57일치인 세계의 출생을 거의 다 막았다(T1283 실험 판 — 325날까지 409 → 451명).
+//   ⚠K · 로지스틱 · 주거 문 · 죽음 줄은 한 글자도 안 바뀐다 — 곳간이 문턱 밑이면 그날 늘림만 0 이다(누적 `_dPAccum` 의 1 밑 몫은 종전처럼 남는다).
+const T1297_BIRTH_FOOD = (typeof process !== 'undefined' && process.env && process.env.T1297_BIRTH_FOOD === '1');
+const T1297_FAMINE_DAYS = 30;   // 피커 기근 블록 `foodEquiv < N * 30` 의 그 수(위 머리말 — 이름만 · 하네스가 같은지 본다)
+function _t1297InWinter(day) {   // 겨울 안인가 — 달력 정본(12 · 1 · 2월) · 옛 달력이면 `d % 365` 270 ~ 364(`t1149WinterDays` 와 같은 경계)
+  const C = _t1149C(), d = day | 0;
+  if (!C || !C.ON || typeof C.dateOf !== 'function') { const r = ((d % 365) + 365) % 365; return r >= 270; }
+  const t = C.dateOf(d);
+  return t.month === 12 || t.month <= 2;
+}
+function t1297WinterLeft(day) { return _t1297InWinter(day) ? t1149LeanDays(day) : 0; }   // 겨울에 남은 날(겨울 밖 0)
+function t1297NeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day)); }   // 출생 문턱 날 수
 // ★★[T1179 2026-11-05 · ★재민 11-05 "겨울에 식량 수확이 있어? 작물별로 수확 기간이 다 다르고 겨울에는 아예 작물이 없지 않아?"] **작물 철** — 손잡이 `T1179_CROP_SEASON`
 //   (끔 기본 · `=1` 켬 · 끔 = 아래 갈래를 아무도 안 탄다 = 종전 바이트).
 //   농부의 하루 일(식 무변 — `JOBS.farmer.base` × 비옥도 × 철 배수 × 숙련 · 도구 …)은 그대로 하고, 그 식량(`food` · 생곡 셋)을
@@ -18114,6 +18135,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   if (_gated) dP = 0;
   // ★[T1149 ⓑ] 출생에 곳간 문 — 곳간이 다가오는 겨울을 한 사람 더 먹일 만큼일 때만(위 `T1149` 주석) · 막힌 날 표지 `_t1149Gate`(표 기계가 센다)
   if (T1149.birth) { v._t1149Gate = 0; if (dP > 0 && totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1149WinterDays(day)) { dP = 0; v._t1149Gate = 1; } }
+  if (T1297_BIRTH_FOOD) { v._t1297Gate = 0; if (dP > 0 && totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)) { dP = 0; v._t1297Gate = 1; } }   // ★[T1297] 출생 곳간 문(위 머리말 · 끔 = 이 줄 무동작 · 칸 0)
   v._dpDebug = { K: +K.toFixed(1), logi: +_logiTerm.toFixed(3), hunger: +_hungerTerm.toFixed(3), health: +_healthTerm.toFixed(3), happy: +_happyTerm.toFixed(3), prestige: +_prestigeTerm.toFixed(3), housing: (v.housing !== undefined ? +(+v.housing).toFixed(1) : null), gated: _gated, dP: +dP.toFixed(3) };
   // ΔP 상한
   const maxDelta = _homeN * POP_MAX_DELTA_PCT;
@@ -20158,7 +20180,7 @@ module.exports = {
   T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
   T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
-  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
+  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)

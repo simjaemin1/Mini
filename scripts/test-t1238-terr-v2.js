@@ -16,6 +16,8 @@
 //   ⓚ 글자 — 손잡이 하나 · econ 출구 · 존 문 · 클라 · 출처 줄
 //   ⓛ [T1275] 나무꾼 몸 행위 끔 세계 — 개간 통나무 입구(곳간 · 수요 = 말뚝 모자람) · 짐이 이튿날 먼저 든다 · 그 통나무로 말뚝 · 미끼(입구 0 사본 → 빨강) · 몸 세계 그대로
 //   ⓜ [T1283] 나무 모자람 → 직업 고르기(`T1283_WOOD_DEMAND`) — 기근 블록 앞 · 모자람 = 못 땐 땔감 + 못 지은 집 + 말뚝 모자람 · 한 사람이 하루 메우는 몫 견주기 · 끔 = 종전 ·
+//   ⓝ [T1297 할 일 3 · T1283 (나)] 관측 마을 몸의 개간 일 — 켬이면 그 칸 그루의 통나무를 몸이 짐씩 지고 곳간 사다리까지 걷는다(부리는 줄 = 일괄과 같은 `_t1207LogIn`) ·
+//      더미가 비어야 영토 · 짐 ≤ 한 짐 · 부린 곳 = 사다리 · 끔(종전 — 끝낸 순간 영토 · 통나무 곧장 곳간) · 수식 나무꾼 세계 무동작 · 헤드리스로 넘어가면 남은 더미는 곳간으로
 //       미끼(수요를 상수로 박은 사본 → 빨강) · 틱 칸 넷(켬만) · (나) 개간 통나무 걸음(`T1283_CLEAR_HAUL` · 나무꾼 몸 켬 세계만)
 //
 // 실행: node scripts/test-t1238-terr-v2.js
@@ -408,10 +410,53 @@ function runZone() {
   return out;
 }
 
+// ── ⓝ [T1297 할 일 3 · T1283 (나)] 관측 마을 몸의 개간 통나무 걸음 ──────────────────────────────────────────────
+//   마을 B(창설 7×7) · 곳간 하나(사다리 = 마을 가운데 칸) · 크루 몸 하나 · 영토 일감 하나(맞닿은 칸 · 말뚝 0 · 개간 1분) · 그 칸 그루 셋(그루마다 통나무 5)
+//   몸 걸음은 `_t1181Step`(정본) 그대로 부르고, 그 몸이 가려는 자리(`targetX/Y`)로 옮겨 놓는다(걸음 물리 대신 — 걸음 다리 · 기다림 · 부림은 정본 줄).
+function runT1297Haul() {
+  const F = fixture(), { V, E, P } = F;
+  const out = { t325: E.T325_WOOD_ACT === true, haul: process.env.T1283_CLEAR_HAUL === '1', perLoad: E.crewPerLoad('wood') };
+  F.trees.clear();
+  const W = F.mk(21, 'B', 15000, 15000, 3, {});
+  W.econ.housing = 600; W.econ.storage.wood = 0;
+  W._granList = [{ cx: 15000, cy: 14998 }];
+  const npc = F.body(211); W.npcPids = [211];
+  const L = { x: 15000 * 32 + 16, y: 15000 * 32 + 16 };   // `_granLadder` — 곳간 렉트 남쪽 칸
+  npc.x = L.x; npc.y = L.y;
+  const world = { day: 600 }; E.bindProductionActs(world); W.econ._world = world;
+  setWorld(F, [W], 600);
+  const key = '15004,15000';
+  F.trees.set(key, 3);
+  W._t1207Pend = [{ key, cx: 15004, cy: 15000, wood: 0, laborMin: 1, m: 1, mat: {}, workMs: 0 }];
+  const e = W.econ, got = () => (e.storage.wood || 0) + (e._t717Pack || 0);
+  const g0 = got();
+  let now = 1e7, steps = 0, maxInv = 0, deposits = 0, atLadder = 0, atSite = 0, terrEarly = false;
+  for (; steps < 800 && W._t1207Pend.length; steps++) {
+    const b = got();
+    P._t1181Probe.step(W, npc, now, true);
+    const a = got();
+    if (a > b + 1e-9) { deposits++; if (Math.hypot(npc.x - L.x, npc.y - L.y) <= 44) atLadder++; if (Math.hypot(npc.x - (15004 * 32 + 16), npc.y - (15000 * 32 + 16)) <= 44) atSite++; }
+    const inv = (npc.inventory && npc.inventory.wood) || 0; if (inv > maxInv) maxInv = inv;
+    if (W._terrSet.has(key) && W._t1207Pend.length) terrEarly = true;
+    if (Number.isFinite(npc.targetX)) { npc.x = npc.targetX; npc.y = npc.targetY; }
+    now += 7000;
+  }
+  const T = W._t1207 || {};
+  out.res = { steps, done: W._terrSet.has(key), left: W._t1207Pend.length, trees: F.trees.get(key) || 0, maxInv: +maxInv.toFixed(3), loads: T.haulLoads || 0, felled: T.felled || 0,
+    woodIn: +(T.woodIn || 0).toFixed(3), got: +(got() - g0).toFixed(3), deposits, atLadder, atSite, terrEarly, inv: (npc.inventory && npc.inventory.wood) || 0 };
+  //   헤드리스로 넘어간다 — 벤 채 아직 안 진 더미(7 단)는 곳간으로(`_t1207Flush`)
+  const g1 = got();
+  W._t1207Pend = [{ key: '15000,15004', cx: 15000, cy: 15004, wood: 0, laborMin: 1, m: 1, mat: {}, workMs: 0, _t1283Pile: 7 }];
+  V._t1207Flush(W);
+  out.flush = { got: +(got() - g1).toFixed(3), left: W._t1207Pend.length };
+  return out;
+}
+
 if (MODE === 'vil') { const o = runVil(); process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 'off') { const o = runOff(); process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 't1275') { let o; try { o = runT1275(); } catch (e) { o = { err: e.stack }; } process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 't1283') { let o; try { o = runT1283(); } catch (e) { o = { err: e.stack }; } process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
+if (MODE === 't1297haul') { let o; try { o = runT1297Haul(); } catch (e) { o = { err: e.stack }; } process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 'zone') { let o; try { o = runZone(); } catch (e) { o = { err: e.stack }; } process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 
 let pass = 0, fail = 0;
@@ -630,6 +675,31 @@ sec('ⓜ [T1283] 나무 모자람 → 직업 고르기 · 미끼 · 틱 칸 · (
     && /if \(walk \+ hw > budget\) \{ _keepCleared\(\); continue; \}/.test(VS)
     && /if \(E\.T1283_WOOD_DEMAND\) e\._t1283Clear = \(e\._t1283Clear \|\| 0\) \+ g;/.test(VS) && /if \(_lifeEcon\(\)\.T1283_WOOD_DEMAND\) vil\.econ\._t1283Clear = \(vil\.econ\._t1283Clear \|\| 0\) \+ g;/.test(VS),
     '글자 — 손잡이 둘(끔 기본 · `\'1\'` 만) · 일괄 말뚝 줄은 걸음 끔이면 종전 식(hw = 0) · 개간 통나무와 짐에서 든 몫을 같은 칸에 센다(켬만)');
+}
+sec('ⓝ [T1297 할 일 3 · T1283 (나)] 관측 마을 몸의 개간 통나무 걸음');
+{
+  const ENV = { T1207_TERR_REAL: '1', T1238_TERR_V2: '1', T1213_DERIV_ADD: '0', T1283_WOOD_DEMAND: '0' };
+  const H1 = child('t1297haul', Object.assign({}, ENV, { T325_WOOD_ACT: '1', T1283_CLEAR_HAUL: '1' }));
+  const H0 = child('t1297haul', Object.assign({}, ENV, { T325_WOOD_ACT: '1', T1283_CLEAR_HAUL: '0' }));
+  const HF = child('t1297haul', Object.assign({}, ENV, { T325_WOOD_ACT: '0', T1283_CLEAR_HAUL: '1' }));
+  const bad = [H1, H0, HF].find((x) => !x || x.err);
+  if (bad !== undefined) ok(false, 'T1297 걸음 자식 판이 안 섰다', bad && bad.err);
+  else {
+    const r1 = H1.res, r0 = H0.res, rf = HF.res, units = 15, loads = Math.ceil(units / H1.perLoad - 1e-9);
+    ok(H1.t325 && H1.haul && r1.done && r1.left === 0 && r1.trees === 0 && r1.felled === 3 && near(r1.got, units, 1e-6),
+      `켬 — 그루 셋을 다 베고 통나무 ${units} 단이 다 곳간(+ 넘친 몫은 마을 짐)에 들었다 · 그 칸이 영토`, r1);
+    ok(r1.loads === loads && r1.maxInv <= H1.perLoad + 1e-9 && r1.deposits === loads && r1.atLadder === loads && r1.atSite === 0,
+      `★몸이 짐씩(한 짐 ${H1.perLoad} 단 · ${loads} 짐) 지고 곳간 사다리에서 부렸다 — 부린 곳 ${r1.atLadder}/${r1.deposits} 이 사다리 · 칸에서 든 몫 0`, r1);
+    ok(!r1.terrEarly && r1.inv === 0, '더미가 비기 전엔 영토가 아니다 · 끝에 몸 손에 남은 통나무 0', r1);
+    ok(!H0.haul && r0.done && r0.loads === 0 && near(r0.got, units, 1e-6) && r0.deposits === 1 && r0.atSite === 1 && r0.atLadder === 0,
+      '끔 — 종전 줄: 일을 끝낸 순간 영토 · 통나무 15 단이 칸에서 곧장 곳간(걸음 0)', r0);
+    ok(!HF.t325 && rf.done && rf.loads === 0 && rf.deposits <= 1, '수식 나무꾼 세계(T325 끔) — 켜도 걸음 0(그 세계엔 나무꾼 몸이 없다)', rf);
+    ok(near(H1.flush.got, 7, 1e-6) && H1.flush.left === 0 && near(H0.flush.got, 7, 1e-6), '관측이 끝나 헤드리스로 넘어갈 때 — 벤 채 안 진 더미 7 단은 곳간으로(`_t1207Flush`)', { on: H1.flush, off: H0.flush });
+  }
+  const VS2 = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+  ok(/if\(_t1283BodyHaul\(vil,npc,t\)\)return;_t1207BodyDone\(vil,t\.site\);return;/.test(VS2) && /n \+= _t1207FellCell\(vil, x, y, \(u\) => _t1207LogIn\(vil, u\)\);/.test(VS2)
+    && /refund:\(k,n\)=>\{if\(npc\._t1181Haul&&npc\._t1181Haul\.t1283\)\{_t1207LogIn\(vil,n\);return;\}E\.returnActMaterials\(vil\.econ,k,n\);\}/.test(VS2),
+    '글자 — 몸 일감은 일한 시간을 채운 뒤 더미부터 · 일괄과 몸이 부리는 줄 하나(`_t1207LogIn`) · 돌려 놓기 부림은 개간 통나무 짐만 그 줄로');
 }
 console.log(`\n=== T1238: ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
