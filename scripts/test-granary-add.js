@@ -188,5 +188,14 @@ console.log('\n[⑥ 목표 도달 후 추가 증설 없음]');
   chk(vil._granList.length === 1 && !vil._granPend, '식량 2500(목표 1동)·기존 1동 → 착공 0');
 }
 
+// --- ★[T1291] 식량이 목표를 정하는 길 — 원문 함수 안의 econ 문 `t1260FoodOf` 를 지나서 ---
+//   ① 은 목표 식을 하네스 쪽에서 다시 셀 뿐이고 ② · 뒤 판은 목표 1 또는 8 의 한 판씩이라, 식량 읽기가 0 이 되어도(목표 1동) 초록이었다(T1291 미끼 G-a).
+console.log('\n[★ 식량 → 목표 동 수(원문 함수 · econ 문)]');
+{
+  const lo = newVil(2400), hi = newVil(20000);
+  for (let d = 0; d <= 40; d++) { state.world.day = d; API._lifeGranAdd(lo); API._lifeGranAdd(hi); }
+  chk(lo._granList.length === 1 && hi._granList.length > 1, `식량 2,400 → ${lo._granList.length}동(목표 1) · 20,000 → ${hi._granList.length}동(목표 8 · 40날에 7날 간격)`);
+}
+
 console.log('\n' + (fail === 0 ? '결과: PASS (전 항목)' : `결과: FAIL (${fail}건)`));
 process.exit(fail === 0 ? 0 : 1);

@@ -34,6 +34,15 @@
 //      t0 판(`startReturnLeg` T772 `_t661.t0`): 머묾 끝 귀환 몸 26 — 흔들림 A ↔ B 에서 `t0` 가 갈린 몸 수 = 0 · `t0` = 머묾 끝(econ 날 시계 축)
 //   ⑥ ★[T1282] 미끼 넷 — 고친 줄 하나씩 종전 글자로 되돌린 사본(마감 중 시계 `D × 하루` · `legDays` 벽시계 `now` · `t0` 벽시계 `now` · 닫는 날 적기 없음) ⇒ 그 판이 빨강.
 //      종전 셋을 한꺼번에 되돌린 사본이 "고치기 전" 수다(보고 T1282 첫 줄 ○ → 0 의 ○).
+//   ⑦ ★[T1289 · T1282 회부 3] 마감 틈의 `econDayToMs` 앵커 — gp 판: 마감을 운영 차례로 열고(경계 → 닫는 날 적기 → econ 머리 앞 틈) 틈 틱마다
+//      틈에 불리는 경계 읽기 다섯(`econDayToMs(D)` · `econDayToMs(D + 1)` · 기온 시계 `econDayT` · 달력 경계 `t728CalNext` · 걸음 날 수의 '지금' `_t1282Wall`)이
+//      econ 머리 뒤 정렬(= 닫는 날의 끝 · 지난 경계)과 다른 (틱 × 자리) 수 = 0 · 기온 시계가 거꾸로 간 틱 = 0 · 흔들림 A ↔ B 바이트 같음
+//   ⑧ ★[T1289 · T1273 회부 1] 캐러밴 세 칸(`departAt` · `arriveAt` · `nomPxMs`) = econ 날 시계 축 — car · xz 판 걸음마다 세 칸이 흔들림 A ↔ B 에 갈린 몸-걸음 = 0 ·
+//      몸 세우기 도착 = econ 날 경계(d × 하루) · 저장 바이트가 흔들림에 갈리는 칸 = `at` 하나(③ 마지막 줄 — T1289 가 고친 단언)
+//   ⑨ ★[T1289 · T1282 회부 5] 저장 축 표지 — 판 둘(sv 저장 · ld 되살림 · 다른 프로세스 · 다른 손잡이)로 머묾 끝 · 귀환 보간이 되살린 판에서 축을 섞나:
+//      켬 저장 → 켬 · `T762_CARAVAN_BODY=0` · 끔 / 표지 없는 옛 켬 저장 → 켬 / 끔 저장 → 켬 · 끔 — 머묾이 저장한 econ 순간에 끝나지 않은 몸 · 귀환 보간 몫이 갈린 몸 = 0
+//   ⑩ ★[T1289] 미끼 — 틈 갈래 하나를 종전 축으로(G1) · 세 칸 자리 하나를 종전 벽시계로(F1 · F2 · F3) · 저장 축 표지를 지움(X1) · 되살림 축 옮김 없음(X2) ⇒ 그 판이 빨강.
+//      X2 사본이 ⑨ 의 "고치기 전" 수다(되살림이 축을 안 옮기던 종전 · 표지도 무의미).
 //
 // 실행: node scripts/test-t1273-clock-rest.js   (존 안 띄움 · 아이 프로세스 열 · 몇 초)
 'use strict';
@@ -62,10 +71,11 @@ const READERS = {
   _xzWalkToBorder: [4, '세 칸끼리(경계 칸까지 명목 빠르기)'], _xzSend: [1, '경계 기다림 상한 `until`(`!body._t1182` 몸만 읽는다)'],
   _t661Vis: [1, '종전 보간(T1182 몸은 안 부른다)'], tickCaravanBodies: [6, '종전 페이싱(T1182 몸 줄 뒤)'],
   xzonePerf: [3, '`/perf` 안 문(관측)'], t1034Peek: [1, '`/perf` 안 문(관측)'],
+  _t1289Leg: [1, '세 칸끼리(★[T1289] 켬 · T1182 몸 = econ 날 시계 축 `nomPxMs = len ÷ (arriveAt − 출발)`)'],   // ★[T1289] 새 줄 — 세 칸을 적는 자리(읽기 = 같은 줄의 `arriveAt`)
   _warEnsureBody: [2, '전쟁 몸(캐러밴 아님)'], _warPaceCommander: [2, '전쟁 몸'], _warSetupReturn: [1, '전쟁 몸'], _warPaceReturn: [2, '전쟁 몸'],
 };
 //   켬 판에서 실제로 읽어도 되는 함수(접근자 셈) — 저장 · 세 칸끼리 · 경계 기다림 상한
-const READ_OK = new Set(['_t1034Pack', 'spawnCaravanBody', 'startReturnLeg', '_caravanSyncOne', '_xzMakeBody', '_xzWalkToBorder', '_xzSend', '_xzAfterSend', '_xzStartReturnLeg']);
+const READ_OK = new Set(['_t1034Pack', 'spawnCaravanBody', 'startReturnLeg', '_caravanSyncOne', '_xzMakeBody', '_xzWalkToBorder', '_xzSend', '_xzAfterSend', '_xzStartReturnLeg', '_t1289Leg']);   // ★[T1289] `_t1289Leg` = 세 칸끼리 셈(위 표)
 const F3 = ['departAt', 'arriveAt', 'nomPxMs'];
 //   ★[T1282] 미끼 — 고친 줄을 종전 글자로(판 'mg' · 'lg' · 't0' = ⑤ 의 그 판이 빨강 · 0 이 아니게 된다)
 const MIX_BAITS = [
@@ -74,14 +84,25 @@ const MIX_BAITS = [
   ['K3 `startReturnLeg` 귀환 보간 t0 econ → 벽시계 `now`(종전)', 't0', 'const _t0n = (T1253_CLOCK_FIX && body._t1182) ? _t1253Now() : now;', 'const _t0n = (T1253_CLOCK_FIX && body._t1182) ? now : now;'],
   ['K4 닫는 날 적기 없음(`_t1282Open` 무동작)', 'mg', 'function _t1282Open() { state._t1282D = state.world ? (state.world.day | 0) : 0; }', 'function _t1282Open() { }'],
 ];
+//   ★[T1289] 미끼 — 판 'gp' · '3f' · 'ax' = ⑦ ⑧ ⑨ 의 그 판이 빨강
+const AXIS_BAITS = [
+  ['G1 마감 틈 `econDayToMs` 정렬 → 종전 `world.day`(틈 갈래 하나를 종전 축으로)', 'gp', 'state._t1253Edge)) ? state.world.day + 1 : state.world.day;', 'state._t1253Edge)) ? state.world.day : state.world.day;'],
+  ['F1 몸 세우기 세 칸 econ → 벽시계(종전)', '3f', 'if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, (outbound ? c.arriveDay : c.returnArriveDay) * state.dayMs);', 'if (false) _t1289Leg(body, (outbound ? c.arriveDay : c.returnArriveDay) * state.dayMs);'],
+  ['F2 이웃 존 몸 세 칸 econ → 벽시계(종전)', '3f', 'if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, _t1289ToE(arriveAt));', 'if (false) _t1289Leg(body, _t1289ToE(arriveAt));'],
+  ['F3 경계 칸 걷기 econ → 인수 벽시계(종전)', '3f', 'if (T1253_CLOCK_FIX && body._t1182) now = _t1253Now();', 'if (false) now = _t1253Now();'],
+  ['X1 저장 축 표지 지움', 'ax', "...(T1253_CLOCK_FIX ? { ax: body._t1182 ? 'e' : 'w' } : {}),", '...({}),'],
+  ['X2 되살림 축 옮김 없음(종전)', 'ax', '  if (!S || (!S.ax && !T1253_CLOCK_FIX)) return S;', '  return S;'],
+  //   (판 셈 전용 · 미끼 표 ⑩ 밖) G1 과 같이 실어 "T1289 앞 글자"를 만든다 — `_t1282Wall` 이 틈에 하루를 빼던 T1282 보정
+  ['G0 `_t1282Wall` 종전 보정(T1282 글자)', '-', '  return econDayToMs(D) + (_t1253Now() - D * M);', '  return econDayToMs(D) - ((!!(state.tickJobs || state._t731 || state._t1253Edge) && state._t1282D === D) ? M : 0) + (_t1253Now() - D * M);'],
+];
 const ROLE = process.argv[2];
 
 // ══ 아이: 판 셋(A · B · 독) 돌고 결과 한 줄 ═══════════════════════════════════════════════
 if (ROLE === '--child') {
   //   미끼 — 숫자 = `BAITS` 하나 · 'm0,m1,…' = ★[T1282] `MIX_BAITS` 여럿(한꺼번에)
   const spec = process.argv[3] != null && process.argv[3] !== '-' ? String(process.argv[3]) : '';
-  const want = process.argv[4] || 'shake';   // 'shake' = A · B 흔들림 · 'tf' = 접근자 셈 + 독 판 · 'tfp' = 독 판만(미끼) · 'mix' = ★[T1282] ⑤ 판 셋
-  const swaps = spec ? spec.split(',').map((t) => (t[0] === 'm' ? MIX_BAITS[+t.slice(1)] : BAITS[+t])) : [];
+  const want = process.argv[4] || 'shake';   // 'shake' = A · B 흔들림 · 'tf' = 접근자 셈 + 독 판 · 'tfp' = 독 판만(미끼) · 'mix' = ★[T1282] ⑤ 판 셋 · ★[T1289] 'gp' ⑦ · '3f' ⑧ · 'sv' · 'ld' ⑨(저장 · 되살림 — 파일 = argv[5])
+  const swaps = spec ? spec.split(',').map((t) => (t[0] === 'm' ? MIX_BAITS[+t.slice(1)] : t[0] === 'a' ? AXIS_BAITS[+t.slice(1)] : BAITS[+t])) : [];   // ★[T1289] 'a…' = `AXIS_BAITS`
   if (swaps.length) {   // 미끼 — 이 아이가 실을 때만 villages.js 글자 한 자리를 바꾼다(파일은 안 만진다)
     const old = Module._extensions['.js'];
     Module._extensions['.js'] = function (m, f) {
@@ -113,6 +134,7 @@ if (ROLE === '--child') {
   const OFF = [3.1e11, -7.7e11, 9.9e12, -1.2e9, 4.4e13, 2.5e10, -1.6e12, 7e12, 1.3e9, -9e11, 5e6 - BASE, 3.6e6 - BASE, -BASE + 1];
   const gaps = [33, 34, 33, 50, 17, 80, 33, 21, 66, 33];
   const POISON = [NaN, -1e300, 1e300, 0, -7.5e12, 3.3e15, 1e-300, -1];
+  let F3LOG = null;   // ★[T1289] ⑧ — 켜면 몸 걸음마다 세 칸을 모은다
   function world(mode, poison, pend) {   // ★[T1282] pend = 마감을 운영 차례로 연다(경계 → 닫는 날 적기 → econ 머리 앞 틈 0.7초 → econ 머리) · 없으면 종전 꼴(경계에서 날을 올린 뒤 마감)
     const w = mute(() => E2.createWorldV2({ seed: 7, villageCount: 2, picker: 'rational', infoRange: 5000, raidPer100: 0 }));
     const [a, b] = w.villages; w.day = D0; w.caravans = [];
@@ -132,6 +154,7 @@ if (ROLE === '--child') {
     const body = (id) => S.caravanBodies.get(id);
     const ent = (pid) => { const q = players.get(pid); return q ? [R9(q.x), R9(q.y)] : null; };
     const snapBodies = (tag, out) => {
+      if (F3LOG) for (const [id, bd] of [...S.caravanBodies].sort((x, y) => String(x[0]).localeCompare(String(y[0])))) F3LOG.push([tag, k, id, R9(bd.departAt), R9(bd.arriveAt), R9(bd.nomPxMs)]);   // ★[T1289] ⑧ 세 칸(따로 모은다 — 결과 줄 `tr` 은 그대로)
       for (const [id, bd] of [...S.caravanBodies].sort((x, y) => String(x[0]).localeCompare(String(y[0])))) {
         out.push([tag, k, id, bd.phase, R9(bd.prog), R9(bd.len), ent(bd.pid), (bd.escorts || []).map((e) => ent(e.pid)), R9(bd.lingerUntil), R9(bd._t1182At), bd._t1253N | 0,
           bd._xzWalked || null, !!bd._xzSendWait, !!bd._xzHanding]);
@@ -297,6 +320,78 @@ if (ROLE === '--child') {
     }
     return { t0, made, n: Object.keys(t0).length, eqLinger: Object.values(t0).filter((r) => r[0] === r[1]).length };
   }
+  // ── ★[T1289] ⑦ gp 판 — 마감 틈의 경계 읽기(틈에 불리는 자리 다섯)가 econ 머리 뒤 정렬과 같나 ─────────────
+  function gpRun(mode) {
+    const G = world(mode, false, true), S = G.S, tr = [];
+    let bad = 0, pendTicks = 0, back = 0, lastT = null;
+    const by = {};
+    while (G.phase !== 'next' || G.wall < DAY_END + 10000) {
+      const ph = G.step(false), e0 = S.epoch;
+      const T = mute(() => V.econDayT(Date.now())), cal = mute(() => V.t728CalNext());
+      const row = [G.k, ph, R9(P.econDay(D0) - e0), R9(P.econDay(D0 + 1) - e0), R9(T), cal ? R9(cal.calendarAt - e0) : null, R9(P.wall() - e0)];
+      if (lastT != null && T < lastT - 1e-9) back++;
+      lastT = T;
+      if (ph === 'pend') {   // 틈 — 앵커는 G0 + 1(새 날) · world.day = D0(닫는 날): 머리 뒤 정렬 = 닫는 날의 끝 = 게임일 G0 + 1 머리(지난 경계)
+        pendTicks++;
+        const want = [G0 * M, (G0 + 1) * M, D0 + 1, (G0 + 1) * M, (G0 + 1) * M];
+        const got = [row[2], row[3], row[4], row[5], row[6]], names = ['econDayToMs(D)', 'econDayToMs(D+1)', 'econDayT', 't728CalNext', '_t1282Wall'];
+        for (let i = 0; i < want.length; i++) if (!(Math.abs(got[i] - want[i]) < 1e-6)) { bad++; by[names[i]] = (by[names[i]] || 0) + 1; }
+      }
+      tr.push(row);
+    }
+    return { h: sha(tr), n: tr.length, trace: tr, bad, by, pendTicks, back };
+  }
+  // ── ★[T1289] ⑧ 3f 판 — 세 칸이 흔들림에 갈리나(car · xz 판 그대로 · 세 칸만 따로 모은다) ─────────────
+  function f3Run(mode) {
+    F3LOG = []; const c = carRun(mode, false); const fc = F3LOG;
+    F3LOG = []; const x = xzRun(mode, false); const fx = F3LOG; F3LOG = null;
+    return { car: fc, xz: fx, h: sha([fc, fx]), n: fc.length + fx.length };
+  }
+  // ── ★[T1289] ⑨ sv · ld 판 — 저장(이 손잡이로) → 되살림(다른 프로세스 · 다른 손잡이) ─────────────────
+  //   몸 둘: 82 = 먼저 닿아 머물다 귀환을 걷는 몸(`_t661.t0` · `arriveAt`) · 81 = 저장 순간 머무는 몸(남은 머묾 ≈ 6초 · `lingerUntil`)
+  function svRun() {
+    const G = world('A', false), S = G.S, { a, b } = G;
+    const c1 = car(81, a, b, 'outbound'), c2 = car(82, a, b, 'outbound');
+    for (const c of [c1, c2]) { G.w.caravans.push(c); mute(() => P.spawn(c, Date.now(), 16)); }
+    const arrive = (c) => { c.state = 'inbound'; const S0 = { seen: new Set(), spawned: 0, arrived: 0, removed: 0 }; mute(() => P.syncOne(Date.now(), c, S0, 16)); };
+    let k2 = false, k1 = false, saved = null;
+    while (!saved && G.k < 8000) {
+      G.step(true);
+      if (!k2 && G.wall >= -140000) { arrive(c2); k2 = true; }
+      if (!k1 && G.wall >= -132000) { arrive(c1); k1 = true; }
+      const b1 = G.body(81), b2 = G.body(82);
+      if (k1 && b1.phase === 'linger' && b2.phase === 'inbound' && G.wall >= -127000) {
+        const knob = process.env.T1253_CLOCK_FIX !== '0', en = mute(() => P.econNow()), wn = Date.now();
+        const pk = JSON.parse(packJson()), B1 = pk.b['81'], B2 = pk.b['82'];
+        //   기대 — 머묾 끝의 econ 순간 · 귀환 보간 몫(저장한 판의 제 축으로 셈)
+        const lgE = knob ? B1.lg : en + (B1.lg - wn);
+        const fExp = knob ? (en - B2.T.t0) / (B2.aa - B2.T.t0) : (wn - B2.T.t0) / (B2.aa - B2.T.t0);
+        //   표지 없는 옛 켬 저장(T1289 앞 꼴) — 표지를 지우고 출발 · 도착을 벽시계 경계 축으로(머묾 끝 · t0 는 그때도 econ 날 시계)
+        const old = JSON.parse(JSON.stringify(pk)); for (const id in old.b) { const o = old.b[id]; delete o.ax; if (knob) { o.da = P.toB(o.da); o.aa = P.toB(o.aa); } }
+        saved = { knob, wall: G.wall, k: G.k, clk: Date.now(), econ: en, pack: pk, packOld: old, lgE, fExp,
+          cars: G.w.caravans.map((c) => ({ id: c.id, state: c.state, departDay: c.departDay, arriveDay: c.arriveDay, returnArriveDay: c.returnArriveDay })), ax: [B1.ax || null, B2.ax || null] };
+      }
+    }
+    return saved || { err: '저장 순간 못 섬' };
+  }
+  function ldRun(file, which) {
+    const SV = JSON.parse(fs.readFileSync(file, 'utf8')), pk = which === 'old' ? SV.packOld : SV.pack;
+    const G = world('A', false), S = G.S, { a, b } = G;
+    while (G.wall < SV.wall) G.step(false);   // 같은 벽시계 · 같은 econ 순간(바로 다시 뜬 판)
+    G.w.caravans = SV.cars.map((x) => car(x.id, a, b, x.state, { departDay: x.departDay, arriveDay: x.arriveDay, returnArriveDay: x.returnArriveDay }));
+    S._t1034Saved = new Map(Object.entries(JSON.parse(JSON.stringify(pk.b))));
+    for (const c of G.w.caravans) { const r = mute(() => P.spawn(c, Date.now(), 16)); if (r === true && S._t1034Saved) { const bd = G.body(c.id); if (bd) mute(() => P.restore(bd, Date.now())); } }   // 운영 `_t775Resume` 차례(몸 세우기 → 덮기)
+    const b1 = G.body(81), b2 = G.body(82), t1182 = !!(b1 && b1._t1182);
+    const R = { t1182, knob: process.env.T1253_CLOCK_FIX !== '0', ph: [b1 && b1.phase, b2 && b2.phase], lg: b1 && R9(b1.lingerUntil), flipE: null, flipK: null, dE: null, fGot: null, fExp: SV.fExp, dF: null };
+    //   ② 귀환 보간(T1182 아닌 몸만 읽는다 — `_t661Vis`) — 되살린 그 순간의 몫
+    if (b2 && !t1182 && b2._t661 && b2._t661.t0 != null) { R.fGot = mute(() => P.vis(b2, Date.now())) / b2._t661.path.len; R.dF = R9(R.fGot - SV.fExp); }
+    //   ① 머묾 끝 — 몸 틱을 돌려 머묾이 끝난 걸음의 econ 순간(저장한 econ 순간과 견준다 · 30초 안에 안 끝나면 null)
+    for (let i = 0; i < 900 && b1 && b1.phase === 'linger'; i++) { G.step(true); if (b1.phase !== 'linger') { R.flipE = mute(() => P.econNow()); R.flipK = i; } }
+    if (R.flipE != null) R.dE = R9(R.flipE - SV.lgE);
+    R.linMixed = !(R.flipE != null && Math.abs(R.dE) <= 150);
+    R.visMixed = R.dF != null && Math.abs(R.dF) > 0.01;
+    return R;
+  }
   let out;
   try {
     const firstDiff = (x, y) => { for (let i = 0; i < Math.max(x.length, y.length); i++) if (JSON.stringify(x[i]) !== JSON.stringify(y[i])) return [i, x[i], y[i]]; return null; };
@@ -309,7 +404,16 @@ if (ROLE === '--child') {
       acc.add(pre.join('.')); return acc;
     };
     const saveDiff = (A, B) => { if (!A.pack || !B.pack) return null; const a = JSON.parse(A.pack).b, b = JSON.parse(B.pack).b, acc = new Set(); for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) keyDiff(a[id], b[id], ['*'], acc); return [...acc].sort(); };
-    if (want === 'mix') {   // ★[T1282]
+    if (want === 'gp') { const A = gpRun('A'), B = gpRun('B'); out = { knob: process.env.T1253_CLOCK_FIX !== '0', gp: cmp(A, B) }; }   // ★[T1289] ⑦
+    else if (want === '3f') {   // ★[T1289] ⑧
+      const A = f3Run('A'), B = f3Run('B');
+      const split = (x, y) => { let n = 0; for (let i = 0; i < Math.max(x.length, y.length); i++) if (JSON.stringify(x[i]) !== JSON.stringify(y[i])) n++; return n; };
+      const s1 = A.car.filter((r) => r[0] === 's' && r[2] === 11)[0];
+      out = { knob: process.env.T1253_CLOCK_FIX !== '0', n: [A.car.length, A.xz.length], split: { car: split(A.car, B.car), xz: split(A.xz, B.xz) }, s11: s1 || null, s11want: (D0 + 2) * M, diff: firstDiff(A.car.concat(A.xz), B.car.concat(B.xz)) };
+    }
+    else if (want === 'sv') out = svRun();   // ★[T1289] ⑨
+    else if (want === 'ld') out = ldRun(process.argv[5], process.argv[6]);
+    else if (want === 'mix') {   // ★[T1282]
       const gA = mgRun('A'), gB = mgRun('B'), L = lgRun(), tA = t0Run('A'), tB = t0Run('B');
       const ids = [...new Set([...Object.keys(tA.t0), ...Object.keys(tB.t0)])].sort();
       const t0split = ids.filter((id) => JSON.stringify((tA.t0[id] || [])[0]) !== JSON.stringify((tB.t0[id] || [])[0]));
@@ -353,8 +457,12 @@ const fnOf = (i) => { const j = VC.lastIndexOf('\nfunction ', i); return j < 0 ?
   const fns = [...VC.matchAll(/(?<!function )_t1253Now\(\)/g)].map((m) => fnOf(m.index)), cnt = {};
   for (const f of fns) cnt[f] = (cnt[f] || 0) + 1;
   //   ★[T1282] 11 → 13곳 — 고침 둘이 읽는 자리를 더했다(`startReturnLeg` 귀환 보간 t0 · `_t1282Wall` = `_xzMakeBody` 걸음 날 수의 econ 날 시계 · 보고 T1282 자리 표)
-  ok(fns.length === 13 && cnt.spawnCaravanBody === 3 && cnt._caravanSyncOne === 1 && cnt._xzMakeBody === 1 && cnt.marketVillages === 1 && cnt.startReturnLeg === 1 && cnt._t1282Wall === 1,
-    '⓪ [전제] `_t1253Now()` 읽는 자리 13곳 중 이 판의 여섯(몸 세우기 셋 · 도착 동기 · 이웃 존 몸 · 장마당 그림) + T1282 둘(귀환 t0 · 걸음 날 수) — 나머지 다섯은 T1268 판', `${fns.length}곳 · 몸 세우기 ${cnt.spawnCaravanBody} · 동기 ${cnt._caravanSyncOne} · 이웃 ${cnt._xzMakeBody} · 장마당 ${cnt.marketVillages} · 귀환 ${cnt.startReturnLeg} · 날 수 ${cnt._t1282Wall}`);
+  //   ★[T1289] 13 → 17곳 — 고침이 읽는 자리 넷을 더했다(`_caravanSyncOne` T1136 바구니 머묾 끝 · `_t1289Leg` 세 칸 · `_t1289In` 되살림 축 · `_xzWalkToBorder` 경계 걷기의 '지금' · 보고 T1289 전수 표).
+  //     종전 조건(이 판 여섯 · T1282 둘 · 함수마다 수)은 그대로 두고 동기만 1 → 2(같은 함수에 바구니 줄) · 새 넷을 더 묶었다(느슨하게 한 것 0).
+  ok(fns.length === 17 && cnt.spawnCaravanBody === 3 && cnt._caravanSyncOne === 2 && cnt._xzMakeBody === 1 && cnt.marketVillages === 1 && cnt.startReturnLeg === 1 && cnt._t1282Wall === 1
+    && cnt._t1289Leg === 1 && cnt._t1289In === 1 && cnt._xzWalkToBorder === 1,
+    '⓪ [전제] `_t1253Now()` 읽는 자리 17곳 중 이 판의 여섯(몸 세우기 셋 · 도착 동기 · 이웃 존 몸 · 장마당 그림) + T1282 둘(귀환 t0 · 걸음 날 수) + T1289 넷(바구니 머묾 끝 · 세 칸 · 되살림 축 · 경계 걷기) — 나머지 다섯은 T1268 판',
+    `${fns.length}곳 · 몸 세우기 ${cnt.spawnCaravanBody} · 동기 ${cnt._caravanSyncOne} · 이웃 ${cnt._xzMakeBody} · 장마당 ${cnt.marketVillages} · 귀환 ${cnt.startReturnLeg} · 날 수 ${cnt._t1282Wall} · 세 칸 ${cnt._t1289Leg} · 되살림 ${cnt._t1289In} · 경계 ${cnt._xzWalkToBorder}`);
   const site = BAITS.slice(0, 6).map(([, , from]) => fnOf(VC.indexOf(from)));
   ok(site.join() === 'spawnCaravanBody,spawnCaravanBody,spawnCaravanBody,_caravanSyncOne,_xzMakeBody,marketVillages', '⓪ 미끼 여섯이 그 여섯 자리(함수)를 바꾼다', site.join(' · '));
   //   ★[T1282] 닫는 날 적기 — 운영 마감 문(`_openDayJobs` 머리 · 하루 마감 또는 창 머리)에서만 · 켬 뒤 · 하네스 mg 판은 같은 함수를 부른다
@@ -364,6 +472,15 @@ const fnOf = (i) => { const j = VC.lastIndexOf('\nfunction ', i); return j < 0 ?
     '⓪ ★[T1282] 닫는 날 적기 — `_openDayJobs` 첫 줄 · 켬 뒤 · 하루 마감 또는 창 머리에서만(창 가운데 · 꼬리 조각은 안 적는다) · 적는 자리 하나', `부르는 곳 ${opens.join(' · ')}`);
   const monce = MIX_BAITS.map(([, , from]) => VSRC.split(from).length - 1), msite = MIX_BAITS.map(([, , from]) => fnOf(VC.indexOf(from)));
   ok(monce.every((x) => x === 1) && msite.join() === '_t1253Now,_xzMakeBody,startReturnLeg,_t1282Open', `⓪ ★[T1282] 미끼 ${MIX_BAITS.length}자리가 제품 소스에 꼭 한 번씩 · 그 함수를 바꾼다`, `${monce.join(' · ')} · ${msite.join(' · ')}`);
+  //   ★[T1289] 미끼 여섯 자리 · 세 칸 econ 축 줄은 다 켬 · T1182 몸 뒤 · 되살림 축 옮김은 덮기 문 둘(`_t1034Apply` · 이웃 존 되살림)에서만 · 저장 표지는 켬만
+  const aonce = AXIS_BAITS.map(([, , from]) => VSRC.split(from).length - 1), asite = AXIS_BAITS.map(([, , from]) => fnOf(VC.indexOf(from)));
+  ok(aonce.every((x) => x === 1) && asite.join() === 'econDayToMs,spawnCaravanBody,_xzMakeBody,_xzWalkToBorder,_t1034Pack,_t1289In,_t1282Wall', `⓪ ★[T1289] 미끼 ${AXIS_BAITS.length}자리(판 셈 전용 G0 포함)가 제품 소스에 꼭 한 번씩 · 그 함수를 바꾼다`, `${aonce.join(' · ')} · ${asite.join(' · ')}`);
+  const legs = [...VC.matchAll(/(?<!function )_t1289Leg\(/g)].map((m) => [fnOf(m.index), VC.slice(VC.lastIndexOf('\n', m.index) + 1, m.index)]);
+  const legFns = legs.map((x) => x[0]).sort().join();
+  ok(legs.length === 10 && legs.every((x) => /if \(T1253_CLOCK_FIX && body\._t1182\) $/.test(x[1])) && legFns === '_caravanSyncOne,_t1136Isolate,_xzAfterSend,_xzIsolate,_xzMakeBody,_xzStartReturnLeg,isolateCaravanReturn,spawnCaravanBody,startReturnLeg,startReturnLeg',
+    '⓪ ★[T1289] 세 칸 econ 축 줄 10자리(세 칸을 적는 함수 전부 · 경계 걷기는 따로) — 다 `if (T1253_CLOCK_FIX && body._t1182)` 뒤(끔 · T1182 아닌 몸 = 종전 줄 그대로)', legFns);
+  const ins = [...VC.matchAll(/(?<!function )_t1289In\(/g)].map((m) => fnOf(m.index)).sort().join();
+  ok(ins === '_t1034Apply,spawnCaravanBody' && /\.\.\.\(T1253_CLOCK_FIX \? \{ ax: body\._t1182 \? 'e' : 'w' \} : \{\}\)/.test(VC), '⓪ ★[T1289] 되살림 축 옮김 = 덮기 문 둘(`_t1034Apply` · 이웃 존 되살림) · 저장 표지 = 켬만(끔 = 칸 없음)', ins);
 }
 
 const on = child(null, {}), off = child(null, { T1253_CLOCK_FIX: '0' });
@@ -424,10 +541,10 @@ console.log('\n③ ★남은 벽시계 칸 셋(`departAt` · `arriveAt` · `nomP
   }
   if (!on.err) {
     const sv = on.save.car || [], sx = on.save.xz || [];
-    const allow = new Set(['*.da', '*.aa', '*.nom', '*.at', '*.T.t0']);
     console.log(`    [표·정보] 저장 바이트(메타 행 곁 칸 \`t1034.b\`)가 흔들림에 갈린 칸 — car ${sv.join(' · ')} · xz ${sx.join(' · ')} (메타 행 \`anchor.epoch\` · \`anchor.at\` 도 벽시계)`);
-    ok(sv.includes('*.da') && sv.includes('*.aa') && sx.includes('*.da') && sx.includes('*.aa') && sv.concat(sx).every((k) => allow.has(k)),
-      '③ 저장 바이트 — 흔들림에 갈리는 칸은 세 칸 + `at`(+ `T.t0`)뿐 · `departAt` · `arriveAt` 는 실제로 저장에 실려 갈린다(`nomPxMs` 는 비 = 길 ÷ (도착 − 출발)이라 같이 민 흔들림엔 안 갈린다 · 그 뒤 결과는 위 독 판이 같음)', `car ${sv.length} · xz ${sx.length}`);
+    //   ★[T1289] 종전 단언은 "갈리는 칸 ⊆ {세 칸 · at · T.t0} 이고 da · aa 가 실제로 갈린다"(벽시계 칸이 저장에 실린다는 기록)였다 — T1289 가 세 칸을 econ 날 시계 축으로 옮겨
+    //     da · aa 는 더 안 갈린다(T1273 회부 1 ⓑ). 단언을 더 좁혔다: 갈리는 칸 = 저장 순간 벽시계 `at` 하나뿐(car · xz 둘 다 · 허용 칸 다섯 → 하나 · 느슨하게 한 것 0).
+    ok(sv.join() === '*.at' && sx.join() === '*.at', '③ ★[T1289] 저장 바이트 — 흔들림에 갈리는 칸은 저장 순간 벽시계 `at` 하나뿐(세 칸 · `T.t0` · 머묾 끝은 econ 날 시계 축 — 안 갈린다 · `at` 은 T1034 되살림 상한이 벽시계로 읽는다)', `car ${sv.join(' · ')} · xz ${sx.join(' · ')}`);
   }
 }
 
@@ -476,5 +593,76 @@ for (let i = 0; i < MIX_BAITS.length; i++) {
   ok(red, `⑥ 미끼 ${name} — ${kind} 판 갈림 > 0(잡음)`, r.err ? r.err.slice(0, 200) : `마감 틈 ${n.mg} · legDays ${n.lg} · t0 ${n.t0}`);
 }
 console.log(`\n  T1282 미끼 ${mcaught}/${MIX_BAITS.length}`);
+
+// ══ ★[T1289] ⑦ ⑧ ⑨ ⑩ — 마감 틈 `econDayToMs` · 캐러밴 세 칸 · 저장 축 표지 ══════════════════════════════════════
+const os = require('os');
+const GPN = (r) => (r.err ? null : r.gp.A.bad + r.gp.B.bad);
+console.log('\n⑦ ★[T1289] 마감 틈의 경계 읽기(`econDayToMs` 앵커 틈) — 틈에 불리는 자리 다섯이 econ 머리 뒤 정렬과 같다');
+const gp = child(null, {}, 'gp'), gpOld = child('a0,a6', {}, 'gp'), gpOff = child(null, { T1253_CLOCK_FIX: '0' }, 'gp');
+if (gp.err) ok(false, '⑦ 켬 판이 돌았다', gp.err);
+else {
+  ok(gp.knob && gp.gp.A.pendTicks >= 10, '⑦ [전제] gp 판 — 마감을 운영 차례로 열었다(econ 머리 앞 틈 틱이 있다)', `틈 ${gp.gp.A.pendTicks}틱`);
+  ok(gp.gp.A.bad === 0 && gp.gp.B.bad === 0, '★⑦ 틈 (틱 × 자리) 가운데 econ 머리 뒤 정렬과 다른 것 = 0 — `econDayToMs(D)` · `(D+1)` · 기온 `econDayT` · 달력 `t728CalNext` · 걸음 날 수 `_t1282Wall`', `A ${gp.gp.A.bad} · B ${gp.gp.B.bad}`);
+  ok(gp.gp.A.back === 0, '★⑦ 기온 시계(`econDayT` — econ 날 + 그날 몫)가 틈에서 거꾸로 간 틱 = 0', `${gp.gp.A.back}`);
+  ok(gp.gp.same, '⑦ 흔들림 A ↔ B 바이트 같음(경계 읽기는 econ 앵커 축 · 벽시계 무관)', gp.gp.same ? `${gp.gp.A.n}틱` : dtxt(gp.gp.diff));
+}
+if (!gpOld.err) { console.log(`    [표] 고치기 전(T1289 앞 글자 — G1 + \`_t1282Wall\` 종전 보정) → 지금: 틈 경계 읽기 갈림 ${GPN(gpOld)} → ${GPN(gp)} (A + B · 자리별 A ${JSON.stringify(gpOld.gp.A.by)}) · 기온 거꾸로 ${gpOld.gp.A.back} → ${gp.err ? '?' : gp.gp.A.back}`);
+  ok(GPN(gpOld) > 0, '⑦ 고치기 전 사본은 틈 갈림이 0 이 아니다(자명 통과 금지)', `${GPN(gpOld)}`); }
+else ok(false, '⑦ 고치기 전 사본 판이 돌았다', gpOld.err);
+if (!gpOff.err) { console.log(`    [표·정보] 끔(\`T1253_CLOCK_FIX=0\` — 종전 · 이 카드 손 밖): 틈 경계 읽기 갈림 A ${gpOff.gp.A.bad} · 기온 거꾸로 ${gpOff.gp.A.back}`); ok(!gpOff.knob, '⑦ [전제] 끔 판 손잡이 = 끔'); }
+
+console.log('\n⑧ ★[T1289] 캐러밴 세 칸(`departAt` · `arriveAt` · `nomPxMs`) = econ 날 시계 축');
+const f3 = child(null, {}, '3f'), f3Off = child(null, { T1253_CLOCK_FIX: '0' }, '3f');
+if (f3.err) ok(false, '⑧ 켬 판이 돌았다', f3.err);
+else {
+  ok(f3.n[0] > 1000 && f3.n[1] > 1000, '⑧ [전제] car · xz 판 몸 걸음마다 세 칸을 모았다', `car ${f3.n[0]} · xz ${f3.n[1]}`);
+  ok(f3.split.car === 0 && f3.split.xz === 0, '★⑧ 세 칸이 흔들림 A ↔ B 에 갈린 몸-걸음 = 0(car · xz — 출발 · 도착 · 명목이 다 econ 날 시계 축)', `car ${f3.split.car} · xz ${f3.split.xz}` + (f3.diff ? ' · ' + dtxt(f3.diff) : ''));
+  ok(f3.s11 && f3.s11[4] === f3.s11want, '⑧ 몸 세우기 도착 = econ 날 경계(도착 날 × 하루 — 벽시계 경계 `econDayToMs` 의 econ 축 짝)', f3.s11 ? `${f3.s11[4]} = ${f3.s11want}` : '없음');
+}
+if (!f3Off.err) console.log(`    [표·정보] 끔(종전): 세 칸 갈림 car ${f3Off.split.car}/${f3Off.n[0]} · xz ${f3Off.split.xz}/${f3Off.n[1]}(벽시계 축 — 흔들림 그대로)`);
+
+console.log('\n⑨ ★[T1289] 저장 축 표지 — 저장(sv) → 되살림(ld · 다른 프로세스 · 다른 손잡이)에서 머묾 끝 · 귀환 보간이 축을 섞나');
+const LOADS = [['L1 켬 → 켬', 'on', 'new', {}], ['L2 켬 → `T762_CARAVAN_BODY=0`', 'on', 'new', { T762_CARAVAN_BODY: '0' }], ['L3 켬 → 끔', 'on', 'new', { T1253_CLOCK_FIX: '0' }],
+  ['L4 표지 없는 옛 켬 저장 → 켬', 'on', 'old', {}], ['L5 끔 저장 → 켬', 'off', 'new', {}], ['L6 끔 저장 → 끔(대조 · 종전 바이트)', 'off', 'new', { T1253_CLOCK_FIX: '0' }]];
+const matrix = (bait) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 't1289-sv-')), rows = [];
+  try {
+    const sv = { on: child(bait, {}, 'sv'), off: child(bait, { T1253_CLOCK_FIX: '0' }, 'sv') };
+    for (const k of ['on', 'off']) { if (sv[k].err) return { err: sv[k].err }; fs.writeFileSync(path.join(dir, k + '.json'), JSON.stringify(sv[k])); }
+    for (const [name, src, which, env] of LOADS) {
+      const E = Object.assign({}, env), r0 = spawnSync(process.execPath, [__filename, '--child', bait == null ? '-' : bait, 'ld', path.join(dir, src + '.json'), which], { encoding: 'utf8', env: Object.assign((() => { const e = Object.assign({}, process.env); delete e.T1253_CLOCK_FIX; delete e.T762_CARAVAN_BODY; return e; })(), E), timeout: 180000, maxBuffer: 1 << 26 });
+      const line = ((r0.stdout || '') + '').split('\n').find((l) => l.startsWith('@@'));
+      rows.push([name, line ? JSON.parse(line.slice(2)) : { err: ((r0.stderr || '') + '').slice(-400) }]);
+    }
+    return { sv, rows, mixed: rows.reduce((n, [, r]) => n + (r.err ? 99 : (r.linMixed ? 1 : 0) + (r.visMixed ? 1 : 0)), 0) };
+  } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {} }
+};
+const mtx = matrix(null), mtxOld = matrix('a5');
+if (mtx.err) ok(false, '⑨ 저장 판이 돌았다', mtx.err);
+else {
+  ok(mtx.sv.on.knob && !mtx.sv.off.knob && mtx.sv.on.ax.join() === 'e,e' && mtx.sv.off.ax.join() === ',', '⑨ [전제] 저장 둘 — 켬 저장은 몸마다 축 표지 `ax: \'e\'` · 끔 저장은 표지 칸이 없다(종전 바이트)', `켬 ${mtx.sv.on.ax.join('·')} · 끔 ${mtx.sv.off.ax.join('·') || '없음'}`);
+  for (const [name, r] of mtx.rows) {
+    if (r.err) { ok(false, `⑨ ${name} 판이 돌았다`, r.err); continue; }
+    ok(!r.linMixed && !r.visMixed && r.ph[0] === 'linger' && r.ph[1] === 'inbound', `★⑨ ${name} — 머묾이 저장한 econ 순간에 끝난다(±150ms) · 귀환 보간 몫이 저장 몫과 같다(T1182 아닌 몸만 읽는다)`,
+      `몸 ${r.t1182 ? 'T1182' : '종전'} · 머묾 끝 차 ${r.dE == null ? '안 끝남' : r.dE + 'ms'}(${r.flipK == null ? '—' : r.flipK + '걸음'}) · 보간 몫 차 ${r.dF == null ? '—' : r.dF}`);
+  }
+}
+if (mtxOld.err) ok(false, '⑨ 고치기 전(X2) 판이 돌았다', mtxOld.err);
+else { console.log(`    [표] 고치기 전(X2 — 되살림이 축을 안 옮긴다 · 종전) → 지금: 축 섞인 몸 ${mtxOld.mixed} → ${mtx.mixed || 0} — ${mtxOld.rows.map(([n, r]) => `${n.split(' ')[0]} ${r.err ? '오류' : (r.linMixed ? '머묾 ' + (r.dE == null ? '안 끝남' : r.dE + 'ms') : '') + (r.visMixed ? ' 보간 ' + r.dF.toFixed(3) : '') || '같음'}`).join(' · ')}`);
+  ok(mtxOld.mixed > 0, '⑨ 고치기 전 사본은 축 섞인 몸이 0 이 아니다(자명 통과 금지)', `${mtxOld.mixed}`); }
+
+console.log('\n⑩ ★[T1289] 미끼 — 틈 갈래 · 세 칸 자리 · 저장 축 표지 · 되살림 축 옮김을 하나씩 종전으로 되돌린 사본이 빨강');
+let acaught = 0;
+for (let i = 0; i < AXIS_BAITS.length; i++) {
+  const [name, kind] = AXIS_BAITS[i];
+  if (kind === '-') continue;   // 판 셈 전용(G0)
+  let red = false, d = '';
+  if (kind === 'gp') { const r = child('a' + i, {}, 'gp'); red = !r.err && GPN(r) > 0; d = r.err ? r.err.slice(0, 200) : `틈 갈림 ${GPN(r)}`; }
+  else if (kind === '3f') { const r = child('a' + i, {}, '3f'); red = !r.err && (r.split.car + r.split.xz) > 0; d = r.err ? r.err.slice(0, 200) : `세 칸 갈림 car ${r.split.car} · xz ${r.split.xz}`; }
+  else { const m = matrix('a' + i); red = !m.err && m.mixed > 0; d = m.err ? String(m.err).slice(0, 200) : `축 섞인 몸 ${m.mixed} — ${m.rows.filter(([, r]) => r.linMixed || r.visMixed || r.err).map(([n]) => n.split(' ')[0]).join(' · ')}`; }
+  if (red) acaught++;
+  ok(red, `⑩ 미끼 ${name} — ${kind} 판 빨강(잡음)`, d);
+}
+console.log(`\n  T1289 미끼 ${acaught}/${AXIS_BAITS.filter((x) => x[1] !== '-').length}`);
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

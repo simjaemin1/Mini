@@ -4,8 +4,8 @@
 import json, math, sqlite3, colorsys, sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-import os; D = os.environ.get('T568_DIR', '/tmp/out/live')
-J = json.load(open(f'{D}/t524/hanbando.json')); N = J['N']; NY, NX = J['NY'], J['NX']
+import os; D = os.environ.get('T568_DIR', '/tmp/out/live'); Z = os.environ.get('T568_ZONE', 'hanbando')   # ★[PM 11-13] 존 손잡이(닛폰 지도 · 기본 한반도 = 종전)
+J = json.load(open(f'{D}/t524/{Z}.json')); N = J['N']; NY, NX = J['NY'], J['NX']
 raw = open(J['bin'], 'rb').read()
 kind = np.frombuffer(raw[:N], np.uint8).reshape(NY, NX)
 forest = np.frombuffer(raw[N:2*N], np.uint8).reshape(NY, NX)
@@ -34,7 +34,7 @@ terr[tr[:, 2], tr[:, 1]] = tr[:, 0]
 B = np.array(c.execute("select x,y,type from buildings where type in ('floor','wall')").fetchall(), dtype=object).reshape(-1, 3)
 bx = (B[:, 0].astype(float) // 32).astype(int); by = (B[:, 1].astype(float) // 32).astype(int); btype = B[:, 2]
 # 길
-R = np.array(c.execute("select cell_key, v from roads where zone='hanbando'").fetchall(), dtype=np.float64).reshape(-1, 2)
+R = np.array(c.execute("select cell_key, v from roads where zone=?", (Z,)).fetchall(), dtype=np.float64).reshape(-1, 2)
 if not len(R): R = np.array(c.execute("select cell_key, v from roads").fetchall(), dtype=np.float64).reshape(-1, 2)
 rk = R[:, 0].astype(np.int64); rv = R[:, 1]; ry, rx = rk // NX, rk % NX
 road = np.zeros((NY, NX), np.uint8)
