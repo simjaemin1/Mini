@@ -1,0 +1,43 @@
+{
+  "reason": "Selected cloud environment restarted; no simulation processes remained alive. Partial 100-day cases are excluded and restarted from day zero.",
+  "cases": [
+    {
+      "name": "PREFLIGHT_PLAIN",
+      "lastObservedDay": null,
+      "completed": true,
+      "includedInFinalComparison": false
+    },
+    {
+      "name": "PREFLIGHT_OBSERVED",
+      "lastObservedDay": 1,
+      "completed": true,
+      "includedInFinalComparison": false
+    },
+    {
+      "name": "OFF",
+      "lastObservedDay": 26,
+      "completed": false,
+      "includedInFinalComparison": false
+    },
+    {
+      "name": "WOOD",
+      "lastObservedDay": 22,
+      "completed": false,
+      "includedInFinalComparison": false
+    }
+  ],
+  "previousZoneProcessExitStatuses": [
+    {
+      "pid": 439810,
+      "state": "Z",
+      "rawWaitStatus": 0,
+      "normalizedExit": 0
+    },
+    {
+      "pid": 439811,
+      "state": "Z",
+      "rawWaitStatus": 0,
+      "normalizedExit": 0
+    }
+  ]
+}
