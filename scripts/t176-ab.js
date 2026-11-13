@@ -372,6 +372,7 @@ const M = vils.map(() => ({ harvestN: 0, units: 0, foodEq: 0, sow: 0, fDays: 0, 
   covLtDays: 0, covMin: 9,                     // 충당률이 1 미만인 날 · 최저
   dHealthSum: 0, dHpmSum: 0, dHealthTermSum: 0,   // `_fuelCov=1` 로 떼면 돌아오는 몫(닫힌 꼴 · 첫째 차수)
   healthSum: 0, hpmSum: 0, dpHealthSum: 0, dpSum: 0, statDays: 0,
+  lsW: 0, lsFg: 0, lsH: 0, lsHap: 0,       // ★[T1298 ③] `lastStats`(다양성 `foodGroups` · 건강 · 행복) 사람-날 가중 합 — 800날 열 시드로 읽는 칸(읽기만)
   d40: null,                      // 40일째 한 장(게이트가 처음 걸리는 그 날 · 카드 ④)
   traj: [] }));                   // ⓒ 궤적(20일마다)
 const IX = new Map(vils.map((v, i) => [v, i]));
@@ -413,6 +414,7 @@ for (let day = 0; day < DAYS; day++) {
     const n = (ev.npcs || []).length;
     if (n > m.popMax) m.popMax = n;
     m.popDays += n;
+    { const L = ev.lastStats; if (L && n > 0) { m.lsW += n; m.lsFg += (+L.foodGroups || 0) * n; m.lsH += (+L.health || 0) * n; m.lsHap += (+L.happiness || 0) * n; } }   // ★[T1298 ③] 틱 끝 그날 값(읽기만)
     m.cellDays += v._farmSet.size;
     m.housingDays += +(ev.housing || 0);
     m.idleDays += +(ev._idleFrac || 0);
@@ -654,6 +656,7 @@ for (let i = 0; i < world.villages.length; i++) {
     strawPendMax: +m.strawPendMax.toFixed(2), strawPendEnd: +((v._strawPend || 0)).toFixed(4),
     watch: m.watch.length ? m.watch : undefined,   // ★[T249] 지켜보는 마을만 채워진다
     healthMean: m.statDays ? +(m.healthSum / m.statDays).toFixed(4) : null,
+    lsW: m.lsW, lsFg: m.lsW ? +(m.lsFg / m.lsW).toFixed(4) : null, lsHealth: m.lsW ? +(m.lsH / m.lsW).toFixed(4) : null, lsHappy: m.lsW ? +(m.lsHap / m.lsW).toFixed(4) : null,   // ★[T1298 ③]
     hpmMean: m.statDays ? +(m.hpmSum / m.statDays).toFixed(5) : null,
     dHealthMean: m.statDays ? +(m.dHealthSum / m.statDays).toFixed(5) : null,
     dHpmMean: m.statDays ? +(m.dHpmSum / m.statDays).toFixed(6) : null,
@@ -710,6 +713,7 @@ const out = {
   fieldFoodEqTot: +M.reduce((a, m) => a + m.foodEq, 0).toFixed(1),
   fDaysTot: M.reduce((a, m) => a + m.fDays, 0),
   popDaysTot: M.reduce((a, m) => a + m.popDays, 0), cellDaysTot: M.reduce((a, m) => a + m.cellDays, 0),
+  lastStatsTot: (() => { const W = M.reduce((a, m) => a + m.lsW, 0); return W ? { w: W, fg: +(M.reduce((a, m) => a + m.lsFg, 0) / W).toFixed(4), health: +(M.reduce((a, m) => a + m.lsH, 0) / W).toFixed(4), happy: +(M.reduce((a, m) => a + m.lsHap, 0) / W).toFixed(4) } : null; })(),   // ★[T1298 ③] 세계 사람-날 가중
   gatedDaysTot: M.reduce((a, m) => a + m.gatedDays, 0), hungerDaysTot: M.reduce((a, m) => a + m.hungerDays, 0),
   housingMeanTot: +M.reduce((a, m) => a + m.housingDays / DAYS, 0).toFixed(1),
   idleMeanTot: +(M.reduce((a, m) => a + m.idleDays / DAYS, 0) / Math.max(1, M.length)).toFixed(4),
