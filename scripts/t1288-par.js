@@ -11,6 +11,8 @@
 const fs = require('fs');
 const path = require('path');
 const [OUTJ, SOLO, ...PARS] = process.argv.slice(2);
+// 남의 서버를 둘로 가른다 — 존 설정 포트(central 의 5초 `/health` 두드림이 닿는 곳 · 제품 고정 = 회부) · 그 밖(central · 하네스 포트)
+const ZCFG = new Set(Object.values(require(path.join(__dirname, '..', 'server', 'zone-config')).ZONES).map((z) => z.port));
 if (!OUTJ || !SOLO || !PARS.length) { console.error('쓰는 법: node scripts/t1288-par.js <요약.json> <홀로 판> <나란히 판…>'); process.exit(2); }
 const jl = (f) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean) : []);
 function runRes(dir) {
@@ -51,25 +53,33 @@ function overlaps(dir) {
 }
 function foreign(dir) {
   const N = jl(path.join(dir, 'net.jsonl'));
+  // ★하네스 끝 = 그 하네스 꼬리표의 마지막 기록(net) · 그 하네스 pid 의 장부 내놓음(ports) 중 늦은 것.
+  //   SIGKILL 로 내려간 존은 '닫음' 줄을 못 남긴다 — 묶음 구간을 하네스 끝에서 자르지 않으면 다음 하네스가
+  //   자기 존이 서기 전에 두드린 것을 "죽은 남의 존에 붙음"으로 잘못 센다(T1288 판 A 첫 집계가 그랬다).
+  const hEnd = new Map();
+  for (const e of N) if (e.h) hEnd.set(e.h, Math.max(hEnd.get(e.h) || 0, e.t));
+  const P = jl(path.join(dir, 'ports.jsonl')), argvOf = new Map();
+  for (const r of P) if (r.argv) argvOf.set(r.pid, r.argv);
+  for (const r of P) if (r.release && argvOf.has(r.pid)) { const h = argvOf.get(r.pid); hEnd.set(h, Math.max(hEnd.get(h) || 0, r.t)); }
   const iv = new Map();   // port → [{h, pid, t0, t1}]
   const open = new Map();
   for (const e of N) {
-    if (e.k === 'listen') { const o = { h: e.h, pid: e.pid, t0: e.t, t1: Infinity }; open.set(e.pid + ':' + e.port, o); if (!iv.has(e.port)) iv.set(e.port, []); iv.get(e.port).push(o); }
-    else if (e.k === 'close') { const o = open.get(e.pid + ':' + e.port); if (o) o.t1 = e.t; }
+    if (e.k === 'listen') { const o = { h: e.h, pid: e.pid, t0: e.t, t1: e.h && hEnd.has(e.h) ? hEnd.get(e.h) : Infinity }; open.set(e.pid + ':' + e.port, o); if (!iv.has(e.port)) iv.set(e.port, []); iv.get(e.port).push(o); }
+    else if (e.k === 'close') { const o = open.get(e.pid + ':' + e.port); if (o) o.t1 = Math.min(o.t1, e.t); }
   }
-  let conn = 0, matched = 0, foreignN = 0, untagged = 0; const ex = [], tagged = new Set();
+  let conn = 0, matched = 0, foreignN = 0, untagged = 0, toZone = 0, toOther = 0; const byPair = new Map(), tagged = new Set();
   for (const e of N) {
     if (e.k !== 'connect') continue;
     conn++; if (e.h) tagged.add(e.h);
-    const L = (iv.get(e.port) || []).filter((o) => o.t0 <= e.t && e.t <= o.t1 + 200);
+    const L = (iv.get(e.port) || []).filter((o) => o.t0 <= e.t && e.t <= o.t1);
     if (!L.length) continue;
     matched++;
     const o = L[L.length - 1];
     if (!o.h || !e.h) { untagged++; continue; }
-    if (o.h !== e.h) { foreignN++; if (ex.length < 5) ex.push({ from: e.h, port: e.port, owner: o.h }); }
+    if (o.h !== e.h) { foreignN++; if (ZCFG.has(e.port)) toZone++; else toOther++; const k = e.h + ' → :' + e.port + ' (' + o.h + ')'; byPair.set(k, (byPair.get(k) || 0) + 1); }
   }
   const listens = N.filter((e) => e.k === 'listen');
-  return { connects: conn, matched, foreign: foreignN, untagged, ex, harnessesSeen: tagged.size, listenHarnesses: new Set(listens.map((e) => e.h).filter(Boolean)).size, listens: listens.length };
+  return { connects: conn, matched, foreign: foreignN, toZone, toCentral: toOther, untagged, ex: [...byPair].map(([k, n]) => n + ' ' + k), harnessesSeen: tagged.size, listenHarnesses: new Set(listens.map((e) => e.h).filter(Boolean)).size, listens: listens.length };
 }
 const solo = runRes(SOLO);
 const out = { solo: { wall: solo.wall, n: Object.keys(solo.R).length, pass: Object.values(solo.R).filter((r) => r.ok).length, inuse: Object.values(solo.R).reduce((s, r) => s + r.inuse, 0), ports: overlaps(SOLO), net: foreign(SOLO) }, pars: [] };
@@ -87,4 +97,4 @@ for (const d of PARS) {
 out.soloFail = Object.entries(solo.R).filter(([, r]) => !r.ok).map(([h, r]) => h + '(rc=' + r.rc + ')');
 fs.writeFileSync(OUTJ, JSON.stringify(out, null, 1));
 console.log(`홀로: ${out.solo.n}개 · 초록 ${out.solo.pass} · 벽 ${out.solo.wall}초 · EADDRINUSE ${out.solo.inuse} · 겹침 ${out.solo.ports.clash} · 남의 서버 ${out.solo.net.foreign}`);
-for (const p of out.pars) console.log(`나란히 ${path.basename(p.dir)}: ${p.n}개 · 초록 ${p.pass} · 벽 ${p.wall}초 · 홀로와 같음 ${p.same}/${out.solo.n} · 범위 겹침 ${p.ports.clash}(범위 ${p.ports.n} · hold ${p.ports.holds} · 최대 기다림 ${p.ports.maxWait}ms) · EADDRINUSE ${p.inuse} · 남의 서버 ${p.net.foreign}(붙음 ${p.net.connects} · 묶은 쪽 찾음 ${p.net.matched} · 꼬리표 없음 ${p.net.untagged})${p.diff.length ? ' · 다른 것 ' + p.diff.map((x) => x.h + JSON.stringify(x.solo || x.why) + '→' + JSON.stringify(x.par || '')).join(' ; ') : ''}`);
+for (const p of out.pars) console.log(`나란히 ${path.basename(p.dir)}: ${p.n}개 · 초록 ${p.pass} · 벽 ${p.wall}초 · 홀로와 같음 ${p.same}/${out.solo.n} · 범위 겹침 ${p.ports.clash}(범위 ${p.ports.n} · hold ${p.ports.holds} · 최대 기다림 ${p.ports.maxWait}ms) · EADDRINUSE ${p.inuse} · 남의 central·하네스 서버 ${p.net.toCentral} · 남의 존 설정 포트 ${p.net.toZone}(붙음 ${p.net.connects} · 묶은 쪽 찾음 ${p.net.matched} · 꼬리표 없음 ${p.net.untagged})${p.diff.length ? ' · 다른 것 ' + p.diff.map((x) => x.h + JSON.stringify(x.solo || x.why) + '→' + JSON.stringify(x.par || '')).join(' ; ') : ''}`);
