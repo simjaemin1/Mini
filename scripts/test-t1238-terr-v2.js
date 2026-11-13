@@ -408,6 +408,67 @@ function runZone() {
   return out;
 }
 
+function t1302People(V,E) {
+  const players=new Map(),npcs=new Set();let serial=0;
+  const deps={players,npcs,broadcast:()=>{},moveSpeed:64,dayPhaseRatio:.7,isTerrainBlockedLocal:()=>false,
+    spawnNpc:q=>{const p={pid:'person'+(++serial),x:q.x,y:q.y,hp:100,maxHp:100,isNpc:true,inventory:{}};players.set(p.pid,p);npcs.add(p.pid);return p;}};
+  const make=(id,name,x)=>({dbId:id,name,ccx:x,ccy:200,housesPx:[],_houseCells:[],_granList:[],npcPids:[],econ:E.createVillage({name,initialPop:2,size:60,fertility:1,water:1,wood:1,game:1,stone:1,ore:1})});
+  const a=make(1,'A',200),b=make(2,'B',240),world={day:10,seed:1020};
+  a.econ._world=b.econ._world=world;
+  const H=V.__p3Bind({ready:true,zoneId:'test',deps,villages:[a,b],byDbId:new Map([[1,a],[2,b]]),world,dayMs:1440000,
+    routeCache:new Map(),_route:null,_distCtx:null,roads:null,epoch:0,bodyExits:new Map()});
+  H.syncVillagePop(a,2);H.syncVillagePop(b,2);
+  for(let i=0;i<5;i++){const q=E.createNPC({job:'farmer'});a.econ.npcs.push(q);a.econ.counts[q.currentJob]=(a.econ.counts[q.currentJob]||0)+1;}
+  H.syncVillagePop(a,2);
+  const full=a.npcPids.length===a.econ.npcs.length;
+  const person=E.createNPC({job:'farmer'});a.econ.npcs.push(person);a.econ.counts[person.currentJob]=(a.econ.counts[person.currentJob]||0)+1;
+  V.banditHost().t1302Prepare(a);
+  const body=a.npcPids.map(pid=>players.get(pid)).find(p=>p._econId===person.id);
+  a.econ.npcs.splice(a.econ.npcs.indexOf(person),1);
+  const leaving=H._t765Depart(a,b,1,[person]);
+  b.econ.npcs.push(person);
+  const joined=H._t765Join(leaving.pids[0],b,person);
+  H.syncVillagePop(a,2);H.syncVillagePop(b,2);H.syncVillageJobs(a);H.syncVillageJobs(b);
+  return {full,selectedSame:!!body&&leaving.pids[0]===body.pid,joined,
+    arrivalSame:players.get(leaving.pids[0])?._econId===person.id,
+    ratio:Math.min(a.npcPids.length/a.econ.npcs.length,b.npcPids.length/b.econ.npcs.length),
+    meals:E.T1197_MEAL_BODY,bodyBirthFlag:E.T1198_BIRTH_BODY};
+}
+function runT1302() {
+  const Module=require('module'),compile=Module._extensions['.js'];
+  global.__t1302BatchCalls=0;
+  Module._extensions['.js']=function(m,f){
+    if(f!==path.join(ROOT,'server/villages.js'))return compile(m,f);
+    let src=fs.readFileSync(f,'utf8').replace('function _t1238Batch(vil, picked, cap) {','function _t1238Batch(vil, picked, cap) { global.__t1302BatchCalls++;');
+    if(process.env.T1302_BAIT==='1')src=src.replace('if (T1302_TERR_BODY) return _t1207Queue(vil, picked);','if (T1302_TERR_BODY && _t449Seen(vil)) return _t1207Queue(vil, picked);');
+    m._compile(src,f);
+  };
+  const F=fixture(),{V,E,P}=F,S=V.__p3Bind({}).state;
+  const v=F.mk(1,'T',1000,1000,3,{}),p=F.body('crew');
+  p.x=32016;p.y=32016;p.simVillageId=1;p.simJob='lumberjack';v.npcPids=[p.pid];
+  v.econ.storage.wood=1000;
+  F.deps.anyViewerNear=()=>process.env.T1302_VIEWER==='1';
+  setWorld(F,[v],1);S.dayMs=1440000;E.bindProductionActs(S.world);v.econ._world=S.world;
+  F.trees.set('1004,1000',1);
+  const initial=v._terrSet.size;
+  P._t1238Probe.pay(v,['1004,1000']);
+  const j=v._t1207Pend && v._t1207Pend[0];
+  if(!j)throw Error('observer-free territory did not queue a physical job');
+  const stock=v.econ.storage.wood;
+  for(let t=100;t<=1000;t+=100)P._t1181Probe.step(v,p,t,true);
+  const far={work:j.workMs,tree:F.trees.get('1004,1000'),stock:v.econ.storage.wood};
+  let heldBeforeReturn=false;
+  for(let now=1100;now<180000 && v._terrSet.size===initial;now+=100){
+    P._t1181Probe.step(v,p,now,true);
+    if((p._t1302Terr?.cargo.wood||0)>0 && v.econ.storage.wood===stock)heldBeforeReturn=true;
+    if(Number.isFinite(p.targetX)){p.x=p.targetX;p.y=p.targetY;}
+  }
+  return {on:V.T1302_TERR_BODY,batch:global.__t1302BatchCalls,far,stock,heldBeforeReturn,
+    body:v._t1207.body,cells:v._t1207.cells,grew:v._terrSet.size-initial,felled:v._t1207.felled,woodIn:v._t1207.woodIn,
+    people:t1302People(V,E),pending:(v._t1207Pend||[]).length,tree:F.trees.get('1004,1000')};
+}
+if (MODE === 't1302') { let o; try { o=runT1302(); } catch(e) { o={err:e.stack,batch:global.__t1302BatchCalls||0}; } process.stdout.write('@@T1238 '+JSON.stringify(o)+'\n');process.exit(0); }
+
 if (MODE === 'vil') { const o = runVil(); process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 'off') { const o = runOff(); process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 't1275') { let o; try { o = runT1275(); } catch (e) { o = { err: e.stack }; } process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
@@ -630,6 +691,17 @@ sec('ⓜ [T1283] 나무 모자람 → 직업 고르기 · 미끼 · 틱 칸 · (
     && /if \(walk \+ hw > budget\) \{ _keepCleared\(\); continue; \}/.test(VS)
     && /if \(E\.T1283_WOOD_DEMAND\) e\._t1283Clear = \(e\._t1283Clear \|\| 0\) \+ g;/.test(VS) && /if \(_lifeEcon\(\)\.T1283_WOOD_DEMAND\) vil\.econ\._t1283Clear = \(vil\.econ\._t1283Clear \|\| 0\) \+ g;/.test(VS),
     '글자 — 손잡이 둘(끔 기본 · `\'1\'` 만) · 일괄 말뚝 줄은 걸음 끔이면 종전 식(hw = 0) · 개간 통나무와 짐에서 든 몫을 같은 칸에 센다(켬만)');
+}
+sec('ⓝ [T1302] 관측자 없이 몸이 개간·귀환·말뚝 · 관측자 미끼');
+{
+  const env={T1207_TERR_REAL:'1',T1238_TERR_V2:'1',T1302_TERR_BODY:'1',T400_BUILD_ACT:'0',T325_WOOD_ACT:'1'};
+  const n=child('t1302',env),v=child('t1302',{...env,T1302_VIEWER:'1'}),b=child('t1302',{...env,T1302_BAIT:'1'});
+  const bodyCheck=x=>!!(x&&!x.err&&x.body>0&&x.body===x.grew&&x.cells===x.grew&&x.batch===0);
+  ok(bodyCheck(n),'관측자0: 영토 증가는 전부 몸 완공 · 일괄 호출0',n);
+  ok(n&&!n.err&&n.far.work===0&&n.far.tree===1&&n.far.stock===n.stock&&n.heldBeforeReturn&&n.felled===1&&n.tree===0,'멀리선 일·벌목·입고0 · 벤 짐은 귀환 전에 손에',n);
+  ok(n?.people?.full && n.people.selectedSame && n.people.joined && n.people.arrivalSame && n.people.ratio===1 && !n.people.meals && !n.people.bodyBirthFlag,'하루+5도 몸 전부 · 떠난 사람=걷는 몸=도착 사람 · 식사 켬 없이 1:1',n?.people);
+  ok(v&&!v.err&&v.body===n?.body&&v.grew===n?.grew&&v.batch===0,'관측자1도 같은 몸 경로',v);
+  ok(b && b.batch>0 && /did not queue/.test(b.err||'') && !bodyCheck(b),'미끼: 관측자 갈래를 되살리면 위 완공 검사가 빨강',b);
 }
 console.log(`\n=== T1238: ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
