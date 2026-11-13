@@ -74,10 +74,10 @@ function world(on, lenPx, src) {
   const state = { caravanBodies: new Map(), deps: { players: new Map(), isPositionActive: null, isBlockedByWall: null, moveSpeed: zoneMove }, world: { day: D, caravans: [] },
     dayMs: DAY, epoch: 0, lastGameDay: D, zoneId: 't', roads: null, _carTickAt: 0, byEcon: new Map() };
   const stat = { legs: 0, home: 0, late: 0, lateMaxPx: 0, lateSumPx: 0 };
-  const names = ['state', 'T772_ON', '_t772Stat', 'T661_ON', 'T707_ON', 'T731_ON', 'CARAVAN_BLOCKTEST', 'SZ', '_escortMarch', 'despawnCaravanNpc', '_t707Tally', '_t661Stamp', 'console', 'T775_RESUME', '_t1034Mark', 'T1145_XY_COLS', 'BC', 'T1253_CLOCK_FIX'];   // ★[T1177] T1145 가 이 함수들에 몸 x · y 쓰기 길(`BC` · 손잡이)을 보탰다 — 제품 정본 모듈 그대로 넘긴다   // ★[T775 · PM 착지 10-17] 다시 뜬 판   // ★[T1034] 귀환 출발 표(메타 행 한 줄 — 가짜 세계엔 저장이 없다 · 값 무변) 갈래 — ★[T782] 제품 기본 = 켬(가짜 세계엔 `state.ready` 가 없어 다시 뜸 문은 안 연다)
+  const names = ['state', 'T772_ON', '_t772Stat', 'T661_ON', 'T707_ON', 'T731_ON', 'CARAVAN_BLOCKTEST', 'SZ', '_escortMarch', 'despawnCaravanNpc', '_t707Tally', '_t661Stamp', 'console', 'T775_RESUME', '_t1034Mark', 'T1145_XY_COLS', 'BC', 'T1253_CLOCK_FIX', 'T1300_OLD_AX'];   // ★[T1300] 되살림 축 가리기 손잡이(`_t1289In` 이 읽는다)   // ★[T1177] T1145 가 이 함수들에 몸 x · y 쓰기 길(`BC` · 손잡이)을 보탰다 — 제품 정본 모듈 그대로 넘긴다   // ★[T775 · PM 착지 10-17] 다시 뜬 판   // ★[T1034] 귀환 출발 표(메타 행 한 줄 — 가짜 세계엔 저장이 없다 · 값 무변) 갈래 — ★[T782] 제품 기본 = 켬(가짜 세계엔 `state.ready` 가 없어 다시 뜸 문은 안 연다)
   const F = new Function(...names, (src || SRC) + '\nreturn { econDayToMs, setBodyPts, _t661Path, _t661Vis, startReturnLeg, tickCaravanBodies, _caravanSyncSweep, _t1289In };');
   const quiet = { log: () => {} };
-  const K = F(state, on, stat, true, false, false, 0, 32, () => {}, () => {}, () => {}, () => {}, quiet, true, () => {}, _BC.ON, _BC, process.env.T1253_CLOCK_FIX !== '0');
+  const K = F(state, on, stat, true, false, false, 0, 32, () => {}, () => {}, () => {}, () => {}, quiet, true, () => {}, _BC.ON, _BC, process.env.T1253_CLOCK_FIX !== '0', process.env.T1300_OLD_AX !== '0');
   if (lenPx === 'axis') return { K, state, F, stat };   // ★[T1289] ④ — 세계 틀만(되살림 축 판이 몸을 직접 세운다)   // ★[T1258] T1253 손잡이 = 제품 글자(켬 기본 · `=0` 끔)   // ★[T782] T775 = 제품 기본(켬)
   const head = K.econDayToMs(D), lingerEnd = head + DAY * 4 / 24;   // T707 장 머묾 하루 4/24(보고 T762)
   const pts = [{ x: 0, y: 0 }, { x: lenPx * 0.5, y: 0 }, { x: lenPx * 0.5, y: lenPx * 0.5 }];
@@ -124,11 +124,11 @@ console.log('\n④ ★[T1289] 귀환 보간 축 — 켬 · T1182 몸으로 저�
 { const DAY = 1440000, D = 10, E0 = 1.6e12, LIN = DAY * 4 / 24;
   //   econ 날 시계 축 저장 칸(장 끝 → econ 도착 · 저장 순간 = econ 날 몫 0.5) — 되살린 순간 보간 몫 기대 = (0.5 − 4/24) ÷ (1 − 4/24) = 0.4
   const rec = (ax) => ({ ...(ax ? { ax } : {}), lg: D * DAY + LIN, da: D * DAY + LIN, aa: (D + 1) * DAY, T: { t0: D * DAY + LIN }, at: E0 + D * DAY + DAY / 2 });
-  const run = (knob, S, src) => {
+  const run = (knob, S, src, oldAx) => {   // ★[T1300] oldAx = `T1300_OLD_AX` 값(없음 = 제품 기본 켬)
     const W = world(true, 'axis', src), K = W.K, st = W.state;
     st.epoch = E0; st.dayMs = DAY;   // 벽시계 경계 축 ≠ econ 날 시계 축(epoch 0 이면 둘이 숫자로 같아 섞여도 안 보인다)
     //   손잡이 T1253 을 판마다(같은 글자 · 다른 인수 — null = 제품 기본)
-    const K2 = knob === null ? K : W.F(st, true, W.stat, true, false, false, 0, 32, () => {}, () => {}, () => {}, () => {}, { log: () => {} }, true, () => {}, _BC.ON, _BC, knob);
+    const K2 = (knob === null && oldAx === undefined) ? K : W.F(st, true, W.stat, true, false, false, 0, 32, () => {}, () => {}, () => {}, () => {}, { log: () => {} }, true, () => {}, _BC.ON, _BC, knob === null ? process.env.T1253_CLOCK_FIX !== '0' : knob, oldAx === undefined ? true : oldAx);
     const now = E0 + D * DAY + DAY / 2;
     const Dnow = Date.now; Date.now = () => now;
     try {
@@ -138,12 +138,19 @@ console.log('\n④ ★[T1289] 귀환 보간 축 — 켬 · T1182 몸으로 저�
       return { f: K2._t661Vis(body, now) / path_.len, S };
     } finally { Date.now = Dnow; }
   };
-  const a = run(true, rec('e')), b = run(false, rec('e')), c = run(false, rec(null));
+  const a = run(true, rec('e')), b = run(false, rec('e')), c = run(false, rec(null), null, false);   // ★[T1300] c = 되돌림 손잡이 `T1300_OLD_AX=0` 판(종전 단언 그대로 — 기본 판은 아래 ④′ 가 잰다)
   ok(Math.abs(a.f - 0.4) < 1e-9 && a.S.ax === 'w' && a.S.lg === E0 + D * DAY + LIN, '★④ 켬 · 표지 e → 이 판(종전 몸) — 시각 칸이 벽시계 경계 축으로 옮겨져 되살린 순간 보간 몫 = 저장 순간 econ 몫 0.4 · 머묾 끝 = 같은 econ 순간',
     `몫 ${a.f.toFixed(6)} · 머묾 끝 ${a.S.lg - E0 - D * DAY}ms(그날 머리부터) · 표지 ${a.S.ax}`);
   ok(Math.abs(b.f - 0.4) < 1e-9 && b.S.ax === 'w', '★④ 끔(`T1253_CLOCK_FIX=0`) · 표지 e → 옮긴다(켬이 쓴 저장 — 끔 판도 안 섞인다)', `몫 ${b.f.toFixed(6)}`);
-  ok(c.S.lg === D * DAY + LIN && c.S.aa === (D + 1) * DAY && !('ax' in c.S), '④ 끔 · 표지 없는 저장 = 손대지 않는다(종전 바이트 — 끔이 쓴 저장은 표지가 없다)', `머묾 끝 ${c.S.lg} · 표지 ${'ax' in c.S}`);
-  const bait = SRC.replace('  if (!S || (!S.ax && !T1253_CLOCK_FIX)) return S;', '  return S;');
+  ok(c.S.lg === D * DAY + LIN && c.S.aa === (D + 1) * DAY && !('ax' in c.S), '④ 끔 · 표지 없는 저장 = 손대지 않는다(종전 바이트 — 끔이 쓴 저장은 표지가 없다)', `머묾 끝 ${c.S.lg} · 표지 ${'ax' in c.S}`);   // ★[T1300] 이 판은 `T1300_OLD_AX=0`(T1289 글자) — 기본 판은 ④′
+  //   ★[T1300 · T1289 회부 4] ④′ 기본 판(`T1300_OLD_AX` 켬) — 끔 판도 표지 없는 저장을 값 크기로 가린다(경계 = econ 날 시계 최대값 (D + 2) × 하루)
+  const recW = () => ({ lg: E0 + D * DAY + LIN, da: E0 + D * DAY + LIN, aa: E0 + (D + 1) * DAY, T: { t0: E0 + D * DAY + LIN }, at: E0 + D * DAY + DAY / 2 });   // 끔이 쓴 저장(벽시계 경계 축 · 표지 없음)
+  const c2 = run(false, rec(null)), w0 = recW(), w0s = JSON.stringify(w0), c3 = run(false, w0), c4 = run(true, rec(null));
+  ok(Math.abs(c2.f - 0.4) < 1e-9 && c2.S.ax === 'w' && c2.S.lg === E0 + D * DAY + LIN && c2.S.aa === E0 + (D + 1) * DAY, '★④′ [T1300] 끔 · 표지 없는 옛 켬 저장(econ 날 시계 값) → 벽시계 경계 축으로 옮긴다 — 보간 몫 0.4 · 머묾 끝 = 같은 econ 순간(종전: 그대로 = 보간 몫 1 · 회부 4)',
+    `몫 ${c2.f.toFixed(6)} · 머묾 끝 ${c2.S.lg - E0 - D * DAY}ms · 표지 ${c2.S.ax}`);
+  ok(c3.S === w0 && JSON.stringify(c3.S) === w0s && !('ax' in c3.S) && Math.abs(c3.f - 0.4) < 1e-9, '★④′ [T1300] 끔 · 끔이 쓴 저장(칸이 다 벽시계) = 손대지 않는다(종전 바이트 · 표지 칸도 안 붙는다)', `바이트 ${JSON.stringify(c3.S) === w0s ? '같음' : '다름'} · 몫 ${c3.f.toFixed(6)}`);
+  ok(Math.abs(c4.f - 0.4) < 1e-9 && c4.S.ax === 'w', '④′ [T1300] 켬 · 표지 없는 옛 켬 저장 → 이 판(종전 몸) — 같은 가리기로 옮긴다', `몫 ${c4.f.toFixed(6)}`);
+  const bait = SRC.replace('  if (!S || (!S.ax && !T1253_CLOCK_FIX && !T1300_OLD_AX)) return S;', '  return S;');   // ★[T1300] 첫 줄 글자가 바뀌었다(손잡이 하나 더) — 미끼 뜻 그대로(되살림 축 옮김 없음)
   const d = run(null, rec('e'), bait);
   ok(bait !== SRC && Math.abs(d.f - 1) < 1e-9, '④ ★미끼(되살림 축 옮김 없음 = 종전) — econ 날 시계 칸을 벽시계로 읽어 보간 몫 1(몸이 집 끝을 쫓는다 · 회부 5 섞임) ⇒ 빨강이 되는 판', `몫 ${d.f.toFixed(6)}`);
 }

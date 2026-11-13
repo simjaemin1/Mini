@@ -1,0 +1,168 @@
+{
+ "arm": "after",
+ "dayMs": 1440000,
+ "obsS": 10800,
+ "client": false,
+ "inWorld": false,
+ "pageErrors": 0,
+ "wallS": 10838,
+ "rev": "HEAD",
+ "stat": {
+  "arm": "after",
+  "D": 6,
+  "cur": {
+   "d": 6,
+   "at": 9771342,
+   "gapTicks": 0,
+   "headMs": 49,
+   "art": 0,
+   "artTrans": 0,
+   "shadow": 0
+  },
+  "closes": [
+   {
+    "d": 0,
+    "at": 1131338,
+    "gapTicks": 0,
+    "headMs": 63,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 1,
+    "at": 2571333,
+    "gapTicks": 0,
+    "headMs": 49,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 2,
+    "at": 4011334,
+    "gapTicks": 0,
+    "headMs": 33,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 3,
+    "at": 5451329,
+    "gapTicks": 0,
+    "headMs": 34,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 4,
+    "at": 6891316,
+    "gapTicks": 0,
+    "headMs": 47,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 5,
+    "at": 8331325,
+    "gapTicks": 0,
+    "headMs": 23,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 6,
+    "at": 9771342,
+    "gapTicks": 0,
+    "headMs": 49,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   }
+  ],
+  "gapTicks": 0,
+  "edm": {},
+  "edmAll": 797166,
+  "art": {
+   "calls": 259386,
+   "gapCalls": 0,
+   "trans": {},
+   "take": 90,
+   "give": 90,
+   "gapTake": 0,
+   "gapGive": 0,
+   "gapOut": 0,
+   "gapIn": 0,
+   "shadow": 0,
+   "shadowBy": {},
+   "shadowOut": 0,
+   "shadowIn": 0
+  },
+  "gran": {
+   "villages": 51,
+   "units": 35951.069,
+   "day": 7
+  },
+  "t0": 1794539420641
+ },
+ "closeMs": [
+  [
+   1,
+   157831
+  ],
+  [
+   2,
+   157450
+  ],
+  [
+   3,
+   158835
+  ],
+  [
+   4,
+   159710
+  ],
+  [
+   5,
+   163176
+  ],
+  [
+   6,
+   161252
+  ],
+  [
+   7,
+   159870
+  ]
+ ],
+ "sum": {
+  "closes": 7,
+  "gapCloses": 0,
+  "gapTicks": 0,
+  "gapTicksMax": 0,
+  "headMsMax": 63,
+  "artGapCalls": 0,
+  "artGapTrans": 0,
+  "artTrans": {},
+  "artShadow": 0,
+  "artShadowBy": {},
+  "gapTake": 0,
+  "gapGive": 0,
+  "gapUnitsOut": 0,
+  "gapUnitsIn": 0,
+  "shadowUnitsOut": 0,
+  "shadowUnitsIn": 0,
+  "take": 90,
+  "give": 90,
+  "edmGap": {},
+  "granary": {
+   "villages": 51,
+   "units": 35951.069,
+   "day": 7
+  }
+ }
+}
