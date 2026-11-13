@@ -13,7 +13,7 @@ const OUT = process.env.T1276_OUT || (SERVER && process.env.T577_OUT ? process.e
 if (!OUT) return;
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
-const rec = { cols: ['day', 'vils', 'pop', 'slot', 'prod', 'fuel', 'K', 'bySlot', 'byProd', 'byFuel', 'popSlot', 'popProd', 'popFuel', 'atK', 'grain', 'tfe', 'farmer', 'born', 'lumber', 'sur', 'stand', 'h365'], rows: [], err: null, vil: {} };
+const rec = { cols: ['day', 'vils', 'pop', 'slot', 'prod', 'fuel', 'K', 'bySlot', 'byProd', 'byFuel', 'popSlot', 'popProd', 'popFuel', 'atK', 'grain', 'tfe', 'farmer', 'born', 'lumber', 'sur', 'stand', 'h365', 'cells', 'harvN', 'fdDead', 'natDead', 'dead'], rows: [], err: null, vil: {} };
 let cur = null, curDay = -1;
 function flush() {
   if (!cur) return;
@@ -40,7 +40,7 @@ V1.tickVillage = function (v, day) {
       cur.lumber = (cur.lumber || 0) + ((v.counts && v.counts.lumberjack) || 0);
       cur.born = (cur.born || 0) + Math.max(0, n - n0);
       cur.sur = (cur.sur || 0) + ((v.surplusEMA && v.surplusEMA.food) || 0);
-      cur.stand = (cur.stand || 0) + (v._t1276Stand || 0); cur.h365 = (cur.h365 || 0) + (v._t1276H || 0);
+      cur.stand = (cur.stand || 0) + (v._t1276Stand || 0); cur.cells = (cur.cells || 0) + (v._fieldCells || 0); cur.harvN = (cur.harvN || 0) + (v._t100HarvestN || 0); cur.h365 = (cur.h365 || 0) + (v._t1276H || 0); cur.fdDead = (cur.fdDead || 0) + (v._fdDeadTot || 0); cur.natDead = (cur.natDead || 0) + (v._natDeadTot || 0); cur.dead = (cur.dead || 0) + (v._deadTot || 0);   // ★[T1284] 죽음 누계(굶음 · 자연 · 전부 — 읽기만)
       if (day % 50 === 0) (rec.vil[day] = rec.vil[day] || []).push([v.name, n, k.slot, k.prod, k.fuel, +(v._dPAccum || 0).toFixed(3), +g0.toFixed(2)]);
     }
   } catch (e) { rec.err = rec.err || String(e && e.stack || e).slice(0, 400); }

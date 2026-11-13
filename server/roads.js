@@ -373,8 +373,12 @@ function clientRoads() { // welcome 1회 — 등급 셀 flat [cx,cy,lv,...] (밟
 //   ⓔ 프로세스가 정상 종료하면(`exit`) 남은 묶음을 그 자리에서 다 쓴다. 강제 종료(SIGKILL)는 남은 묶음을 잃는다 — 종전도 그날 찍힌 것을 다 잃는 자리다.
 let _fl = null;   // { day, rows:[[k, v|null, d]], i, n, cells, graded, stamped } — ★[T688 켬] 쓰기 전 복사 꼴: { lazy, keys, it, snap, out, i, total, … }
 const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(끔 = 제 예산 그대로)
-function _sliceMs() { try { const V = require('./villages'); return V.tickSliceMs ? (V.tickSliceMs() | 0) : 0; } catch (e) { return 0; } }
-function _villagesBusy() { try { const V = require('./villages'); return !!(V.villagesBusy && V.villagesBusy()); } catch (e) { return false; } }
+// ★[T1290 ③] 틱마다 부르는 두 문 — `require('./villages')` 의 경로 풀기를 한 번만 한다. 풀린 이름으로 모듈 캐시 칸을 보고(있으면 그 `exports` —
+//   `require` 가 캐시에 든 모듈에 돌려주는 바로 그것 · 순환 적재 중이면 그때의 `exports` 도 같다), 칸이 없으면 종전처럼 `require`(다시 적재 · 하네스가 캐시를 지운 판).
+let _rVK = null;
+function _rVil() { if (_rVK === null) _rVK = require.resolve('./villages'); const m = require.cache[_rVK]; return m ? m.exports : require('./villages'); }
+function _sliceMs() { try { const V = _rVil(); return V.tickSliceMs ? (V.tickSliceMs() | 0) : 0; } catch (e) { return 0; } }
+function _villagesBusy() { try { const V = _rVil(); return !!(V.villagesBusy && V.villagesBusy()); } catch (e) { return false; } }
 // ★[T688 ⓑ] 묶음 행 상한 — 속도 = 그날 묶음들 중 가장 느린 것(행 ÷ BEGIN~COMMIT ms — WAL 자동 체크포인트가 든 묶음까지) · 다음 날 첫 묶음은 지난날 속도 ·
 //   부팅 뒤 첫 묶음(속도 모름)은 한 행. 종전 첫 묶음은 행 쓰기만 예산을 보고 COMMIT 은 예산 밖이라 4,735행 = 쓰기 13.7 + COMMIT 25.7 = 39 ms 였다(T688 탐침).
 let _flRate = 0, _flDayMin = 0, _flCow = false;
