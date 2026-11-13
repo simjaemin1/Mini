@@ -142,14 +142,20 @@ run_par() {
   local -A run_f=() run_h=() busy=()
   echo "  [나란히] -j ${JOBS} · ${#pend[@]}개 · 고정 포트 쥔 하네스는 같은 포트끼리 차례로"
   while [ "${#pend[@]}" -gt 0 ] || [ "${#run_f[@]}" -gt 0 ]; do
-    # ① 빈 자리에 띄울 수 있는 첫 것(쥐는 포트가 지금 쥔 것과 안 겹치는)을 띄운다
+    # ① 빈 자리에 띄울 수 있는 것(쥐는 포트가 지금 쥔 것과 안 겹치는)을 띄운다
+    #   ★[T1288] 포트를 쥐는 하네스를 **먼저** 고른다 — 같은 포트 무리는 차례로만 돌므로 그 줄이 쉬면 벽이 늘어난다
+    #   (판 A: 목록 차례로 고르니 쥐지 않는 것 넷이 자리를 채운 동안 3010·3020 줄이 놀았다 · 끝에 그 줄만 홀로 남았다).
+    #   고르는 차례만 바꾼다 — 무엇을 도는지 · 판정은 그대로.
     local started=1
     while [ "${#run_f[@]}" -lt "$JOBS" ] && [ "$started" = "1" ]; do
       started=0
-      local i
+      local i pass
+      for pass in hold any; do
+      [ "$started" = "1" ] && break
       for i in "${!pend[@]}"; do
         local f="${pend[$i]}" hs clash=0 p
         hs="$(holds_of "$f")"
+        [ "$pass" = "hold" ] && [ -z "$hs" ] && continue
         for p in $hs; do [ -n "${busy[$p]:-}" ] && clash=1; done
         [ "$clash" = "1" ] && continue
         for p in $hs; do busy[$p]="$f"; done
@@ -158,6 +164,7 @@ run_par() {
         unset 'pend[$i]'; pend=("${pend[@]}")
         started=1
         break
+      done
       done
     done
     # ② 하나 끝나기를 기다려 그 덩어리를 찍고 셈에 넣는다
