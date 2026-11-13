@@ -33,6 +33,11 @@
 //      기본 판(400날 착지 게이트)은 종전 그대로 넉넉한 판이다(느린 틱은 갈래 · 짧은 판). 묶는 코어는 `--slow-core N`(기본 0).
 //      굽기 판 아이 존엔 틱 자(`t1268-tick-meter.js` — 읽기만)를 늘 싣는다(느린 판 · 넉넉한 판 둘 다): 끝 줄에 그 판의 30Hz 틱 간격(p50 · 평균) · 본문 · econ 날 벽시계 길이를 적는다
 //      — "틱이 정말 느렸나"를 끝 줄이 말한다(판정 아님 · 견줌은 종전 그대로 벽시계 = 가상 시계).
+//   ⑤ ★[T1299 · T1289 회부 3] 틈 판(`--slow` 에 붙는다 · `--gap off` = 뗌 · `--gap-only` = 이것만) — 판 자 지문(`--house` · 캐러밴 0)은 마감 틈 갈래 미끼
+//      (`gapK1` = T1282 앞 마감 중 시계 · `gapG1` = T1289 앞 틈 정렬)를 못 봤다(둘 다 PASS — 틈은 벽시계 판에서만 서고 지문이 틈 안 시계 값에 안 닿는다).
+//      ⇒ 견줌 뒤 캐러밴 켬 · 벽시계 판 자 한 판(`t577-server-run` · `--gap-days` 기본 6날 · 시드 = `--seeds` 첫째 · 낮밤 0시 고정)에 틈 자(`t1299-gap-meter.js`)를 싣고
+//         econ 날 시계의 정의 둘(T1282 머리 주석 · T1289 ①)을 본다: 단조(틈에서 시계가 거꾸로 안 간다) · 경계(틈에서 본 econ 날 경계 = 머리 뒤 값).
+//         깨지면 나감 1(`GATE-HOUSE FAIL · 틈 갈래 ≠ econ 날 시계`) · 틈 틱 0 · 자 문 못 끼움이면 나감 2(자가 아무것도 안 봤다 — 자명 통과 금지).
 'use strict';
 const fs = require('fs'), os = require('os'), path = require('path');
 const { spawn } = require('child_process');
@@ -58,7 +63,16 @@ const CLOSE = SLOW ? Math.max(0, parseFloat(opt('--slow-dwell', '6000')) || 0) :
 //     몸의 일과가 내내 취침이라 장인 머묾 0 → 미끼 ④ 같음(T1287 20판 중 6판 — 부하가 아니라 띄운 시각). `--phase real` = 종전(실제 시각 위상).
 const PHASE_REAL = A.includes('--phase') && opt('--phase', '') === 'real';
 const METER = path.join(__dirname, 't1268-tick-meter.js');
-if (!(DAYS > 0) || !/^\d+(,\d+)*$/.test(SEEDS)) { console.error('쓰는 법: [--days 400] [--seeds 1020,7,42] [--load N] [--keep <out.json>] [--slow [--slow-loops N]] [--phase real]'); process.exit(2); }
+//   ★[T1299 · T1289 회부 3] 틈 판 — 느린 틱 판(`--slow`)에 캐러밴 몸 · 마감 틈이 서는 짧은 벽시계 판 하나를 붙인다(머리 주석 ⑤).
+//     판 자(`t577-server-run` · 캐러밴 켬 · 집 행위 켬 · 시드 = `--seeds` 첫째)에 틈 자(`t1299-gap-meter.js` — 읽기만)를 싣고 econ 날 시계의 정의 둘을 본다:
+//     단조(틈에서 시계가 거꾸로 안 간다) · 경계(틈에서 본 `econDayToMs(Dc)` = 머리 뒤 값). 틈 틱 0 이면 판 실패(자가 아무것도 안 봤다).
+//     `--gap off` = 붙이지 않음 · `--gap-only` = 틈 판만(하네스 미끼 판) · `--gap-days N`(기본 6) · `--gap-slice N`(마감 조각 예산 ms · 기본 4).
+const GAP_ON = SLOW && opt('--gap', 'on') !== 'off';
+const GAP_ONLY = A.includes('--gap-only');
+const GAP_DAYS = Math.max(2, parseInt(opt('--gap-days', '6'), 10) || 6);
+const GAP_SLICE = opt('--gap-slice', '4');   // 마감 조각 예산 4ms(*언제*만 · 슬라이서 규약) — 마감마다 틈이 선다(실측 8날 마감 8/8 · 틈 틱 48 · 제품 기본 16ms 는 10날 7틱 — 0 인 판이 날 수 있다)
+const GAPM = path.join(__dirname, 't1299-gap-meter.js');
+if (!(DAYS > 0) || !/^\d+(,\d+)*$/.test(SEEDS)) { console.error('쓰는 법: [--days 400] [--seeds 1020,7,42] [--load N] [--keep <out.json>] [--slow [--slow-loops N] [--gap off|--gap-only] [--gap-days N]] [--phase real]'); process.exit(2); }
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-house-'));
 const BAKE = KEEP ? path.resolve(KEEP) : path.join(TMP, 'house.json');
@@ -82,7 +96,7 @@ function sbc(args, tag, how) {
     const env = Object.assign({}, process.env, { TMPDIR: TMP });
     if (how.meter) env.NODE_OPTIONS = `${process.env.NODE_OPTIONS || ''} --require ${METER}`.trim();   // ★[T1268] 굽기 판 아이 존 틱 자(읽기만)
     if (how.stall) env.T1268_TICK_STALL_MS = String(how.stall); else delete env.T1268_TICK_STALL_MS;
-    if (how.meter && !PHASE_REAL) env.T1287_PHASE0 = '1'; else delete env.T1287_PHASE0;   // ★[T1287] 낮밤 위상 고정(굽기 판 · 틱 자가 아이 존에서 건다)
+    if (how.meter && !PHASE_REAL) env.T1287_PHASE0 = '1'; else delete env.T1287_PHASE0;   delete env.T1299_PHASE_OFF; if (how.meter) env.T1299_PHASE_HOUR = PHASE_REAL ? '' : '0';   // ★[T1299] 부르는 쪽이 다른 시각으로 고정한 묶음(`phase-pin` · T1299_PHASE_HOUR) 안에서 불려도 굽기 판은 제 0시(공용 `lib-phase` 상수를 아이 존이 새로 정한다 · `--phase real` 이면 안 건다)   // ★[T1287] 낮밤 위상 고정(굽기 판 · 틱 자가 아이 존에서 건다)
     if (how.close) env.T1287_DWELL_STALL_MS = String(how.close); else delete env.T1287_DWELL_STALL_MS;   // ★[T1287] 머묾 멈춤(느린 틱 판만)   // ★[T1268] 느린 틱 판만(틱 자가 틱 머리에서 쓴다)
     const t0 = Date.now();
     const ch = how.pin ? spawn('taskset', ['-c', CORE, process.execPath, SBC, ...args], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
@@ -96,6 +110,29 @@ function sbc(args, tag, how) {
     ch.on('close', (code) => { cur = null; o.end(); e.end(); const m = all.match(/=== [^\n]* ===/g); if (m) last = m[m.length - 1]; resolve({ code, last, sec: Math.round((Date.now() - t0) / 1000) }); });
   });
 }
+//   ★[T1299] 틈 판 — 판 자 하나(제 프로세스 묶음 · 끊기면 cleanup 이 아이까지 멈춘다) → `<판>.t1299gap.json`
+function gapRun() {
+  return new Promise((resolve) => {
+    const dir = path.join(TMP, 'gap'); fs.mkdirSync(dir, { recursive: true });
+    const env = Object.assign({}, process.env, { TMPDIR: TMP, T577_DIR: dir, T577_PAR: '1', T1299_GAP: '1', T1299_PHASE_HOUR: '0',
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${GAPM} --require ${path.join(__dirname, 'phase-pin.js')}`.trim() });
+    delete env.T1299_PHASE_OFF; delete env.T745_VCLOCK; delete env.VILLAGE_CARAVAN_MAX;   // 벽시계 · 캐러밴 켬(제품 기본) · 0시(공용 `lib-phase` — 아이 존이 상수를 정한다)
+    env.VILLAGE_TICK_SLICE_MS = String(GAP_SLICE);
+    const seed = SEEDS.split(',')[0], t0 = Date.now();
+    const ch = spawn(process.execPath, [path.join(__dirname, 't577-server-run.js'), String(GAP_DAYS), seed], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+    cur = ch;
+    let tail = '';
+    const keep = (b) => { tail = (tail + b.toString()).slice(-4000); };
+    ch.stdout.on('data', keep); ch.stderr.on('data', keep);
+    ch.on('close', (code) => {
+      cur = null;
+      let G = null; try { const f = fs.readdirSync(dir).find((x) => x.endsWith('.t1299gap.json')); if (f) G = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch (e) {}
+      resolve({ code, G, seed, sec: Math.round((Date.now() - t0) / 1000), tail });
+    });
+  });
+}
+const gapTxt = (g) => !g.G ? `틈 판 자 파일 없음(나감 ${g.code})` : `틈 판 ${GAP_DAYS}날 · 시드 ${g.seed} · 캐러밴 켬 · 조각 예산 ${GAP_SLICE}ms · 틈 선 마감 ${g.G.gapCloses} · 틈 틱 ${g.G.gapTicks} · 틈 몸 틱 ${g.G.bodyGap} · 틈 장인 걸음 ${g.G.artGap} · 시계 잼 ${g.G.checks} · 단조 깨짐 ${g.G.dec}${g.G.dec ? `(틈 ${g.G.decGap} · 최대 ${g.G.decMax}ms)` : ''} · 경계 어긋남 ${g.G.drift}/${g.G.bound}${g.G.drift ? `(최대 ${g.G.driftMax}ms)` : ''} · ${g.sec}초`;
+const gapVerdict = (g) => !g.G || g.code !== 0 || !(g.G.checks > 0) || !(g.G.gapTicks > 0) || !(g.G.inj >= 3) ? 'void' : (g.G.dec || g.G.drift) ? 'bad' : 'ok';
 //   ★[T1268] 굽기 판 틱 자 읽기 — 임시 폴더 안 `<판>.t1268tick.json`(시드마다 하나) → 시드 평균(간격 · 본문 · econ 날)
 function readMeters() {
   const out = [];
@@ -109,6 +146,13 @@ function readMeters() {
   const slowTxt = SLOW ? (PIN ? `느린 틱(taskset -c ${CORE} · 같은 코어 고리 ${SLOW_LOOPS} · 틱마다 ${STALL}ms · 머묾마다 ${CLOSE}ms)` : `느린 틱(taskset 없음 · 고리 ${SLOW_LOOPS} · 틱마다 ${STALL}ms · 머묾마다 ${CLOSE}ms)`) : '넉넉한 틱';
   console.log(`=== 판 자 결정론 게이트(--house) — ${DAYS}날 · 시드 ${SEEDS} · 부하 고리 ${LOAD} · ${slowTxt} · 걸린 T…_ env ${knobs.length ? knobs.join(" ") : "없음(판 자 기본)"} ===`);
   const t0 = Date.now();
+  if (GAP_ONLY) {   // ★[T1299] 틈 판만(하네스 미끼 판)
+    const g = await gapRun(), v = gapVerdict(g), sec = Math.round((Date.now() - t0) / 1000);
+    console.log(`  [틈 판] ${gapTxt(g)}`);
+    if (v === 'ok') { console.log(`GATE-HOUSE PASS · 틈 판만 · econ 날 시계 정의대로 · ${gapTxt(g)} · ${sec}초`); process.exit(0); }
+    if (v === 'bad') { console.log(`GATE-HOUSE FAIL · 틈 갈래 ≠ econ 날 시계 · ${gapTxt(g)} · ${sec}초`); process.exit(1); }
+    console.log(`GATE-HOUSE FAIL · 틈 판 실패 · ${gapTxt(g)} · ${(g.tail || '').trim().split('\n').slice(-2).join(' / ')}`); process.exit(2);
+  }
   // ① 벽시계 굽기(부하 판이면 그동안 고리 · ★[T1268] 느린 틱 판이면 코어 0 에 묶은 고리)
   const pids = LOAD ? startLoops(LOAD) : [];
   if (LOAD) console.log(`  부하 고리 pid ${pids.join(' ')}`);
@@ -121,9 +165,14 @@ function readMeters() {
   if (mk.code !== 0) { console.log(`GATE-HOUSE FAIL · 굽기 판 실패(나감 ${mk.code}) · ${mk.sec}초`); process.exit(2); }
   // ② 그 판 ↔ 가상 시계
   const vc = await sbc([BAKE, '--house', '--vclock'], '견줌');
+  // ③ ★[T1299] 틈 판(느린 틱 판만 · 견줌 뒤 차례로 — 굽기 판 코어 묶음을 안 흔든다)
+  const gp = GAP_ON ? await gapRun() : null, gv = gp ? gapVerdict(gp) : 'off';
+  if (gp) console.log(`  [틈 판] ${gapTxt(gp)}`);
   const sec = Math.round((Date.now() - t0) / 1000);
   const what = (vc.last || '').replace(/^=== | ===$/g, '');
-  const tail = `${DAYS}날 · 시드 ${SEEDS} · 부하 ${LOAD} · ${slowTxt} · ${tickTxt} · 굽기 ${mk.sec}초 + 견줌 ${vc.sec}초 = ${sec}초${KEEP ? ` · 남김 ${path.relative(ROOT, BAKE)}` : ''}`;
+  const tail = `${DAYS}날 · 시드 ${SEEDS} · 부하 ${LOAD} · ${slowTxt} · ${tickTxt} · 굽기 ${mk.sec}초 + 견줌 ${vc.sec}초${gp ? ` + 틈 ${gp.sec}초` : ''} = ${sec}초${gp ? ` · ${gapTxt(gp)}` : ''}${KEEP ? ` · 남김 ${path.relative(ROOT, BAKE)}` : ''}`;
+  if (vc.code === 0 && gv === 'bad') { console.log(`GATE-HOUSE FAIL · 틈 갈래 ≠ econ 날 시계 · 벽시계 = 가상 시계 ${what} · ${tail}`); process.exit(1); }
+  if (vc.code === 0 && gv === 'void') { console.log(`GATE-HOUSE FAIL · 틈 판 실패 · 벽시계 = 가상 시계 ${what} · ${tail}`); process.exit(2); }
   if (vc.code === 0) { console.log(`GATE-HOUSE PASS · 벽시계 = 가상 시계 ${what} · ${tail}`); process.exit(0); }
   console.log(`GATE-HOUSE FAIL · ${vc.code === 1 ? '벽시계 ≠ 가상 시계' : `견줌 판 실패(나감 ${vc.code})`} ${what} · ${tail}`);
   process.exit(vc.code === 1 ? 1 : 2);
