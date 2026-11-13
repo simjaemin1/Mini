@@ -6242,6 +6242,7 @@ function _t1207Pay(vil, picked) {
 //   ★[T1238 ④] 켬 = 한 일은 **땅에 남는다** — 그 칸에서 일한 시간(개간 몫) · 박은 말뚝(통나무)을 `_t1238Land` 에 적고 곳간으로 안 되돌린다(박은 말뚝은 뽑아야 돌아온다)
 function _t1207Flush(vil) {
   const E = _lifeEcon();
+  for (const j of vil._t1207Pend) if (j._t1283Pile > 1e-9) { _t1207LogIn(vil, j._t1283Pile); j._t1283Pile = 0; }   // ★[T1283 (나)] 켬에서만 서는 칸 — 벤 채 아직 안 진 더미는 곳간으로(그루는 이미 베였다 · 끔 = 더미 0 · 무동작)
   if (T1238_TERR_V2) { for (const j of vil._t1207Pend) _t1238JobToLand(j, vil.dbId); vil._t1207Pend = []; return; }
   for (const j of vil._t1207Pend) { const w = (j.mat && j.mat.wood) || 0; if (w > 0 && vil.econ) E.returnActMaterials(vil.econ, 'wood', w); }
   vil._t1207Pend = [];
@@ -6316,6 +6317,23 @@ function _t1207Queue(vil, picked) {
   return [];
 }
 function _t1207Crew(vil) { const c = _t527Crew(vil); return c.length ? c[0].pid : null; }   // 여유 크루의 첫 몸 하나(집 · 곳간 크루가 먼저 가져간 뒤 · 다리가 있으면 다리가 먼저)
+//   ★★[T1297 할 일 3 · T1283 (나) · T1283 회부 3] 관측 마을 몸의 개간 일 — 켬(`T1283_CLEAR_HAUL` · 나무꾼 몸 켬 세계)이면 그 칸 그루를 벤 통나무가 곧장 곳간에 들지 않고
+//     칸 더미(일감 칸 `_t1283Pile` · 단)에 남는다. 그 몸이 짐(`_t400PerLoad('wood')` — 일괄 걸음과 같은 짐)씩 지고 그 일감의 곳간 사다리(`source` — 말뚝을 꺼낸 그 사다리)로 걸어가 부린다
+//     (`build-haul` 의 돌려 놓기 다리 · 부리는 줄 = `_t1207LogIn` — 일괄과 같은 줄 · 세금 · 장부 · 수요 문 · 넘친 몫은 마을 짐). 더미가 비면 그 칸이 영토가 된다
+//     (`_t1207BodyDone` — 남은 그루 0 이라 `_t1207Fell` 은 아무것도 안 벤다). 일괄(`_t1238Batch` · `_t1283Haul`)은 같은 짐 · 같은 사다리 왕복을 낮의 분으로 빼고,
+//     관측 마을은 몸이 그 왕복을 실제로 걷는다. 끔 = false · 종전 줄(끝낸 순간 영토 · 통나무 곧장 곳간).
+function _t1283BodyHaul(vil, npc, t) {
+  if (!T1283_CLEAR_HAUL || !_lifeEcon().T325_WOOD_ACT || !t || !t.site || !state.deps || !state.deps.t325TreesAtCell || !state.deps.t325CutTreeAt) return false;
+  const j = t.site, T = _t1207Stat(vil);
+  if (j._t1283Pile == null) { let pile = 0; T.felled += _t1207FellCell(vil, j.cx, j.cy, (u) => { pile += u; }); j._t1283Pile = +pile.toFixed(6); }   // 처음 — 그 칸 그루를 다 벤다(정본 벌목 문 · 통나무는 더미로)
+  if (!(j._t1283Pile > 1e-9)) return false;                                // 더미가 비었다 — 영토로
+  const n = Math.min(_t400PerLoad('wood'), j._t1283Pile);
+  j._t1283Pile = +(j._t1283Pile - n).toFixed(6);
+  npc.inventory = npc.inventory || {}; npc.inventory.wood = (npc.inventory.wood || 0) + n;
+  npc._t1181Haul = { key: t.key, leg: 'source', at: null, n, item: 'wood', source: t.source, returning: true, t1283: 1 };   // 돌려 놓기 다리 — 사다리에서 `refund` 가 `_t1207LogIn` 으로 부린다
+  T.haulLoads = (T.haulLoads || 0) + 1;
+  return true;
+}
 function _t1207BodyDone(vil, job) {
   const i = vil._t1207Pend ? vil._t1207Pend.indexOf(job) : -1;
   if (i >= 0) vil._t1207Pend.splice(i, 1);
@@ -6324,24 +6342,36 @@ function _t1207BodyDone(vil, job) {
   return _terrAdd(vil, [job.key], null, true);
 }
 //   ★개간 — 넓힌 셀에 서 있던 그루를 정본 벌목 문으로 베어 곳간에(나무꾼 일괄과 같은 세 줄 — `woodToGranary` · 못 받은 몫은 마을 짐 · 잔가지 · 도토리)
-function _t1207Fell(vil, added) {
+//   ★[T1297 할 일 3 · T1283 (나)] 개간 통나무 u 단이 곳간에 드는 한 자리 — 일괄(`_t1207Fell`)과 관측 마을 몸(`_t1283BodyHaul` 이 진 짐을 부릴 때)이 같은 줄을 탄다(사본 0)
+function _t1207LogIn(vil, u) {
   const E = _lifeEcon(), e = vil.econ, T = _t1207Stat(vil);
+  if (!(u > 0) || !e) return 0;
+  const g = E.woodToGranary(e, u) || 0; T.woodIn = +(T.woodIn + g).toFixed(6); if (E.T1283_WOOD_DEMAND) e._t1283Clear = (e._t1283Clear || 0) + g; if (T717_WOOD_HAND) _t717PackPut(vil, u - g);   // ★[T1283] 켬 = 개간 통나무를 따로 센다(나무꾼이 오늘 벤 몫과 가른다 · 짐에서 든 몫도 `_t717PackIn` 이 같은 칸에)
+  return g;
+}
+//   한 칸의 그루를 다 벤다(정본 벌목 문) — 그루마다 통나무 단을 `onLog` 에 넘기고 · 잔가지 · 도토리는 그 자리에서(T733) · 벤 그루 수를 돌려준다
+function _t1207FellCell(vil, x, y, onLog) {
+  let n = 0, left = Infinity;
+  for (;;) {
+    let peek = null; try { peek = state.deps.t325TreesAtCell(x, y); } catch (_) { peek = null; }
+    if (!peek || !peek.length || peek.length >= left) break;              // 다 벴다(또는 줄지 않는다 — 무한 고리 막이)
+    left = peek.length;
+    const u = _lifeLootWood(peek[0]) || 0;
+    let loot = null; try { loot = state.deps.t325CutTreeAt(x, y); } catch (_) { loot = null; }
+    if (!loot) break;
+    n++;
+    if (u > 0) onLog(u);
+    if (T733_FELL_LOOT) _t733LootIn(vil, loot);
+  }
+  return n;
+}
+function _t1207Fell(vil, added) {
+  const e = vil.econ, T = _t1207Stat(vil);
   if (!e || !state.deps || !state.deps.t325TreesAtCell || !state.deps.t325CutTreeAt) return 0;
   let n = 0;
   for (const k of added) {
     const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
-    let left = Infinity;
-    for (;;) {
-      let peek = null; try { peek = state.deps.t325TreesAtCell(x, y); } catch (_) { peek = null; }
-      if (!peek || !peek.length || peek.length >= left) break;              // 다 벴다(또는 줄지 않는다 — 무한 고리 막이)
-      left = peek.length;
-      const u = _lifeLootWood(peek[0]) || 0;
-      let loot = null; try { loot = state.deps.t325CutTreeAt(x, y); } catch (_) { loot = null; }
-      if (!loot) break;
-      n++;
-      if (u > 0) { const g = E.woodToGranary(e, u) || 0; T.woodIn = +(T.woodIn + g).toFixed(6); if (E.T1283_WOOD_DEMAND) e._t1283Clear = (e._t1283Clear || 0) + g; if (T717_WOOD_HAND) _t717PackPut(vil, u - g); }   // ★[T1283] 켬 = 개간 통나무를 따로 센다(나무꾼이 오늘 벤 몫과 가른다 · 짐에서 든 몫도 `_t717PackIn` 이 같은 칸에)
-      if (T733_FELL_LOOT) _t733LootIn(vil, loot);
-    }
+    n += _t1207FellCell(vil, x, y, (u) => _t1207LogIn(vil, u));
   }
   T.felled += n;
   return n;
@@ -15190,10 +15220,10 @@ function _t1181Step(vil,npc,now,awake) {
     move:(g,label)=>{npc.behavior='wander';npc.targetX=g.x;npc.targetY=g.y;npc.gatherTarget=null;_lifeAct(npc,label);},act:label=>_lifeAct(npc,(t&&t.kind==='terr'&&label==='건축')?'개간':label),home:()=>_lifeGoHome(npc,'취침'),
     pick:()=>{for(const[item,left]of missing()){const W=_carryCfg(),kg=(T1214_STEP_FAST?_t1214Weights():require('./weights')).kgOf(item),room=kg>0?Math.max(0,Math.floor((W.CFG.CAP_KG-W.totalKg(npc))/kg)):0;const spare=item==='wood'&&(t.kind==='bridge'||t.kind==='terr')?Math.max(0,t.kind==='bridge'?E.woodSpareAfterLand(vil.econ):E.woodSpare(vil.econ)):Infinity;const n=Math.min(left,_t400PerLoad(item),room,spare);if(n>0&&(vil.econ.storage[item]||0)>0)return{item,n};}return null;},
     take:(k,n)=>{const q=E.actFromGranary(vil.econ,k,n,true);if(q>0){S().took+=q;S().trips++;}return q;},
-    refund:(k,n)=>E.returnActMaterials(vil.econ,k,n),
+    refund:(k,n)=>{if(npc._t1181Haul&&npc._t1181Haul.t1283){_t1207LogIn(vil,n);return;}E.returnActMaterials(vil.econ,k,n);},   /* ★[T1283 (나)] 켬에서만 서는 짐(개간 통나무) — 곳간 사다리에서 일괄과 같은 줄로 부린다 · 끔 = 종전 */
     place:(k,n)=>{if(!(n>0))return;t.site.mat[k]=(t.site.mat[k]||0)+n;E.actMaterialsPlaced(vil.econ,k,n);S().placed=(S().placed||0)+n;if(t.kind==='bridge')_t527Save(t.site);},
     needsLoad:()=>missing().length>0,
-    work:dt=>{if(t&&t.kind==='terr'){const need=t.need();if(Object.entries(need).some(([k,n])=>(t.site.mat[k]||0)+1e-9<n))return;t.site.workMs=(t.site.workMs||0)+Math.min(dt,SCH_VG_STUCK);if(t.site.workMs<t.site.laborMin*_tripDayMs()/1440)return;_t1207BodyDone(vil,t.site);return;}   /* ★[T1207] 말뚝이 다 놓이면 그 셀에서 일한 시간만 개간(게임 분 = 정본 하루 ÷ 1,440) */
+    work:dt=>{if(t&&t.kind==='terr'){const need=t.need();if(Object.entries(need).some(([k,n])=>(t.site.mat[k]||0)+1e-9<n))return;t.site.workMs=(t.site.workMs||0)+Math.min(dt,SCH_VG_STUCK);if(t.site.workMs<t.site.laborMin*_tripDayMs()/1440)return;if(_t1283BodyHaul(vil,npc,t))return;_t1207BodyDone(vil,t.site);return;}   /* ★[T1207] 말뚝이 다 놓이면 그 셀에서 일한 시간만 개간(게임 분 = 정본 하루 ÷ 1,440) */
     if(!t||t.kind!=='bridge'||t.site.done)return;const need=t.need();if(Object.entries(need).some(([k,n])=>(t.site.mat[k]||0)+1e-9<n))return;const stageMs=_tripDayMs()*((state.deps&&state.deps.dayPhaseRatio)||0.7)/LIFE_STAGE_PDAY;t.site.workMs=(t.site.workMs||0)+Math.min(dt,SCH_VG_STUCK);if(t.site.workMs<stageMs)return;t.site.workMs-=stageMs;for(const[k,n]of Object.entries(need))t.site.mat[k]-=n;t.site.stage++;t.site.adv.push(state.world?.day||0);S().adv++;if(t.site.stage>=_t527StageCount(t.site)){_t527Complete(t.site,state.world?.day||0);S().built++;}_t527Save(t.site);}
   });
 }
@@ -18565,7 +18595,7 @@ function __rumorProbe() {
 
 module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   _t1259WoodRadius, _t1259WoodCells,
-  t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
+  t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
   T1238_TERR_V2, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,
   _t1238Batch, _t1238DayPre, _t1238DayPost, _t1238GoOk, _t1238Use, _t1238Remove, _t1238Boot, _t1238JobToLand, _t1238JobFromLand, _t1238JobsOf, landSizeOfCells, _t1238Struct, _t1238Land, _t1238St,
