@@ -1,0 +1,2 @@
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+[seed] ★전수 시딩(존 설정 seedAllVillages) — 품질 게이트 우회: 후보 51곳 전부. (터 미달은 시딩 단계에서 물리적으로 스킵)
