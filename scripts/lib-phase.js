@@ -12,6 +12,9 @@
 //   한 프로세스에 두 번 걸리면 두 번째는 아무것도 안 한다(같은 상수).
 // 부르는 곳: `t1268-tick-meter.js`(게이트 굽기 판 · 0시 · `T1287_PHASE0=1`) · `phase-pin.js`(프리로드 · `T1299_PHASE_HOUR=h` — 하네스 묶음 · 전수 판).
 // ⚠정본 한 자리 — `Date` 를 옮기는 글자를 다른 파일에 베끼지 않는다(`test-harness-lint` ⑯ 이 잡는다 · 가상 시계 `t745-vclock` 은 시각 자체를 대신하는 다른 자라 표에 둔다).
+// ⚠브라우저는 안 옮긴다 — node 프로세스(하네스 · central · zone)만 옮겨 브라우저 시계와 옮김 폭(최대 12분)만큼 어긋난다. 브라우저 판(e2e)에 걸면
+//   클라 시계 보정이 안 닿는 자리가 드러난다(T1299 전수: `e2e-nature` ⓔ 두 프레임 동일 · 생물 가림 반례 — 옮김 ≈0 이면 초록 · 06 · 18 은 둘 다 빨강 · 회부 1).
+//   e2e 를 고정해야 하면 브라우저도 같은 상수로 옮겨야 한다(지금 표 `MUST` 는 0 — 시각에 갈린 하네스가 없다).
 const DAY = 24 * 60 * 1000;   // zone-config WORLD.dayLengthMs (프리로드는 zone-config 를 먼저 안 싣는다 — `phaseOk()` 로 판 끝에 맞대 본다)
 const ENV = 'T1299_PHASE_OFF';
 function hourOf(ms) { return +((((ms % DAY) + DAY) % DAY) / DAY * 24).toFixed(2); }
