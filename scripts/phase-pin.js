@@ -7,4 +7,8 @@
 // 쓰는 법: T1299_PHASE_HOUR=18 NODE_OPTIONS="--require $PWD/scripts/phase-pin.js" node scripts/e2e-….js
 //   하네스 안에서: require('./lib-phase').pin(0) — 판 머리에서 한 번(아이를 띄우기 앞 · 아이는 env 로 같은 상수를 받는다)
 const h = process.env.T1299_PHASE_HOUR;
-if (h != null && h !== '' && process.env.T745_VCLOCK !== '1') require('./lib-phase').pin(+h);
+if (h != null && h !== '' && process.env.T745_VCLOCK !== '1') {
+  const P = require('./lib-phase').pin(+h);
+  //   증인(선택 · `T1299_PHASE_LOG=<파일>`) — 고정이 걸린 프로세스마다 한 줄(pid · 무엇 · 시각) — 전수 판이 아이(존 · central)까지 닿았나를 본다
+  if (process.env.T1299_PHASE_LOG) { try { require('fs').appendFileSync(process.env.T1299_PHASE_LOG, `${process.pid} ${require('path').basename(process.argv[1] || '-')} ${P.hour} ${P.at}\n`); } catch (e) {} }
+}

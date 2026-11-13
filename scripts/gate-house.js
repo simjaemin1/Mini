@@ -96,7 +96,7 @@ function sbc(args, tag, how) {
     const env = Object.assign({}, process.env, { TMPDIR: TMP });
     if (how.meter) env.NODE_OPTIONS = `${process.env.NODE_OPTIONS || ''} --require ${METER}`.trim();   // ★[T1268] 굽기 판 아이 존 틱 자(읽기만)
     if (how.stall) env.T1268_TICK_STALL_MS = String(how.stall); else delete env.T1268_TICK_STALL_MS;
-    if (how.meter && !PHASE_REAL) env.T1287_PHASE0 = '1'; else delete env.T1287_PHASE0;   delete env.T1299_PHASE_OFF;   // ★[T1299] 부르는 쪽이 다른 시각으로 고정한 묶음 안에서 불려도 굽기 판은 제 0시(공용 `lib-phase` 상수를 아이 존이 새로 정한다)   // ★[T1287] 낮밤 위상 고정(굽기 판 · 틱 자가 아이 존에서 건다)
+    if (how.meter && !PHASE_REAL) env.T1287_PHASE0 = '1'; else delete env.T1287_PHASE0;   delete env.T1299_PHASE_OFF; if (how.meter) env.T1299_PHASE_HOUR = PHASE_REAL ? '' : '0';   // ★[T1299] 부르는 쪽이 다른 시각으로 고정한 묶음(`phase-pin` · T1299_PHASE_HOUR) 안에서 불려도 굽기 판은 제 0시(공용 `lib-phase` 상수를 아이 존이 새로 정한다 · `--phase real` 이면 안 건다)   // ★[T1287] 낮밤 위상 고정(굽기 판 · 틱 자가 아이 존에서 건다)
     if (how.close) env.T1287_DWELL_STALL_MS = String(how.close); else delete env.T1287_DWELL_STALL_MS;   // ★[T1287] 머묾 멈춤(느린 틱 판만)   // ★[T1268] 느린 틱 판만(틱 자가 틱 머리에서 쓴다)
     const t0 = Date.now();
     const ch = how.pin ? spawn('taskset', ['-c', CORE, process.execPath, SBC, ...args], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
