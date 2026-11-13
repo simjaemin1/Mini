@@ -495,7 +495,11 @@ async function waitHttp(url, tries = 900) {
   let buyHit = null; const buyTried = [];
   for (const t of (await pool()).takes.slice().sort((a, b) => b.num - a.num)) {   // ★[T17] 위 ⑤-a 와 같은 이유로 자름 제거
     const P = await pool();
-    const g = P.gives.filter((x) => feasible(x, t)).sort((a, b) => a.num - b.num)[0];
+    //   ★[T1291] 넘침(`glut`) 품목은 낼 것에서 뺀다 — 마을이 넘치게 가진 물건은 한 개 값이 바닥(예: 건 미꾸라지 0.0000127 · T1192 어종별 보존식)이고
+    //     많이 낼수록 값이 더 떨어져 10만 개를 내도 "그 양으로는 한 개도 바꿀 수 없습니다"(시장이 맞게 거절) — 가장 싼 것을 고르던 픽스처가 그 품목을 골라
+    //     ⑤-b 가 "성사된 거래가 없다"로 빨갰다(야간 11-11 · T1291 전수). 넘침이 아닌 것 중 가장 싼 것(없으면 종전대로 넘침까지).
+    const _fz = P.gives.filter((x) => feasible(x, t));
+    const g = (_fz.filter((x) => !x.glut).length ? _fz.filter((x) => !x.glut) : _fz).sort((a, b) => a.num - b.num)[0];
     if (!g) { console.log(`    [산다] ${t.ko}(${t.num}·${t.sell}개) — 낼 수 있는 짝이 없다 · 건너뜀`); continue; }
     const r = await push(g, t);
     console.log(`    [산다] ${g.ko} → ${t.ko} (성사 ${r.dealt}회): ${t.ko} 재고 ${r.tS0} → ${r.tS1} · 시세 ${r.tN0} → ${r.tN1}`
@@ -531,7 +535,9 @@ async function waitHttp(url, tries = 900) {
     const gRow = board.rows.find((r) => r.res === GIVE);
     const WANT = 2;
     const cands = board.rows.filter((r) => r.canTake && r.res !== GIVE && r.num > 0 && r.sell >= WANT + 1);
-    const tRow = cands.sort((a, b) => a.num - b.num)[0];
+    //   ★[T1291] 넘침(`glut`) 품목은 받을 것에서도 뒤로 — 한 개 값이 바닥인 품목(건 새우 등 T1192 어종별 보존식)이면 생선 1 개가 수천 개를 사서
+    //     "받을 개수"가 낱개 올림에 묻힌다(견적 `takeAtNeeded` 가 그 수를 말한다 · 아래 판정은 그 말과 견준다).
+    const tRow = (cands.filter((r) => !r.glut).length ? cands.filter((r) => !r.glut) : cands).sort((a, b) => a.num - b.num)[0];
     ok(!!tRow, '★전제 — 받을 후보가 있다(마을이 그 양을 내줄 수 있다)', tRow ? `${tRow.ko} 팔 수 있는 양 ${tRow.sell}` : '없음');
     if (tRow) {
       await page.evaluate((n) => window.__sendPrimary({ type: '__e2e_give', items: { fish: n } }), 400);
@@ -572,7 +578,10 @@ async function waitHttp(url, tries = 900) {
       ok(!!wq && wq.want === WANT && wq.giveNeeded > 0, '★★⑦ "그걸 받으려면 몇 개?"의 답이 온다',
         wq ? `${tRow.ko} ${WANT} ← ${gRow.ko} ${wq.giveNeeded}` : '안 옴');
       const wtxt = await page.evaluate(() => window.__panelText());
-      ok(!!wq && /내야 할/.test(wtxt) && new RegExp(`\\b${wq.giveNeeded}\\b`).test(wtxt),
+      //   ★[T1291] 수수료(T1137 율 · T1151 끝수 장부)가 이 거래에서 1 을 넘기면 실행은 `giveNeeded + fee`(= 견적 `giveTotal`)를 낸다 — 화면은 그 수를
+      //     "모두 N개를 냅니다"로 쓴다. 종전 판정은 `giveNeeded` 만 견줘서, 앞 절들이 쌓은 끝수(④ "쌓인 수수료 0.6")에 이 거래 몫이 더해져 1 을 넘는 판에 빨갰다(15 vs 16).
+      const _wTot = wq && wq.fee > 0 && wq.giveTotal > 0 ? wq.giveTotal : (wq && wq.giveNeeded);
+      ok(!!wq && /내야 할/.test(wtxt) && new RegExp(`\\b${wq.giveNeeded}\\b`).test(wtxt) && (!(wq.fee > 0) || new RegExp(`모두 ${wq.giveTotal}개를 냅니다`).test(wtxt)),
         '★★⑦ **내야 할 양이 화면에** 뜬다(서버가 준 그 수 그대로)',
         (wtxt.match(/[^\n]*내야 할[^\n]*/) || [''])[0].trim().slice(0, 80));
       await snap('tr-07-want');            // ★"내야 할 양"이 떠 있는 그 화면(실행 전)
@@ -585,9 +594,11 @@ async function waitHttp(url, tries = 900) {
       const iv1 = await page.evaluate(() => window.__getInv());
       const dT = (iv1[tRow.item] || 0) - (iv0[tRow.item] || 0);
       const dG = (iv1.fish || 0) - (iv0.fish || 0);
-      ok(dT === WANT, `★★⑦ 인벤에 ${tRow.ko}이(가) **정확히 ${WANT}개** 들어왔다`, `+${dT}`);
-      ok(dG < 0 && Math.abs(dG) === wq.giveNeeded, '★★⑦ 나간 개수가 화면이 말한 "내야 할 양"과 같다',
-        `${wq.giveNeeded} vs ${Math.abs(dG)}`);
+      //   ★[T1291] 화면이 말한 받을 수 — 낱개 올림이면 견적 `takeAtNeeded`("(낱개라 올림 · 그러면 X N)") · 아니면 받을 개수 그대로
+      const _wTake = (wq && wq.takeAtNeeded > 0) ? wq.takeAtNeeded : WANT;
+      ok(dT === _wTake && dT >= WANT, `★★⑦ 인벤에 ${tRow.ko}이(가) **화면이 말한 수 그대로** 들어왔다(받을 개수 ${WANT} · 낱개 올림이면 견적이 말한 수)`, `+${dT} · 화면 ${_wTake}`);
+      ok(dG < 0 && Math.abs(dG) === _wTot, '★★⑦ 나간 개수가 화면이 말한 양과 같다(수수료가 서면 "모두 N개" — 견적 `giveTotal`)',
+        `${_wTot}${wq.fee > 0 ? `(내야 할 ${wq.giveNeeded} + 수수료 ${wq.fee})` : ''} vs ${Math.abs(dG)}`);
       await snap('tr-07-after');
     }
   }

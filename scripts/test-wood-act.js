@@ -231,8 +231,11 @@ console.log('\n⑦ 끄면 비트 동일 — 새 줄이 전부 손잡이 뒤에 �
   ok(/if \(_on && \(_t1202W \? true : _walked === 0\) && _ln > 0 && _tr\.length\) \{/.test(VC)
      && /const _t1202W = \(_bodyOnly && _on\) \? _t1202Roster\(vil, 'lumberjack', _t561W \|\| _t491C, _walked, _t449S\) : null;/.test(VC),
     '⑦ ★그 절이 `return` 으로 하루 경계를 끊지 않는다(뒤 일과가 그대로 돈다) · ★[T1202] 몸 XOR 일괄은 실제 호스트에서만 몸마다');
-  ok(/if \(_lifeEcon\(\)\.T325_WOOD_ACT && state\.deps\.t325TreesAtCell\) \{/.test(VC),
-    '⑦ ★★나무 셀 스캔도 손잡이 뒤다 — 끈 팔은 색인을 **한 셀도 안 묻는다**(벽시계 무변)');
+  //   ★[T1291] T1259(`1880230e8`)가 같은 스캔을 제 손잡이 `T1259_WOOD_CAP`(끔 기본 · `=== '1'` 만 켬) 뒤에서도 쓰게 문을 넓혔다 —
+  //     문 조건이 **손잡이만**(둘 중 하나)이고 T1259 가 끔 기본이면 "끈 팔은 색인을 안 묻는다"가 그대로다(지키던 것 = 손잡이 밖 스캔 0).
+  ok(/if \(\(_lifeEcon\(\)\.T325_WOOD_ACT \|\| _lifeEcon\(\)\.T1259_WOOD_CAP\) && state\.deps\.t325TreesAtCell\) \{/.test(VC)
+     && /const T1259_WOOD_CAP = \(typeof process !== 'undefined' && process\.env && process\.env\.T1259_WOOD_CAP === '1'\);/.test(C),
+    '⑦ ★★나무 셀 스캔도 손잡이 뒤다 — 끈 팔(T325 · T1259 둘 다 끔 · T1259 는 끔 기본)은 색인을 **한 셀도 안 묻는다**(벽시계 무변)');
   ok(/v\._woodOutLast = \(v\.counts\.lumberjack \|\| 0\) \* JOBS\.lumberjack\.base \* \(v\.land\.wood \|\| 0\) \* toolBoostShared;/.test(C),
     '⑦ ⚠분자만 손잡이 밖에서 남긴다 — **읽는 쪽이 손잡이 뒤**라 끈 팔은 그 수를 안 본다(T60 문법의 관측 칸)');
   // ★끈 팔에서 econ 이 내는 목재 = 종전 그대로(게이트가 거짓이라 `addProduce` 를 탄다)
@@ -389,7 +392,7 @@ console.log('\n⑩ [T398] 나무꾼의 숲 = 영토 밖 고리');
   ok(body.length > 0 && lits.length === 0, 'ⓐ ★그 함수에 **지어낸 수가 없다**(반경은 `T325_R` · 남은 것은 0·1)', lits.join(',') || '0개');
   //   ★고리는 손잡이 **뒤**에서만 센다 — 끈 팔은 이 함수를 한 번도 안 부른다(비트 동일)
   const scan = (VC.match(/function _t325Scan\([\s\S]*?\n\}/) || [''])[0];
-  const iKnob = scan.indexOf('if (_lifeEcon().T325_WOOD_ACT && state.deps.t325TreesAtCell) {');
+  const iKnob = scan.indexOf('if ((_lifeEcon().T325_WOOD_ACT || _lifeEcon().T1259_WOOD_CAP) && state.deps.t325TreesAtCell) {');   // ★[T1291] T1259 손잡이도 문에(끔 기본 — ⑦ 이 같이 본다)
   const iCall = scan.indexOf('const C = _t398Cells(vil);');
   ok(iKnob > 0 && iCall > iKnob && (scan.match(/_t398Cells\(/g) || []).length === 1,
     'ⓑ ★★고리를 **손잡이 뒤에서 한 번** 부른다 — 끈 팔은 셀을 한 칸도 안 센다(비트 동일)');
