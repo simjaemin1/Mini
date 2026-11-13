@@ -14,11 +14,33 @@
 //        틱이 실제로 느렸다(끝 줄 틱 자 — econ 날 벽시계 · 틱 간격 평균이 ① 넉넉한 판보다 길다 · 틱 늦춘 수 > 0)
 //     ④ ★[T1268 미끼] 같은 느린 틱 판 + `T1258_ARTISAN_CLOCK=0`(T1258 고치기 전 장인 머묾 = 벽시계) — 나감 1 · 끝 줄 `GATE-HOUSE FAIL · 벽시계 ≠ 가상 시계`
 //        (진짜 벽시계 자리 미끼 — 넉넉한 판에선 초록이던 그 갈림을 느린 틱 판이 잡는다 · 자명 통과 금지). ③ ④ 는 같이 돈다(③ 코어 0 · ④ 코어 1 — 서로 안 늦춘다).
+//        ★[T1287 · T1280 회부 2] 종전 ④ 는 마감 사이 창 길이(상자 부하로 달라진다)가 머묾(5 ~ 6초)보다 기냐에 기대 바쁜 상자에서 '같음'이 났다(6/1).
+//          이제 느린 틱 판은 **머묾 멈춤**(장인 몸이 사다리 머묾에 든 econ 날마다 한 번 · 틱 머리 6초 · `t1268-tick-meter` `T1287_DWELL_STALL_MS`)을 싣는다 —
+//          벽시계로 머묾을 재는 판은 상자와 무관하게 다음 틱에 머묾이 끝난다. ④ 는 머묾 멈춤이 실제로 섰는지(끝 줄 `머묾 멈춤 N` > 0)도 본다.
+//        ★★[T1287 — 뒤집힘의 진짜 까닭] 머묾 멈춤만으로도 20판 중 6판이 ③ ④ 둘 다 머묾 멈춤 0 · ④ 같음이었다 — 부하가 아니라 **띄운 실제 시각**이었다.
+//          몸의 일과는 벽시계 낮밤(`worldPhase` ≥ 0.7 = 밤 · 하루 24분)을 읽는데 굽기 판은 띄운 시각의 게임 시각에서 출발해, 게임 16 ~ 23시에 걸린 판은 장인이 내내 잤다.
+//          이제 게이트가 굽기 판 아이 존의 벽시계를 상수만큼 당겨 게임 0시(가상 시계 V0 와 같은 위상)에서 출발시킨다(`T1287_PHASE0` · 끝 줄 `낮밤 0시 고정(첫 날 게임 N시)`).
+//          ③ ④ 는 둘 다 낮밤 0시 고정 · 첫 날 게임 시각이 밤(16.8시) 앞 · 머묾 멈춤 > 0 을 본다.
 //   진짜 벽시계 자리 미끼(`T146_BUILD_MS=1 T1013_BAND_DAY=0` — 사냥터 짓기를 내일로)는 날 281 에야 갈려 짧은 판에 안 닿는다 — 400날 판은 보고/T1043 §3.
+//   ★[T1289] 마감 틈 갈래 미끼(프리로드 갈래 `T1043_BAIT=gapK1|gapG1` — 손 확인용 · 이 하네스 단언 밖): 느린 틱 판(`--slow`)에 실어도 둘 다 PASS 였다(2026-11-12 ·
+//     `계측/T1289_2026-11-12/게이트_미끼.txt`) — 판 자(`--house` · 캐러밴 0)의 지문에 틈 갈래 자리(기온 · 달력 · 장인 틈 걸음)가 안 닿는다. 틈 갈래는 `test-t1273-clock-rest` ⑤ ⑦ 이 잡는다.
 'use strict';
 if (require.main !== module) {   // ★프리로드 갈래 — 게이트 · 기준선 자 · 판 자 부모 · 부하 고리에도 실린다: 아무것도 안 한다(본문이 돌면 판이 판을 낳는다)
   //   벽시계 굽기 아이(아이 존 · 가상 시계 아님)만 세계를 바꾼다 — 미끼 판에서만(`T1043_BAIT=wall`)
   if (process.env.T1043_BAIT === 'wall' && process.env.T577_SEED && !process.env.T745_VCLOCK) process.env.T400_BUILD_ACT = '0';
+  //   ★[T1289] 마감 틈 갈래 미끼 — 존 아이(벽시계 · 가상 시계 둘 다 · 같은 글자)가 `server/villages.js` 를 실을 때 틈 갈래 글자 한 자리를 종전으로(파일 무변)
+  //     'gapK1' = 마감 중 econ 날 시계를 그날 머리로(T1282 앞 — 장인 머묾 · 장마당 그림이 틈에 하루를 거꾸로) · 'gapG1' = 틈 `econDayToMs` 정렬을 종전 `world.day` 로(T1289 앞)
+  const GAP = { gapK1: ['if (state.tickJobs || state._t731 || state._t1253Edge) return (state._t1282D === D ? D + 1 : D) * M;', 'if (state.tickJobs || state._t731 || state._t1253Edge) return D * M;'],
+    gapG1: ['state._t1253Edge)) ? state.world.day + 1 : state.world.day;', 'state._t1253Edge)) ? state.world.day : state.world.day;'] }[process.env.T1043_BAIT || ''];
+  if (GAP && process.env.T577_SEED) {
+    const Module = require('module'), VF = require('path').join(__dirname, '..', 'server', 'villages.js'), old = Module._extensions['.js'];
+    Module._extensions['.js'] = function (m, f) {
+      if (f !== VF) return old(m, f);
+      const src = require('fs').readFileSync(f, 'utf8'), n = src.split(GAP[0]).length - 1;
+      if (n !== 1) { console.error(`[T1289 미끼] 자리 ${n}곳 — 멈춤`); process.exit(3); }
+      m._compile(src.replace(GAP[0], GAP[1]), f);
+    };
+  }
   return;
 }
 const fs = require('fs'), path = require('path');
@@ -54,15 +76,19 @@ const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { 
   ok(pids.length === 1 && pids.every((x) => !alive(x)) && !!tmpd && !fs.existsSync(tmpd), '① 판 뒤 — 부하 고리 남은 것 0 · 임시 판 폴더 지움', `고리 ${pids.join(',') || '?'} · 폴더 ${tmpd || '?'}`);
   ok(b.code === 1 && /^GATE-HOUSE FAIL · 벽시계 ≠ 가상 시계 다름 1\/1 · /.test(b.last), '[미끼 · ②] 벽시계 굽기 아이만 다른 세계 — 나감 1 · 끝 줄 FAIL', b.last);
   // ③ ④ ★[T1268] 느린 틱 판 — 지금 판 초록 · 고치기 전 판(`T1258_ARTISAN_CLOCK=0`) 빨강 · 틱이 실제로 느렸다(끝 줄 틱 자 ↔ ① 넉넉한 판)
-  const tick = (line) => { const m = (line || '').match(/틱 간격 p50 ([\d.]+)ms · 평균 ([\d.]+)ms · p95 ([\d.]+)ms · 본문 평균 ([\d.]+)ms · econ 날 ([\d.]+)ms\((\d+)틱(?: · 늦춘 틱 (\d+))?/);
-    return m ? { p50: +m[1], mean: +m[2], p95: +m[3], body: +m[4], day: +m[5], n: +m[6], stalled: +(m[7] || 0) } : null; };
+  const tick = (line) => { const m = (line || '').match(/틱 간격 p50 ([\d.]+)ms · 평균 ([\d.]+)ms · p95 ([\d.]+)ms · 본문 평균 ([\d.]+)ms · econ 날 ([\d.]+)ms\((\d+)틱(?: · 늦춘 틱 (\d+))?(?: · 머묾 멈춤 (\d+))?/);
+    const ph = (line || '').match(/낮밤 (0시 고정|실제 시각)\(첫 날 게임 ([\d.]+)시\)/);
+    return m ? { p50: +m[1], mean: +m[2], p95: +m[3], body: +m[4], day: +m[5], n: +m[6], stalled: +(m[7] || 0), dwell: +(m[8] || 0), phase0: !!ph && ph[1] === '0시 고정', hour0: ph ? +ph[2] : null } : null; };
   const [s, r] = await Promise.all([gate([...A, '--slow', '--slow-core', '0'], {}), gate([...A, '--slow', '--slow-core', '1'], { T1258_ARTISAN_CLOCK: '0' })]);   // 코어 둘(서로 안 늦춘다 — 판마다 혼자 돈 판과 같은 조건)
   const T0 = tick(p.last), T1 = tick(s.last), T2 = tick(r.last);
   ok(s.code === 0 && /^GATE-HOUSE PASS · 벽시계 = 가상 시계 같음 1\/1 · /.test(s.last) && /느린 틱\(/.test(s.last), '★③ 느린 틱 판(지금 판 · 켬 기본) — 나감 0 · 끝 줄 PASS', s.last);
   ok(!!T0 && !!T1 && !!T2 && T1.stalled > 0 && T2.stalled > 0 && T1.mean > T0.mean && T1.day > T0.day && T2.day > T0.day,
     '③ 틱이 실제로 느렸다 — 느린 판 둘의 econ 날 벽시계 · 틱 간격 평균이 ① 넉넉한 판보다 길다(끝 줄 틱 자)',
     T0 && T1 && T2 ? `넉넉 간격 ${T0.mean}ms · 날 ${T0.day}ms ↔ 느림 간격 ${T1.mean}ms · 날 ${T1.day}ms(+${(T1.mean - T0.mean).toFixed(1)}ms) · 미끼 판 날 ${T2.day}ms` : '틱 자 없음');
-  ok(r.code === 1 && /^GATE-HOUSE FAIL · 벽시계 ≠ 가상 시계 다름 1\/1 · /.test(r.last), '[미끼 · ④] 느린 틱 판 + `T1258_ARTISAN_CLOCK=0`(고치기 전 장인 머묾 벽시계) — 나감 1 · 끝 줄 FAIL', r.last);
+  ok(!!T1 && !!T2 && T1.phase0 && T2.phase0 && T1.hour0 != null && T1.hour0 < 16.8 && T2.hour0 < 16.8 && T1.dwell > 0 && T2.dwell > 0,
+    '★③ ④ 낮밤 0시 고정(T1287) — 굽기 판 둘 다 첫 날 게임 시각이 밤 앞 · 머묾 멈춤이 섰다(띄운 실제 시각과 무관)',
+    T1 && T2 ? `③ 첫 날 ${T1.hour0}시 · 머묾 멈춤 ${T1.dwell} · ④ 첫 날 ${T2.hour0}시 · 머묾 멈춤 ${T2.dwell}` : '틱 자 없음');
+  ok(r.code === 1 && /^GATE-HOUSE FAIL · 벽시계 ≠ 가상 시계 다름 1\/1 · /.test(r.last) && !!T2 && T2.dwell > 0, '[미끼 · ④] 느린 틱 판 + `T1258_ARTISAN_CLOCK=0`(고치기 전 장인 머묾 벽시계) — 나감 1 · 끝 줄 FAIL · 머묾 멈춤이 섰다(T1287)', r.last);
   console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
   process.exit(fail ? 1 : 0);
 })();

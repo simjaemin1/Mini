@@ -21,7 +21,8 @@
 //   ③ 반쯤(캐러밴 켬 · 장인 끔) — 장인만 갈리고 캐러밴은 같다(손잡이가 제 몸만 가른다)
 //   ④ ★미끼 — `server/villages.js` 사본(아이 프로세스 안 · 실을 때 글자 한 자리만 바꿈)에서 `_t1253Now()` 읽기 하나를 벽시계(`Date.now()` · 인수 `now`)로 되돌리면 빨강
 //      (캐러밴 다섯 · 장인 둘 · 몸 갈래마다 하나 이상) — 잡은 수 ○/○ 를 끝 줄에 적는다.
-//   ⚠결과에서 뺀 칸(벽시계 그대로인 줄 — 정보 · 판정 아님): `_lifeActAt`(라벨 바뀐 순간 · `zone.js` 보내기 창 그림 시각) · `departAt` · `arriveAt` · `nomPxMs`
+//   ⑤ ★[T1289] 캐러밴 세 칸(`departAt` · `arriveAt` · `nomPxMs`)은 켬 · T1182 몸이면 econ 날 시계 축 — 흔들림에 같음(단언) · 끔은 갈림 · 미끼(`_t1289Leg` 출발 = Date.now())는 갈림
+//   ⚠결과에서 뺀 칸(벽시계 그대로인 줄 — 정보 · 판정 아님 · ★[T1289] 세 칸은 ⑤ 가 따로 잰다): `_lifeActAt`(라벨 바뀐 순간 · `zone.js` 보내기 창 그림 시각) · `departAt` · `arriveAt` · `nomPxMs`
 //     (귀환 출발 `startReturnLeg` 가 인수 `now` 로 적는 종전 페이싱 칸 — T1182 몸 걸음은 안 읽는다 · `_t1182Move` 는 `dtMs` 만). 이 칸들이 흔들렸는지는 표로 적는다.
 //   못 덮는 자리(이 판 밖 · 정보): 몸 세우기(`spawnCaravanBody` 셋) · 캐러밴 동기 도착 머묾(`_caravanSyncOne` `lingerUntil`) · 이웃 존 몸(`_xzMakeBody`) · 장마당 그림(`marketVillages`)
 //     — 내보낸 문이 없다(⓪ 표로만 센다).
@@ -42,13 +43,18 @@ const BAITS = [
   ['A1 장인 머묾 econ → Date.now()', 'art', 'const now = T1258_ARTISAN_CLOCK ? _t1253Now() : now0;', 'const now = T1258_ARTISAN_CLOCK ? Date.now() : now0;'],
   ['A2 장인 머묾 econ → 인수 now', 'art', 'const now = T1258_ARTISAN_CLOCK ? _t1253Now() : now0;', 'const now = T1258_ARTISAN_CLOCK ? now0 : now0;'],
 ];
+//   ★[T1289] 세 칸 미끼 — 판정 = 캐러밴 세 칸(`departAt` · `arriveAt` · `nomPxMs`)이 흔들림에 갈린다(⑤)
+const META_BAITS = [
+  ['T1 세 칸 econ 축 → 벽시계(`_t1289Leg` 출발 = Date.now())', 'const e = _t1253Now(); body.departAt = e;', 'const e = Date.now(); body.departAt = e;'],
+];
 const ROLE = process.argv[2];
 
 // ══ 아이: 한 판(A · B) 돌고 결과 한 줄 ═══════════════════════════════════════════════════
 if (ROLE === '--child') {
-  const bi = process.argv[3] != null && process.argv[3] !== '-' ? +process.argv[3] : -1;
+  const a3 = process.argv[3] != null && process.argv[3] !== '-' ? String(process.argv[3]) : '';
+  const bi = a3 === '' ? -1 : a3[0] === 'm' ? 1000 + +a3.slice(1) : +a3;   // ★[T1289] 'm…' = `META_BAITS`
   if (bi >= 0) {   // 미끼 — 이 아이가 실을 때만 villages.js 글자 한 자리를 바꾼다(파일은 안 만진다)
-    const [, , from, to] = BAITS[bi], old = Module._extensions['.js'];
+    const [from, to] = bi >= 1000 ? META_BAITS[bi - 1000].slice(1) : BAITS[bi].slice(2), old = Module._extensions['.js'];
     Module._extensions['.js'] = function (m, f) {
       if (f !== VFILE) return old(m, f);
       const src = fs.readFileSync(f, 'utf8'), n = src.split(from).length - 1;
@@ -260,5 +266,14 @@ for (let i = 0; i < BAITS.length; i++) {
 }
 ok(byBody.car >= 1 && byBody.art >= 1, '④ 몸 갈래마다 미끼 하나 이상을 잡았다', `캐러밴 ${byBody.car} · 장인 ${byBody.art}`);
 console.log(`\n  미끼 ${caught}/${BAITS.length}`);
+
+//   ★[T1289 · T1273 회부 1] 캐러밴 세 칸은 켬 · T1182 몸이면 econ 날 시계 축 — ① 의 [표·정보] 칸이 이제 단언이다(흔들림에 안 갈린다 · 끔은 갈린다)
+console.log('\n⑤ ★[T1289] 캐러밴 세 칸(`departAt` · `arriveAt` · `nomPxMs`) — 켬이면 벽시계 흔들림에 같음 · 끔 · 미끼는 갈림');
+if (!on.err) ok(on.car.metaSame, '★⑤ 켬 — 세 칸(귀환 출발 `startReturnLeg` 이 적는다 · 저장에 실린다)이 흔들림에 바이트 같음(econ 날 시계 축)', on.car.metaSame ? on.car.A.meta : '갈림');
+if (!off.err) ok(!off.car.metaSame, '⑤ [자명 통과 금지] 끔 — 같은 흔들림에 세 칸이 갈린다(종전 벽시계 축)', off.car.metaSame ? '같음' : '갈림');
+for (let i = 0; i < META_BAITS.length; i++) {
+  const r = child('m' + i, {});
+  ok(!r.err && !r.car.metaSame && r.car.same, `⑤ 미끼 ${META_BAITS[i][0]} — 세 칸이 흔들림에 갈린다(잡음 · 몸 결과는 같음 — 세 칸은 T1182 걸음이 안 읽는다)`, r.err ? r.err.slice(0, 160) : `세 칸 ${r.car.metaSame ? '같음' : '갈림'} · 몸 ${r.car.same ? '같음' : '갈림'}`);
+}
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

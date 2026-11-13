@@ -6,6 +6,7 @@
 //   ② 켬 = 합계 — 요리 문 섬 · 개간 문 닫힘(120일치 넘는 곳간) · 요리 재료 한 단을 가장 많이 쌓인 곡식 품목에서
 //   ③ 글자 — 손잡이 읽는 자리 하나(econ) + 전쟁 층 하나 · 문 셋(요리 · 개간 · 곳간 증설)이 같은 함수(`t1260FoodOf`)를 부른다 · 전쟁 층 추정 문이 `_feD`
 //   ④ [자명 통과 금지 · 미끼] 문 셋 중 하나를 `storage.food` 로 되돌린 사본은 ③ 의 검사에서 빠진다(검사가 실제로 문다)
+//   ⑥ [T1286] 손잡이 `T1286_COOK_SPARE` · `T1286_PRODK`(끔 기본 · `'1'` 만 · T1279 켬 안에서만) — 남는 시간 요리(정원 0 · 옮김 · 재료 한 단만 · 부재료 그대로 · 조리식 ≤ 든 환산) · 부양력 조리식 칸 0
 //   ⑤ [T1279] 손잡이 `T1279_COOK`(끔 기본 · `'1'` 만 · T1260 켬 안에서만) — 켜면 ① 식량 흐름 장부(`dailyFoodProd`)가 조리식 칸을 0 으로 센다(요리는 옮김) · ② 정원 요리사 0(`cookTarget`)
 //      · 장부 자리 하나 · 끔 = 종전 글자 · [미끼] 장부 자리를 종전으로 되돌린 사본 · T1260 과 떼어 놓은 사본을 검사가 문다
 'use strict';
@@ -26,6 +27,15 @@ if (process.argv[2] === '--child') {
   const v = mk();
   const out = { on: E.T1260_FOOD_READS, cook79: E.T1279_COOK, foodOf: E.t1260FoodOf(v), total: E.totalFoodEquivalent(v), cook: E.cookTarget(v) };
   const st = E.t1260CookStaple(v); out.staple = st ? st[0] : null;
+  out.spare86 = E.T1286_COOK_SPARE; out.prodk86 = E.T1286_PRODK;
+  if (E.T1286_COOK_SPARE) {   // ⑥ 남는 시간 요리 한 번 — 부자 마을 · 남는 손 0.4(잠재 10 · 실제 6) · 숙련 10(상한이 무는 쪽)
+    const w = mk(), a = E.totalFoodEquivalent(w), rice0 = w.storage.rice, side0 = ['fish', 'vegetable', 'fruit'].map((r) => w.storage[r]), dp = {};
+    E.t1286Cook(w, { skills: { cooking: 10 } }, [0, 0], 10, 6, dp);
+    out.ck = { d: E.totalFoodEquivalent(w) - a, cooked: dp.cooked_food || 0, st: w.storage.cooked_food, rice: rice0 - w.storage.rice, counts: w.counts.cook || 0, cookTarget: E.cookTarget(w), C: w._t1286C || null,
+      sideKept: ['fish', 'vegetable', 'fruit'].every((r, i) => w.storage[r] === side0[i]) };
+    const z = mk(), dz = {}; E.t1286Cook(z, {}, [0, 0], 10, 10, dz); out.ck0 = dz.cooked_food || 0;   // 남는 손 0
+    const q = mk(); q.storage = { food: 5, fish: 5, meat: 0, cooked_food: 0 }; const dq = {}; E.t1286Cook(q, {}, [0, 0], 10, 6, dq); out.ckPoor = dq.cooked_food || 0;   // 식량 안보 문 밑
+  }
   const vil = { econ: mk(), _potSet: new Set(['0,0']), _farmSet: new Set() };
   try { out.needClear = VIL.__labProbe._clearProbe.needClear(vil); } catch (e) { out.needClear = 'err ' + String(e && e.message).slice(0, 80); }
   console.log(JSON.stringify(out));
@@ -35,6 +45,8 @@ const run = (env) => {
   const e = Object.assign({}, process.env, env); delete e.NODE_OPTIONS;
   if (env.T1260_FOOD_READS == null) delete e.T1260_FOOD_READS;
   if (env.T1279_COOK == null) delete e.T1279_COOK;
+  if (env.T1286_COOK_SPARE == null) delete e.T1286_COOK_SPARE;
+  if (env.T1286_PRODK == null) delete e.T1286_PRODK;
   delete e.T1243_FARM_ON; delete e.T1229_FIELD_GROW;
   const r = spawnSync(process.execPath, [__filename, '--child'], { cwd: ROOT, env: e, encoding: 'utf8', timeout: 120000, maxBuffer: 16 << 20 });
   const line = String(r.stdout || '').split('\n').filter((l) => l.startsWith('{')).pop();
@@ -105,5 +117,33 @@ const baitK = ES.replace('const T1279_COOK = T1260_FOOD_READS && (', 'const T127
 const baitP = ES.replace("{ cooked_food: 0 }", "{ fish: 0 }");
 ok(baitL !== ES && baitK !== ES && baitP !== ES && !ledger(baitL) && !ledger(baitK) && !ledger(baitP),
   '⑤ [자명 통과 금지 · 미끼] 장부 자리를 종전으로 · 손잡이를 T1260 과 떼어 · 0 으로 만드는 칸을 딴 품목으로 바꾼 사본 셋 — 글자 검사가 셋 다 문다', { L: ledger(baitL), K: ledger(baitK), P: ledger(baitP) });
+//   ⑥ T1286 — 남는 시간 요리(정원 0 · 옮김 · 식량을 안 늘림) · 부양력 조리식 칸 0
+const s1 = run({ T1260_FOOD_READS: '1', T1279_COOK: '1', T1286_COOK_SPARE: '1', T1286_PRODK: '1' }), s2 = run({ T1260_FOOD_READS: '1', T1286_COOK_SPARE: '1', T1286_PRODK: '1' }), s3 = run({ T1260_FOOD_READS: '1', T1279_COOK: '1', T1286_COOK_SPARE: 'yes', T1286_PRODK: 'yes' });
+ok(!s1.err && !s2.err && !s3.err && off.spare86 === false && on.spare86 === false && k1.spare86 === false && k1.prodk86 === false && s1.spare86 === true && s1.prodk86 === true && s2.spare86 === false && s2.prodk86 === false && s3.spare86 === false && s3.prodk86 === false,
+  "⑥ T1286 손잡이 둘 — 끔 기본 · `'1'` 만 · `T1279_COOK` 켠 판 안에서만(T1279 끔 + `'1'` = 꺼짐 · `yes` = 꺼짐)", { off: off.spare86, k1: k1.spare86, s1: [s1.spare86, s1.prodk86], s2: [s2.spare86, s2.prodk86], s3: [s3.spare86, s3.prodk86] });
+{ const c = s1.ck || {};
+  ok(c.cooked > 0 && Math.abs(c.st - c.cooked) < 1e-9 && c.rice > 0 && c.d <= 1e-9 && c.sideKept === true && c.counts === 0 && c.cookTarget === 0 && c.C && c.C.n === 1 && c.C.days === 1,
+    '⑥ 남는 시간 요리 한 번 — 조리식이 곳간에 들고 재료(곡식)가 빠진다 · 부재료(생선 · 남새 · 과일 — 건강 기여 칸)는 그대로 · 곳간 식량 환산이 늘지 않는다(숙련 10 에도) · 요리사 0 · 정원 0 · 셈 1 번 1 날', c);
+  ok(s1.ck0 === 0 && s1.ckPoor === 0, '⑥ 남는 손 0 이면 요리 0 · 식량 안보 문(N×35 · N×8) 밑이면 요리 0', { ck0: s1.ck0, poor: s1.ckPoor }); }
+const body86 = (es) => { const i = es.indexOf('function _t1286Cook('); if (i < 0) return null; const j = es.indexOf('\n}\n', i); return j < 0 ? null : es.slice(i, j); };
+const spare = (es) => { const b = body86(es); if (!b) return false;
+  return !/currentJob|counts|switchNPCJob|cookTarget|COOK_SIDE_INGREDIENTS/.test(b)
+    && b.includes('per > 0 ? s / per : 0)') && b.includes('JOBS.cook.base')
+    && b.includes('if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;')
+    && (es.match(/const _t1286 = T1286_COOK_SPARE \? \[_potA, _actA\] : null;/g) || []).length === 1
+    && (es.match(/if \(_t1286\) _t1286Cook\(v, npc, _t1286, _potA, _actA, dailyProduction\);/g) || []).length === 1
+    && (es.match(/_t1286Cook\(/g) || []).length === 2
+    && /const T1286_COOK_SPARE = T1279_COOK && \(\(typeof process !== 'undefined' && process\.env\) \? process\.env\.T1286_COOK_SPARE === '1' : false\);/.test(es)
+    && /const T1286_PRODK = T1279_COOK && \(\(typeof process !== 'undefined' && process\.env\) \? process\.env\.T1286_PRODK === '1' : false\);/.test(es)
+    && /const dailyFoodProdPotential = totalFoodProductionEquivalent\(T1286_PRODK \? Object\.assign\(\{\}, dailyProductionPotential, \{ cooked_food: 0 \}\) : dailyProductionPotential, v\);/.test(es); };
+ok(spare(ES), '⑥ 글자 — 남는 시간 요리 함수(직업 · 정원 · 차출 · 부재료를 안 건드림 · 조리식 ≤ 든 환산 · 재료를 뗀다) · 몸 머리 · 꼬리 자리 하나씩 · 손잡이 둘(T1279 와 곱) · 부양력 자리 하나');
+const baitPost = ES.replace('  v.storage.cooked_food = (v.storage.cooked_food || 0) + cooked;\n', "  npc.currentJob = 'cook';\n  v.storage.cooked_food = (v.storage.cooked_food || 0) + cooked;\n");
+const baitMake = ES.replace(', per > 0 ? s / per : 0)', ', Infinity)');
+const baitSide = ES.replace('  if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;\n', '  if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;\n  for (const r of COOK_SIDE_INGREDIENTS) if ((v.storage[r] || 0) >= 0.5 * s) v.storage[r] -= 0.5 * s;\n');
+const baitFree = ES.replace('  if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;\n', '');
+const baitKnob = ES.replace('const T1286_COOK_SPARE = T1279_COOK && (', 'const T1286_COOK_SPARE = (');
+ok([baitPost, baitMake, baitFree, baitKnob, baitSide].every((b) => b !== ES && !spare(b)),
+  '⑥ [자명 통과 금지 · 미끼] 남는 시간 요리가 요리사를 세우는 사본 · 조리식이 든 환산을 넘어 새로 생기는 사본 · 재료를 안 떼는 사본 · 손잡이를 T1279 와 뗀 사본 · 부재료(건강 칸)를 조리식으로 먹어 치우는 사본 — 다섯 다 문다',
+  { post: spare(baitPost), make: spare(baitMake), free: spare(baitFree), knob: spare(baitKnob), side: spare(baitSide) });
 console.log(`\n=== T1260 식량 한 품목 읽는 문: 통과 ${pass} · 실패 ${fail} ===`);
 process.exit(fail ? 1 : 0);
