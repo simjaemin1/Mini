@@ -477,7 +477,7 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
   ok(/dailyProductionPotential\.ore = \(dailyProductionPotential\.ore \|\| 0\) \+ _t724In;/.test(C),
     '⑫ ★[T724 · PM 10-14] 일곱째 자리가 **광부 다리**다(같은 문법 · 이름으로 못 박는다)');
   ok(reads.length === 2, '⑫ 읽는 곳 **둘** — `totalFoodProductionEquivalent`(prodK) · 볏짚(fuelK)', `실제 ${reads.length}`);
-  ok(/const dailyFoodProdPotential = totalFoodProductionEquivalent\(dailyProductionPotential, v\);/.test(C)
+  ok(/const dailyFoodProdPotential = totalFoodProductionEquivalent\((?:T1286_PRODK \? Object\.assign\(\{\}, dailyProductionPotential, \{ cooked_food: 0 \}\) : )?dailyProductionPotential, v\);/   // ★[T1286] 부양력 조리식 칸 0 갈래(끔 = 종전 인수)도 같은 자리.test(C)
      && /\(T1276_FARM_K \? t1276FieldFlow\(v\) : \(dailyProductionPotential\.food \|\| 0\)\) \* STRAW_FUEL_PER_FOOD/.test(C),   // ★[T1276] 켬 갈래(밭 세계 · 끔 기본)만 밭 흐름 — 끔 = 종전 다리
     '⑫ 읽는 두 곳의 꼴이 그대로다(prodK 다리 · 볏짚 다리)');
 

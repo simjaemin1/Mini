@@ -135,13 +135,15 @@ function sideSnap(st, full) {
 }
 let VS = null;
 const getSt = () => { try { const V = require(VILL); if (V.__t722) return V.__t722(); if (V.__t740) return V.__t740(); } catch (e) {} return null; };
+// ★[T1287] state 읽기 = villages 의 공식 자리 `__t740`(읽기만 · 제품 exports) — 관찰기가 villages 를 먼저 실어도(이미 캐시) 붙는다.
+//   아래 덧붙이기는 공식 자리가 없는 옛 트리(그 판의 villages 를 꺼내 돌릴 때)를 위한 뒷길이다.
 // state 읽기 줄이 없으면(t722 훅 없이 쓸 때) 덧붙인다
 {
   const _p2 = Module._extensions['.js'];
   Module._extensions['.js'] = function (m, filename) {
     if (filename !== VILL) return _p2(m, filename);
     const _c = m._compile;
-    m._compile = function (src, fn) { if (src.indexOf('__t722 = function') < 0 && src.indexOf('__t740 = function') < 0) src += '\n;module.exports.__t740 = function () { return state; };\n'; return _c.call(this, src, fn); };
+    m._compile = function (src, fn) { if (src.indexOf('__t722 = function') < 0 && src.indexOf('__t740 = function') < 0 && src.indexOf('__t740: () => state') < 0) src += '\n;module.exports.__t740 = function () { return state; };\n'; return _c.call(this, src, fn); };
     return _p2(m, filename);
   };
 }
