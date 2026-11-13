@@ -1869,6 +1869,26 @@ const T1156_SPECIALTY_JOB = typeof process !== 'undefined' && process.env && pro
 let _t1156Quote = null;
 function setT1156Quote(fn) { _t1156Quote = fn; }
 const T1148_FUEL_JOB = (typeof process !== 'undefined' && process.env && process.env.T1148_FUEL_JOB === '1');
+// ★★★[T1283 2026-11-13 · T1275 회부 1 · 3] 손잡이 `T1283_WOOD_DEMAND`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트) — **나무 모자람이 직업 고르기에 닿는다.**
+//   T1283 관찰(훅 · 400날 3시드 · 끔 · v2 만 · 묶음 — 보고 T1283 §1): 나무꾼에서 다른 일로 옮긴 사람의 96 ~ 100% 가 기근 문(곳간 식량 30일치 밑 — 대부분 10일치 밑) 날이었다. 그 문은 식량 일만 고르고,
+//     전환 문(`autoSwitchJob`)은 기회비용(땅 몫 × 값)이 가장 싼 사람을 옮긴다 — 개간 통나무로 곳간이 찬 철(76 ~ 200날 · 통나무값 가중 2 ~ 17)엔 나무꾼이 가장 쌌다.
+//     그 뒤 통나무가 바닥나도(땔감 충당 0.15 ~ 0.22 · 말뚝 모자람 늘 > 0) 나무꾼 0 ∧ 땔감 모자란 마을-날의 70 ~ 100% 를 기근 문이 막아 나무꾼이 다시 안 섰다.
+//   ⇒ 기근 블록 **앞**(T1148 추위 빚 문 옆 · 같은 하드 플로어 · 같은 자리 · 같은 벨 나무 조건)에서 그날의 나무 모자람을 본다.
+//     ① 모자람 = 못 땐 땔감(연료 단계가 그날 남긴 몫) + 못 지은 집 목재(주거 단계 — `houseDayBuild` × 단가 − 지은 몫) + 말뚝 모자람(`_t1207Need` —
+//        몸 세계 수요 문 `woodShareD` 가 읽는 그 칸 · 서버 일괄이 그날 못 치른 통나무). 셋 다 그날 틱이 실제로 겪은 몫이다(어림 0).
+//     ② 모자람이 있으면 — 나무꾼이 0 인 마을은 한 명(T717 한 명 문의 꼴) · 있으면 **한 사람이 하루에 메우는 몫**을 견준다:
+//        나무꾼 한 사람이 하루에 해 온 나무((오늘 든 나무 − 개간 통나무 − 짐에서 든 몫) ÷ 나무꾼) ÷ 그날 나무 바람(땔감 + 집 + 말뚝)
+//          ≥ 식량 일꾼 한 사람이 하루에 먹여 살리는 사람(식량 흐름 K `_kDbg.prod` ÷ 식량 일꾼) ÷ 사람 수 — 면 나무꾼.
+//        (둘 다 "하루 바람의 몇 몫" — 값 · 새 계수 0. 몸 나무꾼은 하루 수백 단을 해 와 몇 사람이면 모자람이 닫히고, 수식 나무꾼은 하루 1 단 안팎이라 말뚝 바람 앞에선 식량 일이 이긴다.)
+//   ⚠값 함수(`_ratCandsOf` · `opportunityCost`) · 기근 블록 · 전환 문은 한 글자도 안 바뀐다. 끔이면 아래 칸 넷도 안 적는다.
+const T1283_WOOD_DEMAND = (typeof process !== 'undefined' && process.env && process.env.T1283_WOOD_DEMAND === '1');
+function t1283Wood(v) {
+  const post = (v && v._t1207Need > 0) ? v._t1207Need : 0;   // 몸 세계 수요 문(`woodShareD`)의 말뚝 항 — 같은 칸
+  const lj = (v && v.counts && v.counts.lumberjack) || 0;
+  const got = ((v && v.dailyProductionBuf && v.dailyProductionBuf.wood) || 0) - ((v && v._t1283ClearToday) || 0);   // 오늘 든 나무 − (개간 통나무 + 짐에서 든 몫) = 나무꾼이 오늘 벤 몫(수식 · 몸 둘 다 이 칸)
+  return { short: ((v && v._t1283FuelShort) || 0) + ((v && v._t1283HouseShort) || 0) + post,
+    need: ((v && v._t1283Fuel) || 0) + ((v && v._t1283House) || 0) + post, perLJ: lj > 0 ? Math.max(0, got) / lj : 0, lj };
+}
 function t1148Cold(v) {
   const A = v && v._t1148Ahead;
   if (!A || !v.storage) return null;
@@ -4956,6 +4976,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   }
   // ★★[T325] 어제 손으로 들여온 목재도 **같은 자리에서** 장부에 적는다 — 이유도 T193·T312 와 같다.
   //   ★새 수 0 · 이중 0 — 켠 마을에서 `wood` 는 `addProduce` 를 안 탄다(위 게이트) ⇒ 들어오는 길은 이 줄 하나다.
+  if (T1283_WOOD_DEMAND) { v._t1283ClearToday = v._t1283Clear || 0; v._t1283Clear = 0; }   // ★[T1283] 오늘 든 개간 통나무 · 짐에서 든 몫(서버 `_t1207Fell` · `_t717PackIn` 이 센다) — 아래 줄이 옮기는 오늘치와 같은 날 경계
   const _t325In = (T325_WOOD_ACT || v._t1238Land) ? (v._t325InflowToday || 0) : 0;   // ★[T1275] 영토 v2 표지 마을은 수식 나무꾼 세계에서도 개간 통나무가 이 칸으로 든다(위 `woodToGranary` 머리말)
   if (_t325In > 0) {
     v._t325InflowToday = 0;
@@ -5385,6 +5406,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   v.storage.wood = Math.max(0, (v.storage.wood || 0) - fuelFromWood);
   _cons(v, 'wood', fuelFromWood);   // ★flow-EMA(연료 목재)
   v._fuelCov = fuelNeed > 0 ? (strawFuel + _lowFuel + fuelFromWood) / fuelNeed : 1;
+  if (T1283_WOOD_DEMAND) { v._t1283Fuel = fuelNeed; v._t1283FuelShort = Math.max(0, fuelNeed - (strawFuel + _lowFuel + fuelFromWood)); }   // ★[T1283] 그날 땔감 바람 · 못 땐 몫
 
   // ★주거 증축: 집이 인구보다 모자라면 목재(필수)·석재(있으면)로 지음. 노후화로 지속 보수.
   if (v.housing === undefined) v.housing = _homeN;
@@ -5399,6 +5421,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   //     econ 주거(`housing`)는 지은 침상까지만 오르니, 주거를 "앞으로 지을 집"으로 읽던 두 자리 — 나무꾼 안전망(아래 `pickJob` 줄) · 영토 목표(`villages.js` `territoryTarget`) — 는
   //     이 칸을 읽는다(보고 T966 ② — 지은 침상을 읽으면 그 둘이 계획과 다른 세계를 만든다).
   if (_t958) { const _p = (v._t958Plan !== undefined ? v._t958Plan : v.housing / (1 - HOUSE_DECAY)) * (1 - HOUSE_DECAY); v._t958Plan = _p + houseDayBuild({ housing: _p }, _homeN, totalFoodEquivalent(v)); }
+  if (T1283_WOOD_DEMAND) { v._t1283House = 0; v._t1283HouseShort = 0; }   // ★[T1283] 집이 다 찬 날 = 0
   if (v.housing < houseTarget) {
     // ★노동기반 건설: "시간 남는 NPC가 집을 짓는다" — 여유노동이 건설속도를 결정.
     //   식량안보(곳간 여유)일수록 잉여노동 많아 건설 빠름. 쪼들리면 정체(노동을 식량에 다 씀).
@@ -5408,6 +5431,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     const _HS = T400_BUILD_ACT ? houseCostPerCap('stone') : HOUSE_STONE;
     const _live = buildActOn(v);   // ★[T400] 크루가 곳간에서 실제로 꺼내 가는 마을 — 목재 제약·차감은 그 행위가 진다
     let built = Math.min(houseDayBuild(v, _homeN, _fe), _live ? Infinity : (v.storage.wood || 0) / _HW);   // 목재 필수 + 여유노동 제약(★[T488] 여유노동 몫은 `houseDayBuild` 한 함수 — 숯가마의 집 몫이 같은 함수를 부른다 · min 은 묶는 순서와 무관 = 비트 동일)
+    if (T1283_WOOD_DEMAND && !_live) { const _hw = houseDayBuild(v, _homeN, _fe) * _HW; v._t1283House = _hw; v._t1283HouseShort = Math.max(0, _hw - built * _HW); }   // ★[T1283] 그날 집 목재 바람 · 목재 모자라 못 지은 몫(크루 마을은 크루가 진다 — 0)
     if (_t958) { v._t958Want = built; built = Math.min(built, Math.max(0, v._mapBeds - v.housing)); }   // ★[T958] 올리고 싶은 몫은 적고(방아쇠) · 오르는 몫은 지은 침상까지
     //   ★[T1054] 틈 = 새 침상(목재 없이 — 크루가 냈다) + 닳은 몫(수리 — 곳간 목재가 있는 만큼). 오늘 오르는 몫은 새 침상을 먼저 채운다.
     const _t1054Free = _t1054 ? Math.max(0, Math.max(0, v._mapBeds - v.housing) - v._t1054Wear) : 0;
@@ -6483,6 +6507,16 @@ function pickDeficitJob_rational(v, world) {
         && hasSlot(v, 'forager', cap, counts)) return 'forager';
   }
 
+  // ★★[T1283] 나무 모자람 — 위 `T1283_WOOD_DEMAND` 머리말(끔 = 이 줄 무동작). T1148 문 바로 앞(둘 다 나무꾼을 낸다 — 차례는 결과를 안 바꾼다) · 같은 하드 플로어(6일치) · 같은 벨 나무 조건.
+  if (T1283_WOOD_DEMAND && foodEquiv > N * 6 && hasSlot(v, 'lumberjack', cap, counts) && !(T325_WOOD_ACT && v._t325Cells === 0)) {
+    const _w = t1283Wood(v);
+    const _fw = (counts.farmer || 0) + (counts.fisher || 0) + (counts.hunter || 0) + (counts.forager || 0);
+    if (_w.short > 0 && _fw > 0) {   // 식량 일꾼 0 인 마을은 이 문을 안 연다(기근 블록이 먼저다 — 견줄 식량 쪽이 없다)
+      if (_w.lj === 0) return 'lumberjack';   // 나무꾼 0 → 한 명(T717 한 명 문의 꼴)
+      const _food = v._kDbg ? v._kDbg.prod / (_fw * N) : Infinity;   // 식량 일꾼 한 사람이 하루 바람의 몇 몫(K 식량 몫이 없으면 나무 쪽이 못 이긴다)
+      if (_w.need > 0 && _w.perLJ / _w.need >= _food) return 'lumberjack';   // 나무꾼 한 사람이 하루 바람의 몇 몫 ≥ 식량 쪽
+    }
+  }
   // ★★[T1148] 추위 빚 — 땔감도 생존 필요(위 `T1148_FUEL_JOB` 머리말 · 끔 = 이 줄 무동작). 기근 블록 **앞**이다(블록 안팎 같은 잣대).
   if (T1148_FUEL_JOB && foodEquiv > N * 6 && hasSlot(v, 'lumberjack', cap, counts) && !(T325_WOOD_ACT && v._t325Cells === 0)) {
     const _c = t1148Cold(v);
@@ -7586,6 +7620,7 @@ module.exports = {
   T958_HOUSE_REAL,   // ★[T958] 집 행위 마을 econ 주거 = 지은 침상까지(★[T974] 켬 기본 · `=0` 되돌림 · ★[T966] 끔 기본이던 글자) — 방아쇠(서버 `villages.js`)가 읽는다
   T1156_SPECIALTY_JOB, setT1156Quote,
   T1157_EAT_VAULT, t1157Food,
+  T1283_WOOD_DEMAND, t1283Wood,   // ★[T1283] 나무 모자람 → 직업 고르기(끔 기본 · `'1'` 켬)
   T1148_FUEL_JOB, t1148Cold,   // ★[T1148] 추위 빚(끔 기본 · `'1'` 켬)
   T1135_FUEL_EQ, FIREWOOD_PC_SRC, woodShareD, woodFormulaOff,   // ★[T1135] 땔감 평형(끔 기본 · `'1'` 켬) · 고증 d · 나무꾼 분자 · 수식 목재 걷어냄
   T1046_WOOD_SHARE,   // ★[T1046] 나무꾼 안전망 = 출생 문과 같은 주거 상한(끔 기본 · `'1'` 켬)
