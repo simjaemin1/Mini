@@ -371,6 +371,16 @@ function warDeaths(e, k) {   // 표본 밖 econ 전사 — war-core `_warRemoveN
   const s1 = T.H.bodyExitStats();
   ok(s1.died.starve - s0.died.starve === 1 && s1.other.war - s0.other.war === 2 && T.players.get(first).isDown === true && T.H.state.bodyExits.get(last).k === 'war', '⑳ 굶음 1(맨 앞 몸 · 눕는다) · 전사 2(맨 뒤 몸 · 걷는다)', JSON.stringify({ starve: s1.died.starve - s0.died.starve, war: s1.other.war - s0.other.war }));
 }
+// ── ㉑ econ 이 전사로 안 뺀 표본 몸 — 전장에서 3 을 거뒀는데 econ 전사 칸은 1(나머지 둘은 포로 등) → died.war 1 · 꼬리표 없는 몫 warFieldX 2 ─────
+{
+  const T = world(10);
+  const s0 = T.H.bodyExitStats();
+  for (const pid of T.vil.npcPids.slice(1, 4)) T.H._warDespawnPid(pid);
+  warDeaths(T.e, 1); econLeave(T.e, 2);
+  T.H.syncVillagePop(T.vil, Infinity);
+  const s1 = T.H.bodyExitStats();
+  ok(s1.died.war - s0.died.war === 1 && s1.warFieldX - s0.warFieldX === 2 && s1.other.war === s0.other.war && T.vil.npcPids.length === T.e.npcs.length, '㉑ 표본 몸 3 · econ 전사 1 → 전사 꼬리표 1(econ 까닭까지만) · 넘친 2 = warFieldX(꼬리표 없음) · 몸 수 = econ', JSON.stringify({ war: s1.died.war - s0.died.war, x: s1.warFieldX - s0.warFieldX, n: T.vil.npcPids.length, e: T.e.npcs.length }));
+}
 ok(vanishAtSync === 0, '⑧′ 순간 소멸 0 — 전사 판(⑰)의 동기화에도 사라진 몸이 없다', `${vanishAtSync}`);
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

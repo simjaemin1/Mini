@@ -1524,7 +1524,7 @@ function spawnOneNpc(vil) {
 //   ⚠출정 병사(`_muster`)는 종전처럼 건너뛴다 — 전쟁 실체가 그 몸을 쥔다(전사 표본은 `_warDespawnPid` 가 전장에서 거둔다 · 표 §1).
 const BX_CAT = { starve: 'died', old: 'died', bandit: 'walk', desert: 'walk', move: 'walk', expedition: 'other', road: 'other', war: 'other', unknown: 'other' };   // ★[T1307] `war` = 그 밖(집 밖에서 잃은 사람 — 원정 · 행상과 같은 갈래 · 아래 `_bxObserve` 머리글)
 const _bx = { died: { starve: 0, old: 0, war: 0 }, walk: { bandit: 0, desert: 0, move: 0 }, other: { expedition: 0, road: 0, war: 0, unknown: 0 },
-              rot: 0, arrive: 0, straight: 0, lost: 0, vanish: 0, noted: 0, trimmed: 0 };
+              rot: 0, arrive: 0, straight: 0, lost: 0, vanish: 0, noted: 0, trimmed: 0, warFieldX: 0 };   // ★[T1307] `warFieldX` = 전장에서 거둔 표본 몸 가운데 econ 전사 칸이 안 받은 몫(꼬리표 없음)
 function _bxMap() { return state.bodyExits || (state.bodyExits = new Map()); }
 // 까닭 한 줄 — 도적 층(`bandits.js` — 호스트 `noteBodyExit`)과 아래 관측이 같은 줄에 쓴다. `toCell` = 은거지 칸 · `toVil` = 옮겨 갈 마을(T577 ⓐ).
 function noteBodyExit(vil, kind, n, toCell, toVil, gid) {   // ★[T1078] `gid` = 그 몸이 들 단(켬에서만 넘어온다 — 닿는 날 단의 몸 · 끔 = 칸 0)
@@ -1551,7 +1551,8 @@ function noteBodyExit(vil, kind, n, toCell, toVil, gid) {   // ★[T1078] `gid` 
 //   ⓐ 전장 표본 몸(`_warEndFight` 의 쓰러진 몸 → `_warDespawnPid`)은 꼬리표 없이 사라졌고(`player_left`),
 //   ⓑ 표본 밖 econ 전사(`war-core _warRemoveNpc` — `_deadTot` 밖)는 까닭 줄이 비어 그 몸이 `unknown`(그 밖 · 걸어 나감)으로 나갔다.
 //   이제 econ 전사 누계(`_warDeadTot` — `_warRemoveNpc` 한 자리가 센다 · `_fdDeadTot` 과 같은 꼴) 증분이 이 한 자리에서 꼬리표 `war` 가 된다:
-//     ⓐ 그동안 전장에서 쓰러져 거둔 표본 몸(`_bxWarField` — `_warDespawnPid` 가 마을마다 세기만 한다) = `died.war`(전장에서 죽은 몸 · 몸 길 무변 — 그 자리에서 거둔다 · 누운 몸 회부)
+//     ⓐ 그동안 전장에서 쓰러져 거둔 표본 몸(`_bxWarField` — `_warDespawnPid` 가 마을마다 세기만 한다) = `died.war`(econ 전사 증분까지 · 전장에서 죽은 몸 · 몸 길 무변 — 그 자리에서 거둔다 · 누운 몸 회부) ·
+//        econ 전사 칸이 그만큼 안 늘었으면(그 몸의 사람은 포로 등 — econ 이 전사로 안 뺐다) 넘친 몸은 꼬리표 없이 `warFieldX` 로만 센다
 //     ⓑ 나머지(econ 전사 − 표본 몸) = 전사 몫 `_bxWarDue` — 까닭 줄이 빈 자리(종전 `unknown` 이 서던 그 자리 · `_bxTake`)를 그 수만큼 `war` 가 받는다(`other.war`).
 //        그 사람은 출정 중 집 밖에서 죽었다(T590 ⓒ "전쟁 표본 밖") ⇒ 집의 몸은 종전 `unknown` 과 같은 문으로 마을 밖으로 걸어 나간다(갈래 `other` · 명부 맨 뒤 · 가장자리) —
 //        까닭 줄 차례 · 몸 고르기 · 걸음이 한 글자도 안 바뀐다(줄 머리가 아니라 빈 줄 자리라서) ⇒ 세계 무변 · 바뀌는 것은 꼬리표 칸(`bodyExitStats`)뿐.
@@ -1573,10 +1574,12 @@ function _bxObserve(vil) {
   let ds = Math.max(0, fd - ws.fd), dn = Math.max(0, nat - ws.nat);   // ★[T1303] 그동안 econ 이 굶음 · 늙음으로 뺀 사람
   const dw = Math.max(0, war - (ws.war != null ? ws.war : war));   // ★[T1307] 그동안 econ 이 전쟁으로 뺀 사람
   _bxWhySeen.set(vil, { fd, nat, war });
-  {   // ★[T1307] 전사 — 전장 표본 몸 먼저(ⓐ) · 나머지는 빈 줄 자리의 몫(ⓑ)
-    const gone = _bxWarField.get(vil) || 0;
-    if (gone > 0) { _bx.died.war += gone; _bxWarField.delete(vil); }
-    const rest = dw - gone;
+  {   // ★[T1307] 전사 — 전장 표본 몸 먼저(ⓐ · econ 전사 수까지) · 나머지는 빈 줄 자리의 몫(ⓑ)
+    const gone = _bxWarField.get(vil) || 0, m = Math.min(gone, dw);
+    if (gone > 0) _bxWarField.delete(vil);
+    if (m > 0) _bx.died.war += m;
+    if (gone > m) _bx.warFieldX += gone - m;   // 전장에서 거둔 몸인데 econ 전사 칸은 그만큼 안 늘었다(포로로 잡힌 쪽 등 — econ 까닭이 전사가 아니라 꼬리표를 안 단다 · 몸 길 무변 · 회부)
+    const rest = dw - m;
     if (rest > 0) { _bxWarDue.set(vil, (_bxWarDue.get(vil) || 0) + rest); _bx.noted += rest; }
   }
   if (dd > 0 && e._t1197Dead && e._t1197Dead.length && _t1197On()) {   // ★[T1197] 켬 = 굶어 죽은 **그 사람**의 몸이 쓰러진다(짝 지은 몸 · 없으면 까닭 줄 `starve`)
