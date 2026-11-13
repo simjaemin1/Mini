@@ -21,7 +21,9 @@
 //   ③ 반쯤(캐러밴 켬 · 장인 끔) — 장인만 갈리고 캐러밴은 같다(손잡이가 제 몸만 가른다)
 //   ④ ★미끼 — `server/villages.js` 사본(아이 프로세스 안 · 실을 때 글자 한 자리만 바꿈)에서 `_t1253Now()` 읽기 하나를 벽시계(`Date.now()` · 인수 `now`)로 되돌리면 빨강
 //      (캐러밴 다섯 · 장인 둘 · 몸 갈래마다 하나 이상) — 잡은 수 ○/○ 를 끝 줄에 적는다.
-//   ⚠결과에서 뺀 칸(벽시계 그대로인 줄 — 정보 · 판정 아님): `_lifeActAt`(라벨 바뀐 순간 · `zone.js` 보내기 창 그림 시각) · `departAt` · `arriveAt` · `nomPxMs`
+//   ⑤ ★[T1289] 캐러밴 세 칸(`departAt` · `arriveAt` · `nomPxMs`)은 켬 · T1182 몸이면 econ 날 시계 축 — 흔들림에 같음(단언) · 끔은 갈림 · 미끼(`_t1289Leg` 출발 = Date.now())는 갈림
+//   ⑥ ★[T1300 · T1289 회부 6] 전쟁 몸 세 칸 — 켬 · T681 켬(econ 날 장부 몸)이면 econ 날 시계 축(흔들림에 같음) · 끔 · T681 끔은 갈림 · 미끼(W1 행군 · W2 귀환 줄을 끔)는 갈림
+//   ⚠결과에서 뺀 칸(벽시계 그대로인 줄 — 정보 · 판정 아님 · ★[T1289] 세 칸은 ⑤ 가 따로 잰다): `_lifeActAt`(라벨 바뀐 순간 · `zone.js` 보내기 창 그림 시각) · `departAt` · `arriveAt` · `nomPxMs`
 //     (귀환 출발 `startReturnLeg` 가 인수 `now` 로 적는 종전 페이싱 칸 — T1182 몸 걸음은 안 읽는다 · `_t1182Move` 는 `dtMs` 만). 이 칸들이 흔들렸는지는 표로 적는다.
 //   못 덮는 자리(이 판 밖 · 정보): 몸 세우기(`spawnCaravanBody` 셋) · 캐러밴 동기 도착 머묾(`_caravanSyncOne` `lingerUntil`) · 이웃 존 몸(`_xzMakeBody`) · 장마당 그림(`marketVillages`)
 //     — 내보낸 문이 없다(⓪ 표로만 센다).
@@ -42,13 +44,23 @@ const BAITS = [
   ['A1 장인 머묾 econ → Date.now()', 'art', 'const now = T1258_ARTISAN_CLOCK ? _t1253Now() : now0;', 'const now = T1258_ARTISAN_CLOCK ? Date.now() : now0;'],
   ['A2 장인 머묾 econ → 인수 now', 'art', 'const now = T1258_ARTISAN_CLOCK ? _t1253Now() : now0;', 'const now = T1258_ARTISAN_CLOCK ? now0 : now0;'],
 ];
+//   ★[T1289] 세 칸 미끼 — 판정 = 캐러밴 세 칸(`departAt` · `arriveAt` · `nomPxMs`)이 흔들림에 갈린다(⑤)
+const META_BAITS = [
+  ['T1 세 칸 econ 축 → 벽시계(`_t1289Leg` 출발 = Date.now())', 'const e = _t1253Now(); body.departAt = e;', 'const e = Date.now(); body.departAt = e;'],
+];
+//   ★[T1300 · T1289 회부 6] 전쟁 몸 세 칸 미끼 — 판정 = 전쟁 몸 세 칸(행군 · 귀환)이 흔들림에 갈린다(⑥)
+const WAR_BAITS = [
+  ['W1 행군 몸 세 칸 econ 축 → 벽시계(종전)', 'if (T1253_CLOCK_FIX && body._t681) _t1289Leg(body, eta * state.dayMs);', 'if (false) _t1289Leg(body, eta * state.dayMs);'],
+  ['W2 귀환 몸 세 칸 econ 축 → 벽시계(종전)', 'if (T1253_CLOCK_FIX && body._t681) _t1289Leg(body, (state.world.day + legDays) * state.dayMs);', 'if (false) _t1289Leg(body, (state.world.day + legDays) * state.dayMs);'],
+];
 const ROLE = process.argv[2];
 
 // ══ 아이: 한 판(A · B) 돌고 결과 한 줄 ═══════════════════════════════════════════════════
 if (ROLE === '--child') {
-  const bi = process.argv[3] != null && process.argv[3] !== '-' ? +process.argv[3] : -1;
+  const a3 = process.argv[3] != null && process.argv[3] !== '-' ? String(process.argv[3]) : '';
+  const bi = a3 === '' ? -1 : a3[0] === 'm' ? 1000 + +a3.slice(1) : a3[0] === 'w' ? 2000 + +a3.slice(1) : +a3;   // ★[T1289] 'm…' = `META_BAITS` · ★[T1300] 'w…' = `WAR_BAITS`
   if (bi >= 0) {   // 미끼 — 이 아이가 실을 때만 villages.js 글자 한 자리를 바꾼다(파일은 안 만진다)
-    const [, , from, to] = BAITS[bi], old = Module._extensions['.js'];
+    const [from, to] = bi >= 2000 ? WAR_BAITS[bi - 2000].slice(1) : bi >= 1000 ? META_BAITS[bi - 1000].slice(1) : BAITS[bi].slice(2), old = Module._extensions['.js'];
     Module._extensions['.js'] = function (m, f) {
       if (f !== VFILE) return old(m, f);
       const src = fs.readFileSync(f, 'utf8'), n = src.split(from).length - 1;
@@ -175,14 +187,29 @@ if (ROLE === '--child') {
     const s = vil.econ.storage;
     return { h: sha(trace), acts: sha(acts), n: trace.length, trace, labs: { b1: labs.b1.join('>'), b3: labs.b3.join('>') }, q: vil.econ._t1196Q.length, tool: R9(s.tool), cooked: R9(s.cooked_food), stone: R9(s.stone), food: R9(s.food), clkMin: Math.min(...clk), clkMax: Math.max(...clk), days: S.world.day - D0 };
   }
+  // ── ★[T1300] 전쟁 몸 세 칸 — 행군 몸 세우기(`_warEnsureBody`) · 귀환 출발(`_warSetupReturn` · 37초 뒤) 운영 문 그대로 ──────────────
+  function warRun(mode) {
+    const vA = { dbId: 1, name: '가', ccx: 10, ccy: 10, npcPids: [] }, vB = { dbId: 2, name: '나', ccx: 40, ccy: 22, npcPids: [] };
+    Object.assign(S, { world: { day: D0, villages: [], caravans: [] }, dayMs: M, lastGameDay: G0, _t731Anchor: null, _t731: null, tickJobs: null, _t1253Edge: false, byEcon: new Map(), roads: null,
+      deps: { players: new Map(), npcs: new Map(), broadcast: () => {} }, warBodies: new Map(), routeCache: new Map(), warLive: { WAR_ENGAGE_R: 3, WAR_DEF_STANDOFF: 2 } });   // 대형 없는 몸(병사 0) — 세 칸만 본다
+    let k = 0, wall = 0; setClock(mode, k, wall);
+    const w = { id: 7, atk: vA, def: vB, born: D0, eta: D0 + 2, marchDays: 2, phase: 'march' }, rows = [];
+    const rec = (tag, b) => rows.push([tag, R9(b.departAt), R9(b.arriveAt), R9(b.nomPxMs), R9(b.prog), R9(b.len), b.phase]);
+    const b = mute(() => H._warEnsureBody(w, Date.now())); rec('march', b);
+    wall += 37000; k++; setClock(mode, k, wall);
+    const eAt = mute(() => P.econNow());
+    mute(() => H._warSetupReturn(b, [], false)); rec('return', b);
+    return { h: sha(rows), rows, t681: !!b._t681, eAt: R9(eAt), wantM: (D0 + 2) * M, wantR: (D0 + 2) * M };
+  }
   let out;
   try {
-    const cA = carRun('A'), cB = carRun('B'), aA = artRun('A'), aB = artRun('B');
+    const cA = carRun('A'), cB = carRun('B'), aA = artRun('A'), aB = artRun('B'), wA = warRun('A'), wB = warRun('B');   // ★[T1300] 전쟁 몸
     const firstDiff = (x, y) => { for (let i = 0; i < Math.max(x.length, y.length); i++) if (JSON.stringify(x[i]) !== JSON.stringify(y[i])) return [i, x[i], y[i]]; return null; };
     const pick = (r) => { const o = Object.assign({}, r); delete o.trace; return o; };
     out = { knobs: { car: process.env.T1253_CLOCK_FIX !== '0', art: process.env.T1258_ARTISAN_CLOCK !== '0' },
       car: { A: pick(cA), B: pick(cB), same: cA.h === cB.h, metaSame: cA.meta === cB.meta, diff: firstDiff(cA.trace, cB.trace) },
-      art: { A: pick(aA), B: pick(aB), same: aA.h === aB.h, actsSame: aA.acts === aB.acts, diff: firstDiff(aA.trace, aB.trace) } };
+      art: { A: pick(aA), B: pick(aB), same: aA.h === aB.h, actsSame: aA.acts === aB.acts, diff: firstDiff(aA.trace, aB.trace) },
+      war: { A: wA, B: wB, same: wA.h === wB.h, diff: firstDiff(wA.rows, wB.rows) } };   // ★[T1300]
   } catch (e) { out = { err: String(e && e.stack || e).slice(0, 600) }; }
   Date.now = realNow;
   process.stdout.write('@@' + JSON.stringify(out) + '\n');
@@ -260,5 +287,35 @@ for (let i = 0; i < BAITS.length; i++) {
 }
 ok(byBody.car >= 1 && byBody.art >= 1, '④ 몸 갈래마다 미끼 하나 이상을 잡았다', `캐러밴 ${byBody.car} · 장인 ${byBody.art}`);
 console.log(`\n  미끼 ${caught}/${BAITS.length}`);
+
+//   ★[T1289 · T1273 회부 1] 캐러밴 세 칸은 켬 · T1182 몸이면 econ 날 시계 축 — ① 의 [표·정보] 칸이 이제 단언이다(흔들림에 안 갈린다 · 끔은 갈린다)
+console.log('\n⑤ ★[T1289] 캐러밴 세 칸(`departAt` · `arriveAt` · `nomPxMs`) — 켬이면 벽시계 흔들림에 같음 · 끔 · 미끼는 갈림');
+if (!on.err) ok(on.car.metaSame, '★⑤ 켬 — 세 칸(귀환 출발 `startReturnLeg` 이 적는다 · 저장에 실린다)이 흔들림에 바이트 같음(econ 날 시계 축)', on.car.metaSame ? on.car.A.meta : '갈림');
+if (!off.err) ok(!off.car.metaSame, '⑤ [자명 통과 금지] 끔 — 같은 흔들림에 세 칸이 갈린다(종전 벽시계 축)', off.car.metaSame ? '같음' : '갈림');
+for (let i = 0; i < META_BAITS.length; i++) {
+  const r = child('m' + i, {});
+  ok(!r.err && !r.car.metaSame && r.car.same, `⑤ 미끼 ${META_BAITS[i][0]} — 세 칸이 흔들림에 갈린다(잡음 · 몸 결과는 같음 — 세 칸은 T1182 걸음이 안 읽는다)`, r.err ? r.err.slice(0, 160) : `세 칸 ${r.car.metaSame ? '같음' : '갈림'} · 몸 ${r.car.same ? '같음' : '갈림'}`);
+}
+
+//   ★[T1300 · T1289 회부 6] 전쟁 몸 세 칸 — 켬 · econ 날 장부 몸(T681 켬 기본)이면 캐러밴 T1182 몸과 같은 econ 날 시계 축(출발 = econ 날 시계 '지금' · 도착 = 도착 날 × 하루)
+//     T681 끔 판(`T681_WALLCLOCK=0`)은 그 판의 페이싱(`_warPaceCommander` · `_warPaceReturn` 끔 갈래 · `_warEnsureBody` 끔 몫)이 세 칸을 벽시계 `now` 와 견주는 유일한 읽는 이 — 그 판엔 줄이 안 선다(종전 벽시계 그대로)
+console.log('\n⑥ ★[T1300] 전쟁 몸 세 칸(`departAt` · `arriveAt` · `nomPxMs`) — 켬 · T681 켬이면 econ 날 시계 축(흔들림에 같음) · 끔 · T681 끔은 종전 벽시계(갈림) · 미끼는 갈림');
+const t681off = child(null, { T681_WALLCLOCK: '0' });
+if (!on.err) {
+  const W = on.war, m = W.A.rows[0], r = W.A.rows[1];
+  ok(W.A.t681 && W.same, '★⑥ 켬 — 행군 · 귀환 세 칸이 벽시계 흔들림에 바이트 같음(econ 날 시계 축)', W.same ? JSON.stringify(W.A.rows.map((x) => x.slice(1, 4))) : dtxt(W.diff));
+  ok(m[2] === W.A.wantM && r[1] === W.A.eAt && r[2] === W.A.wantR && r[6] === 'return' && m[3] > 0 && r[3] > 0, '⑥ 켬 — 행군 도착 = eta × 하루 · 귀환 출발 = econ 날 시계 지금 · 귀환 도착 = (지금 날 + 행군 날 수) × 하루 · 명목 > 0',
+    `행군 도착 ${m[2]} = ${W.A.wantM} · 귀환 출발 ${r[1]} = ${W.A.eAt} · 귀환 도착 ${r[2]} = ${W.A.wantR}`);
+}
+if (!off.err) ok(!off.war.same, '⑥ [자명 통과 금지] 끔(`T1253_CLOCK_FIX=0`) — 같은 흔들림에 전쟁 몸 세 칸이 갈린다(종전 벽시계 축)', off.war.same ? '같음' : dtxt(off.war.diff));
+if (t681off.err) ok(false, '⑥ T681 끔 판이 돌았다', t681off.err);
+else ok(!t681off.war.A.t681 && !t681off.war.same, '⑥ T681 끔(`T681_WALLCLOCK=0`) · 켬 — 장부 없는 페이싱 몸은 종전 벽시계 축 그대로(그 판의 페이싱이 세 칸을 벽시계 `now` 와 견준다 — 이 줄은 안 선다)', t681off.war.same ? '같음' : dtxt(t681off.war.diff));
+let wcaught = 0;
+for (let i = 0; i < WAR_BAITS.length; i++) {
+  const r = child('w' + i, {}), red = !r.err && !r.war.same && r.car.same;
+  if (red) wcaught++;
+  ok(red, `⑥ 미끼 ${WAR_BAITS[i][0]} — 전쟁 몸 세 칸이 흔들림에 갈린다(잡음 · 캐러밴 몸은 같음)`, r.err ? r.err.slice(0, 160) : dtxt(r.war.diff));
+}
+console.log(`\n  전쟁 몸 미끼 ${wcaught}/${WAR_BAITS.length}`);
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

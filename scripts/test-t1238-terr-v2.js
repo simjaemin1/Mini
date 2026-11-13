@@ -15,6 +15,10 @@
 //   ⓙ 끔 — 손잡이 끔이면 종전 그대로(영토 v2 함수는 꺼짐 · econ 표지 0)
 //   ⓚ 글자 — 손잡이 하나 · econ 출구 · 존 문 · 클라 · 출처 줄
 //   ⓛ [T1275] 나무꾼 몸 행위 끔 세계 — 개간 통나무 입구(곳간 · 수요 = 말뚝 모자람) · 짐이 이튿날 먼저 든다 · 그 통나무로 말뚝 · 미끼(입구 0 사본 → 빨강) · 몸 세계 그대로
+//   ⓜ [T1283] 나무 모자람 → 직업 고르기(`T1283_WOOD_DEMAND`) — 기근 블록 앞 · 모자람 = 못 땐 땔감 + 못 지은 집 + 말뚝 모자람 · 한 사람이 하루 메우는 몫 견주기 · 끔 = 종전 ·
+//   ⓝ [T1297 할 일 3 · T1283 (나)] 관측 마을 몸의 개간 일 — 켬이면 그 칸 그루의 통나무를 몸이 짐씩 지고 곳간 사다리까지 걷는다(부리는 줄 = 일괄과 같은 `_t1207LogIn`) ·
+//      더미가 비어야 영토 · 짐 ≤ 한 짐 · 부린 곳 = 사다리 · 끔(종전 — 끝낸 순간 영토 · 통나무 곧장 곳간) · 수식 나무꾼 세계 무동작 · 헤드리스로 넘어가면 남은 더미는 곳간으로
+//       미끼(수요를 상수로 박은 사본 → 빨강) · 틱 칸 넷(켬만) · (나) 개간 통나무 걸음(`T1283_CLEAR_HAUL` · 나무꾼 몸 켬 세계만)
 //
 // 실행: node scripts/test-t1238-terr-v2.js
 'use strict';
@@ -277,6 +281,73 @@ function runT1275() {
   try { out.bait = days3(); } finally { E.woodToGranary = keep; }
   return out;
 }
+// ── ⓜ [T1283] 나무 모자람 → 직업 고르기 · (나) 개간 통나무 걸음 ──────────────────────────────────────────────
+//   ① 피커 — econ 마을 40명(농부 24 · 어부 12 · 나무꾼 4 — `createVillage` 그대로) · 곳간 식량 15일치(기근 블록 안 · 6일치 위) · 도구 넉넉 · 값표 없음(가중 1)
+//     전환 문(`autoSwitchJob` — 내보낸 시험 문)을 한 번 부르고 그날 피커 판단(`_dbgSwitch.need`)을 읽는다.
+function runT1283() {
+  const out = {};
+  const PP = path.join(ROOT, 'sim', 'economy-sim.js');
+  const pick = (E, o) => {
+    const v = E.createVillage({ name: 'T', initialPop: 40, fertility: 0.6, water: 0.5, wood: 0.6, stone: 0.4, game: 0.4, ore: 0, size: 100 });
+    const N = v.npcs.length;
+    for (const k of Object.keys(v.storage)) if (k !== 'tool' && k !== 'stone' && k !== 'wood' && k !== 'weapon' && k !== 'clothes') v.storage[k] = 0;
+    v.storage.food = N * (o.foodDays == null ? 15 : o.foodDays);
+    if (o.landWood != null) v.land.wood = o.landWood;
+    const want = o.lj == null ? 0 : o.lj;
+    for (const n of v.npcs) if (n.currentJob === 'lumberjack' && v.counts.lumberjack > want) E._switchNPCJobForTest(n, 'farmer', 0, v);
+    for (const n of v.npcs) if (n.currentJob === 'farmer' && v.counts.lumberjack < want) E._switchNPCJobForTest(n, 'lumberjack', 0, v);
+    if (o.noFood) for (const n of v.npcs) if (['farmer', 'fisher', 'hunter', 'forager'].includes(n.currentJob)) E._switchNPCJobForTest(n, 'mason', 0, v);
+    v._kDbg = { prod: N, slot: 999, fuel: 999 };
+    v.dailyProductionBuf = v.dailyProductionBuf || {}; v.dailyProductionBuf.wood = o.got || 0;
+    v._t1207Need = o.post || 0; v._t1283FuelShort = o.fuelShort || 0; v._t1283Fuel = o.fuel == null ? 10 : o.fuel; v._t1283House = 0; v._t1283HouseShort = 0; v._t1283ClearToday = o.clear || 0;
+    const world = { picker: 'rational', priceFn: () => null, villages: [v], day: 1000, autoSwitchInterval: 7 };
+    const w = E.t1283Wood ? E.t1283Wood(v) : null, fe = E.totalFoodEquivalent(v) / N;   // 판단 앞(전환이 사람 수를 바꾸기 전)
+    E._autoSwitchJobForTest(v, 1000, world);
+    return { need: v._dbgSwitch && v._dbgSwitch.need, lj: want, fe, w };
+  };
+  const cases = (E) => ({
+    c1: pick(E, { lj: 0, post: 50 }),                                  // 나무꾼 0 · 말뚝 모자람 → 한 명
+    c2: pick(E, { lj: 2, post: 500, fuelShort: 5, got: 0.8 }),           // 수식 나무꾼(한 사람 0.4 단) · 말뚝 바람 500 → 식량 일이 이긴다
+    c3: pick(E, { lj: 2, post: 500, fuelShort: 5, got: 1000 }),          // 몸 나무꾼(한 사람 500 단) → 나무꾼
+    c4: pick(E, { lj: 0 }),                                             // 모자람 0 → 식량 일(종전)
+    c5: pick(E, { lj: 0, post: 50, foodDays: 5 }),                      // 하드 플로어(6일치) 밑 → 식량 일
+    c6: pick(E, { lj: 0, post: 50, landWood: 0 }),                      // 벨 자리 0 → 식량 일
+    c7: pick(E, { lj: 2, post: 500, got: 1000, clear: 999.2 }),         // 오늘 든 나무가 거의 개간 통나무 — 나무꾼 몫 0.4 → 식량 일
+    c8: pick(E, { lj: 0, post: 50, noFood: true }),                     // 식량 일꾼 0 — 이 문은 안 연다(기근 블록이 먼저)
+  });
+  const E = require(PP);
+  out.on = E.T1283_WOOD_DEMAND === true;
+  out.cases = cases(E);
+  // ② 미끼 — 수요를 상수로 박은 사본(모자람 = 1 · 그날 틱 칸을 안 읽는다) → 모자람 0 인 마을(c4)도 나무꾼이 된다 · 그래서 위 판정이 빨개진다
+  const src = fs.readFileSync(PP, 'utf8');
+  const line = "  return { short: ((v && v._t1283FuelShort) || 0) + ((v && v._t1283HouseShort) || 0) + post,";
+  out.baitHasLine = src.includes(line);
+  const Module = require('module'); const m = new Module(PP + '.t1283bait', null); m.filename = PP; m.paths = Module._nodeModulePaths(path.dirname(PP));
+  m._compile(src.replace(line, '  return { short: 1,'), PP);
+  out.bait = cases(m.exports);
+  // ③ 틱 칸 — 켬이면 그날 땔감 바람 · 못 땐 몫 · 집 바람 · 못 지은 몫 · 오늘 개간 통나무 칸이 선다(끔 = 칸 0 — 아래 끔 자식 판)
+  const v = E.createVillage({ name: 'T', initialPop: 40, fertility: 0.6, water: 0.5, wood: 0.6, stone: 0.4, game: 0.4, ore: 0, size: 100 });
+  v.storage.wood = 3; if (E.T1283_WOOD_DEMAND) v._t1283Clear = 2;   // 서버 `_t1207Fell` 이 켬에서만 세는 칸(끔이면 아무도 안 적는다)
+  E.tickVillage(v, 1); const clear1 = v._t1283ClearToday;
+  for (let d = 2; d <= 3; d++) E.tickVillage(v, d);
+  out.tick = { keys: Object.keys(v).filter((k) => k.startsWith('_t1283')).sort(), fuel: v._t1283Fuel, fuelShort: v._t1283FuelShort, house: v._t1283House, houseShort: v._t1283HouseShort, clear1, clear: v._t1283ClearToday };
+  // ④ (나) 개간 통나무 걸음 — 마을 W(T1275 판과 같은 판 · 바깥 칸마다 그루 서른) · 첫날 일괄
+  const F = fixture(), { V, P } = F;
+  const one = () => {
+    F.trees.clear();
+    const W = F.mk(13, 'H', 13000, 13000, 27, {});
+    W.econ.land.size = 400; W.econ.housing = 600; F.body(131); W.npcPids = [131];
+    W.econ.storage.wood = 5 * W.econ.npcs.length + 5000;
+    for (let x = 12960; x <= 13040; x++) for (let y = 12960; y <= 13040; y++) { const d = Math.max(Math.abs(x - 13000), Math.abs(y - 13000)); if (d >= 28) F.trees.set(x + ',' + y, 30); }
+    setWorld(F, [W], 600);
+    F.deps.dayPhaseRatio = 0.7;
+    const s0 = W._terrSet.size; P._t569Probe.grow(W);
+    const T = W._t1207 || {};
+    return { added: W._terrSet.size - s0, haulMin: T.haulMin == null ? null : T.haulMin, haulWait: T.haulWait || 0, laborMin: +(T.laborMin || 0).toFixed(1), cells: T.cells || 0 };
+  };
+  out.haul = { haulKnob: process.env.T1283_CLEAR_HAUL === '1', t325: !!E.T325_WOOD_ACT, day1: one() };
+  return out;
+}
 function runZone() {
   const TMP = `/tmp/t1238-z-${process.pid}.db`;
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
@@ -339,9 +410,53 @@ function runZone() {
   return out;
 }
 
+// ── ⓝ [T1297 할 일 3 · T1283 (나)] 관측 마을 몸의 개간 통나무 걸음 ──────────────────────────────────────────────
+//   마을 B(창설 7×7) · 곳간 하나(사다리 = 마을 가운데 칸) · 크루 몸 하나 · 영토 일감 하나(맞닿은 칸 · 말뚝 0 · 개간 1분) · 그 칸 그루 셋(그루마다 통나무 5)
+//   몸 걸음은 `_t1181Step`(정본) 그대로 부르고, 그 몸이 가려는 자리(`targetX/Y`)로 옮겨 놓는다(걸음 물리 대신 — 걸음 다리 · 기다림 · 부림은 정본 줄).
+function runT1297Haul() {
+  const F = fixture(), { V, E, P } = F;
+  const out = { t325: E.T325_WOOD_ACT === true, haul: process.env.T1283_CLEAR_HAUL === '1', perLoad: E.crewPerLoad('wood') };
+  F.trees.clear();
+  const W = F.mk(21, 'B', 15000, 15000, 3, {});
+  W.econ.housing = 600; W.econ.storage.wood = 0;
+  W._granList = [{ cx: 15000, cy: 14998 }];
+  const npc = F.body(211); W.npcPids = [211];
+  const L = { x: 15000 * 32 + 16, y: 15000 * 32 + 16 };   // `_granLadder` — 곳간 렉트 남쪽 칸
+  npc.x = L.x; npc.y = L.y;
+  const world = { day: 600 }; E.bindProductionActs(world); W.econ._world = world;
+  setWorld(F, [W], 600);
+  const key = '15004,15000';
+  F.trees.set(key, 3);
+  W._t1207Pend = [{ key, cx: 15004, cy: 15000, wood: 0, laborMin: 1, m: 1, mat: {}, workMs: 0 }];
+  const e = W.econ, got = () => (e.storage.wood || 0) + (e._t717Pack || 0);
+  const g0 = got();
+  let now = 1e7, steps = 0, maxInv = 0, deposits = 0, atLadder = 0, atSite = 0, terrEarly = false;
+  for (; steps < 800 && W._t1207Pend.length; steps++) {
+    const b = got();
+    P._t1181Probe.step(W, npc, now, true);
+    const a = got();
+    if (a > b + 1e-9) { deposits++; if (Math.hypot(npc.x - L.x, npc.y - L.y) <= 44) atLadder++; if (Math.hypot(npc.x - (15004 * 32 + 16), npc.y - (15000 * 32 + 16)) <= 44) atSite++; }
+    const inv = (npc.inventory && npc.inventory.wood) || 0; if (inv > maxInv) maxInv = inv;
+    if (W._terrSet.has(key) && W._t1207Pend.length) terrEarly = true;
+    if (Number.isFinite(npc.targetX)) { npc.x = npc.targetX; npc.y = npc.targetY; }
+    now += 7000;
+  }
+  const T = W._t1207 || {};
+  out.res = { steps, done: W._terrSet.has(key), left: W._t1207Pend.length, trees: F.trees.get(key) || 0, maxInv: +maxInv.toFixed(3), loads: T.haulLoads || 0, felled: T.felled || 0,
+    woodIn: +(T.woodIn || 0).toFixed(3), got: +(got() - g0).toFixed(3), deposits, atLadder, atSite, terrEarly, inv: (npc.inventory && npc.inventory.wood) || 0 };
+  //   헤드리스로 넘어간다 — 벤 채 아직 안 진 더미(7 단)는 곳간으로(`_t1207Flush`)
+  const g1 = got();
+  W._t1207Pend = [{ key: '15000,15004', cx: 15000, cy: 15004, wood: 0, laborMin: 1, m: 1, mat: {}, workMs: 0, _t1283Pile: 7 }];
+  V._t1207Flush(W);
+  out.flush = { got: +(got() - g1).toFixed(3), left: W._t1207Pend.length };
+  return out;
+}
+
 if (MODE === 'vil') { const o = runVil(); process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 'off') { const o = runOff(); process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 't1275') { let o; try { o = runT1275(); } catch (e) { o = { err: e.stack }; } process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
+if (MODE === 't1283') { let o; try { o = runT1283(); } catch (e) { o = { err: e.stack }; } process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
+if (MODE === 't1297haul') { let o; try { o = runT1297Haul(); } catch (e) { o = { err: e.stack }; } process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 'zone') { let o; try { o = runZone(); } catch (e) { o = { err: e.stack }; } process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 
 let pass = 0, fail = 0;
@@ -519,6 +634,72 @@ sec('ⓛ [T1275] 나무꾼 몸 행위 끔 세계 — 개간 통나무 입구 · 
   ok(/const _t325In = \(T325_WOOD_ACT \|\| v\._t1238Land\) \? \(v\._t325InflowToday \|\| 0\) : 0;/.test(EC) && /return actToGranary\(v, 'wood', actDemandCap\(v, units, woodShareD\(v\), '_t325InflowToday'\), '_t325InflowToday', '_t325CutN'\);/.test(EC)
     && /if \(T717_WOOD_HAND && vil\.econ && !_lifeEcon\(\)\.T325_WOOD_ACT && \(vil\.econ\._t717Pack \|\| 0\) > 0\) _t717PackIn\(vil\);/.test(VS),
     '글자 — econ 틱이 표지 마을의 오늘 든 몫을 장부로 옮긴다 · 몸 세계 입구 줄 그대로 · 일괄 앞 짐 넣기는 수식 나무꾼 세계에서만');
+}
+sec('ⓜ [T1283] 나무 모자람 → 직업 고르기 · 미끼 · 틱 칸 · (나) 개간 통나무 걸음');
+{
+  const ENV = { T1207_TERR_REAL: '1', T1238_TERR_V2: '1', T1213_DERIV_ADD: '0' };
+  const M = child('t1283', Object.assign({}, ENV, { T325_WOOD_ACT: '0', T1283_WOOD_DEMAND: '1', T1283_CLEAR_HAUL: '0' }));
+  const MO = child('t1283', Object.assign({}, ENV, { T325_WOOD_ACT: '0', T1283_WOOD_DEMAND: '0', T1283_CLEAR_HAUL: '0' }));
+  const HB0 = child('t1283', Object.assign({}, ENV, { T325_WOOD_ACT: '1', T1283_WOOD_DEMAND: '0', T1283_CLEAR_HAUL: '0' }));
+  const HB1 = child('t1283', Object.assign({}, ENV, { T325_WOOD_ACT: '1', T1283_WOOD_DEMAND: '0', T1283_CLEAR_HAUL: '1' }));
+  const HF1 = child('t1283', Object.assign({}, ENV, { T325_WOOD_ACT: '0', T1283_WOOD_DEMAND: '0', T1283_CLEAR_HAUL: '1' }));
+  const bad = [M, MO, HB0, HB1, HF1].find((x) => !x || x.err);
+  if (bad !== undefined) ok(false, 'T1283 자식 판이 안 섰다', bad && bad.err);
+  else {
+    const C = M.cases, food = (j) => ['farmer', 'fisher', 'hunter', 'forager'].includes(j);
+    ok(M.on === true && near(C.c1.fe, 15, 1e-9) && C.c1.need === 'lumberjack', '★켬 — 기근 블록 안(곳간 15일치) · 나무꾼 0 · 말뚝 모자람 50 → 나무꾼 한 명(종전이면 식량 일)', C.c1);
+    ok(MO.cases.c1.need !== 'lumberjack' && food(MO.cases.c1.need), '끔 — 같은 마을이 종전대로 식량 일(기근 문)', MO.cases.c1);
+    ok(food(C.c2.need) && C.c2.w && near(C.c2.w.perLJ, 0.4, 1e-9) && near(C.c2.w.need, 510, 1e-9), `수식 나무꾼(한 사람 하루 ${C.c2.w && C.c2.w.perLJ} 단 ÷ 바람 510) < 식량 일꾼(하루 바람의 1/36) → 식량 일(${C.c2.need})`, C.c2);
+    ok(C.c3.need === 'lumberjack' && near(C.c3.w.perLJ, 500, 1e-9), '★몸 나무꾼(한 사람 하루 500 단 ÷ 바람 510) ≥ 식량 쪽 → 나무꾼', C.c3);
+    ok(food(C.c4.need) && C.c4.w.short === 0, '모자람 0 → 식량 일(켬이어도 종전 길)', C.c4);
+    ok(food(C.c5.need) && C.c5.fe < 6, '하드 플로어 — 곳간 6일치 밑이면 모자람이 있어도 식량 일(T1148 문과 같은 수)', C.c5);
+    ok(food(C.c6.need), '벨 자리 0(숲 0) → 식량 일', C.c6);
+    ok(food(C.c7.need) && near(C.c7.w.perLJ, 0.4, 1e-6), '오늘 든 나무 중 개간 통나무는 나무꾼 몫에서 뺀다(1000 − 999.2 → 한 사람 0.4) → 식량 일', C.c7);
+    ok(food(C.c8.need), '식량 일꾼 0 인 마을은 모자람이 있어도 이 문을 안 연다 → 기근 블록의 식량 일', C.c8);
+    const B = M.bait;
+    ok(M.baitHasLine && B.c4.need === 'lumberjack' && food(C.c4.need), `★미끼 — 수요를 상수로 박은 사본(모자람 1)은 모자람 0 인 마을도 나무꾼으로 보낸다(${B.c4.need}) → 위 "모자람 0 → 식량 일" 판정이 빨갛다`, B.c4);
+    const T = M.tick;
+    ok(T.keys.join(',') === '_t1283Clear,_t1283ClearToday,_t1283Fuel,_t1283FuelShort,_t1283House,_t1283HouseShort' && T.fuel > 0 && T.fuelShort >= 0 && T.fuelShort <= T.fuel && T.house >= T.houseShort && T.clear1 === 2 && T.clear === 0,
+      `틱 칸(켬) — 땔감 바람 ${T.fuel && T.fuel.toFixed(3)} · 못 땐 ${T.fuelShort && T.fuelShort.toFixed(3)} · 집 바람 ${T.house && T.house.toFixed(3)} · 못 지은 ${T.houseShort && T.houseShort.toFixed(3)} · 개간 통나무 칸(서버가 센 2)은 날 경계에 오늘치로 옮겨지고(${T.clear1}) 이튿날 0`, T);
+    ok(MO.tick.keys.length === 0, '끔 — 틱이 T1283 칸을 하나도 안 적는다(저장 줄 무변)', MO.tick.keys);
+    const h0 = HB0.haul.day1, h1 = HB1.haul.day1, hf = HF1.haul.day1;
+    ok(HB1.haul.t325 === true && h1.haulMin > 0 && h1.added < h0.added && h0.haulMin === null,
+      `★(나) 나무꾼 몸 켬 세계 — 넓힌 칸의 그루를 곳간까지 지는 걸음 ${h1.haulMin && h1.haulMin.toFixed(1)}분이 일괄 몸의 낮에서 빠진다 · 첫날 넓힘 ${h0.added} → ${h1.added} 칸(끔 = 걸음 0)`, { h0, h1 });
+    ok(hf.haulMin === null && hf.added === MO.haul.day1.added, '(나) 수식 나무꾼 세계(T325 끔)는 켜도 걸음 0 · 넓힘 그대로', { hf, off: MO.haul.day1 });
+  }
+  const EC = fs.readFileSync(path.join(ROOT, 'sim/economy-sim.js'), 'utf8'), VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+  const iT1148 = EC.indexOf('if (T1148_FUEL_JOB && foodEquiv > N * 6'), iT1283 = EC.indexOf('if (T1283_WOOD_DEMAND && foodEquiv > N * 6'), iFam = EC.indexOf('  if (foodEquiv < N * 30) {\n    // ★농사 불가 마을');
+  ok(iT1283 > 0 && iT1148 > iT1283 && iFam > iT1148 && /candidates\.push\(\['lumberjack', v\.land\.wood \* 0\.3 \* period \* w\('wood'\)\]\);/.test(EC) && /case 'lumberjack':  return \(L\.wood \|\| 0\) \* 0\.3 \* w\('wood'\) \* sk;/.test(EC),
+    '글자 — T1283 문은 T1148 문 바로 앞(T1148 문은 그대로 기근 블록 바로 앞) · 값 함수(나무꾼 한계 가치 · 기회비용) 줄 그대로');
+  ok(/const T1283_WOOD_DEMAND = \(typeof process !== 'undefined' && process\.env && process\.env\.T1283_WOOD_DEMAND === '1'\);/.test(EC) && /const T1283_CLEAR_HAUL = process\.env\.T1283_CLEAR_HAUL === '1';/.test(VS)
+    && /if \(walk \+ hw > budget\) \{ _keepCleared\(\); continue; \}/.test(VS)
+    && /if \(E\.T1283_WOOD_DEMAND\) e\._t1283Clear = \(e\._t1283Clear \|\| 0\) \+ g;/.test(VS) && /if \(_lifeEcon\(\)\.T1283_WOOD_DEMAND\) vil\.econ\._t1283Clear = \(vil\.econ\._t1283Clear \|\| 0\) \+ g;/.test(VS),
+    '글자 — 손잡이 둘(끔 기본 · `\'1\'` 만) · 일괄 말뚝 줄은 걸음 끔이면 종전 식(hw = 0) · 개간 통나무와 짐에서 든 몫을 같은 칸에 센다(켬만)');
+}
+sec('ⓝ [T1297 할 일 3 · T1283 (나)] 관측 마을 몸의 개간 통나무 걸음');
+{
+  const ENV = { T1207_TERR_REAL: '1', T1238_TERR_V2: '1', T1213_DERIV_ADD: '0', T1283_WOOD_DEMAND: '0' };
+  const H1 = child('t1297haul', Object.assign({}, ENV, { T325_WOOD_ACT: '1', T1283_CLEAR_HAUL: '1' }));
+  const H0 = child('t1297haul', Object.assign({}, ENV, { T325_WOOD_ACT: '1', T1283_CLEAR_HAUL: '0' }));
+  const HF = child('t1297haul', Object.assign({}, ENV, { T325_WOOD_ACT: '0', T1283_CLEAR_HAUL: '1' }));
+  const bad = [H1, H0, HF].find((x) => !x || x.err);
+  if (bad !== undefined) ok(false, 'T1297 걸음 자식 판이 안 섰다', bad && bad.err);
+  else {
+    const r1 = H1.res, r0 = H0.res, rf = HF.res, units = 15, loads = Math.ceil(units / H1.perLoad - 1e-9);
+    ok(H1.t325 && H1.haul && r1.done && r1.left === 0 && r1.trees === 0 && r1.felled === 3 && near(r1.got, units, 1e-6),
+      `켬 — 그루 셋을 다 베고 통나무 ${units} 단이 다 곳간(+ 넘친 몫은 마을 짐)에 들었다 · 그 칸이 영토`, r1);
+    ok(r1.loads === loads && r1.maxInv <= H1.perLoad + 1e-9 && r1.deposits === loads && r1.atLadder === loads && r1.atSite === 0,
+      `★몸이 짐씩(한 짐 ${H1.perLoad} 단 · ${loads} 짐) 지고 곳간 사다리에서 부렸다 — 부린 곳 ${r1.atLadder}/${r1.deposits} 이 사다리 · 칸에서 든 몫 0`, r1);
+    ok(!r1.terrEarly && r1.inv === 0, '더미가 비기 전엔 영토가 아니다 · 끝에 몸 손에 남은 통나무 0', r1);
+    ok(!H0.haul && r0.done && r0.loads === 0 && near(r0.got, units, 1e-6) && r0.deposits === 1 && r0.atSite === 1 && r0.atLadder === 0,
+      '끔 — 종전 줄: 일을 끝낸 순간 영토 · 통나무 15 단이 칸에서 곧장 곳간(걸음 0)', r0);
+    ok(!HF.t325 && rf.done && rf.loads === 0 && rf.deposits <= 1, '수식 나무꾼 세계(T325 끔) — 켜도 걸음 0(그 세계엔 나무꾼 몸이 없다)', rf);
+    ok(near(H1.flush.got, 7, 1e-6) && H1.flush.left === 0 && near(H0.flush.got, 7, 1e-6), '관측이 끝나 헤드리스로 넘어갈 때 — 벤 채 안 진 더미 7 단은 곳간으로(`_t1207Flush`)', { on: H1.flush, off: H0.flush });
+  }
+  const VS2 = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+  ok(/if\(_t1283BodyHaul\(vil,npc,t\)\)return;_t1207BodyDone\(vil,t\.site\);return;/.test(VS2) && /n \+= _t1207FellCell\(vil, x, y, \(u\) => _t1207LogIn\(vil, u\)\);/.test(VS2)
+    && /refund:\(k,n\)=>\{if\(npc\._t1181Haul&&npc\._t1181Haul\.t1283\)\{_t1207LogIn\(vil,n\);return;\}E\.returnActMaterials\(vil\.econ,k,n\);\}/.test(VS2),
+    '글자 — 몸 일감은 일한 시간을 채운 뒤 더미부터 · 일괄과 몸이 부리는 줄 하나(`_t1207LogIn`) · 돌려 놓기 부림은 개간 통나무 짐만 그 줄로');
 }
 console.log(`\n=== T1238: ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

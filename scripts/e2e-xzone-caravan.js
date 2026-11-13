@@ -21,6 +21,8 @@
 //      없으면 도착 날 머리 + 4/24 하루) · 그 끝까지 실제로 머문다. 끔(기본)이면 그 셈 칸이 안 선다(null)는 것만 보고 머묾 끝을 표로 찍는다.
 //   ⓘ [T1030] 교차 존 장 — `T1030_XZ_MARKET=1` 을 이 자에 주면 두 존에 그대로 넘긴다: 받는 존(닛폰) 교차 존 상인이 그 마을 장 기록에 들고(장 명부) ·
 //      머묾 끝 = 장 끝 · 그 끝까지 머문다 · 'return' 의 교역 행 날 = 장이 선 날 + 1(정산은 다음 econ 틱 머리 · 빈손이면 그날). 끔이면 장 칸이 안 선다.
+//   ⓙ ★[T1300 · T1289 회부 5] 관측 칸 축 — 켬이면 `/perf` `xzone.bodies` 가 축 표지 `ax` · 벽시계 ms `wt` · ISO `iso` 를 곁 칸으로 낸다. ⓖ ⓘ 의 머묾 끝 ↔ 표본 시각 견줌은 `wt.lu`(벽시계)로 —
+//      종전은 켬 · T1182 몸의 econ 날 시계 값(1970년 근처 수)을 벽시계 표본 시각과 견줬다(T1253 부터 축이 섞임 · 머묾 끝 ↔ `t952.at` · `mk.ls` 셈도 같음).
 //   ⓗ [T1030] 존 하나가 중간에 죽는다 — 닛폰에 든 한반도 캐러밴 하나가 'return' 을 아직 안 적은 창(켬 = 장 중 · 정산 전 · 끔 = 판 뒤 귀환 구간)에서
 //      닛폰 DB 메타 행에 그 캐러밴이 실린 것을 보고 SIGKILL → 같은 DB 로 다시 띄워 그 짐이 한반도 곳간에 드는지 센다(생성 · 소멸).
 //      ⓔ 뒤에 돈다(죽인 뒤엔 'arrive' = 'return' 셈이 판 밖이다). `XZ_KILL=0` 이면 건너뛴다.
@@ -137,7 +139,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     H = await perf('hanbando'); N = await perf('nippon');
     if (!H || !N) { await sleep(1000); continue; }
     if (!pick) { const o = H.trace.find((t) => t.k === 'out' && t.body && t.at); if (o) pick = o; }
-    for (const b of N.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: N.now, bt: b.bodyAt, prog: b.prog, len: b.len, nom: b.nomPxMs, dep: b.departAt, pend: b.pending, phase: b.phase, lu: b.lu, t952: b.t952, mk: b.mk }); seenN.set(b.key, L); }
+    for (const b of N.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: N.now, bt: b.bodyAt, prog: b.prog, len: b.len, nom: b.nomPxMs, dep: b.departAt, pend: b.pending, phase: b.phase, lu: b.lu, t952: b.t952, mk: b.mk, ax: b.ax, luW: (b.wt ? b.wt.lu : b.lu), btW: (b.wt ? b.wt.bodyAt : null) }); seenN.set(b.key, L); }   // ★[T1300] 축 표지 · 벽시계 ms(켬만 — 끔 = 원래 칸이 벽시계)
     for (const x of (N.caravans || [])) if (x.mktD != null && String(x.id).startsWith('xz:hanbando:')) mktOf.set(String(x.id), x.mktD);   // ★[T1030] 장이 선 날(켬만 칸이 선다)
     if (pick) {
       const home = H.trace.find((t) => t.k === 'home' && t.id === pick.id);
@@ -192,24 +194,25 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     const lingerS = () => { const a = []; for (const [k, L] of seenN) for (let i = 0; i < L.length; i++) if (L[i].phase === 'linger') a.push({ k, i, s: L[i], next: L.slice(i + 1).find((q) => q.phase !== 'linger') || null }); return a; };
     const tX = Date.now();
     while (Date.now() - tX < 120000 && (lingerS().length === 0 || lingerS().every((q) => !q.next))) {
-      const Nn = await perf('nippon'); if (Nn) for (const b of Nn.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: Nn.now, prog: b.prog, len: b.len, phase: b.phase, lu: b.lu, t952: b.t952, mk: b.mk }); seenN.set(b.key, L); }
+      const Nn = await perf('nippon'); if (Nn) for (const b of Nn.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: Nn.now, prog: b.prog, len: b.len, phase: b.phase, lu: b.lu, t952: b.t952, mk: b.mk, ax: b.ax, luW: (b.wt ? b.wt.lu : b.lu), btW: (b.wt ? b.wt.bodyAt : null) }); seenN.set(b.key, L); }   // ★[T1300]
       await sleep(100);
     }
     const S = lingerS(), dm = +DAYMS;
     const keys = [...new Set(S.map((q) => q.k))];
     ok(S.length > 0, 'ⓖ0 [전제] 받는 존에서 머무는(phase linger) 교차 존 상인을 실제로 봤다(0 이면 아래가 자명 통과다)', `몸 ${keys.length} · 표본 ${S.length}`);
-    const rows = keys.map((k) => { const q = S.find((x) => x.k === k), t = q.s.t952; return { k, lu: q.s.lu, t952: t, stayMs: t ? q.s.lu - t.at : null, left: q.next ? q.next.t : null }; });
+    //   ★[T1300 · T1289 회부 5] 머묾 끝을 벽시계 표본 시각(`N.now` · `t952.at`)과 견주는 줄은 벽시계 ms(`luW` — `/perf` 의 `wt.lu` · 켬 · T1182 몸이면 econ 날 시계 값을 같은 econ 순간의 벽시계로)로 — 원래 칸끼리(`lu === t952.end`)는 같은 축 그대로
+    const rows = keys.map((k) => { const q = S.find((x) => x.k === k), t = q.s.t952; return { k, lu: q.s.lu, luW: q.s.luW, t952: t, stayMs: t ? q.s.luW - t.at : null, left: q.next ? q.next.t : null }; });
     if (ON) {
       const bad = rows.filter((r) => !(r.t952 && r.lu === r.t952.end && (r.t952.joined || Math.abs(r.t952.end - (r.t952.d0 + dm * 4 / 24)) < 1e-6)));
       ok(rows.length > 0 && bad.length === 0, 'ⓖ1 ★켬 — 머묾 끝 = 그 마을 장 끝(오늘 장 기록의 끝 · 없으면 도착 날 머리 + 4/24 하루 · 새 수 0)', `${rows.length - bad.length}/${rows.length}` + (bad.length ? ` · 어긋남 ${JSON.stringify(bad[0])}` : ''));
-      const gone = rows.filter((r) => r.left != null), early = gone.filter((r) => r.left < r.lu);
+      const gone = rows.filter((r) => r.left != null), early = gone.filter((r) => r.left < r.luW);   // ★[T1300] 벽시계 ↔ 벽시계
       ok(gone.length > 0 && early.length === 0, 'ⓖ2 ★그 끝까지 머문다 — 머묾이 끝난 첫 표본의 시각 ≥ 머묾 끝(일찍 안 떠난다)', `떠난 몸 ${gone.length} · 일찍 ${early.length}`);
       const longer = rows.filter((r) => r.stayMs != null && r.stayMs > dm / 24 + 1e-6);
       ok(longer.length > 0, 'ⓖ3 자명 통과 금지 — 적어도 한 몸은 종전 1게임시간보다 오래 머문다(장 끝이 1시간보다 먼 도착)', `${longer.length}/${rows.length} · 머묾 ${rows.map((r) => r.stayMs == null ? '-' : Math.round(r.stayMs)).join(' · ')}ms(1시간 = ${Math.round(dm / 24)})`);
     } else {
       ok(rows.length > 0 && rows.every((r) => r.t952 === null), 'ⓖ1 끔 — T952 셈 칸이 안 선다(무동작 · 머묾은 종전 1게임시간)', `${rows.filter((r) => r.t952 === null).length}/${rows.length}`);
     }
-    console.log(`  · [표 · T952] 머묾 끝 − 그 몸 첫 머묾 표본: ${rows.map((r) => { const q = S.find((x) => x.k === r.k); return Math.round(r.lu - q.s.t); }).join(' · ')}ms`);
+    console.log(`  · [표 · T952] 머묾 끝 − 그 몸 첫 머묾 표본: ${rows.map((r) => { const q = S.find((x) => x.k === r.k); return Math.round(r.luW - q.s.t); }).join(' · ')}ms`);   // ★[T1300] 벽시계 ms
   }
 
   // ── ⓘ [T1030] 교차 존 장 ─────────────────────────────────────────────────────
@@ -218,14 +221,14 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     console.log(`\n[ⓘ T1030 — 받는 존(닛폰) 교차 존 상인이 장을 연다 · ${ON ? '켬' : '끔'}]`);
     const firstL = new Map();   // 몸마다 첫 머묾 표본 · 그 뒤 첫 머묾 아닌 표본
     for (const [k, L] of seenN) { const i = L.findIndex((q) => q.phase === 'linger'); if (i >= 0) firstL.set(k, { s: L[i], next: L.slice(i + 1).find((q) => q.phase !== 'linger') || null }); }
-    const rows = [...firstL].map(([k, q]) => ({ k, lu: q.s.lu, mk: q.s.mk, t: q.s.t, left: q.next ? q.next.t : null }));
+    const rows = [...firstL].map(([k, q]) => ({ k, lu: q.s.lu, luW: q.s.luW, mk: q.s.mk, t: q.s.t, left: q.next ? q.next.t : null }));   // ★[T1300] luW = 벽시계 ms(표본 시각 · 머묾을 연 시각 `mk.ls` 와 견주는 줄)
     ok(rows.length > 0, 'ⓘ0 [전제] 받는 존에서 머무는 교차 존 상인을 봤다(0 이면 아래가 자명 통과다)', `몸 ${rows.length}`);
     if (ON) {
       const inMk = rows.filter((r) => r.mk && r.lu === r.mk.end);
       ok(rows.length > 0 && inMk.length === rows.length, 'ⓘ1 ★켬 — 그 마을 장 기록(장 명부)에 든다 · 머묾 끝 = 장 끝', `${inMk.length}/${rows.length}` + (inMk.length < rows.length ? ` · 어긋남 ${JSON.stringify(rows.find((r) => !(r.mk && r.lu === r.mk.end)))}` : ''));
-      const gone = rows.filter((r) => r.left != null), early = gone.filter((r) => r.left < r.lu);
+      const gone = rows.filter((r) => r.left != null), early = gone.filter((r) => r.left < r.luW);   // ★[T1300] 벽시계 ↔ 벽시계
       ok(gone.length > 0 && early.length === 0, 'ⓘ2 ★장 끝까지 선다 — 머묾이 끝난 첫 표본 시각 ≥ 머묾 끝(일찍 안 떠난다)', `떠난 몸 ${gone.length} · 일찍 ${early.length}`);
-      const longer = rows.filter((r) => r.mk && r.mk.ls != null && r.lu - r.mk.ls > dm / 24 + 1e-6);   // 머묾 = 장 끝 − 머묾을 연 시각(서버 덤프 `mk.ls`)
+      const longer = rows.filter((r) => r.mk && r.mk.ls != null && r.luW - r.mk.ls > dm / 24 + 1e-6);   // 머묾 = 장 끝 − 머묾을 연 시각(서버 덤프 `mk.ls` · 벽시계) — ★[T1300] 장 끝도 벽시계 ms
       ok(longer.length > 0, 'ⓘ3 자명 통과 금지 — 적어도 한 몸은 종전 1게임시간보다 오래 머문다(장 끝 − 머묾을 연 시각)', `${longer.length}/${rows.length}`);
       const md = pick ? mktOf.get(`xz:hanbando:${pick.id}`) : undefined;
       const want = (back && md != null) ? (back.abandoned ? md : md + 1) : null;
@@ -233,7 +236,18 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     } else {
       ok(rows.length > 0 && rows.every((r) => r.mk === undefined) && (!back || back.rowDay === undefined), 'ⓘ1 끔 — 장 칸이 안 선다(덤프 `mk` · `rowDay` 없음 · 종전 계약)', `${rows.filter((r) => r.mk === undefined).length}/${rows.length}`);
     }
-    console.log(`  · [표 · T1030] 몸 ${rows.length} — 머묾(장 끝 − 머묾을 연 시각 · ms · 1시간 = ${Math.round(dm / 24)} · 끔은 칸 없음): ${rows.map((r) => (r.mk && r.mk.ls != null) ? Math.round(r.lu - r.mk.ls) : '-').join(' · ')} · 장 명부(주민 수): ${rows.map((r) => r.mk ? r.mk.at : '-').join(' · ')} · 머묾 끝 − 첫 머묾 표본(ms): ${rows.map((r) => Math.round(r.lu - r.t)).join(' · ')}`);
+    console.log(`  · [표 · T1030] 몸 ${rows.length} — 머묾(장 끝 − 머묾을 연 시각 · ms · 1시간 = ${Math.round(dm / 24)} · 끔은 칸 없음): ${rows.map((r) => (r.mk && r.mk.ls != null) ? Math.round(r.luW - r.mk.ls) : '-').join(' · ')} · 장 명부(주민 수): ${rows.map((r) => r.mk ? r.mk.at : '-').join(' · ')} · 머묾 끝 − 첫 머묾 표본(ms): ${rows.map((r) => Math.round(r.luW - r.t)).join(' · ')}`);   // ★[T1300] 벽시계 ms
+  }
+
+  // ── ⓙ ★[T1300 · T1289 회부 5] 관측 칸 축 — `/perf` `xzone.bodies` 가 축 표지(`ax`)와 벽시계 ms(`wt`)를 낸다(켬만) ─────────────
+  {
+    const KNOB = process.env.T1253_CLOCK_FIX !== '0', all = [...seenN.values()].flat();
+    console.log(`\n[ⓙ T1300 — 관측 칸 축 표지 · 벽시계 ms · ${KNOB ? '켬' : '끔'}]`);
+    if (KNOB) {
+      const want = BODY ? 'e' : 'w', bad = all.filter((q) => q.ax !== want), far = all.filter((q) => q.btW != null && Math.abs(q.btW - q.t) > 600000);   // 10분 — 1970년 근처 수(원래 칸)와 가르기엔 넉넉하다
+      ok(all.length > 0 && bad.length === 0, `ⓙ1 ★켬 — 받는 존 몸 표본마다 축 표지 \`ax: '${want}'\`(${BODY ? 'T1182 몸 = econ 날 시계' : '종전 몸 = 벽시계'})`, `${all.length - bad.length}/${all.length}`);
+      ok(!BODY || (all.some((q) => q.btW != null) && far.length === 0), 'ⓙ2 켬 — 걸음 시계 원점의 벽시계 ms(`wt.bodyAt`)가 표본 시각 앞뒤 10분 안(사람이 읽는 시각 · 원래 칸은 econ 날 시계 값)', `${all.filter((q) => q.btW != null).length} 표본 · 먼 것 ${far.length}`);
+    } else ok(all.length > 0 && all.every((q) => q.ax === undefined), 'ⓙ1 끔 — 축 표지 칸이 안 선다(종전 칸)', `${all.filter((q) => q.ax === undefined).length}/${all.length}`);
   }
 
   // ── ⓔ 'arrive' = 'return' ────────────────────────────────────────────────────

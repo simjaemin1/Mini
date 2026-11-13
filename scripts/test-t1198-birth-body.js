@@ -8,6 +8,9 @@
 //      그날 난 아이의 몸은 부모 몸 곁(한 칸 안) · 그 집 · 그 침상 · 늙어 빠진 그 사람의 몸이 눕는다(맨 앞 몸 아님) · 걸어 나간 사람(까닭 줄 `move`)의 몸이 걷는다.
 //   ③ 끔(`T1198_BIRTH_BODY=0`) — 종전 따라가기(하루 ±2 · 부모 칸 0).
 //   ④ 자명 통과 금지 — 짝을 안 보고 맨 앞 몸을 눕히는 사본은 ② 가 잡는다(아래 대조 줄).
+//   ⑤ [T1297] 출생 곳간 문(`T1297_BIRTH_FOOD` · 끔 기본) — 그날 늘림은 곳간 식량 환산 ≥ (사람 + 1) × 하루 소비 × max(기근 문 30일치, 겨울에 남은 날)일 때만.
+//      판 다섯(겨울 밖 20 · 45일치 · 겨울 들머리 60 · 120일치 · 겨울 끝물 20일치) · 끔(같은 곳간이 종전대로 는다) · 기근 문 수 = 피커 기근 블록 글자(사본 0) ·
+//      ★미끼 둘 — 곳간 대신 상수 일치(45일치)를 읽는 사본 · 곳간 칸을 지운(0) 사본 → 판이 갈려 빨강.
 //
 // 실행: node scripts/test-t1198-birth-body.js   (존 안 띄움 · 몇 초)
 'use strict';
@@ -47,6 +50,33 @@ if (process.argv[2] === '--child-off') {
   const n0 = T.vil.npcPids.length; T.H.syncVillagePop(T.vil, 2);
   const v = E.createVillage({ fertility: 1, water: 1, stone: 1, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: 6, name: '끔' });
   console.log(JSON.stringify({ knob: E.T1198_BIRTH_BODY, on: T.H._t1198On(), grew: T.vil.npcPids.length - n0, houses: E._t1198Houses ? 'fn' : null }));
+  process.exit(0);
+}
+
+if (process.argv[2] === '--child-t1297') {
+  //   출생 곳간 문 판 — 마을 하나(20명 · 주거 넉넉) · 곳간을 (사람 + 1) × 날 수로 맞추고 하루 틱 → 그날 dP(`_dpDebug` — 문 뒤) · 문 표지
+  const fs = require('fs'), PP = path.join(ROOT, 'sim', 'economy-sim.js');
+  const run = (EE) => {
+    const one = (days, day) => {
+      const v = EE.createVillage({ fertility: 3, water: 3, stone: 1, ore: 1, wood: 3, game: 3, size: 200, arable: 3, initialPop: 20, name: '곳촌' });
+      v.housing = 1e4; v._dPAccum = 0;
+      const N = v.npcs.length, fe = EE.totalFoodEquivalent(v);
+      v.storage.food = (v.storage.food || 0) + (N + 1) * days - fe;
+      EE.tickVillage(v, day);
+      return { days, day, gate: v._t1297Gate == null ? null : v._t1297Gate, dP: v._dpDebug ? v._dpDebug.dP : null, need: EE.t1297NeedDays ? EE.t1297NeedDays(day) : null };
+    };
+    return { a: one(20, 100), b: one(45, 100), c: one(60, 276), d: one(120, 276), e: one(20, 340) };
+  };
+  const out = { knob: E.T1297_BIRTH_FOOD, famine: E.T1297_FAMINE_DAYS, real: run(E) };
+  if (E.T1297_BIRTH_FOOD) {
+    const src = fs.readFileSync(PP, 'utf8'), line = 'totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)';
+    out.baitLine = src.split(line).length === 2;
+    const Module = require('module');
+    const bait = (rep, tag) => { const m = new Module(PP + tag, null); m.filename = PP; m.paths = Module._nodeModulePaths(path.dirname(PP)); m._compile(src.replace(line, rep), PP); return run(m.exports); };
+    out.bait1 = bait('(_homeN + 1) * DAILY_FOOD_CONSUMPTION * 45 < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)', '.bait1');   // 곳간 대신 상수 일치(45일치)
+    out.bait2 = bait('0 < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)', '.bait2');                                           // 곳간 칸을 지운(0) 사본
+  }
+  console.log('@@T1297 ' + JSON.stringify(out));
   process.exit(0);
 }
 
@@ -124,6 +154,33 @@ console.log('\n=== T1198 ③ 끔 ===');
 {
   const out = JSON.parse(execFileSync(process.execPath, [__filename, '--child-off'], { env: Object.assign({}, process.env, { T1198_BIRTH_BODY: '0' }), encoding: 'utf8' }).trim().split('\n').pop());
   ok(out.knob === false && out.on === false && out.grew === 2, '`T1198_BIRTH_BODY=0` — 종전 따라가기(다섯이 늘어도 그날 몸 둘)', JSON.stringify(out));
+}
+
+console.log('\n=== T1297 ⑤ 출생 곳간 문(`T1297_BIRTH_FOOD`) — 곳간 일치 · 기근 문 · 겨울 들머리 · 미끼 ===');
+{
+  const ch = (env) => { const o = execFileSync(process.execPath, [__filename, '--child-t1297'], { env: Object.assign({}, process.env, { T1197_MEAL_BODY: '0', T1198_BIRTH_BODY: '0', T1149_WINTER: '0' }, env), encoding: 'utf8' });
+    const l = o.split('\n').find((x) => x.startsWith('@@T1297 ')); return l ? JSON.parse(l.slice(8)) : null; };
+  const ON = ch({ T1297_BIRTH_FOOD: '1' }), OFF = ch({ T1297_BIRTH_FOOD: '0' });
+  if (!ON || !OFF) ok(false, 'T1297 자식 판이 안 섰다');
+  else {
+    const R = ON.real, shut = (x) => x.gate === 1 && x.dP === 0, open = (x) => x.gate === 0 && x.dP > 0;
+    ok(ON.knob === true && OFF.knob === false, '손잡이 — `\'1\'` 만 켬 · 끔 기본');
+    ok(shut(R.a) && R.a.need === 30, '★겨울 밖 · 곳간 (사람 + 1) × 20일치 → 그날 늘림 0(기근 문 30일치 밑)', JSON.stringify(R.a));
+    ok(open(R.b), '겨울 밖 · 45일치 → 는다(문 열림)', JSON.stringify(R.b));
+    ok(shut(R.c) && R.c.need === 89, '★겨울 들머리(날 276 · 12월 2일 — 다음 봄까지 89날) · 60일치 → 막힘(겨울은 모아 둔 식량으로)', JSON.stringify(R.c));
+    ok(open(R.d), '겨울 들머리 · 120일치 → 는다', JSON.stringify(R.d));
+    ok(shut(R.e) && R.e.need === 30, '겨울 끝물(날 340 — 남은 날 25 → 기근 문 30) · 20일치 → 막힘', JSON.stringify(R.e));
+    const O = OFF.real;
+    ok(O.a.gate === null && O.a.dP > 0 && O.c.gate === null && O.c.dP > 0, '끔 — 같은 곳간(20 · 60일치)이 종전대로 는다 · 문 표지 칸 0', JSON.stringify({ a: O.a, c: O.c }));
+    const EC = require('fs').readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
+    const ip = EC.indexOf('function pickDeficitJob_rational('), fam = /\n  if \(foodEquiv < N \* (\d+)\) \{/.exec(EC.slice(ip));
+    ok(ip > 0 && fam && +fam[1] === ON.famine, `기근 문 날 수 = 피커 기근 블록 글자(\`foodEquiv < N * ${fam && fam[1]}\`) — 이름만 붙인 수가 같다(사본 0)`, JSON.stringify({ famine: ON.famine, block: fam && fam[1] }));
+    const gl = EC.split('\n').find((x) => x.includes('if (T1297_BIRTH_FOOD) { v._t1297Gate = 0;')) || '';
+    ok(gl && !/T325|T1243|T1238|T1207|_t1238Land|founder/.test(gl), '세계 갈래 0 — 출생 문 줄이 세계 손잡이를 안 읽는다(v2 · 밭 · 끔 같은 길)', gl.slice(0, 160));
+    const B1 = ON.bait1, B2 = ON.bait2;
+    ok(ON.baitLine && B1 && !shut(B1.a) && shut(R.a), `★미끼 1 — 곳간 대신 상수 일치(45일치)를 읽는 사본은 20일치 마을을 막지 못한다(빨강 · dP ${B1 && B1.a.dP})`, JSON.stringify(B1 && B1.a));
+    ok(ON.baitLine && B2 && !open(B2.b) && open(R.b), `★미끼 2 — 곳간 칸을 지운(0) 사본은 45일치 마을도 막는다(빨강 · dP ${B2 && B2.b.dP})`, JSON.stringify(B2 && B2.b));
+  }
 }
 
 console.log(`\n=== T1198 결과: ${pass} 통과 · ${fail} 실패 ===`);

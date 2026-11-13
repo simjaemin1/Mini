@@ -12583,6 +12583,7 @@ function _computeVillageStats(v, N) {
     for (const [stat, w] of Object.entries(contributes)) {
       if (stats[stat] !== undefined) stats[stat] += w * sat;
     }
+    if (T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;   // ★[T1298 ②] 켬 = 조리식 · 보존식이 이은 재료 건강 몫(한 단위당 · 끔 = 무동작)
   }
   if(T1188_ORE_SPLIT){const qty=OreGoods.total(v.storage)+Math.max(0,v.storage?.ore||0),sat=Math.min(1,qty/pop/2);for(const[k,n]of Object.entries(LEGACY_CONTRIBUTES.ore))stats[k]+=n*sat;}
   // ★S3 무기 품질(_weapQ) → defense·prestige 배수: 고품질(청동·명장) 무기가 방어·위세↑, 저품질(막석검) 무기는 낮음.
@@ -13021,8 +13022,10 @@ function _preserveSurplus(v, from, budget, addProduce, cap, unit) {
       if (!(_sur > 0)) continue;
       const _take = Math.min(_sur, _pBudget);
       if(T1192_FISH_SPECIES&&(_fr==='fish'||FishGoods.species().includes(_fr))){_t1192Preserve(v,_fr,_take,addProduce);_pBudget-=_take;continue;}
+      const _h98 = T1298_HEALTH ? [_take * _t1298Hw(v, _fr), v.storage[from[_fr]] || 0] : null;   // ★[T1298 ②] 든 재료 건강 · 낸 전 곳간(끔 = null)
       v.storage[_fr] -= _take; _cons(v, _fr, _take);   // ★flow-EMA — 보존도 수요다
       addProduce(from[_fr], unit ? _take * PRESERVE_YIELD * unit(_fr) : _take * PRESERVE_YIELD);
+      if (_h98) _t1298Carry(v, from[_fr], _h98[0], (v.storage[from[_fr]] || 0) - _h98[1], _h98[1]);
       _pBudget -= _take;
     }
   }
@@ -13074,7 +13077,8 @@ function _t1192Preserve(v,from,take,addProduce){
   let saltLeft=Math.max(0,(v.storage.salt||0)-(v.npcs.length||1)*SALT_DAILY_PC),saltUsed=0;
   for(const x of out)if(x.src&&saltPer>0&&saltLeft+1e-9>=x.n*saltPer){const cost=x.n*saltPer;saltLeft-=cost;saltUsed+=cost;x.id=FP.pickledId(x.src);if(x.r0)x.row=G.preserveRecord(x.r0,x.src,x.id,x.n);}
   if(saltUsed>0){v.storage.salt-=saltUsed;_cons(v,'salt',saltUsed);}
-  for(const x of out){if(x.row)G.pushIn(v,x.id,[x.row]);addProduce(x.id,x.n,true);if(x.row)G.clearIn(v,x.id);}
+  const _h98=T1298_HEALTH?take*_t1298Hw(v,from):0,_n98=T1298_HEALTH?out.reduce((a,x)=>a+x.n,0):0;   // ★[T1298 ②] 든 원물 건강 → 낸 칸들에 낸 수 비례로(끔 = 0)
+  for(const x of out){const _b98=T1298_HEALTH?(v.storage[x.id]||0):0;if(x.row)G.pushIn(v,x.id,[x.row]);addProduce(x.id,x.n,true);if(x.row)G.clearIn(v,x.id);if(T1298_HEALTH&&_n98>0)_t1298Carry(v,x.id,_h98*x.n/_n98,(v.storage[x.id]||0)-_b98,_b98);}
 }
 function _t860Begin(v, from, potA, actA) {
   const st = {}; for (const r in from) st[r] = v.storage[r] || 0;
@@ -13089,6 +13093,28 @@ function _t860Dry(v, npc, b, potA, actA, addProduce) {
   if (!any) return;
   const budget = JOBS.cook.base * (1 + ((npc.skills && npc.skills.cooking) || 0) * 0.05) * spare;
   _preserveSurplus(v, b.from, budget, addProduce, cap, _t860Unit);
+}
+// ★[T1286] 남는 시간 요리 한 번(위 손잡이 주석) — 요리사 갈래의 요리 한 번을 남는 손 s 의 몫으로 · **재료 한 단만**(부재료는 안 쓴다):
+//   재료 s 단(`food` 칸 · 모자라면 `_t1260CookStaple` 곡식 품목) → 조리식 `JOBS.cook.base` × 숙련 배율 × s (조리식 환산 ≤ 든 환산 s)
+//   ⚠부재료를 안 쓰는 까닭(T1286 §2 — 열 시드 갈라 재기): 생선 · 고기 · 과일 · 남새는 곳간에 있을 때 마을 건강에 기여한다(`LEGACY_CONTRIBUTES` health 0.3 ~ 0.4)
+//     · 조리식은 기여가 없다(subsistence · happiness 만). 부재료를 조리식으로 바꾸면 영양이 사라져 건강 · 출생이 준다(G 대비 −11.0% → 부재료 뺌 +0.2%).
+//     요리는 먹기 좋게 할 뿐 영양을 지우지 않는다 — 집 부엌 끼니는 곡식을 익히는 일로 두고, 부재료는 그대로 먹는다(다양성 배율은 환산 상한 밑이라 원래 안 산다).
+function _t1286Cook(v, npc, b, potA, actA, dailyProduction) {
+  const dPot = potA - b[0], dAct = actA - b[1];
+  const s = dPot > 0 ? Math.max(0, 1 - dAct / dPot) : 0;
+  if (!(s > 0)) return;
+  const day = (v._world && v._world.day) || 0;
+  if (v._t1286Gd !== day) { const N = v.npcs.length || 1; v._t1286Gd = day; v._t1286G = totalFoodEquivalent(v) >= N * 35 && t1260FoodOf(v) >= N * 8; }   // 정원 요리사와 같은 식량 안보 문(하루 한 번)
+  if (!v._t1286G) return;
+  let ck = null;
+  if (!((v.storage.food || 0) >= s)) { ck = _t1260CookStaple(v); if (!ck || ((v.storage[ck[0]] || 0) * ck[1]) < s) return; }
+  const per = storageFoodPer(v, 'cooked_food') || 0;
+  const cooked = Math.min(JOBS.cook.base * (1 + ((npc.skills && npc.skills.cooking) || 0) * 0.05) * s, per > 0 ? s / per : 0);   // 요리는 식량을 늘리지 않는다 — 조리식 환산 ≤ 든 환산 s(같은 자 `storageFoodPer`)
+  if (T1298_HEALTH) _t1298Carry(v, 'cooked_food', ck ? s * _t1298Hw(v, ck[0]) / ck[1] : s * _t1298Hw(v, 'food'), cooked, v.storage.cooked_food || 0);   // ★[T1298 ②] 곡식 한 단의 건강 몫(곡식 0 이면 묽어진다)
+  if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;
+  v.storage.cooked_food = (v.storage.cooked_food || 0) + cooked;
+  dailyProduction.cooked_food = (dailyProduction.cooked_food || 0) + cooked;
+  const C = v._t1286C || (v._t1286C = { n: 0, s: 0, cooked: 0, days: 0, lastD: -1 }); C.n++; C.s += s; C.cooked += cooked; if (C.lastD !== day) { C.days++; C.lastD = day; }
 }
 // ★[T17 ③] 소금 일상 소비(인구 비례) — 위 소비처 주석의 두 근거가 만나는 값.
 const SALT_DAILY_PC = 0.01;
@@ -13753,6 +13779,34 @@ function t1260FoodOf(v) { return T1260_FOOD_READS ? totalFoodEquivalent(v) : ((v
 //     이미 선 요리사는 정원 초과(`case 'cook'` 0.005)로 먼저 차출된다 · 정원 밖 길(빈자리 줄 · legacy 줄)은 그대로(그 길에 선 요리사의 조리식은 ① 장부 규약을 탄다).
 //   ⚠곳간 · 조리식 · 다양성 · 부양력(prodK 잠재 생산)은 그대로다(부양력 쪽 · 남는 시간 요리는 회부).
 const T1279_COOK = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1279_COOK === '1' : false);
+// ★★[T1286 2026-11-12 · T1279 회부 2 · 3] 손잡이 둘(끔 기본 · `'1'` 만 · **`T1279_COOK` 켠 판 안에서만** · 끔 = 종전 바이트):
+//   `T1286_COOK_SPARE` — **남는 시간 요리**(집 부엌 · 직업 아님 · 정원 0). T860 잡은 날 말리기 꼴: 수식 생산 몸 하나가 그날 포만으로 깎인 몫
+//     `1 − 실제/잠재`(여유노동 `_idleFrac` 과 같은 식 · 그 몸 하나)가 그 몸의 남는 손이다. 그 손 × 요리사 하루 처리(`JOBS.cook.base`) × 요리 숙련 배율(`1 + 숙련 × 0.05`)만큼
+//     요리사 갈래의 요리 한 번을 남는 손의 몫으로 줄여 한다(`_t1286Cook` · **재료 한 단만** — 부재료는 영양을 지키려 그대로 둔다 · 아래 함수 주석).
+//     문은 정원 요리사와 같은 식량 안보 문(`cookTarget` 첫 문 — 합계 N×35 · 둘째 문 N×8)이다. 재료 · 부재료는 곳간에서 떼고 조리식은 같은 곳간에 넣는다.
+//     조리식 환산은 든 환산(재료 · 같은 자 `storageFoodPer`)을 넘지 않는다 — 요리는 먹기 좋게 할 뿐 식량을 늘리지 않는다(숙련은 그 상한 안에서만 산다).
+//     그날 생산 칸에도 적되 ① 장부 규약(조리식 칸 0)을 그대로 탄다 — 요리는 옮김이다. 잠재 생산(prodK) 칸에는 안 적는다. 새 수 0.
+//   `T1286_PRODK` — 부양력(prodK)의 잠재 생산 환산(`dailyFoodProdPotential`)에서도 조리식 칸 0(① 과 같은 규약 · 회부 3).
+const T1286_COOK_SPARE = T1279_COOK && ((typeof process !== 'undefined' && process.env) ? process.env.T1286_COOK_SPARE === '1' : false);
+const T1286_PRODK = T1279_COOK && ((typeof process !== 'undefined' && process.env) ? process.env.T1286_PRODK === '1' : false);
+// ★★[T1298 2026-11-13 · T1286 회부 1 · 2 · PM 판정 "조리식은 재료의 건강 몫을 그대로 잇는다"] 손잡이 둘(끔 기본 · `'1'` 만 · **`T1260_FOOD_READS` 켠 판 안에서만** · 끔 = 종전 바이트):
+//   `T1298_LEDGER` — **옮김은 생산이 아니다.** 갈무리(`_preserveSurplus` — 요리사 · 잡은 날 말리기) · 요리(요리사 갈래) · 남는 시간 요리(T1286)는 곳간 안에서
+//     원물을 떼어 다른 칸으로 옮긴다. 그런데 산출은 `addProduce` 로 그날 생산 칸에 들고, 뗀 원물은 장부가 안 본다 → 같은 열량을 두 번 센다(T1286 §1 — 요리사 손해의 뿌리).
+//     켜면 식량 흐름 장부(`dailyFoodProd`)와 잠재 생산(`dailyFoodProdPotential` · prodK 다리) 둘 다에서 **조리식 · 보존식 칸을 0** 으로 센다(① T1279 규약을 보존식까지 · 같은 환산 함수 · 새 수 0).
+//     보존식이 생산으로 드는 길은 이 옮김뿐이다(교역 · 시딩은 `addProduce` 를 안 탄다).
+//   `T1298_HEALTH` — **조리식 · 보존식이 재료의 건강 몫을 잇는다.** 마을 · 품목마다 한 단위당 건강 칸 `v._t1298H[품목]`을 둔다(곳간 평균 — 로트 없는 랩의 로트 평균 꼴):
+//     만들 때마다 (곳간에 있던 양 × 그 칸 + 든 재료 건강 값 합) ÷ (있던 양 + 낸 양). 든 재료 건강 값 = 뗀 양 × 그 재료 한 단위 건강(`contributes.health` + 이은 칸).
+//     마을 건강(`_computeVillageStats`)은 그 칸 × 같은 포화(`min(1, 1인당 ÷ 2)`)를 더한다 — 생선 q 를 말리면 건어물 0.4q 가 같은 건강 몫을 진다(선형 구간에서 같음). 새 수 0
+//     (열로 사라지는 몫은 고증 출처가 없어 0 — PM 판정).
+const T1298_LEDGER = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1298_LEDGER === '1' : false);
+const T1298_HEALTH = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1298_HEALTH === '1' : false);
+function _t1298Moved(prod) { const o = Object.assign({}, prod, { cooked_food: 0 }); for (const r of PRESERVED_FOODS) o[r] = 0; return o; }   // 옮김 칸(조리식 · 보존식) 0
+function _t1298Hw(v, id) { const SP = _getSpecialty(); const c = (SP && SP[id] && SP[id].contributes) || LEGACY_CONTRIBUTES[id] || null; return ((c && c.health) || 0) + ((v._t1298H && v._t1298H[id]) || 0); }
+function _t1298Carry(v, P, H, out, before) {   // 품목 P 를 out 만큼 냈고 든 재료 건강 값 합이 H · 낸 전 곳간 before
+  if (!(out > 0)) return;
+  const T = v._t1298H || (v._t1298H = {}); const b = Math.max(0, before || 0);
+  T[P] = (b * (T[P] || 0) + Math.max(0, H)) / (b + out);
+}
 //   ④ 요리 재료 한 단 — `food` 칸이 1 밑일 때(켬만) 곡식 품목(생곡 `RAW_GRAINS` · 밭 작물 `_t368Crops`) 중 하루치 환산이 가장 큰 것 · 하루치 1 이 안 되면 없음
 function _t1260CookStaple(v) {
   const cand = RAW_GRAINS.slice(), own = _t368Crops(v);
@@ -14372,6 +14426,26 @@ const T1156_SPECIALTY_JOB = typeof process !== 'undefined' && process.env && pro
 let _t1156Quote = null;
 function setT1156Quote(fn) { _t1156Quote = fn; }
 const T1148_FUEL_JOB = (typeof process !== 'undefined' && process.env && process.env.T1148_FUEL_JOB === '1');
+// ★★★[T1283 2026-11-13 · T1275 회부 1 · 3] 손잡이 `T1283_WOOD_DEMAND`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트) — **나무 모자람이 직업 고르기에 닿는다.**
+//   T1283 관찰(훅 · 400날 3시드 · 끔 · v2 만 · 묶음 — 보고 T1283 §1): 나무꾼에서 다른 일로 옮긴 사람의 96 ~ 100% 가 기근 문(곳간 식량 30일치 밑 — 대부분 10일치 밑) 날이었다. 그 문은 식량 일만 고르고,
+//     전환 문(`autoSwitchJob`)은 기회비용(땅 몫 × 값)이 가장 싼 사람을 옮긴다 — 개간 통나무로 곳간이 찬 철(76 ~ 200날 · 통나무값 가중 2 ~ 17)엔 나무꾼이 가장 쌌다.
+//     그 뒤 통나무가 바닥나도(땔감 충당 0.15 ~ 0.22 · 말뚝 모자람 늘 > 0) 나무꾼 0 ∧ 땔감 모자란 마을-날의 70 ~ 100% 를 기근 문이 막아 나무꾼이 다시 안 섰다.
+//   ⇒ 기근 블록 **앞**(T1148 추위 빚 문 옆 · 같은 하드 플로어 · 같은 자리 · 같은 벨 나무 조건)에서 그날의 나무 모자람을 본다.
+//     ① 모자람 = 못 땐 땔감(연료 단계가 그날 남긴 몫) + 못 지은 집 목재(주거 단계 — `houseDayBuild` × 단가 − 지은 몫) + 말뚝 모자람(`_t1207Need` —
+//        몸 세계 수요 문 `woodShareD` 가 읽는 그 칸 · 서버 일괄이 그날 못 치른 통나무). 셋 다 그날 틱이 실제로 겪은 몫이다(어림 0).
+//     ② 모자람이 있으면 — 나무꾼이 0 인 마을은 한 명(T717 한 명 문의 꼴) · 있으면 **한 사람이 하루에 메우는 몫**을 견준다:
+//        나무꾼 한 사람이 하루에 해 온 나무((오늘 든 나무 − 개간 통나무 − 짐에서 든 몫) ÷ 나무꾼) ÷ 그날 나무 바람(땔감 + 집 + 말뚝)
+//          ≥ 식량 일꾼 한 사람이 하루에 먹여 살리는 사람(식량 흐름 K `_kDbg.prod` ÷ 식량 일꾼) ÷ 사람 수 — 면 나무꾼.
+//        (둘 다 "하루 바람의 몇 몫" — 값 · 새 계수 0. 몸 나무꾼은 하루 수백 단을 해 와 몇 사람이면 모자람이 닫히고, 수식 나무꾼은 하루 1 단 안팎이라 말뚝 바람 앞에선 식량 일이 이긴다.)
+//   ⚠값 함수(`_ratCandsOf` · `opportunityCost`) · 기근 블록 · 전환 문은 한 글자도 안 바뀐다. 끔이면 아래 칸 넷도 안 적는다.
+const T1283_WOOD_DEMAND = (typeof process !== 'undefined' && process.env && process.env.T1283_WOOD_DEMAND === '1');
+function t1283Wood(v) {
+  const post = (v && v._t1207Need > 0) ? v._t1207Need : 0;   // 몸 세계 수요 문(`woodShareD`)의 말뚝 항 — 같은 칸
+  const lj = (v && v.counts && v.counts.lumberjack) || 0;
+  const got = ((v && v.dailyProductionBuf && v.dailyProductionBuf.wood) || 0) - ((v && v._t1283ClearToday) || 0);   // 오늘 든 나무 − (개간 통나무 + 짐에서 든 몫) = 나무꾼이 오늘 벤 몫(수식 · 몸 둘 다 이 칸)
+  return { short: ((v && v._t1283FuelShort) || 0) + ((v && v._t1283HouseShort) || 0) + post,
+    need: ((v && v._t1283Fuel) || 0) + ((v && v._t1283House) || 0) + post, perLJ: lj > 0 ? Math.max(0, got) / lj : 0, lj };
+}
 function t1148Cold(v) {
   const A = v && v._t1148Ahead;
   if (!A || !v.storage) return null;
@@ -14776,6 +14850,27 @@ function t1149WinterNeed(v, day) {
   const N = v.npcs.length; if (!(N > 0)) return 0;
   return Math.max(0, N * DAILY_FOOD_CONSUMPTION * t1149WinterDays(day) - totalFoodEquivalent(v));
 }
+// ★★★[T1297 2026-11-13 · T1283 회부 1 · 3] 손잡이 `T1297_BIRTH_FOOD`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트 · 세계 갈래 0) — **출생 문이 그 마을 곳간 식량 일치를 본다.**
+//   T1283 관찰: 끔 세계에서 출생을 붙잡은 것은 주거 문 하나였다(마을-날의 61 ~ 68%). 나무를 대는 고침(T1275 · T1283 · 영토 v2)마다 그 문이 열리고,
+//     풀린 출생은 K(땅 · 일자리 만충 부양력 — 곳간을 안 본다)로 간다 — 묶음 + T1283 늘림의 45 ~ 49% 가 곳간 10일치 밑 날에 섰다 → 꼭대기 뒤 25 ~ 30% 내림.
+//   켬 — 그날 늘림(dP > 0)은 곳간 식량 환산 ≥ (사람 + 1) × 하루 소비 × 문턱 날 수일 때만 선다(아니면 0 — 주거 문 · T1149 출생 문과 같은 꼴 · 그 둘 뒤).
+//     문턱 날 수 = max(기근 문 날 수, 겨울에 남은 날)
+//       · 기근 문 날 수 = 피커 기근 블록(`pickDeficitJob_rational` 의 `foodEquiv < N * 30` — "강제 30일버퍼")의 그 30. 그 줄은 하네스 셋
+//         (`test-t1148-fuel-job` · `test-wood-step1` · `test-t1238-terr-v2`)이 글자로 핀이라 그대로 두고 이름만 붙인다 — `test-t1198-birth-body` ⑤ 가 두 수가 같은지 본다(사본 0).
+//       · 겨울에 남은 날 = 겨울 들머리 규약(재민 "겨울은 모아 둔 식량으로" · 족보 762 — 겨울 들머리 곳간 = 마을 사람 × 겨울 날 수) — 겨울 안이면 다음 봄까지 남은 날
+//         (달력 정본 `t1149LeanDays` · 겨울 들머리 = 겨울 한 철 90날) · 겨울 밖이면 0(기근 문만). T1149 ⓑ 와 다른 점: 그 문은 겨울 밖에서도 다가오는 겨울 한 철(90일치)을
+//         늘 요구해 곳간 가운데 29 ~ 57일치인 세계의 출생을 거의 다 막았다(T1283 실험 판 — 325날까지 409 → 451명).
+//   ⚠K · 로지스틱 · 주거 문 · 죽음 줄은 한 글자도 안 바뀐다 — 곳간이 문턱 밑이면 그날 늘림만 0 이다(누적 `_dPAccum` 의 1 밑 몫은 종전처럼 남는다).
+const T1297_BIRTH_FOOD = (typeof process !== 'undefined' && process.env && process.env.T1297_BIRTH_FOOD === '1');
+const T1297_FAMINE_DAYS = 30;   // 피커 기근 블록 `foodEquiv < N * 30` 의 그 수(위 머리말 — 이름만 · 하네스가 같은지 본다)
+function _t1297InWinter(day) {   // 겨울 안인가 — 달력 정본(12 · 1 · 2월) · 옛 달력이면 `d % 365` 270 ~ 364(`t1149WinterDays` 와 같은 경계)
+  const C = _t1149C(), d = day | 0;
+  if (!C || !C.ON || typeof C.dateOf !== 'function') { const r = ((d % 365) + 365) % 365; return r >= 270; }
+  const t = C.dateOf(d);
+  return t.month === 12 || t.month <= 2;
+}
+function t1297WinterLeft(day) { return _t1297InWinter(day) ? t1149LeanDays(day) : 0; }   // 겨울에 남은 날(겨울 밖 0)
+function t1297NeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day)); }   // 출생 문턱 날 수
 // ★★[T1179 2026-11-05 · ★재민 11-05 "겨울에 식량 수확이 있어? 작물별로 수확 기간이 다 다르고 겨울에는 아예 작물이 없지 않아?"] **작물 철** — 손잡이 `T1179_CROP_SEASON`
 //   (끔 기본 · `=1` 켬 · 끔 = 아래 갈래를 아무도 안 탄다 = 종전 바이트).
 //   농부의 하루 일(식 무변 — `JOBS.farmer.base` × 비옥도 × 철 배수 × 숙련 · 도구 …)은 그대로 하고, 그 식량(`food` · 생곡 셋)을
@@ -17100,9 +17195,11 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
         const variety = usedSides.length;
         const efficiency = 1.0 + 0.04 * variety;
         const cooked = jdef.base * skillMul * toolBoost * efficiency;
+        const _h98 = T1298_HEALTH ? [(_ck ? _t1298Hw(v, _ck[0]) / _ck[1] : _t1298Hw(v, 'food')) + usedSides.reduce((a, r) => a + 0.5 * _t1298Hw(v, r), 0), v.storage.cooked_food || 0] : null;   // ★[T1298 ②]
         if (_ck) v.storage[_ck[0]] -= 1 / _ck[1]; else v.storage.food -= 1;
         for (const r of usedSides) v.storage[r] -= 0.5;
         addProduce('cooked_food', cooked);
+        if (_h98) _t1298Carry(v, 'cooked_food', _h98[0], (v.storage.cooked_food || 0) - _h98[1], _h98[1]);
         workNPC(npc);
       }
       // ★★[T17 ② 2026-09-02 · 재민 확정] **요리사가 잉여를 갈무리한다** — 보존식 생산.
@@ -17344,6 +17441,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       //   (노동은 놀지만 job-switch 재배치 경로가 곧 데려간다 — mason taper와 달리 이 직군엔 잉여 전용처가 없다.)
       if (jdef.stockCap && (v.storage[jdef.output] || 0) >= jdef.stockCap(v)) { continue; }
       const _t860 = (T860_ON && T17_PRESERVE && CATCH_FROM[npc.currentJob]) ? _t860Begin(v, CATCH_FROM[npc.currentJob], _potA, _actA) : null;   // ★[T860] 잡기 전 곳간 · 잠재/실제(끔 = null)
+      const _t1286 = T1286_COOK_SPARE ? [_potA, _actA] : null;   // ★[T1286] 이 몸의 잠재/실제 머리(끔 = null)
       for (const [inp, need] of Object.entries(jdef.inputs || {})) {
         if(T1188_ORE_SPLIT&&inp==='ore'){takeOre(v,need);continue;}
         _cons(v, inp, Math.min(v.storage[inp] || 0, need));   // ★flow-EMA(실차감분)
@@ -17407,6 +17505,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
         if (T635_SHELL_ORNAMENT && npc.currentJob === 'fisher' && v.land && v.land.shellBangle > 0 && _t635ShellItem()) addProduce('shell_bangle', baseAmt * (jdef.byproduct.oyster || 0) * v.land.shellBangle);
       }
       if (_t860) _t860Dry(v, npc, _t860, _potA, _actA, addProduce);   // ★[T860] 잡은 날 제 손으로 말린다(끔 = 이 줄 무동작)
+      if (_t1286) _t1286Cook(v, npc, _t1286, _potA, _actA, dailyProduction);   // ★[T1286] 남는 손으로 집 부엌 요리(끔 = 이 줄 무동작)
       workNPC(npc);
     }
     } finally { if (_t1196S) _t1196End(v, npc, _t1196S, day); }   // ★[T1196] 갈래가 곳간 · 금고에 낸 차를 작업표로 떼고 곳간을 되돌린다(`continue` · `return` 길도 여기를 지난다)
@@ -17459,6 +17558,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   }
   // ★★[T325] 어제 손으로 들여온 목재도 **같은 자리에서** 장부에 적는다 — 이유도 T193·T312 와 같다.
   //   ★새 수 0 · 이중 0 — 켠 마을에서 `wood` 는 `addProduce` 를 안 탄다(위 게이트) ⇒ 들어오는 길은 이 줄 하나다.
+  if (T1283_WOOD_DEMAND) { v._t1283ClearToday = v._t1283Clear || 0; v._t1283Clear = 0; }   // ★[T1283] 오늘 든 개간 통나무 · 짐에서 든 몫(서버 `_t1207Fell` · `_t717PackIn` 이 센다) — 아래 줄이 옮기는 오늘치와 같은 날 경계
   const _t325In = (T325_WOOD_ACT || v._t1238Land) ? (v._t325InflowToday || 0) : 0;   // ★[T1275] 영토 v2 표지 마을은 수식 나무꾼 세계에서도 개간 통나무가 이 칸으로 든다(위 `woodToGranary` 머리말)
   if (_t325In > 0) {
     v._t325InflowToday = 0;
@@ -17778,7 +17878,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   // 2.6) 봉쇄 시 직접 NPC 사망 없음. 봉쇄 효과는 교역 차단으로 식량 부족 → 자연스러운 사망 유도.
 
   // 3) Surplus EMA (식량 흐름) — food_equivalent 기준
-  const dailyFoodProd = totalFoodProductionEquivalent(T1279_COOK ? Object.assign({}, dailyProduction, { cooked_food: 0 }) : dailyProduction, v);   // ★[T368] 둘째 인수 = 이 마을(주입 작물 값 · 끈 팔 0)   // ★[T1279] 켬 = 조리식 칸 0(요리는 옮김 · 끔 = 종전 글자)
+  const dailyFoodProd = totalFoodProductionEquivalent(T1298_LEDGER ? _t1298Moved(dailyProduction) : T1279_COOK ? Object.assign({}, dailyProduction, { cooked_food: 0 }) : dailyProduction, v);   // ★[T368] 둘째 인수 = 이 마을(주입 작물 값 · 끈 팔 0)   // ★[T1279] 켬 = 조리식 칸 0(요리는 옮김 · 끔 = 종전 글자)
   const dailySurplus = dailyFoodProd - foodNeed;
   v.surplusEMA.food = 0.95 * v.surplusEMA.food + 0.05 * dailySurplus;
 
@@ -17803,7 +17903,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   const dailyImport = v._importEMA || 0;
   // ★부양력은 생산 *잠재력*으로 — satiation(창고 글럿 시 여가)이 실제생산을 줄여도 K는 안 낮아짐.
   //   (옛 실제생산 기준: 초기 300일치 식량 글럿→생산 12%로 조임→prodK≈4→N8>K→로지스틱이 인구 끌어내려 초반 진동)
-  const dailyFoodProdPotential = totalFoodProductionEquivalent(dailyProductionPotential, v);   // ★[T368] 같은 자
+  const dailyFoodProdPotential = totalFoodProductionEquivalent(T1298_LEDGER ? _t1298Moved(dailyProductionPotential) : T1286_PRODK ? Object.assign({}, dailyProductionPotential, { cooked_food: 0 }) : dailyProductionPotential, v);   // ★[T368] 같은 자   // ★[T1286] 켬 = 잠재 조리식 칸 0(① 과 같은 규약 · 끔 = 종전 글자)
   // ★prodK 신뢰 관성(EMA ~33일): 날씨 이벤트(가뭄 7~14일)가 K를 직접 때려 θ=4 로지스틱이 과잉반응(대촌 ±100명 스윙)하지 않게.
   //   진짜 기근은 별도 실시간 항(hunger)이 처리하므로 안전성 손실 없음 — K만 계절·이벤트 노이즈에 둔감해짐.
   // ★★[2026-08-02c 소멸 0] PRODK_CAP — 용량 기준 식량흐름. **fuelK 와 완전 동형**(같은 모양·같은 MSY 처리):
@@ -17888,6 +17988,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   v.storage.wood = Math.max(0, (v.storage.wood || 0) - fuelFromWood);
   _cons(v, 'wood', fuelFromWood);   // ★flow-EMA(연료 목재)
   v._fuelCov = fuelNeed > 0 ? (strawFuel + _lowFuel + fuelFromWood) / fuelNeed : 1;
+  if (T1283_WOOD_DEMAND) { v._t1283Fuel = fuelNeed; v._t1283FuelShort = Math.max(0, fuelNeed - (strawFuel + _lowFuel + fuelFromWood)); }   // ★[T1283] 그날 땔감 바람 · 못 땐 몫
 
   // ★주거 증축: 집이 인구보다 모자라면 목재(필수)·석재(있으면)로 지음. 노후화로 지속 보수.
   if (v.housing === undefined) v.housing = _homeN;
@@ -17902,6 +18003,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   //     econ 주거(`housing`)는 지은 침상까지만 오르니, 주거를 "앞으로 지을 집"으로 읽던 두 자리 — 나무꾼 안전망(아래 `pickJob` 줄) · 영토 목표(`villages.js` `territoryTarget`) — 는
   //     이 칸을 읽는다(보고 T966 ② — 지은 침상을 읽으면 그 둘이 계획과 다른 세계를 만든다).
   if (_t958) { const _p = (v._t958Plan !== undefined ? v._t958Plan : v.housing / (1 - HOUSE_DECAY)) * (1 - HOUSE_DECAY); v._t958Plan = _p + houseDayBuild({ housing: _p }, _homeN, totalFoodEquivalent(v)); }
+  if (T1283_WOOD_DEMAND) { v._t1283House = 0; v._t1283HouseShort = 0; }   // ★[T1283] 집이 다 찬 날 = 0
   if (v.housing < houseTarget) {
     // ★노동기반 건설: "시간 남는 NPC가 집을 짓는다" — 여유노동이 건설속도를 결정.
     //   식량안보(곳간 여유)일수록 잉여노동 많아 건설 빠름. 쪼들리면 정체(노동을 식량에 다 씀).
@@ -17911,6 +18013,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     const _HS = T400_BUILD_ACT ? houseCostPerCap('stone') : HOUSE_STONE;
     const _live = buildActOn(v);   // ★[T400] 크루가 곳간에서 실제로 꺼내 가는 마을 — 목재 제약·차감은 그 행위가 진다
     let built = Math.min(houseDayBuild(v, _homeN, _fe), _live ? Infinity : (v.storage.wood || 0) / _HW);   // 목재 필수 + 여유노동 제약(★[T488] 여유노동 몫은 `houseDayBuild` 한 함수 — 숯가마의 집 몫이 같은 함수를 부른다 · min 은 묶는 순서와 무관 = 비트 동일)
+    if (T1283_WOOD_DEMAND && !_live) { const _hw = houseDayBuild(v, _homeN, _fe) * _HW; v._t1283House = _hw; v._t1283HouseShort = Math.max(0, _hw - built * _HW); }   // ★[T1283] 그날 집 목재 바람 · 목재 모자라 못 지은 몫(크루 마을은 크루가 진다 — 0)
     if (_t958) { v._t958Want = built; built = Math.min(built, Math.max(0, v._mapBeds - v.housing)); }   // ★[T958] 올리고 싶은 몫은 적고(방아쇠) · 오르는 몫은 지은 침상까지
     //   ★[T1054] 틈 = 새 침상(목재 없이 — 크루가 냈다) + 닳은 몫(수리 — 곳간 목재가 있는 만큼). 오늘 오르는 몫은 새 침상을 먼저 채운다.
     const _t1054Free = _t1054 ? Math.max(0, Math.max(0, v._mapBeds - v.housing) - v._t1054Wear) : 0;
@@ -18032,6 +18135,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   if (_gated) dP = 0;
   // ★[T1149 ⓑ] 출생에 곳간 문 — 곳간이 다가오는 겨울을 한 사람 더 먹일 만큼일 때만(위 `T1149` 주석) · 막힌 날 표지 `_t1149Gate`(표 기계가 센다)
   if (T1149.birth) { v._t1149Gate = 0; if (dP > 0 && totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1149WinterDays(day)) { dP = 0; v._t1149Gate = 1; } }
+  if (T1297_BIRTH_FOOD) { v._t1297Gate = 0; if (dP > 0 && totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)) { dP = 0; v._t1297Gate = 1; } }   // ★[T1297] 출생 곳간 문(위 머리말 · 끔 = 이 줄 무동작 · 칸 0)
   v._dpDebug = { K: +K.toFixed(1), logi: +_logiTerm.toFixed(3), hunger: +_hungerTerm.toFixed(3), health: +_healthTerm.toFixed(3), happy: +_happyTerm.toFixed(3), prestige: +_prestigeTerm.toFixed(3), housing: (v.housing !== undefined ? +(+v.housing).toFixed(1) : null), gated: _gated, dP: +dP.toFixed(3) };
   // ΔP 상한
   const maxDelta = _homeN * POP_MAX_DELTA_PCT;
@@ -18986,6 +19090,16 @@ function pickDeficitJob_rational(v, world) {
         && hasSlot(v, 'forager', cap, counts)) return 'forager';
   }
 
+  // ★★[T1283] 나무 모자람 — 위 `T1283_WOOD_DEMAND` 머리말(끔 = 이 줄 무동작). T1148 문 바로 앞(둘 다 나무꾼을 낸다 — 차례는 결과를 안 바꾼다) · 같은 하드 플로어(6일치) · 같은 벨 나무 조건.
+  if (T1283_WOOD_DEMAND && foodEquiv > N * 6 && hasSlot(v, 'lumberjack', cap, counts) && !(T325_WOOD_ACT && v._t325Cells === 0)) {
+    const _w = t1283Wood(v);
+    const _fw = (counts.farmer || 0) + (counts.fisher || 0) + (counts.hunter || 0) + (counts.forager || 0);
+    if (_w.short > 0 && _fw > 0) {   // 식량 일꾼 0 인 마을은 이 문을 안 연다(기근 블록이 먼저다 — 견줄 식량 쪽이 없다)
+      if (_w.lj === 0) return 'lumberjack';   // 나무꾼 0 → 한 명(T717 한 명 문의 꼴)
+      const _food = v._kDbg ? v._kDbg.prod / (_fw * N) : Infinity;   // 식량 일꾼 한 사람이 하루 바람의 몇 몫(K 식량 몫이 없으면 나무 쪽이 못 이긴다)
+      if (_w.need > 0 && _w.perLJ / _w.need >= _food) return 'lumberjack';   // 나무꾼 한 사람이 하루 바람의 몇 몫 ≥ 식량 쪽
+    }
+  }
   // ★★[T1148] 추위 빚 — 땔감도 생존 필요(위 `T1148_FUEL_JOB` 머리말 · 끔 = 이 줄 무동작). 기근 블록 **앞**이다(블록 안팎 같은 잣대).
   if (T1148_FUEL_JOB && foodEquiv > N * 6 && hasSlot(v, 'lumberjack', cap, counts) && !(T325_WOOD_ACT && v._t325Cells === 0)) {
     const _c = t1148Cold(v);
@@ -20066,7 +20180,7 @@ module.exports = {
   T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
   T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
-  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
+  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
@@ -20089,6 +20203,7 @@ module.exports = {
   T958_HOUSE_REAL,   // ★[T958] 집 행위 마을 econ 주거 = 지은 침상까지(★[T974] 켬 기본 · `=0` 되돌림 · ★[T966] 끔 기본이던 글자) — 방아쇠(서버 `villages.js`)가 읽는다
   T1156_SPECIALTY_JOB, setT1156Quote,
   T1157_EAT_VAULT, t1157Food,
+  T1283_WOOD_DEMAND, t1283Wood,   // ★[T1283] 나무 모자람 → 직업 고르기(끔 기본 · `'1'` 켬)
   T1148_FUEL_JOB, t1148Cold,   // ★[T1148] 추위 빚(끔 기본 · `'1'` 켬)
   T1135_FUEL_EQ, FIREWOOD_PC_SRC, woodShareD, woodFormulaOff,   // ★[T1135] 땔감 평형(끔 기본 · `'1'` 켬) · 고증 d · 나무꾼 분자 · 수식 목재 걷어냄
   T1046_WOOD_SHARE,   // ★[T1046] 나무꾼 안전망 = 출생 문과 같은 주거 상한(끔 기본 · `'1'` 켬)
@@ -20117,7 +20232,7 @@ module.exports = {
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
-  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   T1159_HOME_N, t1159HomeN,
