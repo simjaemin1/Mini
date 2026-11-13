@@ -1,0 +1,19 @@
+{
+ "tag": "r10_7_off",
+ "seed": 7,
+ "arm": "off",
+ "DAY_MS": 3000,
+ "DAYS": 120,
+ "start": "2026-11-13T15:50:35.192Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "end": "2026-11-13T16:01:23.716Z",
+ "wallS": 649,
+ "days": {
+  "hanbando": 121,
+  "nippon": 139
+ },
+ "done": true
+}

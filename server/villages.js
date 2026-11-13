@@ -287,6 +287,27 @@ const _t707Stat = { markets: 0, joins: 0, roster: 0, carNoBody: 0, mktNoBody: 0,
 //   ⚠`T707_MARKET=0`(되돌림)이면 무동작 — 장이 없는 세계의 머묾은 종전 그대로.
 const T952_XZ_ON = process.env.T952_XZ_STAY === '1';
 const _t952Stat = { stays: 0, joined: 0 };
+// ★★[T1292 2026-11-13 · 재민 11-12 · 캐논 797 "몸은 경계에서 사라지거나 둘이 되면 안 된다"] 손잡이 `T1292_XZ_HIDE`(켬 기본 · 되돌림 `=0` = 종전 글자) —
+//   **넘기는 몸은 보내기 직전에 이 존에서 숨는다.** 팔 `T525_CROSS_ZONE` 켬일 때만 닿는다(끔 = `state.xzone` null · 이 손잡이 줄 0 = main 바이트).
+//   종전: 보내는 존은 받는 존의 답(OK)을 받고서야 몸을 지웠고, 받는 존은 기록을 받은 그 자리에서 몸을 세웠다 ⇒ 넘길 때마다 한 몸이 **두 존에 함께** 있었다
+//   (두 존 판 `scripts/t1292-xzone-live.js` 시드 1020 · 120날 — 넘김 963번 **모두** · 가운데 0.39초 · 길게 7.1초 · 합 546초 · 답이 하루 마감에 밀리면(`_xzLater`) 더).
+//   그 사이 두 존의 도적 · 맹수 · 사람이 같은 상인을 따로 칠 수 있었다(같은 짐이 두 번 털린다).
+//   켬: 보내기 직전에 상인 · 호위를 사람 넘기 껍데기와 **같은 칸**(`handingOff` — 안 보이고(`visiblePlayers`) · 안 맞고(T518) · 맹수 · 도적 표적 밖)으로 숨긴다(`_xzHide`).
+//     답 OK → 종전대로 지운다 · 받는 존이 안 받은 것이 **확실**하면(답 "안 받는다" · 연결이 아예 안 섬 `ECONNREFUSED` 등 · 오류 코드로 답함 `HTTP 4xx/5xx` —
+//       안 문 거절 · 짐 못 읽음은 기록을 줄에 세우기 전이다) → 다시 드러내고 **종전 글자 그대로**(한 번 다시 밂 · 되돌림)
+//     · 답을 못 들었다(시한 · 끊김 — 받았는지 모른다) → **숨긴 채** 다음 경계에 다시 민다(받는 쪽은 같은 기록을 한 번만 받는다 · `dup`) — 몸이 둘이 되는 일이 없다.
+//       (종전은 둘째 답 없음에 되돌렸다 — 받는 존이 이미 받았으면 짐 · 몸이 둘이 된다. 켬은 되돌리지 않고 답을 들을 때까지 민다 — 회부 보고/T1292)
+//   그래서 넘기는 동안 몸은 **어디에도 없거나(보낸 순간 ~ 받는 존이 세운 순간 = 한 넘김) 한 존에만** 있다. 새 수 0(사람 넘기 칸 그대로).
+const T1292_XZ_HIDE = process.env.T1292_XZ_HIDE !== '0';
+const _t1292Stat = { hide: 0, unhide: 0, keepUnknown: 0, sure: 0, escSent: 0, escCut: 0 };
+//   ★[T1292] 손잡이 `T1292_XZ_ESC`(켬 기본 · 되돌림 `=0` = 종전 글자) — **넘긴 호위 몸 수 = 보내는 순간 산 호위 수.** 팔 `T525_CROSS_ZONE` 켬일 때만 닿는다.
+//     종전: 받는 존은 호위를 econ 수로 새로 세웠다(가는 길 `r.escort` = 출발 때 수 · 돌아오는 길 = 집 캐러밴 수 − 저쪽 econ 약탈에 죽은 수) ⇒ 보내는 존 길 위에서
+//     죽은 호위 몸(사람 · 맹수 · hp 0)이 경계 너머에서 **다시 살아 섰다**(몸이 경계에서 생긴다 — 캐논 797). econ 은 몸 죽음을 모른다(전사 수는 econ 몫 · 몸은 아바타).
+//     켬: 보내는 존이 미는 글(`payload.esc` — 기록 `rec` 은 그대로 · econ 무접촉)에 그 순간 산 호위 수를 싣고, 받는 존은 econ 수와 그 수 중 작은 만큼만 세운다.
+//     실은 수가 없는 글(몸 없이 민 기록 · 종전 존이 보낸 글)은 종전대로 econ 수. 새 수 0.
+const T1292_XZ_ESC = process.env.T1292_XZ_ESC !== '0';
+const _t1292EscAlive = (body) => { let n = 0; for (const e of (body && body.escorts) || []) { const p = state.deps.players.get(e.pid); if (p && p.hp > 0) n++; } return n; };
+const _t1292Esc = (n, alive) => { if (!T1292_XZ_ESC || !Number.isInteger(alive) || alive < 0) return n; const m = Math.min(n | 0, alive); if (m < (n | 0)) _t1292Stat.escCut++; return m; };
 // ★★[T1030 2026-10-31 · T952 회부 2 ㄱ] 손잡이 `T1030_XZ_MARKET` — **econ 이 정본**(`sim/economy-sim-v2.js` · '1' 만 켬 · 팔 `T525_CROSS_ZONE` 켬일 때만 선다 · 끔 = main 바이트).
 //   켜면 받는 존 econ 이 교차 존 캐러밴도 장 갈래로 치른다(`c._mktD` → 아래 `_t707Open` 이 장 기록 · 명부를 그대로 연다 · 상인 머묾 = 장 끝).
 //   서버 몫 둘: ⓐ 재기동 메타(T728)가 이웃 존이 낀 캐러밴을 **스텁째** 싣고 되돌린다(종전 = 이름으로 적어 다시 뜨면 못 이었다 — 받는 존의 장 · 집 존의 'xzone' 이 사라졌다)
@@ -5544,6 +5565,19 @@ function _xzWalkToBorder(body, r, now) {
   return true;
 }
 // 미는 문 — 받았다는 답을 듣고서야 몸을 지운다(그 사이 몸은 경계 칸에 선다 · 쓸기가 안 치운다).
+// ★[T1292] 넘기는 몸 숨기기 · 드러내기 — 상인 · 호위의 `handingOff`(사람 넘기 껍데기와 같은 칸) · 표 줄 하나(`hide` · `unhide` · 열쇠 = 몸 표 열쇠)
+function _xzHide(body, on) {
+  if (!body || !!body._xzHidden === !!on) return;
+  body._xzHidden = !!on;
+  const P = state.deps.players, p = P.get(body.pid);
+  if (p) p.handingOff = !!on;
+  if (body.escorts) for (const e of body.escorts) { const E = P.get(e.pid); if (E) E.handingOff = !!on; }
+  if (on) _t1292Stat.hide++; else _t1292Stat.unhide++;
+  _xzTrace(on ? 'hide' : 'unhide', { key: body.id });
+}
+//   기록이 받는 존에 **닿지 않은 것이 확실한** 실패 — 연결이 안 섰다(받는 존이 꺼졌다 · 주소가 없다) · 오류 코드로 답했다(`postJSON` 의 `HTTP <코드>` —
+//   zone.js `/handoff_prepare` 는 안 문 거절(404) · 짐 못 읽음(500)을 기록을 줄에 세우기 **전**에 낸다). 시한 · 끊김은 받았는지 모른다.
+const _t1292Sure = (why) => /ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ENETUNREACH|EAI_AGAIN|no zone|^HTTP \d{3}$/.test(String(why || ''));
 function _xzTransferBody(r,key) {
   const b=state.caravanBodies.get(key)||null;
   return T762_CARAVAN_BODY && r.kind==='arrive' && b && b.c && b.c.state!=='xzone'?null:b;
@@ -5565,8 +5599,10 @@ function _xzSend(r, g, tries, walked) {
     const D=X._t1182Depart||(X._t1182Depart=new WeakMap());
     if(!D.has(r)){const p=body && state.deps.players.get(body.pid);D.set(r,{body:!!body,at:p?{x:Math.round(p.x),y:Math.round(p.y)}:null,walked:body?body._xzWalked||null:null});}
   }
+  if (T1292_XZ_HIDE && body) _xzHide(body, true);   // ★[T1292] 받는 존이 세우기 전에 이 존에서 빠진다(두 존 동시 0)
   X.st.sent++;
   const payload = { kind: 'caravan', zone: state.zoneId, gday: g, rec: r };
+  if (T1292_XZ_ESC && body) { payload.esc = _t1292EscAlive(body); _t1292Stat.escSent++; }   // ★[T1292] 보내는 순간 산 호위 몸 수(받는 존이 이만큼만 세운다 · 기록은 그대로)
   let pr; try { pr = Promise.resolve(state.deps.xzonePost(r.toZone, payload)); } catch (e) { pr = Promise.reject(e); }
   //   답을 받았는가(받는 존이 "안 받는다"고 말했다 = 확실) · 못 받았는가(끊김·시간 넘김 = 받았는지 모른다 — 받는 쪽은 같은 기록을 한 번만 센다)
   pr.then((res) => _xzLater(() => _xzAfterSend(r, key, !!(res && res.ok), res && res.why, true, tries | 0)),
@@ -5596,6 +5632,15 @@ function _xzAfterSend(r, key, ok, why, answered, tries) {
     return;
   }
   X.st.sentFail++;
+  //   ★[T1292] 켬 — 받는 존이 안 받은 것이 확실하면(답 · 연결 안 섬 · 오류 코드) 다시 드러내고 아래 종전 글자 그대로 · 답을 못 들었으면(받았는지 모른다)
+  //     몸을 숨긴 채 다음 경계에 다시 민다(두 몸 0 · 받는 쪽 `dup`)
+  if (T1292_XZ_HIDE && !answered && _t1292Sure(why)) _t1292Stat.sure++;
+  else if (T1292_XZ_HIDE && !answered) {
+    X.retry.push({ r, tries: (tries | 0) + 1 }); _t1292Stat.keepUnknown++;
+    _xzLog(`⚠ 넘김 답 없음 #${r.id} → ${r.toZone}(${why}) — 몸은 숨긴 채 다음 경계에 다시(${(tries | 0) + 1}번째)`);
+    return;
+  }
+  if (T1292_XZ_HIDE && body) _xzHide(body, false);   // ★[T1292] 안 받았다(확실) — 다시 드러낸다(한 번 다시 밂 · 되돌림은 종전 문)
   if (r.kind === 'arrive' && !answered && !(tries > 0)) {
     //   답을 못 들었다 — 받았는지 모른다. 몸은 경계 칸에 선 채 다음 경계에 **한 번** 다시 민다(받는 쪽이 이미 받았으면 `dup` 으로 답한다 — 짐이 둘이 되지 않는다).
     X.retry.push({ r, tries: 1 });
@@ -5650,13 +5695,13 @@ function _xzReceiveCaravan(data) {
   X.core.onRecord(data);
   X.seen.add(sk); X.seenQ.push(sk); if (X.seenQ.length > 5000) X.seen.delete(X.seenQ.shift());
   if (r.kind === 'return') { const t = X.track.get(r.id); if (t) t.back = { amt: r.returningAmt || 0, res: r.returningRes || null, dead: !!r.traderDead }; }   // 표 — 돌아온 짐(몸이 없어도)
-  try { _xzBodyIn(r, g, peer); } catch (e) { _xzLog(`받은 몸 세우기 실패(#${r.id}): ${e.message}`); }
+  try { _xzBodyIn(r, g, peer, data.esc); } catch (e) { _xzLog(`받은 몸 세우기 실패(#${r.id}): ${e.message}`); }   // ★[T1292] `data.esc` = 보낸 존의 산 호위 수(없으면 undefined — 종전)
   return { ok: true };
 }
 // 받은 몸 — 보낸 쪽이 지운 **그 자리**(경계 칸 · 이 존 로컬 px)에 세워 이 존 몫을 걷게 한다.
 //   도착 시각 = 보낸 경계 + max(1, 남은 일수) — 이 존 econ 이 다음 경계에 기록을 세우며 잡는 그 날과 같다.
 //   기록이 econ 에 들기 전(다음 경계까지)엔 몸이 가짜 짝(`_xzPending`)을 들고 걷는다 — 동기(`_caravanSyncOne`)가 진짜를 만나면 잇는다.
-function _xzBodyIn(r, g, peer) {
+function _xzBodyIn(r, g, peer, esc) {
   const X = state.xzone;
   if (r.kind === 'return' && r.traderDead) return;   // 상인이 그쪽에서 죽었다 — 넘어올 몸이 없다
   if (!r.ptPeer) { X.st.bodyInSkip++; return; }        // 경계 칸이 없는 기록(합친 길 없음 · T525 뼈대) — 몸 없이 econ 만
@@ -5671,7 +5716,7 @@ function _xzBodyIn(r, g, peer) {
     const homeName = r.home && r.home.name;
     const sp = X.core.splitNames(vil.name, peer, homeName);
     const pts = (sp && _xzSamePt(sp.ptLocal, r.ptPeer)) ? sp.ptsLocal.slice().reverse() : [r.ptPeer, center(vil)];
-    const proxy = { id: key, _xzPending: true, _push: 0, giveRes: r.giveRes, giveAmt: r.giveAmt, escort: r.escort, state: 'outbound',
+    const proxy = { id: key, _xzPending: true, _push: 0, giveRes: r.giveRes, giveAmt: r.giveAmt, escort: _t1292Esc(r.escort, esc), state: 'outbound',   // ★[T1292] 산 호위만(끔 = `r.escort`)
       from: { name: homeName, zone: peer, _xz: true }, to: vil.econ };
     const b = _xzMakeBody(key, proxy, pts, 'outbound', now, arriveAt, vil.econ, { tribeId: `xz_${peer}`, tribeName: homeName || peer });
     b._xzInPts = b.pts;
@@ -5688,7 +5733,7 @@ function _xzBodyIn(r, g, peer) {
     let sp = r.lastTo ? X.core.splitNames(vil.name, peer, r.lastTo) : null;
     if (!(sp && _xzSamePt(sp.ptLocal, r.ptPeer))) sp = X.core.splitNames(vil.name, peer, hc.to && hc.to.name);
     const pts = (sp && _xzSamePt(sp.ptLocal, r.ptPeer)) ? sp.ptsLocal.slice().reverse() : [r.ptPeer, center(vil)];
-    const proxy = { id: key, _xzPending: true, _push: 0, giveRes: hc.giveRes, giveAmt: hc.giveAmt, escort: Math.max(0, (hc.escort | 0) - (r.escKilled | 0)), state: 'inbound', from: hc.from, to: hc.to };
+    const proxy = { id: key, _xzPending: true, _push: 0, giveRes: hc.giveRes, giveAmt: hc.giveAmt, escort: _t1292Esc(Math.max(0, (hc.escort | 0) - (r.escKilled | 0)), esc), state: 'inbound', from: hc.from, to: hc.to };   // ★[T1292] 산 호위만(끔 = 종전 식)
     const b = _xzMakeBody(key, proxy, pts, 'inbound', now, arriveAt, hc.to, { tribeId: `simvil_${vil.dbId}`, tribeName: vil.name, simVid: vil.dbId });
     X.st.bodyIn++;
     _xzTrace('in', { key, back: true, to: vil.name, res: r.returningRes, amt: r.returningAmt, remain: r.remain, pt: r.ptPeer, len: Math.round(b.len) });
@@ -5710,10 +5755,13 @@ function xzonePerf() {
   const bodies = [];
   for (const [k, b] of state.caravanBodies || []) if (b._xz) {
     const P = state.deps.players.get(b.pid);
-    bodies.push({ key: k, phase: b.phase, pending: !!(b.c && b.c._xzPending), handing: !!b._xzHanding, x: P ? Math.round(P.x) : null, y: P ? Math.round(P.y) : null,
+    bodies.push({ key: k, phase: b.phase, pending: !!(b.c && b.c._xzPending), handing: !!b._xzHanding, ...(T1292_XZ_HIDE ? { hidden: !!b._xzHidden } : {}), x: P ? Math.round(P.x) : null, y: P ? Math.round(P.y) : null,
       len: Math.round(b.len), prog: Math.round(b.prog), end: b.pts && b.pts.length ? { x: Math.round(b.pts[b.pts.length - 1].x), y: Math.round(b.pts[b.pts.length - 1].y) } : null,
       bodyAt: b._t1182At, departAt: b.departAt, arriveAt: b.arriveAt, nomPxMs: b.nomPxMs, lu: b.lingerUntil, t952: b._t952 || null,   // ★[T952] 머묾 끝 · 켬 판의 셈(끔 = null)
       ...(T1253_CLOCK_FIX ? _t1300Obs(b, { bodyAt: b._t1182At, departAt: b.departAt, arriveAt: b.arriveAt, lu: b.lingerUntil, t952End: b._t952 ? b._t952.end : null }) : {}),   // ★[T1300] 켬만 — 축 표지 · 벽시계 ms · ISO(위 `_t1300Obs`)
+      //   ★[T1292] T1253 켬 · T1182 몸 — 몸 걸음 시계 '지금' = 원점(`_t1182At`) + 걸은 알갱이 수 × 알갱이(`tickCaravanBodies` 의 그 셈 · 관측만). `bodyAt` 은 원점이라
+      //     밀린 몫이 상한을 넘을 때만 옮겨진다 — 하네스 e2e ⓒ2(걸음 빠르기 상한)는 이 시계로 걸은 시간을 잰다.
+      ...(T1253_CLOCK_FIX && b._t1182 && b._t1182At != null ? { bodyClk: b._t1182At + (b._t1253N | 0) * 1000 / ((state.warLive && state.warLive.TICK_HZ) || 30) } : {}),
       ...(_t1030On() ? { mk: (() => { const v = b.c && state.byEcon && state.byEcon.get(b.c.to), r = v && v._mkt; return (r && r.cars.has(k)) ? { d: r.d, end: r.end, at: r.at.size, vil: v.name, ls: b._t1030 ? b._t1030.at : null } : null; })() } : {}) });   // ★[T1030] 켬만 — 그 몸이 든 장 기록(날 · 끝 · 명부 수)
   }
   const cars = [];
@@ -5725,7 +5773,8 @@ function xzonePerf() {
   }
   return { zone: state.zoneId, day: state.world.day, g: state.lastGameDay, dayMs: state.dayMs, epoch: state.epoch, peers: X.host.peers, ready: X.core.peersReady(),
     geo: X.host.hs.geo, host: X.host.hs, core: X.core.st, live: X.core.live ? X.core.live() : null, st: X.st, stubs: (X.core.X.stubs || []).map((s) => s.name), retry: X.retry.length,
-    bodies, caravans: cars, trace: X.trace.slice(-200), t952: T952_XZ_ON ? Object.assign({}, _t952Stat) : null };
+    bodies, caravans: cars, trace: X.trace.slice(-200), t952: T952_XZ_ON ? Object.assign({}, _t952Stat) : null,
+    ...((T1292_XZ_HIDE || T1292_XZ_ESC) ? { t1292: Object.assign({}, _t1292Stat) } : {}) };   // ★[T1292] 숨김 · 드러냄 · 모르는 답에 숨긴 채 다시 민 수 · 연결 안 섬(확실) · 호위 수 실어 보냄 · 받아 줄여 세움
 }
 
 // =============================================================================
