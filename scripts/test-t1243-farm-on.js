@@ -19,7 +19,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };
-const KNOBS = ['T1284_FARM_YIELD', 'T1276_FARM_K', 'T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
+const KNOBS = ['T1295_FARM_CLOCK', 'T1295_GOURD', 'T1284_FARM_YIELD', 'T1276_FARM_K', 'T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
 const sub = (env, code) => {
   const e = Object.assign({}, process.env); delete e.NODE_OPTIONS; for (const k of KNOBS) delete e[k]; Object.assign(e, env);
   return JSON.parse(execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: e, encoding: 'utf8', maxBuffer: 64 << 20 }).trim().split('\n').filter((l) => l.startsWith('{')).pop());
@@ -176,5 +176,58 @@ ok(yOk(y1) && yOk(y0), '⑨ T1284 — 몸이 거둔 칸의 소출 = 고증 kg/ha
   let yb = null; try { fs.writeFileSync(bp, bait); yb = sub({ T1243_FARM_ON: '1', T1284_FARM_YIELD: '1', T1284_CROPS: bp }, Q9); } finally { try { fs.unlinkSync(bp); } catch (e) { /* 없음 */ } }
   ok(bait !== CS && yb && !yOk(yb), '⑨ T1284 미끼 — 수확에 배수(× 1.5)를 건 작물 정본 사본은 빨강'); }
 ok(!/harvestToGranary|_t368FoodTot/.test(VS.slice(VS.indexOf('function _lifeClearDay('), VS.indexOf('const _t1284Stat'))), '⑨ T1284 — 개간은 칸만 낸다(곳간에 식량을 넣지 않는다 · 식량은 몸이 거둔 칸에서만 — 캐논 797)');
+// ── ⑩ T1295 — 판 시계(250 ms/날)에서 밭 세계 농부 몸의 시계 축 하나 · 박 칸 ──
+const Q10 = `const V=require('./server/villages');const B=V.__p3Bind({});const W=require('./server/zone-config').WORLD;
+const o={knob:V.T1295_FARM_CLOCK,gourd:V.T1295_GOURD,L:W.dayLengthMs};const F={simJob:'farmer',simVillageId:1},H={simJob:'hunter',simVillageId:1};
+o.s0=V.t1295S(F);B.state.deps=Object.assign({},B.state.deps||{},{zoneAwake:()=>true});B.state.dayMs=250;B.state.epoch=1000;
+o.s1=V.t1295S(F);o.sH=V.t1295S(H);o.sNoVil=V.t1295S({simJob:'farmer'});o.wp=V.t1295Wp(F,1000+250*7+100);o.wpH=V.t1295Wp(H,1000+300);
+B.state.dayMs=W.dayLengthMs;o.sLive=V.t1295S(F);o.wpLive=V.t1295Wp(F,5000);B.state.dayMs=250;
+const vil={_farmSet:new Set(),_drySet:new Set(),_crop:new Map(),econ:{land:{fertility:0.5}}};B.state.villages=[vil];
+const M=B._t1243Memo(vil,65);o.cand=M.cand['밭'].map(x=>x[0]);
+console.log(JSON.stringify(o));`;
+const z0 = sub({ T1243_FARM_ON: '1' }, Q10), zN = sub({}, Q10), zK = sub({ T1243_FARM_ON: '1', T1295_FARM_CLOCK: '0' }, Q10), zG = sub({ T1243_FARM_ON: '1', T1295_GOURD: '1' }, Q10);
+ok(z0.knob && z0.s1 === z0.L / 250 && z0.s0 === 1 && z0.sH === 1 && z0.sNoVil === 1 && z0.sLive === 1 && zN.s1 === 1 && zK.s1 === 1 && !zK.knob,
+  '⑩ T1295 — 배율 = 운영 하루 ÷ 판 하루(밭 세계 · 존 · 농부 몸 · 판 시계만) · 그 밖(존 없음 · 사냥꾼 · 운영 시계 · 밭 끔 · `T1295_FARM_CLOCK=0`) = 1', `${z0.s1}`);
+ok(Math.abs(z0.wp - 0.4) < 1e-9 && z0.wpH === null && z0.wpLive === null && zN.wp === null, '⑩ T1295 — 해 몫 = 몸의 날 축((지금 − 기점) ÷ 판 하루의 남은 몫) · 배율 1 이면 null(종전 하늘 `worldPhase`)', `${z0.wp}`);
+const ZS10 = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+ok(/npc\.nextDecisionAt = now \+ 500 \+ _dn\(\) \* 1000;\n  if \(npc\.simVillageId && SimVillages\.t1295S\) \{ const _s = SimVillages\.t1295S\(npc\); if \(_s > 1\) npc\.nextDecisionAt = now \+ \(npc\.nextDecisionAt - now\) \/ _s; \}/.test(ZS10)
+  && /now - npc\._lastAStarAt < \(isVil && SimVillages\.t1295S \? 2000 \/ SimVillages\.t1295S\(npc\) : 2000\)/.test(ZS10) && (ZS10.match(/now - npc\._pathAt > _t1295Stale\(npc\)/g) || []).length === 2
+  && /_ph95 = _w95 != null \? _w95 : _t670Ph;/.test(ZS10) && /if \(p\.simVillageId && _t1295Walk\(p, moveDt\)\) \{/.test(ZS10),
+  '⑩ T1295 — 존 다섯 자리(결정 박자 · A* 간격 · 길 묵음 둘 · 밤 귀가 해 몫 · 이동 문)가 같은 배율 하나를 읽는다(같은 굴림 · 배율 1 = 종전 값)');
+ok(/now - t\.at < \(t\.draw \? G_DRAWW : G_STOREW\) \/ t1295S\(npc\)/.test(VS) && /now - S\.at < G_STOREW \/ t1295S\(npc\)/.test(VS) && (VS.match(/\/ t1295S\(npc\)/g) || []).length === 4
+  && /const _w95 = t1295Wp\(npc, now\);/.test(VS) && /const _w95g = t1295Wp\(npc, now\);/.test(VS),
+  '⑩ T1295 — 생활층 넷(곳간 사다리 머묾 둘 · 일감 없는 쉼 둘)과 해 몫 둘이 같은 축 · 일 머묾(`_t1243MinMs`)은 종전 그대로');
+// 걸음 — zone.js 의 `_t1295Walk` 본문 그대로(사본 0)를 떼어 내 몫을 견준다
+{ const i0 = ZS10.indexOf('function _t1295Walk(p, dt) {'), i1 = ZS10.indexOf('\nfunction _t1295Stale', i0);
+  const src = ZS10.slice(i0, i1);
+  const mk = (s) => new Function('SimVillages', '_desSpeed', '_xyX', '_xyY', '_desPut', 'Roads', src + '\nreturn _t1295Walk;')(
+    { t1295S: () => s, _t1295Stat: { walks: 0, walkPx: 0 } }, () => 38.4, (p) => p.x, (p) => p.y, (p, x, y) => { p.x = x; p.y = y; }, { stampEntityPx() {} });
+  const P = [{ x: 100, y: 0 }, { x: 100, y: 100 }, { x: 300, y: 100 }];
+  const a = { x: 0, y: 0, vx: 5, vy: 5, path: P, pathIndex: 0 }, wk = mk(5760);
+  const r1 = wk(a, 0.001);   // 38.4 × 0.001 × 5,760 = 221.184 px — 두 점을 지나 셋째 다리 위
+  const onSeg = Math.abs(a.y - 100) < 1e-9 && a.x > 100 && a.x < 300;
+  ok(i0 > 0 && r1 === true && a.pathIndex === 2 && onSeg && Math.abs(a.x - (100 + 21.184)) < 1e-6 && a.vx === 0 && a.vy === 0,
+    '⑩ T1295 — 걸음 = 그 자리 빠르기 × dt × 배율을 길 점 차례로(점을 지나면 다음 다리 · 길 밖 0 · 속도 칸 0)', `${a.x.toFixed(3)},${a.y}`);
+  wk(a, 1); ok(a.x === 300 && a.y === 100 && a.pathIndex === 3, '⑩ T1295 — 길 끝에서 선다(넘어 가지 않는다)');
+  const b = { x: 0, y: 0, vx: 1, vy: 0, path: P, pathIndex: 0 }; ok(mk(1)(b, 0.5) === false && b.x === 0 && b.vx === 1, '⑩ T1295 — 배율 1(운영 시계 · 끔)이면 손대지 않는다(종전 이동 문)'); }
+ok(z0.cand.includes('gourd') && !zG.cand.includes('gourd') && zG.gourd && !z0.gourd && zG.cand.length === z0.cand.length - 1,
+  '⑩ T1295 ④ `T1295_GOURD`(끔 기본) 켬 = 박만 마을 밭 후보 밖(그 밖 후보 그대로)', `5월 밭 ${z0.cand.length} → ${zG.cand.length}`);
+ok(/김세빈 · 김민구 2024 「한반도 선·역사시대 박의 재배와 이용」/.test(VS), '⑩ T1295 ④ 출처 줄');
+// 판 시계 서버 판 — 몸이 밭에 닿아 거두고 · 일괄 밭 일 0(캐논 797) · 미끼(일괄 걷음을 끈 사본 = 몸 없이 밭 일) → 빨강
+if (process.env.T1295_SKIP_RUN === '1') console.log('  · ⑩ T1295 서버 판 건너뜀(T1295_SKIP_RUN=1) — 통과로 세지 않는다');
+else {
+  const os = require('os'), D = fs.mkdtempSync(path.join(os.tmpdir(), 't1295h-'));
+  const run = (days, out, extra) => { const e = Object.assign({}, process.env); for (const k of KNOBS) delete e[k]; delete e.NODE_OPTIONS;
+    Object.assign(e, { T1243_FARM_ON: '1', VILLAGE_NPC_CAP: 'Infinity', VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0', T745_VCLOCK: '1', T577_PAR: '1', T577_DIR: path.join(D, out), T577_TAG: out, T1295_PROBE_OUT: path.join(D, out + '.json'),
+      NODE_OPTIONS: `-r ${path.join(ROOT, 'scripts', 't745-vclock.js')} -r ${path.join(ROOT, 'scripts', 't1295-probe.js')}` }, extra || {});
+    try { execFileSync(process.execPath, [path.join(ROOT, 'scripts', 't577-server-run.js'), String(days), '1020'], { cwd: ROOT, env: e, stdio: 'ignore', timeout: 1800000 }); } catch (err) { /* 판 자 종료 코드는 안 본다 — 탐침 JSON 을 본다 */ }
+    try { return JSON.parse(fs.readFileSync(path.join(D, out + '.json'), 'utf8')); } catch (err) { return { err: 'no probe' }; } };
+  const bodyOnly = (r) => r && !r.err && r.batchTasks === 0 && r.batchClear === 0 && r.ghostBatch === 0 && r.cutDays > 0;
+  const R = run(112, 'on');
+  ok(bodyOnly(R) && R.walks > 0 && R.reaped > 0 && R.harvN > 0 && R.pick > 0,
+    '⑩ T1295 — 판 시계 112날(밭 켬 · 몸 전부): 몸이 밭 칸에 닿아 심고 거둔다 · 곳간에 든 수확 > 0 · 일괄 밭 일 0', R.err || `심은 ${R.pick} · 거둔 ${R.reaped} · 곳간 수확 ${R.harvN} · 몸 개간 ${R.bodyCells} · 걸음 ${R.walks}`);
+  const Bt = run(45, 'bait', { T1295_PROBE_BAIT: 'batch' });
+  ok(Bt && !Bt.err && !bodyOnly(Bt) && Bt.batchTasks > 0, '⑩ T1295 미끼 — 밭 길 일괄 걷음을 끈 사본(몸 없이 밭 일을 세는 판)은 빨강', Bt.err || `일괄 일감 ${Bt.batchTasks}`);
+}
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);
