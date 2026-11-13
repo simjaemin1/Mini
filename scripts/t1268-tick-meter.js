@@ -30,16 +30,9 @@ const OUT = process.env.T577_OUT + '.t1268tick.json';
 //   ⇒ 켜면 이 아이 존의 벽시계(`Date.now` · 인수 없는 `new Date()`)를 **상수 하나**만큼 당겨 프리로드 순간을 게임 0시(V0 와 같은 위상)에 둔다 —
 //     흐름 · 간격 · 단조 시계(`performance.now`)는 그대로(상수 차만) · 세계 값 · 차례 무변 · 제품 0. 하루 길이는 아래 상수(끝에 `zone-config` 와 맞대 `phaseOk` 로 적는다).
 const PHASE0 = process.env.T1287_PHASE0 === '1';
-const PHASE_DAY = 24 * 60 * 1000;   // zone-config WORLD.dayLengthMs (판 끝에 맞대 본다 — 프리로드는 zone-config 를 먼저 안 싣는다)
-let phaseOff = 0, hour0 = null;
-if (PHASE0) {
-  const RD = Date, rnow = RD.now.bind(RD);
-  phaseOff = -(rnow() % PHASE_DAY);
-  const PDate = function (...a) { if (!new.target) return new RD(rnow() + phaseOff).toString(); return a.length ? new RD(...a) : new RD(rnow() + phaseOff); };
-  PDate.prototype = RD.prototype; Object.setPrototypeOf(PDate, RD);
-  PDate.now = () => rnow() + phaseOff; PDate.parse = RD.parse; PDate.UTC = RD.UTC;
-  global.Date = PDate;
-}
+const LP = require('./lib-phase');   // ★[T1299] 0시 고정 함수는 공용 정본 한 자리(`lib-phase.pin` — 종전 이 파일 안 글자를 옮김 · 사본 0)
+let hour0 = null;
+if (PHASE0) LP.pin(0);
 const T30 = (ms) => Math.abs(+ms - 1000 / 30) < 2;
 const STALL = Math.max(0, parseFloat(process.env.T1268_TICK_STALL_MS || '0') || 0);
 const DWELL = Math.max(0, parseFloat(process.env.T1287_DWELL_STALL_MS || '0') || 0);   // ★[T1287] 머묾마다 한 번
@@ -75,7 +68,7 @@ const dayAt = [];
   const mk = Ev.createLedger;
   Ev.createLedger = function () {
     const L = mk.apply(this, arguments); const sd = L.scanDay; let last = -1;
-    L.scanDay = function (world, day) { try { if ((day | 0) !== last) { last = day | 0; dayAt.push(performance.now()); stallOn = true; if (hour0 == null) hour0 = +(((Date.now() % PHASE_DAY) + PHASE_DAY) % PHASE_DAY / PHASE_DAY * 24).toFixed(2); } } catch (e) {} return sd.apply(this, arguments); };
+    L.scanDay = function (world, day) { try { if ((day | 0) !== last) { last = day | 0; dayAt.push(performance.now()); stallOn = true; if (hour0 == null) hour0 = LP.hourOf(Date.now()); } } catch (e) {} return sd.apply(this, arguments); };
     return L;
   };
 }
@@ -90,6 +83,6 @@ process.on('exit', () => {
     const main = loops.slice().sort((x, y) => y.sum - x.sum)[0] || { gaps: [], body: [] };
     const dg = []; for (let i = 1; i < dayAt.length; i++) dg.push(dayAt[i] - dayAt[i - 1]);
     fs.writeFileSync(OUT, JSON.stringify({ loops30: loops.length, stallMs: STALL, stalled: stallN, dwellMs: DWELL, dwellStalled: dwellN, phase0: PHASE0, hour0,
-      phaseOk: (() => { try { const z = require.cache[path.join(__dirname, '..', 'server', 'zone-config.js')]; return !!(z && z.exports.WORLD && z.exports.WORLD.dayLengthMs === PHASE_DAY && !z.exports.WORLD.worldEpoch); } catch (e) { return false; } })(), gap: stat(main.gaps), body: stat(main.body), day: stat(dg) }));
+      phaseOk: LP.phaseOk(), gap: stat(main.gaps), body: stat(main.body), day: stat(dg) }));
   } catch (e) { /* 계측 실패는 세계에 0 */ }
 });
