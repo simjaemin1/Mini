@@ -1504,7 +1504,8 @@ function spawnOneNpc(vil) {
 //   굶어 죽든 · 늙어 죽든 · 도적이 되어 떠나든 · 길에서 죽든 다 같은 한 줄이었다(T577 §2-2 · 회부 4).
 //   이제 몸 수가 econ 수를 따라갈 때 **사람이 왜 줄었나**(까닭 줄 `vil._bxQ`)를 보고 몸이 **몸으로** 줄어든다:
 //     ⓐ 그 자리에서 죽음(`died`) — econ 인구식이 뺀 사람(`_deadTot` 증분 · 읽기만). 기근 날(`villageFamine` = econ 의 `_dpDebug.hunger < 0` ·
-//        T159 그 술어)이면 `starve`, 아니면 `old`(늙음·병·추위·붐빔 — 인구식의 나머지 항). 죽는 몸 = 명부 **맨 앞**(가장 먼저 선 몸 —
+//        T159 그 술어)이면 `starve`, 아니면 `old`(늙음·병·추위·붐빔 — 인구식의 나머지 항). ★[T1303] 이제 econ 까닭 칸(식량 빚 `_fdDeadTot` → `starve` ·
+//        나이 `_natDeadTot` → `old`)이 먼저 받고 이 술어는 나머지(인구식 음수 고리)에만 선다(`_bxObserve` 머리글). 죽는 몸 = 명부 **맨 앞**(가장 먼저 선 몸 —
 //        econ 이 죽는 사람을 **가장 늙은 이부터** 고르는 그 규칙의 몸 쪽 거울 · 새 규칙 0). ⚠"가장 굶은 몸"은 몸 층에 없다 —
 //        NPC 허기·갈증은 존이 매 틱 채운다(`zone.js _gaugeStep` "NPC 전면 면제 — 식량은 econ 소유") ⇒ 몸에 굶음의 차이가 없다(보고 §2).
 //        몸은 **선 그 칸에서** 멈추고(AI 끔) · 짐 절반을 그 자리에 떨군다(플레이어 죽음 캐논의 낙하 · zone `_deathDrop` 그 문) ·
@@ -1537,23 +1538,42 @@ function noteBodyExit(vil, kind, n, toCell, toVil, gid) {   // ★[T1078] `gid` 
   _bx.noted += n | 0;
 }
 // econ 이 지난번 뒤로 뺀 사람 — 인구식 죽음(`_deadTot`)과 행상 피살(`tradersKilled`)의 **증분**(읽기만). 처음 보는 마을은 기준만 심는다.
+// ★★[T1303 2026-11-13 · T1263 회부 2] **몸 꼬리표 = econ 이 그 죽음에 붙인 까닭** — 종전엔 그날 증분 전부를 기근 날(`villageFamine` = `_dpDebug.hunger < 0`)이면
+//   `starve` · 아니면 `old` 로 적었다. 그런데 빚 판(`T1074_FOOD_DEBT` · 켬 기본)은 옛 굶주림 항을 걷어 `hunger` 가 늘 0 이다 ⇒ 기근 표시가 서지 않는다 ⇒
+//   econ 식량 빚 죽음(`_fdDeadTot`)이 전부 '늙음'으로 들어갔다(T1263 켬 365날 econ 식량 빚 490 · 몸 굶음 0 · 늙음 446).
+//   이제 econ 이 죽음마다 까닭을 세는 누계 둘의 증분을 그대로 받는다(새 econ 칸 0 · 읽기만 · 사본 0):
+//     굶음 = `_fdDeadTot`(T1074 빚 죽음 · T1197 몸 게이지 HP 0 — econ 의 굶어 죽음 칸) · 늙음 = `_natDeadTot`(T1206 나이 생명표).
+//     나머지(`_deadTot` − 둘 = 인구식 음수 고리)만 종전 술어 그대로 — 빚 판에선 그 고리가 자리 · 연료 · 병 몫(econ T1074 ⑤ 주석)이라 기근 표시가 안 서 '늙음' ·
+//     빚 판이 아닌 세계(`=0`)에선 그 고리가 굶주림 길이라 기근 날이면 '굶음'(T590 그대로 · 하네스 `test-body-exit ②`).
+//   ⚠읽은 누계 둘의 지난 값은 마을 칸이 아니라 모듈 장부(`_bxWhySeen` · WeakMap)에 둔다 — 마을 칸(`_bxSeen`)은 한 글자도 안 바뀐다(마을 칸 지문 t740 side 가
+//     꼬리표 아닌 셈 칸으로 갈리지 않게 · 재기동하면 `_bxSeen` 과 같이 처음부터 기준만 심는다). 세계 결과 무변 — 까닭 줄의 갈래(`k`)만 바뀐다(몸 고르기 = 같은 `died` 갈래 · 명부 맨 앞).
+const _bxWhySeen = new WeakMap();
 function _bxObserve(vil) {
   const e = vil && vil.econ; if (!e) return;
   const dead = +e._deadTot || 0, kill = +((e.tradeStats && e.tradeStats.tradersKilled) || 0);
-  if (!vil._bxSeen) { vil._bxSeen = { dead, kill }; return; }
+  const fd = +e._fdDeadTot || 0, nat = +e._natDeadTot || 0;   // ★[T1303] econ 까닭 누계(굶음 · 늙음)
+  if (!vil._bxSeen) { vil._bxSeen = { dead, kill }; _bxWhySeen.set(vil, { fd, nat }); return; }
   let dd = dead - vil._bxSeen.dead;
   const dk = kill - vil._bxSeen.kill;
+  const ws = _bxWhySeen.get(vil) || { fd, nat };
+  let ds = Math.max(0, fd - ws.fd), dn = Math.max(0, nat - ws.nat);   // ★[T1303] 그동안 econ 이 굶음 · 늙음으로 뺀 사람
+  _bxWhySeen.set(vil, { fd, nat });
   if (dd > 0 && e._t1197Dead && e._t1197Dead.length && _t1197On()) {   // ★[T1197] 켬 = 굶어 죽은 **그 사람**의 몸이 쓰러진다(짝 지은 몸 · 없으면 까닭 줄 `starve`)
     const ids = e._t1197Dead.slice(0, dd); let lone = 0;
     for (const id of ids) { if (_t1197DieBody(vil, id)) dd--; else lone++; }
     if (lone > 0) { noteBodyExit(vil, 'starve', lone); dd -= lone; }
+    ds = Math.max(0, ds - ids.length);   // ★[T1303] 그 목록은 econ 굶음 칸의 사람들이다
   }
   if (dd > 0 && e._t1198Gone && e._t1198Gone.length && _t1198On()) {   // ★[T1198] 켬 = 늙어(로지스틱 음수) 빠진 **그 사람**의 몸이 눕는다 · 몸 없는 사람은 까닭 줄 `old`
     const ids = e._t1198Gone.slice(0, dd); let lone = 0;
     for (const id of ids) { if (_t1197DieBody(vil, id, 'old')) dd--; else lone++; }
     if (lone > 0) { noteBodyExit(vil, 'old', lone); dd -= lone; }
   }
-  if (dd > 0) noteBodyExit(vil, villageFamine(vil) ? 'starve' : 'old', dd);
+  if (dd > 0) {   // ★[T1303] 남은 몫 — econ 까닭 칸 차례로(굶음 → 늙음 → 나머지 = 인구식 고리)
+    const s = Math.min(dd, ds); if (s > 0) { noteBodyExit(vil, 'starve', s); dd -= s; }
+    const o = Math.min(dd, dn); if (o > 0) { noteBodyExit(vil, 'old', o); dd -= o; }
+    if (dd > 0) noteBodyExit(vil, villageFamine(vil) ? 'starve' : 'old', dd);
+  }
   if (dk > 0) noteBodyExit(vil, 'road', dk);
   vil._bxSeen.dead = dead; vil._bxSeen.kill = kill;
 }
