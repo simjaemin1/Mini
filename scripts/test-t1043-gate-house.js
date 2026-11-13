@@ -22,10 +22,25 @@
 //          이제 게이트가 굽기 판 아이 존의 벽시계를 상수만큼 당겨 게임 0시(가상 시계 V0 와 같은 위상)에서 출발시킨다(`T1287_PHASE0` · 끝 줄 `낮밤 0시 고정(첫 날 게임 N시)`).
 //          ③ ④ 는 둘 다 낮밤 0시 고정 · 첫 날 게임 시각이 밤(16.8시) 앞 · 머묾 멈춤 > 0 을 본다.
 //   진짜 벽시계 자리 미끼(`T146_BUILD_MS=1 T1013_BAND_DAY=0` — 사냥터 짓기를 내일로)는 날 281 에야 갈려 짧은 판에 안 닿는다 — 400날 판은 보고/T1043 §3.
+//   ★[T1289] 마감 틈 갈래 미끼(프리로드 갈래 `T1043_BAIT=gapK1|gapG1` — 손 확인용 · 이 하네스 단언 밖): 느린 틱 판(`--slow`)에 실어도 둘 다 PASS 였다(2026-11-12 ·
+//     `계측/T1289_2026-11-12/게이트_미끼.txt`) — 판 자(`--house` · 캐러밴 0)의 지문에 틈 갈래 자리(기온 · 달력 · 장인 틈 걸음)가 안 닿는다. 틈 갈래는 `test-t1273-clock-rest` ⑤ ⑦ 이 잡는다.
 'use strict';
 if (require.main !== module) {   // ★프리로드 갈래 — 게이트 · 기준선 자 · 판 자 부모 · 부하 고리에도 실린다: 아무것도 안 한다(본문이 돌면 판이 판을 낳는다)
   //   벽시계 굽기 아이(아이 존 · 가상 시계 아님)만 세계를 바꾼다 — 미끼 판에서만(`T1043_BAIT=wall`)
   if (process.env.T1043_BAIT === 'wall' && process.env.T577_SEED && !process.env.T745_VCLOCK) process.env.T400_BUILD_ACT = '0';
+  //   ★[T1289] 마감 틈 갈래 미끼 — 존 아이(벽시계 · 가상 시계 둘 다 · 같은 글자)가 `server/villages.js` 를 실을 때 틈 갈래 글자 한 자리를 종전으로(파일 무변)
+  //     'gapK1' = 마감 중 econ 날 시계를 그날 머리로(T1282 앞 — 장인 머묾 · 장마당 그림이 틈에 하루를 거꾸로) · 'gapG1' = 틈 `econDayToMs` 정렬을 종전 `world.day` 로(T1289 앞)
+  const GAP = { gapK1: ['if (state.tickJobs || state._t731 || state._t1253Edge) return (state._t1282D === D ? D + 1 : D) * M;', 'if (state.tickJobs || state._t731 || state._t1253Edge) return D * M;'],
+    gapG1: ['state._t1253Edge)) ? state.world.day + 1 : state.world.day;', 'state._t1253Edge)) ? state.world.day : state.world.day;'] }[process.env.T1043_BAIT || ''];
+  if (GAP && process.env.T577_SEED) {
+    const Module = require('module'), VF = require('path').join(__dirname, '..', 'server', 'villages.js'), old = Module._extensions['.js'];
+    Module._extensions['.js'] = function (m, f) {
+      if (f !== VF) return old(m, f);
+      const src = require('fs').readFileSync(f, 'utf8'), n = src.split(GAP[0]).length - 1;
+      if (n !== 1) { console.error(`[T1289 미끼] 자리 ${n}곳 — 멈춤`); process.exit(3); }
+      m._compile(src.replace(GAP[0], GAP[1]), f);
+    };
+  }
   return;
 }
 const fs = require('fs'), path = require('path');
