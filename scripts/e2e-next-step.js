@@ -258,6 +258,17 @@ const overlap = (a, b) => !!(a && b && Math.min(a.right, b.right) - Math.max(a.l
 
   // ── ⑦ 사유지 터 잡기 ───────────────────────────────────────────────────────────
   console.log('\n⑦ 사유지 터 잡기 — 빈터 안 · 재료 · 단추');
+  //   ★[T1291] 상황을 픽스처가 세운다 — "첫 도착은 빈손 · 의뢰에 낸 나머지뿐"은 의뢰 품목이 무엇이냐에 달렸다: 시작 마을 의뢰가
+  //     "나무 1개를 가져오면 돌 35개로 갚습니다" 같은 판이면 갚은 돌(35) + 낸 나머지 나무(3)가 터 값(나무 3 · 돌 2)을 이미 넘는다 ⇒ 아래 `pre` 가 깨지고
+  //     ⑦ 판정 셋이 덩달아 빨갛다(야간 11-11 · T1291 전수 · 단독 판마다 품목이 갈려 "흔들림"으로 보였다). 플레이어 손(`drop_item`)으로 터 값 밑까지 내려놓는다
+  //     — 판정은 그대로(모자람 → 안내 · 단추 없음 → 받으면 단추).
+  {
+    const inv7 = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
+    for (const k of ['wood', 'stone']) {
+      const over = (inv7[k] | 0) - (FJ.cost[k] - 1);
+      if (over > 0 && FJ.cost[k] > 0) { await page.evaluate(([it, n]) => window.__sendPrimary({ type: 'drop_item', item: it, amount: n }), [k, over]); await sleep(400); }
+    }
+  }
   if (V && V.arrive) await tp(V.arrive.x, V.arrive.y);
   const n8 = await waitNext((n) => n.stage === 'claim' && !n.target);
   const inv8 = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
