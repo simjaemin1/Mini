@@ -6,7 +6,7 @@
 const fs = require('fs');
 const R0 = process.env.R0 || '/dev/shm/t1272x', R = process.env.R || '/dev/shm/t1298';
 const SEEDS = (process.argv.slice(2).find((a) => !a.startsWith('--')) || '1020,7,42,1,2,3,4,5,6,8').split(',').map(Number);
-const SRC = { F1: R, G: R, GS: R, GT: R, C: R, CL: R };   // GT = G + T1286 + T1298 · C = T1260 + T1298(요리사 다시 · T1279 끔) · CL = C 의 장부만
+const SRC = { F1: R, G: R, GS: R, GT: R, C: R, CL: R, CNP: R };   // CNP = C + 요리사 갈무리 뺌   // GT = G + T1286 + T1298 · C = T1260 + T1298(요리사 다시 · T1279 끔) · CL = C 의 장부만
 const rd = (a, s) => { try { return JSON.parse(fs.readFileSync(`${SRC[a]}/${a}-${s}/farm.json`, 'utf8')); } catch (e) { return null; } };
 const live = (f) => f.per.filter((p) => p.everPop);
 const wmean = (f, k) => { let n = 0, w = 0; for (const p of live(f)) { const x = +p[k]; if (!Number.isFinite(x)) continue; const ww = p.popDays || 0; n += x * ww; w += ww; } return w ? n / w : 0; };
@@ -18,7 +18,7 @@ const q = (xs, p) => { const a = xs.slice().sort((x, y) => x - y); if (!a.length
 const pct = (a, b) => (b / a - 1) * 100;
 const out = { seeds: SEEDS, arms: {}, pairs: {} };
 for (const a of Object.keys(SRC)) { out.arms[a] = {}; for (const s of SEEDS) { const f = rd(a, s); if (f) out.arms[a][s] = met(f, sumOf(a, s)); } }
-for (const [name, A, B] of [['G(T1279)', 'F1', 'G'], ['G + T1286', 'F1', 'GS'], ['G + T1286 + T1298', 'F1', 'GT'], ['T1298 몫(GS → GT)', 'GS', 'GT'], ['요리사 다시 + T1298(C)', 'F1', 'C'], ['요리사 다시 + 장부만(CL)', 'F1', 'CL'], ['건강 몫(CL → C)', 'CL', 'C'], ['C ↔ G', 'G', 'C']]) {
+for (const [name, A, B] of [['G(T1279)', 'F1', 'G'], ['G + T1286', 'F1', 'GS'], ['G + T1286 + T1298', 'F1', 'GT'], ['T1298 몫(GS → GT)', 'GS', 'GT'], ['요리사 다시 + T1298(C)', 'F1', 'C'], ['요리사 다시 + 장부만(CL)', 'F1', 'CL'], ['건강 몫(CL → C)', 'CL', 'C'], ['C ↔ G', 'G', 'C'], ['요리사 다시 + T1298 + 갈무리 뺌(CNP)', 'F1', 'CNP'], ['갈무리 몫(C → CNP)', 'C', 'CNP']]) {
   const rows = []; for (const s of SEEDS) { const x = out.arms[A][s], y = out.arms[B][s]; if (!x || !y) continue;
     const r = { seed: s, a: x.pop, b: y.pop }; for (const k of Object.keys(x)) { r[k] = y[k] - x[k]; r[k + 'Pct'] = x[k] ? pct(x[k], y[k]) : null; } rows.push(r); }
   const sum = {}; for (const k of ['pop', 'farmer', 'harvest', 'houseUp', 'gated', 'price', 'famine', 'fg', 'health', 'happy', 'cook']) { const xs = rows.map((r) => r[k + 'Pct']).filter((v) => v != null && Number.isFinite(v));
@@ -36,4 +36,4 @@ for (const [name, p] of Object.entries(out.pairs)) {
 console.log('\n== 팔 절댓값(시드마다 인구)');
 for (const a of Object.keys(out.arms)) console.log(`  ${a.padEnd(4)} ` + SEEDS.map((s) => out.arms[a][s] ? String(out.arms[a][s].pop).padStart(5) : '    —').join(' '));
 console.log('\n== 집 부엌 요리 · 다양성 · 굶음(시드마다 · 팔별)');
-for (const a of ['F1', 'G', 'GS', 'GT', 'C', 'CL']) for (const s of SEEDS) { const m = out.arms[a][s]; if (m) console.log(`  ${a.padEnd(4)} ${String(s).padStart(4)}  요리 마을-날 ${String(m.cookDays).padStart(6)} · 조리식 ${m.cooked.toFixed(0).padStart(7)} · 다양성 ${m.fg.toFixed(3)} · 건강 ${m.health.toFixed(3)} · 행복 ${m.happy.toFixed(3)} · 요리사 날 ${m.cook} · 기근 날 ${m.famine} · 배고픈 날 ${m.hunger}`); }
+for (const a of ['F1', 'G', 'GS', 'GT', 'C', 'CL', 'CNP']) for (const s of SEEDS) { const m = out.arms[a][s]; if (m) console.log(`  ${a.padEnd(4)} ${String(s).padStart(4)}  요리 마을-날 ${String(m.cookDays).padStart(6)} · 조리식 ${m.cooked.toFixed(0).padStart(7)} · 다양성 ${m.fg.toFixed(3)} · 건강 ${m.health.toFixed(3)} · 행복 ${m.happy.toFixed(3)} · 요리사 날 ${m.cook} · 기근 날 ${m.famine} · 배고픈 날 ${m.hunger}`); }
