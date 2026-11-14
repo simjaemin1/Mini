@@ -1,0 +1,24 @@
+== test-seam-walk
+=== 쇠재 · 한재 골짜기 몸 걸음 (T1311) ===
+  ✓ ★미끼 ⓐ 닛폰 골짜기 폭을 4칸으로 줄인 사본 → ③ 빨강(좁은 단면 < 정본 폭)  쇠재 4칸 · 한재 4칸
+  ✓ ★미끼 ⓑ 한반도 짝 골짜기 끝(갈고리)을 막은 사본 → ① 빨강(길 없음 또는 다른 틈)  쇠재 길 없음 · 한재 길 없음
+  ✓ ⑤ 전제 [T1320] — 두 자리의 곧은 줄이 바위 칸을 지난다(자명 통과 금지)  교역로 마디 8 · 다시 붙기 10점
+  ✓ ⑤a [T1320] 손잡이 켬 — 교역로 마디가 바위를 깎는 자리에서 몸 걸음 바위 0 · 끝에 닿는다  {"steps":90,"rock":0,"end":[57552,4176],"reached":true}
+  ✓ ⑤b [T1320] 손잡이 켬 — 길 밖 몸의 다시 붙기 걸음 바위 0 · 닻에 닿는다  {"steps":436,"rock":0,"end":[69157,39973],"reached":true}
+  ✓ ⑤c [T1320] 손잡이 켬 — 교역로 꼭짓점이 다리 옆 물 칸에 선 자리에서 몸 걸음 막힌 칸 0 · 끝에 닿는다  막힌 꼭짓점 2 · {"steps":184,"rock":0,"end":[52560,12624],"reached":true}
+  ✓ ⑤d [T1320] 손잡이 켬 — 같은 배열 계약(고칠 것 없음 = 그 배열 · 같은 배열 두 번 = 같은 결과 · 고친 배열 다시 = 그대로)  {"open":true,"twice":true,"again":true,"changed":true}
+  ✓ ⑤d′ [T1320] 손잡이 끔 — 몸 길 = 들어온 배열 그대로(종전 글자)  {"open":true,"twice":true,"again":true,"changed":false}
+  ✓ ⑤★미끼 ⓐ — 다시 붙기만 곧은 줄로 되돌린 사본(손잡이 켬)이면 다시 붙기 바위 걸음이 선다(빨강)  마디 0 · 다시 붙기 37
+  ✓ ⑤★미끼 ⓒ — 고친 줄이 늘 새 배열인 사본이면 ⑤d 가 빨강  {"open":false,"twice":true,"again":true,"changed":true}
+  ✓ ⑤★미끼 ⓑ — 끔(곧은 줄 그대로)이면 세 자리 다 막힌 칸 걸음이 선다(빨강)  마디 30 · 다시 붙기 37 · 꼭짓점 105
+=== PASS 22 / FAIL 0 ===
+== test-harness-lint: === 77건 중 PASS 77 · FAIL 0 ===
+
+== test-seam: === PASS 18 / FAIL 0 ===
+== test-t1182-caravan-body: PASS 40 / FAIL 0
+== test-t1273-clock-rest: === PASS 104 / FAIL 0 ===
+== test-t1268-econ-clock: === PASS 32 / FAIL 0 ===
+== test-body-fields: === 10 통과 / 0 실패 ===
+== test-t1182-caravan-body (T1320_ROCK_PATH=1): PASS 40 / FAIL 0
+== test-t1273-clock-rest (T1320_ROCK_PATH=1): === PASS 104 / FAIL 0 ===
+== test-t1268-econ-clock (T1320_ROCK_PATH=1): === PASS 32 / FAIL 0 ===

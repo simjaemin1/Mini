@@ -1,0 +1,29 @@
+{
+ "tag": "base-7",
+ "seed": 7,
+ "DAYS": 30,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "zones": [
+  "hanbando",
+  "nippon"
+ ],
+ "env": {
+  "T1311_ALL": "1"
+ },
+ "start": "2026-11-14T18:20:41.515Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "end": "2026-11-14T18:30:15.993Z",
+ "wallS": 574,
+ "days": {
+  "hanbando": 30,
+  "nippon": 30
+ },
+ "bars": 179,
+ "H": 1767225689500,
+ "done": true,
+ "dead": []
+}

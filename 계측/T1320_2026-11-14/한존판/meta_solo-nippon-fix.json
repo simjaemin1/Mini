@@ -1,0 +1,28 @@
+{
+ "tag": "solo-nippon-fix",
+ "seed": 1020,
+ "DAYS": 30,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "zones": [
+  "nippon"
+ ],
+ "env": {
+  "T1311_ALL": "1",
+  "T1320_ROCK_PATH": "1"
+ },
+ "start": "2026-11-14T21:19:14.016Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "end": "2026-11-14T21:21:12.092Z",
+ "wallS": 118,
+ "days": {
+  "nippon": 30
+ },
+ "bars": 184,
+ "H": 1767225692000,
+ "done": true,
+ "dead": []
+}

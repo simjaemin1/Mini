@@ -1,0 +1,501 @@
+{
+ "note": "날 29 낱장(daily) · k = 판 끝까지 전수 가름(all.k) · 막힘 = 존 isTerrainBlockedLocal 칸",
+ "runs": {
+  "base-1020_hanbando": {
+   "day29": {
+    "steps": 9208147,
+    "blocked": 7974,
+    "k": null,
+    "seen": 1233,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 0,
+     "한재": 24668,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "other/cut": 304,
+    "rock/cut": 192,
+    "water/vertex": 7800,
+    "other/vertex": 159,
+    "water/cut": 97,
+    "rock/unk": 16
+   },
+   "byRoleEnd": {
+    "m": 5142,
+    "e0": 3410,
+    "?": 16
+   },
+   "t1320": null
+  },
+  "base-1020_nippon": {
+   "day29": {
+    "steps": 6976402,
+    "blocked": 8289,
+    "k": null,
+    "seen": 873,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 1250,
+     "한재": 27726,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "water/unk": 1884,
+    "water/vertex": 6473,
+    "other/unk": 32,
+    "other/vertex": 16,
+    "rock/cut": 24,
+    "water/cut": 24,
+    "other/cut": 16
+   },
+   "byRoleEnd": {
+    "?": 1916,
+    "m": 3318,
+    "e0": 3235
+   },
+   "t1320": null
+  },
+  "base-7_hanbando": {
+   "day29": {
+    "steps": 9174744,
+    "blocked": 11445,
+    "rockC": 160,
+    "k": {
+     "other/cut": 101,
+     "rock/cut": 144,
+     "water/vertex": 10943,
+     "other/vertex": 154,
+     "water/cut": 87,
+     "rock/unk": 16
+    },
+    "seen": 1241,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 0,
+     "한재": 23923,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "other/cut": 117,
+    "rock/cut": 160,
+    "water/vertex": 10999,
+    "other/vertex": 165,
+    "water/cut": 111,
+    "rock/unk": 16
+   },
+   "byRoleEnd": {
+    "m": 7306,
+    "e0": 4246,
+    "?": 16
+   },
+   "t1320": null
+  },
+  "base-7_nippon": {
+   "day29": {
+    "steps": 6579410,
+    "blocked": 7509,
+    "rockC": 24,
+    "k": {
+     "water/unk": 1623,
+     "water/vertex": 5778,
+     "other/unk": 16,
+     "other/vertex": 32,
+     "water/cut": 36,
+     "rock/cut": 24
+    },
+    "seen": 869,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 0,
+     "한재": 27071,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "water/unk": 1623,
+    "water/vertex": 5778,
+    "other/unk": 16,
+    "other/vertex": 32,
+    "water/cut": 36,
+    "rock/cut": 24
+   },
+   "byRoleEnd": {
+    "?": 1639,
+    "m": 3050,
+    "e0": 2820
+   },
+   "t1320": null
+  },
+  "base-42_hanbando": {
+   "day29": {
+    "steps": 9252148,
+    "blocked": 8719,
+    "rockC": 80,
+    "k": {
+     "other/cut": 177,
+     "rock/cut": 72,
+     "water/vertex": 8018,
+     "other/vertex": 298,
+     "water/cut": 122,
+     "rock/unk": 8,
+     "water/unk": 24
+    },
+    "seen": 1237,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 0,
+     "한재": 36893,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "other/cut": 177,
+    "rock/cut": 72,
+    "water/vertex": 8122,
+    "other/vertex": 333,
+    "water/cut": 131,
+    "rock/unk": 8,
+    "water/unk": 24
+   },
+   "byRoleEnd": {
+    "m": 5303,
+    "e0": 3532,
+    "?": 32
+   },
+   "t1320": null
+  },
+  "base-42_nippon": {
+   "day29": {
+    "steps": 6766822,
+    "blocked": 7279,
+    "rockC": 24,
+    "k": {
+     "water/unk": 1490,
+     "water/vertex": 5629,
+     "other/unk": 32,
+     "other/vertex": 64,
+     "rock/cut": 24,
+     "water/cut": 24,
+     "other/cut": 16
+    },
+    "seen": 853,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 2500,
+     "한재": 43648,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "water/unk": 1490,
+    "water/vertex": 6018,
+    "other/unk": 32,
+    "other/vertex": 64,
+    "rock/cut": 24,
+    "water/cut": 24,
+    "other/cut": 16
+   },
+   "byRoleEnd": {
+    "?": 1522,
+    "m": 3135,
+    "e0": 3011
+   },
+   "t1320": null
+  },
+  "fix-1020_hanbando": {
+   "day29": {
+    "steps": 9211435,
+    "blocked": 204,
+    "rockC": 0,
+    "k": {
+     "water/cut": 1,
+     "other/cut": 203
+    },
+    "seen": 1233,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 0,
+     "한재": 24671,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "water/cut": 97,
+    "other/cut": 267
+   },
+   "byRoleEnd": {
+    "e0": 182,
+    "m": 182
+   },
+   "t1320": {
+    "on": true,
+    "link": 128,
+    "fail": 19,
+    "clear": 209732,
+    "changed": 99,
+    "snap": 316
+   }
+  },
+  "fix-1020_nippon": {
+   "day29": {
+    "steps": 6978760,
+    "blocked": 80,
+    "rockC": 24,
+    "k": {
+     "other/unk": 16,
+     "other/cut": 16,
+     "rock/cut": 24,
+     "water/cut": 24
+    },
+    "seen": 873,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 1250,
+     "한재": 27726,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "other/unk": 16,
+    "other/cut": 16,
+    "rock/cut": 24,
+    "water/cut": 24
+   },
+   "byRoleEnd": {
+    "?": 16,
+    "m": 32,
+    "e0": 32
+   },
+   "t1320": {
+    "on": true,
+    "link": 102,
+    "fail": 4,
+    "clear": 144602,
+    "snap": 273,
+    "changed": 77
+   }
+  },
+  "fix-7_hanbando": {
+   "day29": {
+    "steps": 9178758,
+    "blocked": 185,
+    "rockC": 0,
+    "k": {
+     "other/cut": 112,
+     "water/cut": 73
+    },
+    "seen": 1241,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 0,
+     "한재": 23924,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "other/cut": 128,
+    "water/cut": 97
+   },
+   "byRoleEnd": {
+    "m": 124,
+    "e0": 101
+   },
+   "t1320": {
+    "on": true,
+    "link": 135,
+    "fail": 11,
+    "clear": 186049,
+    "changed": 99,
+    "snap": 457
+   }
+  },
+  "fix-7_nippon": {
+   "day29": {
+    "steps": 6580668,
+    "blocked": 96,
+    "rockC": 24,
+    "k": {
+     "other/unk": 16,
+     "other/cut": 32,
+     "rock/cut": 24,
+     "water/cut": 24
+    },
+    "seen": 869,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 0,
+     "한재": 27071,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "other/unk": 16,
+    "other/cut": 32,
+    "rock/cut": 24,
+    "water/cut": 24
+   },
+   "byRoleEnd": {
+    "?": 16,
+    "m": 48,
+    "e0": 32
+   },
+   "t1320": {
+    "on": true,
+    "link": 73,
+    "fail": 6,
+    "clear": 109116,
+    "snap": 245,
+    "changed": 55
+   }
+  },
+  "fix-42_hanbando": {
+   "day29": {
+    "steps": 9254901,
+    "blocked": 474,
+    "rockC": 0,
+    "k": {
+     "water/cut": 121,
+     "other/cut": 329,
+     "water/unk": 24
+    },
+    "seen": 1237,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 0,
+     "한재": 36895,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "water/cut": 121,
+    "other/cut": 329,
+    "water/unk": 24
+   },
+   "byRoleEnd": {
+    "e0": 214,
+    "m": 236,
+    "?": 24
+   },
+   "t1320": {
+    "on": true,
+    "link": 114,
+    "fail": 23,
+    "clear": 210651,
+    "changed": 100,
+    "snap": 331
+   }
+  },
+  "fix-42_nippon": {
+   "day29": {
+    "steps": 6768636,
+    "blocked": 128,
+    "rockC": 24,
+    "k": {
+     "other/unk": 16,
+     "other/cut": 64,
+     "rock/cut": 24,
+     "water/cut": 24
+    },
+    "seen": 853,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 2500,
+     "한재": 43648,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "other/unk": 16,
+    "other/cut": 64,
+    "rock/cut": 24,
+    "water/cut": 24
+   },
+   "byRoleEnd": {
+    "?": 16,
+    "m": 80,
+    "e0": 32
+   },
+   "t1320": {
+    "on": true,
+    "link": 88,
+    "fail": 10,
+    "clear": 130211,
+    "snap": 248,
+    "changed": 64
+   }
+  },
+  "edge-1020_hanbando": {
+   "day29": {
+    "steps": 9211435,
+    "blocked": 204,
+    "rockC": 0,
+    "k": {
+     "water/cut": 1,
+     "other/cut": 203
+    },
+    "seen": 1233,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 0,
+     "한재": 24671,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "water/cut": 1,
+    "other/cut": 303
+   },
+   "byRoleEnd": {
+    "e0": 146,
+    "m": 158
+   },
+   "t1320": {
+    "on": true,
+    "link": 124,
+    "fail": 17,
+    "clear": 221316,
+    "changed": 99,
+    "snap": 318
+   }
+  },
+  "edge-1020_nippon": {
+   "day29": {
+    "steps": 6962426,
+    "blocked": 32,
+    "rockC": 0,
+    "k": {
+     "other/unk": 16,
+     "other/cut": 16
+    },
+    "seen": 873,
+    "seenBlocked": 0,
+    "valley": {
+     "쇠재": 1250,
+     "한재": 27726,
+     "blocked": 0
+    }
+   },
+   "kEnd": {
+    "other/unk": 16,
+    "other/cut": 16
+   },
+   "byRoleEnd": {
+    "?": 16,
+    "m": 8,
+    "e0": 8
+   },
+   "t1320": {
+    "on": true,
+    "link": 103,
+    "fail": 2,
+    "clear": 156172,
+    "snap": 281,
+    "changed": 79
+   }
+  }
+ }
+}

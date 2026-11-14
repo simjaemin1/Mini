@@ -23,6 +23,63 @@ const ZSRC = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 const MOVE_SPEED = +((ZSRC.match(/^const MOVE_SPEED = (\d+)/m) || [])[1]);
 const TICK_HZ = +((ZSRC.match(/^const TICK_HZ = (\d+)/m) || [])[1]);
 const CELL = 32, NAMES = ['쇠재', '한재'];
+
+// ★[T1320] 몸 길 바위 — 아이 판(손잡이 `T1320_ROCK_PATH` 는 모듈을 실을 때 읽는다 ⇒ 켬 · 끔을 프로세스로 가른다).
+//   ⓐ 교역로 마디: 두 끝점이 열린 칸인데 마디가 바위 칸을 깎는 실제 자리(가상 시계 두 존 판이 잡은 한반도 교차 존 교역로 마디 (57680, 4176) → (57552, 4176) — 칸 중심 기준 바위 칸 셋을 가로지른다)
+//   ⓑ 다시 붙기: 길 밖(한반도 쇠재 골짜기 서쪽 뭍 (68500, 39500))에 선 몸이 골짜기 안 닻(69157, 39973)으로 붙는다 — 곧은 줄이 능선을 가로지르는 자리
+//   ⓒ 꼭짓점: 교역로 꼭짓점(코스 마디 중심)이 다리 옆 물 칸에 선 실제 자리(한반도 (52560, 12368) · (52560, 12496)) — 판의 막힌 걸음 대부분이 이 꼴(보고/T1320 §2)
+//   ⓓ 같은 배열 계약(`_t1320ChainOf`) — 몸 길 · 장부 길 같음 검사(`T.path.pts === body.pts`)가 켬에서도 종전처럼 서야 한다
+//   미끼 ⓐ = 다시 붙기만 곧은 줄로 되돌린 villages.js 사본(`T1320_BAIT=rejoin` · 손잡이 켬) · ⓑ = 손잡이 끔 · ⓒ = 고친 줄이 늘 새 배열인 사본(`T1320_BAIT=ident`)
+//   몸은 존 정본 걸음 문(`_caravanBodyProbe.pts` = setBodyPts · `.walk` = _t1182Walk)으로 걷고, 길 도장(8px 걸음마다)을 존 술어(바위 · 물)로 센다.
+if (process.argv[2] === '--rockchild') {
+  const { ZONES } = require(path.join(ROOT, 'server', 'zone-config'));
+  const TT = require(path.join(ROOT, 'server', 'terrain')); TT.setZonesMeta(ZONES);
+  // ★미끼 사본(`T1320_BAIT=rejoin`): 다시 붙기만 곧은 줄로 되돌린 villages.js 글자를 제자리 경로로 싣는다(파일 손 0)
+  let V;
+  //   `T1320_BAIT=ident`: 고친 줄이 늘 새 배열(같은 배열 계약을 깬 사본 — 장부 길 · 몸 길 같음 검사가 갈린다)
+  const BAITS = { rejoin: ['T1320_ROCK_PATH ? _t1320Link({x:p.x,y:p.y},anchor) : [{x:p.x,y:p.y},anchor]', '[{x:p.x,y:p.y},anchor]'],
+    ident: ['ch.every((q, i) => q.x === pts[i].x && q.y === pts[i].y)) ? pts : ch;', 'ch.every((q, i) => q.x === pts[i].x && q.y === pts[i].y)) ? ch : ch;'] };
+  if (BAITS[process.env.T1320_BAIT]) {
+    const Module = require('module'), vf = require.resolve(path.join(ROOT, 'server', 'villages'));
+    const SRC = fs.readFileSync(vf, 'utf8'), [A0, A1] = BAITS[process.env.T1320_BAIT];
+    if (SRC.split(A0).length !== 2) { console.log('@@' + JSON.stringify({ err: '미끼 자리 못 찾음' })); process.exit(0); }
+    const m = new Module(vf, module); m.filename = vf; m.paths = Module._nodeModulePaths(path.dirname(vf));
+    require.cache[vf] = m; m._compile(SRC.replace(A0, A1), vf); m.loaded = true; V = m.exports;
+  } else V = require(path.join(ROOT, 'server', 'villages'));
+  const P = V.__labProbe._caravanBodyProbe, B3 = V.__p3Bind({}), S = B3.state;
+  const Z = 'hanbando', BR = new Set(); { const bl = ZONES[Z].bridges || []; for (let i = 0; i + 1 < bl.length; i += 2) BR.add(bl[i] + '_' + bl[i + 1]); }
+  // 존 걸음 정본(`zone.js _terrBlocked0`)과 같은 뜻 — 바위 칸 · 물 칸(다리 칸은 열림)
+  const blk = (x, y) => { const tx = Math.floor(x / CELL), ty = Math.floor(y / CELL), cx = tx * CELL + 16, cy = ty * CELL + 16; return TT.isRockCellLocal(Z, cx, cy) || (TT.isWaterCellLocal(Z, cx, cy) && !BR.has(tx + '_' + ty)); };
+  const W = require(path.join(ROOT, 'server', 'zone-config')).WORLD;
+  const straightRock = (a, b) => { let n = 0; const L = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 8); for (let i = 0; i <= L; i++) if (blk(a.x + (b.x - a.x) * i / L, a.y + (b.y - a.y) * i / L)) n++; return n; };
+  const run = (pts, start, target) => {
+    const p = { pid: 'm', x: start.x, y: start.y, hp: 100 }, steps = [];
+    Object.assign(S, { deps: { players: new Map([[p.pid, p]]), moveSpeed: 64, isPositionActive: () => true, isBlockedByWall: () => false, isTerrainBlockedLocal: blk }, dayMs: W.dayLengthMs,
+      roads: { stampEntityPx: (who, x, y) => steps.push([x, y]) } });
+    const body = { pid: p.pid, _t1182: true, escorts: [] }; P.pts(body, pts.map((q) => ({ x: q.x, y: q.y })));
+    body.prog = target === 'end' ? 0 : target;
+    const goal = target === 'end' ? body.len : target, anchorPt = target === 'end' ? body.pts[body.pts.length - 1] : { x: target === 'end' ? 0 : pts[1].x, y: pts[1].y };
+    for (let i = 0; i < 20000; i++) { const want = target === 'end' ? Math.min(body.len, body.prog + 64 * 33.3 / 1000) : body.prog; P.walk(body, p, want, 33.3); if (Math.hypot(p.x - anchorPt.x, p.y - anchorPt.y) < 0.5 && (target !== 'end' || body.prog >= body.len - 0.5)) break; }
+    return { steps: steps.length, rock: steps.filter(([x, y]) => blk(x, y)).length, end: [Math.round(p.x), Math.round(p.y)], reached: Math.hypot(p.x - anchorPt.x, p.y - anchorPt.y) < 0.5 };
+  };
+  const segA = [{ x: 57680, y: 4176 }, { x: 57552, y: 4176 }];
+  const R = { on: V.t1320On ? V.t1320On() : null, stat: null, segStraightRock: straightRock(segA[0], segA[1]),
+    seg: run(segA, segA[0], 'end') };
+  const route = [{ x: 68720, y: 39952 }, { x: 69157, y: 39973 }, { x: 69595, y: 39995 }, { x: 70000, y: 40015 }];
+  R.rejoinStraightRock = straightRock({ x: 68500, y: 39500 }, route[1]);
+  R.rejoin = run(route, { x: 68500, y: 39500 }, Math.hypot(437, 21));
+  // ⓒ 꼭짓점: 교역로 꼭짓점(코스 마디 중심)이 다리 옆 물 칸에 선 실제 자리(한반도 (52560, 12368) · (52560, 12496) — 다리는 서쪽 두 칸 줄)
+  const vtx = [{ x: 52560, y: 12240 }, { x: 52560, y: 12368 }, { x: 52560, y: 12496 }, { x: 52560, y: 12624 }];
+  R.vtxBlocked = vtx.filter((q) => blk(q.x, q.y)).length; R.vtxStraightRock = straightRock(vtx[0], vtx[3]);
+  R.vtx = run(vtx, vtx[0], 'end');
+  // ⓓ 같은 배열 계약: 고칠 것 없는 길 = 들어온 배열 그대로 · 같은 배열 두 번 = 같은 결과 배열 · 고친 배열을 다시 = 그대로(장부 길 `T.path.pts === body.pts` 검사가 종전처럼 선다)
+  { const open = route.map((q) => ({ x: q.x, y: q.y })), fixIn = segA.map((q) => ({ x: q.x, y: q.y })), b0 = {}, b1 = {}, b2 = {}, b3 = {};
+    P.pts(b0, open); P.pts(b1, fixIn); P.pts(b2, fixIn); P.pts(b3, b1.pts);
+    R.ident = { open: b0.pts === open, twice: b1.pts === b2.pts, again: b3.pts === b1.pts, changed: b1.pts !== fixIn }; }
+  R.stat = V.t1320Stat ? V.t1320Stat() : null;
+  console.log('@@' + JSON.stringify(R));
+  process.exit(0);
+}
 const GAME = path.join(ROOT, 'server', 'hanbando-terrain.json');
 
 // 새 술어 판 — 정본 json 객체에 `mut` 를 건 뒤 terrain.js 를 새로 싣는다(술어가 처음 물을 때 json 을 굳힌다 · 미끼가 본판을 더럽히지 않게 판마다 새로)
@@ -106,5 +163,21 @@ ok(bA.every((r) => r.we && r.narrow != null && r.narrow < Math.round(r.W0 / CELL
 // ★미끼 ⓑ — 한반도 짝 골짜기의 이음매 쪽 마디(갈고리 · 끝 둘)를 걷어 그 골짜기가 산 띠 안에서 끝나게
 const bB = walkAll(freshTerrain((J) => { for (const v of J.hanbando.valleys) if (NAMES.includes(v.name)) v.path = v.path.slice(0, 2); }));
 ok(bB.every((r) => !r.we || !r.inValley), '★미끼 ⓑ 한반도 짝 골짜기 끝(갈고리)을 막은 사본 → ① 빨강(길 없음 또는 다른 틈)', bB.map((r) => `${r.nm} ${r.we ? '다른 틈 y ' + Math.round(r.crossY - 49984) : '길 없음'}`).join(' · '));
+// ⑤ [T1320] 몸 길 바위 — 손잡이 켬이면 바위 위 걸음 0 · ★미끼 = 끔(곧은 줄 그대로)이면 빨강
+{
+  const { spawnSync } = require('child_process');
+  const kid = (on, bait) => { const r = spawnSync(process.execPath, [__filename, '--rockchild'], { cwd: ROOT, encoding: 'utf8', env: Object.assign({}, process.env, { T1320_ROCK_PATH: on ? '1' : '0', T1320_BAIT: bait || '' }), maxBuffer: 1 << 24 });
+    const l = (r.stdout || '').split('\n').find((x) => x.startsWith('@@')); return l ? JSON.parse(l.slice(2)) : { err: (r.stderr || '').slice(-300) }; };
+  const ON = kid(true), OFF = kid(false), BAIT = kid(true, 'rejoin'), BAIT2 = kid(true, 'ident');
+  ok(ON.segStraightRock > 0 && ON.rejoinStraightRock > 0, '⑤ 전제 [T1320] — 두 자리의 곧은 줄이 바위 칸을 지난다(자명 통과 금지)', `교역로 마디 ${ON.segStraightRock} · 다시 붙기 ${ON.rejoinStraightRock}점`);
+  ok(ON.on === true && ON.seg && ON.seg.rock === 0 && ON.seg.reached, '⑤a [T1320] 손잡이 켬 — 교역로 마디가 바위를 깎는 자리에서 몸 걸음 바위 0 · 끝에 닿는다', JSON.stringify(ON.seg || ON));
+  ok(ON.rejoin && ON.rejoin.rock === 0 && ON.rejoin.reached, '⑤b [T1320] 손잡이 켬 — 길 밖 몸의 다시 붙기 걸음 바위 0 · 닻에 닿는다', JSON.stringify(ON.rejoin || ON));
+  ok(ON.vtxBlocked > 0 && ON.vtx && ON.vtx.rock === 0 && ON.vtx.reached, '⑤c [T1320] 손잡이 켬 — 교역로 꼭짓점이 다리 옆 물 칸에 선 자리에서 몸 걸음 막힌 칸 0 · 끝에 닿는다', `막힌 꼭짓점 ${ON.vtxBlocked} · ${JSON.stringify(ON.vtx || ON)}`);
+  ok(ON.ident && ON.ident.open && ON.ident.twice && ON.ident.again && ON.ident.changed, '⑤d [T1320] 손잡이 켬 — 같은 배열 계약(고칠 것 없음 = 그 배열 · 같은 배열 두 번 = 같은 결과 · 고친 배열 다시 = 그대로)', JSON.stringify(ON.ident || ON));
+  ok(OFF.ident && OFF.ident.open && OFF.ident.twice && OFF.ident.again && !OFF.ident.changed, '⑤d′ [T1320] 손잡이 끔 — 몸 길 = 들어온 배열 그대로(종전 글자)', JSON.stringify(OFF.ident || OFF));
+  ok(BAIT.on === true && BAIT.seg && BAIT.seg.rock === 0 && BAIT.rejoin && BAIT.rejoin.rock > 0, '⑤★미끼 ⓐ — 다시 붙기만 곧은 줄로 되돌린 사본(손잡이 켬)이면 다시 붙기 바위 걸음이 선다(빨강)', `마디 ${BAIT.seg && BAIT.seg.rock} · 다시 붙기 ${BAIT.rejoin && BAIT.rejoin.rock}${BAIT.err ? ' · ' + BAIT.err : ''}`);
+  ok(BAIT2.ident && !(BAIT2.ident.open && BAIT2.ident.twice && BAIT2.ident.again), '⑤★미끼 ⓒ — 고친 줄이 늘 새 배열인 사본이면 ⑤d 가 빨강', JSON.stringify(BAIT2.ident || BAIT2));
+  ok(OFF.on === false && OFF.seg && OFF.seg.rock > 0 && OFF.rejoin && OFF.rejoin.rock > 0 && OFF.vtx && OFF.vtx.rock > 0, '⑤★미끼 ⓑ — 끔(곧은 줄 그대로)이면 세 자리 다 막힌 칸 걸음이 선다(빨강)', `마디 ${OFF.seg && OFF.seg.rock} · 다시 붙기 ${OFF.rejoin && OFF.rejoin.rock} · 꼭짓점 ${OFF.vtx && OFF.vtx.rock}`);
+}
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
