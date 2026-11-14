@@ -6120,7 +6120,7 @@ function _t1266Keep(vil, npc, s, hk, S, kgU) {
   let mix = null;
   if (E.T1188_ORE_SPLIT) { const m = dep.oreMixAt ? dep.oreMixAt(s.x, s.y) : null; if (m) { mix = {}; for (const k in m) { const id = E.OreGoods.idOf(k); if (id) mix[id] = (mix[id] || 0) + m[k]; } } }
   const v2 = state.econV2 || require('../sim/economy-sim-v2');
-  const val = v2.t1266OreValue ? v2.t1266OreValue(vil.econ, _t1217Clock().H, hk, mix) : null;
+  const val = v2.t1266OreValue ? v2.t1266OreValue(vil.econ, _t1217Clock().H, hk, mix, units) : null;   // ★[T1293] 그 시간 캘 단위도 준다(켬 = 녹임 목표 밑 빈자리 몫만 값 · 끔 = 안 읽는다)
   St.hours++;
   if (!val || !(val.rest < Infinity)) { St.noVal++; return true; }
   const W = units * val.unit;

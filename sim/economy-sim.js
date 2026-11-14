@@ -2732,6 +2732,10 @@ function forageActOn(v) { return !!(T347_FORAGE_ACT && v && (v._t347Cells | 0) >
 //     게임 한 시간마다 견주는 "다음 한 시간 캔 값 ↔ 한 시간 쉰 값"(v2 `t1266OreValue` — 어부 `t1217Value` 와 같은 λ · 같은 쉰 값)이다.
 //   수요는 몸이 일을 고르는 값(시세 · 그림자 값)으로만 닿는다. 헤드리스 랩은 몸 호스트가 없어 이 손잡이가 아무 줄도 안 바꾼다(곳간 입구는 몸만 부른다).
 const T1266_ORE_BODY = (typeof process !== 'undefined' && process.env && process.env.T1266_ORE_BODY === '1');
+// ★★[T1293 2026-11-13 · T1277 회부 ① ⓐ · PM 판정 "녹일 수 있는 것보다 많이 캔 원석은 값이 없다"] **광부 문 닫기** — 손잡이 `T1293_ORE_SAT`(**끔 기본** · `=1` 만 켬 ·
+//   `T1266_ORE_BODY` 켬 안에서만 · 끔 = 종전 바이트). 광부 한 시간 값(v2 `t1266OreValue`)이 그 마을 원석 그림자 값을 읽는 그 칸에서 — 원석 품목마다 그 시간 캘 덩이 가운데
+//   곳간(유효 재고)이 값표 목표(녹임 흐름 × 30날 · 그 칸 값이 읽는 그 목표)에 닿기까지의 빈자리에 드는 몫만 그 칸 값을 받고 넘는 몫은 값 0. 새 수 0 · 사본 0(목표 · 재고 = v2 `_targetV2` 하나).
+const T1293_ORE_SAT = T1266_ORE_BODY && (typeof process !== 'undefined' && process.env && process.env.T1293_ORE_SAT === '1');
 function mineToGranary(v, units, mineral) {
   if (!T724_MINE_ACT || !v || !v.storage) return 0;
   if(T1188_ORE_SPLIT&&!OreGoods.idOf(mineral))return 0;
@@ -7727,6 +7731,7 @@ module.exports = {
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
   mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT, T1266_ORE_BODY,   // ★[T1266] 광부 원석 양 = 몸이 친 만큼(끔 기본)
+  T1293_ORE_SAT,   // ★[T1293] 녹임 목표를 넘을 몫의 덩이 값 0(끔 기본 · T1266 켬 안에서만 — v2 `t1266OreValue` 가 읽는다)
   T1196_ARTISAN_ACT, T1196_SET, artisanActOn, artisanTake, artisanGive, t1196Unhide,   // ★[T1196] 장인 작업장
   __t1196: { begin: _t1196Begin, end: _t1196End, day: _t1196Day, seat: _t1196Seat },   // ★[T1196] 하네스 문(운영 경로는 안 부른다)
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)

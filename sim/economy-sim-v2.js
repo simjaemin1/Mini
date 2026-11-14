@@ -1050,13 +1050,23 @@ function t1217Value(v, H, key) {
 //     목표 = 녹임 흐름 × 30날 · 유효 재고 = 곳간) 그 원석 칸 하나. 종전 줄은 순수출가(`netExportValue` — 이웃 한 곳이 첫 한 단위에 줄 값)와 큰 쪽을 썼다 —
 //     곳간이 녹임 목표를 몇 배 넘어도 이웃 값이 크면 덩이 값이 안 떨어진다. 이 함수에서 순수출가를 안 읽는다(사본 0 · 새 수 0).
 //     mix = { 원석 품목: 몫 }(쪼개기 켬 — 그 셀에서 나올 광물의 기댓값 몫 · 몫 합 1) · 없으면 `ore` 한 칸(쪼개기 끔). 새 수 0 · 주사위 0.
-function t1266OreValue(v, H, key, mix) {
+//   ★★[T1293 · T1277 회부 ① ⓐ · PM 판정 "녹일 수 있는 것보다 많이 캔 원석은 값이 없다"] 손잡이 v1 `T1293_ORE_SAT`(끔 기본 · `T1266_ORE_BODY` 켬 안에서만) —
+//     units = 그 시간 캘 원석 단위(부르는 쪽 `_t1266Keep` 의 그 수). 품목마다 그 시간 덩이(units × 몫) 가운데 곳간(유효 재고 `sEff`)이 값표 목표(`target` — 녹임 흐름 × 30날 ·
+//     그 칸 값이 읽는 그 목표)에 닿기까지의 빈자리에 드는 몫만 그 칸 값을 받는다(`_t1293Fill`) — 넘는 몫은 값 0. units 를 안 주면 첫 한 단위(빈자리가 있으면 몫 그대로 · 없으면 0).
+//     끔 = 아래 줄 종전 산술 그대로(몫 × 그 칸 값). 새 수 0 · 사본 0(목표 · 유효 재고는 `_targetV2` 하나 — 값 칸이 읽는 그 둘).
+function _t1293Fill(v, id, ctx, f, units) {
+  const T = _targetV2(v, id, ctx), room = T ? Math.max(0, T.target - T.sEff) : 0;   // 녹임 목표까지 남은 빈자리(원석 단위)
+  if (!(room > 0)) return 0;
+  return units > 0 ? Math.min(f, room / units) : f;
+}
+function t1266OreValue(v, H, key, mix, units) {
   if (!v || !v.npcs) return null;
   const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
   const { lam, best } = _t1217Lam(v, px, N);
   const M = mix && Object.keys(mix).length ? mix : { ore: 1 };
+  const sat = v1.T1293_ORE_SAT ? _targetCtxV2(v) : null;   // ★[T1293] 켬 = 녹임 목표 문맥(끔 = null · 아래 줄 종전 산술)
   let p = 0;
-  for (const id in M) { const f = M[id]; if (!(f > 0)) continue; p += f * (px[id] || 0); }   // ★[T1277] 그림자 값 한 칸(순수출가 안 읽음)
+  for (const id in M) { const f = M[id]; if (!(f > 0)) continue; p += (sat ? _t1293Fill(v, id, sat, f, units) : f) * (px[id] || 0); }   // ★[T1277] 그림자 값 한 칸(순수출가 안 읽음) · ★[T1293] 켬 = 목표 밑 빈자리 몫만
   return { N, H, unit: p * lam, p, lam, best, rest: t1217RestValue(N, H) };
 }
 
