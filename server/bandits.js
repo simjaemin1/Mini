@@ -164,7 +164,7 @@ function _t765Arrive(day) {   // 길 위 장부 — 닿은 사람을 받는 마�
     if (w.lastDay == null && npc && Number.isFinite(npc.age) && day > w.d0) npc.age += (day - w.d0) / 365;   // ★[T1080] 길 위 칸이 선 줄은 날마다 늙었다(`_walkRoadDay` — 두 번 늙기 0)   // ★[T1049 ④] 길 위에서도 늙는다 — econ 하루 늙기(`economy-sim.js` `n.age += 1 / 365`)를 걸은 날 수만큼(장부 안은 econ 밖이라 종전엔 그 날들이 빠졌다 · 새 수 0)
     _econJoin(to, npc);
     if (to.econ._banditized) S.stats.t765IntoDis = (S.stats.t765IntoDis || 0) + 1;   // 걷는 사이 받는 마을도 해체됐다(그래도 그 마을에 붙는다 · 표에만)
-    const joined = S.host.t765Join ? S.host.t765Join(w.pid, to) : false;
+    const joined = S.host.t765Join ? S.host.t765Join(w.pid, to, w.npc) : false;
     S.stats.t765Arrive = (S.stats.t765Arrive || 0) + 1;
     if (joined) S.stats.t765Joined = (S.stats.t765Joined || 0) + 1;
     const g = S.t765Rows && S.t765Rows.find((r) => r.d0 === (w.dep != null ? w.dep : w.d0) && r.fromId === w.from && r.toId === (w.to0 != null ? w.to0 : w.to));
@@ -247,12 +247,13 @@ function walkToVillage(vil, people, day, why, accept, dest) {   // dest = 호스
   else ({ best, bd } = _nearLive(vil, vil.ccx, vil.ccy));
   if (!best) return 0;
   if (typeof accept === 'function' && !accept(best)) return 0;   // ★[T1134] 받을 곳이 받지 않으면 아무것도 안 바꾼다
+  if (S.host.t1302Prepare) S.host.t1302Prepare(vil);   // newborns may emigrate in their birth tick; establish their own bodies first
   const set = new Set(people), moved = [];
   for (let i = e.npcs.length - 1; i >= 0; i--) if (set.has(e.npcs[i])) moved.unshift(e.npcs.splice(i, 1)[0]);
   if (!moved.length) return 0;
   if (S.host.t765Depart) {   // ★[T765] 길 위 장부 — econ 은 닿는 날 붙는다(`_t765Arrive`) · 몸은 지금 같이 떠난다
     for (const npc of moved) if (e.counts && npc && npc.currentJob) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1);
-    const L = S.host.t765Depart(vil, best, moved.length);
+    const L = S.host.t765Depart(vil, best, moved.length, moved);
     const PK = life && S.host.t1080Pack ? S.host.t1080Pack(vil, moved.length) : null;   // ★[T1080] 제 짐(그 곳간 먹을 것을 고르게 · 25kg 까지)
     for (let i = 0; i < moved.length; i++) S.WALK.push(Object.assign({ npc: moved[i], from: vil.dbId, to: best.dbId, d0: day, len: L.len, ppd: L.ppd, pid: L.pids[i] != null ? L.pids[i] : null },
       unhappy ? { t1075: 1 } : {}, _walkLife(day, best.dbId, PK ? PK.bags[i] : null, why)));
@@ -1194,7 +1195,7 @@ function _t1079Arrive(w, to, day) {   // 닿았다 — 몸 짐 무기는 그 마
   if (p && p.inventory) for (const r of Object.keys(p.inventory)) if (ARMS_RES.has(r) && (+p.inventory[r] || 0) > 0) { const St = to.econ.storage || (to.econ.storage = {}); St[r] = (St[r] || 0) + +p.inventory[r]; k += +p.inventory[r]; p.inventory[r] = 0; }
   if (w.pid != null) _t1079Carry().delete(w.pid);
   st.vilArms += k;
-  if (w.npc) { _econJoin(to, w.npc); st.home++; if (H.t765Join && H.t765Join(w.pid, to)) st.homeBody++; }
+  if (w.npc) { _econJoin(to, w.npc); st.home++; if (H.t765Join && H.t765Join(w.pid, to, w.npc)) st.homeBody++; }
   else { st.noRec++; if (p && H.t1079Gone) H.t1079Gone(w.pid); }
   log(day, `해산한 도적 1명이 ${to.name}에 닿았다 — ${w.npc ? '주민' : '사람 기록 없음(몸 거둠)'}${k ? ` · 무기 짐 ${k} → 곳간` : ''} [T1079]`);
 }
