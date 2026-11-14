@@ -43,7 +43,7 @@ function world(n, opts) {
     deathDrop: (p) => { drops.push(p.pid); return 0; },
     setHp: require('./lib-hp-door').makeSetHp((m) => bcast.push(m)),   // ★[T942] 마을 몸 HP 문 = 존의 그 문(존 소스 글자 그대로 · 사본 0)
   };
-  const e = econ.createVillage({ fertility: 1, water: 1, stone: 1, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: n, name: '목촌' });
+  const e = o.econ || econ.createVillage({ fertility: 1, water: 1, stone: 1, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: n, name: '목촌' });   // ★[T1303] `opts.econ` = 진짜 econ 마을(굶는 마을 판)
   const C = { cx: 200, cy: 200 };
   const housesPx = [0, 1, 2, 3].map((i) => ({ x: (C.cx - 6 + i * 4) * SZ + SZ / 2, y: (C.cy + 8) * SZ + SZ / 2 }));
   const vil = { dbId: 1, name: '목촌', ccx: C.cx, ccy: C.cy, econ: e, npcPids: [], housesPx, _maxRPx: 40 * SZ };
@@ -218,6 +218,95 @@ ok(vanishAtSync === 0, '⑧ ★★순간 소멸 0 — 몸 수가 줄어든 그 �
   const p = T.players.get(T.vil.npcPids[T.vil.npcPids.length - 1]);
   const nearHouse = T.vil.housesPx.some((h) => Math.hypot(p.x - h.x, p.y - h.y) < 4 * SZ);
   ok(T.vil.npcPids.length === n0 + 1 && nearHouse && !p.simCaravan, '⑩ 출생 = 집 자리 둘레에 선다(`spawnOneNpc` 무변 · 표 ⓒ)');
+}
+
+// ══ ★★[T1303 · T1263 회부 2] 몸 꼬리표 = econ 이 그 죽음에 붙인 까닭 ═════════════════════════════════════════
+//   econ 까닭 칸: 굶음 = `_fdDeadTot`(T1074 식량 빚 · T1197 몸 게이지 — econ 이 `_deadTot` 와 한 줄에서 센다) · 늙음 = `_natDeadTot`(T1206 나이 생명표) ·
+//   나머지(인구식 음수 고리)만 기근 날 술어(②). 빚 판(켬 기본)은 옛 굶주림 항을 걷어 `_dpDebug.hunger` 가 늘 0 — 기근 표시가 안 선다(⑮ 가 진짜 econ 으로 보인다).
+//   맞대는 자 = `lib-t1303-why`(까닭 줄을 엿보는 장부 · 관찰기 t1303 과 같은 자). 미끼: 종전 한 줄(그날 증분 전부를 기근 날이면 굶음 · 아니면 늙음)로 되돌리면 ⑪ ⑬ ⑮ 가 빨강.
+const WHY = require('./lib-t1303-why');
+function econFd(e, k, hunger) {   // econ 식량 빚 죽음 — econ 정본(T1074 ④ · `t1197Kill`)이 하는 셈 줄 그대로
+  e._dpDebug = Object.assign({}, e._dpDebug || {}, { hunger });
+  for (let i = 0; i < k; i++) { e.npcs.splice(0, 1); e._deadTot = (e._deadTot || 0) + 1; e._fdDeadTot = (e._fdDeadTot || 0) + 1; }
+}
+function econNat(e, k, hunger) {   // econ 자연사 — econ 정본(T1206 `t1206Day`)의 셈 줄 그대로
+  e._dpDebug = Object.assign({}, e._dpDebug || {}, { hunger });
+  for (let i = 0; i < k; i++) { e.npcs.splice(0, 1); e._deadTot = (e._deadTot || 0) + 1; e._natDeadTot = (e._natDeadTot || 0) + 1; }
+}
+// ── ⑪ 식량 빚 죽음 · 기근 표시 없는 날(빚 판의 늘 그 꼴 — hunger 0) → 굶음 ───────────────────────────────
+{
+  const T = world(10);
+  T.H._starvedToday();
+  const L = WHY.tally(T.vil, true);
+  const s0 = T.H.bodyExitStats();
+  econFd(T.e, 2, 0);
+  T.H.syncVillagePop(T.vil, 2);
+  const s1 = T.H.bodyExitStats(), st = T.H._starvedToday(), S = WHY.sumTally([L]);
+  ok(s1.died.starve - s0.died.starve === 2 && s1.died.old === s0.died.old, '⑪ ★econ 식량 빚 죽음 2 · 기근 표시 없는 날 — 몸 꼬리표 굶음 2 · 늙음 0', `starve +${s1.died.starve - s0.died.starve} · old +${s1.died.old - s0.died.old}`);
+  ok(st.length === 2, '⑪ 굶어 죽은 몸마다 장부 줄(`STARVED` 의 재료)', `${st.length}줄`);
+  ok(S.noted.starve === 2 && S.econ.starve === 2 && S.miss === 0 && S.pct === 100, '⑪ 맞대는 자 — 적힌 굶음 = econ 굶음 · 일치 100%', JSON.stringify({ noted: S.noted, econ: S.econ, pct: S.pct }));
+}
+// ── ⑫ 나이 죽음 · 기근 날 → 늙음(기근 날이어도 econ 은 나이로 뺐다) ────────────────────────────────────
+{
+  const T = world(10);
+  const L = WHY.tally(T.vil, false);
+  const s0 = T.H.bodyExitStats();
+  econNat(T.e, 1, -0.5);
+  T.H.syncVillagePop(T.vil, 2);
+  const s1 = T.H.bodyExitStats(), S = WHY.sumTally([L]);
+  ok(s1.died.old - s0.died.old === 1 && s1.died.starve === s0.died.starve, '⑫ econ 자연사(`_natDeadTot`) · 기근 날 — 몸 꼬리표 늙음(기근 날 술어가 덮지 않는다)', `old +${s1.died.old - s0.died.old} · starve +${s1.died.starve - s0.died.starve}`);
+  ok(S.pct === 100 && S.econ.old === 1, '⑫ 맞대는 자 — 일치 100%', JSON.stringify({ noted: S.noted, econ: S.econ }));
+}
+// ── ⑬ 섞임 — 같은 날 빚 2 · 나이 1 · 인구식 고리 1(기근 표시 없음) → 굶음 2 · 늙음 2 ────────────────────
+{
+  const T = world(12);
+  const L = WHY.tally(T.vil, true);
+  const s0 = T.H.bodyExitStats();
+  econFd(T.e, 2, 0); econNat(T.e, 1, 0); econDeaths(T.e, 1, false);
+  T.H.syncVillagePop(T.vil, Infinity);
+  const s1 = T.H.bodyExitStats(), S = WHY.sumTally([L]);
+  ok(s1.died.starve - s0.died.starve === 2 && s1.died.old - s0.died.old === 2 && T.vil.npcPids.length === 8, '⑬ ★섞인 날 — 굶음 2 · 늙음 2(빚 · 나이 · 고리 각자 제 까닭) · 몸 8', `starve +${s1.died.starve - s0.died.starve} · old +${s1.died.old - s0.died.old} · 몸 ${T.vil.npcPids.length}`);
+  ok(S.agree === 4 && S.miss === 0, '⑬ 맞대는 자 — 넷 다 맞음', JSON.stringify({ agree: S.agree, miss: S.miss }));
+}
+// ── ⑭ 하루 상한 너머 — 남은 까닭이 다음 날로 넘어가도 꼬리표가 섞이지 않는다(굶음 3 · 상한 2) ─────────────
+{
+  const T = world(10);
+  const s0 = T.H.bodyExitStats();
+  econFd(T.e, 3, 0);
+  T.H.syncVillagePop(T.vil, 2);
+  const s1 = T.H.bodyExitStats();
+  T.H.syncVillagePop(T.vil, 2);   // 다음 동기 — econ 증분 0 · 줄에 남은 굶음 1
+  const s2 = T.H.bodyExitStats();
+  ok(s1.died.starve - s0.died.starve === 2 && s2.died.starve - s0.died.starve === 3 && s2.died.old === s0.died.old, '⑭ 상한 2 · 다음 날 셋째 — 셋 다 굶음(다음 날 증분 0 이 늙음으로 덮지 않는다)', `${s1.died.starve - s0.died.starve} → ${s2.died.starve - s0.died.starve}`);
+}
+// ── ⑮ 진짜 econ — 곳간 0 사람 마을(보호막 없음)을 econ 하루로 돌린다: econ 식량 빚 죽음이 기근 표시 없이 난다 · 몸 꼬리표 = 굶음 ──────
+{
+  const ev = econ.createVillage({ name: '빚마을', initialPop: 20, fertility: 0.0, arable: 0, game: 0, wood: 0.5, stone: 0.3, ore: 0 });
+  ev.founder = 'p1';   // 사람 마을 — 보호막 없음(test-t1074 ⑦ 그 꼴)
+  const zero = () => { for (const k of Object.keys(ev.storage)) { const before = ev.storage[k]; ev.storage[k] = 0; if (econ.totalFoodEquivalent(ev) === econ.totalFoodEquivalent(Object.assign({}, ev, { storage: Object.assign({}, ev.storage, { [k]: before }) }))) ev.storage[k] = before; } };
+  const T = world(20, { econ: ev });
+  const L = WHY.tally(T.vil, !!econ.T1074_FOOD_DEBT);
+  const s0 = T.H.bodyExitStats(); let famineFd = 0, fd0 = ev._fdDeadTot || 0, noFamFdDays = 0;
+  for (let d = 400; d < 440; d++) {
+    zero();
+    const f0 = ev._fdDeadTot || 0;
+    econ.tickVillage(ev, d);
+    if ((ev._fdDeadTot || 0) > f0) { if (WHY.famineOf(ev)) famineFd++; else noFamFdDays++; }
+    T.H.syncVillagePop(T.vil, Infinity);
+  }
+  const s1 = T.H.bodyExitStats(), S = WHY.sumTally([L]), fd = (ev._fdDeadTot || 0) - fd0;
+  ok(econ.T1074_FOOD_DEBT === true && fd >= 3 && noFamFdDays >= 3 && famineFd === 0, '⑮ 진짜 econ(빚 판 · 켬 기본) — 40날에 식량 빚 죽음이 나고 그 날들에 기근 표시(`_dpDebug.hunger < 0`)는 한 번도 안 선다', `빚 죽음 ${fd} · 표시 없는 날 ${noFamFdDays} · 표시 선 날 ${famineFd}`);
+  ok(S.noted.starve === fd && S.econ.starve === fd && S.miss === 0 && S.pct === 100, '⑮ ★적힌 굶음 = econ 식량 빚 죽음 · 일치 100%', JSON.stringify({ noted: S.noted, econ: S.econ, miss: S.miss, pct: S.pct }));
+  ok(s1.died.starve - s0.died.starve === fd, '⑮ ★몸이 받은 꼬리표 — 굶음 = econ 식량 빚 죽음(하루 상한 없음 판)', `몸 굶음 +${s1.died.starve - s0.died.starve} · 늙음 +${s1.died.old - s0.died.old} · econ 빚 ${fd} · 자연사 ${S.econ.nat} · 고리 ${S.econ.rest}`);
+}
+// ── ⑯ 자명 통과 금지 — 맞대는 자에 종전 꼬리표(빚 죽음을 늙음으로)를 넣으면 어긋남을 센다 ───────────────────────
+{
+  const fake = { econ: { _deadTot: 0, _fdDeadTot: 0, _natDeadTot: 0 } };
+  const L = WHY.tally(fake, true);
+  fake.econ._deadTot = 3; fake.econ._fdDeadTot = 3;
+  fake._bxQ.push({ k: 'old', n: 3 });
+  const S = WHY.sumTally([L]);
+  ok(S.miss === 3 && S.missBy.starveAsOld === 3 && S.pct === 0, '⑯ 대조 — 빚 죽음 3 을 늙음으로 적으면 자가 어긋남 3 · 일치 0% 를 낸다(잡을 수 있는 자다)', JSON.stringify({ miss: S.miss, pct: S.pct }));
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

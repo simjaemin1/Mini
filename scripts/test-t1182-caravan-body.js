@@ -51,6 +51,7 @@ const saved=P.pack(),x=p.x,g=guard.x,pg=cb.prog;
 S._t1034Saved=new Map([[String(cb.id||convoy.id),saved.b[String(cb.id||convoy.id)]]]);
 p.x=9999;guard.x=9999;cb.prog=0;P.restore(cb,Date.now()+86400000);
 ok(p.x===x && guard.x===g && cb.prog===pg,'상인과 호위는 저장한 실제 위치로 복원, 꺼진 동안 순간이동 0');
+{ const W0=S.world.caravans;S.world.caravans=[convoy];const bd=P.peek().cars[0].body;S.world.caravans=W0;ok(!!bd && !('ax' in bd) && !('wt' in bd) && !('iso' in bd) && P.oldAx===true,'★[T1300] 끔(이 하네스 묶음) — 관측 칸 `t1034car` 몸에 축 표지 · 벽시계 ms 곁 칸이 안 선다(종전 칸 그대로 · 켬 판은 test-t1273 ⑪) · 옛 저장 가리기 손잡이 켬 기본'); }
 cb._xz=true;cb._xzInPts=[{x:1,y:2},{x:64,y:0}];const xzSaved=P.pack();ok(!!xzSaved.b['3'].act && xzSaved.b['3'].act.xzIn[0][0]===1,'경계 캐러밴도 실제 몸과 넘어온 길을 저장한다');
 cb.phase='linger';cb.lingerUntil=0;P.pts(cb,[{x:0,y:0},{x:64,y:0}]);p.x=64;guard.x=64;cb.prog=cb.len;
 const marketVil={npcPids:[]};S.byEcon=new Map([[convoy.to,marketVil]]);const marketNow=Date.now(),rec=P.openMarket(convoy);
