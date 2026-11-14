@@ -8839,7 +8839,7 @@ function _warDespawnPid(pid) {
 //     낙하 문은 표지 `_t1315Drop` 이 선 몸에 다시 안 부른다. 군량 짐(`_warBagDrop`)과 무기(`_t811Fall`)는 종전처럼 먼저 더미로 갔고 그 뒤 남은 몸 짐만 낙하 문이 고른다.
 //   ★기록 칸 — 누운 몸은 `bodyExits`(누운 몸 수 `lying` · 회수 `rot`)에 들고, 까닭 칸(`died.*`)은 안 센다(전사 꼬리표 정본은 `_bxObserve` — 두 번 세지 않는다).
 const T1315_WAR_CORPSE = process.env.T1315_WAR_CORPSE === '1';
-const _t1315Stat = { lay: 0, drop: 0, dropKg: 0, again: 0, noBody: 0 };
+const _t1315Stat = { lay: 0, drop: 0, dropKg: 0, again: 0, noBody: 0, peak: 0 };   // peak = 한때 같이 누운 전장 몸의 가장 큰 수(몸 상한 몫)
 function _warFallPid(pid) { return T1315_WAR_CORPSE ? _warCorpsePid(pid) : _warDespawnPid(pid); }
 function _t1315Kg(p) { try { const C = require('./carry'); return C.npcTotalKg ? C.npcTotalKg(p) : C.totalKg(p); } catch (e) { return 0; } }
 function _warCorpsePid(pid) {
@@ -8867,6 +8867,7 @@ function _warCorpsePid(pid) {
   _bxMap().set(pid, { pid, vid: vil ? vil.dbId : null, k: 'war', cat: 'died', t0: now, until: now + ms,
     untilDay: T681_ON ? state.world.day + ms / Math.max(1, state.dayMs) : undefined });   // 회수 = `_bxDie` 그 시계(T681 켬 = econ 날)
   _t1315Stat.lay++;
+  { let n = 0; for (const r of _bxMap().values()) if (r.k === 'war' && r.cat === 'died') n++; if (n > _t1315Stat.peak) _t1315Stat.peak = n; }
 }
 function t1315Stat() { return Object.assign({ on: T1315_WAR_CORPSE }, _t1315Stat, { dropKg: +_t1315Stat.dropKg.toFixed(3) }); }
 // 출정 해제 — _muster/simWar 해제 + npcs.add(AI 복귀) + hp 회복. pid 는 npcPids 유지(syncVillagePop 재수렴).

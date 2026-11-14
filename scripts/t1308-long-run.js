@@ -18,7 +18,8 @@
 //   node scripts/t1308-long-run.js <날> <시드> [--every 10] [--dir <폴더>] [--tag <이름>]      # 새 판(폴더가 비었거나 progress 없음)
 //   node scripts/t1308-long-run.js --resume <폴더>                                           # 끊긴 판 잇기(progress.json 의 날 · 시드 · env 그대로)
 //   (하네스) --crash-at <날> — 그 날에서 끝나는 마디의 첫 시도는 멈춤 팔이 저장 없이 죽는다(`T722_CRASH=1` — 체크포인트 없음 · 코드 3) · 다시 부르면 그 마디부터.
-//   판 조건 env 는 부르는 쪽이 준다(T577 판 자와 같다 — 예: T1243_FARM_ON=1 VILLAGE_DAY_MS=1440000 VILLAGE_NPC_CAP=Infinity T400_BUILD_ACT=0 VILLAGE_CARAVAN_MAX=0 T745_VCLOCK=1).
+//   판 조건 env 는 부르는 쪽이 준다(T577 판 자와 같다 — 몸 판 정본 = 집 켬 묶음 `T577_BODY=1 T1243_FARM_ON=1` · T1315 ①).
+//     묶음 = VILLAGE_DAY_MS=1440000 VILLAGE_NPC_CAP=Infinity VILLAGE_CARAVAN_MAX=0 T745_VCLOCK=1(집 `T400_BUILD_ACT` 는 기본 켬 · 끔 판은 `T400_BUILD_ACT=0` 을 글자로).
 //   관찰기: NODE_OPTIONS="-r <관찰기> …" — 이 자가 가상 시계 · 멈춤 팔 · 날 뜀 고정 프리로드를 앞에 붙인다.
 //   ⇒ <폴더>/progress.json(날 · 체크포인트 · 마디 줄 · env) · progress.txt(한 줄 진행) · ck/(마지막 체크포인트) · seg-*.log · 묶은 <태그>-<시드>.*.json
 //   끝나면 종료 코드 0 · 끝 표지 `progress.done = true`. 마디가 체크포인트 없이 죽으면 종료 코드 3(감독 `t1308-guard.sh` 가 다시 부른다).
