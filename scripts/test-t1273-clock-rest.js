@@ -70,7 +70,7 @@ const READERS = {
   _caravanSyncOne: [1, '세 칸끼리(재라우팅)'], _xzMakeBody: [1, '세 칸끼리'], _xzStartReturnLeg: [1, '세 칸끼리'], _xzIsolate: [1, '세 칸끼리'], _xzAfterSend: [3, '세 칸끼리(되돌림)'],
   _xzWalkToBorder: [4, '세 칸끼리(경계 칸까지 명목 빠르기)'], _xzSend: [1, '경계 기다림 상한 `until`(`!body._t1182` 몸만 읽는다)'],
   _t661Vis: [1, '종전 보간(T1182 몸은 안 부른다)'], tickCaravanBodies: [6, '종전 페이싱(T1182 몸 줄 뒤)'],
-  xzonePerf: [3, '`/perf` 안 문(관측)'], t1034Peek: [1, '`/perf` 안 문(관측)'],
+  xzonePerf: [5, '`/perf` 안 문(관측)'], t1034Peek: [3, '`/perf` 안 문(관측)'],   // ★[T1300] 3 → 5 · 1 → 3 — 관측 칸 축 표지 · 벽시계 ms(`_t1300Obs` 인수 `departAt` · `arriveAt` — 읽기만 · 켬만)
   _t1289Leg: [1, '세 칸끼리(★[T1289] 켬 · T1182 몸 = econ 날 시계 축 `nomPxMs = len ÷ (arriveAt − 출발)`)'],   // ★[T1289] 새 줄 — 세 칸을 적는 자리(읽기 = 같은 줄의 `arriveAt`)
   _warEnsureBody: [2, '전쟁 몸(캐러밴 아님)'], _warPaceCommander: [2, '전쟁 몸'], _warSetupReturn: [1, '전쟁 몸'], _warPaceReturn: [2, '전쟁 몸'],
 };
@@ -91,9 +91,15 @@ const AXIS_BAITS = [
   ['F2 이웃 존 몸 세 칸 econ → 벽시계(종전)', '3f', 'if (T1253_CLOCK_FIX && body._t1182) _t1289Leg(body, _t1289ToE(arriveAt));', 'if (false) _t1289Leg(body, _t1289ToE(arriveAt));'],
   ['F3 경계 칸 걷기 econ → 인수 벽시계(종전)', '3f', 'if (T1253_CLOCK_FIX && body._t1182) now = _t1253Now();', 'if (false) now = _t1253Now();'],
   ['X1 저장 축 표지 지움', 'ax', "...(T1253_CLOCK_FIX ? { ax: body._t1182 ? 'e' : 'w' } : {}),", '...({}),'],
-  ['X2 되살림 축 옮김 없음(종전)', 'ax', '  if (!S || (!S.ax && !T1253_CLOCK_FIX)) return S;', '  return S;'],
+  ['X2 되살림 축 옮김 없음(종전)', 'ax', '  if (!S || (!S.ax && !T1253_CLOCK_FIX && !T1300_OLD_AX)) return S;', '  return S;'],   // ★[T1300] 첫 줄 글자가 바뀌었다(손잡이 `T1300_OLD_AX` 하나 더) — 미끼 뜻 그대로(되살림 축 옮김 없음)
   //   (판 셈 전용 · 미끼 표 ⑩ 밖) G1 과 같이 실어 "T1289 앞 글자"를 만든다 — `_t1282Wall` 이 틈에 하루를 빼던 T1282 보정
   ['G0 `_t1282Wall` 종전 보정(T1282 글자)', '-', '  return econDayToMs(D) + (_t1253Now() - D * M);', '  return econDayToMs(D) - ((!!(state.tickJobs || state._t731 || state._t1253Edge) && state._t1282D === D) ? M : 0) + (_t1253Now() - D * M);'],
+];
+//   ★[T1300] 미끼 — 판 'ax' = ⑨ 행렬 · 'xa' = ⑪ 아이 판(가리기 · 관측 칸) — 그 판이 빨강
+const T1300_BAITS = [
+  ['Y1 표지 없는 칸 가리기 = T1289 거리 규칙(저장 순간 `at` 에 더 가까우면 벽시계)', 'xa', "const f = S.ax || (T1300_OLD_AX ? (v <= eMax ? 'e' : 'w') :", "const f = S.ax || (false ? (v <= eMax ? 'e' : 'w') :"],
+  ['Y2 끔 판 가리기 없음(T1289 글자 — 끔 · 표지 없음 = 무동작)', 'ax', '  if (!S || (!S.ax && !T1253_CLOCK_FIX && !T1300_OLD_AX)) return S;', '  if (!S || (!S.ax && !T1253_CLOCK_FIX)) return S;'],
+  ['Y3 관측 칸이 축 표지를 안 본다(econ 칸을 벽시계 ms 로 그대로)', 'xa', "w = Number.isFinite(v) ? (ax === 'e' ? _t1289ToB(v) : v) : null;", "w = Number.isFinite(v) ? (false ? _t1289ToB(v) : v) : null;"],
 ];
 const ROLE = process.argv[2];
 
@@ -102,7 +108,7 @@ if (ROLE === '--child') {
   //   미끼 — 숫자 = `BAITS` 하나 · 'm0,m1,…' = ★[T1282] `MIX_BAITS` 여럿(한꺼번에)
   const spec = process.argv[3] != null && process.argv[3] !== '-' ? String(process.argv[3]) : '';
   const want = process.argv[4] || 'shake';   // 'shake' = A · B 흔들림 · 'tf' = 접근자 셈 + 독 판 · 'tfp' = 독 판만(미끼) · 'mix' = ★[T1282] ⑤ 판 셋 · ★[T1289] 'gp' ⑦ · '3f' ⑧ · 'sv' · 'ld' ⑨(저장 · 되살림 — 파일 = argv[5])
-  const swaps = spec ? spec.split(',').map((t) => (t[0] === 'm' ? MIX_BAITS[+t.slice(1)] : t[0] === 'a' ? AXIS_BAITS[+t.slice(1)] : BAITS[+t])) : [];   // ★[T1289] 'a…' = `AXIS_BAITS`
+  const swaps = spec ? spec.split(',').map((t) => (t[0] === 'm' ? MIX_BAITS[+t.slice(1)] : t[0] === 'a' ? AXIS_BAITS[+t.slice(1)] : t[0] === 'y' ? T1300_BAITS[+t.slice(1)] : BAITS[+t])) : [];   // ★[T1289] 'a…' = `AXIS_BAITS` · ★[T1300] 'y…' = `T1300_BAITS`
   if (swaps.length) {   // 미끼 — 이 아이가 실을 때만 villages.js 글자 한 자리를 바꾼다(파일은 안 만진다)
     const old = Module._extensions['.js'];
     Module._extensions['.js'] = function (m, f) {
@@ -368,14 +374,44 @@ if (ROLE === '--child') {
         const fExp = knob ? (en - B2.T.t0) / (B2.aa - B2.T.t0) : (wn - B2.T.t0) / (B2.aa - B2.T.t0);
         //   표지 없는 옛 켬 저장(T1289 앞 꼴) — 표지를 지우고 출발 · 도착을 벽시계 경계 축으로(머묾 끝 · t0 는 그때도 econ 날 시계)
         const old = JSON.parse(JSON.stringify(pk)); for (const id in old.b) { const o = old.b[id]; delete o.ax; if (knob) { o.da = P.toB(o.da); o.aa = P.toB(o.aa); } }
-        saved = { knob, wall: G.wall, k: G.k, clk: Date.now(), econ: en, pack: pk, packOld: old, lgE, fExp,
+        //   ★[T1300] T1258 ~ T1281 시대 꼴 — 위 옛 꼴에서 귀환 보간 시작 `T.t0` 도 벽시계(T1282 가 econ 날 시계로 옮기기 전) · 머묾 끝만 econ 날 시계
+        const old58 = JSON.parse(JSON.stringify(old)); for (const id in old58.b) { const o = old58.b[id]; if (knob && o.T && o.T.t0 != null) o.T.t0 = P.toB(o.T.t0); }
+        saved = { knob, wall: G.wall, k: G.k, clk: Date.now(), econ: en, pack: pk, packOld: old, packOld58: old58, lgE, fExp,
           cars: G.w.caravans.map((c) => ({ id: c.id, state: c.state, departDay: c.departDay, arriveDay: c.arriveDay, returnArriveDay: c.returnArriveDay })), ax: [B1.ax || null, B2.ax || null] };
       }
     }
     return saved || { err: '저장 순간 못 섬' };
   }
+  // ── ★[T1300] ⑪ xa 판 — 표지 없는 칸 가리기(econ 날이 큰 판 · 보통 판) · 관측 칸(축 표지 · 벽시계 ms · ISO) ─────────────
+  function xaRun() {
+    const G = world('A', false), S = G.S, { a, b } = G, knob = process.env.T1253_CLOCK_FIX !== '0';
+    //   (i) 표지 없는 옛 켬 저장 칸 넷(머묾 끝 · t0 = econ 날 시계 · 출발 · 도착 = 벽시계 경계 축) — 되살린 판 축에서 같은 econ 순간인가(벽시계 축 = `toE`)
+    const cls = (Dx) => {
+      const D0x = S.world.day; S.world.day = Dx;   // 앵커(lastGameDay)는 그대로 — 경계 벽시계는 그대로 · econ 날 시계 값만 커진다
+      try {
+        const en = mute(() => P.econNow()), at = Date.now();
+        const want = { lg: en + 5000, da: en - 1000, aa: (Dx + 1) * M, t0: en - 1000 };
+        const rec = { lg: want.lg, da: mute(() => P.toB(want.da)), aa: mute(() => P.toB(want.aa)), T: { t0: want.t0 }, at };
+        const r = mute(() => P.axIn(JSON.parse(JSON.stringify(rec)), true));
+        const back = (v) => (knob ? v : mute(() => P.toE(v)));
+        const d = { lg: R9(back(r.lg) - want.lg), da: R9(back(r.da) - want.da), aa: R9(back(r.aa) - want.aa), t0: R9(back(r.T.t0) - want.t0) };
+        return { D: Dx, ratio: +(en / at).toFixed(4), ax: r.ax, d, bad: Object.values(d).filter((x) => !(Math.abs(x) <= 2)).length };
+      } finally { S.world.day = D0x; }
+    };
+    const at0 = Date.now(), small = cls(D0), big = cls(Math.ceil(0.6 * at0 / M));   // 보통 판(econ 값 ≪ 벽시계) · 큰 판(econ 값 > 저장 순간 벽시계의 반 — T1289 거리 규칙이 틀리는 판)
+    //   (ii) 관측 칸 — 장부 몸(`t1034Peek`)이 축 표지 · 벽시계 ms · ISO 를 낸다(켬만) · 벽시계 ms 는 지금 앞뒤 며칠 안(사람이 읽는 시각)
+    const c = car(91, a, b, 'outbound'); G.w.caravans.push(c); mute(() => P.spawn(c, Date.now(), 16));
+    for (let i = 0; i < 30; i++) G.step(true);
+    const pk = mute(() => P.peek()), cb = pk.cars.find((x) => x.id === 91), bd = cb && cb.body;
+    const ob = { has: !!(bd && 'ax' in bd), ax: bd ? bd.ax : null, raw: bd ? R9(bd.arriveAt) : null, wt: bd && bd.wt ? R9(bd.wt.arriveAt) : null, iso: bd && bd.iso ? bd.iso.arriveAt : null, now: Date.now(),
+      wantW: bd ? R9((bd.ax === 'e') ? mute(() => P.toB(bd.arriveAt)) : bd.arriveAt) : null };
+    ob.days = ob.wt != null ? +((ob.wt - ob.now) / M).toFixed(3) : null;
+    ob.isoOk = ob.iso != null && Date.parse(ob.iso) === Math.floor(ob.wt);
+    const fake = mute(() => P.obs({ _t1182: true }, { x: (D0 + 1) * M, n: null }));
+    return { knob, small, big, ob, fake: { ax: fake.ax, wt: R9(fake.wt.x), want: R9(knob ? mute(() => P.toB((D0 + 1) * M)) : (D0 + 1) * M), iso: fake.iso.x, n: fake.wt.n } };
+  }
   function ldRun(file, which) {
-    const SV = JSON.parse(fs.readFileSync(file, 'utf8')), pk = which === 'old' ? SV.packOld : SV.pack;
+    const SV = JSON.parse(fs.readFileSync(file, 'utf8')), pk = which === 'old' ? SV.packOld : which === 'old58' ? SV.packOld58 : SV.pack;   // ★[T1300] 'old58' = T1258 시대 꼴
     const G = world('A', false), S = G.S, { a, b } = G;
     while (G.wall < SV.wall) G.step(false);   // 같은 벽시계 · 같은 econ 순간(바로 다시 뜬 판)
     G.w.caravans = SV.cars.map((x) => car(x.id, a, b, x.state, { departDay: x.departDay, arriveDay: x.arriveDay, returnArriveDay: x.returnArriveDay }));
@@ -387,6 +423,10 @@ if (ROLE === '--child') {
     if (b2 && !t1182 && b2._t661 && b2._t661.t0 != null) { R.fGot = mute(() => P.vis(b2, Date.now())) / b2._t661.path.len; R.dF = R9(R.fGot - SV.fExp); }
     //   ① 머묾 끝 — 몸 틱을 돌려 머묾이 끝난 걸음의 econ 순간(저장한 econ 순간과 견준다 · 30초 안에 안 끝나면 null)
     for (let i = 0; i < 900 && b1 && b1.phase === 'linger'; i++) { G.step(true); if (b1.phase !== 'linger') { R.flipE = mute(() => P.econNow()); R.flipK = i; } }
+    //   ③ ★[T1300] 도착 — 걷는 몸(82)의 도착 칸이 되살린 판의 축에서 저장한 econ 도착 순간(귀환 도착 날 × 하루)과 같은가(econ 축 = 그대로 · 벽시계 축 = `toE`)
+    const c82 = SV.cars.find((x) => x.id === 82);
+    if (b2 && c82 && Number.isFinite(b2.arriveAt)) { const aE = (R.knob && t1182) ? b2.arriveAt : mute(() => P.toE(b2.arriveAt)); R.dA = R9(aE - c82.returnArriveDay * M); }
+    R.aaMixed = !(R.dA != null && Math.abs(R.dA) <= 150);
     if (R.flipE != null) R.dE = R9(R.flipE - SV.lgE);
     R.linMixed = !(R.flipE != null && Math.abs(R.dE) <= 150);
     R.visMixed = R.dF != null && Math.abs(R.dF) > 0.01;
@@ -411,6 +451,7 @@ if (ROLE === '--child') {
       const s1 = A.car.filter((r) => r[0] === 's' && r[2] === 11)[0];
       out = { knob: process.env.T1253_CLOCK_FIX !== '0', n: [A.car.length, A.xz.length], split: { car: split(A.car, B.car), xz: split(A.xz, B.xz) }, s11: s1 || null, s11want: (D0 + 2) * M, diff: firstDiff(A.car.concat(A.xz), B.car.concat(B.xz)) };
     }
+    else if (want === 'xa') out = xaRun();   // ★[T1300] ⑪
     else if (want === 'sv') out = svRun();   // ★[T1289] ⑨
     else if (want === 'ld') out = ldRun(process.argv[5], process.argv[6]);
     else if (want === 'mix') {   // ★[T1282]
@@ -476,9 +517,13 @@ const fnOf = (i) => { const j = VC.lastIndexOf('\nfunction ', i); return j < 0 ?
   const aonce = AXIS_BAITS.map(([, , from]) => VSRC.split(from).length - 1), asite = AXIS_BAITS.map(([, , from]) => fnOf(VC.indexOf(from)));
   ok(aonce.every((x) => x === 1) && asite.join() === 'econDayToMs,spawnCaravanBody,_xzMakeBody,_xzWalkToBorder,_t1034Pack,_t1289In,_t1282Wall', `⓪ ★[T1289] 미끼 ${AXIS_BAITS.length}자리(판 셈 전용 G0 포함)가 제품 소스에 꼭 한 번씩 · 그 함수를 바꾼다`, `${aonce.join(' · ')} · ${asite.join(' · ')}`);
   const legs = [...VC.matchAll(/(?<!function )_t1289Leg\(/g)].map((m) => [fnOf(m.index), VC.slice(VC.lastIndexOf('\n', m.index) + 1, m.index)]);
-  const legFns = legs.map((x) => x[0]).sort().join();
-  ok(legs.length === 10 && legs.every((x) => /if \(T1253_CLOCK_FIX && body\._t1182\) $/.test(x[1])) && legFns === '_caravanSyncOne,_t1136Isolate,_xzAfterSend,_xzIsolate,_xzMakeBody,_xzStartReturnLeg,isolateCaravanReturn,spawnCaravanBody,startReturnLeg,startReturnLeg',
+  //   ★[T1300] 전쟁 몸 두 자리(`_warEnsureBody` · `_warSetupReturn` — `if (T1253_CLOCK_FIX && body._t681)` 뒤)가 더해졌다 — 캐러밴 10자리는 종전 단언 그대로(그 줄들만 골라 같은 조건) · 전쟁 둘은 따로 · 그 밖 0
+  const legsW = legs.filter((x) => x[0] === '_warEnsureBody' || x[0] === '_warSetupReturn'), legsC = legs.filter((x) => !legsW.includes(x));
+  const legFns = legsC.map((x) => x[0]).sort().join();
+  ok(legsC.length === 10 && legsC.every((x) => /if \(T1253_CLOCK_FIX && body\._t1182\) $/.test(x[1])) && legFns === '_caravanSyncOne,_t1136Isolate,_xzAfterSend,_xzIsolate,_xzMakeBody,_xzStartReturnLeg,isolateCaravanReturn,spawnCaravanBody,startReturnLeg,startReturnLeg',
     '⓪ ★[T1289] 세 칸 econ 축 줄 10자리(세 칸을 적는 함수 전부 · 경계 걷기는 따로) — 다 `if (T1253_CLOCK_FIX && body._t1182)` 뒤(끔 · T1182 아닌 몸 = 종전 줄 그대로)', legFns);
+  ok(legs.length === 12 && legsW.length === 2 && legsW.every((x) => /if \(T1253_CLOCK_FIX && body\._t681\) $/.test(x[1])) && legsW.map((x) => x[0]).sort().join() === '_warEnsureBody,_warSetupReturn',
+    '⓪ ★[T1300] 전쟁 몸 세 칸 econ 축 줄 2자리(행군 · 귀환) — 다 `if (T1253_CLOCK_FIX && body._t681)` 뒤(끔 · T681 끔 판 = 종전 벽시계 줄 · 그 판의 페이싱만 세 칸을 읽는다)', `${legs.length}자리 · 전쟁 ${legsW.map((x) => x[0]).join(' · ')}`);
   const ins = [...VC.matchAll(/(?<!function )_t1289In\(/g)].map((m) => fnOf(m.index)).sort().join();
   ok(ins === '_t1034Apply,spawnCaravanBody' && /\.\.\.\(T1253_CLOCK_FIX \? \{ ax: body\._t1182 \? 'e' : 'w' \} : \{\}\)/.test(VC), '⓪ ★[T1289] 되살림 축 옮김 = 덮기 문 둘(`_t1034Apply` · 이웃 존 되살림) · 저장 표지 = 켬만(끔 = 칸 없음)', ins);
 }
@@ -623,7 +668,10 @@ if (!f3Off.err) console.log(`    [표·정보] 끔(종전): 세 칸 갈림 car $
 
 console.log('\n⑨ ★[T1289] 저장 축 표지 — 저장(sv) → 되살림(ld · 다른 프로세스 · 다른 손잡이)에서 머묾 끝 · 귀환 보간이 축을 섞나');
 const LOADS = [['L1 켬 → 켬', 'on', 'new', {}], ['L2 켬 → `T762_CARAVAN_BODY=0`', 'on', 'new', { T762_CARAVAN_BODY: '0' }], ['L3 켬 → 끔', 'on', 'new', { T1253_CLOCK_FIX: '0' }],
-  ['L4 표지 없는 옛 켬 저장 → 켬', 'on', 'old', {}], ['L5 끔 저장 → 켬', 'off', 'new', {}], ['L6 끔 저장 → 끔(대조 · 종전 바이트)', 'off', 'new', { T1253_CLOCK_FIX: '0' }]];
+  ['L4 표지 없는 옛 켬 저장 → 켬', 'on', 'old', {}], ['L5 끔 저장 → 켬', 'off', 'new', {}], ['L6 끔 저장 → 끔(대조 · 종전 바이트)', 'off', 'new', { T1253_CLOCK_FIX: '0' }],
+  //   ★[T1300 · T1289 회부 4] 옛 저장(표지 없음) 판 다섯 — 끔 판 · 종전 몸 판 · T1258 시대 꼴(귀환 보간 시작도 벽시계)
+  ['L7 표지 없는 옛 켬 저장 → 끔', 'on', 'old', { T1253_CLOCK_FIX: '0' }], ['L8 표지 없는 옛 켬 저장 → `T762_CARAVAN_BODY=0`', 'on', 'old', { T762_CARAVAN_BODY: '0' }],
+  ['L9 T1258 시대 옛 켬 저장 → 켬', 'on', 'old58', {}], ['L10 T1258 시대 옛 켬 저장 → 끔', 'on', 'old58', { T1253_CLOCK_FIX: '0' }], ['L11 T1258 시대 옛 켬 저장 → `T762_CARAVAN_BODY=0`', 'on', 'old58', { T762_CARAVAN_BODY: '0' }]];
 const matrix = (bait) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 't1289-sv-')), rows = [];
   try {
@@ -634,7 +682,7 @@ const matrix = (bait) => {
       const line = ((r0.stdout || '') + '').split('\n').find((l) => l.startsWith('@@'));
       rows.push([name, line ? JSON.parse(line.slice(2)) : { err: ((r0.stderr || '') + '').slice(-400) }]);
     }
-    return { sv, rows, mixed: rows.reduce((n, [, r]) => n + (r.err ? 99 : (r.linMixed ? 1 : 0) + (r.visMixed ? 1 : 0)), 0) };
+    return { sv, rows, mixed: rows.reduce((n, [, r]) => n + (r.err ? 99 : (r.linMixed ? 1 : 0) + (r.visMixed ? 1 : 0)), 0), aaMix: rows.reduce((n, [, r]) => n + (r.err ? 99 : (r.aaMixed ? 1 : 0)), 0) };   // ★[T1300] aaMix = 도착 칸이 축을 섞은 몸(③ · 따로 센다 — `mixed` 는 T1289 셈 그대로)
   } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {} }
 };
 const mtx = matrix(null), mtxOld = matrix('a5');
@@ -645,8 +693,13 @@ else {
     if (r.err) { ok(false, `⑨ ${name} 판이 돌았다`, r.err); continue; }
     ok(!r.linMixed && !r.visMixed && r.ph[0] === 'linger' && r.ph[1] === 'inbound', `★⑨ ${name} — 머묾이 저장한 econ 순간에 끝난다(±150ms) · 귀환 보간 몫이 저장 몫과 같다(T1182 아닌 몸만 읽는다)`,
       `몸 ${r.t1182 ? 'T1182' : '종전'} · 머묾 끝 차 ${r.dE == null ? '안 끝남' : r.dE + 'ms'}(${r.flipK == null ? '—' : r.flipK + '걸음'}) · 보간 몫 차 ${r.dF == null ? '—' : r.dF}`);
+    ok(!r.aaMixed, `★⑨ [T1300] ${name} — 걷는 몸의 도착 칸 = 저장한 econ 도착 순간(±150ms · 되살린 판 축)`, `도착 차 ${r.dA == null ? '없음' : r.dA + 'ms'}`);
   }
 }
+const mtx89 = matrix('y1');   // ★[T1300] T1289 글자(끔 판 가리기 없음 — Y2)로 같은 행렬 — 옛 저장 → 끔 판의 "고치기 전" 수
+if (!mtx89.err) { console.log(`    [표] ★[T1300] T1289 글자(끔 · 표지 없음 = 무동작) → 지금: 축 섞인 몸 ${mtx89.mixed} + 도착 ${mtx89.aaMix} → ${mtx.mixed || 0} + ${mtx.aaMix || 0} — ${mtx89.rows.filter(([, r]) => r.err || r.linMixed || r.visMixed || r.aaMixed).map(([n, r]) => `${n.split(' ')[0]} ${r.err ? '오류' : (r.linMixed ? '머묾 ' + (r.dE == null ? '안 끝남' : r.dE + 'ms') : '') + (r.visMixed ? ' 보간 ' + r.dF.toFixed(3) : '') + (r.aaMixed ? ' 도착 ' + r.dA : '')}`).join(' · ') || '없음'}`);
+  ok(mtx89.mixed + mtx89.aaMix > 0, '⑨ [T1300] T1289 글자 사본은 옛 저장 → 끔 판에서 축 섞인 몸이 0 이 아니다(자명 통과 금지 · 회부 4)', `${mtx89.mixed} + ${mtx89.aaMix}`); }
+else ok(false, '⑨ [T1300] T1289 글자 판이 돌았다', mtx89.err);
 if (mtxOld.err) ok(false, '⑨ 고치기 전(X2) 판이 돌았다', mtxOld.err);
 else { console.log(`    [표] 고치기 전(X2 — 되살림이 축을 안 옮긴다 · 종전) → 지금: 축 섞인 몸 ${mtxOld.mixed} → ${mtx.mixed || 0} — ${mtxOld.rows.map(([n, r]) => `${n.split(' ')[0]} ${r.err ? '오류' : (r.linMixed ? '머묾 ' + (r.dE == null ? '안 끝남' : r.dE + 'ms') : '') + (r.visMixed ? ' 보간 ' + r.dF.toFixed(3) : '') || '같음'}`).join(' · ')}`);
   ok(mtxOld.mixed > 0, '⑨ 고치기 전 사본은 축 섞인 몸이 0 이 아니다(자명 통과 금지)', `${mtxOld.mixed}`); }
@@ -659,10 +712,48 @@ for (let i = 0; i < AXIS_BAITS.length; i++) {
   let red = false, d = '';
   if (kind === 'gp') { const r = child('a' + i, {}, 'gp'); red = !r.err && GPN(r) > 0; d = r.err ? r.err.slice(0, 200) : `틈 갈림 ${GPN(r)}`; }
   else if (kind === '3f') { const r = child('a' + i, {}, '3f'); red = !r.err && (r.split.car + r.split.xz) > 0; d = r.err ? r.err.slice(0, 200) : `세 칸 갈림 car ${r.split.car} · xz ${r.split.xz}`; }
-  else { const m = matrix('a' + i); red = !m.err && m.mixed > 0; d = m.err ? String(m.err).slice(0, 200) : `축 섞인 몸 ${m.mixed} — ${m.rows.filter(([, r]) => r.linMixed || r.visMixed || r.err).map(([n]) => n.split(' ')[0]).join(' · ')}`; }
+  else { const m = matrix('a' + i); red = !m.err && m.mixed + m.aaMix > 0; d = m.err ? String(m.err).slice(0, 200) : `축 섞인 몸 ${m.mixed} · 도착 ${m.aaMix} — ${m.rows.filter(([, r]) => r.linMixed || r.visMixed || r.aaMixed || r.err).map(([n]) => n.split(' ')[0]).join(' · ')}`; }   // ★[T1300] 도착 칸 셈(③)도 빨강에 든다
   if (red) acaught++;
   ok(red, `⑩ 미끼 ${name} — ${kind} 판 빨강(잡음)`, d);
 }
 console.log(`\n  T1289 미끼 ${acaught}/${AXIS_BAITS.filter((x) => x[1] !== '-').length}`);
+
+// ══ ★[T1300] ⑪ ⑫ — 표지 없는 옛 저장 가리기(경계 = econ 날 시계 최대값) · 관측 칸 축 · 미끼 ══════════════════════════════════════
+console.log('\n⑪ ★[T1300] 표지 없는 칸 가리기(값 ≤ econ 날 시계 최대값 (D + 2) × 하루 = econ 날 시계) · 관측 칸(축 표지 · 벽시계 ms · ISO)');
+{
+  const ronce = T1300_BAITS.map(([, , from]) => VSRC.split(from).length - 1), rsite = T1300_BAITS.map(([, , from]) => fnOf(VC.indexOf(from)));
+  ok(ronce.every((x) => x === 1) && rsite.join() === '_t1289In,_t1289In,_t1300Obs', `⓪ ★[T1300] 미끼 ${T1300_BAITS.length}자리가 제품 소스에 꼭 한 번씩 · 그 함수를 바꾼다`, `${ronce.join(' · ')} · ${rsite.join(' · ')}`);
+  ok(/^const T1300_OLD_AX = process\.env\.T1300_OLD_AX !== '0';$/m.test(VC) && /\.\.\.\(T1253_CLOCK_FIX \? _t1300Obs\(b, \{ bodyAt: b\._t1182At, departAt: b\.departAt, arriveAt: b\.arriveAt, lu: b\.lingerUntil, t952End: [^\n]*\) : \{\}\)/.test(VC)
+    && /\.\.\.\(T1253_CLOCK_FIX \? _t1300Obs\(b, \{ linger: b\.lingerUntil \|\| null, departAt: b\.departAt, arriveAt: b\.arriveAt, t0: [^\n]*\) : \{\}\)/.test(VC),
+    '⓪ ★[T1300] 손잡이 `T1300_OLD_AX` 한 줄(켬 기본 · `=0` = T1289 글자) · 관측 칸 둘(`/perf` `xzone.bodies` · `t1034car`)은 켬만 `_t1300Obs`(끔 = 종전 칸)');
+}
+const xa = child(null, {}, 'xa'), xaOff = child(null, { T1253_CLOCK_FIX: '0' }, 'xa'), xa89 = child(null, { T1300_OLD_AX: '0' }, 'xa');
+for (const [tag, r] of [['켬', xa], ['끔', xaOff]]) {
+  if (r.err) { ok(false, `⑪ ${tag} 판이 돌았다`, r.err); continue; }
+  ok(r.small.bad === 0 && r.big.bad === 0, `★⑪ ${tag} — 표지 없는 옛 켬 저장 칸 넷(머묾 끝 · t0 econ · 출발 · 도착 벽시계)이 되살린 판 축에서 같은 econ 순간(±2ms) — 보통 판 · 큰 판(econ 값 = 벽시계의 ${r.big.ratio} 배)`,
+    `보통 ${JSON.stringify(r.small.d)} · 큰 ${JSON.stringify(r.big.d)} · 표지 ${r.small.ax}/${r.big.ax}`);
+}
+if (!xa89.err) { console.log(`    [표] T1289 거리 규칙(\`T1300_OLD_AX=0\`) — 보통 판 어긋난 칸 ${xa89.small.bad} · 큰 판(econ 값 = 벽시계의 ${xa89.big.ratio} 배) ${xa89.big.bad} → 지금 ${xa.err ? '?' : xa.small.bad + ' · ' + xa.big.bad}`);
+  ok(xa89.small.bad === 0 && xa89.big.bad > 0, '⑪ [자명 통과 금지] T1289 거리 규칙은 보통 판은 맞고 큰 판에서 틀린다(econ 값 > 저장 순간 벽시계의 반) — 새 경계가 그 판을 맞춘다', `보통 ${xa89.small.bad} · 큰 ${xa89.big.bad}`); }
+else ok(false, '⑪ T1289 거리 규칙 판이 돌았다', xa89.err);
+if (!xa.err) {
+  const o = xa.ob;
+  ok(o.has && o.ax === 'e' && o.raw < 1e11 && o.wt === o.wantW && o.days > 0 && o.days < 5 && o.isoOk, '★⑪ 켬 — `t1034car` 몸 칸에 축 표지 `ax: e` · 벽시계 ms(`wt` = 같은 econ 순간의 벽시계 경계 축) · ISO — 원래 칸은 econ 날 시계 값 그대로(1970년 근처 수)',
+    `원래 ${o.raw} · wt ${o.wt}(지금 + ${o.days}날) · ${o.iso}`);
+  ok(xa.fake.ax === 'e' && xa.fake.wt === xa.fake.want && xa.fake.n === null && typeof xa.fake.iso === 'string', '⑪ 켬 — `_t1300Obs`(T1182 몸 · econ 칸) = `_t1289ToB` · 빈 칸 = null', `${xa.fake.wt} = ${xa.fake.want} · ${xa.fake.iso}`);
+}
+if (!xaOff.err) ok(!xaOff.ob.has && xaOff.ob.ax == null, '⑪ 끔 — `t1034car` 몸 칸에 새 칸이 안 선다(종전 칸 그대로)', `ax 칸 ${xaOff.ob.has}`);
+
+console.log('\n⑫ ★[T1300] 미끼 — 가리기를 T1289 거리 규칙으로 · 끔 판 가리기 없음 · 관측 칸이 축 표지를 안 봄 ⇒ 그 판이 빨강');
+let ycaught = 0;
+for (let i = 0; i < T1300_BAITS.length; i++) {
+  const [name, kind] = T1300_BAITS[i];
+  let red = false, d = '';
+  if (kind === 'xa') { const r = child('y' + i, {}, 'xa'); red = !r.err && (r.big.bad > 0 || r.small.bad > 0 || r.ob.wt !== r.ob.wantW || r.fake.wt !== r.fake.want); d = r.err ? r.err.slice(0, 200) : `가리기 어긋남 보통 ${r.small.bad} · 큰 ${r.big.bad} · 관측 wt ${r.ob.wt === r.ob.wantW ? '맞음' : '틀림(' + r.ob.wt + ')'}`; }
+  else { const m = i === 1 ? mtx89 : matrix('y' + i); red = !m.err && m.mixed + m.aaMix > 0; d = m.err ? String(m.err).slice(0, 200) : `축 섞인 몸 ${m.mixed} · 도착 ${m.aaMix} — ${m.rows.filter(([, r]) => r.linMixed || r.visMixed || r.aaMixed || r.err).map(([n]) => n.split(' ')[0]).join(' · ')}`; }
+  if (red) ycaught++;
+  ok(red, `⑫ 미끼 ${name} — ${kind} 판 빨강(잡음)`, d);
+}
+console.log(`\n  T1300 미끼 ${ycaught}/${T1300_BAITS.length}`);
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

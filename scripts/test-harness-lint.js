@@ -862,5 +862,35 @@ console.log('\n⑮ 하네스 포트 = 공용 할당기 `lib-port` [T1281]');
   ok(ans === 'old=hit,marked=mark,comment=none,lib=none', '★⑮ 자명 통과 금지 — 옛 식 미끼는 **물고** · 표지 단 줄은 표지로 · 주석 안 · 정본 호출은 보낸다', ans);
 }
 
+// ── ⑯ 벽시계 판의 **띄운 시각 낮밤**은 공용 자리 하나로 고정한다 [T1299 2026-11-13 · T1287 회부 2] ──────────────
+//   T1287: 몸의 일과 · 날씨 시각은 `worldPhase(Date.now())` 를 읽어, 벽시계로 도는 판은 띄운 실제 시각에 따라 몸이 일하거나 잔다(게이트 미끼 ④ 20판 중 6판).
+//   T1299 전수(`t1299-wallclock-census` + 게임 06시 · 18시 두 판 · 보고/T1299 §1): 시각에 따라 결과가 갈린 하네스는 아래 표 — 정본 `lib-phase.pin(h)` 로 판 머리에서 고정한다.
+//   자 ⓐ 표의 하네스는 `lib-phase` 를 부른다(고정 없음 = 빨강) · ⓑ `Date` 를 옮기며 하루 길이로 나머지를 셈하는 글자(낮밤 옮김 사본)는 `lib-phase.js` 밖 0.
+console.log('\n⑯ 띄운 시각 낮밤 = 공용 고정 `lib-phase` [T1299]');
+{
+  const CO = require(path.join(SCRIPTS, 'code-only.js'));
+  const MUST = require(path.join(SCRIPTS, 'lib-phase.js')).MUST;   // 표 정본은 lib-phase 한 자리(전수가 갈린 판으로 적은 이름)
+  const PIN_CALL = new RegExp("require\\(\\s*['\"]\\./lib-" + "phase['\"]\\s*\\)\\s*\\.pin\\s*\\(");
+  const DATE_SET = new RegExp('(global|globalThis)\\.Date\\s*=(?!=)');
+  const DAY_MOD = new RegExp('%\\s*\\(?\\s*(24\\s*\\*\\s*60\\s*\\*\\s*1000|DAY\\b|PHASE_DAY|[\\w.]*dayLengthMs)');
+  const pinned = (src) => PIN_CALL.test(CO(src));
+  const copy = (src) => { const c = CO(src); return DATE_SET.test(c) && DAY_MOD.test(c); };
+  const miss = MUST.filter((f) => !fs.existsSync(path.join(SCRIPTS, f)) || !pinned(fs.readFileSync(path.join(SCRIPTS, f), 'utf8')));
+  const copies = fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js') && x !== 'lib-phase.js' && copy(fs.readFileSync(path.join(SCRIPTS, x), 'utf8')));
+  ok(fs.existsSync(path.join(SCRIPTS, 'lib-phase.js')) && Array.isArray(MUST), '⑯ [전제] 정본 `lib-phase.js` 와 그 표(`MUST` — 시각에 갈린 하네스)가 있다', `표 ${MUST.length}`);
+  ok(miss.length === 0, '★★⑯a 띄운 시각에 결과가 갈린 하네스는 판 머리에서 `lib-phase.pin(h)` 로 고정한다 — 고정 없음 0', miss.join(' ') || `${MUST.length}/${MUST.length}`);
+  ok(copies.length === 0, '★⑯b 낮밤 옮김 사본 0 — `Date` 를 갈아 끼우며 하루 길이로 나머지를 셈하는 글자는 `lib-phase.js` 한 자리', copies.join(' ') || '0');
+  // ★자명 통과 금지 — 같은 자로 미끼 넷을 재면 **각각 다르게** 답한다(글자를 조각내 자기 자신을 안 문다)
+  const LP = "require('./lib-" + "phase')";
+  const bait = {
+    pin: `${LP}.pin(0);\nconst x = 1;`,
+    gone: "const x = 1; // 옛 판 — 고정 없음",
+    comment: `// ${LP}.pin(0) 은 주석일 뿐\nconst x = 1;`,
+    copy: "const RD = Date;\nglobal.Da" + "te = function () {};\nconst off = -(RD.now() % (24 * 60 * 1000));",
+  };
+  const ans = Object.entries(bait).map(([k, v]) => `${k}=${copy(v) ? 'copy' : pinned(v) ? 'pin' : 'none'}`).join(',');
+  ok(ans === 'pin=pin,gone=none,comment=none,copy=copy', '★⑯ 자명 통과 금지 — 정본 호출은 고정 · 지운 판 · 주석 안 호출은 고정 없음 · 옮김 사본은 사본', ans);
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

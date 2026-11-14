@@ -22,6 +22,7 @@
 //   클라(Chromium)는 마을 존에 들어가 판 내내 서 있다(존이 사람 있는 존으로 돈다 · 그림은 안 잰다).
 //
 // 쓰는 법: node scripts/t1289-clock-live.js --arm after|before [--obs 1500] [--day 240000] [--out 계측/T1289_2026-11-12/live_after_1.json]
+//   [T1300] [--cport 3010] [--zport 3020] [--no-client] — 판 둘을 같이 띄울 때 포트를 가르고 · 클라 없는 판(서버 셈만)
 if (process.env.T1289_LIVE && require.main !== module) {   // ── 미리 실림(존 아이) — 셈 문 넷(+ before 판 = 옛 글자)
   if (!require('worker_threads').isMainThread) return;   // 일꾼 스레드(길 · 걸음표)도 `-r` 을 물려받는다 — 셈은 존 본 스레드만(일꾼이 빈 셈으로 파일을 덮지 않게)
   const path = require('path'), fs = require('fs'), Module = require('module');
@@ -94,7 +95,7 @@ const FB = require('./fixture-boot');
 const ROOT = path.join(__dirname, '..');
 const A = process.argv.slice(2), opt = (k, d) => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : d; };
 const ARM = opt('--arm', 'after'), OBS = +opt('--obs', 1500) * 1000, DAY = +opt('--day', 240000), OUT = opt('--out', null), BEFORE_REV = opt('--rev', 'a6b7aba5d');
-const CPORT = 3010, ZPORT = 3020;
+const CPORT = +opt('--cport', 3010), ZPORT = +opt('--zport', 3020), NOCLI = A.includes('--no-client');   // ★[T1300] 포트 · 클라 없는 판(서버 셈만 — 판 둘을 같이 띄울 때 · 존은 idle 문이 기본 끔이라 사람 없어도 본문을 돈다)
 const TMP = fs.mkdtempSync(path.join(require('os').tmpdir(), 't1289-live-'));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
@@ -127,15 +128,17 @@ async function killAll() {
   const uc = await upC, uz = await upZ;
   console.log(`판 ${ARM} · 하루 ${DAY}ms · 보기 ${OBS / 1000}초 — central ${uc.ok ? uc.ms + 'ms' : uc.why} · zone ${uz.ok ? uz.ms + 'ms' : uz.why} · 자 줄 ${/\[T1289 자\]/.test(zone._out)}`);
   if (!uc.ok || !uz.ok) { await killAll(); process.exit(2); }
+  let browser = null, perr = 0, inWorld = false;
+  if (!NOCLI) {
   const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 960, height: 600 } });
-  let perr = 0; page.on('pageerror', () => perr++);
+  page.on('pageerror', () => perr++);
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
   await sleep(2500);
   const enter = await page.$('#enter'); if (enter) await enter.click();
-  let inWorld = false;
   for (let i = 0; i < 120 && !inWorld; i++) { inWorld = await page.evaluate(() => !!(window.__getSrvAbs && window.__getSrvAbs())); if (!inWorld) await sleep(500); }
+  }
   console.log(`  월드 입장 ${inWorld} · ${((Date.now() - t0) / 1000) | 0}초`);
   const tObs = Date.now();
   while (Date.now() - tObs < OBS) {
@@ -143,11 +146,11 @@ async function killAll() {
     let g = null; try { g = JSON.parse(fs.readFileSync(stat, 'utf8')); } catch (e) {}
     if (g) console.log(`  ${((Date.now() - tObs) / 1000) | 0}초 — econDayToMs ${g.edmAll} · 곳간 ${g.gran ? g.gran.day : "—"}날 · 마감 ${g.closes.length} · 틈 선 마감 ${g.closes.filter((c) => c.gapTicks > 0).length} · 틈 틱 ${g.gapTicks} · 장인 틈 걸음 ${g.art.gapCalls} · 그림자 ${g.art.shadow}`);
   }
-  try { await browser.close(); } catch (e) {}
+  try { if (browser) await browser.close(); } catch (e) {}
   await killAll();
   let g = null; try { g = JSON.parse(fs.readFileSync(stat, 'utf8')); } catch (e) {}
   const dayLines = (fs.existsSync(path.join(TMP, 'zone.log')) ? fs.readFileSync(path.join(TMP, 'zone.log'), 'utf8') : '').match(/마을 econ day \d+:[^\n]*마감 \d+ms/g) || [];
-  const R = { arm: ARM, dayMs: DAY, obsS: OBS / 1000, inWorld, pageErrors: perr, wallS: Math.round((Date.now() - t0) / 1000), rev: ARM === 'before' ? BEFORE_REV : 'HEAD', stat: g,
+  const R = { arm: ARM, dayMs: DAY, obsS: OBS / 1000, client: !NOCLI, inWorld, pageErrors: perr, wallS: Math.round((Date.now() - t0) / 1000), rev: ARM === 'before' ? BEFORE_REV : 'HEAD', stat: g,
     closeMs: dayLines.map((l) => [+(l.match(/econ day (\d+)/)[1]), +(l.match(/마감 (\d+)ms/)[1])]) };
   if (g) {
     const C = g.closes, withGap = C.filter((c) => c.gapTicks > 0);
