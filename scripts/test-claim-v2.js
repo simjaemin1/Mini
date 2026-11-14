@@ -20,6 +20,10 @@
 //      ★**새 권한 술어를 안 만들었음을 소스로 확인**한다.
 //   ⑦ **econ 무접촉** — 이 배치가 만진 파일에 `sim/` 이 0건.
 //   ⑧ ★**검사기 자가 검사** — 일부러 틀린 것을 넣으면 위 판정이 실제로 실패하는가.
+//   ⑨ ★[T1305] 사유지 돌봄(`T1305_DEEDS=1` — 손잡이가 모듈 상수라 **아이 판**으로 띄운다 · 이 판(끔)의 ①~⑧ 은 종전 그대로):
+//      미가입자 영토 밖 선포 ○ · 영토 안 비구성원 ✗ · 인정 구성원 ○ · 숫자 상한 없음 · 안전판 · 손보기 = 몸 시간 · 재료 0 · 자리 뜨면 멈춤 ·
+//      접속한 날만 낡음 · 안 돌본 셀 흐림 → 풀림 · 풀린 칸 남이 이어받음 · 풀린 내 칸 다시 잡기 · 이행(옛 셀 줄지 않음) · 영속 · 몸 칸.
+//      미끼 셋 — 존 사본(`server/_t1305bait-*.js` · 판 끝에 지운다)을 같은 아이 검사로 띄워 빨강을 본다: 마을 문 되살림 · 숫자 상한 되살림 · 손보기에 재료.
 //
 // 실행: node scripts/test-claim-v2.js
 'use strict';
@@ -38,9 +42,12 @@ for (const f of [process.env.DB_PATH, process.env.DB_PATH + '-wal', process.env.
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
 
+// ★[T1305] 아이 판(⑨) — 켬 손잡이 · 손보는 시간 1초 · 존 파일은 정본 또는 미끼 사본(`__T1305_ZONE`)
+const T1305_SUB = process.env.__T1305_SUB === '1';
+if (T1305_SUB) { process.env.T1305_DEEDS = '1'; process.env.T1305_CARE_S = '1'; }
 const _l = console.log, _w = console.warn, _e = console.error;
 console.log = () => {}; console.warn = () => {}; console.error = () => {};
-const Zone = require(path.join(ROOT, 'server', 'zone.js'));
+const Zone = require(process.env.__T1305_ZONE || path.join(ROOT, 'server', 'zone.js'));
 console.log = _l; console.warn = _w; console.error = _e;
 const H = Zone.__testBind();
 const { claims, buildings, players, BUILDING_SIZE: SZ, Claims, db } = H;
@@ -105,6 +112,106 @@ function guildLand(cx, cy, half, tribeId) {
     H.SimVillages.__labProbe._t740Probe.setup({ villages: _labVils.slice(), byDbId: new Map(_labVils.map((x) => [x.dbId, x])) });
   }
   return id;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// ★[T1305] 아이 판 — 켬 세계에서 돌봄 · 선포 문을 정본 경로(`tryClaim` · `tryClaimCare` · `_t1305Day` · `_t1305CareEnd`)로 잰다.
+//   결과는 `@@T1305 {이름: 참거짓}` 한 줄로 부모(⑨)에 넘긴다(부모가 같은 이름으로 ✓/✗ 를 찍고 · 미끼 판은 어느 칸이 빨개졌나를 본다).
+if (T1305_SUB) {
+  const R = {};
+  const put = (k, c, x) => { R[k] = !!c; if (x !== undefined) R[k + '#'] = String(x).slice(0, 160); };
+  const now0 = Date.UTC(2026, 10, 14, 12);
+  const D = H.Deeds, F = D.CFG;
+  put('on', D.ON === true && typeof H._t1305Day === 'function' && typeof H.tryClaimCare === 'function');
+  const day = (p, k) => H._t1305Day(p, now0 + k * DAY);
+  try {   // 미끼 사본은 중간에 넘어질 수 있다 — 그때까지 잰 칸은 넘긴다(넘어진 뒤 칸은 없음 = 빨강)
+  const cellOf = (p, cx, cy) => { for (const [id, c] of claims) if (c.ownerPid === p.playerId && c.kind === 'personal' && Math.floor(c.x / SZ) === cx && Math.floor(c.y / SZ) === cy) return [id, c]; return [null, null]; };
+  // ① 미가입자 — 영토 밖 빈 들은 누구나
+  const a = mkPlayer('t13a'); a.tribeId = null; a.member = null;
+  const AX = 20000, AY = 20000;
+  put('outsideAny', /사유지를 두었습니다/.test(claimAt(a, AX, AY)), lastNote(a));
+  // ② 숫자 상한 없음 — 붙여서 12칸(종전 9 한도 너머) · 알림에 "/9" 없음
+  let okAll = true, lastTxt = '';
+  for (let i = 1; i < 12; i++) { lastTxt = claimAt(a, AX + i, AY); if (!/사유지를 두었습니다/.test(lastTxt)) { okAll = false; break; } }
+  put('noCap', okAll && myCells(a).length === 12 && !/\/\s*9\b|한도/.test(lastTxt), `${myCells(a).length}칸 · ${lastTxt}`);
+  // ③ 영토 안 — 비구성원 거절 · 인정 구성원 허용
+  const BX = 21000, BY = 21000;
+  const gl = guildLand(BX, BY, 6, 931);
+  const b = mkPlayer('t13b'); b.tribeId = null; b.member = null;
+  const tb = claimAt(b, BX, BY);
+  put('insideNonMember', !/사유지를 두었습니다/.test(tb) && /구성원|땅 안/.test(tb), tb);
+  const c2 = mkPlayer('t13c'); join(c2, 931);
+  put('insideMember', /사유지를 두었습니다/.test(claimAt(c2, BX + 1, BY)), lastNote(c2));
+  wipe(b); wipe(c2); claims.delete(gl);
+  // ④ 안전판 — 숨은 수(이 판에서만 3 으로 내려 문이 사는지 본다 · 화면 문구에 숫자 0)
+  const s0 = F.SAFETY; F.SAFETY = 3;
+  const sp = mkPlayer('t13s'); sp.tribeId = null; sp.member = null;
+  claimAt(sp, 22000, 22000); claimAt(sp, 22001, 22000); claimAt(sp, 22002, 22000);
+  const st = claimAt(sp, 22003, 22000);
+  put('safety', myCells(sp).length === 3 && /더 넓힐 수 없습니다/.test(st) && !/\d/.test(st), st);
+  F.SAFETY = s0; wipe(sp);
+  // ⑤ 낡음 — 접속한 날만 센다(같은 날 두 번 0 · 열흘 건너뛴 한 번 = 하루)
+  const w = mkPlayer('t13w'); w.tribeId = null; w.member = null; w.deeds = null;
+  const WX = 23000, WY = 23000;
+  H._t1305Day(w, now0);
+  claimAt(w, WX, WY); claimAt(w, WX + 1, WY);
+  const [wid, wc] = cellOf(w, WX, WY);
+  day(w, 0); const w0 = wc.careW | 0;
+  day(w, 10); const w1 = wc.careW | 0;
+  put('activeDays', w0 === 0 && w1 === 1, `같은 날 ${w0} · 열흘 뒤 한 번 ${w1}`);
+  // ⑥ 흐림 — FADE_D 날째 `care = fade`
+  for (let k = 11; k < 10 + F.FADE_D; k++) day(w, k);
+  put('fade', wc.care === 'fade' && (wc.state || 'active') !== 'free', `w=${wc.careW} care=${wc.care}`);
+  // ⑦ 손보기 — 몸 시간(시작 직후엔 안 바뀜) · 끝나면 새것 · 재료 0
+  const inv0 = JSON.stringify(w.inventory);
+  w.x = WX * SZ + SZ / 2; w.y = WY * SZ + SZ / 2;
+  H.tryClaimCare(w, wid);
+  const mid = wc.careW | 0, started = !!w._t1305Care;
+  H._t1305CareEnd(w, wid, wc);
+  put('careTime', started && mid > 0, `시작 직후 w=${mid}`);
+  put('careDone', (wc.careW | 0) === 0 && wc.care === 'new', `w=${wc.careW} care=${wc.care}`);
+  put('careFree', JSON.stringify(w.inventory) === inv0, '');
+  // ⑧ 자리를 뜨면 멈춘다
+  const [wid2, wc2] = cellOf(w, WX + 1, WY);
+  const wb = wc2.careW | 0;
+  w.x = (WX + 1) * SZ + SZ / 2; H.tryClaimCare(w, wid2); w.x = (WX + 6) * SZ; H._t1305CareEnd(w, wid2, wc2);
+  put('careStay', (wc2.careW | 0) === wb && wb > 0, `w=${wc2.careW}`);
+  // ⑨ 영속 — DB 행의 두 칸 · 몸 칸
+  const row = db.getClaims().find((r) => r.id === wc.dbId) || {};
+  put('persist', row.care_n === wc.careN && row.care_w === 0, `care_n ${row.care_n} · care_w ${row.care_w}`);
+  const sb = H.serializeBody(w), pb = H.parseBody(JSON.parse(JSON.stringify(sb)));
+  put('body', sb.deeds && pb.deeds && pb.deeds.n === w.deeds.n && pb.deeds.day === w.deeds.day, JSON.stringify(sb.deeds));
+  // ⑩ 안 돌본 셀 — FREE_D 날째 풀림(빈 땅) · 손본 칸은 남는다
+  const base = 10 + F.FADE_D;
+  for (let k = base; k < base + F.FREE_D + 1; k++) day(w, k);
+  put('free', (wc2.state || 'active') === 'free', `w=${wc2.careW} state=${wc2.state}`);
+  // ⑪ 풀린 칸 — 남이 값을 내고 이어받는다(부재 상태기 승계 그대로) · 그 칸은 새 주인의 새것
+  const t = mkPlayer('t13t'); t.tribeId = null; t.member = null;
+  const tt = claimAt(t, WX + 1, WY);
+  put('takeover', /이어받았습니다/.test(tt) && wc2.ownerPid === t.playerId && wc2.care === 'new' && (wc2.state || 'active') === 'active', tt);
+  // ⑫ 풀린 내 칸 — 값을 내고 다시 잡는다
+  for (let k = base + F.FREE_D + 1; k < base + 2 * F.FREE_D + 3; k++) day(w, k);
+  const re = claimAt(w, WX, WY);
+  put('retake', /이어받았습니다/.test(re) && (wc.state || 'active') === 'active' && wc.ownerPid === w.playerId, re);
+  // ⑬ 이행 — 손잡이 밖에서 선 옛 셀(돌봄 칸 NULL)은 켜는 날 줄지 않는다(첫 낡음 = 그날부터)
+  const m = mkPlayer('t13m'); m.tribeId = null; m.member = null; m.deeds = null;
+  const oid = db.insertClaim({ owner_id: m.playerId, owner_name: m.name, x: 24000 * SZ, y: 24000 * SZ, w: SZ, h: SZ, kind: 'personal' });
+  claims.set('cold', { id: 'cold', dbId: oid, ownerPid: m.playerId, ownerName: m.name, x: 24000 * SZ, y: 24000 * SZ, w: SZ, h: SZ, kind: 'personal', state: 'active', careN: null, careW: null });
+  H._t1305Day(m, now0); const oc = claims.get('cold');
+  const mig0 = oc.careW, migState = oc.state;
+  H._t1305Day(m, now0 + DAY);
+  put('migrate', mig0 === 0 && migState === 'active' && (oc.careW | 0) === 1, `켠 날 w=${mig0} · 다음 날 w=${oc.careW}`);
+  // ⑬-b 존 넘어옴 — 그날을 다른 존에서 이미 센 몸(날 수가 앞섰다)이 와도 이 존 칸을 다시 잰다(접속 = `force`)
+  m.deeds.n += 3;   // 다른 존에서 세 날을 더 보냈다(몸 칸은 존을 따라간다 · 오늘 날짜는 그대로)
+  const before = oc.careW | 0; H._t1305Day(m, now0 + DAY); const sameDay = oc.careW | 0; H._t1305Day(m, now0 + DAY, true);
+  put('handoff', before === 1 && sameDay === 1 && (oc.careW | 0) === 4, `같은 날 틱 ${sameDay} · 접속 다시 재기 ${oc.careW}`);
+  claims.delete('cold');
+  // ⑭ 화면 설정 — welcome 칸(숫자 상한 대신 낡음 날 · 손보는 초)
+  put('ui', F.FADE_D < F.FREE_D && F.CARE_MS === 1000, `흐림 ${F.FADE_D} · 풀림 ${F.FREE_D} · 손보기 ${F.CARE_MS / 1000}초`);
+  } catch (e) { R.err = String((e && e.message) || e).slice(0, 160); }
+  console.log('@@T1305 ' + JSON.stringify(R));
+  for (const f of [process.env.DB_PATH, process.env.DB_PATH + '-wal', process.env.DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
+  process.exit(0);
 }
 
 console.log('\n=== 사유지 v2 — 종류·인접·연결성·부재 상태기 (T45) ===');
@@ -391,6 +498,46 @@ console.log('\n⑧ ★이 하네스가 실패할 줄 아는가 — 일부러 틀
   const T1 = Claims.CFG.HOLD_DAYS * DAY;
   ok(Claims.stageFor({ kind: 'personal' }, T1 - 1) !== Claims.stageFor({ kind: 'personal' }, T1 + 1),
     '⑧-c 통제 실험: T1 을 1ms 넘기면 답이 바뀐다');
+}
+
+// ────────────────────────────────────────────────────────────────────────
+console.log('\n⑨ ★[T1305] 사유지 돌봄 — 켬 아이 판(정본) · 미끼 셋(존 사본) · 이 판(끔)은 위 ①~⑧ 종전 그대로');
+{
+  const { execFileSync } = require('child_process');
+  const sub = (zoneFile) => {
+    let out = '';
+    try { out = execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { __T1305_SUB: '1', __T1305_ZONE: zoneFile || '', DB_PATH: `/tmp/test-claim-t1305-${process.pid}-${Math.random().toString(36).slice(2, 8)}.db`, PORT: String(require('./lib-port').port(37400)) }), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 300000 }); }
+    catch (e) { out = String((e && e.stdout) || ''); }
+    const m = /@@T1305 (\{.*\})/.exec(out); return m ? JSON.parse(m[1]) : null;
+  };
+  ok(!H.Deeds.ON && H.CLAIM_SLOT_PERSONAL_START === 9, '⑨ 끔(이 판) — 손잡이 꺼짐 · 숫자 상한 9 그대로(끈 판 = 종전)');
+  const R = sub(null);
+  ok(!!R && R.on, '⑨ 상황 assert — 켬 아이 판이 정본 함수를 쥐고 돌았다');
+  const NAMES = {
+    outsideAny: '⑨ 미가입자가 영토 밖 빈 들에 선포한다(마을 무관)', noCap: '⑨ 숫자 상한 없음 — 12칸(종전 9 너머) · 알림에 한도 숫자 0',
+    insideNonMember: '⑨ 마을 영토 안 — 비구성원은 거절', insideMember: '⑨ 마을 영토 안 — 인정 구성원은 된다',
+    safety: '⑨ 숨은 안전판 — 문이 산다(이 판만 3) · 문구에 숫자 0', activeDays: '⑨ 낡음 = 주인이 접속한 날(같은 날 0 · 열흘 건너 한 번 = 하루)',
+    fade: '⑨ 안 돌본 칸 — 흐림', careTime: '⑨ 손보기 = 몸 시간(시작 직후엔 그대로)', careDone: '⑨ 손보면 새것',
+    careFree: '⑨ 손보기 재료 0(짐 그대로)', careStay: '⑨ 자리를 뜨면 손보기가 멈춘다', persist: '⑨ 돌봄 칸 DB 영속(care_n · care_w)',
+    body: '⑨ 몸 칸 `deeds`(접속한 날 수) 저장 · 복원', free: '⑨ 오래 안 돌본 칸 — 풀림(빈 땅 · 부재 상태기의 `free`)',
+    takeover: '⑨ 풀린 칸 — 남이 값을 내고 이어받는다(승계 규약 그대로 · 새 주인의 새것)', retake: '⑨ 풀린 내 칸 — 값을 내고 다시 잡는다',
+    migrate: '⑨ 이행 — 켜기 앞의 옛 칸은 켠 날 줄지 않는다(첫 낡음 = 그날부터)', handoff: '⑨ 존 넘어옴 — 다른 존에서 센 날도 이 존 칸 낡음에 든다(접속 때 다시 잰다)', ui: '⑨ 화면 설정 — 흐림 · 풀림 날 · 손보는 초',
+  };
+  for (const [k, msg] of Object.entries(NAMES)) ok(!!R && R[k] === true, msg, R ? (R[k + '#'] || '') : '아이 판 없음');
+  // 미끼 — 존 사본을 같은 아이 검사로 띄운다(정본 무접촉 · 판 끝에 지운다)
+  const Z = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  const BAITS = [
+    ['gate', '마을 문을 되살린 사본(영토 밖도 마을 사람만)', 'if (_t1305P && !_onbLot) {', 'if (false && _t1305P && !_onbLot) {', ['outsideAny']],
+    ['cap', '숫자 상한을 되살린 사본(9 한도)', 'if (!_t1305P && usedCount >= max) {', 'if (usedCount >= max) {', ['noCap']],
+    ['mat', '손보기에 재료를 떼는 사본(나무 1)', '  Deeds.careDone(c, _t1305MyN(player));\n  _t1305SaveCare(c);', '  Deeds.careDone(c, _t1305MyN(player)); player.inventory.wood -= 1;\n  _t1305SaveCare(c);', ['careFree']],
+  ];
+  for (const [tag, what, from, to, reds] of BAITS) {
+    const f = path.join(ROOT, 'server', `_t1305bait-${tag}-${process.pid}.js`);
+    const n = Z.split(from).length - 1;
+    let RB = null;
+    try { fs.writeFileSync(f, Z.split(from).join(to)); RB = sub(f); } finally { try { fs.unlinkSync(f); } catch (e) {} }
+    ok(n === 1 && !!RB && RB.on && reds.every((k) => RB[k] === false), `⑨ 미끼 — ${what} → 빨강`, `바꾼 자리 ${n} · ${reds.map((k) => `${k}=${RB ? RB[k] : '?'}`).join(' ')}`);
+  }
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

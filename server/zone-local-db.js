@@ -261,6 +261,12 @@ function deleteMob(id) { stmtDeleteMob.run(id); }
   if (!_cc.includes('state'))    db.exec("ALTER TABLE claims ADD COLUMN state TEXT NOT NULL DEFAULT 'active'");
   if (!_cc.includes('held_by'))  db.exec('ALTER TABLE claims ADD COLUMN held_by TEXT');
   if (!_cc.includes('state_at')) db.exec('ALTER TABLE claims ADD COLUMN state_at INTEGER NOT NULL DEFAULT 0');
+  // ★[T1305] 돌봄 두 열 — 손본 날(주인이 접속한 날 수 누계 `care_n`) · 그 뒤 낡은 날 수(`care_w`). **켬 판에서만** 붙인다(끔 = 스키마 그대로 · 바이트 같음).
+  //   옛 행은 NULL — 첫 날 셈이 그날을 손본 날로 잡는다(`deeds.rewear` · 켜는 순간 줄지 않는다).
+  if (process.env.T1305_DEEDS === '1') {
+    if (!_cc.includes('care_n')) db.exec('ALTER TABLE claims ADD COLUMN care_n INTEGER');
+    if (!_cc.includes('care_w')) db.exec('ALTER TABLE claims ADD COLUMN care_w INTEGER');
+  }
 }
 const stmtGetClaims = db.prepare('SELECT * FROM claims');
 const stmtInsertClaim = db.prepare(
@@ -294,6 +300,13 @@ function updateClaimOwner(dbId, ownerId, ownerName, kind, state, heldBy, stateAt
       String(state || 'active'), heldBy == null ? null : String(heldBy), (stateAt | 0) || Date.now(), dbId);
     return true;
   } catch (e) { return false; }
+}
+// ★[T1305] 돌봄 칸 쓰기(켬 판에서만 불린다 — 열이 있을 때만 준비한다)
+let _stmtClaimCare = null;
+function updateClaimCare(dbId, careN, careW) {
+  if (!dbId) return false;
+  try { if (!_stmtClaimCare) _stmtClaimCare = db.prepare('UPDATE claims SET care_n = ?, care_w = ? WHERE id = ?'); _stmtClaimCare.run(careN == null ? null : careN | 0, careW == null ? null : careW | 0, dbId); return true; }
+  catch (e) { return false; }
 }
 function deleteClaim(dbId) { if (!dbId) return false; try { stmtDeleteClaim.run(dbId); return true; } catch (e) { return false; } }
 
@@ -808,7 +821,7 @@ module.exports = {
   getResources, insertResource, updateResourceHp, deleteResource,
   getBuildings, getBuildingsInRect, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
-  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim,   // ★[T45] 사유지 v2 — 종류·상태기 영속
+  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim, updateClaimCare,   // ★[T45] 사유지 v2 — 종류·상태기 영속
   insertHarvestedSeed, getAllHarvestedSeeds, promoteHarvestedDays, deleteHarvestedSeed,   // ★[T341] 재생 — 벤 기록을 지우는 문
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   upsertFishCell, getAllFishCells, deleteFishCell,
