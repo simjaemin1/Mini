@@ -1,0 +1,1787 @@
+[
+ {
+  "tag": "circle-1020c",
+  "seed": 1020,
+  "done": true,
+  "days": {
+   "hanbando": 30,
+   "nippon": 51
+  },
+  "wallS": 600,
+  "H": {
+   "sent": 117,
+   "sentOk": 117,
+   "bodyOut": 117,
+   "bodyIn": 114,
+   "crossArrive": 99,
+   "crossReturn": 18,
+   "soldOk": 17,
+   "deposited": 84,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1190
+  },
+  "N": {
+   "sent": 0,
+   "sentOk": 0,
+   "bodyOut": 0,
+   "bodyIn": 15,
+   "crossArrive": 0,
+   "crossReturn": 0,
+   "soldOk": 0,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 842
+  },
+  "쇠재": {
+   "n": 11,
+   "seam": 0,
+   "stillMax": 0,
+   "stillN": 11,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 90,
+   "seam": 81,
+   "stillMax": 3916,
+   "stillN": 207,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 27785,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 0,
+     "한재": 27785
+    },
+    "bodies": 76,
+    "rockAt": []
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 118212,
+    "rock": 518,
+    "water": 0,
+    "by": {
+     "쇠재": 15000,
+     "한재": 103212
+    },
+    "bodies": 74,
+    "rockAt": [
+     [
+      1632,
+      59856,
+      "한재",
+      "m#xz:hanbando:117:outbound",
+      "p1544"
+     ],
+     [
+      1640,
+      59856,
+      "한재",
+      "m#xz:hanbando:117:outbound",
+      "p1544"
+     ],
+     [
+      1636,
+      59856,
+      "한재",
+      "e0#xz:hanbando:117:outbound",
+      "p1545"
+     ],
+     [
+      1530,
+      60624,
+      "한재",
+      "?",
+      "p1591"
+     ],
+     [
+      1538,
+      60624,
+      "한재",
+      "?",
+      "p1591"
+     ],
+     [
+      1546,
+      60624,
+      "한재",
+      "?",
+      "p1591"
+     ],
+     [
+      1554,
+      60624,
+      "한재",
+      "?",
+      "p1591"
+     ],
+     [
+      1562,
+      60624,
+      "한재",
+      "?",
+      "p1591"
+     ],
+     [
+      1570,
+      60624,
+      "한재",
+      "?",
+      "p1591"
+     ],
+     [
+      1578,
+      60624,
+      "한재",
+      "?",
+      "p1591"
+     ],
+     [
+      1586,
+      60624,
+      "한재",
+      "?",
+      "p1591"
+     ],
+     [
+      1594,
+      60624,
+      "한재",
+      "?",
+      "p1591"
+     ],
+     [
+      1602,
+      60624,
+      "한재",
+      "?",
+      "p1591"
+     ],
+     [
+      1526,
+      60624,
+      "한재",
+      "?",
+      "p1592"
+     ],
+     [
+      1534,
+      60624,
+      "한재",
+      "?",
+      "p1592"
+     ],
+     [
+      1542,
+      60624,
+      "한재",
+      "?",
+      "p1592"
+     ],
+     [
+      1550,
+      60624,
+      "한재",
+      "?",
+      "p1592"
+     ],
+     [
+      1558,
+      60624,
+      "한재",
+      "?",
+      "p1592"
+     ],
+     [
+      1566,
+      60624,
+      "한재",
+      "?",
+      "p1592"
+     ],
+     [
+      1574,
+      60624,
+      "한재",
+      "?",
+      "p1592"
+     ],
+     [
+      1582,
+      60624,
+      "한재",
+      "?",
+      "p1592"
+     ],
+     [
+      1590,
+      60624,
+      "한재",
+      "?",
+      "p1592"
+     ],
+     [
+      1598,
+      60624,
+      "한재",
+      "?",
+      "p1592"
+     ],
+     [
+      1530,
+      60624,
+      "한재",
+      "?",
+      "p1594"
+     ],
+     [
+      1538,
+      60624,
+      "한재",
+      "?",
+      "p1594"
+     ],
+     [
+      1546,
+      60624,
+      "한재",
+      "?",
+      "p1594"
+     ],
+     [
+      1554,
+      60624,
+      "한재",
+      "?",
+      "p1594"
+     ],
+     [
+      1562,
+      60624,
+      "한재",
+      "?",
+      "p1594"
+     ],
+     [
+      1570,
+      60624,
+      "한재",
+      "?",
+      "p1594"
+     ],
+     [
+      1578,
+      60624,
+      "한재",
+      "?",
+      "p1594"
+     ],
+     [
+      1586,
+      60624,
+      "한재",
+      "?",
+      "p1594"
+     ],
+     [
+      1594,
+      60624,
+      "한재",
+      "?",
+      "p1594"
+     ],
+     [
+      1602,
+      60624,
+      "한재",
+      "?",
+      "p1594"
+     ],
+     [
+      1526,
+      60624,
+      "한재",
+      "?",
+      "p1595"
+     ],
+     [
+      1534,
+      60624,
+      "한재",
+      "?",
+      "p1595"
+     ],
+     [
+      1542,
+      60624,
+      "한재",
+      "?",
+      "p1595"
+     ],
+     [
+      1550,
+      60624,
+      "한재",
+      "?",
+      "p1595"
+     ],
+     [
+      1558,
+      60624,
+      "한재",
+      "?",
+      "p1595"
+     ],
+     [
+      1566,
+      60624,
+      "한재",
+      "?",
+      "p1595"
+     ],
+     [
+      1574,
+      60624,
+      "한재",
+      "?",
+      "p1595"
+     ],
+     [
+      1582,
+      60624,
+      "한재",
+      "?",
+      "p1595"
+     ],
+     [
+      1590,
+      60624,
+      "한재",
+      "?",
+      "p1595"
+     ],
+     [
+      1598,
+      60624,
+      "한재",
+      "?",
+      "p1595"
+     ],
+     [
+      1599,
+      60624,
+      "한재",
+      "m#xz:hanbando:147:linger",
+      "p1594"
+     ],
+     [
+      1591,
+      60624,
+      "한재",
+      "m#xz:hanbando:147:linger",
+      "p1594"
+     ],
+     [
+      1583,
+      60624,
+      "한재",
+      "m#xz:hanbando:147:linger",
+      "p1594"
+     ],
+     [
+      1575,
+      60624,
+      "한재",
+      "m#xz:hanbando:147:linger",
+      "p1594"
+     ],
+     [
+      1567,
+      60624,
+      "한재",
+      "m#xz:hanbando:147:linger",
+      "p1594"
+     ],
+     [
+      1559,
+      60624,
+      "한재",
+      "m#xz:hanbando:147:linger",
+      "p1594"
+     ],
+     [
+      1551,
+      60624,
+      "한재",
+      "m#xz:hanbando:147:linger",
+      "p1594"
+     ],
+     [
+      1543,
+      60624,
+      "한재",
+      "m#xz:hanbando:147:linger",
+      "p1594"
+     ],
+     [
+      1535,
+      60624,
+      "한재",
+      "m#xz:hanbando:147:linger",
+      "p1594"
+     ],
+     [
+      1527,
+      60624,
+      "한재",
+      "m#xz:hanbando:147:linger",
+      "p1594"
+     ],
+     [
+      1603,
+      60624,
+      "한재",
+      "e0#xz:hanbando:147:linger",
+      "p1595"
+     ],
+     [
+      1595,
+      60624,
+      "한재",
+      "e0#xz:hanbando:147:linger",
+      "p1595"
+     ],
+     [
+      1587,
+      60624,
+      "한재",
+      "e0#xz:hanbando:147:linger",
+      "p1595"
+     ],
+     [
+      1579,
+      60624,
+      "한재",
+      "e0#xz:hanbando:147:linger",
+      "p1595"
+     ],
+     [
+      1571,
+      60624,
+      "한재",
+      "e0#xz:hanbando:147:linger",
+      "p1595"
+     ],
+     [
+      1563,
+      60624,
+      "한재",
+      "e0#xz:hanbando:147:linger",
+      "p1595"
+     ],
+     [
+      1555,
+      60624,
+      "한재",
+      "e0#xz:hanbando:147:linger",
+      "p1595"
+     ],
+     [
+      1547,
+      60624,
+      "한재",
+      "e0#xz:hanbando:147:linger",
+      "p1595"
+     ],
+     [
+      1539,
+      60624,
+      "한재",
+      "e0#xz:hanbando:147:linger",
+      "p1595"
+     ],
+     [
+      1531,
+      60624,
+      "한재",
+      "e0#xz:hanbando:147:linger",
+      "p1595"
+     ],
+     [
+      1601,
+      60624,
+      "한재",
+      "m#xz:hanbando:125:inbound",
+      "p1591"
+     ],
+     [
+      1593,
+      60624,
+      "한재",
+      "m#xz:hanbando:125:inbound",
+      "p1591"
+     ],
+     [
+      1585,
+      60624,
+      "한재",
+      "m#xz:hanbando:125:inbound",
+      "p1591"
+     ],
+     [
+      1577,
+      60624,
+      "한재",
+      "m#xz:hanbando:125:inbound",
+      "p1591"
+     ],
+     [
+      1569,
+      60624,
+      "한재",
+      "m#xz:hanbando:125:inbound",
+      "p1591"
+     ],
+     [
+      1561,
+      60624,
+      "한재",
+      "m#xz:hanbando:125:inbound",
+      "p1591"
+     ],
+     [
+      1553,
+      60624,
+      "한재",
+      "m#xz:hanbando:125:inbound",
+      "p1591"
+     ],
+     [
+      1545,
+      60624,
+      "한재",
+      "m#xz:hanbando:125:inbound",
+      "p1591"
+     ],
+     [
+      1537,
+      60624,
+      "한재",
+      "m#xz:hanbando:125:inbound",
+      "p1591"
+     ],
+     [
+      1529,
+      60624,
+      "한재",
+      "m#xz:hanbando:125:inbound",
+      "p1591"
+     ],
+     [
+      1597,
+      60624,
+      "한재",
+      "e0#xz:hanbando:125:inbound",
+      "p1592"
+     ],
+     [
+      1589,
+      60624,
+      "한재",
+      "e0#xz:hanbando:125:inbound",
+      "p1592"
+     ],
+     [
+      1581,
+      60624,
+      "한재",
+      "e0#xz:hanbando:125:inbound",
+      "p1592"
+     ],
+     [
+      1573,
+      60624,
+      "한재",
+      "e0#xz:hanbando:125:inbound",
+      "p1592"
+     ],
+     [
+      1565,
+      60624,
+      "한재",
+      "e0#xz:hanbando:125:inbound",
+      "p1592"
+     ],
+     [
+      1557,
+      60624,
+      "한재",
+      "e0#xz:hanbando:125:inbound",
+      "p1592"
+     ],
+     [
+      1549,
+      60624,
+      "한재",
+      "e0#xz:hanbando:125:inbound",
+      "p1592"
+     ],
+     [
+      1541,
+      60624,
+      "한재",
+      "e0#xz:hanbando:125:inbound",
+      "p1592"
+     ],
+     [
+      1533,
+      60624,
+      "한재",
+      "e0#xz:hanbando:125:inbound",
+      "p1592"
+     ],
+     [
+      1530,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:outbound",
+      "p1693"
+     ],
+     [
+      1538,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:outbound",
+      "p1693"
+     ],
+     [
+      1546,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:outbound",
+      "p1693"
+     ],
+     [
+      1554,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:outbound",
+      "p1693"
+     ],
+     [
+      1562,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:outbound",
+      "p1693"
+     ],
+     [
+      1570,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:outbound",
+      "p1693"
+     ],
+     [
+      1578,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:outbound",
+      "p1693"
+     ],
+     [
+      1586,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:outbound",
+      "p1693"
+     ],
+     [
+      1594,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:outbound",
+      "p1693"
+     ],
+     [
+      1602,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:outbound",
+      "p1693"
+     ],
+     [
+      1530,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:outbound",
+      "p1697"
+     ],
+     [
+      1538,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:outbound",
+      "p1697"
+     ],
+     [
+      1546,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:outbound",
+      "p1697"
+     ],
+     [
+      1554,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:outbound",
+      "p1697"
+     ],
+     [
+      1562,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:outbound",
+      "p1697"
+     ],
+     [
+      1570,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:outbound",
+      "p1697"
+     ],
+     [
+      1578,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:outbound",
+      "p1697"
+     ],
+     [
+      1586,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:outbound",
+      "p1697"
+     ],
+     [
+      1594,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:outbound",
+      "p1697"
+     ],
+     [
+      1602,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:outbound",
+      "p1697"
+     ],
+     [
+      1526,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:outbound",
+      "p1698"
+     ],
+     [
+      1534,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:outbound",
+      "p1698"
+     ],
+     [
+      1542,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:outbound",
+      "p1698"
+     ],
+     [
+      1550,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:outbound",
+      "p1698"
+     ],
+     [
+      1558,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:outbound",
+      "p1698"
+     ],
+     [
+      1566,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:outbound",
+      "p1698"
+     ],
+     [
+      1574,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:outbound",
+      "p1698"
+     ],
+     [
+      1582,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:outbound",
+      "p1698"
+     ],
+     [
+      1590,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:outbound",
+      "p1698"
+     ],
+     [
+      1598,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:outbound",
+      "p1698"
+     ],
+     [
+      1531,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:outbound",
+      "p1702"
+     ],
+     [
+      1539,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:outbound",
+      "p1702"
+     ],
+     [
+      1547,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:outbound",
+      "p1702"
+     ],
+     [
+      1555,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:outbound",
+      "p1702"
+     ],
+     [
+      1563,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:outbound",
+      "p1702"
+     ],
+     [
+      1571,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:outbound",
+      "p1702"
+     ],
+     [
+      1579,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:outbound",
+      "p1702"
+     ],
+     [
+      1587,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:outbound",
+      "p1702"
+     ],
+     [
+      1595,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:outbound",
+      "p1702"
+     ],
+     [
+      1603,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:outbound",
+      "p1702"
+     ],
+     [
+      1527,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:outbound",
+      "p1703"
+     ],
+     [
+      1535,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:outbound",
+      "p1703"
+     ],
+     [
+      1543,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:outbound",
+      "p1703"
+     ],
+     [
+      1551,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:outbound",
+      "p1703"
+     ],
+     [
+      1559,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:outbound",
+      "p1703"
+     ],
+     [
+      1567,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:outbound",
+      "p1703"
+     ],
+     [
+      1575,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:outbound",
+      "p1703"
+     ],
+     [
+      1583,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:outbound",
+      "p1703"
+     ],
+     [
+      1591,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:outbound",
+      "p1703"
+     ],
+     [
+      1599,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:outbound",
+      "p1703"
+     ],
+     [
+      1641,
+      59856,
+      "한재",
+      "m#xz:hanbando:117:inbound",
+      "p1544"
+     ],
+     [
+      1633,
+      59856,
+      "한재",
+      "m#xz:hanbando:117:inbound",
+      "p1544"
+     ],
+     [
+      1637,
+      59856,
+      "한재",
+      "e0#xz:hanbando:117:inbound",
+      "p1545"
+     ],
+     [
+      1629,
+      59856,
+      "한재",
+      "e0#xz:hanbando:117:inbound",
+      "p1545"
+     ],
+     [
+      1632,
+      59856,
+      "한재",
+      "?",
+      "p1739"
+     ],
+     [
+      1640,
+      59856,
+      "한재",
+      "?",
+      "p1739"
+     ],
+     [
+      1636,
+      59856,
+      "한재",
+      "?",
+      "p1740"
+     ],
+     [
+      1599,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:linger",
+      "p1693"
+     ],
+     [
+      1591,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:linger",
+      "p1693"
+     ],
+     [
+      1583,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:linger",
+      "p1693"
+     ],
+     [
+      1575,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:linger",
+      "p1693"
+     ],
+     [
+      1567,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:linger",
+      "p1693"
+     ],
+     [
+      1559,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:linger",
+      "p1693"
+     ],
+     [
+      1551,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:linger",
+      "p1693"
+     ],
+     [
+      1543,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:linger",
+      "p1693"
+     ],
+     [
+      1535,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:linger",
+      "p1693"
+     ],
+     [
+      1527,
+      60624,
+      "한재",
+      "m#xz:hanbando:158:linger",
+      "p1693"
+     ],
+     [
+      1599,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:linger",
+      "p1697"
+     ],
+     [
+      1591,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:linger",
+      "p1697"
+     ],
+     [
+      1583,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:linger",
+      "p1697"
+     ],
+     [
+      1575,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:linger",
+      "p1697"
+     ],
+     [
+      1567,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:linger",
+      "p1697"
+     ],
+     [
+      1559,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:linger",
+      "p1697"
+     ],
+     [
+      1551,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:linger",
+      "p1697"
+     ],
+     [
+      1543,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:linger",
+      "p1697"
+     ],
+     [
+      1535,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:linger",
+      "p1697"
+     ],
+     [
+      1527,
+      60624,
+      "한재",
+      "m#xz:hanbando:170:linger",
+      "p1697"
+     ],
+     [
+      1603,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:linger",
+      "p1698"
+     ],
+     [
+      1595,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:linger",
+      "p1698"
+     ],
+     [
+      1587,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:linger",
+      "p1698"
+     ],
+     [
+      1579,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:linger",
+      "p1698"
+     ],
+     [
+      1571,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:linger",
+      "p1698"
+     ],
+     [
+      1563,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:linger",
+      "p1698"
+     ],
+     [
+      1555,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:linger",
+      "p1698"
+     ],
+     [
+      1547,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:linger",
+      "p1698"
+     ],
+     [
+      1539,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:linger",
+      "p1698"
+     ],
+     [
+      1531,
+      60624,
+      "한재",
+      "e0#xz:hanbando:170:linger",
+      "p1698"
+     ],
+     [
+      1599,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:linger",
+      "p1702"
+     ],
+     [
+      1591,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:linger",
+      "p1702"
+     ],
+     [
+      1583,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:linger",
+      "p1702"
+     ],
+     [
+      1575,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:linger",
+      "p1702"
+     ],
+     [
+      1567,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:linger",
+      "p1702"
+     ],
+     [
+      1559,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:linger",
+      "p1702"
+     ],
+     [
+      1551,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:linger",
+      "p1702"
+     ],
+     [
+      1543,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:linger",
+      "p1702"
+     ],
+     [
+      1535,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:linger",
+      "p1702"
+     ],
+     [
+      1527,
+      60624,
+      "한재",
+      "m#xz:hanbando:193:linger",
+      "p1702"
+     ],
+     [
+      1603,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:linger",
+      "p1703"
+     ],
+     [
+      1595,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:linger",
+      "p1703"
+     ],
+     [
+      1587,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:linger",
+      "p1703"
+     ],
+     [
+      1579,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:linger",
+      "p1703"
+     ],
+     [
+      1571,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:linger",
+      "p1703"
+     ],
+     [
+      1563,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:linger",
+      "p1703"
+     ],
+     [
+      1555,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:linger",
+      "p1703"
+     ],
+     [
+      1547,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:linger",
+      "p1703"
+     ],
+     [
+      1539,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:linger",
+      "p1703"
+     ],
+     [
+      1531,
+      60624,
+      "한재",
+      "e0#xz:hanbando:193:linger",
+      "p1703"
+     ],
+     [
+      1530,
+      60624,
+      "한재",
+      "m#xz:hanbando:265:outbound",
+      "p1836"
+     ],
+     [
+      1538,
+      60624,
+      "한재",
+      "m#xz:hanbando:265:outbound",
+      "p1836"
+     ],
+     [
+      1546,
+      60624,
+      "한재",
+      "m#xz:hanbando:265:outbound",
+      "p1836"
+     ],
+     [
+      1554,
+      60624,
+      "한재",
+      "m#xz:hanbando:265:outbound",
+      "p1836"
+     ],
+     [
+      1562,
+      60624,
+      "한재",
+      "m#xz:hanbando:265:outbound",
+      "p1836"
+     ],
+     [
+      1570,
+      60624,
+      "한재",
+      "m#xz:hanbando:265:outbound",
+      "p1836"
+     ],
+     [
+      1578,
+      60624,
+      "한재",
+      "m#xz:hanbando:265:outbound",
+      "p1836"
+     ],
+     [
+      1586,
+      60624,
+      "한재",
+      "m#xz:hanbando:265:outbound",
+      "p1836"
+     ],
+     [
+      1594,
+      60624,
+      "한재",
+      "m#xz:hanbando:265:outbound",
+      "p1836"
+     ],
+     [
+      1602,
+      60624,
+      "한재",
+      "m#xz:hanbando:265:outbound",
+      "p1836"
+     ],
+     [
+      1526,
+      60624,
+      "한재",
+      "e0#xz:hanbando:265:outbound",
+      "p1837"
+     ]
+    ]
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 82,
+  "escortRock": 0
+ },
+ {
+  "tag": "valley-42b",
+  "seed": 42,
+  "done": true,
+  "days": {
+   "hanbando": 31,
+   "nippon": 75
+  },
+  "wallS": 835,
+  "H": {
+   "sent": 0,
+   "sentOk": 0,
+   "bodyOut": 0,
+   "bodyIn": 0,
+   "crossArrive": 0,
+   "crossReturn": 0,
+   "soldOk": 0,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1174
+  },
+  "N": {
+   "sent": 0,
+   "sentOk": 0,
+   "bodyOut": 0,
+   "bodyIn": 0,
+   "crossArrive": 0,
+   "crossReturn": 0,
+   "soldOk": 0,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 837
+  },
+  "쇠재": {
+   "n": 0,
+   "seam": 0,
+   "stillMax": 0,
+   "stillN": 0,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 0,
+   "seam": 0,
+   "stillMax": 0,
+   "stillN": 0,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 0,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 0,
+     "한재": 0
+    },
+    "bodies": 0,
+    "rockAt": []
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 109106,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 0,
+     "한재": 109106
+    },
+    "bodies": 18,
+    "rockAt": []
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 0,
+  "escortRock": 0
+ },
+ {
+  "tag": "valley-42c",
+  "seed": 42,
+  "done": true,
+  "days": {
+   "hanbando": 31,
+   "nippon": 51
+  },
+  "wallS": 588,
+  "H": {
+   "sent": 122,
+   "sentOk": 122,
+   "bodyOut": 122,
+   "bodyIn": 123,
+   "crossArrive": 102,
+   "crossReturn": 20,
+   "soldOk": 20,
+   "deposited": 86,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1176
+  },
+  "N": {
+   "sent": 0,
+   "sentOk": 0,
+   "bodyOut": 0,
+   "bodyIn": 19,
+   "crossArrive": 0,
+   "crossReturn": 0,
+   "soldOk": 0,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 838
+  },
+  "쇠재": {
+   "n": 23,
+   "seam": 13,
+   "stillMax": 1918,
+   "stillN": 38,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 94,
+   "seam": 84,
+   "stillMax": 3587,
+   "stillN": 203,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 39665,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 3579,
+     "한재": 36086
+    },
+    "bodies": 95,
+    "rockAt": []
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 154490,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 18781,
+     "한재": 135709
+    },
+    "bodies": 87,
+    "rockAt": []
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 83,
+  "escortRock": 0
+ },
+ {
+  "tag": "valley-7c",
+  "seed": 7,
+  "done": true,
+  "days": {
+   "hanbando": 32,
+   "nippon": 83
+  },
+  "wallS": 871,
+  "H": {
+   "sent": 0,
+   "sentOk": 0,
+   "bodyOut": 0,
+   "bodyIn": 0,
+   "crossArrive": 0,
+   "crossReturn": 0,
+   "soldOk": 0,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1169
+  },
+  "N": {
+   "sent": 0,
+   "sentOk": 0,
+   "bodyOut": 0,
+   "bodyIn": 0,
+   "crossArrive": 0,
+   "crossReturn": 0,
+   "soldOk": 0,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 835
+  },
+  "쇠재": {
+   "n": 0,
+   "seam": 0,
+   "stillMax": 0,
+   "stillN": 0,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 0,
+   "seam": 0,
+   "stillMax": 0,
+   "stillN": 0,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 0,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 0,
+     "한재": 0
+    },
+    "bodies": 0,
+    "rockAt": []
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 138864,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 0,
+     "한재": 138864
+    },
+    "bodies": 19,
+    "rockAt": []
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 0,
+  "escortRock": 0
+ }
+]

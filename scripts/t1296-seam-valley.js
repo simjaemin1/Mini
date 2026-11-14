@@ -155,7 +155,7 @@ if (require.main === module && argv[0] === 'apply') {
 }
 
 // node scripts/t1296-seam-valley.js routes <out.json> — 정본 교역로(xzone-geo `crossGeo` · splitR = 정보 반경 · 존 서버 경계 호스트와 같은 한 벌)가
-//   한반도 → 닛폰 이음매를 **어디서** 넘는가(경계 칸 y) · 쇠재 · 한재 자리(±2,500px)를 지나는 쌍과 그 길(그림 재료). 지금 트리의 json 으로 잰다.
+//   (`--all` = 정보 반경 밖 쌍까지 전 쌍 — T1311) 한반도 → 닛폰 이음매를 **어디서** 넘는가(경계 칸 y) · 쇠재 · 한재 자리(±2,500px)를 지나는 쌍과 그 길(그림 재료). 지금 트리의 json 으로 잰다.
 if (require.main === module && argv[0] === 'routes') {
   process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
   process.env.DB_PATH = process.env.DB_PATH || `/tmp/t1296-routes-${process.pid}.db`;
@@ -163,7 +163,7 @@ if (require.main === module && argv[0] === 'routes') {
   const XG = require(path.join(ROOT, 'server', 'xzone-geo.js'));
   const { vil } = T525.frameOf(['hanbando', 'nippon']);
   const ros = (Z) => vil.filter((v) => v.zone === Z).map((v) => ({ name: v.name, cx: v.ccx, cy: v.ccy }));
-  const g = XG.crossGeo({ A: 'hanbando', rosterA: ros('hanbando'), B: 'nippon', rosterB: ros('nippon'), splitR: T525.INFO_R });
+  const g = XG.crossGeo({ A: 'hanbando', rosterA: ros('hanbando'), B: 'nippon', rosterB: ros('nippon'), splitR: argv.includes('--all') ? Infinity : T525.INFO_R });   // ★[T1311] `--all` = 걸어 닿는 전 쌍(존 서버가 늦게 파는 쌍까지 · T1139 lazySplit 과 같은 함수)
   const rows = [];
   for (const a in g.split) for (const b in g.split[a]) { const e = g.split[a][b]; rows.push({ a, b, d: g.dist[a][b], y: e.ptA.y, ptsA: e.ptsA, ptsB: e.ptsB }); }
   const band = (y) => (Math.abs(y - 40000) <= 2500 ? '쇠재' : Math.abs(y - 60000) <= 2500 ? '한재' : '그 밖');

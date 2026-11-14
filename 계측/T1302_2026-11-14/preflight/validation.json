@@ -1,0 +1,29 @@
+{
+  "days": 3,
+  "population": 457,
+  "bodies": 457,
+  "physical": 1463,
+  "added": 1463,
+  "batchCalls": 0,
+  "zoneExit": {
+    "code": 0,
+    "signal": null,
+    "pid": 589783
+  },
+  "clockErrors": 0,
+  "productFilesSHA256": {
+    "server/villages.js": "6923abb09c5666da4fdb23abf0e2fa6800c6fd675db7d501ff5a9de2090115b8",
+    "server/bandits.js": "4ec2ca815505d3695e41ee1b48fa3be384873acba60ea020c4d8efc9ec876428",
+    "server/zone.js": "a9c0ce5f32aad0ae744b30dd085dd1e00e4aa6268237abcfd937d86e755ba177",
+    "server/terr-body.js": "cc10907750fdf2f517091b51a160ef2c913305a98456ddaab373f6c02479e196"
+  },
+  "checks": {
+    "territory": "100/100",
+    "bodyFields": "10/10",
+    "haul": "18/18",
+    "walk": "46/46",
+    "birthOff": "17/17",
+    "gate": "1/1 actual400/400",
+    "labPopulation": 5929
+  }
+}

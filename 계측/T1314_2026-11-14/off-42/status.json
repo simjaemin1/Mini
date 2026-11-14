@@ -1,0 +1,21 @@
+{
+  "valid": true,
+  "exit": 0,
+  "days": 30,
+  "clock": {
+    "V": 1767268547528.4807,
+    "V0": 1767225600000,
+    "fired": 1783477,
+    "timers": 25282,
+    "intervals": 15,
+    "started": true,
+    "startAt": 1767225600000,
+    "paused": false,
+    "yields": 4458,
+    "maxQ": 21,
+    "errs": 0,
+    "q": 15
+  },
+  "cpuSeconds": 2020.753071,
+  "wallSeconds": 2059.843642974
+}

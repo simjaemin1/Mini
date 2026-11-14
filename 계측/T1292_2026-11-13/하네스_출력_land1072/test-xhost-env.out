@@ -1,0 +1,49 @@
+  ✓ [판] 이웃 존 127.0.0.2:3021 · 한반도 대역 127.0.0.5:3020 이 /health 에 답하고 127.0.0.3 · 127.0.0.4 :3021 은 닫혀 있다(3021 · 3020 을 잡은 다른 판이 없어야 한다)  UP · UP
+
+=== 대상: 작업 트리의 redeploy-light.sh · update-live.sh ===
+
+Ⓐ redeploy-light — 서울 한반도 재생성(`RUN_ZONES=hanbando` · T538 줄)이 옛 `ZONE_HOST_*` 를 이어 싣는다
+  ✓ ★Ⓐ① 옛 한반도에 `ZONE_HOST_NIPPON` 이 있으면 새 컨테이너에도 **한 번** 실린다  -e ZONE_HOST_NIPPON 1개
+  ✓ ★Ⓐ② 그 env 로 존 정본(`hostFromEnv`)이 보는 닛폰 = 이어 실은 주소:3021(서울 IP 로 안 떨어진다)  이어 실은 주소:3021
+  ✓ Ⓐ③ 화면엔 이어 실은 **이름**만(값 · 비밀 0)
+  ✓ Ⓐ④ 이어 싣는 것은 `ZONE_HOST_*` 뿐 — 다른 옛 env 는 종전대로 안 싣는다(비밀은 셸 env 손잡이 그대로)
+  ✓ Ⓐ⑤ EXTRA_ENV 에 같은 이름이 있으면 EXTRA_ENV 가 이긴다(한 번 · 그 값)  1개
+  ✓ Ⓐ⑥ 옛 컨테이너가 없으면(첫 생성) 이어 실을 것 0 — 종전 그대로
+
+Ⓑ update-live ⑧ — 서울 한반도 env 키 + 존 안에서 도쿄 존 /health(읽기만 · 값 0)
+  ✓ ★Ⓑ① 키 있음 + 도쿄 존 /health 200 = ✓ 한 줄 · 갱신 끝(rc 0)  ✓ 경계 서울 한반도 → nippon: env ZONE_HOST_NIPPON 있음 · 주소 = 도쿄 ssh 주소 · :3021/health 200 · 9ms
+  ✓ Ⓑ② 화면에 env 값(주소) · 비밀 0
+  ✓ ★★Ⓑ③ 키 없음(재민 11-01 꼴 — ZONE_HOSTS[nippon] = 서울) = ✗ · ECONNREFUSED · 멈춤(rc 1) — 이 줄을 빼면 여기가 빨강  ✗ 경계 서울 한반도 → nippon: env ZONE_HOST_NIPPON 없음 · 주소 ≠ 도쿄 ssh 주소 · :3021 ECONNREFUSED · 7ms
+  ✓ Ⓑ④ ✗ 판도 값 · 비밀 0
+  ✓ Ⓑ⑤ 키는 있는데 그 주소가 닫힘(옛 IP · 도쿄 포트 닫힘) = ✗ · 멈춤  ✗ 경계 서울 한반도 → nippon: env ZONE_HOST_NIPPON 있음 · 주소 ≠ 도쿄 ssh 주소 · :3021 ECONNREFUSED · 6ms
+  ✓ Ⓑ⑥ 키 없이 ZONE_HOSTS 로만 닿음 = ✗(키가 정본 — 26존 표를 새로 짓는 재배포 한 번이면 서울로 돌아간다)  ✗ 경계 서울 한반도 → nippon: env ZONE_HOST_NIPPON 없음 · 주소 = 도쿄 ssh 주소 · :3021/health 200 · 7ms
+  ✓ Ⓑ⑦ 한반도 컨테이너가 없으면 ✗(말없이 지나가지 않는다)  ✗ 경계 서울 한반도 → nippon: env ZONE_HOST_NIPPON 없음 · 존 안에서 못 물었다: Error response from daemon: No such container: durango-zone-hanbando
+  ✓ Ⓑ⑧ `--dry` 도 같은 줄을 찍는다(멈추지 않는다 · 라이브 무변)  ✗ 경계 서울 한반도 → nippon: env ZONE_HOST_NIPPON 없음 · 주소 ≠ 도쿄 ssh 주소 · :3021 ECONNREFUSED · 8ms
+
+Ⓑ+ ★[T1077] update-live ⑧ — central `/zones` 의 이웃 주소 = 존끼리 넘기는 주소 · 도쿄 → 한반도 반대 방향
+  ✓ ★Ⓑ⑨ 맞는 판 — central 이 주는 닛폰 · 한반도 주소가 존끼리 넘기는 주소와 같고 도쿄 닛폰 → 한반도 /health 200 = ✓ 셋 · 갱신 끝(rc 0)  ✓ 경계 central /zones → nippon: wsUrl 주소 = 한반도가 넘기는 주소 | ✓ 경계 도쿄 nippon → hanbando: env ZONE_HOST_HANBANDO 없음(ZONE_HOSTS) · 주소 = 서울 ssh 주소 · :3020/health 200 · 7ms | rc 0
+  ✓ ★★Ⓑ⑩ 재민 11-02 꼴 — 존↔존은 ✓ 인데 central env 에 닛폰 키가 없다(26존 표 = 서울) = central 줄 ✗ · 멈춤(rc 1) — 이 줄을 빼면 여기가 빨강  ✓ 경계 서울 한반도 → nippon: env ZONE_HOST_NIPP… | ✗ 경계 central /zones → nippon: wsUrl 주소 ≠ 한반도가 넘기는 주소 | rc 1
+  ✓ Ⓑ⑪ 그 판도 화면에 주소 값 · 비밀 0
+  ✓ Ⓑ⑫ central 의 키가 **빈 줄**이어도 ✗(T485 되돌림 꼴 `ZONE_HOST_NIPPON=` — 빈 값은 없는 것과 같다)  ✗ 경계 central /zones → nippon: wsUrl 주소 ≠ 한반도가 넘기는 주소
+  ✓ Ⓑ⑬ 반대 방향 — 도쿄 닛폰이 보는 한반도가 닫힘 = ✗ · 멈춤 · 값 0  ✗ 경계 도쿄 nippon → hanbando: env ZONE_HOST_HANBANDO 없음(ZONE_HOSTS) · 주소 ≠ 서울 ssh 주소 · :3020 ECONNREFUSED · 8ms
+
+Ⓒ ★[T1077] central 을 다시 만드는 길 셋 — 옛 env 를 통째로 옮긴다(`ZONE_HOST_*` 이어짐 · 없던 줄은 안 생긴다)
+  ✓ ★Ⓒ① redeploy-hanbando `recreate()`(진짜 함수) — central 의 옛 `ZONE_HOST_NIPPON` 이 새 컨테이너에 같은 값으로 · 명령줄엔 이름만  함수 있음 · 같은 값
+  ✓ Ⓒ② 옛 central 에 그 줄이 없으면 새 컨테이너에도 없다(옮기기만 한다 — 되살리지 않는다 ⇒ 고침은 Ⓕ 의 스크립트)  없음 그대로
+  ✓ Ⓒ③ redeploy-all central 칸 · reset-world `build_env` 도 같은 꼴(옛 env 전부 · 이미지 기본만 뺀다 · ZONE_HOST 를 따로 짓지 않는다 — 글자)
+
+Ⓕ ★[T1077] fix-central-hosts.sh — central 에 빠진 `ZONE_HOST_<ID>` 를 존 컨테이너 줄로 · central 만 다시
+  ✓ ★Ⓕ① `--dry` — 넣을 이름 · 다시 띄울 것 하나만 말한다 · stop/rm/run 0 · 화면에 값 · 비밀 0  rc 0 · 부름 0
+  ✓ ★★Ⓕ② 고침 — central 하나만 stop · rm · run(같은 이미지 id · 포트 · /data · 라벨 · unless-stopped) · 옛 env 그대로 + `ZONE_HOST_NIPPON` = 한반도 줄 값  rc 0 · stop,rm,run
+  ✓ ★Ⓕ③ 그 env 로 central `/zones`(정본 `publicZoneMap`)가 브라우저에 주는 닛폰 = 한반도가 넘기는 주소 · 끝 줄 ✓  같다
+  ✓ Ⓕ④ 값 · 비밀은 명령줄 · 화면 0(`-e <이름>` · 이 셸 env 로만)
+  ✓ Ⓕ⑤ central 의 빈 줄(`ZONE_HOST_NIPPON=` — T485 되돌림 꼴)은 넣을 값으로 갈음(한 줄)  1줄
+  ✓ Ⓕ⑥ 이미 같으면 할 일 0 — central 을 다시 띄우지 않는다  부름 0
+  ✓ Ⓕ⑦ central 에 다른 값이 있으면 손대지 않는다(✗ · rc 1 · 사람 판정 — 옛 env 그대로)  rc 1 · 부름 0
+  ✓ Ⓕ⑧ 존 둘이 같은 이름에 다른 값 = 멈춤(바꿈 0 · 값 0)  rc 1
+
+Ⓡ 재현 — redeploy-light 꼴 env(키 없음 · ZONE_HOSTS 26 = CENTRAL_IP) → 존이 보는 닛폰 → 접속 → 까닭
+  ✓ Ⓡ① 키가 빠지면 존이 보는 닛폰 = CENTRAL_IP(서울):3021
+  ✓ Ⓡ② 서울:3021 닫힘 → ECONNREFUSED → `_t564HandoffWhy` 까닭 거절 · 알림 "<존>(으)로 넘어가지 못했습니다. 저쪽 서버가 연결을 받지 않습니다."(재민 11-01 글자 · T1069 · T1112 말투 뒤)  ECONNREFUSED → 거절 · "아사기 열도(으)로 넘어가지 못했습니다. 저쪽 서버가 연결을 받지 않습니다."
+
+=== PASS 33 / FAIL 0 ===

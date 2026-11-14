@@ -1,0 +1,32 @@
+{
+ "econ": {
+  "both": 8,
+  "same": 8,
+  "first": null
+ },
+ "side": {
+  "both": 8,
+  "same": 8,
+  "first": null
+ },
+ "sideFields": {},
+ "body": {
+  "both": 8,
+  "same": 8,
+  "first": null
+ },
+ "t1230": {
+  "both": 8,
+  "same": 8,
+  "first": null
+ },
+ "t1276": {
+  "both": 8,
+  "same": 8,
+  "first": null
+ },
+ "runJson": {
+  "same": true,
+  "diff": []
+ }
+}

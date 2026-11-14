@@ -1,0 +1,19 @@
+{
+ "tag": "r9_1020_off",
+ "seed": 1020,
+ "arm": "off",
+ "DAY_MS": 3000,
+ "DAYS": 120,
+ "start": "2026-11-13T15:38:57.756Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "end": "2026-11-13T15:49:46.256Z",
+ "wallS": 648,
+ "days": {
+  "hanbando": 120,
+  "nippon": 140
+ },
+ "done": true
+}
