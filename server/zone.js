@@ -57,6 +57,7 @@ const Wildlife = require('./wildlife'); // §4-4 동물 AI 블록(마을실험�
 //   x · y 쓰기 자리 전부를 쓰기 길(`BC.w` · `wx` · `wy`)로 · 걸음 문의 뜨거운 읽기(걸음 커널 모으기 · 서 있는 몸 거름 · 활성 열 · 따라가기 · 막힘)를 열에서.
 //   거울(몸 x · y 칸)은 아직 안 옮긴 읽기 자리 몫으로 같은 수를 든다(설계 `설계/설계_T1145_몸열_정본.md`). 새 수 0 · 판정 0.
 const BC = require('./body-cols');
+const HC = require('./hot-cols');   // ★[T1314] 몸 칸 열 첫 걸음(끔 기본)
 const T1145_XY_COLS = BC.ON, _xyC = BC.C;
 function _xyX(p) { const s = p._t1145S; return s >= 0 ? _xyC.X[s] : p.x; }   // 열(칸이 없는 몸 = 사람 · 돌려준 몸은 몸 칸)
 function _xyY(p) { const s = p._t1145S; return s >= 0 ? _xyC.Y[s] : p.y; }
@@ -3909,6 +3910,7 @@ function spawnNpc(opts = {}) {
   player.npcWorkY = opts.npcWorkY != null ? opts.npcWorkY : null;
   if (T671_SHAPE) _t671Shape(player);   // ★[T671 ②] 몸 모양 고정(끔 = 종전 그대로)
   if (T1145_XY_COLS) BC.alloc(player);   // ★[T1145] 몸 번호 = 칸 — 이 몸의 x · y 는 이제 열이 정본(끔 = 무동작)
+  if (HC.ON) HC.install(player);   // ★[T1314] 걸음 머리 칸 일곱을 열로(`server/hot-cols.js` · 손잡이 `T1314_HOT_COLS` · 끔 = 무동작)
   players.set(pid, player);
   npcs.add(pid);
 
@@ -4269,7 +4271,7 @@ function decideNpcBehavior(npc, now) {
   //   ⚠`nextDecisionAt` 의 **단위는 그대로 ms** 다(벽시계). 이 카드는 굴림만 결정적으로 만든다 —
   //     박자를 틱 수로 바꾸는 것은 세계를 바꾸는 일이라 카드 밖이다(보고 §3 · 회부).
   _diceNpc.seed(_SEED.seedOf(_shOf(npc), Math.floor(npc.x / BUILDING_SIZE), Math.floor(npc.y / BUILDING_SIZE), zoneGameDay(), _tick.n));
-  npc.nextDecisionAt = now + 500 + _dn() * 1000;
+  { if (HC.ON) HC.w(npc, 'nextDecisionAt', now + 500 + _dn() * 1000); else npc.nextDecisionAt = now + 500 + _dn() * 1000; }
   // ① 늑대 시야 안이면 도망 — quadtree로 후보 추리고 종류 필터
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(npc.x, npc.y, NPC_FLEE_RANGE) : Array.from(mobs.values());
   let nearestWolf = null, wolfDist = NPC_FLEE_RANGE;
@@ -4799,7 +4801,7 @@ function followNpcPath(npc, speedMult) {
   const dx = wx - npc.x, dy = wy - npc.y;
   // ★[T671 ②] 도착(< 10)은 hypot 없이 가른다(`_t671Lt` = 같은 답) — 안 닿았을 때만 나눗셈에 쓸 `dd` 를 종전 그대로 hypot 으로 짓는다.
   if (_t671Lt(dx, dy, 10)) {
-    npc.pathIndex++;
+    { if (HC.ON) HC.w(npc, 'pathIndex', +npc.pathIndex + 1); else npc.pathIndex++; }
     if (npc.pathIndex >= (M ? npc._t791Pn : P.length)) {
       npc.vx = 0; npc.vy = 0;
       return true;
@@ -4820,7 +4822,7 @@ function _t1145Follow(npc, speedMult) {
   if (M && npc.pathIndex === 0) { wx = npc._t791Px; wy = npc._t791Py; } else { const wp = P[npc.pathIndex]; wx = wp.x; wy = wp.y; }
   const dx = wx - _xyX(npc), dy = wy - _xyY(npc);
   if (_t671Lt(dx, dy, 10)) {
-    npc.pathIndex++;
+    { if (HC.ON) HC.w(npc, 'pathIndex', +npc.pathIndex + 1); else npc.pathIndex++; }
     if (npc.pathIndex >= (M ? npc._t791Pn : P.length)) {
       npc.vx = 0; npc.vy = 0;
       return true;
@@ -4877,7 +4879,7 @@ function _t1140Detect(npc, now) {
 }
 function detectStuck(npc, now) {
   if (npc.targetX != null && npc.targetY != null
-      && (!npc.path || npc.pathIndex >= (npc.path === npc._t791P ? npc._t791Pn : npc.path.length))   // ★[T791 ②] 길 거울(끔 = 배열 길이 그대로)
+      && (!npc.path || (HC.ON ? HC.pi(npc) : npc.pathIndex) >= (npc.path === npc._t791P ? (HC.ON ? HC.pn(npc) : npc._t791Pn) : npc.path.length))   // ★[T791 ②] 길 거울(끔 = 배열 길이 그대로) · ★[T1314] 켬 = 길 번호 · 길이를 열에서
       && _t671Lt(npc.x - npc.targetX, npc.y - npc.targetY, 12)) {   // ★[T671 ②] = `Math.hypot(…) < 12`
     _t670Stuck(npc, now);   // 서 있는 동안 타이머를 계속 리셋 — 떠날 때 즉시 오판 금지
     npc._stuckN = 0;
@@ -4936,10 +4938,10 @@ function unstuckNpc(npc, now) {
   _diceNpc.seed(_SEED.seedOf(_shOf(npc), Math.floor(npc.x / BUILDING_SIZE), Math.floor(npc.y / BUILDING_SIZE), zoneGameDay(), _tick.n));
 
   npc.path = null;
-  npc.pathIndex = 0;
+  { if (HC.ON) HC.w(npc, 'pathIndex', 0); else npc.pathIndex = 0; }
   if (npc.simVillageId && typeof npc.targetX === 'number' && (npc._stuckN = (npc._stuckN || 0) + 1) < 3) {
     npc._lastAStarAt = 0; npc._pathFor = null;   // 재경로 강제(목표 불변 — 랩 setPath 재호출 동형)
-    npc.nextDecisionAt = now + 400;
+    { if (HC.ON) HC.w(npc, 'nextDecisionAt', now + 400); else npc.nextDecisionAt = now + 400; }
     npc.vx = 0; npc.vy = 0;
     return;
   }
@@ -4954,7 +4956,7 @@ function unstuckNpc(npc, now) {
   //     도약 점 → 제 몸 직선을 32px 씩 되짚어 첫 열린 점으로. 몸이 선 칸은 열려 있으므로(콜라이더) 언제나 끝난다.
   //     주사위는 위 한 알 그대로(흐름 무소비) · 새 수 0. 손잡이는 T394 그 손잡이(목표에 지형 · 기본 켬 · 되돌림 `=0`).
   if (T394_WORK_TERRAIN) _t394OpenTarget(npc, npc.x, npc.y);
-  npc.nextDecisionAt = now + 800; // 잠깐 wander 후 다시 결정
+  { if (HC.ON) HC.w(npc, 'nextDecisionAt', now + 800); else npc.nextDecisionAt = now + 800; } // 잠깐 wander 후 다시 결정
   npc.behavior = 'wander';
   npc.vx = 0; npc.vy = 0;
 }
@@ -5063,8 +5065,8 @@ const T738_SOA_XY = process.env.T738_SOA_XY === '1';
 const T791_PATH_MIR = process.env.T791_PATH_MIR !== '0', T791_VERIFY = process.env.T791_PATH_MIR === 'verify';   // ★[T806 ①] 켬 기본(PM 10-19) · 끔 탐침 `=0`
 function _t791Mir(npc) {
   const P = npc.path; if (P === npc._t791P) return;
-  const n = P.length; npc._t791P = P; npc._t791Pn = n;
-  if (n) { npc._t791Px = P[0].x; npc._t791Py = P[0].y; } else { npc._t791Px = undefined; npc._t791Py = undefined; }
+  const n = P.length; npc._t791P = P; { if (HC.ON) HC.w(npc, '_t791Pn', n); else npc._t791Pn = n; }
+  if (n) { { if (HC.ON) HC.w(npc, '_t791Px', P[0].x); else npc._t791Px = P[0].x; } { if (HC.ON) HC.w(npc, '_t791Py', P[0].y); else npc._t791Py = P[0].y; } } else { { if (HC.ON) HC.w(npc, '_t791Px', undefined); else npc._t791Px = undefined; } { if (HC.ON) HC.w(npc, '_t791Py', undefined); else npc._t791Py = undefined; } }
 }
 const _t791V = { n: 0, bad: 0, ex: [] };
 function _t791Check(npc) {
@@ -5159,8 +5161,8 @@ function _desEnd(npc, now, why) {
   if (S.r) {
     const o = S.r.posAt(Math.min(now, S.r.t1), _desTmp);
     _desPut(npc, o.x, o.y);
-    if (o.done) { npc.pathIndex = S.P ? S.P.length : 0; npc.vx = 0; npc.vy = 0; }
-    else npc.pathIndex = S.pi + S.r.L[o.k + 1] - 1;   // 지금 걷는 다리의 끝 점(길 점 번호 — 다리 j 의 끝 = 길 점 pi + j − 1)
+    if (o.done) { { if (HC.ON) HC.w(npc, 'pathIndex', S.P ? S.P.length : 0); else npc.pathIndex = S.P ? S.P.length : 0; } npc.vx = 0; npc.vy = 0; }
+    else { if (HC.ON) HC.w(npc, 'pathIndex', S.pi + S.r.L[o.k + 1] - 1); else npc.pathIndex = S.pi + S.r.L[o.k + 1] - 1; }   // 지금 걷는 다리의 끝 점(길 점 번호 — 다리 j 의 끝 = 길 점 pi + j − 1)
     _t670Stuck(npc, now);
   }
 }
@@ -5245,7 +5247,7 @@ function _t1294Arrived(npc, targetKey) {
 function npcStep(npc, dt, now) {
   if (T738_SOA_XY) _t738Adopt(npc);   // ★[T738] 끔 = 종전 그대로
   npc._t540StepAt = now;   // ★[T540 관측] 이 몸이 마지막으로 걸음 문을 받은 때(`/walkdbg stepAge` — 새벽 멎음을 이것으로 잡았다)
-  if (!(T670_SKIP_IDLE && !npc.canadiaVillage && now < npc.nextDecisionAt)) decideNpcBehavior(npc, now);   // ★[T670 ②] 끔 = 종전 그대로
+  if (!(T670_SKIP_IDLE && !npc.canadiaVillage && (HC.ON ? now < HC.nda(npc) : now < npc.nextDecisionAt))) decideNpcBehavior(npc, now);   // ★[T1314] 켬 = 결정 문 칸을 열에서 바로   // ★[T670 ②] 끔 = 종전 그대로
   if (T791_VERIFY) _t791Check(npc);   // ★[T791 견줌] 거울 = 진짜 배열인가(읽기만 · 세계 0)
 
   // ★[§15 2파·비전투원 대피] 전투·긴급 소집 중 마을 주민(villages.js가 simEvacUntil 소프트 TTL 설정) —
@@ -5287,7 +5289,7 @@ function npcStep(npc, dt, now) {
     if (!target || (T1240_KILL_ONCE ? !mobLive(target) : target.hp <= 0)) {   // ★[T1240] 같은 문(`mobs.get` + hp — 종전과 같은 답)
       npc.behavior = 'wander';
       npc.fightTarget = null;
-      npc.nextDecisionAt = 0;
+      { if (HC.ON) HC.w(npc, 'nextDecisionAt', 0); else npc.nextDecisionAt = 0; }
       return;
     }
     const tdx = target.x - npc.x, tdy = target.y - npc.y;
@@ -5325,7 +5327,7 @@ function npcStep(npc, dt, now) {
           }
           npc.fightTarget = null;
           npc.behavior = 'wander';
-          npc.nextDecisionAt = 0;
+          { if (HC.ON) HC.w(npc, 'nextDecisionAt', 0); else npc.nextDecisionAt = 0; }
         }
       }
     }
@@ -5359,7 +5361,7 @@ function npcStep(npc, dt, now) {
   if (needPath && !_skip) {
     const p = computeNpcPath(npc, now);
     npc.path = p || [{ x: npc.targetX, y: npc.targetY }]; // 못 찾으면 beeline
-    npc.pathIndex = 0;
+    { if (HC.ON) HC.w(npc, 'pathIndex', 0); else npc.pathIndex = 0; }
     npc._pathFor = targetKey;
     npc._pathAt = now;
     if (T1294_ARRIVED_PATH) npc._t1294G = _t1294Gen();   // ★[T1294 ⓐ 켬] 이 길을 지은 때의 지형 세대(끔 = 이 줄 무동작)
@@ -5375,12 +5377,12 @@ function npcStep(npc, dt, now) {
       if (r && Math.hypot(r.x - npc.x, r.y - npc.y) < GATHER_RANGE) {
         _npcGatherResource(npc,r);
         npc.gatherTarget = null;
-        npc.nextDecisionAt = 0;
+        { if (HC.ON) HC.w(npc, 'nextDecisionAt', 0); else npc.nextDecisionAt = 0; }
       }
     } else if (npc.behavior === 'plant') {
       // 농지 짓기 — 마을 농부는 개인 사유지 없어도 OK (decide ③와 일치)
       if ((Crops.T1243_FARM_ON ? !!_npcSeedCrop(npc, zoneGameDay()) : (npc.inventory.seed_berry || 0) >= 1) && (npc.myClaim || npc.npcJob === 'farmer')) {
-        if (Crops.T1243_FARM_ON) { const empty = _nearestEmptyFarmland(npc), crop = _npcSeedCrop(npc, zoneGameDay()); if (empty && crop) { _plantInto(npc, empty, crop, zoneGameDay()); npc.nextDecisionAt = 0; return; } }
+        if (Crops.T1243_FARM_ON) { const empty = _nearestEmptyFarmland(npc), crop = _npcSeedCrop(npc, zoneGameDay()); if (empty && crop) { _plantInto(npc, empty, crop, zoneGameDay()); { if (HC.ON) HC.w(npc, 'nextDecisionAt', 0); else npc.nextDecisionAt = 0; } return; } }
         const gx = Math.floor(npc.x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
         const gy = Math.floor(npc.y / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
         // 같은 타일 중복 체크
@@ -5395,7 +5397,7 @@ function npcStep(npc, dt, now) {
           const _today = zoneGameDay();
           const _seed = Crops.wildSeedAt(_cx, _cy, _today, 1);      // 이 철에 못 심으면 null
           const _cid = Crops.T1243_FARM_ON ? _npcSeedCrop(npc, _today) : (_seed ? Crops.cropOfSeed(_seed) : null);
-          if (!_cid) { npc.nextDecisionAt = 0; return; }             // 철이 아니다 — 밭을 안 만든다
+          if (!_cid) { { if (HC.ON) HC.w(npc, 'nextDecisionAt', 0); else npc.nextDecisionAt = 0; } return; }             // 철이 아니다 — 밭을 안 만든다
           let seedFresh = 1;
           if (Crops.T1243_FARM_ON) { const sd = Crops.seedOf(_cid), n = Crops.seedUnitsPerCell(_cid); Lots.reconcile(npc, sd, npc.inventory, _today); seedFresh = Spoil.peekOffer(sd, Lots.of(npc, sd), n, _today).fresh; Lots.consume(npc, sd, n, npc.inventory, _today); }
           else npc.inventory.seed_berry -= 1;
@@ -5410,7 +5412,7 @@ function npcStep(npc, dt, now) {
           broadcast({ type: 'building_added', building });
         }
       }
-      npc.nextDecisionAt = 0;
+      { if (HC.ON) HC.w(npc, 'nextDecisionAt', 0); else npc.nextDecisionAt = 0; }
     } else if (npc.behavior === 'harvest' && npc.harvestTarget) {
       const b = buildings.get(npc.harvestTarget);
       // ★★[T108] 수확도 정본이다 — 익음은 `Crops.isReady`, 산출은 `Crops.harvestUnits`,
@@ -5436,7 +5438,7 @@ function npcStep(npc, dt, now) {
         broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
       }
       npc.harvestTarget = null;
-      npc.nextDecisionAt = 0;
+      { if (HC.ON) HC.w(npc, 'nextDecisionAt', 0); else npc.nextDecisionAt = 0; }
     }
   }
 }
@@ -16203,7 +16205,7 @@ function _wwPost(p, i) {
   const st = _WW.ST[i];
   if (st < 2) { p.vx = 0; p.vy = 0; if (st === 1) p.dirty = true; if (p.pid) _walk.ejPids.add(p.pid); }
   else if (st === 2) Roads.stampEntityPx(p, p.x, p.y);
-  else p.nextDecisionAt = 0;
+  else { if (HC.ON) HC.w(p, 'nextDecisionAt', 0); else p.nextDecisionAt = 0; }
 }
 // ★[T672 ⓑ] 서 있는 몸의 뒷일 — `_wwPost(p, i)` 의 갈래 2 를 커널 답(X=p.x · Y=p.y)으로 푼 것(차례 그대로)
 function _wwStillPost(p) {
@@ -16470,6 +16472,7 @@ function _tickMsStats(reset) {
 setInterval(() => {
   const now = Date.now();
   if (BC.VERIFY) BC.check(players);   // ★[T1145 견줌] 틱 머리 — 쓴 칸 전부 거울 = 열(비트) · 칸의 몸이 지도에 있나 · 주민 몸이 칸을 가졌나(`/perf walk.xyc` · 끔 · 켬 = 무동작)
+  if (HC.VERIFY && (_tick.n % 30) === 0) { const _b0 = HC.stat.bad; HC.check(); if (HC.stat.bad > _b0 && HC.stat.bad <= 5) console.error(`[T1314] verify 어긋남 ${HC.stat.bad} — ${HC.stat.ex.join(' | ')}`); if ((_tick.n % 9000) === 0) console.error(`[T1314] verify 견줌 ${HC.stat.checks} · 어긋남 ${HC.stat.bad} · 쓰기 ${HC.stat.writes} · 몸 ${HC.stat.installed}`); }   // ★[T1314 견줌] 1초마다 칸 받은 몸 전원 · 다섯 칸
   const _tickHr0 = process.hrtime();   // ★[T284 ④] 틱 본문 소요 계측(관측자)
   TB.begin(SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : 0);   // ★★[T687] 한 틱 공용 몫 = 마을 하루 마감 예산 그 수(30Hz 한 프레임의 절반) — 켬일 때만 · 문들이 차례로 남은 몫을 쓴다
   // ★★[T153 2026-09-07 재민 확정] **틱 빚 — 잘라 낸 몫을 버리지 않고 다음 틱에 얹는다.**
@@ -16793,7 +16796,7 @@ setInterval(() => {
       p.x = clamp(nx, 0, ZONE.zoneWidth);
       p.y = clamp(ny, 0, ZONE.zoneHeight);
       }
-      p.nextDecisionAt = 0;
+      { if (HC.ON) HC.w(p, 'nextDecisionAt', 0); else p.nextDecisionAt = 0; }
     } else {
       // 14.46-a: abs 좌표 lookup으로 핸드오프 대상 결정. ocean/월드끝은 클램프.
       const absExitX = ZONE.worldOffsetX + nx;
@@ -18889,7 +18892,7 @@ function decideCanadiaBehavior(npc, now) {
       npc._canadiaSubAt = 0;
     }
   }
-  npc.nextDecisionAt = now + 400 + _dc() * 300;
+  { if (HC.ON) HC.w(npc, 'nextDecisionAt', now + 400 + _dc() * 300); else npc.nextDecisionAt = now + 400 + _dc() * 300; }
 }
 
 function setupCanadiaVillage(village) {
