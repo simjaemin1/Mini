@@ -13,6 +13,7 @@
 //      기대값은 이웃 존 시더 정본(`chunk.generateChunkResources` + `overflowInto`)이 그 띠에 내는 나무 수(사본 0).
 //   ⓑ 넘기 — 한반도 → 닛폰(동) · 한반도 → 중원북(서)을 **키보드로 걸어서** 넘는다(e2e-move 문법 — 소켓을 손으로 안 쏜다).
 //      주 존이 바뀌나 · 월드 좌표가 이어지나(표본 사이 가장 큰 걸음 ≤ 청크 반 — 보정 몇십 px 은 튐이 아니다) · 짐이 같나 · 되돌아오나 · 같은 사람인가.
+//   ⓑv [T1296] 고개 골짜기 둘(쇠재 · 한재 — 닛폰 원 고개를 바꾼 폭 320 선 골짜기)을 **키보드로** 한반도 → 닛폰 → 한반도 걸어서 넘는다(ⓑ 와 같은 걸음 · 줄은 골짜기 안 ±32 열린 가로줄).
 //   ⓒ 자명 통과 금지 — 전제를 먼저 건다: 이웃 띠에 기대 나무가 **실제로 있다**(0 이면 ⓐ 가 공짜다) ·
 //      ⓐ 자리는 옛 문턱(900) **밖**이다 · 걸음이 실제로 경계를 건넜다(주 존이 바뀌었다).
 //
@@ -107,6 +108,27 @@ function corridor(dir) {
   return null;
 }
 
+// ⓑv [T1296] 고개 골짜기 — 쇠재 · 한재(닛폰 골짜기 · 한반도 짝 골짜기와 이음매에서 잇는다)를 걷는 가로줄.
+//   골짜기 중심선이 이음매를 지나는 y 둘레(±128 · 16px 걸음)에서 선 양쪽 WALK px 가 물·바위·개체 없이 열린 줄 — 좁은 통로라 ±32 만 본다
+//   (ⓑ 의 ±48 은 넓은 뭍에서 고른 줄 · 여기는 폭 320 골짜기 안 · 몸 반경 16 의 두 배).
+function valleyCorridor(nm) {
+  const NP = ZONES.nippon, v = (T._getHardcoded().nippon.valleys || []).find((x) => x.name === nm);
+  if (!v) return null;
+  const seam = NP.worldOffsetX, P = v.path.map((p) => p.pos);
+  let ly = null; for (let i = 0; i + 1 < P.length; i++) { const [ax, ay] = P[i], [bx, by] = P[i + 1]; if ((ax <= 0 && bx >= 0) || (bx <= 0 && ax >= 0)) { ly = ay + (by - ay) * (ax === bx ? 0 : (0 - ax) / (bx - ax)); break; } }
+  if (ly == null) return null;
+  const wy0 = (NP.worldOffsetY || 0) + ly;
+  for (let k = 0; k <= 16; k++) {
+    const wy = Math.round(wy0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 16);
+    let clean = true;
+    for (let x = seam - WALK - 64; x <= seam + WALK + 64 && clean; x += 16) for (let dy = -32; dy <= 32; dy += 16) if (blockedW(x, wy + dy)) { clean = false; break; }
+    if (!clean) continue;
+    for (const z of ['hanbando', 'nippon']) if (entsInWorldBox(z, seam - WALK - 96, wy - 64, seam + WALK + 96, wy + 64).length) clean = false;
+    if (clean) return { nm, seam, wy, nb: 'nippon', from: seam - WALK, to: seam + WALK };
+  }
+  return { nm, seam, wy: null };
+}
+
 (async () => {
   console.log('\n=== 존 셋이 한 세계로 보이나 · 경계를 걸어서 넘는다 (T428) ===');
   // ── 소스 한 줄 — 이웃 관측 문턱이 화면 반경과 같은 상수다 ───────────────────────
@@ -118,6 +140,8 @@ function corridor(dir) {
   if (HAS_W) ok(!!VW && VW.n > 0, 'ⓒ 전제: 서쪽 선 자리 화면 상자의 중원북 띠에 중원북 나무가 있다', VW ? `${VW.n}그루 · y ${VW.wy - HB.worldOffsetY}` : '-');
   ok(STAND > PEEK_OLD && STAND < VIEW, `ⓒ 전제: 선 자리(경계에서 ${STAND}px)는 옛 문턱 ${PEEK_OLD} 밖 · 화면 ${VIEW} 안이다(그 띠를 잰다)`);
   ok(!!CE && (!!CW || !HAS_W), 'ⓒ 전제: 동·서 경계에 걸을 길(물·바위·개체 없는 가로줄)이 있다', `${CE ? 'E y' + (CE.wy - HB.worldOffsetY) : 'E 없음'} · ${CW ? 'W y' + (CW.wy - HB.worldOffsetY) : 'W 없음'}`);
+  const CV = ['쇠재', '한재'].map(valleyCorridor);   // ★[T1296] 고개 골짜기 둘
+  ok(CV.every((c) => c && c.wy != null), 'ⓒ 전제 [T1296]: 쇠재 · 한재 골짜기 안에 걸을 가로줄(물·바위·개체 없는 ±32)이 있다', CV.map((c) => `${c ? c.nm : '?'} ${c && c.wy != null ? 'y' + (c.wy - HB.worldOffsetY) : '없음'}`).join(' · '));
 
   // ── 기동 ─────────────────────────────────────────────────────────────────
   const EXT = process.env.ZX_EXTERNAL || '';
@@ -236,6 +260,19 @@ function corridor(dir) {
     const who1 = await page.evaluate(() => (window.__getPlayerId ? window.__getPlayerId() : null));
     const recs = clog.filter((l) => /\[recover\]/.test(l)).slice(rec0);
     ok(!!who0 && who1 === who0, `ⓑ6 [${tag}] ★되돌아와도 **같은 사람**이다(재연결 0 — 계정 id 같음)`, `${who0} → ${who1}${recs.length ? ' · ' + recs.map((l) => l.replace(/^\d+ /, '')).join(' / ').slice(0, 160) : ''}`);
+  }
+
+  // ── ⓑv [T1296] 고개 골짜기 둘을 걸어서 넘는다 — 원 고개(지름 114칸)가 폭 10칸 골짜기가 된 뒤에도 몸이 그 통로로 넘나 ──
+  console.log('\n[ⓑv 고개 골짜기 — 쇠재 · 한재를 걸어서 넘는다 (T1296)]');
+  for (const C of CV) {
+    if (!C || C.wy == null) continue;
+    await warpW(C.from, C.wy); await sleep(2500);
+    const go = await walk(['s', 'd'], 'nippon', 45000);
+    const xs = go.pts.map((q) => q.x), ys = go.pts.map((q) => q.y);
+    ok(go.pz === 'nippon' && xs.some((x) => x > C.seam), `ⓑv ★[${C.nm}] 골짜기로 걸어서 한반도 → 닛폰`, `주 존 ${go.pz} · x ${Math.round(Math.min(...xs))}~${Math.round(Math.max(...xs))} · y 폭 ${Math.round(Math.max(...ys) - Math.min(...ys))}px`);
+    ok(go.vmax > 0 && go.jumpDist <= CS / 2, `ⓑv1 [${C.nm}] 좌표가 이어진다(가장 큰 걸음 ≤ ${CS / 2}px)`, `${go.jumpDist.toFixed(0)}px`);
+    const bk = await walk(['w', 'a'], 'hanbando', 45000);
+    ok(bk.pz === 'hanbando', `ⓑv2 [${C.nm}] 골짜기로 되돌아왔다 — 주 존 hanbando`, `${bk.pz}`);
   }
 
   // ── ⓡ 왕복 — 경계 양쪽 몇백 px 안에서 열 번씩 오간다 (T439) ────────────────────
