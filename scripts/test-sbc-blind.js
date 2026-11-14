@@ -4,7 +4,7 @@
 //
 // ★왜 T1264: 관찰기를 일찍 실은 판(프리로드가 `server/villages.js` 를 먼저 require)에서는 생활층 훅(`t740-side-hook` — module-loader 주입)이
 //   이미 캐시된 villages 에 못 붙어 마을 칸 지문이 0일이다. 종전 `server-baseline-check` 는 그 판을 '마을 칸 지문 0일 같음 · 같음 1/1'(종료 0)로 냈다.
-// 판정 사본 0: 진짜 자(`scripts/server-baseline-check.js`)를 진짜 기준선(`계측/서버기준선_2026-11-13.json`)에 짧은 판(1020:10)으로 댄다.
+// 판정 사본 0: 진짜 자(`scripts/server-baseline-check.js`)를 진짜 기준선(`계측/서버기준선_2026-11-14.json`)에 짧은 판(1020:10)으로 댄다.
 // 지키는 것:
 //   ① 정상 판 — 종료 0 · 결과줄 · 끝 줄에 `경제 10/10 · 생활층 10/10`
 //   ② ★[T1287] 관찰기 먼저 싣기(NODE_OPTIONS 프리로드가 villages 를 먼저 require) → 이제 훅이 공식 자리(`villages.__t740` · 읽기만)로 붙어 **생활층 10/10 · 종료 0**
@@ -19,7 +19,7 @@ const os = require('os');
 const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const SBC = path.join(__dirname, 'server-baseline-check.js');
-const BASE = path.join(ROOT, '계측', '서버기준선_2026-11-13.json');
+const BASE = path.join(ROOT, '계측', '서버기준선_2026-11-14.json');
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 't1280-'));

@@ -30,6 +30,23 @@ const fdDeadRows = []; // [B전쟁] 실제 식량 빚 사망 정본 읽기(누�
 const rows = [];   // [day, npcs[], banditized[], deadTot[], tradersKilled[]]
 let done = false;
 let diag365 = null;
+// ★★[T1308 2026-11-14 · 긴 판 이어 돌리기] `T577_STATE=<파일>` — 판 자 누계(이름 · 날 줄 · 굶음 줄 · d365 단면 · 장부 게시 수 밑)를 끊긴 판이 잇는다.
+//   있으면 적재 때 읽고(앞 마디의 누계) · 프로세스가 끝날 때(제품 SIGTERM 문 → exit) 지금 누계를 쓴다. 없으면 종전 그대로(한 판 = 한 프로세스).
+//   세계는 이미 DB 로 되살아난다(T728 메타 · rng · 앵커) — 이 줄은 판 자 쪽(관측 누계)만 잇는다. 게시 수(`reqOpened`)는 장부가 새로 서며 0 에서 다시 세니 앞 마디 값을 밑으로 더한다.
+const STATE = process.env.T577_STATE || '';
+let boardBase = 0, ledgerRef = null;
+if (STATE) {
+  try {
+    const S0 = JSON.parse(fs.readFileSync(STATE, 'utf8'));
+    names = S0.names || null; for (const r of (S0.rows || [])) rows.push(r); for (const r of (S0.fd || [])) fdDeadRows.push(r);
+    diag365 = S0.diag365 || null; boardBase = S0.board || 0;
+    console.log(`[t577-hook] [T1308] 누계 이어 받음 — 날 줄 ${rows.length} · 마지막 날 ${rows.length ? rows[rows.length - 1][0] : '—'} · 게시 밑 ${boardBase}`);
+  } catch (e) { if (e.code !== 'ENOENT') console.error('[t577-hook] [T1308] 누계 읽기 실패:', e.message); }
+  process.on('exit', () => {
+    if (done) return;   // 끝 날 판 JSON 을 쓴 판은 누계를 안 남긴다(이어 갈 것이 없다)
+    try { fs.writeFileSync(STATE, JSON.stringify({ names, rows, fd: fdDeadRows, diag365, board: boardBase + ((ledgerRef && ledgerRef.stats && ledgerRef.stats.reqOpened) || 0) })); } catch (e) { console.error('[t577-hook] [T1308] 누계 쓰기 실패:', e.message); }
+  });
+}
 
 function finish(world, L, day) {
   if (done) return; done = true;
@@ -61,7 +78,7 @@ function finish(world, L, day) {
            VILLAGE_DAY_MS: process.env.VILLAGE_DAY_MS || null,
            VILLAGE_NPC_CAP: process.env.VILLAGE_NPC_CAP || null, ENABLE_BANDITS: process.env.ENABLE_BANDITS || null,
            cand: Object.fromEntries(Object.entries(process.env).filter(([k]) => /^(T577_(?!SEED$|DAYS$|OUT$|DIR$|PAR$|TAG$)|VILLAGE_LIFE$|ENABLE_BANDITS$|VILLAGE_CARAVAN_MAX$|T513_DAY_SLICE$|WAR_MINDAY$|T766_[A-Z_]+$)/.test(k))) },
-    eight: { pop, dead, ever, weapQ: +weapQ.toFixed(0), expand, board: S.reqOpened || 0,
+    eight: { pop, dead, ever, weapQ: +weapQ.toFixed(0), expand, board: boardBase + (S.reqOpened || 0),   // ★[T1308] 이어 돈 판 = 앞 마디 게시 수 밑 + 이 마디(끊김 없는 판은 밑 0 = 종전)
              toolQ: +toolQ.toFixed(1), preserve: +presStock.toFixed(1), grain: +grain.toFixed(1) },
     dissolved: bdtDay.filter((x) => x != null).length,
     empty: 0,   // 아래에서 끝 날 기준으로 센다
@@ -86,6 +103,7 @@ function finish(world, L, day) {
 
 Ev.createLedger = function () {
   const L = mk.apply(this, arguments);
+  ledgerRef = L;   // ★[T1308] 누계 쓰기가 게시 수를 읽는다
   const sd = L.scanDay;
   L.scanDay = function (world, day) {
     const r = sd.apply(this, arguments);

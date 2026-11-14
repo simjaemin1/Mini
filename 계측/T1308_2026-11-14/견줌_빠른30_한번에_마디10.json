@@ -1,0 +1,123 @@
+{
+ "econ": {
+  "both": 30,
+  "same": 21,
+  "first": 22
+ },
+ "side": {
+  "both": 30,
+  "same": 10,
+  "first": 11
+ },
+ "sideFields": {
+  "_claim": {
+   "first": 11,
+   "days": 20
+  },
+  "_clearCrew": {
+   "first": 11,
+   "days": 13
+  },
+  "_ditchSet": {
+   "first": 11,
+   "days": 20
+  },
+  "_frontier": {
+   "first": 11,
+   "days": 2
+  },
+  "_gameScan": {
+   "first": 11,
+   "days": 20
+  },
+  "_hlDay": {
+   "first": 11,
+   "days": 20
+  },
+  "_jobSites": {
+   "first": 11,
+   "days": 3
+  },
+  "_t325Trees": {
+   "first": 11,
+   "days": 20
+  },
+  "_t427R": {
+   "first": 11,
+   "days": 20
+  },
+  "_t449": {
+   "first": 11,
+   "days": 20
+  },
+  "_t569R": {
+   "first": 11,
+   "days": 1
+  },
+  "_t569RN": {
+   "first": 11,
+   "days": 1
+  },
+  "_t719N": {
+   "first": 11,
+   "days": 20
+  },
+  "_t731Day": {
+   "first": 11,
+   "days": 20
+  },
+  "_dCl": {
+   "first": 21,
+   "days": 2
+  },
+  "_dryN": {
+   "first": 21,
+   "days": 10
+  },
+  "_site": {
+   "first": 24,
+   "days": 7
+  },
+  "_crop": {
+   "first": 27,
+   "days": 4
+  },
+  "_drySet": {
+   "first": 27,
+   "days": 4
+  },
+  "_farmSet": {
+   "first": 27,
+   "days": 4
+  },
+  "_mTk": {
+   "first": 27,
+   "days": 1
+  },
+  "_dTk": {
+   "first": 28,
+   "days": 1
+  },
+  "_mkt": {
+   "first": 29,
+   "days": 2
+  }
+ },
+ "body": {
+  "both": 30,
+  "same": 10,
+  "first": 11
+ },
+ "t1230": {
+  "both": 30,
+  "same": 22,
+  "first": 23
+ },
+ "t1276": null,
+ "runJson": {
+  "same": false,
+  "diff": [
+   "eight"
+  ]
+ }
+}

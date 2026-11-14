@@ -23,6 +23,10 @@
 #            · `docker stats --no-stream` 컨테이너 CPU% · 메모리 · 재시작 수 · 그 1초에 한 코어의 30% 넘게 쓴 **다른** 프로세스(이름만 · 인자는 안 찍는다 — 비밀 0)
 #            · docker build 가 돌고 있나
 #   맥 → 호스트  열린 포트(central 3010 · 존 포트)에 TCP 왕복(`curl` time_connect) 5번 — 핑과 같은 망 길(ICMP 는 막혀 있을 수 있다)
+#            ★[T1292] 존은 **브라우저가 붙는 그 주소**로 잰다 — central `/zones` 가 주는 그 존 `wsUrl` 이 `wss://<이름>` 이면 존 포트 대신 그 이름의
+#            https(443 · Caddy) `/health`. 존 포트(예: 도쿄 3021)는 방화벽이 서울(존끼리 넘기기)만 열어 두는 것이 의도라 맥에서 안 닿는 것이 정상이다
+#            (오라클 도쿄 11-12 — 3021 = 서울 /32 만). 사람이 실제로 지나는 길이 그 443 이다. `wss` 가 아닌 존(`ws://…:포트`) · central 은 종전대로 포트.
+#            주소 값은 표 · JSON 에 안 찍는다(T1077 경계 줄과 같이 — 이름 · 어느 길(https/포트)만).
 #
 # 판정 문턱 — 새 수 0(전부 `scripts/lag-table.js` T486 가름 기준 · T284 틱 예산에서):
 #   존 틱      틱 p95 ≥ 33ms(30Hz 한 틱 예산)
@@ -106,6 +110,13 @@ const qq = (a, p) => { const b = a.slice().sort((x, y) => x - y); return b.lengt
   o.q = { p50: qq(qs, 0.5), p95: qq(qs, 0.95), max: qs.length ? +Math.max(...qs).toFixed(1) : null, fail };
   if (h) { o.humans = h.humans != null ? h.humans : null; o.players = h.players != null ? h.players : null; o.villages = h.villages != null ? h.villages : null; o.up = h.uptime != null ? Math.round(h.uptime) : null;
            o.day = h.day != null ? h.day : null; o.cal = h.calendar || null; }   // ★[T890] `/health` 의 세계 날 · 달력 글자(welcome 과 같은 함수) — 없는 판(옛 존)이면 null
+  //   ★[T1292] 브라우저가 받는 존 주소 — central `/zones`(로비가 묻는 그 문 · 그 값)의 `wsUrl` 중 `wss://<이름>` 만. 맥 망 줄이 그 이름의 https 로 잰다
+  //     (값은 맥이 길을 고르는 데만 쓰고 표 · JSON 에는 안 찍는다 — 아래 perl 이 지운다)
+  if (KIND === 'central') {
+    try { const r = await get('/zones'); const zs = (r.j && r.j.zones) || {}; const pubs = {};
+      for (const [id, z] of Object.entries(zs)) if (z && typeof z.wsUrl === 'string' && /^wss:\/\/[A-Za-z0-9.:-]+$/.test(z.wsUrl)) pubs[id] = z.wsUrl.slice(6);
+      o.pubs = pubs; } catch (e) {}
+  }
   if (KIND === 'zone') {
     try {
       const r = await get('/perf', H); o.perfSt = r.st;
@@ -141,6 +152,8 @@ one_round() {
     ( ssh -o ConnectTimeout=8 -o BatchMode=yes "$h" 'bash -s' <<<"$PROBE" > "$TMP/$h.out" 2> "$TMP/$h.err"; echo $? > "$TMP/$h.rc" ) &
   done
   wait
+  #   ★[T1292] 브라우저가 받는 존 주소표(central `/zones` 의 wss — 어느 호스트 판에 central 이 있든) `<존> <이름>` 줄 · 망 고리가 길을 고른다
+  perl -MJSON::PP -ne 'next unless /^\{/; my $o = eval { JSON::PP->new->utf8->decode($_) } or next; next unless ($o->{k} // "") eq "central" && ref $o->{pubs} eq "HASH"; print "$_ $o->{pubs}{$_}\n" for sort keys %{ $o->{pubs} }' "$TMP"/*.out > "$TMP/pubs" 2>/dev/null
   for h in "$S" "$T"; do
     [ "$h" = - ] && continue
     lab=서울; [ "$h" = "$T" ] && lab=도쿄
@@ -150,20 +163,25 @@ one_round() {
     sed "s/^{/{\"host\":\"$lab\",\"alias\":\"$h\",/" "$TMP/$h.out" >> "$TMP/all"
     # 맥 → 호스트 TCP 왕복(열린 포트마다 5번) — 별칭의 HostName 으로
     ip="$(ssh -G "$h" 2>/dev/null | awk '/^hostname /{print $2; exit}')"
-    for port in $(grep -o '"k":"ctr"[^}]*"port":[0-9]*' "$TMP/$h.out" | sed 's/.*"port"://'); do
-      local conn="" tot="" r
+    for row in $(grep -o '"k":"ctr","name":"[^"]*"[^}]*"port":[0-9][0-9]*' "$TMP/$h.out" | sed 's/^"k":"ctr","name":"\([^"]*\)".*"port":\([0-9]*\)$/\1@\2/'); do
+      local conn="" tot="" r n="${row%@*}" port="${row##*@}" pub="" url via=port
+      #   ★[T1292] 존 컨테이너(durango-zone-<존>)는 central `/zones` 가 그 존에 wss 주소를 주면 그 이름의 https — 존 포트는 존끼리만 열린 것이 의도(머리말 망 줄)
+      case "$n" in durango-zone-*) pub="$(awk -v z="${n#durango-zone-}" '$1 == z { print $2; exit }' "$TMP/pubs" 2>/dev/null)" ;; esac
+      if [ -n "$pub" ]; then url="https://$pub/health"; via=https; case "$pub" in *:*) port="${pub##*:}" ;; *) port=443 ;; esac
+      else url="http://$ip:$port/health"; fi
       for i in 1 2 3 4 5; do
-        r="$(curl --noproxy '*' -s -o /dev/null -m 3 -w '%{time_connect} %{time_total}' "http://$ip:$port/health" 2>/dev/null)" || r=""
+        r="$(curl --noproxy '*' -s -o /dev/null -m 3 -w '%{time_connect} %{time_total}' "$url" 2>/dev/null)" || r=""
         case "$r" in ''|0.000000*) ;; *) conn="$conn${conn:+,}$(awk -v x="${r%% *}" 'BEGIN{printf "%.1f", 1000*x}')"; tot="$tot${tot:+,}$(awk -v x="${r##* }" 'BEGIN{printf "%.1f", 1000*x}')" ;; esac
         sleep 0.2
       done
-      printf '{"host":"%s","alias":"%s","k":"net","port":%s,"conn":[%s],"total":[%s]}\n' "$lab" "$h" "$port" "$conn" "$tot" >> "$TMP/all"
+      printf '{"host":"%s","alias":"%s","k":"net","name":"%s","via":"%s","port":%s,"conn":[%s],"total":[%s]}\n' "$lab" "$h" "$n" "$via" "$port" "$conn" "$tot" >> "$TMP/all"
     done
   done
   perl -MJSON::PP -e '
     use strict; use warnings; use utf8; binmode STDOUT, ":utf8";
     my $JSONOUT = shift @ARGV; my $J = JSON::PP->new->utf8->canonical;
     my @L; while (my $l = <STDIN>) { chomp $l; next unless $l =~ /^\{/; my $o = eval { $J->decode($l) }; push @L, $o if $o; }
+    delete $_->{pubs} for @L;   # ★[T1292] 존 주소 값은 길 고르기에만 — 표 · JSON 에 0
     my @t = localtime; my $at = sprintf("%04d-%02d-%02d %02d:%02d:%02d", $t[5]+1900, $t[4]+1, $t[3], $t[2], $t[1], $t[0]);
     sub d { defined $_[0] ? $_[0] : "—" }
     sub med { my @a = sort { $a <=> $b } @_; return undef unless @a; return $a[int(@a/2)]; }
@@ -205,11 +223,12 @@ one_round() {
     my @net;
     for my $o (grep { $_->{k} eq "net" } @L) {
       my @c = @{ $o->{conn} }; my $md = med(@c);
-      if (!@c) { push @net, "$o->{host}:$o->{port} 닿지 않음"; fl(7, "망 — 맥→$o->{host}:$o->{port} 닿지 않음"); next; }
+      my $where = ($o->{via} || "") eq "https" ? "$o->{host} " . (($o->{name} || "") =~ s/^durango-zone-//r) . " https:$o->{port}" : "$o->{host}:$o->{port}";   # ★[T1292] 브라우저 길(https) 존은 이름 · 길만(주소 값 0)
+      if (!@c) { push @net, "$where 닿지 않음"; fl(7, "망 — 맥→$where 닿지 않음"); next; }
       my ($mn, $mx) = ((sort { $a <=> $b } @c)[0], (sort { $b <=> $a } @c)[0]);
-      push @net, sprintf("%s:%s 최소 %s · 중앙 %s · 최대 %s ms(%d번)", $o->{host}, $o->{port}, $mn, $md, $mx, scalar @c);
+      push @net, sprintf("%s 최소 %s · 중앙 %s · 최대 %s ms(%d번)", $where, $mn, $md, $mx, scalar @c);
       my $lim = $md * 2 > $md + 30 ? $md * 2 : $md + 30;
-      fl(7, "망 — 맥→$o->{host}:$o->{port} 왕복 최대 ${mx}ms > " . sprintf("%.0f", $lim) . "(튐" . ($busy{$o->{host}} ? " · 그 호스트 CPU 가 바빠 TCP 답도 늦을 수 있다 — 망만의 탓이 아닐 수 있다" : "") . ")") if $mx > $lim;
+      fl(7, "망 — 맥→$where 왕복 최대 ${mx}ms > " . sprintf("%.0f", $lim) . "(튐" . ($busy{$o->{host}} ? " · 그 호스트 CPU 가 바빠 TCP 답도 늦을 수 있다 — 망만의 탓이 아닐 수 있다" : "") . ")") if $mx > $lim;
     }
     push @out, "[망] 맥 → 호스트 TCP 왕복 — " . (@net ? join(" | ", @net) : "잰 것 없음");
     my @fs = map { $_->[1] } sort { $a->[0] <=> $b->[0] } @flag;

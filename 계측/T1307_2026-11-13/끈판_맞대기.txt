@@ -1,0 +1,10 @@
+끈 판 앞/뒤 맞대기 (2026-11-13 · 시드 1020 · 400날 · 가상 시계 · 기준선 계측/서버기준선_2026-11-13.json)
+  앞(117d9479 · main land1072 worktree): 같음 1/1 · 판 JSON 1222894507618fa8(= 기준선) · 1225초
+  뒤(e26ad5d7 · 전사 꼬리표): 다름 1/1 — 경제 400/400 · 생활층 400/400 · 인구 3914 / 3914 · 판 JSON 3822f5bd44c5b9af · 742초
+  (중간 판 5c9d7013 — 표본 몸 전부 war: 판 JSON 415fa9c6ce279760 · bodyExit.died.war 88 > econ 전사 76 → e26ad5d7 로 고침)
+  날 지문(.sbc.json) · 마을 칸 지문(.t740.json) · 굶음 칸(.fd-deaths.json) cmp 같음
+  칸 차: ['bodyExit']
+  앞 bodyExit {"died": {"starve": 5, "old": 2, "bandit_starve": 32}, "walk": {"bandit": 0, "desert": 6, "move": 333}, "other": {"expedition": 0, "road": 0, "unknown": 443}, "rot": 0, "arrive": 22, "straight": 0, "lost": 0, "vanish": 0, "noted": 1136, "trimmed": 1129, "lying": 39, "walking": 436}
+  뒤 bodyExit {"died": {"starve": 5, "old": 2, "war": 76, "bandit_starve": 32}, "walk": {"bandit": 0, "desert": 6, "move": 333}, "other": {"expedition": 0, "road": 0, "war": 0, "unknown": 443}, "rot": 0, "arrive": 22, "straight": 0, "lost": 0, "vanish": 0, "noted": 1136, "trimmed": 1129, "warFieldX": 12, "lying": 39, "walking": 436}
+  env·days·bodyExit 뺀 판 JSON 같음: True
+  war-core 판 끝 전쟁 누계(뒤 .sbc.json war): {'decl': 6, 'battle': 6, 'atkWin': 1, 'defWin': 5, 'cas': 76, 'captured': 20, 'siege': 1, 'assault': 7, 'sortie': 1, 'withdraw': 0, 'surrender': 0, 'walkover': 0, 'tribute': 0, 'loot': 1}

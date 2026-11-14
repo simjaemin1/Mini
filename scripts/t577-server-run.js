@@ -98,7 +98,7 @@ function table(outs) {
   }
 }
 
-if (process.argv.includes('--table')) {
+if (require.main === module && process.argv.includes('--table')) {
   const dir = process.argv[process.argv.indexOf('--table') + 1];
   const outs = fs.readdirSync(dir).filter((f) => /\.json$/.test(f)).sort().map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))).filter((o) => o && o.eight && Array.isArray(o.rows));
   table(outs);
@@ -109,7 +109,7 @@ const DAYS = parseInt(process.argv[2], 10) || 800;
 const SEEDS = String(process.argv[3] || '1020,7,42').split(',').map((s) => parseInt(s, 10)).filter(Boolean);
 const PAR = parseInt(process.env.T577_PAR || '', 10) || Math.max(1, Math.min(3, os.cpus().length));
 const DIR = process.env.T577_DIR || `/tmp/t577-${process.pid}`;
-fs.mkdirSync(DIR, { recursive: true });
+if (require.main === module) fs.mkdirSync(DIR, { recursive: true });   // ★[T1308] 모듈로 읽힐 때(`kidEnv`)는 폴더를 안 만든다
 // ★[T914] 집 행위가 선 판인가(제품 기본 켬 · econ 정본과 같은 글자 `!== '0'`) — 그 판이면 크루가 실제로 나르게 아이 env 기본값 둘(머리 주석 T914 줄)
 const HOUSE_ACT = process.env.T400_BUILD_ACT !== '0';
 const KID_MAPBEDS = process.env.T315_MAPBEDS != null ? process.env.T315_MAPBEDS : (HOUSE_ACT ? '1' : '0');
@@ -131,15 +131,9 @@ const KID_ECON = process.env.T990_ECON_DAY != null ? process.env.T990_ECON_DAY :
 // ★[T577 추신] 판 이름 — 판을 가르는 손잡이(후보 · 층 끄기)만 이름에 싣는다(`T577_TAG` 로 덮을 수 있다)
 const TAG = process.env.T577_TAG || Object.keys(process.env).filter((k) => /^(T577_(?!SEED$|DAYS$|OUT$|DIR$|PAR$|TAG$)|VILLAGE_LIFE$|ENABLE_BANDITS$|VILLAGE_CARAVAN_MAX$|T513_DAY_SLICE$|WAR_MINDAY$|T766_[A-Z_]+$)/.test(k)).sort().map((k) => `${k.replace(/^T577_(CAND_)?/, '').toLowerCase()}${process.env[k]}`).join('-') || 'base';
 
-//   ★[T1162 K8] 빈 포트는 **운영체제에게 묻는다**(`listen(0)`) — 종전 `39100 + (pid + k·37) % 700` 은 같은 판 둘이 겹치거나 남의 포트를 밟았다.
-const freePort = () => new Promise((res, rej) => { const s = require('net').createServer(); s.unref(); s.on('error', rej); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)); }); });
-async function runOne(seed, k) {
-  const port = await freePort();
-  return new Promise((resolve) => {
-    const out = path.join(DIR, `${TAG}-${seed}.json`), logf = path.join(DIR, `${TAG}-${seed}.log`);
-    const db = path.join(DIR, `${TAG}-${seed}.db`);
-    for (const f of [out, db, db + '-wal', db + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-    const env = Object.assign({}, process.env, {
+// ★[T1308] 아이 존 env — 판 자 기본값(T914 · T941 · T959 · T990 · T1013 · T1087 · T864 · T655)을 한 자리에서. 부르는 쪽 env 가 먼저(각 줄 주석 그대로).
+function kidEnv({ seed, port, db, out, days }) {
+  const env = Object.assign({}, process.env, {
       ZONE_ID: 'hanbando', PORT: String(port), DB_PATH: db,
       ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
       VILLAGE_DAY_MS: process.env.VILLAGE_DAY_MS || '250',
@@ -150,11 +144,22 @@ async function runOne(seed, k) {
       T1013_BAND_DAY: KID_BAND,   // ★[T1013] 판 자 기본 '1'(사냥터 짓기 그날 안에) · 되돌림 '0' = T1013 전 판 자
       T990_ECON_DAY: KID_ECON,   // ★[T990] 판 자 기본 '1'(길의 날 · NPC 광맥 시각 = econ 날) · 되돌림 '0' = T990 전 판 자
       VILLAGE_NPC_CAP: KID_CAP,   // ★[T1087] 집 행위 켬 판 기본 = 집 크루 몫(`LIFE_CREW`) · 끔 판 기본 '1'(종전) · 부르는 쪽이 먼저
-      T577_SEED: String(seed), T577_DAYS: String(DAYS), T577_OUT: out,
+      T577_SEED: String(seed), T577_DAYS: String(days), T577_OUT: out,
       //   ★[T655] 첫 부팅 조각(T640 · 제품 기본 켬)은 이 자에서 끈다 — 하루 250ms 면 표본이 도는 ~4분 동안 수백 날이 지나 도적 데일리를 건너뛴다(T640 회부 ①).
       T640_BOOT_SLICE: '0',
     });
     if (env.VILLAGE_NPC_CAP === 'Infinity') delete env.VILLAGE_NPC_CAP;   // ★[T864] 몸 상한 운영 기본(무제한)
+  return env;
+}
+//   ★[T1162 K8] 빈 포트는 **운영체제에게 묻는다**(`listen(0)`) — 종전 `39100 + (pid + k·37) % 700` 은 같은 판 둘이 겹치거나 남의 포트를 밟았다.
+const freePort = () => new Promise((res, rej) => { const s = require('net').createServer(); s.unref(); s.on('error', rej); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)); }); });
+async function runOne(seed, k) {
+  const port = await freePort();
+  return new Promise((resolve) => {
+    const out = path.join(DIR, `${TAG}-${seed}.json`), logf = path.join(DIR, `${TAG}-${seed}.log`);
+    const db = path.join(DIR, `${TAG}-${seed}.db`);
+    for (const f of [out, db, db + '-wal', db + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
+    const env = kidEnv({ seed, port, db, out, days: DAYS });   // ★[T1308] 아이 env 를 함수 하나로(이어 돌리기 판 자 `t1308-long-run.js` 가 같은 함수를 부른다 · 글자 무변)
     const t0 = Date.now();
     const child = spawn(process.execPath, ['-r', path.join(__dirname, 't577-server-hook.js'), path.join(ROOT, 'server', 'zone.js')],
       { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -169,7 +174,7 @@ async function runOne(seed, k) {
   });
 }
 
-(async () => {
+if (require.main === module) (async () => {
   console.log(`\n=== 서버 판 자(T577) — ${DAYS}일 · 시드 ${SEEDS.join('·')} · 판 ${TAG} · 동시 ${PAR} · ${DIR} ===`);
   console.log(`  조건: VILLAGE_DAY_MS=${process.env.VILLAGE_DAY_MS || '250'} · T315_MAPBEDS=${KID_MAPBEDS} · T627_TRIP_DAY=${KID_TRIPDAY != null ? KID_TRIPDAY : '(없음)'} · 집 행위 ${HOUSE_ACT ? '켬' : '끔'} · 가상 시계 ${VCLOCK ? '켬' : '끔'} · T696_WAL=${KID_WAL != null ? KID_WAL : '(없음)'} · T941_BATTLE_DAY=${KID_BATTLE} · T990_ECON_DAY=${KID_ECON} · T1013_BAND_DAY=${KID_BAND} · VILLAGE_NPC_CAP=${KID_CAP === 'Infinity' ? '∞(운영 기본)' : KID_CAP} · 도적 ${process.env.ENABLE_BANDITS === '0' ? '끔' : '켬'}`);
   const res = [];
@@ -190,3 +195,5 @@ async function runOne(seed, k) {
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
+
+module.exports = { kidEnv, freePort, KID: { HOUSE_ACT, KID_MAPBEDS, KID_TRIPDAY, KID_CAP, VCLOCK, KID_WAL, KID_BATTLE, KID_BAND, KID_ECON } };   // ★[T1308] 이어 돌리기 판 자가 같은 env 를 쓴다

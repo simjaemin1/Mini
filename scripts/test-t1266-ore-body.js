@@ -18,11 +18,17 @@
 //   ★[T1277] ⑤ 한 단위 값 = Σ 몫 × 그 마을 원석 그림자 값 × λ(순수출가 안 읽음) · ⑩ 광부 자리 = 닿는 셀 × 조 사람 수(`MINE_TEAM` · 0.30 안 곱함)
 //     ⑪ 재고가 녹임 목표(흐름 × 30날)를 넘으면 그림자 값이 떨어져 한 시간 문이 닫힌다 — 이웃이 더 쳐 줘도(순수출가 > 그 마을 값) · 같은 날 곳간이 불어도(시간 표)
 //     미끼 넷 더: 순수출가와 큰 쪽(`nevmax` — 종전 줄) · 그날 아침 값표(`daycache`) · 자리 × 0.30(`cap030`) · 자리 = 셀 수(`slot1`) — 각각 빨강.
+//   ★[T1293] ⑫ 손잡이 `T1293_ORE_SAT`(끔 기본 · T1266 켬 안에서만) 켬 = 원석 품목마다 그 시간 캘 덩이 가운데 녹임 목표(값표 목표 — 흐름 × 30날 · 세계 몫 상한까지 `_targetV2`)
+//       밑 빈자리에 드는 몫만 그 칸 값 · 넘는 몫 값 0 — 아이 판(`T1266_SAT=1`)에서 잰다. 고정판은 λ 를 과일(그 마을 목표 0 · 값 바닥 — T1277 §1 그 판)이 정한다:
+//       끔이면 곳간이 목표의 100 배여도 문이 안 닫힌다(⑫′ — 이 판에서 ⑫ 가 자명하지 않다는 증거).
+//     미끼 넷: 포화 문턱을 지운 사본(`satgone`) · 30날 대신 상수 박은 사본(`satconst` — 목표 60 고정 · `satdays` — 흐름 × 20날) · 목표를 흐름 × 30 으로 다시 셈한 사본(`satcopy` — 세계 몫 상한을 모른다) — 각각 빨강.
 const assert = require('assert'), fs = require('fs'), path = require('path'), { spawnSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..'); let pass = 0, fail = 0;
 function test(n, f) { try { f(); pass++; console.log('  ✓ ' + n); } catch (e) { fail++; console.log('  ✗ ' + n + ': ' + (e && e.message || e)); } }
 function child(env, code) { const r = spawnSync(process.execPath, ['-e', code], { cwd: ROOT, env: { ...process.env, ...env }, encoding: 'utf8' }); assert.strictEqual(r.status, 0, r.stderr); return JSON.parse(r.stdout.trim().split('\n').at(-1)); }
-const MUT = process.env.T1266_MUTANT || '', SUB = !!MUT || process.env.T1266_ARM === '0';   // 아이 판(미끼 · 끈 팔)은 ②③④ 만
+const SAT = process.env.T1266_SAT === '1';   // ★[T1293] 포화 아이 판 — ⑫ 만(손잡이 `T1293_ORE_SAT` 켬)
+const MUT = process.env.T1266_MUTANT || '', SUB = !!MUT || process.env.T1266_ARM === '0' || SAT;   // 아이 판(미끼 · 끈 팔 · 포화)은 ②③④ 만(포화는 ⑫ 만)
+if (SAT) process.env.T1293_ORE_SAT = '1'; else delete process.env.T1293_ORE_SAT;   // ★[T1293] 어미 판 = 끔(⑤ ⑪ 이 T1277 값을 그대로 잰다)
 if (!SUB) {
   console.log('① 손잡이');
   for (const val of [undefined, '0', '1', '', 'true']) test('손잡이 ' + String(val) + ' → ' + (val === '1' ? '켬' : '끔'), () => {
@@ -44,7 +50,11 @@ if (MUT) {   // 미끼 — 정본 파일을 읽어 한 줄만 바꾼 사본으�
     restcopy: ['sim/economy-sim-v2.js', 'return { N, H, unit: p * lam, p, lam, best, rest: t1217RestValue(N, H) };', 'return { N, H, unit: p * lam, p, lam, best, rest: H > 0 ? v1.LEISURE_HAPPY_W / (N * H) : Infinity };'],   // 같은 값의 사본 식(값은 같다 — 함수가 하나여야 한다)
     capreach: ['server/villages.js', '    if (reach && !_t427Reach(vil, null, c.cx * SZ + SZ / 2, c.cy * SZ + SZ / 2, day)) continue;\n', ''],   // 닿지 않는 광맥도 센다
     capform: ['sim/economy-sim.js', 'oreReach == null ? Math.floor(s * Math.max(', 'true ? Math.floor(s * Math.max('],   // 읽개를 안 본다
-    nevmax: ['sim/economy-sim-v2.js', 'p += f * (px[id] || 0); }   // ★[T1277]', 'const nev = v._world ? netExportValue(v._world, v, id) : 0; p += f * Math.max(px[id] || 0, nev || 0); }   // ★[T1277]'],   // 종전 줄(이웃 값과 큰 쪽)
+    nevmax: ['sim/economy-sim-v2.js', 'p += (sat ? _t1293Fill(v, id, sat, f, units) : f) * (px[id] || 0); }   // ★[T1277]', 'const nev = v._world ? netExportValue(v._world, v, id) : 0; p += (sat ? _t1293Fill(v, id, sat, f, units) : f) * Math.max(px[id] || 0, nev || 0); }   // ★[T1277]'],   // 종전 줄(이웃 값과 큰 쪽)
+    satgone: ['sim/economy-sim-v2.js', 'room = T ? Math.max(0, T.target - T.sEff) : 0;', 'room = Infinity;'],   // ★[T1293] 포화 문턱을 지운 사본
+    satconst: ['sim/economy-sim-v2.js', 'room = T ? Math.max(0, T.target - T.sEff) : 0;', 'room = T ? Math.max(0, 60 - T.sEff) : 0;'],   // ★[T1293] 목표 대신 상수(60 — 흐름 2 판의 목표)
+    satdays: ['sim/economy-sim-v2.js', 'room = T ? Math.max(0, T.target - T.sEff) : 0;', 'room = T ? Math.max(0, ((v._consEMA || {})[id] || 0) * 20 - T.sEff) : 0;'],   // ★[T1293] 30날 대신 20날
+    satcopy: ['sim/economy-sim-v2.js', 'const T = _targetV2(v, id, ctx), room', 'const T = { target: ((v._consEMA || {})[id] || 0) * 30, sEff: Math.max(0.1, (v.storage || {})[id] || 0) }, room'],   // ★[T1293] 목표 사본(흐름 × 30 — 세계 몫 상한 모름)
     daycache: ['sim/economy-sim-v2.js', 'px = t1217PricesOf(v, key) || computeShadowPrices(v);\n  const { lam, best } = _t1217Lam(v, px, N);\n  const M = mix', 'px = v._priceCache || t1217PricesOf(v, key) || computeShadowPrices(v);\n  const { lam, best } = _t1217Lam(v, px, N);\n  const M = mix'],   // 그날 아침 값표
     cap030: ['sim/economy-sim.js', ': Math.floor(oreReach),', ': Math.floor(oreReach * 0.30),'],   // T1259 계수를 광맥에
     slot1: ['server/villages.js', 'return n == null ? null : n * MINE_TEAM; }', 'return n; }'],   // 자리 = 셀 수(조 사람 수 안 곱함)
@@ -66,6 +76,71 @@ function fixture(val) {
   S.deps = { players: new Map([['a', p]]), oreStockAt: () => stock, oreConsumeAt: (_x, _y, n) => { cuts++; const q = Math.min(n, stock); stock -= q; return q; }, oreMineralAt: () => 'tin', oreMixAt: () => ({ tin: 1 }), dayPhaseRatio: .7 };
   S.econV2 = Object.assign({}, E2, { t1266OreValue: () => val });   // 값 함수 자리(⑤ 가 정본을 따로 잰다) — 이 판은 문만 잰다
   return { v, p, cuts: () => cuts };
+}
+//   ★[T1293] ⑫ 고정판 — 세계 셋(⑪ 꼴): a(광부 · 구리 원석 녹임 흐름 flow/날 → 값표 목표 flow × 30) · c(과일 100 · 구리 원석 cOre — 세계 공급)
+//     a 는 과일을 안 먹고(흐름 0) 식량 60(1인 10 — 다양성 문 25날이 닫힌다) — 과일 칸이 목표 0 · 값 바닥이라 λ 를 과일이 정한다(T1277 §1 그 판).
+//     cOre 기본 2,000 — 세계 몫 상한(`_targetV2` 의 `_worldStockOf` 몫)이 흐름 목표 밑으로 안 내려온다(⑫ e 만 작게 준다).
+const fxSat = (flow, cOre) => {
+  const w = E2.createWorldV2({ seed: 42, villageCount: 3, infoRange: 5000 }), [a, b, c] = w.villages; E.bindProductionActs(w);
+  a.land.ore = 1; a.land.oreMix = { copper: 1 }; b.land.oreMix = { copper: 1 };
+  a._consEMA = Object.assign(a._consEMA || {}, { ore_copper: flow, copper: 5 }); delete a._consEMA.fruit;
+  a.storage.copper = 0.5; a.storage.fruit = 0; a.storage.food = 60;
+  c.storage.copper = 100; c.storage.ore_copper = cOre == null ? 2000 : cOre; c.storage.fruit = 100;
+  const vil = { name: 'ore-t1293', ccx: 0, ccy: 0, _granList: [{ cx: 2, cy: -2 }], _oreCells: [{ cx: 2, cy: 0, p: .5 }], npcPids: ['a'], _mineLvl: 5, econ: a };
+  const p = { pid: 'a', simVillageId: 1, simJob: 'miner', x: 80, y: 16, inventory: {}, _t724Site: { cx: 2, cy: 0, x: 80, y: 16, day: 1 } };
+  S.world = w; S.dayMs = 1440000; S.epoch = 0; S.zoneId = 'test'; S.villages = [vil];
+  S.deps = { players: new Map([['a', p]]), oreStockAt: () => 1000, oreMixAt: () => ({ copper: 1 }), oreMineralAt: () => 'copper', dayPhaseRatio: .7, moveSpeed: 100 };
+  S.econV2 = E2;
+  let hk = 1000;
+  //   한 물음 — 곳간 st 로 놓고 이튿날(값표 · 세계 공급 캐시가 새로 선다) 서버 `_t1266Keep` 을 그대로 부른다 · W · 쉰 값 · 단위는 계측 칸 차
+  const ask = (st) => { a.storage.ore_copper = st; w.day++; hk++; const t0 = V.t1266Stat(); const keep = V._t1266Keep(vil, p, { cx: 2, cy: 0, x: 80, y: 16 }, hk, Sp, KGU); const t1 = V.t1266Stat(); return { keep, w: t1.w - t0.w, r: t1.r - t0.r, u: t1.u - t0.u, hk }; };
+  const tgt = () => E2._targetV2(a, 'ore_copper', E2._targetCtxV2(a));   // 그 물음 그날의 값표 목표 · 유효 재고(정본 함수 그대로)
+  return { w, a, c, ask, tgt };
+};
+if (SAT) {
+  console.log('⑫ 녹임 목표를 넘을 몫의 덩이 값 0(`T1293_ORE_SAT` 켬 · T1293)');
+  test('손잡이 켬 — `T1293_ORE_SAT=1` · T1266 켬 → v1 `T1293_ORE_SAT` 참', () => { assert.strictEqual(E.T1293_ORE_SAT, true); assert.strictEqual(E.T1266_ORE_BODY, true); });
+  test('녹임 목표 60(흐름 2 × 30날 · λ 과일) — 곳간 5 · 30 · 59 → 친다 · 60 · 61 · 120 · 6,000 → 그 시간 멈춘다(넘는 몫 값 0 → W 0)', () => {
+    const { a, ask, tgt } = fxSat(2);
+    for (const st of [5, 30, 59]) { const r = ask(st); close(tgt().target, 60, 1e-9); assert(r.keep && r.w > r.r, `곳간 ${st} 에서 멈췄다 W ${r.w} R ${r.r}`); }
+    const v0 = E2.t1266OreValue(a, 16.8, null, { ore_copper: 1 }); assert.strictEqual(v0.best, 'fruit', 'λ 를 과일이 안 정한다 — 판이 T1277 그 판이 아니다');
+    for (const st of [60, 61, 120, 6000]) { const r = ask(st); assert(!r.keep, `곳간 ${st} 에서 안 멈췄다 W ${r.w} R ${r.r}`); assert.strictEqual(r.w, 0, `곳간 ${st} W ${r.w} ≠ 0`); }
+  });
+  test('그 몫 — 곳간 59.5 · 그 시간 u 단위 → 빈자리 0.5 만 그 칸 값(W = λ × 값 × 0.5) · 단위를 안 주면 첫 한 단위(몫 그대로) · 목표에 닿으면 0', () => {
+    const { a, ask } = fxSat(2);
+    const r = ask(59.5); assert(r.u > 0.5, `그 시간 단위 ${r.u} ≤ 빈자리 — 몫이 안 갈린다`);
+    const px = E2.t1217PricesOf(a, r.hk).ore_copper, val = E2.t1266OreValue(a, 16.8, r.hk, { ore_copper: 1 }, r.u);
+    close(val.p, px * 0.5 / r.u, 1e-12); close(r.w, val.lam * px * 0.5, 1e-9); assert(r.keep, '빈자리 0.5 값이 쉰 값보다 작다 — 판이 자명');
+    close(E2.t1266OreValue(a, 16.8, r.hk, { ore_copper: 1 }).p, px, 1e-12);
+    a.storage.ore_copper = 60; assert.strictEqual(E2.t1266OreValue(a, 16.8, r.hk, { ore_copper: 1 }, r.u).p, 0); assert.strictEqual(E2.t1266OreValue(a, 16.8, r.hk, { ore_copper: 1 }).p, 0);
+  });
+  test('문턱이 녹임 흐름을 따라간다(목표 = 흐름 × 30날) — 흐름 4 → 목표 120: 곳간 90 · 119 친다 · 120 멈춘다 · 흐름 1 → 목표 30: 곳간 29 친다 · 40 멈춘다', () => {
+    { const { ask, tgt } = fxSat(4); for (const st of [90, 119]) { const r = ask(st); close(tgt().target, 120, 1e-9); assert(r.keep, `흐름 4 곳간 ${st} 에서 멈췄다`); } assert(!ask(120).keep, '흐름 4 곳간 120 에서 안 멈췄다'); }
+    { const { ask, tgt } = fxSat(1); const r = ask(29); close(tgt().target, 30, 1e-9); assert(r.keep, '흐름 1 곳간 29 에서 멈췄다'); assert(!ask(40).keep, '흐름 1 곳간 40 에서 안 멈췄다'); }
+  });
+  test('목표는 값표 목표 하나(`_targetV2` — 세계 몫 상한까지) — 세계 구리 원석이 적어 목표가 흐름 × 30(60) 밑이면 그 목표에서 닫힌다', () => {
+    const { ask, tgt } = fxSat(2, 20); let cut = 0;
+    for (const st of [2, 5, 10, 20, 30, 40, 50]) {
+      const r = ask(st), T = tgt(); assert(T.target < 60 - 1e-9, `세계 몫 상한이 안 걸렸다 — 목표 ${T.target}`);
+      if (st >= T.target) { assert(!r.keep, `곳간 ${st} ≥ 목표 ${T.target.toFixed(2)} 인데 안 멈췄다`); cut++; }
+      else if (T.target - st >= r.u) assert(r.keep, `곳간 ${st} · 목표 ${T.target.toFixed(2)} — 빈자리가 그 시간 단위보다 큰데 멈췄다`);
+    }
+    assert(cut >= 2, `흐름 × 30 밑에서 닫힌 물음 ${cut} — 판이 자명`);
+  });
+  test('여러 광물 — 몫 { 구리 .5 · 주석 .5 } · 주석 녹임 흐름 0(목표 0) → 주석 몫 값 0 · 구리 몫은 빈자리까지', () => {
+    const { a, ask } = fxSat(2); const r = ask(30); a.storage.ore_tin = 3;
+    const px = E2.t1217PricesOf(a, r.hk); assert(px.ore_tin > 0, '주석 원석 칸 값 0 — 판이 자명');
+    close(E2.t1266OreValue(a, 16.8, r.hk, { ore_copper: .5, ore_tin: .5 }, r.u).p, .5 * px.ore_copper, 1e-12);
+    a.storage.ore_copper = 60; assert.strictEqual(E2.t1266OreValue(a, 16.8, r.hk, { ore_copper: .5, ore_tin: .5 }, r.u).p, 0);
+  });
+  test('사본 0 — `_t1293Fill` 은 `_targetV2` 의 목표 · 유효 재고를 읽는다(흐름 · 날 수 · 상수 글 0) · `t1266OreValue` 가 손잡이를 보고 그 함수를 부른다', () => {
+    const src = srcOf('sim/economy-sim-v2.js'), body = (name) => { const i = src.indexOf('function ' + name + '('); assert(i >= 0, name + ' 없음'); return src.slice(i, src.indexOf('\n}', i)); };
+    const f = body('_t1293Fill'); assert(f.includes('_targetV2(v, id, ctx)') && f.includes('T.target - T.sEff'), '목표 · 유효 재고를 정본에서 안 읽는다');
+    assert(!/_consEMA|\* *30|\b\d{2,}\b/.test(f), '채우기 함수에 흐름 · 날 수 · 상수 글이 있다');
+    const g = body('t1266OreValue'); assert(g.includes('v1.T1293_ORE_SAT') && g.includes('_t1293Fill(v, id, sat, f, units)'), '값 함수가 채우기 함수를 안 부른다');
+  });
+  console.log(`=== ${pass} 통과 / ${fail} 실패 ===`); process.exitCode = fail ? 1 : 0;
+  return;
 }
 const ARM = E.T1266_ORE_BODY;
 console.log('② 켬 = D 에서 안 멈춘다 · 입구가 안 자른다' + (ARM ? '' : '(끈 팔)'));
@@ -188,6 +263,13 @@ if (ARM) {
     a._priceCache = E2.computeShadowPrices(a);   // 그날 아침 교역 값표(곳간 5)
     const rB = ask(6000, true); assert(!rB.keep, `같은 날 곳간 6,000 에서 안 멈췄다 W/R ${rB.wr}`);
   });
+  console.log('⑫′ T1293 끔 — λ 과일 판에선 곳간이 목표를 넘어도 문이 안 닫힌다(T1277 그 판 · ⑫ 가 자명하지 않다)');
+  test('`T1293_ORE_SAT` 끔(어미 판) · 녹임 목표 60 · λ 과일 — 곳간 120(목표 2배) · 6,000(100배)에서도 친다 · 값은 그 칸 값 그대로', () => {
+    assert.strictEqual(E.T1293_ORE_SAT, false);
+    const { a, ask } = fxSat(2);
+    for (const st of [120, 6000]) { const r = ask(st); assert(r.keep, `끔인데 곳간 ${st} 에서 멈췄다 W ${r.w} R ${r.r}`); const px = E2.t1217PricesOf(a, r.hk).ore_copper; close(E2.t1266OreValue(a, 16.8, r.hk, { ore_copper: 1 }, r.u).p, px, 1e-12); }
+    assert.strictEqual(E2.t1266OreValue(a, 16.8, null, { ore_copper: 1 }).best, 'fruit');
+  });
 }
 if (!SUB) {
   console.log('⑩′ 손잡이 `T1271_ORE_CAP`');
@@ -220,6 +302,20 @@ if (!SUB) {
   test('끈 팔(`T1266_ARM=0`) — 같은 고정판에서 종전 D 문 그대로(초록)', () => {
     const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, T1266_ARM: '0', T1266_MUTANT: '', T1266_ORE_BODY: '' }, encoding: 'utf8' });
     assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  });
+  console.log('⑫ 손잡이 `T1293_ORE_SAT` · 포화 아이 판 · 미끼');
+  for (const [body, sat] of [['1', undefined], ['1', '0'], ['1', '1'], ['1', ''], ['1', 'true'], [undefined, '1'], ['0', '1']]) test(`T1293 손잡이 ${String(sat)} · T1266 ${String(body)} → ${body === '1' && sat === '1' ? '켬' : '끔'}`, () => {
+    const env = { ...process.env }; delete env.T1293_ORE_SAT; delete env.T1266_ORE_BODY; if (sat !== undefined) env.T1293_ORE_SAT = sat; if (body !== undefined) env.T1266_ORE_BODY = body;
+    const r = spawnSync(process.execPath, ['-e', "console.log(JSON.stringify(require('./sim/economy-sim').T1293_ORE_SAT))"], { cwd: ROOT, env, encoding: 'utf8' });
+    assert.strictEqual(r.status, 0, r.stderr); assert.strictEqual(JSON.parse(r.stdout.trim().split('\n').at(-1)), body === '1' && sat === '1');
+  });
+  test('포화 아이 판(`T1266_SAT=1` → `T1293_ORE_SAT=1`) — ⑫ 다 초록', () => {
+    const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, T1266_SAT: '1', T1266_MUTANT: '' }, encoding: 'utf8' });
+    assert.strictEqual(r.status, 0, r.stdout + r.stderr); assert(/=== 7 통과 \/ 0 실패 ===/.test(r.stdout), r.stdout);
+  });
+  for (const [kind, name] of [['satgone', '녹임 목표 60'], ['satconst', '문턱이 녹임 흐름을 따라간다'], ['satdays', '녹임 목표 60'], ['satcopy', '목표는 값표 목표 하나']]) test('미끼 ' + kind + ' 가 걸린다(⑫ 「' + name + '」 빨강)', () => {
+    const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, T1266_SAT: '1', T1266_MUTANT: kind }, encoding: 'utf8' });
+    assert.strictEqual(r.status, 1, r.stdout + r.stderr); assert(r.stdout.split('\n').some((l) => l.includes('✗') && l.includes(name)), r.stdout);
   });
 }
 console.log(`=== ${pass} 통과 / ${fail} 실패 ===`); process.exitCode = fail ? 1 : 0;

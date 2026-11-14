@@ -1,0 +1,31 @@
+
+=== disk-check — 서버 디스크 · 백업 점검(T901) ===
+① 목록
+  ✓ `.bak` 둘 · `_reset` 한 벌 · 볼륨 DB 를 찍는다(목록만)  rc=0
+  ✓ [T907] `_daily` 매일 스냅샷은 목록 · 크기로 따로 — 볼륨(DB 합 · 백업 한 벌)에 안 든다
+  ✓ ★지울 후보 = 옛 durango 태그 둘뿐 — 컨테이너 이미지 · :latest · :prev-<대상> · :pre-reset · durango 밖은 빠진다  (되돌리기에 안 쓰는 것) 2개: |     eeeeeeeeeeee 468MB durango-zone:t872-seed |     ffffffffffff 465MB durango-central:old-1022
+
+② 판정 — 빈 자리 ≥ 백업 한 벌(DB 합 × 11/10 + 64 MB)
+  ✓ 빈 자리 40 GB → ok
+  ✓ ★같은 판 · 빈 자리만 60 MB → bad(자명 통과 0 — 64 MB 여유도 못 넣는다)
+  ✓ 규칙 글자(`× 11 / 10 + 64 MB`)가 reset-world.sh(정본) · disk-check.sh · live-lag.sh 셋에 같다 — 사본이 갈리면 빨강  reset-world 2 · disk-check 1 · live-lag 1
+
+③ --prune
+  ✓ 별칭을 잘못 치면(tokyo ≠ seoul) 아무것도 안 지운다 · prune 0
+  ✓ ★별칭을 바로 치면 — 옛 durango 태그 둘 · 매달린 이미지 · 빌드 캐시만  durango-central:old-1022 durango-zone:t872-seed · prune image builder
+  ✓ ★DB · .bak · _reset · _daily 파일 여덟 바이트 무변(이 카드는 안 지운다)
+  ✓ 되돌리기 이미지(:prev-hanbando · :pre-reset) · :latest · node 그대로
+
+④ 그 사이 후보가 되돌리기 이미지가 되면
+  ✓ ★지우기 판이 다시 본다 — 컨테이너가 쓰게 된 후보는 안 지운다
+
+⑤ 비밀 0
+  ✓ 컨테이너 env 를 한 번도 안 읽는다(이름 · 크기 · 날짜만)  docker 부름 20번
+
+⑥ 호스트가 안 닿으면
+  ✓ 도쿄가 안 닿으면 그 호스트 ✗ · 판정 줄에 든다 · 서울은 그대로 찍는다
+
+⑦ ★자명 통과 금지 — 되돌리기 이미지를 지킬 줄을 뺀 미끼
+  ✓ [미끼] :prev-<대상> 을 안 지키는 사본은 되돌리기 이미지를 지운다 — ①·③ 의 "그대로" 가 문다
+
+=== PASS 14 / FAIL 0 ===
