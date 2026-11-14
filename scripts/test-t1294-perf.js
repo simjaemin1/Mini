@@ -18,6 +18,8 @@ const fn = (head) => { const i = Z.indexOf(head); if (i < 0) throw new Error(hea
 
 // ── 길 토막 ──
 const fLt = Z.slice(Z.indexOf('function _t671Lt('), Z.indexOf('\n', Z.indexOf('function _t671Lt(')) + 1);
+const fStale = Z.slice(Z.indexOf('function _t1295Stale(npc)'), Z.indexOf('\n', Z.indexOf('function _t1295Stale(npc)')) + 1);   // ★[PM land1074] T1295 가 만료를 `_t1295Stale` 뒤로 옮겼다(운영 시계 = 5000 그대로) — 제품 그 글자를 같이 싣는다
+if (!/return s > 1 \? 5000 \/ s : 5000;/.test(fStale)) throw new Error('_t1295Stale 글자');
 const fArr = fn('function _t1294Arrived(npc, targetKey) {');
 const fMir = fn('function _t791Mir(npc) {');
 const fFol = fn('function followNpcPath(npc, speedMult) {');
@@ -27,9 +29,9 @@ const a = Z.indexOf('  const needPath = !npc.path'), b = Z.indexOf('  const arri
 const seg = Z.slice(a, b) + '  const arrived = followNpcPath(npc, speedMult);\n  return arrived;\n';
 ok(/\|\| \(T1294_ARRIVED_PATH && needPath && _t1294Arrived\(npc, targetKey\)\);/.test(seg) && /  if \(needPath && !_skip\) \{\n    const p = computeNpcPath\(npc, now\);/.test(seg) && /npc\._pathAt = now;/.test(seg), '길 토막 글자를 떴다(`_skip` 끝 손잡이 항 · 묻는 문 글자 그대로(계측기 닻) · 종전 쓰기 넷)');
 const mk = (src, knob, arrSrc) => {
-  const ctx = { Math, Object, T370_PATH_REUSE: false, T1294_ARRIVED_PATH: knob, T791_PATH_MIR: true, T1145_XY_COLS: false, T738_SOA_XY: false, MOVE_SPEED: 64, NPC_WALK_MULT: 1, GEN: 0, _t1294Stat: { strict: 0, knob: 0 } };
+  const ctx = { Math, Object, SimVillages: {}, T370_PATH_REUSE: false, T1294_ARRIVED_PATH: knob, T791_PATH_MIR: true, T1145_XY_COLS: false, T738_SOA_XY: false, MOVE_SPEED: 64, NPC_WALK_MULT: 1, GEN: 0, _t1294Stat: { strict: 0, knob: 0 } };
   vm.createContext(ctx);
-  vm.runInContext(fLt.replace(/^function /, 'function ') + fMir + fFol + fCmp + (arrSrc || fArr) + 'function _t1294Gen() { return GEN; }\n' +
+  vm.runInContext(fLt.replace(/^function /, 'function ') + fStale + fMir + fFol + fCmp + (arrSrc || fArr) + 'function _t1294Gen() { return GEN; }\n' +
     'function step(npc, now, targetKey, speedMult) {\n' + src + '}\n', ctx);
   return ctx;
 };

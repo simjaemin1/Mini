@@ -541,8 +541,12 @@ console.log('\n⑧ T370_PATH_REUSE — 경로를 두 번 묻지 않는다 [T370]
      '⑧ 손잡이는 `T370_PATH_REUSE` 하나 · **기본 끔**');
   ok(/const _skip = T370_PATH_REUSE && needPath/.test(Z3),
      '⑧ ★`_skip` 의 **첫 항이 손잡이**다 — 끄면 단락되어 불리언 읽기 하나(종전과 비트 동일)');
-  ok(/npc\._pathAt > 5000/.test(Z3) && !/T370[^\n]*\b(?!5000)\d{3,}/.test(Z3.split('T370_PATH_REUSE')[1] || ''),
-     '⑧ ★새 수 0 — 만료는 **있던 5000ms** 그대로다');
+  //   ★[PM land1074 · T1295] 만료가 `_t1295Stale(npc)` 뒤로 갔다(판 시계 배율 s > 1 이면 5000 / s · 운영 시계 = 5000 그대로) — 그 함수 글자를 떠서 배율 1 = 5000 을 본다
+  const stM = Z3.match(/function _t1295Stale\(npc\) \{[^\n]*\}/);
+  const _stale = stM ? new Function('SimVillages', stM[0] + '\nreturn _t1295Stale;')({}) : null;
+  ok((/npc\._pathAt > 5000/.test(Z3) || (/npc\._pathAt > _t1295Stale\(npc\)/.test(Z3) && _stale && _stale({}) === 5000 && _stale({ simVillageId: 1 }) === 5000 && /return s > 1 \? 5000 \/ s : 5000;/.test(stM[0])))
+     && !/T370[^\n]*\b(?!5000)\d{3,}/.test(Z3.split('T370_PATH_REUSE')[1] || ''),
+     '⑧ ★새 수 0 — 만료는 **있던 5000ms** 그대로다(T1295 — 운영 시계 `_t1295Stale` = 5000)');
   ok(!/pathfind|path-core/.test(Z3.slice(Z3.indexOf('const _skip'), Z3.indexOf('const _skip') + 400)),
      '⑧ A\\* 알고리즘 무접촉 — 고친 것은 **부르는 조건**뿐이다');
   // ── 네 조건의 진리표를 그대로 복원해 켬/끔을 견준다(제품 글자를 뜬다) ──
@@ -550,9 +554,10 @@ console.log('\n⑧ T370_PATH_REUSE — 경로를 두 번 묻지 않는다 [T370]
   const m = nb.match(/const needPath = [\s\S]*?const _skip = [\s\S]*?\n  if \(needPath && !_skip\) \{/);
   ok(!!m, '⑧ [전제] 제품에서 조건 묶음 **그 글자**를 떴다', m ? `${m[0].length}자` : '못 찾음');
   //   ★[T1294 ⓐ] `_skip` 끝에 손잡이 `T1294_ARRIVED_PATH` 항이 붙었다(끔 = 단락) — 그 두 이름을 매개로 둔다(넘기지 않으면 `undefined` = 끔)
-  const mkAsk = (on) => new Function('npc', 'now', 'targetKey', 'T370_PATH_REUSE', 'T1294_ARRIVED_PATH', '_t1294Arrived',
+  const mkAsk = (on) => new Function('npc', 'now', 'targetKey', 'T370_PATH_REUSE', 'T1294_ARRIVED_PATH', '_t1294Arrived', '_t1295Stale',
     m[0].replace('\n  if (needPath && !_skip) {', '') + '\nreturn needPath && !_skip;');
-  const ask = mkAsk();
+  const _ask0 = mkAsk();
+  const ask = (npc, now, k, on) => _ask0(npc, now, k, on, undefined, undefined, _stale || (() => 5000));   // ★[PM land1074] 제품의 `_t1295Stale` 그 글자(운영 시계 = 5000)
   // 진리표 16칸 × 상황(경로 있음/없음)
   let rows = 0, offAsk = 0, onAsk = 0, diffWhenOff = 0;
   for (let bits = 0; bits < 16; bits++) {
@@ -577,8 +582,9 @@ console.log('\n⑧ T370_PATH_REUSE — 경로를 두 번 묻지 않는다 [T370]
   const endAndOld = { path: [{ x: 0, y: 0 }], pathIndex: 1, _pathFor: 'K', _pathAt: 1 };
   ok(ask(endAndOld, 1000000, 'K', true) === true, '⑧ ★★5초가 지나면 켬도 **묻는다** — 제자리에서 막힌 사람을 있는 만료가 깨운다');
   // 자명 통과 금지 — 손잡이를 무시하는 식으로 바꾸면 위 둘이 갈린다
-  const bad = new Function('npc', 'now', 'targetKey', 'T370_PATH_REUSE',
+  const _bad0 = new Function('npc', 'now', 'targetKey', 'T370_PATH_REUSE', 'T1294_ARRIVED_PATH', '_t1294Arrived', '_t1295Stale',
     m[0].replace('const _skip = T370_PATH_REUSE &&', 'const _skip = true &&').replace('\n  if (needPath && !_skip) {', '') + '\nreturn needPath && !_skip;');
+  const bad = (npc, now, k, on) => _bad0(npc, now, k, on, undefined, undefined, _stale || (() => 5000));
   ok(bad(onlyEnd, 1001, 'K', false) === false, '★⑧ 자명 통과 금지 — 손잡이를 `true` 로 비틀면 **끔 칸이 갈린다**(자가 손잡이를 실제로 본다)');
   console.log('    접점: needPath · _pathFor · _pathAt · pathIndex · computeNpcPath · T370_PATH_REUSE');
 }
@@ -2393,9 +2399,9 @@ console.log('\n㉓ T689 — 틱마다 짓던 쓰레기를 같은 값으로(빌�
          && /if \(T689_GC\) \{ let _decStop = false; npcs\.forEach\(\(pid\) => \{ if \(!_decStop && _decOne\(pid\)\) _decStop = true; \}\); \}\n  else for \(const pid of npcs\) if \(_decOne\(pid\)\) break;/.test(Z),
          '㉓ⓓ 결정 문 — 몸통 글자 그대로(`do … while (false)` · `break` 가 `_stopAt` 을 세운다) · 끔 `for…of`+`break` · 켬 `forEach`+멈춤 깃발', `${d1.length}자`); }
     { const mv1 = Z.slice(Z.indexOf('  const _moveOne = (p) => { do {'), Z.indexOf('  if (T689_GC) players.forEach(_moveOne);'));
-      ok(mv1.length > 1000 && (codeOnly(mv1).match(/\bcontinue;/g) || []).length === 7 && !/\breturn;/.test(codeOnly(mv1)) && /\} while \(false\); \};/.test(mv1)
+      ok(mv1.length > 1000 && (codeOnly(mv1).match(/\bcontinue;/g) || []).length === 8 && !/\breturn;/.test(codeOnly(mv1)) && /\} while \(false\); \};/.test(mv1)
          && /if \(T689_GC\) players\.forEach\(_moveOne\);\n  else for \(const p of players\.values\(\)\) _moveOne\(p\);/.test(Z),
-         '㉓ⓓ 이동 문 — 몸통 글자 그대로(`do … while (false)` · `continue` 일곱 = 이 몸 끝) · 끔 `for…of` · 켬 `forEach`', `${mv1.length}자`); }
+         '㉓ⓓ 이동 문 — 몸통 글자 그대로(`do … while (false)` · `continue` 여덟 = 이 몸 끝 — ★[PM land1074] T1295 `_t1295Walk` 갈래 하나 더) · 끔 `for…of` · 켬 `forEach`', `${mv1.length}자`); }
     const nq = (Z.match(/qtColl \? \(T689_GC \? qtColl\.queryCircleScratch\(/g) || []).length;
     ok(nq === 4, '㉓ⓓ 빌린 배열 질의 자리 넷(벽 변 · 바닥 타일 · 울타리 · 받침) — 모두 받는 고리 안에서 다른 질의를 안 부른다', `${nq}자리`);
   }
