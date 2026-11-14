@@ -62,6 +62,8 @@ const mMult = /\nconst NPC_WALK_MULT = T888_NPC_WALK \? (\d+(?:\.\d+)?) : (\d+(?
 const MOVE_SPEED = mSpeed ? +mSpeed[1] : NaN;
 const mHz = /\nconst TICK_HZ = (\d+(?:\.\d+)?);/.exec(ZSRC);   // ★[T1301] 틱 자의 눈금 — 소스에서(사본 0)
 const TICK_HZ = mHz ? +mHz[1] : NaN;
+const mSt = /\nconst STREAM_SLOW0 = (\d+(?:\.\d+)?);/.exec(fs.readFileSync(path.join(ROOT, 'server', 'streams.js'), 'utf8'));   // ★[T1317] 고른 걸음 문턱 — 개울 배율(소스에서 · 사본 0)
+const STREAM_SLOW0 = mSt ? +mSt[1] : NaN;
 const MULT_ON = mMult ? +mMult[1] : NaN, MULT_OFF = mMult ? +mMult[2] : NaN;
 
 // ── 창 속도 — 서버 갱신의 자리 열에서 1초 창(= `TICK_HZ` 틱)의 곧은 걸음 ───────────────────
@@ -71,12 +73,12 @@ const WIN = 1000;
 function windowSpeeds(rec) {
   const WT = TICK_HZ * WIN / 1000, GAPT = TICK_HZ * 400 / 1000;
   const by = new Map();   // pid → [[t, k, x, y]] — 자리가 바뀐 표본만(= 서버가 새 자리를 실어 온 틱)
-  for (const [t, k, arr] of rec) for (const [pid, x, y] of arr) {
+  for (const [t, k, arr] of rec) for (const [pid, x, y, act] of arr) {
     let a = by.get(pid); if (!a) by.set(pid, (a = []));
     const l = a[a.length - 1];
-    if (!l || l[2] !== x || l[3] !== y) a.push([t, k, x, y]);
+    if (!l || l[2] !== x || l[3] !== y) a.push([t, k, x, y, act || '-']);
   }
-  const out = [], wall = [];
+  const out = [], wall = [], mixed = {};
   for (const a of by.values()) {
     for (let i = 0; i < a.length; i++) {
       let j = i + 1, len = 0, gap = 0;
@@ -85,11 +87,18 @@ function windowSpeeds(rec) {
       len += Math.hypot(a[j][2] - a[j - 1][2], a[j][3] - a[j - 1][3]); gap = Math.max(gap, a[j][1] - a[j - 1][1]);
       const dk = a[j][1] - a[i][1], d = Math.hypot(a[j][2] - a[i][2], a[j][3] - a[i][3]);
       if (!(dk > 0) || dk > WT * 1.3 || gap > GAPT || d < 8 || !(len > 0) || d / len < 0.97) continue;
+      //   ★[T1317 · T1301 회부 1] **고른 걸음** — 창 안 조각(표본 사이)마다 한 틱 걸음(px ÷ 틱)을 재고, 가장 느린 조각이 가장 빠른 조각 × `STREAM_SLOW0` 밑이면
+      //     걷기와 서기가 섞인 창이다(세운 채 몇 px 밀리다가 걷기 시작 · 걷다 서기). 그 창의 "변위 ÷ 1초" 는 걸음이 아니다 — 뺀다(라벨별로 센다 · 줄에 찍는다).
+      //     문턱 = 개울 배율: 곧은 걸음 안에서 정당하게 바뀌는 가장 큰 폭(개울 칸 ×0.5)까지는 그대로 센다. 진단(T1317): '전사' 라벨 느린 창 48 —
+      //     조각이 0px(회관 서성임 · 선 채 밀림) 몇 개 뒤 2.13px/틱(= 64px/s 그대로) — 걸음이 느린 것이 아니라 창이 섞였다.
+      let sMin = Infinity, sMax = 0;
+      for (let q = i + 1; q <= j; q++) { const st = Math.hypot(a[q][2] - a[q - 1][2], a[q][3] - a[q - 1][3]) / Math.max(1, a[q][1] - a[q - 1][1]); if (st < sMin) sMin = st; if (st > sMax) sMax = st; }
+      if (sMin < sMax * STREAM_SLOW0) { const lb = a[i][4]; mixed[lb] = (mixed[lb] || 0) + 1; continue; }
       out.push(d / dk * TICK_HZ);
       wall.push(d / (a[j][0] - a[i][0]) * 1000);
     }
   }
-  return { speeds: out, wall, npcs: by.size };
+  return { speeds: out, wall, npcs: by.size, mixed };
 }
 const med = (a) => { if (!a.length) return NaN; const s = a.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
 const pct = (a, q) => { if (!a.length) return NaN; const s = a.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(q * s.length))]; };
@@ -165,7 +174,7 @@ async function arm(tag, knob) {
     window.__t888 = [];
     window.__t888T = setInterval(() => {
       const n = window.__getNpcs ? window.__getNpcs() : [];
-      window.__t888.push([performance.now(), (window.__fcTick || []).length, n.map((q) => [q.pid, q.wx, q.wy])]);
+      window.__t888.push([performance.now(), (window.__fcTick || []).length, n.map((q) => [q.pid, q.wx, q.wy, q.act || null])]);
     }, 50);
   });
   let W = { speeds: [], npcs: 0 }, t0 = Date.now(), tFirst = null;
@@ -181,6 +190,7 @@ async function arm(tag, knob) {
   const rk = await page.evaluate(() => { const r = window.__t888; if (!r || r.length < 2) return null; const a = r[0], b = r[r.length - 1]; return { k: b[1] - a[1], ms: b[0] - a[0] }; });
   const hz = rk && rk.ms > 0 ? rk.k / rk.ms * 1000 : NaN;
   console.log(`    NPC ${W.npcs} · 곧은 1초(${TICK_HZ}틱) 창 ${W.speeds.length} · 중앙 ${m.toFixed(1)} · p10 ${pct(W.speeds, 0.1).toFixed(1)} · p90 ${pct(W.speeds, 0.9).toFixed(1)} px/s(게임 초 = 틱 ÷ ${TICK_HZ}) · ${((Date.now() - t0) / 1000) | 0}초(걷기 기다림 ${tFirst == null ? '—' : (((tFirst - t0) / 1000) | 0) + '초'})`);
+  console.log(`    (참고 · 판정 밖) 섞인 창(서기+걷기 · 뺌) ${Object.entries(W.mixed || {}).sort((x, y) => y[1] - x[1]).map(([k, v]) => k + ' ' + v).join(' · ') || '0'}`);
   console.log(`    (참고 · 판정 밖) 받은 틱 ${rk ? rk.k : '?'} / ${rk ? (rk.ms / 1000).toFixed(0) : '?'}초 = ${hz.toFixed(1)}Hz(서버 ${TICK_HZ}Hz) · 같은 창 벽시계 걸음 중앙 ${med(W.wall).toFixed(1)}px/s`);
   ok(W.npcs >= 1 && W.speeds.length >= 20, `[${tag}] 걷는 NPC 의 곧은 창이 모였다(자명 통과 금지 — 창 0 이면 아래 판정은 공짜다)`, `NPC ${W.npcs} · 창 ${W.speeds.length}`);
   const nz = [...new Set(noise.filter((x) => !/^console:/.test(x)))];
@@ -193,7 +203,7 @@ async function arm(tag, knob) {
 
 (async () => {
   console.log('\n=== 마을 NPC 걸음 = 플레이어 걸음 실클라 E2E (T888 · Chromium · 서버 권위 좌표) ===');
-  ok(MOVE_SPEED > 0 && MULT_ON > 0 && MULT_OFF > 0 && TICK_HZ > 0, '기대 걸음 · 틱 눈금을 소스에서 읽었다 — `MOVE_SPEED` · `NPC_WALK_MULT`(켬 · 끔) · `TICK_HZ`', `MOVE_SPEED ${MOVE_SPEED} · 켬 ×${MULT_ON} · 끔 ×${MULT_OFF} · ${TICK_HZ}Hz`);
+  ok(MOVE_SPEED > 0 && MULT_ON > 0 && MULT_OFF > 0 && TICK_HZ > 0 && STREAM_SLOW0 > 0 && STREAM_SLOW0 < 1, '기대 걸음 · 틱 눈금을 소스에서 읽었다 — `MOVE_SPEED` · `NPC_WALK_MULT`(켬 · 끔) · `TICK_HZ`', `MOVE_SPEED ${MOVE_SPEED} · 켬 ×${MULT_ON} · 끔 ×${MULT_OFF} · ${TICK_HZ}Hz`);
   //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.npcWalk`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
   require('./lib-e2e-src').SECTIONS.npcWalk(ok);
   const ON = await arm('on', null);

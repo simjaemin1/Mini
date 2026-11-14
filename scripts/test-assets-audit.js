@@ -787,6 +787,20 @@ console.log('\n⑪ 실리는 것은 닿아야 한다 · 닿는 것은 실려야 
             if (i <= j && suf && !/[\/]/.test(pre + suf)) res.dirJoins.push({ dir: path.posix.join(...mid.map(strOf)), prefix: pre, suffix: suf, line });
           }
         }
+        // ★[T1317 · T1107 `bc823aee` 11-03] 같은 꼴의 템플릿 글자 — `path.join(__dirname, \`village-trees-${zoneId}.json\`)`(`server/chunk.js`).
+        //   ⑪a 가 이 꼴을 못 읽어 `server/village-trees-hanbando.json`(존마다 굽는 나무 자리 · 런타임이 읽는다)을 "안 닿음"으로 셌다(52 → 53).
+        //   좁게만 넓힌다: 이름 자리 변수 **하나**(\`앞${x}끝\`) · 앞 글자와 끝 글자 둘 다 있음 · 둘 다 `/` 없음 · 폴더 글자(있으면) 그대로 — 그 폴더 바로 안에서만(아래 ⓔ⑪′ 미끼).
+        //   부르는 이름은 `path.join` 과 `require('path').join` 둘 다(`chunk.js` 는 뒤의 꼴이다).
+        const isPathCallR = (c) => isPathCall(c) || (!!c && c.type === 'CallExpression' && c.callee.type === 'MemberExpression' && !c.callee.computed
+          && ['join', 'resolve'].includes(c.callee.property.name) && c.callee.object.type === 'CallExpression' && c.callee.object.callee.type === 'Identifier'
+          && c.callee.object.callee.name === 'require' && strOf(c.callee.object.arguments[0]) === 'path');
+        if (isPathCallR(n) && isDirname(n.arguments[0]) && n.arguments.length >= 2) {
+          const mid = n.arguments.slice(1, -1), last = n.arguments[n.arguments.length - 1];
+          if (mid.every((x) => strOf(x) != null) && last.type === 'TemplateLiteral' && last.expressions.length === 1) {
+            const pre = last.quasis[0].value.cooked || '', suf = last.quasis[1].value.cooked || '';
+            if (pre && suf && !/[\/]/.test(pre + suf)) res.dirJoins.push({ dir: mid.length ? path.posix.join(...mid.map(strOf)) : '.', prefix: pre, suffix: suf, line, tpl: true });
+          }
+        }
       });
       return res;
     };
@@ -816,7 +830,7 @@ console.log('\n⑪ 실리는 것은 닿아야 한다 · 닿는 것은 실려야 
         }
         for (const d of a.dirJoins) {
           const dirAbs = path.posix.normalize(path.posix.join(dir, d.dir));
-          for (const t of TR) if (!got.has(t) && dirJoinHit(dirAbs, d, t)) got.set(t, { how: '자료 읽기(폴더·끝)', from: `${f}:${d.line}` });
+          for (const t of TR) if (!got.has(t) && dirJoinHit(dirAbs, d, t)) got.set(t, { how: d.tpl ? '자료 읽기(템플릿 앞·끝)' : '자료 읽기(폴더·끝)', from: `${f}:${d.line}` });   // ★[T1317] 템플릿 꼴은 이름을 따로(ⓔ⑪ 가 개울 래스터만 세게)
         }
       }
       return got;
@@ -997,6 +1011,14 @@ console.log('\n⑪ 실리는 것은 닿아야 한다 · 닿는 것은 실려야 
        && !hitE('server/streams/sub/zz_t751_ghost.bin') && !hitE('server/zz_t751_ghost.bin') && !hitE('server/streams/.bin'),
        'ⓔ⑪ 미끼 — 폴더·끝 꼴(`path.join(__dirname, \'streams\', id + \'.bin\')`)은 그 폴더 바로 안 `.bin` 만 문다(다른 끝 · 하위 폴더 · 다른 폴더 · 빈 이름 0)',
        `${viaDJ.join(' ') || '없음'} · 꼴 ${SJ ? `streams.js:${SJ.line}` : '★못 찾음'}`);
+    // ⓔ⑪′ [T1317] 템플릿 꼴(\`village-trees-${zoneId}.json\` · `server/chunk.js`)도 **그 꼴만** 문다 — 나무 자리 파일은 닿고, 다른 끝 글자 · 하위 폴더 · 다른 폴더 · 앞 글자 없는 이름 · 빈 이름은 안 닿는다
+    const VJ = jsOf('server/chunk.js').dirJoins.find((d) => d.tpl && d.prefix === 'village-trees-' && d.suffix === '.json');
+    const hitV = (t) => !!VJ && dirJoinHit('server', VJ, t);
+    const vtOk = SRV.has('server/village-trees-hanbando.json') && /템플릿 앞·끝/.test(SRV.get('server/village-trees-hanbando.json').how);
+    ok(!!VJ && vtOk && hitV('server/village-trees-zz_t1317.json') && !hitV('server/village-trees-zz_t1317.txt')
+       && !hitV('server/sub/village-trees-zz_t1317.json') && !hitV('sim/village-trees-zz_t1317.json') && !hitV('server/village-treeszz.json') && !hitV('server/village-trees-.json'),
+       'ⓔ⑪′ 미끼 — 템플릿 꼴(`path.join(__dirname, `village-trees-${id}.json`)`)은 그 폴더 바로 안 그 앞 · 끝 글자만 문다(다른 끝 · 하위 폴더 · 다른 폴더 · 앞 글자 다름 · 빈 이름 0)',
+       `${vtOk ? 'server/village-trees-hanbando.json 닿음' : '★나무 자리 파일 안 닿음'} · 꼴 ${VJ ? `chunk.js:${VJ.line}` : '★못 찾음'}`);
 
     // 표만 — 동적 접두만(키가 원천에 없다 · 닿음으로 친다 · 빨강 아님)
     console.log(`     · 동적 접두만(키 없음 · 표만) ${DYN.length}장 · ${mbOf(DYN)} MB`);
