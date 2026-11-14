@@ -549,7 +549,8 @@ console.log('\n⑧ T370_PATH_REUSE — 경로를 두 번 묻지 않는다 [T370]
   const nb = body('npcStep');
   const m = nb.match(/const needPath = [\s\S]*?const _skip = [\s\S]*?\n  if \(needPath && !_skip\) \{/);
   ok(!!m, '⑧ [전제] 제품에서 조건 묶음 **그 글자**를 떴다', m ? `${m[0].length}자` : '못 찾음');
-  const mkAsk = (on) => new Function('npc', 'now', 'targetKey', 'T370_PATH_REUSE',
+  //   ★[T1294 ⓐ] `_skip` 끝에 손잡이 `T1294_ARRIVED_PATH` 항이 붙었다(끔 = 단락) — 그 두 이름을 매개로 둔다(넘기지 않으면 `undefined` = 끔)
+  const mkAsk = (on) => new Function('npc', 'now', 'targetKey', 'T370_PATH_REUSE', 'T1294_ARRIVED_PATH', '_t1294Arrived',
     m[0].replace('\n  if (needPath && !_skip) {', '') + '\nreturn needPath && !_skip;');
   const ask = mkAsk();
   // 진리표 16칸 × 상황(경로 있음/없음)
