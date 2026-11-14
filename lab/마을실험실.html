@@ -25644,7 +25644,7 @@ function _mobView(){const v=(typeof view!=='undefined')?view:{z:1,ox:0,oy:0},c=(
 //   ⓒ 그래도 모자란 칸 = 출생 — 종전처럼 침대에서 선다(서버 `spawnOneNpc` 무변).
 //   ⚠출정(`_muster`) · 교역 나간 몸(`trading` — 랩의 캐러밴 몸)은 건너뛴다(남은 게 그뿐이면 서버처럼 멈춘다). 하루 상한(서버 ±2)은 없다 — 랩은 그날 다 맞춘다(종전 그대로).
 //   ⚠랩엔 바닥 물건 층이 없어 짐 낙하(서버 `_deathDrop`)가 없고, 사건 장부가 없어 `STARVED` 줄도 없다(계수 `_bxStat.died.starve` 만).
-const BX_CAT={starve:'died',old:'died',bandit:'walk',desert:'walk',move:'walk',expedition:'other',road:'other',war:'other',unknown:'other'};   // 서버 `BX_CAT` 그 표(T1307 `war` 더함)
+const BX_CAT={starve:'died',old:'died',bandit:'walk',desert:'walk',move:'walk',expedition:'other',road:'other',war:'other',captive:'other',wild:'other',unknown:'other'};   // 서버 `BX_CAT` 그 표(T1307 `war` 더함)
 const BX_COL={fisher:'#6db3e0',hunter:'#c9824a',forager:'#9ccf5e',lumberjack:'#4f8a36',miner:'#b2b2c0',villager:'#d8a85a'};   // 직업 색 — `lifeSync` 의 `grow` 가 쓰는 그 표(한 자리 · 이름표 바꿀 때도 이 표)
 const L_CORPSE=5*60;   // 누운 몸이 남는 게임분 = 서버 `CORPSE_DECAY_MS` 5분(실시간) ÷ 서버 시계(하루 24분 = 1,440게임분 ⇒ 실 1분 = 60게임분) — 값 자체는 T590 회부 1(재민)
 let BODY_EXITS=[], _bxDayGM=0, _bxStat=null;

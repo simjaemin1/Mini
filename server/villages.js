@@ -1544,9 +1544,9 @@ function spawnOneNpc(vil) {
 //   ⚠까닭 줄은 **그날 몸이 따라잡을 몫만큼만** 쓴다 — 몸이 econ 에 닿으면(출생과 상쇄) 남은 까닭은 버린다. 하루 상한(`POP_SYNC_PER_DAY`)은 그대로.
 //   ⚠econ 무접촉(읽기만 — `_deadTot` · `tradeStats.tradersKilled` · `_dpDebug`) · 새 수 0 · 주사위 0 · 늘 때(`spawnOneNpc`)는 무변.
 //   ⚠출정 병사(`_muster`)는 종전처럼 건너뛴다 — 전쟁 실체가 그 몸을 쥔다(전사 표본은 `_warDespawnPid` 가 전장에서 거둔다 · 표 §1).
-const BX_CAT = { starve: 'died', old: 'died', bandit: 'walk', desert: 'walk', move: 'walk', expedition: 'other', road: 'other', war: 'other', unknown: 'other' };   // ★[T1307] `war` = 그 밖(집 밖에서 잃은 사람 — 원정 · 행상과 같은 갈래 · 아래 `_bxObserve` 머리글)
-const _bx = { died: { starve: 0, old: 0, war: 0 }, walk: { bandit: 0, desert: 0, move: 0 }, other: { expedition: 0, road: 0, war: 0, unknown: 0 },
-              rot: 0, arrive: 0, straight: 0, lost: 0, vanish: 0, noted: 0, trimmed: 0, warFieldX: 0 };   // ★[T1307] `warFieldX` = 전장에서 거둔 표본 몸 가운데 econ 전사 칸이 안 받은 몫(꼬리표 없음)
+const BX_CAT = { starve: 'died', old: 'died', bandit: 'walk', desert: 'walk', move: 'walk', expedition: 'other', road: 'other', war: 'other', captive: 'other', wild: 'other', unknown: 'other' };   // ★[T1315] `captive` · `wild` = 그 밖(종전 `unknown` 이 서던 자리 · 몸 길 같음 — `_bxObserve` 머리글)   // ★[T1307] `war` = 그 밖(집 밖에서 잃은 사람 — 원정 · 행상과 같은 갈래 · 아래 `_bxObserve` 머리글)
+const _bx = { died: { starve: 0, old: 0, war: 0 }, walk: { bandit: 0, desert: 0, move: 0 }, other: { expedition: 0, road: 0, war: 0, captive: 0, wild: 0, unknown: 0 },
+              rot: 0, arrive: 0, straight: 0, lost: 0, vanish: 0, noted: 0, trimmed: 0, warFieldX: 0, capFieldX: 0 };   // ★[T1315] `capFieldX` = 포로로 끌려간 몸 가운데 econ 포로 칸이 안 받은 몫   // ★[T1307] `warFieldX` = 전장에서 거둔 표본 몸 가운데 econ 전사 칸이 안 받은 몫(꼬리표 없음)
 function _bxMap() { return state.bodyExits || (state.bodyExits = new Map()); }
 // 까닭 한 줄 — 도적 층(`bandits.js` — 호스트 `noteBodyExit`)과 아래 관측이 같은 줄에 쓴다. `toCell` = 은거지 칸 · `toVil` = 옮겨 갈 마을(T577 ⓐ).
 function noteBodyExit(vil, kind, n, toCell, toVil, gid) {   // ★[T1078] `gid` = 그 몸이 들 단(켬에서만 넘어온다 — 닿는 날 단의 몸 · 끔 = 칸 0)
@@ -1582,20 +1582,38 @@ function noteBodyExit(vil, kind, n, toCell, toVil, gid) {   // ★[T1078] `gid` 
 //   ⚠장부 둘(`_bxWarField` · `_bxWarDue`)과 지난 누계는 모듈 장부(WeakMap)다 — 마을 칸이 한 글자도 안 바뀐다(T1303 `_bxWhySeen` 과 같은 까닭).
 //   ⚠포로(`warCapture` — 다른 마을 명부로 옮긴다)는 죽음이 아니다 — 이 칸에 안 든다(종전 `unknown` 그대로 · 회부).
 const _bxWhySeen = new WeakMap();
-const _bxWarField = new WeakMap(), _bxWarDue = new WeakMap();   // ★[T1307] 마을 → 전장에서 거둔 표본 몸 수 · 몸이 아직 안 받은 전사 몫
-function _bxWarClear(vil) { const d = _bxWarDue.get(vil) || 0; if (d > 0) { _bx.trimmed += d; _bxWarDue.delete(vil); } }
+const _bxWarField = new WeakMap(), _bxWarDue = new WeakMap();
+// ★★[T1315 2026-11-14 · T1307 회부 4] **unknown 의 출처 둘 더 — 포로 · 야생** — 전사(T1307)와 같은 꼴:
+//   econ 이 사람을 빼는 자리 가운데 몸 까닭 줄에 안 닿던 곳이 둘 더 있었다(빈 줄 자리 = 종전 `unknown`):
+//     포로 — `war-core warCapture`(패자 → 승자) · `_capComplete`(억류 마을 → 고향) 가 그 마을 econ 에서 뺀다 → 누계 `_capOutTot`(war-core 한 줄씩).
+//       끌려가는 몸(`_warEndFight` 의 `escort` — 몸이 명부째 승자로 옮는다)은 이미 그 마을 명부에서 빠졌다 → `_bxCapField` 로 세기만 하고(전장 몸 `_bxWarField` 와 같은 꼴),
+//       나머지(econ 포로 − 끌려간 몸)가 빈 줄 자리를 받는다(`other.captive`). 귀향한 포로는 억류 마을의 그 몸이 마을 밖으로 걸어 나간다(종전 `unknown` 과 같은 문).
+//     야생 — `wildlife.js reapDead`(사냥 몸이 짐승에 쓰러졌다)가 econ 에서 한 사람을 뺀다 → 누계 `_wildDeadTot` → 빈 줄 자리(`other.wild`).
+//   ★몸 길 무변 — 줄 머리가 아니라 빈 줄 자리를 받으므로(갈래 `other` · 명부 맨 뒤 · 가장자리) 몸 고르기 · 걸음이 한 글자도 안 바뀐다 · 바뀌는 것은 꼬리표 칸뿐.
+//   ★차례(빈 줄 자리를 채우는 차례) = 전사 → 포로 → 야생 → 그래도 없으면 `unknown`. 몫은 까닭 줄과 같이 산다(버리는 자리에서 같이 버린다 — `_bxWarClear`).
+const _bxCapField = new WeakMap(), _bxOtherDue = new WeakMap();   // ★[T1315] 마을 → 끌려간 몸 수 · {captive, wild} 빈 줄 자리 몫   // ★[T1307] 마을 → 전장에서 거둔 표본 몸 수 · 몸이 아직 안 받은 전사 몫
+function _bxWarClear(vil) { const d = _bxWarDue.get(vil) || 0; if (d > 0) { _bx.trimmed += d; _bxWarDue.delete(vil); } const o = _bxOtherDue.get(vil); if (o) { _bx.trimmed += (o.captive || 0) + (o.wild || 0); _bxOtherDue.delete(vil); } }   // ★[T1315] 포로 · 야생 몫도 같이
 function _bxObserve(vil) {
   const e = vil && vil.econ; if (!e) return;
   const dead = +e._deadTot || 0, kill = +((e.tradeStats && e.tradeStats.tradersKilled) || 0);
   const fd = +e._fdDeadTot || 0, nat = +e._natDeadTot || 0;   // ★[T1303] econ 까닭 누계(굶음 · 늙음)
   const war = +e._warDeadTot || 0;   // ★[T1307] econ 전사 누계
-  if (!vil._bxSeen) { vil._bxSeen = { dead, kill }; _bxWhySeen.set(vil, { fd, nat, war }); _bxWarField.delete(vil); return; }
+  const cap = +e._capOutTot || 0, wild = +e._wildDeadTot || 0;   // ★[T1315] econ 포로 · 야생 누계
+  if (!vil._bxSeen) { vil._bxSeen = { dead, kill }; _bxWhySeen.set(vil, { fd, nat, war, cap, wild }); _bxWarField.delete(vil); _bxCapField.delete(vil); return; }
   let dd = dead - vil._bxSeen.dead;
   const dk = kill - vil._bxSeen.kill;
-  const ws = _bxWhySeen.get(vil) || { fd, nat, war };
+  const ws = _bxWhySeen.get(vil) || { fd, nat, war, cap, wild };
   let ds = Math.max(0, fd - ws.fd), dn = Math.max(0, nat - ws.nat);   // ★[T1303] 그동안 econ 이 굶음 · 늙음으로 뺀 사람
   const dw = Math.max(0, war - (ws.war != null ? ws.war : war));   // ★[T1307] 그동안 econ 이 전쟁으로 뺀 사람
-  _bxWhySeen.set(vil, { fd, nat, war });
+  const dc = Math.max(0, cap - (ws.cap != null ? ws.cap : cap)), dwi = Math.max(0, wild - (ws.wild != null ? ws.wild : wild));   // ★[T1315] 그동안 econ 이 포로 · 야생으로 뺀 사람
+  _bxWhySeen.set(vil, { fd, nat, war, cap, wild });
+  {   // ★[T1315] 포로 — 끌려간 몸 먼저(그 마을 명부에서 이미 빠졌다 · econ 포로 수까지) · 나머지는 빈 줄 자리 몫 · 야생은 전부 빈 줄 자리 몫
+    const gone = _bxCapField.get(vil) || 0, m = Math.min(gone, dc);
+    if (gone > 0) _bxCapField.delete(vil);
+    if (gone > m) _bx.capFieldX += gone - m;
+    const rc = dc - m, o = _bxOtherDue.get(vil) || { captive: 0, wild: 0 };
+    if (rc > 0 || dwi > 0) { o.captive += rc; o.wild += dwi; _bxOtherDue.set(vil, o); _bx.noted += rc + dwi; }
+  }
   {   // ★[T1307] 전사 — 전장 표본 몸 먼저(ⓐ · econ 전사 수까지) · 나머지는 빈 줄 자리의 몫(ⓑ)
     const gone = _bxWarField.get(vil) || 0, m = Math.min(gone, dw);
     if (gone > 0) _bxWarField.delete(vil);
@@ -1743,7 +1761,10 @@ function _t1198Jobs(vil, changedOut) {
 const _t1197Stat = { meals: 0, bodyDied: 0, loneDied: 0 };
 function _bxTake(vil) {   // 까닭 줄 머리에서 한 사람 몫(없으면 전사 몫 `war` · 그것도 없으면 `unknown`)
   const q = vil._bxQ;
-  if (!q || !q.length) { const d = _bxWarDue.get(vil) || 0; if (d > 0) { if (d > 1) _bxWarDue.set(vil, d - 1); else _bxWarDue.delete(vil); return { k: 'war' }; } return { k: 'unknown' }; }   // ★[T1307] 빈 줄 자리 = 종전 `unknown` 그 자리(몸 고르기 · 걸음 같음)
+  if (!q || !q.length) { const d = _bxWarDue.get(vil) || 0; if (d > 0) { if (d > 1) _bxWarDue.set(vil, d - 1); else _bxWarDue.delete(vil); return { k: 'war' }; }
+    const o = _bxOtherDue.get(vil);   // ★[T1315] 포로 → 야생(빈 줄 자리 · 몸 길 같음)
+    if (o) { const k = o.captive > 0 ? 'captive' : (o.wild > 0 ? 'wild' : null); if (k) { o[k]--; if (!(o.captive > 0) && !(o.wild > 0)) _bxOtherDue.delete(vil); return { k }; } _bxOtherDue.delete(vil); }
+    return { k: 'unknown' }; }   // ★[T1307] 빈 줄 자리 = 종전 `unknown` 그 자리(몸 고르기 · 걸음 같음)
   const h = q[0];
   if (--h.n <= 0) q.shift();
   if (h.gid != null) return { k: h.k, to: h.to || null, vil: h.vil || null, gid: h.gid };   // ★[T1078] 켬에서만(끔 = 종전 글자)
@@ -8702,7 +8723,7 @@ function _warEndFight(body, why, winner) {
       if (_t811) _t811.field += _t811Fall(w, p);   // ★[T857] 끌려가는 병사의 무기는 결판 자리에 떨어진다(장부 −같은 몫 · 이긴 쪽이 줍는다)
       p.simCaptive = 1; p._brout = false; _setHp(p, Math.max(1, Math.round((p.maxHp || 100) * 0.4)), 'captive');   // ★[T942] 문으로
       const oldVil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
-      if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) { oldVil.npcPids.splice(kk, 1); if (T822_BODY_SEED) _t822Rekey(oldVil, kk); } }
+      if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) { oldVil.npcPids.splice(kk, 1); if (T822_BODY_SEED) _t822Rekey(oldVil, kk); _bxCapField.set(oldVil, (_bxCapField.get(oldVil) || 0) + 1); } }   // ★[T1315] 끌려간 몸 수(꼬리표는 `_bxObserve` 가 econ 포로 누계와 함께)
       p.simVillageId = winnerVil.dbId; winnerVil.npcPids.push(pid);
       if (T822_BODY_SEED) _t822Rekey(winnerVil, winnerVil.npcPids.length - 1);   // ★[T833] 포로 — 옛 마을은 빠진 자리부터 · 새 마을은 든 자리
       escort.push(pid);
@@ -8717,8 +8738,8 @@ function _warEndFight(body, why, winner) {
     if (state.war && state.war.syncArmsMirror) state.war.syncArmsMirror(w.atk);
   }
   if (_lootActOn()) _warLootPickup(w, winner === 'A' ? atkSurv : defSurv, winner === 'A' ? 'A' : 'B');   // ★[T466] 이긴 쪽 산 몸이 곳간 몫 + 전장 더미를 싣는다(끔이면 안 돈다)
-  for (const pid of deadA) _warDespawnPid(pid);
-  for (const pid of deadB) _warDespawnPid(pid);
+  for (const pid of deadA) _warFallPid(pid);   // ★[T1315] 켬 = 그 자리에 눕는다(끔 = 종전 `_warDespawnPid` 그대로)
+  for (const pid of deadB) _warFallPid(pid);
   if (f && f.engagedOnce) { try { _warBroadcastBattle(body, state._warTickAt || Date.now(), 'resolved'); } catch (_) { } }
   const atkWon = winner === 'A';
   const atkParty = atkWon ? atkSurv.concat(escort) : atkSurv;
@@ -8810,6 +8831,44 @@ function _warDespawnPid(pid) {
   if (p && p.simVillageId != null) { const vil = state.byDbId.get(p.simVillageId); if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) { vil.npcPids.splice(k, 1); if (T822_BODY_SEED) _t822Rekey(vil, k); _bxWarField.set(vil, (_bxWarField.get(vil) || 0) + 1); } } }   // ★[T833] 전사 — 빠진 자리부터 · ★[T1307] 전장에서 거둔 몸 수(꼬리표는 `_bxObserve` 한 자리가 econ 전사 누계와 함께 단다)
   broadcast({ type: 'player_left', pid });
 }
+// ★★[T1315 2026-11-14 · T1307 회부 3 · PM 판단] **전장 몸은 그 자리에 눕는다** — 손잡이 `T1315_WAR_CORPSE`(끔 기본 · `=1` 켬 · 끔 = 위 `_warDespawnPid` 그대로 = 종전 바이트).
+//   종전: 쓰러진 전사 몸은 그 자리에서 사라졌다(`players` · `npcs` 에서 지움 + `player_left`) — 일관성 캐논(T590 "몸은 순간 소멸하지 않는다") 밖.
+//   켬: 몸이 `players` 에 남아 누운 몸이 된다 — `_bxDie` 의 그 줄들(AI 끔 · 이동 문 닫음 · 낙하 문 · hp 0 · 쓰러진 그림 · 누운 몸 기록 · 회수 시계)을 그대로 밟는다.
+//     결속 풀기 · 명부에서 빼기 · 전장에서 거둔 몸 수(`_bxWarField` — 꼬리표 `died.war` 는 종전처럼 `_bxObserve` 한 자리가 econ 전사 누계와 함께 단다)는 `_warDespawnPid` 와 같다.
+//   ★짐 낙하는 한 몸에 **한 번** — 같은 몸이 다시 이 문에 들어와도(다음 교전의 죽은 쪽 등) 두 번째는 아무것도 안 한다(`_t1315Corpse`) ·
+//     낙하 문은 표지 `_t1315Drop` 이 선 몸에 다시 안 부른다. 군량 짐(`_warBagDrop`)과 무기(`_t811Fall`)는 종전처럼 먼저 더미로 갔고 그 뒤 남은 몸 짐만 낙하 문이 고른다.
+//   ★기록 칸 — 누운 몸은 `bodyExits`(누운 몸 수 `lying` · 회수 `rot`)에 들고, 까닭 칸(`died.*`)은 안 센다(전사 꼬리표 정본은 `_bxObserve` — 두 번 세지 않는다).
+const T1315_WAR_CORPSE = process.env.T1315_WAR_CORPSE === '1';
+const _t1315Stat = { lay: 0, drop: 0, dropKg: 0, again: 0, noBody: 0 };
+function _warFallPid(pid) { return T1315_WAR_CORPSE ? _warCorpsePid(pid) : _warDespawnPid(pid); }
+function _t1315Kg(p) { try { const C = require('./carry'); return C.npcTotalKg ? C.npcTotalKg(p) : C.totalKg(p); } catch (e) { return 0; } }
+function _warCorpsePid(pid) {
+  const { players, npcs, broadcast } = state.deps; const p = players.get(pid);
+  if (!p) { _t1315Stat.noBody++; return _warDespawnPid(pid); }   // 몸이 없다(다른 문이 거뒀다) — 종전 문(지울 것도 없다)
+  if (p._t1315Corpse) { _t1315Stat.again++; return; }            // 이미 누운 몸 — 두 번째는 아무것도 안 한다(낙하 두 번 막기)
+  const vil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
+  try { if (vil && state.war && state.war.warDraftReleasePid) state.war.warDraftReleasePid(vil, pid); } catch (_) { }   // `_warDespawnPid` 그 줄 — 결속만 푼다(econ 사망은 war-core 정산 하나)
+  try { require('./home-population').bindWarBody(p, null); } catch (_) { }
+  if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) { vil.npcPids.splice(k, 1); if (T822_BODY_SEED) _t822Rekey(vil, k); _bxWarField.set(vil, (_bxWarField.get(vil) || 0) + 1); } }
+  npcs.delete(pid);
+  _bxQuiet(p);
+  p._muster = false; p._muType = null; p.simWar = false; p._brout = false; p._bcmd = false; p._bt = undefined; p._bside = undefined;
+  p.simCaravan = true;                   // 이동 문 닫음(누운 몸은 안 움직인다 · `_bxDie` 그 줄)
+  if (!p._t1315Drop) {
+    p._t1315Drop = 1;
+    const kg0 = _t1315Kg(p);
+    try { if (state.deps.deathDrop) state.deps.deathDrop(p); } catch (e) {}   // 낙하 — 플레이어 죽음 캐논의 그 문(짐 kg 절반 · 입은 것은 몸에)
+    _t1315Stat.drop++; _t1315Stat.dropKg += Math.max(0, kg0 - _t1315Kg(p));
+  }
+  _setHp(p, 0, 'died');
+  p.isDown = true; p.downedAt = 0; p._bxExit = 'died'; p._t1315Corpse = 1;
+  try { broadcast({ type: 'player_down_state', pid, isDown: true, why: 'down' }); } catch (e) {}
+  const now = Date.now(), ms = Math.max(0, +(state.deps.corpseMs || 0));
+  _bxMap().set(pid, { pid, vid: vil ? vil.dbId : null, k: 'war', cat: 'died', t0: now, until: now + ms,
+    untilDay: T681_ON ? state.world.day + ms / Math.max(1, state.dayMs) : undefined });   // 회수 = `_bxDie` 그 시계(T681 켬 = econ 날)
+  _t1315Stat.lay++;
+}
+function t1315Stat() { return Object.assign({ on: T1315_WAR_CORPSE }, _t1315Stat, { dropKg: +_t1315Stat.dropKg.toFixed(3) }); }
 // 출정 해제 — _muster/simWar 해제 + npcs.add(AI 복귀) + hp 회복. pid 는 npcPids 유지(syncVillagePop 재수렴).
 function _warReleasePid(pid) {
   const { players, npcs } = state.deps; const p = players.get(pid); if (!p) return;
@@ -18982,6 +19041,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   T1128_KCAL_TIDY: _t1128On(), _t1128WithdrawUnits, _t1128HandUnits,   // ★[T1128] 손잡이 · 꺼낸 개수 셈 · 어부 손 값(존 · 하네스가 읽는다)
   playerVillageWithdraw, playerVillageWithdrawStock, villageWithdrawGate,   // ★[T11] 곳간 인출 — 납품의 역연산(같은 표·같은 환산율)
   villageNear: _villageNear,   // ★[T1132] 회관 패널 보기 · 기부 = 마을 화면 · 게시판 · 거래소와 같은 술어 하나(260px · 함수 그대로 — 사본 0)
+  t1315Stat, _warCorpsePid, _warFallPid, T1315_WAR_CORPSE,   // ★[T1315] 전장 몸 누운 몸 — 판 자(`t577-server-hook` 켬 칸) · 하네스가 같은 문을 부른다
   bodyExitStats, noteBodyExit, tickBodyExits,   // ★[T590] 줄어드는 몸 — 판 자(`t577-server-hook`)가 까닭별 수를 읽는다 · 하네스가 같은 문을 부른다
   t1197BodyStep, __t1197: { person: _t1197Person, meal: _t1197BodyMeal, dieBody: _t1197DieBody, stat: _t1197Stat, on: _t1197On },
   __t1198: { sync: _t1198Sync, jobs: _t1198Jobs, stat: _t1198Stat, on: _t1198On },   // ★[T1198] 명부 ↔ 몸 1:1 — 판 자가 셈을 읽는다   // ★[T1197] 몸 게이지 — 존 `_gaugeStep` 이 흘림을 부른다 · 하네스가 같은 문을 부른다

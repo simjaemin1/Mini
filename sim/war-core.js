@@ -387,6 +387,7 @@ function warCapture(loserVil, winnerVil, loserDead, winnerSurv, J, day, roster, 
       const j = le.npcs.indexOf(npc); if (j < 0) return false;
       le.npcs.splice(j, 1); if (le.counts && npc.currentJob) le.counts[npc.currentJob] = Math.max(0, (le.counts[npc.currentJob] || 0) - 1);
       npc.captive = { home: (loserVil.name || '?'), since: day };
+      le._capOutTot = (le._capOutTot || 0) + 1;   // ★[T1315] 포로로 빠진 사람 누계(마을마다 · `_warDeadTot` 과 같은 꼴) — 읽는 이는 서버 몸 꼬리표(`villages.js _bxObserve`) 하나 · 세계 무변
       if (npc.currentJob === 'warrior' || npc.currentJob === 'hunter') {   // 무기 직 박탈 — 승자 땅에 맞는 식량직
         const wl = we.land || {}; const opts2 = [['farmer', (wl.fertility || 0) * 1.5], ['fisher', (wl.water || 0) * 1.2], ['forager', 0.3]];
         opts2.sort((a, b) => b[1] - a[1]); npc.currentJob = opts2[0][0]; npc.lastJobChangeDay = day;
@@ -413,6 +414,7 @@ function _capComplete(fromVil, toVil, npc) {
   const ni = fe.npcs.indexOf(npc); if (ni < 0) return false;
   if (fe.npcs.length <= 1) return false;   // 억류 마을 최후 1인 보존
   fe.npcs.splice(ni, 1); if (fe.counts && npc.currentJob) fe.counts[npc.currentJob] = Math.max(0, (fe.counts[npc.currentJob] || 0) - 1);
+  fe._capOutTot = (fe._capOutTot || 0) + 1;   // ★[T1315] 억류 마을에서 귀향으로 빠진 포로도 같은 칸(그 마을에서 포로로 빠진 사람 — 서버 몸 꼬리표 `captive`)
   te.npcs.push(npc); if (te.counts) te.counts[npc.currentJob] = (te.counts[npc.currentJob] || 0) + 1;
   delete npc.captive;
   return true;

@@ -72,6 +72,7 @@ function finish(world, L, day) {
   let B = null; try { B = require(path.join(ROOT, 'server', 'bandits')).stats(); } catch (e) { B = null; }
   // ★[T590] 줄어든 몸 — 까닭별(그 자리 죽음 · 걸어 나감 · 그 밖) · 누운 몸 · 걷는 몸 · 순간 소멸(읽기만 · 몸 층 계수기)
   let BX = null; try { const V = require(path.join(ROOT, 'server', 'villages')); BX = V.bodyExitStats ? V.bodyExitStats() : null; } catch (e) { BX = null; }
+  let T1315 = null; try { const V = require(path.join(ROOT, 'server', 'villages')); T1315 = (V.t1315Stat && V.T1315_WAR_CORPSE) ? V.t1315Stat() : null; } catch (e) { T1315 = null; }   // ★[T1315] 켬 판만 — 누운 전장 몸 · 낙하 수 · kg(끔 = 칸 없음 = 종전 판 JSON)
   const out = {
     seed: SEED || null, days: day, villages: V.length,
     env: { T315_MAPBEDS: process.env.T315_MAPBEDS || null, T627_TRIP_DAY: process.env.T627_TRIP_DAY || null,   // ★[T914] 판 자가 집 행위 켬 판에 주는 두 기본값이 판 JSON 에 남는다
@@ -87,6 +88,7 @@ function finish(world, L, day) {
     tradersKilled: V.reduce((a, v) => a + ((v.tradeStats && v.tradeStats.tradersKilled) || 0), 0),
     bandit: B ? { conv: B.conv, exo: B.exo, starve: B.starve, disband: B.disband, denForm: B.denForm, loot: B.loot, peak: B.peak } : null,
     bodyExit: BX,
+    ...(T1315 ? { warCorpse: T1315 } : {}),
     names, bdtDay, emptyDay,
     seedPop: rows.length ? rows[0][1] : null,
     diag365,
