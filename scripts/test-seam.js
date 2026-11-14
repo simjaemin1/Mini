@@ -128,5 +128,64 @@ for (let i = 0; i < 3000; i++) {
 }
 TH.seam = kh; TN.seam = kn;
 ok(sameOff < pairsOff, '★자명 통과 금지 — 참조를 비우면(T408 전) 선 양쪽 답이 **갈린다**', `같음 ${sameOff}/${pairsOff}`);
+
+// ── ⑤ [T1296 2026-11-13 · 재민 "연결통로가 원모양인 게 어색하다"] 이음매 고개 둘(쇠재 · 한재)은 **골짜기**(선형 통로)다
+//   11차 캐논: 골짜기 = 산맥을 가로지르는 path + width · 반지름 50셀짜리 원처럼 산을 통째로 지우지 않는다. 닛폰 고개 둘만 옛 원(r 1,850)으로 남아
+//   한반도 동쪽 끝 산맥 띠를 이음매(T408)로 지름 114칸 뚫었다. ⑤a 원 고개 0 · ⑤b 두 이름 = 닛폰 골짜기(폭 = 한반도 짝 골짜기 폭) ·
+//   ⑤c 이음매 열(선 ±16px 두 칸)에서 그 골짜기가 연 틈 = 폭/32 + 2칸 이하(원이면 114) · ⑤d 산 띠를 **실제로** 꿰뚫는다(골짜기 둘레 창 안 4방 BFS · 서 → 동).
+const SEAMX = HB.zoneWidth;   // 한반도 로컬 x = 닛폰 로컬 0
+const openW = (wx, wy) => {   // 세계 px → 주인 존 술어(물 · 바위 아님)
+  const zid = wx < NP.worldOffsetX ? 'hanbando' : 'nippon', Z = ZONES[zid], lx = wx - Z.worldOffsetX, ly = wy - Z.worldOffsetY;
+  return !S.isWaterCellLocal(zid, lx, ly) && !S.isRockCellLocal(zid, lx, ly);
+};
+const _gap = (wyCross) => {   // 이음매 열에서 wyCross 를 품은 열린 칸 줄의 길이(칸) — 두 칸(선 ±16) 다 열려야 열림
+  const ok2 = (wy) => openW(NP.worldOffsetX - 16, wy) && openW(NP.worldOffsetX + 16, wy);
+  const c0 = Math.floor(wyCross / 32) * 32 + 16; if (!ok2(c0)) return 0;
+  let n = 1; for (let y = c0 - 32; ok2(y) && n < 400; y -= 32) n++; for (let y = c0 + 32; ok2(y) && n < 400; y += 32) n++; return n;
+};
+const _through = (v) => {   // 골짜기 둘레 창(이음매 ±2,400 · 골짜기 y 범위 ±600) 안에서 서쪽 끝 열 → 동쪽 끝 열 4방 BFS
+  const ys = v.path.map((p) => p.pos[1] + NP.worldOffsetY), x0 = NP.worldOffsetX - 2400, x1 = NP.worldOffsetX + 2400;
+  const y0 = Math.min(...ys) - 600, y1 = Math.max(...ys) + 600, NX = Math.ceil((x1 - x0) / 32), NY = Math.ceil((y1 - y0) / 32);
+  const op = new Uint8Array(NX * NY); for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) op[j * NX + i] = openW(x0 + i * 32 + 16, y0 + j * 32 + 16) ? 1 : 0;
+  const seen = new Uint8Array(NX * NY), q = []; for (let j = 0; j < NY; j++) if (op[j * NX]) { seen[j * NX] = 1; q.push(j * NX); }
+  for (let h = 0; h < q.length; h++) { const c = q[h], i = c % NX, j = (c - i) / NX; if (i === NX - 1) return true;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= NX || b >= NY) continue; const k = b * NX + a; if (op[k] && !seen[k]) { seen[k] = 1; q.push(k); } } }
+  return false;
+};
+const _seamY = (v) => {   // 골짜기 중심선이 이음매(닛폰 x = 0)를 지나는 세계 y — 선 위 점이 없으면 가장 가까운 점
+  const P = v.path.map((p) => p.pos); for (let i = 0; i + 1 < P.length; i++) { const [ax, ay] = P[i], [bx, by] = P[i + 1];
+    if ((ax <= 0 && bx >= 0) || (bx <= 0 && ax >= 0)) { const t = ax === bx ? 0 : (0 - ax) / (bx - ax); return ay + (by - ay) * t + NP.worldOffsetY; } }
+  const n = P.slice().sort((a, b) => Math.abs(a[0]) - Math.abs(b[0]))[0]; return n[1] + NP.worldOffsetY;
+};
+{
+  const withPass = Object.keys(J).filter((z) => (J[z].passes || []).length);
+  ok(withPass.length === 0, '⑤a [T1296] 원 고개 0 — 그려진 존 어디에도 `passes` 가 없다(11차: 뚫린 곳 = 골짜기뿐)', withPass.map((z) => `${z} ${J[z].passes.map((q) => q.name).join('·')}`).join(' '));
+  const hbW = new Set(); for (const v of J.hanbando.valleys || []) for (const p of v.path) hbW.add(p.width);
+  const rows5 = [];
+  for (const nm of ['쇠재', '한재']) {
+    const v = (J.nippon.valleys || []).find((x) => x.name === nm);
+    ok(!!v && v.path.length > 1 && v.path.every((p) => hbW.has(p.width)), `⑤b [T1296] ${nm} = 닛폰 골짜기(path · 폭은 한반도 골짜기 폭 안 — ${[...hbW].join('·')})`, v ? `점 ${v.path.length} · 폭 ${[...new Set(v.path.map((p) => p.width))].join('·')}` : '없음');
+    if (!v) continue;
+    const wy = _seamY(v), g = _gap(wy), lim = Math.ceil(Math.max(...v.path.map((p) => p.width)) / 32) + 2;
+    ok(g > 0 && g <= lim, `⑤c [T1296] ${nm} — 이음매 열에서 연 틈 ${g}칸 ≤ 폭 칸 + 2(${lim}) · 원이 아니다`, `선 y ${Math.round(wy - HB.worldOffsetY)}(한반도 로컬)`);
+    const th = _through(v);
+    ok(th, `⑤d [T1296] ${nm} — 산 띠를 걸어서 꿰뚫는다(골짜기 둘레 창 서 → 동 4방 BFS)`, '');
+    // ⑤e 클라 거울(`public/terrain.js` — 큰 지도 · 셀 그림은 서버 술어로 굽고 걸음 예측은 거울이 한다)이 그 창 **모든 칸**에서 서버와 같은 답(물 · 바위)
+    { const ys = v.path.map((p) => p.pos[1] + NP.worldOffsetY); let nC = 0, dC = 0;
+      for (let wy = Math.min(...ys) - 600; wy <= Math.max(...ys) + 600; wy += 32) for (let wx = NP.worldOffsetX - 2400; wx <= NP.worldOffsetX + 2400; wx += 32) {
+        const zid = wx < NP.worldOffsetX ? 'hanbando' : 'nippon', Z = ZONES[zid], lx = wx - Z.worldOffsetX + 16, ly = wy - Z.worldOffsetY + 16;
+        nC++; if (S.isRockCellLocal(zid, lx, ly) !== C.isRockCellLocal(zid, lx, ly) || S.isWaterCellLocal(zid, lx, ly) !== C.isWaterCellLocal(zid, lx, ly)) dC++; }
+      ok(nC > 1000 && dC === 0, `⑤e [T1296] ${nm} — 골짜기 둘레 창 칸마다 클라 거울 = 서버(물 · 바위)`, `${nC.toLocaleString()}칸 · 다름 ${dC}`); }
+    rows5.push({ nm, wy, lim });
+  }
+  // ★자명 통과 금지 — 옛 원 고개(r 1,850 · 닛폰 x −216)를 되살리면 ⑤c 가 빨개진다(사본: 술어가 읽는 그 배열에 넣었다 뺀다)
+  const TN5 = S.ZONE_TERRAIN.nippon, TH5 = S.ZONE_TERRAIN.hanbando, bait = [];
+  for (const r of rows5) bait.push({ name: r.nm + '(미끼)', pos: [-216, Math.round(r.wy - NP.worldOffsetY)], radius: 1850 });
+  const p0 = (TN5.passes || []).slice(), s0 = TH5.seam.passes.slice();
+  TN5.passes = p0.concat(bait); TH5.seam.passes = s0.concat(bait.map((f) => ({ f, dx: HB.worldOffsetX - NP.worldOffsetX, dy: HB.worldOffsetY - NP.worldOffsetY, from: 'nippon' })));
+  const gb = rows5.map((r) => _gap(r.wy));
+  TN5.passes = p0; TH5.seam.passes = s0;
+  ok(rows5.length === 2 && rows5.every((r, i) => gb[i] > r.lim), '⑤★자명 통과 금지 — 옛 원 고개를 되살리면 이음매 틈이 폭 칸을 넘는다(⑤c 빨강)', `미끼 틈 ${gb.join(' · ')}칸`);
+}
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
