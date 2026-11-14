@@ -570,6 +570,7 @@ function _warRemoveNpc(e, npc) {
   _t1134Ev(e, 1 / e.npcs.length);   // ★[T1134] 전사 · 포로 한 사람 = 1/N(빠지기 전 인구)
   e.npcs.splice(j, 1);
   if (_t1206On()) e._t1206Due = (e._t1206Due || 0) + 1;   // ★[T1206 ③] 전사도 부장 — 다음 날 경계가 econ 의 같은 문(`t1206Bury`)으로 묻는다
+  e._warDeadTot = (e._warDeadTot || 0) + 1;   // ★[T1307] 전사 누계(마을마다 · `_fdDeadTot` · `_natDeadTot` 과 같은 꼴의 까닭 칸) — 서버 몸 꼬리표(`villages.js _bxObserve`)가 증분을 읽는다 · 읽는 이는 그 하나 · 세계 무변
   if (e.counts && npc.currentJob && !npc._warDraft) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1);
   if (npc._warDraft) { delete npc._warDraft; if (npc._warPid != null) delete npc._warPid; }   // 비워 둔 자리는 안 돌려준다(전사)
   return true;

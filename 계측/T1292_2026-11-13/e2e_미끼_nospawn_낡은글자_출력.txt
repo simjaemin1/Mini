@@ -1,0 +1,14 @@
+
+=== 캐러밴이 존을 넘는다 — 두 존 e2e (T533) ===
+  ✓ ⓔ0 central 기동  154ms
+  ✗ ⓔ hanbando 존 기동(마을 시딩 포함)  ★hanbando 이 뜨지도 못하고 죽었다 — 종료코드 1 · 마지막 출력: claude/mini/server/zone.js:30:21)     at Module.<anonymous> (node:internal/modules/cjs/loader:1781:14)     at Module._compile (/home/claude/mini/scripts/fixture-xz-bodylog.js:49:21)  Node.js v22.23.4 
+  ✗ ⓔ nippon 존 기동(마을 시딩 포함)  ★nippon 이 뜨지도 못하고 죽었다 — 종료코드 1 · 마지막 출력: at Module.require (node:internal/modules/cjs/loader:1527:12)     at require (node:internal/modules/helpers:147:16)     at Object.<anonymous> (/home/claude/mini/server/zone.js:30:21)  Node.js v22.23.4 
+
+[ⓑ 문 — `/handoff_prepare` 의 `kind` (새 라우트 0)]
+  ✗ ⓑ1 ★`kind` 없음 = 종전 사람 문 그대로(토큰 없으면 400 no token)  0 fetch failed
+  ✗ ⓑ2 `kind:'player'` 도 종전 사람 문  0 fetch failed
+  ✗ ⓑ3 `kind:'army'` = 칸만 예약(받지 않는다 · 셋째 카드)  fetch failed
+  ✗ ⓑ4 모르는 종류 = 400  0
+  ✗ ⓑ5 이웃 아닌 존의 `snap` 은 안 받는다  fetch failed
+
+[ⓐ 호스트 — 이웃 · 합친 걸음표(워커 · 백그라운드)]

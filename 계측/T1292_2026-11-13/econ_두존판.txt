@@ -1,0 +1,36 @@
+## econ 두 존 판(리베이스 뒤 · scripts/t525-cross-zone.js two hanbando nippon 120 <씨>) — 끔 팔 자기검사 + 켬 두 시드
+
+### 끔 팔 1020
+
+=== T525 두 존 판 — hanbando+nippon · 씨 1020 · 120일 · 팔 끔 · 거리 walk · 231s ===
+  경계 마을 hanbando 31 · nippon 20
+  캐러밴 넘음 hanbando→nippon 0 · nippon→hanbando 0 · 돌아옴 0 · 0
+  경계 교역 성사(도착 존이 판 것) hanbando→nippon 0 · nippon→hanbando 0
+  hanbando   인구 2032 · 소멸 0/51 · 무기Q 65 · 확장 0 · 게시 612 · 도구Q 1864.3 · 보존식 0 · 생곡 8083.9
+  nippon     인구 1115 · 소멸 0/36 · 무기Q 22 · 확장 0 · 게시 475 · 도구Q 1362.1 · 보존식 0 · 생곡 5445.6
+
+### 존마다 t17 단독(T17_ZONE=<존> node scripts/t17-metrics.js 120 1020) ↔ 끔 팔 존 JSON
+77841cc7c665e9d19e8842c7f3a0d6f0  two/hanbando+nippon-1020-off-walk.hanbando.json
+77841cc7c665e9d19e8842c7f3a0d6f0  t17_hanbando_120_1020.json
+aa0c8e84bbba0410ca82523ce59893bb  two/hanbando+nippon-1020-off-walk.nippon.json
+aa0c8e84bbba0410ca82523ce59893bb  t17_nippon_120_1020.json
+CMP hanbando SAME
+CMP nippon SAME
+
+### 켬 1020
+
+=== T525 두 존 판 — hanbando+nippon · 씨 1020 · 120일 · 팔 **켬** · 거리 walk · 185s ===
+  경계 마을 hanbando 31 · nippon 20
+  캐러밴 넘음 hanbando→nippon 361 · nippon→hanbando 261 · 돌아옴 356 · 254
+  경계 교역 성사(도착 존이 판 것) hanbando→nippon 317 · nippon→hanbando 229
+  hanbando   인구 2141 · 소멸 0/51 · 무기Q 73 · 확장 0 · 게시 680 · 도구Q 1952.2 · 보존식 0 · 생곡 8066.4
+  nippon     인구 1079 · 소멸 0/36 · 무기Q 21 · 확장 0 · 게시 398 · 도구Q 1245.2 · 보존식 0 · 생곡 5593.9
+
+### 켬 7
+
+=== T525 두 존 판 — hanbando+nippon · 씨 7 · 120일 · 팔 **켬** · 거리 walk · 157s ===
+  경계 마을 hanbando 31 · nippon 20
+  캐러밴 넘음 hanbando→nippon 358 · nippon→hanbando 276 · 돌아옴 349 · 275
+  경계 교역 성사(도착 존이 판 것) hanbando→nippon 314 · nippon→hanbando 252
+  hanbando   인구 1846 · 소멸 0/51 · 무기Q 60 · 확장 0 · 게시 632 · 도구Q 1895.4 · 보존식 0 · 생곡 8527.5
+  nippon     인구 1037 · 소멸 0/36 · 무기Q 20 · 확장 0 · 게시 540 · 도구Q 1267 · 보존식 0 · 생곡 6048.7

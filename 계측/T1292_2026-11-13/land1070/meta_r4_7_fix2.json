@@ -1,0 +1,19 @@
+{
+ "tag": "r4_7_fix2",
+ "seed": 7,
+ "arm": "on",
+ "DAY_MS": 3000,
+ "DAYS": 120,
+ "start": "2026-11-13T02:42:27.665Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "end": "2026-11-13T02:55:34.273Z",
+ "wallS": 787,
+ "days": {
+  "hanbando": 120,
+  "nippon": 144
+ },
+ "done": true
+}

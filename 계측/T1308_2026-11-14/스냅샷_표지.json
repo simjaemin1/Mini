@@ -1,0 +1,90 @@
+{
+ "files": [
+  {
+   "file": "world-hanbando.db",
+   "size": 106016768,
+   "rows": [
+    {
+     "zone": "hanbando",
+     "metaDay": 676,
+     "updatedAt": "2026-11-03T15:09:11.972Z",
+     "bodies": 55,
+     "marked": {
+      "e": 0,
+      "w": 0
+     },
+     "unmarked": 55,
+     "unmarkedOldOn": 0,
+     "unmarkedWall": 55,
+     "unmarkedT1182": 0,
+     "fieldsEcon": {
+      "lg": 0,
+      "da": 0,
+      "aa": 0,
+      "t0": 0
+     },
+     "fieldsWall": {
+      "lg": 24,
+      "da": 55,
+      "aa": 55,
+      "t0": 33
+     },
+     "ruleSplit": 0,
+     "err": null,
+     "anchor": {
+      "day": 676,
+      "dayMs": 1440000,
+      "at": "2026-11-03T15:09:11.964Z"
+     }
+    }
+   ],
+   "err": null
+  },
+  {
+   "file": "world-nippon.db",
+   "size": 115314688,
+   "rows": [
+    {
+     "zone": "nippon",
+     "metaDay": 1224,
+     "updatedAt": "2026-11-12T17:57:05.893Z",
+     "bodies": 54,
+     "marked": {
+      "e": 0,
+      "w": 0
+     },
+     "unmarked": 54,
+     "unmarkedOldOn": 0,
+     "unmarkedWall": 54,
+     "unmarkedT1182": 54,
+     "fieldsEcon": {
+      "lg": 0,
+      "da": 0,
+      "aa": 0,
+      "t0": 0
+     },
+     "fieldsWall": {
+      "lg": 31,
+      "da": 54,
+      "aa": 54,
+      "t0": 23
+     },
+     "ruleSplit": 0,
+     "err": null,
+     "anchor": {
+      "day": 1224,
+      "dayMs": 1440000,
+      "at": "2026-11-12T17:57:05.806Z"
+     }
+    }
+   ],
+   "err": null
+  }
+ ],
+ "total": {
+  "bodies": 109,
+  "unmarked": 109,
+  "oldOn": 0,
+  "split": 0
+ }
+}

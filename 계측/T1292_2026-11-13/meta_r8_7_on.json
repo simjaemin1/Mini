@@ -1,0 +1,19 @@
+{
+ "tag": "r8_7_on",
+ "seed": 7,
+ "arm": "on",
+ "DAY_MS": 3000,
+ "DAYS": 120,
+ "start": "2026-11-13T15:25:16.988Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "end": "2026-11-13T15:36:47.529Z",
+ "wallS": 691,
+ "days": {
+  "hanbando": 121,
+  "nippon": 135
+ },
+ "done": true
+}
