@@ -1,0 +1,26 @@
+
+=== T1292 — 넘기는 캐러밴 몸은 보내기 직전에 숨는다(손잡이 `T1292_XZ_HIDE`) ===
+  ✓ ⓪ 손잡이 한 줄 — `!== '0'`(켬 기본 · 되돌림 `=0`)
+  ✓ ⓪ `handingOff` 몸은 다른 사람 화면에 안 실리고(`visiblePlayers`) · 맹수 표적에서 빠진다(wildlife) — 숨김의 뜻
+  ✓ ⓪ 미끼 자리 셋이 소스에 꼭 한 번씩
+
+① 켬(기본)
+  ✓ ① [전제] 손잡이 켬 · 넘기는 몸 = 상인 하나 + 호위 둘 · 보내기 전엔 셋 다 보인다
+  ✓ ★① 보내는 순간(받는 존이 세우기 전) 상인 · 호위 셋 다 숨는다(`handingOff`) · 표 줄 `hide`  sent: 보임 0/3 · 숨김 → answer: 보임 0/0 · 표 밖 · 숨김 · 줄 hide,out
+  ✓ ★ⓐ 답 OK → 몸 표 · 사람 표에서 빠진다 · 드러냄 0  sent: 보임 0/3 · 숨김 → answer: 보임 0/0 · 표 밖 · 숨김 · 줄 hide,out
+  ✓ ★ⓑ 답 없음(시한) → 숨긴 채 다음 경계까지 · 되돌림 0 · 그 사이 드러냄 0  sent: 보임 0/3 · 숨김 → answer: 보임 0/3 · 숨김 → resent: 보임 0/3 · 숨김 → answer2: 보임 0/0 · 표 밖 · 숨김 · 줄 hide,out
+  ✓ ⓑ 다음 경계에 다시 밀어 `dup` OK → 빠진다(한 번만 셌다)  sent: 보임 0/3 · 숨김 → answer: 보임 0/3 · 숨김 → resent: 보임 0/3 · 숨김 → answer2: 보임 0/0 · 표 밖 · 숨김 · 줄 hide,out
+  ✓ ★ⓒ 연결 안 섬(ECONNREFUSED — 닿지 않은 것이 확실) → 드러낸다 · 종전 글자 그대로(첫 번은 보인 채 한 번 다시 밂 · 둘째에 econ 되돌림 — 짐 그대로 빈손 귀환)  sent: 보임 0/3 · 숨김 → answer: 보임 3/3 → resent: 보임 0/3 · 숨김 → answer2: 보임 3/3 · 줄 hide,unhide,hide,unhide,bounce · econ inbound 귀환 짐 5
+  ✓ ⓔ 오류 코드(HTTP 404 — 안 문 거절 · 두 호스트 비밀 어긋남 꼴) → 드러낸다 · 종전 글자 그대로(첫 번은 보인 채 한 번 다시 밂 · 둘째에 econ 되돌림 — 짐 그대로 빈손 귀환)  sent: 보임 0/3 · 숨김 → answer: 보임 3/3 → resent: 보임 0/3 · 숨김 → answer2: 보임 3/3 · 줄 hide,unhide,hide,unhide,bounce · econ inbound 귀환 짐 5
+  ✓ ⓓ 받는 존이 "안 받는다"(geo) → 드러낸다 · 되돌림  sent: 보임 0/3 · 숨김 → answer: 보임 3/3 · 줄 hide,unhide,bounce
+
+② 끔(`T1292_XZ_HIDE=0` = 종전 글자)
+  ✓ ★② 종전 — 보내는 동안 상인 · 호위가 보인다(받는 존이 세운 동안 두 존 동시) · OK 뒤 빠진다  sent: 보임 3/3 → answer: 보임 0/0 · 표 밖 · 줄 out
+  ✓ ② 종전 — 답 없음에도 보인 채 한 번 다시 민다  sent: 보임 3/3 → answer: 보임 3/3 → resent: 보임 3/3 → answer2: 보임 0/0 · 표 밖 · 줄 out
+
+③ 미끼(아이 안 사본 · 파일 무변)
+  ✓ ③ 미끼 nohide → 빨강 — 숨김을 뺀 사본 → ① 보내는 순간 보인다  sent: 보임 3/3 → answer: 보임 0/0 · 표 밖 · 줄 out
+  ✓ ③ 미끼 nokeep → 빨강 — 답 없음에 숨긴 채 다시 밀기를 뺀 사본 → ⓑ 답 없음에 드러난다  sent: 보임 0/3 · 숨김 → answer: 보임 3/3 → resent: 보임 0/3 · 숨김 → answer2: 보임 0/0 · 표 밖 · 숨김 · 줄 hide,unhide,hide,out
+  ✓ ③ 미끼 nosure → 빨강 — 확실한 실패 가름을 뺀 사본 → ⓒ 숨은 채 다시 민다(드러나지 않는다)  sent: 보임 0/3 · 숨김 → answer: 보임 0/3 · 숨김 → resent: 보임 0/3 · 숨김 → answer2: 보임 0/3 · 숨김 · 줄 hide
+
+=== PASS 16 / FAIL 0 ===

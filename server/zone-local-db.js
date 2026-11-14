@@ -797,6 +797,33 @@ function deleteVillageCell(villageId, type, cx, cy) {
   if (!_t1238DelCell) _t1238DelCell = db.prepare('DELETE FROM village_buildings WHERE village_id = ? AND type = ? AND cx = ? AND cy = ?');
   return _t1238DelCell.run(villageId | 0, String(type), cx | 0, cy | 0).changes;
 }
+// ★★[T1321 2026-11-14] 짐승 넘김 표 둘 — **처음 부를 때** 세운다(손잡이 `T1321_XZ_BEAST` 켬에서만 불린다 · 끔 = 표 0 · 문장 0 · main 바이트 · T1238 꼴).
+//   `t1321_pend` — 보내는 존: 숨긴 채 답을 기다리는 짐승(열쇠 · DB 몹 행 id · 받는 존 · 실은 글) — 다시 떠도 숨김이 이어진다
+//   `t1321_seen` — 받는 존: 받은 열쇠(같은 열쇠를 두 번 받으면 `dup` — 세우지 않는다) · 다시 떠도 남는다 · 오래된 것부터 5,000 넘게는 버린다(캐러밴 `X.seenQ` 상한)
+//   `t1321Tx` — 몹 행 넣기 · 지우기와 위 두 표를 한 거래로(SAVEPOINT — 바깥 거래가 열려 있어도 안전)
+let _t1321Ready = false, _t1321PendUp = null, _t1321PendDel = null, _t1321SeenGet = null, _t1321SeenUp = null, _t1321SeenCut = null;
+function _t1321Tables() {
+  if (_t1321Ready) return;
+  db.exec('CREATE TABLE IF NOT EXISTS t1321_pend (key TEXT PRIMARY KEY, mob INTEGER, peer TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL)');
+  db.exec('CREATE TABLE IF NOT EXISTS t1321_seen (n INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL UNIQUE, at INTEGER NOT NULL)');
+  _t1321PendUp = db.prepare('INSERT INTO t1321_pend (key, mob, peer, data, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET mob = excluded.mob, peer = excluded.peer, data = excluded.data, at = excluded.at');
+  _t1321PendDel = db.prepare('DELETE FROM t1321_pend WHERE key = ?');
+  _t1321SeenGet = db.prepare('SELECT 1 AS y FROM t1321_seen WHERE key = ?');
+  _t1321SeenUp = db.prepare('INSERT OR IGNORE INTO t1321_seen (key, at) VALUES (?, ?)');
+  _t1321SeenCut = db.prepare('DELETE FROM t1321_seen WHERE n <= (SELECT MAX(n) FROM t1321_seen) - 5000');
+  _t1321Ready = true;
+}
+function t1321PendPut(key, mob, peer, dataJson) { _t1321Tables(); _t1321PendUp.run(String(key), mob == null ? null : (mob | 0), String(peer), String(dataJson), Date.now()); }
+function t1321PendDel(key) { _t1321Tables(); return _t1321PendDel.run(String(key)).changes; }
+function t1321PendAll() { _t1321Tables(); return db.prepare('SELECT key, mob, peer AS "to", data FROM t1321_pend ORDER BY at').all(); }
+function t1321SeenHas(key) { _t1321Tables(); return !!_t1321SeenGet.get(String(key)); }
+function t1321SeenPut(key) { _t1321Tables(); _t1321SeenUp.run(String(key), Date.now()); _t1321SeenCut.run(); }
+function t1321Tx(fn) {
+  _t1321Tables();
+  db.exec('SAVEPOINT t1321');
+  try { const r = fn(); db.exec('RELEASE t1321'); return r; }
+  catch (e) { try { db.exec('ROLLBACK TO t1321'); db.exec('RELEASE t1321'); } catch (x) {} throw e; }
+}
 function getVillageFarthest(villageId, ccx, ccy) { return stmtVbFar.all(villageId, ccx, ccx, ccy, ccy, ccx, ccx, ccy, ccy, villageId); }   // [T1176] 순번 인자 — 질의 속 `?` 순서대로
 function getVillageFarmInCellRect(cx0, cx1, cy0, cy1) { return stmtGetVillageFarmInCellRect.all(cx0, cx1, cy0, cy1); }
 
@@ -820,6 +847,7 @@ module.exports = {
   getVillageFarmInCellRect, getVillageStructRows,
   eachVillageCell, getVillageStructAll, getVillageFarthest, getTerrContestOwners,   // ★[T538] 경계 있는 부팅 로드
   t1238SaveDay, t1238Load, deleteVillageCell,   // ★[T1238] 영토 v2 — 쓰는 날 · 땅에 남은 일 · 묵혀 빠진 칸(켬에서만 불린다 · 표는 처음 부를 때)
+  t1321PendPut, t1321PendDel, t1321PendAll, t1321SeenHas, t1321SeenPut, t1321Tx,   // ★[T1321] 짐승 넘김 — 숨김 줄 · 받은 열쇠 · 한 거래(켬에서만 불린다 · 표는 처음 부를 때)
   // [2026-08-25 사건 레이어] 사건 장부·게시판 (events.js / villages.js)
   insertVillageEvent, getVillageEventsSince, pruneVillageEvents,
   insertVillageChronicle, getVillageChronicle, countVillageChronicle,   // ★[T18] 연대기(prune 없음)

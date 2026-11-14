@@ -1,0 +1,11 @@
+
+=== 끈 판의 안전망 — econ `_t1321Hold` (T1321 ④) ===
+  ✓ ① 켬 · 팔 끔 — 돌아갈 날 이웃 존 캐러밴: 예외 0 · 미룸(이틀 · 끝나지 않음 · 짐 그대로)  {"a":{"done":false,"state":"inbound"},"b":{"done":false,"state":"inbound"},"after":{"done":false,"handed":false,"out":[]},"xzOn":false}
+  ✓ ①2 켬 · 팔 끔 — 호스트를 꽂아도 팔이 꺼져 있으면 그대로 미룸(econ 은 팔을 본다)  {"done":false,"handed":false,"out":[]}
+  ✓ ② 켬 · 팔 끔 — 도착 날 이웃 존 캐러밴: 예외 0 · 미룸(도착 안 함)  {"done":false,"state":"outbound","trades":0}
+  ✓ ③ 끔(증인) — 같은 판이 종전대로 TypeError(`world.xzone.zone`) — 안전망이 자명하지 않다  {"err":"Cannot read properties of undefined (reading 'zone')"}
+  ✓ ④ 켬 + 팔 켬 · 호스트 전(걸음표 아직 — 다시 뜬 직후) — 예외 0 · 미룸  {"a":{"done":false,"state":"inbound"},"b":{"done":false,"state":"inbound"}}
+  ✓ ④2 켬 + 팔 켬 · 호스트가 서면 그날부터 종전 그대로 — 'return' 하나(돌려보낸 짐 그대로 · 생성 0 · 소멸 0)  {"done":true,"handed":true,"out":[{"kind":"return","id":5,"toZone":"nippon","res":"rice","amt":3}]}
+  ✓ ④3 끔 + 팔 켬 · 호스트 전(증인) — 종전 TypeError(다시 뜬 직후 창에도 결함이 있었다)  {"err":"Cannot read properties of undefined (reading 'zone')"}
+
+=== 7/7 통과 ===

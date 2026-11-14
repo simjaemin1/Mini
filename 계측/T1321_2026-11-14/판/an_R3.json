@@ -1,0 +1,74 @@
+{
+ "tag": "R3",
+ "meta": {
+  "seed": 42,
+  "days": {
+   "hanbando": 61,
+   "nippon": 110
+  },
+  "Y": 17840,
+  "botCross": 35,
+  "restart": {
+   "z": "hanbando",
+   "at": 1794677686323,
+   "day": 34,
+   "up": true,
+   "done": true,
+   "hidden": {
+    "beast": {
+     "key": "hanbando:mwgodu4t:64",
+     "to": "nippon",
+     "tries": 1,
+     "unsure": true,
+     "type": "horse",
+     "src": 509,
+     "tame": true
+    },
+    "caravan": null
+   },
+   "upS": 16
+  },
+  "wallS": 770
+ },
+ "beasts": {
+  "keys": 126,
+  "crossed": 105,
+  "by": {
+   "wild": 41,
+   "tame": 64
+  },
+  "byType": {
+   "horse": 64,
+   "deer": 22,
+   "ibex": 12,
+   "wild_boar": 7
+  },
+  "dir": {
+   "hanbando→nippon": 51,
+   "nippon→hanbando": 51,
+   "?→nippon": 3
+  },
+  "dupAnswered": 3,
+  "dupIn": 3,
+  "unhide": 20,
+  "unhideWhy": {
+   "fauna": 17,
+   "connect ECONNREFUSED 127.0.0.1:3020": 3
+  },
+  "keepN": 0,
+  "bootHide": 3
+ },
+ "canon": {
+  "twoIn": 0,
+  "inAndUnhide": 0,
+  "outNoIn": 1,
+  "hung": 0
+ },
+ "sum": {
+  "pairs": 141,
+  "base": 930,
+  "mismatch": 0,
+  "worst": 0,
+  "skippedNearEvent": 124
+ }
+}
