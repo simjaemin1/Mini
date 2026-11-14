@@ -1,0 +1,109 @@
+{
+ "econ": {
+  "both": 8,
+  "same": 8,
+  "first": null
+ },
+ "side": {
+  "both": 8,
+  "same": 4,
+  "first": 5
+ },
+ "sideFields": {
+  "_claim": {
+   "first": 5,
+   "days": 2
+  },
+  "_ditchSet": {
+   "first": 5,
+   "days": 4
+  },
+  "_dryN": {
+   "first": 5,
+   "days": 4
+  },
+  "_drySet": {
+   "first": 5,
+   "days": 4
+  },
+  "_farmArr": {
+   "first": 5,
+   "days": 4
+  },
+  "_farmN": {
+   "first": 5,
+   "days": 4
+  },
+  "_farmSet": {
+   "first": 5,
+   "days": 4
+  },
+  "_frontier": {
+   "first": 5,
+   "days": 2
+  },
+  "_gameScan": {
+   "first": 5,
+   "days": 4
+  },
+  "_granStock": {
+   "first": 5,
+   "days": 2
+  },
+  "_mkt": {
+   "first": 5,
+   "days": 4
+  },
+  "_otIdx": {
+   "first": 5,
+   "days": 4
+  },
+  "_otIdxDay": {
+   "first": 5,
+   "days": 4
+  },
+  "_potSet": {
+   "first": 5,
+   "days": 4
+  },
+  "_t368HlBody": {
+   "first": 5,
+   "days": 4
+  },
+  "_t427R": {
+   "first": 5,
+   "days": 4
+  },
+  "_t449": {
+   "first": 5,
+   "days": 4
+  },
+  "_t719N": {
+   "first": 5,
+   "days": 4
+  },
+  "npcPids": {
+   "first": 5,
+   "days": 4
+  }
+ },
+ "body": {
+  "both": 8,
+  "same": 4,
+  "first": 5
+ },
+ "t1230": {
+  "both": 8,
+  "same": 8,
+  "first": null
+ },
+ "t1276": {
+  "both": 8,
+  "same": 8,
+  "first": null
+ },
+ "runJson": {
+  "same": true,
+  "diff": []
+ }
+}
