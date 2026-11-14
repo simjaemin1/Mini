@@ -6125,7 +6125,8 @@ function _t724BodyStep(vil, npc, now, day) {
   npc.behavior = 'wander'; npc.targetX = s.x; npc.targetY = s.y; npc.gatherTarget = null;   // 제자리(그 셀에 선다)
   _lifeAct(npc, '채광');
   if (!npc._t724T) { npc._t724T = now; return true; }                 // 선 순간부터 센다(걸어온 시간은 타수가 아니다)
-  let n = Math.floor((now - npc._t724T) / S.MINE_SWING_MS);
+  const _SW = S.MINE_SWING_MS / t1295S(npc);   // ★[T1316] 한 타 = 게임 분 축(끔 · 운영 시계 = ÷ 1)
+  let n = Math.floor((now - npc._t724T) / _SW);
   if (n < 1) return true;
   const _c0 = process.hrtime.bigint();                                   // 계측 — 광맥 장부 몫(읽기 · 깎기 · 존의 DB 한 줄)
   const st = dep.oreStockAt(s.cx, s.cy) || 0;
@@ -6137,8 +6138,8 @@ function _t724BodyStep(vil, npc, now, day) {
   if (cap > 0) n = Math.min(n, Math.max(1, Math.ceil((cap - hand) / kgSw)));
   if (left !== Infinity) n = Math.min(n, Math.max(1, Math.ceil(left * kgU / kgSw)));
   n = Math.min(n, Math.max(1, Math.ceil(st * need)));
-  npc._t724T += n * S.MINE_SWING_MS;
-  if (now - npc._t724T >= S.MINE_SWING_MS) npc._t724T = now;
+  npc._t724T += n * _SW;
+  if (now - npc._t724T >= _SW) npc._t724T = now;
   const _oreType = E.T1188_ORE_SPLIT ? dep.oreMineralAt?.(s.x,s.y,_t340Rng(_seedOf(_shOfNpc(npc),s.cx,s.cy,day,vil._t724Hit||0))) : null;
   if(E.T1188_ORE_SPLIT&&!E.OreGoods.idOf(_oreType)){npc._t724T=now;return true;}   // 광물 모르는 짐을 마을 평균으로 꾸미지 않는다
   const got = dep.oreConsumeAt(s.cx, s.cy, n / need) || 0;             // ★친 때마다 재고를 깎는다(1타 = 1/타수 덩이)
@@ -6169,7 +6170,8 @@ function _t1266Keep(vil, npc, s, hk, S, kgU) {
   const st = dep.oreStockAt(s.cx, s.cy) || 0;
   if (!(st >= 1)) return true;                                          // 다 판 셀 — 아래 줄이 다음 셀로(repick)
   const need = S.mineSwingsNeeded(st / S.ORE_K), ck = S.mineChunkKg(vil._mineLvl || 0);
-  const swH = Math.floor(state.dayMs / 24 / S.MINE_SWING_MS);          // 한 시간 타수(판 시계)
+  const _SW = S.MINE_SWING_MS / t1295S(npc);   // ★[T1316] 같은 축
+  const swH = Math.floor(state.dayMs / 24 / _SW);          // 한 시간 타수(판 시계)
   let chunks = Math.min(swH / need, st);
   //   ★[T1271] 짐 왕복 걸음(위 머리말)
   const _cc = _carryCfg(), cap = (_cc && _cc.CFG && _cc.CFG.CAP_KG) || 0;
@@ -6177,8 +6179,8 @@ function _t1266Keep(vil, npc, s, hk, S, kgU) {
     const g = _granPick(vil, npc, false);
     if (g) {
       const L = _granLadder(g), sp = (dep && dep.moveSpeed) || 0;
-      const walkMs = sp > 0 ? 2 * Math.hypot(L.x - s.x, L.y - s.y) / sp * 1000 : 0;
-      const loadMs = cap / (ck / need) * S.MINE_SWING_MS;
+      const walkMs = sp > 0 ? 2 * Math.hypot(L.x - s.x, L.y - s.y) / sp * 1000 / t1295S(npc) : 0;   // ★[T1316] 걸음도 같은 축
+      const loadMs = cap / (ck / need) * _SW;
       const f = loadMs > 0 ? loadMs / (loadMs + walkMs) : 1;
       chunks = Math.min(swH * f / need, st); St.walkF += f; St.walkN++;
     } else {
@@ -12386,6 +12388,21 @@ function _t1243Live() { return !!(state.deps && typeof state.deps.zoneAwake === 
 //     T627 `_tripDayMs` · T941 교전 몫과 같은 자리(새 수 0). 걸음은 그 몸의 길(`npc.path` — 존 A* · 직선 문 그대로)을 따라 끊김 없이 간다(순간이동 0 · 몸 캐논).
 //   몸이 안 한 일은 0 이다 — 밭 칸은 그 몸이 칸에 서서 `_lifeDoTask` 한 것만 바뀐다(캐논 797). 운영 시계(s = 1)는 이 줄이 안 선다(종전 그대로).
 const T1295_FARM_CLOCK = process.env.T1295_FARM_CLOCK !== '0';
+// ★★[T1316 2026-11-14 · T1295 회부 1 · 3] 손잡이 `T1316_BODY_CLOCK`(끔 기본 · `=1` 켬) — T1295 의 같은 축(배율 `t1295S`)을 **농부 밖 마을 몸**(나무꾼 · 어부 · 광부 · 채집꾼 · 석공 ·
+//   곳간 인출 · 집 크루 — 사냥꾼만 뺀다)에도. 밭 세계 · 존 · 판 시계에서만 선다(운영 시계 · 밭 끔 = 1 · 바이트 같음).
+//   그 몸들의 실 ms 박자(작업 스윙 · 낚시 머묾 · 광부 타 · 회관 머묾 · 곳간 사다리 · 정체 판정)를 ÷ s — 자리 표: 보고/T1316 §2.
+const T1316_BODY_CLOCK = process.env.T1316_BODY_CLOCK === '1';
+// ★★[T1316 ③] 손잡이 `T1316_SUBSTEP`(끔 기본 · `=1` 켬) — 판 시계 틱 한 번 = 게임 190분(250 ms 하루 · 30 Hz)이라 배율을 맞춰도 몸 결정이 하루 7 ~ 8 번에 묶인다(T1295 회부 1 ⓐ).
+//   켜면 배율 몸(`t1295S` > 1)의 틱을 K 토막으로 나눠 결정 · 걸음을 토막마다 한다 — K = ⌈틱의 게임 분 ÷ 가장 짧은 밭 일(김매기 한 번 · `_t1221Cost(1)` — T1221 정본)⌉.
+//   토막 시각 = 그 틱 안의 고른 자리(지난 틱 끝 → 이 틱) · 걸음 몫 = dt ÷ K 씩(합 = dt — 더 걷지 않는다). 새 수 0. 끔 · 배율 1 = K 1(종전).
+const T1316_SUBSTEP = process.env.T1316_SUBSTEP === '1';
+function t1316K(npc, dtS) {
+  if (!T1316_SUBSTEP) return 1;
+  const s = t1295S(npc); if (!(s > 1)) return 1;
+  const gameMin = s * dtS * 1440 * 1000 / _zc720().WORLD.dayLengthMs;   // 틱의 게임 분 = 배율 × dt(초) × 하루 1,440분 ÷ 운영 하루 초
+  const minTask = _t1221Cost(1);   // 게임 분(T1221 정본 — 김매기 한 번)
+  return (minTask > 0 && gameMin > minTask) ? Math.ceil(gameMin / minTask) : 1;
+}
 // ★[T1295 ④ · T1284 회부 4] 손잡이 `T1295_GOURD`(끔 기본 · `=1` 켬) — 박을 마을 밭 작물 후보(`_t1243Memo`)에서 뺀다. 박 칸은 거둔 칸의 7% · 밭 식량의 0.7% 였다(T1284 §1).
 //   고증: 한반도 박 재배는 청동기에 들어와 삼국 때 흔해진다(김세빈 · 김민구 2024 「한반도 선·역사시대 박의 재배와 이용」 『헤리티지: 역사와 과학』57(1) 38 ~ 51) — 식량 칸보다 그릇 · 씨 몫. 새 수 0.
 const T1295_GOURD = process.env.T1295_GOURD === '1';
@@ -12394,7 +12411,9 @@ const _t1295Stat = { walks: 0, walkPx: 0, scaled: 0 };   // 계측 전용
 //     켜면 그 몸의 해 몫 = 몸의 날(`_bodyDay` — (지금 − 기점) ÷ 판 하루)의 남은 몫 — 몸의 날 도장과 같은 축(새 수 0). 끔 · 운영 시계 = null(종전 `worldPhase`).
 function t1295Wp(npc, now) { if (!(t1295S(npc) > 1)) return null; const t = (now - state.epoch) / state.dayMs; return t - Math.floor(t); }
 function t1295S(npc) {
-  if (!T1295_FARM_CLOCK || !npc || npc.simJob !== 'farmer' || !npc.simVillageId || !_t1243On() || !_t1243Live()) return 1;
+  if (!npc || !npc.simVillageId) return 1;
+  if (npc.simJob === 'farmer' ? !T1295_FARM_CLOCK : !(T1316_BODY_CLOCK && npc.simJob !== 'hunter')) return 1;   // ★[T1316] 켬 = 직업 무관(사냥꾼 뺌 — 짐승 두뇌가 실초 축 · 회부) · 끔 = 농부만(T1295 그대로)
+  if (!_t1243On() || !_t1243Live()) return 1;
   const W = _zc720().WORLD, L = W && W.dayLengthMs, D = state.dayMs;
   return (L > 0 && D > 0 && D < L) ? L / D : 1;
 }
@@ -14734,7 +14753,7 @@ function _t400BodyStep(vil, npc, now) {
   if (Math.hypot(npc.x - tx, npc.y - ty) <= 44) {
     if (!leg.at) leg.at = now;
     _lifeAct(npc, leg.to === 'g' ? '인출' : '건축');
-    if (now - leg.at >= G_DRAWW) { leg.to = leg.to === 'g' ? 's' : 'g'; leg.at = 0; }
+    if (now - leg.at >= G_DRAWW / t1295S(npc)) { leg.to = leg.to === 'g' ? 's' : 'g'; leg.at = 0; }
   } else _lifeAct(npc, leg.to === 'g' ? '출근' : '운반');
   return true;
 }
@@ -17101,7 +17120,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         if (Math.hypot(npc.x - hx, npc.y - hy) > 44) { npc.behavior = 'wander'; npc.targetX = hx; npc.targetY = hy; npc.gatherTarget = null; _lifeAct(npc, '운반'); return true; }
         if (!npc._t561Hall.at) npc._t561Hall.at = now;
         _lifeAct(npc, '저장');
-        if (now - npc._t561Hall.at < G_STOREW) return true;
+        if (now - npc._t561Hall.at < G_STOREW / t1295S(npc)) return true;   // ★[T1316] 켬(판 시계) = 게임 분 축
         _t561Ladder(vil, npc, now); npc._t561Hall = null; return true;
       }
     }
@@ -17128,7 +17147,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       npc.behavior = 'wander'; npc.targetX = ts.x; npc.targetY = ts.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true;
     }
     if (npc._jobT && now < npc._jobT) return true;                   // 작업 스윙 페이싱(종전 수 그대로)
-    npc._jobT = now + 6000 + (h % 5) * 1000;
+    npc._jobT = now + (6000 + (h % 5) * 1000) / t1295S(npc);   // ★[T1316] 같은 축(끔 = ÷ 1)
     //   ⓑ **나무가 있으면 벤다 — 예산이 없다**(T341 · PM 결정). 없으면 다음 셀로 간다.
     //      한 그루가 내는 양은 `lootOfResource` 가 답한다(존이 쥔 정본 · 여기 수 0).
     let _peek = null; try { _peek = state.deps.t325TreesAtCell ? state.deps.t325TreesAtCell(ts.cx, ts.cy) : null; } catch (e) { _peek = null; }
@@ -17199,9 +17218,9 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     }
     if (job === 'forager') { if (bestF) best = bestF; }          // 채집: 열매나무 먼저(사전식)
     else if (!best && bestF) best = bestF;                        // 벌목: 목재 전용이 없을 때만 열매종
-    if (best) { npc.behavior = 'gather'; npc.targetX = best.x; npc.targetY = best.y; npc.gatherTarget = best.id; npc._jobT = now + 6000 + (h % 5) * 1000; _lifeAct(npc, job === 'lumberjack' ? '벌목' : (job === 'miner' ? '채광' : '채집')); return true; }   // 실물 채집(기존 gather 실행부·리스폰이 처리)
+    if (best) { npc.behavior = 'gather'; npc.targetX = best.x; npc.targetY = best.y; npc.gatherTarget = best.id; npc._jobT = now + (6000 + (h % 5) * 1000) / t1295S(npc); _lifeAct(npc, job === 'lumberjack' ? '벌목' : (job === 'miner' ? '채광' : '채집')); return true; }   // 실물 채집(기존 gather 실행부·리스폰이 처리)
     npc._workSite = null;   // 현장 고갈 — 다음 결정 때 재배정(랩 resourceTick '더 풍부한 셀로' 동형)
-    npc.behavior = 'wander'; npc.targetX = ws.x + ((h % 5) - 2) * 24; npc.targetY = ws.y + ((((h / 5) | 0) % 5) - 2) * 24; npc.gatherTarget = null; npc._jobT = now + 5000;
+    npc.behavior = 'wander'; npc.targetX = ws.x + ((h % 5) - 2) * 24; npc.targetY = ws.y + ((((h / 5) | 0) % 5) - 2) * 24; npc.gatherTarget = null; npc._jobT = now + 5000 / t1295S(npc);
     return true;
   }
   if (job === 'fisher') {   // 어부=물가 현장(랩 V.bank 어장 앵커 동형) + 낚시(가시 표현 — 마을 경제는 econ 소유)
@@ -17297,7 +17316,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       const _nr = (_t427On() && near.length) ? near.filter((q) => { if (_pend) return false; const r = _t427Reach(vil, npc, q.x, q.y, day, state.deps && state.deps.decBudgetOver); if (r === null) { _pend = true; return false; } return r; }) : near;
       const pick = (!_pend && _nr.length) ? _nr[(h + ((now / 1000) | 0)) % _nr.length] : ws;
       npc._fishSpotX = pick.x; npc._fishSpotY = pick.y;
-      npc._fishT = now + 9000 + (h % 5) * 2000;   // 9~17초 체류(결정론 분산 — 마을 전원이 동시에 안 움직인다)
+      npc._fishT = now + (9000 + (h % 5) * 2000) / t1295S(npc);   // ★[T1316] 같은 축 · 9~17초 체류(결정론 분산 — 마을 전원이 동시에 안 움직인다)
     }
     npc.behavior = 'wander'; npc.targetX = npc._fishSpotX; npc.targetY = npc._fishSpotY; npc.gatherTarget = null;
     _lifeAct(npc, '낚시');
@@ -17357,7 +17376,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       if (npc._vgX === undefined) { npc._vgX = npc.x; npc._vgY = npc.y; npc._vgSince = now; }
       const moved = Math.hypot(npc.x - npc._vgX, npc.y - npc._vgY);
       if (moved > 6) { npc._vgX = npc.x; npc._vgY = npc.y; npc._vgSince = now; }
-      else if (npc._vgSince && now - npc._vgSince > SCH_VG_STUCK) {
+      else if (npc._vgSince && now - npc._vgSince > SCH_VG_STUCK / t1295S(npc)) {   // ★[T1316] 같은 축
         npc._vgGiveUp = day;                       // 오늘은 포기 — 라벨도 지우고 레거시로
         _vgStuckN++;                               // ★진단 카운터(lifedbg vgStuck) — 실제로 발동하는지 프로덕션에서 센다
         if (!npc._huntOn && npc._lifeAct) _lifeAct(npc, '');
@@ -17370,7 +17389,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     npc._vgSince = 0; npc._vgGiveUp = -1;          // 도착 = 정체 해제
     const h2 = _pidHash(npc.pid);
     if (!npc._jobT || now >= npc._jobT) {   // 회관 안 제자리 작업(서성임) — 좌표 단일 작성자 유지
-      npc._jobT = now + 7000 + (h2 % 5) * 1200;
+      npc._jobT = now + (7000 + (h2 % 5) * 1200) / t1295S(npc);   // ★[T1316] 같은 축
       npc.behavior = 'wander'; npc.targetX = wx + ((h2 % 7) - 3) * 8; npc.targetY = wy + (((h2 / 7 | 0) % 7) - 3) * 8; npc.gatherTarget = null;
     }
     _lifeAct(npc, _otRole(vil.econ, idx));
@@ -18804,7 +18823,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
-  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)

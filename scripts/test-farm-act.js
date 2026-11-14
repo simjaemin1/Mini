@@ -152,8 +152,8 @@ console.log('\n⑤ ⓑ 헤드리스 — 켜면 이 마을 밭은 **몸이 한다
 {
   const hl = bodyOf(VC, '_lifeHeadlessDay');
   //   ★[T1220-K1] 옛 글자 — T1212 ① 이 작물 절의 날을 밭 날(`_farmDay(vil, day)` · 끔 = `day` 그대로)로 바꿨다 — 판정(`!_body`)은 그대로라 글자만 새로.
-  ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /if \(!_body && !_cut\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /else if \(!_body\) lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\);/.test(hl) && /const _cut = _t1243On\(\) && _t1243Live\(\);/.test(hl),   // ★[T1243] 켬 + 라이브 = 두 절 걷음(`_cut`)
-    '⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 작물');
+  ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /if \(!_body && !_cut && !_t84\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /else if \(!_body\) \{ lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\); if \(_t84\) _lifeClearDay\(vil, farmerN\); \}/.test(hl) && /const _cut = _t1243On\(\) && _t1243Live\(\);/.test(hl),   // ★[T1243] 켬 + 라이브 = 두 절 걷음(`_cut`)
+    '⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 작물(★[T1284 ③] 켬이면 일괄 개간은 작물 뒤 — `_t84` · 같은 `!_body` 갈래)');
   //   ★[T400] 집 절에 집 행위 손잡이 가드(`&& !_lifeEcon().T400_BUILD_ACT`)가 붙었다 — 농부 판정(`_body`)과 무관한 것은 그대로다.
   ok(/if \(vil\._site(?: && !_lifeEcon\(\)\.T400_BUILD_ACT)?\) \{ let st = Math\.min\(LIFE_CREW, popN\) \* LIFE_STAGE_PDAY;/.test(hl) && !/_body[^\n]*LIFE_STAGE_PDAY/.test(hl),
     '⑤ ② 신축은 **그대로**다(농부 몫이 아니다 — 직업 무관 크루 · T361 칸)');
