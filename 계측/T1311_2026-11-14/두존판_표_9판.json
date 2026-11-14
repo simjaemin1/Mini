@@ -1,0 +1,848 @@
+[
+ {
+  "tag": "circle-1020",
+  "seed": 1020,
+  "done": true,
+  "days": {
+   "hanbando": 31,
+   "nippon": 49
+  },
+  "wallS": 528,
+  "H": {
+   "sent": 130,
+   "sentOk": 130,
+   "bodyOut": 130,
+   "bodyIn": 125,
+   "crossArrive": 107,
+   "crossReturn": 23,
+   "soldOk": 23,
+   "deposited": 86,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1187
+  },
+  "N": {
+   "sent": 12,
+   "sentOk": 12,
+   "bodyOut": 12,
+   "bodyIn": 33,
+   "crossArrive": 6,
+   "crossReturn": 6,
+   "soldOk": 6,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 833
+  },
+  "쇠재": {
+   "n": 12,
+   "seam": 4,
+   "stillMax": 1021,
+   "stillN": 18,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 84,
+   "seam": 76,
+   "stillMax": 2576,
+   "stillN": 172,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 28993,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 694,
+     "한재": 28299
+    },
+    "bodies": 0
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 114315,
+    "rock": 571,
+    "water": 0,
+    "by": {
+     "쇠재": 15717,
+     "한재": 98598
+    },
+    "bodies": 0
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 83,
+  "escortRock": 0
+ },
+ {
+  "tag": "circle-42",
+  "seed": 42,
+  "done": true,
+  "days": {
+   "hanbando": 30,
+   "nippon": 46
+  },
+  "wallS": 522,
+  "H": {
+   "sent": 123,
+   "sentOk": 123,
+   "bodyOut": 123,
+   "bodyIn": 115,
+   "crossArrive": 104,
+   "crossReturn": 19,
+   "soldOk": 19,
+   "deposited": 85,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1184
+  },
+  "N": {
+   "sent": 44,
+   "sentOk": 44,
+   "bodyOut": 44,
+   "bodyIn": 50,
+   "crossArrive": 10,
+   "crossReturn": 34,
+   "soldOk": 34,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 846
+  },
+  "쇠재": {
+   "n": 12,
+   "seam": 9,
+   "stillMax": 1325,
+   "stillN": 27,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 88,
+   "seam": 76,
+   "stillMax": 2695,
+   "stillN": 212,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 32329,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 3433,
+     "한재": 28896
+    },
+    "bodies": 0
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 111578,
+    "rock": 616,
+    "water": 0,
+    "by": {
+     "쇠재": 14290,
+     "한재": 97288
+    },
+    "bodies": 0
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 86,
+  "escortRock": 0
+ },
+ {
+  "tag": "circle-7",
+  "seed": 7,
+  "done": true,
+  "days": {
+   "hanbando": 31,
+   "nippon": 50
+  },
+  "wallS": 540,
+  "H": {
+   "sent": 146,
+   "sentOk": 146,
+   "bodyOut": 146,
+   "bodyIn": 136,
+   "crossArrive": 117,
+   "crossReturn": 29,
+   "soldOk": 29,
+   "deposited": 92,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1195
+  },
+  "N": {
+   "sent": 10,
+   "sentOk": 10,
+   "bodyOut": 10,
+   "bodyIn": 29,
+   "crossArrive": 6,
+   "crossReturn": 4,
+   "soldOk": 4,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 832
+  },
+  "쇠재": {
+   "n": 16,
+   "seam": 14,
+   "stillMax": 1584,
+   "stillN": 30,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 92,
+   "seam": 84,
+   "stillMax": 2555,
+   "stillN": 194,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 34245,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 4100,
+     "한재": 30145
+    },
+    "bodies": 0
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 115997,
+    "rock": 664,
+    "water": 0,
+    "by": {
+     "쇠재": 10865,
+     "한재": 105132
+    },
+    "bodies": 0
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 95,
+  "escortRock": 0
+ },
+ {
+  "tag": "hook-1020",
+  "seed": 1020,
+  "done": true,
+  "days": {
+   "hanbando": 30,
+   "nippon": 44
+  },
+  "wallS": 510,
+  "H": {
+   "sent": 118,
+   "sentOk": 118,
+   "bodyOut": 118,
+   "bodyIn": 117,
+   "crossArrive": 86,
+   "crossReturn": 32,
+   "soldOk": 32,
+   "deposited": 72,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1197
+  },
+  "N": {
+   "sent": 37,
+   "sentOk": 37,
+   "bodyOut": 37,
+   "bodyIn": 41,
+   "crossArrive": 13,
+   "crossReturn": 24,
+   "soldOk": 24,
+   "deposited": 2,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 836
+  },
+  "쇠재": {
+   "n": 0,
+   "seam": 0,
+   "stillMax": 0,
+   "stillN": 0,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 62,
+   "seam": 56,
+   "stillMax": 2933,
+   "stillN": 143,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 23271,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 0,
+     "한재": 23271
+    },
+    "bodies": 0
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 96855,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 2500,
+     "한재": 94355
+    },
+    "bodies": 0
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 52,
+  "escortRock": 0
+ },
+ {
+  "tag": "hook-42",
+  "seed": 42,
+  "done": true,
+  "days": {
+   "hanbando": 31,
+   "nippon": 50
+  },
+  "wallS": 540,
+  "H": {
+   "sent": 127,
+   "sentOk": 127,
+   "bodyOut": 127,
+   "bodyIn": 125,
+   "crossArrive": 107,
+   "crossReturn": 20,
+   "soldOk": 20,
+   "deposited": 88,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1174
+  },
+  "N": {
+   "sent": 4,
+   "sentOk": 4,
+   "bodyOut": 4,
+   "bodyIn": 19,
+   "crossArrive": 0,
+   "crossReturn": 4,
+   "soldOk": 3,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 833
+  },
+  "쇠재": {
+   "n": 8,
+   "seam": 1,
+   "stillMax": 807,
+   "stillN": 11,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 75,
+   "seam": 70,
+   "stillMax": 2988,
+   "stillN": 183,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 34785,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 0,
+     "한재": 34785
+    },
+    "bodies": 0
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 111316,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 15000,
+     "한재": 96316
+    },
+    "bodies": 0
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 74,
+  "escortRock": 0
+ },
+ {
+  "tag": "hook-7",
+  "seed": 7,
+  "done": true,
+  "days": {
+   "hanbando": 31,
+   "nippon": 50
+  },
+  "wallS": 552,
+  "H": {
+   "sent": 112,
+   "sentOk": 112,
+   "bodyOut": 112,
+   "bodyIn": 123,
+   "crossArrive": 91,
+   "crossReturn": 21,
+   "soldOk": 20,
+   "deposited": 80,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1173
+  },
+  "N": {
+   "sent": 7,
+   "sentOk": 7,
+   "bodyOut": 7,
+   "bodyIn": 27,
+   "crossArrive": 3,
+   "crossReturn": 4,
+   "soldOk": 4,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 826
+  },
+  "쇠재": {
+   "n": 6,
+   "seam": 2,
+   "stillMax": 1055,
+   "stillN": 11,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 65,
+   "seam": 61,
+   "stillMax": 4810,
+   "stillN": 162,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 28088,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 653,
+     "한재": 27435
+    },
+    "bodies": 0
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 102653,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 8283,
+     "한재": 94370
+    },
+    "bodies": 0
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 59,
+  "escortRock": 0
+ },
+ {
+  "tag": "valley-1020",
+  "seed": 1020,
+  "done": true,
+  "days": {
+   "hanbando": 30,
+   "nippon": 43
+  },
+  "wallS": 510,
+  "H": {
+   "sent": 122,
+   "sentOk": 122,
+   "bodyOut": 122,
+   "bodyIn": 119,
+   "crossArrive": 99,
+   "crossReturn": 23,
+   "soldOk": 23,
+   "deposited": 78,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1188
+  },
+  "N": {
+   "sent": 36,
+   "sentOk": 36,
+   "bodyOut": 36,
+   "bodyIn": 44,
+   "crossArrive": 8,
+   "crossReturn": 28,
+   "soldOk": 28,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 828
+  },
+  "쇠재": {
+   "n": 18,
+   "seam": 12,
+   "stillMax": 1634,
+   "stillN": 36,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 90,
+   "seam": 79,
+   "stillMax": 3653,
+   "stillN": 197,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 31495,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 2615,
+     "한재": 28880
+    },
+    "bodies": 0
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 127623,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 13129,
+     "한재": 114494
+    },
+    "bodies": 0
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 75,
+  "escortRock": 0
+ },
+ {
+  "tag": "valley-42",
+  "seed": 42,
+  "done": true,
+  "days": {
+   "hanbando": 30,
+   "nippon": 47
+  },
+  "wallS": 528,
+  "H": {
+   "sent": 128,
+   "sentOk": 128,
+   "bodyOut": 128,
+   "bodyIn": 125,
+   "crossArrive": 104,
+   "crossReturn": 24,
+   "soldOk": 23,
+   "deposited": 85,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1199
+  },
+  "N": {
+   "sent": 27,
+   "sentOk": 27,
+   "bodyOut": 27,
+   "bodyIn": 41,
+   "crossArrive": 8,
+   "crossReturn": 19,
+   "soldOk": 18,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 838
+  },
+  "쇠재": {
+   "n": 11,
+   "seam": 3,
+   "stillMax": 0,
+   "stillN": 10,
+   "rock": 1,
+   "rf": 0
+  },
+  "한재": {
+   "n": 97,
+   "seam": 90,
+   "stillMax": 2313,
+   "stillN": 199,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 38982,
+    "rock": 2576,
+    "water": 0,
+    "by": {
+     "쇠재": 2203,
+     "한재": 36779
+    },
+    "bodies": 0
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 159259,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 11640,
+     "한재": 147619
+    },
+    "bodies": 0
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 84,
+  "escortRock": 1
+ },
+ {
+  "tag": "valley-7",
+  "seed": 7,
+  "done": true,
+  "days": {
+   "hanbando": 32,
+   "nippon": 52
+  },
+  "wallS": 546,
+  "H": {
+   "sent": 125,
+   "sentOk": 125,
+   "bodyOut": 125,
+   "bodyIn": 117,
+   "crossArrive": 105,
+   "crossReturn": 20,
+   "soldOk": 20,
+   "deposited": 85,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 1148
+  },
+  "N": {
+   "sent": 4,
+   "sentOk": 4,
+   "bodyOut": 4,
+   "bodyIn": 9,
+   "crossArrive": 0,
+   "crossReturn": 4,
+   "soldOk": 4,
+   "deposited": 0,
+   "lost": 0,
+   "walkWaitLate": 0,
+   "pop": 837
+  },
+  "쇠재": {
+   "n": 24,
+   "seam": 17,
+   "stillMax": 1335,
+   "stillN": 43,
+   "rock": 0,
+   "rf": 0
+  },
+  "한재": {
+   "n": 103,
+   "seam": 98,
+   "stillMax": 3953,
+   "stillN": 245,
+   "rock": 0,
+   "rf": 0
+  },
+  "steps": [
+   {
+    "zone": "hanbando",
+    "wrapped": true,
+    "n": 46660,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 4928,
+     "한재": 41732
+    },
+    "bodies": 0
+   },
+   {
+    "zone": "nippon",
+    "wrapped": true,
+    "n": 162275,
+    "rock": 0,
+    "water": 0,
+    "by": {
+     "쇠재": 13902,
+     "한재": 148373
+    },
+    "bodies": 0
+   }
+  ],
+  "logs": [
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   },
+   {
+    "block": 0,
+    "repairFail": 0,
+    "isolate": 0,
+    "late": 0
+   }
+  ],
+  "escort": 106,
+  "escortRock": 0
+ }
+]

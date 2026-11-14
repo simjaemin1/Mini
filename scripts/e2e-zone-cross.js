@@ -135,12 +135,14 @@ function valleyCorridor(nm) {
   //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.zoneCross`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
   require('./lib-e2e-src').SECTIONS.zoneCross(ok);
 
-  const VE = viewSpot(+1), VW = HAS_W ? viewSpot(-1) : null, CE = corridor(+1), CW = HAS_W ? corridor(-1) : null;
+  // ★[T1311 · T1296 회부 3 ⓓ] 동쪽 넘기 · 왕복(ⓑ · ⓡ)은 **한재 골짜기 안 줄**에서 걷는다 — 종전 줄(한재 원 안 y 61,424)이 원 고개와 같이 사라져
+  //   T1296 뒤엔 산 띠 밖 열린 뭍(y 82,928)을 골랐다. 이제 몸이 실제로 넘는 통로(폭 10칸 골짜기)에서 넘기 · 열 번 왕복을 잰다. 골짜기 줄이 없으면 종전 고르기.
+  const CV = ['쇠재', '한재'].map(valleyCorridor);   // ★[T1296] 고개 골짜기 둘
+  const VE = viewSpot(+1), VW = HAS_W ? viewSpot(-1) : null, CE = (CV[1] && CV[1].wy != null) ? CV[1] : corridor(+1), CW = HAS_W ? corridor(-1) : null;
   ok(!!VE && VE.n > 0, 'ⓒ 전제: 동쪽 선 자리 화면 상자의 닛폰 띠에 닛폰 시더 나무가 **있다**(0 이면 ⓐ 가 공짜다)', VE ? `${VE.n}그루 · 한반도 로컬 y ${VE.wy - HB.worldOffsetY}` : '-');
   if (HAS_W) ok(!!VW && VW.n > 0, 'ⓒ 전제: 서쪽 선 자리 화면 상자의 중원북 띠에 중원북 나무가 있다', VW ? `${VW.n}그루 · y ${VW.wy - HB.worldOffsetY}` : '-');
   ok(STAND > PEEK_OLD && STAND < VIEW, `ⓒ 전제: 선 자리(경계에서 ${STAND}px)는 옛 문턱 ${PEEK_OLD} 밖 · 화면 ${VIEW} 안이다(그 띠를 잰다)`);
   ok(!!CE && (!!CW || !HAS_W), 'ⓒ 전제: 동·서 경계에 걸을 길(물·바위·개체 없는 가로줄)이 있다', `${CE ? 'E y' + (CE.wy - HB.worldOffsetY) : 'E 없음'} · ${CW ? 'W y' + (CW.wy - HB.worldOffsetY) : 'W 없음'}`);
-  const CV = ['쇠재', '한재'].map(valleyCorridor);   // ★[T1296] 고개 골짜기 둘
   ok(CV.every((c) => c && c.wy != null), 'ⓒ 전제 [T1296]: 쇠재 · 한재 골짜기 안에 걸을 가로줄(물·바위·개체 없는 ±32)이 있다', CV.map((c) => `${c ? c.nm : '?'} ${c && c.wy != null ? 'y' + (c.wy - HB.worldOffsetY) : '없음'}`).join(' · '));
 
   // ── 기동 ─────────────────────────────────────────────────────────────────
