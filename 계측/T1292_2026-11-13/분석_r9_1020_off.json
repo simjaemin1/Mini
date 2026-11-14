@@ -1,0 +1,165 @@
+{
+ "tag": "r9_1020_off",
+ "days": {
+  "hanbando": 120,
+  "nippon": 140
+ },
+ "crossed": {
+  "arriveOut": 0,
+  "returnOut": 0,
+  "soldOk": 0,
+  "deposited": 0,
+  "lost": 0,
+  "bodyOut": 0,
+  "bodyIn": 0,
+  "bodyInSkip": 0,
+  "sentFail": 0,
+  "bounced": 0,
+  "retried": 0,
+  "dup": 0
+ },
+ "t952": {
+  "hanbando": {
+   "stays": 0,
+   "joined": 0
+  },
+  "nippon": {
+   "stays": 0,
+   "joined": 0
+  }
+ },
+ "bodies": {
+  "logical": 0,
+  "handoffs": 0,
+  "byDir": {
+   "out": 0,
+   "back": 0
+  },
+  "byWhy": {},
+  "neither": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "le100ms": 0,
+   "le1s": 0,
+   "le5s": 0,
+   "gt5s": 0
+  },
+  "both": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "totalMs": 0,
+   "sample": []
+  },
+  "vanished": {
+   "n": 0,
+   "sample": []
+  },
+  "mapGap": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "sample": []
+  },
+  "mapBoth": {
+   "n": 0,
+   "totalMs": 0
+  },
+  "within": {
+   "n": 0,
+   "over": 0,
+   "overSample": []
+  },
+  "hidden": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "left": 0,
+   "leftSample": [],
+   "byEnd": {}
+  },
+  "esc": {
+   "n": 0,
+   "same": 0,
+   "more": 0,
+   "less": 0,
+   "sumOut": 0,
+   "sumIn": 0,
+   "byDir": {
+    "out": 0,
+    "back": 0
+   },
+   "moreSample": [],
+   "lessSample": [],
+   "way": {
+    "n": 0,
+    "died": 0,
+    "diedSum": 0
+   }
+  },
+  "tEnd": 0,
+  "tailMs": 10000
+ },
+ "lag": {
+  "dueMinusSend": {},
+  "recvNowMinusSend": {},
+  "late": {
+   "lateArrival": 0,
+   "noDayInAtNext": 0,
+   "unexplained": 0
+  }
+ },
+ "stuck": {
+  "hanbando": {
+   "day": 120,
+   "foreign": 0,
+   "foreignInbound": 0,
+   "overdue": 0,
+   "overdueAge": {},
+   "homeOut": 0
+  },
+  "nippon": {
+   "day": 140,
+   "foreign": 0,
+   "foreignInbound": 0,
+   "overdue": 0,
+   "overdueAge": {},
+   "homeOut": 0
+  }
+ },
+ "final": {
+  "hanbando": {
+   "pop": 2065,
+   "dead": 0,
+   "ever": 51,
+   "deaths": 5,
+   "fdDeaths": 0,
+   "trades": 3236,
+   "skip": 91
+  },
+  "nippon": {
+   "pop": 1051,
+   "dead": 0,
+   "ever": 36,
+   "deaths": 41,
+   "fdDeaths": 36,
+   "trades": 2199,
+   "skip": 71
+  }
+ },
+ "cpu": {
+  "hanbando": {
+   "meanMsPerDay": 3090.6,
+   "days": 121
+  },
+  "nippon": {
+   "meanMsPerDay": 1983.6,
+   "days": 141
+  }
+ }
+}
