@@ -29,3 +29,23 @@
   통과 6: e2e-npc-walk.js test-route-persist.js test-t1170-lab-clock.js test-t1170-route-audit.js test-t1259-wood-cap.js test-harness-lint.js
   실패 0: 없음
   걸린 시간 상위(초): test-route-persist.js 460 · e2e-npc-walk.js 102 · test-harness-lint.js 56 · test-t1170-route-audit.js 1 · test-t1170-lab-clock.js 0 · test-t1259-wood-cap.js 0
+
+# land1075(130840526) 합친 뒤 — 러너(순차)
+##### e2e-npc-walk.js #####
+  [소요] 117초
+  ✓ RC=0
+##### test-route-persist.js #####
+  [소요] 590초
+  ✓ RC=0
+##### test-t1170-lab-clock.js #####
+  [소요] 0초
+  ✓ RC=0
+##### test-t1170-route-audit.js #####
+  [소요] 0초
+  ✓ RC=0
+##### test-t1259-wood-cap.js #####
+  [소요] 1초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  [소요] 68초
+  ✓ RC=0
