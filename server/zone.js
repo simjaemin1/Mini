@@ -4270,6 +4270,7 @@ function decideNpcBehavior(npc, now) {
   //     박자를 틱 수로 바꾸는 것은 세계를 바꾸는 일이라 카드 밖이다(보고 §3 · 회부).
   _diceNpc.seed(_SEED.seedOf(_shOf(npc), Math.floor(npc.x / BUILDING_SIZE), Math.floor(npc.y / BUILDING_SIZE), zoneGameDay(), _tick.n));
   npc.nextDecisionAt = now + 500 + _dn() * 1000;
+  if (npc.simVillageId && SimVillages.t1295S) { const _s = SimVillages.t1295S(npc); if (_s > 1) npc.nextDecisionAt = now + (npc.nextDecisionAt - now) / _s; }   // ★[T1295] 밭 세계 판 시계 농부 몸 = 결정 박자도 게임 분 축(같은 굴림 · 끔 · 운영 시계 = 이 줄 무동작)
   // ① 늑대 시야 안이면 도망 — quadtree로 후보 추리고 종류 필터
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(npc.x, npc.y, NPC_FLEE_RANGE) : Array.from(mobs.values());
   let nearestWolf = null, wolfDist = NPC_FLEE_RANGE;
@@ -4704,7 +4705,7 @@ function computeNpcPath(npc, now) {
     return [{ x: npc.targetX, y: npc.targetY }];
   }
   // A* — NPC당 최소 2초 간격
-  if (npc._lastAStarAt && now - npc._lastAStarAt < 2000) return null;
+  if (npc._lastAStarAt && now - npc._lastAStarAt < (isVil && SimVillages.t1295S ? 2000 / SimVillages.t1295S(npc) : 2000)) return null;   // ★[T1295] 같은 축(끔 · 운영 시계 = ÷ 1)
   npc._lastAStarAt = now;
   // ★★★[T381 ② 2026-09-25 · 못 갈 칸에는 길을 묻지 않는다] ★[T394 ④ 2026-09-26] **기본 켬** — 되돌림 `T381_PATH_DEAD=0`.
   //   ⚠T394 ③ 이 `localPath` 첫 줄을 `routePath` 와 같게 만든 뒤로는 **켬/끔이 같은 답**이다(둘 다 막힌 목표에 `null`).
@@ -5032,6 +5033,28 @@ let _t316Econ = null;
 //   ★★[T368 2026-09-25] **농부도** — `T368_FARM_ACT` 면 마을 농부는 관측자와 무관하게 걷는다(캐논 ⓑ① "항상 실걸음").
 //     술어는 여전히 **이 하나**다(둘째 술어 0 · 문 둘 — 결정·이동 — 이 같이 연다). 헤드리스의 농부 몫은 `villages.js` 가 끈다.
 //     ⚠직업은 생활층이 심는 그 칸(`simJob`)이다 — 농부가 다른 일로 바뀌면 그날부터 이 항이 거짓이다(새 규약 0).
+// ★★[T1295] 밭 세계 판 시계 농부 몸 — 걸음 · 길 다시 묻기를 게임 분 축으로(배율 s = `SimVillages.t1295S` · 1 이면 종전 그대로 · 까닭은 villages.js T1295 머리 줄).
+//   걸음: 그 틱의 걸음 거리 = 그 자리 빠르기(`_desSpeed` — 배회 배율 × 길 등급 × 개울 · T1241 사건 걸음과 같은 식) × dt × s 를 그 몸의 길(`npc.path` — 존 A* · 직선 문 답)
+//     점을 차례로 따라 쓴다(점을 지나면 다음 점 · 끝에 닿으면 선다 — 넘어 가지 않는다 · 길 밖으로 안 나간다 · 순간이동 0). 속도 칸은 0(이동 문이 다시 안 옮긴다).
+function _t1295Walk(p, dt) {
+  const s = SimVillages.t1295S ? SimVillages.t1295S(p) : 1;
+  if (!(s > 1)) return false;
+  p.vx = 0; p.vy = 0;
+  const P = p.path, M = P === p._t791P, n = P ? (M ? p._t791Pn : P.length) : 0;
+  if (!P || !(p.pathIndex < n)) return true;   // 갈 길 없음 — 선다
+  let x = _xyX(p), y = _xyY(p), left = dt, moved = 0;   // T1145 열이면 열에서(끔 = 몸 칸)
+  while (left > 0 && p.pathIndex < n) {
+    let wx, wy; if (M && p.pathIndex === 0) { wx = p._t791Px; wy = p._t791Py; } else { const w = P[p.pathIndex]; wx = w.x; wy = w.y; }
+    const dx = wx - x, dy = wy - y, d = Math.hypot(dx, dy), v = _desSpeed(x, y) * s;   // px/실초(게임 분 축)
+    if (!(v > 0)) break;
+    if (d <= v * left) { x = wx; y = wy; left -= d / v; moved += d; p.pathIndex++; }
+    else { const k = v * left / d; x += dx * k; y += dy * k; moved += v * left; left = 0; }
+  }
+  if (moved > 0) { _desPut(p, x, y); Roads.stampEntityPx(p, x, y); p.dirty = true; }
+  const S = SimVillages._t1295Stat; if (S) { S.walks++; S.walkPx += moved; }
+  return true;
+}
+function _t1295Stale(npc) { const s = (npc.simVillageId && SimVillages.t1295S) ? SimVillages.t1295S(npc) : 1; return s > 1 ? 5000 / s : 5000; }
 function _t316WalkAlways(npc) {
   if (!npc || !npc.simVillageId) return false;
   if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
@@ -5260,7 +5283,8 @@ function npcStep(npc, dt, now) {
   else if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null && npc.behavior !== 'fight') {
     // ★[T670 ①] `worldPhase(now)` 는 `now` 의 순수 함수다 — 틱 안의 `now` 는 모두 같으므로 틱당 한 번만 셈한다(같은 값 · 같은 비트).
     if (now !== _t670PhNow) { _t670PhNow = now; _t670Ph = worldPhase(now); }
-    const fv = T720_LON_DAY ? phaseAdd(_t670Ph, npc.simLonOff) : (_t670Ph + npc.simLonOff) % 1;   // ★[T720] 켬 = 음수 경도 몫도 [0,1)
+    const _w95 = SimVillages.t1295Wp ? SimVillages.t1295Wp(npc, now) : null, _ph95 = _w95 != null ? _w95 : _t670Ph;   // ★[T1295] 켬(판 시계 밭 몸) = 해 몫도 판 하루 축(끔 · 운영 시계 = 종전 `_t670Ph`)
+    const fv = T720_LON_DAY ? phaseAdd(_ph95, npc.simLonOff) : (_ph95 + npc.simLonOff) % 1;   // ★[T720] 켬 = 음수 경도 몫도 [0,1)
     if (fv > WORLD.dayPhaseRatio && !(npc._t720 && npc._t720.k)) {   // ★[T720 ③] 해 질 녘 곳간 정산 중인 몸은 그 걸음이 먼저(끔이면 칸이 없다 = 종전)   // ★[침대 진입] 밤 목표=실내 침대(npcLifeTick과 동일 — 두 게이트가 침대/마당으로 갈라지면 왕복 진동). 자리 분산은 1인 1침대(BED_SLOTS)가 실체로 보장
       // ★[T670 ①] 같은 값이면 다시 쓰지 않는다(쓰는 순서·값 그대로 — 같은 값 덮어쓰기는 아무것도 안 바꾼다)
       const _bx = npc.npcBedX ?? npc.npcHomeX, _by = npc.npcBedY ?? npc.npcHomeY;
@@ -5341,7 +5365,7 @@ function npcStep(npc, dt, now) {
   const targetKey = npc._t670Tk;
   const needPath = !npc.path || npc.pathIndex >= (npc.path === npc._t791P ? npc._t791Pn : npc.path.length) ||   // ★[T791 ②] 길 거울(끔 = 배열 길이 그대로)
                    npc._pathFor !== targetKey ||
-                   (npc._pathAt && now - npc._pathAt > 5000);
+                   (npc._pathAt && now - npc._pathAt > _t1295Stale(npc));   // ★[T1295] 같은 축(끔 · 운영 시계 = 5000 그대로)
   // ★★★[T370 ② 2026-09-23 · 경로를 두 번 묻지 않는다] `T370_PATH_REUSE=1` 일 때만.
   //   T356 이 "낮에 A* 가 틱마다 899명(61 %)" 을 냈고, T370 ① 이 **왜**를 세었다:
   //   그중 **98.8 %가 `pathIndex >= length`** 다 — 경로 끝에 닿은(=도착한) 주민이, 목표도 안 바뀌고
@@ -5354,7 +5378,7 @@ function npcStep(npc, dt, now) {
   const _skip = T370_PATH_REUSE && needPath
                 && npc.path && npc.pathIndex >= npc.path.length
                 && npc._pathFor === targetKey
-                && !(npc._pathAt && now - npc._pathAt > 5000)
+                && !(npc._pathAt && now - npc._pathAt > _t1295Stale(npc))
                 || (T1294_ARRIVED_PATH && needPath && _t1294Arrived(npc, targetKey));   // ★[T1294 ⓐ 켬] 도착해 서 있는 몸(위 `_t1294Arrived` 머리말 · 끔 = 첫 항에서 단락)
   if (needPath && !_skip) {
     const p = computeNpcPath(npc, now);
@@ -16845,6 +16869,10 @@ setInterval(() => {
     if (p.isNpc) {
       if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
       if (p.simWar || (T1241_DES && p._des)) continue;     // ★[T1241] 사건 갈래가 쥔 몸도(자리는 결정 문에서 보간했다 · 끔 = 앞 항 그대로) · §4-4 P3: 출정(징발) 병사 — 이동은 villages.js 실체 전쟁(행군 대형 페이싱·전투유닛 미러)이 전담(이중 이동 방지)
+      if (p.simVillageId && _t1295Walk(p, moveDt)) {   // ★[T1295] 밭 세계 판 시계 농부 몸 = 그 몸의 길을 게임 분 축 걸음으로(끔 · 운영 시계 = 거짓 — 아래 종전 그대로)
+        if (_wwOn && p === _wwSeq[_wwCur]) { if (_wwCode[_wwCur++] === 1) _wwK++; }   // 걸음 커널 차례는 그대로 넘긴다(커널이 잰 걸음은 안 쓴다 — 이 몸은 위에서 걸었다)
+        continue;
+      }
       if (_wwOn && p === _wwSeq[_wwCur]) {   // ★[T461] 앞문이 적은 갈래 — 커널 몸은 뒷일만(차례 그대로) · 잠든 몸은 건너뜀 · 2 는 아래 정본 문으로
         const _c = _wwCode[_wwCur++];
         if (_c === 1) { _wwPost(p, _wwK++); continue; }
