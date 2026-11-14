@@ -239,8 +239,10 @@ console.log('\n⑦ 걷기 술어 — `_t316WalkAlways` 에 **농부 항 하나**
   //   ★[T774 · PM 착지 10-17] 앞문 거울의 활성 판정은 손잡이 갈래(`T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(…)`)로 감싼다 —
   //     끔 갈래 글자가 이동 문의 그 식 그대로다(같은 값 · T774 증인). 셈: 이동 문 글자 1 + 거울(감싼 꼴) 1 = 둘.
   const _gate774 = '!p.canadiaVillage && !_t316WalkAlways(p) && !(T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(p.x, p.y))';
-  ok((ZC.match(/_t316WalkAlways\(/g) || []).length === 4 && (_pre.match(/_t316WalkAlways\(/g) || []).length === 1 && (_pre.includes(_gate) || _pre.includes(_gate774))
-     && (ZC.split(_gate).length - 1) + (ZC.split(_gate774).length - 1) === 2,
+  //   ★[T1322] 결정 문 첫 거름(`_t1322Grant` 표 · `_t1322Check` 견줌)은 결정 문 그 거름을 **읽기만** 한다(결정 문의 거울 — 셋째 문이 아니다) ⇒ 그 두 함수 몸통은 빼고 센다.
+  const ZC22 = ZC.replace(/function _t1322(Grant|Check)\([\s\S]*?\n\}\n/g, '');
+  ok((ZC22.match(/_t316WalkAlways\(/g) || []).length === 4 && (_pre.match(/_t316WalkAlways\(/g) || []).length === 1 && (_pre.includes(_gate) || _pre.includes(_gate774))
+     && (ZC22.split(_gate).length - 1) + (ZC22.split(_gate774).length - 1) === 2,
      '⑦ 그 술어를 부르는 **문**은 그대로 **둘**(결정 · 이동 — 셋째 문 0) · 넷째 글자는 이동 문의 **거울**(`_wwPre` · 같은 거름 식 글자 그대로 · T499)');
   ok(/const T774_ACTIVE_COL = process\.env\.T774_ACTIVE_COL !== '0';/.test(ZC), '⑦ [T780] 앞문 거울의 활성 열 손잡이는 새 기본 켬(`!== \'0\'`) — 끔 탐침 = `T774_ACTIVE_COL=0`(감싼 꼴의 끔 갈래 글자가 이동 문 식 그대로)');
   ok(/farm: \(\(\) => \{ try \{ return SimVillages\.farmPerf \? SimVillages\.farmPerf\(\) : null; \} catch \(e\) \{ return null; \} \}\)\(\),/.test(ZC),

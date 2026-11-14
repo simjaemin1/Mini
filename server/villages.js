@@ -1736,6 +1736,7 @@ function _t1198Jobs(vil, changedOut) {
   for (const pid of vil.npcPids) {
     const p = players.get(pid); const q = p && p._econId != null ? m.get(p._econId) : null;
     if (!q || p.simJob === q.currentJob) continue;
+    if (state.deps.t1322Touch) state.deps.t1322Touch(p);   // ★[T1322] 직업 칸(걸음 문 활성 거름 · 판 시계 해 몫이 읽는다)을 쓰기 전에 존 첫 거름 표를 내린다
     p.simJob = q.currentJob; _t1198Stat.jobs++;
     if (changedOut) changedOut[p.pid] = q.currentJob;
   }
@@ -9808,7 +9809,8 @@ function warPerfReset() { const P = state._warPerf; if (P) { P.i = 0; P.n = 0; P
 function _warEvacVillage(vil, now) {
   if (!vil || !vil.npcPids) return;
   const players = state.deps.players;
-  for (const pid of vil.npcPids) { const p = players.get(pid); if (!p || p._muster) continue; p.simEvacUntil = now + 5000; }
+  const _t22 = state.deps.t1322Touch;   // ★[T1322] 존 첫 거름 — 대피 칸을 쓰기 전에 서 있는 몸 표를 내린다(끔 = null)
+  for (const pid of vil.npcPids) { const p = players.get(pid); if (!p || p._muster) continue; if (_t22) _t22(p); p.simEvacUntil = now + 5000; }
 }
 
 // =============================================================================
@@ -12512,6 +12514,7 @@ const _t1295Stat = { walks: 0, walkPx: 0, scaled: 0 };   // 계측 전용
 //   ⓓ 해 몫(일과 창 — 출근 · 반일 · 밤 귀가): 존 하늘(`worldPhase` — 운영 하루 24분)은 판 시계에서 400날에 하루의 7% 만 돈다 — 몸은 늘 같은 시각(밤이면 늘 잠)에 선다.
 //     켜면 그 몸의 해 몫 = 몸의 날(`_bodyDay` — (지금 − 기점) ÷ 판 하루)의 남은 몫 — 몸의 날 도장과 같은 축(새 수 0). 끔 · 운영 시계 = null(종전 `worldPhase`).
 function t1295Wp(npc, now) { if (!(t1295S(npc) > 1)) return null; const t = (now - state.epoch) / state.dayMs; return t - Math.floor(t); }
+function t1295Ph(now) { const t = (now - state.epoch) / state.dayMs; return t - Math.floor(t); }   // ★[T1322] 판 하루 축 해 몫(몸 안 짚기 — `t1295Wp` 의 몸 칸 문 뒤 그 식 · 존 첫 거름이 판 시계 몸 표에 쓴다)
 function t1295S(npc) {
   if (!T1295_FARM_CLOCK || !npc || npc.simJob !== 'farmer' || !npc.simVillageId || !_t1243On() || !_t1243Live()) return 1;
   const W = _zc720().WORLD, L = W && W.dayLengthMs, D = state.dayMs;
@@ -18942,7 +18945,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
-  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)

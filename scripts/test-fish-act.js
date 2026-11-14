@@ -175,9 +175,11 @@ console.log('\n⑦ [T316] 관측자 없는 마을도 걷는다');
      '⑦ ★★**이동 문**(`movePlayerStep` 앞)도 같은 술어로 연다 — 결정만 열면 한 픽셀도 안 간다');
   //   ★[T540 ⓪ · T534 추신 2 알림] T461(T499 기본 켬) 뒤로 이동 문의 **거울**(`_wwPre` — 같은 거름 식 글자 그대로)이 하나 더 있다 ⇒ 정의 1 + 호출 3.
   //     문은 여전히 둘(결정 · 이동)이고 거울은 이동 문의 앞문이다(`test-farm-act ⑦` 이 거울을 글자로 건다).
-  ok((Z.match(/_t316WalkAlways\(/g) || []).length === 4,
-     '⑦ 그 술어를 부르는 자리는 정의 1 + 호출 3(결정 · 이동 · 이동의 거울 `_wwPre`) — 셋째 **문**은 안 열었다',
-     String((Z.match(/_t316WalkAlways\(/g) || []).length));
+  //   ★[T1322] 결정 문 첫 거름(`_t1322Grant` 표 · `_t1322Check` 견줌)이 **결정 문 그 거름**을 읽기만 한다(결정 문의 거울 — 문을 새로 안 연다) ⇒ 그 두 함수 몸통 안 부름은 뺀다.
+  const _zNo22 = Z.replace(/function _t1322(Grant|Check)\([\s\S]*?\n\}\n/g, '');
+  ok((_zNo22.match(/_t316WalkAlways\(/g) || []).length === 4,
+     '⑦ 그 술어를 부르는 자리는 정의 1 + 호출 3(결정 · 이동 · 이동의 거울 `_wwPre`) — 셋째 **문**은 안 열었다(T1322 첫 거름의 결정 문 거울 둘 뺌)',
+     String((_zNo22.match(/_t316WalkAlways\(/g) || []).length) + ' · 첫 거름 거울 ' + ((Z.match(/_t316WalkAlways\(/g) || []).length - (_zNo22.match(/_t316WalkAlways\(/g) || []).length));
   ok(/if \(!npc \|\| !npc\.simVillageId\) return false;/.test(Z),
      '⑦ 마을 소속 NPC 만 해당된다(야생·도적 NPC 는 종전 그대로 — 범위가 마을이다)');
   ok(!/fish/i.test((V.match(/function _lifeHeadlessDay\(vil\)[\s\S]*?\n\}/) || [''])[0]),

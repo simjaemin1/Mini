@@ -3910,6 +3910,7 @@ function spawnNpc(opts = {}) {
   player.npcWorkY = opts.npcWorkY != null ? opts.npcWorkY : null;
   if (T671_SHAPE) _t671Shape(player);   // ★[T671 ②] 몸 모양 고정(끔 = 종전 그대로)
   if (T1145_XY_COLS) BC.alloc(player);   // ★[T1145] 몸 번호 = 칸 — 이 몸의 x · y 는 이제 열이 정본(끔 = 무동작)
+  if (T1322_PF) SS.install(player);   // ★[T1322] 첫 거름 칸(pid → 칸 · 몸 칸 0 · 끔 = 무동작)
   players.set(pid, player);
   npcs.add(pid);
 
@@ -5023,6 +5024,7 @@ function sepNpcs(dt) {
     if (hn) { const hl = Math.hypot(hx, hy); if (hl > 1e-9) { const hk = Math.min(1, Math.max(push, 2.5) / hl); mx += hx * hk; my += hy * hk; } }   // 몸 겹침 해소 최소 2.5px/틱(랩 0.08셀 동형) — 1×에서도 수 틱 내 단단히 풀림
     const pf = p.floor || 0;
     const nx = p.x + mx, ny = p.y + my;
+    if (T1322_PF) _t1322Touch(p);   // ★[T1322] 몸을 옮기기 전 — 첫 거름 표를 내린다(미룬 도장 = 옮기기 전 자리)
     if (!isTerrainBlockedLocal(nx, p.y) && !isBlockedByWall(nx, p.y, p.x, p.y, pf)) { if (T1145_XY_COLS) BC.wx(p, nx); else p.x = nx; }   // 물·벽 변으로는 안 밀림(성분별 취소) · ★[T1145] 켬 = 쓰기 길
     if (!isTerrainBlockedLocal(p.x, ny) && !isBlockedByWall(p.x, ny, p.x, p.y, pf)) { if (T1145_XY_COLS) BC.wy(p, ny); else p.y = ny; }
   }
@@ -5265,6 +5267,103 @@ function _t1294Arrived(npc, targetKey) {
       && Object.is(npc._t791Px, npc.targetX) && Object.is(npc._t791Py, npc.targetY) && _t671Lt(npc.targetX - npc.x, npc.targetY - npc.y, 10)) { _t1294Stat.strict++; return true; }
   if (T1294_ARRIVED_PATH && npc._t1294G === _t1294Gen() && typeof npc.targetX === 'number' && typeof npc.targetY === 'number' && _t671Lt(npc.targetX - npc.x, npc.targetY - npc.y, 48)) { _t1294Stat.knob++; return true; }
   return false;
+}
+// ★★[T1322 2026-11-15 · µs 넷째 · 손잡이 `T1322_PREFILTER`(끔 기본 · `'1'` 켬 · `'verify'` 켬 + 거를 때마다 몸을 열어 견줌)] **서 있는 몸은 몸 객체를 안 연다** — T1314 회부 1 · 3.
+//   진단(보고 T1322 §1): 결정 문이 닫힌 몸의 걸음 문은 낮 62 % 가 **도장만**(`_t540StepAt` · `_pathAt` · `_stuckPos` 시각 — 서 있는 몸 · 길 끝 한 점 · 목표 10px 안 · 속도 +0)이다.
+//     그 몸도 틱마다 pid → 몸 찾기 · 몸 칸 ≈ 30 짚기(줄 넷 + 몸 밖 `_stuckPos`)를 한다 — 미세 판(`scripts/t1322/bench-warm.js`): 몸 연 꼴 262 ns/몸 · 열만 보고 거른 꼴 88 ns/몸(거름 62 %).
+//   켬: ⓐ 진짜 걸음을 마친 몸이 서 있는 몸이면 표(`_t1322Grant` — 다음 걸음 문이 도장만 찍을 조건 전수 · 아래 `_t1322State`).
+//       ⓑ 다음 틱 결정 문 고리는 pid → 칸(`Map` — 몸을 안 짚는다)으로 열만 본다: 결정 시각 전 · 지난 틱에도 봤다 · (표 2) 해 질 녘 전이면 건넌다(`_t1322Skip` · 미룬 도장 시각만 적는다).
+//       ⓒ 그 밖이면(또는 몸을 옮기는 쓰기 · 체력 문 앞에서 `_t1322Touch`) 미룬 도장을 몸에 쓰고(마지막 건넌 시각 · 그 자리) 표를 내린다 → 종전 걸음 문.
+//   같은 답인 까닭: 건넌 틱의 걸음 문(종전 글자)이 썼을 것은 도장 셋뿐이고(`_stuckN` · 길 · 길 번호 · 열쇠 · 속도는 이미 그 값) 그 셋을 읽는 곳은
+//     다음 진짜 걸음(막힘 · 길 만료)과 관측(`/walkdbg` — 들어올 때 전부 쓴다)뿐이다 — 다음 진짜 걸음 앞에서 같은 값이 된다. 몸 칸은 안 늘었다(칸 번호는 모듈 `Map`).
+//   ⚠전제: 표가 산 동안 걸음 문 밖에서 그 몸의 판정 칸(결정 시각 · 목표 · 길 · 자리 · 속도 · 행동 · 체력 …)을 바꾸는 쓰기가 없다. 정적 쓰기 자리 전수는 보고 §2(561 자리)라
+//     전부를 문으로 옮기지 않았다 — 다섯 갈래(밀기 · 걸음 뒷일 · 체력 문/되살림 · 구조 · 생활층 대피 · 직업 바꿈 — 뒤 둘은 deps `t1322Touch`)만 쓰기 앞에서 표를 내린다. `verify` 가 거를 때마다 몸을 열어 종전 걸음 문 머리 글자로 다시 판정해
+//     어긋남을 센다(어긋나면 그 몸은 종전 걸음 문 — 견줌 판은 늘 종전 답). 기본 켬은 PM 판정(회부).
+//   켜지는 조건: 다른 손잡이가 걸음 문 글자를 바꾸지 않을 때만(T738 · T791 견줌 · T1140 · T1145 · T370 · T1294 ⓐ · T1241 사건 갈래 · T670 끔 · T791 거울 끔이면 무동작).
+const SS = require('./stand-skip');
+const T1322_PF = SS.ON && !T738_SOA_XY && T670_SKIP_IDLE && !T791_VERIFY && !T1140_STUCK_INLINE && !T1145_XY_COLS && !T370_PATH_REUSE && !T1294_ARRIVED_PATH && T791_PATH_MIR && !T1241_DES;
+const T1322_VERIFY = T1322_PF && SS.VERIFY;
+// 서 있는 몸 — 다음 걸음 문(결정 문이 닫혀 있을 때)의 막힘 · 길 · 따라가기 · 도착 뒤가 도장만 찍는 몸 칸 상태(종전 글자를 그대로 따라간 조건 · 읽기만)
+function _t1322State(npc) {
+  if (npc.canadiaVillage || !(npc.hp > 0) || npc.floor || npc.onStairId || npc.canadiaTask === 'traveling') return false;
+  const b = npc.behavior;
+  if (b === 'fight' || b === 'plant' || (b === 'gather' && npc.gatherTarget) || (b === 'harvest' && npc.harvestTarget)) return false;   // 도착 뒤 행동이 없는 몸
+  const tx = npc.targetX, ty = npc.targetY;
+  if (typeof tx !== 'number' || typeof ty !== 'number') return false;
+  const P = npc.path;   // 길 끝 한 점(거울) — `computeNpcPath` 가 같은 배열을 돌려주는 갈래 · `followNpcPath` 가 0 → 1 로 끝내는 갈래
+  if (!P || P !== npc._t791P || npc._t791Pn !== 1 || npc.pathIndex !== 1 || !Object.is(npc._t791Px, tx) || !Object.is(npc._t791Py, ty)) return false;
+  if (!_t671Lt(tx - npc.x, ty - npc.y, 10)) return false;   // 따라가기 도착(10) ⇒ 막힘 서 있음(12) · 한 점 길 갈래(48)
+  if (tx !== npc._t670TkX || ty !== npc._t670TkY || npc._pathFor !== npc._t670Tk) return false;   // 목표 열쇠 · 길 열쇠 그대로
+  if (npc._stuckN !== 0 || !Object.is(npc.vx, 0) || !Object.is(npc.vy, 0)) return false;          // 걸음 문이 다시 쓸 값과 같다
+  const S = npc._stuckPos; if (!S || typeof S !== 'object') return false;
+  return true;
+}
+// 표 — 진짜 걸음을 마친 몸(몸이 뜨거울 때)
+function _t1322Grant(npc, now) {
+  const s = SS.slot(npc.pid); if (s < 0 || SS.own[s] !== npc) return;
+  const A = SS.A; A.VT[s] = _tick.n; A.TK[s] = 0;
+  const nda = npc.nextDecisionAt;
+  if (typeof nda !== 'number' || !(now < nda) || !_t1322State(npc)) return;
+  if (npc.simEvacUntil && now < npc.simEvacUntil) return;   // 대피 갈래 — 끝난(지난) 대피만(시각은 앞으로만 간다)
+  if (!_t316WalkAlways(npc)) return;                          // 결정 문 고리의 활성 청크 거름이 늘 통과하는 몸만
+  let kind = 1, lon = 0, w95 = 0;
+  if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null) {   // 밤 귀가 갈래에 드는 몸 — 침대 목표 그대로면 어느 시각에도 무동작(표 1) · 아니면 해 질 녘에 깨운다(표 2)
+    const bx = npc.npcBedX ?? npc.npcHomeX, by = npc.npcBedY ?? npc.npcHomeY;
+    if (!(Object.is(npc.targetX, bx) && Object.is(npc.targetY, by) && npc.behavior === 'wander' && npc.gatherTarget === null)) {
+      kind = 2; lon = npc.simLonOff; if (typeof lon !== 'number') return;
+      w95 = SimVillages.t1295Wp && SimVillages.t1295Wp(npc, now) != null ? 1 : 0;
+    }
+  }
+  A.TK[s] = kind; A.NDA[s] = nda; A.LON[s] = lon; A.W95[s] = w95; A.SK[s] = NaN; A.SX[s] = npc.x; A.SY[s] = npc.y; SS.stat.grant++;
+}
+// 미룬 도장 — 건넌 틱의 걸음 문이 썼을 값(마지막 건넌 시각 · 표를 준 자리)
+function _t1322Wake(s) {
+  const A = SS.A, t = A.SK[s];
+  if (t === t) { const p = SS.own[s]; p._t540StepAt = t; const S = p._stuckPos; S.x = A.SX[s]; S.y = A.SY[s]; S.at = t; p._pathAt = t; SS.stat.stamp++; }
+  A.TK[s] = 0; A.SK[s] = NaN; SS.stat.wake++;
+}
+function _t1322Touch(p) { const s = SS.slot(p.pid); if (s >= 0 && SS.own[s] === p && SS.A.TK[s]) { _t1322Wake(s); SS.stat.touch++; } }
+function _t1322FlushAll() { const A = SS.A, n = SS.count(); for (let s = 0; s < n; s++) if (A.TK[s]) _t1322Wake(s); SS.stat.flushAll++; }
+// 해 질 녘(표 2) — 걸음 문 밤 귀가 갈래의 해 몫 식 그대로(`_t670Ph` 틱 메모 · 판 시계 몸은 판 하루 축)
+let _t1322PhNow = NaN, _t1322Ph95 = 0;
+function _t1322Dusk(s, now) {
+  const A = SS.A;
+  let ph;
+  if (A.W95[s]) { if (now !== _t1322PhNow) { _t1322PhNow = now; _t1322Ph95 = SimVillages.t1295Ph(now); } ph = _t1322Ph95; }
+  else { if (now !== _t670PhNow) { _t670PhNow = now; _t670Ph = worldPhase(now); } ph = _t670Ph; }
+  const lon = A.LON[s], fv = T720_LON_DAY ? phaseAdd(ph, lon) : (ph + lon) % 1;
+  return fv > WORLD.dayPhaseRatio;
+}
+// 거름 — 결정 문 고리가 몸을 열기 전(pid → 칸). 참 = 이번 틱 걸음 문을 건넌다(도장 시각만 적는다). 거짓 = 표를 내렸다(미룬 도장은 몸에) → 종전 길.
+function _t1322Skip(s, pid, now) {
+  const A = SS.A, k = A.TK[s];
+  if (!k) return false;
+  const why = players.get(pid) !== SS.own[s] ? 'gone' : A.VT[s] !== _tick.n - 1 ? 'gap' : !(now < A.NDA[s]) ? 'due' : (k === 2 && _t1322Dusk(s, now)) ? 'dusk' : null;
+  if (why) { SS.stat[why]++; _t1322Wake(s); return false; }
+  if (T1322_VERIFY && !_t1322Check(SS.own[s], s, now)) { _t1322Wake(s); return false; }
+  A.SK[s] = now; A.VT[s] = _tick.n; SS.stat.skip++;
+  return true;
+}
+// `verify` — 건너려는 몸을 열어 종전 결정 문 고리 · 걸음 문 머리 글자로 다시 판정(읽기만 · 어긋나면 그 몸은 종전 길)
+function _t1322Check(npc, s, now) {
+  const st = SS.stat; st.vchecks++;
+  const bad = (w) => { st.bad++; st.why[w] = (st.why[w] || 0) + 1; if (st.ex.length < 8) st.ex.push(`${npc.pid} ${w} t=${now}`); return false; };
+  if (!(npc.hp > 0)) return bad('hp');
+  if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) return bad('inactive');
+  if (npc.canadiaVillage || !(now < npc.nextDecisionAt)) return bad('gate');
+  if (!Object.is(npc.nextDecisionAt, SS.A.NDA[s])) return bad('nda');
+  if (!Object.is(npc.x, SS.A.SX[s]) || !Object.is(npc.y, SS.A.SY[s])) return bad('moved');
+  if (npc.simEvacUntil && now < npc.simEvacUntil && npc.behavior !== 'fight' && npc.npcHomeX != null) return bad('evac');
+  if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null && npc.behavior !== 'fight') {
+    const _w95 = SimVillages.t1295Wp ? SimVillages.t1295Wp(npc, now) : null, ph = _w95 != null ? _w95 : worldPhase(now);
+    const fv = T720_LON_DAY ? phaseAdd(ph, npc.simLonOff) : (ph + npc.simLonOff) % 1;
+    if (fv > WORLD.dayPhaseRatio && !(npc._t720 && npc._t720.k)) {
+      const bx = npc.npcBedX ?? npc.npcHomeX, by = npc.npcBedY ?? npc.npcHomeY;
+      if (!Object.is(npc.targetX, bx) || !Object.is(npc.targetY, by) || npc.behavior !== 'wander' || npc.gatherTarget !== null) return bad('night');
+    }
+  }
+  if (!_t1322State(npc)) return bad('state');
+  return true;
 }
 function npcStep(npc, dt, now) {
   if (T738_SOA_XY) _t738Adopt(npc);   // ★[T738] 끔 = 종전 그대로
@@ -5840,6 +5939,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★★[T942] 몸 HP 문 — 마을 몸(NPC)의 HP 도 사람 문 그 함수(`setHp` · T109 "HP 를 바꾸는 문 하나" · 사본 0)로 쓴다(생활층 요양 · 전쟁 거울 · 포로 · 풀림 ·
   //   원정 굶음 · 캐러밴 죽음 · 다시 뜬 판 복원). NPC 몸은 소켓이 없고(`ws: null`) 마을 낱말은 방송 낱말(`HP_PEER`)이 아니라 메시지 0 = 종전.
   setHp,
+  t1322Touch: T1322_PF ? _t1322Touch : null,   // ★[T1322] 걸음 문 밖에서 몸 판정 칸을 바꾸는 생활층 자리(대피)가 쓰기 앞에 부른다(끔 = null · 무동작)
   t325CutTreeAt: (cx, cy) => _t325CutTreeAt(cx, cy),
   // ★[T325] 전리품 표는 존이 쥔다 — 생활층은 "이 그루가 목재 몇 낱개냐"만 묻는다(사본 0)
   t325LootOf: (r) => lootOfResource(r),
@@ -6577,6 +6677,7 @@ const server = http.createServer((req, res) => {
   // ★[T540] 주민 걸음 관측창(안 문) — 침대 곁 아침 정체를 **서버 값으로** 가른다. 읽기만(`&astar=1` 이면 A* 를 한 번 더 묻는다 · 목표 불변).
   //   `?bed=1` = 침대 곁(≤12px) 주민만 · `?vid=<n>` = 한 마을 · 기본 = 마을 주민 전부(가벼운 칸만).
   if (req.url && req.url.startsWith('/walkdbg') && req.method === 'GET') {
+    if (T1322_PF) _t1322FlushAll();   // ★[T1322] 미룬 도장을 몸에(관측 칸 `_t540StepAt` 이 종전 값)
     if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     try {
@@ -14993,6 +15094,7 @@ function setHp(p, v, why) {
   const prev = p.hp;
   const next = Math.max(0, Math.min(max, v));
   if (next === prev) return prev;
+  if (T1322_PF && (next > 0) !== (prev > 0) && p.isNpc) _t1322Touch(p);   // ★[T1322] 살고 죽음이 바뀌기 전 — 첫 거름 표를 내린다(거름은 `hp > 0` 만 본다)
   p.hp = next;
   if (Math.round(next) === Math.round(prev)) return next;
   if (HP_QUIET.has(why)) return next;
@@ -15032,6 +15134,7 @@ function damagePlayer(p, dmg, source) {
       setTimeout(() => {
         if (!players.has(p.pid)) return;
         setHp(p, p.maxHp, 'respawn');   // ★[T109] 바로 아래 `player_respawn` 이 이미 알린다 — 조용하다
+        if (T1322_PF && p.isNpc) _t1322Touch(p);   // ★[T1322]
         if (T1145_XY_COLS) BC.w(p, respawnX, respawnY); else { p.x = respawnX; p.y = respawnY; }   // ★[T1145] 켬 = 쓰기 길
         p.vx = 0; p.vy = 0;
         p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX;
@@ -15435,6 +15538,7 @@ function _wakeUp(p, x, y, hpFrac, msg) {
   p._deadUntil = 0;
   Body.ensure(p).hpDebt = 0;            // ★누워 있는 동안 쌓인 극단 빚을 지우고 일어난다(T44 와의 접점)
   setHp(p, Math.max(1, Math.round(p.maxHp * hpFrac)), 'rescue');   // ★[T109] 일어난 순간이 화면에 바로 온다(자기에게만)
+  if (T1322_PF && p.isNpc) _t1322Touch(p);   // ★[T1322]
   if (Number.isFinite(x) && Number.isFinite(y)) { if (T1145_XY_COLS) BC.w(p, x, y); else { p.x = x; p.y = y; } }   // ★[T1145] 켬 = 쓰기 길
   p.vx = 0; p.vy = 0;
   p.lastDamagedAt = Date.now();
@@ -16223,6 +16327,7 @@ function _wwPre(moveDt) {
 }
 // 이동 문 **안** — 커널 몸의 뒷일(원래 차례 그대로)
 function _wwPost(p, i) {
+  if (T1322_PF && p.vx === 0 && p.vy === 0) _t1322Touch(p);   // ★[T1322] 서 있던 몸이 옮겨지기 전(표 받은 몸은 속도 +0)
   if (T585_WALK_STAT) _t585WalkCount(p, _WW.X[i] - p.x, _WW.Y[i] - p.y);   // ★[T585] 관측(손잡이 켤 때만) — 개울 칸 위·밖 걸음당 거리
   if (T1145_XY_COLS) BC.w(p, _WW.X[i], _WW.Y[i]); else { p.x = _WW.X[i]; p.y = _WW.Y[i]; }   // ★[T1145] 켬 = 쓰기 길(열 · 거울)
   const st = _WW.ST[i];
@@ -16605,6 +16710,7 @@ setInterval(() => {
   //   끔 = 같은 `for…of` + 멈추면 `break` · 켬 = `Set.forEach`(살아 있는 순회 — 같은 차례) + 멈춤 깃발(멈춘 뒤 사람은 아무것도 안 묻는다 — 시계도 안 읽는다) · 반복 결과 객체 0
   const _decOne = (pid) => { do {
     if (!_curHit) { if (pid !== _npcCursor) continue; _curHit = true; }   // 지난 틱에 **못 한** 그 사람부터 한다
+    if (T1322_PF) { const _s22 = SS.slot(pid); if (_s22 >= 0 && _t1322Skip(_s22, pid, now)) { if (T1241_PROBE && _desClk) { _desStat.steps++; _desStat.nStep++; } else if (_T1241) _desStat.steps++; continue; } }   // ★[T1322] 서 있는 몸 — 몸을 안 열고 건넌다(걸음 셈은 종전대로 · 위 `_t1322Skip`)
     const npc = players.get(pid);
     if (!npc || npc.hp <= 0) continue;
     // Phase 4d-9 fix: canadia NPC는 active chunk 체크 우회 (모든 마을 동시 시뮬)
@@ -16618,10 +16724,11 @@ setInterval(() => {
     //     예산을 늘리지도, 새로 걸지도 않는다: 놓는 수가 곧 설계 판정이라 PM 몫이다(T316 §3 회부).
     if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
     if ((Date.now() - _decT0) > 15 || TB.out(15, 'decide')) { _stopAt = pid; break; }   // ★[T687] 켬 = 이 틱 공용 몫이 바닥나도 여기서 멈춘다(커서 그대로)   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
-    if (T1241_PROBE && _desClk) { _desTimed(npc, dt, now); continue; }   // ★[T1241 계측] 같은 몸통을 진짜 시계로 잰다(아래 세 줄 그대로)
+    if (T1241_PROBE && _desClk) { _desTimed(npc, dt, now); if (T1322_PF) _t1322Grant(npc, now); continue; }   // ★[T1241 계측] 같은 몸통을 진짜 시계로 잰다(아래 세 줄 그대로)
     if (T1241_DES && npc._des && _desHold(npc, now)) continue;   // ★[T1241] 사건 갈래가 쥔 몸(끔 = 이 줄 무동작)
     if (_T1241) _desStat.steps++;
     npcStep(npc, dt, now);
+    if (T1322_PF) _t1322Grant(npc, now);   // ★[T1322] 서 있는 몸이면 표(다음 틱 첫 거름)
     if (T1241_DES) _desTry(npc, now);   // ★[T1241] 사건 토막을 열 수 있나
   } while (false); return _stopAt !== null; };
   if (T689_GC) { let _decStop = false; npcs.forEach((pid) => { if (!_decStop && _decOne(pid)) _decStop = true; }); }
