@@ -2083,6 +2083,7 @@ function isRockTileLocal(localX, localY) {
 // ★[T333] 키가 정수다 — `cx * _WT_H + cy`(같은 격자 · 같은 집합 · 문자열 0). 다리 칸은 수백 개라 Set 이면 족하다.
 const _cellKey = (cx, cy) => cx * _WT_H + cy;
 const BRIDGE_CELLS = new Set();
+let _t1294DitchGen = 0;   // ★[T1294 ⓐ] 환호 다시 짓기 세대(`refreshDitchCells` 마다 +1)
 let _bridgeGen = 0;   // ★[T562] 다리 셀이 더해질 때마다 오른다(`addBridgeCells`) — 닿는 칸 기억의 도장 한 항
 {
   const bl = (ZONE && ZONE.bridges) || null;
@@ -2125,6 +2126,7 @@ function isDitchTileLocal(localX, localY) {
   return DITCH_CELLS.has(_cellKey(Math.floor(localX / 32), Math.floor(localY / 32)));   // ★[T333] 정수 키
 }
 function refreshDitchCells() {
+  _t1294DitchGen++;   // ★[T1294 ⓐ] 지형 세대 한 항(환호가 바뀌었다 — 손잡이 켬 길 기억 열쇠 `_t1294Gen`)
   DITCH_CELLS.clear();
   if (_BLK_BITS) _BLK_BITS.fill(0);   // ★[T356 ②] 환호가 바뀌면 막힘 비트를 통째로 영점(유도값이라 다시 구우면 된다)
   if (_WW) { _WW.clearTerrain(); _wwTbGen++; }   // ★[T461] 커널의 지형 비트도 같은 까닭으로 영점 · ★[T1278] 서 있는 몸 답 기억의 세대
@@ -3780,10 +3782,14 @@ function _t671Shape(p) {
   if (T1241_DES) p._des = undefined;   // ★[T1252] T1241 몸 토막(`_desBegin` · `_desEnd` — 손잡이 `T1241_DES` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
   if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
   if (_t316Econ && _t316Econ.T1243_FARM_ON) p._t1243S = undefined;   // ★[T1252] T1243 추신 14 손에 든 씨 몫(villages.js `_t1243Reaped` · `_t368Deliver` — econ 손잡이 `T1243_FARM_ON` 켬일 때만 서는 칸 · 끔 = 무동작)
-  if (_t316Econ && _t316Econ.T1266_ORE_BODY) { p._t1266H = undefined; p._t1266Stop = undefined; p._granTask = undefined; }   // ★[PM land1067] T1266 광부 몸 한 시간 칸 · 멈춘 날(villages.js `_t1266Keep` — econ 손잡이 `T1266_ORE_BODY` 켬일 때만 서는 칸 · 끔 = 무동작 · test-body-fields 규약)
+  if (_t316Econ && _t316Econ.T1266_ORE_BODY) { p._t1266H = undefined; p._t1266Stop = undefined; }   // ★[PM land1067] T1266 광부 몸 한 시간 칸 · 멈춘 날(villages.js `_t1266Keep` — econ 손잡이 `T1266_ORE_BODY` 켬일 때만 서는 칸 · 끔 = 무동작 · test-body-fields 규약)
   //   ★★[T1277 ③ · 날 52 CPU 뜀] `_granTask`(곳간 사다리 짐 길 — villages `_granGo`)도 이 켬 줄에 — T1266 켬이면 광부가 짐 상한(25 kg)을 날마다 채워 곳간에 간다(끔 판 곳간행 0 · 켬 판 날 12 부터).
   //     그 몸만 `_granTask` 를 뒤에 붙여 모양이 갈렸다(몸 모양 셈 `t1277-observe` ④ — 날 12 넷째 모양) · 날 51 다섯째 모양이 서자 몸마다 짚는 자리(`_decOne` · `_wwPre` · `_moveOne`)가
   //     메가모픽이 되어 하루 CPU 가 +60 초 뛰었다(T1271 회부 3). 값은 `undefined` 그대로 — 읽는 자리(`if (npc._granTask)` · `npc._granTask = null`)의 답 무변 · 판 날 줄 같음(보고 §3).
+  //   ★★[T1294 ② · T1277 회부 ②] **몸 모양 하나로** — 끔 판에서도 나중에 붙어 모양을 가르던 칸을 태어날 때 같은 차례로 `undefined`(값 그대로 · 읽는 자리 답 무변 —
+  //     `if (npc._granTask)` · `p.simCaravan` 참거짓 · `_bdtGid != null` · `!p.kgLedger` · `!npc._lastFishAt` · 몸 키를 도는 자리 0 — test-body-fields).
+  //     어부 `_lastFishAt`(184 몸 · 날 1 부터) · 캐러밴 `simCaravan` · 짐 장부 `kgLedger` · 곳간행 `_granTask`(종전 T1266 켬 줄에서 옮김) · 도적 `_bdtGid` · `_t1078Fed` · 길 세대 `_t1294G`(ⓐ 켬).
+  p._lastFishAt = undefined; p.simCaravan = undefined; p.kgLedger = undefined; p._granTask = undefined; p._bdtGid = undefined; p._t1078Fed = undefined; p._t1294G = undefined;
 }
 const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT !== '0';   // ★[T1144 · T1154] villages.js 와 같은 손잡이(켬 기본 · `'0'` 만 끔) — 이 파일은 몸 칸 하나만
 // ★★[T1140 ③-가 2026-11-04 · 손잡이 `T1140_HOT_ORDER`(기본 끔 · `'1'` 만 켬 · 끔 = 아래 함수가 안 불린다 = 종전 글자)] **걸음 머리 칸을 x · y 곁에** — T791 회부 2 의 남은 몫.
@@ -4264,6 +4270,7 @@ function decideNpcBehavior(npc, now) {
   //     박자를 틱 수로 바꾸는 것은 세계를 바꾸는 일이라 카드 밖이다(보고 §3 · 회부).
   _diceNpc.seed(_SEED.seedOf(_shOf(npc), Math.floor(npc.x / BUILDING_SIZE), Math.floor(npc.y / BUILDING_SIZE), zoneGameDay(), _tick.n));
   npc.nextDecisionAt = now + 500 + _dn() * 1000;
+  if (npc.simVillageId && SimVillages.t1295S) { const _s = SimVillages.t1295S(npc); if (_s > 1) npc.nextDecisionAt = now + (npc.nextDecisionAt - now) / _s; }   // ★[T1295] 밭 세계 판 시계 농부 몸 = 결정 박자도 게임 분 축(같은 굴림 · 끔 · 운영 시계 = 이 줄 무동작)
   // ① 늑대 시야 안이면 도망 — quadtree로 후보 추리고 종류 필터
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(npc.x, npc.y, NPC_FLEE_RANGE) : Array.from(mobs.values());
   let nearestWolf = null, wolfDist = NPC_FLEE_RANGE;
@@ -4698,7 +4705,7 @@ function computeNpcPath(npc, now) {
     return [{ x: npc.targetX, y: npc.targetY }];
   }
   // A* — NPC당 최소 2초 간격
-  if (npc._lastAStarAt && now - npc._lastAStarAt < 2000) return null;
+  if (npc._lastAStarAt && now - npc._lastAStarAt < (isVil && SimVillages.t1295S ? 2000 / SimVillages.t1295S(npc) : 2000)) return null;   // ★[T1295] 같은 축(끔 · 운영 시계 = ÷ 1)
   npc._lastAStarAt = now;
   // ★★★[T381 ② 2026-09-25 · 못 갈 칸에는 길을 묻지 않는다] ★[T394 ④ 2026-09-26] **기본 켬** — 되돌림 `T381_PATH_DEAD=0`.
   //   ⚠T394 ③ 이 `localPath` 첫 줄을 `routePath` 와 같게 만든 뒤로는 **켬/끔이 같은 답**이다(둘 다 막힌 목표에 `null`).
@@ -5026,6 +5033,28 @@ let _t316Econ = null;
 //   ★★[T368 2026-09-25] **농부도** — `T368_FARM_ACT` 면 마을 농부는 관측자와 무관하게 걷는다(캐논 ⓑ① "항상 실걸음").
 //     술어는 여전히 **이 하나**다(둘째 술어 0 · 문 둘 — 결정·이동 — 이 같이 연다). 헤드리스의 농부 몫은 `villages.js` 가 끈다.
 //     ⚠직업은 생활층이 심는 그 칸(`simJob`)이다 — 농부가 다른 일로 바뀌면 그날부터 이 항이 거짓이다(새 규약 0).
+// ★★[T1295] 밭 세계 판 시계 농부 몸 — 걸음 · 길 다시 묻기를 게임 분 축으로(배율 s = `SimVillages.t1295S` · 1 이면 종전 그대로 · 까닭은 villages.js T1295 머리 줄).
+//   걸음: 그 틱의 걸음 거리 = 그 자리 빠르기(`_desSpeed` — 배회 배율 × 길 등급 × 개울 · T1241 사건 걸음과 같은 식) × dt × s 를 그 몸의 길(`npc.path` — 존 A* · 직선 문 답)
+//     점을 차례로 따라 쓴다(점을 지나면 다음 점 · 끝에 닿으면 선다 — 넘어 가지 않는다 · 길 밖으로 안 나간다 · 순간이동 0). 속도 칸은 0(이동 문이 다시 안 옮긴다).
+function _t1295Walk(p, dt) {
+  const s = SimVillages.t1295S ? SimVillages.t1295S(p) : 1;
+  if (!(s > 1)) return false;
+  p.vx = 0; p.vy = 0;
+  const P = p.path, M = P === p._t791P, n = P ? (M ? p._t791Pn : P.length) : 0;
+  if (!P || !(p.pathIndex < n)) return true;   // 갈 길 없음 — 선다
+  let x = _xyX(p), y = _xyY(p), left = dt, moved = 0;   // T1145 열이면 열에서(끔 = 몸 칸)
+  while (left > 0 && p.pathIndex < n) {
+    let wx, wy; if (M && p.pathIndex === 0) { wx = p._t791Px; wy = p._t791Py; } else { const w = P[p.pathIndex]; wx = w.x; wy = w.y; }
+    const dx = wx - x, dy = wy - y, d = Math.hypot(dx, dy), v = _desSpeed(x, y) * s;   // px/실초(게임 분 축)
+    if (!(v > 0)) break;
+    if (d <= v * left) { x = wx; y = wy; left -= d / v; moved += d; p.pathIndex++; }
+    else { const k = v * left / d; x += dx * k; y += dy * k; moved += v * left; left = 0; }
+  }
+  if (moved > 0) { _desPut(p, x, y); Roads.stampEntityPx(p, x, y); p.dirty = true; }
+  const S = SimVillages._t1295Stat; if (S) { S.walks++; S.walkPx += moved; }
+  return true;
+}
+function _t1295Stale(npc) { const s = (npc.simVillageId && SimVillages.t1295S) ? SimVillages.t1295S(npc) : 1; return s > 1 ? 5000 / s : 5000; }
 function _t316WalkAlways(npc) {
   if (!npc || !npc.simVillageId) return false;
   if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
@@ -5217,6 +5246,25 @@ function _desTry(npc, now) {
   npc._des = { k, t0: now, until, r, P, pi: npc.pathIndex, d, hp: npc.hp };
   _desStat.begin[k]++;
 }
+// ★★[T1294 ⓐ 2026-11-13 · µs 둘째] **도착해 서 있는 몸은 길을 다시 안 묻는다** — 손잡이 `T1294_ARRIVED_PATH`(끔 기본 · `'1'` 만 켬). (T1290 회부 2 ⓐ · T370 의 그 자리)
+//   종전: 길 끝에 닿은 몸은 목표가 같아도 틱마다 `computeNpcPath` → 한 점 길(같은 배열) → `pathIndex = 0` → `followNpcPath` 가 10px 안이라 다시 끝(`pathIndex = 1` · 속도 0).
+//   ① 바이트 같은 갈래 — 길 거울이 목표 한 점(같은 수) · 그 끝(`pathIndex === 1`) · 목표 10px 안 · 속도가 이미 +0 이면 다시 물어도 같은 배열 · 같은 끝 · 같은 속도 쓰기다
+//      (다른 것은 이 걸음만 읽는 `_pathAt` 하나 — 하네스 `test-t1294-perf` ① 이 종전 글자와 몸 칸 전부 같음을 본다). ⚠재 보니 이 갈래만으로는 µs 가 안 준다 —
+//      길 묻기의 몫은 셈이 아니라 그 몸 칸을 처음 짚는 몫이라 술어로 옮겨 갈 뿐이다(보고 T1294 §2). 그래서 이 갈래도 손잡이 뒤에 둔다(끔 = 종전 글자 그대로 돈다).
+//   ② 셈 바뀌는 갈래 — 길 끝 · 같은 목표 열쇠 · 목표 48px 안(`computeNpcPath` 의 한 점 갈래) · 지형 세대(콜라이더 · 다리 · 환호)가
+//      길을 지은 때와 같으면 다시 안 묻는다(10px 안으로 다시 걸어 들어가지 않고 선 자리에 선다 · 5초 만료도 안 깨운다).
+const T1294_ARRIVED_PATH = process.env.T1294_ARRIVED_PATH === '1';
+function _t1294Gen() { return collGenAll() * 8 + _t1294DitchGen; }
+const _t1294Stat = { strict: 0, knob: 0 };
+function _t1294Arrived(npc, targetKey) {
+  const P = npc.path; if (!P || npc._pathFor !== targetKey) return false;
+  const M = P === npc._t791P, n = M ? npc._t791Pn : P.length;
+  if (!(npc.pathIndex >= n)) return false;
+  if (M && n === 1 && npc.pathIndex === 1 && !T1145_XY_COLS && !T738_SOA_XY && Object.is(npc.vx, 0) && Object.is(npc.vy, 0)
+      && Object.is(npc._t791Px, npc.targetX) && Object.is(npc._t791Py, npc.targetY) && _t671Lt(npc.targetX - npc.x, npc.targetY - npc.y, 10)) { _t1294Stat.strict++; return true; }
+  if (T1294_ARRIVED_PATH && npc._t1294G === _t1294Gen() && typeof npc.targetX === 'number' && typeof npc.targetY === 'number' && _t671Lt(npc.targetX - npc.x, npc.targetY - npc.y, 48)) { _t1294Stat.knob++; return true; }
+  return false;
+}
 function npcStep(npc, dt, now) {
   if (T738_SOA_XY) _t738Adopt(npc);   // ★[T738] 끔 = 종전 그대로
   npc._t540StepAt = now;   // ★[T540 관측] 이 몸이 마지막으로 걸음 문을 받은 때(`/walkdbg stepAge` — 새벽 멎음을 이것으로 잡았다)
@@ -5235,7 +5283,8 @@ function npcStep(npc, dt, now) {
   else if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null && npc.behavior !== 'fight') {
     // ★[T670 ①] `worldPhase(now)` 는 `now` 의 순수 함수다 — 틱 안의 `now` 는 모두 같으므로 틱당 한 번만 셈한다(같은 값 · 같은 비트).
     if (now !== _t670PhNow) { _t670PhNow = now; _t670Ph = worldPhase(now); }
-    const fv = T720_LON_DAY ? phaseAdd(_t670Ph, npc.simLonOff) : (_t670Ph + npc.simLonOff) % 1;   // ★[T720] 켬 = 음수 경도 몫도 [0,1)
+    const _w95 = SimVillages.t1295Wp ? SimVillages.t1295Wp(npc, now) : null, _ph95 = _w95 != null ? _w95 : _t670Ph;   // ★[T1295] 켬(판 시계 밭 몸) = 해 몫도 판 하루 축(끔 · 운영 시계 = 종전 `_t670Ph`)
+    const fv = T720_LON_DAY ? phaseAdd(_ph95, npc.simLonOff) : (_ph95 + npc.simLonOff) % 1;   // ★[T720] 켬 = 음수 경도 몫도 [0,1)
     if (fv > WORLD.dayPhaseRatio && !(npc._t720 && npc._t720.k)) {   // ★[T720 ③] 해 질 녘 곳간 정산 중인 몸은 그 걸음이 먼저(끔이면 칸이 없다 = 종전)   // ★[침대 진입] 밤 목표=실내 침대(npcLifeTick과 동일 — 두 게이트가 침대/마당으로 갈라지면 왕복 진동). 자리 분산은 1인 1침대(BED_SLOTS)가 실체로 보장
       // ★[T670 ①] 같은 값이면 다시 쓰지 않는다(쓰는 순서·값 그대로 — 같은 값 덮어쓰기는 아무것도 안 바꾼다)
       const _bx = npc.npcBedX ?? npc.npcHomeX, _by = npc.npcBedY ?? npc.npcHomeY;
@@ -5316,7 +5365,7 @@ function npcStep(npc, dt, now) {
   const targetKey = npc._t670Tk;
   const needPath = !npc.path || npc.pathIndex >= (npc.path === npc._t791P ? npc._t791Pn : npc.path.length) ||   // ★[T791 ②] 길 거울(끔 = 배열 길이 그대로)
                    npc._pathFor !== targetKey ||
-                   (npc._pathAt && now - npc._pathAt > 5000);
+                   (npc._pathAt && now - npc._pathAt > _t1295Stale(npc));   // ★[T1295] 같은 축(끔 · 운영 시계 = 5000 그대로)
   // ★★★[T370 ② 2026-09-23 · 경로를 두 번 묻지 않는다] `T370_PATH_REUSE=1` 일 때만.
   //   T356 이 "낮에 A* 가 틱마다 899명(61 %)" 을 냈고, T370 ① 이 **왜**를 세었다:
   //   그중 **98.8 %가 `pathIndex >= length`** 다 — 경로 끝에 닿은(=도착한) 주민이, 목표도 안 바뀌고
@@ -5329,13 +5378,15 @@ function npcStep(npc, dt, now) {
   const _skip = T370_PATH_REUSE && needPath
                 && npc.path && npc.pathIndex >= npc.path.length
                 && npc._pathFor === targetKey
-                && !(npc._pathAt && now - npc._pathAt > 5000);
+                && !(npc._pathAt && now - npc._pathAt > _t1295Stale(npc))
+                || (T1294_ARRIVED_PATH && needPath && _t1294Arrived(npc, targetKey));   // ★[T1294 ⓐ 켬] 도착해 서 있는 몸(위 `_t1294Arrived` 머리말 · 끔 = 첫 항에서 단락)
   if (needPath && !_skip) {
     const p = computeNpcPath(npc, now);
     npc.path = p || [{ x: npc.targetX, y: npc.targetY }]; // 못 찾으면 beeline
     npc.pathIndex = 0;
     npc._pathFor = targetKey;
     npc._pathAt = now;
+    if (T1294_ARRIVED_PATH) npc._t1294G = _t1294Gen();   // ★[T1294 ⓐ 켬] 이 길을 지은 때의 지형 세대(끔 = 이 줄 무동작)
     if (T791_PATH_MIR) _t791Mir(npc);   // ★[T791 ②] 길 거울 — 새 배열이면 길이 · 첫 점을 몸 칸에 비춘다(같은 배열이면 안 읽는다)
   }
   const arrived = followNpcPath(npc, speedMult);
@@ -5796,7 +5847,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   stoneHit: (npc,r) => _physicalStoneHit(npc,r),
   t312DrawFishAt: (cx,cy,kg,now) => { const want=kg/(Fishing.T1218_FISH_CANON?Fishing.kgPerStock(isSeaTileLocal(cx*BUILDING_SIZE+BUILDING_SIZE/2,cy*BUILDING_SIZE+BUILDING_SIZE/2)?'sea':'fresh'):Fishing.CFG.KG_PER_STOCK);return Fishing.drawWholeStock(cx,cy,want,now,_fishSave)>=want-1e-12; },   // ★[T1218] 켬 = 그 물 종류의 kg   // T1180: 사람과 같은 어장·환산·저장 문
   t1217DrawFish: (cx, cy, perStock, n, now, kFn) => Fishing.drawBucketFish(cx, cy, perStock, n, now, kFn, _fishSave),   // ★[T1217 ②-b] 마을 어부(몸 · 일괄)의 마리 — 버킷 장부 · 같은 저장 문(온전한 마리 n 까지)
-  t312FishTargetAt: (p,spot) => _castTargetFor(p,spot),
+  t312FishTargetAt: (p,spot) => _t1294Cast(p,spot),   // ★[T1294 ⓑ] 같은 자리 · 같은 지형 세대면 지난 답(바이트 같음 · 켬 = 칸 열쇠)
   t312FishSpotAt: (x,y) => Fishing.spotAt(_terrain,ZONE_ID,x,y,_fishSea()),
   // ★[T347] 채집 행위 — 문 둘 + 전리품 표 하나. 재생 문(`t341Unharvest`)은 **위 그것을 그대로 쓴다**(사본 0).
   //   ⚠`t347LootOf` 는 `{ day }` 를 넘긴다 — 야생 채종이 계절 정본을 지나게(주사위 0 · `_t347PickAt` 과 같은 ctx).
@@ -10422,6 +10473,21 @@ function _t593Pick(sp, x, y, h, day) {
   return Fresh.pick(_t593Water(sp), day, h, _ch, ZONE_ID);   // ★[T609] 존(위와 같다)
 }
 // 던질 자리 — 플레이어 주변에서 **가장 좋은 물 칸**을 서버가 고른다(클라가 자리를 못 속인다).
+// ★★[T1294 ⓑ] **마을 어부 던질 자리 기억** — `_castTargetFor` 는 몸 x · y 둘레(REACH_PX)의 물 칸 · 자리 값(정적 — T677 칸 기억과 같은 전제)만 읽는다.
+//   ① 바이트 같은 몫(손잡이 0): 같은 몸 · 같은 x · y(Object.is) · 같은 자리 함수 유무 · 같은 지형 세대(콜라이더 · 다리 · 환호)면 지난 답 객체를 그대로 준다
+//      (부르는 쪽 `_t340Try` 는 그 객체의 x · y · sp 를 읽기만 한다). 다른 것은 관측 수 `_walk.waterQ`(물 술어 부른 수) 하나다.
+//   ② 켬(`T1294_LIFE_MEMO=1`): 열쇠가 그 몸이 선 칸(32px) — 칸 안에서 조금 움직여도 지난 자리를 쓴다(셈이 바뀐다).
+const T1294_LIFE_MEMO = process.env.T1294_LIFE_MEMO === '1';
+const _t1294CastM = new WeakMap(), _t1294CastStat = { q: 0, hit: 0 };
+function _t1294Cast(p, spot) {
+  const g = _t1294Gen(), s = !!spot, x = T1294_LIFE_MEMO ? Math.floor(p.x / 32) : p.x, y = T1294_LIFE_MEMO ? Math.floor(p.y / 32) : p.y;
+  _t1294CastStat.q++;
+  const m = _t1294CastM.get(p);
+  if (m && Object.is(m.x, x) && Object.is(m.y, y) && m.g === g && m.s === s) { _t1294CastStat.hit++; return m.r; }
+  const r = _castTargetFor(p, spot);
+  if (m) { m.x = x; m.y = y; m.g = g; m.s = s; m.r = r; } else _t1294CastM.set(p, { x, y, g, s, r });
+  return r;
+}
 function _castTargetFor(player, spotAt) {
   const R = Fishing.CFG.REACH_PX;
   const _sea = _fishSea();   // ★[T593] 켬이면 바다 칸도 자리다(끔 = undefined)
@@ -16803,6 +16869,10 @@ setInterval(() => {
     if (p.isNpc) {
       if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
       if (p.simWar || (T1241_DES && p._des)) continue;     // ★[T1241] 사건 갈래가 쥔 몸도(자리는 결정 문에서 보간했다 · 끔 = 앞 항 그대로) · §4-4 P3: 출정(징발) 병사 — 이동은 villages.js 실체 전쟁(행군 대형 페이싱·전투유닛 미러)이 전담(이중 이동 방지)
+      if (p.simVillageId && _t1295Walk(p, moveDt)) {   // ★[T1295] 밭 세계 판 시계 농부 몸 = 그 몸의 길을 게임 분 축 걸음으로(끔 · 운영 시계 = 거짓 — 아래 종전 그대로)
+        if (_wwOn && p === _wwSeq[_wwCur]) { if (_wwCode[_wwCur++] === 1) _wwK++; }   // 걸음 커널 차례는 그대로 넘긴다(커널이 잰 걸음은 안 쓴다 — 이 몸은 위에서 걸었다)
+        continue;
+      }
       if (_wwOn && p === _wwSeq[_wwCur]) {   // ★[T461] 앞문이 적은 갈래 — 커널 몸은 뒷일만(차례 그대로) · 잠든 몸은 건너뜀 · 2 는 아래 정본 문으로
         const _c = _wwCode[_wwCur++];
         if (_c === 1) { _wwPost(p, _wwK++); continue; }

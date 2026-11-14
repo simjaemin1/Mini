@@ -106,6 +106,7 @@ const cp = (src, dst) => { for (const sfx of ['', '-wal', '-shm']) { try { fs.co
 // ★①~⑤ 는 **선계산을 끄고**(`VILLAGE_ROUTE_WARM=0`) 잰다. 안 끄면 무효화 직후 선계산이 곧바로
 //   다시 채워서 "비웠는가"를 못 잰다(첫 판이 그랬다: 81 → 1). 선계산 자체는 ⑥에서 켜고 잰다.
 async function up(warm, extra) {
+  _board++;   // ★[T1301] 마감 표본을 판마다 가른다(`_closeWallSteady` — 판마다 첫 마감 뺌)
   const _central = boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
   //   포트 응답은 증인이 아니다 — 앞 판 central 이 포트를 쥔 채면 새 central 은 `EADDRINUSE` 로 즉시
@@ -133,10 +134,28 @@ async function up(warm, extra) {
 //   상한은 그물(`REAP_CAP_MS`) — 그래도 산 아이가 있으면 다음 판 `up()` 의 `waitUp` 이 `EADDRINUSE` 로 이름을 붙인다(조용한 빨강 0).
 async function down() { await FB.stopKids(procs); procs.length = 0; await FB.waitFree([CPORT, ZPORT]); }   // ★[T1033] 몸이 내려갔고(exit) 포트가 실제로 풀렸다(bind 로 확인)
 // ★[T884] `sink`(있으면) — 폴링마다 본 **그 하루**(`econTick.last`)를 날 번호로 모은다(⑥ 아래 캐러밴 조각 표 · 판정 아님).
+// ★★[T1301 · T1291 회부 2] **하루 마감의 벽시계 길이**(`econ_day` 사건의 `wall` — 서버가 잰다 · 하네스는 최대만 모은다).
+//   선계산(`_routeWarmStep`)은 마감이 없는 틱에만 돈다(`villages.js` `if (!state.tickJobs)` — 마감 먼저 · 제품 규칙 그대로).
+//   이 하네스의 하루는 3초(`ROUTE_DAY_MS`)인데 상자가 붐비면 마감 하나가 3초를 넘는다(두 코어 부하 판: 마감 일 5,173ms) —
+//   그러면 마감이 다음 마감에 바로 이어져 **마감 없는 틱이 0** 이 되고, 선계산은 한 쌍도 못 끝낸다(594 → 594 · ⑥ ⑦d ⑧ 이 같이 빨갛다).
+//   그건 "접속 중에도 데운다"(⑦d) · "완주한다"(⑥)의 반대 증거가 아니라 **픽스처의 하루가 마감보다 짧아진 판**이다.
+//   ⇒ 선계산 판(5판)의 하루를 앞 판들에서 잰 마감 최대 벽시계의 두 배 이상으로 둔다 — 하루의 절반은 마감 밖(조각 예산이 프레임의 절반 ·
+//     `TICK_SLICE_MS` 16 / 33ms 인 것과 같은 결). 조용한 판에서 3초보다 짧으면 3초 그대로. 단언 · 문턱은 한 글자도 안 바뀐다.
+//   ⚠판마다 **첫 마감은 뺀다** — 부팅 직후 첫날은 찬 세계를 한 번에 세운다(두 코어 부하 판 49,377ms · 그 뒤 날들은 수 초). 그 날을 넣으면 5판 하루가 98초가 된다.
+let _board = 0;
+const _closeSeen = new Map();   // 사건 시각 → [판, 벽시계 ms]
+function _noteClose(j) { for (const e of ((j && j.events) || [])) if (e && e.kind === 'econ_day' && e.wall >= 0 && !_closeSeen.has(e.t)) _closeSeen.set(e.t, [_board, e.wall]); }
+function _closeWallSteady() {
+  const first = new Map();
+  for (const [t, [b]] of _closeSeen) if (!first.has(b) || t < first.get(b)) first.set(b, t);
+  let m = 0, n = 0; for (const [t, [b, w]] of _closeSeen) if (t !== first.get(b)) { n++; if (w > m) m = w; }
+  return { max: m, n };
+}
 async function runDays(n, sink) {
   for (let i = 0; i < 400; i++) {
     await sleep(2000);
     const j = await jget(`http://localhost:${ZPORT}/perf`);
+    _noteClose(j);
     if (sink && j.econTick && j.econTick.last) sink.set(j.econTick.last.day, j.econTick.last);
     if (j.econTick && j.econTick.days >= n) return j;
   }
@@ -281,7 +300,11 @@ async function runDays(n, sink) {
   //   짧게 잡으면 하네스가 들여다보기도 전에 창이 닫힌다(실측 — 관측 0회로 떨어졌다).
   //   기본값(250 / 30,000)은 ① 이 따로 확인한다.
   const WGAP = 60, WIDLE = 90000;
-  if (!await up(true, { VILLAGE_ROUTE_WARM_GAP_MS: String(WGAP), VILLAGE_ROUTE_WARM_IDLE_MS: String(WIDLE) })) {
+  const _cw = _closeWallSteady();
+  const DAY5 = Math.max(DAY_MS, Math.ceil(2 * _cw.max));   // ★[T1301] 위 `_closeSeen` 머리 주석
+  console.log(`  [T1301] 5판 하루 ${DAY5}ms — 앞 판 마감(판마다 첫날 뺌 ${_cw.n}번) 최대 벽시계 ${_cw.max}ms × 2 와 ${DAY_MS}ms 중 큰 것(판정 밖 · 픽스처)`);
+  ok(_cw.n >= 3 && _cw.max > 0, '⑥ [상황] 앞 판에서 하루 마감 길이를 실제로 쟀다(0 이면 5판 하루가 붐빔을 모른다)', `${_cw.n}번 · 최대 ${_cw.max}ms`);
+  if (!await up(true, { VILLAGE_DAY_MS: String(DAY5), VILLAGE_ROUTE_WARM_GAP_MS: String(WGAP), VILLAGE_ROUTE_WARM_IDLE_MS: String(WIDLE) })) {
     console.log('  ✗ 5판 기동 실패'); process.exit(1);
   }
   // ★유예 시계는 **큐가 선 순간**부터 흐른다(`_routeWarmBuild`). /health 가 뜬 시각이 아니다 —
@@ -352,12 +375,21 @@ async function runDays(n, sink) {
       await sleep(100);
     }
   })();
-  for (let i = 0; i < 80 && (Date.now() - tC) < 30000; i++) {
+  //   ★[T1301] 창은 **하루 하나를 통째로 품는다** — 하루 마감 하나가 창 안에 들고(아래 "서버가 계속 대답한다" 는 창 안 가장 무거운 작업 = 마감과 견주는 판정이다 ·
+  //     창에 마감이 없으면 틱 하나와 루프 최대를 견주게 된다 — 뜻 없는 비교), 창 길이 ≥ max(30초, 5판 하루)(마감 몫과 마감 밖 몫을 둘 다 — 선계산은 마감 밖에서만 돈다).
+  //     종전 창(30초)은 3초 하루의 열 날이었다. 5판 하루가 붐빔 때문에 길어지면(위 `DAY5`) 30초 창은 마감 하나(두 코어 부하 판 벽시계 ~22초)에 거의 다 먹혀
+  //     "데운 쌍 0" 이 정책이 아니라 창 탓으로 났다(T1301 재현 — 하루 45초 판 32초 창 0쌍). 종전 일찍 끝(20쌍)은 그대로(마감이 든 뒤).
+  //     대조는 그대로 산다 — "사람 있으면 멈춘다" 정책이면 하루를 통째로 기다려도 0쌍이다(미끼로 잰다).
+  let closeIn = false;
+  const WIN_C = Math.max(30000, DAY5);
+  for (let i = 0; (Date.now() - tC) < WIN_C + DAY5; i++) {
     await sleep(400);
     Wc = await jget(`http://localhost:${ZPORT}/routedbg`);
     look++; if ((Wc.humans | 0) >= 1) humanSeen++; if (Wc.ioBusy) busySeen++;
-    if (Wc0.warmLeft - Wc.warmLeft >= 20) break;
+    if (!closeIn) { const Pq = await jget(`http://localhost:${ZPORT}/perf`); closeIn = ((Pq && Pq.events) || []).some((e) => e && e.kind === 'econ_day' && e.t >= tC); }
+    if (closeIn && (Wc0.warmLeft - Wc.warmLeft >= 20 || (Date.now() - tC) >= WIN_C)) break;
   }
+  ok(closeIn, '⑦d [상황] 창 안에 하루 마감이 실제로 들었다(아래 "계속 대답한다" 가 견줄 무거운 작업)', `창 ${Math.round((Date.now() - tC) / 1000)}초 · 5판 하루 ${DAY5}ms`);
   hcStop = true; await hcPing;
   const warmedWithHuman = Wc0.warmLeft - Wc.warmLeft;
   const secC = Math.max(1, Math.round((Date.now() - tC) / 1000));

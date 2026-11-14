@@ -26,7 +26,8 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const FROZEN = {
   // 드문 몸 필드 — 그 사건을 겪은 몸만 갈라진다(캐나디아 캐러밴 · 싸움 · 수확 · 어로 옛 갈래). 매 틱 읽어도 없음은 같은 모양에서 싸다.
   //   ★[T818 ①] `canadiaTask` · `fightTarget` · `harvestTarget` 은 켬 기본 리터럴에 들었다(T806 ③ 의 정한 다섯) — 아래 위생 줄 규약대로 여기서 뺐다
-  rare: ['_canadiaSubAt', '_caughtFish', '_lastFishAt', 'canadiaCaravanKey', 'canadiaCaravanSpeed', 'canadiaTaskAt', 'canadiaTaskEndAt',
+  //   ★[T1294 ②] `_lastFishAt` 는 `_t671Shape` 에 들었다(어부 184 몸이 날 1 부터 모양을 갈랐다) — 여기서 뺐다
+  rare: ['_canadiaSubAt', '_caughtFish', 'canadiaCaravanKey', 'canadiaCaravanSpeed', 'canadiaTaskAt', 'canadiaTaskEndAt',
     'canadiaWorkX', 'canadiaWorkY', 'farmClaimId'],
   // `server/villages.js` 의 `npc` 가 econ 사람(장부)이거나 생활층 드문 갈래인 자리 — 존 몸 모양과 무관하거나 드물다
   econ: ['_carryOn', '_granD', '_rest', '_t325Ei', '_t325Site', '_t325U', '_t368H', '_t368N', '_t529Since', '_t529StepAt', '_t529X', '_t529Y',

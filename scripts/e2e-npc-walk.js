@@ -17,6 +17,11 @@
 //   · 길 배속(`_rdMul` ×1.10/1.15)을 빼려고 `ENABLE_ROADS=0`, 사냥꾼 두뇌 배속(`_huntSpd`)을 빼려고 `ENABLE_WILDLIFE=0`.
 //     개울 칸(×0.5 · T585)은 중앙값이 거른다(마을 안 개울 칸은 몇 칸뿐).
 //   · 기대 걸음은 **소스에서 읽는다**(사본 0): `const MOVE_SPEED = 64` · `NPC_WALK_MULT = T888_NPC_WALK ? 1 : 0.6`.
+//   ★★[T1301 · T1291 회부 2] **시간 자 = 서버 틱 수**(벽시계 ms 가 아니다). 존은 몸을 틱마다 **고정 스텝**(`moveDt = 1 / TICK_HZ`)으로 옮긴다 —
+//     틱이 늦게 와도 한 틱의 걸음은 같다(`zone.js` 틱 머리 "이동은 빚과 무관한 고정 스텝 · 클라 예측 동형"). 그래서 상자가 붐벼 틱이 30Hz 를 못 채우면
+//     벽시계로 잰 걸음이 틱 비율만큼 줄어 보인다(T1291 전수: 켬 21.7px/s = 64 × 0.34 · 끔 판은 제 값 — 같은 코드 · 판 안 동시 부하).
+//     ⇒ 표본마다 **받은 틱 수**(클라 `__fcTick` — T913 프레임 캡처가 primary 틱마다 한 칸 · 이 하네스는 그 칸 수만 읽는다)를 같이 적고,
+//       창 = 30틱(`TICK_HZ` 한 초) · 걸음 = 변위 ÷ (틱 수 ÷ TICK_HZ). 단언(±10% · 켬 ÷ 끔)은 한 글자도 안 바뀐다. 벽시계 걸음과 받은 틱 빠르기는 줄에 참고로 찍는다.
 //
 // 실행: node scripts/e2e-npc-walk.js [--headed]
 //   ★Chromium 은 /opt/pw-browsers/chromium(playwright install 금지 — 컨테이너 규약). 포트 3010/3020 공용 — E2E 동시 실행 금지.
@@ -55,30 +60,36 @@ const ZSRC = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 const mSpeed = /\nconst MOVE_SPEED = (\d+(?:\.\d+)?);/.exec(ZSRC);
 const mMult = /\nconst NPC_WALK_MULT = T888_NPC_WALK \? (\d+(?:\.\d+)?) : (\d+(?:\.\d+)?);/.exec(ZSRC);
 const MOVE_SPEED = mSpeed ? +mSpeed[1] : NaN;
+const mHz = /\nconst TICK_HZ = (\d+(?:\.\d+)?);/.exec(ZSRC);   // ★[T1301] 틱 자의 눈금 — 소스에서(사본 0)
+const TICK_HZ = mHz ? +mHz[1] : NaN;
 const MULT_ON = mMult ? +mMult[1] : NaN, MULT_OFF = mMult ? +mMult[2] : NaN;
 
-// ── 창 속도 — 서버 갱신 시각의 자리 열에서 1초 창의 곧은 걸음 ───────────────────
+// ── 창 속도 — 서버 갱신의 자리 열에서 1초 창(= `TICK_HZ` 틱)의 곧은 걸음 ───────────────────
+//   ★[T1301] 표본 = [벽시계 ms, 받은 틱 수, [[pid, x, y]]]. 창 · 틈 · 나눗셈은 **틱 수**로(벽시계 1,000ms · 400ms 틈 → 30틱 · 12틱 — 30Hz 에서 같은 창).
+//   벽시계 걸음(`wall`)은 같은 창의 ms 로 따로 낸다 — 판정에 안 든다(붐빈 판을 줄에서 읽게).
 const WIN = 1000;
 function windowSpeeds(rec) {
-  const by = new Map();   // pid → [[t, x, y]] — 자리가 바뀐 표본만(= 서버가 새 자리를 실어 온 시각)
-  for (const [t, arr] of rec) for (const [pid, x, y] of arr) {
+  const WT = TICK_HZ * WIN / 1000, GAPT = TICK_HZ * 400 / 1000;
+  const by = new Map();   // pid → [[t, k, x, y]] — 자리가 바뀐 표본만(= 서버가 새 자리를 실어 온 틱)
+  for (const [t, k, arr] of rec) for (const [pid, x, y] of arr) {
     let a = by.get(pid); if (!a) by.set(pid, (a = []));
     const l = a[a.length - 1];
-    if (!l || l[1] !== x || l[2] !== y) a.push([t, x, y]);
+    if (!l || l[2] !== x || l[3] !== y) a.push([t, k, x, y]);
   }
-  const out = [];
+  const out = [], wall = [];
   for (const a of by.values()) {
     for (let i = 0; i < a.length; i++) {
       let j = i + 1, len = 0, gap = 0;
-      while (j < a.length && a[j][0] - a[i][0] < WIN) { len += Math.hypot(a[j][1] - a[j - 1][1], a[j][2] - a[j - 1][2]); gap = Math.max(gap, a[j][0] - a[j - 1][0]); j++; }
+      while (j < a.length && a[j][1] - a[i][1] < WT) { len += Math.hypot(a[j][2] - a[j - 1][2], a[j][3] - a[j - 1][3]); gap = Math.max(gap, a[j][1] - a[j - 1][1]); j++; }
       if (j >= a.length) break;
-      len += Math.hypot(a[j][1] - a[j - 1][1], a[j][2] - a[j - 1][2]); gap = Math.max(gap, a[j][0] - a[j - 1][0]);
-      const dt = a[j][0] - a[i][0], d = Math.hypot(a[j][1] - a[i][1], a[j][2] - a[i][2]);
-      if (dt > WIN * 1.3 || gap > 400 || d < 8 || !(len > 0) || d / len < 0.97) continue;
-      out.push(d / dt * 1000);
+      len += Math.hypot(a[j][2] - a[j - 1][2], a[j][3] - a[j - 1][3]); gap = Math.max(gap, a[j][1] - a[j - 1][1]);
+      const dk = a[j][1] - a[i][1], d = Math.hypot(a[j][2] - a[i][2], a[j][3] - a[i][3]);
+      if (!(dk > 0) || dk > WT * 1.3 || gap > GAPT || d < 8 || !(len > 0) || d / len < 0.97) continue;
+      out.push(d / dk * TICK_HZ);
+      wall.push(d / (a[j][0] - a[i][0]) * 1000);
     }
   }
-  return { speeds: out, npcs: by.size };
+  return { speeds: out, wall, npcs: by.size };
 }
 const med = (a) => { if (!a.length) return NaN; const s = a.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
 const pct = (a, q) => { if (!a.length) return NaN; const s = a.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(q * s.length))]; };
@@ -148,11 +159,13 @@ async function arm(tag, knob) {
   // 표본 — 곧은 창이 예순 개 넘게 모일 때까지. ⚠주민의 낮밤은 세계 시계(`WORLD.dayLengthMs` 24분 · 마을 하루 `VILLAGE_DAY_MS` 와 따로)다 —
   //   밤(하루의 30% · 최대 7.2분)이면 주민이 침상에 누워 안 걷는다(이 하네스 둘째 판이 밤에 걸려 창 0 이었다). 그래서 **걷기 시작할 때까지** 기다린다(상한 9분 ·
   //   창이 처음 선 뒤 15초는 더 모은다). 기다린 시간은 줄에 적는다 — 기다림이 판정을 바꾸지 않는다(창이 모이면 같은 자로 잰다).
+  //   ★[T1301] 받은 틱 칸(`__fcTick` · T913)을 연다 — 이미 누가 열었으면 안 건드린다. 표본마다 그 칸 수를 같이 적는다(시간 자).
   await page.evaluate(() => {
+    if (!window.__fcOn) { window.__fcRenderMs = 0; window.__fcMsgMs = 0; window.__fcMsgN = 0; window.__fcPong = null; window.__fcTick = []; window.__fcOn = true; }
     window.__t888 = [];
     window.__t888T = setInterval(() => {
       const n = window.__getNpcs ? window.__getNpcs() : [];
-      window.__t888.push([performance.now(), n.map((q) => [q.pid, q.wx, q.wy])]);
+      window.__t888.push([performance.now(), (window.__fcTick || []).length, n.map((q) => [q.pid, q.wx, q.wy])]);
     }, 50);
   });
   let W = { speeds: [], npcs: 0 }, t0 = Date.now(), tFirst = null;
@@ -165,7 +178,10 @@ async function arm(tag, knob) {
   }
   await page.evaluate(() => clearInterval(window.__t888T));
   const m = med(W.speeds);
-  console.log(`    NPC ${W.npcs} · 곧은 1초 창 ${W.speeds.length} · 중앙 ${m.toFixed(1)} · p10 ${pct(W.speeds, 0.1).toFixed(1)} · p90 ${pct(W.speeds, 0.9).toFixed(1)} px/s · ${((Date.now() - t0) / 1000) | 0}초(걷기 기다림 ${tFirst == null ? '—' : (((tFirst - t0) / 1000) | 0) + '초'})`);
+  const rk = await page.evaluate(() => { const r = window.__t888; if (!r || r.length < 2) return null; const a = r[0], b = r[r.length - 1]; return { k: b[1] - a[1], ms: b[0] - a[0] }; });
+  const hz = rk && rk.ms > 0 ? rk.k / rk.ms * 1000 : NaN;
+  console.log(`    NPC ${W.npcs} · 곧은 1초(${TICK_HZ}틱) 창 ${W.speeds.length} · 중앙 ${m.toFixed(1)} · p10 ${pct(W.speeds, 0.1).toFixed(1)} · p90 ${pct(W.speeds, 0.9).toFixed(1)} px/s(게임 초 = 틱 ÷ ${TICK_HZ}) · ${((Date.now() - t0) / 1000) | 0}초(걷기 기다림 ${tFirst == null ? '—' : (((tFirst - t0) / 1000) | 0) + '초'})`);
+  console.log(`    (참고 · 판정 밖) 받은 틱 ${rk ? rk.k : '?'} / ${rk ? (rk.ms / 1000).toFixed(0) : '?'}초 = ${hz.toFixed(1)}Hz(서버 ${TICK_HZ}Hz) · 같은 창 벽시계 걸음 중앙 ${med(W.wall).toFixed(1)}px/s`);
   ok(W.npcs >= 1 && W.speeds.length >= 20, `[${tag}] 걷는 NPC 의 곧은 창이 모였다(자명 통과 금지 — 창 0 이면 아래 판정은 공짜다)`, `NPC ${W.npcs} · 창 ${W.speeds.length}`);
   const nz = [...new Set(noise.filter((x) => !/^console:/.test(x)))];
   ok(errs.length === 0, `[${tag}] 스크립트 오류 0(자원 404 는 소음 — 따로 적는다)`, errs.length ? errs.slice(0, 2).join(' | ') : (nz.length ? `소음 ${nz.slice(0, 3).join(' · ')}` : ''));
@@ -177,7 +193,7 @@ async function arm(tag, knob) {
 
 (async () => {
   console.log('\n=== 마을 NPC 걸음 = 플레이어 걸음 실클라 E2E (T888 · Chromium · 서버 권위 좌표) ===');
-  ok(MOVE_SPEED > 0 && MULT_ON > 0 && MULT_OFF > 0, '기대 걸음을 소스에서 읽었다 — `MOVE_SPEED` · `NPC_WALK_MULT`(켬 · 끔)', `MOVE_SPEED ${MOVE_SPEED} · 켬 ×${MULT_ON} · 끔 ×${MULT_OFF}`);
+  ok(MOVE_SPEED > 0 && MULT_ON > 0 && MULT_OFF > 0 && TICK_HZ > 0, '기대 걸음 · 틱 눈금을 소스에서 읽었다 — `MOVE_SPEED` · `NPC_WALK_MULT`(켬 · 끔) · `TICK_HZ`', `MOVE_SPEED ${MOVE_SPEED} · 켬 ×${MULT_ON} · 끔 ×${MULT_OFF} · ${TICK_HZ}Hz`);
   //   ★[T964] 소스 절 몸통은 `scripts/lib-e2e-src.js` `SECTIONS.npcWalk`(정본 한 벌)로 옮겼다 — 빠른 상설 `test-e2e-src` 가 같은 함수를 부른다(사본 0 · 글자 · 말 무변).
   require('./lib-e2e-src').SECTIONS.npcWalk(ok);
   const ON = await arm('on', null);
