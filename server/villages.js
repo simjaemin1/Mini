@@ -10808,6 +10808,7 @@ function __p3Bind(mock) {
   return {
     state, tickWarBodies, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
     _t1196Step, _t1196Seats, _t1196Stat, T1196_KIND, artisanPerf,   // ★[T1196] 장인 몸 문 — 하네스(`test-t1196-artisan`)가 운영과 같은 문을 부른다(내보내기만)
+    _warCorpsePid, _warFallPid, t1315Stat, T1315_WAR_CORPSE,   // ★[T1315] 전장 누운 몸 문 — 하네스(`test-t1315-war-corpse`)가 운영과 같은 문을 부른다(내보내기만)
     T1063_TERR_BUILD, _t1063Bnd, _t1063DayBnd, _t1063Msg, territoryBoundary,   // ★[T1063] 화면 영토 = 서버 영토(하네스 `test-t1063-terr-draw` 가 운영과 같은 문을 부른다)
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
     t1197BodyStep, _t1197Person, _t1197BodyMeal, _t1197DieBody, _t1197Stat, _t1197On, econDayToMs, _t1198Sync, _t1198Jobs, _t1198Stat, _t1198On, syncVillageJobs,   // ★[T1197] 몸 게이지 끼니 문(하네스 `test-t1197-meal-body` 가 운영과 같은 문을 부른다)

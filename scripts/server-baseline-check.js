@@ -9,7 +9,7 @@
 // ★지문(읽기만 · 세계에 0) — 서버 장부 `scanDay`(econ 하루 끝 · t577 훅 · t634 · t650 · t663 과 같은 문)에서 날마다:
 //   마을마다 네 칸 = st(곳간 전 칸 · 1e-6) · pp(인구 · econ 주민 [id · 나이 · 직업 · 허기 · hp]) · hs(주거 · 확장 · 해체 표) · tr(금고 전 칸)
 //   → 칸마다 sha1 앞 4자리(어느 칸이 갈렸나 찾는 용도) · 그날 전체 = 네 칸 원문 전부의 sha1 앞 12자리(같음 판정은 이것으로)
-//   + 판 끝 여덟 수 · 판 JSON(env · days 칸 뺌) sha1.
+//   + 판 끝 여덟 수 · 판 JSON(env · days · 세는 자 bodyExit · warCorpse 칸 뺌 — `lib-run-hash` · T1315) sha1.
 //
 // 쓰는 법:
 //   만들기: node scripts/server-baseline-check.js --make 계측/서버기준선_<날짜>.json [--days 400] [--seeds 1020,7,42] [--par 2]
@@ -33,6 +33,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const H = (s, n) => crypto.createHash('sha1').update(s).digest('hex').slice(0, n);
+const RH = require('./lib-run-hash');   // ★[T1315 ⑤] 판 JSON 지문 정의(`RUN_HASH_DEF` · 지문 밖 칸)
 
 // ── 훅(아이 존 안 · `T577_OUT` 이 있을 때만) ────────────────────────────────────
 if (process.env.SBC_HOOK === '1' && process.env.T577_OUT) {
@@ -186,8 +187,8 @@ async function runSet(dir, dumpDay) {
     const f = path.join(dir, `sbc-${s}.json`);
     let run = null, fp = null; try { run = JSON.parse(fs.readFileSync(f, 'utf8')); fp = JSON.parse(fs.readFileSync(f + '.sbc.json', 'utf8')); } catch (e) {}
     if (!run || !fp) { out[s] = null; continue; }
-    const strip = Object.assign({}, run); delete strip.env; delete strip.days;
-    out[s] = { eight: run.eight, dissolved: run.dissolved, empty: run.empty, runHash: H(JSON.stringify(strip), 16), names: fp.names, days: fp.days, dump: fp.dump, war: fp.war || null };
+    //   ★[T1315 ⑤] 판 JSON 지문 = `lib-run-hash`(세는 자 `bodyExit` · `warCorpse` 는 지문 밖 — 꼬리표만 고쳐도 기준선을 다시 굽지 않는다)
+    out[s] = { eight: run.eight, dissolved: run.dissolved, empty: run.empty, runHash: RH.runHashOf(run), names: fp.names, days: fp.days, dump: fp.dump, war: fp.war || null };
     if (SIDE) { try { out[s].side = sideCondense(JSON.parse(fs.readFileSync(f + '.t740.json', 'utf8'))); } catch (e) { out[s].side = null; } }
     //   ★[T754] 판 DB(+WAL · 400 날 판 하나 1~2 GB)는 지문을 다 읽은 뒤 지운다(가상 시계 · 마을 칸 판만 — 종전 판은 종전 그대로)
     if (SIDE) for (const x of fs.readdirSync(dir)) if (/^sbc-\d+\.db(-wal|-shm)?$/.test(x)) { try { fs.unlinkSync(path.join(dir, x)); } catch (e) {} }
@@ -216,7 +217,7 @@ if (MAKE) {
     how: `node scripts/server-baseline-check.js --make ${MAKE} --days ${DAYS} --seeds ${SEEDS.join(',')}${HOUSE ? ' --house' : ''}${WAR ? ' --war ' + WAR : ''}${VCLOCK ? ' --vclock' : ''}${VCLOCK && !SIDE ? ' --side off' : ''}`,
     note: '날 지문 = [scanDay 날 · econ world.day · 그날 전체 sha1 12 · 마을마다 칸 넷(st·pp·hs·tr) sha1 4자리씩]'
       + (SIDE ? ' · 마을 칸 지문(side) = [날 · 그날 전체 sha1 12 · 칸마다 sha1 8(차례 = keys)] — 칸 = 서버 마을 칸(Map · Set 풀어서 · 마을 51 의 6자 해시를 이은 줄 · t740-side-hook)' : ''),
-    vclock: VCLOCK, side: SIDE, house: HOUSE, war: WAR, byseed: seeds };
+    vclock: VCLOCK, side: SIDE, house: HOUSE, war: WAR, runHashDef: RH.RUN_HASH_DEF, byseed: seeds };   // ★[T1315 ⑤] 지문 정의 표시
   fs.writeFileSync(MAKE, JSON.stringify(doc));
   if (WAR) for (const s of SEEDS) { const w = seeds[s].war || {}; console.log(`  시드 ${s} 전쟁: 선포 ${w.decl} · 전투 ${w.battle} · 공승 ${w.atkWin} · 방승 ${w.defWin} · 사상 ${w.cas} · 포로 ${w.captured} · 철수 ${w.withdraw} · 항복 ${w.surrender}`); }
   for (const s of SEEDS) { const e = seeds[s].eight; console.log(`  시드 ${s}: 인구 ${e.pop} · 소멸 ${e.dead}/${e.ever} · 무기Q ${e.weapQ} · 확장 ${e.expand} · 게시 ${e.board} · 도구Q ${e.toolQ} · 보존 ${e.preserve} · 곡물 ${e.grain} · 해체 ${seeds[s].dissolved} · 빈 ${seeds[s].empty} · 날 ${seeds[s].days.length}`); }
@@ -253,7 +254,11 @@ for (const s of SEEDS) {
   let fd = null;
   for (let i = 0; i < n; i++) if (o.days[i][2] !== b.days[i][2]) { fd = i; break; }
   const full = DS >= base.days;
-  const endSame = full ? (o.runHash === b.runHash && JSON.stringify(o.eight) === JSON.stringify(b.eight)) : null;
+  //   ★[T1315 ⑤] 기준선의 지문 정의가 지금과 같을 때만 지문끼리 견준다 — 옛 정의(`runHashDef` 없음 · bodyExit 포함) 기준선은
+  //   판 끝을 여덟 수 · 해체 · 빈 마을로 견준다(날 지문 · 마을 칸 지문은 그대로 매일 견준다 · 다시 굽기 0)
+  const hashDef = base.runHashDef === RH.RUN_HASH_DEF;
+  const tailSame = JSON.stringify(o.eight) === JSON.stringify(b.eight) && (hashDef || (JSON.stringify(o.dissolved) === JSON.stringify(b.dissolved) && JSON.stringify(o.empty) === JSON.stringify(b.empty)));
+  const endSame = full ? ((hashDef ? o.runHash === b.runHash : true) && tailSame) : null;
   //   ★[T754] 마을 칸 지문(기준선에 있고 이 판이 가상 시계 · 마을 칸 판일 때)
   const sc = (b.side && SIDE) ? sideCompare(o.side, b.side, DS) : null;
   if (sc && sc.day != null) { bad++; console.log(`  ✗ 시드 ${s}: econ 날 지문 ${fd == null ? n + '일 같음' : '날 ' + o.days[fd][0] + ' 갈림'} · 마을 칸 첫 갈림 = 날 ${sc.day} · 칸 ${sc.fields.length} — ${sc.fields.slice(0, 8).join(' · ')}${sc.fields.length > 8 ? ' …' : ''} · ${covTxt(cov)}`);
@@ -261,7 +266,7 @@ for (const s of SEEDS) {
   //   ★[T1280] 견준 날 안에서 갈림이 없는데 칸 하나라도 기준선보다 적은 날을 견줬다 → 같음이 아니라 판 실패
   if (fd == null && cov.short) { failed++; console.log(`  ✗ 시드 ${s}: 판 실패 — 견준 날이 기준선보다 적다(같음 아님) · ${covTxt(cov)}${cov.side && cov.side[0] === 0 ? (SIDE ? ' — 생활층 훅이 안 걸렸다(t740 · villages 를 먼저 실은 프리로드?)' : ' — 이 판은 생활층을 안 쟀다(--vclock · --side on 이어야 한다)') : ''}`);
     res[s] = { same: false, short: true, cov }; continue; }
-  if (fd == null && endSame !== false) { console.log(`  ○ 시드 ${s}: 날 지문 ${n}일 같음${full ? ` · 판 JSON · 여덟 수 같음(인구 ${o.eight.pop})` : ' (짧은 판 — 앞 날만)'}${sc ? ` · 마을 칸 지문 ${sc.cmpd}일 같음` : ''} · ${covTxt(cov)}`); res[s] = { same: true, days: n, cov }; continue; }
+  if (fd == null && endSame !== false) { console.log(`  ○ 시드 ${s}: 날 지문 ${n}일 같음${full ? (hashDef ? ` · 판 JSON · 여덟 수 같음(인구 ${o.eight.pop})` : ` · 판 끝 여덟 수 · 해체 · 빈 마을 같음(인구 ${o.eight.pop} · 옛 지문 정의 기준선 — 판 JSON 지문은 안 견줌 · T1315)`) : ' (짧은 판 — 앞 날만)'}${sc ? ` · 마을 칸 지문 ${sc.cmpd}일 같음` : ''} · ${covTxt(cov)}`); res[s] = { same: true, days: n, cov }; continue; }
   bad++;
   if (fd == null) { console.log(`  ✗ 시드 ${s}: 날 지문 ${n}일은 같은데 판 끝이 다르다(판 JSON ${o.runHash} / ${b.runHash} · 인구 ${o.eight.pop} / ${b.eight.pop}) · ${covTxt(cov)}`); res[s] = { same: false, end: true, cov }; continue; }
   const od = o.days[fd], bd = b.days[fd];
