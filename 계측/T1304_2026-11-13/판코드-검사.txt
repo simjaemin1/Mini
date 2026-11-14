@@ -1,0 +1,13 @@
+# 판 코드 tgz 검사 — 맥에 보낸 code-df40c1042.tgz 를 클라우드에서 풀어 끔 판 10날(맥-러너.sh 그대로) · 2026-11-14
+
+tgz: 9d1c0b424a1933877b50b6e6e0fe9a9149a2b38a7c82c098aef967df850d1dfd  code-df40c1042.tgz · 135,820,968 바이트 · git archive df40c1042 (계측 · 보고 · 증거_* · 문서 뺌) + REV
+
+start 2026-11-14T05:47:23Z arm=off days=10 rev=df40c1042bb678579b60ef94c822ceb5c0251f87 node=v22.23.4 host=Linux x86_64 cpu=Intel(R) Xeon(R) Processor @ 2.10GHz caf=없음
+exit=0 sec=403 end 2026-11-14T05:54:06Z
+
+$ node 맞대기.js 계측/T1263_2026-11-11/OFF-1020 <tgz 판 머리> 10
+t1243 날 줄: 같음 10/10
+t1243 10날 줄: 같음 1/1
+t1263 날 줄: 같음 10/10
+t1263 10날 사진: 같음 1/1
+t1230 날 줄: 같음 10/10
