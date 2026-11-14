@@ -6,12 +6,14 @@
 //   ③ 손잡이 `T1315_WAR_CORPSE=1` — 결판에서 죽은 몸이 `_warDespawnPid`(그 자리에서 지움) 대신 `_bxDie` 처럼 **그 자리에 눕는다**
 //      (players 에 남음 · 쓰러진 그림 · hp 0 · AI 끔 · 시신 값이 지나면 거둠) · 짐은 **한 번만** 떨군다.
 //   ④ unknown 출처 — econ 이 포로(`_capOutTot`)·야생(`_wildDeadTot`)으로 뺀 사람은 빈 줄 자리에서 `other.captive` · `other.wild` 꼬리표를 받는다(unknown 0).
+//      몸 상한 줄임(전쟁 중 ∞ → 끝나면 상한 — 사람은 econ 에 그대로)은 `other.cap`(기준선 판 unknown 의 대부분).
 //   ⑤ 판 JSON 지문(`lib-run-hash`)에서 세는 자 칸(`bodyExit` · `warCorpse`)을 뺀다 — 꼬리표만 고쳐도 기준선이 안 갈린다.
 //   하네스는 **운영 함수 그대로**(`villages.__p3Bind` — test-body-exit 와 같은 문)를 목 세계 위에서 부른다.
 //
 // ★자명 통과 금지 — 미끼 셋(판정 함수를 진짜와 미끼에 똑같이 대고 미끼는 빨갛게 나와야 초록):
 //   미끼 ⓐ 짐을 두 번 떨구는 사본(운영 소스에서 한 번 막이 둘을 지운 villages 사본 — 같은 판정이 빨강)
 //   미끼 ⓑ 포로 누계를 안 올리고 econ 에서만 빼는 판(종전 war-core) — unknown 이 +1 이어야(판정 빨강)
+//   미끼 ⓓ 몸 상한 줄임 꼬리표(`cap`) 한 줄을 뺀 사본 — 전쟁 끝 상한 줄임이 unknown +9 여야(판정 빨강)
 //   미끼 ⓒ 지문에 `bodyExit` 을 다시 넣은 정의 — 꼬리표만 다른 두 판의 지문이 갈려야(판정 빨강)
 //
 // 실행: node scripts/test-t1315-war-corpse.js
@@ -26,6 +28,8 @@ const R = (p) => require(path.join(ROOT, p));
 const econ = R('sim/economy-sim');
 const V = R('server/villages');
 const RH = R('scripts/lib-run-hash');
+//   ④ 셋째 출처 — 몸 상한 줄임: 상한(`VILLAGE_NPC_CAP`)은 모듈이 읽을 때 정해지므로 자식 판(상한 3)에서 잰다 · `--cap <모듈>` = 자식
+const CAP_CHILD = process.argv[2] === '--cap';
 
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
@@ -85,6 +89,21 @@ function tagRun(Vm, cap, wild, plain, counted) {
   return { n: T.vil.npcPids.length, want: T.e.npcs.length, unknown: d(s0.other.unknown, s1.other.unknown), captive: d(s0.other.captive, s1.other.captive), wild: d(s0.other.wild, s1.other.wild), old: d(s0.died.old, s1.died.old) };
 }
 const unknownZero = (r) => r.unknown === 0;
+//   전쟁 중(T1041 ⓑ — 상한 ∞) 몸이 econ 까지 섰다가 전쟁이 끝나 상한(3)으로 줄인다 — 사람은 econ 에 그대로(빠진 사람 0)
+function capRun(Vm) {
+  const T = world(Vm, 12), S = T.H.state;
+  S.war = { WARS: [{ atk: T.vil, def: S.villages[1] }] }; T.H.syncVillagePop(T.vil, Infinity);
+  const n0 = T.vil.npcPids.length, s0 = T.H.bodyExitStats();
+  S.war = null; T.H.syncVillagePop(T.vil, Infinity);
+  const s1 = T.H.bodyExitStats(), d = (a, b) => (b || 0) - (a || 0);
+  return { n0, n: T.vil.npcPids.length, econ: T.e.npcs.length, cap: d(s0.other.cap, s1.other.cap), unknown: d(s0.other.unknown, s1.other.unknown) };
+}
+function capChild(mod) {
+  const cp = require('child_process');
+  const o = cp.execFileSync(process.execPath, [__filename, '--cap', mod], { env: Object.assign({}, process.env, { VILLAGE_NPC_CAP: '3' }), encoding: 'utf8' });
+  return JSON.parse(o.trim().split('\n').pop());
+}
+if (CAP_CHILD) { console.log(JSON.stringify(capRun(require(path.resolve(process.argv[3]))))); process.exit(0); }
 //   ⑤ 꼬리표만 다른 두 판 — 지문이 같다 · 판 끝이 다르면 지문이 갈린다
 const runA = { eight: { pop: 812, dead: 3 }, dissolved: 2, empty: 1, env: { A: 1 }, days: [1, 2], bodyExit: { other: { unknown: 443 } } };
 const runB = Object.assign({}, runA, { env: { A: 2 }, bodyExit: { other: { unknown: 0, captive: 401, wild: 42 } }, warCorpse: { on: true, lay: 5 } });
@@ -121,6 +140,11 @@ ok(V.T1315_WAR_CORPSE === true, '손잡이 켬 판(이 하네스) — `T1315_WAR
   ok(r.captive === 2 && r.wild === 1 && r.old === 1, '④ 꼬리표 — 포로 2 · 야생 1 · 늙음 1', JSON.stringify(r));
   ok(unknownZero(r), '④ ★unknown +0', `+${r.unknown}`);
 }
+{
+  const r = capChild(path.join(ROOT, 'server/villages.js'));
+  ok(r.n0 === 12 && r.n === 3 && r.econ === 12, '④ 전쟁 중 몸 12(상한 ∞) → 끝나면 상한 3 · econ 그대로 12', JSON.stringify(r));
+  ok(r.cap === 9 && r.unknown === 0, '④ ★몸 상한 줄임 = `other.cap` 9 · unknown +0', JSON.stringify(r));
+}
 
 // ── ⑤ 판 JSON 지문 ────────────────────────────────────────────────────────────────────────
 ok(RH.RUN_HASH_DROP.indexOf('bodyExit') >= 0 && RH.RUN_HASH_DEF === 'T1315', '⑤ 지문 밖 칸에 `bodyExit` · 정의 표시 T1315');
@@ -148,6 +172,17 @@ console.log('\n  — 미끼(같은 판정이 빨강이어야) —');
 {   // ⓑ 포로 · 야생 누계를 안 올리는 판
   const r = tagRun(V, 2, 1, 1, false);
   ok(r.unknown === 3 && !unknownZero(r), '미끼 ⓑ 누계 없이 econ 에서만 뺀 판 → unknown +3 · 판정 빨강', JSON.stringify(r));
+}
+{   // ⓓ 몸 상한 줄임 꼬리표를 뺀 사본(종전 빈 줄 자리)
+  const src = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+  const line = /\n    if \(vil\.econ && vil\.econ\.npcs && vil\.npcPids\.length <= vil\.econ\.npcs\.length\) return \{ k: 'cap' \};[^\n]*/;
+  ok(line.test(src), '미끼 ⓓ 운영 소스에 상한 꼬리표 한 줄이 있다(사본을 만들 수 있다)');
+  const f = path.join(ROOT, 'server', `.t1315-decoy-cap-${process.pid}.js`);
+  try {
+    fs.writeFileSync(f, src.replace(line, ''));
+    const r = capChild(f);
+    ok(r.unknown === 9 && r.cap === 0, '미끼 ⓓ 상한 꼬리표 없는 사본 → unknown +9 · 판정 빨강', JSON.stringify(r));
+  } finally { try { fs.unlinkSync(f); } catch (e) {} }
 }
 {   // ⓒ 지문에 bodyExit 을 다시 넣은 정의
   const back = RH.RUN_HASH_DROP.filter((k) => k !== 'bodyExit' && k !== 'warCorpse');

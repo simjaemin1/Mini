@@ -1544,8 +1544,8 @@ function spawnOneNpc(vil) {
 //   ⚠까닭 줄은 **그날 몸이 따라잡을 몫만큼만** 쓴다 — 몸이 econ 에 닿으면(출생과 상쇄) 남은 까닭은 버린다. 하루 상한(`POP_SYNC_PER_DAY`)은 그대로.
 //   ⚠econ 무접촉(읽기만 — `_deadTot` · `tradeStats.tradersKilled` · `_dpDebug`) · 새 수 0 · 주사위 0 · 늘 때(`spawnOneNpc`)는 무변.
 //   ⚠출정 병사(`_muster`)는 종전처럼 건너뛴다 — 전쟁 실체가 그 몸을 쥔다(전사 표본은 `_warDespawnPid` 가 전장에서 거둔다 · 표 §1).
-const BX_CAT = { starve: 'died', old: 'died', bandit: 'walk', desert: 'walk', move: 'walk', expedition: 'other', road: 'other', war: 'other', captive: 'other', wild: 'other', unknown: 'other' };   // ★[T1315] `captive` · `wild` = 그 밖(종전 `unknown` 이 서던 자리 · 몸 길 같음 — `_bxObserve` 머리글)   // ★[T1307] `war` = 그 밖(집 밖에서 잃은 사람 — 원정 · 행상과 같은 갈래 · 아래 `_bxObserve` 머리글)
-const _bx = { died: { starve: 0, old: 0, war: 0 }, walk: { bandit: 0, desert: 0, move: 0 }, other: { expedition: 0, road: 0, war: 0, captive: 0, wild: 0, unknown: 0 },
+const BX_CAT = { starve: 'died', old: 'died', bandit: 'walk', desert: 'walk', move: 'walk', expedition: 'other', road: 'other', war: 'other', captive: 'other', wild: 'other', cap: 'other', unknown: 'other' };   // ★[T1315] `cap` = 몸 상한 줄임(전쟁 끝 — 사람은 안 빠졌다 · `_bxTake`)   // ★[T1315] `captive` · `wild` = 그 밖(종전 `unknown` 이 서던 자리 · 몸 길 같음 — `_bxObserve` 머리글)   // ★[T1307] `war` = 그 밖(집 밖에서 잃은 사람 — 원정 · 행상과 같은 갈래 · 아래 `_bxObserve` 머리글)
+const _bx = { died: { starve: 0, old: 0, war: 0 }, walk: { bandit: 0, desert: 0, move: 0 }, other: { expedition: 0, road: 0, war: 0, captive: 0, wild: 0, cap: 0, unknown: 0 },
               rot: 0, arrive: 0, straight: 0, lost: 0, vanish: 0, noted: 0, trimmed: 0, warFieldX: 0, capFieldX: 0 };   // ★[T1315] `capFieldX` = 포로로 끌려간 몸 가운데 econ 포로 칸이 안 받은 몫   // ★[T1307] `warFieldX` = 전장에서 거둔 표본 몸 가운데 econ 전사 칸이 안 받은 몫(꼬리표 없음)
 function _bxMap() { return state.bodyExits || (state.bodyExits = new Map()); }
 // 까닭 한 줄 — 도적 층(`bandits.js` — 호스트 `noteBodyExit`)과 아래 관측이 같은 줄에 쓴다. `toCell` = 은거지 칸 · `toVil` = 옮겨 갈 마을(T577 ⓐ).
@@ -1590,7 +1590,9 @@ const _bxWarField = new WeakMap(), _bxWarDue = new WeakMap();
 //       나머지(econ 포로 − 끌려간 몸)가 빈 줄 자리를 받는다(`other.captive`). 귀향한 포로는 억류 마을의 그 몸이 마을 밖으로 걸어 나간다(종전 `unknown` 과 같은 문).
 //     야생 — `wildlife.js reapDead`(사냥 몸이 짐승에 쓰러졌다)가 econ 에서 한 사람을 뺀다 → 누계 `_wildDeadTot` → 빈 줄 자리(`other.wild`).
 //   ★몸 길 무변 — 줄 머리가 아니라 빈 줄 자리를 받으므로(갈래 `other` · 명부 맨 뒤 · 가장자리) 몸 고르기 · 걸음이 한 글자도 안 바뀐다 · 바뀌는 것은 꼬리표 칸뿐.
-//   ★차례(빈 줄 자리를 채우는 차례) = 전사 → 포로 → 야생 → 그래도 없으면 `unknown`. 몫은 까닭 줄과 같이 산다(버리는 자리에서 같이 버린다 — `_bxWarClear`).
+//   ★차례(빈 줄 자리를 채우는 차례) = 전사 → 포로 → 야생 → 그래도 없으면 `unknown`.
+//   ★셋째 출처 — 몸 상한 줄임(`cap`): 판 몸 상한(`VILLAGE_NPC_CAP` — 기준선 판 = 1)이 전쟁 중엔 ∞(T1041 ⓑ)였다가 전쟁이 끝나면 돌아온다 →
+//     명부가 econ 보다 **많지 않은데도** 상한 밖 몸이 걸어 나간다(사람은 econ 에 그대로 있다). 빈 줄 자리에서 명부 ≤ econ 이면 `other.cap` — 남는 `unknown` = 명부 > econ 인데 까닭 없는 몫(참 미상). 몫은 까닭 줄과 같이 산다(버리는 자리에서 같이 버린다 — `_bxWarClear`).
 const _bxCapField = new WeakMap(), _bxOtherDue = new WeakMap();   // ★[T1315] 마을 → 끌려간 몸 수 · {captive, wild} 빈 줄 자리 몫   // ★[T1307] 마을 → 전장에서 거둔 표본 몸 수 · 몸이 아직 안 받은 전사 몫
 function _bxWarClear(vil) { const d = _bxWarDue.get(vil) || 0; if (d > 0) { _bx.trimmed += d; _bxWarDue.delete(vil); } const o = _bxOtherDue.get(vil); if (o) { _bx.trimmed += (o.captive || 0) + (o.wild || 0); _bxOtherDue.delete(vil); } }   // ★[T1315] 포로 · 야생 몫도 같이
 function _bxObserve(vil) {
@@ -1764,6 +1766,7 @@ function _bxTake(vil) {   // 까닭 줄 머리에서 한 사람 몫(없으면 �
   if (!q || !q.length) { const d = _bxWarDue.get(vil) || 0; if (d > 0) { if (d > 1) _bxWarDue.set(vil, d - 1); else _bxWarDue.delete(vil); return { k: 'war' }; }
     const o = _bxOtherDue.get(vil);   // ★[T1315] 포로 → 야생(빈 줄 자리 · 몸 길 같음)
     if (o) { const k = o.captive > 0 ? 'captive' : (o.wild > 0 ? 'wild' : null); if (k) { o[k]--; if (!(o.captive > 0) && !(o.wild > 0)) _bxOtherDue.delete(vil); return { k }; } _bxOtherDue.delete(vil); }
+    if (vil.econ && vil.econ.npcs && vil.npcPids.length <= vil.econ.npcs.length) return { k: 'cap' };   // ★[T1315] 명부 ≤ econ 인데 줄인다 = 몸 상한이 줄었다(T1041 전쟁 중 ∞ → 끝나면 상한) — 사람이 빠진 게 아니다(몸 길 같음 · 꼬리표만)
     return { k: 'unknown' }; }   // ★[T1307] 빈 줄 자리 = 종전 `unknown` 그 자리(몸 고르기 · 걸음 같음)
   const h = q[0];
   if (--h.n <= 0) q.shift();
