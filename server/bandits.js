@@ -227,7 +227,8 @@ function _t1075Leave(econV, npc, day) {   // econ 이 그날(`day`)을 준다
   if (!S.host || !S.host.t765Depart) return false;
   const vil = S.host.villages.find((x) => x.econ === econV); if (!vil) return false;
   const _hOf = (x) => (x && x.econ && x.econ.lastStats && typeof x.econ.lastStats.happiness === 'number') ? x.econ.lastStats.happiness : null;
-  const accept = T1134_HAPPY_TARGET ? (to) => { const a = _hOf(vil), b = _hOf(to); return a != null && b != null && b > a; } : null;   // ★[T1134] 더 행복한 마을만
+  const _heard = !!(S.host.t1312On && S.host.t1312On());   // ★[T1312] 켬 = 받는 곳 고르기가 들은 행복(T7 도달 일수 앞)으로 이미 걸렀다 — 받는 마을 **오늘** 행복을 다시 읽지 않는다(소식 텔레포트 0)
+  const accept = (T1134_HAPPY_TARGET && !_heard) ? (to) => { const a = _hOf(vil), b = _hOf(to); return a != null && b != null && b > a; } : null;   // ★[T1134] 더 행복한 마을만
   //   ★[T1147] 받는 곳 = 둘레 여럿(교역로 4일 안) 중 더 행복하고 받을 자리가 있는 곳(호스트 `t1147Pick` · 없으면 아무도 안 떠난다)
   const dest = (T1134_HAPPY_TARGET && S.host.t1147Pick) ? S.host.t1147Pick(vil) : undefined;
   if (dest === null) return false;
