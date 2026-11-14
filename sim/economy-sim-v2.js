@@ -1021,12 +1021,16 @@ function t1217PricesOf(v, key) {   // key = 시간 열쇠를 부르는 쪽이 �
 //     unit = 빚이 있으면 1 ÷ (N × 죽음 날 수) · 없으면 max(그 마을 생선 값, 순수출가) × λ (λ = 행복 물건 하나의 기울기 ÷ 그 값 중 가장 큰 것 — 세계 어디에도 없는 물건은 뺀다)
 //     rest = 한 사람이 한 시간 쉰 값 = `LEISURE_HAPPY_W` ÷ (N × H)
 //   ★[T1217] 행복 물건 하나의 기울기 ÷ 그 값 중 가장 큰 것(λ · 세계 어디에도 없는 물건은 뺀다) — 어부 · ★[T1266] 광부 한 시간 값이 같은 함수를 읽는다(사본 0 · 종전 줄을 함수로 옮김 · 값 무변).
+//   ★[T1313 ② · T1293 회부 ② · PM 카드] 손잡이 v1 `T1313_LAMBDA_ZERO`(끔 기본) 켬 = 그 마을 값표 목표(`_targetV2` 그 칸)가 0 인 물건은 후보가 아니다 —
+//     그 마을이 원하지 않는(목표 0 · 값 바닥) 물건을 바닥 값에 사 온다고 셈하지 않는다(T1277 §1: 광산 마을의 과일). 끔 = 이 줄 무동작(종전 산술).
 function _t1217Lam(v, px, N) {
   let lam = 0, best = null;
+  const lz = v1.T1313_LAMBDA_ZERO ? _targetCtxV2(v) : null;
   for (const r of TRADABLE) {
     const p = px[r]; if (!(p > 0)) continue;
     const mu = v1.t1217HappyMu(v, r, N); if (!(mu > 0)) continue;
     const ws = _worldStockOf(v, r); if (ws && !(ws.stock > 0)) continue;
+    if (lz) { const T = _targetV2(v, r, lz); if (!(T && T.target > 0)) continue; }   // ★[T1313 ②] 목표 0 물건 뺌
     const l = mu / p; if (l > lam) { lam = l; best = r; }
   }
   return { lam, best };
@@ -1059,14 +1063,24 @@ function _t1293Fill(v, id, ctx, f, units) {
   if (!(room > 0)) return 0;
   return units > 0 ? Math.min(f, room / units) : f;
 }
+//   ★★[T1313 ⓑ · T1293 회부 ① · PM 카드] 손잡이 v1 `T1313_SURPLUS_EXPORT`(끔 기본 · `T1293_ORE_SAT` 켬 안에서만) 켬 = 넘는 몫(몫 − 빈자리 몫)의 덩이 값 =
+//     이웃이 쳐 줄 값(`_t1313Over` — 순수출가 `netExportValue` 의 빈자리 갈래: 그 원석을 더 녹일 빈자리가 있는 이웃만 · 정보 거리 안 · 다 차면 0).
+//     목표 밑 몫은 그대로 그 마을 그림자 값이다(T1277 (가)는 목표 밑 몫에서 그대로 산다). 끔 = 넘는 몫 값 0(T1293 그대로).
+function _t1313Over(v, id) { return v && v._world ? netExportValue(v._world, v, id, true) : 0; }
 function t1266OreValue(v, H, key, mix, units) {
   if (!v || !v.npcs) return null;
   const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
   const { lam, best } = _t1217Lam(v, px, N);
   const M = mix && Object.keys(mix).length ? mix : { ore: 1 };
   const sat = v1.T1293_ORE_SAT ? _targetCtxV2(v) : null;   // ★[T1293] 켬 = 녹임 목표 문맥(끔 = null · 아래 줄 종전 산술)
+  const sur = sat && v1.T1313_SURPLUS_EXPORT;   // ★[T1313 ⓑ] 켬 = 넘는 몫에 이웃 값
   let p = 0;
-  for (const id in M) { const f = M[id]; if (!(f > 0)) continue; p += (sat ? _t1293Fill(v, id, sat, f, units) : f) * (px[id] || 0); }   // ★[T1277] 그림자 값 한 칸(순수출가 안 읽음) · ★[T1293] 켬 = 목표 밑 빈자리 몫만
+  for (const id in M) {
+    const f = M[id]; if (!(f > 0)) continue;
+    const g = sat ? _t1293Fill(v, id, sat, f, units) : f;
+    p += g * (px[id] || 0);   // ★[T1277] 그림자 값 한 칸(순수출가 안 읽음) · ★[T1293] 켬 = 목표 밑 빈자리 몫만
+    if (sur && f > g) p += (f - g) * _t1313Over(v, id);   // ★[T1313 ⓑ] 넘는 몫 = 빈자리 있는 이웃이 쳐 줄 값
+  }
   return { N, H, unit: p * lam, p, lam, best, rest: t1217RestValue(N, H) };
 }
 
@@ -3148,13 +3162,16 @@ function printSummary(world, days) {
 //   그 값으로 그날 모든 발주를 결정한다(line ~569 `_priceCacheDay`). 같은 해상도를 쓴다 —
 //   더 자주 재는 건 교역층보다 정밀해지는 것이라 정합이 아니라 불일치가 된다.
 const FORWARD_PRICE_MARGIN_NEV = 0.95;   // ★tickTradeV2 지역상수 FORWARD_PRICE_MARGIN 과 **같은 값**이어야 한다(test-valuechain ⑥ 이 두 리터럴의 일치를 감시)
-function netExportValue(world, from, res) {
+//   ★[T1313 ⓑ] room(넷째 인자 · 참) = 빈자리 갈래 — 후보 이웃 가운데 그 품목을 더 녹일 빈자리(값표 목표 − 유효 재고 · `_targetV2` 그 칸 — T1293 `_t1293Fill` 과 같은 둘)가 있는 이웃만 센다.
+//     광부 한 시간 값의 넘는 몫(`_t1313Over`)만 부른다 — 교역 발주 · 주조가 부르는 종전 갈래(room 없음)는 한 줄도 안 바뀐다. 캐시 열쇠도 갈래마다 따로.
+function _t1313Room(b, res) { const T = _targetV2(b, res, _targetCtxV2(b)); return T ? T.target - T.sEff : 0; }
+function netExportValue(world, from, res, room) {
   if (!world || !from || !res) return 0;
   const day = world.day || 0;
   const _t1217H = t1217Hour(from), ck = _t1217H != null ? 'h' + _t1217H : day;   // ★[T1217] 켬 = 캐시 열쇠가 그 시간(시세 해상도 = 어부 · 주문과 같다) · 끔 = 그날(종전 값 그대로)
   let C = world._nevCache;
   if (!C || C.day !== ck) C = world._nevCache = { day: ck, px: new Map(), val: new Map() };
-  const vk = from.name + ' ' + res;
+  const vk = room ? from.name + ' ' + res + ' r' : from.name + ' ' + res;   // ★[T1313 ⓑ] 빈자리 갈래는 열쇠가 따로(종전 열쇠 글자 그대로)
   if (C.val.has(vk)) return C.val.get(vk);
   const px = (b) => { let t = C.px.get(b); if (!t) { t = (_t1217H != null && t1217PricesOf(b)) || computeShadowPrices(b); C.px.set(b, t); } return t; };
   let _mv = null; const _nevMv = () => (_mv != null ? _mv : (_mv = (C.mv || (C.mv = new Map())).get(from) != null ? C.mv.get(from) : (() => { const x = lowestProducer(from, px(from), day).mv; C.mv.set(from, isFinite(x) ? x : 0); return C.mv.get(from); })()));   // ★[T1152 ②] 그날 그 마을 상인 하루 몫(끔 = 안 부른다)
@@ -3170,6 +3187,7 @@ function netExportValue(world, from, res) {
     if (dist > infoR) continue;
     const pTo = (px(b)[res] || 0) * FORWARD_PRICE_MARGIN_NEV;
     if (!(pTo > 0)) continue;
+    if (room && !(_t1313Room(b, res) > 0)) continue;   // ★[T1313 ⓑ] 빈자리 갈래 — 다 찬 이웃은 안 산다(끔 · 종전 갈래 = 이 줄 무동작)
     const banditX0 = world.banditRouteRisk ? (world.banditRouteRisk(from, b) || 0) : 0;
     const raidProb = Math.min(RAID_MAX, RAID_BASE + banditX0 + (dist / 100) * (world.raidPer100 || RAID_PER_100));
     let expectedLossRatio = raidProb * 0.5;
