@@ -22,7 +22,7 @@ const V2PATH = require.resolve(path.join(ROOT, 'sim', 'economy-sim-v2'));
 const r4 = (x) => +(+x || 0).toFixed(4);
 const MET = ['copper', 'tin', 'lead', 'silver'];   // 합금 재료 표 중 금은 뺀다(배합이 남지 않는다 — 하네스 ③)
 const WATCH = new Set(['copper', 'tin', 'lead', 'silver', 'weapon', 'bronze_tool']);
-const rec = { knobs: { alloy: !!V1.T1333_ALLOY_ORDER, exportCast: !!V1.T1333_EXPORT_CAST, copperDeriv: !!V1.COPPER_DERIV_ON },
+const rec = { knobs: { alloy: !!V1.T1333_ALLOY_ORDER, exportCast: !!V1.T1333_EXPORT_CAST, ws: !!V1.T1333_WS_INPUT, copperDeriv: !!V1.COPPER_DERIV_ON },
   vcols: ['smith', 'mason', 'warrior', 'pop', 'weapon', 'weapQ', 'bronzeW', 'smelt'], mcols: ['stock', 'flowT', 'derivT', 'target', 'sEff', 'price'],
   day: {}, met: {}, rows: 0, resN: {}, legs: [], dist: {}, consts: null, err: null };
 let VIL = null, V2 = null, W0 = null;
