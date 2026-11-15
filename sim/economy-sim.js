@@ -6139,14 +6139,17 @@ const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && proc
 //   T1313 판 열: 청동은 광부 값이 아니라 **구리 짐이 주석 마을(광산5 — 세계에서 주석이 나는 한 곳)에 닿았나**가 가른다(닿은 판 광산5 청동 4.7 ~ 9.6 ↔ 2.1 ~ 3.3).
 //   닿지 않는 고리는 위 구리 파생 주석 그대로다 — 구리를 안 쓰는 마을 → 흐름 0 → 목표 0 → 값 바닥 → 캐러밴이 안 싣는다(첫 구리가 안 온다).
 //   ⓐ `T1333_ALLOY_ORDER`(끔 기본 · `'1'` 만 켬) **합금 발주** — 대장장이가 모자란 합금 재료를 값표 목표에 올린다(파생수요).
-//     구리 파생의 세 문(무기 노동 · 품질 · 채산)과 "있다면" 가정을 그대로 쓰고 재료만 구리 하나에서 청동의 둘(구리 · 주석)로 넓힌다:
-//     주석을 든 마을은 구리를, 구리를 든 마을은 주석을 "있다면"으로 두고 그 마을이 지금 짤 수 있는 최선의 배합(`_meltSearch` — 주조와 같은 목적함수)을 찾는다.
+//     구리 파생의 세 문(무기 노동 · 품질 · 채산)과 "있다면" 가정을 그대로 쓰고 재료만 구리 하나에서 합금 재료 표(`_MELT_METALS` — 주조가 붓는 금속)로 넓힌다:
+//     그 재료를 "있다면"으로 두고 그 마을이 지금 짤 수 있는 최선의 배합(`_meltSearch` — 주조와 같은 목적함수)을 찾는다 — 주석을 든 마을은 구리를,
+//     구리를 든 마을은 주석(· 주조성의 납)을 발주하고, 배합이 안 고르는 재료(은 · 금)와 표 밖 재료는 0 이다(조리법이 정한다 · 목록 0).
 //     양 = 그 배합의 그 재료 × `COPPER_DERIV_DAYS`(대장장이 한 명의 한 달 조업 재고 · 새 수 0).
 //     v2 목표엔 종전 파생수요 자리(`derivT` — 흐름 목표와 **큰 쪽**)로 든다 — 합금 재료는 주조 흐름과 같은 쓰임이라 T1213 의 더하는 항(짓기 · 다른 쓰임)이 아니다
 //     (T1213 머리 주석 "석기 · 구리 · 숯 자체의 파생수요는 그 재화의 흐름과 같은 쓰임이라 종전 max 그대로"). 더하면 주조가 돌기 시작한 날부터 두 번 센다.
 //     캐러밴은 종전 규칙 그대로 그 값 차를 보고 실제로 나른다(짐 · 길 · 몸 무변).
 //   ⓑ `T1333_EXPORT_CAST`(끔 기본) **수출 주조** — 청동 병기고 몫(`_bronzeArmoryCap`)이 찬 대장장이도, 이웃이 그 무기를 사 줄 값(순수출가 `netExportFn`)으로
 //     한 번 주조의 이윤(같은 탐색 · 재료는 기회비용 `_oppPrice`)이 양수면 주조한다 — 주석을 든 구리 마을이 무기를 만들어 내보내는 쪽(PM 카드 ⓑ).
+//     무기장 자리(`smithTarget` 의 수출 대장장이)도 같은 판정이 서면 선다(종전 문 구리 > 3N 은 판에서 안 섰다) — 주조가 돌면 그 마을 주석 흐름 목표가 서서
+//     주석이 구리 마을로 온다(캐러밴 무변 — 값 차만).
 const T1333_ALLOY_ORDER = (typeof process !== 'undefined' && process.env && process.env.T1333_ALLOY_ORDER === '1');
 const T1333_EXPORT_CAST = (typeof process !== 'undefined' && process.env && process.env.T1333_EXPORT_CAST === '1');
 function _t1333ExportCast(v) {
@@ -6191,7 +6194,10 @@ function derivedInputTarget(v, r) {
     if (!(((v.counts && v.counts.miner) || 0) > 0 || oreTotal(v) >= SMELT_MIN_ORE)) return 0;
     return furnaceCharcoalTarget(v);
   }
-  if (T1333_ALLOY_ORDER && (r === 'copper' || r === 'tin') && v && v.storage) {   // ★★[T1333 ⓐ] 합금 발주 — 구리 · 주석(끔 = 이 갈래가 안 선다)
+  // ★★[T1333 ⓐ] 합금 발주 — 합금 재료(`_MELT_METALS` — 주조가 붓는 금속 표 그대로)만 문에 든다(끔 = 이 갈래가 안 선다).
+  //   무엇을 발주하나는 표가 아니라 **그 마을 최선 배합**이 정한다: 주석을 든 마을은 구리, 구리를 든 마을은 주석(· 납 — 주조성) —
+  //   배합이 안 고르는 재료(은 · 금 — 값이 비싸 점수에서 밀린다)는 `best.take` 에 없어 0, 표 밖(철 · 돌 …)은 이 문에 안 든다(조리법 밖 0).
+  if (T1333_ALLOY_ORDER && _MELT_METALS.includes(r) && v && v.storage) {
     if (_ERA_METAL(r) && !_eraKnows(r)) return 0;
     return _alloyDeriv(v, r);
   }
@@ -6219,7 +6225,7 @@ function _alloyDeriv(v, r) {
   //   ★탐색은 `_meltSearch` 공용 헬퍼 — 주조 결정과 **같은 목적함수**다(사본 금지).
   //     가격만 **기준가**로 준다: 시장가를 쓰면 수요가 값을 올리고 그 값이 게이트를 닫는다(자기 꼬리 물기).
   const stHypo = Object.assign({}, v.storage);
-  stHypo[r] = Math.max(stHypo[r] || 0, _MELT_TOTAL);   // "그 재료가 있다면" — 딱 1회 주조분만 가정(구리 파생 = 구리 · ★[T1333 ⓐ] 주석도 같은 줄)
+  stHypo[r] = Math.max(stHypo[r] || 0, _MELT_TOTAL);   // "그 재료가 있다면" — 딱 1회 주조분만 가정(구리 파생 = 구리 · ★[T1333 ⓐ] 합금 재료 다 같은 줄)
   const basePrice = (k) => (BASE_VALUE[k] > 0 ? BASE_VALUE[k] : 1);
   const best = _meltSearch(stHypo, basePrice);
   if (!best) return 0;
@@ -6289,7 +6295,10 @@ function smithTarget(v) {
   const N = v.npcs.length || 1;
   const cuRich = (v.storage.copper || 0) > N * 3;
   const weapThin = (v.storage.weapon || 0) < N * 0.8;   // 무기 재고 얇음(수출로 소진) → 특산 제작 재개
-  const exportSmiths = (hasBronze && cuRich && weapThin) ? Math.max(1, Math.floor(N * 0.03)) : 0;
+  // ★[T1333 ⓑ] 수출 주조 켬이면 무기장 자리가 서는 조건에 "이웃이 사 줄 값으로 한 번 주조가 남는다"(`_t1333ExportCast` — 주조 문과 같은 함수)를 더한다
+  //   (구리 > 3N 문은 T1313 몸 세계 판 열(10판 · 100날 · 51 마을)에서 한 번도 안 섰다 — 구리 ÷ 3N 가장 큰 날 0.453 · 어촌1 날 83 구리 39.4 · 사람 29).
+  //   자리 수(3 % · 최소 1)는 종전 그대로 · 끔 = 종전 글자.
+  const exportSmiths = (hasBronze && ((cuRich && weapThin) || (T1333_EXPORT_CAST && _t1333ExportCast(v)))) ? Math.max(1, Math.floor(N * 0.03)) : 0;
   // ★★제련과 주조는 **다른 일**이다 — max 가 아니라 **합**이다.
   //   max 로 두면 제련하는 날 무기를 못 만든다(실측: 무기 551 → 255, 그러자 전사·호위가 무너지고
   //   교역이 줄어 인구가 1,804 → 1,045 로 급감했다). 정원을 합으로 두면 대장장이가 늘고,
