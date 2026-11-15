@@ -6139,9 +6139,9 @@ const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && proc
 //   T1313 판 열: 청동은 광부 값이 아니라 **구리 짐이 주석 마을(광산5 — 세계에서 주석이 나는 한 곳)에 닿았나**가 가른다(닿은 판 광산5 청동 4.7 ~ 9.6 ↔ 2.1 ~ 3.3).
 //   닿지 않는 고리는 위 구리 파생 주석 그대로다 — 구리를 안 쓰는 마을 → 흐름 0 → 목표 0 → 값 바닥 → 캐러밴이 안 싣는다(첫 구리가 안 온다).
 //   ⓐ `T1333_ALLOY_ORDER`(끔 기본 · `'1'` 만 켬) **합금 발주** — 대장장이가 모자란 합금 재료를 값표 목표에 올린다(파생수요).
-//     구리 파생의 세 문(무기 노동 · 품질 · 채산)과 "있다면" 가정을 그대로 쓰고 재료만 구리 하나에서 합금 재료 표(`_MELT_METALS` — 주조가 붓는 금속)로 넓힌다:
-//     그 재료를 "있다면"으로 두고 그 마을이 지금 짤 수 있는 최선의 배합(`_meltSearch` — 주조와 같은 목적함수)을 찾는다 — 주석을 든 마을은 구리를,
-//     구리를 든 마을은 주석(· 주조성의 납)을 발주하고, 배합이 안 고르는 재료(은 · 금)와 표 밖 재료는 0 이다(조리법이 정한다 · 목록 0).
+//     구리 파생의 세 문(무기 노동 · 품질 · 채산)과 "있다면" 가정을 그대로 쓰고 재료만 구리 하나에서 청동 조리법의 둘(기지 구리 · 청동 몫의 주석 — `bronzeness` 정의)로 넓힌다:
+//     그 재료를 "있다면"으로 두고 그 마을이 지금 짤 수 있는 최선의 배합(`_meltSearch` — 주조와 같은 목적함수)을 찾아 그 배합이 청동(주석 몫 > 0)이면 발주한다 —
+//     주석을 든 마을은 구리를, 구리를 든 마을은 주석을. 은 · 금(위신재) · 납(주조성 첨가)은 발주하지 않고 그 배합(구리 + 은 · 구리 + 납)을 보고 구리를 부르지도 않는다.
 //     양 = 그 배합의 그 재료 × `COPPER_DERIV_DAYS`(대장장이 한 명의 한 달 조업 재고 · 새 수 0).
 //     v2 목표엔 종전 파생수요 자리(`derivT` — 흐름 목표와 **큰 쪽**)로 든다 — 합금 재료는 주조 흐름과 같은 쓰임이라 T1213 의 더하는 항(짓기 · 다른 쓰임)이 아니다
 //     (T1213 머리 주석 "석기 · 구리 · 숯 자체의 파생수요는 그 재화의 흐름과 같은 쓰임이라 종전 max 그대로"). 더하면 주조가 돌기 시작한 날부터 두 번 센다.
@@ -6200,19 +6200,20 @@ function derivedInputTarget(v, r) {
     if (!(((v.counts && v.counts.miner) || 0) > 0 || oreTotal(v) >= SMELT_MIN_ORE)) return 0;
     return furnaceCharcoalTarget(v);
   }
-  // ★★[T1333 ⓐ] 합금 발주 — 합금 재료(`_MELT_METALS` — 주조가 붓는 금속 표 그대로)만 문에 든다(끔 = 이 갈래가 안 선다).
-  //   무엇을 발주하나는 표가 아니라 **그 마을 최선 배합**이 정한다: 주석을 든 마을은 구리, 구리를 든 마을은 주석(· 납 — 주조성) —
-  //   배합이 안 고르는 재료(은 · 금 — 값이 비싸 점수에서 밀린다)는 `best.take` 에 없어 0, 표 밖(철 · 돌 …)은 이 문에 안 든다(조리법 밖 0).
-  if (T1333_ALLOY_ORDER && _MELT_METALS.includes(r) && v && v.storage) {
+  // ★★[T1333 ⓐ] 합금 발주 — **청동 조리법**의 두 재료만 발주한다: 기지 구리 · 청동 몫을 정하는 주석(`_meltSearch` 의 `bronzeness` 그 정의 — 청동 = 구리 + 주석).
+  //   "있다면" 배합이 청동(주석 몫 > 0)일 때만 선다(`_alloyDeriv` 셋째 인자) — 은 · 납을 든 마을이 구리 + 은 · 구리 + 납 배합을 보고 구리를 부르지 않는다
+  //   (랩 날 30 · 합금 재료 표 다섯 판: 은 든 마을 구리 값 22 ~ 24 → 그 순수출가가 구리 쥔 마을의 기회비용을 올려 대장장이 10 → 5 · 청동 7.42 → 6.03).
+  //   은 · 금은 위신재(v2 `ORNAMENTAL`) · 납은 주조성 첨가 — 청동을 가르지 않는다(조리법 밖 0 · 끔 = 이 갈래가 안 선다).
+  if (T1333_ALLOY_ORDER && (r === 'copper' || r === 'tin') && v && v.storage) {
     if (_ERA_METAL(r) && !_eraKnows(r)) return 0;
-    return _alloyDeriv(v, r);
+    return _alloyDeriv(v, r, true);
   }
   if (!COPPER_DERIV_ON || r !== 'copper' || !v || !v.storage) return 0;
   if (_ERA_METAL('copper') && !_eraKnows('copper')) return 0;   // 시대가 모르는 금속은 파생수요도 없다
   return _alloyDeriv(v, 'copper');
 }
 // ★[T1333] 구리 파생 몸통을 함수로 올렸다(재료만 인자 · 구리 파생은 종전 글자 그대로 — 문 셋 · 양 · 기준가) — 합금 발주가 같은 함수를 부른다(사본 0).
-function _alloyDeriv(v, r) {
+function _alloyDeriv(v, r, bronze) {   // bronze = 청동 배합(주석 몫 > 0)일 때만(★[T1333 ⓐ] · 옛 구리 파생은 false — 종전 글자)
   // ★★[1차 실측으로 뒤집은 게이트] 처음엔 "무기 커버리지(v2 CAP_TARGET.weapon)가 미달일 때만"으로 짰다.
   //   3시드 800일 결과가 **기준선과 비트 동일**했다 — 한 번도 안 걸린 것이다. 이유는 명확하다:
   //   마을은 무기가 **모자라지 않는다**(19마을 2,017자루). 모자란 건 **좋은** 무기다. 커버리지는
@@ -6235,6 +6236,7 @@ function _alloyDeriv(v, r) {
   const basePrice = (k) => (BASE_VALUE[k] > 0 ? BASE_VALUE[k] : 1);
   const best = _meltSearch(stHypo, basePrice);
   if (!best) return 0;
+  if (bronze && !(best.bronzeness > 0)) return 0;   // ★[T1333 ⓐ] 청동 배합만(구리 + 은 · 구리 + 납은 발주 0)
   // 게이트② **품질이 나아지는가** — 이 마을 무기 스톡 품질(_weapQ EMA)보다 나아야 산다.
   const qNew = Math.min(1.2, best.grade) * WEAP_Q_BRONZE;
   const qNow = v._weapQ != null ? v._weapQ : WEAP_Q_STONE;

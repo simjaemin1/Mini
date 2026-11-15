@@ -4,7 +4,7 @@
 //
 // ★지키는 것(존을 부팅하지 않는다 — econ 정본 함수 · v2 값 함수를 그대로 부른다 · 아이 판: 끔 · ⓐ · ⓑ · 옛 구리 파생(`COPPER_DERIV=1`) · 미끼):
 //   ① 손잡이 — `'1'` 만 켬(없음 · '0' · '' · 'true' = 끔) · 끔이면 합금 재료 파생수요 0 · 수출 주조 문 안 선다
-//   ② 합금 발주가 선다 — 주석만 든 대장장이 마을은 구리를, 구리만 든 마을은 주석을 값표 목표에 올린다
+//   ② 합금 발주가 선다 — 주석만 든 대장장이 마을은 구리를, 구리만 든 마을은 주석을 값표 목표에 올린다(청동 조리법 — 기지 구리 · 청동 몫 주석)
 //      양 = "그 재료가 있다면"(1회 주조분) 그 마을 최선 배합의 그 재료 × 30날 — 주조가 쓰는 탐색(`_alloyMelt`)으로 따로 셈 · 구리 · 주석 같은 날 수
 //   ③ 조리법 밖 0 — 배합이 남지 않는 재료(금) · 합금 재료 표 밖(철 · 돌) · 기지(구리)가 없는 마을의 주석 · 납 · 무기 노동 0 마을 · 이미 그 품질을 내는 마을 · 순동뿐인 마을의 구리
 //   ④ 값표 — 켬이면 모자란 재료 값이 오른다 · 곳간이 목표에 닿으면 기준가로 내린다 · 넘치면 기준가 밑 · 흐름 목표와 **큰 쪽**(더하지 않는다 — 주조가 돌면 같은 쓰임)
@@ -12,8 +12,9 @@
 //   ⑥ 수출 주조 — 이웃이 사 줄 값(순수출가 `netExportFn`)으로 한 번 주조의 이윤이 양수면 참 · 무기 값 0 · 순수출가 없음 · 구리 없음 · 순동뿐(기준가)이면 거짓
 //      주조 문 · 무기장 자리 문이 같은 판정 함수를 부른다(글자) · 끔이면 두 문 다 종전 글자
 //   ⑦ 미끼(사본 — 정본 파일 무변 · 한 줄만 바꿔 싣는다) — 각각 빨강:
-//      `outside`(합금 재료 표 밖 재료에도 1회 주조분 발주) · `addflow`(합금 발주를 흐름 목표에 더함 — 두 번 셈) · `market`(문을 시장가로 봄 — 값이 오르면 발주가 꺼지는 자기 꼬리 물기) ·
+//      `outside`(조리법 밖 재료에도 1회 주조분 발주) · `nobronze`(청동 아닌 배합을 보고도 구리 발주) · `oppall`(못 파는 재화도 순수출가를 기회비용으로) · `addflow`(합금 발주를 흐름 목표에 더함 — 두 번 셈) · `market`(문을 시장가로 봄 — 값이 오르면 발주가 꺼지는 자기 꼬리 물기) ·
 //      `expfree`(수출 주조가 이윤을 안 보고 무기 값만 보면 참) · `wsall`(상한 밖을 모든 재화로)
+//   ⑨ 기회비용 — ⓐ 켬이면 그 마을 수출 후보 밖(비축 · 문턱 밑) 재화의 순수출가 = 0(주조 기회비용이 못 파는 값을 안 본다) · 문턱 위는 그대로 · 끔 = 종전
 //   ⑧ 생산 투입재 인구 몫 상한(실험 ④ `T1333_WS_INPUT` · 끔 기본) — 원석 · 합금 재료만 세계 몫 상한 밖 · 그 밖 재화(숯 · 철 · 무기 · 식량)는 그대로 · 상한 줄 한 자리
 //
 // 실행: node scripts/test-t1333-alloy-order.js
@@ -37,7 +38,9 @@ if (ARM) {
     const M = require('module'), old = M._extensions['.js'];
     const R = {
       outside: ['sim/economy-sim.js', "return (best.take[r] || (r === 'copper' ? _MELT_TOTAL : 0)) * COPPER_DERIV_DAYS;", 'return (best.take[r] || _MELT_TOTAL) * COPPER_DERIV_DAYS;',
-        'if (T1333_ALLOY_ORDER && _MELT_METALS.includes(r) && v && v.storage) {', 'if (T1333_ALLOY_ORDER && v && v.storage && r !== \'stone\' && r !== \'wood\') {'],
+        "if (T1333_ALLOY_ORDER && (r === 'copper' || r === 'tin') && v && v.storage) {", 'if (T1333_ALLOY_ORDER && v && v.storage && r !== \'stone\' && r !== \'wood\') {'],   // 조리법 밖 재료(납 · 은 · 금 · 철 · 흑요석)에도 1회 주조분
+      nobronze: ['sim/economy-sim.js', '  if (bronze && !(best.bronzeness > 0)) return 0;', ''],   // 청동 아닌 배합(구리 + 은)을 보고도 구리를 부른다
+      oppall: ['sim/economy-sim-v2.js', '  world.netExportFn = (v, res) => ((v1.T1333_ALLOY_ORDER && !_t1333CanExport(v, res)) ? 0 : netExportValue(world, v, res));', '  world.netExportFn = (v, res) => netExportValue(world, v, res);'],   // 못 파는 재화도 순수출가를 기회비용으로
       addflow: ['sim/economy-sim-v2.js', 'target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);\n    // ★식량 다양성',
         'target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT + (v1.T1333_ALLOY_ORDER && derivT > 0 ? flowT : 0));\n    // ★식량 다양성'],
       market: ['sim/economy-sim.js', "  const basePrice = (k) => (BASE_VALUE[k] > 0 ? BASE_VALUE[k] : 1);\n  const best = _meltSearch(stHypo, basePrice);", '  const basePrice = (k) => ((v._priceCache && v._priceCache[k] > 0) ? v._priceCache[k] : (BASE_VALUE[k] > 0 ? BASE_VALUE[k] : 1));\n  const best = _meltSearch(stHypo, basePrice);'],   // 그날 값표(시장가)로 문을 본다
@@ -64,6 +67,8 @@ if (ARM) {
     noLabor: mk({ tin: 5 }, {}, 0.5),                        // 무기 노동 0
     empty: mk({}, { smith: 2 }, 0.5),                        // 아무 금속도 없음(순동 0.466 < 석검 0.5)
     masonTin: mk({ tin: 5 }, { mason: 1 }, 0.5),             // 석공만(무기 노동은 있다)
+    silverV: mk({ silver: 5 }, { smith: 2 }, 0.5),           // 은만 든 대장장이 마을(구리 + 은 배합은 청동이 아니다)
+    leadV: mk({ lead: 5 }, { smith: 2 }, 0.5),               // 납만 든 대장장이 마을
   };
   const D = {};
   for (const [n, v] of Object.entries(FX)) { D[n] = {}; for (const r of MET) D[n][r] = r6(E.derivedInputTarget(v, r)); }
@@ -89,6 +94,11 @@ if (ARM) {
   // 시장가가 오른 날(값표 캐시 · 구리 40) — 문은 기준가로 본다(자기 꼬리 물기 없음)
   const hi = mk({ tin: 5 }, { smith: 2 }, 0.5); hi._priceCache = { copper: 40, tin: 40, weapon: 12 };   // 그날 값표에 구리 40(발주가 값을 올린 날 꼴)
   V.hiDeriv = r6(E.derivedInputTarget(hi, 'copper'));
+  // ⑨ 기회비용 — 그 마을이 내보낼 수 없는 재화(수출 후보 밖)의 순수출가는 0(ⓐ 켬) · 주석 마을 a 주석 5(비축 문턱 밑) ↔ 500(문턱 위) · 이웃 b 가 주석을 발주한 판
+  a.storage.copper = 0; b.storage.copper = 30; b.storage.tin = 0; w._nevCache = null;
+  let oppDay = 10;   // 수출 후보 셈은 마을-날마다 한 번(정본 캐시) — 곳간을 바꾼 판은 날을 넘겨 다시 센다
+  const opp = (tin) => { a.storage.tin = tin; w.day = ++oppDay; w._nevCache = null; return { nef: r6(w.netExportFn(a, 'tin')), raw: r6(V2.netExportValue(w, a, 'tin')), can: (V2._t1188Probe.exportCandidates({ v: a }, a.npcs.length) || []).some((c) => c.res === 'tin') }; };
+  V.opp = { low: opp(5), high: opp(500) }; a.storage.tin = 5;
   // ⑥ 수출 주조 판정 — 순수출가(이웃이 사 줄 값)를 주는 월드 꼴
   const W = (pw) => ({ netExportFn: (v, res) => (res === 'weapon' ? pw : 0) });
   const ex = (st, pw, world) => { const v = mk(st, { smith: 2 }, 0.5); if (world !== undefined) v._world = world; else v._world = W(pw); return E._t1333ExportCast(v); };
@@ -129,8 +139,8 @@ if (ARM) {
   const G = {
     castGate: (SRC.match(/if \(_melt && \(_smSwordStock < _bronzeArmoryCap \|\| \(T1333_EXPORT_CAST && _t1333ExportCast\(v\)\)\)\) \{/g) || []).length,
     jobGate: (smithT.match(/\(\(cuRich && weapThin\) \|\| \(T1333_EXPORT_CAST && _t1333ExportCast\(v\)\)\)/g) || []).length,
-    oneFn: (SRC.match(/function _t1333ExportCast\(v\)/g) || []).length, oneDeriv: (SRC.match(/function _alloyDeriv\(v, r\)/g) || []).length,
-    derivCalls: (SRC.match(/return _alloyDeriv\(v, (?:r|'copper')\);/g) || []).length,
+    oneFn: (SRC.match(/function _t1333ExportCast\(v\)/g) || []).length, oneDeriv: (SRC.match(/function _alloyDeriv\(v, r, bronze\)/g) || []).length,
+    derivCalls: (SRC.match(/return _alloyDeriv\(v, (?:r, true|'copper')\);/g) || []).length,
   };
   const V2S = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
   G.wsLine = (V2S.match(/&& !VARIETY_FOOD\[r\] && !\(v1\.t1333WsFree && v1\.t1333WsFree\(r\)\)\) \{\n    target = Math\.min\(target, Math\.max\(0\.2, _ws\.stock \* \(N \/ _ws\.pop\) \* EFFDEM_SHARE\)\);/g) || []).length;
@@ -162,11 +172,11 @@ function checks(P, out) {
   ok(A.X.cuTin && A.D.cuV.tin > 0 && near(A.D.cuV.tin, A.X.cuTin.take.tin * 30, 1e-4), `★구리 마을 주석 ${A.D.cuV.tin} = 배합의 주석 ${A.X.cuTin && A.X.cuTin.take.tin} × 30날`, A.X.cuTin);
   ok(near(days, 30, 1e-6) && A.X.tinCu.grade > 0.5 && A.X.cuTin.grade > 0.5, '구리 · 주석 같은 날 수(30 — 대장장이 한 명의 한 달 조업 재고) · 두 배합 다 석검(0.5)보다 낫다', [days, A.X.tinCu.grade, A.X.cuTin.grade]);
   ok(A.D.masonTin.copper > 0 && near(A.D.masonTin.copper, A.D.tinV.copper), '석공만 있는 주석 마을도 같은 발주(무기 노동이면 문 ① 이 선다 — 옛 구리 파생 그대로)', A.D.masonTin.copper);
-  ok(A.D.cuTinV.lead > 0 && A.X.cuTinLead && A.X.cuTinLead.take.lead > 0 && near(A.D.cuTinV.lead, A.X.cuTinLead.take.lead * 30, 1e-4), `구리 · 주석이 다 있고 아직 석검 품질인 마을은 주조성의 납도 발주한다(배합이 고른다 · ${A.D.cuTinV.lead})`, A.X.cuTinLead);
+  ok(['tinV', 'cuV', 'cuTinV', 'topV', 'masonTin'].every((n) => A.D[n].lead === 0 && A.D[n].silver === 0) && A.X.cuTinLead && A.X.cuTinLead.take.lead > 0, `★청동 조리법 밖(납 — 주조성 첨가 · 은 · 금 — 위신재)은 발주하지 않는다 — 배합 탐색은 납을 고르는 마을(구리 + 주석 + 납 ${JSON.stringify(A.X.cuTinLead && A.X.cuTinLead.take)})에서도 0`, [A.D.cuTinV.lead, A.D.cuTinV.silver]);
 
   if (out) console.log('\n③ 조리법 밖 0');
   ok(['tinV', 'cuV', 'cuTinV', 'topV'].every((n) => A.D[n].gold === 0) && A.X.cuGold && A.X.cuGold.take.gold > 0, '★배합이 남지 않는 재료(금 — 기준가 100)는 0 — 순동보다 덜 밑지는 배합(구리 + 금 3 %)을 골라도 채산 문이 닫는다', [A.D.cuV.gold, A.X.cuGold && A.X.cuGold.take]);
-  ok(A.D.cuV.silver > 0 && A.D.cuTinV.silver > 0, `은 — 정본 합금 표가 은을 무기 첨가재로 친다(구리 + 은 10 % 등급 1.116 > 순동 · 기준가 30) → 구리 마을 ${A.D.cuV.silver} · 구리 + 주석 마을 ${A.D.cuTinV.silver} 발주(배합이 고른다 — 판에서 잰다)`, [A.D.cuV.silver, A.D.cuTinV.silver]);
+  ok(A.D.silverV.copper === 0 && A.D.leadV.copper === 0 && C.D.silverV.copper > 0, `★청동 아닌 배합만 서는 마을(은만 · 납만)은 구리를 부르지 않는다 — 옛 구리 파생(\`COPPER_DERIV=1\`)은 은 마을에서 구리 ${C.D.silverV.copper}(구리 + 은 배합 · 등급 1.116)`, [A.D.silverV.copper, A.D.leadV.copper, C.D.silverV.copper]);
   ok(['tinV', 'cuV', 'cuTinV', 'topV'].every((n) => A.D[n].iron === 0 && A.D[n].obsidian === 0 && A.D[n].stone === O.D[n].stone), '★합금 재료 표 밖(철 · 흑요석 · 돌)은 0 · 돌은 종전 줄 그대로', [A.D.cuTinV.iron, A.D.cuTinV.obsidian, A.D.cuTinV.stone]);
   ok(A.D.tinV.tin === 0 && A.D.tinV.lead === 0 && A.D.tinV.silver === 0, '★기지(구리)가 없는 마을의 주석 · 납 · 은은 0 — 붓지 못할 재료는 발주 안 한다', A.D.tinV);
   ok(Object.values(A.D.noLabor).every((x) => x === 0), '무기 노동(석공 · 대장장이) 0 마을은 다 0', A.D.noLabor);
@@ -207,6 +217,11 @@ function checks(P, out) {
   ok(near(S.V.ws.lea, O.V.ws.lea) && near(AS.V.ws.lea, O.V.ws.lea) && near(O.V.ws.lea, O.V.ws.capOre), `★숯(녹임 투입재지만 원석 · 합금 재료 아님) 흐름 목표 15 는 상한 그대로(${O.V.ws.lea} — 세계 숯 2 × 몫)`, [O.V.ws.lea, S.V.ws.lea]);
   ok(S.V.ws.cu === 0 && JSON.stringify(S.D) === JSON.stringify(O.D), '상한 밖만 켠 판 — 발주 0 · 파생수요는 끔 판 그대로(상한은 목표를 깎을 뿐 만들지 않는다)', S.V.ws.cu);
   ok(O.G.wsLine === 1, '상한 줄 한 자리(v2 `_targetV2`) — 빠지는 재화 셋(생존재 · 자본재 · 다양성 식품) 뒤에 한 항', O.G.wsLine);
+
+  if (out) console.log('\n⑨ 기회비용 — 내보낼 수 없는 재화는 순수출가로 치지 않는다(ⓐ 켬 · 주조 기회비용 `_oppPrice` 가 읽는 그 함수)');
+  ok(A.V.opp.low.can === false && A.V.opp.low.raw > 0 && A.V.opp.low.nef === 0, `★ⓐ 켬 — 주석 5(비축 문턱 밑 · 수출 후보 밖) 주석 마을의 주석 순수출가 ${A.V.opp.low.raw} → 기회비용 0(이웃이 발주해도 못 파는 것을 판 값으로 치지 않는다)`, A.V.opp.low);
+  ok(A.V.opp.high.can === true && A.V.opp.high.nef > 0 && near(A.V.opp.high.nef, A.V.opp.high.raw), `ⓐ 켬 — 주석 500(문턱 위 · 수출 후보) = 순수출가 그대로(${A.V.opp.high.nef})`, A.V.opp.high);
+  ok(near(O.V.opp.low.nef, O.V.opp.low.raw) && near(X.V.opp.low.nef, X.V.opp.low.raw), '끔 · ⓑ 판 — 순수출가 그대로(종전 함수)', [O.V.opp.low, X.V.opp.low]);
   return { pass, fail, failed };
 }
 
@@ -226,7 +241,7 @@ const P = {}; for (const a of ARMS) P[a] = child(a);
 const main = checks(P, true);
 console.log('\n⑦ 미끼(사본) — 빨강이어야 한다');
 let pm = 0, fm = 0;
-for (const [kind, name] of [['outside', '합금 재료 표 밖(철 · 흑요석 · 돌)'], ['addflow', '큰 쪽 — 더하지 않는다'], ['market', '시장가(구리 40)가 올라도'], ['expfree', '순동뿐인 마을'], ['wsall', '원석(광종마다 · 옛 원석) · 합금 재료 표만']]) {
+for (const [kind, name] of [['outside', '청동 조리법 밖(납'], ['nobronze', '청동 아닌 배합만 서는 마을'], ['addflow', '큰 쪽 — 더하지 않는다'], ['market', '시장가(구리 40)가 올라도'], ['expfree', '순동뿐인 마을'], ['wsall', '원석(광종마다 · 옛 원석) · 합금 재료 표만'], ['oppall', '주석 5(비축 문턱 밑']]) {
   let res = null, err = null;
   try { const Q = {}; for (const a of ARMS) Q[a] = child(a, kind); res = checks(Q, false); } catch (e) { err = String(e && e.message || e).slice(0, 300); }
   const red = !!res && res.fail > 0 && res.failed.some((m) => m.includes(name));

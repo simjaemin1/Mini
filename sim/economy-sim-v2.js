@@ -3217,6 +3217,14 @@ function netExportValue(world, from, res, room) {
 // =============================================================================
 // 7. main
 // =============================================================================
+//   ★[T1333 ⓐ] 그 마을이 오늘 내보낼 수 있는 재화(수출 후보 `_exportCandidatesV2` — 읽기만 · 마을-날마다 한 번 셈 · 마을 칸 0)
+const _t1333Exp = new WeakMap();
+function _t1333CanExport(v, res) {
+  const w = v && v._world; if (!w || !v.npcs) return true;
+  let C = _t1333Exp.get(v);
+  if (!C || C.day !== w.day) { C = { day: w.day, has: {} }; for (const c of _exportCandidatesV2({ v }, Math.max(1, v.npcs.length))) C.has[c.res] = true; _t1333Exp.set(v, C); }
+  return !!C.has[res];
+}
 function createWorldV2(opts = {}) {
   // v1 createWorld 그대로 사용 (인프라 공유)
   const world = v1.createWorld(opts);
@@ -3225,7 +3233,10 @@ function createWorldV2(opts = {}) {
   world.priceBase = BASE_VALUE_V2;   // ★생산 포만(satiation) 판정용 — v1 tickVillage가 adj=가격/기준값으로 글럿 측정
   // ★★[2026-08-02c 배합↔교역 한 단위 통합] 순수출가 주입 — priceFn 선례와 같은 계약(v1→v2 역참조 금지, world 로 주입).
   //   v1 의 주조 결정(_alloyMelt)이 "이 주석을 이웃이 얼마에 사 주는가"를 볼 수 있게 한다.
-  world.netExportFn = (v, res) => netExportValue(world, v, res);
+  //   ★[T1333 ⓐ] 합금 발주 켬 — 그 마을 수출 후보 밖(비축 · 문턱 밑 — `_exportCandidatesV2` 그 규칙 · 받아 올 짐도 같은 규칙)인 재화는 순수출가가 기회비용이 아니다.
+  //     발주가 이웃 값을 올리면 그 값이 쥔 마을의 주조 기회비용(v1 `_oppPrice`)을 올려 대장장이가 석공에 밀린다 — 문턱 밑 곳간은 실제로 나가지도 않는다
+  //     (랩 날 30: 쥔 마을 셋 대장장이 주조비 0.05 ~ 0.38 → 1.9 ~ 2.8 · 석공 0.3 ~ 0.8). 끔 = 앞 항 거짓 = 종전 함수 그대로.
+  world.netExportFn = (v, res) => ((v1.T1333_ALLOY_ORDER && !_t1333CanExport(v, res)) ? 0 : netExportValue(world, v, res));
   // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑. (30일로 늘리니 반응 느려 기근↑→crisis-mode↑ 역효과 확인, 21 유지)
   world.autoSwitchInterval = 21;
   return world;
