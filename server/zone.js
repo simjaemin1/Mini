@@ -5365,7 +5365,7 @@ function _t1294Arrived(npc, targetKey) {
   if (T1294_ARRIVED_PATH && npc._t1294G === _t1294Gen() && typeof npc.targetX === 'number' && typeof npc.targetY === 'number' && _t671Lt(npc.targetX - npc.x, npc.targetY - npc.y, 48)) { _t1294Stat.knob++; return true; }
   return false;
 }
-// ★★[T1322 2026-11-15 · µs 넷째 · 손잡이 `T1322_PREFILTER`(끔 기본 · `'1'` 켬 · `'verify'` 켬 + 거를 때마다 몸을 열어 견줌)] **서 있는 몸은 몸 객체를 안 연다** — T1314 회부 1 · 3.
+// ★★[T1322 2026-11-15 · µs 넷째 · 손잡이 `T1322_PREFILTER`(★[T1323 · 재민 11-15] 켬 기본 · `'0'` 끔 · `'verify'` 켬 + 거를 때마다 몸을 열어 견줌)] **서 있는 몸은 몸 객체를 안 연다** — T1314 회부 1 · 3.
 //   진단(보고 T1322 §1): 결정 문이 닫힌 몸의 걸음 문은 낮 62 % 가 **도장만**(`_t540StepAt` · `_pathAt` · `_stuckPos` 시각 — 서 있는 몸 · 길 끝 한 점 · 목표 10px 안 · 속도 +0)이다.
 //     그 몸도 틱마다 pid → 몸 찾기 · 몸 칸 ≈ 30 짚기(줄 넷 + 몸 밖 `_stuckPos`)를 한다 — 미세 판(`scripts/t1322/bench-warm.js`): 몸 연 꼴 262 ns/몸 · 열만 보고 거른 꼴 88 ns/몸(거름 62 %).
 //   켬: ⓐ 진짜 걸음을 마친 몸이 서 있는 몸이면 표(`_t1322Grant` — 다음 걸음 문이 도장만 찍을 조건 전수 · 아래 `_t1322State`).
@@ -5378,7 +5378,7 @@ function _t1294Arrived(npc, targetKey) {
 //     어긋남을 센다(어긋나면 그 몸은 종전 걸음 문 — 견줌 판은 늘 종전 답). 기본 켬은 PM 판정(회부).
 //   켜지는 조건: 다른 손잡이가 걸음 문 글자를 바꾸지 않을 때만(T738 · T791 견줌 · T1140 · T1145 · T370 · T1294 ⓐ · T1241 사건 갈래 · T670 끔 · T791 거울 끔이면 무동작).
 const SS = require('./stand-skip');
-const T1322_PF = SS.ON && !T738_SOA_XY && T670_SKIP_IDLE && !T791_VERIFY && !T1140_STUCK_INLINE && !T1145_XY_COLS && !T370_PATH_REUSE && !T1294_ARRIVED_PATH && T791_PATH_MIR && !T1241_DES;
+const T1322_PF = SS.ON && !T738_SOA_XY && T670_SKIP_IDLE && !T791_VERIFY && !T1140_STUCK_INLINE && !T1145_XY_COLS && !T370_PATH_REUSE && !T1294_ARRIVED_PATH && T791_PATH_MIR && !T1241_DES && process.env.T1316_SUBSTEP !== '1';   // ★[T1323] T1316 토막 걸음(한 틱 여러 걸음 · 끔 기본) 켬 판엔 무동작
 const T1322_VERIFY = T1322_PF && SS.VERIFY;
 // 서 있는 몸 — 다음 걸음 문(결정 문이 닫혀 있을 때)의 막힘 · 길 · 따라가기 · 도착 뒤가 도장만 찍는 몸 칸 상태(종전 글자를 그대로 따라간 조건 · 읽기만)
 function _t1322State(npc) {

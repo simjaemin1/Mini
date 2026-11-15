@@ -2300,6 +2300,7 @@ function _t1306Record() {   // 마을마다 하루 한 번 그날 곳간 · 사�
     const e = vil && vil.econ; if (!e || !e.storage || !e.npcs) continue;
     const row = { d: day, fe: E1.totalFoodEquivalent(e), n: e.npcs.length };
     if (_t1312On()) { const b = Math.min(e.housing !== undefined ? e.housing : Infinity, e._mapBeds !== undefined ? e._mapBeds : Infinity); row.h = (e.lastStats && typeof e.lastStats.happiness === 'number') ? e.lastStats.happiness : null; row.beds = isFinite(b) ? b : null; }   // ★[T1312] 켬 = 그날 행복 · 침상도(침상 끝없음 = null)
+    if (_t1319KOn()) row.K = (e._dpDebug && typeof e._dpDebug.K === 'number' && isFinite(e._dpDebug.K)) ? e._dpDebug.K : null;   // ★[T1319] 켬 = 그날 인구 식 부양력 K 도(그날 인구 식이 쓴 값 · 안 돈 마을은 null)
     const ring = Array.isArray(e._t1306Fd) ? e._t1306Fd : (e._t1306Fd = []);
     if (ring.length && (ring[ring.length - 1].d | 0) === day) ring[ring.length - 1] = row; else ring.push(row);
     while (ring.length > N) ring.shift();
@@ -2313,7 +2314,7 @@ function _t1306Known(fromVil, toVil, day) {   // 받는 마을 곳간을 떠나�
   if (!isFinite(lag)) return null;   // 못 닿는 마을 — 소문이 영영 안 간다(rumor.js 제4 규약)
   const ring = Array.isArray(e._t1306Fd) ? e._t1306Fd : null; if (!ring) return null;
   const td = (day | 0) - lag;
-  for (let i = ring.length - 1; i >= 0; i--) if ((ring[i].d | 0) <= td) return { d: ring[i].d | 0, fe: ring[i].fe, n: ring[i].n, h: ring[i].h, beds: ring[i].beds, lag };   // ★[T1312] 행복 · 침상(켬 줄에만 있다)
+  for (let i = ring.length - 1; i >= 0; i--) if ((ring[i].d | 0) <= td) return { d: ring[i].d | 0, fe: ring[i].fe, n: ring[i].n, h: ring[i].h, beds: ring[i].beds, K: ring[i].K, lag };   // ★[T1312] 행복 · 침상 · ★[T1319] K(켬 줄에만 있다)
   return null;   // 소식이 아직 안 닿았다(판 첫날 · 고리보다 먼 소식)
 }
 function _t1306Pass(fromVil, toVil, day) {   // 이주 문 — 들은 곳간이 들은 인구 + 1 을 출생 문 날 수만큼 먹이나(true) · 얇거나 모르면 false
@@ -2321,7 +2322,7 @@ function _t1306Pass(fromVil, toVil, day) {   // 이주 문 — 들은 곳간이 
   _t1306Stat.seen++;
   if (!k) { _t1306Stat.unknown++; return false; }
   _t1306Stat.lagSum += k.lag;
-  if (!(k.fe >= (k.n + 1) * E1.DAILY_FOOD_CONSUMPTION * E1.t1297NeedDays(day))) { _t1306Stat.thin++; return false; }
+  if (!(k.fe >= (k.n + 1) * E1.DAILY_FOOD_CONSUMPTION * (E1.t1319MigNeedDays || E1.t1297NeedDays)(day))) { _t1306Stat.thin++; return false; }
   _t1306Stat.ok++;
   return true;
 }
@@ -2358,11 +2359,23 @@ function _t1312Pass(fromVil, toVil, day, h0) {   // 이주 문(켬) — 들은 �
   if (h0 == null || k.h == null || !(k.h > h0)) { _t1312Stat.unhappy++; return null; }
   const pk = _t1312PickedOf(fromVil, toVil, day), nk = k.n + pk, beds = k.beds == null ? Infinity : k.beds;
   if (!(beds > nk)) { _t1312Stat.beds++; return null; }
-  const per = E1.DAILY_FOOD_CONSUMPTION * E1.t1297NeedDays(day);
+  if (_t1319KOn() && k.K != null && nk + 1 > k.K) { _t1319Stat.overK++; return null; }   // ★[T1319] 켬 = 들은 인구 + 앞서 고른 수 + 이 사람이 들은 K 를 넘으면 안 간다(들은 K 없으면 이 문은 안 선다)
+  const per = E1.DAILY_FOOD_CONSUMPTION * (E1.t1319MigNeedDays || E1.t1297NeedDays)(day);
   if (!(k.fe >= (nk + 1) * per)) { _t1312Stat.thin++; if (pk > 0 && k.fe >= (k.n + 1) * per) _t1312Stat.herdCut++; return null; }
   _t1312Stat.ok++;
   return k.h;
 }
+// ★★★[T1319 2026-11-15 · T1312 회부 1] 손잡이 `T1319_RECV_K`(T1312 무리 셈 켬 안 · `'1'` 만 켬 · 끔 = T1312 그대로) — **받는 곳 문에 부양력 K.**
+//   T1312 판: v2 만 42 의 죽음 506 → 1,183명 가운데 899명이 인구 식이 K 위에서 끌어낸 가장 늙은 사람이었고 그중 803명이 한 마을(어촌6 — 곳간 32 ~ 160일치 ·
+//     K 96 · 사람 최대 188 · 닿은 사람의 27%)에서 났다. 이주 문이 곳간 · 침상 · 행복만 보니 곳간이 넘치는 마을은 K 를 넘어도 계속 받고, 든 만큼 인구 식이
+//     가장 늙은 사람을 끌어낸다(받는 쪽 몰림 — v2 만이 이주 문으로 내리는 까닭).
+//   켬 — 마을마다 하루 한 줄(`_t1306Fd`)에 그날 인구 식 부양력 K(econ `_dpDebug.K` — 그날 인구 식이 쓴 바로 그 값: 경작 자리 · 식량 흐름 · 땔감 흐름 가운데 가장 작은 것)를
+//     함께 싣고, 받는 곳 고르기(`_t1312Pass`)에서 들은 인구 + 앞서 고른 수(무리 셈) + 이 사람 > 들은 K 이면 안 간다 — T7 도달 일수 앞 들은 줄(오늘 값 0 · 소식 텔레포트 0).
+//     "그 마을은 땅도 일도 꽉 찼다더라" — 곳간 · 침상 · 행복과 같은 소문 한 줄이다. 들은 K 가 없으면(켜기 전 줄 · 그날 인구 식이 안 돈 마을) K 문은 안 선다(곳간 · 침상 · 행복 문만).
+//   새 수 0 — K 는 인구 식의 그 값 · 문턱은 사람 수(침상 문 `침상 > 들은 인구 + 앞서 고른 수` 와 같은 꼴).
+const T1319_RECV_K_ENV = process.env.T1319_RECV_K === '1';
+function _t1319KOn() { return T1319_RECV_K_ENV && _t1312On(); }
+const _t1319Stat = { overK: 0 };
 const _t1147Stat = { pick: 0, nearest: 0, other: 0, none: 0, rows: [] };
 function _t1147Pick(vil) {
   const W = state.world, M = W && W._distMatrix, ev = W && W.villages, V2 = state.econV2, E1 = state.econ;
@@ -11067,6 +11080,7 @@ function banditHost() {
     t1147Pick: _t1147Pick, t1147Stat: () => _t1147Stat,   // ★[T1147] 불행 이탈 받는 곳(둘레 여럿 · 더 행복 · 자리)
     t1306Stat: () => _t1306Stat, t1306On: _t1306On, t1306Known: _t1306Known, t1306Pass: _t1306Pass, t1306Record: _t1306Record,   // ★[T1306] 이주 문(소문으로 아는 곳간) — 하네스 · 계측이 같은 함수를 부른다(사본 0)
     t1312On: _t1312On, t1312Stat: () => _t1312Stat,   // ★[T1312] 무리 셈 · 들은 행복 · 침상(bandits.js 걷기 문이 켬이면 오늘 행복 술어를 안 건다)
+    t1319KOn: _t1319KOn, t1319Stat: () => _t1319Stat,   // ★[T1319] 받는 곳 문에 부양력 K(들은 줄)
     t1302Prepare: T1302_TERR_BODY ? (vil) => syncVillagePop(vil, Infinity) : null,
     t1080On: () => T1080_ROAD_LIFE, t1080Pick: _t1080Pick, t1080Pack: _t1080Pack, t1080RoadDay: _t1080RoadDay, t1080Reroute: _t1080Reroute, t1080Arrive: _t1080Arrive, t1080Stat: () => _t1080Stat,   // ★[T1080] 길 위 먹고 늙기 · 길 거리 받는 마을(도적 `walkToVillage` 가 부른다)    // ★[T765] 후보 걷기 몸 문 둘(도적 `_t577Walk` — `T577_CAND_WALK=1` 에서만 불린다)
     seed: state.villageSeed || 1020,
@@ -19181,7 +19195,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   T1238_TERR_V2, T1302_TERR_BODY, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,
   _t1238Batch, _t1238DayPre, _t1238DayPost, _t1238GoOk, _t1238Use, _t1238Remove, _t1238Boot, _t1238JobToLand, _t1238JobFromLand, _t1238JobsOf, landSizeOfCells, _t1238Struct, _t1238Land, _t1238St,
-  t1167Stat, t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t1320Stat: () => Object.assign({ on: T1320_ROCK_PATH }, _t1320St), t1320On: () => T1320_ROCK_PATH, t1306Stat: () => _t1306Stat, _t1306On, _t1306Known, _t1306Pass, _t1306Record, t1312Stat: () => _t1312Stat, _t1312On, _t1312Pass, _t1312PickedOf, _t1312Note, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes, t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), t1166Sizes: _t1166Sizes, lotsClockSet: _t1166Flush,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
+  t1167Stat, t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t1320Stat: () => Object.assign({ on: T1320_ROCK_PATH }, _t1320St), t1320On: () => T1320_ROCK_PATH, t1306Stat: () => _t1306Stat, _t1306On, _t1306Known, _t1306Pass, _t1306Record, t1312Stat: () => _t1312Stat, _t1312On, _t1312Pass, _t1312PickedOf, _t1312Note, t1319Stat: () => _t1319Stat, _t1319KOn, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes, t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), t1166Sizes: _t1166Sizes, lotsClockSet: _t1166Flush,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
   streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   T856_LAND_ELEV, _t856LandElev,   // ★[T856] 마을 고도 — 하네스(`test-land-elev`)가 같은 함수를 부른다(사본 0)
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
