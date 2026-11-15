@@ -6969,6 +6969,7 @@ const server = http.createServer((req, res) => {
           else if (data.kind === 'beast' && T1321_XZ_BEAST) { try { out = _t1321Door.receive(data); } catch (e) { st = 500; out = { ok: false, why: 'err ' + e.message }; } }   // ★[T1321] 짐승 — 열쇠 · 거름 · 세우기(끔 = 아래 '모르는 종류' 400 — 보낸 존이 드러낸다)
           else if (data.kind === 'drain' && SimVillages.t1321DrainCmd) out = _t1321DrainCmd(data);   // ★[T1321 ④] 비우기 명령(안 문 · 켜기 · 끄기 · 상태)
           else if (data.kind === 'army') out = { ok: false, why: 'army — 칸만 예약(셋째 카드)' };
+          else if (data.kind === 'e2e_emigrate' && E2E_GIVE) out = SimVillages.__e2eEmigrate ? SimVillages.__e2eEmigrate(data.vid | 0, data.n) : { ok: false, why: '미지원' };   // ★[T1324] 테스트 전용(판 꾸밈 · `E2E_GIVE` 만) — 그 마을 이탈 압력(가상 시계 판이 안 문으로 — 발맞춤 가로대에 같이 든다)
           else if (data.kind === 'drop' && T1092_HANDOFF_BACK) out = _t1092Drop(data);   // ★[T1092] 보낸 존 ACK 시한 — 그 토큰을 놓는다(`_t1092Drop`)
           else { st = 400; out = { ok: false, why: 'unknown kind' }; }
           res.writeHead(st, { 'Content-Type': 'application/json' });

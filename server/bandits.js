@@ -232,6 +232,8 @@ function _t1075Leave(econV, npc, day) {   // econ 이 그날(`day`)을 준다
   //   ★[T1147] 받는 곳 = 둘레 여럿(교역로 4일 안) 중 더 행복하고 받을 자리가 있는 곳(호스트 `t1147Pick` · 없으면 아무도 안 떠난다)
   const dest = (T1134_HAPPY_TARGET && S.host.t1147Pick) ? S.host.t1147Pick(vil) : undefined;
   if (dest === null) return false;
+  //   ★[T1324] 받는 곳이 이웃 존 마을(호스트 고르기가 들은 줄로 골랐다 — 손잡이 `T1324_XZ_MIGRATE` 켬에서만 나온다)이면 경계 칸까지 걷는 이웃 존 이주 문(호스트 `t1324Depart`)
+  if (dest && dest._t1324) return !!(S.host.t1324Depart && S.host.t1324Depart(vil, npc, dest, day != null ? day | 0 : (S.host.world ? S.host.world.day | 0 : 0)));
   return walkToVillage(vil, [npc], day != null ? day | 0 : (S.host.world ? S.host.world.day | 0 : 0), 'unhappy', accept, dest) > 0;
 }
 //   people = 그 마을 econ 명부에 지금 있는 사람 객체들(받는 마을을 고른 뒤에만 명부에서 뺀다 — 갈 곳이 없으면 아무것도 안 바꾸고 0).
