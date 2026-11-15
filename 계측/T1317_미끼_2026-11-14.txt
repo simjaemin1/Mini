@@ -15,3 +15,4 @@ P4 test-t1221-farm-labor rc=1   ✗ ⑤ 몸 — 켬이면 일 시간(게임 분 
 P5 test-granary-haul rc=1   ✗ 체류 중 소유권 유지(정산 전)
 P6 _t1317-bait-bigmap rc=1   ✗ 전제: 조각에 산맥 바위 · 한재 골짜기의 뭍(셀 술어가 그 원에서 뭍이라 하는 
 REAL test-bigmap-cells rc=0 
+B5 bait(존이 hot-cols 를 다시 부름) rc=1   ✗ ⑪b 이미지가 읽는데 그 이미지에 **안 실리는** 파일 1장  ★server/hot-cols.js(Dockerfile.zone · server/zone.js:2 · .docker

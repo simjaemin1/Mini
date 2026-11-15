@@ -33,3 +33,7 @@ bc823aeee485eef084e7b8f187f4fc4501f7c43c is the first bad commit
 
 ## 부르는 자리
 641:  try { doc = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, `village-trees-${zoneId}.json`), 'utf8')); } catch (e) { doc = null; }
+
+## land1076(664a622b) 뒤 — 안 닿는 목록 차(이 가지 앞 판 대 land1076 합친 판)
+5a6
+> server/hot-cols.js
