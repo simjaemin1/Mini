@@ -1,0 +1,19 @@
+# T1328 미끼 — 판마다 한 줄(/root/wt/bait/run.sh · 제품 글자는 판 뒤 git checkout)
+D1 test-farm-act rc=1   ✗ ⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 작물  �
+D1 test-t1212-farm-clock rc=1   ✗ ③ 몸 갈래가 아니면 종전 두 절 그대로(밭 날만 ① · T1243 켬 + 라이브면 걷음 — `_cut`)
+D1 test-t1224-econ-farm rc=1   ✗ ⑤ 종전 줄 그대로 — 몸 갈래 문 · 일괄 개간 · 일괄 작물(새 줄은 `if (T1224_ECON_FARM && !
+D2 test-farm-act rc=1   ✗ ⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 작물  �
+D3 test-t1212-farm-clock rc=1   ✗ ③ 몸 갈래가 아니면 종전 두 절 그대로(밭 날만 ① · T1243 켬 + 라이브면 걷음 — `_cut`)
+D3 test-t1224-econ-farm rc=1   ✗ ⑤ 종전 줄 그대로 — 몸 갈래 문 · 일괄 개간 · 일괄 작물(새 줄은 `if (T1224_ECON_FARM && !
+D4 test-t1328-ore-zero rc=1   ✗ ③ ★0원 원석만 캐는 광부 한 시간 값 = 0  p=0.01
+D5 test-t1328-ore-zero rc=1   ✗ ① [상황] 0원 원석 칸이 실제로 선다(자명 통과 금지)  0칸 · 
+D6 e2e-oseok-all rc=1   ✗ [상황] 알림 판이 보인다  #notice
+
+## 같은 뜻 · 다른 글자(개간 줄을 `if (!(_body || _cut || _t84))` 로) — 새 하네스 초록 · 옛 글자 핀 빨강
+test-farm-act 새 rc=0✗ · 옛   ✗ ⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 �
+test-t1212-farm-clock 새 rc=0✗ · 옛   ✗ ③ 몸 갈래가 아니면 종전 두 절 그대로(밭 날만 ① · T1243 켬 + �
+test-t1224-econ-farm 새 rc=0✗ · 옛   ✗ ⑤ 종전 줄 그대로 — 몸 갈래 문 · 일괄 개간 · 일괄 작물(새 �
+
+## D7 — T1320 손잡이 기본을 켬으로(`server/villages.js` `const T1320_ROCK_PATH = process.env.T1320_ROCK_PATH !== '0';`) → test-t772-leg
+rc=1 · ReferenceError: _t1320ChainOf is not defined — 샌드박스는 원문 손잡이 줄을 그대로 받아 기본이 바뀌면 조용히 지나가지 않는다(되돌림 `git checkout` · 상태 깨끗)
+## 대조 — 고치기 전 test-t772-leg(전수 판): rc=1 · ReferenceError: T1320_ROCK_PATH is not defined · 고친 뒤 단독 24/0 · 러너 다시 24/0

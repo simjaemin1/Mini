@@ -1,0 +1,81 @@
+[
+ {
+  "zone": "hanbando",
+  "arm": "live",
+  "before": {
+   "n": 0,
+   "personal": 0,
+   "careCols": []
+  },
+  "on": {
+   "boot": true,
+   "ms": 18453,
+   "n": 0,
+   "personal": 0,
+   "careCols": [
+    "care_n",
+    "care_w"
+   ],
+   "worn": 0,
+   "care": [],
+   "quick": "ok"
+  },
+  "off": {
+   "boot": true,
+   "ms": 17975,
+   "n": 0,
+   "careCols": [
+    "care_n",
+    "care_w"
+   ],
+   "rowsSame": true,
+   "quick": "ok"
+  }
+ },
+ {
+  "zone": "hanbando",
+  "arm": "seeded",
+  "before": {
+   "n": 3,
+   "personal": 3,
+   "careCols": []
+  },
+  "on": {
+   "boot": true,
+   "ms": 18790,
+   "n": 3,
+   "personal": 3,
+   "careCols": [
+    "care_n",
+    "care_w"
+   ],
+   "worn": 0,
+   "care": [
+    [
+     null,
+     null
+    ],
+    [
+     null,
+     null
+    ],
+    [
+     null,
+     null
+    ]
+   ],
+   "quick": "ok"
+  },
+  "off": {
+   "boot": true,
+   "ms": 17491,
+   "n": 3,
+   "careCols": [
+    "care_n",
+    "care_w"
+   ],
+   "rowsSame": true,
+   "quick": "ok"
+  }
+ }
+]
