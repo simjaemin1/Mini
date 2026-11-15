@@ -440,7 +440,7 @@
  },
  "COMBO-1020": {
   "dir": "/tmp/t1318/COMBO-1020",
-  "done": false,
+  "done": true,
   "segs": [
    [
     0,
@@ -451,33 +451,2232 @@
     10,
     20,
     652
+   ],
+   [
+    20,
+    30,
+    916
+   ],
+   [
+    30,
+    40,
+    1091
+   ],
+   [
+    40,
+    50,
+    1250
+   ],
+   [
+    50,
+    60,
+    1437
+   ],
+   [
+    60,
+    70,
+    1733
+   ],
+   [
+    70,
+    80,
+    2539
+   ],
+   [
+    80,
+    90,
+    3790
+   ],
+   [
+    90,
+    100,
+    3730
    ]
   ],
-  "days": 21,
-  "pop": 998,
-  "bodies": 998,
+  "days": 100,
+  "pop": 3479,
+  "bodies": 3424,
   "empty": 0,
-  "minBodyRatio": 1.0,
-  "maxBodyGap": 0,
-  "maxMissingPeople": 1197,
+  "minBodyRatio": 0.9841908594423685,
+  "maxBodyGap": 55,
+  "maxMissingPeople": 3479,
   "physical": 0,
-  "added": 42843,
-  "batchCalls": 1071,
-  "terrCells": 42843,
+  "added": 152212,
+  "batchCalls": 5042,
+  "terrCells": 152212,
   "terrBody": 0,
-  "territory": 119343,
-  "emigration": 0,
-  "emigrationCumulativeField": 0,
-  "emigrationDays": {},
-  "emig90": 0,
+  "territory": 228712,
+  "emigration": 55,
+  "emigrationCumulativeField": 55,
+  "emigrationDays": {
+   "89": 1,
+   "90": 2,
+   "91": 2,
+   "92": 4,
+   "93": 5,
+   "94": 3,
+   "95": 5,
+   "96": 4,
+   "97": 11,
+   "99": 7,
+   "100": 11
+  },
+  "emig90": 54,
   "bodyStarve": 0,
   "debtDeaths": 0,
-  "bornCum": 590,
-  "cpuMeanAll": 53.94785455,
-  "cpuMeanRun": 51.0123665,
-  "cpuSegFirst": 80.36724699999999,
+  "bornCum": 3083,
+  "cpuMeanAll": 173.72115754545453,
+  "cpuMeanRun": 174.28517871111112,
+  "cpuSegFirst": 168.0809458888889,
   "errors": 0,
-  "events": []
+  "events": [
+   {
+    "day": 89,
+    "village": "임업2",
+    "person": "nv62.118",
+    "job": "lumberjack",
+    "age": 16.010958904109586,
+    "born": null,
+    "population": 142,
+    "bodies": 126,
+    "food": 4636.884455838538,
+    "wood": 864.8413327212437,
+    "happiness": 0.21708959241842896,
+    "health": 0.6519433212755803,
+    "housing": 141.2264485786892,
+    "mapBeds": null,
+    "gate": {
+     "K": 367,
+     "logi": 5.41,
+     "hunger": 0,
+     "health": 0.335,
+     "happy": -0.937,
+     "prestige": 0.037,
+     "housing": 141.2,
+     "gated": false,
+     "dP": 4.851
+    },
+    "pressure": 1.0899926991016329,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3506"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 90,
+    "village": "임업2",
+    "person": "nv62.108",
+    "job": "forager",
+    "age": 16.02191780821917,
+    "born": null,
+    "population": 146,
+    "bodies": 127,
+    "food": 4592.634430595377,
+    "wood": 1090.3404014777814,
+    "happiness": 0.19156950661469652,
+    "health": 0.6657508758468526,
+    "housing": 145.24460890582117,
+    "mapBeds": null,
+    "gate": {
+     "K": 370.1,
+     "logi": 5.521,
+     "hunger": 0,
+     "health": 0.374,
+     "happy": -1.044,
+     "prestige": 0.037,
+     "housing": 145.2,
+     "gated": false,
+     "dP": 4.894
+    },
+    "pressure": 2.0672805952603026,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3554"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 90,
+    "village": "임업2",
+    "person": "nv62.103",
+    "job": "smith",
+    "age": 16.02465753424657,
+    "born": null,
+    "population": 145,
+    "bodies": 126,
+    "food": 4558.4632670696255,
+    "wood": 1090.3404014777814,
+    "happiness": 0.19156950661469652,
+    "health": 0.6657508758468526,
+    "housing": 145.24460890582117,
+    "mapBeds": null,
+    "gate": {
+     "K": 370.1,
+     "logi": 5.521,
+     "hunger": 0,
+     "health": 0.374,
+     "happy": -1.044,
+     "prestige": 0.037,
+     "housing": 145.2,
+     "gated": false,
+     "dP": 4.894
+    },
+    "pressure": 1.0672805952603026,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3553"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 91,
+    "village": "임업2",
+    "person": "nv62.69",
+    "job": "mason",
+    "age": 16.06301369863012,
+    "born": null,
+    "population": 149,
+    "bodies": 144,
+    "food": 4583.78972885468,
+    "wood": 1096.9296174324602,
+    "happiness": 0.16579334168329174,
+    "health": 0.6518458448291958,
+    "housing": 149.34674199246243,
+    "mapBeds": null,
+    "gate": {
+     "K": 373.1,
+     "logi": 5.632,
+     "hunger": 0,
+     "health": 0.35,
+     "happy": -1.155,
+     "prestige": 0.038,
+     "housing": 149.3,
+     "gated": false,
+     "dP": 4.871
+    },
+    "pressure": 2.97746270668574,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p793"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 91,
+    "village": "임업2",
+    "person": "nv62.60",
+    "job": "farmer",
+    "age": 16.0767123287671,
+    "born": null,
+    "population": 148,
+    "bodies": 143,
+    "food": 4549.681005062834,
+    "wood": 1096.9296174324602,
+    "happiness": 0.16579334168329174,
+    "health": 0.6518458448291958,
+    "housing": 149.34674199246243,
+    "mapBeds": null,
+    "gate": {
+     "K": 373.1,
+     "logi": 5.632,
+     "hunger": 0,
+     "health": 0.35,
+     "happy": -1.155,
+     "prestige": 0.038,
+     "housing": 149.3,
+     "gated": false,
+     "dP": 4.871
+    },
+    "pressure": 1.9774627066857402,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p792"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 92,
+    "village": "임업2",
+    "person": "nv62.149",
+    "job": "smith",
+    "age": 16,
+    "born": null,
+    "population": 152,
+    "bodies": 144,
+    "food": 4560.88814383565,
+    "wood": 1003.2679176967301,
+    "happiness": 0.13985129979263167,
+    "health": 0.6696818280728686,
+    "housing": 153.53272187947374,
+    "mapBeds": null,
+    "gate": {
+     "K": 377.3,
+     "logi": 5.745,
+     "hunger": 0,
+     "health": 0.399,
+     "happy": -1.271,
+     "prestige": 0.039,
+     "housing": 153.5,
+     "gated": false,
+     "dP": 4.918
+    },
+    "pressure": 4.863508850001695,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3279"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 92,
+    "village": "임업2",
+    "person": "nv62.46",
+    "job": "tailor",
+    "age": 16.10136986301367,
+    "born": null,
+    "population": 151,
+    "bodies": 143,
+    "food": 4526.919192034226,
+    "wood": 1003.2679176967301,
+    "happiness": 0.13985129979263167,
+    "health": 0.6696818280728686,
+    "housing": 153.53272187947374,
+    "mapBeds": null,
+    "gate": {
+     "K": 377.3,
+     "logi": 5.745,
+     "hunger": 0,
+     "health": 0.399,
+     "happy": -1.271,
+     "prestige": 0.039,
+     "housing": 153.5,
+     "gated": false,
+     "dP": 4.918
+    },
+    "pressure": 3.863508850001695,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3278"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 92,
+    "village": "임업2",
+    "person": "nv62.43",
+    "job": "lumberjack",
+    "age": 16.106849315068462,
+    "born": null,
+    "population": 150,
+    "bodies": 142,
+    "food": 4492.950240232803,
+    "wood": 1003.2679176967301,
+    "happiness": 0.13985129979263167,
+    "health": 0.6696818280728686,
+    "housing": 153.53272187947374,
+    "mapBeds": null,
+    "gate": {
+     "K": 377.3,
+     "logi": 5.745,
+     "hunger": 0,
+     "health": 0.399,
+     "happy": -1.271,
+     "prestige": 0.039,
+     "housing": 153.5,
+     "gated": false,
+     "dP": 4.918
+    },
+    "pressure": 2.863508850001695,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p791"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 92,
+    "village": "임업2",
+    "person": "nv62.39",
+    "job": "hunter",
+    "age": 16.115068493150652,
+    "born": null,
+    "population": 149,
+    "bodies": 141,
+    "food": 4458.981288431378,
+    "wood": 1003.2679176967301,
+    "happiness": 0.13985129979263167,
+    "health": 0.6696818280728686,
+    "housing": 153.53272187947374,
+    "mapBeds": null,
+    "gate": {
+     "K": 377.3,
+     "logi": 5.745,
+     "hunger": 0,
+     "health": 0.399,
+     "happy": -1.271,
+     "prestige": 0.039,
+     "housing": 153.5,
+     "gated": false,
+     "dP": 4.918
+    },
+    "pressure": 1.8635088500016952,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p790"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 93,
+    "village": "임업2",
+    "person": "nv62.36",
+    "job": "fisher",
+    "age": 16.126027397260238,
+    "born": null,
+    "population": 153,
+    "bodies": 142,
+    "food": 4465.0493910776395,
+    "wood": 945.4427593069775,
+    "happiness": 0.13312303369568923,
+    "health": 0.525,
+    "housing": 157.74242279665452,
+    "mapBeds": null,
+    "gate": {
+     "K": 380.5,
+     "logi": 5.784,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.303,
+     "prestige": 0.04,
+     "housing": 157.7,
+     "gated": false,
+     "dP": 4.586
+    },
+    "pressure": 5.014978693130813,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3375"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 93,
+    "village": "임업2",
+    "person": "nv62.1",
+    "job": "mason",
+    "age": 16.246575342465682,
+    "born": null,
+    "population": 152,
+    "bodies": 141,
+    "food": 4430.934156517189,
+    "wood": 945.4427593069775,
+    "happiness": 0.13312303369568923,
+    "health": 0.525,
+    "housing": 157.74242279665452,
+    "mapBeds": null,
+    "gate": {
+     "K": 380.5,
+     "logi": 5.784,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.303,
+     "prestige": 0.04,
+     "housing": 157.7,
+     "gated": false,
+     "dP": 4.586
+    },
+    "pressure": 4.014978693130813,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3374"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 93,
+    "village": "임업2",
+    "person": "nv62.133",
+    "job": "hunter",
+    "age": 17.010958904109586,
+    "born": null,
+    "population": 151,
+    "bodies": 140,
+    "food": 4396.818921956737,
+    "wood": 945.4427593069775,
+    "happiness": 0.13312303369568923,
+    "health": 0.525,
+    "housing": 157.74242279665452,
+    "mapBeds": null,
+    "gate": {
+     "K": 380.5,
+     "logi": 5.784,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.303,
+     "prestige": 0.04,
+     "housing": 157.7,
+     "gated": false,
+     "dP": 4.586
+    },
+    "pressure": 3.0149786931308133,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p789"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 93,
+    "village": "임업2",
+    "person": "nv62.76",
+    "job": "farmer",
+    "age": 17.060273972602722,
+    "born": null,
+    "population": 150,
+    "bodies": 139,
+    "food": 4362.703687396287,
+    "wood": 945.4427593069775,
+    "happiness": 0.13312303369568923,
+    "health": 0.525,
+    "housing": 157.74242279665452,
+    "mapBeds": null,
+    "gate": {
+     "K": 380.5,
+     "logi": 5.784,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.303,
+     "prestige": 0.04,
+     "housing": 157.7,
+     "gated": false,
+     "dP": 4.586
+    },
+    "pressure": 2.0149786931308133,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p788"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 93,
+    "village": "임업2",
+    "person": "nv62.77",
+    "job": "farmer",
+    "age": 17.060273972602722,
+    "born": null,
+    "population": 149,
+    "bodies": 138,
+    "food": 4328.588452835835,
+    "wood": 945.4427593069775,
+    "happiness": 0.13312303369568923,
+    "health": 0.525,
+    "housing": 157.74242279665452,
+    "mapBeds": null,
+    "gate": {
+     "K": 380.5,
+     "logi": 5.784,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.303,
+     "prestige": 0.04,
+     "housing": 157.7,
+     "gated": false,
+     "dP": 4.586
+    },
+    "pressure": 1.0149786931308133,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p787"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 94,
+    "village": "임업2",
+    "person": "nv62.73",
+    "job": "farmer",
+    "age": 17.068493150684912,
+    "born": null,
+    "population": 153,
+    "bodies": 139,
+    "food": 4257.650890854751,
+    "wood": 946.8382705683057,
+    "happiness": 0.13996717510306256,
+    "health": 0.6657818595897924,
+    "housing": 161.94580916245954,
+    "mapBeds": null,
+    "gate": {
+     "K": 382.6,
+     "logi": 5.787,
+     "hunger": 0,
+     "health": 0.393,
+     "happy": -1.279,
+     "prestige": 0.04,
+     "housing": 161.9,
+     "gated": false,
+     "dP": 4.947
+    },
+    "pressure": 3.923344633470031,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3431"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 94,
+    "village": "임업2",
+    "person": "nv62.56",
+    "job": "farmer",
+    "age": 17.090410958904084,
+    "born": null,
+    "population": 152,
+    "bodies": 138,
+    "food": 4223.484698606381,
+    "wood": 946.8382705683057,
+    "happiness": 0.13996717510306256,
+    "health": 0.6657818595897924,
+    "housing": 161.94580916245954,
+    "mapBeds": null,
+    "gate": {
+     "K": 382.6,
+     "logi": 5.787,
+     "hunger": 0,
+     "health": 0.393,
+     "happy": -1.279,
+     "prestige": 0.04,
+     "housing": 161.9,
+     "gated": false,
+     "dP": 4.947
+    },
+    "pressure": 2.923344633470031,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3430"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 94,
+    "village": "임업2",
+    "person": "nv62.31",
+    "job": "smith",
+    "age": 17.13972602739722,
+    "born": null,
+    "population": 151,
+    "bodies": 137,
+    "food": 4189.318506358011,
+    "wood": 946.8382705683057,
+    "happiness": 0.13996717510306256,
+    "health": 0.6657818595897924,
+    "housing": 161.94580916245954,
+    "mapBeds": null,
+    "gate": {
+     "K": 382.6,
+     "logi": 5.787,
+     "hunger": 0,
+     "health": 0.393,
+     "happy": -1.279,
+     "prestige": 0.04,
+     "housing": 161.9,
+     "gated": false,
+     "dP": 4.947
+    },
+    "pressure": 1.9233446334700308,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p786"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "임업2",
+    "person": "nv62.17",
+    "job": "farmer",
+    "age": 17.18630136986296,
+    "born": null,
+    "population": 155,
+    "bodies": 138,
+    "food": 4197.823183549836,
+    "wood": 960.5685431342856,
+    "happiness": 0.12533299961614908,
+    "health": 0.65,
+    "housing": 166.20289044871586,
+    "mapBeds": null,
+    "gate": {
+     "K": 386.7,
+     "logi": 5.864,
+     "hunger": 0,
+     "health": 0.36,
+     "happy": -1.349,
+     "prestige": 0.041,
+     "housing": 166.2,
+     "gated": false,
+     "dP": 4.922
+    },
+    "pressure": 5.411356647288663,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3524"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "임업2",
+    "person": "nv62.164",
+    "job": "fisher",
+    "age": 18,
+    "born": null,
+    "population": 154,
+    "bodies": 137,
+    "food": 4163.681321634889,
+    "wood": 960.5685431342856,
+    "happiness": 0.12533299961614908,
+    "health": 0.65,
+    "housing": 166.20289044871586,
+    "mapBeds": null,
+    "gate": {
+     "K": 386.7,
+     "logi": 5.864,
+     "hunger": 0,
+     "health": 0.36,
+     "happy": -1.349,
+     "prestige": 0.041,
+     "housing": 166.2,
+     "gated": false,
+     "dP": 4.922
+    },
+    "pressure": 4.411356647288663,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3523"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "임업2",
+    "person": "nv62.150",
+    "job": "tailor",
+    "age": 18.005479452054793,
+    "born": null,
+    "population": 153,
+    "bodies": 136,
+    "food": 4129.539459719941,
+    "wood": 960.5685431342856,
+    "happiness": 0.12533299961614908,
+    "health": 0.65,
+    "housing": 166.20289044871586,
+    "mapBeds": null,
+    "gate": {
+     "K": 386.7,
+     "logi": 5.864,
+     "hunger": 0,
+     "health": 0.36,
+     "happy": -1.349,
+     "prestige": 0.041,
+     "housing": 166.2,
+     "gated": false,
+     "dP": 4.922
+    },
+    "pressure": 3.411356647288663,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p785"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "임업2",
+    "person": "nv62.143",
+    "job": "hunter",
+    "age": 18.010958904109586,
+    "born": null,
+    "population": 152,
+    "bodies": 135,
+    "food": 4095.3975978049934,
+    "wood": 960.5685431342856,
+    "happiness": 0.12533299961614908,
+    "health": 0.65,
+    "housing": 166.20289044871586,
+    "mapBeds": null,
+    "gate": {
+     "K": 386.7,
+     "logi": 5.864,
+     "hunger": 0,
+     "health": 0.36,
+     "happy": -1.349,
+     "prestige": 0.041,
+     "housing": 166.2,
+     "gated": false,
+     "dP": 4.922
+    },
+    "pressure": 2.411356647288663,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p784"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "임업2",
+    "person": "nv62.138",
+    "job": "forager",
+    "age": 18.013698630136982,
+    "born": null,
+    "population": 151,
+    "bodies": 134,
+    "food": 4061.255735890045,
+    "wood": 960.5685431342856,
+    "happiness": 0.12533299961614908,
+    "health": 0.65,
+    "housing": 166.20289044871586,
+    "mapBeds": null,
+    "gate": {
+     "K": 386.7,
+     "logi": 5.864,
+     "hunger": 0,
+     "health": 0.36,
+     "happy": -1.349,
+     "prestige": 0.041,
+     "housing": 166.2,
+     "gated": false,
+     "dP": 4.922
+    },
+    "pressure": 1.4113566472886632,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p783"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 96,
+    "village": "임업2",
+    "person": "nv62.168",
+    "job": "fisher",
+    "age": 16,
+    "born": null,
+    "population": 155,
+    "bodies": 135,
+    "food": 3993.0555167100683,
+    "wood": 959.0852418696364,
+    "happiness": 0.1326007994239522,
+    "health": 0.664217795083907,
+    "housing": 170.4535861130428,
+    "mapBeds": null,
+    "gate": {
+     "K": 389.9,
+     "logi": 5.869,
+     "hunger": 0,
+     "health": 0.394,
+     "happy": -1.323,
+     "prestige": 0.041,
+     "housing": 170.5,
+     "gated": false,
+     "dP": 4.987
+    },
+    "pressure": 4.637727868026384,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3574"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 96,
+    "village": "임업2",
+    "person": "nv62.120",
+    "job": "fisher",
+    "age": 18.027397260273965,
+    "born": null,
+    "population": 154,
+    "bodies": 134,
+    "food": 3958.7823057027267,
+    "wood": 959.0852418696364,
+    "happiness": 0.1326007994239522,
+    "health": 0.664217795083907,
+    "housing": 170.4535861130428,
+    "mapBeds": null,
+    "gate": {
+     "K": 389.9,
+     "logi": 5.869,
+     "hunger": 0,
+     "health": 0.394,
+     "happy": -1.323,
+     "prestige": 0.041,
+     "housing": 170.5,
+     "gated": false,
+     "dP": 4.987
+    },
+    "pressure": 3.637727868026384,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3573"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 96,
+    "village": "임업2",
+    "person": "nv62.119",
+    "job": "lumberjack",
+    "age": 18.03013698630136,
+    "born": null,
+    "population": 153,
+    "bodies": 133,
+    "food": 3924.5090946953846,
+    "wood": 959.0852418696364,
+    "happiness": 0.1326007994239522,
+    "health": 0.664217795083907,
+    "housing": 170.4535861130428,
+    "mapBeds": null,
+    "gate": {
+     "K": 389.9,
+     "logi": 5.869,
+     "hunger": 0,
+     "health": 0.394,
+     "happy": -1.323,
+     "prestige": 0.041,
+     "housing": 170.5,
+     "gated": false,
+     "dP": 4.987
+    },
+    "pressure": 2.637727868026384,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p782"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 96,
+    "village": "임업2",
+    "person": "nv62.104",
+    "job": "lumberjack",
+    "age": 18.041095890410947,
+    "born": null,
+    "population": 152,
+    "bodies": 132,
+    "food": 3890.2358836880435,
+    "wood": 959.0852418696364,
+    "happiness": 0.1326007994239522,
+    "health": 0.664217795083907,
+    "housing": 170.4535861130428,
+    "mapBeds": null,
+    "gate": {
+     "K": 389.9,
+     "logi": 5.869,
+     "hunger": 0,
+     "health": 0.394,
+     "happy": -1.323,
+     "prestige": 0.041,
+     "housing": 170.5,
+     "gated": false,
+     "dP": 4.987
+    },
+    "pressure": 1.637727868026384,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p781"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "임업2",
+    "person": "nv62.170",
+    "job": "fisher",
+    "age": 18,
+    "born": null,
+    "population": 155,
+    "bodies": 133,
+    "food": 3891.938441654304,
+    "wood": 924.4053710616839,
+    "happiness": 0.12901875441414545,
+    "health": 0.65,
+    "housing": 173.64999999999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 393,
+     "logi": 5.908,
+     "hunger": 0,
+     "health": 0.362,
+     "happy": -1.344,
+     "prestige": 0.041,
+     "housing": 173.6,
+     "gated": false,
+     "dP": 4.974
+    },
+    "pressure": 5.022088208057753,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌13",
+     "pids": [
+      "p3668"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "임업2",
+    "person": "nv62.102",
+    "job": "forager",
+    "age": 18.04657534246574,
+    "born": null,
+    "population": 154,
+    "bodies": 132,
+    "food": 3857.7059750951566,
+    "wood": 924.4053710616839,
+    "happiness": 0.12901875441414545,
+    "health": 0.65,
+    "housing": 173.64999999999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 393,
+     "logi": 5.908,
+     "hunger": 0,
+     "health": 0.362,
+     "happy": -1.344,
+     "prestige": 0.041,
+     "housing": 173.6,
+     "gated": false,
+     "dP": 4.974
+    },
+    "pressure": 4.022088208057753,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌13",
+     "pids": [
+      "p3667"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "임업2",
+    "person": "nv62.96",
+    "job": "hunter",
+    "age": 18.052054794520533,
+    "born": null,
+    "population": 153,
+    "bodies": 131,
+    "food": 3823.47350853601,
+    "wood": 924.4053710616839,
+    "happiness": 0.12901875441414545,
+    "health": 0.65,
+    "housing": 173.64999999999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 393,
+     "logi": 5.908,
+     "hunger": 0,
+     "health": 0.362,
+     "happy": -1.344,
+     "prestige": 0.041,
+     "housing": 173.6,
+     "gated": false,
+     "dP": 4.974
+    },
+    "pressure": 3.0220882080577534,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌13",
+     "pids": [
+      "p780"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "임업2",
+    "person": "nv62.83",
+    "job": "smith",
+    "age": 18.06301369863012,
+    "born": null,
+    "population": 152,
+    "bodies": 130,
+    "food": 3789.2410419768635,
+    "wood": 924.4053710616839,
+    "happiness": 0.12901875441414545,
+    "health": 0.65,
+    "housing": 173.64999999999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 393,
+     "logi": 5.908,
+     "hunger": 0,
+     "health": 0.362,
+     "happy": -1.344,
+     "prestige": 0.041,
+     "housing": 173.6,
+     "gated": false,
+     "dP": 4.974
+    },
+    "pressure": 2.0220882080577534,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌13",
+     "pids": [
+      "p779"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "임업2",
+    "person": "nv62.66",
+    "job": "farmer",
+    "age": 18.08493150684929,
+    "born": null,
+    "population": 151,
+    "bodies": 129,
+    "food": 3755.008575417716,
+    "wood": 924.4053710616839,
+    "happiness": 0.12901875441414545,
+    "health": 0.65,
+    "housing": 173.64999999999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 393,
+     "logi": 5.908,
+     "hunger": 0,
+     "health": 0.362,
+     "happy": -1.344,
+     "prestige": 0.041,
+     "housing": 173.6,
+     "gated": false,
+     "dP": 4.974
+    },
+    "pressure": 1.0220882080577534,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌13",
+     "pids": [
+      "p778"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "광산5",
+    "person": "nv62.168",
+    "job": "fisher",
+    "age": 16.002739726027396,
+    "born": null,
+    "population": 142,
+    "bodies": 142,
+    "food": 4553.201487941122,
+    "wood": 0,
+    "happiness": 0.08865799376478556,
+    "health": 0.28083953414823737,
+    "housing": 153.29834158324493,
+    "mapBeds": null,
+    "gate": {
+     "K": 147.7,
+     "logi": 0.832,
+     "hunger": 0,
+     "health": -0.498,
+     "happy": -1.402,
+     "prestige": 0.034,
+     "housing": 153.3,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 6.398535572496108,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌13",
+     "pids": [
+      "p781"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "광산5",
+    "person": "nv57.105",
+    "job": "forager",
+    "age": 16.032876712328758,
+    "born": null,
+    "population": 141,
+    "bodies": 141,
+    "food": 4518.469493661482,
+    "wood": 0,
+    "happiness": 0.08865799376478556,
+    "health": 0.28083953414823737,
+    "housing": 153.29834158324493,
+    "mapBeds": null,
+    "gate": {
+     "K": 147.7,
+     "logi": 0.832,
+     "hunger": 0,
+     "health": -0.498,
+     "happy": -1.402,
+     "prestige": 0.034,
+     "housing": 153.3,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 5.398535572496108,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌13",
+     "pids": [
+      "p782"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "광산5",
+    "person": "nv57.95",
+    "job": "lumberjack",
+    "age": 16.04657534246574,
+    "born": null,
+    "population": 140,
+    "bodies": 140,
+    "food": 4483.737499381844,
+    "wood": 0,
+    "happiness": 0.08865799376478556,
+    "health": 0.28083953414823737,
+    "housing": 153.29834158324493,
+    "mapBeds": null,
+    "gate": {
+     "K": 147.7,
+     "logi": 0.832,
+     "hunger": 0,
+     "health": -0.498,
+     "happy": -1.402,
+     "prestige": 0.034,
+     "housing": 153.3,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 4.398535572496108,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌13",
+     "pids": [
+      "p3573"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "광산5",
+    "person": "nv57.83",
+    "job": "smith",
+    "age": 16.06301369863012,
+    "born": null,
+    "population": 139,
+    "bodies": 139,
+    "food": 4449.005505102205,
+    "wood": 0,
+    "happiness": 0.08865799376478556,
+    "health": 0.28083953414823737,
+    "housing": 153.29834158324493,
+    "mapBeds": null,
+    "gate": {
+     "K": 147.7,
+     "logi": 0.832,
+     "hunger": 0,
+     "health": -0.498,
+     "happy": -1.402,
+     "prestige": 0.034,
+     "housing": 153.3,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 3.398535572496108,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌13",
+     "pids": [
+      "p3574"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "광산5",
+    "person": "nv57.70",
+    "job": "hunter",
+    "age": 16.09315068493148,
+    "born": null,
+    "population": 138,
+    "bodies": 138,
+    "food": 4414.273510822564,
+    "wood": 0,
+    "happiness": 0.08865799376478556,
+    "health": 0.28083953414823737,
+    "housing": 153.29834158324493,
+    "mapBeds": null,
+    "gate": {
+     "K": 147.7,
+     "logi": 0.832,
+     "hunger": 0,
+     "health": -0.498,
+     "happy": -1.402,
+     "prestige": 0.034,
+     "housing": 153.3,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 2.398535572496108,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌13",
+     "pids": [
+      "p783"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "광산5",
+    "person": "nv57.66",
+    "job": "hunter",
+    "age": 16.104109589041066,
+    "born": null,
+    "population": 137,
+    "bodies": 137,
+    "food": 4379.541516542927,
+    "wood": 0,
+    "happiness": 0.08865799376478556,
+    "health": 0.28083953414823737,
+    "housing": 153.29834158324493,
+    "mapBeds": null,
+    "gate": {
+     "K": 147.7,
+     "logi": 0.832,
+     "hunger": 0,
+     "health": -0.498,
+     "happy": -1.402,
+     "prestige": 0.034,
+     "housing": 153.3,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 1.3985355724961082,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌13",
+     "pids": [
+      "p784"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "임업2",
+    "person": "nv62.180",
+    "job": "fisher",
+    "age": 18,
+    "born": null,
+    "population": 160,
+    "bodies": 132,
+    "food": 3764.0923542294076,
+    "wood": 843.1885918743579,
+    "happiness": 0.08628306018736842,
+    "health": 0.5249999999999999,
+    "housing": 174.5334407125,
+    "mapBeds": null,
+    "gate": {
+     "K": 392.2,
+     "logi": 6.084,
+     "hunger": 0,
+     "health": 0.062,
+     "happy": -1.549,
+     "prestige": 0.042,
+     "housing": 174.5,
+     "gated": false,
+     "dP": 4.645
+    },
+    "pressure": 7.029562226584926,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3819"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "임업2",
+    "person": "nv62.48",
+    "job": "lumberjack",
+    "age": 18.11780821917805,
+    "born": null,
+    "population": 159,
+    "bodies": 131,
+    "food": 3730.0389770795023,
+    "wood": 843.1885918743579,
+    "happiness": 0.08628306018736842,
+    "health": 0.5249999999999999,
+    "housing": 174.5334407125,
+    "mapBeds": null,
+    "gate": {
+     "K": 392.2,
+     "logi": 6.084,
+     "hunger": 0,
+     "health": 0.062,
+     "happy": -1.549,
+     "prestige": 0.042,
+     "housing": 174.5,
+     "gated": false,
+     "dP": 4.645
+    },
+    "pressure": 6.029562226584926,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3818"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "임업2",
+    "person": "nv62.45",
+    "job": "lumberjack",
+    "age": 18.12328767123284,
+    "born": null,
+    "population": 158,
+    "bodies": 130,
+    "food": 3695.9855999295955,
+    "wood": 843.1885918743579,
+    "happiness": 0.08628306018736842,
+    "health": 0.5249999999999999,
+    "housing": 174.5334407125,
+    "mapBeds": null,
+    "gate": {
+     "K": 392.2,
+     "logi": 6.084,
+     "hunger": 0,
+     "health": 0.062,
+     "happy": -1.549,
+     "prestige": 0.042,
+     "housing": 174.5,
+     "gated": false,
+     "dP": 4.645
+    },
+    "pressure": 5.029562226584926,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3724"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "임업2",
+    "person": "nv62.29",
+    "job": "farmer",
+    "age": 18.158904109588995,
+    "born": null,
+    "population": 157,
+    "bodies": 129,
+    "food": 3661.93222277969,
+    "wood": 843.1885918743579,
+    "happiness": 0.08628306018736842,
+    "health": 0.5249999999999999,
+    "housing": 174.5334407125,
+    "mapBeds": null,
+    "gate": {
+     "K": 392.2,
+     "logi": 6.084,
+     "hunger": 0,
+     "health": 0.062,
+     "happy": -1.549,
+     "prestige": 0.042,
+     "housing": 174.5,
+     "gated": false,
+     "dP": 4.645
+    },
+    "pressure": 4.029562226584926,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3723"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "임업2",
+    "person": "nv62.16",
+    "job": "farmer",
+    "age": 18.199999999999942,
+    "born": null,
+    "population": 156,
+    "bodies": 128,
+    "food": 3627.878845629785,
+    "wood": 843.1885918743579,
+    "happiness": 0.08628306018736842,
+    "health": 0.5249999999999999,
+    "housing": 174.5334407125,
+    "mapBeds": null,
+    "gate": {
+     "K": 392.2,
+     "logi": 6.084,
+     "hunger": 0,
+     "health": 0.062,
+     "happy": -1.549,
+     "prestige": 0.042,
+     "housing": 174.5,
+     "gated": false,
+     "dP": 4.645
+    },
+    "pressure": 3.0295622265849262,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p777"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "임업2",
+    "person": "nv62.6",
+    "job": "tailor",
+    "age": 18.2328767123287,
+    "born": null,
+    "population": 155,
+    "bodies": 127,
+    "food": 3593.82546847988,
+    "wood": 843.1885918743579,
+    "happiness": 0.08628306018736842,
+    "health": 0.5249999999999999,
+    "housing": 174.5334407125,
+    "mapBeds": null,
+    "gate": {
+     "K": 392.2,
+     "logi": 6.084,
+     "hunger": 0,
+     "health": 0.062,
+     "happy": -1.549,
+     "prestige": 0.042,
+     "housing": 174.5,
+     "gated": false,
+     "dP": 4.645
+    },
+    "pressure": 2.0295622265849262,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p776"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "임업2",
+    "person": "nv62.145",
+    "job": "mason",
+    "age": 19.019178082191775,
+    "born": null,
+    "population": 154,
+    "bodies": 126,
+    "food": 3559.7720913299736,
+    "wood": 843.1885918743579,
+    "happiness": 0.08628306018736842,
+    "health": 0.5249999999999999,
+    "housing": 174.5334407125,
+    "mapBeds": null,
+    "gate": {
+     "K": 392.2,
+     "logi": 6.084,
+     "hunger": 0,
+     "health": 0.062,
+     "happy": -1.549,
+     "prestige": 0.042,
+     "housing": 174.5,
+     "gated": false,
+     "dP": 4.645
+    },
+    "pressure": 1.0295622265849262,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p775"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "임업2",
+    "person": "nv62.186",
+    "job": "fisher",
+    "age": 16,
+    "born": null,
+    "population": 158,
+    "bodies": 127,
+    "food": 3534.012916646188,
+    "wood": 820.8119881314068,
+    "happiness": 0.12650999219124137,
+    "health": 0.6566856853806309,
+    "housing": 175.64864055143127,
+    "mapBeds": null,
+    "gate": {
+     "K": 397.4,
+     "logi": 5.985,
+     "hunger": 0,
+     "health": 0.384,
+     "happy": -1.371,
+     "prestige": 0.042,
+     "housing": 175.6,
+     "gated": false,
+     "dP": 5.046
+    },
+    "pressure": 4.564115313322543,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3865"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "임업2",
+    "person": "nv62.187",
+    "job": "fisher",
+    "age": 19,
+    "born": null,
+    "population": 157,
+    "bodies": 126,
+    "food": 3500.058468384154,
+    "wood": 820.8119881314068,
+    "happiness": 0.12650999219124137,
+    "health": 0.6566856853806309,
+    "housing": 175.64864055143127,
+    "mapBeds": null,
+    "gate": {
+     "K": 397.4,
+     "logi": 5.985,
+     "hunger": 0,
+     "health": 0.384,
+     "happy": -1.371,
+     "prestige": 0.042,
+     "housing": 175.6,
+     "gated": false,
+     "dP": 5.046
+    },
+    "pressure": 3.564115313322543,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p3864"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "임업2",
+    "person": "nv62.130",
+    "job": "forager",
+    "age": 19.032876712328758,
+    "born": null,
+    "population": 156,
+    "bodies": 125,
+    "food": 3466.1040201221194,
+    "wood": 820.8119881314068,
+    "happiness": 0.12650999219124137,
+    "health": 0.6566856853806309,
+    "housing": 175.64864055143127,
+    "mapBeds": null,
+    "gate": {
+     "K": 397.4,
+     "logi": 5.985,
+     "hunger": 0,
+     "health": 0.384,
+     "happy": -1.371,
+     "prestige": 0.042,
+     "housing": 175.6,
+     "gated": false,
+     "dP": 5.046
+    },
+    "pressure": 2.564115313322543,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p774"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "임업2",
+    "person": "nv62.92",
+    "job": "tailor",
+    "age": 19.06301369863012,
+    "born": null,
+    "population": 155,
+    "bodies": 124,
+    "food": 3432.1495718600863,
+    "wood": 820.8119881314068,
+    "happiness": 0.12650999219124137,
+    "health": 0.6566856853806309,
+    "housing": 175.64864055143127,
+    "mapBeds": null,
+    "gate": {
+     "K": 397.4,
+     "logi": 5.985,
+     "hunger": 0,
+     "health": 0.384,
+     "happy": -1.371,
+     "prestige": 0.042,
+     "housing": 175.6,
+     "gated": false,
+     "dP": 5.046
+    },
+    "pressure": 1.5641153133225432,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p773"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "광산5",
+    "person": "nv57.64",
+    "job": "hunter",
+    "age": 16.115068493150652,
+    "born": null,
+    "population": 145,
+    "bodies": 145,
+    "food": 4637.194333016078,
+    "wood": 127.34235223516251,
+    "happiness": 0.055026444381699346,
+    "health": 0.523813535772797,
+    "housing": 161.66367499999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 151.7,
+     "logi": 0.961,
+     "hunger": 0,
+     "health": 0.055,
+     "happy": -1.549,
+     "prestige": 0.028,
+     "housing": 161.7,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 7.6850797355168625,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "임업2",
+     "pids": [
+      "p775"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "광산5",
+    "person": "nv57.44",
+    "job": "cook",
+    "age": 16.136986301369824,
+    "born": null,
+    "population": 144,
+    "bodies": 144,
+    "food": 4602.409333450142,
+    "wood": 127.34235223516251,
+    "happiness": 0.055026444381699346,
+    "health": 0.523813535772797,
+    "housing": 161.66367499999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 151.7,
+     "logi": 0.961,
+     "hunger": 0,
+     "health": 0.055,
+     "happy": -1.549,
+     "prestige": 0.028,
+     "housing": 161.7,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 6.6850797355168625,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "임업2",
+     "pids": [
+      "p776"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "광산5",
+    "person": "nv57.12",
+    "job": "miner",
+    "age": 16.21643835616432,
+    "born": null,
+    "population": 143,
+    "bodies": 143,
+    "food": 4567.624333884209,
+    "wood": 127.34235223516251,
+    "happiness": 0.055026444381699346,
+    "health": 0.523813535772797,
+    "housing": 161.66367499999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 151.7,
+     "logi": 0.961,
+     "hunger": 0,
+     "health": 0.055,
+     "happy": -1.549,
+     "prestige": 0.028,
+     "housing": 161.7,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 5.6850797355168625,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "임업2",
+     "pids": [
+      "p777"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "광산5",
+    "person": "nv57.2",
+    "job": "forager",
+    "age": 16.260273972602665,
+    "born": null,
+    "population": 142,
+    "bodies": 142,
+    "food": 4532.8393343182715,
+    "wood": 127.34235223516251,
+    "happiness": 0.055026444381699346,
+    "health": 0.523813535772797,
+    "housing": 161.66367499999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 151.7,
+     "logi": 0.961,
+     "hunger": 0,
+     "health": 0.055,
+     "happy": -1.549,
+     "prestige": 0.028,
+     "housing": 161.7,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 4.6850797355168625,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "임업2",
+     "pids": [
+      "p3723"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "광산5",
+    "person": "nv57.112",
+    "job": "fisher",
+    "age": 17.03013698630136,
+    "born": null,
+    "population": 141,
+    "bodies": 141,
+    "food": 4498.054334752336,
+    "wood": 127.34235223516251,
+    "happiness": 0.055026444381699346,
+    "health": 0.523813535772797,
+    "housing": 161.66367499999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 151.7,
+     "logi": 0.961,
+     "hunger": 0,
+     "health": 0.055,
+     "happy": -1.549,
+     "prestige": 0.028,
+     "housing": 161.7,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 3.6850797355168625,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "임업2",
+     "pids": [
+      "p3724"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "광산5",
+    "person": "nv57.113",
+    "job": "hunter",
+    "age": 17.03013698630136,
+    "born": null,
+    "population": 140,
+    "bodies": 140,
+    "food": 4463.269335186401,
+    "wood": 127.34235223516251,
+    "happiness": 0.055026444381699346,
+    "health": 0.523813535772797,
+    "housing": 161.66367499999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 151.7,
+     "logi": 0.961,
+     "hunger": 0,
+     "health": 0.055,
+     "happy": -1.549,
+     "prestige": 0.028,
+     "housing": 161.7,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 2.6850797355168625,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "임업2",
+     "pids": [
+      "p3818"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "광산5",
+    "person": "nv57.108",
+    "job": "forager",
+    "age": 17.035616438356154,
+    "born": null,
+    "population": 139,
+    "bodies": 139,
+    "food": 4428.484335620465,
+    "wood": 127.34235223516251,
+    "happiness": 0.055026444381699346,
+    "health": 0.523813535772797,
+    "housing": 161.66367499999998,
+    "mapBeds": null,
+    "gate": {
+     "K": 151.7,
+     "logi": 0.961,
+     "hunger": 0,
+     "health": 0.055,
+     "happy": -1.549,
+     "prestige": 0.028,
+     "housing": 161.7,
+     "gated": false,
+     "dP": 0
+    },
+    "pressure": 1.6850797355168625,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "임업2",
+     "pids": [
+      "p3819"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   }
+  ],
+  "offRatio": 1.4310983134512547
  },
  "BODY-1020": {
   "dir": "/tmp/t1318/BODY-1020",
@@ -1200,34 +3399,3280 @@
   ],
   "offRatio": 1.0575894693541752
  },
+ "OFF-7": {
+  "dir": "/tmp/t1318/OFF-7",
+  "done": true,
+  "segs": [
+   [
+    0,
+    10,
+    478
+   ],
+   [
+    10,
+    20,
+    665
+   ],
+   [
+    20,
+    30,
+    818
+   ],
+   [
+    30,
+    40,
+    928
+   ],
+   [
+    40,
+    50,
+    1128
+   ],
+   [
+    50,
+    60,
+    1149
+   ],
+   [
+    60,
+    70,
+    1295
+   ],
+   [
+    70,
+    80,
+    1442
+   ],
+   [
+    80,
+    90,
+    1791
+   ],
+   [
+    90,
+    100,
+    3307
+   ]
+  ],
+  "days": 100,
+  "pop": 2626,
+  "bodies": 2617,
+  "empty": 0,
+  "minBodyRatio": 0.9933911606774061,
+  "maxBodyGap": 16,
+  "maxMissingPeople": 2626,
+  "physical": 0,
+  "added": 128640,
+  "batchCalls": 0,
+  "terrCells": 0,
+  "terrBody": 0,
+  "territory": 304590,
+  "emigration": 22,
+  "emigrationCumulativeField": 22,
+  "emigrationDays": {
+   "90": 2,
+   "91": 2,
+   "92": 2,
+   "93": 2,
+   "94": 3,
+   "95": 2,
+   "98": 4,
+   "99": 2,
+   "100": 3
+  },
+  "emig90": 22,
+  "bodyStarve": 0,
+  "debtDeaths": 0,
+  "bornCum": 2230,
+  "cpuMeanAll": 127.5487000909091,
+  "cpuMeanRun": 127.10923562222222,
+  "cpuSegFirst": 131.94334477777778,
+  "errors": 0,
+  "events": [
+   {
+    "day": 90,
+    "village": "임업2",
+    "person": "nv62.102",
+    "job": "lumberjack",
+    "age": 16.019178082191775,
+    "born": null,
+    "population": 131,
+    "bodies": 119,
+    "food": 3205.4969361595845,
+    "wood": 99.61218615748939,
+    "happiness": 0.18561123106641175,
+    "health": 0.2525292420492386,
+    "housing": 130.26765654062987,
+    "mapBeds": null,
+    "gate": {
+     "K": 210,
+     "logi": 4.436,
+     "hunger": 0,
+     "health": -0.515,
+     "happy": -0.981,
+     "prestige": 0.005,
+     "housing": 130.3,
+     "gated": false,
+     "dP": 2.951
+    },
+    "pressure": 2.99846686904291,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p2855"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 90,
+    "village": "임업2",
+    "person": "nv62.98",
+    "job": "farmer",
+    "age": 16.02191780821917,
+    "born": null,
+    "population": 130,
+    "bodies": 118,
+    "food": 3170.9443206402743,
+    "wood": 99.61218615748939,
+    "happiness": 0.18561123106641175,
+    "health": 0.2525292420492386,
+    "housing": 130.26765654062987,
+    "mapBeds": null,
+    "gate": {
+     "K": 210,
+     "logi": 4.436,
+     "hunger": 0,
+     "health": -0.515,
+     "happy": -0.981,
+     "prestige": 0.005,
+     "housing": 130.3,
+     "gated": false,
+     "dP": 2.951
+    },
+    "pressure": 1.9984668690429102,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p2854"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 91,
+    "village": "임업2",
+    "person": "nv62.66",
+    "job": "smith",
+    "age": 16.06301369863012,
+    "born": null,
+    "population": 132,
+    "bodies": 129,
+    "food": 3037.7218873235634,
+    "wood": 91.7653576641211,
+    "happiness": 0.19445949775794014,
+    "health": 0.2601240853659693,
+    "housing": 131.23325505581894,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.424,
+     "hunger": 0,
+     "health": -0.495,
+     "happy": -0.946,
+     "prestige": 0.004,
+     "housing": 131.2,
+     "gated": false,
+     "dP": 2.993
+    },
+    "pressure": 2.7180008184570834,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p529"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 91,
+    "village": "임업2",
+    "person": "nv62.57",
+    "job": "farmer",
+    "age": 16.0767123287671,
+    "born": null,
+    "population": 131,
+    "bodies": 128,
+    "food": 3003.2078312813,
+    "wood": 91.7653576641211,
+    "happiness": 0.19445949775794014,
+    "health": 0.2601240853659693,
+    "housing": 131.23325505581894,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.424,
+     "hunger": 0,
+     "health": -0.495,
+     "happy": -0.946,
+     "prestige": 0.004,
+     "housing": 131.2,
+     "gated": false,
+     "dP": 2.993
+    },
+    "pressure": 1.7180008184570834,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p528"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 92,
+    "village": "임업2",
+    "person": "nv62.127",
+    "job": "fisher",
+    "age": 16,
+    "born": null,
+    "population": 133,
+    "bodies": 129,
+    "food": 2869.8514910107206,
+    "wood": 86.67603009822753,
+    "happiness": 0.18794239003535995,
+    "health": 0.39066067900786594,
+    "housing": 132.2064051732352,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.435,
+     "hunger": 0,
+     "health": -0.227,
+     "happy": -0.974,
+     "prestige": 0.003,
+     "housing": 132.2,
+     "gated": false,
+     "dP": 3.243
+    },
+    "pressure": 2.654198249353853,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p2582"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 92,
+    "village": "임업2",
+    "person": "nv62.41",
+    "job": "farmer",
+    "age": 16.106849315068462,
+    "born": null,
+    "population": 132,
+    "bodies": 128,
+    "food": 2835.3793422742797,
+    "wood": 86.67603009822753,
+    "happiness": 0.18794239003535995,
+    "health": 0.39066067900786594,
+    "housing": 132.2064051732352,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.435,
+     "hunger": 0,
+     "health": -0.227,
+     "happy": -0.974,
+     "prestige": 0.003,
+     "housing": 132.2,
+     "gated": false,
+     "dP": 3.243
+    },
+    "pressure": 1.6541982493538532,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p2581"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 93,
+    "village": "임업2",
+    "person": "nv62.38",
+    "job": "farmer",
+    "age": 16.115068493150652,
+    "born": null,
+    "population": 134,
+    "bodies": 129,
+    "food": 2736.0252013465865,
+    "wood": 97.26218641540164,
+    "happiness": 0.18140000745212814,
+    "health": 0.39630118315472646,
+    "housing": 133.18709556547535,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.445,
+     "hunger": 0,
+     "health": -0.217,
+     "happy": -1.002,
+     "prestige": 0.003,
+     "housing": 133.2,
+     "gated": false,
+     "dP": 3.234
+    },
+    "pressure": 2.8109820150589444,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p2638"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 93,
+    "village": "임업2",
+    "person": "nv62.30",
+    "job": "farmer",
+    "age": 16.134246575342427,
+    "born": null,
+    "population": 133,
+    "bodies": 128,
+    "food": 2701.6244336712357,
+    "wood": 97.26218641540164,
+    "happiness": 0.18140000745212814,
+    "health": 0.39630118315472646,
+    "housing": 133.18709556547535,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.445,
+     "hunger": 0,
+     "health": -0.217,
+     "happy": -1.002,
+     "prestige": 0.003,
+     "housing": 133.2,
+     "gated": false,
+     "dP": 3.234
+    },
+    "pressure": 1.8109820150589444,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p2637"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 94,
+    "village": "임업2",
+    "person": "nv62.13",
+    "job": "lumberjack",
+    "age": 16.197260273972546,
+    "born": null,
+    "population": 135,
+    "bodies": 129,
+    "food": 2606.300892330936,
+    "wood": 109.54311440195643,
+    "happiness": 0.1771165174130992,
+    "health": 0.525,
+    "housing": 134.17531492212711,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.455,
+     "hunger": 0,
+     "health": 0.053,
+     "happy": -1.023,
+     "prestige": 0.002,
+     "housing": 134.2,
+     "gated": false,
+     "dP": 3.492
+    },
+    "pressure": 3.119930743411962,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p2689"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 94,
+    "village": "임업2",
+    "person": "nv62.78",
+    "job": "forager",
+    "age": 17.05479452054793,
+    "born": null,
+    "population": 134,
+    "bodies": 128,
+    "food": 2571.9753349467137,
+    "wood": 109.54311440195643,
+    "happiness": 0.1771165174130992,
+    "health": 0.525,
+    "housing": 134.17531492212711,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.455,
+     "hunger": 0,
+     "health": 0.053,
+     "happy": -1.023,
+     "prestige": 0.002,
+     "housing": 134.2,
+     "gated": false,
+     "dP": 3.492
+    },
+    "pressure": 2.119930743411962,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p2688"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 94,
+    "village": "임업2",
+    "person": "nv62.65",
+    "job": "tailor",
+    "age": 17.07123287671231,
+    "born": null,
+    "population": 133,
+    "bodies": 127,
+    "food": 2537.6497775624916,
+    "wood": 109.54311440195643,
+    "happiness": 0.1771165174130992,
+    "health": 0.525,
+    "housing": 134.17531492212711,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.455,
+     "hunger": 0,
+     "health": 0.053,
+     "happy": -1.023,
+     "prestige": 0.002,
+     "housing": 134.2,
+     "gated": false,
+     "dP": 3.492
+    },
+    "pressure": 1.1199307434119619,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p527"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "임업2",
+    "person": "nv62.64",
+    "job": "smith",
+    "age": 17.0767123287671,
+    "born": null,
+    "population": 136,
+    "bodies": 128,
+    "food": 2451.180764799432,
+    "wood": 122.72260501018357,
+    "happiness": 0.18168485477613316,
+    "health": 0.525,
+    "housing": 135.16205194974393,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.455,
+     "hunger": 0,
+     "health": 0.053,
+     "happy": -1.008,
+     "prestige": 0.002,
+     "housing": 135.2,
+     "gated": false,
+     "dP": 3.507
+    },
+    "pressure": 2.284154544104063,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p2745"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "임업2",
+    "person": "nv62.58",
+    "job": "farmer",
+    "age": 17.08493150684929,
+    "born": null,
+    "population": 135,
+    "bodies": 127,
+    "food": 2416.937808950125,
+    "wood": 122.72260501018357,
+    "happiness": 0.18168485477613316,
+    "health": 0.525,
+    "housing": 135.16205194974393,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.455,
+     "hunger": 0,
+     "health": 0.053,
+     "happy": -1.008,
+     "prestige": 0.002,
+     "housing": 135.2,
+     "gated": false,
+     "dP": 3.507
+    },
+    "pressure": 1.2841545441040632,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p2744"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "임업2",
+    "person": "nv62.140",
+    "job": "fisher",
+    "age": 17.005479452054793,
+    "born": null,
+    "population": 139,
+    "bodies": 132,
+    "food": 2250.773642569927,
+    "wood": 169.79580858000284,
+    "happiness": 0.1413286728128721,
+    "health": 0.5265732653519123,
+    "housing": 138.23026981714884,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.489,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.188,
+     "prestige": 0.002,
+     "housing": 138.2,
+     "gated": false,
+     "dP": 3.368
+    },
+    "pressure": 4.499194356437676,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산1",
+     "pids": [
+      "p2924"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "임업2",
+    "person": "nv62.44",
+    "job": "farmer",
+    "age": 17.11780821917805,
+    "born": null,
+    "population": 138,
+    "bodies": 131,
+    "food": 2216.6434394666717,
+    "wood": 169.79580858000284,
+    "happiness": 0.1413286728128721,
+    "health": 0.5265732653519123,
+    "housing": 138.23026981714884,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.489,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.188,
+     "prestige": 0.002,
+     "housing": 138.2,
+     "gated": false,
+     "dP": 3.368
+    },
+    "pressure": 3.499194356437676,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산1",
+     "pids": [
+      "p2923"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "임업2",
+    "person": "nv62.26",
+    "job": "farmer",
+    "age": 17.158904109588995,
+    "born": null,
+    "population": 137,
+    "bodies": 130,
+    "food": 2182.5132363634166,
+    "wood": 169.79580858000284,
+    "happiness": 0.1413286728128721,
+    "health": 0.5265732653519123,
+    "housing": 138.23026981714884,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.489,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.188,
+     "prestige": 0.002,
+     "housing": 138.2,
+     "gated": false,
+     "dP": 3.368
+    },
+    "pressure": 2.499194356437676,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산1",
+     "pids": [
+      "p2862"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "임업2",
+    "person": "n471",
+    "job": "farmer",
+    "age": 17.265753424657458,
+    "born": null,
+    "population": 136,
+    "bodies": 129,
+    "food": 2148.383033260163,
+    "wood": 169.79580858000284,
+    "happiness": 0.1413286728128721,
+    "health": 0.5265732653519123,
+    "housing": 138.23026981714884,
+    "mapBeds": null,
+    "gate": {
+     "K": 209.9,
+     "logi": 4.489,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.188,
+     "prestige": 0.002,
+     "housing": 138.2,
+     "gated": false,
+     "dP": 3.368
+    },
+    "pressure": 1.499194356437676,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산1",
+     "pids": [
+      "p2861"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "임업2",
+    "person": "nv62.136",
+    "job": "fisher",
+    "age": 18.010958904109586,
+    "born": null,
+    "population": 138,
+    "bodies": 130,
+    "food": 2131.4732441761857,
+    "wood": 128.11297703703738,
+    "happiness": 0.17310396715289988,
+    "health": 0.3815138835632043,
+    "housing": 139.23792441242313,
+    "mapBeds": null,
+    "gate": {
+     "K": 205.8,
+     "logi": 4.4,
+     "hunger": 0,
+     "health": -0.256,
+     "happy": -1.059,
+     "prestige": 0.002,
+     "housing": 139.2,
+     "gated": false,
+     "dP": 3.093
+    },
+    "pressure": 2.9906258206837197,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p2977"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "임업2",
+    "person": "nv62.139",
+    "job": "fisher",
+    "age": 18.010958904109586,
+    "born": null,
+    "population": 137,
+    "bodies": 129,
+    "food": 2097.6645073346845,
+    "wood": 128.11297703703738,
+    "happiness": 0.17310396715289988,
+    "health": 0.3815138835632043,
+    "housing": 139.23792441242313,
+    "mapBeds": null,
+    "gate": {
+     "K": 205.8,
+     "logi": 4.4,
+     "hunger": 0,
+     "health": -0.256,
+     "happy": -1.059,
+     "prestige": 0.002,
+     "housing": 139.2,
+     "gated": false,
+     "dP": 3.093
+    },
+    "pressure": 1.9906258206837197,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산5",
+     "pids": [
+      "p2976"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "임업2",
+    "person": "nv62.118",
+    "job": "hunter",
+    "age": 18.032876712328758,
+    "born": null,
+    "population": 140,
+    "bodies": 130,
+    "food": 2027.7921644656649,
+    "wood": 148.67239175827333,
+    "happiness": 0.16862322617022618,
+    "health": 0.3870528321978879,
+    "housing": 140.25306752580448,
+    "mapBeds": null,
+    "gate": {
+     "K": 205.8,
+     "logi": 4.403,
+     "hunger": 0,
+     "health": -0.246,
+     "happy": -1.082,
+     "prestige": 0.002,
+     "housing": 140.3,
+     "gated": false,
+     "dP": 3.083
+    },
+    "pressure": 3.6467637184875374,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p3031"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "임업2",
+    "person": "nv62.90",
+    "job": "lumberjack",
+    "age": 18.057534246575326,
+    "born": null,
+    "population": 139,
+    "bodies": 129,
+    "food": 1994.1104811933337,
+    "wood": 148.67239175827333,
+    "happiness": 0.16862322617022618,
+    "health": 0.3870528321978879,
+    "housing": 140.25306752580448,
+    "mapBeds": null,
+    "gate": {
+     "K": 205.8,
+     "logi": 4.403,
+     "hunger": 0,
+     "health": -0.246,
+     "happy": -1.082,
+     "prestige": 0.002,
+     "housing": 140.3,
+     "gated": false,
+     "dP": 3.083
+    },
+    "pressure": 2.6467637184875374,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p3030"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "임업2",
+    "person": "nv62.67",
+    "job": "lumberjack",
+    "age": 18.08493150684929,
+    "born": null,
+    "population": 138,
+    "bodies": 128,
+    "food": 1960.4287979210026,
+    "wood": 148.67239175827333,
+    "happiness": 0.16862322617022618,
+    "health": 0.3870528321978879,
+    "housing": 140.25306752580448,
+    "mapBeds": null,
+    "gate": {
+     "K": 205.8,
+     "logi": 4.403,
+     "hunger": 0,
+     "health": -0.246,
+     "happy": -1.082,
+     "prestige": 0.002,
+     "housing": 140.3,
+     "gated": false,
+     "dP": 3.083
+    },
+    "pressure": 1.6467637184875374,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌4",
+     "pids": [
+      "p2803"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   }
+  ]
+ },
+ "COMBO-7": {
+  "dir": "/tmp/t1318/COMBO-7",
+  "done": true,
+  "segs": [
+   [
+    0,
+    10,
+    471
+   ],
+   [
+    10,
+    20,
+    683
+   ],
+   [
+    20,
+    30,
+    884
+   ],
+   [
+    30,
+    40,
+    1003
+   ],
+   [
+    40,
+    50,
+    1201
+   ],
+   [
+    50,
+    60,
+    1293
+   ],
+   [
+    60,
+    70,
+    1561
+   ],
+   [
+    70,
+    80,
+    1823
+   ],
+   [
+    80,
+    90,
+    3735
+   ],
+   [
+    90,
+    100,
+    3238
+   ]
+  ],
+  "days": 100,
+  "pop": 3341,
+  "bodies": 3283,
+  "empty": 0,
+  "minBodyRatio": 0.98263992816522,
+  "maxBodyGap": 58,
+  "maxMissingPeople": 3341,
+  "physical": 0,
+  "added": 145084,
+  "batchCalls": 5032,
+  "terrCells": 145084,
+  "terrBody": 0,
+  "territory": 221584,
+  "emigration": 48,
+  "emigrationCumulativeField": 48,
+  "emigrationDays": {
+   "94": 1,
+   "95": 5,
+   "96": 5,
+   "97": 8,
+   "98": 9,
+   "99": 8,
+   "100": 12
+  },
+  "emig90": 48,
+  "bodyStarve": 0,
+  "debtDeaths": 0,
+  "bornCum": 2948,
+  "cpuMeanAll": 159.23118496969698,
+  "cpuMeanRun": 160.20378331111112,
+  "cpuSegFirst": 149.50520155555554,
+  "errors": 0,
+  "events": [
+   {
+    "day": 94,
+    "village": "어촌2",
+    "person": "nv60.139",
+    "job": "forager",
+    "age": 16.005479452054793,
+    "born": null,
+    "population": 153,
+    "bodies": 148,
+    "food": 4699.532699503128,
+    "wood": 749.5919610613777,
+    "happiness": 0.21475349852631553,
+    "health": 0.6620859067554425,
+    "housing": 152.81604429724945,
+    "mapBeds": null,
+    "gate": {
+     "K": 385.9,
+     "logi": 5.898,
+     "hunger": 0,
+     "health": 0.392,
+     "happy": -1.034,
+     "prestige": 0.003,
+     "housing": 152.8,
+     "gated": false,
+     "dP": 5.266
+    },
+    "pressure": 1.934220287940144,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3310"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "어촌2",
+    "person": "nv60.106",
+    "job": "farmer",
+    "age": 16.035616438356154,
+    "born": null,
+    "population": 156,
+    "bodies": 149,
+    "food": 4629.938266030696,
+    "wood": 762.7621146899158,
+    "happiness": 0.2089562392943577,
+    "health": 0.6620817337581568,
+    "housing": 155.30855770515743,
+    "mapBeds": null,
+    "gate": {
+     "K": 386.2,
+     "logi": 5.934,
+     "hunger": 0,
+     "health": 0.394,
+     "happy": -1.062,
+     "prestige": 0.002,
+     "housing": 155.3,
+     "gated": false,
+     "dP": 5.275
+    },
+    "pressure": 2.431496678481975,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3392"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "어촌2",
+    "person": "nv60.66",
+    "job": "farmer",
+    "age": 16.079452054794498,
+    "born": null,
+    "population": 155,
+    "bodies": 148,
+    "food": 4595.889019432574,
+    "wood": 762.7621146899158,
+    "happiness": 0.2089562392943577,
+    "health": 0.6620817337581568,
+    "housing": 155.30855770515743,
+    "mapBeds": null,
+    "gate": {
+     "K": 386.2,
+     "logi": 5.934,
+     "hunger": 0,
+     "health": 0.394,
+     "happy": -1.062,
+     "prestige": 0.002,
+     "housing": 155.3,
+     "gated": false,
+     "dP": 5.275
+    },
+    "pressure": 1.4314966784819751,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3391"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "임업2",
+    "person": "nv62.126",
+    "job": "farmer",
+    "age": 16.013698630136982,
+    "born": null,
+    "population": 145,
+    "bodies": 142,
+    "food": 3517.444975168026,
+    "wood": 716.8121900147544,
+    "happiness": 0.22577189445681445,
+    "health": 0.5583484733327502,
+    "housing": 144.69180990733406,
+    "mapBeds": null,
+    "gate": {
+     "K": 384.5,
+     "logi": 5.647,
+     "hunger": 0,
+     "health": 0.134,
+     "happy": -0.948,
+     "prestige": 0.069,
+     "housing": 144.7,
+     "gated": false,
+     "dP": 4.908
+    },
+    "pressure": 1.3943678278775522,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3396"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "농촌2",
+    "person": "nv69.130",
+    "job": "fisher",
+    "age": 16.005479452054793,
+    "born": null,
+    "population": 147,
+    "bodies": 138,
+    "food": 3770.966492229501,
+    "wood": 1017.6847411546898,
+    "happiness": 0.1947461778736227,
+    "health": 0.65,
+    "housing": 146.22535607822007,
+    "mapBeds": null,
+    "gate": {
+     "K": 217.9,
+     "logi": 4.659,
+     "hunger": 0,
+     "health": 0.343,
+     "happy": -1.048,
+     "prestige": 0.011,
+     "housing": 146.2,
+     "gated": false,
+     "dP": 3.972
+    },
+    "pressure": 2.4147057877037206,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3404"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "농촌2",
+    "person": "nv69.117",
+    "job": "farmer",
+    "age": 16.01643835616438,
+    "born": null,
+    "population": 146,
+    "bodies": 137,
+    "food": 3736.84487587728,
+    "wood": 1017.6847411546898,
+    "happiness": 0.1947461778736227,
+    "health": 0.65,
+    "housing": 146.22535607822007,
+    "mapBeds": null,
+    "gate": {
+     "K": 217.9,
+     "logi": 4.659,
+     "hunger": 0,
+     "health": 0.343,
+     "happy": -1.048,
+     "prestige": 0.011,
+     "housing": 146.2,
+     "gated": false,
+     "dP": 3.972
+    },
+    "pressure": 1.4147057877037206,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3403"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 96,
+    "village": "어촌2",
+    "person": "nv60.47",
+    "job": "forager",
+    "age": 16.10958904109586,
+    "born": null,
+    "population": 159,
+    "bodies": 149,
+    "food": 4668.194465846294,
+    "wood": 774.7384001924,
+    "happiness": 0.19209085353362254,
+    "health": 0.6714356377201515,
+    "housing": 158.06519011238896,
+    "mapBeds": null,
+    "gate": {
+     "K": 386.5,
+     "logi": 6.005,
+     "hunger": 0,
+     "health": 0.422,
+     "happy": -1.138,
+     "prestige": 0.002,
+     "housing": 158.1,
+     "gated": false,
+     "dP": 5.297
+    },
+    "pressure": 2.571818731879286,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3448"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 96,
+    "village": "어촌2",
+    "person": "nv60.13",
+    "job": "tailor",
+    "age": 16.199999999999942,
+    "born": null,
+    "population": 158,
+    "bodies": 148,
+    "food": 4634.526134750783,
+    "wood": 774.7384001924,
+    "happiness": 0.19209085353362254,
+    "health": 0.6714356377201515,
+    "housing": 158.06519011238896,
+    "mapBeds": null,
+    "gate": {
+     "K": 386.5,
+     "logi": 6.005,
+     "hunger": 0,
+     "health": 0.422,
+     "happy": -1.138,
+     "prestige": 0.002,
+     "housing": 158.1,
+     "gated": false,
+     "dP": 5.297
+    },
+    "pressure": 1.571818731879286,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3447"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 96,
+    "village": "임업2",
+    "person": "nv62.102",
+    "job": "farmer",
+    "age": 16.043835616438344,
+    "born": null,
+    "population": 146,
+    "bodies": 143,
+    "food": 3540.2021150349938,
+    "wood": 631.4327563568486,
+    "happiness": 0.2256265321770159,
+    "health": 0.4,
+    "housing": 145.77077219247306,
+    "mapBeds": null,
+    "gate": {
+     "K": 388.6,
+     "logi": 5.651,
+     "hunger": 0,
+     "health": -0.23,
+     "happy": -0.948,
+     "prestige": 0.067,
+     "housing": 145.8,
+     "gated": false,
+     "dP": 4.545
+    },
+    "pressure": 1.236714875839883,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3452"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 96,
+    "village": "농촌2",
+    "person": "nv69.109",
+    "job": "farmer",
+    "age": 16.02465753424657,
+    "born": null,
+    "population": 149,
+    "bodies": 138,
+    "food": 3763.7506890219715,
+    "wood": 999.565524880645,
+    "happiness": 0.1769818917837398,
+    "health": 0.65,
+    "housing": 150.35601804410274,
+    "mapBeds": null,
+    "gate": {
+     "K": 219.2,
+     "logi": 4.689,
+     "hunger": 0,
+     "health": 0.348,
+     "happy": -1.124,
+     "prestige": 0.01,
+     "housing": 150.4,
+     "gated": false,
+     "dP": 3.928
+    },
+    "pressure": 2.9557359536295755,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3458"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 96,
+    "village": "농촌2",
+    "person": "nv69.110",
+    "job": "farmer",
+    "age": 16.02465753424657,
+    "born": null,
+    "population": 148,
+    "bodies": 137,
+    "food": 3729.7661522243798,
+    "wood": 999.565524880645,
+    "happiness": 0.1769818917837398,
+    "health": 0.65,
+    "housing": 150.35601804410274,
+    "mapBeds": null,
+    "gate": {
+     "K": 219.2,
+     "logi": 4.689,
+     "hunger": 0,
+     "health": 0.348,
+     "happy": -1.124,
+     "prestige": 0.01,
+     "housing": 150.4,
+     "gated": false,
+     "dP": 3.928
+    },
+    "pressure": 1.9557359536295755,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3457"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "어촌2",
+    "person": "nv60.156",
+    "job": "hunter",
+    "age": 17,
+    "born": null,
+    "population": 161,
+    "bodies": 149,
+    "food": 4629.208091939492,
+    "wood": 891.4973587662473,
+    "happiness": 0.16302528616797507,
+    "health": 0.6610245991384935,
+    "housing": 160.89898313492586,
+    "mapBeds": null,
+    "gate": {
+     "K": 387,
+     "logi": 6.11,
+     "hunger": 0,
+     "health": 0.404,
+     "happy": -1.27,
+     "prestige": 0.002,
+     "housing": 160.9,
+     "gated": false,
+     "dP": 5.253
+    },
+    "pressure": 3.8490259490699854,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "농촌10",
+     "pids": [
+      "p3530"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "어촌2",
+    "person": "nv60.121",
+    "job": "farmer",
+    "age": 17.027397260273965,
+    "born": null,
+    "population": 160,
+    "bodies": 148,
+    "food": 4595.6165600147215,
+    "wood": 891.4973587662473,
+    "happiness": 0.16302528616797507,
+    "health": 0.6610245991384935,
+    "housing": 160.89898313492586,
+    "mapBeds": null,
+    "gate": {
+     "K": 387,
+     "logi": 6.11,
+     "hunger": 0,
+     "health": 0.404,
+     "happy": -1.27,
+     "prestige": 0.002,
+     "housing": 160.9,
+     "gated": false,
+     "dP": 5.253
+    },
+    "pressure": 2.8490259490699854,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "농촌10",
+     "pids": [
+      "p3529"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "어촌2",
+    "person": "nv60.111",
+    "job": "farmer",
+    "age": 17.035616438356154,
+    "born": null,
+    "population": 159,
+    "bodies": 147,
+    "food": 4562.025028089951,
+    "wood": 891.4973587662473,
+    "happiness": 0.16302528616797507,
+    "health": 0.6610245991384935,
+    "housing": 160.89898313492586,
+    "mapBeds": null,
+    "gate": {
+     "K": 387,
+     "logi": 6.11,
+     "hunger": 0,
+     "health": 0.404,
+     "happy": -1.27,
+     "prestige": 0.002,
+     "housing": 160.9,
+     "gated": false,
+     "dP": 5.253
+    },
+    "pressure": 1.8490259490699854,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "농촌10",
+     "pids": [
+      "p3309"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "임업2",
+    "person": "nv62.98",
+    "job": "farmer",
+    "age": 16.049315068493136,
+    "born": null,
+    "population": 147,
+    "bodies": 144,
+    "food": 3579.163827987083,
+    "wood": 814.1995714795291,
+    "happiness": 0.2145900962123798,
+    "health": 0.43890304050202134,
+    "housing": 146.85711603418437,
+    "mapBeds": null,
+    "gate": {
+     "K": 390.8,
+     "logi": 5.69,
+     "hunger": 0,
+     "health": -0.142,
+     "happy": -0.993,
+     "prestige": 0.065,
+     "housing": 146.9,
+     "gated": false,
+     "dP": 4.626
+    },
+    "pressure": 1.4689795276490663,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "농촌10",
+     "pids": [
+      "p3534"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "농촌2",
+    "person": "nv69.111",
+    "job": "farmer",
+    "age": 16.027397260273965,
+    "born": null,
+    "population": 151,
+    "bodies": 138,
+    "food": 3695.8620458521655,
+    "wood": 943.8027531175528,
+    "happiness": 0.15795808186816584,
+    "health": 0.65,
+    "housing": 154.5404840170366,
+    "mapBeds": null,
+    "gate": {
+     "K": 220.5,
+     "logi": 4.718,
+     "hunger": 0,
+     "health": 0.353,
+     "happy": -1.207,
+     "prestige": 0.008,
+     "housing": 154.5,
+     "gated": false,
+     "dP": 3.878
+    },
+    "pressure": 4.202974825320684,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "농촌10",
+     "pids": [
+      "p3541"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "농촌2",
+    "person": "nv69.106",
+    "job": "farmer",
+    "age": 16.03013698630136,
+    "born": null,
+    "population": 150,
+    "bodies": 137,
+    "food": 3661.7737380867266,
+    "wood": 943.8027531175528,
+    "happiness": 0.15795808186816584,
+    "health": 0.65,
+    "housing": 154.5404840170366,
+    "mapBeds": null,
+    "gate": {
+     "K": 220.5,
+     "logi": 4.718,
+     "hunger": 0,
+     "health": 0.353,
+     "happy": -1.207,
+     "prestige": 0.008,
+     "housing": 154.5,
+     "gated": false,
+     "dP": 3.878
+    },
+    "pressure": 3.202974825320684,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "농촌10",
+     "pids": [
+      "p3540"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "농촌2",
+    "person": "nv69.45",
+    "job": "forager",
+    "age": 16.115068493150652,
+    "born": null,
+    "population": 149,
+    "bodies": 136,
+    "food": 3627.6854303212863,
+    "wood": 943.8027531175528,
+    "happiness": 0.15795808186816584,
+    "health": 0.65,
+    "housing": 154.5404840170366,
+    "mapBeds": null,
+    "gate": {
+     "K": 220.5,
+     "logi": 4.718,
+     "hunger": 0,
+     "health": 0.353,
+     "happy": -1.207,
+     "prestige": 0.008,
+     "housing": 154.5,
+     "gated": false,
+     "dP": 3.878
+    },
+    "pressure": 2.202974825320684,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "농촌10",
+     "pids": [
+      "p3321"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "농촌2",
+    "person": "nv69.18",
+    "job": "lumberjack",
+    "age": 16.18630136986296,
+    "born": null,
+    "population": 148,
+    "bodies": 135,
+    "food": 3593.597122555847,
+    "wood": 943.8027531175528,
+    "happiness": 0.15795808186816584,
+    "health": 0.65,
+    "housing": 154.5404840170366,
+    "mapBeds": null,
+    "gate": {
+     "K": 220.5,
+     "logi": 4.718,
+     "hunger": 0,
+     "health": 0.353,
+     "happy": -1.207,
+     "prestige": 0.008,
+     "housing": 154.5,
+     "gated": false,
+     "dP": 3.878
+    },
+    "pressure": 1.202974825320684,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "농촌10",
+     "pids": [
+      "p3320"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "어촌2",
+    "person": "nv60.164",
+    "job": "hunter",
+    "age": 16,
+    "born": null,
+    "population": 164,
+    "bodies": 148,
+    "food": 4556.402732859657,
+    "wood": 1015.0581185996922,
+    "happiness": 0.15736453172111275,
+    "health": 0.6616100255898947,
+    "housing": 163.72684196301603,
+    "mapBeds": null,
+    "gate": {
+     "K": 387.5,
+     "logi": 6.145,
+     "hunger": 0,
+     "health": 0.409,
+     "happy": -1.299,
+     "prestige": 0.003,
+     "housing": 163.7,
+     "gated": false,
+     "dP": 5.264
+    },
+    "pressure": 4.36176290620539,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3587"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "어촌2",
+    "person": "nv60.107",
+    "job": "farmer",
+    "age": 17.041095890410947,
+    "born": null,
+    "population": 163,
+    "bodies": 147,
+    "food": 4522.921281175719,
+    "wood": 1015.0581185996922,
+    "happiness": 0.15736453172111275,
+    "health": 0.6616100255898947,
+    "housing": 163.72684196301603,
+    "mapBeds": null,
+    "gate": {
+     "K": 387.5,
+     "logi": 6.145,
+     "hunger": 0,
+     "health": 0.409,
+     "happy": -1.299,
+     "prestige": 0.003,
+     "housing": 163.7,
+     "gated": false,
+     "dP": 5.264
+    },
+    "pressure": 3.3617629062053904,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3586"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "어촌2",
+    "person": "nv60.102",
+    "job": "farmer",
+    "age": 17.04657534246574,
+    "born": null,
+    "population": 162,
+    "bodies": 146,
+    "food": 4489.439829491779,
+    "wood": 1015.0581185996922,
+    "happiness": 0.15736453172111275,
+    "health": 0.6616100255898947,
+    "housing": 163.72684196301603,
+    "mapBeds": null,
+    "gate": {
+     "K": 387.5,
+     "logi": 6.145,
+     "hunger": 0,
+     "health": 0.409,
+     "happy": -1.299,
+     "prestige": 0.003,
+     "housing": 163.7,
+     "gated": false,
+     "dP": 5.264
+    },
+    "pressure": 2.3617629062053904,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3255"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "어촌2",
+    "person": "nv60.97",
+    "job": "mason",
+    "age": 17.049315068493136,
+    "born": null,
+    "population": 161,
+    "bodies": 145,
+    "food": 4455.958377807842,
+    "wood": 1015.0581185996922,
+    "happiness": 0.15736453172111275,
+    "health": 0.6616100255898947,
+    "housing": 163.72684196301603,
+    "mapBeds": null,
+    "gate": {
+     "K": 387.5,
+     "logi": 6.145,
+     "hunger": 0,
+     "health": 0.409,
+     "happy": -1.299,
+     "prestige": 0.003,
+     "housing": 163.7,
+     "gated": false,
+     "dP": 5.264
+    },
+    "pressure": 1.3617629062053904,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3254"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "임업2",
+    "person": "nv62.65",
+    "job": "farmer",
+    "age": 16.087671232876687,
+    "born": null,
+    "population": 148,
+    "bodies": 145,
+    "food": 3610.8109400050257,
+    "wood": 1242.0365016080852,
+    "happiness": 0.20222283928237106,
+    "health": 0.4,
+    "housing": 147.9508303601331,
+    "mapBeds": null,
+    "gate": {
+     "K": 392.9,
+     "logi": 5.729,
+     "hunger": 0,
+     "health": -0.234,
+     "happy": -1.043,
+     "prestige": 0.063,
+     "housing": 148,
+     "gated": false,
+     "dP": 4.52
+    },
+    "pressure": 2.143091239194784,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산1",
+     "pids": [
+      "p3590"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "임업2",
+    "person": "nv62.56",
+    "job": "fisher",
+    "age": 16.10136986301367,
+    "born": null,
+    "population": 147,
+    "bodies": 144,
+    "food": 3576.6713149386173,
+    "wood": 1242.0365016080852,
+    "happiness": 0.20222283928237106,
+    "health": 0.4,
+    "housing": 147.9508303601331,
+    "mapBeds": null,
+    "gate": {
+     "K": 392.9,
+     "logi": 5.729,
+     "hunger": 0,
+     "health": -0.234,
+     "happy": -1.043,
+     "prestige": 0.063,
+     "housing": 148,
+     "gated": false,
+     "dP": 4.52
+    },
+    "pressure": 1.143091239194784,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산1",
+     "pids": [
+      "p3589"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "농촌2",
+    "person": "nv69.148",
+    "job": "fisher",
+    "age": 16,
+    "born": null,
+    "population": 151,
+    "bodies": 136,
+    "food": 3647.1529079137817,
+    "wood": 932.3565847891703,
+    "happiness": 0.16147578491475678,
+    "health": 0.65,
+    "housing": 155.63167329101105,
+    "mapBeds": null,
+    "gate": {
+     "K": 221.7,
+     "logi": 4.744,
+     "hunger": 0,
+     "health": 0.353,
+     "happy": -1.194,
+     "prestige": 0.006,
+     "housing": 155.6,
+     "gated": false,
+     "dP": 3.915
+    },
+    "pressure": 3.326109133528065,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산1",
+     "pids": [
+      "p3598"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "농촌2",
+    "person": "nv69.5",
+    "job": "forager",
+    "age": 16.235616438356097,
+    "born": null,
+    "population": 150,
+    "bodies": 135,
+    "food": 3613.2912706955817,
+    "wood": 932.3565847891703,
+    "happiness": 0.16147578491475678,
+    "health": 0.65,
+    "housing": 155.63167329101105,
+    "mapBeds": null,
+    "gate": {
+     "K": 221.7,
+     "logi": 4.744,
+     "hunger": 0,
+     "health": 0.353,
+     "happy": -1.194,
+     "prestige": 0.006,
+     "housing": 155.6,
+     "gated": false,
+     "dP": 3.915
+    },
+    "pressure": 2.326109133528065,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산1",
+     "pids": [
+      "p3597"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "농촌2",
+    "person": "nv69.126",
+    "job": "farmer",
+    "age": 17.019178082191775,
+    "born": null,
+    "population": 149,
+    "bodies": 134,
+    "food": 3579.4296334773817,
+    "wood": 932.3565847891703,
+    "happiness": 0.16147578491475678,
+    "health": 0.65,
+    "housing": 155.63167329101105,
+    "mapBeds": null,
+    "gate": {
+     "K": 221.7,
+     "logi": 4.744,
+     "hunger": 0,
+     "health": 0.353,
+     "happy": -1.194,
+     "prestige": 0.006,
+     "housing": 155.6,
+     "gated": false,
+     "dP": 3.915
+    },
+    "pressure": 1.3261091335280648,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산1",
+     "pids": [
+      "p3265"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "어촌2",
+    "person": "nv60.168",
+    "job": "hunter",
+    "age": 17,
+    "born": null,
+    "population": 165,
+    "bodies": 146,
+    "food": 4375.212174224806,
+    "wood": 1036.2432262240884,
+    "happiness": 0.14023779263205094,
+    "health": 0.65,
+    "housing": 166.55021503445246,
+    "mapBeds": null,
+    "gate": {
+     "K": 388,
+     "logi": 6.215,
+     "hunger": 0,
+     "health": 0.384,
+     "happy": -1.381,
+     "prestige": 0.004,
+     "housing": 166.6,
+     "gated": false,
+     "dP": 5.228
+    },
+    "pressure": 4.576631669134634,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3664"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "어촌2",
+    "person": "nv60.74",
+    "job": "lumberjack",
+    "age": 17.0767123287671,
+    "born": null,
+    "population": 164,
+    "bodies": 145,
+    "food": 4341.567221164829,
+    "wood": 1036.2432262240884,
+    "happiness": 0.14023779263205094,
+    "health": 0.65,
+    "housing": 166.55021503445246,
+    "mapBeds": null,
+    "gate": {
+     "K": 388,
+     "logi": 6.215,
+     "hunger": 0,
+     "health": 0.384,
+     "happy": -1.381,
+     "prestige": 0.004,
+     "housing": 166.6,
+     "gated": false,
+     "dP": 5.228
+    },
+    "pressure": 3.576631669134634,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3663"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "어촌2",
+    "person": "nv60.37",
+    "job": "farmer",
+    "age": 17.13972602739722,
+    "born": null,
+    "population": 163,
+    "bodies": 144,
+    "food": 4307.922268104851,
+    "wood": 1036.2432262240884,
+    "happiness": 0.14023779263205094,
+    "health": 0.65,
+    "housing": 166.55021503445246,
+    "mapBeds": null,
+    "gate": {
+     "K": 388,
+     "logi": 6.215,
+     "hunger": 0,
+     "health": 0.384,
+     "happy": -1.381,
+     "prestige": 0.004,
+     "housing": 166.6,
+     "gated": false,
+     "dP": 5.228
+    },
+    "pressure": 2.576631669134634,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3174"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "어촌2",
+    "person": "n452",
+    "job": "farmer",
+    "age": 17.268493150684854,
+    "born": null,
+    "population": 162,
+    "bodies": 143,
+    "food": 4274.277315044875,
+    "wood": 1036.2432262240884,
+    "happiness": 0.14023779263205094,
+    "health": 0.65,
+    "housing": 166.55021503445246,
+    "mapBeds": null,
+    "gate": {
+     "K": 388,
+     "logi": 6.215,
+     "hunger": 0,
+     "health": 0.384,
+     "happy": -1.381,
+     "prestige": 0.004,
+     "housing": 166.6,
+     "gated": false,
+     "dP": 5.228
+    },
+    "pressure": 1.5766316691346338,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3173"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "임업2",
+    "person": "nv62.27",
+    "job": "farmer",
+    "age": 16.16438356164379,
+    "born": null,
+    "population": 151,
+    "bodies": 145,
+    "food": 3674.82538199054,
+    "wood": 1143.4218212287817,
+    "happiness": 0.20460647844827196,
+    "health": 0.5620333625796142,
+    "housing": 152.1089041145929,
+    "mapBeds": null,
+    "gate": {
+     "K": 390.9,
+     "logi": 5.726,
+     "hunger": 0,
+     "health": 0.145,
+     "happy": -1.035,
+     "prestige": 0.061,
+     "housing": 152.1,
+     "gated": false,
+     "dP": 4.903
+    },
+    "pressure": 1.7336802343673348,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3667"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "농촌2",
+    "person": "nv69.153",
+    "job": "fisher",
+    "age": 17,
+    "born": null,
+    "population": 152,
+    "bodies": 135,
+    "food": 3601.298878323131,
+    "wood": 744.7410003714178,
+    "happiness": 0.1499306106446946,
+    "health": 0.525,
+    "housing": 156.73022578107455,
+    "mapBeds": null,
+    "gate": {
+     "K": 223,
+     "logi": 4.772,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.243,
+     "prestige": 0.004,
+     "housing": 156.7,
+     "gated": false,
+     "dP": 3.598
+    },
+    "pressure": 3.8805738434285124,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3673"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "농촌2",
+    "person": "nv69.98",
+    "job": "farmer",
+    "age": 17.043835616438344,
+    "born": null,
+    "population": 151,
+    "bodies": 134,
+    "food": 3567.2863304202065,
+    "wood": 744.7410003714178,
+    "happiness": 0.1499306106446946,
+    "health": 0.525,
+    "housing": 156.73022578107455,
+    "mapBeds": null,
+    "gate": {
+     "K": 223,
+     "logi": 4.772,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.243,
+     "prestige": 0.004,
+     "housing": 156.7,
+     "gated": false,
+     "dP": 3.598
+    },
+    "pressure": 2.8805738434285124,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3672"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "농촌2",
+    "person": "nv69.79",
+    "job": "farmer",
+    "age": 17.06301369863012,
+    "born": null,
+    "population": 150,
+    "bodies": 133,
+    "food": 3533.273782517283,
+    "wood": 744.7410003714178,
+    "happiness": 0.1499306106446946,
+    "health": 0.525,
+    "housing": 156.73022578107455,
+    "mapBeds": null,
+    "gate": {
+     "K": 223,
+     "logi": 4.772,
+     "hunger": 0,
+     "health": 0.059,
+     "happy": -1.243,
+     "prestige": 0.004,
+     "housing": 156.7,
+     "gated": false,
+     "dP": 3.598
+    },
+    "pressure": 1.8805738434285124,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3264"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "어촌2",
+    "person": "nv60.174",
+    "job": "hunter",
+    "age": 17,
+    "born": null,
+    "population": 166,
+    "bodies": 144,
+    "food": 4281.254024741196,
+    "wood": 1044.3346726446778,
+    "happiness": 0.134645099179314,
+    "health": 0.65,
+    "housing": 169.4369095704035,
+    "mapBeds": null,
+    "gate": {
+     "K": 388.5,
+     "logi": 6.25,
+     "hunger": 0,
+     "health": 0.386,
+     "happy": -1.412,
+     "prestige": 0.007,
+     "housing": 169.4,
+     "gated": false,
+     "dP": 5.238
+    },
+    "pressure": 5.033945036845941,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산2",
+     "pids": [
+      "p3718"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "어촌2",
+    "person": "nv60.134",
+    "job": "farmer",
+    "age": 18.027397260273965,
+    "born": null,
+    "population": 165,
+    "bodies": 143,
+    "food": 4247.71402270785,
+    "wood": 1044.3346726446778,
+    "happiness": 0.134645099179314,
+    "health": 0.65,
+    "housing": 169.4369095704035,
+    "mapBeds": null,
+    "gate": {
+     "K": 388.5,
+     "logi": 6.25,
+     "hunger": 0,
+     "health": 0.386,
+     "happy": -1.412,
+     "prestige": 0.007,
+     "housing": 169.4,
+     "gated": false,
+     "dP": 5.238
+    },
+    "pressure": 4.033945036845941,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산2",
+     "pids": [
+      "p3717"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "어촌2",
+    "person": "nv60.116",
+    "job": "farmer",
+    "age": 18.041095890410947,
+    "born": null,
+    "population": 164,
+    "bodies": 142,
+    "food": 4214.174020674503,
+    "wood": 1044.3346726446778,
+    "happiness": 0.134645099179314,
+    "health": 0.65,
+    "housing": 169.4369095704035,
+    "mapBeds": null,
+    "gate": {
+     "K": 388.5,
+     "logi": 6.25,
+     "hunger": 0,
+     "health": 0.386,
+     "happy": -1.412,
+     "prestige": 0.007,
+     "housing": 169.4,
+     "gated": false,
+     "dP": 5.238
+    },
+    "pressure": 3.0339450368459406,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산2",
+     "pids": [
+      "p545"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "어촌2",
+    "person": "nv60.67",
+    "job": "farmer",
+    "age": 18.090410958904084,
+    "born": null,
+    "population": 163,
+    "bodies": 141,
+    "food": 4180.634018641154,
+    "wood": 1044.3346726446778,
+    "happiness": 0.134645099179314,
+    "health": 0.65,
+    "housing": 169.4369095704035,
+    "mapBeds": null,
+    "gate": {
+     "K": 388.5,
+     "logi": 6.25,
+     "hunger": 0,
+     "health": 0.386,
+     "happy": -1.412,
+     "prestige": 0.007,
+     "housing": 169.4,
+     "gated": false,
+     "dP": 5.238
+    },
+    "pressure": 2.0339450368459406,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산2",
+     "pids": [
+      "p544"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "어촌2",
+    "person": "nv60.56",
+    "job": "farmer",
+    "age": 18.106849315068462,
+    "born": null,
+    "population": 162,
+    "bodies": 140,
+    "food": 4147.094016607807,
+    "wood": 1044.3346726446778,
+    "happiness": 0.134645099179314,
+    "health": 0.65,
+    "housing": 169.4369095704035,
+    "mapBeds": null,
+    "gate": {
+     "K": 388.5,
+     "logi": 6.25,
+     "hunger": 0,
+     "health": 0.386,
+     "happy": -1.412,
+     "prestige": 0.007,
+     "housing": 169.4,
+     "gated": false,
+     "dP": 5.238
+    },
+    "pressure": 1.0339450368459406,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산2",
+     "pids": [
+      "p543"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "임업2",
+    "person": "nv62.152",
+    "job": "fisher",
+    "age": 16,
+    "born": null,
+    "population": 154,
+    "bodies": 146,
+    "food": 3691.3325939117626,
+    "wood": 1151.100277674048,
+    "happiness": 0.16197398820137798,
+    "health": 0.4,
+    "housing": 153.230740758421,
+    "mapBeds": null,
+    "gate": {
+     "K": 394,
+     "logi": 5.874,
+     "hunger": 0,
+     "health": -0.24,
+     "happy": -1.217,
+     "prestige": 0.059,
+     "housing": 153.2,
+     "gated": false,
+     "dP": 4.482
+    },
+    "pressure": 3.9026166591177276,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3721"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "임업2",
+    "person": "nv62.12",
+    "job": "forager",
+    "age": 16.213698630136925,
+    "born": null,
+    "population": 153,
+    "bodies": 145,
+    "food": 3657.2318847311985,
+    "wood": 1151.100277674048,
+    "happiness": 0.16197398820137798,
+    "health": 0.4,
+    "housing": 153.230740758421,
+    "mapBeds": null,
+    "gate": {
+     "K": 394,
+     "logi": 5.874,
+     "hunger": 0,
+     "health": -0.24,
+     "happy": -1.217,
+     "prestige": 0.059,
+     "housing": 153.2,
+     "gated": false,
+     "dP": 4.482
+    },
+    "pressure": 2.9026166591177276,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3720"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "임업2",
+    "person": "nv62.9",
+    "job": "forager",
+    "age": 16.221917808219114,
+    "born": null,
+    "population": 152,
+    "bodies": 144,
+    "food": 3623.1311755506335,
+    "wood": 1151.100277674048,
+    "happiness": 0.16197398820137798,
+    "health": 0.4,
+    "housing": 153.230740758421,
+    "mapBeds": null,
+    "gate": {
+     "K": 394,
+     "logi": 5.874,
+     "hunger": 0,
+     "health": -0.24,
+     "happy": -1.217,
+     "prestige": 0.059,
+     "housing": 153.2,
+     "gated": false,
+     "dP": 4.482
+    },
+    "pressure": 1.9026166591177276,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3666"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "농촌2",
+    "person": "nv69.76",
+    "job": "farmer",
+    "age": 17.068493150684912,
+    "born": null,
+    "population": 152,
+    "bodies": 134,
+    "food": 3544.9199343144746,
+    "wood": 764.2394897712911,
+    "happiness": 0.14028232564106935,
+    "health": 0.525,
+    "housing": 157.83613044240295,
+    "mapBeds": null,
+    "gate": {
+     "K": 224.3,
+     "logi": 4.799,
+     "hunger": 0,
+     "health": 0.06,
+     "happy": -1.286,
+     "prestige": 0.003,
+     "housing": 157.8,
+     "gated": false,
+     "dP": 3.581
+    },
+    "pressure": 4.804077878503872,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3728"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "농촌2",
+    "person": "nv69.63",
+    "job": "forager",
+    "age": 17.087671232876687,
+    "born": null,
+    "population": 151,
+    "bodies": 133,
+    "food": 3510.647846965704,
+    "wood": 764.2394897712911,
+    "happiness": 0.14028232564106935,
+    "health": 0.525,
+    "housing": 157.83613044240295,
+    "mapBeds": null,
+    "gate": {
+     "K": 224.3,
+     "logi": 4.799,
+     "hunger": 0,
+     "health": 0.06,
+     "happy": -1.286,
+     "prestige": 0.003,
+     "housing": 157.8,
+     "gated": false,
+     "dP": 3.581
+    },
+    "pressure": 3.804077878503872,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3727"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "농촌2",
+    "person": "nv69.55",
+    "job": "forager",
+    "age": 17.10136986301367,
+    "born": null,
+    "population": 150,
+    "bodies": 132,
+    "food": 3476.3757596169344,
+    "wood": 764.2394897712911,
+    "happiness": 0.14028232564106935,
+    "health": 0.525,
+    "housing": 157.83613044240295,
+    "mapBeds": null,
+    "gate": {
+     "K": 224.3,
+     "logi": 4.799,
+     "hunger": 0,
+     "health": 0.06,
+     "happy": -1.286,
+     "prestige": 0.003,
+     "housing": 157.8,
+     "gated": false,
+     "dP": 3.581
+    },
+    "pressure": 2.804077878503872,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3188"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 100,
+    "village": "농촌2",
+    "person": "nv69.19",
+    "job": "lumberjack",
+    "age": 17.189041095890357,
+    "born": null,
+    "population": 149,
+    "bodies": 131,
+    "food": 3442.1036722681642,
+    "wood": 764.2394897712911,
+    "happiness": 0.14028232564106935,
+    "health": 0.525,
+    "housing": 157.83613044240295,
+    "mapBeds": null,
+    "gate": {
+     "K": 224.3,
+     "logi": 4.799,
+     "hunger": 0,
+     "health": 0.06,
+     "happy": -1.286,
+     "prestige": 0.003,
+     "housing": 157.8,
+     "gated": false,
+     "dP": 3.581
+    },
+    "pressure": 1.8040778785038718,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "광산3",
+     "pids": [
+      "p3187"
+     ],
+     "bodyPeople": [
+      null
+     ]
+    },
+    "accepted": true
+   }
+  ],
+  "offRatio": 1.2722772277227723
+ },
  "BODY-7": {
   "dir": "/tmp/t1318/BODY-7",
-  "done": false,
-  "segs": [],
-  "days": 1,
-  "pop": 408,
-  "bodies": 408,
+  "done": true,
+  "segs": [
+   [
+    0,
+    10,
+    863
+   ],
+   [
+    10,
+    20,
+    1314
+   ],
+   [
+    20,
+    30,
+    1575
+   ],
+   [
+    30,
+    40,
+    1930
+   ],
+   [
+    40,
+    50,
+    2221
+   ],
+   [
+    50,
+    60,
+    2485
+   ],
+   [
+    60,
+    70,
+    2748
+   ],
+   [
+    70,
+    80,
+    3105
+   ],
+   [
+    80,
+    90,
+    3374
+   ],
+   [
+    90,
+    100,
+    3386
+   ]
+  ],
+  "days": 100,
+  "pop": 2542,
+  "bodies": 2542,
   "empty": 0,
   "minBodyRatio": 1.0,
   "maxBodyGap": 0,
   "maxMissingPeople": 0,
-  "physical": 0,
-  "added": 0,
+  "physical": 12048,
+  "added": 12048,
   "batchCalls": 0,
-  "terrCells": 0,
-  "terrBody": 0,
-  "territory": 76500,
-  "emigration": 0,
-  "emigrationCumulativeField": 0,
-  "emigrationDays": {},
-  "emig90": 0,
+  "terrCells": 12048,
+  "terrBody": 12048,
+  "territory": 88548,
+  "emigration": 7,
+  "emigrationCumulativeField": 7,
+  "emigrationDays": {
+   "94": 1,
+   "95": 1,
+   "96": 1,
+   "97": 1,
+   "98": 1,
+   "99": 2
+  },
+  "emig90": 7,
   "bodyStarve": 0,
   "debtDeaths": 0,
-  "bornCum": 0,
-  "cpuMeanAll": null,
-  "cpuMeanRun": null,
-  "cpuSegFirst": null,
+  "bornCum": 2149,
+  "cpuMeanAll": 226.9138983939394,
+  "cpuMeanRun": 226.72119632222223,
+  "cpuSegFirst": 228.8409191111111,
   "errors": 0,
-  "events": []
+  "events": [
+   {
+    "day": 94,
+    "village": "어촌2",
+    "person": "nv60.96",
+    "job": "fisher",
+    "age": 16.005479452054793,
+    "born": null,
+    "population": 108,
+    "bodies": 106,
+    "food": 3090.227722106338,
+    "wood": 449.0018079585248,
+    "happiness": 0.2168162987872655,
+    "health": 0.6517595374250917,
+    "housing": 107.4585854268381,
+    "mapBeds": null,
+    "gate": {
+     "K": 123.6,
+     "logi": 1.949,
+     "hunger": 0,
+     "health": 0.257,
+     "happy": -0.72,
+     "prestige": 0.009,
+     "housing": 107.5,
+     "gated": false,
+     "dP": 1.499
+    },
+    "pressure": 1.409511925443107,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌3",
+     "pids": [
+      "p2661"
+     ],
+     "bodyPeople": [
+      "nv60.96"
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 95,
+    "village": "어촌2",
+    "person": "nv60.63",
+    "job": "forager",
+    "age": 16.07123287671231,
+    "born": null,
+    "population": 108,
+    "bodies": 107,
+    "food": 2998.486887339692,
+    "wood": 527.9132768158737,
+    "happiness": 0.20584985400182454,
+    "health": 0.65,
+    "housing": 108.98807483950137,
+    "mapBeds": null,
+    "gate": {
+     "K": 123.7,
+     "logi": 1.882,
+     "hunger": 0,
+     "health": 0.257,
+     "happy": -0.755,
+     "prestige": 0.009,
+     "housing": 109,
+     "gated": false,
+     "dP": 1.397
+    },
+    "pressure": 1.5432876746762527,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌3",
+     "pids": [
+      "p378"
+     ],
+     "bodyPeople": [
+      "nv60.63"
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 96,
+    "village": "어촌2",
+    "person": "nv60.35",
+    "job": "lumberjack",
+    "age": 16.136986301369824,
+    "born": null,
+    "population": 109,
+    "bodies": 107,
+    "food": 2979.0999453326453,
+    "wood": 554.4040115269457,
+    "happiness": 0.2101387374239071,
+    "health": 0.65,
+    "housing": 110.51451141142974,
+    "mapBeds": null,
+    "gate": {
+     "K": 123.7,
+     "logi": 1.886,
+     "hunger": 0,
+     "health": 0.257,
+     "happy": -0.744,
+     "prestige": 0.009,
+     "housing": 110.5,
+     "gated": false,
+     "dP": 1.411
+    },
+    "pressure": 1.5669248976303185,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌3",
+     "pids": [
+      "p350"
+     ],
+     "bodyPeople": [
+      "nv60.35"
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 97,
+    "village": "어촌2",
+    "person": "nv60.93",
+    "job": "fisher",
+    "age": 17.019178082191775,
+    "born": null,
+    "population": 109,
+    "bodies": 108,
+    "food": 2886.3617849255647,
+    "wood": 617.4288223740973,
+    "happiness": 0.20314354120392975,
+    "health": 0.65,
+    "housing": 111.98707453707834,
+    "mapBeds": null,
+    "gate": {
+     "K": 123.8,
+     "logi": 1.815,
+     "hunger": 0,
+     "health": 0.259,
+     "happy": -0.769,
+     "prestige": 0.009,
+     "housing": 112,
+     "gated": false,
+     "dP": 1.319
+    },
+    "pressure": 1.7814443096244594,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌3",
+     "pids": [
+      "p408"
+     ],
+     "bodyPeople": [
+      "nv60.93"
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 98,
+    "village": "어촌2",
+    "person": "nv60.70",
+    "job": "fisher",
+    "age": 17.06301369863012,
+    "born": null,
+    "population": 110,
+    "bodies": 108,
+    "food": 3342.4862704051598,
+    "wood": 677.4127962362484,
+    "happiness": 0.21008445217005367,
+    "health": 0.65,
+    "housing": 115.05909392527272,
+    "mapBeds": null,
+    "gate": {
+     "K": 126.9,
+     "logi": 2.051,
+     "hunger": 0,
+     "health": 0.259,
+     "happy": -0.751,
+     "prestige": 0.009,
+     "housing": 115.1,
+     "gated": false,
+     "dP": 1.572
+    },
+    "pressure": 1.8160553093766683,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌3",
+     "pids": [
+      "p385"
+     ],
+     "bodyPeople": [
+      "nv60.70"
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "어촌2",
+    "person": "nv60.37",
+    "job": "lumberjack",
+    "age": 17.13972602739722,
+    "born": null,
+    "population": 110,
+    "bodies": 109,
+    "food": 3320.6148792909853,
+    "wood": 637.2459977043516,
+    "happiness": 0.20188252579855126,
+    "health": 0.6520092761291819,
+    "housing": 118.1565052843848,
+    "mapBeds": null,
+    "gate": {
+     "K": 126.9,
+     "logi": 1.987,
+     "hunger": 0,
+     "health": 0.265,
+     "happy": -0.78,
+     "prestige": 0.009,
+     "housing": 118.2,
+     "gated": false,
+     "dP": 1.486
+    },
+    "pressure": 2.0748084344865676,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌3",
+     "pids": [
+      "p352"
+     ],
+     "bodyPeople": [
+      "nv60.37"
+     ]
+    },
+    "accepted": true
+   },
+   {
+    "day": 99,
+    "village": "어촌2",
+    "person": "nv60.36",
+    "job": "lumberjack",
+    "age": 17.142465753424617,
+    "born": null,
+    "population": 109,
+    "bodies": 109,
+    "food": 3286.7223295660106,
+    "wood": 637.2459977043516,
+    "happiness": 0.20188252579855126,
+    "health": 0.6520092761291819,
+    "housing": 118.1565052843848,
+    "mapBeds": null,
+    "gate": {
+     "K": 126.9,
+     "logi": 1.987,
+     "hunger": 0,
+     "health": 0.265,
+     "happy": -0.78,
+     "prestige": 0.009,
+     "housing": 118.2,
+     "gated": false,
+     "dP": 1.486
+    },
+    "pressure": 1.0748084344865676,
+    "predicate": "t1075Emigrate: happiness < T1134_EMIG_H, accumulated pressure >= 1, accepted happier destination",
+    "depart": {
+     "to": "어촌3",
+     "pids": [
+      "p351"
+     ],
+     "bodyPeople": [
+      "nv60.36"
+     ]
+    },
+    "accepted": true
+   }
+  ],
+  "offRatio": 0.968012185833968
  }
 }
