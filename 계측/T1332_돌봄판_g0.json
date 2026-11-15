@@ -1,0 +1,823 @@
+{
+ "moveSpeed": 64,
+ "cellPx": 32,
+ "stepS": 0.5,
+ "dwellS": 20,
+ "cheapS": 0.5,
+ "days": 240,
+ "gatherS": 0,
+ "live": {
+  "30분": 16,
+  "1시간": 36,
+  "3시간": 100
+ },
+ "rows": [
+  {
+   "K": 4,
+   "combo": "A 빠름",
+   "fade": 2,
+   "free": 3,
+   "base": 2,
+   "daily": "30분",
+   "grow": {
+    "cells": 80,
+    "chunks": 5,
+    "careShare": 0.059722222222222225,
+    "lost": 0,
+    "cap": 5
+   },
+   "cheat": {
+    "cells": 80,
+    "chunks": 5,
+    "careShare": 0.005555555555555556,
+    "lost": 0,
+    "cap": 5
+   },
+   "live": {
+    "cells": 38,
+    "chunks": 5,
+    "careShare": 0.020555555555555556,
+    "lost": 0
+   }
+  },
+  {
+   "K": 4,
+   "combo": "A 빠름",
+   "fade": 2,
+   "free": 3,
+   "base": 2,
+   "daily": "1시간",
+   "grow": {
+    "cells": 80,
+    "chunks": 5,
+    "careShare": 0.029861111111111113,
+    "lost": 0,
+    "cap": 5
+   },
+   "cheat": {
+    "cells": 80,
+    "chunks": 5,
+    "careShare": 0.002777777777777778,
+    "lost": 0,
+    "cap": 5
+   },
+   "live": {
+    "cells": 0,
+    "chunks": 0,
+    "careShare": 0,
+    "lost": 58
+   }
+  },
+  {
+   "K": 4,
+   "combo": "A 빠름",
+   "fade": 2,
+   "free": 3,
+   "base": 2,
+   "daily": "3시간",
+   "grow": {
+    "cells": 80,
+    "chunks": 5,
+    "careShare": 0.009953703703703704,
+    "lost": 0,
+    "cap": 5
+   },
+   "cheat": {
+    "cells": 80,
+    "chunks": 5,
+    "careShare": 0.000925925925925926,
+    "lost": 0,
+    "cap": 5
+   },
+   "live": {
+    "cells": 0,
+    "chunks": 0,
+    "careShare": 0,
+    "lost": 122
+   }
+  },
+  {
+   "K": 4,
+   "combo": "B 가운데(기본)",
+   "fade": 3,
+   "free": 7,
+   "base": 2,
+   "daily": "30분",
+   "grow": {
+    "cells": 208,
+    "chunks": 13,
+    "careShare": 0.1597222222222222,
+    "lost": 0,
+    "cap": 13
+   },
+   "cheat": {
+    "cells": 208,
+    "chunks": 13,
+    "careShare": 0.01888888888888889,
+    "lost": 0,
+    "cap": 13
+   },
+   "live": {
+    "cells": 38,
+    "chunks": 5,
+    "careShare": 0.006944444444444444,
+    "lost": 0
+   }
+  },
+  {
+   "K": 4,
+   "combo": "B 가운데(기본)",
+   "fade": 3,
+   "free": 7,
+   "base": 2,
+   "daily": "1시간",
+   "grow": {
+    "cells": 208,
+    "chunks": 13,
+    "careShare": 0.0798611111111111,
+    "lost": 0,
+    "cap": 13
+   },
+   "cheat": {
+    "cells": 208,
+    "chunks": 13,
+    "careShare": 0.009444444444444445,
+    "lost": 0,
+    "cap": 13
+   },
+   "live": {
+    "cells": 58,
+    "chunks": 9,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 4,
+   "combo": "B 가운데(기본)",
+   "fade": 3,
+   "free": 7,
+   "base": 2,
+   "daily": "3시간",
+   "grow": {
+    "cells": 208,
+    "chunks": 13,
+    "careShare": 0.02662037037037037,
+    "lost": 0,
+    "cap": 13
+   },
+   "cheat": {
+    "cells": 208,
+    "chunks": 13,
+    "careShare": 0.003148148148148148,
+    "lost": 0,
+    "cap": 13
+   },
+   "live": {
+    "cells": 122,
+    "chunks": 10,
+    "careShare": 0.002685185185185185,
+    "lost": 0
+   }
+  },
+  {
+   "K": 4,
+   "combo": "C 느림",
+   "fade": 7,
+   "free": 14,
+   "base": 8,
+   "daily": "30분",
+   "grow": {
+    "cells": 1312,
+    "chunks": 82,
+    "careShare": 0.9955555555555555,
+    "lost": 0,
+    "cap": 111
+   },
+   "cheat": {
+    "cells": 1776,
+    "chunks": 111,
+    "careShare": 0.14583333333333334,
+    "lost": 0,
+    "cap": 111
+   },
+   "live": {
+    "cells": 38,
+    "chunks": 5,
+    "careShare": 0.0010416666666666667,
+    "lost": 0
+   }
+  },
+  {
+   "K": 4,
+   "combo": "C 느림",
+   "fade": 7,
+   "free": 14,
+   "base": 8,
+   "daily": "1시간",
+   "grow": {
+    "cells": 1776,
+    "chunks": 111,
+    "careShare": 0.6741666666666667,
+    "lost": 0,
+    "cap": 111
+   },
+   "cheat": {
+    "cells": 1776,
+    "chunks": 111,
+    "careShare": 0.07291666666666667,
+    "lost": 0,
+    "cap": 111
+   },
+   "live": {
+    "cells": 58,
+    "chunks": 9,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 4,
+   "combo": "C 느림",
+   "fade": 7,
+   "free": 14,
+   "base": 8,
+   "daily": "3시간",
+   "grow": {
+    "cells": 1776,
+    "chunks": 111,
+    "careShare": 0.2247222222222222,
+    "lost": 0,
+    "cap": 111
+   },
+   "cheat": {
+    "cells": 1776,
+    "chunks": 111,
+    "careShare": 0.024305555555555556,
+    "lost": 0,
+    "cap": 111
+   },
+   "live": {
+    "cells": 122,
+    "chunks": 10,
+    "careShare": 0.00023495370370370372,
+    "lost": 0
+   }
+  },
+  {
+   "K": 8,
+   "combo": "A 빠름",
+   "fade": 2,
+   "free": 3,
+   "base": 2,
+   "daily": "30분",
+   "grow": {
+    "cells": 320,
+    "chunks": 5,
+    "careShare": 0.06305555555555556,
+    "lost": 0,
+    "cap": 5
+   },
+   "cheat": {
+    "cells": 320,
+    "chunks": 5,
+    "careShare": 0.008888888888888889,
+    "lost": 0,
+    "cap": 5
+   },
+   "live": {
+    "cells": 38,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 8,
+   "combo": "A 빠름",
+   "fade": 2,
+   "free": 3,
+   "base": 2,
+   "daily": "1시간",
+   "grow": {
+    "cells": 320,
+    "chunks": 5,
+    "careShare": 0.03152777777777778,
+    "lost": 0,
+    "cap": 5
+   },
+   "cheat": {
+    "cells": 320,
+    "chunks": 5,
+    "careShare": 0.0044444444444444444,
+    "lost": 0,
+    "cap": 5
+   },
+   "live": {
+    "cells": 58,
+    "chunks": 4,
+    "careShare": 0.021111111111111112,
+    "lost": 0
+   }
+  },
+  {
+   "K": 8,
+   "combo": "A 빠름",
+   "fade": 2,
+   "free": 3,
+   "base": 2,
+   "daily": "3시간",
+   "grow": {
+    "cells": 320,
+    "chunks": 5,
+    "careShare": 0.01050925925925926,
+    "lost": 0,
+    "cap": 5
+   },
+   "cheat": {
+    "cells": 320,
+    "chunks": 5,
+    "careShare": 0.0014814814814814814,
+    "lost": 0,
+    "cap": 5
+   },
+   "live": {
+    "cells": 0,
+    "chunks": 0,
+    "careShare": 0,
+    "lost": 122
+   }
+  },
+  {
+   "K": 8,
+   "combo": "B 가운데(기본)",
+   "fade": 3,
+   "free": 7,
+   "base": 2,
+   "daily": "30분",
+   "grow": {
+    "cells": 832,
+    "chunks": 13,
+    "careShare": 0.17305555555555555,
+    "lost": 0,
+    "cap": 13
+   },
+   "cheat": {
+    "cells": 832,
+    "chunks": 13,
+    "careShare": 0.03222222222222222,
+    "lost": 0,
+    "cap": 13
+   },
+   "live": {
+    "cells": 38,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 8,
+   "combo": "B 가운데(기본)",
+   "fade": 3,
+   "free": 7,
+   "base": 2,
+   "daily": "1시간",
+   "grow": {
+    "cells": 832,
+    "chunks": 13,
+    "careShare": 0.08652777777777777,
+    "lost": 0,
+    "cap": 13
+   },
+   "cheat": {
+    "cells": 832,
+    "chunks": 13,
+    "careShare": 0.01611111111111111,
+    "lost": 0,
+    "cap": 13
+   },
+   "live": {
+    "cells": 58,
+    "chunks": 4,
+    "careShare": 0.007037037037037037,
+    "lost": 0
+   }
+  },
+  {
+   "K": 8,
+   "combo": "B 가운데(기본)",
+   "fade": 3,
+   "free": 7,
+   "base": 2,
+   "daily": "3시간",
+   "grow": {
+    "cells": 832,
+    "chunks": 13,
+    "careShare": 0.028842592592592593,
+    "lost": 0,
+    "cap": 13
+   },
+   "cheat": {
+    "cells": 832,
+    "chunks": 13,
+    "careShare": 0.00537037037037037,
+    "lost": 0,
+    "cap": 13
+   },
+   "live": {
+    "cells": 122,
+    "chunks": 9,
+    "careShare": 0.002685185185185185,
+    "lost": 0
+   }
+  },
+  {
+   "K": 8,
+   "combo": "C 느림",
+   "fade": 7,
+   "free": 14,
+   "base": 8,
+   "daily": "30분",
+   "grow": {
+    "cells": 4800,
+    "chunks": 75,
+    "careShare": 0.9944444444444445,
+    "lost": 4800,
+    "cap": 111
+   },
+   "cheat": {
+    "cells": 7104,
+    "chunks": 111,
+    "careShare": 0.2813888888888889,
+    "lost": 4800,
+    "cap": 111
+   },
+   "live": {
+    "cells": 38,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 8,
+   "combo": "C 느림",
+   "fade": 7,
+   "free": 14,
+   "base": 8,
+   "daily": "1시간",
+   "grow": {
+    "cells": 7104,
+    "chunks": 111,
+    "careShare": 0.7263888888888889,
+    "lost": 0,
+    "cap": 111
+   },
+   "cheat": {
+    "cells": 7104,
+    "chunks": 111,
+    "careShare": 0.12513888888888888,
+    "lost": 0,
+    "cap": 111
+   },
+   "live": {
+    "cells": 58,
+    "chunks": 4,
+    "careShare": 0.0015833333333333333,
+    "lost": 0
+   }
+  },
+  {
+   "K": 8,
+   "combo": "C 느림",
+   "fade": 7,
+   "free": 14,
+   "base": 8,
+   "daily": "3시간",
+   "grow": {
+    "cells": 7104,
+    "chunks": 111,
+    "careShare": 0.24212962962962964,
+    "lost": 0,
+    "cap": 111
+   },
+   "cheat": {
+    "cells": 7104,
+    "chunks": 111,
+    "careShare": 0.041712962962962966,
+    "lost": 0,
+    "cap": 111
+   },
+   "live": {
+    "cells": 122,
+    "chunks": 9,
+    "careShare": 0.00022376543209876542,
+    "lost": 0
+   }
+  },
+  {
+   "K": 16,
+   "combo": "A 빠름",
+   "fade": 2,
+   "free": 3,
+   "base": 2,
+   "daily": "30분",
+   "grow": {
+    "cells": 1280,
+    "chunks": 5,
+    "careShare": 0.06972222222222223,
+    "lost": 0,
+    "cap": 5
+   },
+   "cheat": {
+    "cells": 1280,
+    "chunks": 5,
+    "careShare": 0.015555555555555555,
+    "lost": 0,
+    "cap": 5
+   },
+   "live": {
+    "cells": 38,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 16,
+   "combo": "A 빠름",
+   "fade": 2,
+   "free": 3,
+   "base": 2,
+   "daily": "1시간",
+   "grow": {
+    "cells": 1280,
+    "chunks": 5,
+    "careShare": 0.034861111111111114,
+    "lost": 0,
+    "cap": 5
+   },
+   "cheat": {
+    "cells": 1280,
+    "chunks": 5,
+    "careShare": 0.0077777777777777776,
+    "lost": 0,
+    "cap": 5
+   },
+   "live": {
+    "cells": 58,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 16,
+   "combo": "A 빠름",
+   "fade": 2,
+   "free": 3,
+   "base": 2,
+   "daily": "3시간",
+   "grow": {
+    "cells": 1280,
+    "chunks": 5,
+    "careShare": 0.011620370370370371,
+    "lost": 0,
+    "cap": 5
+   },
+   "cheat": {
+    "cells": 1280,
+    "chunks": 5,
+    "careShare": 0.0025925925925925925,
+    "lost": 0,
+    "cap": 5
+   },
+   "live": {
+    "cells": 122,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 16,
+   "combo": "B 가운데(기본)",
+   "fade": 3,
+   "free": 7,
+   "base": 2,
+   "daily": "30분",
+   "grow": {
+    "cells": 3328,
+    "chunks": 13,
+    "careShare": 0.19972222222222222,
+    "lost": 0,
+    "cap": 13
+   },
+   "cheat": {
+    "cells": 3328,
+    "chunks": 13,
+    "careShare": 0.058888888888888886,
+    "lost": 0,
+    "cap": 13
+   },
+   "live": {
+    "cells": 38,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 16,
+   "combo": "B 가운데(기본)",
+   "fade": 3,
+   "free": 7,
+   "base": 2,
+   "daily": "1시간",
+   "grow": {
+    "cells": 3328,
+    "chunks": 13,
+    "careShare": 0.09986111111111111,
+    "lost": 0,
+    "cap": 13
+   },
+   "cheat": {
+    "cells": 3328,
+    "chunks": 13,
+    "careShare": 0.029444444444444443,
+    "lost": 0,
+    "cap": 13
+   },
+   "live": {
+    "cells": 58,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 16,
+   "combo": "B 가운데(기본)",
+   "fade": 3,
+   "free": 7,
+   "base": 2,
+   "daily": "3시간",
+   "grow": {
+    "cells": 3328,
+    "chunks": 13,
+    "careShare": 0.03328703703703704,
+    "lost": 0,
+    "cap": 13
+   },
+   "cheat": {
+    "cells": 3328,
+    "chunks": 13,
+    "careShare": 0.009814814814814814,
+    "lost": 0,
+    "cap": 13
+   },
+   "live": {
+    "cells": 122,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 16,
+   "combo": "C 느림",
+   "fade": 7,
+   "free": 14,
+   "base": 8,
+   "daily": "30분",
+   "grow": {
+    "cells": 15872,
+    "chunks": 62,
+    "careShare": 0.9627777777777777,
+    "lost": 79872,
+    "cap": 111
+   },
+   "cheat": {
+    "cells": 28416,
+    "chunks": 111,
+    "careShare": 0.45916666666666667,
+    "lost": 0,
+    "cap": 111
+   },
+   "live": {
+    "cells": 38,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 16,
+   "combo": "C 느림",
+   "fade": 7,
+   "free": 14,
+   "base": 8,
+   "daily": "1시간",
+   "grow": {
+    "cells": 28416,
+    "chunks": 111,
+    "careShare": 0.8348611111111112,
+    "lost": 28416,
+    "cap": 111
+   },
+   "cheat": {
+    "cells": 28416,
+    "chunks": 111,
+    "careShare": 0.23041666666666666,
+    "lost": 5888,
+    "cap": 111
+   },
+   "live": {
+    "cells": 58,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  },
+  {
+   "K": 16,
+   "combo": "C 느림",
+   "fade": 7,
+   "free": 14,
+   "base": 8,
+   "daily": "3시간",
+   "grow": {
+    "cells": 28416,
+    "chunks": 111,
+    "careShare": 0.27694444444444444,
+    "lost": 0,
+    "cap": 111
+   },
+   "cheat": {
+    "cells": 28416,
+    "chunks": 111,
+    "careShare": 0.07652777777777778,
+    "lost": 0,
+    "cap": 111
+   },
+   "live": {
+    "cells": 122,
+    "chunks": 1,
+    "careShare": 0,
+    "lost": 0
+   }
+  }
+ ],
+ "fence": [
+  {
+   "daily": "30분",
+   "cells": 17424,
+   "edge": 524
+  },
+  {
+   "daily": "1시간",
+   "cells": 69696,
+   "edge": 1052
+  },
+  {
+   "daily": "3시간",
+   "cells": 625681,
+   "edge": 3160
+  }
+ ],
+ "onePerDay": [
+  {
+   "K": 4,
+   "cells": 96,
+   "chunks": 6
+  },
+  {
+   "K": 8,
+   "cells": 384,
+   "chunks": 6
+  },
+  {
+   "K": 16,
+   "cells": 1536,
+   "chunks": 6
+  }
+ ],
+ "t1305": {
+  "A 빠름": [
+   136,
+   238,
+   715
+  ],
+  "B 가운데(기본)": [
+   529,
+   1059,
+   3196
+  ],
+  "C 느림": [
+   2256,
+   4538,
+   13683
+  ]
+ }
+}

@@ -261,11 +261,11 @@ function deleteMob(id) { stmtDeleteMob.run(id); }
   if (!_cc.includes('state'))    db.exec("ALTER TABLE claims ADD COLUMN state TEXT NOT NULL DEFAULT 'active'");
   if (!_cc.includes('held_by'))  db.exec('ALTER TABLE claims ADD COLUMN held_by TEXT');
   if (!_cc.includes('state_at')) db.exec('ALTER TABLE claims ADD COLUMN state_at INTEGER NOT NULL DEFAULT 0');
-  // ★[T1305] 돌봄 두 열 — 손본 날(주인이 접속한 날 수 누계 `care_n`) · 그 뒤 낡은 날 수(`care_w`). **켬 판에서만** 붙인다(끔 = 스키마 그대로 · 바이트 같음).
-  //   옛 행은 NULL — 첫 날 셈이 그날을 손본 날로 잡는다(`deeds.rewear` · 켜는 순간 줄지 않는다).
+  // ★[T1305 → ★T1332] 돌봄 = **청크 줄**(주인 · 청크 좌표 → 낡음 `w` · 마지막으로 잰 접속일 `n0`). **켬 판에서만** 만든다(끔 = 스키마 그대로 · 바이트 같음).
+  //   T1305 의 칸마다 두 열(`care_n` · `care_w`)은 안 쓴다 — 그 열을 쓰던 켬 판 DB 는 없다(라이브 끔 · 카드 T1332 ①).
+  //   청크 줄이 없는 내 칸(켜기 앞의 옛 칸)은 첫 날 셈이 그날을 돌본 날로 잡는다(`deeds.wear` · 켜는 순간 줄지 않는다).
   if (process.env.T1305_DEEDS === '1') {
-    if (!_cc.includes('care_n')) db.exec('ALTER TABLE claims ADD COLUMN care_n INTEGER');
-    if (!_cc.includes('care_w')) db.exec('ALTER TABLE claims ADD COLUMN care_w INTEGER');
+    db.exec('CREATE TABLE IF NOT EXISTS deed_chunks (owner_id TEXT NOT NULL, cx INTEGER NOT NULL, cy INTEGER NOT NULL, w REAL NOT NULL DEFAULT 0, n0 INTEGER, PRIMARY KEY (owner_id, cx, cy))');
   }
 }
 const stmtGetClaims = db.prepare('SELECT * FROM claims');
@@ -301,13 +301,14 @@ function updateClaimOwner(dbId, ownerId, ownerName, kind, state, heldBy, stateAt
     return true;
   } catch (e) { return false; }
 }
-// ★[T1305] 돌봄 칸 쓰기(켬 판에서만 불린다 — 열이 있을 때만 준비한다)
-let _stmtClaimCare = null;
-function updateClaimCare(dbId, careN, careW) {
-  if (!dbId) return false;
-  try { if (!_stmtClaimCare) _stmtClaimCare = db.prepare('UPDATE claims SET care_n = ?, care_w = ? WHERE id = ?'); _stmtClaimCare.run(careN == null ? null : careN | 0, careW == null ? null : careW | 0, dbId); return true; }
-  catch (e) { return false; }
+// ★[T1332] 돌봄 청크 줄(켬 판에서만 불린다 — 표가 있을 때만 준비한다)
+let _stmtDcAll = null, _stmtDcPut = null, _stmtDcDel = null;
+function getDeedChunks() { try { if (!_stmtDcAll) _stmtDcAll = db.prepare('SELECT * FROM deed_chunks'); return _stmtDcAll.all(); } catch (e) { return []; } }
+function saveDeedChunk(ownerId, cx, cy, w, n0) {
+  try { if (!_stmtDcPut) _stmtDcPut = db.prepare('INSERT INTO deed_chunks (owner_id, cx, cy, w, n0) VALUES (?, ?, ?, ?, ?) ON CONFLICT(owner_id, cx, cy) DO UPDATE SET w = excluded.w, n0 = excluded.n0');
+    _stmtDcPut.run(String(ownerId), cx | 0, cy | 0, +w || 0, n0 == null ? null : n0 | 0); return true; } catch (e) { return false; }
 }
+function deleteDeedChunk(ownerId, cx, cy) { try { if (!_stmtDcDel) _stmtDcDel = db.prepare('DELETE FROM deed_chunks WHERE owner_id = ? AND cx = ? AND cy = ?'); _stmtDcDel.run(String(ownerId), cx | 0, cy | 0); return true; } catch (e) { return false; } }
 function deleteClaim(dbId) { if (!dbId) return false; try { stmtDeleteClaim.run(dbId); return true; } catch (e) { return false; } }
 
 // === harvested_seeds (procedural 자원 채집 기록) ===
@@ -848,7 +849,7 @@ module.exports = {
   getResources, insertResource, updateResourceHp, deleteResource,
   getBuildings, getBuildingsInRect, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
-  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim, updateClaimCare,   // ★[T45] 사유지 v2 — 종류·상태기 영속
+  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim, getDeedChunks, saveDeedChunk, deleteDeedChunk,   // ★[T45] 사유지 v2 — 종류·상태기 영속
   insertHarvestedSeed, getAllHarvestedSeeds, promoteHarvestedDays, deleteHarvestedSeed,   // ★[T341] 재생 — 벤 기록을 지우는 문
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   upsertFishCell, getAllFishCells, deleteFishCell,

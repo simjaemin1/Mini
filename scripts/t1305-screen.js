@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 'use strict';
 // (@regress 없음 — 러너 밖 · T1305 화면 판 · 실클라 · 판정 0)
-// === scripts/t1305-screen.js — 사유지 돌봄 켬 판의 화면: 숫자 상한 문구 0 · 흐린 경계 · 손보기 단추 ===========================
+// === scripts/t1305-screen.js — 사유지 돌봄 켬 판의 화면(★T1332 청크 · 쓰면 저절로): 숫자 상한 문구 0 · 흐린 경계 · 머묾 돌봄 ===========================
 //   central + 존(`T1305_DEEDS=1` · 하루를 4초로 줄인 시험 손잡이 `T1305_DAY_MS` — 값 무변 · 마을 끔 = 빈 들)을 띄우고 실클라로:
-//   ① C 로 첫 칸(재료는 `__e2e_give` · 걷기 키는 화면 대각이라 여러 칸 · 변 맞댐은 서버 하네스 `test-claim-v2` ⑨ 몫) ② 사유지 패널(Y) 문구 — "개인 n칸" · "/9" 없음 · 손보기 단추
-//   ③ 날이 지나 칸이 흐려진다(클라가 받은 `care` = fade) · 그 칸 둘레 화소가 새것보다 옅다(같은 자리 두 장 견줌)
-//   ④ 패널 손보기 단추 → 몸 시간 뒤 새것 · 짐 그대로(재료 0)
+//   ① C 로 첫 칸(재료는 `__e2e_give` · 변 맞댐은 서버 하네스 `test-claim-v2` ⑨ 몫) ② 사유지 패널(Y) 문구 — "개인 n칸 · 땅덩이 n" · "/9" 없음 · 손보기 단추 0 · 머묾 안내
+//   ③ 청크 밖으로 걸어 나가 날이 지나면 칸이 흐려진다(클라가 받은 `care` = fade — 그 청크의 단계)
+//   ④ 걸어 돌아와 머물면(머묾 2초 — 시험 값) 새것 · 짐 그대로(재료 0) · 단추 0
 //   node scripts/t1305-screen.js
 const path = require('path');
 const fs = require('fs');
@@ -27,12 +27,12 @@ function boot(name, file, env) {
   procs.push(p); return p;
 }
 (async () => {
-  console.log('\n=== T1305 화면 판 — 사유지 돌봄 켬(실클라) ===');
+  console.log('\n=== T1305 · T1332 화면 판 — 사유지 돌봄 켬(청크 · 실클라) ===');
   const c0 = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   const cUp = FB.waitUp(c0, /central server up on/, { name: 'central' });
   const z0 = boot('zone', 'zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1',
-    T1305_DEEDS: '1', T1305_DAY_MS: '4000', T1305_TICK_MS: '10000', T1305_CARE_S: '2' });
+    T1305_DEEDS: '1', T1305_DAY_MS: '4000', T1305_TICK_MS: '10000', T1305_CARE_S: '2', T1332_CHUNK: '4' });   // ★[T1332] 청크 4칸(걸어 나가기 짧게) · 머묾 2초
   const zUp = FB.waitUp(z0, /zone server up on/, { name: 'zone', capMs: 300000 });
   ok((await cUp).ok && (await zUp).ok, '[상황] central · 존(켬) 기동');
   for (let i = 0; i < 120; i++) { try { const z = await (await fetch(`http://localhost:${CPORT}/zones`)).json(); const h = (z.zones || {}).hanbando || {}; if (h.population != null && h.cap) break; } catch (e) {} await sleep(1000); }
@@ -58,30 +58,31 @@ function boot(name, file, env) {
   // ② 패널 문구
   await page.keyboard.press('y'); await sleep(1200);
   const txt = await page.evaluate(() => (document.getElementById('spBody') || {}).innerText || '');
-  ok(/개인 \d+칸/.test(txt) && !/\/\s*9/.test(txt), '② 사유지 패널 — "개인 n칸"(숫자 상한 문구 0)', txt.split('\n')[0]);
-  ok(/손보기/.test(txt) && /흐려지고/.test(txt), '② 패널 — 손보기 단추 · 낡음 안내 줄', '');
+  ok(/개인 \d+칸 · 땅덩이 1/.test(txt) && !/\/\s*9/.test(txt), '② 사유지 패널 — "개인 n칸 · 땅덩이 1"(숫자 상한 문구 0)', txt.split('\n')[0]);
+  ok(!(await page.$('[data-care]')) && /머물면/.test(txt) && /넓을수록 빨리 낡습니다/.test(txt), '② 패널 — 손보기 단추 0 · 쓰기 · 머묾 · 넓을수록 빨리 낡음 안내', '');
+  await page.keyboard.press('y'); await sleep(400);
   await page.screenshot({ path: `${SHOTS}/1-new.png` });
-  // ③ 날이 지나 흐려진다(하루 4초 · 틱 10초 — 흐림 날 수만큼 틱)
+  // ③ 청크 밖으로 걸어 나가(머묾이 안 걸리게) 날이 지나면 흐려진다(하루 4초 · 틱 10초 — 흐림 날 수만큼 틱)
+  const hold = async (k, ms) => { await page.keyboard.down(k); await sleep(ms); await page.keyboard.up(k); await sleep(300); };
+  const p0 = await page.evaluate(() => window.__getMyAbs());
+  let p1 = p0, held = 0;   // 청크 둘 너비(4칸 × 2)를 넘을 때까지 걷는다(걷는 빠르기는 땅에 따라 다르다 — 시간 대신 자리로)
+  while (held < 30000 && Math.max(Math.abs(p1.x - p0.x), Math.abs(p1.y - p0.y)) <= 2 * 4 * 32) { await hold('d', 1000); held += 1000; p1 = await page.evaluate(() => window.__getMyAbs()); }
+  ok(Math.max(Math.abs(p1.x - p0.x), Math.abs(p1.y - p0.y)) > 2 * 4 * 32, '[상황] 걸어서 청크 밖으로 나갔다', `${Math.round(Math.hypot(p1.x - p0.x, p1.y - p0.y))}px · ${held / 1000}초`);
   const t0 = Date.now(); let fadeSeen = null;
   while (Date.now() - t0 < 120000) { const mm = await mine(); const f = mm.find((c) => c.care === 'fade'); if (f) { fadeSeen = f; break; } await sleep(2000); }
   ok(!!fadeSeen, '③ 안 돌본 칸이 흐려진다(클라가 받은 `care = fade`)', fadeSeen ? `${Math.round((Date.now() - t0) / 1000)}초` : '120초 안에 없음');
   await page.screenshot({ path: `${SHOTS}/2-fade.png` });
-  // ④ 패널 손보기 — 몸 시간 뒤 새것 · 짐 그대로(서 있는 칸 = 마지막 칸)
+  // ④ 걸어 돌아와 머문다(머묾 2초 · 재는 간격 1초) — 손보기 단추 없이 그 청크가 새것 · 짐 그대로
   const inv1 = await page.evaluate(() => JSON.stringify(window.__getInv && window.__getInv()));
-  await page.keyboard.press('y'); await sleep(400); await page.keyboard.press('y'); await sleep(1000);
-  const btn = await page.$('[data-care]');
-  const target = btn ? await btn.getAttribute('data-care') : null;
-  const all = await mine(); const me = await page.evaluate(() => window.__getMyAbs());
-  const near = all.filter((c) => c.state !== 'free').sort((a, b) => Math.hypot(a.wx + a.w / 2 - me.x, a.wy + a.h / 2 - me.y) - Math.hypot(b.wx + b.w / 2 - me.x, b.wy + b.h / 2 - me.y))[0];
-  if (near) await send({ type: 'claim_care', claimId: near.id });
-  await sleep(3500);
-  const after = (await mine()).find((c) => near && c.id === near.id);
+  await hold('a', held);   // 같은 시간만큼 되돌아 걷는다(땅이 같으니 같은 자리 — 아래 ④ 가 그 청크의 단계로 잰다)
+  let after = null; const t1 = Date.now();
+  while (Date.now() - t1 < 20000) { const mm = await mine(); after = mm.find((c) => fadeSeen && c.id === fadeSeen.id); if (after && after.care === 'new') break; await sleep(1000); }
   const inv2 = await page.evaluate(() => JSON.stringify(window.__getInv && window.__getInv()));
-  ok(!!near && after && after.care === 'new', '④ 손보기 → 몸 시간(2초) 뒤 그 칸이 새것', (after ? `${near.id} care=${after.care}` : '칸 없음') + ` · 알림 ${(await page.evaluate(() => (window.__notices || []).slice(-2).join(' / ')))}`);
-  ok(inv1 === inv2, '④ 손보기 재료 0(짐 그대로)', '');
-  ok(!!target, '④ 패널에 손보기 단추가 칸마다 선다', target || '');
+  ok(!!after && after.care === 'new', '④ 돌아와 머물면 그 청크가 새것(손보기 단추 0)', (after ? `${after.id} care=${after.care} · ${Math.round((Date.now() - t1) / 1000)}초` : '칸 없음'));
+  await page.screenshot({ path: `${SHOTS}/3-dwell.png` });
+  ok(inv1 === inv2, '④ 머묾 재료 0(짐 그대로)', '');
   ok(perrs.length === 0, '페이지 오류 0', perrs.slice(0, 2).join(' | '));
-  console.log(`\n=== T1305 화면 판: ${pass} 통과 / ${fail} 실패 === (그림 ${SHOTS})`);
+  console.log(`\n=== T1305 · T1332 화면 판: ${pass} 통과 / ${fail} 실패 === (그림 ${SHOTS})`);
   try { await browser.close(); } catch (e) {}
   for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
   for (const f of [CDB, ZDB]) for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} }
