@@ -1,0 +1,81 @@
+== day(phase .10±): steps 969878 · 결정문 열림 4.0% · 무동작(관측칸만) 0.0% · 시각칸만 61.2% (그중 안 움직임 61.2%) · 그 밖 34.8% · 지난 걸음 뒤 움직임 35.8% · 속도0 64.2%
+   farmer       n 490268 열림   4.0% 무동작   0.0% 시각만  54.2% 그밖  41.8%
+   hunter       n 143883 열림   4.0% 무동작   0.0% 시각만  88.2% 그밖   7.8%
+   forager      n 138554 열림   4.0% 무동작   0.0% 시각만  29.0% 그밖  67.0%
+   fisher       n  90593 열림   4.0% 무동작   0.0% 시각만  78.5% 그밖  17.6%
+   mason        n  47961 열림   4.0% 무동작   0.0% 시각만  93.8% 그밖   2.2%
+   lumberjack   n  15987 열림   4.0% 무동작   0.0% 시각만  26.5% 그밖  69.5%
+   tailor       n  15987 열림   4.0% 무동작   0.0% 시각만  92.8% 그밖   3.2%
+   smith        n  10658 열림   3.9% 무동작   0.0% 시각만  96.1% 그밖   0.0%
+   miner        n   5329 열림   4.1% 무동작   0.0% 시각만  95.9% 그밖   0.0%
+   armorsmith   n   5329 열림   4.0% 무동작   0.0% 시각만  90.8% 그밖   5.2%
+   warrior      n   5329 열림   3.9% 무동작   0.0% 시각만  92.7% 그밖   3.3%
+   막는 쓰기(그 밖 갈래 키 묶음) 상위:
+      20.3%  vx,vy
+      11.9%  _stuckPos.x,_stuckPos.y,vx,vy
+       0.8%  vx
+       0.4%  _stuckPos.x,_stuckPos.y,vx
+       0.4%  vy
+       0.3%  _stuckPos.x,_stuckPos.y
+       0.3%  pathIndex,vx,vy
+       0.2%  _stuckPos.x,_stuckPos.y,vy
+       0.2%  _stuckPos.x,_stuckPos.y,pathIndex,vx,vy
+       0.1%  _t791P,path,vx,vy
+       0.0%  _stuckPos.x,_stuckPos.y,_t791P,path,vx,vy
+       0.0%  pathIndex
+       0.0%  _stuckPos.x,_stuckPos.y,pathIndex
+       0.0%  _stuckPos.y,vx
+== night(phase .70+): steps 1033912 · 결정문 열림 3.6% · 무동작(관측칸만) 0.0% · 시각칸만 81.8% (그중 안 움직임 81.8%) · 그 밖 14.6% · 지난 걸음 뒤 움직임 15.0% · 속도0 85.0%
+   farmer       n 522634 열림   3.6% 무동작   0.0% 시각만  80.4% 그밖  16.1%
+   hunter       n 153387 열림   3.6% 무동작   0.0% 시각만  84.7% 그밖  11.7%
+   forager      n 147701 열림   3.6% 무동작   0.0% 시각만  75.4% 그밖  21.0%
+   fisher       n  96573 열림   3.5% 무동작   0.1% 시각만  81.6% 그밖  14.8%
+   mason        n  51128 열림   3.6% 무동작   0.0% 시각만  92.4% 그밖   4.0%
+   lumberjack   n  17043 열림   3.5% 무동작   0.0% 시각만  96.2% 그밖   0.3%
+   tailor       n  17042 열림   3.5% 무동작   0.0% 시각만  92.5% 그밖   4.0%
+   smith        n  11362 열림   3.5% 무동작   0.0% 시각만  91.2% 그밖   5.3%
+   miner        n   5681 열림   3.7% 무동작   0.0% 시각만  96.3% 그밖   0.0%
+   armorsmith   n   5681 열림   3.6% 무동작   0.0% 시각만  89.7% 그밖   6.7%
+   warrior      n   5680 열림   3.5% 무동작   0.0% 시각만  92.2% 그밖   4.4%
+   막는 쓰기(그 밖 갈래 키 묶음) 상위:
+       8.6%  vx,vy
+       4.5%  _stuckPos.x,_stuckPos.y,vx,vy
+       0.5%  vx
+       0.3%  _stuckPos.x,_stuckPos.y,vx
+       0.2%  vy
+       0.1%  _stuckPos.x,_stuckPos.y,vy
+       0.1%  _stuckPos.x,_stuckPos.y
+       0.1%  pathIndex,vx,vy
+       0.0%  _stuckPos.x,_stuckPos.y,pathIndex,vx,vy
+       0.0%  _t791P,path,vx,vy
+       0.0%  _stuckPos.x,_stuckPos.y,_t791P,path,vx,vy
+       0.0%  _stuckPos.y,vx
+       0.0%  _pathFor,_t670Tk,_t670TkX,_t670TkY,_t791P,_t791Px,_t791Py,path,pathIndex,targetX,targetY,vx,vy
+       0.0%  _stuckPos.x,vy
+== all: steps 5599776 · 결정문 열림 3.9% · 무동작(관측칸만) 0.0% · 시각칸만 66.5% (그중 안 움직임 66.5%) · 그 밖 29.6% · 지난 걸음 뒤 움직임 30.4% · 속도0 69.6%
+   farmer       n2830656 열림   3.9% 무동작   0.1% 시각만  60.3% 그밖  35.8%
+   hunter       n 830736 열림   3.9% 무동작   0.0% 시각만  90.5% 그밖   5.7%
+   forager      n 799968 열림   3.9% 무동작   0.0% 시각만  37.5% 그밖  58.6%
+   fisher       n 523056 열림   3.9% 무동작   0.0% 시각만  82.9% 그밖  13.2%
+   mason        n 276912 열림   3.9% 무동작   0.0% 시각만  93.8% 그밖   2.3%
+   lumberjack   n  92304 열림   3.9% 무동작   0.0% 시각만  47.8% 그밖  48.3%
+   tailor       n  92304 열림   3.8% 무동작   0.0% 시각만  94.6% 그밖   1.6%
+   smith        n  61536 열림   3.8% 무동작   0.0% 시각만  92.4% 그밖   3.7%
+   miner        n  30768 열림   3.9% 무동작   0.0% 시각만  93.9% 그밖   2.2%
+   armorsmith   n  30768 열림   3.9% 무동작   0.0% 시각만  93.0% 그밖   3.1%
+   warrior      n  30768 열림   3.8% 무동작   0.0% 시각만  94.1% 그밖   2.1%
+   막는 쓰기(그 밖 갈래 키 묶음) 상위:
+      17.4%  vx,vy
+       9.9%  _stuckPos.x,_stuckPos.y,vx,vy
+       0.7%  vx
+       0.3%  _stuckPos.x,_stuckPos.y,vx
+       0.3%  vy
+       0.2%  _stuckPos.x,_stuckPos.y
+       0.2%  pathIndex,vx,vy
+       0.2%  _stuckPos.x,_stuckPos.y,vy
+       0.2%  _stuckPos.x,_stuckPos.y,pathIndex,vx,vy
+       0.1%  _t791P,path,vx,vy
+       0.0%  _stuckPos.x,_stuckPos.y,_t791P,path,vx,vy
+       0.0%  _stuckPos.y,vx
+       0.0%  pathIndex
+       0.0%  _stuckPos.x,_stuckPos.y,pathIndex

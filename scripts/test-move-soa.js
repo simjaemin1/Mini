@@ -114,7 +114,8 @@ const body = (name) => {
 };
 // ★[T1145] 열 손잡이 — 아래 절들이 뜬 제품 글자가 읽는 이름(`BC` · `T1145_XY_COLS` · `_xyC` · `_xyX` · `_xyY`)을 제품 모듈 · 제품 글자 그대로 싣는다(사본 0 · 손잡이는 이 프로세스 env `T1145_XY_COLS`)
 globalThis.__T1145BC = require(path.join(ROOT, 'server', 'body-cols.js'));
-const T1145P = 'const BC = globalThis.__T1145BC, T1145_XY_COLS = BC.ON, _xyC = BC.C;\n' + body('_xyX') + '\n' + body('_xyY') + '\n';
+//   ★[T1322] 같은 머리에 첫 거름 손잡이 이름(`T1322_PF` 끔 · `_t1322Touch` 무동작) — 걸음 뒷일 · 밀기 글자의 표 내리기 줄이 묻는 이름
+const T1145P = 'const BC = globalThis.__T1145BC, T1145_XY_COLS = BC.ON, _xyC = BC.C;\nconst T1322_PF = false; function _t1322Touch() {}\n' + body('_xyX') + '\n' + body('_xyY') + '\n';
 
 console.log('\n③ 남은 할당 — 걸음 하나의 계수(T340 자를 그대로 다시 댄다)');
 {
