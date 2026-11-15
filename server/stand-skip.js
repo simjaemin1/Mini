@@ -1,6 +1,6 @@
 // === server/stand-skip.js — 서 있는 몸 첫 거름 열 (T1322 · 2026-11-15) ======================================================
 //
-// ★손잡이 `T1322_PREFILTER` — `'1'` 켬 · `'verify'` 켬 + 거를 때마다 몸을 열어 견줌 · 그 밖(없음 포함) 끔.
+// ★손잡이 `T1322_PREFILTER` — ★[T1323 · 재민 11-15 "켜"] **켬 기본** · `'0'` 끔(되돌림) · `'verify'` 켬 + 거를 때마다 몸을 열어 견줌.
 //   끔이면 이 모듈은 아무것도 안 만든다(`ON` 거짓 — 존이 부르는 자리가 전부 `T1322_PF` 뒤 = 종전 글자 · 종전 값).
 // ★무엇 — 결정 문 고리(`_decOne`)가 몸 객체를 **열기 전에** 열만 보고 "이번 틱 걸음 문이 도장만 찍는 몸"을 건넌다.
 //   ⓐ 몸 번호 = 칸 — 존 `spawnNpc` 가 낳을 때 받는다(`install` · pid → 칸 `Map` · 몸 칸은 안 붙인다 = 몸 모양 · 키 차례 그대로).
@@ -12,7 +12,7 @@
 //   전제를 깨는 쓰기(밀기 · 걸음 뒷일 · 체력 문 · 생활층 대피 · 직업 바꿈)는 쓰기 **앞에서** 표를 내린다(존 `_t1322Touch` · 생활층은 deps `t1322Touch`). 나머지는 `verify` 가 센다(거를 때마다 몸을 열어 걸음 문 머리 글자 그대로 다시 판정).
 'use strict';
 const MODE = (typeof process !== 'undefined' && process.env && process.env.T1322_PREFILTER || '').trim();
-const ON = MODE === '1' || MODE === 'verify', VERIFY = MODE === 'verify';
+const ON = MODE !== '0', VERIFY = MODE === 'verify';   // ★[T1323] 켬 기본(`'0'` 만 끔 · 종전 `'1'` 도 켬)
 const A = { TK: new Uint8Array(0), W95: new Uint8Array(0), VT: new Int32Array(0), NDA: new Float64Array(0), LON: new Float64Array(0), SK: new Float64Array(0), SX: new Float64Array(0), SY: new Float64Array(0) };
 const own = [];          // 칸 → 몸(빈 칸 = null)
 const slotOf = new Map();   // pid → 칸
