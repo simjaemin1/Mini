@@ -1964,8 +1964,13 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
   // 이동 문 — 정본 글자 · NPC 로만 부른다(입력 없음)
   const mkMove = (W) => new Function('isTerrainBlockedLocal', 'isBlockedByWall', 'isBlockedByTree', 'treeBlockerAt', 'isInIceBand', 'Roads', 'clamp', 'ZONE',
     'MOVE_SPEED', 'moveDt', '_walk', 'buildings', 'MoveModel', 'MOVE_PARAMS', 'findZoneAt', 'ZONE_ID', 'fireHandoff', 'HANDOFF_COMMIT', '_streamWalkMul',
+    //   ★[T1324 2026-11-16] 이동 문이 존 맨 위 이름 `T1324_BAND_TERRAIN` · `_t1324PBlk`(사람 겹침 띠 땅 — `'1'` 만 켬 · 끔 기본)를 읽는다 — 이 판에 그 이름이 없어
+    //     ReferenceError(전수 가지 머리 첫 판). 제품 기본 끔 갈래(끔 = 종전 술어 `isTerrainBlockedLocal` 그대로 · 이 판은 NPC 로만 부른다 — 켬이어도 NPC 는 종전 술어) ·
+    //     켬 판은 `e2e-zone-cross`(T1324_BAND_TERRAIN=1) · `scripts/t1324-band-check.js` 가 잰다(이 판 모의 세계엔 이웃 존 땅이 없다)
+    'T1324_BAND_TERRAIN', '_t1324PBlk',
     MV + '\nreturn movePlayerStep;')(terr, (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy), treeFast, null, iceBand, Roads, clamp, ZONE,
-    64, 1 / 30, W, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1);   // ★[T585] 개울 걸음 배율 — 이 판엔 개울이 없다(×1 · 커널 앞문과 같은 수)
+    64, 1 / 30, W, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1,   // ★[T585] 개울 걸음 배율 — 이 판엔 개울이 없다(×1 · 커널 앞문과 같은 수)
+    false, null);
   // 커널 — 제품 껍데기 · 제품 앞문/뒷문 글자
   const WW = require(path.join(ROOT, 'server', 'walk-wasm.js')).create({ zw: ZW, zh: ZH, iceN: true, iceS: true, iceBand: ICE, speed: 64,
     terrMiss: (x, y) => terr0(x, y), wallQ: (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy) });
@@ -2085,8 +2090,9 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
       const WA = mkWalk(), WB = mkWalk(), WC = mkWalk();
       const moveA = new Function('isTerrainBlockedLocal', 'isBlockedByWall', 'isBlockedByTree', 'treeBlockerAt', 'isInIceBand', 'Roads', 'clamp', 'ZONE',
         'MOVE_SPEED', 'moveDt', '_walk', 'buildings', 'MoveModel', 'MOVE_PARAMS', 'findZoneAt', 'ZONE_ID', 'fireHandoff', 'HANDOFF_COMMIT', '_streamWalkMul',
+        'T1324_BAND_TERRAIN', '_t1324PBlk',   // ★[T1324] 사람 겹침 띠 땅 — 제품 기본 끔 갈래(위 `mkMove` 와 같다)
         MV + '\nreturn movePlayerStep;')(terr, (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy), treeX, null, iceBand, Roads, clamp, ZONE,
-        64, 1 / 30, WA, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1);
+        64, 1 / 30, WA, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1, false, null);
       const A = mkNpcs(N, 999 + N), B = mkNpcs(N, 999 + N), C = mkNpcs(N, 999 + N);
       colOn(A, B, C);
       const fB = mkCut(new Map(B.map((p) => [p.pid, p])), WB, R, mkWW(), true, opt.still), fC = mkCut(new Map(C.map((p) => [p.pid, p])), WC, R, mkWW(), false);
