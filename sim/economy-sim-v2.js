@@ -914,7 +914,8 @@ function _targetV2(v, r, ctx) {
   //     기근 신호이고 교역을 부른다. 거기에 "구할 수 있는 만큼만 원해라"를 걸면 흉년에
   //     가격이 안 올라 캐러밴이 식량을 안 옮긴다(실측: 삼림 마을 식량가격이 1000 으로 튀며 기근).
   //     제한은 **없어도 죽지 않는 것들**(위신재·잡화 롱테일)에만 건다.
-  if (_ws && !SUBSISTENCE_PER_NPC[r] && CAP_TARGET[r] === undefined && !VARIETY_FOOD[r]) {
+  //   ★[T1333 ④ 실험 · 끔 기본] 생산 투입재(원석 · 합금 재료)는 인구 몫 상한 밖 — 수요가 사람 수가 아니라 노 · 주조 한 곳에 몰린다(판정 v1 `t1333WsFree` · 끔 = 이 항 거짓 = 종전).
+  if (_ws && !SUBSISTENCE_PER_NPC[r] && CAP_TARGET[r] === undefined && !VARIETY_FOOD[r] && !(v1.t1333WsFree && v1.t1333WsFree(r))) {
     target = Math.min(target, Math.max(0.2, _ws.stock * (N / _ws.pop) * EFFDEM_SHARE));
   }
   // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.

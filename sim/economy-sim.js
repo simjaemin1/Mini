@@ -6150,8 +6150,14 @@ const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && proc
 //     한 번 주조의 이윤(같은 탐색 · 재료는 기회비용 `_oppPrice`)이 양수면 주조한다 — 주석을 든 구리 마을이 무기를 만들어 내보내는 쪽(PM 카드 ⓑ).
 //     무기장 자리(`smithTarget` 의 수출 대장장이)도 같은 판정이 서면 선다(종전 문 구리 > 3N 은 판에서 안 섰다) — 주조가 돌면 그 마을 주석 흐름 목표가 서서
 //     주석이 구리 마을로 온다(캐러밴 무변 — 값 차만).
+//   ④ `T1333_WS_INPUT`(끔 기본 · 실험 — T1313 회부 2) **생산 투입재는 인구 몫 상한 밖** — 원석(광종마다)과 합금 재료(`_MELT_METALS`)의 값표 목표를
+//     v2 세계 몫 상한(세계 공급 × 내 인구 몫 × 1.5 · 바닥 0.2)에서 뺀다(생존재 · 자본재 · 다양성 식품이 빠지는 그 줄에 한 항).
+//     상한은 "없어도 죽지 않는 것들(위신재 · 잡화 롱테일)"을 인구 비례로 묶으려던 줄인데, 녹이는 원석 · 붓는 금속의 수요는 사람 수가 아니라
+//     노 · 주조 한 곳에 몰린다 — 주석은 녹이는 마을-날 96 · 78 % 가 바닥이었고(T1313 §1), 합금 발주(ⓐ)의 구리도 3.42 → 0.2 ~ 0.6 으로 깎였다(T1333 서버 자 판).
 const T1333_ALLOY_ORDER = (typeof process !== 'undefined' && process.env && process.env.T1333_ALLOY_ORDER === '1');
 const T1333_EXPORT_CAST = (typeof process !== 'undefined' && process.env && process.env.T1333_EXPORT_CAST === '1');
+const T1333_WS_INPUT = (typeof process !== 'undefined' && process.env && process.env.T1333_WS_INPUT === '1');
+function t1333WsFree(r) { return !!(T1333_WS_INPUT && (r === 'ore' || OreGoods.isOre(r) || _MELT_METALS.includes(r))); }   // v2 상한 줄이 부른다(판정은 여기 하나)
 function _t1333ExportCast(v) {
   const nef = (v && v._world && typeof v._world.netExportFn === 'function') ? v._world.netExportFn : null;
   if (!nef) return false;
@@ -7846,6 +7852,7 @@ module.exports = {
   oreMixOf, foldOreMix, _trySmelt, smeltTarget,
   derivedInputTarget,   // ★[2026-08-02f ①-2] 구리 파생 투입수요 — v2 가 가격 target 에 얹는다(단일 진실)
   T1333_ALLOY_ORDER, T1333_EXPORT_CAST, COPPER_DERIV_ON, _t1333ExportCast,   // ★[T1333] 합금 발주 · 수출 주조 손잡이(끔 기본) · 구리 파생 손잡이(읽기) · 수출 주조 판정(하네스가 정본을 직접 부른다)
+  T1333_WS_INPUT, t1333WsFree,   // ★[T1333 ④] 생산 투입재 인구 몫 상한 밖(실험 · 끔 기본) — v2 상한 줄이 부른다
   // ★[2026-08-03a ⑰] 국고 현금 배선 — 하네스가 **산술을 직접 재게** 노출한다(상수 복제 금지).
   //   `_treasuryTopUp` 은 실제 함수 그대로여야 검사가 그 코드를 밟는다(모형을 검사하면 의미가 없다).
   _treasuryTopUp, RESERVE_PC, _matPrice, expandCost,

@@ -13,7 +13,8 @@
 //      주조 문 · 무기장 자리 문이 같은 판정 함수를 부른다(글자) · 끔이면 두 문 다 종전 글자
 //   ⑦ 미끼(사본 — 정본 파일 무변 · 한 줄만 바꿔 싣는다) — 각각 빨강:
 //      `outside`(합금 재료 표 밖 재료에도 1회 주조분 발주) · `addflow`(합금 발주를 흐름 목표에 더함 — 두 번 셈) · `market`(문을 시장가로 봄 — 값이 오르면 발주가 꺼지는 자기 꼬리 물기) ·
-//      `expfree`(수출 주조가 이윤을 안 보고 무기 값만 보면 참)
+//      `expfree`(수출 주조가 이윤을 안 보고 무기 값만 보면 참) · `wsall`(상한 밖을 모든 재화로)
+//   ⑧ 생산 투입재 인구 몫 상한(실험 ④ `T1333_WS_INPUT` · 끔 기본) — 원석 · 합금 재료만 세계 몫 상한 밖 · 그 밖 재화(숯 · 철 · 무기 · 식량)는 그대로 · 상한 줄 한 자리
 //
 // 실행: node scripts/test-t1333-alloy-order.js
 'use strict';
@@ -26,8 +27,9 @@ const ARM = process.env.T1333_HARNESS_ARM || '', MUT = process.env.T1333_MUTANT 
 
 // ── 아이 판: 손잡이를 고른 채 정본을 싣고 잰 수를 JSON 한 줄로 낸다 ─────────────────────────────
 if (ARM) {
-  for (const k of ['T1333_ALLOY_ORDER', 'T1333_EXPORT_CAST', 'COPPER_DERIV', 'COPPER_DERIV_DAYS']) delete process.env[k];
-  if (ARM === 'alloy') process.env.T1333_ALLOY_ORDER = '1';
+  for (const k of ['T1333_ALLOY_ORDER', 'T1333_EXPORT_CAST', 'T1333_WS_INPUT', 'COPPER_DERIV', 'COPPER_DERIV_DAYS']) delete process.env[k];
+  if (ARM === 'alloy' || ARM === 'aws') process.env.T1333_ALLOY_ORDER = '1';
+  if (ARM === 'ws' || ARM === 'aws') process.env.T1333_WS_INPUT = '1';
   if (ARM === 'export') process.env.T1333_EXPORT_CAST = '1';
   if (ARM === 'cuderiv') process.env.COPPER_DERIV = '1';
   process.env.ENABLE_VILLAGES = '0';
@@ -40,6 +42,7 @@ if (ARM) {
         'target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT + (v1.T1333_ALLOY_ORDER && derivT > 0 ? flowT : 0));\n    // ★식량 다양성'],
       market: ['sim/economy-sim.js', "  const basePrice = (k) => (BASE_VALUE[k] > 0 ? BASE_VALUE[k] : 1);\n  const best = _meltSearch(stHypo, basePrice);", '  const basePrice = (k) => ((v._priceCache && v._priceCache[k] > 0) ? v._priceCache[k] : (BASE_VALUE[k] > 0 ? BASE_VALUE[k] : 1));\n  const best = _meltSearch(stHypo, basePrice);'],   // 그날 값표(시장가)로 문을 본다
       expfree: ['sim/economy-sim.js', '  return !!(best && best.score > 0);\n}', '  return !!best;\n}'],
+      wsall: ['sim/economy-sim.js', "function t1333WsFree(r) { return !!(T1333_WS_INPUT && (r === 'ore' || OreGoods.isOre(r) || _MELT_METALS.includes(r))); }", 'function t1333WsFree(r) { return !!T1333_WS_INPUT; }'],   // 모든 재화를 상한 밖으로
     }[MUT];
     assert(R, '미끼 모름 ' + MUT);
     M._extensions['.js'] = function (m, f) {
@@ -93,6 +96,16 @@ if (ARM) {
     bronze12: ex({ copper: 5, tin: 5 }, 12), bronze0: ex({ copper: 5, tin: 5 }, 0), noNef: ex({ copper: 5, tin: 5 }, 12, {}),
     noCu: ex({ tin: 5 }, 12), pureCu12: ex({ copper: 5 }, 12), pureCu60: ex({ copper: 5 }, 60),
   };
+  // ⑧ 생산 투입재 인구 몫 상한(실험 ④) — 세계 공급이 얇은 판(구리 1 · 주석 원석 2 · 숯 2): 주석 마을 a2 의 구리 발주 · 주석 원석 녹임 흐름 · 숯 흐름 목표
+  const w2 = V2.createWorldV2({ seed: 42, villageCount: 3, infoRange: 5000 }), [a2, b2, c2] = w2.villages;
+  for (const v of [a2, b2, c2]) { v.counts = Object.assign(v.counts || {}, { smith: 2, mason: 1 }); v._weapQ = 0.5; v._consEMA = {}; v.dailyProductionBuf = {}; }
+  for (const v of [a2, b2, c2]) for (const k of ['copper', 'tin', 'ore_tin', 'charcoal']) v.storage[k] = 0;
+  a2.storage.tin = 5; b2.storage.copper = 1; b2.storage.ore_tin = 2; b2.storage.charcoal = 2; a2._consEMA = { ore_tin: 0.5, charcoal: 0.5 };
+  w2.day = 2;
+  const T2 = (r) => { const T = V2._targetV2(a2, r, V2._targetCtxV2(a2)); return T ? r6(T.target) : null; };
+  const pop2 = w2.villages.reduce((n, v) => n + v.npcs.length, 0), N2 = a2.npcs.length;
+  V.ws = { cu: T2('copper'), ore: T2('ore_tin'), lea: T2('charcoal'), dCu: r6(E.derivedInputTarget(a2, 'copper')), capCu: r6(Math.max(0.2, 1 * (N2 / pop2) * 1.5)), capOre: r6(Math.max(0.2, 2 * (N2 / pop2) * 1.5)),
+    free: ['ore_tin', 'ore_copper', 'ore', 'copper', 'tin', 'lead', 'silver', 'gold', 'charcoal', 'iron', 'weapon', 'food'].map((r) => [r, !!E.t1333WsFree(r)]), knob: E.T1333_WS_INPUT };
   const SRC = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
   const smithT = SRC.slice(SRC.indexOf('function smithTarget(v)'), SRC.indexOf('function warriorTarget(v)'));
   const G = {
@@ -101,7 +114,9 @@ if (ARM) {
     oneFn: (SRC.match(/function _t1333ExportCast\(v\)/g) || []).length, oneDeriv: (SRC.match(/function _alloyDeriv\(v, r\)/g) || []).length,
     derivCalls: (SRC.match(/return _alloyDeriv\(v, (?:r|'copper')\);/g) || []).length,
   };
-  process.stdout.write(JSON.stringify({ knobs: { alloy: E.T1333_ALLOY_ORDER, exp: E.T1333_EXPORT_CAST, cd: E.COPPER_DERIV_ON }, D, X, V, XC, G, MELT: E._MELT_TOTAL }) + '\n');
+  const V2S = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
+  G.wsLine = (V2S.match(/&& !VARIETY_FOOD\[r\] && !\(v1\.t1333WsFree && v1\.t1333WsFree\(r\)\)\) \{\n    target = Math\.min\(target, Math\.max\(0\.2, _ws\.stock \* \(N \/ _ws\.pop\) \* EFFDEM_SHARE\)\);/g) || []).length;
+  process.stdout.write(JSON.stringify({ knobs: { alloy: E.T1333_ALLOY_ORDER, exp: E.T1333_EXPORT_CAST, ws: E.T1333_WS_INPUT, cd: E.COPPER_DERIV_ON }, D, X, V, XC, G, MELT: E._MELT_TOTAL }) + '\n');
   process.exit(0);
 }
 
@@ -116,7 +131,7 @@ const near = (x, y, e) => Math.abs(x - y) <= (e == null ? 1e-6 : e);
 function checks(P, out) {
   let pass = 0, fail = 0; const failed = [];
   const ok = (c, m, x) => { if (c) pass++; else { fail++; failed.push(m); } if (out) console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined ? '  ' + (typeof x === 'string' ? x : JSON.stringify(x)) : '')); };
-  const { off: O, alloy: A, export: X, cuderiv: C } = P;
+  const { off: O, alloy: A, export: X, cuderiv: C, ws: S, aws: AS } = P;
   if (out) console.log('\n① 손잡이 — 끔이면 두 갈래가 안 선다');
   ok(O.knobs.alloy === false && O.knobs.exp === false && A.knobs.alloy === true && A.knobs.exp === false && X.knobs.exp === true && X.knobs.alloy === false, '★손잡이 둘 — 끔 기본 · 제 팔만 켬', [O.knobs, A.knobs, X.knobs]);
   ok(Object.values(O.D).every((o) => Object.entries(o).every(([r, x]) => r === 'stone' || x === 0)), '★끔 — 일곱 마을 · 재료 일곱 파생수요 다 0(종전 — 옛 구리 파생도 끔)', O.D.tinV);
@@ -160,14 +175,24 @@ function checks(P, out) {
   ok(X.XC.noCu === false, '구리 없는 마을 → 거짓(기지 없음)', X.XC.noCu);
   ok(X.XC.pureCu12 === false && X.XC.pureCu60 === true, '★순동뿐인 마을 — 기준가 무기 값이면 남지 않는다(거짓) · 무기 값 60 이면 남는다(참 — 값이 정한다)', [X.XC.pureCu12, X.XC.pureCu60]);
   ok(X.G.castGate === 1 && X.G.jobGate === 1 && X.G.oneFn === 1, '★주조 문 · 무기장 자리 문이 같은 판정 함수 하나를 부른다(글자 — 끔이면 앞 항만 = 종전)', X.G);
+
+  if (out) console.log('\n⑧ 생산 투입재 인구 몫 상한(실험 `T1333_WS_INPUT` · 끔 기본)');
+  ok(O.V.ws.knob === false && S.V.ws.knob === true && O.V.ws.free.every(([, f]) => f === false), '★손잡이 — 끔이면 어느 재화도 상한 밖이 아니다', O.V.ws.free);
+  ok(JSON.stringify(S.V.ws.free) === JSON.stringify([['ore_tin', true], ['ore_copper', true], ['ore', true], ['copper', true], ['tin', true], ['lead', true], ['silver', true], ['gold', true], ['charcoal', false], ['iron', false], ['weapon', false], ['food', false]]),
+    '★켬 — 원석(광종마다 · 옛 원석) · 합금 재료 표만 상한 밖 · 숯(녹임 연료) · 철(합금 재료 아님) · 무기 · 식량은 그대로', S.V.ws.free);
+  ok(near(O.V.ws.ore, O.V.ws.capOre) && near(S.V.ws.ore, 15) && near(A.V.ws.ore, O.V.ws.ore), `★주석 원석 녹임 흐름 목표 15 — 끔 상한 ${O.V.ws.ore}(세계 원석 2 × 인구 몫 × 1.5) · 켬 ${S.V.ws.ore}(흐름 그대로) · 합금 발주만으론 안 바뀐다`, [O.V.ws.ore, S.V.ws.ore, A.V.ws.ore]);
+  ok(near(A.V.ws.cu, A.V.ws.capCu) && A.V.ws.dCu > A.V.ws.cu && near(AS.V.ws.cu, AS.V.ws.dCu), `★합금 발주 구리 ${A.V.ws.dCu} — 상한 판 ${A.V.ws.cu}(세계 구리 1 × 몫) · 상한 밖 ${AS.V.ws.cu}(발주 그대로)`, [A.V.ws, AS.V.ws.cu]);
+  ok(near(S.V.ws.lea, O.V.ws.lea) && near(AS.V.ws.lea, O.V.ws.lea) && near(O.V.ws.lea, O.V.ws.capOre), `★숯(녹임 투입재지만 원석 · 합금 재료 아님) 흐름 목표 15 는 상한 그대로(${O.V.ws.lea} — 세계 숯 2 × 몫)`, [O.V.ws.lea, S.V.ws.lea]);
+  ok(S.V.ws.cu === 0 && JSON.stringify(S.D) === JSON.stringify(O.D), '상한 밖만 켠 판 — 발주 0 · 파생수요는 끔 판 그대로(상한은 목표를 깎을 뿐 만들지 않는다)', S.V.ws.cu);
+  ok(O.G.wsLine === 1, '상한 줄 한 자리(v2 `_targetV2`) — 빠지는 재화 셋(생존재 · 자본재 · 다양성 식품) 뒤에 한 항', O.G.wsLine);
   return { pass, fail, failed };
 }
 
-const ARMS = ['off', 'alloy', 'export', 'cuderiv'];
+const ARMS = ['off', 'alloy', 'export', 'cuderiv', 'ws', 'aws'];
 console.log('\n=== T1333 청동 길 — 합금 발주(ⓐ) · 수출 주조(ⓑ) ===');
 console.log('\n⓪ 손잡이 글자 — `\'1\'` 만 켬');
 let p0 = 0, f0 = 0;
-for (const [k, prop] of [['T1333_ALLOY_ORDER', 'T1333_ALLOY_ORDER'], ['T1333_EXPORT_CAST', 'T1333_EXPORT_CAST']]) {
+for (const [k, prop] of [['T1333_ALLOY_ORDER', 'T1333_ALLOY_ORDER'], ['T1333_EXPORT_CAST', 'T1333_EXPORT_CAST'], ['T1333_WS_INPUT', 'T1333_WS_INPUT']]) {
   for (const val of [undefined, '0', '', 'true', '1']) {
     const env = Object.assign({}, process.env, { ENABLE_VILLAGES: '0' }); delete env[k]; if (val !== undefined) env[k] = val;
     const r = spawnSync(process.execPath, ['-e', `process.stdout.write(JSON.stringify(require('./sim/economy-sim').${prop}))`], { cwd: ROOT, env, encoding: 'utf8' });
@@ -179,7 +204,7 @@ const P = {}; for (const a of ARMS) P[a] = child(a);
 const main = checks(P, true);
 console.log('\n⑦ 미끼(사본) — 빨강이어야 한다');
 let pm = 0, fm = 0;
-for (const [kind, name] of [['outside', '합금 재료 표 밖(철 · 흑요석 · 돌)'], ['addflow', '큰 쪽 — 더하지 않는다'], ['market', '시장가(구리 40)가 올라도'], ['expfree', '순동뿐인 마을']]) {
+for (const [kind, name] of [['outside', '합금 재료 표 밖(철 · 흑요석 · 돌)'], ['addflow', '큰 쪽 — 더하지 않는다'], ['market', '시장가(구리 40)가 올라도'], ['expfree', '순동뿐인 마을'], ['wsall', '원석(광종마다 · 옛 원석) · 합금 재료 표만']]) {
   let res = null, err = null;
   try { const Q = {}; for (const a of ARMS) Q[a] = child(a, kind); res = checks(Q, false); } catch (e) { err = String(e && e.message || e).slice(0, 300); }
   const red = !!res && res.fail > 0 && res.failed.some((m) => m.includes(name));
