@@ -4165,7 +4165,7 @@ function _meltSearch(st, price) {
     }
   }
   if (!best) return null;
-  return { take: best.take, mix: best.mix, grade: best.grade, castF: best.castF, bronzeness: Math.min(1, (best.mix.tin || 0) / 0.12) };
+  return { take: best.take, mix: best.mix, grade: best.grade, castF: best.castF, bronzeness: Math.min(1, (best.mix.tin || 0) / 0.12), score: best.score };   // ★[T1333 ⓑ] score = 그 배합 하루 이윤(읽는 자리는 수출 주조 하나 · 끔 = 안 읽힘)
 }
 function _alloyMelt(v) {
   const st = v.storage || {};
@@ -4874,7 +4874,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
 
       const _melt = _alloyMelt(v);
       if (_melt && _melt.castF > 0) amt *= _melt.castF;   // ★주조성이 산출량을 정한다(위 _alloyMelt 주석)
-      if (_melt && _smSwordStock < _bronzeArmoryCap) {
+      if (_melt && (_smSwordStock < _bronzeArmoryCap || (T1333_EXPORT_CAST && _t1333ExportCast(v)))) {   // ★[T1333 ⓑ] 끔 = 종전 문 그대로(뒤 항이 안 선다)
         for (const m in _melt.take) { v.storage[m] -= _melt.take[m]; _cons(v, m, _melt.take[m]); }
         v._cuWeapUsed = (v._cuWeapUsed || 0) + (_melt.take.copper || 0);   // (계측 전용)
         v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt * _melt.bronzeness;
@@ -6135,6 +6135,29 @@ const SMELT_LABOR_CAP_PC = (typeof process !== 'undefined' && process.env && pro
 const COPPER_DERIV_ON = (typeof process !== 'undefined' && process.env && process.env.COPPER_DERIV === '1');
 const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && process.env.COPPER_DERIV_DAYS != null)
   ? Number(process.env.COPPER_DERIV_DAYS) : 30;
+// ══ ★★[T1333 2026-11-15 · T1313 회부 1 · PM 고른 갈래] 청동 길 — 구리가 주석 마을에 닿게 ══
+//   T1313 판 열: 청동은 광부 값이 아니라 **구리 짐이 주석 마을(광산5 — 세계에서 주석이 나는 한 곳)에 닿았나**가 가른다(닿은 판 광산5 청동 4.7 ~ 9.6 ↔ 2.1 ~ 3.3).
+//   닿지 않는 고리는 위 구리 파생 주석 그대로다 — 구리를 안 쓰는 마을 → 흐름 0 → 목표 0 → 값 바닥 → 캐러밴이 안 싣는다(첫 구리가 안 온다).
+//   ⓐ `T1333_ALLOY_ORDER`(끔 기본 · `'1'` 만 켬) **합금 발주** — 대장장이가 모자란 합금 재료를 값표 목표에 올린다(파생수요).
+//     구리 파생의 세 문(무기 노동 · 품질 · 채산)과 "있다면" 가정을 그대로 쓰고 재료만 구리 하나에서 청동의 둘(구리 · 주석)로 넓힌다:
+//     주석을 든 마을은 구리를, 구리를 든 마을은 주석을 "있다면"으로 두고 그 마을이 지금 짤 수 있는 최선의 배합(`_meltSearch` — 주조와 같은 목적함수)을 찾는다.
+//     양 = 그 배합의 그 재료 × `COPPER_DERIV_DAYS`(대장장이 한 명의 한 달 조업 재고 · 새 수 0).
+//     v2 목표엔 종전 파생수요 자리(`derivT` — 흐름 목표와 **큰 쪽**)로 든다 — 합금 재료는 주조 흐름과 같은 쓰임이라 T1213 의 더하는 항(짓기 · 다른 쓰임)이 아니다
+//     (T1213 머리 주석 "석기 · 구리 · 숯 자체의 파생수요는 그 재화의 흐름과 같은 쓰임이라 종전 max 그대로"). 더하면 주조가 돌기 시작한 날부터 두 번 센다.
+//     캐러밴은 종전 규칙 그대로 그 값 차를 보고 실제로 나른다(짐 · 길 · 몸 무변).
+//   ⓑ `T1333_EXPORT_CAST`(끔 기본) **수출 주조** — 청동 병기고 몫(`_bronzeArmoryCap`)이 찬 대장장이도, 이웃이 그 무기를 사 줄 값(순수출가 `netExportFn`)으로
+//     한 번 주조의 이윤(같은 탐색 · 재료는 기회비용 `_oppPrice`)이 양수면 주조한다 — 주석을 든 구리 마을이 무기를 만들어 내보내는 쪽(PM 카드 ⓑ).
+const T1333_ALLOY_ORDER = (typeof process !== 'undefined' && process.env && process.env.T1333_ALLOY_ORDER === '1');
+const T1333_EXPORT_CAST = (typeof process !== 'undefined' && process.env && process.env.T1333_EXPORT_CAST === '1');
+function _t1333ExportCast(v) {
+  const nef = (v && v._world && typeof v._world.netExportFn === 'function') ? v._world.netExportFn : null;
+  if (!nef) return false;
+  const pw = nef(v, 'weapon') || 0;
+  if (!(pw > 0)) return false;
+  const p = _oppPrice(v);
+  const best = _meltSearch(v.storage || {}, (k) => (k === 'weapon' ? pw : p(k)));
+  return !!(best && best.score > 0);
+}
 function derivedInputTarget(v, r) {
   // 재료가 없어 작업을 못 해도 도구 결손의 실제 레시피 투입은 수요다(숯 파생수요와 같은 문).
   if (r === 'stone' && stoneRealOn() && v && v.storage) {
@@ -6168,8 +6191,16 @@ function derivedInputTarget(v, r) {
     if (!(((v.counts && v.counts.miner) || 0) > 0 || oreTotal(v) >= SMELT_MIN_ORE)) return 0;
     return furnaceCharcoalTarget(v);
   }
+  if (T1333_ALLOY_ORDER && (r === 'copper' || r === 'tin') && v && v.storage) {   // ★★[T1333 ⓐ] 합금 발주 — 구리 · 주석(끔 = 이 갈래가 안 선다)
+    if (_ERA_METAL(r) && !_eraKnows(r)) return 0;
+    return _alloyDeriv(v, r);
+  }
   if (!COPPER_DERIV_ON || r !== 'copper' || !v || !v.storage) return 0;
   if (_ERA_METAL('copper') && !_eraKnows('copper')) return 0;   // 시대가 모르는 금속은 파생수요도 없다
+  return _alloyDeriv(v, 'copper');
+}
+// ★[T1333] 구리 파생 몸통을 함수로 올렸다(재료만 인자 · 구리 파생은 종전 글자 그대로 — 문 셋 · 양 · 기준가) — 합금 발주가 같은 함수를 부른다(사본 0).
+function _alloyDeriv(v, r) {
   // ★★[1차 실측으로 뒤집은 게이트] 처음엔 "무기 커버리지(v2 CAP_TARGET.weapon)가 미달일 때만"으로 짰다.
   //   3시드 800일 결과가 **기준선과 비트 동일**했다 — 한 번도 안 걸린 것이다. 이유는 명확하다:
   //   마을은 무기가 **모자라지 않는다**(19마을 2,017자루). 모자란 건 **좋은** 무기다. 커버리지는
@@ -6188,8 +6219,8 @@ function derivedInputTarget(v, r) {
   //   ★탐색은 `_meltSearch` 공용 헬퍼 — 주조 결정과 **같은 목적함수**다(사본 금지).
   //     가격만 **기준가**로 준다: 시장가를 쓰면 수요가 값을 올리고 그 값이 게이트를 닫는다(자기 꼬리 물기).
   const stHypo = Object.assign({}, v.storage);
-  stHypo.copper = Math.max(stHypo.copper || 0, _MELT_TOTAL);   // "구리가 있다면" — 딱 1회 주조분만 가정
-  const basePrice = (r) => (BASE_VALUE[r] > 0 ? BASE_VALUE[r] : 1);
+  stHypo[r] = Math.max(stHypo[r] || 0, _MELT_TOTAL);   // "그 재료가 있다면" — 딱 1회 주조분만 가정(구리 파생 = 구리 · ★[T1333 ⓐ] 주석도 같은 줄)
+  const basePrice = (k) => (BASE_VALUE[k] > 0 ? BASE_VALUE[k] : 1);
   const best = _meltSearch(stHypo, basePrice);
   if (!best) return 0;
   // 게이트② **품질이 나아지는가** — 이 마을 무기 스톡 품질(_weapQ EMA)보다 나아야 산다.
@@ -6201,7 +6232,7 @@ function derivedInputTarget(v, r) {
   let cost = 0; for (const k in best.take) cost += best.take[k] * basePrice(k);
   const gain = amtPerCast * best.castF * (BASE_VALUE.weapon || 1) * Math.min(1.2, best.grade);
   if (!(gain - cost > 0)) return 0;
-  return (best.take.copper || _MELT_TOTAL) * COPPER_DERIV_DAYS;
+  return (best.take[r] || (r === 'copper' ? _MELT_TOTAL : 0)) * COPPER_DERIV_DAYS;
 }
 function smeltTarget(v) {
   if (_t1249NoSmelt(v)) { migrateOre(v); return 0; }   // ★[T1249] 켬 = 조성 모르는 마을은 안 녹인다(위 머리 주석)
@@ -7805,6 +7836,7 @@ module.exports = {
   //   _trySmelt·smeltTarget 은 하네스(scripts/test-oremix.js)가 실제 제련을 돌려 보려고 노출한다.
   oreMixOf, foldOreMix, _trySmelt, smeltTarget,
   derivedInputTarget,   // ★[2026-08-02f ①-2] 구리 파생 투입수요 — v2 가 가격 target 에 얹는다(단일 진실)
+  T1333_ALLOY_ORDER, T1333_EXPORT_CAST, COPPER_DERIV_ON, _t1333ExportCast,   // ★[T1333] 합금 발주 · 수출 주조 손잡이(끔 기본) · 구리 파생 손잡이(읽기) · 수출 주조 판정(하네스가 정본을 직접 부른다)
   // ★[2026-08-03a ⑰] 국고 현금 배선 — 하네스가 **산술을 직접 재게** 노출한다(상수 복제 금지).
   //   `_treasuryTopUp` 은 실제 함수 그대로여야 검사가 그 코드를 밟는다(모형을 검사하면 의미가 없다).
   _treasuryTopUp, RESERVE_PC, _matPrice, expandCost,
