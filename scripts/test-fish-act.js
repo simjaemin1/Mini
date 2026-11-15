@@ -231,7 +231,9 @@ console.log('\n⑨ [T340] 낚시 창 — 던짐 → 기다림 → 걸림/놓침'
      '⑨ ★★창도 **같은 함수**가 정한다(`fishing.windowMsFor`) — 그 종의 kg 이 창을 정한다');
   ok(/const lat = \(F\.CFG && F\.CFG\.WIN_LAT_MS\) \|\| 0;/.test(V),
      '⑨ ★여유도 정본의 그 수다(`CFG.WIN_LAT_MS`) — 옮겨 적지 않았다');
-  ok(V.includes('const target=state.deps.t312FishTargetAt?.(') && ZSRC.includes('t312FishTargetAt: (p,spot) => _castTargetFor(p,spot)') && /F\.stockRatioAt\(cx, cy, now\)/.test(V),
+  //   ★[T1317 · T1294 land1074] 존 깃이 `_t1294Cast`(같은 자리 · 같은 지형 세대면 지난 답 — 바이트 같음)로 감싸였다 — 못 맞으면 그 안에서 같은 `_castTargetFor(p, spot)` 를 부른다(land1075 가 t1180 에 단 같은 글자 고침).
+  const _c94 = (ZSRC.match(/function _t1294Cast\(p, spot\) \{[\s\S]*?\n\}/) || [''])[0];
+  ok(V.includes('const target=state.deps.t312FishTargetAt?.(') && ZSRC.includes('t312FishTargetAt: (p,spot) => _t1294Cast(p,spot)') && /const r = _castTargetFor\(p, spot\);/.test(_c94) && /F\.stockRatioAt\(cx, cy, now\)/.test(V),
      '⑨ ★자리·재고도 플레이어가 묻는 그 술어로 묻는다(`spotAt`·`stockRatioAt`)');
   const blk = (V.match(/function _t340Try\(vil, npc, now, day, h, ws\)[\s\S]*?\n\}/) || [''])[0];
   ok(blk.length > 300, '⑨ [상황] 시도 함수 본문을 통째로 잡았다', `${blk.length}자`);

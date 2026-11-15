@@ -136,7 +136,8 @@ console.log('\n④ 장부 다리 — 밭 입고가 **품목으로** 잠재·실�
     '④ 채집 다리(T374) **다음 자리**다 — 같은 틱 안 · 리셋 뒤 · 읽는 줄 앞');
   ok(/const got = \(v\._t100InflowToday \|\| 0\) \+ \(T368_FARM_ACT \? \(v\._t368InflowToday \|\| 0\) : 0\);/.test(C),
     '④ ★텃밭 하한이 켠 팔의 오늘치(식량등가)도 **밭이 낸 몫**으로 센다(안 세면 하한이 겹쳐 채운다)');
-  ok(/totalFoodProductionEquivalent\(dailyProduction, v\)/.test(C) && /totalFoodProductionEquivalent\(dailyProductionPotential, v\)/.test(C),
+  //   ★[T1317 · T1279 · T1286 · T1298] 두 자리의 첫 인수가 손잡이 갈래(조리식 칸 0 · 장부 옮김)로 감싸였다 — 갈래가 다 꺼지면 종전 `dailyProduction` · `dailyProductionPotential` 그대로이고 둘째 인수(마을)는 그대로다.
+  ok(/const dailyFoodProd = totalFoodProductionEquivalent\([^;\n]*: dailyProduction, v\);/.test(C) && /const dailyFoodProdPotential = totalFoodProductionEquivalent\([^;\n]*: dailyProductionPotential, v\);/.test(C),
     '④ 읽는 두 자리(실현 · 잠재)가 **마을을 넘긴다**(주입 값이 prodK·surplusEMA 에 닿는다)');
   const r = probe(ON, `const E=require(${EP}); const V2=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim-v2.js'))});
     const w=V2.createWorldV2({seed:5,villageCount:1,namePool:['가'],infoRange:5000,raidPer100:0}); const v=w.villages[0]; v._world=w; w.cropFoodEq={foxtail_millet:1.028571};
@@ -151,8 +152,9 @@ console.log('\n④ 장부 다리 — 밭 입고가 **품목으로** 잠재·실�
 console.log('\n⑤ ⓑ 헤드리스 — 켜면 이 마을 밭은 **몸이 한다**(농부 몫 두 절 호출 0) · 존이 통째로 자면 일괄이 그 몫(몸 XOR 일괄) · ★T410 문을 열면(기본) 존이 안 잔다');
 {
   const hl = bodyOf(VC, '_lifeHeadlessDay');
+  // ★[T1317 · T1284 `3282c420` land1072] 일괄 두 절 글자가 바뀌었다 — 개간은 `!_t84` 를 더 묻고(켬 = 작물 뒤로 옮김) 작물 절은 `{ … if (_t84) 개간 }` 블록이 됐다. `_t84` = `_t1284On() && _t1221On()`(T1284 끔 기본 = 거짓) ⇒ 끔이면 종전 두 절 그대로 — 그 뜻을 그대로 핀한다.
   //   ★[T1220-K1] 옛 글자 — T1212 ① 이 작물 절의 날을 밭 날(`_farmDay(vil, day)` · 끔 = `day` 그대로)로 바꿨다 — 판정(`!_body`)은 그대로라 글자만 새로.
-  ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /if \(!_body && !_cut\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /else if \(!_body\) lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\);/.test(hl) && /const _cut = _t1243On\(\) && _t1243Live\(\);/.test(hl),   // ★[T1243] 켬 + 라이브 = 두 절 걷음(`_cut`)
+  ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /const _t84 = _t1284On\(\) && _t1221On\(\);/.test(hl) && /if \(!_body && !_cut && !_t84\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /else if \(!_body\) \{ lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\); if \(_t84\) _lifeClearDay\(vil, farmerN\); \}/.test(hl) && /const _cut = _t1243On\(\) && _t1243Live\(\);/.test(hl),   // ★[T1243] 켬 + 라이브 = 두 절 걷음(`_cut`)
     '⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 작물');
   //   ★[T400] 집 절에 집 행위 손잡이 가드(`&& !_lifeEcon().T400_BUILD_ACT`)가 붙었다 — 농부 판정(`_body`)과 무관한 것은 그대로다.
   ok(/if \(vil\._site(?: && !_lifeEcon\(\)\.T400_BUILD_ACT)?\) \{ let st = Math\.min\(LIFE_CREW, popN\) \* LIFE_STAGE_PDAY;/.test(hl) && !/_body[^\n]*LIFE_STAGE_PDAY/.test(hl),

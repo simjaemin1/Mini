@@ -44,8 +44,9 @@ ok(Math.abs(w1off.bud - w1off.dayS) < 1e-6 && w1off.st.ghost === 0, '③ 대조 
 const few = sub({ T1224_ECON_FARM: '1' }, probe(1, false, 0));
 ok(few.st.ghost === 0 && Math.abs(few.bud - few.dayS) < 1e-6, '④ 몸 농부 ≥ econ 농부 — 몸 없는 농부 0 · 켬 = 끔 몫', { st: few.st, bud: few.bud });
 const S = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+// ★[T1317 · T1284 `3282c420` land1072] 일괄 두 절 글자가 바뀌었다 — 개간은 `!_t84` 를 더 묻고(켬 = 작물 뒤로 옮김) 작물 절은 `{ … if (_t84) 개간 }` 블록이 됐다. `_t84` = `_t1284On() && _t1221On()`(T1284 끔 기본 = 거짓) ⇒ 끔이면 종전 두 절 그대로 — 그 뜻을 그대로 핀한다.
 const hb = S.slice(S.indexOf('function _lifeHeadlessDay(vil) {'), S.indexOf('// ★★★[T117 2026-09-05] **하루치 작물 노동 — 정본 하나.**'));
-ok(/if \(_body && T1212_FARM_REST && !_cut\) \{/.test(hb) && /if \(!_body && !_cut\) _lifeClearDay\(vil, farmerN\);/.test(hb) && /else if \(!_body\) lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\);/.test(hb) && /if \(T1224_ECON_FARM && !_cut\) \{/.test(hb),
+ok(/if \(_body && T1212_FARM_REST && !_cut\) \{/.test(hb) && /const _t84 = _t1284On\(\) && _t1221On\(\);/.test(hb) && /if \(!_body && !_cut && !_t84\) _lifeClearDay\(vil, farmerN\);/.test(hb) && /else if \(!_body\) \{ lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\); if \(_t84\) _lifeClearDay\(vil, farmerN\); \}/.test(hb) && /if \(T1224_ECON_FARM && !_cut\) \{/.test(hb),
   '⑤ 종전 줄 그대로 — 몸 갈래 문 · 일괄 개간 · 일괄 작물(새 줄은 `if (T1224_ECON_FARM && !_cut) {` 블록 하나 · T1243 켬 + 라이브면 `_cut` 이 셋 다 걷는다)');
 ok((S.match(/process\.env\.T1224_ECON_FARM/g) || []).length === 1 && /const T1224_ECON_FARM = process\.env\.T1224_ECON_FARM === '1';/.test(S), '⑤ 손잡이 읽는 자리 하나 · `=== \'1\'` 만 켬');
 console.log(`\n=== T1224 몸 없는 농부: 통과 ${pass} · 실패 ${fail} ===`);
