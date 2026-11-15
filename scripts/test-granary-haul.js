@@ -33,13 +33,11 @@ if (!GRAIN_ITEM) throw new Error('GRAIN_ITEM 정본을 못 찾았다');
 const _carryCfg = () => require(path.join(__dirname, '..', 'server', 'carry'));
 const _weights = () => require(path.join(__dirname, '..', 'server', 'weights'));
 
-// ★[T1317 · T1295 `land1074`] `_lifeGranStep` 이 체류를 `t1295S(npc)`(판 시계 밭 몸 배율 · 운영 시계 = 1)로 나눈다 — 원문의 그 함수와 손잡이 줄을 잘라 온다(사본 0).
-//   이 하네스 몸은 농부가 아니라(`simJob` 없음) 원문 첫 갈래에서 1 이 된다 — 밭 시계 줄(`_t1243On` 등)은 안 닿는다. 빠졌을 때는 `ReferenceError` 로 죽었다(main 상시 빨강).
-const T1295_LINE = (src.match(/\nconst T1295_FARM_CLOCK = [^\n]*\n/) || [''])[0];
-if (!T1295_LINE) throw new Error('T1295_FARM_CLOCK 정본 줄을 못 찾았다');
-const ctx = vm.createContext({ SZ, _lifeAct, state, GRAIN_ITEM, _carryCfg, _weights, process,
+// ★[T1295] `_lifeGranStep` 의 머묾은 판 시계 배율(`t1295S`)로 나눈다 — 이 하네스는 운영 시계 판이라 배율 1(판 시계 축은 `test-t1243-farm-on` ⑩ · ⑪ 이 잰다).
+const t1295S = () => 1;
+const ctx = vm.createContext({ SZ, _lifeAct, state, GRAIN_ITEM, _carryCfg, _weights, t1295S,
   Math, Map, Set, Array, Object, JSON, console });
-vm.runInContext([consts, T1295_LINE, cut('t1295S'), cut('_handOf'), cut('_handSet'), cut('_handAdd'), cut('_handFull'),
+vm.runInContext([consts, cut('_handOf'), cut('_handSet'), cut('_handAdd'), cut('_handFull'),
   cut('_granStockOf'), cut('_granStockAdd'), cut('_granLadder'),
   cut('_granPick'), cut('_granGo'), cut('_lifeGranStep'),
   'globalThis.__api = { _granStockOf, _granStockAdd, _granLadder, _granPick, _granGo, _lifeGranStep, '

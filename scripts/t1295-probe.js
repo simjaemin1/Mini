@@ -8,10 +8,23 @@ const A1 = process.argv[1] || '';
 if (!(process.env.T577_SEED && /server[\/\\]zone\.js$/.test(A1))) return;
 const OUT = process.env.T1295_PROBE_OUT || ''; if (!OUT) return;
 const ROOT = path.join(__dirname, '..');
-if (process.env.T1295_PROBE_BAIT === 'batch') {
-  const Module = require('module'), _comp = Module.prototype._compile, VS = path.join(ROOT, 'server', 'villages.js');
-  Module.prototype._compile = function (c, f) { if (f === VS) c = c.replace('const _cut = _t1243On() && _t1243Live();', 'const _cut = false;'); return _comp.call(this, c, f); };
+//   ★[T1316] `T1295_PROBE_BAIT=mine` = 미끼 — 광부 한 타만 실 ms 축으로 되돌린 사본(`_SW = S.MINE_SWING_MS`) · 모든 판에서 몸 직업 × 라벨 몸-틱 · 광부 몸 kg 을 함께 적는다.
+{
+  const Module = require('module'), _comp = Module.prototype._compile, VS = path.join(ROOT, 'server', 'villages.js'), ZS = path.join(ROOT, 'server', 'zone.js');
+  const BAIT = process.env.T1295_PROBE_BAIT;
+  Module.prototype._compile = function (c, f) {
+    if (f === VS) {
+      if (BAIT === 'batch') c = c.replace('const _cut = _t1243On() && _t1243Live();', 'const _cut = false;');
+      if (BAIT === 'mine') c = c.replace('const _SW = S.MINE_SWING_MS / t1295S(npc);   // ★[T1316] 한 타', 'const _SW = S.MINE_SWING_MS;   // 미끼 한 타');
+      c += '\nmodule.exports.__t1295ProbeT724 = () => (typeof _probe !== "undefined" && _probe.t724) || null;\n';
+    }
+    if (f === ZS) { const H = 'function npcStep(npc, dt, now) {'; const i = c.indexOf(H);
+      if (i >= 0) c = c.slice(0, i) + 'function npcStep(npc, dt, now) { const __r = __t1295Inner(npc, dt, now); if (global.__t1295Lab) global.__t1295Lab(npc); return __r; }\nfunction __t1295Inner(npc, dt, now) {' + c.slice(i + H.length); }
+    return _comp.call(this, c, f);
+  };
 }
+const LAB = {};
+global.__t1295Lab = (npc) => { if (!npc || !npc.simVillageId) return; const k = (npc.simJob || '?') + '|' + (npc._lifeAct || ''); LAB[k] = (LAB[k] || 0) + 1; };
 function dump() {
   try {
     const V = require(path.join(ROOT, 'server', 'villages')), B = V.__p3Bind({});
@@ -19,7 +32,8 @@ function dump() {
     for (const v of (B.state.villages || [])) { const e = v.econ; if (!e) continue; harvN += e._t100HarvestN || 0; const n = (e.npcs || []).length; pop += n; if (n) vils++; else empty++; }
     const o = { day: B.state.world && B.state.world.day, harvN, pop, vils, empty, pick: (B._t1243PStat || {}).pick || 0, reaped: (B._t1243PStat || {}).reaped || 0,
       batchTasks: (B._t1212Rest || {}).batchTasks || 0, batchClear: (B._t1212Rest || {}).batchClear || 0, ghostBatch: (B._t1224Stat || {}).batch || 0,
-      cutDays: (B._t1243Stat || {}).cutDays || 0, bodyCells: (B._t1243CStat || {}).bodyCells || 0, walks: (V._t1295Stat || {}).walks || 0, walkPx: Math.round((V._t1295Stat || {}).walkPx || 0) };
+      cutDays: (B._t1243Stat || {}).cutDays || 0, bodyCells: (B._t1243CStat || {}).bodyCells || 0, walks: (V._t1295Stat || {}).walks || 0, walkPx: Math.round((V._t1295Stat || {}).walkPx || 0),
+      lab: LAB, mineKg: (() => { const P = V.__t1295ProbeT724 && V.__t1295ProbeT724(); return P ? +P.kg.toFixed(3) : null; })() };
     fs.writeFileSync(OUT, JSON.stringify(o));
   } catch (e) { try { fs.writeFileSync(OUT, JSON.stringify({ err: String(e && e.stack || e).slice(0, 400) })); } catch (_) {} }
 }

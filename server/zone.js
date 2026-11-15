@@ -5039,9 +5039,10 @@ let _t316Econ = null;
 // ★★[T1295] 밭 세계 판 시계 농부 몸 — 걸음 · 길 다시 묻기를 게임 분 축으로(배율 s = `SimVillages.t1295S` · 1 이면 종전 그대로 · 까닭은 villages.js T1295 머리 줄).
 //   걸음: 그 틱의 걸음 거리 = 그 자리 빠르기(`_desSpeed` — 배회 배율 × 길 등급 × 개울 · T1241 사건 걸음과 같은 식) × dt × s 를 그 몸의 길(`npc.path` — 존 A* · 직선 문 답)
 //     점을 차례로 따라 쓴다(점을 지나면 다음 점 · 끝에 닿으면 선다 — 넘어 가지 않는다 · 길 밖으로 안 나간다 · 순간이동 0). 속도 칸은 0(이동 문이 다시 안 옮긴다).
-function _t1295Walk(p, dt) {
+function _t1295Walk(p, dt, sub) {
   const s = SimVillages.t1295S ? SimVillages.t1295S(p) : 1;
   if (!(s > 1)) return false;
+  if (!sub && SimVillages.t1316K) { const K = SimVillages.t1316K(p, dt); if (K > 1) dt /= K; }   // ★[T1316 ③] 이동 문 몫 = 마지막 토막(dt ÷ K) — 앞 토막은 결정 문이 걸었다
   p.vx = 0; p.vy = 0;
   const P = p.path, M = P === p._t791P, n = P ? (M ? p._t791Pn : P.length) : 0;
   if (!P || !(p.pathIndex < n)) return true;   // 갈 길 없음 — 선다
@@ -16727,7 +16728,9 @@ setInterval(() => {
     if (T1241_PROBE && _desClk) { _desTimed(npc, dt, now); if (T1322_PF) _t1322Grant(npc, now); continue; }   // ★[T1241 계측] 같은 몸통을 진짜 시계로 잰다(아래 세 줄 그대로)
     if (T1241_DES && npc._des && _desHold(npc, now)) continue;   // ★[T1241] 사건 갈래가 쥔 몸(끔 = 이 줄 무동작)
     if (_T1241) _desStat.steps++;
-    npcStep(npc, dt, now);
+    const _K95 = (npc.simVillageId && SimVillages.t1316K) ? SimVillages.t1316K(npc, dt) : 1;   // ★[T1316 ③] 켬(판 시계 배율 몸) = 틱을 K 토막(끔 · 배율 1 = 1 — 아래 종전 한 줄)
+    if (_K95 > 1) { for (let k = _K95 - 1; k >= 0; k--) { npcStep(npc, dt / _K95, now - k * dt * 1000 / _K95); if (k > 0) _t1295Walk(npc, dt / _K95, 1); } }   // 마지막 토막 걸음은 이동 문(`_t1295Walk` 가 dt ÷ K)
+    else npcStep(npc, dt, now);
     if (T1322_PF) _t1322Grant(npc, now);   // ★[T1322] 서 있는 몸이면 표(다음 틱 첫 거름)
     if (T1241_DES) _desTry(npc, now);   // ★[T1241] 사건 토막을 열 수 있나
   } while (false); return _stopAt !== null; };

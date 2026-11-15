@@ -19,7 +19,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };
-const KNOBS = ['T1295_FARM_CLOCK', 'T1295_GOURD', 'T1284_FARM_YIELD', 'T1276_FARM_K', 'T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
+const KNOBS = ['T1316_BODY_CLOCK', 'T1316_SUBSTEP', 'T1295_FARM_CLOCK', 'T1295_GOURD', 'T1284_FARM_YIELD', 'T1276_FARM_K', 'T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
 const sub = (env, code) => {
   const e = Object.assign({}, process.env); delete e.NODE_OPTIONS; for (const k of KNOBS) delete e[k]; Object.assign(e, env);
   return JSON.parse(execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: e, encoding: 'utf8', maxBuffer: 64 << 20 }).trim().split('\n').filter((l) => l.startsWith('{')).pop());
@@ -194,11 +194,11 @@ ok(/npc\.nextDecisionAt = now \+ 500 \+ _dn\(\) \* 1000;\n  if \(npc\.simVillage
   && /now - npc\._lastAStarAt < \(isVil && SimVillages\.t1295S \? 2000 \/ SimVillages\.t1295S\(npc\) : 2000\)/.test(ZS10) && (ZS10.match(/now - npc\._pathAt > _t1295Stale\(npc\)/g) || []).length === 2
   && /_ph95 = _w95 != null \? _w95 : _t670Ph;/.test(ZS10) && /if \(p\.simVillageId && _t1295Walk\(p, moveDt\)\) \{/.test(ZS10),
   '⑩ T1295 — 존 다섯 자리(결정 박자 · A* 간격 · 길 묵음 둘 · 밤 귀가 해 몫 · 이동 문)가 같은 배율 하나를 읽는다(같은 굴림 · 배율 1 = 종전 값)');
-ok(/now - t\.at < \(t\.draw \? G_DRAWW : G_STOREW\) \/ t1295S\(npc\)/.test(VS) && /now - S\.at < G_STOREW \/ t1295S\(npc\)/.test(VS) && (VS.match(/\/ t1295S\(npc\)/g) || []).length === 4
+ok(/now - t\.at < \(t\.draw \? G_DRAWW : G_STOREW\) \/ t1295S\(npc\)/.test(VS) && /now - S\.at < G_STOREW \/ t1295S\(npc\)/.test(VS) && VS.includes("now + (9000 + (_pidHash(npc.pid) % 7) * 1500) / t1295S(npc);") && VS.includes('npc._jobT = now + (9000 + (h % 7) * 1500) / t1295S(npc);')
   && /const _w95 = t1295Wp\(npc, now\);/.test(VS) && /const _w95g = t1295Wp\(npc, now\);/.test(VS),
   '⑩ T1295 — 생활층 넷(곳간 사다리 머묾 둘 · 일감 없는 쉼 둘)과 해 몫 둘이 같은 축 · 일 머묾(`_t1243MinMs`)은 종전 그대로');
 // 걸음 — zone.js 의 `_t1295Walk` 본문 그대로(사본 0)를 떼어 내 몫을 견준다
-{ const i0 = ZS10.indexOf('function _t1295Walk(p, dt) {'), i1 = ZS10.indexOf('\nfunction _t1295Stale', i0);
+{ const i0 = ZS10.indexOf('function _t1295Walk(p, dt, sub) {'), i1 = ZS10.indexOf('\nfunction _t1295Stale', i0);
   const src = ZS10.slice(i0, i1);
   const mk = (s) => new Function('SimVillages', '_desSpeed', '_xyX', '_xyY', '_desPut', 'Roads', src + '\nreturn _t1295Walk;')(
     { t1295S: () => s, _t1295Stat: { walks: 0, walkPx: 0 } }, () => 38.4, (p) => p.x, (p) => p.y, (p, x, y) => { p.x = x; p.y = y; }, { stampEntityPx() {} });
@@ -228,6 +228,45 @@ else {
     '⑩ T1295 — 판 시계 112날(밭 켬 · 몸 전부): 몸이 밭 칸에 닿아 심고 거둔다 · 곳간에 든 수확 > 0 · 일괄 밭 일 0', R.err || `심은 ${R.pick} · 거둔 ${R.reaped} · 곳간 수확 ${R.harvN} · 몸 개간 ${R.bodyCells} · 걸음 ${R.walks}`);
   const Bt = run(45, 'bait', { T1295_PROBE_BAIT: 'batch' });
   ok(Bt && !Bt.err && !bodyOnly(Bt) && Bt.batchTasks > 0, '⑩ T1295 미끼 — 밭 길 일괄 걷음을 끈 사본(몸 없이 밭 일을 세는 판)은 빨강', Bt.err || `일괄 일감 ${Bt.batchTasks}`);
+}
+// ── ⑪ T1316 — 판 시계 몸 축을 농부 밖 마을 몸(나무꾼 · 어부 · 광부 · 곳간 인출)으로 · 틱 토막 ──
+const Q11 = `const V=require('./server/villages');const B=V.__p3Bind({});
+const o={k:V.T1316_BODY_CLOCK,ks:V.T1316_SUBSTEP};const J=(j)=>({simJob:j,simVillageId:1});
+const run=()=>({f:V.t1295S(J('farmer')),l:V.t1295S(J('lumberjack')),fi:V.t1295S(J('fisher')),m:V.t1295S(J('miner')),h:V.t1295S(J('hunter')),K:V.t1316K(J('miner'),1/30),KF:V.t1316K(J('farmer'),1/30)});
+o.noZone=run();B.state.deps=Object.assign({},B.state.deps||{},{zoneAwake:()=>true});B.state.dayMs=250;o.fast=run();B.state.dayMs=require('./server/zone-config').WORLD.dayLengthMs;o.live=run();
+o.minTask=B._t1221Cost(1);console.log(JSON.stringify(o));`;
+const u0 = sub({ T1243_FARM_ON: '1' }, Q11), u1 = sub({ T1243_FARM_ON: '1', T1316_BODY_CLOCK: '1', T1316_SUBSTEP: '1' }, Q11), uN = sub({ T1316_BODY_CLOCK: '1', T1316_SUBSTEP: '1' }, Q11);
+ok(!u0.k && !u0.ks && u0.fast.f === 5760 && u0.fast.l === 1 && u0.fast.fi === 1 && u0.fast.m === 1 && u0.fast.K === 1,
+  '⑪ T1316 — 끔 기본 = 농부만 배율(T1295 그대로) · 나무꾼 · 어부 · 광부 1 · 토막 1');
+ok(u1.fast.l === 5760 && u1.fast.fi === 5760 && u1.fast.m === 5760 && u1.fast.h === 1 && u1.live.l === 1 && u1.noZone.l === 1 && uN.fast.l === 1 && uN.fast.f === 1,
+  '⑪ T1316 — 켬 = 나무꾼 · 어부 · 광부도 같은 배율(사냥꾼 뺌) · 운영 시계 · 존 없음 · 밭 끔 = 1', `${u1.fast.l}`);
+ok(u1.fast.K === Math.ceil((u1.fast.m / 30) / u1.minTask) && u1.fast.K === 3 && u1.fast.KF === 3 && u1.live.K === 1 && u0.fast.K === 1,
+  '⑪ T1316 ③ 토막 K = ⌈틱의 게임 분 ÷ 김매기 한 번(T1221 정본)⌉ — 판 시계 3 · 운영 시계 · 끔 1', `K ${u1.fast.K} · 김매기 ${u1.minTask.toFixed(1)}분`);
+{ const VS11 = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'), ZS11 = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  const spots = ['if (now - npc._t561Hall.at < G_STOREW / t1295S(npc))', 'npc._jobT = now + (6000 + (h % 5) * 1000) / t1295S(npc);', 'npc._fishT = now + (9000 + (h % 5) * 2000) / t1295S(npc);',
+    'now - npc._vgSince > SCH_VG_STUCK / t1295S(npc)', 'npc._jobT = now + (7000 + (h2 % 5) * 1200) / t1295S(npc);', 'if (now - leg.at >= G_DRAWW / t1295S(npc))',
+    'const _SW = S.MINE_SWING_MS / t1295S(npc);   // ★[T1316] 한 타', 'const swH = Math.floor(state.dayMs / 24 / _SW);', "/ sp * 1000 / t1295S(npc) : 0;"];
+  const miss = spots.filter((x) => !VS11.includes(x));
+  ok(!miss.length, '⑪ T1316 — 농부 밖 몸의 실 ms 박자 자리(회관 머묾 · 작업 스윙 · 낚시 머묾 · 정체 판정 · 회관 서성임 · 집 크루 사다리 · 광부 한 타 · 한 시간 타수 · 짐 왕복)가 같은 배율', miss.join(' / '));
+  ok(/const _K95 = \(npc\.simVillageId && SimVillages\.t1316K\) \? SimVillages\.t1316K\(npc, dt\) : 1;/.test(ZS11) && /if \(_K95 > 1\) \{ for \(let k = _K95 - 1; k >= 0; k--\) \{ npcStep\(npc, dt \/ _K95, now - k \* dt \* 1000 \/ _K95\); if \(k > 0\) _t1295Walk\(npc, dt \/ _K95, 1\); \} \}/.test(ZS11)
+    && /if \(!sub && SimVillages\.t1316K\) \{ const K = SimVillages\.t1316K\(p, dt\); if \(K > 1\) dt \/= K; \}/.test(ZS11),
+    '⑪ T1316 ③ 결정 문 = 토막마다 결정 · 걸음(합 = dt — 이동 문은 마지막 토막만)'); }
+if (process.env.T1295_SKIP_RUN === '1') console.log('  · ⑪ T1316 서버 판 건너뜀(T1295_SKIP_RUN=1) — 통과로 세지 않는다');
+else {
+  const os = require('os'), D = fs.mkdtempSync(path.join(os.tmpdir(), 't1316h-'));
+  const run = (days, out, extra) => { const e = Object.assign({}, process.env); for (const k of KNOBS) delete e[k]; delete e.NODE_OPTIONS;
+    Object.assign(e, { T1243_FARM_ON: '1', T1316_BODY_CLOCK: '1', T1316_SUBSTEP: '1', VILLAGE_NPC_CAP: 'Infinity', VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0', T745_VCLOCK: '1', T577_PAR: '1', T577_DIR: path.join(D, out), T577_TAG: out, T1295_PROBE_OUT: path.join(D, out + '.json'),
+      NODE_OPTIONS: `-r ${path.join(ROOT, 'scripts', 't745-vclock.js')} -r ${path.join(ROOT, 'scripts', 't1295-probe.js')}` }, extra || {});
+    try { execFileSync(process.execPath, [path.join(ROOT, 'scripts', 't577-server-run.js'), String(days), '1020'], { cwd: ROOT, env: e, stdio: 'ignore', timeout: 2400000 }); } catch (err) { /* 탐침 JSON 을 본다 */ }
+    try { return JSON.parse(fs.readFileSync(path.join(D, out + '.json'), 'utf8')); } catch (err) { return { err: 'no probe' }; } };
+  const L = (r, job, labs) => labs.reduce((a, l) => a + ((r.lab || {})[job + '|' + l] || 0), 0);
+  const R = run(60, 'on');
+  const n = R.err ? null : { fish: L(R, 'fisher', ['낚시', '드리움', '낚음']), mine: L(R, 'miner', ['채광']), draw: Object.keys(R.lab || {}).filter((k) => k.endsWith('|인출')).reduce((a, k) => a + R.lab[k], 0), farm: L(R, 'farmer', ['파종', '김매기', '개간']) };
+  ok(n && n.fish > 0 && n.mine > 0 && n.draw > 0 && n.farm > 0 && R.mineKg > 0 && R.batchTasks === 0,
+    '⑪ T1316 — 판 시계 60날(밭 켬 · 몸 전부 · 켬): 어부 · 광부 · 농부 몸이 일터에서 일하고(라벨 몸-틱) · 곳간 인출 > 0 · 광부 몸이 캔 kg > 0 · 일괄 밭 일 0', R.err || `낚시 ${n.fish} · 채광 ${n.mine} · 인출 ${n.draw} · 밭 ${n.farm} · 광부 ${R.mineKg} kg`);
+  console.log('  · ⑪ [상황] 나무꾼 · 채집꾼은 이 세계(`T325_WOOD_ACT` · `T347_FORAGE_ACT` 끔 기본)에서 econ 식이 낸다 — 몸 일 라벨 없음(벌목 ' + L(R, 'lumberjack', ['벌목']) + ')');
+  const Bm = run(60, 'bait', { T1295_PROBE_BAIT: 'mine' });
+  ok(Bm && !Bm.err && R.mineKg > 0 && !(Bm.mineKg > R.mineKg * 0.1), '⑪ T1316 미끼 — 광부 한 타만 실 ms 축으로 되돌린 사본은 빨강(광부 몸 kg 이 켬 판의 10분의 1 아래)', Bm.err || `${Bm.mineKg} : ${R.mineKg} kg`);
 }
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);
