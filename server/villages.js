@@ -12739,6 +12739,10 @@ const T1295_FARM_CLOCK = process.env.T1295_FARM_CLOCK !== '0';
 //   곳간 인출 · 집 크루 — 사냥꾼만 뺀다)에도. 밭 세계 · 존 · 판 시계에서만 선다(운영 시계 · 밭 끔 = 1 · 바이트 같음).
 //   그 몸들의 실 ms 박자(작업 스윙 · 낚시 머묾 · 광부 타 · 회관 머묾 · 곳간 사다리 · 정체 판정)를 ÷ s — 자리 표: 보고/T1316 §2.
 const T1316_BODY_CLOCK = process.env.T1316_BODY_CLOCK === '1';
+// ★★[T1326 2026-11-15 · T1316 회부 2] 손잡이 `T1326_HUNT_CLOCK`(끔 기본 · `=1` 켬 · `T1316_BODY_CLOCK` 켬 위에서만) — 사냥꾼 몸도 같은 배율.
+//   사냥꾼의 걸음(존 이동 문 — 배속 `_huntSpd` 를 곱한다) · 두뇌 시간(`wildlife._hunterBrain` 의 dt — 잠행 · 추적 · 조준 · 머묾)만 게임 분 축으로 옮긴다.
+//   짐승 쪽(블록 `updateMobs` · 개체 장부)은 손대지 않는다(재민 11-15 — 짐승은 T1331 에서 몸이 된다) — 판 시계에서 짐승은 실초 축에 남는다(보고/T1326 §2 표).
+const T1326_HUNT_CLOCK = process.env.T1326_HUNT_CLOCK === '1';
 // ★★[T1316 ③] 손잡이 `T1316_SUBSTEP`(끔 기본 · `=1` 켬) — 판 시계 틱 한 번 = 게임 190분(250 ms 하루 · 30 Hz)이라 배율을 맞춰도 몸 결정이 하루 7 ~ 8 번에 묶인다(T1295 회부 1 ⓐ).
 //   켜면 배율 몸(`t1295S` > 1)의 틱을 K 토막으로 나눠 결정 · 걸음을 토막마다 한다 — K = ⌈틱의 게임 분 ÷ 가장 짧은 밭 일(김매기 한 번 · `_t1221Cost(1)` — T1221 정본)⌉.
 //   토막 시각 = 그 틱 안의 고른 자리(지난 틱 끝 → 이 틱) · 걸음 몫 = dt ÷ K 씩(합 = dt — 더 걷지 않는다). 새 수 0. 끔 · 배율 1 = K 1(종전).
@@ -12760,7 +12764,7 @@ function t1295Wp(npc, now) { if (!(t1295S(npc) > 1)) return null; const t = (now
 function t1295Ph(now) { const t = (now - state.epoch) / state.dayMs; return t - Math.floor(t); }   // ★[T1322] 판 하루 축 해 몫(몸 안 짚기 — `t1295Wp` 의 몸 칸 문 뒤 그 식 · 존 첫 거름이 판 시계 몸 표에 쓴다)
 function t1295S(npc) {
   if (!npc || !npc.simVillageId) return 1;
-  if (npc.simJob === 'farmer' ? !T1295_FARM_CLOCK : !(T1316_BODY_CLOCK && npc.simJob !== 'hunter')) return 1;   // ★[T1316] 켬 = 직업 무관(사냥꾼 뺌 — 짐승 두뇌가 실초 축 · 회부) · 끔 = 농부만(T1295 그대로)
+  if (npc.simJob === 'farmer' ? !T1295_FARM_CLOCK : !(T1316_BODY_CLOCK && (npc.simJob !== 'hunter' || T1326_HUNT_CLOCK))) return 1;   // ★[T1326] 사냥꾼은 `T1326_HUNT_CLOCK` 켬일 때만   // ★[T1316] 켬 = 직업 무관(사냥꾼 뺌 — 짐승 두뇌가 실초 축 · 회부) · 끔 = 농부만(T1295 그대로)
   if (!_t1243On() || !_t1243Live()) return 1;
   const W = _zc720().WORLD, L = W && W.dayLengthMs, D = state.dayMs;
   return (L > 0 && D > 0 && D < L) ? L / D : 1;
@@ -16462,10 +16466,13 @@ const T1202_BATCH = process.env.T1202_BATCH !== '0';
 const _t1202Stat = { days: 0, roster: { fisher: 0, lumberjack: 0, forager: 0 }, bodiless: { fisher: 0, lumberjack: 0, forager: 0 }, bodies: { fisher: 0, lumberjack: 0, forager: 0 },
   fish: 0, fishN: 0, fishCast: 0, fishNoSp: 0, fishQuota: 0, fishDemand: 0, fishNoSite: 0, fishOff: 0, fishNoRoster: 0, wood: 0, forage: 0 };
 //   판 시계로 몸이 한 칸(SZ)도 다녀올 수 없나 — 걸음(존 `moveSpeed`) · 낮 비율(`dayPhaseRatio`) · 마을 하루(`state.dayMs`) 셋 다 정본.
-function _t1202ClockShort() {
+//   ★[T1326] 몸 시계(T1316 · 직업 무관 문 `t1295S`)에 든 직업이면 그 몸의 하루는 판 하루 × s(= 게임 하루) — 그 몸은 왕복할 수 있다.
+//     인자 없이(하네스) · 끔 · 운영 시계(s = 1)면 종전 그대로.
+function _t1202ClockShort(vil, job) {
   const sp = (state.deps && state.deps.moveSpeed) || 0, dayR = (state.deps && state.deps.dayPhaseRatio) || 0;
   if (!(sp > 0) || !(dayR > 0)) return false;
-  return Math.floor(((state.dayMs || 0) * dayR / 1000) / (2 * SZ / sp)) <= 0;
+  const s95 = (vil && job) ? t1295S({ simVillageId: vil.dbId || 1, simJob: job }) : 1;
+  return Math.floor(((state.dayMs || 0) * s95 * dayR / 1000) / (2 * SZ / sp)) <= 0;
 }
 //   그날 일괄 명부 — { n, bodiless, bodies } · 끔이면 null(부르는 쪽이 T1180 줄 그대로).
 function _t1202Roster(vil, job, crew, walked, observed) {
@@ -16475,7 +16482,7 @@ function _t1202Roster(vil, job, crew, walked, observed) {
   let nb = 0; for (const pid of (vil.npcPids || [])) { const p = pl && pl.get(pid); if (p && p.simJob === job) nb++; }
   const econN = (vil.econ.counts && vil.econ.counts[job]) || 0;
   const bodiless = Math.max(0, econN - nb);
-  const bodies = _t1202ClockShort() ? Math.max(0, (crew ? crew.length : 0) - (walked | 0)) : 0;
+  const bodies = _t1202ClockShort(vil, job) ? Math.max(0, (crew ? crew.length : 0) - (walked | 0)) : 0;
   if (job in _t1202Stat.roster) { _t1202Stat.roster[job] += bodiless + bodies; _t1202Stat.bodiless[job] += bodiless; _t1202Stat.bodies[job] += bodies; }
   return { n: bodiless + bodies, bodiless, bodies };
 }
@@ -19192,7 +19199,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
-  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)

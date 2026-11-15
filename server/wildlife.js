@@ -602,6 +602,9 @@ function _updateVillageAnchor() {
 //   잠행 히스테리시스)까지 랩 동형. 이동은 본체 소유(좌표 단일 작성자): moveTo 대신 목표 셀 기록(_hgx/_hgy) →
 //   tick()이 본체 npc.targetX/Y로 역전달(경로 스무딩·벽·물은 zone.js 이동층 담당). 치환: life→s · dGM→dt ·
 //   a._fgl(econ 식량 잉여 가중)=0 폴백(식 유지 — 미연결 시 무효과).
+// ★[T1326] 사냥꾼 몸의 판 시계 배율 — 생활층 정본(`villages.t1295S` — 직업 · 손잡이 · 시계 판정 하나)을 읽는다 · 없으면 1.
+let _t1326V = null;
+function _t1326S(rp) { if (!rp) return 1; if (_t1326V === null) { try { _t1326V = require('./villages'); } catch (e) { _t1326V = false; } } return (_t1326V && _t1326V.t1295S) ? _t1326V.t1295S(rp) : 1; }
 function _hunterBrain(a, s, dt) {
   const bMoveTo = (a2, cx, cy) => { a2._hgx = cx; a2._hgy = cy; a2._hgo = 1; return true; };   // 목표 기록(성공은 본체 경로층이 판정 — stuck·재경로 흡수)
   // ★★[T158 2026-09-07] **보이는 사냥은 장부의 연출이다.**
@@ -899,7 +902,8 @@ function tick(now) {
   //     속도 배속 _huntSpd: 잠행 0.5×·추적/회수 2×(도주 표적·부패와 시간 싸움)·평시 속보 1.25×·정지(_hold)≈0 — 랩 moveNPC 동형.
   for (const pr of S.agents) {
     if (pr.state !== 'work' || !pr._real) continue;
-    try { _hunterBrain(pr, S, 1 / H.TICK_HZ); } catch (e) { if (!S._hbErr) { S._hbErr = 1; console.error('[wildlife] 사냥꾼 두뇌 오류:', e.message); } }
+    const _s95 = _t1326S(pr._real);   // ★[T1326] 켬(판 시계 · 밭 세계 · 사냥꾼 축) = 두뇌 시간도 게임 분 축(끔 · 운영 시계 = 1 — 종전 dt 그대로)
+    try { _hunterBrain(pr, S, _s95 > 1 ? _s95 / H.TICK_HZ : 1 / H.TICK_HZ); } catch (e) { if (!S._hbErr) { S._hbErr = 1; console.error('[wildlife] 사냥꾼 두뇌 오류:', e.message); } }
     const rp = pr._real;
     if (pr._hgo) { rp.behavior = 'wander'; rp.targetX = pr._hgx * 32 + 16; rp.targetY = pr._hgy * 32 + 16; rp.gatherTarget = null; pr._hgo = 0; }
     rp._huntSpd = pr._hold ? 0.02 : (pr.sneak ? 0.5 : ((pr.action === '추적' || pr.action === '회수') ? 2 : 1.25));
