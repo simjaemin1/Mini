@@ -5,7 +5,7 @@
 //     → 판 JSON 곁 `<판>-<시드>.t1333.json`(10날마다 덮어 쓴다 · 끝에 한 번 더)
 //   ① 날 머리(econ `tickVillage` 그날 첫 부름) 온 마을(51) — 칸 `rec.vcols`:
 //      대장장이 · 석공 · 전사 · 사람 수 · 무기 곳간 · 무기 질 EMA(`_weapQ`) · 청동 무기 누계 · 녹임 누계 ·
-//      금속(구리 · 주석 · 납)마다 [곳간 · 흐름 목표(`_consEMA × 30`) · 파생 수요(`derivedInputTarget` — 정본 함수 · 순수) · 값표 목표 · 유효 재고(`_targetV2` — 세계 공급 캐시가 오늘 선 때만) ·
+//      금속(구리 · 주석 · 납 · 은)마다 [곳간 · 흐름 목표(`_consEMA × 30`) · 파생 수요(`derivedInputTarget` — 정본 함수 · 순수) · 값표 목표 · 유효 재고(`_targetV2` — 세계 공급 캐시가 오늘 선 때만) ·
 //      교역 값(`_priceCache` — 그 마을이 교역 차례에 쓴 값표 · 그날 · 어제 것만)]
 //   ② econ 교역 장부(`world.tradeLog`)의 새 줄(꼬리에서 읽기만 · t1313 과 같은 꼴): 품목 셈(보낸 짐 · 귀로 짐 품목별 줄 수) · 금속 · 무기 줄(날 · 보낸 → 받은 · 품목 · 양 · 떠난 값 · 닿은 값 · 거리 · 귀로?)
 //   ③ 판 머리 한 번: 마을 사이 거리(`villageDist` — 구리 · 주석을 든 적 있는 마을 → 대장장이 마을 짝은 판 끝에 다시 적는다) · 교역 수(TAU · 운반비 · 습격 기본)
@@ -20,8 +20,8 @@ const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
 const V2PATH = require.resolve(path.join(ROOT, 'sim', 'economy-sim-v2'));
 const r4 = (x) => +(+x || 0).toFixed(4);
-const MET = ['copper', 'tin', 'lead'];
-const WATCH = new Set(['copper', 'tin', 'lead', 'weapon', 'bronze_tool']);
+const MET = ['copper', 'tin', 'lead', 'silver'];   // 합금 재료 표 중 금은 뺀다(배합이 남지 않는다 — 하네스 ③)
+const WATCH = new Set(['copper', 'tin', 'lead', 'silver', 'weapon', 'bronze_tool']);
 const rec = { knobs: { alloy: !!V1.T1333_ALLOY_ORDER, exportCast: !!V1.T1333_EXPORT_CAST, copperDeriv: !!V1.COPPER_DERIV_ON },
   vcols: ['smith', 'mason', 'warrior', 'pop', 'weapon', 'weapQ', 'bronzeW', 'smelt'], mcols: ['stock', 'flowT', 'derivT', 'target', 'sEff', 'price'],
   day: {}, met: {}, rows: 0, resN: {}, legs: [], dist: {}, consts: null, err: null };
