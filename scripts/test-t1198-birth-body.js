@@ -14,6 +14,9 @@
 //   ⑥ [T1306] 단계 문(`T1306_BIRTH_GRADE` · T1297 켬 안) — 문턱 아래는 그날 늘림 × (곳간 ÷ 문턱 곳간). 판 여섯(10 · 15 · 45일치 · 겨울 들머리 60 · 120일치 · 곳간 0 — 틱 앞 곳간 ·
 //      문은 그날 거둔 뒤 곳간을 본다) ·
 //      같은 곳간의 끔 판 늘림과 견준다 · T1297 만(전부/0 그대로) · T1297 끔이면 손잡이도 꺼진다 · 미끼 둘(전부/0 로 되돌린 사본 · 비율이 곳간을 안 보는 사본 → 빨강).
+//   ⑦ [T1319] 가을 문(`T1319_AUTUMN_LOOK` · T1297 켬 안) — 가을(9 · 10 · 11월)엔 출생 문 날 수 = 다가오는 겨울 끝(다음 3월 1일)까지 남은 날.
+//      판 여덟(9월 1일 60 · 200일치 · 10월 15일 100 · 150일치 · 11월 30일 60 · 100일치 · 8월 31일 45일치 · 겨울 들머리 60일치) · T1297 만(가을 문 끔)이면 9월 1일 60일치가 는다 ·
+//      T1297 끔이면 손잡이도 꺼진다 · `'mig'`(이주 문만)이면 출생 문은 그대로(9월 1일 60일치가 는다) · ★미끼 — 가을 항을 뺀 사본(가을에도 30일치) → 9월 1일 60일치 마을이 는다(빨강).
 //
 // 실행: node scripts/test-t1198-birth-body.js   (존 안 띄움 · 몇 초)
 'use strict';
@@ -84,6 +87,31 @@ if (process.argv[2] === '--child-t1306') {
   process.exit(0);
 }
 
+if (process.argv[2] === '--child-t1319') {
+  //   가을 문 판 — T1297 판과 같은 마을(20명 · 주거 넉넉) · 곳간을 (사람 + 1) × 날 수로 맞추고 가을 날 하루 틱 → 그날 dP(`_dpDebug` — 문 뒤) · 문 표지 · 문턱 날 수
+  const fs = require('fs'), PP = path.join(ROOT, 'sim', 'economy-sim.js'), C = R('server/calendar');
+  const run = (EE) => {
+    const one = (days, day) => {
+      const v = EE.createVillage({ fertility: 3, water: 3, stone: 1, ore: 1, wood: 3, game: 3, size: 200, arable: 3, initialPop: 20, name: '곳촌' });
+      v.housing = 1e4; v._dPAccum = 0;
+      const N = v.npcs.length, fe = EE.totalFoodEquivalent(v);
+      v.storage.food = (v.storage.food || 0) + (N + 1) * days - fe;
+      EE.tickVillage(v, day);
+      return { days, day, gate: v._t1297Gate == null ? null : v._t1297Gate, dP: v._dpDebug ? v._dpDebug.dP : null, need: EE.t1297NeedDays ? EE.t1297NeedDays(day) : null };
+    };
+    const sep1 = C.dayOf(1, 9, 1), oct15 = C.dayOf(1, 10, 15), nov30 = C.dayOf(1, 11, 30), aug31 = C.dayOf(1, 8, 31);
+    return { a: one(60, sep1), b: one(200, sep1), c: one(100, oct15), d: one(150, oct15), e: one(60, nov30), f: one(100, nov30), g: one(45, aug31), h: one(60, 276) };
+  };
+  const out = { knob: E.T1319_AUTUMN_LOOK, mig: E.T1319_AUTUMN_MIG, t1297: E.T1297_BIRTH_FOOD, real: run(E) };
+  if (E.T1319_AUTUMN_LOOK) {
+    const src = fs.readFileSync(PP, 'utf8'), AL = 'T1319_AUTUMN_LOOK ? t1319AutumnLeft(day) : 0';
+    out.baitLine = src.split(AL).length === 2;
+    const Module = require('module'), m = new Module(PP + '.bait19', null); m.filename = PP; m.paths = Module._nodeModulePaths(path.dirname(PP)); m._compile(src.replace(AL, '0'), PP);
+    out.bait = run(m.exports);   // 가을 항을 뺀 사본(가을에도 30일치)
+  }
+  console.log('@@T1319 ' + JSON.stringify(out));
+  process.exit(0);
+}
 if (process.argv[2] === '--child-t1297') {
   //   출생 곳간 문 판 — 마을 하나(20명 · 주거 넉넉) · 곳간을 (사람 + 1) × 날 수로 맞추고 하루 틱 → 그날 dP(`_dpDebug` — 문 뒤) · 문 표지
   const fs = require('fs'), PP = path.join(ROOT, 'sim', 'economy-sim.js');
@@ -239,6 +267,25 @@ console.log('\n=== T1306 ⑥ 단계 문(`T1306_BIRTH_GRADE` · T1297 켬 안) �
     const B1 = G.bait1, B2 = G.bait2;
     ok(G.baitLine && B1 && grade(R.a, raw.a) && !grade(B1.a, raw.a) && B1.a.dP === 0, `★미끼 1 — 단계 문을 전부/0 로 되돌린 사본은 10일치 마을을 0 으로 막는다(빨강 · dP ${B1 && B1.a.dP})`, J(B1 && B1.a));
     ok(G.baitLine && B2 && !grade(B2.a, raw.a) && near(B2.a.dP, raw.a.dP), `★미끼 2 — 비율이 곳간을 안 보는 사본은 10일치 마을도 다 는다(빨강 · dP ${B2 && B2.a.dP})`, J(B2 && B2.a));
+  }
+}
+
+console.log('\n=== T1319 ⑦ 가을 문(`T1319_AUTUMN_LOOK` · T1297 켬 안) — 가을엔 다가오는 겨울 끝까지 · 미끼 ===');
+{
+  const ch = (env) => { const o = execFileSync(process.execPath, [__filename, '--child-t1319'], { env: Object.assign({}, process.env, { T1197_MEAL_BODY: '0', T1198_BIRTH_BODY: '0', T1149_WINTER: '0' }, env), encoding: 'utf8', maxBuffer: 64 << 20 });
+    const l = o.split('\n').find((x) => x.startsWith('@@T1319 ')); return l ? JSON.parse(l.slice(8)) : null; };
+  const A = ch({ T1297_BIRTH_FOOD: '1', T1319_AUTUMN_LOOK: '1' }), T = ch({ T1297_BIRTH_FOOD: '1', T1319_AUTUMN_LOOK: '0' }), X = ch({ T1297_BIRTH_FOOD: '0', T1319_AUTUMN_LOOK: '1' }), MG = ch({ T1297_BIRTH_FOOD: '1', T1319_AUTUMN_LOOK: 'mig' });
+  if (!A || !T || !X || !MG) ok(false, 'T1319 자식 판이 안 섰다');
+  else {
+    const R0 = A.real, shut = (x) => x.gate === 1 && x.dP === 0, open = (x) => x.gate === 0 && x.dP > 0, J = (x) => JSON.stringify(x);
+    ok(A.knob === true && T.knob === false && X.knob === false && X.t1297 === false, '손잡이 — T1297 켬 안에서 `\'1\'` 만 켬 · T1297 끔이면 가을 문도 꺼진다');
+    ok(shut(R0.a) && R0.a.need === 181 && open(R0.b), '★9월 1일(다음 3월 1일까지 181날) — 60일치 막힘 · 200일치 는다', J({ a: R0.a, b: R0.b }));
+    ok(shut(R0.c) && R0.c.need === 137 && open(R0.d), '10월 15일(137날) — 100일치 막힘 · 150일치 는다', J({ c: R0.c, d: R0.d }));
+    ok(shut(R0.e) && R0.e.need === 91 && open(R0.f), '11월 30일(91날 — 이튿날 겨울 줄 90날로 이어진다) — 60일치 막힘 · 100일치 는다', J({ e: R0.e, f: R0.f }));
+    ok(open(R0.g) && R0.g.need === 30 && shut(R0.h) && R0.h.need === 89, '봄 · 여름 · 겨울은 그대로 — 8월 31일 45일치 는다(문턱 30) · 겨울 들머리 60일치 막힘(문턱 89)', J({ g: R0.g, h: R0.h }));
+    ok(open(T.real.a) && T.real.a.need === 30, 'T1297 만(가을 문 끔) — 9월 1일 60일치가 는다(종전 30일치 문턱)', J(T.real.a));
+    ok(MG.knob === false && MG.mig === true && open(MG.real.a) && MG.real.a.need === 30 && shut(MG.real.h), '`\'mig\'`(이주 문만) — 출생 문은 그대로: 9월 1일 60일치가 는다(문턱 30) · 겨울 들머리 60일치는 막힘(89)', J({ a: MG.real.a, h: MG.real.h }));
+    ok(A.baitLine && A.bait && open(A.bait.a) && A.bait.a.need === 30 && shut(R0.a), '★미끼 — 가을 항을 뺀 사본(가을에도 30일치)은 9월 1일 60일치 마을이 는다(빨강 · 진짜는 막힘)', J(A.bait && A.bait.a));
   }
 }
 

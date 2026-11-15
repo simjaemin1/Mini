@@ -2370,7 +2370,27 @@ function _t1297InWinter(day) {   // 겨울 안인가 — 달력 정본(12 · 1 �
   return t.month === 12 || t.month <= 2;
 }
 function t1297WinterLeft(day) { return _t1297InWinter(day) ? t1149LeanDays(day) : 0; }   // 겨울에 남은 날(겨울 밖 0)
-function t1297NeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day)); }   // 출생 문턱 날 수
+// ★★★[T1319 2026-11-15 · T1312 회부 3] 손잡이 `T1319_AUTUMN_LOOK`(T1297 켬 안 · `'1'` 만 켬 · 끔 = T1297 그대로 · 세계 갈래 0) — **가을에 겨울 끝까지 내다보기.**
+//   T1312 판: 묶음 굶어 죽음은 모두 날 300 뒤였고 94% 가 가을에 난 사람(1,298) · 든 사람(1,060)으로 불어난 마을에서 났다 — 출생 문 · 이주 문이 가을엔 30일치만 봐서
+//     곳간 30일치 줄에 붙은 채 89 ~ 90일치 겨울을 맞았다(T1312 §1 ⓓ).
+//   켬 — 문턱 날 수 = max(기근 문 30, 겨울에 남은 날, **가을이면 다가오는 겨울 끝(다음 3월 1일)까지 남은 날**).
+//     가을 = 달력 정본 9 · 10 · 11월(server/calendar `SEASON_OF_MONTH` — 기상청 철) · 옛 달력(`T570_CALENDAR=0`)이면 `d % 365` 180 ~ 269(그 파일 `legacySeasonOf` 경계).
+//     남은 날 = `t1149LeanDays`(겨울 안에서 T1297 이 쓰는 그 식을 가을로 넓힘 — 9월 1일 181일 → 11월 30일 91일 → 12월 1일부터 겨울 줄 90일 · 윤년 2월이면 하루 더).
+//     봄 · 여름은 그대로(30) · 겨울은 그대로(다음 봄까지). `'1'` = 출생 문(아래 `_homeN + 1` 줄 — `t1297NeedDays`)과 이주 문(서버 `_t1306Pass` · `_t1312Pass` — `t1319MigNeedDays`)이 함께 바뀐다.
+//     `'mig'` = 이주 문만(출생 문은 가을에도 30일치 그대로) — T1319 판: 가을 출생을 막으면 묶음 굶어 죽음 0 · 0 · 0 이지만 1020 끔비 0.975 · 이주 문만이면 굶어 죽음 153 · 284 · 116(끔 194 · 293 · 152) · 끔비 1.177 · 1.413 · 1.540(보고 T1319 §2).
+//   새 수 0 — 달력에서 나오는 날 수. ⚠K · 로지스틱 · 주거 문 · 죽음 줄은 한 글자도 안 바뀐다.
+const _T1319_AUT = (T1297_BIRTH_FOOD && typeof process !== 'undefined' && process.env) ? process.env.T1319_AUTUMN_LOOK : undefined;
+const T1319_AUTUMN_LOOK = _T1319_AUT === '1';                              // 출생 문 + 이주 문
+const T1319_AUTUMN_MIG = _T1319_AUT === '1' || _T1319_AUT === 'mig';       // 이주 문에 가을 항이 서나(`'1'` · `'mig'`)
+function _t1319InAutumn(day) {   // 가을 안인가 — 달력 정본(9 · 10 · 11월) · 옛 달력이면 `d % 365` 180 ~ 269
+  const C = _t1149C(), d = day | 0;
+  if (!C || !C.ON || typeof C.dateOf !== 'function') { const r = ((d % 365) + 365) % 365; return r >= 180 && r < 270; }
+  const m = C.dateOf(d).month;
+  return m >= 9 && m <= 11;
+}
+function t1319AutumnLeft(day) { return _t1319InAutumn(day) ? t1149LeanDays(day) : 0; }   // 가을이면 다가오는 겨울 끝까지 남은 날(가을 밖 0)
+function t1297NeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day), T1319_AUTUMN_LOOK ? t1319AutumnLeft(day) : 0); }   // 출생 문턱 날 수 · ★[T1319] `'1'` = 가을도 겨울 끝까지
+function t1319MigNeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day), T1319_AUTUMN_MIG ? t1319AutumnLeft(day) : 0); }   // ★[T1319] 이주 문 날 수 — `'1'` · `'mig'` = 가을도 겨울 끝까지 · 끔 = 출생 문 날 수와 같다
 // ★★★[T1306 2026-11-14 · T1297 회부 1 · 2] 손잡이 `T1306_BIRTH_GRADE`(T1297 켬 안 · `'1'` 만 켬 · 끔 = T1297 그대로 · 세계 갈래 0) — **출생 문을 단계로.**
 //   T1297 은 둘 중 하나였다 — 곳간 < (사람 + 1) × 하루치 × 문턱 날 수이면 그날 늘림 0. 판을 열면 곳간이 47일치에서 보름 만에 30일치 밑으로 내려오고
 //     첫 가을걷이(날 200 ~ 275)까지 21 ~ 28일치(사람 가중)에 머문다 — 그 철 내내 문이 거의 닫혀 1020 묶음 끔비가 1.077 에 그쳤다(T1297 회부 1).
@@ -7702,7 +7722,7 @@ module.exports = {
   T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
   T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
-  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
+  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
