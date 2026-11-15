@@ -31,12 +31,12 @@ for (const r of a.rows) {
 if (n) console.log(`T1263 끔과 날 줄(인구 · 식량등가) 같음 ${same}/${n}` + (first ? ` · 첫 갈림 ${first}` : ''));
 // CPU · 남은 시간 어림(맥 / T1263 CPU 비 × T1263 남은 몫 · 날 301 ~ 365 는 T1263 마지막 10날 평균으로)
 const cpu = a.cpu || [];
-let mac = 0, ref = 0;
-for (const c of cpu) { mac += c[1]; if (c[0] <= REF.length) ref += REF[c[0] - 1][2]; }
+let mac = 0, kMac = 0, ref = 0;   // 비는 날 2 부터(날 1 = 기동 · 모듈 싣기 — 기계마다 결이 달라 뺌)
+for (const c of cpu) { mac += c[1]; if (c[0] >= 2 && c[0] <= REF.length) { kMac += c[1]; ref += REF[c[0] - 1][2]; } }
 const lastRef = REF.slice(-10).reduce((x, r) => x + r[2], 0) / 10;
 let refLeft = 0;
 for (let d = D + 1; d <= 365; d++) refLeft += d <= REF.length ? REF[d - 1][2] : lastRef;
-const k = ref > 0 ? mac / ref : 1;
+const k = ref > 0 ? kMac / ref : 1;
 const recent = cpu.slice(-10), rAvg = recent.length ? recent.reduce((x, c) => x + c[1], 0) / recent.length : 0;
 console.log(`누적 CPU ${(mac / 3600).toFixed(1)} 시간 · 최근 ${recent.length}날 하루 ${rAvg.toFixed(0)} 초 · 맥/T1263 CPU 비 ${k.toFixed(2)}` +
   (end ? '' : ` · 남은 어림 ${(k * refLeft / 3600).toFixed(1)} 시간`));
