@@ -20857,6 +20857,12 @@ function _xzOn(world) { return !!(T525_CROSS_ZONE && world && world.xzone && typ
 //     다시 뜬 존이 호스트를 아직 안 꽂았으면(걸음표 전 `_xzOn` 거짓) 이웃 존 캐러밴의 도착 · 'return' 을 하루씩 미룬다(`_t1030Hold` — 짐은 그 캐러밴에 그대로).
 const T1030_XZ_MARKET = T525_CROSS_ZONE && (typeof process !== 'undefined' && process.env && process.env.T1030_XZ_MARKET === '1');
 function _t1030Hold(world, c) { return T1030_XZ_MARKET && !!(c && c._xzHome) && !_xzOn(world); }
+// ★★[T1321 2026-11-14 · T1292 회부 6] 손잡이 `T1321_XZ_DRAIN`('1' 만 켬 · 끔 기본 · 끔 = 아래 줄 늘 false = 종전 바이트) — **끈 판의 안전망.**
+//   팔이 꺼졌거나(`T525_CROSS_ZONE` 끔으로 다시 뜬 판) 호스트 · 걸음표가 아직이면(`_xzOn` 거짓) 메타에서 되돌린 이웃 존 캐러밴(`_xzHome`)의 도착 · 'return' 을 적지 않고
+//   경계에 선 채 하루씩 미룬다(T1030 미룸과 같은 꼴 — 팔 켬 · 장 손잡이와 무관). 종전: `_xzHandBack` 이 `world.xzone.zone` 을 읽다 예외 → 그날 캐러밴 고리가 통째로 멈췄다.
+//   이 존 캐러밴으로 저쪽에 가 있는 것('xzone')은 원래 갈래가 없다(돌아올 'return' 을 기다린다 — 예외 0). 팔이 다시 켜지면 그날부터 종전 그대로 간다.
+const T1321_XZ_DRAIN = (typeof process !== 'undefined' && process.env && process.env.T1321_XZ_DRAIN === '1');
+function _t1321Hold(world, c) { return T1321_XZ_DRAIN && !!(c && c._xzHome) && !_xzOn(world); }
 // 거리 — 스텁이 끼면 호스트에 묻는다(걸음 · 존 경계 너머) · 아니면 종전 정본(`villageDist`) 그대로.
 function _xzDist(world, a, b) {
   if ((a && a._xz) || (b && b._xz)) {
@@ -23103,13 +23109,13 @@ function _caravanStepV2(world,c,day) {
     }
 
     else if (c.state === 'outbound' && caravanBodyDue(world,c,'outbound',day>=c.arriveDay)) {
-      if (c._xzHome) { if (!_t1030Hold(world, c)) _xzArriveLoop(world, c, day); }   // ★[T525·T533] 이웃 존 캐러밴의 도착(이 존 몫을 걸어 왔다 · 우회 뒤 도착도 여기) · ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전)
+      if (c._xzHome) { if (!_t1030Hold(world, c) && !_t1321Hold(world, c)) _xzArriveLoop(world, c, day); }   // ★[T525·T533] 이웃 존 캐러밴의 도착(이 존 몫을 걸어 왔다 · 우회 뒤 도착도 여기) · ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전) · ★[T1321] 끈 판 안전망(끔 = 종전)
       else _caravanArrive(world, c, day);
     }
 
     // ★★[T533] 이웃 존 캐러밴의 귀환 구간 — 집은 스텁이라 이 존 곳간에 넣지 않는다: 제 몫을 걸어 경계 칸에 선 날 집 존으로 넘긴다.
     else if (c._xzHome && c.state === 'inbound') {
-      if (c._xzBack && caravanBodyDue(world,c,'inbound',day>=c._xzBack.day) && !_t1030Hold(world, c)) _xzHandBack(world, c, day, c._xzRow || null, c._xzBack.remain);   // ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전)
+      if (c._xzBack && caravanBodyDue(world,c,'inbound',day>=c._xzBack.day) && !_t1030Hold(world, c) && !_t1321Hold(world, c)) _xzHandBack(world, c, day, c._xzRow || null, c._xzBack.remain);   // ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전) · ★[T1321] 끈 판 안전망(끔 = 종전)
     }
 
     else if (c.state === 'inbound' && !c._t707 && caravanBodyDue(world,c,'inbound',day>=c.returnArriveDay)) {   // ★[T707] 정산 전 장은 귀환을 안 닫는다(머리에서 정산되니 실제로는 안 닿는다 · 끔이면 `_t707` 없음 = 종전)

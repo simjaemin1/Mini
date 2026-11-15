@@ -308,6 +308,90 @@ const _t1292Stat = { hide: 0, unhide: 0, keepUnknown: 0, sure: 0, escSent: 0, es
 const T1292_XZ_ESC = process.env.T1292_XZ_ESC !== '0';
 const _t1292EscAlive = (body) => { let n = 0; for (const e of (body && body.escorts) || []) { const p = state.deps.players.get(e.pid); if (p && p.hp > 0) n++; } return n; };
 const _t1292Esc = (n, alive) => { if (!T1292_XZ_ESC || !Number.isInteger(alive) || alive < 0) return n; const m = Math.min(n | 0, alive); if (m < (n | 0)) _t1292Stat.escCut++; return m; };
+// ★★[T1321 2026-11-14 · 세션8 · T1292 회부 5 · 6] 손잡이 둘('1' 만 켬 · ★기본 끔 · 끔 = 아래 함수들이 늘 무동작 = main 바이트 · 팔 `T525_CROSS_ZONE` 켬일 때만 닿는다):
+//   ⓐ `T1321_XZ_KEEP` — **답을 기다리는 넘김이 재기동을 건넌다**(회부 5). 종전: 숨긴 몸(`_xzHidden`)은 메타에 안 실리고 다시 밂 줄(`X.retry`) · 경계 칸 기다림
+//      (`_xzSendWait`) · 받은 열쇠(`X.seen`) · 받은 기록 줄(`core.pend` — econ 이 다음 경계에 읽기 전)은 메모리다 ⇒ 보내는 존이 그 사이 다시 뜨면 기록이 사라진다
+//      (받는 존이 받았으면 저쪽에만 · 안 받았으면 어디에도 — 집 존 캐러밴은 'xzone' 칸에 영영 묶인다 = 상인 · 짐 사라짐).
+//      켬: 나간 기록마다 줄(`X.t1321P` — 열쇠 · 기록 · 경계 · 다시 민 번 · 모름 표지)을 세워 메타(T728 행 곁 칸 `t1321`)에 받은 열쇠 · 받은 기록 줄과 같이 싣는다
+//      (줄이 바뀐 틱 끝에 T1034 표 — 마감 중이면 마감 끝 저장이 같은 줄을 쓴다). 다시 뜨면(같은 날 메타 — 캐러밴 되돌림과 같은 규약) 그 줄을 **모름**으로 다시 밂 줄에 세우고
+//      받은 열쇠 · 받은 기록 줄을 되돌린다 ⇒ 다음 경계에 같은 기록을 다시 민다 → 받은 존은 `dup`(이미 받았다) · 안 받았으면 OK(지금 받는다) — 몸 · 짐 둘 0 · 사라짐 0.
+//      ★모름 규칙: 앞 글이 답을 못 들은(받았는지 모르는) 기록은 다시 민 글의 **연결 실패**(받는 존 꺼짐 — 그 글이 안 닿은 것만 확실)로 되돌리지 않는다(숨긴 채 · 다음 경계).
+//        종전(T1292 켬)은 다시 민 글의 연결 실패에도 되돌렸다 — 앞 글이 닿았으면 짐이 둘(되돌린 짐 + 저쪽 짐)이 된다. 받는 존이 **답한** "안 받는다"만 되돌린다.
+//   ⓑ `T1321_XZ_DRAIN` — **끄기 전 비우기**(회부 6 · 부팅 손잡이 · 또는 안 문 명령 `kind: 'drain'`(zone.js) 이 켜고 끈다):
+//      ① 새 넘김 0 — 이웃 스텁을 econ 에 안 꽂는다(새 교차 존 교역이 안 선다) · 경계에 닿은 이 존 캐러밴의 'arrive' 는 안 밀고 경계에서 되돌린다(받는 존이 안 받았을 때의
+//         종전 되돌림 갈래 그대로 — 짐을 지고 집으로) · 받는 존은 새 'arrive' 를 "비우는 중"으로 거절한다(보낸 존이 되돌린다).
+//      ② 넘어가 있는 것은 돌아온다 — 'return'(집으로 돌아가는 기록)은 그대로 민다 · 받는다.
+//      ③ 비움 끝(`t1321DrainStatus().done`) = 이 존 캐러밴이 저쪽에 0 · 저쪽 캐러밴이 이쪽에 0 · 답 기다림 0 · 받은 기록 줄 0 → 그때 팔을 끈다.
+//      ★끈 판의 안전망(econ 쪽 · 같은 env `T1321_XZ_DRAIN` — `sim/economy-sim-v2.js`): 팔이 꺼졌거나 걸음표가 아직이면(`_xzOn` 거짓) 이웃 존 캐러밴의 'return'(`_xzHandBack`)을
+//         적지 않고 경계에 선 채 하루씩 미룬다 — 종전은 `world.xzone.zone` 을 읽다 예외(그날 캐러밴 고리가 통째로 멈춘다).
+const T1321_XZ_KEEP = process.env.T1321_XZ_KEEP === '1';
+let _t1321Drain = process.env.T1321_XZ_DRAIN === '1';
+const T1321_CMD = T1321_XZ_KEEP || _t1321Drain || process.env.T1321_XZ_BEAST === '1';   // 비우기 명령 문(zone.js `kind: 'drain'`)이 서는 판 — T1321 손잡이 하나라도 켬(끔 = 그 종류는 종전 '모르는 종류' 400)
+const _t1321Stat = { put: 0, del: 0, restored: 0, restoredSeen: 0, restoredQ: 0, unsureKeep: 0, drainBounce: 0, drainRefuse: 0, drainCmd: 0, mark: 0, track: 0 };
+function t1321Drain() { return _t1321Drain; }
+function t1321SetDrain(on) {
+  const was = _t1321Drain; _t1321Drain = !!on; _t1321Stat.drainCmd++;
+  const X = state.xzone; if (X && _t1321Drain) X.core.X.stubs = [];   // 켜는 순간 꽂힌 스텁도 뺀다(새 교역 0)
+  if (was !== _t1321Drain) console.log(`[${state.zoneId}] 🌐 [T1321] 비우기 ${_t1321Drain ? '켬 — 새 넘김 0 · 넘어가 있는 것은 돌아온다' : '끔 — 넘김 다시 엶'}`);
+  return _t1321Drain;
+}
+function t1321DrainStatus() {
+  const X = state.xzone, W = state.world;
+  const o = { drain: _t1321Drain, xzone: !!X, mineAway: 0, theirsHere: 0, retry: 0, wait: 0, hidden: 0, pendIn: 0, out: 0, keep: X && X.t1321P ? X.t1321P.size : 0 };
+  for (const c of ((W && W.caravans) || [])) { if (c._done) continue; if (c.state === 'xzone') o.mineAway++; if (c._xzHome) o.theirsHere++; }
+  if (X) {
+    const CX = (X.core && X.core.X) || {};
+    o.retry = (X.retry || []).length; o.pendIn = ((X.core && X.core.pend) || []).length; o.out = (CX.out || []).length + (CX.inbox || []).length;
+    for (const b of (state.caravanBodies || new Map()).values()) { if (b._xzSendWait) o.wait++; if (b._xzHidden) o.hidden++; }
+  }
+  o.done = o.mineAway === 0 && o.theirsHere === 0 && o.retry === 0 && o.wait === 0 && o.hidden === 0 && o.pendIn === 0 && o.out === 0;
+  return o;
+}
+//   나간 기록 줄(켬만) — 열쇠 = 몸 표 열쇠(`_xzSend` 의 그 열쇠) · 표가 바뀌면 메타 표(T1034)
+function _t1321Mark() { if (!T1321_XZ_KEEP) return; _t1321Stat.mark++; _t1034Mark('t1321'); }
+function _t1321Put(key, r, g, tries, unsure) {
+  if (!T1321_XZ_KEEP) return; const X = state.xzone; if (!X) return;
+  const P = X.t1321P || (X.t1321P = new Map()), old = P.get(key);
+  P.set(key, { key, r, g, tries: tries | 0, unsure: !!(unsure || (old && old.unsure)) });
+  _t1321Stat.put++; _t1321Mark();
+}
+function _t1321Del(key) { if (!T1321_XZ_KEEP) return; const X = state.xzone; if (X && X.t1321P && X.t1321P.delete(key)) { _t1321Stat.del++; _t1321Mark(); } }
+//   표(`X.track` — 셈 칸 · 메모리) — 다시 뜬 판은 표가 비어, 다시 밀기(같은 기록 · dup) 전에 받는 존이 치러 돌려보낸 'return' 이 먼저 닿으면
+//   귀환 짐이 표에 안 붙고 econ 이 그 캐러밴을 끝낼 때 '잃음'으로 셌다(판 R3 9 — 짐은 곳간에 들었다 · 셈만 틀림). 켬 = 받는 순간 표 칸을 세운다 ·
+//   다시 민 답(OK)이 그 칸을 덮지 않는다(끔 = undefined · false — 종전)
+function _t1321Track(r) {
+  if (!T1321_XZ_KEEP) return undefined; const X = state.xzone;
+  const c = ((state.world && state.world.caravans) || []).find((x) => x.id === r.id && x.state === 'xzone' && !x._done);
+  if (!X || !c) return undefined;
+  const t = { c, res: c.giveRes || null, amt: c.giveAmt || 0, sentDay: null }; X.track.set(r.id, t); _t1321Stat.track++; return t;
+}
+function _t1321Back(id) { if (!T1321_XZ_KEEP) return false; const t = state.xzone && state.xzone.track.get(id); return !!(t && t.back); }
+//   연결이 안 섰다(그 글만 안 닿은 것이 확실 — 받는 존이 꺼졌다 · 주소 없음) · 오류 코드(`HTTP 4xx/5xx`)는 받는 존의 답이다(열쇠를 먼저 보고 거절한 것 — 되돌려도 된다)
+const _t1321Conn = (why) => /ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ENETUNREACH|EAI_AGAIN|no zone/.test(String(why || ''));
+function _t1321Unsure(key) { const X = state.xzone, p = X && X.t1321P && X.t1321P.get(key); return !!(p && p.unsure); }
+//   메타 곁 칸(켬 + 호스트만) — 나간 줄 · 받은 열쇠(줄 차례 · 상한 5,000 그대로) · 받은 기록 줄(econ 이 읽기 전)
+function _t1321Pack() {
+  const X = state.xzone; if (!T1321_XZ_KEEP || !X) return null;
+  const p = X.t1321P ? [...X.t1321P.values()].map((q) => ({ key: q.key, r: q.r, g: q.g, tries: q.tries, unsure: q.unsure })) : [];
+  const q = ((X.core && X.core.pend) || []).map((x) => ({ gday: x.gday, rec: x.rec }));
+  const sq = X.seenQ || [];
+  if (!p.length && !q.length && !sq.length) return null;
+  return { p, s: sq.slice(), q };
+}
+//   다시 뜬 판 — 호스트가 선 바로 뒤(`_xzInit`) 쥔 줄을 되돌린다(같은 날 메타만 — 캐러밴 되돌림과 같은 규약 · `_t728Restore` 가 쥐어 둔다)
+function _t1321Restore(X) {
+  const S = state._t1321Saved; state._t1321Saved = null;
+  if (!T1321_XZ_KEEP || !S || !X) return;
+  for (const k of (S.s || [])) if (!X.seen.has(k)) { X.seen.add(k); X.seenQ.push(k); _t1321Stat.restoredSeen++; }
+  for (const x of (S.q || [])) if (x && x.rec) { X.core.onRecord({ gday: x.gday, rec: x.rec }); _t1321Stat.restoredQ++; }
+  for (const q of (S.p || [])) {
+    if (!q || !q.r) continue;
+    X.retry.push({ r: q.r, tries: Math.max(1, q.tries | 0) });   // 다음 경계에 같은 기록을 다시 민다
+    (X.t1321P || (X.t1321P = new Map())).set(q.key, { key: q.key, r: q.r, g: q.g, tries: Math.max(1, q.tries | 0), unsure: true });   // 앞 글이 닿았는지 모른다
+    _t1321Stat.restored++;
+  }
+  if (_t1321Stat.restored || _t1321Stat.restoredSeen || _t1321Stat.restoredQ) _xzLog(`[T1321] 재기동 — 답 기다리던 넘김 ${_t1321Stat.restored} · 받은 열쇠 ${_t1321Stat.restoredSeen} · 받은 기록 줄 ${_t1321Stat.restoredQ} 되돌림(모름 — 다음 경계에 다시 민다)`);
+}
 // ★★[T1030 2026-10-31 · T952 회부 2 ㄱ] 손잡이 `T1030_XZ_MARKET` — **econ 이 정본**(`sim/economy-sim-v2.js` · '1' 만 켬 · 팔 `T525_CROSS_ZONE` 켬일 때만 선다 · 끔 = main 바이트).
 //   켜면 받는 존 econ 이 교차 존 캐러밴도 장 갈래로 치른다(`c._mktD` → 아래 `_t707Open` 이 장 기록 · 명부를 그대로 연다 · 상인 머묾 = 장 끝).
 //   서버 몫 둘: ⓐ 재기동 메타(T728)가 이웃 존이 낀 캐러밴을 **스텁째** 싣고 되돌린다(종전 = 이름으로 적어 다시 뜨면 못 이었다 — 받는 존의 장 · 집 존의 'xzone' 이 사라졌다)
@@ -5593,6 +5677,7 @@ function _xzInit(zoneId) {
   _xzLog(`경계 호스트 — 이웃 ${host.peers.join('·') || '없음'}(zone-config 동서남북 · 바다 제외) · 정보 반경 ${state.world.infoRange}(econ) · 걸음표는 이웃 명부가 오면 워커로(그 전엔 스텁 0 = 끔과 같다)`);
   // 기동 명부 한 번 — 이웃이 걸음표를 잴 재료(zone.js 적재가 끝난 뒤 · 안 받으면 하루 뒤 경계에 다시 민다)
   setTimeout(() => { try { host.pushRoster(state.lastGameDay); } catch (e) {} }, 0);
+  _t1321Restore(state.xzone);   // ★[T1321 ⓐ] 켬 — 다시 뜬 판이 쥔 나간 줄 · 받은 열쇠 · 받은 기록 줄(끔 = 무동작)
 }
 function _xzTrace(kind, o) {
   const X = state.xzone; if (!X) return;
@@ -5698,6 +5783,8 @@ function _xzDayIn() {
     const b = state.caravanBodies.get(key);
     if (b && b.c && b.c._xzPending && b.c._push > 0) { rec.remain = (rec.remain || 0) + b.c._push; b.c._push = 0; }
   });
+  if (_t1321Drain) X.core.X.stubs = [];   // ★[T1321 ⓑ] 비우기 — 이웃 스텁을 안 꽂는다(새 교차 존 교역 0)
+  _t1321Mark();   // ★[T1321 ⓐ] 받은 기록 줄이 econ 으로 갔다(끔 = 무동작)
 }
 // econ 뒤 — 나간 기록(몸 넘김) · 못 받은 귀환 다시 · 경계 마을 스냅 · 표(오늘 경계 교역 · 곳간에 든 귀환)
 function _xzDayOut() {
@@ -5795,10 +5882,12 @@ function _xzSend(r, g, tries, walked) {
   const key = (r.kind === 'arrive') ? r.id : ('xz:' + r.toZone + ':' + r.id);
   const body = _xzTransferBody(r,key);
   if (body) body._xzHanding = true;
+  _t1321Put(key, r, g, tries);   // ★[T1321 ⓐ] 켬 — 나간 기록 줄(메타에 실린다 · 끔 = 무동작)
   if (body && !walked && !body._xzSendWait && _xzWalkToBorder(body, r, Date.now())) {   // ★[T578 추신] 경계 칸까지 걷고 나서 민다
     body._xzSendWait = { r, g, tries, at: Date.now(), until: body.arriveAt + state.dayMs }; X.st.walkWait++;   // 기다림 상한 = 명목 빠르기로 닿을 시각 + 하루
     return;
   }
+  if (_t1321Drain && r.kind === 'arrive') { _t1321Stat.drainBounce++; _xzAfterSend(r, key, false, 'drain', true, tries | 0); return; }   // ★[T1321 ⓑ] 비우기 — 경계 칸에 닿은 몸은 안 밀고 되돌린다(받는 존이 "안 받는다"고 답한 판의 종전 갈래 그대로)
   if(T762_CARAVAN_BODY && r.kind==='arrive' && !X.track.has(r.id)) {
     const c=(state.world.caravans||[]).find(c=>c.id===r.id && c.state==='xzone' && !c._done);
     if(c)X.track.set(r.id,{c,res:r.giveRes,amt:r.giveAmt,sentDay:state.world.day});
@@ -5820,6 +5909,7 @@ function _xzAfterSend(r, key, ok, why, answered, tries) {
   const X = state.xzone; if (!X) return;
   const body = _xzTransferBody(r,key);
   if (ok) {
+    _t1321Del(key);   // ★[T1321 ⓐ] 받았다(또는 이미 받았다) — 줄에서 뺀다
     X.st.sentOk++;
     const departure=T762_CARAVAN_BODY && X._t1182Depart && X._t1182Depart.get(r);
     let at = departure?departure.at:null, walked = departure?departure.walked:null;
@@ -5828,7 +5918,7 @@ function _xzAfterSend(r, key, ok, why, answered, tries) {
     if (r.kind === 'arrive') {
       X.st.crossArrive++;
       const c = (state.world.caravans || []).find((x) => x.id === r.id && x.state === 'xzone' && !x._done) || null;
-      if (c && (!T762_CARAVAN_BODY || !X.track.has(r.id))) X.track.set(r.id, { c, res: r.giveRes, amt: r.giveAmt, sentDay: state.world.day });
+      if (c && (!T762_CARAVAN_BODY || !X.track.has(r.id)) && !_t1321Back(r.id)) X.track.set(r.id, { c, res: r.giveRes, amt: r.giveAmt, sentDay: state.world.day });
       _xzTrace('out', { id: r.id, to: r.to, toZone: r.toZone, res: r.giveRes, amt: r.giveAmt, res2: r.giveRes2 || null, amt2: r.giveAmt2 || 0, remain: r.remain, at, pt: r.ptHome || null, body: hadBody, walked });
     } else {
       X.st.crossReturn++;
@@ -5840,11 +5930,18 @@ function _xzAfterSend(r, key, ok, why, answered, tries) {
     return;
   }
   X.st.sentFail++;
+  //   ★[T1321 ⓐ] 켬 — 앞 글이 답을 못 들은 기록(모름 · 다시 뜬 판이 되돌린 줄 포함)은 이번 글의 연결 실패로 되돌리지 않는다(앞 글이 닿았으면 짐이 둘 — 숨긴 채 다음 경계)
+  if (T1321_XZ_KEEP && !answered && _t1321Conn(why) && _t1321Unsure(key)) {
+    X.retry.push({ r, tries: (tries | 0) + 1 }); _t1321Put(key, r, state.lastGameDay, (tries | 0) + 1, true); _t1321Stat.unsureKeep++;
+    _xzLog(`⚠ [T1321] 넘김 다시 밂 연결 실패 #${r.id} → ${r.toZone}(${why}) — 앞 글이 닿았는지 몰라 숨긴 채 다음 경계에 다시(${(tries | 0) + 1}번째)`);
+    return;
+  }
   //   ★[T1292] 켬 — 받는 존이 안 받은 것이 확실하면(답 · 연결 안 섬 · 오류 코드) 다시 드러내고 아래 종전 글자 그대로 · 답을 못 들었으면(받았는지 모른다)
   //     몸을 숨긴 채 다음 경계에 다시 민다(두 몸 0 · 받는 쪽 `dup`)
   if (T1292_XZ_HIDE && !answered && _t1292Sure(why)) _t1292Stat.sure++;
   else if (T1292_XZ_HIDE && !answered) {
     X.retry.push({ r, tries: (tries | 0) + 1 }); _t1292Stat.keepUnknown++;
+    _t1321Put(key, r, state.lastGameDay, (tries | 0) + 1, true);   // ★[T1321 ⓐ] 모름 표지
     _xzLog(`⚠ 넘김 답 없음 #${r.id} → ${r.toZone}(${why}) — 몸은 숨긴 채 다음 경계에 다시(${(tries | 0) + 1}번째)`);
     return;
   }
@@ -5852,10 +5949,12 @@ function _xzAfterSend(r, key, ok, why, answered, tries) {
   if (r.kind === 'arrive' && !answered && !(tries > 0)) {
     //   답을 못 들었다 — 받았는지 모른다. 몸은 경계 칸에 선 채 다음 경계에 **한 번** 다시 민다(받는 쪽이 이미 받았으면 `dup` 으로 답한다 — 짐이 둘이 되지 않는다).
     X.retry.push({ r, tries: 1 });
+    _t1321Put(key, r, state.lastGameDay, 1, !_t1292Sure(why));   // ★[T1321 ⓐ] 연결 실패가 아니면 모름
     _xzLog(`⚠ 넘김 답 없음 #${r.id} → ${r.toZone}(${why}) — 다음 경계에 한 번 더`);
     return;
   }
   if (r.kind === 'arrive') {
+    _t1321Del(key);   // ★[T1321 ⓐ] 되돌림 — 줄에서 뺀다
     //   이웃 존이 안 받았다(꺼졌다 · 걸음표가 아직 · 그 마을이 비었다) — 경계에서 짐을 되돌린다(빈손 귀환과 같은 뜻 · 질량 보존 · 회부 §4)
     const c = (state.world.caravans || []).find((x) => x.id === r.id && x.state === 'xzone' && !x._done) || null;
     if (c) {
@@ -5878,6 +5977,7 @@ function _xzAfterSend(r, key, ok, why, answered, tries) {
   } else {
     //   집 존이 안 받았다 — 몸은 경계 칸에 선 채 다음 경계에 다시 민다(짐은 기록에 있다 · 질량 보존)
     X.retry.push({ r, tries: (tries | 0) + 1 });
+    _t1321Put(key, r, state.lastGameDay, (tries | 0) + 1, !answered && !_t1292Sure(why));   // ★[T1321 ⓐ]
     _xzLog(`⚠ 돌려보냄 못 함 #${r.id} → ${r.toZone}(${why}) — 다음 경계에 다시`);
   }
 }
@@ -5895,6 +5995,7 @@ function _xzReceiveCaravan(data) {
   if (!r || (r.kind !== 'arrive' && r.kind !== 'return') || r.toZone !== state.zoneId || !X.host.peers.includes(peer)) return { ok: false, why: 'bad-rec' };
   const sk = `${peer}:${r.kind}:${r.id}`;
   if (X.seen.has(sk)) { X.st.dup++; return { ok: true, dup: true }; }   // 같은 기록을 두 번 받았다(답이 늦어 다시 민 것) — 한 번만 센다
+  if (_t1321Drain && r.kind === 'arrive') { _t1321Stat.drainRefuse++; return { ok: false, why: 'drain' }; }   // ★[T1321 ⓑ] 비우는 중 — 새로 넘어오는 캐러밴은 안 받는다(보낸 존이 되돌린다 · 'return' 은 받는다)
   if (!X.core.G.has(peer)) return { ok: false, why: 'geo' };           // 걸음표가 아직 — 보낸 쪽이 되돌린다('arrive') · 다시 민다('return')
   if (r.kind === 'arrive') {
     const vil = (state.villages || []).find((v) => v.name === r.to) || null;
@@ -5902,7 +6003,8 @@ function _xzReceiveCaravan(data) {
   }
   X.core.onRecord(data);
   X.seen.add(sk); X.seenQ.push(sk); if (X.seenQ.length > 5000) X.seen.delete(X.seenQ.shift());
-  if (r.kind === 'return') { const t = X.track.get(r.id); if (t) t.back = { amt: r.returningAmt || 0, res: r.returningRes || null, dead: !!r.traderDead }; }   // 표 — 돌아온 짐(몸이 없어도)
+  _t1321Mark();   // ★[T1321 ⓐ] 받은 열쇠 · 받은 기록 줄이 바뀌었다 — 이 틱 끝 메타 행(끔 = 무동작)
+  if (r.kind === 'return') { const t = X.track.get(r.id) || _t1321Track(r); if (t) t.back = { amt: r.returningAmt || 0, res: r.returningRes || null, dead: !!r.traderDead }; }   // 표 — 돌아온 짐(몸이 없어도)
   try { _xzBodyIn(r, g, peer, data.esc); } catch (e) { _xzLog(`받은 몸 세우기 실패(#${r.id}): ${e.message}`); }   // ★[T1292] `data.esc` = 보낸 존의 산 호위 수(없으면 undefined — 종전)
   return { ok: true };
 }
@@ -5982,7 +6084,8 @@ function xzonePerf() {
   return { zone: state.zoneId, day: state.world.day, g: state.lastGameDay, dayMs: state.dayMs, epoch: state.epoch, peers: X.host.peers, ready: X.core.peersReady(),
     geo: X.host.hs.geo, host: X.host.hs, core: X.core.st, live: X.core.live ? X.core.live() : null, st: X.st, stubs: (X.core.X.stubs || []).map((s) => s.name), retry: X.retry.length,
     bodies, caravans: cars, trace: X.trace.slice(-200), t952: T952_XZ_ON ? Object.assign({}, _t952Stat) : null,
-    ...((T1292_XZ_HIDE || T1292_XZ_ESC) ? { t1292: Object.assign({}, _t1292Stat) } : {}) };   // ★[T1292] 숨김 · 드러냄 · 모르는 답에 숨긴 채 다시 민 수 · 연결 안 섬(확실) · 호위 수 실어 보냄 · 받아 줄여 세움
+    ...((T1292_XZ_HIDE || T1292_XZ_ESC) ? { t1292: Object.assign({}, _t1292Stat) } : {}),   // ★[T1292] 숨김 · 드러냄 · 모르는 답에 숨긴 채 다시 민 수 · 연결 안 섬(확실) · 호위 수 실어 보냄 · 받아 줄여 세움
+    ...(T1321_CMD ? { t1321: Object.assign({ keep: T1321_XZ_KEEP, pend: X.t1321P ? [...X.t1321P.values()].map((q) => ({ key: q.key, kind: q.r && q.r.kind, id: q.r && q.r.id, tries: q.tries, unsure: q.unsure })) : [], drainSt: t1321DrainStatus() }, _t1321Stat) } : {}) };   // ★[T1321] 나간 줄 · 셈 · 비움 상태(켬만)
 }
 
 // =============================================================================
@@ -18904,7 +19007,8 @@ function _t728Meta() {
     anchor: { day: W.day | 0, g: state.lastGameDay, epoch: state.epoch, dayMs: state.dayMs, at: Date.now() },
     ...(T742_ZONE ? { t742: _t742MetaOut() } : {}),
     ...(T1167_WAR ? (() => { const P = _t1167Pack(); return P ? { t1167: P } : {}; })() : {}),   // ★[T1167] 진행 중 전쟁(없으면 칸 0 · 끔 = 칸 없음)
-    ...(T1034_KEEP ? (() => { const P = _t1034Pack(); return P ? { t1034: P } : {}; })() : {}) });   // ★[T1034] 몸 칸(몸이 없으면 칸이 안 선다 · 끔 = 칸 없음)   // ★[T742] 존 · 모듈 메모리(끔 = 칸 없음 · 종전 글자)
+    ...(T1034_KEEP ? (() => { const P = _t1034Pack(); return P ? { t1034: P } : {}; })() : {}),   // ★[T1034] 몸 칸(몸이 없으면 칸이 안 선다 · 끔 = 칸 없음)   // ★[T742] 존 · 모듈 메모리(끔 = 칸 없음 · 종전 글자)
+    ...(T1321_XZ_KEEP ? (() => { const P = _t1321Pack(); return P ? { t1321: P } : {}; })() : {}) });   // ★[T1321 ⓐ] 답 기다리는 넘김 · 받은 열쇠 · 받은 기록 줄(끔 = 칸 없음)
 }
 const _t728Stat = { metaSaves: 0, restored: null, shutdown: null, dropKeys: [] };
 function _t728SaveMeta() {
@@ -18985,6 +19089,7 @@ function _t728Restore() {
         out.push(o);
       }
       W.caravans = out; W._caravanIdCounter = M.caravanId | 0; R.caravans = out.length;
+      if (T1321_XZ_KEEP && M.t1321) { state._t1321Saved = M.t1321; R.t1321 = { p: (M.t1321.p || []).length, s: (M.t1321.s || []).length, q: (M.t1321.q || []).length }; }   // ★[T1321 ⓐ] 같은 날 메타만(캐러밴과 같은 규약) — 호스트가 선 뒤 `_t1321Restore`
       if (T1034_KEEP && M.t1034 && M.t1034.b) {
         //   몸 칸의 벽시계 값(머묾 끝 · 도착 시각 · 귀환 보간 시작)과 하루 px 은 시계(하루 길이 · epoch)가 같을 때만 뜻이 같다 — 다르면 안 쥔다(T775 자리 그대로)
         if (M.anchor && (T762_CARAVAN_BODY || (M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch))) { state._t1034Saved = new Map(Object.entries(M.t1034.b)); R.t1034 = state._t1034Saved.size; }
@@ -19092,7 +19197,9 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
-  xzoneReceive, xzonePerf,   // ★[T533] 존 경계 — `/handoff_prepare` 의 `kind`(caravan·snap) 받는 문 · `/perf` 의 `xzone` 칸(끔이면 null)
+  xzoneReceive, xzonePerf,
+  t1321Drain, t1321SetDrain, t1321DrainStatus, t1321DrainCmd: T1321_CMD,
+  __t1321Probe: { pack: () => _t1321Pack(), restore: (X) => _t1321Restore(X), dayOut: () => _xzDayOut() },   // ★[T1321] 하네스 — 메타 곁 칸 싣기 · 되돌리기 그 함수(사본 0 · 세계 0)   // ★[T1321 ⓑ] 비우기 — zone.js 짐승 문 · 안 문 명령 `kind: 'drain'` 이 같은 칸을 본다(끔 = 늘 false · 명령 문 안 섬)   // ★[T533] 존 경계 — `/handoff_prepare` 의 `kind`(caravan·snap) 받는 문 · `/perf` 의 `xzone` 칸(끔이면 null)
   distBasisRefresh,   // ★[T996] zone.js `refreshDitchCells` 끝 — 환호 적재 뒤 거리행렬 바탕 다시 세움(켬 · 마감 밖 일)
   villagesBusy, villageWait, villageBookWait,   // ★[T792] 사람 장부 문(창 안 = 바로)   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
   dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게

@@ -27,6 +27,10 @@
 //      닛폰 DB 메타 행에 그 캐러밴이 실린 것을 보고 SIGKILL → 같은 DB 로 다시 띄워 그 짐이 한반도 곳간에 드는지 센다(생성 · 소멸).
 //      ⓔ 뒤에 돈다(죽인 뒤엔 'arrive' = 'return' 셈이 판 밖이다). `XZ_KILL=0` 이면 건너뛴다.
 //
+//   ⓗ' [T1321] 보내는 존이 죽는다(T1292 회부 5) — 닛폰을 먼저 죽여(연결 안 섬) 한반도가 민 기록이 다시 밂 줄에 선 것을 보고 · 그 줄이 한반도 DB 메타 행에 실린 뒤
+//      한반도 SIGKILL → 닛폰 · 한반도를 같은 DB 로 다시 띄운다 → 줄의 'arrive' 기록(켬 = 죽은 한반도 DB 메타 행의 그 줄)마다
+//      받는 존 받음(받은 열쇠 · 몸 들어옴) + 보낸 존 되돌림 = 정확히 1(둘 0 · 사라짐 0).
+//      `T1321_XZ_KEEP=1` 을 이 자에 주면 켬(줄이 메타에 실려 다시 민다) · 안 주면 끔(종전 — 다시 밂 줄이 메모리라 사라진다: 들어옴 + 되돌림 = 0 · 증인).
 //   ⓚ [T1292] 몸 보존(캐논 797 — 경계에서 사라지거나 둘이 되면 안 된다) — 두 존에 `scripts/fixture-xz-bodylog.js` 를 물려 몸 표 넣기 · 빼기 ·
 //      숨김(`hide` · `unhide`)을 한 시계(µs)로 적고 맞댄다(ⓔ 뒤 · ⓗ 죽이기 앞까지): ① 같은 몸이 두 존에 동시에 **보인** 때 0 ② 사라진 몸 0
 //      (넘기려 끝난 몸이 어느 존에서도 다시 안 섬) ③ 표 틈 0(같은 몸이 어느 존 표에도 없던 때 — 데이터상 몸은 언제나 있다) ④ 숨긴 몸은 풀린다(판 끝까지 숨은 채 0)
@@ -98,6 +102,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     ...(BODY?{T1182_E2E_STOP_DIR:checkpointDir,NODE_OPTIONS:((process.env.NODE_OPTIONS||'')+' --require '+path.join(ROOT,'scripts/t1182-e2e-checkpoint.js')).trim()}:{}),
     T952_XZ_STAY: process.env.T952_XZ_STAY || '',   // ★[T952] 이 자에 준 그대로(끔 = 빈 값)
     T1030_XZ_MARKET: process.env.T1030_XZ_MARKET || '',   // ★[T1030] 이 자에 준 그대로(끔 = 빈 값)
+    T1321_XZ_KEEP: process.env.T1321_XZ_KEEP || '',   // ★[T1321] 이 자에 준 그대로(끔 = 빈 값 · ⓗ 보내는 존 죽이기 절이 켬 · 끔을 가른다)
     //   ★[T1139] 걸음표는 **물은 쌍만** 판다(`server/xzone.js` 손잡이 `T1139_XZ_LAZY` — 서버 기본은 끔 = 전 쌍 한 벌) · `T1139_XZ_LAZY=0` 을 주면 종전(전 쌍)
     T1139_XZ_LAZY: process.env.T1139_XZ_LAZY != null ? process.env.T1139_XZ_LAZY : '1',
     //   ★[T662] 걸음표 한 벌 파일 자리 — 이 판의 임시 폴더(판마다 처음부터 잰다 = 찬 판을 잰다 · 두 존이 같은 자리를 봐야 한 벌을 나눈다)
@@ -423,6 +428,86 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     }
   }
 
+  // ── ⓗ' [T1321] 보내는 존(한반도)이 죽는다 — 다시 밂 줄이 재기동을 건너나 ─────────────────────────────
+  if (process.env.XZ_KILL !== '0') {
+    const KEEP = process.env.T1321_XZ_KEEP === '1', dm = +DAYMS;
+    console.log(`\n[ⓗ' T1321 — 보내는 존(한반도)이 다시 밂 줄을 쥔 채 죽는다 · ${KEEP ? '켬(T1321_XZ_KEEP — 줄이 메타에 실린다)' : '끔(종전 — 줄은 메모리)'}]`);
+    const { DatabaseSync } = require('node:sqlite');
+    const metaH = () => { let db = null; try { db = new DatabaseSync(`${DDIR}/w-hanbando.db`, { readOnly: true }); const r = db.prepare('SELECT data, day FROM world_meta WHERE zone = ?').get('hanbando'); return r ? Object.assign(JSON.parse(r.data), { _rowDay: r.day }) : null; } catch (e) { return null; } finally { try { db && db.close(); } catch (e) {} } };
+    const live = (n) => procs.find((p) => p._name === n && !p._dead);
+    //   두 존 줄(경계 표) 모으기 — 고리(400) 밖으로 밀리기 전에(0.5초마다)
+    const TR = { hanbando: [], nippon: [] }, seenTr = { hanbando: new Set(), nippon: new Set() };
+    const grab = async (z) => { const P = await perf(z); if (!P) return null; for (const t of (P.trace || [])) { const k = JSON.stringify(t); if (seenTr[z].has(k)) continue; seenTr[z].add(k); TR[z].push(t); } return P; };
+    // ① 닛폰을 죽인다(연결 안 섬 — 한반도가 미는 글은 닿지 않는다)
+    const np = live('nippon'); np._dead = true; np.kill('SIGKILL');
+    const tK = Date.now();
+    // ② 한반도 다시 밂 줄 · 메타 행에 그 줄(켬) — 닛폰에 한 번 이상 민(연결 안 섬) 'arrive' 가 줄에 선 때(끔이면 줄 · 메타 칸이 없다 — 다시 밂 줄 수 · 로그 줄을 본다)
+    //   ★[T1321 추신] 첫 판은 줄에 막 선 기록(tries 0 — 경계 칸으로 걷는 중 · 아직 안 민 것)을 보자마자 대상을 로그 줄에서 골라 대상 0 이었다 —
+    //   대상은 죽인 뒤 한반도 DB 메타 행(마지막 저장 그대로 = 다시 뜬 판이 되돌릴 그 줄)에서 읽는다
+    let held = null, P0 = null;
+    const metaArr = (M) => ((M && M.t1321 && M.t1321.p) || []).filter((q) => q && q.r && q.r.kind === 'arrive' && q.r.toZone === 'nippon');
+    while (Date.now() - tK < Math.max(60000, 20 * dm)) {
+      P0 = await grab('hanbando');
+      const rq = P0 ? (P0.retry || 0) : 0;
+      if (KEEP) {
+        const M = metaH(), p = metaArr(M);
+        if (p.some((q) => (q.tries | 0) >= 1)) { held = { recs: p.map((q) => ({ key: q.key, id: q.r.id, to: q.r.to, res: q.r.giveRes, amt: q.r.giveAmt, tries: q.tries, unsure: q.unsure })), rowDay: M._rowDay, retry: rq }; break; }
+      } else if (rq > 0 && /⚠ 넘김 답 없음 #\d+ → nippon/.test(live('hanbando')._out.slice(-200000))) { held = { recs: null, retry: rq }; break; }
+      await sleep(300);
+    }
+    ok(!!held, `ⓗ'0 [전제] 닛폰이 꺼진 동안 한반도가 민 'arrive' 가 다시 밂 줄에 섰다${KEEP ? ' · 그 줄이 한반도 DB 메타 행에 실렸다(한 번 이상 민 것 ≥ 1)' : ''}`, held ? JSON.stringify(held).slice(0, 300) : '없음');
+    if (held) {
+      const hp = live('hanbando');
+      await grab('hanbando');
+      const logH = hp._out, failIds = new Set();
+      for (const m of logH.matchAll(/(?:넘김 답 없음|넘김 다시 밂 연결 실패) #(\d+) → nippon/g)) failIds.add(+m[1]);
+      const bounced0 = new Set(TR.hanbando.filter((t) => t.k === 'bounce').map((t) => t.id));
+      hp._dead = true; hp.kill('SIGKILL');
+      const tKill = Date.now(), nPreH = TR.hanbando.length;
+      await sleep(1500);
+      //   대상 — 켬: 죽은 한반도 DB 메타 행의 'arrive' → nippon 전부 · 끔: 로그 줄("넘김 답 없음 #id → nippon")에서 죽이기 전 되돌림이 안 난 것(줄은 메모리)
+      const MH = KEEP ? metaH() : null, finalAll = KEEP ? ((MH && MH.t1321 && MH.t1321.p) || []).filter((q) => q && q.r) : null;
+      const targets = KEEP ? [...new Set(metaArr(MH).map((q) => q.r.id))] : [...failIds].filter((id) => !bounced0.has(id));
+      const pN = boot('nippon', 'zone.js', zenv('nippon')), pH = boot('hanbando', 'zone.js', zenv('hanbando'));
+      const [uN, uH] = await Promise.all([FB.waitUp(pN, /zone server up on/, { name: 'nippon', capMs: 900000 }), FB.waitUp(pH, /zone server up on/, { name: 'hanbando', capMs: 900000 })]);
+      ok(uN.ok && uH.ok, "ⓗ'1 두 존 다시 뜸(같은 DB)", `닛폰 ${uN.ok ? (uN.ms / 1000).toFixed(1) + 's' : uN.why} · 한반도 ${uH.ok ? (uH.ms / 1000).toFixed(1) + 's' : uH.why}`);
+      const mR = /\[T1321\] 재기동 — 답 기다리던 넘김 (\d+)/.exec(pH._out);
+      if (KEEP) ok(!!mR && +mR[1] === finalAll.length && targets.length > 0, "ⓗ'2 ★켬 — 다시 뜬 한반도가 메타 행의 넘김 줄을 그대로 되돌렸다(모름 — 다음 경계에 다시 민다)", `${mR ? mR[0] : '줄 없음'} · 메타 행 줄 ${finalAll.length}(그중 'arrive' → nippon ${targets.length})`);
+      // ③ 기다림 — 대상마다 닛폰 받음 · 한반도 되돌림이 날 때까지(또는 걸음표가 선 뒤 하루 여덟)
+      //   받음 = 닛폰 받은 열쇠(`hanbando:arrive:<id>` — 닛폰 DB 메타 행 · 켬) 또는 닛폰 몸 들어옴 줄('in') · 되돌림 = 다시 뜬 한반도 줄('bounce')
+      const metaN = () => { let db = null; try { db = new DatabaseSync(`${DDIR}/w-nippon.db`, { readOnly: true }); const r = db.prepare('SELECT data FROM world_meta WHERE zone = ?').get('nippon'); const M = r ? JSON.parse(r.data) : null; return M && M.t1321 ? new Set(M.t1321.s || []) : null; } catch (e) { return null; } finally { try { db && db.close(); } catch (e) {} } };
+      const until = Date.now() + WAIT_S * 1000; let ready = null, H2 = null, N2 = null, seenN = null;
+      const fate = () => targets.map((id) => {
+        const inTr = TR.nippon.filter((t) => t.k === 'in' && !t.back && t.key === 'xz:hanbando:' + id).length;
+        const seen = seenN ? (seenN.has('hanbando:arrive:' + id) ? 1 : 0) : null;
+        const bounce = TR.hanbando.slice(nPreH).filter((t) => t.k === 'bounce' && t.id === id).length;
+        const recv = Math.max(seen || 0, inTr ? 1 : 0);
+        return { id, recv, inTr, seen, bounce, n: recv + bounce, two: (inTr > 1 || (recv && bounce)) ? 1 : 0 };
+      });
+      while (Date.now() < until) {
+        H2 = (await grab('hanbando')) || H2; N2 = (await grab('nippon')) || N2;   // 늦은 /perf 하나(null)로 마지막 관측을 잃지 않는다
+        if (KEEP) seenN = metaN() || seenN;
+        if (ready == null && H2 && N2 && (H2.ready || []).includes('nippon') && (N2.ready || []).includes('hanbando')) ready = Date.now();
+        const F = fate();
+        if (F.length && F.every((f) => f.n >= 1) && (!KEEP || (H2 && H2.t1321 && !(H2.t1321.pend || []).length))) break;
+        if (ready != null && Date.now() - ready > 8 * dm + 15000) break;
+        await sleep(500);
+      }
+      const F = fate();
+      const dupN = N2 && N2.st ? N2.st.dup : null;
+      console.log(`  · [표 · T1321 ⓗ'] | 판 | 죽인 때 다시 밂 줄 | 대상 'arrive' | 닛폰 받음(받은 열쇠 · 몸 들어옴) | 한반도 되돌림 | 둘(받음 + 되돌림 > 1 · 몸 둘) | 사라짐(= 0) | 닛폰 dup | 한반도 남은 줄 |`);
+      console.log(`  · [표 · T1321 ⓗ'] | ${KEEP ? '켬' : '끔'} | ${held.retry} | ${targets.length} | ${F.reduce((a, f) => a + f.recv, 0)}(${F.reduce((a, f) => a + (f.seen || 0), 0)} · ${F.reduce((a, f) => a + f.inTr, 0)}) | ${F.reduce((a, f) => a + f.bounce, 0)} | ${F.filter((f) => f.n > 1 || f.two).length} | ${F.filter((f) => f.n === 0).length} | ${dupN} | ${H2 && H2.t1321 ? (H2.t1321.pend || []).length : '-'} |`);
+      console.log(`  · [표 · T1321 ⓗ'] 대상마다 ${JSON.stringify(F)} · 죽인 뒤 걸음표 다시 ${ready ? ((ready - tKill) / 1000).toFixed(0) + 's' : '안 섬'}`);
+      if (KEEP) {
+        ok(F.length > 0 && F.every((f) => f.n <= 1 && !f.two), "ⓗ'3 ★★켬 — 둘 0: 대상마다 닛폰 받음 + 한반도 되돌림 ≤ 1 · 몸 들어옴 ≤ 1(받았으면 dup · 안 받았으면 지금 받거나 되돌린다)", JSON.stringify(F));
+        ok(F.length > 0 && F.every((f) => f.n >= 1), "ⓗ'4 ★★켬 — 사라짐 0: 대상마다 닛폰 받음 + 한반도 되돌림 ≥ 1(줄이 재기동을 건넜다)", JSON.stringify(F));
+        ok(!!(H2 && H2.t1321 && (H2.t1321.pend || []).length === 0), "ⓗ'5 켬 — 한반도 넘김 줄이 다 끝났다(남은 줄 0)", H2 && H2.t1321 ? JSON.stringify(H2.t1321.pend).slice(0, 200) : '없음');
+      } else {
+        ok(F.length === 0 || F.some((f) => f.n === 0), "ⓗ'3 끔 — 종전(증인): 다시 밂 줄이 메모리라 재기동에 사라진다(대상 중 받음 · 되돌림 둘 다 없는 것 ≥ 1 — 'xzone' 칸에 묶인 상인 · 짐)", JSON.stringify(F));
+      }
+    }
+  }
+
   // ── ⓕ 오류 ─────────────────────────────────────────────────────────────────
   const zerr = procs.filter((p) => ZIDS.includes(p._name)).map((p) => [p._name, p._out.split('\n').filter((l) => /(^|\s)(TypeError|ReferenceError)\b|Cannot read|is not a function/.test(l)).length + p._err.split('\n').filter((l) => /^\s+at\s+\S/.test(l)).length]);
   ok(zerr.every(([, n]) => n === 0), 'ⓕ 두 존 로그에 예외 0', zerr.map(([z, n]) => `${z} ${n}`).join(' · '));
@@ -433,4 +518,10 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
   killAll(); try { fs.rmSync(DDIR, { recursive: true, force: true }); } catch (e) {}
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   process.exit(fail ? 1 : 0);
-})().catch((e) => { console.error('하네스 실패:', e); killAll(); process.exit(1); });
+})().catch((e) => {
+  console.error('하네스 실패:', e);
+  //   ★[T1321] 하네스가 멈춘 판에도 존 로그를 남긴다(무엇이 /perf 를 못 읽게 했나 — 존이 죽었나 · 늦었나)
+  try { const OUT = process.env.XZ_SHOTS || '/tmp/e2e-xzone-caravan'; fs.mkdirSync(OUT, { recursive: true });
+    for (const p of procs) { fs.writeFileSync(path.join(OUT, `${p._name}.log`), p._out + '\n--- stderr ---\n' + p._err + `\n--- exit ${p.exitCode} ${p.signalCode || ''} ---`); } } catch (e2) {}
+  killAll(); process.exit(1);
+});

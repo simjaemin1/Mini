@@ -3610,9 +3610,11 @@ function spawnMob(type, opts = {}) {
 //   방송 칸은 NPC 길 글자(`tameOwner: null` · `tameOwnerName: null` 까지 — 새 몹은 주인이 없다 · 클라 `mob_spawn` 은 두 꼴을 같게 읽는다).
 const T987_MOB_RESPAWN = process.env.T987_MOB_RESPAWN !== '0';
 function respawnMobLater(m) {
+  if (T1321_XZ_BEAST && !m.isWild) _t1321Stat.died++;   // ★[T1321] 두 존 합 셈 — 존 몹 죽음(세 죽음 길이 다 이 문을 부른다 · 끔 = 이 줄 무동작)
   if (m.isWild || !(HOSTILES_ON || !(ANIMALS[m.type] && ANIMALS[m.type].aggressive))) return false;
   const respawnType = m.type;
   setTimeout(() => {
+    if (T1321_XZ_BEAST) _t1321Stat.born++;   // ★[T1321] 두 존 합 셈 — 다시 낳음
     const n = spawnMob(respawnType);
     broadcast({ type: 'mob_spawn', mob: { mid: n.mid, type: n.type, x: n.x, y: n.y, hp: n.hp, maxHp: n.maxHp, tameOwner: null, tameOwnerName: null } });
   }, 15000);
@@ -3650,6 +3652,90 @@ const T1032_NPC_KILL = process.env.T1032_NPC_KILL !== '0';
 //   화살(`mobs.values()` 를 돈다)과 NPC 싸움(`mobs.get` + hp)은 종전에도 이 둘을 지켰다 — 같은 문으로 옮길 뿐 값 무변(구멍은 사람 공격 하나).
 const T1240_KILL_ONCE = process.env.T1240_KILL_ONCE !== '0';
 function mobLive(m) { return !!m && mobs.has(m.mid) && m.hp > 0; }
+// ★★[T1321 2026-11-14 · 세션8 · T1292 회부 3 · ★재민 11-12 "한반도 ↔ 닛폰 사이에 동물이 자유롭게 오가"] 손잡이 `T1321_XZ_BEAST`('1' 만 켬 · ★기본 끔 —
+//   끔 = 문을 안 만든다 · 아래 자리마다 `if (T1321_XZ_BEAST …)` 하나 · 몹 걸음 · 적재 · 받는 문 · 넘기 ACK 줄 그대로 = main 바이트).
+//   존 몹(DB 행이 있는 몸 — 야생 · 맹수 · 길든 짐승)이 땅 이웃 존 쪽 존 사각을 걸어 나가면 이웃 존에 넘긴다 — 사람 넘기와 같은 겹침 띠 ·
+//   캐러밴 몸과 같은 문(`/handoff_prepare` `kind: 'beast'`) · 숨김 → 답 OK → 지움 · `dup` 은 버림. 몸통 = `server/xzone-beast.js`(머리글이 규칙 전부).
+//   야생 그림자(`isWild` — 랩 블록 몸 · 장부의 연출)는 이 문을 안 탄다(아래 몹 고리가 그 몸을 이미 건너뛴다 — 넘김은 장부 몫 · 보고 §1 ⓑ).
+//   ★길든 짐승 — 주인이 이웃 존으로 넘어가면(넘기 ACK · 시한) 그 넘어간 자리를 적어 두고(`_t1321Gone` · 주인 id → 이 존 로컬 자리) 짐승이 그 자리로 걸어 띠를 건넌다.
+//     주인이 이 존에 다시 서면(되돌림 · 돌아옴) 지운다. 메모리만이다 — 존이 다시 뜨면 종전대로 선다(보고 §6).
+const T1321_XZ_BEAST = process.env.T1321_XZ_BEAST === '1';
+const T1321_XZ_DRAIN0 = process.env.T1321_XZ_DRAIN === '1';   // ★[T1321 ④] 비우기(새 넘김 0) — 부팅 손잡이 · 아래 `kind: 'drain'` 명령이 켜고 끈다(마을 쪽과 한 칸 — `SimVillages.t1321Drain`)
+const _t1321Gone = new Map();   // 주인 playerId → { x, y, to, at } — 주인이 넘어간 자리(이 존 로컬)
+const _t1321Stat = { died: 0, born: 0, follow: 0, gone: 0, goneClear: 0 };
+const _T1321B = { x: 0, y: 0, go: null };   // 띠 답 칸(틱마다 새 객체 0)
+const _t1321Peer = new Map();   // 이웃 존 칸 막힘 메모(`peerBlocked`)
+let _t1321Door = null;
+if (T1321_XZ_BEAST) {
+  const _XZB = require('./xzone-beast');
+  const _t1321Nb = require('./xzone').neighborsOf(ZONE_ID);
+  _t1321Door = _XZB.createBeastDoor({
+    zone: ZONE_ID, W: ZONE.zoneWidth, Hh: ZONE.zoneHeight, offX: ZONE.worldOffsetX, offY: ZONE.worldOffsetY || 0,
+    bootId: Date.now().toString(36), retryMs: 2000,   // 다시 시도 창 = 사람 넘기 `fireHandoff` 의 2초(새 수 0)
+    now: () => Date.now(), later: (fn, ms) => { const t = setTimeout(fn, ms); return t; },
+    neighbors: () => _t1321Nb, findZoneAt: (ax, ay) => findZoneAt(ax, ay),   // 이웃 = zone-config 동서남북 · 바다 뺌(`xzone.neighborsOf` — 부팅 때 한 번 · 존 표는 안 변한다)
+    post: (zid, payload) => { const t = ZONES[zid]; if (!t) return Promise.reject(new Error('no zone ' + zid)); return postJSON(t.host, t.port, '/handoff_prepare', payload); },
+    mobs: {
+      add: (m) => { mobs.set(m.mid, m); chunkManager.insertMob(m); _t1321Chunk(m); broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null } }); },
+      remove: (m) => { const had = mobs.delete(m.mid); chunkManager.removeMob(m); if (had) broadcast({ type: 'mob_removed', mid: m.mid }); },
+    },
+    spawn: (b, peer) => {
+      const n = spawnMob(b.type, { x: b.x, y: b.y, hp: Math.max(1, +b.hp || 1), tameOwner: b.tameOwner || null, tameOwnerName: b.tameOwnerName || null,
+        tameProgress: b.tameProgress | 0, homeX: b.x + (+b.hx || 0), homeY: b.y + (+b.hy || 0), packId: b.pack || null });
+      n.vx = +b.vx || 0; n.vy = +b.vy || 0; n.wanderUntil = Date.now() + Math.max(0, +b.wl || 0); n.floor = b.floor | 0;
+      if (+b.maxHp > 0) n.maxHp = +b.maxHp;
+      //   고삐(주인 칸 둘)는 몹 행 넣기 문(`insertMob` — 종 · 자리 · hp 만)에 없다 — 같은 거래 안에서 바로 적는다(주기 저장 전에 존이 죽어도 길든 짐승으로 다시 뜬다)
+      if (n.tameOwner && n.dbId != null) db.updateMobState(n.dbId, n.x, n.y, n.hp, n.tameOwner, n.tameOwnerName);
+      _t1321Chunk(n);
+      broadcast({ type: 'mob_spawn', mob: { mid: n.mid, type: n.type, x: n.x, y: n.y, hp: n.hp, maxHp: n.maxHp, tameOwner: n.tameOwner || null, tameOwnerName: n.tameOwnerName || null } });
+      return n;
+    },
+    delRow: (m) => { if (m.dbId != null) db.deleteMob(m.dbId); },
+    tx: (fn) => db.t1321Tx(fn),
+    pendPut: (key, r) => db.t1321PendPut(key, r.mob, r.to, JSON.stringify(r.data)),
+    pendDel: (key) => db.t1321PendDel(key), pendAll: () => db.t1321PendAll(),
+    seenHas: (key) => db.t1321SeenHas(key), seenPut: (key) => db.t1321SeenPut(key),
+    typeOk: (type) => !!MOB_DEFS[type], faunaOut: (type) => require('./animals').faunaOut(type, ZONE_ID),
+    blocked: (x, y) => isTerrainBlockedLocal(x, y),
+    //   이웃 존 땅(띠 · 넘김 자리) — 지형 정본(`terrain.js`)의 그 존 술어 · 칸 가운데(존 `isRockTileLocal` 과 같은 칸 잡기) · 칸 메모(지형은 안 변한다)
+    peerBlocked: (zid, lx, ly) => {
+      const cx = Math.floor(lx / 32), cy = Math.floor(ly / 32), k = zid + ':' + cx + ',' + cy;
+      let v = _t1321Peer.get(k);
+      if (v === undefined) { try { const px = cx * 32 + 16, py = cy * 32 + 16; v = !!(_terrain.isRockCellLocal(zid, px, py) || _terrain.isWaterCellLocal(zid, px, py)); } catch (e) { v = false; } if (_t1321Peer.size > 200000) _t1321Peer.clear(); _t1321Peer.set(k, v); }
+      return v;
+    },
+    drain: () => _t1321DrainOn(),
+    log: (s) => console.log(`[${ZONE_ID}] 🐾 [T1321] ${s}`),
+  });
+  console.log(`[${ZONE_ID}] 🐾 [T1321] 짐승 넘김 문 켬 — 띠 ${HANDOFF_COMMIT}px · 이웃 ${_t1321Nb.join('·') || '없음'}${T1321_XZ_DRAIN0 ? ' · 비우기 켬(새 넘김 0)' : ''}`);
+}
+function _t1321DrainOn() { try { return SimVillages.t1321Drain ? !!SimVillages.t1321Drain() : T1321_XZ_DRAIN0; } catch (e) { return T1321_XZ_DRAIN0; } }
+//   띠(존 사각 밖)에 선 몸의 청크 = 변 안쪽 청크(띠는 이 존 몸의 자리다 — 청크 밖 칸 "-1_y" 는 활성에 안 들어 몸이 얼어붙는다) · 사각 안이면 종전 그 줄
+function _t1321Chunk(m) {
+  const W = ZONE.zoneWidth, HH = ZONE.zoneHeight;
+  if (m.x >= 0 && m.y >= 0 && m.x < W && m.y < HH) return chunkManager.updateMobChunk(m);
+  const ox = m.x, oy = m.y;
+  m.x = clamp(ox, 0, W - 1); m.y = clamp(oy, 0, HH - 1);
+  chunkManager.updateMobChunk(m);
+  m.x = ox; m.y = oy;
+}
+//   ★[T1321] 관측 — 문 셈 · 숨긴 짐승 · 줄(400 고리 끝 200) · 존 몹 종별 수(세계 표 · 야생 그림자 뺌) · 띠에 선 몸 · 죽음 · 다시 낳음 · 길든 짐승 넘어간 자리 줄
+function _t1321Perf() {
+  const by = {}; let band = 0, tame = 0, n = 0;
+  for (const m of mobs.values()) { if (m.isWild) continue; n++; by[m.type] = (by[m.type] | 0) + 1; if (m.tameOwner) tame++; if (m.x < 0 || m.y < 0 || m.x > ZONE.zoneWidth || m.y > ZONE.zoneHeight) band++; }
+  const D = _t1321Door ? _t1321Door.perf() : null;
+  return Object.assign({ on: T1321_XZ_BEAST, drain: _t1321DrainOn(), mobs: n, byType: by, band, tame, gone: _t1321Gone.size }, { stat: Object.assign({}, _t1321Stat) }, D || {});
+}
+//   ★[T1321 ④] 비우기 명령 — 안 문 `/handoff_prepare` `kind: 'drain'`(새 라우트 0) · `on: true|false` 면 켜고 끈다(마을 쪽 비우기와 한 칸) · 상태를 답한다:
+//     짐승 숨김 · 띠에 선 몸 · 교차 존 캐러밴(이 존 것이 저쪽에 · 저쪽 것이 이쪽에 · 답 기다림) — 넷이 0 이면 `done`(팔을 꺼도 되는 때)
+function _t1321DrainCmd(d) {
+  if (d && typeof d.on === 'boolean' && SimVillages.t1321SetDrain) SimVillages.t1321SetDrain(d.on);
+  let band = 0; for (const m of mobs.values()) if (!m.isWild && (m.x < 0 || m.y < 0 || m.x > ZONE.zoneWidth || m.y > ZONE.zoneHeight)) band++;
+  const hid = _t1321Door ? _t1321Door.hidden.size : 0;
+  let xz = null; try { xz = SimVillages.t1321DrainStatus ? SimVillages.t1321DrainStatus() : null; } catch (e) { xz = { err: e.message }; }
+  const on = _t1321DrainOn();
+  return { ok: true, zone: ZONE_ID, drain: on, beastHidden: hid, beastBand: band, xzone: xz, done: !!(on && hid === 0 && (!xz || xz.done)) };
+}
 function killCorpse(m, killerPid) {
   const c = spawnCorpse(m, killerPid);
   if (m._t1025Hunt && c) { c.huntAt = { x: m.x, y: m.y }; _t1025Corpse.deferred++; }
@@ -3663,14 +3749,19 @@ function killCorpse(m, killerPid) {
     //   행은 DB 에 그대로 둔다(지우지 않는다 · 끄면 돌아온다). 길들인 개체는 거르지 않는다. 끔이면 이 줄은 늘 false(옛 줄 그대로).
     const { faunaOut } = require('./animals');
     let _t622skip = 0;
+    //   ★[T1321] 켬 — 숨긴 채 답을 기다리던 짐승(보내는 존이 다시 떴다 · 숨김 줄 `t1321_pend`)은 세우되 곧바로 숨기고 같은 열쇠로 다시 민다 ·
+    //     띠(존 사각 밖)에 선 채 저장된 몸은 변 안쪽 청크에 싣는다(끔 = 이 두 칸이 null · 아래 줄 무동작)
+    const _t1321P = _t1321Door ? _t1321Door.bootPend() : null, _t1321Rows = _t1321P ? new Set() : null;
     for (const row of existing) {
       if (!row.tame_owner && faunaOut(row.type, ZONE_ID)) { _t622skip++; continue; }
-      spawnMob(row.type, {
+      const _m = spawnMob(row.type, {
         dbId: row.id, x: row.x, y: row.y, hp: row.hp,
         tameOwner: row.tame_owner || null,
         tameOwnerName: row.tame_owner_name || null,
       });
+      if (_t1321P) { _t1321Rows.add(row.id); const _pr = _t1321P.get(row.id); if (_pr) _t1321Door.bootHide(_m, _pr); else _t1321Chunk(_m); }
     }
+    if (_t1321P) { _t1321Door.bootOrphans(_t1321P, _t1321Rows); if (_t1321P.size) console.log(`[${ZONE_ID}] 🐾 [T1321] 숨긴 채 다시 뜬 짐승 ${_t1321P.size}마리 — 같은 열쇠로 다시 민다`); }
     console.log(`[${ZONE_ID}] DB에서 mob ${existing.length}마리 로드`);
     if (_t622skip) console.log(`[${ZONE_ID}] 🗾 T622 존 칸 — 이 존에서 없음인 종 ${_t622skip}마리는 안 실었다(DB 행은 그대로)`);
   } else if (ZONE.isOcean) {
@@ -6475,6 +6566,7 @@ const server = http.createServer((req, res) => {
       forage: (() => { try { return SimVillages.foragePerf ? SimVillages.foragePerf() : null; } catch (e) { return null; } })(),   // ★[T347] 채집 관측(끔이면 null)
       farm: (() => { try { return SimVillages.farmPerf ? SimVillages.farmPerf() : null; } catch (e) { return null; } })(),   // ★[T368] 농부 관측(끔이면 null)
       xzone: (() => { try { return SimVillages.xzonePerf ? SimVillages.xzonePerf() : null; } catch (e) { return null; } })(),   // ★[T533] 존 경계 관측(팔 끔이면 null)
+      ...(T1321_XZ_BEAST ? { t1321: _t1321Perf() } : {}),   // ★[T1321] 짐승 넘김 관측(켬만 칸 · 끔 = 칸 없음)
       vein: { saves: _oreSaveN, npcSaves: _oreSaveNpc, cells: minedCells.size, batch: _vein ? _vein.stats() : null, digest: _vein ? _veinDigest() : null },   // ★[T735] 광맥 장부 쓰기 문 · 모아 쓰기(켬만)
       tick: Object.assign({}, _tick, { ms: _tickMsStats(_rst), on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
         lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
@@ -6836,6 +6928,8 @@ const server = http.createServer((req, res) => {
         if (data && data.kind != null && data.kind !== 'player') {   // ★[T533] 사람 아닌 짐 — 종전 갈래(아래)는 한 글자도 안 탄다
           let st = 200, out;
           if (data.kind === 'caravan' || data.kind === 'snap') out = SimVillages.xzoneReceive ? SimVillages.xzoneReceive(data) : null;
+          else if (data.kind === 'beast' && T1321_XZ_BEAST) { try { out = _t1321Door.receive(data); } catch (e) { st = 500; out = { ok: false, why: 'err ' + e.message }; } }   // ★[T1321] 짐승 — 열쇠 · 거름 · 세우기(끔 = 아래 '모르는 종류' 400 — 보낸 존이 드러낸다)
+          else if (data.kind === 'drain' && SimVillages.t1321DrainCmd) out = _t1321DrainCmd(data);   // ★[T1321 ④] 비우기 명령(안 문 · 켜기 · 끄기 · 상태)
           else if (data.kind === 'army') out = { ok: false, why: 'army — 칸만 예약(셋째 카드)' };
           else if (data.kind === 'drop' && T1092_HANDOFF_BACK) out = _t1092Drop(data);   // ★[T1092] 보낸 존 ACK 시한 — 그 토큰을 놓는다(`_t1092Drop`)
           else { st = 400; out = { ok: false, why: 'unknown kind' }; }
@@ -6949,6 +7043,7 @@ const server = http.createServer((req, res) => {
           if (p) {
             players.delete(entry.pid);
             broadcast({ type: 'player_left', pid: entry.pid });
+            if (T1321_XZ_BEAST && entry.to && entry.at) { _t1321Gone.set(p.playerId, { x: entry.at.x, y: entry.at.y, to: entry.to, at: Date.now() }); _t1321Stat.gone++; }   // ★[T1321] 주인이 넘어간 자리 — 길든 짐승이 그 자리로 걸어 띠를 건넌다
             // Phase 5-K3: ws를 닫지 않고 observer로 전환 — 클라가 이 zone을 fresh observer로
             // 재구독하면 observer welcome이 건물 전체를 다시 보내 끊김 발생. 연결을 유지하면
             // 재구독·full welcome이 없어지고, 이 observer ws는 promote 핸들러를 가지므로
@@ -8193,6 +8288,23 @@ function handlePlayerInput(player, raw) {
     const vil = SimVillages.villageByDbId && SimVillages.villageByDbId(msg.vid | 0);
     if (vil && vil.econ) { vil.econ.founder = player.playerId; if (vil._kin) vil._kin = Object.assign({}, vil._kin, { chief: player.playerId }); }
     send(player.ws, { type: 'notice', text: vil ? `시험: ${vil.name} 촌장이 되었습니다.` : '시험: 그런 마을이 없습니다.' });
+  }
+  else if (E2E_GIVE && msg.type === '__e2e_beast') {
+    // ★[T1321] 테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 짐승을 세운다(판 꾸밈: 이음매 곁 야생 몸 · 이 사람의 길든 짐승). 자리 = 준 자리(존 로컬) 또는 이 사람 곁 ·
+    //   n 마리를 반경 r 원 위에 고르게(굴림 0) · 종은 MOB_DEFS 의 것만 · `tame` 이면 고삐 = 이 사람(정본 길들이기 `tryFeed` 가 세우는 두 칸 그대로).
+    const def = MOB_DEFS[msg.kind]; const n = Math.max(1, Math.min(50, msg.n | 0 || 1)), r = Math.max(0, +msg.r || 0);
+    const cx = Number.isFinite(+msg.x) ? +msg.x : player.x, cy = Number.isFinite(+msg.y) ? +msg.y : player.y;
+    const made = [];
+    if (def) for (let i = 0; i < n; i++) {
+      const a = 2 * Math.PI * i / n, x = clamp(cx + Math.cos(a) * r, 0, ZONE.zoneWidth), y = clamp(cy + Math.sin(a) * r, 0, ZONE.zoneHeight);
+      if (isTerrainBlockedLocal(x, y)) continue;   // 바위 · 물 칸엔 안 세운다(그 칸은 건너뛴다)
+      const m = spawnMob(msg.kind, { x, y, ...(msg.tame ? { tameOwner: player.playerId, tameOwnerName: player.name } : {}) });
+      if (msg.tame) { m.tameProgress = def.tameNeed || 0; m.dirty = true; }
+      if (msg.vx || msg.vy) { m.vx = +msg.vx || 0; m.vy = +msg.vy || 0; m.wanderUntil = Date.now() + Math.max(0, +msg.ms || 10000); }   // 판 꾸밈 — 그 쪽으로 곧장 걷게(배회 시각을 미룬다 · 배회 문 그대로)
+      broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null } });
+      made.push({ mid: m.mid, dbId: m.dbId, x: Math.round(m.x), y: Math.round(m.y) });
+    }
+    send(player.ws, { type: 'notice', text: `🧪 짐승 ${made.length}마리 세움(${msg.kind}${msg.tame ? ' · 길든' : ''})`, beasts: made });
   }
   else if (E2E_GIVE && msg.type === '__e2e_contrib') {
     // ★[T1137] 테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 기여 계량기(온보딩 정본 하나)를 그 수로 세운다(부탁 12건 사슬은 이 판 밖 · 판 꾸밈 · 사진 하네스 `t1137-shots`).
@@ -17459,6 +17571,9 @@ setInterval(() => {
       // 주인이 현재 zone에 접속 중이면 따라가기
       let ownerP = null;
       for (const p of players.values()) if (p.playerId === m.tameOwner) { ownerP = p; break; }
+      //   ★[T1321] 켬 — 주인이 이 존에 서면 넘어간 자리 줄을 지운다(되돌림 · 돌아옴) · 주인이 없고 넘어간 자리를 알면 그 자리로 걷는다(멈춤 거리 0 — 띠를 다 건너야 넘는다 · 속도는 따라가기 그 값)
+      const _t1321F = T1321_XZ_BEAST ? _t1321Door.followTarget(ownerP, _t1321Gone.get(m.tameOwner)) : null;
+      if (T1321_XZ_BEAST && ownerP && _t1321Gone.size && _t1321Gone.delete(m.tameOwner)) _t1321Stat.goneClear++;
       if (ownerP) {
         const dx = ownerP.x - m.x, dy = ownerP.y - m.y;
         const dd = Math.hypot(dx, dy);
@@ -17468,14 +17583,20 @@ setInterval(() => {
         } else if (dd < TAME_FOLLOW_STOP) {
           m.vx = 0; m.vy = 0;
         } // 중간은 그대로 두기
+      } else if (_t1321F) {
+        const dx = _t1321F.x - m.x, dy = _t1321F.y - m.y, dd = Math.hypot(dx, dy);
+        if (dd > 1) { m.vx = (dx / dd) * def.speed * 0.7; m.vy = (dy / dd) * def.speed * 0.7; }   // 닿으면 그 걸음 그대로(띠를 다 건넌다 — 주인이 넘은 자리는 띠 너머다)
       } else {
         m.vx = 0; m.vy = 0;
       }
       // 길든 mob은 이동만 처리하고 일반 AI 스킵
       let nx = m.x + m.vx * dt;
       let ny = m.y + m.vy * dt;
+      if (T1321_XZ_BEAST && _t1321Door.band(m, nx, ny, _T1321B)) { nx = _T1321B.x; ny = _T1321B.y; }   // ★[T1321] 땅 이웃 쪽 변 — 겹침 띠(끔 = 아래 종전 두 줄)
+      else {
       nx = clamp(nx, 0, ZONE.zoneWidth);
       ny = clamp(ny, 0, ZONE.zoneHeight);
+      }
       if (isBlockedByWall(nx, m.y, m.x, m.y, m.floor || 0)) nx = m.x;
       if (isBlockedByWall(m.x, ny, m.x, m.y, m.floor || 0)) ny = m.y;
       if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
@@ -17494,7 +17615,8 @@ setInterval(() => {
       }
       if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
       m.x = nx; m.y = ny;
-      chunkManager.updateMobChunk(m);
+      if (T1321_XZ_BEAST) { _t1321Chunk(m); if (_t1321Door.band(m, nx, ny, _T1321B) && _T1321B.go) _t1321Door.send(m, _T1321B.go); }   // ★[T1321] 띠를 다 건넌 걸음(지형 · 벽 뒤 자리)이면 넘긴다
+      else chunkManager.updateMobChunk(m);
       continue;
     }
 
@@ -17598,8 +17720,11 @@ setInterval(() => {
     }
     let nx = m.x + m.vx * dt;
     let ny = m.y + m.vy * dt;
+    if (T1321_XZ_BEAST && _t1321Door.band(m, nx, ny, _T1321B)) { nx = _T1321B.x; ny = _T1321B.y; }   // ★[T1321] 땅 이웃 쪽 변 — 겹침 띠(끔 = 아래 종전 두 줄)
+    else {
     nx = clamp(nx, 0, ZONE.zoneWidth);
     ny = clamp(ny, 0, ZONE.zoneHeight);
+    }
     if (isBlockedByWall(nx, m.y, m.x, m.y, m.floor || 0)) nx = m.x;
     if (isBlockedByWall(m.x, ny, m.x, m.y, m.floor || 0)) ny = m.y;
     if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
@@ -17619,7 +17744,8 @@ setInterval(() => {
     // 의미 있는 이동(>2px)일 때만 dirty 마크 — 영속화 부담 최소화
     if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
     m.x = nx; m.y = ny;
-    chunkManager.updateMobChunk(m);
+    if (T1321_XZ_BEAST) { _t1321Chunk(m); if (_t1321Door.band(m, nx, ny, _T1321B) && _T1321B.go) _t1321Door.send(m, _T1321B.go); }   // ★[T1321] 띠를 다 건넌 걸음이면 넘긴다
+    else chunkManager.updateMobChunk(m);
   }
 
   // §4-4 동물 AI 블록(마을실험실 이식) — 활성 청크 뷰의 야생 5종. dt=1/TICK_HZ 유닛/틱(=1유닛/초, 환산 계수 1).
@@ -17961,6 +18087,7 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
         broadcast({ type: 'player_left', pid });
         try { p.ws.close(); } catch (e) {}
         console.warn(`[${ZONE_ID}] ⚠ ACK timeout token=${token.slice(0,8)} — fallback 정리`);
+        if (T1321_XZ_BEAST) { _t1321Gone.set(p.playerId, { x: newX + target.worldOffsetX - ZONE.worldOffsetX, y: newY + (target.worldOffsetY || 0) - (ZONE.worldOffsetY || 0), to: targetZoneId, at: Date.now() }); _t1321Stat.gone++; }   // ★[T1321] 주인은 받는 존 사람이다(다시 접속 = 넘기 전 저장 `last_zone`) — 길든 짐승이 그 자리로
       }
       // ★[T498] 인계가 확인되지 않았다 — 떠나는 순간 쥔 행을 이제 보낸다(끔 판이 떠나기 전에 써 둔 그 행과 같다)
       // ★★[T867 2026-10-22 · T843 회부 1] 그 쥔 행도 T843 술어(`_t843Skip` — 같은 함수 · 사본 0)를 지난다. 시한은 받는 존 준비 응답 OK 뒤(토큰을 준 뒤)에만 돌므로
@@ -17975,7 +18102,8 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
     if (T1092_HANDOFF_BACK && outgoingHandoffs.has(token)) return _t1092Back(pid, token, targetZoneId, target, _ackGone);   // ★[T1092] 받는 존에 토큰을 놓으라 하고 돌려놓는다
     _ackGone();
   }, HANDOFF_ACK_MS);   // ★[PM 11-03] 종전 3000 — 위 HANDOFF_ACK_MS 머리글
-  outgoingHandoffs.set(token, { pid, timeoutHandle });
+  //   ★[T1321] 켬 = 받는 존 · 주인이 넘어간 자리(받는 존에 서는 자리를 이 존 로컬로 — 띠를 넘은 그 월드 자리 · 껍데기는 이 존 사각에 붙여 둔 채라 그 자리가 아니다)
+  outgoingHandoffs.set(token, T1321_XZ_BEAST ? { pid, timeoutHandle, to: targetZoneId, at: { x: newX + target.worldOffsetX - ZONE.worldOffsetX, y: newY + (target.worldOffsetY || 0) - (ZONE.worldOffsetY || 0) } } : { pid, timeoutHandle });
   metrics.handoffs_out++;
 }
 
