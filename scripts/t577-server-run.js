@@ -105,6 +105,16 @@ if (require.main === module && process.argv.includes('--table')) {
   process.exit(0);
 }
 
+// ★★[T1315 ① 2026-11-14] **몸 판 정본 = 집 켬** — 판 자 묶음 `T577_BODY=1`(몸 판 · T1285 줄 · T1308 긴 판):
+//   부르는 쪽이 안 준 칸만 채운다 — 하루 `VILLAGE_DAY_MS=1440000`(운영 하루 24분) · 몸 상한 `VILLAGE_NPC_CAP=Infinity` · 캐러밴 `VILLAGE_CARAVAN_MAX=0` · 가상 시계 `T745_VCLOCK=1`.
+//   집 행위(`T400_BUILD_ACT`)는 **안 건드린다 = 켬**(제품 기본 · 아래 `HOUSE_ACT` · 침상 `T315_MAPBEDS=1` · 크루 하루 `T627_TRIP_DAY=1` 이 따라온다).
+//   집 끔 몸 판은 이제 정본이 아니다 — 끔으로 견줄 땐 부르는 쪽이 `T400_BUILD_ACT=0` 을 **글자로** 준다(T1307 몸 판 집 끔 : 랩 집 켬 어긋남 회부).
+//   농사 몸(`T1243_FARM_ON`)은 판 조건이라 부르는 쪽이 준다(켬 · 끔 두 팔). 묶음이 없으면(`T577_BODY` 없음) 한 글자도 안 바뀐다.
+//   예: T577_BODY=1 T1243_FARM_ON=1 node scripts/t1308-long-run.js 120 1020 --every 10 --dir <폴더> --tag body-on
+if (process.env.T577_BODY === '1') {
+  const BODY = { VILLAGE_DAY_MS: '1440000', VILLAGE_NPC_CAP: 'Infinity', VILLAGE_CARAVAN_MAX: '0', T745_VCLOCK: '1' };
+  for (const k of Object.keys(BODY)) if (process.env[k] == null) process.env[k] = BODY[k];
+}
 const DAYS = parseInt(process.argv[2], 10) || 800;
 const SEEDS = String(process.argv[3] || '1020,7,42').split(',').map((s) => parseInt(s, 10)).filter(Boolean);
 const PAR = parseInt(process.env.T577_PAR || '', 10) || Math.max(1, Math.min(3, os.cpus().length));
