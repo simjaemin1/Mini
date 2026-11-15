@@ -2,7 +2,7 @@
 'use strict';
 // (@regress 없음 — 러너 밖 · T1333 계측 읽개 · 제품 무변)
 // === scripts/t1333-diag.js — 청동 길 진단: 구리가 광산5(주석 마을)로 가나 · 왜 안 가나 ==========
-//   쓰는 법: node scripts/t1333-diag.js <판 머리>…   (판 머리 = `<폴더>/<판>-<시드>` — `.t1256.json` · `.log.gz`(또는 `.log`) · 있으면 `.t1333.json`)
+//   쓰는 법: node scripts/t1333-diag.js <판 머리>… [--dist <다른 판 .t1333.json>]   (판 머리 = `<폴더>/<판>-<시드>` — `.t1256.json` · `.log.gz`(또는 `.log`) · 있으면 `.t1333.json`)
 //   ① 판마다 광산5 줄(t1256 날 줄 — 대장장이 · 청동 무기 누계 · 구리 · 주석 · 무기 곳간) — 구리가 처음 바닥(< 0.05)난 날 · 그 앞 10날 청동 증가(주조가 돌던 중인가)
 //      · 광산5 로 든 구리 짐(로그 — 출발 짐 X→광산5 · 귀로 짐 X→광산5(광산5 캐러밴이 사 온 것)) 첫 날 · 수 · 보낸 마을 곳간
 //   ② t1333 관찰기가 있으면: 광산5 구리 [곳간 · 흐름 목표 · 파생(발주) · 값표 목표 · 유효 재고 · 값] 10날마다 · 구리 쥔 마을 값 · 거리(villageDist) ·
@@ -10,7 +10,8 @@
 //   ③ 판 사이 — 같은 시드 판끼리 광산5 구리 줄이 처음 갈리는 날 · 그날 구리 · 청동 · 무기
 const fs = require('fs');
 const zlib = require('zlib');
-const heads = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const argv = process.argv.slice(2), di = argv.indexOf('--dist'), DIST = di >= 0 ? (JSON.parse(fs.readFileSync(argv[di + 1], 'utf8')).dist || {}) : null;   // --dist <t1333.json> — 거리 칸을 그 판에서 빌린다(같은 지도 · 판 끝에 적히므로 도는 판엔 아직 없다)
+const heads = argv.filter((a, i) => !a.startsWith('--') && !(di >= 0 && i === di + 1));
 if (!heads.length) { console.error('쓰는 법: node scripts/t1333-diag.js <판 머리>…'); process.exit(2); }
 const f2 = (x) => (x == null ? '·' : (+x).toFixed(2)), f1 = (x) => (x == null ? '·' : (+x).toFixed(1));
 const VIL = '광산5';
@@ -60,7 +61,7 @@ for (const h of heads) {
     const md = Object.keys(O.met).map(Number).sort((a, b) => a - b);
     const TC = (O.consts && O.consts.TC1000) || 2, TAU = (O.consts && O.consts.TAU) || 0.03;
     const holders = ['광산6', '어촌1', '광산4', '농촌1', '농촌10'];
-    const dist = (a) => (O.dist && (O.dist[a + '→' + VIL] || O.dist[VIL + '→' + a])) || null;
+    const dist = (a) => { const D = (O.dist && Object.keys(O.dist).length) ? O.dist : (DIST || {}); return D[a + '→' + VIL] || D[VIL + '→' + a] || null; };
     console.log('| 날 | 광산5 구리 곳간 | 흐름 목표 | 발주 | 값표 목표 | 유효 재고 | 광산5 구리 값 | ' + holders.map((n) => `${n} 구리 · 값 · 몫/단위(거리 ${dist(n) || '·'})`).join(' | ') + ' |');
     console.log('|---:|---:|---:|---:|---:|---:|---:|' + holders.map(() => '---').join('|') + '|');
     for (const d of md) {

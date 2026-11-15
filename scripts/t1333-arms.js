@@ -9,6 +9,7 @@
 //     · 잠김 주석 · 납 · 은 %(T1293 보고 §3 셈 — t1256 광산 마을 · 그 광물 녹이는 날(흐름 목표 ≥ 1 · 날 11 ~) 가운데 값표 목표 < 흐름 목표 ÷ 2 ∧ 곳간 ≥ 값표 목표 ∧ 이튿날 머리 몸이 든 것 0 인 날의 몫 —
 //       값은 t1313 ① 원석 칸 [곳간 · 흐름 목표 · 값표 목표])
 //     · 무기 Q(t1333 ① — 온 마을 무기 곳간 가중 `_weapQ` 평균 · 청동을 낸 마을만의 평균)
+//     · 주석 원석 녹이는 마을-날 흐름 목표 합 · 값표 목표 바닥 % · 값표 ÷ 흐름(t1313 ① 원석 칸 — 세계 몫 상한이 깎는 몫) · 원석 짐(t1313 ②)
 //     · 광산5 · 광산6 · 어촌1 청동 · 광산5 구리 값(날 11 ~ 가운데) · 세계 구리 · 주석 · 은 곳간(끝) · 인구 · 하루 CPU
 const fs = require('fs');
 const args = process.argv.slice(2), arms = [], opt = {};
@@ -31,6 +32,7 @@ function one(h) {
   const legs = O ? O.legs.filter((x) => x[0] < L) : [];
   const cu5 = legs.filter((x) => x[3] === 'copper' && x[2] === '광산5');
   const cnt = (res) => legs.filter((x) => x[3] === res).length;
+  let tradeN = null; if (O && O.resN) { tradeN = { out: 0, back: 0 }; for (const [k, n] of Object.entries(O.resN)) { if (k[0] === '↩') tradeN.back += n; else tradeN.out += n; } }   // 교역 장부 줄(판 끝까지 · 품목 줄)
   // 잠김 %(T1293 §3 셈 — t1313 원석 칸 [곳간 · 흐름 목표 · 값표 목표] · 캔 것 = t1256 이튿날 머리 bodyInY)
   let lock = null;
   if (Q && Q.ore && A) {
@@ -40,6 +42,14 @@ function one(h) {
       const d = +ds; if (d < 11 || d >= L) continue;
       for (const [vn, o] of Object.entries(V)) { if (!mines.has(vn)) continue; for (const k of MIN) { const q = o[k]; if (!q) continue; const [s, f, t] = q; if (!(f >= 1) || t == null) continue; const p = prodOf(d, vn, k); if (p == null) continue; lock[k].melt++; if (t < f / 2 && s >= t && p === 0) lock[k].lock++; } }
     }
+  }
+  // 주석 원석 — 녹이는 마을-날(흐름 목표 ≥ 1 · 날 11 ~) 흐름 목표 합 · 값표 목표 바닥(≤ 0.2) 몫 · 값표 목표 합 ÷ 흐름 목표 합(t1313 ① 원석 칸 · T1313 ⑥ 셈) · 원석 짐(t1313 ②)
+  let tinOre = null, oreLegs = null;
+  if (Q && Q.ore) {
+    let n = 0, fl = 0, tg = 0, floor = 0;
+    for (const [ds, V] of Object.entries(Q.ore)) { const d = +ds; if (d < 11 || d >= L) continue; for (const o of Object.values(V)) { const q = o.ore_tin; if (!q) continue; const [, f, t] = q; if (!(f >= 1) || t == null) continue; n++; fl += f; tg += t; if (t <= 0.2 + 1e-9) floor++; } }
+    tinOre = { n, fl, tg, floor };
+    oreLegs = { n: 0, amt: 0 }; for (const r of (Q.trade || [])) if (r[0] < L) { oreLegs.n++; oreLegs.amt += r[4] || 0; }
   }
   // 무기 Q · 광산5 구리 값 · 세계 곳간(t1333 ①)
   let wq = null, wqB = null, p5 = null, world = null;
@@ -53,7 +63,7 @@ function one(h) {
   }
   const cpu = C && C.cpu ? C.cpu.filter((q) => q[0] >= 2 && q[0] <= L) : [];
   return { L, bronze, smelt, b5: bzOf('광산5'), b6: bzOf('광산6'), b1: bzOf('어촌1'), cu5n: cu5.length, cu5amt: sum(cu5.map((x) => x[4])), cu5first: cu5.length ? cu5[0][0] : null,
-    legs: { copper: cnt('copper'), tin: cnt('tin'), silver: cnt('silver'), weapon: cnt('weapon') }, lock, wq, wqB, p5, world, knobs: O ? O.knobs : null,
+    legs: { copper: cnt('copper'), tin: cnt('tin'), silver: cnt('silver'), weapon: cnt('weapon') }, lock, wq, wqB, p5, world, knobs: O ? O.knobs : null, tinOre, oreLegs, tradeN,
     pop: J && J.eight ? J.eight.pop : null, cpuDay: cpu.length ? sum(cpu.map((q) => q[1])) / cpu.length : null };
 }
 const S = {}; for (const [n, h] of arms) S[n] = one(h);
@@ -70,6 +80,9 @@ line('광산5 · 광산6 · 어촌1 청동', (s) => `${f2(s.b5)} · ${f2(s.b6)} 
 line('광산5 로 간 구리 짐(수 · 양 · 첫 날)', (s) => `${s.cu5n} · ${f1(s.cu5amt)} · ${s.cu5first == null ? '—' : 'd' + s.cu5first}`);
 line('금속 짐 줄 — 구리 · 주석 · 은 · 무기', (s) => `${s.legs.copper} · ${s.legs.tin} · ${s.legs.silver} · ${s.legs.weapon}`);
 line('잠김 주석 · 납 · 은 %', (s) => s.lock ? MIN.map((k) => s.lock[k].melt ? pc(s.lock[k].lock / s.lock[k].melt) : '—').join(' · ') : '—');
+line('주석 원석 녹임 흐름 목표 합 · 바닥(0.2) % · 값표 ÷ 흐름', (s) => s.tinOre && s.tinOre.n ? `${f0(s.tinOre.fl)} · ${pc(s.tinOre.floor / s.tinOre.n)} · ${f2(s.tinOre.tg / s.tinOre.fl)}` : '—');
+line('원석 짐(줄 · 양)', (s) => s.oreLegs ? `${s.oreLegs.n} · ${f1(s.oreLegs.amt)}` : '—');
+line('교역 장부 품목 줄(보낸 · 귀로 · 판 끝까지)', (s) => s.tradeN ? `${f0(s.tradeN.out)} · ${f0(s.tradeN.back)}` : '—');
 line('무기 Q(곳간 가중 · 청동 낸 마을)', (s) => `${s.wq == null ? '—' : s.wq.toFixed(3)} · ${s.wqB == null ? '—' : s.wqB.toFixed(3)}`);
 line('광산5 구리 값(날 11 ~ 가운데)', (s) => f2(s.p5));
 line('세계 곳간 끝 — 구리 · 주석 · 은', (s) => s.world ? `${f1(s.world.cu)} · ${f1(s.world.sn)} · ${f1(s.world.ag)}` : '—');
