@@ -1,0 +1,30 @@
+{
+ "tag": "fix-1020",
+ "seed": 1020,
+ "DAYS": 30,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "zones": [
+  "hanbando",
+  "nippon"
+ ],
+ "env": {
+  "T1311_ALL": "1",
+  "T1320_ROCK_PATH": "1"
+ },
+ "start": "2026-11-14T20:00:52.619Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "end": "2026-11-14T20:20:18.496Z",
+ "wallS": 1166,
+ "days": {
+  "hanbando": 30,
+  "nippon": 30
+ },
+ "bars": 179,
+ "H": 1767225689500,
+ "done": true,
+ "dead": []
+}
