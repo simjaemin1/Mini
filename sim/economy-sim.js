@@ -6147,7 +6147,8 @@ const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && proc
 //     (T1213 머리 주석 "석기 · 구리 · 숯 자체의 파생수요는 그 재화의 흐름과 같은 쓰임이라 종전 max 그대로"). 더하면 주조가 돌기 시작한 날부터 두 번 센다.
 //     캐러밴은 종전 규칙 그대로 그 값 차를 보고 실제로 나른다(짐 · 길 · 몸 무변).
 //   ⓑ `T1333_EXPORT_CAST`(끔 기본) **수출 주조** — 청동 병기고 몫(`_bronzeArmoryCap`)이 찬 대장장이도, 이웃이 그 무기를 사 줄 값(순수출가 `netExportFn`)으로
-//     한 번 주조의 이윤(같은 탐색 · 재료는 기회비용 `_oppPrice`)이 양수면 주조한다 — 주석을 든 구리 마을이 무기를 만들어 내보내는 쪽(PM 카드 ⓑ).
+//     한 번 주조의 이윤(같은 탐색 · 재료는 기회비용 `_oppPrice`)이 양수이고 곳간 무기가 얇으면(인구 × 0.8 밑 — 종전 수출 대장장이 문의 과잉 방지 `_weaponThin`) 주조한다 —
+//     주석을 든 구리 마을이 무기를 만들어 내보내는 쪽(PM 카드 ⓑ · 랩 날 100 과잉 방지 없는 판: 청동 10.06 → 43.97 · 어촌1 무기 곳간 24.5 — 못 판 무기가 쌓였다).
 //     무기장 자리(`smithTarget` 의 수출 대장장이)도 같은 판정이 서면 선다(종전 문 구리 > 3N 은 판에서 안 섰다) — 주조가 돌면 그 마을 주석 흐름 목표가 서서
 //     주석이 구리 마을로 온다(캐러밴 무변 — 값 차만).
 //   ④ `T1333_WS_INPUT`(끔 기본 · 실험 — T1313 회부 2) **생산 투입재는 인구 몫 상한 밖** — 원석(광종마다)과 합금 재료(`_MELT_METALS`)의 값표 목표를
@@ -6161,6 +6162,7 @@ function t1333WsFree(r) { return !!(T1333_WS_INPUT && (r === 'ore' || OreGoods.i
 function _t1333ExportCast(v) {
   const nef = (v && v._world && typeof v._world.netExportFn === 'function') ? v._world.netExportFn : null;
   if (!nef) return false;
+  if (!_weaponThin(v)) return false;   // 곳간에 무기가 쌓였으면(인구 × 0.8 위) 수출로 빠져나가야 다시 붓는다 — 종전 수출 대장장이 문의 과잉 방지 그대로(같은 함수)
   const pw = nef(v, 'weapon') || 0;
   if (!(pw > 0)) return false;
   const p = _oppPrice(v);
@@ -6286,6 +6288,7 @@ function smeltTarget(v) {
   const need = Math.max(1, Math.round(ore / (per * 30)));    // 한 달 안에 재고를 소화할 인원
   return Math.min(Math.max(1, Math.ceil((v.npcs.length || 1) * SMELT_LABOR_CAP_PC)), need);
 }
+function _weaponThin(v) { return (v.storage.weapon || 0) < (v.npcs.length || 1) * 0.8; }   // 무기 곳간이 얇다(인구 × 0.8 밑 — 수출로 빠져나가야 다시 만든다 · 종전 `smithTarget` 의 그 식)
 function smithTarget(v) {
   // ★청동 희소성: 청동은 *청동 자격* 마을만(주석 산지·교역 허브). 트레이스 주석뿐인 마을은 청동 생산 안 함(석공이 마제석검).
   const hasBronze = _smithBeatsMason(v) && (v.storage.copper || 0) >= 0.3;
@@ -6302,7 +6305,7 @@ function smithTarget(v) {
   //   과잉 방지: 무기 재고가 얇을 때만(수출로 빠져나가야 재개) + 인구 3% 상한. 청동검은 희소 위세 교역재로 유지.
   const N = v.npcs.length || 1;
   const cuRich = (v.storage.copper || 0) > N * 3;
-  const weapThin = (v.storage.weapon || 0) < N * 0.8;   // 무기 재고 얇음(수출로 소진) → 특산 제작 재개
+  const weapThin = _weaponThin(v);   // 무기 재고 얇음(수출로 소진) → 특산 제작 재개(★[T1333] 식을 함수로 올렸다 — 수출 주조 문이 같은 함수를 부른다 · 값 무변)
   // ★[T1333 ⓑ] 수출 주조 켬이면 무기장 자리가 서는 조건에 "이웃이 사 줄 값으로 한 번 주조가 남는다"(`_t1333ExportCast` — 주조 문과 같은 함수)를 더한다
   //   (구리 > 3N 문은 T1313 몸 세계 판 열(10판 · 100날 · 51 마을)에서 한 번도 안 섰다 — 구리 ÷ 3N 가장 큰 날 0.453 · 어촌1 날 83 구리 39.4 · 사람 29).
   //   자리 수(3 % · 최소 1)는 종전 그대로 · 끔 = 종전 글자.
