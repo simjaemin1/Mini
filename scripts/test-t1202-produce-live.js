@@ -24,7 +24,7 @@ if (MUT) {
     let src = fs.readFileSync(file, 'utf8');
     const swap = (a, b) => { assert(src.includes(a), 'mutant needle ' + MUT); src = src.replace(a, b); };
     if (MUT === 'bodiless') swap('  const bodiless = Math.max(0, econN - nb);', '  const bodiless = 0;');
-    else if (MUT === 'clock') swap('  const bodies = _t1202ClockShort() ?', '  const bodies = true ?');
+    else if (MUT === 'clock') swap('  const bodies = _t1202ClockShort(vil, job) ?', '  const bodies = true ?');
     else if (MUT === 'observed') swap('  if (observed) return { n: 0, bodiless: 0, bodies: 0 };', '');
     else if (MUT === 'demand') swap('      const m = Math.min(mT, mD, mQ);', '      const m = Math.min(mT, mQ);');
     m._compile(src, file);
