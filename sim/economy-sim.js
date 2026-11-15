@@ -929,6 +929,8 @@ function storageFoodPer(v, r) {
   const f = _t368FoodPer(v, r);
   return f > 0 ? f : Math.max(0, K.econUnitsOf(r, 1));
 }
+const T1325_ONE_ROT = (typeof process !== 'undefined' && process.env && process.env.T1325_ONE_ROT === '1');
+const T1325_LOT_DISCARD = (typeof process !== 'undefined' && process.env && process.env.T789_DISCARD === '1');   // 장부 버림 판(서버 `granary-lots` T789 와 같은 손잡이 글자)
 function storageFoodEquivalent(v, storage = v.storage, fresh = true) {
   let total = 0;
   for (const [r, quantity] of Object.entries(storage || {})) {
@@ -937,7 +939,11 @@ function storageFoodEquivalent(v, storage = v.storage, fresh = true) {
     const f = storageFoodPer(v, r);
     if (!(f > 0)) continue;
     // 호스트 로트가 있으면 썩은 몫만 제외. 숫자 랩은 로트가 없고 일일 부패로 재고가 준다.
-    const lots = fresh && _LOTH && _LOTH.freshOf ? _LOTH.freshOf(v, r) : null;
+    // ★[T1325] 손잡이 `T1325_ONE_ROT`('1' 만 켬 · 끔 = 이 줄 무동작 = main 바이트) — 썩음은 한 길로만 센다(T803 '부패는 한 길'과 같은 뜻).
+    //   장부가 상한 레코드를 버리지 않는 판(`T789_DISCARD` 끔)은 econ 일일 부패(`tickDecay`)가 이미 재고를 줄였다 — 랩과 같은 길.
+    //   거기서 상한 몫을 합계에서 또 빼면 곳간에 남아 먹히는 식량이 0 으로 읽힌다(T1325 ① — 몸 날 72 시작 재고 레코드가 한꺼번에 상해
+    //   기근 문(`tickVillage` 7절 · 사람 × 10) 마을이 17 → 43 · 나무꾼이 농부로 빠진다). 켜면 그 판에선 상한 몫을 빼지 않는다(랩 글 = 정본).
+    const lots = fresh && _LOTH && _LOTH.freshOf && !(T1325_ONE_ROT && !T1325_LOT_DISCARD) ? _LOTH.freshOf(v, r) : null;
     const usable = lots ? Math.max(0, n - Math.min(n, lots.spoiledU || 0)) : n;
     total += usable * f;
   }
