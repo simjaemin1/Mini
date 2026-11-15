@@ -2370,7 +2370,27 @@ function _t1297InWinter(day) {   // 겨울 안인가 — 달력 정본(12 · 1 �
   return t.month === 12 || t.month <= 2;
 }
 function t1297WinterLeft(day) { return _t1297InWinter(day) ? t1149LeanDays(day) : 0; }   // 겨울에 남은 날(겨울 밖 0)
-function t1297NeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day)); }   // 출생 문턱 날 수
+// ★★★[T1319 2026-11-15 · T1312 회부 3] 손잡이 `T1319_AUTUMN_LOOK`(T1297 켬 안 · `'1'` 만 켬 · 끔 = T1297 그대로 · 세계 갈래 0) — **가을에 겨울 끝까지 내다보기.**
+//   T1312 판: 묶음 굶어 죽음은 모두 날 300 뒤였고 94% 가 가을에 난 사람(1,298) · 든 사람(1,060)으로 불어난 마을에서 났다 — 출생 문 · 이주 문이 가을엔 30일치만 봐서
+//     곳간 30일치 줄에 붙은 채 89 ~ 90일치 겨울을 맞았다(T1312 §1 ⓓ).
+//   켬 — 문턱 날 수 = max(기근 문 30, 겨울에 남은 날, **가을이면 다가오는 겨울 끝(다음 3월 1일)까지 남은 날**).
+//     가을 = 달력 정본 9 · 10 · 11월(server/calendar `SEASON_OF_MONTH` — 기상청 철) · 옛 달력(`T570_CALENDAR=0`)이면 `d % 365` 180 ~ 269(그 파일 `legacySeasonOf` 경계).
+//     남은 날 = `t1149LeanDays`(겨울 안에서 T1297 이 쓰는 그 식을 가을로 넓힘 — 9월 1일 181일 → 11월 30일 91일 → 12월 1일부터 겨울 줄 90일 · 윤년 2월이면 하루 더).
+//     봄 · 여름은 그대로(30) · 겨울은 그대로(다음 봄까지). `'1'` = 출생 문(아래 `_homeN + 1` 줄 — `t1297NeedDays`)과 이주 문(서버 `_t1306Pass` · `_t1312Pass` — `t1319MigNeedDays`)이 함께 바뀐다.
+//     `'mig'` = 이주 문만(출생 문은 가을에도 30일치 그대로) — T1319 판: 가을 출생을 막으면 묶음 굶어 죽음 0 · 0 · 0 이지만 1020 끔비 0.975 · 이주 문만이면 굶어 죽음 153 · 284 · 116(끔 194 · 293 · 152) · 끔비 1.177 · 1.413 · 1.540(보고 T1319 §2).
+//   새 수 0 — 달력에서 나오는 날 수. ⚠K · 로지스틱 · 주거 문 · 죽음 줄은 한 글자도 안 바뀐다.
+const _T1319_AUT = (T1297_BIRTH_FOOD && typeof process !== 'undefined' && process.env) ? process.env.T1319_AUTUMN_LOOK : undefined;
+const T1319_AUTUMN_LOOK = _T1319_AUT === '1';                              // 출생 문 + 이주 문
+const T1319_AUTUMN_MIG = _T1319_AUT === '1' || _T1319_AUT === 'mig';       // 이주 문에 가을 항이 서나(`'1'` · `'mig'`)
+function _t1319InAutumn(day) {   // 가을 안인가 — 달력 정본(9 · 10 · 11월) · 옛 달력이면 `d % 365` 180 ~ 269
+  const C = _t1149C(), d = day | 0;
+  if (!C || !C.ON || typeof C.dateOf !== 'function') { const r = ((d % 365) + 365) % 365; return r >= 180 && r < 270; }
+  const m = C.dateOf(d).month;
+  return m >= 9 && m <= 11;
+}
+function t1319AutumnLeft(day) { return _t1319InAutumn(day) ? t1149LeanDays(day) : 0; }   // 가을이면 다가오는 겨울 끝까지 남은 날(가을 밖 0)
+function t1297NeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day), T1319_AUTUMN_LOOK ? t1319AutumnLeft(day) : 0); }   // 출생 문턱 날 수 · ★[T1319] `'1'` = 가을도 겨울 끝까지
+function t1319MigNeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day), T1319_AUTUMN_MIG ? t1319AutumnLeft(day) : 0); }   // ★[T1319] 이주 문 날 수 — `'1'` · `'mig'` = 가을도 겨울 끝까지 · 끔 = 출생 문 날 수와 같다
 // ★★★[T1306 2026-11-14 · T1297 회부 1 · 2] 손잡이 `T1306_BIRTH_GRADE`(T1297 켬 안 · `'1'` 만 켬 · 끔 = T1297 그대로 · 세계 갈래 0) — **출생 문을 단계로.**
 //   T1297 은 둘 중 하나였다 — 곳간 < (사람 + 1) × 하루치 × 문턱 날 수이면 그날 늘림 0. 판을 열면 곳간이 47일치에서 보름 만에 30일치 밑으로 내려오고
 //     첫 가을걷이(날 200 ~ 275)까지 21 ~ 28일치(사람 가중)에 머문다 — 그 철 내내 문이 거의 닫혀 1020 묶음 끔비가 1.077 에 그쳤다(T1297 회부 1).
@@ -2754,6 +2774,13 @@ const T1266_ORE_BODY = (typeof process !== 'undefined' && process.env && process
 //   `T1266_ORE_BODY` 켬 안에서만 · 끔 = 종전 바이트). 광부 한 시간 값(v2 `t1266OreValue`)이 그 마을 원석 그림자 값을 읽는 그 칸에서 — 원석 품목마다 그 시간 캘 덩이 가운데
 //   곳간(유효 재고)이 값표 목표(녹임 흐름 × 30날 · 그 칸 값이 읽는 그 목표)에 닿기까지의 빈자리에 드는 몫만 그 칸 값을 받고 넘는 몫은 값 0. 새 수 0 · 사본 0(목표 · 재고 = v2 `_targetV2` 하나).
 const T1293_ORE_SAT = T1266_ORE_BODY && (typeof process !== 'undefined' && process.env && process.env.T1293_ORE_SAT === '1');
+// ★★[T1313 2026-11-14 · T1293 회부 ① ⓑ · ② · PM 카드] 손잡이 둘(**끔 기본** · `=1` 만 켬 · 끔 = 종전 바이트):
+//   `T1313_SURPLUS_EXPORT`(`T1293_ORE_SAT` 켬 안에서만) — 광부 한 시간 값에서 녹임 목표를 넘을 몫의 덩이 = 이웃이 쳐 줄 값(v2 순수출가 `netExportValue` —
+//     그 원석을 더 녹일 빈자리(값표 목표 − 유효 재고)가 있는 이웃만 · 정보 거리 안 · 다 차면 0). 목표 밑 몫은 그대로 그 마을 그림자 값(T1293).
+//   `T1313_LAMBDA_ZERO` — λ(행복 물건 하나의 기울기 ÷ 그 마을 값 가운데 가장 큰 것) 후보에서 그 마을 값표 목표가 0 인 물건을 뺀다(광부 · 어부가 같은 함수를 읽는다).
+//   새 수 0 · 사본 0(목표 · 유효 재고 = v2 `_targetV2` 하나 · 이웃 값 = 순수출가 하나).
+const T1313_SURPLUS_EXPORT = T1293_ORE_SAT && (typeof process !== 'undefined' && process.env && process.env.T1313_SURPLUS_EXPORT === '1');
+const T1313_LAMBDA_ZERO = (typeof process !== 'undefined' && process.env && process.env.T1313_LAMBDA_ZERO === '1');
 function mineToGranary(v, units, mineral) {
   if (!T724_MINE_ACT || !v || !v.storage) return 0;
   if(T1188_ORE_SPLIT&&!OreGoods.idOf(mineral))return 0;
@@ -7702,7 +7729,7 @@ module.exports = {
   T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
   T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
-  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
+  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
@@ -7750,6 +7777,7 @@ module.exports = {
   T17_MSY, fishMsyDayClose,   // ★[T923] 어장 MSY 상한 켬 기본 — 자(t17)가 켬/끔을 글자로 다시 적지 않고 엔진에게 묻는다(사본 0) · 마을 하루 마감(V2 가 부른다)
   mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT, T1266_ORE_BODY,   // ★[T1266] 광부 원석 양 = 몸이 친 만큼(끔 기본)
   T1293_ORE_SAT,   // ★[T1293] 녹임 목표를 넘을 몫의 덩이 값 0(끔 기본 · T1266 켬 안에서만 — v2 `t1266OreValue` 가 읽는다)
+  T1313_SURPLUS_EXPORT, T1313_LAMBDA_ZERO,   // ★[T1313] 넘는 몫 = 빈자리 있는 이웃의 순수출가(T1293 켬 안) · λ 후보에서 목표 0 물건 빼기(끔 기본 둘)
   T1196_ARTISAN_ACT, T1196_SET, artisanActOn, artisanTake, artisanGive, t1196Unhide,   // ★[T1196] 장인 작업장
   __t1196: { begin: _t1196Begin, end: _t1196End, day: _t1196Day, seat: _t1196Seat },   // ★[T1196] 하네스 문(운영 경로는 안 부른다)
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)

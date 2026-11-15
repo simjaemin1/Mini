@@ -1,0 +1,25 @@
+PASS defaults undefined
+PASS defaults 0
+PASS defaults 1
+PASS defaults 
+[econ-sim-v2] specialty.js 통합: 233종 → 총 253 TRADABLE
+PASS physical host suppresses all formula byproducts even before sites exist
+PASS an econ resource callback cannot replace a walking producer in a physical host
+PASS physical host disables anonymous bulk crews and old uncarried packs
+PASS missing fishing site cannot reactivate the legacy catch clock
+PASS a whole fish can use the unchanged village quota across shoreline cells
+PASS failed real stock draw refunds the fishing quota; over-quota catch draws nothing
+PASS an overweight next fish is rejected before stock and quota are spent
+PASS whole fish draw consumes the same natural stock and refuses a partial fish
+PASS wood and forage alone open the actual unobserved movement predicate
+PASS NPC and player share water targeting inside the canonical reach
+PASS a cast stays on its real water cell; leaving reach or dry water aborts it
+PASS full fish walks to the hall before any deposit
+PASS zero demand keeps every fish and credited unit
+PASS whole fish only; second accepted fish is deposited once
+PASS credit without a physical fish cannot enter storage
+PASS sea species use the same partial deposit and keep rejected fish
+PASS mutant removing arrival check is caught
+PASS mutant restoring formula production is caught
+PASS mutant restoring per-cell fish fractions is caught
+PASS 23 / FAIL 0

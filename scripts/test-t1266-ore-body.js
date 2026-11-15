@@ -22,13 +22,20 @@
 //       밑 빈자리에 드는 몫만 그 칸 값 · 넘는 몫 값 0 — 아이 판(`T1266_SAT=1`)에서 잰다. 고정판은 λ 를 과일(그 마을 목표 0 · 값 바닥 — T1277 §1 그 판)이 정한다:
 //       끔이면 곳간이 목표의 100 배여도 문이 안 닫힌다(⑫′ — 이 판에서 ⑫ 가 자명하지 않다는 증거).
 //     미끼 넷: 포화 문턱을 지운 사본(`satgone`) · 30날 대신 상수 박은 사본(`satconst` — 목표 60 고정 · `satdays` — 흐름 × 20날) · 목표를 흐름 × 30 으로 다시 셈한 사본(`satcopy` — 세계 몫 상한을 모른다) — 각각 빨강.
+//   ★[T1313] ⑬ 손잡이 `T1313_SURPLUS_EXPORT`(끔 기본 · T1293 켬 안에서만) 켬 = 넘는 몫의 덩이 값 = 그 원석을 더 녹일 빈자리가 있는 이웃이 쳐 줄 값(순수출가 빈자리 갈래) —
+//       아이 판(`T1266_SUR=1`): 넘는 몫 = 이웃 값 · 그 몫 · 목표 밑은 그 마을 값 · 이웃이 다 차면 0(종전 순수출가는 0 이 아니다) · 사본 0.
+//     ⑭ 손잡이 `T1313_LAMBDA_ZERO`(끔 기본) 켬 = λ 후보에서 그 마을 값표 목표 0 물건을 뺀다 — 아이 판(`T1266_LZ=1`): 과일(목표 0)이 λ 를 못 정한다 · 어부 `t1217Value` 와 같은 λ.
+//     미끼 셋: 넘는 몫에 제 마을 값을 쓰는 사본(`surown`) · 이웃 빈자리 거름을 뺀 사본(`surnoroom`) · λ 거름을 뺀 사본(`lzgone`) — 각각 빨강.
 const assert = require('assert'), fs = require('fs'), path = require('path'), { spawnSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..'); let pass = 0, fail = 0;
 function test(n, f) { try { f(); pass++; console.log('  ✓ ' + n); } catch (e) { fail++; console.log('  ✗ ' + n + ': ' + (e && e.message || e)); } }
 function child(env, code) { const r = spawnSync(process.execPath, ['-e', code], { cwd: ROOT, env: { ...process.env, ...env }, encoding: 'utf8' }); assert.strictEqual(r.status, 0, r.stderr); return JSON.parse(r.stdout.trim().split('\n').at(-1)); }
 const SAT = process.env.T1266_SAT === '1';   // ★[T1293] 포화 아이 판 — ⑫ 만(손잡이 `T1293_ORE_SAT` 켬)
-const MUT = process.env.T1266_MUTANT || '', SUB = !!MUT || process.env.T1266_ARM === '0' || SAT;   // 아이 판(미끼 · 끈 팔 · 포화)은 ②③④ 만(포화는 ⑫ 만)
-if (SAT) process.env.T1293_ORE_SAT = '1'; else delete process.env.T1293_ORE_SAT;   // ★[T1293] 어미 판 = 끔(⑤ ⑪ 이 T1277 값을 그대로 잰다)
+const SUR = process.env.T1266_SUR === '1', LZ = process.env.T1266_LZ === '1';   // ★[T1313] 넘는 몫 아이 판 — ⑬ 만 · λ 빼기 아이 판 — ⑭ 만
+const MUT = process.env.T1266_MUTANT || '', SUB = !!MUT || process.env.T1266_ARM === '0' || SAT || SUR || LZ;   // 아이 판(미끼 · 끈 팔 · 포화 · 넘는 몫 · λ)은 ②③④ 만(포화 · 넘는 몫 · λ 는 제 절만)
+if (SAT || SUR) process.env.T1293_ORE_SAT = '1'; else delete process.env.T1293_ORE_SAT;   // ★[T1293] 어미 판 = 끔(⑤ ⑪ 이 T1277 값을 그대로 잰다)
+if (SUR) process.env.T1313_SURPLUS_EXPORT = '1'; else delete process.env.T1313_SURPLUS_EXPORT;   // ★[T1313] 어미 판 · 다른 아이 판 = 끔
+if (LZ) process.env.T1313_LAMBDA_ZERO = '1'; else delete process.env.T1313_LAMBDA_ZERO;
 if (!SUB) {
   console.log('① 손잡이');
   for (const val of [undefined, '0', '1', '', 'true']) test('손잡이 ' + String(val) + ' → ' + (val === '1' ? '켬' : '끔'), () => {
@@ -50,7 +57,10 @@ if (MUT) {   // 미끼 — 정본 파일을 읽어 한 줄만 바꾼 사본으�
     restcopy: ['sim/economy-sim-v2.js', 'return { N, H, unit: p * lam, p, lam, best, rest: t1217RestValue(N, H) };', 'return { N, H, unit: p * lam, p, lam, best, rest: H > 0 ? v1.LEISURE_HAPPY_W / (N * H) : Infinity };'],   // 같은 값의 사본 식(값은 같다 — 함수가 하나여야 한다)
     capreach: ['server/villages.js', '    if (reach && !_t427Reach(vil, null, c.cx * SZ + SZ / 2, c.cy * SZ + SZ / 2, day)) continue;\n', ''],   // 닿지 않는 광맥도 센다
     capform: ['sim/economy-sim.js', 'oreReach == null ? Math.floor(s * Math.max(', 'true ? Math.floor(s * Math.max('],   // 읽개를 안 본다
-    nevmax: ['sim/economy-sim-v2.js', 'p += (sat ? _t1293Fill(v, id, sat, f, units) : f) * (px[id] || 0); }   // ★[T1277]', 'const nev = v._world ? netExportValue(v._world, v, id) : 0; p += (sat ? _t1293Fill(v, id, sat, f, units) : f) * Math.max(px[id] || 0, nev || 0); }   // ★[T1277]'],   // 종전 줄(이웃 값과 큰 쪽)
+    nevmax: ['sim/economy-sim-v2.js', 'p += g * (px[id] || 0);   // ★[T1277]', 'const nev = v._world ? netExportValue(v._world, v, id) : 0; p += g * Math.max(px[id] || 0, nev || 0);   // ★[T1277]'],   // 종전 줄(이웃 값과 큰 쪽)
+    surown: ['sim/economy-sim-v2.js', 'if (sur && f > g) p += (f - g) * _t1313Over(v, id);', 'if (sur && f > g) p += (f - g) * (px[id] || 0);'],   // ★[T1313] 넘는 몫에 제 마을 값
+    surnoroom: ['sim/economy-sim-v2.js', '    if (room && !(_t1313Room(b, res) > 0)) continue;', ''],   // ★[T1313] 이웃 빈자리 거름을 뺀 사본(다 찬 이웃도 산다)
+    lzgone: ['sim/economy-sim-v2.js', '    if (lz) { const T = _targetV2(v, r, lz); if (!(T && T.target > 0)) continue; }', ''],   // ★[T1313] λ 거름을 뺀 사본
     satgone: ['sim/economy-sim-v2.js', 'room = T ? Math.max(0, T.target - T.sEff) : 0;', 'room = Infinity;'],   // ★[T1293] 포화 문턱을 지운 사본
     satconst: ['sim/economy-sim-v2.js', 'room = T ? Math.max(0, T.target - T.sEff) : 0;', 'room = T ? Math.max(0, 60 - T.sEff) : 0;'],   // ★[T1293] 목표 대신 상수(60 — 흐름 2 판의 목표)
     satdays: ['sim/economy-sim-v2.js', 'room = T ? Math.max(0, T.target - T.sEff) : 0;', 'room = T ? Math.max(0, ((v._consEMA || {})[id] || 0) * 20 - T.sEff) : 0;'],   // ★[T1293] 30날 대신 20날
@@ -80,12 +90,16 @@ function fixture(val) {
 //   ★[T1293] ⑫ 고정판 — 세계 셋(⑪ 꼴): a(광부 · 구리 원석 녹임 흐름 flow/날 → 값표 목표 flow × 30) · c(과일 100 · 구리 원석 cOre — 세계 공급)
 //     a 는 과일을 안 먹고(흐름 0) 식량 60(1인 10 — 다양성 문 25날이 닫힌다) — 과일 칸이 목표 0 · 값 바닥이라 λ 를 과일이 정한다(T1277 §1 그 판).
 //     cOre 기본 2,000 — 세계 몫 상한(`_targetV2` 의 `_worldStockOf` 몫)이 흐름 목표 밑으로 안 내려온다(⑫ e 만 작게 준다).
-const fxSat = (flow, cOre) => {
+const fxSat = (flow, cOre, bOpt) => {
   const w = E2.createWorldV2({ seed: 42, villageCount: 3, infoRange: 5000 }), [a, b, c] = w.villages; E.bindProductionActs(w);
   a.land.ore = 1; a.land.oreMix = { copper: 1 }; b.land.oreMix = { copper: 1 };
   a._consEMA = Object.assign(a._consEMA || {}, { ore_copper: flow, copper: 5 }); delete a._consEMA.fruit;
   a.storage.copper = 0.5; a.storage.fruit = 0; a.storage.food = 60;
   c.storage.copper = 100; c.storage.ore_copper = cOre == null ? 2000 : cOre; c.storage.fruit = 100;
+  if (bOpt) {   // ★[T1313] 이웃 b — 구리 원석 녹임 흐름 · 곳간(빈자리) · 구리 0(구리 값이 원석 상한을 안 누른다 — ⑪ b 그 꼴) · 거리(a 곁 near — 운반비가 값을 다 먹지 않게)
+    b._consEMA = Object.assign(b._consEMA || {}, { ore_copper: bOpt.flow, copper: 5 }); b.storage.ore_copper = bOpt.stock; b.storage.copper = 0;
+    if (bOpt.near != null) b.coord = { x: a.coord.x + bOpt.near, y: a.coord.y };
+  }
   const vil = { name: 'ore-t1293', ccx: 0, ccy: 0, _granList: [{ cx: 2, cy: -2 }], _oreCells: [{ cx: 2, cy: 0, p: .5 }], npcPids: ['a'], _mineLvl: 5, econ: a };
   const p = { pid: 'a', simVillageId: 1, simJob: 'miner', x: 80, y: 16, inventory: {}, _t724Site: { cx: 2, cy: 0, x: 80, y: 16, day: 1 } };
   S.world = w; S.dayMs = 1440000; S.epoch = 0; S.zoneId = 'test'; S.villages = [vil];
@@ -95,7 +109,7 @@ const fxSat = (flow, cOre) => {
   //   한 물음 — 곳간 st 로 놓고 이튿날(값표 · 세계 공급 캐시가 새로 선다) 서버 `_t1266Keep` 을 그대로 부른다 · W · 쉰 값 · 단위는 계측 칸 차
   const ask = (st) => { a.storage.ore_copper = st; w.day++; hk++; const t0 = V.t1266Stat(); const keep = V._t1266Keep(vil, p, { cx: 2, cy: 0, x: 80, y: 16 }, hk, Sp, KGU); const t1 = V.t1266Stat(); return { keep, w: t1.w - t0.w, r: t1.r - t0.r, u: t1.u - t0.u, hk }; };
   const tgt = () => E2._targetV2(a, 'ore_copper', E2._targetCtxV2(a));   // 그 물음 그날의 값표 목표 · 유효 재고(정본 함수 그대로)
-  return { w, a, c, ask, tgt };
+  return { w, a, b, c, ask, tgt };
 };
 if (SAT) {
   console.log('⑫ 녹임 목표를 넘을 몫의 덩이 값 0(`T1293_ORE_SAT` 켬 · T1293)');
@@ -138,6 +152,65 @@ if (SAT) {
     const f = body('_t1293Fill'); assert(f.includes('_targetV2(v, id, ctx)') && f.includes('T.target - T.sEff'), '목표 · 유효 재고를 정본에서 안 읽는다');
     assert(!/_consEMA|\* *30|\b\d{2,}\b/.test(f), '채우기 함수에 흐름 · 날 수 · 상수 글이 있다');
     const g = body('t1266OreValue'); assert(g.includes('v1.T1293_ORE_SAT') && g.includes('_t1293Fill(v, id, sat, f, units)'), '값 함수가 채우기 함수를 안 부른다');
+  });
+  console.log(`=== ${pass} 통과 / ${fail} 실패 ===`); process.exitCode = fail ? 1 : 0;
+  return;
+}
+if (SUR) {
+  console.log('⑬ 넘는 몫 = 빈자리 있는 이웃이 쳐 줄 값(`T1313_SURPLUS_EXPORT` 켬 · T1313)');
+  const N0 = { flow: 5, stock: 0, near: 50 };   // 이웃 b — 구리 원석 녹임 흐름 5 → 목표 150 · 곳간 0 · 거리 50
+  test('손잡이 켬 — `T1313_SURPLUS_EXPORT=1` · T1293 · T1266 켬 → v1 참 · λ 빼기 끔', () => { assert.strictEqual(E.T1313_SURPLUS_EXPORT, true); assert.strictEqual(E.T1293_ORE_SAT, true); assert.strictEqual(E.T1313_LAMBDA_ZERO, false); });
+  test('넘는 몫 = 빈자리 있는 이웃이 쳐 줄 값 — a 곳간 61(목표 60 넘음) · 이웃 b 빈자리 150 → 한 단위 값 = 순수출가(빈자리 갈래) · W = λ × u × 그 값 · 친다', () => {
+    const { w, a, ask } = fxSat(2, null, N0); const r = ask(61);
+    const nevR = E2.netExportValue(w, a, 'ore_copper', true); assert(nevR > 0, '이웃 값 0 — 판이 자명');
+    const val = E2.t1266OreValue(a, 16.8, r.hk, { ore_copper: 1 }, r.u);
+    close(val.p, nevR, 1e-12); close(r.w, val.lam * r.u * nevR, 1e-9); assert(r.keep, `빈자리 있는 이웃이 사 주는데 멈췄다 W ${r.w} R ${r.r}`);
+  });
+  test('그 몫 — a 곳간 59.5 · 그 시간 u 단위 → 한 단위 값 = (빈자리 0.5 × 그 마을 값 + 넘는 (u − 0.5) × 이웃 값) ÷ u', () => {
+    const { w, a, ask } = fxSat(2, null, N0); const r = ask(59.5); assert(r.u > 0.5, `그 시간 단위 ${r.u} ≤ 빈자리`);
+    const pxA = E2.t1217PricesOf(a, r.hk).ore_copper, nevR = E2.netExportValue(w, a, 'ore_copper', true);
+    close(E2.t1266OreValue(a, 16.8, r.hk, { ore_copper: 1 }, r.u).p, (0.5 * pxA + (r.u - 0.5) * nevR) / r.u, 1e-12);
+  });
+  test('목표 밑은 그 마을 값 그대로 — a 곳간 30(빈자리 30 ≥ u) → 한 단위 값 = 그 마을 그림자 값(이웃 값 안 섞임)', () => {
+    const { a, ask } = fxSat(2, null, N0); const r = ask(30);
+    close(E2.t1266OreValue(a, 16.8, r.hk, { ore_copper: 1 }, r.u).p, E2.t1217PricesOf(a, r.hk).ore_copper, 1e-12);
+  });
+  test('이웃이 다 차면 0 — b 곳간 149 → 친다 · 150 · 200(목표 150) → 넘는 몫 값 0 · 멈춘다 · 종전 순수출가(빈자리 갈래 아님)는 0 이 아니다', () => {
+    { const { w, a, ask } = fxSat(2, null, { flow: 5, stock: 149, near: 50 }); const r = ask(61); assert(r.keep && E2.netExportValue(w, a, 'ore_copper', true) > 0, '빈자리 1 인 이웃인데 멈췄다'); }
+    for (const st of [150, 200]) {
+      const { w, a, ask } = fxSat(2, null, { flow: 5, stock: st, near: 50 }); const r = ask(61);
+      assert(!r.keep, `이웃 곳간 ${st} 인데 안 멈췄다 W ${r.w} R ${r.r}`); assert.strictEqual(r.w, 0, `W ${r.w} ≠ 0`);
+      assert.strictEqual(E2.netExportValue(w, a, 'ore_copper', true), 0);
+      assert(E2.netExportValue(w, a, 'ore_copper') > 0, `이웃 곳간 ${st} — 종전 순수출가도 0 이라 판이 자명`);
+    }
+  });
+  test('사본 0 — 넘는 몫 값 = 순수출가 하나(빈자리 갈래 넷째 인자) · 이웃 빈자리 = `_targetV2` 의 목표 − 유효 재고 · 값 함수는 손잡이를 보고 그 갈래만 부른다', () => {
+    const src = srcOf('sim/economy-sim-v2.js'), body = (name) => { const i = src.indexOf('function ' + name + '('); assert(i >= 0, name + ' 없음'); return src.slice(i, src.indexOf('\n}', i)); };
+    assert(body('_t1313Over').includes('netExportValue(v._world, v, id, true)'), '넘는 몫 값이 순수출가를 안 부른다');
+    const rb = body('_t1313Room'); assert(rb.includes('_targetV2(b, res, _targetCtxV2(b))') && rb.includes('T.target - T.sEff'), '이웃 빈자리를 정본에서 안 읽는다');
+    const nb = body('netExportValue'); assert.strictEqual(nb.split('_t1313Room(b, res)').length - 1, 1, '순수출가의 빈자리 거름이 한 줄이 아니다');
+    const g = body('t1266OreValue'); assert(g.includes('const sur = sat && v1.T1313_SURPLUS_EXPORT;') && g.split('_t1313Over(v, id)').length - 1 === 1 && g.includes('if (sur && f > g) p += (f - g) * _t1313Over(v, id);'), '값 함수가 손잡이 밖에서 이웃 값을 읽는다');
+  });
+  console.log(`=== ${pass} 통과 / ${fail} 실패 ===`); process.exitCode = fail ? 1 : 0;
+  return;
+}
+if (LZ) {
+  console.log('⑭ λ 후보에서 그 마을 목표 0 물건 빼기(`T1313_LAMBDA_ZERO` 켬 · T1313)');
+  test('손잡이 켬 — `T1313_LAMBDA_ZERO=1` → v1 참 · T1293 · 넘는 몫 끔', () => { assert.strictEqual(E.T1313_LAMBDA_ZERO, true); assert.strictEqual(E.T1293_ORE_SAT, false); assert.strictEqual(E.T1313_SURPLUS_EXPORT, false); });
+  test('λ 후보에서 목표 0 물건 뺌 — 과일(그 마을 목표 0 · 세계에 100)이 λ 를 안 정한다 · λ 물건은 그 마을 목표 > 0 · λ < 과일로 셈한 λ', () => {
+    const { a } = fxSat(2); const v = E2.t1266OreValue(a, 16.8, null, { ore_copper: 1 });
+    assert(v.best && v.best !== 'fruit', `λ 물건 ${v.best}`);
+    const ctx = E2._targetCtxV2(a); assert(E2._targetV2(a, v.best, ctx).target > 0, `λ 물건 ${v.best} 목표 0`); assert.strictEqual(E2._targetV2(a, 'fruit', ctx).target, 0, '과일 목표가 0 이 아니다 — 판이 자명');
+    const px = E2.computeShadowPrices(a), lf = E.t1217HappyMu(a, 'fruit', a.npcs.length) / px.fruit; assert(lf > 0 && v.lam < lf, `λ ${v.lam} · 과일 λ ${lf}`);
+  });
+  test('어부 값도 같은 λ — `t1217Value` 의 λ · 물건 = 광부 값의 그것(같은 함수 `_t1217Lam`)', () => {
+    const { a } = fxSat(2); const m = E2.t1266OreValue(a, 16.8, null, { ore_copper: 1 }), f = E2.t1217Value(a, 16.8, null);
+    close(f.lam, m.lam, 1e-15); assert.strictEqual(f.best, m.best);
+  });
+  test('사본 0 — λ 거름은 `_t1217Lam` 한 자리 · 목표는 `_targetV2` 그 칸', () => {
+    const src = srcOf('sim/economy-sim-v2.js'), i = src.indexOf('function _t1217Lam('), j = src.indexOf('\n}', i), b = src.slice(i, j);
+    assert(b.includes('v1.T1313_LAMBDA_ZERO ? _targetCtxV2(v) : null') && b.includes('_targetV2(v, r, lz)') && b.includes('T.target > 0'), 'λ 거름이 정본 목표를 안 읽는다');
+    assert.strictEqual(src.split('v1.T1313_LAMBDA_ZERO').length - 1, 1, 'λ 손잡이를 읽는 자리가 하나가 아니다');
   });
   console.log(`=== ${pass} 통과 / ${fail} 실패 ===`); process.exitCode = fail ? 1 : 0;
   return;
@@ -256,6 +329,7 @@ if (ARM) {
     close(val.p, px.ore_copper, 1e-12); close(val.unit, px.ore_copper * val.lam, 1e-12);
     const src = srcOf('sim/economy-sim-v2.js'), i = src.indexOf('function t1266OreValue('), j = src.indexOf('\n}', i);
     assert(!src.slice(i, j).includes('netExportValue'), '광부 값 함수가 순수출가를 읽는다');
+    assert(src.slice(i, j).includes('if (sur && f > g) p += (f - g) * _t1313Over(v, id);'), '★[T1313] 이웃 값은 넘는 몫 갈래(손잡이 · 끔 기본)에서만이어야 한다');
   });
   test('같은 날 곳간이 5 → 6,000 으로 불면 다음 시간 값이 떨어져 멈춘다(그날 아침 값표가 아니다)', () => {
     const { a, ask } = fx3();
@@ -315,6 +389,26 @@ if (!SUB) {
   });
   for (const [kind, name] of [['satgone', '녹임 목표 60'], ['satconst', '문턱이 녹임 흐름을 따라간다'], ['satdays', '녹임 목표 60'], ['satcopy', '목표는 값표 목표 하나']]) test('미끼 ' + kind + ' 가 걸린다(⑫ 「' + name + '」 빨강)', () => {
     const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, T1266_SAT: '1', T1266_MUTANT: kind }, encoding: 'utf8' });
+    assert.strictEqual(r.status, 1, r.stdout + r.stderr); assert(r.stdout.split('\n').some((l) => l.includes('✗') && l.includes(name)), r.stdout);
+  });
+  console.log('⑬ ⑭ 손잡이 `T1313_SURPLUS_EXPORT` · `T1313_LAMBDA_ZERO` · 아이 판 · 미끼');
+  for (const [body, sat, sur] of [['1', '1', '1'], ['1', '1', undefined], ['1', '1', '0'], ['1', '1', 'true'], ['1', '0', '1'], [undefined, '1', '1']]) test(`T1313 넘는 몫 손잡이 ${String(sur)} · T1293 ${String(sat)} · T1266 ${String(body)} → ${body === '1' && sat === '1' && sur === '1' ? '켬' : '끔'}`, () => {
+    const env = { ...process.env }; for (const k of ['T1266_ORE_BODY', 'T1293_ORE_SAT', 'T1313_SURPLUS_EXPORT']) delete env[k];
+    if (body !== undefined) env.T1266_ORE_BODY = body; if (sat !== undefined) env.T1293_ORE_SAT = sat; if (sur !== undefined) env.T1313_SURPLUS_EXPORT = sur;
+    const r = spawnSync(process.execPath, ['-e', "console.log(JSON.stringify(require('./sim/economy-sim').T1313_SURPLUS_EXPORT))"], { cwd: ROOT, env, encoding: 'utf8' });
+    assert.strictEqual(r.status, 0, r.stderr); assert.strictEqual(JSON.parse(r.stdout.trim().split('\n').at(-1)), body === '1' && sat === '1' && sur === '1');
+  });
+  for (const val of [undefined, '0', '1', '', 'true']) test('T1313 λ 손잡이 ' + String(val) + ' → ' + (val === '1' ? '켬' : '끔'), () => {
+    const env = { ...process.env }; delete env.T1313_LAMBDA_ZERO; if (val !== undefined) env.T1313_LAMBDA_ZERO = val;
+    const r = spawnSync(process.execPath, ['-e', "console.log(JSON.stringify(require('./sim/economy-sim').T1313_LAMBDA_ZERO))"], { cwd: ROOT, env, encoding: 'utf8' });
+    assert.strictEqual(r.status, 0, r.stderr); assert.strictEqual(JSON.parse(r.stdout.trim().split('\n').at(-1)), val === '1');
+  });
+  for (const [mode, n] of [['T1266_SUR', 6], ['T1266_LZ', 4]]) test(`아이 판(\`${mode}=1\`) — 제 절 다 초록(${n})`, () => {
+    const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, [mode]: '1', T1266_MUTANT: '' }, encoding: 'utf8' });
+    assert.strictEqual(r.status, 0, r.stdout + r.stderr); assert(new RegExp('=== ' + n + ' 통과 / 0 실패 ===').test(r.stdout), r.stdout);
+  });
+  for (const [kind, mode, name] of [['surown', 'T1266_SUR', '넘는 몫 = 빈자리 있는 이웃'], ['surnoroom', 'T1266_SUR', '이웃이 다 차면 0'], ['lzgone', 'T1266_LZ', 'λ 후보에서 목표 0 물건 뺌']]) test('미끼 ' + kind + ' 가 걸린다(「' + name + '」 빨강)', () => {
+    const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, [mode]: '1', T1266_MUTANT: kind }, encoding: 'utf8' });
     assert.strictEqual(r.status, 1, r.stdout + r.stderr); assert(r.stdout.split('\n').some((l) => l.includes('✗') && l.includes(name)), r.stdout);
   });
 }
