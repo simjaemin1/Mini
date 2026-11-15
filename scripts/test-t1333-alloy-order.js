@@ -106,6 +106,24 @@ if (ARM) {
   const pop2 = w2.villages.reduce((n, v) => n + v.npcs.length, 0), N2 = a2.npcs.length;
   V.ws = { cu: T2('copper'), ore: T2('ore_tin'), lea: T2('charcoal'), dCu: r6(E.derivedInputTarget(a2, 'copper')), capCu: r6(Math.max(0.2, 1 * (N2 / pop2) * 1.5)), capOre: r6(Math.max(0.2, 2 * (N2 / pop2) * 1.5)),
     free: ['ore_tin', 'ore_copper', 'ore', 'copper', 'tin', 'lead', 'silver', 'gold', 'charcoal', 'iron', 'weapon', 'food'].map((r) => [r, !!E.t1333WsFree(r)]), knob: E.T1333_WS_INPUT };
+  // ⑥b 한 마을 하루(가짜 마을 · 존 안 띄움 — test-smelt-return 그 픽스처 땅): 첫 차례 대장장이 · 구리 5 · 주석 5 · 원석 0 · 무기 곳간 50(청동 병기고 몫을 한참 넘는다) · 이웃 무기 순수출가 pw
+  const day1 = (pw) => {
+    const _l = console.log; console.log = () => {};
+    try {
+      if (E.setSeed) E.setSeed(1);
+      const lp = { fertility: 0.32, arable: 1, water: 0.08, wood: 0.67, game: 0.74, stone: 2.13, ore: 0.24, size: 138, baseSize: 138, woodSustain: 12.61, fishSustain: null,
+        forageSustain: 9.87, marginalQ: 0.497, oreMix: { copper: 0.9, gold: 0.05, silver: 0.05 }, oreGrade: 0.5153, oreP: 0.0909, oreDist: 0.4, coastal: false };
+      const v = E.createVillage({ ...lp, name: '시험주조', initialPop: 10 });
+      const sm = v.npcs[0]; v.counts[sm.currentJob] = (v.counts[sm.currentJob] || 0) - 1; sm.currentJob = 'smith'; v.counts.smith = (v.counts.smith || 0) + 1;
+      v.storage.ore = 0; for (const k of ['copper', 'tin', 'lead', 'silver', 'gold', 'iron', 'arsenic', ...((E.OreGoods && E.OreGoods.ids) || [])]) v.storage[k] = 0;   // 녹일 원석 0(광종마다) — 하루를 주조에
+      v.storage.copper = 5; v.storage.tin = 5; v.storage.weapon = 50; v.storage.wood = 1000; v.storage.charcoal = 1000;
+      if (pw != null) v._world = { netExportFn: (vv, res) => (res === 'weapon' ? pw : 0) };
+      const b0 = v._bronzeWeaponMade || 0;
+      E.tickVillage(v, 1);
+      return { made: r6((v._bronzeWeaponMade || 0) - b0), cu: r6(5 - v.storage.copper), sn: r6(5 - v.storage.tin) };
+    } finally { console.log = _l; }
+  };
+  const CD = { pw12: day1(12), pw0: day1(0), none: day1(null) };
   const SRC = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
   const smithT = SRC.slice(SRC.indexOf('function smithTarget(v)'), SRC.indexOf('function warriorTarget(v)'));
   const G = {
@@ -116,7 +134,7 @@ if (ARM) {
   };
   const V2S = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
   G.wsLine = (V2S.match(/&& !VARIETY_FOOD\[r\] && !\(v1\.t1333WsFree && v1\.t1333WsFree\(r\)\)\) \{\n    target = Math\.min\(target, Math\.max\(0\.2, _ws\.stock \* \(N \/ _ws\.pop\) \* EFFDEM_SHARE\)\);/g) || []).length;
-  process.stdout.write(JSON.stringify({ knobs: { alloy: E.T1333_ALLOY_ORDER, exp: E.T1333_EXPORT_CAST, ws: E.T1333_WS_INPUT, cd: E.COPPER_DERIV_ON }, D, X, V, XC, G, MELT: E._MELT_TOTAL }) + '\n');
+  process.stdout.write(JSON.stringify({ knobs: { alloy: E.T1333_ALLOY_ORDER, exp: E.T1333_EXPORT_CAST, ws: E.T1333_WS_INPUT, cd: E.COPPER_DERIV_ON }, D, X, V, XC, CD, G, MELT: E._MELT_TOTAL }) + '\n');
   process.exit(0);
 }
 
@@ -175,6 +193,10 @@ function checks(P, out) {
   ok(X.XC.noCu === false, '구리 없는 마을 → 거짓(기지 없음)', X.XC.noCu);
   ok(X.XC.pureCu12 === false && X.XC.pureCu60 === true, '★순동뿐인 마을 — 기준가 무기 값이면 남지 않는다(거짓) · 무기 값 60 이면 남는다(참 — 값이 정한다)', [X.XC.pureCu12, X.XC.pureCu60]);
   ok(X.G.castGate === 1 && X.G.jobGate === 1 && X.G.oneFn === 1, '★주조 문 · 무기장 자리 문이 같은 판정 함수 하나를 부른다(글자 — 끔이면 앞 항만 = 종전)', X.G);
+  ok(O.CD.pw12.made === 0 && O.CD.pw12.cu === 0 && O.CD.none.made === 0, '★한 마을 하루(무기 곳간 50 ≫ 청동 병기고 몫) — 끔이면 대장장이가 안 붓는다(이웃 무기 값 12 여도 · 종전)', [O.CD.pw12, O.CD.none]);
+  ok(X.CD.pw12.made > 0 && X.CD.pw12.cu > 0 && X.CD.pw12.sn > 0, `★ⓑ 켬 · 이웃 무기 순수출가 12 — 병기고가 차도 붓는다(청동 무기 ${X.CD.pw12.made} · 구리 ${X.CD.pw12.cu} · 주석 ${X.CD.pw12.sn} 씀)`, X.CD.pw12);
+  ok(X.CD.pw0.made === 0 && X.CD.none.made === 0 && X.CD.pw0.cu === 0, 'ⓑ 켬이어도 이웃이 사 줄 값 0 · 순수출가 주입 없음이면 안 붓는다(병기고 문 그대로)', [X.CD.pw0, X.CD.none]);
+  ok(JSON.stringify(A.CD) === JSON.stringify(O.CD), 'ⓐ 만 켠 판의 한 마을 하루 = 끔 판(ⓐ 는 주조 문을 안 건드린다)', A.CD);
 
   if (out) console.log('\n⑧ 생산 투입재 인구 몫 상한(실험 `T1333_WS_INPUT` · 끔 기본)');
   ok(O.V.ws.knob === false && S.V.ws.knob === true && O.V.ws.free.every(([, f]) => f === false), '★손잡이 — 끔이면 어느 재화도 상한 밖이 아니다', O.V.ws.free);
