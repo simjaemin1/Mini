@@ -420,6 +420,12 @@ function _xzOn(world) { return !!(T525_CROSS_ZONE && world && world.xzone && typ
 //     다시 뜬 존이 호스트를 아직 안 꽂았으면(걸음표 전 `_xzOn` 거짓) 이웃 존 캐러밴의 도착 · 'return' 을 하루씩 미룬다(`_t1030Hold` — 짐은 그 캐러밴에 그대로).
 const T1030_XZ_MARKET = T525_CROSS_ZONE && (typeof process !== 'undefined' && process.env && process.env.T1030_XZ_MARKET === '1');
 function _t1030Hold(world, c) { return T1030_XZ_MARKET && !!(c && c._xzHome) && !_xzOn(world); }
+// ★★[T1321 2026-11-14 · T1292 회부 6] 손잡이 `T1321_XZ_DRAIN`('1' 만 켬 · 끔 기본 · 끔 = 아래 줄 늘 false = 종전 바이트) — **끈 판의 안전망.**
+//   팔이 꺼졌거나(`T525_CROSS_ZONE` 끔으로 다시 뜬 판) 호스트 · 걸음표가 아직이면(`_xzOn` 거짓) 메타에서 되돌린 이웃 존 캐러밴(`_xzHome`)의 도착 · 'return' 을 적지 않고
+//   경계에 선 채 하루씩 미룬다(T1030 미룸과 같은 꼴 — 팔 켬 · 장 손잡이와 무관). 종전: `_xzHandBack` 이 `world.xzone.zone` 을 읽다 예외 → 그날 캐러밴 고리가 통째로 멈췄다.
+//   이 존 캐러밴으로 저쪽에 가 있는 것('xzone')은 원래 갈래가 없다(돌아올 'return' 을 기다린다 — 예외 0). 팔이 다시 켜지면 그날부터 종전 그대로 간다.
+const T1321_XZ_DRAIN = (typeof process !== 'undefined' && process.env && process.env.T1321_XZ_DRAIN === '1');
+function _t1321Hold(world, c) { return T1321_XZ_DRAIN && !!(c && c._xzHome) && !_xzOn(world); }
 // 거리 — 스텁이 끼면 호스트에 묻는다(걸음 · 존 경계 너머) · 아니면 종전 정본(`villageDist`) 그대로.
 function _xzDist(world, a, b) {
   if ((a && a._xz) || (b && b._xz)) {
@@ -1021,12 +1027,16 @@ function t1217PricesOf(v, key) {   // key = 시간 열쇠를 부르는 쪽이 �
 //     unit = 빚이 있으면 1 ÷ (N × 죽음 날 수) · 없으면 max(그 마을 생선 값, 순수출가) × λ (λ = 행복 물건 하나의 기울기 ÷ 그 값 중 가장 큰 것 — 세계 어디에도 없는 물건은 뺀다)
 //     rest = 한 사람이 한 시간 쉰 값 = `LEISURE_HAPPY_W` ÷ (N × H)
 //   ★[T1217] 행복 물건 하나의 기울기 ÷ 그 값 중 가장 큰 것(λ · 세계 어디에도 없는 물건은 뺀다) — 어부 · ★[T1266] 광부 한 시간 값이 같은 함수를 읽는다(사본 0 · 종전 줄을 함수로 옮김 · 값 무변).
+//   ★[T1313 ② · T1293 회부 ② · PM 카드] 손잡이 v1 `T1313_LAMBDA_ZERO`(끔 기본) 켬 = 그 마을 값표 목표(`_targetV2` 그 칸)가 0 인 물건은 후보가 아니다 —
+//     그 마을이 원하지 않는(목표 0 · 값 바닥) 물건을 바닥 값에 사 온다고 셈하지 않는다(T1277 §1: 광산 마을의 과일). 끔 = 이 줄 무동작(종전 산술).
 function _t1217Lam(v, px, N) {
   let lam = 0, best = null;
+  const lz = v1.T1313_LAMBDA_ZERO ? _targetCtxV2(v) : null;
   for (const r of TRADABLE) {
     const p = px[r]; if (!(p > 0)) continue;
     const mu = v1.t1217HappyMu(v, r, N); if (!(mu > 0)) continue;
     const ws = _worldStockOf(v, r); if (ws && !(ws.stock > 0)) continue;
+    if (lz) { const T = _targetV2(v, r, lz); if (!(T && T.target > 0)) continue; }   // ★[T1313 ②] 목표 0 물건 뺌
     const l = mu / p; if (l > lam) { lam = l; best = r; }
   }
   return { lam, best };
@@ -1050,13 +1060,33 @@ function t1217Value(v, H, key) {
 //     목표 = 녹임 흐름 × 30날 · 유효 재고 = 곳간) 그 원석 칸 하나. 종전 줄은 순수출가(`netExportValue` — 이웃 한 곳이 첫 한 단위에 줄 값)와 큰 쪽을 썼다 —
 //     곳간이 녹임 목표를 몇 배 넘어도 이웃 값이 크면 덩이 값이 안 떨어진다. 이 함수에서 순수출가를 안 읽는다(사본 0 · 새 수 0).
 //     mix = { 원석 품목: 몫 }(쪼개기 켬 — 그 셀에서 나올 광물의 기댓값 몫 · 몫 합 1) · 없으면 `ore` 한 칸(쪼개기 끔). 새 수 0 · 주사위 0.
-function t1266OreValue(v, H, key, mix) {
+//   ★★[T1293 · T1277 회부 ① ⓐ · PM 판정 "녹일 수 있는 것보다 많이 캔 원석은 값이 없다"] 손잡이 v1 `T1293_ORE_SAT`(끔 기본 · `T1266_ORE_BODY` 켬 안에서만) —
+//     units = 그 시간 캘 원석 단위(부르는 쪽 `_t1266Keep` 의 그 수). 품목마다 그 시간 덩이(units × 몫) 가운데 곳간(유효 재고 `sEff`)이 값표 목표(`target` — 녹임 흐름 × 30날 ·
+//     그 칸 값이 읽는 그 목표)에 닿기까지의 빈자리에 드는 몫만 그 칸 값을 받는다(`_t1293Fill`) — 넘는 몫은 값 0. units 를 안 주면 첫 한 단위(빈자리가 있으면 몫 그대로 · 없으면 0).
+//     끔 = 아래 줄 종전 산술 그대로(몫 × 그 칸 값). 새 수 0 · 사본 0(목표 · 유효 재고는 `_targetV2` 하나 — 값 칸이 읽는 그 둘).
+function _t1293Fill(v, id, ctx, f, units) {
+  const T = _targetV2(v, id, ctx), room = T ? Math.max(0, T.target - T.sEff) : 0;   // 녹임 목표까지 남은 빈자리(원석 단위)
+  if (!(room > 0)) return 0;
+  return units > 0 ? Math.min(f, room / units) : f;
+}
+//   ★★[T1313 ⓑ · T1293 회부 ① · PM 카드] 손잡이 v1 `T1313_SURPLUS_EXPORT`(끔 기본 · `T1293_ORE_SAT` 켬 안에서만) 켬 = 넘는 몫(몫 − 빈자리 몫)의 덩이 값 =
+//     이웃이 쳐 줄 값(`_t1313Over` — 순수출가 `netExportValue` 의 빈자리 갈래: 그 원석을 더 녹일 빈자리가 있는 이웃만 · 정보 거리 안 · 다 차면 0).
+//     목표 밑 몫은 그대로 그 마을 그림자 값이다(T1277 (가)는 목표 밑 몫에서 그대로 산다). 끔 = 넘는 몫 값 0(T1293 그대로).
+function _t1313Over(v, id) { return v && v._world ? netExportValue(v._world, v, id, true) : 0; }
+function t1266OreValue(v, H, key, mix, units) {
   if (!v || !v.npcs) return null;
   const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
   const { lam, best } = _t1217Lam(v, px, N);
   const M = mix && Object.keys(mix).length ? mix : { ore: 1 };
+  const sat = v1.T1293_ORE_SAT ? _targetCtxV2(v) : null;   // ★[T1293] 켬 = 녹임 목표 문맥(끔 = null · 아래 줄 종전 산술)
+  const sur = sat && v1.T1313_SURPLUS_EXPORT;   // ★[T1313 ⓑ] 켬 = 넘는 몫에 이웃 값
   let p = 0;
-  for (const id in M) { const f = M[id]; if (!(f > 0)) continue; p += f * (px[id] || 0); }   // ★[T1277] 그림자 값 한 칸(순수출가 안 읽음)
+  for (const id in M) {
+    const f = M[id]; if (!(f > 0)) continue;
+    const g = sat ? _t1293Fill(v, id, sat, f, units) : f;
+    p += g * (px[id] || 0);   // ★[T1277] 그림자 값 한 칸(순수출가 안 읽음) · ★[T1293] 켬 = 목표 밑 빈자리 몫만
+    if (sur && f > g) p += (f - g) * _t1313Over(v, id);   // ★[T1313 ⓑ] 넘는 몫 = 빈자리 있는 이웃이 쳐 줄 값
+  }
   return { N, H, unit: p * lam, p, lam, best, rest: t1217RestValue(N, H) };
 }
 
@@ -2656,13 +2686,13 @@ function _caravanStepV2(world,c,day) {
     }
 
     else if (c.state === 'outbound' && caravanBodyDue(world,c,'outbound',day>=c.arriveDay)) {
-      if (c._xzHome) { if (!_t1030Hold(world, c)) _xzArriveLoop(world, c, day); }   // ★[T525·T533] 이웃 존 캐러밴의 도착(이 존 몫을 걸어 왔다 · 우회 뒤 도착도 여기) · ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전)
+      if (c._xzHome) { if (!_t1030Hold(world, c) && !_t1321Hold(world, c)) _xzArriveLoop(world, c, day); }   // ★[T525·T533] 이웃 존 캐러밴의 도착(이 존 몫을 걸어 왔다 · 우회 뒤 도착도 여기) · ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전) · ★[T1321] 끈 판 안전망(끔 = 종전)
       else _caravanArrive(world, c, day);
     }
 
     // ★★[T533] 이웃 존 캐러밴의 귀환 구간 — 집은 스텁이라 이 존 곳간에 넣지 않는다: 제 몫을 걸어 경계 칸에 선 날 집 존으로 넘긴다.
     else if (c._xzHome && c.state === 'inbound') {
-      if (c._xzBack && caravanBodyDue(world,c,'inbound',day>=c._xzBack.day) && !_t1030Hold(world, c)) _xzHandBack(world, c, day, c._xzRow || null, c._xzBack.remain);   // ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전)
+      if (c._xzBack && caravanBodyDue(world,c,'inbound',day>=c._xzBack.day) && !_t1030Hold(world, c) && !_t1321Hold(world, c)) _xzHandBack(world, c, day, c._xzRow || null, c._xzBack.remain);   // ★[T1030] 켬 + 호스트 전이면 하루 미룸(끔 = 종전) · ★[T1321] 끈 판 안전망(끔 = 종전)
     }
 
     else if (c.state === 'inbound' && !c._t707 && caravanBodyDue(world,c,'inbound',day>=c.returnArriveDay)) {   // ★[T707] 정산 전 장은 귀환을 안 닫는다(머리에서 정산되니 실제로는 안 닿는다 · 끔이면 `_t707` 없음 = 종전)
@@ -3138,13 +3168,16 @@ function printSummary(world, days) {
 //   그 값으로 그날 모든 발주를 결정한다(line ~569 `_priceCacheDay`). 같은 해상도를 쓴다 —
 //   더 자주 재는 건 교역층보다 정밀해지는 것이라 정합이 아니라 불일치가 된다.
 const FORWARD_PRICE_MARGIN_NEV = 0.95;   // ★tickTradeV2 지역상수 FORWARD_PRICE_MARGIN 과 **같은 값**이어야 한다(test-valuechain ⑥ 이 두 리터럴의 일치를 감시)
-function netExportValue(world, from, res) {
+//   ★[T1313 ⓑ] room(넷째 인자 · 참) = 빈자리 갈래 — 후보 이웃 가운데 그 품목을 더 녹일 빈자리(값표 목표 − 유효 재고 · `_targetV2` 그 칸 — T1293 `_t1293Fill` 과 같은 둘)가 있는 이웃만 센다.
+//     광부 한 시간 값의 넘는 몫(`_t1313Over`)만 부른다 — 교역 발주 · 주조가 부르는 종전 갈래(room 없음)는 한 줄도 안 바뀐다. 캐시 열쇠도 갈래마다 따로.
+function _t1313Room(b, res) { const T = _targetV2(b, res, _targetCtxV2(b)); return T ? T.target - T.sEff : 0; }
+function netExportValue(world, from, res, room) {
   if (!world || !from || !res) return 0;
   const day = world.day || 0;
   const _t1217H = t1217Hour(from), ck = _t1217H != null ? 'h' + _t1217H : day;   // ★[T1217] 켬 = 캐시 열쇠가 그 시간(시세 해상도 = 어부 · 주문과 같다) · 끔 = 그날(종전 값 그대로)
   let C = world._nevCache;
   if (!C || C.day !== ck) C = world._nevCache = { day: ck, px: new Map(), val: new Map() };
-  const vk = from.name + ' ' + res;
+  const vk = room ? from.name + ' ' + res + ' r' : from.name + ' ' + res;   // ★[T1313 ⓑ] 빈자리 갈래는 열쇠가 따로(종전 열쇠 글자 그대로)
   if (C.val.has(vk)) return C.val.get(vk);
   const px = (b) => { let t = C.px.get(b); if (!t) { t = (_t1217H != null && t1217PricesOf(b)) || computeShadowPrices(b); C.px.set(b, t); } return t; };
   let _mv = null; const _nevMv = () => (_mv != null ? _mv : (_mv = (C.mv || (C.mv = new Map())).get(from) != null ? C.mv.get(from) : (() => { const x = lowestProducer(from, px(from), day).mv; C.mv.set(from, isFinite(x) ? x : 0); return C.mv.get(from); })()));   // ★[T1152 ②] 그날 그 마을 상인 하루 몫(끔 = 안 부른다)
@@ -3160,6 +3193,7 @@ function netExportValue(world, from, res) {
     if (dist > infoR) continue;
     const pTo = (px(b)[res] || 0) * FORWARD_PRICE_MARGIN_NEV;
     if (!(pTo > 0)) continue;
+    if (room && !(_t1313Room(b, res) > 0)) continue;   // ★[T1313 ⓑ] 빈자리 갈래 — 다 찬 이웃은 안 산다(끔 · 종전 갈래 = 이 줄 무동작)
     const banditX0 = world.banditRouteRisk ? (world.banditRouteRisk(from, b) || 0) : 0;
     const raidProb = Math.min(RAID_MAX, RAID_BASE + banditX0 + (dist / 100) * (world.raidPer100 || RAID_PER_100));
     let expectedLossRatio = raidProb * 0.5;

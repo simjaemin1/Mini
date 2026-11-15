@@ -1,0 +1,91 @@
+{
+ "NX": {
+  "hanbando": 2188,
+  "nippon": 2187
+ },
+ "seamCell": 2188,
+ "hanbando": {
+  "villages": 51,
+  "villagesWithLedger": 51,
+  "cells": 149060,
+  "sum": 14875593.6,
+  "near": {
+   "1": {
+    "cells": 0,
+    "sum": 0,
+    "vils": 0
+   },
+   "2": {
+    "cells": 0,
+    "sum": 0,
+    "vils": 0
+   },
+   "10": {
+    "cells": 0,
+    "sum": 0,
+    "vils": 0
+   },
+   "40": {
+    "cells": 157,
+    "sum": 15700,
+    "vils": 2
+   },
+   "130": {
+    "cells": 1884,
+    "sum": 187709.6,
+    "vils": 5
+   }
+  },
+  "outsideZone": {
+   "cells": 0,
+   "sum": 0,
+   "vils": [],
+   "maxBeyond": 0
+  }
+ },
+ "nippon": {
+  "villages": 36,
+  "villagesWithLedger": 36,
+  "cells": 56013,
+  "sum": 5569432.4,
+  "near": {
+   "1": {
+    "cells": 0,
+    "sum": 0,
+    "vils": 0
+   },
+   "2": {
+    "cells": 6,
+    "sum": 600,
+    "vils": 1
+   },
+   "10": {
+    "cells": 332,
+    "sum": 33200,
+    "vils": 4
+   },
+   "40": {
+    "cells": 1399,
+    "sum": 139674.5,
+    "vils": 4
+   },
+   "130": {
+    "cells": 4338,
+    "sum": 433117.9,
+    "vils": 5
+   }
+  },
+  "outsideZone": {
+   "cells": 0,
+   "sum": 0,
+   "vils": [],
+   "maxBeyond": 0
+  }
+ },
+ "sameGround": {
+  "cells": 0,
+  "sumH": 0,
+  "sumN": 0,
+  "sample": []
+ }
+}

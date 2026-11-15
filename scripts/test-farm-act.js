@@ -136,7 +136,8 @@ console.log('\n④ 장부 다리 — 밭 입고가 **품목으로** 잠재·실�
     '④ 채집 다리(T374) **다음 자리**다 — 같은 틱 안 · 리셋 뒤 · 읽는 줄 앞');
   ok(/const got = \(v\._t100InflowToday \|\| 0\) \+ \(T368_FARM_ACT \? \(v\._t368InflowToday \|\| 0\) : 0\);/.test(C),
     '④ ★텃밭 하한이 켠 팔의 오늘치(식량등가)도 **밭이 낸 몫**으로 센다(안 세면 하한이 겹쳐 채운다)');
-  ok(/totalFoodProductionEquivalent\(dailyProduction, v\)/.test(C) && /totalFoodProductionEquivalent\(dailyProductionPotential, v\)/.test(C),
+  //   ★[T1317 · T1279 · T1286 · T1298] 두 자리의 첫 인수가 손잡이 갈래(조리식 칸 0 · 장부 옮김)로 감싸였다 — 갈래가 다 꺼지면 종전 `dailyProduction` · `dailyProductionPotential` 그대로이고 둘째 인수(마을)는 그대로다.
+  ok(/const dailyFoodProd = totalFoodProductionEquivalent\([^;\n]*: dailyProduction, v\);/.test(C) && /const dailyFoodProdPotential = totalFoodProductionEquivalent\([^;\n]*: dailyProductionPotential, v\);/.test(C),
     '④ 읽는 두 자리(실현 · 잠재)가 **마을을 넘긴다**(주입 값이 prodK·surplusEMA 에 닿는다)');
   const r = probe(ON, `const E=require(${EP}); const V2=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim-v2.js'))});
     const w=V2.createWorldV2({seed:5,villageCount:1,namePool:['가'],infoRange:5000,raidPer100:0}); const v=w.villages[0]; v._world=w; w.cropFoodEq={foxtail_millet:1.028571};
@@ -151,8 +152,9 @@ console.log('\n④ 장부 다리 — 밭 입고가 **품목으로** 잠재·실�
 console.log('\n⑤ ⓑ 헤드리스 — 켜면 이 마을 밭은 **몸이 한다**(농부 몫 두 절 호출 0) · 존이 통째로 자면 일괄이 그 몫(몸 XOR 일괄) · ★T410 문을 열면(기본) 존이 안 잔다');
 {
   const hl = bodyOf(VC, '_lifeHeadlessDay');
+  // ★[T1317 · T1284 `3282c420` land1072] 일괄 두 절 글자가 바뀌었다 — 개간은 `!_t84` 를 더 묻고(켬 = 작물 뒤로 옮김) 작물 절은 `{ … if (_t84) 개간 }` 블록이 됐다. `_t84` = `_t1284On() && _t1221On()`(T1284 끔 기본 = 거짓) ⇒ 끔이면 종전 두 절 그대로 — 그 뜻을 그대로 핀한다.
   //   ★[T1220-K1] 옛 글자 — T1212 ① 이 작물 절의 날을 밭 날(`_farmDay(vil, day)` · 끔 = `day` 그대로)로 바꿨다 — 판정(`!_body`)은 그대로라 글자만 새로.
-  ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /if \(!_body && !_cut\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /else if \(!_body\) lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\);/.test(hl) && /const _cut = _t1243On\(\) && _t1243Live\(\);/.test(hl),   // ★[T1243] 켬 + 라이브 = 두 절 걷음(`_cut`)
+  ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /const _t84 = _t1284On\(\) && _t1221On\(\);/.test(hl) && /if \(!_body && !_cut && !_t84\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /else if \(!_body\) \{ lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\); if \(_t84\) _lifeClearDay\(vil, farmerN\); \}/.test(hl) && /const _cut = _t1243On\(\) && _t1243Live\(\);/.test(hl),   // ★[T1243] 켬 + 라이브 = 두 절 걷음(`_cut`)
     '⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 작물');
   //   ★[T400] 집 절에 집 행위 손잡이 가드(`&& !_lifeEcon().T400_BUILD_ACT`)가 붙었다 — 농부 판정(`_body`)과 무관한 것은 그대로다.
   ok(/if \(vil\._site(?: && !_lifeEcon\(\)\.T400_BUILD_ACT)?\) \{ let st = Math\.min\(LIFE_CREW, popN\) \* LIFE_STAGE_PDAY;/.test(hl) && !/_body[^\n]*LIFE_STAGE_PDAY/.test(hl),
@@ -239,8 +241,10 @@ console.log('\n⑦ 걷기 술어 — `_t316WalkAlways` 에 **농부 항 하나**
   //   ★[T774 · PM 착지 10-17] 앞문 거울의 활성 판정은 손잡이 갈래(`T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(…)`)로 감싼다 —
   //     끔 갈래 글자가 이동 문의 그 식 그대로다(같은 값 · T774 증인). 셈: 이동 문 글자 1 + 거울(감싼 꼴) 1 = 둘.
   const _gate774 = '!p.canadiaVillage && !_t316WalkAlways(p) && !(T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(p.x, p.y))';
-  ok((ZC.match(/_t316WalkAlways\(/g) || []).length === 4 && (_pre.match(/_t316WalkAlways\(/g) || []).length === 1 && (_pre.includes(_gate) || _pre.includes(_gate774))
-     && (ZC.split(_gate).length - 1) + (ZC.split(_gate774).length - 1) === 2,
+  //   ★[T1322] 결정 문 첫 거름(`_t1322Grant` 표 · `_t1322Check` 견줌)은 결정 문 그 거름을 **읽기만** 한다(결정 문의 거울 — 셋째 문이 아니다) ⇒ 그 두 함수 몸통은 빼고 센다.
+  const ZC22 = ZC.replace(/function _t1322(Grant|Check)\([\s\S]*?\n\}\n/g, '');
+  ok((ZC22.match(/_t316WalkAlways\(/g) || []).length === 4 && (_pre.match(/_t316WalkAlways\(/g) || []).length === 1 && (_pre.includes(_gate) || _pre.includes(_gate774))
+     && (ZC22.split(_gate).length - 1) + (ZC22.split(_gate774).length - 1) === 2,
      '⑦ 그 술어를 부르는 **문**은 그대로 **둘**(결정 · 이동 — 셋째 문 0) · 넷째 글자는 이동 문의 **거울**(`_wwPre` · 같은 거름 식 글자 그대로 · T499)');
   ok(/const T774_ACTIVE_COL = process\.env\.T774_ACTIVE_COL !== '0';/.test(ZC), '⑦ [T780] 앞문 거울의 활성 열 손잡이는 새 기본 켬(`!== \'0\'`) — 끔 탐침 = `T774_ACTIVE_COL=0`(감싼 꼴의 끔 갈래 글자가 이동 문 식 그대로)');
   ok(/farm: \(\(\) => \{ try \{ return SimVillages\.farmPerf \? SimVillages\.farmPerf\(\) : null; \} catch \(e\) \{ return null; \} \}\)\(\),/.test(ZC),

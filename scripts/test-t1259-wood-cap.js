@@ -43,17 +43,19 @@ if (process.env.T1259_TEST_CHILD === '1') {
   }
   process.exit(0);
 }
+// ★[T1301] 어버이 판 — 공용 판정 줄(`lib-verdict` · 단언을 센다 · 끝줄 없이 RC=0 이면 빨강). 아이 판은 위 `assert` 그대로(던지면 RC≠0).
+const V = require('./lib-verdict')('test-t1259-wood-cap'), A = V.assert;
 let passed = 0;
 for (const mode of [undefined, '0', '1']) {
   const env = { ...process.env, T1259_TEST_CHILD: '1' };
   delete env.T1259_WOOD_CAP; if (mode !== undefined) env.T1259_WOOD_CAP = mode;
   const r = spawnSync(process.execPath, [__filename], { env, encoding: 'utf8' });
-  assert.equal(r.status, 0, String(mode) + ': ' + r.stderr); passed++;
+  A.equal(r.status, 0, String(mode) + ': ' + r.stderr); passed++;
   console.log('  ✓ 아이 판 T1259_WOOD_CAP=' + (mode === undefined ? '(없음 · 끔 기본)' : mode) + ' — 단언 다 섬');   // ★[T1291] 러너 판정 줄(✓/✗ · 결과) — 없으면 RC=0 이어도 "결과줄 0개 → 실패"로 센다
 }
 const bait = spawnSync(process.execPath, [__filename], { env: { ...process.env, T1259_TEST_CHILD: '1', T1259_WOOD_CAP: '1', T1259_TEST_BAIT: '1' }, encoding: 'utf8' });
-assert.notEqual(bait.status, 0, 'bait ignoring canonical trees must fail'); passed++;
-assert.match(bait.stderr, /tree0 must produce zero lumberjack slots/, 'bait must fail the intended tree0 assertion');
+A.notEqual(bait.status, 0, 'bait ignoring canonical trees must fail'); passed++;
+A.match(bait.stderr, /tree0 must produce zero lumberjack slots/, 'bait must fail the intended tree0 assertion');
 console.log('  ✓ 미끼(정본 나무를 안 읽는 사본)는 tree0 단언에서 빨갛다');
 console.log('T1259 child configurations ' + passed + '/0; real tree0 assertion rejects the deliberately broken copy.');
-console.log('=== 결과: ' + passed + ' PASS / 0 FAIL ===');   // ★[T1291] 러너 문법(`run-regress.sh` 결과줄) — 단언이 하나라도 깨지면 위에서 던져 RC≠0
+V.end();

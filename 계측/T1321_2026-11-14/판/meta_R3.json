@@ -1,0 +1,87 @@
+{
+ "tag": "R3",
+ "seed": 42,
+ "DAY_MS": 3000,
+ "DAYS": 60,
+ "restart": {
+  "z": "hanbando",
+  "at": 1794677686323,
+  "day": 34,
+  "up": true,
+  "done": true,
+  "hidden": {
+   "beast": {
+    "key": "hanbando:mwgodu4t:64",
+    "to": "nippon",
+    "tries": 1,
+    "unsure": true,
+    "type": "horse",
+    "src": 509,
+    "tame": true
+   },
+   "caravan": null
+  },
+  "upS": 16
+ },
+ "start": "2026-11-14T17:24:19.670Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "bootS": 26,
+ "lanes": [
+  [
+   2864,
+   5424
+  ],
+  [
+   7664,
+   9520
+  ],
+  [
+   14320,
+   21360
+  ],
+  [
+   39888,
+   40144
+  ],
+  [
+   59888,
+   60144
+  ],
+  [
+   83184,
+   86704
+  ],
+  [
+   87312,
+   90160
+  ],
+  [
+   91088,
+   91632
+  ],
+  [
+   95216,
+   102928
+  ],
+  [
+   103952,
+   130000
+  ]
+ ],
+ "Y": 17840,
+ "end": "2026-11-14T17:37:09.630Z",
+ "wallS": 770,
+ "days": {
+  "hanbando": 61,
+  "nippon": 110
+ },
+ "d0": {
+  "hanbando": 1,
+  "nippon": 1
+ },
+ "done": true,
+ "botCross": 35
+}

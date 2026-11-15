@@ -33,7 +33,9 @@ if (!GRAIN_ITEM) throw new Error('GRAIN_ITEM 정본을 못 찾았다');
 const _carryCfg = () => require(path.join(__dirname, '..', 'server', 'carry'));
 const _weights = () => require(path.join(__dirname, '..', 'server', 'weights'));
 
-const ctx = vm.createContext({ SZ, _lifeAct, state, GRAIN_ITEM, _carryCfg, _weights,
+// ★[T1295] `_lifeGranStep` 의 머묾은 판 시계 배율(`t1295S`)로 나눈다 — 이 하네스는 운영 시계 판이라 배율 1(판 시계 축은 `test-t1243-farm-on` ⑩ · ⑪ 이 잰다).
+const t1295S = () => 1;
+const ctx = vm.createContext({ SZ, _lifeAct, state, GRAIN_ITEM, _carryCfg, _weights, t1295S,
   Math, Map, Set, Array, Object, JSON, console });
 vm.runInContext([consts, cut('_handOf'), cut('_handSet'), cut('_handAdd'), cut('_handFull'),
   cut('_granStockOf'), cut('_granStockAdd'), cut('_granLadder'),

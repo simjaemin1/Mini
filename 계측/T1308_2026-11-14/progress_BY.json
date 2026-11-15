@@ -1,0 +1,40 @@
+{
+ "v": 1,
+ "tag": "BY",
+ "seed": 1020,
+ "days": 8,
+ "every": 4,
+ "dir": "/tmp/s5m/t1308/BY",
+ "ck": 8,
+ "segs": [
+  {
+   "from": 0,
+   "to": 4,
+   "sec": 302.1,
+   "code": 0,
+   "at": "2026-11-14T06:17:12.848Z"
+  },
+  {
+   "from": 4,
+   "to": 8,
+   "sec": 247,
+   "code": 0,
+   "at": "2026-11-14T06:21:20.116Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "VILLAGE_NPC_CAP": "Infinity",
+  "NODE_OPTIONS": "-r /root/minirepo/scripts/t650-print.js -r /root/minirepo/scripts/t1308-bodyprint.js -r /root/minirepo/scripts/t1230-observe.js -r /root/minirepo/scripts/t1276-observe.js",
+  "T745_VCLOCK": "1",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T400_BUILD_ACT": "0",
+  "T1243_FARM_ON": "1",
+  "VILLAGE_DAY_MS": "1440000"
+ },
+ "started": "2026-11-14T06:07:12.895Z",
+ "tries": 0,
+ "crashAt": 4,
+ "crashDone": true,
+ "ended": "2026-11-14T06:21:20.198Z"
+}

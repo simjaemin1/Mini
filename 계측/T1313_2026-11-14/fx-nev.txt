@@ -1,0 +1,10 @@
+{"dist":50,"bTarget":150,"bStock":0,"nev":11.107,"nevRoom":11.107,"pxA":0.985}
+{"dist":50,"bTarget":150,"bStock":100,"nev":1.194,"nevRoom":1.194,"pxA":0.985}
+{"dist":50,"bTarget":150,"bStock":149,"nev":0.804,"nevRoom":0.804,"pxA":0.985}
+{"dist":50,"bTarget":150,"bStock":150,"nev":0.798,"nevRoom":0,"pxA":0.985}
+{"dist":50,"bTarget":150,"bStock":200,"nev":0.594,"nevRoom":0,"pxA":0.985}
+{"dist":925,"bTarget":150,"bStock":0,"nev":7.345,"nevRoom":7.345,"pxA":0.985}
+{"dist":925,"bTarget":150,"bStock":100,"nev":0,"nevRoom":0,"pxA":0.985}
+{"dist":925,"bTarget":150,"bStock":149,"nev":0,"nevRoom":0,"pxA":0.985}
+{"dist":925,"bTarget":150,"bStock":150,"nev":0,"nevRoom":0,"pxA":0.985}
+{"dist":925,"bTarget":150,"bStock":200,"nev":0,"nevRoom":0,"pxA":0.985}

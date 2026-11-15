@@ -89,20 +89,28 @@
       ? '<div style="color:var(--dim-2);padding:14px;text-align:center">설치한 사유지가 없습니다</div>'
       : my.map(cl => {
           const k = cl.kind || 'personal';
+          // ★[T1305] 켬(`uiCfg.deeds`) — 개인 칸의 낡음(서버가 준 `care` 그대로 · 클라 재계산 0) · 손보기 단추(몸이 그 칸 · 맞닿은 칸에 있어야 서버가 받는다)
+          const _dd = (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.deeds) && k === 'personal';
+          const _st = _dd ? (cl.state === 'free' ? '풀림' : (cl.care === 'fade' ? '흐림' : '또렷')) : '';
           return `<div class="sp-list-row">
-            <span>${uiIcon(KIND_ICON[k] || 'claim', 14)} ${KIND_NAME[k]} @ (${cl.x},${cl.y})</span>
+            <span>${uiIcon(KIND_ICON[k] || 'claim', 14)} ${KIND_NAME[k]} @ (${cl.x},${cl.y})${_dd ? ` · ${_st}` : ''}</span>
+            ${_dd && cl.state !== 'free' ? `<button class="craft-btn" data-care="${cl.id}" style="padding:3px 8px">손보기</button>` : ''}
             <button class="craft-btn" data-unclaim="${cl.id}" style="background:var(--hp);padding:3px 8px">해제</button>
           </div>`;
         }).join('');
+    const _dd = (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.deeds);   // ★[T1305] 켬 — 개인 칸은 숫자 상한이 없다(돌봄이 상한)
+    const _fade = _dd ? my.filter(cl => (cl.kind || 'personal') === 'personal' && cl.state !== 'free' && cl.care === 'fade').length : 0;
     body.innerHTML = `
-      <div class="hint">슬롯 사용: 개인 ${counts.personal}/9 · 임시 ${counts.temporary}/4 · 마을 땅 ${counts.guild}/50</div>
+      <div class="hint">${_dd ? `개인 ${counts.personal}칸${_fade ? ` (흐린 칸 ${_fade})` : ''} · 임시 ${counts.temporary}/4 · 마을 땅 ${counts.guild}/50` : `슬롯 사용: 개인 ${counts.personal}/9 · 임시 ${counts.temporary}/4 · 마을 땅 ${counts.guild}/50`}</div>
       <div class="hint" style="font-size:11px;opacity:0.7;margin-bottom:10px">
-        <b>C</b>=개인 사유지 (마을 땅 안만) · <b>T</b>=임시 (어디든) · <b>Shift+C</b>=마을 땅 (마을 사람만)<br/>
+        ${_dd ? `<b>C</b>=개인 사유지 (빈 들은 누구나 · 마을 영토 안은 그 마을 구성원) · 내 땅 위에서 <b>C</b>=손보기(${uiCfg.deeds.careS}초) · <b>T</b>=임시 (어디든)<br/>
+        땅은 손봐야 남습니다 — 접속한 날로 ${uiCfg.deeds.fade}날 안 손보면 경계가 흐려지고 ${uiCfg.deeds.free}날이면 풀립니다.<br/>` : `<b>C</b>=개인 사유지 (마을 땅 안만) · <b>T</b>=임시 (어디든) · <b>Shift+C</b>=마을 땅 (마을 사람만)<br/>`}
         땅을 내놓으면 칸은 돌아오지만 들인 것은 돌려받지 못합니다. 다른 곳에 가서 다시 정할 수 있습니다.
       </div>
       <div class="inv-col-head">내 사유지 목록 (${my.length}개)</div>
       ${list}
     `;
+    body.querySelectorAll('[data-care]').forEach(btn => btn.onclick = () => { sendPrimary({ type: 'claim_care', claimId: btn.dataset.care }); });   // ★[T1305]
     body.querySelectorAll('[data-unclaim]').forEach(btn => btn.onclick = () => {
       if (!confirm('이 땅을 내놓으시겠습니까? 들인 것은 돌려받지 못합니다.')) return;
       sendPrimary({ type: 'unclaim', claimId: btn.dataset.unclaim });
@@ -166,6 +174,7 @@
         else p++;
       }
     }
+    if (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.deeds) return `개인 ${p}칸 · 임시 ${t}/4 · 마을 땅 ${g}/50`;   // ★[T1305] 개인 숫자 상한 0
     return `개인 ${p}/9 · 임시 ${t}/4 · 마을 땅 ${g}/50`;
   }
 

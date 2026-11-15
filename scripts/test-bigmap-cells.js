@@ -156,7 +156,7 @@ function auditZoneMap(zid, png, flip) {
     for (const [k] of [...rk.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)) want.push(k.split(',').map(Number));
     for (let i = 0; i < 3; i++) want.push([(i * 7 + 3) % Math.ceil(T.W / 64), (i * 13 + 5) % Math.ceil(T.H / 64)]);
   }
-  let tb = 0, tn = 0, same = 0, sameN = 0, vOk = 0, rockN = 0, passLand = 0, bridgeN = 0;
+  let tb = 0, tn = 0, same = 0, sameN = 0, vOk = 0, rockN = 0, passLand = 0, passLandT = 0, bridgeN = 0;
   for (const [TX, TY] of want) {
     const r = await getPng(`${HB}/bigmap.png?tile=${TX},${TY}`);
     if (r.status !== 200) { tb++; continue; }
@@ -167,13 +167,19 @@ function auditZoneMap(zid, png, flip) {
       tn++; if (k !== T.at(cx, cy)) tb++;
       if (k === BB.K.rock) rockN++;
       if (k === BB.K.bridge) bridgeN++;
-      if (Math.hypot(cx * 32 + 16 - 69800, cy * 32 + 16 - 60000) < 1500 && k !== BB.K.rock && k !== BB.K.water) passLand++;
+      if (Math.hypot(cx * 32 + 16 - 69800, cy * 32 + 16 - 60000) < 1500) {
+        if (k !== BB.K.rock && k !== BB.K.water) passLand++;
+        const kt = T.at(cx, cy); if (kt !== BB.K.rock && kt !== BB.K.water) passLandT++;   // ★[T1317] 같은 원 · 셀 술어(정본)가 말하는 뭍
+      }
       const bx = Math.floor(cx / 4), by = Math.floor(cy / 4);
       if (BB.sampleCell(bx, 4, T.W) === cx && BB.sampleCell(by, 4, T.H) === cy) { sameN++; if (aH.cls[by * aH.bw + bx] === k) same++; }
     }
   }
-  ok(tn > 20000 && rockN > 2000 && passLand > 1000 && (!bridgeCell || bridgeN > 0),
-     '전제: 조각에 산맥 바위 · 한재 고개의 뭍 · 다리가 실제로 실렸다', `셀 ${tn.toLocaleString()} · 바위 ${rockN} · 고개 뭍 ${passLand} · 다리 ${bridgeN}`);
+  //   ★[T1317 · T1296 안 A `ccaa399f` land1073] 한재 원 고개(반경 1,850)가 **골짜기**(폭 10칸 · 곧게 동서)로 바뀌었다 — 같은 원 안 뭍이 1,000 칸 넘게에서 120 칸으로 줄어
+  //     "고개 뭍 > 1000" 전제가 매판 빨갛다(낡은 수 · main 상시 빨강). 문턱 1000 은 원 고개 넓이에서 온 수였다 ⇒ 수를 새로 고르지 않고 **셀 술어(정본)가 그 원에서 뭍이라고 하는 칸**과
+  //     조각이 실은 뭍이 같고 0 이 아닌지로 잰다(자명 통과 금지는 그대로 — 골짜기가 원 밖으로 가거나 조각이 바위로 칠하면 빨강).
+  ok(tn > 20000 && rockN > 2000 && passLandT > 0 && passLand === passLandT && (!bridgeCell || bridgeN > 0),
+     '전제: 조각에 산맥 바위 · 한재 골짜기의 뭍(셀 술어가 그 원에서 뭍이라 하는 칸 그대로) · 다리가 실제로 실렸다', `셀 ${tn.toLocaleString()} · 바위 ${rockN} · 고개 뭍 ${passLand}/${passLandT} · 다리 ${bridgeN}`);
   ok(tb === 0, '★★조각 ↔ 셀 술어 불일치 0', `${tn.toLocaleString()}셀 · 불일치 ${tb}`);
   ok(sameN > 1000 && same === sameN, '★★줌인/줌아웃 같은 답 — 표본 셀에서 조각 = 존 지도', `${same}/${sameN}`);
   ok(vOk === want.length, '조각의 버전 = 존 지도 버전', `${vOk}/${want.length}`);

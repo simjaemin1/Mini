@@ -1,0 +1,140 @@
+{
+ "tag": "r6_7_off",
+ "days": {
+  "hanbando": 121,
+  "nippon": 139
+ },
+ "crossed": {
+  "arriveOut": 0,
+  "returnOut": 0,
+  "soldOk": 0,
+  "deposited": 0,
+  "lost": 0,
+  "bodyOut": 0,
+  "bodyIn": 0,
+  "bodyInSkip": 0,
+  "sentFail": 0,
+  "bounced": 0,
+  "retried": 0,
+  "dup": 0
+ },
+ "t952": {
+  "hanbando": {
+   "stays": 0,
+   "joined": 0
+  },
+  "nippon": {
+   "stays": 0,
+   "joined": 0
+  }
+ },
+ "bodies": {
+  "logical": 0,
+  "handoffs": 0,
+  "byDir": {
+   "out": 0,
+   "back": 0
+  },
+  "neither": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "le100ms": 0,
+   "le1s": 0,
+   "le5s": 0,
+   "gt5s": 0
+  },
+  "both": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "totalMs": 0,
+   "sample": []
+  },
+  "vanished": {
+   "n": 0,
+   "sample": []
+  },
+  "mapGap": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "sample": []
+  },
+  "mapBoth": {
+   "n": 0,
+   "totalMs": 0
+  },
+  "hidden": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "left": 0,
+   "leftSample": [],
+   "byEnd": {}
+  },
+  "tEnd": 0,
+  "tailMs": 10000
+ },
+ "lag": {
+  "dueMinusSend": {},
+  "recvNowMinusSend": {},
+  "late": {
+   "lateArrival": 0,
+   "noDayInAtNext": 0,
+   "unexplained": 0
+  }
+ },
+ "stuck": {
+  "hanbando": {
+   "day": 120,
+   "foreign": 0,
+   "foreignInbound": 0,
+   "overdue": 0,
+   "overdueAge": {},
+   "homeOut": 0
+  },
+  "nippon": {
+   "day": 138,
+   "foreign": 0,
+   "foreignInbound": 0,
+   "overdue": 0,
+   "overdueAge": {},
+   "homeOut": 0
+  }
+ },
+ "final": {
+  "hanbando": {
+   "pop": 1872,
+   "dead": 0,
+   "ever": 51,
+   "deaths": 5,
+   "fdDeaths": 0,
+   "trades": 3331,
+   "skip": 119
+  },
+  "nippon": {
+   "pop": 1036,
+   "dead": 0,
+   "ever": 36,
+   "deaths": 47,
+   "fdDeaths": 41,
+   "trades": 2194,
+   "skip": 100
+  }
+ },
+ "cpu": {
+  "hanbando": {
+   "meanMsPerDay": 3349.3,
+   "days": 122
+  },
+  "nippon": {
+   "meanMsPerDay": 2287.4,
+   "days": 140
+  }
+ }
+}

@@ -1,0 +1,14 @@
+# T1317 0원 원석 — 랩 자 t17 800날 시드 1020 · 관측기 scripts/t1317-ore0-observe.js(날마다)
+인구 5929(관측기 없는 판과 같음)
+0원 칸 = 원석 3(ore_iron · ore_nickel · ore_zinc) × 51마을 = 153 — 800날 내내 같은 칸
+합: 그 원석이 실린 교역 줄 0 / 24254 · 양 0.0 · 그 마을이 캔 양 0.0
+날 1 · 곳간 재고 136.36 · 품목별 ore_iron 136.4 / ore_nickel 0.0 / ore_zinc 0.0 · 광부(0원 원석 있는 마을 합) 0
+날 50 · 곳간 재고 95.03 · 품목별 ore_iron 95.0 / ore_nickel 0.0 / ore_zinc 0.0 · 광부(0원 원석 있는 마을 합) 7
+날 100 · 곳간 재고 80.78 · 품목별 ore_iron 80.8 / ore_nickel 0.0 / ore_zinc 0.0 · 광부(0원 원석 있는 마을 합) 8
+날 200 · 곳간 재고 54.72 · 품목별 ore_iron 54.7 / ore_nickel 0.0 / ore_zinc 0.0 · 광부(0원 원석 있는 마을 합) 10
+날 300 · 곳간 재고 42.16 · 품목별 ore_iron 42.2 / ore_nickel 0.0 / ore_zinc 0.0 · 광부(0원 원석 있는 마을 합) 8
+날 400 · 곳간 재고 30.89 · 품목별 ore_iron 30.9 / ore_nickel 0.0 / ore_zinc 0.0 · 광부(0원 원석 있는 마을 합) 8
+날 500 · 곳간 재고 11.21 · 품목별 ore_iron 11.2 / ore_nickel 0.0 / ore_zinc 0.0 · 광부(0원 원석 있는 마을 합) 20
+날 600 · 곳간 재고 4.89 · 품목별 ore_iron 4.9 / ore_nickel 0.0 / ore_zinc 0.0 · 광부(0원 원석 있는 마을 합) 22
+날 700 · 곳간 재고 3.11 · 품목별 ore_iron 3.1 / ore_nickel 0.0 / ore_zinc 0.0 · 광부(0원 원석 있는 마을 합) 21
+날 800 · 곳간 재고 2.18 · 품목별 ore_iron 2.2 / ore_nickel 0.0 / ore_zinc 0.0 · 광부(0원 원석 있는 마을 합) 23

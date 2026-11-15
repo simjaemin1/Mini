@@ -1,0 +1,114 @@
+{
+ "base": "계측/서버기준선_2026-11-14.json",
+ "plan": {
+  "7": 400,
+  "42": 400,
+  "1020": 400
+ },
+ "seeds": [
+  1020,
+  7,
+  42
+ ],
+ "sec": 2574,
+ "per": {
+  "7": {
+   "seed": 7,
+   "code": 0,
+   "sec": 1566
+  },
+  "42": {
+   "seed": 42,
+   "code": 0,
+   "sec": 1009
+  },
+  "1020": {
+   "seed": 1020,
+   "code": 0,
+   "sec": 1643
+  }
+ },
+ "res": {
+  "7": {
+   "same": false,
+   "sideDay": 382,
+   "sideFields": [
+    "_gameRich",
+    "_gameTook",
+    "_t427R",
+    "npcPids",
+    "pop"
+   ],
+   "econDay": 382,
+   "cov": {
+    "econ": [
+     400,
+     400
+    ],
+    "side": [
+     400,
+     400
+    ],
+    "short": false
+   }
+  },
+  "42": {
+   "same": false,
+   "sideDay": 372,
+   "sideFields": [
+    "_bxSeen",
+    "_crop",
+    "_dryN",
+    "_drySet",
+    "_farmArr",
+    "_farmSet",
+    "_frontDay",
+    "_frontier",
+    "_gameRich",
+    "_gameTook",
+    "_mCl",
+    "_mTk",
+    "_mkt",
+    "_t325Trees",
+    "_t427R",
+    "_t719N",
+    "npcPids",
+    "pop"
+   ],
+   "econDay": 372,
+   "cov": {
+    "econ": [
+     400,
+     400
+    ],
+    "side": [
+     400,
+     400
+    ],
+    "short": false
+   }
+  },
+  "1020": {
+   "same": false,
+   "sideDay": 383,
+   "sideFields": [
+    "_otIdx",
+    "_t427R",
+    "npcPids",
+    "pop"
+   ],
+   "econDay": 383,
+   "cov": {
+    "econ": [
+     400,
+     400
+    ],
+    "side": [
+     400,
+     400
+    ],
+    "short": false
+   }
+  }
+ }
+}
