@@ -11,7 +11,8 @@
 //   node scripts/us-line.js run  --dir <판 폴더> --tpl <틀 db> --n 2 --arm main=<커밋> --arm fix=<커밋>[:ENV=1,ENV2=0] ...
 //       ⇒ 차례 main1 fix1 main2 fix2 … (번갈아 · 한 판씩 혼자) · 판 하나 끝날 때마다 <판 폴더>/us-line.log 에 한 줄
 //   node scripts/us-line.js line --dir <판 폴더> [--arm main --arm fix]
-//       ⇒ 팔마다 한 줄: "main n2 · 낮 0.651 [0.623 ~ 0.709] · 밤 닫힘 앞 0.680 [0.555 ~ 0.754] · 밤 창 1.252 [...] · 틱 p50 낮 2.84"
+//       ⇒ 팔마다 한 줄: "main n2 · 낮 0.651 [0.623 ~ 0.709] · 밤 닫힘 앞 0.680 [0.555 ~ 0.754] · 밤 창 1.252 [...] · 결정 순회 낮 … · 밤 닫힘 앞 … · 밤 창 … · 틱 p50 낮 2.84"
+//       ★[T1323] 결정 순회 = 결정 문(순회) 구간 µs/사람(몸을 건너는 몫까지 — 걸음 µs 와 같이 적는다 · T1322 회부 3)
 //   틀이 없으면 먼저 굽는다: T368_TMP=<틀 폴더> T368_ARMS=t100 T687_SHARED_BUDGET=0 node scripts/t368-farm-day.js a  (기준 커밋 트리에서)
 // ★µs 카드는 이 자로 잰다(인계/공통.md).
 const path = require('path'), fs = require('fs'), { spawnSync } = require('child_process');
@@ -51,8 +52,12 @@ if (cmd === 'run' || cmd === 'line') {
     const pv = night.map((x) => (x.pre ? x.pre.stepUs : null)).filter((v) => v != null);
     const wv = night.map((x) => (x.live ? x.live.stepUs : x.lines && x.lines.stepUs)).filter((v) => v != null);
     const fl = R.filter((x) => x.flags && x.flags.length).map((x) => x.tag + ' ' + x.W);
-    const ln = `${nm} n${day.length} · 낮 ${band(dv)} · 밤 닫힘 앞 ${band(pv)} · 밤 창 ${band(wv)} · 틱 p50 낮 ${f3(med(day.map((x) => x.tickP50)))}` + (fl.length ? ` · ⚠자가 표시(live 로 읽음) ${fl.join(', ')}` : '');
-    out.push({ arm: nm, n: day.length, day: med(dv), pre: med(pv), win: med(wv), dayBand: [Math.min(...dv), Math.max(...dv)], preBand: [Math.min(...pv), Math.max(...pv)], flags: fl });
+    //   ★[T1323 · T1322 회부 3] 결정 문 순회 µs/사람 — 걸음 µs 는 `npcStep` 표본 몫이라 결정 문 고리 안에서 몸을 건너는 몫(첫 거름 · 결정 거름)을 안 센다. 이 칸이 그 몫까지 센 수(구간 시계 · 같은 판).
+    const dd = day.map((x) => (x.live ? x.live.decUs : x.lines ? x.lines.decUs : x.segUs && x.segUs['결정 문(순회)'])).filter((v) => v != null);
+    const pd = night.map((x) => (x.pre ? x.pre.decUs : null)).filter((v) => v != null);
+    const wd = night.map((x) => (x.live ? x.live.decUs : x.lines ? x.lines.decUs : x.segUs && x.segUs['결정 문(순회)'])).filter((v) => v != null);
+    const ln = `${nm} n${day.length} · 낮 ${band(dv)} · 밤 닫힘 앞 ${band(pv)} · 밤 창 ${band(wv)} · 결정 순회 낮 ${band(dd)} · 밤 닫힘 앞 ${band(pd)} · 밤 창 ${band(wd)} · 틱 p50 낮 ${f3(med(day.map((x) => x.tickP50)))}` + (fl.length ? ` · ⚠자가 표시(live 로 읽음) ${fl.join(', ')}` : '');
+    out.push({ arm: nm, n: day.length, day: med(dv), pre: med(pv), win: med(wv), decDay: med(dd), decPre: med(pd), decWin: med(wd), dayBand: [Math.min(...dv), Math.max(...dv)], preBand: [Math.min(...pv), Math.max(...pv)], flags: fl });
     console.log(ln);
   }
   fs.writeFileSync(path.join(DIR, 'us-line.json'), JSON.stringify(out, null, 1));

@@ -111,5 +111,23 @@ ok(bad.length === 0, '★몸 필드 규약 — `npc.` 에 쓰는 이름이 전�
     ok([...m806.keys()].some((k) => m806.get(k) !== bait.get(k)), '★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다');
   } else ok(true, '[T1140 ③-가] 차례 리터럴 없음(손잡이 없는 판)');
 }
+// ⑳ ★[T1323 · T1322 회부 1] 걸음 판정 칸 쓰기 린트 — 첫 거름(T1322 · 켬 기본)은 "표가 산 동안 걸음 문 밖에서 판정 칸이 안 바뀐다"에 선다.
+//   걸음 문 밖(npcStep · 결정 · 생활층 한 몸 틱에서만 닿지 않는 함수)에서 판정 칸을 쓰는 함수는 쓰기 앞에 표를 내리거나(`_t1322Touch` · `_t1323Touch` · deps `t1322Touch`)
+//   `scripts/t1323/gate-writes-allow.json` 에 까닭 갈래와 함께 있어야 한다. 정적 · 이름 부름 그래프(`scripts/lib-gate-writes.js` = `scripts/t1323/census.py`).
+console.log('\n=== ⑳ [T1323] 걸음 판정 칸 — 문 밖 쓰기는 표를 내리거나 까닭이 있다 ===');
+{
+  const G = require('./lib-gate-writes'), ALLOW = JSON.parse(fs.readFileSync(path.join(__dirname, 't1323', 'gate-writes-allow.json'), 'utf8'));
+  const allow = new Map(); for (const [why, L] of Object.entries(ALLOW)) if (Array.isArray(L)) for (const k of L) allow.set(k, why);
+  const lint = (extra) => { const { rows } = G.census(path.join(__dirname, '..'), extra); const out = rows.filter((r) => !r.inside), bad = new Map(), seen = new Set();
+    for (const r of out) { const k = `${r.file}:${r.fn}`; seen.add(k); if (!r.touched && !allow.has(k)) bad.set(k, (bad.get(k) || 0) + 1); }
+    return { rows, out, bad, seen, touched: out.filter((r) => r.touched).length, allowed: out.filter((r) => !r.touched && allow.has(`${r.file}:${r.fn}`)).length }; };
+  const R = lint();
+  ok(R.rows.length > 300 && R.out.length > 0, '⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)', `전체 ${R.rows.length} · 걸음 문 안 ${R.rows.length - R.out.length} · 문 밖 ${R.out.length}(표 내림 ${R.touched} · 까닭 ${R.allowed})`);
+  ok(R.bad.size === 0, '⑳ 문 밖 판정 칸 쓰기 = 표 내림 또는 까닭 표', R.bad.size ? [...R.bad].map(([k, n]) => `${k}(${n})`).join(' · ') : '0');
+  const stale = [...allow.keys()].filter((k) => !R.seen.has(k));
+  ok(stale.length === 0, '⑳ 까닭 표에 없는 함수가 없다(지워진 · 이름 바뀐 함수 — 표를 고친다)', stale.join(' · ') || '0');
+  const B = lint([['bait.js', 'function _baitWarp(p) {\n  p.targetX = 1; p.x = 2;\n}\nsetInterval(() => _baitWarp(players.get("n1")), 1000);\n']]);
+  ok(B.bad.has('bait.js:_baitWarp'), '⑳ 미끼 — 걸음 문 밖에서 목표 · 자리를 쓰는 새 함수(표 내림 없음)는 문다', [...B.bad.keys()].join(' · '));
+}
 console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);
 process.exit(fail ? 1 : 0);
