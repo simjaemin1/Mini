@@ -152,7 +152,7 @@ console.log('\n⑤ 존 배선 글자');
   const dec = Z.slice(Z.indexOf('  const _decOne = (pid) => { do {'), Z.indexOf('  } while (false); return _stopAt !== null; };'));
   const iSkip = dec.indexOf('if (T1322_PF) { const _s22 = SS.slot(pid); if (_s22 >= 0 && _t1322Skip(_s22, pid, now))'), iGet = dec.indexOf('    const npc = players.get(pid);');
   ok(iSkip > 0 && iGet > iSkip && dec.indexOf("if (!_curHit) { if (pid !== _npcCursor) continue; _curHit = true; }") < iSkip, '거름은 커서 다음 · `players.get` 앞(몸을 안 연다)');
-  ok(/    npcStep\(npc, dt, now\);\n    if \(T1322_PF\) _t1322Grant\(npc, now\);/.test(dec) && /_desTimed\(npc, dt, now\); if \(T1322_PF\) _t1322Grant\(npc, now\); continue;/.test(dec), '표는 진짜 걸음 뒤(두 길 — 계측 시계 길 포함)');
+  ok(/    (?:else )?npcStep\(npc, dt, now\);\n    if \(T1322_PF\) _t1322Grant\(npc, now\);/.test(dec)   /* ★[PM land1077] T1316 토막 갈래(`_K95 > 1` … `else npcStep`)와 만난 자리 — 표는 여전히 토막 걸음을 다 마친 뒤 */ && /_desTimed\(npc, dt, now\); if \(T1322_PF\) _t1322Grant\(npc, now\); continue;/.test(dec), '표는 진짜 걸음 뒤(두 길 — 계측 시계 길 포함)');
   ok(/_desStat\.steps\+\+; _desStat\.nStep\+\+; \} else if \(_T1241\) _desStat\.steps\+\+; continue;/.test(dec), '건넌 몸도 걸음 셈(몸 탐침 `steps` · `nStep`)은 종전대로');
   const sep = fn('function sepNpcs(dt) {'), ww = fn('function _wwPost(p, i) {'), hp = fn('function setHp(p, v, why) {');
   ok(sep.indexOf('if (T1322_PF) _t1322Touch(p);') > 0 && sep.indexOf('if (T1322_PF) _t1322Touch(p);') < sep.indexOf('else p.x = nx;'), '밀기 — 옮기기 전에 표를 내린다');

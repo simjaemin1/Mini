@@ -120,7 +120,7 @@ function guildLand(cx, cy, half, tribeId) {
 if (T1305_SUB) {
   const R = {};
   const put = (k, c, x) => { R[k] = !!c; if (x !== undefined) R[k + '#'] = String(x).slice(0, 160); };
-  const now0 = Date.UTC(2026, 10, 14, 12);
+  const now0 = Math.floor(Date.now() / 86400000) * 86400000 + 12 * 3600000;   // ★[PM land1077] 오늘(UTC) 정오 — 박아 둔 11-14 는 `tryClaim` 이 실제 시각(`Date.now()`)으로 날을 세는 자리와 어긋나 11-15 부터 ⑨ 가 빨갰다(같은 날 0 → 1). UTC 자정을 걸치는 판은 드물게 갈릴 수 있다(회부 — 하네스 시각 주입).
   const D = H.Deeds, F = D.CFG;
   put('on', D.ON === true && typeof H._t1305Day === 'function' && typeof H.tryClaimCare === 'function');
   const day = (p, k) => H._t1305Day(p, now0 + k * DAY);
