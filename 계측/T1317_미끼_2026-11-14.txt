@@ -1,0 +1,17 @@
+# T1317 미끼 — 판마다 한 줄(/tmp/t1317-bait/run.sh · 제품 글자는 판 뒤 git checkout)
+B1 rc=1   ✗ ⑪a 이미지에 실리는데 어디서도 안 닿는 파일 53장 ≤ 기준 52(T456 뒤 수) — 늘면 빨갛다  ★1장 늘었�|  ✓ ⓐ 미끼 — 안 부르는 `public/zz_t456_ghost.bin` 를 실리는 목록에 놓으면 ⑪a 가 **하나 더** 센다  53→54(기�|  ✓ ⓒ 미끼 — `.dockerignore` 의 `sim/out/` 줄을 (가상으로) 빼면 ⑪a 가 그 산물 수만큼 더 센다(T456 ① 을 지�|결과: FAIL(1)|
+B2 rc=1   ✗ ⑪a 이미지에 실리는데 어디서도 안 닿는 파일 53장 ≤ 기준 52(T456 뒤 수) — 늘면 빨갛다  ★1장 늘었�|  ✓ ⓐ 미끼 — 안 부르는 `public/zz_t456_ghost.bin` 를 실리는 목록에 놓으면 ⑪a 가 **하나 더** 센다  53→54(기�|  ✓ ⓒ 미끼 — `.dockerignore` 의 `sim/out/` 줄을 (가상으로) 빼면 ⑪a 가 그 산물 수만큼 더 센다(T456 ① 을 지�|  ✗ ⓔ⑪′ 미끼 — 템플릿 꼴(`path.join(__dirname, `village-trees-${id}.json`)`)은 그 폴더 바로 안 그 앞 · 끝 글자�|결과: FAIL(2)|
+B3 rc=1   ✗ _lifeNeedClear 식량 게이트 원문 보존|결과: FAIL (1건)|
+B4 rc=1   ✗ ★★① 켬 — NPC 곧은 걸음 = MOVE_SPEED × 1 = 64px/s(플레이어 걸음 · ±10%)  — 중앙|  ✗ ★② 끔(=0) — 같은 자로 MOVE_SPEED × 0.6 = 38.4px/s(종전 · 자가 두 걸음을 가른다) |  ✓ ★③ 켬 ÷ 끔 = 1.667(±10%)  — 1.682|=== e2e-npc-walk 결과: 16 통과 / 3 실패 ===|
+BAIT-DONE
+
+## 핀 고침 미끼(/tmp/t1317-bait/run2.sh)
+P1 test-t1212-farm-clock rc=1   ✗ ③ 몸 갈래가 아니면 종전 두 절 그대로(밭 날만 ① · T1243 켬 + 라이브면 걷음 �
+P1 test-t1224-econ-farm rc=1   ✗ ⑤ 종전 줄 그대로 — 몸 갈래 문 · 일괄 개간 · 일괄 작물(새 줄은 `if (T1224_ECON
+P1 test-farm-act rc=1   ✗ ⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 
+P2 test-farm-act rc=1   ✗ ④ 읽는 두 자리(실현 · 잠재)가 **마을을 넘긴다**(주입 값이 prodK·surplusEMA 에 �
+P3 test-fish-act rc=1   ✗ ⑨ ★자리·재고도 플레이어가 묻는 그 술어로 묻는다(`spotAt`·`stockRatioAt`)
+P4 test-t1221-farm-labor rc=1   ✗ ⑤ 몸 — 켬이면 일 시간(게임 분 × 하루 ÷ 1,440 ms)만큼 머문다 · 개간 칸도 같�
+P5 test-granary-haul rc=1   ✗ 체류 중 소유권 유지(정산 전)
+P6 _t1317-bait-bigmap rc=1   ✗ 전제: 조각에 산맥 바위 · 한재 골짜기의 뭍(셀 술어가 그 원에서 뭍이라 하는 
+REAL test-bigmap-cells rc=0 

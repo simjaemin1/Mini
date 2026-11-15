@@ -1,0 +1,35 @@
+# T1317 ⑪a 귀속 — 이분(git bisect · test-assets-audit ⑪a 수 ≤ 52 를 좋음으로)
+## 1차(48cac4f89..130840526) — 양 끝이 다 53(좋은 끝이 아니었다)
+3dae4c5f4 n=53
+6031b3bed n=53
+d508a6500 n=53
+a7ffdef18 n=53
+14183e4f5 n=53
+8c551622a n=53
+6d3e209b3 n=53
+186055405 n=53
+## 2차(0fdaab788 = T751 기준 52 를 적은 판 .. 48cac4f89)
+38b7fe3bc n=52
+801fbae2d n=53
+5174772e2 n=53
+aa6cc39e0 n=52
+164141a57 n=52
+3ea7cc687 n=52
+b7831414e n=52
+d631dc19c n=53
+1a928225b n=52
+59861dc40 n=53
+f08350009 n=53
+bc823aeee n=53
+bc823aeee485eef084e7b8f187f4fc4501f7c43c is the first bad commit
+
+## 첫 53 판 bc823aeee(T1107) 앞뒤 안 닿는 목록 차
+7a8
+> server/village-trees-hanbando.json
+
+## main 130840526 대 이 가지(템플릿 꼴 읽기) 안 닿는 목록 차
+8d7
+< server/village-trees-hanbando.json
+
+## 부르는 자리
+641:  try { doc = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, `village-trees-${zoneId}.json`), 'utf8')); } catch (e) { doc = null; }
