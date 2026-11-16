@@ -9,6 +9,8 @@ if (PX) SITES.push(['/sim/economy-sim-v2.js',
   "function _t859Stock(v, r) { return ((T859_FOOD_HUNGER || v1.T1243_FARM_ON) && r === 'food') ? (+v1.totalFoodEquivalent(v) || 0) : (v.storage[r] || 0); }",
   "function _t859Stock(v, r) { if ((T859_FOOD_HUNGER || v1.T1243_FARM_ON) && r === 'food') { let p = 0; for (const k of v1.PRESERVED_FOODS) p += (v.storage[k] || 0) * v1.preservedFactor(k); return Math.max(0, (+v1.totalFoodEquivalent(v) || 0) - p); } return (v.storage[r] || 0); }",
   'px']);
+//   env T1309_PNC=1 → 갈무리가 뗀 원물을 흐름 소비(`_cons` — 값의 흐름 수요 `_consEMA × 30`)로 적지 않는다(곳간에서 떼는 것은 그대로) — 갈무리가 값 수요 칸으로 닿는 줄을 가르는 자
+if (process.env.T1309_PNC === '1') SITES.push(['/sim/economy-sim.js', '      v.storage[_fr] -= _take; _cons(v, _fr, _take);   // ★flow-EMA — 보존도 수요다', '      v.storage[_fr] -= _take;', 'pnc']);
 const hit = {};
 Module.prototype._compile = function (src, file) {
   const f = file.replace(/\\/g, '/');
