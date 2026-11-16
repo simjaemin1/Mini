@@ -291,11 +291,18 @@ async function waitHttp(url, tries = 900) {
   }
   let board = await ensureBoard(30);
   // ★여기서부터 상호작용 — **날을 얼린다.** 이 아래로는 의뢰가 제 발로 철회되거나 품목이 바뀌지 않는다.
+  //   ★[T1339] 종전 `sleep(800)` 뒤 마지막 알림 넉 줄 — 부하 10판 중 1판이 빨갰다(답이 800ms 뒤에 왔거나 다른 알림 넉 줄이 밀어냈다). 진단 배열에 표지를 넣고
+  //     그 뒤에 온 알림에서 "게임일 정지"를 기다린다(상한 15초 · 판정 그대로 — 끝내 안 오면 빨강).
+  await page.evaluate(() => { (window.__notices = window.__notices || []).push('__t1339_freeze_mark'); });
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
   dayFrozen = true;   // ★[T794]
   await sleep(800);
-  ok((await page.evaluate(() => (window.__notices || []).slice(-4).join(' | '))).includes('게임일 정지'),
-    '★게임일 정지(상호작용 구간) — 여기부터 경제가 검사를 앞지르지 않는다');
+  let frozeNote = false;
+  for (let j = 0; j < 72 && !frozeNote; j++) {
+    frozeNote = await page.evaluate(() => { const a = window.__notices || []; const i = a.lastIndexOf('__t1339_freeze_mark'); return (i >= 0 ? a.slice(i + 1) : a.slice(-4)).join(' | ').includes('게임일 정지'); });
+    if (!frozeNote) await sleep(200);
+  }
+  ok(frozeNote, '★게임일 정지(상호작용 구간) — 여기부터 경제가 검사를 앞지르지 않는다');
   sh = sh || (await shWitness());   // ★[T185] 판정 직전에 한 번 더 — 늦게 도착한 증인도 센다
   ok(!!sh, '부족 픽스처 성립(소비EMA 가 자란 품목의 재고를 문턱 아래로 · 갚을 잉여도 갖춤)', sh || '(성립 실패 — 소비EMA 미성숙)');
   ok(!!(board && board.rows && board.rows.length), '게시판에 납품 의뢰가 걸렸다', board ? JSON.stringify(board.rows.map((r) => r.line)) : 'X');
@@ -587,6 +594,10 @@ async function waitHttp(url, tries = 900) {
     await page.evaluate(() => { const p = document.getElementById('boardPane'); if (p) p.classList.add('hidden'); });
     await page.keyboard.press('Shift+g');
     await sleep(1500);
+    //   ★[T1339] 부하 10판 중 2판 — 1.5초 뒤 판이 아직 안 열렸다(판 답은 마을 요청 줄 · 하루 마감 중이면 마감 뒤에 온다 · 제목 칸은 앞 판 글자가 남아 있었다).
+    //     판이 열리고 소식 절이 찰 때까지 기다린다(상한 15초 · 판정 그대로 — 끝내 안 열리면 빨강).
+    for (let j = 0; j < 68 && !(await page.evaluate(() => { const p = document.getElementById('boardPane'), b = document.getElementById('boardPaneBody');
+      return !!(p && !p.classList.contains('hidden') && b && b.querySelector('.bd-sec')); })); j++) await sleep(200);
     const pn = await page.evaluate(() => {
       const p = document.getElementById('boardPane');
       const body = document.getElementById('boardPaneBody');

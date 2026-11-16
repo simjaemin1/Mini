@@ -78,6 +78,10 @@ async function waitHttp(url, tries = 900) {
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
     E2E_GIVE: '1',
     T489_RUMOR_SPLIT: '0',   // ★[T496] 종전 소문 시계(위 머리 — 배선 검사 · 시계는 test-events ⑲)
+    //   ★[T1339] 게시판 소식 줄 수(`EV_BOARD_NEWS_N` · 운영 기본 8) — 부하 10판 중 2판이 ⑤ 를 못 봤다(사건일 + 120일 · 하루씩 걸어도 60일). 판은 새 소식 8줄만
+    //     보인다 — 붐빈 판에서 찾던 줄이 들어왔다가 다음 물음 전에 밀려났다고 보고(⑤ 뒤 참고 줄이 판마다 그 줄 자리를 찍는다 — 9 넘으면 8줄 판에선 안 보였을 판)
+    //     이 판의 물음("그 줄이 B 에 **들어왔나**")에 맞게 줄 수를 넉넉히 연다(있는 손잡이 · 소식 걸러 내기 무변 · ⑥ 은 브리핑 ⊆ 판 소식이라 뜻 같음).
+    EV_BOARD_NEWS_N: '64',
   });
   // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
   //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
@@ -199,6 +203,7 @@ async function waitHttp(url, tries = 900) {
   //   ★[T1339] 얼린 뒤엔 날이 가라앉기를 기다린다(`WD.settleDay` — 얼림 전에 연 하루 마감이 끝까지 돌아 하루가 더 갈 수 있다 · 단독 판 ④a `26 → 27`)
   const freeze = async (on) => { await page.evaluate((o) => window.__sendPrimary({ type: '__e2e_day_freeze', on: o }), on); await sleep(700);
     if (on) await WD.settleDay(() => page.evaluate(() => window.__evGameDay | 0), 1500, 15000); };
+
   // ★★키에 **출처 마을**을 넣는다. 안 넣으면 `CARAVAN_LATE|null|57` 같은 키가 두 마을에서
   //   같은 날 나서 "B 가 A 의 사건을 이미 안다"는 **가짜 실패**가 난다(1차 실패의 진범).
   //   자기 마을 사건은 `from` 이 null 이므로 보는 쪽 마을 이름으로 채운다.
@@ -264,9 +269,13 @@ async function waitHttp(url, tries = 900) {
   // ── ⑤ 날을 녹이고 기다리면 — **며칠 뒤에** 나타난다 ────────────────────────
   await freeze(false);
   let arrived = null, polls = 0;
-  //   ★[T1339] 종전 "폴링 120번"(벽시계 ≈ 60초 · 0.5초/일이면 ≈ 120게임일)을 **게임일 120일**로 — 그 날까지 안 오면 빨강 · 그 전에 상한(240초 · 안전망)이면 유보
-  const arrR = await WD.waitDay(() => gameDay(), (evA ? evA.day : frozenDay) + 120, { capMs: 240000, pollMs: 400, until: () => !!arrived,
+  //   ★[T1339] 종전 "폴링 120번"(벽시계 · 0.5초/일이면 ≈ 120게임일) → **게임일 120일**(그 날까지 안 오면 빨강 · 그 전에 상한 300초면 유보).
+  //     판 줄 수는 위 존 env `EV_BOARD_NEWS_N` 64(붐빈 판 늦음 소식에 찾던 줄이 밀려나던 자리 — 부하 10판 중 2판).
+  const arrR = await WD.waitDay(() => gameDay(), (evA ? evA.day : frozenDay) + 120, { capMs: 300000, pollMs: 400, until: () => !!arrived,
     body: async () => { polls++; const b = await askBoard(B.id); const hit = ((b && b.news) || []).find((r) => evA && keyOf(r, B.name) === keyOf(evA, A.name)); if (hit) arrived = hit; } });
+  { const bL = await askBoard(B.id), nw = (bL && bL.news) || [], ty = {}; for (const r of nw) ty[r.type] = (ty[r.type] || 0) + 1;
+    const rank = arrived ? nw.findIndex((r) => keyOf(r, B.name) === keyOf(arrived, A.name)) : -1;
+    console.log(`    (참고 · 판정 밖) B 판 소식 ${nw.length}줄(운영 판이면 8줄) · 찾던 줄 자리 ${rank < 0 ? '없음' : rank + 1} · 종류 ${JSON.stringify(ty)}`); }
   WD.judge(ok, arrR, !!arrived, '⑤ 며칠 뒤 그 사건이 **B 게시판에 나타난다**(캐러밴이 걸어온 뒤에 들린다)',
     arrived ? `day${arrived.day} → heard${arrived.heard} (${arrived.heard - arrived.day}일) · 출처 ${arrived.from}` : `(${polls}회 폴링 뒤에도 미도착)`);
   if (arrived) {

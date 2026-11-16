@@ -787,7 +787,9 @@ async function waitHttp(url, tries = 900) {
     // ⓔ 다시 끄면 사라진다
     await send({ type: 'village_welcome', buildingId: hall.id, on: false });
     await sleep(1200);
-    const s2 = await sinfo();
+    //   ★[T1339] 종전 1.2초 뒤 한 번 — 부하 10판 중 1판이 빨갰다(끔이 존 → central 시작 지도로 가는 길이 붐빈 판에서 늦다). 내려갈 때까지 다시 묻는다(상한 15초 · 판정 그대로).
+    let s2 = await sinfo();
+    for (let j = 0; j < 30 && !(s2 && (s2.playerN | 0) === 0); j++) { await sleep(500); s2 = await sinfo(); }
     ok(!!s2 && (s2.playerN | 0) === 0, '★[T19] ⓔ 끄면 시작 지도에서 내려간다');
     await snap('09-welcome');
   }

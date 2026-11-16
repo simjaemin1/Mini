@@ -84,7 +84,7 @@ function judge(ok, r, cond, msg, detail) {
   const d = detail == null ? '' : String(detail);
   if (cond) return ok(true, msg, d);
   if (r && r.slow) return yubo(msg, `${d} · 판이 느림(빨강 아님) — ${desc(r)}`);
-  return ok(false, msg, `${d}${r && r.stalled ? ' · ★멈춘 시계 — ' + desc(r) : ''}`);
+  return ok(false, msg, `${d}${r && r.stalled ? ' · ★멈춘 시계 — ' + desc(r) : r ? ' · ' + desc(r) : ''}`);   // 빨강도 그 판의 날 셈을 단다(닿았는데 조건이 안 섬 = 진짜 빨강)
 }
 function count() { return _yubo.length; }
 function rc(fail) {
