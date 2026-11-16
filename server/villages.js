@@ -5289,7 +5289,7 @@ function _t1182Step(dtMs) {
 //     건널목: 물을 다리 없이 건너는 코스 마디 · 얇은 능선 굴: 우회가 탐색 반경 밖 — 길 층 몫 · 보고/T1320 회부). 교역로 캐시 · econ 거리는 무변 — 몸이 걷는 줄만.
 //     다시 붙기(`_t1182Walk`) · 호위 잇기(`_t1182EscortPath`)의 곧은 줄도 같은 잇기로(판에서 밟는 것은 못 봤지만 같은 곧은 줄이다).
 //   곧은 줄이 지형을 안 지나면 두 점 그대로 — 켬이어도 그 몸은 종전 글자다.
-const T1320_ROCK_PATH = process.env.T1320_ROCK_PATH === '1';
+const T1320_ROCK_PATH = process.env.T1320_ROCK_PATH !== '0';   // ★[PM land1080 · 재민 11-16 "그래 켜"] 켬 기본 — 되돌림 `'0'`(종전 글자)
 const _t1320St = { link: 0, fail: 0, clear: 0 };
 function _t1320Clear(a, b) {
   const f = state.deps && state.deps.isTerrainBlockedLocal; if (!f) return true;
