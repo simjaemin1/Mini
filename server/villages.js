@@ -1202,6 +1202,7 @@ function _t740Pack(vil) {
   for (const k of _T740_KEYS) if (k in vil) o[k] = _t740Enc(vil[k]);
   if (vil._site) { o.site = { cx: vil._site.cx, cy: vil._site.cy, stage: vil._site.stage }; if (vil._site.mat) o.site.mat = _t740Enc(vil._site.mat); }   // ★T400 — 곳간에서 꺼내 집터에 놓은 자재(종전: 재기동에 사라졌다 — 소멸)
   if (vil._psite) o.psite = { cx: vil._psite.cx, cy: vil._psite.cy, stage: vil._psite.stage, bo: vil._psite.bo ? vil._psite.bo.dbId : null };
+  if (T1340_EXACT && state._t1340Shut) { const C = state._t1340C || (state._t1340C = _t1340Ctx(Date.now())); o.$all = _t1340PackObj(vil, _T1340_VKEYS, C, _t1340Stat.vilSkip); o.$at = C.at; _t1340Stat.vils++; }   // ★[T1340 ③] 종료 저장만
   return o;
 }
 const _t740Stat = { restored: null };
@@ -1218,7 +1219,128 @@ const _t740Stat = { restored: null };
 //   반쯤 한 일: 대상이 그대로면 잇는다 — 개간 셀이 아직 개간 앞(밭이 아니고 영토 · 잠재 농지)이면 · 집터가 그대로 있으면. 사라졌으면 깨끗이 푼다(손은 남는다).
 //   마을 클레임 그림자(`_claim` · `_clearCrew` · `_buildCrew` · `_psiteCrew` · `_cropClaim` · 광부 손 합 `_t724HeldKg`)는 되돌린 몸에서 다시 센다(하루 마감의 재대사 줄과 같은 식).
 //   몸 열쇠 = 마을 `npcPids` 자리(T728 `_t728HuntWk` 문법). 저장된 몸이 지금 몸보다 많으면 남은 손은 그 마을 첫 몸의 손에 더한다(소멸 0).
-const T747_BODY = process.env.T747_BODY_KEEP !== '0';   // ★[PM 10-14] 켬 기본(소멸 금지 · 다시 뜰 때만 — 손 · 진행 작업 · 자리) · 되돌림 `=0`
+const T747_BODY = process.env.T747_BODY_KEEP !== '0';
+// ★★[T1340 2026-11-16 · T1318 회부 1 · 3 · T1308 회부 1] **끊고 이은 판 = 한 번에 돈 판** — 손잡이 `T1340_RESUME_EXACT`(켬 기본 · 되돌림 `=0` = 종전 글자).
+//   재기동은 무손실이 캐논이다(순간이동 · 소멸 0). 종전 영속(T728 · T740 · T747)은 "값에 닿고 다시 셀 수 없는 칸"만 실어, 다시 뜬 판이 저장 순간과 다른 몸 · 마을 · 시계로 섰다
+//   (같은 몸 1020 이 20날부터 갈렸다 · 재기동 날 영토 완공 0). 켜면:
+//     ① 날 앵커 — 저장 순간의 `lastGameDay` · 현지 자정 창(T731 `t731Day` · `_t731Anchor`)을 메타 앵커에 싣고, **벽시계 날이 그대로면**(같은 날 안에 다시 뜸) 그 값으로 선다.
+//        날이 넘었으면 종전 그대로(시계에서 — 멈춘 시간은 버린다 · T728 ⑥).
+//     ② 몸 칸 전부 — T747 칸 밖의 몸 칸(걸음 · 길 · 결정 시각 · 일과 · 이름 · 색 · 신원 …)도 몸 줄(`_t747Body`) 한 칸 `$all` 에 싣는다. 시각 칸은 저장 순간에서 잰 차로 싣고
+//        다시 뜬 순간에 그 차만큼 뒤에 둔다(멈춘 시간은 버린다 — 같은 순간에 다시 뜨면 같은 값). 진행 일의 시각(`_t1302Terr` · `_t1181Haul` · `_workT`)도 비우지 않는다.
+//     ③ 서버 마을 칸 전부 — T740 칸 밖의 마을 칸(일터 · 지도 훑기 캐시 · 개척 줄 …)도 곁 칸 `$all` 에(같은 규약).
+//   새 수 0 · 새 몸 필드 0 · 새 표 0(곁 칸 · 메타 행 칸만 는다). 끔 = 종전 글자.
+const T1340_EXACT = process.env.T1340_RESUME_EXACT !== '0';
+const _t1340Stat = { anchor: null, bodies: 0, bodyKeys: 0, bodySkip: {}, vils: 0, vilKeys: 0, vilSkip: {} };
+//   ★[T1340 ② ③ ⑤] 칸 싣기 문법 — `_t740Enc` 위에 셋을 더한다(새 수 0):
+//     · 시각 = 저장 순간에서 잰 차(`{$t: x − 저장 시각}`) — 다시 뜬 순간에 더한다(같은 순간이면 같은 값 · 멈춘 동안은 버린다 — T728 ⑥).
+//       시각 판별 = 벽시계 크기(> 10¹²)이고 저장 시각에서 1년 안(그 밖의 수 — 좌표 · 셈 · econ 날 — 는 그대로).
+//     · 남을 가리키는 칸 = 열쇠로 — econ 사람(`{$npc: id}`) · 몸(`{$pid}`) · econ 마을(`{$ev: 이름}`) · 서버 마을(`{$sv: dbId}`). 그 밖의 클래스 객체는 싣지 않고 센다(회부 표).
+//     · 같은 배열을 두 칸이 쥐면(`path` ↔ `_t791P` — 존 걸음이 `===` 로 가른다) 뒤 칸은 `{$same: 칸}`.
+function _t1340Ctx(at) {
+  const C = { at, npc: new Map(), npcById: new Map(), P: state.deps && state.deps.players, ev: new Map(), sv: new Map() };
+  for (const v of (state.villages || [])) { if (Number.isFinite(v.dbId)) C.sv.set(v.dbId, v); const e = v.econ; if (!e) continue; C.ev.set(e.name, e); for (const n of (e.npcs || [])) if (n && n.id != null) { C.npc.set(n, n.id); C.npcById.set(n.id, n); } }
+  if (state.world) for (const e of (state.world.villages || [])) if (e && e.name != null && !C.ev.has(e.name)) C.ev.set(e.name, e);
+  return C;
+}
+class _T1340Skip extends Error {}
+function _t1340Enc(x, C, d) {
+  if (typeof x === 'number') return (x > 1e12 && Math.abs(x - C.at) < 3.2e10) ? { $t: x - C.at } : x;
+  if (x === null || typeof x !== 'object') { if (typeof x === 'function' || typeof x === 'symbol' || typeof x === 'bigint') throw new _T1340Skip(typeof x); return x; }
+  if (d > 12) throw new _T1340Skip('깊이');
+  if (x instanceof Map) { const a = []; for (const [k, v] of x) a.push(_t1340Enc(k, C, d + 1), _t1340Enc(v, C, d + 1)); return { $M: a }; }
+  if (x instanceof Set) { const a = []; for (const v of x) a.push(_t1340Enc(v, C, d + 1)); return { $S: a }; }
+  if (Array.isArray(x)) return x.map((v) => _t1340Enc(v, C, d + 1));
+  if (ArrayBuffer.isView(x)) return { $A: x.constructor.name, v: Array.from(x) };
+  if (C.npc.has(x)) return { $npc: C.npc.get(x) };
+  if (x.pid != null && C.P && C.P.get(x.pid) === x) return { $pid: x.pid };
+  if (x.npcs && x.name != null && C.ev.get(x.name) === x) return { $ev: x.name };
+  if (Number.isFinite(x.dbId) && C.sv.get(x.dbId) === x) return { $sv: x.dbId };
+  const pr = Object.getPrototypeOf(x); if (pr !== Object.prototype && pr !== null) throw new _T1340Skip(pr && pr.constructor ? pr.constructor.name : '?');
+  const o = {}; for (const k of Object.keys(x)) { const v = x[k]; if (typeof v === 'function') continue; o[k] = _t1340Enc(v, C, d + 1); } return o;
+}
+function _t1340Dec(x, C) {
+  if (Array.isArray(x)) return x.map((v) => _t1340Dec(v, C));
+  if (!x || typeof x !== 'object') return x;
+  if (x.$t !== undefined && Object.keys(x).length === 1) return C.at + x.$t;
+  if (Array.isArray(x.$M)) { const m = new Map(); for (let i = 0; i + 1 < x.$M.length; i += 2) m.set(_t1340Dec(x.$M[i], C), _t1340Dec(x.$M[i + 1], C)); return m; }
+  if (Array.isArray(x.$S)) return new Set(x.$S.map((v) => _t1340Dec(v, C)));
+  if (x.$A && Array.isArray(x.v)) { const T = global[x.$A]; return typeof T === 'function' ? T.from(x.v) : x.v; }
+  if (x.$npc !== undefined && Object.keys(x).length === 1) return C.npcById.get(x.$npc) || null;
+  if (x.$pid !== undefined && Object.keys(x).length === 1) return (C.P && C.P.get(x.$pid)) || null;
+  if (x.$ev !== undefined && Object.keys(x).length === 1) return C.ev.get(x.$ev) || null;
+  if (x.$sv !== undefined && Object.keys(x).length === 1) return C.sv.get(x.$sv) || null;
+  const o = {}; for (const k of Object.keys(x)) o[k] = _t1340Dec(x[k], C); return o;
+}
+//   한 객체의 칸들을 싣는다 — 못 싣는 칸은 `skip` 에 센다(칸 이름 → 까닭)
+function _t1340PackObj(obj, keys, C, skip) {
+  const o = {}, seen = new Map();
+  for (const k of keys) {
+    if (!(k in obj)) continue;
+    const v = obj[k]; if (typeof v === 'function') continue;
+    if (v && typeof v === 'object' && seen.has(v)) { o[k] = { $same: seen.get(v) }; continue; }
+    try { o[k] = _t1340Enc(v, C, 0); if (v && typeof v === 'object') seen.set(v, k); } catch (e) { if (e instanceof _T1340Skip) skip[k] = e.message; else skip[k] = 'err ' + e.message; }
+  }
+  return o;
+}
+function _t1340UnpackObj(obj, o, C) {
+  let n = 0; const later = [];
+  for (const k of Object.keys(o)) { const x = o[k]; if (x && typeof x === 'object' && x.$same !== undefined && Object.keys(x).length === 1) { later.push([k, x.$same]); continue; } obj[k] = _t1340Dec(x, C); n++; }
+  for (const [k, f] of later) { obj[k] = obj[f]; n++; }
+  return n;
+}
+//   몸: 이 칸만 빼고 다 — 소켓 · 열쇠(pid) · 짐/로트 줄(T1133 · T1166 이 따로 싣는다) · 자리(T747 이 열 쓰기 길로) · 진행 일(T747 이 대상이 그대로인지 보고 잇는다)
+const _T1340_BODY_DENY = new Set(['ws', 'pid', '_bag', '_lots', 'x', 'y', '_lifeTask']);
+//   서버 마을: 재기동이 잃는다고 잰 칸(보고 T1340 §1 표 — 부팅이 DB 행에서 다시 세우는 칸은 싣지 않는다)
+const _T1340_VKEYS = ['_frontDay', '_gameScan', '_jobSites', '_oreCells', '_oreScan', '_t449', '_t569R', '_t569RN', '_t724CutLast', '_t719N', '_farmArr', '_frontier', '_t427R', '_t325Trees',
+  '_ditchSet', '_claim', '_clearCrew', '_buildCrew', '_psiteCrew', '_cropClaim', '_t731Day', '_t1302Crew',
+  //   몸 세계 판(T1302 켬 · 나무꾼 몸)에서 더 잰 칸 — 영토 일감 줄(진척 `workMs` · 놓인 말뚝) · 그 계측 · 나무 훑기 · 숲 재생 셈 · 땅 쓰임 기억 · 잔가지 · 짐 넘친 몫
+  '_t1207', '_t1207Pend', '_t1207Sum', '_t325Dbg', '_t325PreWalked', '_t341Back', '_t341Grow', '_t341K', '_t341KAt', '_t341R', '_t341WBar', '_t398Box', '_t398C', '_t743G',
+  '_t1238Use', '_t1238UseDirty', '_t1238UseSaved', '_t733Gr', '_t717PkIn'];
+//   서버 state: 틱 사이 시각(첫 틱의 dt) · 차례 기억 · 걸음 캐시
+const _T1340_SKEYS = ['_bxTickAt', '_carTickAt', '_warTickAt', '_t1282D', '_t695W', '_t714Wait', '_t1253Edge', '_routeUsed', '_walkSegFar', 'walkCache', '_oreWarm'];
+//   ★[T1340 ③′] 닿음 기억 도장 — 상자 안 벽 · 다리 세대(`deps.collGenAround`)는 존 모듈의 셈이라 다시 뜨면 0 부터 다시 오른다. 저장한 기억은 저장 순간의 벽으로 넓힌 것이고
+//     다시 뜬 세계의 벽은 같다(같은 DB) ⇒ 첫 틱(부팅이 벽을 다 세운 뒤)에 그 기억의 도장을 지금 세대로 다시 찍는다. 안 찍으면 첫 물음이 기억을 버리고 처음부터 넓혀(여러 틱)
+//     한 번에 돈 판보다 늦게 닿는다(T1340 §1 — 다시 뜬 다음 날 몸 자리가 갈린 자리).
+function _t1340RestampNow() {
+  const dp = state.deps; if (!dp || typeof dp.collGenAround !== 'function') return 0;
+  let n = 0;
+  const st = (e) => { if (e && e.S && Number.isFinite(e.S.ax) && Number.isFinite(e.S.ay)) { e.stamp = dp.collGenAround(e.S.ax, e.S.ay); n++; } };
+  for (const vil of state.villages) for (const k of ['_t427R', '_t719N']) { const M = vil[k]; if (!(M instanceof Map)) continue; for (const e of M.values()) { st(e); if (e && e.pre) st(e.pre); } }
+  _t1340Stat.restamp = n; return n;
+}
+//   ★[T1340 ④] econ 세계의 그날 메모리 — 처음 부를 때 그 순간 값으로 서는 캐시 넷(T1308 판 자 잇기 훅이 하던 일을 제품으로 · 그 훅은 판 자 쪽 증명용으로 남는다):
+//     `_effDemCache`(유효 수요 세계 재고 · v2 `_worldStockOf`) · `_nevCache`(그날 · 그 시간 값표 · 순수취 · 최저 생산 — 마을 객체 열쇠는 이름으로) ·
+//     마을마다 `_near20` · `_near20N`(교역 후보 가까운 20곳 — 처음 부를 때 그때 거리로) · `_capTransit`(포로 귀향 이송 줄 — 사람 · 마을은 id · 이름으로).
+//   같은 econ 날 메타일 때만 되돌린다(T728 캐러밴 규약 그대로 — 다른 날이면 그 캐시는 이미 지난 날 것이다).
+function _t1340EconPack() {
+  const W = state.world; if (!W) return null;
+  const nm = (x) => (x && x.name != null ? x.name : null), o = {};
+  if (state._t1340Shut) { const C = state._t1340C || (state._t1340C = _t1340Ctx(Date.now())); o.st = _t1340PackObj(state, _T1340_SKEYS, C, _t1340Stat.stSkip || (_t1340Stat.stSkip = {})); o.at = C.at; }   // ★[T1340 ⑤] 종료 저장만
+  try { if (W._effDemCache) o.eff = JSON.parse(JSON.stringify(W._effDemCache)); } catch (e) {}
+  const C = W._nevCache;
+  if (C) { try { o.nev = { day: C.day, px: C.px ? [...C.px].map(([b, t]) => [nm(b), t]) : null, val: C.val ? [...C.val] : null, mv: C.mv ? [...C.mv].map(([b, x]) => [nm(b), x]) : null }; JSON.stringify(o.nev); } catch (e) { delete o.nev; } }
+  const near = {}; for (const v of (W.villages || [])) if (Array.isArray(v._near20)) near[v.name] = { l: v._near20.map(nm), n: v._near20N };
+  o.near = near;
+  if (Array.isArray(W._capTransit) && W._capTransit.length) o.cap = W._capTransit.map((t) => { const r = {}; for (const [k, v] of Object.entries(t)) {
+    if (k === 'npc') r.npc = v && v.id != null ? v.id : null; else if (k === 'from' || k === 'to') r[k] = nm(v); else { try { JSON.stringify(v); r[k] = v; } catch (e) {} } } return r; });
+  return o;
+}
+function _t1340EconIn(o) {
+  const W = state.world; if (!W || !o) return null;
+  const by = new Map((W.villages || []).map((v) => [v.name, v])), R = { eff: 0, nev: 0, near: 0, nearMiss: 0, cap: 0, capMiss: 0 };
+  if (o.st && Number.isFinite(o.at)) { const C = state._t1340R || (state._t1340R = _t1340Ctx(Date.now())); R.st = _t1340UnpackObj(state, o.st, C); }   // ★[T1340 ⑤]
+  if (o.eff) { W._effDemCache = o.eff; R.eff = 1; }
+  if (o.nev) { const C = { day: o.nev.day, px: new Map(), val: new Map(o.nev.val || []) };
+    for (const [n, t] of (o.nev.px || [])) { const b = by.get(n); if (b) C.px.set(b, t); }
+    if (o.nev.mv) { C.mv = new Map(); for (const [n, x] of o.nev.mv) { const b = by.get(n); if (b) C.mv.set(b, x); } }
+    W._nevCache = C; R.nev = 1; }
+  for (const [n, x] of Object.entries(o.near || {})) { const v = by.get(n); if (!v) { R.nearMiss++; continue; } const l = x.l.map((m) => by.get(m)); if (l.some((b) => !b)) { R.nearMiss++; continue; } v._near20 = l; v._near20N = x.n; R.near++; }
+  if (Array.isArray(o.cap)) { const cap = [];
+    for (const t of o.cap) { let npc = null; if (t.npc != null) for (const v of (W.villages || [])) { npc = (v.npcs || []).find((n) => n && n.id === t.npc) || null; if (npc) break; }
+      const to = by.get(t.to); if (!npc || !to) { R.capMiss++; continue; } cap.push(Object.assign({}, t, { npc, from: by.get(t.from) || null, to })); }
+    W._capTransit = cap; R.cap = cap.length; }
+  return R;
+}   // ★[PM 10-14] 켬 기본(소멸 금지 · 다시 뜰 때만 — 손 · 진행 작업 · 자리) · 되돌림 `=0`
 //   ★[T1257 · T1252 회부 2] 손에 든 씨 몫 `_t1243S`(T1243 추신 14 · `_t1243Reaped` 가 손에 얹고 `_t368Deliver` 가 곳간에 내린다)도 손의 장부값이다 —
 //   없으면 넘김 · 재기동 뒤 손의 씨가 "그냥 손 물건"이 되어 곳간 몫 셈이 끊겼다. `T1243_FARM_ON` 끔이면 그 칸이 안 서서(undefined) 몸 줄 바이트 그대로.
 const _T747_KEYS = ['simJob', 'x', 'y', 'hp', '_rest', 'inventory', 'oreLedger', '_t312U', '_t312Kg', '_t1180FullFish', '_t1181Haul', '_t1181Returns', '_t1302Terr', '_t368H', '_t368N', '_t1243S', '_t717L', '_t733F',
@@ -1307,6 +1429,7 @@ function _t747Pack(vil) {
     if (_G) { const bg = _G.bagDump(b); if (bg) { o._bag = bg; if (b._warPackOf != null) o._packOf = b._warPackOf; _t1133Stat.saved++; for (const res in bg) _t1133Stat.savedRecs += bg[res].length; } }   // ★[T1133] 몸 짐 줄(있을 때만 — 없으면 칸 0 · 종전 바이트)
     if (T1166_LOT) { const _L = _t732Lots(); const lt = _L ? _L.npcDump(b) : null; if (lt) { o._lots = lt; _t1166Stat.saved++; for (const k in lt) _t1166Stat.savedRecs += lt[k].length; } }   // ★[T1166] 몸 손 로트 줄(있을 때만 — 없으면 칸 0 · 종전 바이트)
     if (o._lifeTask && o._lifeTask.k === 'greet') delete o._lifeTask;   // 인사(T529)는 그 사람 · 그 순간의 일 — 싣지 않는다
+    if (T1340_EXACT && state._t1340Shut) { const C = state._t1340C || (state._t1340C = _t1340Ctx(Date.now())); o.$all = _t1340PackObj(b, Object.keys(b).filter((k) => !_T1340_BODY_DENY.has(k)), C, _t1340Stat.bodySkip); _t1340Stat.bodies++; o.$at = C.at; if (b._lifeTask === null) o.$ltn = 1; }   // ★[T1340 ②] 종료 저장만
     rows.push(o);
   }
   //   마을 클레임 그림자 — 저장 순간 그대로(하루 마감 리셋 뒤 걸어가던 몸의 클레임까지 다시 세면 저장 순간과 달라진다 — 첫 켬 판이 보였다)
@@ -1342,14 +1465,18 @@ function _t747Restore() {
       if (S.inventory && typeof S.inventory === 'object') { b.inventory = S.inventory; let any = false; for (const k in S.inventory) if (S.inventory[k] > 0 && k !== 'seed_berry') any = true; if (any) R.hands++; }
       for (const k of ['oreLedger', '_t312U', '_t312Kg', '_t1180FullFish', '_t1181Haul', '_t1181Returns', '_t1302Terr', '_t368H', '_t368N', '_t1243S', '_t717L', '_t733F', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil', '_sh', '_hd', '_half'])
         if (k in S) b[k] = S[k];
+      if (T1340_EXACT && S.$all && Number.isFinite(S.$at)) { const C = state._t1340R || (state._t1340R = _t1340Ctx(Date.now())); _t1340Stat.bodyKeys += _t1340UnpackObj(b, S.$all, C); _t1340Stat.bodies++; if (S.$ltn && b._lifeTask === undefined) b._lifeTask = null; }   // ★[T1340 ②] 몸 칸 전부(시각은 차로 · 진행 일 시각도 그대로)
+      else {
       if(b._t1302Terr){b._t1302Terr.at=null;b._t1302Terr.last=null;}
       if(b._t1181Haul)b._t1181Haul.at=null;   // 재기동 중 시공·체류 적산 없음
+      }
       //   반쯤 한 일 — 대상이 그대로면 잇고(노동 적산은 도착부터 — `_workT` 없음) · 사라졌으면 푼다
       if (S._lifeTask && typeof S._lifeTask === 'object') {
         const t = S._lifeTask, key = t.cx + ',' + t.cy;
         const ok = t.k === 'clear' ? !!(vil._terrSet && vil._terrSet.has(key) && !(vil._farmSet && vil._farmSet.has(key)) && !(vil._drySet && vil._drySet.has(key)))
           : t.k === 'build' ? !!(t.ps ? vil._psite : vil._site) : false;
-        if (ok) { b._lifeTask = t; b._workT = null; R.task++; } else { R.taskDrop++; dropped.push(t); }
+        if (T1340_EXACT && S.$all) { b._lifeTask = t; R.task++; }   // ★[T1340] 켬 = 저장 순간 그대로(대상이 사라진 일은 몸이 다음 걸음에 스스로 놓는다 — 한 번에 돈 판과 같은 순간에)
+        else if (ok) { b._lifeTask = t; b._workT = null; R.task++; }   // ★[T1340] 켬 = 노동 적산 시각도 그대로(몸 칸 전부 줄이 실었다) else { R.taskDrop++; dropped.push(t); }
       }
     }
     if (spill.length) {   // 저장된 몸이 지금보다 많았다 — 남은 손은 첫 몸에(소멸 0)
@@ -1391,6 +1518,8 @@ function _t740Restore() {
     if (!S || typeof S !== 'object') continue;
     R.villages++;
     for (const k of _T740_KEYS) if (k in S) { vil[k] = _t740Dec(S[k]); R.keys[k] = (R.keys[k] || 0) + 1; }
+    if (T1340_EXACT && S.$all && Number.isFinite(S.$at)) { const C = state._t1340R || (state._t1340R = _t1340Ctx(Date.now())); _t1340Stat.vilKeys += _t1340UnpackObj(vil, S.$all, C); }   // ★[T1340 ③]
+    if (T1340_EXACT && S.$all) state._t1340Restamp = true;   // ★[T1340 ③] 닿음 기억(`_t427R` · `_t719N`)의 도장은 첫 틱에 지금 벽 세대로(아래 `_t1340RestampNow`)
     if (vil._crop instanceof Map) R.crop += vil._crop.size;
     if (vil._mkt) R.mkt++;
     //   공사 중이던 마을 집터 — 저장된 단계로 지금 선다(종전: 다음 하루 마감에 단계 1로). 행(`housesite`)이 없으면(그새 완공) 세우지 않는다.
@@ -10184,6 +10313,8 @@ function tickPerf() {
 // =============================================================================
 function onGameTick(now) {
   if (!state.ready) return; // 플래그 off·비대상 존·init 실패 전부 여기서 차단
+  if (state._t1340Restamp) { state._t1340Restamp = false; try { _t1340RestampNow(); } catch (e) { console.error(`[${state.zoneId}] [T1340] 닿음 기억 도장 실패:`, e.message); } }
+  if (state._t1340Done) return;   // ★[T1340 ⑦] 종료 저장 뒤엔 마을 세계가 서 있다 — 내려가기 전 200ms 동안 몸이 걷고 메타 행을 다시 쓰면 저장된 마을 행(저장 순간)과 메타(그 뒤)가 갈린다
   _t1026Seq++;   // ★[T1026] 마을 틱 차례(슬롯 '쥐고 있는 일' 술어 · 값만)
   if (_t732BootWait) { try { _t732Boot(); } catch (e) { _t732BootWait = false; console.error(`[${state.zoneId}] 🧺 [T732] 곳간 로트 장부 붙이기 실패(장부 없이 계속):`, e.message); } }   // ★[T732] 미룬 붙이기(끄면 늘 거짓)
   if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();   // ★[T620 ②] 광맥 셀 미리 굽기(배경 · 한 번)
@@ -19073,15 +19204,16 @@ function _t728Meta() {
     car.push(o);
   }
   return JSON.stringify({ v: 1, rng: E && E.rngState ? E.rngState() : null, caravanId: W._caravanIdCounter || 0, caravans: car,
-    anchor: { day: W.day | 0, g: state.lastGameDay, epoch: state.epoch, dayMs: state.dayMs, at: Date.now() },
+    anchor: Object.assign({ day: W.day | 0, g: state.lastGameDay, epoch: state.epoch, dayMs: state.dayMs, at: Date.now() }, T1340_EXACT ? { t731: T731_ON ? { d: state.t731Day, a: state._t731Anchor, v: state.villages.map((v) => v._t731Day) } : null } : {}),   // ★[T1340 ①] 현지 자정 창 앵커
     ...(T742_ZONE ? { t742: _t742MetaOut() } : {}),
     ...(T1167_WAR ? (() => { const P = _t1167Pack(); return P ? { t1167: P } : {}; })() : {}),   // ★[T1167] 진행 중 전쟁(없으면 칸 0 · 끔 = 칸 없음)
     ...(T1034_KEEP ? (() => { const P = _t1034Pack(); return P ? { t1034: P } : {}; })() : {}),   // ★[T1034] 몸 칸(몸이 없으면 칸이 안 선다 · 끔 = 칸 없음)   // ★[T742] 존 · 모듈 메모리(끔 = 칸 없음 · 종전 글자)
-    ...(T1321_XZ_KEEP ? (() => { const P = _t1321Pack(); return P ? { t1321: P } : {}; })() : {}) });   // ★[T1321 ⓐ] 답 기다리는 넘김 · 받은 열쇠 · 받은 기록 줄(끔 = 칸 없음)
+    ...(T1321_XZ_KEEP ? (() => { const P = _t1321Pack(); return P ? { t1321: P } : {}; })() : {}),
+    ...(T1340_EXACT ? (() => { const P = _t1340EconPack(); return P ? { t1340: P } : {}; })() : {}) });   // ★[T1340 ④] econ 세계 그날 메모리(끔 = 칸 없음)   // ★[T1321 ⓐ] 답 기다리는 넘김 · 받은 열쇠 · 받은 기록 줄(끔 = 칸 없음)
 }
 const _t728Stat = { metaSaves: 0, restored: null, shutdown: null, dropKeys: [] };
 function _t728SaveMeta() {
-  if (!state.db || !state.db.upsertWorldMeta || !state.world) return;
+  if (!state.db || !state.db.upsertWorldMeta || !state.world || state._t1340Done) return;
   state.db.upsertWorldMeta(state.zoneId, _t728Meta(), state.world.day | 0); _t728Stat.metaSaves++;
   if (T1034_KEEP) _t1034Dirty = false;   // ★[T1034] 같은 줄이 몸 칸도 실었다
 }
@@ -19164,6 +19296,7 @@ function _t728Restore() {
         if (M.anchor && (T762_CARAVAN_BODY || (M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch))) { state._t1034Saved = new Map(Object.entries(M.t1034.b)); R.t1034 = state._t1034Saved.size; }
         else { _t1034Stat.clock++; R.t1034 = 'clock'; }
       }   // ★[T1034] 몸 칸 — T775 가 몸을 세울 때 덮는다(같은 날 메타만)
+      if (T1340_EXACT && M.t1340) { try { _t1340Stat.econ = _t1340EconIn(M.t1340); } catch (e) { _t1340Stat.econErr = e.message; } }   // ★[T1340 ④] 같은 날 메타 = 그날 econ 메모리
       R.meta = true;
     } else R.why = `메타 날 ${R.day} ≠ econ 날 ${W.day | 0} — 번호만 앞으로(난수 · 캐러밴은 종전대로)`;
   }
@@ -19181,6 +19314,18 @@ function _t728Restore() {
       R.due = due;
     }
   } else if (M.anchor) R.why += (R.why ? ' · ' : '') + `앵커 시계(하루 ${M.anchor.dayMs} · epoch ${M.anchor.epoch})가 지금 시계와 달라 날을 안 뛴다`;
+  //   ★[T1340 ①] 같은 벽시계 날 안에 다시 떴다 — 저장 순간의 날 앵커 그대로(부팅이 시계에서 다시 잰 값은 동쪽 끝 창이 앞선 날을 모른다)
+  if (T1340_EXACT && M.anchor && Number.isFinite(M.anchor.at) && Number.isFinite(M.anchor.g) && M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch
+      && gameDayOf(Date.now()) === gameDayOf(M.anchor.at) && !(R.jump > 0)) {
+    const A = { g0: state.lastGameDay, g: M.anchor.g };
+    state.lastGameDay = Math.max(state.lastGameDay, M.anchor.g);
+    const T = M.anchor.t731;
+    if (T731_ON && T && Number.isFinite(T.d) && T.d >= (state.t731Day | 0)) {
+      A.t731 = [state.t731Day, T.d]; state.t731Day = T.d; if (T.a != null) state._t731Anchor = T.a;
+      if (Array.isArray(T.v) && T.v.length === state.villages.length) state.villages.forEach((v, i) => { if (Number.isFinite(T.v[i])) v._t731Day = T.v[i]; });
+    }
+    _t1340Stat.anchor = A;
+  }
   _t728Stat.restored = R;
   console.log(`[${state.zoneId}] 🏘️ [T728] 재기동 영속 — 마을 곁 칸 ${R.side} · 메타 ${R.meta ? `되돌림(날 ${R.day} · 캐러밴 ${R.caravans}${R.lost ? ` · 못 이은 ${R.lost}` : ''})` : R.why}`
     + ` · 날 뜀 ${R.jump | 0}${R.jump ? `(econ 날 ${R.day} → ${W.day | 0} · 이미 도착했어야 할 캐러밴 ${R.due | 0})` : ''}`);
@@ -19198,6 +19343,7 @@ function t728Shutdown(capMs, done) {
   const t0 = Date.now();
   if (!state.ready || !state.world || !state.db) { done({ why: '마을 시뮬 없음' }); return; }
   state.dayFreeze = true;
+  if (T1340_EXACT) state._t1340Shut = true;   // ★[T1340] 이 뒤 저장 줄(종료 저장)만 몸 · 마을 · state 칸 전부를 싣는다
   const fin = (why) => {
     const t1 = Date.now(); let n = 0, err = null;
     if (why === '경계') {
@@ -19208,6 +19354,7 @@ function t728Shutdown(capMs, done) {
         state.saveQueue = []; n = rows.length;
       } catch (e) { err = e.message; }
     }
+    if (T1340_EXACT && why === '경계') state._t1340Done = true;   // ★[T1340 ⑦] 이 뒤 마을 틱 · 메타 쓰기 0
     const r = { why, waitMs: t1 - t0, saveMs: Date.now() - t1, villages: n, day: state.world.day | 0, err };
     _t728Stat.shutdown = r; done(r);
   };

@@ -98,6 +98,7 @@ async function segment(from) {
   env.NODE_OPTIONS = preloads();
   env.T577_STATE = STATE;
   if (!last && P.crashAt === to && !P.crashDone) { env.T722_CRASH = '1'; P.crashDone = true; saveP(); }   // 하네스 — 이 마디는 저장 없이 죽는다(한 번)
+  if (!last && process.env.T1308_STOP_NOW !== '0') env.T722_STOP_NOW = '1';   // ★[T1340] 마디 끝 = 마감 끝난 그 틱에 내린다(저장 큐 드레인 동안 날을 얼리지 않는다 · 되돌림 `T1308_STOP_NOW=0`)
   if (!last) { env.T722_STOP_DAY = String(to); env.T722_DUMP = path.join(DIR, `stop-${to}.json`); if (VCLOCK) env.T745_PHASE_OUT = path.join(DIR, `phase-${to}.json`); env.T1308_KEEP_OUT = path.join(DIR, `keep-${to}.json`); }
   if (from > 0) {
     const S0 = JSON.parse(fs.readFileSync(path.join(DIR, 'ck', `stop-${from}.json`), 'utf8'));

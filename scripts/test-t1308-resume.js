@@ -9,7 +9,8 @@
 //   ③ 미끼 — 다시 뜬 마디에서 econ 난수 상태를 덮은 사본(`T1308_BAIT_RNG=1` = "난수 상태를 안 잇는 사본")은 ① 과 econ 지문이 갈린다(빨강이어야 한다).
 //   ④ 한 번에 돈 판(10날 마디 하나)과 ① 의 차는 기록만 한다(판정 아님 — 제품 재기동이 잃는 서버 마을 칸 · 몸 자리 · 보고 T1308 §2 · 회부).
 //   ⑤ 같은 폴더에 다른 판을 부르면 덮지 않는다(코드 2).
-// 실행: node scripts/test-t1308-resume.js   (판 넷 · 동시 둘 · 약 6 ~ 8분)
+//   ⑥ [T1340] 끊고 이은 판(10 + 2) — 종료 저장 순간 ↔ 다시 뜬 첫 틱 몸 · 서버 마을 칸 갈림 0 · 미끼(몸 칸 전부 줄을 뺀 사본) 빨강 · 한 번에 돈 판과 econ 날 지문 12/12 · 판 JSON 같음.
+// 실행: node scripts/test-t1308-resume.js   (판 일곱 · 동시 둘 · 약 12 ~ 15분)
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -69,6 +70,24 @@ const full = (r) => r && r.both > 0 && r.same === r.both;
   ok(S.code === 0, '한 번에 돈 판(마디 하나)도 같은 자로 끝까지', `코드 ${S.code}`);
   const W = await run(['12', '1020', '--every', '5', '--tag', 'X', '--dir', D('X')]);
   ok(W.code === 2, '같은 폴더에 다른 판(12날)을 부르면 덮지 않는다(코드 2)', `코드 ${W.code}`);
+
+  console.log('\n⑥ 끊고 이은 판 = 한 번에 돈 판(T1340 · 판 자 잇기 훅 끔 — 제품 영속만)');
+  //   마디 판(10 + 2)의 종료 저장 순간 ↔ 다시 뜬 첫 틱 전수(몸 · 서버 마을 칸) · 그 첫 틱 V 에서 한 번에 돈 판과 econ 날 지문 · 판 JSON
+  const MO = { T1308_KEEP: '0', NODE_OPTIONS: ENV.NODE_OPTIONS + ` -r ${path.join(__dirname, 't1340-moment-hook.js')}` };
+  const [P, Pb] = await Promise.all([
+    run(['12', '1020', '--every', '10', '--tag', 'P', '--dir', D('P')], MO),
+    run(['12', '1020', '--every', '10', '--tag', 'B', '--dir', D('B')], Object.assign({ T1340_BAIT: 'body' }, MO)),
+  ]);
+  const mom = (dir) => { const j = path.join(BASE, `mom-${path.basename(dir)}.json`); execFileSync(process.execPath, [path.join(__dirname, 't1340-moment-cmp.js'), path.join(dir, 'seg-0.json.t1340-save.json'), path.join(dir, 'seg-10.json.t1340-ready.json'), '--json', j], { stdio: 'ignore' }); return JSON.parse(fs.readFileSync(j, 'utf8')); };
+  const nk = (g) => Object.keys(g || {}).length;
+  const MP = P.code === 0 ? mom(D('P')) : null;
+  ok(MP && MP.bodies > 0 && nk(MP.groups['몸']) === 0 && nk(MP.groups['서버 마을']) === 0, '다시 뜬 첫 틱 = 종료 저장 순간 — 몸 칸 · 서버 마을 칸 갈림 0', MP ? `몸 ${MP.bodies} · 몸 칸 ${nk(MP.groups['몸'])} · 마을 칸 ${nk(MP.groups['서버 마을'])}` : `코드 ${P.code}`);
+  const MB = Pb.code === 0 ? mom(D('B')) : null;
+  ok(MB && nk(MB.groups['몸']) > 0, '[미끼] 종료 저장에서 몸 칸 전부 줄(걸음 · 일 진행 · 결정 시각)을 뺀 사본은 갈린다', MB ? `몸 칸 ${nk(MB.groups['몸'])}` : `코드 ${Pb.code}`);
+  const V = MP ? MP.ready.V : null;
+  const Q = V ? await run(['12', '1020', '--every', '12', '--tag', 'Q', '--dir', D('Q')], Object.assign({ T1340_AT_V: String(V) }, MO)) : { code: -1 };
+  const RQ = Q.code === 0 ? cmp(D('Q'), D('P')) : null;
+  ok(RQ && full(RQ.econ) && RQ.econ.both === 12 && RQ.runJson && RQ.runJson.same, '한 번에 돈 12날 = 10 + 2날 — econ 날 지문 12/12 · 판 JSON 같음', RQ ? `econ ${RQ.econ.same}/${RQ.econ.both} · 판 JSON ${RQ.runJson && RQ.runJson.same ? '같음' : '다름'} · (기록) 몸 자리 ${RQ.body && RQ.body.same}/${RQ.body && RQ.body.both} · 마을 칸 ${RQ.side && RQ.side.same}/${RQ.side && RQ.side.both}` : `코드 ${Q.code}`);
 
   console.log(`\n=== T1308 결과: ${pass} 통과 · ${fail} 실패 ===`);
   if (!fail) fs.rmSync(BASE, { recursive: true, force: true });
