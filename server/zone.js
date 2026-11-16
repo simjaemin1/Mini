@@ -3657,14 +3657,16 @@ const T1032_NPC_KILL = process.env.T1032_NPC_KILL !== '0';
 //   화살(`mobs.values()` 를 돈다)과 NPC 싸움(`mobs.get` + hp)은 종전에도 이 둘을 지켰다 — 같은 문으로 옮길 뿐 값 무변(구멍은 사람 공격 하나).
 const T1240_KILL_ONCE = process.env.T1240_KILL_ONCE !== '0';
 function mobLive(m) { return !!m && mobs.has(m.mid) && m.hp > 0; }
-// ★★[T1321 2026-11-14 · 세션8 · T1292 회부 3 · ★재민 11-12 "한반도 ↔ 닛폰 사이에 동물이 자유롭게 오가"] 손잡이 `T1321_XZ_BEAST`('1' 만 켬 · ★기본 끔 —
+// ★★[T1321 2026-11-14 · 세션8 · T1292 회부 3 · ★재민 11-12 "한반도 ↔ 닛폰 사이에 동물이 자유롭게 오가"] 손잡이 `T1321_XZ_BEAST`(★T1324 켬 기본 · '0' 끔 · 팔 안 —
 //   끔 = 문을 안 만든다 · 아래 자리마다 `if (T1321_XZ_BEAST …)` 하나 · 몹 걸음 · 적재 · 받는 문 · 넘기 ACK 줄 그대로 = main 바이트).
 //   존 몹(DB 행이 있는 몸 — 야생 · 맹수 · 길든 짐승)이 땅 이웃 존 쪽 존 사각을 걸어 나가면 이웃 존에 넘긴다 — 사람 넘기와 같은 겹침 띠 ·
 //   캐러밴 몸과 같은 문(`/handoff_prepare` `kind: 'beast'`) · 숨김 → 답 OK → 지움 · `dup` 은 버림. 몸통 = `server/xzone-beast.js`(머리글이 규칙 전부).
 //   야생 그림자(`isWild` — 랩 블록 몸 · 장부의 연출)는 이 문을 안 탄다(아래 몹 고리가 그 몸을 이미 건너뛴다 — 넘김은 장부 몫 · 보고 §1 ⓑ).
 //   ★길든 짐승 — 주인이 이웃 존으로 넘어가면(넘기 ACK · 시한) 그 넘어간 자리를 적어 두고(`_t1321Gone` · 주인 id → 이 존 로컬 자리) 짐승이 그 자리로 걸어 띠를 건넌다.
 //     주인이 이 존에 다시 서면(되돌림 · 돌아옴) 지운다. 메모리만이다 — 존이 다시 뜨면 종전대로 선다(보고 §6).
-const T1321_XZ_BEAST = process.env.T1321_XZ_BEAST === '1';
+//   ★★[T1324 2026-11-15 · ★재민 11-15 "전부 켜"] **켬 기본**(되돌림 `T1321_XZ_BEAST=0`) — 팔 `T525_CROSS_ZONE` 안: 팔 끔(한 존 판)이면 끔과 같다
+//     (문을 안 만든다 · 위 자리마다 `if (T1321_XZ_BEAST …)` 가 안 돈다 = main 바이트). 팔은 econ 정본과 같은 env 글자(`=== '1'`).
+const T1321_XZ_BEAST = process.env.T525_CROSS_ZONE === '1' && process.env.T1321_XZ_BEAST !== '0';
 const T1321_XZ_DRAIN0 = process.env.T1321_XZ_DRAIN === '1';   // ★[T1321 ④] 비우기(새 넘김 0) — 부팅 손잡이 · 아래 `kind: 'drain'` 명령이 켜고 끈다(마을 쪽과 한 칸 — `SimVillages.t1321Drain`)
 const _t1321Gone = new Map();   // 주인 playerId → { x, y, to, at } — 주인이 넘어간 자리(이 존 로컬)
 const _t1321Stat = { died: 0, born: 0, follow: 0, gone: 0, goneClear: 0 };

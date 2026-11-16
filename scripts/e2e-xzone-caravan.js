@@ -30,7 +30,7 @@
 //   ⓗ' [T1321] 보내는 존이 죽는다(T1292 회부 5) — 닛폰을 먼저 죽여(연결 안 섬) 한반도가 민 기록이 다시 밂 줄에 선 것을 보고 · 그 줄이 한반도 DB 메타 행에 실린 뒤
 //      한반도 SIGKILL → 닛폰 · 한반도를 같은 DB 로 다시 띄운다 → 줄의 'arrive' 기록(켬 = 죽은 한반도 DB 메타 행의 그 줄)마다
 //      받는 존 받음(받은 열쇠 · 몸 들어옴) + 보낸 존 되돌림 = 정확히 1(둘 0 · 사라짐 0).
-//      `T1321_XZ_KEEP=1` 을 이 자에 주면 켬(줄이 메타에 실려 다시 민다) · 안 주면 끔(종전 — 다시 밂 줄이 메모리라 사라진다: 들어옴 + 되돌림 = 0 · 증인).
+//      ★T1324 켬 기본(줄이 메타에 실려 다시 민다) · `T1321_XZ_KEEP=0` 을 이 자에 주면 끔(종전 — 다시 밂 줄이 메모리라 사라진다: 들어옴 + 되돌림 = 0 · 증인).
 //   ⓚ [T1292] 몸 보존(캐논 797 — 경계에서 사라지거나 둘이 되면 안 된다) — 두 존에 `scripts/fixture-xz-bodylog.js` 를 물려 몸 표 넣기 · 빼기 ·
 //      숨김(`hide` · `unhide`)을 한 시계(µs)로 적고 맞댄다(ⓔ 뒤 · ⓗ 죽이기 앞까지): ① 같은 몸이 두 존에 동시에 **보인** 때 0 ② 사라진 몸 0
 //      (넘기려 끝난 몸이 어느 존에서도 다시 안 섬) ③ 표 틈 0(같은 몸이 어느 존 표에도 없던 때 — 데이터상 몸은 언제나 있다) ④ 숨긴 몸은 풀린다(판 끝까지 숨은 채 0)
@@ -102,7 +102,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     ...(BODY?{T1182_E2E_STOP_DIR:checkpointDir,NODE_OPTIONS:((process.env.NODE_OPTIONS||'')+' --require '+path.join(ROOT,'scripts/t1182-e2e-checkpoint.js')).trim()}:{}),
     T952_XZ_STAY: process.env.T952_XZ_STAY || '',   // ★[T952] 이 자에 준 그대로(끔 = 빈 값)
     T1030_XZ_MARKET: process.env.T1030_XZ_MARKET || '',   // ★[T1030] 이 자에 준 그대로(끔 = 빈 값)
-    T1321_XZ_KEEP: process.env.T1321_XZ_KEEP || '',   // ★[T1321] 이 자에 준 그대로(끔 = 빈 값 · ⓗ 보내는 존 죽이기 절이 켬 · 끔을 가른다)
+    T1321_XZ_KEEP: process.env.T1321_XZ_KEEP || '',   // ★[T1321] 이 자에 준 그대로(★T1324 켬 기본 — 빈 값 = 켬 · '0' = 끔 · ⓗ' 보내는 존 죽이기 절이 켬 · 끔을 가른다)
     //   ★[T1139] 걸음표는 **물은 쌍만** 판다(`server/xzone.js` 손잡이 `T1139_XZ_LAZY` — 서버 기본은 끔 = 전 쌍 한 벌) · `T1139_XZ_LAZY=0` 을 주면 종전(전 쌍)
     T1139_XZ_LAZY: process.env.T1139_XZ_LAZY != null ? process.env.T1139_XZ_LAZY : '1',
     //   ★[T662] 걸음표 한 벌 파일 자리 — 이 판의 임시 폴더(판마다 처음부터 잰다 = 찬 판을 잰다 · 두 존이 같은 자리를 봐야 한 벌을 나눈다)
@@ -430,7 +430,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
 
   // ── ⓗ' [T1321] 보내는 존(한반도)이 죽는다 — 다시 밂 줄이 재기동을 건너나 ─────────────────────────────
   if (process.env.XZ_KILL !== '0') {
-    const KEEP = process.env.T1321_XZ_KEEP === '1', dm = +DAYMS;
+    const KEEP = process.env.T1321_XZ_KEEP !== '0', dm = +DAYMS;   // ★[T1324] 켬 기본
     console.log(`\n[ⓗ' T1321 — 보내는 존(한반도)이 다시 밂 줄을 쥔 채 죽는다 · ${KEEP ? '켬(T1321_XZ_KEEP — 줄이 메타에 실린다)' : '끔(종전 — 줄은 메모리)'}]`);
     const { DatabaseSync } = require('node:sqlite');
     const metaH = () => { let db = null; try { db = new DatabaseSync(`${DDIR}/w-hanbando.db`, { readOnly: true }); const r = db.prepare('SELECT data, day FROM world_meta WHERE zone = ?').get('hanbando'); return r ? Object.assign(JSON.parse(r.data), { _rowDay: r.day }) : null; } catch (e) { return null; } finally { try { db && db.close(); } catch (e) {} } };

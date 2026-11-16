@@ -308,7 +308,9 @@ const _t1292Stat = { hide: 0, unhide: 0, keepUnknown: 0, sure: 0, escSent: 0, es
 const T1292_XZ_ESC = process.env.T1292_XZ_ESC !== '0';
 const _t1292EscAlive = (body) => { let n = 0; for (const e of (body && body.escorts) || []) { const p = state.deps.players.get(e.pid); if (p && p.hp > 0) n++; } return n; };
 const _t1292Esc = (n, alive) => { if (!T1292_XZ_ESC || !Number.isInteger(alive) || alive < 0) return n; const m = Math.min(n | 0, alive); if (m < (n | 0)) _t1292Stat.escCut++; return m; };
-// ★★[T1321 2026-11-14 · 세션8 · T1292 회부 5 · 6] 손잡이 둘('1' 만 켬 · ★기본 끔 · 끔 = 아래 함수들이 늘 무동작 = main 바이트 · 팔 `T525_CROSS_ZONE` 켬일 때만 닿는다):
+// ★★[T1321 2026-11-14 · 세션8 · T1292 회부 5 · 6] 손잡이 둘(끔 = 아래 함수들이 늘 무동작 = main 바이트 · 팔 `T525_CROSS_ZONE` 켬일 때만 닿는다):
+//   ★★[T1324 2026-11-15 · ★재민 11-15 "전부 켜"] ⓐ `T1321_XZ_KEEP` **켬 기본**(되돌림 `=0`) · ⓑ `T1321_XZ_DRAIN` 은 끄기 절차라 그대로 '1' 만 켬.
+//     팔 끔(한 존 판)이면 `state.xzone` 이 없어 ⓐ 함수들이 무동작이고 메타 곁 칸도 안 선다(= main 바이트) · 명령 문(`T1321_CMD`)도 팔 안에서만.
 //   ⓐ `T1321_XZ_KEEP` — **답을 기다리는 넘김이 재기동을 건넌다**(회부 5). 종전: 숨긴 몸(`_xzHidden`)은 메타에 안 실리고 다시 밂 줄(`X.retry`) · 경계 칸 기다림
 //      (`_xzSendWait`) · 받은 열쇠(`X.seen`) · 받은 기록 줄(`core.pend` — econ 이 다음 경계에 읽기 전)은 메모리다 ⇒ 보내는 존이 그 사이 다시 뜨면 기록이 사라진다
 //      (받는 존이 받았으면 저쪽에만 · 안 받았으면 어디에도 — 집 존 캐러밴은 'xzone' 칸에 영영 묶인다 = 상인 · 짐 사라짐).
@@ -324,9 +326,9 @@ const _t1292Esc = (n, alive) => { if (!T1292_XZ_ESC || !Number.isInteger(alive) 
 //      ③ 비움 끝(`t1321DrainStatus().done`) = 이 존 캐러밴이 저쪽에 0 · 저쪽 캐러밴이 이쪽에 0 · 답 기다림 0 · 받은 기록 줄 0 → 그때 팔을 끈다.
 //      ★끈 판의 안전망(econ 쪽 · 같은 env `T1321_XZ_DRAIN` — `sim/economy-sim-v2.js`): 팔이 꺼졌거나 걸음표가 아직이면(`_xzOn` 거짓) 이웃 존 캐러밴의 'return'(`_xzHandBack`)을
 //         적지 않고 경계에 선 채 하루씩 미룬다 — 종전은 `world.xzone.zone` 을 읽다 예외(그날 캐러밴 고리가 통째로 멈춘다).
-const T1321_XZ_KEEP = process.env.T1321_XZ_KEEP === '1';
+const T1321_XZ_KEEP = process.env.T1321_XZ_KEEP !== '0';
 let _t1321Drain = process.env.T1321_XZ_DRAIN === '1';
-const T1321_CMD = T1321_XZ_KEEP || _t1321Drain || process.env.T1321_XZ_BEAST === '1';   // 비우기 명령 문(zone.js `kind: 'drain'`)이 서는 판 — T1321 손잡이 하나라도 켬(끔 = 그 종류는 종전 '모르는 종류' 400)
+const T1321_CMD = process.env.T525_CROSS_ZONE === '1' && (T1321_XZ_KEEP || _t1321Drain || process.env.T1321_XZ_BEAST !== '0');   // 비우기 명령 문(zone.js `kind: 'drain'`)이 서는 판 — 팔 켬 + T1321 손잡이 하나라도 켬(끔 = 그 종류는 종전 '모르는 종류' 400)
 const _t1321Stat = { put: 0, del: 0, restored: 0, restoredSeen: 0, restoredQ: 0, unsureKeep: 0, drainBounce: 0, drainRefuse: 0, drainCmd: 0, mark: 0, track: 0 };
 function t1321Drain() { return _t1321Drain; }
 function t1321SetDrain(on) {

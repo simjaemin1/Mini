@@ -810,7 +810,7 @@ function deleteVillageCell(villageId, type, cx, cy) {
   if (!_t1238DelCell) _t1238DelCell = db.prepare('DELETE FROM village_buildings WHERE village_id = ? AND type = ? AND cx = ? AND cy = ?');
   return _t1238DelCell.run(villageId | 0, String(type), cx | 0, cy | 0).changes;
 }
-// ★★[T1321 2026-11-14] 짐승 넘김 표 둘 — **처음 부를 때** 세운다(손잡이 `T1321_XZ_BEAST` 켬에서만 불린다 · 끔 = 표 0 · 문장 0 · main 바이트 · T1238 꼴).
+// ★★[T1321 2026-11-14] 짐승 넘김 표 둘 — **처음 부를 때** 세운다(손잡이 `T1321_XZ_BEAST` 켬에서만 불린다 — T1324 켬 기본 · 팔 안 · 끔 = 표 0 · 문장 0 · main 바이트 · T1238 꼴).
 //   `t1321_pend` — 보내는 존: 숨긴 채 답을 기다리는 짐승(열쇠 · DB 몹 행 id · 받는 존 · 실은 글) — 다시 떠도 숨김이 이어진다
 //   `t1321_seen` — 받는 존: 받은 열쇠(같은 열쇠를 두 번 받으면 `dup` — 세우지 않는다) · 다시 떠도 남는다 · 오래된 것부터 5,000 넘게는 버린다(캐러밴 `X.seenQ` 상한)
 //   `t1321Tx` — 몹 행 넣기 · 지우기와 위 두 표를 한 거래로(SAVEPOINT — 바깥 거래가 열려 있어도 안전)
