@@ -9,7 +9,8 @@
 const fs = require('fs'), path = require('path');
 const B = process.argv[2] || __dirname;
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
-const alive = (pf) => { try { process.kill(+fs.readFileSync(pf, 'utf8'), 0); return true; } catch (e) { return false; } };
+// 살아 있나 — 같은 기계면 감독 pid 로, 다른 기계(맥 연결 VM 에서 맥 판을 볼 때 · pid 가 안 보인다)면 진행 줄(30초마다 쓰임)이 2분 안에 바뀌었는지로
+const alive = (pf, d) => { try { process.kill(+fs.readFileSync(pf, 'utf8'), 0); return true; } catch (e) {} try { return Date.now() - fs.statSync(path.join(d, 'progress.txt')).mtimeMs < 120000; } catch (e) { return false; } };
 let order = [];
 try { order = fs.readFileSync(path.join(B, '판목록.txt'), 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#') && !/^[A-Z]+=/.test(l)).map((l) => l.split(/\s+/)[0]); } catch (e) {}
 const dirs = fs.readdirSync(B).filter((n) => fs.existsSync(path.join(B, n, 'progress.json')));
@@ -19,7 +20,7 @@ const pops = {};
 for (const n of dirs) {
   const d = path.join(B, n), P = rd(path.join(d, 'progress.json')) || {};
   let pt = ''; try { pt = fs.readFileSync(path.join(d, 'progress.txt'), 'utf8').trim(); } catch (e) {}
-  const st = P.done ? '끝' : (alive(path.join(d, 'guard.pid')) ? '도는 중' : '멈춤(다시 더블클릭하면 이어 돕니다)');
+  const st = P.done ? '끝' : (alive(path.join(d, 'guard.pid'), d) ? '도는 중' : '멈춤(다시 더블클릭하면 이어 돕니다)');
   const rows = new Map(), cpu = new Map();
   for (const f of fs.readdirSync(d).filter((x) => /^seg-\d+\.t1243\.json$/.test(x)).sort((x, y) => parseInt(x.slice(4), 10) - parseInt(y.slice(4), 10))) {
     const o = rd(path.join(d, f)); if (!o) continue;
