@@ -105,6 +105,14 @@ async function waitHttp(url, tries = 600) {
     // ★각자 **다른 신원**이어야 한다 — 같은 컨텍스트를 쓰면 게스트 토큰을 공유해 한 몸이 된다.
     const ctx = await browser.newContext({ viewport: { width: 1100, height: 720 } });
     { const js = require('./lib-phase').browserSkew(SKEW_MS); if (js) await ctx.addInitScript(js); }   // ★[T1310 ①] 브라우저 시계 어긋남 판(선택)
+    //   ★[T1310 미끼] `T1310_BAIT=off0` — 받은 클라 글자에서 `srvNow()` 를 오프셋 0(클라 벽시계)으로 박은 사본으로 바꿔 싣는다(파일 무변 · 이 판의 브라우저만).
+    //     어긋남 판(+5분)에서 화살 절이 빨강이어야 한다 — 시계 보정이 실제로 일한다는 반례.
+    if (process.env.T1310_BAIT === 'off0') await ctx.route('**/client/20-r2-visibility.js*', async (route) => {
+      const r = await route.fetch(); let t = await r.text(); const n = t.split('function srvNow() {').length - 1;
+      if (n !== 1) throw new Error('[T1310 미끼] srvNow 자리 ' + n + '곳');
+      t = t.replace('function srvNow() {', 'function srvNow() { return Date.now();');
+      await route.fulfill({ response: r, body: t, headers: Object.assign({}, r.headers(), { 'content-length': String(Buffer.byteLength(t)) }) });
+    });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => allErrs.push(`[${tag}] ` + String(e.message).slice(0, 160)));
     await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
