@@ -69,9 +69,12 @@ function one(h) {
     const M = O.met[L] || {}; world = { cu: 0, sn: 0, ag: 0 }; for (const o of Object.values(M)) { if (o.copper) world.cu += o.copper[0]; if (o.tin) world.sn += o.tin[0]; if (o.silver) world.ag += o.silver[0]; }
   }
   const cpu = C && C.cpu ? C.cpu.filter((q) => q[0] >= 2 && q[0] <= L) : [];
+  // 인구 — 판 끝은 판 여덟 수 · `--at` 이면 그 날 t1333 ① 마을 사람 수 합(관찰기 없으면 —)
+  let pop = J && J.eight ? J.eight.pop : null;
+  if (opt.at) { pop = null; if (O && O.day[L]) { const ip = O.vcols.indexOf('pop'); if (ip >= 0) pop = sum(Object.values(O.day[L]).map((r) => r[ip])); } }
   return { L, bronze, smelt, b5: bzOf('광산5'), b6: bzOf('광산6'), b1: bzOf('어촌1'), cu5n: cu5.length, cu5amt: sum(cu5.map((x) => x[4])), cu5first: cu5.length ? cu5[0][0] : null,
-    legs: { copper: cnt('copper'), tin: cnt('tin'), silver: cnt('silver'), weapon: cnt('weapon') }, lock, wq, wqB, p5, world, knobs: O ? O.knobs : null, tinOre, oreLegs, tradeN,
-    pop: J && J.eight ? J.eight.pop : null, wq8: J && J.eight ? J.eight.weapQ : null, cpuDay: cpu.length ? sum(cpu.map((q) => q[1])) / cpu.length : null };
+    legs: O ? { copper: cnt('copper'), tin: cnt('tin'), silver: cnt('silver'), weapon: cnt('weapon') } : null, lock, wq, wqB, p5, world, knobs: O ? O.knobs : null, tinOre, oreLegs, tradeN,
+    pop, wq8: J && J.eight ? J.eight.weapQ : null, cpuDay: cpu.length ? sum(cpu.map((q) => q[1])) / cpu.length : null };
 }
 const S = {}; for (const [n, h] of arms) S[n] = one(h);
 const base = S[arms[0][0]];
@@ -85,7 +88,7 @@ line('끔비(청동)', (s) => base && base.bronze ? f2(s.bronze / base.bronze) :
 line('녹임 누계', (s) => f1(s.smelt));
 line('광산5 · 광산6 · 어촌1 청동', (s) => `${f2(s.b5)} · ${f2(s.b6)} · ${f2(s.b1)}`);
 line('광산5 로 간 구리 짐(수 · 양 · 첫 날)', (s) => `${s.cu5n} · ${f1(s.cu5amt)} · ${s.cu5first == null ? '—' : 'd' + s.cu5first}`);
-line('금속 짐 줄 — 구리 · 주석 · 은 · 무기', (s) => `${s.legs.copper} · ${s.legs.tin} · ${s.legs.silver} · ${s.legs.weapon}`);
+line('금속 짐 줄 — 구리 · 주석 · 은 · 무기', (s) => s.legs ? `${s.legs.copper} · ${s.legs.tin} · ${s.legs.silver} · ${s.legs.weapon}` : '—');   // t1333 관찰기 없는 판(T1313 판)은 —(광산5 구리 짐만 로그에서)
 line('잠김 주석 · 납 · 은 %', (s) => s.lock ? MIN.map((k) => s.lock[k].melt ? pc(s.lock[k].lock / s.lock[k].melt) : '—').join(' · ') : '—');
 line('주석 원석 녹임 흐름 목표 합 · 바닥(0.2) % · 값표 ÷ 흐름', (s) => s.tinOre && s.tinOre.n ? `${f0(s.tinOre.fl)} · ${pc(s.tinOre.floor / s.tinOre.n)} · ${f2(s.tinOre.tg / s.tinOre.fl)}` : '—');
 line('원석 짐(줄 · 양)', (s) => s.oreLegs ? `${s.oreLegs.n} · ${f1(s.oreLegs.amt)}` : '—');
@@ -94,7 +97,7 @@ line('무기Q(판 여덟 수 — 판 끝)', (s) => s.wq8 == null ? '—' : f0(s.
 line('무기 Q(곳간 가중 · 청동 낸 마을)', (s) => `${s.wq == null ? '—' : s.wq.toFixed(3)} · ${s.wqB == null ? '—' : s.wqB.toFixed(3)}`);
 line('광산5 구리 값(날 11 ~ 가운데)', (s) => f2(s.p5));
 line('세계 곳간 끝 — 구리 · 주석 · 은', (s) => s.world ? `${f1(s.world.cu)} · ${f1(s.world.sn)} · ${f1(s.world.ag)}` : '—');
-line('인구', (s) => f0(s.pop));
+line(opt.at ? '인구(그 날 · t1333 마을 사람 수 합)' : '인구(판 여덟 수 — 판 끝)', (s) => f0(s.pop));
 line('하루 CPU 초(날 2 ~)', (s) => f2(s.cpuDay));
 console.log(out.join('\n'));
 if (opt.json) fs.writeFileSync(opt.json, JSON.stringify(S));
