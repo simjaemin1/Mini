@@ -152,10 +152,13 @@ console.log('\n④ 장부 다리 — 밭 입고가 **품목으로** 잠재·실�
 console.log('\n⑤ ⓑ 헤드리스 — 켜면 이 마을 밭은 **몸이 한다**(농부 몫 두 절 호출 0) · 존이 통째로 자면 일괄이 그 몫(몸 XOR 일괄) · ★T410 문을 열면(기본) 존이 안 잔다');
 {
   const hl = bodyOf(VC, '_lifeHeadlessDay');
-  // ★[T1317 · T1284 `3282c420` land1072] 일괄 두 절 글자가 바뀌었다 — 개간은 `!_t84` 를 더 묻고(켬 = 작물 뒤로 옮김) 작물 절은 `{ … if (_t84) 개간 }` 블록이 됐다. `_t84` = `_t1284On() && _t1221On()`(T1284 끔 기본 = 거짓) ⇒ 끔이면 종전 두 절 그대로 — 그 뜻을 그대로 핀한다.
-  //   ★[T1220-K1] 옛 글자 — T1212 ① 이 작물 절의 날을 밭 날(`_farmDay(vil, day)` · 끔 = `day` 그대로)로 바꿨다 — 판정(`!_body`)은 그대로라 글자만 새로.
-  ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /const _t84 = _t1284On\(\) && _t1221On\(\);/.test(hl) && /if \(!_body && !_cut && !_t84\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /else if \(!_body\) \{ lifeFarmDay\(vil, _farmDay\(vil, day\), farmerN\); if \(_t84\) _lifeClearDay\(vil, farmerN\); \}/.test(hl) && /const _cut = _t1243On\(\) && _t1243Live\(\);/.test(hl),   // ★[T1243] 켬 + 라이브 = 두 절 걷음(`_cut`)
-    '⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 작물');
+  //   ★★[T1328 · 글자 핀 → 뜻 단언] 원문 `_lifeHeadlessDay` 를 잘라 **돌려서** 묻는다(`scripts/lib-headless-day.js` — 부른 일 · 수 · 차례를 적는다). 줄 모양이 바뀌어도(T1284 `_t84` · T1243 `_cut` 처럼 같은 줄에 조건이 더 붙어도) 뜻이 같으면 초록이다.
+  { const HD = require('./lib-headless-day');
+    const B = HD.run({ walk: true, awake: true, rest: false }), A1 = HD.run({ walk: true, awake: false }), A2 = HD.run({ walk: false, awake: true }), K = HD.run({ cut: true });
+    const both = (r) => r.clear.length === 1 && r.clear[0] === r.farmers && r.farm.length === 1 && r.farm[0][1] === r.farmers && r.order.join(',') === 'clear,farm';
+    ok(B.clear.length === 0 && B.farm.length === 0 && both(A1) && both(A2) && K.clear.length === 0 && K.farm.length === 0,
+      '⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 작물',
+      `몸(걷기 · 깸) 일괄 ${B.clear.length}·${B.farm.length} · 걷기만 ${A1.clear.length}·${A1.farm.length} · 깸만 ${A2.clear.length}·${A2.farm.length} · 걷음 ${K.clear.length}·${K.farm.length}${B.unknown.length ? ' · 모르는 이름 ' + B.unknown.join(' ') : ''}`); }
   //   ★[T400] 집 절에 집 행위 손잡이 가드(`&& !_lifeEcon().T400_BUILD_ACT`)가 붙었다 — 농부 판정(`_body`)과 무관한 것은 그대로다.
   ok(/if \(vil\._site(?: && !_lifeEcon\(\)\.T400_BUILD_ACT)?\) \{ let st = Math\.min\(LIFE_CREW, popN\) \* LIFE_STAGE_PDAY;/.test(hl) && !/_body[^\n]*LIFE_STAGE_PDAY/.test(hl),
     '⑤ ② 신축은 **그대로**다(농부 몫이 아니다 — 직업 무관 크루 · T361 칸)');
