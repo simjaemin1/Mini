@@ -12,6 +12,7 @@
 //     ② 그리고 두 판의 판 JSON 이 **바이트 같다**(econ · 마을 칸 · 판 끝 수)
 //     ③ ★자명 통과 금지 — 끔(`=0` · 종전 벽시계 타이머)이면 벽시계 판의 쉼터가 켬 판과 다른 날에 선다(기동 · 마감이 실제 시간을 먹는다 — 이 판이 잡은 갈림의 첫 칸)
 'use strict';
+if (process.env.T1334_BUNDLE === undefined) process.env.T1334_BUNDLE = '0';   // ★[T1334 ④] 켬 기본 묶음 끔을 글자로 — 이 하네스는 판 자(벽시계 = 가상 시계 바이트 같음)를 끔 세계에서 잰다(묶음 세계는 벽시계 판 ≠ 가상 시계 판 — 어느 갈래가 벽시계를 읽나는 보고 T1334 회부 5)
 const fs = require('fs'), os = require('os'), path = require('path');
 const { spawn } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');

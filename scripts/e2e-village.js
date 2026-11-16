@@ -18,6 +18,7 @@
 //   ★테스트 손잡이(전부 기본 OFF/기본값): E2E_GIVE=1(재료 지급 분기) · VILLAGE_DAY_MS(빠른 하루)
 //     VILLAGE_MAX=1(시딩 1곳 — 부팅 4~5분 회피) · VILLAGE_FOUND_COST(자재 눈금) · PVILLAGE_GAP
 'use strict';
+if (process.env.T1334_BUNDLE === undefined) process.env.T1334_BUNDLE = '0';   // ★[T1334 ④] 켬 기본 묶음 끔을 글자로 — 이 하네스는 영토 갈래(T1207 · T1238)를 제 env 로 가른다(빈 값 = 종전 영토 판) · 묶음 세계 판은 낱 글자를 주고 돌린다(켠 판 갈래)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

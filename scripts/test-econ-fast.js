@@ -15,6 +15,7 @@
 //   판 조건 = 서버 기준선 자(`VILLAGE_CARAVAN_MAX=0` · `T400_BUILD_ACT=0` — T650 econ 바이트 결정론이 선 판). 전체 ≈9분.
 // 실행: node scripts/test-econ-fast.js
 'use strict';
+if (process.env.T1334_BUNDLE === undefined) process.env.T1334_BUNDLE = '0';   // ★[T1334 ④] 켬 기본 묶음 끔을 글자로 — 이 하네스는 econ 빠른 꼴을 끔 세계에서 잰다 · '다시 뜬 판'은 존을 t577 훅(econ 을 먼저 읽는다)으로 바로 띄워 켬 기본이면 존 맨 위 지킴이 멈춘다(반쪽 묶음 0)
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
