@@ -31,7 +31,13 @@ const rec = {
   ccols: ['day', 'v', 'amt', 'grade', 'bz', 'castF', ...MELT],
   xcols: ['grade', 'bz', 'castF', 'amt', 'copper', 'tin', 'lead', 'gold'],
   day: {}, casts: [], noAg: [], trade: {}, mix: [], depart: [], rows: 0, err: null,
+  // ⑤ 첫째 화물 다리(`world.onTradeLeg` — econ 출발 자리의 읽기만 훅 · T206 문법): 구리를 내보낼 수 있는 마을의 출발 · 광산5 로 가는 출발 —
+  //    고른 다리의 낱개 몫 · 짐 몫 · 양 · 호위 · 남는 kg(몸 짐 × (1 + 호위) − 첫째 무게) · 그 마을 구리 내보낼 몫 · 구리 값(그 마을 · 광산5 — 각 마을 교역 값표 캐시) ·
+  //    같은 날 구리 → 광산5 다리였다면의 낱개 몫(첫째 화물 식 `_legProfitPerUnit` · 운반비 · 습격 손실은 종전 식 · 도적 길목 · 갱 · 전쟁 위협 0 으로 — 기본 길만)
+  lcols: ['day', 'from', 'to', 'res', 'units', 'pu', 'profit', 'escort', 'roomKg', 'res2', 'amt2', 'cuSurplus', 'pCuFrom', 'pCu5', 'dist5', 'cuPu5', 'cuTot5', 'mv', 'tripDays'],
+  legs: [],
 };
+const K5 = '광산5';
 let VIL = null, W0 = null, V2 = null, foodRef = null;
 const foodPer = (r) => { try { const f = foodRef ? V1.storageFoodPer(foodRef, r) : 0; return f > 0 ? f : 0; } catch (e) { return 0; } };
 function _cast(v, m, amt) {
@@ -67,6 +73,30 @@ function _readLog(w) {
   let i = L.length - 1; while (i >= 0 && !SEEN.has(L[i])) i--;
   for (let j = i + 1; j < L.length; j++) { const r = L[j]; if (r && typeof r === 'object') { SEEN.add(r); rec.rows++; try { _row(r); } catch (e) { rec.err = rec.err || String(e && e.stack || e).slice(0, 400); } } }
 }
+let byName = null;
+function _leg(L) {
+  try {
+    if (!L || !W0) return;
+    const cu = (L.cands || []).find((c) => c && c.res === 'copper');
+    if (!cu && L.to !== K5) return;
+    if (!V2) return;
+    const C = W0.caravans && W0.caravans[W0.caravans.length - 1];   // 방금 떠난 캐러밴(econ 이 push 뒤 훅을 부른다)
+    const esc = C ? (C.escort | 0) : 0;
+    let roomKg = null; try { roomKg = r4(V2._t1136Probe.capKg() * (1 + esc) - (+L.units || 0) * V2._t1136Probe.kg(L.res)); } catch (e) { roomKg = null; }
+    const va = byName && byName.get(L.from), v5 = byName && byName.get(K5);
+    const pa = va && va._priceCache ? va._priceCache.copper : null, p5 = v5 && v5._priceCache ? v5._priceCache.copper : null;
+    let d5 = null, pu5 = null, tot5 = null;
+    if (cu && va && v5 && va !== v5 && pa != null && p5 != null) {
+      d5 = Math.round(V1.villageDist(va, v5));
+      const tc = (V2.TRANSPORT_COST_PER_1000 || 2) * d5 / 1000;
+      const raid = Math.min(0.5, 0.03 + (d5 / 100) * (W0.raidPer100 || 0.04));
+      pu5 = r4(V2._legProfitPerUnit(pa, p5 * 0.95, tc, raid * 0.5));
+      tot5 = r4(pu5 * Math.min(cu.surplus, 100));
+    }
+    rec.legs.push([L.day | 0, L.from, L.to, L.res, r4(L.units), r4(L.profitPerUnit), r4(L.profit), esc, roomKg, C && C.giveRes2 || null, C ? r4(C.giveAmt2 || 0) : 0,
+      cu ? r4(cu.surplus) : 0, pa == null ? null : r4(pa), p5 == null ? null : r4(p5), d5, pu5, tot5, r4(L.mv), r4(L.tripDays)]);
+  } catch (e) { rec.err = rec.err || String(e && e.stack || e).slice(0, 400); }
+}
 let lastCid = 0;
 function _departs(w, day) {
   for (const c of (w.caravans || [])) {
@@ -82,6 +112,8 @@ function snap(day) {
   const vils = (P.villages || []).filter((x) => x && x.econ);
   for (const vil of vils) { const e = vil.econ; if (e._world && e._world !== W0) { W0 = e._world; break; } }
   if (W0 && W0.onCast !== _cast) W0.onCast = _cast;   // 주조 훅(읽기만 — econ 이 관찰기가 줄 때만 부른다)
+  if (W0 && !W0.onTradeLeg) W0.onTradeLeg = _leg;     // 첫째 화물 다리 훅(읽기만 — T206 계측 문 · 다른 관찰기가 이미 줬으면 안 덮는다)
+  if (!byName || byName.size !== vils.length) byName = new Map(vils.map((x) => [x.name, x.econ]));
   if (!foodRef && vils.length) foodRef = vils[0].econ;
   _readLog(W0);
   if (W0) _departs(W0, day);
