@@ -23,6 +23,16 @@ const _clockReady = (() => {
   return () => { if (!at) at = real(); return at - t0; };   // 돌려주는 값 = 멎어 있던 길이(ms · 로그용)
 })();
 
+// ★★[T1334 2026-11-15] 켬 기본 묶음 손잡이 `T1334_BUNDLE`(끔 기본 · `server/t1334-bundle.js`) — villages · econ 을 읽기 **전**에 env 를 채운다
+//   (부르는 쪽이 안 준 글자만 · 낱 `'0'` 되돌림). 끔이면 아무것도 안 한다(바이트 같음). 이미 villages · econ 을 읽은 프로세스(econ 프리로드)에서
+//   채울 글자가 남았으면 모듈이 옛 글자로 섰다는 뜻 — 조용히 반쪽 묶음으로 돌지 않게 멈춘다(판 자는 아이 env 에서 미리 채운다 · `kidEnv`).
+{ const _t1334Set = require('./t1334-bundle').fill(process.env);
+  if (_t1334Set.length) {
+    const _t1334Late = [require.resolve('./villages'), require.resolve('../sim/economy-sim')].filter((f) => require.cache[f]);
+    if (_t1334Late.length) throw new Error(`[T1334] 묶음 손잡이가 모듈보다 늦었다(${_t1334Late.map((f) => f.split(/[\\/]/).pop()).join(' · ')} 먼저 읽힘) — 부르는 쪽 env 에서 채울 것: ${_t1334Set.join(' · ')}`);
+    console.log(`[T1334] 묶음 켬 — ${_t1334Set.join(' · ')}`);
+  } }
+
 const WebSocket = require('ws');
 const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT, T720_LON_DAY, SUNRISE_FRAC, phaseAdd, localPhase, T761_CLOCKS } = require('./zone-config');   // ★[T720] 경도 하루 1단계 손잡이 · 시각 한 식   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)

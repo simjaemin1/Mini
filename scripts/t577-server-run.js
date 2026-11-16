@@ -159,6 +159,8 @@ function kidEnv({ seed, port, db, out, days }) {
       T640_BOOT_SLICE: '0',
     });
     if (env.VILLAGE_NPC_CAP === 'Infinity') delete env.VILLAGE_NPC_CAP;   // ★[T864] 몸 상한 운영 기본(무제한)
+    //   ★[T1334] 묶음 손잡이(`T1334_BUNDLE`) — 아이 존은 econ 을 먼저 읽는 프리로드(`t577-server-hook` · 계측 훅)가 있어 존 맨 위로는 늦다 → 아이 env 에서 채운다(끔 = env 무변)
+    require(path.join(ROOT, 'server', 't1334-bundle')).fill(env);
   return env;
 }
 //   ★[T1162 K8] 빈 포트는 **운영체제에게 묻는다**(`listen(0)`) — 종전 `39100 + (pid + k·37) % 700` 은 같은 판 둘이 겹치거나 남의 포트를 밟았다.
