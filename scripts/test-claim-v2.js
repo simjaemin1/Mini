@@ -20,10 +20,12 @@
 //      ★**새 권한 술어를 안 만들었음을 소스로 확인**한다.
 //   ⑦ **econ 무접촉** — 이 배치가 만진 파일에 `sim/` 이 0건.
 //   ⑧ ★**검사기 자가 검사** — 일부러 틀린 것을 넣으면 위 판정이 실제로 실패하는가.
-//   ⑨ ★[T1305] 사유지 돌봄(`T1305_DEEDS=1` — 손잡이가 모듈 상수라 **아이 판**으로 띄운다 · 이 판(끔)의 ①~⑧ 은 종전 그대로):
-//      미가입자 영토 밖 선포 ○ · 영토 안 비구성원 ✗ · 인정 구성원 ○ · 숫자 상한 없음 · 안전판 · 손보기 = 몸 시간 · 재료 0 · 자리 뜨면 멈춤 ·
-//      접속한 날만 낡음 · 안 돌본 셀 흐림 → 풀림 · 풀린 칸 남이 이어받음 · 풀린 내 칸 다시 잡기 · 이행(옛 셀 줄지 않음) · 영속 · 몸 칸.
-//      미끼 셋 — 존 사본(`server/_t1305bait-*.js` · 판 끝에 지운다)을 같은 아이 검사로 띄워 빨강을 본다: 마을 문 되살림 · 숫자 상한 되살림 · 손보기에 재료.
+//   ⑨ ★[T1305 → T1332] 사유지 돌봄(`T1305_DEEDS=1` — 손잡이가 모듈 상수라 **아이 판**으로 띄운다 · 이 판(끔)의 ①~⑧ 은 종전 그대로):
+//      미가입자 영토 밖 선포 ○ · 영토 안 비구성원 ✗ · 인정 구성원 ○ · 숫자 상한 없음 · 안전판 · ★청크 문 · 접속한 날만 낡음 ·
+//      ★흐림은 청크째 · ★헛손질은 돌봄 아님 · ★한 청크에서 쓰면 그 청크 내 칸 전부 새것 · ★옆 청크 그대로 · ★걸어 지나가기 아님 · ★머묾 ·
+//      영속(`deed_chunks`) · 몸 칸 · ★청크 수 2배 = 풀림 날 절반 · 풀림 · 이어받음 · 다시 잡기 · 이행 · 존 넘어옴. 시각은 주입(`_t1332SetClock` — 날짜를 박지 않는다).
+//      미끼 넷 — 존 사본(`server/_t1305bait-*.js` · 판 끝에 지운다)을 같은 아이 검사로 띄워 빨강을 본다: 마을 문 되살림 · 숫자 상한 되살림 ·
+//      ★칸마다 낡는 사본 · ★청크 수를 안 보는 사본.
 //
 // 실행: node scripts/test-claim-v2.js
 'use strict';
@@ -120,24 +122,32 @@ function guildLand(cx, cy, half, tribeId) {
 if (T1305_SUB) {
   const R = {};
   const put = (k, c, x) => { R[k] = !!c; if (x !== undefined) R[k + '#'] = String(x).slice(0, 160); };
-  const now0 = Math.floor(Date.now() / 86400000) * 86400000 + 12 * 3600000;   // ★[PM land1077] 오늘(UTC) 정오 — 박아 둔 11-14 는 `tryClaim` 이 실제 시각(`Date.now()`)으로 날을 세는 자리와 어긋나 11-15 부터 ⑨ 가 빨갰다(같은 날 0 → 1). UTC 자정을 걸치는 판은 드물게 갈릴 수 있다(회부 — 하네스 시각 주입).
+  // ★[T1332 ⑦] 시각은 주입 — 고정 시각(실제 날짜와 무관)을 존 돌봄 시계로 준다(`_t1332SetClock`). 하루 셈 · 쓰기 · 선포가 같은 시계를 본다.
+  const now0 = Date.UTC(2031, 0, 1, 12);
+  let T = now0;
   const D = H.Deeds, F = D.CFG;
-  put('on', D.ON === true && typeof H._t1305Day === 'function' && typeof H.tryClaimCare === 'function');
-  const day = (p, k) => H._t1305Day(p, now0 + k * DAY);
+  put('on', D.ON === true && typeof H._t1305Day === 'function' && typeof H._t1332Use === 'function' && typeof H._t1332SetClock === 'function');
+  H._t1332SetClock(() => T);
+  const day = (p, k) => { T = now0 + k * DAY; return H._t1305Day(p, T); };
+  const K = F.CHUNK;
   try {   // 미끼 사본은 중간에 넘어질 수 있다 — 그때까지 잰 칸은 넘긴다(넘어진 뒤 칸은 없음 = 빨강)
   const cellOf = (p, cx, cy) => { for (const [id, c] of claims) if (c.ownerPid === p.playerId && c.kind === 'personal' && Math.floor(c.x / SZ) === cx && Math.floor(c.y / SZ) === cy) return [id, c]; return [null, null]; };
+  const row = (p, cx, cy) => { const [kx, ky] = D.chunkOf(cx, cy); return H.deedChunks.get(p.playerId + '|' + kx + ',' + ky); };
+  const fresh = (nm) => { const p = mkPlayer(nm); p.tribeId = null; p.member = null; p.deeds = null; return p; };
+  const line = (p, x0, y0, n) => { let okA = true; for (let i = 0; i < n; i++) if (!/사유지를 두었습니다/.test(claimAt(p, x0 + i, y0))) okA = false; return okA; };
+  const send = (p, m) => H.handlePlayerInput(p, JSON.stringify(m));
   // ① 미가입자 — 영토 밖 빈 들은 누구나
-  const a = mkPlayer('t13a'); a.tribeId = null; a.member = null;
-  const AX = 20000, AY = 20000;
+  const a = fresh('t13a');
+  const AX = 20000, AY = 20000;   // 20000 = 청크 경계(K 의 배수)
   put('outsideAny', /사유지를 두었습니다/.test(claimAt(a, AX, AY)), lastNote(a));
-  // ② 숫자 상한 없음 — 붙여서 12칸(종전 9 한도 너머) · 알림에 "/9" 없음
+  // ② 숫자 상한 없음 — 붙여서 12칸(종전 9 한도 너머 · 청크 둘에 걸친다) · 알림에 "/9" 없음
   let okAll = true, lastTxt = '';
   for (let i = 1; i < 12; i++) { lastTxt = claimAt(a, AX + i, AY); if (!/사유지를 두었습니다/.test(lastTxt)) { okAll = false; break; } }
   put('noCap', okAll && myCells(a).length === 12 && !/\/\s*9\b|한도/.test(lastTxt), `${myCells(a).length}칸 · ${lastTxt}`);
   // ③ 영토 안 — 비구성원 거절 · 인정 구성원 허용
   const BX = 21000, BY = 21000;
   const gl = guildLand(BX, BY, 6, 931);
-  const b = mkPlayer('t13b'); b.tribeId = null; b.member = null;
+  const b = fresh('t13b');
   const tb = claimAt(b, BX, BY);
   put('insideNonMember', !/사유지를 두었습니다/.test(tb) && /구성원|땅 안/.test(tb), tb);
   const c2 = mkPlayer('t13c'); join(c2, 931);
@@ -145,70 +155,98 @@ if (T1305_SUB) {
   wipe(b); wipe(c2); claims.delete(gl);
   // ④ 안전판 — 숨은 수(이 판에서만 3 으로 내려 문이 사는지 본다 · 화면 문구에 숫자 0)
   const s0 = F.SAFETY; F.SAFETY = 3;
-  const sp = mkPlayer('t13s'); sp.tribeId = null; sp.member = null;
+  const sp = fresh('t13s');
   claimAt(sp, 22000, 22000); claimAt(sp, 22001, 22000); claimAt(sp, 22002, 22000);
   const st = claimAt(sp, 22003, 22000);
   put('safety', myCells(sp).length === 3 && /더 넓힐 수 없습니다/.test(st) && !/\d/.test(st), st);
   F.SAFETY = s0; wipe(sp);
-  // ⑤ 낡음 — 접속한 날만 센다(같은 날 두 번 0 · 열흘 건너뛴 한 번 = 하루)
-  const w = mkPlayer('t13w'); w.tribeId = null; w.member = null; w.deeds = null;
-  const WX = 23000, WY = 23000;
-  H._t1305Day(w, now0);
-  claimAt(w, WX, WY); claimAt(w, WX + 1, WY);
-  const [wid, wc] = cellOf(w, WX, WY);
-  day(w, 0); const w0 = wc.careW | 0;
-  day(w, 10); const w1 = wc.careW | 0;
+  // ⑤ 청크 문 — 청크 수가 `FREE_D × BASE` 에 닿는 새 청크는 막는다(받으면 다음 날 전부 풀리는 덫 · 문구 숫자 0) · 있는 청크 안은 된다
+  const cap = Math.ceil(F.FREE_D * F.BASE) - 1;
+  const g = fresh('t13g'); T = now0;
+  const GX = 30000, GY = 30000;
+  const gOk = line(g, GX, GY, cap * K);   // 꽉 찬 줄 = 청크 cap 개
+  const gNew = claimAt(g, GX + cap * K, GY);   // cap+1 번째 청크의 첫 칸
+  const gIn = claimAt(g, GX, GY + 1);         // 첫 청크 안 칸
+  put('chunkGate', gOk && H._t1332MyChunks(g.playerId).size === cap && /더 넓힐 수 없습니다/.test(gNew) && !/\d/.test(gNew) && /사유지를 두었습니다/.test(gIn), `청크 ${H._t1332MyChunks(g.playerId).size}/${cap} · ${gNew}`);
+  wipe(g);
+  // ⑥ 낡음 — 접속한 날만 센다(같은 날 두 번 0 · 열흘 건너뛴 한 번 = 하루 × 배수 1)
+  const w = fresh('t13w');
+  const WX = 23000, WY = 23000;   // 23000 = 청크 경계 · 칸 WX, WX+1 = 청크 P · 칸 WX-1 = 옆 청크 Q
+  T = now0; H._t1305Day(w, now0);
+  claimAt(w, WX, WY); claimAt(w, WX + 1, WY); claimAt(w, WX - 1, WY);
+  const [, wc] = cellOf(w, WX, WY), [, wc1] = cellOf(w, WX + 1, WY), [, wq] = cellOf(w, WX - 1, WY);
+  day(w, 0); const w0 = row(w, WX, WY).w;
+  day(w, 10); const w1 = row(w, WX, WY).w;
   put('activeDays', w0 === 0 && w1 === 1, `같은 날 ${w0} · 열흘 뒤 한 번 ${w1}`);
-  // ⑥ 흐림 — FADE_D 날째 `care = fade`
+  // ⑦ 흐림 — 청크째(그 청크의 내 칸이 함께) · 옆 청크도 제 날로
   for (let k = 11; k < 10 + F.FADE_D; k++) day(w, k);
-  put('fade', wc.care === 'fade' && (wc.state || 'active') !== 'free', `w=${wc.careW} care=${wc.care}`);
-  // ⑦ 손보기 — 몸 시간(시작 직후엔 안 바뀜) · 끝나면 새것 · 재료 0
+  put('chunkFade', wc.care === 'fade' && wc1.care === 'fade' && wq.care === 'fade' && (wc.state || 'active') !== 'free', `P ${wc.care}/${wc1.care} · Q ${wq.care} · w=${row(w, WX, WY).w}`);
+  // ⑧ 헛손질은 돌봄 아님 — 짐이 안 바뀐 쓰는 사건(원석 없이 선광)
+  w.x = (WX - 1) * SZ + SZ / 2; w.y = WY * SZ + SZ / 2; w.inventory.ore_chunk = 0; w.oreLedger = {};
+  send(w, { type: 'sort_ore' });
+  put('useNoChange', wq.care === 'fade', `Q ${wq.care}`);
+  // ⑨ 쓰면 저절로 — 청크 P 에서 실제로 한 일(원석 선광 — 짐이 바뀐다) → P 의 내 칸 전부 새것 · 옆 청크 Q 는 그대로 · 재료 · 단추 0
+  w.x = (WX + 1) * SZ + SZ / 2; w.y = WY * SZ + SZ / 2; w.inventory.ore_chunk = 7; w.oreLedger = { copper: 7 };
   const inv0 = JSON.stringify(w.inventory);
-  w.x = WX * SZ + SZ / 2; w.y = WY * SZ + SZ / 2;
-  H.tryClaimCare(w, wid);
-  const mid = wc.careW | 0, started = !!w._t1305Care;
-  H._t1305CareEnd(w, wid, wc);
-  put('careTime', started && mid > 0, `시작 직후 w=${mid}`);
-  put('careDone', (wc.careW | 0) === 0 && wc.care === 'new', `w=${wc.careW} care=${wc.care}`);
-  put('careFree', JSON.stringify(w.inventory) === inv0, '');
-  // ⑧ 자리를 뜨면 멈춘다
-  const [wid2, wc2] = cellOf(w, WX + 1, WY);
-  const wb = wc2.careW | 0;
-  w.x = (WX + 1) * SZ + SZ / 2; H.tryClaimCare(w, wid2); w.x = (WX + 6) * SZ; H._t1305CareEnd(w, wid2, wc2);
-  put('careStay', (wc2.careW | 0) === wb && wb > 0, `w=${wc2.careW}`);
-  // ⑨ 영속 — DB 행의 두 칸 · 몸 칸
-  const row = db.getClaims().find((r) => r.id === wc.dbId) || {};
-  put('persist', row.care_n === wc.careN && row.care_w === 0, `care_n ${row.care_n} · care_w ${row.care_w}`);
+  send(w, { type: 'sort_ore' });
+  put('chunkUse', wc.care === 'new' && wc1.care === 'new' && row(w, WX, WY).w === 0 && JSON.stringify(w.inventory) !== inv0, `P ${wc.care}/${wc1.care} · w=${row(w, WX, WY).w}`);
+  put('neighborSame', wq.care === 'fade', `Q ${wq.care}`);
+  // ⑩ 걸어 지나가기는 돌봄 아님 — Q 에 머묾보다 짧게 서 있다 나간다(시각 주입)
+  const t0 = now0 + 20 * DAY; delete w._t1332Dw;
+  w.x = (WX - 1) * SZ + SZ / 2; H._t1332Dwell(w, t0); H._t1332Dwell(w, t0 + F.DWELL_MS * 0.6);
+  w.x = (WX + 1) * SZ + SZ / 2; H._t1332Dwell(w, t0 + F.DWELL_MS * 1.2);
+  put('walkThrough', wq.care === 'fade', `Q ${wq.care}`);
+  // ⑪ 머묾 — Q 안에서 연속 `DWELL_MS` → Q 새것(재료 0)
+  const inv1 = JSON.stringify(w.inventory);
+  w.x = (WX - 1) * SZ + SZ / 2; H._t1332Dwell(w, t0 + 2 * F.DWELL_MS); H._t1332Dwell(w, t0 + 3 * F.DWELL_MS);
+  put('dwell', wq.care === 'new' && JSON.stringify(w.inventory) === inv1, `Q ${wq.care}`);
+  // ⑫ 영속 — DB 청크 줄 · 몸 칸
+  const dr = db.getDeedChunks().find((r) => r.owner_id === w.playerId && r.cx === D.chunkOf(WX, WY)[0] && r.cy === D.chunkOf(WX, WY)[1]) || {};
+  put('persist', dr.w === 0 && dr.n0 === row(w, WX, WY).n0, `w ${dr.w} · n0 ${dr.n0}`);
   const sb = H.serializeBody(w), pb = H.parseBody(JSON.parse(JSON.stringify(sb)));
   put('body', sb.deeds && pb.deeds && pb.deeds.n === w.deeds.n && pb.deeds.day === w.deeds.day, JSON.stringify(sb.deeds));
-  // ⑩ 안 돌본 셀 — FREE_D 날째 풀림(빈 땅) · 손본 칸은 남는다
-  const base = 10 + F.FADE_D;
-  for (let k = base; k < base + F.FREE_D + 1; k++) day(w, k);
-  put('free', (wc2.state || 'active') === 'free', `w=${wc2.careW} state=${wc2.state}`);
-  // ⑪ 풀린 칸 — 남이 값을 내고 이어받는다(부재 상태기 승계 그대로) · 그 칸은 새 주인의 새것
-  const t = mkPlayer('t13t'); t.tribeId = null; t.member = null;
-  const tt = claimAt(t, WX + 1, WY);
-  put('takeover', /이어받았습니다/.test(tt) && wc2.ownerPid === t.playerId && wc2.care === 'new' && (wc2.state || 'active') === 'active', tt);
-  // ⑫ 풀린 내 칸 — 값을 내고 다시 잡는다
-  for (let k = base + F.FREE_D + 1; k < base + 2 * F.FREE_D + 3; k++) day(w, k);
+  // ⑪-b 날을 넘겨 같은 청크에 서 있는 사람 — 접속한 날이 바뀌면 머묾이 다시 돈다(한 번 돌본 뒤 나가지 않아도)
+  T = now0 + 20 * DAY; H._t1305Day(w, T); const wDay = row(w, WX - 1, WY).w;
+  H._t1332Dwell(w, t0 + 5 * F.DWELL_MS);
+  put('dwellDaily', wDay > 0 && row(w, WX - 1, WY).w === 0 && wq.care === 'new', `날 넘김 w=${wDay} → ${row(w, WX - 1, WY).w}`);
+  // ⑬ ★초선형 — 청크 수 2배 = 풀림 날 절반(청크 2B · 4B 를 꽉 채운 두 사람 · 안 쓰고 날만 보낸다)
+  const freeDays = (nm, X, nChunks) => {
+    const q = fresh(nm); T = now0; H._t1305Day(q, now0);
+    line(q, X, 40000, nChunks * K);
+    const [, qc] = cellOf(q, X, 40000);
+    for (let k = 1; k <= 3 * F.FREE_D; k++) { day(q, k); if ((qc.state || 'active') === 'free') { wipe(q); return k; } }
+    wipe(q); return -1;
+  };
+  const dA = freeDays('t13p', 50000, 2 * F.BASE), dB = freeDays('t13r', 60000, 4 * F.BASE);
+  put('superlinear', dA > 0 && dB > 0 && dA === Math.ceil(F.FREE_D / 2) && dB === Math.ceil(F.FREE_D / 4) && dB * 2 >= dA && dB < dA, `청크 ${2 * F.BASE} → ${dA}날 · ${4 * F.BASE} → ${dB}날(기준 이하 = ${F.FREE_D}날)`);
+  // ⑭ 안 돌본 청크 — 풀림(빈 땅 · 부재 상태기의 `free`) · 청크의 내 칸이 함께 · 돌본 청크는 남는다
+  const base = 20;
+  w.x = (WX + 1) * SZ + SZ / 2; T = now0 + base * DAY; H._t1305Day(w, T); H._t1332Use(w, w.x, w.y);   // P 를 오늘 돌봤다
+  for (let k = base + 1; k < base + F.FREE_D + 1; k++) { day(w, k); if (k < base + F.FREE_D - 1) H._t1332Use(w, w.x, w.y); }
+  put('free', (wq.state || 'active') === 'free' && (wc.state || 'active') !== 'free', `Q ${wq.state} · P ${wc.state}`);
+  // ⑮ 풀린 칸 — 남이 값을 내고 이어받는다(부재 상태기 승계 그대로) · 그 칸의 청크는 새 주인의 새것
+  const t = fresh('t13t');
+  const tt = claimAt(t, WX - 1, WY);
+  put('takeover', /이어받았습니다/.test(tt) && wq.ownerPid === t.playerId && wq.care === 'new' && (wq.state || 'active') === 'active' && !!row(t, WX - 1, WY), tt);
+  // ⑯ 풀린 내 칸 — 값을 내고 다시 잡는다
+  for (let k = base + F.FREE_D + 1; k < base + 3 * F.FREE_D; k++) day(w, k);
   const re = claimAt(w, WX, WY);
-  put('retake', /이어받았습니다/.test(re) && (wc.state || 'active') === 'active' && wc.ownerPid === w.playerId, re);
-  // ⑬ 이행 — 손잡이 밖에서 선 옛 셀(돌봄 칸 NULL)은 켜는 날 줄지 않는다(첫 낡음 = 그날부터)
-  const m = mkPlayer('t13m'); m.tribeId = null; m.member = null; m.deeds = null;
+  put('retake', /이어받았습니다/.test(re) && (wc.state || 'active') === 'active' && wc.ownerPid === w.playerId && wc.care === 'new', re);
+  // ⑰ 이행 — 손잡이 밖에서 선 옛 칸(청크 줄 없음)은 켜는 날 줄지 않는다(첫 낡음 = 그날부터)
+  const m = fresh('t13m');
   const oid = db.insertClaim({ owner_id: m.playerId, owner_name: m.name, x: 24000 * SZ, y: 24000 * SZ, w: SZ, h: SZ, kind: 'personal' });
-  claims.set('cold', { id: 'cold', dbId: oid, ownerPid: m.playerId, ownerName: m.name, x: 24000 * SZ, y: 24000 * SZ, w: SZ, h: SZ, kind: 'personal', state: 'active', careN: null, careW: null });
-  H._t1305Day(m, now0); const oc = claims.get('cold');
-  const mig0 = oc.careW, migState = oc.state;
-  H._t1305Day(m, now0 + DAY);
-  put('migrate', mig0 === 0 && migState === 'active' && (oc.careW | 0) === 1, `켠 날 w=${mig0} · 다음 날 w=${oc.careW}`);
-  // ⑬-b 존 넘어옴 — 그날을 다른 존에서 이미 센 몸(날 수가 앞섰다)이 와도 이 존 칸을 다시 잰다(접속 = `force`)
-  m.deeds.n += 3;   // 다른 존에서 세 날을 더 보냈다(몸 칸은 존을 따라간다 · 오늘 날짜는 그대로)
-  const before = oc.careW | 0; H._t1305Day(m, now0 + DAY); const sameDay = oc.careW | 0; H._t1305Day(m, now0 + DAY, true);
-  put('handoff', before === 1 && sameDay === 1 && (oc.careW | 0) === 4, `같은 날 틱 ${sameDay} · 접속 다시 재기 ${oc.careW}`);
+  claims.set('cold', { id: 'cold', dbId: oid, ownerPid: m.playerId, ownerName: m.name, x: 24000 * SZ, y: 24000 * SZ, w: SZ, h: SZ, kind: 'personal', state: 'active' });
+  T = now0; H._t1305Day(m, now0); const mig0 = row(m, 24000, 24000) ? row(m, 24000, 24000).w : null;
+  day(m, 1);
+  put('migrate', mig0 === 0 && claims.get('cold').state === 'active' && row(m, 24000, 24000).w === 1, `켠 날 w=${mig0} · 다음 날 w=${row(m, 24000, 24000).w}`);
+  // ⑰-b 존 넘어옴 — 그날을 다른 존에서 이미 센 몸(날 수가 앞섰다)이 와도 이 존 청크를 다시 잰다(접속 = `force`)
+  m.deeds.n += 3;
+  const before = row(m, 24000, 24000).w; H._t1305Day(m, now0 + DAY); const sameDay = row(m, 24000, 24000).w; H._t1305Day(m, now0 + DAY, true);
+  put('handoff', before === 1 && sameDay === 1 && row(m, 24000, 24000).w === 4, `같은 날 틱 ${sameDay} · 접속 다시 재기 ${row(m, 24000, 24000).w}`);
   claims.delete('cold');
-  // ⑭ 화면 설정 — welcome 칸(숫자 상한 대신 낡음 날 · 손보는 초)
-  put('ui', F.FADE_D < F.FREE_D && F.CARE_MS === 1000, `흐림 ${F.FADE_D} · 풀림 ${F.FREE_D} · 손보기 ${F.CARE_MS / 1000}초`);
-  } catch (e) { R.err = String((e && e.message) || e).slice(0, 160); }
+  // ⑱ 화면 설정 — welcome 칸(청크 · 기준 · 머묾 초 · 흐림 · 풀림)
+  put('ui', F.FADE_D < F.FREE_D && F.DWELL_MS === 1000 && F.CHUNK >= 1 && F.BASE >= 1, `청크 ${F.CHUNK} · 기준 ${F.BASE} · 머묾 ${F.DWELL_MS / 1000}초 · 흐림 ${F.FADE_D} · 풀림 ${F.FREE_D}`);
+  } catch (e) { R.err = String((e && e.stack) || e).slice(0, 300); }
   console.log('@@T1305 ' + JSON.stringify(R));
   for (const f of [process.env.DB_PATH, process.env.DB_PATH + '-wal', process.env.DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.exit(0);
@@ -501,7 +539,7 @@ console.log('\n⑧ ★이 하네스가 실패할 줄 아는가 — 일부러 틀
 }
 
 // ────────────────────────────────────────────────────────────────────────
-console.log('\n⑨ ★[T1305] 사유지 돌봄 — 켬 아이 판(정본) · 미끼 셋(존 사본) · 이 판(끔)은 위 ①~⑧ 종전 그대로');
+console.log('\n⑨ ★[T1305 → T1332] 사유지 돌봄(청크 · 쓰면 저절로 · 초선형) — 켬 아이 판(정본) · 미끼 넷(존 사본) · 이 판(끔)은 위 ①~⑧ 종전 그대로');
 {
   const { execFileSync } = require('child_process');
   const sub = (zoneFile) => {
@@ -516,12 +554,19 @@ console.log('\n⑨ ★[T1305] 사유지 돌봄 — 켬 아이 판(정본) · 미
   const NAMES = {
     outsideAny: '⑨ 미가입자가 영토 밖 빈 들에 선포한다(마을 무관)', noCap: '⑨ 숫자 상한 없음 — 12칸(종전 9 너머) · 알림에 한도 숫자 0',
     insideNonMember: '⑨ 마을 영토 안 — 비구성원은 거절', insideMember: '⑨ 마을 영토 안 — 인정 구성원은 된다',
-    safety: '⑨ 숨은 안전판 — 문이 산다(이 판만 3) · 문구에 숫자 0', activeDays: '⑨ 낡음 = 주인이 접속한 날(같은 날 0 · 열흘 건너 한 번 = 하루)',
-    fade: '⑨ 안 돌본 칸 — 흐림', careTime: '⑨ 손보기 = 몸 시간(시작 직후엔 그대로)', careDone: '⑨ 손보면 새것',
-    careFree: '⑨ 손보기 재료 0(짐 그대로)', careStay: '⑨ 자리를 뜨면 손보기가 멈춘다', persist: '⑨ 돌봄 칸 DB 영속(care_n · care_w)',
-    body: '⑨ 몸 칸 `deeds`(접속한 날 수) 저장 · 복원', free: '⑨ 오래 안 돌본 칸 — 풀림(빈 땅 · 부재 상태기의 `free`)',
+    safety: '⑨ 숨은 안전판 — 문이 산다(이 판만 3) · 문구에 숫자 0',
+    chunkGate: '⑨ ★[T1332] 청크 문 — 다음 날 전부 풀릴 새 청크는 막는다 · 있는 청크 안은 된다 · 문구 숫자 0',
+    activeDays: '⑨ 낡음 = 주인이 접속한 날(같은 날 0 · 열흘 건너 한 번 = 하루)',
+    chunkFade: '⑨ ★[T1332] 흐림은 청크째 — 그 청크의 내 칸이 함께', useNoChange: '⑨ ★[T1332] 헛손질(짐 안 바뀐 쓰는 사건)은 돌봄 아님',
+    chunkUse: '⑨ ★[T1332] 쓰면 저절로 — 한 청크에서 실제로 한 일 → 그 청크 내 칸 전부 새것(단추 · 재료 0)', neighborSame: '⑨ ★[T1332] 옆 청크는 그대로',
+    walkThrough: '⑨ ★[T1332] 걸어 지나가기는 돌봄 아님(머묾보다 짧게 서 있다 나감)', dwell: '⑨ ★[T1332] 머묾 — 그 청크 안 연속 머묾 초 → 새것(재료 0)',
+    dwellDaily: '⑨ ★[T1332] 날을 넘겨 같은 청크에 서 있어도 머묾이 날마다 다시 돈다',
+    persist: '⑨ 돌봄 청크 줄 DB 영속(`deed_chunks`)', body: '⑨ 몸 칸 `deeds`(접속한 날 수) 저장 · 복원',
+    superlinear: '⑨ ★[T1332] 초선형 — 청크 수 2배 = 풀림 날 절반',
+    free: '⑨ 오래 안 돌본 청크 — 풀림(빈 땅 · 부재 상태기의 `free`) · 돌본 청크는 남는다',
     takeover: '⑨ 풀린 칸 — 남이 값을 내고 이어받는다(승계 규약 그대로 · 새 주인의 새것)', retake: '⑨ 풀린 내 칸 — 값을 내고 다시 잡는다',
-    migrate: '⑨ 이행 — 켜기 앞의 옛 칸은 켠 날 줄지 않는다(첫 낡음 = 그날부터)', handoff: '⑨ 존 넘어옴 — 다른 존에서 센 날도 이 존 칸 낡음에 든다(접속 때 다시 잰다)', ui: '⑨ 화면 설정 — 흐림 · 풀림 날 · 손보는 초',
+    migrate: '⑨ 이행 — 켜기 앞의 옛 칸은 켠 날 줄지 않는다(첫 낡음 = 그날부터)', handoff: '⑨ 존 넘어옴 — 다른 존에서 센 날도 이 존 청크 낡음에 든다(접속 때 다시 잰다)',
+    ui: '⑨ 화면 설정 — 청크 · 기준 · 머묾 초 · 흐림 · 풀림',
   };
   for (const [k, msg] of Object.entries(NAMES)) ok(!!R && R[k] === true, msg, R ? (R[k + '#'] || '') : '아이 판 없음');
   // 미끼 — 존 사본을 같은 아이 검사로 띄운다(정본 무접촉 · 판 끝에 지운다)
@@ -529,7 +574,8 @@ console.log('\n⑨ ★[T1305] 사유지 돌봄 — 켬 아이 판(정본) · 미
   const BAITS = [
     ['gate', '마을 문을 되살린 사본(영토 밖도 마을 사람만)', 'if (_t1305P && !_onbLot) {', 'if (false && _t1305P && !_onbLot) {', ['outsideAny']],
     ['cap', '숫자 상한을 되살린 사본(9 한도)', 'if (!_t1305P && usedCount >= max) {', 'if (usedCount >= max) {', ['noCap']],
-    ['mat', '손보기에 재료를 떼는 사본(나무 1)', '  Deeds.careDone(c, _t1305MyN(player));\n  _t1305SaveCare(c);', '  Deeds.careDone(c, _t1305MyN(player)); player.inventory.wood -= 1;\n  _t1305SaveCare(c);', ['careFree']],
+    ['cell', '★[T1332] 칸마다 낡는 사본(쓴 칸 하나만 새것)', 'if (q[0] === cx && q[1] === cy) cells.push([id, c]);', 'if (Math.floor(c.x / S) === Math.floor(px / S) && Math.floor(c.y / S) === Math.floor(py / S)) cells.push([id, c]);', ['chunkUse']],
+    ['flat', '★[T1332] 청크 수를 안 보는 사본(배수 1)', 'const st = Deeds.wear(r, n, C);', 'const st = Deeds.wear(r, n, 1);', ['superlinear']],
   ];
   for (const [tag, what, from, to, reds] of BAITS) {
     const f = path.join(ROOT, 'server', `_t1305bait-${tag}-${process.pid}.js`);

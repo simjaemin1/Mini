@@ -134,7 +134,10 @@ if (BODIES && BODIES !== 'all') { console.error(`--bodies 는 all 만 안다(${B
 const FARM = A.includes('--farm') || A.includes('--farm-clock');
 //   `--farm-clock` = 판 시계 몸 축 손잡이 셋(`T1316_BODY_CLOCK=1` · `T1316_SUBSTEP=1` · ★[T1326] `T1326_HUNT_CLOCK=1`)도 판 조건으로(밭 세계 판 시계 게이트 — T1295 · T1316 · T1326).
 const FARM_CLOCK = A.includes('--farm-clock');
-const COND = Object.assign({ VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: HOUSE ? '1' : '0' }, WAR ? WAR_COND[WAR] : {}, BODIES ? { VILLAGE_NPC_CAP: 'Infinity' } : {}, FARM ? { T1243_FARM_ON: '1' } : {}, FARM_CLOCK ? { T1316_BODY_CLOCK: '1', T1316_SUBSTEP: '1', T1326_HUNT_CLOCK: '1' } : {});
+//   ★[T1334] 켬 기본 묶음 손잡이(`T1334_BUNDLE` · `server/t1334-bundle.js`)가 서면 `cond` 에 적힌다 — 묶음 판 기준선은 묶음 판으로만 견준다
+//     (묶음이 안 서면 칸이 없다 = 종전 cond 그대로 · 켬 기본 가지에서 끔 세계 기준선과 견줄 땐 `T1334_BUNDLE=0` 을 글자로 준다).
+const T1334_COND = require(path.join(ROOT, 'server', 't1334-bundle')).active(process.env) ? { T1334_BUNDLE: '1' } : {};
+const COND = Object.assign({ VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: HOUSE ? '1' : '0' }, WAR ? WAR_COND[WAR] : {}, BODIES ? { VILLAGE_NPC_CAP: 'Infinity' } : {}, FARM ? { T1243_FARM_ON: '1' } : {}, FARM_CLOCK ? { T1316_BODY_CLOCK: '1', T1316_SUBSTEP: '1', T1326_HUNT_CLOCK: '1' } : {}, T1334_COND);
 if (base && base.cond && JSON.stringify(base.cond) !== JSON.stringify(COND)) { console.error(`판 조건이 기준선과 다르다 — 기준선 ${JSON.stringify(base.cond)} · 이 판 ${JSON.stringify(COND)}${HOUSE ? '' : ' (집 행위 켬 기준선이면 --house)'}`); process.exit(2); }
 // ★[T699] 교역로 디스크 캐시 — 부팅 소굴 배치의 교역로 A*(109초)를 판마다 다시 파지 않는다(같은 지문 = 같은 길 · 결과 바이트 같음).
 //   기본 = os 임시 폴더 `durango-route-cache`(레포 밖) · `--route-cache off` = 종전(판마다 판다) · `--route-cache <dir>` = 그 폴더.

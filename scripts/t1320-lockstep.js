@@ -111,7 +111,10 @@ const _W = WT.Worker;
 WT.Worker = class extends _W {
   constructor(f, o) {
     super(f, o);
-    if (/xzone-geo\.js$/.test(String(f))) {
+    //   ★[T1324 2026-11-15] 늦게 파는 일꾼(`workerData.xzoneLazy` — T1139 · 손잡이 `T1139_XZ_LAZY`)은 셈 밖이다: 본 스레드가 묻고 `Atomics.wait` 로 답을
+    //     **동기로** 받는다(가상 시계 줄이 그 자리에서 기다린다 — 결정론 그대로). 이 일꾼은 `postMessage` · 'exit' 이 없어(포트 · 공유 버퍼로만 말한다)
+    //     셈(`outW`)이 영영 안 줄어 가로대가 첫 0.5초에서 멎었다(T1324 자 첫 판). 한 벌 일꾼(`xzoneGeo`)은 종전대로 센다.
+    if (/xzone-geo\.js$/.test(String(f)) && !(o && o.workerData && o.workerData.xzoneLazy)) {
       outW++; let d = false;
       const fin = () => { if (d) return; d = true; outW--; RT.setImmediate(() => C.resume()); };
       this.on('message', fin); this.on('exit', fin);

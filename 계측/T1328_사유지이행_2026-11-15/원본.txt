@@ -1,0 +1,18 @@
+# 원본 사본(맥 ~/Mini/_db · 스테이지 · 연 판은 그 사본을 다시 복사한 것) — sha256 · meta
+## 20261103-152720-hanbando
+56f82eb5ac01950ee05d6a69d3d75b3b33e4a1e7d00f45c0fcebf0dc1d02ab2e  world-hanbando.db
+56f82eb5ac01950ee05d6a69d3d75b3b33e4a1e7d00f45c0fcebf0dc1d02ab2e  world-hanbando.db
+target=hanbando
+image_commit=ecf39cfd264b103092fb6a0db8c3c16164ff8057
+taken_at=2026-11-03T15:27:20Z
+facts={"quick":"ok","tables":22,"rows":{"bandit_state":1,"buildings":43590,"claims":0,"fish_cells":0,"harvested_seeds":32366,"mined_cells":131,"mobs":449,"onboarding":10,"picked_seeds":0,"resources":0,"roads":361311,"save_queue":0,"seed_hp":0,"soil_cells":0,"trade_routes":1275,"village_bridges":0,"village_buildings":645498,"village_chronicle":6532,"village_events":1765,"village_requests":93,"villa
+## 20261112-175756-nippon
+721ca3de28047ee7b1172a48a69c99e834ad0f9d491ab63b4e0577c841f0f15c  world-nippon.db
+721ca3de28047ee7b1172a48a69c99e834ad0f9d491ab63b4e0577c841f0f15c  world-nippon.db
+target=nippon
+image_commit=103595e553b601b663d7708de9d6f40cb6f1bd38
+taken_at=2026-11-12T17:57:57Z
+facts={"quick":"ok","tables":22,"rows":{"bandit_state":1,"buildings":39459,"claims":0,"fish_cells":0,"harvested_seeds":5673,"mined_cells":55,"mobs":450,"onboarding":3,"picked_seeds":0,"resources":0,"roads":580801,"save_queue":0,"seed_hp":0,"soil_cells":0,"trade_routes":630,"village_bridges":0,"village_buildings":581356,"village_chronicle":6454,"village_events":1480,"village_requests":95,"villages"
+## 판 끝 뒤 스테이지 사본 sha(바뀌지 않음)
+56f82eb5ac01950ee05d6a69d3d75b3b33e4a1e7d00f45c0fcebf0dc1d02ab2e  20261103-152720-hanbando/world-hanbando.db
+721ca3de28047ee7b1172a48a69c99e834ad0f9d491ab63b4e0577c841f0f15c  20261112-175756-nippon/world-nippon.db

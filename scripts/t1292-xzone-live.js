@@ -46,7 +46,13 @@ if (HOOK === 'zone' && !_isMain) {
     return m;
   };
   const { performance } = require('perf_hooks');
-  const NOW = () => performance.timeOrigin + performance.now();
+  //   ★[T1324 2026-11-15] 가상 시계 판(`T745_VCLOCK=1` · T1320 발맞춤)은 존마다 `performance.timeOrigin`(실제 기동 시각)이 달라 두 존 줄의 시각이 수십 ms 어긋났다
+  //     (T1324 판 1020 — 같은 몸 두 존 동시 131번 · 모두 24.0ms = 두 프로세스 원점 차). ⇒ 그 판은 가상 시각 V(`Date.now` — 두 존이 같은 가로대에 선다) +
+  //     같은 ms 안 차례(µs 한 칸씩 — 한 존 안 차례 보존)로 적는다. 존 사이 같은 ms 는 문 차례가 가른다(받는 쪽은 다음 가로대에서야 받는다).
+  let _vMs = -1, _vSub = 0;
+  const NOW = process.env.T745_VCLOCK === '1'
+    ? () => { const v = Date.now(); if (v !== _vMs) { _vMs = v; _vSub = 0; } return v + (++_vSub) * 1e-3; }
+    : () => performance.timeOrigin + performance.now();
   const FX = require('./fixture-xz-bodylog');   // 호위 몸 수 셈(`escOf`) — 정본 한 벌(적기 `install` 은 env `XZ_BODYLOG` 가 없어 안 깬다)
   const ROWS = process.env.T1292_ROWS, EVF = process.env.T1292_EV;
   let buf = [];

@@ -1,0 +1,23 @@
+{
+ "what": "T1283_CLEAR_HAUL=1 + T1302_TERR_BODY=1(BODY 팔) 10날 한 번에 돈 판 vs 같은 판 T1283 끔(R50 의 1~10날)",
+ "t1302Days": "10/10",
+ "econFingerprint": "10/10",
+ "t1274Rows": "10/10",
+ "day10": {
+  "territoryCost": {
+   "days": 510,
+   "stallWood": 0,
+   "stallBody": 0,
+   "cells": 4985,
+   "wood": 955.1673279999998,
+   "laborMin": 7742.708133189233,
+   "felled": 371,
+   "woodIn": 459.58518699999996,
+   "body": 4985,
+   "queued": 7320
+  },
+  "cutCalls": 371,
+  "felledTrees": 371,
+  "haulLoads": 0
+ }
+}

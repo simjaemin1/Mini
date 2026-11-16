@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// === scripts/test-t1321-xz-keep.js — 답을 기다리는 캐러밴 넘김이 보내는 존 재기동을 건넌다 (T1321 · T1292 회부 5 · 손잡이 `T1321_XZ_KEEP`) ==========
+// === scripts/test-t1321-xz-keep.js — 답을 기다리는 캐러밴 넘김이 보내는 존 재기동을 건넌다 (T1321 · T1292 회부 5 · 손잡이 `T1321_XZ_KEEP` — ★T1324 켬 기본 · '0' 끔) ==
 //
 // ★왜: 숨긴 채 답을 기다리는 넘김(T1292)은 다시 밂 줄(`X.retry`) · 숨김 · 받은 열쇠 · 받은 기록 줄이 메모리라 보내는 존이 다시 뜨면 사라졌다 —
 //   받는 존이 받았으면 저쪽에만 · 안 받았으면 어디에도(집 존 캐러밴은 'xzone' 칸에 영영 — 상인 · 짐 사라짐). 그리고 앞 글이 답을 못 들은 기록을
@@ -56,7 +56,7 @@ if (process.argv[2] === '--child') {
   const flush = () => new Promise((r) => setImmediate(r));
   const freshX = () => ({ st: { sent: 0, sentOk: 0, sentFail: 0, bounced: 0, retried: 0, dup: 0, bodyOut: 0, crossArrive: 0, crossReturn: 0, walkWait: 0, walkWaitLate: 0, soldOk: 0, deposited: 0, lost: 0 }, track: new Map(), trace: [], retry: [], seen: new Set(), seenQ: [],
     core: { splitNames: () => null, pend: [], X: { stubs: [], out: [], inbox: [] }, onRecord: function (m) { this.pend.push({ gday: m.gday, rec: m.rec, seq: this.pend.length }); return true; } } });
-  const out = { keep: process.env.T1321_XZ_KEEP === '1', cases: {} };
+  const out = { keep: process.env.T1321_XZ_KEEP !== '0', cases: {} };   // ★[T1324] 켬 기본 — '0' 만 끔
   const ZA = ZC.ZONES.hanbando, ZB = ZC.ZONES.nippon;
   const tgt = { x: Math.min(Math.max(0 + ZB.worldOffsetX - ZA.worldOffsetX, 0), ZA.zoneWidth - 1), y: 700 };
   const mkCar = (id) => {
@@ -148,7 +148,7 @@ function child(env, bait) {
 const VSRC = fs.readFileSync(VFILE, 'utf8');
 console.log('\n=== T1321 — 답을 기다리는 캐러밴 넘김이 재기동을 건넌다(손잡이 `T1321_XZ_KEEP`) ===');
 ok(Object.values(BAITS).every(([x]) => VSRC.split(x).length === 2), '⓪ 미끼 자리 셋이 소스에 꼭 한 번씩');
-const on = child({ T1321_XZ_KEEP: '1' }), off = child({});
+const on = child({}), off = child({ T1321_XZ_KEEP: '0' });   // ★[T1324] 켬 = 손잡이 안 줌(기본 켬) · 끔 = '0'
 const J = (o) => JSON.stringify(o);
 if (on.err) ok(false, '켬 판이 돌았다', on.err);
 else {
