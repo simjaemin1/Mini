@@ -13,11 +13,17 @@
 'use strict';
 const MODE = (typeof process !== 'undefined' && process.env && process.env.T1322_PREFILTER || '').trim();
 const ON = MODE !== '0', VERIFY = MODE === 'verify';   // ★[T1323] 켬 기본(`'0'` 만 끔 · 종전 `'1'` 도 켬)
-const A = { TK: new Uint8Array(0), W95: new Uint8Array(0), VT: new Int32Array(0), NDA: new Float64Array(0), LON: new Float64Array(0), SK: new Float64Array(0), SX: new Float64Array(0), SY: new Float64Array(0) };
+// ★[T1337] 잠 깨움 거름 손잡이 `T1337_WAKE` — `'1'` 켬 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌 · 그 밖 끔(끔 기본 — 판 증거 뒤 PM)
+const WMODE = (typeof process !== 'undefined' && process.env && process.env.T1337_WAKE || '').trim();
+const WAKE_ON = WMODE === '1' || WMODE === 'verify', WAKE_VERIFY = WMODE === 'verify';
+const A = { TK: new Uint8Array(0), W95: new Uint8Array(0), VT: new Int32Array(0), NDA: new Float64Array(0), LON: new Float64Array(0), SK: new Float64Array(0), SX: new Float64Array(0), SY: new Float64Array(0),
+  // ★[T1337] 잠 깨움 표(결정 문까지 건넌다) — DS 표 · SH 신원 해시 · CX/CY 셀 · T95 판 시계 배율 · VID 마을 · SEG 창 쪽(1 저녁 · 2 새벽) · DOF `_dOff` · BDY 몸 날 · DAY 장부 날 · DK 미룬 결정 도장(`_t540DecAt`)
+  DS: new Uint8Array(0), SH: new Float64Array(0), CX: new Float64Array(0), CY: new Float64Array(0), T95: new Float64Array(0), VID: new Float64Array(0), SEG: new Uint8Array(0), DOF: new Float64Array(0), BDY: new Float64Array(0), DAY: new Float64Array(0), DK: new Float64Array(0) };
 const own = [];          // 칸 → 몸(빈 칸 = null)
 const slotOf = new Map();   // pid → 칸
 let cap = 0, n = 0;
-const stat = { installed: 0, grant: 0, skip: 0, wake: 0, stamp: 0, touch: 0, flushAll: 0, gap: 0, due: 0, dusk: 0, gone: 0, vchecks: 0, bad: 0, why: {}, ex: [] };
+const stat = { installed: 0, grant: 0, skip: 0, wake: 0, stamp: 0, touch: 0, flushAll: 0, gap: 0, due: 0, dusk: 0, gone: 0, vchecks: 0, bad: 0, why: {}, ex: [],
+  dgrant: 0, dskip: 0, dstamp: 0, dwolf: 0, dstill: 0, dvq: 0, dcmp: 0, dbad: 0, dwhy: {}, dex: [] };   // ★[T1337] 잠 깨움 표 셈
 function _grow(need) {
   let c = cap || 1024; while (c < need) c *= 2;
   for (const k of Object.keys(A)) { const B = new A[k].constructor(c); B.set(A[k]); A[k] = B; }
@@ -25,9 +31,9 @@ function _grow(need) {
 }
 // 몸이 칸을 받는다(같은 pid 로 다시 낳으면 새 칸 — 옛 칸은 비운다)
 function install(p) {
-  const old = slotOf.get(p.pid); if (old !== undefined) { own[old] = null; A.TK[old] = 0; }
+  const old = slotOf.get(p.pid); if (old !== undefined) { own[old] = null; A.TK[old] = 0; A.DS[old] = 0; }
   const s = n++; if (s >= cap) _grow(s + 1);
-  own[s] = p; slotOf.set(p.pid, s); A.TK[s] = 0; A.SK[s] = NaN; A.VT[s] = -1;
+  own[s] = p; slotOf.set(p.pid, s); A.TK[s] = 0; A.SK[s] = NaN; A.VT[s] = -1; A.DS[s] = 0; A.DK[s] = NaN;
   stat.installed++;
   return s;
 }
@@ -35,7 +41,7 @@ function slot(pid) { const s = slotOf.get(pid); return s === undefined ? -1 : s;
 function count() { return n; }
 // 판 셈 — `T1322_STAT=<파일>`(`%p` = 프로세스 번호 — 판 여럿이 같이 돌 때) 이면 끝날 때(와 30초마다) 표 셈을 적는다(켬일 때만)
 if (ON && process.env.T1322_STAT) {
-  const fs = require('fs'), _f = process.env.T1322_STAT.replace('%p', String(process.pid)), put = () => { try { fs.writeFileSync(_f, JSON.stringify(Object.assign({ mode: MODE, slots: n }, stat))); } catch (e) {} };
+  const fs = require('fs'), _f = process.env.T1322_STAT.replace('%p', String(process.pid)), put = () => { try { fs.writeFileSync(_f, JSON.stringify(Object.assign({ mode: MODE, wmode: WMODE, slots: n }, stat))); } catch (e) {} };
   setInterval(put, 30000).unref(); process.on('exit', put);
 }
-module.exports = { ON, VERIFY, MODE, A, own, install, slot, count, stat };
+module.exports = { ON, VERIFY, MODE, WAKE_ON, WAKE_VERIFY, WMODE, A, own, install, slot, count, stat };

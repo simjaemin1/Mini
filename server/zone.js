@@ -5382,6 +5382,50 @@ function _t1294Arrived(npc, targetKey) {
 const SS = require('./stand-skip');
 const T1322_PF = SS.ON && !T738_SOA_XY && T670_SKIP_IDLE && !T791_VERIFY && !T1140_STUCK_INLINE && !T1145_XY_COLS && !T370_PATH_REUSE && !T1294_ARRIVED_PATH && T791_PATH_MIR && !T1241_DES && process.env.T1316_SUBSTEP !== '1';   // ★[T1323] T1316 토막 걸음(한 틱 여러 걸음 · 끔 기본) 켬 판엔 무동작
 const T1322_VERIFY = T1322_PF && SS.VERIFY;
+// ★★[T1337 2026-11-16 · µs 여섯째 · 손잡이 `T1337_WAKE`(끔 기본 · `'1'` 켬 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌)] **잠 깨움 표 — 결정 문까지 건넌다**(T1323 회부 1).
+//   T1323 진단: 밤 결정의 95 % 가 몸 칸 무동작(취침 79 %) · 결정 시간의 82 %. 첫 거름(T1322) 표 1(침대 목표 그대로) 몸이 결정 시각이 되어도
+//   ⓐ 늑대가 결정 문 그 질의(`qtMobs.queryCircle(자리, NPC_FLEE_RANGE)` · 길들지 않은 늑대 · 그 거리)로 없고 ⓑ 생활층이 준 잠 깨움 판정(`SimVillages.t1337Sleep` —
+//   취침 갈래 차례 그대로 · 짐 일감 · 곳간 정산 · 끼니 · 쉼 · 귀가 값이 다 무동작)이 아직 산다(`t1337Still` — 창 쪽 · 몸 날 · 장부 날 · 마을 · 마감 얼림)면
+//   결정 문을 안 돌리고 그 결정이 썼을 결정 시각만 열에 적는다(결정 문 머리 글자 그대로 — 씨 흐름 `(신원 · 셀 · 게임일 · 틱)` 첫 수 · 판 시계 배율).
+//   미룬 결정 도장(`nextDecisionAt` · `_t540DecAt` · `_sh`)은 몸을 다시 열 때 첫 거름 도장과 같이 쓴다(`_t1322Wake`). 결정 문 주사위 흐름은 결정마다 새로 씨를 뿌린다 — 건너도 다른 몸 수는 그대로.
+//   ⚠전제(T1322 과 같은 꼴): 표가 산 동안 걸음 문 밖에서 그 몸의 생활층 칸(손 짐 · 곳간 일 · 쉼 · 짐 일감 · 곳간 정산 · 끼니)과 그 마을의 일감이 안 바뀐다. `verify` 가 결정 문을 실제로 돌려 센다.
+const T1337_WAKE = T1322_PF && SS.WAKE_ON, T1337_VERIFY = T1337_WAKE && SS.WAKE_VERIFY;
+const _t1337Dice = _SEED.makeStream();
+let _t1337Pend = null;
+function _t1337Grant(npc, s, now) {
+  const w = SimVillages.t1337Sleep ? SimVillages.t1337Sleep(npc, now) : null; if (!w) return;
+  const A = SS.A;
+  A.DS[s] = 1; A.SH[s] = npc._sh !== undefined ? npc._sh : _SEED.pidHash(npc.playerId || npc.pid || npc.mid || npc.id || '');   // `_shOf` 그 식(몸 칸은 안 쓴다)
+  A.CX[s] = Math.floor(npc.x / BUILDING_SIZE); A.CY[s] = Math.floor(npc.y / BUILDING_SIZE);
+  A.T95[s] = (npc.simVillageId && SimVillages.t1295S) ? SimVillages.t1295S(npc) : 1;
+  A.VID[s] = w.vid; A.SEG[s] = w.seg; A.DOF[s] = w.dOff; A.BDY[s] = w.bday; A.DAY[s] = w.day;
+  A.LON[s] = npc.simLonOff || 0; A.W95[s] = SimVillages.t1295Wp && SimVillages.t1295Wp(npc, now) != null ? 1 : 0;   // 표 1 은 해 질 녘을 안 본다 — 이 두 칸은 잠 깨움 판정 몫
+  SS.stat.dgrant++;
+}
+// 결정 시각이 된 표 1 몸 — 결정 문을 건너도 되나(거짓 = 깨운다 → 종전 길). 참이면 열의 결정 시각만 다음 수로.
+function _t1337Dec(s, now) {
+  const A = SS.A, x = A.SX[s], y = A.SY[s];
+  const near = qtMobs ? qtMobs.queryCircle(x, y, NPC_FLEE_RANGE) : Array.from(mobs.values());   // 결정 문 ① 그 질의
+  for (const m of near) { if (m.type !== 'wolf' || m.tameOwner) continue; if (Math.hypot(m.x - x, m.y - y) < NPC_FLEE_RANGE) { SS.stat.dwolf++; return false; } }
+  if (!SimVillages.t1337Still(A.VID[s], A.LON[s], A.W95[s], A.SEG[s], A.DOF[s], A.BDY[s], A.DAY[s], now)) { SS.stat.dstill++; return false; }
+  _t1337Dice.seed(_SEED.seedOf(A.SH[s], A.CX[s], A.CY[s], zoneGameDay(), _tick.n));
+  let nda = now + 500 + _t1337Dice.next() * 1000;
+  const sc = A.T95[s]; if (sc > 1) nda = now + (nda - now) / sc;
+  if (T1337_VERIFY) { const p = SS.own[s]; _t1337Pend = { p, nda, t: _tick.n, snap: _t1337Snap(p) }; SS.stat.dvq++; return false; }   // 견줌 = 실제로 돌린다(아래 `_t1337Cmp`)
+  A.NDA[s] = nda; A.DK[s] = now; SS.stat.dskip++;
+  return true;
+}
+const _T1337_ST = new Set(['_t540StepAt', '_pathAt', '_stuckPos', 'nextDecisionAt', '_t540DecAt', '_sh']);
+function _t1337Snap(p) { const m = new Map(); for (const k of Object.keys(p)) { if (_T1337_ST.has(k)) continue; const v = p[k]; m.set(k, v && typeof v === 'object' ? (Array.isArray(v) ? v : JSON.stringify(v)) : v); } return m; }
+function _t1337Cmp(npc) {
+  const P = _t1337Pend; _t1337Pend = null; if (P.t !== _tick.n) return;   // 같은 틱 그 몸의 진짜 걸음 뒤에만
+  SS.stat.dcmp++;
+  const st = SS.stat, bad = (w) => { st.dbad++; st.dwhy[w] = (st.dwhy[w] || 0) + 1; if (st.dex.length < 8) st.dex.push(`${npc.pid} ${w}`); };
+  if (!Object.is(npc.nextDecisionAt, P.nda)) bad('nda');
+  const now = _t1337Snap(npc);
+  for (const [k, v] of now) { const a = P.snap.get(k); if (!P.snap.has(k)) bad('+' + k); else if (!(Array.isArray(v) ? v === a : Object.is(v, a))) bad(k); }
+  for (const k of P.snap.keys()) if (!now.has(k)) bad('-' + k);
+}
 // 서 있는 몸 — 다음 걸음 문(결정 문이 닫혀 있을 때)의 막힘 · 길 · 따라가기 · 도착 뒤가 도장만 찍는 몸 칸 상태(종전 글자를 그대로 따라간 조건 · 읽기만)
 function _t1322State(npc) {
   if (npc.canadiaVillage || !(npc.hp > 0) || npc.floor || npc.onStairId || npc.canadiaTask === 'traveling') return false;
@@ -5414,12 +5458,16 @@ function _t1322Grant(npc, now) {
     }
   }
   A.TK[s] = kind; A.NDA[s] = nda; A.LON[s] = lon; A.W95[s] = w95; A.SK[s] = NaN; A.SX[s] = npc.x; A.SY[s] = npc.y; SS.stat.grant++;
+  A.DS[s] = 0; A.DK[s] = NaN;
+  if (T1337_WAKE && kind === 1) _t1337Grant(npc, s, now);   // ★[T1337] 잠 깨움 표(결정 문까지)
 }
 // 미룬 도장 — 건넌 틱의 걸음 문이 썼을 값(마지막 건넌 시각 · 표를 준 자리)
 function _t1322Wake(s) {
   const A = SS.A, t = A.SK[s];
   if (t === t) { const p = SS.own[s]; p._t540StepAt = t; const S = p._stuckPos; S.x = A.SX[s]; S.y = A.SY[s]; S.at = t; p._pathAt = t; SS.stat.stamp++; }
-  A.TK[s] = 0; A.SK[s] = NaN; SS.stat.wake++;
+  const d = A.DK[s];   // ★[T1337] 미룬 결정 도장 — 마지막으로 건넌 결정이 썼을 결정 시각 · 관측 칸 · 신원 해시 캐시
+  if (d === d) { const p = SS.own[s]; p.nextDecisionAt = A.NDA[s]; p._t540DecAt = d; if (p._sh === undefined) p._sh = A.SH[s]; A.DK[s] = NaN; SS.stat.dstamp++; }
+  A.TK[s] = 0; A.SK[s] = NaN; A.DS[s] = 0; SS.stat.wake++;
 }
 function _t1322Touch(p) { const s = SS.slot(p.pid); if (s >= 0 && SS.own[s] === p && SS.A.TK[s]) { _t1322Wake(s); SS.stat.touch++; } }
 function _t1322FlushAll() { const A = SS.A, n = SS.count(); for (let s = 0; s < n; s++) if (A.TK[s]) _t1322Wake(s); SS.stat.flushAll++; }
@@ -5437,7 +5485,7 @@ function _t1322Dusk(s, now) {
 function _t1322Skip(s, pid, now) {
   const A = SS.A, k = A.TK[s];
   if (!k) return false;
-  const why = players.get(pid) !== SS.own[s] ? 'gone' : A.VT[s] !== _tick.n - 1 ? 'gap' : !(now < A.NDA[s]) ? 'due' : (k === 2 && _t1322Dusk(s, now)) ? 'dusk' : null;
+  const why = players.get(pid) !== SS.own[s] ? 'gone' : A.VT[s] !== _tick.n - 1 ? 'gap' : !(now < A.NDA[s]) ? ((A.DS[s] && _t1337Dec(s, now)) ? null : 'due') : (k === 2 && _t1322Dusk(s, now)) ? 'dusk' : null;   // ★[T1337] 결정 시각이 된 잠 깨움 표 몸은 `_t1337Dec` 이 결정 문까지 건넌다
   if (why) { SS.stat[why]++; _t1322Wake(s); return false; }
   if (T1322_VERIFY && !_t1322Check(SS.own[s], s, now)) { _t1322Wake(s); return false; }
   A.SK[s] = now; A.VT[s] = _tick.n; SS.stat.skip++;
@@ -5449,8 +5497,9 @@ function _t1322Check(npc, s, now) {
   const bad = (w) => { st.bad++; st.why[w] = (st.why[w] || 0) + 1; if (st.ex.length < 8) st.ex.push(`${npc.pid} ${w} t=${now}`); return false; };
   if (!(npc.hp > 0)) return bad('hp');
   if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) return bad('inactive');
-  if (npc.canadiaVillage || !(now < npc.nextDecisionAt)) return bad('gate');
-  if (!Object.is(npc.nextDecisionAt, SS.A.NDA[s])) return bad('nda');
+  const _nd = SS.A.DK[s] === SS.A.DK[s] ? SS.A.NDA[s] : npc.nextDecisionAt;   // ★[T1337] 결정을 건넜으면 몸 칸은 아직 옛 결정 시각(미룬 도장)
+  if (npc.canadiaVillage || !(now < _nd)) return bad('gate');
+  if (SS.A.DK[s] !== SS.A.DK[s] && !Object.is(npc.nextDecisionAt, SS.A.NDA[s])) return bad('nda');
   if (!Object.is(npc.x, SS.A.SX[s]) || !Object.is(npc.y, SS.A.SY[s])) return bad('moved');
   if (npc.simEvacUntil && now < npc.simEvacUntil && npc.behavior !== 'fight' && npc.npcHomeX != null) return bad('evac');
   if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null && npc.behavior !== 'fight') {
@@ -17005,12 +17054,13 @@ setInterval(() => {
     //     예산을 늘리지도, 새로 걸지도 않는다: 놓는 수가 곧 설계 판정이라 PM 몫이다(T316 §3 회부).
     if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
     if ((Date.now() - _decT0) > 15 || TB.out(15, 'decide')) { _stopAt = pid; break; }   // ★[T687] 켬 = 이 틱 공용 몫이 바닥나도 여기서 멈춘다(커서 그대로)   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
-    if (T1241_PROBE && _desClk) { _desTimed(npc, dt, now); if (T1322_PF) _t1322Grant(npc, now); continue; }   // ★[T1241 계측] 같은 몸통을 진짜 시계로 잰다(아래 세 줄 그대로)
+    if (T1241_PROBE && _desClk) { _desTimed(npc, dt, now); if (_t1337Pend && _t1337Pend.p === npc) _t1337Cmp(npc); if (T1322_PF) _t1322Grant(npc, now); continue; }   // ★[T1241 계측] 같은 몸통을 진짜 시계로 잰다(아래 세 줄 그대로)
     if (T1241_DES && npc._des && _desHold(npc, now)) continue;   // ★[T1241] 사건 갈래가 쥔 몸(끔 = 이 줄 무동작)
     if (_T1241) _desStat.steps++;
     const _K95 = (npc.simVillageId && SimVillages.t1316K) ? SimVillages.t1316K(npc, dt) : 1;   // ★[T1316 ③] 켬(판 시계 배율 몸) = 틱을 K 토막(끔 · 배율 1 = 1 — 아래 종전 한 줄)
     if (_K95 > 1) { for (let k = _K95 - 1; k >= 0; k--) { npcStep(npc, dt / _K95, now - k * dt * 1000 / _K95); if (k > 0) _t1295Walk(npc, dt / _K95, 1); } }   // 마지막 토막 걸음은 이동 문(`_t1295Walk` 가 dt ÷ K)
     else npcStep(npc, dt, now);
+    if (_t1337Pend && _t1337Pend.p === npc) _t1337Cmp(npc);   // ★[T1337 verify] 건너려던 결정을 실제로 돌린 뒤 견줌
     if (T1322_PF) _t1322Grant(npc, now);   // ★[T1322] 서 있는 몸이면 표(다음 틱 첫 거름)
     if (T1241_DES) _desTry(npc, now);   // ★[T1241] 사건 토막을 열 수 있나
   } while (false); return _stopAt !== null; };

@@ -12826,6 +12826,62 @@ const _t1295Stat = { walks: 0, walkPx: 0, scaled: 0 };   // 계측 전용
 //   ⓓ 해 몫(일과 창 — 출근 · 반일 · 밤 귀가): 존 하늘(`worldPhase` — 운영 하루 24분)은 판 시계에서 400날에 하루의 7% 만 돈다 — 몸은 늘 같은 시각(밤이면 늘 잠)에 선다.
 //     켜면 그 몸의 해 몫 = 몸의 날(`_bodyDay` — (지금 − 기점) ÷ 판 하루)의 남은 몫 — 몸의 날 도장과 같은 축(새 수 0). 끔 · 운영 시계 = null(종전 `worldPhase`).
 function t1295Wp(npc, now) { if (!(t1295S(npc) > 1)) return null; const t = (now - state.epoch) / state.dayMs; return t - Math.floor(t); }
+// ★★[T1337 2026-11-16 · µs 여섯째] **잠 깨움 표** — 존 첫 거름(T1322)이 결정 문까지 건너도 되는가(몸 칸 무동작 결정)를 생활층이 답한다. 읽기만(쓰기 0).
+//   `npcLifeTick` 의 취침 갈래를 그 차례 그대로 따라간다: 마감 얼림 · 손 짐 깃발 · 마을 · 곳간 일 · 쉼 · 짐 나르기(`_t1181Step`) · 해 질 녘 곳간(`_t720Step`) ·
+//   취침 창(`fv >= dayR || fv < _dOff`) · 저녁 끼니(그 날 했나) · `_lifeGoHome('취침')` 이 쓸 값(행동 · 목표 · 라벨 · 사냥 깃발)이 이미 그 값 — 다 맞으면 이 결정은 몸 칸 무동작이다.
+//   돌려주는 것 = 그 판정이 산 동안 바뀌지 않아야 할 시각 수(창 쪽 · `_dOff` · 몸 날 · 장부 날 · 마을) — 존이 열에 두고 결정 때마다 `t1337Still` 로 다시 본다.
+//   ⚠늑대(결정 문 머리)는 존이 결정 때마다 같은 질의로 본다. 마을 상태(짐 일감 · 곳간 일)는 결정 때마다 다시 묻지 않는다 — `verify` 가 결정 문을 실제로 돌려 센다.
+function t1337Sleep(npc, now) {
+  if (!LIFE_ON || !npc || !npc.simVillageId) return null;
+  if (T698_BOUNDARY_SLICE && state.tickJobs) return null;
+  if ((_handOf(npc) > 0) !== !!npc._carryOn) return null;
+  const vil = state.byDbId && state.byDbId.get(npc.simVillageId);
+  if (!vil || !vil._terrSet || !vil._terrSet.size) return null;
+  if (npc._granTask) return null;
+  const wpF = state.deps.worldPhase, dayR = state.deps.dayPhaseRatio || 0.7;
+  const _w95 = t1295Wp(npc, now);
+  const fv = _w95 != null ? _t720Fv(_w95, npc.simLonOff || 0) : wpF ? _t720Fv(wpF(now), npc.simLonOff || 0) : 0.35;
+  const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, now) : gameDayOf(now)) : 0;
+  const bday = T720_LON_DAY ? (state.dayMs ? _bodyDay(npc, now) : 0) : day;
+  if (npc._rest) return null;
+  if (npc.hp != null && npc.hp > 0 && npc.hp < (npc.maxHp || 100) * SCH_REST_IN) return null;
+  const E = _lifeEcon();
+  if (E.productionActsBound(vil.econ)) {   // `_t1181Step` 이 거짓을 돌려주는 갈래(돌아갈 짐 · 짐 · 영토 짐 없음 · 일감 없음)
+    if ((npc._t1181Returns && npc._t1181Returns.length) || npc._t1181Haul || npc._t1302Terr) return null;
+    if (_t1181Task(vil, npc, true)) return null;
+  }
+  if (T720_LON_DAY) {   // `_t720Step` 이 거짓을 돌려주는 갈래(정산 길 밖 · 낮 아님 · 오늘 했다 / 든 짐 없음 · 짐 가득 아님)
+    if (npc._t720 && npc._t720.k) return null;
+    const _fishCap = E.T312_FISH_ACT && (npc._t312Kg || 0) > 0 ? _carryCfg()?.CFG?.CAP_KG : 0;
+    if (_fishCap > 0 && (npc._t312Kg >= _fishCap || npc._t1180FullFish)) return null;
+    if (_stoneHandInOn(vil) && _stoneHeld(npc) > 0) return null;
+    if (fv >= dayR) { const S = npc._t720; if (!(S && S.dd === bday) && _t720Held(vil, npc) > 0) return null; }
+  }
+  if (npc._dOff === undefined) return null;
+  if (!(fv >= dayR || fv < npc._dOff)) return null;
+  if (fv >= dayR && npc._t1197M1 !== bday && _t1197On()) return null;
+  if (npc._workT !== null) return null;
+  if (npc.behavior !== 'wander' || npc.gatherTarget !== null || npc._huntOn !== 0 || npc._huntSpd !== 0) return null;
+  const bed = npc.npcBedX != null, tx = bed ? npc.npcBedX : npc.npcHomeX, ty = bed ? npc.npcBedY : npc.npcHomeY;
+  if (tx == null) return null;
+  const d = Math.hypot(npc.x - tx, npc.y - ty);
+  if (_handOf(npc) > 0 && d <= 44) return null;
+  if (!Object.is(npc.targetX, tx) || !Object.is(npc.targetY, ty)) return null;
+  if (npc._lifeAct !== (d > 44 ? '귀가' : '취침')) return null;
+  return { seg: fv >= dayR ? 1 : 2, dOff: npc._dOff, bday, day, vid: npc.simVillageId };
+}
+// 그 판정이 아직 사는가(결정 때마다 · 몸 안 짚기) — 창 쪽 그대로 · 몸 날 · 장부 날 · 마을 그대로 · 마감 얼림 아님
+function t1337Still(vid, lon, w95, seg, dOff, bday, day, now) {
+  if (T698_BOUNDARY_SLICE && state.tickJobs) return false;
+  const vil = state.byDbId && state.byDbId.get(vid);
+  if (!vil || !vil._terrSet || !vil._terrSet.size) return false;
+  const wpF = state.deps.worldPhase, dayR = state.deps.dayPhaseRatio || 0.7;
+  const fv = w95 ? _t720Fv(t1295Ph(now), lon || 0) : wpF ? _t720Fv(wpF(now), lon || 0) : 0.35;
+  if (seg === 1 ? !(fv >= dayR) : !(fv < dOff)) return false;
+  const d2 = state.dayMs ? (T731_ON ? _ledgerDay(vil, now) : gameDayOf(now)) : 0;
+  const b2 = T720_LON_DAY ? (state.dayMs ? Math.floor((now - state.epoch) / state.dayMs + (lon || 0)) : 0) : d2;
+  return d2 === day && b2 === bday;
+}
 function t1295Ph(now) { const t = (now - state.epoch) / state.dayMs; return t - Math.floor(t); }   // ★[T1322] 판 하루 축 해 몫(몸 안 짚기 — `t1295Wp` 의 몸 칸 문 뒤 그 식 · 존 첫 거름이 판 시계 몸 표에 쓴다)
 function t1295S(npc) {
   if (!npc || !npc.simVillageId) return 1;
@@ -19261,7 +19317,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
-  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1337Sleep, t1337Still, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
