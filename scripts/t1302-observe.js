@@ -16,9 +16,12 @@ global.__t1302Trace={
  join(pid,to,person){rec.joins.push({day:getState().world.day,pid,to:to.name,person:person?.id??null,bodyPerson:getState().deps.players.get(pid)?._econId??null});}
 };
 const load=Module._extensions['.js'];
+// T1318: chain to the loaders preloaded before this one (T1308 runner: t722 stop · t740 side · t1308 keep hooks append to the same
+// villages.js source). Edit the source on its way to _compile and hand the file to the previous loader — alone, the same text compiles.
 Module._extensions['.js']=function(m,f){
  if(f!==path.join(ROOT,'server/villages.js'))return load(m,f);
- let s=fs.readFileSync(f,'utf8');
+ const compile=m._compile;
+ m._compile=function(s,fn){
  const edits=[
   ['function _terrAdd(vil, keys, target, fell) {','function _terrAdd(vil, keys, target, fell) { global.__t1302Trace.add(vil,keys);'],
   ['function _t1238Batch(vil, picked, cap) {','function _t1238Batch(vil, picked, cap) { global.__t1302Trace.batch();'],
@@ -26,7 +29,9 @@ Module._extensions['.js']=function(m,f){
   ['  _t765Stat.joined++;','  global.__t1302Trace.join(pid,to,typeof person===\'undefined\'?null:person); _t765Stat.joined++;']
  ];
  for(const[a,b]of edits){if(!s.includes(a))throw Error('T1302 diagnostic anchor missing: '+a);s=s.replace(a,b);}
- m._compile(s,f);
+ return compile.call(this,s,fn);
+ };
+ return load(m,f);
 };
 const wrapped=new WeakMap();
 function bind(w){
