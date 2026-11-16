@@ -33,9 +33,9 @@ function install(p) {
 }
 function slot(pid) { const s = slotOf.get(pid); return s === undefined ? -1 : s; }
 function count() { return n; }
-// 판 셈 — `T1322_STAT=<파일>` 이면 끝날 때(와 30초마다) 표 셈을 적는다(켬일 때만)
+// 판 셈 — `T1322_STAT=<파일>`(`%p` = 프로세스 번호 — 판 여럿이 같이 돌 때) 이면 끝날 때(와 30초마다) 표 셈을 적는다(켬일 때만)
 if (ON && process.env.T1322_STAT) {
-  const fs = require('fs'), put = () => { try { fs.writeFileSync(process.env.T1322_STAT, JSON.stringify(Object.assign({ mode: MODE, slots: n }, stat))); } catch (e) {} };
+  const fs = require('fs'), _f = process.env.T1322_STAT.replace('%p', String(process.pid)), put = () => { try { fs.writeFileSync(_f, JSON.stringify(Object.assign({ mode: MODE, slots: n }, stat))); } catch (e) {} };
   setInterval(put, 30000).unref(); process.on('exit', put);
 }
 module.exports = { ON, VERIFY, MODE, A, own, install, slot, count, stat };

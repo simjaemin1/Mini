@@ -490,6 +490,8 @@ const state = {
 //   (원정 굶음 T906 'die' 판이 0 밑으로 깎던 잠깐 값 — 그 판은 T1168 이 걷었다.)
 //   전투 단위(`bu` · 교전 `ctx.units`)의 hp 는 몸이 아니라 판의 칸이다(war-live · battle-core 소유) — 이 문 밖. 소스 검사 `scripts/test-npc-hp-door.js`.
 function _setHp(p, v, why) { return state.deps.setHp(p, v, why); }
+// ★[T1323] 존 첫 거름(T1322) 표 내리기 — 걸음 문 밖에서 몸 판정 칸(자리 · 목표 · 행동 · 직업 · 집 · 침대 · 마을)을 쓰기 **앞에** 부른다(끔 = deps 가 null · 무동작). 자리 전수는 `scripts/t1323/census.py`.
+function _t1323Touch(p) { const f = state.deps.t1322Touch; if (f && p) f(p); }
 
 // 게임 절대일 — zone-config WORLD(worldEpoch=0, dayLengthMs=10분)와 같은 시계 원천(Date.now).
 // isNight/worldPhase와 동일 epoch를 쓰므로 낮밤 주기와 일 경계가 정렬됨.
@@ -1330,7 +1332,8 @@ function _t747Restore() {
       R.bodies++;
       if (S._bag && T1133_BAG) { if (_t1133BagLoad(b, S._bag, S._packOf, false) < 0 && T1166_LOT && _T732_ON) { _t1166Pend.push({ b, bag: S._bag, packOf: S._packOf, spill: false }); _t1166Stat.bagDeferred++; } }   // ★[T1133] 같은 자리 몸에 짐 줄 · 표식(끄면 칸을 안 읽는다) · ★[T1166] 시계 전이면 미룬다
       if (S._lots && T1166_LOT) { if (_t1166LotLoad(b, S._lots, false) < 0 && _T732_ON) { _t1166Pend.push({ b, lots: S._lots, spill: false }); _t1166Stat.deferred++; } }   // ★[T1166] 같은 자리 몸에 손 로트 줄(시계 전이면 미룬다)
-      if (S.simJob != null && b.simJob !== S.simJob) { R.jobMiss++; b.simJob = S.simJob; }   // 같은 자리 = 같은 몸(직업도 그 몸의 것)
+      _t1323Touch(b);   // ★[T1323]
+  if (S.simJob != null && b.simJob !== S.simJob) { R.jobMiss++; b.simJob = S.simJob; }   // 같은 자리 = 같은 몸(직업도 그 몸의 것)
       if (Number.isFinite(S.x) && Number.isFinite(S.y)) { if (T1145_XY_COLS) BC.w(b, S.x, S.y); else { b.x = S.x; b.y = S.y; } b.targetX = S.x; b.targetY = S.y; b.vx = 0; b.vy = 0; R.moved++; }
       if (Number.isFinite(S.hp) && S.hp > 0) { _setHp(b, Math.min(S.hp, b.maxHp || S.hp), 'restore'); if (b.hp < (b.maxHp || 100)) R.hpLow++; }   // ★[T942] 문으로
       if (S._rest != null) b._rest = S._rest;
@@ -1826,6 +1829,7 @@ function _t1198Sync(vil, cap) {
       const pa = q._pa != null ? linked.get(q._pa) : null;
       if (pa && !pa._bxExit) {
         const x = pa.x + SZ / 2, y = pa.y;
+        _t1323Touch(p);   // ★[T1323]
         if (T1145_XY_COLS) BC.w(p, x, y); else { p.x = x; p.y = y; }
         p.npcHomeX = pa.npcHomeX; p.npcHomeY = pa.npcHomeY; p.npcBedX = pa.npcBedX; p.npcBedY = pa.npcBedY;
         _t1198Stat.bornBeside++;
@@ -2004,6 +2008,7 @@ function _t765Join(pid, to, person) {
   if (!p || !r || !r.t765) { _t765Stat.noBody++; return false; }
   if (to.npcPids.length >= NPC_CAP_PER_VILLAGE) { _bxGone(r, p); _t765Stat.capped = (_t765Stat.capped || 0) + 1; return false; }   // 가시 몸 상한(`VILLAGE_NPC_CAP` — 자의 판 조건)에 찼다 — 그 몸은 종전처럼 거둔다(사람은 econ 에 붙었다)
   state.bodyExits.delete(pid);
+  _t1323Touch(p);   // ★[T1323]
   p.simCaravan = false; p._bxExit = undefined; p.vx = 0; p.vy = 0;
   const sp = state.deps.spawnNpc;
   state.deps.spawnNpc = (q) => { p.tribeId = q.villageId || null; p.tribeName = q.villageName || null; p.npcHomeX = q.npcHomeX != null ? q.npcHomeX : null; p.npcHomeY = q.npcHomeY != null ? q.npcHomeY : null;
@@ -2063,6 +2068,7 @@ function _t1039Join(pid, keep) {
   if (!p || !r || !(r.t1039 || r.t1078 != null || (r.t1104 != null && r.t1104k === 'g'))) { _t1039Stat.noBody++; return null; }   // ★[T1078] 단에 들 몸(절망 이탈)도 같은 받기 문 · ★[T1104] 길목에서 은거지로 돌아온 단 몸도
   if (!keep) { _bxGone(r, p); _bx.arrive++; _t1039Stat.capped++; return null; }   // 단 몸 상한에 찼다 — 종전 닿음 회수 그 줄(사람은 단에 들었다)
   state.bodyExits.delete(pid);
+  _t1323Touch(p);   // ★[T1323]
   p.simCaravan = false; p._bxExit = undefined; p.vx = 0; p.vy = 0;
   p.simVillageId = undefined; p.simLonOff = undefined; p.npcBedX = undefined; p.npcBedY = undefined;   // 마을 결속을 푼다(존 `spawnNpc` 로 선 단 몸에 없는 칸)
   npcs.add(p.pid);   // AI 다시 켬 — 집 · 일터 칸은 도적 층이 단 몸 규칙으로 준다(`syncBodies` 그 식)
@@ -2576,6 +2582,7 @@ function syncVillageJobs(vil, changedOut) {
     let pick = null;
     for (const j of jobs) if (deficit[j] > 0) { pick = j; deficit[j]--; break; }
     if (pick && p.simJob !== pick) {
+      _t1323Touch(p);   // ★[T1323]
       p.simJob = pick;
       if (changedOut) changedOut[p.pid] = pick;
     }
@@ -4812,7 +4819,7 @@ function _t1034Apply(body, now) {
   if(body._t1182 && S.act) {
     body._t1182At=T1253_CLOCK_FIX ? _t1253Now() : now;if(T1253_CLOCK_FIX)body._t1253N=0;const A=S.act;if(A.xzIn)body._xzInPts=A.xzIn.map(q=>({x:q[0],y:q[1]}));setBodyPts(body,A.pts.map(q=>({x:q[0],y:q[1]})));body.phase=S.ph;body.prog=Math.max(0,Math.min(body.len,A.pg));   // ★[T1253] 켬 = 걸음 시계는 econ 날 시계
     body.lingerUntil=S.lg;body.departAt=S.da;body.arriveAt=S.aa;body.pxPerDay=S.ppd;body.nomPxMs=S.nom;
-    const put=(p,q)=>{if(!p||!q)return;if(T1145_XY_COLS)BC.w(p,q[0],q[1]);else{p.x=q[0];p.y=q[1];}if(Number.isFinite(q[2]))_setHp(p,q[2],'restore');p.vx=0;p.vy=0;};   // ★[T1203] 몸 hp 는 문으로(T1076 캐논 · `restore` — 다시 뜬 판 복원 낱말 · 마을 몸은 소켓 0 이라 방송 0 · 값 = [0, 최대] 안의 그 값)
+    const put=(p,q)=>{if(!p||!q)return;_t1323Touch(p);if(T1145_XY_COLS)BC.w(p,q[0],q[1]);else{p.x=q[0];p.y=q[1];}if(Number.isFinite(q[2]))_setHp(p,q[2],'restore');p.vx=0;p.vy=0;};   // ★[T1203] 몸 hp 는 문으로(T1076 캐논 · `restore` — 다시 뜬 판 복원 낱말 · 마을 몸은 소켓 0 이라 방송 0 · 값 = [0, 최대] 안의 그 값)
     put(state.deps.players.get(body.pid),A.p);
     for(let i=0;i<(body.escorts||[]).length;i++){const e=body.escorts[i],r=(A.escorts||[])[i];if(!r)continue;put(state.deps.players.get(e.pid),r.p);if(r.pts){e._actPath=_t661Path(r.pts.map(q=>({x:q[0],y:q[1]})));e._actPath.prog=r.pg;e._actPrefix=r.prefix;e._actSource=body.pts;}}
     const savedT=S.T, samePath=body.phase!=='linger';
@@ -5232,7 +5239,7 @@ function _t661Day(body, now) {
     const p = state.deps.players.get(body.pid);
     if (p) {
       body.prog = T.L; caravanPointAt(body, T.L);
-      if (T1145_XY_COLS) BC.w(p, blockedAt.x, blockedAt.y); else { p.x = blockedAt.x; p.y = blockedAt.y; }   // ★[T1145] 켬 = 쓰기 길
+      _t1323Touch(p); if (T1145_XY_COLS) BC.w(p, blockedAt.x, blockedAt.y); else { p.x = blockedAt.x; p.y = blockedAt.y; }   // ★[T1145] 켬 = 쓰기 길
       const before = body.pts;
       caravanBlockedResponse(body, p, now);
       if (body.pts !== before && body._t661 === T) _t661Anchor(body, body.pts, body.phase === 'inbound' ? 'inbound' : 'outbound');   // 재경로(같은 구간) · 고립 귀환(돌아서는 구간)
@@ -5342,7 +5349,7 @@ function _t1182Walk(path,p,want,dtMs) {
     at=L;prev=next;
     if(state.roads)state.roads.stampEntityPx(p,next.x,next.y);
   }
-  path.prog=at;p.vx=(prev.x-p.x)/dtMs*1000;p.vy=(prev.y-p.y)/dtMs*1000;
+  path.prog=at;_t1323Touch(p);p.vx=(prev.x-p.x)/dtMs*1000;p.vy=(prev.y-p.y)/dtMs*1000;
   if(T1145_XY_COLS)BC.w(p,prev.x,prev.y);else{p.x=prev.x;p.y=prev.y;}
   return blocked;
 }
@@ -5495,6 +5502,7 @@ function _escortMarch(body, dtMs, players) {
     ep.hunger = e.pinH; ep.thirst = e.pinT;   // 원정 중 게이지 고정(상인 pinHunger 동형)
     if (ep.hp <= 0) { ep.vx = 0; ep.vy = 0; continue; }
     const tp = caravanPointAt(body, Math.max(0, body.prog - 20 * (i + 1)), e);
+    _t1323Touch(ep);   // ★[T1323]
     ep.vx = (tp.x - ep.x) / dtMs * 1000; ep.vy = (tp.y - ep.y) / dtMs * 1000;   // 걷기 모션(클라 facing)
     if (T1145_XY_COLS) BC.w(ep, tp.x, tp.y); else { ep.x = tp.x; ep.y = tp.y; }   // ★[T1145] 켬 = 쓰기 길
     if (state.roads && !(T661_ON && body._t661)) state.roads.stampEntityPx(ep, ep.x, ep.y);   // ★[T661] 켬이면 호위 답압도 하루 경계 장부가(`_t661Stamp`) · §16 답압(★호위도 길을 밟는다 — 상인 동형. 대열 5명이면 답압 5배 = 교역로가 더 빨리 길이 됨)
@@ -8905,7 +8913,7 @@ function _warEndFight(body, why, winner) {
       p.simCaptive = 1; p._brout = false; _setHp(p, Math.max(1, Math.round((p.maxHp || 100) * 0.4)), 'captive');   // ★[T942] 문으로
       const oldVil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
       if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) { oldVil.npcPids.splice(kk, 1); if (T822_BODY_SEED) _t822Rekey(oldVil, kk); _bxCapField.set(oldVil, (_bxCapField.get(oldVil) || 0) + 1); } }   // ★[T1315] 끌려간 몸 수(꼬리표는 `_bxObserve` 가 econ 포로 누계와 함께)
-      p.simVillageId = winnerVil.dbId; winnerVil.npcPids.push(pid);
+      _t1323Touch(p); p.simVillageId = winnerVil.dbId; winnerVil.npcPids.push(pid);
       if (T822_BODY_SEED) _t822Rekey(winnerVil, winnerVil.npcPids.length - 1);   // ★[T833] 포로 — 옛 마을은 빠진 자리부터 · 새 마을은 든 자리
       escort.push(pid);
     }
@@ -11989,6 +11997,7 @@ function _lifeAct(npc, s) {   // ★[액션 라벨 가시화] 행동 라벨 세�
   if (npc._lifeAct !== s) { npc._lifeAct = s; npc._lifeActAt = Date.now(); }
 }
 function _lifeGoHome(npc, act) {   // 자택 대기(취침·요양·휴식·대피 공통 — §19 게이트와 동일 목표 세팅)
+  _t1323Touch(npc);   // ★[T1323] 생활층 밖(도적 은거지 하루 등)에서도 부른다
   npc.behavior = 'wander'; npc.gatherTarget = null;
   npc._huntOn = 0; npc._huntSpd = 0;   // ★사냥꾼 완전체: 귀가=두뇌 주도권 반납(wildlife 프록시 idle 강등 — 잠행 배속 잔존 방지)
   // ★[침대 진입] 취침·요양=실내 침대(문으로 출입 — 주민 A*가 벽 변 인지), 휴식·대피=마당 슬롯(집 앞 개활지).
@@ -14653,7 +14662,7 @@ function assignJob(vil, npcId, job) {
   if (!r.ok) return r;
   let pid = null;
   const P = state.deps && state.deps.players;
-  if (P && vil.npcPids) for (const id of vil.npcPids) { const b = P.get(id); if (b && b.simJob === old) { b.simJob = job; pid = id; break; } }
+  if (P && vil.npcPids) for (const id of vil.npcPids) { const b = P.get(id); if (b && b.simJob === old) { _t1323Touch(b); b.simJob = job; pid = id; break; } }
   if (pid && state.deps.broadcast) { try { state.deps.broadcast({ type: 'village_jobs', jobs: { [pid]: job } }); } catch (e) {} }
   return { ok: true, old, job, pid };
 }
@@ -15474,7 +15483,7 @@ function _t707Linger(body, c, p) {   // 상인 머묾 = 장 끝 · 남문 앞 �
   const vil = state.byEcon && state.byEcon.get(c.to), rec = vil && vil._mkt;
   if (rec && rec.cars.has(c.id)) body.lingerUntil = rec.end;
   const rp = (T661_ON && body._t661) ? body._t661.path.pts : _t661ReturnPts(body);
-  if (!body._t1182 && rp && rp.length) { setBodyPts(body, rp); if (p) { if (T1145_XY_COLS) BC.w(p, rp[0].x, rp[0].y); else { p.x = rp[0].x; p.y = rp[0].y; } } }
+  if (!body._t1182 && rp && rp.length) { setBodyPts(body, rp); if (p) { _t1323Touch(p); if (T1145_XY_COLS) BC.w(p, rp[0].x, rp[0].y); else { p.x = rp[0].x; p.y = rp[0].y; } } }
   _t707Stat.linger++;
 }
 function _t707Walk(vil, npc, k) {   // 장 명부의 몸 — 제 자리로 걷고 선다(목표만 · 길은 존 걸음 · 사냥꾼은 두뇌 주도권을 내려놓는다 — `_lifeGoHome` 꼴)
@@ -17859,7 +17868,7 @@ function _t1196Step(vil, npc, now0, job) {
     _t1196Stat.claim++;
   }
   const W = npc._t1196W || (npc._t1196W = { ph: t.st === 0 ? 'draw' : 'go', at: 0, tx: 0, ty: 0, fac: null });
-  const go = (x, y, lab) => { npc.behavior = 'wander'; npc.targetX = x; npc.targetY = y; npc.gatherTarget = null; _lifeAct(npc, lab); };
+  const go = (x, y, lab) => { _t1323Touch(npc); npc.behavior = 'wander'; npc.targetX = x; npc.targetY = y; npc.gatherTarget = null; _lifeAct(npc, lab); };
   if (W.ph === 'draw' || W.ph === 'back') {
     const L = _t1196Ladder(vil, npc);
     if (Math.hypot(npc.x - L.x, npc.y - L.y) > 44) { W.at = 0; go(L.x, L.y, W.ph === 'draw' ? '인출' : '운반'); return true; }
