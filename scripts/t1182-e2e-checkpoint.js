@@ -15,6 +15,7 @@ tickCaravanBodies=function(...a){const r=tick.apply(this,a);
   if(!c._xzHome || c._xzHome.zone!=='hanbando' || c._done || c._xzHandedBack || c.state!=='inbound')continue;
   const b=state.caravanBodies.get(c.id),p=b&&state.deps.players.get(b.pid);
   if(!b || b.c!==c || !p || p.hp<=0 || (market?(!c._t707||b.phase!=='linger'):(c._t707||b.phase!=='inbound'||!(c._returningAmt>0))))continue;
+  if(process.env.T1182_E2E_EDGE==='1' && !(b.len-b.prog<=0.5))continue;   // ★[T1324] 경계 칸에 닿아 'return' 을 기다리는 몸만(다시 뜬 직후 걸음표 전 창 · land1077 한 판 ⓗ4 · ⓗ5) — 빈 값 = 종전
   K.stopped=true;
   try{
    _t728SaveMeta();
