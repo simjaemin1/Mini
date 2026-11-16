@@ -1,0 +1,12 @@
+test-move-soa ✓286 ✗0 
+test-body-exit ✓49 ✗0 
+test-npc-hp-door ✓19 ✗0 
+test-harness-lint ✓77 ✗0 
+test-fish-act ✓86 ✗0 
+test-farm-act ✓78 ✗0 
+test-coll-grid rc? ✓20 ✗0  | === 결과: 20 PASS / 0 FAIL ===
+test-hp-src rc? ✓54 ✗0  | === 54 통과 / 0 실패 ===
+test-lon-day rc? ✓22 ✗0  | === 22건 중 PASS 22 · FAIL 0 ===
+test-handoff-body rc? ✓11 ✗1   ✗ 2존 기동 실패  |   ✗ 2존 기동 실패
+test-wood-act rc? ✓159 ✗0  | === 결과: 159 PASS / 0 FAIL ===
+test-handoff-body (main 혼자 다시) 94 통과 / 0 실패

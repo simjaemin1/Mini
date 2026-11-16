@@ -13,9 +13,9 @@
 'use strict';
 const MODE = (typeof process !== 'undefined' && process.env && process.env.T1322_PREFILTER || '').trim();
 const ON = MODE !== '0', VERIFY = MODE === 'verify';   // ★[T1323] 켬 기본(`'0'` 만 끔 · 종전 `'1'` 도 켬)
-// ★[T1337] 잠 깨움 거름 손잡이 `T1337_WAKE` — `'1'` 켬 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌 · 그 밖 끔(끔 기본 — 판 증거 뒤 PM)
+// ★[T1337] 잠 깨움 거름 손잡이 `T1337_WAKE` — **켬 기본**(판 같음 증거: 30날 × 3 시드 30/30 · 400날 1020 같음 · verify 어긋남 0) · `'0'` 끔(되돌림) · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌
 const WMODE = (typeof process !== 'undefined' && process.env && process.env.T1337_WAKE || '').trim();
-const WAKE_ON = WMODE === '1' || WMODE === 'verify', WAKE_VERIFY = WMODE === 'verify';
+const WAKE_ON = WMODE !== '0', WAKE_VERIFY = WMODE === 'verify';
 const A = { TK: new Uint8Array(0), W95: new Uint8Array(0), VT: new Int32Array(0), NDA: new Float64Array(0), LON: new Float64Array(0), SK: new Float64Array(0), SX: new Float64Array(0), SY: new Float64Array(0),
   // ★[T1337] 잠 깨움 표(결정 문까지 건넌다) — DS 표 · SH 신원 해시 · CX/CY 셀 · T95 판 시계 배율 · VID 마을 · SEG 창 쪽(1 저녁 · 2 새벽) · DOF `_dOff` · BDY 몸 날 · DAY 장부 날 · DK 미룬 결정 도장(`_t540DecAt`)
   DS: new Uint8Array(0), SH: new Float64Array(0), CX: new Float64Array(0), CY: new Float64Array(0), T95: new Float64Array(0), VID: new Float64Array(0), SEG: new Uint8Array(0), DOF: new Float64Array(0), BDY: new Float64Array(0), DAY: new Float64Array(0), GD: new Float64Array(0), DK: new Float64Array(0) };

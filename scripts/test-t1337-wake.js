@@ -162,8 +162,8 @@ console.log('\n④ 글자');
     && lt.includes('if (fv >= dayR || fv < npc._dOff) {') && sl.includes('if (!(fv >= dayR || fv < npc._dOff)) return null;')
     && lt.includes('if (_t1181Step(vil,npc,now,') && sl.includes('if (_t1181Task(vil, npc, true)) return null;') && lt.includes('_t720Step(vil, npc, now, fv, dayR, bday,') && sl.includes('_t720Held(vil, npc) > 0) return null;'),
     '생활층 잠 판정 — `npcLifeTick` 취침 갈래의 끼니 · 창 · 짐 일감 · 곳간 정산 줄을 본다');
-  const S0 = loadSS('', ''), S1 = loadSS('', '1'), S2 = loadSS('', 'verify'), S3 = loadSS('0', '1');
-  ok(!S0.WAKE_ON && S1.WAKE_ON && !S1.WAKE_VERIFY && S2.WAKE_ON && S2.WAKE_VERIFY && /const T1337_WAKE = T1322_PF && SS\.WAKE_ON/.test(Z), "`T1337_WAKE` — `'1'` 켬 · `'verify'` 켬 + 견줌 · 첫 거름 끔이면 무동작");
+  const S0 = loadSS('', ''), S1 = loadSS('', '1'), S2 = loadSS('', 'verify'), S3 = loadSS('0', '1'), S4 = loadSS('', '0');
+  ok(S0.WAKE_ON && !S0.WAKE_VERIFY && S1.WAKE_ON && !S1.WAKE_VERIFY && S2.WAKE_ON && S2.WAKE_VERIFY && !S4.WAKE_ON && /const T1337_WAKE = T1322_PF && SS\.WAKE_ON/.test(Z), "`T1337_WAKE` — 켬 기본 · `'0'` 끔 · `'verify'` 켬 + 견줌 · 첫 거름 끔이면 무동작");
 }
 console.log(`\n=== T1337 잠 깨움 ${pass} 통과 · ${fail} 실패 ===`);
 process.exit(fail ? 1 : 0);

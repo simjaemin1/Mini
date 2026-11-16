@@ -5382,7 +5382,7 @@ function _t1294Arrived(npc, targetKey) {
 const SS = require('./stand-skip');
 const T1322_PF = SS.ON && !T738_SOA_XY && T670_SKIP_IDLE && !T791_VERIFY && !T1140_STUCK_INLINE && !T1145_XY_COLS && !T370_PATH_REUSE && !T1294_ARRIVED_PATH && T791_PATH_MIR && !T1241_DES && process.env.T1316_SUBSTEP !== '1';   // ★[T1323] T1316 토막 걸음(한 틱 여러 걸음 · 끔 기본) 켬 판엔 무동작
 const T1322_VERIFY = T1322_PF && SS.VERIFY;
-// ★★[T1337 2026-11-16 · µs 여섯째 · 손잡이 `T1337_WAKE`(끔 기본 · `'1'` 켬 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌)] **잠 깨움 표 — 결정 문까지 건넌다**(T1323 회부 1).
+// ★★[T1337 2026-11-16 · µs 여섯째 · 손잡이 `T1337_WAKE`(켬 기본 · `'0'` 끔 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌)] **잠 깨움 표 — 결정 문까지 건넌다**(T1323 회부 1).
 //   T1323 진단: 밤 결정의 95 % 가 몸 칸 무동작(취침 79 %) · 결정 시간의 82 %. 첫 거름(T1322) 표 1(침대 목표 그대로) 몸이 결정 시각이 되어도
 //   ⓐ 늑대가 결정 문 그 질의(`qtMobs.queryCircle(자리, NPC_FLEE_RANGE)` · 길들지 않은 늑대 · 그 거리)로 없고 ⓑ 생활층이 준 잠 깨움 판정(`SimVillages.t1337Sleep` —
 //   취침 갈래 차례 그대로 · 짐 일감 · 곳간 정산 · 끼니 · 쉼 · 귀가 값이 다 무동작)이 아직 산다(`t1337Still` — 창 쪽 · 몸 날 · 장부 날 · 마을 · 마감 얼림)면
