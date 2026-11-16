@@ -9,11 +9,26 @@
 const fs = require('fs');
 const zlib = require('zlib');
 const args = process.argv.slice(2), arms = [], opt = { rows: 12 };
-for (let i = 0; i < args.length; i++) { if (args[i] === '--rows') opt.rows = +args[++i]; else { const k = args[i].indexOf('='); arms.push([args[i].slice(0, k), args[i].slice(k + 1)]); } }
+for (let i = 0; i < args.length; i++) { if (args[i] === '--rows') opt.rows = +args[++i]; else if (args[i] === '--sum') opt.sum = args[++i]; else { const k = args[i].indexOf('='); arms.push([args[i].slice(0, k), args[i].slice(k + 1)]); } }
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { try { return JSON.parse(zlib.gunzipSync(fs.readFileSync(f + '.gz')).toString('utf8')); } catch (e2) { return null; } } };
 const med = (a) => { const b = a.filter((x) => x != null && Number.isFinite(+x)); if (!b.length) return null; const s = b.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
 const f1 = (x) => x == null ? '—' : (+x).toFixed(1), f2 = (x) => x == null ? '—' : (+x).toFixed(2);
 const top = (a, n) => { const m = {}; for (const x of a) m[x] = (m[x] || 0) + 1; return Object.entries(m).sort((p, q) => q[1] - p[1]).slice(0, n).map(([k, v]) => `${k} ${v}`).join(' · '); };
+//   --sum <마을> — 판마다 한 줄: 그 마을이 구리를 내보낼 수 있던 출발(날 범위 · 수) · 고른 다리 낱개 몫 · 짐 몫(가장 작은 / 가운데 / 가장 큰) ·
+//     구리 내보낼 몫 · 광산5 구리 값 · 구리 → 광산5 낱개 몫 · 짐 몫 · 고른 다리 ÷ 구리 다리(가운데) · 광산5 로 간 출발 · 호위 0 · 남는 kg < 0 · 둘째 화물 · 구리 다리가 이긴 출발
+if (opt.sum) {
+  const r3 = (a) => { const b = a.filter((x) => x != null && Number.isFinite(+x)).sort((x, y) => x - y); return b.length ? `${(+b[0]).toFixed(1)} / ${(+b[b.length >> 1]).toFixed(1)} / ${(+b[b.length - 1]).toFixed(1)}` : '—'; };
+  console.log(`| 판(${opt.sum}) | 출발(날) | 고른 다리 낱개 몫 | 고른 다리 짐 몫 | 구리 내보낼 몫 | 광산5 구리 값 | 구리 → 광산5 낱개 몫 | 구리 → 광산5 짐 몫 | 고른 ÷ 구리(가운데) | 광산5 로 · 호위 0 · 남는 kg < 0 · 둘째 화물 · 구리가 이김 |`);
+  console.log('|---|---:|---:|---:|---:|---:|---:|---:|---:|---|');
+  for (const [name, h] of arms) {
+    const X = rd(h + '.t1344.json'); if (!X) { console.log(`| ${name} | (관찰기 없음) |||||||||`); continue; }
+    const c = X.lcols, I = (k) => c.indexOf(k), A = (X.legs || []).filter((l) => l[I('from')] === opt.sum && l[I('cuSurplus')] > 0);
+    if (!A.length) { console.log(`| ${name} | 0 |||||||||`); continue; }
+    const ratio = med(A.filter((l) => l[I('cuTot5')] > 0).map((l) => l[I('profit')] / l[I('cuTot5')]));
+    console.log(`| ${name} | ${A.length}(${A[0][I('day')]} ~ ${A[A.length - 1][I('day')]}) | ${r3(A.map((l) => l[I('pu')]))} | ${r3(A.map((l) => l[I('profit')]))} | ${r3(A.map((l) => l[I('cuSurplus')]))} | ${r3(A.map((l) => l[I('pCu5')]))} | ${r3(A.map((l) => l[I('cuPu5')]))} | ${r3(A.map((l) => l[I('cuTot5')]))} | ${ratio == null ? '— (구리 짐 몫 ≤ 0)' : ratio.toFixed(1)} | ${A.filter((l) => l[I('to')] === '광산5').length} · ${A.filter((l) => !l[I('escort')]).length} · ${A.filter((l) => l[I('roomKg')] != null && l[I('roomKg')] < 0).length} · ${A.filter((l) => l[I('res2')]).length} · ${A.filter((l) => l[I('cuTot5')] != null && l[I('cuTot5')] > l[I('profit')]).length} |`);
+  }
+  process.exit(0);
+}
 for (const [name, h] of arms) {
   const X = rd(h + '.t1344.json');
   if (!X) { console.log(`## ${name} — 관찰기 없음\n`); continue; }
