@@ -6,7 +6,7 @@
 //   ① 손잡이 — `'1'` 만 켬(없음 · '0' · '' · 'true' = 끔)
 //   ② 한 마을 하루(test-smelt-return 픽스처 땅 · 사람 10 · 대장장이 첫 차례 · 구리 5 · 주석 5 · 식량 넉넉):
 //      석검이 병기고 청동 몫 한도를 넘게 차 있어도(근접검 3.75 ≥ 10 × 0.72 × 0.45 = 3.24) 청동 몫이 비면(몫 0 · 0.5) 붓는다 · 청동 몫이 차면(몫 1) 안 붓는다 ·
-//      끔이면 종전대로 안 붓는다 · 취약 마을(식량 0 — 전사 커버리지 갈래)은 켬이어도 종전(근접검 전부)
+//      끔이면 종전대로 안 붓는다 · 취약 마을(식량 0 — 전사 커버리지 갈래)은 켬이어도 종전(근접검 전부) · 주석 없는 구리 마을(청동 아닌 배합)도 종전 곳간
 //   ③ 청동 몫 섞음(`_t1344Mix`) — 곳간 가중(어제 근접검 곳간 · 오늘 만든 근접검 · 그 가운데 청동) · 비례 줄어듦은 몫 그대로 · 켜는 날 · 만든 게 없는 날
 //   ④ 대장장이 자리(`smithTarget`) — 석검이 병기고를 채운 청동 마을: 끔 0 · 켬이면 청동 몫이 비어 자리가 선다(≥ 1) · 청동 몫이 차면 0
 //   ⑤ 석공(청동 우선권 `_bronzeNow`) — 병기고가 모자란 청동 마을: 끔이면 석공이 석검을 채운다(근접검 ≥ 청동 몫 한도라 청동 차례가 없다) · 켬이면 청동 몫이 비어 석공이 비켜 선다
@@ -15,7 +15,7 @@
 //   ⑦ 판(마을 여섯 월드 · 날 열 · `tickWorldV2`): 끔이면 둘째 화물 0 · 장부 `sent2` 0 · 켬이면 둘째 화물이 서고 첫째 화물(품목 · 양 · 목적지)은 끔 판 그대로(첫 출발 날)
 //   ⑧ 글자 — 청동 근접검 함수 하나 · 부르는 자리 셋(주조 문 · 석공 문 · 대장장이 자리) · 섞어 싣기 부르는 자리 하나(`else if` — T206 둘째 화물이 먼저) · T1333 주조 문 글자 그대로
 //   ⑨ 미끼(사본 — 정본 파일 무변 · 한 줄만 바꿔 싣는다) — 각각 빨강:
-//      `allstock`(곳간을 근접검 전부로 되돌림) · `emaq`(청동 몫을 만든 몫 EMA 로) · `nosecf`(취약 마을에도 청동 몫) · `overkg`(무게 상한을 넘겨 싣는다) ·
+//      `allstock`(곳간을 근접검 전부로 되돌림) · `emaq`(청동 몫을 만든 몫 EMA 로) · `nosecf`(취약 마을에도 청동 몫) · `anyrecipe`(청동 아닌 배합도 청동 근접검으로) · `overkg`(무게 상한을 넘겨 싣는다) ·
 //      `nomain`(첫째 무게를 안 뺀다) · `shrink`(섞어 실으며 첫째 화물을 한 낱개 줄인다)
 //
 // 실행: node scripts/test-t1344-bronze-mix.js
@@ -40,7 +40,8 @@ if (ARM) {
     const R = {
       allstock: ['sim/economy-sim.js', ' * Math.max(0, Math.min(1, v._t1344Q || 0));\n}', ';\n}'],
       emaq: ['sim/economy-sim.js', '  if (sw > 0) v._t1344Q = ((v._t1344Q || 0) * m0 + bz) / (m0 + sw);', '  if (sw > 0) v._t1344Q = (v._t1344Q || 0) * (1 - SWORD_FRAC_EMA) + (bz / sw) * SWORD_FRAC_EMA;'],
-      nosecf: ['sim/economy-sim.js', 'const _smSwordStock = (T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF) ? _t1344BronzeStock(v)', 'const _smSwordStock = (T1344_BRONZE_STOCK) ? _t1344BronzeStock(v)'],
+      nosecf: ['sim/economy-sim.js', 'if (T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF && _melt && _melt.bronzeness > 0) _smSwordStock', 'if (T1344_BRONZE_STOCK && _melt && _melt.bronzeness > 0) _smSwordStock'],
+      anyrecipe: ['sim/economy-sim.js', 'if (T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF && _melt && _melt.bronzeness > 0) _smSwordStock', 'if (T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF && _melt) _smSwordStock'],   // 청동 아닌 배합도 청동 근접검으로 잰다
       overkg: ['sim/economy-sim-v2.js', 'a.v.storage[c2.res] || 0, room / kg));', 'a.v.storage[c2.res] || 0, Infinity));'],
       nomain: ['sim/economy-sim-v2.js', '  const room = cap - best.N_units * _t1136Kg(best.cand.res);', '  const room = cap;'],
       shrink: ['sim/economy-sim-v2.js', '        giveRes: cand.res, giveAmt: N_units,', '        giveRes: cand.res, giveAmt: (_res2 ? Math.max(0, N_units - 1) : N_units),'],   // 둘째를 실으면 첫째를 한 낱개 덜 싣는다
@@ -67,6 +68,7 @@ if (ARM) {
     v.storage.ore = 0; for (const k of ['copper', 'tin', 'lead', 'silver', 'gold', 'iron', 'arsenic', ...((E.OreGoods && E.OreGoods.ids) || [])]) v.storage[k] = 0;   // 녹일 원석 0 — 하루를 주조에
     v.storage.copper = 5; v.storage.tin = 5; v.storage.weapon = o.wpn == null ? 7.5 : o.wpn; v.storage.wood = 1000; v.storage.charcoal = 1000;
     if (o.stone != null) v.storage.stone = o.stone;
+    if (o.st) Object.assign(v.storage, o.st);
     if (o.food != null) { for (const k of Object.keys(v.storage)) if (E.storageFoodPer && E.storageFoodPer(v, k) > 0) v.storage[k] = 0; v.storage.food = o.food; }
     if (o.tin != null) v.land.tin = o.tin;
     if (o.q != null) v._t1344Q = o.q;
@@ -89,10 +91,11 @@ if (ARM) {
     bzFull: day1({ job: 'smith', food: 2000, q: 1 }),          // 청동 몫 1 — 청동 근접검 3.75 ≥ 3.24
     fragile: day1({ job: 'smith', food: 0 }),                  // 취약 — 한도 = 전사 커버리지(2) · 근접검 전부로 센다
     mason: day1({ job: 'mason', food: 2000, tin: 1, stone: 50 }),   // 석공 첫 차례 · 청동 자격(땅 주석) · 병기고 모자람(근접검 3.75 < 7.2 × 0.85) · 대장장이 없음
+    cuAg: day1({ job: 'smith', food: 2000, st: { tin: 0, silver: 1 } }),   // 주석 없는 잘 먹는 구리 마을(구리 5 · 은 1) — 오늘 배합은 청동이 아니다
   };
   // ④ 대장장이 자리 — 청동 자격 · 구리 · 주석 · 식량 넉넉 · 원석 0(녹임 자리 0) · 무기 곳간 20(근접검 10 ≥ 병기고 7.2 — 석검으로 찬 병기고)
   const st = (q, wpn) => { const _l = console.log; console.log = () => {}; try { const v = mkV({ food: 2000, tin: 1, q, wpn: wpn == null ? 20 : wpn }); return { t: E.smithTarget(v), smelt: E.smeltTarget ? E.smeltTarget(v) : null, secF: r6(E._foodSecF(v)) }; } finally { console.log = _l; } };
-  const ST = { stone0: st(0), bz1: st(1), empty: st(0, 0) };
+  const ST = { stone0: st(0), bz1: st(1), empty: st(0, 0), noTin: ((q) => { const _l = console.log; console.log = () => {}; try { const v = mkV({ food: 2000, tin: 1, q, wpn: 20 }); v.storage.tin = 0; return { t: E.smithTarget(v) }; } finally { console.log = _l; } })(0) };
   // ③ 섞음 — 가짜 마을 칸만(곳간 · 근접검 비중 · 오늘 칸)
   const mix = (o) => { const v = { storage: { weapon: o.w }, _swordFrac: o.sf, _swordMadeToday: o.sw, _bowMadeToday: 0, _t1344BzT: o.bz, _t1344Q: o.q, _t1344M: o.m0 }; E._t1344Mix(v); return { q: r6(v._t1344Q), M: r6(v._t1344M), bzT: v._t1344BzT, bs: r6(E._t1344BronzeStock(v)) }; };
   const MX = {
@@ -145,7 +148,7 @@ if (ARM) {
   const G = {
     oneFn: (SRC.match(/function _t1344BronzeStock\(v\)/g) || []).length,
     calls: (SRC.match(/_t1344BronzeStock\(v\)/g) || []).length - 1,
-    smDef: (SRC.match(/const _smSwordStock = \(T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF\) \? _t1344BronzeStock\(v\) : /g) || []).length,
+    smDef: (SRC.match(/if \(T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF && _melt && _melt\.bronzeness > 0\) _smSwordStock = _t1344BronzeStock\(v\);/g) || []).length,
     mason: (SRC.match(/\(\(T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF\) \? _t1344BronzeStock\(v\) : _swordStock\) < _bronzeArmoryCap/g) || []).length,
     t1333Gate: (SRC.match(/if \(_melt && \(_smSwordStock < _bronzeArmoryCap \|\| \(T1333_EXPORT_CAST && _t1333ExportCast\(v\)\)\)\) \{/g) || []).length,
     mixCall: (V2S.match(/\} else if \(T1344_MIX_LOAD\) \{[^\n]*\n        const _mx = _t1344MixPick\(world, a, best, candidates, lp, day, FORWARD_PRICE_MARGIN\);/g) || []).length,
@@ -177,6 +180,7 @@ function checks(P, out) {
   ok(B.CD.half.made > 0 && near(B.CD.half.made, B.CD.stoneFull.made), `켬 · 청동 몫 0.5(청동 근접검 1.875 < 3.24) → 붓는다(같은 양)`, B.CD.half);
   ok(B.CD.bzFull.made === 0 && B.CD.bzFull.cu === 0, '★켬 · 청동 몫 1(청동 근접검 3.75 ≥ 3.24) → 안 붓는다(청동 몫이 찼다)', B.CD.bzFull);
   ok(O.CD.fragile.secF === 0 && O.CD.fragile.made === 0 && B.CD.fragile.made === 0, '★취약 마을(식량 0 — 한도 = 전사 커버리지 2) — 켬이어도 근접검 전부로 센다(안 붓는다 · 종전)', [O.CD.fragile, B.CD.fragile]);
+  ok(O.CD.cuAg.made === 0 && O.CD.cuAg.cu === 0 && B.CD.cuAg.made === 0 && B.CD.cuAg.cu === 0, '★주석 없는 잘 먹는 구리 마을(구리 5 · 은 1 — 배합이 청동 아님) — 켬이어도 종전 곳간(근접검 3.75 ≥ 3.24)으로 잰다 → 안 붓는다(청동 몫을 못 채우는 배합이 문을 열지 않는다)', [O.CD.cuAg, B.CD.cuAg]);
   ok(JSON.stringify(M.CD) === JSON.stringify(O.CD), '섞어 싣기만 켠 판의 한 마을 하루 = 끔 판(마을 하루를 안 건드린다)', M.CD.stoneFull);
   ok(O.CD.stoneFull.q === null && O.CD.stoneFull.M === null, '★끔 — 청동 몫 칸이 서지 않는다(마을에 새 칸 0)', O.CD.stoneFull);
   const sw1 = B.CD.stoneFull.made;   // 대장장이 하나가 오늘 부은 청동(= 오늘 근접검 — 석공 · 활 0)
@@ -195,6 +199,7 @@ function checks(P, out) {
   ok(B.ST.stone0.t >= 1, `★켬 — 같은 마을 · 청동 몫 0 → 자리 ${B.ST.stone0.t}(청동 몫 결손)`, B.ST.stone0);
   ok(B.ST.bz1.t === 0, '켬 · 청동 몫 1(청동 근접검 10 ≥ 3.24) → 자리 0', B.ST.bz1);
   ok(B.ST.empty.t >= O.ST.empty.t && O.ST.empty.t >= 1, '빈 병기고 — 종전 목표(병기고 전체)와 큰 쪽(켬이 끔보다 작지 않다)', [O.ST.empty, B.ST.empty]);
+  ok(B.ST.noTin.t === O.ST.noTin.t, '주석 0 마을 — 켬이어도 청동 몫 자리는 안 선다(청동을 부을 주석이 없다 · 끔과 같다)', [O.ST.noTin, B.ST.noTin]);
 
   if (out) console.log('\n⑤ 석공 — 청동 우선권(`_bronzeNow`)');
   //   (다른 주민의 하루 — 사냥꾼 활 · 석공 도구 돌 0.2 — 는 두 판 같다: 대장장이 판 끔 dw 0.36 · 돌 0.2 가 그 바닥)
@@ -233,7 +238,7 @@ console.log('=== test-t1344-bronze-mix — 청동 몫 곳간 · 섞어 싣기(�
 const P = { off: child('off'), b: child('b'), m: child('m'), bm: child('bm'), k0: child('k0'), ktrue: child('ktrue') };
 const R = checks(P, true);
 console.log('\n⑨ 미끼 — 한 줄 바꾼 사본은 빨강이어야 한다');
-const BAITS = ['allstock', 'emaq', 'nosecf', 'overkg', 'nomain', 'shrink'];
+const BAITS = ['allstock', 'emaq', 'nosecf', 'anyrecipe', 'overkg', 'nomain', 'shrink'];
 let bait = 0;
 for (const mut of BAITS) {
   const Q = { off: child('off', mut), b: child('b', mut), m: child('m', mut), bm: child('bm', mut), k0: child('k0', mut), ktrue: child('ktrue', mut) };

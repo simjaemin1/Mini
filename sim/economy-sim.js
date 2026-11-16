@@ -4878,7 +4878,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       const _qSkill = 1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (skillLvl / 10);   // 스킬 기여(0.4~1.0)
       // ★청동 병기고 비중 상한 — 청동은 병기고의 BRONZE_ARMORY_FRAC까지만(나머지 석기). swordStock이 그 한도 미만일 때만 청동 제작 → 청동마을도 석기 다수·청동 소수(엘리트).
       //   ★식량 안보 게이트: 잘 먹는 마을만 병기고까지 청동 확충, 취약 마을은 전사 실수요(BUFFER)까지만(식량·생존 우선).
-      const _smSwordStock = (T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF) ? _t1344BronzeStock(v) : (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT);   // ★[T1344] 켬 · 잘 먹는 마을(청동 몫 한도 갈래) = 청동 근접검(석검 빼고 — 모듈 머리) · 끔 = 종전 식(근접검 전부)
+      let _smSwordStock = (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT);   // ★[T1344] `let` — 켬 · 잘 먹는 마을 · 오늘 배합이 청동이면 아래(`_melt` 뒤)에서 청동 근접검으로 선다(값은 종전 식 그대로)
       const _bronzeArmoryCap = (_secF > MELEE_ARMORY_SECF)
         ? (v.npcs.length || 0) * MELEE_ARMORY_PC * BRONZE_ARMORY_FRAC
         : Math.max(2, (v.counts.warrior || 0) * MELEE_COV_BUFFER);   // 취약 마을 = 전사 커버리지만
@@ -4910,6 +4910,10 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
 
       const _melt = _alloyMelt(v);
       if (_melt && _melt.castF > 0) amt *= _melt.castF;   // ★주조성이 산출량을 정한다(위 _alloyMelt 주석)
+      // ★[T1344] 켬 · 잘 먹는 마을(청동 몫 한도 갈래) · **오늘 배합이 청동(주석 몫 > 0)일 때만** 주조 문 곳간 = 청동 근접검(석검 빼고 — 모듈 머리 `T1344_BRONZE_STOCK`).
+      //   청동이 아닌 배합(순동 · 구리 + 은 — 청동도 0)은 청동 몫을 채우지 못하므로 종전 곳간(근접검 전부)으로 잰다 — 안 그러면 주석 없는 잘 먹는 구리 마을에서
+      //   청동 몫이 영영 0 으로 남아 문이 닫히지 않고 순동 · 구리 + 은 검을 끝없이 붓는다(미끼 `anyrecipe`). 끔 = 이 줄 무동작.
+      if (T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF && _melt && _melt.bronzeness > 0) _smSwordStock = _t1344BronzeStock(v);
       if (_melt && (_smSwordStock < _bronzeArmoryCap || (T1333_EXPORT_CAST && _t1333ExportCast(v)))) {   // ★[T1333 ⓑ] 끔 = 종전 문 그대로(뒤 항이 안 선다)
         for (const m in _melt.take) { v.storage[m] -= _melt.take[m]; _cons(v, m, _melt.take[m]); }
         v._cuWeapUsed = (v._cuWeapUsed || 0) + (_melt.take.copper || 0);   // (계측 전용)
@@ -6355,7 +6359,8 @@ function smithTarget(v) {
   //   (첫 사람이 원석을 다 소화하면 나머지는 주조로 넘어간다).
   // ★[T1344] 켬 · 잘 먹는 청동 마을 — 청동 몫(병기고 × 45 %)이 청동 근접검으로 비면 대장장이 자리가 선다(종전 목표와 큰 쪽 · 같은 노동 식 · 같은 두 수).
   //   석검이 병기고를 채워 종전 목표(근접검 전부)가 0 인 마을에서만 갈린다(모듈 머리 `T1344_BRONZE_STOCK`). 끔 = 0(큰 쪽에 0 — 앞 두 항은 0 이상이라 종전 값).
-  const _t1344L = (T1344_BRONZE_STOCK && hasBronze && _foodSecF(v) > MELEE_ARMORY_SECF)
+  //   청동을 부을 주석이 있는 마을만(석공 청동 우선권 `_bronzeNow` 의 그 문턱 0.12 — 주석 없는 구리 마을은 청동 몫을 못 채운다 · 주조 문도 그 배합은 종전 곳간으로 잰다)
+  const _t1344L = (T1344_BRONZE_STOCK && hasBronze && (v.storage.tin || 0) >= 0.12 && _foodSecF(v) > MELEE_ARMORY_SECF)
     ? craftLaborTarget(_t1344BronzeStock(v), N0 * MELEE_ARMORY_PC * BRONZE_ARMORY_FRAC, 0.5 * WEAPON_LABOR_MULT, { buffer: 1.0, catchup: 40, decay: DECAY_MELEE_MAINT, minStock: 2 }) : 0;
   return Math.max(local, exportSmiths, _t1344L) + smeltTarget(v);
 }
