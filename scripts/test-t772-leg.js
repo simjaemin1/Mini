@@ -66,7 +66,7 @@ function grab(name) {
 }
 const SRC = ['econDayToMs', '_econDayFrac', 'setBodyPts', 'caravanPointAt', '_t661Path', '_t661End', '_t661Target', '_t661Vis', 'startReturnLeg', 'tickCaravanBodies', '_caravanSyncSweep', '_t1253Now', '_t1289In'].map(grab).join('\n')
   + '\n' + V.split('\n').find((l) => l.startsWith('function _t1289ToB('))
-  + '\nconst T1320_ROCK_PATH = false;';   // ★[PM land1080] T1320 이 켬 기본이 됐다(재민 11-16) — 이 하네스는 T772 다리 · 페이싱을 종전 곧은 줄 꼴로 잰다(막힌 칸 돌아가기는 `test-seam-walk` ⑤ 몫) ⇒ 끔으로 못 박는다. 앞 주석(원문 줄 그대로)은 land1077 ~ 1079 때 얘기.   // ★[T1328] T1320(land1077) 손잡이 줄 — `setBodyPts` · `startReturnLeg` · `tickCaravanBodies` 가 읽는다 · 원문 줄 그대로(사본 0 · 기본 끔이면 `_t1320ChainOf` 안 부름)   // ★[T1289] 되살림 축(④) — `_t1289In` · 한 줄 함수 `_t1289ToB`(줄 끝 주석이 있어 `grab` 의 한 줄 갈래를 못 탄다 — 그 줄만 집는다)   // ★[T1258] T1253 econ 날 시계(`tickCaravanBodies` 가 읽는다 — 이 판은 `T762_CARAVAN_BODY=0` 이라 몸 정본 갈래 밖 · 켬 · 끔 같은 걸음)
+  ;   // ★[PM land1081] land1080 의 `const T1320_ROCK_PATH = false` 줄은 뺀다 — T1327 이 같은 이름을 매개(false)로 넘긴다(아래 `names` 끝) · 둘이 만나 이름이 두 번 섰다
 const MS = 64;   // 존 `MOVE_SPEED` 정본(zone.js) — 아래는 그 값을 deps 로 넘긴다
 const zoneMove = +((fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8').match(/const MOVE_SPEED = (\d+);/) || [])[1]);
 const _BC = require(path.join(ROOT, 'server', 'body-cols'));   // ★[T1177] T1145 몸 x · y 열 정본(제품과 같은 손잡이 · 같은 모듈)
