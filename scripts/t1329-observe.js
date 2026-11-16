@@ -89,6 +89,12 @@ Ev.createLedger = function () {
           pend: pend.length, pendWood: +pend.reduce((a, j) => a + Math.max(0, (j.wood || 0) - ((j.mat && j.mat.wood) || 0)), 0).toFixed(2),
           held: pend.filter((j) => j._t1329By != null).length,
           done: T.body || 0, terr: v._terrSet ? v._terrSet.size : 0, jobBodies: r.bodies.size, cuts: r.cuts, trips: r.trips, took: +r.took.toFixed(2), s: ms, px,
+          head: pend[0] ? { k: pend[0].key, wood: +(pend[0].wood || 0).toFixed(2), mat: +((pend[0].mat && pend[0].mat.wood) || 0).toFixed(2), work: Math.round(pend[0].workMs || 0), lab: +(pend[0].laborMin || 0).toFixed(2),
+            m: +(pend[0].m || 0).toFixed(2), r: +Math.hypot(pend[0].cx - v.ccx, pend[0].cy - v.ccy).toFixed(1), by: pend[0]._t1329By != null ? 1 : 0 } : null,
+          crew: ((v._t1329Crew && v._t1329Crew.pids) || (v._t1302Crew ? [v._t1302Crew.pid] : [])).map((pid) => { const p = P.get(pid); if (!p) return { pid, gone: 1 };
+            const T2 = p._t1302Terr, H = p._t1181Haul, j = pend.find((q) => T2 ? 't/' + q.key === T2.key : H ? 't/' + q.key === H.key : false);
+            return { act: p._lifeAct || null, tk: (T2 && T2.key) || null, cl: T2 && T2.cleared ? 1 : 0, cargo: T2 ? +Object.values(T2.cargo || {}).reduce((a, b) => a + b, 0).toFixed(2) : 0,
+              hk: (H && H.key) || null, leg: (H && H.leg) || null, hn: (H && H.n) || 0, d: j ? Math.round(Math.hypot(p.x - (j.cx * 32 + 16), p.y - (j.cy * 32 + 16))) : null, rest: p._rest ? 1 : 0, hp: p.hp }; }),
           woodSpare: v.econ ? +E.woodSpare(v.econ).toFixed(2) : null, wood: v.econ ? +(v.econ.storage.wood || 0).toFixed(2) : null, need: v.econ ? (v.econ._t1207Need || 0) : 0 };
       });
       const row = { day, done: vils.reduce((a, v) => a + v.done, 0), pend: vils.reduce((a, v) => a + v.pend, 0), jobBodies: vils.reduce((a, v) => a + v.jobBodies, 0), vils };
