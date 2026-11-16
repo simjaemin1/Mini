@@ -543,6 +543,7 @@ function runT1329() {
   F.deps.t325LootOf=()=>({wood:2,twig:1});
   const v=F.mk(1,'T',1000,1000,3,{}),bodies=[0,1,2,3].map(i=>{const p=F.body('crew'+i);p.x=32016;p.y=32016;p.simVillageId=1;p.simJob='farmer';return p;});
   v.npcPids=bodies.map(p=>p.pid);
+  if(process.env.T1329_FULL==='1')bodies[0].inventory={stone:1000};   // 명부 첫 몸의 손이 찼다(짐 상한 넘음 — 말뚝 한 단도 못 든다 · 어부 물고기 꼴)
   v.econ.storage.wood=400;
   setWorld(F,[v],1);S.dayMs=1440000;E.bindProductionActs(S.world);v.econ._world=S.world;
   const keys=['1004,1000','996,1000','1000,1004','1000,996'];
@@ -843,8 +844,9 @@ sec('ⓝ [T1329] 몸 영토 일감 크루 여럿 — 한 칸 한 몸 · 완공 =
 {
   const env={T1207_TERR_REAL:'1',T1238_TERR_V2:'1',T1302_TERR_BODY:'1',T400_BUILD_ACT:'0',T325_WOOD_ACT:'1',T1329_TERR_CREW:'1'};
   const on=child('t1329',env),haul=child('t1329',{...env,T1283_CLEAR_HAUL:'1'}),off=child('t1329',{...env,T1329_TERR_CREW:'0'});
+  const full=child('t1329',{...env,T1329_FULL:'1'}),fullOff=child('t1329',{...env,T1329_TERR_CREW:'0',T1329_FULL:'1'});
   const bc=child('t1329',{...env,T1329_BAIT:'cell'}),bs=child('t1329',{...env,T1329_BAIT:'stock'});
-  const bad=[on,haul,off,bc,bs].find(x=>!x||x.err);
+  const bad=[on,haul,off,full,fullOff,bc,bs].find(x=>!x||x.err);
   if(bad!==undefined)ok(false,'T1329 자식 판이 안 섰다',bad&&bad.err);
   else{
     const oneBody=x=>Object.values(x.owners).every(a=>a.length===1);
@@ -859,6 +861,8 @@ sec('ⓝ [T1329] 몸 영토 일감 크루 여럿 — 한 칸 한 몸 · 완공 =
       `끔 — 종전(T1302): 첫 몸 하나 · 그루마다 귀환(부림 ${off.deposits.length}번) · 곁 칸에 일감 줄 칸 없음(켬만)`,{owners:off.owners,deposits:off.deposits.length,packKey0:[off.packKey0,on.packKey0]});
     ok(haul.on&&doneSum(haul)&&logsOnce(haul)&&haul.deposits.length===on.deposits.length&&JSON.stringify(haul.add)===JSON.stringify(on.add)&&haul.steps===on.steps,
       '★T1283 걸음(`T1283_CLEAR_HAUL`) 켬과 같이 — 같은 판(완공 · 부림 · 걸음 수 같음) · 칸 더미 줄은 안 선다(두 번 나름 · 두 번 입고 0)',{deposits:haul.deposits,steps:[haul.steps,on.steps]});
+    ok(doneSum(full)&&oneBody(full)&&workers(full)===full.crew&&!Object.values(full.owners).some(a=>a.includes('crew0'))&&fullOff.body===0&&fullOff.left===4&&Object.keys(fullOff.add).length===0,
+      `★손이 찬 몸(말뚝 한 단도 못 든다)은 크루에서 빠지고 다음 몸이 선다 — 켬 완공 ${full.body}칸 · 끔(종전 T1302)은 그 몸이 줄 머리에서 헛걸어 완공 ${fullOff.body}`,{owners:full.owners,offBody:fullOff.body,offLeft:fullOff.left});
     ok(on.restored&&on.restored.packed>=2&&on.restored.same&&on.restored.held===0,
       `★재기동 — 일감 줄(일한 시간 · 놓은 말뚝)이 곁 칸(\`_t740Side\`)에 실려 되살아난다(${on.restored&&on.restored.packed}칸 · 맡은 몸은 다시 맡는다) · 뒤 완공 그대로`,on.restored);
     ok(!oneBody(bc)&&!doneSum(bc),'미끼: 맡은 몸을 안 보고 줄 머리를 주는(두 몸이 한 칸 · 그 칸을 두 번 완공) 사본 — 위 두 검사가 빨강',{owners:bc.owners,add:bc.add});

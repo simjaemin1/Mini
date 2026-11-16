@@ -6796,12 +6796,30 @@ function _t1207Crew(vil) {
   }
   const c = _t527Crew(vil); return c.length ? c[0].pid : null;
 }   // 여유 크루의 첫 몸 하나(집 · 곳간 크루가 먼저 가져간 뒤 · 다리가 있으면 다리가 먼저)
-//   ★[T1329 ①] 켬 = 여유 크루 전부(T1302 `_t1207Crew` 와 같은 거르기 · 같은 표지 — 날 · 명부 길이 · 집터 · 곳간 터) · 크루에서 빠진 몸이 맡던 일감은 놓는다(한 일은 일감에 남는다)
+//   ★[T1329 ①] 켬 = 여유 크루 `LIFE_CREW` 명 — 집 · 곳간 크루가 먼저 가져간 뒤(`_t527Crew` 와 같은 건너뜀) 명부 차례로 **나설 수 있는 몸**(T1302 `_t1207Crew` 와 같은 거르기 ·
+//     그리고 말뚝 한 단을 들 손 — 짐 무게 정본 `carry` · 목재 kg — 일감 몸의 꺼내기(`pick` 의 `room`)와 같은 식).
+//     T1329 §1: 크루 첫 몸이 어부면 손에 물고기(~225 · 짐 상한)를 든 채 영토 일을 받아 말뚝을 한 번도 못 들고 곳간 ↔ 칸을 날마다 헛걸었다(줄 머리가 영영 안 끝나 줄 60 이 찼다).
+//     다리 터가 열린 마을은 종전처럼 다리가 먼저(크루가 다리에 간다 — 영토 크루 없음). 표지(날 · 명부 길이 · 집터 · 곳간 터)가 바뀌면 다시 잰다 · 크루에서 빠진 몸이 맡던 일감은 놓는다(한 일은 일감에 남는다).
+function _t1329Room(p) {
+  const W = _carryCfg(); if (!W) return Infinity;
+  const kg = (T1214_STEP_FAST ? _t1214Weights() : require('./weights')).kgOf('wood');
+  return kg > 0 ? Math.max(0, Math.floor((W.CFG.CAP_KG - W.totalKg(p)) / kg)) : 0;
+}
 function _t1329Crew(vil) {
   const day = state.world && state.world.day, mark = [day, vil.npcPids.length, !!vil._site, !!vil._granPend].join('/');
   let c = vil._t1329Crew;
   if (!c || c.mark !== mark || c.pids.some((pid) => !state.deps.players.has(pid))) {
-    vil._t1329Crew = c = { mark, pids: _t527Crew(vil).filter((p) => _t561Fit(p) && !p._muster && !p._bxExit).map((p) => p.pid) };
+    const E = _lifeEcon(), pl = state.deps.players, pids = [];
+    const bridge = E.T527_BRIDGE_ACT && (_t527Sites() || []).some((s) => !s.done && (s.v.indexOf(vil.name) >= 0 || (vil._seedName && s.v.indexOf(vil._seedName) >= 0)));
+    if (!bridge) {
+      const skip = ((E.T400_BUILD_ACT && vil._site) ? LIFE_CREW : 0) + ((E.T435_GRANARY_ACT && vil._granPend) ? LIFE_CREW : 0);
+      let i = 0;
+      for (const pid of (vil.npcPids || [])) {
+        const p = pl.get(pid); if (!p) continue; if (i++ < skip) continue; if (pids.length >= LIFE_CREW) break;
+        if (_t561Fit(p) && !p._muster && !p._bxExit && _t1329Room(p) >= 1) pids.push(pid);
+      }
+    }
+    vil._t1329Crew = c = { mark, pids };
     for (const j of (vil._t1207Pend || [])) if (j._t1329By != null && c.pids.indexOf(j._t1329By) < 0) j._t1329By = null;
   }
   return c.pids;
@@ -6945,7 +6963,7 @@ const T1302_TERR_BODY = T1238_TERR_V2 && process.env.T1302_TERR_BODY === '1';
 // ★★[T1329 2026-11-16 · T1318 중간 회부 2 · 3] 손잡이 `T1329_TERR_CREW`(끔 기본 · `'1'` 만 켬 · T1302 켬 안에서만 뜻 · 끔 = 종전 바이트) — 몸 영토 처리량.
 //   T1318: 몸이 영토를 지으면 마을당 일감 몸이 하나(`_t1207Crew` — 여유 크루의 첫 몸)라 일감 줄 60 이 차고 10날 완공이 200칸 안팎으로 내려갔다(보고 T1329 §1).
 //   ① 일감 몸 여럿 — 여유 크루 전부(`_t527Crew` — 집 · 곳간 크루가 먼저 가져간 뒤 명부 앞 `LIFE_CREW` 명 · 랩 · 서버가 같이 쓰는 크루 식 `min(LIFE_CREW, 인구)` ·
-//      번들 `EconEngine.LifeCrew` · 새 수 0)가 영토 일을 한다. **한 칸 한 몸** — 일감마다 맡은 몸(`_t1329By`)이 하나다(같은 칸에 둘이 서지 않는다).
+//      번들 `EconEngine.LifeCrew` · 새 수 0) — 명부 차례로 나설 수 있고 말뚝 한 단을 들 손이 있는 몸(`_t1329Crew`)이 영토 일을 한다. **한 칸 한 몸** — 일감마다 맡은 몸(`_t1329By`)이 하나다(같은 칸에 둘이 서지 않는다).
 //      나르는 몸 · 개간 몸은 안 나눈다 — 몸마다 제 칸의 개간 · 벌목 · 통나무 · 말뚝을 다 한다(보고 T1329 §2 — 나누면 칸마다 두 몸이 같은 곳간 ↔ 칸 길을 두 번 걷는다).
 //   ② 벤 통나무 짐 = T1283 짐(`_t400PerLoad('wood')` — 일괄 걸음 · `_t1283BodyHaul` 과 같은 짐) — 한 짐이 차거나(다음 그루를 더하면 넘친다) 그 칸 그루가 다할 때까지 베고 진다
 //      (종전 T1302: 그루마다 곳간까지 한 번 왕복). T1283 의 칸 더미 줄(`_t1283BodyHaul`)은 이 켬에선 서지 않는다 — 몸이 벤 통나무는 몸 짐 하나로만 곳간에 든다(두 줄 → 한 줄).
