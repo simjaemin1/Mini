@@ -157,7 +157,7 @@ console.log('\n⑤ 존 배선 글자');
   const sep = fn('function sepNpcs(dt) {'), ww = fn('function _wwPost(p, i) {'), hp = fn('function setHp(p, v, why) {');
   ok(sep.indexOf('if (T1322_PF) _t1322Touch(p);') > 0 && sep.indexOf('if (T1322_PF) _t1322Touch(p);') < sep.indexOf('else p.x = nx;'), '밀기 — 옮기기 전에 표를 내린다');
   ok(ww.indexOf('_t1322Touch(p)') > 0 && ww.indexOf('_t1322Touch(p)') < ww.indexOf('p.x = _WW.X[i]'), '걸음 뒷일 — 옮기기 전에');
-  ok(hp.indexOf('_t1322Touch(p)') > 0 && hp.indexOf('_t1322Touch(p)') < hp.indexOf('p.hp = next;'), '체력 문 — 바꾸기 전에');
+  ok(hp.indexOf('_t1322HpTouch(p, prev, next)') > 0 && hp.indexOf('_t1322HpTouch(p, prev, next)') < hp.indexOf('p.hp = next;'), '체력 문 — 바꾸기 전에(살고 죽음 · ★[T1337] 요양 문턱)');
   ok(/\/walkdbg[\s\S]{0,200}if \(T1322_PF\) _t1322FlushAll\(\);/.test(Z), '관측(`/walkdbg`) — 들어올 때 미룬 도장을 몸에');
   { const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'), ev = V.slice(V.indexOf('function _warEvacVillage(vil, now) {'), V.indexOf('\n}\n', V.indexOf('function _warEvacVillage(vil, now) {')));
     ok(/t1322Touch: T1322_PF \? _t1322Touch : null,/.test(Z) && ev.indexOf('if (_t22) _t22(p);') > 0 && ev.indexOf('if (_t22) _t22(p);') < ev.indexOf('p.simEvacUntil = now + 5000;'), '대피(생활층 `_warEvacVillage`) — 대피 칸을 쓰기 전에(존이 deps 로 준 문 · `verify` 30날 · 400날 판이 센 유일한 걸음 문 밖 쓰기)'); }

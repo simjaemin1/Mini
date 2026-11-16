@@ -5398,7 +5398,7 @@ function _t1337Grant(npc, s, now) {
   A.DS[s] = 1; A.SH[s] = npc._sh !== undefined ? npc._sh : _SEED.pidHash(npc.playerId || npc.pid || npc.mid || npc.id || '');   // `_shOf` 그 식(몸 칸은 안 쓴다)
   A.CX[s] = Math.floor(npc.x / BUILDING_SIZE); A.CY[s] = Math.floor(npc.y / BUILDING_SIZE);
   A.T95[s] = (npc.simVillageId && SimVillages.t1295S) ? SimVillages.t1295S(npc) : 1;
-  A.VID[s] = w.vid; A.SEG[s] = w.seg; A.DOF[s] = w.dOff; A.BDY[s] = w.bday; A.DAY[s] = w.day;
+  A.VID[s] = w.vid; A.SEG[s] = w.seg; A.DOF[s] = w.dOff; A.BDY[s] = w.bday; A.DAY[s] = w.day; A.GD[s] = zoneGameDay();
   A.LON[s] = npc.simLonOff || 0; A.W95[s] = SimVillages.t1295Wp && SimVillages.t1295Wp(npc, now) != null ? 1 : 0;   // 표 1 은 해 질 녘을 안 본다 — 이 두 칸은 잠 깨움 판정 몫
   SS.stat.dgrant++;
 }
@@ -5407,7 +5407,7 @@ function _t1337Dec(s, now) {
   const A = SS.A, x = A.SX[s], y = A.SY[s];
   const near = qtMobs ? qtMobs.queryCircle(x, y, NPC_FLEE_RANGE) : Array.from(mobs.values());   // 결정 문 ① 그 질의
   for (const m of near) { if (m.type !== 'wolf' || m.tameOwner) continue; if (Math.hypot(m.x - x, m.y - y) < NPC_FLEE_RANGE) { SS.stat.dwolf++; return false; } }
-  if (!SimVillages.t1337Still(A.VID[s], A.LON[s], A.W95[s], A.SEG[s], A.DOF[s], A.BDY[s], A.DAY[s], now)) { SS.stat.dstill++; return false; }
+  if (A.GD[s] !== zoneGameDay() || !SimVillages.t1337Still(A.VID[s], A.LON[s], A.W95[s], A.SEG[s], A.DOF[s], A.BDY[s], A.DAY[s], now)) { SS.stat.dstill++; return false; }   // 존 게임일도(하루 경계 econ 일)
   _t1337Dice.seed(_SEED.seedOf(A.SH[s], A.CX[s], A.CY[s], zoneGameDay(), _tick.n));
   let nda = now + 500 + _t1337Dice.next() * 1000;
   const sc = A.T95[s]; if (sc > 1) nda = now + (nda - now) / sc;
@@ -5469,6 +5469,8 @@ function _t1322Wake(s) {
   if (d === d) { const p = SS.own[s]; p.nextDecisionAt = A.NDA[s]; p._t540DecAt = d; if (p._sh === undefined) p._sh = A.SH[s]; A.DK[s] = NaN; SS.stat.dstamp++; }
   A.TK[s] = 0; A.SK[s] = NaN; A.DS[s] = 0; SS.stat.wake++;
 }
+// ★[T1322 · T1337] 체력 문 — 첫 거름은 `hp > 0` 만 본다 · 잠 깨움은 생활층 요양 문턱(`hp < maxHp × SCH_REST_IN`)도 본다
+function _t1322HpTouch(p, prev, next) { if ((next > 0) !== (prev > 0)) return _t1322Touch(p); if (T1337_WAKE) { const r = (p.maxHp || 100) * (SimVillages.SCH_REST_IN || 0.6); if ((next < r) !== (prev < r)) _t1322Touch(p); } }
 function _t1322Touch(p) { const s = SS.slot(p.pid); if (s >= 0 && SS.own[s] === p && SS.A.TK[s]) { _t1322Wake(s); SS.stat.touch++; } }
 function _t1322FlushAll() { const A = SS.A, n = SS.count(); for (let s = 0; s < n; s++) if (A.TK[s]) _t1322Wake(s); SS.stat.flushAll++; }
 // 해 질 녘(표 2) — 걸음 문 밤 귀가 갈래의 해 몫 식 그대로(`_t670Ph` 틱 메모 · 판 시계 몸은 판 하루 축)
@@ -15424,7 +15426,7 @@ function setHp(p, v, why) {
   const prev = p.hp;
   const next = Math.max(0, Math.min(max, v));
   if (next === prev) return prev;
-  if (T1322_PF && (next > 0) !== (prev > 0) && p.isNpc) _t1322Touch(p);   // ★[T1322] 살고 죽음이 바뀌기 전 — 첫 거름 표를 내린다(거름은 `hp > 0` 만 본다)
+  if (T1322_PF && p.isNpc) _t1322HpTouch(p, prev, next);   // ★[T1322 · T1337] 살고 죽음 · 요양 문턱이 바뀌기 전 — 첫 거름 · 잠 깨움 표를 내린다
   p.hp = next;
   if (Math.round(next) === Math.round(prev)) return next;
   if (HP_QUIET.has(why)) return next;
