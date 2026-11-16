@@ -15,7 +15,7 @@ const heads = argv.filter((a, i) => !a.startsWith('--') && !(di >= 0 && i === di
 if (!heads.length) { console.error('쓰는 법: node scripts/t1333-diag.js <판 머리>…'); process.exit(2); }
 const f2 = (x) => (x == null ? '·' : (+x).toFixed(2)), f1 = (x) => (x == null ? '·' : (+x).toFixed(1));
 const VIL = '광산5';
-function readJ(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return null; } }
+function readJ(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { try { return JSON.parse(zlib.gunzipSync(fs.readFileSync(p + '.gz')).toString('utf8')); } catch (e2) { return null; } } }   // 큰 관찰기 JSON 은 계측 폴더에 .gz 로
 function readLog(h) { try { return zlib.gunzipSync(fs.readFileSync(h + '.log.gz')).toString('utf8'); } catch (e) { try { return fs.readFileSync(h + '.log', 'utf8'); } catch (e2) { return null; } } }
 function line5(h) {   // t1256 날 줄 → 날: { sm, bz, cu, sn, w }
   const A = readJ(h + '.t1256.json'); if (!A) return null;
