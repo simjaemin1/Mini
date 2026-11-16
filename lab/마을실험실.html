@@ -16778,7 +16778,7 @@ function _meltSearch(st, price) {
     }
   }
   if (!best) return null;
-  return { take: best.take, mix: best.mix, grade: best.grade, castF: best.castF, bronzeness: Math.min(1, (best.mix.tin || 0) / 0.12) };
+  return { take: best.take, mix: best.mix, grade: best.grade, castF: best.castF, bronzeness: Math.min(1, (best.mix.tin || 0) / 0.12), score: best.score };   // ★[T1333 ⓑ] score = 그 배합 하루 이윤(읽는 자리는 수출 주조 하나 · 끔 = 안 읽힘)
 }
 function _alloyMelt(v) {
   const st = v.storage || {};
@@ -17487,7 +17487,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
 
       const _melt = _alloyMelt(v);
       if (_melt && _melt.castF > 0) amt *= _melt.castF;   // ★주조성이 산출량을 정한다(위 _alloyMelt 주석)
-      if (_melt && _smSwordStock < _bronzeArmoryCap) {
+      if (_melt && (_smSwordStock < _bronzeArmoryCap || (T1333_EXPORT_CAST && _t1333ExportCast(v)))) {   // ★[T1333 ⓑ] 끔 = 종전 문 그대로(뒤 항이 안 선다)
         for (const m in _melt.take) { v.storage[m] -= _melt.take[m]; _cons(v, m, _melt.take[m]); }
         v._cuWeapUsed = (v._cuWeapUsed || 0) + (_melt.take.copper || 0);   // (계측 전용)
         v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt * _melt.bronzeness;
@@ -18748,6 +18748,40 @@ const SMELT_LABOR_CAP_PC = (typeof process !== 'undefined' && process.env && pro
 const COPPER_DERIV_ON = (typeof process !== 'undefined' && process.env && process.env.COPPER_DERIV === '1');
 const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && process.env.COPPER_DERIV_DAYS != null)
   ? Number(process.env.COPPER_DERIV_DAYS) : 30;
+// ══ ★★[T1333 2026-11-15 · T1313 회부 1 · PM 고른 갈래] 청동 길 — 구리가 주석 마을에 닿게 ══
+//   T1313 판 열: 청동은 광부 값이 아니라 **구리 짐이 주석 마을(광산5 — 세계에서 주석이 나는 한 곳)에 닿았나**가 가른다(닿은 판 광산5 청동 4.7 ~ 9.6 ↔ 2.1 ~ 3.3).
+//   닿지 않는 고리는 위 구리 파생 주석 그대로다 — 구리를 안 쓰는 마을 → 흐름 0 → 목표 0 → 값 바닥 → 캐러밴이 안 싣는다(첫 구리가 안 온다).
+//   ⓐ `T1333_ALLOY_ORDER`(끔 기본 · `'1'` 만 켬) **합금 발주** — 대장장이가 모자란 합금 재료를 값표 목표에 올린다(파생수요).
+//     구리 파생의 세 문(무기 노동 · 품질 · 채산)과 "있다면" 가정을 그대로 쓰고 재료만 구리 하나에서 청동 조리법의 둘(기지 구리 · 청동 몫의 주석 — `bronzeness` 정의)로 넓힌다:
+//     그 재료를 "있다면"으로 두고 그 마을이 지금 짤 수 있는 최선의 배합(`_meltSearch` — 주조와 같은 목적함수)을 찾아 그 배합이 청동(주석 몫 > 0)이면 발주한다 —
+//     주석을 든 마을은 구리를, 구리를 든 마을은 주석을. 은 · 금(위신재) · 납(주조성 첨가)은 발주하지 않고 그 배합(구리 + 은 · 구리 + 납)을 보고 구리를 부르지도 않는다.
+//     양 = 그 배합의 그 재료 × `COPPER_DERIV_DAYS`(대장장이 한 명의 한 달 조업 재고 · 새 수 0).
+//     v2 목표엔 종전 파생수요 자리(`derivT` — 흐름 목표와 **큰 쪽**)로 든다 — 합금 재료는 주조 흐름과 같은 쓰임이라 T1213 의 더하는 항(짓기 · 다른 쓰임)이 아니다
+//     (T1213 머리 주석 "석기 · 구리 · 숯 자체의 파생수요는 그 재화의 흐름과 같은 쓰임이라 종전 max 그대로"). 더하면 주조가 돌기 시작한 날부터 두 번 센다.
+//     캐러밴은 종전 규칙 그대로 그 값 차를 보고 실제로 나른다(짐 · 길 · 몸 무변).
+//   ⓑ `T1333_EXPORT_CAST`(끔 기본) **수출 주조** — 청동 병기고 몫(`_bronzeArmoryCap`)이 찬 대장장이도, 이웃이 그 무기를 사 줄 값(순수출가 `netExportFn`)으로
+//     한 번 주조의 이윤(같은 탐색 · 재료는 기회비용 `_oppPrice`)이 양수이고 곳간 무기가 얇으면(인구 × 0.8 밑 — 종전 수출 대장장이 문의 과잉 방지 `_weaponThin`) 주조한다 —
+//     주석을 든 구리 마을이 무기를 만들어 내보내는 쪽(PM 카드 ⓑ · 랩 날 100 과잉 방지 없는 판: 청동 10.06 → 43.97 · 어촌1 무기 곳간 24.5 — 못 판 무기가 쌓였다).
+//     무기장 자리(`smithTarget` 의 수출 대장장이)도 같은 판정이 서면 선다(종전 문 구리 > 3N 은 판에서 안 섰다) — 주조가 돌면 그 마을 주석 흐름 목표가 서서
+//     주석이 구리 마을로 온다(캐러밴 무변 — 값 차만).
+//   ④ `T1333_WS_INPUT`(끔 기본 · 실험 — T1313 회부 2) **생산 투입재는 인구 몫 상한 밖** — 원석(광종마다)과 합금 재료(`_MELT_METALS`)의 값표 목표를
+//     v2 세계 몫 상한(세계 공급 × 내 인구 몫 × 1.5 · 바닥 0.2)에서 뺀다(생존재 · 자본재 · 다양성 식품이 빠지는 그 줄에 한 항).
+//     상한은 "없어도 죽지 않는 것들(위신재 · 잡화 롱테일)"을 인구 비례로 묶으려던 줄인데, 녹이는 원석 · 붓는 금속의 수요는 사람 수가 아니라
+//     노 · 주조 한 곳에 몰린다 — 주석은 녹이는 마을-날 96 · 78 % 가 바닥이었고(T1313 §1), 합금 발주(ⓐ)의 구리도 3.42 → 0.2 ~ 0.6 으로 깎였다(T1333 서버 자 판).
+const T1333_ALLOY_ORDER = (typeof process !== 'undefined' && process.env && process.env.T1333_ALLOY_ORDER === '1');
+const T1333_EXPORT_CAST = (typeof process !== 'undefined' && process.env && process.env.T1333_EXPORT_CAST === '1');
+const T1333_WS_INPUT = (typeof process !== 'undefined' && process.env && process.env.T1333_WS_INPUT === '1');
+function t1333WsFree(r) { return !!(T1333_WS_INPUT && (r === 'ore' || OreGoods.isOre(r) || _MELT_METALS.includes(r))); }   // v2 상한 줄이 부른다(판정은 여기 하나)
+function _t1333ExportCast(v) {
+  const nef = (v && v._world && typeof v._world.netExportFn === 'function') ? v._world.netExportFn : null;
+  if (!nef) return false;
+  if (!_weaponThin(v)) return false;   // 곳간에 무기가 쌓였으면(인구 × 0.8 위) 수출로 빠져나가야 다시 붓는다 — 종전 수출 대장장이 문의 과잉 방지 그대로(같은 함수)
+  const pw = nef(v, 'weapon') || 0;
+  if (!(pw > 0)) return false;
+  const p = _oppPrice(v);
+  const best = _meltSearch(v.storage || {}, (k) => (k === 'weapon' ? pw : p(k)));
+  return !!(best && best.score > 0);
+}
 function derivedInputTarget(v, r) {
   // 재료가 없어 작업을 못 해도 도구 결손의 실제 레시피 투입은 수요다(숯 파생수요와 같은 문).
   if (r === 'stone' && stoneRealOn() && v && v.storage) {
@@ -18781,8 +18815,20 @@ function derivedInputTarget(v, r) {
     if (!(((v.counts && v.counts.miner) || 0) > 0 || oreTotal(v) >= SMELT_MIN_ORE)) return 0;
     return furnaceCharcoalTarget(v);
   }
+  // ★★[T1333 ⓐ] 합금 발주 — **청동 조리법**의 두 재료만 발주한다: 기지 구리 · 청동 몫을 정하는 주석(`_meltSearch` 의 `bronzeness` 그 정의 — 청동 = 구리 + 주석).
+  //   "있다면" 배합이 청동(주석 몫 > 0)일 때만 선다(`_alloyDeriv` 셋째 인자) — 은 · 납을 든 마을이 구리 + 은 · 구리 + 납 배합을 보고 구리를 부르지 않는다
+  //   (랩 날 30 · 합금 재료 표 다섯 판: 은 든 마을 구리 값 22 ~ 24 → 그 순수출가가 구리 쥔 마을의 기회비용을 올려 대장장이 10 → 5 · 청동 7.42 → 6.03).
+  //   은 · 금은 위신재(v2 `ORNAMENTAL`) · 납은 주조성 첨가 — 청동을 가르지 않는다(조리법 밖 0 · 끔 = 이 갈래가 안 선다).
+  if (T1333_ALLOY_ORDER && (r === 'copper' || r === 'tin') && v && v.storage) {
+    if (_ERA_METAL(r) && !_eraKnows(r)) return 0;
+    return _alloyDeriv(v, r, true);
+  }
   if (!COPPER_DERIV_ON || r !== 'copper' || !v || !v.storage) return 0;
   if (_ERA_METAL('copper') && !_eraKnows('copper')) return 0;   // 시대가 모르는 금속은 파생수요도 없다
+  return _alloyDeriv(v, 'copper');
+}
+// ★[T1333] 구리 파생 몸통을 함수로 올렸다(재료만 인자 · 구리 파생은 종전 글자 그대로 — 문 셋 · 양 · 기준가) — 합금 발주가 같은 함수를 부른다(사본 0).
+function _alloyDeriv(v, r, bronze) {   // bronze = 청동 배합(주석 몫 > 0)일 때만(★[T1333 ⓐ] · 옛 구리 파생은 false — 종전 글자)
   // ★★[1차 실측으로 뒤집은 게이트] 처음엔 "무기 커버리지(v2 CAP_TARGET.weapon)가 미달일 때만"으로 짰다.
   //   3시드 800일 결과가 **기준선과 비트 동일**했다 — 한 번도 안 걸린 것이다. 이유는 명확하다:
   //   마을은 무기가 **모자라지 않는다**(19마을 2,017자루). 모자란 건 **좋은** 무기다. 커버리지는
@@ -18801,10 +18847,11 @@ function derivedInputTarget(v, r) {
   //   ★탐색은 `_meltSearch` 공용 헬퍼 — 주조 결정과 **같은 목적함수**다(사본 금지).
   //     가격만 **기준가**로 준다: 시장가를 쓰면 수요가 값을 올리고 그 값이 게이트를 닫는다(자기 꼬리 물기).
   const stHypo = Object.assign({}, v.storage);
-  stHypo.copper = Math.max(stHypo.copper || 0, _MELT_TOTAL);   // "구리가 있다면" — 딱 1회 주조분만 가정
-  const basePrice = (r) => (BASE_VALUE[r] > 0 ? BASE_VALUE[r] : 1);
+  stHypo[r] = Math.max(stHypo[r] || 0, _MELT_TOTAL);   // "그 재료가 있다면" — 딱 1회 주조분만 가정(구리 파생 = 구리 · ★[T1333 ⓐ] 합금 재료 다 같은 줄)
+  const basePrice = (k) => (BASE_VALUE[k] > 0 ? BASE_VALUE[k] : 1);
   const best = _meltSearch(stHypo, basePrice);
   if (!best) return 0;
+  if (bronze && !(best.bronzeness > 0)) return 0;   // ★[T1333 ⓐ] 청동 배합만(구리 + 은 · 구리 + 납은 발주 0)
   // 게이트② **품질이 나아지는가** — 이 마을 무기 스톡 품질(_weapQ EMA)보다 나아야 산다.
   const qNew = Math.min(1.2, best.grade) * WEAP_Q_BRONZE;
   const qNow = v._weapQ != null ? v._weapQ : WEAP_Q_STONE;
@@ -18814,7 +18861,7 @@ function derivedInputTarget(v, r) {
   let cost = 0; for (const k in best.take) cost += best.take[k] * basePrice(k);
   const gain = amtPerCast * best.castF * (BASE_VALUE.weapon || 1) * Math.min(1.2, best.grade);
   if (!(gain - cost > 0)) return 0;
-  return (best.take.copper || _MELT_TOTAL) * COPPER_DERIV_DAYS;
+  return (best.take[r] || (r === 'copper' ? _MELT_TOTAL : 0)) * COPPER_DERIV_DAYS;
 }
 function smeltTarget(v) {
   if (_t1249NoSmelt(v)) { migrateOre(v); return 0; }   // ★[T1249] 켬 = 조성 모르는 마을은 안 녹인다(위 머리 주석)
@@ -18854,6 +18901,7 @@ function smeltTarget(v) {
   const need = Math.max(1, Math.round(ore / (per * 30)));    // 한 달 안에 재고를 소화할 인원
   return Math.min(Math.max(1, Math.ceil((v.npcs.length || 1) * SMELT_LABOR_CAP_PC)), need);
 }
+function _weaponThin(v) { return (v.storage.weapon || 0) < (v.npcs.length || 1) * 0.8; }   // 무기 곳간이 얇다(인구 × 0.8 밑 — 수출로 빠져나가야 다시 만든다 · 종전 `smithTarget` 의 그 식)
 function smithTarget(v) {
   // ★청동 희소성: 청동은 *청동 자격* 마을만(주석 산지·교역 허브). 트레이스 주석뿐인 마을은 청동 생산 안 함(석공이 마제석검).
   const hasBronze = _smithBeatsMason(v) && (v.storage.copper || 0) >= 0.3;
@@ -18870,8 +18918,11 @@ function smithTarget(v) {
   //   과잉 방지: 무기 재고가 얇을 때만(수출로 빠져나가야 재개) + 인구 3% 상한. 청동검은 희소 위세 교역재로 유지.
   const N = v.npcs.length || 1;
   const cuRich = (v.storage.copper || 0) > N * 3;
-  const weapThin = (v.storage.weapon || 0) < N * 0.8;   // 무기 재고 얇음(수출로 소진) → 특산 제작 재개
-  const exportSmiths = (hasBronze && cuRich && weapThin) ? Math.max(1, Math.floor(N * 0.03)) : 0;
+  const weapThin = _weaponThin(v);   // 무기 재고 얇음(수출로 소진) → 특산 제작 재개(★[T1333] 식을 함수로 올렸다 — 수출 주조 문이 같은 함수를 부른다 · 값 무변)
+  // ★[T1333 ⓑ] 수출 주조 켬이면 무기장 자리가 서는 조건에 "이웃이 사 줄 값으로 한 번 주조가 남는다"(`_t1333ExportCast` — 주조 문과 같은 함수)를 더한다
+  //   (구리 > 3N 문은 T1313 몸 세계 판 열(10판 · 100날 · 51 마을)에서 한 번도 안 섰다 — 구리 ÷ 3N 가장 큰 날 0.453 · 어촌1 날 83 구리 39.4 · 사람 29).
+  //   자리 수(3 % · 최소 1)는 종전 그대로 · 끔 = 종전 글자.
+  const exportSmiths = (hasBronze && ((cuRich && weapThin) || (T1333_EXPORT_CAST && _t1333ExportCast(v)))) ? Math.max(1, Math.floor(N * 0.03)) : 0;
   // ★★제련과 주조는 **다른 일**이다 — max 가 아니라 **합**이다.
   //   max 로 두면 제련하는 날 무기를 못 만든다(실측: 무기 551 → 255, 그러자 전사·호위가 무너지고
   //   교역이 줄어 인구가 1,804 → 1,045 로 급감했다). 정원을 합으로 두면 대장장이가 늘고,
@@ -20418,6 +20469,8 @@ module.exports = {
   //   _trySmelt·smeltTarget 은 하네스(scripts/test-oremix.js)가 실제 제련을 돌려 보려고 노출한다.
   oreMixOf, foldOreMix, _trySmelt, smeltTarget,
   derivedInputTarget,   // ★[2026-08-02f ①-2] 구리 파생 투입수요 — v2 가 가격 target 에 얹는다(단일 진실)
+  T1333_ALLOY_ORDER, T1333_EXPORT_CAST, COPPER_DERIV_ON, _t1333ExportCast,   // ★[T1333] 합금 발주 · 수출 주조 손잡이(끔 기본) · 구리 파생 손잡이(읽기) · 수출 주조 판정(하네스가 정본을 직접 부른다)
+  T1333_WS_INPUT, t1333WsFree,   // ★[T1333 ④] 생산 투입재 인구 몫 상한 밖(실험 · 끔 기본) — v2 상한 줄이 부른다
   // ★[2026-08-03a ⑰] 국고 현금 배선 — 하네스가 **산술을 직접 재게** 노출한다(상수 복제 금지).
   //   `_treasuryTopUp` 은 실제 함수 그대로여야 검사가 그 코드를 밟는다(모형을 검사하면 의미가 없다).
   _treasuryTopUp, RESERVE_PC, _matPrice, expandCost,
@@ -21386,7 +21439,8 @@ function _targetV2(v, r, ctx) {
   //     기근 신호이고 교역을 부른다. 거기에 "구할 수 있는 만큼만 원해라"를 걸면 흉년에
   //     가격이 안 올라 캐러밴이 식량을 안 옮긴다(실측: 삼림 마을 식량가격이 1000 으로 튀며 기근).
   //     제한은 **없어도 죽지 않는 것들**(위신재·잡화 롱테일)에만 건다.
-  if (_ws && !SUBSISTENCE_PER_NPC[r] && CAP_TARGET[r] === undefined && !VARIETY_FOOD[r]) {
+  //   ★[T1333 ④ 실험 · 끔 기본] 생산 투입재(원석 · 합금 재료)는 인구 몫 상한 밖 — 수요가 사람 수가 아니라 노 · 주조 한 곳에 몰린다(판정 v1 `t1333WsFree` · 끔 = 이 항 거짓 = 종전).
+  if (_ws && !SUBSISTENCE_PER_NPC[r] && CAP_TARGET[r] === undefined && !VARIETY_FOOD[r] && !(v1.t1333WsFree && v1.t1333WsFree(r))) {
     target = Math.min(target, Math.max(0.2, _ws.stock * (N / _ws.pop) * EFFDEM_SHARE));
   }
   // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.
@@ -23688,6 +23742,14 @@ function netExportValue(world, from, res, room) {
 // =============================================================================
 // 7. main
 // =============================================================================
+//   ★[T1333 ⓐ] 그 마을이 오늘 내보낼 수 있는 재화(수출 후보 `_exportCandidatesV2` — 읽기만 · 마을-날마다 한 번 셈 · 마을 칸 0)
+const _t1333Exp = new WeakMap();
+function _t1333CanExport(v, res) {
+  const w = v && v._world; if (!w || !v.npcs) return true;
+  let C = _t1333Exp.get(v);
+  if (!C || C.day !== w.day) { C = { day: w.day, has: {} }; for (const c of _exportCandidatesV2({ v }, Math.max(1, v.npcs.length))) C.has[c.res] = true; _t1333Exp.set(v, C); }
+  return !!C.has[res];
+}
 function createWorldV2(opts = {}) {
   // v1 createWorld 그대로 사용 (인프라 공유)
   const world = v1.createWorld(opts);
@@ -23696,7 +23758,10 @@ function createWorldV2(opts = {}) {
   world.priceBase = BASE_VALUE_V2;   // ★생산 포만(satiation) 판정용 — v1 tickVillage가 adj=가격/기준값으로 글럿 측정
   // ★★[2026-08-02c 배합↔교역 한 단위 통합] 순수출가 주입 — priceFn 선례와 같은 계약(v1→v2 역참조 금지, world 로 주입).
   //   v1 의 주조 결정(_alloyMelt)이 "이 주석을 이웃이 얼마에 사 주는가"를 볼 수 있게 한다.
-  world.netExportFn = (v, res) => netExportValue(world, v, res);
+  //   ★[T1333 ⓐ] 합금 발주 켬 — 그 마을 수출 후보 밖(비축 · 문턱 밑 — `_exportCandidatesV2` 그 규칙 · 받아 올 짐도 같은 규칙)인 재화는 순수출가가 기회비용이 아니다.
+  //     발주가 이웃 값을 올리면 그 값이 쥔 마을의 주조 기회비용(v1 `_oppPrice`)을 올려 대장장이가 석공에 밀린다 — 문턱 밑 곳간은 실제로 나가지도 않는다
+  //     (랩 날 30: 쥔 마을 셋 대장장이 주조비 0.05 ~ 0.38 → 1.9 ~ 2.8 · 석공 0.3 ~ 0.8). 끔 = 앞 항 거짓 = 종전 함수 그대로.
+  world.netExportFn = (v, res) => ((v1.T1333_ALLOY_ORDER && !_t1333CanExport(v, res)) ? 0 : netExportValue(world, v, res));
   // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑. (30일로 늘리니 반응 느려 기근↑→crisis-mode↑ 역효과 확인, 21 유지)
   world.autoSwitchInterval = 21;
   return world;
