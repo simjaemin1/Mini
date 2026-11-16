@@ -1202,6 +1202,7 @@ function _t740Pack(vil) {
   for (const k of _T740_KEYS) if (k in vil) o[k] = _t740Enc(vil[k]);
   if (vil._site) { o.site = { cx: vil._site.cx, cy: vil._site.cy, stage: vil._site.stage }; if (vil._site.mat) o.site.mat = _t740Enc(vil._site.mat); }   // ★T400 — 곳간에서 꺼내 집터에 놓은 자재(종전: 재기동에 사라졌다 — 소멸)
   if (vil._psite) o.psite = { cx: vil._psite.cx, cy: vil._psite.cy, stage: vil._psite.stage, bo: vil._psite.bo ? vil._psite.bo.dbId : null };
+  if (T1329_TERR_CREW && vil._t1207Pend && vil._t1207Pend.length) o.t1329Pend = vil._t1207Pend.map((j) => { const q = Object.assign({}, j); delete q._t1329By; return q; });   // ★[T1329 ③] 일감 줄(맡은 몸은 다시 뜨면 다시 맡는다 · 몸 id 는 새로 선다)
   return o;
 }
 const _t740Stat = { restored: null };
@@ -1396,6 +1397,7 @@ function _t740Restore() {
     //   공사 중이던 마을 집터 — 저장된 단계로 지금 선다(종전: 다음 하루 마감에 단계 1로). 행(`housesite`)이 없으면(그새 완공) 세우지 않는다.
     if (S.site && !vil._site && vil._pendSite && vil._pendSite.cx === S.site.cx && vil._pendSite.cy === S.site.cy) { vil._pendSite = null; _siteRise(vil, S.site, Math.max(1, S.site.stage | 0)); if (vil._site && S.site.mat) vil._site.mat = _t740Dec(S.site.mat); R.site++; }
     if (S.psite && vil._psite && vil._psite.stage === S.psite.stage) R.psite++;
+    if (T1329_TERR_CREW && Array.isArray(S.t1329Pend)) { vil._t1207Pend = S.t1329Pend.filter((j) => j && j.key && !(vil._terrSet && vil._terrSet.has(j.key))); R.t1329 = (R.t1329 || 0) + vil._t1207Pend.length; }   // ★[T1329 ③] 일감 줄을 잇는다(그새 영토가 된 칸은 뺀다)
   }
   //   클라 영토 페이로드의 반경도 같은 값으로(페이로드는 이 줄 앞에서 행으로 다시 잰 반경을 실었다)
   for (const e of (state.clientPayload || [])) { const v = state.byDbId && state.byDbId.get(e.id); if (v && v._maxRPx != null) e.r = v._maxRPx; }
@@ -6794,6 +6796,28 @@ function _t1207Crew(vil) {
   }
   const c = _t527Crew(vil); return c.length ? c[0].pid : null;
 }   // 여유 크루의 첫 몸 하나(집 · 곳간 크루가 먼저 가져간 뒤 · 다리가 있으면 다리가 먼저)
+//   ★[T1329 ①] 켬 = 여유 크루 전부(T1302 `_t1207Crew` 와 같은 거르기 · 같은 표지 — 날 · 명부 길이 · 집터 · 곳간 터) · 크루에서 빠진 몸이 맡던 일감은 놓는다(한 일은 일감에 남는다)
+function _t1329Crew(vil) {
+  const day = state.world && state.world.day, mark = [day, vil.npcPids.length, !!vil._site, !!vil._granPend].join('/');
+  let c = vil._t1329Crew;
+  if (!c || c.mark !== mark || c.pids.some((pid) => !state.deps.players.has(pid))) {
+    vil._t1329Crew = c = { mark, pids: _t527Crew(vil).filter((p) => _t561Fit(p) && !p._muster && !p._bxExit).map((p) => p.pid) };
+    for (const j of (vil._t1207Pend || [])) if (j._t1329By != null && c.pids.indexOf(j._t1329By) < 0) j._t1329By = null;
+  }
+  return c.pids;
+}
+//   그 몸의 일감 — 맡은 칸이 있으면 그 칸 · 없으면 아무도 안 맡은 칸(그 몸이 이미 짐을 들고 있던 칸이 먼저 — 재기동 뒤 · 크루가 바뀐 뒤 · 없으면 줄 차례) · 다 맡겼으면 없음
+function _t1329Job(vil, npc) {
+  if (_t1329Crew(vil).indexOf(npc.pid) < 0) return null;
+  const cur = (npc._t1302Terr && npc._t1302Terr.key) || (npc._t1181Haul && npc._t1181Haul.key) || null;
+  let free = null;
+  for (const j of vil._t1207Pend) {
+    if (j._t1329By === npc.pid) return j;
+    if (j._t1329By == null && (free == null || (cur != null && 't/' + j.key === cur && 't/' + free.key !== cur))) free = j;
+  }
+  if (free) free._t1329By = npc.pid;
+  return free;
+}
 //   ★★[T1297 할 일 3 · T1283 (나) · T1283 회부 3] 관측 마을 몸의 개간 일 — 켬(`T1283_CLEAR_HAUL` · 나무꾼 몸 켬 세계)이면 그 칸 그루를 벤 통나무가 곧장 곳간에 들지 않고
 //     칸 더미(일감 칸 `_t1283Pile` · 단)에 남는다. 그 몸이 짐(`_t400PerLoad('wood')` — 일괄 걸음과 같은 짐)씩 지고 그 일감의 곳간 사다리(`source` — 말뚝을 꺼낸 그 사다리)로 걸어가 부린다
 //     (`build-haul` 의 돌려 놓기 다리 · 부리는 줄 = `_t1207LogIn` — 일괄과 같은 줄 · 세금 · 장부 · 수요 문 · 넘친 몫은 마을 짐). 더미가 비면 그 칸이 영토가 된다
@@ -6801,6 +6825,7 @@ function _t1207Crew(vil) {
 //     관측 마을은 몸이 그 왕복을 실제로 걷는다. 끔 = false · 종전 줄(끝낸 순간 영토 · 통나무 곧장 곳간).
 function _t1283BodyHaul(vil, npc, t) {
   if (!T1283_CLEAR_HAUL || !_lifeEcon().T325_WOOD_ACT || !t || !t.site || !state.deps || !state.deps.t325TreesAtCell || !state.deps.t325CutTreeAt) return false;
+  if (T1329_TERR_CREW) return false;   // ★[T1329 ②] 켬 = 몸(`_t1302Body`)이 벤 통나무를 T1283 짐으로 이미 졌다 — 칸 더미 줄은 안 선다(한 줄)
   const j = t.site, T = _t1207Stat(vil);
   if (j._t1283Pile == null) { let pile = 0; T.felled += _t1207FellCell(vil, j.cx, j.cy, (u) => { pile += u; }); j._t1283Pile = +pile.toFixed(6); }   // 처음 — 그 칸 그루를 다 벤다(정본 벌목 문 · 통나무는 더미로)
   if (!(j._t1283Pile > 1e-9)) return false;                                // 더미가 비었다 — 영토로
@@ -6917,6 +6942,15 @@ function t1207Stat() {
 const T1238_TERR_V2 = T1207_TERR_REAL && process.env.T1238_TERR_V2 === '1';
 // T1302: opt in only inside territory v2; observer-free physical clearing and stakes.
 const T1302_TERR_BODY = T1238_TERR_V2 && process.env.T1302_TERR_BODY === '1';
+// ★★[T1329 2026-11-16 · T1318 중간 회부 2 · 3] 손잡이 `T1329_TERR_CREW`(끔 기본 · `'1'` 만 켬 · T1302 켬 안에서만 뜻 · 끔 = 종전 바이트) — 몸 영토 처리량.
+//   T1318: 몸이 영토를 지으면 마을당 일감 몸이 하나(`_t1207Crew` — 여유 크루의 첫 몸)라 일감 줄 60 이 차고 10날 완공이 200칸 안팎으로 내려갔다(보고 T1329 §1).
+//   ① 일감 몸 여럿 — 여유 크루 전부(`_t527Crew` — 집 · 곳간 크루가 먼저 가져간 뒤 명부 앞 `LIFE_CREW` 명 · 랩 · 서버가 같이 쓰는 크루 식 `min(LIFE_CREW, 인구)` ·
+//      번들 `EconEngine.LifeCrew` · 새 수 0)가 영토 일을 한다. **한 칸 한 몸** — 일감마다 맡은 몸(`_t1329By`)이 하나다(같은 칸에 둘이 서지 않는다).
+//      나르는 몸 · 개간 몸은 안 나눈다 — 몸마다 제 칸의 개간 · 벌목 · 통나무 · 말뚝을 다 한다(보고 T1329 §2 — 나누면 칸마다 두 몸이 같은 곳간 ↔ 칸 길을 두 번 걷는다).
+//   ② 벤 통나무 짐 = T1283 짐(`_t400PerLoad('wood')` — 일괄 걸음 · `_t1283BodyHaul` 과 같은 짐) — 한 짐이 차거나(다음 그루를 더하면 넘친다) 그 칸 그루가 다할 때까지 베고 진다
+//      (종전 T1302: 그루마다 곳간까지 한 번 왕복). T1283 의 칸 더미 줄(`_t1283BodyHaul`)은 이 켬에선 서지 않는다 — 몸이 벤 통나무는 몸 짐 하나로만 곳간에 든다(두 줄 → 한 줄).
+//   ③ 재기동 — 일감 줄(일한 시간 · 놓은 말뚝 · 그 칸 더미)을 마을 곁 칸(`_t740Side` · T740 문법)에 실어 다시 뜬 날 이어 간다(종전: 다음 장부 문까지 줄이 비어 재기동 날 완공 0).
+const T1329_TERR_CREW = T1302_TERR_BODY && process.env.T1329_TERR_CREW === '1';
 const _tv2 = require('./terr-v2');
 const _t1238St = { growN: 0, growUs: 0, growMaxUs: 0, picks: 0, pickCells: 0, go: 0, workMs: 0, done: 0, cancels: 0, cancelCells: 0, pulls: 0, pullBack: 0, pullBroke: 0, goRefuse: 0, structCut: 0, structCells: 0,
   decayDays: 0, decayCells: 0, decayFields: 0, decayScanMs: 0, useMarks: 0, trapDays: 0, trapScanMs: 0, trapped: 0, trapFreed: 0, trapTerrain: 0, bodyCells: 0, bodyPartial: 0, steal: 0, stealUnits: 0, saveRows: 0, saveMs: 0 };
@@ -15820,6 +15854,10 @@ function _t1181Task(vil,npc,bound) {
       if(candidates.length)return {kind:'bridge',key:'b/'+p.i+'/'+_t527Sig(p),site:p,target:candidates[0],need:()=>_t527EconNeed(p,p.stage)||{}};
     }
   }
+  if(T1329_TERR_CREW) {   // ★[T1329 ①] 켬 = 여유 크루마다 제 칸 하나(한 칸 한 몸) · 끔 = 아래 종전 줄(첫 몸 하나 · 줄 머리)
+    const j=vil._t1207Pend&&vil._t1207Pend.length?_t1329Job(vil,npc):null;
+    return j?{kind:'terr',key:'t/'+j.key,sourceVillageId:vil.dbId,site:j,target:{x:j.cx*SZ+SZ/2,y:j.cy*SZ+SZ/2},need:()=>(j.wood>1e-9?{wood:j.wood}:{})}:null;
+  }
   // ★[T1207 ④] 관측 마을의 영토 일감 — 여유 크루의 첫 몸 하나가 말뚝을 날라 그 셀에서 개간한다(헤드리스는 `_t1207Batch`)
   if(T1207_TERR_REAL && vil._t1207Pend && vil._t1207Pend.length && _t1207Crew(vil)===npc.pid) {
     const j=vil._t1207Pend[0];
@@ -15837,6 +15875,7 @@ function _t1181Step(vil,npc,now,awake) {
     const task=T1302_TERR_BODY && t && t.kind==='terr' ? t : null;
     if (_t1302Body.step(npc,task,{now,awake,reach:44,maxGap:SCH_VG_STUCK,storeMs:G_STOREW,
       swingMs:6000+(_pidHash(npc.pid)%5)*1000,laborMs:j=>j.laborMin*_tripDayMs()/1440,
+      ...(T1329_TERR_CREW?{load:_t400PerLoad('wood'),nextWood:j=>{const t=state.deps.t325TreesAtCell?.(j.cx,j.cy);return t&&t.length?_lifeLootWood(t[0]):0;}}:{}),   /* ★[T1329 ②] 켬 = 한 짐(T1283 짐)이 찰 때까지 베고 진다 · 끔 = 칸 없음(그루마다 귀환) */
       home:()=>_lifeGoHome(npc,'취침'),act:a=>_lifeAct(npc,a),
       move:(g,a)=>{npc.behavior='wander';npc.targetX=g.x;npc.targetY=g.y;npc.gatherTarget=null;_lifeAct(npc,a);},
       hasTrees:j=>!!state.deps.t325TreesAtCell?.(j.cx,j.cy)?.length,
@@ -19240,7 +19279,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,
   t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
-  T1238_TERR_V2, T1302_TERR_BODY, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
+  T1238_TERR_V2, T1302_TERR_BODY, T1329_TERR_CREW, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,
   _t1238Batch, _t1238DayPre, _t1238DayPost, _t1238GoOk, _t1238Use, _t1238Remove, _t1238Boot, _t1238JobToLand, _t1238JobFromLand, _t1238JobsOf, landSizeOfCells, _t1238Struct, _t1238Land, _t1238St,
   t1167Stat, t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t1320Stat: () => Object.assign({ on: T1320_ROCK_PATH }, _t1320St), t1320On: () => T1320_ROCK_PATH, t1306Stat: () => _t1306Stat, _t1306On, _t1306Known, _t1306Pass, _t1306Record, t1312Stat: () => _t1312Stat, _t1312On, _t1312Pass, _t1312PickedOf, _t1312Note, t1319Stat: () => _t1319Stat, _t1319KOn, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes, t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), t1166Sizes: _t1166Sizes, lotsClockSet: _t1166Flush,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)

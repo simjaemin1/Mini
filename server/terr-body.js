@@ -11,7 +11,10 @@ function step(npc, task, c) {
   if (!cancelled && s.cleared) return false;
   if (!c.awake) { s.at = s.last = null; c.home(); return true; }
   if (cancelled && !carrying()) { npc._t1302Terr = undefined; return task ? step(npc,task,c) : false; }
-  const returning = carrying();
+  // T1329: with c.load (one T1283 load of wood) the body keeps felling this cell until the next tree
+  // would overflow the load or the cell has no trees left; without it, every felled tree goes home.
+  const returning = carrying() && (cancelled || !c.load || !c.hasTrees(task.site) ||
+    (s.cargo.wood||0) + c.nextWood(task.site) > c.load + 1e-9);
   const goal = returning ? s.source : task.target;
   c.move(goal, returning ? '운반' : '출근');
   if (!Number.isFinite(npc.x) || !Number.isFinite(npc.y) || Math.hypot(npc.x-goal.x, npc.y-goal.y) > c.reach) { s.at = s.last = null; return true; }
