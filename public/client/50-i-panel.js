@@ -792,17 +792,17 @@ function itemKo(k) {
     //   줄마다 `setTimeout` 을 달면 타이머가 N 개로 늘고 지우기가 어려워진다.
     const next = Math.min(..._ntLines.map((L) => L.until));
     noticeTimer = setTimeout(() => {
-      const now = Date.now();
+      const now = Date.now();  // [T1310 클라 시계] 토스트 간격(클라가 찍은 until)
       _ntLines = _ntLines.filter((L) => L.until > now);
       _ntRender(); _ntArm();
-    }, Math.max(16, next - Date.now()));
+    }, Math.max(16, next - Date.now()));  // [T1310 클라 시계] 토스트 간격
   }
   function showNotice(text, ms, kind) {
     // ★진단 훅(읽기 전용): 최근 알림 40건 — 하네스가 '재료 부족/의뢰 성공' 같은 서버 응답을 실측하는 통로.
     //   ⚠**글자만** 담는다(아이콘도 ×n 도 화면의 일이다). 하네스 28개가 이 배열을 문자열로 읽는다.
     (window.__notices = window.__notices || []).push(text); if (window.__notices.length > 40) window.__notices.shift();
     if (!text) { _ntLines = []; clearTimeout(noticeTimer); _ntRender(); return; }   // 빈 글자 = 지우기(종전 뜻)
-    const life = ms || 2500, until = Date.now() + life;
+    const life = ms || 2500, until = Date.now() + life;  // [T1310 클라 시계] 토스트 수명(클라)
     // ★같은 말이 연달아 오면 **겹치지 말고 ×n**(스팸 억제). 마지막 줄 하나만 본다 — 새 상태 0.
     //   ⚠맨 앞 줄까지 뒤지면 "A B A" 가 `A ×2 · B` 로 뭉쳐 **온 차례가 거짓말**이 된다.
     const last = _ntLines[_ntLines.length - 1];

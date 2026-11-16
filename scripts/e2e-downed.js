@@ -34,6 +34,9 @@ const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-downed-shots';
 fs.mkdirSync(SHOTS, { recursive: true });
 const HEADED = process.argv.includes('--headed');
+// ★[T1310 ①] `T1310_E2E_SKEW_MS`(ms · 기본 0) — 브라우저 시계만 옮긴다(플레이어 컴퓨터 시계가 틀린 판 · 정본 `lib-phase.browserSkew`).
+//   구조창 화살의 수명(`at + windowMs`)은 서버가 찍은 시각이라 클라가 서버 시각 축으로 봐야 한다 — 클라 시계가 3분 넘게 앞서면 종전엔 그리자마자 사라졌다.
+const SKEW_MS = +process.env.T1310_E2E_SKEW_MS || 0;
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2e-downed-central-${process.pid}.db`, ZDB = `/tmp/e2e-downed-zone-${process.pid}.db`;
 for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
@@ -101,6 +104,7 @@ async function waitHttp(url, tries = 600) {
   async function newClient(tag) {
     // ★각자 **다른 신원**이어야 한다 — 같은 컨텍스트를 쓰면 게스트 토큰을 공유해 한 몸이 된다.
     const ctx = await browser.newContext({ viewport: { width: 1100, height: 720 } });
+    { const js = require('./lib-phase').browserSkew(SKEW_MS); if (js) await ctx.addInitScript(js); }   // ★[T1310 ①] 브라우저 시계 어긋남 판(선택)
     const page = await ctx.newPage();
     page.on('pageerror', (e) => allErrs.push(`[${tag}] ` + String(e.message).slice(0, 160)));
     await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });

@@ -7899,6 +7899,7 @@ async function _acceptConnection(ws, req, C) {
     // ★[정비 배치] 클라 손잡이 — 서버 env 가 정본이다(클라 상수 금지 · `carryCfg` 와 같은 규약).
     uiCfg: {
       vignetteTint: process.env.VIGNETTE_AXIS_TINT !== '0',
+      t1310: process.env.T1310_CLOCK_SKEW !== '0',   // ★[T1310 ①] 클라가 서버가 찍은 시각(구조창 · 조업 · 만료)을 서버 시각 축(`worldNow`)으로 본다 · 켬 기본 · 되돌림 `=0`(클라 벽시계 · 종전)
       moodleShowMax: (Body.CFG && Body.CFG.SHOW_MAX) || 3,
       ghostStallMs: parseInt(process.env.GHOST_STALL_MS || '5000', 10) || 5000,          // 딱지·예측 정지
       ghostReconnectMs: parseInt(process.env.GHOST_RECONNECT_MS || '10000', 10) || 10000, // 소켓 강제 끊기

@@ -449,7 +449,7 @@
     const sx = iso.x - myIso.x + W/2;
     // 14.53-h fix: floor 보정은 FLOOR_HEIGHT(64) — 옛 *32는 절반만 올라감
     const sy = iso.y - myIso.y + H/2 - (b.floor || 0) * FLOOR_HEIGHT;
-    const t = (Date.now() % 800) / 800;
+    const t = (Date.now() % 800) / 800;  // [T1310 클라 시계] 그림 깜빡임 주기
     const glow = 0.4 + 0.6 * Math.abs(Math.sin(t * Math.PI));
     ctx.save();
     ctx.lineWidth = 3;

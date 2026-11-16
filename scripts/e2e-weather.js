@@ -92,9 +92,14 @@ function seedHouse(dbPath, cells) {
 // ★게임 화면 상자 — HUD 제외. `e2e-nature`·`e2e-rooms` 가 쓰는 **같은 값**이다
 //   (위쪽 띠는 시계·숫자가 계속 바뀌어 한 쌍에 수천 화소씩 흔들린다 — 재는 층 격리).
 const GBOX = [40, 200, 1360, 880];
-const diffPx = (a, b) => { let c = 0;
+//   ★[T1310 ③] 몸 자리 가림(선택) — `ents` = `__entBoxes()` 의 [종류, 화면 x, y] · 상자 폭은 e2e-nature · e2e-rooms 와 같은 값
+const ENT_DX = 80, ENT_UP = 120, ENT_DN = 48;
+const inEnt = (ents, x, y) => { for (const [, sx, sy] of ents) if (x >= sx - ENT_DX && x < sx + ENT_DX && y >= sy - ENT_UP && y < sy + ENT_DN) return true; return false; };
+const entMasked = (ents) => { let m = 0; for (let y = GBOX[1]; y < GBOX[3]; y++) for (let x = GBOX[0]; x < GBOX[2]; x++) if (inEnt(ents, x, y)) m++; return m; };
+const diffPx = (a, b, ents) => { let c = 0;
   for (let y = GBOX[1]; y < Math.min(a.height, b.height, GBOX[3]); y++)
     for (let x = GBOX[0]; x < Math.min(a.width, b.width, GBOX[2]); x++) {
+      if (ents && ents.length && inEnt(ents, x, y)) continue;
       const i = (y * a.width + x) * 4;
       const d = Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]);
       if (d > 24) c++;
@@ -169,7 +174,7 @@ const diffPx = (a, b) => { let c = 0;
   await sleep(12000);
   // ★바람을 끈다 — 지면 풀 카펫이 프레임마다 흔들려 짝 비교의 잡음 바닥을 통째로 먹는다
   //   (T87 이 대조군 0px 을 얻으려고 격리한 그 층과 같다).
-  await page.evaluate(() => { if (window.__terrain19) window.__terrain19.windOff = true; });
+  await page.evaluate(() => { if (window.__terrain19) { window.__terrain19.windOff = true; window.__terrain19.entBoxes = true; } });
   await sleep(600);
 
   const rain = (o) => page.evaluate((f) => window.__rainForce(f), o);
@@ -206,12 +211,20 @@ const diffPx = (a, b) => { let c = 0;
   const dIn = await rdbg();
   ok(dIn.indoor === true && dIn.on === false && dIn.n === 0,
      '★★비를 최대로 켜도 실내면 **한 획도 안 그린다**', JSON.stringify(dIn));
-  const inA = await shot('01-in-rain'); const inB = await shot('02-in-rain2');
+  //   ★[T1310 ③] 몸(내 몸 · 남 · 짐승) 자리는 가리고 잰다 — 146px 의 뜻(T1299 6판 중 3판 · 보고/T1310 §3): 비 켬 · 끔 사이 400ms 동안
+  //     **내 몸 서기 동작 한 판**이 넘어가 몸 상자(22 × 34px · 화면 가운데)만 1px 옮겨 그려졌다 — 비도 지붕도 아니다(획 0 은 위 ★★ 가 본다).
+  //     자리는 클라가 제 변환으로 내준다(`__entBoxes` · e2e-nature · e2e-rooms 와 같은 문법 · 같은 상자 폭) — 스샷 앞 · 뒤 두 번 읽은 합집합.
+  const ents = () => page.evaluate(() => (window.__entBoxes ? window.__entBoxes() : [])).catch(() => []);
+  const shotE = async (n) => { const e0 = await ents(); const img = await shot(n); const e1 = await ents(); img._ents = [...e0, ...e1]; return img; };
+  const inA = await shotE('01-in-rain'); const inB = await shotE('02-in-rain2');
   await rain({ precip: 0 }); await sleep(400);
-  const inC = await shot('03-in-clear');
-  const inNoise = diffPx(inA, inB), inSig = diffPx(inA, inC);
-  ok(inSig <= Math.max(60, inNoise * 3), '★화면도 그대로다 — 비 켠 실내 vs 맑은 실내가 잡음 안',
-     `효과 ${inSig}px · 잡음 ${inNoise}px`);
+  const inC = await shotE('03-in-clear');
+  const inEnts = [...inA._ents, ...inB._ents, ...inC._ents];
+  const inNoise = diffPx(inA, inB, inEnts), inSig = diffPx(inA, inC, inEnts), inRaw = diffPx(inA, inC);
+  ok(inEnts.some((e) => e[0] === 'player') && entMasked(inEnts) < (GBOX[2] - GBOX[0]) * (GBOX[3] - GBOX[1]) * 0.25,
+     '★검사 전제 — 몸 자리를 받았고(내 몸 포함) 가린 넓이가 판정 대상을 삼키지 않았다(< 25%)', `몸 ${inEnts.length}자리 · 가림 ${entMasked(inEnts)}px`);
+  ok(inSig <= Math.max(60, inNoise * 3), '★화면도 그대로다 — 비 켠 실내 vs 맑은 실내가 잡음 안(몸 자리 가림)',
+     `효과 ${inSig}px · 잡음 ${inNoise}px · (가리기 전 ${inRaw}px)`);
 
   // ══ 밖으로 나간다 ═══════════════════════════════════════════════════════════════
   say('\n[밖으로 — 집에서 40셀 떨어진 빈 땅으로 옮긴다]');

@@ -784,7 +784,7 @@ function initAudio() {
      *  호출자는 여전히 로직 0 · 줄 하나. */
     scan: (list, cx, cy) => {
       if (!_sfxCtx || !_sfxMan || !list) return;
-      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());  // [T1310 클라 시계] performance 없을 때 대체(간격만)
       if (now - _sfxScanAt < SFX_SCAN_MS) return;
       _sfxScanAt = now;
       const MOB = _sfxMan.mobs || {}, BLD = _sfxMan.buildings || {}, RL = _sfxMan.resourceLoop || {};
