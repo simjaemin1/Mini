@@ -175,7 +175,8 @@ async function waitHttp(url, tries = 900) {
 
   // 촌장 브리핑은 근접 틱(0.7초)이 자동으로 요청한다 — 사람이 다가가면 말을 건다.
   let brief = null;
-  for (let i = 0; i < 20 && !brief; i++) { await sleep(700); brief = await page.evaluate(() => window.__evLastBrief || null); }
+  //   ★[T1339] 종전 20번 × 0.7초(14초) — 부하 10판 중 1판에서 안 왔다(브리핑 요청도 마을 요청 줄 — 붐빈 판에선 하루 마감 뒤에 답한다). 60번(42초)까지 기다린다(판정 그대로).
+  for (let i = 0; i < 60 && !brief; i++) { await sleep(700); brief = await page.evaluate(() => window.__evLastBrief || null); }
   ok(!!brief, '접근만으로 촌장 브리핑이 왔다(별도 조작 없음)');
   ok(!!(brief && brief.lines && brief.lines.length), '브리핑에 문장이 있다', brief ? JSON.stringify(brief.lines) : '');
   ok(!!(brief && brief.vid === V.id), '브리핑은 **그 마을 것**이다(타 마을 미포함)', brief ? `vid=${brief.vid}` : '');
