@@ -1,0 +1,90 @@
+{
+ "base": "계측/서버기준선_2026-11-14.json",
+ "plan": {
+  "7": 400,
+  "42": 400,
+  "1020": 400
+ },
+ "seeds": [
+  1020,
+  7,
+  42
+ ],
+ "sec": 2483,
+ "per": {
+  "7": {
+   "seed": 7,
+   "code": 0,
+   "sec": 1651
+  },
+  "42": {
+   "seed": 42,
+   "code": 0,
+   "sec": 1068
+  },
+  "1020": {
+   "seed": 1020,
+   "code": 0,
+   "sec": 1415
+  }
+ },
+ "res": {
+  "7": {
+   "same": false,
+   "sideDay": 4,
+   "sideFields": [
+    "_mkt"
+   ],
+   "econDay": 5,
+   "cov": {
+    "econ": [
+     400,
+     400
+    ],
+    "side": [
+     400,
+     400
+    ],
+    "short": false
+   }
+  },
+  "42": {
+   "same": false,
+   "sideDay": 4,
+   "sideFields": [
+    "_mkt"
+   ],
+   "econDay": 5,
+   "cov": {
+    "econ": [
+     400,
+     400
+    ],
+    "side": [
+     400,
+     400
+    ],
+    "short": false
+   }
+  },
+  "1020": {
+   "same": false,
+   "sideDay": 4,
+   "sideFields": [
+    "_mkt"
+   ],
+   "econDay": 5,
+   "cov": {
+    "econ": [
+     400,
+     400
+    ],
+    "side": [
+     400,
+     400
+    ],
+    "short": false
+   }
+  }
+ }
+}
