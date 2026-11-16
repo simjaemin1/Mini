@@ -8184,6 +8184,36 @@ function _warStandNear(cx, cy) {
 //   병사별 기억(u._wpth): 그 길 위에 있는 동안은 다시 찾지 않는다(목표가 조금 움직여도). 길을 벗어났거나 끝났으면 다시.
 //   목표 칸이 막혔으면 설 수 있는 가장 가까운 칸으로(ⓑ 같은 술어). 서 있는 칸이 막혔으면 가장 가까운 열린 칸으로 한 걸음.
 //   못 찾으면 null — 호출측 종전 걸음.
+// ★[T1330] `_warPathNext` 물음 기억 — 막힘 술어 세대 하나에 (출발 칸 · 목표 칸) → 답(길 배열 · null). 셈은 계측(`_t1330Stat` · 판 자가 읽는다).
+//   ★둘째 손 — **닫힌 덩이**: 길이 없던 물음 뒤 그 두 끝점에서 같은 걸음(4방 · 같은 술어 `_warBlockedCell`)으로 칠해 본다(상한 = 걸음 프리셋 정본 꺼냄 상한
+//     `LOCAL_MAX_NODES` · 새 수 0). 상한 안에서 다 칠해지면(닫힌 덩이 — 성벽 안 · 섬 · 막힌 골) 그 칸들을 덩이 번호로 기억한다.
+//     끝점 하나가 아는 닫힌 덩이 안이고 다른 하나가 그 덩이 밖이면 4방 연결이 없다 ⇒ `localPath` 는 어떤 탐색 차례로도 null(끝점 막힘 · 꺼냄 상한 · 다 뒤짐 셋 다 null) —
+//     그래서 탐색 없이 null 이 같은 답이다. 두 끝점이 같은 덩이 안이면 종전처럼 묻는다. 칠한 판이 상한에 닿으면(열린 땅) 그 칸만 "열림"으로 적고 다시 칠하지 않는다.
+const _t1330Stat = { ask: 0, hit: 0, fail: 0, gen: 0, apart: 0, comp: 0, open: 0 };
+function _t1330Memo() {
+  if (state._warNoCollide || !state._warRectCells) return null;
+  const C = state._t1330Path;
+  if (C && C.gen === state._warRectCells) return C.m;
+  state._t1330Path = { gen: state._warRectCells, m: new Map(), cell: new Map(), open: new Set(), n: 0 }; _t1330Stat.gen++;
+  return state._t1330Path.m;
+}
+function _t1330Apart(sx, sy, gx, gy) {
+  const C = state._t1330Path; if (!C || !C.cell.size) return false;
+  const a = C.cell.get(sx + ',' + sy), b = C.cell.get(gx + ',' + gy);
+  return (a !== undefined || b !== undefined) && a !== b;
+}
+function _t1330Learn(x0, y0) {
+  const C = state._t1330Path; if (!C) return;
+  const k0 = x0 + ',' + y0; if (C.cell.has(k0) || C.open.has(k0) || _warBlockedCell(x0, y0)) return;
+  if (!PathCore) PathCore = require('../sim/path-core.js');
+  const CAP = PathCore.LOCAL_MAX_NODES, seen = new Set([k0]), q = [x0, y0];
+  for (let i = 0; i < q.length; i += 2) {
+    if (seen.size > CAP) { C.open.add(k0); _t1330Stat.open++; return; }   // 열린 땅 — 결론 없음(이 칸은 다시 안 칠한다)
+    const x = q[i], y = q[i + 1];
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, nk = nx + ',' + ny; if (seen.has(nk) || _warBlockedCell(nx, ny)) continue; seen.add(nk); q.push(nx, ny); }
+  }
+  const id = ++C.n; for (const k of seen) C.cell.set(k, id); _t1330Stat.comp++;
+}
 function _warPathNext(u, tx, ty) {
   const MPC = state.warLive.M_PER_CELL;
   const sx = Math.floor(u.x / MPC), sy = Math.floor(u.y / MPC);
@@ -8195,7 +8225,21 @@ function _warPathNext(u, tx, ty) {
     const gl = _warStandNear(tx / MPC, ty / MPC); if (!gl) return null;
     if (!PathCore) PathCore = require('../sim/path-core.js');
     const blk = (x, y) => _warBlockedCell(x, y);
-    let pts = null; try { pts = PathCore.localPath(sx, sy, Math.floor(gl.cx), Math.floor(gl.cy), { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2) }); } catch (_) { pts = null; }
+    const gx = Math.floor(gl.cx), gy = Math.floor(gl.cy);
+    //   ★★[T1330] 같은 물음은 한 번만 — (출발 칸 · 목표 칸)이 같고 막힘 술어의 세대가 같으면 답이 비트 같다:
+    //     술어(`_warBlockedCell`)는 직사각 칸 · 지형 메모 · 나무 메모만 읽고, 셋 다 `_warBuildRectIndex` 가 **같은 순간 새 객체로** 갈 때까지
+    //     칸마다 처음 물은 답 그대로다(메모) — 같은 출발 · 목표의 탐색은 같은 칸을 같은 차례로 묻는다(path-core 결정성). 그래서 그 세대 안에서는
+    //     답(길 · 길 없음)을 기억해 되묻지 않는다. 큰 교전에서 막힌 병사 수백이 닿을 수 없는 길 점을 **매 틱** 끝까지(꺼냄 `LOCAL_MAX_NODES`) 다시 뒤지던 것이
+    //     전쟁 판 멈춤의 까닭이었다(보고 T1330 §2). 길은 병사마다 따로 쥐고(`u._wpth = { pts, i }` — `pts` 는 안 고친다 · 같은 배열을 나눠 읽는다).
+    //     세대 = 직사각 칸 집합 객체(`state._warRectCells` — 세 메모가 같은 자리에서 함께 갈린다) · 하네스 대조 팔(`_warNoCollide`)이면 기억 안 함.
+    const M = _t1330Memo(), mk = M ? sx + ',' + sy + '>' + gx + ',' + gy : '';
+    let pts;
+    if (M && M.has(mk)) { pts = M.get(mk); _t1330Stat.hit++; }
+    else if (M && _t1330Apart(sx, sy, gx, gy)) { pts = null; M.set(mk, null); _t1330Stat.apart++; }   // 끝점 하나가 이미 아는 닫힌 덩이 안 · 다른 하나는 밖 — 길이 없다(탐색 없이 같은 답)
+    else {
+      pts = null; try { pts = PathCore.localPath(sx, sy, gx, gy, { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2) }); } catch (_) { pts = null; }
+      if (M) { M.set(mk, pts); _t1330Stat.ask++; if (!pts) { _t1330Stat.fail++; _t1330Learn(gx, gy); _t1330Learn(sx, sy); } }
+    }
     if (!pts || pts.length < 2) return null;
     P = u._wpth = { pts, i: 0 };
   }
@@ -11027,7 +11071,7 @@ function __p3Bind(mock) {
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
     _econSameOf, _warEatBySpoil,   // ★[T458] 같은 물건 한 줄 · 상하는 것부터 — 하네스가 **이 함수**로 등가 표를 센다(사본 0)
     _warLootAccept, _warLootPickup,   // ★[T466] 약탈 = 행위 — 하네스가 운영과 같은 훅을 war-core 에 건다
-    _warSnapToSlots, _warStandNear, _warPathNext, _warReleaseAdv, _warDetourFor,   // ★[T541] 막힌 슬롯 → 설 수 있는 가장 가까운 칸 · 막힌 곧은 걸음 → 걸음 경로 — 하네스가 **이 함수들**을 부른다
+    _warSnapToSlots, _warStandNear, _warPathNext, _warReleaseAdv, _warDetourFor, _t1330Stat, _t1330Memo,   // ★[T541] 막힌 슬롯 → 설 수 있는 가장 가까운 칸 · 막힌 곧은 걸음 → 걸음 경로 — 하네스가 **이 함수들**을 부른다
     _t476Decide, _t476DenVil,   // ★[T476] 토벌 결단 · 소굴 어댑터 — 하네스가 운영과 같은 결단을 부른다
     _warRationLayDownBody, _warBagDrop, _t476DenRefresh, _t476DenSync,   // ★[T748] 켬 전용 일곱 길 — 하네스(`test-moment-lot` ⑨~)가 **이 함수들**을 그대로 부른다(사본 0)
     _t312Deliver, _t347Deliver, _t544PackPut, _t544PackIn, _t368Hold, _t368Deliver,
