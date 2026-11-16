@@ -111,7 +111,16 @@ function boot(name, file, env) {
 // ★[T1310 ①] 브라우저 시계 어긋남 판 — `T1310_E2E_SKEW_MS`(ms · 기본 0) 만큼 브라우저 시계만 옮긴다(서버는 그대로 · 정본 `lib-phase.browserSkew`).
 //   플레이어 컴퓨터 시계가 몇 분 틀린 판 — 클라가 서버 시각 축(`worldNow`)을 쓰면 결과가 같아야 한다.
 const SKEW_MS = +process.env.T1310_E2E_SKEW_MS || 0;
-async function _ctx(browser) { const c = await browser.newContext({ viewport: { width: 1400, height: 900 } }); const js = require('./lib-phase').browserSkew(SKEW_MS); if (js) await c.addInitScript(js); return c; }
+//   ★[T1310 미끼] `T1310_BAIT=off0` — 받은 클라 글자에서 `worldNow()` 를 오프셋 0(클라 벽시계)으로 박은 사본으로 싣는다(파일 무변 · 이 판 브라우저만).
+//     어긋남 판(±5분)에서 빨강이어야 한다 — 낮밤 · 물 · 바람이 서버 시각 축을 실제로 쓴다는 반례(보정이 없으면 이 판이 무엇을 잡는지).
+async function _ctx(browser) { const c = await browser.newContext({ viewport: { width: 1400, height: 900 } }); const js = require('./lib-phase').browserSkew(SKEW_MS); if (js) await c.addInitScript(js);
+  if (process.env.T1310_BAIT === 'off0') await c.route('**/client/20-r2-visibility.js*', async (route) => {
+    const r = await route.fetch(); let t = await r.text(); const n = t.split('function worldNow() {').length - 1;
+    if (n !== 1) throw new Error('[T1310 미끼] worldNow 자리 ' + n + '곳');
+    t = t.replace('function worldNow() {', 'function worldNow() { return Date.now();');
+    await route.fulfill({ response: r, body: t, headers: Object.assign({}, r.headers(), { 'content-length': String(Buffer.byteLength(t)) }) });
+  });
+  return c; }
 async function waitHttp(url, tries = 900) {
   for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); }
   return false;
