@@ -7,7 +7,7 @@
 //   ② 장부 범위 겹침 = 같은 때 살아 있던 두 pid 의 범위가 겹친 쌍(살아 있음 = 잡은 때 ~ 내놓은 때).
 //   ③ 남의 서버에 붙음 = 하네스 A 의 프로세스가 붙은 순간 그 포트를 묶고 있던 프로세스의 하네스가 B(≠A).
 //      묶은 쪽 꼬리표가 비면(자식이 env 를 안 물려받음) 따로 센다.
-//   ④ EADDRINUSE = 하네스 전체 출력에서 센 줄 수.
+//   ④ EADDRINUSE = 하네스 전체 출력에서 **오류 꼴** 줄 수(`Error: listen EADDRINUSE …` · `ERR EADDRINUSE` — 규칙 글에 적힌 낱말은 안 센다).
 const fs = require('fs');
 const path = require('path');
 const [OUTJ, SOLO, ...PARS] = process.argv.slice(2);
@@ -31,7 +31,7 @@ function runRes(dir) {
     const p = nums(/PASS\s*(\d+)|(\d+)\s*PASS/) ?? nums(/통과\s*(\d+)/), f = nums(/FAIL\s*(\d+)|(\d+)\s*FAIL/) ?? nums(/실패\s*(\d+)/);
     const pp = (() => { const m = /PASS\s*(\d+)|(\d+)\s*PASS|통과\s*(\d+)|(\d+)\s*통과/.exec(last); return m ? +(m[1] || m[2] || m[3] || m[4]) : null; })();
     const ff = (() => { const m = /FAIL\s*(\d+)|(\d+)\s*FAIL|실패\s*(\d+)|(\d+)\s*실패/.exec(last); return m ? +(m[1] || m[2] || m[3] || m[4]) : null; })();
-    R[name] = { ok, rc: ok ? 0 : (rc == null ? '?' : +rc), pass: pp ?? p, fail: ff ?? f, sec, inuse: (txt.match(/EADDRINUSE/g) || []).length };
+    R[name] = { ok, rc: ok ? 0 : (rc == null ? '?' : +rc), pass: pp ?? p, fail: ff ?? f, sec, inuse: (txt.match(/(?:Error|ERR)\b[^\n]*EADDRINUSE|EADDRINUSE[^\n]*(?:address already in use|:\d{2,5}\b)/g) || []).length };   // 오류 꼴만(린트 규칙 글 '접점: … EADDRINUSE …' 는 안 센다)
   }
   const tot = (/러너 전체 (\d+)초/.exec(log) || [])[1];
   return { R, wall: tot ? +tot : null };

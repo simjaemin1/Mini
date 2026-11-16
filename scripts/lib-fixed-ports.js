@@ -22,7 +22,7 @@ const PORTLIT = [
   /\.listen\(\s*(\d{4,5})\b/g,
   /\b(?:start|boot|serve|listen|spawn|launch|up)\w*\(\s*(\d{4,5})\b/gi,   // ★부르는 자리 인자(`startNeighbor(3020, …)` · `up(3811, …)` — T1288 -j4 첫 판이 찾았다)
 ];
-const BOOT = (code) => (/(?:'central(?:\.js)?'|server['"],\s*['"]central|central\.js|'zone\.js'|server['"],\s*['"]zone|zone\.js)/.test(code) && /\b(?:spawn|fork|boot|sp|execFile)\w*\s*\(/.test(code))
+const BOOT = (code) => (/(?:'central(?:\.js)?'|server['"],\s*['"]central(?:\.js)?['"]|central\.js|'zone\.js'|server['"],\s*['"]zone(?:\.js)?['"]|zone\.js)/.test(code) && /\b(?:spawn|fork|boot|sp|execFile)\w*\s*\(/.test(code))
   || /require\(\s*(?:path\.join\([^)]*['"]server['"],\s*['"]zone(?:\.js)?['"]\)|['"]\.\.\/server\/zone(?:\.js)?['"])\s*\)/.test(code) || /\.listen\(/.test(code);
 const esc = (s) => s.replace(/[$]/g, '\\$');
 const UNBOUND = 'lib-port: 묶지 ' + '않음';
@@ -49,9 +49,9 @@ function judge(src) {
   }
   // ★central 없이 존을 띄우는 파일 — 존은 `CENTRAL_*` 가 없으면 기본 localhost:3010 에 붙는다(나란히 돌면 **남의 central 에 등록**한다).
   //   ⇒ 이 파일은 머리 줄 `lib-port.noCentral()`(닿지 않는 `http://localhost:1`)를 단다 · 린트 ⑯d.
-  const zoneBoot = /(?:'zone\.js'|server['"],\s*['"]zone|zone\.js)/.test(code) && /\b(?:spawn|fork|boot|sp|execFile)\w*\s*\(/.test(code)
+  const zoneBoot = /(?:'zone\.js'|server['"],\s*['"]zone(?:\.js)?['"]|zone\.js)/.test(code) && /\b(?:spawn|fork|boot|sp|execFile)\w*\s*\(/.test(code)
     || /require\(\s*(?:path\.join\([^)]*['"]server['"],\s*['"]zone(?:\.js)?['"]\)|['"]\.\.\/server\/zone(?:\.js)?['"])\s*\)/.test(code);
-  const centralBoot = /(?:'central(?:\.js)?'|server['"],\s*['"]central|central\.js)/.test(code) && /\b(?:spawn|fork|boot|sp|execFile)\w*\s*\(/.test(code);
+  const centralBoot = /(?:'central(?:\.js)?'|server['"],\s*['"]central(?:\.js)?['"]|central\.js)/.test(code) && /\b(?:spawn|fork|boot|sp|execFile)\w*\s*\(/.test(code);
   const centralLess = zoneBoot && !centralBoot && !/\bCENTRAL_(?:URL|PORT|HOST)\b/.test(code);
   const all = [...nums].sort((a, b) => a - b);
   const fixed = all.filter((n) => CFGP.has(n));

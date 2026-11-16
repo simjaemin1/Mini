@@ -136,11 +136,32 @@ run_one() {
 
 # ═══ ★[T1288] 나란히 갈래 — 같은 고정 포트(`lib-port.hold` 머리 줄)를 쥐는 둘은 같이 안 띄운다 ═══
 holds_of() { grep -oE "require\('\./lib-port'\)\.hold\([0-9, ]+\)" "scripts/$1" 2>/dev/null | head -1 | grep -oE "[0-9]+" | tr '\n' ' '; }
+# ★[T1288] 혼자 돌 하네스 — 머리에 `// @regress-alone` 을 단 파일(벽시계 · 틱 속도 · 화면 흐름을 재는 판).
+#   -j 판에서 **맨 먼저 하나씩** 돌고 그동안 다른 하네스를 안 띄운다(CPU 를 나눠 쓰면 잰 값이 바뀐다 — 판 A·B 가 보였다).
+#   판정 · 문턱은 그대로 — 홀로 판(-j 1)과 같은 조건에서 돈다.
+alone_of() { head -40 "scripts/$1" 2>/dev/null | grep -q '^// @regress-alone' && echo 1; }
+par_collect() {   # $1 하네스 · $2 출력 파일 — 덩어리를 찍고 셈에 넣는다
+  local f="$1" out="$2"
+  cat "$out"
+  local el; el="$(grep -oE '\[소요\] [0-9]+초' "$out" | tail -1 | grep -oE '[0-9]+')"
+  TIMES+=("${el:-0} $f")
+  if grep -qE '^  ✓ RC=0$' "$out"; then PASSED+=("$f")
+  else
+    local rc; rc="$(grep -oE '✗ RC=[0-9]+' "$out" | tail -1 | grep -oE '[0-9]+$')"
+    FAILED+=("$f(rc=${rc:-?})")
+  fi
+}
 run_par() {
   local WD; WD="$(mktemp -d)"
-  local -a pend=("${LIST[@]}")
+  local -a pend=() solo=()
   local -A run_f=() run_h=() busy=()
-  echo "  [나란히] -j ${JOBS} · ${#pend[@]}개 · 고정 포트 쥔 하네스는 같은 포트끼리 차례로"
+  local f0
+  for f0 in "${LIST[@]}"; do if [ -n "$(alone_of "$f0")" ]; then solo+=("$f0"); else pend+=("$f0"); fi; done
+  echo "  [나란히] -j ${JOBS} · ${#LIST[@]}개 · 혼자 돌 것 ${#solo[@]}개 먼저 차례로 · 고정 포트 쥔 하네스는 같은 포트끼리 차례로"
+  for f0 in "${solo[@]}"; do
+    ( NEED_DRAIN=0; export RUN_REGRESS_HARNESS="$f0"; run_one "$f0" ) > "$WD/$f0.out" 2>&1
+    par_collect "$f0" "$WD/$f0.out"
+  done
   while [ "${#pend[@]}" -gt 0 ] || [ "${#run_f[@]}" -gt 0 ]; do
     # ① 빈 자리에 띄울 수 있는 것(쥐는 포트가 지금 쥔 것과 안 겹치는)을 띄운다
     #   ★[T1288] 포트를 쥐는 하네스를 **먼저** 고른다 — 같은 포트 무리는 차례로만 돌므로 그 줄이 쉬면 벽이 늘어난다
@@ -174,14 +195,7 @@ run_par() {
     local f="${run_f[$done_pid]}" p
     for p in ${run_h[$done_pid]}; do unset 'busy[$p]'; done
     unset 'run_f[$done_pid]' 'run_h[$done_pid]'
-    cat "$WD/$f.out"
-    local el; el="$(grep -oE '\[소요\] [0-9]+초' "$WD/$f.out" | tail -1 | grep -oE '[0-9]+')"
-    TIMES+=("${el:-0} $f")
-    if grep -qE '^  ✓ RC=0$' "$WD/$f.out"; then PASSED+=("$f")
-    else
-      local rc; rc="$(grep -oE '✗ RC=[0-9]+' "$WD/$f.out" | tail -1 | grep -oE '[0-9]+$')"
-      FAILED+=("$f(rc=${rc:-?})")
-    fi
+    par_collect "$f" "$WD/$f.out"
   done
   rm -rf "$WD"
 }
