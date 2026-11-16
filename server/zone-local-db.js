@@ -261,11 +261,16 @@ function deleteMob(id) { stmtDeleteMob.run(id); }
   if (!_cc.includes('state'))    db.exec("ALTER TABLE claims ADD COLUMN state TEXT NOT NULL DEFAULT 'active'");
   if (!_cc.includes('held_by'))  db.exec('ALTER TABLE claims ADD COLUMN held_by TEXT');
   if (!_cc.includes('state_at')) db.exec('ALTER TABLE claims ADD COLUMN state_at INTEGER NOT NULL DEFAULT 0');
-  // ★[T1305 → ★T1332] 돌봄 = **청크 줄**(주인 · 청크 좌표 → 낡음 `w` · 마지막으로 잰 접속일 `n0`). **켬 판에서만** 만든다(끔 = 스키마 그대로 · 바이트 같음).
-  //   T1305 의 칸마다 두 열(`care_n` · `care_w`)은 안 쓴다 — 그 열을 쓰던 켬 판 DB 는 없다(라이브 끔 · 카드 T1332 ①).
-  //   청크 줄이 없는 내 칸(켜기 앞의 옛 칸)은 첫 날 셈이 그날을 돌본 날로 잡는다(`deeds.wear` · 켜는 순간 줄지 않는다).
+  // ★[T1305 → T1332 → ★T1343] 돌봄 = **청크 계량기 줄**(주인 · 청크 좌표 → 관리도 `m` · 마지막 셈 시각 `t` ms) · 다른 존 칸 기억(`deed_owners`).
+  //   **켬 판에서만** 만든다(끔 = 스키마 그대로 · 바이트 같음). T1305 의 칸마다 두 열(`care_n` · `care_w`)은 안 쓴다(켬 판 DB 없음 — 라이브 끔).
+  //   줄이 없는 내 칸(켜기 앞의 옛 칸)은 첫 셈이 가득으로 잡는다(`deeds.init` · 켜는 순간 줄지 않는다).
   if (process.env.T1305_DEEDS === '1') {
-    db.exec('CREATE TABLE IF NOT EXISTS deed_chunks (owner_id TEXT NOT NULL, cx INTEGER NOT NULL, cy INTEGER NOT NULL, w REAL NOT NULL DEFAULT 0, n0 INTEGER, PRIMARY KEY (owner_id, cx, cy))');
+    db.exec('CREATE TABLE IF NOT EXISTS deed_chunks (owner_id TEXT NOT NULL, cx INTEGER NOT NULL, cy INTEGER NOT NULL, m REAL, t INTEGER, PRIMARY KEY (owner_id, cx, cy))');
+    // ★[T1343] 계량기 꼴(관리도 `m` · 마지막 셈 시각 `t` ms) — T1332 꼴(`w` · `n0`)로 선 표는 두 열을 붙인다(옛 줄은 NULL → 첫 셈이 가득으로 잡는다)
+    const _dc = db.prepare('PRAGMA table_info(deed_chunks)').all().map((c) => c.name);
+    if (!_dc.includes('m')) db.exec('ALTER TABLE deed_chunks ADD COLUMN m REAL');
+    if (!_dc.includes('t')) db.exec('ALTER TABLE deed_chunks ADD COLUMN t INTEGER');
+    db.exec('CREATE TABLE IF NOT EXISTS deed_owners (owner_id TEXT PRIMARY KEY, others INTEGER NOT NULL DEFAULT 0)');   // ★[T1343] 다른 존의 내 칸(마지막으로 본 몸 칸)
   }
 }
 const stmtGetClaims = db.prepare('SELECT * FROM claims');
@@ -304,10 +309,13 @@ function updateClaimOwner(dbId, ownerId, ownerName, kind, state, heldBy, stateAt
 // ★[T1332] 돌봄 청크 줄(켬 판에서만 불린다 — 표가 있을 때만 준비한다)
 let _stmtDcAll = null, _stmtDcPut = null, _stmtDcDel = null;
 function getDeedChunks() { try { if (!_stmtDcAll) _stmtDcAll = db.prepare('SELECT * FROM deed_chunks'); return _stmtDcAll.all(); } catch (e) { return []; } }
-function saveDeedChunk(ownerId, cx, cy, w, n0) {
-  try { if (!_stmtDcPut) _stmtDcPut = db.prepare('INSERT INTO deed_chunks (owner_id, cx, cy, w, n0) VALUES (?, ?, ?, ?, ?) ON CONFLICT(owner_id, cx, cy) DO UPDATE SET w = excluded.w, n0 = excluded.n0');
-    _stmtDcPut.run(String(ownerId), cx | 0, cy | 0, +w || 0, n0 == null ? null : n0 | 0); return true; } catch (e) { return false; }
+function saveDeedChunk(ownerId, cx, cy, m, t) {
+  try { if (!_stmtDcPut) _stmtDcPut = db.prepare('INSERT INTO deed_chunks (owner_id, cx, cy, m, t) VALUES (?, ?, ?, ?, ?) ON CONFLICT(owner_id, cx, cy) DO UPDATE SET m = excluded.m, t = excluded.t');
+    _stmtDcPut.run(String(ownerId), cx | 0, cy | 0, Number.isFinite(+m) ? +m : null, Number.isFinite(+t) ? Math.round(+t) : null); return true; } catch (e) { return false; }
 }
+let _stmtDoAll = null, _stmtDoPut = null;
+function getDeedOwners() { try { if (!_stmtDoAll) _stmtDoAll = db.prepare('SELECT * FROM deed_owners'); return _stmtDoAll.all(); } catch (e) { return []; } }
+function saveDeedOwner(ownerId, others) { try { if (!_stmtDoPut) _stmtDoPut = db.prepare('INSERT INTO deed_owners (owner_id, others) VALUES (?, ?) ON CONFLICT(owner_id) DO UPDATE SET others = excluded.others'); _stmtDoPut.run(String(ownerId), others | 0); return true; } catch (e) { return false; } }
 function deleteDeedChunk(ownerId, cx, cy) { try { if (!_stmtDcDel) _stmtDcDel = db.prepare('DELETE FROM deed_chunks WHERE owner_id = ? AND cx = ? AND cy = ?'); _stmtDcDel.run(String(ownerId), cx | 0, cy | 0); return true; } catch (e) { return false; } }
 function deleteClaim(dbId) { if (!dbId) return false; try { stmtDeleteClaim.run(dbId); return true; } catch (e) { return false; } }
 
@@ -849,7 +857,7 @@ module.exports = {
   getResources, insertResource, updateResourceHp, deleteResource,
   getBuildings, getBuildingsInRect, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
-  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim, getDeedChunks, saveDeedChunk, deleteDeedChunk,   // ★[T45] 사유지 v2 — 종류·상태기 영속
+  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim, getDeedChunks, saveDeedChunk, deleteDeedChunk, getDeedOwners, saveDeedOwner,   // ★[T45] 사유지 v2 — 종류·상태기 영속
   insertHarvestedSeed, getAllHarvestedSeeds, promoteHarvestedDays, deleteHarvestedSeed,   // ★[T341] 재생 — 벤 기록을 지우는 문
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   upsertFishCell, getAllFishCells, deleteFishCell,
