@@ -838,6 +838,41 @@ function t1321Tx(fn) {
   try { const r = fn(); db.exec('RELEASE t1321'); return r; }
   catch (e) { try { db.exec('ROLLBACK TO t1321'); db.exec('RELEASE t1321'); } catch (x) {} throw e; }
 }
+// ★★[T1331 2026-11-16] 짐승 몸 표 셋 — **처음 부를 때** 세운다(손잡이 `T1331_BEAST_BODY` 켬에서만 불린다 · 끔 = 표 0 · 문장 0 · main 바이트 · T1238 · T1321 꼴).
+//   `t1331_body` — 몸 한 행(종 · 암수 · 난 날 · 어미 · 무리터 · 칸 · 옮겨 가는 곳 · hp) · 날마다 통째로 다시 적는다(몸 수천 행 · 한 거래)
+//   `t1331_hab`  — 무리터(마을)마다 서식 칸 열쇠 · 처음 K · 부존 기준 — 바뀐 날만(이행 · 벌채)
+//   `t1331_meta` — 다음 몸 id · 보존 셈 칸 · 날 줄 끝 60
+let _t1331Ready = false, _t1331Ins = null;
+function _t1331Tables() {
+  if (_t1331Ready) return;
+  db.exec('CREATE TABLE IF NOT EXISTS t1331_body (zone TEXT NOT NULL, id INTEGER NOT NULL, sp TEXT NOT NULL, sex INTEGER NOT NULL, born INTEGER NOT NULL, mom INTEGER NOT NULL, home TEXT NOT NULL, cx INTEGER NOT NULL, cy INTEGER NOT NULL, wto TEXT, wat INTEGER, hp INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (zone, id))');
+  db.exec('CREATE TABLE IF NOT EXISTS t1331_hab (zone TEXT NOT NULL, vid TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (zone, vid))');
+  db.exec('CREATE TABLE IF NOT EXISTS t1331_meta (zone TEXT PRIMARY KEY, data TEXT NOT NULL)');
+  _t1331Ins = db.prepare('INSERT INTO t1331_body (zone, id, sp, sex, born, mom, home, cx, cy, wto, wat, hp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  _t1331Ready = true;
+}
+//   rows = [[id, 종, 암수, 난 날, 어미, 무리터, cx, cy, 옮길 무리터|null, 옮길 칸|null, hp]] · hab = [[무리터, JSON]] | null(안 바뀜) · meta = JSON
+function t1331Save(zone, rows, hab, meta) {
+  _t1331Tables();
+  db.exec('SAVEPOINT t1331');
+  try {
+    db.prepare('DELETE FROM t1331_body WHERE zone = ?').run(zone);
+    for (const r of rows) _t1331Ins.run(zone, r[0] | 0, String(r[1]), r[2] | 0, r[3] | 0, r[4] | 0, String(r[5]), r[6] | 0, r[7] | 0, r[8] == null ? null : String(r[8]), r[9] == null ? null : (r[9] | 0), r[10] | 0);
+    if (hab) { db.prepare('DELETE FROM t1331_hab WHERE zone = ?').run(zone); const ins = db.prepare('INSERT INTO t1331_hab (zone, vid, data) VALUES (?, ?, ?)'); for (const h of hab) ins.run(zone, String(h[0]), String(h[1])); }
+    db.prepare('INSERT INTO t1331_meta (zone, data) VALUES (?, ?) ON CONFLICT(zone) DO UPDATE SET data = excluded.data').run(zone, String(meta));
+    db.exec('RELEASE t1331');
+  } catch (e) { try { db.exec('ROLLBACK TO t1331'); db.exec('RELEASE t1331'); } catch (x) {} throw e; }
+  return rows.length;
+}
+function t1331Load(zone) {
+  _t1331Tables();
+  const num = (v) => (v != null && /^-?\d+$/.test(String(v)) ? +v : v);   // 무리터 = 마을 dbId(수) · 하네스 마을은 이름(글자)
+  const bodies = db.prepare('SELECT id, sp, sex, born, mom, home, cx, cy, wto, wat, hp FROM t1331_body WHERE zone = ? ORDER BY id').all(zone)
+    .map((r) => [r.id, r.sp, r.sex, r.born, r.mom, num(r.home), r.cx, r.cy, r.wto == null ? null : num(r.wto), r.wat, r.hp]);
+  const hab = db.prepare('SELECT vid, data FROM t1331_hab WHERE zone = ? ORDER BY rowid').all(zone).map((r) => [num(r.vid), r.data]);
+  const m = db.prepare('SELECT data FROM t1331_meta WHERE zone = ?').get(zone);
+  return { bodies, hab, meta: m ? m.data : null };
+}
 function getVillageFarthest(villageId, ccx, ccy) { return stmtVbFar.all(villageId, ccx, ccx, ccy, ccy, ccx, ccx, ccy, ccy, villageId); }   // [T1176] 순번 인자 — 질의 속 `?` 순서대로
 function getVillageFarmInCellRect(cx0, cx1, cy0, cy1) { return stmtGetVillageFarmInCellRect.all(cx0, cx1, cy0, cy1); }
 
@@ -857,6 +892,7 @@ module.exports = {
   upsertPickedSeed, getAllPickedSeeds, deletePickedSeed,   // ★[T495] 부분 수확 — 개체에 남은 단위(켠 팔만 · 표는 처음 쓸 때)
   // §4-4 마을 시뮬 (villages.js)
   getWorldMeta, upsertWorldMeta, saveVillagesAndMeta,   // ★[T728]
+  t1331Save, t1331Load,   // ★[T1331] 짐승 몸 표(켬만 부른다 · 표는 처음 부를 때)
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings, updateVillageBuildingData,
   getVillageFarmInCellRect, getVillageStructRows,
   eachVillageCell, getVillageStructAll, getVillageFarthest, getTerrContestOwners,   // ★[T538] 경계 있는 부팅 로드

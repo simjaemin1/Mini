@@ -3614,7 +3614,12 @@ function spawnMob(type, opts = {}) {
 //   종전: 화살 길엔 다시 낳기가 없었다(화살로 사냥할수록 몹이 줄었다) · NPC 길은 야생 그림자를 안 걸렀다(늑대 그림자를 잡으면 DB 늑대가 섰다) · 사람 공격 길은 걸렀다.
 //   방송 칸은 NPC 길 글자(`tameOwner: null` · `tameOwnerName: null` 까지 — 새 몹은 주인이 없다 · 클라 `mob_spawn` 은 두 꼴을 같게 읽는다).
 const T987_MOB_RESPAWN = process.env.T987_MOB_RESPAWN !== '0';
+// ★★[T1331 2026-11-16] 손잡이 `T1331_BEAST_BODY`(끔 기본 · `'1'` 만 켬 · villages · wildlife 와 같은 글자) — 야생 짐승 = 몸 표(`server/beast-body.js`).
+//   켬: 몸 표에서 선 존 몹(`m._t1331` = 몸 id · 보임 다리 wildlife `_t1331Show`)이 죽음 길 셋(NPC · 화살 · 사람 공격)으로 죽으면 **몸 표에 죽음으로 적고 다시 낳지 않는다**(생성 0).
+//   그 밖의 존 몹(DB 행 몹 · 맹수 · 길든 짐승)은 종전 그대로다(다시 낳기 15초 — 회부). 끔 = 아래 첫 줄 무동작.
+const T1331_BEAST_BODY = process.env.T1331_BEAST_BODY === '1';
 function respawnMobLater(m) {
+  if (T1331_BEAST_BODY && m._t1331 != null) { const B = require('./beast-body').current; if (B) B.diedAt(m._t1331, 'seen'); return false; }   // ★[T1331] 몸의 죽음 — 다시 낳기 0
   if (T1321_XZ_BEAST && !m.isWild) _t1321Stat.died++;   // ★[T1321] 두 존 합 셈 — 존 몹 죽음(세 죽음 길이 다 이 문을 부른다 · 끔 = 이 줄 무동작)
   if (m.isWild || !(HOSTILES_ON || !(ANIMALS[m.type] && ANIMALS[m.type].aggressive))) return false;
   const respawnType = m.type;
@@ -3683,10 +3688,11 @@ if (T1321_XZ_BEAST) {
     neighbors: () => _t1321Nb, findZoneAt: (ax, ay) => findZoneAt(ax, ay),   // 이웃 = zone-config 동서남북 · 바다 뺌(`xzone.neighborsOf` — 부팅 때 한 번 · 존 표는 안 변한다)
     post: (zid, payload) => { const t = ZONES[zid]; if (!t) return Promise.reject(new Error('no zone ' + zid)); return postJSON(t.host, t.port, '/handoff_prepare', payload); },
     mobs: {
-      add: (m) => { mobs.set(m.mid, m); chunkManager.insertMob(m); _t1321Chunk(m); broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null } }); },
-      remove: (m) => { const had = mobs.delete(m.mid); chunkManager.removeMob(m); if (had) broadcast({ type: 'mob_removed', mid: m.mid }); },
+      add: (m) => { if (T1331_BEAST_BODY && m._t1331 != null) { const B = require('./beast-body').current; if (B) B.doorShow(m._t1331); } mobs.set(m.mid, m); chunkManager.insertMob(m); _t1321Chunk(m); broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null } }); },
+      remove: (m) => { if (T1331_BEAST_BODY && m._t1331 != null) { const B = require('./beast-body').current; if (B) B.doorHide(m._t1331); } const had = mobs.delete(m.mid); chunkManager.removeMob(m); if (had) broadcast({ type: 'mob_removed', mid: m.mid }); },   // ★[T1331] 몸이면 몸 표에 '넘는 중'(숨김)
     },
     spawn: (b, peer) => {
+      if (T1331_BEAST_BODY && b.t1331) return _t1331DoorIn(b, peer);   // ★[T1331] 넘어온 몸 — 이 존 몸 표에 넘어옴으로(DB 행 없음 · 보임 다리가 켜진 청크면 세운다) · 끔 = 무동작
       const n = spawnMob(b.type, { x: b.x, y: b.y, hp: Math.max(1, +b.hp || 1), tameOwner: b.tameOwner || null, tameOwnerName: b.tameOwnerName || null,
         tameProgress: b.tameProgress | 0, homeX: b.x + (+b.hx || 0), homeY: b.y + (+b.hy || 0), packId: b.pack || null });
       n.vx = +b.vx || 0; n.vy = +b.vy || 0; n.wanderUntil = Date.now() + Math.max(0, +b.wl || 0); n.floor = b.floor | 0;
@@ -3697,7 +3703,8 @@ if (T1321_XZ_BEAST) {
       broadcast({ type: 'mob_spawn', mob: { mid: n.mid, type: n.type, x: n.x, y: n.y, hp: n.hp, maxHp: n.maxHp, tameOwner: n.tameOwner || null, tameOwnerName: n.tameOwnerName || null } });
       return n;
     },
-    delRow: (m) => { if (m.dbId != null) db.deleteMob(m.dbId); },
+    delRow: (m) => { if (T1331_BEAST_BODY && m._t1331 != null) { const B = require('./beast-body').current; if (B) B.doorOut(m._t1331); } if (m.dbId != null) db.deleteMob(m.dbId); },   // ★[T1331] 답 OK = 몸 표에서 넘어감
+    ...(T1331_BEAST_BODY ? { t1331Pack: (m) => { const B = require('./beast-body').current; return B ? B.pack(m._t1331) : null; } } : {}),   // ★[T1331] 몸 칸(종 · 암수 · 난 날 · 보낸 몸 id) · 끔 = 칸 없음
     tx: (fn) => db.t1321Tx(fn),
     pendPut: (key, r) => db.t1321PendPut(key, r.mob, r.to, JSON.stringify(r.data)),
     pendDel: (key) => db.t1321PendDel(key), pendAll: () => db.t1321PendAll(),
@@ -3715,6 +3722,21 @@ if (T1321_XZ_BEAST) {
     log: (s) => console.log(`[${ZONE_ID}] 🐾 [T1321] ${s}`),
   });
   console.log(`[${ZONE_ID}] 🐾 [T1321] 짐승 넘김 문 켬 — 띠 ${HANDOFF_COMMIT}px · 이웃 ${_t1321Nb.join('·') || '없음'}${T1321_XZ_DRAIN0 ? ' · 비우기 켬(새 넘김 0)' : ''}`);
+}
+// ★[T1331] 넘어온 몸 — 받는 존 몸 표에 세우고(넘어옴 셈) 그 자리에 존 몹으로 바로 선다(같은 월드 자리 · 순간이동 0 · 보임 다리가 이 몸을 이미 선 몸으로 쥔다)
+function _t1331DoorIn(b, peer) {
+  const B = require('./beast-body').current; if (!B) return null;
+  const cx = Math.floor(b.x / 32), cy = Math.floor(b.y / 32), home = B.homeAt(cx, cy);
+  const body = B.doorIn(b.t1331, b.x, b.y, home);
+  const A = ANIMALS[b.type] || {}, maxHp = +b.maxHp > 0 ? +b.maxHp : (A.hp || 10);
+  const m = { mid: 'b' + body.id, dbId: null, type: b.type, x: b.x, y: b.y, z: 0, floor: b.floor | 0, homeX: b.x + (+b.hx || 0), homeY: b.y + (+b.hy || 0), packId: b.pack || null,
+    vx: +b.vx || 0, vy: +b.vy || 0, hp: Math.max(1, +b.hp || 1), maxHp, aggroTarget: null, lastAttackAt: 0, wanderUntil: Date.now() + Math.max(0, +b.wl || 0),
+    tameProgress: b.tameProgress | 0, tameOwner: null, tameOwnerName: null, dirty: false, _t1331: body.id };
+  mobs.set(m.mid, m); chunkManager.insertMob(m); _t1321Chunk(m);
+  B.showAt(body, m.mid, m.hp);
+  try { const W = require('./wildlife'); if (W.t1331Adopt) W.t1331Adopt(m, body); } catch (e) {}
+  broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: null, tameOwnerName: null } });
+  return m;
 }
 function _t1321DrainOn() { try { return SimVillages.t1321Drain ? !!SimVillages.t1321Drain() : T1321_XZ_DRAIN0; } catch (e) { return T1321_XZ_DRAIN0; } }
 //   띠(존 사각 밖)에 선 몸의 청크 = 변 안쪽 청크(띠는 이 존 몸의 자리다 — 청크 밖 칸 "-1_y" 는 활성에 안 들어 몸이 얼어붙는다) · 사각 안이면 종전 그 줄
@@ -6137,6 +6159,8 @@ Wildlife.init({
   gameRichSize: () => SimVillages.gameRichSize ? SimVillages.gameRichSize() : 0,
   // ★[T158] 뷰 사냥꾼의 하루 예산 — 장부가 그날 실제로 뺀 수(읽기만 · 정본은 `villages.js`).
   huntBudgetOf: (p) => (SimVillages.huntVisLeft ? SimVillages.huntVisLeft(p) : Infinity),
+  //   ★[T1331] 켬만 — 길든 몸(몸 표에서 나간 몸)을 길든 존 몹 행으로 적는 문(DB 행 · 주인 칸 둘 — T1321 받기 꼴) · 끔 = 칸 없음
+  ...(T1331_BEAST_BODY ? { t1331Keep: (m) => { m.dbId = db.insertMob({ type: m.type, x: m.x, y: m.y, hp: m.hp, max_hp: m.maxHp }); db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName); } } : {}),
   // §4-4 P3: 실체 전쟁 병사 pid 위치(px)를 야생 위협원으로 주입(_buildWarThreats 서버판 — 행군/전투 병사를 몹이 인지·회피).
   warThreats: () => SimVillages.warThreats(),
 });

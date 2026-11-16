@@ -796,8 +796,56 @@ function _syncLab(lm, liveSet, list) {
   }
 }
 
+// ═══ [C] ★★[T1331 2026-11-16] 짐승 몸 보임 다리 — 손잡이 `T1331_BEAST_BODY`(끔 기본 · `'1'` 만 켬 · villages · zone 과 같은 글자) ═══
+//   켬: 블록(B)을 **안 돌린다** — 블록은 뷰에 든 서식 칸의 풍부도로 몹을 낳고(스폰 · 맹수 굴림) 뷰를 떠나면 지운다(디스폰 · 넘친 초식 이탈) = 없던 몸 · 사라진 몸이다.
+//   대신 몸 표(`beast-body.current` — 마을 하루가 쥔 그 몸들)에서 켜진 청크 칸에 선 몸을 **존 몹으로 세운다**(1초에 한 번 · `mid = 'b' + 몸 id` · DB 행 없음 — 몸 표가 정본).
+//   존 몹이 된 몸은 존 몹 고리(배회 · 도주)가 걷기고 · 사람 공격 · 화살 · NPC 의 죽음 길 셋이 죽인다(zone `respawnMobLater` 켬 갈래가 몸 표에 죽음으로 적는다 · 다시 낳기 0) ·
+//   먹이 길들이기(`tryFeed`)가 길들이면 몸 표에서 나가 길든 짐승(DB 행)이 된다 · 존 경계 띠는 T1321 문이 몸 칸을 실어 넘긴다(zone 켬 갈래).
+//   청크가 꺼지면 그 자리(px → 칸)를 몸 표에 적고 존 몹만 걷는다(몸은 그 칸에 그대로 — 사라짐 0). 사냥꾼 두뇌(블록 몹 표적)는 이 판에서 안 선다(회부 — 랩 블록 무수정).
+//   ⚠끔 = 이 절이 한 번도 안 불린다(`tick` 첫 줄 · 아래 `if (T1331)`).
+const T1331 = process.env.T1331_BEAST_BODY === '1';
+const _t1331Mat = new Map();   // 존 몹 mid → 몸
+let _t1331Tk = 0;
+const _t1331St = { show: 0, hide: 0, tame: 0, lost: 0, peak: 0 };
+function _t1331Show() {
+  const B = require('./beast-body').current; if (!B) return;
+  if ((++_t1331Tk) % ((H.TICK_HZ | 0) || 30)) return;
+  const act = H.getActiveChunkKeys(), cm = H.chunkManager, cs = cm.chunkSize;
+  const on = (x, y) => act.has(cm.keyOf(Math.floor(x / cs), Math.floor(y / cs)));
+  for (const [mid, b0] of _t1331Mat) {
+    const b = B.W.bodies.get(b0.id);
+    if (!b) { _t1331Mat.delete(mid); continue; }        // 죽음 · 넘어감 · 길듦 — 존 문이 이미 몸 표에 적었다
+    if (b.tr) continue;                                  // 넘는 중(T1321 문이 쥐고 있다 — 숨김 · 답 기다림)
+    const m = H.mobs.get(mid);
+    if (!m) { _t1331Mat.delete(mid); B.diedAt(b.id, 'seen'); _t1331St.lost++; continue; }   // 존 몹이 문 밖에서 빠졌다(다시 낳기 손잡이 끔 등) — 죽음으로 센다
+    if (m.tameOwner) {                                   // 길듦 — 몸 표에서 나가 길든 짐승(DB 행)으로
+      B.tameAt(b.id); delete m._t1331; _t1331Mat.delete(mid); _t1331St.tame++;
+      try { if (H.t1331Keep) H.t1331Keep(m); } catch (e) {}
+      continue;
+    }
+    if (!on(m.x, m.y)) {                                 // 청크가 꺼졌다 — 몸은 그 칸에 남는다
+      H.mobs.delete(mid); cm.removeMob(m); H.broadcast({ type: 'mob_removed', mid });
+      _t1331Mat.delete(mid); B.hideAt(b, m.x, m.y, m.hp); _t1331St.hide++;
+      continue;
+    }
+    B.follow(b, m.x, m.y);
+  }
+  for (const b of B.W.bodies.values()) {
+    if (b.mat || b.tr) continue;
+    const x = b.cx * 32 + 16, y = b.cy * 32 + 16;
+    if (!on(x, y)) continue;
+    const A = Animals.ANIMALS[b.sp] || {}, maxHp = A.hp || 10, hp = b.hp > 0 ? Math.min(b.hp, maxHp) : maxHp;
+    const m = { mid: 'b' + b.id, dbId: null, type: b.sp, x, y, z: 0, floor: 0, homeX: x, homeY: y, packId: null, vx: 0, vy: 0, hp, maxHp,
+      aggroTarget: null, lastAttackAt: 0, wanderUntil: 0, tameProgress: 0, tameOwner: null, tameOwnerName: null, dirty: false, _t1331: b.id };
+    H.mobs.set(m.mid, m); cm.insertMob(m);
+    H.broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: null, tameOwnerName: null } });
+    B.showAt(b, m.mid, hp); _t1331Mat.set(m.mid, b); _t1331St.show++;
+  }
+  if (_t1331Mat.size > _t1331St.peak) _t1331St.peak = _t1331Mat.size;
+}
 function tick(now) {
   if (!ENABLED || !_ready) return;
+  if (T1331) { _t1331Show(); return; }   // ★[T1331] 켬 = 블록 대신 몸 표 보임 다리 · 끔 = 무동작
   const t0 = Date.now();
   // 1) 시계: 본체 월드시계 → lifeGM(게임분). 낮(p<0.7)→랩 06~20시, 밤→랩 20~06시 피스와이즈(밤 경계 정렬,
   //    단조·연속). lifeGM 절대시각 타이머(경계기억 등)는 본체 하루 10분 압축만큼 짧아짐 — dt 물리(속도)는 불변.
@@ -970,3 +1018,4 @@ module.exports = { init, tick, onMobHit, _debug: { S, stats: _stats, get lifeGM(
 Object.defineProperty(module.exports, 'enabled', { get() { return ENABLED; }, enumerable: true, configurable: true });
 // ★[T1195] 보이는 사냥의 먹잇감 섞음을 종 id 로(초식 스폰 가중치 `MOB_PREY` 그대로 · 사슴3 · 멧돼지1 · 토끼2) — 뷰 밖 사냥꾼이 든 마리의 종 차례(`villages._t1195HuntIn`).
 module.exports.preyIds = Object.freeze(MOB_PREY.map((t) => MAIN_TYPE[t]));
+if (T1331) { module.exports.t1331Stat = () => Object.assign({ mat: _t1331Mat.size }, _t1331St); module.exports.t1331Adopt = (m, b) => { _t1331Mat.set(m.mid, b); }; }   // ★[T1331] 켬만 — 보임 다리 셈(끔 = 칸 없음)

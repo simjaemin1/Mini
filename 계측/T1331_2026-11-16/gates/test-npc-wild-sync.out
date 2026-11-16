@@ -1,0 +1,28 @@
+
+=== NPC 가 죽인 야생 그림자 — 랩 몸도 그 자리에서 — T998(`T998_NPC_WILD_SYNC` 켬 · 끔) ===
+  ✓ [상황] 판 둘 다 섰다(자식 결과)  on ㅇ · off ㅇ
+
+① 상황
+  ✓ [상황] 손잡이가 판대로 섰다 · 존의 야생 인스턴스가 켜졌다  켬 true · 끔 false
+  ✓ [상황] 랩 늑대 그림자가 섰고(wolf · isWild · DB 행 없음) NPC 한 대에 존에서 빠졌다  그림자 hp 40
+  [관찰] 켬: 차례 lab → removed · npcStep 직후 랩 {"st":"dead","hp":0,"corpsed":1,"link":false} · 야생 틱 뒤 {"st":"dead","hp":0,"corpsed":1,"link":false}
+  [관찰] 끔: 차례 removed · npcStep 직후 랩 {"st":"prowl","hp":0.8,"corpsed":0,"link":true} · 야생 틱 뒤 {"st":"dead","hp":0,"corpsed":1,"link":false}
+
+② 켬 — npcStep 안에서 랩 늑대가 죽는다
+  ✓ ★★② 켬 — NPC 가 그림자를 죽인 그 자리에서 랩 늑대도 죽는다(st dead · hp 0 · 사체 표 — 존 길이 사체를 맡는다 · 그림자 고리 풀림)  {"st":"dead","hp":0,"corpsed":1,"link":false}
+  ✓ ★② 켬 — 차례 = 랩 문 → `mob_removed`(그림자는 DB 행이 없어 삭제 0 · 야생이라 다시 낳기 0)  lab → removed
+
+③ 끔 — 종전(폴링 보정) · 갈림은 한 틱 안
+  ✓ ★③ 끔 — npcStep 직후 랩 늑대는 산다(랩 문이 안 불렸다 · 존에선 이미 빠졌다) — 위가 자명 통과가 아니다  {"st":"prowl","hp":0.8,"corpsed":0,"link":true} · 차례 removed
+  ✓ ★③ 끔 — 다음 야생 틱 한 번에 죽는다(④ 외부 피해 폴링 보정) — 갈림은 npcStep 과 야생 틱 사이뿐(같은 존 틱 안: NPC 걸음 → 야생 틱 차례)  {"st":"dead","hp":0,"corpsed":1,"link":false}
+  ✓ ③ 켬 — 야생 틱 뒤에도 그대로 죽음 · 그림자가 다시 안 선다  {"st":"dead","hp":0,"corpsed":1,"link":false}
+
+④ 사람 공격 길(대조) — 같은 문 · 같은 차례
+  [관찰] 사람 공격: 켬 lab → removed · 끔 lab → removed · 랩 {"st":"dead","hp":0,"corpsed":1,"link":false}
+  ✓ ★④ 사람 공격이 늑대 그림자를 죽이면 두 판 다 랩 → 지움(종전부터) — 켬 판 NPC 길(②)이 이 차례와 같다  lab → removed
+
+⑤ DB 늑대(그림자 아님) — 랩 문 없음 · T975 · T987 차례
+  [관찰] NPC 가 DB 늑대: 켬 dbDelete → removed → respawn · 끔 dbDelete → removed → respawn
+  ✓ ★⑤ NPC 가 DB 늑대를 죽이면 두 판 다 DB 삭제 → `mob_removed` → 다시 낳기(15초 · HOSTILES_ON) · 랩 문 0  dbDelete → removed → respawn
+
+=== 10건 중 PASS 10 · FAIL 0 ===

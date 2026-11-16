@@ -1,0 +1,10 @@
+test-hunt-port rc=0 sec=1
+test-mob-respawn rc=0 sec=5
+test-resume-slice rc=0 sec=84
+test-slot-keep rc=0 sec=134
+test-hunt-vis rc=0 sec=47
+test-npc-wild-sync rc=0 sec=3
+test-t1237-water-deer rc=0 sec=8
+test-wild-door rc=0 sec=8
+test-zone-fauna rc=0 sec=24
+test-game-meat rc=0 sec=7
