@@ -1,0 +1,179 @@
+{
+ "BKAM": {
+  "agg": {
+   "400": {
+    "g1": true,
+    "g2": true,
+    "g3": true,
+    "g4": true
+   },
+   "800": {
+    "g1": false,
+    "g2": true,
+    "g3": false,
+    "g4": false
+   }
+  },
+  "both": false,
+  "per": {
+   "400": [
+    {
+     "g1": true,
+     "g2": true,
+     "g3": true,
+     "g4": true
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true
+    }
+   ],
+   "800": [
+    {
+     "g1": false,
+     "g2": true,
+     "g3": false,
+     "g4": false
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": false
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": false,
+     "g4": false
+    }
+   ]
+  }
+ },
+ "BKG2": {
+  "agg": {
+   "400": {
+    "g1": true,
+    "g2": true,
+    "g3": true,
+    "g4": true
+   },
+   "800": {
+    "g1": true,
+    "g2": true,
+    "g3": true,
+    "g4": false
+   }
+  },
+  "both": false,
+  "per": {
+   "400": [
+    {
+     "g1": true,
+     "g2": true,
+     "g3": true,
+     "g4": true
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true
+    }
+   ],
+   "800": [
+    {
+     "g1": true,
+     "g2": true,
+     "g3": true,
+     "g4": false
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": false
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": false
+    }
+   ]
+  }
+ },
+ "VKG": {
+  "agg": {
+   "400": {
+    "g1": true,
+    "g2": true,
+    "g3": true,
+    "g4": true
+   },
+   "800": {
+    "g1": true,
+    "g2": true,
+    "g3": true,
+    "g4": false
+   }
+  },
+  "both": false,
+  "per": {
+   "400": [
+    {
+     "g1": true,
+     "g2": true,
+     "g3": true,
+     "g4": true
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true
+    }
+   ],
+   "800": [
+    {
+     "g1": true,
+     "g2": true,
+     "g3": true,
+     "g4": false
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": false
+    },
+    {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": false
+    }
+   ]
+  }
+ }
+}
