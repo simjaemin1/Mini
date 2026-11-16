@@ -9,6 +9,7 @@
 //     일꾼 — `nHun` 사냥꾼 · `nFis` 어부 · `nFor` 채집꾼 · `nFar` 농부 · `nCook` 요리사(틱 뒤)
 //     먹음 · 씀 — `cons` 어제 하루 `_consDay` 의 식량 등가 합(틱 머리에서 폴드 직전에 읽는다 = 틱 사이 서버 몫까지 하루 온전히)
 //     곳간 — `stIn` 틱 앞 · `stOut` 틱 뒤 · `dTick` 틱 안 변화 · `dGap` 앞 틱 뒤 → 이 틱 앞(틱 사이 · 서버 수확 배달 · 짐 · 캐러밴 · 몸 요리)
+//     먹음(틱 뒤) — `eat` 그날 먹은 식량 등가(`v._foodEaten` × 같은 자) · `needN` 하루 몫 합(사람마다 1 − 적응 `_fdA`) · `debt` 빚 합(`_fd`) · `adaptN` 적응 > 0 인 사람
 //     사람 — `pop` · `fdDead` 식량 빚 죽음(누계 차) · `emig` 떠남(누계 차) · `famV` 기근 문 마을(곳간 < 사람 × 10)
 //   주사위 0 · 캐시 0 · 세계에 아무것도 안 쓴다.
 const path = require('path');
@@ -20,7 +21,7 @@ if (!OUT) return;
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
 const COLS = ['day', 'vil', 'pop', 'pMeat', 'pFish', 'pFor', 'pGrain', 'pCook', 'pPres', 'pOth', 'nHun', 'nFis', 'nFor', 'nFar', 'nCook',
-  'cons', 'stIn', 'stOut', 'dTick', 'dGap', 'fdDead', 'emig', 'famV'];
+  'cons', 'stIn', 'stOut', 'dTick', 'dGap', 'fdDead', 'emig', 'famV', 'eat', 'needN', 'debt', 'adaptN'];
 const rec = { cols: COLS, rows: [], err: null, server: SERVER };
 const FOR = new Set(Object.keys(V1.FORAGE_FOOD_FACTOR || {}));
 const GRAIN = new Set(V1.RAW_GRAINS || []);
@@ -68,6 +69,8 @@ V1.tickVillage = function (v, day) {
         let g = group(k); if (g === 'pOth' && !V1.RESOURCES.includes(k)) g = 'pGrain';
         cur[g] += q * f;
       }
+      const E = v._foodEaten || {}; for (const k in E) { const q = +E[k] || 0; if (q > 0) { const f = V1.storageFoodPer(v, k); if (f > 0) cur.eat += q * f; } }
+      for (const p of (v.npcs || [])) { const a = p._fdA || 0; cur.needN += 1 - a; cur.debt += p._fd || 0; if (a > 0) cur.adaptN++; }
       const C = v.counts || {};
       cur.nHun += C.hunter || 0; cur.nFis += C.fisher || 0; cur.nFor += C.forager || 0; cur.nFar += C.farmer || 0; cur.nCook += C.cook || 0;
       const fd = v._fdDeadTot || 0, em = v._emigTot || 0;
