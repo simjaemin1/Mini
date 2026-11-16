@@ -105,9 +105,16 @@ function contrastFree(file, rects) {
     if (inText(xx, yy)) continue; const X = Math.round(xx * s), Y = Math.round(yy * s); if (X >= 0 && X < g.W && Y >= 0 && Y < g.H) plateL.push(g.L(X, Y));
   }
   for (const [x, y, w, h] of rects.texts) for (let yy = Math.round(y * s); yy < Math.round((y + h) * s); yy++) for (let xx = Math.round(x * s); xx < Math.round((x + w) * s); xx++) if (xx >= 0 && xx < g.W && yy >= 0 && yy < g.H) textL.push(g.L(xx, yy));
-  if (!plateL.length || !textL.length) return null;
-  plateL.sort((a, b) => a - b); textL.sort((a, b) => a - b);
-  const pL = plateL[plateL.length >> 1], tL = textL[Math.floor(textL.length * 0.995)];
+  if (!textL.length) return null;
+  textL.sort((a, b) => a - b);
+  //   ★[T1339 · T1328 회부 1ⓐ] 한 줄짜리 판이 글자에 꼭 맞으면(알림 — 오석 판 자리 `osaLayout` 이 위쪽 줄 · 지도 사이 폭으로 세운 판에 한 줄이 꽉 찬 판)
+  //     테(12px)를 뺀 판 칸이 전부 글자 자리라 판 밝기 표본이 0 → null 이었다(빨강 · 30판 중 몇 판 — 위쪽 줄 폭이 판마다 달라 두 줄로 접힌 판만 쟀다).
+  //     ⇒ 판 칸 표본이 0 이면 **글자 상자 안 가운데값**(글자 획은 상자의 소수 — 상자 가운데값 = 획 사이 판 바탕)을 판 밝기로 쓴다. 글자 밝기 · 문턱은 그대로.
+  //     어느 길로 쟀는지는 `rects.how` 에 적는다(판정 밖 · 하네스가 줄에 찍는다).
+  let pL;
+  if (plateL.length) { plateL.sort((a, b) => a - b); pL = plateL[plateL.length >> 1]; if (rects.how) rects.how.plate = 'face'; }
+  else { pL = textL[textL.length >> 1]; if (rects.how) rects.how.plate = 'textbox'; }
+  const tL = textL[Math.floor(textL.length * 0.995)];
   return +((tL + 0.05) / (pL + 0.05)).toFixed(2);
 }
 module.exports = { open, playwrightDriver, webkitGtkDriver, pngGray, contrastOf, contrastFree };

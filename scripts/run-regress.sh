@@ -43,6 +43,9 @@ TIMEOUT_SEC="${TIMEOUT_SEC:-2400}"
 declare -A TIMEOUT_OF=( [test-lab-mining.js]=7200 [test-lab-psite.js]=3600 )
 FAILED=()
 PASSED=()
+# ★[T1339] 유보 — 하네스가 RC 75(`lib-wait-day.YUBO_RC`)로 끝나면 "느린 판 · 기계 의존"(게임일 상한 · 같은 조건 잡음 안의 판정)이다(빨강 0 · 유보만). 실패 목록 밖 · 통과 목록 밖에 따로 센다.
+#   판정 줄은 `⚠ RC=75 · 유보 …`(`nightly-report.js` 가 같은 줄을 유보로 읽는다). 결과 줄이 없으면(크래시) 종전대로 실패다.
+HELD=()
 # ★[T1121 2026-11-03] **걸린 시간도 러너가 말한다.** 야간 11-02 묶음 A 가 4시간 33분 · PM 착지 게이트(하네스 96)가 7시간을 넘었는데
 #   하네스별 시간은 어디에도 안 남았다 — 야간 보고는 실패 칸에만 '소요'(분)가 있고, 러너는 아예 안 찍었다(긴 판을 아무도 못 짚었다).
 #   ⇒ 하네스마다 `[소요] N초` 한 줄(판정 줄 바로 앞 · 벽시계 · **판정에 안 든다**) · 요약에 상위 열.
@@ -98,6 +101,7 @@ run_one() {
   #   종전엔 요약줄만 `tail -5` 로 남아서 "72/1 실패"만 보이고 **무엇이** 실패했는지는
   #   로그를 다시 돌려야 알 수 있었다(실제로 두 번 그랬다). ✗ 줄을 먼저, 따로 보여 준다.
   echo "$out" | grep -E "^\s*✗|실패|FAIL" | grep -vE "실패 0|FAIL 0" | head -6
+  echo "$out" | grep -E "^\s*⚠ 유보" | head -4   # ★[T1339] 유보 줄도 제 이름을 말하게(유보가 없으면 아무것도 안 찍는다)
   echo "$out" | grep -E "통과|PASS|EADDRINUSE|Error:|MODULE_NOT_FOUND" | tail -4
   # ★"결과 줄이 없으면 크래시다" — 종료코드만 믿지 않는다(하네스가 0 으로 죽을 수도 있다).
   local summary
@@ -112,7 +116,10 @@ run_one() {
   summary=$(( marks + words ))
   echo "  [소요] ${el}초"   # ★[T1121] 판정 줄 바로 앞 — 판정에 안 든다(✓/✗ 로 시작하지 않는다 · 보고기의 판정 문법 밖)
   TIMES+=("$el $f")
-  if [ "$rc" -ne 0 ] || [ "$summary" -eq 0 ]; then
+  if [ "$rc" -eq 75 ] && [ "$summary" -gt 0 ]; then
+    echo "  ⚠ RC=75 · 유보(느린 판 · 기계 의존 — 빨강 아님) · 결과줄 ${summary}개"
+    HELD+=("$f")
+  elif [ "$rc" -ne 0 ] || [ "$summary" -eq 0 ]; then
     echo "  ✗ RC=$rc · 결과줄 ${summary}개 → **실패로 센다**"
     FAILED+=("$f(rc=$rc)")
   else
@@ -224,6 +231,7 @@ echo
 echo "=== 러너 요약 ==="
 echo "  통과 ${#PASSED[@]}: ${PASSED[*]:-없음}"
 echo "  실패 ${#FAILED[@]}: ${FAILED[*]:-없음}"
+[ "${#HELD[@]}" -gt 0 ] && echo "  유보 ${#HELD[@]}: ${HELD[*]}"   # ★[T1339] 유보가 있을 때만(없으면 종전 바이트)
 # ★[T1121] 걸린 시간 상위 열(초 · 긴 것부터 · 같으면 이름순) · 하네스 합 · 러너 전체 — 판정에 안 든다
 if [ "${#TIMES[@]}" -gt 0 ]; then
   _sum=0; for _x in "${TIMES[@]}"; do _sum=$(( _sum + ${_x%% *} )); done

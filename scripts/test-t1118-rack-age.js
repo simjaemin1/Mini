@@ -89,12 +89,17 @@ if (process.env.T1118_SUB === 'run') {
       // ⓒ 앞 주문 기다림 — 생선 1(앞) · 과실 1(뒤 — 앞 주문이 끝날 때까지 원물로 기다린다)
       const S_C = (async () => {
         const p = mkPlayer('c'), rack = mkRack('t1118c', p);
-        giveFresh(p, 'fish', 1); giveFresh(p, 'berry', 1);
-        p._msgs.length = 0; H.doPreserve(p, 'dry_fish', 1);
-        const jA = jobView(jobOf(rack, p));
-        const row = rowOf(p, rack, 'dry_fruit');     // ⓔ 앞 주문이 있는 시설의 "나오면"
-        p._msgs.length = 0; H.doPreserve(p, 'dry_fruit', 1);
-        const jBraw = jobOf(rack, p), jB = jobView(jBraw);
+        //   ★[T1339 · T1328 회부 3] 얻기 → 화면 → 넣기를 **한 순간**으로 묶는다(`lib-phase.hold`) — 종전엔 화면을 본 순간과 넣은 순간 사이 벽시계 1ms 가
+        //     과실 신선도 0.00017(하루 2초)이라 허용 1e-4 를 넘어 ⓔ 가 빨갰다(0.999833). 묶은 구간은 동기 코드뿐 · 기다림(아래 `sleep`)은 진짜 시계.
+        const { jA, row, jBraw } = require('./lib-phase').hold(() => {
+          giveFresh(p, 'fish', 1); giveFresh(p, 'berry', 1);
+          p._msgs.length = 0; H.doPreserve(p, 'dry_fish', 1);
+          const jA = jobView(jobOf(rack, p));
+          const row = rowOf(p, rack, 'dry_fruit');     // ⓔ 앞 주문이 있는 시설의 "나오면"
+          p._msgs.length = 0; H.doPreserve(p, 'dry_fruit', 1);
+          return { jA, row, jBraw: jobOf(rack, p) };
+        });
+        const jB = jobView(jBraw);
         if (jBraw) { await sleep(jBraw.doneAt - Date.now() + 60); H.doCraftCollect(p, rack.id); }
         return { row, jA, jB, dried: p.inventory.dried_fruit || 0, fishDried: p.inventory.dried_fish || 0, lots: recs(p, 'dried_fruit') };
       })();

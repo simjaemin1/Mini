@@ -517,7 +517,14 @@ async function waitHttp(url, tries = 900) {
           [(r.give || [])[0], Math.max(2, Math.ceil(r.remain) + 5)]);
         await sleep(500);
       }
-      const before = new Map(((bd.rows) || []).map((r) => [r.item, r.remain]));
+      //   ★[T1339] `before` 를 **누르기 직전에 새로** 읽는다 — 종전엔 위 `bd`(지급 두 번 · 1초 전)를 썼다. 붐비는 판에선 `stepDay` 의 다시 얼림이
+      //     닿기 전에 연 하루 마감 하나가 그 사이 끝까지 돌아(이미 연 마감은 얼려도 끝까지 돈다) 다른 행(`hide`)이 움직였고, 그게 "내가 누른 행"
+      //     과 섞여 ④-c 가 빨갰다(T1328 전수 — 움직인 행 hide · herb). 판 답은 마감이 끝난 뒤에 온다(마을 요청 줄) — 상한 15초까지 기다린다.
+      const bdNow = await (async () => { await page.evaluate(() => { window.__evLastBoard = null; }); await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
+        for (let j = 0; j < 75 && !(await page.evaluate(() => !!window.__evLastBoard)); j++) await sleep(200); return await page.evaluate(() => window.__evLastBoard || null); })();
+      const before = new Map((((bdNow || bd).rows) || []).map((r) => [r.item, r.remain]));
+      const dayBefore = await page.evaluate(() => window.__evGameDay | 0);
+      await page.evaluate(() => { window.__evLastBoard = null; });   // ★[T1339] 누른 뒤의 판은 **새 답**으로만 읽는다(묵은 답 0)
       // ★진짜 버튼을 누른다(메시지를 손으로 보내지 않는다 — 그러면 판을 안 재는 것이다).
       const clicked = await page.evaluate((it) => {
         const body = document.getElementById('boardPaneBody');
@@ -530,8 +537,11 @@ async function waitHttp(url, tries = 900) {
         return it;
       }, target.item);
       ok(clicked === target.item, '★④-c 판에서 **그 행의 납품 버튼**을 실제로 눌렀다', String(clicked));
-      await sleep(1800);
-      const bd2 = await page.evaluate(() => window.__evLastBoard || null);
+      //   ★[T1339] 종전 `sleep(1800)` 뒤 마지막 판 — 붐비면 답이 늦어 묵은 판을 읽을 수 있었다. 새 답이 올 때까지(상한 15초 · 안 오면 한 번 새로 묻는다).
+      for (let j = 0; j < 75 && !(await page.evaluate(() => !!window.__evLastBoard)); j++) await sleep(200);
+      const bd2 = (await page.evaluate(() => window.__evLastBoard || null)) || (await readBoard());
+      const dayAfter = await page.evaluate(() => window.__evGameDay | 0);
+      if (dayAfter !== dayBefore) console.log(`    (참고 · 판정 밖) 누르는 사이 게임일 ${dayBefore} → ${dayAfter} — 언 판이어야 한다`);
       const after = new Map((((bd2 && bd2.rows) || [])).map((r) => [r.item, r.remain]));
       const moved = [...before.keys()].filter((k) => !after.has(k) || after.get(k) < before.get(k));
       ok(moved.length === 1 && moved[0] === target.item,
@@ -617,9 +627,18 @@ async function waitHttp(url, tries = 900) {
   await sleep(2000);
   const farVid = await page.evaluate(() => window.__evNearVid);
   ok(farVid == null, '마을에서 멀어지면 근접 인식이 풀린다', `__evNearVid=${farVid}`);
+  //   ★[T1339] 종전 `sleep(1200)` 뒤 마지막 알림 두 줄 — 붐비는 판에선 요청이 하루 마감 중에 닿아 "장부를 닫는 중" 알림이 먼저 오고
+  //     (마을 요청은 줄을 서서 마감 뒤에 다시 처리된다 — zone.js `VILLAGE_BOOK_MSG`) 거리 거절이 1.2초 안에 안 와 빨갰다(T1328 전수).
+  //     ⇒ 요청 뒤에 온 알림만 보고, 거리 거절이 올 때까지(상한 20초 · 마감 알림은 기다림의 까닭일 뿐 판정 밖).
+  //     표지: 진단 배열(`window.__notices` — 화면이 아니라 글자 배열)에 표지 한 칸을 넣고 그 뒤에 온 것만 읽는다(화면 무변).
+  await page.evaluate(() => { (window.__notices = window.__notices || []).push('__t1339_far_mark'); });
   await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
-  await sleep(1200);
-  const farNote = await page.evaluate(() => (window.__notices || []).slice(-2).join(' | '));
+  let farNote = '';
+  for (let j = 0; j < 100; j++) {
+    farNote = await page.evaluate(() => { const a = window.__notices || []; const i = a.lastIndexOf('__t1339_far_mark'); return (i >= 0 ? a.slice(i + 1) : a.slice(-2)).join(' | '); });
+    if (/너무 (멀|멉)/.test(farNote)) break;
+    await sleep(200);
+  }
   ok(/너무 (멀|멉)/.test(farNote), '멀리서 게시판을 요청하면 서버가 거절한다(거리 게이트는 서버가 판정)', JSON.stringify(farNote));
   await snap('ev-06-far');
 

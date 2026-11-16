@@ -22,6 +22,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
+const WD = require('./lib-wait-day');   // ★[T1339] 게임일 기다림 문(벽시계 폴링 수 대신 게임일 · 느린 판 = 유보 · 멈춘 시계 = 빨강)
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-village-shots';
@@ -572,21 +573,26 @@ async function waitHttp(url, tries = 900) {
 
 
   // 첫 주민 대기 — 회복 창(day % 50 === 0 && day >= 100). 하루 0.12초라 ~20초면 지난다.
-  let popped = null;
+  let popped = null, popR = null;   // ★[T1339] popR = 게임일 기다림 결과(느린 판이면 아래 판정이 유보)
   if (hall) {
     // ★식량은 **썩는다**(`tickDecay`) — 한 번 부어 놓고 기다리면 회복 창(day%50, day≥100)에
     //   닿기 전에 문턱 아래로 내려간다. 1차 실행이 정확히 그래서 실패했다.
     //   재민의 문장은 *"농사지어서 식량 확보하면"* 이다 — 계속 농사짓는다. 그래서 계속 붓는다.
-    for (let i = 0; i < 80; i++) {
+    //   ★[T1339] 종전 "80번 × 1.5초"(벽시계 ≈ 2분 · 회복 창 day ≥ 100 · day % 50 을 그 안에 지나야 했다) → 게임일 문: 첫 관측일 + 240일까지
+    //     (그 날까지 인구가 안 서면 빨강 · 그 전에 상한 360초면 유보 · 날이 30초 안 가면 멈춘 시계 = 빨강). 본문(주고 넣기)은 언 날 안에서 돈다(`bodyPauses`).
+    let i = 0, lastDay = null, firstDay = null;
+    popR = await WD.waitDay(async () => lastDay, Infinity, { capMs: 360000, pollMs: 1500, bodyPauses: true,
+      until: () => !!popped || (firstDay != null && lastDay != null && lastDay >= firstDay + 240), body: async () => {
       if (i % 2 === 0) await handOff(hall.id, 200);   // ★[T794] 언 날 안에서 주고 넣는다(위 `handOff` 주석)
       const cur = await openInv(hall.id, 2);
-      if (cur && cur.pop > 0) { popped = cur; break; }
-      if (cur && i % 10 === 0) console.log(`    [대기] day ${cur.day} · 식량 ${cur.nextResidentHave}/${cur.nextResidentAt} · 인구 ${cur.pop}`);
-      await sleep(1500);
-    }
+      if (cur && Number.isFinite(cur.day)) { lastDay = cur.day; if (firstDay == null) firstDay = cur.day; }
+      if (cur && cur.pop > 0) popped = cur;
+      else if (cur && i % 10 === 0) console.log(`    [대기] day ${cur.day} · 식량 ${cur.nextResidentHave}/${cur.nextResidentAt} · 인구 ${cur.pop}`);
+      i++;
+    } });
   }
   const lastSeen = await page.evaluate(() => window.__villageInv);
-  ok(!!popped, `★식량이 사람을 불렀다 — 인구 ${popped ? popped.pop : 0}명${popped ? '' : ` (마지막 관측: day ${lastSeen && lastSeen.day} · 식량 ${lastSeen && lastSeen.nextResidentHave}/${lastSeen && lastSeen.nextResidentAt})`} (재민 확정 (마): "농사지어서 식량 확보하면 그냥 늘어나는 거 아냐?")`);
+  WD.judge(ok, popR, !!popped, `★식량이 사람을 불렀다 — 인구 ${popped ? popped.pop : 0}명${popped ? '' : ` (마지막 관측: day ${lastSeen && lastSeen.day} · 식량 ${lastSeen && lastSeen.nextResidentHave}/${lastSeen && lastSeen.nextResidentAt})`} (재민 확정 (마): "농사지어서 식량 확보하면 그냥 늘어나는 거 아냐?")`);
   if (popped) {
     ok(popped.day >= 100, `회복 창을 실제로 지났다 — day ${popped.day} (100 미만이면 이 검사는 자명하다)`);
     // ★★[T794 2026-10-18] **화면과 서버 답을 같은 순간에 읽는다.** 종전엔 `popped`(그때 받은 답)를 쥐고
@@ -799,5 +805,5 @@ async function waitHttp(url, tries = 900) {
   console.log(`\n스크린샷 ${shots.length}장: ${SHOTS}`);
   console.log(`=== 마을 건립 실클라 E2E: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-  process.exit(fail ? 1 : 0);
+  process.exit(WD.rc(fail));   // ★[T1339] 빨강 1 · 유보만 75 · 0
 })().catch((e) => { console.error('E2E 실패:', e); shutdown(); process.exit(1); });
