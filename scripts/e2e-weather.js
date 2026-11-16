@@ -214,6 +214,9 @@ const diffPx = (a, b) => { let c = 0;
   //     내 몸 그림)였고, 비와 무관하게 **맑음 ↔ 맑음(400ms 뒤)** · **비 ↔ 비(400ms 뒤)** 에서도 같은 수가 났다(계측/T1339_weather20) — 내 몸의 서 있는 몸짓(숨)이다.
   //     종전 잡음은 붙여 찍은 두 장(A · B)뿐이라 시간을 두고 바뀌는 그림을 못 봤다. ⇒ **맑은 판끼리** 시간을 두고 넉 장 더 찍어(비는 그릴 수 없는 판) 그 사이
   //     바뀐 화소를 "시간이 바꾼 자리"로 지우고(2px 넓혀) 남은 화소로 비 ↔ 맑음을 잰다. 비가 실내에 그려지면 비 켠 장에만 서므로 지움 밖에 남는다(문턱 · 식 무변).
+  //     잡음도 **맑은 판** 붙여 찍은 두 장(C · C')으로 잰다 — 종전 A · B(비 켠 두 장)는 비가 실내에 그려지면 빗줄기가 장마다 움직여 잡음이 커지고 그 잡음 ×3 이
+  //     효과를 덮었다(미끼 D8: 실내에 비를 그려도 효과 21,182px ≤ 잡음 42,134px × 3 — 이 줄은 초록이었다 · 계약 줄 하나만 빨갰다). 맑은 판엔 비가 없다.
+  const inC2 = await shot('03-in-clear-b');
   const clr = [inC]; for (let k = 0; k < 4; k++) { await sleep(300); clr.push(await shot(`03-in-clear${k + 2}`)); }
   const tmask = new Uint8Array((inA.width) * (inA.height));
   for (let a = 0; a < clr.length; a++) for (let b = a + 1; b < clr.length; b++) {
@@ -230,10 +233,10 @@ const diffPx = (a, b) => { let c = 0;
       const i = (y * a.width + x) * 4; const d = Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]);
       if (d > 24) c++; }
     return c; };
-  const inNoise = diffPx(inA, inB), inSig = diffOut(inA, inC), inSigRaw = diffPx(inA, inC);
+  const inNoise = diffPx(inC, inC2), inNoiseRain = diffPx(inA, inB), inSig = diffOut(inA, inC), inSigRaw = diffPx(inA, inC);
   ok(tN < (GBOX[2] - GBOX[0]) * (GBOX[3] - GBOX[1]) * 0.05, '[상황] 시간이 바꾼 자리(맑은 판끼리 다섯 장)는 화면 상자의 5% 아래다(지움이 화면을 다 덮어 자명 통과가 되지 않는다)', `${tN}px`);
   ok(inSig <= Math.max(60, inNoise * 3), '★화면도 그대로다 — 비 켠 실내 vs 맑은 실내가 잡음 안',
-     `효과 ${inSig}px(시간이 바꾼 자리 ${tN}px 밖 · 지우기 전 ${inSigRaw}px) · 잡음 ${inNoise}px`);
+     `효과 ${inSig}px(시간이 바꾼 자리 ${tN}px 밖 · 지우기 전 ${inSigRaw}px) · 잡음(맑음 붙여 찍음) ${inNoise}px · 참고 비 켠 두 장 ${inNoiseRain}px`);
 
   // ══ 밖으로 나간다 ═══════════════════════════════════════════════════════════════
   say('\n[밖으로 — 집에서 40셀 떨어진 빈 땅으로 옮긴다]');

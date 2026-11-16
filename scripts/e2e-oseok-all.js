@@ -90,9 +90,10 @@ const S = (d) => `${q(d, 0.5)} / ${q(d, 0.95)} / ${Math.max(...d).toFixed(1)}`;
       //   ★[T1339 · T1328 회부 1ⓑ] 글자 바닥 덧씀(`52-w-oseok-all.js` `osaFlush`)은 **다음 프레임**에 돈다 — 판 안에 새로 선 글자(가방 칸 수 등)는 그 프레임 전까지
       //     제 크기(10px)다. 붐비는 상자에선 rAF 가 밀려 500ms 안에 덧씀이 안 돌아 "18px 아래 `0`" 이 잡혔다(10판 중 1). 화면 캐논은 **선 판**의 글자다 —
       //     덧씀 줄이 비고(`osaRaf` 0) 프레임 둘이 지난 뒤 잰다(상한 3초 · 넘으면 그대로 잰다 — 빨강이 이름을 단다). 끔 판엔 덧씀이 없다(바로 0).
-      { const _t0 = Date.now();
-        while (Date.now() - _t0 < 3000 && !(await pg.ev(`new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(typeof osaRaf === 'undefined' || osaRaf === 0))))`))) await sleep(50); }
-      const P = await pg.ev(PROBE(sel));
+      //     ⚠덧씀 줄이 빈 것을 보고 **같은 차례(한 태스크) 안에서** 잰다 — 따로 물으면 그 사이 가방이 다시 그려져(재고 갱신) 새 10px 칸이 설 수 있다(미끼 D4 판에서 그랬다 ·
+      //       DOM 변경의 관찰자는 그 태스크 끝 마이크로태스크라, 덧씀 줄이 비었다고 본 태스크 안에선 덧씀 안 된 새 칸이 없다).
+      const P = await pg.ev(`(async () => { for (let i = 0; i < 90; i++) { await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        if (typeof osaRaf === 'undefined' || (osaRaf === 0 && !(typeof osaQueue !== 'undefined' && osaQueue.size))) return ${PROBE(sel)}; } return ${PROBE(sel)}; })()`);
     P.texts = P.texts.filter(([x, y, w, h]) => x >= P.rect[0] && y >= P.rect[1] && x + w <= P.rect[0] + P.rect[2] + 1 && y + h <= P.rect[1] + P.rect[3] + 1);   // 판 안에 보이는 글자만(넘쳐 가려진 줄 · 판 밖 0)
       const f = path.join(OUT, `${BR}-${mode}-${name}.png`); await pg.shot(f);
       let con = null;
