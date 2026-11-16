@@ -1,0 +1,283 @@
+{
+ "nippon": {
+  "meta": {
+   "day": 40,
+   "updated": "2026-11-15T22:21:22.839Z",
+   "anchor": {
+    "day": 40,
+    "g": 598260427,
+    "epoch": 0,
+    "dayMs": 3000,
+    "at": 1794781282822
+   }
+  },
+  "villageRowsByDay": {
+   "40": 35,
+   "45": [
+    "타카노"
+   ]
+  },
+  "target": {
+   "id": "xz:hanbando:151",
+   "state": "inbound",
+   "to": "새후보9",
+   "_rerouted": 2,
+   "arriveDay": 37,
+   "returnArriveDay": 38,
+   "_xzBack": {
+    "day": 38,
+    "leg": 1,
+    "remain": 0,
+    "ptLocal": {
+     "x": 0,
+     "y": 9728
+    },
+    "ptPeer": {
+     "x": 70015,
+     "y": 9728
+    }
+   },
+   "_returningRes": "rice",
+   "_returningAmt": 10.227328921954808
+  },
+  "xzCaravans": [
+   [
+    "xz:hanbando:151",
+    "inbound",
+    "새후보9",
+    38
+   ],
+   [
+    "xz:hanbando:164",
+    "outbound",
+    "새후보16",
+    null
+   ],
+   [
+    "xz:hanbando:254",
+    "inbound",
+    "시로농촌",
+    41
+   ],
+   [
+    "xz:hanbando:260",
+    "inbound",
+    "시로농촌",
+    41
+   ],
+   [
+    "xz:hanbando:265",
+    "inbound",
+    "키요어촌",
+    40
+   ],
+   [
+    "xz:hanbando:272",
+    "inbound",
+    "시로농촌",
+    41
+   ],
+   [
+    "xz:hanbando:275",
+    "outbound",
+    "쿠라다",
+    null
+   ],
+   [
+    "xz:hanbando:286",
+    "inbound",
+    "사키농촌",
+    41
+   ]
+  ]
+ },
+ "hanbando": {
+  "meta": {
+   "day": 235,
+   "updated": "2026-11-15T22:33:22.682Z"
+  },
+  "xzone": [
+   {
+    "id": 151,
+    "sentDay": 9,
+    "to": "오오임업",
+    "zone": "nippon"
+   },
+   {
+    "id": 164,
+    "sentDay": 12,
+    "to": "시로농촌",
+    "zone": "nippon"
+   },
+   {
+    "id": 254,
+    "sentDay": 14,
+    "to": "시로농촌",
+    "zone": "nippon"
+   },
+   {
+    "id": 260,
+    "sentDay": 14,
+    "to": "시로농촌",
+    "zone": "nippon"
+   },
+   {
+    "id": 265,
+    "sentDay": 14,
+    "to": "키요어촌",
+    "zone": "nippon"
+   },
+   {
+    "id": 272,
+    "sentDay": 15,
+    "to": "시로농촌",
+    "zone": "nippon"
+   },
+   {
+    "id": 275,
+    "sentDay": 15,
+    "to": "사키농촌",
+    "zone": "nippon"
+   },
+   {
+    "id": 286,
+    "sentDay": 15,
+    "to": "사키농촌",
+    "zone": "nippon"
+   },
+   {
+    "id": 327,
+    "sentDay": 17,
+    "to": "사키농촌",
+    "zone": "nippon"
+   },
+   {
+    "id": 328,
+    "sentDay": 17,
+    "to": "쿠라마",
+    "zone": "nippon"
+   }
+  ],
+  "t1321pend": 0
+ },
+ "bodylog_nippon": {
+  "n": 334,
+  "first": "2026-11-15T22:20:21.997Z",
+  "last": "2026-11-15T22:22:12.072Z",
+  "target": [
+   {
+    "op": "set",
+    "k": null,
+    "ph": "outbound",
+    "t": "2026-11-15T22:20:57.502Z"
+   },
+   {
+    "op": "tr",
+    "k": "in",
+    "ph": null,
+    "day": 33,
+    "t": "2026-11-15T22:20:57.502Z"
+   },
+   {
+    "op": "set",
+    "k": null,
+    "ph": "inbound",
+    "t": "2026-11-15T22:21:38.304Z"
+   }
+  ]
+ },
+ "bodylog_hanbando": {
+  "n": 589,
+  "first": "2026-11-15T22:20:06.934Z",
+  "last": "2026-11-15T22:22:18.902Z",
+  "target": [
+   {
+    "op": "set",
+    "k": null,
+    "ph": "outbound",
+    "t": "2026-11-15T22:20:54.618Z"
+   },
+   {
+    "op": "tr",
+    "k": "hide",
+    "ph": null,
+    "day": 9,
+    "t": "2026-11-15T22:20:57.251Z"
+   },
+   {
+    "op": "del",
+    "k": null,
+    "ph": "outbound",
+    "t": "2026-11-15T22:20:58.698Z"
+   },
+   {
+    "op": "tr",
+    "k": "out",
+    "ph": null,
+    "day": 9,
+    "t": "2026-11-15T22:20:58.698Z"
+   }
+  ]
+ },
+ "checkpoint": {
+  "target": {
+   "id": "xz:hanbando:151",
+   "state": "inbound",
+   "from": "광산2",
+   "to": "새후보9",
+   "toZone": null,
+   "home": {
+    "zone": "hanbando",
+    "id": 151
+   },
+   "res": "stone",
+   "amt": 7.585563755353011,
+   "ret": "rice",
+   "retAmt": 10.227328921954808,
+   "depart": 36,
+   "arrive": 37,
+   "back": 38,
+   "cross": null,
+   "xback": 38
+  },
+  "body": {
+   "key": "xz:hanbando:151",
+   "phase": "inbound",
+   "pending": false,
+   "handing": false,
+   "hidden": false,
+   "x": 0,
+   "y": 9728,
+   "len": 79108,
+   "prog": 79108,
+   "end": {
+    "x": 0,
+    "y": 9728
+   },
+   "bodyAt": 121636.98193359375,
+   "departAt": 114000,
+   "arriveAt": 114001,
+   "nomPxMs": 79108.13602592274,
+   "lu": 111125,
+   "t952": null,
+   "ax": "e",
+   "wt": {
+    "bodyAt": 1794781281446,
+    "departAt": 1794781273809.018,
+    "arriveAt": 1794781273810.018,
+    "lu": 1794781270934.018,
+    "t952End": null
+   },
+   "iso": {
+    "bodyAt": "2026-11-15T22:21:21.446Z",
+    "departAt": "2026-11-15T22:21:13.809Z",
+    "arriveAt": "2026-11-15T22:21:13.810Z",
+    "lu": "2026-11-15T22:21:10.934Z",
+    "t952End": null
+   },
+   "bodyClk": 122970.31526692708
+  },
+  "day": 40,
+  "at": "2026-11-15T22:21:22.868Z"
+ }
+}

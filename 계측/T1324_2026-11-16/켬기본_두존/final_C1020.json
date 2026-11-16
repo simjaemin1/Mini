@@ -1,0 +1,84 @@
+{
+ "hanbando": {
+  "mobs": [
+   {
+    "t": "bear",
+    "n": 24
+   },
+   {
+    "t": "deer",
+    "n": 72
+   },
+   {
+    "t": "horse",
+    "n": 2
+   },
+   {
+    "t": "ibex",
+    "n": 2
+   },
+   {
+    "t": "moose",
+    "n": 18
+   },
+   {
+    "t": "pheasant",
+    "n": 73
+   },
+   {
+    "t": "quail",
+    "n": 98
+   },
+   {
+    "t": "red_fox",
+    "n": 49
+   },
+   {
+    "t": "tiger",
+    "n": 14
+   },
+   {
+    "t": "wild_boar",
+    "n": 47
+   },
+   {
+    "t": "wolf",
+    "n": 68
+   }
+  ],
+  "tame": 2,
+  "pend": 2,
+  "seen": 15
+ },
+ "nippon": {
+  "mobs": [
+   {
+    "t": "bear",
+    "n": 24
+   },
+   {
+    "t": "deer",
+    "n": 3
+   },
+   {
+    "t": "horse",
+    "n": 2
+   },
+   {
+    "t": "ibex",
+    "n": 308
+   },
+   {
+    "t": "wild_boar",
+    "n": 2
+   },
+   {
+    "t": "wolf",
+    "n": 126
+   }
+  ],
+  "tame": 2,
+  "pend": 0,
+  "seen": 16
+ }
+}

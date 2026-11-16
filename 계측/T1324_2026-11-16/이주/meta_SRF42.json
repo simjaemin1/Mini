@@ -1,0 +1,99 @@
+{
+ "tag": "SRF42",
+ "seed": 42,
+ "DAYS": 120,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "vclock": true,
+ "env": {},
+ "envz": {},
+ "start": "2026-11-15T19:21:10.945Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "restart": null,
+ "bootS": 24,
+ "geoWaitS": 147,
+ "stageReplay": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1324/vc3/beast_SMF42.jsonl",
+ "perfEnd": {
+  "hanbando": {
+   "day": 120,
+   "st": {
+    "sent": 677,
+    "sentOk": 666,
+    "sentFail": 0,
+    "bounced": 0,
+    "retried": 0,
+    "dup": 0,
+    "bodyOut": 666,
+    "bodyIn": 675,
+    "bodyInSkip": 0,
+    "walkWait": 0,
+    "walkWaitLate": 0,
+    "crossArrive": 347,
+    "crossReturn": 319,
+    "soldOk": 306,
+    "deposited": 338,
+    "lost": 0
+   },
+   "t1324": null,
+   "t1321": {
+    "stat": {
+     "died": 0,
+     "born": 0,
+     "follow": 0,
+     "gone": 0,
+     "goneClear": 0
+    },
+    "mobs": 449,
+    "hidden": 0
+   }
+  },
+  "nippon": {
+   "day": 120,
+   "st": {
+    "sent": 678,
+    "sentOk": 675,
+    "sentFail": 0,
+    "bounced": 0,
+    "retried": 0,
+    "dup": 0,
+    "bodyOut": 675,
+    "bodyIn": 677,
+    "bodyInSkip": 0,
+    "walkWait": 0,
+    "walkWaitLate": 0,
+    "crossArrive": 335,
+    "crossReturn": 340,
+    "soldOk": 324,
+    "deposited": 316,
+    "lost": 0
+   },
+   "t1324": null,
+   "t1321": {
+    "stat": {
+     "died": 0,
+     "born": 0,
+     "follow": 0,
+     "gone": 0,
+     "goneClear": 0
+    },
+    "mobs": 450,
+    "hidden": 0
+   }
+  }
+ },
+ "end": "2026-11-15T19:31:51.655Z",
+ "wallS": 641,
+ "days": {
+  "hanbando": 120,
+  "nippon": 120
+ },
+ "bars": 721,
+ "H": 1767225960500,
+ "dead": [],
+ "botCross": 0,
+ "botFail": 0,
+ "done": true
+}

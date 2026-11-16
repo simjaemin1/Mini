@@ -1,0 +1,77 @@
+{
+ "wallS": 364,
+ "bars": 205,
+ "H": 1767225702500,
+ "zones": {
+  "hanbando": {
+   "started": true,
+   "at": true,
+   "st": {
+    "t": "upd",
+    "zone": "hanbando",
+    "H": 1767225702500,
+    "V": 1767225702500,
+    "cnt": {
+     "reqSent": {
+      "nippon": 691,
+      "central": 32
+     },
+     "reqRecv": {
+      "ext": 119,
+      "nippon": 507
+     },
+     "resSent": {
+      "ext": 119,
+      "nippon": 506
+     },
+     "resRecv": {
+      "nippon": 691,
+      "central": 32
+     }
+    },
+    "outW": 0,
+    "inbox": 1,
+    "held": 0,
+    "heldK": [],
+    "inboxK": [
+     "nippon:/handoff_ack"
+    ],
+    "flushes": 205
+   }
+  },
+  "nippon": {
+   "started": true,
+   "at": true,
+   "st": {
+    "t": "at",
+    "zone": "nippon",
+    "H": 1767225702500,
+    "V": 1767225702500,
+    "cnt": {
+     "reqSent": {
+      "hanbando": 512,
+      "central": 36
+     },
+     "reqRecv": {
+      "ext": 118,
+      "hanbando": 691
+     },
+     "resSent": {
+      "ext": 118,
+      "hanbando": 691
+     },
+     "resRecv": {
+      "hanbando": 506,
+      "central": 32
+     }
+    },
+    "outW": 0,
+    "inbox": 0,
+    "held": 0,
+    "heldK": [],
+    "inboxK": [],
+    "flushes": 205
+   }
+  }
+ }
+}
