@@ -7,7 +7,7 @@
 //   섭식(`consumeFood` 3.6 `_t368Crops` — 표가 없으면 null)은 작물을 안 먹는다 ⇒ 곳간이 차 있는 채 굶는다(몸 1020 날 80: 곳간 19,802 중 작물 약 16,000 · 먹은 작물 0).
 //  ① 표 없음(복원한 세계 · 종전) — 곳간 합계는 작물을 센다 · 섭식은 작물을 0 먹고 모자란다(결함 재현)
 //  ② 표 있음(시딩 세계 · 랩 · 켬 복원) — 같은 곳간에서 작물을 먹고 모자람 0 · 합계는 같은 자(표 = `econUnitsOf` 그 값)
-//  ③ 서버 글자 — 복원 갈래(`restoreEcon` 뒤 `ev._world = world`)가 손잡이 켬 + 작물 칸 켬일 때만 같은 함수(`_t368Attach`)로 심는다 · 손잡이 끔 기본
+//  ③ 서버 글자 — 복원 갈래(`restoreEcon` 뒤 `ev._world = world` · 시딩 줄 다음)가 손잡이 켬 + 작물 칸 켬일 때만 같은 함수(`_t368Attach`)로 심는다 · 손잡이 끔 기본
 //     · 미끼: 심는 줄을 지운 사본은 ③ 이 빨강
 //  ④ 같은 조건 ⇒ 같은 직업 하루 생산 — 같은 씨앗 세계 둘(하나는 실제 호스트 `bindProductionActs` = 몸 · 하나는 랩) 한 틱 뒤 `dailyProductionBuf` 같음
 //     (사냥 · 어로 · 채집 행위 손잡이 끔 기본 = 두 세계 모두 econ 식)
@@ -56,9 +56,9 @@ function restoreAttaches(src) {
   const i = src.indexOf('ev = restoreEcon(row.econ_state, econ);'); if (i < 0) return false;
   const j = src.indexOf('ev._world = world;', i); if (j < 0) return false;
   const seg = src.slice(j, j + 400);
-  return seg.indexOf(LINE) >= 0 && seg.indexOf(LINE) < seg.indexOf('_t1243Seed(ev, row.id)');
+  return seg.indexOf(LINE) >= 0 && seg.indexOf(LINE) > seg.indexOf('_t1243Seed(ev, row.id)');   // 시딩 줄 바로 뒤(`test-t1243-farm-on` ③ 이 `_world` → 시딩 붙음을 글자로 지킨다)
 }
-ok(restoreAttaches(VSRC), '★복원 갈래 — `ev._world = world` 바로 뒤 · 첫 시작 시딩 앞에 같은 함수로 심는다(손잡이 + 작물 칸 켬만)');
+ok(restoreAttaches(VSRC), '★복원 갈래 — `ev._world = world` · 첫 시작 시딩 줄 바로 뒤에 같은 함수로 심는다(손잡이 + 작물 칸 켬만)');
 ok(/const T1336_CROP_EQ = process\.env\.T1336_CROP_EQ === '1';/.test(VSRC) && VSRC.split('T1336_CROP_EQ &&').length === 2, '손잡이 끔 기본(`=1` 만 켬) · 부르는 자리 하나');
 ok(/function _t368Attach\(vil\)[\s\S]{0,400}W\.cropFoodEq = t;/.test(VSRC) && /for \(const id of C\.IDS\) t\[id\] = \+K\.econUnitsOf\(id, 1\) \|\| 0;/.test(VSRC), '심는 함수는 종전 그대로(작물 표 정본 × 열량 정본 · 하네스 ② 의 표와 같은 식)');
 ok(!restoreAttaches(VSRC.replace(LINE, '')), '★미끼(심는 줄 지운 사본) — ③ 이 빨강');

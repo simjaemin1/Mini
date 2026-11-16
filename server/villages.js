@@ -7662,8 +7662,8 @@ function init(deps) {
         { const _fb = (lp && lp.fishSustain != null) ? lp.fishSustain : null; if (_fb != null) ev.land._fishBase = _fb; }
       }
       ev._world = world;
-      if (T1336_CROP_EQ && _t368ItemsOn()) _t368Attach({ econ: ev });   // ★[T1336] 켬 = 복원한 세계에도 작물 식량 값 표를 심는다(아래 손잡이 주석 · 끔 = 무동작)
       if (!row.econ_state) _t1243Seed(ev, row.id);   // ★[T1243 ⓒ] 서버 첫 시작만(복원 갈래는 안 닿는다 · 끔 = 무동작)
+      if (T1336_CROP_EQ && _t368ItemsOn()) _t368Attach({ econ: ev });   // ★[T1336] 켬 = 복원한 세계에도 작물 식량 값 표를 심는다(아래 손잡이 주석 · 끔 = 무동작)
       _t856LandElev(ev, row.cx, row.cy);   // ★[T856] 마을 고도 — 새로 세운 마을 · 복원한 마을 둘 다(복원한 칸은 지금 지형으로 다시 · 끔 = 무동작)
       // econ 좌표 = 셀×2.5 — 랩(4804행)과 동일 스케일: villageDist·운반비·약탈 확률이 랩 검증 범위에 머묾
       ev.coord = { x: row.cx * 2.5, y: row.cy * 2.5 };
