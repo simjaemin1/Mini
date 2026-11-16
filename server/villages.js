@@ -6840,13 +6840,24 @@ function _t1329Short(vil, npc, j) {
 }
 function _t1329Job(vil, npc) {
   if (_t1329Crew(vil).indexOf(npc.pid) < 0) return null;
+  let mine = null;
+  for (const j of vil._t1207Pend) if (j._t1329By === npc.pid) { mine = j; break; }
+  if (mine && !_t1329Short(vil, npc, mine)) return mine;
+  //   ★[T1329 ④] 맡은 칸이 말뚝 기다림이면(또는 맡은 칸이 없으면) 아무도 안 맡은 칸 중 말뚝 없이 할 수 있는 칸 — 개간이 남았거나 말뚝이 다 놓인(필요 없는) 칸 —
+  //     으로 옮긴다(맡은 칸은 놓는다 · 한 일은 그 일감에 남는다). 일괄의 "개간은 줄의 어느 칸이든 · 말뚝 막힘 뒤에도 말뚝 없는 칸은 영토로"와 같은 차례.
+  //     곳간 잉여가 있으면 차례대로(그 몸이 이미 짐을 들고 있던 칸이 먼저 — 재기동 뒤 · 크루가 바뀐 뒤).
+  const E = _lifeEcon(), e = vil.econ, dry = !(e && Math.max(0, E.woodSpare(e)) > 0 && (e.storage.wood || 0) > 0);
   const cur = (npc._t1302Terr && npc._t1302Terr.key) || (npc._t1181Haul && npc._t1181Haul.key) || null;
   let free = null;
   for (const j of vil._t1207Pend) {
-    if (j._t1329By === npc.pid) return j;
-    if (j._t1329By == null && (free == null || (cur != null && 't/' + j.key === cur && 't/' + free.key !== cur))) free = j;
+    if (j._t1329By != null) continue;
+    if (dry && j.wood > 1e-9 && ((j.mat && j.mat.wood) || 0) + 1e-9 < j.wood && (j.workMs || 0) >= j.laborMin * _tripDayMs() / 1440) continue;
+    if (free == null || (cur != null && 't/' + j.key === cur && 't/' + free.key !== cur)) free = j;
+    if (!cur) break;
   }
-  if (free) free._t1329By = npc.pid;
+  if (!free) return null;
+  if (mine) mine._t1329By = null;
+  free._t1329By = npc.pid;
   return free;
 }
 //   ★★[T1297 할 일 3 · T1283 (나) · T1283 회부 3] 관측 마을 몸의 개간 일 — 켬(`T1283_CLEAR_HAUL` · 나무꾼 몸 켬 세계)이면 그 칸 그루를 벤 통나무가 곧장 곳간에 들지 않고

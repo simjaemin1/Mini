@@ -532,7 +532,7 @@ function runT1329() {
     ed('function _t1238Batch(vil, picked, cap) {','function _t1238Batch(vil, picked, cap) { global.__t1329.batch++;');
     ed('function _terrAdd(vil, keys, target, fell) {','function _terrAdd(vil, keys, target, fell) { for (const k of keys) global.__t1329.add[k]=(global.__t1329.add[k]||0)+1;');
     if(process.env.T1329_BAIT==='cell'){
-      ed('    if (j._t1329By === npc.pid) return j;','    return j;');
+      ed('  if (mine && !_t1329Short(vil, npc, mine)) return mine;','  return vil._t1207Pend[0];');   // 맡은 몸을 안 보고 줄 머리
       ed('  if (i >= 0) vil._t1207Pend.splice(i, 1);\n  if (!_t1207CanTake(vil, job.cx, job.cy)) {','  if (false) vil._t1207Pend.splice(i, 1);\n  if (false) {');
     }
     if(process.env.T1329_BAIT==='stock')ed('const wood=Math.min(bag.wood||0,npc.inventory.wood||0),got=wood>0?(E.woodToGranary(home.econ,wood)||0):0;','const wood=Math.min(bag.wood||0,npc.inventory.wood||0),got=wood>0?(E.woodToGranary(home.econ,wood)||0):0;if(wood>0)_t1207LogIn(home,wood);');
@@ -869,8 +869,8 @@ sec('ⓝ [T1329] 몸 영토 일감 크루 여럿 — 한 칸 한 몸 · 완공 =
       '★T1283 걸음(`T1283_CLEAR_HAUL`) 켬과 같이 — 같은 판(완공 · 부림 · 걸음 수 같음) · 칸 더미 줄은 안 선다(두 번 나름 · 두 번 입고 0)',{deposits:haul.deposits,steps:[haul.steps,on.steps]});
     ok(doneSum(full)&&oneBody(full)&&workers(full)===full.crew&&!Object.values(full.owners).some(a=>a.includes('crew0'))&&fullOff.body===0&&fullOff.left===4&&Object.keys(fullOff.add).length===0,
       `★손이 찬 몸(말뚝 한 단도 못 든다)은 크루에서 빠지고 다음 몸이 선다 — 켬 완공 ${full.body}칸 · 끔(종전 T1302)은 그 몸이 줄 머리에서 헛걸어 완공 ${fullOff.body}`,{owners:full.owners,offBody:fullOff.body,offLeft:fullOff.left});
-    ok(dry.dry&&dry.dry.done===0&&dry.dry.free===2&&dry.dry.cleared>=2&&dry.dry.held>=2&&doneSum(dry)&&oneBody(dry),
-      `★말뚝 기다림 — 곳간 잉여 0 이면 개간 · 벌목만 하고 크루 둘이 일감을 쥔 채 제 일로(일감 없음 ${dry.dry&&dry.dry.free}몸 · 완공 0) · 통나무가 들자 다 완공(${dry.body}칸)`,dry.dry);
+    ok(dry.dry&&dry.dry.done===0&&dry.dry.free===2&&dry.dry.cleared===4&&dry.dry.held>=2&&doneSum(dry)&&oneBody(dry),
+      `★말뚝 기다림 — 곳간 잉여 0 이면 말뚝 없이 할 칸(개간 · 벌목)으로 옮겨 가며 넷 다 개간하고(${dry.dry&&dry.dry.cleared}칸) 크루 둘은 일감을 쥔 채 제 일로(일감 없음 ${dry.dry&&dry.dry.free}몸 · 완공 0) · 통나무가 들자 다 완공(${dry.body}칸)`,dry.dry);
     ok(on.restored&&on.restored.packed>=2&&on.restored.same&&on.restored.held===0,
       `★재기동 — 일감 줄(일한 시간 · 놓은 말뚝)이 곁 칸(\`_t740Side\`)에 실려 되살아난다(${on.restored&&on.restored.packed}칸 · 맡은 몸은 다시 맡는다) · 뒤 완공 그대로`,on.restored);
     ok(!oneBody(bc)&&!doneSum(bc),'미끼: 맡은 몸을 안 보고 줄 머리를 주는(두 몸이 한 칸 · 그 칸을 두 번 완공) 사본 — 위 두 검사가 빨강',{owners:bc.owners,add:bc.add});
