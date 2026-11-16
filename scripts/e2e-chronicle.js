@@ -231,14 +231,16 @@ async function waitHttp(url, tries = 900) {
   let cA = null, addedA = 0, freshCross = [];
   //   ★[T1339] 연표를 **얼린 채** 읽는다 — 부하 10판 중 2판이 ⑤b2(얼린 날 − 사건일 ≤ 3)에서 4일로 빨갰다: 붐비면 연표 한 번 묻는 데 몇 초가 걸려
   //     줄을 찾은 뒤 아래 얼림까지 날이 더 갔다. ⇒ 하루 경계를 흘린 뒤 얼리고 묻는다 · 찾으면 언 채로 ⑤ 로(얼린 날 = 찾은 날) · 못 찾으면 녹여 다시.
-  for (let i = 0; i < 30 && !freshCross.length; i++) {
+  //     ⚠"하루 경계를 흘린다"는 벽시계(종전 1.2초 ≈ 0.5초/일 두 날)가 아니라 **게임일 둘**로(`WD.waitDay` — 붐빈 판에선 1.2초에 하루도 안 가
+  //       새 줄 없이 그날 이미 있던 줄만 보고 멈췄다 · 부하 판 ④ `7 → 7줄`). 멈춤 조건도 "이 판이 더한 줄이 있다"(④ 의 판정 그대로)를 같이 본다.
+  for (let i = 0; i < 30 && !(freshCross.length && addedA > 0); i++) {
     await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), A.id);
-    await sleep(1200);
+    { const dNow = await gameDay(); await WD.waitDay(() => gameDay(), dNow + 2, { capMs: 30000, pollMs: 100, stallMs: 20000 }); }
     await freeze(true);
     cA = await askChron(A.id, null);
     addedA = before(cA) - n0;
     freshCross = crossOf(cA).filter((x) => x.day >= dayStart);
-    if (!freshCross.length) await freeze(false);
+    if (!(freshCross.length && addedA > 0)) await freeze(false);
   }
   ok(addedA > 0, '④ 사건이 나면 **그 마을 연표에 바로** 적힌다', `${n0} → ${before(cA)}줄`);
   const mineItems = [].concat(...((cA && cA.seasons) || []).map((b) => b.items)).filter((x) => x.from == null);
