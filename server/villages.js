@@ -6825,6 +6825,19 @@ function _t1329Crew(vil) {
   return c.pids;
 }
 //   그 몸의 일감 — 맡은 칸이 있으면 그 칸 · 없으면 아무도 안 맡은 칸(그 몸이 이미 짐을 들고 있던 칸이 먼저 — 재기동 뒤 · 크루가 바뀐 뒤 · 없으면 줄 차례) · 다 맡겼으면 없음
+//   ★[T1329 ④] 말뚝 기다림 — 개간 · 벌목이 끝나 말뚝만 남았고(손에 든 짐 없음) 곳간 잉여가 꺼낼 만큼 없으면(`pick` 과 같은 문 — `woodSpare` > 0 · 곳간 통나무 > 0) 그 몸을 잡아 두지 않는다.
+//     T1329 §1: 크루 둘이면 곳간 잉여가 먼저 바닥나 크루 몸 시간의 57 ~ 84% 가 곳간 ↔ 칸 헛걸음(기다림)이었다 — 그동안 그 몸의 제 일(나무꾼 · 농부 …)이 섰다.
+//     일괄(`_t1238Batch`)의 "재료가 없으면 그날은 여기부터 대기"와 같은 문 — 몸은 기다리는 동안 제 일을 한다(새 수 0).
+function _t1329Short(vil, npc, j) {
+  if (!(j.wood > 1e-9) || ((j.mat && j.mat.wood) || 0) + 1e-9 >= j.wood) return false;
+  if ((j.workMs || 0) < j.laborMin * _tripDayMs() / 1440) return false;
+  let tr = null; try { tr = state.deps.t325TreesAtCell ? state.deps.t325TreesAtCell(j.cx, j.cy) : null; } catch (e) { tr = null; }
+  if (tr && tr.length) return false;
+  const T = npc._t1302Terr, H = npc._t1181Haul;
+  if ((T && T.cargo && Object.values(T.cargo).some((n) => n > 1e-9)) || (H && H.n > 0)) return false;
+  const E = _lifeEcon(), e = vil.econ;
+  return !(e && Math.max(0, E.woodSpare(e)) > 0 && (e.storage.wood || 0) > 0);
+}
 function _t1329Job(vil, npc) {
   if (_t1329Crew(vil).indexOf(npc.pid) < 0) return null;
   const cur = (npc._t1302Terr && npc._t1302Terr.key) || (npc._t1181Haul && npc._t1181Haul.key) || null;
@@ -6968,6 +6981,7 @@ const T1302_TERR_BODY = T1238_TERR_V2 && process.env.T1302_TERR_BODY === '1';
 //   ② 벤 통나무 짐 = T1283 짐(`_t400PerLoad('wood')` — 일괄 걸음 · `_t1283BodyHaul` 과 같은 짐) — 한 짐이 차거나(다음 그루를 더하면 넘친다) 그 칸 그루가 다할 때까지 베고 진다
 //      (종전 T1302: 그루마다 곳간까지 한 번 왕복). T1283 의 칸 더미 줄(`_t1283BodyHaul`)은 이 켬에선 서지 않는다 — 몸이 벤 통나무는 몸 짐 하나로만 곳간에 든다(두 줄 → 한 줄).
 //   ③ 재기동 — 일감 줄(일한 시간 · 놓은 말뚝 · 그 칸 더미)을 마을 곁 칸(`_t740Side` · T740 문법)에 실어 다시 뜬 날 이어 간다(종전: 다음 장부 문까지 줄이 비어 재기동 날 완공 0).
+//   ④ 말뚝 기다림 — 말뚝만 남았는데 곳간 잉여가 없으면 몸을 잡아 두지 않는다(`_t1329Short` — 꺼내기와 같은 문 · 그동안 제 일).
 const T1329_TERR_CREW = T1302_TERR_BODY && process.env.T1329_TERR_CREW === '1';
 const _tv2 = require('./terr-v2');
 const _t1238St = { growN: 0, growUs: 0, growMaxUs: 0, picks: 0, pickCells: 0, go: 0, workMs: 0, done: 0, cancels: 0, cancelCells: 0, pulls: 0, pullBack: 0, pullBroke: 0, goRefuse: 0, structCut: 0, structCells: 0,
@@ -15874,6 +15888,7 @@ function _t1181Task(vil,npc,bound) {
   }
   if(T1329_TERR_CREW) {   // ★[T1329 ①] 켬 = 여유 크루마다 제 칸 하나(한 칸 한 몸) · 끔 = 아래 종전 줄(첫 몸 하나 · 줄 머리)
     const j=vil._t1207Pend&&vil._t1207Pend.length?_t1329Job(vil,npc):null;
+    if(j&&_t1329Short(vil,npc,j))return null;   // ★[T1329 ④] 말뚝만 남았는데 곳간에 꺼낼 잉여가 없다 — 몸은 제 일로(일감은 그 몸이 쥔 채 · 잉여가 서면 다시)
     return j?{kind:'terr',key:'t/'+j.key,sourceVillageId:vil.dbId,site:j,target:{x:j.cx*SZ+SZ/2,y:j.cy*SZ+SZ/2},need:()=>(j.wood>1e-9?{wood:j.wood}:{})}:null;
   }
   // ★[T1207 ④] 관측 마을의 영토 일감 — 여유 크루의 첫 몸 하나가 말뚝을 날라 그 셀에서 개간한다(헤드리스는 `_t1207Batch`)
