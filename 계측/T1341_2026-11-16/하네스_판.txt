@@ -1,0 +1,35 @@
+test-t1341-own-house rc=0 0s === 62건 중 PASS 62 · FAIL 0 ===
+test-claim-v2 rc=0 10s === PASS 95 / FAIL 0 ===
+test-donate rc=0 23s === 42건 중 PASS 42 · FAIL 0 ===
+test-downed rc=0 332s === 180건 중 PASS 180 · FAIL 0 ===
+test-events rc=0 307s === 305건 중 PASS 305 · FAIL 0 ===
+test-furnace rc=0 4s 
+test-granary-age rc=0 138s === 31건 중 PASS 31 · FAIL 0 ===
+test-member-open rc=0 75s 
+test-membership rc=0 15s === PASS 90 / FAIL 0 ===
+test-newcomers rc=0 4s === PASS 56 / FAIL 0 ===
+test-onboarding rc=0 145s === PASS 38 / FAIL 0 ===  (총 145초)
+test-regrow rc=0 24s === 101건 중 PASS 101 · FAIL 0 ===
+test-t1064-next-step rc=0 1s === 49건 중 PASS 49 · FAIL 0 ===
+test-t1086-first-join rc=0 0s === 82건 중 PASS 82 · FAIL 0 ===
+test-t1120-next-tool rc=1 14s === T1120: 85건 중 PASS 84 · FAIL 1 ===
+test-t1132-hall-view rc=0 45s === 18건 중 PASS 18 · FAIL 0 ===
+test-t1204-now-words rc=0 0s === 22건 중 PASS 22 · FAIL 0 ===
+test-village-only rc=2 16s 
+test-village-view rc=0 30s 결과: PASS 132 · FAIL 0
+test-body-fields rc=0 3s 
+test-coll-grid rc=0 34s === 결과: 20 PASS / 0 FAIL ===
+test-hp-src rc=0 3s 
+test-lon-day rc=0 2s === 22건 중 PASS 22 · FAIL 0 ===
+test-harness-lint rc=1 76s === 77건 중 PASS 75 · FAIL 2 ===
+DONE
+e2e-t1341-own-house rc=0 53s === 30건 중 PASS 30 · FAIL 0 ===
+e2e-next-step rc=0 37s === 35건 중 PASS 35 · FAIL 0 ===
+e2e-onboarding rc=0 176s === PASS 75 / FAIL 0 ===
+e2e-t1204-now-words rc=0 54s === 22건 중 PASS 22 · FAIL 0 ===
+e2e-downed rc=0 460s === 35건 중 PASS 35 · FAIL 0 ===
+test-village-only rc=0 79s 
+DONE
+
+# 고친 뒤 다시
+test-t1120-next-tool 85/0 · test-harness-lint 77/0 · test-village-only 106/0(망 이름공간) · test-t1341-own-house 62/0

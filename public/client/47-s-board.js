@@ -86,7 +86,8 @@ function boardRowHtml(r, i) {
     + `<span class="bp-name">${itemKo(r.item)}</span>`
     + `<span class="bp-num">${r.remain}</span>`
     + `<span class="bp-prog">${r.filled}/${r.qty}</span>`
-    + `<span class="bp-rew">${itemPic(r.rewItem, 16)} ${itemKo(r.rewItem)} ${r.rewQty}</span>`
+    + (r.rewItem ? `<span class="bp-rew">${itemPic(r.rewItem, 16)} ${itemKo(r.rewItem)} ${r.rewQty}</span>`
+      : `<span class="bp-rew">받아들임 +1</span>`)   // ★[T1341] 켬 — 갚음 0(서버가 갚을 것 칸을 비웠다) · 다 채우면 받아들임이 오른다
     + `<button class="bp-give" data-bp-give="${i}"${canGive ? '' : ' disabled'}>납품</button>`
     + `</div>`;
 }
@@ -131,7 +132,7 @@ function renderBoardPane() {
   if (!rows.length) {
     h += `<div class="bd-none">걸린 부탁이 없습니다.</div>`;
   } else {
-    h += `<div class="bp-hdr"><span></span><span>구하는 것</span><span>남은</span><span>진척</span><span>갚을 것</span><span></span></div>`;
+    h += `<div class="bp-hdr"><span></span><span>구하는 것</span><span>남은</span><span>진척</span><span>${bd.noRepay ? '받는 것' : '갚을 것'}</span><span></span></div>`;   // ★[T1341] 켬 — 갚음 0
     h += rows.map(boardRowHtml).join('');
     h += `<div class="bp-hint"><span class="key">Shift+N</span> 을 누르면 서버가 고른 부탁에 냅니다. 줄마다 있는 <b>납품</b>은 그 줄에 냅니다.</div>`;
   }
