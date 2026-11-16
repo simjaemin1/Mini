@@ -19,6 +19,7 @@
 //     ㉓ `T1319_AUTUMN_LOOK=mig`(이주 문만) — 출생 문 날 수는 가을에도 30 · 이주 문 날 수는 181(9월 1일) · ㉒ 그대로(60일치 마을에 8월 31일엔 가고 9월 1일엔 안 간다)
 'use strict';
 if (process.env.T474_CARAVAN_WALK === undefined) process.env.T474_CARAVAN_WALK = '0';   // test-t1147-emig-pick 과 같은 판(교역로 4일 이웃 표본)
+if (process.env.T1334_BUNDLE === undefined) process.env.T1334_BUNDLE = '0';   // ★[T1334 ④] 켬 기본 묶음 끔을 글자로 — 이 하네스는 낱 손잡이를 글자로 켜고 빈 값을 끔으로 쓴다(켬 기본이면 빈 값 = 묶음 켬)
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
