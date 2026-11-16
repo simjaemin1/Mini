@@ -7662,6 +7662,7 @@ function init(deps) {
         { const _fb = (lp && lp.fishSustain != null) ? lp.fishSustain : null; if (_fb != null) ev.land._fishBase = _fb; }
       }
       ev._world = world;
+      if (T1336_CROP_EQ && _t368ItemsOn()) _t368Attach({ econ: ev });   // ★[T1336] 켬 = 복원한 세계에도 작물 식량 값 표를 심는다(아래 손잡이 주석 · 끔 = 무동작)
       if (!row.econ_state) _t1243Seed(ev, row.id);   // ★[T1243 ⓒ] 서버 첫 시작만(복원 갈래는 안 닿는다 · 끔 = 무동작)
       _t856LandElev(ev, row.cx, row.cy);   // ★[T856] 마을 고도 — 새로 세운 마을 · 복원한 마을 둘 다(복원한 칸은 지금 지형으로 다시 · 끔 = 무동작)
       // econ 좌표 = 셀×2.5 — 랩(4804행)과 동일 스케일: villageDist·운반비·약탈 확률이 랩 검증 범위에 머묾
@@ -12517,6 +12518,14 @@ function _t368Walk() { const E = _lifeEcon(); return !!(E && E.T368_FARM_ACT); }
 //     ⇒ "존이 잠" 인 팔이 없어지고 몸 XOR 일괄은 **몸** 하나가 된다(T410 ④). 문을 닫으면(`=1`) 종전 두 명부 그대로.
 //   ⚠주입이 없으면(랩·하네스 — 존이 없다) 몸도 없다 ⇒ 거짓(일괄이 돈다). 켰을 때만 불린다(끈 팔은 이 줄에 안 닿는다).
 function _t368ZoneAwake(vil) { const f = state.deps && state.deps.zoneAwake; return !!(f && f()); }
+// ★★[T1336 2026-11-16 · T1325 회부 1] 손잡이 `T1336_CROP_EQ`(끔 기본 · `=1` 켬) — **복원한 세계도 작물을 먹는다.**
+//   작물 식량 값 표(`world.cropFoodEq`)는 세계 객체의 칸이라 저장되지 않는다(`serializeEcon` 밖). 종전엔 첫 시작 시딩(`_t1243Seed`)과
+//   수확(`_t368Item`)만 심었다 ⇒ 서버가 다시 서면(배포 · T1308 이어 돌리기 마디마다) 첫 수확까지 표가 없다:
+//   곳간 합계(`storageFoodPer` — 표가 없으면 열량 정본 `econUnitsOf` 로 센다)는 작물을 식량으로 세는데 섭식(`consumeFood` 3.6 ·
+//   `_t368Crops` — 표가 없으면 null)은 작물을 안 먹는다 → 곳간이 차 있는 채 굶는다(T1336 ② — 몸 1020 날 80 곳간 식량 19,802 중 작물 약 16,000 ·
+//   그날 먹은 작물 0 · 빚 사람당 3.3 · 식량 빚 죽음 날 57 ~ 93 에 214). 랩은 한 프로세스라 시딩 때 심은 표가 그대로 남는다.
+//   켬 = 복원 갈래에서도 `ev._world` 를 붙인 그 자리에서 같은 함수(`_t368Attach`)로 심는다(작물 칸이 켜진 판만 · 밭 끔 세계 무동작).
+const T1336_CROP_EQ = process.env.T1336_CROP_EQ === '1';
 function _t368ItemsOn() { const E = _lifeEcon(); return !!(E && E.T368_FARM_ACT && E.T100_FIELD_YIELD); }
 // ★[T368] 작물의 식량 값 표 — **열량 정본**(`kcal.econUnitsOf` = kg × kcal/kg ÷ `DAY_KCAL` · T59)을 세계에 **한 번** 심는다.
 //   econ 은 서버 모듈을 안 부른다 ⇒ 주입이다(T347 `forageActItems` 선례 · 심는 줄은 이 함수의 마지막 한 줄).
