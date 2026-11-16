@@ -1,0 +1,44 @@
+{
+ "v": 1,
+ "tag": "F",
+ "seed": 1020,
+ "days": 30,
+ "every": 10,
+ "dir": "/tmp/s5m/t1308/LF",
+ "ck": 30,
+ "segs": [
+  {
+   "from": 0,
+   "to": 10,
+   "sec": 125.7,
+   "code": 0,
+   "at": "2026-11-14T06:04:10.725Z"
+  },
+  {
+   "from": 10,
+   "to": 20,
+   "sec": 53,
+   "code": 0,
+   "at": "2026-11-14T06:05:56.683Z"
+  },
+  {
+   "from": 20,
+   "to": 30,
+   "sec": 48.6,
+   "code": 0,
+   "at": "2026-11-14T06:06:45.508Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "NODE_OPTIONS": "-r /root/minirepo/scripts/t650-print.js -r /root/minirepo/scripts/t1308-bodyprint.js -r /root/minirepo/scripts/t1230-observe.js",
+  "T745_VCLOCK": "1",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T400_BUILD_ACT": "0"
+ },
+ "started": "2026-11-14T06:02:04.837Z",
+ "tries": 0,
+ "crashAt": 20,
+ "crashDone": true,
+ "ended": "2026-11-14T06:06:45.731Z"
+}

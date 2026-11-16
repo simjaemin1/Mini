@@ -36,7 +36,7 @@ console.log('\n[ⓐ] 정적 — 손잡이 문 · war-core 한 줄 · 호스트 �
   const end = fnBody(CV, '_warEndFight');
   ok(/if \(_t811\) _t811\.field \+= _t811Fall\(w, p\);/.test(end) && /for \(const pid of deadA\) \{ const p = players\.get\(pid\); const q = _t811Fall\(w, p\); _t811\.field \+= q;/.test(end)
     && /_t857Pick\(w, winner, atkSurv, defSurv, _t811\.field, _t811\.dead\);\s*_t811Sync\(w, 'settle'\);\s*if \(state\.war && state\.war\.syncArmsMirror\) state\.war\.syncArmsMirror\(w\.atk\);/.test(end)
-    && end.indexOf('_t857Pick(') < end.indexOf('_warDespawnPid(pid)'),
+    && end.indexOf('_t857Pick(') >= 0 && end.indexOf('_t857Pick(') < end.indexOf('_warFallPid(pid)') && /_warDespawnPid\(pid\)/.test(fnBody(CV, '_warFallPid')),   // ★[T1315] 전사자 문 = `_warFallPid`(끔 = `_warDespawnPid` 그대로 · 켬 = 누운 몸) — 차례(더미 먼저 · 몸 나중)는 같다
     'ⓐ ② 결판(★T857) — 끌려간 · 쓰러진 몸 짐 → 결판 자리 더미 · 이긴 쪽이 줍고 · 그 뒤 산 몸 = 장부 · 거울 — 전사자가 사라지기 전에');
   ok(/w\._arms\.weapon = Math\.max\(0, \(w\._arms\.weapon \|\| 0\) - mine\);/.test(fnBody(CV, '_t811Fall')), 'ⓐ ② 장부 −같은 몫(떨어진 몸 짐 그대로)');
   const pk = fnBody(CV, '_t857Pick');

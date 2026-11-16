@@ -1,0 +1,26 @@
+[picker가 반환 가능한 직업 → OUT1·OUTRES 등록 검사]
+  발견 직업: armorsmith, cook, forager, lumberjack, mason, merchant, miner, smith, tailor, warrior
+  ✓ armorsmith ∈ OUT1
+  ✓ armorsmith ∈ OUTRES
+  ✓ cook ∈ OUT1
+  ✓ cook ∈ OUTRES
+  ✓ forager ∈ OUT1
+  ✓ forager ∈ OUTRES
+  ✓ lumberjack ∈ OUT1
+  ✓ lumberjack ∈ OUTRES
+  ✓ mason ∈ OUT1
+  ✓ mason ∈ OUTRES
+  - merchant: 명시 예외(산출재 없음)
+  ✓ miner ∈ OUT1
+  ✓ miner ∈ OUTRES
+  ✓ smith ∈ OUT1
+  ✓ smith ∈ OUTRES
+  ✓ tailor ∈ OUT1
+  ✓ tailor ∈ OUTRES
+  ✓ warrior ∈ OUT1
+  ✓ warrior ∈ OUTRES
+
+[표 자체 정합 — OUT1 키 = OUTRES 키]
+  ✓ OUT1(13) = OUTRES(13)
+
+결과: PASS

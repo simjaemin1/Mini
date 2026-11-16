@@ -1,0 +1,53 @@
+{
+ "tag": "R2",
+ "meta": {
+  "seed": 7,
+  "days": {
+   "hanbando": 41,
+   "nippon": 116
+  },
+  "Y": 17840,
+  "botCross": 42,
+  "restart": null,
+  "wallS": 905
+ },
+ "beasts": {
+  "keys": 139,
+  "crossed": 127,
+  "by": {
+   "wild": 47,
+   "tame": 80
+  },
+  "byType": {
+   "horse": 80,
+   "deer": 29,
+   "ibex": 11,
+   "wild_boar": 7
+  },
+  "dir": {
+   "hanbando→nippon": 62,
+   "nippon→hanbando": 65
+  },
+  "dupAnswered": 2,
+  "dupIn": 2,
+  "unhide": 12,
+  "unhideWhy": {
+   "fauna": 12
+  },
+  "keepN": 2,
+  "bootHide": 0
+ },
+ "canon": {
+  "twoIn": 0,
+  "inAndUnhide": 0,
+  "outNoIn": 0,
+  "hung": 0
+ },
+ "sum": {
+  "pairs": 174,
+  "base": 930,
+  "mismatch": 0,
+  "worst": 0,
+  "skippedNearEvent": 152
+ }
+}

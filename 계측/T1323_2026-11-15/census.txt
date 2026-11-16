@@ -1,0 +1,54 @@
+판정 칸 쓰기 449 · 걸음 문 안 256 · 문 밖 193
+  생활층(그 밖)         58
+  존                53
+  캐러밴              48
+  집 행위 · 짓기 · 몸 잇기 15
+  전쟁               12
+  war-live         4
+  bandits          3
+
+문 밖 함수(쓰기 수):
+   26 캐러밴 · tickCaravanBodies (villages.js:5376) — vx,vy,x,y
+   19 존 · _t671Shape (zone.js:3859) — _pathFor,_stuckN,_stuckPos,_t670Tk,_t670TkX,_t670TkY,_t720,_t791P,_t791Pn,_t791Px,_t791Py,gatherTarget,npcBedX,npcBedY,path,pathIndex,simJob,simLonOff,simVillageId
+   14 생활층(그 밖) · tickBodyExits (villages.js:1929) — vx,vy,x,y
+    7 생활층(그 밖) · _t747Restore (villages.js:1315) — simJob,targetX,targetY,vx,vy,x,y
+    6 생활층(그 밖) · _t1198Sync (villages.js:1804) — npcBedX,npcBedY,npcHomeX,npcHomeY,x,y
+    6 집 행위 · 짓기 · 몸 잇기 · _t1039Join (villages.js:2064) — npcBedX,npcBedY,simLonOff,simVillageId,vx,vy
+    6 생활층(그 밖) · _escortMarch (villages.js:5482) — vx,vy,x,y
+    6 캐러밴 · _caravanSyncOne (villages.js:5506) — vx,vy,x,y
+    6 존 · damagePlayer (zone.js:15332) — vx,vy,x,y
+    5 집 행위 · 짓기 · 몸 잇기 · _t765Join (villages.js:2004) — npcHomeX,npcHomeY,simJob,vx,vy
+    5 존 · _wwPost (zone.js:16551) — nextDecisionAt,vx,vy,x,y
+    4 생활층(그 밖) · spawnOneNpc (villages.js:1574) — npcBedX,npcBedY,simLonOff,simVillageId
+    4 캐러밴 · _caravanNpcs (villages.js:4672) — simJob,simVillageId
+    4 캐러밴 · _t775Put (villages.js:4729) — vx,vy,x,y
+    4 생활층(그 밖) · _t1034Apply (villages.js:4800) — vx,vy,x,y
+    4 생활층(그 밖) · _t1182Walk (villages.js:5325) — vx,vy,x,y
+    4 캐러밴 · _t1136Turn (villages.js:5640) — vx,vy,x,y
+    4 전쟁 · _warSyncMeta (villages.js:8324) — vx,vy
+    4 생활층(그 밖) · _lifeGoHome (villages.js:11985) — behavior,gatherTarget,targetX,targetY
+    4 생활층(그 밖) · _t1196Step (villages.js:17843) — behavior,gatherTarget,targetX,targetY
+    4 war-live · createWarLive (war-live.js:142) — x,y
+    4 존 · _desEnd (zone.js:5277) — pathIndex,vx,vy
+    4 존 · _wakeUp (zone.js:15756) — vx,vy,x,y
+    4 존 · syncCanadiaCaravans (zone.js:19010) — canadiaTask,targetX,targetY
+    3 존 · _t1295Walk (zone.js:5138) — pathIndex,vx,vy
+    3 존 · tickDowned (zone.js:16015) — floor,x,y
+    2 bandits · _t1039Adopt (bandits.js:666) — npcHomeX,npcHomeY
+    2 전쟁 · _bxQuiet (villages.js:1880) — vx,vy
+    2 전쟁 · _t1104Release (villages.js:2206) — vx,vy
+    2 캐러밴 · _t1080RoadDay (villages.js:2424) — vx,vy
+    2 캐러밴 · spawnCaravanBody (villages.js:4935) — x,y
+    2 생활층(그 밖) · _t661Day (villages.js:5191) — x,y
+    2 집 행위 · 짓기 · 몸 잇기 · _xzMakeBody (villages.js:5696) — x,y
+    2 전쟁 · _warReleasePid (villages.js:9050) — vx,vy
+    2 집 행위 · 짓기 · 몸 잇기 · _t707Linger (villages.js:15468) — x,y
+    2 존 · _inputTOStep (zone.js:1273) — vx,vy
+    2 존 · sepNpcs (zone.js:5076) — x,y
+    1 bandits · syncBodies (bandits.js:951) — simJob
+    1 생활층(그 밖) · _t1198Jobs (villages.js:1842) — simJob
+    1 생활층(그 밖) · syncVillageJobs (villages.js:2540) — simJob
+    1 전쟁 · _warEndFight (villages.js:8885) — simVillageId
+    1 전쟁 · _warEvacVillage (villages.js:10044) — simEvacUntil
+    1 생활층(그 밖) · assignJob (villages.js:14641) — simJob
+    1 존 · setHp (zone.js:15314) — hp

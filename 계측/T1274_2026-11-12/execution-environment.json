@@ -1,0 +1,20 @@
+{
+  "base": "a6b7aba5df7865b4e81865a5f4d17f057bac12f6",
+  "node": "v22.23.4",
+  "cpusVisible": 5,
+  "cpuQuota": "400000 100000",
+  "startedUserDate": "2026-11-12 Asia/Seoul",
+  "capturedUTC": "2026-11-12T05:55:38Z",
+  "inheritedExperimentVariables": {},
+  "secondRun": {
+    "directory": "/tmp/t1274-r2",
+    "sessionPID": 442669,
+    "verifiedSurvivalAcrossEnvironmentTransition": true,
+    "sourceVersion": "measurement-v2",
+    "capturedUTC": "2026-11-12T06:53:06Z"
+  },
+  "dependencyManifestsSHA256": {
+    "package.json": "70417ecb96b566bbf343b8d356966f66f1a207d8d38670bbb62a46d2de6363a8",
+    "package-lock.json": "e1fd2f9573239380a403797956c2bf7ef70419a4f7b8f546760bb7773c23ff25"
+  }
+}

@@ -140,6 +140,7 @@ function _devAsGate(req) {
 const Notice = require('./notice');           // ★[T78 2026-09-03] 알림 경계 — 접두 이모지 → `kind` · 글자 제거
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
 const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
+const Deeds = require('./deeds');             // ★[T1305] 사유지 돌봄(마을 무관 선포 · 숫자 상한 대신 돌봄) — 손잡이 `T1305_DEEDS`(끔 기본 · 끔 = 아무 데서도 안 부른다)
 const Newcomers = require('./newcomers');     // ★[T19 2026-09-02] 유저 마을 시작지 등록 — "이방인 받기"(§9.3 나머지 절반)
 const Friends = require('./friends');         // ★[T115 2026-09-05] 친구 — 서로 수락한 쌍(T23 소셜 첫 칸)
 const Guild = require('./guild');             // ★[T128 2026-09-05] 길드 모집 — 초대·승인제·마을 소개문
@@ -1306,6 +1307,8 @@ let resourcesDirty = true;  // 자원(나무·돌)은 static — 변경됐을 �
 let _lastResRebuild = 0;    // qtResources 전체 재구축 throttle (5Hz 상한)
 // ★[T461] 걸음 문 WASM 커널 — 선언만 여기(아래 `refreshDitchCells`·`_rebuildResources` 가 부른다) · 만드는 자리는 `isBlockedByTree` 뒤
 let _WW = null;             // 커널(끔이면 null — 아래 세 자리가 전부 무동작)
+let _wwTbGen = 0, _wwStN = 0;   // ★[T1278] 지형 비트 세대(`clearTerrain` 마다 +1) · 기억 칸 수
+let _wwStRef = [], _wwStX = new Float64Array(0), _wwStY = new Float64Array(0), _wwStG = new Uint32Array(0), _wwStR = new Uint8Array(0);
 let _wwRes = null;          // `qtResources` 가 **지금 든** 자원 목록(마지막 재구축 · 안에 든 것만) — 커널의 나무 열 원천
 let _wwResGen = 0;          // ★[T672] 자원 항목의 충돌 필드(종류·반경)를 **제자리에서** 바꾸는 자리가 올린다(`_shapeRegrown`) — 커널 나무 열 다시 채우기의 열쇠 하나
 // ★★★[T421 2026-09-26 · T371 회부 · T375 §4-4 · T385 §4-4 세 번 미룬 자리] **격자 증분.** `T421_SPATIAL_INC=1` 일 때만.
@@ -1509,6 +1512,7 @@ function serializeBody(p) {
   if (T927_BODY_VER) o.sv = +p._saveVer || 0;   // ★[T927] 몸 버전(위) — 맨 끝 칸(끔 = 칸 없음 · 종전 바이트)
   if (Number(p.memberCool) > 0) o.memberCool = +p.memberCool;   // ★[T1137] 다시 들 수 있는 때(epoch ms · 탈퇴 · 추방 뒤에만 선다 — 없으면 종전 바이트)
   if (p.feeOwe && typeof p.feeOwe === 'object' && Object.keys(p.feeOwe).length) o.feeOwe = Object.assign({}, p.feeOwe);   // ★[T1151] 수수료 끝수 장부(마을 id → 끝수 · 있을 때만)
+  if (Deeds.ON && Deeds.bodyOf(p)) o.deeds = { n: p.deeds.n | 0, day: String(p.deeds.day || '') };   // ★[T1305] 주인이 접속한 날 수(사유지 낡음의 시계 · 켬 판 · 있을 때만)
   return o;
 }
 // 복원 — 옛 형식(`{axe: 3}`)까지 여기서 흡수한다. 반환값의 키는 `serializeBody` 와 같다.
@@ -1537,6 +1541,7 @@ function parseBody(raw, opts) {
   if (opts && opts.vitals && o.vital && typeof o.vital === 'object') out.vital = o.vital;
   if (Number.isFinite(o.sv)) out.sv = o.sv;   // ★[T927] 몸 버전 — 없으면(옛 행 · 끔 존) 칸도 없다
   if (Number.isFinite(o.memberCool) && o.memberCool > 0) out.memberCool = o.memberCool;   // ★[T1137] 다시 들기 시각
+  if (o.deeds && typeof o.deeds === 'object' && Number.isFinite(o.deeds.n)) out.deeds = { n: o.deeds.n | 0, day: String(o.deeds.day || '') };   // ★[T1305] 접속한 날 수
   if (o.feeOwe && typeof o.feeOwe === 'object') { const f = {}; for (const [k, v] of Object.entries(o.feeOwe)) { const x = Number(v); if (Number.isFinite(x) && x > 0 && x < 1) f[k] = x; } if (Object.keys(f).length) out.feeOwe = f; }   // ★[T1151] 끝수 장부
   // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
   if (Array.isArray(o.toolItems)) {
@@ -1612,6 +1617,7 @@ function _bodyInto(p, B, equipped) {
   if (T927_BODY_VER) p._saveVer = +B.sv || 0;   // ★[T927] 몸 버전 — 이 몸의 다음 저장은 이 차례 위에서 센다(끔 = 칸 없음)
   if (B.memberCool) p.memberCool = B.memberCool;   // ★[T1137] 다시 들기 시각 — 몸에 실려 왔을 때만(없으면 칸도 없다)
   if (B.feeOwe) p.feeOwe = B.feeOwe;               // ★[T1151] 수수료 끝수 장부 — 몸에 실려 왔을 때만
+  if (Deeds.ON && B.deeds) p.deeds = B.deeds;      // ★[T1305] 접속한 날 수 — 몸에 실려 왔을 때만(켬 판)
   return p;
 }
 
@@ -2081,6 +2087,7 @@ function isRockTileLocal(localX, localY) {
 // ★[T333] 키가 정수다 — `cx * _WT_H + cy`(같은 격자 · 같은 집합 · 문자열 0). 다리 칸은 수백 개라 Set 이면 족하다.
 const _cellKey = (cx, cy) => cx * _WT_H + cy;
 const BRIDGE_CELLS = new Set();
+let _t1294DitchGen = 0;   // ★[T1294 ⓐ] 환호 다시 짓기 세대(`refreshDitchCells` 마다 +1)
 let _bridgeGen = 0;   // ★[T562] 다리 셀이 더해질 때마다 오른다(`addBridgeCells`) — 닿는 칸 기억의 도장 한 항
 {
   const bl = (ZONE && ZONE.bridges) || null;
@@ -2107,7 +2114,7 @@ function addBridgeCells(flat) {
   _bridgeGen++;
   if (_t678G) _t678G.invalidateAll();   // ★[T678] 다리가 놓이면 문 표는 전부 낡는다(다시 짓기는 조각)
   if (_BLK_BITS) _BLK_BITS.fill(0);
-  if (_WW) _WW.clearTerrain();
+  if (_WW) { _WW.clearTerrain(); _wwTbGen++; }   // ★[T1278] 서 있는 몸 답 기억의 세대
   try { broadcast({ type: 'bridges_add', cells: add }); } catch (e) {}
   _t565OnCells(add);   // ★[T565] 큰 지도 — 표본 셀만 다시 묻고 버전을 새로 낸다(클라는 `bridges_add` 를 보고 다시 받는다)
   return add.length / 2;
@@ -2123,9 +2130,10 @@ function isDitchTileLocal(localX, localY) {
   return DITCH_CELLS.has(_cellKey(Math.floor(localX / 32), Math.floor(localY / 32)));   // ★[T333] 정수 키
 }
 function refreshDitchCells() {
+  _t1294DitchGen++;   // ★[T1294 ⓐ] 지형 세대 한 항(환호가 바뀌었다 — 손잡이 켬 길 기억 열쇠 `_t1294Gen`)
   DITCH_CELLS.clear();
   if (_BLK_BITS) _BLK_BITS.fill(0);   // ★[T356 ②] 환호가 바뀌면 막힘 비트를 통째로 영점(유도값이라 다시 구우면 된다)
-  if (_WW) _WW.clearTerrain();        // ★[T461] 커널의 지형 비트도 같은 까닭으로 영점
+  if (_WW) { _WW.clearTerrain(); _wwTbGen++; }   // ★[T461] 커널의 지형 비트도 같은 까닭으로 영점 · ★[T1278] 서 있는 몸 답 기억의 세대
   if (_t678G) _t678G.invalidateAll();  // ★[T678] 환호가 바뀌면 문 표도 전부 낡는다
   try {
     const flat = SimVillages.ditchCells ? SimVillages.ditchCells() : [];
@@ -3527,6 +3535,7 @@ function spawnOneResource() {
       stateAt: row.state_at | 0,
       createdAt: row.created_at | 0,
     });
+    if (Deeds.ON) { const _c = claims.get(id); if (_c.kind === 'personal') _c.care = 'new'; }   // ★[T1305 → T1332] 돌봄 단계는 청크 줄에서 — 아래 `deedChunks` 싣기(그 표는 뒤에 선다)
   }
   console.log(`[${ZONE_ID}] DB에서 claim ${rows.length}개 로드`);
 }
@@ -3606,9 +3615,11 @@ function spawnMob(type, opts = {}) {
 //   방송 칸은 NPC 길 글자(`tameOwner: null` · `tameOwnerName: null` 까지 — 새 몹은 주인이 없다 · 클라 `mob_spawn` 은 두 꼴을 같게 읽는다).
 const T987_MOB_RESPAWN = process.env.T987_MOB_RESPAWN !== '0';
 function respawnMobLater(m) {
+  if (T1321_XZ_BEAST && !m.isWild) _t1321Stat.died++;   // ★[T1321] 두 존 합 셈 — 존 몹 죽음(세 죽음 길이 다 이 문을 부른다 · 끔 = 이 줄 무동작)
   if (m.isWild || !(HOSTILES_ON || !(ANIMALS[m.type] && ANIMALS[m.type].aggressive))) return false;
   const respawnType = m.type;
   setTimeout(() => {
+    if (T1321_XZ_BEAST) _t1321Stat.born++;   // ★[T1321] 두 존 합 셈 — 다시 낳음
     const n = spawnMob(respawnType);
     broadcast({ type: 'mob_spawn', mob: { mid: n.mid, type: n.type, x: n.x, y: n.y, hp: n.hp, maxHp: n.maxHp, tameOwner: null, tameOwnerName: null } });
   }, 15000);
@@ -3646,6 +3657,92 @@ const T1032_NPC_KILL = process.env.T1032_NPC_KILL !== '0';
 //   화살(`mobs.values()` 를 돈다)과 NPC 싸움(`mobs.get` + hp)은 종전에도 이 둘을 지켰다 — 같은 문으로 옮길 뿐 값 무변(구멍은 사람 공격 하나).
 const T1240_KILL_ONCE = process.env.T1240_KILL_ONCE !== '0';
 function mobLive(m) { return !!m && mobs.has(m.mid) && m.hp > 0; }
+// ★★[T1321 2026-11-14 · 세션8 · T1292 회부 3 · ★재민 11-12 "한반도 ↔ 닛폰 사이에 동물이 자유롭게 오가"] 손잡이 `T1321_XZ_BEAST`(★T1324 켬 기본 · '0' 끔 · 팔 안 —
+//   끔 = 문을 안 만든다 · 아래 자리마다 `if (T1321_XZ_BEAST …)` 하나 · 몹 걸음 · 적재 · 받는 문 · 넘기 ACK 줄 그대로 = main 바이트).
+//   존 몹(DB 행이 있는 몸 — 야생 · 맹수 · 길든 짐승)이 땅 이웃 존 쪽 존 사각을 걸어 나가면 이웃 존에 넘긴다 — 사람 넘기와 같은 겹침 띠 ·
+//   캐러밴 몸과 같은 문(`/handoff_prepare` `kind: 'beast'`) · 숨김 → 답 OK → 지움 · `dup` 은 버림. 몸통 = `server/xzone-beast.js`(머리글이 규칙 전부).
+//   야생 그림자(`isWild` — 랩 블록 몸 · 장부의 연출)는 이 문을 안 탄다(아래 몹 고리가 그 몸을 이미 건너뛴다 — 넘김은 장부 몫 · 보고 §1 ⓑ).
+//   ★길든 짐승 — 주인이 이웃 존으로 넘어가면(넘기 ACK · 시한) 그 넘어간 자리를 적어 두고(`_t1321Gone` · 주인 id → 이 존 로컬 자리) 짐승이 그 자리로 걸어 띠를 건넌다.
+//     주인이 이 존에 다시 서면(되돌림 · 돌아옴) 지운다. 메모리만이다 — 존이 다시 뜨면 종전대로 선다(보고 §6).
+//   ★★[T1324 2026-11-15 · ★재민 11-15 "전부 켜"] **켬 기본**(되돌림 `T1321_XZ_BEAST=0`) — 팔 `T525_CROSS_ZONE` 안: 팔 끔(한 존 판)이면 끔과 같다
+//     (문을 안 만든다 · 위 자리마다 `if (T1321_XZ_BEAST …)` 가 안 돈다 = main 바이트). 팔은 econ 정본과 같은 env 글자(`=== '1'`).
+const T1321_XZ_BEAST = process.env.T525_CROSS_ZONE === '1' && process.env.T1321_XZ_BEAST !== '0';
+const T1321_XZ_DRAIN0 = process.env.T1321_XZ_DRAIN === '1';   // ★[T1321 ④] 비우기(새 넘김 0) — 부팅 손잡이 · 아래 `kind: 'drain'` 명령이 켜고 끈다(마을 쪽과 한 칸 — `SimVillages.t1321Drain`)
+const _t1321Gone = new Map();   // 주인 playerId → { x, y, to, at } — 주인이 넘어간 자리(이 존 로컬)
+const _t1321Stat = { died: 0, born: 0, follow: 0, gone: 0, goneClear: 0 };
+const _T1321B = { x: 0, y: 0, go: null };   // 띠 답 칸(틱마다 새 객체 0)
+const _t1321Peer = new Map();   // 이웃 존 칸 막힘 메모(`peerBlocked`)
+let _t1321Door = null;
+if (T1321_XZ_BEAST) {
+  const _XZB = require('./xzone-beast');
+  const _t1321Nb = require('./xzone').neighborsOf(ZONE_ID);
+  _t1321Door = _XZB.createBeastDoor({
+    zone: ZONE_ID, W: ZONE.zoneWidth, Hh: ZONE.zoneHeight, offX: ZONE.worldOffsetX, offY: ZONE.worldOffsetY || 0,
+    bootId: Date.now().toString(36), retryMs: 2000,   // 다시 시도 창 = 사람 넘기 `fireHandoff` 의 2초(새 수 0)
+    now: () => Date.now(), later: (fn, ms) => { const t = setTimeout(fn, ms); return t; },
+    neighbors: () => _t1321Nb, findZoneAt: (ax, ay) => findZoneAt(ax, ay),   // 이웃 = zone-config 동서남북 · 바다 뺌(`xzone.neighborsOf` — 부팅 때 한 번 · 존 표는 안 변한다)
+    post: (zid, payload) => { const t = ZONES[zid]; if (!t) return Promise.reject(new Error('no zone ' + zid)); return postJSON(t.host, t.port, '/handoff_prepare', payload); },
+    mobs: {
+      add: (m) => { mobs.set(m.mid, m); chunkManager.insertMob(m); _t1321Chunk(m); broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null } }); },
+      remove: (m) => { const had = mobs.delete(m.mid); chunkManager.removeMob(m); if (had) broadcast({ type: 'mob_removed', mid: m.mid }); },
+    },
+    spawn: (b, peer) => {
+      const n = spawnMob(b.type, { x: b.x, y: b.y, hp: Math.max(1, +b.hp || 1), tameOwner: b.tameOwner || null, tameOwnerName: b.tameOwnerName || null,
+        tameProgress: b.tameProgress | 0, homeX: b.x + (+b.hx || 0), homeY: b.y + (+b.hy || 0), packId: b.pack || null });
+      n.vx = +b.vx || 0; n.vy = +b.vy || 0; n.wanderUntil = Date.now() + Math.max(0, +b.wl || 0); n.floor = b.floor | 0;
+      if (+b.maxHp > 0) n.maxHp = +b.maxHp;
+      //   고삐(주인 칸 둘)는 몹 행 넣기 문(`insertMob` — 종 · 자리 · hp 만)에 없다 — 같은 거래 안에서 바로 적는다(주기 저장 전에 존이 죽어도 길든 짐승으로 다시 뜬다)
+      if (n.tameOwner && n.dbId != null) db.updateMobState(n.dbId, n.x, n.y, n.hp, n.tameOwner, n.tameOwnerName);
+      _t1321Chunk(n);
+      broadcast({ type: 'mob_spawn', mob: { mid: n.mid, type: n.type, x: n.x, y: n.y, hp: n.hp, maxHp: n.maxHp, tameOwner: n.tameOwner || null, tameOwnerName: n.tameOwnerName || null } });
+      return n;
+    },
+    delRow: (m) => { if (m.dbId != null) db.deleteMob(m.dbId); },
+    tx: (fn) => db.t1321Tx(fn),
+    pendPut: (key, r) => db.t1321PendPut(key, r.mob, r.to, JSON.stringify(r.data)),
+    pendDel: (key) => db.t1321PendDel(key), pendAll: () => db.t1321PendAll(),
+    seenHas: (key) => db.t1321SeenHas(key), seenPut: (key) => db.t1321SeenPut(key),
+    typeOk: (type) => !!MOB_DEFS[type], faunaOut: (type) => require('./animals').faunaOut(type, ZONE_ID),
+    blocked: (x, y) => isTerrainBlockedLocal(x, y),
+    //   이웃 존 땅(띠 · 넘김 자리) — 지형 정본(`terrain.js`)의 그 존 술어 · 칸 가운데(존 `isRockTileLocal` 과 같은 칸 잡기) · 칸 메모(지형은 안 변한다)
+    peerBlocked: (zid, lx, ly) => {
+      const cx = Math.floor(lx / 32), cy = Math.floor(ly / 32), k = zid + ':' + cx + ',' + cy;
+      let v = _t1321Peer.get(k);
+      if (v === undefined) { try { const px = cx * 32 + 16, py = cy * 32 + 16; v = !!(_terrain.isRockCellLocal(zid, px, py) || _terrain.isWaterCellLocal(zid, px, py)); } catch (e) { v = false; } if (_t1321Peer.size > 200000) _t1321Peer.clear(); _t1321Peer.set(k, v); }
+      return v;
+    },
+    drain: () => _t1321DrainOn(),
+    log: (s) => console.log(`[${ZONE_ID}] 🐾 [T1321] ${s}`),
+  });
+  console.log(`[${ZONE_ID}] 🐾 [T1321] 짐승 넘김 문 켬 — 띠 ${HANDOFF_COMMIT}px · 이웃 ${_t1321Nb.join('·') || '없음'}${T1321_XZ_DRAIN0 ? ' · 비우기 켬(새 넘김 0)' : ''}`);
+}
+function _t1321DrainOn() { try { return SimVillages.t1321Drain ? !!SimVillages.t1321Drain() : T1321_XZ_DRAIN0; } catch (e) { return T1321_XZ_DRAIN0; } }
+//   띠(존 사각 밖)에 선 몸의 청크 = 변 안쪽 청크(띠는 이 존 몸의 자리다 — 청크 밖 칸 "-1_y" 는 활성에 안 들어 몸이 얼어붙는다) · 사각 안이면 종전 그 줄
+function _t1321Chunk(m) {
+  const W = ZONE.zoneWidth, HH = ZONE.zoneHeight;
+  if (m.x >= 0 && m.y >= 0 && m.x < W && m.y < HH) return chunkManager.updateMobChunk(m);
+  const ox = m.x, oy = m.y;
+  m.x = clamp(ox, 0, W - 1); m.y = clamp(oy, 0, HH - 1);
+  chunkManager.updateMobChunk(m);
+  m.x = ox; m.y = oy;
+}
+//   ★[T1321] 관측 — 문 셈 · 숨긴 짐승 · 줄(400 고리 끝 200) · 존 몹 종별 수(세계 표 · 야생 그림자 뺌) · 띠에 선 몸 · 죽음 · 다시 낳음 · 길든 짐승 넘어간 자리 줄
+function _t1321Perf() {
+  const by = {}; let band = 0, tame = 0, n = 0;
+  for (const m of mobs.values()) { if (m.isWild) continue; n++; by[m.type] = (by[m.type] | 0) + 1; if (m.tameOwner) tame++; if (m.x < 0 || m.y < 0 || m.x > ZONE.zoneWidth || m.y > ZONE.zoneHeight) band++; }
+  const D = _t1321Door ? _t1321Door.perf() : null;
+  return Object.assign({ on: T1321_XZ_BEAST, drain: _t1321DrainOn(), mobs: n, byType: by, band, tame, gone: _t1321Gone.size }, { stat: Object.assign({}, _t1321Stat) }, D || {});
+}
+//   ★[T1321 ④] 비우기 명령 — 안 문 `/handoff_prepare` `kind: 'drain'`(새 라우트 0) · `on: true|false` 면 켜고 끈다(마을 쪽 비우기와 한 칸) · 상태를 답한다:
+//     짐승 숨김 · 띠에 선 몸 · 교차 존 캐러밴(이 존 것이 저쪽에 · 저쪽 것이 이쪽에 · 답 기다림) — 넷이 0 이면 `done`(팔을 꺼도 되는 때)
+function _t1321DrainCmd(d) {
+  if (d && typeof d.on === 'boolean' && SimVillages.t1321SetDrain) SimVillages.t1321SetDrain(d.on);
+  let band = 0; for (const m of mobs.values()) if (!m.isWild && (m.x < 0 || m.y < 0 || m.x > ZONE.zoneWidth || m.y > ZONE.zoneHeight)) band++;
+  const hid = _t1321Door ? _t1321Door.hidden.size : 0;
+  let xz = null; try { xz = SimVillages.t1321DrainStatus ? SimVillages.t1321DrainStatus() : null; } catch (e) { xz = { err: e.message }; }
+  const on = _t1321DrainOn();
+  return { ok: true, zone: ZONE_ID, drain: on, beastHidden: hid, beastBand: band, xzone: xz, done: !!(on && hid === 0 && (!xz || xz.done)) };
+}
 function killCorpse(m, killerPid) {
   const c = spawnCorpse(m, killerPid);
   if (m._t1025Hunt && c) { c.huntAt = { x: m.x, y: m.y }; _t1025Corpse.deferred++; }
@@ -3659,14 +3756,19 @@ function killCorpse(m, killerPid) {
     //   행은 DB 에 그대로 둔다(지우지 않는다 · 끄면 돌아온다). 길들인 개체는 거르지 않는다. 끔이면 이 줄은 늘 false(옛 줄 그대로).
     const { faunaOut } = require('./animals');
     let _t622skip = 0;
+    //   ★[T1321] 켬 — 숨긴 채 답을 기다리던 짐승(보내는 존이 다시 떴다 · 숨김 줄 `t1321_pend`)은 세우되 곧바로 숨기고 같은 열쇠로 다시 민다 ·
+    //     띠(존 사각 밖)에 선 채 저장된 몸은 변 안쪽 청크에 싣는다(끔 = 이 두 칸이 null · 아래 줄 무동작)
+    const _t1321P = _t1321Door ? _t1321Door.bootPend() : null, _t1321Rows = _t1321P ? new Set() : null;
     for (const row of existing) {
       if (!row.tame_owner && faunaOut(row.type, ZONE_ID)) { _t622skip++; continue; }
-      spawnMob(row.type, {
+      const _m = spawnMob(row.type, {
         dbId: row.id, x: row.x, y: row.y, hp: row.hp,
         tameOwner: row.tame_owner || null,
         tameOwnerName: row.tame_owner_name || null,
       });
+      if (_t1321P) { _t1321Rows.add(row.id); const _pr = _t1321P.get(row.id); if (_pr) _t1321Door.bootHide(_m, _pr); else _t1321Chunk(_m); }
     }
+    if (_t1321P) { _t1321Door.bootOrphans(_t1321P, _t1321Rows); if (_t1321P.size) console.log(`[${ZONE_ID}] 🐾 [T1321] 숨긴 채 다시 뜬 짐승 ${_t1321P.size}마리 — 같은 열쇠로 다시 민다`); }
     console.log(`[${ZONE_ID}] DB에서 mob ${existing.length}마리 로드`);
     if (_t622skip) console.log(`[${ZONE_ID}] 🗾 T622 존 칸 — 이 존에서 없음인 종 ${_t622skip}마리는 안 실었다(DB 행은 그대로)`);
   } else if (ZONE.isOcean) {
@@ -3773,12 +3875,20 @@ function _t671Shape(p) {
   p._t1196J = undefined; p._t1196W = undefined;   // ★[T1196] 장인 몸이 든 작업표 번호 · 걸음 칸(villages.js `_t1196Step` — 손잡이 `T1196_ARTISAN_ACT` 켬 · 실제 몸 호스트에서만 값이 든다)
   p._t724Site = undefined; p._t724T = undefined;   // ★[T724] 광부 몸의 그날 셀 · 선 때(villages.js `_t724BodyStep` — 손잡이 `T724_MINE_ACT` 켬일 때만 값이 든다)
   if (T1140_STUCK_INLINE && !T1140_HOT_ORDER) { p._t1140Sx = undefined; p._t1140Sy = undefined; p._t1140Sa = undefined; }   // ★[T1140 ③-다] 막힘 칸 셋(차례 리터럴엔 이미 있다 · 끔 = 이 줄 무동작)
+  p._t1302Terr = undefined;   // T1302: physical territory clearing cargo
   p.oreLedger = undefined; p._t1180FullFish = undefined; p._t1181Haul = undefined; p._t1197M1 = undefined; p._t1197M0 = undefined; p._t1195At = undefined; p._t1212N = undefined; p._t1217H = undefined; p._t1217Stop = undefined;   /* ★[PM land1052 · T1220-K3] T1212 · T1217 몸 칸 셋 */   /* ★[PM land1050 · T1208-K4 회부 2] land1049 가 연 몸 칸 셋(T1197 끼니 · T1195 사냥) */   // ★[PM land1048 · T1188 · T1180 · T1181] 가지들이 보탠 몸 칸 셋 — 스폰 꼴에 미리(test-body-fields · 숨은 클래스 한 벌)
   if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ② · T1154] 어부 던짐 종의 지난 답(villages.js `_t1144SpGet` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)
   if (T1241_DES) p._des = undefined;   // ★[T1252] T1241 몸 토막(`_desBegin` · `_desEnd` — 손잡이 `T1241_DES` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
   if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
   if (_t316Econ && _t316Econ.T1243_FARM_ON) p._t1243S = undefined;   // ★[T1252] T1243 추신 14 손에 든 씨 몫(villages.js `_t1243Reaped` · `_t368Deliver` — econ 손잡이 `T1243_FARM_ON` 켬일 때만 서는 칸 · 끔 = 무동작)
   if (_t316Econ && _t316Econ.T1266_ORE_BODY) { p._t1266H = undefined; p._t1266Stop = undefined; }   // ★[PM land1067] T1266 광부 몸 한 시간 칸 · 멈춘 날(villages.js `_t1266Keep` — econ 손잡이 `T1266_ORE_BODY` 켬일 때만 서는 칸 · 끔 = 무동작 · test-body-fields 규약)
+  //   ★★[T1277 ③ · 날 52 CPU 뜀] `_granTask`(곳간 사다리 짐 길 — villages `_granGo`)도 이 켬 줄에 — T1266 켬이면 광부가 짐 상한(25 kg)을 날마다 채워 곳간에 간다(끔 판 곳간행 0 · 켬 판 날 12 부터).
+  //     그 몸만 `_granTask` 를 뒤에 붙여 모양이 갈렸다(몸 모양 셈 `t1277-observe` ④ — 날 12 넷째 모양) · 날 51 다섯째 모양이 서자 몸마다 짚는 자리(`_decOne` · `_wwPre` · `_moveOne`)가
+  //     메가모픽이 되어 하루 CPU 가 +60 초 뛰었다(T1271 회부 3). 값은 `undefined` 그대로 — 읽는 자리(`if (npc._granTask)` · `npc._granTask = null`)의 답 무변 · 판 날 줄 같음(보고 §3).
+  //   ★★[T1294 ② · T1277 회부 ②] **몸 모양 하나로** — 끔 판에서도 나중에 붙어 모양을 가르던 칸을 태어날 때 같은 차례로 `undefined`(값 그대로 · 읽는 자리 답 무변 —
+  //     `if (npc._granTask)` · `p.simCaravan` 참거짓 · `_bdtGid != null` · `!p.kgLedger` · `!npc._lastFishAt` · 몸 키를 도는 자리 0 — test-body-fields).
+  //     어부 `_lastFishAt`(184 몸 · 날 1 부터) · 캐러밴 `simCaravan` · 짐 장부 `kgLedger` · 곳간행 `_granTask`(종전 T1266 켬 줄에서 옮김) · 도적 `_bdtGid` · `_t1078Fed` · 길 세대 `_t1294G`(ⓐ 켬).
+  p._lastFishAt = undefined; p.simCaravan = undefined; p.kgLedger = undefined; p._granTask = undefined; p._bdtGid = undefined; p._t1078Fed = undefined; p._t1294G = undefined;
 }
 const T1144_LIFE_EVENT = process.env.T1144_LIFE_EVENT !== '0';   // ★[T1144 · T1154] villages.js 와 같은 손잡이(켬 기본 · `'0'` 만 끔) — 이 파일은 몸 칸 하나만
 // ★★[T1140 ③-가 2026-11-04 · 손잡이 `T1140_HOT_ORDER`(기본 끔 · `'1'` 만 켬 · 끔 = 아래 함수가 안 불린다 = 종전 글자)] **걸음 머리 칸을 x · y 곁에** — T791 회부 2 의 남은 몫.
@@ -3898,6 +4008,7 @@ function spawnNpc(opts = {}) {
   player.npcWorkY = opts.npcWorkY != null ? opts.npcWorkY : null;
   if (T671_SHAPE) _t671Shape(player);   // ★[T671 ②] 몸 모양 고정(끔 = 종전 그대로)
   if (T1145_XY_COLS) BC.alloc(player);   // ★[T1145] 몸 번호 = 칸 — 이 몸의 x · y 는 이제 열이 정본(끔 = 무동작)
+  if (T1322_PF) SS.install(player);   // ★[T1322] 첫 거름 칸(pid → 칸 · 몸 칸 0 · 끔 = 무동작)
   players.set(pid, player);
   npcs.add(pid);
 
@@ -4259,6 +4370,7 @@ function decideNpcBehavior(npc, now) {
   //     박자를 틱 수로 바꾸는 것은 세계를 바꾸는 일이라 카드 밖이다(보고 §3 · 회부).
   _diceNpc.seed(_SEED.seedOf(_shOf(npc), Math.floor(npc.x / BUILDING_SIZE), Math.floor(npc.y / BUILDING_SIZE), zoneGameDay(), _tick.n));
   npc.nextDecisionAt = now + 500 + _dn() * 1000;
+  if (npc.simVillageId && SimVillages.t1295S) { const _s = SimVillages.t1295S(npc); if (_s > 1) npc.nextDecisionAt = now + (npc.nextDecisionAt - now) / _s; }   // ★[T1295] 밭 세계 판 시계 농부 몸 = 결정 박자도 게임 분 축(같은 굴림 · 끔 · 운영 시계 = 이 줄 무동작)
   // ① 늑대 시야 안이면 도망 — quadtree로 후보 추리고 종류 필터
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(npc.x, npc.y, NPC_FLEE_RANGE) : Array.from(mobs.values());
   let nearestWolf = null, wolfDist = NPC_FLEE_RANGE;
@@ -4693,7 +4805,7 @@ function computeNpcPath(npc, now) {
     return [{ x: npc.targetX, y: npc.targetY }];
   }
   // A* — NPC당 최소 2초 간격
-  if (npc._lastAStarAt && now - npc._lastAStarAt < 2000) return null;
+  if (npc._lastAStarAt && now - npc._lastAStarAt < (isVil && SimVillages.t1295S ? 2000 / SimVillages.t1295S(npc) : 2000)) return null;   // ★[T1295] 같은 축(끔 · 운영 시계 = ÷ 1)
   npc._lastAStarAt = now;
   // ★★★[T381 ② 2026-09-25 · 못 갈 칸에는 길을 묻지 않는다] ★[T394 ④ 2026-09-26] **기본 켬** — 되돌림 `T381_PATH_DEAD=0`.
   //   ⚠T394 ③ 이 `localPath` 첫 줄을 `routePath` 와 같게 만든 뒤로는 **켬/끔이 같은 답**이다(둘 다 막힌 목표에 `null`).
@@ -5010,6 +5122,7 @@ function sepNpcs(dt) {
     if (hn) { const hl = Math.hypot(hx, hy); if (hl > 1e-9) { const hk = Math.min(1, Math.max(push, 2.5) / hl); mx += hx * hk; my += hy * hk; } }   // 몸 겹침 해소 최소 2.5px/틱(랩 0.08셀 동형) — 1×에서도 수 틱 내 단단히 풀림
     const pf = p.floor || 0;
     const nx = p.x + mx, ny = p.y + my;
+    if (T1322_PF) _t1322Touch(p);   // ★[T1322] 몸을 옮기기 전 — 첫 거름 표를 내린다(미룬 도장 = 옮기기 전 자리)
     if (!isTerrainBlockedLocal(nx, p.y) && !isBlockedByWall(nx, p.y, p.x, p.y, pf)) { if (T1145_XY_COLS) BC.wx(p, nx); else p.x = nx; }   // 물·벽 변으로는 안 밀림(성분별 취소) · ★[T1145] 켬 = 쓰기 길
     if (!isTerrainBlockedLocal(p.x, ny) && !isBlockedByWall(p.x, ny, p.x, p.y, pf)) { if (T1145_XY_COLS) BC.wy(p, ny); else p.y = ny; }
   }
@@ -5021,6 +5134,29 @@ let _t316Econ = null;
 //   ★★[T368 2026-09-25] **농부도** — `T368_FARM_ACT` 면 마을 농부는 관측자와 무관하게 걷는다(캐논 ⓑ① "항상 실걸음").
 //     술어는 여전히 **이 하나**다(둘째 술어 0 · 문 둘 — 결정·이동 — 이 같이 연다). 헤드리스의 농부 몫은 `villages.js` 가 끈다.
 //     ⚠직업은 생활층이 심는 그 칸(`simJob`)이다 — 농부가 다른 일로 바뀌면 그날부터 이 항이 거짓이다(새 규약 0).
+// ★★[T1295] 밭 세계 판 시계 농부 몸 — 걸음 · 길 다시 묻기를 게임 분 축으로(배율 s = `SimVillages.t1295S` · 1 이면 종전 그대로 · 까닭은 villages.js T1295 머리 줄).
+//   걸음: 그 틱의 걸음 거리 = 그 자리 빠르기(`_desSpeed` — 배회 배율 × 길 등급 × 개울 · T1241 사건 걸음과 같은 식) × dt × s 를 그 몸의 길(`npc.path` — 존 A* · 직선 문 답)
+//     점을 차례로 따라 쓴다(점을 지나면 다음 점 · 끝에 닿으면 선다 — 넘어 가지 않는다 · 길 밖으로 안 나간다 · 순간이동 0). 속도 칸은 0(이동 문이 다시 안 옮긴다).
+function _t1295Walk(p, dt, sub) {
+  const s = SimVillages.t1295S ? SimVillages.t1295S(p) : 1;
+  if (!(s > 1)) return false;
+  if (!sub && SimVillages.t1316K) { const K = SimVillages.t1316K(p, dt); if (K > 1) dt /= K; }   // ★[T1316 ③] 이동 문 몫 = 마지막 토막(dt ÷ K) — 앞 토막은 결정 문이 걸었다
+  p.vx = 0; p.vy = 0;
+  const P = p.path, M = P === p._t791P, n = P ? (M ? p._t791Pn : P.length) : 0;
+  if (!P || !(p.pathIndex < n)) return true;   // 갈 길 없음 — 선다
+  let x = _xyX(p), y = _xyY(p), left = dt, moved = 0;   // T1145 열이면 열에서(끔 = 몸 칸)
+  while (left > 0 && p.pathIndex < n) {
+    let wx, wy; if (M && p.pathIndex === 0) { wx = p._t791Px; wy = p._t791Py; } else { const w = P[p.pathIndex]; wx = w.x; wy = w.y; }
+    const dx = wx - x, dy = wy - y, d = Math.hypot(dx, dy), v = _desSpeed(x, y) * s;   // px/실초(게임 분 축)
+    if (!(v > 0)) break;
+    if (d <= v * left) { x = wx; y = wy; left -= d / v; moved += d; p.pathIndex++; }
+    else { const k = v * left / d; x += dx * k; y += dy * k; moved += v * left; left = 0; }
+  }
+  if (moved > 0) { _desPut(p, x, y); Roads.stampEntityPx(p, x, y); p.dirty = true; }
+  const S = SimVillages._t1295Stat; if (S) { S.walks++; S.walkPx += moved; }
+  return true;
+}
+function _t1295Stale(npc) { const s = (npc.simVillageId && SimVillages.t1295S) ? SimVillages.t1295S(npc) : 1; return s > 1 ? 5000 / s : 5000; }
 function _t316WalkAlways(npc) {
   if (!npc || !npc.simVillageId) return false;
   if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
@@ -5212,6 +5348,122 @@ function _desTry(npc, now) {
   npc._des = { k, t0: now, until, r, P, pi: npc.pathIndex, d, hp: npc.hp };
   _desStat.begin[k]++;
 }
+// ★★[T1294 ⓐ 2026-11-13 · µs 둘째] **도착해 서 있는 몸은 길을 다시 안 묻는다** — 손잡이 `T1294_ARRIVED_PATH`(끔 기본 · `'1'` 만 켬). (T1290 회부 2 ⓐ · T370 의 그 자리)
+//   종전: 길 끝에 닿은 몸은 목표가 같아도 틱마다 `computeNpcPath` → 한 점 길(같은 배열) → `pathIndex = 0` → `followNpcPath` 가 10px 안이라 다시 끝(`pathIndex = 1` · 속도 0).
+//   ① 바이트 같은 갈래 — 길 거울이 목표 한 점(같은 수) · 그 끝(`pathIndex === 1`) · 목표 10px 안 · 속도가 이미 +0 이면 다시 물어도 같은 배열 · 같은 끝 · 같은 속도 쓰기다
+//      (다른 것은 이 걸음만 읽는 `_pathAt` 하나 — 하네스 `test-t1294-perf` ① 이 종전 글자와 몸 칸 전부 같음을 본다). ⚠재 보니 이 갈래만으로는 µs 가 안 준다 —
+//      길 묻기의 몫은 셈이 아니라 그 몸 칸을 처음 짚는 몫이라 술어로 옮겨 갈 뿐이다(보고 T1294 §2). 그래서 이 갈래도 손잡이 뒤에 둔다(끔 = 종전 글자 그대로 돈다).
+//   ② 셈 바뀌는 갈래 — 길 끝 · 같은 목표 열쇠 · 목표 48px 안(`computeNpcPath` 의 한 점 갈래) · 지형 세대(콜라이더 · 다리 · 환호)가
+//      길을 지은 때와 같으면 다시 안 묻는다(10px 안으로 다시 걸어 들어가지 않고 선 자리에 선다 · 5초 만료도 안 깨운다).
+const T1294_ARRIVED_PATH = process.env.T1294_ARRIVED_PATH === '1';
+function _t1294Gen() { return collGenAll() * 8 + _t1294DitchGen; }
+const _t1294Stat = { strict: 0, knob: 0 };
+function _t1294Arrived(npc, targetKey) {
+  const P = npc.path; if (!P || npc._pathFor !== targetKey) return false;
+  const M = P === npc._t791P, n = M ? npc._t791Pn : P.length;
+  if (!(npc.pathIndex >= n)) return false;
+  if (M && n === 1 && npc.pathIndex === 1 && !T1145_XY_COLS && !T738_SOA_XY && Object.is(npc.vx, 0) && Object.is(npc.vy, 0)
+      && Object.is(npc._t791Px, npc.targetX) && Object.is(npc._t791Py, npc.targetY) && _t671Lt(npc.targetX - npc.x, npc.targetY - npc.y, 10)) { _t1294Stat.strict++; return true; }
+  if (T1294_ARRIVED_PATH && npc._t1294G === _t1294Gen() && typeof npc.targetX === 'number' && typeof npc.targetY === 'number' && _t671Lt(npc.targetX - npc.x, npc.targetY - npc.y, 48)) { _t1294Stat.knob++; return true; }
+  return false;
+}
+// ★★[T1322 2026-11-15 · µs 넷째 · 손잡이 `T1322_PREFILTER`(★[T1323 · 재민 11-15] 켬 기본 · `'0'` 끔 · `'verify'` 켬 + 거를 때마다 몸을 열어 견줌)] **서 있는 몸은 몸 객체를 안 연다** — T1314 회부 1 · 3.
+//   진단(보고 T1322 §1): 결정 문이 닫힌 몸의 걸음 문은 낮 62 % 가 **도장만**(`_t540StepAt` · `_pathAt` · `_stuckPos` 시각 — 서 있는 몸 · 길 끝 한 점 · 목표 10px 안 · 속도 +0)이다.
+//     그 몸도 틱마다 pid → 몸 찾기 · 몸 칸 ≈ 30 짚기(줄 넷 + 몸 밖 `_stuckPos`)를 한다 — 미세 판(`scripts/t1322/bench-warm.js`): 몸 연 꼴 262 ns/몸 · 열만 보고 거른 꼴 88 ns/몸(거름 62 %).
+//   켬: ⓐ 진짜 걸음을 마친 몸이 서 있는 몸이면 표(`_t1322Grant` — 다음 걸음 문이 도장만 찍을 조건 전수 · 아래 `_t1322State`).
+//       ⓑ 다음 틱 결정 문 고리는 pid → 칸(`Map` — 몸을 안 짚는다)으로 열만 본다: 결정 시각 전 · 지난 틱에도 봤다 · (표 2) 해 질 녘 전이면 건넌다(`_t1322Skip` · 미룬 도장 시각만 적는다).
+//       ⓒ 그 밖이면(또는 몸을 옮기는 쓰기 · 체력 문 앞에서 `_t1322Touch`) 미룬 도장을 몸에 쓰고(마지막 건넌 시각 · 그 자리) 표를 내린다 → 종전 걸음 문.
+//   같은 답인 까닭: 건넌 틱의 걸음 문(종전 글자)이 썼을 것은 도장 셋뿐이고(`_stuckN` · 길 · 길 번호 · 열쇠 · 속도는 이미 그 값) 그 셋을 읽는 곳은
+//     다음 진짜 걸음(막힘 · 길 만료)과 관측(`/walkdbg` — 들어올 때 전부 쓴다)뿐이다 — 다음 진짜 걸음 앞에서 같은 값이 된다. 몸 칸은 안 늘었다(칸 번호는 모듈 `Map`).
+//   ⚠전제: 표가 산 동안 걸음 문 밖에서 그 몸의 판정 칸(결정 시각 · 목표 · 길 · 자리 · 속도 · 행동 · 체력 …)을 바꾸는 쓰기가 없다. 정적 쓰기 자리 전수는 보고 §2(561 자리)라
+//     전부를 문으로 옮기지 않았다 — 다섯 갈래(밀기 · 걸음 뒷일 · 체력 문/되살림 · 구조 · 생활층 대피 · 직업 바꿈 — 뒤 둘은 deps `t1322Touch`)만 쓰기 앞에서 표를 내린다. `verify` 가 거를 때마다 몸을 열어 종전 걸음 문 머리 글자로 다시 판정해
+//     어긋남을 센다(어긋나면 그 몸은 종전 걸음 문 — 견줌 판은 늘 종전 답). 기본 켬은 PM 판정(회부).
+//   켜지는 조건: 다른 손잡이가 걸음 문 글자를 바꾸지 않을 때만(T738 · T791 견줌 · T1140 · T1145 · T370 · T1294 ⓐ · T1241 사건 갈래 · T670 끔 · T791 거울 끔이면 무동작).
+const SS = require('./stand-skip');
+const T1322_PF = SS.ON && !T738_SOA_XY && T670_SKIP_IDLE && !T791_VERIFY && !T1140_STUCK_INLINE && !T1145_XY_COLS && !T370_PATH_REUSE && !T1294_ARRIVED_PATH && T791_PATH_MIR && !T1241_DES && process.env.T1316_SUBSTEP !== '1';   // ★[T1323] T1316 토막 걸음(한 틱 여러 걸음 · 끔 기본) 켬 판엔 무동작
+const T1322_VERIFY = T1322_PF && SS.VERIFY;
+// 서 있는 몸 — 다음 걸음 문(결정 문이 닫혀 있을 때)의 막힘 · 길 · 따라가기 · 도착 뒤가 도장만 찍는 몸 칸 상태(종전 글자를 그대로 따라간 조건 · 읽기만)
+function _t1322State(npc) {
+  if (npc.canadiaVillage || !(npc.hp > 0) || npc.floor || npc.onStairId || npc.canadiaTask === 'traveling') return false;
+  const b = npc.behavior;
+  if (b === 'fight' || b === 'plant' || (b === 'gather' && npc.gatherTarget) || (b === 'harvest' && npc.harvestTarget)) return false;   // 도착 뒤 행동이 없는 몸
+  const tx = npc.targetX, ty = npc.targetY;
+  if (typeof tx !== 'number' || typeof ty !== 'number') return false;
+  const P = npc.path;   // 길 끝 한 점(거울) — `computeNpcPath` 가 같은 배열을 돌려주는 갈래 · `followNpcPath` 가 0 → 1 로 끝내는 갈래
+  if (!P || P !== npc._t791P || npc._t791Pn !== 1 || npc.pathIndex !== 1 || !Object.is(npc._t791Px, tx) || !Object.is(npc._t791Py, ty)) return false;
+  if (!_t671Lt(tx - npc.x, ty - npc.y, 10)) return false;   // 따라가기 도착(10) ⇒ 막힘 서 있음(12) · 한 점 길 갈래(48)
+  if (tx !== npc._t670TkX || ty !== npc._t670TkY || npc._pathFor !== npc._t670Tk) return false;   // 목표 열쇠 · 길 열쇠 그대로
+  if (npc._stuckN !== 0 || !Object.is(npc.vx, 0) || !Object.is(npc.vy, 0)) return false;          // 걸음 문이 다시 쓸 값과 같다
+  const S = npc._stuckPos; if (!S || typeof S !== 'object') return false;
+  return true;
+}
+// 표 — 진짜 걸음을 마친 몸(몸이 뜨거울 때)
+function _t1322Grant(npc, now) {
+  const s = SS.slot(npc.pid); if (s < 0 || SS.own[s] !== npc) return;
+  const A = SS.A; A.VT[s] = _tick.n; A.TK[s] = 0;
+  const nda = npc.nextDecisionAt;
+  if (typeof nda !== 'number' || !(now < nda) || !_t1322State(npc)) return;
+  if (npc.simEvacUntil && now < npc.simEvacUntil) return;   // 대피 갈래 — 끝난(지난) 대피만(시각은 앞으로만 간다)
+  if (!_t316WalkAlways(npc)) return;                          // 결정 문 고리의 활성 청크 거름이 늘 통과하는 몸만
+  let kind = 1, lon = 0, w95 = 0;
+  if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null) {   // 밤 귀가 갈래에 드는 몸 — 침대 목표 그대로면 어느 시각에도 무동작(표 1) · 아니면 해 질 녘에 깨운다(표 2)
+    const bx = npc.npcBedX ?? npc.npcHomeX, by = npc.npcBedY ?? npc.npcHomeY;
+    if (!(Object.is(npc.targetX, bx) && Object.is(npc.targetY, by) && npc.behavior === 'wander' && npc.gatherTarget === null)) {
+      kind = 2; lon = npc.simLonOff; if (typeof lon !== 'number') return;
+      w95 = SimVillages.t1295Wp && SimVillages.t1295Wp(npc, now) != null ? 1 : 0;
+    }
+  }
+  A.TK[s] = kind; A.NDA[s] = nda; A.LON[s] = lon; A.W95[s] = w95; A.SK[s] = NaN; A.SX[s] = npc.x; A.SY[s] = npc.y; SS.stat.grant++;
+}
+// 미룬 도장 — 건넌 틱의 걸음 문이 썼을 값(마지막 건넌 시각 · 표를 준 자리)
+function _t1322Wake(s) {
+  const A = SS.A, t = A.SK[s];
+  if (t === t) { const p = SS.own[s]; p._t540StepAt = t; const S = p._stuckPos; S.x = A.SX[s]; S.y = A.SY[s]; S.at = t; p._pathAt = t; SS.stat.stamp++; }
+  A.TK[s] = 0; A.SK[s] = NaN; SS.stat.wake++;
+}
+function _t1322Touch(p) { const s = SS.slot(p.pid); if (s >= 0 && SS.own[s] === p && SS.A.TK[s]) { _t1322Wake(s); SS.stat.touch++; } }
+function _t1322FlushAll() { const A = SS.A, n = SS.count(); for (let s = 0; s < n; s++) if (A.TK[s]) _t1322Wake(s); SS.stat.flushAll++; }
+// 해 질 녘(표 2) — 걸음 문 밤 귀가 갈래의 해 몫 식 그대로(`_t670Ph` 틱 메모 · 판 시계 몸은 판 하루 축)
+let _t1322PhNow = NaN, _t1322Ph95 = 0;
+function _t1322Dusk(s, now) {
+  const A = SS.A;
+  let ph;
+  if (A.W95[s]) { if (now !== _t1322PhNow) { _t1322PhNow = now; _t1322Ph95 = SimVillages.t1295Ph(now); } ph = _t1322Ph95; }
+  else { if (now !== _t670PhNow) { _t670PhNow = now; _t670Ph = worldPhase(now); } ph = _t670Ph; }
+  const lon = A.LON[s], fv = T720_LON_DAY ? phaseAdd(ph, lon) : (ph + lon) % 1;
+  return fv > WORLD.dayPhaseRatio;
+}
+// 거름 — 결정 문 고리가 몸을 열기 전(pid → 칸). 참 = 이번 틱 걸음 문을 건넌다(도장 시각만 적는다). 거짓 = 표를 내렸다(미룬 도장은 몸에) → 종전 길.
+function _t1322Skip(s, pid, now) {
+  const A = SS.A, k = A.TK[s];
+  if (!k) return false;
+  const why = players.get(pid) !== SS.own[s] ? 'gone' : A.VT[s] !== _tick.n - 1 ? 'gap' : !(now < A.NDA[s]) ? 'due' : (k === 2 && _t1322Dusk(s, now)) ? 'dusk' : null;
+  if (why) { SS.stat[why]++; _t1322Wake(s); return false; }
+  if (T1322_VERIFY && !_t1322Check(SS.own[s], s, now)) { _t1322Wake(s); return false; }
+  A.SK[s] = now; A.VT[s] = _tick.n; SS.stat.skip++;
+  return true;
+}
+// `verify` — 건너려는 몸을 열어 종전 결정 문 고리 · 걸음 문 머리 글자로 다시 판정(읽기만 · 어긋나면 그 몸은 종전 길)
+function _t1322Check(npc, s, now) {
+  const st = SS.stat; st.vchecks++;
+  const bad = (w) => { st.bad++; st.why[w] = (st.why[w] || 0) + 1; if (st.ex.length < 8) st.ex.push(`${npc.pid} ${w} t=${now}`); return false; };
+  if (!(npc.hp > 0)) return bad('hp');
+  if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) return bad('inactive');
+  if (npc.canadiaVillage || !(now < npc.nextDecisionAt)) return bad('gate');
+  if (!Object.is(npc.nextDecisionAt, SS.A.NDA[s])) return bad('nda');
+  if (!Object.is(npc.x, SS.A.SX[s]) || !Object.is(npc.y, SS.A.SY[s])) return bad('moved');
+  if (npc.simEvacUntil && now < npc.simEvacUntil && npc.behavior !== 'fight' && npc.npcHomeX != null) return bad('evac');
+  if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null && npc.behavior !== 'fight') {
+    const _w95 = SimVillages.t1295Wp ? SimVillages.t1295Wp(npc, now) : null, ph = _w95 != null ? _w95 : worldPhase(now);
+    const fv = T720_LON_DAY ? phaseAdd(ph, npc.simLonOff) : (ph + npc.simLonOff) % 1;
+    if (fv > WORLD.dayPhaseRatio && !(npc._t720 && npc._t720.k)) {
+      const bx = npc.npcBedX ?? npc.npcHomeX, by = npc.npcBedY ?? npc.npcHomeY;
+      if (!Object.is(npc.targetX, bx) || !Object.is(npc.targetY, by) || npc.behavior !== 'wander' || npc.gatherTarget !== null) return bad('night');
+    }
+  }
+  if (!_t1322State(npc)) return bad('state');
+  return true;
+}
 function npcStep(npc, dt, now) {
   if (T738_SOA_XY) _t738Adopt(npc);   // ★[T738] 끔 = 종전 그대로
   npc._t540StepAt = now;   // ★[T540 관측] 이 몸이 마지막으로 걸음 문을 받은 때(`/walkdbg stepAge` — 새벽 멎음을 이것으로 잡았다)
@@ -5230,7 +5482,8 @@ function npcStep(npc, dt, now) {
   else if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null && npc.behavior !== 'fight') {
     // ★[T670 ①] `worldPhase(now)` 는 `now` 의 순수 함수다 — 틱 안의 `now` 는 모두 같으므로 틱당 한 번만 셈한다(같은 값 · 같은 비트).
     if (now !== _t670PhNow) { _t670PhNow = now; _t670Ph = worldPhase(now); }
-    const fv = T720_LON_DAY ? phaseAdd(_t670Ph, npc.simLonOff) : (_t670Ph + npc.simLonOff) % 1;   // ★[T720] 켬 = 음수 경도 몫도 [0,1)
+    const _w95 = SimVillages.t1295Wp ? SimVillages.t1295Wp(npc, now) : null, _ph95 = _w95 != null ? _w95 : _t670Ph;   // ★[T1295] 켬(판 시계 밭 몸) = 해 몫도 판 하루 축(끔 · 운영 시계 = 종전 `_t670Ph`)
+    const fv = T720_LON_DAY ? phaseAdd(_ph95, npc.simLonOff) : (_ph95 + npc.simLonOff) % 1;   // ★[T720] 켬 = 음수 경도 몫도 [0,1)
     if (fv > WORLD.dayPhaseRatio && !(npc._t720 && npc._t720.k)) {   // ★[T720 ③] 해 질 녘 곳간 정산 중인 몸은 그 걸음이 먼저(끔이면 칸이 없다 = 종전)   // ★[침대 진입] 밤 목표=실내 침대(npcLifeTick과 동일 — 두 게이트가 침대/마당으로 갈라지면 왕복 진동). 자리 분산은 1인 1침대(BED_SLOTS)가 실체로 보장
       // ★[T670 ①] 같은 값이면 다시 쓰지 않는다(쓰는 순서·값 그대로 — 같은 값 덮어쓰기는 아무것도 안 바꾼다)
       const _bx = npc.npcBedX ?? npc.npcHomeX, _by = npc.npcBedY ?? npc.npcHomeY;
@@ -5311,7 +5564,7 @@ function npcStep(npc, dt, now) {
   const targetKey = npc._t670Tk;
   const needPath = !npc.path || npc.pathIndex >= (npc.path === npc._t791P ? npc._t791Pn : npc.path.length) ||   // ★[T791 ②] 길 거울(끔 = 배열 길이 그대로)
                    npc._pathFor !== targetKey ||
-                   (npc._pathAt && now - npc._pathAt > 5000);
+                   (npc._pathAt && now - npc._pathAt > _t1295Stale(npc));   // ★[T1295] 같은 축(끔 · 운영 시계 = 5000 그대로)
   // ★★★[T370 ② 2026-09-23 · 경로를 두 번 묻지 않는다] `T370_PATH_REUSE=1` 일 때만.
   //   T356 이 "낮에 A* 가 틱마다 899명(61 %)" 을 냈고, T370 ① 이 **왜**를 세었다:
   //   그중 **98.8 %가 `pathIndex >= length`** 다 — 경로 끝에 닿은(=도착한) 주민이, 목표도 안 바뀌고
@@ -5324,13 +5577,15 @@ function npcStep(npc, dt, now) {
   const _skip = T370_PATH_REUSE && needPath
                 && npc.path && npc.pathIndex >= npc.path.length
                 && npc._pathFor === targetKey
-                && !(npc._pathAt && now - npc._pathAt > 5000);
+                && !(npc._pathAt && now - npc._pathAt > _t1295Stale(npc))
+                || (T1294_ARRIVED_PATH && needPath && _t1294Arrived(npc, targetKey));   // ★[T1294 ⓐ 켬] 도착해 서 있는 몸(위 `_t1294Arrived` 머리말 · 끔 = 첫 항에서 단락)
   if (needPath && !_skip) {
     const p = computeNpcPath(npc, now);
     npc.path = p || [{ x: npc.targetX, y: npc.targetY }]; // 못 찾으면 beeline
     npc.pathIndex = 0;
     npc._pathFor = targetKey;
     npc._pathAt = now;
+    if (T1294_ARRIVED_PATH) npc._t1294G = _t1294Gen();   // ★[T1294 ⓐ 켬] 이 길을 지은 때의 지형 세대(끔 = 이 줄 무동작)
     if (T791_PATH_MIR) _t791Mir(npc);   // ★[T791 ②] 길 거울 — 새 배열이면 길이 · 첫 점을 몸 칸에 비춘다(같은 배열이면 안 읽는다)
   }
   const arrived = followNpcPath(npc, speedMult);
@@ -5783,6 +6038,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★★[T942] 몸 HP 문 — 마을 몸(NPC)의 HP 도 사람 문 그 함수(`setHp` · T109 "HP 를 바꾸는 문 하나" · 사본 0)로 쓴다(생활층 요양 · 전쟁 거울 · 포로 · 풀림 ·
   //   원정 굶음 · 캐러밴 죽음 · 다시 뜬 판 복원). NPC 몸은 소켓이 없고(`ws: null`) 마을 낱말은 방송 낱말(`HP_PEER`)이 아니라 메시지 0 = 종전.
   setHp,
+  t1322Touch: T1322_PF ? _t1322Touch : null,   // ★[T1322] 걸음 문 밖에서 몸 판정 칸을 바꾸는 생활층 자리(대피)가 쓰기 앞에 부른다(끔 = null · 무동작)
   t325CutTreeAt: (cx, cy) => _t325CutTreeAt(cx, cy),
   // ★[T325] 전리품 표는 존이 쥔다 — 생활층은 "이 그루가 목재 몇 낱개냐"만 묻는다(사본 0)
   t325LootOf: (r) => lootOfResource(r),
@@ -5791,7 +6047,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   stoneHit: (npc,r) => _physicalStoneHit(npc,r),
   t312DrawFishAt: (cx,cy,kg,now) => { const want=kg/(Fishing.T1218_FISH_CANON?Fishing.kgPerStock(isSeaTileLocal(cx*BUILDING_SIZE+BUILDING_SIZE/2,cy*BUILDING_SIZE+BUILDING_SIZE/2)?'sea':'fresh'):Fishing.CFG.KG_PER_STOCK);return Fishing.drawWholeStock(cx,cy,want,now,_fishSave)>=want-1e-12; },   // ★[T1218] 켬 = 그 물 종류의 kg   // T1180: 사람과 같은 어장·환산·저장 문
   t1217DrawFish: (cx, cy, perStock, n, now, kFn) => Fishing.drawBucketFish(cx, cy, perStock, n, now, kFn, _fishSave),   // ★[T1217 ②-b] 마을 어부(몸 · 일괄)의 마리 — 버킷 장부 · 같은 저장 문(온전한 마리 n 까지)
-  t312FishTargetAt: (p,spot) => _castTargetFor(p,spot),
+  t312FishTargetAt: (p,spot) => _t1294Cast(p,spot),   // ★[T1294 ⓑ] 같은 자리 · 같은 지형 세대면 지난 답(바이트 같음 · 켬 = 칸 열쇠)
   t312FishSpotAt: (x,y) => Fishing.spotAt(_terrain,ZONE_ID,x,y,_fishSea()),
   // ★[T347] 채집 행위 — 문 둘 + 전리품 표 하나. 재생 문(`t341Unharvest`)은 **위 그것을 그대로 쓴다**(사본 0).
   //   ⚠`t347LootOf` 는 `{ day }` 를 넘긴다 — 야생 채종이 계절 정본을 지나게(주사위 0 · `_t347PickAt` 과 같은 ctx).
@@ -6023,6 +6279,9 @@ VillageView.init({ SimVillages, Membership, VillageKin, send, players, get jobKo
 //   ⚠`gameDay` 를 일부러 안 넘긴다 — 부재 시계는 **실시간**이고 세계의 시간이 아니다(claims.js 제3 규약).
 Claims.init({ claims, buildings, players, db, central, broadcast, ZONE_ID, BUILDING_SIZE });
 Claims.start();
+// ★[T1305] 접속 중인 사람의 날 바뀜(자정을 넘겨 접속해 있는 사람) — 존 틱에 안 얹는다. 끔 = 타이머 0.
+if (Deeds.ON) { const _t1332D = setInterval(() => { const _n = Date.now(); for (const p of players.values()) { if (p && !p.isNpc && p.playerId) { try { _t1332Dwell(p, _n); } catch (e) {} } } }, Math.max(1000, Deeds.CFG.DWELL_MS / 4)); if (_t1332D.unref) _t1332D.unref(); }   // ★[T1332 ②] 머묾 — 연속 `DWELL_MS`(재는 간격 = 그 4분의 1 · 유도)
+if (Deeds.ON) { const _t1305T = setInterval(() => { const _n = Date.now(); for (const p of players.values()) { if (p && !p.isNpc && p.playerId) { try { _t1305Day(p, _n); } catch (e) {} } } }, Deeds.CFG.TICK_MS); if (_t1305T.unref) _t1305T.unref(); }
 
 // ★[T19 2026-09-02] 이방인 받기 — **이미 있는 것만 넘긴다**(사본 금지).
 //   ⚠`holdDays` 는 T45 가 정한 "자리를 비웠다"의 선이다. 여기서 새 수를 만들지 않는다(축이 하나다).
@@ -6317,6 +6576,7 @@ const server = http.createServer((req, res) => {
       forage: (() => { try { return SimVillages.foragePerf ? SimVillages.foragePerf() : null; } catch (e) { return null; } })(),   // ★[T347] 채집 관측(끔이면 null)
       farm: (() => { try { return SimVillages.farmPerf ? SimVillages.farmPerf() : null; } catch (e) { return null; } })(),   // ★[T368] 농부 관측(끔이면 null)
       xzone: (() => { try { return SimVillages.xzonePerf ? SimVillages.xzonePerf() : null; } catch (e) { return null; } })(),   // ★[T533] 존 경계 관측(팔 끔이면 null)
+      ...(T1321_XZ_BEAST ? { t1321: _t1321Perf() } : {}),   // ★[T1321] 짐승 넘김 관측(켬만 칸 · 끔 = 칸 없음)
       vein: { saves: _oreSaveN, npcSaves: _oreSaveNpc, cells: minedCells.size, batch: _vein ? _vein.stats() : null, digest: _vein ? _veinDigest() : null },   // ★[T735] 광맥 장부 쓰기 문 · 모아 쓰기(켬만)
       tick: Object.assign({}, _tick, { ms: _tickMsStats(_rst), on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
         lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
@@ -6520,6 +6780,7 @@ const server = http.createServer((req, res) => {
   // ★[T540] 주민 걸음 관측창(안 문) — 침대 곁 아침 정체를 **서버 값으로** 가른다. 읽기만(`&astar=1` 이면 A* 를 한 번 더 묻는다 · 목표 불변).
   //   `?bed=1` = 침대 곁(≤12px) 주민만 · `?vid=<n>` = 한 마을 · 기본 = 마을 주민 전부(가벼운 칸만).
   if (req.url && req.url.startsWith('/walkdbg') && req.method === 'GET') {
+    if (T1322_PF) _t1322FlushAll();   // ★[T1322] 미룬 도장을 몸에(관측 칸 `_t540StepAt` 이 종전 값)
     if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     try {
@@ -6677,6 +6938,8 @@ const server = http.createServer((req, res) => {
         if (data && data.kind != null && data.kind !== 'player') {   // ★[T533] 사람 아닌 짐 — 종전 갈래(아래)는 한 글자도 안 탄다
           let st = 200, out;
           if (data.kind === 'caravan' || data.kind === 'snap') out = SimVillages.xzoneReceive ? SimVillages.xzoneReceive(data) : null;
+          else if (data.kind === 'beast' && T1321_XZ_BEAST) { try { out = _t1321Door.receive(data); } catch (e) { st = 500; out = { ok: false, why: 'err ' + e.message }; } }   // ★[T1321] 짐승 — 열쇠 · 거름 · 세우기(끔 = 아래 '모르는 종류' 400 — 보낸 존이 드러낸다)
+          else if (data.kind === 'drain' && SimVillages.t1321DrainCmd) out = _t1321DrainCmd(data);   // ★[T1321 ④] 비우기 명령(안 문 · 켜기 · 끄기 · 상태)
           else if (data.kind === 'army') out = { ok: false, why: 'army — 칸만 예약(셋째 카드)' };
           else if (data.kind === 'drop' && T1092_HANDOFF_BACK) out = _t1092Drop(data);   // ★[T1092] 보낸 존 ACK 시한 — 그 토큰을 놓는다(`_t1092Drop`)
           else { st = 400; out = { ok: false, why: 'unknown kind' }; }
@@ -6790,6 +7053,7 @@ const server = http.createServer((req, res) => {
           if (p) {
             players.delete(entry.pid);
             broadcast({ type: 'player_left', pid: entry.pid });
+            if (T1321_XZ_BEAST && entry.to && entry.at) { _t1321Gone.set(p.playerId, { x: entry.at.x, y: entry.at.y, to: entry.to, at: Date.now() }); _t1321Stat.gone++; }   // ★[T1321] 주인이 넘어간 자리 — 길든 짐승이 그 자리로 걸어 띠를 건넌다
             // Phase 5-K3: ws를 닫지 않고 observer로 전환 — 클라가 이 zone을 fresh observer로
             // 재구독하면 observer welcome이 건물 전체를 다시 보내 끊김 발생. 연결을 유지하면
             // 재구독·full welcome이 없어지고, 이 observer ws는 promote 핸들러를 가지므로
@@ -7522,6 +7786,7 @@ async function _acceptConnection(ws, req, C) {
   //   안 가져간 것만 — 가져간 셀은 이미 주인이 바뀌어 이 순회에 안 잡히므로 **구조적으로 저절로** 그렇다.
   //   여기 두는 이유: 부재 배치는 30분에 한 번 도는데, 사람은 접속한 그 순간 자기 땅을 본다.
   try { const _rc = Claims.onPlayerActive(player); if (_rc) console.log(`[${ZONE_ID}] 🏠 ${name} 복귀 — 맡겨 둔 사유지 ${_rc}칸 반환`); } catch (e) {}
+  if (Deeds.ON) { try { _t1305Day(player, Date.now(), true); } catch (e) {} }   // ★[T1305] 오늘 처음 들어왔으면 하루를 센다 · 이 존 칸은 늘 다시 잰다(사유지 낡음)
 
   // 활성 청크 즉시 갱신 — 이 player 주변 청크의 시드 자원 spawn → welcome.resources에 포함됨
   updateActiveChunks();
@@ -7670,6 +7935,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T970_CUT_NEAR !== '0' ? { cutNear: true } : {}),   // [T970 · ★T981 켬 기본 — PM 10-28] 클라 산 가르기 붙듦(`_mtCutHold` — 가르기 조각을 만든 띠)을 카메라 둘레(이번 판 산 수집 창의 청크 · 그 청크의 지금 띠)만 남긴다(11-r1-mountain `_mtCutHoldSweep` · 상한 64/48 그대로) · 되돌림 `T970_CUT_NEAR=0` 이면 칸이 없다(옛 welcome · 종전 붙듦)
       ...(process.env.T981_MT_NEAR !== '0' ? { mtNear: true } : {}),   // [T981 · ★T997 켬 기본 — PM 10-29] 클라 산 굽다 만 청크(`_mt3Jobs`)를 이번 판 산 수집 창 것만 남기고 · 가르기 붙듦이 비면 가르기 판 둘(`_mtMaskCv` · `_mtStripCv`)을 만들 때 크기로 되돌린다(11-r1-mountain `_mtNearSweep` · T970 회부 2) · 되돌림 `T981_MT_NEAR=0` 이면 칸이 없다(옛 welcome · 종전 그대로)
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
+      ...(Deeds.ON ? { deeds: { fade: Deeds.CFG.FADE_D, free: Deeds.CFG.FREE_D, chunk: Deeds.CFG.CHUNK, base: Deeds.CFG.BASE, dwellS: Math.round(Deeds.CFG.DWELL_MS / 1000) } } : {}),   // [T1305] 사유지 돌봄 — 클라 사유지 패널이 숫자 상한 대신 낡음을 보인다(끔 = 칸 없음)
       ...(VillageKin.ON ? { villageOnly: true } : {}),   // [T787] 길드 = 마을(켬 기본) — 클라 무리 패널이 마을 패널이 된다 · `T785_VILLAGE_ONLY=0` 이면 칸이 없다(옛 길드 패널)
       ...(process.env.T839_SITE_EXIT !== '0' ? { siteExit: true } : {}),   // [T839 · ★T850 켬 기본 — PM 10-22] 터를 놓으면 건축 모드를 끈다(다섯 터 · 클라 `30-n-net.js`) — 되돌림 `T839_SITE_EXIT=0` 이면 칸이 없다(옛 welcome · 건축 모드가 남는다)
       ...(T509_WELL ? { wellAct: true } : {}),   // [T557] 우물 터 잡기 버튼 — 기본 켬 · `T509_WELL=0` 이면 칸이 없어 버튼이 숨는다   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
@@ -7768,6 +8034,13 @@ function handlePlayerInput(player, raw) {
   let msg;
   try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
   const ws = player.ws;
+  // ★[T1332 ②] 켬 — 쓰는 사건(`T1332_USE`)은 감싸서 짐이 바뀌었으면(실제로 한 일) 그 자리 청크를 돌본다. 끔 = 이 줄 안 돈다.
+  if (Deeds.ON && !player._t1332In && T1332_USE.has(msg.type)) {
+    const _sg = _t1332Sig(player); player._t1332In = true;
+    try { handlePlayerInput(player, raw); } finally { player._t1332In = false; }
+    if (_t1332Sig(player) !== _sg) { try { _t1332Use(player, player.x, player.y, msg.type); } catch (e) {} }
+    return;
+  }
 
   // Phase 14.41: 다운 중엔 부활/구조/ping/chat만 허용
   if (player.isDown) {
@@ -8034,6 +8307,23 @@ function handlePlayerInput(player, raw) {
     const vil = SimVillages.villageByDbId && SimVillages.villageByDbId(msg.vid | 0);
     if (vil && vil.econ) { vil.econ.founder = player.playerId; if (vil._kin) vil._kin = Object.assign({}, vil._kin, { chief: player.playerId }); }
     send(player.ws, { type: 'notice', text: vil ? `시험: ${vil.name} 촌장이 되었습니다.` : '시험: 그런 마을이 없습니다.' });
+  }
+  else if (E2E_GIVE && msg.type === '__e2e_beast') {
+    // ★[T1321] 테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 짐승을 세운다(판 꾸밈: 이음매 곁 야생 몸 · 이 사람의 길든 짐승). 자리 = 준 자리(존 로컬) 또는 이 사람 곁 ·
+    //   n 마리를 반경 r 원 위에 고르게(굴림 0) · 종은 MOB_DEFS 의 것만 · `tame` 이면 고삐 = 이 사람(정본 길들이기 `tryFeed` 가 세우는 두 칸 그대로).
+    const def = MOB_DEFS[msg.kind]; const n = Math.max(1, Math.min(50, msg.n | 0 || 1)), r = Math.max(0, +msg.r || 0);
+    const cx = Number.isFinite(+msg.x) ? +msg.x : player.x, cy = Number.isFinite(+msg.y) ? +msg.y : player.y;
+    const made = [];
+    if (def) for (let i = 0; i < n; i++) {
+      const a = 2 * Math.PI * i / n, x = clamp(cx + Math.cos(a) * r, 0, ZONE.zoneWidth), y = clamp(cy + Math.sin(a) * r, 0, ZONE.zoneHeight);
+      if (isTerrainBlockedLocal(x, y)) continue;   // 바위 · 물 칸엔 안 세운다(그 칸은 건너뛴다)
+      const m = spawnMob(msg.kind, { x, y, ...(msg.tame ? { tameOwner: player.playerId, tameOwnerName: player.name } : {}) });
+      if (msg.tame) { m.tameProgress = def.tameNeed || 0; m.dirty = true; }
+      if (msg.vx || msg.vy) { m.vx = +msg.vx || 0; m.vy = +msg.vy || 0; m.wanderUntil = Date.now() + Math.max(0, +msg.ms || 10000); }   // 판 꾸밈 — 그 쪽으로 곧장 걷게(배회 시각을 미룬다 · 배회 문 그대로)
+      broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null } });
+      made.push({ mid: m.mid, dbId: m.dbId, x: Math.round(m.x), y: Math.round(m.y) });
+    }
+    send(player.ws, { type: 'notice', text: `🧪 짐승 ${made.length}마리 세움(${msg.kind}${msg.tame ? ' · 길든' : ''})`, beasts: made });
   }
   else if (E2E_GIVE && msg.type === '__e2e_contrib') {
     // ★[T1137] 테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 기여 계량기(온보딩 정본 하나)를 그 수로 세운다(부탁 12건 사슬은 이 판 밖 · 판 꾸밈 · 사진 하네스 `t1137-shots`).
@@ -10417,6 +10707,21 @@ function _t593Pick(sp, x, y, h, day) {
   return Fresh.pick(_t593Water(sp), day, h, _ch, ZONE_ID);   // ★[T609] 존(위와 같다)
 }
 // 던질 자리 — 플레이어 주변에서 **가장 좋은 물 칸**을 서버가 고른다(클라가 자리를 못 속인다).
+// ★★[T1294 ⓑ] **마을 어부 던질 자리 기억** — `_castTargetFor` 는 몸 x · y 둘레(REACH_PX)의 물 칸 · 자리 값(정적 — T677 칸 기억과 같은 전제)만 읽는다.
+//   ① 바이트 같은 몫(손잡이 0): 같은 몸 · 같은 x · y(Object.is) · 같은 자리 함수 유무 · 같은 지형 세대(콜라이더 · 다리 · 환호)면 지난 답 객체를 그대로 준다
+//      (부르는 쪽 `_t340Try` 는 그 객체의 x · y · sp 를 읽기만 한다). 다른 것은 관측 수 `_walk.waterQ`(물 술어 부른 수) 하나다.
+//   ② 켬(`T1294_LIFE_MEMO=1`): 열쇠가 그 몸이 선 칸(32px) — 칸 안에서 조금 움직여도 지난 자리를 쓴다(셈이 바뀐다).
+const T1294_LIFE_MEMO = process.env.T1294_LIFE_MEMO === '1';
+const _t1294CastM = new WeakMap(), _t1294CastStat = { q: 0, hit: 0 };
+function _t1294Cast(p, spot) {
+  const g = _t1294Gen(), s = !!spot, x = T1294_LIFE_MEMO ? Math.floor(p.x / 32) : p.x, y = T1294_LIFE_MEMO ? Math.floor(p.y / 32) : p.y;
+  _t1294CastStat.q++;
+  const m = _t1294CastM.get(p);
+  if (m && Object.is(m.x, x) && Object.is(m.y, y) && m.g === g && m.s === s) { _t1294CastStat.hit++; return m.r; }
+  const r = _castTargetFor(p, spot);
+  if (m) { m.x = x; m.y = y; m.g = g; m.s = s; m.r = r; } else _t1294CastM.set(p, { x, y, g, s, r });
+  return r;
+}
 function _castTargetFor(player, spotAt) {
   const R = Fishing.CFG.REACH_PX;
   const _sea = _fishSea();   // ★[T593] 켬이면 바다 칸도 자리다(끔 = undefined)
@@ -11637,7 +11942,23 @@ function tryClaim(player, kind = 'personal') {
   const used = countMyClaims(player.playerId);
   const usedCount = kind === 'temporary' ? used.temporary : (kind === 'guild' ? used.guild : used.personal);
   const max = kind === 'temporary' ? CLAIM_SLOT_TEMPORARY_START : (kind === 'guild' ? CLAIM_SLOT_GUILD_START : CLAIM_SLOT_PERSONAL_START);
-  if (usedCount >= max) {
+  // ★★[T1305] 켬 — 개인 사유지는 **숫자 상한이 없다**(실제 상한 = 돌봄 · `deeds.js`). ★[T1332] 내 칸 위에서 C = 안내 한 줄(돌봄은 쓰거나 머물면 저절로 — 손보기 단추 0).
+  //   숨은 안전판(DB · 성능용)과 ★청크 문 하나: 새 청크를 열면 청크 수가 `FREE_D × BASE` 에 닿아 **다음 날 모든 청크가 풀리는** 자리면 막는다
+  //   (초선형의 닫힌 꼴 — 그 칸을 받으면 들인 땅 전부를 잃는 덫이다 · 수는 `deeds.daysToFree` 유도 · 화면엔 숫자 0).
+  const _t1305P = Deeds.ON && kind === 'personal';
+  let _live = 0;
+  if (_t1305P) {
+    const _S = BUILDING_SIZE, _hx = Math.floor(player.x / _S) * _S + _S / 2, _hy = Math.floor(player.y / _S) * _S + _S / 2;
+    for (const _c of claims.values()) {
+      if (_c.ownerPid !== player.playerId || _c.kind !== 'personal' || (_c.state || 'active') === 'free') continue;
+      if (_hx >= _c.x && _hx < _c.x + _c.w && _hy >= _c.y && _hy < _c.y + _c.h) { send(player.ws, { type: 'notice', text: '🏠 이미 내 땅입니다. 땅은 쓰거나(거두기 · 심기 · 만들기 · 보관함 · 짓기) 그 자리에 머물면 저절로 돌봐집니다.' }); return; }
+      _live++;
+    }
+    const _mc = _t1332MyChunks(player.playerId), [_ncx, _ncy] = Deeds.chunkOf(Math.floor(player.x / _S), Math.floor(player.y / _S));
+    const _newChunk = !_mc.has(_t1332Key(player.playerId, _ncx, _ncy));
+    if (_live >= Deeds.CFG.SAFETY || (_newChunk && Deeds.daysToFree(_mc.size + 1) < 2)) { send(player.ws, { type: 'notice', text: '🏠 여기서는 더 넓힐 수 없습니다. 땅이 넓을수록 빨리 낡습니다 — 있는 땅 안을 채우십시오.' }); return; }
+  }
+  if (!_t1305P && usedCount >= max) {
     const kName = { personal: '개인', temporary: '임시', guild: '마을' }[kind];
     send(player.ws, { type: 'notice', text: `${kName} 사유지를 더 둘 수 없습니다(한도 ${max}).` });
     return;
@@ -11659,19 +11980,21 @@ function tryClaim(player, kind = 'personal') {
   if (kind === 'personal') {
     let victim = null, vid = null;
     for (const [cid, c] of claims) {
-      if (c.ownerPid === player.playerId || c.kind === 'guild') continue;
+      if (c.kind === 'guild') continue;
       const st = c.state || 'active';
+      if (c.ownerPid === player.playerId && !(_t1305P && st === 'free')) continue;   // ★[T1305] 켬 — 돌봄으로 풀린 내 칸은 값을 내고 다시 잡는다
       if (st !== 'pref' && st !== 'free') continue;
       if (!(cx + SZ / 2 >= c.x && cx + SZ / 2 < c.x + c.w && cy + SZ / 2 >= c.y && cy + SZ / 2 < c.y + c.h)) continue;
       victim = c; vid = cid; break;
     }
     if (victim) {
-      const t = Claims.takeableBy(player, victim);
+      const t = (_t1305P && victim.ownerPid === player.playerId) ? { ok: true, why: '풀린 내 땅을 다시 잡음' } : Claims.takeableBy(player, victim);
       if (!t.ok) { send(player.ws, { type: 'notice', text: `🏠 ${t.why}` }); return; }
       player.inventory.wood -= cost.wood;
       player.inventory.stone -= cost.stone;
       const prevOwner = victim.ownerName;
       const nf = Claims.transfer(vid, victim, player);
+      if (_t1305P) { victim.care = 'new'; broadcast({ type: 'claim_updated', claim: victim }); _t1332Use(player, victim.x + SZ / 2, victim.y + SZ / 2, 'claim'); }   // ★[T1305 → T1332] 이어받은 칸 = 그 청크를 쓴 것(새 주인의 청크 새것)
       savePlayer(player);
       sendInventory(player);
       send(player.ws, { type: 'notice', text: `🏠 ${prevOwner}이(가) 쓰던 자리를 이어받았습니다(${t.why}${nf ? ` · 시설 ${nf}채도 함께` : ''}).` });
@@ -11713,6 +12036,12 @@ function tryClaim(player, kind = 'personal') {
   // 개인 사유지(personal)는 자기 길드의 길드 영토 안에만 설치 가능
   // ★[온보딩 v2 §9.5] 예외 하나 — **마을 어귀 빈터**. 누적 기여를 채운 사람은 그 구역에서만 길드 요건이 면제된다(구역 밖은 종전 그대로).
   const _onbLot = Onboarding.vacantLotAllows(player, cx + SZ / 2, cy + SZ / 2);
+  // ★★[T1305 · 재민 11-13 확정] 켬 — **사유지는 마을과 무관하다.** 마을 영토 밖(빈 들) = 누구나(가입 무관) · 영토 안 = 그 마을 인정 구성원만(T1137 문 그대로).
+  //   남의 사유지 · 다른 종류 겹침 거절은 위 겹침 검사 그대로 · 인접(변 맞댐)도 위 그대로. 끔 = 아래 종전 두 갈래 그대로.
+  if (_t1305P && !_onbLot) {
+    const _g = _t1305Gate(player, cx + SZ / 2, cy + SZ / 2);
+    if (!_g.ok) { send(player.ws, { type: 'notice', text: _g.why }); return; }
+  } else
   if (kind === 'personal' && !_onbLot && VillageKin.ON) {   // ★[T786 C12] 켬 — 개인 사유지는 **내 마을 땅** 안에만(종전 "내 길드 영토")
     if (!_kinMyLand(player, cx + SZ / 2, cy + SZ / 2)) { send(player.ws, { type: 'notice', text: '개인 사유지는 내 마을 땅 안에만 둘 수 있습니다. 마을 사람이 되거나 임시 사유지(T)를 쓰십시오.' }); return; }
     //   ★★[T1137] 켬 — 영토 안 집터(새로 · 넓히기)는 **인정 구성원**만(가입만으로는 안 된다 · 탈퇴해도 잡아 둔 땅은 그대로 — 이 문은 새로 잡는 것만 막는다).
@@ -11749,6 +12078,7 @@ function tryClaim(player, kind = 'personal') {
     guildTribeName: kind === 'guild' ? player.tribeName : null,
     createdAt: Date.now(),
   };
+  if (_t1305P) claim.care = 'new';   // ★[T1305 → T1332] 새 칸 = 그 청크를 쓴 것(아래 `_t1332Use` — 칸을 붙인 청크 = 짓기)
   claims.set(id, claim);
   const dbId = db.insertClaim({
     owner_id: player.playerId,
@@ -11759,10 +12089,11 @@ function tryClaim(player, kind = 'personal') {
     state: 'active', held_by: null,
   });
   claim.dbId = dbId;
+  if (_t1305P) _t1332Use(player, cx + SZ / 2, cy + SZ / 2, 'claim');
   savePlayer(player);
   sendInventory(player);
   const kIcon = { personal: '🏠 개인', temporary: '⛺ 임시', guild: '🏛️ 마을' }[kind];
-  send(player.ws, { type: 'notice', text: `${kIcon} 사유지를 두었습니다(${usedCount + 1}/${max}).` });
+  send(player.ws, { type: 'notice', text: _t1305P ? `${kIcon} 사유지를 두었습니다(내 땅 ${_live + 1}칸 — 쓰거나 머물면 남습니다).` : `${kIcon} 사유지를 두었습니다(${usedCount + 1}/${max}).` });
   broadcast({ type: 'claim_added', claim });
 }
 
@@ -11786,6 +12117,128 @@ function tryUnclaim(player, claimId) {
   claims.delete(claimId);
   send(player.ws, { type: 'notice', text: '사유지를 풀었습니다. 들인 자원은 돌려받지 못합니다.' });
   broadcast({ type: 'claim_removed', id: claimId });
+}
+
+// ★★[T1305 · 재민 11-13 확정] 사유지 돌봄 — 존 쪽 손(수식 · 상태는 `deeds.js` 정본 · 판이 같은 함수를 부른다).
+//   선포 문: 그 칸이 마을 영토 안이면 그 마을 인정 구성원만(T1137 `isRecognized` 그대로) · 옛 길드 영토(마을로 안 접힌 판)는 그 길드 사람만 · 그 밖(빈 들) = 누구나.
+function _t1305Gate(player, px, py) {
+  const vil = VillageKin.ON ? _kinLandOf(px, py) : null;
+  if (vil) {
+    if (Membership.isRecognized(player, vil.dbId | 0)) return { ok: true, why: 'member' };
+    return { ok: false, why: `🏠 ${vil.name || '이 마을'} 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.` };
+  }
+  if (VillageKin.ON) return { ok: true, why: 'open' };   // 마을로 접힌 판 — 영토 = 마을 영토 칸(`villageOfCell`) 하나
+  const S = BUILDING_SIZE, k = Math.floor(px / S) + ',' + Math.floor(py / S);
+  for (const c of claims.values()) {
+    if (c.kind !== 'guild' || !(px >= c.x && px < c.x + c.w && py >= c.y && py < c.y + c.h)) continue;
+    if (!Claims.cellsOf(c).some(([qx, qy]) => qx + ',' + qy === k)) continue;   // 셀 집합이 정본(사각은 파생 — claims.js 제1 규약)
+    if (c.guildTribeId != null && player.tribeId != null && String(c.guildTribeId) === String(player.tribeId)) return { ok: true, why: 'guild' };
+    return { ok: false, why: `🏠 ${c.guildTribeName || c.ownerName || '남의'} 땅 안입니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.` };
+  }
+  return { ok: true, why: 'open' };
+}
+// ★[T1332 ⑦] 시각은 주입 — 운영 = 벽시계 · 하네스는 `_t1332SetClock` 으로 고정 시각을 준다(날짜를 박지 않는다 — T1305 ⑨ 가 11-14 를 박아 11-15 에 빨갰다).
+let _t1332Clock = () => Date.now();
+function _t1332SetClock(f) { _t1332Clock = typeof f === 'function' ? f : (() => Date.now()); }
+function _t1305MyN(player) { Deeds.touchDay(player, _t1332Clock()); return Deeds.bodyOf(player).n | 0; }
+// ★★[T1332 · 재민 11-15] 돌봄 = **청크**(`deeds.js` 머리) — 존 쪽 손. 청크 줄 `deedChunks`(주인|청크 → { pid, cx, cy, w, n0 }) · DB `deed_chunks`.
+//   칸의 `care`(새것 · 흐림)는 그 칸이 든 청크의 단계 그대로(화면이 흐린 청크의 내 칸을 다 흐리게 그린다 · 클라 재계산 0).
+const deedChunks = new Map();
+const _t1332Key = (pid, cx, cy) => pid + '|' + cx + ',' + cy;
+// 이 사람의 살아 있는 개인 칸을 청크로 묶는다 — 청크 키 → [청크 좌표, 칸들]. 존 사유지를 한 번 훑는다(`countMyClaims` 와 같은 값).
+function _t1332MyChunks(pid) {
+  const S = BUILDING_SIZE, m = new Map();
+  for (const [id, c] of claims) {
+    if (c.ownerPid !== pid || c.kind !== 'personal' || (c.state || 'active') === 'free') continue;
+    const [cx, cy] = Deeds.chunkOf(Math.floor(c.x / S), Math.floor(c.y / S)), k = _t1332Key(pid, cx, cy);
+    let e = m.get(k); if (!e) m.set(k, e = { cx, cy, cells: [] });
+    e.cells.push([id, c]);
+  }
+  return m;
+}
+function _t1332Row(pid, cx, cy) { const k = _t1332Key(pid, cx, cy); let r = deedChunks.get(k); if (!r) deedChunks.set(k, r = { pid, cx, cy, w: 0, n0: null }); return r; }
+function _t1332Save(r) { if (r && db.saveDeedChunk) db.saveDeedChunk(r.pid, r.cx, r.cy, r.w, r.n0); }
+function _t1332Stage(cells, st) {   // 청크 단계를 그 안 내 칸에 — 바뀐 칸만 방송
+  for (const [, c] of cells) if (c.care !== st) { c.care = st; broadcast({ type: 'claim_updated', claim: c }); }
+}
+// 날 셈 — 이 사람이 오늘 처음 보이면 하루를 세고 제 청크의 낡음을 쌓는다(배수 = 지금 청크 수 · 초선형). 반환 = 바뀐 청크 수.
+//   접속 안 한 날은 안 낡는다(부재는 부재 상태기 `claims.js` 가 맡는다 — 두 층이 안 겹친다 · 축 표는 `deeds.js` 머리).
+//   `force` = 날이 안 바뀌어도 다시 잰다(접속 · 존 넘어옴 — 그날을 다른 존에서 이미 센 몸이면 이 존 청크는 아직 옛 낡음이다).
+function _t1305Day(player, now, force) {
+  if (!Deeds.ON || !player || player.isNpc || !player.playerId) return 0;
+  const t = now || Date.now();
+  if (!Deeds.touchDay(player, t) && !force) return 0;
+  const n = Deeds.bodyOf(player).n | 0, pid = player.playerId;
+  const mine = _t1332MyChunks(pid), C = mine.size;
+  let k = 0;
+  for (const [key, e] of mine) {
+    const r = _t1332Row(pid, e.cx, e.cy), w0 = r.w, n00 = r.n0;
+    const st = Deeds.wear(r, n, C);
+    if (r.w !== w0 || r.n0 !== n00) { k++; }
+    if (st === 'free') {   // 풀림 = 부재 상태기의 그 개방(누구나 · 시설은 승계 규약 그대로) — 그 청크의 내 칸이 함께
+      for (const [id, c] of e.cells) { c.care = 'free'; Claims.setState(id, c, 'free', null, t); broadcast({ type: 'claim_updated', claim: c }); }
+      deedChunks.delete(key); if (db.deleteDeedChunk) db.deleteDeedChunk(pid, e.cx, e.cy);
+      continue;
+    }
+    if (r.w !== w0 || r.n0 !== n00) _t1332Save(r);
+    _t1332Stage(e.cells, st);
+  }
+  try { savePlayer(player); } catch (e) {}
+  return k;
+}
+// ★[T1332 ②] 썼다 — 그 자리(px)가 든 청크에 내 칸이 있으면 그 청크 = 새것. 반환 = 돌본 청크가 있었나.
+//   부르는 곳: 쓰는 사건(`T1332_USE` — 짐이 바뀐 것만 · `handlePlayerInput` 감싸개) · 선포 · 이어받기(칸을 붙인 청크 = 짓기) · 머묾(`_t1332Dwell`).
+function _t1332Use(player, px, py, why) {
+  if (!Deeds.ON || !player || player.isNpc || !player.playerId) return false;
+  const S = BUILDING_SIZE, [cx, cy] = Deeds.chunkOf(Math.floor(px / S), Math.floor(py / S)), pid = player.playerId;
+  const cells = [];
+  for (const [id, c] of claims) {
+    if (c.ownerPid !== pid || c.kind !== 'personal' || (c.state || 'active') === 'free') continue;
+    const q = Deeds.chunkOf(Math.floor(c.x / S), Math.floor(c.y / S)); if (q[0] === cx && q[1] === cy) cells.push([id, c]);
+  }
+  if (!cells.length) return false;
+  const r = _t1332Row(pid, cx, cy);
+  Deeds.used(r, _t1305MyN(player));
+  _t1332Save(r);
+  _t1332Stage(cells, 'new');
+  _t1332Stat[why || 'use'] = (_t1332Stat[why || 'use'] | 0) + 1;
+  return true;
+}
+const _t1332Stat = {};
+// ★[T1332 ②] 머묾 — 쓸 것 없는 청크는 그 안에 **연속** `DWELL_MS`(걸어 지나가기는 안 든다 · 청크를 나가면 처음부터). 한 번 돌본 뒤엔
+//   그 청크를 나가거나 **접속한 날이 바뀔 때까지** 다시 안 적는다(한 청크에 날을 넘겨 서 있는 사람도 날마다 한 번 돈다).
+//   존 틱에 안 얹는다(아래 타이머 · 시각은 주입 — 하네스).
+function _t1332Dwell(player, now) {
+  if (!Deeds.ON || !player || player.isNpc || !player.playerId || player.isDown) return false;
+  const S = BUILDING_SIZE, [cx, cy] = Deeds.chunkOf(Math.floor(player.x / S), Math.floor(player.y / S)), k = cx + ',' + cy;
+  const d = player._t1332Dw, day = Deeds.dayKey(_t1332Clock());
+  if (!d || d.k !== k) { player._t1332Dw = { k, since: now, done: null }; return false; }
+  if (d.done === day || now - d.since < Deeds.CFG.DWELL_MS) return false;
+  d.done = day;
+  return _t1332Use(player, player.x, player.y, 'dwell');
+}
+// ★[T1332 ② 사건 표] "쓴 것" — 서버가 이미 아는 사람 사건 중 **그 자리에서 손으로 한 일**. 짐(인벤 · 원장)이 바뀐 것만 든다(헛손질 · 문 여닫기 0).
+//   잠: 사람 잠 사건이 서버에 없다(0) — 집 청크는 머묾으로 돈다. 보관함 "열기"는 서버 사건이 없다(넣기 · 꺼내기만).
+const T1332_USE = new Set([
+  'harvest', 'pick_fruit', 'gather', 'butcher',                                   // 거두기
+  'plant', 'plant_tree',                                                          // 심기
+  'craft', 'craft_item', 'craft_equipment', 'craft_building', 'cook', 'preserve', 'sort_ore',   // 만들기
+  'chest_put', 'chest_take',                                                      // 보관함
+  'build', 'place_building', 'repair_building', 'hut_start', 'hut_advance', 'well_start', 'well_advance',   // 짓기 · 고치기(공용 쉼터 `shelter_*` 는 마을 장부 · 마을 땅이라 뺀다)
+  'furnace_start', 'furnace_advance', 'furnace_smelt', 'kiln_start', 'kiln_advance', 'kiln_burn',   // 시설
+]);
+const _t1332Sig = (p) => { try { return JSON.stringify(p.inventory || {}); } catch (e) { return ''; } };
+// 싣기 — DB 청크 줄 → `deedChunks` · 칸의 단계(흐림)를 그 청크 단계로(위 사유지 싣기 뒤 · 끔 = 안 돈다)
+if (Deeds.ON) {
+  try {
+    for (const r of (db.getDeedChunks ? db.getDeedChunks() : [])) deedChunks.set(_t1332Key(String(r.owner_id), r.cx | 0, r.cy | 0), { pid: String(r.owner_id), cx: r.cx | 0, cy: r.cy | 0, w: +r.w || 0, n0: r.n0 == null ? null : r.n0 | 0 });
+    const S = BUILDING_SIZE;
+    for (const c of claims.values()) {
+      if (c.kind !== 'personal' || (c.state || 'active') === 'free') continue;
+      const [cx, cy] = Deeds.chunkOf(Math.floor(c.x / S), Math.floor(c.y / S)), r = deedChunks.get(_t1332Key(c.ownerPid, cx, cy));
+      c.care = r ? Deeds.stageOf(r.w) : 'new';
+    }
+  } catch (e) { console.warn(`[${ZONE_ID}] T1332 돌봄 청크 싣기 실패: ${e.message}`); }
 }
 
 // ★★[원장 승격 2026-08-30 재민 확정 §2-A] **인벤에서 빼는 길은 이 함수 하나다.**
@@ -14267,6 +14720,7 @@ function __testBind() {
     nearestVillageWake, resolveDowned, buildings, _liveBuildRow, isTerrainBlockedLocal,
     Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
     findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
+    Deeds, _t1305Day, _t1305Gate, _t1332Use, _t1332Dwell, _t1332MyChunks, deedChunks, _t1332Stat, T1332_USE, _t1332SetClock,   // ★[T1305 → T1332] 사유지 돌봄(청크) — 하네스가 정본 그대로 부른다
     CLAIM_SLOT_PERSONAL_START, CLAIM_SLOT_TEMPORARY_START, CLAIM_SLOT_GUILD_START,
     // ★[T1238] 영토 v2 존 몫 — 하네스(`test-t1238-terr-v2`)가 정본 함수를 그대로 부른다(벌점 · 갇힘 · 작물 · 칸 일)
     T1238_ON, VP_STEAL_CROP, VP_BREAK_FENCE, VP_TRESPASS_GATHER, VP_ATTACK_PLAYER, VP_THRESHOLD, VP_MAX,
@@ -14921,6 +15375,7 @@ function setHp(p, v, why) {
   const prev = p.hp;
   const next = Math.max(0, Math.min(max, v));
   if (next === prev) return prev;
+  if (T1322_PF && (next > 0) !== (prev > 0) && p.isNpc) _t1322Touch(p);   // ★[T1322] 살고 죽음이 바뀌기 전 — 첫 거름 표를 내린다(거름은 `hp > 0` 만 본다)
   p.hp = next;
   if (Math.round(next) === Math.round(prev)) return next;
   if (HP_QUIET.has(why)) return next;
@@ -14960,6 +15415,7 @@ function damagePlayer(p, dmg, source) {
       setTimeout(() => {
         if (!players.has(p.pid)) return;
         setHp(p, p.maxHp, 'respawn');   // ★[T109] 바로 아래 `player_respawn` 이 이미 알린다 — 조용하다
+        if (T1322_PF && p.isNpc) _t1322Touch(p);   // ★[T1322]
         if (T1145_XY_COLS) BC.w(p, respawnX, respawnY); else { p.x = respawnX; p.y = respawnY; }   // ★[T1145] 켬 = 쓰기 길
         p.vx = 0; p.vy = 0;
         p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX;
@@ -15363,6 +15819,7 @@ function _wakeUp(p, x, y, hpFrac, msg) {
   p._deadUntil = 0;
   Body.ensure(p).hpDebt = 0;            // ★누워 있는 동안 쌓인 극단 빚을 지우고 일어난다(T44 와의 접점)
   setHp(p, Math.max(1, Math.round(p.maxHp * hpFrac)), 'rescue');   // ★[T109] 일어난 순간이 화면에 바로 온다(자기에게만)
+  if (T1322_PF && p.isNpc) _t1322Touch(p);   // ★[T1322]
   if (Number.isFinite(x) && Number.isFinite(y)) { if (T1145_XY_COLS) BC.w(p, x, y); else { p.x = x; p.y = y; } }   // ★[T1145] 켬 = 쓰기 길
   p.vx = 0; p.vy = 0;
   p.lastDamagedAt = Date.now();
@@ -16051,11 +16508,26 @@ const T672_WALK_CUT = process.env.T672_WALK_CUT !== '0';   // ★PM 10-07 켬 �
 const _wwStill = [], _wwStill0 = [];    // 서 있는 몸(차례대로) · 견줌일 때 그 처음 값(x, y, vx, vy)
 const _wwNoRes = [];                    // 빈 목록의 정체(새 배열을 틱마다 안 만든다 — 나무 열 열쇠가 서게)
 const _wwTC = { src: null, rx: null, gen: -1, k: 0, hit: 0, miss: 0, treeBad: 0, still: 0, stillBad: 0 };
-function _wwIsStill(p) {   // 커널 `terr()` 와 같은 칸 셈(정수 · 타일 2비트) — 구웠고(1) 안 막힘(2 아님)
+function _wwIsStill(p, i) {   // 커널 `terr()` 와 같은 칸 셈(정수 · 타일 2비트) — 구웠고(1) 안 막힘(2 아님)
   const x = T1145_XY_COLS ? _xyX(p) : p.x, y = T1145_XY_COLS ? _xyY(p) : p.y;   // ★[T1145] 켬 = 열
-  if (!(x > 0 && y > 0 && x < _WW.zw && y < _WW.zh)) return false;   // ±0 · NaN · 범위 밖은 커널로(±0 은 +0 속도와 더하면 부호가 바뀔 수 있다)
-  const b = (Math.floor(y / 32) * _WW.tw + Math.floor(x / 32)) << 1;
-  return ((_WW.TB[b >> 3] >> (b & 7)) & 3) === 1;
+  //   ★[T1278] 서 있는 몸 답 기억 — 슬롯 i(players 차례 · T774 슬롯)에 지난 답을 둔다. 같은 몸 · 같은 x · y · 같은 지형 비트 세대면 지난 답 그대로.
+  //     지형 비트는 커널이 0(모름) → 1 · 2 로 한 번만 쓰고, 지우는 곳은 `clearTerrain` 둘뿐(세대 `_wwTbGen` 을 올린다) ⇒ 1 · 2 와 범위 밖 답은 세대 안에서 안 바뀐다.
+  //     0(아직 안 구움)은 기억하지 않는다(뒤에 구워지면 답이 바뀐다). 답 · 차례 · 커널에 넘기는 것이 종전과 같다(결과 바이트 같음).
+  if (i !== undefined && i < _wwStN && _wwStRef[i] === p && _wwStX[i] === x && _wwStY[i] === y && _wwStG[i] === _wwTbGen && _wwStR[i] !== 0) return _wwStR[i] === 1;
+  let v;   // 1 = 참 · 2 = 거짓(굳은 답) · 0 = 거짓(기억 안 함)
+  if (!(x > 0 && y > 0 && x < _WW.zw && y < _WW.zh)) v = 2;   // ±0 · NaN · 범위 밖은 커널로(±0 은 +0 속도와 더하면 부호가 바뀔 수 있다)
+  else { const b = (Math.floor(y / 32) * _WW.tw + Math.floor(x / 32)) << 1, t = (_WW.TB[b >> 3] >> (b & 7)) & 3; v = t === 1 ? 1 : (t === 0 ? 0 : 2); }
+  if (i !== undefined) {
+    if (i >= _wwStN) _wwStGrow(i + 1);
+    _wwStRef[i] = p; _wwStX[i] = x; _wwStY[i] = y; _wwStG[i] = _wwTbGen; _wwStR[i] = v;
+  }
+  return v === 1;
+}
+function _wwStGrow(need) {
+  let cap = _wwStX.length || 1024; while (cap < need) cap *= 2;
+  const X = new Float64Array(cap), Y = new Float64Array(cap), G = new Uint32Array(cap), R = new Uint8Array(cap);
+  X.set(_wwStX); Y.set(_wwStY); G.set(_wwStG); R.set(_wwStR);
+  _wwStX = X; _wwStY = Y; _wwStG = G; _wwStR = R; _wwStN = cap;
 }
 if ((_wwOn || _wwVerify) && !ZONE.isOcean) {
   _WW = require('./walk-wasm').create({ zw: ZONE.zoneWidth, zh: ZONE.zoneHeight, iceN: !NEIGHBOR.hasNorth, iceS: !NEIGHBOR.hasSouth,
@@ -16075,7 +16547,7 @@ function _wwPreOne(p) {   // 종전 `_wwPre` 고리 몸통 글자 그대로(`con
   let c = 1;
   if (!p.canadiaVillage && !_t316WalkAlways(p) && !(T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(p.x, p.y))) c = 0;   // 이동 문의 그 거름(몸이 안 움직인 자리에서)
   else if (p.floor || p.onStairId) c = 2;                                                // 위층·계단 = JS 정본
-  else if (cut && p.vx === 0 && p.vy === 0 && _wwIsStill(p)) { c = 3; _streamWalkMul(p); }   // ★[T672 ⓑ] 서 있는 몸 = 뒷일만(개울 메모는 종전처럼 갱신)
+  else if (cut && p.vx === 0 && p.vy === 0 && _wwIsStill(p, T774_ACTIVE_COL ? _si : undefined)) { c = 3; _streamWalkMul(p); }   // ★[T1278] 슬롯 = T774 슬롯(끔이면 기억 없음)   // ★[T672 ⓑ] 서 있는 몸 = 뒷일만(개울 메모는 종전처럼 갱신)
   _wwSeq.push(p); _wwCode.push(c);
   if (c === 1) _wwList.push(p);
   else if (c === 3) { _wwStill.push(p); if (!_wwOn) _wwStill0.push(p.x, p.y, p.vx, p.vy); }
@@ -16136,6 +16608,7 @@ function _wwPre(moveDt) {
 }
 // 이동 문 **안** — 커널 몸의 뒷일(원래 차례 그대로)
 function _wwPost(p, i) {
+  if (T1322_PF && p.vx === 0 && p.vy === 0) _t1322Touch(p);   // ★[T1322] 서 있던 몸이 옮겨지기 전(표 받은 몸은 속도 +0)
   if (T585_WALK_STAT) _t585WalkCount(p, _WW.X[i] - p.x, _WW.Y[i] - p.y);   // ★[T585] 관측(손잡이 켤 때만) — 개울 칸 위·밖 걸음당 거리
   if (T1145_XY_COLS) BC.w(p, _WW.X[i], _WW.Y[i]); else { p.x = _WW.X[i]; p.y = _WW.Y[i]; }   // ★[T1145] 켬 = 쓰기 길(열 · 거울)
   const st = _WW.ST[i];
@@ -16518,6 +16991,7 @@ setInterval(() => {
   //   끔 = 같은 `for…of` + 멈추면 `break` · 켬 = `Set.forEach`(살아 있는 순회 — 같은 차례) + 멈춤 깃발(멈춘 뒤 사람은 아무것도 안 묻는다 — 시계도 안 읽는다) · 반복 결과 객체 0
   const _decOne = (pid) => { do {
     if (!_curHit) { if (pid !== _npcCursor) continue; _curHit = true; }   // 지난 틱에 **못 한** 그 사람부터 한다
+    if (T1322_PF) { const _s22 = SS.slot(pid); if (_s22 >= 0 && _t1322Skip(_s22, pid, now)) { if (T1241_PROBE && _desClk) { _desStat.steps++; _desStat.nStep++; } else if (_T1241) _desStat.steps++; continue; } }   // ★[T1322] 서 있는 몸 — 몸을 안 열고 건넌다(걸음 셈은 종전대로 · 위 `_t1322Skip`)
     const npc = players.get(pid);
     if (!npc || npc.hp <= 0) continue;
     // Phase 4d-9 fix: canadia NPC는 active chunk 체크 우회 (모든 마을 동시 시뮬)
@@ -16531,10 +17005,13 @@ setInterval(() => {
     //     예산을 늘리지도, 새로 걸지도 않는다: 놓는 수가 곧 설계 판정이라 PM 몫이다(T316 §3 회부).
     if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
     if ((Date.now() - _decT0) > 15 || TB.out(15, 'decide')) { _stopAt = pid; break; }   // ★[T687] 켬 = 이 틱 공용 몫이 바닥나도 여기서 멈춘다(커서 그대로)   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
-    if (T1241_PROBE && _desClk) { _desTimed(npc, dt, now); continue; }   // ★[T1241 계측] 같은 몸통을 진짜 시계로 잰다(아래 세 줄 그대로)
+    if (T1241_PROBE && _desClk) { _desTimed(npc, dt, now); if (T1322_PF) _t1322Grant(npc, now); continue; }   // ★[T1241 계측] 같은 몸통을 진짜 시계로 잰다(아래 세 줄 그대로)
     if (T1241_DES && npc._des && _desHold(npc, now)) continue;   // ★[T1241] 사건 갈래가 쥔 몸(끔 = 이 줄 무동작)
     if (_T1241) _desStat.steps++;
-    npcStep(npc, dt, now);
+    const _K95 = (npc.simVillageId && SimVillages.t1316K) ? SimVillages.t1316K(npc, dt) : 1;   // ★[T1316 ③] 켬(판 시계 배율 몸) = 틱을 K 토막(끔 · 배율 1 = 1 — 아래 종전 한 줄)
+    if (_K95 > 1) { for (let k = _K95 - 1; k >= 0; k--) { npcStep(npc, dt / _K95, now - k * dt * 1000 / _K95); if (k > 0) _t1295Walk(npc, dt / _K95, 1); } }   // 마지막 토막 걸음은 이동 문(`_t1295Walk` 가 dt ÷ K)
+    else npcStep(npc, dt, now);
+    if (T1322_PF) _t1322Grant(npc, now);   // ★[T1322] 서 있는 몸이면 표(다음 틱 첫 거름)
     if (T1241_DES) _desTry(npc, now);   // ★[T1241] 사건 토막을 열 수 있나
   } while (false); return _stopAt !== null; };
   if (T689_GC) { let _decStop = false; npcs.forEach((pid) => { if (!_decStop && _decOne(pid)) _decStop = true; }); }
@@ -16783,6 +17260,10 @@ setInterval(() => {
     if (p.isNpc) {
       if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
       if (p.simWar || (T1241_DES && p._des)) continue;     // ★[T1241] 사건 갈래가 쥔 몸도(자리는 결정 문에서 보간했다 · 끔 = 앞 항 그대로) · §4-4 P3: 출정(징발) 병사 — 이동은 villages.js 실체 전쟁(행군 대형 페이싱·전투유닛 미러)이 전담(이중 이동 방지)
+      if (p.simVillageId && _t1295Walk(p, moveDt)) {   // ★[T1295] 밭 세계 판 시계 농부 몸 = 그 몸의 길을 게임 분 축 걸음으로(끔 · 운영 시계 = 거짓 — 아래 종전 그대로)
+        if (_wwOn && p === _wwSeq[_wwCur]) { if (_wwCode[_wwCur++] === 1) _wwK++; }   // 걸음 커널 차례는 그대로 넘긴다(커널이 잰 걸음은 안 쓴다 — 이 몸은 위에서 걸었다)
+        continue;
+      }
       if (_wwOn && p === _wwSeq[_wwCur]) {   // ★[T461] 앞문이 적은 갈래 — 커널 몸은 뒷일만(차례 그대로) · 잠든 몸은 건너뜀 · 2 는 아래 정본 문으로
         const _c = _wwCode[_wwCur++];
         if (_c === 1) { _wwPost(p, _wwK++); continue; }
@@ -17258,6 +17739,9 @@ setInterval(() => {
       // 주인이 현재 zone에 접속 중이면 따라가기
       let ownerP = null;
       for (const p of players.values()) if (p.playerId === m.tameOwner) { ownerP = p; break; }
+      //   ★[T1321] 켬 — 주인이 이 존에 서면 넘어간 자리 줄을 지운다(되돌림 · 돌아옴) · 주인이 없고 넘어간 자리를 알면 그 자리로 걷는다(멈춤 거리 0 — 띠를 다 건너야 넘는다 · 속도는 따라가기 그 값)
+      const _t1321F = T1321_XZ_BEAST ? _t1321Door.followTarget(ownerP, _t1321Gone.get(m.tameOwner)) : null;
+      if (T1321_XZ_BEAST && ownerP && _t1321Gone.size && _t1321Gone.delete(m.tameOwner)) _t1321Stat.goneClear++;
       if (ownerP) {
         const dx = ownerP.x - m.x, dy = ownerP.y - m.y;
         const dd = Math.hypot(dx, dy);
@@ -17267,14 +17751,20 @@ setInterval(() => {
         } else if (dd < TAME_FOLLOW_STOP) {
           m.vx = 0; m.vy = 0;
         } // 중간은 그대로 두기
+      } else if (_t1321F) {
+        const dx = _t1321F.x - m.x, dy = _t1321F.y - m.y, dd = Math.hypot(dx, dy);
+        if (dd > 1) { m.vx = (dx / dd) * def.speed * 0.7; m.vy = (dy / dd) * def.speed * 0.7; }   // 닿으면 그 걸음 그대로(띠를 다 건넌다 — 주인이 넘은 자리는 띠 너머다)
       } else {
         m.vx = 0; m.vy = 0;
       }
       // 길든 mob은 이동만 처리하고 일반 AI 스킵
       let nx = m.x + m.vx * dt;
       let ny = m.y + m.vy * dt;
+      if (T1321_XZ_BEAST && _t1321Door.band(m, nx, ny, _T1321B)) { nx = _T1321B.x; ny = _T1321B.y; }   // ★[T1321] 땅 이웃 쪽 변 — 겹침 띠(끔 = 아래 종전 두 줄)
+      else {
       nx = clamp(nx, 0, ZONE.zoneWidth);
       ny = clamp(ny, 0, ZONE.zoneHeight);
+      }
       if (isBlockedByWall(nx, m.y, m.x, m.y, m.floor || 0)) nx = m.x;
       if (isBlockedByWall(m.x, ny, m.x, m.y, m.floor || 0)) ny = m.y;
       if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
@@ -17293,7 +17783,8 @@ setInterval(() => {
       }
       if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
       m.x = nx; m.y = ny;
-      chunkManager.updateMobChunk(m);
+      if (T1321_XZ_BEAST) { _t1321Chunk(m); if (_t1321Door.band(m, nx, ny, _T1321B) && _T1321B.go) _t1321Door.send(m, _T1321B.go); }   // ★[T1321] 띠를 다 건넌 걸음(지형 · 벽 뒤 자리)이면 넘긴다
+      else chunkManager.updateMobChunk(m);
       continue;
     }
 
@@ -17397,8 +17888,11 @@ setInterval(() => {
     }
     let nx = m.x + m.vx * dt;
     let ny = m.y + m.vy * dt;
+    if (T1321_XZ_BEAST && _t1321Door.band(m, nx, ny, _T1321B)) { nx = _T1321B.x; ny = _T1321B.y; }   // ★[T1321] 땅 이웃 쪽 변 — 겹침 띠(끔 = 아래 종전 두 줄)
+    else {
     nx = clamp(nx, 0, ZONE.zoneWidth);
     ny = clamp(ny, 0, ZONE.zoneHeight);
+    }
     if (isBlockedByWall(nx, m.y, m.x, m.y, m.floor || 0)) nx = m.x;
     if (isBlockedByWall(m.x, ny, m.x, m.y, m.floor || 0)) ny = m.y;
     if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
@@ -17418,7 +17912,8 @@ setInterval(() => {
     // 의미 있는 이동(>2px)일 때만 dirty 마크 — 영속화 부담 최소화
     if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
     m.x = nx; m.y = ny;
-    chunkManager.updateMobChunk(m);
+    if (T1321_XZ_BEAST) { _t1321Chunk(m); if (_t1321Door.band(m, nx, ny, _T1321B) && _T1321B.go) _t1321Door.send(m, _T1321B.go); }   // ★[T1321] 띠를 다 건넌 걸음이면 넘긴다
+    else chunkManager.updateMobChunk(m);
   }
 
   // §4-4 동물 AI 블록(마을실험실 이식) — 활성 청크 뷰의 야생 5종. dt=1/TICK_HZ 유닛/틱(=1유닛/초, 환산 계수 1).
@@ -17760,6 +18255,7 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
         broadcast({ type: 'player_left', pid });
         try { p.ws.close(); } catch (e) {}
         console.warn(`[${ZONE_ID}] ⚠ ACK timeout token=${token.slice(0,8)} — fallback 정리`);
+        if (T1321_XZ_BEAST) { _t1321Gone.set(p.playerId, { x: newX + target.worldOffsetX - ZONE.worldOffsetX, y: newY + (target.worldOffsetY || 0) - (ZONE.worldOffsetY || 0), to: targetZoneId, at: Date.now() }); _t1321Stat.gone++; }   // ★[T1321] 주인은 받는 존 사람이다(다시 접속 = 넘기 전 저장 `last_zone`) — 길든 짐승이 그 자리로
       }
       // ★[T498] 인계가 확인되지 않았다 — 떠나는 순간 쥔 행을 이제 보낸다(끔 판이 떠나기 전에 써 둔 그 행과 같다)
       // ★★[T867 2026-10-22 · T843 회부 1] 그 쥔 행도 T843 술어(`_t843Skip` — 같은 함수 · 사본 0)를 지난다. 시한은 받는 존 준비 응답 OK 뒤(토큰을 준 뒤)에만 돌므로
@@ -17774,7 +18270,8 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
     if (T1092_HANDOFF_BACK && outgoingHandoffs.has(token)) return _t1092Back(pid, token, targetZoneId, target, _ackGone);   // ★[T1092] 받는 존에 토큰을 놓으라 하고 돌려놓는다
     _ackGone();
   }, HANDOFF_ACK_MS);   // ★[PM 11-03] 종전 3000 — 위 HANDOFF_ACK_MS 머리글
-  outgoingHandoffs.set(token, { pid, timeoutHandle });
+  //   ★[T1321] 켬 = 받는 존 · 주인이 넘어간 자리(받는 존에 서는 자리를 이 존 로컬로 — 띠를 넘은 그 월드 자리 · 껍데기는 이 존 사각에 붙여 둔 채라 그 자리가 아니다)
+  outgoingHandoffs.set(token, T1321_XZ_BEAST ? { pid, timeoutHandle, to: targetZoneId, at: { x: newX + target.worldOffsetX - ZONE.worldOffsetX, y: newY + (target.worldOffsetY || 0) - (ZONE.worldOffsetY || 0) } } : { pid, timeoutHandle });
   metrics.handoffs_out++;
 }
 

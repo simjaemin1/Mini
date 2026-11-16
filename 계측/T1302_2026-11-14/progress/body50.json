@@ -1,0 +1,168 @@
+{
+  "state": "incomplete: first 50 days only; not the requested 100-day result",
+  "implementation": "2f0a4b914da5d78d240cfa253f1bd038fc34c81e",
+  "sourceManifestSHA256": "00165c7a3c1d314e26598f4aecc8905ff6ef3d9bb9c17ddd5598a39ac7d03622",
+  "recordedUTC": "2026-11-13T18:47:13.470959+00:00",
+  "BODY_1020": {
+    "day": 50,
+    "row": {
+      "day": 50,
+      "cpuSeconds": 325.196908,
+      "processCPUSeconds": 8920.42941,
+      "uptimeSeconds": 8647.981377585,
+      "pop": 1650,
+      "bodies": 1650,
+      "playerEntries": 1776,
+      "empty": 0,
+      "born": 21,
+      "econDeaths": 0,
+      "emigration": 0,
+      "bornCumulative": 1244,
+      "debtDeaths": 0,
+      "econDeathsCumulative": 2,
+      "emigrationCumulative": 0,
+      "famineVillages": 0,
+      "bodyExit": {
+        "died": {
+          "starve": 0,
+          "old": 2
+        },
+        "walk": {
+          "bandit": 0,
+          "desert": 0,
+          "move": 0
+        },
+        "other": {
+          "expedition": 0,
+          "road": 0,
+          "unknown": 0
+        },
+        "rot": 2,
+        "arrive": 0,
+        "straight": 0,
+        "lost": 0,
+        "vanish": 0,
+        "noted": 2,
+        "trimmed": 0,
+        "lying": 0,
+        "walking": 0
+      },
+      "bodyStarve": 0,
+      "territory": 86160,
+      "farm": 13538,
+      "farmNetNewCells": 8330,
+      "houses": 93,
+      "newHouseCells": 16,
+      "housing": 1625.044203571451,
+      "wood": 2385.867162000157,
+      "settledBodyWood": 8250.850521903347,
+      "acceptedBodyWood": 8271.087506903346,
+      "legacyPreviousWoodD": 2377.975171008725,
+      "currentWoodD": 2524.8723907316116,
+      "cutCalls": 1352,
+      "felledTrees": 1352,
+      "felledWood": 8473,
+      "territoryCost": {
+        "days": 2550,
+        "stallWood": 0,
+        "stallBody": 0,
+        "cells": 9660,
+        "wood": 1786.6407929999998,
+        "laborMin": 15990.00167252355,
+        "felled": 658,
+        "woodIn": 1087.138772,
+        "body": 9660,
+        "queued": 11580
+      }
+    },
+    "minBodyRatioDays1to50": 1.0,
+    "maxMissingPersonIDsDays1to50": 0,
+    "physical": 9660,
+    "added": 9660,
+    "batchCalls": 0
+  },
+  "T1274_REPLAY_1020": {
+    "day": 50,
+    "row": {
+      "day": 50,
+      "cpuSeconds": 337.709094,
+      "processCPUSeconds": 8357.209239,
+      "uptimeSeconds": 8077.759767582,
+      "pop": 1743,
+      "bodies": 1742,
+      "playerEntries": 1874,
+      "empty": 0,
+      "born": 28,
+      "econDeaths": 0,
+      "emigration": 0,
+      "bornCumulative": 1338,
+      "debtDeaths": 0,
+      "econDeathsCumulative": 3,
+      "emigrationCumulative": 0,
+      "famineVillages": 0,
+      "bodyExit": {
+        "died": {
+          "starve": 0,
+          "old": 1
+        },
+        "walk": {
+          "bandit": 0,
+          "desert": 0,
+          "move": 0
+        },
+        "other": {
+          "expedition": 0,
+          "road": 0,
+          "unknown": 0
+        },
+        "rot": 1,
+        "arrive": 0,
+        "straight": 0,
+        "lost": 0,
+        "vanish": 0,
+        "noted": 3,
+        "trimmed": 2,
+        "lying": 0,
+        "walking": 0
+      },
+      "bodyStarve": 0,
+      "territory": 165866,
+      "farm": 13782,
+      "farmNetNewCells": 8574,
+      "houses": 227,
+      "newHouseCells": 150,
+      "housing": 1721.8635254097208,
+      "wood": 8111.756863511196,
+      "settledBodyWood": 32061.58627969363,
+      "acceptedBodyWood": 32231.322279259217,
+      "legacyPreviousWoodD": 2920.728451957086,
+      "currentWoodD": 3063.3439743752556,
+      "cutCalls": 6039,
+      "felledTrees": 6039,
+      "felledWood": 38405,
+      "territoryCost": {
+        "days": 2550,
+        "stallWood": 1535,
+        "stallBody": 0,
+        "cells": 89366,
+        "wood": 16033.35873657464,
+        "laborMin": 256278.5873408938,
+        "felled": 4393,
+        "woodIn": 6106.653146999998,
+        "body": 0,
+        "queued": 0
+      }
+    },
+    "eightMetricsAllFirst50DaysEqual": [
+      "pop",
+      "bodies",
+      "empty",
+      "emigrationCumulative",
+      "territory",
+      "wood",
+      "debtDeaths",
+      "bodyStarve"
+    ]
+  },
+  "diagnosticErrors": []
+}

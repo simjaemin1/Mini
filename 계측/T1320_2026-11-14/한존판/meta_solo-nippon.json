@@ -1,0 +1,27 @@
+{
+ "tag": "solo-nippon",
+ "seed": 1020,
+ "DAYS": 30,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "zones": [
+  "nippon"
+ ],
+ "env": {
+  "T1311_ALL": "1"
+ },
+ "start": "2026-11-14T19:07:00.592Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "end": "2026-11-14T19:09:10.675Z",
+ "wallS": 130,
+ "days": {
+  "nippon": 30
+ },
+ "bars": 179,
+ "H": 1767225689500,
+ "done": true,
+ "dead": []
+}

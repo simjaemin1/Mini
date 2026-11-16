@@ -41,6 +41,8 @@ const CFG = {
 let H = null;
 // ★[T786] T785 손잡이(`T785_VILLAGE_ONLY`)를 같은 식 하나로 읽는다(`village-kin` 의 `ON` — 순수 모듈 · require 0).
 const _KIN_ON = require('./village-kin').ON;
+// ★[T1305] 사유지 돌봄 켬이면 `free` 는 끝이다 — 돌봄으로 풀린 칸(또는 부재로 풀린 칸)을 주인이 다시 나갔다고 `held` 로 되돌리지 않는다(끔 = 종전).
+const _DEEDS_ON = require('./deeds').ON;
 function init(host) { H = host || {}; return true; }
 function ready() { return !!H && !!H.claims; }
 const SZ = () => (H && H.BUILDING_SIZE) || 32;
@@ -179,6 +181,7 @@ async function scanAbsence() {
     // 4) 전이
     for (const [id, c] of H.claims) {
       if (!isOwnKind(c) || !c.ownerPid || String(c.ownerPid).startsWith('village_')) continue;
+      if (_DEEDS_ON && c.state === 'free') continue;   // ★[T1305] 풀린 칸은 세계의 것(위 머리)
       if (online.has(c.ownerPid)) { if (restoreOne(id, c)) moved.push([id, 'active']); continue; }
       const row = rows.get(c.ownerPid);
       if (!row || !Number.isFinite(row.last_seen)) continue;   // 모르면 안 건드린다(안전한 쪽)

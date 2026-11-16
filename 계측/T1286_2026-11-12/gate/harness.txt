@@ -1,0 +1,3 @@
+test-picker-tables rc=0 :: 결과: PASS
+test-t1243-farm-on rc=0 :: 46 통과 · 0 실패
+test-body-fields rc=0 :: === 10 통과 / 0 실패 ===

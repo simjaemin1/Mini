@@ -24,11 +24,11 @@ function run(mutant) {
   const m = new Module(file, module); m.filename=file; m.paths=Module._nodeModulePaths(path.dirname(file));
   m._compile(src,file); return m.exports.__t1170();
 }
-const assert = require('assert/strict');
+const V = require('./lib-verdict')('test-t1170-route-audit', { strict: true }), assert = V.assert;   // ★[T1301] 공용 판정 줄
 const normal=run(false), mutant=run(true);
 assert.equal(normal.found,true);
 assert.equal(normal.result.n,1);
 assert.equal(normal.result.mismatch,0);
 assert.ok(normal.result.maxSlices>1);
 assert.equal(mutant.result.mismatch,1);
-console.log('PASS 5 / FAIL 0',JSON.stringify({normal,mutant}));
+V.end(JSON.stringify({normal,mutant}));

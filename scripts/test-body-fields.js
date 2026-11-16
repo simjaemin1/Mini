@@ -27,10 +27,11 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const FROZEN = {
   // 드문 몸 필드 — 그 사건을 겪은 몸만 갈라진다(캐나디아 캐러밴 · 싸움 · 수확 · 어로 옛 갈래). 매 틱 읽어도 없음은 같은 모양에서 싸다.
   //   ★[T818 ①] `canadiaTask` · `fightTarget` · `harvestTarget` 은 켬 기본 리터럴에 들었다(T806 ③ 의 정한 다섯) — 아래 위생 줄 규약대로 여기서 뺐다
-  rare: ['_canadiaSubAt', '_caughtFish', '_lastFishAt', 'canadiaCaravanKey', 'canadiaCaravanSpeed', 'canadiaTaskAt', 'canadiaTaskEndAt',
+  //   ★[T1294 ②] `_lastFishAt` 는 `_t671Shape` 에 들었다(어부 184 몸이 날 1 부터 모양을 갈랐다) — 여기서 뺐다
+  rare: ['_canadiaSubAt', '_caughtFish', 'canadiaCaravanKey', 'canadiaCaravanSpeed', 'canadiaTaskAt', 'canadiaTaskEndAt',
     'canadiaWorkX', 'canadiaWorkY', 'farmClaimId'],
   // `server/villages.js` 의 `npc` 가 econ 사람(장부)이거나 생활층 드문 갈래인 자리 — 존 몸 모양과 무관하거나 드물다
-  econ: ['_carryOn', '_granD', '_granTask', '_rest', '_t325Ei', '_t325Site', '_t325U', '_t368H', '_t368N', '_t529Since', '_t529StepAt', '_t529X', '_t529Y',
+  econ: ['_carryOn', '_granD', '_rest', '_t325Ei', '_t325Site', '_t325U', '_t368H', '_t368N', '_t529Since', '_t529StepAt', '_t529X', '_t529Y',
     '_t561Hall', '_t561Wd', 'currentJob',
     'age'],   // ★[PM land1044] econ 사람 나이 — 도적 길 위 늙기(T1049 ④ · T1080 `_t1080RoadDay` · bandits 걷기 장부)가 쓰는 `npc` 는 존 몸이 아니라 econ 사람(장부 줄) · land1041 부터 main 빨강
 };
@@ -110,6 +111,24 @@ ok(bad.length === 0, '★몸 필드 규약 — `npc.` 에 쓰는 이름이 전�
     const bait = new Map(m1140); bait.set('nextDecisionAt', 'nextDecisionAt: 1');
     ok([...m806.keys()].some((k) => m806.get(k) !== bait.get(k)), '★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다');
   } else ok(true, '[T1140 ③-가] 차례 리터럴 없음(손잡이 없는 판)');
+}
+// ⑳ ★[T1323 · T1322 회부 1] 걸음 판정 칸 쓰기 린트 — 첫 거름(T1322 · 켬 기본)은 "표가 산 동안 걸음 문 밖에서 판정 칸이 안 바뀐다"에 선다.
+//   걸음 문 밖(npcStep · 결정 · 생활층 한 몸 틱에서만 닿지 않는 함수)에서 판정 칸을 쓰는 함수는 쓰기 앞에 표를 내리거나(`_t1322Touch` · `_t1323Touch` · deps `t1322Touch`)
+//   `scripts/t1323/gate-writes-allow.json` 에 까닭 갈래와 함께 있어야 한다. 정적 · 이름 부름 그래프(`scripts/lib-gate-writes.js` = `scripts/t1323/census.py`).
+console.log('\n=== ⑳ [T1323] 걸음 판정 칸 — 문 밖 쓰기는 표를 내리거나 까닭이 있다 ===');
+{
+  const G = require('./lib-gate-writes'), ALLOW = JSON.parse(fs.readFileSync(path.join(__dirname, 't1323', 'gate-writes-allow.json'), 'utf8'));
+  const allow = new Map(); for (const [why, L] of Object.entries(ALLOW)) if (Array.isArray(L)) for (const k of L) allow.set(k, why);
+  const lint = (extra) => { const { rows } = G.census(path.join(__dirname, '..'), extra); const out = rows.filter((r) => !r.inside), bad = new Map(), seen = new Set();
+    for (const r of out) { const k = `${r.file}:${r.fn}`; seen.add(k); if (!r.touched && !allow.has(k)) bad.set(k, (bad.get(k) || 0) + 1); }
+    return { rows, out, bad, seen, touched: out.filter((r) => r.touched).length, allowed: out.filter((r) => !r.touched && allow.has(`${r.file}:${r.fn}`)).length }; };
+  const R = lint();
+  ok(R.rows.length > 300 && R.out.length > 0, '⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)', `전체 ${R.rows.length} · 걸음 문 안 ${R.rows.length - R.out.length} · 문 밖 ${R.out.length}(표 내림 ${R.touched} · 까닭 ${R.allowed})`);
+  ok(R.bad.size === 0, '⑳ 문 밖 판정 칸 쓰기 = 표 내림 또는 까닭 표', R.bad.size ? [...R.bad].map(([k, n]) => `${k}(${n})`).join(' · ') : '0');
+  const stale = [...allow.keys()].filter((k) => !R.seen.has(k));
+  ok(stale.length === 0, '⑳ 까닭 표에 없는 함수가 없다(지워진 · 이름 바뀐 함수 — 표를 고친다)', stale.join(' · ') || '0');
+  const B = lint([['bait.js', 'function _baitWarp(p) {\n  p.targetX = 1; p.x = 2;\n}\nsetInterval(() => _baitWarp(players.get("n1")), 1000);\n']]);
+  ok(B.bad.has('bait.js:_baitWarp'), '⑳ 미끼 — 걸음 문 밖에서 목표 · 자리를 쓰는 새 함수(표 내림 없음)는 문다', [...B.bad.keys()].join(' · '));
 }
 console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);
 process.exit(fail ? 1 : 0);

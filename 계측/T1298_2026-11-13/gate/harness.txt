@@ -1,0 +1,5 @@
+test-t1260-food-reads rc=0 :: === T1260 식량 한 품목 읽는 문: 통과 31 · 실패 0 ===
+test-econ-fieldyield rc=0 :: === 결과: 206 PASS / 0 FAIL ===
+test-picker-tables rc=0 :: 결과: PASS
+test-t1243-farm-on rc=0 :: 60 통과 · 0 실패
+test-body-fields rc=0 :: === 10 통과 / 0 실패 ===

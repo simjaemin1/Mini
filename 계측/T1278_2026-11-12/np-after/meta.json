@@ -1,0 +1,45 @@
+{
+  "code": 0,
+  "cpuSeconds": 1798.251828,
+  "wallSeconds": 1836.616513314,
+  "stats": {
+    "steps": 1023161247,
+    "ticks": 1288428,
+    "held": 0,
+    "heldWalk": 0,
+    "begin": {
+      "sleep": 0,
+      "rest": 0,
+      "walk": 0
+    },
+    "end": {
+      "due": 0,
+      "intr": 0
+    },
+    "intrWhy": {},
+    "walkMs": 0,
+    "sleepMs": 0,
+    "restMs": 0,
+    "routePts": 0,
+    "nsHeld": 0,
+    "nHeld": 0,
+    "nsStep": 501269529167,
+    "nStep": 1023161247,
+    "nsMove": 254140147403,
+    "nMoveTicks": 1288428
+  },
+  "clock": {
+    "V": 1767268547528.4807,
+    "V0": 1767225600000,
+    "fired": 1783477,
+    "timers": 25282,
+    "intervals": 15,
+    "started": true,
+    "startAt": 1767225600000,
+    "paused": false,
+    "yields": 4458,
+    "maxQ": 21,
+    "errs": 0,
+    "q": 15
+  }
+}

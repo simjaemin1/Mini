@@ -141,6 +141,12 @@ const S = (d) => `${q(d, 0.5)} / ${q(d, 0.95)} / ${Math.max(...d).toFixed(1)}`;
     await pg.ev(`(() => { if (typeof closeBoardPane === 'function') closeBoardPane(); return 1; })()`);
     // 알림
     await pg.ev(`(() => { showNotice('오석 판 알림 시험입니다. 이 줄은 화면 위 가운데에 섭니다.', 8000); return 1; })()`);
+    //   ★[T1328 · 야간 11-15 ② "알림 사진 null" — 단독 초록] 판을 재기 전에 **그 줄이 판에 실제로 섰는지**를 기다린다(조건 · 상한 8초 = 알림 수명).
+    //     종전엔 고정 500ms 뒤 바로 쟀다 — 그 사이 알림 판이 아직 안 그려졌거나(붐빈 상자 · 프레임 밀림) 다른 알림 줄이 앞을 차지하면 글자 0 → 대비 null 로 빨갰다.
+    //     기다린 시간은 줄에 찍는다(판정 밖) · 상한을 넘으면 그대로 잰다(빨강이 이름을 단다 — 조용한 초록 0).
+    { const _t0 = Date.now(); let _seen = false;
+      while (Date.now() - _t0 < 8000 && !(_seen = await pg.ev(`(() => { const n = document.getElementById('notice'); if (!n) return false; const r = n.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(n).visibility !== 'hidden' && (n.textContent || '').includes('오석 판 알림 시험입니다'); })()`))) await sleep(100);
+      console.log(`    (참고 · 판정 밖) 알림 줄이 판에 선 때까지 ${Date.now() - _t0}ms${_seen ? '' : ' — ★상한 8초를 넘었다(그대로 잰다)'}`); }
     await judge('알림', '#notice');
     const errs = await pg.ev('window.__osaErr || []');
     ok(!errs.length, `${mode === 'on' ? '③' : '⑧'} 페이지 오류 0`, errs.slice(0, 3).join(' | '));

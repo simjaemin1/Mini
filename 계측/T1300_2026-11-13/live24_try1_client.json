@@ -1,0 +1,84 @@
+{
+ "note": "첫 판 — 컨테이너 재시작(03:08 UTC 무렵)으로 끊김 · 보기 10800초 중 약 4740초 · 자 파일(5초마다) 마지막 값",
+ "arm": "after",
+ "dayMs": 1440000,
+ "client": true,
+ "startedUtc": "2026-11-13T01:49",
+ "killedUtc": "2026-11-13T03:08",
+ "lastLog": "4740초 — econDayToMs 427997 · 곳간 4날 · 마감 4 · 틈 선 마감 0 · 틈 틱 0 · 장인 틈 걸음 0 · 그림자 0",
+ "stat": {
+  "arm": "after",
+  "D": 3,
+  "cur": {
+   "d": 3,
+   "at": 4565314,
+   "gapTicks": 0,
+   "headMs": 30,
+   "art": 0,
+   "artTrans": 0,
+   "shadow": 0
+  },
+  "closes": [
+   {
+    "d": 0,
+    "at": 245318,
+    "gapTicks": 0,
+    "headMs": 24,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 1,
+    "at": 1685343,
+    "gapTicks": 0,
+    "headMs": 21,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 2,
+    "at": 3125320,
+    "gapTicks": 0,
+    "headMs": 24,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 3,
+    "at": 4565314,
+    "gapTicks": 0,
+    "headMs": 30,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   }
+  ],
+  "gapTicks": 0,
+  "edm": {},
+  "edmAll": 430298,
+  "art": {
+   "calls": 49312,
+   "gapCalls": 0,
+   "trans": {},
+   "take": 0,
+   "give": 0,
+   "gapTake": 0,
+   "gapGive": 0,
+   "gapOut": 0,
+   "gapIn": 0,
+   "shadow": 0,
+   "shadowBy": {},
+   "shadowOut": 0,
+   "shadowIn": 0
+  },
+  "gran": {
+   "villages": 51,
+   "units": 35797.031,
+   "day": 4
+  },
+  "t0": 1794534546644
+ }
+}

@@ -1,0 +1,39 @@
+{
+ "run": "after30",
+ "intervalUs": 2000,
+ "cpuSeconds": 1756.307342,
+ "wallSeconds": 1721.595031848,
+ "valid": true,
+ "profiles": [
+  {
+   "file": "CPU.20261112.062332.988.0.001.cpuprofile",
+   "samples": 807003,
+   "idle": 806716,
+   "tickCaravanBodies": 0,
+   "_wwPre": 0,
+   "_t1182Step": 0,
+   "_wwIsStill": 0,
+   "internalModuleStat": 0
+  },
+  {
+   "file": "CPU.20261112.062332.996.0.001.cpuprofile",
+   "samples": 797687,
+   "idle": 58,
+   "tickCaravanBodies": 32972,
+   "_wwPre": 59895,
+   "_t1182Step": 149,
+   "_wwIsStill": 1,
+   "internalModuleStat": 1
+  }
+ ],
+ "tickCaravanBodies_min": 1.099,
+ "tickCaravanBodies_pctOfBusy": 4.13,
+ "_wwPre_min": 1.997,
+ "_wwPre_pctOfBusy": 7.51,
+ "_t1182Step_min": 0.005,
+ "_t1182Step_pctOfBusy": 0.02,
+ "_wwIsStill_min": 0.0,
+ "_wwIsStill_pctOfBusy": 0.0,
+ "internalModuleStat_min": 0.0,
+ "internalModuleStat_pctOfBusy": 0.0
+}

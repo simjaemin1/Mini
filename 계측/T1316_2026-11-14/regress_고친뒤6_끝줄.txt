@@ -1,0 +1,6 @@
+=== 러너 요약 ===
+  통과 5: test-granary-haul.js test-t1212-farm-clock.js test-t1221-farm-labor.js test-t1224-econ-farm.js test-t1243-farm-on.js
+  실패 1: test-farm-act.js(rc=1)
+  걸린 시간 상위(초): test-t1243-farm-on.js 1126 · test-farm-act.js 18 · test-t1212-farm-clock.js 1 · test-t1224-econ-farm.js 1 · test-granary-haul.js 0 · test-t1221-farm-labor.js 0
+  걸린 시간 합: 하네스 1146초 · 러너 전체 1155초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 6번(앞 판이 남긴 아이 없음)

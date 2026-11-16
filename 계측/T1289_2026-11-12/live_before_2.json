@@ -1,0 +1,154 @@
+{
+ "arm": "before",
+ "dayMs": 240000,
+ "obsS": 1500,
+ "inWorld": true,
+ "pageErrors": 0,
+ "wallS": 1534,
+ "rev": "a6b7aba5d",
+ "stat": {
+  "arm": "before",
+  "D": 5,
+  "cur": {
+   "d": 5,
+   "at": 1340277,
+   "gapTicks": 0,
+   "headMs": 16,
+   "art": 0,
+   "artTrans": 0,
+   "shadow": 0
+  },
+  "closes": [
+   {
+    "d": 0,
+    "at": 140280,
+    "gapTicks": 0,
+    "headMs": 24,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 1,
+    "at": 380283,
+    "gapTicks": 0,
+    "headMs": 21,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 2,
+    "at": 620292,
+    "gapTicks": 0,
+    "headMs": 20,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 3,
+    "at": 860298,
+    "gapTicks": 0,
+    "headMs": 19,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 4,
+    "at": 1100292,
+    "gapTicks": 0,
+    "headMs": 17,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   },
+   {
+    "d": 5,
+    "at": 1340277,
+    "gapTicks": 0,
+    "headMs": 16,
+    "art": 0,
+    "artTrans": 0,
+    "shadow": 0
+   }
+  ],
+  "gapTicks": 0,
+  "edm": {},
+  "edmAll": 145734,
+  "art": {
+   "calls": 25111,
+   "gapCalls": 0,
+   "trans": {},
+   "take": 32,
+   "give": 11,
+   "gapTake": 0,
+   "gapGive": 0,
+   "gapOut": 0,
+   "gapIn": 0,
+   "shadow": 0,
+   "shadowBy": {},
+   "shadowOut": 0,
+   "shadowIn": 0
+  },
+  "gran": {
+   "villages": 51,
+   "units": 36174.663,
+   "day": 6
+  },
+  "t0": 1794498031727
+ },
+ "closeMs": [
+  [
+   1,
+   62003
+  ],
+  [
+   2,
+   26375
+  ],
+  [
+   3,
+   27977
+  ],
+  [
+   4,
+   28501
+  ],
+  [
+   5,
+   30752
+  ],
+  [
+   6,
+   28281
+  ]
+ ],
+ "sum": {
+  "closes": 6,
+  "gapCloses": 0,
+  "gapTicks": 0,
+  "gapTicksMax": 0,
+  "headMsMax": 24,
+  "artGapCalls": 0,
+  "artGapTrans": 0,
+  "artTrans": {},
+  "artShadow": 0,
+  "artShadowBy": {},
+  "gapTake": 0,
+  "gapGive": 0,
+  "gapUnitsOut": 0,
+  "gapUnitsIn": 0,
+  "shadowUnitsOut": 0,
+  "shadowUnitsIn": 0,
+  "take": 32,
+  "give": 11,
+  "edmGap": {},
+  "granary": {
+   "villages": 51,
+   "units": 36174.663,
+   "day": 6
+  }
+ }
+}

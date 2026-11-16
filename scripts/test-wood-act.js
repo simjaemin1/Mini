@@ -122,7 +122,8 @@ console.log("\n③ ⓒ 이중 0 — 켠 마을에서 `addProduce('wood')` 가 �
     '③ ★부산물(수지·껍질·도토리)은 **손 안 댔다** — `baseAmt` 를 그대로 타고 나간다');
   ok(/if \(npc\.currentJob === 'lumberjack' && woodActOn\(v\)\) npc\._t172mul = skillMul \* toolBoost \* inputMult;/.test(C),
     '③ ★걷어낸 자리에 **배율만 남겨 둔다**(T179 규약 · 실체 쪽이 읽는다)');
-  ok(/const _t325In = T325_WOOD_ACT \? \(v\._t325InflowToday \|\| 0\) : 0;/.test(C)
+  //   ★[T1275] 영토 v2 표지 마을(`_t1238Land`)은 수식 나무꾼 세계에서도 개간 통나무가 이 칸으로 든다 — 같은 한 줄에 표지가 붙었다(끔 세계 = 표지 없음 = 종전 값)
+  ok(/const _t325In = \(T325_WOOD_ACT \|\| v\._t1238Land\) \? \(v\._t325InflowToday \|\| 0\) : 0;/.test(C)
      && /dailyProductionPotential\.wood = \(dailyProductionPotential\.wood \|\| 0\) \+ _t325In;/.test(C)
      && /dailyProduction\.wood = \(dailyProduction\.wood \|\| 0\) \+ _t325In;/.test(C),
     '③ ★★장부 다리가 **틱 안 한 줄**이다(T193·T312 가 연 그 자리 — 생활층에서 적으면 리셋이 지운다)');
@@ -217,7 +218,8 @@ console.log('\n⑥ ⓐ 관측자 무관 · ⓕ 벤 그루는 없어지고 벤 �
 console.log('\n⑦ 끄면 비트 동일 — 새 줄이 전부 손잡이 뒤에 있다');
 {
   const C = codeOf(SRC), VC = codeOf(VSRC);
-  ok(/if \(!T325_WOOD_ACT \|\| !v \|\| !v\.storage\) return 0;/.test(C), '⑦ ★곳간 입구 첫 줄이 손잡이다');
+  //   ★[T1275] 곳간 입구 — 손잡이가 꺼지면 0 이 종전 그대로이고, 영토 v2 표지 마을(`_t1238Land` — 서버가 켬에서만 심는다)만 개간 통나무를 말뚝 모자람까지 받는다(끔 세계 · 랩 = 표지 없음 = 0)
+  ok(/function woodToGranary\(v, units\) \{\n  if \(!v \|\| !v\.storage\) return 0;\n  if \(!T325_WOOD_ACT\) return v\._t1238Land \? actToGranary\(v, 'wood', actDemandCap\(v, units, v\._t1207Need \|\| 0, '_t325InflowToday'\), '_t325InflowToday', '_t325CutN'\) : 0;/.test(C), '⑦ ★곳간 입구 — 손잡이 끔이면 0(영토 v2 표지 마을만 T1275 개간 통나무 입구)');
   ok(/function woodActOn\(v\) \{ return !!\(T325_WOOD_ACT/.test(C), '⑦ ★게이트도 손잡이가 첫 항이다');
   ok(/if \(job === 'lumberjack' && vil\.econ && _lifeEcon\(\)\.woodActOn\(vil\.econ\)\) \{/.test(VC),
     '⑦ ★★생활층 벌목 블록이 **통째로** 손잡이 뒤다(끄면 종전 갈래가 그대로 돈다)');
@@ -230,8 +232,11 @@ console.log('\n⑦ 끄면 비트 동일 — 새 줄이 전부 손잡이 뒤에 �
   ok(/if \(_on && \(_t1202W \? true : _walked === 0\) && _ln > 0 && _tr\.length\) \{/.test(VC)
      && /const _t1202W = \(_bodyOnly && _on\) \? _t1202Roster\(vil, 'lumberjack', _t561W \|\| _t491C, _walked, _t449S\) : null;/.test(VC),
     '⑦ ★그 절이 `return` 으로 하루 경계를 끊지 않는다(뒤 일과가 그대로 돈다) · ★[T1202] 몸 XOR 일괄은 실제 호스트에서만 몸마다');
-  ok(/if \(_lifeEcon\(\)\.T325_WOOD_ACT && state\.deps\.t325TreesAtCell\) \{/.test(VC),
-    '⑦ ★★나무 셀 스캔도 손잡이 뒤다 — 끈 팔은 색인을 **한 셀도 안 묻는다**(벽시계 무변)');
+  //   ★[T1291] T1259(`1880230e8`)가 같은 스캔을 제 손잡이 `T1259_WOOD_CAP`(끔 기본 · `=== '1'` 만 켬) 뒤에서도 쓰게 문을 넓혔다 —
+  //     문 조건이 **손잡이만**(둘 중 하나)이고 T1259 가 끔 기본이면 "끈 팔은 색인을 안 묻는다"가 그대로다(지키던 것 = 손잡이 밖 스캔 0).
+  ok(/if \(\(_lifeEcon\(\)\.T325_WOOD_ACT \|\| _lifeEcon\(\)\.T1259_WOOD_CAP\) && state\.deps\.t325TreesAtCell\) \{/.test(VC)
+     && /const T1259_WOOD_CAP = \(typeof process !== 'undefined' && process\.env && process\.env\.T1259_WOOD_CAP === '1'\);/.test(C),
+    '⑦ ★★나무 셀 스캔도 손잡이 뒤다 — 끈 팔(T325 · T1259 둘 다 끔 · T1259 는 끔 기본)은 색인을 **한 셀도 안 묻는다**(벽시계 무변)');
   ok(/v\._woodOutLast = \(v\.counts\.lumberjack \|\| 0\) \* JOBS\.lumberjack\.base \* \(v\.land\.wood \|\| 0\) \* toolBoostShared;/.test(C),
     '⑦ ⚠분자만 손잡이 밖에서 남긴다 — **읽는 쪽이 손잡이 뒤**라 끈 팔은 그 수를 안 본다(T60 문법의 관측 칸)');
   // ★끈 팔에서 econ 이 내는 목재 = 종전 그대로(게이트가 거짓이라 `addProduce` 를 탄다)
@@ -388,7 +393,7 @@ console.log('\n⑩ [T398] 나무꾼의 숲 = 영토 밖 고리');
   ok(body.length > 0 && lits.length === 0, 'ⓐ ★그 함수에 **지어낸 수가 없다**(반경은 `T325_R` · 남은 것은 0·1)', lits.join(',') || '0개');
   //   ★고리는 손잡이 **뒤**에서만 센다 — 끈 팔은 이 함수를 한 번도 안 부른다(비트 동일)
   const scan = (VC.match(/function _t325Scan\([\s\S]*?\n\}/) || [''])[0];
-  const iKnob = scan.indexOf('if (_lifeEcon().T325_WOOD_ACT && state.deps.t325TreesAtCell) {');
+  const iKnob = scan.indexOf('if ((_lifeEcon().T325_WOOD_ACT || _lifeEcon().T1259_WOOD_CAP) && state.deps.t325TreesAtCell) {');   // ★[T1291] T1259 손잡이도 문에(끔 기본 — ⑦ 이 같이 본다)
   const iCall = scan.indexOf('const C = _t398Cells(vil);');
   ok(iKnob > 0 && iCall > iKnob && (scan.match(/_t398Cells\(/g) || []).length === 1,
     'ⓑ ★★고리를 **손잡이 뒤에서 한 번** 부른다 — 끈 팔은 셀을 한 칸도 안 센다(비트 동일)');

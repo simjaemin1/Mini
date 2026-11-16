@@ -44,7 +44,7 @@
     const out = [];
     for (const c of conns.values()) {
       const ox = c.meta?.worldOffsetX || 0, oy = c.meta?.worldOffsetY || 0;
-      for (const cl of (c.claims ? c.claims.values() : [])) out.push({ id: cl.id, kind: cl.kind, wx: ox + cl.x, wy: oy + cl.y, w: cl.w, h: cl.h });
+      for (const cl of (c.claims ? c.claims.values() : [])) out.push({ id: cl.id, kind: cl.kind, wx: ox + cl.x, wy: oy + cl.y, w: cl.w, h: cl.h, ...(cl.care != null ? { care: cl.care, state: cl.state || 'active' } : {}) });   // ★[T1305] 돌봄 단계(켬 판에만 실린다)
     }
     return out;
   };

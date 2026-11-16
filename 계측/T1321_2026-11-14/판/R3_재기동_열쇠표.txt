@@ -1,0 +1,5 @@
+# R3 재기동 창 — 받은 열쇠 표(t1321_seen) · 숨김 줄(t1321_pend) · 몹 행 수 (판 끝 DB)
+한반도 받은 열쇠(닛폰 사슴 #40~#49): [{"n":4,"key":"nippon:mwgodu8e:4","at":1794677185450},{"n":40,"key":"nippon:mwgodu8e:40","at":1794677632651},{"n":41,"key":"nippon:mwgodu8e:41","at":1794677642470},{"n":42,"key":"nippon:mwgodu8e:42","at":1794677660115},{"n":43,"key":"nippon:mwgodu8e:43","at":1794677666079},{"n":44,"key":"nippon:mwgodu8e:44","at":1794677666079},{"n":45,"key":"nippon:mwgodu8e:45","at":1794677677839},{"n":46,"key":"nippon:mwgodu8e:49","at":1794677728190}]
+닛폰 받은 열쇠(한반도 #60~#66): [{"n":4,"key":"hanbando:mwgodu4t:6","at":1794677135884},{"n":43,"key":"hanbando:mwgodu4t:60","at":1794677581114},{"n":44,"key":"hanbando:mwgodu4t:61","at":1794677621254},{"n":45,"key":"hanbando:mwgodu4t:62","at":1794677648972},{"n":46,"key":"hanbando:mwgodu4t:63","at":1794677648972},{"n":47,"key":"hanbando:mwgodu4t:64","at":1794677694851},{"n":48,"key":"hanbando:mwgodu4t:65","at":1794677694852},{"n":49,"key":"hanbando:mwgodu4t:66","at":1794677694972}]
+숨김 줄: 한반도 0 · 닛폰 0
+몹 행: 한반도 465 · 닛폰 466

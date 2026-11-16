@@ -1,0 +1,20 @@
+test-seam rc=0 1s === PASS 16 / FAIL 0 ===
+test-coll-grid rc=0 9s === 결과: 20 PASS / 0 FAIL ===
+test-rock-los rc=0 1s 결과: PASS
+test-t1187-names rc=0 1s === 27건 중 PASS 27 · FAIL 0 ===
+test-clothes-tiers rc=0 0s === 15건 중 PASS 15 · FAIL 0 ===
+test-streams rc=0 20s === 54건 중 PASS 54 · FAIL 0 ===
+test-nippon-boot rc=0 67s === 43건 중 PASS 43 · FAIL 0 ===
+test-route-sig rc=0 135s === 10 통과 / 0 실패 ===
+test-static-cache rc=0 17s 
+test-t1163-welcome-sig rc=0 7s === T1163 welcome 지형 서명: 통과 18 · 실패 0 ===
+test-region-profiles rc=0 0s === 74건 중 PASS 74 · FAIL 0 ===
+test-jungwon-boot rc=0 10s === 38건 중 PASS 38 · FAIL 0 ===
+test-frontier-iron rc=0 1s === 프런티어 철 하네스: 11 통과 / 0 실패 ✅ ===
+test-t1188-ore-split rc=0 2s PASS 29 / FAIL 0
+test-mining rc=0 4s 결과: PASS
+test-regrow rc=0 16s === 101건 중 PASS 101 · FAIL 0 ===
+test-route-persist rc=1 407s === 56 통과 / 1 실패 ===
+test-harness-lint rc=0 19s === 73건 중 PASS 73 · FAIL 0 ===
+test-body rc=0 5s === 324건 중 PASS 324 · FAIL 0 ===
+DONE

@@ -1,0 +1,63 @@
+E 4190 _t1289ToE function _t1289ToE(b) { const M = state.dayMs || 1, D = state.world ? (state.world.day | 0) : 0; return b - econDayToMs(D) + D * M; }
+E 4191 _t1289ToB function _t1289ToB(e) { const M = state.dayMs || 1, D = state.world ? (state.world.day | 0) : 0; return e - D * M + econDayToMs(D); }
+E 4209 _econDayFrac function _econDayFrac(now) { return Math.min(1, Math.max(0, (now - econDayToMs(state.world.day)) / Math.max(1, state.dayMs))); }
+E 4686 spawnCaravanBody body.arriveAt = Math.max(now + 1, econDayToMs(outbound ? c.arriveDay : c.returnArriveDay));
+E 4724 startReturnLeg body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
+E 4738 startReturnLeg body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
+E 4772 isolateCaravanReturn body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
+E 4798 _t1136Isolate body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
+E 5219 _caravanSyncOne body.arriveAt = Math.max(now + 1, econDayToMs(c.arriveDay));
+E 5372 _xzSpawnBody const b=_xzMakeBody(c.id,c,pts,outbound?'outbound':'inbound',now,econDayToMs(outbound?c.arriveDay:c.returnArriveDay),c.to,{tribeId:`simvil_${vil.dbId}
+E 5379 _xzSpawnBody const b = _xzMakeBody(c.id, c, sp.ptsLocal.slice(), 'outbound', now, econDayToMs(c._xzCross.day), c.to,
+E 5403 _xzStartReturnLeg body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
+E 5424 _xzIsolate body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
+E 5583 _xzAfterSend body.arriveAt = Math.max(body.departAt + 1, econDayToMs(c.returnArriveDay));
+E 8097 _warEnsureBody body.departAt = now; body.arriveAt = Math.max(now + 1, econDayToMs(eta));
+E 8100 _warEnsureBody const bornMs = econDayToMs(born); const frac = T681_ON ? Math.max(0, Math.min(1, (state.world.day - born) / legDays))
+E 8482 _warSetupReturn body.departAt = now; body.arriveAt = Math.max(now + 1, econDayToMs(state.world.day + legDays));
+E 10327 _t1253Now return D * M + Math.min(M, Math.max(0, Date.now() - econDayToMs(D)));
+E 10335 _t1282Wall return econDayToMs(D) + (_t1253Now() - D * M);
+E 14839 _t707Open if (!rec || rec.d !== D) { rec = vil._mkt = { d: D, end: (T762_CARAVAN_BODY ? (T1253_CLOCK_FIX ? _t1253Now() : Date.now()) : econDayToMs(D)) + state.d
+E 14856 _t952XzStay const d0 = econDayToMs(D), end = (rec && rec.d === D) ? rec.end : d0 + state.dayMs * _lifeVL().MKT_LINGER_DAY_FRAC;
+E 18206 econDayT function econDayT(now) { if (!state.world || !Number.isFinite(state.world.day) || !state.dayMs) return null; const D = state.world.day | 0; return T87
+E 18485 t728CalNext return { calendarNext: cal, calendarAt: econDayToMs((state.world.day | 0) + 1) };
+N 4192 _t1289Leg function _t1289Leg(body, arrE) { const e = _t1253Now(); body.departAt = e; body.arriveAt = Math.max(e + 1, arrE); body.nomPxMs = body.len / Math.max(1
+N 4201 _t1289In const mv = (v) => { if (!Number.isFinite(v)) return v; const f = S.ax || (Math.abs(v - S.at) < Math.abs(v) ? 'w' : 'e'); return f === to ? v : (to ===
+N 4514 _t1034Apply body._t1182At=T1253_CLOCK_FIX ? _t1253Now() : now;if(T1253_CLOCK_FIX)body._t1253N=0;const A=S.act;if(A.xzIn)body._xzInPts=A.xzIn.map(q=>({x:q[0],y:q[1
+N 4682 spawnCaravanBody _t1182: T762_CARAVAN_BODY, _t1182At: T1253_CLOCK_FIX ? _t1253Now() : now, pinHunger: p.hunger, pinThirst: p.thirst,
+N 4693 spawnCaravanBody if (_t707Mk) { const vil = state.byEcon.get(c.to), rec = vil && vil._mkt; body.phase = 'linger'; body.lingerUntil = (rec && rec.cars.has(c.id)) ? rec.
+N 4696 spawnCaravanBody if (T775_RESUME && T661_ON && _t707Mk && Number.isFinite(body.lingerUntil) && body.lingerUntil <= (T1253_CLOCK_FIX ? _t1253Now() : now)) { startReturn
+N 4728 startReturnLeg if (T772_ON) { const _t0n = (T1253_CLOCK_FIX && body._t1182) ? _t1253Now() : now; body._t661.t0 = Number.isFinite(body.lingerUntil) ? Math.min(_t0n, b
+N 4959 _t1182BodyReady if (leg === 'market') { if (body.phase !== 'linger' || (T1253_CLOCK_FIX ? _t1253Now() : Date.now()) < body.lingerUntil) return false; }
+N 5029 tickCaravanBodies const _en = T1253_CLOCK_FIX ? _t1253Now() : 0;
+N 5183 _caravanSyncOne body.lingerUntil = ((T1253_CLOCK_FIX && body._t1182) ? _t1253Now() : now) + state.dayMs * CARAVAN_LINGER_DAY_FRAC;
+N 5186 _caravanSyncOne if (T1136_ON && c.basket) body.lingerUntil = (T1253_CLOCK_FIX && body._t1182) ? _t1253Now() : now;
+N 5346 _xzMakeBody _t1182: T762_CARAVAN_BODY, _t1182At: T1253_CLOCK_FIX ? _t1253Now() : now, pinHunger: N.p.hunger, pinThirst: N.p.thirst, _xz: true };
+N 5483 _xzWalkToBorder if (T1253_CLOCK_FIX && body._t1182) now = _t1253Now();
+N 10335 _t1282Wall return econDayToMs(D) + (_t1253Now() - D * M);
+N 14839 _t707Open if (!rec || rec.d !== D) { rec = vil._mkt = { d: D, end: (T762_CARAVAN_BODY ? (T1253_CLOCK_FIX ? _t1253Now() : Date.now()) : econDayToMs(D)) + state.d
+N 14884 marketVillages const now = (T1253_CLOCK_FIX && T762_CARAVAN_BODY) ? _t1253Now() : Date.now();
+N 17200 _t1196Step const now = T1258_ARTISAN_CLOCK ? _t1253Now() : now0;
+D 4490 _t1034Pack da: body.departAt, aa: body.arriveAt, ppd: body.pxPerDay, nom: body.nomPxMs, pg: body.prog, at: Date.now(),
+D 4608 _t929Mark function _t929Mark() { return { k: _probe.routeCold | 0, w: _probe.walkBuilt | 0, t: Date.now() }; }
+D 4610 _t929Note const d = Date.now() - m.t;
+D 4621 _t775Resume let cut = false; const _q0 = Date.now();
+D 4630 _t775Resume const _dry = TB.ON ? (TB.left(TICK_SLICE_MS) <= 0) : (TICK_SLICE_MS > 0 && Date.now() - _q0 >= TICK_SLICE_MS);
+D 4959 _t1182BodyReady if (leg === 'market') { if (body.phase !== 'linger' || (T1253_CLOCK_FIX ? _t1253Now() : Date.now()) < body.lingerUntil) return false; }
+D 5522 _xzSend if (body && !walked && !body._xzSendWait && _xzWalkToBorder(body, r, Date.now())) {
+D 5523 _xzSend body._xzSendWait = { r, g, tries, at: Date.now(), until: body.arriveAt + state.dayMs }; X.st.walkWait++;
+D 5582 _xzAfterSend body.phase = 'inbound'; body.departAt = Date.now();
+D 5630 _xzBodyIn const now = Date.now();
+D 8481 _warSetupReturn const now = state._warTickAt || Date.now(), legDays = Math.max(1, w.marchDays || 1);
+D 10327 _t1253Now return D * M + Math.min(M, Math.max(0, Date.now() - econDayToMs(D)));
+D 14839 _t707Open if (!rec || rec.d !== D) { rec = vil._mkt = { d: D, end: (T762_CARAVAN_BODY ? (T1253_CLOCK_FIX ? _t1253Now() : Date.now()) : econDayToMs(D)) + state.d
+D 14884 marketVillages const now = (T1253_CLOCK_FIX && T762_CARAVAN_BODY) ? _t1253Now() : Date.now();
+D 17585 t1034Peek const out = { day: W ? W.day | 0 : null, w731: !!state._t731, frac: W && state.dayMs ? +_econDayFrac(Date.now()).toFixed(4) : null, t775: state._t775 
+D 18369 _t728Meta anchor: { day: W.day | 0, g: state.lastGameDay, epoch: state.epoch, dayMs: state.dayMs, at: Date.now() },
+F 1583 _t1197Now function _t1197Now(now) { return state.world.day + _econDayFrac(now); }
+F 4793 _t1136Isolate const t = world.day + _econDayFrac(now), days = E._t1136Probe.days(c.distance);
+F 4948 _t661Vis const f = _econDayFrac(now);
+F 5272 _t1136Clock const ev = E.basketFlush(w, Math.min(w.day + _econDayFrac(now), w.day + 1), false);
+F 9347 _t681BxVis const f = _econDayFrac(now);
+F 17585 t1034Peek const out = { day: W ? W.day | 0 : null, w731: !!state._t731, frac: W && state.dayMs ? +_econDayFrac(Date.now()).toFixed(4) : null, t775: state._t775 
+F 18206 econDayT function econDayT(now) { if (!state.world || !Number.isFinite(state.world.day) || !state.dayMs) return null; const D = state.world.day | 0; return T87

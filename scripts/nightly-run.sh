@@ -179,6 +179,14 @@ else
 fi
 say "===== 본 판 끝 ====="
 
+# ── ★[T1299 · T1287 회부 3 · PM 판정 넣음] 보고 끈 판 줄 점검 — **경고 줄만**(빨강 아님 · 나감 코드 · 빨강 목록 · 재실행에 안 든다).
+#   자 = `lint-report-gate.js`(기본 --since 2026-11-13 · `--strict` 는 11-20 뒤 PM 이 다시 본다 — 여기서는 안 준다). 끝 줄 하나를 로그에 그대로 적는다.
+if [ -z "${NIGHT_NO_LINT:-}" ]; then
+  _lint="$(node scripts/lint-report-gate.js 2>&1 </dev/null)"
+  printf '%s\n' "$_lint" | grep '⚠' | while IFS= read -r line; do say "  [경고 · 보고 끈 판] ${line#  }"; done
+  say "  [경고 · 보고 끈 판] $(printf '%s\n' "$_lint" | tail -1)"
+fi
+
 # ── 빨강 단독 재실행 — 판정은 제가 안 한다(보고기에게 묻는다 · 파서 사본 0).
 #   왜 단독으로 한 번 더: 2코어에서 앞 하네스 정리와 서버 둘 세우기가 겹치면 **없는 회귀**가 보인다
 #   (족보 167 · 09-13·09-14 야간 실측: `e2e-cold` 가 전수에선 빨갛고 단독에선 초록).

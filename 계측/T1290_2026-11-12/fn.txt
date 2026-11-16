@@ -1,0 +1,27 @@
+함수(npcStep 표본 %)                       A1 day   A1 night     A2 day   A2 night     A3 day   A3 night     D1 day   D1 night     D2 day   D2 night
+step                                    0.991      2.993      1.269      1.522      0.966      1.078      0.998      1.331      1.019      1.452
+self                                     0.44      1.655      0.576      0.822      0.436      0.569      0.465      0.713      0.465      0.821
+n                                       18629      14253      17424      11776      18629       8608      19160      10719      14071      11652
+decideNpcBehavior@zone.js               43.67      29.17      42.75      30.27      43.08      33.02      42.07       31.5      42.93      29.97
+npcLifeTick@villages.js                 33.52      17.41      32.93      18.73      33.32      21.51      32.61      19.63      33.87      19.85
+computeNpcPath@zone.js                   9.57      14.21        9.2      14.33       9.35      12.76       9.12      13.32       9.21      12.56
+queryCircle@quadtree.js                  0.19        0.1       0.17       0.14       3.51       4.61       3.41        5.0       3.25       4.31
+queryCircleScratch@quadtree.js           4.12       5.42        4.1       4.96          0          0          0          0          0          0
+queryRect@quadtree.js                    0.19       0.13       0.14       0.12       3.48       4.73       3.47       5.13       3.23       4.35
+_qrInto@quadtree.js                       3.4       4.64        3.5       4.29          0          0          0          0          0          0
+_t1181Step@villages.js                   3.38       4.16       3.47       4.93       3.11       4.45       4.03       5.35        3.8       5.26
+_t1181Task@villages.js                   0.87       1.38       0.91       1.49       0.83       1.12       1.18       1.63       1.18       1.73
+productionActsBound@economy-sim.j        0.83       1.22       1.08       1.72       0.79       1.46       1.17       1.85       0.97       1.54
+_t435Crew@villages.js                       0          0          0          0          0          0       0.26       0.48       0.31       0.48
+_t435CrewHas@villages.js                 0.21        0.4       0.25        0.5       0.23        0.5          0          0          0          0
+_t527Crew@villages.js                       0          0          0          0          0          0          0          0          0          0
+_t527CrewHas@villages.js                    0          0          0          0          0          0          0          0          0          0
+_t1214Crew527@villages.js                   0       0.01          0          0          0          0          0       0.01          0       0.01
+_t340Try@villages.js                     5.78       0.38       5.49       0.53       5.57       0.67       5.32       0.44       5.76       0.55
+_t312Catch@villages.js                   3.22       0.11       3.15       0.14       3.32       0.24       3.24       0.09       3.03       0.21
+drawWholeStock@fishing.js                1.49          0       1.57          0        1.5          0       1.41          0       1.32          0
+_fishSave@zone.js                         1.1          0       1.08          0       1.08          0       1.04          0       0.92          0
+npcTotalKg@carry.js                      1.49       0.08       1.39       0.12       1.62       0.22       1.64       0.07        1.5       0.18
+zoneGameDay@zone.js                      1.24       1.49       0.99        1.6       1.03       2.01       1.01       1.81       0.92       1.31
+followNpcPath@zone.js                     2.0       0.85       2.11       1.06       1.93       1.06       1.82        1.1       1.93       0.77
+_lifeNeedClear@villages.js               3.14       0.83       3.25       0.76       3.49       1.16       2.96       0.88       3.51       1.07

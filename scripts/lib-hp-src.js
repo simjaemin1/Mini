@@ -61,7 +61,8 @@ const SPECS = {
     name: '마을 NPC 몸 hp', file: 'server/villages.js', door: /\nfunction setHp\(p, v, why\) \{/, doorName: '`setHp(p, v, why)`',
     fwd: 'function _setHp(p, v, why) { return state.deps.setHp(p, v, why); }',
     // ★[T1203 2026-11-07] 부르는 자리 8 → 10 — 식사 몸 굶음(`_t1198`/T1206 갈래 · `lost > 0` → `starve`)과 캐러밴 몸 복원(T1182 `_t1034Apply` 의 `put` · 종전 `p.hp=q[2]` 직접 쓰기를 문으로 · `restore`). 낱말 일곱 그대로.
-    unit: ['bu', 'A[i]'], calls: 10, whys: ['captive', 'died', 'regen', 'release', 'restore', 'starve', 'war'],
+    // ★[T1315 2026-11-14] 부르는 자리 10 → 11 — 전장 누운 몸(`_warCorpsePid` · 손잡이 `T1315_WAR_CORPSE` 켬 갈래 · 그 자리 죽음 `died`). 낱말 일곱 그대로.
+    unit: ['bu', 'A[i]'], calls: 11, whys: ['captive', 'died', 'regen', 'release', 'restore', 'starve', 'war'],
   },
 };
 

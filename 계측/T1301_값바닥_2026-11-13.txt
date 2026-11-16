@@ -1,0 +1,30 @@
+# T1301 값 바닥 관측 — 랩 자 t17-metrics 800날 · 100날마다 51마을 값표 전 칸 대 바닥(scripts/t1301-floor-observe.js)
+시드 1020 ⓐ 기준선   인구 5929 · 소멸 0/51 · 무기Q 1045 · 확장셀 3480 · 거래 5000
+시드 1020 날 100 칸 15045 바닥에 붙음 9751 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 1020 날 200 칸 15045 바닥에 붙음 9813 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 1020 날 300 칸 15045 바닥에 붙음 9780 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 1020 날 400 칸 15045 바닥에 붙음 9824 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 1020 날 500 칸 15045 바닥에 붙음 9786 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 1020 날 600 칸 15045 바닥에 붙음 9786 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 1020 날 700 칸 15045 바닥에 붙음 9768 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 1020 날 800 칸 15045 바닥에 붙음 9789 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 7 ⓐ 기준선   인구 6642 · 소멸 0/51 · 무기Q 812 · 확장셀 6553 · 거래 5000
+시드 7 날 100 칸 15045 바닥에 붙음 9741 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 7 날 200 칸 15045 바닥에 붙음 9770 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 7 날 300 칸 15045 바닥에 붙음 9808 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 7 날 400 칸 15045 바닥에 붙음 9856 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 7 날 500 칸 15045 바닥에 붙음 9823 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 7 날 600 칸 15045 바닥에 붙음 9793 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 7 날 700 칸 15045 바닥에 붙음 9757 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 7 날 800 칸 15045 바닥에 붙음 9797 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 42 ⓐ 기준선   인구 6171 · 소멸 0/51 · 무기Q 794 · 확장셀 4084 · 거래 5000
+시드 42 날 100 칸 15045 바닥에 붙음 9735 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 42 날 200 칸 15045 바닥에 붙음 9795 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 42 날 300 칸 15045 바닥에 붙음 9790 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 42 날 400 칸 15045 바닥에 붙음 9812 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 42 날 500 칸 15045 바닥에 붙음 9806 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 42 날 600 칸 15045 바닥에 붙음 9817 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 42 날 700 칸 15045 바닥에 붙음 9765 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+시드 42 날 800 칸 15045 바닥에 붙음 9780 바닥 아래 357 (원석 상한 357 · 그 밖 0 · 0원 153 ) 품목 ore_iron,ore_sand,ore_nickel,ore_coal,ore_limestone,ore_clay,ore_zinc 마을 51
+가장 싼 칸(원석 밖 · 1020 800날): [[0.00003757959183673469,"dried_loach","광산1",0.003757959183673469,0.00003757959183673469],[0.00003757959183673469,"dried_loach","광산2",0.003757959183673469,0.00003757959183673469],[0.00003757959183673469,"dried_loach","광산3",0.003757959183673469,0.00003757959183673469]]
+관측기 없이 시드 1020 ⓐ 기준선   인구 5929 · 소멸 0/51 · 무기Q 1045 · 확장셀 3480 · 거래 5000

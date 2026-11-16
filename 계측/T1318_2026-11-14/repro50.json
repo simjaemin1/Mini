@@ -1,0 +1,49 @@
+{
+ "what": "T1318 50날 재현 — main 130840526(land1075) · 시드 1020 BODY 팔 · t1302-run.py 와 같은 한 번에 돈 판(마디 없음) vs GPT 중간 기록 progress/body50.json(구현 2f0a4b91)",
+ "sameFields": 55,
+ "fields": 55,
+ "diff": {
+  "bodyExit.died.war": [
+   null,
+   0
+  ],
+  "bodyExit.other.war": [
+   null,
+   0
+  ],
+  "bodyExit.warFieldX": [
+   null,
+   0
+  ]
+ },
+ "diffNote": "다른 칸은 land1074 T1307 이 더한 꼬리표 칸(died.war · other.war · warFieldX = 0)뿐 — GPT 기록엔 칸이 없다",
+ "day50": {
+  "pop": 1650,
+  "bodies": 1650,
+  "territoryCost": {
+   "days": 2550,
+   "stallWood": 0,
+   "stallBody": 0,
+   "cells": 9660,
+   "wood": 1786.6407929999998,
+   "laborMin": 15990.00167252355,
+   "felled": 658,
+   "woodIn": 1087.138772,
+   "body": 9660,
+   "queued": 11580
+  },
+  "t1302": {
+   "population": 1650,
+   "bodies": 1650,
+   "physical": 9660,
+   "added": 9660,
+   "batchCalls": 0
+  },
+  "missingPeople": 0
+ },
+ "cpuSecondsDay50": {
+  "this": 306.724482,
+  "gpt": 325.196908
+ },
+ "quick5": "2f0a4b91 worktree 와 main 머리의 5날 BODY 판 — t1302 날 줄 5/5 · econ 지문(sbc) 5/5 · 몸 자리 지문 5/5 같음(t650 은 ms · 호출 자리 칸만 다름)"
+}

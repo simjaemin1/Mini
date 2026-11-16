@@ -1,0 +1,3 @@
+
+=== 서버 판 자(T577) — 100일 · 시드 7 · 판 F · 동시 2 · /root/t1293runs/F-7 ===
+  조건: VILLAGE_DAY_MS=1440000 · T315_MAPBEDS=0 · T627_TRIP_DAY=(없음) · 집 행위 끔 · 가상 시계 켬 · T696_WAL=0 · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=∞(운영 기본) · 도적 켬

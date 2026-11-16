@@ -23,6 +23,8 @@
 //   env: T745_VCLOCK=1(켬 · 러너가 준다) · T745_V0=<ms> · T745_CHUNK=<콜백 수>(실제 I/O 에 한 번 양보하는 간격 · 결과 무관 · 기본 400) ·
 //        T745_PHASE_OUT=<파일> · T745_PHASE_IN=<파일>
 if (process.env.T745_VCLOCK !== '1' || !process.env.T577_SEED) return;   // 아이 존만(부모 러너 · 다른 프로세스 무접촉)
+// ★[T1320] 일꾼 스레드(`-r` 은 execArgv 로 일꾼에도 실린다 — 두 존 판의 걸음표 일꾼)는 제 시계 그대로 — 시작 줄(`zone server up on`)이 없어 줄이 영영 안 돈다
+try { if (!require('worker_threads').isMainThread) return; } catch (e) {}
 const RT = { setTimeout: global.setTimeout, setInterval: global.setInterval, clearTimeout: global.clearTimeout, clearInterval: global.clearInterval,
   setImmediate: global.setImmediate, Date: global.Date };
 let V = Number(process.env.T745_V0) || 1767225600000;   // 2026-01-01T00:00:00Z — 상수일 뿐(두 판이 같은 값이면 된다)
@@ -91,10 +93,15 @@ global.clearTimeout = function (t) { if (t instanceof VTimer) t._dead = true; el
 global.clearInterval = function (t) { if (t instanceof VTimer) t._dead = true; else if (t != null) RT.clearInterval(t); };
 try { const TM = require('timers'); TM.setTimeout = global.setTimeout; TM.setInterval = global.setInterval; TM.clearTimeout = global.clearTimeout; TM.clearInterval = global.clearInterval; } catch (e) {}
 
+// ★[T1320] 발맞춤 문(두 존 가상 시계 판 — `scripts/t1320-lockstep.js` 가 건다 · 없으면 종전 그대로):
+//   gate(다음 만기) 가 거짓이면 줄을 멈춘다(그 콜백 앞에서 · V 흐름 0) — 다시 돌리기는 resume() · 문 쪽 V 올리기는 setV(v)(앞으로만).
+const G = { gate: null, onStart: null };
+global.__t745Ctl = { setGate(fn) { G.gate = fn; }, onStart(fn) { G.onStart = fn; }, resume() { if (ST.started && !ST.paused) RT.setImmediate(pump); }, setV(v) { if (v > V) V = v; }, V: () => V, rt: RT };
 function pump() {
   if (ST.paused) return;
   let n = 0;
   while (heap.length && n < CHUNK) {
+    if (G.gate && !G.gate(heap[0].due)) { ST.gated = (ST.gated || 0) + 1; return; }
     const e = pop(), t = e.t;
     if (t._dead || t._cur !== e) continue;
     if (e.due > V) V = e.due;
@@ -107,7 +114,7 @@ function pump() {
   ST.yields++;
   if (heap.length) RT.setImmediate(pump);
 }
-function start(why) { if (ST.started) return; ST.started = true; ST.startAt = V; console.log(`[t745] 가상 시계 돈다 — V0 ${V0} (${new RD(V0).toISOString()}) · 줄 ${heap.length} · ${why}`); RT.setImmediate(pump); }
+function start(why) { if (ST.started) return; ST.started = true; ST.startAt = V; console.log(`[t745] 가상 시계 돈다 — V0 ${V0} (${new RD(V0).toISOString()}) · 줄 ${heap.length} · ${why}`); if (G.onStart) G.onStart(V); RT.setImmediate(pump); }
 // 시작 문 — 기동 마지막 줄(`zone server up on`)이 찍힌 뒤
 const _log = console.log;
 console.log = function (...a) { const r = _log.apply(this, a); if (!ST.started && typeof a[0] === 'string' && a[0].indexOf('zone server up on') >= 0) RT.setImmediate(() => start('listen 뒤')); return r; };

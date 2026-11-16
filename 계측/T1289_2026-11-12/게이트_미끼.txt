@@ -1,0 +1,10 @@
+# T1289 gate-house 느린 틱 판 + 마감 틈 미끼(손 확인 · 2026-11-12 · 두 판 같이 · 코어 0 · 1 · 293초)
+# T1043_BAIT=gapK1|gapG1 NODE_OPTIONS="--require scripts/test-t1043-gate-house.js" node scripts/gate-house.js --days 20 --seeds 42 --slow --slow-core 0|1
+## gapK1 (마감 중 econ 날 시계 = 그날 머리 · T1282 앞)
+GATE-HOUSE PASS · 벽시계 = 가상 시계 같음 1/1 · 판 58초 · 20날 · 시드 42 · 부하 0 · 느린 틱(taskset -c 0 · 같은 코어 고리 1 · 틱마다 40ms) · 틱 간격 p50 60.2ms · 평균 65.3ms · p95 96ms · 본문 평균 24.2ms · econ 날 6197.3ms(1919틱 · 늦춘 틱 1746 · 판 1) · 굽기 233초 + 견줌 58초 = 291초
+## gapG1 (틈 econDayToMs 정렬 = 종전 world.day · T1289 앞)
+GATE-HOUSE PASS · 벽시계 = 가상 시계 같음 1/1 · 판 56초 · 20날 · 시드 42 · 부하 0 · 느린 틱(taskset -c 1 · 같은 코어 고리 1 · 틱마다 40ms) · 틱 간격 p50 60.2ms · 평균 65.1ms · p95 98.1ms · 본문 평균 24ms · econ 날 6249.9ms(1947틱 · 늦춘 틱 1768 · 판 1) · 굽기 237초 + 견줌 56초 = 293초
+## 미끼 글자가 실제로 실렸나(같은 프리로드 · T577_SEED=42 아이 꼴 · 마감 틈 상태에서 econNow · econDayToMs(D) — 하루 1000ms · D 10 · 앵커 11)
+gapK1 econNow 10000 · econDayToMs(D) 10000
+gapG1 econNow 11000 · econDayToMs(D) 11000
+none econNow 11000 · econDayToMs(D) 10000

@@ -1,0 +1,19 @@
+{
+ "tag": "r1_1020_old",
+ "seed": 1020,
+ "arm": "on",
+ "DAY_MS": 3000,
+ "DAYS": 120,
+ "start": "2026-11-13T01:47:44.993Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "end": "2026-11-13T02:00:39.633Z",
+ "wallS": 775,
+ "days": {
+  "hanbando": 120,
+  "nippon": 140
+ },
+ "done": true
+}

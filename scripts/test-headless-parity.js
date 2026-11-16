@@ -105,7 +105,14 @@ console.log('\n[③ 개간·건설 결산은 실걸음 상한과 같은 식이�
 
 console.log('\n[④ 개간 게이트는 유지 — 사용자 확정(식량 > 인구×120이면 개간 없음)]');
 {
-  chk(/storage && e\.storage\.food\) \|\| 0\) > e\.npcs\.length \* 120/.test(src), '_lifeNeedClear 식량 게이트 원문 보존');
+  //   ★[T1291] T1260 ②(`325a12481`)가 게이트의 식량 읽기를 econ 문 `t1260FoodOf(e)` 하나로 옮겼다(끔 기본 = `storage.food` 그대로 · 켬 = 곳간 식량 합계).
+  //     지키던 것 = "식량 > 인구 × 120 이면 개간 없음" — 게이트 글자(문턱 120 · `>` · 개간 없음 `return false`)와 문의 끔 갈래가 `food` 칸인지 둘 다 본다.
+  const ESRC = fs.readFileSync(path.join(__dirname, '..', 'sim', 'economy-sim.js'), 'utf8');
+  const nc = (src.match(/function _lifeNeedClear\([\s\S]*?\n\}/) || [''])[0];
+  chk(/if \(_lifeEcon\(\)\.t1260FoodOf\(e\) > e\.npcs\.length \* 120\) return false;/.test(nc)
+      && /function t1260FoodOf\(v\) \{ return T1260_FOOD_READS \? totalFoodEquivalent\(v\) : \(\(v && v\.storage && v\.storage\.food\) \|\| 0\); \}/.test(ESRC)
+      && /const T1260_FOOD_READS = [^\n]*=== '1'/.test(ESRC),
+      '_lifeNeedClear 식량 게이트 보존(식량 > 인구×120 이면 개간 없음 · 식량 읽기 = T1260 문 · 끔 기본 = `food` 칸)');
 }
 
 console.log('\n' + (fail === 0 ? '결과: PASS' : `결과: FAIL (${fail}건)`));
