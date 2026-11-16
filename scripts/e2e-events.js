@@ -30,6 +30,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
+const WD = require('./lib-wait-day');   // ★[T1339] 얼린 뒤 날 가라앉힘(`settleDay`)
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-shots';
@@ -504,6 +505,9 @@ async function waitHttp(url, tries = 900) {
       }
       const dd = await stepDay(SHORT_CAP - (Date.now() - tShort)); stepN++;   // ⓑ 하루만(위 `stepDay`)
       if (dd < 0) break;
+      //   ★[T1339] 다시 얼림은 다음 날 방송을 받은 **그 자리**에서 보내지만, 붐빈 판에선 얼림이 닿기 전에 마감 하나가 더 열려(열린 마감은 얼려도 끝까지 돈다)
+      //     언 판을 읽은 뒤 그 마감이 의뢰를 거뒀다(부하 10판 중 1판 — 고른 행 `hide` 가 누르기 직전 판에서 사라져 버튼 null). 날이 가라앉은 뒤 읽는다.
+      await WD.settleDay(() => page.evaluate(() => window.__evGameDay | 0), 1500, 15000);
       bd = await readBoard(); rows = canGive(bd);                    // ⓒ **판정이 읽을 그 판**(언 판)
       for (const it of held) if (!rows.some((r) => r.item === it) && (miss[it] = (miss[it] || 0) + 1) >= 2 && !stuck.includes(it)) stuck.push(it);   // ⓓ 두 번 걸어도 안 선 것은 붙박이로 뺀다(T704 그대로)
     }
@@ -636,6 +640,8 @@ async function waitHttp(url, tries = 900) {
   // ── ⑥ 거리 게이트 — 멀어지면 촌장 목소리가 안 닿는다 ──────────────────────
   await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }), [ax + 1500, ay + 1500]);
   await sleep(2000);
+  //   ★[T1339] 2초 뒤 한 번 — 부하 10판 중 1판이 빨갰다(근접 인식은 틱이 돌아야 풀린다). 풀릴 때까지 다시 본다(상한 15초 · 판정 그대로).
+  for (let j = 0; j < 65 && (await page.evaluate(() => window.__evNearVid)) != null; j++) await sleep(200);
   const farVid = await page.evaluate(() => window.__evNearVid);
   ok(farVid == null, '마을에서 멀어지면 근접 인식이 풀린다', `__evNearVid=${farVid}`);
   //   ★[T1339] 종전 `sleep(1200)` 뒤 마지막 알림 두 줄 — 붐비는 판에선 요청이 하루 마감 중에 닿아 "장부를 닫는 중" 알림이 먼저 오고
