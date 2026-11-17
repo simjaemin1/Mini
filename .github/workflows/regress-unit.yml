@@ -6,8 +6,14 @@
 #   ★[T293 2026-09-14] 여기에 **게이트 셋**이 붙었다(번들 `--check` · 랩 인라인 `--check` · 랩 배선) — 셋 다 서버 0.
 #   전수는 여전히 야간(망고링고 04:00 KST)이 main 에서 한다.
 # ★러너는 레포의 것 하나(`scripts/run-regress.sh` — 파이프 종료코드·결과줄 0 = 크래시 판정). 여기서 사본 안 만든다.
-# ★두 잡: core = 반드시 초록 · watch = 지금 main 에서 빨간 둘(귀속 카드 있음) — 고쳐지면 core 로 옮긴다.
-#   watch 는 continue-on-error 라 배지를 안 깨지만 로그엔 남는다. 숨기는 게 아니라 **알면서 기다리는 것**.
+# ★★[T1350 2026-11-17 · 재민 "CI 체크 표시를 믿을 수 있게"] 잡 넷:
+#   · gates — 러너 자가 검사 · 게이트 셋(번들 · 랩 인라인 · 랩 배선).
+#   · core — **분류표(`scripts/ci-class.js` → `scripts/ci-class.json`)가 뽑은** 하네스를 잡 몇 개로 나눠 돈다(손 목록 0).
+#     올림 규칙: 프로세스 · 브라우저를 안 띄우거나(가) 자식 프로세스만(나) · 다섯 판 다 초록 · 가장 긴 판 60초 이하.
+#     목록은 `node scripts/ci-class.js --write-yml` 이 아래 표지 사이에 쓴다 · `test-ci-list` 가 표와 같은지 본다(한 줄 빠져도 빨강).
+#   · old-code-red — 가지 · PR 에서만: 새 하네스(`scripts/test-*.js` 새 파일)를 **옛 제품**(가지가 갈라진 main 판) 위에서 돌려 빨강이어야 통과
+#     (`scripts/pm-old-code-red.sh <merge-base>` · `// @harness-only` 하네스는 건너뜀 — `test-harness-lint` ⑲).
+#   · watch — 알면서 기다리는 것(배지 안 깸 · 로그엔 남음).
 # ★TIDE_FREEZE_MS=372603 — test-body ⑯㉧ 은 물때에 따라 갈린다(T52 가 심었다 · 공통 상시 목록). 만조로 못 박는다.
 # ★DRAIN_SEC=1 — 서버를 안 띄우는 하네스뿐이라 하네스 사이 8초 대기가 필요 없다.
 name: regress-unit
@@ -16,7 +22,7 @@ name: regress-unit
 #   하네스 전부가 돌던 낭비. 코드 · 하네스 · 계측이 한 줄이라도 섞이면 돈다. 착지 가지는 `batch/land<번호>` 로 먼저 올려 여기 초록을 보고 main 을 옮긴다.
 on:
   push:
-    branches: ['main', 'batch/**']
+    branches: ['main', 'batch/**', 'claude/**', 'land/**']   # ★[T1350] 클라우드 세션 가지 · PM 착지 가지(main 앞에 먼저 올려 초록을 본다)
     paths-ignore: ['지시/**', '보고/**', '인계/**', '회부/**']
   pull_request:
     paths-ignore: ['지시/**', '보고/**', '인계/**', '회부/**']
@@ -27,24 +33,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  core:
-    name: 단위 회귀 (반드시 초록)
+  gates:
+    name: 러너 자가 검사 · 게이트 셋 · 하네스 규약
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     env:
-      TIDE_FREEZE_MS: '372603'
       DRAIN_SEC: '1'
       TIMEOUT_SEC: '180'
     steps:
-      # ★[PM 2026-11-17 land1082] main 의 이 잡이 빨강이었다(`test-nightly` · `test-audio` — T1336 회부 3 · 까닭은 러너 환경):
-      #   · `test-nightly` 는 `nightly-run` 이 얕은 클론을 보면 전체 이력을 받는 줄을 찍어 견주는 글자가 어긋난다 → 전체 이력으로 받는다.
-      #   · `test-audio` ⑭b 는 ffmpeg 이 없으면 "못 쟀다"로 빨강(조용히 넘어가지 않는 자) → 러너에 ffmpeg 을 깐다.
-      #   언제부터였는지 · 다른 까닭이 더 있는지는 T1350(S6).
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - name: ffmpeg (test-audio ⑭b 이음새 자)
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          fetch-depth: 0   # test-harness-lint ⑭ 는 하네스가 태어난 판까지 거슬러 본다
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -52,35 +51,387 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: 러너 자가 검사 (크래시를 실패로 잡는가)
         run: bash scripts/run-regress.sh --selftest
-      # ★[T1288 2026-11-12 · PM 판정] `test-lib-port`(포트 장부 정본 · 서버 0 · 몇 초)를 단위 하네스에 넣었다(26 → 27).
-      # ★[T293 2026-09-14] 게이트 셋 — 지금까지 **카드마다 세션이 손으로 돌리고 출력을 대화에 쌓던** 셋이다.
-      #   셋 다 서버·브라우저를 안 띄운다. 여기서 빨개지면 `core` 가 빨개진다(야간 표식엔 안 얹는다).
+      # ★[T293 2026-09-14] 게이트 셋 — 셋 다 서버·브라우저를 안 띄운다.
       #   · build-econ-bundle --check : 엔진 번들이 소스와 어긋났나(회귀검증 8종)
       #   · inline-engine --check     : 랩 HTML 의 인라인 블록이 낡았나
       #   · lab-wiring-check          : 랩이 정본 함수를 무는가(자명 통과 금지 줄 포함)
       - name: 게이트 셋 (번들 · 랩 인라인 · 랩 배선 — 서버 0)
         run: node sim/build-econ-bundle.js --check && node sim/inline-engine.js --check && node scripts/lab-wiring-check.js
-      - name: 단위 하네스 27종
+      # ★[T1350] 하네스 규약 lint — 분류표로는 (나) · 혼자 60초 안팎(59.6 · 60.9초)이라 core 규칙(60초)의 경계에 있다. 하네스 규약(사본 0 · 고정 포트 ·
+      #   `@harness-only` ⑲ …)의 문이라 시간과 상관없이 여기서 늘 돈다 — 표 밖에서 이름으로 부르는 것은 이 한 줄뿐(까닭 그대로 적음).
+      - name: 하네스 규약 (test-harness-lint)
+        run: bash scripts/run-regress.sh test-harness-lint.js
+
+  core:
+    name: 단위 회귀 ${{ matrix.shard }} (반드시 초록)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # <ci-class core — scripts/ci-class.js --write-yml 이 쓴다 · 손으로 고치지 않는다>
+        # 분류표 2026-11-17 · core 294종 · 잡 5개(합 초 314 · 314 · 314 · 314 · 314)
+        include:
+          - shard: '1/5'
+            list: >-
+              test-arms-body.js
+              test-assets-audit.js
+              test-backup-live.js
+              test-body.js
+              test-building-anchor.js
+              test-calendar.js
+              test-cand-walk.js
+              test-chunk-gates.js
+              test-crop-cal.js
+              test-draft-famine.js
+              test-e2e-src.js
+              test-ghost-band.js
+              test-granary-add.js
+              test-granary-haul.js
+              test-hunt-port.js
+              test-indoor-on.js
+              test-inv-ground.js
+              test-lab-wood.js
+              test-lon-day.js
+              test-mining.js
+              test-model-intake.js
+              test-newcomers.js
+              test-nightly.js
+              test-npc-label.js
+              test-npc-wild-sync.js
+              test-render-common.js
+              test-rock-los.js
+              test-segindex.js
+              test-snow.js
+              test-sortie-miss.js
+              test-t1044-scram-walk.js
+              test-t1063-terr-draw.js
+              test-t1064-next-step.js
+              test-t1086-first-join.js
+              test-t1094-arms-trip.js
+              test-t1107-regrow.js
+              test-t1159-home-n.js
+              test-t1180-produce-defaults.js
+              test-t1182-caravan-body.js
+              test-t1187-names.js
+              test-t1188-ore-split.js
+              test-t1195-hunt-real.js
+              test-t1196-artisan.js
+              test-t1206-natural-death.js
+              test-t1212-farm-clock.js
+              test-t1215-field-area.js
+              test-t1240-kill-once.js
+              test-t1241-des.js
+              test-t1268-econ-clock.js
+              test-t1273-clock-rest.js
+              test-t1336-crop-eq.js
+              test-t1339-wait-day.js
+              test-t740-side.js
+              test-t958-house-real.js
+              test-tame.js
+              test-trees.js
+              test-village-view.js
+              test-villager-stuck.js
+              test-winter.js
+          - shard: '2/5'
+            list: >-
+              test-army-morale.js
+              test-audio.js
+              test-bandit-all.js
+              test-bandit-walk.js
+              test-body-exit.js
+              test-bridge-path.js
+              test-bridge-sprite.js
+              test-carrier.js
+              test-charsheet.js
+              test-crops-world.js
+              test-dusk-stamp.js
+              test-econ-diet.js
+              test-farm-act.js
+              test-food-hunger.js
+              test-frontier-iron.js
+              test-gap-ruler.js
+              test-happy-converge.js
+              test-hist.js
+              test-hp-src.js
+              test-hunt-vis.js
+              test-itemlabel.js
+              test-land-elev.js
+              test-loot-body.js
+              test-mob-hp-restart.js
+              test-move.js
+              test-one-clock.js
+              test-reanchor.js
+              test-relic.js
+              test-resource-index.js
+              test-rooms.js
+              test-seed-reserve.js
+              test-smelt-return.js
+              test-t1054-decay-wood.js
+              test-t1059-pick-top.js
+              test-t1060-scram-hold.js
+              test-t1147-emig-pick.js
+              test-t1166-npc-lot-persist.js
+              test-t1179-crop-season.js
+              test-t1205-happy.js
+              test-t1207-terr-real.js
+              test-t1209-meal-triage.js
+              test-t1217-margin.js
+              test-t1219-step-fast.js
+              test-t1224-econ-farm.js
+              test-t1226-job-flex.js
+              test-t1229-field-grow.js
+              test-t1290-perf.js
+              test-t1321-xz-drain.js
+              test-t1325-one-rot.js
+              test-t1344-bronze-mix.js
+              test-t721-apply.js
+              test-t807-quote-exec.js
+              test-t835-quote-weight.js
+              test-t965-want-start.js
+              test-t988-trade-words.js
+              test-tidal.js
+              test-trade.js
+              test-vein-batch.js
+              test-vern-num.js
+          - shard: '3/5'
+            list: >-
+              test-assault-miss.js
+              test-bandit-camp.js
+              test-bgm-phrase.js
+              test-body-fields.js
+              test-build-act.js
+              test-cell-memo.js
+              test-chron-icons.js
+              test-coll-grid.js
+              test-crop-memo.js
+              test-food-floor.js
+              test-ghost-tree.js
+              test-guild-treasury.js
+              test-icons.js
+              test-kcal.js
+              test-ledger.js
+              test-live-lag-net.js
+              test-local-clocks.js
+              test-msy.js
+              test-no-shield.js
+              test-notice.js
+              test-npc-hp-door.js
+              test-one-target.js
+              test-physical-forage-plan.js
+              test-reap-scope.js
+              test-seam.js
+              test-stone-consumption-flow.js
+              test-stone-real.js
+              test-t1001-econ-day.js
+              test-t1046-wood-share.js
+              test-t1080-road-life.js
+              test-t1087-crew-cap.js
+              test-t1089-ret-walk.js
+              test-t1113-low-happy.js
+              test-t1135-fuel-eq.js
+              test-t1143-no-dissolve.js
+              test-t1161-two-prices.js
+              test-t1167-war-persist.js
+              test-t1168-sortie-ammo.js
+              test-t1183-surrender-loss.js
+              test-t1198-birth-body.js
+              test-t1218-fish-canon.js
+              test-t1221-farm-labor.js
+              test-t1225-fish-capital.js
+              test-t1245-lot-clock.js
+              test-t1245-seeds.js
+              test-t1249-ore-fix.js
+              test-t1257-seed-handoff.js
+              test-t1266-ore-body.js
+              test-t1322-prefilter.js
+              test-t1324-xz-migrate.js
+              test-t1333-alloy-order.js
+              test-t742-zone.js
+              test-t877-dry-fix.js
+              test-t976-want-capped.js
+              test-t999-trade-cap.js
+              test-terr-backfill.js
+              test-terrain-memo.js
+              test-valuechain.js
+          - shard: '4/5'
+            list: >-
+              test-assay.js
+              test-bandit-body.js
+              test-body-chunks.js
+              test-body-seed-restart.js
+              test-clothes.js
+              test-craft.js
+              test-day-deaths.js
+              test-deforest-game.js
+              test-ditch.js
+              test-econ-rawgrain.js
+              test-fell-loot.js
+              test-floor-stone.js
+              test-food-keep.js
+              test-furnace.js
+              test-gate-draft.js
+              test-headless-parity.js
+              test-imsu.js
+              test-lab-happywork.js
+              test-lint-harness-words.js
+              test-membership.js
+              test-mob-respawn.js
+              test-oremix.js
+              test-picker-tables.js
+              test-props.js
+              test-redeploy.js
+              test-region-profiles.js
+              test-road-day.js
+              test-stone-planning.js
+              test-t1019-untrap.js
+              test-t1075-happy-eq.js
+              test-t1094-carry-cap.js
+              test-t1133-bag-persist.js
+              test-t1149-winter.js
+              test-t1181-build-defaults.js
+              test-t1183-physical-war.js
+              test-t1200-kg-fast.js
+              test-t1201-bronze-crops.js
+              test-t1202-produce-live.js
+              test-t1204-now-words.js
+              test-t1213-terr-supply.js
+              test-t1214-step-fast.js
+              test-t1235-nearest.js
+              test-t1292-t952-axis.js
+              test-t1292-xz-esc.js
+              test-t1314-cols.js
+              test-t1321-xz-beast.js
+              test-t1328-ore-zero.js
+              test-t1330-war-path.js
+              test-t1331-beast-body.js
+              test-t1341-own-house.js
+              test-t762-sync.js
+              test-t772-leg.js
+              test-t924-debt-cap.js
+              test-t931-slotk-ema.js
+              test-t995-dry-dance.js
+              test-war-nosnap.js
+              test-wild-door.js
+              test-wood-flow.js
+              test-wood-step1.js
+          - shard: '5/5'
+            list: >-
+              test-alloy.js
+              test-armor-cap.js
+              test-arms-keep.js
+              test-battle-fast.js
+              test-body-seed-other.js
+              test-ci-list.js
+              test-client-globals.js
+              test-clothes-tiers.js
+              test-crops.js
+              test-disk-check.js
+              test-econ-fieldyield.js
+              test-farm-life.js
+              test-fish-act.js
+              test-hall-door-path.js
+              test-index-named.js
+              test-lab-army-morale.js
+              test-local-midnight.js
+              test-npc-clothes.js
+              test-one-decay.js
+              test-path-core.js
+              test-physical-stone-return.js
+              test-psite-server.js
+              test-redeploy-light.js
+              test-regrow-block.js
+              test-road-tail.js
+              test-salt.js
+              test-seam-walk.js
+              test-server-market.js
+              test-stone-independent-budget.js
+              test-streams.js
+              test-t1074-food-debt.js
+              test-t1085-assign-job.js
+              test-t1095-mine-demand.js
+              test-t1136-basket.js
+              test-t1148-fuel-job.js
+              test-t1160-promote-key.js
+              test-t1170-lab-clock.js
+              test-t1170-route-audit.js
+              test-t1184-war-owner.js
+              test-t1192-fish-species.js
+              test-t1197-meal-body.js
+              test-t1237-water-deer.js
+              test-t1259-wood-cap.js
+              test-t1260-food-reads.js
+              test-t1278-perf.js
+              test-t1292-xz-hide.js
+              test-t1294-perf.js
+              test-t1315-war-corpse.js
+              test-t1321-xz-keep.js
+              test-t1337-wake.js
+              test-t766-dissolve.js
+              test-t860-catch-dry.js
+              test-t941-ruler.js
+              test-terr-overlap.js
+              test-update-snap.js
+              test-village-found.js
+              test-weather.js
+              test-well-art.js
+              test-winter-fx.js
+        # </ci-class core>
+    env:
+      TIDE_FREEZE_MS: '372603'
+      DRAIN_SEC: '1'
+      TIMEOUT_SEC: '180'
+    steps:
+      # ★[PM land1082] 전체 이력(`test-harness-lint` ⑭ 가 하네스가 태어난 판까지 본다) · ffmpeg(`test-audio` ⑭b 이음새 자 — 없으면 "못 쟀다" 빨강).
+      #   ★[T1350] `test-nightly` 는 이제 클론 깊이와 무관하다(아이 nightly-run 에 `NIGHT_UNSHALLOW=0` · ⑬) — 11-11 ~ 11-17 빨강의 까닭이 그것이었다.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: ffmpeg (test-audio ⑭b 이음새 자)
+        if: contains(matrix.list, 'test-audio.js')
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - name: 분류표 하네스 (${{ matrix.shard }})
+        run: bash scripts/run-regress.sh ${{ matrix.list }}
+
+  old-code-red:
+    name: 옛 코드 빨강 (새 하네스는 옛 제품 위에서 빨강)
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TIDE_FREEZE_MS: '372603'
+      TIMEOUT_SEC: '600'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - name: 가지가 갈라진 main 판(merge-base) 위에서 새 하네스
         run: |
-          bash scripts/run-regress.sh \
-            test-harness-lint.js test-client-globals.js test-calendar.js \
-            test-audio.js test-bgm-phrase.js test-nightly.js \
-            test-kcal.js test-crops.js test-crops-world.js test-farm-life.js \
-            test-econ-diet.js test-econ-rawgrain.js test-winter.js \
-            test-carrier.js test-weight.js test-spoil2.js test-preserve.js test-salt.js \
-            test-membership.js test-newcomers.js test-village-found.js \
-            test-icons.js test-props.js test-render-common.js test-charsheet.js \
-            test-body.js test-lib-port.js
+          git config user.name ci && git config user.email ci@localhost
+          BASE="${{ github.event.pull_request.base.sha }}"
+          [ -n "$BASE" ] || BASE="$(git merge-base HEAD origin/main)"
+          echo "옛 판 = $BASE"
+          bash scripts/pm-old-code-red.sh "$BASE"
 
   watch:
-    name: 지켜보는 둘 (main 에서 빨강 · 귀속 카드 있음)
+    name: 지켜보는 하나 (배지 안 깸)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     continue-on-error: true
     env:
       TIDE_FREEZE_MS: '372603'
       DRAIN_SEC: '1'
-      TIMEOUT_SEC: '180'
+      TIMEOUT_SEC: '300'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -88,7 +439,9 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci --no-audit --no-fund
-      # test-tidal  : "zone 이 갯벌 정본을 부르는 자리는 셋뿐" — T58b(035566db) 가 물대기용 FRESH 읽기를 더해 4곳. 하네스 수 갱신은 세션3.
-      # test-events : ㉜a "풍년·흉년이 저절로 난다" — T86 세계에서 풍년 0 · 흉년 3. 귀속은 세션6 T94(사건 밀도 재정박 2).
-      - name: test-tidal · test-events
-        run: bash scripts/run-regress.sh test-tidal.js test-events.js
+      # ★[T1350 2026-11-17 · 9월 설명을 지금으로] 9월엔 둘 다 빨강이었다(test-tidal 부르는 자리 수 · test-events ㉜a 풍년 0).
+      #   지금(main 11-17): test-tidal 은 초록이고 분류표 규칙을 넘으면 core 로 갔다(표 줄을 보라). test-events 는 단언이 초록인데
+      #   혼자 120 ~ 180초가 걸려 종전 시한 180초에서 RC 124 로 끊긴 판이 있었다(11-13 ~ 11-15 넷) — 60초 규칙 밖이라 core 에 못 간다.
+      #   여기서 시한 300초로 지켜본다(빨강이면 로그로 본다 · 배지는 안 깬다).
+      - name: test-events (단언 초록 · 120 ~ 180초)
+        run: bash scripts/run-regress.sh test-events.js

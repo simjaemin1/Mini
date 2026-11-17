@@ -10,7 +10,8 @@
 # ★판정: RC≠0 이고 ✗ 줄이 있다 = 빨강(단언) ○ · RC≠0 인데 결과 줄 0 = 빨강(크래시 — 약함 · 까닭을 읽어라) △ ·
 #   RC=0 = 초록 ✗ · 시한 = 모름(다시 재라).
 # ★한계: 하네스 **고침**(새 파일이 아닌 것)은 기본 목록에 안 든다 — 이름을 주면 돈다. e2e(브라우저)는 이름을 줄 때만.
-#   하네스 도구만 재는 하네스(`lib-*` 검사 · 러너 검사 — 제품을 안 부른다)는 옛 제품 위에서도 초록이 맞다 — 그 줄은 보고에 "제품 무관"이라 적는다.
+#   하네스 도구만 재는 하네스(`lib-*` 검사 · 러너 검사 — 제품을 안 부른다)는 옛 제품 위에서도 초록이 맞다 — 머리에 `// @harness-only` 를 달면
+#   건너뛴다("제품 무관" 줄 · `test-harness-lint` ⑲ 가 표지를 단 하네스는 제품 자리를 안 가리킴을 본다 · T1350).
 #   손잡이 끔 기본 고침은 하네스가 손잡이를 켜고 돈다 — 옛 제품엔 그 손잡이가 없으니 빨강이어야 한다(초록이면 손잡이를 안 잰다).
 #
 # 쓰는 법:
@@ -31,10 +32,12 @@ trap 'git worktree remove --force "$TMP/w" >/dev/null 2>&1; rm -rf "$TMP"' EXIT
 # shellcheck disable=SC2086
 git -C "$TMP/w" checkout -q "$OLD" -- $PROD || exit 2
 [ -d "$ROOT/node_modules" ] && ln -s "$ROOT/node_modules" "$TMP/w/node_modules"
-red=0; weak=0; green=0; unk=0
+red=0; weak=0; green=0; unk=0; skip=0
 {
   echo "# 옛 코드 빨강 — 하네스 = $(git rev-parse --short HEAD) · 제품($PROD) = $(git rev-parse --short "$OLD") · 시한 ${TIMEOUT_SEC}초"
   for t in $LIST; do
+    # ★[T1350] 머리 표지 `// @harness-only`(제품 부름 0 — `test-harness-lint` ⑲ 가 확인) = 옛 제품 위에서도 초록이 맞다 → 건너뛴다(셈 밖 · 줄은 남긴다)
+    if grep -qE '^// @harness-only([[:space:]]|$)' "scripts/$t" 2>/dev/null; then echo "제품 무관 | $t | @harness-only — 건너뜀"; skip=$((skip+1)); continue; fi
     log="$TMP/$(basename "$t").log"
     ( cd "$TMP/w" && timeout "$TIMEOUT_SEC" node "scripts/$t" >"$log" 2>&1 ); rc=$?
     nf=$(grep -cE '^\s*(✗|❌|FAIL)' "$log"); np=$(grep -cE '^\s*(✓|✅|PASS)' "$log")
@@ -46,7 +49,7 @@ red=0; weak=0; green=0; unk=0
     else v="빨강(크래시) △"; weak=$((weak+1)); fi
     echo "$v | $t | RC=$rc · ✓ $np · ✗ $nf | $why"
   done
-  echo "# 합: 빨강 $red · 크래시 $weak · 초록 $green · 모름 $unk"
+  echo "# 합: 빨강 $red · 크래시 $weak · 초록 $green · 모름 $unk · 제품 무관 $skip"
 } >"$OUT"
 [ "$green" -gt 0 ] && exit 1
 exit 0
