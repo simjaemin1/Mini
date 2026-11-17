@@ -6,7 +6,7 @@
 const fs = require('fs');
 const R0 = process.env.R0 || '/dev/shm/t1298x', R = process.env.R || '/dev/shm/t1309';
 const SEEDS = (process.argv.slice(2).find((a) => !a.startsWith('--')) || '1020,7,42,1,2,3,4,5,6,8').split(',').map(Number);
-const SRC = { F1: R0, G: R0, GT: R0, C: R0, CNP: R0, GH0: R, GH: R, CH: R, CNC: R };   // GH0 = GT + 먹은 것 건강 · GH = GH0 + 다양성 같은 군 · CH = C + 먹은 것 건강 · 다양성 · CNC = C + 갈무리 흐름 소비 뺌
+const SRC = { F1: R0, G: R0, GT: R0, C: R0, CNP: R0, GH0: R, GH: R, CH: R, CNC: R, CM: R };   // GH0 = GT + 먹은 것 건강 · GH = GH0 + 다양성 같은 군 · CH = C + 먹은 것 건강 · 다양성 · CNC = C + 갈무리 흐름 소비 뺌(탐침) · CM = C + T1309_MOVE_CONS 손잡이
 const rd = (a, s) => { try { return JSON.parse(fs.readFileSync(`${SRC[a]}/${a}-${s}/farm.json`, 'utf8')); } catch (e) { return null; } };
 const live = (f) => f.per.filter((p) => p.everPop);
 const wmean = (f, k) => { let n = 0, w = 0; for (const p of live(f)) { const x = +p[k]; if (!Number.isFinite(x)) continue; const ww = p.popDays || 0; n += x * ww; w += ww; } return w ? n / w : 0; };
@@ -18,7 +18,7 @@ const q = (xs, p) => { const a = xs.slice().sort((x, y) => x - y); if (!a.length
 const pct = (a, b) => (b / a - 1) * 100;
 const out = { seeds: SEEDS, arms: {}, pairs: {} };
 for (const a of Object.keys(SRC)) { out.arms[a] = {}; for (const s of SEEDS) { const f = rd(a, s); if (f) out.arms[a][s] = met(f, sumOf(a, s)); } }
-for (const [name, A, B] of [['GT(T1298 · 카드 G 계열)', 'F1', 'GT'], ['GT + 먹은 것 건강(GH0)', 'F1', 'GH0'], ['GT + 먹은 것 건강 + 다양성(GH)', 'F1', 'GH'], ['건강 몫(GT → GH0)', 'GT', 'GH0'], ['다양성 몫(GH0 → GH)', 'GH0', 'GH'], ['T1309 몫(GT → GH)', 'GT', 'GH'], ['요리사 다시 + T1298(C)', 'F1', 'C'], ['C + 먹은 것 건강 · 다양성(CH)', 'F1', 'CH'], ['C → CH', 'C', 'CH'], ['C + 갈무리 흐름 소비 뺌(CNC)', 'F1', 'CNC'], ['흐름 소비 몫(C → CNC)', 'C', 'CNC'], ['갈무리 뺌(C → CNP)', 'C', 'CNP']]) {
+for (const [name, A, B] of [['GT(T1298 · 카드 G 계열)', 'F1', 'GT'], ['GT + 먹은 것 건강(GH0)', 'F1', 'GH0'], ['GT + 먹은 것 건강 + 다양성(GH)', 'F1', 'GH'], ['건강 몫(GT → GH0)', 'GT', 'GH0'], ['다양성 몫(GH0 → GH)', 'GH0', 'GH'], ['T1309 몫(GT → GH)', 'GT', 'GH'], ['요리사 다시 + T1298(C)', 'F1', 'C'], ['C + 먹은 것 건강 · 다양성(CH)', 'F1', 'CH'], ['C → CH', 'C', 'CH'], ['C + 갈무리 흐름 소비 뺌(CNC)', 'F1', 'CNC'], ['흐름 소비 몫(C → CNC)', 'C', 'CNC'], ['C + T1309_MOVE_CONS 손잡이(CM)', 'F1', 'CM'], ['손잡이 몫(C → CM)', 'C', 'CM'], ['탐침 ↔ 손잡이(CNC → CM)', 'CNC', 'CM'], ['갈무리 뺌(C → CNP)', 'C', 'CNP']]) {
   const rows = []; for (const s of SEEDS) { const x = out.arms[A][s], y = out.arms[B][s]; if (!x || !y) continue;
     const r = { seed: s, a: x.pop, b: y.pop }; for (const k of Object.keys(x)) { r[k] = y[k] - x[k]; r[k + 'Pct'] = x[k] ? pct(x[k], y[k]) : null; } rows.push(r); }
   const sum = {}; for (const k of ['pop', 'farmer', 'harvest', 'houseUp', 'gated', 'price', 'famine', 'fg', 'health', 'happy', 'cook']) { const xs = rows.map((r) => r[k + 'Pct']).filter((v) => v != null && Number.isFinite(v));
@@ -36,4 +36,4 @@ for (const [name, p] of Object.entries(out.pairs)) {
 console.log('\n== 팔 절댓값(시드마다 인구)');
 for (const a of Object.keys(out.arms)) console.log(`  ${a.padEnd(4)} ` + SEEDS.map((s) => out.arms[a][s] ? String(out.arms[a][s].pop).padStart(5) : '    —').join(' '));
 console.log('\n== 집 부엌 요리 · 다양성 · 굶음(시드마다 · 팔별)');
-for (const a of ['F1', 'GT', 'GH0', 'GH', 'C', 'CH', 'CNC', 'CNP']) for (const s of SEEDS) { const m = out.arms[a][s]; if (m) console.log(`  ${a.padEnd(4)} ${String(s).padStart(4)}  요리 마을-날 ${String(m.cookDays).padStart(6)} · 조리식 ${m.cooked.toFixed(0).padStart(7)} · 다양성 ${m.fg.toFixed(3)} · 건강 ${m.health.toFixed(3)} · 행복 ${m.happy.toFixed(3)} · 요리사 날 ${m.cook} · 기근 날 ${m.famine} · 배고픈 날 ${m.hunger}`); }
+for (const a of ['F1', 'GT', 'GH0', 'GH', 'C', 'CH', 'CNC', 'CM', 'CNP']) for (const s of SEEDS) { const m = out.arms[a][s]; if (m) console.log(`  ${a.padEnd(4)} ${String(s).padStart(4)}  요리 마을-날 ${String(m.cookDays).padStart(6)} · 조리식 ${m.cooked.toFixed(0).padStart(7)} · 다양성 ${m.fg.toFixed(3)} · 건강 ${m.health.toFixed(3)} · 행복 ${m.happy.toFixed(3)} · 요리사 날 ${m.cook} · 기근 날 ${m.famine} · 배고픈 날 ${m.hunger}`); }
