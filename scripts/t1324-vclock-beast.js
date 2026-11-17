@@ -15,7 +15,7 @@
 //   손잡이: T1321 둘은 **안 준다**(켬 기본을 잰다) — 끔 판은 `--env T1321_XZ_BEAST=0,T1321_XZ_KEEP=0`.
 //   팔 = T1292 판 'on'(`T525_CROSS_ZONE` · `T952_XZ_STAY` · `T622_ZONE_FAUNA` · `T1139_XZ_LAZY`) + `E2E_GIVE`(판 꾸밈 문).
 //
-//   run <outdir> <표지> <씨> [날=30] [하루ms=3000] [--q 500] [--env K=V,…] [--envz <존>:K=V,…] [--nobeast] [--stage-emig d0,every,k,n] [--stage-replay <beast_<표지>.jsonl>]
+//   run <outdir> <표지> <씨> [날=30] [하루ms=3000] [--q 500] [--env K=V,…] [--envz <존>:K=V,…] [--nobeast] [--stage-emig d0,every,k,n] [--stage-replay <beast_<표지>.jsonl>] [--stage-plan d0,every,k,n](T1352)
 //   분석: 짐승 `node scripts/t1321-beast-run.js analyze <outdir> <표지>` · 캐러밴 · 몸 보존 `node scripts/t1292-xzone-live.js analyze <outdir> <표지>`
 //   ⚠존 포트가 고정이라 두 판을 같이 못 돈다(T1320 과 같다) · e2e 와도 같이 못 돈다.
 // =============================================================================
@@ -61,6 +61,7 @@ if (MODE !== 'run') { console.error('쓰는 법: run <outdir> <표지> <씨> [�
     //   ★`T1139_XZ_LAZY` 켬(e2e · T1292 판과 같다 — 한 벌은 2km 안 쌍만 · 1분) — 늦게 파는 일꾼은 발맞춤 일꾼 셈 밖(`t1320-lockstep.js` ⓒ T1324 고침:
     //     그 일꾼은 `postMessage` 없이 포트 · 공유 버퍼로 동기 답만 해 셈이 영영 안 줄어 가로대가 0.5초에서 멎었다) · 걸음표 자리는 판마다 새로(`geo_<표지>` — 묵은 자물쇠 0).
     for (const k of ['T1321_XZ_BEAST', 'T1321_XZ_KEEP']) if (!(k in EXTRA) && !(EXTZ[z] && k in EXTZ[z])) delete env[k];   // ★켬 기본을 잰다(물려받은 손잡이 0)
+    require(path.join(ROOT, 'server', 't1334-bundle')).fill(env);   // ★[T1352] 묶음(`T1334_BUNDLE=1`)은 존 env 에 미리 채운다 — 프리로드(T1292 훅)가 econ 을 존 맨 위보다 먼저 읽는다(t577-server-run 그 자리와 같은 까닭 · 끔 = 무동작)
     const logf = fs.openSync(o.log, 'w');
     o.p = spawn(process.execPath, pre.flatMap((f) => ['-r', f]).concat([path.join(ROOT, 'server', 'zone.js')]), { cwd: ROOT, stdio: ['ignore', logf, logf, 'ipc'], env });
     o.p.on('error', () => {});   // 판 끝 내리는 사이 늦은 'go' 가 닫힌 통로에 닿는 일(ERR_IPC_CHANNEL_CLOSED) — 판 셈과 무관
@@ -109,6 +110,10 @@ if (MODE !== 'run') { console.error('쓰는 법: run <outdir> <표지> <씨> [�
   //   `--stage-replay <beast_<표지>.jsonl>` — 그 판의 꾸밈 줄(op 'stage')을 같은 날에 그대로 다시 민다(끈 판 견줌)
   const RPL = opt('--stage-replay', '') ? fs.readFileSync(opt('--stage-replay', ''), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter((j) => j.op === 'stage')
     .map((j) => ({ day: j.day, z: j.z, vid: j.vid, name: j.name, n: (meta.stageEmig ? meta.stageEmig[3] : 3) })).sort((a, b) => a.day - b.day) : null; if (RPL) meta.stageReplay = opt('--stage-replay', '');
+  //   ★[T1352] `--stage-plan d0,every,k,n`(`--nobeast` 판) — 꾸밈을 **존 하루 경계에서**(`kind 'e2e_stage'` — 존 날 d0 부터 every 날마다 경계 마을(이웃 존 마을과 걸어 2km 안) 중
+  //     행복 낮은 k 곳에서 n 사람 · 판 시계 · 벽시계 0 · 같은 씨면 같은 날 같은 마을 — 손잡이 꼴끼리 견준다). 걸음표가 선 뒤(가로대 넷) 한 번 민다.
+  const SPL = opt('--stage-plan', '') ? opt('--stage-plan', '').split(',').map(Number) : null;
+  if (SPL) { meta.stagePlan = SPL; for (const z of ZS) { const res = await postZ(z, { kind: 'e2e_stage', plan: SPL }); out({ z, op: 'plan', plan: SPL, res }); } saveMeta(); }
   const WebSocket = require('ws');
   const socks = [];
   const open = (url, onMsg) => new Promise((res) => {
