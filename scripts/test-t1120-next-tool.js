@@ -180,7 +180,7 @@ ok(/\.\.\.\(T1120_NEXT_TOOL \? \{ nextTool: _t1120Cfg\(\) \} : \{\}\),/.test(Z),
 ok(/if \(!best\) \{ tryForage\(player\); if \(refused\) _t1120Tell\(player, refused\.r\); return; \}/.test(Z), '② 줍기 갈래 — 줍기는 그대로 · 건너뛴 자연물의 이유 한 번(`_t1120Tell`)');
 ok(/if \(player\._t1120Told\) player\._t1120Told\[kind\] = 0; return null;/.test(Z), '② 한 번 = 문이 열릴 때까지(`_t1065Gate` 통과 갈래가 비운다)');
 ok(/if \(msg\.need && typeof onbNeedNote === 'function'\) onbNeedNote\(msg\.need\);/.test(NET), '클라 걸이 — 알림의 `need` 를 「지금 할 일」에 쌓는다(30-n-net 한 줄)');
-ok(/let p = onbToolPlan\(I\) \|\| onbJoinPlan\(I, s, lot, inLot, K\);/.test(SRC), '칸 차례 — 안 풀린 막힘이 맨 먼저(그다음 T1086 · T1064 종전 차례)');
+ok(/let p = onbToolPlan\(I\) \|\| onbJoinPlan\(I, s, lot, inLot, K\)( \|\| onbOwnPlan\(I, s, K\))?;/.test(SRC), '칸 차례 — 안 풀린 막힘이 맨 먼저(그다음 T1086 · ★[T1341] 켬이면 제 집 줄기 · T1064 종전 차례)');
 
 const ON = run({}), OFF = run({ T1120_NEXT_TOOL: '0' }), NOGATE = run({ T1065_TOOL_GATE: '0' }), MUT = run({ T1120_MUT: 'tell' });
 ok(!!ON && !!OFF && !!NOGATE && !!MUT, '[상황] 켬 · 끔 · 도구 문 끔 · 돌연변이 네 판이 떴다', `${!!ON} · ${!!OFF} · ${!!NOGATE} · ${!!MUT}`);

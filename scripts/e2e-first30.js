@@ -111,9 +111,13 @@ const REACH_K = +val('--reach-dirs', '16');
 // ★[T1093] `--old-bot` — T1093 앞 손(돌괭이 사다리 0 · 쉼터 한 번 실패 = 영영 포기)으로 돈다. 눈 · 이름표 · 사진은 새 것 그대로 —
 //   land1038 실기 막힘을 **같은 손으로 다시 세우고** 그 순간을 찍어 귀속하는 판(보고 ① · ④). 기본은 새 손.
 const OLDBOT = argv.includes('--old-bot');
-const PANELBOT = argv.includes('--panel-bot');   // ★[T1120] 「지금 할 일」을 읽는 손(머리 주석)
+const PANELBOT = argv.includes('--panel-bot');
+// ★[T1341 2026-11-16] `--own` — 제 집 줄기 판(서버 손잡이 `T1341_OWN_HOUSE=1` 을 아이 존에 싣는다 · 카드 T1341 "도착 → 집터 평균 ○분 · 봇 ○/○"):
+//   본판 차례에 "집터"가 든다(몸 · 불 앞 칸 다음 · 첫 도구 앞) — 집터 값(서버 상태 `own.cost`)이 짐에 차면 C 키 한 번(사람 손) · 서버가 영토 안이라 거절하면
+//   가장 가까운 마을에서 멀어지는 쪽으로 걷고 다시 · 터가 서면(받은 사유지) '집터' 마일스톤. 재료 길은 종전 손(나무 · 바위 · 도구 문은 칸이 말한다 — `--panel-bot` 과 같이 쓴다).
+const OWN = argv.includes('--own');   // ★[T1120] 「지금 할 일」을 읽는 손(머리 주석)
 const CPORT = PB, ZPORT = PB + 10, IPORT = PB + 47;
-const TAG = `${SEASON}-${START}${PANELBOT ? '-panel' : ''}${CHIEF ? '-chief' : ''}${QFIX ? 'Q' : ''}${ECON_DAYS ? 'E' + ECON_DAYS : ''}${WARMDB ? 'L' + WARMDB : ''}`;
+const TAG = `${SEASON}-${START}${PANELBOT ? '-panel' : ''}${OWN ? '-own' : ''}${CHIEF ? '-chief' : ''}${QFIX ? 'Q' : ''}${ECON_DAYS ? 'E' + ECON_DAYS : ''}${WARMDB ? 'L' + WARMDB : ''}`;
 const say = (s) => process.stdout.write(s + '\n');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 if (!['spring', 'summer', 'winter', 'autumn'].includes(SEASON) || !['day', 'night'].includes(START)) { say('인자 오류'); process.exit(2); }
@@ -927,6 +931,32 @@ async function fetchMissing(need) {   // need = {item: n} — 모자란 것 중 
   return goForage(SRC[best.it].forage);
 }
 
+// ★[T1341] 집터 — 값은 서버 상태(`own.cost`) · 손은 C 키 · 판정은 받은 사유지(서버 claim_added)
+async function myClaimN() { return ev(() => { const c = conns.get(window.__getPrimaryZoneId()); const me = myPlayerId || myUsername; let n = 0; if (c && c.claims) for (const cl of c.claims.values()) if (cl.ownerPid === me && cl.kind === 'personal') n++; return n; }).catch(() => 0); }
+async function claimStep() {
+  const cost = await ev(() => (window.__onbState && window.__onbState.own && window.__onbState.own.cost) || null).catch(() => null);
+  if (!cost) { block('집터', '서버 상태에 own 칸이 없다(손잡이 끔?)'); skipUntil['집터'] = Date.now() + 600000; return false; }
+  const s = await state();
+  if (!haveAll(s, cost)) return fetchMissing(cost);
+  const n0 = await myClaimN();
+  const k0 = await ev(() => (window.__notices || []).length).catch(() => 0);
+  await press('KeyC');
+  let n1 = n0; for (let i = 0; i < 12 && n1 === n0; i++) { await sleep(300); n1 = await myClaimN(); }
+  if (n1 > n0) { const me = await meL(); mark('집터', { x: Math.round(me.x), y: Math.round(me.y), cost }); return true; }
+  const nt = (await ev(() => (window.__notices || []).slice()).catch(() => [])).slice(Math.max(0, k0 - 2));
+  const why = nt.find((t) => /영토 안 집터는|사유지|겹칩니다|붙여서만|모서리/.test(t)) || '';
+  R.legs.push({ t: tSec(), kind: 'claim-refused', why: why.slice(0, 80) });
+  if (/영토 안 집터는|겹칩니다/.test(why)) {   // 영토 안 · 남의 땅 — 가장 가까운 마을에서 멀어지는 쪽으로 열 칸
+    const me = await meL();
+    let v = null, bd = Infinity; for (const q of VILS) { const d = Math.hypot(me.x - q.ax, me.y - q.ay); if (d < bd) { bd = d; v = q; } }
+    const ux = v ? (me.x - v.ax) / (bd || 1) : 1, uy = v ? (me.y - v.ay) / (bd || 1) : 0;
+    await walkTo(standAround(me.x + ux * 320, me.y + uy * 320, 96).filter((g) => !blockedCell(g.x, g.y)), 20);
+    return true;
+  }
+  skipUntil['집터'] = Date.now() + 60000;
+  return false;
+}
+
 // ★[T1120] 「지금 할 일」 읽기(훅 `__t1064Next` — 칸이 마지막에 그린 것 · 읽기만)
 async function panelNow() { return ev(() => (window.__t1064Next ? window.__t1064Next() : null)).catch(() => null); }
 // ★[T1120] 맨손으로 못 따는 소스(도구 문에 걸린 바위 · 나무)만 화면에 있으면 **한 번** 눌러 본다 — 사람이 바위를 우클릭해 "채굴"을 눌러 보는 그 한 번.
@@ -1126,7 +1156,7 @@ async function sampleOnce() {
     say(`  산 세계 — 줄인 하루(0.5초)로 ${WARMDB}초 살고 내렸다(같은 DB로 보통 존을 다시 띄운다)`);
   }
   const zon = boot('zone', 'zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
-    VILLAGE_MAX: '4', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1' });
+    VILLAGE_MAX: '4', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1', ...(OWN ? { T1341_OWN_HOUSE: '1' } : {}) });
   const upZ = FB.waitUp(zon, /zone server up on/, { name: 'zone', capMs: 300000 });
   const a = await upC, b = await upZ;
   if (!a.ok || !b.ok) { say(`기동 실패 central=${a.ok} zone=${b.ok} ${a.why || ''} ${b.why || ''}`); process.exit(1); }
@@ -1340,6 +1370,8 @@ async function sampleOnce() {
     { key: '쬐기', when: (s, x) => fire && x.coldSt >= 1, run: (s) => warmUp((s.body || {}).cold || 0) },
     { key: '불', when: (s, x) => !R.milestones['첫 불'] && x.coldSt >= 1, run: () => makeFire() },   // 추우면 불이 도구보다 먼저
     { key: '열매', when: (s, x) => !x.foods.length && (!R.milestones['첫 밥'] || s.g.hunger < 55), run: () => fetchOne('berry') },   // 첫 밥 · 그리고 허기 1단계 문턱(55) 밑이면 다시 딴다
+    ...(OWN ? [{ key: '칸', when: () => !!(PANELBOT && _pn && _pn.stage === 'tool' && _pn.step), run: () => followPanel(_pn) },   // ★[T1341] 칸이 말하는 차례 — 막힘 먼저 · 그다음 집터
+      { key: '집터', when: () => !R.milestones['집터'], run: () => claimStep() }] : []),
     { key: '도구', when: () => !R.milestones['첫 도구'], run: async (s) => {
       const rc = (Z.RECIPES.crude_axe && Z.RECIPES.crude_axe.cost) || null;   // ★조잡한 돌도끼 — 정본 `stone-uses.CRUDE_TOOLS`(서버 `RECIPES` 에 펼쳐진 그 줄)
       if (!rc) { block('첫 도구', 'RECIPES.crude_axe 없음'); return false; }

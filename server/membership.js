@@ -636,7 +636,8 @@ function firstJoinChat(player, text) {
   if (v == null || player._t1086Offer !== (v | 0)) return false;          // 첫 의뢰 권함이 아니면 종전 문(K-2)
   if (contribOf(player.playerId) >= CFG.N_MEMBER) return false;           // 종전 문턱을 넘었으면 종전 문이 받는다(같은 결과 · 종전 말)
   const s = Onb.stateOf(player.playerId);
-  if (!s.lot_ok || s.start_vid == null || (s.start_vid | 0) !== (v | 0)) return false;   // 시작 마을 · 빈터 권리(= 그 마을 의뢰를 하나 다 채웠다)
+  //   ★[T1341] 켬 — 첫 의뢰가 빈터를 안 내주므로(선물 0) 문은 "의뢰 하나를 다 채웠다"(`first_done`) 그 자체다(권함은 시작 마을에서만 걸린다 — 위 `_t1086Offer`).
+  if ((Onb.T1341 ? !s.first_done : !s.lot_ok) || s.start_vid == null || (s.start_vid | 0) !== (v | 0)) return false;   // 시작 마을 · 빈터 권리(= 그 마을 의뢰를 하나 다 채웠다)
   if (VillageKin.ON && typeof VillageKin.joinModeOfVid === 'function' && VillageKin.joinModeOfVid(v | 0) === 'invite') return false;   // 그새 초대제 — 종전 문이 답한다
   _seat(player, v | 0);
   player._memberOfferVid = null;
@@ -645,10 +646,11 @@ function firstJoinChat(player, text) {
   let claimed = false;
   try { claimed = !!(H && typeof H.lotClaimed === 'function' && H.lotClaimed(player)); } catch (e) { claimed = false; }
   const lines = ['오늘부터 자네는 우리 마을 사람일세.'];
-  if (!claimed) lines.push(Onb.T1086_LOT_LINE);
+  if (Onb.T1341) lines.push(Onb._t1341LeftLine(contribOf(player.playerId)));   // ★[T1341] 켬 — 빈터 줄 대신 받아들임이 다음에 여는 것(영토 안 집터 · 인정 문턱)
+  else if (!claimed) lines.push(Onb.T1086_LOT_LINE);
   try {
     if (H && H.send && player.ws) H.send(player.ws, { type: 'onboarding_quest', vid: v | 0, kind: 'joined', name: player.member.name || '', day: _day(), quest: null,
-      lines, state: Onb.publicState(player.playerId), join: joinOf(player) });
+      lines, state: Onb.T1341 ? Object.assign(Onb.publicState(player.playerId), { own: Onb._t1341Own(player) }) : Onb.publicState(player.playerId), join: joinOf(player) });   // ★[T1341] 켬 — 제 집 줄기 칸도(끔 = 종전 바이트)
   } catch (e) {}
   return true;
 }

@@ -18558,8 +18558,11 @@ function villageBoard(vid, px, py) {
     give: (state.ledger.deliverable.items.get(r.item) || []),   // 어떤 플레이어 아이템으로 낼 수 있나
     take: state.ledger.deliverable.toEcon.get(r.rewItem) || null,
   }));
+  //   ★[T1341] 켬 — 의뢰 갚음 0(`Events.T1341_OWN_HOUSE` 머리 주석): 갚을 것 칸을 비운다(장부의 약속 값은 거는 문으로만 남는다 · 화면 · 납품에 안 나간다).
+  //     `noRepay` = 판이 "갚을 것" 대신 "받아들임"을 그린다(클라 47-s-board). 끔 = 이 줄 무동작(옛 바이트).
+  if (Events.T1341_OWN_HOUSE) for (const r of rows) { r.rewItem = null; r.rewQty = 0; r.take = null; }
   //   ★[T779] 겨울나기 머리줄(`head`)은 걷었다 — 게시판은 의뢰 줄 · 소식 줄 둘이다.
-  return { ok: true, vid: vid | 0, name: g.vil.name, rows, news: _newsRows(vid, BOARD_NEWS_N) };
+  return { ok: true, vid: vid | 0, name: g.vil.name, rows, news: _newsRows(vid, BOARD_NEWS_N), ...(Events.T1341_OWN_HOUSE ? { noRepay: true } : {}) };
 }
 
 // ★★[T7] 사건 목록 — **가시성 술어 하나를 통과한 것만**. 게시판·근황이 같은 이 함수를 쓴다.

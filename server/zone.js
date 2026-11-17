@@ -151,6 +151,7 @@ const Notice = require('./notice');           // ★[T78 2026-09-03] 알림 경�
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
 const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
 const Deeds = require('./deeds');             // ★[T1305] 사유지 돌봄(마을 무관 선포 · 숫자 상한 대신 돌봄) — 손잡이 `T1305_DEEDS`(끔 기본 · 끔 = 아무 데서도 안 부른다)
+const _T1341_ON = !!require('./events').T1341_OWN_HOUSE;   // ★[T1341] 제 집 줄기 · 의뢰 갚음 0(끔 기본 · 값은 `events.js` 한 자리) — 클레임 문 · 납품 알림 두 자리만 읽는다
 const Newcomers = require('./newcomers');     // ★[T19 2026-09-02] 유저 마을 시작지 등록 — "이방인 받기"(§9.3 나머지 절반)
 const Friends = require('./friends');         // ★[T115 2026-09-05] 친구 — 서로 수락한 쌍(T23 소셜 첫 칸)
 const Guild = require('./guild');             // ★[T128 2026-09-05] 길드 모집 — 초대·승인제·마을 소개문
@@ -6241,6 +6242,12 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
   // ★[T1086] 첫 의뢰 = 마을 사람 권함 — 권함 자리 · 가입 형편은 `membership.js` 정본이 한다(온보딩은 부르는 법만 안다 · 손잡이 끔이면 둘 다 거짓/무동작).
   offerJoin: (p, vid) => Membership.offerFirst(p, vid),
   joinOf: (p) => Membership.joinOf(p),
+  // ★[T1341] 제 집 줄기(켬에서만 부른다 · 끔 = 아무도 안 부른다) — 전부 존 정본을 부르는 법만 넘긴다(사본 0):
+  //   가까운 나무 · 바위 = 자연물 동사 술어(`_t1065ResKind` — 벌목 · 채석) + 살아 있음 · 집터 값 = `CLAIM_COST.personal` · 인정 = T1137 `isRecognized` · 문턱 = `MEMBER_N`.
+  nearRes: (kind, x, y) => _t1341NearRes(kind, x, y),
+  isRecognized: (p, vid) => Membership.isRecognized(p, vid),
+  get claimCost() { return CLAIM_COST.personal; },   // 늦게 읽는다(이 표는 파일 아래에서 선다)
+  get memberNeed() { return Membership.CFG.N_MEMBER; },
   // ★[T115] 함께 도착 — 이름으로 물어 **vid → 벗 수**를 낸다. 세는 정본은 `friends.js` 하나다.
   //   ⚠못 물어보면 `null` 이고 시작 화면은 친구 칸 0 으로 그대로 뜬다(막지 않는다).
   friendVidsByName: (name) => Friends.nameVids(name),
@@ -11367,6 +11374,24 @@ function _t1065RockNear(x, y, rad) {
   for (const r of list) if (r && r.type === 'rock' && r.hp > 0 && Math.hypot(r.x - x, r.y - y) <= rad) return true;
   return false;
 }
+// ★[T1341] 「지금 할 일」 제 집 줄기 — 선 자리에서 가장 가까운 살아 있는 나무(벌목 · 나무가 나오는 개체) · 바위(채석 · 돌이 나오는 개체) 하나.
+//   술어 = 자연물 동사 정본(`_t1065ResKind`) + 그 동사의 원재료 개체(나무 · 바위 — 묘목 · 광맥 · 운석은 집터 값의 나무 · 돌이 아니다) · 반경은 넓혀 가며(가까운 것부터).
+const _T1341_RAD = [480, 1200, 2400, 4800];
+function _t1341NearRes(kind, x, y) {
+  const want = kind === 'chop' ? 'tree' : kind === 'quarry' ? 'rock' : null;
+  if (!want || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  for (const rad of _T1341_RAD) {
+    const list = qtResources ? qtResources.queryCircle(x, y, rad) : resources.values();
+    let best = null, bd = Infinity;
+    for (const r of list) {
+      if (!r || r.type !== want || !(r.hp > 0) || _t1065ResKind(r) !== kind) continue;
+      const d = Math.hypot(r.x - x, r.y - y);
+      if (d <= rad && d < bd) { bd = d; best = r; }
+    }
+    if (best) return { x: best.x, y: best.y, id: best.id };
+  }
+  return null;
+}
 function tryForage(player) {
   const now = Date.now();
   if (player._forageAt && now - player._forageAt < Forage.CFG.COOLDOWN_MS) return;
@@ -12048,6 +12073,13 @@ function tryClaim(player, kind = 'personal') {
   const _onbLot = Onboarding.vacantLotAllows(player, cx + SZ / 2, cy + SZ / 2);
   // ★★[T1305 · 재민 11-13 확정] 켬 — **사유지는 마을과 무관하다.** 마을 영토 밖(빈 들) = 누구나(가입 무관) · 영토 안 = 그 마을 인정 구성원만(T1137 문 그대로).
   //   남의 사유지 · 다른 종류 겹침 거절은 위 겹침 검사 그대로 · 인접(변 맞댐)도 위 그대로. 끔 = 아래 종전 두 갈래 그대로.
+  //   ★★[T1341 · ★재민 11-16 "그거로 플레이어 사유지를 지을 수 있도록"] 켬 — 사유지 캐논(재민 11-13)의 선포 문만 이 손잡이 안에서 연다(돌봄 `T1305_DEEDS` 는 그대로 꺼 둔다):
+  //     영토 밖 빈 들 = 누구나(가입 무관) · 영토 안 = 그 마을 인정 구성원만 — 문 술어는 T1305 의 그것 하나(`_t1305Gate` · 사본 0). 시작 마을 어귀 빈터(`_onbLot` — 켬이면 "받아들여진 뒤")도
+  //     같은 문을 지난다(빈터 예외는 이제 인접 면제뿐). 글자는 이모지 없이(먹선 · 문 술어의 🏠 머리만 뗀다).
+  if (_T1341_ON && kind === 'personal' && !_t1305P) {
+    const _g = _t1305Gate(player, cx + SZ / 2, cy + SZ / 2);
+    if (!_g.ok) { send(player.ws, { type: 'notice', text: String(_g.why).replace(/^🏠 /, ''), kind: 'claim' }); return; }
+  } else
   if (_t1305P && !_onbLot) {
     const _g = _t1305Gate(player, cx + SZ / 2, cy + SZ / 2);
     if (!_g.ok) { send(player.ws, { type: 'notice', text: _g.why }); return; }
@@ -12103,7 +12135,9 @@ function tryClaim(player, kind = 'personal') {
   savePlayer(player);
   sendInventory(player);
   const kIcon = { personal: '🏠 개인', temporary: '⛺ 임시', guild: '🏛️ 마을' }[kind];
-  send(player.ws, { type: 'notice', text: _t1305P ? (() => { const _N = _live + 1 + _t1343Others(player.playerId), _f = (d) => (d >= 10 ? Math.round(d) : +d.toFixed(1)); return `${kIcon} 사유지를 두었습니다(내 땅 ${_N}칸 — 안 돌보면 버티는 날 ${_f(Deeds.daysOf(_N - 1))}일 → ${_f(Deeds.daysOf(_N))}일).`; })() : `${kIcon} 사유지를 두었습니다(${usedCount + 1}/${max}).` });
+  send(player.ws, { type: 'notice', text: _t1305P ? (() => { const _N = _live + 1 + _t1343Others(player.playerId), _f = (d) => (d >= 10 ? Math.round(d) : +d.toFixed(1)); return `${kIcon} 사유지를 두었습니다(내 땅 ${_N}칸 — 안 돌보면 버티는 날 ${_f(Deeds.daysOf(_N - 1))}일 → ${_f(Deeds.daysOf(_N))}일).`; })()
+    : (_T1341_ON && kind === 'personal') ? `개인 사유지를 두었습니다(${usedCount + 1}/${max}). 이제 이 터에 움집을 지을 수 있습니다.`   // ★[T1341] 켬 — 이모지 0 · 다음 할 일 한 마디
+    : `${kIcon} 사유지를 두었습니다(${usedCount + 1}/${max}).` });
   broadcast({ type: 'claim_added', claim });
 }
 
@@ -14526,6 +14560,10 @@ function tryVillageDeliver(player, vid, item, want) {
   sendInventory(player);
   const gave = Object.entries(r.taken || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
   const got = r.rew > 0 ? ` 삯으로 ${ITEM_LABEL_SERVER[r.rewItem] || r.rewItem} ${r.rew}을(를) 받았습니다.` : '';
+  //   ★[T1341] 켬 — 갚음 0: 받는 말 대신 받아들임 한 마디(다 채웠으면 오른다 · 아니면 다 채우면 오른다) · 이모지 0(먹선). 끔 = 종전 바이트.
+  if (r.noRepay) send(player.ws, { type: 'notice', text: `${r.name}에 ${gave}을(를) 바쳤습니다. ${r.done ? '부탁을 다 채워 받아들임이 1 올랐습니다.' : '부탁을 다 채우면 받아들임이 오릅니다.'}${r.refused > 0 ? ` ${r.refused}개는 남은 몫을 넘어 돌려받았습니다.` : ''}`
+    + (_g732 ? _t732GotLine(player, _g732) : ''), kind: 'deliver' });
+  else
   send(player.ws, { type: 'notice', text: `📋 ${r.name}에 ${gave}을(를) 바쳤습니다.${got}${r.refused > 0 ? ` ${r.refused}개는 남은 몫을 넘어 돌려받았습니다.` : ''}`
     + (_g732 ? _t732GotLine(player, _g732) : '') });   // ★[T779] 겨울 몫 알림(T20 "올겨울 몫")은 걷었다
   Onboarding.onDeliver(player, r, vid | 0);   // ★[온보딩 v2] 누적 기여(=T11 이 재사용할 하나의 카운터)·곳간 이펙트·훅 대사·빈터 권리
