@@ -84,6 +84,29 @@ function scene(villagesFile) {
       all++; if (H._t804Nearest(pts, x, y) === b) same++; }
     out.nearSame = same === all; out.nearN = all;
   }
+  {   // 대형 몸 밀어내기(war-live `_muSeparate`) = 종전 n² 글자(아래 OLD — 고치기 전 글자 그대로) · 몸 수 2 ~ 400 · 뭉침 · 겹침 · NaN · 아주 먼 자리
+    const WL = H.state.warLive, MU = WL.MU;
+    const OLD = (g, dDays, budget) => { const us = g.units, n = us.length; if (n < 2) return;
+      const R = MU.SEP_R, R2 = R * R, str = MU.SEP_STR * dDays; const px = new Float64Array(n), py = new Float64Array(n);
+      for (let i = 0; i < n; i++) { const a = us[i]; let sx = 0, sy = 0, cnt = 0;
+        for (let j = 0; j < n; j++) { if (j === i) continue; const b = us[j]; const dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
+          if (d2 < R2 && d2 > 1e-6) { const dv = Math.sqrt(d2); sx += dx / dv; sy += dy / dv; cnt++; } }
+        if (cnt) { px[i] = sx / cnt; py[i] = sy / cnt; } }
+      for (let i = 0; i < n; i++) { const a = us[i]; if (a.cmd) continue; if (px[i] || py[i]) { const d = Math.hypot(px[i] * str, py[i] * str), cap = budget ? budget[i] : d, mul = d > 0 ? Math.min(1, cap / d) : 0; const nx2 = a.x + px[i] * str * mul, ny2 = a.y + py[i] * str * mul; if (!(H._warBlockedCell(nx2, ny2))) { a.x = nx2; a.y = ny2; } } } };
+    let rnd = 99991; const rr = () => { rnd = (rnd * 1103515245 + 12345) % 2147483648; return rnd / 2147483648; };
+    let same = 0, all = 0, grid = 0;
+    for (let k = 0; k < 160; k++) {
+      const n = k < 10 ? 2 + k : 40 + Math.floor(rr() * 360), sp = [0.3, 1, 3, 10, 40][k % 5], ox = RX - 60 + rr() * 30, oy = C + rr() * 50;
+      const mk = () => { const us = []; let r2 = rnd; for (let i = 0; i < n; i++) { let x = ox + rr() * sp, y = oy + rr() * sp; if (i % 7 === 3) { x = ox + Math.round(rr() * 4) * 0.45; y = oy; }
+        if (k % 31 === 7 && i === 5) x = NaN; if (k % 37 === 11 && i === 9) { x = 1e12; y = 1e12; } us.push({ x, y, cmd: i === 0 }); } return us; };
+      const r0 = rnd; const A = mk(); rnd = r0; const Bu = mk();
+      const bud = k % 3 === 0 ? A.map(() => rr() * 0.2) : null;
+      OLD({ units: A }, 0.067, bud); WL._muSeparate({ units: Bu }, 0.067, bud);
+      all++; if (n >= 48) grid++;
+      if (A.every((u, i) => Object.is(u.x, Bu[i].x) && Object.is(u.y, Bu[i].y))) same++;
+    }
+    out.sepSame = same === all; out.sepN = all; out.sepGrid = grid;
+  }
   return out;
 }
 if (process.env.__T1349_SUB) {
@@ -107,6 +130,7 @@ ok(!!r && r.doneAt >= 0, `② 걸음 ${STEPS} 안에 병사 ${N} 전부가 못 �
 ok(!!r && r.asks <= 2 && r.maxLive <= 1, '② 세운 물음 ≤ 2 · 동시 물음 ≤ 1(덩이 쌍 표)', r ? `물음 ${r.asks} · 동시 ${r.maxLive} · 표 ${JSON.stringify(r.share)}` : '');
 ok(!!r && r.pushSteps <= 2 * 250000 / 32 + STEPS && r.heapMB <= 120, '② 재개 걸음 합 ≤ (상한 × 2 / 걸음 몫) + 걸음 수 · 힙 늘음 ≤ 120 MB', r ? `재개 걸음 ${r.pushSteps} · 힙 늘음 ${r.heapMB} MB` : '');
 ok(!!r && r.standSame === true && r.standHit > 0, '③ 값 같음 — 나선 답 기억 = 기억 없이 다시 센 답(4,000점)', r ? `같음 ${r.standSame} · 기억 맞음 ${r.standHit}` : '');
+ok(!!r && r.sepSame === true && r.sepGrid >= 100, '③ 값 같음 — 대형 몸 밀어내기(격자 이웃) = 종전 n² 글자(무리 160 · 격자 길 100 넘음 · NaN · 아주 먼 자리)', r ? `같음 ${r.sepSame} · ${r.sepN} 무리(격자 ${r.sepGrid})` : '');
 ok(!!r && r.nearSame === true, '③ 값 같음 — 행군로 가장 가까운 점 기억 = 바로 센 답(6,000 물음 · 되풀이 포함)', r ? `같음 ${r.nearSame} · ${r.nearN}` : '');
 // ④ 미끼 — 손잡이 줄 한 곳
 const VS = fs.readFileSync(VFILE, 'utf8');
