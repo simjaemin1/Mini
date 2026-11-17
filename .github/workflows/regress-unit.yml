@@ -36,7 +36,15 @@ jobs:
       DRAIN_SEC: '1'
       TIMEOUT_SEC: '180'
     steps:
+      # ★[PM 2026-11-17 land1082] main 의 이 잡이 빨강이었다(`test-nightly` · `test-audio` — T1336 회부 3 · 까닭은 러너 환경):
+      #   · `test-nightly` 는 `nightly-run` 이 얕은 클론을 보면 전체 이력을 받는 줄을 찍어 견주는 글자가 어긋난다 → 전체 이력으로 받는다.
+      #   · `test-audio` ⑭b 는 ffmpeg 이 없으면 "못 쟀다"로 빨강(조용히 넘어가지 않는 자) → 러너에 ffmpeg 을 깐다.
+      #   언제부터였는지 · 다른 까닭이 더 있는지는 T1350(S6).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: ffmpeg (test-audio ⑭b 이음새 자)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
