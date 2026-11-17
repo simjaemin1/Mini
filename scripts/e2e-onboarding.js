@@ -30,6 +30,9 @@ const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-shots';
 fs.mkdirSync(SHOTS, { recursive: true });
 const HEADED = process.argv.includes('--headed');
+// ★★[T1353 · T1341 회부 7] 손잡이 따라 두 대본 — `T1341_OWN_HOUSE=1`(또는 `--own`)이면 켬 대본(제 집 줄기 · 의뢰 갚음 0), 아니면 종전 대본 그대로(끔 판 판정 무변).
+//   켬 대본에서 갈리는 자리만 갈래를 둔다: ④ 첫 의뢰 말(갚음 0) · ⑤ 납품(짐 = 낸 것만 · 받아들임 · 촌장 "고맙네") · ⑥ 집터(빈터 선물 0 · 영토 안 거절 · 영토 밖 빈 들 선포) · ⑦ HUD("받아들임").
+const OWN = process.env.T1341_OWN_HOUSE === '1' || process.argv.includes('--own');
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2e-onb-central-${process.pid}.db`, ZDB = `/tmp/e2e-onb-zone-${process.pid}.db`;
 for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
@@ -105,7 +108,9 @@ async function waitHttp(url, tries = 900) {
     ENABLE_WILDLIFE: '0',   // 적대 개체 OFF — 검사 중 사망 모달이 화면을 덮는 사고를 막는다(2026-08-26 규약)
     E2E_GIVE: '1',
     SHELTER_BACKFILL_MS: '8000',   // ★[T62] 쉼터 백필 주기 — 4마을이라 금방 굽는다(값의 뜻은 안 바꿨다, 주기만)
+    T1341_OWN_HOUSE: OWN ? '1' : '',   // ★[T1353] 손잡이는 하네스가 정한다(밖 env 를 그대로 물려받지 않는다 — 끔 판이 켬으로 새지 않게)
   });
+  console.log(`    대본 = ${OWN ? '켬(T1341_OWN_HOUSE=1 — 제 집 줄기 · 의뢰 갚음 0)' : '끔(종전 — 의뢰 3건 → 빈터)'}`);
   // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
   //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
   //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
@@ -377,6 +382,8 @@ async function waitHttp(url, tries = 900) {
     // 첫 의뢰는 **게시판이 실제로 낸 것**이라 마을 사정에 따라 없을 수 있다 — 있으면 방향 언급이 있어야 한다.
     if (quest) {
       ok(!!quest.item, `[${label}] 촌장이 첫 의뢰를 제안했다`, `${quest.item} ${quest.remain} → ${quest.rewItem} ${quest.rewQty}${quest.meal ? ' (밥)' : ''}`);
+      if (OWN) ok(quest.rewItem == null && !(quest.rewQty > 0) && (brief.lines || []).some((l) => /만 구해다 주면 고맙겠네\.$/.test(l)) && !(brief.lines || []).some((l) => /갚/.test(l)),
+        `[${label}] ★[켬] 첫 의뢰에 갚음이 없다 — "…구해다 주면 고맙겠네"(갚는 말 0)`, JSON.stringify((brief.lines || []).slice(1, 2)));
       ok((brief.lines || []).some((l) => /쪽|강가|들로/.test(l)), `[${label}] 안내는 대사 속 방향뿐이다(마커 0)`,
         JSON.stringify((brief.lines || []).slice(-1)));
     } else {
@@ -422,8 +429,9 @@ async function waitHttp(url, tries = 900) {
     }
     ok(!!shRow, `[${label}] ★[T62] 납품을 시작하기 전에 **쉼터가 섰다**`, shRow ? `(${shRow.shelter.cx},${shRow.shelter.cy})` : '안 섰다');
 
-    let contrib = 0, fxSeen = false, hookSeen = false, mealSeen = false, shelterSaid = '';
-    const need = await page.evaluate(() => (window.__onbState || {}).need || 3);
+    let contrib = 0, fxSeen = false, hookSeen = false, mealSeen = false, shelterSaid = '', gained = [], gave = 0;
+    //   ★[T1353] 켬 — 상태의 `need` 는 인정 문턱(12)이다(빈터 3건 문턱은 안 탄다) · 대본은 의뢰 셋을 채워 받아들임이 쌓이는지를 본다.
+    const need = OWN ? 3 : await page.evaluate(() => (window.__onbState || {}).need || 3);
     for (let round = 0; round < 8 && contrib < need; round++) {
       // 상호작용 구간은 얼린다 — 경제가 검사를 앞지르지 않게
       // ★[T704] 의뢰를 **세우는** 구간은 날이 흘러야 한다 — 얼린 날에는 부족 래치도 게시도 안 돈다(날 경계의 일). 걸린 뒤에 얼린다.
@@ -447,7 +455,9 @@ async function waitHttp(url, tries = 900) {
         greet: (window.__onbGreet && window.__onbGreet.lines) ? window.__onbGreet.lines.slice() : [] }));
       const invA = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
       if (st.fx > 0 || st.notes.some((t) => /곳간에 쌓였습니다/.test(t))) fxSeen = true;   // ★알림 링버퍼가 아니라 **상태**로 센다
-      if (st.notes.some((t) => /빈터 하나 내어줌세|밥이라도/.test(t))) hookSeen = true;
+      if (st.notes.some((t) => (OWN ? /고맙네\. 마을이 자네 손을 받아들였네/ : /빈터 하나 내어줌세|밥이라도/).test(t))) hookSeen = true;
+      //   ★[T1353] 켬 — 짐 변화 = 낸 것만(늘어난 칸 0 · 갚음 0) · 이 판이 실제로 낸 것이 있을 때만 센다
+      if (OWN) { let down = false; for (const k of new Set([...Object.keys(invB), ...Object.keys(invA)])) { const d = (invA[k] || 0) - (invB[k] || 0); if (d > 1e-9) gained.push(`${k}+${d}`); if (d < -1e-9) down = true; } if (down) gave++; }
       // ★★[T62] 쉼터 한 줄은 **말풍선에서** 잡는다 — `showNotice` 는 촌장 대사의 **첫 줄만** 띄운다
       //   (`70-lobby.js` `onbOnMessage`: `msg.lines[0]`). 쉼터는 둘째 줄이라 `__notices` 엔 영영 안 온다.
       //   ⇒ 클라가 이미 노출한 정본 훅 `window.__onbGreet.lines` 를 읽는다(클라 접점 0).
@@ -464,7 +474,12 @@ async function waitHttp(url, tries = 900) {
       if (contrib < need) { await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false })); await sleep(2500); }
     }
     ok(contrib >= need, `[${label}] 누적 기여 ${contrib}/${need} — 하나의 카운터로 쌓인다(T11 재사용 축)`);
-    ok(hookSeen, `[${label}] ★훅 대사가 왔다 — "며칠 일손을 보태면 빈터 하나"(목표 ③)`);
+    ok(hookSeen, OWN ? `[${label}] ★[켬] 훅 대사가 왔다 — "고맙네. 마을이 자네 손을 받아들였네."(밥 · 빈터 0)` : `[${label}] ★훅 대사가 왔다 — "며칠 일손을 보태면 빈터 하나"(목표 ③)`);
+    if (OWN) {
+      ok(gave >= need && gained.length === 0, `[${label}] ★[켬] 납품 ${gave}번 — 짐 변화는 낸 것만(늘어난 칸 0 = 갚음 0)`, gained.length ? JSON.stringify(gained.slice(0, 4)) : `낸 판 ${gave}`);
+      const sN = await page.evaluate(() => window.__onbState || null);
+      ok(!!sN && !sN.lotOk && (sN.contrib | 0) >= need && !!sN.own, `[${label}] ★[켬] 받아들임만 쌓인다 — 빈터 선물 0(lotOk 거짓) · 상태에 제 집 줄기 칸`, JSON.stringify(sN && { c: sN.contrib, lot: sN.lotOk, need: sN.need }));
+    }
 
     // ── ★★[T62 2026-09-03] 공용 쉼터 — 사다리 1칸이 **말이 아니라 자리**가 됐는가 ────────
     //   §9.4: *"납품 → **밥 + 공용 쉼터**"*. 여태 이 자리엔 밥만 있었다(보고 T62 §0-ⓒ).
@@ -500,7 +515,8 @@ async function waitHttp(url, tries = 900) {
 
     // ── ⑥ 빈터 권리 → 클레임 ────────────────────────────────────────────────
     const stL = await page.evaluate(() => window.__onbState || null);
-    ok(!!(stL && stL.lotOk && stL.lot), `[${label}] 빈터 권리가 섰다`, stL && stL.lot ? `(${Math.round(stL.lot.x)},${Math.round(stL.lot.y)}) r=${stL.lot.r}` : 'X');
+    if (OWN) ok(!!stL && !stL.lotOk, `[${label}] ★[켬] 빈터 권리는 의뢰로 안 선다(선물 0) — 집터는 영토 밖 빈 들에서 제 재료로`, JSON.stringify(stL && stL.lotOk));
+    else ok(!!(stL && stL.lotOk && stL.lot), `[${label}] 빈터 권리가 섰다`, stL && stL.lot ? `(${Math.round(stL.lot.x)},${Math.round(stL.lot.y)}) r=${stL.lot.r}` : 'X');
     if (stL && stL.lot) {
       // ★★★클레임의 성사 여부는 **알림으로 세지 않는다.**
       //   `window.__notices` 는 **40칸 링버퍼**다 — 길이가 40에 붙으면 `slice(길이)` 가 늘 빈 배열이고,
@@ -526,12 +542,27 @@ async function waitHttp(url, tries = 900) {
       await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { wood: 20, stone: 20 } }));
       await sleep(700);
       ok(claimN() === 0, `[${label}] (상황) 아직 내 땅이 하나도 없다 — 아래 델타가 자명 통과가 아니다`, `claims=${claimN()}`);
+      if (OWN) {
+        //   ★[T1353] 켬 — 문은 사유지 캐논(영토 밖 = 누구나 · 영토 안 = 인정 구성원) · 이 사람은 받아들임 3 · 미가입(인정 아님)
+        const r1 = await claimTry(lx, ly);   // 마을 한복판 = 영토 안
+        ok(r1.after === r1.before && /영토 안 집터는/.test(r1.notes), `[${label}] ★[켬] 영토 안은 인정 전이라 거절된다`, `claims ${r1.before}→${r1.after} · ${JSON.stringify(r1.notes.slice(-90))}`);
+        //   도착 지점(어귀 밖 2셀 — 부팅 때의 경계)에서 시작해 마을 중심에서 멀어지는 쪽으로 4셀씩 — 영토가 자라 도착 지점을 덮은 마을이 있다(광산4 실측 · 회부)
+        let r2 = null, out = 0;
+        const ux = V.arrive.x - lx, uy = V.arrive.y - ly, ul = Math.hypot(ux, uy) || 1;
+        for (let k = 0; k <= 10; k++) {
+          r2 = await claimTry(Math.round(V.arrive.x + ux / ul * k * 128), Math.round(V.arrive.y + uy / ul * k * 128));
+          if (r2.after === r2.before + 1) { out = k * 4; break; }
+          if (!/영토 안 집터는/.test(r2.notes)) break;   // 영토 말고 다른 까닭이면 멈춘다(그대로 빨강)
+        }
+        ok(!!r2 && r2.after === r2.before + 1, `[${label}] ★[켬] 영토 밖 빈 들에 내 땅을 걸었다(빈터 권리 없이 · 미가입)`, `도착 지점에서 바깥으로 ${out}셀 · claims ${r2 && r2.before}→${r2 && r2.after} · ${JSON.stringify(r2 && r2.notes.slice(-90))}`);
+      } else {
       // 구역 **밖**에서는 여전히 거절돼야 한다(게이트가 진짜 게이트인지)
       const r1 = await claimTry(stL.lot.x + stL.lot.r * 3, stL.lot.y);
       ok(r1.after === r1.before, `[${label}] 구역 밖은 종전 규칙 그대로 거절된다`, `claims ${r1.before}→${r1.after} · ${JSON.stringify(r1.notes.slice(0, 90))}`);
       // 구역 **안**에서는 통과
       const r2 = await claimTry(stL.lot.x, stL.lot.y);
       ok(r2.after === r2.before + 1, `[${label}] ★마을 어귀 빈터에 내 땅을 걸었다(목표 ③ 도달)`, `claims ${r2.before}→${r2.after} · ${JSON.stringify(r2.notes.slice(0, 90))}`);
+      }
       try { zdb.close(); } catch (e) {}
       await snap('onb-05-lot');
     }
@@ -542,6 +573,7 @@ async function waitHttp(url, tries = 900) {
     const dayLine = await page.evaluate(() => ({ d: window.__onbDay || null, hud: (document.getElementById('onbHud') || {}).textContent || '' }));
     ok(!!dayLine.d, `[${label}] 하루 정산이 온다(이력서 데이터 재사용)`, JSON.stringify(dayLine.d));
     ok(/의뢰|빈터|오늘/.test(dayLine.hud), `[${label}] HUD 한 줄에 실제로 그려졌다 — 새 패널 0(§9.5)`, JSON.stringify(dayLine.hud));
+    if (OWN) ok(/받아들임 \d+/.test(dayLine.hud) && !/빈터/.test(dayLine.hud), `[${label}] ★[켬] HUD 계량기 — "받아들임 n"(빈터 문턱 0)`, JSON.stringify(dayLine.hud));
 
     // ── ⑧ 허기 1단계 — §9.4 "걷는 동안 허기 1단계"가 **화면에** 오는가 ──────────
     //   ★문턱은 `body.js` 정본에서 읽는다(하네스가 상수를 박으면 곡선이 바뀌는 날 조용히 틀린다).
