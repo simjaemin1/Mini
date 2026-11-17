@@ -6,7 +6,8 @@
 //     영토 셀 `terr`(`lastStats.terrCells`) · 부양력 `K` · 늘림 `dP` · 행복 항 `hap`(`_dpDebug.happy`) · 문 `gated` · 침상 `beds`(min(집 · 지도 침상)) ·
 //     이탈 압력 `acc`(`_emigAccum` 날 끝) · 물음 `ask`(econ 이 호스트 이탈 문 `world.t1075Emigrate` 를 부른 수) · 떠남 허락 `ok1`(그 문이 참을 돌린 수) ·
 //     받는 곳 없음 `none`(그 부름 동안 `t1147Stat.none` 차) · 문 까닭(그 부름 동안 셈 차 — 켬 판만): 모름 `gU` · 행복 `gH` · 침상 `gB` · K `gK` · 곳간 얇음 `gT` · 무리 몫 `gHerd` · 통과 `gOk` ·
-//     출생 곳간 문 `bGate`(`_t1297Gate`).
+//     출생 곳간 문 `bGate`(`_t1297Gate`) · 집 짓기(집 켬 판 — 생활층 크루): 집터 단계 `site`(없으면 −1) · 오늘 오른 단계 `t4adv`(`_t400Dbg.adv`) ·
+//     자재 없어 멈춤 `t4stall`(`_t400Dbg.stall`) · 곳간 나무 `wood` · 돌 `stone` · econ 주거 `housing` · 지도 침상 `mapBeds`.
 //   세계-날 줄(`wcols`): 이주 문 날 수(`t1319MigNeedDays` — 가을 문 켬이면 가을도 겨울 끝까지) · 가을 문 없는 날 수(max(기근 30 · 겨울 남은 날)) · 가을인가 ·
 //     T1147 · T1306 · T1312 · T1319 · T1342 셈의 날 차 · 걷기 셈(bandits `t1075Leave` · `t765Arrive`) 날 차.
 //   물음 셈은 호스트 문 `world.t1075Emigrate`(bandits `_t1075Leave`)를 같은 인자로 그대로 부르는 겉싸개로 센다(돌려준 값 · 부른 순서 무변). 셈 칸(`t13xxStat`)은 읽기만.
@@ -19,7 +20,8 @@ if (process.env.T577_OUT) {
   const Ev = require(path.join(ROOT, 'server', 'events'));
   const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
   const COLS = ['day', 'v', 'N', 'arr', 'born', 'emig', 'dead', 'fd', 'nat', 'fdays', 'h', 'hS', 'hB', 'hG', 'terr', 'K', 'dP', 'hap', 'gated', 'beds',
-    'acc', 'ask', 'ok1', 'none', 'gU', 'gH', 'gB', 'gK', 'gT', 'gHerd', 'gOk', 'bGate'];
+    'acc', 'ask', 'ok1', 'none', 'gU', 'gH', 'gB', 'gK', 'gT', 'gHerd', 'gOk', 'bGate',
+    'site', 't4adv', 't4stall', 'wood', 'stone', 'housing', 'mapBeds'];
   const WCOLS = ['day', 'needMig', 'needNoAut', 'autumn', 'pick', 'none', 's6seen', 's6ok', 's6thin', 's6unk', 's12seen', 's12ok', 's12unk', 's12unh', 's12beds', 's12thin', 's12herd',
     'overK', 'g42gate', 'g42full', 'g42back', 'g42noHome', 'g42told', 'g42use', 'leave', 'arrive', 'ask', 'ok1'];
   const names = [], nameIdx = new Map(), rows = [], wrows = [];
@@ -83,7 +85,9 @@ if (process.env.T577_OUT) {
         r3(num(ls, 'happiness')), r3(num(ls, 'happinessSlow')), r3(num(ls, 'happinessBurden')), r3(num(ls, 'happinessGoods')), num(ls, 'terrCells'),
         dd ? dd.K : null, dd ? dd.dP : null, dd ? dd.happy : null, dd ? (dd.gated ? 1 : 0) : null, isFinite(beds) ? beds : null,
         r3(e._emigAccum || 0), a ? a.ask : 0, a ? a.ok1 : 0, a ? a.none : 0, a ? a.gU : 0, a ? a.gH : 0, a ? a.gB : 0, a ? a.gK : 0, a ? a.gT : 0, a ? a.gHerd : 0, a ? a.gOk : 0,
-        e._t1297Gate ? 1 : 0]);
+        e._t1297Gate ? 1 : 0,
+        vil._site ? (vil._site.stage | 0) : -1, vil._t400Dbg ? (vil._t400Dbg.adv | 0) : null, vil._t400Dbg ? (vil._t400Dbg.stall | 0) : null,
+        r3((e.storage && e.storage.wood) || 0), r3((e.storage && e.storage.stone) || 0), e.housing !== undefined ? r3(e.housing) : null, e._mapBeds !== undefined ? e._mapBeds : null]);
       prev.set(vil.name, { nid, _emigTot: e._emigTot || 0, _deadTot: e._deadTot || 0, _fdDeadTot: e._fdDeadTot || 0, _natDeadTot: e._natDeadTot || 0 });
       prevRoster.set(vil.name, roster);
     }
