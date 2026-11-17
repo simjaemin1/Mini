@@ -101,7 +101,7 @@
     const _fade = _dd ? my.filter(cl => (cl.kind || 'personal') === 'personal' && cl.state !== 'free' && cl.care === 'fade').length : 0;
     // ★[T1343] 계량기 — 서버 `deeds_meter`(청크마다 관리도 m · ms 당 줄어듦 r · 셈 시각 t) 를 지금으로 줄여 그린다(닫힌 식 · 새 셈 0)
     const _M = _dd ? (window.__deedsMeter || null) : null;
-    const _now = _M ? _M.now + (Date.now() - _M.recvAt) : 0, _DAY = 86400000;
+    const _now = _M ? _M.now + (Date.now() - _M.recvAt) : 0, _DAY = 86400000;   // [T1310 클라 시계] 받은 뒤 흐른 클라 간격만 — 축은 서버가 준 `now`(PM land1082)
     const _fd = (d) => (d >= 10 ? Math.round(d) : Math.max(0, +d.toFixed(1)));
     let _meterHtml = '';
     if (_M) {

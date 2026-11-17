@@ -12,6 +12,7 @@
 //   ★미끼 셋 — 닿기 문을 뺀 도적 사본(ⓐ 찬 마을에 든다 · 빨강) · 문 앞 K 를 침상으로 읽는 villages 사본(② K 가 차도 침상이 넉넉하면 든다 · 빨강) ·
 //     소식을 얹는 줄을 뗀 들은 줄 사본 + 그 사본을 읽는 받는 곳 문(`_t1312Pass` 글 그대로 · ⑤ 찼다는 소식을 듣고도 간다 · 빨강)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다(PM land1082)
 if (process.env.T1334_BUNDLE === undefined) process.env.T1334_BUNDLE = '0';   // 묶음은 글자로 끔 — 이 하네스는 낱 글자를 제 env 로 가른다(켬 기본 가지에서도 빈 값 = 안 준 것)
 const path = require('path');
 const fs = require('fs');

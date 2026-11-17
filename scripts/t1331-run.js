@@ -6,6 +6,7 @@
 //   쓰는 법: node scripts/t1331-run.js <outdir> <표지> <존> <씨> <날> [--days-probe 1,2,…] [--env K=V,…]
 //   결과: <outdir>/<표지>.json(t577 판 JSON) · <표지>.probe.jsonl(탐침 줄) · <표지>.log · 벽시계 초는 <표지>.done 에.
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다(PM land1082)
 const path = require('path'), fs = require('fs'), { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const A = process.argv.slice(2);
