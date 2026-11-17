@@ -9,6 +9,7 @@
 //     출생 곳간 문 `bGate`(`_t1297Gate`) · 집 짓기(집 켬 판 — 생활층 크루): 집터 단계 `site`(없으면 −1) · 오늘 오른 단계 `t4adv`(`_t400Dbg.adv`) ·
 //     자재 없어 멈춤 `t4stall`(`_t400Dbg.stall`) · 곳간 나무 `wood` · 돌 `stone` · econ 주거 `housing` · 지도 침상 `mapBeds` ·
 //     영토 셀 수 `terrN`(서버 `_terrSet`) · 지은 집 칸 `houses`(`_houseCells`) · 집터 찾기가 마지막으로 빈손이던 날 `missDay`(`_siteMissDay` · 없으면 −1).
+//   `probes` — 10날마다 생활층 집터 찾기 누계(`tickPerf().probe`: 부름 · 찾음 · 건너뜀 · 빈손(영토 상한 탓 · 아님) · 거부 까닭 · 영토 넓힘).
 //   세계-날 줄(`wcols`): 이주 문 날 수(`t1319MigNeedDays` — 가을 문 켬이면 가을도 겨울 끝까지) · 가을 문 없는 날 수(max(기근 30 · 겨울 남은 날)) · 가을인가 ·
 //     T1147 · T1306 · T1312 · T1319 · T1342 셈의 날 차 · 걷기 셈(bandits `t1075Leave` · `t765Arrive`) 날 차.
 //   물음 셈은 호스트 문 `world.t1075Emigrate`(bandits `_t1075Leave`)를 같은 인자로 그대로 부르는 겉싸개로 센다(돌려준 값 · 부른 순서 무변). 셈 칸(`t13xxStat`)은 읽기만.
@@ -101,12 +102,16 @@ if (process.env.T577_OUT) {
     askTot = 0; ok1Tot = 0; prevSt = s;
     wrapGo(world);   // 이 날 뒤의 물음부터 센다(세계가 새로 서면 — 마디 — 다시 감싼다)
   };
+  //   집터 찾기 셈(생활층 `_probe` — `tickPerf().probe` · 계측 전용 · 읽기만) — 10날마다 · 끝에 한 번(날마다는 안 부른다)
+  const probe = () => { const V = VS(); try { const p = V && typeof V.tickPerf === 'function' ? V.tickPerf().probe : null; return p ? { siteCall: p.siteCall, siteHit: p.siteHit, siteSkip: p.siteSkip, siteMissCap: p.siteMissCap, siteMissFree: p.siteMissFree, siteReason: p.siteReason, terrGrowDays: p.terrGrowDays, terrGrowCells: p.terrGrowCells, day: lastDay } : null; } catch (e) { return null; } };
+  const probes = [];
   const dump = () => {
     try {
+      const pq = probe(); if (pq && (!probes.length || probes[probes.length - 1].day !== pq.day)) probes.push(pq);
       fs.writeFileSync(OUT + '.t1345.json', JSON.stringify({ env: { BUNDLE: process.env.T1334_BUNDLE || null, MIG: process.env.T1306_MIGRATE_FOOD || null, HERD: process.env.T1312_HERD || null,
         K: process.env.T1319_RECV_K || null, AUT: process.env.T1319_AUTUMN_LOOK || null, GH: process.env.T1342_GATE_HOME || null, DAY_MS: process.env.VILLAGE_DAY_MS || null,
         CAP: process.env.VILLAGE_NPC_CAP || null, BUILD: process.env.T400_BUILD_ACT || null, MAPBEDS: process.env.T315_MAPBEDS || null, CARAVAN: process.env.VILLAGE_CARAVAN_MAX || null },
-        cols: COLS, wcols: WCOLS, names, rows, wrows }));
+        cols: COLS, wcols: WCOLS, names, rows, wrows, probes }));
     } catch (e) {}
   };
   const mk = Ev.createLedger;
