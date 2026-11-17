@@ -31,6 +31,65 @@ const CELL = 32, NAMES = ['쇠재', '한재'];
 //   ⓓ 같은 배열 계약(`_t1320ChainOf`) — 몸 길 · 장부 길 같음 검사(`T.path.pts === body.pts`)가 켬에서도 종전처럼 서야 한다
 //   미끼 ⓐ = 다시 붙기만 곧은 줄로 되돌린 villages.js 사본(`T1320_BAIT=rejoin` · 손잡이 켬) · ⓑ = 손잡이 끔 · ⓒ = 고친 줄이 늘 새 배열인 사본(`T1320_BAIT=ident`)
 //   몸은 존 정본 걸음 문(`_caravanBodyProbe.pts` = setBodyPts · `.walk` = _t1182Walk)으로 걷고, 길 도장(8px 걸음마다)을 존 술어(바위 · 물)로 센다.
+// ★[T1327] 길 층 — 아이 판(손잡이 `T1327_ROUTE_FIX` 는 모듈을 실을 때 읽는다). 한반도 실지형(다리 칸 열림) 위 교역로 정본 A*(`computeRoutePts`)를 판다.
+//   ⓐ 꼭짓점: 다리로 구제된 코스 노드(가운데 칸이 물)를 지나는 길 — 정적 전 쌍의 막힌 마디 대부분(보고/T1327 §1)
+//   ⓑ 건널목: 코스 이웃 잇기가 다리 없는 강을 뛰어넘는 자리(63184, 56784 → 56656) — 켬이면 몸이 이을 수 있는 이음만(돌아간다)
+//   ⓒ 도랑: 열린 땅 곧은 길을 가로지르는 도랑 줄(61칸)을 판 중에 놓고 `distBasisRefresh`(= zone.js `refreshDitchCells` 끝) — 그 칸을 지나던 길은 캐시에서 빠지고 다시 판 길은 도랑 0
+//   ⓓ 정적 표본: 정적 전 쌍 감사에서 막힌 마디가 있던 실제 마을 쌍 여섯
+//   ⓕ 모서리 깎기: 막힌 칸 모서리를 3px 만 깎는 곧은 몸 마디 — 켬은 표본이 아니라 지나는 칸 전부로 본다
+//   ⓔ 몸 길: 환호 둘레 안 → 밖 마디(교차 존 합친 길이 지형만 보고 낸 마디의 꼴) — T1320 몸 잇기의 재경로 상한을 넘는 돌기는 상자 BFS(켬)
+//   미끼(villages.js 사본 · 제자리 경로로 싣는다 · 파일 손 0): `T1327_BAIT=ditch` = 도랑 다시 굽기를 뺀 사본 · `edge` = 코스 이음 거름을 뺀 사본
+if (process.argv[2] === '--routechild') {
+  const { ZONES } = require(path.join(ROOT, 'server', 'zone-config'));
+  const TT = require(path.join(ROOT, 'server', 'terrain')); TT.setZonesMeta(ZONES);
+  const BAITS = { ditch: ['  if (T1327_ROUTE_FIX) _t1327DitchRedig();', ''], edge: ['const _T598E = T598_ROUTE_EDGE || T1327_ROUTE_FIX;', 'const _T598E = T598_ROUTE_EDGE;'] };
+  let V;
+  if (BAITS[process.env.T1327_BAIT]) {
+    const Module = require('module'), vf = require.resolve(path.join(ROOT, 'server', 'villages'));
+    const SRC = fs.readFileSync(vf, 'utf8'), [A0, A1] = BAITS[process.env.T1327_BAIT];
+    if (SRC.split(A0).length !== 2) { console.log('@@' + JSON.stringify({ err: '미끼 자리 못 찾음' })); process.exit(0); }
+    const m = new Module(vf, module); m.filename = vf; m.paths = Module._nodeModulePaths(path.dirname(vf));
+    require.cache[vf] = m; m._compile(SRC.replace(A0, A1), vf); m.loaded = true; V = m.exports;
+  } else V = require(path.join(ROOT, 'server', 'villages'));
+  const B3 = V.__p3Bind({}), S = B3.state, Z = 'hanbando', ZONE = ZONES[Z], BR = new Set();
+  { const bl = ZONE.bridges || []; for (let i = 0; i + 1 < bl.length; i += 2) BR.add(bl[i] + '_' + bl[i + 1]); }
+  const cached = (f) => { const MEMO = new Map(); return (x, y) => { const k = Math.floor(x / CELL) * 65536 + Math.floor(y / CELL); let v = MEMO.get(k); if (v === undefined) { v = f(x, y); MEMO.set(k, v); } return v; }; };   // 술어마다 제 메모
+  const ctr = (x) => Math.floor(x / CELL) * CELL + 16;
+  const isW = cached((x, y) => { try { return !!TT.isWaterCellLocal(Z, ctr(x), ctr(y)); } catch (e) { return false; } });
+  const blk0 = cached((x, y) => x < 0 || y < 0 || x >= ZONE.zoneWidth || y >= ZONE.zoneHeight || !!TT.isRockCellLocal(Z, ctr(x), ctr(y)) || isW(x, y));
+  const DIT = new Set(), blk = (x, y) => DIT.has(Math.floor(x / CELL) * 65536 + Math.floor(y / CELL)) || blk0(x, y);
+  S.zoneId = Z;
+  const ta = V.__labProbe.makeTerrainAdapter(TT, ZONE, { isTerrainBlockedLocal: blk, isWaterTileLocal: isW, isBridgeLocal: (x, y) => BR.has(Math.floor(x / CELL) + '_' + Math.floor(y / CELL)) });
+  S._distCtx = { ta, ZONE }; S.routeCache = new Map();
+  const walk = (pts) => { if (!pts) return null; let L = 0, b = 0; for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], c = pts[i], d = Math.hypot(c.x - a.x, c.y - a.y); L += d;
+    const k = Math.max(1, Math.ceil(d / 8)); for (let q = 1; q <= k; q++) if (ta.isBlocked(Math.floor((a.x + (c.x - a.x) * q / k) / CELL), Math.floor((a.y + (c.y - a.y) * q / k) / CELL))) b++; } return { L: Math.round(L), b, n: pts.length }; };
+  const open = (x, y, dy) => { while (blk(x, y)) y += dy; return [x, y]; };
+  const R = { on: V.t1327On ? V.t1327On() : null };
+  { const a = open(15184, 56400 + 768, 32), b = open(15184, 56272 - 768, -32); R.vtxAt = [a, b]; R.vtx = walk(B3.computeRoutePts(a[0], a[1], b[0], b[1])); }
+  { const a = [63184, 56784 + 512], b = [63184, 56656 - 512]; R.fordStraight = (() => { let n = 0; for (let y = b[1]; y <= a[1]; y += 8) if (blk(a[0], y)) n++; return n; })(); R.ford = walk(B3.computeRoutePts(a[0], a[1], b[0], b[1])); }
+  { const A = [30000, 40000], Bp = [30000, 41600], r0 = B3.computeRoutePts(A[0], A[1], Bp[0], Bp[1]); R.ditchPre = walk(r0); S.routeCache.set('d', r0);
+    const wy = Math.floor(40800 / CELL), cells = []; for (let cx = Math.floor(30000 / CELL) - 30; cx <= Math.floor(30000 / CELL) + 30; cx++) { DIT.add(cx * 65536 + wy); cells.push({ cx, cy: wy }); }
+    S.villages = [{ _ditch: cells }]; V.distBasisRefresh();
+    R.ditchDropped = !S.routeCache.has('d'); R.ditchPost = walk(B3.computeRoutePts(A[0], A[1], Bp[0], Bp[1])); }
+  // ⓓ 정적 표본 — 정적 전 쌍 감사(`scripts/t1327-route-audit.js` · 부팅이 판 1,275쌍)에서 막힌 마디가 있던 실제 마을 쌍 여섯(바위 · 물 짧은 길 넷 · 건널목)
+  //   마을 칸 = 정본 시드 한반도(`계측/T1327_2026-11-15/정적_*.json` 의 vil) · 길 = 같은 A* 문(캐시 0)
+  R.sample = [['2_15', 2007, 218, 982, 684], ['31_49', 405, 3316, 428, 3489], ['26_37', 61, 1797, 161, 1667], ['20_44', 685, 732, 428, 939], ['9_17', 1655, 375, 1537, 554], ['1_3', 2120, 2117, 1425, 794]]
+    .map(([k, ax, ay, bx, by]) => [k, walk(B3.computeRoutePts(ax * CELL + 16, ay * CELL + 16, bx * CELL + 16, by * CELL + 16))]);
+  // ⓔ 몸 길(`setBodyPts` · T1320 몸 잇기 켬): 환호 둘레(반지름 30칸 · 출입구 서쪽 3칸) 안 마을 가운데 → 둘레 밖 동쪽 — 재경로 상한(900칸)을 넘는 돌기
+  { DIT.clear(); const cx0 = Math.floor(30000 / CELL), cy0 = Math.floor(52000 / CELL), ring = [];
+    for (let y = cy0 - 32; y <= cy0 + 32; y++) for (let x = cx0 - 32; x <= cx0 + 32; x++) { const d = Math.hypot(x - cx0, y - cy0); if (d >= 29.5 && d < 31 && !(x < cx0 && Math.abs(y - cy0) <= 1)) { DIT.add(x * 65536 + y); ring.push({ cx: x, cy: y }); } }
+    Object.assign(S, { deps: { isTerrainBlockedLocal: blk, isBlockedByWall: () => false, players: new Map() } }); S.villages = [{ _ditch: ring }];
+    const body = {}; V.__labProbe._caravanBodyProbe.pts(body, [{ x: cx0 * CELL + 16, y: cy0 * CELL + 16 }, { x: (cx0 + 45) * CELL + 16, y: cy0 * CELL + 16 }]);
+    R.ringOpen = !blk(cx0 * CELL + 16, cy0 * CELL + 16) && !blk((cx0 + 45) * CELL + 16, cy0 * CELL + 16); R.ring = walk(body.pts); R.t1320 = V.t1320Stat ? V.t1320Stat() : null; }
+  // ⓕ 모서리 깎기: 막힌 칸 하나의 모서리를 3px 만 깎는 곧은 몸 마디(SZ/4 표본 사이로 빠지는 꼴) — 1px 마다 잰다
+  { DIT.clear(); const X = Math.floor(30000 / CELL) * CELL, Y = Math.floor(56000 / CELL) * CELL; DIT.add((X / CELL) * 65536 + Y / CELL); S.villages = [];
+    const P0 = { x: X - 103, y: Y + 29 - 103 }, P1 = { x: X + 100, y: Y + 29 + 100 }, body = {}; V.__labProbe._caravanBodyProbe.pts(body, [P0, P1]);
+    const w1 = (pts) => { let b = 0; for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], c = pts[i], k = Math.max(1, Math.ceil(Math.hypot(c.x - a.x, c.y - a.y))); for (let q = 0; q <= k; q++) if (blk(a.x + (c.x - a.x) * q / k, a.y + (c.y - a.y) * q / k)) b++; } return b; };
+    R.cornerStraight = w1([P0, P1]); R.corner = w1(body.pts); R.cornerN = body.pts.length; }
+  R.stat = V.t1327Stat ? V.t1327Stat() : null;
+  console.log('@@' + JSON.stringify(R));
+  process.exit(0);
+}
 if (process.argv[2] === '--rockchild') {
   const { ZONES } = require(path.join(ROOT, 'server', 'zone-config'));
   const TT = require(path.join(ROOT, 'server', 'terrain')); TT.setZonesMeta(ZONES);
@@ -178,6 +237,24 @@ ok(bB.every((r) => !r.we || !r.inValley), '★미끼 ⓑ 한반도 짝 골짜기
   ok(BAIT.on === true && BAIT.seg && BAIT.seg.rock === 0 && BAIT.rejoin && BAIT.rejoin.rock > 0, '⑤★미끼 ⓐ — 다시 붙기만 곧은 줄로 되돌린 사본(손잡이 켬)이면 다시 붙기 바위 걸음이 선다(빨강)', `마디 ${BAIT.seg && BAIT.seg.rock} · 다시 붙기 ${BAIT.rejoin && BAIT.rejoin.rock}${BAIT.err ? ' · ' + BAIT.err : ''}`);
   ok(BAIT2.ident && !(BAIT2.ident.open && BAIT2.ident.twice && BAIT2.ident.again), '⑤★미끼 ⓒ — 고친 줄이 늘 새 배열인 사본이면 ⑤d 가 빨강', JSON.stringify(BAIT2.ident || BAIT2));
   ok(OFF.on === false && OFF.seg && OFF.seg.rock > 0 && OFF.rejoin && OFF.rejoin.rock > 0 && OFF.vtx && OFF.vtx.rock > 0, '⑤★미끼 ⓑ — 끔(곧은 줄 그대로)이면 세 자리 다 막힌 칸 걸음이 선다(빨강)', `마디 ${OFF.seg && OFF.seg.rock} · 다시 붙기 ${OFF.rejoin && OFF.rejoin.rock} · 꼭짓점 ${OFF.vtx && OFF.vtx.rock}`);
+}
+// ⑥ [T1327] 길 층 — 손잡이 켬이면 교역로가 막힌 칸을 안 지난다(꼭짓점 · 건널목 · 판 중 도랑) · ★미끼: 도랑 다시 굽기 뺀 사본 · 코스 이음 거름 뺀 사본 · 끔
+{
+  const { spawnSync } = require('child_process');
+  const kid = (on, bait) => { const r = spawnSync(process.execPath, [__filename, '--routechild'], { cwd: ROOT, encoding: 'utf8', env: Object.assign({}, process.env, { T1327_ROUTE_FIX: on ? '1' : '0', T1320_ROCK_PATH: '1', T1327_BAIT: bait || '' }), maxBuffer: 1 << 24 });
+    const l = (r.stdout || '').split('\n').find((x) => x.startsWith('@@')); return l ? JSON.parse(l.slice(2)) : { err: (r.stderr || '').slice(-300) }; };
+  const ON = kid(true), OFF = kid(false), BD = kid(true, 'ditch'), BE = kid(true, 'edge');
+  const b = (w) => (w ? w.b : null);
+  ok(OFF.on === false && b(OFF.vtx) > 0 && b(OFF.ford) > 0 && OFF.fordStraight > 0 && b(OFF.ditchPre) === 0 && b(OFF.ditchPost) > 0, '⑥ 전제 [T1327] — 끔이면 세 자리 다 교역로가 막힌 칸을 지난다(자명 통과 금지)', `꼭짓점 ${b(OFF.vtx)} · 건널목 ${b(OFF.ford)} · 도랑 앞 ${b(OFF.ditchPre)} → 뒤 ${b(OFF.ditchPost)}`);
+  ok(ON.on === true && ON.vtx && ON.vtx.b === 0, '⑥a [T1327] 켬 — 다리로 구제된 코스 노드를 지나는 길이 막힌 칸 0(꼭짓점 = 몸 칸)', JSON.stringify(ON.vtx || ON));
+  ok(ON.ford && ON.ford.b === 0 && OFF.ford && ON.ford.L > OFF.ford.L, '⑥b [T1327] 켬 — 다리 없는 건널목을 안 뛰어넘는다(막힌 칸 0 · 돌아간다)', `${JSON.stringify(ON.ford)} ← 끔 ${JSON.stringify(OFF.ford)}`);
+  ok(ON.ditchDropped === true && ON.ditchPost && ON.ditchPost.b === 0, '⑥c [T1327] 켬 — 판 중 도랑이 실리면 그 칸을 지나던 길이 캐시에서 빠지고 다시 판 길은 도랑 0', `빠짐 ${ON.ditchDropped} · ${JSON.stringify(ON.ditchPost)}`);
+  const sb = (X) => (X.sample || []).map(([k, w]) => (w ? w.b : -1));
+  ok(sb(OFF).length === 6 && sb(OFF).every((x) => x > 0) && sb(ON).length === 6 && sb(ON).every((x) => x === 0), '⑥d [T1327] 정적 표본 — 막힌 마디가 있던 실제 마을 쌍 여섯이 켬이면 막힌 칸 0(끔은 모두 > 0 · 다 닿음)', `끔 ${sb(OFF).join(' · ')} → 켬 ${sb(ON).join(' · ')}`);
+  ok(ON.ringOpen && OFF.ring && OFF.ring.b > 0 && ON.ring && ON.ring.b === 0, '⑥e [T1327] 켬 — 몸 길(T1320 몸 잇기 켬)이 환호 둘레 안 → 밖 마디를 출입구로 돈다(재경로 상한 밖 · 막힌 칸 0 · 끔은 둘레를 밟는다)', `켬 ${JSON.stringify(ON.ring)} · 끔 ${JSON.stringify(OFF.ring)}`);
+  ok(ON.cornerStraight > 0 && ON.corner === 0 && OFF.corner > 0, '⑥f [T1327] 켬 — 막힌 칸 모서리를 표본 사이로 깎는 곧은 몸 마디도 잡는다(지나는 칸 전부 · 1px 잼 0 · 끔은 깎는다)', `곧은 줄 ${ON.cornerStraight}px · 켬 ${ON.corner}px(점 ${ON.cornerN}) · 끔 ${OFF.corner}px`);
+  ok(BD.on === true && !(BD.ditchDropped === true && BD.ditchPost && BD.ditchPost.b === 0), '⑥★미끼 ⓐ — 도랑 다시 굽기를 뺀 사본(켬)이면 ⑥c 빨강', `빠짐 ${BD.ditchDropped} · ${JSON.stringify(BD.ditchPost)}${BD.err ? ' · ' + BD.err : ''}`);
+  ok(BE.on === true && !(BE.ford && BE.ford.b === 0), '⑥★미끼 ⓑ — 코스 이음 거름을 뺀 사본(켬)이면 ⑥b 빨강', `${JSON.stringify(BE.ford)}${BE.err ? ' · ' + BE.err : ''}`);
 }
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
