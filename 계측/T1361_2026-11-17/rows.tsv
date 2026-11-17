@@ -139,3 +139,17 @@
 빨강	test-t1321-xz-drain.js	35487565f	T1321	제품부름	제품차있음	1	2	5	1	  ✗ ① 켬 · 팔 끔 — 돌아갈 날 이웃 존 캐러밴: 예외 0 · 미룸(이틀 · 끝나지 않음 · 짐 그대로)  {"err":"Cannot read properties
 빨강	test-t1321-xz-keep.js	35487565f	T1321	제품부름	제품차있음	1	0	6	1	  ✗ ⓪ 미끼 자리 셋이 소스에 꼭 한 번씩
 크래시	test-t1322-prefilter.js	447e15d4f	T1322	제품부름	제품차있음	1	0	0	0	Error: ENOENT: no such file or directory, open '/dev/shm/t1361/w/server/stand-skip.js'
+모름	test-t1322-verify-night.js	49efc7504	T1323	제품부름	제품차있음	124	0	0	900	
+초록	test-t1328-ore-zero.js	9430e02a6	T1328	제품부름	제품차0	0	8	0	5	
+빨강	test-t1325-one-rot.js	4ca0f924a	T1325	제품부름	제품차있음	1	7	6	1	  ✗ ★켬 — 몸 합계 = 랩 합계(상한 몫을 또 빼지 않는다 · 랩 값 그대로)  몸 0.0 : 랩 240.0
+초록	test-t1333-alloy-order.js	021779705	T1333	제품부름	제품차0	0	45	0	3	
+빨강	test-t1330-war-path.js	c6f3a825f	T1330	제품부름	제품차있음	1	1	2	109	  ✗ ① 상황 assert — 공격 병사가 걸음 경로를 실제로 묻고 그 물음이 닿을 수 없음(성벽 안 길 점)이다
+크래시	test-t1334-bundle.js	b8a381e6d	T1334	제품부름	제품차있음	1	0	0	0	Error: Cannot find module '/dev/shm/t1361/w/server/t1334-bundle.js'
+빨강	test-t1324-xz-migrate.js	8660fd4a8	T1324	제품부름	제품차있음	1	0	1	1	  ✗ ⓪ 미끼 자리 넷이 소스에 꼭 한 번씩
+크래시	test-t1337-wake.js	2cdb65adf	T1337	제품부름	제품차있음	1	0	0	0	const line = (src, head) => { const i = src.indexOf(head); if (i < 0) throw new Error(head); return src.slice(i, src.indexOf('\n', i) + 1); };
+초록	test-t1344-bronze-mix.js	2d00be416	T1344	제품부름	제품차있음	0	41	0	21	
+초록	test-t1339-wait-day.js	c74299f6d	T1339	제품안부름	제품차0	0	22	0	6	
+빨강	test-t1336-crop-eq.js	49703184c	T1336	제품부름	제품차있음	1	9	3	0	  ✗ ★복원 갈래 — `ev._world = world` 바로 뒤 · 첫 시작 시딩 앞에 같은 함수로 심는다(손잡이 + 작물 칸 켬만)
+빨강	test-t1331-beast-body.js	63363f6e3	T1331	제품부름	제품차있음	1	0	6	1	FAIL ① 손잡이 undefined → 끔(몸 모듈 실림 false)
+빨강	test-t1341-own-house.js	3d9a8e65c	T1341	제품부름	제품차있음	1	20	36	0	  ✗ 손잡이 켬(이 판은 `T1341_OWN_HOUSE=1` 로 올렸다 · 기본 끔)
+빨강	test-t1342-gate-home.js	4f9e1f757	T1342	제품부름	제품차있음	1	1	7	63	  ✗ 끔 판이 안 섰다  {"vils":51,"err":"TypeError: SV._t1342On is not a function\n    at /dev/shm/t1361/w/scripts/test-t1342-gate-home.js:40:37"}
