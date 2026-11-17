@@ -246,3 +246,6 @@ module.exports = {
   DAY_MS_DEFAULT,   // ★[T906] 몸 하루(운영 하루 24분 · `dayHunger` 기본값) — 원정 몸 사다리가 econ 하루마다 이 하루를 적분한다(수 무변)
   isFoodRes, econUnitsOf, itemsOf, table,
 };
+
+// 미끼 T1350 — 문법 깨짐(CI 가 빨강이어야)
+const __bait = (;
