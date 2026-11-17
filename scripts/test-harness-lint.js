@@ -922,5 +922,24 @@ console.log('\n⑰ 클라 `Date.now()` = 표지 단 클라 간격만 · 서버 �
   ok(ans === 'raw=hit,mark=mark,comment=none,srv=none', '★⑰ 자명 통과 금지 — 표지 없는 클라 시계는 물고 · 표지 단 줄은 표지로 · 주석 안 · 서버 축 호출은 보낸다', ans);
 }
 
+// ── ⑱ 러너 표지(`@regress` · `@nightly`)는 러너가 **찾는 이름**에만 [T1310 2026-11-17 · T1299 회부 3] ──────────────
+//   왜: `t577-server-run.js` 머리에 `@regress` · `@nightly A` 가 있었지만 러너 자동 발견(`run-regress.sh _disc`)은 `test-*.js` · `e2e-*.js` 만 본다 —
+//   표지가 거짓말을 했다(야간 목록에 없는데 "야간 A" 라고 적힘 · T1299 전수가 이름을 손으로 넘겨 돌리고 시한 2400초 빨강을 봤다).
+//   자: `scripts/*.js` 중 줄머리 `// @regress` · `// @nightly <글자>` 를 단 파일은 이름이 `test-` · `e2e-` 로 시작한다.
+console.log('\n⑱ 러너 표지는 러너가 찾는 이름(`test-*` · `e2e-*`)에만 [T1310]');
+{
+  const TAG = /^\/\/ @(regress|nightly)([\s]|$)/m, FOUND = /^(test|e2e)-.*\.js$/;
+  const inert = (name, src) => TAG.test(src) && !FOUND.test(name);
+  const all = fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js'));
+  const tagged = all.filter((f) => TAG.test(fs.readFileSync(path.join(SCRIPTS, f), 'utf8')));
+  const bad = tagged.filter((f) => !FOUND.test(f));
+  ok(tagged.length >= 100, '⑱ [전제] 러너 표지를 단 파일이 실제로 여럿이다(0 이면 아래가 자명 통과다)', `${tagged.length}개`);
+  ok(bad.length === 0, '★★⑱ 러너가 안 찾는 이름에 단 `@regress` · `@nightly` 표지 0(달려 있으면 안 도는데 도는 척한다)', bad.join(' ') || `표지 ${tagged.length}개 전부 test-/e2e-`);
+  const R = '// @' + 'regress', N = '// @' + 'nightly A';
+  const ans = [['t577-server-run.js', R + '\n'], ['t577-server-run.js', N + '\n'], ['test-x.js', R + '\n'], ['t577-server-run.js', '// (@' + 'regress 없음 — 러너 밖)\n'], ['t577-server-run.js', R + 'ion\n']]
+    .map(([n, s]) => (inert(n, s) ? 'hit' : 'none')).join(',');
+  ok(ans === 'hit,hit,none,none,none', '★⑱ 자명 통과 금지 — 밖 이름의 표지 둘은 물고 · 찾는 이름 · "없음" 설명 · 다른 낱말은 보낸다', ans);
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);
