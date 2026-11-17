@@ -4551,6 +4551,14 @@ function pricesFresh(econV2, v) { return econV2.computeShadowPrices(v); }
 //   정본에 그 함수가 없으면(옛 엔진 · 모의 econ) 전 표 — 값은 같다. 여기서도 가격을 계산하지 않는다.
 //   손잡이 `T1161_TWO_PRICES=0` = 종전(전 표 · 같은 값 대조용).
 const T1161_TWO_PRICES = !(typeof process !== 'undefined' && process.env && process.env.T1161_TWO_PRICES === '0');
+// ★★[T1341 2026-11-16 · ★재민 11-16 "마을이 정말 필요한 물건은 구해오면 그냥 받아들임 수치가 오르는 것뿐이고 보상 없음"]
+//   손잡이 `T1341_OWN_HOUSE`(끔 기본 · `=1` 켬 · 판정 재민). 켬이면 **마을 의뢰(부탁) 전부** 갚음이 0 이다 — 마을이 그냥 받는다.
+//   ⓐ 납품(`deliverToVillage`) — 몫 확정 · 실물 이동(짐 → 곳간)은 그대로 · 갚음 확인(①b) · 갚음 지급(③)만 건너뛴다(곳간에서 나가는 것 0 · 짐에 들어오는 것 0).
+//   ⓑ 게시판 한 줄(`boardLine`) — "…개를 구해다 주면 고맙겠습니다."(갚는 말 0).
+//   ⚠의뢰를 **거는 문**(`makeRequest` — 갚을 잉여가 있어야 건다 · B-1)과 하루 재검증(`revalidate`)은 그대로다 — 그 값이 거래소의 "보상으로 잠긴 품목"(`trade.js` ·
+//     `villages.js` 시세 조정)에 같은 줄로 걸려 있어 여기서 흔들면 교역이 바뀐다(카드 ③ "교역은 무접촉"). 사람 0 판이면 켬 · 끔이 같은 까닭이 이것이다.
+//     걸린 약속 값(`rewItem` · `rewQty`)은 장부 안에만 남고 화면 · 납품 어디에도 안 나간다(`villages.js villageBoard` 가 켬이면 비운다) — 뜻을 옮길지는 회부.
+const T1341_OWN_HOUSE = !!(typeof process !== 'undefined' && process.env && process.env.T1341_OWN_HOUSE === '1');
 function pricesFreshOf(econV2, v, keys) {
   return (T1161_TWO_PRICES && typeof econV2.shadowPricesOf === 'function') ? econV2.shadowPricesOf(v, keys) : econV2.computeShadowPrices(v);
 }
@@ -5644,6 +5652,7 @@ function newsLine(ev) {
 // 게시판 한 줄 — "무엇을 얼마 가져오면 무엇으로 갚는다"
 function boardLine(req) {
   const remain = (req.remain != null ? req.remain : (req.qty - req.filled));
+  if (T1341_OWN_HOUSE) return `${koRes(req.item)} ${remain}개를 구해다 주면 고맙겠습니다.`;   // ★[T1341] 켬 — 갚는 말 0(머리 손잡이 주석)
   return `${koRes(req.item)} ${remain}개를 가져오면 ${koRes(req.rewItem)} ${req.rewQty}개로 갚습니다.`;
 }
 
@@ -5677,8 +5686,9 @@ function deliverToVillage(a) {
 
   // ①b ★**갚을 수 있는지 먼저 본다.** 물건을 받아 놓고 못 갚으면 그게 사기다.
   //   (게시 시점엔 갚을 수 있었어도 그 사이 마을 재고가 줄 수 있다 — 하루 경계 재검증과 이 줄이 짝이다.)
+  //   ★[T1341] 켬 — 갚음이 없으니 갚을 수 있나도 안 본다(머리 손잡이 주석 · 끔 = 이 줄 그대로).
   const _rewRes = c.rewItem, _rewItem0 = D.toEcon.get(_rewRes);
-  if (c.rew > 0) {
+  if (c.rew > 0 && !T1341_OWN_HOUSE) {
     const have = Math.floor(+((v.storage || {})[_rewRes] || 0));
     if (!_rewItem0 || have < c.rew) {
       ledger.unclaim(vid, item, c.take);
@@ -5701,6 +5711,11 @@ function deliverToVillage(a) {
 
   // ③ 보상 — 마을 잉여를 실제로 덜어 준다(물물. `_cash` 는 쓰지 않는다 — 재민 세금 캐논).
   //   ★**전액 아니면 0**. 위 ①b 가 이미 보장하므로 여기서 깎이는 일은 없다.
+  //   ★[T1341] 켬 — 갚음 0: 곳간에서 덜지 않고 짐에 안 넣는다(마을이 그냥 받는다). 돌려주는 칸도 비운다(받은 것 없음).
+  if (T1341_OWN_HOUSE) {
+    return { ok: true, take: c.take, refused: c.refused, taken: dep.taken, moved: dep.moved,
+      rew: 0, rewRes: null, rewItem: null, done: c.done, req: c.req, noRepay: true };
+  }
   const rewRes = _rewRes, rewPlayerItem = _rewItem0;
   let rewPaid = 0;
   if (rewPlayerItem && c.rew > 0) {
@@ -5724,7 +5739,8 @@ function deliverToVillage(a) {
 module.exports = { createLedger, CFG, TYPES, DEED_TYPES, DEED_FOREIGN, briefLine, boardLine, newsLine, LINE_TYPES: Object.keys(LINES), NEWS_LINE_TYPES: Object.keys(NEWS_LINES), koRes, josa, seasonOf, KO_SEASON,
   blurMag,   // ★[T127] 뭉갬 정본 — 하네스·계측기가 **이 함수**를 부른다(사본 금지)
   yearDaysOf, seasonStartOf, calendarOf, yearOf, yearSpanOf, springYearOf,
-  buildDeliverable, deliverToVillage, pricesOf, pricesFresh, pricesFreshOf, T1161_TWO_PRICES, payableQty };
+  buildDeliverable, deliverToVillage, pricesOf, pricesFresh, pricesFreshOf, T1161_TWO_PRICES, payableQty,
+  T1341_OWN_HOUSE };   // ★[T1341] 의뢰 갚음 0 손잡이(끔 기본) — 온보딩 · 게시판 · 존이 같은 값을 읽는다(사본 0)
 
 ;return module.exports;})();
   modules["crops"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["crops"];},set:function(v){modules["crops"]=v;}});module.exports={};var exports=module.exports;var require=req;var window=undefined;
