@@ -97,7 +97,7 @@ const TAGP = process.env.T347_TAG || '';
 function boot(tag, zenv) {
   tag = TAGP + tag;
   const SECRET = 't347-' + tag;
-  const CP = 3830 + PORT_OFF, ZP = 3840 + PORT_OFF;
+  const CP = require('./lib-port').port(3830) + PORT_OFF, ZP = require('./lib-port').port(3840) + PORT_OFF;
   const logf = fs.openSync(`/tmp/t347/${tag}.log`, 'w');
   const c = spawn(process.execPath, [path.join(ROOT, 'server/central.js')], { cwd: ROOT, stdio: 'ignore',
     env: Object.assign({}, process.env, { PORT: String(CP), DB_PATH: `/tmp/t347/c-${tag}.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });

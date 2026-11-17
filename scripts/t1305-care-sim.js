@@ -17,6 +17,7 @@
 //   걷기는 맨해튼 칸 · 머묾 = `DWELL_MS`(T1305 손보는 시간 20초 재사용) · 싼 쓰기 `CHEAP_S` = 한 칸 걷는 시간(한 동작 왕복 — 가장 싸게 잡는다).
 //
 //   node scripts/t1305-care-sim.js [--days 240] [--gather 0] [--json <파일>]
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.T1305_DEEDS = '1';
 const fs = require('fs');
 const path = require('path');

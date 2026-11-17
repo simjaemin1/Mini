@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress
+// @regress-alone   ← [T1288] 러너 -j 판에서 맨 먼저 혼자 돈다(다른 하네스를 안 띄운다) · NPC 24명 프레임 비용 증가를 잰다 — 판 C -j4 에서 11.6%(기준 ≤ 10%) · 홀로 초록
 // @nightly C   ← 야간 **세 밤** 분할(T238 · 소요로 균등) · `run-regress.sh --list "nightly C"`
 // =============================================================================
 // e2e — NPC 소체 시트 [재민 확정 2026-09-02 · T13]
@@ -19,6 +20,7 @@
 // 포트 3010/3020 공용 — E2E 동시 실행 금지.
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)

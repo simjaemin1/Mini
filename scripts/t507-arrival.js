@@ -16,7 +16,7 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');
 const ROOT = path.join(__dirname, '..');
-const CPORT = 3712, ZPORT = 3722;
+const CPORT = require('./lib-port').port(3712), ZPORT = require('./lib-port').port(3722);
 const CDB = `/tmp/t507a-central-${process.pid}.db`, ZDB = `/tmp/t507a-zone-${process.pid}.db`;
 const OUT = (() => { const i = process.argv.indexOf('--out'); return i > 0 ? process.argv[i + 1] : '/tmp/t507-arrival.json'; })();
 // ★[T520] `--env K=V`(여러 번) — 존에 손잡이를 건다(예: `--env T520_ARRIVE_INDOOR=1`). 없으면 T507 판 그대로.

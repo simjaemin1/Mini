@@ -59,7 +59,7 @@ function runOne(dir, arm, seed, days, rep, k) {
     for (const kk of ARM_KEYS) delete env[kk];
     delete env.VILLAGE_DAY_MS; delete env.VILLAGE_NPC_CAP;   // ★정본 하루 · 몸 상한 운영 기본(무제한)
     Object.assign(env, ARMS[arm], {
-      ZONE_ID: 'hanbando', PORT: String(40100 + ((process.pid + k * 37) % 700)), DB_PATH: db,
+      ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port('40100:' + k)), DB_PATH: db,
       ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
       T577_SEED: String(seed), T577_DAYS: String(days), T577_OUT: out,
       T745_VCLOCK: '1', SBC_HOOK: '1', T805_D0: String(D0),

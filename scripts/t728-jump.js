@@ -23,7 +23,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function run(tag, env, pre) {
   return new Promise((resolve) => {
     const e = Object.assign({}, process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1', VILLAGE_NPC_CAP: '1', T400_BUILD_ACT: '0',
-      T640_BOOT_SLICE: '0', T728_RESTART_KEEP: '1', PORT: String(39500 + Math.floor(Math.random() * 400)), NODE_OPTIONS: pre.map((p) => `--require ${p}`).join(' ') }, env);
+      T640_BOOT_SLICE: '0', T728_RESTART_KEEP: '1', PORT: String(require('./lib-port').port(39500)), NODE_OPTIONS: pre.map((p) => `--require ${p}`).join(' ') }, env);
     const ch = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env: e, stdio: ['ignore', 'pipe', 'pipe'] });
     const lf = fs.createWriteStream(path.join(DIR, tag + '.log')); ch.stdout.pipe(lf); ch.stderr.pipe(lf);
     ch.on('exit', (code) => resolve(code));

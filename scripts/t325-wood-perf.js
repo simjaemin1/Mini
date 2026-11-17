@@ -33,7 +33,7 @@ const say = (...a) => console.log(...a);
 
 function boot(tag, zenv) {
   const SECRET = 't325-' + tag;
-  const CP = 3730, ZP = 3740;
+  const CP = require('./lib-port').port(3730), ZP = require('./lib-port').port(3740);
   const logf = fs.openSync(`/tmp/t325-${tag}.log`, 'w');
   const c = spawn(process.execPath, [path.join(ROOT, 'server/central.js')], { cwd: ROOT, stdio: 'ignore',
     env: Object.assign({}, process.env, { PORT: String(CP), DB_PATH: `/tmp/t325-c-${tag}.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });

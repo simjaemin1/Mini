@@ -21,6 +21,7 @@
 // 실행: node scripts/test-build-act.js
 'use strict';
 // T1181: 기존 되돌림 계약. 새 기본값·실제 몸은 test-t1181-build-defaults에서 검사.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 for(const k of ['T435_GRANARY_ACT', 'T527_BRIDGE_ACT', 'T517_HUT_STONE', 'T419_STONE_REAL']) process.env[k]='0';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 // ★[T537 추신2] 집 켬이 **기본**이 됐다(`T400_BUILD_ACT` 켬 · `T497_HUT_COST` 2). 이 하네스의 ①~⑥은 **되돌림 판**(끔 · 표 22)을 기준으로 계약을 잰다 —

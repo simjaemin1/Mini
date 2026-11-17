@@ -17,6 +17,7 @@
 // ⚠존을 부팅하지 않는다 — 정본(battle-core · war-live · war-core · villages `__p3Bind`)을 그대로 부른다(규칙 사본 0). 손잡이는 모듈을 싣는 순간 읽는다 ⇒ 판마다 아이 프로세스.
 // 실행: node scripts/test-t1044-scram-walk.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

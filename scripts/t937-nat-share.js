@@ -6,6 +6,7 @@
 //   셀 고리 · **물 거리 고리**(물가 술 갈래 — `fringeOff` 기본이라 안 그리지만 물가 셋째 칸 안의 소품 자리를 비우는 갈래이기도 하다) 몫이다.
 // 실행: [E2E_BROWSER=webkit] node scripts/t937-nat-share.js [--n 3] [--out /tmp/t937]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

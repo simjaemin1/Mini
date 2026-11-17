@@ -18,6 +18,7 @@
 // 이식 중에 조용히 빠지는 것을 막는 게 목적이다(9차 "하네스가 대조한다더니 하네스가 없더라" 재발 금지).
 //
 // 실행: node scripts/test-psite-server.js
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 

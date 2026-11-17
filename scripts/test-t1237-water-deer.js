@@ -16,6 +16,7 @@
 //  ⑤ 행동 — 사람이 다가오면 경계(44m) · 도주(36m) · 짧게 뛰고 선다 · 엎드림(숨을 곳에서 경계) · 열도(T622 켬)엔 안 난다 · 사람이 잡으면 랩도 죽는다
 // 실행: node scripts/test-t1237-water-deer.js   (자식 넷 · 가짜 땅 · 라이브 무접촉 · 몇 초)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { spawnSync } = require('child_process');

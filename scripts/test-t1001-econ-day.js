@@ -12,6 +12,7 @@
 //     ② 그리고 켬 판의 길의 날은 econ 날을 따른다(마지막 econ 날 + 맞춤 몫 = 길 하루 날)
 //     ③ ★자명 통과 금지 — 끔(함수 안 넘김 · 종전 벽시계 날)이면 같은 두 벽시계 판이 갈린다
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

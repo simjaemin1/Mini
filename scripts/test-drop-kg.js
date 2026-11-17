@@ -22,6 +22,7 @@
 // ★[T716 ⑥ · 2026-10-13] **켬 세계**(T694 사냥 고기 · T705 배탈 지수 — PM 10-13 켬 기본)의 단언이다 — PM 이 걸어 둔 끔 묶음(`=0` 둘)을 걷었다.
 //   곰 고기 칸 = 곰고기(`meat_bear` 36 · 1,610 kcal/kg) · 날고기 줄에 즉시 HP 칸 없음(해는 배탈 지수) · `meat_game` 은 곳간 넣기 표 안(T694 ④).
 //   되돌림(`T636_DROP_KG=0`)은 T694 를 같이 끈다(`game-meat.on()` 이 드롭 kg 켬을 요구한다) — ③ · ⑥ 되돌림 판은 종전 그대로다.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

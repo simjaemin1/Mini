@@ -15,6 +15,7 @@
 //  ⑨ 돌연변이        회복을 0 으로 하면 `land.game` 이 단조 감소만 한다(⑤ 가 ✗ 를 낼 수 있다 · 자식+env)
 //  ⑩ 접점            econ 소득 식 무접촉 · kill→곳간 0(다음 판) · wildlife 는 빈 Map 채우기만
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');

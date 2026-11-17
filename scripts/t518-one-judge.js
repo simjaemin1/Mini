@@ -58,15 +58,15 @@ async function one(arm) {
   const tmp = fs.mkdtempSync('/tmp/t518j-'); const out = path.join(tmp, 'res.json');
   const base = { ...process.env, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' };
   delete base.CENTRAL_SECRET;
-  const c = spawn('node', ['server/central.js'], { cwd: ROOT, env: { ...base, PORT: '3710', DB_PATH: tmp + '/c.db', PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', ZONE_HOST_HANBANDO: '127.0.0.1', ZONE_PORT_HANBANDO: '3720' }, stdio: ['ignore', fs.openSync(tmp + '/c.log', 'w'), fs.openSync(tmp + '/c.log', 'a')] });
-  if (!(await waitH('http://127.0.0.1:3710'))) { c.kill(); throw new Error('central 안 뜸 ' + tmp); }   // ★[T899] 종전 sleep(1500) — 부팅 시간 가정 → central /health
-  const zenv = { ...base, PORT: '3720', ZONE_ID: 'hanbando', DB_PATH: tmp + '/h.db', CENTRAL_HOST: '127.0.0.1', CENTRAL_PORT: '3710', PUBLIC_HOST: 'localhost', T518_JUDGE_OUT: out, NODE_OPTIONS: '--require=' + __filename };
+  const c = spawn('node', ['server/central.js'], { cwd: ROOT, env: { ...base, PORT: String(require('./lib-port').port(3710)), DB_PATH: tmp + '/c.db', PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', ZONE_HOST_HANBANDO: '127.0.0.1', ZONE_PORT_HANBANDO: String(require('./lib-port').port(3720)) }, stdio: ['ignore', fs.openSync(tmp + '/c.log', 'w'), fs.openSync(tmp + '/c.log', 'a')] });
+  if (!(await waitH(`http://127.0.0.1:${require('./lib-port').port(3710)}`))) { c.kill(); throw new Error('central 안 뜸 ' + tmp); }   // ★[T899] 종전 sleep(1500) — 부팅 시간 가정 → central /health
+  const zenv = { ...base, PORT: String(require('./lib-port').port(3720)), ZONE_ID: 'hanbando', DB_PATH: tmp + '/h.db', CENTRAL_HOST: '127.0.0.1', CENTRAL_PORT: String(require('./lib-port').port(3710)), PUBLIC_HOST: 'localhost', T518_JUDGE_OUT: out, NODE_OPTIONS: '--require=' + __filename };
   if (arm === 0) zenv.T518_ONE_JUDGE = '0';
   const z = spawn('node', ['server/zone.js'], { cwd: ROOT, env: zenv, stdio: ['ignore', fs.openSync(tmp + '/z.log', 'w'), fs.openSync(tmp + '/z.log', 'a')] });
   let r = null;
   try {
-    if (!(await waitH('http://127.0.0.1:3720'))) throw new Error('존 안 뜸 ' + tmp);
-    const ws = new WebSocket('ws://127.0.0.1:3720/?username=&name=judge&color=%23ffffff');
+    if (!(await waitH(`http://127.0.0.1:${require('./lib-port').port(3720)}`))) throw new Error('존 안 뜸 ' + tmp);
+    const ws = new WebSocket(`ws://127.0.0.1:${require('./lib-port').port(3720)}/?username=&name=judge&color=%23ffffff`);
     ws.on('error', () => {});
     for (let i = 0; i < 150 && !fs.existsSync(out); i++) await sleep(200);
     r = fs.existsSync(out) ? JSON.parse(fs.readFileSync(out, 'utf8')) : { err: '결과 없음 ' + tmp };

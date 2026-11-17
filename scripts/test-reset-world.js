@@ -137,7 +137,7 @@ function fresh() {
   fs.writeFileSync(path.join(vol, 'keep-me.txt'), '볼륨 안 다른 파일');
   const S = { argv: [], images: { 'durango-zone': { id: 'sha256:' + 'b'.repeat(64), commit: 'newcommit123' }, 'old-zone-id': { id: 'sha256:' + 'a'.repeat(64), commit: 'oldcommit456' } },
     containers: { 'durango-zone-hanbando': { state: 'running', image: 'durango-zone', imageId: 'sha256:' + 'a'.repeat(64), data: vol, port: '3020', labels: {},
-      env: ['ZONE_ID=hanbando', 'PORT=3020', 'DB_PATH=/data/world-hanbando.db', 'PLAYER_CAP=150', 'CHAR_SPRITE=on', 'ZONE_HOST_NIPPON=203.0.113.9', 'ZONE_HOSTS={"hanbando":"203.0.113.1"}', 'CENTRAL_SECRET=' + SECRET] } } };
+      env: ['ZONE_ID=hanbando', 'PORT=3020', 'DB_PATH=/data/world-hanbando.db', 'PLAYER_CAP=150', 'CHAR_SPRITE=on', 'ZONE_HOST_NIPPON=203.0.113.9', 'ZONE_HOSTS={"hanbando":"203.0.113.1"}', 'CENTRAL_SECRET=' + SECRET] } } };   // lib-port: 묶지 않음(도커 env 픽스처 글자 — 이 판이 묶는 포트가 아니다)
   fs.writeFileSync(STATE, JSON.stringify(S));
   return { vol, h };
 }
@@ -254,7 +254,7 @@ console.log('\n⑨ central --keep-accounts — 진짜 central 스키마');
 const CV = path.join(SRV, 'central'); fs.mkdirSync(CV, { recursive: true });
 (async () => {
   // 정본 스키마는 진짜 central 이 만든다(손으로 적지 않는다) — 띄우고 표가 서면 내린다.
-  const port = 39000 + Math.floor(Math.random() * 900);
+  const port = require('./lib-port').port(39000);
   const ch = spawn(process.execPath, ['--experimental-sqlite', path.join(ROOT, 'server', 'central.js')], { env: Object.assign({}, process.env, { DB_PATH: path.join(CV, 'central.db'), PORT: String(port) }), stdio: ['ignore', 'pipe', 'pipe'] });
   let said = ''; ch.stdout.on('data', (d) => { said += d; }); ch.stderr.on('data', (d) => { said += d; });
   for (let i = 0; i < 100 && !/central server up/.test(said); i++) await new Promise((res) => setTimeout(res, 100));
@@ -270,7 +270,7 @@ const CV = path.join(SRV, 'central'); fs.mkdirSync(CV, { recursive: true });
   d.close();
   const S2 = st(); S2.images['durango-central'] = { id: 'sha256:' + 'c'.repeat(64), commit: 'cc' };
   S2.containers['durango-central'] = { state: 'running', image: 'durango-central', imageId: 'sha256:' + 'c'.repeat(64), data: CV, port: '3010', labels: {},
-    env: ['PORT=3010', 'DB_PATH=/data/central.db', 'PUBLIC_HOST=203.0.113.1', 'ZONE_HOST_NIPPON=203.0.113.9', 'CENTRAL_SECRET=' + SECRET] };
+    env: ['PORT=3010', 'DB_PATH=/data/central.db', 'PUBLIC_HOST=203.0.113.1', 'ZONE_HOST_NIPPON=203.0.113.9', 'CENTRAL_SECRET=' + SECRET] };   // lib-port: 묶지 않음(도커 env 픽스처 글자 — 이 판이 묶는 포트가 아니다)
   fs.writeFileSync(STATE, JSON.stringify(S2));
   r = run(['central', '--keep-accounts']);
   ok(r.rc === 0 && /사람 2\(계정 1 · 손님 1\)/.test(r.out) && /길드 2/.test(r.out), '예행: 사람·길드 수를 진짜 DB 에서 센다', (r.out.match(/DB central[^\n]*/) || [''])[0].slice(0, 110));

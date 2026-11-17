@@ -20,6 +20,7 @@
 //     넘김마다 앞 존 끝 → 뒷 존 시작의 틈(+ = 어디에도 없음 · − = 두 존 동시) · 사라짐 = 끝났는데 다른 존에서 안 서고 집에 닿지도(home) 죽지도 않은 몸.
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

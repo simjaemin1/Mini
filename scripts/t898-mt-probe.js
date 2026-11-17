@@ -10,6 +10,7 @@
 //   굽기 계량은 이미 있는 `_mt3BakeMs` · `_mt3BakeN`(청크 단위 · 판을 넘은 몫 포함)과 이 카드의 `_mt898`(옮기기) 를 페이지 전역 이름으로 읽는다.
 // 실행: node scripts/t898-mt-probe.js [--env 0|1](없음 = 서버 기본 · ★T912 켬 기본) [--out /tmp/t898] [--spots 광산1,광산4] [--win 30000]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

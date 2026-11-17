@@ -14,6 +14,7 @@
 // ⚠존을 부팅하지 않는다 — 생활층 정본 함수를 `__labProbe._t743Probe` 로 그대로 부른다(규칙 사본 0).
 // 실행: node scripts/test-dusk-stamp.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 const path = require('path');
 const fs = require('fs');

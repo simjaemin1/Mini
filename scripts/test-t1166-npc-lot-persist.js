@@ -18,6 +18,7 @@
 //   ⑤ 로트 없는 몸 — 켬 · 끔 몸 줄 글자 같다(칸 0) · 끔이면 로트 든 몸도 `_lots` 칸 0
 //   ⑥ 크기 — 몸 하나 `_lots` 칸 바이트
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

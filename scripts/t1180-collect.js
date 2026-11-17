@@ -2,6 +2,7 @@
 'use strict';
 // T1180 측정 원문을 DB 없이 보존. 기록별 SHA256은 압축 JSON 내부 manifest에 둔다.
 // node scripts/t1180-collect.js /tmp/t1180 계측/T1180_2026-11-06
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs=require('fs'),path=require('path'),zlib=require('zlib'),crypto=require('crypto'),cp=require('child_process');
 const [root,out]=process.argv.slice(2);if(!root||!out)throw Error('data root and output stem required');
 const sha=s=>crypto.createHash('sha256').update(s).digest('hex'),files={},members={};

@@ -12,6 +12,7 @@
 //   종전 `88bd5795` = T671 깎기 직전 기준(T670 가지 끝) — 그대로 고정.
 // 실행: node scripts/t671-witness.js [ref=88bd5795]
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const { execFileSync } = require('child_process');
 const fs = require('fs');

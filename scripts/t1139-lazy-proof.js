@@ -15,6 +15,7 @@
 //   --fwd = 늦게 묻는 차례를 거꾸로 대신 바로(i, j)로
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs'), crypto = require('crypto');
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || path.join(require('os').tmpdir(), `t1139-proof-${process.pid}.db`);

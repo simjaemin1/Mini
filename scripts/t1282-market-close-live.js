@@ -20,6 +20,7 @@
 //   진짜 장은 econ 날 4/24(3.3초) 동안 선다(econ 이 밀리면 더 길다 · 짧아지지 않는다). 그 구간이 마감 방송(`sim_village_day`) 앞 3초 안에 섰는지도 적는다.
 //
 // 쓰는 법: node scripts/t1282-market-close-live.js [--arm now|before|both] [--obs 240] [--out 계측/T1282_2026-11-12/실클라.json]
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 if (process.env.T1282_BAIT === 'K1' && require.main !== module) {   // ── 미리 실림(존 아이) — 마감 중 시계 한 줄만 종전 글자로
   const path = require('path'), fs = require('fs'), Module = require('module');
   const VFILE = path.join(__dirname, '..', 'server', 'villages.js');

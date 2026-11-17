@@ -11,6 +11,7 @@
 // 판: 존을 임시 DB · 임시 포트 · 마을 · 야생 끔으로 띄우고(test-mob-respawn 꼴) 사슴 DB 몹(hp 5)을 조용한 자리에 세운다.
 //   ⓐ 한 틱 안 — 두 사람이 차례로 한 번씩(같은 매크로태스크 · 둘 다 첫 공격이라 쿨다운 0) ⓑ 대조 — 둘 사이에 100 ms(틱 셋)를 둔다.
 // 실행: node scripts/t1237-same-tick-kill.js   → JSON 한 줄(ⓐ 주검 수 · ⓑ 주검 수 · 알림)
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 Object.assign(process.env, { ZONE_ID: 'hanbando', DB_PATH: `/tmp/t1237-same-tick-${process.pid}.db`, ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0',

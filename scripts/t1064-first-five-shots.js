@@ -18,6 +18,7 @@
 //   E2E_BROWSER=webkit node scripts/t1064-first-five-shots.js --out /tmp/t1064 --tag before --vw 1280 --vh 720
 //   (선택) --times 0,10,30,60,180,300 · --env K=V(존에 싣는 env · 되돌림 판 `--env T1064_NEXT_STEP=0`) · --headed
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

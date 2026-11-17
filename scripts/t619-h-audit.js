@@ -10,6 +10,7 @@
 // ★재기만 한다 — 제품 코드 0 · 러너 밖. 존을 이 프로세스 안에 띄운다(`test-regrow-block` bootZone 문법).
 // 실행: node scripts/t619-h-audit.js [--out /tmp/t619/h-off.json]   (켬 팔: T619_LOCAL_H=1 node …)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

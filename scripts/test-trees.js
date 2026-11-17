@@ -13,6 +13,7 @@
 //   ⑧ 되돌림      — `T135_TREES=0` 이면 econ 접점이 통째로 잠든다(비트 동일 경로)
 //   ⑨ 재생 시계   — T122 단계 판정이 **종별 햇수**를 읽는다 · 비율은 T122 것 그대로(새 수 0)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');

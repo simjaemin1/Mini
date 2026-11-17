@@ -20,7 +20,7 @@ const DB = path.join(DIR, 'w.db'), CDB = path.join(DIR, 'c.db');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) { } } };
 rmdb(DB); rmdb(CDB); for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(TPL + s, DB + s); } catch (e) { } }
-const CP = 4310, ZP = 4311, SECRET = 't747';
+const CP = require('./lib-port').port(4310), ZP = require('./lib-port').port(4311), SECRET = 't747';
 const AT0 = (Math.floor(fs.statSync(TPL).mtimeMs / 1440000) + 2) * 1440000 - 60000;
 const clk = (at, hook) => ({ NODE_OPTIONS: `--require ${path.join(__dirname, 't455-clock.js')}` + (hook ? ` --require ${path.join(__dirname, 't747-body-hook.js')}` : ''), T455_CLOCK_PRE: '1', T455_CLOCK_AT: String(at) });
 const ENV = Object.assign({}, process.env, { T312_FISH_ACT: '1' });

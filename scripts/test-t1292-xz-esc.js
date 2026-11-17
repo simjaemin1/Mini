@@ -17,6 +17,7 @@
 //   ② 끔(`T1292_XZ_ESC=0` = 종전 글자) — A · B 셋(죽은 호위가 경계 너머에서 다시 선다) · 글에 실은 수 없음
 //   ③ 미끼(아이 안 · 파일 무변) — 받는 존 줄임을 뺀 사본 → ① A · B 빨강 · 보내는 존 싣기를 뺀 사본 → ① A 빨강
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path'), fs = require('fs'), Module = require('module');
 const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');

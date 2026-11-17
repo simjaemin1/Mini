@@ -40,6 +40,7 @@
 // 실행: [E2E_BROWSER=webkit] node scripts/t926-mem-hour.js [--min 60] [--every 5] [--snap 5,60] [--mdump] [--terr] [--own] [--peak] [--first] [--out /tmp/t926] [--tag cr-off]
 //       [--dsf 2] [--q '?T1193_HIDPI=1'] [--lag] [--headed(xvfb-run -a -s '-screen 0 2400x1600x24' 밑에서)] [--eval '<입장 뒤 한 번 부를 식>']
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const net = require('net');

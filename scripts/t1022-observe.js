@@ -18,6 +18,7 @@
 //     ⓓ 판정대기 3 근거 — 해체 그 순간 T577 ⓐ 규칙(곧은 거리 최근접 산 마을 · 해체 표 없는 곳)이 고를 마을과 교역로 거리 행렬(`world._distMatrix` — 읽기만)의
 //        최근접이 같은가 · 그 길을 존 걸음으로 걸으면 며칠인가(이 판 하루 길이 ↔ 운영 하루 `zone-config dayLengthMs`).
 //   ⚠값을 안 바꾼다: 숨은 칸은 배열 원소가 아니다(`JSON.stringify` · `length` · 순회 무변). 감싸개는 원 함수를 같은 인자로 부르고 그 돌려줌을 그대로 돌려준다.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const A1 = process.argv[1] || '';

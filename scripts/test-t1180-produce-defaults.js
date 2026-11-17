@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @regress
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.T1192_FISH_SPECIES='0';
 const assert=require('assert'),fs=require('fs'),path=require('path'),Module=require('module'),{spawnSync}=require('child_process');
 const ROOT=path.resolve(__dirname,'..'),flags=['T312_FISH_ACT','T325_WOOD_ACT','T347_FORAGE_ACT'];

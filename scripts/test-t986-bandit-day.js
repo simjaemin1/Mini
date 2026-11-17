@@ -15,6 +15,7 @@
 //     ③ ★자명 통과 금지 — 끔(`=0` · 종전 · 존 틱이 부른다)이면 가상 시계 판(결정론)에서도 도적 하루는 머리가 든 틱 **끝**에 돈다 —
 //        그 틱에 든 마을 결산 뒤(머리 뒤 결산 수 > 0 인 날이 있다) · 길 = 틱. 벽시계 판에선 그 수가 틱 몫 · 밀림에 달린다(보고 T986 §2)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs'), os = require('os'), path = require('path');
 const { spawn } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');

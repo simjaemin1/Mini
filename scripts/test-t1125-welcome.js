@@ -17,6 +17,7 @@
 //   ⓢ 소스: 서버 `sendWelcome` 네 자리(첫 접속 · 관측 · 승격 · T1092 되돌림) · ws 옵션 · 클라 `_t1125Hold` 감시 셋(pong · 틱 · 탭 복귀) · `welcome_head` 갈래
 // 실행: node scripts/test-t1125-welcome.js   (존 기동 둘 · 약 30초)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const net = require('net');

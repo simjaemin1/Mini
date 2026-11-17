@@ -6,6 +6,7 @@
 //     · 해 질 녘 운반 몸의 길 묻기(`computeNpcPath` — 존 사본 · `npc._t720.k` 인 몸) 수 · ms.
 //   (세계에 0 — 읽기만 · 감싸기 비용은 판 전체에 얹힌다 · 같은 자로 끔/켬/고친 켬을 견준다)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 

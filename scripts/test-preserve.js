@@ -18,6 +18,7 @@
 //
 // 실행: node scripts/test-preserve.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.T1192_FISH_SPECIES='0';
 // ★[T716 ⑥ · 2026-10-13] **켬 세계**(T705 배탈 지수 · PM 10-13 켬 기본)의 단언이다 — PM 이 걸어 둔 끔 묶음(`T705_FOOD_SICK=0`)을 걷었다.
 //   ②ⓒⓓⓔ 가 종전 "상한 것 = 즉시 부상"을 적던 자리를 **배탈 지수**(먹은 kg × (1 − f) → P → 잠복 → B > θ 면 체력)로 옮겼다.

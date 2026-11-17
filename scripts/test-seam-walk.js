@@ -13,6 +13,7 @@
 //     ⓐ 닛폰 골짜기 폭을 4칸(128)으로 줄인 사본 → ③ 빨강   ⓑ 한반도 짝 골짜기 끝(갈고리 · 이음매 쪽 마디)을 막은 사본 → ① 빨강
 // 실행: node scripts/test-seam-walk.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

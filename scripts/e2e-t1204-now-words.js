@@ -17,6 +17,7 @@
 //   쉼터 행이 없으면 빨갛다(좌표를 짓지 않는다) · 두 도착 꼴(나루터 · 길)을 다 못 고르면 빨갛다.
 // 실행: node scripts/e2e-t1204-now-words.js [--headed]   (E2E_BROWSER=webkit 이면 WebKit)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

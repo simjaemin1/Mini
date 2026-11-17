@@ -7,6 +7,7 @@
 //   ③ 청크 밖으로 걸어 나가 날이 지나면 칸이 흐려진다(클라가 받은 `care` = fade — 그 청크의 단계)
 //   ④ 걸어 돌아와 머물면(머묾 2초 — 시험 값) 새것 · 짐 그대로(재료 0) · 단추 0
 //   node scripts/t1305-screen.js
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

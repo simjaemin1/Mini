@@ -11,6 +11,7 @@
 //   ⑦ 반쪽 묶음 지킴 — econ 을 먼저 읽은 프로세스에서 zone.js 묶음 블록이 채울 글자가 남으면 멈춘다(반쪽으로 안 돈다) · 다 준 env 면 안 멈춘다(판 자 길)
 //   ★미끼 — 묶음이 K 문만 켜고 가을 문을 뺀 `t1334-bundle` 사본: ② 빨강(권고 줄과 다르다) · ⑤ 빨강(이주 문 날 수 9월 1일 30 ≠ 181 · 가을 문 꺼짐)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] 존 블록을 아이에서 컴파일하고 판 자로 존을 띄운다 — 아이가 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 물려준다
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

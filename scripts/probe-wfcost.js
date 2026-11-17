@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // 흐름 텍스처 굽기 비용 **분해** 진단기 (물가 렉 원인 추적용 · 일회성 계측)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs');
 const { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..');

@@ -3,6 +3,7 @@
 //   바위 셀인데 그 자리에 산 스프라이트가 **안 서는** 셀을 픽셀로 센다.
 //   산 픽셀은 색으로 안 세고 `mtOff` 손잡이 A/B 차이로 잰다(e2e-mountain 과 같은 규약).
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs');
 const { spawn } = require('child_process');
 const { PNG } = require('pngjs');

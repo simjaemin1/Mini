@@ -11,6 +11,7 @@
 // 판: `test-donate` 와 같은 가벼운 판(존 `__testBind` · 랩 econ 마을 다섯 · 정본 진입점 · 포트 0).
 // 실행: node scripts/test-t1132-hall-view.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

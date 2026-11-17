@@ -20,6 +20,7 @@
 //   ⚠존 포트가 고정이라 두 판을 같이 못 돈다(T1320 과 같다) · e2e 와도 같이 못 돈다.
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

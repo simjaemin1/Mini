@@ -11,6 +11,7 @@
 //   ⓑ 높이장을 i·j 축으로 훑어 **16셀 주기**가 서는지 (스펙트럼)
 //   ⓒ 청크 경계에서 높이 **단차**(창 잘림이 있으면 경계에서 튄다)
 // 추정이 틀리면 여기서 멈추고 보고한다.
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs'); const { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..'), CPORT = 3010, ZPORT = 3020;
 const OUT = process.env.OUTDIR || '/tmp/pad'; fs.mkdirSync(OUT, { recursive: true });

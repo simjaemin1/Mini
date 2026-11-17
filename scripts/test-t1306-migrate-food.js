@@ -18,6 +18,7 @@
 //     ★미끼 둘 — K 를 오늘 값으로 읽는 `_t1312Pass` 사본(⑳ 를 거꾸로 · 빨강) · 가을 문이 30일로 남은 econ 사본(㉒ 9월 1일에도 간다 · 빨강)
 //     ㉓ `T1319_AUTUMN_LOOK=mig`(이주 문만) — 출생 문 날 수는 가을에도 30 · 이주 문 날 수는 181(9월 1일) · ㉒ 그대로(60일치 마을에 8월 31일엔 가고 9월 1일엔 안 간다)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 if (process.env.T474_CARAVAN_WALK === undefined) process.env.T474_CARAVAN_WALK = '0';   // test-t1147-emig-pick 과 같은 판(교역로 4일 이웃 표본)
 const path = require('path');
 const fs = require('fs');

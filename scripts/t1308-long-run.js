@@ -24,6 +24,7 @@
 //   ⇒ <폴더>/progress.json(날 · 체크포인트 · 마디 줄 · env) · progress.txt(한 줄 진행) · ck/(마지막 체크포인트) · seg-*.log · 묶은 <태그>-<시드>.*.json
 //   끝나면 종료 코드 0 · 끝 표지 `progress.done = true`. 마디가 체크포인트 없이 죽으면 종료 코드 3(감독 `t1308-guard.sh` 가 다시 부른다).
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

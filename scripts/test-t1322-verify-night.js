@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 'use strict';
 // @regress
+// @regress-alone   ← [T1288] 러너 -j 판에서 맨 먼저 혼자 돈다(다른 하네스를 안 띄운다) · 긴 판(홀로 1,827초 · CPU 를 판 내내 쥔다) — 판 C -j4 에서 러너 상한 2400초 넘김 · 홀로 초록 · 곁 하네스의 시간 재기도 흔든다
 // === scripts/test-t1322-verify-night.js — 첫 거름 견줌 판(야간 · T1323 · T1322 회부 1) ===
 //   몸 전부 판(T1270 판 자 — `scripts/t1294/run.cjs` · 가상 시계 · 시드 1020 · 30날)을 `T1322_PREFILTER=verify` 로 한 판 돌린다.
 //   `verify` 는 거를 때마다 몸을 열어 종전 걸음 문 머리 글자로 다시 판정한다(어긋나면 그 몸은 종전 길 — 판은 늘 종전 답).
 //   ① 판이 끝까지 돌았다(가상 시계 오류 0 · 30날)  ② 견줌이 탔다(자명 통과 아님)  ③ **어긋남 0** — 아니면 빨강 + 어긋난 칸 · 몸 · 시각 + 그 칸을 걸음 문 밖에서 쓰는 자리(정적 후보) 한 줄씩.
 //   판 하나 ≈ 30 ~ 35분(혼자). 짧게: `T1323_NIGHT_DAYS=2`.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path'), fs = require('fs'), os = require('os'), { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const DAYS = +(process.env.T1323_NIGHT_DAYS || 30), SEED = String(process.env.T1323_NIGHT_SEED || 1020);

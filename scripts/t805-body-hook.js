@@ -12,6 +12,7 @@
 //     ④ econ 하루 끝(`scanDay` — SBC 훅 · t577 훅과 같은 문)마다 한 줄: 팔 넷 관측 창(`fishPerf` · `woodPerf` · `foragePerf` · `farmPerf` —
 //        `/perf` 가 내주는 그것) · econ 직업 수 · `farmFlowPerDay`(econ 정본 농사 용량) · **몸 지문**(마을 몸 전부의 pid · 자리 · HP · 손 — sha1).
 //   env: T577_OUT=<판>(→ `<판>.t805.json`) · T805_OUT=<파일>(덮어쓰기) · T745_VCLOCK=1 · T577_SEED(가상 시계 조건 — t745 그대로)
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 if (!/server[\/\\]zone\.js$/.test(process.argv[1] || '')) return;
 const OUT = process.env.T805_OUT || (process.env.T577_OUT ? process.env.T577_OUT + '.t805.json' : null);
 if (!OUT) return;
