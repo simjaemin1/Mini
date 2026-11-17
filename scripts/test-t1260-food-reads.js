@@ -31,7 +31,11 @@ if (process.argv[2] === '--child') {
   const st = E.t1260CookStaple(v); out.staple = st ? st[0] : null;
   out.spare86 = E.T1286_COOK_SPARE; out.prodk86 = E.T1286_PRODK;
   out.led98 = E.T1298_LEDGER; out.hl98 = E.T1298_HEALTH;
-  out.he09 = E.T1309_HEALTH_EATEN; out.dv09 = E.T1309_DIVERSITY_EATEN;
+  out.he09 = E.T1309_HEALTH_EATEN; out.dv09 = E.T1309_DIVERSITY_EATEN; out.mc09 = E.T1309_MOVE_CONS;
+  {   // ⑧ T1309 ① 갈무리 흐름 소비 — 생선 5 를 말리면 끔 = 흐름 소비 5 · 켬 = 0
+    const w = mk(); w.storage = { food: N * 100, fish: N * 1.5, meat: 0, cooked_food: 0, dried_fish: 0 }; const add = (r, a) => { w.storage[r] = (w.storage[r] || 0) + a; };
+    E._preserveSurplus(w, { fish: 'dried_fish' }, 5, add, null, E.T877_ON ? E._t860Unit : null); out.cs09 = (w._consDay && w._consDay.fish) || 0;
+  }
   {   // ⑧ T1309 — 건강은 먹은 것으로(곳간 생선이 많아도 안 먹으면 0 · 먹으면 군 몫) · 보존식은 원물 군 · 서버 로트가 진 건강
     const m = (st, eat, H) => { const w = mk(); w.storage = Object.assign({ food: N * 50, fish: 0, meat: 0, cooked_food: 0 }, st); w._foodEaten = eat; if (H) w._t1298H = H; return E._computeVillageStats(w, N).health; };
     out.ea09 = { stockNoEat: m({ fish: N * 2 }, { food: N }), eatFish: m({}, { fish: N * 0.2, food: N * 0.8 }), eatDried: m({}, { dried_fish: N * 0.08, food: N * 0.8 }, { dried_fish: 1.0 }), none: m({}, { food: N }),
@@ -76,6 +80,7 @@ const run = (env) => {
   if (env.T1298_HEALTH == null) delete e.T1298_HEALTH;
   if (env.T1309_HEALTH_EATEN == null) delete e.T1309_HEALTH_EATEN;
   if (env.T1309_DIVERSITY_EATEN == null) delete e.T1309_DIVERSITY_EATEN;
+  if (env.T1309_MOVE_CONS == null) delete e.T1309_MOVE_CONS;
   delete e.T1243_FARM_ON; delete e.T1229_FIELD_GROW;
   const r = spawnSync(process.execPath, [__filename, '--child'], { cwd: ROOT, env: e, encoding: 'utf8', timeout: 120000, maxBuffer: 16 << 20 });
   const line = String(r.stdout || '').split('\n').filter((l) => l.startsWith('{')).pop();
@@ -216,6 +221,13 @@ ok(!u1.err && !u2.err && !u3.err && off.dv09 === false && off.he09 === false && 
 { const L = u1.lot09 || {};
   ok(!L.err && L.tg === true && L.eat && L.eat.cooked_food && Math.abs(L.eat.cooked_food[0] - 3) < 1e-9 && Math.abs(L.eat.cooked_food[1] - 6) < 1e-9 && Math.abs(L.left - 3) < 1e-9,
     '⑧ 서버 로트 — 조리식 10 중 새 6 에 건강 0.5 를 적고(갈라 새 로트) · 5 를 더 얻고 · 12 를 먹으면 오래된 것부터 나가 건강 진 6 단위(합 3)가 든다', L); }
+{ const m1 = run({ T1260_FOOD_READS: '1', T1309_MOVE_CONS: '1' }), m2 = run({ T1309_MOVE_CONS: '1' });
+  ok(!m1.err && !m2.err && on.mc09 === false && m1.mc09 === true && m2.mc09 === false && on.cs09 > 4.9 && m1.cs09 === 0,
+    "⑧ T1309 ① `T1309_MOVE_CONS` — 끔 기본 · T1260 켬 안에서만 · 생선 5 를 말리면 끔 = 흐름 소비 5 · 켬 = 0(옮김)", { off: on.cs09, on: m1.cs09, k: [on.mc09, m1.mc09, m2.mc09] }); }
+const mc09 = (es) => es.includes("v.storage[_fr] -= _take; if (!T1309_MOVE_CONS) _cons(v, _fr, _take);") && es.includes('v.storage[from]-=take;if(!T1309_MOVE_CONS)_cons(v,from,take);')
+  && /const T1309_MOVE_CONS = T1260_FOOD_READS && /.test(es);
+const baitMC = ES.replace('if (!T1309_MOVE_CONS) _cons(v, _fr, _take);', '_cons(v, _fr, _take);');
+ok(mc09(ES) && baitMC !== ES && !mc09(baitMC), '⑧ 글자 — 갈무리 흐름 소비 자리 둘(갈무리 · 어종 갈무리)이 손잡이를 본다 · [미끼] 갈무리를 다시 소비로 적는 사본을 문다', { bait: mc09(baitMC) });
 const he09 = (es) => /const T1309_HEALTH_EATEN = T1260_FOOD_READS && /.test(es)
   && es.includes('if (_f09 && stat === \'health\') continue;') && es.includes('if (T1309_HEALTH_EATEN) stats.health += _t1309EatenHealth(v, pop);')
   && es.includes('h += (H[g] / X[g]) * Math.min(1, (X[g] / pop) / xb);') && es.includes('const xb = DAILY_FOOD_CONSUMPTION * (T86_W[g] || 0);')
