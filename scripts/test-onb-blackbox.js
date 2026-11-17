@@ -384,8 +384,9 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
       const r = off.R[id];
       ok(!!r && r.ok === false, `★미끼 ${id} — 끔 판에서 빨강(켬 전용 줄이 손잡이를 잰다)`, r ? `${r.ok === null ? '못 잼' : r.ok ? '초록' : '빨강'} · ${r.detail.slice(0, 140)}` : '안 쟀다');
     }
-    const offRed = Object.keys(Q).filter((id) => off.R[id] && off.R[id].ok === false);
-    console.log(`  [끔 판 빨강 줄 — 참고] ${offRed.join(' ') || '0'}`);
+    //   끔 판 줄마다 — 참고(판정 아님): 초록 · 빨강 · 못 잼 · 안 잼(판이 거기까지 못 갔다)
+    const st = (r) => (!r ? '안잼' : r.ok === null ? '못잼' : r.ok ? '초록' : '빨강');
+    console.log(`  [끔 판 줄마다 — 참고] ${Object.keys(Q).map((id) => id + ' ' + st(off.R[id])).join(' · ')}`);
   }
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
   process.exit(fail ? 1 : 0);
