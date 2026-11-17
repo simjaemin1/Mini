@@ -12,10 +12,14 @@
 # ★DRAIN_SEC=1 — 서버를 안 띄우는 하네스뿐이라 하네스 사이 8초 대기가 필요 없다.
 name: regress-unit
 
+# ★[PM 2026-11-17 · 재민 "테스트 강화" · 공통 규약 ⑧] 문서만 바뀐 커밋(카드 · 보고 · 인계 · 회부)은 건너뛴다 — 카드만 올리는 PM 커밋마다
+#   하네스 전부가 돌던 낭비. 코드 · 하네스 · 계측이 한 줄이라도 섞이면 돈다. 착지 가지는 `batch/land<번호>` 로 먼저 올려 여기 초록을 보고 main 을 옮긴다.
 on:
   push:
     branches: ['main', 'batch/**']
+    paths-ignore: ['지시/**', '보고/**', '인계/**', '회부/**']
   pull_request:
+    paths-ignore: ['지시/**', '보고/**', '인계/**', '회부/**']
   workflow_dispatch:
 
 concurrency:
