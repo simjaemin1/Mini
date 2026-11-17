@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// === scripts/test-t1325-one-rot.js — T1325: 썩음은 한 길로만 센다(`T1325_ONE_ROT` · 끔 기본) — 같은 곳간이면 몸 = 랩 직업 고르기 입력 ===
+// === scripts/test-t1325-one-rot.js — T1325: 썩음은 한 길로만 센다(`T1325_ONE_ROT` · ★T1336 켬 기본 · `=0` 끔) — 같은 곳간이면 몸 = 랩 직업 고르기 입력 ===
 //
 // ★T1325 ①: 몸 판(로트 켬 · 장부 버림 `T789_DISCARD` 끔)은 econ 일일 부패가 재고를 깎고(랩과 같은 길), 식량 합계(`storageFoodEquivalent`)는
 //   거기에 더해 장부의 상한 레코드 몫을 **또** 뺐다 — 곳간에 남아 먹히는 식량이 0 으로 읽힌다. 날 72 에 시작 재고 레코드(팥 · 율무 — 보관일 45)가
 //   한꺼번에 상해 기근 문(사람 × 10) 마을이 17 → 43 · 하루 2명 옮김 → 나무꾼이 농부로 빠졌다(몸 +239 : 랩 +109).
 //   손잡이를 켜면 장부 버림이 꺼진 판에서는 상한 몫을 빼지 않는다(랩 글 = 정본 · 새 수 0).
-//  ① 끔(main) — 같은 곳간 · 상한 시작 레코드: 몸 합계 < 랩 합계(결함 재현 · 직업 표가 갈린다)
+//  ① 끔(`T1325_ONE_ROT=0` · T1325 판) — 같은 곳간 · 상한 시작 레코드: 몸 합계 < 랩 합계(결함 재현 · 직업 표가 갈린다)
 //  ② 켬 — 몸 합계 = 랩 합계 · 식량 문(사람 × 10 · × 30) 같음 · 같은 세계 상태 ⇒ 같은 직업 표(`autoSwitchJob` 고른 일 · 옮긴 사람)
 //  ③ 켬 + 장부 버림 켬(`T789_DISCARD=1`) — 손잡이 무동작(장부가 썩음 길을 맡는다 · 상한 몫은 계속 뺀다)
 //  ④ 미끼 — 손잡이 갈래를 지운 사본(econ 을 그 사본으로 갈아 끼운다)은 ② 가 빨강
@@ -75,13 +75,14 @@ if (process.argv[2] === '--child') { const o = modRun(); process.stdout.write('\
 
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { if (c) pass++; else fail++; console.log(`  ${c ? '✓' : '✗'} ${m}${d !== undefined ? '  ' + d : ''}`); };
-const BASE = { T1243_FARM_ON: '1', T789_DISCARD: '', T1325_ONE_ROT: '', T1325_DECOY: '' };
+const BASE = { T1243_FARM_ON: '1', T789_DISCARD: '', T1325_ONE_ROT: '0', T1325_DECOY: '' };   // ★[T1336] 켬 기본 — 끔 판은 '0' 을 글자로
 const child = (env) => JSON.parse(String(execFileSync(process.execPath, [__filename, '--child'], { env: Object.assign({}, process.env, BASE, env), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })).split('@@JSON@@').pop());
 const f1 = (x) => (x == null ? '-' : (+x).toFixed(1));
 
 console.log('\n=== T1325 썩음은 한 길로만 센다 · 같은 곳간이면 몸 = 랩 직업 고르기 입력 ===');
-const OFF = child({});
-console.log('\n① 끔(main) — 결함 재현');
+const OFF = child({});                       // 끔 = '0'(BASE)
+const DEF = child({ T1325_ONE_ROT: '' });   // ★[T1336] 빈 값 = 기본 = 켬
+console.log('\n① 끔(`=0` · T1325 판) — 결함 재현');
 ok(OFF.att && OFF.per > 0 && OFF.spoiledU > 0 && Math.abs(OFF.spoiledU - OFF.u) < 1e-6, '대조 — 몸 곳간에 장부가 붙고 팥 시작 레코드가 통째로 상했다(장부 버림 끔 = 곳간에 남는다)', `N ${OFF.N} · 상한 ${f1(OFF.spoiledU)} / ${f1(OFF.u)}`);
 ok(OFF.feB < OFF.feL && OFF.regB === 'r10' && OFF.regL === 'rOk', '★끔 — 몸 합계가 상한 몫을 빼 기근 문 · 랩은 같은 곳간을 넉넉으로 센다', `몸 ${f1(OFF.feB)}(${OFF.regB}) : 랩 ${f1(OFF.feL)}(${OFF.regL})`);
 ok(OFF.sameStart && (OFF.needB !== OFF.needL || !OFF.jobsSame), '끔 — 같은 세계 상태인데 직업 표가 갈린다', `고른 일 몸 ${OFF.needB} : 랩 ${OFF.needL} · 옮김 ${OFF.movedB} : ${OFF.movedL}`);
@@ -94,6 +95,8 @@ ok(ON.sameStart && ON.needB === ON.needL && ON.jobsSame && ON.movedB === ON.move
 ok(ON.feL === OFF.feL && ON.needL === OFF.needL, '랩 쪽은 손잡이와 무관(장부 없음 = 손잡이 무동작)', `${f1(ON.feL)} · ${ON.needL}`);
 
 const DIS = child({ T1325_ONE_ROT: '1', T789_DISCARD: '1' });
+console.log('\n②ⓑ 기본(빈 값) = 켬 · T1336');
+ok(DEF.feB === DEF.feL && DEF.feB === ON.feB && DEF.needB === ON.needB && DEF.jobsSame, '★켬 기본 — 손잡이를 안 주면 켬과 같은 합계 · 같은 직업 표(T1336)', `몸 ${f1(DEF.feB)} : 랩 ${f1(DEF.feL)}`);
 console.log('\n③ 켬 + 장부 버림 켬');
 ok(DIS.T789 && DIS.feB < DIS.feL && DIS.feB === OFF.feB, '장부가 썩음 길을 맡는 판 — 손잡이 무동작(상한 몫은 계속 뺀다 · 끔 값 그대로)', `몸 ${f1(DIS.feB)} : 랩 ${f1(DIS.feL)}`);
 
@@ -107,7 +110,7 @@ ok(bundle.includes(GATE), '브라우저 묶음도 같은 줄(build-econ-bundle)'
 const decoy = path.join(ROOT, 'sim', `.t1325-decoy-${process.pid}.js`);
 try {
   fs.writeFileSync(decoy, src.replace(GATE, 'true'));
-  const D = child({ T1325_ONE_ROT: '1', T1325_DECOY: decoy });
+  const D = child({ T1325_ONE_ROT: '', T1325_DECOY: decoy });   // 기본(켬) 판에서 손잡이 갈래를 지운 사본 = 두 번 빼기
   ok(D.feB < D.feL && !(D.needB === D.needL && D.jobsSame), '★미끼(손잡이 갈래 지운 사본) — ② 가 빨강(몸 합계 < 랩 · 직업 표 갈림)', `몸 ${f1(D.feB)} : 랩 ${f1(D.feL)} · ${D.needB} : ${D.needL}`);
 } finally { try { fs.unlinkSync(decoy); } catch (e) {} }
 
