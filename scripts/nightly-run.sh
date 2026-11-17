@@ -28,6 +28,11 @@
 #                                그 판의 목록에서 **판정이 난 것만 빼고** 이어 돈다(같은 로그 · 보고는 한 밤 한 장).
 #                                auto(기본) = 그 판이 오늘 시작했을 때만 · 1 = 날짜 무관 · 0 = 끔(종전). NIGHT_LIST 를 주면 안 잇는다.
 #   NIGHT_UNSHALLOW=0            얕은 클론을 전체 이력으로 늘리지 않는다(기본 1 · land1067)
+#   NIGHT_CLOCK_DAYS=30          ★[T1356 · 재민 11-17 테스트 강화 ②] **시계를 민 판** — 하네스 · central · zone · 아이(node 프로세스)의 벽시계를
+#                                그 날수만큼 민다(프리로드 `clock-shift.js` → 정본 `lib-phase.shift` · 30일 = 게임 하루의 정수배라 낮밤 무변).
+#                                날짜를 박은 하네스 · 오늘 날짜로 날 경계를 재는 하네스가 여기서 빨개진다. 목록은 그대로(분할기 · NIGHT_LIST).
+#                                로그 기본 `/tmp/night/regress-clock<N>.log` · 보고 기본 `보고/야간러너_<날짜>_시계+<N>일.md`(보통 판 보고를 안 덮는다).
+#                                ⚠브라우저 페이지 시계는 안 민다(node 만).
 #   TIMEOUT_SEC · DRAIN_SEC      러너의 것 그대로 — 여기서 새로 정하지 않는다(`e2e-thirst` 15~20분은 러너가 안다)
 #
 # ⚠stdin 을 안 읽는다(`nohup` 으로 띄워도 멈추지 않게 · 러너 자식도 `</dev/null`).
@@ -42,6 +47,15 @@ if [ "${NIGHT_UNSHALLOW:-1}" != "0" ] && [ "$(git rev-parse --is-shallow-reposit
 fi
 
 export TZ="${NIGHT_TZ:-Asia/Seoul}"
+# ★[T1356] 시계를 민 판 — 손잡이를 주면 이 판의 모든 node 프로세스가 같은 상수로 밀린다(env 로 아이까지 · 사본 0)
+CLOCK_DAYS="${NIGHT_CLOCK_DAYS:-}"
+case "$CLOCK_DAYS" in ''|0) CLOCK_DAYS="" ;; *[!0-9-]*) echo "  ✗ NIGHT_CLOCK_DAYS 는 정수 날수다: $CLOCK_DAYS" >&2; exit 2 ;; esac
+if [ -n "$CLOCK_DAYS" ]; then
+  export T1356_CLOCK_SHIFT_DAYS="$CLOCK_DAYS"
+  _CS="$PWD/scripts/clock-shift.js"
+  case " ${NODE_OPTIONS:-} " in *"$_CS"*) ;; *) export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--require $_CS" ;; esac
+  LOG="${LOG:-/tmp/night/regress-clock${CLOCK_DAYS}.log}"
+fi
 LOG="${LOG:-/tmp/night/regress.log}"
 mkdir -p "$(dirname "$LOG")" || exit 1
 STATE="$LOG.state"; RETRY="$LOG.retry"; PIDF="$LOG.pid"
@@ -91,6 +105,8 @@ fi
 # ★[T760 · T751 회부 6] 이 상자의 판 — 정규식 유니코드 속성(\p{…})은 Node · ICU · Unicode 판을 따른다.
 #   야간 상자만 10-02 밤에 하네스 둘이 같이 돌았다(글자 무변) — 다음엔 이 한 줄로 가른다. 보고가 머리로 옮긴다.
 say "  [판] $(node -p "'node ' + process.version + ' · icu ' + process.versions.icu + ' · unicode ' + process.versions.unicode + ' · v8 ' + process.versions.v8" 2>/dev/null || echo 'node 없음')"
+# ★[T1356] 시계를 민 판이면 머리에 한 줄 — 민 뒤 node 가 보는 날짜(프리로드가 실제로 걸렸나를 node 에게 묻는다 · 안 걸렸으면 그대로 적힌다)
+[ -n "$CLOCK_DAYS" ] && say "  [시계] +${CLOCK_DAYS}일 판 — node 가 보는 지금 $(node -p 'new Date().toISOString()' 2>/dev/null </dev/null || echo '?') · 상자 시계 $(date -u +%Y-%m-%dT%H:%M:%SZ) · 브라우저 페이지는 안 민다"
 # ★[T939 · T798 회부 1 · ★PM 10-26] 한글 글꼴 — 상자에 한글을 그리는 글꼴이 없으면 게스트 이름 '여행자'가 대체 글리프로 그려져
 #   화면 글자를 재는 e2e(`e2e-charsprite` ⓔ 글자 서명 43~44 → 12)가 **상자 탓으로** 갈린다. 돌기 전에 한 번 보고, 없으면 넣는다
 #   (apt · root 일 때만 · `NIGHT_NO_FONT=1` 이면 건너뜀). 있음 = `fc-list ':lang=ko'` 가 하나라도 낸다(글꼴 이름이 아니라 한글 덮음으로 센다).
@@ -220,6 +236,7 @@ if [ -z "${NIGHT_NO_REPORT:-}" ]; then
   #   (첫 판에서 실제로 09-14 보고를 덮었다. 그래서 기본값을 갈랐다.)
   if [ -n "${NIGHT_OUT:-}" ]; then OUTMD="$NIGHT_OUT"
   elif [ -n "${NIGHT_LIST:-}" ]; then OUTMD="$(dirname "$LOG")/야간러너_${DAY}.md"
+  elif [ -n "$CLOCK_DAYS" ]; then OUTMD="보고/야간러너_${DAY}_시계+${CLOCK_DAYS}일.md"   # ★[T1356] 보통 판 보고를 안 덮는다
   else OUTMD="보고/야간러너_${DAY}.md"; fi
   BASE="${NIGHT_BASE:-$(git rev-parse --short HEAD 2>/dev/null || echo '?')}"
   if node scripts/nightly-report.js --log "$LOG" --base "$BASE" --out "$OUTMD" >/dev/null 2>&1; then
