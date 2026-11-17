@@ -1,0 +1,684 @@
+{
+ "solo": {
+  "wall": 16008,
+  "n": 258,
+  "pass": 250,
+  "inuse": 0,
+  "ports": {
+   "n": 397,
+   "holds": 189,
+   "displays": 9,
+   "maxWait": 1608,
+   "clash": 0,
+   "ex": []
+  },
+  "net": {
+   "connects": 3142,
+   "matched": 2130,
+   "foreign": 0,
+   "toZone": 0,
+   "toCentral": 0,
+   "untagged": 2130,
+   "ex": [],
+   "harnessesSeen": 0,
+   "listenHarnesses": 0,
+   "listens": 533
+  }
+ },
+ "pars": [
+  {
+   "dir": "/tmp/claude-0/-home-user-Mini/2b37f3bf-4e2c-5696-b52a-e22e02e2f0d7/scratchpad/t1288/run/A",
+   "wall": 11220,
+   "n": 258,
+   "pass": 248,
+   "same": 250,
+   "diff": [
+    {
+     "h": "test-guest-rejoin.js",
+     "solo": [
+      0,
+      26,
+      0
+     ],
+     "par": [
+      1,
+      25,
+      1
+     ]
+    },
+    {
+     "h": "test-site-memo.js",
+     "solo": [
+      1,
+      22,
+      1
+     ],
+     "par": [
+      0,
+      23,
+      0
+     ]
+    },
+    {
+     "h": "test-update-snap.js",
+     "solo": [
+      1,
+      null,
+      null
+     ],
+     "par": [
+      0,
+      26,
+      0
+     ]
+    },
+    {
+     "h": "e2e-handoff-proto.js",
+     "solo": [
+      0,
+      48,
+      0
+     ],
+     "par": [
+      1,
+      47,
+      1
+     ]
+    },
+    {
+     "h": "e2e-npc-walk.js",
+     "solo": [
+      0,
+      19,
+      0
+     ],
+     "par": [
+      1,
+      17,
+      2
+     ]
+    },
+    {
+     "h": "e2e-onboarding.js",
+     "solo": [
+      0,
+      74,
+      0
+     ],
+     "par": [
+      0,
+      75,
+      0
+     ]
+    },
+    {
+     "h": "e2e-t1204-now-words.js",
+     "solo": [
+      0,
+      21,
+      0
+     ],
+     "par": [
+      0,
+      22,
+      0
+     ]
+    },
+    {
+     "h": "e2e-zoom.js",
+     "solo": [
+      0,
+      33,
+      0
+     ],
+     "par": [
+      1,
+      32,
+      1
+     ]
+    }
+   ],
+   "inuse": 0,
+   "inuseBy": [],
+   "ports": {
+    "n": 397,
+    "holds": 189,
+    "displays": 9,
+    "maxWait": 1731,
+    "clash": 0,
+    "ex": []
+   },
+   "net": {
+    "connects": 3220,
+    "matched": 1959,
+    "foreign": 33,
+    "toZone": 33,
+    "toCentral": 0,
+    "untagged": 0,
+    "ex": [
+     "1 test-local-midnight-window.js → :3020 (e2e-blizzard.js)",
+     "1 test-local-midnight-window.js → :3020 (e2e-mtcorridor.js)",
+     "1 test-terr-persist.js → :3020 (e2e-mtcorridor.js)",
+     "3 test-terr-persist.js → :3020 (e2e-frost.js)",
+     "3 test-static-cache.js → :3020 (e2e-frost.js)",
+     "11 test-terr-persist.js → :3020 (e2e-cutaway.js)",
+     "1 test-terr-persist.js → :3020 (e2e-fishing.js)",
+     "1 test-terr-persist.js → :3020 (e2e-cold.js)",
+     "1 test-war-world.js → :3020 (e2e-cold.js)",
+     "1 test-guest-rejoin.js → :3020 (e2e-cold.js)",
+     "6 test-seed-hp.js → :3021 (e2e-handoff-proto.js)",
+     "2 test-t1000-chunk-restart.js → :3020 (e2e-emptystart.js)",
+     "1 test-t1000-chunk-restart.js → :3020 (e2e-tilestate.js)"
+    ],
+    "harnessesSeen": 131,
+    "listenHarnesses": 131,
+    "listens": 525
+   }
+  },
+  {
+   "dir": "/tmp/claude-0/-home-user-Mini/2b37f3bf-4e2c-5696-b52a-e22e02e2f0d7/scratchpad/t1288/run/Bm",
+   "wall": 12690,
+   "n": 258,
+   "pass": 248,
+   "same": 249,
+   "diff": [
+    {
+     "h": "test-guest-rejoin.js",
+     "solo": [
+      0,
+      26,
+      0
+     ],
+     "par": [
+      1,
+      25,
+      1
+     ]
+    },
+    {
+     "h": "test-harness-lint.js",
+     "solo": [
+      0,
+      79,
+      0
+     ],
+     "par": [
+      1,
+      78,
+      1
+     ]
+    },
+    {
+     "h": "test-route-persist.js",
+     "solo": [
+      0,
+      57,
+      0
+     ],
+     "par": [
+      1,
+      55,
+      2
+     ]
+    },
+    {
+     "h": "test-site-memo.js",
+     "solo": [
+      1,
+      22,
+      1
+     ],
+     "par": [
+      0,
+      23,
+      0
+     ]
+    },
+    {
+     "h": "test-update-snap.js",
+     "solo": [
+      1,
+      null,
+      null
+     ],
+     "par": [
+      0,
+      26,
+      0
+     ]
+    },
+    {
+     "h": "e2e-onboarding.js",
+     "solo": [
+      0,
+      74,
+      0
+     ],
+     "par": [
+      0,
+      75,
+      0
+     ]
+    },
+    {
+     "h": "e2e-rtt.js",
+     "solo": [
+      0,
+      10,
+      0
+     ],
+     "par": [
+      0,
+      9,
+      0
+     ]
+    },
+    {
+     "h": "e2e-t1204-now-words.js",
+     "solo": [
+      0,
+      21,
+      0
+     ],
+     "par": [
+      0,
+      22,
+      0
+     ]
+    },
+    {
+     "h": "e2e-village-view.js",
+     "solo": [
+      0,
+      58,
+      0
+     ],
+     "par": [
+      1,
+      56,
+      2
+     ]
+    }
+   ],
+   "inuse": 0,
+   "inuseBy": [],
+   "ports": {
+    "n": 403,
+    "holds": 195,
+    "displays": 9,
+    "maxWait": 1688,
+    "clash": 0,
+    "ex": []
+   },
+   "net": {
+    "connects": 3831,
+    "matched": 2528,
+    "foreign": 53,
+    "toZone": 53,
+    "toCentral": 0,
+    "untagged": 0,
+    "ex": [
+     "5 test-t1000-chunk-restart.js → :3020 (e2e-cutaway.js)",
+     "3 test-static-cache.js → :3020 (e2e-guest-reconnect.js)",
+     "1 test-terr-persist.js → :3020 (e2e-guest-reconnect.js)",
+     "4 test-terr-persist.js → :3020 (e2e-preserve.js)",
+     "8 test-terr-persist.js → :3020 (test-resume-slice.js)",
+     "2 test-terr-persist.js → :3020 (test-emptystart.js)",
+     "3 test-terr-persist.js → :3020 (e2e-npcsprite.js)",
+     "1 test-terr-persist.js → :3020 (e2e-mountain.js)",
+     "1 test-seed-hp.js → :3021 (e2e-bigmap-cells.js)",
+     "4 test-seed-hp.js → :3021 (test-handoff-body.js)",
+     "1 test-war-world.js → :3020 (e2e-site-exit.js)",
+     "1 test-war-world.js → :3020 (test-bigmap-cells.js)",
+     "1 test-war-world.js → :3020 (e2e-bigmap-live.js)",
+     "1 test-war-world.js → :3020 (e2e-hp.js)",
+     "1 test-guest-rejoin.js → :3020 (e2e-rtt.js)",
+     "8 test-local-midnight-window.js → :3020 (e2e-rtt.js)",
+     "2 e2e-npc-walk.js → :3020 (e2e-zone-cross.js)",
+     "2 e2e-nature.js → :3020 (e2e-zone-cross.js)",
+     "1 e2e-oseok-all.js → :3020 (e2e-zone-cross.js)",
+     "2 e2e-pick-top.js → :3020 (e2e-zone-cross.js)",
+     "1 e2e-tilestate.js → :3020 (e2e-zone-cross.js)"
+    ],
+    "harnessesSeen": 131,
+    "listenHarnesses": 131,
+    "listens": 534
+   }
+  },
+  {
+   "dir": "/tmp/claude-0/-home-user-Mini/2b37f3bf-4e2c-5696-b52a-e22e02e2f0d7/scratchpad/t1288/run/C",
+   "wall": 11292,
+   "n": 261,
+   "pass": 255,
+   "same": 232,
+   "diff": [
+    {
+     "h": "test-body-fields.js",
+     "solo": [
+      0,
+      10,
+      0
+     ],
+     "par": [
+      0,
+      14,
+      0
+     ]
+    },
+    {
+     "h": "test-bridge-path.js",
+     "why": "없음"
+    },
+    {
+     "h": "test-claim-v2.js",
+     "solo": [
+      0,
+      66,
+      0
+     ],
+     "par": [
+      0,
+      95,
+      0
+     ]
+    },
+    {
+     "h": "test-harness-lint.js",
+     "solo": [
+      0,
+      79,
+      0
+     ],
+     "par": [
+      0,
+      83,
+      0
+     ]
+    },
+    {
+     "h": "test-local-midnight.js",
+     "why": "없음"
+    },
+    {
+     "h": "test-model-intake.js",
+     "solo": [
+      1,
+      78,
+      1
+     ],
+     "par": [
+      0,
+      79,
+      0
+     ]
+    },
+    {
+     "h": "test-resume-one.js",
+     "solo": [
+      0,
+      12,
+      0
+     ],
+     "par": [
+      1,
+      11,
+      1
+     ]
+    },
+    {
+     "h": "test-road-day.js",
+     "why": "없음"
+    },
+    {
+     "h": "test-route-persist.js",
+     "solo": [
+      0,
+      57,
+      0
+     ],
+     "par": [
+      0,
+      59,
+      0
+     ]
+    },
+    {
+     "h": "test-segindex.js",
+     "why": "없음"
+    },
+    {
+     "h": "test-site-memo.js",
+     "solo": [
+      1,
+      22,
+      1
+     ],
+     "par": [
+      0,
+      23,
+      0
+     ]
+    },
+    {
+     "h": "test-t1107-regrow.js",
+     "why": "없음"
+    },
+    {
+     "h": "test-t1213-terr-supply.js",
+     "why": "없음"
+    },
+    {
+     "h": "test-t1238-terr-v2.js",
+     "solo": [
+      0,
+      69,
+      0
+     ],
+     "par": [
+      0,
+      107,
+      0
+     ]
+    },
+    {
+     "h": "test-t1243-farm-on.js",
+     "solo": [
+      0,
+      39,
+      0
+     ],
+     "par": [
+      0,
+      78,
+      0
+     ]
+    },
+    {
+     "h": "test-t772-leg.js",
+     "solo": [
+      0,
+      17,
+      0
+     ],
+     "par": [
+      0,
+      24,
+      0
+     ]
+    },
+    {
+     "h": "test-tick-slicer.js",
+     "solo": [
+      0,
+      37,
+      0
+     ],
+     "par": [
+      1,
+      36,
+      1
+     ]
+    },
+    {
+     "h": "test-update-snap.js",
+     "solo": [
+      1,
+      null,
+      null
+     ],
+     "par": [
+      0,
+      26,
+      0
+     ]
+    },
+    {
+     "h": "test-wood-act.js",
+     "solo": [
+      1,
+      157,
+      2
+     ],
+     "par": [
+      0,
+      159,
+      0
+     ]
+    },
+    {
+     "h": "e2e-next-step.js",
+     "solo": [
+      1,
+      33,
+      3
+     ],
+     "par": [
+      0,
+      35,
+      0
+     ]
+    },
+    {
+     "h": "e2e-npcsprite.js",
+     "solo": [
+      0,
+      38,
+      0
+     ],
+     "par": [
+      1,
+      37,
+      1
+     ]
+    },
+    {
+     "h": "e2e-oseok-all.js",
+     "solo": [
+      1,
+      50,
+      1
+     ],
+     "par": [
+      0,
+      51,
+      0
+     ]
+    },
+    {
+     "h": "e2e-rtt.js",
+     "solo": [
+      0,
+      10,
+      0
+     ],
+     "par": [
+      0,
+      9,
+      0
+     ]
+    },
+    {
+     "h": "e2e-t1204-now-words.js",
+     "solo": [
+      0,
+      21,
+      0
+     ],
+     "par": [
+      0,
+      22,
+      0
+     ]
+    },
+    {
+     "h": "e2e-trade.js",
+     "solo": [
+      1,
+      52,
+      2
+     ],
+     "par": [
+      0,
+      55,
+      0
+     ]
+    },
+    {
+     "h": "e2e-zone-cross.js",
+     "solo": [
+      0,
+      47,
+      0
+     ],
+     "par": [
+      0,
+      54,
+      0
+     ]
+    }
+   ],
+   "inuse": 0,
+   "inuseBy": [],
+   "ports": {
+    "n": 410,
+    "holds": 189,
+    "displays": 9,
+    "maxWait": 1577,
+    "clash": 0,
+    "ex": []
+   },
+   "net": {
+    "connects": 3393,
+    "matched": 1943,
+    "foreign": 25,
+    "toZone": 25,
+    "toCentral": 0,
+    "untagged": 0,
+    "ex": [
+     "1 test-nippon-boot.js → :3021 (test-handoff-body.js)",
+     "2 test-t1000-chunk-restart.js → :3020 (e2e-charsprite.js)",
+     "3 test-static-cache.js → :3020 (e2e-friends.js)",
+     "13 test-war-world.js → :3020 (test-tick-slicer.js)",
+     "1 test-local-midnight-window.js → :3020 (test-site-memo.js)",
+     "1 test-doors.js → :3020 (e2e-mtfuzz.js)",
+     "1 test-terr-persist.js → :3020 (e2e-weather.js)",
+     "1 test-terr-persist.js → :3020 (e2e-bigmap-live.js)",
+     "2 test-terr-persist.js → :3020 (e2e-verbs.js)"
+    ],
+    "harnessesSeen": 133,
+    "listenHarnesses": 135,
+    "listens": 548
+   }
+  }
+ ],
+ "soloFail": [
+  "test-model-intake.js(rc=1)",
+  "test-site-memo.js(rc=1)",
+  "test-update-snap.js(rc=1)",
+  "test-wood-act.js(rc=1)",
+  "e2e-next-step.js(rc=1)",
+  "e2e-oseok-all.js(rc=1)",
+  "e2e-trade.js(rc=1)",
+  "e2e-weather.js(rc=1)"
+ ]
+}
