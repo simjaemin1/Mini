@@ -33,7 +33,8 @@ function runRes(dir) {
     const ff = (() => { const m = /FAIL\s*(\d+)|(\d+)\s*FAIL|실패\s*(\d+)|(\d+)\s*실패/.exec(last); return m ? +(m[1] || m[2] || m[3] || m[4]) : null; })();
     R[name] = { ok, rc: ok ? 0 : (rc == null ? '?' : +rc), pass: pp ?? p, fail: ff ?? f, sec, inuse: (txt.match(/(?:Error|ERR)\b[^\n]*EADDRINUSE|EADDRINUSE[^\n]*(?:address already in use|:\d{2,5}\b)/g) || []).length };   // 오류 꼴만(린트 규칙 글 '접점: … EADDRINUSE …' 는 안 센다)
   }
-  const tot = (/러너 전체 (\d+)초/.exec(log) || [])[1];
+  // 이어 붙인 판은 조각마다 '걸린 시간 합 … 러너 전체' 줄이 있다 → 줄 머리의 합친 줄이 있으면 그것 · 없으면 맨 뒤 것
+  const tot = ([...log.matchAll(/^러너 전체 (\d+)초/gm)].pop() || [...log.matchAll(/러너 전체 (\d+)초/g)].pop() || [])[1];
   return { R, wall: tot ? +tot : null };
 }
 function overlaps(dir) {
