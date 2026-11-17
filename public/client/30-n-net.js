@@ -1335,6 +1335,9 @@
     } else if (msg.type === 'claim_updated') {
       // Phase 4d-16-a: 영토 cell sub-type 변경 (예: NPC personal 분배)
       c.claims.set(msg.claim.id, msg.claim);
+    } else if (msg.type === 'deeds_meter') {
+      // ★[T1343] 사유지 계량기(내 청크마다 관리도 · 줄어드는 속도 · 버티는 날) — 서버가 준 그대로 · 패널이 지금으로 줄여 그린다(닫힌 식)
+      window.__deedsMeter = Object.assign({ recvAt: Date.now() }, msg);
     } else if (msg.type === 'sim_village_add') {
       // ★[T19 2026-09-02] **마을이 하나 늘었다.** `simVillages` 는 여태 welcome 1회뿐이라
       //   방금 선 마을은 재접속 전엔 세계에 없었다 — 그래서 **자기가 세운 마을의 촌장과도 말을 못 했다**

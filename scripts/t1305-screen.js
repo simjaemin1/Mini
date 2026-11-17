@@ -28,12 +28,12 @@ function boot(name, file, env) {
   procs.push(p); return p;
 }
 (async () => {
-  console.log('\n=== T1305 · T1332 화면 판 — 사유지 돌봄 켬(청크 · 실클라) ===');
+  console.log('\n=== T1305 · T1343 화면 판 — 사유지 계량기 켬(청크 · 실클라) ===');
   const c0 = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   const cUp = FB.waitUp(c0, /central server up on/, { name: 'central' });
   const z0 = boot('zone', 'zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1',
-    T1305_DEEDS: '1', T1305_DAY_MS: '4000', T1305_TICK_MS: '10000', T1305_CARE_S: '2', T1332_CHUNK: '4' });   // ★[T1332] 청크 4칸(걸어 나가기 짧게) · 머묾 2초
+    T1305_DEEDS: '1', T1305_DAY_MS: '4000', T1305_TICK_MS: '10000', T1305_CARE_S: '2', T1343_D0: '0.02', T1343_Q_IDLE: '20' });   // ★[T1343] 시험 값 — 하루 4초 · D0 0.02(1칸 = 32날 = 128초) · 머묾 2초 · 서 있기 초당 20점
   const zUp = FB.waitUp(z0, /zone server up on/, { name: 'zone', capMs: 300000 });
   ok((await cUp).ok && (await zUp).ok, '[상황] central · 존(켬) 기동');
   for (let i = 0; i < 120; i++) { try { const z = await (await fetch(`http://localhost:${CPORT}/zones`)).json(); const h = (z.zones || {}).hanbando || {}; if (h.population != null && h.cap) break; } catch (e) {} await sleep(1000); }
@@ -48,7 +48,7 @@ function boot(name, file, env) {
   await sleep(2000);
   ok(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs())), '[상황] 실클라 입장');
   const cfg = await page.evaluate(() => (window.__uiCfg ? window.__uiCfg().deeds : null));
-  ok(!!cfg && cfg.free > cfg.fade, '[상황] 서버가 돌봄 설정을 실었다(welcome `uiCfg.deeds`)', JSON.stringify(cfg));
+  ok(!!cfg && cfg.chunk === 4 && cfg.n0 === 40 && cfg.pt === 100, '[상황] 서버가 돌봄 설정을 실었다(welcome `uiCfg.deeds` — 청크 4 · N0 40 · 칸 100점)', JSON.stringify(cfg));
   const send = (m) => page.evaluate((mm) => { window.__sendPrimary(mm); return true; }, m);
   for (let i = 0; i < 5; i++) { await send({ type: '__e2e_give', items: { wood: 60, stone: 60 } }); await sleep(1000); const inv = await page.evaluate(() => window.__getInv && window.__getInv()); if (inv && inv.wood >= 30) break; }
   const mine = () => page.evaluate(() => (window.__getClaims ? window.__getClaims() : []).filter((c) => c.kind === 'personal'));
@@ -59,8 +59,9 @@ function boot(name, file, env) {
   // ② 패널 문구
   await page.keyboard.press('y'); await sleep(1200);
   const txt = await page.evaluate(() => (document.getElementById('spBody') || {}).innerText || '');
-  ok(/개인 \d+칸 · 땅덩이 1/.test(txt) && !/\/\s*9/.test(txt), '② 사유지 패널 — "개인 n칸 · 땅덩이 1"(숫자 상한 문구 0)', txt.split('\n')[0]);
-  ok(!(await page.$('[data-care]')) && /머물면/.test(txt) && /넓을수록 빨리 낡습니다/.test(txt), '② 패널 — 손보기 단추 0 · 쓰기 · 머묾 · 넓을수록 빨리 낡음 안내', '');
+  ok(/개인 \d+칸/.test(txt) && !/\/\s*9/.test(txt) && /내 땅 합 1칸/.test(txt) && /버티는 날 [\d.]+일/.test(txt), '② ★[T1343] 사유지 패널 — 내 칸 합 N · 버티는 날(숫자 상한 문구 0)', txt.split('\n').slice(0, 3).join(' / '));
+  ok(/한 칸 더 잡으면 [\d.]+일 → [\d.]+일로 줄어듭니다/.test(txt) && /땅덩이 \(-?\d+,-?\d+\) 1칸/.test(txt), '② ★[T1343] 패널 — 한 칸 더 잡으면 n일 → m일 · 땅덩이마다 관리도 띠', (txt.match(/한 칸 더[^\n]*/) || [''])[0]);
+  ok(!(await page.$('[data-care]')) && /머물면/.test(txt) && /실제 날짜로 줄어듭니다/.test(txt) && /넓을수록 빨리/.test(txt), '② 패널 — 손보기 단추 0 · 쓰기 · 머묾 · 실제 날짜 · 넓을수록 빨리 안내', '');
   await page.keyboard.press('y'); await sleep(400);
   await page.screenshot({ path: `${SHOTS}/1-new.png` });
   // ③ 청크 밖으로 걸어 나가(머묾이 안 걸리게) 날이 지나면 흐려진다(하루 4초 · 틱 10초 — 흐림 날 수만큼 틱)
@@ -83,7 +84,7 @@ function boot(name, file, env) {
   await page.screenshot({ path: `${SHOTS}/3-dwell.png` });
   ok(inv1 === inv2, '④ 머묾 재료 0(짐 그대로)', '');
   ok(perrs.length === 0, '페이지 오류 0', perrs.slice(0, 2).join(' | '));
-  console.log(`\n=== T1305 · T1332 화면 판: ${pass} 통과 / ${fail} 실패 === (그림 ${SHOTS})`);
+  console.log(`\n=== T1305 · T1343 화면 판: ${pass} 통과 / ${fail} 실패 === (그림 ${SHOTS})`);
   try { await browser.close(); } catch (e) {}
   for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
   for (const f of [CDB, ZDB]) for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} }

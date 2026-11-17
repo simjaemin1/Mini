@@ -1,85 +1,96 @@
 'use strict';
-// === server/deeds.js — 사유지 돌봄(T1305 · ★T1332 청크 다시 — 재민 11-15) ============================================
+// === server/deeds.js — 사유지 돌봄(T1305 → T1332 → ★T1343 계량기 · 재민 11-16 확정) =====================================
 //
 // ★무엇: 개인 사유지는 **마을과 무관**하다(영토 밖 빈 들은 누구나 · 영토 안은 그 마을 인정 구성원만 — 문은 `zone.tryClaim`).
 //   셀 수는 겉으로 무제한이고, 실제 상한은 **돌봄**이 만든다(캐논 797 — 땅을 쥐는 힘 = 몸이 들인 시간).
 //
-// ★★[T1332 · 재민 11-15 "숙제처럼 변한다 · 넓을수록 선형보다 크게 · 칸마다는 어색 · 청크로"] T1305(칸마다 서서 손보기)를 셋으로 바꾼다:
-//   ① **청크 단위** — 세계 격자 청크(`CHUNK`×`CHUNK` 칸). 낡음 · 새것은 "내 칸이 든 청크"마다 하나 — 그 청크의 내 칸은 함께 흐리고 함께 풀린다
-//      (집 안쪽 · 마당 · 비워 둔 칸을 따로 돌볼 일이 없다).
-//   ② **쓰면 저절로** — 그 청크에서 주인이 실제로 한 일(수확 · 심기 · 제작 · 보관함 · 짓기 · 고치기 · 시설 — 짐이 바뀐 것만 · 표는 `zone.js`
-//      `T1332_USE`)이 있으면 그 청크 = 새것. 쓸 것 없는 장식 청크는 그 안에 **머묾**(연속 `DWELL_MS` — 걸어 지나가기는 안 든다)으로 돌본다.
-//      손보기 단추 · 서서 기다리기는 없다.
-//   ③ **클수록 빨리 낡음(초선형)** — 접속한 날마다 청크가 낡는 양 = 1 × max(1, 내 청크 수 ÷ `BASE`). 풀림까지 접속일 = `FREE_D` ÷ 그 배수
-//      ⇒ 하루 돌봄 방문 ∝ 청크² · `BASE` 청크 밑(작은 땅)은 기준 속도 그대로(일주일에 한 번 들르면 남는다).
-//      ⚠닫힌 꼴: 청크 수 ≥ `FREE_D × BASE` 면 하루에 풀림 몫이 다 차서 **아무리 돌봐도 못 쥔다**(보고 T1332 §3 — 숨은 숫자 상한이 생긴다 · 회부).
+// ★★[T1343 · 재민 11-16 확정 — 카드 글 그대로]
+//   ① 넓이: "보통 자기 사유지는 수십 타일이면 괜찮지 않나" · ② **실제 날짜로 낡는다**("현실로 보름 동안 안 들어와도 어느 정도는 유지" ·
+//      "셀 욕심을 부릴수록 좀 더 공격적으로 관리를 피곤하게") — T1305 의 "접속한 날만 낡음"은 버린다.
+//   ③ 안 쓰고 버티는 날 **D(N) = 15일 × (40 ÷ N)²**(N = 내 사유지 칸 수 합 — 존을 넘어도 한 사람 합) · 숫자 상한 없음.
+//   ④ **청크 계량기**: "한 청크에 포함되는 내 영토에 관리비용이 비례 — 3칸이면 300 · 감소속도 3k, 10칸이면 1000 · 10k.
+//      그 청크 안의 어느 셀을 관리해도 전체 청크의 관리도가 오른다." ⑤ 청크 = 4×4(세계 격자).
+//   ⇒ 청크 c 의 관리도 `m ∈ [0, PT × n_c]` · 줄어듦 = 실제 시간으로 하루 `n_c × PT ÷ D(N)`(가득 찬 청크가 비는 날 = D(N) — 칸 수와 무관) ·
+//      0 이면 그 청크의 내 칸이 풀린다(`free` — 이어받기 규약 그대로) · 새로 잡은 칸은 가득(+PT) · 하루 필요 점수 합 = N × PT ÷ D(N) = N³ ÷ 240.
 //
-// ★★낡는 축 = **주인이 접속한 날 수**(T1305 §2 표 그대로 — 실시간 달력 날 · 접속 안 한 날은 안 낡는다 · 부재는 부재 상태기가 맡는다).
+// ★계산은 게으르게(읽을 때 · 바뀔 때) — 청크 줄 `{ m, t }`(t = 마지막 셈 시각 ms). 풀림 · 단계 시각은 닫힌 식(`zeroAt` · `nextAt`)으로 미리 안다
+//   (존이 그 시각에 깨는 예약 하나 — 틱마다 전 청크를 안 돈다).
 //
 // ★규약: 이 파일은 **수식 · 상태만** 쥔다(존 · DB · 방송은 부르는 쪽 `zone.js`). 판(`scripts/t1305-care-sim.js`)이 같은 함수를 부른다(사본 0).
 //   손잡이 `T1305_DEEDS`(끔 기본 · `=1` 켬) — 끔이면 아무 데서도 안 불린다(바이트 같음).
-//   ⚠속도 값(흐림 · 풀림 날 · 청크 크기 · 기준 청크 수 · 머묾 초)은 판으로 고를 **제안**이다 — 정본은 재민(보고 T1332 고를 표).
+//   ⚠점수(무엇이 몇 점인가 — `SCORE` · `P_USE` · `Q_WORK` · `Q_IDLE`)는 판으로 고를 **제안**이다 — 정본은 재민(보고 T1343 고를 표).
 
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
 const ON = process.env.T1305_DEEDS === '1';
 const CFG = {
-  FADE_D: Math.max(1, _num('T1305_FADE_D', 3)),    // 이 낡음(기준 날 단위)이면 경계가 흐려진다
-  FREE_D: Math.max(2, _num('T1305_FREE_D', 7)),    // 이 낡음이면 풀린다(빈 땅 — 부재 상태기의 `free`)
-  // ★[T1332] 청크 한 변(칸) · 기준 청크 수(이 밑은 기준 속도) — 판 표의 제안(재민이 고른다)
-  CHUNK: Math.max(1, _num('T1332_CHUNK', 8) | 0),
-  BASE: Math.max(1, _num('T1332_BASE', 2)),
-  // ★[T1332] 머묾 — 쓸 것 없는 청크를 돌보는 연속 몸 시간. 수는 T1305 손보는 시간(`T1305_CARE_S` 20초)을 그대로 쓴다(새 수 0).
+  // ★[T1343 ③] 버티는 날 D(N) = D0 × (N0 ÷ N)² — 재민 11-16 글의 두 수(15일 · 40칸)
+  D0: Math.max(0.01, _num('T1343_D0', 15)),
+  N0: Math.max(1, _num('T1343_N0', 40)),
+  PT: Math.max(1, _num('T1343_PT', 100)),          // ★[T1343 ④] 칸 하나의 관리도 몫(재민 글 "3칸이면 300")
+  CHUNK: Math.max(1, _num('T1332_CHUNK', 4) | 0),  // ★[T1343 ⑤] 청크 4×4(T1332 손잡이 글자 그대로 · 기본만 8 → 4)
+  // 흐림 — 관리도 몫이 이 밑이면 경계가 흐려진다. 수는 T1305 의 흐림 · 풀림 날(3 · 7)에서 유도(새 수 0): 남은 몫 ≤ 1 − 3 ÷ 7.
+  FADE_D: Math.max(1, _num('T1305_FADE_D', 3)),
+  FREE_D: Math.max(2, _num('T1305_FREE_D', 7)),
+  // ★[T1343 ②] 점수(판 제안 — 재민 고름) · 'a' = 쓴 일마다 P_USE 점(머묾 한 번도 한 일) · 'b' = 그 청크에서 일하는 시간 초당 Q_WORK(서 있기만 Q_IDLE) · 'c' = 반씩
+  SCORE: /^[abc]$/.test(process.env.T1343_SCORE || '') ? process.env.T1343_SCORE : 'b',
+  P_USE: Math.max(0, _num('T1343_P_USE', 4)),
+  Q_WORK: Math.max(0, _num('T1343_Q_WORK', 1)),
+  Q_IDLE: Math.max(0, _num('T1343_Q_IDLE', 0.25)),
+  // 머묾 — 연속으로 이만큼 그 청크에 있어야 "머문 것"(걸어 지나가기 0) · 일한 뒤 이만큼은 "일하는 중" — T1305 손보는 시간(20초) 재사용(새 수 0)
   DWELL_MS: Math.max(1000, _num('T1305_CARE_S', 20) * 1000),
-  SAFETY: 0,   // 숨은 안전판(칸) — 아래 유도
-  TICK_MS: Math.max(10 * 1000, _num('T1305_TICK_MS', 60 * 1000)),   // 접속 중인 사람의 날 바뀜을 보는 주기(존 틱에 안 얹는다)
-  // 하루 길이 — 기본 = 실시간 달력 하루(UTC 날짜). 시험 판(`scripts/t1305-screen.js`)만 줄인다(`T1305_DAY_MS` · 운영은 안 준다).
+  TICK_MS: Math.max(10 * 1000, _num('T1305_TICK_MS', 60 * 1000)),
+  // 하루 길이 — 기본 = 실시간 하루. 시험 판(`scripts/t1305-screen.js`)만 줄인다(`T1305_DAY_MS` · 운영은 안 준다).
   DAY_MS: Math.max(1000, _num('T1305_DAY_MS', 24 * 60 * 60 * 1000)),
+  SAFETY: 0,
 };
 if (CFG.FADE_D >= CFG.FREE_D) CFG.FADE_D = CFG.FREE_D - 1;
-// 숨은 안전판(칸) — 새 수가 아니라 위 식에서 유도한다: 청크 수가 `FREE_D × BASE` 에 닿으면 하루에 다 풀리므로(③ 닫힌 꼴)
-//   그보다 많은 칸은 **누구도 하루를 넘겨 쥘 수 없다** ⇒ 그 넓이(청크 수 × 청크 칸)를 DB · 성능 문으로 둔다(사유지 순회가 존 전체를 훑는다).
-CFG.SAFETY = Math.max(1, _num('T1305_SAFETY', Math.ceil(CFG.FREE_D * CFG.BASE) * CFG.CHUNK * CFG.CHUNK) | 0);
+// 숨은 안전판(칸) — 숫자 상한은 없다. DB · 성능 문 하나만: D(N) 이 한 틱(`TICK_MS`)보다 짧아지는 넓이(유도 · 기본 5,879칸 — 그 땅은 잡는 사이 풀린다).
+CFG.SAFETY = Math.max(1, _num('T1305_SAFETY', Math.ceil(CFG.N0 * Math.sqrt(CFG.D0 * CFG.DAY_MS / CFG.TICK_MS))) | 0);
 
-// 실시간 달력 날 — UTC 날짜(부재 시계와 같은 실시간 축 · 게임일 아님 — T45 제3 규약).
-const dayKey = (ms) => (CFG.DAY_MS === 24 * 60 * 60 * 1000 ? new Date(ms).toISOString().slice(0, 10) : 'd' + Math.floor(ms / CFG.DAY_MS));
-
-// 낡음 단계 — 새것 · 흐림 · 풀림. `w` = 마지막 돌본 뒤 쌓인 낡음(기준 날 단위 · 소수).
-function stageOf(w) { w = +w || 0; return w >= CFG.FREE_D ? 'free' : (w >= CFG.FADE_D ? 'fade' : 'new'); }
-
-// 몸 칸 `deeds` = { n: 접속한 날 수(누계), day: 마지막으로 센 달력 날 } — `serializeBody` 끝 칸(있을 때만 · 켬 판에서만 선다).
-function bodyOf(player) {
-  const d = player && player.deeds;
-  return (d && typeof d === 'object' && Number.isFinite(d.n)) ? d : null;
+// 버티는 날(일) — N = 한 사람의 사유지 칸 합
+function daysOf(N) { const n = Math.max(1, +N || 0); return CFG.D0 * (CFG.N0 / n) * (CFG.N0 / n); }
+// 하루 필요 점수 합 = N × PT ÷ D(N)
+function dailyNeed(N) { return Math.max(0, +N || 0) * CFG.PT / daysOf(N); }
+// 청크 줄 꼴: { m, t } · 그 청크 안 내 칸 n · 한 사람 합 N
+const capOf = (n) => CFG.PT * Math.max(0, n | 0);
+// ms 당 줄어듦
+function rateOf(n, N) { return capOf(n) / (daysOf(N) * CFG.DAY_MS); }
+// 이행 · 처음 보는 청크: 지금 가득으로 잡는다(켜는 순간 줄지 않는다 · 새로 잡은 칸은 가득)
+function init(ch, now, n) { if (!ch) return ch; if (!Number.isFinite(ch.t)) { ch.t = now; ch.m = capOf(n); } if (!Number.isFinite(ch.m)) ch.m = capOf(n); return ch; }
+// 지금까지 줄어든 몫을 셈(게으르게) — 반환 = m
+function settle(ch, now, n, N) {
+  init(ch, now, n);
+  const dt = Math.max(0, now - ch.t);
+  if (dt) { ch.m = Math.max(0, Math.min(capOf(n), ch.m) - rateOf(n, N) * dt); ch.t = now; }
+  ch.m = Math.min(capOf(n), ch.m);
+  return ch.m;
 }
-// 오늘 처음 보면 하루를 센다 — 반환 = 날이 바뀌었나. 처음 켠 몸은 n = 1(오늘이 첫날).
-function touchDay(player, now) {
-  if (!player) return false;
-  const k = dayKey(now || Date.now());
-  const d = bodyOf(player);
-  if (!d) { player.deeds = { n: 1, day: k }; return true; }
-  if (d.day === k) return false;
-  d.n = (d.n | 0) + 1; d.day = k;
-  return true;
+// 지금 속도로 0 이 되는 시각(ms · 닫힌 식) — settle 한 뒤에 부른다
+function zeroAt(ch, n, N) { const r = rateOf(n, N); return r > 0 ? ch.t + ch.m / r : Infinity; }
+// 단계 — 'new'(또렷) · 'fade'(흐림 — 남은 몫 ≤ 1 − 흐림 ÷ 풀림) · 'soon'(곧 풀림 — 하루 안에 0) · 'free'
+const FADE_FRAC = () => 1 - CFG.FADE_D / CFG.FREE_D;
+function stageOf(ch, n, N) {
+  const cap = capOf(n); if (!(cap > 0) || !(ch.m > 0)) return 'free';
+  if (zeroAt(ch, n, N) - ch.t <= CFG.DAY_MS) return 'soon';
+  return ch.m / cap <= FADE_FRAC() + 1e-12 ? 'fade' : 'new';
 }
+// 다음 단계 바뀜 시각(흐림 문턱 · 곧 풀림 문턱 · 0 중 지금 뒤 가장 이른 것) — 존의 예약 한 개가 이 값의 최소에 깬다
+function nextAt(ch, n, N) {
+  const r = rateOf(n, N); if (!(r > 0)) return Infinity;
+  const cap = capOf(n), z = ch.t + ch.m / r, out = [z];
+  const fadeM = cap * FADE_FRAC(); if (ch.m > fadeM) out.push(ch.t + (ch.m - fadeM) / r);
+  const soon = z - CFG.DAY_MS; if (soon > ch.t) out.push(soon);
+  return Math.min(...out);
+}
+// 관리 — 점수를 더한다(상한 = 가득). settle 한 뒤에 부른다.
+function add(ch, pts, n) { ch.m = Math.min(capOf(n), (+ch.m || 0) + Math.max(0, +pts || 0)); return ch.m; }
 
-// ── 청크(T1332) ───────────────────────────────────────────────────────────────────────────────
-// 칸 좌표(칸 단위 정수) → 청크 좌표. 음수 칸도 바닥 나눗셈(격자는 세계에 붙박이).
+// 몸 칸 `deeds` = { z: { 존: 그 존의 내 칸 수 } } — 존을 넘어도 N 은 한 사람 합(카드 ①). `serializeBody` 끝 칸(있을 때만 · 켬 판에서만 선다).
+function bodyOf(player) { const d = player && player.deeds; return (d && typeof d === 'object' && d.z && typeof d.z === 'object') ? d : null; }
+function setZone(player, zone, n) { if (!player) return; if (!bodyOf(player)) player.deeds = { z: {} }; player.deeds.z[String(zone)] = Math.max(0, n | 0); }
+function othersOf(player, zone) { const d = bodyOf(player); if (!d) return 0; let s = 0; for (const [k, v] of Object.entries(d.z)) if (k !== String(zone)) s += Math.max(0, v | 0); return s; }
+
+// 칸 좌표(칸 단위 정수) → 청크 좌표(세계 격자 · 바닥 나눗셈)
 function chunkOf(cellX, cellY) { const K = CFG.CHUNK; return [Math.floor(cellX / K), Math.floor(cellY / K)]; }
-// 하루 낡는 배수 — 내 청크 수 C 가 기준 밑이면 1 · 넘으면 C ÷ BASE(초선형: 하루 돌봄 방문 = C × 배수 ÷ FREE_D ∝ C²)
-function rate(C) { return Math.max(1, (C | 0) / CFG.BASE); }
-// 안 돌보면 풀림까지 남은 접속일(지금 청크 수로 · 화면 안내 · 판 점검) — 1 이면 내일 풀린다
-function daysToFree(C) { return Math.max(1, Math.ceil(CFG.FREE_D / rate(C) - 1e-9)); }
-// 그날의 낡음 — 청크 줄 `ch = { w, n0 }`(n0 = 마지막으로 잰 접속일). 접속일 n 까지 (n − n0) × 배수(C)를 쌓는다. 반환 = 단계.
-//   ★이행(켜는 순간 줄지 않게): `n0` 가 없는 청크(켜기 앞의 옛 칸 · 처음 보는 청크)는 **지금 날**을 돌본 날로 잡는다.
-//   다른 존에서 센 날도 `n` 에 들어 있으므로 여기서 한꺼번에 쌓인다(존 넘어옴 — T1305 ⑬-b 그대로).
-function wear(ch, n, C) {
-  if (!ch) return 'new';
-  if (!Number.isFinite(ch.n0)) { ch.n0 = n | 0; ch.w = 0; }
-  const k = Math.max(0, (n | 0) - (ch.n0 | 0));
-  if (k) { ch.w = (+ch.w || 0) + k * rate(C); ch.n0 = n | 0; }
-  return stageOf(ch.w);
-}
-// 썼다(또는 머물렀다) — 그 청크 새것.
-function used(ch, n) { if (!ch) return false; ch.w = 0; ch.n0 = n | 0; return true; }
 
-module.exports = { ON, CFG, dayKey, stageOf, bodyOf, touchDay, chunkOf, rate, daysToFree, wear, used };
+module.exports = { ON, CFG, daysOf, dailyNeed, capOf, rateOf, init, settle, zeroAt, stageOf, nextAt, add, bodyOf, setZone, othersOf, chunkOf };
