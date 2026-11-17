@@ -1,0 +1,93 @@
+{
+ "tag": "MXH",
+ "seed": 1020,
+ "DAYS": 30,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "vclock": true,
+ "env": {},
+ "envz": {
+  "hanbando": {
+   "T1321_XZ_BEAST": "0"
+  }
+ },
+ "start": "2026-11-15T16:09:10.473Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "restart": null,
+ "bootS": 23,
+ "geoWaitS": 146,
+ "Y": 17840,
+ "perfEnd": {
+  "hanbando": {
+   "day": 31,
+   "st": {
+    "sent": 136,
+    "sentOk": 131,
+    "sentFail": 0,
+    "bounced": 0,
+    "retried": 0,
+    "dup": 0,
+    "bodyOut": 131,
+    "bodyIn": 125,
+    "bodyInSkip": 0,
+    "walkWait": 0,
+    "walkWaitLate": 0,
+    "crossArrive": 48,
+    "crossReturn": 83,
+    "soldOk": 82,
+    "deposited": 35,
+    "lost": 0
+   },
+   "t1324": null,
+   "t1321": null
+  },
+  "nippon": {
+   "day": 31,
+   "st": {
+    "sent": 129,
+    "sentOk": 125,
+    "sentFail": 0,
+    "bounced": 0,
+    "retried": 0,
+    "dup": 0,
+    "bodyOut": 125,
+    "bodyIn": 136,
+    "bodyInSkip": 0,
+    "walkWait": 0,
+    "walkWaitLate": 0,
+    "crossArrive": 89,
+    "crossReturn": 36,
+    "soldOk": 36,
+    "deposited": 82,
+    "lost": 0
+   },
+   "t1324": null,
+   "t1321": {
+    "stat": {
+     "died": 0,
+     "born": 0,
+     "follow": 0,
+     "gone": 4,
+     "goneClear": 0
+    },
+    "mobs": 464,
+    "hidden": 0
+   }
+  }
+ },
+ "end": "2026-11-15T16:14:17.103Z",
+ "wallS": 307,
+ "days": {
+  "hanbando": 31,
+  "nippon": 31
+ },
+ "bars": 187,
+ "H": 1767225693500,
+ "dead": [],
+ "botCross": 9,
+ "botFail": 0,
+ "done": true
+}

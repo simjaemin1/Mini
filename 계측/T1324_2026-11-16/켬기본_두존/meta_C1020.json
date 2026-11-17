@@ -1,0 +1,31 @@
+{
+ "tag": "C1020",
+ "seed": 1020,
+ "DAYS": 30,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "vclock": true,
+ "env": {},
+ "envz": {},
+ "start": "2026-11-15T07:14:39.276Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "restart": null,
+ "bootS": 26,
+ "geoWaitS": 160,
+ "Y": 17840,
+ "end": "2026-11-15T07:20:43.919Z",
+ "wallS": 365,
+ "days": {
+  "hanbando": 34,
+  "nippon": 34
+ },
+ "bars": 207,
+ "H": 1767225703500,
+ "dead": [],
+ "botCross": 11,
+ "botFail": 0,
+ "done": true
+}

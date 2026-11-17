@@ -1,0 +1,98 @@
+{
+ "tag": "F1020",
+ "seed": 1020,
+ "DAYS": 120,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "vclock": true,
+ "env": {},
+ "envz": {},
+ "start": "2026-11-15T16:26:34.661Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "restart": null,
+ "bootS": 27,
+ "geoWaitS": 151,
+ "perfEnd": {
+  "hanbando": {
+   "day": 120,
+   "st": {
+    "sent": 667,
+    "sentOk": 658,
+    "sentFail": 0,
+    "bounced": 0,
+    "retried": 0,
+    "dup": 0,
+    "bodyOut": 658,
+    "bodyIn": 649,
+    "bodyInSkip": 0,
+    "walkWait": 0,
+    "walkWaitLate": 0,
+    "crossArrive": 316,
+    "crossReturn": 342,
+    "soldOk": 333,
+    "deposited": 298,
+    "lost": 0
+   },
+   "t1324": null,
+   "t1321": {
+    "stat": {
+     "died": 0,
+     "born": 0,
+     "follow": 0,
+     "gone": 0,
+     "goneClear": 0
+    },
+    "mobs": 449,
+    "hidden": 0
+   }
+  },
+  "nippon": {
+   "day": 120,
+   "st": {
+    "sent": 652,
+    "sentOk": 649,
+    "sentFail": 0,
+    "bounced": 0,
+    "retried": 0,
+    "dup": 0,
+    "bodyOut": 649,
+    "bodyIn": 667,
+    "bodyInSkip": 0,
+    "walkWait": 0,
+    "walkWaitLate": 0,
+    "crossArrive": 346,
+    "crossReturn": 303,
+    "soldOk": 293,
+    "deposited": 337,
+    "lost": 0
+   },
+   "t1324": null,
+   "t1321": {
+    "stat": {
+     "died": 0,
+     "born": 0,
+     "follow": 0,
+     "gone": 0,
+     "goneClear": 0
+    },
+    "mobs": 450,
+    "hidden": 0
+   }
+  }
+ },
+ "end": "2026-11-15T16:37:09.061Z",
+ "wallS": 634,
+ "days": {
+  "hanbando": 120,
+  "nippon": 120
+ },
+ "bars": 721,
+ "H": 1767225960500,
+ "dead": [],
+ "botCross": 0,
+ "botFail": 0,
+ "done": true
+}

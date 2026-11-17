@@ -1,0 +1,18 @@
+
+=== T1321 — 답을 기다리는 캐러밴 넘김이 재기동을 건넌다(손잡이 `T1321_XZ_KEEP`) ===
+  ✓ ⓪ 미끼 자리 셋이 소스에 꼭 한 번씩
+  ✓ ①0 [전제] 답 없음 → 숨긴 채 다시 밂 줄 1 · 나간 줄 모름  {"retry":1,"pend":[{"id":701,"tries":1,"unsure":true}],"st":{"sent":1,"sentOk":0,"sentFail":1,"bounced":0,"retried":0,"dup":0,"bodyOut":0,"crossArrive":0,"crossReturn":0,"walkWait":0,"walkWaitLate":0,"soldOk":0,"deposited":0,"lost":0},"trace":["hide"],"cState":"xzone","cDone":false,"hidden":true,"inMap":true}
+  ✓ ★① 켬 — 다시 민 글 연결 안 섬 → 숨긴 채 · 다시 밂 줄 1 · 되돌림 0(앞 글이 닿았을 수 있다)  {"retry":1,"pend":[{"id":701,"tries":2,"unsure":true}],"st":{"sent":2,"sentOk":0,"sentFail":2,"bounced":0,"retried":1,"dup":0,"bodyOut":0,"crossArrive":0,"crossReturn":0,"walkWait":0,"walkWaitLate":0,"soldOk":0,"deposited":0,"lost":0},"trace":["hide"],"cState":"xzone","cDone":false,"hidden":true,"inMap":true}
+  ✓ ②1 메타 곁 칸에 나간 줄(모름)이 실린다  {"p":1,"unsure":[true]}
+  ✓ ②2 다시 뜬 판 — 다시 밂 줄 1 · 나간 줄(모름) 되돌림  {"retry":1,"pend":[{"id":702,"tries":1,"unsure":true}],"st":{"sent":0,"sentOk":0,"sentFail":0,"bounced":0,"retried":0,"dup":0,"bodyOut":0,"crossArrive":0,"crossReturn":0,"walkWait":0,"walkWaitLate":0,"soldOk":0,"deposited":0,"lost":0},"trace":[],"cState":"xzone","cDone":false,"hidden":false,"inMap":false}
+  ✓ ★②3 다음 경계 다시 밂 → dup OK → 줄 0 · 되돌림 0 · 캐러밴은 저쪽 몫(xzone) — 둘 0 · 사라짐 0  {"retry":0,"pend":[],"st":{"sent":1,"sentOk":1,"sentFail":0,"bounced":0,"retried":1,"dup":0,"bodyOut":0,"crossArrive":1,"crossReturn":0,"walkWait":0,"walkWaitLate":0,"soldOk":0,"deposited":0,"lost":0},"trace":["out"],"cState":"xzone","cDone":false,"hidden":false,"inMap":false}
+  ✓ ★③ 다시 뜬 뒤 받는 존 꺼짐 → 숨긴 채 · 다음 경계 OK → 받음(사라짐 0 · 되돌림 0)  {"mid":1,"after":{"sent":2,"sentOk":1,"sentFail":1,"bounced":0,"retried":2,"dup":0,"bodyOut":0,"crossArrive":1,"crossReturn":0,"walkWait":0,"walkWaitLate":0,"soldOk":0,"deposited":0,"lost":0}}
+  ✓ ④ 받은 쪽 — 받은 열쇠 · 받은 기록 줄이 실리고 되돌아온다(같은 기록을 다시 받으면 dup · 기록 줄 하나)  {"a1":{"ok":true},"packed":{"s":1,"q":1},"pendAfter":1,"a2":{"ok":true,"dup":true}}
+  ✓ ★⑤ 표 — 다시 밀기 전에 'return' 이 먼저 닿아도 귀환 짐이 표에 붙고 다시 민 답(dup)이 안 덮는다 → econ 이 끝내면 입금 1 · 잃음 0  {"a1":{"ok":true},"t1":true,"retry1":1,"t2":true,"sentOk":1,"deposited":1,"lost":0,"trace":["home"]}
+  ✓ ①증인 끔(T1292 만) — 다시 민 글 연결 안 섬에 드러내고 되돌린다(앞 글이 닿았으면 짐 둘)  {"retry":0,"pend":null,"st":{"sent":2,"sentOk":0,"sentFail":2,"bounced":1,"retried":1,"dup":0,"bodyOut":0,"crossArrive":0,"crossReturn":0,"walkWait":0,"walkWaitLate":0,"soldOk":0,"deposited":0,"lost":0},"trace":["hide","unhide","bounce"],"cState":"inbound","cDone":false,"hidden":false,"inMap":true}
+  ✓ ②증인 끔 — 메타 칸 0 · 다시 뜬 판 다시 밂 줄 0 · 그 기록은 안 민다(캐러밴 xzone 에 묶임 = 사라짐)  {"retry":0,"pend":null,"st":{"sent":0,"sentOk":0,"sentFail":0,"bounced":0,"retried":0,"dup":0,"bodyOut":0,"crossArrive":0,"crossReturn":0,"walkWait":0,"walkWaitLate":0,"soldOk":0,"deposited":0,"lost":0},"trace":[],"cState":"xzone","cDone":false,"hidden":false,"inMap":false}
+  ✓ 미끼 ㉠ 되돌리기에서 다시 밂 줄을 뺀 사본 → ② 빨강(그 기록을 안 민다 · 사라짐)  {"sent":0,"sentOk":0,"sentFail":0,"bounced":0,"retried":0,"dup":0,"bodyOut":0,"crossArrive":0,"crossReturn":0,"walkWait":0,"walkWaitLate":0,"soldOk":0,"deposited":0,"lost":0}
+  ✓ 미끼 ㉡ 모름 규칙을 뺀 사본 → ① 빨강(드러내고 되돌림)  {"sent":2,"sentOk":0,"sentFail":2,"bounced":1,"retried":1,"dup":0,"bodyOut":0,"crossArrive":0,"crossReturn":0,"walkWait":0,"walkWaitLate":0,"soldOk":0,"deposited":0,"lost":0}
+  ✓ 미끼 ㉢ 받는 순간 표 칸 세우기를 뺀 사본 → ⑤ 빨강(다시 민 답이 짐 없는 칸을 세워 잃음 1 — 판 R3 그 셈)  {"a1":{"ok":true},"t1":null,"retry1":1,"t2":false,"sentOk":1,"deposited":0,"lost":1,"trace":["gone"]}
+
+=== PASS 14 / FAIL 0 ===

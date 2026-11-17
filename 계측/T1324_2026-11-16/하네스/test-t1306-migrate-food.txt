@@ -1,0 +1,32 @@
+=== T1306 이주 문(`T1306_MIGRATE_FOOD` · T1297 켬 안) — 소문으로 아는 받는 마을 곳간 ===
+(node:7854) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7871) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7888) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7905) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓ 손잡이 — T1297 켬 안에서 `'1'` 만 켬
+  ✓ ① 하루 한 줄(오늘 날 · 곳간 식량 환산 · 사람 수) · 같은 날 두 번 적으면 덮는다 · 모든 마을  {"len":1,"d":0,"day":0,"fe":360,"feNow":360,"n":8,"nNow":8,"all":true}
+  ✓ ② 소식이 닿는 날 수(T7 도달 시각표) = 1날 — 오늘 줄뿐이면 아직 모른다  {"lag":1}
+  ✓ ③ 들은 곳간이 모두 넉넉 → 행복이 가장 높은 곳(0.7)  {"got":"농촌5","want":"농촌5"}
+  ✓ ★④ 들은 곳간이 얇으면 건너뛴다 — 지금 곳간은 넉넉해도(떠나는 사람은 모른다) → 다음 0.6  {"got":"어촌11","want":"어촌11","feNow":360,"need":270}
+  ✓ ★⑤ 지금은 비었어도 들은 곳간이 넉넉하면 간다 — 비었다는 소식이 아직 안 닿았다  {"got":"농촌5","want":"농촌5"}
+  ✓ ⑥ 도달 일수보다 새 줄(오늘 · 얇음)은 아직 안 들린다 → 들은 줄(넉넉)로 고른다  {"got":"농촌5"}
+  ✓ ⑦ 겨울 — 날 276 줄을 듣는 날(276 + 1)의 출생 문 날 수 88일치(봄까지 남은 날 · 같은 자) — 60일치 막힘 · 100일치 통과  {"need":88,"w60":false,"w100":true}
+  ✓ ⑧ 소식 없는 마을은 모른다 → 안 간다 · 셈 칸(본 = 모름 + 넉넉 + 얇음)  {"got":"어촌11","st":{"seen":3,"unknown":1,"ok":2,"thin":0}}
+  ✓ ★미끼 — 들은 줄 대신 지금 곳간을 읽는 사본은 ④ 의 얇다는 소식을 놓친다(빨강 · 사본 통과)  {"real":false,"bait":true}
+  ✓ ⑮ T1312 끔(T1306 켬) = T1306 그대로 — (인구 + 6)까지만 먹이는 b 에도 20명이 모두 간다 · 줄 칸은 날 · 곳간 · 사람 수뿐  {"herd":["농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","농촌5"],"keys":"d,fe,n"}
+  ✓ ⑨ 끔(T1306 끔 · T1297 켬) = 종전 줄 — 들은 줄을 안 보고 지금 곳간(3일치)으로 고른다 · 셈 0  {"rich":"농촌5","empty":"어촌11","st":{"seen":0,"ok":0,"thin":0,"unknown":0,"lagSum":0,"rec":0}}
+  ✓ ⑩ T1297 끔이면 이주 문도 꺼진다(`T1306_MIGRATE_FOOD=1` 이어도)  {"on":false,"st":{"seen":0,"ok":0,"thin":0,"unknown":0,"lagSum":0,"rec":0}}
+=== T1312 무리 절(`T1312_HERD` · T1306 켬 안) — 무리 셈 · 들은 행복 · 침상 ===
+  ✓ 손잡이 — T1306 켬 안에서 `'1'` 만 켬
+  ✓ ⑪ 하루 한 줄에 그날 행복 · 침상(min(집 · 지도 침상))도 싣는다  {"keys":"beds,d,fe,h,n","h":0.7,"hNow":0.7,"beds":18,"bedsNow":18}
+  ✓ ★⑫ 무리 — 같은 날 20명: 들은 곳간이 (들은 인구 + 6)까지만 먹이는 b(0.7)엔 앞 6명만 · 나머지 14명은 c(0.6) — 앞서 고른 수를 들은 인구에 더해 셈  {"herd":["농촌5","농촌5","농촌5","농촌5","농촌5","농촌5","어촌11","어촌11","어촌11","어촌11","어촌11","어촌11","어촌11","어촌11","어촌11","어촌11","어촌11","어촌11","어촌11","어촌11"],"st":{"picks":20,"herdPicks":18,"herdCut":14}}
+  ✓ ⑬ 들은 침상이 찼으면(오늘은 비어도 — 모른다) 안 간다 → c  {"got":"어촌11","bedsNow":10}
+  ✓ ★⑭ 행복은 들은 줄 — b 오늘 0.9 · 들은 0.1 → 안 감(c) / 오늘 0.05 · 들은 0.95 → 감(b)  {"low":"어촌11","high":"농촌5"}
+  ✓ ★미끼 ⓐ — 앞서 고른 수를 안 더한 사본은 20명을 모두 b 로 보낸다(빨강 · 진짜 6명)  {"real":6,"bait":20}
+  ✓ ★미끼 ⓑ — 행복을 오늘 값으로 읽는 사본은 들은 행복 0.95 인 b 를 오늘 0.05 로 버린다(빨강)  {"real":true,"bait":false}
+
+=== T1306 이주 문 + T1312 무리 절: 통과 20 · 실패 0 ===

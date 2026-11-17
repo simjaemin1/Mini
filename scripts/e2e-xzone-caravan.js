@@ -77,6 +77,7 @@ function boot(name, file, env) {
   p.stdout.on('data', (b) => { p._out += String(b); }); p.stderr.on('data', (b) => { p._err += String(b); });
   procs.push(p); return p;
 }
+function procLogNames() { const k = {}; return procs.map((p) => { k[p._name] = (k[p._name] || 0) + 1; return [p, k[p._name] > 1 ? `${p._name}-${k[p._name]}.log` : `${p._name}.log`]; }); }   // ★[T1324] 다시 띄운 존 로그가 앞 판을 안 덮는다
 function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
 process.on('exit', killAll);
 const portFree = (port) => new Promise((res) => { const s = net.createServer(); s.once('error', () => res(false)); s.once('listening', () => s.close(() => res(true))); s.listen(port, '127.0.0.1'); });
@@ -89,6 +90,12 @@ async function post(z, body) {
 const abs = (z, pt) => pt ? { x: pt.x + ZONES[z].worldOffsetX, y: pt.y + (ZONES[z].worldOffsetY || 0) } : null;
 const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
 
+//   ★[T1324 · 10판 재현 13판] 판이 밖에서 끊겨도(SIGTERM · SIGINT — 러너 시한 · 감시 만료) 존 로그를 남긴다 — 13판은 ⓗ4 · ⓗ5 빨강 뒤 끊겨 다시 뜬 닛폰 로그가 없었다
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
+  try { const OUT = process.env.XZ_SHOTS || '/tmp/e2e-xzone-caravan'; fs.mkdirSync(OUT, { recursive: true });
+    for (const [p, f] of procLogNames()) fs.writeFileSync(path.join(OUT, f), p._out + '\n--- stderr ---\n' + p._err + `\n--- ${sig} ---`); } catch (e) {}
+  killAll(); process.exit(sig === 'SIGTERM' ? 143 : 130);
+});
 (async () => {
   console.log('\n=== 캐러밴이 존을 넘는다 — 두 존 e2e (T533) ===');
   for (const port of [CPORT].concat(ZIDS.map((z) => ZONES[z].port))) if (!await portFree(port)) { ok(false, `포트 ${port} 가 비어 있다(남의 서버를 잴 수 없다)`); process.exit(1); }
@@ -283,9 +290,13 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
   //     두 종류 합)로만 봤고 셋째를 못 봤다 — 하루 마감이 조각으로 여러 프레임에 걸치면 `/perf` 가 그 사이에 닿는다.
   const inZ = (P, home) => (P.caravans || []).filter((x) => x.home && x.home.zone === home).length;
   const slotOf = (P) => { const L = P.live || {}; return (L.pendArrive | 0) + (L.inboxArrive | 0) + (L.outReturn | 0); };
-  let E = null;
+  let E = null, eNull = 0;
   for (let i = 0; i < 20; i++) {
-    H = await perf('hanbando'); N = await perf('nippon');
+    //   ★[T1324 · T1321 회부 16 · 10판 재현 12판 하네스 멈춤] `/perf` 는 바쁜 존이 10초 안에 못 답하면 null 이다 — 종전은 그 표본을 그대로 읽어
+    //     TypeError 로 판이 통째 멈췄다. null 표본은 세고 건너뛰어 다시 읽는다(H · N 은 마지막으로 둘 다 읽은 표본 · 셈 · 단언 무변).
+    const h0 = await perf('hanbando'), n0 = await perf('nippon');
+    if (!h0 || !n0) { eNull++; await sleep(300); continue; }
+    H = h0; N = n0;
     const inN = inZ(N, 'hanbando'), inH = inZ(H, 'nippon');
     E = { inN, inH, LN: N.live || {}, LH: H.live || {},
       e1: H.st.crossArrive === N.core.arriveIn, e2: N.core.arriveIn === N.core.returnOut + inN + slotOf(N),
@@ -300,12 +311,14 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     if (E.e1 && E.e2 && E.e3 && E.e4) break;
     await sleep(300);
   }
+  if (!E) E = { inN: '?', inH: '?', LN: {}, LH: {}, e1: false, e2: false, e3: false, e4: false };   // ★[T1324] 스무 번 다 null — ⓔ1 ~ ⓔ4 는 빨강으로 선다(멈추지 않는다)
   //   ★[T598 추신 ①] 확인 표 — 판 끝에 `/perf` 를 촘촘히(60번 · 100ms) 보며 종전 셈(`st.pend`)과 새 셈(세 칸)이 각각 몇 번 어긋나는지 ·
   //     종전 셈이 어긋난 순간 기록이 어느 칸에 있었는지 센다(값은 안 고친다 · 자의 셈만).
-  const PR = { n: 0, oldBad: 0, newBad: 0, inbox: 0, out: 0, pendLate: 0 };
+  const PR = { n: 0, oldBad: 0, newBad: 0, inbox: 0, out: 0, pendLate: 0, nul: 0 };
   for (let i = 0; i < 60; i++) {
     const h = await perf('hanbando'), nn = await perf('nippon');
     for (const [P, home] of [[nn, 'hanbando'], [h, 'nippon']]) {
+      if (!P) { PR.nul++; continue; }   // ★[T1324 · T1321 회부 16] null 표본(바쁜 존 · 10초 시한)은 세고 건너뛴다(표만 · 단언 없음)
       PR.n++;
       const inC = inZ(P, home), L = P.live || {};
       const oldOk = P.core.arriveIn === P.core.returnOut + inC + P.core.pend, newOk = P.core.arriveIn === P.core.returnOut + inC + slotOf(P);
@@ -326,8 +339,18 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
   ok(E.e2, "ⓔ2 ★닛폰이 받은 'arrive' = 돌려보낸 'return' + 지금 닛폰에 있는 것", `${N.core.arriveIn} = ${N.core.returnOut} + 이동 중(캐러밴 ${E.inN} · 줄 ${E.LN.pendArrive | 0} · 인박스 ${E.LN.inboxArrive | 0} · 셀 귀환 ${E.LN.outReturn | 0})`);
   ok(E.e3, BODY ? "ⓔ3 인과 순서: 앞서 확인된 닛폰 인수응답 ≤ 한반도 수신 ≤ 뒤에 읽은 닛폰 송신" : "ⓔ3 닛폰 넘김 = 한반도 수신", BODY ? `${N.st.crossArrive} ≤ ${E.hReceive} ≤ ${E.nAfter}` : `${N.st.crossArrive} = ${H.core.arriveIn}`);
   ok(E.e4, "ⓔ4 한반도가 받은 'arrive' = 돌려보낸 'return' + 지금 한반도에 있는 것", `${H.core.arriveIn} = ${H.core.returnOut} + 이동 중(캐러밴 ${E.inH} · 줄 ${E.LH.pendArrive | 0} · 인박스 ${E.LH.inboxArrive | 0} · 셀 귀환 ${E.LH.outReturn | 0})`);
-  console.log(`  · [표 · T598 추신] 판 끝 관측 ${PR.n}번(두 존 × 60) — 종전 셈(st.pend) 어긋남 ${PR.oldBad} · 새 셈(세 칸) 어긋남 ${PR.newBad} · 종전 어긋남 때 기록이 인박스에 ${PR.inbox} · 셀 귀환(out)에 ${PR.out} · 줄 값이 늦음(st.pend ≠ 지금 줄) ${PR.pendLate}`);
-  ok(H.st.sentFail === 0 && N.st.sentFail === 0 && H.st.bounced === 0 && N.st.bounced === 0, 'ⓔ5 문이 다 받았다(되돌림 0 · 못 보냄 0)', `한반도 ${H.st.sentOk}/${H.st.sent} · 닛폰 ${N.st.sentOk}/${N.st.sent}`);
+  console.log(`  · [표 · T598 추신] 판 끝 관측 ${PR.n}번(두 존 × 60) — 종전 셈(st.pend) 어긋남 ${PR.oldBad} · 새 셈(세 칸) 어긋남 ${PR.newBad} · 종전 어긋남 때 기록이 인박스에 ${PR.inbox} · 셀 귀환(out)에 ${PR.out} · 줄 값이 늦음(st.pend ≠ 지금 줄) ${PR.pendLate} · null 표본(건너뜀) ${PR.nul} · ⓔ 셈 null 표본(다시 읽음) ${eNull}`);
+  //   ★★[T1324 · land1077 게이트 흔들림 — 8판 중 빨강 둘이 이 줄] ⓔ5 는 종전 "못 보냄 0"(`sentFail` 0)을 요구했다 — 실시간 판에서 받는 존이 5초 넘게 바쁘면
+  //     "답 없음"(시한)이 서고(T1292 §: 판마다 4 ~ 19번) 숨김 켬(T1292) 세계에선 그 글이 다음 경계에 같은 열쇠로 다시 밀려 `dup`/OK 로 끝난다 — 실패가 아니다.
+  //     새 단언 = **되돌림 0 · 잃음 0 · 판 끝 다시 밂 줄 0**(답 없음이 다 끝났다 — 몇 초 기다려 본다) · **둘 0** — 받는 쪽 dup ≤ 보낸 쪽 다시 밂(dup 은 같은 열쇠를 두 번 민 글에서만 · ⓗ 재기동 앞이라 다시 뜬 판 밂 없음) ·
+  //     넘김 = 받음 인과는 ⓔ1 ~ ⓔ4 · 몸 보존은 ⓚ.
+  //     못 보냄 · 다시 밂 · dup 은 표(종전 단언이었으면 몇 번 빨갰나도 같이 — 10판 재현 셈).
+  let RQ = null;
+  for (let i = 0; i < 30; i++) { const h = await perf('hanbando'), n = await perf('nippon'); if (h && n) { RQ = { h: h.retry | 0, n: n.retry | 0, H: h, N: n }; if (!RQ.h && !RQ.n) break; } await sleep(500); }
+  const H5 = (RQ && RQ.H) || H, N5 = (RQ && RQ.N) || N;
+  console.log(`  · [표 · T1324 ⓔ5] 답 없음(못 보냄) 한반도 ${H5.st.sentFail} · 닛폰 ${N5.st.sentFail} · 다시 밂 ${H5.st.retried} · ${N5.st.retried} · 받는 쪽 dup 한반도 ${H5.st.dup} · 닛폰 ${N5.st.dup} · 되돌림 ${H5.st.bounced} · ${N5.st.bounced} · 잃음 ${H5.st.lost | 0} · ${N5.st.lost | 0} · 판 끝 다시 밂 줄 ${RQ ? RQ.h : '?'} · ${RQ ? RQ.n : '?'} · 종전 단언(못 보냄 0 · 그 자리 그 값 H · N)이었으면 ${(H.st.sentFail === 0 && N.st.sentFail === 0 && H.st.bounced === 0 && N.st.bounced === 0) ? '초록' : '빨강'}(못 보냄 ${H.st.sentFail} · ${N.st.sentFail})`);
+  ok(H5.st.bounced === 0 && N5.st.bounced === 0 && (H5.st.lost | 0) === 0 && (N5.st.lost | 0) === 0 && !!RQ && RQ.h === 0 && RQ.n === 0 && N5.st.dup <= H5.st.retried && H5.st.dup <= N5.st.retried,
+    'ⓔ5 문이 다 받았다(되돌림 0 · 잃음 0 · 답 없음은 같은 열쇠 다시 밂으로 끝 — 판 끝 다시 밂 줄 0 · 둘 0 — 받는 쪽 dup ≤ 보낸 쪽 다시 밂)', `한반도 ${H5.st.sentOk}/${H5.st.sent} · 닛폰 ${N5.st.sentOk}/${N5.st.sent} · dup 닛폰 ${N5.st.dup} ≤ 한반도 다시 밂 ${H5.st.retried} · 한반도 ${H5.st.dup} ≤ 닛폰 ${N5.st.retried}`);
   console.log(`  · [표] 한반도 넘김 ${H.st.crossArrive} · 돌려보냄 ${H.st.crossReturn}(경계 교역 성사 ${H.st.soldOk}) · 곳간 ${H.st.deposited} · 잃음 ${H.st.lost} · 몸 넘김 ${H.st.bodyOut} · 받은 몸 ${H.st.bodyIn} · econ 날 ${H.day}`);
   console.log(`  · [표 · T578 추신] 경계 칸까지 걸어간 뒤 넘김 — 한반도 ${H.st.walkWait | 0}(하루 넘겨 그 자리 ${H.st.walkWaitLate | 0}) · 닛폰 ${N.st.walkWait | 0}(${N.st.walkWaitLate | 0})`);
   console.log(`  · [표] 닛폰 넘김 ${N.st.crossArrive} · 돌려보냄 ${N.st.crossReturn}(경계 교역 성사 ${N.st.soldOk}) · 곳간 ${N.st.deposited} · 잃음 ${N.st.lost} · 몸 넘김 ${N.st.bodyOut} · 받은 몸 ${N.st.bodyIn} · econ 날 ${N.day}`);
@@ -402,15 +425,23 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
       const lost = m728 ? +(m728[2] || 0) : null;
       //   한반도 곳간에 들 때까지(켬) · 끔은 걸음표가 다시 서고 그 캐러밴 귀환 날을 넘긴 뒤 하루씩 넷 더 본다
       let home = null, N2 = null, H2 = null, until = Date.now() + WAIT_S * 1000, ready = null;
+      //   ★[T1324 · land1077 한 판 ⓗ4 · ⓗ5 빨강] 흔적은 존마다 400 줄 고리(`_xzTrace`)다 — 종전은 마지막 표본 한 장의 흔적만 읽어, 기다림이 길면
+      //     닛폰 'back' 이 고리에서 밀려나거나(그 사이 흔적 400 넘음) 마지막 표본이 null(바쁜 존 · 10초 시한)이면 일어난 정산을 못 봤다.
+      //     ⇒ 표본마다 앞 표본과 겹친 꼬리 뒤만 덧붙여 모은다(같은 내용 두 줄도 둘로 — 둘 셈(ⓗ4 `backs.length === 1`)을 감추지 않는다) · null 표본은 건너뛴다.
+      const TRZ = { hanbando: [], nippon: [] }, prevT = { hanbando: null, nippon: null }, hNul = { h: 0, n: 0 }; let readyDay = null;
+      const takeTr = (z, P) => { if (!P) return; const T = (P.trace || []).map((t) => JSON.stringify(t)), Pv = prevT[z]; let add = T.length;
+        if (Pv) for (let sh = 0; sh <= Pv.length; sh++) { const m = Pv.length - sh; if (m > T.length) continue; let eq = true; for (let i = 0; i < m && eq; i++) if (Pv[sh + i] !== T[i]) eq = false; if (eq) { add = T.length - m; break; } }
+        for (let i = T.length - add; i < T.length; i++) TRZ[z].push(P.trace[i]); prevT[z] = T; };
       while (Date.now() < until) {
-        H2 = await perf('hanbando'); N2 = await perf('nippon');
-        if (H2) home = (H2.trace || []).find((t) => t.k === 'home' && t.id === hid) || null;
+        const h2 = await perf('hanbando'), n2 = await perf('nippon'); if (h2) H2 = h2; if (n2) N2 = n2; takeTr('hanbando', h2); takeTr('nippon', n2);
+        if (!h2) hNul.h++; if (!n2) hNul.n++;
+        home = TRZ.hanbando.find((t) => t.k === 'home' && t.id === hid) || null;
         if (home) break;
-        if (N2 && N2.ready && N2.ready.includes('hanbando') && ready == null) { ready = Date.now(); if(!BODY)until = Math.min(until, ready + Math.max(4, (tgt.xback || 0) - (tgt.depart || 0) + 4) * dm + 20000); }
+        if (N2 && N2.ready && N2.ready.includes('hanbando') && ready == null) { ready = Date.now(); readyDay = N2.day; if(!BODY)until = Math.min(until, ready + Math.max(4, (tgt.xback || 0) - (tgt.depart || 0) + 4) * dm + 20000); }
         await sleep(500);
       }
-      const backs = N2 ? (N2.trace || []).filter((t) => t.k === 'back' && t.id === hid) : [];
-      const homes = H2 ? (H2.trace || []).filter((t) => t.k === 'home' && t.id === hid) : [];
+      const backs = TRZ.nippon.filter((t) => t.k === 'back' && t.id === hid);
+      const homes = TRZ.hanbando.filter((t) => t.k === 'home' && t.id === hid);
       const hc = H2 ? (H2.caravans || []).find((x) => x.id === hid) : null;
       const sent = tgt.amt || 0, retAmt = backs[0] ? (backs[0].amt || 0) : 0;
       const made = Math.max(0, homes.length - 1) * retAmt + Math.max(0, backs.length - 1) * retAmt;
@@ -418,6 +449,16 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
       console.log(`  · [표 · T1030 ⓗ] | 판 | 죽인 창 | 넘긴 짐 | 닛폰 다시 뜸: 이은 캐러밴 · 못 이은 | 닛폰 'return'(판 짐 · 돌려보낸 짐) | 한반도 곳간 | 한반도 그 캐러밴 | 생성 | 소멸 |`);
       console.log(`  · [표 · T1030 ⓗ] | ${ON ? '켬' : '끔'} | ${ON ? '장 중(정산 전)' : '판 뒤(귀환 구간)'} | ${tgt.res}×${sent.toFixed(2)} | ${m728 ? `${m728[1]} · ${lost}` : '-'} | ${backs.length ? backs.map((b) => `${b.sold ? `${b.sold.res}×${b.sold.amt}` : '-'} · ${b.res}×${(b.amt || 0).toFixed(2)}`).join(' / ') : '없음'} | ${homes.length ? homes.map((h) => `${h.res}×${(h.amt || 0).toFixed(2)}`).join(' / ') : '안 듦'} | ${hc ? hc.state : '없음(끝남)'} | ${made.toFixed(2)} | ${goneAmt == null ? '?' : (+goneAmt).toFixed(2)} |`);
       console.log(`  · [표 · T1030 ⓗ] 죽인 뒤 닛폰 다시 뜨기 ${((Date.now() - tKill) / 1000).toFixed(0)}s 안 · 걸음표 다시 ${ready ? `${((ready - tKill) / 1000).toFixed(0)}s` : '안 섬'}`);
+      //   ★[T1324 · 10판 재현 13판 ⓗ4 · ⓗ5 빨강(land1077 한 판과 같은 꼴) — 다시 뜬 닛폰이 600초 동안 그 캐러밴을 안 돌려보냈다] 안 들었으면 그 판의
+      //     닛폰 날(걸음표 선 때 → 끝) · 그 캐러밴 줄 · 몸 줄 · 다시 밂 줄 · 다시 뜬 닛폰 로그의 예외 · 마감 줄을 남긴다(판정 무변)
+      if (!(backs.length === 1 && homes.length === 1)) {
+        const nc = N2 ? (N2.caravans || []).find((x) => x.id === tgt.id) : null, nb = N2 ? (N2.bodies || []).find((b) => b.key === tgt.id) : null;
+        console.log(`  · [ⓗ 진단] 닛폰 날 죽일 때 ${preN ? preN.day : '?'} · 걸음표 선 때 ${readyDay == null ? '-' : readyDay} · 끝 ${N2 ? N2.day : '?'} · null 표본 한반도 ${hNul.h} · 닛폰 ${hNul.n} · 닛폰 다시 밂 줄 ${N2 ? N2.retry : '?'} · 넘김 줄 ${N2 && N2.t1321 ? (N2.t1321.pend || []).length : '-'}`);
+        console.log(`  · [ⓗ 진단] 닛폰 그 캐러밴 ${JSON.stringify(nc)} · 몸 ${JSON.stringify(nb ? { phase: nb.phase, prog: nb.prog, len: nb.len, x: nb.x, y: nb.y, end: nb.end, hidden: nb.hidden, handing: nb.handing, pending: nb.pending } : null)} · 한반도 그 캐러밴 ${JSON.stringify(hc)}`);
+        const L = String(p2._out || '').split('\n').filter((l) => /econ 틱 실패|TypeError|ReferenceError|Cannot read|is not a function|\[T728\]|\[T1321\]|\[T1034\]/.test(l));
+        console.log(`  · [ⓗ 진단] 다시 뜬 닛폰 로그 — 걸린 줄 ${L.length}(econ 틱 실패 ${L.filter((l) => /econ 틱 실패/.test(l)).length})`);
+        for (const l of L.slice(0, 6).concat(L.length > 12 ? ['…'] : [], L.slice(Math.max(6, L.length - 6)))) console.log('  · [ⓗ 진단 · 닛폰 로그] ' + l.slice(0, 240));
+      }
       if (ON || BODY) {
         ok(lost === 0, 'ⓗ3 ★켬 — 다시 뜬 닛폰이 이웃 존 캐러밴을 잇는다(메타 행 · 못 이은 0)', m728 ? m728[0].slice(0, 120) : 'T728 줄 없음');
         ok(backs.length === 1 && backs[0].sold && backs[0].sold.res === tgt.res && Math.abs(backs[0].sold.amt - sent) < 0.01, "ⓗ4 ★켬 — 다시 뜬 닛폰이 한 번 정산해 'return' 하나(판 짐 = 넘긴 짐)", backs.map((b) => JSON.stringify(b.sold)).join(' · ') || '없음');
@@ -440,6 +481,12 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     const TR = { hanbando: [], nippon: [] }, seenTr = { hanbando: new Set(), nippon: new Set() };
     const grab = async (z) => { const P = await perf(z); if (!P) return null; for (const t of (P.trace || [])) { const k = JSON.stringify(t); if (seenTr[z].has(k)) continue; seenTr[z].add(k); TR[z].push(t); } return P; };
     // ① 닛폰을 죽인다(연결 안 섬 — 한반도가 미는 글은 닿지 않는다)
+    //   ★[T1324 · land1077 한 판 · 10판 재현 4판 ⓗ'0 빨강 — 죽인 뒤 2분 안에 닛폰으로 민 'arrive' 가 하나도 없었다] 전제는 "죽인 뒤 넘는 캐러밴"이 있어야 선다 —
+    //     죽이기 전에 한반도에 닛폰으로 가는(아직 안 넘은) 캐러밴이 경계 칸에 사흘 안에 닿는 때를 기다린다(3분 상한 · 못 찾으면 종전대로 바로 죽인다 · 단언 무변) —
+    //     ⓗ 가 닛폰을 다시 띄운 직후(4 · 5판 — 다시 뜬 뒤 28 · 43초)엔 그 사이 끊긴 교역 줄이 아직 안 차 있다(스텁 · 새 출발 · 경계까지 며칠)
+    { const tW = Date.now(); let near = null;
+      while (Date.now() - tW < Math.max(180000, 60 * dm)) { const P = await perf('hanbando'); if (P && P.caravans) { near = P.caravans.find((c) => c.toZone === 'nippon' && c.state !== 'xzone' && c.cross != null && c.cross >= P.day && c.cross - P.day <= 3) || null; if (near) break; } await sleep(500); }
+      console.log(`  · [ⓗ' 준비] 죽이기 전 닛폰으로 넘을 한반도 캐러밴 ${near ? `#${near.id}(넘는 날 ${near.cross})` : '못 찾음(종전대로 바로)'} · 기다림 ${((Date.now() - tW) / 1000).toFixed(1)}s`); }
     const np = live('nippon'); np._dead = true; np.kill('SIGKILL');
     const tK = Date.now();
     // ② 한반도 다시 밂 줄 · 메타 행에 그 줄(켬) — 닛폰에 한 번 이상 민(연결 안 섬) 'arrive' 가 줄에 선 때(끔이면 줄 · 메타 칸이 없다 — 다시 밂 줄 수 · 로그 줄을 본다)
@@ -447,7 +494,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     //   대상은 죽인 뒤 한반도 DB 메타 행(마지막 저장 그대로 = 다시 뜬 판이 되돌릴 그 줄)에서 읽는다
     let held = null, P0 = null;
     const metaArr = (M) => ((M && M.t1321 && M.t1321.p) || []).filter((q) => q && q.r && q.r.kind === 'arrive' && q.r.toZone === 'nippon');
-    while (Date.now() - tK < Math.max(60000, 20 * dm)) {
+    while (Date.now() - tK < Math.max(120000, 40 * dm)) {   // ★[T1324] 60초 → 120초(land1077 한 판 ⓗ'0 빨강 — 닛폰이 꺼진 뒤 넘는 캐러밴이 늦게 닿는 판)
       P0 = await grab('hanbando');
       const rq = P0 ? (P0.retry || 0) : 0;
       if (KEEP) {
@@ -477,7 +524,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
       // ③ 기다림 — 대상마다 닛폰 받음 · 한반도 되돌림이 날 때까지(또는 걸음표가 선 뒤 하루 여덟)
       //   받음 = 닛폰 받은 열쇠(`hanbando:arrive:<id>` — 닛폰 DB 메타 행 · 켬) 또는 닛폰 몸 들어옴 줄('in') · 되돌림 = 다시 뜬 한반도 줄('bounce')
       const metaN = () => { let db = null; try { db = new DatabaseSync(`${DDIR}/w-nippon.db`, { readOnly: true }); const r = db.prepare('SELECT data FROM world_meta WHERE zone = ?').get('nippon'); const M = r ? JSON.parse(r.data) : null; return M && M.t1321 ? new Set(M.t1321.s || []) : null; } catch (e) { return null; } finally { try { db && db.close(); } catch (e) {} } };
-      const until = Date.now() + WAIT_S * 1000; let ready = null, H2 = null, N2 = null, seenN = null;
+      const until = Date.now() + WAIT_S * 1000; let ready = null, H2 = null, N2 = null, seenN = null, exitWhy = 'WAIT_S', late = null;
       const fate = () => targets.map((id) => {
         const inTr = TR.nippon.filter((t) => t.k === 'in' && !t.back && t.key === 'xz:hanbando:' + id).length;
         const seen = seenN ? (seenN.has('hanbando:arrive:' + id) ? 1 : 0) : null;
@@ -490,9 +537,23 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
         if (KEEP) seenN = metaN() || seenN;
         if (ready == null && H2 && N2 && (H2.ready || []).includes('nippon') && (N2.ready || []).includes('hanbando')) ready = Date.now();
         const F = fate();
-        if (F.length && F.every((f) => f.n >= 1) && (!KEEP || (H2 && H2.t1321 && !(H2.t1321.pend || []).length))) break;
-        if (ready != null && Date.now() - ready > 8 * dm + 15000) break;
+        if (F.length && F.every((f) => f.n >= 1) && (!KEEP || (H2 && H2.t1321 && !(H2.t1321.pend || []).length))) { exitWhy = 'done'; break; }
+        if (ready != null && Date.now() - ready > 8 * dm + 15000) {
+          if (!KEEP) { exitWhy = 'ready+8날'; break; }
+          //   ★[T1324 · 10판 재현 3판 ⓗ'5 빨강 — 대상은 다 받았는데 한반도 넘김 줄 넷이 걸음표 + 8날 + 15초 뒤에도 남음] 켬은 남은 줄이 비워질 때까지(WAIT_S 상한) 더 본다 —
+          //     단언(ⓗ'5 남은 줄 0)은 그대로 · 종전 자르기 자리에서 남은 줄이 있었으면 그 판 진단을 찍는다(종전 자르기였으면 빨강 — 표)
+          if (!late) { late = { at: Date.now(), pend: (H2 && H2.t1321 && (H2.t1321.pend || []).length) | 0 }; if (late.pend) diag('종전 자르기(걸음표 + 8날 + 15초)'); }
+        }
         await sleep(500);
+      }
+      if (late && late.pend) console.log(`  · [표 · T1324 ⓗ'] 종전 자르기(걸음표 + 8날 + 15초) 때 남은 줄 ${late.pend} — 종전이면 ⓗ'5 빨강 · 그 뒤 ${((Date.now() - late.at) / 1000).toFixed(0)}s 더 봄(${exitWhy})`);
+      //   ★[T1324] 끝에도 남은 줄이 있으면 그 판의 한반도 넘김 셈 · 다시 밂 · 로그 줄을 남긴다(판정 무변)
+      if (KEEP && H2 && H2.t1321 && (H2.t1321.pend || []).length) diag('끝');
+      function diag(when) {
+        console.log(`  · [ⓗ' 진단 · ${when}] 나감 ${exitWhy} · 걸음표 다시 ${ready ? ((ready - tK) / 1000).toFixed(0) + 's' : '안 섬'} · 그 뒤 ${ready ? ((Date.now() - ready) / 1000).toFixed(0) + 's' : '-'} · 한반도 st ${JSON.stringify(H2.st)} · 다시 밂 줄 ${H2.retry} · 날 ${H2.day} · 남은 줄 ${JSON.stringify(H2.t1321.pend).slice(0, 300)}`);
+        console.log(`  · [ⓗ' 진단] 한반도 t1321 ${JSON.stringify(Object.assign({}, H2.t1321, { pend: undefined, trace: undefined })).slice(0, 600)}`);
+        const L = String(pH._out || '').split('\n').filter((l) => /T1321|T533\] .*(넘김|다시|되돌|답)|xzone|걸음표/.test(l)).slice(-25);
+        for (const l of L) console.log('  · [ⓗ\' 진단 · 한반도 로그] ' + l.slice(0, 240));
       }
       const F = fate();
       const dupN = N2 && N2.st ? N2.st.dup : null;
@@ -510,11 +571,15 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
   }
 
   // ── ⓕ 오류 ─────────────────────────────────────────────────────────────────
-  const zerr = procs.filter((p) => ZIDS.includes(p._name)).map((p) => [p._name, p._out.split('\n').filter((l) => /(^|\s)(TypeError|ReferenceError)\b|Cannot read|is not a function/.test(l)).length + p._err.split('\n').filter((l) => /^\s+at\s+\S/.test(l)).length]);
+  //   ★[T1324 · 10판 재현 13판] 존이 잡아 적는 틱 예외(`villages.js` — `… 틱 실패:` · `마을 econ 틱 실패 (다음 경계에 재시도):` 하루 마감을 통째로 버린다)는
+  //     stderr 에 메시지만 남아(쌓임 줄 없음) 종전 셈이 못 봤다 — 두 흐름 다 그 줄도 센다(기본 판 14 ~ 17 · 짐 판 · E1 로그에 0 줄)
+  const tickFail = (s) => s.split('\n').filter((l) => /틱 실패/.test(l)).length;
+  const zerr = procs.filter((p) => ZIDS.includes(p._name)).map((p) => [p._name, p._out.split('\n').filter((l) => /(^|\s)(TypeError|ReferenceError)\b|Cannot read|is not a function/.test(l)).length + p._err.split('\n').filter((l) => /^\s+at\s+\S/.test(l)).length + tickFail(p._out) + tickFail(p._err)]);
   ok(zerr.every(([, n]) => n === 0), 'ⓕ 두 존 로그에 예외 0', zerr.map(([z, n]) => `${z} ${n}`).join(' · '));
   const OUT = process.env.XZ_SHOTS || '/tmp/e2e-xzone-caravan';
   fs.mkdirSync(OUT, { recursive: true });
-  for (const p of procs) { try { fs.writeFileSync(path.join(OUT, `${p._name}.log`), p._out + '\n--- stderr ---\n' + p._err); } catch (e) {} }
+  //   ★[T1324 · 10판 재현 13판] 다시 띄운 존은 같은 이름이라 종전엔 뒤 판 로그가 앞 판을 덮었다(ⓗ 에서 다시 뜬 닛폰 로그가 ⓗ' 로그에 덮임) — 둘째부터 `-2` · `-3` 을 붙인다
+  for (const [p, f] of procLogNames()) { try { fs.writeFileSync(path.join(OUT, f), p._out + '\n--- stderr ---\n' + p._err); } catch (e) {} }
   try { fs.writeFileSync(path.join(OUT, 'perf.json'), JSON.stringify({ hanbando: H, nippon: N, pick, nin, back, hin, done, samples: ln }, null, 1)); } catch (e) {}
   killAll(); try { fs.rmSync(DDIR, { recursive: true, force: true }); } catch (e) {}
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
@@ -523,6 +588,6 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
   console.error('하네스 실패:', e);
   //   ★[T1321] 하네스가 멈춘 판에도 존 로그를 남긴다(무엇이 /perf 를 못 읽게 했나 — 존이 죽었나 · 늦었나)
   try { const OUT = process.env.XZ_SHOTS || '/tmp/e2e-xzone-caravan'; fs.mkdirSync(OUT, { recursive: true });
-    for (const p of procs) { fs.writeFileSync(path.join(OUT, `${p._name}.log`), p._out + '\n--- stderr ---\n' + p._err + `\n--- exit ${p.exitCode} ${p.signalCode || ''} ---`); } } catch (e2) {}
+    for (const [p, f] of procLogNames()) { fs.writeFileSync(path.join(OUT, f), p._out + '\n--- stderr ---\n' + p._err + `\n--- exit ${p.exitCode} ${p.signalCode || ''} ---`); } } catch (e2) {}
   killAll(); process.exit(1);
 });

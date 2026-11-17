@@ -1,0 +1,31 @@
+{
+ "tag": "C7",
+ "seed": 7,
+ "DAYS": 30,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "vclock": true,
+ "env": {},
+ "envz": {},
+ "start": "2026-11-15T07:20:47.372Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "restart": null,
+ "bootS": 25,
+ "geoWaitS": 153,
+ "Y": 17840,
+ "end": "2026-11-15T07:26:01.774Z",
+ "wallS": 314,
+ "days": {
+  "hanbando": 31,
+  "nippon": 31
+ },
+ "bars": 189,
+ "H": 1767225694500,
+ "dead": [],
+ "botCross": 9,
+ "botFail": 0,
+ "done": true
+}

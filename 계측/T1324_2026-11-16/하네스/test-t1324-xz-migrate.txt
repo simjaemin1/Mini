@@ -1,0 +1,37 @@
+
+=== T1324 — 주민이 존을 넘어 이주한다(손잡이 `T1324_XZ_MIGRATE`) ===
+  ✓ ⓪ 미끼 자리 넷이 소스에 꼭 한 번씩
+  ✓ ①0 [전제] 켬(팔 안 · `T1324_XZ_MIGRATE=1`) — 두 아이 다 문이 선다
+  ✓ ★①1 들은 적 없는 이웃 존 마을은 안 고른다(모르는 곳 0 — 제 존 마을이나 아무 데도)  {"local":"A마을2"}
+  ✓ ①2 소식이 아직 길 위(상인이 집에 닿기 전)면 안 고른다  {"local":"A마을2"}
+  ✓ ①3 정보 반경 밖 쌍은 안 고른다  {"local":"A마을2"}
+  ✓ ①4 들은 행복이 낮거나 들은 곳간이 얇으면 안 고른다  [{"local":"A마을2"},{"local":"A마을2"}]
+  ✓ ★①5 들은 줄이 더 행복 · 곳간 · 침상이면 이웃 존 마을을 고른다  {"foreign":true,"zone":"nippon","name":"B마을1"}
+  ✓ ⑧1 이웃 존이 'return' 을 밀 때 그 캐러밴이 치른 마을의 그날 줄(곳간 · 사람 · 행복 · 침상)을 싣는다  {"name":"A마을1","d":100,"fe":5000,"n":6,"h":0.2,"beds":999}
+  ✓ ★⑧2 집 존이 받으면 그 캐러밴 집 마을이 듣는다 — 쓸 수 있는 날 = 오늘 + 남은 날(상인이 집에 닿는 날)  {"res":{"ok":true},"row":{"name":"B마을1","d":99,"fe":100000,"n":10,"h":0.9,"beds":100,"zone":"nippon","at":103}}
+  ✓ ②1 떠남 — A 명부 −1 · 길 위 줄 1(경계 칸으로)  [{"key":"hanbando:mwi31j3q:1","ph":"out","unsure":false,"id":"n6"}]
+  ✓ ②2 경계 칸에 닿은 날 캐러밴 문으로 민다(기록 `migrant`)  {"kind":"caravan","rec":"migrant","to":"B마을1"}
+  ✓ ②3 B 받음 — 길 위 줄 1(받는 마을로)  {"ok":true}
+  ✓ ②4 A 답 OK → 줄 0  []
+  ✓ ★②5 B 닿음 — B 명부 +1 · 줄 0  {"popB0":18,"popB":19}
+  ✓ ②5b 받는 존 셈 — 받음 1 · 닿음 1  {"in":1,"arrive":1}
+  ✓ ★②6 두 존 사람 합(명부 + 길 위 줄) = 처음 수  30 = 30
+  ✓ ③1 답 잃음 — A 숨긴 채(모름) · 줄 1  [{"key":"hanbando:mwi31jdy:1","ph":"out","unsure":true,"id":"n6"}]
+  ✓ ★③2 다음 하루 같은 열쇠 → B `dup` · A 줄 0 · B 줄 하나(둘 0)  {"mid":{"pop":11,"popA":5,"popB":6,"rows":[{"key":"hanbando:mwi31jdy:1","ph":"out","unsure":true,"id":"n6"}],"stat":{"news":0,"heard":0,"cand":1,"candSeen":1,"pick":1,"depart":1,"bodied":0,"sent":1,"ok":0,"dup":0,"refused":0,"unknown":1,"back":0,"home":0,"in":0,"inRefuse":0,"inDup":0,"arrive":0,"joined":0,"roadDead":0,"reroute":0,"mark":3,"restored":0,"gapN":0,"gapOver":0,"gapMax":0}},"resent":true,"dup":true,"aRows":0,"bRows":1,"popB":19,"sum":30,"base":30}
+  ✓ ★③3 두 존 사람 합 = 처음 수  30 = 30
+  ✓ ④1 B 거절(마을 빔) → A 집으로 되돌아 걷는다  {"res":{"ok":false,"why":"no-village"},"back":["back"],"popA0":5,"popA":6,"rows":0,"stat":{"refused":1,"home":1}}
+  ✓ ★④2 집에 닿으면 A 명부 +1(사라짐 0)  {"res":{"ok":false,"why":"no-village"},"back":["back"],"popA0":5,"popA":6,"rows":0,"stat":{"refused":1,"home":1}}
+  ✓ ⑤1 첫 글 연결 안 섬(안 닿은 것이 확실) → 집으로  [{"key":"hanbando:mwi31juf:1","ph":"back","unsure":false,"id":"n6"}]
+  ✓ ★⑤2 모름 규칙 — 앞 글이 모른 채면 다시 민 글 연결 안 섬에도 숨긴 채(되돌리지 않는다 · 앞 글이 닿았으면 둘)  [{"key":"hanbando:mwi31k10:1","ph":"out","unsure":true,"id":"n6"}]
+  ✓ ⑥1 메타 곁 칸에 길 위 줄(모름) · 다시 뜬 판이 되돌림  [{"key":"hanbando:mwi31kbm:1","ph":"out","unsure":true,"id":"n6"}]
+  ✓ ★⑥2 다시 밂 → B `dup` · A 줄 0 · B 사람 하나(둘 0)  {"dup":true,"aRows":0,"popB0":18,"popB":19}
+  ✓ ⑥3 두 존 사람 합 = 처음 수  30 = 30
+  ✓ ★⑦ 받는 존 재기동 — 길 위 줄(받는 마을로)이 되돌아와 닿는다(사라짐 0 · 둘 0)  {"packed":1,"popB0":18,"popB":19}
+  ✓ ★⑩1 받는 마을이 걷는 사이 빔 → 받는 존 안 다음 산 마을로 다시 골라 닿는다(T1080 그 문 · 사라짐 0)  {"reroute":1,"popB0":8,"popB":9,"rows":[]}
+  ✓ ★⑩2 되돌아 걷는 사이 집이 빔 → 집 존 안 다음 산 마을로(사라짐 0)  {"back":["back"],"reroute":1,"home":1,"popA2_0":6,"popA2":7}
+  ✓ ⑨ 끔 증인 — 문이 안 선다 · 이웃 존을 안 고른다 · 받는 문은 'migrant' 를 모른다(bad-rec · 종전 글자)  {"on":false,"pick":{"local":"A마을2"},"res":{"ok":false,"why":"bad-rec"}}
+  ✓ 미끼 ㉠ 답 전에 줄을 지우는 사본 → ④ 빨강(거절된 사람이 집에 못 닿음 — 사라짐)  {"res":{"ok":false,"why":"no-village"},"back":[],"popA0":5,"popA":5,"rows":0,"stat":{"refused":0,"home":0}}
+  ✓ 미끼 ㉢ 다시 고르기를 뺀 사본 → ⑩1 빨강(빈 마을에 붙는다)  {"reroute":0,"popB0":8,"popB":8,"popA":1}
+  ✓ 미끼 ㉡ 받는 존이 같은 사람을 두 번 받는 사본 → ③ 빨강(둘)  {"mid":{"pop":11,"popA":5,"popB":6,"rows":[{"key":"hanbando:mwi31m5e:1","ph":"out","unsure":true,"id":"n6"}],"stat":{"news":0,"heard":0,"cand":1,"candSeen":1,"pick":1,"depart":1,"bodied":0,"sent":1,"ok":0,"dup":0,"refused":0,"unknown":1,"back":0,"home":0,"in":0,"inRefuse":0,"inDup":0,"arrive":0,"joined":0,"roadDead":0,"reroute":0,"mark":3,"restored":0,"gapN":0,"gapOver":0,"gapMax":0}},"resent":true,"dup":false,"aRows":0,"bRows":2,"popB":20,"sum":31,"base":30}
+
+=== PASS 33 / FAIL 0 ===

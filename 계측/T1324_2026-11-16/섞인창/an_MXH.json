@@ -1,0 +1,45 @@
+{
+ "tag": "MXH",
+ "meta": {
+  "seed": 1020,
+  "days": {
+   "hanbando": 31,
+   "nippon": 31
+  },
+  "Y": 17840,
+  "botCross": 9,
+  "restart": null,
+  "wallS": 307
+ },
+ "beasts": {
+  "keys": 6,
+  "crossed": 0,
+  "by": {
+   "wild": 0,
+   "tame": 0
+  },
+  "byType": {},
+  "dir": {},
+  "dupAnswered": 0,
+  "dupIn": 0,
+  "unhide": 6,
+  "unhideWhy": {
+   "HTTP 400": 6
+  },
+  "keepN": 0,
+  "bootHide": 0
+ },
+ "canon": {
+  "twoIn": 0,
+  "inAndUnhide": 0,
+  "outNoIn": 0,
+  "hung": 0
+ },
+ "sum": {
+  "pairs": 0,
+  "base": null,
+  "mismatch": 0,
+  "worst": 0,
+  "skippedNearEvent": 0
+ }
+}

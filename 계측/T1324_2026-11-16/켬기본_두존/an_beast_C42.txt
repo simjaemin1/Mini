@@ -1,0 +1,53 @@
+{
+ "tag": "C42",
+ "meta": {
+  "seed": 42,
+  "days": {
+   "hanbando": 33,
+   "nippon": 33
+  },
+  "Y": 17840,
+  "botCross": 9,
+  "restart": null,
+  "wallS": 320
+ },
+ "beasts": {
+  "keys": 27,
+  "crossed": 20,
+  "by": {
+   "wild": 10,
+   "tame": 10
+  },
+  "byType": {
+   "horse": 10,
+   "deer": 4,
+   "wild_boar": 3,
+   "ibex": 3
+  },
+  "dir": {
+   "hanbando→nippon": 12,
+   "nippon→hanbando": 8
+  },
+  "dupAnswered": 0,
+  "dupIn": 0,
+  "unhide": 7,
+  "unhideWhy": {
+   "fauna": 7
+  },
+  "keepN": 0,
+  "bootHide": 0
+ },
+ "canon": {
+  "twoIn": 0,
+  "inAndUnhide": 0,
+  "outNoIn": 0,
+  "hung": 0
+ },
+ "sum": {
+  "pairs": 5,
+  "base": 930,
+  "mismatch": 0,
+  "worst": 0,
+  "skippedNearEvent": 22
+ }
+}

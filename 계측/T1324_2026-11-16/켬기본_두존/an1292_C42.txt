@@ -1,0 +1,175 @@
+{
+ "tag": "C42",
+ "days": {
+  "hanbando": 33,
+  "nippon": 33
+ },
+ "crossed": {
+  "arriveOut": 130,
+  "returnOut": 117,
+  "soldOk": 114,
+  "deposited": 113,
+  "lost": 0,
+  "bodyOut": 247,
+  "bodyIn": 247,
+  "bodyInSkip": 0,
+  "sentFail": 0,
+  "bounced": 0,
+  "retried": 0,
+  "dup": 0
+ },
+ "t952": {
+  "hanbando": {
+   "stays": 83,
+   "joined": 22
+  },
+  "nippon": {
+   "stays": 39,
+   "joined": 10
+  }
+ },
+ "bodies": {
+  "logical": 140,
+  "handoffs": 255,
+  "byDir": {
+   "out": 133,
+   "back": 122
+  },
+  "byWhy": {
+   "hide→set": 255
+  },
+  "neither": {
+   "n": 255,
+   "p50": 333.37,
+   "p95": 333.56,
+   "max": 333.58,
+   "le100ms": 127,
+   "le1s": 128,
+   "le5s": 0,
+   "gt5s": 0
+  },
+  "both": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "totalMs": 0,
+   "sample": []
+  },
+  "vanished": {
+   "n": 0,
+   "sample": []
+  },
+  "mapGap": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "sample": []
+  },
+  "mapBoth": {
+   "n": 255,
+   "totalMs": 127499.13
+  },
+  "within": {
+   "n": 255,
+   "over": 0,
+   "overSample": []
+  },
+  "hidden": {
+   "n": 255,
+   "p50": 833.37,
+   "p95": 833.55,
+   "max": 833.58,
+   "left": 0,
+   "leftSample": [],
+   "byEnd": {
+    "del": 255
+   }
+  },
+  "esc": {
+   "n": 255,
+   "same": 255,
+   "more": 0,
+   "less": 0,
+   "sumOut": 186,
+   "sumIn": 186,
+   "byDir": {
+    "out": 0,
+    "back": 0
+   },
+   "moreSample": [],
+   "lessSample": [],
+   "way": {
+    "n": 255,
+    "died": 0,
+    "diedSum": 0
+   }
+  },
+  "tEnd": 1767225699000.01,
+  "tailMs": 10000
+ },
+ "lag": {
+  "dueMinusSend": {
+   "1": 247
+  },
+  "recvNowMinusSend": {
+   "0": 255
+  },
+  "late": {
+   "lateArrival": 0,
+   "noDayInAtNext": 0,
+   "unexplained": 0
+  }
+ },
+ "stuck": {
+  "hanbando": {
+   "day": 32,
+   "foreign": 3,
+   "foreignInbound": 2,
+   "overdue": 0,
+   "overdueAge": {},
+   "homeOut": 8
+  },
+  "nippon": {
+   "day": 33,
+   "foreign": 2,
+   "foreignInbound": 2,
+   "overdue": 0,
+   "overdueAge": {},
+   "homeOut": 8
+  }
+ },
+ "final": {
+  "hanbando": {
+   "pop": 1243,
+   "dead": 0,
+   "ever": 51,
+   "deaths": 0,
+   "fdDeaths": 0,
+   "trades": 822,
+   "skip": 0
+  },
+  "nippon": {
+   "pop": 873,
+   "dead": 0,
+   "ever": 36,
+   "deaths": 0,
+   "fdDeaths": 0,
+   "trades": 494,
+   "skip": 0
+  }
+ },
+ "cpu": {
+  "hanbando": {
+   "meanMsPerDay": 8956.7,
+   "days": 34
+  },
+  "nippon": {
+   "meanMsPerDay": 7729.4,
+   "days": 34
+  }
+ }
+}
+(node:8424) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

@@ -2366,6 +2366,35 @@ function isTerrainBlockedLocal(x, y) {
   }
   return _terrBlocked0(x, y);
 }
+// ★★[T1324 2026-11-15 · T1321 회부 3] 손잡이 `T1324_BAND_TERRAIN`('1' 만 켬 · ★기본 끔 · 끔 = 사람 걸음 문 세 줄이 종전 `isTerrainBlockedLocal` 그대로 = main 바이트) —
+//   **사람 겹침 띠(Phase 5-K2 `HANDOFF_COMMIT` 256px)는 이웃 존 땅이다.** 종전: 존 지형 술어는 존 사각 밖을 "막힘 없음"으로 읽어(`_terrBlocked0` · 존 격자 밖)
+//   사람이 넘기 전 띠에서 이웃 존 능선 · 물 위를 걸었다(T1321 보고 회부 3 — 짐승 띠는 T1321 이 이웃 땅 술어로 막았다).
+//   켬: 사람(NPC 아님 — NPC 는 존 사각에서 자른다)이 존 사각 밖 칸으로 드는 걸음은 그 칸이 든 이웃 존(월드 자리 → `findZoneAt` · 바다 · 월드 끝 · 이 존이면 종전)의
+//   지형 정본(`terrain.js` 바위 · 물 — 그 존 `bridges` 칸은 물 예외 · 칸 가운데 · 칸 메모 — 지형은 안 변한다)을 본다 = 짐승 띠 `peerBlocked` 와 같은 술어 + 다리.
+//   이웃 존의 판 중 막힘(환호 도랑 · 벽)은 이 존이 모른다 — 넘은 뒤 그 존 걸음 문이 본다(짐승 띠와 같다). 새 수 0.
+const T1324_BAND_TERRAIN = process.env.T1324_BAND_TERRAIN === '1';
+const _t1324Band = new Map(), _t1324Br = new Map();   // 칸 메모(`<존>:<cx>,<cy>` → 막힘) · 존 → 다리 칸 집합
+const _t1324Stat = { q: 0, blk: 0 };
+function _t1324BandBlk(x, y) {   // 존 사각 밖 칸 = 이웃 존 땅 막힘(바위 · 다리 아닌 물) · 존 안 · 바다 · 월드 끝 · 이 존이면 false
+  if (x >= 0 && y >= 0 && x < ZONE.zoneWidth && y < ZONE.zoneHeight) return false;
+  const ax = (ZONE.worldOffsetX || 0) + x, ay = (ZONE.worldOffsetY || 0) + y;
+  const t = findZoneAt(ax, ay);
+  if (!t || t.id === ZONE_ID || t.isOcean) return false;
+  const cx = Math.floor((ax - (t.worldOffsetX || 0)) / 32), cy = Math.floor((ay - (t.worldOffsetY || 0)) / 32), k = t.id + ':' + cx + ',' + cy;
+  _t1324Stat.q++;
+  let v = _t1324Band.get(k);
+  if (v === undefined) {
+    let br = _t1324Br.get(t.id);
+    if (!br) { br = new Set(); const bl = (ZONES[t.id] && ZONES[t.id].bridges) || []; for (let i = 0; i + 1 < bl.length; i += 2) br.add(bl[i] + '_' + bl[i + 1]); _t1324Br.set(t.id, br); }
+    const px = cx * 32 + 16, py = cy * 32 + 16;
+    try { v = !!(_terrain.isRockCellLocal(t.id, px, py) || (_terrain.isWaterCellLocal(t.id, px, py) && !br.has(cx + '_' + cy))); } catch (e) { v = false; }
+    if (_t1324Band.size > 200000) _t1324Band.clear();
+    _t1324Band.set(k, v);
+  }
+  if (v) _t1324Stat.blk++;
+  return v;
+}
+function _t1324PBlk(x, y) { return isTerrainBlockedLocal(x, y) || _t1324BandBlk(x, y); }   // 사람 걸음 문의 지형 술어(켬)
 // 메트릭 카운터
 const metrics = {
   startedAt: Date.now(),
@@ -7032,6 +7061,7 @@ const server = http.createServer((req, res) => {
           else if (data.kind === 'beast' && T1321_XZ_BEAST) { try { out = _t1321Door.receive(data); } catch (e) { st = 500; out = { ok: false, why: 'err ' + e.message }; } }   // ★[T1321] 짐승 — 열쇠 · 거름 · 세우기(끔 = 아래 '모르는 종류' 400 — 보낸 존이 드러낸다)
           else if (data.kind === 'drain' && SimVillages.t1321DrainCmd) out = _t1321DrainCmd(data);   // ★[T1321 ④] 비우기 명령(안 문 · 켜기 · 끄기 · 상태)
           else if (data.kind === 'army') out = { ok: false, why: 'army — 칸만 예약(셋째 카드)' };
+          else if (data.kind === 'e2e_emigrate' && E2E_GIVE) out = SimVillages.__e2eEmigrate ? SimVillages.__e2eEmigrate(data.vid | 0, data.n) : { ok: false, why: '미지원' };   // ★[T1324] 테스트 전용(판 꾸밈 · `E2E_GIVE` 만) — 그 마을 이탈 압력(가상 시계 판이 안 문으로 — 발맞춤 가로대에 같이 든다)
           else if (data.kind === 'drop' && T1092_HANDOFF_BACK) out = _t1092Drop(data);   // ★[T1092] 보낸 존 ACK 시한 — 그 토큰을 놓는다(`_t1092Drop`)
           else { st = 400; out = { ok: false, why: 'unknown kind' }; }
           res.writeHead(st, { 'Content-Type': 'application/json' });
@@ -17361,19 +17391,20 @@ setInterval(() => {
     if (isInIceBand(ny) && !isInIceBand(p.y)) ny = p.y;
     // 14.46-b-mini: 물 타일 진입 차단 (보트 시스템 전까지). 각 축별 slide.
     // Phase 5-G: cell border까지 정확히 snap (tick step 가변·east/west 비대칭 fix)
-    if (isTerrainBlockedLocal(nx, p.y) && !isTerrainBlockedLocal(p.x, p.y)) {
+    const _tbk = (T1324_BAND_TERRAIN && !p.isNpc) ? _t1324PBlk : isTerrainBlockedLocal;   // ★[T1324] 켬 = 사람 띠는 이웃 존 땅(위 머리말) · 끔 = 종전 술어 그대로
+    if (_tbk(nx, p.y) && !_tbk(p.x, p.y)) {
       const tx = Math.floor(p.x / 32);
       if (nx > p.x) nx = (tx + 1) * 32 - 1;       // 동쪽: cell의 마지막 정수 px
       else if (nx < p.x) nx = tx * 32;            // 서쪽: cell의 시작 px
       else nx = p.x;
     }
-    if (isTerrainBlockedLocal(p.x, ny) && !isTerrainBlockedLocal(p.x, p.y)) {
+    if (_tbk(p.x, ny) && !_tbk(p.x, p.y)) {
       const ty = Math.floor(p.y / 32);
       if (ny > p.y) ny = (ty + 1) * 32 - 1;
       else if (ny < p.y) ny = ty * 32;
       else ny = p.y;
     }
-    if (isTerrainBlockedLocal(nx, ny) && !isTerrainBlockedLocal(p.x, p.y)) { nx = p.x; ny = p.y; }
+    if (_tbk(nx, ny) && !_tbk(p.x, p.y)) { nx = p.x; ny = p.y; }
 
     // 4방향 경계 처리 — 새 위치가 zone 밖으로 나가면 이웃으로 핸드오프
     // 우선순위: 가장 큰 초과 축. 모서리에서 두 방향 동시에 초과돼도 한 zone으로만.

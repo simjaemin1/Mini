@@ -104,7 +104,8 @@ if (HOOK === 'zone' && !_isMain) {
     const row = { zone: st.zoneId, day: w.day, g: st.lastGameDay, skip: lastG != null ? Math.max(0, st.lastGameDay - lastG - (w.day - lastDay)) : 0, wallMs: lastT != null ? t - lastT : null,
       pop, dead, ever, deaths, fdDeaths, trades: (w.tradeLog || []).length, caravans: (w.caravans || []).length, bodies: st.caravanBodies ? st.caravanBodies.size : 0,
       xzBodies, xzLinger, xzHidden, cpuMs: +((c1.user + c1.system) / 1000).toFixed(1), t952: t952 ? { stays: t952.stays, joined: t952.joined } : null,
-      xz: X ? { st: X.st, core: X.core.st, ready: X.core.peersReady().length, stubs: (X.core.X.stubs || []).length, retry: X.retry.length, geo: X.host.hs.geo } : null };
+      xz: X ? { st: X.st, core: X.core.st, ready: X.core.peersReady().length, stubs: (X.core.X.stubs || []).length, retry: X.retry.length, geo: X.host.hs.geo } : null,
+      fdBy: Object.fromEntries((w.villages || []).filter((v) => (v._fdDeadTot || 0) > 0).map((v) => [v.name, v._fdDeadTot])) };   // ★[T1324] 마을마다 굶어 죽음 누계(있는 마을만 · 이주 판에서 받는 마을 굶음을 가린다)
     lastDay = w.day; lastG = st.lastGameDay; lastT = t;
     if (ROWS) try { fs.appendFileSync(ROWS, JSON.stringify(row) + '\n'); } catch (e) {}
   }, 20);
