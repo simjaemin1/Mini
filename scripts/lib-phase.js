@@ -51,4 +51,14 @@ function hold(fn) {
 function phaseOk() { try { const z = require.cache[require('path').join(__dirname, '..', 'server', 'zone-config.js')]; return !!(z && z.exports.WORLD && z.exports.WORLD.dayLengthMs === DAY && !z.exports.WORLD.worldEpoch); } catch (e) { return false; } }
 //   ★[T1299 ①] 띄운 시각(게임 06시 · 18시 두 판)에 결과가 갈린 하네스 — 판 머리에서 `pin(h)` 로 고정한다(`test-harness-lint` ⑯a 가 이 표를 본다 · 보고/T1299 §1).
 const MUST = [];
-module.exports = { pin, hold, phaseOk, hourOf, DAY, ENV, MUST };
+//   ★[T1310 ①] 브라우저 시계 어긋남 — `browserSkew(ms)` 는 Playwright `context.addInitScript` 에 넘길 글자를 준다(브라우저의 `Date.now` ·
+//   인수 없는 `new Date()` · `Date()` 를 ms 만큼 옮긴다 · 서버는 그대로 · `performance.now` · 타이머 무변). 플레이어 컴퓨터 시계가 틀린 판을 세운다.
+//   정본은 이 한 자리(`pin` 과 같은 옮김 꼴 — 사본 0 · lint ⑯b). 0 이면 빈 글자(아무것도 안 건다).
+function browserSkew(ms) {
+  const off = +ms || 0; if (!off) return '';
+  return `(() => { const RD = Date, rnow = RD.now.bind(RD), off = ${off};
+    const PDate = function (...a) { if (!new.target) return new RD(rnow() + off).toString(); return a.length ? new RD(...a) : new RD(rnow() + off); };
+    PDate.prototype = RD.prototype; Object.setPrototypeOf(PDate, RD); PDate.now = () => rnow() + off; PDate.parse = RD.parse; PDate.UTC = RD.UTC;
+    window.Date = PDate; window.__t1310Skew = off; })();`;
+}
+module.exports = { pin, hold, phaseOk, hourOf, browserSkew, DAY, ENV, MUST };

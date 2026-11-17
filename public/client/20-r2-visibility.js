@@ -767,7 +767,13 @@
   let worldClock = null;
   let _lonView = 0; // §19 4파: 뷰(카메라) 경도 오프셋(하루 비율 0~0.045) — render가 매 프레임 갱신, worldPhase가 가산
   function worldNow() {
-    return Date.now() + (worldClock ? worldClock.serverNowOffset : 0);
+    return Date.now() + (worldClock ? worldClock.serverNowOffset : 0);  // [T1310 클라 시계] 서버 시각 축의 정의(클라 시계 + 다시 잰 차)
+  }
+  // ★[T1310 ①] 서버가 찍은 벽시계 시각(구조창 `at` · 조업 `startedAt/until` · 만료 `expiresAt`)과 견줄 **지금** — 서버 시각 축 하나.
+  //   클라 컴퓨터 시계가 몇 분 틀려도(플레이어 PC · 절전 복귀) 서버 시각 = 클라 시각 + 다시 잰 차(welcome · pong 마다 · T728 ④)로 본다.
+  //   손잡이 `T1310_CLOCK_SKEW`(서버 env → welcome `uiCfg.t1310` · 켬 기본) — 끔이면 종전(클라 벽시계 `Date.now()`). 클라만의 간격(애니 · 토스트 · 되묻기)은 그대로 `Date.now`.
+  function srvNow() {
+    return (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.t1310 === false) ? Date.now() : worldNow();  // [T1310 클라 시계] 끔(=0) 되돌림 자리
   }
   function worldPhase() {
     if (!worldClock) return 0.2; // 기본: 한낮

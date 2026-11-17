@@ -111,7 +111,7 @@
     // 14.54-d: 충돌/사유지 사전 체크. 안 되면 빨간색 ghost.
     const blocked = isPlacementBlocked(it, cx, cy, dir);
     ctx.save();
-    const t = (Date.now() % 1000) / 1000;
+    const t = (Date.now() % 1000) / 1000;  // [T1310 클라 시계] 그림 깜빡임 주기
     const a = 0.35 + 0.25 * Math.abs(Math.sin(t * Math.PI));
     if (blocked) {
       ctx.fillStyle = `rgba(220,80,80,${a})`;

@@ -953,5 +953,54 @@ console.log('\n⑯ 띄운 시각 낮밤 = 공용 고정 `lib-phase` [T1299]');
   ok(ans === 'pin=pin,gone=none,comment=none,copy=copy', '★⑯ 자명 통과 금지 — 정본 호출은 고정 · 지운 판 · 주석 안 호출은 고정 없음 · 옮김 사본은 사본', ans);
 }
 
+// ── ⑰ 클라가 서버가 찍은 시각과 견주는 **지금**은 서버 시각 축(`srvNow` · `worldNow`) [T1310 2026-11-16 · T1299 회부 1] ──────────────
+//   T1310: 구조창 화살(`at + windowMs`) · 조업 게이지(`startedAt/until`) · 만료 게이지(`expiresAt`)가 클라 벽시계 `Date.now()` 로 서버 시각과 견줬다
+//   ⇒ 플레이어 컴퓨터 시계가 몇 분 틀리면 화살이 그리자마자 사라지고 게이지가 틀린다(e2e-downed · 브라우저 +5분 판).
+//   자: `public/client/*.js` 의 코드 속 `Date.now()` 는 **한 줄마다** 표지 `[T1310 클라 시계] <까닭>`(클라만의 간격 · 축을 세우는 자리)을 단다 —
+//   표지 없는 새 자리 = 빨강(서버 시각과 견주면 `srvNow()` 를 쓴다 · 클라만의 간격이면 표지와 까닭을 단다).
+console.log('\n⑰ 클라 `Date.now()` = 표지 단 클라 간격만 · 서버 시각은 `srvNow` [T1310]');
+{
+  const CO = require(path.join(SCRIPTS, 'code-only.js'));
+  const CDIR = path.join(ROOT, 'public', 'client');
+  const NOW = new RegExp('Date\\.' + 'now\\s*\\(\\s*\\)'), MARK = /\[T1310 클라 시계\] \S/;
+  const scan = (src) => { const c = CO(src).split('\n'), r = src.split('\n'); const hit = [], marked = [];
+    c.forEach((l, i) => { if (NOW.test(l)) (MARK.test(r[i]) ? marked : hit).push(i + 1); }); return { hit, marked }; };
+  const files = fs.readdirSync(CDIR).filter((x) => x.endsWith('.js'));
+  const bad = [], seen = []; let marks = 0;
+  for (const f of files) { const r = scan(fs.readFileSync(path.join(CDIR, f), 'utf8')); marks += r.marked.length; if (r.hit.length) bad.push(`${f}:${r.hit.join(',')}`); if (r.hit.length || r.marked.length) seen.push(f); }
+  const srv = fs.readFileSync(path.join(CDIR, '20-r2-visibility.js'), 'utf8');
+  ok(files.length > 20 && /function srvNow\(\)/.test(CO(srv)) && /uiCfg\.t1310 === false/.test(CO(srv)), '⑰ [전제] 클라 파일을 읽었고 정본 `srvNow()`(손잡이 `t1310` · 끔 = 클라 벽시계) 가 있다', `파일 ${files.length} · 표지 ${marks}`);
+  ok(bad.length === 0, '★★⑰ 클라 코드 속 `Date.now()` 는 표지 단 클라 간격뿐 — 표지 없는 자리 0(서버 시각과 견주면 `srvNow()`)', bad.join(' ') || `표지 ${marks}곳 · ${seen.length}파일`);
+  // ★자명 통과 금지 — 같은 자로 미끼 넷을 재면 각각 다르게 답한다(글자를 조각내 자기 자신을 안 문다)
+  const DN = 'Date.' + 'now()';
+  const bait = {
+    raw: `const remain = Math.max(0, exp - ${DN});`,
+    mark: `const t = (${DN} % 800) / 800;  // [T1310 클라 ` + '시계] 깜빡임',
+    comment: `// 옛 판: exp - ${DN}`,
+    srv: 'const remain = Math.max(0, exp - srvNow());',
+  };
+  const ans = Object.entries(bait).map(([k, v]) => { const r = scan(v); return k + '=' + (r.hit.length ? 'hit' : r.marked.length ? 'mark' : 'none'); }).join(',');
+  ok(ans === 'raw=hit,mark=mark,comment=none,srv=none', '★⑰ 자명 통과 금지 — 표지 없는 클라 시계는 물고 · 표지 단 줄은 표지로 · 주석 안 · 서버 축 호출은 보낸다', ans);
+}
+
+// ── ⑱ 러너 표지(`@regress` · `@nightly`)는 러너가 **찾는 이름**에만 [T1310 2026-11-17 · T1299 회부 3] ──────────────
+//   왜: `t577-server-run.js` 머리에 `@regress` · `@nightly A` 가 있었지만 러너 자동 발견(`run-regress.sh _disc`)은 `test-*.js` · `e2e-*.js` 만 본다 —
+//   표지가 거짓말을 했다(야간 목록에 없는데 "야간 A" 라고 적힘 · T1299 전수가 이름을 손으로 넘겨 돌리고 시한 2400초 빨강을 봤다).
+//   자: `scripts/*.js` 중 줄머리 `// @regress` · `// @nightly <글자>` 를 단 파일은 이름이 `test-` · `e2e-` 로 시작한다.
+console.log('\n⑱ 러너 표지는 러너가 찾는 이름(`test-*` · `e2e-*`)에만 [T1310]');
+{
+  const TAG = /^\/\/ @(regress|nightly)([\s]|$)/m, FOUND = /^(test|e2e)-.*\.js$/;
+  const inert = (name, src) => TAG.test(src) && !FOUND.test(name);
+  const all = fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js'));
+  const tagged = all.filter((f) => TAG.test(fs.readFileSync(path.join(SCRIPTS, f), 'utf8')));
+  const bad = tagged.filter((f) => !FOUND.test(f));
+  ok(tagged.length >= 100, '⑱ [전제] 러너 표지를 단 파일이 실제로 여럿이다(0 이면 아래가 자명 통과다)', `${tagged.length}개`);
+  ok(bad.length === 0, '★★⑱ 러너가 안 찾는 이름에 단 `@regress` · `@nightly` 표지 0(달려 있으면 안 도는데 도는 척한다)', bad.join(' ') || `표지 ${tagged.length}개 전부 test-/e2e-`);
+  const R = '// @' + 'regress', N = '// @' + 'nightly A';
+  const ans = [['t577-server-run.js', R + '\n'], ['t577-server-run.js', N + '\n'], ['test-x.js', R + '\n'], ['t577-server-run.js', '// (@' + 'regress 없음 — 러너 밖)\n'], ['t577-server-run.js', R + 'ion\n']]
+    .map(([n, s]) => (inert(n, s) ? 'hit' : 'none')).join(',');
+  ok(ans === 'hit,hit,none,none,none', '★⑱ 자명 통과 금지 — 밖 이름의 표지 둘은 물고 · 찾는 이름 · "없음" 설명 · 다른 낱말은 보낸다', ans);
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

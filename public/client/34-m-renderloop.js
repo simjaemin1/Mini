@@ -1413,7 +1413,7 @@
             ctx.strokeRect(Math.round(cs.x - 9) + 0.5, Math.round(cs.y - 9) + 0.5, 18, 18);
             ctx.restore();
             // Phase 4d-16-d: forge 가끔 연기 파티클 (시각 동작 — client only, deterministic by time)
-            if (cl.facilityType === 'forge' && Math.sin((Date.now() + (cl.x + cl.y) * 13) * 0.001) > 0.8) {
+            if (cl.facilityType === 'forge' && Math.sin((Date.now() + (cl.x + cl.y) * 13) * 0.001) > 0.8) {  // [T1310 클라 시계] 대장간 불꽃 깜빡임
               ctx.fillStyle = 'rgba(160, 80, 40, 0.5)';
               ctx.beginPath();
               ctx.arc(cs.x, cs.y - 8, 3, 0, Math.PI * 2);
@@ -2546,7 +2546,7 @@
   function drawDownedArrows() {
     const M = window.__downedCries;
     if (!M || !M.size) return 0;
-    const now = Date.now();
+    const now = srvNow();   // ★[T1310 ①] `at` 은 서버 벽시계 — 서버 시각 축으로 견준다(클라 시계가 3분 넘게 앞서면 화살이 그리자마자 사라졌다)
     let n = 0;
     for (const [pid, c] of [...M]) {
       // 창이 닫혔으면 스스로 사라진다 — 지우는 자리가 여기와 `player_down_state` 둘뿐이다

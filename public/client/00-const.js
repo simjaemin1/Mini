@@ -650,7 +650,7 @@ function cropSprite(stage, crop) {
     const frames = [], hid = [];
     const onVis = () => hid.push({ t: performance.now(), hidden: document.hidden });
     document.addEventListener('visibilitychange', onVis);
-    const t0 = performance.now(), epoch0 = Date.now() - t0;
+    const t0 = performance.now(), epoch0 = Date.now() - t0;  // [T1310 클라 시계] 첫 프레임 진단 기록 시각(로그만)
     let prevT = null, prev = null;
     console.log(`[frame] ${sec}초 캡처 시작 — 탭을 앞에 두고 평소처럼 논다`);
     const q = (a, p) => { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y); return +b[Math.min(b.length - 1, Math.floor(b.length * p))].toFixed(1); };
