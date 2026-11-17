@@ -30,6 +30,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
+const WD = require('./lib-wait-day');   // ★[T1339] 얼린 뒤 날 가라앉힘(`settleDay`)
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-shots';
@@ -174,7 +175,8 @@ async function waitHttp(url, tries = 900) {
 
   // 촌장 브리핑은 근접 틱(0.7초)이 자동으로 요청한다 — 사람이 다가가면 말을 건다.
   let brief = null;
-  for (let i = 0; i < 20 && !brief; i++) { await sleep(700); brief = await page.evaluate(() => window.__evLastBrief || null); }
+  //   ★[T1339] 종전 20번 × 0.7초(14초) — 부하 10판 중 1판에서 안 왔다(브리핑 요청도 마을 요청 줄 — 붐빈 판에선 하루 마감 뒤에 답한다). 60번(42초)까지 기다린다(판정 그대로).
+  for (let i = 0; i < 60 && !brief; i++) { await sleep(700); brief = await page.evaluate(() => window.__evLastBrief || null); }
   ok(!!brief, '접근만으로 촌장 브리핑이 왔다(별도 조작 없음)');
   ok(!!(brief && brief.lines && brief.lines.length), '브리핑에 문장이 있다', brief ? JSON.stringify(brief.lines) : '');
   ok(!!(brief && brief.vid === V.id), '브리핑은 **그 마을 것**이다(타 마을 미포함)', brief ? `vid=${brief.vid}` : '');
@@ -291,11 +293,18 @@ async function waitHttp(url, tries = 900) {
   }
   let board = await ensureBoard(30);
   // ★여기서부터 상호작용 — **날을 얼린다.** 이 아래로는 의뢰가 제 발로 철회되거나 품목이 바뀌지 않는다.
+  //   ★[T1339] 종전 `sleep(800)` 뒤 마지막 알림 넉 줄 — 부하 10판 중 1판이 빨갰다(답이 800ms 뒤에 왔거나 다른 알림 넉 줄이 밀어냈다). 진단 배열에 표지를 넣고
+  //     그 뒤에 온 알림에서 "게임일 정지"를 기다린다(상한 15초 · 판정 그대로 — 끝내 안 오면 빨강).
+  await page.evaluate(() => { (window.__notices = window.__notices || []).push('__t1339_freeze_mark'); });
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
   dayFrozen = true;   // ★[T794]
   await sleep(800);
-  ok((await page.evaluate(() => (window.__notices || []).slice(-4).join(' | '))).includes('게임일 정지'),
-    '★게임일 정지(상호작용 구간) — 여기부터 경제가 검사를 앞지르지 않는다');
+  let frozeNote = false;
+  for (let j = 0; j < 72 && !frozeNote; j++) {
+    frozeNote = await page.evaluate(() => { const a = window.__notices || []; const i = a.lastIndexOf('__t1339_freeze_mark'); return (i >= 0 ? a.slice(i + 1) : a.slice(-4)).join(' | ').includes('게임일 정지'); });
+    if (!frozeNote) await sleep(200);
+  }
+  ok(frozeNote, '★게임일 정지(상호작용 구간) — 여기부터 경제가 검사를 앞지르지 않는다');
   sh = sh || (await shWitness());   // ★[T185] 판정 직전에 한 번 더 — 늦게 도착한 증인도 센다
   ok(!!sh, '부족 픽스처 성립(소비EMA 가 자란 품목의 재고를 문턱 아래로 · 갚을 잉여도 갖춤)', sh || '(성립 실패 — 소비EMA 미성숙)');
   ok(!!(board && board.rows && board.rows.length), '게시판에 납품 의뢰가 걸렸다', board ? JSON.stringify(board.rows.map((r) => r.line)) : 'X');
@@ -497,6 +506,9 @@ async function waitHttp(url, tries = 900) {
       }
       const dd = await stepDay(SHORT_CAP - (Date.now() - tShort)); stepN++;   // ⓑ 하루만(위 `stepDay`)
       if (dd < 0) break;
+      //   ★[T1339] 다시 얼림은 다음 날 방송을 받은 **그 자리**에서 보내지만, 붐빈 판에선 얼림이 닿기 전에 마감 하나가 더 열려(열린 마감은 얼려도 끝까지 돈다)
+      //     언 판을 읽은 뒤 그 마감이 의뢰를 거뒀다(부하 10판 중 1판 — 고른 행 `hide` 가 누르기 직전 판에서 사라져 버튼 null). 날이 가라앉은 뒤 읽는다.
+      await WD.settleDay(() => page.evaluate(() => window.__evGameDay | 0), 1500, 15000);
       bd = await readBoard(); rows = canGive(bd);                    // ⓒ **판정이 읽을 그 판**(언 판)
       for (const it of held) if (!rows.some((r) => r.item === it) && (miss[it] = (miss[it] || 0) + 1) >= 2 && !stuck.includes(it)) stuck.push(it);   // ⓓ 두 번 걸어도 안 선 것은 붙박이로 뺀다(T704 그대로)
     }
@@ -517,7 +529,14 @@ async function waitHttp(url, tries = 900) {
           [(r.give || [])[0], Math.max(2, Math.ceil(r.remain) + 5)]);
         await sleep(500);
       }
-      const before = new Map(((bd.rows) || []).map((r) => [r.item, r.remain]));
+      //   ★[T1339] `before` 를 **누르기 직전에 새로** 읽는다 — 종전엔 위 `bd`(지급 두 번 · 1초 전)를 썼다. 붐비는 판에선 `stepDay` 의 다시 얼림이
+      //     닿기 전에 연 하루 마감 하나가 그 사이 끝까지 돌아(이미 연 마감은 얼려도 끝까지 돈다) 다른 행(`hide`)이 움직였고, 그게 "내가 누른 행"
+      //     과 섞여 ④-c 가 빨갰다(T1328 전수 — 움직인 행 hide · herb). 판 답은 마감이 끝난 뒤에 온다(마을 요청 줄) — 상한 15초까지 기다린다.
+      const bdNow = await (async () => { await page.evaluate(() => { window.__evLastBoard = null; }); await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
+        for (let j = 0; j < 75 && !(await page.evaluate(() => !!window.__evLastBoard)); j++) await sleep(200); return await page.evaluate(() => window.__evLastBoard || null); })();
+      const before = new Map((((bdNow || bd).rows) || []).map((r) => [r.item, r.remain]));
+      const dayBefore = await page.evaluate(() => window.__evGameDay | 0);
+      await page.evaluate(() => { window.__evLastBoard = null; });   // ★[T1339] 누른 뒤의 판은 **새 답**으로만 읽는다(묵은 답 0)
       // ★진짜 버튼을 누른다(메시지를 손으로 보내지 않는다 — 그러면 판을 안 재는 것이다).
       const clicked = await page.evaluate((it) => {
         const body = document.getElementById('boardPaneBody');
@@ -530,8 +549,11 @@ async function waitHttp(url, tries = 900) {
         return it;
       }, target.item);
       ok(clicked === target.item, '★④-c 판에서 **그 행의 납품 버튼**을 실제로 눌렀다', String(clicked));
-      await sleep(1800);
-      const bd2 = await page.evaluate(() => window.__evLastBoard || null);
+      //   ★[T1339] 종전 `sleep(1800)` 뒤 마지막 판 — 붐비면 답이 늦어 묵은 판을 읽을 수 있었다. 새 답이 올 때까지(상한 15초 · 안 오면 한 번 새로 묻는다).
+      for (let j = 0; j < 75 && !(await page.evaluate(() => !!window.__evLastBoard)); j++) await sleep(200);
+      const bd2 = (await page.evaluate(() => window.__evLastBoard || null)) || (await readBoard());
+      const dayAfter = await page.evaluate(() => window.__evGameDay | 0);
+      if (dayAfter !== dayBefore) console.log(`    (참고 · 판정 밖) 누르는 사이 게임일 ${dayBefore} → ${dayAfter} — 언 판이어야 한다`);
       const after = new Map((((bd2 && bd2.rows) || [])).map((r) => [r.item, r.remain]));
       const moved = [...before.keys()].filter((k) => !after.has(k) || after.get(k) < before.get(k));
       ok(moved.length === 1 && moved[0] === target.item,
@@ -577,6 +599,10 @@ async function waitHttp(url, tries = 900) {
     await page.evaluate(() => { const p = document.getElementById('boardPane'); if (p) p.classList.add('hidden'); });
     await page.keyboard.press('Shift+g');
     await sleep(1500);
+    //   ★[T1339] 부하 10판 중 2판 — 1.5초 뒤 판이 아직 안 열렸다(판 답은 마을 요청 줄 · 하루 마감 중이면 마감 뒤에 온다 · 제목 칸은 앞 판 글자가 남아 있었다).
+    //     판이 열리고 소식 절이 찰 때까지 기다린다(상한 15초 · 판정 그대로 — 끝내 안 열리면 빨강).
+    for (let j = 0; j < 68 && !(await page.evaluate(() => { const p = document.getElementById('boardPane'), b = document.getElementById('boardPaneBody');
+      return !!(p && !p.classList.contains('hidden') && b && b.querySelector('.bd-sec')); })); j++) await sleep(200);
     const pn = await page.evaluate(() => {
       const p = document.getElementById('boardPane');
       const body = document.getElementById('boardPaneBody');
@@ -615,11 +641,22 @@ async function waitHttp(url, tries = 900) {
   // ── ⑥ 거리 게이트 — 멀어지면 촌장 목소리가 안 닿는다 ──────────────────────
   await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }), [ax + 1500, ay + 1500]);
   await sleep(2000);
+  //   ★[T1339] 2초 뒤 한 번 — 부하 10판 중 1판이 빨갰다(근접 인식은 틱이 돌아야 풀린다). 풀릴 때까지 다시 본다(상한 15초 · 판정 그대로).
+  for (let j = 0; j < 65 && (await page.evaluate(() => window.__evNearVid)) != null; j++) await sleep(200);
   const farVid = await page.evaluate(() => window.__evNearVid);
   ok(farVid == null, '마을에서 멀어지면 근접 인식이 풀린다', `__evNearVid=${farVid}`);
+  //   ★[T1339] 종전 `sleep(1200)` 뒤 마지막 알림 두 줄 — 붐비는 판에선 요청이 하루 마감 중에 닿아 "장부를 닫는 중" 알림이 먼저 오고
+  //     (마을 요청은 줄을 서서 마감 뒤에 다시 처리된다 — zone.js `VILLAGE_BOOK_MSG`) 거리 거절이 1.2초 안에 안 와 빨갰다(T1328 전수).
+  //     ⇒ 요청 뒤에 온 알림만 보고, 거리 거절이 올 때까지(상한 20초 · 마감 알림은 기다림의 까닭일 뿐 판정 밖).
+  //     표지: 진단 배열(`window.__notices` — 화면이 아니라 글자 배열)에 표지 한 칸을 넣고 그 뒤에 온 것만 읽는다(화면 무변).
+  await page.evaluate(() => { (window.__notices = window.__notices || []).push('__t1339_far_mark'); });
   await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
-  await sleep(1200);
-  const farNote = await page.evaluate(() => (window.__notices || []).slice(-2).join(' | '));
+  let farNote = '';
+  for (let j = 0; j < 100; j++) {
+    farNote = await page.evaluate(() => { const a = window.__notices || []; const i = a.lastIndexOf('__t1339_far_mark'); return (i >= 0 ? a.slice(i + 1) : a.slice(-2)).join(' | '); });
+    if (/너무 (멀|멉)/.test(farNote)) break;
+    await sleep(200);
+  }
   ok(/너무 (멀|멉)/.test(farNote), '멀리서 게시판을 요청하면 서버가 거절한다(거리 게이트는 서버가 판정)', JSON.stringify(farNote));
   await snap('ev-06-far');
 

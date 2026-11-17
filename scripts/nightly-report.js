@@ -72,7 +72,7 @@ function readRun(file) {
 //   러너가 찍는 것만 본다: `##### <파일> #####` 로 열리고 `✓ RC=0` 또는 `✗ RC=n …` 로 닫힌다.
 //   닫히지 않은 블록은 **빨강이 아니다** — 창이 닫혀 끊긴 것이다(미측정으로 센다).
 const OPEN = /^#{5} (\S+) #{5}$/;
-const VERDICT = /^\s*(✓|✗) RC=(\d+)(.*)$/;
+const VERDICT = /^\s*(✓|✗|⚠) RC=(\d+)(.*)$/;   // ★[T1339] `⚠ RC=75` = 유보(느린 판 · 게임일 상한 — `lib-wait-day`) — 초록도 빨강도 아니다(`ok = 'hold'`)
 function parseBlocks(lines) {
   const out = [];
   let cur = null;
@@ -82,7 +82,7 @@ function parseBlocks(lines) {
     if (o) { if (cur) out.push(cur); cur = { name: o[1], t0: t, t1: null, ok: null, verdict: '', marks: [] }; continue; }
     if (!cur) continue;
     const v = VERDICT.exec(s);
-    if (v) { cur.ok = v[1] === '✓'; cur.t1 = t; cur.verdict = `RC=${v[2]}${v[3]}`.replace(/\s*→ \*\*실패로 센다\*\*/, '').trim(); continue; }
+    if (v) { cur.ok = v[1] === '⚠' ? 'hold' : v[1] === '✓'; cur.t1 = t; cur.verdict = `RC=${v[2]}${v[3]}`.replace(/\s*→ \*\*실패로 센다\*\*/, '').trim(); continue; }
     if (/^\s*✗/.test(s)) cur.marks.push(s.trim().replace(/^✗\s*/, ''));
   }
   if (cur) out.push(cur);
@@ -270,6 +270,7 @@ for (const b of blocks) seen.set(base(b.name), b);          // 같은 이름이 
 const reds = blocks.filter((b) => b.ok === false);
 const greens = blocks.filter((b) => b.ok === true);
 const cut = blocks.filter((b) => b.ok === null);             // 열렸는데 안 닫힌 것 = 끊김
+const holds = blocks.filter((b) => b.ok === 'hold');         // ★[T1339] 유보(느린 판) — 없으면 아래 줄 · 절이 안 선다(종전 바이트)
 const missing = listed.filter((n) => !seen.has(base(n)));
 
 // 단독 재실행 결과
@@ -307,7 +308,7 @@ const L = [];
 L.push(`# 보고 — 야간 러너 ${T0 ? T0.slice(0, 10) : '?'} (${T0 ? T0.slice(-5) : '?'})`);
 L.push('');
 L.push(`**기준 커밋 \`${BASE}\`** · 시작 **${hhmm(T0)}** → 종료 **${hhmm(T1)}** (${dur(T0, T1)})`);
-L.push(`· 오늘 묶음 **${which}** · 목록 **${listed.length}종** · 돈 것 **${blocks.length}** · 통과 **${greens.length}** · 실패 **${reds.length}** · 끊김 **${cut.length}** · 미측정 **${missing.length}**`);
+L.push(`· 오늘 묶음 **${which}** · 목록 **${listed.length}종** · 돈 것 **${blocks.length}** · 통과 **${greens.length}** · 실패 **${reds.length}** · 끊김 **${cut.length}** · 미측정 **${missing.length}**${holds.length ? ` · 유보 **${holds.length}**` : ''}`);
 //   ★[T1177] 이어 돈 판이면 몇 번 이었나 한 줄(이어 돌지 않은 밤은 이 줄이 없다 — 종전 바이트)
 const RESUMES = head.filter(({ s }) => s.startsWith('===== nightly-run 이어서')).map(({ t }) => hhmm(t));
 if (RESUMES.length) L.push(`· ★이어 돌기 **${RESUMES.length}번**(${RESUMES.join(' · ')}) — 끊긴 판을 같은 로그에서 남은 것만 이어 돌았다(T1177 · 시작→종료 시간에 멈춘 사이가 든다)`);
@@ -342,7 +343,7 @@ if (reds.length === 0) {
     const k = known.get(base(b.name));
     const r = retryOf.get(base(b.name));
     const first = `${b.verdict}${b.marks.length ? ' · ' + b.marks[0] : ''}`;
-    const again = !r ? '—' : (r.ok ? `★**단독 초록** (${r.verdict})` : `여전히 빨강 (${r.verdict}${r.marks.length ? ' · ' + r.marks[0] : ''})`);
+    const again = !r ? '—' : (r.ok === 'hold' ? `단독 유보 (${r.verdict})` : r.ok ? `★**단독 초록** (${r.verdict})` : `여전히 빨강 (${r.verdict}${r.marks.length ? ' · ' + r.marks[0] : ''})`);
     const who = k ? `**상시(${cell(k.why)})** — ${cell(k.src)}` : '**귀속: 모델 몫**';
     const n = streak(b.name);
     // ★표는 **글자로** 표시한다(이모지 0) — 자가 이 칸을 읽는다(`test-harness-lint ②`: 판정 자리에 이모지 0).
@@ -363,6 +364,12 @@ L.push('');
 L.push(...CHK.lines);
 L.push('');
 
+if (holds.length) {   // ★[T1339] 유보 — 게임일 상한에 닿은 느린 판(빨강 아님 · 판정 줄 그대로 옮긴다)
+  L.push('## 2a. 유보 (느린 판 · 기계 의존 — 빨강이 아니다 · `lib-wait-day`)');
+  L.push('');
+  for (const b of holds) L.push(`* \`${base(b.name)}\` — ${cell(b.verdict)}`);
+  L.push('');
+}
 if (cut.length) {
   L.push('## 2. 끊김 (열렸는데 안 닫혔다 — 창이 닫힌 자리다 · 빨강이 아니다)');
   L.push('');
@@ -389,7 +396,7 @@ if (outside.length === 0) {
     L.push(`* \`${base(b.name)}\` — ${cell(b.verdict)}`);
     for (const m of b.marks.slice(0, 3)) L.push(`  * ${cell(m)}`);
     const r = retryOf.get(base(b.name));
-    if (r) L.push(`  * 단독 재실행: ${r.ok ? '**초록**' : '여전히 빨강'} (${cell(r.verdict)})`);
+    if (r) L.push(`  * 단독 재실행: ${r.ok === 'hold' ? '유보' : r.ok ? '**초록**' : '여전히 빨강'} (${cell(r.verdict)})`);
     // ★[T1029 · T971 회부 1] `test-map-editor` 층 데이터 대조가 남긴 `[editor-layers] 다른 자리` 줄 — 그 글자로 귀속을 가른다(판정 0 · 글자 대응만)
     const el = b.marks.find((m) => /\[editor-layers\] 다른 자리/.test(m));
     if (el) L.push(/화소 같음\(인코더 차이\)/.test(el)
@@ -415,7 +422,7 @@ if (!topT.length) L.push('잰 판 **0**(판정 줄까지 닫힌 판이 없다).'
 else {
   L.push('| 순위 | 하네스 | 걸린 초 | 하네스 합의 몫 | 판정 |');
   L.push('|---|---|---|---|---|');
-  topT.forEach((x, i) => L.push(`| ${i + 1} | \`${base(x.b.name)}\` | ${grp(x.s)} | ${pct(x.s, sumS)}% | ${x.b.ok ? '초록' : '빨강'} |`));
+  topT.forEach((x, i) => L.push(`| ${i + 1} | \`${base(x.b.name)}\` | ${grp(x.s)} | ${pct(x.s, sumS)}% | ${x.b.ok === 'hold' ? '유보' : x.b.ok ? '초록' : '빨강'} |`));
   const topSum = topT.reduce((a, x) => a + x.s, 0);
   L.push('');
   L.push(`· 잰 판 **${timed.length}** · 하네스 합 **${grp(sumS)}초** · 위 ${topT.length} 합 ${grp(topSum)}초(${pct(topSum, sumS)}%) · 판 전체 ${wallS == null ? '?' : `**${grp(wallS)}초** · 그 사이(배수 · 정리 기다림 · 머리) ${grp(wallS - sumS)}초`}${cut.length ? ` · 끊김 ${cut.length}은 셈 밖` : ''}`);

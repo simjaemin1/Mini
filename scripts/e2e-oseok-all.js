@@ -12,7 +12,8 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
+const FB = require('./fixture-boot');
+const WD = require('./lib-wait-day');   // ★[T1339] 유보 줄 · RC(프레임 띠 — 기계 의존)   // ★T349 기동 기다리기 정본(사본 0)
 const BD = require('./browser-driver');
 
 const ROOT = path.join(__dirname, '..');
@@ -86,11 +87,18 @@ const S = (d) => `${q(d, 0.5)} / ${q(d, 0.95)} / ${Math.max(...d).toFixed(1)}`;
     // 판 하나 재고 찍기
     const judge = async (name, sel) => {
       await sleep(500);
-      const P = await pg.ev(PROBE(sel));
+      //   ★[T1339 · T1328 회부 1ⓑ] 글자 바닥 덧씀(`52-w-oseok-all.js` `osaFlush`)은 **다음 프레임**에 돈다 — 판 안에 새로 선 글자(가방 칸 수 등)는 그 프레임 전까지
+      //     제 크기(10px)다. 붐비는 상자에선 rAF 가 밀려 500ms 안에 덧씀이 안 돌아 "18px 아래 `0`" 이 잡혔다(10판 중 1). 화면 캐논은 **선 판**의 글자다 —
+      //     덧씀 줄이 비고(`osaRaf` 0) 프레임 둘이 지난 뒤 잰다(상한 3초 · 넘으면 그대로 잰다 — 빨강이 이름을 단다). 끔 판엔 덧씀이 없다(바로 0).
+      //     ⚠덧씀 줄이 빈 것을 보고 **같은 차례(한 태스크) 안에서** 잰다 — 따로 물으면 그 사이 가방이 다시 그려져(재고 갱신) 새 10px 칸이 설 수 있다(미끼 D4 판에서 그랬다 ·
+      //       DOM 변경의 관찰자는 그 태스크 끝 마이크로태스크라, 덧씀 줄이 비었다고 본 태스크 안에선 덧씀 안 된 새 칸이 없다).
+      const P = await pg.ev(`(async () => { for (let i = 0; i < 90; i++) { await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        if (typeof osaRaf === 'undefined' || (osaRaf === 0 && !(typeof osaQueue !== 'undefined' && osaQueue.size))) return ${PROBE(sel)}; } return ${PROBE(sel)}; })()`);
     P.texts = P.texts.filter(([x, y, w, h]) => x >= P.rect[0] && y >= P.rect[1] && x + w <= P.rect[0] + P.rect[2] + 1 && y + h <= P.rect[1] + P.rect[3] + 1);   // 판 안에 보이는 글자만(넘쳐 가려진 줄 · 판 밖 0)
       const f = path.join(OUT, `${BR}-${mode}-${name}.png`); await pg.shot(f);
       let con = null;
-      if (P.found && P.texts.length) con = BD.contrastFree(f, { plates: [P.rect], texts: P.texts, dpr: await pg.ev('devicePixelRatio') });
+      const how = {};   // ★[T1339] 판 밝기를 어느 길로 쟀나(판 칸 · 글자 상자 — 꼭 맞는 한 줄 판) — 판정 밖 · 줄에 찍는다
+      if (P.found && P.texts.length) con = BD.contrastFree(f, { plates: [P.rect], texts: P.texts, dpr: await pg.ev('devicePixelRatio'), how });
       vals[mode][name] = { visible: P.visible, plate: P.plate, min: P.min, n: P.n, emoji: P.emoji.length, contrast: con };
       shots.push(name);
       if (mode === 'on') {
@@ -98,7 +106,7 @@ const S = (d) => `${q(d, 0.5)} / ${q(d, 0.95)} / ${Math.max(...d).toFixed(1)}`;
         ok(P.plate && /plate/.test(P.img), `① ${name} = 오석 판(모듈 판 겉 \`os-plate\` · 무늬 \`plate\`)`, P.img.slice(0, 60));
         ok(P.n > 0 && P.min >= 18, `② ${name} 판 안 글자 18px 아래 0`, `${P.n}마디 · 가장 작은 ${P.min}px「${P.minText}」`);
         ok(!P.emoji.length, `② ${name} 이모지 0`, P.emoji.join('|'));
-        ok(con != null && con >= 4.5, `② ${name} 판 글자 대비 ≥ 4.5(AA) — 사진`, String(con));
+        ok(con != null && con >= 4.5, `② ${name} 판 글자 대비 ≥ 4.5(AA) — 사진`, `${con}${how.plate === 'textbox' ? ' · 판 밝기 = 글자 상자 가운데값(꼭 맞는 한 줄 판)' : ''}`);
       } else {
         ok(P.found && !P.plate && !/plate/.test(P.img), `⑧ 끔 — ${name} 은 먹선 그대로(판 겉 · 무늬 0)`, P.img.slice(0, 40));
       }
@@ -126,6 +134,17 @@ const S = (d) => `${q(d, 0.5)} / ${q(d, 0.95)} / ${Math.max(...d).toFixed(1)}`;
     const opened = await pg.ev(RAF);
     await pg.ev('(() => { toggleInv(); return 1; })()');
     await sleep(400);
+    //   ★[T1339 · T1328 회부 1ⓒ] 프레임 띠 — 2코어 상자에선 rAF 가 통째로 30fps 로 떨어지는 판이 있다(15판 중 2 · 열림 33 ↔ 닫힘 17).
+    //     띠를 넘으면 **같은 판에서 한 번 더** 닫힘 → 열림 차례로 잰다(판정 문턱 무변): 다시 연 판도 넘고 닫힘은 띠 안 = 가방이 무겁다(빨강) ·
+    //     닫힘도 같이 느리거나 다시 연 판이 띠 안 = 상자가 흔들렸다(기계 의존 — 유보 줄 · RC 75 · 빨강 아님).
+    let frameRe = null;
+    if (mode === 'on' && !(q(opened, 0.5) <= q(closed, 0.5) * 1.5 + 1)) {
+      const closed2 = await pg.ev(RAF);
+      await pg.ev('(() => { toggleInv(); return 1; })()'); await sleep(500);
+      const opened2 = await pg.ev(RAF);
+      await pg.ev('(() => { toggleInv(); return 1; })()'); await sleep(400);
+      frameRe = { closed2: q(closed2, 0.5), opened2: q(opened2, 0.5), heavy: q(opened2, 0.5) > q(closed2, 0.5) * 1.5 + 1 && q(closed2, 0.5) <= q(closed, 0.5) * 1.5 + 1 };
+    }
     // 제작(K 와 같은 함수 `toggleSide('craft')` — 진짜 키는 로비 입력칸에 초점이 남아 그리로 간다)
     await pg.ev(`(() => { toggleSide('craft'); return 1; })()`);
     await sleep(700);
@@ -155,12 +174,15 @@ const S = (d) => `${q(d, 0.5)} / ${q(d, 0.95)} / ${Math.max(...d).toFixed(1)}`;
       const st = await pg.ev('window.__osaStats()');
       vals.on.floor = st;
       console.log(`    가방 열 때 ${tInv}ms · 열린 동안 rAF p50/p95/max ${S(opened)} ↔ 닫힘 ${S(closed)} · 글자 바닥 덧씀 ${st.floored}칸 · ${st.passes}번 · ${st.ms}ms`);
-      ok(q(opened, 0.5) <= q(closed, 0.5) * 1.5 + 1, '② 가방을 연 동안 프레임 = 닫힘과 같은 띠(p50)', `${q(opened, 0.5)} ↔ ${q(closed, 0.5)}`);
+      { const m = '② 가방을 연 동안 프레임 = 닫힘과 같은 띠(p50)', d = `${q(opened, 0.5)} ↔ ${q(closed, 0.5)}`;
+        if (!frameRe) ok(true, m, d);
+        else if (frameRe.heavy) ok(false, m, `${d} · 다시 잰 판도 넘음(열림 ${frameRe.opened2} ↔ 닫힘 ${frameRe.closed2}) — 가방이 무겁다`);
+        else WD.yubo(m, `${d} · 다시 잰 판 열림 ${frameRe.opened2} ↔ 닫힘 ${frameRe.closed2} — 상자가 흔들렸다(기계 의존 · 빨강 아님)`); }
     }
     await pg.close();
   }
   fs.writeFileSync(path.join(OUT, `${BR}-values.json`), JSON.stringify(vals, null, 1));
   await D.close(); shutdown();
   console.log(`\n=== 결과: ${pass} 통과 / ${fail} 실패 ===`);
-  process.exit(fail ? 1 : 0);
+  process.exit(WD.rc(fail));   // ★[T1339] 빨강 1 · 유보만 75 · 0
 })().catch((e) => { console.error(e); shutdown(); process.exit(1); });

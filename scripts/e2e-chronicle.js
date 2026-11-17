@@ -22,6 +22,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
+const WD = require('./lib-wait-day');   // ★[T1339] 게임일 기다림 문(벽시계 폴링 수 대신 게임일 · 느린 판 = 유보 · 멈춘 시계 = 빨강)
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-shots';
@@ -164,7 +165,9 @@ async function waitHttp(url, tries = 900) {
     for (let i = 0; i < 30; i++) { const d = await page.evaluate(() => window.__evGameDay | 0); if (d > 0) return d; await sleep(400); }
     return 0;
   };
-  const freeze = async (on) => { await page.evaluate((o) => window.__sendPrimary({ type: '__e2e_day_freeze', on: o }), on); await sleep(700); };
+  //   ★[T1339] 얼린 뒤 날이 가라앉기를 기다린다(`WD.settleDay` — e2e-rumor ④a 와 같은 자리 · 얼림 전에 연 마감이 하루를 더 낼 수 있다)
+  const freeze = async (on) => { await page.evaluate((o) => window.__sendPrimary({ type: '__e2e_day_freeze', on: o }), on); await sleep(700);
+    if (on) await WD.settleDay(() => page.evaluate(() => window.__evGameDay | 0), 1500, 15000); };
   // 사이드바 아이콘을 **실제로 눌러서** 연다 — 메시지만 보내면 §8.2 등록 3단계를 안 재게 된다.
   const openChron = async () => {
     await page.evaluate(() => { window.__evLastChronicle = null; });   // ★위 주석 — 낡은 응답을 읽지 않는다
@@ -226,12 +229,18 @@ async function waitHttp(url, tries = 900) {
   const crossOf = (c) => [].concat(...((c && c.seasons) || []).map((b) => b.items))
     .filter((x) => x.from == null && !x.deed);
   let cA = null, addedA = 0, freshCross = [];
-  for (let i = 0; i < 30 && !freshCross.length; i++) {
+  //   ★[T1339] 연표를 **얼린 채** 읽는다 — 부하 10판 중 2판이 ⑤b2(얼린 날 − 사건일 ≤ 3)에서 4일로 빨갰다: 붐비면 연표 한 번 묻는 데 몇 초가 걸려
+  //     줄을 찾은 뒤 아래 얼림까지 날이 더 갔다. ⇒ 하루 경계를 흘린 뒤 얼리고 묻는다 · 찾으면 언 채로 ⑤ 로(얼린 날 = 찾은 날) · 못 찾으면 녹여 다시.
+  //     ⚠"하루 경계를 흘린다"는 벽시계(종전 1.2초 ≈ 0.5초/일 두 날)가 아니라 **게임일 둘**로(`WD.waitDay` — 붐빈 판에선 1.2초에 하루도 안 가
+  //       새 줄 없이 그날 이미 있던 줄만 보고 멈췄다 · 부하 판 ④ `7 → 7줄`). 멈춤 조건도 "이 판이 더한 줄이 있다"(④ 의 판정 그대로)를 같이 본다.
+  for (let i = 0; i < 30 && !(freshCross.length && addedA > 0); i++) {
     await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), A.id);
-    await sleep(1200);
+    { const dNow = await gameDay(); await WD.waitDay(() => gameDay(), dNow + 2, { capMs: 30000, pollMs: 100, stallMs: 20000 }); }
+    await freeze(true);
     cA = await askChron(A.id, null);
     addedA = before(cA) - n0;
     freshCross = crossOf(cA).filter((x) => x.day >= dayStart);
+    if (!(freshCross.length && addedA > 0)) await freeze(false);
   }
   ok(addedA > 0, '④ 사건이 나면 **그 마을 연표에 바로** 적힌다', `${n0} → ${before(cA)}줄`);
   const mineItems = [].concat(...((cA && cA.seasons) || []).map((b) => b.items)).filter((x) => x.from == null);
@@ -276,15 +285,16 @@ async function waitHttp(url, tries = 900) {
   // ── ⑥ 날을 녹이면 며칠 뒤 나타난다 — 그리고 "몇 일 걸려 닿았다"가 화면에 있다
   await freeze(false);
   let arrived = null, polls = 0;
-  for (; polls < 150 && !arrived; polls++) {
+  //   ★[T1339] 종전 "폴링 150번"(벽시계 · 0.5초/일이면 ≈ 150게임일) → 게임일 150일(그 날까지 안 오면 빨강 · 그 전에 상한 300초면 유보)
+  const arrR = await WD.waitDay(() => gameDay(), evA.day + 150, { capMs: 300000, pollMs: 400, until: () => !!arrived, body: async () => {
+    polls++;
     // ★**그 사건이 난 해**를 명시해 묻는다 — 기본값(올해)으로 물으면 폴링 중에 해가 넘어가는 순간
     //   찾던 줄이 화면에서 사라진다(그건 제품이 옳은 것이고 하네스가 틀린 것이다).
     const c = await askChron(B.id, yearAtFreeze);
     const all = [].concat(...((c && c.seasons) || []).map((b) => b.items));
-    arrived = all.find((x) => keyOf(x, B.name) === keyOf(evA, A.name));
-    if (!arrived) await sleep(400);
-  }
-  ok(!!arrived, '⑥ 며칠 뒤 그 일이 **B 연표에 나타난다**(연표도 도달표 위에 선다)',
+    arrived = all.find((x) => keyOf(x, B.name) === keyOf(evA, A.name)) || null;
+  } });
+  WD.judge(ok, arrR, !!arrived, '⑥ 며칠 뒤 그 일이 **B 연표에 나타난다**(연표도 도달표 위에 선다)',
     arrived ? `day${arrived.day} → ${arrived.heard}일에 들었다 (${arrived.heard - arrived.day}일)` : `(${polls}회 폴링 뒤에도 미도착)`);
   if (arrived) {
     ok(arrived.from === A.name, '⑥b 출처 마을이 붙어 온다', `from=${arrived.from}`);
@@ -477,5 +487,5 @@ async function waitHttp(url, tries = 900) {
   console.log(`\n  스크린샷: ${shots.join(' ')}`);
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-  process.exit(fail ? 1 : 0);
+  process.exit(WD.rc(fail));   // ★[T1339] 빨강 1 · 유보만 75 · 0
 })().catch((e) => { console.error('E2E 실패:', e); shutdown(); process.exit(1); });

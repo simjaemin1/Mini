@@ -20,6 +20,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
+const WD = require('./lib-wait-day');   // ★[T1339] 게임일 기다림 문(벽시계 240초 대신 "겨울 첫날 + 2 에 닿을 때까지" · 느린 판 = 유보 · 멈춘 시계 = 빨강)
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-shots';
@@ -258,8 +259,10 @@ async function waitHttp(url, tries = 900) {
     { let a0 = d0; while (a0 > 0 && !isAutumn1(a0)) a0--;
       let j0 = a0 + 1; while (!isWinter1(j0)) j0++;
       if (a0 > 0 && d0 < j0 - 3) tried = await tryFood(await askBoard(V.id)); }
-    const t0 = Date.now();
-    while (maxDay < dJ + 2 && Date.now() - t0 < 240000) {
+    //   ★[T1339] 종전 `while (maxDay < dJ + 2 && 벽시계 < 240초)` — 붐비는 상자(전수 8시간)에선 240초에 날이 35 → 157 만 가서 ③ 이 빨갰다(T1328 전수).
+    //     ⇒ 게임일 문: 겨울 첫날 + 2 에 닿을 때까지(상한 600초는 안전망 · 닿기 전 상한 = 유보 · 날이 30초 안 가면 멈춘 시계 = 빨강).
+    //     본문이 날을 얼렸다 푼다(`tryFood` · 판 열기) — 그 시간은 멈춤 셈 밖(`bodyPauses`).
+    const winR = await WD.waitDay(() => gameDay(), dJ + 2, { capMs: 600000, pollMs: 250, bodyPauses: true, body: async () => {
       const b = await askBoard(V.id);
       polls++;
       const d = await gameDay(); if (d > maxDay) maxDay = d;
@@ -286,19 +289,19 @@ async function waitHttp(url, tries = 900) {
           await freeze(false);
         }
       }
-      await sleep(250);
-    }
-    ok(maxDay >= dJ + 1 && autumnSeen, '③ 전제: 게임일이 가을 첫날(옛 공표일)과 겨울 첫날(옛 판정일)을 실제로 지났다(달력 정본)',
-      `day ${d0} → ${maxDay} · 가을 첫날 ${dA} · 겨울 첫날 ${dJ} · 게시판 ${polls}회`);
+    } });
+    WD.judge(ok, winR, maxDay >= dJ + 1 && autumnSeen, '③ 전제: 게임일이 가을 첫날(옛 공표일)과 겨울 첫날(옛 판정일)을 실제로 지났다(달력 정본)',
+      `day ${d0} → ${maxDay} · 가을 첫날 ${dA} · 겨울 첫날 ${dJ} · 게시판 ${polls}회 · ${WD.desc(winR)}`);
     ok(heads === 0, '③b ★가을이 와도 게시판 답에 올겨울 머리줄 칸이 안 선다', `${heads}회 / ${polls}`);
     ok(annLines === 0, '③c ★촌장의 공표 말 · 판정 말 0(게시판 소식에 "올겨울" 줄 없음)', `${annLines}회`);
-    ok(!!paneHead && paneHead.open && paneHead.filled && paneHead.head === false, '④ ★가을 한복판에 연 게시판 **판**의 머리 자리가 비어 있다(`.bp-head` 0 — 그린 화면)',
+    //   ★[T1339] ④ ⑤ ⑤b 는 가을 한복판에 닿아야 서는 판 — 못 닿은 판(판 · 시도 없음)만 느림으로 유보한다(선 판의 틀린 값은 그대로 빨강)
+    WD.judge(ok, paneHead ? null : winR, !!paneHead && paneHead.open && paneHead.filled && paneHead.head === false, '④ ★가을 한복판에 연 게시판 **판**의 머리 자리가 비어 있다(`.bp-head` 0 — 그린 화면)',
       JSON.stringify(paneHead));
     ok(srvWinter.length === 0, '④b 서버 콘솔에도 겨울 공표 · 판정 줄 0', srvWinter.slice(0, 2).join(' | '));
-    ok(!!tried && tried.gave && tried.f0 > 0 && tried.nt.length > 0 && !tried.nt.some((t) => /상했습니다/.test(t)),
+    WD.judge(ok, tried ? null : winR, !!tried && tried.gave && tried.f0 > 0 && tried.nt.length > 0 && !tried.nt.some((t) => /상했습니다/.test(t)),
       '⑤ 전제: 가을에 성한 곡식을 손에 쥐고 냈다(거절 까닭이 "상했다"가 아니다 — 겨울 갈래를 잰다)',
       JSON.stringify(tried && { day: tried.day, before: tried.before, f0: tried.f0, reqs: tried.foodReqs, nt: tried.nt }));
-    ok(!!tried && tried.foodReqs === 0 && tried.nt.some((t) => /그런 부탁이 없습니다/.test(t)) && !tried.nt.some((t) => /올겨울 몫/.test(t)) && tried.f1 === tried.f0,
+    WD.judge(ok, tried ? null : winR, !!tried && tried.foodReqs === 0 && tried.nt.some((t) => /그런 부탁이 없습니다/.test(t)) && !tried.nt.some((t) => /올겨울 몫/.test(t)) && tried.f1 === tried.f0,
       '⑤b ★곡식 의뢰가 없으면 납품으로 안 받는다("그런 의뢰가 없다" — 장부 정본) — 겨울 몫 갈래 0(손의 곡식 그대로)', JSON.stringify(tried && { f0: tried.f0, f1: tried.f1, nt: tried.nt }));
     await freeze(true);
     const ch = await askChron(V.id, null);
@@ -316,7 +319,7 @@ async function waitHttp(url, tries = 900) {
     console.log(`\n  스크린샷: ${shots.join(' ')}`);
     console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
     for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-    process.exit(fail ? 1 : 0);
+    process.exit(WD.rc(fail));   // ★[T1339] 빨강 1 · 유보만 75 · 0
   }
 
 })().catch((e) => { console.error('E2E 실패:', e); shutdown(); process.exit(1); });

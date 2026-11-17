@@ -38,8 +38,17 @@ function pin(hour) {
   global.__t1299Phase = { off, hour: +hour || 0, at: hourOf(rnow() + off) };
   return global.__t1299Phase;
 }
+//   ★[T1339 · T1328 회부 3] **한 순간 붙잡기** — `fn` 이 도는 동안 `Date.now()` 를 부른 그 순간 값 하나로 묶는다(동기 구간만 · 끝나면 되돌린다).
+//     왜: `test-t1118-rack-age` ⓔ 는 "넣은 신선도 = 화면 '나오면'"(허용 1e-4)을 잰다 — 하루 2초 판에선 화면을 본 순간과 넣은 순간 사이 **1ms** 가
+//     생선 · 과실 신선도 0.00017 이라(0.999833 · T1301 · T1328 전수 두 번) 그 사이에 벽시계 1ms 눈금만 넘어가도 빨갰다. 같은 순간에 일어난 일로 묶는다.
+//     흐름 · 간격은 그대로(묶은 동안만 0) · 세계 값 무변 · `pin` 과 겹쳐도 된다(옮긴 시계의 그 순간을 묶는다).
+function hold(fn) {
+  const D = global.Date, keep = Object.getOwnPropertyDescriptor(D, 'now'), t = D.now();
+  Object.defineProperty(D, 'now', { configurable: true, writable: true, value: () => t });
+  try { return fn(t); } finally { if (keep) Object.defineProperty(D, 'now', keep); else delete D.now; }
+}
 //   zone-config 가 실렸으면 하루 길이 · 기점이 이 자의 가정(하루 24분 · worldEpoch 0)과 맞나 — 안 맞으면 고정한 시각이 게임 시각이 아니다
 function phaseOk() { try { const z = require.cache[require('path').join(__dirname, '..', 'server', 'zone-config.js')]; return !!(z && z.exports.WORLD && z.exports.WORLD.dayLengthMs === DAY && !z.exports.WORLD.worldEpoch); } catch (e) { return false; } }
 //   ★[T1299 ①] 띄운 시각(게임 06시 · 18시 두 판)에 결과가 갈린 하네스 — 판 머리에서 `pin(h)` 로 고정한다(`test-harness-lint` ⑯a 가 이 표를 본다 · 보고/T1299 §1).
 const MUST = [];
-module.exports = { pin, phaseOk, hourOf, DAY, ENV, MUST };
+module.exports = { pin, hold, phaseOk, hourOf, DAY, ENV, MUST };
