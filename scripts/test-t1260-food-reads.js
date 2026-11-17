@@ -6,6 +6,7 @@
 //   ② 켬 = 합계 — 요리 문 섬 · 개간 문 닫힘(120일치 넘는 곳간) · 요리 재료 한 단을 가장 많이 쌓인 곡식 품목에서
 //   ③ 글자 — 손잡이 읽는 자리 하나(econ) + 전쟁 층 하나 · 문 셋(요리 · 개간 · 곳간 증설)이 같은 함수(`t1260FoodOf`)를 부른다 · 전쟁 층 추정 문이 `_feD`
 //   ④ [자명 통과 금지 · 미끼] 문 셋 중 하나를 `storage.food` 로 되돌린 사본은 ③ 의 검사에서 빠진다(검사가 실제로 문다)
+//   ⑧ [T1309] 손잡이 `T1309_HEALTH_EATEN`(끔 기본 · `'1'` 만 · T1260 켬 안에서만) — 건강은 먹은 것으로(곳간 재고 아님) · 서버 곳간 로트가 재료 건강을 잇는다
 //   ⑦ [T1298] 손잡이 `T1298_LEDGER` · `T1298_HEALTH`(끔 기본 · `'1'` 만 · T1260 켬 안에서만) — 옮김(조리식 · 보존식)은 장부 · 잠재 생산 0 · 조리식 · 보존식이 재료 건강 몫을 잇는다
 //   ⑥ [T1286] 손잡이 `T1286_COOK_SPARE` · `T1286_PRODK`(끔 기본 · `'1'` 만 · T1279 켬 안에서만) — 남는 시간 요리(정원 0 · 옮김 · 재료 한 단만 · 부재료 그대로 · 조리식 ≤ 든 환산) · 부양력 조리식 칸 0
 //   ⑤ [T1279] 손잡이 `T1279_COOK`(끔 기본 · `'1'` 만 · T1260 켬 안에서만) — 켜면 ① 식량 흐름 장부(`dailyFoodProd`)가 조리식 칸을 0 으로 센다(요리는 옮김) · ② 정원 요리사 0(`cookTarget`)
@@ -30,6 +31,22 @@ if (process.argv[2] === '--child') {
   const st = E.t1260CookStaple(v); out.staple = st ? st[0] : null;
   out.spare86 = E.T1286_COOK_SPARE; out.prodk86 = E.T1286_PRODK;
   out.led98 = E.T1298_LEDGER; out.hl98 = E.T1298_HEALTH;
+  out.he09 = E.T1309_HEALTH_EATEN; out.dv09 = E.T1309_DIVERSITY_EATEN; out.mc09 = E.T1309_MOVE_CONS;
+  {   // ⑧ T1309 ① 갈무리 흐름 소비 — 생선 5 를 말리면 끔 = 흐름 소비 5 · 켬 = 0
+    const w = mk(); w.storage = { food: N * 100, fish: N * 1.5, meat: 0, cooked_food: 0, dried_fish: 0 }; const add = (r, a) => { w.storage[r] = (w.storage[r] || 0) + a; };
+    E._preserveSurplus(w, { fish: 'dried_fish' }, 5, add, null, E.T877_ON ? E._t860Unit : null); out.cs09 = (w._consDay && w._consDay.fish) || 0;
+  }
+  {   // ⑧ T1309 — 건강은 먹은 것으로(곳간 생선이 많아도 안 먹으면 0 · 먹으면 군 몫) · 보존식은 원물 군 · 서버 로트가 진 건강
+    const m = (st, eat, H) => { const w = mk(); w.storage = Object.assign({ food: N * 50, fish: 0, meat: 0, cooked_food: 0 }, st); w._foodEaten = eat; if (H) w._t1298H = H; return E._computeVillageStats(w, N).health; };
+    out.ea09 = { stockNoEat: m({ fish: N * 2 }, { food: N }), eatFish: m({}, { fish: N * 0.2, food: N * 0.8 }), eatDried: m({}, { dried_fish: N * 0.08, food: N * 0.8 }, { dried_fish: 1.0 }), none: m({}, { food: N }),
+      grp: [E.t1309Group('dried_fish'), E.t1309Group('cooked_food'), E.t1309Group('wood')] };
+    try {   // 서버 곳간 로트(시계 순간을 켠 것처럼 — 이 아이 프로세스 안에서만)
+      const Lots = require(path.join(ROOT, 'server', 'lots')); Lots.momentOn = () => true;
+      const G = require(path.join(ROOT, 'server', 'granary-lots')); const lv = { name: 'l', npcs: [{}], storage: { food: 0, cooked_food: 0 } };
+      G.attach(lv, null, 0); lv.storage.cooked_food = (lv.storage.cooked_food || 0) + 10; const tg = G.tagH(lv, 'cooked_food', 6, 0.5);
+      lv.storage.cooked_food = (lv.storage.cooked_food || 0) + 5; G.eatBegin(lv); lv.storage.cooked_food -= 12; out.lot09 = { tg, eat: G.eatEnd(lv), left: lv.storage.cooked_food };
+    } catch (e) { out.lot09 = { err: String(e && e.message).slice(0, 120) }; }
+  }
   {   // ⑦ T1298 — 생선 갈무리 한 번(곳간 생선 N×4 · 손 5): 장부 칸 · 건강 칸 · 마을 건강(같은 포화)
     const w = mk(); w.storage = { food: N * 100, fish: N * 1.5, meat: 0, cooked_food: 0, dried_fish: 0 };   // 생선 1인당 1.5 — 포화(1인당 2) 밑 선형 구간
     const dp = {}; const add = (r, a) => { w.storage[r] = (w.storage[r] || 0) + a; dp[r] = (dp[r] || 0) + a; };
@@ -61,6 +78,9 @@ const run = (env) => {
   if (env.T1286_PRODK == null) delete e.T1286_PRODK;
   if (env.T1298_LEDGER == null) delete e.T1298_LEDGER;
   if (env.T1298_HEALTH == null) delete e.T1298_HEALTH;
+  if (env.T1309_HEALTH_EATEN == null) delete e.T1309_HEALTH_EATEN;
+  if (env.T1309_DIVERSITY_EATEN == null) delete e.T1309_DIVERSITY_EATEN;
+  if (env.T1309_MOVE_CONS == null) delete e.T1309_MOVE_CONS;
   delete e.T1243_FARM_ON; delete e.T1229_FIELD_GROW;
   const r = spawnSync(process.execPath, [__filename, '--child'], { cwd: ROOT, env: e, encoding: 'utf8', timeout: 120000, maxBuffer: 16 << 20 });
   const line = String(r.stdout || '').split('\n').filter((l) => l.startsWith('{')).pop();
@@ -175,15 +195,55 @@ const led98 = (es) => /const dailyFoodProd = totalFoodProductionEquivalent\(T129
   && /function _t1298Moved\(prod\) \{ const o = Object\.assign\(\{\}, prod, \{ cooked_food: 0 \}\); for \(const r of PRESERVED_FOODS\) o\[r\] = 0; return o; \}/.test(es)
   && /const T1298_LEDGER = T1260_FOOD_READS && /.test(es) && /const T1298_HEALTH = T1260_FOOD_READS && /.test(es);
 const hl98 = (es) => (es.match(/_t1298Carry\(v, /g) || []).length === 4
-  && es.includes('if (T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;')
+  && es.includes('if (!_f09 && T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;')
   && es.includes('T[P] = (b * (T[P] || 0) + Math.max(0, H)) / (b + out);');
 ok(led98(ES) && hl98(ES), '⑦ 글자 — 장부 · 잠재 자리 하나씩(켬 = 옮김 칸 0) · 옮김 칸 함수 · 손잡이 둘(T1260 과 곱) · 건강 잇는 자리 넷(갈무리 · 갈래 요리 · 남는 시간 요리 · 어종 갈무리) · 마을 건강 자리 하나');
 const baitL98 = ES.replace('T1298_LEDGER ? _t1298Moved(dailyProduction) : ', '');
 const baitP98 = ES.replace('for (const r of PRESERVED_FOODS) o[r] = 0; ', '');
-const baitH98 = ES.replace('if (T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;', '');
+const baitH98 = ES.replace('if (!_f09 && T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;', '');
 const baitC98 = ES.replace('T[P] = (b * (T[P] || 0) + Math.max(0, H)) / (b + out);', 'T[P] = 0;');
 ok([baitL98, baitP98].every((b) => b !== ES && !led98(b)) && [baitH98, baitC98].every((b) => b !== ES && !hl98(b)),
   '⑦ [자명 통과 금지 · 미끼] 갈무리를 다시 생산으로 센 사본 둘(장부 자리 종전 · 보존식 칸을 안 지움) · 건강을 0 으로 되돌린 사본 둘(마을 건강 자리 뺌 · 칸을 0 으로) — 넷 다 문다',
   { L: led98(baitL98), P: led98(baitP98), H: hl98(baitH98), C: hl98(baitC98) });
+//   ⑧ T1309 — 건강은 먹은 것으로 · 서버 곳간 로트가 재료 건강을 잇고 먹을 때 그 로트 건강이 든다
+const u1 = run({ T1260_FOOD_READS: '1', T1309_HEALTH_EATEN: '1', T1309_DIVERSITY_EATEN: '1', T1298_HEALTH: '1' }), u0 = run({ T1260_FOOD_READS: '1', T1309_HEALTH_EATEN: '1', T1298_HEALTH: '1' }), u2 = run({ T1309_HEALTH_EATEN: '1' }), u3 = run({ T1260_FOOD_READS: '1', T1309_HEALTH_EATEN: 'yes' });
+ok(!u1.err && !u2.err && !u3.err && off.dv09 === false && off.he09 === false && on.he09 === false && u1.he09 === true && u2.he09 === false && u3.he09 === false,
+  "⑧ T1309 손잡이 — 끔 기본 · `'1'` 만 · T1260 켠 판 안에서만(T1260 끔 + `'1'` · `yes` = 꺼짐)", { on: on.he09, u1: u1.he09, u2: u2.he09, u3: u3.he09 });
+{ const a = on.ea09 || {}, b = u1.ea09 || {};
+  ok(a.stockNoEat > a.none + 0.1 && Math.abs(b.stockNoEat - b.none) < 1e-9,
+    '⑧ 곳간 생선이 1인당 2 있어도 — 끔(곳간으로 셈)은 건강이 오르고 · 켬(먹은 것으로 셈)은 안 먹었으니 그대로', { off: [a.none, a.stockNoEat], on: [b.none, b.stockNoEat] });
+  ok(b.eatFish - b.none > 0.4 - 1e-9 && Math.abs(b.eatDried - b.eatFish) < 1e-9,
+    '⑧ 켬 — 생선을 1인당 0.2(군 몫 1/6 넘김) 먹으면 +0.4(생선 건강) + 다양성 한 군 · 같은 열량을 건어물(이은 칸 1.0 ÷ 환산 2.5)로 먹어도 같다(다양성도 원물 군)', { none: b.none, fish: b.eatFish, dried: b.eatDried });
+  { const c = u0.ea09 || {};
+    ok(!u0.err && u0.dv09 === false && u1.dv09 === true && Math.abs(c.eatFish - c.none - 0.4 - (b.eatFish - b.none - 0.4)) < 1e-9 && c.eatDried < c.eatFish - 1e-9,
+      '⑧ 다양성 손잡이 `T1309_DIVERSITY_EATEN` — 끔이면 건어물은 생선군 다양성을 안 얻고(종전 여섯 품목) · 켜면 얻는다 · 건강 몫은 같다', { off: [c.none, c.eatFish, c.eatDried], on: [b.none, b.eatFish, b.eatDried] }); }
+  ok(JSON.stringify(b.grp) === JSON.stringify(['fish', 'grain', null]), '⑧ 군 — 보존식은 원물 군(건어물 → 생선) · 조리식 곡물군 · 식량 밖(나무) 없음', b.grp); }
+{ const L = u1.lot09 || {};
+  ok(!L.err && L.tg === true && L.eat && L.eat.cooked_food && Math.abs(L.eat.cooked_food[0] - 3) < 1e-9 && Math.abs(L.eat.cooked_food[1] - 6) < 1e-9 && Math.abs(L.left - 3) < 1e-9,
+    '⑧ 서버 로트 — 조리식 10 중 새 6 에 건강 0.5 를 적고(갈라 새 로트) · 5 를 더 얻고 · 12 를 먹으면 오래된 것부터 나가 건강 진 6 단위(합 3)가 든다', L); }
+{ const m1 = run({ T1260_FOOD_READS: '1', T1309_MOVE_CONS: '1' }), m2 = run({ T1309_MOVE_CONS: '1' });
+  ok(!m1.err && !m2.err && on.mc09 === false && m1.mc09 === true && m2.mc09 === false && on.cs09 > 4.9 && m1.cs09 === 0,
+    "⑧ T1309 ① `T1309_MOVE_CONS` — 끔 기본 · T1260 켬 안에서만 · 생선 5 를 말리면 끔 = 흐름 소비 5 · 켬 = 0(옮김)", { off: on.cs09, on: m1.cs09, k: [on.mc09, m1.mc09, m2.mc09] }); }
+const mc09 = (es) => es.includes("v.storage[_fr] -= _take; if (!T1309_MOVE_CONS) _cons(v, _fr, _take);") && es.includes('v.storage[from]-=take;if(!T1309_MOVE_CONS)_cons(v,from,take);')
+  && /const T1309_MOVE_CONS = T1260_FOOD_READS && /.test(es);
+const baitMC = ES.replace('if (!T1309_MOVE_CONS) _cons(v, _fr, _take);', '_cons(v, _fr, _take);');
+ok(mc09(ES) && baitMC !== ES && !mc09(baitMC), '⑧ 글자 — 갈무리 흐름 소비 자리 둘(갈무리 · 어종 갈무리)이 손잡이를 본다 · [미끼] 갈무리를 다시 소비로 적는 사본을 문다', { bait: mc09(baitMC) });
+const he09 = (es) => /const T1309_HEALTH_EATEN = T1260_FOOD_READS && /.test(es)
+  && es.includes('if (_f09 && stat === \'health\') continue;') && es.includes('if (T1309_HEALTH_EATEN) stats.health += _t1309EatenHealth(v, pop);')
+  && es.includes('h += (H[g] / X[g]) * Math.min(1, (X[g] / pop) / xb);') && es.includes('const xb = DAILY_FOOD_CONSUMPTION * (T86_W[g] || 0);')
+  && (es.match(/_t1309Tag\(v, /g) || []).length === 4 && es.includes('x.row.h=_h98/_n98;')
+  && es.includes('if (T1309_HEALTH_EATEN) v._t1309LotH = _e09 ? _e09.eatEnd(v) : null;')
+  && es.includes('if (g && (_eaten[id] || 0) / pop > 0.03) _fg.add(g); }');
+const GS = fs.readFileSync(path.join(ROOT, 'server', 'granary-lots.js'), 'utf8');
+const lot09 = (gs) => gs.includes('if (r.h != null) o.h = r.h; return o; }') && gs.includes('&& last.it == null && last.h == null) last.u += left;')
+  && (gs.match(/if \(_eatV === v && r\.h != null\) _eatAdd\(res, take, r\.h\);/g) || []).length === 2;
+ok(he09(ES) && lot09(GS), '⑧ 글자 — 손잡이(T1260 과 곱) · 식량 품목 곳간 건강 뺌 · 먹은 것 건강 한 자리(T86 군 몫 자) · 로트 적는 자리 넷(갈무리 · 갈래 요리 · 남는 시간 요리 · 어종 갈무리) · 끼니 묶음 · 로트가 h 를 잇고(복사 · 합치지 않음) · 먹는 동안 두 길에서 모은다');
+const baitS09 = ES.replace("if (_f09 && stat === 'health') continue;", '');
+const baitE09 = ES.replace('if (T1309_HEALTH_EATEN) stats.health += _t1309EatenHealth(v, pop);', '');
+const baitC09 = GS.replace('if (r.h != null) o.h = r.h; return o; }', 'return o; }');
+const baitM09 = GS.replace('&& last.it == null && last.h == null) last.u += left;', '&& last.it == null) last.u += left;');
+ok(baitS09 !== ES && baitE09 !== ES && !he09(baitS09) && !he09(baitE09) && baitC09 !== GS && baitM09 !== GS && !lot09(baitC09) && !lot09(baitM09),
+  '⑧ [자명 통과 금지 · 미끼] 곳간 재고로 건강을 세는 옛 글자로 돌린 사본 둘(곳간 건강 다시 셈 · 먹은 것 자리 뺌) · 로트 건강을 버리는 사본 둘(복사에서 h 뺌 · 새 몫을 h 로트에 합침) — 넷 다 문다',
+  { S: he09(baitS09), E: he09(baitE09), C: lot09(baitC09), M: lot09(baitM09) });
 console.log(`\n=== T1260 식량 한 품목 읽는 문: 통과 ${pass} · 실패 ${fail} ===`);
 process.exit(fail ? 1 : 0);

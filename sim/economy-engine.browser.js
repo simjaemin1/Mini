@@ -12580,11 +12580,14 @@ function _computeVillageStats(v, N) {
     if (!contributes) continue;
     const per_npc = qty / pop;
     const sat = Math.min(1.0, per_npc / 2.0);
+    const _f09 = T1309_HEALTH_EATEN && _t1309Group(id) != null;   // ★[T1309] 켬 = 식량 품목의 건강은 곳간이 아니라 먹은 것으로(아래) · 끔 = false
     for (const [stat, w] of Object.entries(contributes)) {
+      if (_f09 && stat === 'health') continue;
       if (stats[stat] !== undefined) stats[stat] += w * sat;
     }
-    if (T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;   // ★[T1298 ②] 켬 = 조리식 · 보존식이 이은 재료 건강 몫(한 단위당 · 끔 = 무동작)
+    if (!_f09 && T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;   // ★[T1298 ②] 켬 = 조리식 · 보존식이 이은 재료 건강 몫(한 단위당 · 끔 = 무동작)
   }
+  if (T1309_HEALTH_EATEN) stats.health += _t1309EatenHealth(v, pop);   // ★[T1309] 먹은 것의 건강 몫(끔 = 이 줄 무동작)
   if(T1188_ORE_SPLIT){const qty=OreGoods.total(v.storage)+Math.max(0,v.storage?.ore||0),sat=Math.min(1,qty/pop/2);for(const[k,n]of Object.entries(LEGACY_CONTRIBUTES.ore))stats[k]+=n*sat;}
   // ★S3 무기 품질(_weapQ) → defense·prestige 배수: 고품질(청동·명장) 무기가 방어·위세↑, 저품질(막석검) 무기는 낮음.
   //   기본 defense 기여(1.0×sat)에 (1 + SPAN×(_weapQ−0.5)) 추가분. _weapQ 0.5(석검)=중립, 1.0(명장청동)=+SPAN×0.5.
@@ -12602,6 +12605,7 @@ function _computeVillageStats(v, N) {
   for (const id in FOOD_GROUP) {
     if ((_eaten[id] || 0) / pop > 0.03) _fg.add(FOOD_GROUP[id]);
   }
+  if (T1309_DIVERSITY_EATEN) for (const id in _eaten) { if (FOOD_GROUP[id] || id === 'cooked_food') continue; const g = _t1309Group(id); if (g && (_eaten[id] || 0) / pop > 0.03) _fg.add(g); }   // ★[T1309 · 손잡이 `T1309_DIVERSITY_EATEN`] 켬 = 다양성도 건강과 같은 군 표(보존식은 원물 군 · 생곡 · 어종도 그 군) · 끔 = 무동작(다양성은 종전 `FOOD_GROUP` 여섯 품목)
   if ((_eaten.cooked_food || 0) / pop > 0.03) _fg.add('grain');   // 조리식 = 곡물군
   // ★★[T86] **행복은 "몇 군 먹었나"가 아니라 "예산대로 먹었나"** 다.
   //   종전 `_fg.size / DIVERSITY_FULL` 은 **문턱 계단**이라 3% 를 한 톨 넘기면 만점이 붙었다.
@@ -13023,9 +13027,9 @@ function _preserveSurplus(v, from, budget, addProduce, cap, unit) {
       const _take = Math.min(_sur, _pBudget);
       if(T1192_FISH_SPECIES&&(_fr==='fish'||FishGoods.species().includes(_fr))){_t1192Preserve(v,_fr,_take,addProduce);_pBudget-=_take;continue;}
       const _h98 = T1298_HEALTH ? [_take * _t1298Hw(v, _fr), v.storage[from[_fr]] || 0] : null;   // ★[T1298 ②] 든 재료 건강 · 낸 전 곳간(끔 = null)
-      v.storage[_fr] -= _take; _cons(v, _fr, _take);   // ★flow-EMA — 보존도 수요다
+      v.storage[_fr] -= _take; if (!T1309_MOVE_CONS) _cons(v, _fr, _take);   // ★flow-EMA — 보존도 수요다   // ★[T1309 ①] 켬 = 갈무리는 옮김이라 흐름 소비로 안 적는다
       addProduce(from[_fr], unit ? _take * PRESERVE_YIELD * unit(_fr) : _take * PRESERVE_YIELD);
-      if (_h98) _t1298Carry(v, from[_fr], _h98[0], (v.storage[from[_fr]] || 0) - _h98[1], _h98[1]);
+      if (_h98) { const _o98 = (v.storage[from[_fr]] || 0) - _h98[1]; _t1298Carry(v, from[_fr], _h98[0], _o98, _h98[1]); _t1309Tag(v, from[_fr], _o98, _h98[0]); }   // ★[T1309] 서버 로트에도
       _pBudget -= _take;
     }
   }
@@ -13062,7 +13066,7 @@ function fishPreserveReserve(v,id){return FishGoods.reserve(v,id,RESERVE_PC.drie
 function _t1192Preserve(v,from,take,addProduce){
   const G=require('../server/granary-lots'),FP=require('../server/fish-preserve'),K=require('../server/kcal');
   const active=G.ON&&G.attached(v),captured=active&&G.capBegin(v,from);
-  v.storage[from]-=take;_cons(v,from,take);
+  v.storage[from]-=take;if(!T1309_MOVE_CONS)_cons(v,from,take);
   const recs=captured?G.capEnd(v,from):[],out=[];let accounted=0;
   for(const r of recs){const src=FishGoods.species().includes(r.it)?r.it:(FishGoods.species().includes(from)?from:null);if(!src)continue;
     const n=G.countOf(r,src,K.kcalOf,K.DAY_KCAL);if(!(n>0))continue;
@@ -13078,7 +13082,7 @@ function _t1192Preserve(v,from,take,addProduce){
   for(const x of out)if(x.src&&saltPer>0&&saltLeft+1e-9>=x.n*saltPer){const cost=x.n*saltPer;saltLeft-=cost;saltUsed+=cost;x.id=FP.pickledId(x.src);if(x.r0)x.row=G.preserveRecord(x.r0,x.src,x.id,x.n);}
   if(saltUsed>0){v.storage.salt-=saltUsed;_cons(v,'salt',saltUsed);}
   const _h98=T1298_HEALTH?take*_t1298Hw(v,from):0,_n98=T1298_HEALTH?out.reduce((a,x)=>a+x.n,0):0;   // ★[T1298 ②] 든 원물 건강 → 낸 칸들에 낸 수 비례로(끔 = 0)
-  for(const x of out){const _b98=T1298_HEALTH?(v.storage[x.id]||0):0;if(x.row)G.pushIn(v,x.id,[x.row]);addProduce(x.id,x.n,true);if(x.row)G.clearIn(v,x.id);if(T1298_HEALTH&&_n98>0)_t1298Carry(v,x.id,_h98*x.n/_n98,(v.storage[x.id]||0)-_b98,_b98);}
+  for(const x of out){const _b98=T1298_HEALTH?(v.storage[x.id]||0):0;if(x.row&&T1298_HEALTH&&T1309_HEALTH_EATEN&&_n98>0)x.row.h=_h98/_n98;if(x.row)G.pushIn(v,x.id,[x.row]);addProduce(x.id,x.n,true);if(x.row)G.clearIn(v,x.id);if(T1298_HEALTH&&_n98>0)_t1298Carry(v,x.id,_h98*x.n/_n98,(v.storage[x.id]||0)-_b98,_b98);}
 }
 function _t860Begin(v, from, potA, actA) {
   const st = {}; for (const r in from) st[r] = v.storage[r] || 0;
@@ -13113,6 +13117,7 @@ function _t1286Cook(v, npc, b, potA, actA, dailyProduction) {
   if (T1298_HEALTH) _t1298Carry(v, 'cooked_food', ck ? s * _t1298Hw(v, ck[0]) / ck[1] : s * _t1298Hw(v, 'food'), cooked, v.storage.cooked_food || 0);   // ★[T1298 ②] 곡식 한 단의 건강 몫(곡식 0 이면 묽어진다)
   if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;
   v.storage.cooked_food = (v.storage.cooked_food || 0) + cooked;
+  if (T1298_HEALTH) _t1309Tag(v, 'cooked_food', cooked, ck ? s * _t1298Hw(v, ck[0]) / ck[1] : s * _t1298Hw(v, 'food'));   // ★[T1309] 서버 로트에도(곡식 건강)
   dailyProduction.cooked_food = (dailyProduction.cooked_food || 0) + cooked;
   const C = v._t1286C || (v._t1286C = { n: 0, s: 0, cooked: 0, days: 0, lastD: -1 }); C.n++; C.s += s; C.cooked += cooked; if (C.lastD !== day) { C.days++; C.lastD = day; }
 }
@@ -13244,6 +13249,7 @@ function t1157Food(v, need) {
   }
 }
 function consumeFood(v, need) {
+  const _e09 = T1309_HEALTH_EATEN ? _g09(v) : null; if (_e09) _e09.eatBegin(v);   // ★[T1309] 서버 로트 — 이번 끼니에 나간 로트의 건강 몫(끔 = null)
   if (T1157_EAT_VAULT) t1157Food(v, need);
   let remaining = need;
   // ★소비량 군별 기록(_foodEaten) — 이게 진짜 식단(자체생산+수입, 신선히 먹은 것 포함). 다양성 판정에 씀.
@@ -13399,6 +13405,7 @@ function consumeFood(v, need) {
   //     값은 그 품목의 **곳간 단위**(열량이 아니다) — 다른 `_cons` 호출부 24곳과 같은 단위다.
   //   ★새 수 0(소비량은 사다리가 적은 값 그대로) · 정본 재구현 0 · **기본 끔**(미설정 = 위 판정 그대로 = 비트 동일).
   if (foodConsOn()) for (const r in eaten) _cons(v, r, eaten[r]);
+  if (T1309_HEALTH_EATEN) v._t1309LotH = _e09 ? _e09.eatEnd(v) : null;   // ★[T1309] 이번 끼니의 로트 건강(`_foodEaten` 과 같은 끼니 · 끔 = 무동작)
   return remaining;
 }
 
@@ -13806,6 +13813,44 @@ const T1286_PRODK = T1279_COOK && ((typeof process !== 'undefined' && process.en
 //     (열로 사라지는 몫은 고증 출처가 없어 0 — PM 판정).
 const T1298_LEDGER = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1298_LEDGER === '1' : false);
 const T1298_HEALTH = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1298_HEALTH === '1' : false);
+// ★★[T1309 2026-11-16 · T1298 회부 2 · PM 판정 "건강은 먹은 것으로 센다 — 사람 몸이 실제로 먹은 것이 건강이다"(캐논 797)] 손잡이 `T1309_HEALTH_EATEN`
+//   (끔 기본 · `'1'` 만 · `T1260_FOOD_READS` 켠 판 안에서만 · 끔 = 종전 바이트): 마을 건강의 **식량 몫**을 곳간 재고가 아니라 그날 먹은 것(`_foodEaten`)으로 센다.
+//   식단 군(`T86_GROUP` — 보존식은 원물의 군 · 조리식은 곡물군)마다:
+//     먹은 식량 환산 x_g(1인당) ÷ 이상 몫 x̄_g = `DAILY_FOOD_CONSUMPTION × T86_W[g]`(T86 예산 그 자 · 새 수 0) → 포화 `min(1, x_g / x̄_g)`
+//     × 그 군에서 먹은 것의 식량 환산 1 당 건강(= Σ 먹은 양 × 한 단위 건강 ÷ Σ 먹은 식량 환산 — 생선 0.4 · 건어물 1.0 ÷ 2.5 = 0.4 · 조리식은 T1298 이은 칸)
+//   식량 품목의 곳간 건강 몫(`contributes.health` · T1298 칸)은 켜면 안 센다(먹은 것과 두 번 0). 식량 밖 품목(약재 · 옷 …)과 다른 칸(생존 · 행복)은 그대로다.
+//   서버 곳간 로트가 붙은 마을은 먹은 로트가 진 건강 몫(`granary-lots` 레코드 `h` · `eatenHealth`)을 그 단위만큼 그대로 쓴다.
+const T1309_HEALTH_EATEN = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1309_HEALTH_EATEN === '1' : false);
+//   `T1309_DIVERSITY_EATEN`(끔 기본 · `'1'` 만 · `T1309_HEALTH_EATEN` 켠 판 안에서만) — 다양성(먹은 군 수)도 같은 군 표로 센다. 종전 다양성은 `FOOD_GROUP` 여섯 품목(`food` · 생선 · 고기 · 과일 · 남새 · 버섯)만
+//     세어 생곡 · 보존식 · 어종을 먹어도 그 군이 안 든다(같은 열량을 건어물로 먹으면 생선군이 빠진다). 건강과 따로 재려고 손잡이를 갈랐다(T1309 §2).
+//   `T1309_MOVE_CONS`(끔 기본 · `'1'` 만 · `T1260_FOOD_READS` 켠 판 안에서만 · T1309 ①) — 갈무리(`_preserveSurplus` · 어종 갈무리)가 뗀 원물을 **흐름 소비**(`_cons` → `_consEMA` — 값의 흐름 수요 칸)로 적지 않는다.
+//     갈무리는 곳간 안의 옮김이다(T1298 장부 규약의 수요 쪽 짝). 요리사를 다시 세운 판에서 이 줄만 끊으면 열 시드 +4.1%(6/4) · 농부 날 +7.7%(8/10) — 갈무리를 통째로 뺀 몫(+9.1% · 농부 +18.5%)의 절반쯤(T1309 §1).
+const T1309_MOVE_CONS = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1309_MOVE_CONS === '1' : false);
+const T1309_DIVERSITY_EATEN = T1309_HEALTH_EATEN && ((typeof process !== 'undefined' && process.env) ? process.env.T1309_DIVERSITY_EATEN === '1' : false);
+const _T1309_SRC = (() => { const o = {}; for (const k in PRESERVE_FROM) o[PRESERVE_FROM[k]] = k; return o; })();   // 보존식 → 원물
+function _t1309Group(id) {
+  if (T86_GROUP[id]) return T86_GROUP[id];
+  const src = _T1309_SRC[id]; if (src && T86_GROUP[src]) return T86_GROUP[src];
+  if (PRESERVED_FOODS.indexOf(id) >= 0) return 'fish';   // 어종 보존식(건 · 절임 어종) = 생선군
+  return null;
+}
+let _G09 = null;   // 서버 곳간 로트(붙은 마을만 · 랩은 늘 null)
+function _g09(v) { if (!(T1309_HEALTH_EATEN && T1298_HEALTH)) return null; if (_G09 === null) { try { _G09 = require('../server/granary-lots'); } catch (e) { _G09 = false; } } return (_G09 && _G09.ON && _G09.attached(v)) ? _G09 : null; }
+function _t1309Tag(v, P, out, H) { const G = _g09(v); if (G && out > 0) G.tagH(v, P, out, Math.max(0, H) / out); }   // 막 낸 몫의 로트에 한 단위 건강
+function _t1309EatenHealth(v, pop) {   // 먹은 것의 건강 몫(마을 · 그날)
+  const E = v._foodEaten || {}, LH = v._t1309LotH || null;   // LH = { 품목: [로트 건강 합, 로트 단위 수] }(서버 로트 · 없으면 null)
+  const X = {}, H = {};
+  for (const id in E) {
+    const q = +E[id] || 0; if (!(q > 0)) continue;
+    const g = _t1309Group(id); if (!g) continue;
+    const fe = storageFoodPer(v, id) || _t86Factor(id) || 0; if (!(fe > 0)) continue;
+    const L = LH && LH[id]; const lu = L ? Math.min(q, L[1]) : 0, lh = L && L[1] > 0 ? L[0] * lu / L[1] : 0;
+    X[g] = (X[g] || 0) + q * fe; H[g] = (H[g] || 0) + lh + (q - lu) * _t1298Hw(v, id);
+  }
+  let h = 0;
+  for (const g in X) { const xb = DAILY_FOOD_CONSUMPTION * (T86_W[g] || 0); if (!(xb > 0) || !(X[g] > 0)) continue; h += (H[g] / X[g]) * Math.min(1, (X[g] / pop) / xb); }
+  return h;
+}
 function _t1298Moved(prod) { const o = Object.assign({}, prod, { cooked_food: 0 }); for (const r of PRESERVED_FOODS) o[r] = 0; return o; }   // 옮김 칸(조리식 · 보존식) 0
 function _t1298Hw(v, id) { const SP = _getSpecialty(); const c = (SP && SP[id] && SP[id].contributes) || LEGACY_CONTRIBUTES[id] || null; return ((c && c.health) || 0) + ((v._t1298H && v._t1298H[id]) || 0); }
 function _t1298Carry(v, P, H, out, before) {   // 품목 P 를 out 만큼 냈고 든 재료 건강 값 합이 H · 낸 전 곳간 before
@@ -17257,7 +17302,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
         if (_ck) v.storage[_ck[0]] -= 1 / _ck[1]; else v.storage.food -= 1;
         for (const r of usedSides) v.storage[r] -= 0.5;
         addProduce('cooked_food', cooked);
-        if (_h98) _t1298Carry(v, 'cooked_food', _h98[0], (v.storage.cooked_food || 0) - _h98[1], _h98[1]);
+        if (_h98) { const _o98 = (v.storage.cooked_food || 0) - _h98[1]; _t1298Carry(v, 'cooked_food', _h98[0], _o98, _h98[1]); _t1309Tag(v, 'cooked_food', _o98, _h98[0]); }   // ★[T1309] 서버 로트에도
         workNPC(npc);
       }
       // ★★[T17 ② 2026-09-02 · 재민 확정] **요리사가 잉여를 갈무리한다** — 보존식 생산.
@@ -20343,7 +20388,7 @@ module.exports = {
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
-  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, T1309_HEALTH_EATEN, T1309_DIVERSITY_EATEN, T1309_MOVE_CONS, t1309Group: _t1309Group, t1309EatenHealth: _t1309EatenHealth, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   T1159_HOME_N, t1159HomeN,

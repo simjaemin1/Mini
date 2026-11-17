@@ -110,7 +110,7 @@ function _elevOf(v) {   // 그 마을 고도(km) — econ 정본 한 함수
 function _gElev(v) { return T856 ? _elevOf(v) : 0; }   // 곳간 구간의 고도
 // 자리를 바꾼다 — 정산 먼저(지난 구간에 새 배율이 소급되지 않게)
 function _restamp(r, pf, nf) { _settle(r, nf); r.m = pf.m; r.w = pf.w; return r; }
-function _copy(r, u) { const o = { k: r.k, u, f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w }; if (r.it != null) o.it = r.it; if (r.pu != null) o.pu = r.pu; return o; }   // ★[T768] 품목은 따라간다(없으면 칸도 없다 — 옛 꼴 그대로)
+function _copy(r, u) { const o = { k: r.k, u, f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w }; if (r.it != null) o.it = r.it; if (r.pu != null) o.pu = r.pu; if (r.h != null) o.h = r.h; return o; }   // ★[T1309] 로트가 진 건강 몫(한 단위당)도 따라간다(없으면 칸도 없다)   // ★[T768] 품목은 따라간다(없으면 칸도 없다 — 옛 꼴 그대로)
 function _sortK(arr) { arr.sort((a, b) => (a.k - b.k) || ((+b.e || 0) - (+a.e || 0))); return arr; }
 
 // ══ ★[T789] 상한 레코드 — 판정 · 사람의 눈 · 하루 마감 버림 ═══════════════════════════════════════════════
@@ -227,7 +227,7 @@ function _in(v, res, du) {
   }
   const k = _kNow(), g = _gran();                       // 얻음 — 지금 순간의 새 로트(같은 순간 · 같은 자리 · 갓 난 것이면 합친다)
   const last = arr.length ? arr[arr.length - 1] : null;
-  if (last && last.k === k && last.m === g.m && last.w === g.w && !(+last.e > 0) && (last.f0 == null || last.f0 === 1) && last.it == null) last.u += left;   // ★[T768] 품목 실은 레코드엔 안 합친다(econ 이 만든 몫 = 대표 품목)
+  if (last && last.k === k && last.m === g.m && last.w === g.w && !(+last.e > 0) && (last.f0 == null || last.f0 === 1) && last.it == null && last.h == null) last.u += left;   // ★[T768] 품목 실은 레코드엔 안 합친다(econ 이 만든 몫 = 대표 품목)
   else { arr.push(_rec(k, left)); ST.newLots++; if (last && last.k > k) _sortK(arr); }
 }
 function _out(v, res, du) {
@@ -246,6 +246,7 @@ function _out(v, res, du) {
       const take = Math.min(left, r.u);
       if (taken) taken.push(ge ? _settle(_copy(r, take), gnf, ge) : _copy(r, take));
       if (r.it != null) { _itOut(v, r.it, take); if (!taken) { ST.itemEatU += take; EAT[r.it] = (EAT[r.it] || 0) + take; } }
+      if (_eatV === v && r.h != null) _eatAdd(res, take, r.h);   // ★[T1309] 먹는 동안 나간 로트의 건강 몫
       r.u -= take; left -= take;
       if (r.u <= EPS) arr.splice(i, 1); else i++;
     }
@@ -253,6 +254,7 @@ function _out(v, res, du) {
   while (left > EPS && arr.length) {
     const r = arr[0], take = Math.min(left, r.u);
     if (taken) taken.push(ge ? _settle(_copy(r, take), gnf, ge) : _copy(r, take));
+    if (_eatV === v && r.h != null) _eatAdd(res, take, r.h);   // ★[T1309] 먹는 동안 나간 로트의 건강 몫
     if (r.it != null) { _itOut(v, r.it, take); if (!taken) { ST.itemEatU += take; EAT[r.it] = (EAT[r.it] || 0) + take; } }   // ★[T768] 난 품목 셈 · 문 · 싣기 밖이면 마을이 먹은 것(그 품목 그대로)
     r.u -= take; left -= take;
     if (r.u <= EPS) arr.shift();
@@ -348,6 +350,24 @@ function sync(econVillages) {
 }
 
 // ══ 문 — 옮김 ═══════════════════════════════════════════════════════════════════════════════════
+// ★★[T1309] 로트 건강 — econ 이 조리식 · 보존식을 낼 때 그 끼니의 한 단위 건강(재료 건강 합 ÷ 낸 수)을 **그 로트**에 적고(`tagH`),
+//   마을이 먹을 때(`eatBegin` ~ `eatEnd` — econ `consumeFood` 한 번) 나간 로트가 진 건강 몫을 품목마다 모은다(`[건강 합, 단위 수]`). 칸 `h` 가 없는 로트는 셈 밖(econ 이 그 품목 기본 건강으로 센다).
+//   끔(econ `T1309_HEALTH_EATEN` 끔)이면 아무도 `tagH` · `eatBegin` 을 안 부른다 — 레코드에 `h` 가 안 생기고 위 세 자리는 무동작이다.
+let _eatV = null, _eatMap = null;
+function _eatAdd(res, u, h) { const m = _eatMap[res] || (_eatMap[res] = [0, 0]); m[0] += u * h; m[1] += u; ST.t1309EatU = (ST.t1309EatU || 0) + u; ST.t1309EatH = (ST.t1309EatH || 0) + u * h; }   // 셈 칸은 부를 때만 생긴다(끔 = 칸 0)
+function eatBegin(v) { if (!LED.has(v)) return false; _eatV = v; _eatMap = {}; return true; }
+function eatEnd(v) { if (_eatV !== v) return null; const m = _eatMap; _eatV = null; _eatMap = null; return m; }
+//   막 얻은 몫 du 에 한 단위 건강 h 를 적는다 — 맨 뒤(가장 새) 레코드에서 떼어 낸다(같은 순간 합쳐진 몫이 더 크면 갈라 새 레코드로 · 정렬 열쇠 그대로)
+function tagH(v, res, du, h) {
+  const L = LED.get(v); if (!L || !(du > EPS) || !(h >= 0)) return false;
+  const arr = L[res]; if (!arr || !arr.length) return false;
+  const r = arr[arr.length - 1];
+  if (r.h != null) return false;   // 맨 뒤가 이미 적힌 로트면(같은 몫이 아니다) 적지 않는다
+  if (r.u > du + EPS) { r.u -= du; const o = _copy(r, du); o.h = h; arr.push(o); }
+  else r.h = h;
+  ST.t1309Tag = (ST.t1309Tag || 0) + 1; ST.t1309TagU = (ST.t1309TagU || 0) + du;
+  return true;
+}
 function pushIn(v, res, recs) {
   if (!LED.has(v) || !Array.isArray(recs) || !recs.length) return;
   let P = PEND.get(v); if (!P) { P = {}; PEND.set(v, P); }
@@ -915,7 +935,7 @@ function preserveRecord(r,from,to,n){
   const nf=_nowFrac(),f=Spoil.freshnessOf(from,Spoil.exposureOf(r,Math.floor(nf))),pf=_gran();
   return{k:r.k,u:n,pu:1,it:to,f0:1,e:Spoil.carryExposure(to,f),t:nf,m:pf.m,w:pf.w};
 }
-module.exports = { preserveRecord, ON, T840, T856, legSettle: _legSettle, elevOf: _elevOf, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
+module.exports = { preserveRecord, tagH, eatBegin, eatEnd, ON, T840, T856, legSettle: _legSettle, elevOf: _elevOf, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
   tickBegin, tickEnd, doorBegin, doorEnd, doorIn, doorRest, doorCap,
   recsFromPlayer, recsToPlayer, recsToItems, byCount, countOf: _t1128CountOf, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
   itemSums, checkItems, itemFlow, eaten,   // ★[T768] 품목 칸 · 품목 불변식 · 마을이 먹은 품목
