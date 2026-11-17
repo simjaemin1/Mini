@@ -19,6 +19,8 @@
 //   ⓝ [T1297 할 일 3 · T1283 (나)] 관측 마을 몸의 개간 일 — 켬이면 그 칸 그루의 통나무를 몸이 짐씩 지고 곳간 사다리까지 걷는다(부리는 줄 = 일괄과 같은 `_t1207LogIn`) ·
 //      더미가 비어야 영토 · 짐 ≤ 한 짐 · 부린 곳 = 사다리 · 끔(종전 — 끝낸 순간 영토 · 통나무 곧장 곳간) · 수식 나무꾼 세계 무동작 · 헤드리스로 넘어가면 남은 더미는 곳간으로
 //       미끼(수요를 상수로 박은 사본 → 빨강) · 틱 칸 넷(켬만) · (나) 개간 통나무 걸음(`T1283_CLEAR_HAUL` · 나무꾼 몸 켬 세계만)
+//   ⓝ [T1329] 몸 영토 일감 크루 여럿(`T1329_TERR_CREW` · T1302 켬 안) — 여유 크루 전부 · 한 칸 한 몸 · 완공 = 몸 작업 합 · 일괄 0 · 벤 통나무는 T1283 짐 하나로(두 번 입고 0 · T1283 걸음 켬과 같은 판) ·
+//       재기동 일감 줄(곁 칸) · 끔 = 종전(첫 몸 하나 · 그루마다 귀환) · 미끼 둘(두 몸 한 칸 두 번 완공 사본 · 통나무 두 번 입고 사본 → 빨강)
 //
 // 실행: node scripts/test-t1238-terr-v2.js
 'use strict';
@@ -517,6 +519,71 @@ function runT1302() {
     body:v._t1207.body,cells:v._t1207.cells,grew:v._terrSet.size-initial,felled:v._t1207.felled,woodIn:v._t1207.woodIn,
     people:t1302People(V,E),pending:(v._t1207Pend||[]).length,tree:F.trees.get('1004,1000')};
 }
+// ── ⓝ [T1329] 몸 영토 일감 — 크루 여럿 · 한 칸 한 몸 · 완공 = 몸 작업 합 · 일괄 0 · 벤 통나무는 T1283 짐 하나로 · 재기동 일감 줄 ──────────────
+//   마을 T(7×7 · 곳간 없음 = 회관에서 꺼내고 부린다) · 몸 넷(여유 크루 = 명부 앞 `LIFE_CREW` — 집 · 곳간 크루 없음) · 맞닿은 칸 넷(칸마다 그루 셋 · 그루마다 통나무 2 — 한 짐 8 안에 칸 하나)
+//   몸 걸음은 `_t1181Step`(정본) 그대로 · 몸이 가려는 자리로 옮겨 놓는다(걸음 물리 대신 · T1297 ⓝ 과 같은 꼴). 판 도중 일감 줄을 곁 칸으로 싸서(`_t740Pack`) 비우고 되살린다(`_t740Restore` — 재기동).
+//   미끼 `T1329_BAIT`: 'cell' = 일감 고르기가 맡은 몸을 안 보고(크루 둘이 줄 머리 한 칸) 완공 문이 그 칸을 줄에 남긴 채 다시 받는 사본 · 'stock' = 부림이 같은 통나무를 곳간에 두 번 넣는 사본(T1283 줄이 한 번 더)
+function runT1329() {
+  const Module=require('module'),compile=Module._extensions['.js'];
+  global.__t1329={batch:0,add:{}};
+  Module._extensions['.js']=function(m,f){
+    if(f!==path.join(ROOT,'server/villages.js'))return compile(m,f);
+    let src=fs.readFileSync(f,'utf8');
+    const ed=(a,b)=>{if(!src.includes(a))throw Error('T1329 harness anchor missing: '+a.slice(0,70));src=src.replace(a,b);};
+    ed('function _t1238Batch(vil, picked, cap) {','function _t1238Batch(vil, picked, cap) { global.__t1329.batch++;');
+    ed('function _terrAdd(vil, keys, target, fell) {','function _terrAdd(vil, keys, target, fell) { for (const k of keys) global.__t1329.add[k]=(global.__t1329.add[k]||0)+1;');
+    if(process.env.T1329_BAIT==='cell'){
+      ed('  if (mine && !_t1329Short(vil, npc, mine)) return mine;','  return vil._t1207Pend[0];');   // 맡은 몸을 안 보고 줄 머리
+      ed('  if (i >= 0) vil._t1207Pend.splice(i, 1);\n  if (!_t1207CanTake(vil, job.cx, job.cy)) {','  if (false) vil._t1207Pend.splice(i, 1);\n  if (false) {');
+    }
+    if(process.env.T1329_BAIT==='stock')ed('const wood=Math.min(bag.wood||0,npc.inventory.wood||0),got=wood>0?(E.woodToGranary(home.econ,wood)||0):0;','const wood=Math.min(bag.wood||0,npc.inventory.wood||0),got=wood>0?(E.woodToGranary(home.econ,wood)||0):0;if(wood>0)_t1207LogIn(home,wood);');
+    m._compile(src,f);
+  };
+  const F=fixture(),{V,E,P}=F,S=V.__p3Bind({}).state;
+  F.deps.t325CutTreeAt=(x,y)=>{const k=x+','+y,n=F.trees.get(k)||0;if(!(n>0))return null;F.trees.set(k,n-1);return {wood:2,twig:1};};
+  F.deps.t325LootOf=()=>({wood:2,twig:1});
+  const v=F.mk(1,'T',1000,1000,3,{}),bodies=[0,1,2,3].map(i=>{const p=F.body('crew'+i);p.x=32016;p.y=32016;p.simVillageId=1;p.simJob='farmer';return p;});
+  v.npcPids=bodies.map(p=>p.pid);
+  if(process.env.T1329_FULL==='1')bodies[0].inventory={stone:1000};   // 명부 첫 몸의 손이 찼다(짐 상한 넘음 — 말뚝 한 단도 못 든다 · 어부 물고기 꼴)
+  v.econ.storage.wood=process.env.T1329_DRY==='1'?0:400;   // 마름 = 곳간에 통나무 0(말뚝 기다림 — 개간 · 벌목 뒤 몸을 제 일로)
+  setWorld(F,[v],1);S.dayMs=1440000;E.bindProductionActs(S.world);v.econ._world=S.world;
+  const keys=['1004,1000','996,1000','1000,1004','1000,996'];
+  for(const k of keys)F.trees.set(k,3);
+  const initial=v._terrSet.size,e=v.econ,w0=e.storage.wood,p0=e._t717Pack||0;
+  P._t1238Probe.pay(v,keys);
+  if(!(v._t1207Pend&&v._t1207Pend.length===keys.length))throw Error('T1329 jobs did not queue');
+  const stakes=v._t1207Pend.reduce((a,j)=>a+j.wood,0),packKey0='t1329Pend' in P._t740Probe.pack(v);
+  const owners={},maxCargo={},deposits=[];let restored=null,steps=0,dry=null;
+  for(let now=100;now<900000 && steps<40000 && (process.env.T1329_BAIT==='cell'?now<300000:v._t1207Pend.length);now+=100){
+    for(const p of bodies){
+      const gi=(e.storage.wood||0)+(e._t717Pack||0),hi=(p.inventory&&p.inventory.wood)||0;
+      P._t1181Probe.step(v,p,now,true);steps++;
+      const ga=(e.storage.wood||0)+(e._t717Pack||0),ha=(p.inventory&&p.inventory.wood)||0;
+      if(ga>gi+1e-9&&ha<hi-1e-9)deposits.push(+(hi-ha).toFixed(6));   // 부린 통나무 = 손에서 내린 몫(곳간 + 마을 짐이 늘 때)
+      const k=(p._t1302Terr&&p._t1302Terr.key)||(p._t1181Haul&&p._t1181Haul.key)||null;
+      if(k&&k.startsWith('t/')){(owners[k]||(owners[k]=new Set())).add(p.pid);}
+      const c=(p._t1302Terr&&p._t1302Terr.cargo&&p._t1302Terr.cargo.wood)||0;if(c>(maxCargo[p.pid]||0))maxCargo[p.pid]=c;
+      if(Number.isFinite(p.targetX)){p.x=p.targetX;p.y=p.targetY;}
+    }
+    if(process.env.T1329_DRY==='1'&&!dry&&now>=200000){   // 마른 판 — 200초 뒤 곳간에 통나무를 채운다(그 앞: 개간 · 벌목만 · 말뚝 0)
+      dry={done:(v._t1207||{}).body||0,free:bodies.slice(0,2).filter(p=>!P._t1181Probe.task(v,p)&&!p._t1181Haul&&!p._t1302Terr).length,
+        cleared:v._t1207Pend.filter(j=>(j.workMs||0)>0).length,held:v._t1207Pend.filter(j=>j._t1329By!=null).length,trees:keys.map(k=>F.trees.get(k)||0)};
+      e.storage.wood=400;
+    }
+    //   재기동 — 두 칸이 일을 받은 순간 일감 줄을 곁 칸으로 싸고 비운 뒤 되살린다(몸 칸은 그대로 — 몸은 T747 이 따로 잇는다)
+    if(!restored&&v._t1207Pend.filter(j=>(j.workMs||0)>0).length>=2){
+      const before=JSON.stringify(v._t1207Pend.map(j=>[j.key,j.workMs,(j.mat||{}).wood||0])),side=P._t740Probe.pack(v);
+      v._t1207Pend=undefined;v.econ._t740Side=JSON.parse(JSON.stringify(side));P._t740Probe.restore();
+      restored={packed:Array.isArray(side.t1329Pend)?side.t1329Pend.length:-1,same:JSON.stringify((v._t1207Pend||[]).map(j=>[j.key,j.workMs,(j.mat||{}).wood||0]))===before,
+        held:(v._t1207Pend||[]).filter(j=>j._t1329By!=null).length,at:now};
+    }
+  }
+  const T=v._t1207||{};
+  return {on:V.T1329_TERR_CREW,crew:P._t400Probe.LIFE_CREW,batch:global.__t1329.batch,add:global.__t1329.add,owners:Object.fromEntries(Object.entries(owners).map(([k,s2])=>[k,[...s2]])),
+    body:T.body||0,cells:T.cells||0,grew:v._terrSet.size-initial,left:(v._t1207Pend||[]).length,felled:T.felled||0,woodIn:+(T.woodIn||0).toFixed(6),placed:+(T.wood||0).toFixed(6),stakes:+stakes.toFixed(6),
+    dStore:+(e.storage.wood-w0).toFixed(6),dPack:+((e._t717Pack||0)-p0).toFixed(6),loot:keys.length*3*2,deposits,maxCargo,perLoad:E.crewPerLoad('wood'),restored,dry,packKey0,trees:keys.map(k=>F.trees.get(k)||0),steps};
+}
+if (MODE === 't1329') { let o; try { o=runT1329(); } catch(e) { o={err:e.stack}; } process.stdout.write('@@T1238 '+JSON.stringify(o)+'\n');process.exit(0); }
 if (MODE === 't1302') { let o; try { o=runT1302(); } catch(e) { o={err:e.stack,batch:global.__t1302BatchCalls||0}; } process.stdout.write('@@T1238 '+JSON.stringify(o)+'\n');process.exit(0); }
 
 if (MODE === 'vil') { const o = runVil(); process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
@@ -778,6 +845,38 @@ sec('ⓝ [T1302] 관측자 없이 몸이 개간·귀환·말뚝 · 관측자 미
   ok(n?.people?.full && n.people.selectedSame && n.people.joined && n.people.arrivalSame && n.people.ratio===1 && n.people.freshIndex && n.people.deathObserved && !n.people.meals && !n.people.bodyBirthFlag,'하루+5도 몸 전부 · 떠난 사람=걷는 몸=도착 사람 · 식사 켬 없이 1:1',n?.people);
   ok(v&&!v.err&&v.body===n?.body&&v.grew===n?.grew&&v.batch===0,'관측자1도 같은 몸 경로',v);
   ok(b && b.batch>0 && /did not queue/.test(b.err||'') && !bodyCheck(b),'미끼: 관측자 갈래를 되살리면 위 완공 검사가 빨강',b);
+}
+sec('ⓝ [T1329] 몸 영토 일감 크루 여럿 — 한 칸 한 몸 · 완공 = 몸 작업 합 · 일괄 0 · 통나무 한 줄 · 재기동 일감 줄 · 미끼');
+{
+  const env={T1207_TERR_REAL:'1',T1238_TERR_V2:'1',T1302_TERR_BODY:'1',T400_BUILD_ACT:'0',T325_WOOD_ACT:'1',T1329_TERR_CREW:'1'};
+  const on=child('t1329',env),haul=child('t1329',{...env,T1283_CLEAR_HAUL:'1'}),off=child('t1329',{...env,T1329_TERR_CREW:'0'});
+  const dry=child('t1329',{...env,T1329_DRY:'1'});
+  const full=child('t1329',{...env,T1329_FULL:'1'}),fullOff=child('t1329',{...env,T1329_TERR_CREW:'0',T1329_FULL:'1'});
+  const bc=child('t1329',{...env,T1329_BAIT:'cell'}),bs=child('t1329',{...env,T1329_BAIT:'stock'});
+  const bad=[on,haul,off,dry,full,fullOff,bc,bs].find(x=>!x||x.err);
+  if(bad!==undefined)ok(false,'T1329 자식 판이 안 섰다',bad&&bad.err);
+  else{
+    const oneBody=x=>Object.values(x.owners).every(a=>a.length===1);
+    const doneSum=x=>{const ks=Object.keys(x.add);return ks.length===x.grew&&ks.every(k=>x.add[k]===1)&&x.body===x.grew&&x.cells===x.grew&&x.left===0&&x.batch===0;};
+    const logsOnce=x=>near(x.woodIn+x.dPack,x.loot,1e-6)&&near(x.deposits.reduce((a,b)=>a+b,0),x.loot,1e-6);
+    const workers=x=>new Set([].concat(...Object.values(x.owners))).size;
+    ok(on.on===true&&workers(on)===on.crew&&oneBody(on),`★켬 — 여유 크루 ${on.crew}몸(명부 앞 \`LIFE_CREW\` · 넷째 몸까지 있어도 크루만)이 영토 일을 하고 칸마다 맡은 몸은 하나`,on.owners);
+    ok(doneSum(on),`★완공 = 몸 작업 합 — 칸 ${on.grew}칸 · 칸마다 완공 한 번 · 몸 완공 ${on.body} = 영토 증가 · 일괄 호출 ${on.batch}`,{add:on.add,body:on.body,batch:on.batch});
+    ok(logsOnce(on)&&on.felled===12&&on.trees.every(n=>n===0)&&Object.values(on.maxCargo).every(c=>c<=on.perLoad+1e-9)&&on.deposits.length===4,
+      `★벤 통나무는 한 짐(${on.perLoad} 단)씩 — 칸마다 한 번 진다(부림 ${on.deposits.length}번 · 곳간 + 마을 짐 = 벤 몫 ${on.loot} 단 · 두 번 입고 0)`,{deposits:on.deposits,woodIn:on.woodIn,dPack:on.dPack});
+    ok(off.on===false&&workers(off)===1&&doneSum(off)&&logsOnce(off)&&off.deposits.length===12&&off.packKey0===false&&on.packKey0===true,
+      `끔 — 종전(T1302): 첫 몸 하나 · 그루마다 귀환(부림 ${off.deposits.length}번) · 곁 칸에 일감 줄 칸 없음(켬만)`,{owners:off.owners,deposits:off.deposits.length,packKey0:[off.packKey0,on.packKey0]});
+    ok(haul.on&&doneSum(haul)&&logsOnce(haul)&&haul.deposits.length===on.deposits.length&&JSON.stringify(haul.add)===JSON.stringify(on.add)&&haul.steps===on.steps,
+      '★T1283 걸음(`T1283_CLEAR_HAUL`) 켬과 같이 — 같은 판(완공 · 부림 · 걸음 수 같음) · 칸 더미 줄은 안 선다(두 번 나름 · 두 번 입고 0)',{deposits:haul.deposits,steps:[haul.steps,on.steps]});
+    ok(doneSum(full)&&oneBody(full)&&workers(full)===full.crew&&!Object.values(full.owners).some(a=>a.includes('crew0'))&&fullOff.body===0&&fullOff.left===4&&Object.keys(fullOff.add).length===0,
+      `★손이 찬 몸(말뚝 한 단도 못 든다)은 크루에서 빠지고 다음 몸이 선다 — 켬 완공 ${full.body}칸 · 끔(종전 T1302)은 그 몸이 줄 머리에서 헛걸어 완공 ${fullOff.body}`,{owners:full.owners,offBody:fullOff.body,offLeft:fullOff.left});
+    ok(dry.dry&&dry.dry.done===0&&dry.dry.free===2&&dry.dry.cleared===4&&dry.dry.held>=2&&doneSum(dry)&&oneBody(dry),
+      `★말뚝 기다림 — 곳간 잉여 0 이면 말뚝 없이 할 칸(개간 · 벌목)으로 옮겨 가며 넷 다 개간하고(${dry.dry&&dry.dry.cleared}칸) 크루 둘은 일감을 쥔 채 제 일로(일감 없음 ${dry.dry&&dry.dry.free}몸 · 완공 0) · 통나무가 들자 다 완공(${dry.body}칸)`,dry.dry);
+    ok(on.restored&&on.restored.packed>=2&&on.restored.same&&on.restored.held===0,
+      `★재기동 — 일감 줄(일한 시간 · 놓은 말뚝)이 곁 칸(\`_t740Side\`)에 실려 되살아난다(${on.restored&&on.restored.packed}칸 · 맡은 몸은 다시 맡는다) · 뒤 완공 그대로`,on.restored);
+    ok(!oneBody(bc)&&!doneSum(bc),'미끼: 맡은 몸을 안 보고 줄 머리를 주는(두 몸이 한 칸 · 그 칸을 두 번 완공) 사본 — 위 두 검사가 빨강',{owners:bc.owners,add:bc.add});
+    ok(!logsOnce(bs)&&oneBody(bs)&&doneSum(bs),'미끼: 부림이 같은 통나무를 곳간에 두 번 넣는(T1283 줄이 한 번 더) 사본 — 통나무 검사가 빨강',{woodIn:bs.woodIn,dPack:bs.dPack,loot:bs.loot});
+  }
 }
 console.log(`\n=== T1238: ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
