@@ -23,11 +23,11 @@ const loadSS = (src, env) => { const m = { exports: {} }; vm.runInThisContext('(
 const MISS = [];   // 못 찾은 존 글자(옛 코드 · 이름 바뀜) — 던지지 않고 ✗ 줄로 낸다
 const fn = (src, head) => { const i = src.indexOf(head); if (i < 0) { MISS.push(head); return ''; } const j = src.indexOf('\n}\n', i); return src.slice(i, j + 3); };
 const line = (src, head) => { const i = src.indexOf(head); if (i < 0) { MISS.push(head); return ''; } return src.slice(i, src.indexOf('\n', i) + 1); };
-const span = (src, a, b) => { const i = src.indexOf(a); if (i < 0) { MISS.push(a); return ''; } const j = src.indexOf(b, i); if (j < 0) { MISS.push(b); return ''; } return src.slice(i, src.indexOf('\n', j) + 1); };
-const once = (src, a, b) => { const n = src.split(a).length - 1; if (n !== 1) throw new Error(`미끼 자리 ${n}곳: ${a.slice(0, 60)}`); return src.replace(a, b); };
+const seg = (src, a, b) => { const i = src.indexOf(a); if (i < 0) { MISS.push(a); return ''; } const j = src.indexOf(b, i); if (j < 0) { MISS.push(b); return ''; } return src.slice(i, src.indexOf('\n', j) + 1); };
+const once = (src, a, b) => { let n = 0; for (let i = src.indexOf(a); i >= 0; i = src.indexOf(a, i + 1)) n++; if (n !== 1) throw new Error(`미끼 자리 ${n}곳: ${a.slice(0, 60)}`); return src.replace(a, b); };
 let fCmp = fn(Z, 'function computeNpcPath(npc, now) {');
 fCmp = fCmp.slice(0, fCmp.indexOf('  const isVil')) + '  return __path(npc);\n}\n';
-const LOOP = span(Z, '  let _curHit = (_npcCursor === null), _stopAt = null;', '  _npcCursor = _curHit ? _stopAt : null;');
+const LOOP = seg(Z, '  let _curHit = (_npcCursor === null), _stopAt = null;', '  _npcCursor = _curHit ? _stopAt : null;');
 const PARTS = [line(Z, 'function _t671Lt('), line(Z, 'function _t671Gt('), line(Z, 'function _t670Stuck(npc, now)'), fn(Z, 'function detectStuck(npc, now) {'), fn(Z, 'function followNpcPath(npc, speedMult) {'),
   fn(Z, 'function _t791Mir(npc) {'), fCmp, fn(Z, 'function npcStep(npc, dt, now) {'),
   fn(Z, 'function _t1322State(npc) {'), fn(Z, 'function _t1322Grant(npc, now, s0) {'), fn(Z, 'function _t1322Wake(s) {'), line(Z, 'function _t1322Touch(p)'), line(Z, 'function _t1322FlushAll()'),
@@ -137,8 +137,8 @@ function same(a, b, all) {
 function run(envA, envB, srcB, ssrcB, N, T, useStops, late) {
   const A = world(envA, SRC0, SSRC0), B = world(envB, srcB, ssrcB, late);
   const bodies = [new Map(), new Map()];
-  const spawn = (w, W, i) => { const p = mkBody(i); bodies[w].set(p.pid, p); if (W.T1322_PF) W.SS.install(p); W.players.set(p.pid, p); W.npcs.add(p.pid); return p; };
-  for (const [w, W] of [[0, A], [1, B]]) for (let i = 0; i < N; i++) spawn(w, W, i);
+  const born = (w, W, i) => { const p = mkBody(i); bodies[w].set(p.pid, p); if (W.T1322_PF) W.SS.install(p); W.players.set(p.pid, p); W.npcs.add(p.pid); return p; };
+  for (const [w, W] of [[0, A], [1, B]]) for (let i = 0; i < N; i++) born(w, W, i);
   for (const W of [A, B]) for (let k = 0; k < 6; k++) W.wolves.push({ type: 'wolf', tameOwner: null, x: 800 + k * 400, y: 900, hp: 50 });
   let now = 0, diffTick = 0, diffFull = 0, diffSeen = 0, firstDiff = null, stops = 0; const dt = 0.05, dead = [];
   for (let t = 0; t < T; t++) {
@@ -157,7 +157,7 @@ function run(envA, envB, srcB, ssrcB, N, T, useStops, late) {
       for (const e of ev) {
         if (e[0] === 'die') { const p = bodies[w].get(e[1]); if (p && W.players.get(e[1]) === p) { W.players.delete(e[1]); W.npcs.delete(e[1]); if (w === 1) dead.push(e[1]); } }
         else if (e[0] === 'back') { const p = bodies[w].get(e[1]); if (p && !W.players.has(e[1])) { W.players.set(e[1], p); W.npcs.add(e[1]); } }
-        else if (e[0] === 'reborn') { const old = bodies[w].get('n' + e[1]); if (old && W.T1322_PF) W._t1322Touch(old); W.players.delete('n' + e[1]); W.npcs.delete('n' + e[1]); spawn(w, W, e[1]); }
+        else if (e[0] === 'reborn') { const old = bodies[w].get('n' + e[1]); if (old && W.T1322_PF) W._t1322Touch(old); W.players.delete('n' + e[1]); W.npcs.delete('n' + e[1]); born(w, W, e[1]); }
         else if (e[0] === 'swap') { const p = bodies[w].get(e[1]); if (p && W.players.get(e[1]) === p) { const c = Object.assign({}, p, { _stuckPos: p._stuckPos && Object.assign({}, p._stuckPos) }); W.players.set(e[1], c); if (w === 0) swapped = [e[1], p, c]; W.__swap = [e[1], p, c]; } }
         else if (e[0] === 'unswap') { const S = W.__swap; if (S && W.players.get(S[0]) === S[2]) { W.players.set(S[0], S[1]); } W.__swap = null; }
       }

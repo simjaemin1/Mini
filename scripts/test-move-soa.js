@@ -2419,9 +2419,10 @@ console.log('\n㉓ T689 — 틱마다 짓던 쓰레기를 같은 값으로(빌�
     { const wsrc = CR.cut(zf, '_wwPre'), a = order(wsrc, '_wwPre', false, '_wwPreOne', (f) => f(50)), b = order(wsrc, '_wwPre', true, '_wwPreOne', (f) => f(50));
       ok(a.length === 7 && a.join() === b.join(), '㉓ⓓ 걸음 커널 앞문 — 끔 · 켬이 같은 몸을 같은 차례로 몸통(`_wwPreOne`)에(원문을 잘라 돌림)', `끔 ${a.join(',')} · 켬 ${b.join(',')}`); }
     ok(/else \{ oc = \{ cx: _ocx, cy: _ocy \}; nc = \{ cx: _ncx, cy: _ncy \}; \}/.test(wall) && /oc = _t689WOC; nc = _t689WNC;/.test(wall), '㉓ⓓ 벽 술어 — 끔 새 객체 · 켬 빌린 칸(같은 네 수)');
-    { const d1 = Z.slice(Z.indexOf('  const _decOne = (pid) => { do {'), Z.indexOf('  if (T689_GC) { let _decStop = false;'));
+    { const d1 = Z.slice(Z.indexOf('  const _decOne = (pid, _sL) => { do {'), Z.indexOf('  if (T1348_LOOP) {'));   // ★[T1348 ⓐ] 몸통이 거울 고리의 칸(`_sL`)을 받는다 · 순회 문 머리에 거울 갈래(같은 차례 — `test-t1348-loop` ⓐ ③)
       ok(d1.length > 500 && /\{ _stopAt = pid; break; \}/.test(d1) && /\} while \(false\); return _stopAt !== null; \};/.test(d1)
-         && /if \(T689_GC\) \{ let _decStop = false; npcs\.forEach\(\(pid\) => \{ if \(!_decStop && _decOne\(pid\)\) _decStop = true; \}\); \}\n  else for \(const pid of npcs\) if \(_decOne\(pid\)\) break;/.test(Z),
+         && /else if \(T689_GC\) \{ let _decStop = false; npcs\.forEach\(\(pid\) => \{ if \(!_decStop && _decOne\(pid\)\) _decStop = true; \}\); \}\n  else for \(const pid of npcs\) if \(_decOne\(pid\)\) break;/.test(Z)
+         && /for \(let i = 0; i < _P\.length; i\+\+\) \{ const pid = _P\[i\]; if \(pid === undefined\) continue;[^\n]*if \(_decOne\(pid, s\)\) break; \}/.test(Z),
          '㉓ⓓ 결정 문 — 몸통 글자 그대로(`do … while (false)` · `break` 가 `_stopAt` 을 세운다) · 끔 `for…of`+`break` · 켬 `forEach`+멈춤 깃발', `${d1.length}자`); }
     { //   이동 문 — `_moveOne` 선언과 그 뒤 차례 문(끔 `for…of` · 켬 `forEach`)을 잘라 돌린다. 몸마다 걸음(`movePlayerStep`)이 몇 번 · 어떤 차례로 불렸나:
       //     넘기는 중 · 캐러밴 · 전쟁 몸은 건너뛰고(그 몸에서 고리가 **안 끝난다** — 다음 몸이 걷는다) · 사람은 입력 수만큼 · 입력 없는 사람 0.
