@@ -148,7 +148,10 @@ say('\n④ 배선 — 네 자리 · 끔 갈래는 종전 식 그대로');
 const src = fs.readFileSync(V2P, 'utf8');
 ok(/const T784_CARGO_AGE = !\(typeof process !== 'undefined' && process\.env && process\.env\.T784_CARGO_AGE === '0'\);/.test(src), '④ 손잡이는 켬 기본 · 되돌림 `=== \'0\'` 하나(채택 꼴 — lab-wiring-check [F]④)');
 const uses = (src.match(/T784_CARGO_AGE \?|if \(T784_CARGO_AGE\)/g) || []).length;
-ok(uses === 4, '④ 손잡이를 읽는 자리 넷(첫째 · 둘째 기대 값 · 첫째 · 둘째 판 값)', `${uses}`);
+//   ★[T1344] 다섯째 자리 = 섞어 싣기(`_t1344MixPick` · 끔 기본 `T1344_MIX_LOAD`)의 기대 값 — 둘째 화물 칸(T206)에 얹는 짐도 첫째 · 둘째와 같은 꼴(도착 쪽 값 × 다리 날 수 신선도 · 끔 = `pTo`)로 잰다.
+ok(uses === 5, '④ 손잡이를 읽는 자리 다섯(첫째 · 둘째 · 섞어 싣기 기대 값 · 첫째 · 둘째 판 값)', `${uses}`);
+ok(src.includes('_legProfitPerUnit(pFrom, T784_CARGO_AGE ? pTo * _t784F(c2.res, days, day, _elevKmOf(b.v)) : pTo, tc, best.expectedLossRatio)'),
+  '④ 섞어 싣기 기대 값(T1344) — 첫째와 같은 꼴 · 끔 = `pTo`');
 ok(src.includes('_legProfitPerUnit(pFrom, T784_CARGO_AGE ? pTo * _t784F(cand.res, travelDaysForDistance(dist), day, _elevKmOf(b.v)) : pTo, transportCostPerUnit, expectedLossRatio)'),
   '④ 첫째 기대 값 — 도착 쪽 값 × 다리 날 수 신선도 · 끔 = `pTo`');
 ok(src.includes("T784_CARGO_AGE ? ((b.prices && b.prices[c2.res]) || 0) * _t784F(c2.res, travelDaysForDistance(best.dist), day, _elevKmOf(best.b.v)) : ((b.prices && b.prices[c2.res]) || 0)"),

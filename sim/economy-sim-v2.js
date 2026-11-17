@@ -1384,6 +1384,39 @@ function _t1136CapKg() { return _t1136M().C.CFG.CAP_KG; }   // 짐 상한 = 몸 
 // ★[T1182 · 기본 켬 · =0 되돌림] `T1136_ESCORT_CARRY` — 사람 = 상인 + 호위: 호위 수 = 종전 만재(100 낱개) 호위 식(`_escortOfV2` · 그 길 위험 · 갱 · 전사 수 상한) ·
 //   짐 상한 = 몸 짐 × (1 + 호위). 끔 = 상인 하나(호위는 손을 비운다). 카드 "25 kg × 사람"의 사람이 누구인가는 판정(회부) — 두 읽기를 같은 자로 재려고 둔다(새 수 0).
 const T1136_ESCORT_CARRY = (typeof process !== 'undefined' && process.env && process.env.T1136_ESCORT_CARRY !== '0');
+// ★★[T1344 2026-11-16 · T1333 카드 밖 줄] 손잡이 `T1344_MIX_LOAD`('1' 만 켬 · 끔 기본 = 첫째 화물 고리의 `else if` 가 안 선다 = 종전 바이트 · 번들(랩)은 process.env 가 비어 구조적으로 끔)
+//   **섞어 싣기** — 캐러밴이 첫째 화물(종전 규칙 그대로 — 짐 몫 합 최대 다리 · 낱개 100 상한)을 고른 뒤, 그 수레의 **남는 무게**에 그 다리(같은 목적지 · 같은 길)에서
+//   짐 몫이 가장 큰 품목 하나를 얹는다. 둘째 화물 자리는 T206 의 것(`giveRes2` — 차감 · 도착 매도 `_gross2` · 습격 · 빈손 귀환 · 이웃 존 기록 그대로)을 쓴다(사본 0).
+//   ① 남는 무게 = 짐 상한 − 첫째 화물 무게. 짐 상한 = 몸 짐 정본(`carry.js CAP_KG` 25) × 사람(상인 + 그 다리 호위 — `_escortOfV2` 출발 자리와 같은 부름 ·
+//      T1182 `T1136_ESCORT_CARRY` 켬 기본 = 호위도 진다 · 끔 = 상인 하나) — 바구니(T1136)의 그 식. 낱개 무게 = `weights.kgOfOrDefault`(`_t1136Kg`).
+//      첫째 화물이 이미 상한을 넘으면(종전 낱개 100 상한은 무게를 안 본다 — 쌀 100 = 75 kg) 남는 무게 0 = 안 얹는다. 첫째 화물은 **한 낱개도 안 줄인다**.
+//   ② 후보 = 첫째 화물과 같은 내보낼 후보(`_exportCandidatesV2` — 비축 · 문턱 위 몫) 가운데 첫째 품목이 아닌 것 · 얹는 양 = ⌊min(내보낼 몫, 곳간, 남는 무게 ÷ 낱개 무게)⌋ ≥ 1 낱개.
+//   ③ 낱개 몫 = 첫째 화물과 같은 식(`_legProfitPerUnit` — 출발 값 · 도착 값 × 선도 할인 0.95 × 도착 신선도(T784) · 운반비(그 품목 — T1152 켬이면 품목 무게 식 · 끔이면
+//      종전 낱개 운반비 그대로) · 기대 손실(첫째 다리 그대로)) > 0 이어야 한다(T233 관문). 고르는 자 = 짐 몫(낱개 몫 × 얹는 양)이 가장 큰 하나 — 첫째 화물이 다리를 고르는 그 자.
+//      품목 특례 0(금속 · 식량 · 무엇이든 같은 규칙) · 동점 = 후보 차례.
+//   ★T206 둘째 화물(`L_CARGO_TWO` · 낱개 자리)이 켜져 있으면 그쪽이 먼저다(이 갈래는 `else if`).
+const T1344_MIX_LOAD = (typeof process !== 'undefined' && process.env && process.env.T1344_MIX_LOAD === '1');
+function _t1344MixPick(world, a, best, candidates, lp, day, fwd) {   // a = 마을 칸({ v · prices }) · best = 첫째 화물(다리 · 양 · 운반비 · 기대 손실) → { res, q, pFrom, pu, tot, kg, room } | null
+  const b = best.b, esc = _escortOfV2(world, a, b, best.N_units);
+  const cap = _t1136CapKg() * (1 + (T1136_ESCORT_CARRY ? (esc || 0) : 0));
+  const room = cap - best.N_units * _t1136Kg(best.cand.res);
+  if (!(room > 0)) return null;
+  const days = travelDaysForDistance(best.dist);
+  let pick = null;
+  for (const c2 of candidates) {
+    if (c2.res === best.cand.res) continue;
+    const kg = _t1136Kg(c2.res); if (!(kg > 0)) continue;
+    const q = Math.floor(Math.min(c2.surplus, a.v.storage[c2.res] || 0, room / kg));
+    if (!(q >= 1)) continue;
+    const pFrom = a.prices[c2.res] || 0, pTo = ((b.prices && b.prices[c2.res]) || 0) * fwd;
+    const tc = T1152_TC ? _t1152Tc(lp.mv, best.dist, c2.res) : best.transportCostPerUnit;
+    const pu = _legProfitPerUnit(pFrom, T784_CARGO_AGE ? pTo * _t784F(c2.res, days, day, _elevKmOf(b.v)) : pTo, tc, best.expectedLossRatio);
+    if (!(pu > 0)) continue;
+    const tot = pu * q;
+    if (!pick || tot > pick.tot) pick = { res: c2.res, q, pFrom, pu, tot, kg: q * kg, room };
+  }
+  return pick;
+}
 function _t1136Days(dist) { return Math.max(0, +dist || 0) / CARAVAN_DAY_SPEED; }   // 다리 날(소수 그대로)
 // 길 위 신선도(t0 → t1 · 소수 날) — T784 곡선 · T812 노출 정본(`_t812Exp` 의 누적 차) · T840 고도. 늙지 않는 품목 1.
 function _t1136F(res, t0, t1, elevKm) {
@@ -2076,6 +2109,9 @@ function* tickTradeV2Steps(world, day) {
           //     셋째는 여전히 0(고르는 건 하나뿐이다).
           if (world.cargoTwoBest && _bRes) { _res2 = _bRes; _n2 = _bN; _p2 = _bP; _pp2 = _bPP; }
         }
+      } else if (T1344_MIX_LOAD) {   // ★[T1344] 섞어 싣기 — 둘째 화물 자리(T206 · 그 차감 · 정산 · 귀환 갈래 그대로)에 **남는 무게**로 하나(`_t1344MixPick` · 끔 = 이 갈래가 안 선다 = 종전 바이트)
+        const _mx = _t1344MixPick(world, a, best, candidates, lp, day, FORWARD_PRICE_MARGIN);
+        if (_mx) { _res2 = _mx.res; _n2 = _mx.q; _p2 = _mx.pFrom; _pp2 = _mx.pu; }
       }
       let _lotG2 = null;   // ★[T732]
       if (_res2 && _n2 >= 1) {
@@ -2611,6 +2647,7 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
       escort: c.escort,
       raided: outboundLoss > 0,
       travelDays: c.travelDays,
+      ...((c.giveRes2 && _delivered2 > 0) ? { sent2: { res: c.giveRes2, amt: +_delivered2.toFixed(2) } } : {}),   // ★[T1344] 둘째 화물(T206 · 섞어 싣기)도 장부에 — 둘째 화물이 없으면(두 손잡이 끔) 칸이 없다 = 종전 줄
     });
 }
 // ★★[T707] 떠날 때 정산 — 찍어 둔 장(`c._t707`)을 `world.caravans` 차례로 한 번에 정산한다(같은 마을 같은 날 둘째는 첫째 정산 뒤 곳간을 본다 = 종전 차례).
@@ -3505,6 +3542,7 @@ module.exports = {
   T784_CARGO_AGE, _t784Probe: { F: _t784F, arrive: _t784Arrive },
   T1049_FLOOR_STONE,   // ★[T1049] 돌 바닥 마을은 제 돌을 안 판다(하네스 `test-floor-stone` 가 읽는다)
   T812_CARGO_TEMP, _t812Probe: { exp: _t812Exp },
+  T1344_MIX_LOAD, _t1344MixPick,   // ★[T1344] 섞어 싣기(끔 기본) · 하네스가 정본 함수를 그대로 부른다(사본 0)
   T1136_BASKET, T1136_ESCORT_CARRY, basketFlush, basketBounce,   // ★[T1136] 바구니 교역 손잡이(끔 기본) · 사건 처리기(서버 호스트가 몸 시계로 부른다 · 헤드리스는 날 머리) · 몸이 막혀 되돌아섬(서버 §5.5b)
   _lowestProducer: lowestProducer,   // ★[T1152] 계측기가 상인 하루 몫을 같은 함수로 잰다(사본 0)
   T1152_MARKET, _t1152Probe: { cal: _t1152Cal, lean: _t1152Lean, rho: _t1152Rho, half: _t1152Half, food: _t1152Food, own: _t1152Own, keepHalf: _t1152KeepHalf, params: _t1152CalParams, tc: _t1152Tc, tcD: _t1152TcD, rvCal: _t1152RvCal, foodPer: _t825FoodPer,

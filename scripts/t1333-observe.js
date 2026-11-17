@@ -38,6 +38,7 @@ function _note(row) {
       if (WATCH.has(res)) rec.legs.push([d, back ? row.to : row.from, back ? row.from : row.to, res, r4(amt), pf == null ? null : r4(pf), pt == null ? null : r4(pt), row.distance | 0, back ? 1 : 0]);
     };
     if (!row.abandoned && row.sent) one(row.sent.res, +row.sent.amt, false, row.sent.pAtFrom, row.sent.pAtTo);
+    if (!row.abandoned && row.sent2) one(row.sent2.res, +row.sent2.amt, false, null, null);   // ★[T1344] 둘째 화물(섞어 싣기 · T206 — 장부 `sent2` · 두 손잡이 끔이면 칸이 없다)
     if (!row.abandoned) for (const it of (row.basket || [])) if (it) one(it.res, +it.amt, false, null, null);
     for (const it of (row.retBasket || [])) if (it) one(it.res, +it.amt, true, null, null);
     if (!row.retBasket && row.bought) one(row.bought.res, +row.bought.amt, true, null, null);

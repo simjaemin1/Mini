@@ -452,7 +452,9 @@ console.log('\n㉑ 둘째 화물(T206) — 문 두 자리 · 용량·후보 규�
   //     `_res2` 는 `_picked` 로 잠겨 한 번만 쓰이고, 적재 자리도 `_res2` 하나뿐이다.
   //     기전이 아니라 **불변식**을 잠근다(런타임 `third` 검사는 ㉒·㉕ 에 있다).
   {
-    const seg = V2C.slice(V2C.indexOf('for (const c2 of candidates)'), V2C.indexOf('for (const c2 of candidates)') + 1400);
+    //   ★[T1344] 섞어 싣기 함수(`_t1344MixPick` — 모듈 위쪽)도 같은 후보 고리 글자를 가진다 → 둘째 화물(T206) 고리는 `cargoTwoOn` 갈래 안의 그것으로 찾는다.
+    const _i206 = V2C.indexOf('for (const c2 of candidates)', V2C.indexOf('if (cargoTwoOn(world))'));
+    const seg = V2C.slice(_i206, _i206 + 1400);
     ok(/if \(!_picked\) \{/.test(seg) && (seg.match(/_res2 = c2\.res/g) || []).length === 1,
       '㉑ ★★★**셋째 이상 0** — 둘째 지정이 `_picked` 로 잠긴 **한 자리**뿐이다');
     ok(!/_res3|giveRes3|_n3\b/.test(V2C), '㉑ ★셋째 화물 변수 자체가 **코드에 없다**');
