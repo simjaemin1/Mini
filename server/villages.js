@@ -2451,7 +2451,7 @@ function _t1306Known(fromVil, toVil, day) {   // 받는 마을 곳간을 떠나�
   if (!isFinite(lag)) return null;   // 못 닿는 마을 — 소문이 영영 안 간다(rumor.js 제4 규약)
   const ring = Array.isArray(e._t1306Fd) ? e._t1306Fd : null; if (!ring) return null;
   const td = (day | 0) - lag;
-  for (let i = ring.length - 1; i >= 0; i--) if ((ring[i].d | 0) <= td) return { d: ring[i].d | 0, fe: ring[i].fe, n: ring[i].n, h: ring[i].h, beds: ring[i].beds, K: ring[i].K, lag };   // ★[T1312] 행복 · 침상 · ★[T1319] K(켬 줄에만 있다)
+  for (let i = ring.length - 1; i >= 0; i--) if ((ring[i].d | 0) <= td) { const row = { d: ring[i].d | 0, fe: ring[i].fe, n: ring[i].n, h: ring[i].h, beds: ring[i].beds, K: ring[i].K, lag }; return _t1342On() ? _t1342Merge(fromVil, toVil, row) : row; }   // ★[T1342] 켬 = 돌아온 사람이 전한 소식(사람 수 · K)이 이 줄보다 새면 얹는다(끔 = 종전 줄)   // ★[T1312] 행복 · 침상 · ★[T1319] K(켬 줄에만 있다)
   return null;   // 소식이 아직 안 닿았다(판 첫날 · 고리보다 먼 소식)
 }
 function _t1306Pass(fromVil, toVil, day) {   // 이주 문 — 들은 곳간이 들은 인구 + 1 을 출생 문 날 수만큼 먹이나(true) · 얇거나 모르면 false
@@ -2627,6 +2627,58 @@ function _t1080Reroute(w, day) {
   _t1080Stat.reroute++;
   if (_t1080Stat.rerouteRows.length < 200) _t1080Stat.rerouteRows.push({ day, d0: w.d0, from: w.from, oldTo: w.to, to: v.dbId, walked: Math.round(s), px: Math.round(len), via: P.via });
   return { to: v.dbId, len, ppd: w.ppd };
+}
+// ★★★[T1342 2026-11-16 · T1334 회부 2 — 둘째 해 K 위 죽음] 손잡이 `T1342_GATE_HOME`(T1319 K 문 켬 안 · `'1'` 만 켬 · 끔 = 종전 바이트 · 세계 갈래 0) — **문 앞에서 집으로.**
+//   T1334 두 해 판: 묶음 둘째 겨울(날 640 ~ 729) K 위 죽음(인구 식이 가장 늙은 사람을 끌어낸 죽음)의 91 % 가 앞 45날 사이 사람이 25 % 넘게 닿은 마을에서 났다(T1342 §1).
+//     한 마을에 하루 이틀 사이 열둘 ~ 스물넷 마을에서 떠난 사람이 몰려 든다(농촌4 날 658 — 17마을 235명 · 인구 ÷ K 2.88). 떠나는 마을마다 들은 줄(곳간 · 침상 · K)과
+//     제 마을 무리 셈만 보니(다른 마을에서 같은 날 오는 사람은 모른다 — 캐논) 마을마다 같은 몫을 보내 받는 곳 K 의 두세 배가 된다.
+//   켬 — 불행 이탈로 걸어온 사람이 받는 마을 문 앞에 닿은 날, 그 마을이 오늘 제 인구 식 K(`_dpDebug.K` — 들은 줄의 K 와 같은 값 · 제 마을이라 오늘 값을 안다)를
+//     넘으면(지금 사람 + 1 > K) 그 사람은 들지 않고 떠난 마을로 걸어 돌아간다 — 몸은 문 앞 자리에서 새 길(T1080 다시 고르기 그 꼴) · 짐은 지고 간다 · 한 길에 한 번.
+//     집에 닿으면 문 없이 든다. 집이 해체 · 빔이면 길 위 하루가 종전대로 다시 고른다. 해체 남은 사람(`_t577Walk`) · 해산 도적(T1079)은 이 문 밖(갈 곳이 꼭 있어야 한다).
+//     "그 마을은 이미 사람으로 꽉 찼다 — 땔감도 자리도 없다" — 문 앞에 선 몸이 제 눈으로 본다(소식 텔레포트 0 · 받는 마을의 오늘 값은 그 마을 문 앞에서만 읽는다).
+//   돌아온 사람은 문 앞에서 본 것(그 마을 오늘 사람 수 · K)을 지고 가 집에 닿은 날 집 마을에 전한다(`_t1342Seen` — 받는 마을마다 가장 새 줄 하나) —
+//     그 뒤 그 집 마을이 아는 그 마을 줄(`_t1306Known` — 받는 곳 문이 읽는 들은 줄)은 그 소식이 들은 줄보다 새면 사람 수 · K 를 그것으로 얹는다(소식은 몸으로 — T7 캐논 그대로 · 새 소문 길 0).
+//   새 수 0 — K 는 인구 식의 그 값 · 문턱은 사람 수(K 문 `들은 인구 + 앞서 고른 수 + 1 > 들은 K` 와 같은 꼴).
+const T1342_GATE_HOME_ENV = process.env.T1342_GATE_HOME === '1';
+function _t1342On() { return T1342_GATE_HOME_ENV && _t1319KOn(); }
+const _t1342Stat = { gate: 0, full: 0, back: 0, noHome: 0, told: 0, toldUse: 0 };
+function _t1342Full(vil) {   // 문 앞 — 이 마을이 오늘 제 K 를 넘나(켬만 · 끔 = 언제나 false)
+  if (!_t1342On()) return false;
+  const e = vil && vil.econ, K = e && e._dpDebug && typeof e._dpDebug.K === 'number' && isFinite(e._dpDebug.K) ? e._dpDebug.K : null;
+  _t1342Stat.gate++;
+  if (K == null || !(e.npcs.length + 1 > K)) return false;
+  _t1342Stat.full++;
+  return true;
+}
+function _t1342Home(w, day) {   // 문 앞에서 떠난 마을로 — { to, len, ppd } · 집이 해체 · 빔이면 null(종전대로 든다)
+  const home = state.byDbId.get(w.from), gate = state.byDbId.get(w.to);
+  if (!home || !home.econ || home.econ._banditized || !(home.econ.npcs.length > 0) || !gate) { _t1342Stat.noHome++; return null; }
+  const p = w.pid != null ? state.deps.players.get(w.pid) : null;
+  let x, y; if (p) { x = p.x; y = p.y; } else { x = gate.ccx * SZ + SZ / 2; y = gate.ccy * SZ + SZ / 2; }
+  const tx = home.ccx * SZ + SZ / 2, ty = home.ccy * SZ + SZ / 2;
+  let pts = null; try { pts = computeRoutePts(x, y, tx, ty); } catch (e) { pts = null; }
+  if (!pts || pts.length < 2) pts = [{ x, y }, { x: tx, y: ty }];
+  let len = 0; for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  const r = p && state.bodyExits ? state.bodyExits.get(w.pid) : null;
+  if (r) { setBodyPts(r, [{ x: p.x, y: p.y }, ...pts.slice(1)]); r.vid = home.dbId; if (T681_ON) { r.d0 = day; r.L = 0; } }   // 몸은 문 앞에서 집 길로(걸음 장부도 그날부터)
+  _t1342Stat.back++;
+  const ge = gate.econ, gK = ge && ge._dpDebug && typeof ge._dpDebug.K === 'number' && isFinite(ge._dpDebug.K) ? ge._dpDebug.K : null;
+  w.t1342Seen = { v: gate.dbId, d: day | 0, n: ge ? ge.npcs.length : 0, K: gK };   // 문 앞에서 제 눈으로 본 것(그 마을 오늘 사람 수 · K) — 집에 지고 간다
+  return { to: home.dbId, len, ppd: w.ppd };
+}
+function _t1342Tell(w, home) {   // 집에 닿은 날 — 집 마을이 그 소식을 안다(마을 칸 `_t1342Seen` · 받는 마을마다 가장 새 것 한 줄)
+  const s0 = w && w.t1342Seen, e = home && home.econ; if (!s0 || !e) return;
+  const m = e._t1342Seen || (e._t1342Seen = {}), o = m[s0.v];
+  if (!o || (o.d | 0) <= (s0.d | 0)) { m[s0.v] = { d: s0.d | 0, n: s0.n, K: s0.K }; _t1342Stat.told++; }
+}
+function _t1342Merge(fromVil, toVil, row) {   // 들은 줄 + 더 새 돌아온 사람 소식 → 사람 수 · K 를 그 소식으로(곳간 · 행복 · 침상 · 날은 들은 줄 그대로) · 없으면 들은 줄 그대로
+  const o = _t1342Told(fromVil, toVil, row); if (!o) return row;
+  _t1342Stat.toldUse++;
+  return Object.assign({}, row, { n: o.n, K: o.K, told: o.d });
+}
+function _t1342Told(fromVil, toVil, k) {   // 들은 줄 k(떠나는 마을이 아는 그 마을 줄)보다 새 '돌아온 사람 소식'이 있으면 { d, n, K } · 없으면 null
+  const m = fromVil && fromVil.econ && fromVil.econ._t1342Seen, o = m && toVil ? m[toVil.dbId] : null;
+  return (o && k && (o.d | 0) > (k.d | 0)) ? o : null;
 }
 function _t1080Arrive(w, to) {   // ⓓ 남은 짐 → 받는 마을 곳간
   const bag = w.pack; if (!bag || !to || !to.econ || !to.econ.storage) return 0;
@@ -11409,6 +11461,7 @@ function banditHost() {
     t1312On: _t1312On, t1312Stat: () => _t1312Stat,   // ★[T1312] 무리 셈 · 들은 행복 · 침상(bandits.js 걷기 문이 켬이면 오늘 행복 술어를 안 건다)
     t1319KOn: _t1319KOn, t1319Stat: () => _t1319Stat,   // ★[T1319] 받는 곳 문에 부양력 K(들은 줄)
     t1302Prepare: T1302_TERR_BODY ? (vil) => syncVillagePop(vil, Infinity) : null,
+    t1342Full: _t1342Full, t1342Home: _t1342Home, t1342Tell: _t1342Tell,   // ★[T1342] 문 앞에서 집으로 · 돌아온 사람이 전한 소식(끔 = 언제나 false · 안 불림)
     t1080On: () => T1080_ROAD_LIFE, t1080Pick: _t1080Pick, t1080Pack: _t1080Pack, t1080RoadDay: _t1080RoadDay, t1080Reroute: _t1080Reroute, t1080Arrive: _t1080Arrive, t1080Stat: () => _t1080Stat,   // ★[T1080] 길 위 먹고 늙기 · 길 거리 받는 마을(도적 `walkToVillage` 가 부른다)    // ★[T765] 후보 걷기 몸 문 둘(도적 `_t577Walk` — `T577_CAND_WALK=1` 에서만 불린다)
     seed: state.villageSeed || 1020,
     cellsW: ZONE ? Math.ceil(ZONE.zoneWidth / SZ) : 0,
@@ -19606,7 +19659,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   T1238_TERR_V2, T1302_TERR_BODY, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,
   _t1238Batch, _t1238DayPre, _t1238DayPost, _t1238GoOk, _t1238Use, _t1238Remove, _t1238Boot, _t1238JobToLand, _t1238JobFromLand, _t1238JobsOf, landSizeOfCells, _t1238Struct, _t1238Land, _t1238St,
-  t1167Stat, t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t1320Stat: () => Object.assign({ on: T1320_ROCK_PATH }, _t1320St), t1320On: () => T1320_ROCK_PATH, t1327Stat: () => Object.assign({ on: T1327_ROUTE_FIX }, _t1327St), t1327On: () => T1327_ROUTE_FIX, t1306Stat: () => _t1306Stat, _t1306On, _t1306Known, _t1306Pass, _t1306Record, t1312Stat: () => _t1312Stat, _t1312On, _t1312Pass, _t1312PickedOf, _t1312Note, t1319Stat: () => _t1319Stat, _t1319KOn, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes, t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), t1166Sizes: _t1166Sizes, lotsClockSet: _t1166Flush,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
+  t1167Stat, t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t1320Stat: () => Object.assign({ on: T1320_ROCK_PATH }, _t1320St), t1320On: () => T1320_ROCK_PATH, t1327Stat: () => Object.assign({ on: T1327_ROUTE_FIX }, _t1327St), t1327On: () => T1327_ROUTE_FIX, t1306Stat: () => _t1306Stat, _t1306On, _t1306Known, _t1306Pass, _t1306Record, t1312Stat: () => _t1312Stat, _t1312On, _t1312Pass, _t1312PickedOf, _t1312Note, t1319Stat: () => _t1319Stat, _t1319KOn, t1342Stat: () => Object.assign({ on: _t1342On() }, _t1342Stat), _t1342On, _t1342Full, _t1342Home, _t1342Tell, _t1342Told, _t1342Merge, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes, t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), t1166Sizes: _t1166Sizes, lotsClockSet: _t1166Flush,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
   streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   T856_LAND_ELEV, _t856LandElev,   // ★[T856] 마을 고도 — 하네스(`test-land-elev`)가 같은 함수를 부른다(사본 0)
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)

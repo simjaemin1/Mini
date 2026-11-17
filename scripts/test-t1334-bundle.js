@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// === scripts/test-t1334-bundle.js — T1334: 켬 기본 묶음 손잡이 하나(`T1334_BUNDLE`)가 낱 일곱(아홉 글자)과 같다 [T1319 회부 3] ======
+// === scripts/test-t1334-bundle.js — T1334: 켬 기본 묶음 손잡이 하나(`T1334_BUNDLE`)가 낱 여덟(열 글자 — T1319 아홉 + T1342 문 앞 집으로)과 같다 [T1319 회부 3 · T1342] ======
 //   ① 기본 갈래(`DEFAULT_ON`) · 끔이면 env 무변 · 켬 글자는 `'1'` 하나(켬 기본 가지에선 빈 값 = 켬 · `'0'` = 끔)
-//   ② 켬 = T1319 권고표의 "목표 넷 다 넘는 줄"(묶음 세계 줄)의 손잡이 칸 그대로 — 권고표 JSON(줄 · 칸 표지)과 md 머리(칸 이름 차례)를 읽는다(사본 0)
+//   ② 켬 = T1319 권고표의 "목표 넷 다 넘는 줄"(묶음 세계 줄)의 손잡이 칸 그대로 + T1342 고침 줄(`계측/T1342_2026-11-16/t1342-fix.json`) — 권고표 JSON(줄 · 칸 표지)과 md 머리(칸 이름 차례)를 읽는다(사본 0)
 //   ③ 되돌림 — 준 값이 먼저(`'0'` 그대로 · 빈 글자는 안 준 것으로 채운다)
 //   ④ 서버 입구 차례(정적) — `server/zone.js` 묶음 블록이 villages · econ 을 읽는 첫 require 보다 앞 · 판 자 아이 env(`kidEnv`)가 채운다 · 기준선 `cond` 에 묶음이 적힌다
-//   ⑤ 지문 같음(모듈이 실제로 선 값) — 아이 프로세스에서 zone.js 묶음 블록을 **글자 그대로** 컴파일해 돌린 뒤 econ · villages 를 읽어 선 값 열다섯:
-//      묶음 켬 = 낱 아홉 · 끔과 다름 · 묶음 켬 + 낱 `'0'` 하나(K 문) = 그 갈래만 꺼짐
-//   ⑥ 짧은 판 지문 같음 — 판 자(`server-baseline-check --make` · 가상 시계 · 시드 1020 · 5날): 묶음 켬 = 낱 아홉(날 지문 · 판 JSON 지문 · 마을 칸) · 끔과 다름
+//   ⑤ 지문 같음(모듈이 실제로 선 값) — 아이 프로세스에서 zone.js 묶음 블록을 **글자 그대로** 컴파일해 돌린 뒤 econ · villages 를 읽어 선 값 열여섯:
+//      묶음 켬 = 낱 열 · 끔과 다름 · 묶음 켬 + 낱 `'0'` 하나(K 문) = 그 갈래(+ 그 위에 선 문 앞 집으로)만 꺼짐
+//   ⑥ 짧은 판 지문 같음 — 판 자(`server-baseline-check --make` · 가상 시계 · 시드 1020 · 5날): 묶음 켬 = 낱 열(날 지문 · 판 JSON 지문 · 마을 칸) · 끔과 다름
 //   ⑦ 반쪽 묶음 지킴 — econ 을 먼저 읽은 프로세스에서 zone.js 묶음 블록이 채울 글자가 남으면 멈춘다(반쪽으로 안 돈다) · 다 준 env 면 안 멈춘다(판 자 길)
 //   ★미끼 — 묶음이 K 문만 켜고 가을 문을 뺀 `t1334-bundle` 사본: ② 빨강(권고 줄과 다르다) · ⑤ 빨강(이주 문 날 수 9월 1일 30 ≠ 181 · 가을 문 꺼짐)
 'use strict';
@@ -48,7 +48,7 @@ if (process.argv[2] === '--child') {
       Object.assign(out, {
         T325: !!E.T325_WOOD_ACT, T1213: !!E.T1213_ON, T1283: !!E.T1283_WOOD_DEMAND, T1297: !!E.T1297_BIRTH_FOOD, T1306G: !!E.T1306_BIRTH_GRADE,
         AUT1: !!E.T1319_AUTUMN_LOOK, MIG: !!E.T1319_AUTUMN_MIG, need184: E.t1297NeedDays(184), mig184: E.t1319MigNeedDays(184),
-        T1207: !!V.T1207_TERR_REAL, T1238: !!V.T1238_TERR_V2, T1302: !!V.T1302_TERR_BODY, m1306: !!V._t1306On(), m1312: !!V._t1312On(), m1319K: !!V._t1319KOn(),
+        T1207: !!V.T1207_TERR_REAL, T1238: !!V.T1238_TERR_V2, T1302: !!V.T1302_TERR_BODY, m1306: !!V._t1306On(), m1312: !!V._t1312On(), m1319K: !!V._t1319KOn(), m1342: !!(V._t1342On && V._t1342On()),
       });
     }
   } catch (e) { out.err = String(e && e.stack || e).slice(0, 300); }
@@ -74,7 +74,7 @@ fs.writeFileSync(BAIT, baitSrc);
 const Bb = require(BAIT);
 
 (async () => {
-  console.log('\n=== T1334 켬 기본 묶음 손잡이 — 하나 = 낱 일곱(아홉 글자) ===\n');
+  console.log('\n=== T1334 켬 기본 묶음 손잡이 — 하나 = 낱 여덟(열 글자) ===\n');
 
   // ① 기본 갈래
   {
@@ -99,22 +99,23 @@ const Bb = require(BAIT);
       '무리 셈': [['T1312_HERD', '1']], 'K 문': [['T1319_RECV_K', '1']], '가을 문': null, 'v2': [['T1207_TERR_REAL', '1'], ['T1238_TERR_V2', '1']], '나무꾼 몸': [['T325_WOOD_ACT', '1']] };
     const rows = RJ.filter((r) => r.all4 && /^묶음/.test(r.name));
     ok(cols.length === 9 && cols.every((c) => c in MAP) && rows.length === 1, '② 전제 — 권고표 칸 아홉(이름 차례는 md 머리) · 묶음 세계 "넷 다 넘는 줄"이 하나', { cols, rows: rows.map((r) => r.name) });
-    const want = {};
+    const want = {}, FIX = JSON.parse(fs.readFileSync(path.join(ROOT, '계측', 'T1342_2026-11-16', 't1342-fix.json'), 'utf8')).knobs;
     if (rows.length === 1) {
       const marks = rows[0].on.split(' ');
       cols.forEach((c, i) => { const mk = marks[i]; if (mk !== '○' && mk !== '◐') return; const L = c === '가을 문' ? [['T1319_AUTUMN_LOOK', mk === '◐' ? 'mig' : '1']] : MAP[c]; for (const [k, v] of L) want[k] = v; });
+      for (const [k, v] of FIX) want[k] = v;   // ★[T1342] 고침 줄(문 앞에서 집으로)
     }
     const got = (mod) => { const e = { T1334_BUNDLE: '1' }; mod.fill(e); delete e.T1334_BUNDLE; return e; };
     const g = got(B), gb = got(Bb);
     const same = (a, b) => JSON.stringify(Object.keys(a).sort().map((k) => [k, a[k]])) === JSON.stringify(Object.keys(b).sort().map((k) => [k, b[k]]));
-    ok(Object.keys(want).length === 9 && same(g, want), '② 묶음 켬이 채우는 글자 = 권고 줄의 손잡이 칸 그대로(아홉 · 값까지 · 가을 문 `mig` · 단계 문 끔)', g);
+    ok(Object.keys(want).length === 9 + FIX.length && FIX.length === 1 && same(g, want), '② 묶음 켬이 채우는 글자 = 권고 줄의 손잡이 칸(아홉 · 값까지 · 가을 문 `mig` · 단계 문 끔) + T1342 고침 줄(`T1342_GATE_HOME`)', g);
     ok(baitSrc !== fs.readFileSync(BUNDLE, 'utf8') && !same(gb, want), '★미끼 ② — 가을 문을 뺀 묶음 사본은 권고 줄과 다르다(빨강)', gb);
   }
 
   // ③ 되돌림
   {
     const e = { T1334_BUNDLE: '1', T1319_RECV_K: '0', T325_WOOD_ACT: '' }, s = B.fill(e);
-    ok(e.T1319_RECV_K === '0' && e.T325_WOOD_ACT === '1' && !s.includes('T1319_RECV_K') && s.includes('T325_WOOD_ACT') && s.length === 8,
+    ok(e.T1319_RECV_K === '0' && e.T325_WOOD_ACT === '1' && !s.includes('T1319_RECV_K') && s.includes('T325_WOOD_ACT') && s.length === NINE.length - 1,
       '③ 되돌림 — 준 `0` 은 그대로(K 문만 끔) · 빈 글자는 안 준 것으로 채운다', { filled: s.length, K: e.T1319_RECV_K });
   }
 
@@ -136,12 +137,12 @@ const Bb = require(BAIT);
     const rB = child('zone', ON1), rI = child('zone', indiv), rO = child('zone', OFF0), rR = child('zone', Object.assign({}, ON1, { T1319_RECV_K: '0' }));
     const rX = child('zone', Object.assign({}, ON1, { __T1334_BAIT: BAIT }));
     const fp = (r) => JSON.stringify(Object.keys(r).filter((k) => k !== 'threw').sort().map((k) => [k, r[k]]));
-    ok(!rB.err && !rB.threw && rB.T325 && rB.T1213 && rB.T1283 && rB.T1297 && !rB.T1306G && !rB.AUT1 && rB.MIG && rB.need184 === 30 && rB.mig184 === 181 && rB.T1207 && rB.T1238 && !rB.T1302 && rB.m1306 && rB.m1312 && rB.m1319K,
-      '⑤ 묶음 켬 — 선 값 열다섯(econ 손잡이 여섯 · 날 수 둘 · villages 갈래 여섯 · T1302 끔): 출생 문 9월 1일 30 · 이주 문 181', rB);
-    ok(!rI.err && fp(rB) === fp(rI), '⑤ 지문 같음 — 묶음 켬 = 낱 아홉 켬(선 값 열다섯 모두)');
-    ok(!rO.err && fp(rO) !== fp(rB) && !rO.T325 && !rO.T1297 && !rO.m1306 && rO.mig184 === 30, '⑤ 끔과 다름 — 끔이면 아무 갈래도 안 선다(자명 통과 아님)', rO);
-    ok(!rR.err && !rR.m1319K && rR.m1312 && rR.MIG && fp(Object.assign({}, rR, { m1319K: true })) === fp(rB), '⑤ 묶음 켬 + `T1319_RECV_K=0` = K 문만 꺼진다(나머지 열넷 그대로)', { m1319K: rR.m1319K });
-    ok(!rX.err && fp(rX) !== fp(rI) && !rX.MIG && rX.mig184 === 30 && rX.m1319K, '★미끼 ⑤ — 가을 문을 뺀 묶음 사본: K 문은 서나 이주 문 날 수 9월 1일 30(≠ 181) → 낱 아홉과 다르다(빨강)', { MIG: rX.MIG, mig184: rX.mig184 });
+    ok(!rB.err && !rB.threw && rB.T325 && rB.T1213 && rB.T1283 && rB.T1297 && !rB.T1306G && !rB.AUT1 && rB.MIG && rB.need184 === 30 && rB.mig184 === 181 && rB.T1207 && rB.T1238 && !rB.T1302 && rB.m1306 && rB.m1312 && rB.m1319K && rB.m1342,
+      '⑤ 묶음 켬 — 선 값 열여섯(econ 손잡이 여섯 · 날 수 둘 · villages 갈래 일곱 · T1302 끔): 출생 문 9월 1일 30 · 이주 문 181 · 문 앞 집으로', rB);
+    ok(!rI.err && fp(rB) === fp(rI), '⑤ 지문 같음 — 묶음 켬 = 낱 열 켬(선 값 열여섯 모두)');
+    ok(!rO.err && fp(rO) !== fp(rB) && !rO.T325 && !rO.T1297 && !rO.m1306 && !rO.m1342 && rO.mig184 === 30, '⑤ 끔과 다름 — 끔이면 아무 갈래도 안 선다(자명 통과 아님)', rO);
+    ok(!rR.err && !rR.m1319K && !rR.m1342 && rR.m1312 && rR.MIG && fp(Object.assign({}, rR, { m1319K: true, m1342: true })) === fp(rB), '⑤ 묶음 켬 + `T1319_RECV_K=0` = K 문과 그 위 문 앞 집으로만 꺼진다(나머지 열넷 그대로)', { m1319K: rR.m1319K, m1342: rR.m1342 });
+    ok(!rX.err && fp(rX) !== fp(rI) && !rX.MIG && rX.mig184 === 30 && rX.m1319K, '★미끼 ⑤ — 가을 문을 뺀 묶음 사본: K 문은 서나 이주 문 날 수 9월 1일 30(≠ 181) → 낱 열과 다르다(빨강)', { MIG: rX.MIG, mig184: rX.mig184 });
   }
 
   // ⑥ 짧은 판 지문 같음 — 판 자(가상 시계 · 1020 · 5날)
@@ -156,9 +157,9 @@ const Bb = require(BAIT);
     const indiv = Object.assign({}, OFF0); for (const [k, v] of NINE) indiv[k] = v;
     const b = run('bundle', ON1), i = run('indiv', indiv), o = run('off', OFF0);
     const days = (x) => x && x.s && JSON.stringify(x.s.days), side = (x) => x && x.s && JSON.stringify(x.s.side || null);
-    ok(!!(b && i && o && b.s && i.s && o.s) && b.s.days.length === 5, '⑥ 전제 — 판 셋(묶음 · 낱 아홉 · 끔)이 5날을 다 돌았다', { b: !!(b && b.s), i: !!(i && i.s), o: !!(o && o.s) });
+    ok(!!(b && i && o && b.s && i.s && o.s) && b.s.days.length === 5, '⑥ 전제 — 판 셋(묶음 · 낱 열 · 끔)이 5날을 다 돌았다', { b: !!(b && b.s), i: !!(i && i.s), o: !!(o && o.s) });
     ok(!!(b && i && b.s && i.s) && days(b) === days(i) && b.s.runHash === i.s.runHash && side(b) === side(i) && JSON.stringify(b.s.eight) === JSON.stringify(i.s.eight),
-      '⑥ 짧은 판 지문 같음 — 묶음 켬 = 낱 아홉(날 지문 · 판 JSON 지문 · 마을 칸 · 여덟 수)', b && b.s ? { runHash: b.s.runHash, pop: b.s.eight && b.s.eight.pop } : null);
+      '⑥ 짧은 판 지문 같음 — 묶음 켬 = 낱 열(날 지문 · 판 JSON 지문 · 마을 칸 · 여덟 수)', b && b.s ? { runHash: b.s.runHash, pop: b.s.eight && b.s.eight.pop } : null);
     ok(!!(b && o && b.s && o.s) && days(b) !== days(o), '⑥ 끔 판과는 다르다(묶음이 판을 실제로 바꾼다)', o && o.s ? { runHash: o.s.runHash, pop: o.s.eight && o.s.eight.pop } : null);
     ok(!!(b && b.cond) && b.cond.T1334_BUNDLE === '1' && !!(i && i.cond) && i.cond.T1334_BUNDLE === undefined, '⑥ 기준선 `cond` — 묶음 판에만 `T1334_BUNDLE` 칸', { b: b && b.cond, i: i && i.cond });
   }
