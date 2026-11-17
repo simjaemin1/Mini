@@ -5158,7 +5158,7 @@ function _t1295Walk(p, dt, sub) {
   let x = _xyX(p), y = _xyY(p), left = dt, moved = 0;   // T1145 열이면 열에서(끔 = 몸 칸)
   while (left > 0 && p.pathIndex < n) {
     let wx, wy; if (M && p.pathIndex === 0) { wx = p._t791Px; wy = p._t791Py; } else { const w = P[p.pathIndex]; wx = w.x; wy = w.y; }
-    const dx = wx - x, dy = wy - y, d = Math.hypot(dx, dy), v = _desSpeed(x, y) * s;   // px/실초(게임 분 축)
+    const dx = wx - x, dy = wy - y, d = Math.hypot(dx, dy), v = _desSpeed(x, y) * s * (p._huntSpd > 0 ? p._huntSpd : 1);   // px/실초(게임 분 축) · ★[T1326] 사냥꾼 배속(잠행 · 추적 — `npcStep` 이 곱하는 그 칸)
     if (!(v > 0)) break;
     if (d <= v * left) { x = wx; y = wy; left -= d / v; moved += d; p.pathIndex++; }
     else { const k = v * left / d; x += dx * k; y += dy * k; moved += v * left; left = 0; }
