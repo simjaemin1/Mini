@@ -1,0 +1,26 @@
+빨강	test-t1059-pick-top.js	77be2e5b2	T1059	제품부름	제품차있음	1	27	17	0	  ✗ ★★켬 — **그림에서 위에 그려진 사람**(p2 · 가까운 p1 이 아니다)  ["player","p1"]
+빨강	test-t1054-decay-wood.js	777f503d3	T1054	제품부름	제품차있음	1	7	10	0	  ✗ `T1054_DECAY_WOOD` 는 `=== '1'` — 끔 기본(회부 · 켜는 값 '1' · 끔 = 종전 바이트)
+빨강	test-deforest-game.js	34872cf26	T1053	제품부름	제품차있음	1	8	9	0	  ✗ [상황] 손잡이가 판대로 섰다(켬 기본 · `=0` 끔)  켬 undefined · 끔 undefined
+빨강	test-t1065-tool-gate.js	fd4d7c611	T1065	제품부름	제품차있음	1	2	7	3	  ✗ 손잡이 — 켬 기본 · `=0` 만 끔
+크래시	test-village-view.js	475b6bc0f	T1072	제품부름	제품차있음	1	1	0	13	TypeError: V.villageViewSrc is not a function
+크래시	test-t1066-village-fire.js	9afd81039	T1066	제품부름	제품차있음	1	0	0	0	Error: Cannot find module '/dev/shm/t1361/w/server/hut-hearth.js'
+빨강	test-t1064-next-step.js	e313eae1a	T1064	제품부름	제품차있음	1	1	35	0	  ✗ 제품 글자에 「지금 할 일」 고르기 · 그리기 함수가 있다(onbNextPlan · onbNextRender)
+크래시	test-crop-memo.js	1a67fbe0c	T1041	제품부름	제품차있음	1	0	0	0	TypeError: C.t1041Stat is not a function
+크래시	test-t1043-gate-house.js	4df90472a	T1043	제품안부름	제품차0	143	1	0	17	
+크래시	test-bandit-body.js	8d613bb35	T1039	제품부름	제품차있음	1	0	0	0	TypeError: Cannot read properties of undefined (reading 'reset')
+빨강	test-t1060-scram-hold.js	bd85c3f34	T1060	제품부름	제품차있음	1	7	9	4	  ✗ ⓐ 손잡이 문 둘 — villages `T1060_SCRAM_HOLD !== '0'`(켬 기본 · 되돌림 `=0`) · `T1060_ATK_AIM === '1'`(끔 기본 · 판 자 env) · war-l
+크래시	test-t1074-food-debt.js	ff2637daf	T1074	제품부름	제품차있음	1	0	0	0	TypeError: Cannot read properties of undefined (reading '_fdNeed')
+빨강	test-t1085-assign-job.js	40072389b	T1085	제품부름	제품차있음	1	0	1	0	  ✗ ①-0 econ 이 지정 함수 · 직업 목록 · 쿨다운 이름(값 30 = 종전 두 자리 그대로)을 낸다
+크래시	test-army-morale.js	aedc098ea	T1076	제품부름	제품차있음	1	0	0	0	Error: Cannot find module '/dev/shm/t1361/w/sim/equilibrium.js'
+빨강	test-t1086-first-join.js	2b20c5263	T1086	제품부름	제품차있음	1	8	36	1	  ✗ ★손잡이 켬 기본 후보 — env 를 안 주면 켜져 있다(`T1086_FIRST_JOIN` · `=0` 만 끔)
+빨강	test-bandit-all.js	4e09d3cd6	T1078	제품부름	제품차있음	1	0	4	0	  ✗ 정적 · 존 `damagePlayer` NPC 갈래 — 되살림(`setTimeout`) 앞에서 도적 단원 몸이면 `t1078Died` 가 쥔다(`_bdtGid` 가 선 몸만)
+초록	test-t1087-crew-cap.js	76c17f104	T1087	제품부름	제품차0	0	8	0	0	
+빨강	test-t1089-ret-walk.js	ed4d13309	T1089	제품부름	제품차있음	1	6	13	4	  ✗ ⓐ 손잡이 문 하나 — villages `!== '0'`(켬 기본 · 되돌림 `=0`) · war-core · war-live · battle-core 무변
+초록	test-gate-draft.js	0f9c4d6a4	T1082	제품안부름	제품차0	0	6	0	2	
+빨강	test-bandit-camp.js	2d09f045b	T1079	제품부름	제품차있음	1	0	3	0	  ✗ 정적 · 손잡이 하나(`'1'` 만 켬) · T1078 켬 위에서만 선다
+초록	test-gap-ruler.js	9934120dc	T1101	제품부름	제품차0	0	21	0	0	
+빨강	test-lab-army-morale.js	a358a4856	T1100	제품부름	제품차있음	1	0	1	0	  ✗ 전투실험실 BATTLE-CORE · ARMY-MORALE 블록 — 다시 구워도 차 0
+빨강	test-t1094-arms-trip.js	225ac32cd	T1094	제품부름	제품차있음	1	2	6	1	  ✗ ⓐ war-core `T403_ARMS_LEDGER !== '0'`(켬 기본 · 되돌림 `=0`) — 문 하나
+빨강	test-t1094-carry-cap.js	225ac32cd	T1094	제품부름	제품차있음	1	0	5	0	  ✗ ⓐ 손잡이 문 하나 — villages `!== '0'`(켬 기본 후보 · 되돌림 `=0`) · war-core 는 손잡이를 안 읽는다
+크래시	test-t1095-mine-demand.js	a070d6d70	T1095	제품부름	제품차있음	1	0	0	0	TypeError: H._oreMineDaily is not a function
+초록	test-lint-harness-words.js	22a6a74c3	T1097	제품부름	제품차0	0	5	0	0	
