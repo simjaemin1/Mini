@@ -19,9 +19,11 @@ const ok = (c, m, d) => { if (c) { pass++; console.log('  ✓ ' + m + (d !== und
 const Z = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 const SSRC0 = fs.readFileSync(path.join(ROOT, 'server', 'stand-skip.js'), 'utf8');
 const _SEED = require(path.join(ROOT, 'server', 'seed-rand.js'));
-const fn = (src, head) => { const i = src.indexOf(head); if (i < 0) throw new Error(head); const j = src.indexOf('\n}\n', i); return src.slice(i, j + 3); };
-const line = (src, head) => { const i = src.indexOf(head); if (i < 0) throw new Error(head); return src.slice(i, src.indexOf('\n', i) + 1); };
-const span = (src, a, b) => { const i = src.indexOf(a); if (i < 0) throw new Error(a); const j = src.indexOf(b, i); if (j < 0) throw new Error(b); return src.slice(i, src.indexOf('\n', j) + 1); };
+const loadSS = (src, env) => { const m = { exports: {} }; vm.runInThisContext('(function (module, exports, require, process) {' + src + '\n})')(m, m.exports, require, { env }); return m.exports; };
+const MISS = [];   // 못 찾은 존 글자(옛 코드 · 이름 바뀜) — 던지지 않고 ✗ 줄로 낸다
+const fn = (src, head) => { const i = src.indexOf(head); if (i < 0) { MISS.push(head); return ''; } const j = src.indexOf('\n}\n', i); return src.slice(i, j + 3); };
+const line = (src, head) => { const i = src.indexOf(head); if (i < 0) { MISS.push(head); return ''; } return src.slice(i, src.indexOf('\n', i) + 1); };
+const span = (src, a, b) => { const i = src.indexOf(a); if (i < 0) { MISS.push(a); return ''; } const j = src.indexOf(b, i); if (j < 0) { MISS.push(b); return ''; } return src.slice(i, src.indexOf('\n', j) + 1); };
 const once = (src, a, b) => { const n = src.split(a).length - 1; if (n !== 1) throw new Error(`미끼 자리 ${n}곳: ${a.slice(0, 60)}`); return src.replace(a, b); };
 let fCmp = fn(Z, 'function computeNpcPath(npc, now) {');
 fCmp = fCmp.slice(0, fCmp.indexOf('  const isVil')) + '  return __path(npc);\n}\n';
@@ -35,8 +37,10 @@ const PARTS = [line(Z, 'function _t671Lt('), line(Z, 'function _t671Gt('), line(
   fn(Z, 'function _t1348FGrant(npc, s) {'), fn(Z, 'function _t1348Dec(s, now) {'), fn(Z, 'function _t1348FCmp(npc, nda, snap) {'),
   'function decLoop(now, dt) {\n  _decT0 = Date.now();\n' + LOOP.replace('  const _decOne = (pid, _sL) => { do {', '  const _decOne = (pid, _sL) => { SEEN.push(pid); do {') + '  return _stopAt;\n}\n'];   // 하네스 계측: 고리가 짚은 pid 차례
 const SRC0 = PARTS.join('\n');
+{ let SSOK = true; try { const S = loadSS(SSRC0, {}); SSOK = typeof S.OrdSet === 'function' && typeof S.newPlayers === 'function' && 'WORK_ON' in S; } catch (e) { SSOK = false; }
+  ok(!MISS.length && SSOK, '존 · stand-skip 글자 — 고리 거울 · 걷는 몸 커널 · 일터 깨움이 있다(옛 코드면 여기서 빨강)', MISS.length ? '없음: ' + MISS.map((x) => x.slice(0, 40)).join(' | ') : (SSOK ? '' : 'stand-skip OrdSet · newPlayers · WORK_ON 없음'));
+  if (MISS.length || !SSOK) { console.log(`\n=== T1348 고리 거울 · 걷는 몸 커널 ${pass} 통과 · ${fail} 실패 ===`); process.exit(1); } }
 const DAY = 40000, RATIO = 0.7, BS = 32, R = 250;
-const loadSS = (src, env) => { const m = { exports: {} }; vm.runInThisContext('(function (module, exports, require, process) {' + src + '\n})')(m, m.exports, require, { env }); return m.exports; };
 const phase = (now) => ((now / DAY) % 1 + 1) % 1, fvOf = (now, lon) => { const v = (phase(now) + lon) % 1; return v < 0 ? v + 1 : v; };
 const bdayOf = (now, lon) => Math.floor(now / DAY + lon);
 const sleepOf = (npc, now) => {
