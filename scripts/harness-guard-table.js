@@ -18,7 +18,7 @@ const Cc = rows.filter((r) => r.reg && !r.bait), Dd = rows.filter((r) => r.reg &
 const M = rows.filter((r) => r.mark != null);
 const sum = { files: rows.length, regress: rows.filter((r) => r.reg).length, dateLines: A.reduce((s, r) => s + r.dates.length, 0), dateFiles: A.length, dateUnmarked: A.filter((r) => !r.dateOk).length,
   edgeLines: B.reduce((s, r) => s + r.edge.length, 0), edgeFiles: B.length, noBait: Cc.length, noCount: Dd.length, marked: M.length, parseFail: rows.filter((r) => !r.parse).map((r) => r.f) };
-if (process.argv.includes('--json')) { console.log(JSON.stringify({ sum, rows })); process.exit(0); }
+if (process.argv.includes('--json')) { process.stdout.write(JSON.stringify({ sum, rows }) + '\n'); return; }   // exit 를 안 부른다(파이프로 큰 출력이 잘린다)
 const L = [];
 L.push('# T1356 하네스 전수 표 — 박힌 날짜 · 날 경계 · 미끼 (자 = `scripts/lib-harness-guard.js` · 셈 = `node scripts/harness-guard-table.js`)', '');
 L.push(`· 대상 \`scripts/test-*.js\` · \`e2e-*.js\` ${sum.files}파일(@regress ${sum.regress}) · 주석 뺀 코드 글자로 센다(\`code-only.js\`) · 판정 호출은 AST(\`acorn\` — 못 읽은 파일 ${sum.parseFail.length}${sum.parseFail.length ? ': ' + sum.parseFail.join(' ') : ''})`);

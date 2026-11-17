@@ -8,7 +8,7 @@
 //      하네스 자신(`scripts/test-*.js` · `e2e-*.js`)은 이름을 안 뽑고 "바뀐 하네스" 로 목록에 넣는다.
 //   ② 이름 = 바뀐 덩어리 머리의 둘레 함수(git 이 `@@ … @@` 뒤에 적는 줄) + 바뀐 줄(+ · −)의 선언(함수 · const/let/var · 객체 메서드 · exports) + env 손잡이(`process.env.X`).
 //      넉 자 미만 · 흔한 낱말 · 내장 메서드(`STOP`)는 뺀다 · 하네스 절반 넘게가 무는 이름은 "흔한 이름" 으로 따로 적고 목록에 안 넣는다(넣으면 전수다).
-//      아직 더하지 않은 새 코드 파일은 파일 이름(그 파일을 싣는 하네스)으로 센다. 둘레 함수는 덩어리 안에 들여쓴(몸통 속) 바뀐 줄이 있을 때만 쓴다(맨 앞 줄만 바뀌면 git 이 고른 줄은 바로 위 함수일 뿐이다).
+//      새 코드 파일(갈림점 뒤 더한 것 · 아직 안 더한 것)은 파일 이름(그 파일을 싣는 하네스)으로 센다 — 안의 지역 이름은 남의 하네스와 무관하다. 둘레 함수는 덩어리 안에 들여쓴(몸통 속) 바뀐 줄이 있을 때만 쓴다(맨 앞 줄만 바뀌면 git 이 고른 줄은 바로 위 함수일 뿐이다).
 //      하네스 공용 자(`scripts/lib-*.js`)가 바뀌면 그 파일 이름도 이름으로 넣는다(그 자를 싣는 하네스 — 바뀐 함수 이름이 내장 이름과 같아 빠지는 것을 막는다).
 //   ③ 하네스 = 그 이름을 낱말 경계로 무는 `scripts/test-*.js` · `e2e-*.js`(주석 포함 글자 — PM 의 `grep -l` 과 같은 자) ∪ 바뀐 하네스 ∪ 규약 다섯.
 // 쓰는 법:
@@ -60,6 +60,8 @@ function namesFromDiff(diff) {
       continue;
     }
     if (!cur) continue;
+    if (/^new file mode /.test(raw)) { cur.names = new Set([path.basename(cur.file).replace(/\.(c|m)?js$/, '')]); cur.added = true; continue; }   // 새 파일 — 파일 이름만(그 파일을 싣는 하네스)
+    if (cur.added) continue;
     if ((m = /^@@ [^@]* @@ ?(.*)$/.exec(raw))) { ctx = declNames(m[1]); continue; }   // ★둘레 함수(덩어리 머리 — git 이 고른 줄)
     if (/^(\+\+\+|---) /.test(raw)) continue;
     if (raw[0] === '+' || raw[0] === '-') {
@@ -112,8 +114,8 @@ if (require.main === module) {
   const root = path.resolve(opt('--root') || path.join(__dirname, '..'));
   const base = argv.find((a, i) => !a.startsWith('-') && !['--root', '-j'].includes(argv[i - 1])) || 'origin/main';
   const P = plan(root, base);
-  if (argv.includes('--list')) { console.log(P.list.join('\n')); process.exit(0); }
-  if (argv.includes('--json')) { console.log(JSON.stringify({ ...P, hit: Object.fromEntries(P.hit) })); process.exit(0); }
+  if (argv.includes('--list')) { process.stdout.write(P.list.join('\n') + '\n'); return; }   // exit 를 안 부른다(파이프로 큰 출력이 잘린다)
+  if (argv.includes('--json')) { process.stdout.write(JSON.stringify({ ...P, hit: Object.fromEntries(P.hit) }) + '\n'); return; }
   const L = [];
   L.push(`# 만진 함수 → 하네스 (touched-harness · base ${P.base} · 갈림점 ${P.mergeBase})`);
   L.push(`· 바뀐 코드 파일 ${P.files.length} · 이름 ${P.names.length}(물린 것 ${P.used.length} · 흔한 이름 뺌 ${P.common.length}) · 바뀐 하네스 ${P.changedHarness.length} · 규약 다섯 · **돌릴 하네스 ${P.list.length}**${P.notRegress.length ? `(@regress 아님 ${P.notRegress.length}: ${P.notRegress.join(' ')})` : ''}`);
