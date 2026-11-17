@@ -1,0 +1,552 @@
+{
+ "hanbando": {
+  "h-off": {
+   "arms": {
+    "T598_ROUTE_EDGE": false,
+    "T1320_ROCK_PATH": false,
+    "T1327_ROUTE_FIX": false
+   },
+   "bakeS": 396.7,
+   "villages": 51,
+   "pairs": 1275,
+   "reach": 1275,
+   "routes": 1275,
+   "routeNull": 7,
+   "routesBlk": 918,
+   "blkSegs": 114,
+   "blkSegsByKind": {
+    "water": 103,
+    "ditch": 10,
+    "rock": 1
+   },
+   "blkSteps": {
+    "water": 61302,
+    "ditch": 852,
+    "rock": 256
+   },
+   "body": null,
+   "lenSum": 83807023,
+   "lenVsOff": {
+    "p50": 0,
+    "p90": 0,
+    "max": 0,
+    "min": 0,
+    "changed": 0,
+    "longer": 0
+   },
+   "t1327": null,
+   "ditchCells": 698
+  },
+  "h-edge": {
+   "arms": {
+    "T598_ROUTE_EDGE": true,
+    "T1320_ROCK_PATH": false,
+    "T1327_ROUTE_FIX": false
+   },
+   "bakeS": 484.9,
+   "villages": 51,
+   "pairs": 1275,
+   "reach": 1275,
+   "routes": 1275,
+   "routeNull": 7,
+   "routesBlk": 918,
+   "blkSegs": 114,
+   "blkSegsByKind": {
+    "water": 102,
+    "rock": 2,
+    "ditch": 10
+   },
+   "blkSteps": {
+    "water": 59671,
+    "rock": 364,
+    "ditch": 864
+   },
+   "body": null,
+   "lenSum": 85584967,
+   "lenVsOff": {
+    "p50": 0,
+    "p90": 0,
+    "max": 117.12,
+    "min": -2.12,
+    "changed": 89,
+    "longer": 84
+   },
+   "t1327": null,
+   "ditchCells": 698
+  },
+  "hanbando-fix3": {
+   "arms": {
+    "T598_ROUTE_EDGE": false,
+    "T1320_ROCK_PATH": true,
+    "T1327_ROUTE_FIX": true
+   },
+   "bakeS": 513,
+   "villages": 51,
+   "pairs": 1275,
+   "reach": 1275,
+   "routes": 1275,
+   "routeNull": 5,
+   "routesBlk": 10,
+   "blkSegs": 4,
+   "blkSegsByKind": {
+    "water": 2,
+    "ditch": 1,
+    "rock": 1
+   },
+   "blkSteps": {
+    "water": 168,
+    "ditch": 8,
+    "rock": 12
+   },
+   "body": {
+    "n": 10853358,
+    "blk": {
+     "water": 120
+    },
+    "routesBlk": 10,
+    "len": 86197447.15657406
+   },
+   "lenSum": 86193255,
+   "lenVsOff": {
+    "p50": 0.1,
+    "p90": 1.22,
+    "max": 117.66,
+    "min": -1.83,
+    "changed": 918,
+    "longer": 900
+   },
+   "t1327": {
+    "on": true,
+    "finish": 1270,
+    "link": 1639,
+    "linkFail": 16,
+    "endLink": 0,
+    "endFail": 0,
+    "pull": 8326,
+    "ditchRedig": 0,
+    "ditchRuns": 1,
+    "noEdge": 15,
+    "bodyLink": 11,
+    "bodyFail": 10
+   },
+   "ditchCells": 698
+  },
+  "h-fix": {
+   "arms": {
+    "T598_ROUTE_EDGE": false,
+    "T1320_ROCK_PATH": true,
+    "T1327_ROUTE_FIX": true
+   },
+   "bakeS": 516.7,
+   "villages": 51,
+   "pairs": 1275,
+   "reach": 1275,
+   "routes": 1275,
+   "routeNull": 15,
+   "routesBlk": 0,
+   "blkSegs": 0,
+   "blkSegsByKind": {},
+   "blkSteps": {},
+   "body": {
+    "n": 10699408,
+    "blk": {},
+    "routesBlk": 0,
+    "len": 84972634.19739437
+   },
+   "lenSum": 84972634,
+   "lenVsOff": {
+    "p50": 0.08,
+    "p90": 1.25,
+    "max": 117.59,
+    "min": -1.85,
+    "changed": 908,
+    "longer": 883
+   },
+   "t1327": {
+    "on": true,
+    "finish": 1260,
+    "link": 1512,
+    "linkFail": 0,
+    "endLink": 0,
+    "endFail": 0,
+    "pull": 7724,
+    "ditchRedig": 0,
+    "ditchRuns": 1
+   },
+   "ditchCells": 698
+  }
+ },
+ "nippon": {
+  "nippon-off": {
+   "arms": {
+    "T598_ROUTE_EDGE": false,
+    "T1320_ROCK_PATH": false,
+    "T1327_ROUTE_FIX": false
+   },
+   "bakeS": 110.1,
+   "villages": 36,
+   "pairs": 630,
+   "reach": 630,
+   "routes": 630,
+   "routeNull": 26,
+   "routesBlk": 373,
+   "blkSegs": 64,
+   "blkSegsByKind": {
+    "water": 57,
+    "rock": 2,
+    "ditch": 5
+   },
+   "blkSteps": {
+    "water": 20998,
+    "rock": 216,
+    "ditch": 468
+   },
+   "body": null,
+   "lenSum": 49962884,
+   "lenVsOff": {
+    "p50": 0,
+    "p90": 0,
+    "max": 0,
+    "min": 0,
+    "changed": 0,
+    "longer": 0
+   },
+   "t1327": {
+    "on": false,
+    "finish": 0,
+    "link": 0,
+    "linkFail": 0,
+    "endLink": 0,
+    "endFail": 0,
+    "pull": 0,
+    "ditchRedig": 0,
+    "ditchRuns": 0
+   },
+   "ditchCells": 874
+  },
+  "nippon-edge": {
+   "arms": {
+    "T598_ROUTE_EDGE": true,
+    "T1320_ROCK_PATH": false,
+    "T1327_ROUTE_FIX": false
+   },
+   "bakeS": 349.1,
+   "villages": 36,
+   "pairs": 630,
+   "reach": 630,
+   "routes": 630,
+   "routeNull": 26,
+   "routesBlk": 370,
+   "blkSegs": 63,
+   "blkSegsByKind": {
+    "water": 56,
+    "ditch": 5,
+    "rock": 2
+   },
+   "blkSteps": {
+    "water": 20848,
+    "ditch": 468,
+    "rock": 84
+   },
+   "body": null,
+   "lenSum": 49975047,
+   "lenVsOff": {
+    "p50": 0,
+    "p90": 0,
+    "max": 1.94,
+    "min": 0,
+    "changed": 43,
+    "longer": 43
+   },
+   "t1327": {
+    "on": false,
+    "finish": 0,
+    "link": 0,
+    "linkFail": 0,
+    "endLink": 0,
+    "endFail": 0,
+    "pull": 0,
+    "ditchRedig": 0,
+    "ditchRuns": 0
+   },
+   "ditchCells": 874
+  },
+  "nippon-fix3": {
+   "arms": {
+    "T598_ROUTE_EDGE": false,
+    "T1320_ROCK_PATH": true,
+    "T1327_ROUTE_FIX": true
+   },
+   "bakeS": 379,
+   "villages": 36,
+   "pairs": 630,
+   "reach": 630,
+   "routes": 630,
+   "routeNull": 26,
+   "routesBlk": 1,
+   "blkSegs": 2,
+   "blkSegsByKind": {
+    "ditch": 1,
+    "rock": 1
+   },
+   "blkSteps": {
+    "ditch": 8,
+    "rock": 12
+   },
+   "body": {
+    "n": 6305972,
+    "blk": {},
+    "routesBlk": 0,
+    "len": 50071557.98652814
+   },
+   "lenSum": 50063669,
+   "lenVsOff": {
+    "p50": 0.07,
+    "p90": 0.48,
+    "max": 7.67,
+    "min": -0.12,
+    "changed": 373,
+    "longer": 371
+   },
+   "t1327": {
+    "on": true,
+    "finish": 604,
+    "link": 994,
+    "linkFail": 2,
+    "endLink": 0,
+    "endFail": 0,
+    "pull": 5120,
+    "ditchRedig": 0,
+    "ditchRuns": 1,
+    "noEdge": 27,
+    "bodyLink": 2
+   },
+   "ditchCells": 874
+  },
+  "nippon-fix": {
+   "arms": {
+    "T598_ROUTE_EDGE": false,
+    "T1320_ROCK_PATH": true,
+    "T1327_ROUTE_FIX": true
+   },
+   "bakeS": 431.3,
+   "villages": 36,
+   "pairs": 630,
+   "reach": 630,
+   "routes": 630,
+   "routeNull": 27,
+   "routesBlk": 0,
+   "blkSegs": 0,
+   "blkSegsByKind": {},
+   "blkSteps": {},
+   "body": {
+    "n": 6285190,
+    "blk": {},
+    "routesBlk": 0,
+    "len": 49904806.26192724
+   },
+   "lenSum": 49904806,
+   "lenVsOff": {
+    "p50": 0.07,
+    "p90": 0.46,
+    "max": 7.66,
+    "min": -0.14,
+    "changed": 370,
+    "longer": 356
+   },
+   "t1327": {
+    "on": true,
+    "finish": 603,
+    "link": 769,
+    "linkFail": 0,
+    "endLink": 0,
+    "endFail": 0,
+    "pull": 4591,
+    "ditchRedig": 0,
+    "ditchRuns": 1
+   },
+   "ditchCells": 874
+  }
+ },
+ "jungwon_n": {
+  "jungwon_n-off": {
+   "arms": {
+    "T598_ROUTE_EDGE": false,
+    "T1320_ROCK_PATH": false,
+    "T1327_ROUTE_FIX": false
+   },
+   "bakeS": 130.4,
+   "villages": 16,
+   "pairs": 120,
+   "reach": 120,
+   "routes": 120,
+   "routeNull": 55,
+   "routesBlk": 23,
+   "blkSegs": 9,
+   "blkSegsByKind": {
+    "water": 2,
+    "ditch": 7
+   },
+   "blkSteps": {
+    "water": 230,
+    "ditch": 134
+   },
+   "body": null,
+   "lenSum": 6122560,
+   "lenVsOff": {
+    "p50": 0,
+    "p90": 0,
+    "max": 0,
+    "min": 0,
+    "changed": 0,
+    "longer": 0
+   },
+   "t1327": {
+    "on": false,
+    "finish": 0,
+    "link": 0,
+    "linkFail": 0,
+    "endLink": 0,
+    "endFail": 0,
+    "pull": 0,
+    "ditchRedig": 0,
+    "ditchRuns": 0
+   },
+   "ditchCells": 702
+  },
+  "jungwon_n-edge": {
+   "arms": {
+    "T598_ROUTE_EDGE": true,
+    "T1320_ROCK_PATH": false,
+    "T1327_ROUTE_FIX": false
+   },
+   "bakeS": 122.5,
+   "villages": 16,
+   "pairs": 120,
+   "reach": 120,
+   "routes": 120,
+   "routeNull": 55,
+   "routesBlk": 23,
+   "blkSegs": 9,
+   "blkSegsByKind": {
+    "water": 2,
+    "ditch": 7
+   },
+   "blkSteps": {
+    "water": 230,
+    "ditch": 134
+   },
+   "body": null,
+   "lenSum": 6122560,
+   "lenVsOff": {
+    "p50": 0,
+    "p90": 0,
+    "max": 0,
+    "min": 0,
+    "changed": 0,
+    "longer": 0
+   },
+   "t1327": {
+    "on": false,
+    "finish": 0,
+    "link": 0,
+    "linkFail": 0,
+    "endLink": 0,
+    "endFail": 0,
+    "pull": 0,
+    "ditchRedig": 0,
+    "ditchRuns": 0
+   },
+   "ditchCells": 702
+  },
+  "jungwon_n-fix3": {
+   "arms": {
+    "T598_ROUTE_EDGE": false,
+    "T1320_ROCK_PATH": true,
+    "T1327_ROUTE_FIX": true
+   },
+   "bakeS": 176.5,
+   "villages": 16,
+   "pairs": 120,
+   "reach": 120,
+   "routes": 120,
+   "routeNull": 55,
+   "routesBlk": 0,
+   "blkSegs": 0,
+   "blkSegsByKind": {},
+   "blkSteps": {},
+   "body": {
+    "n": 771414,
+    "blk": {},
+    "routesBlk": 0,
+    "len": 6130865.769240727
+   },
+   "lenSum": 6130866,
+   "lenVsOff": {
+    "p50": 0,
+    "p90": 0.48,
+    "max": 3.1,
+    "min": 0,
+    "changed": 23,
+    "longer": 23
+   },
+   "t1327": {
+    "on": true,
+    "finish": 65,
+    "link": 26,
+    "linkFail": 0,
+    "endLink": 0,
+    "endFail": 0,
+    "pull": 156,
+    "ditchRedig": 0,
+    "ditchRuns": 1,
+    "noEdge": 55
+   },
+   "ditchCells": 702
+  },
+  "jungwon_n-fix": {
+   "arms": {
+    "T598_ROUTE_EDGE": false,
+    "T1320_ROCK_PATH": true,
+    "T1327_ROUTE_FIX": true
+   },
+   "bakeS": 150.4,
+   "villages": 16,
+   "pairs": 120,
+   "reach": 120,
+   "routes": 120,
+   "routeNull": 55,
+   "routesBlk": 0,
+   "blkSegs": 0,
+   "blkSegsByKind": {},
+   "blkSteps": {},
+   "body": {
+    "n": 771414,
+    "blk": {},
+    "routesBlk": 0,
+    "len": 6130865.769240727
+   },
+   "lenSum": 6130866,
+   "lenVsOff": {
+    "p50": 0,
+    "p90": 0.48,
+    "max": 3.1,
+    "min": 0,
+    "changed": 23,
+    "longer": 23
+   },
+   "t1327": {
+    "on": true,
+    "finish": 65,
+    "link": 26,
+    "linkFail": 0,
+    "endLink": 0,
+    "endFail": 0,
+    "pull": 156,
+    "ditchRedig": 0,
+    "ditchRuns": 1
+   },
+   "ditchCells": 702
+  }
+ }
+}
