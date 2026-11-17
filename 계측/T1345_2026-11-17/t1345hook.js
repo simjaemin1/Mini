@@ -9,6 +9,7 @@
 //     출생 곳간 문 `bGate`(`_t1297Gate`) · 집 짓기(집 켬 판 — 생활층 크루): 집터 단계 `site`(없으면 −1) · 오늘 오른 단계 `t4adv`(`_t400Dbg.adv`) ·
 //     자재 없어 멈춤 `t4stall`(`_t400Dbg.stall`) · 곳간 나무 `wood` · 돌 `stone` · econ 주거 `housing` · 지도 침상 `mapBeds` ·
 //     영토 셀 수 `terrN`(서버 `_terrSet`) · 지은 집 칸 `houses`(`_houseCells`) · 집터 찾기가 마지막으로 빈손이던 날 `missDay`(`_siteMissDay` · 없으면 −1).
+//     영토 실물(T1207 켬 판 — 마을 칸 `_t1207` 누계): 넓힌 칸 `t7cells` · 통나무 없어 멈춘 날 `t7stW` · 몸 없어 멈춘 날 `t7stB` · 말뚝 통나무 모자람 `t7need`(econ `_t1207Need`).
 //   `probes` — 10날마다 생활층 집터 찾기 누계(`tickPerf().probe`: 부름 · 찾음 · 건너뜀 · 빈손(영토 상한 탓 · 아님) · 거부 까닭 · 영토 넓힘).
 //   세계-날 줄(`wcols`): 이주 문 날 수(`t1319MigNeedDays` — 가을 문 켬이면 가을도 겨울 끝까지) · 가을 문 없는 날 수(max(기근 30 · 겨울 남은 날)) · 가을인가 ·
 //     T1147 · T1306 · T1312 · T1319 · T1342 셈의 날 차 · 걷기 셈(bandits `t1075Leave` · `t765Arrive`) 날 차.
@@ -23,7 +24,7 @@ if (process.env.T577_OUT) {
   const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
   const COLS = ['day', 'v', 'N', 'arr', 'born', 'emig', 'dead', 'fd', 'nat', 'fdays', 'h', 'hS', 'hB', 'hG', 'terr', 'K', 'dP', 'hap', 'gated', 'beds',
     'acc', 'ask', 'ok1', 'none', 'gU', 'gH', 'gB', 'gK', 'gT', 'gHerd', 'gOk', 'bGate',
-    'site', 't4adv', 't4stall', 'wood', 'stone', 'housing', 'mapBeds', 'terrN', 'houses', 'missDay'];
+    'site', 't4adv', 't4stall', 'wood', 'stone', 'housing', 'mapBeds', 'terrN', 'houses', 'missDay', 't7cells', 't7stW', 't7stB', 't7need'];
   const WCOLS = ['day', 'needMig', 'needNoAut', 'autumn', 'pick', 'none', 's6seen', 's6ok', 's6thin', 's6unk', 's12seen', 's12ok', 's12unk', 's12unh', 's12beds', 's12thin', 's12herd',
     'overK', 'g42gate', 'g42full', 'g42back', 'g42noHome', 'g42told', 'g42use', 'leave', 'arrive', 'ask', 'ok1'];
   const names = [], nameIdx = new Map(), rows = [], wrows = [];
@@ -90,7 +91,8 @@ if (process.env.T577_OUT) {
         e._t1297Gate ? 1 : 0,
         vil._site ? (vil._site.stage | 0) : -1, vil._t400Dbg ? (vil._t400Dbg.adv | 0) : null, vil._t400Dbg ? (vil._t400Dbg.stall | 0) : null,
         r3((e.storage && e.storage.wood) || 0), r3((e.storage && e.storage.stone) || 0), e.housing !== undefined ? r3(e.housing) : null, e._mapBeds !== undefined ? e._mapBeds : null,
-        vil._terrSet ? vil._terrSet.size : null, vil._houseCells ? vil._houseCells.length : null, vil._siteMissDay != null ? (vil._siteMissDay | 0) : -1]);
+        vil._terrSet ? vil._terrSet.size : null, vil._houseCells ? vil._houseCells.length : null, vil._siteMissDay != null ? (vil._siteMissDay | 0) : -1,
+        vil._t1207 ? (vil._t1207.cells | 0) : null, vil._t1207 ? (vil._t1207.stallWood | 0) : null, vil._t1207 ? (vil._t1207.stallBody | 0) : null, r3(e._t1207Need || 0)]);
       prev.set(vil.name, { nid, _emigTot: e._emigTot || 0, _deadTot: e._deadTot || 0, _fdDeadTot: e._fdDeadTot || 0, _natDeadTot: e._natDeadTot || 0 });
       prevRoster.set(vil.name, roster);
     }
