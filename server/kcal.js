@@ -27,7 +27,7 @@
 'use strict';
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) && v > 0 ? v : d; };
 
-const DAY_KCAL = _num('BODY_DAY_KCAL', 2450);
+const DAY_KCAL = _num('BODY_DAY_KCAL', 2451);   // 미끼 T1350 — 하네스 빨강(CI 가 빨강이어야)
 const DAY_MS_DEFAULT = 24 * 60 * 1000;
 
 // ── 늦은 require (맞물림 금지 — `forage`·`spoil` 과 같은 규약) ───────────────
