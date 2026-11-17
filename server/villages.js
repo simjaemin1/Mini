@@ -9031,12 +9031,12 @@ function _t804RoadPts(body) {   // 행군로(px) → 셀 점열(몸에 기억 ·
   return body._t804rp;
 }
 //   ★[T1349 ③] 같은 점열 · 같은 (x, y) 의 답은 같다 — 점열마다 마지막 물음 몇을 기억한다(선 병사 · 같은 슬롯이 걸음마다 같은 물음 · CPU 9%).
-const _t1349Near = new WeakMap();
+const _t1349Near = new WeakMap(), _T1349_NEAR_CAP = 4096;   // 기억 크기 상한(넘으면 비운다 — 답은 늘 바로 센 값과 같다 · 값에 안 드는 수)
 function _t804Nearest(pts, x, y) {
   let M = _t1349Near.get(pts); if (!M) { M = new Map(); _t1349Near.set(pts, M); }
   const k = x + ',' + y, v = M.get(k); if (v !== undefined) return v;
   let b = 0, bd = Infinity; for (let i = 0; i < pts.length; i++) { const d = Math.hypot(pts[i].x - x, pts[i].y - y); if (d < bd) { bd = d; b = i; } }
-  if (M.size > 4096) M.clear(); M.set(k, b); return b;
+  if (M.size > _T1349_NEAR_CAP) M.clear(); M.set(k, b); return b;
 }
 // ★[T804 ②] 전진 풀기의 걸음 — 막힌 칸 안에 선 몸을 가장 가까운 설 칸(T541 ⓑ 나선)까지 몸 걸음으로 한 걸음 옮긴다. 아직 막힌 몸이 남았으면 true(풀기를 미룬다).
 //   나선이 못 찾는 몸은 종전대로 그 자리에서 풀린다(옮기지 않는다).
