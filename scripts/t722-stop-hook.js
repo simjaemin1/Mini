@@ -27,6 +27,7 @@ const RESUME = process.env.T722_RESUME || '';
 const CATCH = parseInt(process.env.T722_CATCH || '', 10) || 0;
 const PERSIST = new Set(String(process.env.T722_PERSIST || '').split(',').filter(Boolean));
 const CRASH = process.env.T722_CRASH === '1';
+const STOP_NOW = process.env.T722_STOP_NOW === '1';
 
 const _load = Module._extensions['.js'];
 let cutN = 0;
@@ -128,10 +129,10 @@ if (STOP) {
           process.kill(process.pid, 'SIGTERM'); return r;
         }
         if (CRASH) { try { if (DUMP) fs.writeFileSync(DUMP, JSON.stringify(Object.assign(snap('crash'), { crash: true }))); } catch (e) {} process.exit(1); }
-        st.dayFreeze = true;   // 다음 날을 열지 않는다(마감 · 저장 큐 드레인은 얼림 앞에 있다 — villages.js onGameTick)
+        if (!STOP_NOW) st.dayFreeze = true;   // ★[T1340] 바로 내림 팔은 얼리지 않는다(얼림 = 열린 현지 자정 창의 남은 마을을 몰아 닫는다 — 한 번에 돈 판에 없는 일) · 다음 날을 열지 않는다(마감 · 저장 큐 드레인은 얼림 앞에 있다 — villages.js onGameTick)
         const t0 = Date.now();
         const iv = setInterval(() => {
-          if (st.tickJobs || (st.saveQueue && st.saveQueue.length)) return;
+          if (st.tickJobs || (STOP_NOW && st._t731) || (!STOP_NOW && st.saveQueue && st.saveQueue.length)) return;   // ★[T1340] `T722_STOP_NOW=1` — 마감만 끝나면 곧 내린다(저장 큐는 T728 종료 저장이 한 트랜잭션으로 다 쓴다 · 빠른 시계에서 드레인 1.7초 = 여러 날 얼림이 한 번에 돈 판과 갈랐다)
           clearInterval(iv);
           if (global.__t740Pause) global.__t740Pause();   // ★[T740] 덤프 동안 벽시계를 세운다(대조 판이 같은 순간에서 이어 가게)
           try { if (DUMP) fs.writeFileSync(DUMP, JSON.stringify(Object.assign(snap('stop'), { drainMs: Date.now() - t0 }))); } catch (e) { console.error('[t722] 덤프 실패', e.message); }

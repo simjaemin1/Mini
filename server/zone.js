@@ -16978,6 +16978,9 @@ const TICK_DEBT_ON = process.env.T153_DEBT !== '0';
 let _tickDebt = 0;
 // ★계측(관측자) — `/perf` 가 그대로 내준다. 하네스가 "빚이 몇 %냐"를 **소스가 아니라 세계에** 묻는다.
 const _tick = { n: 0, wall: 0, sim: 0, clip: 0, clipped: 0, maxGap: 0, debt: 0, dropN: 0, dropped: 0 };
+// ★★[T1340 ⑥] 틱 번호(`_tick.n`)는 주사위 씨의 한 칸이다(틱 흐름 `_diceTick` · 주민 결정 `_diceNpc` — 신원 · 셀 · 날 · **틱**). 다시 뜨면 0 부터 세어
+//   다시 뜬 판의 굴림이 한 번에 돈 판과 다른 씨에서 났다(T1340 §1). 손잡이 `T1340_RESUME_EXACT`(켬 기본 · `=0` 끔 = 종전 — 0 부터) — 켬이면 T742 모듈 메모리 줄로 번호만 잇는다(계측 칸은 프로세스 것).
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.tickN', () => _tick.n, (n) => { if (Number.isFinite(n) && n > _tick.n) _tick.n = n; });
 // ★[T284 ④ · 관측자] 틱 본문 소요(ms) 고리 — `/perf` 의 tick.ms(p50/p95/max). idle 존 조기 반환 틱은 안 든다(본문이 없다).
 const _tickMs = { ring: new Float64Array(3000), i: 0, n: 0 };
 function _tickMsStats(reset) {
@@ -18642,6 +18645,7 @@ function gracefulShutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[${ZONE_ID}] ${signal} 받음 — 상태 flush 후 종료...`);
+  if (process.env.T1340_RESUME_EXACT !== '0') { try { _t1322FlushAll(); } catch (e) {} }   // ★[T1340] 미룬 걸음 도장(T1322)을 몸에 내려 둔 채 저장한다(다시 뜬 몸은 미룸 표가 없다)
   if (SimVillages.t728On && SimVillages.t728On() && SimVillages.t728Shutdown) {
     SimVillages.t728Shutdown(T728_SHUTDOWN_CAP_MS, (r) => {
       console.log(`[${ZONE_ID}] 🏘️ [T728] 종료 저장 — ${r.why} · 마감 기다림 ${r.waitMs | 0}ms · 저장 ${r.saveMs | 0}ms · 마을 ${r.villages | 0} · econ 날 ${r.day}${r.err ? ' · 실패 ' + r.err : ''}`);

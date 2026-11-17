@@ -1,0 +1,531 @@
+{
+ "save": {
+  "V": 1767228227531.9185,
+  "day": 2
+ },
+ "ready": {
+  "V": 1767228227560.2517,
+  "day": 2
+ },
+ "bodies": 408,
+ "pidSame": 408,
+ "groups": {
+  "몸": {
+   "_lifeTask": {
+    "both": 408,
+    "diff": 25,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산4#2",
+      "c38333daa82c5eae {k:\"build\",px:40752,py:43248,prog:968330.9692382812,}",
+      "u u"
+     ]
+    ]
+   }
+  },
+  "몸 수": {},
+  "서버 마을": {},
+  "econ 마을": {
+   "_t728Game": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t728LtdOwn": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t728LtdSrv": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t732Lots": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t740Side": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t747Body": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t728BaseOre": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 13,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t717Pack": {
+    "both": 6,
+    "diff": 0,
+    "onlyS": 10,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산5",
+      "u u",
+      "∅"
+     ]
+    ]
+   },
+   "_t728HuntWk": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 8,
+    "ex": [
+     [
+      "광산3",
+      "∅",
+      "u u"
+     ]
+    ]
+   }
+  },
+  "econ 세계": {
+   "_capTransit": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "world",
+      "6dcd4ce23d88e2ee A0[]",
+      "∅"
+     ]
+    ]
+   },
+   "_tradeAudit": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "world",
+      "4be9d75f0ed433b4 {n:23,rs:A23[1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.05",
+      "∅"
+     ]
+    ]
+   }
+  },
+  "서버 state": {
+   "_distBasis": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "7632dbd07cd4358a {coords:A51[A2[5300,5292.5,],A2[5017.5,545,],A2[3562.5,1985,],A2[3212.5,3325,],A2[3240,5902.5,],A2[2787.5,7280,],A2[567.5,7695,],A2[5095,7747.5",
+      "572745fbd86c59db {coords:A51[A2[5300,5292.5,],A2[5017.5,545,],A2[3562.5,1985,],A2[3212.5,3325,],A2[3240,5902.5,],A2[2787.5,7280,],A2[567.5,7695,],A2[5095,7747.5"
+     ]
+    ]
+   },
+   "_route": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "d6f0bf02591ea442 {ta:{isBlocked:ƒ,isWater:ƒ,isRock:ƒ,isOre:ƒ,isBridgeCell:ƒ,oreMinerals:ƒ,oreMix:ƒ,forestMult:ƒ,fert:ƒ,elev:ƒ,nearestWaterDist:ƒ,prepareFert:ƒ,f",
+      "object:null null"
+     ]
+    ]
+   },
+   "_routeBootAt": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#1767225600000 1767225600000",
+      "#1767228227531.9 1767228227531.9185"
+     ]
+    ]
+   },
+   "_routePrimed": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#0 0",
+      "#1275 1275"
+     ]
+    ]
+   },
+   "_routePrimedKeys": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "02aa629c8b16cd17 S0{}",
+      "049ddbe8ede4b89b S1275{\"10_11\",\"10_12\",\"10_13\",\"10_14\",\"10_15\",\"10_16\",\"10_17\",\"10_18\",\"10_19\",\"10_20\",\"10_21\",\"10_22\",\"10_23\",\"10_24\",\"10_25\",\"10_26\",\"10_27\",\""
+     ]
+    ]
+   },
+   "_routeRedigDay": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#1227241 1227241",
+      "∅"
+     ]
+    ]
+   },
+   "_routeRedigGen": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#2866 2866",
+      "∅"
+     ]
+    ]
+   },
+   "_routeWarmAt": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#1767228227526.9 1767228227526.9185",
+      "∅"
+     ]
+    ]
+   },
+   "_t1340C": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "bb04170ff87618bf {at:1767228227531.9185,npc:M408{{id:\"n417\",age:19.005479452054793,currentJob:\"farmer\",skills:{farming:0,fishing:0,hunting:0,woodworking:0,minin",
+      "∅"
+     ]
+    ]
+   },
+   "_t1340Shut": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "boolean:true true",
+      "∅"
+     ]
+    ]
+   },
+   "_t527Sites": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "6dcd4ce23d88e2ee A0[]",
+      "∅"
+     ]
+    ]
+   },
+   "_t775": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "64dcb4b4019753c4 {q:A0[],done:true,}",
+      "∅"
+     ]
+    ]
+   },
+   "_walkJobs": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "c63ae6dd4fc9f9dd M0{}",
+      "∅"
+     ]
+    ]
+   },
+   "caravanBodies": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "040ce2cfed21639f M30{1=#pp409,2=#pp410,3=#pp411,4=#pp412,5=#pp413,6=#pp414,7=#pp415,8=#pp416,9=#pp417,10=#pp418,11=#pp419,12=#pp420,13=#pp421,14=#pp422,15=#pp42",
+      "c63ae6dd4fc9f9dd M0{}"
+     ]
+    ]
+   },
+   "clientPayload": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "a25421e7a202c8fc A51[{id:1,name:\"광산1\",cx:2120,cy:2117,pop:8,r:969,b:A369[6,-24,1,11,-22,1,13,12,4,11,13,4,2,-25,1,-15,6,8,9,-23,1,13,-21,1,16,-19,1,24,-2,2,-17,",
+      "fe78a87dab328348 A51[{id:1,name:\"광산1\",cx:2120,cy:2117,pop:8,r:969,b:A369[6,-24,1,11,-22,1,13,12,4,11,13,4,2,-25,1,-15,6,8,9,-23,1,13,-21,1,16,-19,1,24,-2,2,-17,"
+     ]
+    ]
+   },
+   "dayFreeze": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "boolean:true true",
+      "∅"
+     ]
+    ]
+   },
+   "ledger": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "f87d2f6cda2e994c {cfg:{SHORT_DAYS:5,GLUT_DAYS:45,HYST:1.6,PRICE_WIN:30,PRICE_UP:0.9,PRICE_DOWN:0.9,PRICE_MIN:0.05,LATE_DAYS:1,KEEP_DAYS:90,MAX_DAY:0,REQ_DAYS:1,",
+      "479e54a925c41b2e {cfg:{SHORT_DAYS:5,GLUT_DAYS:45,HYST:1.6,PRICE_WIN:30,PRICE_UP:0.9,PRICE_DOWN:0.9,PRICE_MIN:0.05,LATE_DAYS:1,KEEP_DAYS:90,MAX_DAY:0,REQ_DAYS:1,"
+     ]
+    ]
+   },
+   "roads": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "4bc3bd22c8dc1d41 {SPD:A3[1,1.1,1.15,],setEconDay:ƒ,dayTick:ƒ,roadDayPerf:ƒ,retouchCell:ƒ,unpaveSoonKeys:ƒ,init:ƒ,onGameTick:ƒ,stampCell:ƒ,stampEntityPx:ƒ,speedM",
+      "96d3c66fbaadc6ef {SPD:A3[1,1.1,1.15,],setEconDay:ƒ,dayTick:ƒ,roadDayPerf:ƒ,retouchCell:ƒ,unpaveSoonKeys:ƒ,init:ƒ,onGameTick:ƒ,stampCell:ƒ,stampEntityPx:ƒ,speedM"
+     ]
+    ]
+   },
+   "routeCache": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "15a57c53705d18ae M1275{\"1_2\"=A510[{x:67856,y:67760,},{x:67920,y:67792,},{x:67920,y:67664,},{x:67920,y:67536,},{x:67920,y:67408,},{x:67920,y:67280,},{x:67920,y:6",
+      "1ebc5bb973faac9d M1275{\"10_11\"=A107[{x:28528,y:112528,},{x:28624,y:112592,},{x:28752,y:112464,},{x:28752,y:112336,},{x:28880,y:112208,},{x:29008,y:112080,},{x:2"
+     ]
+    ]
+   },
+   "routeRedigQ": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "3dbc860fad47e4a2 A26[\"5_6\",\"10_18\",\"1_12\",\"13_47\",\"6_16\",\"11_19\",\"20_44\",\"21_34\",\"12_22\",\"23_46\",\"11_24\",\"9_25\",\"26_37\",\"15_27\",\"28_44\",\"11_29\",\"18_30\",\"31_49\",",
+      "∅"
+     ]
+    ]
+   },
+   "routeWarmTotal": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#594 594",
+      "#0 0"
+     ]
+    ]
+   },
+   "saveQueue": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "7051388340bd8cb3 A51[#v1,#v2,#v3,#v4,#v5,#v6,#v7,#v8,#v9,#v10,#v11,#v12,#v13,#v14,#v15,#v16,#v17,#v18,#v19,#v20,#v21,#v22,#v23,#v24,#v25,#v26,#v27,#v28,#v29,#v3",
+      "∅"
+     ]
+    ]
+   },
+   "tickCtx": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "object:null null",
+      "∅"
+     ]
+    ]
+   },
+   "tickJobs": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "object:null null",
+      "∅"
+     ]
+    ]
+   },
+   "_t1034Saved": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 1,
+    "ex": [
+     [
+      "state",
+      "∅",
+      "77690295eba8f3b1 M30{\"1\"={ph:\"linger\",dd:0,seen:0,rf:0,lg:3120000,da:1440000,aa:2880000,ppd:32381.542325575603,nom:0.022487182170538612,pg:32381.542325575603,at"
+     ]
+    ]
+   },
+   "_t1340R": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 1,
+    "ex": [
+     [
+      "state",
+      "∅",
+      "ee52ff7588846444 {at:1767228227531.9185,npc:M408{{id:\"n417\",age:19.005479452054793,currentJob:\"farmer\",skills:{farming:0,fishing:0,hunting:0,woodworking:0,minin"
+     ]
+    ]
+   },
+   "_t1340Restamp": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 1,
+    "ex": [
+     [
+      "state",
+      "∅",
+      "boolean:true true"
+     ]
+    ]
+   }
+  }
+ }
+}

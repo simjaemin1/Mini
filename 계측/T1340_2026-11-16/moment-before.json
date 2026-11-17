@@ -1,0 +1,1429 @@
+{
+ "save": {
+  "V": 1767225602499.994,
+  "day": 10
+ },
+ "ready": {
+  "V": 1767225602499.994,
+  "day": 10
+ },
+ "bodies": 51,
+ "pidSame": 51,
+ "groups": {
+  "몸": {
+   "_dOff": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#0.0083650952858 0.008365095285857571",
+      "u u"
+     ]
+    ]
+   },
+   "_lifeAct": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "string:출근 \"출근\"",
+      "u u"
+     ]
+    ]
+   },
+   "_lifeActAt": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#1767225601199.9 1767225601199.997",
+      "u u"
+     ]
+    ]
+   },
+   "_pathAt": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#1767225602066.6 1767225602066.6616",
+      "u u"
+     ]
+    ]
+   },
+   "_pathFor": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "string:68120_676 \"68120_67648\"",
+      "u u"
+     ]
+    ]
+   },
+   "_rdK": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#4616621 4616621",
+      "u u"
+     ]
+    ]
+   },
+   "_rdMul": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#1 1",
+      "u u"
+     ]
+    ]
+   },
+   "_simCloth": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "string:hemp \"hemp\"",
+      "u u"
+     ]
+    ]
+   },
+   "_stCx": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#2129 2129",
+      "u u"
+     ]
+    ]
+   },
+   "_stCy": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#2109 2109",
+      "u u"
+     ]
+    ]
+   },
+   "_stMul": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#1 1",
+      "u u"
+     ]
+    ]
+   },
+   "_stuckN": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#0 0",
+      "u u"
+     ]
+    ]
+   },
+   "_stuckPos": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "3bcc89b02ca1f4d6 {x:68138.14098397084,y:67492.9825241285,at:1767225602466.6606,}",
+      "u u"
+     ]
+    ]
+   },
+   "_t540DecAt": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#1767225602066.6 1767225602066.6616",
+      "u u"
+     ]
+    ]
+   },
+   "_t540StepAt": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#1767225602466.6 1767225602466.6606",
+      "u u"
+     ]
+    ]
+   },
+   "_t670Tk": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "string:68120_676 \"68120_67648\"",
+      "u u"
+     ]
+    ]
+   },
+   "_t670TkX": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#68120.979781655 68120.97978165543",
+      "u u"
+     ]
+    ]
+   },
+   "_t670TkY": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#67648.747593674 67648.74759367405",
+      "u u"
+     ]
+    ]
+   },
+   "_t791P": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "1c69d1043a2e4087 A1[{x:68120.97978165543,y:67648.74759367405,},]",
+      "u u"
+     ]
+    ]
+   },
+   "_t791Pn": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#1 1",
+      "u u"
+     ]
+    ]
+   },
+   "_t791Px": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#68120.979781655 68120.97978165543",
+      "u u"
+     ]
+    ]
+   },
+   "_t791Py": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#67648.747593674 67648.74759367405",
+      "u u"
+     ]
+    ]
+   },
+   "_wornAt": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#1767225600199.9 1767225600199.9995",
+      "u u"
+     ]
+    ]
+   },
+   "gatherTarget": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "object:null null",
+      "u u"
+     ]
+    ]
+   },
+   "lastSeen": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#1767225600000 1767225600000",
+      "#1767225602471.6 1767225602471.6606"
+     ]
+    ]
+   },
+   "nextDecisionAt": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#1767225603507.4 1767225603507.4148",
+      "#0 0"
+     ]
+    ]
+   },
+   "npcWorkX": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#68105.795732049 68105.79573204911",
+      "#67995.920363679 67995.92036367986"
+     ]
+    ]
+   },
+   "npcWorkY": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#67643.148028168 67643.14802816807",
+      "#67597.797466747 67597.79746674707"
+     ]
+    ]
+   },
+   "path": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "1c69d1043a2e4087 A1[{x:68120.97978165543,y:67648.74759367405,},]",
+      "u u"
+     ]
+    ]
+   },
+   "pathIndex": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#0 0",
+      "u u"
+     ]
+    ]
+   },
+   "playerId": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "string:npc_hanba \"npc_hanbando_1_dn7i\"",
+      "string:npc_hanba \"npc_hanbando_1_t8xl\""
+     ]
+    ]
+   },
+   "targetX": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#68120.979781655 68120.97978165543",
+      "#68137.907360515 68137.90736051538"
+     ]
+    ]
+   },
+   "targetY": {
+    "both": 51,
+    "diff": 51,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#67648.747593674 67648.74759367405",
+      "#67495.103026708 67495.10302670859"
+     ]
+    ]
+   },
+   "_workT": {
+    "both": 51,
+    "diff": 49,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#1767225601199.9 1767225601199.997",
+      "u u"
+     ]
+    ]
+   },
+   "name": {
+    "both": 51,
+    "diff": 46,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "string:솔 \"솔\"",
+      "string:루나 \"루나\""
+     ]
+    ]
+   },
+   "_huntOn": {
+    "both": 51,
+    "diff": 45,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산3#0",
+      "#0 0",
+      "u u"
+     ]
+    ]
+   },
+   "_huntSpd": {
+    "both": 51,
+    "diff": 45,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산3#0",
+      "#0 0",
+      "u u"
+     ]
+    ]
+   },
+   "color": {
+    "both": 51,
+    "diff": 44,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산3#0",
+      "string:#c080d8 \"#c080d8\"",
+      "string:#d8c060 \"#d8c060\""
+     ]
+    ]
+   },
+   "_esk": {
+    "both": 51,
+    "diff": 26,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "34067f87c5cfb2b4 {id:\"n417\",age:19.027397260273965,currentJob:\"farmer\",skills:{farming:0,fishing:0,hunting:0,woodworking:0,mining:0,masonry:0,smithing:0,tailori",
+      "u u"
+     ]
+    ]
+   },
+   "_arm": {
+    "both": 51,
+    "diff": 7,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산3#0",
+      "#0 0",
+      "u u"
+     ]
+    ]
+   },
+   "_fgl": {
+    "both": 51,
+    "diff": 7,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산3#0",
+      "#0 0",
+      "u u"
+     ]
+    ]
+   },
+   "vx": {
+    "both": 51,
+    "diff": 6,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#-7.008703663811 -7.008703663811871",
+      "#0 0"
+     ]
+    ]
+   },
+   "vy": {
+    "both": 51,
+    "diff": 6,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "#63.615077402710 63.61507740271067",
+      "#0 0"
+     ]
+    ]
+   },
+   "_lifeTask": {
+    "both": 51,
+    "diff": 4,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1#0",
+      "object:null null",
+      "u u"
+     ]
+    ]
+   }
+  },
+  "몸 수": {},
+  "서버 마을": {
+   "_frontDay": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 51,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "#-1 -1",
+      "∅"
+     ]
+    ]
+   },
+   "_gameScan": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 51,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "object:null null",
+      "∅"
+     ]
+    ]
+   },
+   "_jobSites": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 51,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "object:null null",
+      "∅"
+     ]
+    ]
+   },
+   "_oreCells": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 51,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "8f1361251df59b57 A6000[{cx:2112,cy:2041,p:0.5341841305053334,},{cx:2112,cy:2040,p:0.5339483536882296,},{cx:2111,cy:2040,p:0.5335815726793012,},{cx:2111,cy:2041,",
+      "∅"
+     ]
+    ]
+   },
+   "_oreScan": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 51,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "object:null null",
+      "∅"
+     ]
+    ]
+   },
+   "_t449": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 51,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "a9443ef8c3d682c3 {d:10,seen:0,hlFarm:0,hlSite:0,woodBody:0,forageBody:0,}",
+      "∅"
+     ]
+    ]
+   },
+   "_t569R": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 51,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "#44.687805943008 44.687805943008655",
+      "∅"
+     ]
+    ]
+   },
+   "_t569RN": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 51,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "#3450 3450",
+      "∅"
+     ]
+    ]
+   },
+   "_t724CutLast": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 51,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "#0 0",
+      "∅"
+     ]
+    ]
+   },
+   "_t719N": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 29,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산3",
+      "c63ae6dd4fc9f9dd M0{}",
+      "∅"
+     ]
+    ]
+   },
+   "_farmArr": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 12,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "object:null null",
+      "∅"
+     ]
+    ]
+   },
+   "_frontier": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 12,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "object:null null",
+      "∅"
+     ]
+    ]
+   },
+   "_t427R": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 10,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산2",
+      "ab3bdb2e54e9aa20 M1{\"2012,203\"={stamp:84,S:{ax:64400,ay:6512,sx:2012,sy:203,R:64,W:129,seen:A16641[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1",
+      "∅"
+     ]
+    ]
+   },
+   "_t325Trees": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 4,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산2",
+      "384446ff69a31869 {day:7068902408,list:A0[],N:0,K:0,wBar:0,}",
+      "∅"
+     ]
+    ]
+   },
+   "_ditchSet": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 2,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산1",
+      "dcc9e82c03100d4d S292{\"2109,2095\",\"2110,2095\",\"2111,2095\",\"2112,2095\",\"2113,2095\",\"2114,2095\",\"2115,2095\",\"2116,2095\",\"2117,2095\",\"2118,2095\",\"2122,2095\",\"2123,",
+      "∅"
+     ]
+    ]
+   },
+   "_buildCrew": {
+    "both": 51,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "광산7",
+      "#1 1",
+      "#0 0"
+     ]
+    ]
+   },
+   "_claim": {
+    "both": 51,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "어촌2",
+      "8131f0c6b539d6a0 S1{\"1642,370\",}",
+      "02aa629c8b16cd17 S0{}"
+     ]
+    ]
+   },
+   "_clearCrew": {
+    "both": 51,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "어촌2",
+      "#1 1",
+      "#0 0"
+     ]
+    ]
+   }
+  },
+  "econ 마을": {
+   "_t728Game": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t728LtdOwn": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t728LtdSrv": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t732Lots": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t740Side": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t747Body": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 51,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t728BaseOre": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 13,
+    "ex": [
+     [
+      "광산1",
+      "∅",
+      "u u"
+     ]
+    ]
+   },
+   "_t728HuntWk": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 7,
+    "ex": [
+     [
+      "광산3",
+      "∅",
+      "u u"
+     ]
+    ]
+   }
+  },
+  "econ 세계": {
+   "_nevCache": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "world",
+      "7e2e623d16fd3953 {day:10,px:M51{#e광산1={food:1.0367300522169995,fish:190.70528802022733,meat:36.258539550422725,cooked_food:126.19146889603867,wood:0.26368186204",
+      "∅"
+     ]
+    ]
+   },
+   "_pullStats": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "world",
+      "393fd7605cc79c96 {crisisReturns:4,crisisFoodReturns:4,}",
+      "∅"
+     ]
+    ]
+   },
+   "_t707Stat": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "world",
+      "eaf76fefaf7283c0 {settled:161,days:8,}",
+      "∅"
+     ]
+    ]
+   },
+   "_tradeAudit": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "world",
+      "b4e33826a83c5f2f {n:196,rs:A196[1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.",
+      "∅"
+     ]
+    ]
+   },
+   "tradeLog": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "world",
+      "ad2c9650ee3ed676 A161[{day:3,from:\"광산4\",to:\"농촌15\",sent:{res:\"fish\",amt:3.48,pAtFrom:0.01,pAtTo:130.14,},bought:{res:\"herb\",amt:3.29,},distance:2532,escort:0,rai",
+      "6dcd4ce23d88e2ee A0[]"
+     ]
+    ]
+   }
+  },
+  "서버 state": {
+   "_bxTickAt": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#1767225602466.6 1767225602466.6606",
+      "∅"
+     ]
+    ]
+   },
+   "_carTickAt": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#1767225602466.6 1767225602466.6606",
+      "∅"
+     ]
+    ]
+   },
+   "_distBasis": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "7632dbd07cd4358a {coords:A51[A2[5300,5292.5,],A2[5017.5,545,],A2[3562.5,1985,],A2[3212.5,3325,],A2[3240,5902.5,],A2[2787.5,7280,],A2[567.5,7695,],A2[5095,7747.5",
+      "572745fbd86c59db {coords:A51[A2[5300,5292.5,],A2[5017.5,545,],A2[3562.5,1985,],A2[3212.5,3325,],A2[3240,5902.5,],A2[2787.5,7280,],A2[567.5,7695,],A2[5095,7747.5"
+     ]
+    ]
+   },
+   "_ltdByName": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "5813c7f4b0302dfc M51{\"광산1\"=#e광산1,\"광산2\"=#e광산2,\"광산3\"=#e광산3,\"광산4\"=#e광산4,\"어촌1\"=#e어촌1,\"광산5\"=#e광산5,\"광산6\"=#e광산6,\"광산7\"=#e광산7,\"어촌2\"=#e어촌2,\"임업1\"=#e임업1,\"임업2\"=#e임업2,\"임업3\"=#",
+      "∅"
+     ]
+    ]
+   },
+   "_oreWarm": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "94ac636cd867430e {i:51,rows:199,vils:1,t0:1767225600033.3333,oreDone:true,j:51,}",
+      "∅"
+     ]
+    ]
+   },
+   "_route": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "77ceb54b0862fbc9 {ta:{isBlocked:ƒ,isWater:ƒ,isRock:ƒ,isOre:ƒ,isBridgeCell:ƒ,oreMinerals:ƒ,oreMix:ƒ,forestMult:ƒ,fert:ƒ,elev:ƒ,nearestWaterDist:ƒ,prepareFert:ƒ,f",
+      "object:null null"
+     ]
+    ]
+   },
+   "_routeBootAt": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#1767225600000 1767225600000",
+      "#1767225602471.6 1767225602471.6606"
+     ]
+    ]
+   },
+   "_routePrimed": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#0 0",
+      "#1275 1275"
+     ]
+    ]
+   },
+   "_routePrimedKeys": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "02aa629c8b16cd17 S0{}",
+      "049ddbe8ede4b89b S1275{\"10_11\",\"10_12\",\"10_13\",\"10_14\",\"10_15\",\"10_16\",\"10_17\",\"10_18\",\"10_19\",\"10_20\",\"10_21\",\"10_22\",\"10_23\",\"10_24\",\"10_25\",\"10_26\",\"10_27\",\""
+     ]
+    ]
+   },
+   "_routeUsed": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "7d94545a22d6a436 S140{\"4_44\",\"5_6\",\"10_18\",\"1_12\",\"13_38\",\"6_16\",\"18_49\",\"11_19\",\"20_44\",\"21_34\",\"12_22\",\"23_38\",\"11_24\",\"9_25\",\"26_37\",\"15_27\",\"28_44\",\"11_29\",",
+      "∅"
+     ]
+    ]
+   },
+   "_t1253Edge": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "boolean:false false",
+      "∅"
+     ]
+    ]
+   },
+   "_t1282D": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#9 9",
+      "∅"
+     ]
+    ]
+   },
+   "_t527Sites": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "6dcd4ce23d88e2ee A0[]",
+      "∅"
+     ]
+    ]
+   },
+   "_t695W": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "boolean:false false",
+      "∅"
+     ]
+    ]
+   },
+   "_t714Wait": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "boolean:false false",
+      "∅"
+     ]
+    ]
+   },
+   "_t775": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "64dcb4b4019753c4 {q:A0[],done:true,}",
+      "∅"
+     ]
+    ]
+   },
+   "_walkJobs": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "c63ae6dd4fc9f9dd M0{}",
+      "∅"
+     ]
+    ]
+   },
+   "_walkSegFar": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "ee2c2f1f64d05efa M15{\"136710210>136448066\"=A79[{x:2086,y:2114,},{x:2087,y:2114,},{x:2088,y:2114,},{x:2089,y:2114,},{x:2090,y:2114,},{x:2091,y:2114,},{x:2092,y:2",
+      "∅"
+     ]
+    ]
+   },
+   "_warTickAt": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#1767225602433.3 1767225602433.3274",
+      "#0 0"
+     ]
+    ]
+   },
+   "caravanBodies": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "a3fa5a4bc5631855 M58{151=#pp254,152=#pp255,153=#pp256,154=#pp257,155=#pp258,156=#pp260,157=#pp262,158=#pp263,159=#pp264,160=#pp266,161=#pp268,162=#pp270,163=#pp",
+      "c63ae6dd4fc9f9dd M0{}"
+     ]
+    ]
+   },
+   "clientPayload": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "c3527af037c5d117 A51[{id:1,name:\"광산1\",cx:2120,cy:2117,pop:11,r:1526,b:A591[27,-5,2,27,-4,2,27,-6,2,27,-3,2,27,-7,2,27,-2,2,27,-8,2,27,-1,2,27,-9,2,27,0,2,27,-10",
+      "425a15b2f03975c6 A51[{id:1,name:\"광산1\",cx:2120,cy:2117,pop:11,r:1526,b:A591[27,-5,2,27,-4,2,27,-6,2,27,-3,2,27,-7,2,27,-2,2,27,-8,2,27,-1,2,27,-9,2,27,0,2,27,-10"
+     ]
+    ]
+   },
+   "econ": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "3849437107ce9a68 {T1259_WOOD_CAP:false,setT1259WoodReader:ƒ,T1271_ORE_CAP:false,setT1271OreReader:ƒ,jobCapacity:ƒ,T1192_FISH_SPECIES:true,FishGoods:{ON:true,bod",
+      "54e6befaa7e24a42 {T1259_WOOD_CAP:false,setT1259WoodReader:ƒ,T1271_ORE_CAP:false,setT1271OreReader:ƒ,jobCapacity:ƒ,T1192_FISH_SPECIES:true,FishGoods:{ON:true,bod"
+     ]
+    ]
+   },
+   "lastGameDay": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#7068902410 7068902410",
+      "#7068902409 7068902409"
+     ]
+    ]
+   },
+   "ledger": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "117880109628dfb1 {cfg:{SHORT_DAYS:5,GLUT_DAYS:45,HYST:1.6,PRICE_WIN:30,PRICE_UP:0.9,PRICE_DOWN:0.9,PRICE_MIN:0.05,LATE_DAYS:1,KEEP_DAYS:90,MAX_DAY:0,REQ_DAYS:1,",
+      "5ebe4aec25cbd3b0 {cfg:{SHORT_DAYS:5,GLUT_DAYS:45,HYST:1.6,PRICE_WIN:30,PRICE_UP:0.9,PRICE_DOWN:0.9,PRICE_MIN:0.05,LATE_DAYS:1,KEEP_DAYS:90,MAX_DAY:0,REQ_DAYS:1,"
+     ]
+    ]
+   },
+   "roads": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "859275022a2684fc {SPD:A3[1,1.1,1.15,],setEconDay:ƒ,dayTick:ƒ,roadDayPerf:ƒ,retouchCell:ƒ,unpaveSoonKeys:ƒ,init:ƒ,onGameTick:ƒ,stampCell:ƒ,stampEntityPx:ƒ,speedM",
+      "5806e0d40de5f97d {SPD:A3[1,1.1,1.15,],setEconDay:ƒ,dayTick:ƒ,roadDayPerf:ƒ,retouchCell:ƒ,unpaveSoonKeys:ƒ,init:ƒ,onGameTick:ƒ,stampCell:ƒ,stampEntityPx:ƒ,speedM"
+     ]
+    ]
+   },
+   "routeCache": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "5446700511a07225 M1275{\"1_2\"=A510[{x:67856,y:67760,},{x:67920,y:67792,},{x:67920,y:67664,},{x:67920,y:67536,},{x:67920,y:67408,},{x:67920,y:67280,},{x:67920,y:6",
+      "82df8df7014d1b6d M1275{\"10_11\"=A107[{x:28528,y:112528,},{x:28624,y:112592,},{x:28752,y:112464,},{x:28752,y:112336,},{x:28880,y:112208,},{x:29008,y:112080,},{x:2"
+     ]
+    ]
+   },
+   "routeWarmQ": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "0c144b8f4e790e2c A594[A2[#v1,#v12,],A2[#v1,#v29,],A2[#v1,#v22,],A2[#v1,#v5,],A2[#v1,#v8,],A2[#v1,#v4,],A2[#v1,#v51,],A2[#v1,#v6,],A2[#v1,#v11,],A2[#v1,#v19,],A2",
+      "6dcd4ce23d88e2ee A0[]"
+     ]
+    ]
+   },
+   "routeWarmTotal": {
+    "both": 1,
+    "diff": 1,
+    "onlyS": 0,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "#594 594",
+      "#0 0"
+     ]
+    ]
+   },
+   "saveQueue": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "7051388340bd8cb3 A51[#v1,#v2,#v3,#v4,#v5,#v6,#v7,#v8,#v9,#v10,#v11,#v12,#v13,#v14,#v15,#v16,#v17,#v18,#v19,#v20,#v21,#v22,#v23,#v24,#v25,#v26,#v27,#v28,#v29,#v3",
+      "∅"
+     ]
+    ]
+   },
+   "tickCtx": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "object:null null",
+      "∅"
+     ]
+    ]
+   },
+   "tickJobs": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "object:null null",
+      "∅"
+     ]
+    ]
+   },
+   "walkCache": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 1,
+    "onlyR": 0,
+    "ex": [
+     [
+      "state",
+      "b4b8230a11742c61 M140{\"4_44\"={coarse:A217[{x:41136,y:42576,},{x:41168,y:42704,},{x:41040,y:42704,},{x:40912,y:42576,},{x:40784,y:42576,},{x:40656,y:42448,},{x:4",
+      "∅"
+     ]
+    ]
+   },
+   "_t1034Saved": {
+    "both": 0,
+    "diff": 0,
+    "onlyS": 0,
+    "onlyR": 1,
+    "ex": [
+     [
+      "state",
+      "∅",
+      "440320c46ca27f1b M58{\"151\"={ph:\"inbound\",dd:0,seen:0,rf:0,lg:2291.6666666666665,da:2542.501953125,aa:2543.501953125,ppd:35759.68676310107,nom:35759.68676310107,"
+     ]
+    ]
+   }
+  }
+ }
+}
