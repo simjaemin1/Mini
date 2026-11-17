@@ -8249,6 +8249,7 @@ function init(deps) {
     state.lastGameDay = gameDayOf(Date.now()); // 다음 경계부터 틱 (재기동 따라잡기 없음 — 실시간 앵커)
     if (T731_ON) _t731Boot(Date.now());   // ★[T731] 마을마다 현지 자정 날을 시계에서 바로(증인 한 줄)
     if (T728_KEEP) { try { _t728Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T728] 재기동 영속 복원 실패(종전대로 계속):`, e.message); } }
+    if (T1331_BEAST_BODY) { try { _t1331Boot(); } catch (e) { console.error(`[${ZONE_ID}] 🦌 [T1331] 짐승 몸 표 되읽기 실패(장부에서 다시 이행):`, e.message); } }   // ★[T1331] 켬만 — 몸 표 되읽기(끔 = 무동작)
     if (T740_SIDE) { try { _t740Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T740] 마을 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t740Side')) _t862Drop(v.econ, '_t740Side');   // ★[T740] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(다음 켬이 묵은 칸을 되돌리지 않게 · main 행엔 이 칸이 없어 무동작)
     if (T1025_EV_CORPSE) { try { _t1025Restore(); } catch (e) { console.error(`[${ZONE_ID}] 📜 [T1025] 사건 대기 줄 복원 실패(빈 줄로 계속):`, e.message); } }
@@ -16651,6 +16652,7 @@ const T1013_BAND_DAY = process.env.T1013_BAND_DAY !== '0';   // ★[PM land1036 
 const _t1013Stat = { short: 0, resume: 0, carry: 0 };   // 계측 전용 — 몫이 바닥난 마을-날 · 같은 날 이어 지은 번 · 내일로 넘긴 마을-날
 function* _lifeGameDaySteps(vil, day) {
   if (_t146() === 0) return;
+  if (T1331_BEAST_BODY) { yield* _t1331DaySteps(vil, day); return; }   // ★[T1331] 켬 = 장부를 안 읽는다 — 몸 규칙 하루(아래 절) · 끔 = 이 줄 무동작(종전 글자 그대로)
   let m = _huntBandBuild(vil);
   if (!m && vil._gameScan) _t1013Stat.short++;
   if (!m && T1013_BAND_DAY) while (!m && vil._gameScan) { _t1013Stat.resume++; yield; m = _huntBandBuild(vil); }   // ★[T1013] 켬 — 몫이 바닥나면 쉼표 뒤 같은 날 이어 짓는다(끔 = 내일)
@@ -16674,6 +16676,85 @@ function* _lifeGameDaySteps(vil, day) {
         if (ng > L_GAMEMAX * 0.3) { m.set(k2, g2 + 2); break; } } } }
   }
 }
+// ══ ★★★[T1331 2026-11-16 · S14 · ★재민 11-15 "그게 추상 아니야? 모든 짐승도 다 몸이 있어야지"] **야생 짐승 = 몸** — 손잡이 `T1331_BEAST_BODY`(**끔 기본** · `'1'` 만 켬 · 켬은 재민) ══
+//   켬: 사냥터 개체 장부(`_gameRich`)를 **안 읽는다**. 마을마다 장부를 지은 그 순간(`_huntBandBuild` — 끔과 같은 문 · 같은 칸) 한 번 장부 수만큼 몸을 그 칸에 세우고
+//   (이행 · `beast-body.migrate`) 장부를 버린다(`_gameRich = null` · `_gameNone = 1` — 다시 짓지도 않는다). 그 뒤 하루 = 몸 규칙만(`server/beast-body.js` 머리말 ⓐ ~ ⓔ):
+//     사냥꾼 하루 몫(랩 `huntTake` ÷ 몸 환율)이 한 마리가 되면 현장에서 가장 가까운 몸이 죽는다 · 7날 번식(어미 칸) · 날마다 걸음 · 14일 빈 무리터로 걸어 옮김 ·
+//     14일 부존 `land.game = base × clamp(몸 수 / 처음 몸 수, 0.05, 1)`(랩 식 — 합/tot0 를 몸으로 · 환율이 약분된다 · 처음 몸 0 인 무리터는 안 건드린다) · 벌채(`_t1053Deforest`) = 서식 칸만 지운다.
+//   저장 = 존 DB 몸 표(`zone-local-db t1331Save` — 날마다 그날 첫 마을이 어제 몫을 · 종료 때 한 번) · 되읽기 = 부팅(`_t1331Boot` — T728 복원 뒤).
+//   ⚠끔 = 이 절의 함수가 한 번도 안 불린다(부르는 자리 넷 — `_lifeGameDaySteps` 첫 줄 · `_t1053Deforest` 첫 줄 · 부팅 · 종료 — 다 `if (T1331_BEAST_BODY)` 안).
+const T1331_BEAST_BODY = process.env.T1331_BEAST_BODY === '1';
+let _t1331W = null;
+const _t1331Stat = { days: 0, mig: 0, migBodies: 0, cpuUs: 0, cpuMax: 0, saves: 0, saveUs: 0, loads: 0, deforest: 0, huntKill: 0, resettle: 0, breed: 0, starve: 0, bootWhy: '' };
+function _t1331() {
+  if (_t1331W) return _t1331W;
+  const sc = parseFloat(process.env.T1331_BEAST_SCALE);
+  _t1331W = require('./beast-body').create({ L_GAMEMAX, L_GAMER, huntTake, species: _t1195Prey(), scale: sc > 0 ? sc : 0,
+    blocked: (cx, cy) => { const ta = state.ta; return !ta || !!(ta.isRock && ta.isRock(cx, cy)) || !!(ta.isBlocked && ta.isBlocked(cx, cy)); } });
+  return _t1331W;
+}
+const _t1331Vid = (vil) => (vil.dbId != null ? vil.dbId : vil.name);
+function* _t1331DaySteps(vil, day) {
+  const B = _t1331(), u0 = process.cpuUsage();   // CPU 는 실제 시계(가상 시계 T745 가 안 덮는 `cpuUsage`)
+  if (B.W.dayAudit !== day) { B.audit(day); _t1331Save(); _t1331Stat.days++; }   // 그날 첫 마을 — 어제 몫 보존 셈 · 저장
+  const vid = _t1331Vid(vil);
+  if (!B.has(vid)) {   // ── 이행(한 번) — 끔과 같은 문으로 장부를 짓고(T1013 이어 짓기 그대로) 그 수만큼 몸을 세운다
+    let m = _huntBandBuild(vil);
+    if (!m && T1013_BAND_DAY) while (!m && vil._gameScan) { _t1013Stat.resume++; yield; m = _huntBandBuild(vil); }
+    if (!m) return;
+    const n = B.migrate(vid, m, vil._baseGame != null ? vil._baseGame : null);
+    vil._gameRich = null; vil._gameNone = 1; vil._gameScan = null;   // 장부를 버린다 — 이 뒤 아무도 장부를 못 읽는다(사냥 · 그림자 · 저장 · T1195 되돌림 — 다 `_gameRich` 없음 갈래)
+    _t1331Stat.mig++; _t1331Stat.migBodies += n;
+    _t1331Save();   // 이행은 한 번뿐이다 — 곧바로 몸 표에(장부는 이미 버렸다 · 다음 날 저장 전에 존이 죽어도 몸이 남는다)
+  }
+  const players = state.deps && state.deps.players;
+  // ⓒ 사냥 — 사냥꾼 몸마다(T523 쉼표 그대로 한 명씩)
+  for (const pid of (vil.npcPids || [])) {
+    const p = players && players.get(pid); if (!p || p.simJob !== 'hunter') continue;
+    p._huntBud = 0; p._huntKil = 0;   // ★[T158] 오늘 예산 — 몸 판엔 그림자가 없다 · 예산 = 오늘 이 사람이 죽인 몸 수
+    if (_lifeEcon().T1195_HUNT_REAL) { p._t1195K = null; p._t1195Open = 1; p._t1195At = 0; p._t1195Sp = null; }
+    const w = p._huntWk || (p._workSite ? { cx: _cellOfPx(p._workSite.x), cy: _cellOfPx(p._workSite.y) } : { cx: vil.ccx, cy: vil.ccy });
+    const b = B.hunt(vid, p, w.cx, w.cy);
+    if (b) { p._huntBud = 1; _t1331Stat.huntKill++; p._huntWk = { cx: b.cx, cy: b.cy }; p._workSite = { x: b.cx * SZ + SZ / 2, y: b.cy * SZ + SZ / 2, day }; }
+    else if (!p._huntWk) { const c = B.nearestCell(vid, w.cx, w.cy); if (c) { p._huntWk = c; p._workSite = { x: c.cx * SZ + SZ / 2, y: c.cy * SZ + SZ / 2, day }; } }   // 현장 = 짐승이 있는 곳(사냥꾼이 몸을 쫓는다)
+    yield;
+  }
+  if (day % 7 === 0) { const r = B.breedWeek(vid, day); _t1331Stat.breed += r.born; _t1331Stat.starve += r.died; }   // ⓐ 번식 · 넘친 몸 굶음
+  B.walkDay(vid, day);                                                                                              // ⓑ 걸음
+  if (day % 14 === 0) {                                                                                             // ⓑ 빈 무리터로 걸어 옮김 · 14일 부존
+    _t1331Stat.resettle += B.resettle(vid, day);
+    const r = B.gameRatio(vid), h = B.W.hab.get(vid);
+    if (r != null && h && h.base != null && vil.econ && vil.econ.land) vil.econ.land.game = +(h.base * r).toFixed(2);
+  }
+  const u = process.cpuUsage(u0), us = u.user + u.system;
+  _t1331Stat.cpuUs += us; if (us > _t1331Stat.cpuMax) _t1331Stat.cpuMax = us;
+}
+/** ★[T1331] 벌채 — 서식 칸만 지운다(몸은 다음 걸음에 떠난다 · 갈 칸이 없으면 굶는다). `_t1053Deforest` 켬 갈래. @returns 지운 칸 수 */
+function _t1331Deforest(vil, cx, cy, rad) {
+  const n = _t1331().deforest(_t1331Vid(vil), cx, cy, rad);
+  _t1331Stat.deforest += n; _t1053Stat.cells += n;
+  return n;
+}
+function _t1331Save() {
+  const db = state.db; if (!db || !db.t1331Save || !_t1331W) return false;
+  const u0 = process.cpuUsage(), B = _t1331W;
+  try { db.t1331Save(state.zoneId, B.rows(), B.W.habDirty ? B.habRows() : null, B.meta()); B.W.habDirty = false; B.W.st.saveN++; _t1331Stat.saves++; }
+  catch (e) { console.error(`[${state.zoneId}] 🦌 [T1331] 몸 표 저장 실패:`, e.message); return false; }
+  const u = process.cpuUsage(u0); _t1331Stat.saveUs += u.user + u.system;
+  return true;
+}
+function _t1331Boot() {
+  const db = state.db; if (!db || !db.t1331Load) { _t1331Stat.bootWhy = 'DB 문 없음'; return null; }
+  const r = db.t1331Load(state.zoneId);
+  if (!r || !r.hab.length) { _t1331Stat.bootWhy = '몸 표 없음(첫 부팅 · 끔에서 켬 — 장부를 지을 때 이행)'; console.log(`[${state.zoneId}] 🦌 [T1331] 짐승 몸 표 — ${_t1331Stat.bootWhy}`); return null; }
+  const B = _t1331(), o = B.load(r.bodies, r.hab, r.meta);
+  let n = 0;
+  for (const vil of state.villages) if (B.has(_t1331Vid(vil))) { vil._gameRich = null; vil._gameNone = 1; vil._gameScan = null; n++; }
+  _t1331Stat.loads++; _t1331Stat.bootWhy = '되읽음';
+  console.log(`[${state.zoneId}] 🦌 [T1331] 짐승 몸 표 되읽음 — 몸 ${o.bodies} · 무리터 ${o.hab} · 마을 ${n} · 셈 차 ${B.W.st.reloadGap | 0}`);
+  return o;
+}
+function t1331Stat() { return Object.assign({ on: T1331_BEAST_BODY }, _t1331Stat, _t1331W ? { w: _t1331W.stat() } : {}); }
 /** 벌채·개간으로 서식지가 없어지면 그 셀의 짐승도 없어진다(랩 `deforestCell` 그대로 · K 영구 감소). */
 function huntDeforest(vil, cx, cy) {
   const m = vil && vil._gameRich; if (!m) return false;
@@ -16776,6 +16857,7 @@ const L_DEFOREST_H = 12;    // 랩 19406 그대로 — 집 주변 벌채 반경(
 const L_DEFOREST_GRAN = 3;  // 랩 19241 그대로 — 곳간 자리 벌채 반경(`deforestArea(s,g.cx,g.cy,3)`)
 /** ★[T1053] 랩 `deforestArea(s, cx, cy, rad)` 의 장부 몫 그대로 — ±rad 정사각 셀마다 위 문(`huntDeforest`) · rad 0 = 그 셀(랩 `deforestCell`). @returns 지운 셀 수 */
 function _t1053Deforest(vil, cx, cy, rad) {
+  if (T1331_BEAST_BODY && T1053_DEFOREST_GAME && vil && _t1331W && _t1331W.has(_t1331Vid(vil))) return _t1331Deforest(vil, cx, cy, rad);   // ★[T1331] 켬 · 몸이 선 마을 = 서식 칸을 지운다(장부 없음) · 끔 = 무동작
   if (!T1053_DEFOREST_GAME || !vil || !vil._gameRich) return 0;
   let n = 0;
   for (let dx = -rad; dx <= rad; dx++) for (let dy = -rad; dy <= rad; dy++) if (huntDeforest(vil, cx + dx, cy + dy)) n++;
@@ -19621,6 +19703,7 @@ function t728Shutdown(capMs, done) {
         for (const vil of state.villages) { if (!vil.econ || !Number.isFinite(vil.dbId)) continue; rows.push({ id: vil.dbId, econ: serializeEcon(vil.econ), pop: vil.econ.npcs.length, day: state.world.day }); }
         state.db.saveVillagesAndMeta(rows, state.zoneId, _t728Meta(), state.world.day | 0);
         state.saveQueue = []; n = rows.length;
+        if (T1331_BEAST_BODY) _t1331Save();   // ★[T1331] 켬만 — 짐승 몸 표도 같은 경계에서(끔 = 무동작)
       } catch (e) { err = e.message; }
     }
     if (T1340_EXACT && why === '경계') state._t1340Done = true;   // ★[T1340 ⑦] 이 뒤 마을 틱 · 메타 쓰기 0
@@ -19694,6 +19777,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
+  T1331_BEAST_BODY, t1331Stat, _t1331Probe: { w: () => _t1331W, day: (vil, day) => _t1331DaySteps(vil, day), save: () => _t1331Save(), boot: () => _t1331Boot(), reset: () => { _t1331W = null; for (const k of Object.keys(_t1331Stat)) _t1331Stat[k] = typeof _t1331Stat[k] === 'number' ? 0 : ''; } },   // ★[T1331] 짐승 몸(하네스 `test-t1331-beast-body` · 탐침 · 내보내기만)
   gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1225Stat, t1225Keep, t1225SiteTable, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
   t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, t1266Stat, _t1266Keep, _t1271Day, _t1271OreCells, _t1277OreSlots, MINE_TEAM, t1271Stat, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,

@@ -1,0 +1,66 @@
+
+=== 야생 그림자를 맞히는 문 하나 — NPC 타격 랩 놀람 · 화살 사냥 장부(T1009 · `T1009_WILD_DOOR`) · NPC 잡음 사체 · 장부(T1032 · `T1032_NPC_KILL` × T1025) ===
+  ✓ [상황] 판 다섯 다 섰다(자식 결과)  on ㅇ · off ㅇ · k1 ㅇ · k1c0 ㅇ · k0c1 ㅇ
+
+① 상황
+  ✓ [상황] 손잡이가 판대로 섰다(T998 은 두 판 다 켬 기본) · 존의 야생 인스턴스가 켜졌다  켬 true · 끔 false · T998 true/true
+  ✓ [상황] 판 여섯 × 둘 다 늑대 그림자가 섰다(isWild · DB 행 없음)  12/12
+  ✓ [상황] 장부를 꽂았다(셀마다 50) · 맞힘이 존 hp 를 깎았다(NPC 8 · 사람 10 · 화살 25 — 안 죽음)  NPC 32 · 사람 30 · 화살 15
+  [관찰] npcHit: 켬 차례 lab · 굴림 1 · 랩 {"st":"charge","hp":3.2,"fcd":20,"pause":0,"corpsed":0,"link":true,"tgt":"t1009_npcHit"} · 장부 50→50 · 존 사체 0 | 끔 차례 (없음) · 굴림 0 · 랩 {"st":"flee","hp":4,"fcd":0,"pause":5,"corpsed":0,"link":true,"tgt":null} · 장부 50→50 · 존 사체 0
+  [관찰] meleeHit: 켬 차례 lab · 굴림 1 · 랩 {"st":"charge","hp":3,"fcd":20,"pause":0,"corpsed":0,"link":true,"tgt":"t1009_meleeHit"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {"st":"charge","hp":3,"fcd":20,"pause":0,"corpsed":0,"link":true,"tgt":"t1009_meleeHit"} · 장부 50→50 · 존 사체 0
+  [관찰] arrowHit: 켬 차례 lab · 굴림 1 · 랩 {"st":"charge","hp":1.5,"fcd":20,"pause":0,"corpsed":0,"link":true,"tgt":"t1009_arrowHit"} · 장부 50→50 · 존 사체 0 | 끔 차례 lab · 굴림 1 · 랩 {"st":"charge","hp":1.5,"fcd":20,"pause":0,"corpsed":0,"link":true,"tgt":"t1009_arrowHit"} · 장부 50→50 · 존 사체 0
+  [관찰] arrowKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {"st":"dead","hp":0,"fcd":0,"pause":5,"corpsed":1,"link":false,"tgt":null} · 장부 50→49→49 · 존 사체 1 | 끔 차례 lab → removed · 굴림 1 · 랩 {"st":"dead","hp":0,"fcd":0,"pause":5,"corpsed":1,"link":false,"tgt":null} · 장부 50→50→50 · 존 사체 1
+  [관찰] meleeKill: 켬 차례 lab → ledger → removed · 굴림 1 · 랩 {"st":"dead","hp":0,"fcd":0,"pause":5,"corpsed":1,"link":false,"tgt":null} · 장부 50→49→49 · 존 사체 1 | 끔 차례 lab → ledger → removed · 굴림 1 · 랩 {"st":"dead","hp":0,"fcd":0,"pause":5,"corpsed":1,"link":false,"tgt":null} · 장부 50→49→49 · 존 사체 1
+  [관찰] npcKill: 켬 차례 lab → removed · 굴림 1 · 랩 {"st":"dead","hp":0,"fcd":0,"pause":5,"corpsed":1,"link":false,"tgt":null} · 장부 50→50→50 · 존 사체 0 | 끔 차례 lab → removed · 굴림 1 · 랩 {"st":"dead","hp":0,"fcd":0,"pause":5,"corpsed":1,"link":false,"tgt":null} · 장부 50→50→50 · 존 사체 0
+
+② 안 죽는 NPC 타격 — 랩 놀람 · 반격 굴림
+  ✓ ★★② 켬 — 안 죽는 NPC 타격이 그 자리에서 랩 문을 지난다: 놀람(`fcd` 20 · `pause` 0) · hp 동기(3.2) · 반격 굴림 한 번 → NPC 프록시로 돌진  {"st":"charge","hp":3.2,"fcd":20,"pause":0,"corpsed":0,"link":true,"tgt":"t1009_npcHit"} · 굴림 1
+  ✓ ★② 켬 — 사람 공격(대조 · 같은 판)이 같은 반응이다(놀람 · hp 동기 3 · 반격 굴림 한 번 → 사람 프록시) — NPC 길이 같은 규칙  {"st":"charge","hp":3,"fcd":20,"pause":0,"corpsed":0,"link":true,"tgt":"t1009_meleeHit"} · 굴림 1
+  ✓ ★★② 끔 — 안 죽는 NPC 타격은 그 자리에서 랩에 아무것도 안 한다(문 0 · 굴림 0 · hp 4 그대로 · 놀람 0) — 위가 자명 통과가 아니다  {"st":"flee","hp":4,"fcd":0,"pause":5,"corpsed":0,"link":true,"tgt":null}
+  ✓ ★② 끔 — 다음 야생 틱 ④ 폴링 보정이 hp(3.2)만 맞춘다 — 반격 돌진은 끝내 없다(종전 갈림)  {"st":"flee","hp":3.2,"fcd":19.966666666666665,"pause":5,"corpsed":0,"link":true,"tgt":null}
+
+③ 화살로 잡음 — 마을 장부
+  ✓ ★★③ 켬 — 화살로 잡으면 장부 −1(50 → 49) · 차례 = 랩 → 장부 → 지움(사람 공격 길 그 차례)  50 → 49 → 49 · lab → ledger → removed
+  ✓ ★★③ 끔 — 화살로 잡아도 장부 그대로(50 · 종전) — 위가 자명 통과가 아니다  50 → 50 → 50 · lab → removed
+
+④ 사람 공격 · NPC 로 잡음 — 손잡이와 무관(대조)
+  ✓ ★④ 사람 공격으로 잡으면 두 판 다 장부 −1 · 랩 → 장부 → 지움(종전 두 줄이 문으로 옮겨도 글자 · 차례 그대로)  lab → ledger → removed | lab → ledger → removed
+  ✓ ★④ NPC 가 잡으면 두 판 다 장부 0 · 랩 → 지움(T998 켬 · T1032 끔 판 = T1009 글자 — 켬 판은 ⑦ · ⑧)  lab → removed | lab → removed
+  [관찰] 존 사체(잡은 판 · 켬 | 끔): 사람 공격 1 | 1 · 화살 1 | 1 · NPC 0 | 0 — T1032 끔 판: NPC 죽음 길은 사체를 안 낸다(종전 · 랩엔 사체 corpsed 1 — T1009 회부 1 → T1032 ⑥)
+
+⑤ 안 죽는 화살 · 사람 공격 — 두 판 다 그 자리 놀람(종전부터)
+  ✓ ★⑤ 안 죽는 화살(hp 1.5) · 사람 공격(hp 3)은 두 판 다 랩 문 · 놀람 · hp 동기  화살 {"st":"charge","hp":1.5,"fcd":20,"pause":0,"corpsed":0,"link":true,"tgt":"t1009_arrowHit"} · 사람 {"st":"charge","hp":3,"fcd":20,"pause":0,"corpsed":0,"link":true,"tgt":"t1009_meleeHit"}
+
+⑥ T1032 판 — 상황
+  ✓ [상황] 판 넷이 손잡이대로 섰다(T1032 × T1025 · T1009 · T998 켬) · 잡는 판 다섯이 다 섰다  k1 true/true · k1c0 true/false · k0c1 false/true · on false/false
+  ✓ [상황] 잡은 짐승이 다 존에서 빠졌다 · 그림자 넷(장부 50) · DB 늑대 하나(DB 행 있음)
+  [관찰] k1: arrowKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | meleeKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | npcKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | hunterKill 차례 lab→corpse→removed · 사체 1 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 corpse→dbDelete→removed→respawn · 사체 1 · 장부 -→-→- · 미룸 0/도살 0
+  [관찰] k1c0: arrowKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | meleeKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | npcKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | hunterKill 차례 lab→corpse→removed · 사체 1 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 corpse→dbDelete→removed→respawn · 사체 1 · 장부 -→-→- · 미룸 0/도살 0
+  [관찰] k0c1: arrowKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | meleeKill 차례 lab→corpse→removed · 사체 1(자리) · 장부 50→50→49 · 미룸 1/도살 1 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0
+  [관찰] on: arrowKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | meleeKill 차례 lab→ledger→corpse→removed · 사체 1 · 장부 50→49→49 · 미룸 0/도살 0 | npcKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | hunterKill 차례 lab→removed · 사체 0 · 장부 50→50→50 · 미룸 0/도살 0 | dbKill 차례 dbDelete→removed→respawn · 사체 0 · 장부 -→-→- · 미룸 0/도살 0
+
+⑥ NPC 가 잡으면 존 사체 — 사람 공격 길 그 차례
+  ✓ ★★⑥ 켬 — NPC 가 잡으면 존 사체가 선다(야생 그림자 · 사냥꾼 · DB 늑대 다 · 도살하면 사라진다)  k1 1·1·1 · k1c0 1·1·1
+  ✓ ★⑥ 켬 — 차례가 사람 공격으로 잡은 판과 같다(랩 → [장부] → 사체 → 지움 · DB 몹 = 사체 → DB 삭제 → 지움 → 다시 낳기)  k1c0 NPC lab,ledger,corpse,removed = 사람 lab,ledger,corpse,removed · k1 NPC lab,corpse,removed = 사람 lab,corpse,removed · DB corpse,dbDelete,removed,respawn
+  ✓ ★★⑥ 끔 — NPC 잡음은 존 사체 0(T1009 판 · 랩 → 지움) · 같은 판 사람 공격 · 화살 잡음은 사체 1 — 위가 자명 통과가 아니다  k0c1 lab,removed · DB dbDelete,removed,respawn
+
+⑦ 사냥꾼 아닌 NPC 잡음 — 장부 −1 한 번
+  ✓ ★★⑦ 켬 · T1025 끔 — 잡은 순간 −1(50 → 49) · 도살 때 더 안 준다(49)  50 → 49 → 49
+  ✓ ★★⑦ 켬 · T1025 켬 — 잡을 땐 그대로(50 · 사체에 자리) · 도살 때 −1(49 · 미룸 1 · 도살 1) — 사람 공격 · 화살과 같은 T1025 길  50 → 50 → 49 · 미룸 1 · 도살 1
+  ✓ ★★⑦ 끔 — 사냥꾼 아닌 NPC 가 잡아도 장부 0(T1009 판) — 위가 자명 통과가 아니다  k0c1 50 → 50 → 50 · on 50 → 50 → 50
+
+⑧ 사냥꾼 NPC 잡음 — 장부 0(하루치가 몫 · T158)
+  ✓ ★★⑧ 사냥꾼 NPC(`simJob` hunter)가 잡으면 네 판 다 장부 0 — 켬 판도 사체에 자리가 없다(도살 뒤도 50)  k1 50→50→50 · k1c0 50→50→50 · k0c1 50→50→50 · on 50→50→50
+
+⑨ 두 번 깎임 0 — 잡기 → 도살 사이 장부가 꼭 한 번
+  ✓ ★★⑨ 사람 공격 · 화살 · (켬) NPC — T1025 켬 판 = 50 → 50 → 49(도살 때) · 끔 판 = 50 → 49 → 49(잡을 때) · 48 은 어디에도 없다  meleeKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→49 / on 50→49→49 | arrowKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→49 / on 50→49→49 | npcKill k1 50→50→49 / k1c0 50→49→49 / k0c1 50→50→50 / on 50→50→50
+  ✓ ★⑨ 화살로 잡은 사체도 T1025 길(켬 판 미룸 1 · 도살 1 · 도살 때 장부 한 번) — T1009 의 잡은 순간 −1 과 엇갈림 0
+
+⑩ 굴림 수 표 — 사체 · 장부는 굴림 0
+  [관찰] 잡는 판 굴림(arrowKill/meleeKill/npcKill/hunterKill/dbKill): k1 1/1/1/1/0 · k1c0 1/1/1/1/0 · k0c1 1/1/1/1/0 · on 1/1/1/1/0 · 도살 굴림 0/0/0/0
+  ✓ ★⑩ 같은 T1025 판끼리 T1032 켬 ↔ 끔 잡음 굴림이 같다 · 도살 굴림 0 — 사체 · 장부 칸은 흐름을 안 건드린다  k1 1/1/1/1/0 = k0c1 1/1/1/1/0 · k1c0 1/1/1/1/0 = on 1/1/1/1/0
+
+⑪ 사냥꾼 판별 = 하루치 고리의 그 술어
+  ✓ ★⑪ 하루치 고리(villages.js `_huntHuntersSteps`)가 고르는 술어 `simJob !== 'hunter'` 와 존 NPC 줄의 장부 칸이 같은 글자다(새 수 0)  하루치 true · 존 true
+
+=== 26건 중 PASS 26 · FAIL 0 ===

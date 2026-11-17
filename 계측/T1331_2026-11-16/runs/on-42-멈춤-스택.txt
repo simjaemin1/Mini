@@ -1,0 +1,16 @@
+# 씨 42 켬 판 — 날 372 → 373 경계에서 멈춘 존 아이 프로세스를 SIGUSR1 → CDP Debugger.pause 로 두 번 세운 스택(벽 22분 · RSS 3.1 GB · --max-old-space-size=4096)
+## 첫 번
+pop · _searchStep:338 · pathStep:447 @ sim/path-core.js · _t821Push:8350 · _t804Local:8283 · _t804Way:8275 · det.walk:8479 @ server/villages.js · _muStepFollow:249 @ server/war-live.js · _warAdvanceMarch:10039 @ server/villages.js · _warTickOne:9950 · _t681Flush:9841 · (anon):10398 · g:10393 · _drainTickJobs:10953 · _t731Tick:10379 · onGameTick:10261 · (anon) zone.js:16953 · pump · processImmediate
+## 둘째 (_standCellNear = server/zone.js · _muStepFollow = server/war-live.js · 그 밖 = server/villages.js)
+_standCellNear @ :15631
+_warStandNear @ :8180
+det.target @ :8480
+_muStepFollow @ :241
+_warAdvanceMarch @ :10039
+_warTickOne @ :9950
+_t681Flush @ :9841
+(anon) @ :10398
+g @ :10393
+_drainTickJobs @ :10953
+_t731Tick @ :10379
+onGameTick @ :10261
