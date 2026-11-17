@@ -5509,8 +5509,7 @@ function _t1348Grant(npc, s, now, nda) {
   if (!(Number.isInteger(pi) && pi >= 0 && pi < pn)) return;
   if (npc.targetX !== npc._t670TkX || npc.targetY !== npc._t670TkY || npc._pathFor !== npc._t670Tk) return;   // 목표 열쇠 · 길 열쇠 그대로(NaN 목표는 다시 짓는다 — 안 받는다)
   const S = npc._stuckPos; if (!S || typeof S !== 'object' || npc._stuckN !== 0) return;
-  if (!_t316WalkAlways(npc)) return;
-  if (SimVillages.t1295S && SimVillages.t1295S(npc) > 1) return;   // 판 시계 몸은 이동 문이 길 번호를 옮긴다
+  if (SimVillages.t1295S && SimVillages.t1295S(npc) > 1) return;   // 판 시계 몸은 이동 문이 길 번호를 옮긴다 · 활성 청크 거름은 부른 쪽(`_t1322Grant`)이 봤다
   let wd = 0, lon = 0, w95 = 0;
   if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null) {   // 밤 귀가 갈래 — 침대 목표 그대로면 무동작 · 아니면 해 질 녘에 깨운다(표 2 그 셈)
     const bx = npc.npcBedX ?? npc.npcHomeX, by = npc.npcBedY ?? npc.npcHomeY;
@@ -5617,9 +5616,9 @@ function _t1322Grant(npc, now, s0) {
   const A = SS.A; A.VT[s] = _tick.n; A.TK[s] = 0;
   const nda = npc.nextDecisionAt;
   if (typeof nda !== 'number' || !(now < nda)) return;
+  if (!_t316WalkAlways(npc)) return;                          // 결정 문 고리의 활성 청크 거름이 늘 통과하는 몸만(★[T1348 ⓑ] 걷는 몸 표도 — 셋 다 읽기만이라 차례를 앞으로)
   if (!_t1322State(npc)) { if (T1348_WALK) _t1348Grant(npc, s, now, nda); return; }   // ★[T1348 ⓑ] 서 있지 않은 몸 — 길 가운데를 걷는 몸이면 표 3
   if (npc.simEvacUntil && now < npc.simEvacUntil) return;   // 대피 갈래 — 끝난(지난) 대피만(시각은 앞으로만 간다)
-  if (!_t316WalkAlways(npc)) return;                          // 결정 문 고리의 활성 청크 거름이 늘 통과하는 몸만
   let kind = 1, lon = 0, w95 = 0;
   if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null) {   // 밤 귀가 갈래에 드는 몸 — 침대 목표 그대로면 어느 시각에도 무동작(표 1) · 아니면 해 질 녘에 깨운다(표 2)
     const bx = npc.npcBedX ?? npc.npcHomeX, by = npc.npcBedY ?? npc.npcHomeY;
