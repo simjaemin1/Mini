@@ -13216,6 +13216,51 @@
     "spawnSync node"
    ]
   },
+  "test-t1347-fetch.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 44.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 45.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 44.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 45.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 44.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "나",
+   "maxSec": 45.9,
+   "same5": true,
+   "core": true,
+   "why": "core"
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -15374,5 +15419,5 @@
    ]
   }
  },
- "at": "2026-11-17"
+ "at": "2026-11-18"
 }
