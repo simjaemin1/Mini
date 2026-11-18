@@ -26,9 +26,9 @@ const WALK_ON = ON && KMODE !== '0', WALK_VERIFY = KMODE === 'verify';
 // ★[T1348 ⓒ] 일터 깨움 손잡이 `T1348_WORK` — 켬 기본 · `'0'` 끔 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌(잠 깨움 `T1337_WAKE` 그 꼴 · 농부 일터 머묾)
 const FMODE = (typeof process !== 'undefined' && process.env && process.env.T1348_WORK || '').trim();
 const WORK_ON = ON && FMODE !== '0', WORK_VERIFY = FMODE === 'verify';
-// ★[T1365 ⓐ] 일터 깨움 나머지 손잡이 `T1365_WORK` — 켬 기본 · `'0'` 끔 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌 + 직업마다 덮음 셈(무동작 결정 중 판정이 잡은 몫)
+// ★[T1365 ⓐ] 일터 깨움 나머지 손잡이 `T1365_WORK` — **끔 기본**(같은 자에서 이득이 안 섰다 — 판정 셈이 결정 문 셈과 거의 같다 · 보고 T1365 §5) · `'1'` 켬 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌 + 직업마다 덮음 셈(무동작 결정 중 판정이 잡은 몫)
 const XMODE = (typeof process !== 'undefined' && process.env && process.env.T1365_WORK || '').trim();
-const WORK2_ON = ON && XMODE !== '0', WORK2_VERIFY = XMODE === 'verify';
+const WORK2_ON = ON && (XMODE === '1' || XMODE === 'verify'), WORK2_VERIFY = XMODE === 'verify';
 const A = { TK: new Uint8Array(0), W95: new Uint8Array(0), VT: new Int32Array(0), NDA: new Float64Array(0), LON: new Float64Array(0), SK: new Float64Array(0), SX: new Float64Array(0), SY: new Float64Array(0),
   // ★[T1337] 잠 깨움 표(결정 문까지 건넌다) — DS 표 · SH 신원 해시 · CX/CY 셀 · T95 판 시계 배율 · VID 마을 · SEG 창 쪽(1 저녁 · 2 새벽) · DOF `_dOff` · BDY 몸 날 · DAY 장부 날 · DK 미룬 결정 도장(`_t540DecAt`)
   // ★[T1348 ⓑ] 걷는 몸 표(표 종류 3) — PI 길 번호 · PN 길 길이(거울) · PX0/PY0 첫 점(거울) · PAT `_pathAt` · ST 길 만료 · SPX/SPY/SPA 막힘 자리(`_stuckPos`) · SPD 걸음 빠르기 · WD 해 질 녘에 깨움

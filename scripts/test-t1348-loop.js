@@ -185,7 +185,7 @@ const OFF = { T1322_PREFILTER: '0' }, LOFF = { T1348_LOOP: '0', T1348_WALK: '0' 
 const R0 = run(LOFF, { T1348_WALK: '0' }, SRC0, SSRC0, N, T, true);
 ok(R0.diffTick === 0 && R0.diffFull === 0 && R0.diffSeen === 0 && R0.stops > 10 && R0.st.gone > 0 && R0.st.compact > 0, 'ⓐ 고리 거울 끔 ↔ 켬(첫 거름 켠 두 벌 · 예산 멈춤 · 죽음 · 되살림 · 새 몸 · 다른 몸) — 짚은 pid 차례 · 몸 칸 전부 같음 · 멈춤 · gone · 칸 메움이 탔다',
   `틱 ${R0.diffTick} · 전부 ${R0.diffFull} · 차례 ${R0.diffSeen} · 멈춤 ${R0.stops} · gone ${R0.st.gone} · 칸 메움 ${R0.st.compact}${R0.firstDiff ? ' · ' + R0.firstDiff : ''}`);
-const R1 = run(OFF, {}, SRC0, SSRC0, N, T, false);
+const R1 = run(OFF, { T1365_WORK: '1' }, SRC0, SSRC0, N, T, false);   // ★[T1365] 그 밖 일터는 끔 기본 — 켜고 견준다
 ok(R1.diffTick === 0 && R1.diffFull === 0 && R1.diffSeen === 0, 'ⓑ 전부 끔 ↔ 켬 기본(고리 거울 + 걷는 몸 커널 + 첫 거름 + 잠 깨움) — 몸 칸 전부 같음(틱마다 · 들여다볼 때 · 끝) · 짚은 pid 차례 같음',
   `틱 ${R1.diffTick} · 전부 ${R1.diffFull} · 차례 ${R1.diffSeen}${R1.firstDiff ? ' · ' + R1.firstDiff : ''}`);
 const st = R1.st;
@@ -234,7 +234,7 @@ console.log('\n④ 미끼(바꾼 자리 정확히 1곳 · 빨강 줄 단언)');
   const bC = once(SRC0, kC, "const pa = A.PAT[s]; if (pa && now - pa > A.ST[s] + 300) return 'stale';");
   const RC = run(OFF, {}, bC, SSRC0, N, T, false);
   ok(RC.diffTick + RC.diffFull + RC.diffSeen > 0, 'ⓒ 길 만료 깨움을 늦게 낸 사본(+300ms) → ① 이 빨강', `${RC.diffTick}/${RC.diffFull}/${RC.diffSeen}${RC.firstDiff ? ' · ' + RC.firstDiff : ''}`);
-  const RD = run(OFF, {}, SRC0, SSRC0, N, T, false, 250);
+  const RD = run(OFF, { T1365_WORK: '1' }, SRC0, SSRC0, N, T, false, 250);
   ok(RD.diffTick + RD.diffFull + RD.diffSeen > 0, 'ⓓ 일터 깨움 시각을 늦게 낸 사본(체류 끝 +250ms 까지 거른다) → ① 이 빨강', `${RD.diffTick}/${RD.diffFull}/${RD.diffSeen}${RD.firstDiff ? ' · ' + RD.firstDiff : ''}`);
   const RDV = run(OFF, { T1348_WORK: 'verify', T1365_WORK: 'verify' }, SRC0, SSRC0, N, T, false, 250);
   ok(RDV.st.fbad > 0 && RDV.st.xbad > 0 && RDV.diffTick === 0, 'ⓓ 같은 미끼를 `verify` 로 — 농부 · 그 밖 일터 둘 다 어긋남을 세고 그 몸은 종전 길(몸 칸 같음)', `어긋남 농부 ${RDV.st.fbad} ${JSON.stringify(RDV.st.fwhy)} · 그 밖 ${RDV.st.xbad}`);
