@@ -4533,6 +4533,10 @@ function createLedger(opts) {
   const _sg = (econV2 && typeof econV2.subsGuard === 'function') ? econV2.subsGuard : null;
   const _boardEma = (r, e) => ((_sg && _sg(r, 'board')) ? 0 : (+e[r] || 0));
   const DEL = buildDeliverable(o.depositMap);
+  //   ★★[T1368 · 검사 카드 T1354 Q19] 켬(`T1341_OWN_HOUSE`) — 새 사람이 맨손 · 조잡한 도구로 낼 수 있는 econ 품목(플레이어 품목 → econ 대응 정본 `DEL.items`).
+  //     품목 목록은 존이 넘긴다(`o.newbieItems` — 자연물 전리품 정본 `lootOfResource` × 맨손 · 조잡한 도구 거리 + 줍기 차례). 없으면(랩 · 끔) 빈 집합 = 아래 갈래 무동작.
+  const NEWBIE = new Set();
+  if (T1341_OWN_HOUSE && o.newbieItems) { const nb = new Set(o.newbieItems); for (const [econ, items] of DEL.items) if ((items || []).some((it) => nb.has(it))) NEWBIE.add(econ); }
   const onEvent = o.onEvent || null;          // (ev) => void — 영속화 훅(서버가 DB 에 꽂는다)
   const onRequest = o.onRequest || null;      // (req, 'open'|'close') => void
   // ★★[T18] 연대기 영속화 훅 — **사건 링버퍼는 90일이면 잘린다**(`KEEP_DAYS`). 연표는 해를 넘겨 읽는
@@ -5010,6 +5014,8 @@ function createLedger(opts) {
       for (const [item, req] of [...s.reqs]) {
         const d = s.det.get(item);
         const filled = req.filled >= req.qty;
+        //   ★[T1368] 켬의 "날마다 쓰는 것" 의뢰(`fit: 'daily'` — 아래 ② 끝)는 부족 래치와 무관하다 — 다 채워지거나 그 품목이 남아돌 때(`glut`)만 거둔다(날마다 거두고 다시 거는 되풀이 0 · 끔엔 이 의뢰가 없다).
+        if (req.fit === 'daily' && !filled && !(d && d.glut)) continue;
         if (!d || !d.short || filled) {
           s.reqs.delete(item);
           stats.reqClosed++;
@@ -5040,6 +5046,32 @@ function createLedger(opts) {
         s.reqs.set(item, req);
         stats.reqOpened++;
         if (onRequest) { try { onRequest(req, 'open'); } catch (e) {} }
+      }
+      //   ★★[T1368 · Q19] 켬 — 새 사람이 낼 수 있는 의뢰가 하나도 안 걸렸으면, 그 마을이 **날마다 실제로 쓰는**(소비EMA > 0) 새 사람 품목 하나를 건다.
+      //     "정말 필요한 것" 안에서만 — 남아도는 품목(`glut` 래치)은 안 건다 · 쉬는 기간(REQ_COOLDOWN)도 그대로 · 양 = 소비EMA × REQ_DAYS(위 거는 문 그대로).
+      //     고르는 차례 = 소비가 가장 큰 것(그 마을이 가장 많이 쓰는 것). 쓰는 것이 없으면 안 건다(지어내지 않는다 — 그때 판은 비고 안내는 "지금은 부탁할 것이 없다").
+      if (NEWBIE.size && ![...s.reqs.keys()].some((k) => NEWBIE.has(k))) {
+        let best = null, be = 0;
+        for (const item of NEWBIE) {
+          if (!DEL.fromEcon.has(item)) continue;
+          const e = +((v._consEMA || {})[item]) || 0;
+          if (!(e > be)) continue;
+          const d = s.det.get(item);
+          if (d && d.glut) continue;
+          if (d && d.reqClosedDay != null && (day - d.reqClosedDay) < cfg.REQ_COOLDOWN) continue;
+          best = item; be = e;
+        }
+        if (best) {
+          if (!prices) prices = priceView(v, day);
+          const req = makeRequest(s, v, best, prices, day);
+          if (req) {
+            req.fit = 'daily';   // 부족 래치가 아니라 날마다 쓰는 것(장부 · 하네스가 가른다)
+            s.reqs.set(best, req);
+            stats.reqOpened++;
+            stats.reqDaily = (stats.reqDaily | 0) + 1;
+            if (onRequest) { try { onRequest(req, 'open'); } catch (e) {} }
+          }
+        }
       }
     });
   }
@@ -5417,6 +5449,7 @@ function createLedger(opts) {
 
   return {
     cfg, stats, TYPES,
+    newbieHas: (item) => NEWBIE.has(item),   // ★[T1368] 켬 — 새 사람이 낼 수 있는 econ 품목인가(끔 · 랩 = 늘 거짓)
     prime, scanDay, scanSteps: (world, day, extra) => _scanSteps(world, day, extra), recent, board, claim, unclaim, ringOf, detOf, loadRing, loadRequest,
     // ★[T7] 소문 물리 전파 — 가시성 술어와 그 부속. 사본 금지: 사건을 보는 문은 이것뿐이다.
     visibleEvents, visibleTo, heardDayOf, delayTo, returnBrief,
