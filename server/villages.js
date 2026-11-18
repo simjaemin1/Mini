@@ -5340,7 +5340,8 @@ function _t1034Pack() {
   if (state._t1034Saved && !(state._t775 && state._t775.done)) for (const [k, v] of state._t1034Saved) if (!(k in b)) { b[k] = v; _t1034Stat.held++; }   // T775 줄이 끝나면 몸을 못 받은 칸은 버린다(끝난 캐러밴 칸이 줄곧 따라 실리지 않게)
   if (!Object.keys(b).length) return null;
   _t1034Stat.packed++;
-  return { b };
+  const x = (T1340_EXACT && state._t1340Shut) ? _t1372CarPack() : null;   // ★[T1372 ⓐ] 종료 저장만 — 몸 객체 전부(끔 = 칸 없음 · 종전 바이트)
+  return x ? { b, x } : { b };
 }
 // T775 가 몸을 세운 바로 뒤 — 그 몸에 쥔 칸을 덮는다. 같은 길(같은 구간 · 길이 1px 안)일 때만 장부 칸을 덮는다(아니면 T775 자리 그대로 · `miss`).
 function _t1034Apply(body, now) {
@@ -5449,6 +5450,119 @@ function _t929Note(m) {
   const d = Date.now() - m.t;
   if ((_probe.routeCold | 0) > m.k || (_probe.walkBuilt | 0) > m.w) _probe.t929Cold = (_probe.t929Cold | 0) + 1;
   if (d > (_probe.t929MsMax | 0)) _probe.t929MsMax = d;
+}
+// ★★[T1372 ⓐ 2026-11-18 · T1340 회부 1] **다시 뜬 판의 캐러밴 몸 = 저장 순간 그 몸** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
+//   종전(T775 · T1034): 다시 뜬 판은 첫 틱부터 장부 차례로 몸을 **새로** 세웠다 — 새 pid · 새 신원(`playerId` 꼬리 · `_sh`) · 존 주사위(`_dt` — 색 굴림)를 그 틱에 굴리고,
+//     틱 몫(T1061) · 길 슬롯(T896)이 줄을 여러 틱에 나눠 몸이 늦게 섰다(30날 · 마디 5 판: 첫 틱 몸 0 · 한 번에 돈 판 78). 몸 칸은 자리 · 길 · 단계 몇 칸만 덮었다(T1034).
+//   켜면 **종료 저장 줄**(T1340 `_t1340Shut`)이 몸마다 객체 전부를 싣는다 — 캐러밴 몸(`c` · `escorts` 빼고) · 상인 몸 · 호위 몸(소켓 · pid · 자리 빼고 칸 전부) · 호위 기록.
+//     같은 객체를 두 칸이 쥐면(몸 길 `pts` ↔ 장부 길 `_t661.path.pts` ↔ 호위 `_actSource` — `===` 로 가르는 자리가 여럿 · T1320) 한 번 싣고 열쇠로(`$ref`).
+//     시각 · 남(사람 · 몸 · 마을)은 T1340 문법 그대로(`_t1340Enc` 규약 · 저장 순간에서 잰 차).
+//   부팅(같은 날 메타 · T1034 와 같은 규약)은 마을 몸이 선 바로 뒤 — 저장 pid 차례(= 한 번에 돈 판의 낳은 차례)로 몸을 낳고(존 `spawnNpc` · 저장 pid · 색 · 이름을 주어 굴림 0)
+//     칸을 덮은 뒤 캐러밴 몸을 그 객체로 세운다. 몸 번호 계수기(존 `nextPid`)도 저장 값으로 앞으로(뒤에 낳는 몸 번호가 한 번에 돈 판과 같게).
+//   이렇게 선 몸은 T775 줄 · T1034 덮기가 건너뛴다(`caravanBodies` 에 이미 있다 · 그 칸은 지운다). 못 세운 캐러밴(장부에 없다 · 이웃 존 몸 · pid 가 이미 쓰였다)은 종전 길.
+const _t1372Stat = { packed: 0, cars: 0, players: 0, skip: {}, restored: 0, restPlayers: 0, miss: 0, clash: 0, xz: 0, pid: null, err: null };
+const _T1372_PDENY = new Set(['ws', 'pid', 'x', 'y']);
+//   T1340 칸 문법 + 같은 객체 열쇠(`{$id, v}` 처음 · `{$ref}` 다음) + 수 아닌 수(`$n`) · undefined(`$u`) — JSON 이 지우는 값도 그 칸 그대로
+function _t1372Enc(x, C, T, d) {
+  if (x === undefined) return { $u: 1 };
+  if (typeof x === 'number') { if (!Number.isFinite(x)) return { $n: String(x) }; return (x > 1e12 && Math.abs(x - C.at) < 3.2e10) ? { $t: x - C.at } : x; }
+  if (x === null || typeof x !== 'object') { if (typeof x === 'function' || typeof x === 'symbol' || typeof x === 'bigint') throw new _T1340Skip(typeof x); return x; }
+  if (d > 14) throw new _T1340Skip('깊이');
+  if (C.npc.has(x)) return { $npc: C.npc.get(x) };
+  if (x.pid != null && C.P && C.P.get(x.pid) === x) return { $pid: x.pid };
+  if (x.npcs && x.name != null && C.ev.get(x.name) === x) return { $ev: x.name };
+  if (Number.isFinite(x.dbId) && C.sv.get(x.dbId) === x) return { $sv: x.dbId };
+  if (T.has(x)) return { $ref: T.get(x) };
+  const id = T.size; T.set(x, id);
+  let v;
+  if (x instanceof Map) { v = []; for (const [k, w] of x) v.push(_t1372Enc(k, C, T, d + 1), _t1372Enc(w, C, T, d + 1)); return { $id: id, $M: v }; }
+  if (x instanceof Set) { v = []; for (const w of x) v.push(_t1372Enc(w, C, T, d + 1)); return { $id: id, $S: v }; }
+  if (ArrayBuffer.isView(x)) return { $id: id, $A: x.constructor.name, v: Array.from(x, (n) => (Number.isFinite(n) ? n : { $n: String(n) })) };
+  if (Array.isArray(x)) return { $id: id, v: x.map((w) => _t1372Enc(w, C, T, d + 1)) };
+  const pr = Object.getPrototypeOf(x); if (pr !== Object.prototype && pr !== null) throw new _T1340Skip(pr && pr.constructor ? pr.constructor.name : '?');
+  const o = {}; for (const k of Object.keys(x)) { const w = x[k]; if (typeof w === 'function') continue; o[k] = _t1372Enc(w, C, T, d + 1); }
+  return { $id: id, o };
+}
+function _t1372Dec(x, C, T) {
+  if (Array.isArray(x)) return x.map((w) => _t1372Dec(w, C, T));   // (싣는 쪽은 배열을 늘 `$id` 로 싼다 — 방어)
+  if (!x || typeof x !== 'object') return x;
+  if (x.$u === 1) return undefined;
+  if (x.$n !== undefined) return Number(x.$n);
+  if (x.$t !== undefined) return C.at + x.$t;
+  if (x.$ref !== undefined) return T.get(x.$ref);
+  if (x.$npc !== undefined) return C.npcById.get(x.$npc) || null;
+  if (x.$pid !== undefined) return (C.P && C.P.get(x.$pid)) || null;
+  if (x.$ev !== undefined) return C.ev.get(x.$ev) || null;
+  if (x.$sv !== undefined) return C.sv.get(x.$sv) || null;
+  const id = x.$id;
+  if (x.$M) { const m = new Map(); T.set(id, m); for (let i = 0; i + 1 < x.$M.length; i += 2) m.set(_t1372Dec(x.$M[i], C, T), _t1372Dec(x.$M[i + 1], C, T)); return m; }
+  if (x.$S) { const s = new Set(); T.set(id, s); for (const w of x.$S) s.add(_t1372Dec(w, C, T)); return s; }
+  if (x.$A) { const K = global[x.$A]; const a = typeof K === 'function' ? K.from(x.v, (n) => (typeof n === 'number' ? n : Number(n.$n))) : x.v; T.set(id, a); return a; }
+  if (x.v) { const a = []; T.set(id, a); for (const w of x.v) a.push(_t1372Dec(w, C, T)); return a; }
+  const o = {}; T.set(id, o); for (const k of Object.keys(x.o || {})) o[k] = _t1372Dec(x.o[k], C, T); return o;
+}
+//   한 객체의 칸을 차례 그대로(못 싣는 칸은 센다 · 열쇠 표 `T` 는 캐러밴 하나가 같이 쓴다)
+function _t1372PackObj(obj, deny, C, T) {
+  const o = {};
+  for (const k of Object.keys(obj)) { if (deny.has(k)) continue; const v = obj[k]; if (typeof v === 'function') continue;
+    try { o[k] = _t1372Enc(v, C, T, 0); } catch (e) { _t1372Stat.skip[k] = e instanceof _T1340Skip ? e.message : 'err ' + e.message; } }
+  return o;
+}
+function _t1372CarPack() {
+  const B = state.caravanBodies, P = state.deps && state.deps.players; if (!B || !P || !B.size) return null;
+  const C = state._t1340C || (state._t1340C = _t1340Ctx(Date.now()));
+  const ord = [], cars = {}, BD = new Set(['c', 'escorts']), ED = new Set();
+  const pl = (pid, T) => { const p = P.get(pid); if (!p) return null; _t1372Stat.players++; return { pid, x: p.x, y: p.y, o: _t1372PackObj(p, _T1372_PDENY, C, T) }; };
+  for (const [id, b] of B) {
+    if (b._xz) { _t1372Stat.xz++; continue; }   // 이웃 존 몸 — T533 · T1034 길(종전)
+    const T = new Map();
+    const body = _t1372PackObj(b, BD, C, T);
+    const esc = (b.escorts || []).map((e) => ({ r: _t1372PackObj(e, ED, C, T), p: pl(e.pid, T) }));
+    cars[String(id)] = { k: Object.keys(b), b: body, p: pl(b.pid, T), esc };
+    ord.push(String(id)); _t1372Stat.cars++;
+  }
+  if (!ord.length) return null;
+  _t1372Stat.packed++;
+  return { at: C.at, ord, cars, nextPid: state.deps.t1372Pid ? state.deps.t1372Pid.get() : null };
+}
+function _t1372CarRestore() {
+  const X = state._t1372Car; state._t1372Car = null;
+  if (!X || !Array.isArray(X.ord) || !state.world) return;
+  const P = state.deps.players, B = state.caravanBodies, W = state.world;
+  const byId = new Map((W.caravans || []).map((c) => [String(c.id), c]));
+  const C = state._t1340R || (state._t1340R = _t1340Ctx(Date.now()));   // 마을 몸(T1340 ②)과 같은 다시 뜬 순간 · 같은 열쇠 표
+  //   ① 몸 — 저장 pid 차례로 낳는다(낳는 차례 = 한 번에 돈 판에서 낳은 차례 · players 차례가 같다)
+  const want = [];
+  for (const id of X.ord) { const R = X.cars[id]; if (!R || !byId.has(id) || !R.p || B.has(byId.get(id).id)) { _t1372Stat.miss++; continue; } want.push(R.p); for (const e of (R.esc || [])) if (e.p) want.push(e.p); }
+  const num = (s) => +String(s).replace(/^p/, '');
+  want.sort((a, b) => num(a.pid) - num(b.pid));
+  const made = new Map();
+  for (const w of want) {
+    if (P.has(w.pid)) { _t1372Stat.clash++; continue; }
+    const p = state.deps.spawnNpc({ pid: w.pid, x: w.x, y: w.y, name: w.o.name, color: w.o.color, skipHouse: true });
+    if (!p || p.pid !== w.pid) { _t1372Stat.clash++; if (p) { state.deps.npcs.delete(p.pid); P.delete(p.pid); } continue; }
+    state.deps.npcs.delete(p.pid);   // 캐러밴 몸은 일반 NPC AI 밖(빙의 — `_caravanNpcs` 와 같다)
+    made.set(w.pid, { p, w }); _t1372Stat.restPlayers++;
+  }
+  //   ② 칸 — 몸이 다 선 뒤(몸이 서로를 가리키는 칸이 `$pid` 로 풀린다) · 캐러밴마다 열쇠 표 하나
+  for (const id of X.ord) {
+    const R = X.cars[id], c = byId.get(id); if (!R || !c || !R.p || !made.has(R.p.pid) || B.has(c.id)) continue;
+    if ((R.esc || []).some((e) => e.p && !made.has(e.p.pid))) continue;   // 호위 하나라도 못 섰으면 종전 길(T775)
+    const T = new Map();
+    const put = (w) => { const { p } = made.get(w.pid); for (const k of Object.keys(w.o)) p[k] = _t1372Dec(w.o[k], C, T); _t1323Touch(p); if (T1145_XY_COLS) BC.w(p, w.x, w.y); else { p.x = w.x; p.y = w.y; } return p; };
+    //   몸 객체를 칸 차례 그대로 세운다(열쇠 표가 같은 차례로 차야 `$ref` 가 풀린다 — 싣던 차례: 몸 칸 → 호위 기록 · 몸 → 상인 몸)
+    const body = {}; for (const k of R.k) body[k] = undefined;
+    for (const k of Object.keys(R.b)) body[k] = _t1372Dec(R.b[k], C, T);
+    body.c = c;
+    const escorts = (R.esc || []).map((e) => { const r = {}; for (const k of Object.keys(e.r)) r[k] = _t1372Dec(e.r[k], C, T); if (e.p) put(e.p); return r; });
+    body.escorts = escorts;
+    put(R.p);
+    for (const k of R.k) if (!(k in R.b) && k !== 'c' && k !== 'escorts') delete body[k];   // 못 실은 칸(센 칸)은 자리만 비운다
+    B.set(c.id, body); _t1372Stat.restored++;
+    if (state._t1034Saved) state._t1034Saved.delete(String(id));   // T1034 덮기는 이 몸에 안 간다
+  }
+  if (Number.isFinite(X.nextPid) && state.deps.t1372Pid) { state.deps.t1372Pid.set(X.nextPid); _t1372Stat.pid = X.nextPid; }
+  console.log(`[${state.zoneId}] 🐂 [T1372] 캐러밴 몸 되살림 — ${_t1372Stat.restored}/${X.ord.length} · 몸 ${_t1372Stat.restPlayers} · 못 섬 ${_t1372Stat.miss} · pid 겹침 ${_t1372Stat.clash} · 몸 번호 ${_t1372Stat.pid}`);
 }
 function _t775Resume(now) {
   const R = state._t775 || (state._t775 = { q: null, done: false });
@@ -8568,6 +8682,7 @@ function init(deps) {
     if (T747_BODY) { try { _t747Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T747] 몸 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t747Body')) _t862Drop(v.econ, '_t747Body');   // ★[T747] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(main 행엔 이 칸이 없어 무동작)
     if (T1167_WAR) { try { _t1167Bind(); } catch (e) { console.error(`[${ZONE_ID}] ⚔️ [T1167] 전쟁 몸 다시 잇기 실패(명부 없이 계속):`, e.message); } }   // ★[T1167] 몸이 선 뒤 — 자리 → 새 pid · 낡은 징발 pid 지움
+    if (T1340_EXACT && state._t1372Car) { try { _t1372CarRestore(); } catch (e) { _t1372Stat.err = e.message; console.error(`[${ZONE_ID}] 🐂 [T1372] 캐러밴 몸 되살림 실패(종전 T775 길로 계속):`, e.message); } }   // ★[T1372 ⓐ] 마을 몸이 선 바로 뒤(저장 pid 차례)
     if (T822_BODY_SEED) _t833Boot();   // ★[T833] 되살림(T728 메타 · T747 몸 칸) 뒤 — 명부 자리 열쇠로 한 번(같은 판 씨 · 같은 자리면 되살린 값 그대로)
     if (_T732_ON) { try { _t732Boot(); } catch (e) { console.error(`[${ZONE_ID}] 🧺 [T732] 곳간 로트 장부 붙이기 실패(장부 없이 계속):`, e.message); } }
     // ★★[T533] 존 경계 호스트 — 팔 `T525_CROSS_ZONE`(econ 정본) 켬 + 존이 미는 문을 줬을 때만(끔 = 이 줄 무동작 · 조각 목록·몸 층 무변).
@@ -20036,7 +20151,7 @@ function _t728Restore() {
       if (T1321_XZ_KEEP && M.t1321) { state._t1321Saved = M.t1321; R.t1321 = { p: (M.t1321.p || []).length, s: (M.t1321.s || []).length, q: (M.t1321.q || []).length }; }   // ★[T1321 ⓐ] 같은 날 메타만(캐러밴과 같은 규약) — 호스트가 선 뒤 `_t1321Restore`
       if (T1034_KEEP && M.t1034 && M.t1034.b) {
         //   몸 칸의 벽시계 값(머묾 끝 · 도착 시각 · 귀환 보간 시작)과 하루 px 은 시계(하루 길이 · epoch)가 같을 때만 뜻이 같다 — 다르면 안 쥔다(T775 자리 그대로)
-        if (M.anchor && (T762_CARAVAN_BODY || (M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch))) { state._t1034Saved = new Map(Object.entries(M.t1034.b)); R.t1034 = state._t1034Saved.size; }
+        if (M.anchor && (T762_CARAVAN_BODY || (M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch))) { state._t1034Saved = new Map(Object.entries(M.t1034.b)); R.t1034 = state._t1034Saved.size; if (T1340_EXACT && M.t1034.x) state._t1372Car = M.t1034.x; }   // ★[T1372 ⓐ] 몸 객체 전부 — 마을 몸이 선 뒤 `_t1372CarRestore`
         else { _t1034Stat.clock++; R.t1034 = 'clock'; }
       }   // ★[T1034] 몸 칸 — T775 가 몸을 세울 때 덮는다(같은 날 메타만)
       if (T1340_EXACT && M.t1340) { try { _t1340Stat.econ = _t1340EconIn(M.t1340); } catch (e) { _t1340Stat.econErr = e.message; } }   // ★[T1340 ④] 같은 날 메타 = 그날 econ 메모리

@@ -4009,7 +4009,7 @@ function spawnNpc(opts = {}) {
   // 사이즈 안 벗어나게 clamp
   cx = clamp(cx, NPC_CLAIM_SIZE, ZONE.zoneWidth - NPC_CLAIM_SIZE);
   cy = clamp(cy, NPC_CLAIM_SIZE, ZONE.zoneHeight - NPC_CLAIM_SIZE);
-  const pid = `p${nextPid++}`;
+  const pid = (opts.pid != null && !players.has(opts.pid)) ? opts.pid : `p${nextPid++}`;   // ★[T1372 ⓐ] 다시 뜬 판의 캐러밴 몸만 저장한 pid 를 준다(T1340 켬 · 그 밖 = 종전 글자 그대로)
   const npcId = `npc_${ZONE_ID}_${nextNpcSerial++}_${Math.random().toString(36).slice(2,6)}`;
   const name = opts.name || NPC_NAMES[Math.floor(_dt()*NPC_NAMES.length)];
   const color = opts.color || NPC_COLORS[Math.floor(_dt()*NPC_COLORS.length)];
@@ -5649,6 +5649,34 @@ function _t1322Wake(s) {
 function _t1322HpTouch(p, prev, next) { if ((next > 0) !== (prev > 0)) return _t1322Touch(p); if (T1337_WAKE) { const r = (p.maxHp || 100) * (SimVillages.SCH_REST_IN || 0.6); if ((next < r) !== (prev < r)) _t1322Touch(p); } }
 function _t1322Touch(p) { const s = SS.slot(p.pid); if (s >= 0 && SS.own[s] === p && SS.A.TK[s]) { _t1322Wake(s); SS.stat.touch++; } }
 function _t1322FlushAll() { const A = SS.A, n = SS.count(); for (let s = 0; s < n; s++) if (A.TK[s]) _t1322Wake(s); SS.stat.flushAll++; }
+// ★★[T1372 ⓑ 2026-11-18 · T1340 회부 4] **첫 거름 표(T1322 · T1337 · T1348)도 재기동을 넘는다** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
+//   종전(T1340 ⑦): 종료 저장 앞에서 미룬 도장을 몸에 내리고(`_t1322FlushAll`) 표는 버렸다 — 다시 뜬 판의 몸은 표 없이 첫 틱부터 걸음 문 · 결정 문을 다 탄다.
+//     걸음 결과는 같아도(거름 = 결과가 같은 문만 건넌다) 그 문들이 여는 생활층 캐시(일터 고르기 · 나무 훑기 …)가 한 번에 돈 판과 다른 틱에 섰다(T1340 §7 회부 4 ·
+//     30날 · 마디 5 판: 다시 뜬 순간 표 든 몸 47 · 다시 뜬 쪽 0).
+//   켜면 도장을 내리기 **바로 앞** 표 행(표 든 몸 — pid · 열 전부)을 떠서 T742 모듈 메모리 줄(`zone.t1372SS`)에 싣고, 다시 뜬 판의 첫 틱 머리에 같은 pid 몸의 칸에 그대로 건다.
+//     걷는 몸 표(표 종류 3)의 길 배열은 그 몸의 `path`(T1340 ② 가 `_t791P` 와 같은 배열로 되살린다 — 표를 줄 때 술어가 같은 것을 본다)로.
+//   도장은 그대로 몸에 내린다(종전 T1340 ⑦) — 표가 산 동안 몸 칸은 안 읽힌다는 것이 거름의 전제이고, 깨울 때 표가 같은 값을 다시 쓴다.
+let _t1372SSSnap = null, _t1372SSPend = null;
+const _t1372SSStat = { snap: 0, rows: 0, applied: 0, miss: 0, path: 0 };
+function _t1372SSTake() {
+  const A = SS.A, n = SS.count(), rows = [], K = Object.keys(A).filter((k) => k !== 'GN');
+  for (let s = 0; s < n; s++) { const p = SS.own[s]; if (!p || !(A.TK[s] || A.DS[s])) continue;
+    const r = { pid: p.pid }; for (const k of K) { const v = A[k][s]; r[k] = Number.isFinite(v) ? v : String(v); } rows.push(r); }
+  _t1372SSSnap = rows; _t1372SSStat.snap++; _t1372SSStat.rows = rows.length;
+  return rows;
+}
+function _t1372SSApply() {
+  const rows = _t1372SSPend; _t1372SSPend = null; if (!Array.isArray(rows)) return;
+  const A = SS.A;
+  for (const r of rows) {
+    const s = SS.slot(r.pid), p = s >= 0 ? SS.own[s] : null;
+    if (!p || p.pid !== r.pid || players.get(r.pid) !== p) { _t1372SSStat.miss++; continue; }
+    if (+r.TK === 3 && !(Array.isArray(p.path) && p.path === p._t791P && p.path.length === +r.PN)) { _t1372SSStat.path++; continue; }   // 길이 같은 길이 아니면 표 없이(종전 길)
+    for (const k of Object.keys(r)) { if (k === 'pid' || !(k in A)) continue; const v = r[k]; A[k][s] = typeof v === 'number' ? v : Number(v); }
+    SS.WPA[s] = +r.TK === 3 ? p.path : null; _t1372SSStat.applied++;
+  }
+  console.log(`[${ZONE_ID}] 🦶 [T1372] 첫 거름 표 되살림 — ${_t1372SSStat.applied}/${rows.length} · 몸 없음 ${_t1372SSStat.miss} · 길 다름 ${_t1372SSStat.path}`);
+}
 // 해 질 녘(표 2) — 걸음 문 밤 귀가 갈래의 해 몫 식 그대로(`_t670Ph` 틱 메모 · 판 시계 몸은 판 하루 축)
 let _t1322PhNow = NaN, _t1322Ph95 = 0;
 function _t1322Dusk(s, now) {
@@ -6269,6 +6297,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★★[T942] 몸 HP 문 — 마을 몸(NPC)의 HP 도 사람 문 그 함수(`setHp` · T109 "HP 를 바꾸는 문 하나" · 사본 0)로 쓴다(생활층 요양 · 전쟁 거울 · 포로 · 풀림 ·
   //   원정 굶음 · 캐러밴 죽음 · 다시 뜬 판 복원). NPC 몸은 소켓이 없고(`ws: null`) 마을 낱말은 방송 낱말(`HP_PEER`)이 아니라 메시지 0 = 종전.
   setHp,
+  t1372Pid: process.env.T1340_RESUME_EXACT !== '0' ? { get: () => nextPid, set: (n) => { if (Number.isFinite(n) && n > nextPid) nextPid = n; } } : null,   // ★[T1372 ⓐ] 몸 번호 계수기(종료 저장에 싣고 · 캐러밴 몸을 되살린 뒤 앞으로만 — 끔 = null)
   t1322Touch: T1322_PF ? _t1322Touch : null,   // ★[T1322] 걸음 문 밖에서 몸 판정 칸을 바꾸는 생활층 자리(대피)가 쓰기 앞에 부른다(끔 = null · 무동작)
   t325CutTreeAt: (cx, cy) => _t325CutTreeAt(cx, cy),
   // ★[T325] 전리품 표는 존이 쥔다 — 생활층은 "이 그루가 목재 몇 낱개냐"만 묻는다(사본 0)
@@ -17203,6 +17232,7 @@ let _tickDebt = 0;
 const _tick = { n: 0, wall: 0, sim: 0, clip: 0, clipped: 0, maxGap: 0, debt: 0, dropN: 0, dropped: 0 };
 // ★★[T1340 ⑥] 틱 번호(`_tick.n`)는 주사위 씨의 한 칸이다(틱 흐름 `_diceTick` · 주민 결정 `_diceNpc` — 신원 · 셀 · 날 · **틱**). 다시 뜨면 0 부터 세어
 //   다시 뜬 판의 굴림이 한 번에 돈 판과 다른 씨에서 났다(T1340 §1). 손잡이 `T1340_RESUME_EXACT`(켬 기본 · `=0` 끔 = 종전 — 0 부터) — 켬이면 T742 모듈 메모리 줄로 번호만 잇는다(계측 칸은 프로세스 것).
+if (process.env.T1340_RESUME_EXACT !== '0' && T1322_PF) SimVillages.t742Bind('zone.t1372SS', () => _t1372SSSnap, (v) => { if (Array.isArray(v)) _t1372SSPend = v; });   // ★[T1372 ⓑ] 종료 저장에만 값(그 밖 null)
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.tickN', () => _tick.n, (n) => { if (Number.isFinite(n) && n > _tick.n) _tick.n = n; });
 // ★[T284 ④ · 관측자] 틱 본문 소요(ms) 고리 — `/perf` 의 tick.ms(p50/p95/max). idle 존 조기 반환 틱은 안 든다(본문이 없다).
 const _tickMs = { ring: new Float64Array(3000), i: 0, n: 0 };
@@ -17248,6 +17278,7 @@ setInterval(() => {
   //   그 둘을 가른 이유: 순수 해시는 자리마다 '무엇이 신원인가'를 정해야 하는데, 몹 스폰·드랍처럼
   //   **신원이 아직 없는** 자리가 많다. 거기까지 순수 해시로 가는 건 다음 카드다(보고 §4).
   _diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));
+  if (_t1372SSPend) _t1372SSApply();   // ★[T1372 ⓑ] 다시 뜬 판의 첫 틱 머리 — 첫 거름 표 행을 그 몸 칸에(몸 · 캐러밴 몸이 다 선 뒤)
   if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }
   if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;
   // 플레이어/NPC 이동은 클라 예측(고정 PRED_STEP=1/TICK_HZ)과 '동일한 고정 dt'로 — 리컨실리에이션 어긋남 0(떨림 제거).
@@ -18875,7 +18906,7 @@ function gracefulShutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[${ZONE_ID}] ${signal} 받음 — 상태 flush 후 종료...`);
-  if (process.env.T1340_RESUME_EXACT !== '0') { try { _t1322FlushAll(); } catch (e) {} }   // ★[T1340] 미룬 걸음 도장(T1322)을 몸에 내려 둔 채 저장한다(다시 뜬 몸은 미룸 표가 없다)
+  if (process.env.T1340_RESUME_EXACT !== '0') { try { if (T1322_PF) _t1372SSTake(); _t1322FlushAll(); } catch (e) {} }   // ★[T1372 ⓑ] 내리기 앞 표 행을 뜬다(T742 줄 `zone.t1372SS`)   // ★[T1340] 미룬 걸음 도장(T1322)을 몸에 내려 둔 채 저장한다(다시 뜬 몸은 미룸 표가 없다)
   if (SimVillages.t728On && SimVillages.t728On() && SimVillages.t728Shutdown) {
     SimVillages.t728Shutdown(T728_SHUTDOWN_CAP_MS, (r) => {
       console.log(`[${ZONE_ID}] 🏘️ [T728] 종료 저장 — ${r.why} · 마감 기다림 ${r.waitMs | 0}ms · 저장 ${r.saveMs | 0}ms · 마을 ${r.villages | 0} · econ 날 ${r.day}${r.err ? ' · 실패 ' + r.err : ''}`);
