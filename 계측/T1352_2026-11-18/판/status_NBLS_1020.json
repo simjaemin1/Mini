@@ -1,0 +1,83 @@
+{
+ "wallS": 1477,
+ "bars": 1797,
+ "H": 1767226498500,
+ "zones": {
+  "hanbando": {
+   "started": true,
+   "at": false,
+   "st": {
+    "t": "upd",
+    "zone": "hanbando",
+    "H": 1767226498000,
+    "V": 1767226498000,
+    "cnt": {
+     "reqSent": {
+      "nippon": 2026
+     },
+     "reqRecv": {
+      "ext": 839,
+      "nippon": 10689
+     },
+     "resSent": {
+      "ext": 838,
+      "nippon": 10684
+     },
+     "resRecv": {
+      "nippon": 2026
+     }
+    },
+    "outW": 0,
+    "inbox": 6,
+    "held": 0,
+    "heldK": [],
+    "inboxK": [
+     "nippon:/ghost_sync",
+     "nippon:/ghost_sync",
+     "nippon:/ghost_sync",
+     "nippon:/ghost_sync",
+     "nippon:/ghost_sync"
+    ],
+    "flushes": 1796
+   }
+  },
+  "nippon": {
+   "started": true,
+   "at": false,
+   "st": {
+    "t": "at",
+    "zone": "nippon",
+    "H": 1767226498000,
+    "V": 1767226498000,
+    "cnt": {
+     "reqSent": {
+      "hanbando": 10689
+     },
+     "reqRecv": {
+      "ext": 838,
+      "hanbando": 2026
+     },
+     "resSent": {
+      "ext": 838,
+      "hanbando": 2026
+     },
+     "resRecv": {
+      "hanbando": 10684
+     }
+    },
+    "outW": 0,
+    "inbox": 0,
+    "held": 5,
+    "heldK": [
+     "res:hanbando:200:/ghost_sync",
+     "res:hanbando:200:/ghost_sync",
+     "res:hanbando:200:/ghost_sync",
+     "res:hanbando:200:/ghost_sync",
+     "res:hanbando:200:/ghost_sync"
+    ],
+    "inboxK": [],
+    "flushes": 1796
+   }
+  }
+ }
+}

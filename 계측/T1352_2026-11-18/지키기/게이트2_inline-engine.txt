@@ -1,0 +1,7 @@
+[inline] 마을실험실.html: 최신 ✅
+[inline] 전쟁실험실.html: 최신 ✅
+
+real	0m0.127s
+user	0m0.101s
+sys	0m0.015s
+RC2=0

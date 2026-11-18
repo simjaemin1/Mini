@@ -49,7 +49,12 @@ function install(FILE, BAIT) {
     return _compile.call(this, content, filename);
   };
   const { performance } = require('perf_hooks');
-  const NOW = () => performance.timeOrigin + performance.now();
+  //   ★[T1352] 가상 시계 판(`T745_VCLOCK=1` · T1320 발맞춤 — e2e-xzone-caravan 기본)은 존마다 `performance.timeOrigin`(실제 기동 시각)이 달라 두 존 줄이 어긋난다 —
+  //     그 판은 가상 시각 V(`Date.now` — 두 존이 같은 가로대에 선다) + 같은 ms 안 차례(µs 한 칸씩)로 적는다(`t1292-xzone-live.js` T1324 고침과 같은 꼴) · 실시간 판 = 종전 글자
+  let _vMs = -1, _vSub = 0;
+  const NOW = process.env.T745_VCLOCK === '1'
+    ? () => { const v = Date.now(); if (v !== _vMs) { _vMs = v; _vSub = 0; } return v + (++_vSub) * 1e-3; }
+    : () => performance.timeOrigin + performance.now();
   let buf = [];
   const ev = (o) => { o.t = +NOW().toFixed(3); buf.push(JSON.stringify(o)); };
   const flush = () => { if (!buf.length) return; try { fs.appendFileSync(FILE, buf.join('\n') + '\n'); } catch (e) {} buf = []; };

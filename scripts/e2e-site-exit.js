@@ -15,6 +15,7 @@
 'use strict';
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');
@@ -78,7 +79,8 @@ async function round(label, env) {
   await page.evaluate(() => { window.__sendPrimary({ type: '__e2e_give', items: { wood: 40, stone: 40, pebble: 60 }, tools: ['pickaxe'] }); });
   await sleep(800);
 
-  const st = () => page.evaluate(() => ({ bm: buildMode, pm: placementMode ? (placementMode.special || placementMode.itemType || 'on') : null, n: (window.__notices || []).slice(-2) }));
+  //   [T1367] 종전 n = 마지막 두 줄 — 표지(tg)를 주면 그 뒤에 온 알림 전부(앞 터가 남긴 "짓기를 마쳤습니다" 를 안 읽는다)
+  const st = async (tg) => Object.assign(await page.evaluate(() => ({ bm: buildMode, pm: placementMode ? (placementMode.special || placementMode.itemType || 'on') : null })), { n: tg ? await NM.since(page, tg) : [] });
   const siteExit = await page.evaluate(() => !!(uiCfg && uiCfg.siteExit));
   ok(siteExit === (label === '켬'), `[${label}] ★welcome \`uiCfg.siteExit\` = ${label === '켬'}(★T850 기본 켬 · 서버 env 가 정본 · \`=0\` 이면 칸이 없다)`, String(siteExit));
   // 캔버스 위 · 내 자리에서 오른쪽 40px(배치 거리 160px 안 · HUD 밖)
@@ -95,9 +97,11 @@ async function round(label, env) {
     const s0 = await st();
     ok(s0.bm === true && s0.pm === S.sp, `[${label}] ${S.name} — 버튼 → 배치 모드(\`${S.sp}\`) · 건축 모드 켜짐`, JSON.stringify(s0));
     const p = await spotScreen();
+    const tgK = await NM.mark(page);
     await page.mouse.click(p.x, p.y);
     await sleep(400);
-    const s1 = await st();
+    let s1 = await st(tgK);
+    for (let j = 0; j < 25 && label === '켬' && !s1.n.includes('짓기를 마쳤습니다.'); j++) { await sleep(200); s1 = await st(tgK); }   // [T1367] 알림이 늦은 판 — 상한 5초(판정 그대로)
     if (label === '켬') ok(s1.bm === false && s1.pm === null && s1.n.includes('짓기를 마쳤습니다.'), `[${label}] ★★${S.name} — 캔버스 클릭(착공 요청) 뒤 **건축 모드 꺼짐** · 배치 모드 걷힘 · 알림 "짓기를 마쳤습니다"`, JSON.stringify(s1));
     else ok(s1.bm === true && s1.pm === null, `[${label}] ★${S.name} — 캔버스 클릭 뒤 건축 모드가 **남는다**(종전 그대로 — 대조군)`, JSON.stringify(s1));
     if (S.a === 'hut_start') {
@@ -108,8 +112,10 @@ async function round(label, env) {
       if (site) {
         const q = await page.evaluate(([x, y]) => { const s2 = window.__w2s(x, y); const cv = document.getElementById('canvas'); const r = cv.getBoundingClientRect(); return { x: r.left + s2.px * (r.width / cv.width), y: r.top + s2.py * (r.height / cv.height) }; }, [site.wx, site.wy]);
         await page.mouse.move(q.x - 3, q.y); await page.mouse.move(q.x, q.y); await sleep(150);
-        await page.mouse.click(q.x, q.y); await sleep(600);
-        const r = await page.evaluate(() => ({ act: (typeof buildAction !== 'undefined' && buildAction) ? buildAction.kind : null, hover: (typeof hoverBuildingId !== 'undefined') ? hoverBuildingId : null, n: (window.__notices || []).slice(-2) }));
+        const tgH = await NM.mark(page);
+        await page.mouse.click(q.x, q.y); await sleep(600);   // 없음("분해")을 잰다 — 종전 시간 그대로 · 표지 뒤 전부(N줄 자름 0)
+        const r = await page.evaluate(() => ({ act: (typeof buildAction !== 'undefined' && buildAction) ? buildAction.kind : null, hover: (typeof hoverBuildingId !== 'undefined') ? hoverBuildingId : null }));
+        r.n = await NM.since(page, tgH);
         if (label === '켬') ok(r.act === null && !r.n.some((t) => /분해/.test(t)), `[${label}] ★★움집터 — 안내대로 터를 누르면 **분해가 아니다**(3초 분해 0 · 시공 쪽으로 간다)`, JSON.stringify(r));
         else ok(r.act === 'dismantle', `[${label}] ★움집터 — 건축 모드가 남은 채 터를 누르면 **3초 분해**가 걸린다(고친 결함 — 대조군이 실재한다)`, JSON.stringify(r));
         if (r.act) { await page.mouse.move(q.x + 200, q.y); await sleep(300); }   // 분해는 움직이면 취소된다(종전 문)
