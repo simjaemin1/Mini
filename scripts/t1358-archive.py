@@ -18,11 +18,11 @@ for name,summary in S.items():
  assert json.loads((a.runs/(name+'.exit.json')).read_text())['exit']==0
  if not name.startswith('OFF'):
   assert summary['batchCalls']==0 and summary['maxMissingResidents']==0
- assert summary['minBodyRatio']>=1
+ if not name.startswith('OFF'):assert summary['minBodyRatio']>=1
  child=[]
  for seg in P['segs']:
   start=seg['from'];meta=json.loads((d/f'seg-{start}.json.t1274-meta.json').read_text())
-  assert meta['exitEventCode']==0 and not (meta.get('clock') or {}).get('errs')
+  assert meta['exitEventCode']==0 and isinstance(meta.get('clock'),dict) and meta['clock']['errs']==0 and meta['clock']['fired']>0 and meta['clock']['V']>=meta['clock']['V0']
   child.append(dict(start=start,exit=meta['exitEventCode'],clock=meta.get('clock'),cpu=meta.get('cpu'),uptime=meta.get('uptimeSeconds')))
  # The canonical t577 final JSON is an independent population end total.
  final=json.loads((d/f'{P["tag"]}-{P["seed"]}.json').read_text())
@@ -39,7 +39,7 @@ for name,summary in S.items():
  for tail in ['.launch.json','.exit.json','.guard.log']:
   f=a.runs/(name+tail)
   if f.exists():copy.append((f,dst/(f.name+'.gz')))
- validation[name]=dict(days=expected,segments=len(P['segs']),actualRunnerExit=0,observerErrors=summary['observerErrors'],minBodyRatio=summary['minBodyRatio'],maxMissingResidents=summary['maxMissingResidents'],children=child)
+ validation[name]=dict(days=expected,segments=len(P['segs']),actualRunnerExit=0,observerErrors=summary['observerErrors'],minBodyRatio=summary['minBodyRatio'],maxBodyGap=summary['maxBodyGap'],maxMissingResidents=summary['maxMissingResidents'],children=child)
 # Gate source is the final guarded product version; corrected touched selector is separate.
 gates=a.out/'gates';gates.mkdir(exist_ok=True)
 for f in (a.work/'ready-gates').iterdir():

@@ -44,14 +44,14 @@ L+=['','# T1358 — 몸 영토 말뚝 통나무 차례 · 같은 칸 진단과 1
  f"날 장부 단면에서 빈 줄인데 말뚝 수요가 남은 마을·날 수: BODY1020 {S['BODY-1020']['emptyQueuePositiveNeedVillageDays']} · A1020 {S['A-1020']['emptyQueuePositiveNeedVillageDays']} · BODY7 {S['BODY-7']['emptyQueuePositiveNeedVillageDays']} · A7 {S['A-7']['emptyQueuePositiveNeedVillageDays']}. 하루 사이 모든 틱의 갱신 시각을 판정한 수는 아니다.",'','## 3. 판 조건과 100·200·400날','',
  '**팔 구별:** BODY는 T1283·T1297·T1306까지 켠 T1329 진단 묶음 + T1329 크루다. T1329의 **1.048·0.904는 세 문을 끈 FIXB** 값이다. 이 둘을 동일 팔의 전후 효과로 비교하지 않는다. 본판은 카드의 출생 곳간 문 설명에 맞춘 팔이다. 조건 전부는 METHODS.md와 각 launch.json에 있다.','',
  'ⓑ·ⓒ의 주어진 차례는 BODY와 같다. A = BODY + ⓐ다. 1020은 각 400날 한 판의 단면이며, 7은 각 100날이다. 끔비 분모도 같은 시드·같은 날·같은 10날 재기동 자로 새로 잰 OFF다.','',
- '| 시드 | 팔 | 날 | 인구 | 끔비 | 영토 칸 | 몸 완공 | 말뚝 소비(완공+진행 중) | 완공 0 마을(당일 / 끝10날 평균) | 이탈 | 식량 빚 / 몸 굶음 | CPU 초/날(부팅 포함 / 마디 첫날 제외) |',
- '|---:|---|---:|---:|---:|---:|---:|---:|---|---:|---|---|']
+ '| 시드 | 팔 | 날 | 인구 | 실제 몸 | 끔비 | 영토 칸 | 몸 완공 | 말뚝 소비(완공+진행 중) | 완공 0 마을(당일 / 끝10날 평균) | 이탈 | 식량 빚 / 몸 굶음 | CPU 초/날(부팅 포함 / 마디 첫날 제외) |',
+ '|---:|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---|---|']
 for seed in [1020,7]:
  for day in ([100,200,400] if seed==1020 else [100]):
   for arm in ['OFF','BODY','A']:
    r=point(arm,seed,day);z='—' if r['zeroVillages'] is None else f"{r['zeroVillages']} / {r['zeroLast10Mean']:.1f}"
-   L.append(f"| {seed} | {arm} | {day} | {r['pop']:,} | {r['offRatio']:.3f} | {r['territory']:,} | {r['completed']:,} | {r['placedWood']:,.3f} | {z} | {r['emigrated']} | {r['debtDeaths']} / {r['bodyStarve']} | {r['cpuMeanAll']:.1f} / {r['cpuMeanSteady']:.1f} |")
-L+=['','- 식량 빚과 몸 굶음은 표현층이 달라 겹칠 수 있다. 둘을 더하지 않는다. 이탈은 실제 수락된 사람별 사건 수다.',
+   L.append(f"| {seed} | {arm} | {day} | {r['pop']:,} | {r['bodies']:,} | {r['offRatio']:.3f} | {r['territory']:,} | {r['completed']:,} | {r['placedWood']:,.3f} | {z} | {r['emigrated']} | {r['debtDeaths']} / {r['bodyStarve']} | {r['cpuMeanAll']:.1f} / {r['cpuMeanSteady']:.1f} |")
+L+=['',f"- OFF는 원본 `syncVillagePop`의 스폰 증분 제한 때문에 인구와 몸 수에 시간차가 있다. 최소 몸/인구 비율: 1020 {S['OFF-1020']['minBodyRatio']:.6f}, 7 {S['OFF-7']['minBodyRatio']:.6f}; 최대 인구−몸 차이: {S['OFF-1020']['maxBodyGap']}·{S['OFF-7']['maxBodyGap']}명. 이 원본 조건을 유지했고 실제 몸 수를 표에 함께 냈다. BODY/A는 상한 없는 1:1 동기화와 주민 id 짝까지 검증했다.",'- 식량 빚과 몸 굶음은 표현층이 달라 겹칠 수 있다. 둘을 더하지 않는다. 이탈은 실제 수락된 사람별 사건 수다.',
  '- 몸 팔의 일괄 호출은 0이어야 하며, 매일 보존된 몸 완공 누계와 별도 `_terrAdd` 확장 호출 누계가 같아야 한다. 검사 결과는 summary/source validation에 있다.',
  '- CPU는 존 프로세스 사용자+커널 실제 CPU다. 시드·팔별 인구가 달라지므로 전체 CPU 차를 가격 재계산 함수 하나의 단가로 해석하지 않는다. 관찰기 비용을 포함한다.','',
  '## 4. 1.30 문턱 — 100날과 400날의 답','',

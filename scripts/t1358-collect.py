@@ -57,13 +57,14 @@ for name in expected:
   allruns[name]=dict(done=False,days=0);continue
  assert not errors,(name,errors[:3])
  if not a.allow_live:
-  assert min(r['bodies']/r['pop'] for r in rows if r['pop'])>=1,(name,'body cap')
-  if name.split('-')[0]!='OFF':assert max(r['missingResidents'] for r in rows)==0,(name,'resident without linked physical body')
+  if name.split('-')[0]!='OFF':
+   assert min(r['bodies']/r['pop'] for r in rows if r['pop'])>=1,(name,'body cap')
+   assert max(r['missingResidents'] for r in rows)==0,(name,'resident without linked physical body')
  if not a.allow_live:
   assert len(rows)==P['days'] and len(P['segs'])==(P['days']+P['every']-1)//P['every']
   assert all(s['code']==0 for s in P['segs'])
   assert len(meta)==len(P['segs'])
-  assert all(m['exitEventCode']==0 and not (m.get('clock') or {}).get('errs') for m in meta)
+  assert all(m['exitEventCode']==0 and isinstance(m.get('clock'),dict) and m['clock']['errs']==0 and m['clock']['fired']>0 and m['clock']['V']>=m['clock']['V0'] for m in meta)
  points={}
  for day in [100,200,400]:
   R=next((r for r in rows if r['day']==day),None)
@@ -88,7 +89,7 @@ for name in expected:
  last=rows[-1]
  allruns[name]=dict(done=P.get('done'),days=last['day'],target=P['days'],pop=last['pop'],points=points,
   cpuMeanAll=statistics.mean(r['cpuSeconds'] for r in rows),completed=last['completed'],completedWood=last['completedWood'],
-  minBodyRatio=min(r['bodies']/r['pop'] for r in rows if r['pop']),maxMissingResidents=max(r['missingResidents'] for r in rows) if name.split('-')[0]!='OFF' else None,batchCalls=last['batchCalls'],observerErrors=len(errors),
+  minBodyRatio=min(r['bodies']/r['pop'] for r in rows if r['pop']),maxBodyGap=max(r['pop']-r['bodies'] for r in rows),maxMissingResidents=max(r['missingResidents'] for r in rows) if name.split('-')[0]!='OFF' else None,batchCalls=last['batchCalls'],observerErrors=len(errors),
   segments=P.get('segs'),clockExitMeta=meta,
   emptyQueuePositiveNeedVillageDays=sum(r['emptyQueueWithNeed'] or 0 for r in rows),villageWorst=sorted([dict(village=n,zeroDays=zeroDays[n],maxConsecutiveZero=worstZero[n],completed=villast[n]) for n in villast],key=lambda r:(-r['maxConsecutiveZero'],r['completed'])))
  dailyout.extend(rows)

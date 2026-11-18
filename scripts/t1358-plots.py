@@ -44,7 +44,7 @@ for seed in [1020,7]:
  axes[2].set_yscale('symlog',linthresh=1)
  axes[2].set_ylim(bottom=0)
  axes[3].set_ylim(-1,52)
- titles=['Economic population (all bodies retained)','Population / same-day OFF','Physical completions per day (symlog)','Villages with zero completions that day','Stakes: completed cells; x = all placed incl. pending','Process CPU sec/day (raw faint; 10-day mean)']
+ titles=['Economic population','Population / same-day OFF','Physical completions per day (symlog)','Villages with zero completions that day','Stakes: completed cells; x = all placed incl. pending','Process CPU sec/day (raw faint; 10-day mean)']
  for ax,title in zip(axes,titles):
   ax.set_title(title,loc='left',fontsize=10);ax.grid(axis='y',alpha=.2)
   for day in [100,200,400]:
