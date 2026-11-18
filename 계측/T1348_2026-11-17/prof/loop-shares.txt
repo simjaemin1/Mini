@@ -1,0 +1,2 @@
+day samples 17504 loop 904 loop:904(100%) step:596(66%) decide:304(34%) life:237(26%) stepself:160(18%) walkfns:132(15%) loopself/other:109(12%) ss.slot:93(10%) date:57(6%) skip:37(4%) grant:12(1%)
+night samples 17611 loop 198 loop:198(100%) step:79(40%) skip:39(20%) loopself/other:37(19%) decide:35(18%) stepself:34(17%) life:28(14%) ss.slot:24(12%) grant:11(6%) walkfns:10(5%) date:8(4%)

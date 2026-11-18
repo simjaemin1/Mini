@@ -1,0 +1,9 @@
+A 종전(Set · 칸 Map · players.get): 33.7 ns/몸
+A 종전 + players 하위 클래스: 46.1 ns/몸
+B 칸 번호 배열 + 열: 4.6 ns/몸
+A 종전(다시): 30.0 ns/몸
+B 칸 번호 배열(다시): 4.7 ns/몸
+Map.get: 13.0 ns
+PM.get: 13.6 ns
+Map.get: 13.1 ns
+PM.get: 13.2 ns

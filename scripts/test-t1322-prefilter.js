@@ -21,7 +21,7 @@ let fCmp = fn('function computeNpcPath(npc, now) {');
 fCmp = fCmp.slice(0, fCmp.indexOf('  const isVil')) + '  return [{ x: npc.targetX + 3, y: npc.targetY - 2 }, { x: npc.targetX, y: npc.targetY }];\n}\n';   // 48px 밖 = 두 점 길(결정적 대역)
 const PARTS = [line('function _t671Lt('), line('function _t671Gt('), line('function _t670Stuck(npc, now)'), fn('function detectStuck(npc, now) {'), fn('function followNpcPath(npc, speedMult) {'),
   fn('function _t791Mir(npc) {'), fCmp, fn('function npcStep(npc, dt, now) {'),
-  fn('function _t1322State(npc) {'), fn('function _t1322Grant(npc, now) {'), fn('function _t1322Wake(s) {'), line('function _t1322Touch(p)'), line('function _t1322FlushAll()'),
+  fn('function _t1322State(npc) {'), fn('function _t1322Grant(npc, now, s0) {'), fn('function _t1322Wake(s) {'), line('function _t1322Touch(p)'), line('function _t1322FlushAll()'),
   line('let _t1322PhNow = NaN'), fn('function _t1322Dusk(s, now) {'), fn('function _t1322Skip(s, pid, now) {'), fn('function _t1322Check(npc, s, now) {')];
 const SRC0 = PARTS.join('\n');
 const DAY = 240000, RATIO = 0.7, EPOCH = 1000;
@@ -29,7 +29,7 @@ const loadSS = (mode) => { const m = { exports: {} }; vm.runInThisContext('(func
 function world(mode, src) {
   const SS = loadSS(mode), PF = SS.ON;
   const ctx = {
-    Math, Object, Number, Infinity, NaN, console, SS, T1322_PF: PF, T1322_VERIFY: PF && SS.VERIFY, T1337_WAKE: false, players: new Map(), _tick: { n: 0 },   // ★[T1337] 잠 깨움(끔 — 그 하네스는 `test-t1337-wake`)
+    Math, Object, Number, Infinity, NaN, console, SS, T1322_PF: PF, T1322_VERIFY: PF && SS.VERIFY, T1337_WAKE: false, T1348_LOOP: false, T1348_WALK: false, T1348_WVERIFY: false, T1348_WORK: false, players: new Map(), _tick: { n: 0 },   // ★[T1337] 잠 깨움(끔 — 그 하네스는 `test-t1337-wake`)
     T738_SOA_XY: false, T670_SKIP_IDLE: true, T791_VERIFY: false, SIM_LON_ON: true, T720_LON_DAY: true, T370_PATH_REUSE: false, T1294_ARRIVED_PATH: false, T791_PATH_MIR: true,
     MOVE_SPEED: 64, NPC_WALK_MULT: 1, GATHER_RANGE: 40, WORLD: { dayPhaseRatio: RATIO }, resources: new Map(),
     worldPhase: (now) => ((now / DAY) % 1 + 1) % 1, phaseAdd: (a, b) => { const v = (a + b) % 1; return v < 0 ? v + 1 : v; },
@@ -137,8 +137,8 @@ const R3 = run(SRC0, 'verify', 1000, 400, {});
 ok(R3.diffTick === 0 && R3.diffFull === 0 && R3.st.vchecks > 0 && R3.st.bad === 0, '`verify` — 거를 때마다 몸을 열어 다시 판정 · 어긋남 0 · 끔과 같음', `견줌 ${R3.st.vchecks} · 어긋남 ${R3.st.bad} · 몸 칸 ${R3.diffTick}/${R3.diffFull}`);
 console.log('\n④ 미끼');
 {
-  const a = "!(now < A.NDA[s]) ? ((A.DS[s] && _t1337Dec(s, now)) ? null : 'due') : ";   // ★[T1337] 결정 시각 갈래(잠 깨움 표 몸은 `_t1337Dec`)
-  const baitA = SRC0.replace(a, '');
+  const a = "  if (!why && !(now < A.NDA[s])) why = ";   // ★[T1337 · T1348] 결정 시각 갈래(잠 · 일터 깨움 표 몸은 결정 문까지) — 그 줄 머리를 `if (false)` 로(뒤 `else if` 해 질 녘 갈래는 산다)
+  const baitA = SRC0.replace(a, '  if (false) why = ');
   ok(baitA !== SRC0, 'ⓐ 결정 시각이 된 몸을 거르는 사본을 지었다');
   const RA = run(baitA, '1', 300, 300, { stepCheck: true });
   ok(RA.stepBad > 0 && (RA.diffTick > 0 || RA.diffFull > 0), 'ⓐ ① · ② 가 문다(빨강)', `① ${RA.stepBad}${RA.stepBadEx ? ' · ' + RA.stepBadEx : ''} · ② ${RA.diffTick}/${RA.diffFull}`);
@@ -149,10 +149,10 @@ console.log('\n④ 미끼');
 }
 console.log('\n⑤ 존 배선 글자');
 {
-  const dec = Z.slice(Z.indexOf('  const _decOne = (pid) => { do {'), Z.indexOf('  } while (false); return _stopAt !== null; };'));
-  const iSkip = dec.indexOf('if (T1322_PF) { const _s22 = SS.slot(pid); if (_s22 >= 0 && _t1322Skip(_s22, pid, now))'), iGet = dec.indexOf('    const npc = players.get(pid);');
+  const dec = Z.slice(Z.indexOf('  const _decOne = (pid, _sL) => { do {'), Z.indexOf('  } while (false); return _stopAt !== null; };'));
+  const iSkip = dec.indexOf('if (T1322_PF) { const _s22 = _sL !== undefined ? _sL : SS.slot(pid); if (_s22 >= 0 && _t1322Skip(_s22, pid, now))'), iGet = dec.indexOf('    const npc = players.get(pid);');
   ok(iSkip > 0 && iGet > iSkip && dec.indexOf("if (!_curHit) { if (pid !== _npcCursor) continue; _curHit = true; }") < iSkip, '거름은 커서 다음 · `players.get` 앞(몸을 안 연다)');
-  ok(/    (?:else )?npcStep\(npc, dt, now\);\n(?:    if \(_t1337Pend && _t1337Pend\.p === npc\) _t1337Cmp\(npc\);[^\n]*\n)?    if \(T1322_PF\) _t1322Grant\(npc, now\);/.test(dec)   /* ★[PM land1077] T1316 토막 갈래(`_K95 > 1` … `else npcStep`)와 만난 자리 — 표는 여전히 토막 걸음을 다 마친 뒤 */ && /_desTimed\(npc, dt, now\); (?:if \(_t1337Pend && _t1337Pend\.p === npc\) _t1337Cmp\(npc\); )?if \(T1322_PF\) _t1322Grant\(npc, now\); continue;/.test(dec), '표는 진짜 걸음 뒤(두 길 — 계측 시계 길 포함)');
+  ok(/    (?:else )?npcStep\(npc, dt, now\);\n(?:    if \(_t1337Pend && _t1337Pend\.p === npc\) _t1337Cmp\(npc\);[^\n]*\n)?(?:    if \(_t1348Pend && _t1348Pend\.p === npc\) _t1348Cmp\(npc\);[^\n]*\n)?    if \(T1322_PF\) _t1322Grant\(npc, now, _sL\);/.test(dec)   /* ★[PM land1077] T1316 토막 갈래(`_K95 > 1` … `else npcStep`)와 만난 자리 — 표는 여전히 토막 걸음을 다 마친 뒤 */ && /_desTimed\(npc, dt, now\); (?:if \(_t1337Pend && _t1337Pend\.p === npc\) _t1337Cmp\(npc\); )?(?:if \(_t1348Pend && _t1348Pend\.p === npc\) _t1348Cmp\(npc\); )?if \(T1322_PF\) _t1322Grant\(npc, now, _sL\); continue;/.test(dec), '표는 진짜 걸음 뒤(두 길 — 계측 시계 길 포함)');
   ok(/_desStat\.steps\+\+; _desStat\.nStep\+\+; \} else if \(_T1241\) _desStat\.steps\+\+; continue;/.test(dec), '건넌 몸도 걸음 셈(몸 탐침 `steps` · `nStep`)은 종전대로');
   const sep = fn('function sepNpcs(dt) {'), ww = fn('function _wwPost(p, i) {'), hp = fn('function setHp(p, v, why) {');
   ok(sep.indexOf('if (T1322_PF) _t1322Touch(p);') > 0 && sep.indexOf('if (T1322_PF) _t1322Touch(p);') < sep.indexOf('else p.x = nx;'), '밀기 — 옮기기 전에 표를 내린다');

@@ -1,0 +1,46 @@
+total samples 134045 avg us 10217
+decideNpcBehavior incl 1417 1.06 %
+self 117
+     1092  77.1% npcLifeTick:18173@villages.js
+      116   8.2% queryCircle:81@quadtree.js
+       44   3.1% zoneGameDay:10173@zone.js
+       14   1.0% _t394OpenTarget:4592@zone.js
+        8   0.6% seedOf:38@seed-rand.js
+        7   0.5% t1295S:13537@villages.js
+        3   0.2% _lifeJobSites:14775@villages.js
+        2   0.1% pidHash:33@seed-rand.js
+        2   0.1% _isPositionActiveBM:1219@zone.js
+        2   0.1% next:61@seed-rand.js
+        1   0.1% _shOf:60@zone.js
+        1   0.1% seed:60@seed-rand.js
+        1   0.1% _physicalStoneWork:12504@villages.js
+        1   0.1% _t312EconNpc:11918@villages.js
+        1   0.1% fishActOn:3080@economy-sim.js
+        1   0.1% _lifeGoHome:12684@villages.js
+        1   0.1% _farmDay:13331@villages.js
+        1   0.1% _otRole:18761@villages.js
+        1   0.1% (anon):18549@villages.js
+        1   0.1% isTerrainBlockedLocal:2357@zone.js
+self lines [(4461, 68), (4535, 8), (4435, 6), (60, 4), (4544, 4), (4476, 3), (4425, 3), (73, 3), (4433, 3), (4417, 2), (10173, 2), (4532, 1), (74, 1), (61, 1), (4464, 1)]
+== npcLifeTick incl 1092 self 345
+      164  15.0% _t340Try:12095@villages.js
+      128  11.7% _t1181Step:16542@villages.js
+       93   8.5% _lifeNeedClear:14896@villages.js
+       80   7.3% _t312Catch:12253@villages.js
+       41   3.8% _isPositionActiveBM:1219@zone.js
+       37   3.4% _t400BodyStep:15871@villages.js
+       34   3.1% _lifeJobSites:14775@villages.js
+       22   2.0% (anon):18549@villages.js
+       20   1.8% _lifeNextFarmCell:13809@villages.js
+       18   1.6% _t720Step:16071@villages.js
+       13   1.2% _t1144Units:12083@villages.js
+       11   1.0% _t1196Step:18700@villages.js
+       11   1.0% _otRole:18761@villages.js
+       11   1.0% _lifeOtherIndex:18769@villages.js
+        8   0.7% _physicalStoneWork:12504@villages.js
+        7   0.6% noteNow:579@lots.js
+        7   0.6% _handOf:11858@villages.js
+        6   0.5% _lifeAct:12681@villages.js
+        3   0.3% note:36@fish-goods.js
+        3   0.3% _t724BodyStep:6960@villages.js
+self lines [(18188, 70), (11858, 21), (18213, 19), (18233, 16), (18224, 15), (18214, 10), (18561, 9), (18284, 9), (18306, 8), (18483, 8), (18215, 8), (18421, 7)]
