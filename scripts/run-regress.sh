@@ -52,7 +52,8 @@ TIMEOUT_SEC="${TIMEOUT_SEC:-2400}"
 #   ★[T830 2026-10-21 · PM 10-20 결정] 칠하기 끔(T799 · `fixture-lab-clock` `noPaint`) 뒤 두 판에 `@regress` 를 다시 붙였다 — 전수·야간 단위에 든다 · 이 표(3,600초)는 그대로.
 #   ★[T1121 2026-11-03] 지금 판(2코어 · 혼자): mining 1,601 → 1,018초(표시만 하는 토글 둘 끔 · `leanDraw`) · psite 1,105 → 664초(판 넷 둘씩 나란히). 이 표(3,600초)는 그대로.
 # T1170: 기본 세계 채광 창 90날 — 종전 끔 세계 60날의 상한을 늘린다.
-declare -A TIMEOUT_OF=( [test-lab-mining.js]=7200 [test-lab-psite.js]=3600 )
+# ★[T1356 2026-11-18] `test-t1322-verify-night` — 30날 판(홀로 1,827초 · +30일 판 -j4 2,373초)에 미끼 짧은 판(2날)이 붙어 기본 2,400초를 넘었다(touched 판 RC=124). 3,600초.
+declare -A TIMEOUT_OF=( [test-lab-mining.js]=7200 [test-lab-psite.js]=3600 [test-t1322-verify-night.js]=3600 )
 FAILED=()
 PASSED=()
 # ★[T1339] 유보 — 하네스가 RC 75(`lib-wait-day.YUBO_RC`)로 끝나면 "느린 판 · 기계 의존"(게임일 상한 · 같은 조건 잡음 안의 판정)이다(빨강 0 · 유보만). 실패 목록 밖 · 통과 목록 밖에 따로 센다.
