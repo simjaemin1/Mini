@@ -1,0 +1,54 @@
+=== 저장 순간 V 1767225604999.9878 날 20 ↔ 다시 뜬 첫 틱 V 1767225604999.9878 날 20 · 몸 51(pid 같음 51) ===
+
+[몸] 갈린 칸 4 / 132
+  playerId               갈림 51/51  광산1#0: string:npc_hanba "npc_hanbando_1_14ck" → string:npc_hanba "npc_hanbando_1_0uoh"
+  _stuckPos              갈림 39/51  광산1#0: cbc59ce6d31de892 {x:68089.93888838137,y:67447.36143418678,at:1767225604666.6553,} → a3fcfefa865af5c7 {x:68085.27188556425,y:67428.73728092539,at:1767225604966.6545,}
+  _t540StepAt            갈림 39/51  광산1#0: #1767225604699.9 1767225604699.9885 → #1767225604966.6 1767225604966.6545
+  _pathAt                갈림 33/51  광산4#0: #1767225604733.3 1767225604733.3218 → #1767225604966.6 1767225604966.6545
+
+[몸 수] 갈린 칸 0 / 1
+
+[서버 마을] 갈린 칸 0 / 77
+
+[econ 마을] 갈린 칸 8 / 143
+  _t728Game              갈림 0/0 · 다시 뜬 쪽에만 51  광산1: ∅ → u u
+  _t728LtdOwn            갈림 0/0 · 다시 뜬 쪽에만 51  광산1: ∅ → u u
+  _t728LtdSrv            갈림 0/0 · 다시 뜬 쪽에만 51  광산1: ∅ → u u
+  _t732Lots              갈림 0/0 · 다시 뜬 쪽에만 51  광산1: ∅ → u u
+  _t740Side              갈림 0/0 · 다시 뜬 쪽에만 51  광산1: ∅ → u u
+  _t747Body              갈림 0/0 · 다시 뜬 쪽에만 51  광산1: ∅ → u u
+  _t728BaseOre           갈림 0/0 · 다시 뜬 쪽에만 13  광산1: ∅ → u u
+  _t728HuntWk            갈림 0/0 · 다시 뜬 쪽에만 7  광산3: ∅ → u u
+
+[econ 세계] 갈린 칸 5 / 37
+  _capTransit            갈림 0/0 · 저장에만 1  world: 6dcd4ce23d88e2ee A0[] → ∅
+  _pullStats             갈림 0/0 · 저장에만 1  world: 1461572f08ff534d {crisisReturns:25,crisisFoodReturns:24,} → ∅
+  _t707Stat              갈림 0/0 · 저장에만 1  world: db2ef676a3e367d3 {settled:380,days:18,} → ∅
+  _tradeAudit            갈림 0/0 · 저장에만 1  world: 77ea0527c952302c {n:428,rs:A428[1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1.053,1. → ∅
+  tradeLog               갈림 1/1  world: 0e0c661167b08cef A397[{day:3,from:"광산4",to:"농촌15",sent:{res:"fish",amt:3.48,pAtFrom:0.01,pAtTo:130.14,},bought:{res:"herb",amt:3.29,},distance:2532,escort:0,rai → 6dcd4ce23d88e2ee A0[]
+
+[서버 state] 갈린 칸 24 / 66
+  _distBasis             갈림 1/1  state: 7632dbd07cd4358a {coords:A51[A2[5300,5292.5,],A2[5017.5,545,],A2[3562.5,1985,],A2[3212.5,3325,],A2[3240,5902.5,],A2[2787.5,7280,],A2[567.5,7695,],A2[5095,7747.5 → 572745fbd86c59db {coords:A51[A2[5300,5292.5,],A2[5017.5,545,],A2[3562.5,1985,],A2[3212.5,3325,],A2[3240,5902.5,],A2[2787.5,7280,],
+  _ltdByName             갈림 0/0 · 저장에만 1  state: 5813c7f4b0302dfc M51{"광산1"=#e광산1,"광산2"=#e광산2,"광산3"=#e광산3,"광산4"=#e광산4,"어촌1"=#e어촌1,"광산5"=#e광산5,"광산6"=#e광산6,"광산7"=#e광산7,"어촌2"=#e어촌2,"임업1"=#e임업1,"임업2"=#e임업2,"임업3"=# → ∅
+  _route                 갈림 1/1  state: 77ceb54b0862fbc9 {ta:{isBlocked:ƒ,isWater:ƒ,isRock:ƒ,isOre:ƒ,isBridgeCell:ƒ,oreMinerals:ƒ,oreMix:ƒ,forestMult:ƒ,fert:ƒ,elev:ƒ,nearestWaterDist:ƒ,prepareFert:ƒ,f → object:null null
+  _routeBootAt           갈림 1/1  state: #1767225600000 1767225600000 → #1767225604971.6 1767225604971.6545
+  _routePrimed           갈림 1/1  state: #0 0 → #1275 1275
+  _routePrimedKeys       갈림 1/1  state: 02aa629c8b16cd17 S0{} → 049ddbe8ede4b89b S1275{"10_11","10_12","10_13","10_14","10_15","10_16","10_17","10_18","10_19","10_20","10_21","10_22","10_23","10_24","10_25","10_26","10_27","
+  _t527Sites             갈림 0/0 · 저장에만 1  state: 6dcd4ce23d88e2ee A0[] → ∅
+  _t775                  갈림 0/0 · 저장에만 1  state: 64dcb4b4019753c4 {q:A0[],done:true,} → ∅
+  _walkJobs              갈림 0/0 · 저장에만 1  state: c63ae6dd4fc9f9dd M0{} → ∅
+  clientPayload          갈림 1/1  state: b4556b6054039f4e A51[{id:1,name:"광산1",cx:2120,cy:2117,pop:17,r:1526,b:A591[27,-5,2,27,-4,2,27,-6,2,27,-3,2,27,-7,2,27,-2,2,27,-8,2,27,-1,2,27,-9,2,27,0,2,27,-10 → 27a1dea6cb51156b A51[{id:1,name:"광산1",cx:2120,cy:2117,pop:17,r:1526,b:A591[27,-5,2,27,-4,2,27,-6,2,27,-3,2,27,-7,2,27,-2,2,27,-8,2
+  econ                   갈림 1/1  state: fef3831e9597111c {T1259_WOOD_CAP:false,setT1259WoodReader:ƒ,T1271_ORE_CAP:false,setT1271OreReader:ƒ,jobCapacity:ƒ,T1192_FISH_SPECIES:true,FishGoods:{ON:true,bod → 051bdb278b88120e {T1259_WOOD_CAP:false,setT1259WoodReader:ƒ,T1271_ORE_CAP:false,setT1271OreReader:ƒ,jobCapacity:ƒ,T1192_FISH_SPECI
+  ledger                 갈림 1/1  state: 11ef2eca55d98853 {cfg:{SHORT_DAYS:5,GLUT_DAYS:45,HYST:1.6,PRICE_WIN:30,PRICE_UP:0.9,PRICE_DOWN:0.9,PRICE_MIN:0.05,LATE_DAYS:1,KEEP_DAYS:90,MAX_DAY:0,REQ_DAYS:1, → 15bc53bf35adc38d {cfg:{SHORT_DAYS:5,GLUT_DAYS:45,HYST:1.6,PRICE_WIN:30,PRICE_UP:0.9,PRICE_DOWN:0.9,PRICE_MIN:0.05,LATE_DAYS:1,KEEP
+  roads                  갈림 1/1  state: 4ed7c68e7c6b21be {SPD:A3[1,1.1,1.15,],setEconDay:ƒ,dayTick:ƒ,roadDayPerf:ƒ,retouchCell:ƒ,unpaveSoonKeys:ƒ,init:ƒ,onGameTick:ƒ,stampCell:ƒ,stampEntityPx:ƒ,speedM → ae26e8470cc428a7 {SPD:A3[1,1.1,1.15,],setEconDay:ƒ,dayTick:ƒ,roadDayPerf:ƒ,retouchCell:ƒ,unpaveSoonKeys:ƒ,init:ƒ,onGameTick:ƒ,stam
+  routeCache             갈림 1/1  state: 5446700511a07225 M1275{"1_2"=A510[{x:67856,y:67760,},{x:67920,y:67792,},{x:67920,y:67664,},{x:67920,y:67536,},{x:67920,y:67408,},{x:67920,y:67280,},{x:67920,y:6 → 82df8df7014d1b6d M1275{"10_11"=A107[{x:28528,y:112528,},{x:28624,y:112592,},{x:28752,y:112464,},{x:28752,y:112336,},{x:28880,y:112
+  routeWarmQ             갈림 1/1  state: 0c144b8f4e790e2c A594[A2[#v1,#v12,],A2[#v1,#v29,],A2[#v1,#v22,],A2[#v1,#v5,],A2[#v1,#v8,],A2[#v1,#v4,],A2[#v1,#v51,],A2[#v1,#v6,],A2[#v1,#v11,],A2[#v1,#v19,],A2 → 6dcd4ce23d88e2ee A0[]
+  routeWarmTotal         갈림 1/1  state: #594 594 → #0 0
+  saveQueue              갈림 0/0 · 저장에만 1  state: 7051388340bd8cb3 A51[#v1,#v2,#v3,#v4,#v5,#v6,#v7,#v8,#v9,#v10,#v11,#v12,#v13,#v14,#v15,#v16,#v17,#v18,#v19,#v20,#v21,#v22,#v23,#v24,#v25,#v26,#v27,#v28,#v29,#v3 → ∅
+  tickCtx                갈림 0/0 · 저장에만 1  state: object:null null → ∅
+  tickJobs               갈림 0/0 · 저장에만 1  state: object:null null → ∅
+  walkCache              갈림 1/1  state: 698b28e0b81c5872 M249{"4_44"={coarse:A217[{x:41136,y:42576,},{x:41168,y:42704,},{x:41040,y:42704,},{x:40912,y:42576,},{x:40784,y:42576,},{x:40656,y:42448,},{x:4 → 9143e74d0d652673 M249{"4_44"={coarse:A217[{x:41136,y:42576,},{x:41168,y:42704,},{x:41040,y:42704,},{x:40912,y:42576,},{x:40784,y:4
+  _t1034Saved            갈림 0/0 · 다시 뜬 쪽에만 1  state: ∅ → c63ae6dd4fc9f9dd M0{}
+  _t1340R                갈림 0/0 · 다시 뜬 쪽에만 1  state: ∅ → bf0b7511602867d3 {at:1767225604971.6545,npc:M986{{id:"n385",age:26.05479452054793,currentJob:"farmer",skills:{farming:0,fishing:0,hunting:0,woodworking:0,mining
+  _t1340Restamp          갈림 0/0 · 다시 뜬 쪽에만 1  state: ∅ → boolean:false false
+  _t1372Car              갈림 0/0 · 다시 뜬 쪽에만 1  state: ∅ → object:null null

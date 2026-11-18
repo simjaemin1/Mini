@@ -1,0 +1,20 @@
+=== A V 1767225602499.994 날 10 ↔ B V 1767225602499.994 날 10 · 캐러밴 A 57 · B 57 · 둘 다 57(pid 같음 57) · A 에만 0 · B 에만 0 ===
+    가장 큰 pid A 350 · B 350 · 첫 거름 칸 수 A 350 · B 148 · 표 든 몸 A 108 {"0":57,"1":45,"3":6} · B 108 {"0":57,"1":45,"3":6}
+
+[캐러밴 몸] 갈린 칸 0 / 25
+
+[상인 몸] 갈린 칸 1 / 132
+  playerId           갈림 57/57  #151: "npc_hanbando_254_0csw" → "npc_hanbando_254_f0iy" ‖ #152: "npc_hanbando_255_ut09" → "npc_hanbando_255_4fnr"
+
+[호위 몸] 갈린 칸 1 / 132
+  playerId           갈림 40/40  #154.0: "npc_hanbando_258_mox4" → "npc_hanbando_258_h1rv" ‖ #155.0: "npc_hanbando_260_v1mf" → "npc_hanbando_260_ftrl"
+
+[호위 기록] 갈린 칸 0 / 7
+
+[첫 거름 표] 갈린 칸 0 / 34
+
+[모듈 객체] 몹 A 449 · B 449
+  ledger   칸 11 · 갈림 3 · A 에만 0 · B 에만 0  rumorStats 1 · stats 1 · vids 1
+  roads    칸 3 · 갈림 1 · A 에만 0 · B 에만 0  _S 1
+  payload  칸 510 · 갈림 0 · A 에만 51 · B 에만 0  wx 51
+  mobs     칸 9878 · 갈림 450 · A 에만 0 · B 에만 0  homeX 150 · homeY 150 · packId 150
