@@ -31,6 +31,16 @@ for (const id of [...ids].sort((p, q) => p - q)) {
 const ssP = new Set([...Object.keys(X.ss), ...Object.keys(Y.ss)]);
 let ssBoth = 0;
 for (const pid of ssP) { const x = X.ss[pid], y = Y.ss[pid]; if (x && y) ssBoth++; cmpObj('첫 거름 표', x || { TK: '(없음)' }, y || { TK: '(없음)' }, pid); }
+//   모듈 객체 — 모듈마다 칸 수 · 갈린 칸 · 한쪽에만(칸 이름의 앞 조각 = 마을 · 몹 번호는 떼고 칸 이름으로 묶는다)
+const MODS = {};
+if (X.mods && Y.mods) for (const m of ['ledger', 'roads', 'payload', 'mobs']) {
+  const x = X.mods[m] || {}, y = Y.mods[m] || {}, R = MODS[m] = { keys: 0, diff: 0, onlyA: 0, onlyB: 0, byField: {} };
+  for (const k of new Set([...Object.keys(x), ...Object.keys(y)])) {
+    R.keys++; const f = m === 'payload' || m === 'mobs' ? k.slice(k.indexOf('.') + 1) : k;
+    const d = x[k] === undefined ? 'onlyB' : y[k] === undefined ? 'onlyA' : x[k] !== y[k] ? 'diff' : null;
+    if (d) { R[d]++; R.byField[f] = (R.byField[f] || 0) + 1; }
+  }
+}
 const tk = (S) => { const c = {}; for (const r of Object.values(S.ss)) c[r.TK] = (c[r.TK] || 0) + 1; return JSON.stringify(c); };
 console.log(`=== A V ${X.V} 날 ${X.day} ↔ B V ${Y.V} 날 ${Y.day} · 캐러밴 A ${Object.keys(X.cars).length} · B ${Object.keys(Y.cars).length} · 둘 다 ${both}(pid 같음 ${pidSame}) · A 에만 ${onlyA.length}${onlyA.length ? ' ' + onlyA.slice(0, 8).join(',') : ''} · B 에만 ${onlyB.length}${onlyB.length ? ' ' + onlyB.slice(0, 8).join(',') : ''} ===`);
 console.log(`    가장 큰 pid A ${X.maxPid} · B ${Y.maxPid} · 첫 거름 칸 수 A ${X.ssN} · B ${Y.ssN} · 표 든 몸 A ${Object.keys(X.ss).length} ${tk(X)} · B ${Object.keys(Y.ss).length} ${tk(Y)}`);
@@ -41,4 +51,5 @@ for (const g of Object.keys(T)) {
   console.log(`\n[${g}] 갈린 칸 ${rows.length} / ${Object.keys(T[g]).length}`);
   for (const [k, p] of rows.slice(0, 40)) console.log(`  ${k.padEnd(18)} 갈림 ${p.diff}/${p.both}${p.onlyA ? ` · A 에만 ${p.onlyA}` : ''}${p.onlyB ? ` · B 에만 ${p.onlyB}` : ''}  ${p.ex.map((e) => `${e[0]}: ${e[1]} → ${e[2]}`).join(' ‖ ')}`);
 }
+if (Object.keys(MODS).length) { console.log(`\n[모듈 객체] 몹 A ${X.mods.mobN} · B ${Y.mods.mobN}`); for (const [m, R] of Object.entries(MODS)) console.log(`  ${m.padEnd(8)} 칸 ${R.keys} · 갈림 ${R.diff} · A 에만 ${R.onlyA} · B 에만 ${R.onlyB}  ${Object.entries(R.byField).sort((p, q) => q[1] - p[1]).slice(0, 12).map(([f, n]) => f + ' ' + n).join(' · ')}`); out.mods = MODS; }
 if (opt('json', null)) fs.writeFileSync(opt('json'), JSON.stringify(out, null, 1));

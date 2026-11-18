@@ -50,6 +50,13 @@ function dump(st, tag) {
   }
   for (const v of (st.villages || [])) for (const pid of (v.npcPids || [])) { out.bodies++; const r = ssRow(pid); if (r && (r.TK !== '0' || r.DS !== '0')) out.ss[pid] = r; }
   if (B) for (const [, b] of B) { const r = ssRow(b.pid); if (r) out.ss[b.pid] = r; }
+  //   모듈 객체(카드 4 — 고침 안 · 표만): 사건 장부 · 길 닳음 · 클라 영토 페이로드 · 짐승(몹) — 칸마다 정규화 값
+  const M = out.mods = {};
+  const fl2 = (o) => { const r = {}; if (!o) return r; for (const k of Object.keys(o).sort()) { const v = o[k]; if (typeof v === 'function') continue; r[k] = norm(v, 1).slice(0, 4000); } return r; };
+  M.ledger = fl2(st.ledger); M.roads = fl2(st.roads);
+  M.payload = {}; for (const [i, v] of (st.clientPayload || []).entries()) for (const [k, w] of Object.entries(fl2(v))) M.payload[(v && v.name || i) + '.' + k] = w;
+  const mobs = st.deps && st.deps.mobs; M.mobs = {}; M.mobN = mobs ? mobs.size : 0;
+  if (mobs) for (const [mid, m] of mobs) for (const [k, w] of Object.entries(fl2(m))) M.mobs[mid + '.' + k] = w;
   return out;
 }
 {
