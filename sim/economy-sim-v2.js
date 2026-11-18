@@ -257,12 +257,17 @@ if(T1188_ORE_SPLIT){
 // === 계절 시스템 ===
 //   v2 r7: 진폭 축소 — 인구 cycle 진동 완화. 평년 평균 = 1.0 유지.
 const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+// ★★[T1373 ⑤ 2026-11-18 · ★재민 11-18 "애초에 계절별로 나는 작물이 정해져 있잖아"] 손잡이 `T1373_NO_SEASON_YIELD`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트) —
+//   켜면 아래 계절 배수를 전부 1 로(겨울 지력 0.80 · 물 0.85 · 사냥감 0.90 · 나무 0.90 등 · 날씨 · 풍흉 배수는 그대로). 작물 철(`T1179_CROP_SEASON` — 작물마다 심는 달 · 익는 날)과
+//   실제 밭(`T1243_FARM_ON`)이 겨울을 따로 내므로 둘을 켠 세계에서 이 배수는 겨울을 두 번 센다(보고 T1373 §5 — 켤지는 재민).
+const T1373_NO_SEASON_YIELD = (typeof process !== 'undefined' && process.env && process.env.T1373_NO_SEASON_YIELD === '1');
 const SEASON_MULT = {
   spring: { fertility: 1.10, water: 1.0, game: 1.05, wood: 1.0, stone: 1.0, ore: 1.0 },
   summer: { fertility: 1.0, water: 1.15, game: 1.0, wood: 1.05, stone: 1.0, ore: 1.0 },
   autumn: { fertility: 1.15, water: 0.95, game: 1.0, wood: 1.0, stone: 1.0, ore: 1.0 },
   winter: { fertility: 0.80, water: 0.85, game: 0.90, wood: 0.90, stone: 0.95, ore: 0.95 },
 };
+if (T1373_NO_SEASON_YIELD) for (const _s of SEASONS) for (const _k of Object.keys(SEASON_MULT[_s])) SEASON_MULT[_s][_k] = 1;   // ★[T1373 ⑤] 켬 = 네 철 여섯 칸 다 1(위 표 글자는 그대로 — `test-t931-slotk-ema` 가 글자에서 읽는다)
 // ★★[T570 재민 10-02] 계절 = **달력 정본** `server/calendar.js` 의 달(기상청 봄 3~5 · 여름 6~8 · 가을 9~11 · 겨울 12~2 ·
 //   게임일 0 = 1년 3월 1일 · 윤년 4/100/400) — 이 줄 하나가 econ 의 계절이다(사본 0 · `events.seasonOf` 도 같은 함수를 부른다).
 //   되돌림 `T570_CALENDAR=0` = 옛 줄(`day % 365` · 경계 90/180/270) 글자 그대로(`calendar.legacySeasonOf`).

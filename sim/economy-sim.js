@@ -2297,6 +2297,28 @@ function houseCrewDay(v, s2, crew, labor, tripsEach, perLoad, roundS, dbg, advan
 //     서버 정본 두 수(`villages.js` 의 그 두 상수 · `__labProbe._t400Probe.LIFE_CREW` · `.LIFE_STAGE_PDAY` 로 읽는다 — 사본 0)를 준다. 안 붙인 마을(서버 · 다른 자 · 랩 HTML)은 한 글자도 안 닿는다.
 //   ★[T1056] 랩 HTML 둘(마을실험실 · 전쟁실험실)의 생활층 집 고리도 이 손잡이를 읽는다(켬 문 `_t1056H` — 켬 = 마을 집터를 아래 `labSiteCrewDay` 가 짓는다 · 끔 = 종전 셋째 규칙 = 종전 바이트).
 const T1050_LAB_HOUSE = !(typeof process !== 'undefined' && process.env && process.env.T1050_LAB_HOUSE === '0');
+// ★★★[T1373 2026-11-18 · ★재민 11-18 확정 · 지시 T1373] 손잡이 `T1373_HOME_CAP`(★켬 기본 · `'0'` = 끔 = 종전 바이트 · 세계 갈래 0) — **인구 상한의 땅 몫 = 집터 수.**
+//   재민 11-18: "사냥이나 벌목, 광업은 마을 밖에서 하는 건데 그게 대체 무슨 상관이야? … 순수 마을 셀 수로만 세는 게 옳지 않냐 · 난 집터 개수 때문에 상한을 뒀던 건데" ·
+//     "땅이 좁은 건 인구성장만 느려지는 거고, 지워지는 길은 없는 거 맞지? 그냥 상한 역할이잖아".
+//   종전 — 인구 식의 K = min(식량 자리 slotK · 식량 흐름 prodK · 땔감 fuelK). slotK = 농부 · 어부 · 사냥꾼 · 채집 자리 = 영토 크기 × 땅 밀도(`jobCapacity`)이고
+//     땅 밀도엔 계절 · 날씨 · 풍흉 배수(v2 `applyLandModifiers` — 겨울 지력 0.80 · 물 0.85 · 사냥감 0.90)가 걸려 겨울마다 slotK 가 사람 밑으로 내려가고,
+//     식량 빚 켬(T1074) 뒤 로지스틱 음수 몫 `min(slotK, fuelK)` 가 곳간과 무관하게 가장 늙은 사람을 지웠다("K 위 죽음"의 땅 몫 — 보고 T1373 §1).
+//   켬 — ⓐ 인구 식의 K 에서 slotK 를 뺀다: K = min(prodK · fuelK) · 지우는 몫 = fuelK 넘김만(땅으로 지우는 길 0).
+//        ⓑ 땅 상한 = 주거 문 하나(성장만 막는다 · 지우지 않는다 — "집 부족으론 안 죽음"): 주거 문 `_hcap` = min(econ 주거 · 지은 침상 `_mapBeds` · **집터 수 × 가구원**)
+//           집터 수 × 가구원 = 마을 칸(econ 땅 × 25 — 서버 `landSizeOfCells` 의 그 환산 · 영토 칸) ÷ 집터 원반(`village-layout` `LOT_CELLS` — 부지 원 r 6.5 · 124칸) 내림 × 한 집 6명(`HOUSE_CAP_PER_FLOOR`).
+//           계절 · 날씨 · 풍흉 배수는 상한에 안 탄다(마을 칸은 배수가 없는 크기 · `applyLandModifiers` 도 size 를 그대로 둔다).
+//   새 수 0 — 25 · 124 · 6 은 서버 · 마을 배치 정본의 수(배치 모듈을 읽는다 · 사본 0). 랩 · 서버 같은 줄(랩은 env 가 없어 켬).
+//   ⚠땔감 몫(fuelK — 나무 배수 0.90 이 벌목 자리 · 1인 산출 둘에 탄다)은 이 카드에서 안 바꾼다(표만 · 재민: 땔감 부족을 없애는 쪽).
+const T1373_HOME_CAP = !(typeof process !== 'undefined' && process.env && process.env.T1373_HOME_CAP === '0');
+function t1373HomeCap(v) {   // 집터 수 × 가구원 — 마을 칸 ÷ 집터 원반 내림 × 한 집 6명(배치 모듈 없거나 땅 크기 없으면 무한 = 상한 없음)
+  const L = _villageLayoutMod();
+  if (!L || !L.LOT_CELLS || !(L.LOT_CELLS.length > 0) || !v || !v.land || !(v.land.size > 0)) return Infinity;
+  return Math.floor((v.land.size * 25) / L.LOT_CELLS.length) * L.HOUSE_CAP_PER_FLOOR;
+}
+function t1373Hcap(v) {   // 주거 문 상한 — econ 주거 ∧ 지은 침상(종전 `_hcap`) ∧ 켬이면 집터 수 × 가구원
+  const h = Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity);
+  return T1373_HOME_CAP ? Math.min(h, t1373HomeCap(v)) : h;
+}
 function labHouseAttach(v, cells0, life) {
   if (!T1050_LAB_HOUSE || !T400_BUILD_ACT || !v || !life || !(life.crew > 0) || !(life.pday > 0)) return false;
   v._t1050 = { cells: (cells0 | 0), site: null, crew: life.crew, pday: life.pday, sum: { days: 0, crewDays: 0, trips: 0, took: 0, adv: 0, stallDays: 0, built: 0 } };
@@ -5719,7 +5741,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   const fuelK = v._fuelKema;
   v._kDbg = { slot: +slotK.toFixed(1), prod: +prodK.toFixed(1), fuel: +fuelK.toFixed(1) };   // ★K 분해 노출: "이 마을은 뭐에 막혔나"(경작지·식량흐름·연료) — 진단·UI 근거
   if (T931_SLOTK_EMA || T931_SLOTK_SEASON) v._kDbg.slotRaw = +_slotKraw.toFixed(1);   // ★[T931] 켬만 — 관성 앞 그날 자리(진단 · `slot` 은 K 에 든 값)
-  const Kraw = Math.min(slotK, prodK, fuelK);   // ★자연 리비히 min: 식량 자리·식량 흐름·연료 흐름. (옛 K_MAX=110 임의 천장 폐지 — 수준은 지형+MB/MC 확장이 결정)
+  const Kraw = T1373_HOME_CAP ? Math.min(prodK, fuelK) : Math.min(slotK, prodK, fuelK);   // ★자연 리비히 min: 식량 자리·식량 흐름·연료 흐름. (옛 K_MAX=110 임의 천장 폐지 — 수준은 지형+MB/MC 확장이 결정) · ★[T1373 ⓐ] 켬 = 식량 자리를 뺀다(땅 상한은 아래 주거 문)
   const K = Math.max(POP_MIN, Kraw);
 
   // 5) 인구 θ-로지스틱 갱신 — dP = r·N·(1−(N/K)^θ). θ>1: K의 ~80%까지 빠르고 이후 급감(S곡선의 상단을 압축)
@@ -5729,7 +5751,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   //   식량 빚이 사람마다 치른다(아래 기아 사망 고리로 따로 죽이지 않는다). 출생 쪽(양수)은 그대로 prodK 가 막는다.
   //   음수는 식량 밖 K(자리 slotK · 땔감 fuelK)를 넘긴 몫만 남는다 — 그건 식량이 아니라 자리 · 연료의 일이다.
   if (T1074_FOOD_DEBT && _logiTerm < 0) {
-    const _Knf = Math.max(POP_MIN, Math.min(slotK, fuelK));
+    const _Knf = Math.max(POP_MIN, T1373_HOME_CAP ? fuelK : Math.min(slotK, fuelK));   // ★[T1373 ⓐ] 켬 = 땅으로 지우는 몫 0(땔감 넘김만)
     _logiTerm = Math.min(0, POP_GROWTH_RATE * _homeN * (1 - Math.pow(_homeN / Math.max(1, _Knf), LOGISTIC_THETA)));
   }
   let dP = _logiTerm;
@@ -5780,7 +5802,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     v.lastStats = stats;
   }
   // ★주거 성장 게이트: 집이 부족하면(_homeN≥주거) 인구가 더 못 늚. 감소는 식량(famine)만 — 집 부족으론 안 죽음.
-  const _hcap = Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity);   // ★완공 계약: 맵 완공 침대(_mapBeds)가 상한(3사본 동기화)
+  const _hcap = t1373Hcap(v);   // ★완공 계약: 맵 완공 침대(_mapBeds)가 상한(3사본 동기화) · ★[T1373 ⓑ] 켬 = 집터 수 × 가구원도(위 머리말 · 끔 = 종전 두 칸 min 그대로)
   const _gated = (dP > 0 && _hcap !== Infinity && _homeN >= _hcap);
   if (_gated) dP = 0;
   // ★[T1149 ⓑ] 출생에 곳간 문 — 곳간이 다가오는 겨울을 한 사람 더 먹일 만큼일 때만(위 `T1149` 주석) · 막힌 날 표지 `_t1149Gate`(표 기계가 센다)
@@ -6903,7 +6925,7 @@ function pickDeficitJob_rational(v, world) {
   //     하나 더 읽는다: **남은 날 = 곳간 ÷ 하루 소비 EMA(`_consEMA.wood`) < 30** — 30 은 v2 가 흐름 수요를 재는 바로 그 창
   //     (`flowT = _consEMA × 30` · economy-sim-v2 computeShadowPrices)이다. 새 수 0. 끔이면 이 줄은 종전 그대로(비트 동일).
   const _hPick = T1046_WOOD_SHARE
-    ? Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity)   // ★[T1046] 켬 = 출생 문 `_hcap` 과 같은 상한(econ 주거 ∧ 지은 침상)
+    ? t1373Hcap(v)   // ★[T1046] 켬 = 출생 문 `_hcap` 과 같은 상한(econ 주거 ∧ 지은 침상 · ★[T1373] 켬이면 집터 수 × 가구원도 — 같은 함수)
     : (T958_HOUSE_REAL && v._t958Plan !== undefined) ? v._t958Plan : v.housing;   // ★[T966] 켬 = 계획 주거(위 `_t958Plan`) · 끔 · 그 칸 없음 = 주거 그대로(종전)
   if (((v.housing !== undefined && N >= _hPick * 0.95 && (v.storage.wood || 0) < N * 2)
        || (woodEarlyOn() && (woodEarlyMode() === 1 || _t663Birth) && (v.storage.wood || 0) < ((v._consEMA && v._consEMA.wood) || 0) * 30))
@@ -7886,7 +7908,7 @@ module.exports = {
   T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
   T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
-  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays, T1346_BIRTH_FLOW, t1346FlowShort,   // ★[T1346] 흐름 문(하네스가 정본 함수를 그대로 부른다) · ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
+  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays, T1346_BIRTH_FLOW, t1346FlowShort, T1373_HOME_CAP, t1373HomeCap, t1373Hcap,   // ★[T1373] 땅 상한 = 집터 수 — 하네스가 정본 함수를 그대로 부른다 · ★[T1346] 흐름 문(하네스가 정본 함수를 그대로 부른다) · ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
