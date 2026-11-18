@@ -14989,7 +14989,7 @@ function _t1319InAutumn(day) {   // 가을 안인가 — 달력 정본(9 · 10 �
   return m >= 9 && m <= 11;
 }
 function t1319AutumnLeft(day) { return _t1319InAutumn(day) ? t1149LeanDays(day) : 0; }   // 가을이면 다가오는 겨울 끝까지 남은 날(가을 밖 0)
-function t1297NeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day), T1319_AUTUMN_LOOK ? t1319AutumnLeft(day) : 0); }   // 출생 문턱 날 수 · ★[T1319] `'1'` = 가을도 겨울 끝까지
+function t1297NeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day), T1319_AUTUMN_LOOK ? t1319AutumnLeft(day) : 0, T1346_BIRTH_FLOW ? t1319AutumnLeft(day) : 0); }   // 출생 문턱 날 수 · ★[T1319] `'1'` = 가을도 겨울 끝까지 · ★[T1346 ⓐ] 켬 = 같은 가을 항(아래 머리말)
 function t1319MigNeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day), T1319_AUTUMN_MIG ? t1319AutumnLeft(day) : 0); }   // ★[T1319] 이주 문 날 수 — `'1'` · `'mig'` = 가을도 겨울 끝까지 · 끔 = 출생 문 날 수와 같다
 // ★★★[T1306 2026-11-14 · T1297 회부 1 · 2] 손잡이 `T1306_BIRTH_GRADE`(T1297 켬 안 · `'1'` 만 켬 · 끔 = T1297 그대로 · 세계 갈래 0) — **출생 문을 단계로.**
 //   T1297 은 둘 중 하나였다 — 곳간 < (사람 + 1) × 하루치 × 문턱 날 수이면 그날 늘림 0. 판을 열면 곳간이 47일치에서 보름 만에 30일치 밑으로 내려오고
@@ -15009,6 +15009,19 @@ function t1306GradeDP(v, dP, homeN, day) {   // ★[T1306] 단계 문 — 표지
   v._t1306R = r; v._t1297Gate = 1;
   return dP * r;
 }
+// ★★★[T1346 2026-11-17 · T1342 회부 1 · 지시 T1346] 손잡이 `T1346_BIRTH_FLOW`(T1297 켬 안 · `'1'` 만 켬 · 끔 = 종전 바이트 · 세계 갈래 0) — **2년째 봄 굶음: 출생 문이 겨울 끝과 흐름을 본다.**
+//   T1342 두 해 판(묶음 · 가을 문 `mig`)의 2년째 굶어 죽음 150 · 136 · 169(끔 66 · 30 · 28)는 모두 첫 겨울 끝 꼬리(1년 2월 ~ 2년 5월 · 날 334 ~ 456)였고
+//     81 ~ 98% 가 가을에 사람이 10% 넘게 난 마을이었다(보고 T1346 §1). 가을 아이를 반만 줄여도(가름 판 · 단계 몫) 첫 겨울 굶음은 거의 그대로였고(206 → 161),
+//     가을 아이를 다 막으면(`T1319_AUTUMN_LOOK='1'`) 첫 겨울은 0 이지만 1 ~ 2월 · 봄에 곳간 문이 다시 열려 2년째 여름 · 둘째 겨울에 232명이 굶었다(T1342 ⓒ).
+//   켬 —
+//   ⓐ 가을 출생 문 = T1319 `'1'` 의 출생 몫(가을이면 다가오는 겨울 끝 — 다음 3월 1일 — 까지 남은 날 · `t1319AutumnLeft` 그대로). 이주 문은 묶음의 `mig` 그대로(`t1319MigNeedDays`).
+//   ⓑ 흐름 문 — 그날 늘림은 그 마을 식량 흐름이 한 사람 더 먹일 때만 선다: 흐름 장부(`surplusEMA.food` — 생산 − 하루 수요 · econ 정본 칸) + 들여온 식량(`_importEMA` —
+//      prodK 가 이미 읽는 100날 평균) ≥ 하루 소비(`DAILY_FOOD_CONSUMPTION` — 그 한 사람 몫). 곳간 문(T1297 · 위 ⓐ)이 열려도 흐름이 모자라면 그날 늘림 0(표지 `_t1346Gate`).
+//      근거: 곳간은 늦게 마른다 — 곳간 문만 보면 흐름이 이미 모자란 마을도 곳간이 문턱을 넘는 동안 사람을 늘렸다가(가을 문 `'1'` 뒤 1 ~ 5월 늘림 2,083명) 다음 철에 굶었다.
+//   새 수 0 — 날 수는 달력(T1149 · T1319) · 흐름은 econ 장부 둘 · 문턱은 한 사람 하루치.
+//   ⚠K · 로지스틱 · 주거 문 · 죽음 · 이주 줄은 한 글자도 안 바뀐다 — 그날 늘림만 0 이다(누적 `_dPAccum` 의 1 밑 몫은 종전처럼 남는다).
+const T1346_BIRTH_FLOW = T1297_BIRTH_FOOD && (typeof process !== 'undefined' && process.env && process.env.T1346_BIRTH_FLOW === '1');
+function t1346FlowShort(v) { return !!(v && v.surplusEMA) && (v.surplusEMA.food + (v._importEMA || 0)) < DAILY_FOOD_CONSUMPTION; }   // ★[T1346 ⓑ] 흐름이 한 사람 하루치에 못 미치나
 // ★★[T1179 2026-11-05 · ★재민 11-05 "겨울에 식량 수확이 있어? 작물별로 수확 기간이 다 다르고 겨울에는 아예 작물이 없지 않아?"] **작물 철** — 손잡이 `T1179_CROP_SEASON`
 //   (끔 기본 · `=1` 켬 · 끔 = 아래 갈래를 아무도 안 탄다 = 종전 바이트).
 //   농부의 하루 일(식 무변 — `JOBS.farmer.base` × 비옥도 × 철 배수 × 숙련 · 도구 …)은 그대로 하고, 그 식량(`food` · 생곡 셋)을
@@ -18292,6 +18305,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   // ★[T1149 ⓑ] 출생에 곳간 문 — 곳간이 다가오는 겨울을 한 사람 더 먹일 만큼일 때만(위 `T1149` 주석) · 막힌 날 표지 `_t1149Gate`(표 기계가 센다)
   if (T1149.birth) { v._t1149Gate = 0; if (dP > 0 && totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1149WinterDays(day)) { dP = 0; v._t1149Gate = 1; } }
   if (T1297_BIRTH_FOOD) { v._t1297Gate = 0; if (T1306_BIRTH_GRADE) dP = t1306GradeDP(v, dP, _homeN, day); else if (dP > 0 && totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)) { dP = 0; v._t1297Gate = 1; } }   // ★[T1297] 출생 곳간 문(위 머리말 · 끔 = 이 줄 무동작 · 칸 0)
+  if (T1346_BIRTH_FLOW) { v._t1346Gate = 0; if (dP > 0 && t1346FlowShort(v)) { dP = 0; v._t1346Gate = 1; } }   // ★[T1346 ⓑ] 흐름 문(위 머리말 · 끔 = 이 줄 무동작)
   v._dpDebug = { K: +K.toFixed(1), logi: +_logiTerm.toFixed(3), hunger: +_hungerTerm.toFixed(3), health: +_healthTerm.toFixed(3), happy: +_happyTerm.toFixed(3), prestige: +_prestigeTerm.toFixed(3), housing: (v.housing !== undefined ? +(+v.housing).toFixed(1) : null), gated: _gated, dP: +dP.toFixed(3) };
   // ΔP 상한
   const maxDelta = _homeN * POP_MAX_DELTA_PCT;
@@ -20391,7 +20405,7 @@ module.exports = {
   T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
   T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
-  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
+  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays, T1346_BIRTH_FLOW, t1346FlowShort,   // ★[T1346] 흐름 문(하네스가 정본 함수를 그대로 부른다) · ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
