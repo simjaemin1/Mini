@@ -16,7 +16,7 @@
 if (require.main !== module) {   // ★[T1356] 프리로드로 실렸을 때 — 미끼 갈아 끼우기만(판을 안 돈다)
   if (process.env.__T1322_BAIT === '1') {
     const Module = require('module'), _c = Module.prototype._compile, ZP = require('path').join('server', 'zone.js');
-    const FROM = '!(now < A.NDA[s]) ? ((A.DS[s]', TO = 'false ? ((A.DS[s]';   // verify 는 `_t1322State` 를 같이 부르므로 그 함수를 바꾼 사본은 안 잡힌다 — 거름 쪽 한 곳
+    const FROM = 'if (!why && !(now < A.NDA[s])) why = ', TO = 'if (!why && false) why = ';   // ★[PM land1083] T1348 이 이 문을 `if (!why && …) why =` 꼴로 옮겼다 — 미끼 글자를 새 줄에 맞춤(종전 `!(now < A.NDA[s]) ? ((A.DS[s]` 는 바꾼 자리 0 → 미끼 판정이 그것을 잡았다)   // verify 는 `_t1322State` 를 같이 부르므로 그 함수를 바꾼 사본은 안 잡힌다 — 거름 쪽 한 곳
     Module.prototype._compile = function (content, filename) {
       if (filename.endsWith(ZP)) {
         const n = content.split(FROM).length - 1; content = content.replace(FROM, TO);
