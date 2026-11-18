@@ -1,0 +1,9 @@
+C-OFF 1020 rc=0 840s
+C-ALL 1020 rc=0 868s
+C-OFF 7 rc=0 797s
+C-ALL 7 rc=0 807s
+C-OFF 3 rc=0 779s
+C-ALL 3 rc=0 769s
+G-OFF 1020 rc=0 756s
+G-ALL 1020 rc=0 796s
+done

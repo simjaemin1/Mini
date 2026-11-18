@@ -1,0 +1,561 @@
+{
+ "off": {
+  "label": "끔",
+  "seeds": {
+   "1020": {
+    "last": 947,
+    "p400": 3917,
+    "r400": 1.0,
+    "p800": 6989,
+    "r800": 1.0,
+    "p1094": null,
+    "r1094": null,
+    "fdY1": 128,
+    "kovY1": 856,
+    "full1": true,
+    "fdY2": 66,
+    "kovY2": 963,
+    "full2": true,
+    "fdY3": 0,
+    "kovY3": 289,
+    "full3": false,
+    "fdSeason": 194,
+    "kovSeason": 972,
+    "dd2": 10.5,
+    "dd3": 6.1,
+    "drop400": 4.1,
+    "drop800": 0.0,
+    "worstFdShare": 56.9,
+    "worstFdVil": "어촌7",
+    "worstFdYear": 1,
+    "worstFd": 41,
+    "worstFdN": 72,
+    "emptied": [],
+    "worstVilDrop": 88.9,
+    "worstVilDropVil": "어촌7",
+    "worstVilDropYear": 1,
+    "goals400": {
+     "g1": false,
+     "g2": true,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1
+     ]
+    },
+    "goals800": {
+     "g1": false,
+     "g2": true,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1,
+      2,
+      3
+     ]
+    },
+    "offFdY1": 128,
+    "offKovY1": 856,
+    "offFdY2": 66,
+    "offKovY2": 963,
+    "offFdY3": 0,
+    "offKovY3": 289
+   },
+   "7": {
+    "last": 800,
+    "p400": 3707,
+    "r400": 1.0,
+    "p800": 6031,
+    "r800": 1.0,
+    "p1094": null,
+    "r1094": null,
+    "fdY1": 263,
+    "kovY1": 1246,
+    "full1": true,
+    "fdY2": 30,
+    "kovY2": 968,
+    "full2": true,
+    "fdY3": 0,
+    "kovY3": 18,
+    "full3": false,
+    "fdSeason": 291,
+    "kovSeason": 1487,
+    "dd2": 9.4,
+    "dd3": 5.0,
+    "drop400": 4.9,
+    "drop800": 0.0,
+    "worstFdShare": 200.0,
+    "worstFdVil": "농촌20",
+    "worstFdYear": 2,
+    "worstFd": 4,
+    "worstFdN": 2,
+    "emptied": [
+     [
+      "농촌20",
+      393
+     ]
+    ],
+    "worstVilDrop": 91.2,
+    "worstVilDropVil": "어촌9",
+    "worstVilDropYear": 1,
+    "goals400": {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1
+     ]
+    },
+    "goals800": {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1,
+      2,
+      3
+     ]
+    },
+    "offFdY1": 263,
+    "offKovY1": 1246,
+    "offFdY2": 30,
+    "offKovY2": 968,
+    "offFdY3": 0,
+    "offKovY3": 18
+   },
+   "42": {
+    "last": 800,
+    "p400": 3530,
+    "r400": 1.0,
+    "p800": 6343,
+    "r800": 1.0,
+    "p1094": null,
+    "r1094": null,
+    "fdY1": 125,
+    "kovY1": 756,
+    "full1": true,
+    "fdY2": 28,
+    "kovY2": 1149,
+    "full2": true,
+    "fdY3": 0,
+    "kovY3": 31,
+    "full3": false,
+    "fdSeason": 141,
+    "kovSeason": 732,
+    "dd2": 10.2,
+    "dd3": 10.0,
+    "drop400": 0.0,
+    "drop800": 0.0,
+    "worstFdShare": 113.6,
+    "worstFdVil": "농촌18",
+    "worstFdYear": 1,
+    "worstFd": 25,
+    "worstFdN": 22,
+    "emptied": [
+     [
+      "농촌18",
+      333
+     ]
+    ],
+    "worstVilDrop": 100.0,
+    "worstVilDropVil": "농촌18",
+    "worstVilDropYear": 1,
+    "goals400": {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1
+     ]
+    },
+    "goals800": {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1,
+      2,
+      3
+     ]
+    },
+    "offFdY1": 125,
+    "offKovY1": 756,
+    "offFdY2": 28,
+    "offKovY2": 1149,
+    "offFdY3": 0,
+    "offKovY3": 31
+   }
+  }
+ },
+ "BK": {
+  "label": "묶음(T1342 착지 글)",
+  "seeds": {
+   "1020": {
+    "last": 800,
+    "p400": 4606,
+    "r400": 1.176,
+    "p800": 9483,
+    "r800": 1.357,
+    "p1094": null,
+    "r1094": null,
+    "fdY1": 56,
+    "kovY1": 4,
+    "full1": true,
+    "fdY2": 150,
+    "kovY2": 716,
+    "full2": true,
+    "fdY3": 0,
+    "kovY3": 112,
+    "full3": false,
+    "fdSeason": 206,
+    "kovSeason": 41,
+    "dd2": 11.1,
+    "dd3": 10.5,
+    "drop400": 0.0,
+    "drop800": 6.1,
+    "worstFdShare": 100.0,
+    "worstFdVil": "농촌10",
+    "worstFdYear": 2,
+    "worstFd": 20,
+    "worstFdN": 20,
+    "emptied": [
+     [
+      "농촌10",
+      417
+     ]
+    ],
+    "worstVilDrop": 100.0,
+    "worstVilDropVil": "농촌10",
+    "worstVilDropYear": 2,
+    "goals400": {
+     "g1": true,
+     "g2": true,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1
+     ]
+    },
+    "goals800": {
+     "g1": true,
+     "g2": true,
+     "g3": true,
+     "g4": false,
+     "years": [
+      1,
+      2,
+      3
+     ]
+    },
+    "offFdY1": 128,
+    "offKovY1": 856,
+    "offFdY2": 66,
+    "offKovY2": 963,
+    "offFdY3": 0,
+    "offKovY3": 289
+   },
+   "7": {
+    "last": 800,
+    "p400": 5221,
+    "r400": 1.408,
+    "p800": 10253,
+    "r800": 1.7,
+    "p1094": null,
+    "r1094": null,
+    "fdY1": 160,
+    "kovY1": 16,
+    "full1": true,
+    "fdY2": 136,
+    "kovY2": 469,
+    "full2": true,
+    "fdY3": 0,
+    "kovY3": 111,
+    "full3": false,
+    "fdSeason": 296,
+    "kovSeason": 43,
+    "dd2": 7.5,
+    "dd3": 8.5,
+    "drop400": 0.0,
+    "drop800": 7.7,
+    "worstFdShare": 68.0,
+    "worstFdVil": "어촌10",
+    "worstFdYear": 1,
+    "worstFd": 34,
+    "worstFdN": 50,
+    "emptied": [],
+    "worstVilDrop": 90.5,
+    "worstVilDropVil": "어촌14",
+    "worstVilDropYear": 2,
+    "goals400": {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1
+     ]
+    },
+    "goals800": {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": false,
+     "years": [
+      1,
+      2,
+      3
+     ]
+    },
+    "offFdY1": 263,
+    "offKovY1": 1246,
+    "offFdY2": 30,
+    "offKovY2": 968,
+    "offFdY3": 0,
+    "offKovY3": 18
+   },
+   "42": {
+    "last": 800,
+    "p400": 5829,
+    "r400": 1.651,
+    "p800": 9163,
+    "r800": 1.445,
+    "p1094": null,
+    "r1094": null,
+    "fdY1": 50,
+    "kovY1": 20,
+    "full1": true,
+    "fdY2": 169,
+    "kovY2": 603,
+    "full2": true,
+    "fdY3": 0,
+    "kovY3": 146,
+    "full3": false,
+    "fdSeason": 201,
+    "kovSeason": 68,
+    "dd2": 7.6,
+    "dd3": 9.9,
+    "drop400": 0.0,
+    "drop800": 3.3,
+    "worstFdShare": 100.0,
+    "worstFdVil": "농촌18",
+    "worstFdYear": 2,
+    "worstFd": 23,
+    "worstFdN": 23,
+    "emptied": [
+     [
+      "농촌18",
+      405
+     ]
+    ],
+    "worstVilDrop": 100.0,
+    "worstVilDropVil": "농촌18",
+    "worstVilDropYear": 2,
+    "goals400": {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1
+     ]
+    },
+    "goals800": {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": false,
+     "years": [
+      1,
+      2,
+      3
+     ]
+    },
+    "offFdY1": 125,
+    "offKovY1": 756,
+    "offFdY2": 28,
+    "offKovY2": 1149,
+    "offFdY3": 0,
+    "offKovY3": 31
+   }
+  }
+ },
+ "FIX": {
+  "label": "묶음 + 흐름 문(`T1346_BIRTH_FLOW=1`)",
+  "seeds": {
+   "1020": {
+    "last": 1095,
+    "p400": 3637,
+    "r400": 0.929,
+    "p800": 8039,
+    "r800": 1.15,
+    "p1094": 6883,
+    "r1094": null,
+    "fdY1": 0,
+    "kovY1": 0,
+    "full1": true,
+    "fdY2": 71,
+    "kovY2": 357,
+    "full2": true,
+    "fdY3": 111,
+    "kovY3": 829,
+    "full3": true,
+    "fdSeason": 28,
+    "kovSeason": 29,
+    "dd2": 6.3,
+    "dd3": 16.5,
+    "drop400": 0.0,
+    "drop800": 0.0,
+    "drop1094": 15.7,
+    "worstFdShare": 54.2,
+    "worstFdVil": "광산1",
+    "worstFdYear": 2,
+    "worstFd": 26,
+    "worstFdN": 48,
+    "emptied": [],
+    "worstVilDrop": 72.9,
+    "worstVilDropVil": "광산1",
+    "worstVilDropYear": 2,
+    "goals400": {
+     "g1": false,
+     "g2": false,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1
+     ]
+    },
+    "goals800": {
+     "g1": true,
+     "g2": true,
+     "g3": true,
+     "g4": false,
+     "years": [
+      1,
+      2,
+      3
+     ]
+    },
+    "goals1094": {
+     "g1": null,
+     "g2": null,
+     "g3": false,
+     "g4": null,
+     "years": [
+      1,
+      2,
+      3
+     ]
+    },
+    "offFdY1": 128,
+    "offKovY1": 856,
+    "offFdY2": 66,
+    "offKovY2": 963,
+    "offFdY3": 0,
+    "offKovY3": 289
+   },
+   "7": {
+    "last": 680,
+    "p400": 4206,
+    "r400": 1.135,
+    "p800": null,
+    "r800": null,
+    "p1094": null,
+    "r1094": null,
+    "fdY1": 15,
+    "kovY1": 0,
+    "full1": true,
+    "fdY2": 85,
+    "kovY2": 28,
+    "full2": false,
+    "fdY3": null,
+    "kovY3": null,
+    "full3": false,
+    "fdSeason": 35,
+    "kovSeason": 1,
+    "dd2": 2.6,
+    "dd3": null,
+    "drop400": 0.0,
+    "worstFdShare": 100.0,
+    "worstFdVil": "농촌14",
+    "worstFdYear": 2,
+    "worstFd": 17,
+    "worstFdN": 17,
+    "emptied": [
+     [
+      "농촌14",
+      437
+     ]
+    ],
+    "worstVilDrop": 70.0,
+    "worstVilDropVil": "농촌18",
+    "worstVilDropYear": 1,
+    "goals400": {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1
+     ]
+    },
+    "offFdY1": 263,
+    "offKovY1": 1246,
+    "offFdY2": 30,
+    "offKovY2": 968,
+    "offFdY3": 0,
+    "offKovY3": 18
+   },
+   "42": {
+    "last": 749,
+    "p400": 4628,
+    "r400": 1.311,
+    "p800": null,
+    "r800": null,
+    "p1094": null,
+    "r1094": null,
+    "fdY1": 0,
+    "kovY1": 0,
+    "full1": true,
+    "fdY2": 301,
+    "kovY2": 435,
+    "full2": true,
+    "fdY3": 0,
+    "kovY3": 36,
+    "full3": false,
+    "fdSeason": 132,
+    "kovSeason": 14,
+    "dd2": 7.3,
+    "dd3": 6.3,
+    "drop400": 0.0,
+    "worstFdShare": 88.3,
+    "worstFdVil": "광산1",
+    "worstFdYear": 2,
+    "worstFd": 83,
+    "worstFdN": 94,
+    "emptied": [],
+    "worstVilDrop": 98.9,
+    "worstVilDropVil": "광산1",
+    "worstVilDropYear": 2,
+    "goals400": {
+     "g1": null,
+     "g2": true,
+     "g3": true,
+     "g4": true,
+     "years": [
+      1
+     ]
+    },
+    "offFdY1": 125,
+    "offKovY1": 756,
+    "offFdY2": 28,
+    "offKovY2": 1149,
+    "offFdY3": 0,
+    "offKovY3": 31
+   }
+  }
+ }
+}

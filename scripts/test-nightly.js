@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @date-ok 가짜 야간 로그 · 보고 날짜 픽스처(보고기에 날짜를 주입) — 벽시계와 안 맞댄다 [T1356]
 // === scripts/test-nightly.js — 야간 기계 둘의 자(`nightly-run.sh` · `nightly-report.js`) [T293 2026-09-14 · 재민 확정] ===
 //
 // ★무엇을 재나: `scripts/nightly-report.js` 가 **로그만 읽고** 야간 보고 표를 옳게 내는가.
@@ -23,6 +24,10 @@ const REPORT = path.join(ROOT, 'scripts', 'nightly-report.js');
 // ★[T1208-K1 2026-11-07] 부르는 판의 야간 손잡이(`NIGHT_*`)는 아이에게 안 넘긴다 — 이 자는 판마다 제 `NIGHT_*` 를 손으로 준다.
 //   몫 판(`NIGHT_LIST=… nightly-run.sh` — T1208)이 이 하네스를 부르자 `NIGHT_LIST` 가 새어 들어 아이 nightly-run 이 이어 돌기 대신 목록 덮어쓰기로 갔다(빨강 둘 · 혼자 돌면 초록).
 const ENV0 = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^NIGHT_/.test(k)));
+// ★[T1350] 아이 nightly-run 은 얕은 클론을 늘리지 않는다(`NIGHT_UNSHALLOW=0`) — CI(`actions/checkout` 기본 `fetch-depth: 1`)에서 이 자가 11-11(05b66c73 — 야간 러너
+//   unshallow) 부터 빨갰다: 아이가 `git fetch --unshallow` 를 하고 "[nightly-run] 얕은 클론 → 전체 이력 (n 커밋)" 줄을 찍어 견주는 첫 줄이 어긋났다(이어 돌기 ⑤).
+//   하네스가 레포 이력을 바꾸는 곁일도 생긴다. 이 자가 재는 것은 이어 돌기 · 보고 글자다 — 클론 깊이와 무관하게 같은 답이어야 한다.
+ENV0.NIGHT_UNSHALLOW = '0';
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
 
@@ -402,6 +407,31 @@ console.log('\n=== ⑫ [T1121] §6 걸린 시간 표 — 도장으로 잰 초 ·
   ok(/\| `test-b` \| 연속 \*\*1밤\*\*/.test(T3) && /\| `test-d` \| 연속 \*\*2밤\*\*/.test(T3),
     '★§6 의 초록 줄은 다음 밤 연속 셈에 **안 든다**(test-b 1밤) · §1 빨강 줄은 든다(test-d 2밤 — 자명 통과 금지)',
     ['test-b', 'test-d'].map((n) => ((T3.split('\n').find((l) => l.startsWith(`| \`${n}\` | 연속`)) || '').match(/연속 \*\*\d+밤\*\*/) || ['?'])[0]).join(' · '));
+}
+
+console.log('\n=== ⑬ [T1350] 아이 nightly-run 은 얕은 클론을 안 늘린다 — 클론 깊이와 무관한 자 ===');
+{
+  //   작은 레포(커밋 둘)를 얕게(깊이 1) 떠 그 안에서 `nightly-run.sh`(정본 파일 사본 — 이 레포 것 그대로)를 마른 판으로 돌린다.
+  //   이 자가 아이에게 주는 env(`ENV0`)면 첫 줄이 목록이고 레포는 얕은 채다. **미끼**: 같은 env 에서 `NIGHT_UNSHALLOW` 한 칸만 지운 판 —
+  //   unshallow 줄이 첫 줄에 서고 레포가 전체 이력이 된다(CI 11-11 ~ 11-17 빨강의 꼴) ⇒ 위 ⑤ 이어 돌기 첫 줄 단언이 문다.
+  const T = fs.mkdtempSync(path.join(os.tmpdir(), 't1350-shallow-'));
+  const g = (cwd, ...a) => execFileSync('git', a, { cwd, encoding: 'utf8', env: Object.assign({}, ENV0, { GIT_AUTHOR_NAME: 'x', GIT_AUTHOR_EMAIL: 'x@x', GIT_COMMITTER_NAME: 'x', GIT_COMMITTER_EMAIL: 'x@x' }) }).trim();
+  let ok0 = false, okB = false, d0 = '', dB = '';
+  try {
+    const O = path.join(T, 'o'); fs.mkdirSync(path.join(O, 'scripts'), { recursive: true });
+    g(O, 'init', '-q'); fs.copyFileSync(path.join(ROOT, 'scripts', 'nightly-run.sh'), path.join(O, 'scripts', 'nightly-run.sh'));
+    fs.writeFileSync(path.join(O, 'a'), 'a'); g(O, 'add', '-A'); g(O, 'commit', '-qm', '1'); fs.writeFileSync(path.join(O, 'b'), 'b'); g(O, 'add', '-A'); g(O, 'commit', '-qm', '2');
+    const run = (env, tag) => { const S = path.join(T, tag); g(T, 'clone', '-q', '--depth', '1', 'file://' + O, S);
+      const out = execFileSync('bash', [path.join(S, 'scripts', 'nightly-run.sh')], { cwd: S, encoding: 'utf8', env: Object.assign({}, env, { NIGHT_DRY: '1', NIGHT_LIST: 'test-x.js', LOG: path.join(T, tag + '-log', 'regress.log'), NIGHT_TZ: 'Asia/Seoul' }), timeout: 30000 });
+      return { first: out.trim().split('\n')[0], shallow: g(S, 'rev-parse', '--is-shallow-repository') }; };
+    const A = run(ENV0, 's0'); const benv = Object.assign({}, ENV0); delete benv.NIGHT_UNSHALLOW; const B = run(benv, 'sB');
+    d0 = JSON.stringify(A); dB = JSON.stringify(B);
+    ok0 = A.first === 'test-x.js' && A.shallow === 'true';
+    okB = /얕은 클론 → 전체 이력/.test(B.first) && B.shallow === 'false';
+  } catch (e) { d0 = String(e.message || e).slice(0, 160); }
+  finally { try { fs.rmSync(T, { recursive: true, force: true }); } catch (e) {} }
+  ok(ok0, '★⑬ 이 자의 아이 env(`ENV0`) — 얕은 클론에서도 첫 줄이 목록 · 레포는 얕은 채(이력을 안 바꾼다)', d0);
+  ok(okB, '⑬ [미끼] `NIGHT_UNSHALLOW` 한 칸만 지운 env — unshallow 줄이 첫 줄에 서고 레포가 전체 이력이 된다(CI 11-11 ~ 11-17 빨강 꼴 · 위 ⑤ 가 문다)', dB);
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);

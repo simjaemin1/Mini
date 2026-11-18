@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @date-ok 가짜 스냅샷 디렉터리 이름(고정 날에서 거슬러 센 픽스처 글자) — 벽시계와 안 맞댄다 [T1356]
 // === scripts/test-backup-live.js — `backup-live.sh` 를 **진짜로 돌린다**(T907 · 2026-10-24) ========================
 //
 // `test-disk-check` 문법 — 판정 사본 0: 가짜 `docker`(상태를 JSON 에 쥔다 · `run` 은 마운트를 임시 판 경로로 바꿔 **진짜 node:sqlite** 로 돈다 ·
