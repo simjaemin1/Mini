@@ -10,11 +10,12 @@
 # ★멈춤: 판 디렉터리에 300초 동안 새 글자가 없으면 멈춤으로 끊는다(`STALL_SEC`) · 판 하나 시한 `MAX_SEC`(기본 7200).
 #
 #   OUT=계측/T1370_2026-11-18 SEED=1020 PAR=2 nohup bash scripts/t1370-run.sh > log 2>&1 &
+#   KNOBS=$OUT/refs.tsv … — 짝 판(11-01 앞 끔 손잡이 — 짝 대비 견줌용 · 표의 손잡이 수 밖)
 #   ONLY="T1302_TERR_BODY T1329_TERR_CREW" SEED=7 … — 이 이름만
 set -u
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT" || exit 2
 OUT="${OUT:-계측/T1370_2026-11-18}"; SEED="${SEED:-1020}"; DAYS="${DAYS:-400}"; PAR="${PAR:-2}"
-WORK="${WORK:-/dev/shm/t1370}"; STALL_SEC="${STALL_SEC:-300}"; MAX_SEC="${MAX_SEC:-7200}"
+KNOBS="${KNOBS:-$OUT/knobs.tsv}"; WORK="${WORK:-/dev/shm/t1370}"; STALL_SEC="${STALL_SEC:-300}"; MAX_SEC="${MAX_SEC:-7200}"
 mkdir -p "$OUT/runs" "$WORK/tmp" "$WORK/mk" "$WORK/log"
 export ROOT OUT SEED DAYS WORK STALL_SEC MAX_SEC
 
@@ -57,7 +58,7 @@ one() {
 export -f one
 
 if [ -n "${ONLY:-}" ]; then
-  for n in $ONLY; do grep -P "^$n\t" "$OUT/knobs.tsv"; done
-else cat "$OUT/knobs.tsv"; fi | while IFS=$'\t' read -r n e; do printf '%s\0%s\0' "$n" "$e"; done |
+  for n in $ONLY; do grep -P "^$n\t" "$KNOBS"; done
+else cat "$KNOBS"; fi | while IFS=$'\t' read -r n e; do printf '%s\0%s\0' "$n" "$e"; done |
   xargs -0 -n 2 -P "$PAR" bash -c 'one "$0" "$1"'
 echo "끝 $(date -u +%FT%TZ)"
