@@ -30,8 +30,9 @@ const DECOY = process.argv.includes('--decoy');
 const MD = process.argv.includes('--md');
 const rd = (f) => { let b = fs.readFileSync(f); if (/\.gz$/.test(f)) b = zlib.gunzipSync(b); return JSON.parse(b.toString('utf8')); };
 function side(runF, obsF) {
-  const R = rd(runF); const s = Object.keys(R.byseed)[0]; const B = R.byseed[s];
-  const O = rd(obsF); const rows = new Map(); for (const r of O.rows) { const o = {}; O.cols.forEach((c, i) => { o[c] = r[i]; }); rows.set(o.day, o); }
+  // runF '-' = 판 JSON 없음(끝까지 못 간 판 — 관찰기 줄만 · L14 L15 는 판정 안 함 '—')
+  const R = runF === '-' ? null : rd(runF); const O = rd(obsF);
+  const s = R ? Object.keys(R.byseed)[0] : String((O.server && O.server.seed) || '?'); const B = R ? R.byseed[s] : null; const rows = new Map(); for (const r of O.rows) { const o = {}; O.cols.forEach((c, i) => { o[c] = r[i]; }); rows.set(o.day, o); }
   const V = new Map(); for (const [d, vs] of O.vrows) V.set(d, new Map(vs.map((x) => [x[0], { pop: x[1], foodPer: x[2], fdTot: x[3], deadTot: x[4], newTot: x[5], emigTot: x[6], jobs: x[7] }])));
   const last = Math.max(...rows.keys());
   return { seed: s, B, rows, V, last, err: O.err };
@@ -80,7 +81,8 @@ function judge(on, off) {
     const [a, an] = mx(on), [b, bn] = mx(off); put('L12', a <= Math.max(1.5 * b, 10), `마을 굶어 죽음 최대 ${a}(${an}) : ${b}(${bn})`); }
   // L13
   { const a = Y.map(([, y]) => [(on.rows.get(y) || {}).minPop || 0, (off.rows.get(y) || {}).minPop || 0]); put('L13', a.every(([u, v]) => u >= 0.5 * v), `해 끝 가장 작은 마을 ${a.map(([u, v]) => u + ':' + v).join(' · ')}`); }
-  // L14 L15
+  // L14 L15 — 판 JSON(끝 날 상태)이 두 쪽 다 있어야 잰다
+  if (!on.B || !off.B) { out.push({ id: 'L14', ok: true, na: true, txt: '— 판 JSON 없음(끝까지 못 간 판)' }, { id: 'L15', ok: true, na: true, txt: '— 판 JSON 없음' }); return { n, out }; }
   { const a = on.B, b = off.B; put('L14', (a.dissolved || 0) <= (b.dissolved || 0) && (a.empty || 0) <= (b.empty || 0) && (a.eight.dead || 0) <= (b.eight.dead || 0), `해체 ${a.dissolved}:${b.dissolved} · 빈 ${a.empty}:${b.empty} · 소멸 ${a.eight.dead}:${b.eight.dead}`); }
   { const pc = (B, k) => (B.eight[k] || 0) / Math.max(1, B.eight.pop || 1); const w = pc(on.B, 'weapQ') / Math.max(1e-9, pc(off.B, 'weapQ')), t = pc(on.B, 'toolQ') / Math.max(1e-9, pc(off.B, 'toolQ'));
     put('L15', w >= 0.5 && t >= 0.5, `사람당 무기Q 비 ${w.toFixed(2)} · 도구Q 비 ${t.toFixed(2)}`); }
@@ -135,7 +137,7 @@ for (const a of args) {
   const [onR, onO] = onS.split(','), [offR, offO] = offS.split(',');
   const on = side(onR, onO), off = side(offR, offO);
   const J = judge(on, off); all.push({ name, ...J });
-  if (MD) { console.log(`\n### ${name}(시드 ${on.seed} · ${J.n}날)\n\n| 물음 | 결과 | 켬 : 끔 |\n|---|---|---|`); for (const o of J.out) console.log(`| ${o.id} | ${o.ok ? '○' : '✗'} | ${o.txt} |`); }
-  else { console.log(`\n## ${name} — 시드 ${on.seed} · ${J.n}날 · ○ ${J.out.filter((o) => o.ok).length}/${J.out.length}`); for (const o of J.out) console.log(`  ${o.ok ? '○' : '✗'} ${o.id}  ${o.txt}`); }
+  if (MD) { console.log(`\n### ${name}(시드 ${on.seed} · ${J.n}날)\n\n| 물음 | 결과 | 켬 : 끔 |\n|---|---|---|`); for (const o of J.out) console.log(`| ${o.id} | ${o.na ? '—' : o.ok ? '○' : '✗'} | ${o.txt} |`); }
+  else { console.log(`\n## ${name} — 시드 ${on.seed} · ${J.n}날 · ○ ${J.out.filter((o) => o.ok && !o.na).length}/${J.out.filter((o) => !o.na).length}`); for (const o of J.out) console.log(`  ${o.na ? '—' : o.ok ? '○' : '✗'} ${o.id}  ${o.txt}`); }
 }
-if (all.length > 1) { const ids = all[0].out.map((o) => o.id); console.log(`\n## 모음 — ${all.map((x) => x.name).join(' · ')}`); for (const id of ids) console.log(`  ${id}  ${all.map((x) => { const o = x.out.find((y) => y.id === id); return o ? (o.ok ? '○' : '✗') : '-'; }).join(' ')}`); }
+if (all.length > 1) { const ids = all[0].out.map((o) => o.id); console.log(`\n## 모음 — ${all.map((x) => x.name).join(' · ')}`); for (const id of ids) console.log(`  ${id}  ${all.map((x) => { const o = x.out.find((y) => y.id === id); return o && !o.na ? (o.ok ? '○' : '✗') : '—'; }).join(' ')}`); }
