@@ -2584,7 +2584,9 @@ const T1374_BIRTH_HARV = T1243_FARM_ON && (typeof process !== 'undefined' && pro
 // ★★[T1374 ③ 2026-11-18 · 지시 T1374 ㉯ 일손] **기근 문도 다음 거둠까지** — 손잡이 `T1374_FAMINE_HARV`(끔 기본 · `=1` · 밭 세계 켬일 때만).
 //   피커 기근 블록(`foodEquiv < N × 30` — 식량 직업 강제)은 곳간 30일치를 본다. 밭 세계의 곳간은 거둠 사이 석 달 ~ 여덟 달을 가야 하는데,
 //     30일치가 넘는 동안은 석공 · 전사 · 대장장이를 뽑아 8명 마을에서 식량 일 아닌 사람이 25 ~ 30%(보고 T1374 §1 — 1020 고침 판 날 45 ~ 75).
-//   켬 — 그 문의 날 수 = 출생 문과 같은 `t1374NeedDays`(max(30, 다음 거둠 날 − 오늘)). 블록 안 고르기(식량 넷 · 부얼타운 · 광맥 · 땔감)는 그대로. 새 수 0.
+//   켬 — 피커가 보는 곳간을 **다음 거둠까지의 날로 잰다**: foodEquiv = 곳간 ÷ (`t1374NeedDays` ÷ 30) — 기근 블록(30일치 밑)은 "곳간이 다음 거둠까지 못 간다"가 되고,
+//     블록 안팎의 다른 날 수 문턱(하드 플로어 6 · 광맥 18 · 땔감 날 수)도 같은 자로 읽는다(다음 거둠이 멀면 더 깐깐). 30 이하 지평(다음 거둠 30일 안)이면 ÷ 1 = 종전.
+//     블록 줄 글자(`foodEquiv < N * 30`)는 하네스 넷이 핀이라 그대로 두고 읽는 합계 한 줄만 바꾼다. 새 수 0.
 const T1374_FAMINE_HARV = T1243_FARM_ON && (typeof process !== 'undefined' && process.env) && process.env.T1374_FAMINE_HARV === '1';
 function t1374NeedDays(v, day) { const n = v && typeof v._t1374Next === 'number' ? v._t1374Next - day : 0; return Math.max(T1297_FAMINE_DAYS, n > 0 ? n : 0); }
 function _t1374FieldCrop(r) { const C = _crops(); return !!(C && C.T1201_BRONZE_SET && C.T1201_BRONZE_SET.has(r)); }
@@ -6789,7 +6791,7 @@ function pickDeficitJob_rational(v, world) {
   const N = v.npcs.length || 1;
   const cap = jobCapacity(v);
   const counts = jobCounts(v);
-  const foodEquiv = totalFoodEquivalent(v);
+  const foodEquiv = totalFoodEquivalent(v) / (T1374_FAMINE_HARV ? t1374NeedDays(v, (v._world && v._world.day) || 0) / T1297_FAMINE_DAYS : 1);   // ★[T1374 ③] 켬 = 곳간을 다음 거둠까지의 날로 잰다(기근 블록 30일치 = 다음 거둠까지 · 끔 = ÷ 1 그대로)
   const forageLandMean = Math.max(0.3, (v.land.fertility + v.land.wood + v.land.stone) / 3);
 
   // ★S2 도구 자본 우선(기근보다 앞): 도구(석기)가 치명적으로 부족하면(맨손 0.25× = 식량생산 폭락) 석공 먼저.
@@ -6836,7 +6838,7 @@ function pickDeficitJob_rational(v, world) {
   }
   // 진짜 기근 (food < N*30일치) — 식량 직업 강제. ★경제적 정당성: 자급경제는 맬서스 상한에서 돌고,
   //   강제 30일버퍼가 ①식량안보→특화 노동 해방 ②식량생산 최대화→인구 상한 달성. (게이트 완화 실험 시 인구·특화 둘다 악화 확인)
-  if (foodEquiv < N * (T1374_FAMINE_HARV ? t1374NeedDays(v, (v._world && v._world.day) || 0) : 30)) {   // ★[T1374 ③] 켬 = 기근 문 날 수 = 다음 거둠까지(밭 세계 · 끔 = 30 그대로)
+  if (foodEquiv < N * 30) {
     // ★농사 불가 마을(비옥<0.2): 농부 강제는 무의미(거의 0 산출) → 가치재(금·광석) 채굴로 식량 살 자금 확보.
     //   광산 부얼타운 = 식량 전량 수입. 어로/사냥(직접 식량)이 가능하면 그게 우선, 광맥뿐이면 채굴해 교역.
     //   하드플로어 N*6: 그 아래로 떨어지면 가능한 식량직(어/렵)이라도 풀가동.
