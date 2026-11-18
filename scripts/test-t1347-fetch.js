@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh)
+// @bait 10   ← [T1356] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다 — 미끼 하나에 판정 줄 하나)
 // === scripts/test-t1347-fetch.js — 받아 올 짐(`T1347_FETCH`) · 섞어 싣기 목적지 발주만(`T1347_MIX_DEST`) — 끔 기본 둘(T1347 · T1344 회부 2 · 3) ===
 //
 // ★지키는 것(존을 부팅하지 않는다 — econ 정본 함수 · 정본 틱 조각(`tickWorldV2Parts`)을 그대로 부른다 · 날짜 · 벽시계 0 — 판 날만 센다):
@@ -355,23 +356,37 @@ const gok = (c, m, x) => { if (c) gp++; else gf++; console.log((c ? '  ✓ ' : '
     "G5 손잡이는 `'1'` 비교 한 줄씩 · 훅은 관찰만(두 자리 · 있을 때만 부른다)", [n('T1347_FETCH'), n('world.onT1347')]);
 }
 
-console.log('\n⑨ 미끼 — 한 자리 바꾼 사본은 정한 단언이 빨강이어야 한다');
-let bait = 0;
+console.log('\n⑨ 미끼 — 한 자리 바꾼 사본은 정한 단언이 빨강이어야 한다(미끼 하나에 판정 줄 하나 — `@bait 10`)');
+let bait = 0, baitSeen = 0;
 const SRCS = {};
-for (const [name, [file, from, , arms, expect]] of Object.entries(BAITS)) {
+// 미끼 판 — 바꿀 자리를 세고(정확히 1곳일 때만 돈다) · 정한 팔을 사본으로 돌려 · 단언 판정을 다시 센다
+function baitRun(name) {
+  const [file, from, , arms, expect] = BAITS[name];
   const S = SRCS[file] || (SRCS[file] = fs.readFileSync(path.join(ROOT, file), 'utf8'));
   const sites = S.split(from).length - 1;
-  if (sites !== 1) { console.log(`  ✗ 미끼 ${name} — 바꿀 자리 ${sites}곳(정확히 1곳이어야)`); continue; }
+  if (sites !== 1) return { sites, good: false, why: `바꿀 자리가 정확히 1곳이 아니다 — 미끼를 안 돌림 · 팔 ${arms.join('+')} · 정한 빨강 ${J(expect)}` };
   const Q = {}; for (const a of arms) Q[a] = child(a, name);
   const dead = arms.filter((a) => Q[a].crash || Q[a].loadErr);
   const r = runChecks(Q, false);
   const hit = expect.every((id) => r.failed.includes(id));
-  const good = dead.length === 0 && hit;
-  if (good) bait++;
-  console.log(`  ${good ? '✓' : '✗'} 미끼 ${name} — 자리 1곳 · 팔 ${arms.join('+')} · 단언 ${r.ran} 가운데 빨강 ${J(r.failed)} · 정한 빨강 ${J(expect)}` +
-    (dead.length ? ` · 아이 판 죽음 ${dead.join(',')} ${(Q[dead[0]].crash || Q[dead[0]].loadErr).slice(0, 160)}` : ''));
+  return { sites, good: dead.length === 0 && hit,
+    why: `팔 ${arms.join('+')} · 단언 ${r.ran} 가운데 빨강 ${J(r.failed)} · 정한 빨강 ${J(expect)}` + (dead.length ? ` · 아이 판 죽음 ${dead.join(',')} ${(Q[dead[0]].crash || Q[dead[0]].loadErr).slice(0, 160)}` : '') };
 }
+// 미끼 판정 — 바꾼 자리 1곳 · 정한 단언이 빨강(아이 판 죽음 0)이면 초록
+function ok(c, m, x) { baitSeen++; if (c) bait++; console.log((c ? '  ✓ ' : '  ✗ ') + m + '  ' + x); }
+let b;
+b = baitRun('notol');     ok(b.sites === 1 && b.good, '미끼 notol — 다리 관용(× FOOD_PULL_TOL)을 뺀 사본 → L2 빨강(관용 밖 다리로 갈아 탄다)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('legany');    ok(b.sites === 1 && b.good, '미끼 legany — 다리 문(`_t1347Buys`)을 뺀 사본 → L2 빨강(집 발주를 안 파는 다리로도 갈아 탄다)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('crisisleg'); ok(b.sites === 1 && b.good, '미끼 crisisleg — 다리에서 굶는 마을 거름(`!_crisisA`)을 뺀 사본 → C1 빨강(굶는 마을도 발주 다리)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('crisisret'); ok(b.sites === 1 && b.good, '미끼 crisisret — 받아 올 짐에서 굶는 마을 거름(식량 EMA < 0)을 뺀 사본 → C1 빨강(굶는 마을 대금도 발주 품목)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('nosells');   ok(b.sites === 1 && b.good, '미끼 nosells — 파는 쪽 문(`_t1347Sells`)을 뺀 사본 → R2 빨강(그곳이 안 파는 발주를 받아 온다)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('minratio');  ok(b.sites === 1 && b.good, '미끼 minratio — 값 비 최대 대신 첫째 품목을 고르는 사본 → R3 빨강', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('ownorder');  ok(b.sites === 1 && b.good, '미끼 ownorder — 파는 마을 제 발주 거름을 뺀 사본 → S1 빨강(제가 발주한 품목도 판다)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('ordge');     ok(b.sites === 1 && b.good, '미끼 ordge — 모자람 비교를 ≥ 로 바꾼 사본 → O2 빨강(목표 0 · 곳간 0 도 발주)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('nocache');   ok(b.sites === 1 && b.good, '미끼 nocache — 마을-날 한 번 셈(칸 `_t1347O`)을 뺀 사본 → O6 빨강(같은 날 곳간이 바뀌면 열이 바뀐다)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('mixany');    ok(b.sites === 1 && b.good, '미끼 mixany — 섞어 싣기 목적지 발주 거르개를 뺀 사본 → M1 빨강(목적지가 발주 안 한 품목도 얹는다)', `바꾼 자리 ${b.sites} · ${b.why}`);
 const NB = Object.keys(BAITS).length;
+if (baitSeen !== NB) { console.log(`  ✗ 미끼 표(${NB})와 판정 줄(${baitSeen}) 수가 다르다 — 표에 더한 미끼는 판정 줄도 더한다`); bait = -1; }
 const total = R.pass + R.fail + gp + gf;
 console.log(`\n=== ${R.pass + gp}/${total} ${R.fail + gf ? '✗' : '✓'} (미끼 ${bait}/${NB}) ===`);
 process.exitCode = (R.fail || gf || bait < NB) ? 1 : 0;
