@@ -1,0 +1,40 @@
+[hanbando] ⚔️ 전쟁 day 372: 선포 2[교역0·영토2·위신0·응징0] 전투 0(공승0/방승0) 사상 0 노획 0 · 활성 1 조공 1 · 실체 몸 1 교전 1
+[hanbando] 🐂 캐러밴#7829 귀환 출발: 어촌13→어촌5 stone×11 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7831 귀환 출발: 어촌5→어촌7 food×23 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7838 귀환 출발: 어촌5→농촌13 food×4 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7842 귀환 출발: 농촌13→광산2 food×0 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7843 귀환 출발: 광산2→광산3 leather×16 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7844 귀환 출발: 어촌12→광산5 food×0 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7846 귀환 출발: 임업6→임업5 ramie×4 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7847 귀환 출발: 임업4→어촌5 meat×1 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7848 귀환 출발: 임업4→어촌8 meat×1 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7849 귀환 출발: 임업4→어촌10 meat×0 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7850 귀환 출발: 광산5→어촌11 leather×5 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7851 귀환 출발: 농촌12→어촌12 pebble×2 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7852 귀환 출발: 농촌14→농촌6 hide×72 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7853 귀환 출발: 농촌13→어촌16 stone×16 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7854 귀환 출발: 임업4→농촌8 leather×2 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7855 귀환 출발: 임업4→농촌14 food×0 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7856 귀환 출발: 농촌5→농촌16 leather×14 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7857 귀환 출발: 어촌13→농촌19 herb×21 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#7858 귀환 출발: 농촌12→농촌21 leather×45 — econ d372 도착 예정
+
+<--- Last few GCs --->
+
+[1806:0x262e5000]   883451 ms: Mark-Compact 2043.2 (2068.6) -> 2041.3 (2068.9) MB, pooled: 1 MB, 1977.06 / 0.00 ms  (average mu = 0.070, current mu = 0.019) allocation failure; scavenge might not succeed
+[1806:0x262e5000]   885595 ms: Mark-Compact 2043.2 (2068.9) -> 2041.3 (2068.6) MB, pooled: 1 MB, 2102.50 / 0.00 ms  (average mu = 0.044, current mu = 0.019) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 0xe48bbe node::OOMErrorHandler(char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 2: 0x1248d00 v8::Utils::ReportOOMFailure(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 3: 0x1248fd7 v8::internal::V8::FatalProcessOutOfMemory(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 4: 0x1477ee5  [/opt/node22/bin/node]
+ 5: 0x1477f13  [/opt/node22/bin/node]
+ 6: 0x1490fea  [/opt/node22/bin/node]
+ 7: 0x14941b8  [/opt/node22/bin/node]
+ 8: 0x1cfcc61  [/opt/node22/bin/node]
