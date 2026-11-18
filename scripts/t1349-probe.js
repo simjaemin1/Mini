@@ -2,7 +2,7 @@
 // (@regress 없음 — 러너 밖 · T1349 계측기 · 제품 무변)
 // === scripts/t1349-probe.js — 멈춘(기어가는) 존 프로세스를 밖에서 잰다: SIGUSR1 → 검사기(CDP) — 멈춤 스택 N 번 · CPU 프로파일 S 초 · 힙 ===
 //   node scripts/t1349-probe.js <pid> <포트> <출력.json> [--pauses 6] [--profile 20] [--eval 파일] [--heapsample 초]
-//   --heapsample: 그 초 동안 힙 표본(`HeapProfiler.startSampling` — 살아남은 할당만 남는다) → 할당 자리(함수 · 줄)별 MB 위 30 · 스택 꼭대기 넷 줄기 위 15
+//   --heapsample: 그 초 동안 힙 표본(`--alloc` 이면 거둔 것까지 — 할당 몫 · GC 부담)(`HeapProfiler.startSampling` — 살아남은 할당만 남는다) → 할당 자리(함수 · 줄)별 MB 위 30 · 스택 꼭대기 넷 줄기 위 15
 //   아이 존은 NODE_OPTIONS 에 `--inspect-port=<포트>` 를 실어 띄운다(검사기는 SIGUSR1 이 올 때만 선다 — 그 전엔 0).
 'use strict';
 const fs = require('fs'), http = require('http');
@@ -43,7 +43,7 @@ const getJson = (u) => new Promise((res, rej) => http.get(u, (r) => { let b = ''
     out.profile = { samples: tot, top: [...self].sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k, c]) => [k, +(100 * c / tot).toFixed(1)]) };
   }
   if (HS > 0) {
-    await call('HeapProfiler.enable'); await call('HeapProfiler.startSampling', { samplingInterval: 262144 });
+    await call('HeapProfiler.enable'); await call('HeapProfiler.startSampling', process.argv.includes('--alloc') ? { samplingInterval: 65536, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true } : { samplingInterval: 262144 });
     await sleep(HS * 1000);
     const r = await call('HeapProfiler.stopSampling'); const root = r.result && r.result.profile && r.result.profile.head;
     if (root) { const site = new Map(), stem = new Map(); let tot = 0;
