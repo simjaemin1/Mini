@@ -1,0 +1,306 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 07b429e77)
+· 바뀐 코드 파일 2 · 이름 8(물린 것 6 · 흔한 이름 뺌 0) · 바뀐 하네스 35 · 규약 다섯 · **돌릴 하네스 47**(@regress 아님 3: test-lab-market.js test-t1156-specialty-job.js test-t1157-pay-power.js)
+  scripts/ci-class.js: MARK_A MARK_SA decide runOnce shardsOf srvBlock srvOf
+  scripts/lib-notice-mark.js: lib-notice-mark
+· 이름 → 하네스 수: MARK_A 2 · MARK_SA 1 · decide 2 · lib-notice-mark 20 · runOnce 4 · srvOf 1
+· 바뀐 하네스: e2e-chronicle.js e2e-cold.js e2e-downed.js e2e-events.js e2e-fishing.js e2e-guest-reconnect.js e2e-metallurgy.js e2e-next-step.js e2e-npcsprite.js e2e-onboarding.js e2e-pick-top.js e2e-respawn-choice.js e2e-site-exit.js e2e-streams.js e2e-t1341-own-house.js e2e-tidal.js e2e-ui.js e2e-verbs.js e2e-village.js e2e-well.js e2e-winter.js e2e-zoom.js test-ci-changes.js test-ci-list.js test-harness-bite.js test-lint-harness-words.js test-live-lag-net.js test-notice-mark.js test-t1087-crew-cap.js test-t1156-specialty-job.js test-t1157-pay-power.js test-t1246-food-price.js test-t1292-t952-axis.js test-t1292-xz-esc.js test-t1292-xz-hide.js
+· 돌릴 하네스: e2e-bgm-phrase.js e2e-chronicle.js e2e-cold.js e2e-downed.js e2e-events.js e2e-fishing.js e2e-guest-reconnect.js e2e-metallurgy.js e2e-next-step.js e2e-npcsprite.js e2e-onboarding.js e2e-pick-top.js e2e-respawn-choice.js e2e-site-exit.js e2e-streams.js e2e-t1341-own-house.js e2e-tidal.js e2e-ui.js e2e-verbs.js e2e-village.js e2e-well.js e2e-winter.js e2e-zoom.js test-audio.js test-body-fields.js test-ci-changes.js test-ci-list.js test-coll-grid.js test-harness-bite.js test-harness-lint.js test-hp-src.js test-inv-ground.js test-lab-market.js test-lab-psite.js test-lint-harness-words.js test-live-lag-net.js test-lon-day.js test-notice-mark.js test-t1087-crew-cap.js test-t1156-specialty-job.js test-t1157-pay-power.js test-t1246-food-price.js test-t1292-t952-axis.js test-t1292-xz-esc.js test-t1292-xz-hide.js test-t1322-prefilter.js test-t766-dissolve.js
+##### e2e-bgm-phrase.js #####
+=== PASS 12 / FAIL 0 ===
+  [소요] 17초
+  ✓ RC=0
+##### e2e-chronicle.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★⑪b 자명 통과 금지 — 수치를 읊는 줄은 같은 자가 잡는다
+  ✓ ★⑪b 자명 통과 금지 — 문장을 한 글자 바꾸면 표 밖이다
+  ✓ ★⑪b 자명 통과 금지 — 정본 표는 **종류마다 다른 문장**을 낸다  종류 4 → 문장 5
+=== 62건 중 PASS 62 · FAIL 0 ===
+  [소요] 116초
+  ✓ RC=0
+##### e2e-cold.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★★⑤ 자명 통과 금지 — 갖옷이 삼베옷보다 **더 많이 되돌린다**  삼베 Δ-0.0124 vs 갖옷 Δ-0.0773
+  ✓ ★⑦㉠ 자명 통과 금지 — 둘 다 **마을 완충 0** 인 야생이다(갈린 것은 바람뿐)  능선 0 · 골 0
+  ✓ ★⑧ⓒ (상황) 그때 추위가 실제로 극단 문턱 아래다 — 자명 통과 금지  추위 0.8143 < 문턱 0.930
+=== 56건 중 PASS 56 · FAIL 0 ===
+  [소요] 448초
+  ✓ RC=0
+##### e2e-downed.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  · [상황] B 가 실제로 반경 밖으로 갔다(안 갔으면 아래가 자명 통과다)  2880px > 960px
+  ✓ ★ⓐ 자명 통과 금지 — 실제로 옮겨졌다  806px
+=== 35건 중 PASS 35 · FAIL 0 ===
+  [소요] 451초
+  ✓ RC=0
+##### e2e-events.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★⑤-c 자명 통과 금지 — 인라인 hex 한 줄을 되살리면 잡힌다
+  ✓ ★[T78] 전제: 서버 알림 프레임을 실제로 여럿 받았다(적으면 아래가 자명 통과다)  39건
+  ✓ [T78] 자명 통과 금지 — `kind` 가 한 종류로 뭉개지지 않았다  info village dev board
+=== 60건 중 PASS 60 · FAIL 0 ===
+  [소요] 52초
+  ✓ RC=0
+##### e2e-fishing.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 35건 중 PASS 35 · FAIL 0 ===
+  [소요] 96초
+  ✓ RC=0
+##### e2e-guest-reconnect.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 게스트 재접속 소유 E2E: 40 통과 / 0 실패 ✅ ===
+=== 게스트 재접속 소유 E2E: 40 통과 / 0 실패 ✅ ===
+  [소요] 388초
+  ✓ RC=0
+##### e2e-metallurgy.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 실클라 E2E: 20 통과 / 0 실패 ✅ ===
+=== 실클라 E2E: 20 통과 / 0 실패 ✅ ===
+  [소요] 26초
+  ✓ RC=0
+##### e2e-next-step.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  · [상황] 의뢰 전 — 빈터 권리 없음 · 첫 납품 없음(아래가 자명 통과가 아니다)  [false,0]
+=== 35건 중 PASS 35 · FAIL 0 ===
+  [소요] 39초
+  ✓ RC=0
+##### e2e-npcsprite.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★②′ 자명 통과 금지 — 한 사람의 옷을 바꿔 끼우면 같은 셈이 **한 명으로 센다**  — 1명
+  ✓ ★걷는 NPC 를 실제로 봤다(idle 만 보고 통과하지 않는다)
+=== e2e-npcsprite 결과: 통과 38 · 실패 0 ===
+  [소요] 108초
+  ✓ RC=0
+##### e2e-onboarding.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★[T159] 아직 아무도 마을 사람이 아니다(자명 통과 금지 — 칸이 늘 1 이면 뜻이 없다)
+  ✓ [첫 사람 · 추천 원클릭] (상황) 아직 내 땅이 하나도 없다 — 아래 델타가 자명 통과가 아니다  claims=0
+=== PASS 74 / FAIL 0 ===
+  [소요] 172초
+  ✓ RC=0
+##### e2e-pick-top.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 14건 중 PASS 14 · FAIL 0 ===
+  [소요] 172초
+  ✓ RC=0
+##### e2e-respawn-choice.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 결과: 23 PASS / 0 FAIL ===
+=== 결과: 23 PASS / 0 FAIL ===
+  [소요] 459초
+  ✓ RC=0
+##### e2e-site-exit.js #####
+=== 터 · 건축 모드 E2E: 34 통과 / 0 실패 ✅ ===
+  ✓ [켬] ★자명 통과 금지 — Shift 배치(이어 놓기)는 배치 · 건축 모드를 **지킨다**(종전 그대로)  {"bm":true,"pm":"kiln_site","n":[]}
+  ✓ [켬] ★자명 통과 금지 — 집 의뢰(`psite`)는 다섯 터가 아니다 — 건축 모드가 남는다(손대지 않음)  {"bm":true,"pm":null,"n":[]}
+=== 터 · 건축 모드 E2E: 34 통과 / 0 실패 ✅ ===
+  [소요] 70초
+  ✓ RC=0
+##### e2e-streams.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 개울 E2E: 14 통과 / 0 실패 ✅ ===
+=== 개울 E2E: 14 통과 / 0 실패 ✅ ===
+  [소요] 37초
+  ✓ RC=0
+##### e2e-t1341-own-house.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 30건 중 PASS 30 · FAIL 0 ===
+  [소요] 59초
+  ✓ RC=0
+##### e2e-tidal.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 결과: 24 PASS / 0 FAIL ===
+  · [상황] ★자명 통과 금지 — 아직 굴이 하나도 없다  0
+  · [상황] ★자명 통과 금지 — 빈 병 셋을 들었고 물은 아직 없다  병 3 · 물 0
+  · [상황] ★자명 통과 금지 — 말릴 굴이 손에 있다  굴 15
+=== 결과: 24 PASS / 0 FAIL ===
+  [소요] 100초
+  ✓ RC=0
+##### e2e-ui.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★★⓪ 돌연변이 — 술어를 끄면 `i` 가 **다시 인벤을 연다**(이 검사가 실패할 줄 안다)
+  ✓ ★⑬ 자명 통과 금지 — `가 나 가` 는 **안 뭉친다**  ["가","나","가"]
+  ✓ ★⑭ 자명 통과 금지 — **옛 자리라면 겹친다**(이 검사가 늘 0 을 내는 게 아니다)  옛 자리 겹침 3000px²
+  ✓ ★⑮e 자명 통과 금지 — 같은 훑기로 **있는 문자열은 찾는다**(`showNotice`)
+=== 151건 중 PASS 151 · FAIL 0 ===
+  [소요] 138초
+  ✓ RC=0
+##### e2e-verbs.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★⑩ 자명 통과 금지 — 훅을 되살린 소스는 잡힌다
+  ✓ ★⑪ 자명 통과 금지 — 표를 되살린 소스는 잡힌다
+  ✓ ★⑫ 자명 통과 금지 — 말은 그대로 남는다  "알림 village"
+=== 79건 중 PASS 79 · FAIL 0 ===
+  [소요] 245초
+  ✓ RC=0
+##### e2e-village.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 마을 건립 실클라 E2E: 51 통과 / 0 실패 ✅ ===
+=== 마을 건립 실클라 E2E: 51 통과 / 0 실패 ✅ ===
+  [소요] 117초
+  ✓ RC=0
+##### e2e-well.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 우물 E2E: 16 통과 / 0 실패 ✅ ===
+=== 우물 E2E: 16 통과 / 0 실패 ✅ ===
+  [소요] 33초
+  ✓ RC=0
+##### e2e-winter.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 17건 중 PASS 17 · FAIL 0 ===
+  [소요] 149초
+  ✓ RC=0
+##### e2e-zoom.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★자명 통과 금지 — 화면이 실제로 달라졌다  평균 화소 차 10.30
+  ✓ ★자명 통과 금지 — 배율이 다르면 같은 화면 점이 다른 월드 점이다  1배 vs 2배 거리 105px
+  ✓ ★자명 통과 금지 — 표에 있는 값(2)은 실제로 기억된다  zoom=2
+=== e2e-zoom 결과: 통과 33 · 실패 0 ===
+  [소요] 90초
+  ✓ RC=0
+##### test-audio.js #####
+⑥ ★이 하네스가 실패할 줄 아는가 — 픽스처로 일부러 깨뜨린다
+  ✓ ⑮g2 자명 통과 금지 — 같은 자가 박힌 이름(`fish_state`)은 잡는다
+  ✓ ⑱a2 자명 통과 금지 — 같은 술어에 `axe` 반경 0(종전 표)을 먹이면 **그 키 하나**를 잡는다  axe
+  ✓ ⑱a4 자명 통과 금지 — 종전 `downed_b` 반경 0 을 먹이면 ⑱a3 은 **그 하나**를 잡고 ⑱a(자리 표만)는 못 잡는다  downed_b
+=== PASS 208 / FAIL 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:19730 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 454 · 걸음 문 안 256 · 문 밖 198(표 내림 73 · 까닭 125)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-ci-changes.js #####
+=== test-ci-changes 결과: 9 통과 / 0 실패 ===
+=== test-ci-changes 결과: 9 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-ci-list.js #####
+=== test-ci-list 결과: 16 통과 / 0 실패 ===
+  ✓ ① [전제] 분류표 core 가 실제로 여럿이다(0 이면 아래가 자명 통과다)  307종 · 표 417줄
+  ✓ ⑤ [전제] yml 에 서버 잡 블록(표지 사이)이 있고 표의 srv 가 실제로 여럿이다(0 이면 아래가 자명 통과다)  yml 46종 · 표 46종
+=== test-ci-list 결과: 16 통과 / 0 실패 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 15초
+  ✓ RC=0
+##### test-harness-bite.js #####
+=== test-harness-bite 결과: 6 통과 / 0 실패 ===
+  ✓ ② [전제] 표지 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-lint-harness-words.js test-live-lag-net.js
+=== test-harness-bite 결과: 6 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다  good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-changes.js test-ci-list.js test-harness-bite.js test-notice-mark.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+=== 99건 중 PASS 99 · FAIL 0 ===
+  [소요] 73초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1192392 · net 108838 · wildlife 96104
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1444351
+=== 54 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-inv-ground.js #####
+=== 28건 중 PASS 28 · FAIL 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-lab-market.js #####
+  ✓ ③ⓜ 자명 통과 금지 — 좌판 밖 참여자를 일부러 심은 미끼 판은 같은 자로 **빨강** — B′ 7/9명
+결과: PASS
+  [소요] 274초
+  ✓ RC=0
+##### test-lab-psite.js #####
+  ✓ ③ 4단계 공정 실측 통과 — 관측 stage 0,1,2,3,4
+  ✓ ⑦ⓐ (전제) 침대 명부가 비어 있지 않다 — _mapBeds 60 · 기준 60 (양쪽 0 이면 자명 통과다)
+  ✓ ⑧ⓜ 자명 통과 금지 — 마을 크루를 일부러 빼앗은 미끼 판은 같은 자로 **빨강** — B′ 1/2일 (크루 붙은 날 2 중 1일 몫 미달)
+결과: PASS
+  [소요] 698초
+  ✓ RC=0
+##### test-lint-harness-words.js #####
+  ✓ ★② 커밋 2(말투) — FAIL · 빨강 = /먹였다/ 하나 · 주석에 남은 옛 글자가 숨기지 않는다    ✗ test-x.js:7 ok() 조건 "/먹였다/" — 지금 없음 먹였다 (그때 있음 먹였다) · 태어난 판 6cb2e6b9
+  ✓ ★⑨ 얇은 클론(깊이 3) — 경계 너머 넷은 못 잼(빨강에도 초록에도 안 듦 · 끝 줄 · ⚠ 줄) · 잰 줄(별 · 커밋 3)은 전체 클론과 같은 빨강  전체 빨강 4 · 얇은 빨강 1 · LINT-HARNESS-WORDS FAIL · 빨강 1 · 못 잼 4 · test-y.js:8 별이 떴다
+  ✓ ⑥ 부분 클론 — 망 0 · 빨강 · 참고 줄 둘을 못 잼으로 센다(조용히 초록 아님 · 끝 줄 · ⚠ 줄) · 빨리 끝난다  LINT-HARNESS-WORDS PASS · 빨강 0 · 한글 판정 리터럴 4 · 참고 0(하네스 제 글자 · 런타임 이름) · 못 잼 2(태어난 판이 지역에 없음 — 얇은 · 부분 클론 · 망 0) · 0.1초
+  ✓ ④ 커밋 3(하네스 고침) — PASS  LINT-HARNESS-WORDS PASS · 빨강 0 · 한글 판정 리터럴 4 · 참고 1(하네스 제 글자 · 런타임 이름)
+  ✓ ⑦ 커밋 1 — 여러 줄 `/* */` 속에만 있는 글자(노을)는 지금 · 옛 판 둘 다 "없다"(같은 눈) — 거짓 빨강 0  LINT-HARNESS-WORDS PASS · 빨강 0 · 한글 판정 리터럴 4 · 참고 1(하네스 제 글자 · 런타임 이름)
+=== PASS 9 / FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-live-lag-net.js #####
+12 통과 · 0 실패
+12 통과 · 0 실패
+  [소요] 51초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-notice-mark.js #####
+=== test-notice-mark 결과: 12 통과 / 0 실패 ===
+  ✓ ① [전제] e2e 를 실제로 읽었고 표지 자를 쓰는 e2e 가 여럿이다(0 이면 아래가 자명 통과다)  e2e 79 · 표지 자 19
+=== test-notice-mark 결과: 12 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1087-crew-cap.js #####
+=== 8건 중 PASS 8 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1156-specialty-job.js #####
+=== 결과: 6 PASS / 0 FAIL ===
+=== 결과: 6 PASS / 0 FAIL ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1157-pay-power.js #####
+=== 결과: 갈래 5(off · settle · eat · release · all) PASS / 0 FAIL ===
+=== 결과: 갈래 5(off · settle · eat · release · all) PASS / 0 FAIL ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1246-food-price.js #####
+PASS grain-only, monotone price, seed, actual consumption, milling once, normalized/preserved units, production, spoilage and trade
+PASS grain-only, monotone price, seed, actual consumption, milling once, normalized/preserved units, production, spoilage and trade
+PASS 미끼 ① mutant old food-only read is rejected · 바꾼 자리 1
+PASS 미끼 ② mutant double rot subtraction is rejected · 바꾼 자리 1
+  [소요] 2초
+  ✓ RC=0
+##### test-t1292-t952-axis.js #####
+=== PASS 12 / FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1292-xz-esc.js #####
+=== PASS 16 / FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1292-xz-hide.js #####
+  ✓ ③ 미끼 nosure → 빨강 — 확실한 실패 가름을 뺀 사본 → ⓒ 숨은 채 다시 민다(드러나지 않는다) · 바꾼 자리 1  sent: 보임 0/3 · 숨김 → answer: 보임 0/3 · 숨김 → resent: 보임 0/3 · 숨김 → answer2: 보임 0/3 · 숨김 · 줄 hide
+=== PASS 16 / FAIL 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-t1322-prefilter.js #####
+=== T1322 첫 거름 21 통과 · 0 실패 ===
+=== T1322 첫 거름 21 통과 · 0 실패 ===
+  [소요] 20초
+  ✓ RC=0
+##### test-t766-dissolve.js #####
+  ✓ ② 켬 — 보류는 오는 식량이 문턱을 채운 셋뿐 · 미끼 여섯은 모두 해체(자명 통과 아님 — 갈린다)  보류 3 · 미끼 해체 6/6
+=== 17건 중 PASS 17 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 47: e2e-bgm-phrase.js e2e-chronicle.js e2e-cold.js e2e-downed.js e2e-events.js e2e-fishing.js e2e-guest-reconnect.js e2e-metallurgy.js e2e-next-step.js e2e-npcsprite.js e2e-onboarding.js e2e-pick-top.js e2e-respawn-choice.js e2e-site-exit.js e2e-streams.js e2e-t1341-own-house.js e2e-tidal.js e2e-ui.js e2e-verbs.js e2e-village.js e2e-well.js e2e-winter.js e2e-zoom.js test-audio.js test-body-fields.js test-ci-changes.js test-ci-list.js test-coll-grid.js test-harness-bite.js test-harness-lint.js test-hp-src.js test-inv-ground.js test-lab-market.js test-lab-psite.js test-lint-harness-words.js test-live-lag-net.js test-lon-day.js test-notice-mark.js test-t1087-crew-cap.js test-t1156-specialty-job.js test-t1157-pay-power.js test-t1246-food-price.js test-t1292-t952-axis.js test-t1292-xz-esc.js test-t1292-xz-hide.js test-t1322-prefilter.js test-t766-dissolve.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-lab-psite.js 698 · e2e-respawn-choice.js 459 · e2e-downed.js 451 · e2e-cold.js 448 · e2e-guest-reconnect.js 388 · test-lab-market.js 274 · e2e-verbs.js 245 · e2e-onboarding.js 172 · e2e-pick-top.js 172 · e2e-winter.js 149
+  걸린 시간 합: 하네스 4730초 · 러너 전체 4906초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 22번 × 8초 · 건넘 26번(앞 판이 남긴 아이 없음)
+RC=0
