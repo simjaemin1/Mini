@@ -5484,6 +5484,7 @@ const T1365_CLOCK = process.env.T1365_CLOCK !== '0';
 function _t1348FGrant(npc, s) {
   if (!npc.simVillageId || !npc.simJob) return;
   if (npc.simJob === 'farmer' ? !(T1348_WORK && SimVillages.t1348Farm) : !(T1365_WORK && SimVillages.t1365Work)) return;   // ★[T1365] 농부 밖 일터도
+  if (npc.simJob !== 'farmer' && SimVillages.t1365Want && !SimVillages.t1365Want(npc)) return;   // ★[T1365] 결정 대부분이 몸을 바꾸는 일터는 표를 안 준다(판정 셈 낭비)
   SS.A.DS[s] = 2; SS.A.SH[s] = npc._sh !== undefined ? npc._sh : _SEED.pidHash(npc.playerId || npc.pid || npc.mid || npc.id || '');   // `_shOf` 그 식(몸 칸은 안 쓴다)
   SS.stat.fgrant++;
 }

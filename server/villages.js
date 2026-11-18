@@ -13742,6 +13742,14 @@ function t1365Work(npc, now) {
   }
   return _z('W51');
 }
+// ★[T1365] 일터 깨움 표를 줄 만한 몸인가(존 표 줄) — 결정 대부분이 몸을 바꾸는 일터(채집 · 벌목 — 따기 · 베기 · 던짐 대본을 켠 마을의 어부)는
+//   판정을 불러도 거의 다 거짓이라 셈만 는다(틀 세계 `verify` 판: 채집 28.0 만 결정 중 무동작 0.9 만 · 어부 14.4 만 중 0.8 만 · 벌목 4.4 만 중 0.2 만). 거짓 = 표를 안 준다(종전 결정 문).
+function t1365Want(npc) {
+  const j = npc.simJob;
+  if (j === 'forager' || j === 'lumberjack') return false;
+  if (j === 'fisher') { const vil = state.byDbId && state.byDbId.get(npc.simVillageId); if (vil && vil.econ && _lifeEcon().fishActOn(vil.econ)) return false; }
+  return true;
+}
 // 장인(`_t1196Step`) — null = 그 갈래가 null 을 돌려줄 몸(회관 일로 흐른다) · 0 = 쓰기 · 1 = 기다림(제작 · 인출 · 저장 머묾)
 function _t1365Art(vil, npc, now0, job) {
   if (!_t1196On(vil)) return null;
@@ -20329,7 +20337,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
-  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1337Sleep, t1337Still, t1348Farm, t1365Work, t1365Why, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1337Sleep, t1337Still, t1348Farm, t1365Work, t1365Why, t1365Want, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
