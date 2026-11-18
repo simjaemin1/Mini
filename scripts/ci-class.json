@@ -356,8 +356,8 @@
    ]
   },
   "test-audio.js": {
-   "cls0": "나",
-   "why0": "child_process",
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
    "cls": "나",
    "maxSec": 2.4,
    "same5": true,
@@ -1200,6 +1200,15 @@
    ],
    "dyn": "가"
   },
+  "test-bundle-blackbox.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
   "test-calendar.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
@@ -1645,6 +1654,15 @@
     }
    ],
    "dyn": "가"
+  },
+  "test-clock-shift.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
   },
   "test-clothes-tiers.js": {
    "cls0": "가",
@@ -5785,6 +5803,15 @@
    "child": [
     "spawnSync node"
    ]
+  },
+  "test-onb-blackbox.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
   },
   "test-onboarding.js": {
    "cls0": "가",
@@ -12536,7 +12563,7 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 0.4,
+   "maxSec": 0.9,
    "same5": true,
    "core": true,
    "why": "core",
@@ -12544,31 +12571,31 @@
    "runs": [
     {
      "rc": 0,
-     "secs": 0.4,
+     "secs": 0.9,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 0.4,
+     "secs": 0.8,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 0.4,
+     "secs": 0.6,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 0.4,
+     "secs": 0.7,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 0.4,
+     "secs": 0.6,
      "green": true,
      "fails": []
     }
@@ -13207,6 +13234,213 @@
     {
      "rc": 0,
      "secs": 25.5,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
+  },
+  "test-t1346-birth-flow.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1348-loop.js": {
+   "cls0": "가",
+   "why0": "",
+   "cls": "가",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1352-xz-hold.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 0.8,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
+  },
+  "test-t1352-xz-news.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 4,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 2.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "fork test-t1352-xz-news.js"
+   ]
+  },
+  "test-t1353-onb-on-prep.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1376-tick-fail.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 0.5,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 0.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.4,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
+  },
+  "test-t1376-xz-market.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 11.7,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 11.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.7,
      "green": true,
      "fails": []
     }
@@ -14400,6 +14634,15 @@
    ],
    "inproc": true
   },
+  "test-touched-harness.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
   "test-trade.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
@@ -15374,5 +15617,5 @@
    ]
   }
  },
- "at": "2026-11-17"
+ "at": "2026-11-18"
 }
