@@ -18,6 +18,7 @@
 'use strict';
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -194,9 +195,10 @@ async function waitHttp(url, tries = 900) {
     //     같은 품목에 두 번 주입한 뒤 그 품목을 `skip` 에 넣고 다음 품목으로 간다(`skip` 은 T80 의 종전 인자 · 제품 코드 0). 품목은 알림 줄에서 읽는다.
     const stuck = []; let lastIt = null, sameIt = 0;
     for (let i = 0; i < 12; i++) {
+      const tgS = await NM.mark(page);
       await page.evaluate(([vid, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid, skip: sk }), [V.id, stuck.slice()]);
-      await sleep(700);
-      { const nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '');
+      //   [T1367] 종전 0.7초 뒤 고리의 마지막 "(문턱" 줄 — 표지 뒤 픽스처 답이 올 때까지(상한 5초)
+      { const nl = (await NM.waitLine(page, tgS, /\(문턱 |소비 품목이 없다|그런 마을/, { capMs: 5000 })).list.filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '';
         const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl), it = m ? m[1] : null;
         if (it && it === lastIt) sameIt++; else { lastIt = it; sameIt = 1; }
         if (it && sameIt >= 2 && !stuck.includes(it)) { stuck.push(it); lastIt = null; sameIt = 0; } }

@@ -88,7 +88,7 @@ process.on('exit', shutdown);
   await sleep(1800);
   ok(await A.evaluate(() => !!(window.__inWorld && window.__inWorld())), '[A] 존 입장');
 
-  const notices = () => A.evaluate(() => (window.__notices || []).slice(-40));
+  const notices = () => A.evaluate(() => (window.__notices || []).slice(-40));   // @notice-ok 고리 전부(40칸 = 클라 상한 · 자름 0)
   const clearNotices = () => A.evaluate(() => { window.__notices = []; });
   const panelOpen = () => A.evaluate(() => { const el = document.getElementById('downPanel'); return !!(el && !el.classList.contains('hidden')); });
   const buttons = () => A.evaluate(() => [...document.querySelectorAll('#downOptions button')].map((b) => ({ text: b.textContent.trim(), disabled: !!b.disabled })));
