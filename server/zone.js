@@ -5473,8 +5473,13 @@ const T1348_WALK = T1322_PF && SS.WALK_ON, T1348_WVERIFY = T1348_WALK && SS.WALK
 //   그 결정이 썼을 결정 시각만 열에 적는다(결정 문 머리 글자 그대로 — 씨 흐름 `(신원 · 지금 셀 · 게임일 · 틱)` 첫 수 · 판 시계 배율). 미룬 결정 도장은 잠 깨움과 같은 칸(`DK`).
 //   걷는 몸이면 같은 틱에 걷는 몸 커널이 이어 걷는다(결정이 무동작이면 걸음 문은 그 뒤 그대로다).
 const T1348_WORK = T1322_PF && SS.WORK_ON, T1348_FVERIFY = T1348_WORK && SS.WORK_VERIFY;
+// ★★[T1365 ⓐ 2026-11-18 · µs 여덟째 · 손잡이 `T1365_WORK`(켬 기본 · `'0'` 끔 · `'verify'` 켬 + 견줌 + 직업마다 덮음 셈)] **일터 깨움 나머지** — T1348 회부 2.
+//   농부 밖 일터(벌목 · 채광 · 채집 · 낚시 · 수색 · 회관 일 · 제작)의 머묾 결정을 같은 고리로 건넌다 — 판정은 생활층 `t1365Work`(그 몸 · 지금 · `npcLifeTick` 차례 그대로).
+//   표 · 늑대 · 결정 시각 · 미룬 도장은 일터 깨움(T1348 ⓒ) 그 줄이다(`DS = 2` · `_t1348Dec`).
+const T1365_WORK = T1322_PF && SS.WORK2_ON, T1365_VERIFY = T1365_WORK && SS.WORK2_VERIFY;
 function _t1348FGrant(npc, s) {
-  if (npc.simJob !== 'farmer' || !npc.simVillageId || !SimVillages.t1348Farm) return;
+  if (!npc.simVillageId || !npc.simJob) return;
+  if (npc.simJob === 'farmer' ? !(T1348_WORK && SimVillages.t1348Farm) : !(T1365_WORK && SimVillages.t1365Work)) return;   // ★[T1365] 농부 밖 일터도
   SS.A.DS[s] = 2; SS.A.SH[s] = npc._sh !== undefined ? npc._sh : _SEED.pidHash(npc.playerId || npc.pid || npc.mid || npc.id || '');   // `_shOf` 그 식(몸 칸은 안 쓴다)
   SS.stat.fgrant++;
 }
@@ -5482,22 +5487,39 @@ function _t1348Dec(s, now) {
   const A = SS.A, p = SS.own[s], x = p.x, y = p.y;
   const near = qtMobs ? qtMobs.queryCircle(x, y, NPC_FLEE_RANGE) : Array.from(mobs.values());   // 결정 문 ① 그 질의(지금 자리)
   for (const m of near) { if (m.type !== 'wolf' || m.tameOwner) continue; if (Math.hypot(m.x - x, m.y - y) < NPC_FLEE_RANGE) { SS.stat.fwolf++; return false; } }
-  const k = SimVillages.t1348Farm(p, now); if (!k) { SS.stat.fstill++; return false; }
+  const farm = p.simJob === 'farmer', vq = farm ? T1348_FVERIFY : T1365_VERIFY;   // ★[T1365] 농부 = `t1348Farm` · 그 밖 일터 = `t1365Work`
+  const k = farm ? SimVillages.t1348Farm(p, now) : SimVillages.t1365Work(p, now);
+  if (!k && !vq) { SS.stat.fstill++; return false; }
   _t1337Dice.seed(_SEED.seedOf(A.SH[s], Math.floor(x / BUILDING_SIZE), Math.floor(y / BUILDING_SIZE), zoneGameDay(), _tick.n));
   let nda = now + 500 + _t1337Dice.next() * 1000;
   if (p.simVillageId && SimVillages.t1295S) { const sc = SimVillages.t1295S(p); if (sc > 1) nda = now + (nda - now) / sc; }
-  if (T1348_FVERIFY) { _t1322Wake(s); const snap = _t1337Snap(p); decideNpcBehavior(p, now); _t1348FCmp(p, nda, snap); SS.stat.fvq++; return false; }   // 견줌 = 미룬 도장을 쓰고 결정 문을 그 자리에서 실제로 돌려 견준다(걸음 문은 이어 종전대로 · 결정은 이미 했다)
-  A.NDA[s] = nda; A.DK[s] = now; SS.stat.fskip++; if (k === 1) SS.stat.fk1++; else SS.stat.fk2++;
+  if (vq) {   // 견줌 = 미룬 도장을 쓰고 결정 문을 그 자리에서 실제로 돌려 견준다(걸음 문은 이어 종전대로 · 결정은 이미 했다) · ★[T1365] 판정이 거짓인 결정도 돌려 직업마다 덮음을 센다
+    _t1322Wake(s); const snap = _t1337Snap(p); decideNpcBehavior(p, now);
+    const J = SS.stat.fjob[p.simJob] || (SS.stat.fjob[p.simJob] = [0, 0, 0, 0]);
+    if (k) { if (_t1348FCmp(p, nda, snap, farm ? 'f' : 'x')) J[2]++; else J[3]++; if (farm) SS.stat.fvq++; else SS.stat.xvq++; }
+    else { J[_t1365Noop(p, snap) ? 0 : 1]++; SS.stat.fstill++; }
+    return false;
+  }
+  A.NDA[s] = nda; A.DK[s] = now;
+  if (farm) { SS.stat.fskip++; if (k === 1) SS.stat.fk1++; else SS.stat.fk2++; } else { SS.stat.xskip++; if (k === 1) SS.stat.xk1++; else SS.stat.xk2++; }
   return true;
 }
 // 견줌 — 결정 문을 돌린 바로 뒤(걸음 문 앞) 몸 칸 전부(도장 · 결정 칸 뺌)가 그 앞과 같고 결정 시각이 셈한 값인가(걸음 문이 쓰는 칸은 아직 안 썼다)
-function _t1348FCmp(npc, nda, snap) {
-  const P = { nda, snap }, st = SS.stat; st.fcmp++;
-  const bad = (w) => { st.fbad++; st.fwhy[w] = (st.fwhy[w] || 0) + 1; if (st.fex.length < 8) st.fex.push(`${npc.pid} ${w}`); };
+function _t1348FCmp(npc, nda, snap, pre) {   // ★[T1365] `pre` = 셈 칸 머리('f' 농부 · 'x' 그 밖 일터) · 돌려주는 값 = 어긋남 0
+  const P = { nda, snap }, st = SS.stat, f = pre || 'f'; st[f + 'cmp']++;
+  let ok = true;
+  const bad = (w) => { ok = false; st[f + 'bad']++; st[f + 'why'][w] = (st[f + 'why'][w] || 0) + 1; if (st[f + 'ex'].length < 8) st[f + 'ex'].push(`${npc.pid} ${npc.simJob} ${w}`); };
   if (!Object.is(npc.nextDecisionAt, P.nda)) bad('nda');
   const now = _t1337Snap(npc);
   for (const [k, v] of now) { const a = P.snap.get(k); if (!P.snap.has(k)) bad('+' + k); else if (!(Array.isArray(v) ? v === a : Object.is(v, a))) bad(k); }
   for (const k of P.snap.keys()) if (!now.has(k)) bad('-' + k);
+  return ok;
+}
+// ★[T1365 verify] 판정이 거짓인 결정 — 몸 칸이 그대로였나(도장 · 결정 칸 뺌 · 덮음 셈 전용)
+function _t1365Noop(npc, snap) {
+  const now = _t1337Snap(npc); if (now.size !== snap.size) return false;
+  for (const [k, v] of now) { if (!snap.has(k)) return false; const a = snap.get(k); if (!(Array.isArray(v) ? v === a : Object.is(v, a))) return false; }
+  return true;
 }
 let _t1348Pend = null;
 function _t1348Grant(npc, s, now, nda) {
@@ -5525,7 +5547,7 @@ function _t1348Grant(npc, s, now, nda) {
   A.PI[s] = pi; A.PN[s] = pn; A.PX0[s] = npc._t791Px; A.PY0[s] = npc._t791Py; A.PAT[s] = npc._pathAt || 0; A.ST[s] = _t1295Stale(npc);
   A.SPX[s] = S.x; A.SPY[s] = S.y; A.SPA[s] = S.at; A.SPD[s] = MOVE_SPEED * (sm || NPC_WALK_MULT); SS.WPA[s] = P;
   A.DS[s] = 0; A.DK[s] = NaN; SS.stat.wgrant++;
-  if (T1348_WORK) _t1348FGrant(npc, s);   // ★[T1348 ⓒ] 일터 깨움 표(농부 — 배정 칸으로 가는 중 · 순찰 체류)
+  if (T1348_WORK || T1365_WORK) _t1348FGrant(npc, s);   // ★[T1348 ⓒ] 일터 깨움 표(농부 — 배정 칸으로 가는 중 · 순찰 체류)
 }
 // 걷는 몸 한 틱(표 3) — 깨울 까닭(글자) 또는 null(셈했다 · 속도를 몸에 썼다). `vq` = 견줌(셈만 · 아무것도 안 쓴다 · 예측을 `_t1348Pend` 에)
 function _t1348Walk(s, now, vq) {
@@ -5630,7 +5652,7 @@ function _t1322Grant(npc, now, s0) {
   A.TK[s] = kind; A.NDA[s] = nda; A.LON[s] = lon; A.W95[s] = w95; A.SK[s] = NaN; A.SX[s] = npc.x; A.SY[s] = npc.y; SS.stat.grant++;
   A.DS[s] = 0; A.DK[s] = NaN;
   if (T1337_WAKE && kind === 1) _t1337Grant(npc, s, now);   // ★[T1337] 잠 깨움 표(결정 문까지)
-  else if (T1348_WORK && kind === 2) _t1348FGrant(npc, s);   // ★[T1348 ⓒ] 일터 깨움 표(농부)
+  else if ((T1348_WORK || T1365_WORK) && kind === 2) _t1348FGrant(npc, s);   // ★[T1348 ⓒ] 일터 깨움 표(농부)
 }
 // 미룬 도장 — 건넌 틱의 걸음 문이 썼을 값(마지막 건넌 시각 · 표를 준 자리)
 function _t1322Wake(s) {
