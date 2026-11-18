@@ -1,0 +1,38 @@
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:19608 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 450 · 걸음 문 안 256 · 문 밖 194(표 내림 73 · 까닭 121)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1182128 · net 108838 · wildlife 96104
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1453416
+=== 54 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ★⑰ 자명 통과 금지 — 표지 없는 클라 시계는 물고 · 표지 단 줄은 표지로 · 주석 안 · 서버 축 호출은 보낸다  raw=hit,mark=mark,comment=none,srv=none
+  ✓ ⑱ [전제] 러너 표지를 단 파일이 실제로 여럿이다(0 이면 아래가 자명 통과다)  468개
+  ✓ ★⑱ 자명 통과 금지 — 밖 이름의 표지 둘은 물고 · 찾는 이름 · "없음" 설명 · 다른 낱말은 보낸다  hit,hit,none,none,none
+=== 89건 중 PASS 89 · FAIL 0 ===
+  [소요] 68초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 4: test-body-fields.js test-hp-src.js test-lon-day.js test-harness-lint.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-harness-lint.js 68 · test-hp-src.js 2 · test-body-fields.js 1 · test-lon-day.js 0
+  걸린 시간 합: 하네스 71초 · 러너 전체 79초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 4번(앞 판이 남긴 아이 없음)
+
+real	1m19.241s
+user	0m56.895s
+sys	0m9.574s

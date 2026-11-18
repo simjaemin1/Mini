@@ -21105,7 +21105,13 @@ function _t1030Hold(world, c) { return T1030_XZ_MARKET && !!(c && c._xzHome) && 
 //   경계에 선 채 하루씩 미룬다(T1030 미룸과 같은 꼴 — 팔 켬 · 장 손잡이와 무관). 종전: `_xzHandBack` 이 `world.xzone.zone` 을 읽다 예외 → 그날 캐러밴 고리가 통째로 멈췄다.
 //   이 존 캐러밴으로 저쪽에 가 있는 것('xzone')은 원래 갈래가 없다(돌아올 'return' 을 기다린다 — 예외 0). 팔이 다시 켜지면 그날부터 종전 그대로 간다.
 const T1321_XZ_DRAIN = (typeof process !== 'undefined' && process.env && process.env.T1321_XZ_DRAIN === '1');
-function _t1321Hold(world, c) { return T1321_XZ_DRAIN && !!(c && c._xzHome) && !_xzOn(world); }
+// ★★[T1352 2026-11-17 · 세션8 · T1324 회부 15] 손잡이 `T1352_XZ_HOLD`('1' 만 켬 · 끔 기본 · 끔 = 아래 줄 종전 글자 그대로 = 바이트 같음) — **위 안전망을 비우기 명령과 떼어 낸다.**
+//   다시 뜬 존(팔 켬)은 이웃 존 걸음표가 서기 전(`_xzOn` 거짓 — 이웃 명부가 와야 워커)에 첫 하루를 연다. 메타에서 되돌린 이웃 존 캐러밴의 'return' 날이 그 하루면
+//   `_xzHandBack` 이 `world.xzone.zone` 을 읽다 예외 → 서버 현지 자정 창(T731)이 안 닫혀 그 존 econ 이 멎는다(e2e-xzone-caravan ⓗ4 · ⓗ5 — 실시간 판은 걸음표 · 첫 창 경주라
+//   가끔 · 가상 시계 판은 매번 · land1077 한 판 · T1324 판 13). 위 안전망(`_t1321Hold`)은 비우기 env(`T1321_XZ_DRAIN` — 새 넘김 0 · 끄기 절차)와 한 글자라 평소 판엔 없다 ⇒
+//   이 손잡이는 미룸만 켠다(비우기 0 · 새 수 0 — 미룸은 T1321 그 꼴: 경계에 선 채 하루씩 · 걸음표가 서면 그날부터 종전 그대로).
+const T1352_XZ_HOLD = (typeof process !== 'undefined' && process.env && process.env.T1352_XZ_HOLD === '1');
+function _t1321Hold(world, c) { return (T1321_XZ_DRAIN || T1352_XZ_HOLD) && !!(c && c._xzHome) && !_xzOn(world); }
 // 거리 — 스텁이 끼면 호스트에 묻는다(걸음 · 존 경계 너머) · 아니면 종전 정본(`villageDist`) 그대로.
 function _xzDist(world, a, b) {
   if ((a && a._xz) || (b && b._xz)) {

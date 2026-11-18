@@ -432,6 +432,7 @@ function _t1324News(r) {
   const beds = Math.min(e.housing !== undefined ? e.housing : Infinity, e._mapBeds !== undefined ? e._mapBeds : Infinity);
   r.t1324 = { name: vil.name, d: (state.world && state.world.day) | 0, fe: +E1.totalFoodEquivalent(e).toFixed(3), n: e.npcs.length,
     h: (e.lastStats && typeof e.lastStats.happiness === 'number') ? e.lastStats.happiness : null, beds: isFinite(beds) ? beds : null };
+  if (_t1352On()) r.t1324.g = state.lastGameDay;   // ★[T1352] 켬 = 경계 수(소식 나이 — 두 존 같은 수 · 끔 = 종전 줄 글자)
   _t1324Stat.news++;
 }
 //   ⓐ 받는 쪽(집 존): 그 캐러밴 집 마을이 듣는다(쓸 수 있는 날 = 상인이 집에 닿는 날)
@@ -441,16 +442,19 @@ function _t1324Hear(r, peer) {
   const e = c && c.from; if (!e || !e.npcs) return;
   const H = e._t1324Heard || (e._t1324Heard = {});
   H[peer + '|' + r.t1324.name] = Object.assign({}, r.t1324, { zone: peer, at: ((state.world && state.world.day) | 0) + Math.max(0, r.remain | 0) });
+  if (T1352_NEWS_LOCAL) _t1352Hist(e, peer + '|' + r.t1324.name, H[peer + '|' + r.t1324.name]);   // ★[T1352 ⓐ] 켬 — 들은 줄 고리(같은 존 소문이 앞 줄도 나른다 · 끔 = 무동작)
   _t1324Stat.heard++;
 }
 //   ⓑ 이웃 존 받는 곳 — 들은 줄로 · 정보 반경 안 · 경계 칸이 선 쌍 · 교역로 4일 안 → { h, dist, dest } 중 가장 나은 하나(없으면 null)
 function _t1324Cand(vil, h0, day) {
   const X = state.xzone, e0 = vil && vil.econ, V2 = state.econV2, E1 = state.econ;
-  if (!X || !e0 || !e0._t1324Heard || !V2 || !E1) return null;
+  const KN = _t1352On() ? _t1352Known(vil, day) : null;   // ★[T1352] 켬 = 제 줄 + 같은 존 소문(ⓐ) + 이음매 소문(ⓑ) 중 오늘 닿은 가장 새 줄 · 끔 = null(아래 종전 `_t1324Heard`)
+  if (!X || !e0 || !(KN || e0._t1324Heard) || !V2 || !E1) return null;
   if ((day | 0) !== _t1324PickDay) { _t1324Picked.clear(); _t1324PickDay = day | 0; }
   let best = null;
-  for (const k of Object.keys(e0._t1324Heard)) {
-    const row = e0._t1324Heard[k]; if (!row || !row.zone || !row.name) continue;
+  const HH = KN || e0._t1324Heard, w0 = KN ? Object.assign({}, _t1324Why) : null;
+  for (const k of Object.keys(HH)) {
+    const row = KN ? HH[k].row : HH[k]; if (!row || !row.zone || !row.name) continue;
     _t1324Stat.candSeen++;
     if ((row.at | 0) > (day | 0)) { _t1324Why.at++; continue; }            // 소식이 아직 집에 안 닿았다(상인이 길 위)
     if (!X.core.G.has(row.zone)) { _t1324Why.geo++; continue; }            // 걸음표가 아직(다시 뜬 판)
@@ -465,7 +469,12 @@ function _t1324Cand(vil, h0, day) {
     const per = _t1306On() ? E1.DAILY_FOOD_CONSUMPTION * E1.t1297NeedDays(day) : 3;
     if (!(row.fe >= (nk + 1) * per)) { _t1324Why.food++; continue; }
     _t1324Stat.cand++;
-    if (!best || row.h > best.h || (row.h === best.h && dist < best.dist)) best = { h: row.h, dist, dest: { _t1324: true, zone: row.zone, name: row.name, key: k, sp } };
+    if (!best || row.h > best.h || (row.h === best.h && dist < best.dist)) best = { h: row.h, dist, dest: { _t1324: true, zone: row.zone, name: row.name, key: k, sp, ...(KN ? { t1352: HH[k] } : {}) } };
+  }
+  if (KN) {   // ★[T1352] 이 고르기의 셈(받는 곳 없음 줄이 읽는다)
+    const c = { own: 0, local: 0, seam: 0 }, why = {}; for (const k of Object.keys(KN)) c[KN[k].via]++;
+    for (const q of Object.keys(_t1324Why)) if (_t1324Why[q] !== w0[q]) why[q] = _t1324Why[q] - w0[q];
+    _t1352Last = { vid: vil.dbId, own: c.own, local: c.local, seam: c.seam, why };
   }
   return best;
 }
@@ -493,8 +502,9 @@ function _t1324Depart(vil, npc, dest, day) {
   _t1324Rows().push(w);
   _t1324Note(vil, dest.key);
   _t1324Stat.depart++; _t1324Mark();
-  const hr = (e._t1324Heard && e._t1324Heard[dest.key]) || {};
-  _xzLog(`[T1324] 이주 ${w.key} 떠남: ${vil.name} 주민 1명 → ${dest.name}@${dest.zone} · 경계 칸까지 ${Math.round(w.len / SZ)}셀 · 몸 ${pid != null ? '있음' : '없음(장부만)'} · 들은 줄 ${hr.d}날 곳간 ${hr.fe} 인구 ${hr.n} 행복 ${hr.h}`);
+  const hr = (dest.t1352 && dest.t1352.row) || (e._t1324Heard && e._t1324Heard[dest.key]) || {};   // ★[T1352] 켬 = 고른 그 줄(같은 존 소문 · 이음매로 들은 줄 포함 · 끔 = 종전 글자)
+  _xzLog(`[T1324] 이주 ${w.key} 떠남: ${vil.name} 주민 1명 → ${dest.name}@${dest.zone} · 경계 칸까지 ${Math.round(w.len / SZ)}셀 · 몸 ${pid != null ? '있음' : '없음(장부만)'} · 들은 줄 ${hr.d}날 곳간 ${hr.fe} 인구 ${hr.n} 행복 ${hr.h}${_t1352Picked(dest)}`);
+  _xzLog(`[T1352] 표 떠남 ${w.key} g${state.lastGameDay} d${day | 0}`);   // ★[T1352] 표 — 떠난 경계(소식 나이 · 날 줄 — 판 분석이 이웃 존 날 줄로 들은 줄 경계를 찾는다 · 셈만)
   return true;
 }
 //   ⓓ 넘기 — 경계 칸에 닿은 날 · 받는 존 답에 따라
@@ -567,6 +577,7 @@ function _t1324In(r, peer, sk) {
 //   하루 — 길 위 줄(경계 칸으로 · 받는 마을로 · 집으로) · `_xzDayOut` 끝에서
 function _t1324Day() {
   if (!_t1324On()) return;
+  if (state._e2eStage) _t1352StageDay();   // ★[T1352] 테스트 전용 판 꾸밈(`E2E_GIVE` 문으로만 선다 · 없으면 무동작)
   const W = _t1324Rows(); if (!W.length) return;
   const day = (state.world && state.world.day) | 0;
   for (let i = 0; i < W.length; i++) {
@@ -576,7 +587,10 @@ function _t1324Day() {
       w.lastDay = day;
       if (w.ph !== 'out') _t1324Reroute(w, day);                         // 가던 마을(받는 마을 · 집)이 걷는 사이 해체 · 빔 — T1080 그 다시 고르기(이 존 안)
       const ctx = state.byDbId && (state.byDbId.get(w.ph === 'in' ? w.toId : w.from));
-      if (_t1080RoadDay(w, day, ctx)) { W.splice(i--, 1); _t1324Stat.roadDead++; _t1324Mark(); _xzLog(`[T1324] 이주 ${w.key} 길 위 죽음(${w.ph})`); continue; }   // 길 위에서 굶어 죽었다(몸은 그 자리에 눕는다 · T1080 그 문)
+      const hd0 = _t1080Stat.hungryDays;
+      const dead = _t1080RoadDay(w, day, ctx);
+      _t1352Stat.roadDays++; if (_t1080Stat.hungryDays > hd0) _t1352Stat.roadHungry++;   // ★[T1352] 표 — 이웃 존 이주 길 위 하루 · 굶은 하루(T1080 그 셈의 이 줄 몫 · 셈만)
+      if (dead) { W.splice(i--, 1); _t1324Stat.roadDead++; _t1324Mark(); _xzLog(`[T1324] 이주 ${w.key} 길 위 죽음(${w.ph})`); continue; }   // 길 위에서 굶어 죽었다(몸은 그 자리에 눕는다 · T1080 그 문)
     }
     if (!(w.ppd > 0 && (day - w.d0) * w.ppd >= w.len - 0.5)) continue;   // 아직 길 위(T765 그 닿음 식)
     if (w.ph === 'out') { _t1324Send(w); continue; }
@@ -603,6 +617,7 @@ function _t1324Join(w, to) {   // 닿았다 — econ 에 붙고(`_econJoin` 두 
   if (_t765Join(w.pid, to, w.npc)) _t1324Stat.joined++;
   if (w.ph === 'in') _t1324Stat.arrive++; else _t1324Stat.home++;
   const E1 = state.econ;
+  if (w.ph === 'in') { const dp = to.econ._dpDebug; _xzLog(`[T1352] 표 닿음 ${w.key} g${state.lastGameDay} d${(state.world && state.world.day) | 0} K${dp && typeof dp.K === 'number' && isFinite(dp.K) ? +dp.K.toFixed(1) : '?'}`); }   // ★[T1352] 표 — 닿은 경계 · 그 마을 그날 K(몰림 날 줄 · 셈만)
   _xzLog(`[T1324] 이주 ${w.key} ${w.ph === 'in' ? '닿음' : '집에 돌아옴'}: ${to.name} · 인구 ${to.econ.npcs.length} · 곳간 ${E1 ? (+E1.totalFoodEquivalent(to.econ)).toFixed(1) : '?'} · 길 ${((state.world && state.world.day) | 0) - (w.dep | 0)}날`);
 }
 //   영속 — 메타 곁 칸(몸 pid · 하루 안 칸은 안 싣는다)
@@ -615,6 +630,147 @@ function _t1324Restore() {
   if (!T1324_XZ_MIGRATE || !Array.isArray(S) || !S.length) return;
   const W = _t1324Rows(); for (const w of S) { if (!w || !w.key || W.some((x) => x.key === w.key)) continue; W.push(Object.assign({}, w, { pid: null })); _t1324Stat.restored++; }
   if (_t1324Stat.restored) _xzLog(`[T1324] 재기동 — 이주 길 위 ${_t1324Stat.restored}명 되돌림(몸 없이 장부만 · 답 기다리던 줄은 모름으로 다시 민다)`);
+}
+// ═══ ★★[T1352 2026-11-17 · 세션8 · T1324 회부 2 · 3] 소식이 번지는 길 — 손잡이 둘 `T1352_NEWS_LOCAL`(ⓐ) · `T1352_NEWS_SEAM`(ⓑ)(둘 다 `'1'` 만 켬 · ★기본 끔 ·
+//   이주 손잡이 `T1324_XZ_MIGRATE` 안 — 끔 = 아래 함수가 한 줄도 안 돈다 · 받는 곳 고르기는 T1324 `_t1324Heard` 그대로 = 바이트 같음).
+//   T1324 자연 판 넘은 주민 0 — 이웃 존 줄을 가진 마을(캐러밴 집 = 이음매 교역 마을)은 행복해 안 떠나고, 불행한 마을은 줄이 없다(T1324 §4).
+//   ⓐ 같은 존 소문 — 마을 A 가 들은 이웃 존 줄(그 집 캐러밴이 실어 온 줄)은 같은 존 마을 V 에 "A 가 들은 날 + T7 도달 일수"(`ledger.delayTo(V, A)` — server/rumor.js
+//      그 표 · 몸 걸음 시계 · 다단 · 주사위 0)에 닿는다. A 는 열쇠(존|마을)마다 들은 줄 고리(`_t1352Hist` — econ 칸 · 재기동을 넘는다)를 쥔다 — 새 줄이 V 에 닿기 전에도
+//      V 는 앞 줄을 안다(잊음 0). 고리는 더 새 줄이 이 존 닿는 마을 모두에 닿은 뒤 그보다 낡은 줄을 버린다(T7 일수만 · 상한 = 장부 30날 창 PRICE_WIN — T1306 고리와 같은 자).
+//   ⓑ 이음매 소문 — 이웃 존이 날마다 미는 경계 마을 스냅(T533 `snap` — 이 존 어느 마을과 걸어 2km 안인 그 존 마을)에 그날 줄(곳간 식량 환산 · 사람 · 행복 · 침상 —
+//      T1324 'return' 줄과 같은 칸)을 싣는다. 이 존 마을 U 는 경계 g 의 그 줄을 g + T7 일수(`rumor.travelDaysOf(합친 걸음표 거리 U ↔ 그 마을)` — 캐러밴이 쓰는 그 거리 ·
+//      소문 그 식)에 듣는다. ⓐ 도 켬이면 U 에서 V 로 같은 존 소문이 잇는다 — V 가 아는 경계 = g + min_U(이음매 일수(U) + delayTo(V, U))(T7 다익스트라에 이음매 한 칸 · U = V 포함).
+//      받는 쪽 고리(`state._t1352S` — 존|마을 → 경계 줄 · 길이 PRICE_WIN)는 메모리에만 — 다시 뜨면 하루 모른다(스텁과 같은 결 · T533 시효 하루).
+//   V 가 아는 그 마을 줄 = 닿은 줄 가운데 가장 새 것(그 존 날 `d` · 같으면 제 줄 → 같은 존 소문 → 이음매 · 같으면 마을 번호).
+//   받는 곳 문(정보 반경 · 경계 칸 길 · 교역로 4일 · 행복 · 침상 · 곳간 · 무리 셈)은 T1324 그대로 — 새 수 0 · 도달 식 그대로(T7 `travelDaysOf` · `delayTo`).
+//   ⚠T7 끔(`RUMOR_OFF`)이면 ⓐ ⓑ 다 제 줄만(같은 존 소문 · 이음매 소문 0 — T7 이전 동작).
+const T1352_NEWS_LOCAL = T1324_XZ_MIGRATE && process.env.T1352_NEWS_LOCAL === '1';
+const T1352_NEWS_SEAM = T1324_XZ_MIGRATE && process.env.T1352_NEWS_SEAM === '1';
+const _t1352Stat = { hist: 0, histDrop: 0, seamOut: 0, seamIn: 0, seamRows: 0, calls: 0, own: 0, local: 0, seam: 0, notYet: 0,
+  pickOwn: 0, pickLocal: 0, pickSeam: 0, ageN: 0, ageSum: 0, ageMax: 0, stage: 0, staged: 0, roadDays: 0, roadHungry: 0 };
+const _t1352None = [];   // 받는 곳 없음(켬만) — [날 · 마을 · 아는 줄 제 · 같은 존 · 이음매 · 제 행복 · 이 고르기의 까닭 셈](앞 200)
+let _t1352Last = null;   // 바로 앞 `_t1324Cand` 한 번의 셈 — { vid, own, local, seam, why }(받는 곳 없음 줄이 읽는다)
+function _t1352On() { return (T1352_NEWS_LOCAL || T1352_NEWS_SEAM) && _t1324On(); }
+function _t1352Win() { const L = state.ledger; return (L && L.cfg && L.cfg.PRICE_WIN) || require('./events').CFG.PRICE_WIN; }
+function _t1352Off() { const C = require('./rumor').CFG; return !!(C && C.OFF); }
+//   ⓐ 들은 줄 고리 — `_t1324Hear` 가 부른다(켬만). 더 새 줄(그 존 날 `d`)이 이 존 닿는 마을 모두에 닿았으면(들은 날 + 가장 먼 T7 일수 ≤ 오늘) 그보다 낡은 줄은 버린다.
+function _t1352Hist(e, k, line) {
+  const M = e._t1352Hist || (e._t1352Hist = {}), R = M[k] || (M[k] = []);
+  R.push(line); _t1352Stat.hist++;
+  const vil = state.byEcon && state.byEcon.get(e), L = state.ledger, day = (state.world && state.world.day) | 0;
+  let far = 0;
+  if (vil && L && typeof L.delayTo === 'function' && !_t1352Off()) for (const v of state.villages || []) { const d = L.delayTo(vil.dbId, v.dbId); if (isFinite(d) && d > far) far = d; }
+  let cut = -Infinity; for (const x of R) if ((x.at | 0) + far <= day && (x.d | 0) > cut) cut = x.d | 0;
+  for (let i = R.length - 1; i >= 0; i--) if ((R[i].d | 0) < cut) { R.splice(i, 1); _t1352Stat.histDrop++; }
+  const N = _t1352Win(); while (R.length > N) { R.shift(); _t1352Stat.histDrop++; }
+}
+//   그날 줄(T1324 'return' 줄과 같은 칸 + 경계 g)
+function _t1352Row(e, day, g) {
+  const E1 = state.econ, beds = Math.min(e.housing !== undefined ? e.housing : Infinity, e._mapBeds !== undefined ? e._mapBeds : Infinity);
+  return { d: day | 0, g, fe: +E1.totalFoodEquivalent(e).toFixed(3), n: e.npcs.length,
+    h: (e.lastStats && typeof e.lastStats.happiness === 'number') ? e.lastStats.happiness : null, beds: isFinite(beds) ? beds : null };
+}
+//   ⓑ 보내는 쪽 — `_xzDayOut` 이 경계 마을 스냅을 밀기 전(켬만 · 끔 = 스냅 글자 그대로)
+function _t1352SeamOut(snaps, g) {
+  if (!T1352_NEWS_SEAM || !_t1324On() || !snaps || !state.econ) return;
+  const day = (state.world && state.world.day) | 0;
+  for (const peer of Object.keys(snaps)) for (const s of snaps[peer] || []) {
+    const vil = (state.villages || []).find((v) => v.name === s.name), e = vil && vil.econ;
+    if (!e || !e.npcs) continue;
+    s.t1352 = _t1352Row(e, day, g); _t1352Stat.seamOut++;
+  }
+}
+//   ⓑ 받는 쪽 — `xzoneReceive` 'snap' 갈래(켬만) · 경계 마을마다 경계 g 줄 고리
+function _t1352SeamIn(data) {
+  const X = state.xzone, peer = data && data.zone;
+  if (!T1352_NEWS_SEAM || !_t1324On() || !X || !X.host.peers.includes(peer) || data.rosterOnly || !Array.isArray(data.snaps)) return;
+  const g = Math.floor(+data.gday || 0), S = state._t1352S || (state._t1352S = new Map()), N = _t1352Win();   // ⚠`| 0` 금지 — 짧은 하루 판은 경계 수가 2^31 을 넘는다(xzone.js 그 줄)
+  _t1352Stat.seamIn++;
+  for (const s of data.snaps) {
+    const t = s && s.t1352; if (!t || !s.name) continue;
+    const k = peer + '|' + s.name, R = S.get(k) || [];
+    const row = { name: s.name, zone: peer, d: t.d | 0, g, fe: t.fe, n: t.n, h: t.h, beds: t.beds };
+    const j = R.findIndex((x) => x.g === g); if (j >= 0) R[j] = row; else { R.push(row); R.sort((a, b) => a.g - b.g); }
+    while (R.length > N) R.shift();
+    S.set(k, R); _t1352Stat.seamRows++;
+  }
+}
+//   V 가 오늘 아는 이웃 존 줄 — 열쇠(존|마을) → { row, via: 'own' | 'local' | 'seam', src, kat(안 날 · 이 존 날) } · 끔이면 null(고르기가 종전 `_t1324Heard` 를 읽는다)
+const _T1352_VIA = { own: 0, local: 1, seam: 2 };
+function _t1352Known(vil, day) {
+  if (!_t1352On() || !vil || !vil.econ) return null;
+  const out = {}, L = state.ledger, X = state.xzone, off = _t1352Off(), g = state.lastGameDay, VS = state.villages || [];
+  const hasL = !!(L && typeof L.delayTo === 'function');
+  _t1352Stat.calls++;
+  const put = (k, row, via, src, kat) => {
+    const o = out[k], d = row.d | 0, od = o ? (o.row.d | 0) : 0;
+    if (o && !(d > od || (d === od && (_T1352_VIA[via] < _T1352_VIA[o.via] || (_T1352_VIA[via] === _T1352_VIA[o.via] && src < o.src))))) return;
+    out[k] = { row, via, src, kat };
+  };
+  //   제 줄(lag 0) · ⓐ 같은 존 마을 A 의 줄(lag = delayTo(V, A))
+  for (const A of VS) {
+    const e = A.econ; if (!e || (!e._t1324Heard && !e._t1352Hist)) continue;
+    let lag = 0;
+    if (A !== vil) { if (!T1352_NEWS_LOCAL || off || !hasL) continue; lag = L.delayTo(vil.dbId, A.dbId); if (!isFinite(lag)) continue; }
+    const H = e._t1324Heard || {}, M = e._t1352Hist || {};
+    const keys = Object.keys(H); for (const k of Object.keys(M)) if (!(k in H)) keys.push(k);
+    for (const k of keys) {
+      const ls = (M[k] || []).slice(); if (H[k] && !ls.includes(H[k])) ls.push(H[k]);
+      for (const row of ls) {
+        if (!row || !row.zone || !row.name) continue;
+        const kat = (row.at | 0) + lag;
+        if (kat > (day | 0)) { if (A !== vil) _t1352Stat.notYet++; continue; }
+        put(k, row, A === vil ? 'own' : 'local', A.dbId, kat);
+      }
+    }
+  }
+  //   ⓑ 이음매 — 그 존 경계 마을 줄(경계 g' ≤ 오늘 경계 − 일수)
+  if (T1352_NEWS_SEAM && !off && state._t1352S && X && g != null) {
+    const rumor = require('./rumor');
+    for (const [k, R] of state._t1352S) {
+      if (!R.length) continue;
+      const peer = R[0].zone, nm = R[0].name; if (!X.core.G.has(peer)) continue;
+      let lag = Infinity;
+      const dV = X.core.distNames(vil.name, peer, nm); if (dV != null) lag = rumor.travelDaysOf(dV);
+      if (T1352_NEWS_LOCAL && hasL) for (const U of VS) {
+        if (U === vil) continue;
+        const dl = L.delayTo(vil.dbId, U.dbId); if (!isFinite(dl) || dl + 1 >= lag) continue;   // 이음매 한 칸은 하루 이상(T7 MIN_DAYS) — 더 짧아질 수 없는 U 는 안 본다
+        const du = X.core.distNames(U.name, peer, nm); if (du == null) continue;
+        const t = rumor.travelDaysOf(du) + dl; if (t < lag) lag = t;
+      }
+      if (!isFinite(lag)) continue;
+      let row = null; for (let i = R.length - 1; i >= 0; i--) if (R[i].g <= g - lag) { row = R[i]; break; }
+      if (!row) { _t1352Stat.notYet++; continue; }
+      put(k, row, 'seam', -1, (day | 0) - (g - (row.g + lag)));
+    }
+  }
+  for (const k of Object.keys(out)) _t1352Stat[out[k].via]++;
+  return out;
+}
+//   고른 받는 곳 — 떠남 셈 · 나이(경계 수 · 두 존 같은 수)
+function _t1352Picked(dest) {
+  const t = dest && dest.t1352; if (!t) return '';
+  if (t.via === 'own') _t1352Stat.pickOwn++; else if (t.via === 'local') _t1352Stat.pickLocal++; else _t1352Stat.pickSeam++;
+  const age = (t.row && t.row.g != null && state.lastGameDay != null) ? state.lastGameDay - t.row.g : null;
+  if (age != null) { _t1352Stat.ageN++; _t1352Stat.ageSum += age; if (age > _t1352Stat.ageMax) _t1352Stat.ageMax = age; }
+  return ` · 소식 ${t.via}${t.via === 'local' ? '(' + ((state.byDbId && state.byDbId.get(t.src)) || {}).name + ')' : ''} 나이 ${age == null ? '?' : age}날 · 안 날 ${t.kat}`;
+}
+//   ★[T1352] 테스트 전용 판 꾸밈(`E2E_GIVE` 만 — zone.js `kind 'e2e_stage'`) — 그 존 날 d0 부터 every 날마다 경계 마을(이웃 존 마을과 걸어 2km 안 · 사람 > n) 중
+//     행복 낮은 k 곳에서 n 사람이 떠나기로(T1324 `__e2eEmigrate` 그 꼴). 판 시계가 아니라 존 하루 경계에서 돈다(`_t1324Day` 머리 — 같은 씨면 같은 날 같은 마을 · 판끼리 견줌).
+function __e2eStagePlan(plan) {
+  if (!Array.isArray(plan) || plan.length < 4) { state._e2eStage = null; return { ok: true, plan: null }; }
+  const [d0, every, k, n] = plan.map((x) => Math.max(0, x | 0));
+  state._e2eStage = { d0, every: Math.max(1, every), k, n, next: d0 };
+  return { ok: true, plan: state._e2eStage };
+}
+function _t1352StageDay() {
+  const P = state._e2eStage, X = state.xzone, W = state.world; if (!P || !X || !W) return;
+  const day = W.day | 0; if (day < P.next) return;
+  P.next = day + P.every; _t1352Stat.stage++;
+  const mine = new Set(); for (const [, gg] of X.core.G) for (const nm of gg.mine) mine.add(nm);
+  const pick = (state.villages || []).filter((v) => mine.has(v.name) && v.econ && !v.econ._banditized && v.econ.npcs.length > P.n && v.econ.lastStats && typeof v.econ.lastStats.happiness === 'number')
+    .sort((a, b) => (a.econ.lastStats.happiness - b.econ.lastStats.happiness) || (a.dbId - b.dbId)).slice(0, P.k);
+  for (const v of pick) { const r = __e2eEmigrate(v.dbId, P.n); _t1352Stat.staged += (r && r.took) || 0; _xzLog(`[T1352] 꾸밈 ${day}날 ${v.name} 행복 ${(+v.econ.lastStats.happiness).toFixed(3)} — 떠남 ${(r && r.took) || 0}/${P.n} · 들은 줄 ${(r && r.heard) || 0}`); }
 }
 // ★★[T1030 2026-10-31 · T952 회부 2 ㄱ] 손잡이 `T1030_XZ_MARKET` — **econ 이 정본**(`sim/economy-sim-v2.js` · '1' 만 켬 · 팔 `T525_CROSS_ZONE` 켬일 때만 선다 · 끔 = main 바이트).
 //   켜면 받는 존 econ 이 교차 존 캐러밴도 장 갈래로 치른다(`c._mktD` → 아래 `_t707Open` 이 장 기록 · 명부를 그대로 연다 · 상인 머묾 = 장 끝).
@@ -2765,7 +2921,9 @@ function _t1147Pick(vil) {
     const xb = _t1324Cand(vil, h0, W ? W.day | 0 : 0);
     if (xb && (!best || xb.h > bh || (xb.h === bh && xb.dist < bd))) { _t1324Stat.pick++; _t1147Stat.pick++; _t1147Stat.other++; return xb.dest; }
   }
-  if (!best) { _t1147Stat.none++; if (_t1324On() && _t1324None.length < 200) _t1324None.push([W ? W.day | 0 : 0, vil.name, e0._t1324Heard ? Object.keys(e0._t1324Heard).length : 0, h0 == null ? null : +h0.toFixed(3)]); return null; }
+  if (!best) { _t1147Stat.none++; if (_t1324On() && _t1324None.length < 200) _t1324None.push([W ? W.day | 0 : 0, vil.name, e0._t1324Heard ? Object.keys(e0._t1324Heard).length : 0, h0 == null ? null : +h0.toFixed(3)]);
+    if (_t1352On() && _t1352None.length < 200) { const q = (_t1352Last && _t1352Last.vid === vil.dbId) ? _t1352Last : { own: 0, local: 0, seam: 0, why: {} }; _t1352None.push([W ? W.day | 0 : 0, vil.name, q.own, q.local, q.seam, h0 == null ? null : +h0.toFixed(3), q.why]); }   // ★[T1352] 켬 — 아는 줄(제 · 같은 존 · 이음매) · 이 고르기에서 이웃 존 줄이 걸린 까닭
+    return null; }
   if (_t1312On()) _t1312Note(vil, best, W ? W.day | 0 : 0);   // ★[T1312] 무리 셈 — 오늘 이 마을에서 그리로 한 사람 더
   _t1147Stat.pick++; if (best === near) _t1147Stat.nearest++; else _t1147Stat.other++;
   if (_t1147Stat.rows.length < 200) _t1147Stat.rows.push([W ? W.day | 0 : 0, vil.name, best.name, best === near ? 1 : 0, +(h0 || 0).toFixed(3), +bh.toFixed(3)]);
@@ -6365,6 +6523,7 @@ function _xzDayOut() {
   const X = state.xzone; if (!X) return;
   const g = state.lastGameDay;
   const o = X.core.dayOut(g);
+  _t1352SeamOut(o.snaps, g);   // ★[T1352 ⓑ] 켬 — 경계 마을 스냅에 그날 줄(끔 = 무동작 · 스냅 글자 그대로)
   if (X.retry.length) { const R = X.retry.splice(0); for (const q of R) { X.st.retried++; _xzSend(q.r, g, q.tries); } }
   for (const r of o.recs) _xzSend(r, g, 0);
   X.host.pushSnaps(g, o.snaps);
@@ -6562,7 +6721,7 @@ function xzoneReceive(data) {
   const X = state.xzone;
   if (!X || !state.ready) return { ok: false, why: 'no-host' };
   if (!data || typeof data !== 'object') return { ok: false, why: 'bad' };
-  if (data.kind === 'snap') return X.host.onSnapMsg(data);
+  if (data.kind === 'snap') { if (T1352_NEWS_SEAM) _t1352SeamIn(data); return X.host.onSnapMsg(data); }   // ★[T1352 ⓑ] 켬 — 이음매 소문 줄 고리(끔 = 종전 줄)
   if (data.kind === 'caravan') return _xzReceiveCaravan(data);
   return { ok: false, why: 'kind' };
 }
@@ -6665,7 +6824,9 @@ function xzonePerf() {
     ...(T1324_XZ_MIGRATE ? { t1324: Object.assign({ walk: (state._t1324W || []).reduce((m, w) => (m[w.ph] = (m[w.ph] || 0) + 1, m), {}), rows: (state._t1324W || []).map((w) => ({ key: w.key, ph: w.ph, d0: w.d0, len: Math.round(w.len), unsure: !!w.unsure, h: w._st ? Math.round(w._st.h) : w.h, hp: w.roadHp })),
       knows: (state.villages || []).reduce((n, v) => n + ((v.econ && v.econ._t1324Heard) ? Object.keys(v.econ._t1324Heard).length : 0), 0), knowVil: (state.villages || []).filter((v) => v.econ && v.econ._t1324Heard).length,
       t1147: { pick: _t1147Stat.pick, nearest: _t1147Stat.nearest, other: _t1147Stat.other, none: _t1147Stat.none }, why: _t1324Why, none: _t1324None.slice(-40),
-      knowList: (state.villages || []).filter((v) => v.econ && v.econ._t1324Heard && v.econ.npcs.length).map((v) => [v.dbId, v.name, Object.keys(v.econ._t1324Heard).length, (v.econ.lastStats && typeof v.econ.lastStats.happiness === 'number') ? +v.econ.lastStats.happiness.toFixed(3) : null, v.econ.npcs.length]) }, _t1324Stat) } : {}),   // ★[T1324] 주민 이주(켬만 칸) · 들은 줄 수 · 그 존 받는 곳 고르기 셈(같은 존 몫과 견줌)
+      knowList: (state.villages || []).filter((v) => v.econ && v.econ._t1324Heard && v.econ.npcs.length).map((v) => [v.dbId, v.name, Object.keys(v.econ._t1324Heard).length, (v.econ.lastStats && typeof v.econ.lastStats.happiness === 'number') ? +v.econ.lastStats.happiness.toFixed(3) : null, v.econ.npcs.length]),
+      t1352: Object.assign({ localOn: T1352_NEWS_LOCAL, seamOn: T1352_NEWS_SEAM, none: _t1352None.slice(-40), seamKeys: state._t1352S ? state._t1352S.size : 0,
+        hist: (state.villages || []).reduce((n, v) => n + ((v.econ && v.econ._t1352Hist) ? Object.values(v.econ._t1352Hist).reduce((m, R) => m + R.length, 0) : 0), 0) }, _t1352Stat) }, _t1324Stat) } : {}),   // ★[T1352] 소식 길 셈(켬 · 끔 다 — 끔이면 셈 0 · 길 위 하루 · 굶은 하루만 선다)   // ★[T1324] 주민 이주(켬만 칸) · 들은 줄 수 · 그 존 받는 곳 고르기 셈(같은 존 몫과 견줌)
     ...(T1321_CMD ? { t1321: Object.assign({ keep: T1321_XZ_KEEP, pend: X.t1321P ? [...X.t1321P.values()].map((q) => ({ key: q.key, kind: q.r && q.r.kind, id: q.r && q.r.id, tries: q.tries, unsure: q.unsure })) : [], drainSt: t1321DrainStatus() }, _t1321Stat) } : {}) };   // ★[T1321] 나간 줄 · 셈 · 비움 상태(켬만)
 }
 
@@ -20166,7 +20327,9 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t1321Drain, t1321SetDrain, t1321DrainStatus, t1321DrainCmd: T1321_CMD,
   __t1321Probe: { pack: () => _t1321Pack(), restore: (X) => _t1321Restore(X), dayOut: () => _xzDayOut() },
   __t1324Probe: { on: () => _t1324On(), pick: (vil) => _t1147Pick(vil), cand: _t1324Cand, depart: _t1324Depart, day: () => _t1324Day(), rows: () => _t1324Rows(), stat: () => _t1324Stat,
-    pack: () => _t1324Pack(), restore: () => _t1324Restore(), news: _t1324News, hear: _t1324Hear },   // ★[T1324] 하네스 — 주민 이주 문 그 함수들(사본 0 · 세계 0)   // ★[T1321] 하네스 — 메타 곁 칸 싣기 · 되돌리기 그 함수(사본 0 · 세계 0)   // ★[T1321 ⓑ] 비우기 — zone.js 짐승 문 · 안 문 명령 `kind: 'drain'` 이 같은 칸을 본다(끔 = 늘 false · 명령 문 안 섬)   // ★[T533] 존 경계 — `/handoff_prepare` 의 `kind`(caravan·snap) 받는 문 · `/perf` 의 `xzone` 칸(끔이면 null)
+    pack: () => _t1324Pack(), restore: () => _t1324Restore(), news: _t1324News, hear: _t1324Hear },
+  __t1352Probe: { on: () => _t1352On(), localOn: T1352_NEWS_LOCAL, seamOn: T1352_NEWS_SEAM, known: _t1352Known, stat: () => _t1352Stat, none: () => _t1352None, dayOut: () => _xzDayOut(),
+    seamRing: () => state._t1352S || null, stagePlan: __e2eStagePlan },   // ★[T1352] 하네스 — 소식 길 그 함수들(사본 0 · 세계 0)   // ★[T1324] 하네스 — 주민 이주 문 그 함수들(사본 0 · 세계 0)   // ★[T1321] 하네스 — 메타 곁 칸 싣기 · 되돌리기 그 함수(사본 0 · 세계 0)   // ★[T1321 ⓑ] 비우기 — zone.js 짐승 문 · 안 문 명령 `kind: 'drain'` 이 같은 칸을 본다(끔 = 늘 false · 명령 문 안 섬)   // ★[T533] 존 경계 — `/handoff_prepare` 의 `kind`(caravan·snap) 받는 문 · `/perf` 의 `xzone` 칸(끔이면 null)
   distBasisRefresh,   // ★[T996] zone.js `refreshDitchCells` 끝 — 환호 적재 뒤 거리행렬 바탕 다시 세움(켬 · 마감 밖 일)
   villagesBusy, villageWait, villageBookWait,   // ★[T792] 사람 장부 문(창 안 = 바로)   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
   dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게
@@ -20229,7 +20392,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   // ★[2026-08-26 낚시 v2] 어장 결손 접점 — zone.js 낚시 경로가 소비한다(econ 무수정)
   waterVillageAt, refreshFishSustain, refreshAllFishSustain,
   npcFishDraw,   // ★[T60 ②] NPC 어획 → 낚시 v2 재고 차감(양방향)
-  __e2eForceShortage, __e2eForceDeed, __e2eDayFreeze, __e2eEmigrate,   // ★테스트 전용 — zone.js 가 E2E_GIVE 로 게이트한다(기본 부팅에선 도달 불가) · ★[T1324] 이탈 압력
+  __e2eForceShortage, __e2eForceDeed, __e2eDayFreeze, __e2eEmigrate, __e2eStagePlan,   // ★테스트 전용 — zone.js 가 E2E_GIVE 로 게이트한다(기본 부팅에선 도달 불가) · ★[T1324] 이탈 압력
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
   villageQualityAt,
   lifeSellIronRelic,   // ★철제 위세품 판매(플레이어→마을) — econ 접점은 이 함수 하나뿐
