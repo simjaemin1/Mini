@@ -1,0 +1,110 @@
+$ grep -lE '_t1147Pick|_t1324Cand|_t1324Day|_t1324Depart|_t1324Hear|_t1324Join|_t1324News|_xzDayOut|xzonePerf|xzoneReceive|_t1321Hold|T1352_|_t1352|__e2eStagePlan|e2e_stage' scripts/test-*.js scripts/e2e-*.js
+scripts/test-local-midnight-window.js
+scripts/test-t1147-emig-pick.js
+scripts/test-t1273-clock-rest.js
+scripts/test-t1292-xz-esc.js
+scripts/test-t1292-xz-hide.js
+scripts/test-t1306-migrate-food.js
+scripts/test-t1321-xz-drain.js
+scripts/test-t1321-xz-keep.js
+scripts/test-t1324-xz-migrate.js
+scripts/test-t1352-xz-hold.js
+scripts/test-t1352-xz-news.js
++ 규약 다섯: test-body-fields test-coll-grid test-hp-src test-lon-day test-harness-lint
+
+$ bash scripts/run-regress.sh <위 11 + 규약 다섯>   # ② 나무 3d6cb0a16
+##### test-local-midnight-window.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+⑥ 자명 통과 금지 — 꼴을 깬 증인은 빨강
+  ✓ [전제] 바른 꼴은 통과  []
+=== 12건 중 PASS 12 · FAIL 0 ===
+  [소요] 110초
+  ✓ RC=0
+##### test-t1147-emig-pick.js #####
+=== T1147 받는 곳: 통과 8 · 실패 0 ===
+  [소요] 50초
+  ✓ RC=0
+##### test-t1273-clock-rest.js #####
+  ✓ ⑨ [T1300] T1289 글자 사본은 옛 저장 → 끔 판에서 축 섞인 몸이 0 이 아니다(자명 통과 금지 · 회부 4)  2 + 0
+  ✓ ⑨ 고치기 전 사본은 축 섞인 몸이 0 이 아니다(자명 통과 금지)  9
+  ✓ ⑪ [자명 통과 금지] T1289 거리 규칙은 보통 판은 맞고 큰 판에서 틀린다(econ 값 > 저장 순간 벽시계의 반) — 새 경계가 그 판을 맞춘다  보통 0 · 큰 2
+=== PASS 104 / FAIL 0 ===
+  [소요] 101초
+  ✓ RC=0
+##### test-t1292-xz-esc.js #####
+=== PASS 16 / FAIL 0 ===
+  [소요] 3초
+  ✓ RC=0
+##### test-t1292-xz-hide.js #####
+  ✓ ③ 미끼 nosure → 빨강 — 확실한 실패 가름을 뺀 사본 → ⓒ 숨은 채 다시 민다(드러나지 않는다)  sent: 보임 0/3 · 숨김 → answer: 보임 0/3 · 숨김 → resent: 보임 0/3 · 숨김 → answer2: 보임 0/3 · 숨김 · 줄 hide
+=== PASS 16 / FAIL 0 ===
+  [소요] 3초
+  ✓ RC=0
+##### test-t1306-migrate-food.js #####
+  ✓ ⑦ 겨울 — 날 276 줄을 듣는 날(276 + 1)의 출생 문 날 수 88일치(봄까지 남은 날 · 같은 자) — 60일치 막힘 · 100일치 통과  {"need":88,"w60":false,"w100":true}
+  ✓ ★미끼 — 들은 줄 대신 지금 곳간을 읽는 사본은 ④ 의 얇다는 소식을 놓친다(빨강 · 사본 통과)  {"real":false,"bait":true}
+=== T1306 이주 문 + T1312 무리 절 + T1319 절: 통과 30 · 실패 0 ===
+  [소요] 228초
+  ✓ RC=0
+##### test-t1321-xz-drain.js #####
+=== 7/7 통과 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1321-xz-keep.js #####
+=== PASS 14 / FAIL 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-t1324-xz-migrate.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== PASS 33 / FAIL 0 ===
+  [소요] 7초
+  ✓ RC=0
+##### test-t1352-xz-hold.js #####
+=== 8/8 통과 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1352-xz-news.js #####
+  합: 79 통과 · 0 실패
+  합: 79 통과 · 0 실패
+  [소요] 3초
+  ✓ RC=0
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:19608 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 450 · 걸음 문 안 256 · 문 밖 194(표 내림 73 · 까닭 121)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 20초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1182128 · net 108838 · wildlife 96104
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1453416
+=== 54 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ★⑰ 자명 통과 금지 — 표지 없는 클라 시계는 물고 · 표지 단 줄은 표지로 · 주석 안 · 서버 축 호출은 보낸다  raw=hit,mark=mark,comment=none,srv=none
+  ✓ ⑱ [전제] 러너 표지를 단 파일이 실제로 여럿이다(0 이면 아래가 자명 통과다)  468개
+  ✓ ★⑱ 자명 통과 금지 — 밖 이름의 표지 둘은 물고 · 찾는 이름 · "없음" 설명 · 다른 낱말은 보낸다  hit,hit,none,none,none
+=== 89건 중 PASS 89 · FAIL 0 ===
+  [소요] 103초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 16: test-local-midnight-window.js test-t1147-emig-pick.js test-t1273-clock-rest.js test-t1292-xz-esc.js test-t1292-xz-hide.js test-t1306-migrate-food.js test-t1321-xz-drain.js test-t1321-xz-keep.js test-t1324-xz-migrate.js test-t1352-xz-hold.js test-t1352-xz-news.js test-body-fields.js test-coll-grid.js test-hp-src.js test-lon-day.js test-harness-lint.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t1306-migrate-food.js 228 · test-local-midnight-window.js 110 · test-harness-lint.js 103 · test-t1273-clock-rest.js 101 · test-t1147-emig-pick.js 50 · test-coll-grid.js 20 · test-t1324-xz-migrate.js 7 · test-t1292-xz-esc.js 3 · test-t1292-xz-hide.js 3 · test-t1352-xz-news.js 3
+  걸린 시간 합: 하네스 635초 · 러너 전체 661초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 3번 × 8초 · 건넘 14번(앞 판이 남긴 아이 없음)
