@@ -13216,6 +13216,51 @@
     "spawnSync node"
    ]
   },
+  "test-t1355-lot-day.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 1.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.4,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "나",
+   "maxSec": 1.7,
+   "same5": true,
+   "core": true,
+   "why": "core"
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -15374,5 +15419,5 @@
    ]
   }
  },
- "at": "2026-11-17"
+ "at": "2026-11-18"
 }
