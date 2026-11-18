@@ -1,0 +1,6 @@
+test-handoff-body ✓94 ✗0  | === 94 통과 / 0 실패 ===
+test-farm-act ✓77 ✗1   ✗ ⑦ 그 술어를 부르는 **문**은 그대로 **둘**(결정 · 이동 — 셋째 문 0) · 넷째 글자는 �  | === 결과: 77 PASS / 1 FAIL ===
+test-fish-act ✓85 ✗1   ✗ ⑦ 그 술어를 부르는 자리는 정의 1 + 호출 3(결정 · 이동 · 이동의 거울 `_wwPre`) — 셋�  | === 결과: 85 PASS / 1 FAIL ===
+test-wood-act ✓158 ✗1   ✗ ⓑ ★`villages.js` 에서 고리를 부르는 자리는 `_t325Scan` **하나**다(다른 자리 무접촉)  | === 결과: 158 PASS / 1 FAIL ===
+test-npc-hp-door ✓19 ✗0  | === 19건 중 PASS 19 · FAIL 0 ===
+test-body-exit ✓49 ✗0  | === 49건 중 PASS 49 · FAIL 0 ===
