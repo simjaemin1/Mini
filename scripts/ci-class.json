@@ -1006,15 +1006,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 10,
-   "same5": null,
+   "maxSec": 10.3,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 10,
    "runs": [
     {
      "rc": 0,
-     "secs": 10,
+     "secs": 9.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 9.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 9.5,
      "green": true,
      "fails": []
     }
@@ -1023,7 +1047,8 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-bridge-path.js": {
    "cls0": "가",
@@ -1204,10 +1229,22 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": null,
+   "maxSec": 120.1,
    "same5": null,
    "core": false,
-   "why": "안 잼"
+   "why": "120.1초 > 60초",
+   "runs": [
+    {
+     "rc": 124,
+     "secs": 120.1,
+     "green": false,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
   },
   "test-calendar.js": {
    "cls0": "다",
@@ -1557,12 +1594,6 @@
    "runs": [
     {
      "rc": 0,
-     "secs": 0,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
      "secs": 0.1,
      "green": true,
      "fails": []
@@ -1575,7 +1606,13 @@
     },
     {
      "rc": 0,
-     "secs": 0,
+     "secs": 0.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.1,
      "green": true,
      "fails": []
     },
@@ -1593,11 +1630,35 @@
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
    "maxSec": 11.2,
-   "same5": null,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 10,
    "runs": [
+    {
+     "rc": 0,
+     "secs": 10.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.7,
+     "green": true,
+     "fails": []
+    },
     {
      "rc": 0,
      "secs": 11.2,
@@ -1610,7 +1671,8 @@
     "spawnSync node",
     "execFileSync node"
    ],
-   "inproc": true
+   "inproc": true,
+   "srv": true
   },
   "test-client-globals.js": {
    "cls0": "가",
@@ -1659,10 +1721,47 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": null,
-   "same5": null,
-   "core": false,
-   "why": "안 잼"
+   "maxSec": 0.8,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 0.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node",
+    "spawnSync bash"
+   ]
   },
   "test-clothes-tiers.js": {
    "cls0": "가",
@@ -2228,15 +2327,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 20.3,
-   "same5": null,
+   "maxSec": 19.3,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 20,
    "runs": [
     {
      "rc": 0,
-     "secs": 20.3,
+     "secs": 18.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 19.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 19.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.9,
      "green": true,
      "fails": []
     }
@@ -2244,21 +2367,46 @@
    "dyn": "다",
    "child": [
     "execFileSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-doors.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 4.4,
-   "same5": null,
+   "maxSec": 4.5,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 5,
    "runs": [
     {
      "rc": 0,
+     "secs": 4.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
      "secs": 4.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4.3,
      "green": true,
      "fails": []
     }
@@ -2267,7 +2415,9 @@
    "child": [
     "spawnSync node",
     "spawn node"
-   ]
+   ],
+   "left": true,
+   "srv": true
   },
   "test-downed.js": {
    "cls0": "다",
@@ -2329,12 +2479,36 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 6.6,
-   "same5": null,
+   "maxSec": 7,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 7,
    "runs": [
+    {
+     "rc": 0,
+     "secs": 6.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6.7,
+     "green": true,
+     "fails": []
+    },
     {
      "rc": 0,
      "secs": 6.6,
@@ -2346,7 +2520,8 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-dusk-stamp.js": {
    "cls0": "다",
@@ -2589,12 +2764,36 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 14.9,
-   "same5": null,
+   "maxSec": 15.1,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 15,
    "runs": [
+    {
+     "rc": 0,
+     "secs": 15,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 14.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 14.8,
+     "green": true,
+     "fails": []
+    },
     {
      "rc": 0,
      "secs": 14.9,
@@ -2607,7 +2806,8 @@
     "spawnSync node",
     "spawn node"
    ],
-   "inproc": true
+   "inproc": true,
+   "srv": true
   },
   "test-events.js": {
    "cls0": "나",
@@ -2827,15 +3027,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 31.1,
-   "same5": null,
+   "maxSec": 38.1,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 33,
    "runs": [
     {
      "rc": 0,
-     "secs": 31.1,
+     "secs": 32.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 35.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 36.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 34,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 38.1,
      "green": true,
      "fails": []
     }
@@ -2845,21 +3069,46 @@
     "spawnSync node",
     "execFileSync node"
    ],
-   "inproc": true
+   "inproc": true,
+   "srv": true
   },
   "test-fixture-reap.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 2,
-   "same5": null,
+   "maxSec": 2.2,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 2,
    "runs": [
     {
      "rc": 0,
-     "secs": 2,
+     "secs": 2.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.1,
      "green": true,
      "fails": []
     }
@@ -2868,7 +3117,9 @@
    "child": [
     "spawnSync node",
     "spawn node"
-   ]
+   ],
+   "left": true,
+   "srv": true
   },
   "test-floor-stone.js": {
    "cls0": "나",
@@ -3058,15 +3309,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 15.5,
-   "same5": null,
+   "maxSec": 16.6,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 17,
    "runs": [
     {
      "rc": 0,
-     "secs": 15.5,
+     "secs": 16.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.2,
      "green": true,
      "fails": []
     }
@@ -3075,21 +3350,46 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-forage-act.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 15.9,
-   "same5": null,
+   "maxSec": 19,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 18,
    "runs": [
     {
      "rc": 0,
-     "secs": 15.9,
+     "secs": 18.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 19,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 17.8,
      "green": true,
      "fails": []
     }
@@ -3098,7 +3398,8 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-frontier-iron.js": {
    "cls0": "가",
@@ -3194,15 +3495,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 7.6,
-   "same5": null,
+   "maxSec": 8.6,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 8,
    "runs": [
     {
      "rc": 0,
-     "secs": 7.6,
+     "secs": 8.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 8.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 8.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 8.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 8.4,
      "green": true,
      "fails": []
     }
@@ -3211,7 +3536,8 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-gap-ruler.js": {
    "cls0": "가",
@@ -3440,15 +3766,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 34,
-   "same5": null,
+   "maxSec": 46.4,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 41,
    "runs": [
     {
      "rc": 0,
-     "secs": 34,
+     "secs": 41.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 40.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 40.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 45.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 46.4,
      "green": true,
      "fails": []
     }
@@ -3457,7 +3807,8 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-granary-haul.js": {
    "cls0": "가",
@@ -3506,15 +3857,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 12.6,
-   "same5": null,
+   "maxSec": 16.8,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 16,
    "runs": [
     {
      "rc": 0,
-     "secs": 12.6,
+     "secs": 16.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.7,
      "green": true,
      "fails": []
     }
@@ -3523,21 +3898,46 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-granary-rot.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 12,
-   "same5": null,
+   "maxSec": 15.9,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 13,
    "runs": [
     {
      "rc": 0,
-     "secs": 12,
+     "secs": 15.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.9,
      "green": true,
      "fails": []
     }
@@ -3546,21 +3946,46 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-guest-identity.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 16.4,
-   "same5": null,
+   "maxSec": 17.9,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 17,
    "runs": [
     {
      "rc": 0,
-     "secs": 16.4,
+     "secs": 17.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 17.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 17.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 17.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 17.3,
      "green": true,
      "fails": []
     }
@@ -3569,21 +3994,47 @@
    "child": [
     "spawnSync node",
     "spawn node"
-   ]
+   ],
+   "left": true,
+   "srv": true
   },
   "test-guest-rejoin.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 29.4,
-   "same5": null,
+   "maxSec": 29.9,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 30,
    "runs": [
     {
      "rc": 0,
-     "secs": 29.4,
+     "secs": 29.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 29.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 29.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 29.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 29.7,
      "green": true,
      "fails": []
     }
@@ -3593,7 +4044,9 @@
     "spawnSync node",
     "spawn node"
    ],
-   "inproc": true
+   "inproc": true,
+   "left": true,
+   "srv": true
   },
   "test-guild-treasury.js": {
    "cls0": "가",
@@ -3685,15 +4138,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 18.7,
-   "same5": null,
+   "maxSec": 24.6,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 21,
    "runs": [
     {
      "rc": 0,
-     "secs": 18.7,
+     "secs": 24.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 24,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 23.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 23.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 23.9,
      "green": true,
      "fails": []
     }
@@ -3702,7 +4179,8 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-handoff-body.js": {
    "cls0": "다",
@@ -4277,15 +4755,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 11.4,
-   "same5": null,
+   "maxSec": 13.6,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 12,
    "runs": [
     {
      "rc": 0,
-     "secs": 11.4,
+     "secs": 13.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 12.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 12.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 12.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 13.6,
      "green": true,
      "fails": []
     }
@@ -4295,7 +4797,9 @@
     "spawnSync node",
     "spawn node"
    ],
-   "inproc": true
+   "inproc": true,
+   "left": true,
+   "srv": true
   },
   "test-kcal.js": {
    "cls0": "다",
@@ -4460,40 +4964,40 @@
    "cls0": "가",
    "why0": "",
    "cls": "가",
-   "maxSec": 0.5,
+   "maxSec": 1,
    "same5": true,
-   "core": false,
-   "why": "다섯 판 다 빨강 — RC 1",
+   "core": true,
+   "why": "core",
    "logSec": 0,
    "runs": [
     {
-     "rc": 1,
-     "secs": 0.5,
-     "green": false,
+     "rc": 0,
+     "secs": 0.9,
+     "green": true,
      "fails": []
     },
     {
-     "rc": 1,
-     "secs": 0.5,
-     "green": false,
+     "rc": 0,
+     "secs": 0.9,
+     "green": true,
      "fails": []
     },
     {
-     "rc": 1,
-     "secs": 0.5,
-     "green": false,
+     "rc": 0,
+     "secs": 0.9,
+     "green": true,
      "fails": []
     },
     {
-     "rc": 1,
-     "secs": 0.5,
-     "green": false,
+     "rc": 0,
+     "secs": 0.9,
+     "green": true,
      "fails": []
     },
     {
-     "rc": 1,
-     "secs": 0.5,
-     "green": false,
+     "rc": 0,
+     "secs": 1,
+     "green": true,
      "fails": []
     }
    ],
@@ -5038,15 +5542,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 25.4,
-   "same5": null,
+   "maxSec": 29.2,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 23,
    "runs": [
     {
      "rc": 0,
-     "secs": 25.4,
+     "secs": 28.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 29.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 27.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 26.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 27,
      "green": true,
      "fails": []
     }
@@ -5054,7 +5582,8 @@
    "dyn": "다",
    "child": [
     "execFileSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-membership.js": {
    "cls0": "다",
@@ -5153,15 +5682,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 4.1,
-   "same5": null,
+   "maxSec": 4.4,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 3,
    "runs": [
     {
      "rc": 0,
+     "secs": 4.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
      "secs": 4.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.9,
      "green": true,
      "fails": []
     }
@@ -5170,7 +5723,8 @@
    "child": [
     "spawnSync node"
    ],
-   "inproc": true
+   "inproc": true,
+   "srv": true
   },
   "test-mob-hp-restart.js": {
    "cls0": "다",
@@ -5519,15 +6073,15 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 59.9,
+   "maxSec": 71.4,
    "same5": null,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "서버 71.4초 > 60초 — CI 밖(야간 · 전수)",
    "logSec": 55,
    "runs": [
     {
      "rc": 0,
-     "secs": 59.9,
+     "secs": 71.4,
      "green": true,
      "fails": []
     }
@@ -5538,7 +6092,8 @@
     "spawnSync node",
     "spawn node"
    ],
-   "inproc": true
+   "inproc": true,
+   "left": true
   },
   "test-no-shield.js": {
    "cls0": "나",
@@ -5585,6 +6140,48 @@
    "child": [
     "execFileSync node"
    ]
+  },
+  "test-notice-mark.js": {
+   "cls0": "가",
+   "why0": "",
+   "cls": "가",
+   "maxSec": 0.7,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.7,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "가"
   },
   "test-notice.js": {
    "cls0": "가",
@@ -5808,10 +6405,24 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": null,
+   "maxSec": 120.1,
    "same5": null,
    "core": false,
-   "why": "서버(글자) — CI 밖(야간 · 전수)"
+   "why": "서버 120.1초 > 60초 — CI 밖(야간 · 전수)",
+   "runs": [
+    {
+     "rc": 124,
+     "secs": 120.1,
+     "green": false,
+     "fails": []
+    }
+   ],
+   "left": true,
+   "dyn": "다",
+   "child": [
+    "spawnSync node",
+    "spawn node"
+   ]
   },
   "test-onboarding.js": {
    "cls0": "가",
@@ -6099,14 +6710,38 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 3.8,
-   "same5": null,
+   "maxSec": 5.2,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "runs": [
     {
      "rc": 0,
-     "secs": 3.8,
+     "secs": 4.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4.4,
      "green": true,
      "fails": []
     }
@@ -6114,7 +6749,8 @@
    "dyn": "다",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-physical-stone-return.js": {
    "cls0": "가",
@@ -6205,15 +6841,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 17.2,
-   "same5": null,
+   "maxSec": 18.8,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 17,
    "runs": [
     {
      "rc": 0,
-     "secs": 17.2,
+     "secs": 18.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 17.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.5,
      "green": true,
      "fails": []
     }
@@ -6222,21 +6882,46 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-preserve.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 5.3,
-   "same5": null,
+   "maxSec": 5.8,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 5,
    "runs": [
     {
      "rc": 0,
-     "secs": 5.3,
+     "secs": 5.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.8,
      "green": true,
      "fails": []
     }
@@ -6246,7 +6931,8 @@
     "spawnSync node",
     "execFileSync node"
    ],
-   "inproc": true
+   "inproc": true,
+   "srv": true
   },
   "test-props.js": {
    "cls0": "다",
@@ -6628,15 +7314,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 17.5,
-   "same5": null,
+   "maxSec": 18.2,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 17,
    "runs": [
     {
      "rc": 0,
-     "secs": 17.5,
+     "secs": 17.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 17.9,
      "green": true,
      "fails": []
     }
@@ -6646,7 +7356,8 @@
     "execFileSync node",
     "spawnSync node"
    ],
-   "inproc": true
+   "inproc": true,
+   "srv": true
   },
   "test-relic.js": {
    "cls0": "가",
@@ -6738,15 +7449,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 31.9,
-   "same5": null,
+   "maxSec": 36,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 24,
    "runs": [
     {
      "rc": 0,
-     "secs": 31.9,
+     "secs": 32.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 33.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 34.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 34.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 36,
      "green": true,
      "fails": []
     }
@@ -6757,7 +7492,9 @@
     "execFileSync node",
     "spawnSync node",
     "spawn node"
-   ]
+   ],
+   "left": true,
+   "srv": true
   },
   "test-resource-index.js": {
    "cls0": "가",
@@ -7208,15 +7945,15 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 57.7,
+   "maxSec": 61.3,
    "same5": null,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "서버 61.3초 > 60초 — CI 밖(야간 · 전수)",
    "logSec": 55,
    "runs": [
     {
      "rc": 0,
-     "secs": 57.7,
+     "secs": 61.3,
      "green": true,
      "fails": []
     }
@@ -7368,15 +8105,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 35.8,
-   "same5": null,
+   "maxSec": 44.5,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 24,
    "runs": [
     {
      "rc": 0,
-     "secs": 35.8,
+     "secs": 44.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 40.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 40.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 41,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 42,
      "green": true,
      "fails": []
     }
@@ -7386,7 +8147,8 @@
     "spawnSync node",
     "execFileSync node"
    ],
-   "inproc": true
+   "inproc": true,
+   "srv": true
   },
   "test-site-memo.js": {
    "cls0": "다",
@@ -7547,15 +8309,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 3.3,
-   "same5": null,
+   "maxSec": 4,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 3,
    "runs": [
     {
      "rc": 0,
-     "secs": 3.3,
+     "secs": 3.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4,
      "green": true,
      "fails": []
     }
@@ -7565,7 +8351,8 @@
     "spawnSync node",
     "execFileSync node"
    ],
-   "inproc": true
+   "inproc": true,
+   "srv": true
   },
   "test-static-cache.js": {
    "cls0": "라",
@@ -8246,15 +9033,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 3.1,
-   "same5": null,
+   "maxSec": 3.6,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 4,
    "runs": [
     {
      "rc": 0,
-     "secs": 3.1,
+     "secs": 3.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.5,
      "green": true,
      "fails": []
     }
@@ -8262,21 +9073,46 @@
    "dyn": "다",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1066-village-fire.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 3.8,
-   "same5": null,
+   "maxSec": 4.1,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 5,
    "runs": [
     {
      "rc": 0,
-     "secs": 3.8,
+     "secs": 3.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 4,
      "green": true,
      "fails": []
     }
@@ -8284,7 +9120,8 @@
    "dyn": "다",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1074-food-debt.js": {
    "cls0": "나",
@@ -8620,15 +9457,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 16.8,
-   "same5": null,
+   "maxSec": 21.1,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 17,
    "runs": [
     {
      "rc": 0,
-     "secs": 16.8,
+     "secs": 19.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 19.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 21.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 21,
      "green": true,
      "fails": []
     }
@@ -8638,7 +9499,8 @@
     "spawnSync node",
     "execFileSync node"
    ],
-   "inproc": true
+   "inproc": true,
+   "srv": true
   },
   "test-t1094-arms-trip.js": {
    "cls0": "다",
@@ -8871,15 +9733,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 18,
-   "same5": null,
+   "maxSec": 19.2,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 19,
    "runs": [
     {
      "rc": 0,
-     "secs": 18,
+     "secs": 18.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 19.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 17.9,
      "green": true,
      "fails": []
     }
@@ -8888,21 +9774,46 @@
    "child": [
     "execFile node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1120-next-tool.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 6.1,
-   "same5": null,
+   "maxSec": 7.5,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 6,
    "runs": [
     {
      "rc": 0,
-     "secs": 6.1,
+     "secs": 7.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.5,
      "green": true,
      "fails": []
     }
@@ -8910,21 +9821,46 @@
    "dyn": "다",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1125-welcome.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 13.2,
-   "same5": null,
+   "maxSec": 14.2,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 12,
    "runs": [
     {
      "rc": 0,
+     "secs": 13.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
      "secs": 13.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 13.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 14.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 13.7,
      "green": true,
      "fails": []
     }
@@ -8933,21 +9869,46 @@
    "child": [
     "spawnSync node",
     "spawn node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1126-rock-yield.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 9.8,
-   "same5": null,
+   "maxSec": 11.5,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 10,
    "runs": [
     {
      "rc": 0,
-     "secs": 9.8,
+     "secs": 10.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.6,
      "green": true,
      "fails": []
     }
@@ -8955,21 +9916,46 @@
    "dyn": "다",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1128-kcal-tidy.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 5.2,
-   "same5": null,
+   "maxSec": 6.5,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 4,
    "runs": [
     {
      "rc": 0,
-     "secs": 5.2,
+     "secs": 5.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6.5,
      "green": true,
      "fails": []
     }
@@ -8978,7 +9964,8 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1130-hosted.js": {
    "cls0": "라",
@@ -8994,15 +9981,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 12.7,
-   "same5": null,
+   "maxSec": 14.4,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 13,
    "runs": [
     {
      "rc": 0,
-     "secs": 12.7,
+     "secs": 14.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 13.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 13.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 13.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 13.6,
      "green": true,
      "fails": []
     }
@@ -9010,7 +10021,8 @@
    "dyn": "다",
    "child": [
     "execFileSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1133-bag-persist.js": {
    "cls0": "나",
@@ -9210,15 +10222,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 7.2,
-   "same5": null,
+   "maxSec": 9,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 9,
    "runs": [
     {
      "rc": 0,
-     "secs": 7.2,
+     "secs": 8.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 8.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 8.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 8.9,
      "green": true,
      "fails": []
     }
@@ -9226,7 +10262,8 @@
    "dyn": "다",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1147-emig-pick.js": {
    "cls0": "다",
@@ -9371,51 +10408,41 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 6.9,
+   "maxSec": 7.7,
    "same5": true,
-   "core": false,
-   "why": "다섯 판 다 빨강 — ✗ 쓰는 자리 — 바구니 두 다리 · 종전 첫 화물 · 돌리기 · 순수출값(끔 = 종전 식)",
+   "core": true,
+   "why": "core",
    "logSec": 7,
    "runs": [
     {
-     "rc": 1,
-     "secs": 6.9,
-     "green": false,
-     "fails": [
-      "✗ 쓰는 자리 — 바구니 두 다리 · 종전 첫 화물 · 돌리기 · 순수출값(끔 = 종전 식)"
-     ]
+     "rc": 0,
+     "secs": 7.4,
+     "green": true,
+     "fails": []
     },
     {
-     "rc": 1,
-     "secs": 6.8,
-     "green": false,
-     "fails": [
-      "✗ 쓰는 자리 — 바구니 두 다리 · 종전 첫 화물 · 돌리기 · 순수출값(끔 = 종전 식)"
-     ]
+     "rc": 0,
+     "secs": 7.7,
+     "green": true,
+     "fails": []
     },
     {
-     "rc": 1,
-     "secs": 6.5,
-     "green": false,
-     "fails": [
-      "✗ 쓰는 자리 — 바구니 두 다리 · 종전 첫 화물 · 돌리기 · 순수출값(끔 = 종전 식)"
-     ]
+     "rc": 0,
+     "secs": 7.7,
+     "green": true,
+     "fails": []
     },
     {
-     "rc": 1,
-     "secs": 6.8,
-     "green": false,
-     "fails": [
-      "✗ 쓰는 자리 — 바구니 두 다리 · 종전 첫 화물 · 돌리기 · 순수출값(끔 = 종전 식)"
-     ]
+     "rc": 0,
+     "secs": 7.5,
+     "green": true,
+     "fails": []
     },
     {
-     "rc": 1,
-     "secs": 6.6,
-     "green": false,
-     "fails": [
-      "✗ 쓰는 자리 — 바구니 두 다리 · 종전 첫 화물 · 돌리기 · 순수출값(끔 = 종전 식)"
-     ]
+     "rc": 0,
+     "secs": 7.7,
+     "green": true,
+     "fails": []
     }
    ],
    "dyn": "나",
@@ -9429,37 +10456,37 @@
    "cls": "가",
    "maxSec": 0.3,
    "same5": true,
-   "core": false,
-   "why": "다섯 판 다 빨강 — RC 0",
+   "core": true,
+   "why": "core",
    "runs": [
     {
      "rc": 0,
-     "secs": 0.2,
-     "green": false,
+     "secs": 0.3,
+     "green": true,
      "fails": []
     },
     {
      "rc": 0,
      "secs": 0.3,
-     "green": false,
+     "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 0.2,
-     "green": false,
+     "secs": 0.3,
+     "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 0.2,
-     "green": false,
+     "secs": 0.3,
+     "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 0.2,
-     "green": false,
+     "secs": 0.3,
+     "green": true,
      "fails": []
     }
    ],
@@ -9469,39 +10496,39 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 0.6,
+   "maxSec": 0.7,
    "same5": true,
-   "core": false,
-   "why": "다섯 판 다 빨강 — RC 0",
+   "core": true,
+   "why": "core",
    "runs": [
     {
      "rc": 0,
-     "secs": 0.5,
-     "green": false,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.7,
+     "green": true,
      "fails": []
     },
     {
      "rc": 0,
      "secs": 0.6,
-     "green": false,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.6,
-     "green": false,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.5,
-     "green": false,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.6,
-     "green": false,
+     "green": true,
      "fails": []
     }
    ],
@@ -9649,15 +10676,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 8,
-   "same5": null,
+   "maxSec": 8.5,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 8,
    "runs": [
     {
      "rc": 0,
+     "secs": 8.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 8.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 8.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
      "secs": 8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 8.5,
      "green": true,
      "fails": []
     }
@@ -9666,7 +10717,8 @@
    "child": [
     "spawnSync node",
     "spawn node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1166-npc-lot-persist.js": {
    "cls0": "다",
@@ -10215,10 +11267,10 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 5,
-   "same5": null,
+   "maxSec": 5.6,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 4,
    "runs": [
     {
@@ -10226,12 +11278,37 @@
      "secs": 5,
      "green": true,
      "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.1,
+     "green": true,
+     "fails": []
     }
    ],
    "dyn": "다",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1187-names.js": {
    "cls0": "나",
@@ -11565,15 +12642,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 5.3,
-   "same5": null,
+   "maxSec": 7.3,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 4,
    "runs": [
     {
      "rc": 0,
-     "secs": 5.3,
+     "secs": 7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6.7,
      "green": true,
      "fails": []
     }
@@ -11581,7 +12682,8 @@
    "dyn": "다",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-t1240-kill-once.js": {
    "cls0": "다",
@@ -11802,13 +12904,13 @@
     },
     {
      "rc": 1,
-     "secs": 0.1,
+     "secs": 0.2,
      "green": false,
      "fails": []
     },
     {
      "rc": 1,
-     "secs": 0.1,
+     "secs": 0.2,
      "green": false,
      "fails": []
     }
@@ -12563,7 +13665,7 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 0.9,
+   "maxSec": 0.6,
    "same5": true,
    "core": true,
    "why": "core",
@@ -12571,13 +13673,7 @@
    "runs": [
     {
      "rc": 0,
-     "secs": 0.9,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.8,
+     "secs": 0.6,
      "green": true,
      "fails": []
     },
@@ -12589,7 +13685,13 @@
     },
     {
      "rc": 0,
-     "secs": 0.7,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.5,
      "green": true,
      "fails": []
     },
@@ -12984,7 +14086,7 @@
    "maxSec": 120.1,
    "same5": null,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "서버 120.1초 > 60초 — CI 밖(야간 · 전수)",
    "runs": [
     {
      "rc": 124,
@@ -13183,7 +14285,7 @@
    "maxSec": 61.8,
    "same5": null,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "서버 61.8초 > 60초 — CI 밖(야간 · 전수)",
    "runs": [
     {
      "rc": 0,
@@ -13243,7 +14345,7 @@
     "spawnSync node"
    ]
   },
-  "test-t1346-birth-flow.js": {
+  "test-t1345-body-day.js": {
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
@@ -13252,16 +14354,7 @@
    "core": false,
    "why": "안 잼"
   },
-  "test-t1348-loop.js": {
-   "cls0": "가",
-   "why0": "",
-   "cls": "가",
-   "maxSec": null,
-   "same5": null,
-   "core": false,
-   "why": "안 잼"
-  },
-  "test-t1352-xz-hold.js": {
+  "test-t1346-birth-flow.js": {
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
@@ -13270,6 +14363,12 @@
    "core": true,
    "why": "core",
    "runs": [
+    {
+     "rc": 0,
+     "secs": 0.8,
+     "green": true,
+     "fails": []
+    },
     {
      "rc": 0,
      "secs": 0.6,
@@ -13290,13 +14389,88 @@
     },
     {
      "rc": 0,
+     "secs": 0.7,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
+  },
+  "test-t1347-fetch.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1348-loop.js": {
+   "cls0": "가",
+   "why0": "",
+   "cls": "가",
+   "maxSec": 120,
+   "same5": null,
+   "core": false,
+   "why": "120초 > 60초",
+   "runs": [
+    {
+     "rc": 124,
+     "secs": 120,
+     "green": false,
+     "fails": []
+    }
+   ],
+   "dyn": "가"
+  },
+  "test-t1351-mine-clock.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
+  },
+  "test-t1352-xz-hold.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 0.7,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
      "secs": 0.6,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 0.8,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.7,
      "green": true,
      "fails": []
     }
@@ -13310,38 +14484,38 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 4,
+   "maxSec": 2.2,
    "same5": true,
    "core": true,
    "why": "core",
    "runs": [
     {
      "rc": 0,
-     "secs": 2.5,
+     "secs": 2.2,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 2.5,
+     "secs": 2,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 3,
+     "secs": 2,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 2.9,
+     "secs": 2.1,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 4,
+     "secs": 2,
      "green": true,
      "fails": []
     }
@@ -13352,6 +14526,51 @@
    ]
   },
   "test-t1353-onb-on-prep.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 25.5,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 23.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 25.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 24.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 23.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 23.3,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
+   ]
+  },
+  "test-t1368-onb-newbie.js": {
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
@@ -13377,19 +14596,19 @@
     },
     {
      "rc": 0,
+     "secs": 0.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
      "secs": 0.5,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.4,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.4,
      "green": true,
      "fails": []
     },
@@ -13416,31 +14635,31 @@
    "runs": [
     {
      "rc": 0,
-     "secs": 11.2,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 11.3,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
      "secs": 11,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 11.3,
+     "secs": 11.6,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
      "secs": 11.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.6,
      "green": true,
      "fails": []
     }
@@ -14255,15 +15474,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 21.9,
-   "same5": null,
+   "maxSec": 23.1,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 22,
    "runs": [
     {
      "rc": 0,
-     "secs": 21.9,
+     "secs": 22.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 23.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 22.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 22.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 22.4,
      "green": true,
      "fails": []
     }
@@ -14271,7 +15514,8 @@
    "dyn": "다",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-t995-dry-dance.js": {
    "cls0": "나",
@@ -14559,15 +15803,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 3,
-   "same5": null,
+   "maxSec": 3.8,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 3,
    "runs": [
     {
      "rc": 0,
-     "secs": 3,
+     "secs": 3.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.6,
      "green": true,
      "fails": []
     }
@@ -14575,7 +15843,8 @@
    "dyn": "다",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   },
   "test-tick-slicer.js": {
    "cls0": "다",
@@ -14638,10 +15907,46 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": null,
-   "same5": null,
-   "core": false,
-   "why": "안 잼"
+   "maxSec": 0.1,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 0.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.1,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync git"
+   ]
   },
   "test-trade.js": {
    "cls0": "다",
@@ -15193,15 +16498,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 17.8,
-   "same5": null,
+   "maxSec": 21.1,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 19,
    "runs": [
     {
      "rc": 0,
-     "secs": 17.8,
+     "secs": 20.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 21.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 20.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 19.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 20.1,
      "green": true,
      "fails": []
     }
@@ -15211,7 +16540,8 @@
     "spawnSync node",
     "execFileSync node"
    ],
-   "inproc": true
+   "inproc": true,
+   "srv": true
   },
   "test-well-art.js": {
    "cls0": "다",
@@ -15264,15 +16594,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 2.8,
-   "same5": null,
+   "maxSec": 3.3,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 3,
    "runs": [
     {
      "rc": 0,
-     "secs": 2.8,
+     "secs": 3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.3,
      "green": true,
      "fails": []
     }
@@ -15282,7 +16636,8 @@
     "spawnSync node",
     "execFileSync node"
    ],
-   "inproc": true
+   "inproc": true,
+   "srv": true
   },
   "test-wild-door.js": {
    "cls0": "다",
@@ -15423,51 +16778,41 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "나",
-   "maxSec": 7.9,
+   "maxSec": 8.4,
    "same5": true,
-   "core": false,
-   "why": "다섯 판 다 빨강 — ✗ ⓑ ★`villages.js` 에서 고리를 부르는 자리는 `_t325Scan` **하나**다(다른 자리 무접촉)",
+   "core": true,
+   "why": "core",
    "logSec": 8,
    "runs": [
     {
-     "rc": 1,
-     "secs": 7.6,
-     "green": false,
-     "fails": [
-      "✗ ⓑ ★`villages.js` 에서 고리를 부르는 자리는 `_t325Scan` **하나**다(다른 자리 무접촉)"
-     ]
+     "rc": 0,
+     "secs": 8.4,
+     "green": true,
+     "fails": []
     },
     {
-     "rc": 1,
-     "secs": 7.4,
-     "green": false,
-     "fails": [
-      "✗ ⓑ ★`villages.js` 에서 고리를 부르는 자리는 `_t325Scan` **하나**다(다른 자리 무접촉)"
-     ]
+     "rc": 0,
+     "secs": 8.3,
+     "green": true,
+     "fails": []
     },
     {
-     "rc": 1,
-     "secs": 7.9,
-     "green": false,
-     "fails": [
-      "✗ ⓑ ★`villages.js` 에서 고리를 부르는 자리는 `_t325Scan` **하나**다(다른 자리 무접촉)"
-     ]
+     "rc": 0,
+     "secs": 8.1,
+     "green": true,
+     "fails": []
     },
     {
-     "rc": 1,
-     "secs": 7.5,
-     "green": false,
-     "fails": [
-      "✗ ⓑ ★`villages.js` 에서 고리를 부르는 자리는 `_t325Scan` **하나**다(다른 자리 무접촉)"
-     ]
+     "rc": 0,
+     "secs": 8.1,
+     "green": true,
+     "fails": []
     },
     {
-     "rc": 1,
-     "secs": 7.8,
-     "green": false,
-     "fails": [
-      "✗ ⓑ ★`villages.js` 에서 고리를 부르는 자리는 `_t325Scan` **하나**다(다른 자리 무접촉)"
-     ]
+     "rc": 0,
+     "secs": 8,
+     "green": true,
+     "fails": []
     }
    ],
    "dyn": "나",
@@ -15571,15 +16916,39 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 5.5,
-   "same5": null,
+   "maxSec": 6.3,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 6,
    "runs": [
     {
      "rc": 0,
-     "secs": 5.5,
+     "secs": 6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6,
      "green": true,
      "fails": []
     }
@@ -15590,21 +16959,47 @@
     "spawn node",
     "execFileSync bash",
     "execFileSync node"
-   ]
+   ],
+   "left": true,
+   "srv": true
   },
   "test-zone-fauna.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 31.8,
-   "same5": null,
+   "maxSec": 34,
+   "same5": true,
    "core": false,
-   "why": "서버 — CI 밖(야간 · 전수)",
+   "why": "srv",
    "logSec": 30,
    "runs": [
     {
      "rc": 0,
-     "secs": 31.8,
+     "secs": 31.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 32,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 31.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 34,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 33.5,
      "green": true,
      "fails": []
     }
@@ -15614,7 +17009,8 @@
     "execFileSync node",
     "spawn node",
     "spawnSync node"
-   ]
+   ],
+   "srv": true
   }
  },
  "at": "2026-11-18"

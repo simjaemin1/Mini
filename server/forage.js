@@ -136,6 +136,13 @@ function sourceAt(x, y, ctx) {
   for (const [dx, dy] of adj) if (ctx.isWater(x + dx, y + dy)) {
     return { kind: 'fiber', key: `c:${Math.floor(x / CFG.CELL_PX)}_${Math.floor(y / CFG.CELL_PX)}`, where: '갈대 군락' };
   }
+  // ★★[T1368 · 검사 카드 T1354 Q16] 켬(`T1341_OWN_HOUSE` — 존이 `ctx.rockFirst` 로 넘긴다)이면 **바위 덩이 곁은 숲 바닥보다 자갈이 먼저**다.
+  //   왜: 「지금 할 일」이 "바위 곁에서" 를 가리키는데 숲 마을에선 그 바위 곁 칸이 ② 숲 바닥이라 맨손 E 가 잔가지만 줬다(네 시작 마을 중 셋 · 자갈 0) —
+  //   새 사람이 안내만으로 조잡한 돌괭이 · 돌도끼(자갈)를 못 만든다. 자갈은 그 바위 곁 땅에서 나온다(③′ 그 판정 · 링 반경 그대로 · 새 수 0 · 주머니에 넣어 주지 않는다).
+  //   숲 바닥 잔가지는 바위 곁이 아닌 숲 칸 · 덤불에서 그대로 나온다. 끔 = `rockFirst` 없음 = 아래 종전 차례 그대로(바이트 같음).
+  if (ctx.rockFirst && ctx.rockNear && ctx.rockNear(x, y, RING_PX)) {
+    return { kind: 'pebble', key: `c:${Math.floor(x / CFG.CELL_PX)}_${Math.floor(y / CFG.CELL_PX)}`, where: '바위 곁' };
+  }
   // ② 숲 바닥 — 삭정이가 발에 걸린다(잔가지의 둘째 소스)
   if (ctx.forestMult(x, y) > 1.5) {
     return { kind: 'twig', key: `c:${Math.floor(x / CFG.CELL_PX)}_${Math.floor(y / CFG.CELL_PX)}`, where: '숲 바닥' };

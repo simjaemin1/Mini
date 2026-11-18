@@ -492,3 +492,8 @@ test-onb-blackbox.js
 test-t1346-birth-flow.js
 test-t1348-loop.js
 test-t1353-onb-on-prep.js
+# ★[PM land1084] 규칙(land1083 `da9dd53a`) 앞 main 에서 딴 가지 넷 — 미끼는 파일 안에 있다(자리 한 번 · 빨강 줄 단언)지만 `@bait` 꼴이 아니다. land1083 뒤 main 에서 딴 가지는 여기 못 든다.
+test-t1345-body-day.js
+test-t1351-mine-clock.js
+test-t1352-xz-hold.js
+test-t1352-xz-news.js

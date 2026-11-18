@@ -22,6 +22,7 @@
 'use strict';
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -404,9 +405,10 @@ async function waitHttp(url, tries = 900) {
         await sleep(400);
         const b0 = await page.evaluate(() => window.__evLastBoard || null);
         if (b0 && b0.rows && b0.rows.length) return b0;
+        const tgS = await NM.mark(page);
         await page.evaluate(([v, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid: v, skip: sk }), [vid, skip.slice()]);
-        await sleep(900);
-        const nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '');
+        //   [T1367] 종전 0.9초 뒤 고리의 마지막 "(문턱" 줄 — 앞 판이 남긴 줄을 읽을 수 있었다 · 표지 뒤 픽스처 답이 올 때까지(상한 5초)
+        const nl = (await NM.waitLine(page, tgS, /\(문턱 |소비 품목이 없다|그런 마을/, { capMs: 5000 })).list.filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '';
         const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl);
         const it = m ? m[1] : null;
         if (it && it === lastItem) same++; else { lastItem = it; same = 1; }
@@ -449,10 +451,14 @@ async function waitHttp(url, tries = 900) {
       await page.evaluate(([it, n]) => window.__sendPrimary({ type: '__e2e_give', items: { [it]: n } }), [giveItem, want]);
       await sleep(900);
       const invB = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
+      const tgD = await NM.mark(page);
       await page.evaluate((v) => window.__sendPrimary({ type: 'village_deliver', vid: v }), vid);
       await sleep(1600);
-      const st = await page.evaluate(() => ({ s: window.__onbState || null, notes: (window.__notices || []).slice(-12), fx: window.__onbFxN | 0,
+      //   [T1367] 종전 1.6초 뒤 마지막 열두 줄 — 표지 뒤 납품 답("납품" · "바쳤습니다" · 거절)이 하나라도 올 때까지(상한 15초) · 읽는 것은 표지 뒤 전부
+      await NM.waitSince(page, tgD, (l) => l.length > 0, { capMs: 15000 });
+      const st = await page.evaluate(() => ({ s: window.__onbState || null, fx: window.__onbFxN | 0,
         greet: (window.__onbGreet && window.__onbGreet.lines) ? window.__onbGreet.lines.slice() : [] }));
+      st.notes = await NM.since(page, tgD);
       const invA = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
       if (st.fx > 0 || st.notes.some((t) => /곳간에 쌓였습니다/.test(t))) fxSeen = true;   // ★알림 링버퍼가 아니라 **상태**로 센다
       if (st.notes.some((t) => (OWN ? /고맙네\. 마을이 자네 손을 받아들였네/ : /빈터 하나 내어줌세|밥이라도/).test(t))) hookSeen = true;
@@ -535,9 +541,12 @@ async function waitHttp(url, tries = 900) {
         await page.evaluate(([px, py]) => window.__sendPrimary({ type: 'teleport_debug', x: px, y: py }), [x, y]);
         await sleep(1500);
         const before = claimN();
+        const tgC = await NM.mark(page);
         await page.evaluate(() => window.__sendPrimary({ type: 'claim', kind: 'personal' }));
         await sleep(1800);
-        return { before, after: claimN(), notes: await page.evaluate(() => (window.__notices || []).slice(-6).join(' | ')) };
+        //   [T1367] 종전 1.8초 뒤 마지막 여섯 줄 — 칸 수가 바뀌었거나 표지 뒤 답(거절 까닭)이 올 때까지 더(상한 15초 · 판정은 부른 쪽 그대로)
+        await NM.waitSince(page, tgC, (l) => l.length > 0 || claimN() !== before, { capMs: 15000 });
+        return { before, after: claimN(), notes: (await NM.since(page, tgC)).join(' | ') };
       };
       await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { wood: 20, stone: 20 } }));
       await sleep(700);
