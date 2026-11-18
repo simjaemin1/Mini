@@ -12,6 +12,10 @@ const Ev = require(path.join(ROOT, 'server', 'events'));
 const mk = Ev.createLedger;
 let last = -1, tickMax = 0, tickN = 0, patched = false;
 const os = require('os');
+//   살아 있는 힙(`live`) — 큰 GC(mark-compact) 바로 뒤 heapUsed 의 그날 꼭대기(쓰레기 뺀 몫 — 힙 넘침은 이 값이 상한에 닿을 때다)
+let liveMax = 0;
+try { const { PerformanceObserver, constants } = require('perf_hooks');
+  new PerformanceObserver((list) => { for (const e of list.getEntries()) { const k = e.detail ? e.detail.kind : e.kind; if (k === constants.NODE_PERFORMANCE_GC_MAJOR) { const h = process.memoryUsage().heapUsed; if (h > liveMax) liveMax = h; } } }).observe({ entryTypes: ['gc'] }); } catch (e) {}
 const cpuMs = () => { const c = process.cpuUsage(); return (c.user + c.system) / 1000; };
 function patchTick() {
   if (patched) return; patched = true;
@@ -28,8 +32,8 @@ Ev.createLedger = function () {
         last = day | 0;
         const m = process.memoryUsage();
         let st = null; try { const V = require(path.join(ROOT, 'server', 'villages')); st = V.__t740 ? V.__t740() : null; } catch (e) {}
-        const o = { d: last, heap: MB(m.heapUsed), tot: MB(m.heapTotal), rss: MB(m.rss), ext: MB(m.external), tickMax: +tickMax.toFixed(1), tickN, cpu: +(cpuMs() / 1000).toFixed(1), up: +os.uptime().toFixed(1) };
-        tickMax = 0; tickN = 0;
+        const o = { d: last, heap: MB(m.heapUsed), tot: MB(m.heapTotal), rss: MB(m.rss), ext: MB(m.external), live: MB(liveMax), tickMax: +tickMax.toFixed(1), tickN, cpu: +(cpuMs() / 1000).toFixed(1), up: +os.uptime().toFixed(1) };
+        tickMax = 0; tickN = 0; liveMax = 0;
         if (st) { o.players = st.deps && st.deps.players ? st.deps.players.size : null; o.routeCache = st.routeCache ? st.routeCache.size : null; o.walkCache = st.walkCache ? st.walkCache.size : null;
           o.war = st.war ? (Array.isArray(st.war) ? st.war.length : Object.keys(st.war).length) : 0; o.caravans = st.world && st.world.caravans ? st.world.caravans.length : null; }
         fs.appendFileSync(OUT, JSON.stringify(o) + '\n');

@@ -78,6 +78,8 @@ function scene(villagesFile) {
   if (H._t804Nearest) {   // 가장 가까운 점 기억 = 바로 센 답(같은 점열 · 같은 물음 되풀이 포함)
     let rnd = 7654321; const rr = () => { rnd = (rnd * 1103515245 + 12345) % 2147483648; return rnd / 2147483648; };
     const pts = []; for (let i = 0; i < 300; i++) pts.push({ x: i * 3 + rr() * 2, y: 40 + Math.sin(i / 9) * 30 });
+    for (let i = 0; i < 60; i++) { const cx = Math.floor(rr() * 60) * 15, cy = Math.floor(rr() * 8) * 10, r = 1 + Math.floor(rr() * 6);   // 같은 거리 짝(거울 · 겹침) — 먼저 본 점이 이긴다
+      pts.push({ x: cx + r, y: cy }, { x: cx - r, y: cy }, { x: cx, y: cy + r }, { x: cx + r, y: cy }, { x: cx + r * (1 + 1e-12), y: cy }); }
     let same = 0, all = 0;
     for (let i = 0; i < 6000; i++) { const x = Math.floor(rr() * 60) * 15, y = Math.floor(rr() * 8) * 10;
       let b = 0, bd = Infinity; for (let j = 0; j < pts.length; j++) { const d = Math.hypot(pts[j].x - x, pts[j].y - y); if (d < bd) { bd = d; b = j; } }

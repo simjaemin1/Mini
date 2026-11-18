@@ -8599,8 +8599,9 @@ function warCenterPx(vil) { return { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ +
 // 공격 주둔 링(셀) — 방어 포진 거리 + 두 대형 접근 거리(war-live 상수의 합 · 새 수 아님).
 function _warCampBackCells() { const WL = state.warLive; return WL.WAR_ENGAGE_R + WL.WAR_DEF_STANDOFF; }
 // 본대 행군 속도(셀/틱) — battle-core 병종 spd(m/s) × 틱 dt ÷ 셀(m). 대치 재편·주둔 복귀 걸음의 상한.
+let _t1349BC = null;
 function _warWalkCap(g) {
-  const WL = state.warLive, U = require('../sim/battle-core').UNITS;
+  const WL = state.warLive, U = (_t1349BC || (_t1349BC = require('../sim/battle-core'))).UNITS;   // ★[T1349] 모듈은 한 번만 찾는다(걸음마다 `require` 길 찾기 — 긴 전쟁 날 CPU 2.5 % · 같은 모듈 객체)
   let m = Infinity; for (const u of (g && g.units) || []) { if (u.dead) continue; const D = U[u.type]; if (D && D.spd < m) m = D.spd; }
   if (!isFinite(m)) m = U.spear.spd;
   return m * WL.STEP_DT / WL.M_PER_CELL;
@@ -9031,11 +9032,15 @@ function _t804RoadPts(body) {   // 행군로(px) → 셀 점열(몸에 기억 ·
   return body._t804rp;
 }
 //   ★[T1349 ③] 같은 점열 · 같은 (x, y) 의 답은 같다 — 점열마다 마지막 물음 몇을 기억한다(선 병사 · 같은 슬롯이 걸음마다 같은 물음 · CPU 9%).
-const _t1349Near = new WeakMap(), _T1349_NEAR_CAP = 4096;   // 기억 크기 상한(넘으면 비운다 — 답은 늘 바로 센 값과 같다 · 값에 안 드는 수)
+const _t1349Near = new WeakMap(), _T1349_NEAR_CAP = 4096, _T1349_NEAR_EPS = 1e-9;   // 기억 크기 상한(넘으면 비운다 — 답은 늘 바로 센 값과 같다 · 값에 안 드는 수)
 function _t804Nearest(pts, x, y) {
   let M = _t1349Near.get(pts); if (!M) { M = new Map(); _t1349Near.set(pts, M); }
   const k = x + ',' + y, v = M.get(k); if (v !== undefined) return v;
-  let b = 0, bd = Infinity; for (let i = 0; i < pts.length; i++) { const d = Math.hypot(pts[i].x - x, pts[i].y - y); if (d < bd) { bd = d; b = i; } }
+  //   제곱 거리로 먼저 거른다 — 지금 가장 가까운 거리의 제곱 × (1 + _T1349_NEAR_EPS) 보다 확실히 먼 점은 hypot 을 안 센다(그 점은 hypot 으로도 더 멀다 —
+  //   반올림 몇 ulp ≪ ε). 가까운 점 · 비슷한 점 · NaN · 넘침(∞)은 종전대로 hypot 으로 견준다 ⇒ 같은 차례 · 같은 비교 · 같은 답.
+  let b = 0, bd = Infinity, lim = Infinity;
+  for (let i = 0; i < pts.length; i++) { const dx = pts[i].x - x, dy = pts[i].y - y, d2 = dx * dx + dy * dy; if (d2 > lim && d2 !== Infinity) continue;
+    const d = Math.hypot(dx, dy); if (d < bd) { bd = d; b = i; lim = bd * bd * (1 + _T1349_NEAR_EPS); } }
   if (M.size > _T1349_NEAR_CAP) M.clear(); M.set(k, b); return b;
 }
 // ★[T804 ②] 전진 풀기의 걸음 — 막힌 칸 안에 선 몸을 가장 가까운 설 칸(T541 ⓑ 나선)까지 몸 걸음으로 한 걸음 옮긴다. 아직 막힌 몸이 남았으면 true(풀기를 미룬다).
