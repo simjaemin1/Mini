@@ -16638,6 +16638,7 @@ function _t1181Step(vil,npc,now,awake) {
   return _t1181Haul.step(npc,t,{now,awake,reach:44,drawMs:G_DRAWW,storeMs:G_STOREW,maxGap:SCH_VG_STUCK,
     move:(g,label)=>{npc.behavior='wander';npc.targetX=g.x;npc.targetY=g.y;npc.gatherTarget=null;_lifeAct(npc,label);},act:label=>_lifeAct(npc,(t&&t.kind==='terr'&&label==='건축')?'개간':label),home:()=>_lifeGoHome(npc,'취침'),
     pick:()=>{for(const[item,left]of missing()){const W=_carryCfg(),kg=(T1214_STEP_FAST?_t1214Weights():require('./weights')).kgOf(item),room=kg>0?Math.max(0,Math.floor((W.CFG.CAP_KG-W.totalKg(npc))/kg)):0;const spare=item==='wood'&&(t.kind==='bridge'||t.kind==='terr')?Math.max(0,t.kind==='bridge'?E.woodSpareAfterLand(vil.econ):E.woodSpare(vil.econ)):Infinity;const n=Math.min(left,_t400PerLoad(item),room,spare);if(n>0&&(vil.econ.storage[item]||0)>0)return{item,n};}return null;},
+    ...(T1358_STAKE_REQUOTE&&t&&t.kind==='terr'?{placeLimit:(k,n)=>Math.min(n,Math.max(0,(t.need()[k]||0)-(t.site.mat[k]||0)))}:{}),
     take:(k,n)=>{const q=E.actFromGranary(vil.econ,k,n,true);if(q>0){S().took+=q;S().trips++;}return q;},
     refund:(k,n)=>{if(npc._t1181Haul&&npc._t1181Haul.t1283){_t1207LogIn(vil,n);return;}E.returnActMaterials(vil.econ,k,n);},   /* ★[T1283 (나)] 켬에서만 서는 짐(개간 통나무) — 곳간 사다리에서 일괄과 같은 줄로 부린다 · 끔 = 종전 */
     place:(k,n)=>{if(!(n>0))return;t.site.mat[k]=(t.site.mat[k]||0)+n;E.actMaterialsPlaced(vil.econ,k,n);S().placed=(S().placed||0)+n;if(t.kind==='bridge')_t527Save(t.site);},

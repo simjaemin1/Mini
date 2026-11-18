@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress
-// @bait 3
+// @bait 5
 // T1358: real village task -> clearing/build-haul -> territory and granary assertions.
 'use strict';
 const assert = require('assert');
@@ -18,11 +18,16 @@ if (child) {
     Module._extensions['.js'] = function (m, f) {
       const village = f === path.join(ROOT, 'server/villages.js');
       const econ = f === path.join(ROOT, 'sim/economy-sim.js');
-      if (!(village || econ)) return original(m, f);
+      const haul = f === path.join(ROOT, 'server/build-haul.js');
+      if (!(village || econ || haul)) return original(m, f);
       let s = fs.readFileSync(f, 'utf8'), from, to;
       if (village && bait === 'quote') {
         from = 'j.wood = +_t1207CellCost(vil, j.cx, j.cy).wood.toFixed(6);';
         to = 'j.wood = j.wood;';
+      }
+      if (village && bait === 'underpaid') {
+        from = 'if (((job.mat && job.mat.wood) || 0) + 1e-9 < job.wood) return 0;';
+        to = 'if (false) return 0;';
       }
       if (village && bait === 'priority') {
         from = "t.kind==='bridge'?E.woodSpareAfterLand(vil.econ):E.woodSpare(vil.econ)";
@@ -31,6 +36,10 @@ if (child) {
       if (econ && bait === 'demand') {
         from = '+ ((v && v._t1207Need) || 0); }';
         to = '+ 0; }';
+      }
+      if (haul && bait === 'surplus') {
+        from = 'const placed=ctx.placeLimit?Math.max(0,Math.min(got,ctx.placeLimit(s.item,got))):got;';
+        to = 'const placed=got;';
       }
       if (from) {
         const n = s.split(from).length - 1;
@@ -42,12 +51,13 @@ if (child) {
   }
   const V = require('../server/villages'), E = require('../sim/economy-sim');
   const P = V.__labProbe, S = V.__p3Bind({}).state;
-  function fixture() {
+  function fixture(closed = false) {
     P._t1238Probe.clearLand();
     const players = new Map();
     const ta = { isBlocked: () => false, isRock: () => false, isWater: () => false, fert: () => 0.5, forestMult: () => 1 };
     const own = new Set();
     for (let x = 997; x <= 1003; x++) for (let y = 997; y <= 1003; y++) own.add(x + ',' + y);
+    if (closed) { own.add('1004,999'); own.add('1004,1001'); }
     const e = E.createVillage({ name: 'stake', initialPop: 40, fertility: 0.6, water: 0.5, wood: 0.6, stone: 0.4, game: 0.4, ore: 0, size: 100 });
     const v = { dbId: 1, name: 'stake', ccx: 1000, ccy: 1000, _terrSet: own, _potSet: new Set(), _farmSet: new Set(), _drySet: new Set(),
       _houseCells: [], _granList: [], _ditch: [], _shelter: null, _site: null, _psite: null, npcPids: [], _crop: new Map(), econ: e };
@@ -65,10 +75,30 @@ if (child) {
   }
   function walk(F, ticks = 1200) {
     for (let i = 1; i <= ticks; i++) {
-      P._t1181Probe.step(F.v, F.p, i * 100, true);
+      F.now = (F.now || 0) + 100;
+      P._t1181Probe.step(F.v, F.p, F.now, true);
       if (Number.isFinite(F.p.targetX)) { F.p.x = F.p.targetX; F.p.y = F.p.targetY; }
       if (!F.v._t1207Pend.length) break;
     }
+  }
+  if (process.argv.includes('--diagnose')) {
+    const rows = [];
+    for (const changed of [false, true]) {
+      const B = fixture(), quote = B.j.wood;
+      if (changed) { B.own.add('1004,999'); B.own.add('1004,1001'); }
+      B.j.workMs = B.j.laborMin * 1000;
+      const priceNow = V._t1207CellCost(B.v, 1004, 1000).wood;
+      walk(B);
+      const physical = B.v._t1207.wood || 0;
+      const H = fixture();
+      if (changed) { H.own.add('1004,999'); H.own.add('1004,1001'); }
+      P._t1238Probe.land().set(H.j.key, { c: 1, cDay: 23, w: 0, wDay: null });
+      const batch = P._t1238Probe.batch(H.v, [H.j.key], 1);
+      rows.push({ changed, queued: quote, current: priceNow, physical, batch: H.v._t1207.wood || 0,
+        bodyDone: B.v._t1207.body || 0, batchDone: batch.length });
+    }
+    console.log(JSON.stringify({ enabled: process.env.T1358_STAKE_REQUOTE === '1', rows }));
+    process.exit(0);
   }
   const free = fixture(), queued = free.j.wood;
   assert(queued > 0);
@@ -83,6 +113,12 @@ if (child) {
   assert.strictEqual(free.e.storage.wood, 0, 'free cell takes no wood');
   assert.strictEqual(free.v._t1207.wood, 0, 'free cell consumes no wood');
 
+  const underpaid = fixture(true);
+  underpaid.own.delete('1004,999'); underpaid.own.delete('1004,1001');
+  assert.strictEqual(V._t1207BodyDone(underpaid.v, underpaid.j), 0, 'underpaid cell is not added');
+  assert.strictEqual(underpaid.v._t1207Pend.length, 1, 'UNDERPAID_STAYS_QUEUED');
+  assert(!underpaid.own.has(underpaid.j.key), 'missing stakes cannot claim a cell');
+
   const paid = fixture();
   paid.e._t1207Need = 1000;
   paid.j.workMs = paid.j.laborMin * 1000;
@@ -92,12 +128,34 @@ if (child) {
   assert(Math.abs(stock - paid.e.storage.wood - paid.v._t1207.wood) < 1e-6, 'stock decrease equals placed wood');
   assert(paid.v._t1207.wood > 0, 'paid boundary uses real carried stakes');
 
-  const D = fixture();
+  const transit = fixture(); transit.j.workMs = transit.j.laborMin * 1000;
+  const transitStock = transit.e.storage.wood;
+  for (let i = 0; i < 500 && !(transit.p._t1181Haul?.n > 0); i++) walk(transit, 1);
+  assert(transit.p._t1181Haul?.n > 0, 'stakes actually withdrawn before boundary changes');
+  transit.own.add('1004,999'); transit.own.add('1004,1001');
+  walk(transit);
+  assert(transit.own.has('1004,1000'), 'in-flight quote change finishes');
+  assert(Math.abs(transit.e.storage.wood - transitStock) < 1e-6, 'INFLIGHT_SURPLUS_RETURNS');
+  assert.strictEqual(transit.v._t1207.wood, 0, 'surplus is not charged as placed stakes');
+  assert(!(transit.p.inventory.wood > 1e-9), 'no surplus disappears from the body');
+
+  const rising = fixture(true);
+  assert.strictEqual(rising.j.wood, 0);
+  rising.own.delete('1004,999'); rising.own.delete('1004,1001');
+  rising.j.workMs = rising.j.laborMin * 1000;
+  const risingStock = rising.e.storage.wood;
+  walk(rising);
+  assert(rising.own.has('1004,1000') && rising.v._t1207.wood > 0, 'new boundary requires actual carried stakes');
+  assert(Math.abs(risingStock - rising.e.storage.wood - rising.v._t1207.wood) < 1e-6, 'rising quote cannot complete underpaid');
+
+  const D = fixture(), queueNeed = D.e._t1207Need;
+  assert(queueNeed > 0, 'real queue emits nonzero stake demand');
   D.e._woodOutLast = 7; D.e._t1135Need = 7; D.e._t1207Need = 0;
-  const d0 = E.woodShareD(D.e); D.e._t1207Need = 13;
-  assert.strictEqual(E.woodShareD(D.e) - d0, 13, 'QUEUE_IN_WOOD_DEMAND');
+  const d0 = E.woodShareD(D.e);
+  V._t1207Queue(D.v, []);
+  assert(Math.abs(E.woodShareD(D.e) - d0 - queueNeed) < 1e-9, 'QUEUE_IN_WOOD_DEMAND');
   D.e._t325InflowToday = d0;
-  assert.strictEqual(E.woodDemandLeft(D.e, 0), 13, 'queue reaches logger remaining-demand gate');
+  assert(Math.abs(E.woodDemandLeft(D.e, 0) - queueNeed) < 1e-9, 'queue reaches logger remaining-demand gate');
 
   // Queue quote survives the existing checkpoint sidecar; workers are assigned again.
   const R = fixture(); R.j.workMs = R.j.laborMin * 500;
@@ -105,6 +163,9 @@ if (child) {
   const side = P._t740Probe.pack(R.v);
   R.v._t1207Pend = undefined; R.e._t740Side = JSON.parse(JSON.stringify(side)); P._t740Probe.restore();
   assert.strictEqual(JSON.stringify(R.v._t1207Pend.map(j => [j.key, j.workMs, j.mat, j.wood])), before, 'checkpoint keeps progress/materials/quote');
+  R.own.add('1004,999'); R.own.add('1004,1001'); R.e.storage.wood = 0;
+  walk(R);
+  assert(R.own.has('1004,1000') && R.v._t1207.body === 1, 'restored job requotes and physically completes exactly once');
   if (bait) assert.strictEqual(changes, 1);
   console.log('PASS T1358 product assertions');
   process.exit(0);
@@ -126,5 +187,9 @@ const b = run('priority');
 ok(b.status !== 0 && b.stderr.includes('STAKE_BEFORE_LAND') && !b.stderr.includes('one mutation site'), '미끼 ⓑ 바꾼 자리 1곳: 땅 몫을 먼저 뺌 → STAKE_BEFORE_LAND 빨강');
 const c = run('demand');
 ok(c.status !== 0 && c.stderr.includes('QUEUE_IN_WOOD_DEMAND') && !c.stderr.includes('one mutation site'), '미끼 ⓒ 바꾼 자리 1곳: 나무꾼 수요에서 말뚝 제거 → QUEUE_IN_WOOD_DEMAND 빨강');
+const surplus = run('surplus');
+ok(surplus.status !== 0 && surplus.stderr.includes('INFLIGHT_SURPLUS_RETURNS') && !surplus.stderr.includes('one mutation site'), '미끼 ⓓ 바꾼 자리 1곳: 초과 말뚝도 박음 → INFLIGHT_SURPLUS_RETURNS 빨강');
+const underpaid = run('underpaid');
+ok(underpaid.status !== 0 && underpaid.stderr.includes('underpaid cell is not added') && !underpaid.stderr.includes('one mutation site'), '미끼 ⓔ 바꾼 자리 1곳: 완공 지불 문 제거 → underpaid cell is not added 빨강');
 console.log(`결과 ${pass} 통과 / ${fail} 실패`);
 process.exit(fail ? 1 : 0);
