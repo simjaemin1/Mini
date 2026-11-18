@@ -1,0 +1,2 @@
+day 17505 _decOne:537 _t1322Skip:265 npcStep:240 decide:165   life:137 _t1348Dec:123 _t1348Walk:92 t1365Work:52 t1348Farm:51 wolfq:20 _t1181Task:7
+night 17558 _decOne:256 _t1322Skip:153 npcStep:72 _t1337Dec:58 decide:35 _t1348Dec:34   life:25 _t1348Walk:18 t1365Work:12 t1348Farm:11 wolfq:7 t1337Sleep:5 _t1181Task:3
