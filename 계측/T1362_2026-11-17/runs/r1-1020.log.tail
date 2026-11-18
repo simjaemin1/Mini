@@ -1,0 +1,43 @@
+마을 51곳 · 청크 1268 · 2ms · 걸음 1(최대 0.0ms) · 그 사이 표 기다림 0 · 칸 A* 0(기동 뒤 배경)
+[hanbando] ⏱ [T687] 한 틱 공용 예산 켬 — 16ms(문들이 차례로 남은 몫을 쓴다)
+[hanbando] 🧺 [T732] 곳간 로트 장부 — 마을 51곳(저장된 장부 0) · 캐러밴 · 군량 짐 훅 · [T748] 대기 칸 · 갱 비축
+[hanbando] 🏘️ [T996] 거리행렬 바탕 다시 세움: 51마을 BFS 51소스 · 판정 486932칸 · 0ms(주입 0 · 공유 메모 무접촉)
+[hanbando] 🏴 [도적] D1 소굴#1 재결성 카운트다운 — D46 예정(1대)
+[hanbando] 🏴 [도적] D1 소굴#2 재결성 카운트다운 — D46 예정(1대)
+[hanbando] 🏴 [도적] D1 소굴#3 재결성 카운트다운 — D50 예정(1대)
+[hanbando] 🏘️ [광산1] 생활층 신축 터 @(2100,2126) — 크루 시공 시작
+[hanbando] 🏘️ [광산7] 생활층 신축 터 @(2016,3096) — 크루 시공 시작
+[hanbando] 🏘️ [어촌6] 생활층 신축 터 @(2002,3916) — 크루 시공 시작
+[hanbando] 🏘️ [농촌3] 생활층 신축 터 @(2034,3598) — 크루 시공 시작
+[hanbando] 🏘️ [광산2] 생활층 신축 터 @(1986,212) — 크루 시공 시작
+[hanbando] 🏘️ [어촌14] 생활층 신축 터 @(1776,678) — 크루 시공 시작
+[hanbando] 🏘️ [임업3] 생활층 신축 터 @(1784,1924) — 크루 시공 시작
+[hanbando] 🏘️ [어촌11] 생활층 신축 터 @(1742,2752) — 크루 시공 시작
+[hanbando] 🏘️ [어촌2] 생활층 신축 터 @(1644,346) — 크루 시공 시작
+[hanbando] 🏘️ [임업6] 생활층 신축 터 @(1506,544) — 크루 시공 시작
+[hanbando] 🏘️ [어촌7] 생활층 신축 터 @(1528,160) — 크루 시공 시작
+[hanbando] 🏘️ [광산3] 생활층 신축 터 @(1404,790) — 크루 시공 시작
+[hanbando] 🏘️ [농촌5] 생활층 신축 터 @(1402,2070) — 크루 시공 시작
+[hanbando] 🏘️ [어촌1] 생활층 신축 터 @(1282,2378) — 크루 시공 시작
+[hanbando] 🏘️ [광산4] 생활층 신축 터 @(1278,1308) — 크루 시공 시작
+
+<--- Last few GCs --->
+
+[1510:0x1a1b9000]   212830 ms: Mark-Compact (reduce) 2046.7 (2083.6) -> 2046.7 (2076.6) MB, pooled: 0 MB, 530.07 / 0.01 ms  (+ 10.8 ms in 0 steps since start of marking, biggest step 0.0 ms, walltime since start of marking 558 ms) (average mu = 0.400, cur[1510:0x1a1b9000]   214105 ms: Mark-Compact 2047.7 (2076.6) -> 2047.7 (2080.6) MB, pooled: 0 MB, 1274.24 / 0.00 ms  (average mu = 0.163, current mu = 0.000) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 0xe48bbe node::OOMErrorHandler(char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 2: 0x1248d00 v8::Utils::ReportOOMFailure(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 3: 0x1248fd7 v8::internal::V8::FatalProcessOutOfMemory(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 4: 0x1477ee5  [/opt/node22/bin/node]
+ 5: 0x1491779 v8::internal::Heap::CollectGarbage(v8::internal::AllocationSpace, v8::internal::GarbageCollectionReason, v8::GCCallbackFlags) [/opt/node22/bin/node]
+ 6: 0x1465e78 v8::internal::HeapAllocator::AllocateRawWithLightRetrySlowPath(int, v8::internal::AllocationType, v8::internal::AllocationOrigin, v8::internal::AllocationAlignment) [/opt/node22/bin/node]
+ 7: 0x1466da5 v8::internal::HeapAllocator::AllocateRawWithRetryOrFailSlowPath(int, v8::internal::AllocationType, v8::internal::AllocationOrigin, v8::internal::AllocationAlignment) [/opt/node22/bin/node]
+ 8: 0x143f9ae v8::internal::Factory::NewFillerObject(int, v8::internal::AllocationAlignment, v8::internal::AllocationType, v8::internal::AllocationOrigin) [/opt/node22/bin/node]
+ 9: 0x18a22bc v8::internal::Runtime_AllocateInYoungGeneration(int, unsigned long*, v8::internal::Isolate*) [/opt/node22/bin/node]
+10: 0x7f4b0beacaf6 

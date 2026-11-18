@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress
+// @date-ok 가짜 야간 로그 시각 픽스처(보고기에 주입) — 벽시계와 안 맞댄다 [T1356]
 // === scripts/test-t1339-wait-day.js — 게임일 기다림 문(`lib-wait-day`) · 유보 RC(러너 · 야간 보고) · 한 순간 붙잡기(`lib-phase.hold`) 자 (T1339) ===
 //
 // ★무엇:

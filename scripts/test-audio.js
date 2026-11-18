@@ -685,7 +685,9 @@ console.log('\n⑩ ★[T292] CI 등록');
   const wf = path.join(ROOT, '.github', 'workflows', 'regress-unit.yml');
   ok(fs.existsSync(wf), '⑩a CI 파일이 있다', 'regress-unit.yml');
   const y = fs.readFileSync(wf, 'utf8');
-  const unitBlock = y.slice(y.indexOf('단위 하네스'), y.indexOf('watch:') > 0 ? y.indexOf('watch:') : y.length);
+  //   ★[T1350] 단위 목록은 이제 분류표가 쓰는 core 블록(표지 사이 · `ci-class.js --write-yml`)이다 — 손으로 적은 "단위 하네스 27종" 줄은 없어졌다.
+  const CC = require('./ci-class.js');
+  const unitBlock = y.indexOf(CC.MARK_A) >= 0 && y.indexOf(CC.MARK_B) > y.indexOf(CC.MARK_A) ? y.slice(y.indexOf(CC.MARK_A), y.indexOf(CC.MARK_B)) : '';
   ok(/test-audio\.js/.test(unitBlock), '⑩b ★`test-audio.js` 가 단위 목록에 있다(매 push·PR 마다 돈다)');
   const listed = (unitBlock.match(/test-[a-z0-9-]+\.js/g) || []);
   ok(listed.length >= 20, `⑩c 단위 목록이 실제로 여럿이다 — ${listed.length}종`, listed.length + '종');

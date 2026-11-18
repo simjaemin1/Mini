@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 60cb77817 · 제품(server sim public lab) = 1e2eb209f · 시한 600초
+빨강 ○ | test-t1348-loop.js | RC=1 · ✓ 0 · ✗ 1 |   ✗ 존 · stand-skip 글자 — 고리 거울 · 걷는 몸 커널 · 일터 깨움이 있다(옛 코드면 여기서 빨강)  없음: function _t1322Grant(n
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0

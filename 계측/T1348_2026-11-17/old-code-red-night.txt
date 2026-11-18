@@ -1,0 +1,4 @@
+# 옛 코드 빨강 — 하네스 = a18db4d19 · 제품(server sim public lab) = 1e2eb209f · 시한 1500초
+빨강(크래시) △ | test-t1348-loop.js | RC=1 · ✓ 0 · ✗ 0 | const fn = (src, head) => { const i = src.indexOf(head); if (i < 0) throw new Error(head); const j = src.indexOf('\n}\n', i); return src.slice(i, j + 3); };
+빨강 ○ | test-t1322-verify-night.js | RC=1 · ✓ 4 · ✗ 2 |   ✗ ⑤ ★[T1348] 걷는 몸 커널 — 낼 값(속도 · 길 번호 · 막힘 자리) ↔ 진짜 걸음 어긋남 0 · 고리 거울 gone 표 ↔ players �
+# 합: 빨강 1 · 크래시 1 · 초록 0 · 모름 0
