@@ -17232,6 +17232,23 @@ let _tickDebt = 0;
 const _tick = { n: 0, wall: 0, sim: 0, clip: 0, clipped: 0, maxGap: 0, debt: 0, dropN: 0, dropped: 0 };
 // ★★[T1340 ⑥] 틱 번호(`_tick.n`)는 주사위 씨의 한 칸이다(틱 흐름 `_diceTick` · 주민 결정 `_diceNpc` — 신원 · 셀 · 날 · **틱**). 다시 뜨면 0 부터 세어
 //   다시 뜬 판의 굴림이 한 번에 돈 판과 다른 씨에서 났다(T1340 §1). 손잡이 `T1340_RESUME_EXACT`(켬 기본 · `=0` 끔 = 종전 — 0 부터) — 켬이면 T742 모듈 메모리 줄로 번호만 잇는다(계측 칸은 프로세스 것).
+// ★★[T1372 ⓒ 2026-11-18 · 다시 뜬 다음 날 몸 자리(T1340 회부 4)] **벽 세대도 재기동을 넘는다** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
+//   닿음 기억(`_t427R` · `_t719N`)의 도장 = 청크 콜라이더 세대 합 + 다리 세대(`collGenAround`). 세대는 서고 · 헐리고 · 문이 여닫힐 때마다 오르는 **이력**이다 —
+//   다시 뜬 판은 부팅이 지금 선 건물만 다시 넣어 세는 수가 달랐고(T1340 ③′ 은 그래서 첫 틱에 모든 기억을 지금 세대로 다시 찍었다),
+//   다시 찍기는 한 번에 돈 판에서 이미 낡은(벽이 바뀌어 다시 넓혀야 할) 기억까지 새것으로 만들었다 ⇒ 다시 뜬 다음 날부터 마을 칸 `_t427R` · `_t719N` 이 갈렸다(30날 판 25날).
+//   켜면 종료 저장에 세대 표(청크 → 세대 · 합 · 다리 세대)를 싣고, 다시 뜬 판의 첫 틱 머리에 그대로 되돌린다(부팅이 넣으며 올린 수는 버린다) — 저장한 도장이 그대로 뜻이 같다.
+//   되돌렸으면 T1340 다시 찍기는 안 한다(`SimVillages.t1372NoRestamp`).
+let _t1372CgPend = null;
+const _t1372CgStat = { saved: 0, applied: 0, chunks: 0 };
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1372CG', () => (shuttingDown ? (_t1372CgStat.saved++, { g: [..._collGen], all: _collGenAll, br: _bridgeGen }) : null), (v) => { if (v && Array.isArray(v.g)) _t1372CgPend = v; });
+function _t1372CgApply() {
+  const v = _t1372CgPend; _t1372CgPend = null; if (!v) return;
+  _collGen.clear(); for (const [k, n] of v.g) _collGen.set(k, n | 0);
+  if (Number.isFinite(v.all)) _collGenAll = v.all; if (Number.isFinite(v.br)) _bridgeGen = v.br;
+  _t1372CgStat.applied++; _t1372CgStat.chunks = v.g.length;
+  if (SimVillages.t1372NoRestamp) SimVillages.t1372NoRestamp();
+  console.log(`[${ZONE_ID}] 🧱 [T1372] 벽 세대 되돌림 — 청크 ${v.g.length} · 합 ${_collGenAll} · 다리 ${_bridgeGen}`);
+}
 if (process.env.T1340_RESUME_EXACT !== '0' && T1322_PF) SimVillages.t742Bind('zone.t1372SS', () => _t1372SSSnap, (v) => { if (Array.isArray(v)) _t1372SSPend = v; });   // ★[T1372 ⓑ] 종료 저장에만 값(그 밖 null)
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.tickN', () => _tick.n, (n) => { if (Number.isFinite(n) && n > _tick.n) _tick.n = n; });
 // ★[T284 ④ · 관측자] 틱 본문 소요(ms) 고리 — `/perf` 의 tick.ms(p50/p95/max). idle 존 조기 반환 틱은 안 든다(본문이 없다).
@@ -17278,6 +17295,7 @@ setInterval(() => {
   //   그 둘을 가른 이유: 순수 해시는 자리마다 '무엇이 신원인가'를 정해야 하는데, 몹 스폰·드랍처럼
   //   **신원이 아직 없는** 자리가 많다. 거기까지 순수 해시로 가는 건 다음 카드다(보고 §4).
   _diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));
+  if (_t1372CgPend) _t1372CgApply();   // ★[T1372 ⓒ] 첫 틱 머리 — 벽 세대(마을 첫 틱의 T1340 다시 찍기보다 앞)
   if (_t1372SSPend) _t1372SSApply();   // ★[T1372 ⓑ] 다시 뜬 판의 첫 틱 머리 — 첫 거름 표 행을 그 몸 칸에(몸 · 캐러밴 몸이 다 선 뒤)
   if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }
   if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;
