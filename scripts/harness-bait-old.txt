@@ -484,3 +484,11 @@ test-wood-flow.js
 test-wood-step1.js
 test-xhost-env.js
 test-zone-fauna.js
+# [PM land1083 · 2026-11-18] 이 규칙(⑲b)과 **같은 착지에 나란히 들어온** 여섯 — 규칙이 서기 전 베이스(4ab5ab2b4)에서 짠 하네스라 표지 꼴을 몰랐다(미끼는 파일 안에 있다 · 판정 줄 꼴만 다르다).
+#   옛 목록의 바닥을 규칙이 main 에 선 판(land1083)으로 한 번 옮긴다(485 → 491) · 이 뒤로는 안 는다 — 새 하네스는 `// @bait <n>`(카드 "지키기"에 실었다).
+test-bundle-blackbox.js
+test-ci-list.js
+test-onb-blackbox.js
+test-t1346-birth-flow.js
+test-t1348-loop.js
+test-t1353-onb-on-prep.js
