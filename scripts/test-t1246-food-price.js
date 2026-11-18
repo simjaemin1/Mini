@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// @regress   ← [T1375] 러너 목록에 든다(T1336 켬 기본 뒤 빨강을 아무도 못 봤다 — @regress 가 아니었다)
+// @bait 2
+// === scripts/test-t1246-food-price.js — 곳간 식량 합계 정본 · 가격 오진(T1246) · 썩음은 한 길(T1325 · T1336 켬 기본 — T1375 가 갈래를 나눔) ===
 'use strict';
 const fs=require('fs'),os=require('os'),path=require('path'),assert=require('assert'),{spawnSync}=require('child_process');
 const root=process.env.T1246_CODE_ROOT||path.resolve(__dirname,'..');
@@ -16,18 +19,36 @@ if(process.env.T1246_CASE){
  const r=make();r.storage.food=3;r.storage.fish=4;r.storage.meat=5;r.storage.cooked_food=2;r.storage.dried_fish=6;
  assert.equal(E.totalFoodEquivalent(r),3+4+5+2*K.COOKED_FACTOR+6*E.PRESERVE_FOOD_FACTOR,'normalized econ units and preserved yield are not converted twice');
  assert.equal(E.totalFoodProductionEquivalent({rice:20},v),20*K.econUnitsOf('rice',1),'production uses same canonical factor');
- E.setLotHook({freshOf:(_v,item)=>item==='rice'?{spoiledU:1000}:null});assert.equal(E.totalFoodEquivalent(v),0,'spoiled grain is excluded');E.setLotHook(null);
- const G=require(root+'/server/granary-lots'),L=require(root+'/server/lots');let day=0;L.setClock(()=>day*1440000,1440000);const aged=make();aged.storage.food=10;G.attach(aged,null,0);G.ledger(aged,'food')[0].it='millet';day=120;E.setLotHook(G.hooks);assert.equal(E.totalFoodEquivalent(aged),0,'actual ledger excludes rotten underlying grain, not the generic food shelf');E.setLotHook(null);
+ const oneRot=process.env.T1325_ONE_ROT!=='0'&&process.env.T789_DISCARD!=='1',noHook=E.totalFoodEquivalent(v);   // [T1375] T1325_ONE_ROT 켬 기본(T1336) — 장부가 상한 레코드를 안 버리는 판은 econ 하루 부패가 이미 재고를 줄였다 = 썩음은 한 길
+ E.setLotHook({freshOf:(_v,item)=>item==='rice'?{spoiledU:1000}:null});
+ if(oneRot)assert.equal(E.totalFoodEquivalent(v),noHook,'one rot path: spoiled lot is not subtracted twice (econ decay already counted)');
+ else assert.equal(E.totalFoodEquivalent(v),0,'spoiled grain is excluded');
+ E.setLotHook(null);
+ const G=require(root+'/server/granary-lots'),L=require(root+'/server/lots');let day=0;L.setClock(()=>day*1440000,1440000);const aged=make();aged.storage.food=10;G.attach(aged,null,0);G.ledger(aged,'food')[0].it='millet';day=120;const agedNoHook=E.totalFoodEquivalent(aged);E.setLotHook(G.hooks);
+ if(oneRot)assert.equal(E.totalFoodEquivalent(aged),agedNoHook,'one rot path: rotten ledger lot is not subtracted twice');   // [T1375] 한 길 — 장부 레코드를 안 버리는 판
+ else assert.equal(E.totalFoodEquivalent(aged),0,'actual ledger excludes rotten underlying grain, not the generic food shelf');
+ E.setLotHook(null);
  const p1=V._settleParamsV2(v,'rice'),p2=V._settleParamsV2(q,'rice');assert(p1&&p2,'item-specific grain trade curve remains available');assert.equal(p1.physical,v.storage.rice,'rice trade capacity is physical rice');assert.equal(p1.sEff,v.storage.rice,'rice price keeps its own commodity stock');assert.equal(V._settleParamsV2(v,'food').physical,0,'aggregate calories cannot create physical food cargo');
  const vm=require('vm'),ctx={console:{log(){}},process:{env:{T1243_FARM_ON:'1'}}};vm.createContext(ctx);vm.runInContext(fs.readFileSync(root+'/sim/economy-engine.browser.js','utf8'),ctx);const B=ctx.EconEngine,bv=B.createVillage({initialPop:10});for(const r in bv.storage)bv.storage[r]=0;bv.storage.rice=500;bv._world={cropFoodEq:{}};assert.equal(B.totalFoodEquivalent(bv),full,'ON browser and Node share the same calorie sum');assert.equal(B.computeShadowPrices(bv).food,px,'ON browser and Node share the same grain-only food price');
  console.log('PASS grain-only, monotone price, seed, actual consumption, milling once, normalized/preserved units, production, spoilage and trade');process.exit(0);
 }
-const run=(codeRoot,on)=>spawnSync(process.execPath,[__filename],{env:{...process.env,T1246_CASE:'1',T1246_CODE_ROOT:codeRoot,T1243_FARM_ON:on,T859_FOOD_HUNGER:'0'},encoding:'utf8'});
-for(const on of ['1','0']){const r=run(root,on);process.stdout.write(r.stdout);process.stderr.write(r.stderr);assert.equal(r.status,0,'T1246 gate '+on);}
+const run=(codeRoot,on,extra)=>spawnSync(process.execPath,[__filename],{env:{...process.env,T1246_CASE:'1',T1246_CODE_ROOT:codeRoot,T1243_FARM_ON:on,T859_FOOD_HUNGER:'0',...(extra||{})},encoding:'utf8'});
+//   [T1375] 갈래 넷 — 기본(썩음 한 길 · T1336 켬 기본) · 밭 끔 · 장부가 상한 레코드를 버리는 판(`T789_DISCARD=1` — 상한 몫을 합계에서 뺀다 = 종전 단언) · 한 길 끔(`T1325_ONE_ROT=0` — 종전 두 번 빼기)
+for(const [on,extra,tag] of [['1',{},'on'],['0',{},'off'],['1',{T789_DISCARD:'1'},'discard'],['1',{T1325_ONE_ROT:'0'},'onerot-off']]){const r=run(root,on,extra);process.stdout.write(r.stdout);process.stderr.write(r.stderr);assert.equal(r.status,0,'T1246 gate '+tag);}
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'t1246-mutant-'));
 try{
  fs.cpSync(path.join(root,'sim'),path.join(tmp,'sim'),{recursive:true});for(const d of ['server','public','node_modules'])fs.symlinkSync(path.join(root,d),path.join(tmp,d),'dir');
+ //   미끼 ① — 곳간 식량을 `food` 칸만 읽는 옛 글자(T1246 앞)
  const p=path.join(tmp,'sim/economy-sim-v2.js'),s=fs.readFileSync(p,'utf8'),from=/function _t859Stock\(v, r\) \{[^\n]+\}/;
- assert(from.test(s),'mutation anchor');fs.writeFileSync(p,s.replace(from,'function _t859Stock(v, r) { return v.storage[r] || 0; }'));
- const bad=run(tmp,'1');assert.notEqual(bad.status,0,'old food-only read must fail');if(!bad.stderr.includes('grain-only warehouse'))process.stderr.write(bad.stderr);assert(bad.stderr.includes('grain-only warehouse'),'mutation fails at the targeted invariant');console.log('PASS mutant old food-only read is rejected');
+ const n1=(s.match(new RegExp(from.source,'g'))||[]).length;
+ fs.writeFileSync(p,s.replace(from,'function _t859Stock(v, r) { return v.storage[r] || 0; }'));
+ const bad=run(tmp,'1');if(!bad.stderr.includes('grain-only warehouse'))process.stderr.write(bad.stderr);
+ assert(n1===1&&bad.status!==0&&bad.stderr.includes('grain-only warehouse'),'미끼 ① 옛 식량만 읽는 사본 — grain-only 단언이 빨강 · 바꾼 자리 '+n1);console.log('PASS 미끼 ① mutant old food-only read is rejected · 바꾼 자리 '+n1);
+ fs.writeFileSync(p,s);
+ //   미끼 ② — 한 길을 지운 사본(장부 상한 몫을 늘 다시 뺀다 = T1325 앞 두 번 빼기) → 기본 판의 한 길 단언이 빨강
+ const q=path.join(tmp,'sim/economy-sim.js'),t=fs.readFileSync(q,'utf8'),A='!(T1325_ONE_ROT && !T1325_LOT_DISCARD)';
+ const n2=t.split(A).length-1;
+ fs.writeFileSync(q,t.replace(A,'true'));
+ const bad2=run(tmp,'1');if(!bad2.stderr.includes('one rot path'))process.stderr.write(bad2.stderr);
+ assert(n2===1&&bad2.status!==0&&bad2.stderr.includes('one rot path'),'미끼 ② 한 길을 지운 사본 — one rot path 단언이 빨강 · 바꾼 자리 '+n2);console.log('PASS 미끼 ② mutant double rot subtraction is rejected · 바꾼 자리 '+n2);
 }finally{fs.rmSync(tmp,{recursive:true,force:true});}
