@@ -28,17 +28,17 @@ for name in expected:
   for r in rr:
    day=r['day'];assert start<day<=min(start+P['every'],P['days']),(name,start,day)
    assert not rows or day==rows[-1]['day']+1,(name,'gap or duplicate',day)
-   br=bodyrows[day];tr=terrrows.get(day);t=r['territoryCost'];inc=0;z=0;zq=0;zw=0;zdry=0
+   br=bodyrows[day];tr=terrrows.get(day);t=r['territoryCost'];inc=0;z=0;zq=0;zw=0;zdry=0;emptyneed=0
    if tr:
     for v in tr['vils']:
      n=v['n'];dv=v['done']-villast.get(n,0);assert dv>=0,(name,n,'territory counter lost on resume')
-     villast[n]=v['done'];inc+=dv;z+=int(dv==0);zq+=int(dv==0 and v['pend']>0);zw+=int(dv==0 and v['pendWood']>0);zdry+=int(dv==0 and v['pendWood']>0 and v['woodSpare']<=0)
+     villast[n]=v['done'];inc+=dv;z+=int(dv==0);zq+=int(dv==0 and v['pend']>0);zw+=int(dv==0 and v['pendWood']>0);zdry+=int(dv==0 and v['pendWood']>0 and v['woodSpare']<=0);emptyneed+=int(v['pend']==0 and v['need']>0)
      zeroStreak[n]=zeroStreak.get(n,0)+1 if dv==0 else 0;worstZero[n]=max(worstZero.get(n,0),zeroStreak[n]);zeroDays[n]=zeroDays.get(n,0)+int(dv==0)
      vilout.append(dict(case=name,day=day,village=n,pop=v['pop'],doneDay=dv,done=v['done'],pending=v['pend'],pendingWood=v['pendWood'],jobBodies=v['jobBodies'],woodSpare=v['woodSpare'],wood=v['wood'],need=v['need']))
      byvilDone.setdefault(n,[]).append([day,dv])
     assert tr['done']==t['body']==br['physical'],(name,day,'independent body count mismatch')
    row=dict(case=name,day=day,segmentStart=start,pop=r['pop'],bodies=r['bodies'],empty=r['empty'],territory=r['territory'],cpuSeconds=r['cpuSeconds'],
-    completed=t['body'],completedWood=t['wood'],placedWood=None,doneDay=inc if tr else 0,zeroVillages=z if tr else None,zeroWithQueue=zq if tr else None,zeroWithWoodOwed=zw if tr else None,zeroDryWoodOwed=zdry if tr else None,
+    completed=t['body'],completedWood=t['wood'],placedWood=None,doneDay=inc if tr else 0,zeroVillages=z if tr else None,zeroWithQueue=zq if tr else None,zeroWithWoodOwed=zw if tr else None,zeroDryWoodOwed=zdry if tr else None,emptyQueueWithNeed=emptyneed if tr else None,
     traceAdded=traceBase+br['added'],batchCalls=batchBase+br['batchCalls'],bodyStarve=starveBase+r['bodyStarve'],debtDeaths=r['debtDeaths'],
     emigrationCumulative=r['emigrationCumulative'],emigrationDay=r['emigration'],bornDay=r['born'],missingResidents=sum(len(v['missingPeople']) for v in br['villages']) if name.split('-')[0]!='OFF' else None)
    if name.split('-')[0]!='OFF':assert row['traceAdded']==row['completed'],(name,day,'actual expansion trace closure')
@@ -78,6 +78,7 @@ for name in expected:
   window=[r for r in rows if day-10<r['day']<=day]
   prefix=[r for r in rows if r['day']<=day];steady=[r['cpuSeconds'] for r in prefix if r['day']!=r['segmentStart']+1]
   points[str(day)]=dict(R,placedWood=state['totals']['placedWood'] if state else None,
+   drawnWood=state['totals']['drawnWood'] if state else None,loadTrips=state['totals']['loadTrips'] if state else None,
    pendingPlacedWood=state['totals']['pendingPlacedWood'] if state else None,
    materialsResidual=state['totals']['placedMinusCompletedAndPending'] if state else None,
    zeroLast10Mean=statistics.mean(r['zeroVillages'] for r in window) if window and window[0]['zeroVillages'] is not None else None,
@@ -89,7 +90,7 @@ for name in expected:
   cpuMeanAll=statistics.mean(r['cpuSeconds'] for r in rows),completed=last['completed'],completedWood=last['completedWood'],
   minBodyRatio=min(r['bodies']/r['pop'] for r in rows if r['pop']),maxMissingResidents=max(r['missingResidents'] for r in rows) if name.split('-')[0]!='OFF' else None,batchCalls=last['batchCalls'],observerErrors=len(errors),
   segments=P.get('segs'),clockExitMeta=meta,
-  villageWorst=sorted([dict(village=n,zeroDays=zeroDays[n],maxConsecutiveZero=worstZero[n],completed=villast[n]) for n in villast],key=lambda r:(-r['maxConsecutiveZero'],r['completed'])))
+  emptyQueuePositiveNeedVillageDays=sum(r['emptyQueueWithNeed'] or 0 for r in rows),villageWorst=sorted([dict(village=n,zeroDays=zeroDays[n],maxConsecutiveZero=worstZero[n],completed=villast[n]) for n in villast],key=lambda r:(-r['maxConsecutiveZero'],r['completed'])))
  dailyout.extend(rows)
 for name,r in allruns.items():
  for day,point in r.get('points',{}).items():

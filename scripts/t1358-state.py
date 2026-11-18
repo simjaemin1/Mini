@@ -12,10 +12,10 @@ def value(v,k,default):
  return json.loads(x)
 for name,v in raw.items():
  t=value(v,'_t1207',{}) or {};S=value(v,'_t1207Sum',{}) or {};jobs=value(v,'_t1207Pend',[]) or []
- rows.append(dict(name=name,done=t.get('body',0),completedWood=t.get('wood',0),placedWood=S.get('placed',0),drawnWood=S.get('took',0),
+ rows.append(dict(name=name,done=t.get('body',0),completedWood=t.get('wood',0),placedWood=S.get('placed',0),drawnWood=S.get('took',0),loadTrips=S.get('trips',0),
   pendingPlacedWood=sum((j.get('mat') or {}).get('wood',0) for j in jobs),remainingQuote=sum(max(0,j.get('wood',0)-(j.get('mat') or {}).get('wood',0)) for j in jobs),
   pending=len(jobs)))
-keys=['done','completedWood','placedWood','drawnWood','pendingPlacedWood','remainingQuote','pending']
+keys=['done','completedWood','placedWood','drawnWood','loadTrips','pendingPlacedWood','remainingQuote','pending']
 res=dict(day=s.get('d',s.get('worldDay')),sourceSha256=hashlib.sha256(a.snapshot.read_bytes()).hexdigest(),totals={k:sum(r[k] for r in rows) for k in keys},villages=rows)
 res['totals']['placedMinusCompletedAndPending']=res['totals']['placedWood']-res['totals']['completedWood']-res['totals']['pendingPlacedWood']
 a.out.parent.mkdir(parents=True,exist_ok=True);a.out.write_text(json.dumps(res,ensure_ascii=False,indent=1))

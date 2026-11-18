@@ -1,0 +1,116 @@
+{
+ "base": "origin/main",
+ "mergeBase": "e96fb3455",
+ "files": [
+  {
+   "file": "server/build-haul.js",
+   "names": []
+  },
+  {
+   "file": "server/villages.js",
+   "names": [
+    "T1358_STAKE_REQUOTE",
+    "_t1181Step",
+    "_t1181Task",
+    "_t1207BodyDone",
+    "_t1207Queue",
+    "_t1329Crew",
+    "_t1329Job",
+    "_t1329Short",
+    "_t1358Requote"
+   ]
+  }
+ ],
+ "names": [
+  "T1358_STAKE_REQUOTE",
+  "_t1181Step",
+  "_t1181Task",
+  "_t1207BodyDone",
+  "_t1207Queue",
+  "_t1329Crew",
+  "_t1329Job",
+  "_t1329Short",
+  "_t1358Requote"
+ ],
+ "hit": {
+  "T1358_STAKE_REQUOTE": [
+   "test-t1358-terr-stake.js"
+  ],
+  "_t1181Step": [
+   "test-t1238-terr-v2.js",
+   "test-t1290-perf.js",
+   "test-t1337-wake.js"
+  ],
+  "_t1181Task": [
+   "test-t1214-step-fast.js",
+   "test-t1290-perf.js",
+   "test-t1337-wake.js"
+  ],
+  "_t1207BodyDone": [
+   "test-t1207-terr-real.js",
+   "test-t1238-terr-v2.js",
+   "test-t1358-terr-stake.js"
+  ],
+  "_t1207Queue": [
+   "test-t1238-terr-v2.js",
+   "test-t1358-terr-stake.js"
+  ],
+  "_t1329Crew": [],
+  "_t1329Job": [],
+  "_t1329Short": [
+   "test-t1238-terr-v2.js"
+  ],
+  "_t1358Requote": []
+ },
+ "used": [
+  [
+   "T1358_STAKE_REQUOTE",
+   1
+  ],
+  [
+   "_t1181Step",
+   3
+  ],
+  [
+   "_t1181Task",
+   3
+  ],
+  [
+   "_t1207BodyDone",
+   3
+  ],
+  [
+   "_t1207Queue",
+   2
+  ],
+  [
+   "_t1329Short",
+   1
+  ]
+ ],
+ "common": [],
+ "changedHarness": [
+  "test-t1358-terr-stake.js"
+ ],
+ "rule5": [
+  "test-body-fields.js",
+  "test-coll-grid.js",
+  "test-hp-src.js",
+  "test-lon-day.js",
+  "test-harness-lint.js"
+ ],
+ "list": [
+  "test-body-fields.js",
+  "test-coll-grid.js",
+  "test-harness-lint.js",
+  "test-hp-src.js",
+  "test-lon-day.js",
+  "test-t1207-terr-real.js",
+  "test-t1214-step-fast.js",
+  "test-t1238-terr-v2.js",
+  "test-t1290-perf.js",
+  "test-t1337-wake.js",
+  "test-t1358-terr-stake.js"
+ ],
+ "notRegress": []
+}

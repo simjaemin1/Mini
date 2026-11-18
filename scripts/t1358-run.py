@@ -24,7 +24,7 @@ env['NODE_OPTIONS']=' '.join('-r '+str(root/'scripts'/(h+'.js')) for h in hooks)
 # Read-only full village state at the ruler points, before t577's immediate final exit.
 env['T740_DUMP_DAYS']='100,200,400'
 name=f'{a.arm}-{a.seed}'; run=out/name
-(out/(name+'.launch.json')).write_text(json.dumps(dict(root=str(root),days=a.days,seed=a.seed,every=a.every,env={k:v for k,v in env.items() if k.startswith(('T','VILLAGE_','NODE_OPTIONS'))}),indent=1))
+(out/(name+'.launch.json')).write_text(json.dumps(dict(root=str(root),days=a.days,seed=a.seed,every=a.every,env={k:v for k,v in env.items() if (re.match(r'^T\d+_',k) or k.startswith('VILLAGE_') or k in ['NODE_OPTIONS','TIDE_FREEZE_MS'])}),indent=1))
 with (out/(name+'.guard.log')).open('wb') as log:
     r=subprocess.run(['bash','scripts/t1308-guard.sh','new',str(a.days),str(a.seed),'--every',str(a.every),'--tag',a.arm,'--dir',str(run)],cwd=root,env=env,stdout=log,stderr=subprocess.STDOUT)
 (out/(name+'.exit.json')).write_text(json.dumps(dict(exit=r.returncode)))

@@ -41,7 +41,7 @@ L+=['','# T1358 — 몸 영토 말뚝 통나무 차례 · 같은 칸 진단과 1
  '| ⓑ 말뚝 몫의 차례 | 영토 `woodSpare`; 숯·다리 `woodSpareAfterLand` | main이 이미 땅 몫 차감 전에 영토 말뚝을 꺼냄. 이를 뒤집는 미끼는 실제 인출 검사에서 빨강 |',
  '| ⓒ 나무꾼 수요 | `_t1207Queue → _t1207Need → woodShareD → woodDemandLeft` | main이 이미 말뚝 줄의 모자람을 나무꾼 수요에 더함. 줄에서 만들어진 실제 수요 항을 지우는 미끼는 나무꾼 문 검사에서 빨강 |','',
  '개간에 이미 쓴 시간·이미 박은 말뚝을 되감거나 지우지 않는다. 나무꾼·재료·크루 수·속도·상한·금고 식에 새 수를 넣지 않았다. 몸 필드를 새로 추가하지 않았다. 반환 표지는 기존 `returning`을 쓴다.','',
- '## 3. 판 조건과 100·200·400날','',
+ f"날 장부 단면에서 빈 줄인데 말뚝 수요가 남은 마을·날 수: BODY1020 {S['BODY-1020']['emptyQueuePositiveNeedVillageDays']} · A1020 {S['A-1020']['emptyQueuePositiveNeedVillageDays']} · BODY7 {S['BODY-7']['emptyQueuePositiveNeedVillageDays']} · A7 {S['A-7']['emptyQueuePositiveNeedVillageDays']}. 하루 사이 모든 틱의 갱신 시각을 판정한 수는 아니다.",'','## 3. 판 조건과 100·200·400날','',
  '**팔 구별:** BODY는 T1283·T1297·T1306까지 켠 T1329 진단 묶음 + T1329 크루다. T1329의 **1.048·0.904는 세 문을 끈 FIXB** 값이다. 이 둘을 동일 팔의 전후 효과로 비교하지 않는다. 본판은 카드의 출생 곳간 문 설명에 맞춘 팔이다. 조건 전부는 METHODS.md와 각 launch.json에 있다.','',
  'ⓑ·ⓒ의 주어진 차례는 BODY와 같다. A = BODY + ⓐ다. 1020은 각 400날 한 판의 단면이며, 7은 각 100날이다. 끔비 분모도 같은 시드·같은 날·같은 10날 재기동 자로 새로 잰 OFF다.','',
  '| 시드 | 팔 | 날 | 인구 | 끔비 | 영토 칸 | 몸 완공 | 말뚝 소비(완공+진행 중) | 완공 0 마을(당일 / 끝10날 평균) | 이탈 | 식량 빚 / 몸 굶음 | CPU 초/날(부팅 포함 / 마디 첫날 제외) |',
@@ -63,14 +63,14 @@ for seed in [1020,7]:
   L.append(f"| {seed}·{arm} | {x['offRatio']:.3f} | {'참' if x['ratioAtLeast130'] else '거짓'} | {f(mid['offRatio']) if mid else '—'} | {f(y['offRatio']) if y else '카드 판 밖'} | {('참' if y['ratioAtLeast130'] else '거짓') if y else '—'} | {('같음' if x['ratioAtLeast130']==y['ratioAtLeast130'] else '다름') if y else '비교 안 함'} |")
 L+=['','어느 날을 켬 기본의 자로 삼을지는 이 카드에서 정하지 않는다. 이 표는 실제로 같은 답인지 가르는 자료다.','',
  '## 5. 완공 0과 재료 장부','',
- '| 시드·팔·날 | 당일 완공 0 | 그중 줄 있음 | 그중 말뚝 모자람 | 말뚝 모자람+잉여 0 | 끝10날 내내 완공 0 | 완공 칸 목재 | 진행 칸에 박힌 목재 | 총 소비−둘의 합 |',
- '|---|---:|---:|---:|---:|---:|---:|---:|---:|']
+ '| 시드·팔·날 | 당일 완공 0 | 그중 줄 있음 | 그중 말뚝 모자람 | 말뚝 모자람+잉여 0 | 끝10날 내내 완공 0 | 인출 횟수 / 인출−소비 | 완공 칸 목재 | 진행 칸에 박힌 목재 | 총 소비−둘의 합 |',
+ '|---|---:|---:|---:|---:|---:|---|---:|---:|---:|']
 for seed in [1020,7]:
  for arm in ['BODY','A']:
   for day in ([100,400] if seed==1020 else [100]):
    r=point(arm,seed,day)
-   L.append(f"| {seed}·{arm}·{day} | {r['zeroVillages']} | {r['zeroWithQueue']} | {r['zeroWithWoodOwed']} | {r['zeroDryWoodOwed']} | {r['zeroWholeLast10']} | {r['completedWood']:.6f} | {r['pendingPlacedWood']:.6f} | {r['materialsResidual']:.9g} |")
-L+=['','완공 0만으로 재료 막힘을 단정하지 않고 줄·모자람·잉여를 함께 보았다. 마을별 모든 날은 villages-daily.csv, 긴 연속 완공 0 순서는 summary.json의 villageWorst다.',
+   L.append(f"| {seed}·{arm}·{day} | {r['zeroVillages']} | {r['zeroWithQueue']} | {r['zeroWithWoodOwed']} | {r['zeroDryWoodOwed']} | {r['zeroWholeLast10']} | {r['loadTrips']} / {r['drawnWood']-r['placedWood']:.3f} | {r['completedWood']:.6f} | {r['pendingPlacedWood']:.6f} | {r['materialsResidual']:.9g} |")
+L+=['','완공 0만으로 재료 막힘을 단정하지 않고 줄·모자람·잉여를 함께 보았다. 인출−소비에는 손에 든 몫·반환한 몫 등이 들어가므로 그 전부를 소비라고 부르지 않는다. 마을별 모든 날은 villages-daily.csv, 긴 연속 완공 0 순서는 summary.json의 villageWorst다.',
  'T1340은 `_t1207`·`_t1207Sum`을 재기동에 보존한다. 옛 모으개처럼 마디 끝 누계들을 더하지 않았다. 반면 프로세스마다 초기화되는 확장 호출·몸 굶음 계기는 마디별로 더했다.','',
  '## 6. 곡선','',
  '![1020](../계측/T1358_2026-11-19/curves-1020.png)','',

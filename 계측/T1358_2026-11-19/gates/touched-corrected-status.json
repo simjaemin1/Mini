@@ -1,0 +1,18 @@
+{
+ "exit": 0,
+ "seconds": 360.4214267459997,
+ "expectedHarnesses": [
+  "test-body-fields.js",
+  "test-coll-grid.js",
+  "test-harness-lint.js",
+  "test-hp-src.js",
+  "test-lon-day.js",
+  "test-t1207-terr-real.js",
+  "test-t1214-step-fast.js",
+  "test-t1238-terr-v2.js",
+  "test-t1290-perf.js",
+  "test-t1337-wake.js",
+  "test-t1358-terr-stake.js"
+ ],
+ "gitConfig": "caller-only core.quotePath=false"
+}
