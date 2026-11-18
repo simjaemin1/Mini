@@ -159,11 +159,12 @@ ok(ON.world.breach.trade === 0 && ON.world.breach.arrive === 0 && ON.world.breac
   `검사 ${ON.world.breach.checks} · 침범 ${ON.world.breach.trade} · ${ON.world.breach.arrive} · 가산 마을 통나무 수레 ${ON.world.breach.woodLegs} · 되사 감 ${ON.world.breach.woodBuys}`);
 ok(OFF.world.breach.woodLegs >= ON.world.breach.woodLegs, 'ⓓ 끔 판도 같은 조작에서 가산 마을 통나무 수레가 나간다(끔 ≥ 켬)', `끔 ${OFF.world.breach.woodLegs} · 켬 ${ON.world.breach.woodLegs}`);
 
-console.log('\nⓔ 자리 — 읽기 · 서기 · 줄기 · 깎기 · v2 다섯 + 하나');
+console.log('\nⓔ 자리 — 읽기 · 서기 · 줄기 · 깎기 · v2 여섯 + 하나');
 ok((S1.split('process.env.T692_SEED_RESERVE').length - 1) === 1 && (S2.split('T692_SEED_RESERVE').length - 1) === 0, 'ⓔ 손잡이를 읽는 자리 하나(v1) · v2 는 손잡이를 안 읽는다(v1 함수만 부른다)');
 ok(S1.includes(SET_LINE) && S1.indexOf(SET_LINE) > S1.indexOf('function createVillage(') && (S1.split('v._seedReserve = _woodBonus').length - 1) === 1, 'ⓔ 비축이 서는 자리 하나 — `createVillage` LANDFIT 가산 줄');
 ok(S1.includes(CONS_LINE) && S1.includes(CAP_LINE) && (S1.split('v._seedReserve = Math.').length - 1) === 2, 'ⓔ 줄어드는 자리 하나(`_cons`) · 깎는 자리 하나(`tickVillage` 머리) — 그 밖에 비축을 쓰는 줄 0');
-ok((S2.split('v1.seedReserveAvail(').length - 1) === 5 && S2.includes(CAND_LINE) && (S2.split('v1.seedReserveHeld(').length - 1) === 1 && S2.includes(BUY_LINE), 'ⓔ v2 곳간 읽기 다섯(발주 후보 · 출발 때 귀환 후보 · 도착 무효 판정 · 다시 고르기 · 귀환 당김 훅) · 되사 감 수량 한 자리');
+//   ★[T1347] 여섯째 = 받아 올 짐 파는 쪽 문(`_t1347Sells` — 종전 받아 올 짐 문의 "비축 뺀 곳간 > 1" 그대로 · 같은 함수를 부른다 · 끔 기본 `T1347_FETCH`)
+ok((S2.split('v1.seedReserveAvail(').length - 1) === 6 && S2.includes(CAND_LINE) && S2.includes('v1.seedReserveAvail(v, r) > 1 && !_t1347Ordered(v, r, day)') && (S2.split('v1.seedReserveHeld(').length - 1) === 1 && S2.includes(BUY_LINE), 'ⓔ v2 곳간 읽기 여섯(발주 후보 · 출발 때 귀환 후보 · 도착 무효 판정 · 다시 고르기 · 귀환 당김 훅 · 받아 올 짐 파는 쪽 문) · 되사 감 수량 한 자리');
 ok(S2.includes('const qty = Math.min(Math.max(0, s0 - s1), P.physical - (held || 0));'), 'ⓔ `_impactBuyV2` — 안 파는 몫만 물리 재고에서 뺀다(값 · 비용 식 무변)');
 
 console.log('\nⓕ 3사본 — 번들 · 랩');
