@@ -31,6 +31,7 @@
 'use strict';
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');            // ★T349 기동 기다리기 정본
@@ -133,9 +134,10 @@ async function ownFlow({ page, V, OFF, nx, box, snap, errs }) {
       await sleep(400);
       const b0 = await page.evaluate(() => window.__evLastBoard || null);
       if (b0 && b0.rows && b0.rows.length) return b0;
+      const tgS = await NM.mark(page);
       await page.evaluate(([v, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid: v, skip: sk }), [vid, skip.slice()]);
-      await sleep(900);
-      const nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '');
+      //   [T1367] 종전 0.9초 뒤 고리의 마지막 "(문턱" 줄 — 앞 판이 남긴 줄을 읽을 수 있었다 · 표지 뒤 픽스처 답이 올 때까지(상한 5초)
+      const nl = (await NM.waitLine(page, tgS, /\(문턱 |소비 품목이 없다|그런 마을/, { capMs: 5000 })).list.filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '';
       const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl);
       const it = m ? m[1] : null;
       if (it && it === lastItem) same++; else { lastItem = it; same = 1; }
@@ -308,9 +310,10 @@ const overlap = (a, b) => !!(a && b && Math.min(a.right, b.right) - Math.max(a.l
       await sleep(400);
       const b0 = await page.evaluate(() => window.__evLastBoard || null);
       if (b0 && b0.rows && b0.rows.length) return b0;
+      const tgS = await NM.mark(page);
       await page.evaluate(([v, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid: v, skip: sk }), [vid, skip.slice()]);
-      await sleep(900);
-      const nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '');
+      //   [T1367] 종전 0.9초 뒤 고리의 마지막 "(문턱" 줄 — 앞 판이 남긴 줄을 읽을 수 있었다 · 표지 뒤 픽스처 답이 올 때까지(상한 5초)
+      const nl = (await NM.waitLine(page, tgS, /\(문턱 |소비 품목이 없다|그런 마을/, { capMs: 5000 })).list.filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '';
       const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl);
       const it = m ? m[1] : null;
       if (it && it === lastItem) same++; else { lastItem = it; same = 1; }

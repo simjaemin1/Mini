@@ -9,6 +9,7 @@ if (!process.env.T1157_TEST_CHILD) {
     if(mode==='release'||mode==='all')env.T1157_RELEASE_RESERVE='1';
     process.stdout.write(execFileSync(process.execPath,[__filename],{env,encoding:'utf8'}));
   }
+  console.log('=== 결과: 갈래 5(off · settle · eat · release · all) PASS / 0 FAIL ===');   // [T1367] 러너 결과 줄 꼴(단언은 그대로 — 갈래 하나라도 던지면 execFileSync 가 던져 RC 1 · 이 줄 없음)
 } else {
   const E=require('../sim/economy-sim-v2'), V=require('../sim/economy-sim'), P=E._t1157Probe;
   const v=E.createWorldV2({seed:1020,villageCount:7}).villages[0];

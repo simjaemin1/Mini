@@ -236,7 +236,7 @@ async function waitHttp(url, tries = 900) {
     }
     furnace = (await buildings()).find((b) => b.type === 'furnace') || null;
   }
-  ok(!!furnace, `★노가 완공됐다(furnace)${furnace ? '' : ` — 알림: ${(await page.evaluate(() => (window.__notices || []).slice(-2))).join(' / ')}`}`);
+  ok(!!furnace, `★노가 완공됐다(furnace)${furnace ? '' : ` — 알림: ${(await page.evaluate(() => (window.__notices || []).slice(-2))).join(' / ')}`}`);   // @notice-ok 진단(판정 밖)
   await snap('02-furnace');
 
   // ── 사유지 4칸 회수 → 옆으로 걸어가 다시 2×2 → 마을 회관 ────────────────────
@@ -256,7 +256,7 @@ async function waitHttp(url, tries = 900) {
     }
     hall = (await buildings()).find((b) => b.type === 'village_hall') || null;
   }
-  ok(!!hall, `★게스트가 **마을을 세웠다**(village_hall)${hall ? '' : ` — 알림: ${(await page.evaluate(() => (window.__notices || []).slice(-2))).join(' / ')}`}`);
+  ok(!!hall, `★게스트가 **마을을 세웠다**(village_hall)${hall ? '' : ` — 알림: ${(await page.evaluate(() => (window.__notices || []).slice(-2))).join(' / ')}`}`);   // @notice-ok 진단(판정 밖)
 
   // ── 움집터 — 사유지가 필요 없는 다른 소유 갈래(`data.owner` 직접 대조) ───────
   //   ★움집(`hut_site`)은 여기서 안 짓는다. 6×4 발자국이라 방금 세운 회관·노·사유지와
