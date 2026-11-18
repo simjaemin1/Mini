@@ -6968,7 +6968,11 @@ function _t724BodyStep(vil, npc, now, day) {
   //   ④ 수요 문 — 그 마을 손(아직 곳간에 안 든 몫)까지 뺀다(T374 `held` 규약 · 손 합은 몸이 바꿀 때마다 고친 칸 · 해 질 녘에 다시 센다)
   const T66 = !!E.T1266_ORE_BODY;                                         // ★[T1266] 켬 = 수요 문 D 가 없다(아래 한 시간 값 ↔ 쉰 값이 문)
   if (T66 && npc._t1266Stop && npc._t1266Stop.day === day) { npc._t724T = 0; _t1266Stat.restStep++; _lifeGoHome(npc, '휴식'); return true; }   // 그날 멈췄다 — 쉰다
-  const left = T66 ? Infinity : E.mineDemandLeft(vil.econ, (vil._t724HeldKg || 0) / kgU);
+  let left = T66 ? Infinity : E.mineDemandLeft(vil.econ, (vil._t724HeldKg || 0) / kgU);
+  if (!T66 && left !== Infinity && _t1351MineOn(vil)) {   // ★[T1351] 켬 = 몸의 하루 문(D − 이 몸의 날 입고 − 손 합 · 끔 = 위 econ 날 문)
+    const _bd = _bodyDay(npc, now), _I = vil._t1351In, _in = (_I && _I.d === _bd) ? _I.u : 0;
+    left = Math.max(0, (vil.econ._oreOutLast || 0) - _in - (vil._t724HeldKg || 0) / kgU);
+  }
   if (!(left > 0)) { npc._t724T = 0; P.done++; _lifeGoHome(npc, '휴식'); return true; }
   //   ② 짐이 찼다 — 곳간 사다리(없으면 퇴근 · 손은 해 질 녘 일괄이 넣는다)
   if (cap > 0 && hand >= cap) {
@@ -7086,6 +7090,7 @@ function _t724Deliver(vil, npc, why, now) {
   if(!E.T1188_ORE_SPLIT&&npc.oreLedger)for(const k in npc.oreLedger)npc.oreLedger[k]=+(npc.oreLedger[k]*npc.inventory.ore_chunk/kg).toFixed(6);
   const out = kg - npc.inventory.ore_chunk;
   vil._t724HeldKg = Math.max(0, (vil._t724HeldKg || 0) - out);
+  if (g > 0 && now > 0 && _t1351MineOn(vil)) { const _bd = _bodyDay(npc, now); if (!vil._t1351In || vil._t1351In.d !== _bd) vil._t1351In = { d: _bd, u: 0 }; vil._t1351In.u += g; }   // ★[T1351] 켬 = 이 몸의 날에 든 원석
   const P = _t724P();
   if (why === 'gran') {
     P.gran++; P.granKg += out; P.granU += g;
@@ -13459,6 +13464,14 @@ const T1316_BODY_CLOCK = process.env.T1316_BODY_CLOCK === '1';
 //   사냥꾼의 걸음(존 이동 문 — 배속 `_huntSpd` 를 곱한다) · 두뇌 시간(`wildlife._hunterBrain` 의 dt — 잠행 · 추적 · 조준 · 머묾)만 게임 분 축으로 옮긴다.
 //   짐승 쪽(블록 `updateMobs` · 개체 장부)은 손대지 않는다(재민 11-15 — 짐승은 T1331 에서 몸이 된다) — 판 시계에서 짐승은 실초 축에 남는다(보고/T1326 §2 표).
 const T1326_HUNT_CLOCK = process.env.T1326_HUNT_CLOCK === '1';
+// ★★[T1351 2026-11-17 · T1326 회부 3] 손잡이 `T1351_MINE_CLOCK`(끔 기본 · `=1` 켬) — 판 시계 몸 축(`t1295S` > 1 · 밭 세계 · T1316 켬) 광부의 수요 문을 **몸의 하루**로.
+//   까닭(보고 T1351 §2 · 진단 판 실측 — 광산6 광부 한 몸의 라벨 날 줄): 광부 몸은 현지 해 몫 0.13 ~ 0.27 에 치고 0.73 ~ 0.87 해 질 녘에 곳간에 넣는다.
+//     판 시계에서는 econ 하루 마감이 몸의 아침(해 몫 ~0.2)에 선다(250ms 하루 · 마감이 틱 여럿에 걸친다 — T1253) ⇒ 어제 저녁 넣은 몫과 오늘 아침이 **같은 econ 날** 이라
+//     오늘 아침 수요 문(D − econ 오늘 입고 − 손 합)이 이미 0 ⇒ 그날 쉰다 ⇒ 격일(마을 수요 D 의 48% · 몸 세계 100%). 운영 시계는 마감이 몸의 밤에 서서 갈리지 않는다.
+//   켬: 문 = D − **이 몸의 하루**(`_bodyDay` — 현지 날)에 곳간에 든 원석(`_t1351In` — 마을 칸 · `_t724Deliver` 가 적는다) − 손 합. 곳간 입구(econ 날 D 상한)는 그대로.
+//   새 수 0 · 주사위 0. 끔 · 운영 시계 = 그 칸이 안 선다(바이트 같음).
+const T1351_MINE_CLOCK = process.env.T1351_MINE_CLOCK === '1';
+function _t1351MineOn(vil) { return T1351_MINE_CLOCK && !!vil && t1295S({ simVillageId: vil.dbId || 1, simJob: 'miner' }) > 1; }
 // ★★[T1316 ③] 손잡이 `T1316_SUBSTEP`(끔 기본 · `=1` 켬) — 판 시계 틱 한 번 = 게임 190분(250 ms 하루 · 30 Hz)이라 배율을 맞춰도 몸 결정이 하루 7 ~ 8 번에 묶인다(T1295 회부 1 ⓐ).
 //   켜면 배율 몸(`t1295S` > 1)의 틱을 K 토막으로 나눠 결정 · 걸음을 토막마다 한다 — K = ⌈틱의 게임 분 ÷ 가장 짧은 밭 일(김매기 한 번 · `_t1221Cost(1)` — T1221 정본)⌉.
 //   토막 시각 = 그 틱 안의 고른 자리(지난 틱 끝 → 이 틱) · 걸음 몫 = dt ÷ K 씩(합 = dt — 더 걷지 않는다). 새 수 0. 끔 · 배율 1 = K 1(종전).
@@ -20155,7 +20168,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
-  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1337Sleep, t1337Still, t1348Farm, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK,   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1337Sleep, t1337Still, t1348Farm, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK, T1351_MINE_CLOCK, t1351MineOn: (vil) => _t1351MineOn(vil),   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
