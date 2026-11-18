@@ -77,7 +77,7 @@ function clockCheck() {
   ok(CK.n > 5000 && CK.outs > 100 && CK.diff === 0, '④ ★[T1365 ⓒ] 예산 시계 한 번 — `TB.outAt(…, t)` 가 같은 시각의 `TB.out` 과 같은 답 · 같은 셈 칸', `견줌 ${CK.n} · 멈춤 ${CK.outs} · 어긋남 ${CK.diff}`);
   const baitEnv = (b) => ({ __T1365_BAIT: b, __T1365_BAIT_LOG: path.join(out, `bait-${b}.log`), T1294_PRELOAD: __filename });
   const [M, BH, BF] = await Promise.all([lane('main', PB, {}), lane('hunt', PB + 100, baitEnv('hunt')), lane('fish', PB + 200, baitEnv('fish'))]);
-  ok(M.code === 0 && M.st && M.st.valid && M.st.days === DAYS, `① 판이 끝까지 돌았다(${DAYS}날 · 가상 시계 오류 0)`, `rc ${M.code}`);
+  ok(M.code === 0 && M.st && M.st.valid && M.st.days === DAYS, `① 판이 끝까지 돌았다(${DAYS}날 · 가상 시계 오류 0)`, `rc ${M.code}${M.st && !M.st.valid ? ' · ' + JSON.stringify({ exit: M.st.exit, clock: M.st.clock }) : ''}`);
   ok(M.S.xvq > DAYS * 5e4 && M.S.xcmp === M.S.xvq && M.S.xbad === 0 && M.S.fvq > DAYS * 5e4 && M.S.fcmp === M.S.fvq && M.S.fbad === 0,
     '② 판정이 참인 결정을 실제로 돌려 견줌 — 농부 · 그 밖 일터 어긋남 0', `그 밖 ${M.S.xvq}/${M.S.xcmp} 어긋남 ${M.S.xbad} ${JSON.stringify(M.S.xwhy)} · 농부 ${M.S.fvq}/${M.S.fcmp} 어긋남 ${M.S.fbad} ${JSON.stringify(M.S.fwhy)}${M.S.ex.length ? ' · ' + M.S.ex.slice(0, 4).join(' | ') : ''}`);
   const J = M.S.fjob, cov = (j) => { const a = J[j] || [0, 0, 0, 0]; return { caught: a[2], miss: a[0], share: a[0] / Math.max(1, a[0] + a[2]) }; };

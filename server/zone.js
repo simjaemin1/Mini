@@ -5494,11 +5494,12 @@ function _t1348Dec(s, now) {
   const farm = p.simJob === 'farmer', vq = farm ? T1348_FVERIFY : T1365_VERIFY;   // ★[T1365] 농부 = `t1348Farm` · 그 밖 일터 = `t1365Work`
   const k = farm ? SimVillages.t1348Farm(p, now) : SimVillages.t1365Work(p, now);
   if (!k && !vq) { SS.stat.fstill++; return false; }
+  A.SH[s] = p._sh !== undefined ? p._sh : _SEED.pidHash(p.playerId || p.pid || p.mid || p.id || '');   // ★[T1365] 신원 해시는 결정 때 그 몸에서(`_shOf` 그 식 — 표를 준 뒤 `playerId` 가 서는 몸 · 400날 판 verify 가 찾았다)
   _t1337Dice.seed(_SEED.seedOf(A.SH[s], Math.floor(x / BUILDING_SIZE), Math.floor(y / BUILDING_SIZE), zoneGameDay(), _tick.n));
   let nda = now + 500 + _t1337Dice.next() * 1000;
   if (p.simVillageId && SimVillages.t1295S) { const sc = SimVillages.t1295S(p); if (sc > 1) nda = now + (nda - now) / sc; }
   if (vq) {   // 견줌 = 미룬 도장을 쓰고 결정 문을 그 자리에서 실제로 돌려 견준다(걸음 문은 이어 종전대로 · 결정은 이미 했다) · ★[T1365] 판정이 거짓인 결정도 돌려 직업마다 덮음을 센다
-    _t1322Wake(s); const snap = _t1337Snap(p); decideNpcBehavior(p, now);
+    _t1322Wake(s); const snap = _t1337Snap(p), _nd0 = p.nextDecisionAt; decideNpcBehavior(p, now); _t1348Nd = [_nd0, now, p._t540DecAt, A.NDA[s], A.TK[s]];
     const J = SS.stat.fjob[p.simJob] || (SS.stat.fjob[p.simJob] = [0, 0, 0, 0]);
     if (k) { if (_t1348FCmp(p, nda, snap, farm ? 'f' : 'x')) J[2]++; else J[3]++; if (farm) SS.stat.fvq++; else SS.stat.xvq++; }
     else { const nz = _t1365Noop(p, snap); J[nz ? 0 : 1]++; SS.stat.fstill++; if (nz) { const M = SS.stat.fmiss, kk = p.simJob + ':' + (p._lifeAct || '-') + ':' + (SimVillages.t1365Why ? SimVillages.t1365Why() : ''); M[kk] = (M[kk] || 0) + 1; } }   // 놓친 무동작(직업 : 라벨 — 다음 판정 감 · 셈 전용)
@@ -5509,11 +5510,12 @@ function _t1348Dec(s, now) {
   return true;
 }
 // 견줌 — 결정 문을 돌린 바로 뒤(걸음 문 앞) 몸 칸 전부(도장 · 결정 칸 뺌)가 그 앞과 같고 결정 시각이 셈한 값인가(걸음 문이 쓰는 칸은 아직 안 썼다)
+let _t1348Nd = null;   // 견줌 셈 칸(어긋난 결정 시각의 앞 · 지금 · 결정 도장 · 표 열)
 function _t1348FCmp(npc, nda, snap, pre) {   // ★[T1365] `pre` = 셈 칸 머리('f' 농부 · 'x' 그 밖 일터) · 돌려주는 값 = 어긋남 0
   const P = { nda, snap }, st = SS.stat, f = pre || 'f'; st[f + 'cmp']++;
   let ok = true;
   const bad = (w) => { ok = false; st[f + 'bad']++; st[f + 'why'][w] = (st[f + 'why'][w] || 0) + 1; if (st[f + 'ex'].length < 8) st[f + 'ex'].push(`${npc.pid} ${npc.simJob} ${w}`); };
-  if (!Object.is(npc.nextDecisionAt, P.nda)) bad('nda');
+  if (!Object.is(npc.nextDecisionAt, P.nda)) { bad('nda'); if (st[f + 'ex'].length <= 8 && _t1348Nd) st[f + 'ex'].push(`nda ${npc.pid} 앞 ${_t1348Nd[0]} · 지금 ${_t1348Nd[1]} · 도장 ${_t1348Nd[2]} · 셈 ${P.nda} · 뒤 ${npc.nextDecisionAt} · 표 ${_t1348Nd[3]}/${_t1348Nd[4]}`); }
   const now = _t1337Snap(npc);
   for (const [k, v] of now) { const a = P.snap.get(k); if (!P.snap.has(k)) bad('+' + k); else if (!(Array.isArray(v) ? v === a : Object.is(v, a))) bad(k); }
   for (const k of P.snap.keys()) if (!now.has(k)) bad('-' + k);
@@ -5603,6 +5605,7 @@ function _t1337Dec(s, now) {
   const near = qtMobs ? qtMobs.queryCircle(x, y, NPC_FLEE_RANGE) : Array.from(mobs.values());   // 결정 문 ① 그 질의
   for (const m of near) { if (m.type !== 'wolf' || m.tameOwner) continue; if (Math.hypot(m.x - x, m.y - y) < NPC_FLEE_RANGE) { SS.stat.dwolf++; return false; } }
   if (A.GD[s] !== zoneGameDay() || !SimVillages.t1337Still(A.VID[s], A.LON[s], A.W95[s], A.SEG[s], A.DOF[s], A.BDY[s], A.DAY[s], now)) { SS.stat.dstill++; return false; }   // 존 게임일도(하루 경계 econ 일)
+  { const p = SS.own[s]; A.SH[s] = p._sh !== undefined ? p._sh : _SEED.pidHash(p.playerId || p.pid || p.mid || p.id || ''); }   // ★[T1365] 신원 해시는 결정 때 그 몸에서(`_shOf` 그 식)
   _t1337Dice.seed(_SEED.seedOf(A.SH[s], A.CX[s], A.CY[s], zoneGameDay(), _tick.n));
   let nda = now + 500 + _t1337Dice.next() * 1000;
   const sc = A.T95[s]; if (sc > 1) nda = now + (nda - now) / sc;

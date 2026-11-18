@@ -356,8 +356,8 @@
    ]
   },
   "test-audio.js": {
-   "cls0": "나",
-   "why0": "child_process",
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
    "cls": "나",
    "maxSec": 2.4,
    "same5": true,
@@ -1200,6 +1200,15 @@
    ],
    "dyn": "가"
   },
+  "test-bundle-blackbox.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
   "test-calendar.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
@@ -1645,6 +1654,15 @@
     }
    ],
    "dyn": "가"
+  },
+  "test-clock-shift.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
   },
   "test-clothes-tiers.js": {
    "cls0": "가",
@@ -5785,6 +5803,15 @@
    "child": [
     "spawnSync node"
    ]
+  },
+  "test-onb-blackbox.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
   },
   "test-onboarding.js": {
    "cls0": "가",
@@ -13216,6 +13243,42 @@
     "spawnSync node"
    ]
   },
+  "test-t1346-birth-flow.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1348-loop.js": {
+   "cls0": "가",
+   "why0": "",
+   "cls": "가",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1353-onb-on-prep.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1365-work.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -14399,6 +14462,15 @@
     "spawnSync node"
    ],
    "inproc": true
+  },
+  "test-touched-harness.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
   },
   "test-trade.js": {
    "cls0": "다",
