@@ -1,0 +1,69 @@
+##### test-t1355-lot-day.js #####
+  [소요] 1초
+  ✓ RC=0
+##### test-t1197-meal-body.js #####
+=== T1197 결과: 28 통과 · 0 실패 ===
+  ✓ [자명 통과 금지] 몸 길이 저녁 끼니를 건너뛴 사본은 갈린다  0.520
+=== T1197 결과: 28 통과 · 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1209-meal-triage.js #####
+=== T1209 결과: 16 통과 · 0 실패 ===
+=== T1209 ⑦ 자명 통과 금지 ===
+=== T1209 결과: 16 통과 · 0 실패 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1260-food-reads.js #####
+  ✓ ⑥ [자명 통과 금지 · 미끼] 남는 시간 요리가 요리사를 세우는 사본 · 조리식이 든 환산을 넘어 새로 생기는 사본 · 재료를 안 떼는 사본 · 손잡이를 T1279 와 뗀 사본 · 부재료(건강 칸)를 조리식으로 먹어 치우는 사본 — 다섯 다 문다  {"post":false,"make":false,"free":false,"knob":false,"side":false}
+  ✓ ⑦ [자명 통과 금지 · 미끼] 갈무리를 다시 생산으로 센 사본 둘(장부 자리 종전 · 보존식 칸을 안 지움) · 건강을 0 으로 되돌린 사본 둘(마을 건강 자리 뺌 · 칸을 0 으로) — 넷 다 문다  {"L":false,"P":false,"H":false,"C":false}
+  ✓ ⑧ [자명 통과 금지 · 미끼] 곳간 재고로 건강을 세는 옛 글자로 돌린 사본 둘(곳간 건강 다시 셈 · 먹은 것 자리 뺌) · 로트 건강을 버리는 사본 둘(복사에서 h 뺌 · 새 몫을 h 로트에 합침) — 넷 다 문다  {"S":false,"E":false,"C":false,"M":false}
+=== T1260 식량 한 품목 읽는 문: 통과 41 · 실패 0 ===
+  [소요] 4초
+  ✓ RC=0
+##### test-wood-act.js #####
+=== 결과: 159 PASS / 0 FAIL ===
+  ✓ ⑪ [전제 · 자명 통과 금지] 판이 한도에 걸린다 — 하루 4짐(낮 42초 ÷ 왕복 10초) · 짐당 2그루 · 한 짐 8단(정본이 낸 수)  짐 4 · 2그루 · 8단
+=== 결과: 159 PASS / 0 FAIL ===
+  [소요] 19초
+  ✓ RC=0
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:19730 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 454 · 걸음 문 안 256 · 문 밖 198(표 내림 73 · 까닭 125)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 24초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1192392 · net 108838 · wildlife 96104
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1444351
+=== 54 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다  good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-list.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+=== 99건 중 PASS 99 · FAIL 0 ===
+  [소요] 154초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 10: test-t1355-lot-day.js test-t1197-meal-body.js test-t1209-meal-triage.js test-t1260-food-reads.js test-wood-act.js test-body-fields.js test-coll-grid.js test-hp-src.js test-lon-day.js test-harness-lint.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-harness-lint.js 154 · test-coll-grid.js 24 · test-wood-act.js 19 · test-t1260-food-reads.js 4 · test-hp-src.js 2 · test-lon-day.js 2 · test-body-fields.js 1 · test-t1197-meal-body.js 1 · test-t1355-lot-day.js 1 · test-t1209-meal-triage.js 0
+  걸린 시간 합: 하네스 208초 · 러너 전체 217초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 10번(앞 판이 남긴 아이 없음)
+RC=0
