@@ -44,6 +44,12 @@ one() {
   local lastday=""; [ -n "$dir" ] && [ -f "$dir/sbc-$SEED.json.sbc.json" ] && lastday=$(node -e "try{const f=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));const d=f.days||[];console.log(d.length?d[d.length-1][0]:'')}catch(e){}" "$dir/sbc-$SEED.json.sbc.json")
   printf '{"name":"%s","seed":%s,"env":"%s","rc":%s,"sec":%s,"json":%s,"why":"%s","lastDay":"%s"}\n' "$name" "$SEED" "$envs" "$rc" "$sec" "$ok" "$why" "$lastday" > "$OUT/runs/$tag.done"
   tail -3 "$log" > "$OUT/runs/$tag.tail.txt"
+  # 판 JSON 이 없으면(판 실패) 판 디렉터리를 지우기 전에 안쪽 판 로그 꼬리 · 마지막 econ 날을 남긴다(까닭은 캐지 않는다 — 날 한 줄)
+  if [ "$ok" = 0 ] && [ -n "$dir" ] && [ -f "$dir/sbc-$SEED.log" ]; then
+    tail -40 "$dir/sbc-$SEED.log" | cut -c1-300 > "$OUT/runs/$tag.runlog.tail.txt"
+    [ -z "$lastday" ] && lastday="econ d$(grep -oE 'econ d[0-9]+' "$dir/sbc-$SEED.log" | tail -1 | grep -oE '[0-9]+$')(로그 마지막)"
+    sed -i "s/\"lastDay\":\"\"/\"lastDay\":\"$lastday\"/" "$OUT/runs/$tag.done"
+  fi
   [ -n "$dir" ] && case "$dir" in "$WORK/tmp/sbc-"*) rm -rf -- "$dir";; esac
   rm -f -- "$WORK/mk/$tag.json"
   echo "$(date -u +%H:%M) $tag rc=$rc ${sec}s json=$ok ${why}"
