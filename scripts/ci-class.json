@@ -13273,11 +13273,24 @@
   "test-t1365-work.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
-   "cls": "다",
-   "maxSec": null,
+   "cls": "나",
+   "maxSec": 464.7,
    "same5": null,
    "core": false,
-   "why": "서버(글자) — CI 밖(야간 · 전수)"
+   "why": "464.7초 > 60초",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 464.7,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawn node",
+    "spawnSync node"
+   ]
   },
   "test-t721-apply.js": {
    "cls0": "나",
@@ -15446,5 +15459,5 @@
    ]
   }
  },
- "at": "2026-11-17"
+ "at": "2026-11-18"
 }
