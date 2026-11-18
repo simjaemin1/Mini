@@ -23,7 +23,7 @@ fCmp = fCmp.slice(0, fCmp.indexOf('  const isVil')) + '  return [{ x: npc.target
 const T37 = [line(Z, 'const _t1337Dice = '), line(Z, 'let _t1337Pend = null;'), fn(Z, 'function _t1337Grant(npc, s, now) {'), fn(Z, 'function _t1337Dec(s, now) {'), line(Z, 'const _T1337_ST = '), line(Z, 'function _t1337Snap(p)'), fn(Z, 'function _t1337Cmp(npc) {')];
 const PARTS = [line(Z, 'function _t671Lt('), line(Z, 'function _t671Gt('), line(Z, 'function _t670Stuck(npc, now)'), fn(Z, 'function detectStuck(npc, now) {'), fn(Z, 'function followNpcPath(npc, speedMult) {'),
   fn(Z, 'function _t791Mir(npc) {'), fCmp, fn(Z, 'function npcStep(npc, dt, now) {'),
-  fn(Z, 'function _t1322State(npc) {'), fn(Z, 'function _t1322Grant(npc, now) {'), fn(Z, 'function _t1322Wake(s) {'), line(Z, 'function _t1322Touch(p)'), line(Z, 'function _t1322FlushAll()'),
+  fn(Z, 'function _t1322State(npc) {'), fn(Z, 'function _t1322Grant(npc, now, s0) {'), fn(Z, 'function _t1322Wake(s) {'), line(Z, 'function _t1322Touch(p)'), line(Z, 'function _t1322FlushAll()'),
   line(Z, 'let _t1322PhNow = NaN'), fn(Z, 'function _t1322Dusk(s, now) {'), fn(Z, 'function _t1322Skip(s, pid, now) {'), fn(Z, 'function _t1322Check(npc, s, now) {'), ...T37];
 const SRC0 = PARTS.join('\n');
 const DAY = 40000, RATIO = 0.7, EPOCH = 0, BS = 32, R = 250;
@@ -42,7 +42,7 @@ const still = (vid, lon, w95, seg, dOff, bday, day, now) => { const fv = fvOf(no
 function world(pf, wk, src, noMeal) {
   const SS = loadSS(pf, wk), PF = SS.ON, wolves = [];
   const ctx = {
-    Math, Object, Number, Infinity, NaN, console, JSON, Set, Map, Array, SS, T1322_PF: PF, T1322_VERIFY: PF && SS.VERIFY, T1337_WAKE: PF && SS.WAKE_ON, T1337_VERIFY: PF && SS.WAKE_ON && SS.WAKE_VERIFY,
+    Math, Object, Number, Infinity, NaN, console, JSON, Set, Map, Array, SS, T1322_PF: PF, T1322_VERIFY: PF && SS.VERIFY, T1337_WAKE: PF && SS.WAKE_ON, T1337_VERIFY: PF && SS.WAKE_ON && SS.WAKE_VERIFY, T1348_LOOP: false, T1348_WALK: false, T1348_WVERIFY: false, T1348_WORK: false,   // ★[T1348] 고리 거울 · 걷는 몸 · 일터 깨움은 `test-t1348-loop`
     players: new Map(), _tick: { n: 0 }, _SEED, BUILDING_SIZE: BS, NPC_FLEE_RANGE: R, mobs: new Map(), wolves,
     qtMobs: { queryCircle: (x, y, r) => wolves.filter((m) => Math.abs(m.x - x) <= r && Math.abs(m.y - y) <= r) },
     zoneGameDay: () => Math.floor(ctx.NOW / DAY), NOW: 0,

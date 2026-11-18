@@ -63,6 +63,7 @@ async function jget(u) { try { const r = await fetch(u, { signal: AbortSignal.ti
         if (m.type === 'welcome') { B.welcome = true; let seq = 0; B.keep = setInterval(() => { try { ws.send(JSON.stringify({ type: 'input', seq: ++seq, vx: 0, vy: 0 })); } catch (e) {} }, 500); res(B); }   // 살아 있음(존은 오래 조용한 소켓을 내린다 — STALE_WS_MS)
         else if (m.type === 'inventory') B.inv = Object.assign({}, m.inventory || m.inv || {});
         else if (m.type === 'village_board') B.board = m.board;
+        else if ((m.type === 'onboarding_state' || m.type === 'onboarding_quest') && m.state) B.contrib = m.state.contrib | 0;   // ★[T1353] 받아들임(서버 계량기 — 봇의 대본 상태)
         else if (m.type === 'village_trade') B.trade = m.trade;
         else if (m.type === 'notice') { B.notices.push(m.text); const mm = /삯으로 (\S+) ([\d.]+)을/.exec(m.text || ''); if (mm) B.rew[mm[1]] = (B.rew[mm[1]] || 0) + (+mm[2]); if (/바쳤습니다/.test(m.text || '')) B.deliv++; }
       });
@@ -123,10 +124,11 @@ async function jget(u) { try { const r = await fetch(u, { signal: AbortSignal.ti
     obs.forEach((o2, k) => send(o2, { type: 'village_board', vid: V[k].vid }));
     await sleep(250);
     let fx = 0;
+    const vb = obs.map((o2) => (o2.board && o2.board.rows) ? o2.board.rows.length : (o2.board ? 0 : -1));   // ★[T1353] 마을마다 걸린 의뢰 줄 수(-1 = 게시판을 못 봤다)
     obs.forEach((o2, k) => { const n = (o2.board && o2.board.rows) ? o2.board.rows.length : 0; rowsSeen += n; if (FIX && !n) { send(o2, { type: '__e2e_village_short', vid: V[k].vid }); fx++; } });
     fixN += fx;
     const o = await observe();
-    series.push({ d, obs: o, deliv: bots.reduce((s, B) => s + B.deliv, 0) });
+    series.push({ d, obs: o, vb, deliv: bots.reduce((s, B) => s + B.deliv, 0), contrib: bots.reduce((s, B) => s + (B.contrib | 0), 0) });
     if (d % 10 === 0) console.log(`  ${d}날 — 납품 ${series[series.length - 1].deliv} · 재고 합 ${o.reduce((s, x) => s + x.stock, 0).toFixed(0)}`);
     const left = DMS - (Date.now() - tDay); if (left > 0) await sleep(left);
   }

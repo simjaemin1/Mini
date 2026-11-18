@@ -1,0 +1,4 @@
+# 옛 코드 빨강 — 하네스 = 6fdb08688 · 제품(server sim public lab) = 4ab5ab2b4 · 시한 900초
+초록 ✗ | test-touched-harness.js | RC=0 · ✓ 9 · ✗ 0 | 
+초록 ✗ | test-clock-shift.js | RC=0 · ✓ 8 · ✗ 0 | 
+# 합: 빨강 0 · 크래시 0 · 초록 2 · 모름 0

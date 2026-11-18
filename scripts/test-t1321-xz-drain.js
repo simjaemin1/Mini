@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress
+// @bait 1   ← [T1356] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
 // === scripts/test-t1321-xz-drain.js — 끈 판의 안전망(T1321 ④ · T1292 회부 6 · econ `_t1321Hold`) =====================
 //
 // ★무엇: 팔(`T525_CROSS_ZONE`)을 켰다 끈 판 · 또는 다시 뜬 직후 걸음표가 아직인 판에서 메타가 되돌린 **이웃 존 캐러밴**(`_xzHome`)이
@@ -10,6 +11,7 @@
 //   ② 켬 — 도착 날 이웃 존 캐러밴(outbound): 예외 0 · 미룸
 //   ③ 끔(증인) — 같은 판이 TypeError(종전 결함이 아직 있다 — 안전망이 자명하지 않다)
 //   ④ 켬 + 팔 켬 + 호스트 있음 — 종전 그대로('return' 하나 · 미룸 0)
+//   ★미끼 [T1356] — econ 사본 한 곳: 돌아갈 날 자리(`_xzHandBack` 앞)의 안전망 부름 `!_t1321Hold(world, c)` 를 뺀다 → 켬 판 ① 이 빨강(TypeError).
 // 실행: node scripts/test-t1321-xz-drain.js
 'use strict';
 const path = require('path');
@@ -20,7 +22,13 @@ if (process.argv[2] === '--child') {
   const Module = require('module');
   const _c = Module.prototype._compile;
   Module.prototype._compile = function (content, filename) {
-    if (filename.endsWith(path.join('sim', 'economy-sim-v2.js'))) content += '\n;module.exports.__t1321 = { step: _caravanStepV2, on: _xzOn };\n';
+    if (filename.endsWith(path.join('sim', 'economy-sim-v2.js'))) {
+      if (process.env.__T1321_BAIT === '1') {   // ★미끼 [T1356] — 돌아갈 날 자리의 안전망 부름 한 곳만 뺀다(바꾼 자리 수를 적는다)
+        const FROM = '!_t1030Hold(world, c) && !_t1321Hold(world, c)) _xzHandBack', TO = '!_t1030Hold(world, c)) _xzHandBack';
+        process.env.__T1321_BAIT_N = String(content.split(FROM).length - 1); content = content.replace(FROM, TO);
+      }
+      content += '\n;module.exports.__t1321 = { step: _caravanStepV2, on: _xzOn };\n';
+    }
     return _c.call(this, content, filename);
   };
   const E = require(path.join(ROOT, 'sim', 'economy-sim-v2.js'));
@@ -50,6 +58,7 @@ if (process.argv[2] === '--child') {
     E.__t1321.step(w, c, 10);
     return { done: !!c._done, state: c.state, trades: w.tradeLog.length };
   });
+  if (process.env.__T1321_BAIT_N != null) out.baitN = +process.env.__T1321_BAIT_N;
   process.stdout.write(JSON.stringify(out));
   process.exit(0);
 }
@@ -84,6 +93,12 @@ console.log('\n=== 끈 판의 안전망 — econ `_t1321Hold` (T1321 ④) ===');
     "④2 켬 + 팔 켬 · 호스트가 서면 그날부터 종전 그대로 — 'return' 하나(돌려보낸 짐 그대로 · 생성 0 · 소멸 0)", JSON.stringify(I.after));
   const R0 = child({ T525_CROSS_ZONE: '1' });
   ok(R0.in && R0.in.err && /zone/.test(R0.in.err), '④3 끔 + 팔 켬 · 호스트 전(증인) — 종전 TypeError(다시 뜬 직후 창에도 결함이 있었다)', JSON.stringify(R0.in).slice(0, 160));
+}
+// ★미끼 [T1356] — 안전망 부름 한 곳을 뺀 econ 사본으로 ① 켬 판을 다시 — 돌아갈 날 이웃 존 캐러밴이 종전 TypeError 로 돌아온다(① 빨강)
+{
+  const R = child({ T1321_XZ_DRAIN: '1', __T1321_BAIT: '1' });
+  const I = R.in || {};
+  ok(R.baitN === 1 && !!I.err && /zone/.test(I.err) && !(R.out || {}).err, '미끼 — 돌아갈 날 안전망 부름을 뺀 econ 사본 → ① 켬 판이 빨강(TypeError · ② 도착 날은 그대로 미룸)', `바꾼 자리 ${R.baitN} · ① ${JSON.stringify(I).slice(0, 120)}`);
 }
 console.log(`\n=== ${pass}/${pass + fail} 통과 ===`);
 process.exit(fail ? 1 : 0);

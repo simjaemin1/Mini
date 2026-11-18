@@ -1002,5 +1002,93 @@ console.log('\n⑱ 러너 표지는 러너가 찾는 이름(`test-*` · `e2e-*`)
   ok(ans === 'hit,hit,none,none,none', '★⑱ 자명 통과 금지 — 밖 이름의 표지 둘은 물고 · 찾는 이름 · "없음" 설명 · 다른 낱말은 보낸다', ans);
 }
 
+// ── ⑲ 하네스에 박힌 날짜 0 · 새 하네스의 미끼는 파일 안에(표지 `@bait <n>`) [T1356 2026-11-17 · ★재민 테스트 강화 규약 ① · ②] ──────────────
+//   왜: 사유지 하네스에 `Date.UTC(2026, 10, 14, 12)` 가 박혀 다음 날 깨졌다(T1305 — 미끼 넷은 다 빨강이었다) · 미끼가 보고에만 적혀 PM 이 다시 못 도는 카드가 있었다 ·
+//   11-10 뒤 새 하네스 셋은 미끼가 없었다. 자는 `lib-harness-guard.js` 한 벌(전수 표 `harness-guard-table.js` 와 같은 자 — 사본 0).
+//   ⑲a `test-*` · `e2e-*` 코드(주석 뺌)의 박힌 날짜 · 연도는 머리 표지 `// @date-ok <까닭>` 이 있는 파일에만(주입 고정 시각 · 로그 픽스처 — 벽시계와 안 맞대는 자리).
+//   ⑲b 옛 목록(`harness-bait-old.txt` — 베이스에 있던 이름)에 없는 새 `@regress` 하네스는 머리에 `// @bait <n>`(n ≥ 1)을 달고, 미끼 판정 줄
+//       (판정 호출 글자에 `미끼` 와 `바꾼 자리` 가 같이 든 것)이 꼭 n 개다. 옛 하네스도 표지를 달았으면 수가 맞아야 한다.
+//   ⑲c 옛 목록은 늘지 않는다(새 하네스를 거기 넣으면 ⑲b 를 피한다).
+console.log('\n⑲ 박힌 날짜 0 · 새 하네스 미끼 표지 `@bait <n>` [T1356]');
+{
+  const G = require(path.join(SCRIPTS, 'lib-harness-guard.js'));
+  const OLD_N = 491;   // ★얼린 수 — 베이스 4ab5ab2b4 의 test-* · e2e-* 파일 수 485 + ★[PM land1083] 규칙과 같은 착지에 나란히 들어온 여섯(목록 파일 끝 주석)(이 수를 올리면 ⑲b 를 피한다 · 내리는 것은 된다)
+  const OLDF = path.join(SCRIPTS, 'harness-bait-old.txt');
+  const OLD = new Set(fs.existsSync(OLDF) ? fs.readFileSync(OLDF, 'utf8').split('\n').filter((l) => l && !l.startsWith('#')) : []);
+  const dateBad = (src) => G.dateLines(src).length > 0 && !G.dateOk(src);
+  const baitBad = (name, src) => {
+    const m = G.baitMark(src), isNew = !OLD.has(name) && G.regress(src);
+    if (m == null) return isNew ? 'no-mark' : '';
+    const n = (G.baitCalls(src) || []).length;
+    return m < 1 ? 'zero' : n !== m ? `count ${n}/${m}` : '';
+  };
+  const files = fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x));
+  const src = (f) => fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+  const dbad = [], bbad = []; let dlines = 0, marked = 0, unparsed = [];
+  for (const f of files) {
+    const s = src(f); const d = G.dateLines(s); dlines += d.length;
+    if (dateBad(s)) dbad.push(`${f}:${d.map((x) => x.line).join(',')}`);
+    if (G.calls(s) == null) unparsed.push(f);
+    if (G.baitMark(s) != null) marked++;
+    const b = baitBad(f, s); if (b) bbad.push(`${f}(${b})`);
+  }
+  ok(files.length >= 400 && OLD.size >= 400 && unparsed.length === 0, '⑲ [전제] 하네스를 다 읽었고(AST 못 읽은 파일 0) 옛 목록이 있다(0 이면 아래가 자명 통과다)', `하네스 ${files.length} · 옛 목록 ${OLD.size} · 박힌 날짜 ${dlines}줄 · 표지 \`@bait\` ${marked}${unparsed.length ? ' · 못 읽음 ' + unparsed.join(' ') : ''}`);
+  ok(dbad.length === 0, '★★⑲a 하네스 코드에 박힌 날짜 · 연도 0 — 있으면 머리 표지 `// @date-ok <까닭>`(주입 고정 시각 · 로그 픽스처)', dbad.join(' ') || `표지 없는 파일 0 (${dlines}줄은 표지 단 파일)`);
+  ok(bbad.length === 0, '★★⑲b 새 `@regress` 하네스는 `// @bait <n>` 표지 · 미끼 판정 줄(`미끼` + `바꾼 자리`)이 꼭 n 개 — 미끼는 파일 안에', bbad.join(' ') || `표지 ${marked}개 수 맞음 · 옛 목록 밖 새 @regress 0 빠짐`);
+  ok(OLD.size <= OLD_N, '★⑲c 옛 목록(`harness-bait-old.txt`)은 늘지 않는다 — 새 하네스를 거기 넣으면 ⑲b 를 피한다', `${OLD.size} ≤ ${OLD_N}`);
+  // ★자명 통과 금지 — 같은 자로 어기는 사본은 빨강 · 지키는 사본은 초록(글자를 조각내 자기 자신을 안 문다)
+  const Y = '20' + '26', HD = '// @' + 'date-ok 순수 함수에 넣는 고정 시각 — 벽시계와 안 맞댄다\n', BM = (n) => `// @${'bait'} ${n}\n`, RG = '// @' + 'regress\n';
+  const MK = '미' + '끼', CNT = '바꾼 ' + '자리';
+  const okCall = `ok(n === 1 && red, '${MK} — 문을 뺀 사본 → ③ 빨강', \`${CNT} \${n}\`);\n`;
+  const dbait = {
+    utc: `const T0 = Date.UTC(${Y}, 10, 14, 12);\n`,
+    str: `const day = '${Y}-11-14';\n`,
+    marked: HD + `const T0 = Date.UTC(${Y}, 10, 14, 12);\n`,
+    comment: `// 옛 판: Date.UTC(${Y}, 10, 14, 12)\nconst T0 = injected;\n`,
+    path: `const f = '계측/서버기준선_${Y}-11-16.json';\n`,
+  };
+  const da = Object.entries(dbait).map(([k, v]) => `${k}=${dateBad(v) ? 'bad' : 'ok'}`).join(',');
+  ok(da === 'utc=bad,str=bad,marked=ok,comment=ok,path=ok', '★⑲a 자명 통과 금지 — 박힌 `Date.UTC` · 날짜 글자는 물고 · 표지 단 파일 · 주석 · 파일 경로 속 날짜는 보낸다', da);
+  const bbait = {
+    good: ['test-new.js', RG + BM(1) + okCall],
+    nomark: ['test-new.js', RG + okCall],
+    many: ['test-new.js', RG + BM(2) + okCall],
+    nocount: ['test-new.js', RG + BM(1) + `ok(red, '${MK} — 문을 뺀 사본 → 빨강');\n`],
+    old: ['test-alloy.js', RG + okCall],
+    oldmarked: ['test-alloy.js', RG + BM(3) + okCall],
+    report: ['test-new.js', RG + BM(1) + `// ok(n === 1, '${MK} ${CNT} 1') — 보고에만 적은 미끼\n`],
+  };
+  const ba = Object.entries(bbait).map(([k, [n, v]]) => `${k}=${baitBad(n, v) ? 'bad' : 'ok'}`).join(',');
+  ok(ba === 'good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad', '★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다', ba);
+}
+
+// ── ⑳ `// @harness-only` = 제품을 안 부르는 하네스 [T1350 2026-11-17 · CI 옛 코드 빨강 단계] ──────────────
+//   왜: CI 의 옛 코드 빨강 단계(`pm-old-code-red.sh`)는 새 하네스를 옛 제품 위에서 돌려 **빨강**이어야 통과다. 하네스 도구만 재는 하네스(분류표 ·
+//   러너 · lib 자)는 옛 제품 위에서도 초록이 맞다 — 그런 하네스는 머리에 `// @harness-only` 를 달아 그 단계를 건너뛴다. 표지가 거짓말이면
+//   (제품을 부르는데 표지를 달면) 고침을 안 재는 하네스가 그 단계를 빠져나간다 ⇒ 이 자가 막는다.
+//   자: 표지를 단 파일과 그 파일이 부르는 `scripts/` 자(따라가며)의 코드(주석 뺀)에 제품 자리(`server` · `sim` · `public` · `lab` 디렉터리)를 가리키는 글자 0.
+console.log('\n⑳ `// @harness-only` = 제품 부름 0 [T1350]');
+{
+  const CO = require('./code-only.js');
+  const HO = /^\/\/ @harness-only([\s]|$)/m;
+  const PROD = /['"`](?:\.\.\/|\.\/)?(?:server|sim|public|lab)\/|['"`](?:server|sim|public|lab)['"`]\s*[,)]/;
+  const deps = (f, seen) => { seen = seen || new Set(); if (seen.has(f)) return seen; seen.add(f);
+    let src = ''; try { src = CO(fs.readFileSync(f, 'utf8')); } catch (e) {}
+    for (const m of src.matchAll(/require\(\s*['"](\.\/[^'"]+)['"]\s*\)/g)) { let q = path.join(path.dirname(f), m[1]); if (!/\.js$/.test(q)) q += '.js'; if (fs.existsSync(q)) deps(q, seen); }
+    return seen; };
+  const touches = (f) => [...deps(f)].filter((x) => PROD.test(CO(fs.readFileSync(x, 'utf8')))).map((x) => path.basename(x));
+  const all = fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js'));
+  const marked = all.filter((f) => HO.test(fs.readFileSync(path.join(SCRIPTS, f), 'utf8')));
+  const lie = marked.map((f) => [f, touches(path.join(SCRIPTS, f))]).filter(([, t]) => t.length);
+  const notTest = marked.filter((f) => !/^test-.*\.js$/.test(f));
+  ok(marked.length >= 1, '⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)', marked.join(' '));
+  ok(lie.length === 0, '★★⑳ `@harness-only` 하네스(와 그것이 부르는 scripts 자)는 제품 자리(server · sim · public · lab)를 안 가리킨다', lie.map(([f, t]) => `${f}←${t.join(',')}`).join(' ') || `${marked.length}/${marked.length}`);
+  ok(notTest.length === 0, '⑳ 표지는 `test-*.js` 에만(옛 코드 빨강 단계가 보는 이름)', notTest.join(' ') || '0');
+  //   미끼 — 같은 자(PROD 글자 자)가 제품 부름 셋을 물고(require · path.join · 상대 경로) 제품 아닌 글자 둘(주석 · 'scripts')은 보낸다
+  const bait = { req: "require('../server/zone.js')", join: "path.join(ROOT, 'server', 'zone.js')", rel: "'./sim/economy-sim.js'", cmt: "// require('../server/zone.js')", scr: "path.join(ROOT, 'scripts', 'x.js')" };
+  const ans = Object.entries(bait).map(([k, v]) => k + '=' + (PROD.test(CO(v)) ? 'hit' : 'none')).join(',');
+  ok(ans === 'req=hit,join=hit,rel=hit,cmt=none,scr=none', '★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다', ans);
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

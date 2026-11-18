@@ -1,0 +1,68 @@
+{
+ "main-1020": {
+  "cpuS": 1647.9,
+  "shape": {
+   "days": 30,
+   "maps": 1,
+   "dict": 0,
+   "len": [
+    134
+   ]
+  }
+ },
+ "main-7": {
+  "cpuS": 1619.8,
+  "shape": {
+   "days": 30,
+   "maps": 1,
+   "dict": 0,
+   "len": [
+    134
+   ]
+  }
+ },
+ "main-42": {
+  "cpuS": 1648.2,
+  "shape": {
+   "days": 30,
+   "maps": 1,
+   "dict": 0,
+   "len": [
+    134
+   ]
+  }
+ },
+ "fix-1020": {
+  "cpuS": 1471.1,
+  "shape": {
+   "days": 30,
+   "maps": 1,
+   "dict": 0,
+   "len": [
+    134
+   ]
+  }
+ },
+ "fix-7": {
+  "cpuS": 1427.2,
+  "shape": {
+   "days": 30,
+   "maps": 1,
+   "dict": 0,
+   "len": [
+    134
+   ]
+  }
+ },
+ "fix-42": {
+  "cpuS": 1427.1,
+  "shape": {
+   "days": 30,
+   "maps": 1,
+   "dict": 0,
+   "len": [
+    134
+   ]
+  }
+ }
+}

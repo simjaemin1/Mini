@@ -989,6 +989,11 @@ function createLedger(opts) {
     const wantQty = Math.max(1, Math.round(ema * cfg.REQ_DAYS));
     const pWant = +prices[item] || 0;
     if (!(pWant > 0)) return null;
+    //   ★★[T1353 · T1341 회부 2] 켬(`T1341_OWN_HOUSE`) — 갚음이 0 이니 갚을 잉여를 보지 않는다: **마을이 정말 필요한 것이면 건다**
+    //     (부족이 서 있고 · 플레이어가 낼 수 있고 · 쉬는 기간이 지났다 — 위 게시 줄의 문 그대로 · 양 = 소비EMA × REQ_DAYS 그대로).
+    //     약속 칸은 비운다(`rewItem` null · `rewQty` 0) — 그래서 거래소 "보상으로 잠긴 품목"(`trade.js lockedRewards` · 걸린 의뢰의 `rewItem`)이 켬에서 서지 않는다(교역 글자 무접촉).
+    //     하루 재검증(`revalidate`)은 갚을 몫이 0 이라 거두지 않는다. 끔 = 아래 B-1 그대로(바이트 같음).
+    if (T1341_OWN_HOUSE) return { vid: s.vid, item, qty: wantQty, filled: 0, rewItem: null, rewQty: 0, day, fit: 'need' };
     const sto = v.storage || {};
 
     // 후보 잉여 — 플레이어가 **받을 수 있고** 재고·시세가 있는 품목만.

@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = ec1b65b · 제품(server sim public lab) = c2d2376 · 시한 600초
+빨강 ○ | test-t1353-onb-on-prep.js | RC=1 · ✓ 5 · ✗ 10 |   ✗ ★① 잉여 0 이어도 의뢰가 선다 — 양 = 소비EMA × REQ_DAYS · 못갚아미게시 +0  {"W":"stone","posted":false,"qty":null,"want":1,"noPa
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0

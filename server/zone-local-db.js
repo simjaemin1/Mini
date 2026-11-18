@@ -728,7 +728,7 @@ function pruneVillageEvents(zone, beforeDay) { stmtPruneVillageEvents.run(zone, 
 const stmtUpsertVillageRequest = db.prepare('INSERT INTO village_requests (zone, vid, item, qty, filled, rew_item, rew_qty, day) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(zone, vid, item) DO UPDATE SET qty = excluded.qty, filled = excluded.filled, rew_item = excluded.rew_item, rew_qty = excluded.rew_qty, day = excluded.day');
 const stmtDeleteVillageRequest = db.prepare('DELETE FROM village_requests WHERE zone = ? AND vid = ? AND item = ?');
 const stmtGetVillageRequests = db.prepare('SELECT vid, item, qty, filled, rew_item, rew_qty, day FROM village_requests WHERE zone = ?');
-function upsertVillageRequest(zone, r) { stmtUpsertVillageRequest.run(zone, r.vid | 0, String(r.item), +r.qty || 0, +r.filled || 0, String(r.rewItem), +r.rewQty || 0, r.day | 0); }
+function upsertVillageRequest(zone, r) { stmtUpsertVillageRequest.run(zone, r.vid | 0, String(r.item), +r.qty || 0, +r.filled || 0, String(r.rewItem == null ? '' : r.rewItem), +r.rewQty || 0, r.day | 0); }   // ★[T1353] 켬(T1341)의 의뢰는 약속 칸이 비었다(null → '' — 'null' 글자로 안 남긴다 · 끔은 늘 품목이라 바이트 같음)
 function deleteVillageRequest(zone, vid, item) { stmtDeleteVillageRequest.run(zone, vid | 0, String(item)); }
 function getVillageRequests(zone) { return stmtGetVillageRequests.all(zone); }
 

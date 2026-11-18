@@ -400,7 +400,9 @@ console.log('\n⑩ [T398] 나무꾼의 숲 = 영토 밖 고리');
   ok(/const _needK = \(vil\._t341K == null\) \|\| \(vil\._t341KAt !== C\.key\);/.test(scan)
      && /vil\._t341KAt = C\.key;/.test(scan),
     'ⓑ ★`K` 는 **그 셀 집합의 수**다 — 셀 집합(키)이 바뀐 날에만 다시 잰다(네모는 종전 그대로 첫날 한 번)');
-  ok(!/_t398/.test(VC.replace(/function _t398Box\([\s\S]*?\n\}/, '').replace(/function _t398Cells\([\s\S]*?\n\}/, '').replace(scan, '').replace(/_t398Cells,/, '')),
+  //   ★[PM land1083 · 야간 11-18 빨강] T1340(종료 저장에서 안 싣는 마을 칸 이름 목록)이 `'_t398Box'` · `'_t398C'` 를 **글자열**로 적었다 — 부르는 자리가 아니다.
+  //     칸 이름 글자열 둘만 걷고 잰다(그 밖의 `_t398` — 부름 · 읽기 · 쓰기 — 은 종전대로 문다).
+  ok(!/_t398/.test(VC.replace(/function _t398Box\([\s\S]*?\n\}/, '').replace(/function _t398Cells\([\s\S]*?\n\}/, '').replace(scan, '').replace(/_t398Cells,/, '').replace(/'_t398(?:Box|C)'/g, '')),
     'ⓑ ★`villages.js` 에서 고리를 부르는 자리는 `_t325Scan` **하나**다(다른 자리 무접촉)');
 
   // 정의로 센 답 — 영토에서 체비쇼프 ≤ R · 내 영토 아님 · 남의 영토 아님 · 행 우선

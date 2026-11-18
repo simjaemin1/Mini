@@ -49,7 +49,11 @@ sec('① 이식 범위 — 정본은 `villages.js` 하나 · 연출 층 무접�
     if (f.isDirectory()) { if (f.name === 'node_modules' || f.name === 'assets') continue; walk(p2); continue; }
     if (!/\.(js|html)$/.test(f.name)) continue;
     const t = fs.readFileSync(p2, 'utf8');
-    for (const n of names) if (t.includes(n)) hits.push(path.relative(ROOT, p2) + ':' + n);
+    //   ★[PM land1083 · 야간 11-18 빨강] T1331 `server/beast-body.js` 는 사냥 식을 **받아 쓴다**(`opt.huntTake(g)` — `villages.js` 가 정본 함수를 넘긴다) · 주석에 이름을 적었다.
+    //     받아 쓰는 자리 · 주석은 사본이 아니다 ⇒ `villages.js` 밖 서버 파일은 주석을 걷고 **맨 이름**(`.` 뒤가 아닌 것 — 정의 · 대입 · 구조 분해)만 센다. 클라는 종전대로 글자 하나도 안 된다.
+    const rel = path.relative(ROOT, p2), inj = /^server[\\/]/.test(rel) && !/^server[\\/]villages\.js$/.test(rel) && /\.js$/.test(rel);
+    const tt = inj ? require('./code-only.js')(t) : t;
+    for (const n of names) if (inj ? new RegExp('(^|[^.\\w$])' + n + '\\b').test(tt) : t.includes(n)) hits.push(rel + ':' + n);
   } };
   for (const d of dirs) walk(path.join(ROOT, d));
   //   ★★[T146 2026-09-06 · 이 절은 **뒤집혔다**] 원래 이 줄은 "서버에 이 이름이 한 글자도 없다"를 잠갔다.
