@@ -171,7 +171,7 @@ console.log('\n⑦ 운반비');
   const st = R.rows.find((x) => x.r === 'stone'), fo = R.rows.find((x) => x.r === 'food');
   ok(st.t > fo.t * 5 && R.speed > 1000, '무게를 안다(돌 4kg > 식량 0.7kg) · 몸 걸음(T474 켬 기본)', `돌 ${st.t.toFixed(4)} · 식량 ${fo.t.toFixed(4)} · 걸음 ${R.speed}`);
   const n = (re) => (SRC.match(re) || []).length;
-  ok(n(/T1152_TC \? _t1152TcD\(risk\.mv, t(Out|Back), r\) : risk\.transportCostPerUnit/g) === 2 && n(/T1152_TC \? _t1152Tc\(/g) === 3, '쓰는 자리 — 바구니 두 다리 · 종전 첫 화물 · 돌리기 · 순수출값(끔 = 종전 식)');
+  ok(n(/T1152_TC \? _t1152TcD\(risk\.mv, t(Out|Back), r\) : risk\.transportCostPerUnit/g) === 2 && n(/T1152_TC \? _t1152Tc\(/g) === 4 && n(/const tc = T1152_TC \? _t1152Tc\(lp\.mv, best\.dist, c2\.res\) : best\.transportCostPerUnit;/g) === 1, '쓰는 자리 — 바구니 두 다리 · 종전 첫 화물 · 돌리기 · 순수출값 · 섞어 싣기 둘째 화물(T1344 — 끔 = 고른 다리의 종전 값 · PM land1083)(끔 = 종전 식)');
 }
 
 console.log('\n⑧ 출발 직후 값 · 계측');
