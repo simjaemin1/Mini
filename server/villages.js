@@ -13687,14 +13687,15 @@ function t1365Work(npc, now) {
     if (S && dep.oreConsumeAt && dep.oreStockAt && vil._oreCells && vil._oreCells.length && kgU > 0) {
       if (!npc.inventory) return _z('W28');
       const T66 = !!E.T1266_ORE_BODY;
-      if (T66 && npc._t1266Stop && npc._t1266Stop.day === day) return _z('W29');
+      if (T66 && npc._t1266Stop && npc._t1266Stop.day === day) return (npc._t724T === 0 && _t1365Home(npc, '휴식')) ? 1 : _z('W29');   // 그날 멈췄다(쉰다 · 셈 칸은 관측 전용)
       const left = T66 ? Infinity : E.mineDemandLeft(vil.econ, (vil._t724HeldKg || 0) / kgU);
-      if (!(left > 0)) return _z('W30');
+      if (!(left > 0)) return (npc._t724T === 0 && _t1365Home(npc, '휴식')) ? 1 : _z('W30');   // 그날 캘 만큼 캤다(퇴근 · 셈 칸 `P.done` 은 관측 전용)
       const _cc = _carryCfg(), cap = (_cc && _cc.CFG && _cc.CFG.CAP_KG) || 0;
       if (cap > 0 && (npc.inventory.ore_chunk || 0) >= cap) return _z('W31');
       const st = npc._t724Site;
-      if (!st || st.day !== day || st.wait || st.none) return _z('W32');
-      if (Math.hypot(npc.x - st.x, npc.y - st.y) > 44) return _z('W33');   // 가는 중(관측 칸을 고친다 — 결정 문)
+      if (!st || st.day !== day || st.wait) return _z('W32');
+      if (st.none) return _t1365Home(npc, '휴식') ? 1 : _z('W32b');   // 그날 조의 셀이 다 비었다(퇴근)
+      if (Math.hypot(npc.x - st.x, npc.y - st.y) > 44) return (npc._t724T === 0 && _t1365Same(npc, st.x, st.y, '출근')) ? 2 : _z('W33');   // 가는 중(셈 칸 `P.walk` · `P.vs` 는 관측 전용)
       if (T66 && state.dayMs && npc._t1266H !== Math.floor((now - state.epoch) * 24 / state.dayMs)) return _z('W34');
       if (!_t1365Same(npc, st.x, st.y, '채광') || !npc._t724T) return _z('W35');
       return Math.floor((now - npc._t724T) / (S.MINE_SWING_MS / t1295S(npc))) < 1 ? 1 : _z('W56');   // 한 타 전
@@ -13752,11 +13753,13 @@ function _t1365Art(vil, npc, now0, job) {
   const W = npc._t1196W; if (!W) return _z('A3');
   if (W.ph === 'draw' || W.ph === 'back') {
     const L = _t1196Ladder(vil, npc);
-    if (Math.hypot(npc.x - L.x, npc.y - L.y) > 44 || !W.at || npc._lifeAct !== (W.ph === 'draw' ? '인출' : '저장')) return _z('A4');
+    if (Math.hypot(npc.x - L.x, npc.y - L.y) > 44) return (W.at === 0 && _t1365Same(npc, L.x, L.y, W.ph === 'draw' ? '인출' : '운반')) ? 2 : _z('A4');   // 사다리로 가는 중(그 갈래의 표 내림은 첫 거름 칸만)
+    if (!W.at || npc._lifeAct !== (W.ph === 'draw' ? '인출' : '저장')) return _z('A4b');
     return now - W.at < (W.ph === 'draw' ? G_DRAWW : G_STOREW) ? 1 : _z('A7');
   }
   if (W.ph === 'go' && !(W.tx || W.ty)) return _z('A5');
-  if (Math.hypot(npc.x - W.tx, npc.y - W.ty) > 44 || !W.at || npc._lifeAct !== '제작') return _z('A6');
+  if (Math.hypot(npc.x - W.tx, npc.y - W.ty) > 44) return (W.at === 0 && W.ph === 'go' && _t1365Same(npc, W.tx, W.ty, '운반')) ? 2 : _z('A6');   // 작업 자리로 가는 중
+  if (!W.at || npc._lifeAct !== '제작') return _z('A6b');
   return now - W.at < _t1196CraftMs(T1196_KIND[job]) ? 1 : _z('A8');
 }
 function t1295Ph(now) { const t = (now - state.epoch) / state.dayMs; return t - Math.floor(t); }   // ★[T1322] 판 하루 축 해 몫(몸 안 짚기 — `t1295Wp` 의 몸 칸 문 뒤 그 식 · 존 첫 거름이 판 시계 몸 표에 쓴다)
