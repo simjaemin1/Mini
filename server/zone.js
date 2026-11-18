@@ -5497,7 +5497,7 @@ function _t1348Dec(s, now) {
     _t1322Wake(s); const snap = _t1337Snap(p); decideNpcBehavior(p, now);
     const J = SS.stat.fjob[p.simJob] || (SS.stat.fjob[p.simJob] = [0, 0, 0, 0]);
     if (k) { if (_t1348FCmp(p, nda, snap, farm ? 'f' : 'x')) J[2]++; else J[3]++; if (farm) SS.stat.fvq++; else SS.stat.xvq++; }
-    else { const nz = _t1365Noop(p, snap); J[nz ? 0 : 1]++; SS.stat.fstill++; if (nz) { const M = SS.stat.fmiss, kk = p.simJob + ':' + (p._lifeAct || '-'); M[kk] = (M[kk] || 0) + 1; } }   // 놓친 무동작(직업 : 라벨 — 다음 판정 감 · 셈 전용)
+    else { const nz = _t1365Noop(p, snap); J[nz ? 0 : 1]++; SS.stat.fstill++; if (nz) { const M = SS.stat.fmiss, kk = p.simJob + ':' + (p._lifeAct || '-') + ':' + (SimVillages.t1365Why ? SimVillages.t1365Why() : ''); M[kk] = (M[kk] || 0) + 1; } }   // 놓친 무동작(직업 : 라벨 — 다음 판정 감 · 셈 전용)
     return false;
   }
   A.NDA[s] = nda; A.DK[s] = now;
