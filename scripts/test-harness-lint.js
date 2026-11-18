@@ -1062,5 +1062,33 @@ console.log('\n⑲ 박힌 날짜 0 · 새 하네스 미끼 표지 `@bait <n>` [T
   ok(ba === 'good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad', '★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다', ba);
 }
 
+// ── ⑳ `// @harness-only` = 제품을 안 부르는 하네스 [T1350 2026-11-17 · CI 옛 코드 빨강 단계] ──────────────
+//   왜: CI 의 옛 코드 빨강 단계(`pm-old-code-red.sh`)는 새 하네스를 옛 제품 위에서 돌려 **빨강**이어야 통과다. 하네스 도구만 재는 하네스(분류표 ·
+//   러너 · lib 자)는 옛 제품 위에서도 초록이 맞다 — 그런 하네스는 머리에 `// @harness-only` 를 달아 그 단계를 건너뛴다. 표지가 거짓말이면
+//   (제품을 부르는데 표지를 달면) 고침을 안 재는 하네스가 그 단계를 빠져나간다 ⇒ 이 자가 막는다.
+//   자: 표지를 단 파일과 그 파일이 부르는 `scripts/` 자(따라가며)의 코드(주석 뺀)에 제품 자리(`server` · `sim` · `public` · `lab` 디렉터리)를 가리키는 글자 0.
+console.log('\n⑳ `// @harness-only` = 제품 부름 0 [T1350]');
+{
+  const CO = require('./code-only.js');
+  const HO = /^\/\/ @harness-only([\s]|$)/m;
+  const PROD = /['"`](?:\.\.\/|\.\/)?(?:server|sim|public|lab)\/|['"`](?:server|sim|public|lab)['"`]\s*[,)]/;
+  const deps = (f, seen) => { seen = seen || new Set(); if (seen.has(f)) return seen; seen.add(f);
+    let src = ''; try { src = CO(fs.readFileSync(f, 'utf8')); } catch (e) {}
+    for (const m of src.matchAll(/require\(\s*['"](\.\/[^'"]+)['"]\s*\)/g)) { let q = path.join(path.dirname(f), m[1]); if (!/\.js$/.test(q)) q += '.js'; if (fs.existsSync(q)) deps(q, seen); }
+    return seen; };
+  const touches = (f) => [...deps(f)].filter((x) => PROD.test(CO(fs.readFileSync(x, 'utf8')))).map((x) => path.basename(x));
+  const all = fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js'));
+  const marked = all.filter((f) => HO.test(fs.readFileSync(path.join(SCRIPTS, f), 'utf8')));
+  const lie = marked.map((f) => [f, touches(path.join(SCRIPTS, f))]).filter(([, t]) => t.length);
+  const notTest = marked.filter((f) => !/^test-.*\.js$/.test(f));
+  ok(marked.length >= 1, '⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)', marked.join(' '));
+  ok(lie.length === 0, '★★⑳ `@harness-only` 하네스(와 그것이 부르는 scripts 자)는 제품 자리(server · sim · public · lab)를 안 가리킨다', lie.map(([f, t]) => `${f}←${t.join(',')}`).join(' ') || `${marked.length}/${marked.length}`);
+  ok(notTest.length === 0, '⑳ 표지는 `test-*.js` 에만(옛 코드 빨강 단계가 보는 이름)', notTest.join(' ') || '0');
+  //   미끼 — 같은 자(PROD 글자 자)가 제품 부름 셋을 물고(require · path.join · 상대 경로) 제품 아닌 글자 둘(주석 · 'scripts')은 보낸다
+  const bait = { req: "require('../server/zone.js')", join: "path.join(ROOT, 'server', 'zone.js')", rel: "'./sim/economy-sim.js'", cmt: "// require('../server/zone.js')", scr: "path.join(ROOT, 'scripts', 'x.js')" };
+  const ans = Object.entries(bait).map(([k, v]) => k + '=' + (PROD.test(CO(v)) ? 'hit' : 'none')).join(',');
+  ok(ans === 'req=hit,join=hit,rel=hit,cmt=none,scr=none', '★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다', ans);
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);
