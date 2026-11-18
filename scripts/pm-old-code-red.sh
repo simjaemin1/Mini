@@ -38,6 +38,8 @@ red=0; weak=0; green=0; unk=0; skip=0
   for t in $LIST; do
     # ★[T1350] 머리 표지 `// @harness-only`(제품 부름 0 — `test-harness-lint` ⑲ 가 확인) = 옛 제품 위에서도 초록이 맞다 → 건너뛴다(셈 밖 · 줄은 남긴다)
     if grep -qE '^// @harness-only([[:space:]]|$)' "scripts/$t" 2>/dev/null; then echo "제품 무관 | $t | @harness-only — 건너뜀"; skip=$((skip+1)); continue; fi
+    # ★[PM land1083] PM 예외 목록(`scripts/old-green-ok.txt` — 하네스 도구를 재지만 제품 글자를 쥐는 하네스 · PM 만 편집) = 건너뛴다(줄은 남긴다)
+    if [ -f scripts/old-green-ok.txt ] && grep -qE "^$(basename "$t" | sed 's/[.]/[.]/g')[[:space:]]*[|]" scripts/old-green-ok.txt; then echo "예외(PM 목록) | $t | $(grep -E "^$(basename "$t" | sed 's/[.]/[.]/g')[[:space:]]*[|]" scripts/old-green-ok.txt | cut -d'|' -f2- | cut -c1-120)"; skip=$((skip+1)); continue; fi
     log="$TMP/$(basename "$t").log"
     ( cd "$TMP/w" && timeout "$TIMEOUT_SEC" node "scripts/$t" >"$log" 2>&1 ); rc=$?
     nf=$(grep -cE '^\s*(✗|❌|FAIL)' "$log"); np=$(grep -cE '^\s*(✓|✅|PASS)' "$log")
