@@ -34,7 +34,7 @@ while IFS=$'\t' read -r t card cp pd np0; do
   Fs="$(git rev-parse --short=9 "$F")"
   mark="$SCR/mark"; : > "$mark"
   s0=$(date +%s)
-  bash scripts/pm-old-code-red.sh "$F^" "$t" > "$SCR/one.txt" 2>&1
+  : > "$SCR/one.txt"; OUT="$SCR/one.txt" bash scripts/pm-old-code-red.sh "$F^" "$t" > "$SCR/one.err" 2>&1
   sec=$(( $(date +%s) - s0 ))
   find /tmp -maxdepth 1 -newer "$mark" -type f \( -name '*.db' -o -name '*.db-wal' -o -name '*.db-shm' -o -name '*.sqlite*' \) -delete 2>/dev/null
   line="$(grep -E "\| ${t//./\\.} \|" "$SCR/one.txt" | head -1)"
@@ -43,7 +43,7 @@ while IFS=$'\t' read -r t card cp pd np0; do
   np="$(printf '%s' "$line" | grep -oE '✓ [0-9]+' | grep -oE '[0-9]+')"
   nf="$(printf '%s' "$line" | grep -oE '✗ [0-9]+' | grep -oE '[0-9]+' | head -1)"
   why="$(printf '%s' "$line" | cut -d'|' -f4- | sed 's/^ *//' | tr '\t' ' ' | cut -c1-160)"
-  [ -z "$v" ] && { v="자 실패"; why="$(tail -3 "$SCR/one.txt" | tr '\n\t' '  ' | cut -c1-160)"; }
+  [ -z "$v" ] && { v="자 실패"; why="$(cat "$SCR/one.txt" "$SCR/one.err" | tail -3 | tr '\n\t' '  ' | cut -c1-160)"; }
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$t" "$kind" "$card" "$head1" "$Fs" "$v" "${rc:--}" "${np:-0}" "${nf:-0}" "$sec" "$why" >> "$ROWS"
   echo "$(date -u +%H:%M) $t F=$Fs $v ${sec}s"
 done
