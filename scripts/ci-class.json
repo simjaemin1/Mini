@@ -13220,14 +13220,20 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 4.5,
+   "maxSec": 5.1,
    "same5": true,
    "core": true,
    "why": "core",
    "runs": [
     {
      "rc": 0,
-     "secs": 4.5,
+     "secs": 5.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.9,
      "green": true,
      "fails": []
     },
@@ -13239,19 +13245,13 @@
     },
     {
      "rc": 0,
-     "secs": 3.4,
+     "secs": 3.2,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 3.1,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 3.7,
+     "secs": 4.1,
      "green": true,
      "fails": []
     }

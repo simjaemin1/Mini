@@ -7388,6 +7388,10 @@ function _t1329Crew(vil) {
 // Refresh before the dry-queue filter too, so a now-free interior cell cannot wait on an old quote.
 function _t1358Requote(vil, j) {
   if (!T1358_STAKE_REQUOTE) return;
+  if ((j.workMs || 0) < j.laborMin * _t1238JobMsPerMin()) return;
+  // Quote only after physical clearing/felling, immediately before stakes are needed.
+  // A fresh queue keeps the existing demand estimate until that cell is ready.
+  try { if (state.deps.t325TreesAtCell?.(j.cx, j.cy)?.length) return; } catch (e) { return; }
   j.wood = +_t1207CellCost(vil, j.cx, j.cy).wood.toFixed(6);
 }
 function _t1329Short(vil, npc, j) {

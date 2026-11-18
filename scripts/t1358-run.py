@@ -21,6 +21,8 @@ if a.arm!='OFF':
 if a.arm=='A': env['T1358_STAKE_REQUOTE']='1'
 hooks=['t1274-baseline-hook','t1302-observe','t1243-observe','t1221-observe','t1230-observe','t1251-observe','t1274-observe','t1329-observe']
 env['NODE_OPTIONS']=' '.join('-r '+str(root/'scripts'/(h+'.js')) for h in hooks)
+# Read-only full village state at the ruler points, before t577's immediate final exit.
+env['T740_DUMP_DAYS']='100,200,400'
 name=f'{a.arm}-{a.seed}'; run=out/name
 (out/(name+'.launch.json')).write_text(json.dumps(dict(root=str(root),days=a.days,seed=a.seed,every=a.every,env={k:v for k,v in env.items() if k.startswith(('T','VILLAGE_','NODE_OPTIONS'))}),indent=1))
 with (out/(name+'.guard.log')).open('wb') as log:

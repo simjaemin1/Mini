@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress
-// @bait 5
+// @bait 6
 // T1358: real village task -> clearing/build-haul -> territory and granary assertions.
 'use strict';
 const assert = require('assert');
@@ -24,6 +24,10 @@ if (child) {
       if (village && bait === 'quote') {
         from = 'j.wood = +_t1207CellCost(vil, j.cx, j.cy).wood.toFixed(6);';
         to = 'j.wood = j.wood;';
+      }
+      if (village && bait === 'early') {
+        from = 'if ((j.workMs || 0) < j.laborMin * _t1238JobMsPerMin()) return;';
+        to = 'if (false) return;';
       }
       if (village && bait === 'underpaid') {
         from = 'if (((job.mat && job.mat.wood) || 0) + 1e-9 < job.wood) return 0;';
@@ -81,6 +85,36 @@ if (child) {
       if (!F.v._t1207Pend.length) break;
     }
   }
+  if (process.argv.includes('--diagnose-full')) {
+    const core = require('../server/village-layout').TERR_CORE;
+    const rad = Math.ceil(Math.sqrt(core));
+    const offsets = [];
+    for (let x = -rad; x <= rad; x++) for (let y = -rad; y <= rad; y++) offsets.push([x, y]);
+    offsets.sort((a,b) => Math.hypot(...a)-Math.hypot(...b) || a[0]-b[0] || a[1]-b[1]);
+    const initialKeys = offsets.slice(0,core).map(([x,y]) => (1000+x)+','+(1000+y));
+    const reset = () => { const F=fixture(); F.own.clear(); for(const k of initialKeys)F.own.add(k); F.v._t1207Pend=[]; F.v._t1207=undefined; return F; };
+    const B=reset();
+    P._t569Probe.grow(B.v);
+    assert(B.v._t1207Pend.length>0, 'native picker emits a real queue');
+    const queued=B.v._t1207Pend.reduce((n,j)=>n+j.wood,0);
+    // Same native-picked cells; reverse the physical completion order, keeping their queued quotes.
+    B.v._t1207Pend.reverse(); const order=B.v._t1207Pend.map(j=>j.key);
+    walk(B,200000);
+    assert.strictEqual(B.v._t1207Pend.length,0,'physical comparison completes every picked cell');
+    const bodyWood=B.v._t1207Sum.placed, bodyDone=B.v._t1207.body;
+    const H=reset(); let rounds=0;
+    while(!order.every(k=>H.own.has(k)) && rounds<order.length){
+      const out=P._t1238Probe.batch(H.v,order,order.length);
+      if(out.length)V._terrAdd(H.v,out,null,false);
+      rounds++; P._t1238Probe.setup({day:23+rounds});
+    }
+    assert(order.every(k=>H.own.has(k)),'batch comparison completes the same cells');
+    assert.strictEqual([...B.own].sort().join(';'),[...H.own].sort().join(';'),'same final territory geometry');
+    console.log(JSON.stringify({enabled:process.env.T1358_STAKE_REQUOTE==='1',initialCells:core,cells:order.length,bodyDone,queued,bodyWood,
+      batchWood:H.v._t1207.wood,bodyPerCell:bodyWood/order.length,batchPerCell:H.v._t1207.wood/order.length,
+      ratio:H.v._t1207.wood>0?bodyWood/H.v._t1207.wood:null,batchDays:rounds}));
+    process.exit(0);
+  }
   if (process.argv.includes('--diagnose')) {
     const rows = [];
     for (const changed of [false, true]) {
@@ -104,6 +138,8 @@ if (child) {
   assert(queued > 0);
   // Two neighbours finish while this cell is being cleared: its present boundary growth is zero.
   free.own.add('1004,999'); free.own.add('1004,1001'); free.e.storage.wood = 0;
+  P._t1181Probe.task(free.v, free.p);
+  assert.strictEqual(free.j.wood, queued, 'NO_REQUOTE_BEFORE_CLEAR');
   free.j.workMs = free.j.laborMin * 1000;
   const expected = V._t1207CellCost(free.v, 1004, 1000).wood;
   assert.strictEqual(expected, 0);
@@ -115,6 +151,7 @@ if (child) {
 
   const underpaid = fixture(true);
   underpaid.own.delete('1004,999'); underpaid.own.delete('1004,1001');
+  underpaid.j.workMs = underpaid.j.laborMin * 1000;
   assert.strictEqual(V._t1207BodyDone(underpaid.v, underpaid.j), 0, 'underpaid cell is not added');
   assert.strictEqual(underpaid.v._t1207Pend.length, 1, 'UNDERPAID_STAYS_QUEUED');
   assert(!underpaid.own.has(underpaid.j.key), 'missing stakes cannot claim a cell');
@@ -191,5 +228,7 @@ const surplus = run('surplus');
 ok(surplus.status !== 0 && surplus.stderr.includes('INFLIGHT_SURPLUS_RETURNS') && !surplus.stderr.includes('one mutation site'), '미끼 ⓓ 바꾼 자리 1곳: 초과 말뚝도 박음 → INFLIGHT_SURPLUS_RETURNS 빨강');
 const underpaid = run('underpaid');
 ok(underpaid.status !== 0 && underpaid.stderr.includes('underpaid cell is not added') && !underpaid.stderr.includes('one mutation site'), '미끼 ⓔ 바꾼 자리 1곳: 완공 지불 문 제거 → underpaid cell is not added 빨강');
+const early = run('early');
+ok(early.status !== 0 && early.stderr.includes('NO_REQUOTE_BEFORE_CLEAR') && !early.stderr.includes('one mutation site'), '미끼 ⓕ 바꾼 자리 1곳: 개간 전부터 재견적 → NO_REQUOTE_BEFORE_CLEAR 빨강');
 console.log(`결과 ${pass} 통과 / ${fail} 실패`);
 process.exit(fail ? 1 : 0);
