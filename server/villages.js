@@ -3928,7 +3928,8 @@ const T598_ROUTE_EDGE = process.env.T598_ROUTE_EDGE === '1';
 //        ⓕ 곧은 줄 검사(ⓑ · `_t1320Clear` 켬 갈래 · 도랑 길 거르기)는 표본(SZ/4)이 아니라 지나는 칸 전부(`_t1327Cells` — 격자 따라가기 · 꼭짓점이면 옆 두 칸)
 //   게임 수 0 — 판정 술어 · 이웃 잇기 상자 · 스냅은 다 있는 것(T598 ④ · `ta.isBlocked` · DIST_STEP). ⚠구현 상한 둘은 새로 적었다(보고/T1327 §3):
 //     마을 끝 · 몸 마디 상자 둘레 = 코스 칸 2 · 6 · 16(작은 것부터) · BFS 상자 칸 상한 40,000. 서명엔 'fix:T1327:<도랑 지문>'(켬 판은 다른 길 · 끔 서명 글자 그대로).
-const T1327_ROUTE_FIX = process.env.T1327_ROUTE_FIX === '1';
+// ★[PM land1084 2026-11-18 · 재민 "켜는 거 맞고"] 켬 기본('0' 만 끔 = 종전 글자 그대로 · 끈 판 = 서버기준선 11-16 과 같음 · 켬 정본 = 서버기준선 11-18).
+const T1327_ROUTE_FIX = process.env.T1327_ROUTE_FIX !== '0';
 const _T598E = T598_ROUTE_EDGE || T1327_ROUTE_FIX;   // 이웃 잇기 규칙이 켜졌나(끔 = T598_ROUTE_EDGE 그대로)
 const _t1327St = { finish: 0, link: 0, linkFail: 0, endLink: 0, endFail: 0, pull: 0, ditchRedig: 0, ditchRuns: 0 };
 let _t598C = null, _t598T = null;   // chunk.js · terrain.js 지연 적재(순환 회피)
