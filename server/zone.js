@@ -5661,7 +5661,7 @@ const _t1372SSStat = { snap: 0, rows: 0, applied: 0, miss: 0, path: 0 };
 function _t1372SSTake() {
   const A = SS.A, n = SS.count(), rows = [], K = Object.keys(A).filter((k) => k !== 'GN');
   for (let s = 0; s < n; s++) { const p = SS.own[s]; if (!p || !(A.TK[s] || A.DS[s])) continue;
-    const r = { pid: p.pid }; for (const k of K) { const v = A[k][s]; r[k] = Number.isFinite(v) ? v : String(v); } rows.push(r); }
+    const r = { pid: p.pid, w: SimVillages.t1372Where ? SimVillages.t1372Where(p.pid) : null }; for (const k of K) { const v = A[k][s]; r[k] = Number.isFinite(v) ? v : String(v); } rows.push(r); }   // `w` = 마을 몸의 (마을 · 자리) — 캐러밴 몸은 null(저장 pid 그대로 되살린다)
   _t1372SSSnap = rows; _t1372SSStat.snap++; _t1372SSStat.rows = rows.length;
   return rows;
 }
@@ -5669,10 +5669,12 @@ function _t1372SSApply() {
   const rows = _t1372SSPend; _t1372SSPend = null; if (!Array.isArray(rows)) return;
   const A = SS.A;
   for (const r of rows) {
-    const s = SS.slot(r.pid), p = s >= 0 ? SS.own[s] : null;
-    if (!p || p.pid !== r.pid || players.get(r.pid) !== p) { _t1372SSStat.miss++; continue; }
+    //   임자 찾기 — 마을 몸 = 같은 마을 · 같은 자리의 지금 몸(pid 가 바뀌었어도 · T747 이 그 자리 몸에 칸을 되살렸다) · 캐러밴 몸 = 같은 pid 의 캐러밴 몸만
+    const pid = r.w ? (SimVillages.t1372PidAt ? SimVillages.t1372PidAt(r.w.v, r.w.i) : null) : r.pid;
+    const s = pid != null ? SS.slot(pid) : -1, p = s >= 0 ? SS.own[s] : null;
+    if (!p || p.pid !== pid || players.get(pid) !== p || (!r.w && !p.simCaravan)) { _t1372SSStat.miss++; continue; }
     if (+r.TK === 3 && !(Array.isArray(p.path) && p.path === p._t791P && p.path.length === +r.PN)) { _t1372SSStat.path++; continue; }   // 길이 같은 길이 아니면 표 없이(종전 길)
-    for (const k of Object.keys(r)) { if (k === 'pid' || !(k in A)) continue; const v = r[k]; A[k][s] = typeof v === 'number' ? v : Number(v); }
+    for (const k of Object.keys(r)) { if (k === 'pid' || k === 'w' || !(k in A)) continue; const v = r[k]; A[k][s] = typeof v === 'number' ? v : Number(v); }
     SS.WPA[s] = +r.TK === 3 ? p.path : null; _t1372SSStat.applied++;
   }
   console.log(`[${ZONE_ID}] 🦶 [T1372] 첫 거름 표 되살림 — ${_t1372SSStat.applied}/${rows.length} · 몸 없음 ${_t1372SSStat.miss} · 길 다름 ${_t1372SSStat.path}`);
