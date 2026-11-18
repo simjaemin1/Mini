@@ -4,7 +4,7 @@
 // === scripts/test-t1374-farm-winter.js — 밭 세계가 겨울 너머로 먹이는 갈래 둘(T1374 ① 부산물 곡식 · ② 다음 거둠 출생 문) =====================
 //
 // 지키는 것:
-//   ① 손잡이 — `T1374_NO_BYGRAIN` · `T1374_BIRTH_HARV` 끔 기본 · `=1` 이어도 밭 세계(`T1243_FARM_ON`) 켬일 때만 선다 ·
+//   ① 손잡이 — `T1374_NO_BYGRAIN` · `T1374_BIRTH_HARV` · `T1374_FAMINE_HARV`(기근 문 날 수 — 같은 `t1374NeedDays` · 결과 줄은 회부) 끔 기본 · `=1` 이어도 밭 세계(`T1243_FARM_ON`) 켬일 때만 선다 ·
 //      문턱 날 수 = max(30일, 다음 거둠 날 − 오늘)(`t1374NeedDays` — 다음 거둠을 모르면 30일)
 //   ② 결과(서버 판 · 밭 켬 · 판 시계 몸 축 · 작물 철 켬 · 1020 · 30날 — 3월):
 //      ⓐ `T1374_NO_BYGRAIN` 켬 = 농부 부산물 곡식(밀 · 쌀 · 보리)이 밭 못자리에 하나도 안 든다(관찰기 `byF` 합 = 0)
@@ -25,18 +25,18 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); return !!c; };
-const KNOBS = ['T1374_NO_BYGRAIN', 'T1374_BIRTH_HARV', 'T1179_CROP_SEASON', 'T1276_FARM_K', 'T1284_FARM_YIELD', 'T1297_BIRTH_FOOD', 'T1351_MINE_CLOCK', 'T1326_HUNT_CLOCK', 'T1316_BODY_CLOCK', 'T1316_SUBSTEP', 'T1243_FARM_ON', 'T1334_BUNDLE', 'T400_BUILD_ACT'];
+const KNOBS = ['T1374_NO_BYGRAIN', 'T1374_BIRTH_HARV', 'T1374_FAMINE_HARV', 'T1179_CROP_SEASON', 'T1276_FARM_K', 'T1284_FARM_YIELD', 'T1297_BIRTH_FOOD', 'T1351_MINE_CLOCK', 'T1326_HUNT_CLOCK', 'T1316_BODY_CLOCK', 'T1316_SUBSTEP', 'T1243_FARM_ON', 'T1334_BUNDLE', 'T400_BUILD_ACT'];
 const sub = (env, code) => {
   const e = Object.assign({}, process.env); delete e.NODE_OPTIONS; for (const k of KNOBS) delete e[k]; Object.assign(e, env);
   return JSON.parse(execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: e, encoding: 'utf8', maxBuffer: 64 << 20 }).trim().split('\n').filter((l) => l.startsWith('{')).pop());
 };
 console.log('\n=== T1374 — 밭 세계 겨울 갈래 둘 ===');
 // ── ① 손잡이 · 문턱 날 수 ──
-const Q = `const E=require('./sim/economy-sim');const o={a:E.T1374_NO_BYGRAIN,b:E.T1374_BIRTH_HARV,f:typeof E.t1374NeedDays};
+const Q = `const E=require('./sim/economy-sim');const o={a:E.T1374_NO_BYGRAIN,b:E.T1374_BIRTH_HARV,c:E.T1374_FAMINE_HARV,f:typeof E.t1374NeedDays};
 if(o.f==='function'){o.n0=E.t1374NeedDays({},10);o.n1=E.t1374NeedDays({_t1374Next:100},10);o.n2=E.t1374NeedDays({_t1374Next:20},10);}console.log(JSON.stringify(o));`;
 let u0, u1, uN;
-try { u0 = sub({ T1243_FARM_ON: '1' }, Q); u1 = sub({ T1243_FARM_ON: '1', T1374_NO_BYGRAIN: '1', T1374_BIRTH_HARV: '1' }, Q); uN = sub({ T1374_NO_BYGRAIN: '1', T1374_BIRTH_HARV: '1' }, Q); } catch (e) { u0 = u1 = uN = { err: String(e).slice(0, 200) }; }
-const unitOk = ok(u0 && u0.f === 'function' && u0.a === false && u0.b === false && u1.a === true && u1.b === true && uN.a === false && uN.b === false
+try { u0 = sub({ T1243_FARM_ON: '1' }, Q); u1 = sub({ T1243_FARM_ON: '1', T1374_NO_BYGRAIN: '1', T1374_BIRTH_HARV: '1', T1374_FAMINE_HARV: '1' }, Q); uN = sub({ T1374_NO_BYGRAIN: '1', T1374_BIRTH_HARV: '1', T1374_FAMINE_HARV: '1' }, Q); } catch (e) { u0 = u1 = uN = { err: String(e).slice(0, 200) }; }
+const unitOk = ok(u0 && u0.f === 'function' && u0.a === false && u0.b === false && u0.c === false && u1.a === true && u1.b === true && u1.c === true && uN.a === false && uN.b === false && uN.c === false
   && u1.n0 === 30 && u1.n1 === 90 && u1.n2 === 30,
   '① T1374 — 끔 기본 · 켬은 밭 세계에서만 · 문턱 날 수 = max(30, 다음 거둠 − 오늘)', JSON.stringify({ u0, u1, uN }).slice(0, 240));
 if (!unitOk) { console.log(`\n${pass} 통과 · ${fail} 실패`); process.exit(1); }
