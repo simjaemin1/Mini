@@ -14849,9 +14849,33 @@ const T719_REACH_PRE = process.env.T719_REACH_PRE !== '0';   // ★[PM 10-14] �
 const _t719Stat = { checked: 0, cont: 0, pre: 0, adopt: 0, preDone: 0, idle: 0, nChecked: 0, nBegin: 0, nDone: 0, nRestart: 0, nAdopt: 0 };
 //   쉼: 한 바퀴(마을 전부) 돌아 할 일이 없었고 그 뒤 세상 콜라이더 세대(`collGenAll`)도 집 기억 셈(`sets`·`pend`)도 그대로면 아무것도 안 묻는다(틱마다 도장 16번 → 0).
 let _t719Vi = 0, _t719It = null, _t719G = NaN, _t719S0 = -1, _t719Idle = false, _t719Pass = 0, _t719Work = 0;
+// ★★[T1372 ⓓ 2026-11-18 · 다시 뜬 다음 날 마을 칸 `_t719N`] **미리 넓히기 줄의 자리도 재기동을 넘는다** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
+//   위 쉼 · 차례 칸(마을 번호 · 기억 훑기 자리 · 주민 훑기 자리 · 붙든 집 · 쉼 표지 · 지난 세대 · 집 기억 셈 `_t562Stat.sets · pend`)은 모듈 메모리라 다시 뜨면 0 부터 섰다 —
+//   한 번에 돈 판과 다른 집부터 넓혀 다음 날 `_t719N` 이 갈렸다(30날 · 마디 5 판 6날).
+//   켜면 종료 저장(T742 줄 `vil.t719`)에 그 칸들을 싣는다 — 훑기 자리는 "몇 개 꺼냈나"(같은 차례의 Map · Set 을 다시 그만큼 꺼낸다 · T1340 ③ 이 기억 Map 을 같은 차례로 되살린다).
+//   되돌림은 첫 `t719ReachPre` 에서(마을 칸 · 몸이 다 선 뒤 — 줄 받는 때는 마을 칸 되살림보다 앞이다).
+let _t719ItN = 0, _t719NpN = 0, _t719Pend = null;
+function _t719Take() {
+  if (!state._t1340Shut) return null;
+  return { vi: _t719Vi, it: _t719It ? _t719ItN : null, np: _t719NpcIt ? _t719NpN : null, cur: _t719Cur ? { v: _t719Cur.vil.dbId, k: _t719Cur.key } : null,
+    g: Number.isFinite(_t719G) ? _t719G : null, s0: _t719S0, idle: _t719Idle, pass: _t719Pass, work: _t719Work, sets: _t562Stat.sets, pend: _t562Stat.pend };
+}
+function _t719Resume(dp) {
+  const v = _t719Pend; _t719Pend = null; if (!v) return;
+  const vils = state.villages;
+  _t719Vi = v.vi | 0; _t719G = v.g == null ? NaN : v.g; _t719S0 = v.s0; _t719Idle = !!v.idle; _t719Pass = v.pass | 0; _t719Work = v.work | 0;
+  _t562Stat.sets = v.sets | 0; _t562Stat.pend = v.pend | 0;
+  _t719It = null; _t719ItN = 0;
+  if (v.it != null) { const R = vils[_t719Vi] && vils[_t719Vi]._t427R; if (R) { _t719It = R.values(); for (let i = 0; i < v.it; i++) _t719It.next(); _t719ItN = v.it; } }
+  _t719NpcIt = null; _t719NpN = 0;
+  if (v.np != null && dp.npcs) { _t719NpcIt = dp.npcs.values(); for (let i = 0; i < v.np; i++) _t719NpcIt.next(); _t719NpN = v.np; }
+  _t719Cur = null;
+  if (v.cur) { const vil = state.byDbId && state.byDbId.get(v.cur.v), ent = vil && vil._t719N && vil._t719N.get(v.cur.k); if (ent) _t719Cur = { vil, key: v.cur.k, ent }; }
+}
 function t719ReachPre(budgetMs) {
   if (!T719_REACH_PRE || !_t562On()) return 0;
   const dp = state.deps, vils = state.villages; if (!vils || !vils.length) return 0;
+  if (_t719Pend) _t719Resume(dp);   // ★[T1372 ⓓ] 다시 뜬 판 — 저장한 줄 자리로(끔 = 늘 null)
   const G = typeof dp.collGenAll === 'function' ? dp.collGenAll() : NaN, S0 = _t562Stat.sets + _t562Stat.pend;
   if (!(G === _t719G) || S0 !== _t719S0) { _t719G = G; _t719S0 = S0; _t719Idle = false; _t719Pass = 0; _t719Work = 0; }
   const t0 = Date.now(), stop = () => Date.now() - t0 > budgetMs;
@@ -14861,8 +14885,8 @@ function t719ReachPre(budgetMs) {
   while (checked < 16 && spins < vils.length + 1 && !stop()) {
     if (!_t719It) { _t719Vi = (_t719Vi + 1) % vils.length; spins++;
       if (++_t719Pass > vils.length) { if (!_t719Work) { _t719Idle = true; break; } _t719Pass = 1; _t719Work = 0; }
-      const R = vils[_t719Vi] && vils[_t719Vi]._t427R; if (!R || !R.size) continue; _t719It = R.values(); }
-    const r = _t719It.next(); if (r.done) { _t719It = null; continue; }
+      const R = vils[_t719Vi] && vils[_t719Vi]._t427R; if (!R || !R.size) continue; _t719It = R.values(); _t719ItN = 0; }
+    const r = _t719It.next(); _t719ItN++; if (r.done) { _t719It = null; continue; }
     const e = r.value; checked++; _t719Stat.checked++;
     const stamp = dp.collGenAround(e.S.ax, e.S.ay);
     if (e.stamp === stamp) { if (!e.S.done) { _t719Work++; _t719Stat.cont++; dp.npcReachStep(e.S, stop); if (e.S.done && e.S.q) e.S.q = null; } }
@@ -14887,8 +14911,8 @@ function _t719NewHomes(dp, stop) {
   }
   const npcs = dp.npcs, P = dp.players, by = state.byDbId; if (!npcs || !P || !by) return;   // `npcs` = pid 모음(Set) · 몸은 `players`
   for (let k = 0; k < 8 && !_t719Cur && !stop(); k++) {
-    if (!_t719NpcIt) _t719NpcIt = npcs.values();
-    const r = _t719NpcIt.next(); if (r.done) { _t719NpcIt = null; break; }
+    if (!_t719NpcIt) { _t719NpcIt = npcs.values(); _t719NpN = 0; }
+    const r = _t719NpcIt.next(); _t719NpN++; if (r.done) { _t719NpcIt = null; break; }
     const npc = P.get(r.value); if (!npc || !npc.simVillageId || !_T719_JOBS.has(npc.simJob)) continue;
     const vil = by.get(npc.simVillageId); if (!vil) continue;
     _t719Stat.nChecked++;
@@ -19919,6 +19943,7 @@ function t742Bind(name, get, set) {
 }
 //   전쟁 번호 계수기 · 전쟁 셈 — econ world 칸인데 메타 행에 없었다. 다시 뜨면 번호가 1 부터 다시 서서 **묶여 남은 징발자의 번호와 겹쳤다**(T742 ③ W380).
 //   번호는 앞으로만(겹친 번호 0) · 셈은 그대로. 진행 중 전쟁 자체(`_warWars`)는 교전 몸에 묶여 싣지 않는다(회부).
+if (T1340_EXACT) t742Bind('vil.t719', () => _t719Take(), (v) => { if (v && typeof v === 'object') _t719Pend = v; });   // ★[T1372 ⓓ] 종료 저장에만 값(그 밖 null)
 t742Bind('world.warSeq', () => (state.world ? state.world._warSeq : null), (v) => { if (state.world && Number.isFinite(+v)) state.world._warSeq = Math.max(state.world._warSeq || 1, +v | 0); });
 t742Bind('world.warStats', () => (state.world ? state.world._warStats : null), (v) => { if (state.world && v && typeof v === 'object') state.world._warStats = v; });
 //   ★★[T753] 비옥도 장 `_FF` — 마을마다 갈아 끼우는 **하나**라 부팅 뒤엔 마지막으로 깐 마을 상자만 남는다(위 T237 주석). 새 세계는 시딩 루프의
