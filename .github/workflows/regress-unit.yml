@@ -487,6 +487,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      # ★[T1367] 배포 스크립트 하네스(`test-xhost-env` — 가짜 docker 로 `recreate … /srv/durango/central`)는 `/srv/durango` 를 쓴다 — core 잡의 같은 걸음(T1350)과 같다.
+      #   이 잡 첫 판에 러너 일반 사용자라 Ⓐ①~⑥ 다섯이 빨갰다(분류 상자는 root). 쓰기 자리만 미리 연다(스크립트 · 하네스 글자 무변).
+      - name: /srv/durango 쓰기 자리 (배포 스크립트 하네스)
+        run: sudo mkdir -p /srv/durango && sudo chown "$(id -u):$(id -g)" /srv/durango
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
