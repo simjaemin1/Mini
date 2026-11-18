@@ -61,4 +61,23 @@ function browserSkew(ms) {
     PDate.prototype = RD.prototype; Object.setPrototypeOf(PDate, RD); PDate.now = () => rnow() + off; PDate.parse = RD.parse; PDate.UTC = RD.UTC;
     window.Date = PDate; window.__t1310Skew = off; })();`;
 }
-module.exports = { pin, hold, phaseOk, hourOf, browserSkew, DAY, ENV, MUST };
+//   ★[T1356 · 재민 11-17 테스트 강화 ②] **시계를 통째로 민다** — `shift(ms)` 는 이 프로세스의 벽시계를 상수 `ms` 만큼 옮긴다(크기 제한 없음 ·
+//     `pin` 은 낮밤만 ±12분 안에서 고르지만 이것은 달력을 넘긴다). 야간 "+30일 판"(`nightly-run.sh` `NIGHT_CLOCK_DAYS=30`)이
+//     프리로드 `clock-shift.js` 로 하네스 · central · zone · 아이에 같은 상수를 건다 — 날짜를 박은 하네스 · 날 경계에 선 하네스가 여기서 빨개진다.
+//     30일 = 게임 하루(24분)의 정수배라 게임 낮밤(`worldPhase`)은 그대로다(달력만 넘어간다). 흐름 · 간격 · `performance.now` · 타이머 무변.
+//     `pin` 과 겹쳐도 된다(먼저 민 시계 위에서 낮밤을 고른다). 한 프로세스에 두 번 걸리면 두 번째는 아무것도 안 한다.
+const SHIFT_ENV = 'T1356_CLOCK_SHIFT_MS';
+function shift(ms) {
+  if (global.__t1356Shift) return global.__t1356Shift;
+  const off = +ms || 0;
+  if (!off) return null;
+  const RD = Date, rnow = RD.now.bind(RD);
+  process.env[SHIFT_ENV] = String(off);
+  const PDate = function (...a) { if (!new.target) return new RD(rnow() + off).toString(); return a.length ? new RD(...a) : new RD(rnow() + off); };
+  PDate.prototype = RD.prototype; Object.setPrototypeOf(PDate, RD);
+  PDate.now = () => rnow() + off; PDate.parse = RD.parse; PDate.UTC = RD.UTC;
+  global.Date = PDate;
+  global.__t1356Shift = { off, days: off / 86400000 };
+  return global.__t1356Shift;
+}
+module.exports = { pin, hold, shift, phaseOk, hourOf, browserSkew, DAY, ENV, SHIFT_ENV, MUST };

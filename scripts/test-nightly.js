@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @date-ok 가짜 야간 로그 · 보고 날짜 픽스처(보고기에 날짜를 주입) — 벽시계와 안 맞댄다 [T1356]
 // === scripts/test-nightly.js — 야간 기계 둘의 자(`nightly-run.sh` · `nightly-report.js`) [T293 2026-09-14 · 재민 확정] ===
 //
 // ★무엇을 재나: `scripts/nightly-report.js` 가 **로그만 읽고** 야간 보고 표를 옳게 내는가.

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @date-ok 존 돌봄 시계에 주입하는 고정 시각(`_t1332SetClock` · 실제 날짜와 무관) — 벽시계와 안 맞댄다 [T1356]
 // === scripts/test-claim-v2.js — 사유지 v2 [재민 확정 2026-09-02 · T45] ==========
 //
 // ★설계 정본 `설계/소속_사유지_기여_설계안.md` §3 · 구현 정본 `server/claims.js`.
