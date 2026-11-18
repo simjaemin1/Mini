@@ -1,0 +1,7 @@
+{
+ "base": "e96fb3455252ab97cd2ec4f798541e299bf8abff",
+ "implementation": "fadb3c42fc8a686322803f4ec717695881b17824",
+ "branch": "batch/terr-stake-1117",
+ "officialBaseline": "계측/서버기준선_2026-11-16.json",
+ "officialBaselineSHA256": "d30dbe5e7475de629e0cf6413c737ce5f89e34a81c701ddb411fa54b168ef78f"
+}

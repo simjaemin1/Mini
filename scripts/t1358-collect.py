@@ -28,19 +28,19 @@ for name in expected:
   for r in rr:
    day=r['day'];assert start<day<=min(start+P['every'],P['days']),(name,start,day)
    assert not rows or day==rows[-1]['day']+1,(name,'gap or duplicate',day)
-   br=bodyrows[day];tr=terrrows.get(day);t=r['territoryCost'];inc=0;z=0
+   br=bodyrows[day];tr=terrrows.get(day);t=r['territoryCost'];inc=0;z=0;zq=0;zw=0;zdry=0
    if tr:
     for v in tr['vils']:
      n=v['n'];dv=v['done']-villast.get(n,0);assert dv>=0,(name,n,'territory counter lost on resume')
-     villast[n]=v['done'];inc+=dv;z+=int(dv==0)
+     villast[n]=v['done'];inc+=dv;z+=int(dv==0);zq+=int(dv==0 and v['pend']>0);zw+=int(dv==0 and v['pendWood']>0);zdry+=int(dv==0 and v['pendWood']>0 and v['woodSpare']<=0)
      zeroStreak[n]=zeroStreak.get(n,0)+1 if dv==0 else 0;worstZero[n]=max(worstZero.get(n,0),zeroStreak[n]);zeroDays[n]=zeroDays.get(n,0)+int(dv==0)
      vilout.append(dict(case=name,day=day,village=n,pop=v['pop'],doneDay=dv,done=v['done'],pending=v['pend'],pendingWood=v['pendWood'],jobBodies=v['jobBodies'],woodSpare=v['woodSpare'],wood=v['wood'],need=v['need']))
      byvilDone.setdefault(n,[]).append([day,dv])
     assert tr['done']==t['body']==br['physical'],(name,day,'independent body count mismatch')
    row=dict(case=name,day=day,segmentStart=start,pop=r['pop'],bodies=r['bodies'],empty=r['empty'],territory=r['territory'],cpuSeconds=r['cpuSeconds'],
-    completed=t['body'],completedWood=t['wood'],placedWood=None,doneDay=inc if tr else 0,zeroVillages=z if tr else None,
+    completed=t['body'],completedWood=t['wood'],placedWood=None,doneDay=inc if tr else 0,zeroVillages=z if tr else None,zeroWithQueue=zq if tr else None,zeroWithWoodOwed=zw if tr else None,zeroDryWoodOwed=zdry if tr else None,
     traceAdded=traceBase+br['added'],batchCalls=batchBase+br['batchCalls'],bodyStarve=starveBase+r['bodyStarve'],debtDeaths=r['debtDeaths'],
-    emigrationCumulative=r['emigrationCumulative'],emigrationDay=r['emigration'],bornDay=r['born'])
+    emigrationCumulative=r['emigrationCumulative'],emigrationDay=r['emigration'],bornDay=r['born'],missingResidents=sum(len(v['missingPeople']) for v in br['villages']) if name.split('-')[0]!='OFF' else None)
    if name.split('-')[0]!='OFF':assert row['traceAdded']==row['completed'],(name,day,'actual expansion trace closure')
    rows.append(row)
   if rr:
@@ -56,6 +56,9 @@ for name in expected:
  if not rows:
   allruns[name]=dict(done=False,days=0);continue
  assert not errors,(name,errors[:3])
+ if not a.allow_live:
+  assert min(r['bodies']/r['pop'] for r in rows if r['pop'])>=1,(name,'body cap')
+  if name.split('-')[0]!='OFF':assert max(r['missingResidents'] for r in rows)==0,(name,'resident without linked physical body')
  if not a.allow_live:
   assert len(rows)==P['days'] and len(P['segs'])==(P['days']+P['every']-1)//P['every']
   assert all(s['code']==0 for s in P['segs'])
@@ -84,7 +87,7 @@ for name in expected:
  last=rows[-1]
  allruns[name]=dict(done=P.get('done'),days=last['day'],target=P['days'],pop=last['pop'],points=points,
   cpuMeanAll=statistics.mean(r['cpuSeconds'] for r in rows),completed=last['completed'],completedWood=last['completedWood'],
-  minBodyRatio=min(r['bodies']/r['pop'] for r in rows if r['pop']),batchCalls=last['batchCalls'],observerErrors=len(errors),
+  minBodyRatio=min(r['bodies']/r['pop'] for r in rows if r['pop']),maxMissingResidents=max(r['missingResidents'] for r in rows) if name.split('-')[0]!='OFF' else None,batchCalls=last['batchCalls'],observerErrors=len(errors),
   segments=P.get('segs'),clockExitMeta=meta,
   villageWorst=sorted([dict(village=n,zeroDays=zeroDays[n],maxConsecutiveZero=worstZero[n],completed=villast[n]) for n in villast],key=lambda r:(-r['maxConsecutiveZero'],r['completed'])))
  dailyout.extend(rows)

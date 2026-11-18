@@ -32,5 +32,9 @@ for d in sorted(a.runs.iterdir()):
    shutil.rmtree(dst/'checkpoint',ignore_errors=True);tmp.rename(dst/'checkpoint')
    (dst/'progress.json').write_text(json.dumps(P,indent=1));mark.write_text(str(ck))
   else:shutil.rmtree(tmp,ignore_errors=True)
+ # A read-only observation option may be added at the same checkpoint. Keep
+ # recovery environment current while retaining that exact immutable DB snapshot.
+ if (dst/'checkpoint/day').exists() and (dst/'checkpoint/day').read_text().strip()==str(ck):
+  (dst/'progress.json').write_text(json.dumps(P,indent=1))
  (dst/'latest-status.json').write_text(json.dumps(P,indent=1))
  print(d.name,'checkpoint',ck,'complete',P.get('done'),flush=True)

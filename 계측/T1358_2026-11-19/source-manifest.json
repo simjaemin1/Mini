@@ -1,0 +1,121 @@
+{
+ "base": "e96fb3455252ab97cd2ec4f798541e299bf8abff",
+ "implementation": "fadb3c42fc8a686322803f4ec717695881b17824",
+ "files": {
+  "server/villages.js": {
+   "main": "40dfc278debd99e823fc9687014123fa572c0ef6513596e3c4c4c80d79815b5e",
+   "candidate": "eebf994b48e09a9727b93a775cbf2cfc241ad97ce80318a4e8441543d6ad2c20",
+   "working": "eebf994b48e09a9727b93a775cbf2cfc241ad97ce80318a4e8441543d6ad2c20"
+  },
+  "server/build-haul.js": {
+   "main": "ab96f3a9f496b50c3fa6ede380b25069e4a92ac73508f3eb20abd1036c306104",
+   "candidate": "deb39bce3f2f53287810e8a0d71f15691dbd39247063c7863853b1417287f0db",
+   "working": "deb39bce3f2f53287810e8a0d71f15691dbd39247063c7863853b1417287f0db"
+  },
+  "server/terr-body.js": {
+   "main": "9c2482d018eb367fcef1534e608631ef58ca5b71705d94d18996b3acfd709188",
+   "candidate": "9c2482d018eb367fcef1534e608631ef58ca5b71705d94d18996b3acfd709188",
+   "working": "9c2482d018eb367fcef1534e608631ef58ca5b71705d94d18996b3acfd709188"
+  },
+  "server/terr-cost.js": {
+   "main": "a8bc781b27c421950c3737c315bce5306bbcc516f377f6d25d813319d106294e",
+   "candidate": "a8bc781b27c421950c3737c315bce5306bbcc516f377f6d25d813319d106294e",
+   "working": "a8bc781b27c421950c3737c315bce5306bbcc516f377f6d25d813319d106294e"
+  },
+  "server/zone.js": {
+   "main": "b71f8d1050c6d878dc61d287ccf05b23c3e8f9b4c5a8d2616c7b458a60181dba",
+   "candidate": "b71f8d1050c6d878dc61d287ccf05b23c3e8f9b4c5a8d2616c7b458a60181dba",
+   "working": "b71f8d1050c6d878dc61d287ccf05b23c3e8f9b4c5a8d2616c7b458a60181dba"
+  },
+  "sim/economy-sim.js": {
+   "main": "11fa885467b8c79fa91b1f42dc9608aa5634e6ad95a3fc2d7aefec6dea66b3a5",
+   "candidate": "11fa885467b8c79fa91b1f42dc9608aa5634e6ad95a3fc2d7aefec6dea66b3a5",
+   "working": "11fa885467b8c79fa91b1f42dc9608aa5634e6ad95a3fc2d7aefec6dea66b3a5"
+  },
+  "sim/economy-sim-v2.js": {
+   "main": "786cc1ceaa0d2137234c736ec446282bfe150b88b9af0a98d4c4ce06dc385241",
+   "candidate": "786cc1ceaa0d2137234c736ec446282bfe150b88b9af0a98d4c4ce06dc385241",
+   "working": "786cc1ceaa0d2137234c736ec446282bfe150b88b9af0a98d4c4ce06dc385241"
+  },
+  "package-lock.json": {
+   "main": "e1fd2f9573239380a403797956c2bf7ef70419a4f7b8f546760bb7773c23ff25",
+   "candidate": "e1fd2f9573239380a403797956c2bf7ef70419a4f7b8f546760bb7773c23ff25",
+   "working": "e1fd2f9573239380a403797956c2bf7ef70419a4f7b8f546760bb7773c23ff25"
+  },
+  "scripts/t577-server-run.js": {
+   "main": "8bd6f8d38c162a32110686547c7782a5d4690158060803b93999c622c4409dfe",
+   "candidate": "8bd6f8d38c162a32110686547c7782a5d4690158060803b93999c622c4409dfe",
+   "working": "8bd6f8d38c162a32110686547c7782a5d4690158060803b93999c622c4409dfe"
+  },
+  "scripts/t577-server-hook.js": {
+   "main": "bed1faa299da65917b81e1b9c2619c14501a679177ef4bc60d20987f45ef3bec",
+   "candidate": "bed1faa299da65917b81e1b9c2619c14501a679177ef4bc60d20987f45ef3bec",
+   "working": "bed1faa299da65917b81e1b9c2619c14501a679177ef4bc60d20987f45ef3bec"
+  },
+  "scripts/t1308-long-run.js": {
+   "main": "df223660e3001d6683d81d480c921f7e75c57f7277ff93549bf6b3da4bc0056a",
+   "candidate": "df223660e3001d6683d81d480c921f7e75c57f7277ff93549bf6b3da4bc0056a",
+   "working": "df223660e3001d6683d81d480c921f7e75c57f7277ff93549bf6b3da4bc0056a"
+  },
+  "scripts/t1308-keep-hook.js": {
+   "main": "9606aa4ff5210a56b0c82b5e5cd79b584477e4d47a5d44165a83fdaac0ea3e77",
+   "candidate": "9606aa4ff5210a56b0c82b5e5cd79b584477e4d47a5d44165a83fdaac0ea3e77",
+   "working": "9606aa4ff5210a56b0c82b5e5cd79b584477e4d47a5d44165a83fdaac0ea3e77"
+  },
+  "scripts/t745-vclock.js": {
+   "main": "ef108611a876fd661b77e368f1a1bf95333a010f1530ff8d39ecf8c84d7e3697",
+   "candidate": "ef108611a876fd661b77e368f1a1bf95333a010f1530ff8d39ecf8c84d7e3697",
+   "working": "ef108611a876fd661b77e368f1a1bf95333a010f1530ff8d39ecf8c84d7e3697"
+  },
+  "scripts/t722-stop-hook.js": {
+   "main": "584e5eaed4892fd0b99cef7559dd92f97287ba1a0ad62ff2b0f605879a6ee40a",
+   "candidate": "584e5eaed4892fd0b99cef7559dd92f97287ba1a0ad62ff2b0f605879a6ee40a",
+   "working": "584e5eaed4892fd0b99cef7559dd92f97287ba1a0ad62ff2b0f605879a6ee40a"
+  },
+  "scripts/t740-side-hook.js": {
+   "main": "4300c33da005fd4c0bdfeb2cc11efa6e295833b728cc9c1a4a3632f070885269",
+   "candidate": "4300c33da005fd4c0bdfeb2cc11efa6e295833b728cc9c1a4a3632f070885269",
+   "working": "4300c33da005fd4c0bdfeb2cc11efa6e295833b728cc9c1a4a3632f070885269"
+  },
+  "scripts/t1274-baseline-hook.js": {
+   "main": "5e8d2d46c1e9980097e55749f669017f637edb7542b27234130364cccff59b08",
+   "candidate": "5e8d2d46c1e9980097e55749f669017f637edb7542b27234130364cccff59b08",
+   "working": "5e8d2d46c1e9980097e55749f669017f637edb7542b27234130364cccff59b08"
+  },
+  "scripts/t1274-observe.js": {
+   "main": "e0c7b81ebff13bc8d1d784326a73643b126cad43fb9004c095d7160c1fb3f475",
+   "candidate": "e0c7b81ebff13bc8d1d784326a73643b126cad43fb9004c095d7160c1fb3f475",
+   "working": "e0c7b81ebff13bc8d1d784326a73643b126cad43fb9004c095d7160c1fb3f475"
+  },
+  "scripts/t1302-observe.js": {
+   "main": "61b7603e5c239048a6a432a8aed3eb9bc197f71a6c2d52212b47be0921f1eec6",
+   "candidate": "61b7603e5c239048a6a432a8aed3eb9bc197f71a6c2d52212b47be0921f1eec6",
+   "working": "61b7603e5c239048a6a432a8aed3eb9bc197f71a6c2d52212b47be0921f1eec6"
+  },
+  "scripts/t1329-observe.js": {
+   "main": "8da342326271eda44ddf39d8bcf751cf0cde4871b288a096beccbf3879dee79a",
+   "candidate": "8da342326271eda44ddf39d8bcf751cf0cde4871b288a096beccbf3879dee79a",
+   "working": "8da342326271eda44ddf39d8bcf751cf0cde4871b288a096beccbf3879dee79a"
+  },
+  "scripts/t1243-observe.js": {
+   "main": "25a674ee1ac6912d3bcb5373929db98dcd8ff802720b370b03b10ebd829e5f30",
+   "candidate": "25a674ee1ac6912d3bcb5373929db98dcd8ff802720b370b03b10ebd829e5f30",
+   "working": "25a674ee1ac6912d3bcb5373929db98dcd8ff802720b370b03b10ebd829e5f30"
+  },
+  "scripts/t1221-observe.js": {
+   "main": "1f2a5d6757dfab97c306b598230f0ac0d4c6259c63858dcb367931a3d404ade1",
+   "candidate": "1f2a5d6757dfab97c306b598230f0ac0d4c6259c63858dcb367931a3d404ade1",
+   "working": "1f2a5d6757dfab97c306b598230f0ac0d4c6259c63858dcb367931a3d404ade1"
+  },
+  "scripts/t1230-observe.js": {
+   "main": "6e5609f089e396ef0e17c6ee59ab6deb22cc7f8c3103b7c5ab658c6d182a9e19",
+   "candidate": "6e5609f089e396ef0e17c6ee59ab6deb22cc7f8c3103b7c5ab658c6d182a9e19",
+   "working": "6e5609f089e396ef0e17c6ee59ab6deb22cc7f8c3103b7c5ab658c6d182a9e19"
+  },
+  "scripts/t1251-observe.js": {
+   "main": "0d3df04ecdecd6e63ec12618f667ef55d4436945378445388e31d7b853fc5395",
+   "candidate": "0d3df04ecdecd6e63ec12618f667ef55d4436945378445388e31d7b853fc5395",
+   "working": "0d3df04ecdecd6e63ec12618f667ef55d4436945378445388e31d7b853fc5395"
+  }
+ }
+}
