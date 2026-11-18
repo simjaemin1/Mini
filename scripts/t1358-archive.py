@@ -51,7 +51,7 @@ assert '=== 같음 1/1 · 경제 400/400 · 생활층 400/400' in (gates/'off.lo
 assert all(r['exit']==0 for r in json.loads((gates/'status.json').read_text()))
 corrected=json.loads((gates/'touched-corrected-status.json').read_text());assert corrected['exit']==0 and len(corrected['expectedHarnesses'])==11
 prov=a.out/'provenance';prov.mkdir(exist_ok=True)
-for pattern in ['*preflight.json','*invalid.json','point-observer-migration.json','body-off-fixture-proof.json','diagnosis*.log','gates/node22-prefix-proof.json','gates/node24-side-differences.json','gates/node22-build.log','gates/off.log','gates/snapshot-smoke-state.json','gates/snapshot-smoke-proof.json']:
+for pattern in ['*preflight.json','*invalid.json','point-observer-migration.json','a-resume-80.json','body-off-fixture-proof.json','diagnosis*.log','gates/node22-prefix-proof.json','gates/node24-side-differences.json','gates/node22-build.log','gates/off.log','gates/snapshot-smoke-state.json','gates/snapshot-smoke-proof.json']:
  for f in a.work.glob(pattern):
   if f.is_file():shutil.copyfile(f,prov/(f.parent.name+'-'+f.name if f.parent!=a.work else f.name))
 # Include the actual official gate child fingerprints, not its live database.

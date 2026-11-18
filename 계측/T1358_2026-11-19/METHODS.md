@@ -80,3 +80,9 @@ bash scripts/pm-old-code-red.sh origin/main test-t1358-terr-stake.js
 ```
 
 재기동: `bash scripts/t1308-guard.sh resume <팔-시드 폴더>`. `progress.json`의 원래 조건과 `ck/` DB·상태·시계 위상을 함께 보존한다. 살아 있는 DB를 복사해 새 체크포인트라고 부르지 않는다. `t1358-backup.py`는 닫힌 마디와 확정된 체크포인트만 `/workspace/scratch`에 보관한다.
+
+### 실행 중단 복구
+
+후보 A/1020의 첫 80→90 마디는 실행 부모가 사라진 뒤 자식이 좀비로 남아 econ 86날에서 멈췄다. 완료된 80날 체크포인트는 그대로 보존하고 `t1308-guard.sh resume`으로 같은 조건을 다시 실행했다. 중단된 부분 자료는 `/tmp/t1358/interruption-A-80`에 분리했으며 최종 집계에는 재실행하여 코드 0으로 끝난 마디만 넣는다. 복구 사실은 `provenance/a-resume-80.json`에 남긴다.
+
+몸 굶음 계수 `bodyExitStats()`의 `_bx`는 프로세스별 값이다. T577 STATE는 names/rows/fd/diag365/board만 이으며 `_bx`는 복원하지 않는다. 따라서 몸 굶음은 마디별 마지막 값을 합산하고, T1340이 복원하는 영토 완료·말뚝 계수는 마지막 누계 및 날별 차분으로 읽는다.
