@@ -44,7 +44,7 @@ const stat = { installed: 0, grant: 0, skip: 0, wake: 0, stamp: 0, touch: 0, flu
   compact: 0, gnbad: 0,   // ★[T1348 ⓐ]
   wgrant: 0, wstep: 0, wvi: 0, wvq: 0, wcmp: 0, wbad: 0, wwhy: {}, wex: [], clock: 0, stuck: 0, stale: 0, arrive: 0, verify: 0,   // ★[T1348 ⓑ] 걷는 몸 표 셈
   fgrant: 0, fskip: 0, fwolf: 0, fstill: 0, fvq: 0, fcmp: 0, fbad: 0, fwhy: {}, fex: [], fk1: 0, fk2: 0,   // ★[T1348 ⓒ] 일터 깨움 셈
-  xskip: 0, xk1: 0, xk2: 0, xvq: 0, xcmp: 0, xbad: 0, xwhy: {}, xex: [], fjob: {},   // ★[T1365 ⓐ] 일터 깨움 나머지 셈 · 직업마다 [판정 0 무동작 · 판정 0 바뀜 · 판정 참 무동작 · 판정 참 바뀜(어긋남)] (verify)
+  xskip: 0, xk1: 0, xk2: 0, xvq: 0, xcmp: 0, xbad: 0, xwhy: {}, xex: [], fjob: {}, fmiss: {},   // ★[T1365 ⓐ] 일터 깨움 나머지 셈 · 직업마다 [판정 0 무동작 · 판정 0 바뀜 · 판정 참 무동작 · 판정 참 바뀜(어긋남)] (verify)
   dgrant: 0, dskip: 0, dstamp: 0, dwolf: 0, dstill: 0, dvq: 0, dcmp: 0, dbad: 0, dwhy: {}, dex: [] };   // ★[T1337] 잠 깨움 표 셈
 function _grow(need) {
   let c = cap || 1024; while (c < need) c *= 2;

@@ -34,7 +34,7 @@ const PARTS = [line(Z, 'function _t671Lt('), line(Z, 'function _t671Gt('), line(
   line(Z, 'let _t1322PhNow = NaN'), fn(Z, 'function _t1322Dusk(s, now) {'), fn(Z, 'function _t1322Skip(s, pid, now) {'), fn(Z, 'function _t1322Check(npc, s, now) {'),
   line(Z, 'const _t1337Dice = '), line(Z, 'let _t1337Pend = null;'), fn(Z, 'function _t1337Grant(npc, s, now) {'), fn(Z, 'function _t1337Dec(s, now) {'), line(Z, 'const _T1337_ST = '), line(Z, 'function _t1337Snap(p)'), fn(Z, 'function _t1337Cmp(npc) {'),
   line(Z, 'let _t1348Pend = null;'), fn(Z, 'function _t1348Grant(npc, s, now, nda) {'), fn(Z, 'function _t1348Walk(s, now, vq) {'), fn(Z, 'function _t1348Cmp(npc) {'),
-  fn(Z, 'function _t1348FGrant(npc, s) {'), fn(Z, 'function _t1348Dec(s, now) {'), fn(Z, 'function _t1348FCmp(npc, nda, snap) {'),
+  fn(Z, 'function _t1348FGrant(npc, s) {'), fn(Z, 'function _t1348Dec(s, now) {'), fn(Z, 'function _t1348FCmp(npc, nda, snap, pre) {'), fn(Z, 'function _t1365Noop(npc, snap) {'),
   'function decLoop(now, dt) {\n  _decT0 = Date.now();\n' + LOOP.replace('  const _decOne = (pid, _sL) => { do {', '  const _decOne = (pid, _sL) => { SEEN.push(pid); do {') + '  return _stopAt;\n}\n'];   // 하네스 계측: 고리가 짚은 pid 차례
 const SRC0 = PARTS.join('\n');
 { let SSOK = true; try { const S = loadSS(SSRC0, {}); SSOK = typeof S.OrdSet === 'function' && typeof S.newPlayers === 'function' && 'WORK_ON' in S; } catch (e) { SSOK = false; }
@@ -53,8 +53,8 @@ const sleepOf = (npc, now) => {
 const still = (vid, lon, w95, seg, dOff, bday, day, now) => { const fv = fvOf(now, lon); if (seg === 1 ? !(fv >= RATIO) : !(fv < dOff)) return false; return Math.floor(now / DAY) === day && bdayOf(now, lon) === bday; };
 const H = (a, b) => { let h = (a * 2654435761) ^ (b * 1597334677); h = Math.imul(h ^ (h >>> 15), 2246822519); h = Math.imul(h ^ (h >>> 13), 3266489917); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 // 생활층 대역의 일터 깨움 판정 — 아래 결정 대역의 일 갈래가 몸 칸 무동작인 조건 그대로(체류 = 1 · 배정 칸으로 가는 중 = 2) · 미끼는 `late`(체류 끝을 늦게 본다)
-const farmOf = (late) => (npc, now) => {
-  if (npc.simJob !== 'farmer' || npc._lazy) return 0;
+const farmOf = (late, jobs) => (npc, now) => {   // ★[T1365] 같은 대역을 농부(`t1348Farm`) · 그 밖 일터(`t1365Work`)에 — 결정 대역의 일 갈래는 직업을 안 가린다
+  if (!jobs(npc.simJob) || npc._lazy) return 0;
   const f = fvOf(now, npc.simLonOff); if (!(f < RATIO && f >= npc._dOff)) return 0;
   if (npc._jobT && now < npc._jobT + late) return 1;
   const K = npc._farmK; if (!K) return 0;
@@ -66,7 +66,7 @@ function world(env, src, ssrc, late) {
   const SS = loadSS(ssrc, env), PF = SS.ON, wolves = [];
   const ctx = {
     Math, Object, Number, Infinity, NaN, console, JSON, Set, Map, Array, SS, T1322_PF: PF, T1322_VERIFY: PF && SS.VERIFY, T1337_WAKE: PF && SS.WAKE_ON, T1337_VERIFY: PF && SS.WAKE_ON && SS.WAKE_VERIFY,
-    T1348_LOOP: PF && SS.LOOP, T1348_WALK: PF && SS.WALK_ON, T1348_WVERIFY: PF && SS.WALK_ON && SS.WALK_VERIFY, T1348_WORK: PF && SS.WORK_ON, T1348_FVERIFY: PF && SS.WORK_ON && SS.WORK_VERIFY,
+    T1348_LOOP: PF && SS.LOOP, T1348_WALK: PF && SS.WALK_ON, T1348_WVERIFY: PF && SS.WALK_ON && SS.WALK_VERIFY, T1348_WORK: PF && SS.WORK_ON, T1348_FVERIFY: PF && SS.WORK_ON && SS.WORK_VERIFY, T1365_WORK: PF && SS.WORK2_ON, T1365_VERIFY: PF && SS.WORK2_ON && SS.WORK2_VERIFY,
     _tick: { n: 0 }, _SEED, BUILDING_SIZE: BS, NPC_FLEE_RANGE: R, mobs: new Map(), wolves,
     qtMobs: { queryCircle: (x, y, r) => wolves.filter((m) => Math.abs(m.x - x) <= r && Math.abs(m.y - y) <= r) },
     zoneGameDay: () => Math.floor(ctx.NOW / DAY), NOW: 0,
@@ -74,7 +74,7 @@ function world(env, src, ssrc, late) {
     T1241_PROBE: false, _desClk: null, _T1241: false, T1241_DES: false, T689_GC: false, _desStat: {}, _npcCursor: null, _decT0: 0,
     MOVE_SPEED: 64, NPC_WALK_MULT: 1.25, GATHER_RANGE: 40, WORLD: { dayPhaseRatio: RATIO }, resources: new Map(),
     worldPhase: phase, phaseAdd: (a, b) => { const v = (a + b) % 1; return v < 0 ? v + 1 : v; },
-    SimVillages: { t1295Wp: () => null, t1295Ph: () => 0, t1295S: () => 1, t1316K: () => 1, t1337Sleep: sleepOf, t1337Still: still, t1348Farm: farmOf(late || 0) },
+    SimVillages: { t1295Wp: () => null, t1295Ph: () => 0, t1295S: () => 1, t1316K: () => 1, t1337Sleep: sleepOf, t1337Still: still, t1348Farm: farmOf(late || 0, (j) => j === 'farmer'), t1365Work: farmOf(late || 0, (j) => !!j && j !== 'farmer') },
     _t316WalkAlways: (npc) => !!npc.simVillageId, isPositionActive: () => true, _t1295Stale: () => 5000, _npcGatherResource: () => {},
     unstuckNpc: (npc, now) => { ctx.UNSTUCK++; npc.path = null; npc.pathIndex = 0; npc._pathFor = null; npc.nextDecisionAt = now + 400; npc.vx = 0; npc.vy = 0; },
     TB: { out: () => ctx.STOPNEXT-- === 1, lateBegin: () => {} }, STOPNEXT: 0, Date: { now: () => 0 },
@@ -117,7 +117,7 @@ const mkBody = (i) => { const bx = 1000 + (i % 40) * 64, by = 1000 + Math.floor(
   return { pid: 'n' + i, _i: i, x: bx, y: by, vx: 0, vy: 0, isNpc: true, hp: 100, canadiaVillage: undefined, nextDecisionAt: 0, _t540StepAt: undefined, _t540DecAt: undefined, simEvacUntil: undefined,
     simLonOff: (i % 9) * 0.02 - 0.08, behavior: 'wander', canadiaTask: undefined, targetX: bx, targetY: by, path: undefined, pathIndex: undefined, _t791P: undefined, _t791Pn: undefined, _t791Px: undefined, _t791Py: undefined,
     _stuckPos: undefined, _stuckN: undefined, _t670TkX: undefined, _t670TkY: undefined, _t670Tk: undefined, _pathFor: undefined, _pathAt: undefined, _huntSpd: undefined, _huntOn: undefined, gatherTarget: undefined, harvestTarget: undefined,
-    npcHomeX: bx, npcHomeY: by, npcBedX: bx, npcBedY: by, _t720: undefined, simVillageId: 1, simJob: i % 23 === 0 ? 'hunter' : 'farmer', floor: 0, onStairId: undefined, inventory: {}, _sh: undefined,
+    npcHomeX: bx, npcHomeY: by, npcBedX: bx, npcBedY: by, _t720: undefined, simVillageId: 1, simJob: i % 23 === 0 ? 'hunter' : i % 7 === 3 ? 'fisher' : 'farmer', floor: 0, onStairId: undefined, inventory: {}, _sh: undefined,
     _farmK: undefined, _jobT: undefined, _dOff: 0.02 + (i % 7) * 0.01, workX: bx + 60, workY: by + 20, _meal: undefined, _lifeAct: undefined, _lifeActAt: undefined, _lazy: i % 6 === 0 }; };
 const STAMP = new Set(['_t540StepAt', '_pathAt', '_stuckPos', 'nextDecisionAt', '_t540DecAt', '_sh', 'pathIndex']);
 function same(a, b, all) {
@@ -192,13 +192,16 @@ const st = R1.st;
 ok(st.wstep > 20000 && st.wgrant > 1000 && st.stuck > 0 && st.stale > 0 && st.arrive > 0 && st.gone > 0 && st.dskip > 0 && R1.unstuck > 0,
   'ⓑ 전제 — 걷는 몸 커널이 탔다 · 막힘 · 길 만료 · 끝 점 도착 깨움 · 몸 바뀜(gone) · 잠 깨움이 다 났다',
   `커널 걸음 ${st.wstep} · 표 3 ${st.wgrant} · 막힘 ${st.stuck} · 만료 ${st.stale} · 도착 ${st.arrive} · gone ${st.gone} · 잠 건넘 ${st.dskip} · 칸 메움 ${st.compact}`);
+ok(st.xskip > 1000 && st.xk1 > 0 && st.xk2 > 0, 'ⓒ ★[T1365] 그 밖 일터(사냥꾼 · 어부 대역)도 결정을 건넜다(체류 · 가는 중 둘 다)', `건넌 결정 ${st.xskip}(체류 ${st.xk1} · 가는 중 ${st.xk2})`);
 ok(st.fskip > 5000 && st.fk1 > 0 && st.fk2 > 0 && st.fwolf > 0 && st.fstill > 0 && R1.decB < R1.decA, 'ⓒ 전제 — 일터 깨움이 결정을 건넜고(체류 · 가는 중 둘 다) · 늑대 깨움 · 판정 깨움이 났다 · 결정 문 부름이 줄었다',
   `건넌 결정 ${st.fskip}(체류 ${st.fk1} · 가는 중 ${st.fk2}) · 늑대 ${st.fwolf} · 판정 깨움 ${st.fstill} · 결정 끔 ${R1.decA} → 켬 ${R1.decB}`);
 console.log('\n② `verify`(첫 거름 · 걷는 몸)');
-const R2 = run(OFF, { T1322_PREFILTER: 'verify', T1348_WALK: 'verify', T1348_WORK: 'verify' }, SRC0, SSRC0, N, T, false);
+const R2 = run(OFF, { T1322_PREFILTER: 'verify', T1348_WALK: 'verify', T1348_WORK: 'verify', T1365_WORK: 'verify' }, SRC0, SSRC0, N, T, false);
 ok(R2.diffTick === 0 && R2.diffFull === 0 && R2.diffSeen === 0 && R2.st.wvq > 5000 && R2.st.wcmp === R2.st.wvq && R2.st.wbad === 0 && R2.st.gnbad === 0 && R2.st.vchecks > 0 && R2.st.bad === 0,
   '② 커널이 낼 값 ↔ 진짜 걸음 어긋남 0 · gone 표 ↔ players 술어 어긋남 0 · 끔과 같음',
   `견줌 ${R2.st.wvq}/${R2.st.wcmp} · 어긋남 ${R2.st.wbad} ${JSON.stringify(R2.st.wwhy)} · gone 표 ${R2.st.gnbad} · 첫 거름 견줌 ${R2.st.vchecks} 어긋남 ${R2.st.bad} · 몸 칸 ${R2.diffTick}/${R2.diffFull}`);
+ok(R2.st.xvq > 500 && R2.st.xcmp === R2.st.xvq && R2.st.xbad === 0 && R2.st.fjob.hunter && R2.st.fjob.fisher && R2.st.fjob.hunter[2] > 0 && R2.st.fjob.fisher[2] > 0 && !R2.st.fjob.hunter[3] && !R2.st.fjob.fisher[3],
+  '② ★[T1365] 그 밖 일터 `verify` — 견줌 어긋남 0 · 직업마다 덮음 셈이 섰다', `견줌 ${R2.st.xvq}/${R2.st.xcmp} · 어긋남 ${R2.st.xbad} ${JSON.stringify(R2.st.xwhy)} · 덮음 ${JSON.stringify(R2.st.fjob)}`);
 ok(R2.st.fvq > 3000 && R2.st.fcmp === R2.st.fvq && R2.st.fbad === 0, '② 일터 깨움 `verify` — 건너려던 결정을 실제로 돌려 견줌 어긋남 0', `견줌 ${R2.st.fvq}/${R2.st.fcmp} · 어긋남 ${R2.st.fbad} ${JSON.stringify(R2.st.fwhy)} ${R2.st.fex.join(' ')}`);
 console.log('\n③ OrdSet ↔ Set(무작위 · 순회 중 넣고 빼기 · 칸 메움)');
 function ordCheck(ssrc) {
@@ -233,8 +236,8 @@ console.log('\n④ 미끼(바꾼 자리 정확히 1곳 · 빨강 줄 단언)');
   ok(RC.diffTick + RC.diffFull + RC.diffSeen > 0, 'ⓒ 길 만료 깨움을 늦게 낸 사본(+300ms) → ① 이 빨강', `${RC.diffTick}/${RC.diffFull}/${RC.diffSeen}${RC.firstDiff ? ' · ' + RC.firstDiff : ''}`);
   const RD = run(OFF, {}, SRC0, SSRC0, N, T, false, 250);
   ok(RD.diffTick + RD.diffFull + RD.diffSeen > 0, 'ⓓ 일터 깨움 시각을 늦게 낸 사본(체류 끝 +250ms 까지 거른다) → ① 이 빨강', `${RD.diffTick}/${RD.diffFull}/${RD.diffSeen}${RD.firstDiff ? ' · ' + RD.firstDiff : ''}`);
-  const RDV = run(OFF, { T1348_WORK: 'verify' }, SRC0, SSRC0, N, T, false, 250);
-  ok(RDV.st.fbad > 0 && RDV.diffTick === 0, 'ⓓ 같은 미끼를 `verify` 로 — 어긋남을 세고 그 몸은 종전 길(몸 칸 같음)', `어긋남 ${RDV.st.fbad} ${JSON.stringify(RDV.st.fwhy)}`);
+  const RDV = run(OFF, { T1348_WORK: 'verify', T1365_WORK: 'verify' }, SRC0, SSRC0, N, T, false, 250);
+  ok(RDV.st.fbad > 0 && RDV.st.xbad > 0 && RDV.diffTick === 0, 'ⓓ 같은 미끼를 `verify` 로 — 농부 · 그 밖 일터 둘 다 어긋남을 세고 그 몸은 종전 길(몸 칸 같음)', `어긋남 농부 ${RDV.st.fbad} ${JSON.stringify(RDV.st.fwhy)} · 그 밖 ${RDV.st.xbad}`);
   const kE = "  for (const m of near) { if (m.type !== 'wolf' || m.tameOwner) continue; if (Math.hypot(m.x - x, m.y - y) < NPC_FLEE_RANGE) { SS.stat.fwolf++; return false; } }\n";
   const bE = once(SRC0, kE, '');
   const RE = run(OFF, {}, bE, SSRC0, N, T, false);
