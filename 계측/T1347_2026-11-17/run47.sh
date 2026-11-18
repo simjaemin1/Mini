@@ -15,7 +15,7 @@ X47=""; [ -f $S/t1347-observe.js ] && X47="-r $S/t1347-observe.js"
 case "$KIND" in
   body) export T1244_BODY_MS=10000 T1221_EVERY=10 T1256_BODY_MS=10000 VILLAGE_DAY_MS=1440000 VILLAGE_NPC_CAP=Infinity
         PRE="-r $S/t745-vclock.js -r $S/t1243-observe.js -r $S/t1221-observe.js -r $S/t1230-observe.js -r $S/t1256-observe.js -r $S/t1266-observe.js -r $S/t1277-observe.js -r $S/t1293-observe.js -r $S/t1313-observe.js -r $S/t1333-observe.js -r $S/t1344-observe.js $X47" ;;
-  srv)  export T1256_BODY_MS=0
+  srv)  export T1256_BODY_MS=0; HEAP="--max-old-space-size=3072"   # ★서버 자 400날 판이 V8 힙 기본 2,096 MB 에 닿아 죽었다(SA-42 날 366 · 값 무변 — 힙 한도만 · 11-18 00:12Z 뒤 판부터)
         PRE="-r $S/t745-vclock.js -r $S/t1243-observe.js -r $S/t1256-observe.js -r $S/t1313-observe.js -r $S/t1333-observe.js -r $S/t1344-observe.js $X47" ;;
   *) echo "꼴 모름 $KIND"; exit 2 ;;
 esac
@@ -28,6 +28,6 @@ case "$ARM" in
   m) export T1333_ALLOY_ORDER=1 T1344_MIX_LOAD=1 ;;
   *) echo "팔 모름 $ARM"; exit 2 ;;
 esac
-export NODE_OPTIONS="$PRE"
+export NODE_OPTIONS="${HEAP:-} $PRE"
 T0=$(date +%s); node scripts/t577-server-run.js $DAYS $SEED
 echo "벽 $(( $(date +%s) - T0 ))초 · 작업 트리 $(git -C $R rev-parse --short HEAD) $(git -C $R status --porcelain | grep -c '^ M') 고친 파일"
