@@ -1,0 +1,1 @@
+scripts/test-static-cache.js scripts/test-t1341-own-house.js scripts/test-t1353-onb-on-prep.js scripts/test-trade.js scripts/e2e-first30.js scripts/e2e-next-step.js scripts/e2e-onboarding.js scripts/e2e-t1341-own-house.js 

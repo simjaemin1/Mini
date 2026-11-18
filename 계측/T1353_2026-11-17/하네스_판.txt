@@ -1,0 +1,23 @@
+test-t1353-onb-on-prep rc=0 26s === 15건 중 PASS 15 · FAIL 0 ===
+test-t1341-own-house rc=0 1s === 62건 중 PASS 62 · FAIL 0 ===
+test-donate rc=0 22s === 42건 중 PASS 42 · FAIL 0 ===
+test-events rc=0 240s === 305건 중 PASS 305 · FAIL 0 ===
+test-static-cache rc=0 21s 
+test-trade rc=0 8s === 68건 중 PASS 68 · FAIL 0 ===
+test-body-fields rc=0 1s === 14 통과 / 0 실패 ===
+test-coll-grid rc=0 12s === 결과: 20 PASS / 0 FAIL ===
+test-hp-src rc=0 1s === 54 통과 / 0 실패 ===
+test-lon-day rc=0 1s === 22건 중 PASS 22 · FAIL 0 ===
+test-harness-lint rc=0 37s === 89건 중 PASS 89 · FAIL 0 ===
+lab-wiring-check rc=0 2s   ✅ ⓓ [자명 통과 금지] 번들에서 LifeCrew 를 뺀 사본 · 방아쇠에서 `_t958Want` 를 뺀 사본 · �
+DONE
+e2e-next-step[on] rc=1 60s === 22건 중 PASS 21 · FAIL 1 ===
+e2e-onboarding[on] rc=1 175s === PASS 79 / FAIL 1 ===
+e2e-next-step[off] rc=0 35s === 35건 중 PASS 35 · FAIL 0 ===
+e2e-onboarding[off] rc=0 179s === PASS 75 / FAIL 0 ===
+e2e-t1341-own-house[own] rc=0 58s === 30건 중 PASS 30 · FAIL 0 ===
+DONE
+e2e-next-step[on2] rc=0 60s === 22건 중 PASS 22 · FAIL 0 ===
+e2e-onboarding[on2] rc=0 172s === PASS 80 / FAIL 0 ===
+DONE2
+# 하네스 린트 다시(e2e 고친 뒤) 89/0
