@@ -70,7 +70,7 @@ jobs:
       fail-fast: false
       matrix:
         # <ci-class core — scripts/ci-class.js --write-yml 이 쓴다 · 손으로 고치지 않는다>
-        # 분류표 2026-11-17 · core 294종 · 잡 5개(합 초 314 · 314 · 314 · 314 · 314)
+        # 분류표 2026-11-18 · core 294종 · 잡 5개(합 초 314 · 314 · 314 · 314 · 314)
         include:
           - shard: '1/5'
             list: >-
