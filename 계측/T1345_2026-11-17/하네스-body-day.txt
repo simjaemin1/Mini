@@ -1,0 +1,17 @@
+
+=== T1345 — 서버 판 자 `--body-day`(운영 하루 24분 + 집 켬 · 사다리 ③ 계단) ===
+  ✓ ① `--body-day` — 아이 존 VILLAGE_DAY_MS=1440000(운영 하루 24분)  {"VILLAGE_DAY_MS":"1440000","T400_BUILD_ACT":"1","T315_MAPBEDS":"1","VILLAGE_NPC_CAP":"2","T627_TRIP_DAY":"1","T1334_BUNDLE":null,"T745_VCLOCK":null}
+  ✓ ① `--body-day` — 집 켬이 따라온다(T400_BUILD_ACT=1 · 지도 침상 T315_MAPBEDS=1 · 몸 상한 LIFE_CREW 2)
+  ✓ ② `--body-day` 없음 — 서버 기준선 자 그대로(VILLAGE_DAY_MS=250 · 집 끔)  {"VILLAGE_DAY_MS":"250","T400_BUILD_ACT":"0","T315_MAPBEDS":"0","VILLAGE_NPC_CAP":"1","T627_TRIP_DAY":null,"T1334_BUNDLE":null,"T745_VCLOCK":null}
+  ✓ ③ 묶음 + 빠른 시계 `--make` — 경고 줄 하나
+  ✓ ③ 묶음 + `--body-day` · 묶음 끔 — 경고 없음
+  ✓ ③ 묶음 + `--body-day` — 아이 존에 묶음 · 하루 24분이 같이 간다  {"VILLAGE_DAY_MS":"1440000","T400_BUILD_ACT":"1","T315_MAPBEDS":"1","VILLAGE_NPC_CAP":"2","T627_TRIP_DAY":"1","T1334_BUNDLE":"1","T745_VCLOCK":null}
+  ✓ ⑤ 판 자에서 `--body-day` 의 판 조건 자리는 한 곳
+  ✓ ⑤ 미끼 — 하루 길이 자리를 뺀 사본은 집만 켜고 하루는 250 — ① 의 "VILLAGE_DAY_MS=1440000" 단언이 빨강  {"VILLAGE_DAY_MS":"250","T400_BUILD_ACT":"1","T315_MAPBEDS":"1","VILLAGE_NPC_CAP":"2","T627_TRIP_DAY":"1","T1334_BUNDLE":null,"T745_VCLOCK":null}
+  ✓ ④ 짧은 판(묶음 · --body-day · 20날) — 기준선이 선다  RC=0
+  ✓ ④ 기준선 cond · bodyDay · how · clock 에 운영 하루 24분 + 집 켬이 적힌다  {"VILLAGE_CARAVAN_MAX":"0","T400_BUILD_ACT":"1","VILLAGE_DAY_MS":"1440000","T1334_BUNDLE":"1"}
+  ✓ ④ 판이 그 세계를 돈다 — 존 하루 24분 · 마을마다 지도 침상(집 켬)  {"days":20,"vils":51,"mapBeds":51,"gated":422,"gatedNoSite":377,"villageDays":1020,"dayMs":"1440000"}
+  ✓ ④ 판이 계단을 문다 — 묶음 마을의 주거 문 닫힌 마을-날 > 0 · 그중 집터 없는 날 > 0  주거 문 422 · 집터 없음 377 / 마을-날 1020
+
+=== 12건 중 PASS 12 · FAIL 0 ===
+RC 0
