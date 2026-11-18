@@ -13369,8 +13369,35 @@ function _t1276Stand(vil) {
   vil.econ._t1276Stand = S;
   return S;
 }
+// ★★[T1374 ② 2026-11-18 · 지시 T1374 ㉳] **다음 거둠 날** — econ `_t1374Next`(출생 문 `T1374_BIRTH_HARV` · 기근 문 `T1374_FAMINE_HARV` 가 읽는다 · 밭 세계 · 둘 다 끔이면 무동작).
+//   = 이 마을 밭에 선 작물이 익는 날(작물 정본 `readyDay(작물, 심은 날)`) 가운데 가장 이른 날. 선 작물이 없으면(가을걷이 뒤 빈 밭) 앞으로 열두 달
+//     그 달 첫날에 심을 수 있는 작물(청동기 묶음 · 논 · 밭 · 작물 정본 `sowableMonth`)이 익는 가장 이른 날. 새 수 0 — 작물 달력 · 춘화 · 휴면 정본 그대로.
+const _T1374_RD = new WeakMap();   // 칸 항목 → 익는 날(심을 때 한 번 셈 · 저장 안 함)
+const _t1374Fb = new Map();        // '논|밭' + 달 첫날 → 그때부터 가장 이른 거둠 날(심을 수 있는 작물)
+function _t1374NextHarv(vil, day) {
+  const C = _Crops(); if (!C || !vil._crop) return null;
+  let next = Infinity;
+  for (const e of vil._crop.values()) { if (!e || !e.c) continue; let rd = _T1374_RD.get(e); if (rd === undefined) { rd = C.readyDay(e.c, e.p); _T1374_RD.set(e, rd); } if (rd != null && rd > day && rd < next) next = rd; }
+  if (next !== Infinity) return next;
+  const Cal = require('./calendar'), flds = [];
+  if (vil._farmSet && vil._farmSet.size) { const nD = vil._drySet ? [...vil._farmSet].filter((k) => vil._drySet.has(k)).length : 0; if (nD > 0) flds.push('밭'); if (vil._farmSet.size - nD > 0) flds.push('논'); }
+  for (let d = day, mo0 = -1; d < day + 366; d++) {
+    const mo = Cal.dateOf(d).month; if (mo === mo0 && d !== day) continue; mo0 = mo;
+    for (const f of flds) { const key = f + '|' + d; let r = _t1374Fb.get(key);
+      if (r === undefined) { r = Infinity; for (const id of C.sowableMonth(f, mo)) { if (!C.T1201_BRONZE_SET.has(id)) continue; const x = C.readyDay(id, d); if (x != null && x < r) r = x; } _t1374Fb.set(key, r); if (_t1374Fb.size > 4096) _t1374Fb.clear(); }
+      if (r < next) next = r; }
+    if (next !== Infinity && next <= d + 1) break;
+  }
+  return next === Infinity ? null : next;
+}
+function _t1374Next(vil) {
+  const E = _lifeEcon(); if (!E || !(E.T1374_BIRTH_HARV || E.T1374_FAMINE_HARV) || !vil || !vil.econ) return;
+  const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
+  vil.econ._t1374Next = _t1374NextHarv(vil, day);
+}
 function _lifeHeadlessDay(vil) {
   _t1276Stand(vil);   // ★[T1276] 하루 한 번(라이브 · 판 자 — 몸 갈래여도 선다)
+  _t1374Next(vil);   // ★[T1374 ②] 다음 거둠 날(출생 문 · 끔 = 무동작)
   _lifeVL();   // lazy 로드 방어(단독 호출 경로 — 5e8d5f5 'is not defined' 클래스 재발 금지)
   const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
   let farmerN = 0, popN = 0;
