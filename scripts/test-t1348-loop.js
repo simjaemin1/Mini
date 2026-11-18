@@ -77,7 +77,7 @@ function world(env, src, ssrc, late) {
     SimVillages: { t1295Wp: () => null, t1295Ph: () => 0, t1295S: () => 1, t1316K: () => 1, t1337Sleep: sleepOf, t1337Still: still, t1348Farm: farmOf(late || 0, (j) => j === 'farmer'), t1365Work: farmOf(late || 0, (j) => !!j && j !== 'farmer') },
     _t316WalkAlways: (npc) => !!npc.simVillageId, isPositionActive: () => true, _t1295Stale: () => 5000, _npcGatherResource: () => {},
     unstuckNpc: (npc, now) => { ctx.UNSTUCK++; npc.path = null; npc.pathIndex = 0; npc._pathFor = null; npc.nextDecisionAt = now + 400; npc.vx = 0; npc.vy = 0; },
-    TB: { out: () => ctx.STOPNEXT-- === 1, lateBegin: () => {} }, STOPNEXT: 0, Date: { now: () => 0 },
+    TB: { out: () => ctx.STOPNEXT-- === 1, outAt: () => ctx.STOPNEXT-- === 1, lateBegin: () => {} }, STOPNEXT: 0, T1365_CLOCK: true, Date: { now: () => 0 },   // ★[T1365 ⓒ] 예산 시계 한 번(같은 멈춤 셈)
     DEC: 0, UNSTUCK: 0, PATHQ: 0, SEEN: [],
   };
   ctx.players = SS.newPlayers(); ctx.npcs = SS.newNpcs();

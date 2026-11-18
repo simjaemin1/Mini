@@ -5477,6 +5477,10 @@ const T1348_WORK = T1322_PF && SS.WORK_ON, T1348_FVERIFY = T1348_WORK && SS.WORK
 //   농부 밖 일터(벌목 · 채광 · 채집 · 낚시 · 수색 · 회관 일 · 제작)의 머묾 결정을 같은 고리로 건넌다 — 판정은 생활층 `t1365Work`(그 몸 · 지금 · `npcLifeTick` 차례 그대로).
 //   표 · 늑대 · 결정 시각 · 미룬 도장은 일터 깨움(T1348 ⓒ) 그 줄이다(`DS = 2` · `_t1348Dec`).
 const T1365_WORK = T1322_PF && SS.WORK2_ON, T1365_VERIFY = T1365_WORK && SS.WORK2_VERIFY;
+// ★★[T1365 ⓒ · 손잡이 `T1365_CLOCK`(켬 기본 · `'0'` 끔)] **예산 시계 한 번** — 결정 문 고리는 안 건넌 몸마다 `Date.now()` 를 두 번 읽었다(제 예산 15ms · 공용 몫 `TB.out`).
+//   켬 = 한 번 읽어 두 판정이 같이 쓴다(`TB.outAt`). 몸마다 멈출 수 있음은 그대로다. 가상 시계 판에서는 틱 안 시각이 한 값이라 같은 답이고,
+//   실시간에서는 두 읽기 사이(수십 ns)에 ms 가 넘어가는 경우만 공용 몫 판정이 그 ms 앞 시각으로 난다(실시간 멈춤 자리는 본디 판마다 다르다).
+const T1365_CLOCK = process.env.T1365_CLOCK !== '0';
 function _t1348FGrant(npc, s) {
   if (!npc.simVillageId || !npc.simJob) return;
   if (npc.simJob === 'farmer' ? !(T1348_WORK && SimVillages.t1348Farm) : !(T1365_WORK && SimVillages.t1365Work)) return;   // ★[T1365] 농부 밖 일터도
@@ -17339,6 +17343,7 @@ setInterval(() => {
   //       켠 팔 어획 합을 전/후로 나란히 적는다.
   //     ⚠커서가 가리키던 주민이 사라지면(사망·핸드오프) 한 바퀴를 헛돌 수 있다 ⇒ 못 찾으면 그 틱 끝에 영점.
   let _curHit = (_npcCursor === null), _stopAt = null;
+  let _tn = 0;   // ★[T1365 ⓒ] 몸마다 읽은 시각(예산 판정 둘이 같이 쓴다)
   //   ★★[T562 ④ 2026-09-30] 결정 예산(15ms)을 **이 루프의 머리부터** 잰다(종전: 틱 머리 `now`). 수·커서·순서는 그대로다.
   //     T562 자가 쟀다: 하루 마감 조각(`SimVillages.onGameTick` · 조각 예산 16ms)과 공간 색인이 이 루프 **앞**에서 15ms 를 다 쓰면
   //     커서의 첫 사람에서 끊겨 **한 명도** 결정을 못 받는다 — 새벽(하루 경계) 조각이 도는 몇 초 동안 깬 주민 168~400 명이 걸음 문 0.
@@ -17362,7 +17367,7 @@ setInterval(() => {
     //     (:11255 `movePlayerStep` 루프) — 실측에서 틱의 대부분은 거기서 났다(p50 2.47 → 374.6ms · 152배).
     //     예산을 늘리지도, 새로 걸지도 않는다: 놓는 수가 곧 설계 판정이라 PM 몫이다(T316 §3 회부).
     if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
-    if ((Date.now() - _decT0) > 15 || TB.out(15, 'decide')) { _stopAt = pid; break; }   // ★[T687] 켬 = 이 틱 공용 몫이 바닥나도 여기서 멈춘다(커서 그대로)   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
+    if (T1365_CLOCK ? ((_tn = Date.now()) - _decT0 > 15 || TB.outAt(15, 'decide', _tn)) : ((Date.now() - _decT0) > 15 || TB.out(15, 'decide'))) { _stopAt = pid; break; }   // ★[T1365 ⓒ] 켬 = 시계를 한 번 읽어 두 판정이 같이 쓴다(가상 시계 판은 같은 값 · 실시간은 같은 ms 안)   // ★[T687] 켬 = 이 틱 공용 몫이 바닥나도 여기서 멈춘다(커서 그대로)   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
     if (T1241_PROBE && _desClk) { _desTimed(npc, dt, now); if (_t1337Pend && _t1337Pend.p === npc) _t1337Cmp(npc); if (_t1348Pend && _t1348Pend.p === npc) _t1348Cmp(npc); if (T1322_PF) _t1322Grant(npc, now, _sL); continue; }   // ★[T1241 계측] 같은 몸통을 진짜 시계로 잰다(아래 세 줄 그대로)
     if (T1241_DES && npc._des && _desHold(npc, now)) continue;   // ★[T1241] 사건 갈래가 쥔 몸(끔 = 이 줄 무동작)
     if (_T1241) _desStat.steps++;

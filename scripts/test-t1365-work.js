@@ -55,8 +55,26 @@ function lane(name, port, extra) {
     });
   });
 }
+// ④ ★[T1365 ⓒ] 예산 시계 한 번 — `TB.outAt(own, name, t)` = 같은 시각 t 에서 `TB.out(own, name)`(공용 몫 · 결정 몫 남김 · 셈 칸까지) — 가상 시각을 넣어 견준다
+function clockCheck() {
+  const real = Date.now; let T = 1000, diff = 0, n = 0, outs = 0;
+  try {
+    Date.now = () => T;
+    const A = require(path.join(ROOT, 'server', 'tick-budget.js'));
+    if (typeof A.outAt !== 'function') return { diff: -1, n: 0, outs: 0 };
+    for (let k = 0; k < 400; k++) {
+      T = 1000 + k * 37; A.begin(16); if (k % 3 === 0) A.lateBegin();
+      for (let d = 0; d < 24; d += 0.5) { T = 1000 + k * 37 + d; const s0 = JSON.stringify(A.stats()); const a = A.out(15, 'decide'); const s1 = JSON.stringify(A.stats()); const b = A.outAt(15, 'decide', T); const s2 = JSON.stringify(A.stats());
+        n++; if (a) outs++; if (a !== b || (s1 === s0) !== (s2 === s1)) diff++; }
+      A.lateEnd(5 + (k % 9), 15, k % 4 === 0); A.end();
+    }
+  } finally { Date.now = real; }
+  return { diff, n, outs };
+}
 (async () => {
   console.log(`\n=== 일터 깨움 판정 = 결정 문 — 시드 ${SEED} · ${DAYS}날 · ${out} ===`);
+  const CK = clockCheck();
+  ok(CK.n > 5000 && CK.outs > 100 && CK.diff === 0, '④ ★[T1365 ⓒ] 예산 시계 한 번 — `TB.outAt(…, t)` 가 같은 시각의 `TB.out` 과 같은 답 · 같은 셈 칸', `견줌 ${CK.n} · 멈춤 ${CK.outs} · 어긋남 ${CK.diff}`);
   const baitEnv = (b) => ({ __T1365_BAIT: b, __T1365_BAIT_LOG: path.join(out, `bait-${b}.log`), T1294_PRELOAD: __filename });
   const [M, BH, BF] = await Promise.all([lane('main', PB, {}), lane('hunt', PB + 100, baitEnv('hunt')), lane('fish', PB + 200, baitEnv('fish'))]);
   ok(M.code === 0 && M.st && M.st.valid && M.st.days === DAYS, `① 판이 끝까지 돌았다(${DAYS}날 · 가상 시계 오류 0)`, `rc ${M.code}`);
