@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 83e9ae0 · 제품(server sim public lab) = f2feee1 · 시한 600초
+빨강 ○ | test-t1368-onb-newbie.js | RC=1 · ✓ 0 · ✗ 6 |   ✗ 켬 판 예외: Error: Command failed: /opt/node22/bin/node /tmp/ocr.hB9trZ/w/scripts/test-t1368-onb-newbie.js
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

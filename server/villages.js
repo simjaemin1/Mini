@@ -18979,6 +18979,8 @@ function _initLedger() {
     // econ 마을 객체 → dbId. 랩은 인덱스를 쓰고 서버는 dbId 를 쓴다 — 장부는 어느 쪽이든 상관 안 한다.
     vidOf: (ev) => { const vil = state.byEcon.get(ev); return vil ? vil.dbId : null; },
     depositMap: playerVillageDepositMap(),
+    // ★[T1368] 새 사람이 맨손 · 조잡한 도구로 얻는 플레이어 품목(존이 자연물 전리품 정본 · 줍기 차례에서 유도해 넘긴다) — 장부는 켬(T1341)에서만 읽는다(끔 = 안 씀)
+    newbieItems: (state.deps && state.deps.newbieItems) || null,
     // ★★[T7 2026-09-01] 소문 물리 전파의 **지리 접점 — 이 세 줄이 전부다.**
     //   장부는 지형을 모른다(알면 안 된다). 마을 목록과 "두 마을이 얼마나 떨어져 있나"만 넘긴다.
     //   ⚠거리는 **정본 함수** `econ.villageDist` 에 묻는다 — 그 함수가 지형 BFS 거리행렬
