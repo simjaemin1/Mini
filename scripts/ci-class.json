@@ -14279,6 +14279,15 @@
    ],
    "dyn": "가"
   },
+  "test-t1338-war-tick.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
+  },
   "test-t1339-wait-day.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -14519,6 +14528,15 @@
    ],
    "dyn": "가"
   },
+  "test-t1349-war-stall.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
+  },
   "test-t1351-mine-clock.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
@@ -14591,7 +14609,56 @@
     "execFileSync node"
    ]
   },
+  "test-t1355-lot-day.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1365-work.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "나",
+   "maxSec": 464.7,
+   "same5": null,
+   "core": false,
+   "why": "464.7초 > 60초",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 464.7,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawn node",
+    "spawnSync node"
+   ]
+  },
   "test-t1368-onb-newbie.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1372-resume.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1373-home-cap.js": {
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
@@ -14619,6 +14686,28 @@
    "dyn": "나",
    "child": [
     "execFileSync node"
+   ]
+  },
+  "test-t1399-tok.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "나",
+   "maxSec": 1168.5,
+   "same5": null,
+   "core": false,
+   "why": "1168.5초 > 60초",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 1168.5,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawn node",
+    "spawnSync node"
    ]
   },
   "test-t721-apply.js": {
@@ -16963,29 +17052,7 @@
     "spawnSync node"
    ],
    "srv": true
-  },
-  "test-t1365-work.js": {
-   "cls0": "다",
-   "why0": "존 · central · listen · fixture-boot",
-   "cls": "나",
-   "maxSec": 464.7,
-   "same5": null,
-   "core": false,
-   "why": "464.7초 > 60초",
-   "runs": [
-    {
-     "rc": 0,
-     "secs": 464.7,
-     "green": true,
-     "fails": []
-    }
-   ],
-   "dyn": "나",
-   "child": [
-    "spawn node",
-    "spawnSync node"
-   ]
   }
  },
- "at": "2026-11-18"
+ "at": "2026-11-19"
 }
