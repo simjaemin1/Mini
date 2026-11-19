@@ -155,7 +155,7 @@ if (process.env.T577_OUT) {
       let tgt = null; try { if (e.land && e.land.size) { const tt = W0.tt(e.land.size, terrHousing(e)); tgt = Math.min(tt.target, capF); } } catch (_) {}
       const p = prevV.get(vil.name) || null;
       const T7 = vil._t1207 || {}, K = vil._t1380 || {};
-      const d = (o, k) => p ? (+(o[k] || 0) - (p[k] || 0)) : null;
+      const d = (o, k) => p ? (+(o[k] || 0) - (p[k] || 0)) : +(o[k] || 0);   // 셈 칸 날 차 — 마을의 첫 줄은 부팅(셈 0) 뒤 누계(한 번에 돈 판 · 첫 날 몫을 안 버린다)
       const grown = p ? terrN - p.terrN : null;
       const wt = vil._t1207Wait && (vil._t1207Wait.day | 0) === (day | 0) ? vil._t1207Wait.why : null;
       const why = grown == null ? null : grown > 0 ? (wt ? 'grow+' + wt : 'grow') : (tgt != null && terrN >= tgt) ? 'target' : wt ? wt : ((vil._t1238Pend && vil._t1238Pend.length) || (vil._t1207Pend && vil._t1207Pend.length)) ? 'labor' : 'none';
