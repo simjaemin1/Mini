@@ -54,7 +54,10 @@ const Q = {
   Q16: '[기준 공격] 안내가 가리킨 바위 곁에서 맨손으로 자갈을 주울 수 있다(네 마을)',
   Q17: '[기준 공격] 맨손으로 나무를 베려 하면 무엇을 만들어야 하는지 듣는다(재료 이름까지)',
   Q18: '[기준 공격] 집터를 잡은 뒤 가진 것으로 움집 첫 삽을 뜨거나, 못 뜨면 거절이 모자란 것을 칸이 읽을 꼴(`need`)로 준다',
-  Q19: '[기준 공격] 어느 시작 마을이든 도착했을 때 새 사람이 맨손 · 조잡한 도구로 낼 수 있는 의뢰가 판에 하나 이상 있다',
+  // ★[PM land1085 · 재민 11-19 판정(T1368 회부 1)] "온보딩은 그게 맞아.. 서버 오픈 직후에 여는 게 아니라, 평형상태동안 돌린 다음 여는 거야" —
+  //   새 세계 기동 직후 품목이 다 남아도는 마을의 **빈 판 + 촌장 "지금은 급한 일이 없네"** 는 맞는 동작이다(가짜 의뢰 0). 묻는 것을 "어느 마을이든" → "시작 마을 가운데 하나 이상"으로 옮긴다
+  //   (판이 통째로 죽으면 — 낼 수 있는 의뢰가 어디에도 없으면 — 여전히 빨강). 검사 하네스라 구현 세션이 아니라 PM 이 고친다(규약 ⑥).
+  Q19: '[기준 공격 · 재민 11-19] 시작 마을 가운데 하나 이상엔 도착했을 때 새 사람이 맨손 · 조잡한 도구로 낼 수 있는 의뢰가 있다(남아도는 마을의 빈 판은 맞다 — 가짜 의뢰 0)',
 };
 //   ★켬 전용 — 끔 판(종전 온보딩: 의뢰가 시세대로 갚는다 · 안내는 의뢰)에서 빨강이어야 하는 질문(미끼 단언)
 const ONLY_ON = ['Q2', 'Q3', 'Q14', 'Q15'];
@@ -227,7 +230,7 @@ async function oneRun(knob, tag) {
       `집터 값(나무/돌) ${per.map((p, i) => p.v.name + ' ' + costs[i]).join(' · ')} · 갚음 약속 줄 ${repayRows.length}${repayRows.length ? ' — ' + repayRows.slice(0, 4).join(' ') : ''} · 판 줄 ${per.map((p) => p.rows.length).join('/')}`);
     put('Q16', per.every((p) => p.peb === true), per.map((p) => `${p.v.name} ${p.peb === null ? '바위 없음' : p.peb ? '자갈' : '자갈 0'}`).join(' · '));
     const newbieRows = per.map((p) => p.rows.filter((r) => GATHERABLE.has(r.item)).map((r) => r.item));
-    put('Q19', newbieRows.every((x) => x.length > 0), per.map((p, i) => `${p.v.name} [${p.rows.map((r) => r.item).join(',') || '빈 판'}] 낼 수 있는 것 ${newbieRows[i].length}`).join(' · '));
+    put('Q19', newbieRows.some((x) => x.length > 0), per.map((p, i) => `${p.v.name} [${p.rows.map((r) => r.item).join(',') || '빈 판'}] 낼 수 있는 것 ${newbieRows[i].length}`).join(' · '));
     T.villages = Date.now() - t0;
 
     // ⓑ 플레이어 A — 광산 마을(안내 바위 곁 자갈이 나오는 마을 · 없으면 첫 마을)에서 안내대로
