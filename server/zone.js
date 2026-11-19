@@ -12586,7 +12586,10 @@ function _t1389Later(pid) {
 function _t1343Send(pid, force) {
   const p = _t1343Online(pid); if (!p || !p.ws) return;
   const now = _t1332Clock();
-  if (!force && p._t1343Sent && now - p._t1343Sent < 1000) return;
+  if (!force && p._t1343Sent && now - p._t1343Sent < 1000) {   // ★[T1389] 1초 안 두 번째는 1초 끝에 한 번 보낸다(종전 = 버렸다 — 둘째 칸을 잡은 직후 패널이 옛 N 에 머물렀다)
+    if (!p._t1389Trail) { p._t1389Trail = setTimeout(() => { p._t1389Trail = null; try { _t1343Send(pid, true); } catch (e) {} }, 1000); if (p._t1389Trail.unref) p._t1389Trail.unref(); }
+    return;
+  }
   p._t1343Sent = now;
   const mine = _t1332MyChunks(pid), others = _t1343Others(pid); let local = 0; for (const e of mine.values()) local += e.cells.length;
   const N = local + others, out = [];

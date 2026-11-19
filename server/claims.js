@@ -248,7 +248,7 @@ async function scanAbsence() {
       if (online.has(c.ownerPid)) { if (restoreOne(id, c)) moved.push([id, 'active']); continue; }
       const row = rows.get(c.ownerPid);
       if (!row || !Number.isFinite(row.last_seen)) continue;   // 모르면 안 건드린다(안전한 쪽)
-      const want = stageFor(c, now - (row.last_seen | 0));
+      const want = stageFor(c, now - Number(row.last_seen));   // ★[T1389] `| 0` 은 ms 시각(1.8조)을 32비트로 잘라 "2만 날 부재"로 만들었다 — 접속 끊은 모든 주인의 칸이 다음 훑기에 `free`(T45 부터)
       if (want === (c.state || 'active')) continue;
       if (want === 'active') { if (restoreOne(id, c)) moved.push([id, 'active']); continue; }
       // held 로 갈 때만 `held_by` 를 새로 판정한다 — 그 뒤로는 그 판정을 들고 간다.
