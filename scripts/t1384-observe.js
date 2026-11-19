@@ -45,7 +45,7 @@ const DFC = V1.DAILY_FOOD_CONSUMPTION || 1;
 const MARGIN = V2.FORWARD_PRICE_MARGIN_NEV || 0.95;
 const rec = {
   mode: SERVER ? 'server' : 'lab',
-  knobs: { T1384_MINE_FOOD: process.env.T1384_MINE_FOOD || null, T1384_MINE_FOOD_PULL: process.env.T1384_MINE_FOOD_PULL || null, T1384_MINE_FOOD_SELL: process.env.T1384_MINE_FOOD_SELL || null, T1347_FETCH: process.env.T1347_FETCH || null, T784: !!(X && X.T784_CARGO_AGE), T1152: !!(X && X.T1152_TC) },
+  knobs: { T1384_MINE_FOOD: process.env.T1384_MINE_FOOD || null, T1384_FOOD_KEEP: process.env.T1384_FOOD_KEEP || null, T1384_FOOD_ROUTE: process.env.T1384_FOOD_ROUTE || null, T1347_FETCH: process.env.T1347_FETCH || null, T784: !!(X && X.T784_CARGO_AGE), T1152: !!(X && X.T1152_TC) },
   consts: X ? { DFC, CARGO: X.CARGO_PER_TRIP, SPARE: X.TRADE_SPARE_UTIL, CRISIS: X.CRISIS_TRADE_PC, TOL: X.FOOD_PULL_TOL, MARGIN } : null,
   names: null,
   vcols: ['N', 'secF', 'stockEq', 'need', 'prod', 'eaten', 'short', 'surpEMA', 'fdDead', 'dead', 'emig', 'emigLost', 'farmer', 'forager', 'hunter', 'fisher', 'miner', 'smith', 'mason', 'warrior',
