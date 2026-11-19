@@ -141,20 +141,49 @@ function _afterFree(P, cell) {
     if (dk == null || dk >= mx) P._dist.delete(k); else P._dist = null;
   }
 }
+// ★[T1389] 값 같은 빠른 길 — 부르는 쪽이 `claims` 정본(`splitsInt` · `intKey`)을 넘기면(`G` 가 객체) 한 셈 안에서 정수 칸 집합 · 먼 차례 줄을 고쳐 쓴다.
+//   고르는 차례 · 갈라짐 판정은 위 `pickFar` 와 같다(하네스 `test-t1389-deeds-on` 이 무작위 땅 수십 판의 풀림 차례를 견준다).
+function _cmpOf(P) {
+  const dist = P._dist, [hx, hy] = P.home != null ? P.home.split(',').map(Number) : [NaN, NaN];
+  const far = (c) => { const d = dist.get(ck(c.x, c.y)); return d == null ? Infinity : d; };
+  const eu = (c) => (Number.isFinite(hx) ? Math.hypot(c.x - hx, c.y - hy) : 0);
+  return (a, b) => (far(b) - far(a)) || (eu(b) - eu(a)) || (a.x - b.x) || (a.y - b.y);
+}
+function pickFarFast(P, bankrupt, G) {
+  if (!P._S) { P._S = new Set(); P._ik = new Map(); for (const c of P.cells) { const k = G.intKey(c.x, c.y); P._ik.set(c, k); P._S.add(k); } }
+  if (!P._dist || P._distHome !== P.home || !P._order) { P._dist = stepsFrom(P.cells, P.home); P._distHome = P.home; P._order = P.cells.slice().sort(_cmpOf(P)); }
+  const K = G.intKey(1, 0) - G.intKey(0, 0);
+  let first = null;
+  for (const c of P._order) {
+    if (P._gone.has(c) || !bankrupt.has(c.key)) continue;
+    if (!first) first = c;
+    const k = P._ik.get(c); let deg = 0; for (const q of [k + K, k - K, k + 1, k - 1]) if (P._S.has(q)) deg++;
+    if (deg <= 1 || !G.splitsInt(P._S, k)) return c;
+  }
+  P._neck = first;   // 다 목이었다 — ㉡(`T1389_NECK_GIVE`)이 쓸 가장 먼 목 칸
+  return null;
+}
+// ★[T1389 · T1386 회부 1] 복도 막힘 두 안 — ㉠(끔 기본 · 지금대로) 빚을 들고 기다린다 · ㉡(`T1389_NECK_GIVE=1`) 가장 먼 목 칸을 풀고(빚 −PT)
+//   그 칸이 떼어 낸 조각 가운데 집이 안 든 조각을 통째로 내준다(빚은 그 목 칸 몫만 — 떨어진 조각은 걸어 닿을 수 없는 땅이 된 것). 판정 재료(보고 T1389 §1).
+const NECK_GIVE = process.env.T1389_NECK_GIVE === '1';
 const _debtStat = { iters: 0, maxIters: 0, maxFreed: 0, stuck: 0, capped: 0 };
 // ★셈 — P 를 지금까지(빠져나감 · 빚 · 칸 풀림을 일어난 차례대로). onFree(cell, at) = 부르는 쪽이 그 칸을 푼다 · onDrop(chunk) = 빈 청크 줄 지움.
 //   되풀이 상한 = 칸 수 × 2 + 청크 수 × 2 + 8(사건은 청크 바닥남 · 칸 풀림 둘뿐 — 넘으면 멈추고 셈 표에 남긴다).
-function advance(P, now, components, onFree, onDrop) {
+function advance(P, now, components, onFree, onDrop, opt) {   // ★[T1389] opt = { budgetMs, neckGive } · components = `claims.components`(함수 · 종전 길) 또는 `claims` 정본 객체(빠른 길)
   const PT = CFG.PT;
   if (!Number.isFinite(P.debt) || P.debt < 0) P.debt = 0;
   if (Number.isFinite(P.t) && now < P.t) return { freed: 0, iters: 0, stuck: false, capped: false };   // 시각은 거꾸로 안 간다(부팅 벽시계가 셈 시각보다 앞이면 그대로)
   if (!Number.isFinite(P.t)) { let t0 = Infinity; for (const c of P.chunks) if (Number.isFinite(c.t) && c.t < t0) t0 = c.t; P.t = Number.isFinite(t0) ? Math.min(t0, now) : now; }
   for (const c of P.chunks) init(c, now, c.n);
-  P._dist = null; P._comps = undefined; P._compsNext = undefined;
-  let T = P.t, freed = 0, it = 0, stuck = false, capped = false;
+  P._dist = null; P._comps = undefined; P._compsNext = undefined; P._S = null; P._order = null; P._gone = new Set(); P._neck = null;
+  const fast = components && typeof components === 'object' && typeof components.splitsInt === 'function';
+  const give = opt && opt.neckGive != null ? !!opt.neckGive : NECK_GIVE;
+  const budget = opt && opt.budgetMs > 0 ? opt.budgetMs : 0, t0 = budget ? Date.now() : 0;
+  let T = P.t, freed = 0, it = 0, stuck = false, capped = false, done = true;
   const cap = P.cells.length * 2 + P.chunks.length * 2 + 8;
   for (;;) {
     if (++it > cap) { capped = true; break; }
+    if (budget && it > 1 && Date.now() - t0 > budget) { done = false; break; }   // ★[T1389] 틱 예산 — 여기(사건 시각 T)까지 셈하고 다음 틱에 잇는다(같은 차례 · 같은 답)
     const N = P.chunks.reduce((a, c) => a + c.n, 0) + (P.others | 0);
     let R = 0, zc = Infinity, zch = null;
     for (const c of P.chunks) { const r = rateOf(c.n, N); if (!(c.m > 0)) R += r; else if (r > 0) { const z = c.t + c.m / r; if (z < zc) { zc = z; zch = c; } } }
@@ -170,8 +199,15 @@ function advance(P, now, components, onFree, onDrop) {
     if (e === zc) { stuck = false; continue; }   // 청크가 바닥났다 — 다음 고리에서 빚 속도가 붙는다
     // 빚이 한 칸 몫 — 칸 하나를 푼다
     const bankrupt = new Set(); for (const c of P.chunks) if (!(c.m > 0)) bankrupt.add(c.key);
-    const cell = pickFar(P, bankrupt, components);
+    let cell = fast ? pickFarFast(P, bankrupt, components) : pickFar(P, bankrupt, components);
+    if (!cell && give && fast && P._neck) {   // ㉡ — 가장 먼 목 칸 + 집이 안 든 조각 통째로
+      const neck = P._neck; P._neck = null;
+      const lost = _neckPieces(P, neck, components);
+      for (const c of lost) { _dropCell(P, c, e, onFree, onDrop); freed++; }
+      cell = neck; _debtStat.neckGive = (_debtStat.neckGive | 0) + 1;
+    }
     if (!cell) { stuck = true; _debtStat.stuck++; continue; }
+    if (fast) { P._gone.add(cell); P._S.delete(P._ik.get(cell)); }
     P.cells.splice(P.cells.indexOf(cell), 1); _afterFree(P, cell);
     const ch = P.chunks.find((c) => c.key === cell.key);
     ch.n--; ch.m = Math.min(ch.m, capOf(ch.n));
@@ -181,9 +217,24 @@ function advance(P, now, components, onFree, onDrop) {
     if (ch.n <= 0) { P.chunks.splice(P.chunks.indexOf(ch), 1); if (onDrop) onDrop(ch); }
     if (!P.cells.length) { P.debt = 0; break; }
   }
-  P.t = T;
+  P.t = T; P._S = null; P._order = null; P._gone = null; P._ik = null;
   _debtStat.iters += it; if (it > _debtStat.maxIters) _debtStat.maxIters = it; if (freed > _debtStat.maxFreed) _debtStat.maxFreed = freed; if (capped) _debtStat.capped++;
-  return { freed, iters: it, stuck, capped };
+  return { freed, iters: it, stuck, capped, done };
+}
+// ㉡ 의 조각 — 목 칸을 뺀 뒤 집이 든 조각 밖의 칸(집이 없으면 빈 목록 — 목 칸만 푼다)
+function _neckPieces(P, neck, G) {
+  if (P.home == null) return [];
+  const K = G.intKey(1, 0) - G.intKey(0, 0), hk = (() => { const [x, y] = P.home.split(',').map(Number); return G.intKey(x, y); })();
+  const nk = P._ik.get(neck); if (!P._S.has(hk) || hk === nk) return [];
+  const keep = new Set([hk]), st = [hk];
+  while (st.length) { const c = st.pop(); for (const q of [c + K, c - K, c + 1, c - 1]) if (q !== nk && P._S.has(q) && !keep.has(q)) { keep.add(q); st.push(q); } }
+  return P._order.filter((c) => c !== neck && !P._gone.has(c) && !keep.has(P._ik.get(c)));   // 먼 차례 그대로
+}
+function _dropCell(P, c, at, onFree, onDrop) {
+  P._gone.add(c); P._S.delete(P._ik.get(c)); P.cells.splice(P.cells.indexOf(c), 1); _afterFree(P, c);
+  const ch = P.chunks.find((q) => q.key === c.key); ch.n--; ch.m = Math.min(ch.m, capOf(ch.n));
+  if (onFree) onFree(c, at);
+  if (ch.n <= 0) { P.chunks.splice(P.chunks.indexOf(ch), 1); if (onDrop) onDrop(ch); }
 }
 // 들어온 점수 — 빚부터 지우고 남는 것이 그 청크 저축에(상한 = 가득) · 반환 = { paid, saved }
 function addPts(P, ch, pts) {
@@ -202,13 +253,14 @@ function nextEventAt(P) {
 }
 // 내다보기 — P 를 베껴 손 안 대면 언제 첫 칸이 풀리고 · 그 뒤 하루에 몇 칸 · 다음 하루에 풀릴 칸(차례). P 는 안 바뀐다.
 //   멀리 보기 상한 = 한 칸만 남은 땅이 바닥나 풀리는 날(D(1) + PT ÷ 하루 몫 — 식에서 유도).
-function forecast(P, now, components) {
+function forecast(P, now, components, opt) {   // ★[T1389] opt.budgetMs — 넘치면 거기까지 내다본 것만(하루 칸 수가 덜 셀 수 있다 · 셈 자체는 안 바뀐다)
   const Q = { chunks: P.chunks.map((c) => ({ key: c.key, n: c.n, m: c.m, t: c.t })), cells: P.cells.slice(), home: P.home, debt: P.debt, t: P.t, others: P.others | 0 };
   const out = { first: Infinity, perDay: 0, next: [], hits: [] };
   if (!Q.cells.length) return out;
   const horizon = now + (daysOf(1) + CFG.PT / dailyNeed(1)) * CFG.DAY_MS;
   let first = Infinity; const hits = [];
-  const step = (to) => advance(Q, to, components, (cell, at) => { if (!Number.isFinite(first)) first = at; hits.push([cell, at]); });
+  const t0 = Date.now(), left = () => (opt && opt.budgetMs > 0 ? { budgetMs: Math.max(1e-6, opt.budgetMs - (Date.now() - t0)) } : undefined);
+  const step = (to) => advance(Q, to, components, (cell, at) => { if (!Number.isFinite(first)) first = at; hits.push([cell, at]); }, null, left());
   // 첫 풀림 — 사건 시각을 따라 한 걸음씩(첫 칸이 풀리면 멈춘다 · 걸음 수 상한 = advance 의 되풀이 상한)
   const lim = Q.cells.length * 2 + Q.chunks.length * 2 + 8;
   for (let k = 0; k < lim && !Number.isFinite(first); k++) {
@@ -233,4 +285,4 @@ function othersOf(player, zone) { const d = bodyOf(player); if (!d) return 0; le
 function chunkOf(cellX, cellY) { const K = CFG.CHUNK; return [Math.floor(cellX / K), Math.floor(cellY / K)]; }
 
 module.exports = { ON, CFG, daysOf, dailyNeed, capOf, rateOf, init, settle, zeroAt, stageOf, nextAt, add, bodyOf, setZone, othersOf, chunkOf,
-  stepsFrom, pickFar, advance, addPts, nextEventAt, forecast, setDebt, _debtStat };   // ★[T1386] 빚
+  stepsFrom, pickFar, pickFarFast, advance, addPts, nextEventAt, forecast, setDebt, _debtStat, NECK_GIVE };   // ★[T1386] 빚

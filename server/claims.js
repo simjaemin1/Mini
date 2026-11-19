@@ -94,7 +94,35 @@ function adjacencyOf(ownerPid, cx, cy) {
 //     그 사람들은 **아무것도 못 버린다** — 규칙이 소급되는 것과 같다(L-5 위반).
 //   덩이 수는 셀을 빼면 **줄거나(그 셀이 외딴 덩이였다) 그대로(잎)이거나 는다(목)**.
 //   ⇒ 늘면 거절. 그게 정확히 "ㄷ 자의 목을 뺐다"는 뜻이다.
+//   ★[T1389] 값 같게 빠르게 — 칸 열쇠 `"x,y"` 를 한 번만 정수로 풀어(x · y 가 ±2²⁵ 안이면) 정수 열쇠로 훑는다(풀 수 없는 열쇠가 하나라도 있으면 종전 글자 그대로).
+//     덩이 수는 같다(같은 4방 이웃 · 같은 칸 집합 — 하네스 `test-t1389-deeds-on` 이 무작위 집합 수천 개로 종전 글자와 견준다).
+const _IK = 67108864, _IH = 33554432;   // 정수 열쇠 = (x + 2²⁵) × 2²⁶ + (y + 2²⁵) — 2⁵² 안(뜬수 정확)
+function _intSet(set) {
+  const out = new Set();
+  for (const k of set) {
+    if (typeof k !== 'string') return null;
+    const i = k.indexOf(','); if (i <= 0) return null;
+    const x = +k.slice(0, i), y = +k.slice(i + 1);
+    if (!Number.isInteger(x) || !Number.isInteger(y) || Math.abs(x) >= _IH || Math.abs(y) >= _IH || key(x, y) !== k) return null;
+    out.add((x + _IH) * _IK + (y + _IH));
+  }
+  return out;
+}
+function _componentsInt(S) {
+  const seen = new Set(); let n = 0; const st = [];
+  for (const k of S) {
+    if (seen.has(k)) continue;
+    n++; seen.add(k); st.push(k);
+    while (st.length) {
+      const c = st.pop();
+      for (const nk of [c + _IK, c - _IK, c + 1, c - 1]) if (S.has(nk) && !seen.has(nk)) { seen.add(nk); st.push(nk); }
+    }
+  }
+  return n;
+}
 function components(set) {
+  const S = _intSet(set);
+  if (S) return _componentsInt(S);
   const seen = new Set();
   let n = 0;
   for (const k of set) {
@@ -112,6 +140,41 @@ function components(set) {
   }
   return n;
 }
+// ★[T1389] 칸 하나를 빼면 덩이가 느는가 — `components(set − k) > components(set)` 와 같은 답(정수 열쇠 집합 `S` · 칸 열쇠 `k`).
+//   그 칸의 이웃들이 그 칸 없이 서로 이어지는지만 본다: 이웃마다 한 칸씩 번갈아 넓히고(만나면 한 무리), 어느 무리가 다른 무리를 못 만나고
+//   다 넓혔으면 갈라진다 · 모두 만나면 안 갈라진다. 이웃이 하나 이하면 늘 안 갈라진다. 드는 일 = 작은 쪽 조각 크기(종전 = 땅 전체 두 번).
+function splitsInt(S, k) {
+  if (!S.has(k)) return false;
+  const nb = [k + _IK, k - _IK, k + 1, k - 1].filter((q) => S.has(q));
+  if (nb.length <= 1) return false;
+  const par = nb.map((_, i) => i), find = (i) => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+  const owner = new Map(), qs = nb.map((q, i) => { owner.set(q, i); return [q]; }), heads = nb.map(() => 0);
+  let roots = nb.length;
+  const union = (a, b) => { a = find(a); b = find(b); if (a === b) return; par[b] = a; for (let j = heads[b]; j < qs[b].length; j++) qs[a].push(qs[b][j]); qs[b] = []; heads[b] = 0; roots--; };
+  for (;;) {
+    let progressed = false;
+    for (let i = 0; i < nb.length; i++) {
+      if (find(i) !== i) continue;
+      if (heads[i] >= qs[i].length) return true;   // 이 무리는 다 넓혔는데 다른 무리를 못 만났다 = 따로 떨어진 조각
+      const c = qs[i][heads[i]++]; progressed = true;
+      for (const q of [c + _IK, c - _IK, c + 1, c - 1]) {
+        if (q === k || !S.has(q)) continue;
+        const o = owner.get(q);
+        if (o === undefined) { owner.set(q, i); qs[find(i)].push(q); }
+        else if (find(o) !== find(i)) { union(i, o); if (roots === 1) return false; }
+      }
+      if (roots === 1) return false;
+    }
+    if (!progressed) return false;
+  }
+}
+function splitsAt(set, k) {   // 문자열 칸 집합 · 칸 열쇠 — 정수로 풀 수 없으면 종전 술어 그대로
+  const S = _intSet(set);
+  if (S && typeof k === 'string') { const i = k.indexOf(','), x = +k.slice(0, i), y = +k.slice(i + 1); if (Number.isInteger(x) && Number.isInteger(y) && Math.abs(x) < _IH && Math.abs(y) < _IH) return splitsInt(S, (x + _IH) * _IK + (y + _IH)); }
+  if (!set.has(k)) return false;
+  const before = components(set); set.delete(k); const after = components(set); set.add(k); return after > before;
+}
+const intKey = (x, y) => (Math.abs(x) < _IH && Math.abs(y) < _IH ? (x + _IH) * _IK + (y + _IH) : null);
 function unclaimSplits(ownerPid, claimId) {
   const before = mySet(ownerPid);
   const after = mySet(ownerPid, claimId);
@@ -312,7 +375,7 @@ function debug() {
 
 module.exports = {
   CFG, init, ready, start, debug,
-  cellsOf, mySet, components, adjacencyOf, unclaimSplits,
+  cellsOf, mySet, components, adjacencyOf, unclaimSplits, splitsAt, splitsInt, intKey,   // ★[T1389] splitsAt · splitsInt · intKey(값 같은 빠른 갈라짐 술어)
   stageFor, heldByOf, setState, scanAbsence, restoreOne, onPlayerActive,
   takeableBy, succeedFacilities, transfer, chestLocked,
 };

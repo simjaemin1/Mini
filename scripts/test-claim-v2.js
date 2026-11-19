@@ -621,7 +621,7 @@ console.log('\n⑨ ★[T1305 → T1343] 사유지 돌봄(청크 계량기 · 실
   const BAITS = [
     ['gate', '마을 문을 되살린 사본(영토 밖도 마을 사람만)', 'if (_t1305P && !_onbLot) {', 'if (false && _t1305P && !_onbLot) {', ['outsideAny']],
     ['cap', '숫자 상한을 되살린 사본(9 한도)', 'if (!_t1305P && usedCount >= max) {', 'if (usedCount >= max) {', ['noCap']],
-    ['online', '★[T1343] 접속해 있을 때만 줄이는 사본(접속한 날만 세는 꼴)', 'function _t1343Advance(pid, now, noStage) {', 'function _t1343Advance(pid, now, noStage) {\n  if (!_t1343Online(pid)) { const m0 = _t1332MyChunks(pid); return { N: 0, chunks: m0, freed: 0, P: _t1386Build(pid, m0, 0) }; }\n', ['offlineFlows', 'd40']],
+    ['online', '★[T1343] 접속해 있을 때만 줄이는 사본(접속한 날만 세는 꼴)', 'function _t1343Advance(pid, now, noStage, opt) {', 'function _t1343Advance(pid, now, noStage, opt) {\n  if (!_t1343Online(pid)) { const m0 = _t1332MyChunks(pid); return { N: 0, chunks: m0, freed: 0, P: _t1386Build(pid, m0, 0) }; }\n', ['offlineFlows', 'd40']],
     ['flat', '★[T1343] 칸 수에 비례 안 하는 사본(청크 상한 100 고정)', 'const capOf = (n) => CFG.PT * Math.max(0, n | 0);', 'const capOf = (n) => CFG.PT * (n > 0 ? 1 : 0);', ['cap'], 'deeds'],
     ['all', '★[T1343] 전 청크를 한꺼번에 올리는 사본', '  Deeds.addPts(P, w, pts == null ? Deeds.CFG.P_USE : pts);', '  for (const ww of P.chunks) { Deeds.addPts(P, ww, pts == null ? Deeds.CFG.P_USE : pts); ww.row.m = ww.m; }', ['neighborSame']],
   ];
