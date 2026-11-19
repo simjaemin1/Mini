@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress
-// @bait 6
+// @bait 8
 // T1398: 재고 띠 · 주석 유보 · 무기 되실음 · 인구비례 수출 노동 상한 제거.
 // 정본 함수를 아이 프로세스에서 부른다. 미끼는 한 자리만 바꾸고 지정 단언의 빨강을 확인.
 'use strict';
@@ -12,6 +12,8 @@ const BAITS = {
   back: [V2, "return !(v1.T1398_BRONZE_BAND && r === 'weapon') &&", 'return', 'back'],
   hands: [ES, 'return Math.max(1, Math.ceil(casts / COPPER_DERIV_DAYS));', 'return Math.max(1, Math.floor(v.npcs.length * 0.03));', 'hands'],
   labor: [ES, 'const labor = costs.length ? Math.min(...costs) : 0;', 'const labor = 0;', 'band'],
+  copper: [ES, 'if (!_t1333ExportCast(v)) return 0;', 'if ((v.storage.copper || 0) <= v.npcs.length * 3 || !_t1333ExportCast(v)) return 0;', 'hands'],
+  flat: [ES, 'const _cuPC =', 'const tinAmt = TIN_DEPOSIT_YIELD_FLAT; const _cuPC =', 'dead'],
   dead: [ES, 'const _cuPC =', 'const _tinGlut = 0; const _cuPC =', 'dead'],
 };
 if (process.env.T1398_CHILD) {
@@ -75,7 +77,7 @@ function child(arm, mut = '') {
   return JSON.parse(p.stdout);
 }
 function checks(p) { return { band: p.band && p.low && !p.noBuyer && !p.noCu && p.made > 0 && !p.costlyHands, tin: p.tin > 95,
-  back: !p.back && p.armor, hands: p.richHands > p.hands && p.hands > p.smallHands && p.target > 1, dead: p.dead }; }
+  back: !p.back && p.armor, hands: p.richHands > p.hands && p.hands > p.smallHands && p.smallHands > 0 && p.target > 1, dead: p.dead }; }
 let pass = 0, fail = 0;
 function ok(x, msg, detail) { console.log(`${x ? '✓' : '✗'} ${msg}${detail == null ? '' : ' ' + JSON.stringify(detail)}`); x ? pass++ : fail++; }
 try {
@@ -98,8 +100,10 @@ try {
   ok(bait('back'), '미끼 back: back 빨강 · 바꾼 자리 1');
   ok(bait('hands'), '미끼 hands: hands 빨강 · 바꾼 자리 1');
   ok(bait('labor'), '미끼 labor: band 빨강 · 바꾼 자리 1');
+  ok(bait('copper'), '미끼 copper: hands 빨강 · 바꾼 자리 1');
+  ok(bait('flat'), '미끼 flat: dead 빨강 · 바꾼 자리 1');
   ok(bait('dead'), '미끼 dead: dead 빨강 · 바꾼 자리 1');
 
 } catch (e) { ok(false, '실행 오류', e.stack); }
-console.log(`T1398 ${pass}/${pass + fail} ${fail ? 'FAIL' : 'PASS'} · 미끼 6`);
+console.log(`T1398 ${pass}/${pass + fail} ${fail ? 'FAIL' : 'PASS'} · 미끼 8`);
 process.exitCode = fail ? 1 : 0;
