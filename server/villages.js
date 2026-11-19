@@ -4193,6 +4193,8 @@ let _t996Job = null;   // ★[T996] 바탕만 다시 세우는 일 { g, slices, 
 //   값: 바탕은 쓸 때 다시 판정되므로(T977 증서) 있든 없든 행렬은 같다 · 주입 0 · 공유 메모 무접촉(T996 과 같다). 끔 = T996 그대로.
 const T1011_BASIS_LAZY = process.env.T1011_BASIS_LAZY === '1';
 function distBasisRefresh() {
+  //   ★[T1382 ㉤] 다시 뜬 판의 첫 환호 적재가 저장 순간과 같은 도랑(지문 같음)이면 바뀐 것이 없다 — 되돌린 교역로 · 거리 바탕을 그대로 둔다(한 번에 돈 판은 그 순간 적재가 없다 · 끔 = 지문 없음 = 종전)
+  if (_t1382DsKeep != null) { const keep = _t1382DsKeep === _t1327DitchSig(); _t1382DsKeep = null; if (keep) { _t1382RtStat.dsSkip = (_t1382RtStat.dsSkip | 0) + 1; return false; } }
   if (T1327_ROUTE_FIX) _t1327DitchRedig();   // ★[T1327 ⓒ] 환호가 다시 실렸다 — 도랑 칸을 지나는 교역로만 버린다(끔 = 이 줄 무동작)
   if (!T977_DIST_SAME || !T957_DIST_SLICE || !T968_DIST_BG || T598_ROUTE_COST || _T598E) return false;
   if (!state._distBasis || !state._distCtx || !state.world) return false;
@@ -5735,6 +5737,7 @@ const _T1382_RKEYS = ['routeCache', 'routeRedigQ', '_routeRedigGen', '_routeRedi
   '_routePrimed', '_routePrimedKeys', 'walkCache', '_distBasis', 'distDirty', '_distIncrFrom'];
 const _t1382RtStat = { packed: 0, keys: 0, restored: 0, skip: {}, err: null };
 let _t1382RtPend = null;
+let _t1382DsKeep = null;   // ★[T1382 ㉤] 종료 저장의 도랑 지문(다시 뜬 판 첫 환호 적재 한 번만 본다)
 function _t1382RtTake() {
   if (!state._t1340Shut || !T1340_EXACT) return null;
   const C = state._t1340C || (state._t1340C = _t1340Ctx(Date.now())), T = new Map(), o = {};
@@ -5742,13 +5745,18 @@ function _t1382RtTake() {
   const W = state.world; let dm = null;
   if (W && Array.isArray(W._distMatrix)) dm = W._distMatrix.map((r) => Array.from(r, (n) => (Number.isFinite(n) ? n : String(n))));
   _t1382RtStat.packed++;
-  return { at: C.at, ord: Object.keys(o), o, dm };
+  //   도랑 지문(다시 뜬 판의 환호 적재가 같은 도랑을 다시 실을 뿐이면 교역로를 안 버린다 — 아래 `distBasisRefresh`) · 교역 기록(그날 도착 = 첫 물건 셈이 읽는다)
+  const ds = T1327_ROUTE_FIX ? _t1327DitchSig() : null;
+  const tl = W && Array.isArray(W.tradeLog) ? JSON.parse(JSON.stringify(W.tradeLog)) : null;
+  return { at: C.at, ord: Object.keys(o), o, dm, ds, tl };
 }
 function _t1382RtRestore() {
   const X = _t1382RtPend; _t1382RtPend = null; if (!X || !X.o) return;
   const C = state._t1340R || (state._t1340R = _t1340Ctx(Date.now())), T = new Map();
   for (const k of X.ord) { state[k] = _t1372Dec(X.o[k], C, T); _t1382RtStat.restored++; }
   if (Array.isArray(X.dm) && state.world) state.world._distMatrix = X.dm.map((r) => r.map((n) => (typeof n === 'number' ? n : Number(n))));
+  if (X.ds != null) _t1382DsKeep = X.ds;
+  if (Array.isArray(X.tl) && state.world && Array.isArray(state.world.tradeLog) && !state.world.tradeLog.length) { for (const e of X.tl) state.world.tradeLog.push(e); _t1382RtStat.tl = X.tl.length; }
   console.log(`[${state.zoneId}] 🛣️ [T1382] 교역 거리 · 교역로 줄 되돌림 — 칸 ${_t1382RtStat.restored} · 교역로 ${state.routeCache ? state.routeCache.size : 0}쌍 · 다시 파기 줄 ${(state.routeRedigQ || []).length} · 행렬 ${X.dm ? X.dm.length : 0}`);
 }
 function _t1372CarRestore() {
