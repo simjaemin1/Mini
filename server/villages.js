@@ -20198,7 +20198,7 @@ function t742Bind(name, get, set) {
 }
 //   전쟁 번호 계수기 · 전쟁 셈 — econ world 칸인데 메타 행에 없었다. 다시 뜨면 번호가 1 부터 다시 서서 **묶여 남은 징발자의 번호와 겹쳤다**(T742 ③ W380).
 //   번호는 앞으로만(겹친 번호 0) · 셈은 그대로. 진행 중 전쟁 자체(`_warWars`)는 교전 몸에 묶여 싣지 않는다(회부).
-if (T1340_EXACT) t742Bind('vil.t1382Rt', () => _t1382RtTake(), (v) => { if (v && v.o) _t1382RtPend = v; });   // ★[T1382 ㉤] 종료 저장에만 값
+if (T1340_EXACT) t742Bind('vil.t1382Rt', () => { const X = _t1382RtTake(); return X ? JSON.stringify(X) : null; }, (v) => { try { const X = typeof v === 'string' ? JSON.parse(v) : null; if (X && X.o) _t1382RtPend = X; } catch (e) { _t1382RtStat.err = e.message; } });   // ★[T1382 ㉤] 종료 저장에만 값 · 글자째(T740 표식 `$M` 이 열쇠 표 꼴을 먼저 풀지 않게)
 if (T1340_EXACT) t742Bind('vil.t719', () => _t719Take(), (v) => { if (v && typeof v === 'object') _t719Pend = v; });   // ★[T1372 ⓓ] 종료 저장에만 값(그 밖 null)
 t742Bind('world.warSeq', () => (state.world ? state.world._warSeq : null), (v) => { if (state.world && Number.isFinite(+v)) state.world._warSeq = Math.max(state.world._warSeq || 1, +v | 0); });
 t742Bind('world.warStats', () => (state.world ? state.world._warStats : null), (v) => { if (state.world && v && typeof v === 'object') state.world._warStats = v; });
