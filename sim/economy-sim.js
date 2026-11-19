@@ -2327,7 +2327,9 @@ const T1050_LAB_HOUSE = !(typeof process !== 'undefined' && process.env && proce
 //           계절 · 날씨 · 풍흉 배수는 상한에 안 탄다(마을 칸은 배수가 없는 크기 · `applyLandModifiers` 도 size 를 그대로 둔다).
 //   새 수 0 — 25 · 124 · 6 은 서버 · 마을 배치 정본의 수(배치 모듈을 읽는다 · 사본 0). 랩 · 서버 같은 줄(랩은 env 가 없어 켬).
 //   ⚠땔감 몫(fuelK — 나무 배수 0.90 이 벌목 자리 · 1인 산출 둘에 탄다)은 이 카드에서 안 바꾼다(표만 · 재민: 땔감 부족을 없애는 쪽).
-const T1373_HOME_CAP = !(typeof process !== 'undefined' && process.env && process.env.T1373_HOME_CAP === '0');
+// ★[PM land1085 2026-11-19] **끔 기본으로 돌려 착지**('1' 만 켬 · 끔 = 종전 바이트) — land1084(길 고침 켬 기본) 위에서 켬 판 새 기준선이 시드 1020 빈 마을 4/51 · 7 1/51(끔 0 · 0 · 0 · 인구 켬 3,383 · 3,369 · 3,972 : 끔 3,345 · 3,582 · 3,884).
+//   "마을은 하나도 망하면 안 된다"(재민 11-04)와 부딪혀 재민 판정 뒤 켠다(족보 881 · 켬 후보 기준선 `계측/서버기준선_집터켬_후보_2026-11-19.json`).
+const T1373_HOME_CAP = (typeof process !== 'undefined' && process.env && process.env.T1373_HOME_CAP === '1');
 function t1373HomeCap(v) {   // 집터 수 × 가구원 — 마을 칸 ÷ 집터 원반 내림 × 한 집 6명(배치 모듈 없거나 땅 크기 없으면 무한 = 상한 없음)
   const L = _villageLayoutMod();
   if (!L || !L.LOT_CELLS || !(L.LOT_CELLS.length > 0) || !v || !v.land || !(v.land.size > 0)) return Infinity;

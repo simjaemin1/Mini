@@ -73,15 +73,15 @@ const child = (env) => {
   const r = spawnSync(process.execPath, [__filename, '--child'], { env: e, encoding: 'utf8', timeout: 120000 });
   try { return JSON.parse(String(r.stdout).trim().split('\n').pop()); } catch (err) { return { err: (r.stderr || String(err)).slice(0, 300) }; }   // 끝 줄(v2 를 실으면 머리에 안내 한 줄이 먼저 찍힌다)
 };
-const ON = child({});
-const OFF = child({ T1373_HOME_CAP: '0' });
-const NS = child({ T1373_NO_SEASON_YIELD: '1' });
-const BS = child({ T1373_TEST_BAIT: 'slot' });
-const BG = child({ T1373_TEST_BAIT: 'gate' });
+const ON = child({ T1373_HOME_CAP: '1' });   // ★[PM land1085] 끔 기본으로 착지 — 켬 팔은 '1' 을 준다
+const OFF = child({});
+const NS = child({ T1373_HOME_CAP: '1', T1373_NO_SEASON_YIELD: '1' });
+const BS = child({ T1373_HOME_CAP: '1', T1373_TEST_BAIT: 'slot' });
+const BG = child({ T1373_HOME_CAP: '1', T1373_TEST_BAIT: 'gate' });
 
 console.log('① 손잡이');
-ok(ON.on === true, '켬 = 빈 값(켬 기본)', ON.on);
-ok(OFF.on === false, "끔 = '0'", OFF.on);
+ok(ON.on === true, "켬 = '1'", ON.on);
+ok(OFF.on === false, '끔 = 빈 값(끔 기본 — PM land1085)', OFF.on);
 
 console.log('② 집터 수 × 가구원(정본 `t1373HomeCap` · 배치 모듈 두 수로 따로 셈)');
 delete process.env.T1373_HOME_CAP;
@@ -110,7 +110,7 @@ ok(!!(ON.B && OFF.B && JSON.stringify(ON.B) === JSON.stringify(OFF.B) && ON.B.dP
 
 console.log('⑤ 계절 산출 배수 손잡이 `T1373_NO_SEASON_YIELD`(끔 기본 · v2 `SEASON_MULT`)');
 { const W = ON.sea && ON.sea.winter, A = NS.sea, all1 = (o) => !!o && Object.values(o).every((x) => x === 1);
-  ok(!!W && W.fertility === 0.8 && W.water === 0.85 && W.game === 0.9 && W.wood === 0.9 && ON.sea.autumn.fertility === 1.15, '끔(빈 값) = 종전 표(겨울 지력 0.80 · 물 0.85 · 사냥감 0.90 · 나무 0.90 · 가을 지력 1.15)', W);
+  ok(!!W && W.fertility === 0.8 && W.water === 0.85 && W.game === 0.9 && W.wood === 0.9 && ON.sea.autumn.fertility === 1.15, '계절 손잡이 끔(빈 값) = 종전 표(겨울 지력 0.80 · 물 0.85 · 사냥감 0.90 · 나무 0.90 · 가을 지력 1.15)', W);
   ok(!!A && all1(A.winter) && all1(A.spring) && all1(A.autumn) && Object.keys(A.winter).length === 6, "켬('1') = 네 철 여섯 칸 다 1(날씨 · 풍흉 배수는 이 표 밖)", A && A.winter); }
 
 console.log('★미끼 ⓐ — 지우는 몫에 식량 자리를 되돌린 econ 사본');
