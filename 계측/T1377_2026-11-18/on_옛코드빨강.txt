@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 2fcfa78 · 제품(server sim public lab) = 67ef6cd · 시한 600초
+빨강 ○ | test-t1377-onb-default.js | RC=1 · ✓ 4 · ✗ 5 |   ✗ ★env 없음 → 켬(켬 기본)
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

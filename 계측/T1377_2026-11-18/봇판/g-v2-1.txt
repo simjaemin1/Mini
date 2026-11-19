@@ -1,0 +1,91 @@
+
+=== T511 첫 30분 실기 자 — spring-day-panel-own-guide (계절 spring = 게임일 46 · 시작 day · 상한 35분 · 문 260px/지킴 324px) ===
+  기동 — central 264ms · zone 10300ms
+  마을 농촌1(vid 1) · 도착점→중심 1045px · 쉼터→중심 없음(아직)
+  도착 20:29:55 · 어촌2(vid 2) · phase 0.2468 (낮) · 도착점과 0px · 허기 56 갈증 92 · 달력 봄 1일 · 바깥 {"cold":0.4685,"ko":"쌀쌀함","emo":"🌬","night":false,"tempC":18,"shelter":1,"cut":
+  ▣ 0.04분  칸 gather:집터 재료 모으기→
+  ◆  0.09분  물  {"thirst":"91→100","how":"edge"}
+  ◆  0.28분  첫 열매  {"how":"berry_bush","berry":2}
+  ◆  0.28분  첫 섬유  {"how":"berry_bush"}
+  ◆  0.29분  첫 밥  {"how":"berry","hunger":"55→60"}
+  ▷ 0.30분  칸 gather:tree
+  ◆  2.29분  안내 자리(나무)  {"d":809,"alt":true}
+  ▣ 2.31분  칸 tool:조잡한 돌도끼 만들기
+  ◆  2.31분  칸 다음 막힘  {"item":"조잡한 돌도끼 만들기"}
+  ☞ 2.31분  칸 「조잡한 돌도끼 만들기」 조잡한 돌도끼가 있어야 나무를 벨 수 있습니다. 자갈 2개, 잔가지 1개, 풀 2개로 제작 창에서 만들 수 있습니다. 지금 자갈 0개, 잔가지 1개, 풀 1개가 있습니다.
+  ▷ 2.31분  칸 tool:pebble
+  ✗ 12.40분  막힘 [칸] 화면에 안 보여 탐색 누적 6분 — 못 찾음(pebble)
+  ⚠ 20.07분  촌장 문 안 — near=2 greet=true minD=240
+  ⚠ 20.58분  촌장 문 안 — near=null greet=true minD=1105
+  ⚠ 21.08분  촌장 문 안 — near=null greet=true minD=1931
+  ⚠ 21.59분  촌장 문 안 — near=null greet=true minD=3117
+  ⚠ 22.18분  촌장 문 안 — near=null greet=true minD=3360
+  ⚠ 22.69분  촌장 문 안 — near=null greet=true minD=3674
+  ⚠ 23.20분  촌장 문 안 — near=null greet=true minD=4637
+  ⚠ 23.70분  촌장 문 안 — near=null greet=true minD=6214
+  ⚠ 24.20분  촌장 문 안 — near=null greet=true minD=7995
+  ⚠ 24.71분  촌장 문 안 — near=null greet=true minD=9560
+  ⚠ 25.23분  촌장 문 안 — near=null greet=true minD=8262
+  ⚠ 25.74분  촌장 문 안 — near=null greet=true minD=6751
+  ⚠ 26.25분  촌장 문 안 — near=null greet=true minD=5448
+  ⚠ 26.76분  촌장 문 안 — near=null greet=true minD=4420
+  ✗ 27.15분  막힘 [열매] 화면에 안 보여 탐색 누적 6분 — 못 찾음(berry)
+  ▷ 27.29분  칸 tool:crude_axe
+  ◆  27.3분  조잡한 돌도끼(칸 따라 손 제작)
+  ▣ 27.30분  칸 tool:조잡한 돌도끼 손에 들기
+  ☞ 27.30분  칸 「조잡한 돌도끼 손에 들기」 조잡한 돌도끼를 손에 들어야 나무를 벨 수 있습니다. 가방에서 골라 손에 드십시오. 가방은 [I] 키로 엽니다.
+  ▣ 27.30분  칸 gather:집터 재료 모으기→
+  ▷ 27.30분  칸 gather:tree
+  ▷ 27.52분  화살 자리 못 감(nopath)
+  ◆ 27.56분  첫 통나무  {"how":"tree","wood":6}
+  ▷ 27.56분  칸 gather:rock
+  ▷ 27.77분  화살 자리 못 감(nopath)
+  ▷ 27.77분  화살 끝 · 둘레 rock 못 닿음
+  ▷ 28.00분  화살 자리 못 감(nopath)
+  ▷ 28.00분  화살 끝 · 둘레 rock 못 닿음
+  ▷ 28.23분  화살 자리 못 감(nopath)
+  ▷ 28.23분  화살 끝 · 둘레 rock 못 닿음
+  ▷ 28.46분  화살 자리 못 감(nopath)
+  ▷ 28.46분  화살 끝 · 둘레 rock 못 닿음
+  ▷ 28.69분  화살 자리 못 감(nopath)
+  ▷ 28.69분  화살 끝 · 둘레 rock 못 닿음
+  ▷ 28.92분  화살 자리 못 감(nopath)
+  ▷ 28.92분  화살 끝 · 둘레 rock 못 닿음
+  ⚠ 28.94분  촌장 문 안 — near=null greet=true minD=3876
+  ⚠ 29.45분  촌장 문 안 — near=null greet=true minD=4809
+  ⚠ 29.95분  촌장 문 안 — near=null greet=true minD=4817
+  ⚠ 30.46분  촌장 문 안 — near=null greet=true minD=5822
+  ⚠ 30.98분  촌장 문 안 — near=null greet=true minD=6474
+  ⚠ 31.49분  촌장 문 안 — near=null greet=true minD=6411
+  ⚠ 31.99분  촌장 문 안 — near=null greet=true minD=6151
+  ⚠ 32.50분  촌장 문 안 — near=null greet=true minD=6121
+  ⚠ 33.01분  촌장 문 안 — near=null greet=true minD=5159
+  ⚠ 33.51분  촌장 문 안 — near=null greet=true minD=5163
+  ⚠ 34.02분  촌장 문 안 — near=null greet=true minD=5848
+  ⚠ 34.53분  촌장 문 안 — near=null greet=true minD=7345
+  ✗ 35.00분  막힘 [첫 잠자리] 공용 쉼터가 한 번도 화면에 안 보였다
+  ✗ 35.00분  막힘 [첫 도구] 30분 안 미도달
+  ✗ 35.00분  막힘 [첫 불] 30분 안 미도달
+
+  ── spring-day-panel-own-guide 요약 ──
+     0.09분  물
+     0.28분  첫 열매
+     0.28분  첫 섬유
+     0.29분  첫 밥
+     2.29분  안내 자리(나무)
+     2.31분  칸 다음 막힘
+     27.3분  조잡한 돌도끼(칸 따라 손 제작)
+    27.56분  첫 통나무
+   막힘 [칸] 화면에 안 보여 탐색 누적 6분 — 못 찾음(pebble)
+   막힘 [열매] 화면에 안 보여 탐색 누적 6분 — 못 찾음(berry)
+   막힘 [첫 잠자리] 공용 쉼터가 한 번도 화면에 안 보였다
+   막힘 [첫 도구] 30분 안 미도달
+   막힘 [첫 불] 30분 안 미도달
+   몸 hunger: 1단계 첫 넘김 5.1분 · 최고 2단계 · 풀림 11.2분
+   몸 thirst: 1단계 첫 넘김 없음 · 최고 0단계
+   몸 cold: 1단계 첫 넘김 없음 · 최고 0단계
+   몸 fatigue: 1단계 첫 넘김 없음 · 최고 0단계
+   몸 injury: 1단계 첫 넘김 없음 · 최고 0단계
+   렌더 fps(창 320×200 · 눈 1280×800) 최저 30.4 · 하위10% 44.8 · 중앙 56.4 · 20 밑 0/375표본
+   걸음 89795px / 1423s = 63.1px/s · 탐색 44다리 1356s · 문 침범 26 · 문에서 최소 237px · 오류 0
+   → /tmp/t1377/g-v2-1.json

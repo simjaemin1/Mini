@@ -1,0 +1,168 @@
+
+=== T511 첫 30분 실기 자 — spring-day-panel-own-guide (계절 spring = 게임일 46 · 시작 day · 상한 35분 · 문 260px/지킴 324px) ===
+  기동 — central 651ms · zone 11608ms
+  마을 농촌1(vid 1) · 도착점→중심 1045px · 쉼터→중심 없음(아직)
+  도착 00:52:09 · 임업2(vid 3) · phase 0.1731 (낮) · 도착점과 0px · 허기 56 갈증 92 · 달력 봄 1일 · 바깥 {"cold":0.4685,"ko":"쌀쌀함","emo":"🌬","night":false,"tempC":18,"shelter":1,"cut":
+  ▣ 0.07분  칸 gather:집터 재료 모으기→
+  ◆  0.13분  물  {"thirst":"91→100","how":"edge"}
+  ◆   0.9분  첫 열매  {"how":"berry_bush","berry":2}
+  ◆   0.9분  첫 섬유  {"how":"berry_bush"}
+  ◆   0.9분  첫 밥  {"how":"berry","hunger":"54→59"}
+  ▷ 0.91분  칸 gather:tree
+  ⚠ 1.09분  촌장 문 안 — near=3 greet=false minD=249
+  ◆  1.56분  안내 자리(나무)  {"d":0,"alt":false}
+  ⚠ 1.63분  촌장 문 안 — near=null greet=true minD=1080
+  ⚠ 2.14분  촌장 문 안 — near=null greet=true minD=778
+  ▣ 2.24분  칸 tool:조잡한 돌도끼 만들기
+  ◆  2.24분  칸 다음 막힘  {"item":"조잡한 돌도끼 만들기"}
+  ☞ 2.24분  칸 「조잡한 돌도끼 만들기」 조잡한 돌도끼가 있어야 나무를 벨 수 있습니다. 자갈 2개, 잔가지 1개, 풀 2개로 제작 창에서 만들 수 있습니다. 지금 자갈 0개, 잔가지 1개, 풀 1개가 있습니다.
+  ▷ 2.24분  칸 tool:pebble
+  ⚠ 2.64분  촌장 문 안 — near=null greet=true minD=2096
+  ⚠ 3.15분  촌장 문 안 — near=null greet=true minD=3131
+  ⚠ 3.67분  촌장 문 안 — near=null greet=true minD=3994
+  ⚠ 4.17분  촌장 문 안 — near=null greet=true minD=4998
+  ⚠ 4.68분  촌장 문 안 — near=null greet=true minD=5962
+  ⚠ 5.19분  촌장 문 안 — near=null greet=true minD=7042
+  ⚠ 5.69분  촌장 문 안 — near=null greet=true minD=8550
+  ⚠ 6.21분  촌장 문 안 — near=null greet=true minD=10089
+  ⚠ 6.71분  촌장 문 안 — near=null greet=true minD=11051
+  ⚠ 7.22분  촌장 문 안 — near=null greet=true minD=11916
+  ⚠ 7.72분  촌장 문 안 — near=null greet=true minD=12614
+  ⚠ 8.22분  촌장 문 안 — near=null greet=true minD=12802
+  ⚠ 8.74분  촌장 문 안 — near=null greet=true minD=13720
+  ⚠ 9.24분  촌장 문 안 — near=null greet=true minD=14579
+  ⚠ 9.75분  촌장 문 안 — near=null greet=true minD=15669
+  ⚠ 10.25분  촌장 문 안 — near=null greet=true minD=15934
+  ▷ 10.35분  칸 tool:crude_axe
+  ◆ 10.36분  조잡한 돌도끼(칸 따라 손 제작)
+  ▣ 10.36분  칸 tool:조잡한 돌도끼 손에 들기
+  ☞ 10.36분  칸 「조잡한 돌도끼 손에 들기」 조잡한 돌도끼를 손에 들어야 나무를 벨 수 있습니다. 가방에서 골라 손에 드십시오. 가방은 [I] 키로 엽니다.
+  ▣ 10.37분  칸 gather:집터 재료 모으기→
+  ▷ 10.37분  칸 gather:tree
+  ⚠ 10.76분  촌장 문 안 — near=null greet=true minD=15447
+  ⚠ 11.28분  촌장 문 안 — near=null greet=true minD=14114
+  ⚠ 11.79분  촌장 문 안 — near=null greet=true minD=12852
+  ⚠ 12.29분  촌장 문 안 — near=null greet=true minD=11561
+  ⚠ 12.80분  촌장 문 안 — near=null greet=true minD=10068
+  ⚠ 13.31분  촌장 문 안 — near=null greet=true minD=8148
+  ⚠ 13.81분  촌장 문 안 — near=null greet=true minD=6293
+  ⚠ 14.32분  촌장 문 안 — near=null greet=true minD=4809
+  ⚠ 14.83분  촌장 문 안 — near=null greet=true minD=3278
+  ⚠ 15.34분  촌장 문 안 — near=null greet=true minD=1983
+  ◆ 15.71분  첫 통나무  {"how":"tree","wood":8}
+  ⚠ 15.85분  촌장 문 안 — near=null greet=true minD=878
+  ⚠ 16.36분  촌장 문 안 — near=null greet=true minD=1355
+  ⚠ 16.88분  촌장 문 안 — near=null greet=true minD=2366
+  ⚠ 17.38분  촌장 문 안 — near=null greet=true minD=3155
+  ⚠ 17.89분  촌장 문 안 — near=null greet=true minD=4122
+  ▷ 18.01분  칸 gather:rock
+  ⚠ 18.39분  촌장 문 안 — near=null greet=true minD=3347
+  ⚠ 18.90분  촌장 문 안 — near=null greet=true minD=2040
+  ◆ 19.41분  안내 자리(바위)  {"d":0,"alt":false}
+  ▣ 19.43분  칸 tool:조잡한 돌괭이 만들기
+  ☞ 19.43분  칸 「조잡한 돌괭이 만들기」 조잡한 돌괭이가 있어야 돌을 캘 수 있습니다. 자갈 3개, 잔가지 1개, 풀 2개로 제작 창에서 만들 수 있습니다. 자갈은 바위 곁에서 맨손으로 주울 수 있습니다. 지금 자갈 2개, 잔가지 6개, 풀 4개가 있습니다.
+  ▷ 19.43분  칸 tool:pebble
+  ▷ 19.55분  칸 tool:crude_pick
+  ◆ 19.56분  조잡한 돌괭이(칸 따라 손 제작)
+  ▣ 19.56분  칸 tool:조잡한 돌괭이 손에 들기
+  ☞ 19.56분  칸 「조잡한 돌괭이 손에 들기」 조잡한 돌괭이를 손에 들어야 돌을 캘 수 있습니다. 가방에서 골라 손에 드십시오. 가방은 [I] 키로 엽니다.
+  ▣ 19.57분  칸 gather:집터 재료 모으기→
+  ▷ 19.57분  칸 gather:rock
+  ◆ 19.61분  첫 돌  {"how":"rock"}
+  ▣ 19.61분  칸 claim:집터 잡기
+  ▷ 19.61분  칸 claim:
+  ⚠ 19.68분  촌장 문 안 — near=null greet=true minD=847
+  ◆ 19.94분  집터  {"x":36799,"y":99559,"cost":{"wood":3,"stone":2}}
+  ▣ 19.94분  칸 build:움집 짓기
+  ▷ 19.94분  칸 hut:
+  ▣ 20.13분  칸 tool:바위 채굴
+  ☞ 20.13분  칸 「바위 채굴」 곡괭이를 만들려면 나무 3개, 돌 5개가 있어야 합니다. 지금 나무 5개, 돌 0개가 있습니다. 바위 곁에서 [E] 키로 돌을 캘 수 있습니다.
+  ⚠ 20.20분  촌장 문 안 — near=null greet=true minD=1454
+  ▷ 20.34분  칸 tool:stone
+  ▣ 20.71분  칸 tool:곡괭이 만들기
+  ☞ 20.71분  칸 「곡괭이 만들기」 재료가 다 있습니다. 제작 창에서 곡괭이를 만드십시오. 제작 창은 [K] 키로 엽니다.
+  ▷ 20.71분  칸 tool:pickaxe
+  ◆ 20.72분  곡괭이(손 제작)
+  ▣ 20.72분  칸 build:움집 짓기→
+  ▷ 20.72분  칸 goto:build
+  ⚠ 20.73분  촌장 문 안 — near=null greet=true minD=979
+  ◆ 20.82분  안내 자리(내 터)
+  ▣ 20.82분  칸 build:움집 짓기
+  ▷ 20.82분  칸 hut:
+  ◆ 20.85분  움집터(① 굴착)
+  ▣ 20.85분  칸 rest:쉬어 가기
+  ◆ 21.11분  도끼(손 제작)
+  ⚠ 21.26분  촌장 문 안 — near=null greet=true minD=1050
+  ◆ 21.54분  움집 ② 단계
+  ⚠ 21.77분  촌장 문 안 — near=null greet=true minD=1223
+  ⚠ 22.27분  촌장 문 안 — near=null greet=true minD=2076
+  ⚠ 22.79분  촌장 문 안 — near=null greet=true minD=2668
+  ⚠ 23.29분  촌장 문 안 — near=null greet=true minD=2070
+  ⚠ 23.79분  촌장 문 안 — near=null greet=true minD=1408
+  ◆ 23.87분  움집 ③ 단계
+  ⚠ 24.31분  촌장 문 안 — near=null greet=true minD=2250
+  ⚠ 24.81분  촌장 문 안 — near=null greet=true minD=3699
+  ⚠ 25.32분  촌장 문 안 — near=null greet=true minD=4289
+  ▣ 25.71분  칸 build:움집 짓기→
+  ▷ 25.71분  칸 goto:build
+  ⚠ 25.82분  촌장 문 안 — near=null greet=true minD=4954
+  ⚠ 26.33분  촌장 문 안 — near=null greet=true minD=3499
+  ⚠ 26.84분  촌장 문 안 — near=null greet=true minD=1982
+  ▣ 27.06분  칸 rest:쉬어 가기
+  ⚠ 27.34분  촌장 문 안 — near=null greet=true minD=1009
+  ⚠ 27.86분  촌장 문 안 — near=null greet=true minD=1309
+  ⚠ 28.36분  촌장 문 안 — near=null greet=true minD=1945
+  ◆ 28.43분  첫 갈대  {"fiber":1}
+  ▣ 28.48분  칸 build:움집 짓기→
+  ⚠ 28.87분  촌장 문 안 — near=null greet=true minD=1026
+  ⚠ 29.38분  촌장 문 안 — near=null greet=true minD=1083
+  ▣ 29.45분  칸 rest:쉬어 가기
+  ⚠ 29.88분  촌장 문 안 — near=null greet=true minD=604
+  ⚠ 30.39분  촌장 문 안 — near=null greet=true minD=1886
+  ▣ 30.79분  칸 build:움집 짓기→
+  ⚠ 30.90분  촌장 문 안 — near=null greet=true minD=2232
+  ⚠ 31.40분  촌장 문 안 — near=null greet=true minD=1050
+  ▣ 31.64분  칸 rest:쉬어 가기
+  ⚠ 31.90분  촌장 문 안 — near=null greet=true minD=1670
+  ⚠ 32.41분  촌장 문 안 — near=null greet=true minD=2004
+  ⚠ 32.91분  촌장 문 안 — near=null greet=true minD=2535
+  ⚠ 33.41분  촌장 문 안 — near=null greet=true minD=3074
+  ⚠ 33.92분  촌장 문 안 — near=null greet=true minD=4011
+  ⚠ 34.43분  촌장 문 안 — near=null greet=true minD=4773
+  ▣ 34.59분  칸 build:움집 짓기→
+  ⚠ 34.93분  촌장 문 안 — near=null greet=true minD=4389
+  ✗ 35.02분  막힘 [첫 잠자리] 공용 쉼터가 한 번도 화면에 안 보였다
+  ✗ 35.02분  막힘 [첫 도구] 30분 안 미도달
+  ✗ 35.02분  막힘 [첫 불] 30분 안 미도달
+
+  ── spring-day-panel-own-guide 요약 ──
+     0.13분  물
+      0.9분  첫 열매
+      0.9분  첫 섬유
+      0.9분  첫 밥
+     1.56분  안내 자리(나무)
+     2.24분  칸 다음 막힘
+    10.36분  조잡한 돌도끼(칸 따라 손 제작)
+    15.71분  첫 통나무
+    19.41분  안내 자리(바위)
+    19.56분  조잡한 돌괭이(칸 따라 손 제작)
+    19.61분  첫 돌
+    19.94분  집터
+    20.72분  곡괭이(손 제작)
+    20.82분  안내 자리(내 터)
+    20.85분  움집터(① 굴착)
+    21.11분  도끼(손 제작)
+    21.54분  움집 ② 단계
+    23.87분  움집 ③ 단계
+    28.43분  첫 갈대
+   막힘 [첫 잠자리] 공용 쉼터가 한 번도 화면에 안 보였다
+   막힘 [첫 도구] 30분 안 미도달
+   막힘 [첫 불] 30분 안 미도달
+   몸 hunger: 1단계 첫 넘김 8.2분 · 최고 1단계 · 풀림 18.0분
+   몸 thirst: 1단계 첫 넘김 8.8분 · 최고 1단계 · 풀림 9.1분
+   몸 cold: 1단계 첫 넘김 없음 · 최고 0단계
+   몸 fatigue: 1단계 첫 넘김 없음 · 최고 0단계
+   몸 injury: 1단계 첫 넘김 없음 · 최고 0단계
+   렌더 fps(창 320×200 · 눈 1280×800) 최저 10.8 · 하위10% 30.6 · 중앙 45.4 · 20 밑 2/418표본
+   걸음 99541px / 1755.3s = 56.7px/s · 탐색 63다리 866s · 문 침범 67 · 문에서 최소 176px · 오류 0
+   → /tmp/t1377/g-v3-5.json

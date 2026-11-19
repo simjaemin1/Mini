@@ -116,8 +116,15 @@ const PANELBOT = argv.includes('--panel-bot');
 //   본판 차례에 "집터"가 든다(몸 · 불 앞 칸 다음 · 첫 도구 앞) — 집터 값(서버 상태 `own.cost`)이 짐에 차면 C 키 한 번(사람 손) · 서버가 영토 안이라 거절하면
 //   가장 가까운 마을에서 멀어지는 쪽으로 걷고 다시 · 터가 서면(받은 사유지) '집터' 마일스톤. 재료 길은 종전 손(나무 · 바위 · 도구 문은 칸이 말한다 — `--panel-bot` 과 같이 쓴다).
 const OWN = argv.includes('--own');   // ★[T1120] 「지금 할 일」을 읽는 손(머리 주석)
+// ★[T1377 · T1368 회부 5] `--guide`(`--own --panel-bot` 과 같이) — 칸이 화살로 가리키는 자리(나무 · 바위 · 내 터)를 **실제로 따라간다**.
+//   종전 손은 칸이 '도구' 단계일 때만 칸을 따르고 재료는 화면에 보이는 소스를 제 차례로 찾았다(사람 손의 분이 아니었다).
+//   켜면 본판 차례가 칸 한 벌(`lib-onb-guide.guideAct` — 안내 글의 구조 · 화살 · 단추만 읽는다)로 바뀐다:
+//   물 · 먹기 · 쬐기 · 추우면 불 · 열매(몸) > 칸이 말한 한 수 > 내 움집 사다리 > 잠자리 · 불(칸 밖 일은 움집 뒤로).
+//   움집 첫 삽 전 곡괭이는 미리 안 만든다 — 터파기를 눌러 보고 서버 거절(`need`)이 칸에 뜨면 그것을 따른다(사람 손).
+const GUIDE = argv.includes('--guide') && OWN && PANELBOT;
+const { guideAct } = require('./lib-onb-guide');
 const CPORT = PB, ZPORT = PB + 10, IPORT = PB + 47;
-const TAG = `${SEASON}-${START}${PANELBOT ? '-panel' : ''}${OWN ? '-own' : ''}${CHIEF ? '-chief' : ''}${QFIX ? 'Q' : ''}${ECON_DAYS ? 'E' + ECON_DAYS : ''}${WARMDB ? 'L' + WARMDB : ''}`;
+const TAG = `${SEASON}-${START}${PANELBOT ? '-panel' : ''}${OWN ? '-own' : ''}${GUIDE ? '-guide' : ''}${CHIEF ? '-chief' : ''}${QFIX ? 'Q' : ''}${ECON_DAYS ? 'E' + ECON_DAYS : ''}${WARMDB ? 'L' + WARMDB : ''}`;
 const say = (s) => process.stdout.write(s + '\n');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 if (!['spring', 'summer', 'winter', 'autumn'].includes(SEASON) || !['day', 'night'].includes(START)) { say('인자 오류'); process.exit(2); }
@@ -470,12 +477,12 @@ function inPoly(x, y) {   // 볼록 사각형(화면 → 월드 사영) — 부�
 // ── 촌장 문 ────────────────────────────────────────────────────────────────────
 //   두 고리 — 굳은 고리(문 + 24px: 절대 안 든다 · 이미 안이면 **지금보다 더 들어가지 않는다**) ·
 //   무른 고리(`KEEP` = 문 + 64px: 목표로 안 고르고 길은 비싸게 · 셀 중심 경로의 흔들림 여유).
-//   촌장 판은 고리가 없다(어디든 간다).
+//   촌장 판은 고리가 없다(어디든 간다). ★[T1377] `--guide` 도 없다 — 칸의 화살이 문 안(마을 곁 나무 · 바위)을 가리키면 사람은 거기로 간다(침범 수는 그대로 센다).
 let VILS = [];           // [{vid,name,ax,ay}] 존 로컬 앵커
 let keepCtx = [];
 let startInKeep = false;
 function keepPrep(from) {
-  keepCtx = CHIEF ? [] : VILS.map((v) => { const d = Math.hypot(from.x - v.ax, from.y - v.ay); return { vid: v.vid, ax: v.ax, ay: v.ay, hard: Math.min(C.GATE + 24, d - 8), soft: KEEP }; });
+  keepCtx = (CHIEF || GUIDE) ? [] : VILS.map((v) => { const d = Math.hypot(from.x - v.ax, from.y - v.ay); return { vid: v.vid, ax: v.ax, ay: v.ay, hard: Math.min(C.GATE + 24, d - 8), soft: KEEP }; });
   startInKeep = keepState(from.x, from.y) >= 1;
 }
 function keepState(x, y) { let st = 0; for (const v of keepCtx) { const d = Math.hypot(x - v.ax, y - v.ay); if (d < v.hard) return 2; if (d < v.soft) st = 1; } return st; }
@@ -877,6 +884,14 @@ async function fetchOne(item, want) {   // ★[T1126] want — 칸이 말한 만
   const rs = visRes(src.res);
   const fc = src.forage ? forageCells(src.forage) : [];
   const cand = byDist(me, rs.map((r) => ({ r, p: r })).concat(fc.map((c) => ({ c, p: ctr(c.x, c.y) }))), (o) => o.p);
+  if (!cand.length && GUIDE) {   // ★[T1377] 화면에 없으면 화살이 데려갔던 자리로 먼저(사람의 기억 · fetchMissing 과 같은 손)
+    const res = item === 'wood' ? 'tree' : (item === 'stone' || item === 'pebble') ? 'rock' : null, m = res && arrowMem[res];
+    if (m && Math.hypot(m.x - me.x, m.y - me.y) >= 96) {
+      const w = await walkTo(standAround(m.x, m.y, 96).filter((g) => !blockedCell(g.x, g.y)), 20);
+      R.notes.push(`${tSec()}s [${CUR}] 화살이 데려갔던 ${res} 자리로 돌아감 ${w.ok ? '' : w.reason}`);
+      if (w.ok) return true;
+    }
+  }
   if (!cand.length) { if (PANELBOT && await tryGated([item])) return true; return explore(item); }   // ★[T1120] 맨손으로 못 따는 소스만 있으면 한 번 눌러 본다
   const o = cand[0].a;
   if (o.r) {
@@ -921,6 +936,16 @@ async function fetchMissing(need) {   // need = {item: n} — 모자란 것 중 
     const src = SRC[it]; if (!src) continue;
     for (const r of visRes(src.res)) { const d = Math.hypot(r.x - me.x, r.y - me.y); if (!best || d < best.d) best = { it, r, d }; }
     if (src.forage) for (const c of forageCells(src.forage)) { const p = ctr(c.x, c.y); const d = Math.hypot(p.x - me.x, p.y - me.y) + 64; if (!best || d < best.d) best = { it, c, d }; }
+  }
+  //   ★[T1377] `--guide` — 화면에 없으면 칸 화살이 데려갔던 자리(전에 베고 캔 그 나무 · 바위 곁)로 먼저 돌아간다(사람의 기억 · 탐색보다 앞)
+  if (!best && GUIDE) {
+    for (const it of miss) {
+      const res = it === 'wood' ? 'tree' : it === 'stone' ? 'rock' : null, m = res && arrowMem[res];
+      if (!m || Math.hypot(m.x - me.x, m.y - me.y) < 96) continue;
+      const w = await walkTo(standAround(m.x, m.y, 96).filter((g) => !blockedCell(g.x, g.y)), 20);
+      R.notes.push(`${tSec()}s [${CUR}] 화살이 데려갔던 ${res} 자리로 돌아감 ${w.ok ? '' : w.reason}`);
+      if (w.ok) return true;
+    }
   }
   if (!best) { if (PANELBOT && await tryGated(miss)) return true; return explore(miss.join('+')); }   // ★[T1120] 맨손으로 못 따는 소스만 있으면 한 번 눌러 본다
   if (best.r) {
@@ -1003,6 +1028,74 @@ async function followPanel(n) {
   return fetchOne(st.what, mk ? { [st.what]: mk[st.what] || 1 } : null);   // fetch(맨손 줍기) · gather(손에 든 도구로 캐기) — 그 품목을 가장 가까운 소스에서
 }
 
+// ★[T1377] 칸 한 수(`guideAct`)를 손으로 — 화살 자리로 걸어가 그것을 E · 단추 · 터 안으로.
+//   화살 자리(절대)는 존 로컬로 옮긴다(`A2L`). 그 자리에 선 개체(나무 · 바위)는 화면이 보여 주는 것(`RES`)에서 화살 끝에 가장 가까운 것.
+//   맨손이면 그 개체를 눌러 본다(서버 거절 → 칸이 도구 막힘을 잇는다). 같은 화살에 세 번 못 닿으면 그 품목은 종전 손(`fetchOne`)으로 넘긴다.
+const guideTries = new Map();
+const arrowMem = {};   // ★[T1377] 화살이 데려가 실제로 베고 캔 자리(종 → 존 로컬)
+let guideSig = '';
+async function guideStep(a) {
+  if (!a) return false;
+  { const sig = `${a.do}:${a.res || a.why || (a.step && a.step.what) || ''}`; if (sig !== guideSig) { guideSig = sig; say(`  ▷ ${(tSec() / 60).toFixed(2)}분  칸 ${sig}`); } }
+  (R.guide || (R.guide = [])).push({ t: tSec(), do: a.do, res: a.res || null, why: a.why || null, target: a.target ? { x: Math.round(a.target.x), y: Math.round(a.target.y) } : null });
+  if (a.do === 'tool') return followPanel(_pnLast);
+  if (a.do === 'claim') return claimStep();
+  if (a.do === 'hut') return hutStep();
+  const tl = A2L(a.target);
+  if (a.do === 'goto') {
+    //   터 안으로 — 터 칸(개인 사유지는 한 칸일 수 있다) 그 자체를 목표로 · 작은 허용(칸 안에 서야 "터 안"이다) · 막혔으면 둘레
+    const c0 = cellOf(tl);
+    dyn.delete(ck(c0.x, c0.y));   // 걸려 본 칸 표가 제 터 칸을 막고 있으면 푼다(터는 서 있던 칸이다)
+    let w = blockedCell(c0.x, c0.y) ? { ok: false, reason: 'blocked' } : await walkTo([c0], 6);
+    if (!w.ok) w = await walkTo(standAround(tl.x, tl.y, 40).filter((g) => !blockedCell(g.x, g.y)), 20);
+    if (!R.milestones[`안내 자리(${a.why === 'build' ? '내 터' : '빈터'})`] && w.ok) mark(`안내 자리(${a.why === 'build' ? '내 터' : '빈터'})`);
+    if (!w.ok) R.notes.push(`${tSec()}s [칸] 화살 자리(${a.why})에 못 감 ${w.reason}`);
+    else {   // 닿았는데 칸이 아직 화살을 주면(터 밖) — 그 자리 · 칸을 적는다(자 진단)
+      const me = await meL(); const pn = await panelNow();
+      if (pn && pn.target) { R.notes.push(`${tSec()}s [칸] 화살 자리(${a.why}) 닿음 · 칸은 아직 화살 — 나 ${Math.round(me.x)},${Math.round(me.y)} · 목표 ${Math.round(tl.x)},${Math.round(tl.y)} · 칸 ${c0.x},${c0.y} 막힘 ${blockedCell(c0.x, c0.y)}`); say(`  ▷ ${(tSec() / 60).toFixed(2)}분  터 곁인데 칸이 화살(나 ${Math.round(me.x - tl.x)},${Math.round(me.y - tl.y)})`); }
+    }
+    return true;
+  }
+  // gather — 화살 끝의 나무 · 바위
+  const k = `${a.res}:${Math.round(tl.x)}:${Math.round(tl.y)}`, n = (guideTries.get(k) || 0) + 1; guideTries.set(k, n);
+  const cost = await ev(() => (window.__onbState && window.__onbState.own && window.__onbState.own.cost) || null).catch(() => null);
+  const want = cost && cost[a.item] ? { [a.item]: cost[a.item] } : null;
+  if (n > 6) { R.notes.push(`${tSec()}s [칸] 화살 자리 ${a.res} 여섯 번 못 닿음 — 종전 손`); return fetchOne(a.item, want); }
+  await look();
+  //   화살 끝 둘레(160px)의 같은 종 개체 — 화살 끝에 가까운 차례(사람도 막힌 나무 곁 나무를 벤다) · 못 가 본 것은 뺀다
+  const near = () => RES.filter((r) => r.on && r.t === a.res && !unreach.has(r.id) && Math.hypot(r.x - tl.x, r.y - tl.y) <= 160)
+    .sort((p, q) => Math.hypot(p.x - tl.x, p.y - tl.y) - Math.hypot(q.x - tl.x, q.y - tl.y));
+  let cs = near();
+  if (!cs.length) {
+    const w = await walkTo(standAround(tl.x, tl.y, STAND + 24).filter((g) => !blockedCell(g.x, g.y)), 16);
+    if (!w.ok) { R.notes.push(`${tSec()}s [칸] 화살 자리(${a.res})에 못 감 ${w.reason}`); say(`  ▷ ${(tSec() / 60).toFixed(2)}분  화살 자리 못 감(${w.reason})`); }
+    else { await look(); cs = near(); if (!cs.length) R.notes.push(`${tSec()}s [칸] 화살 끝에 ${a.res} 가 안 보인다`); }
+  }
+  //   화살 끝 셋이 다 막혔으면 — 화면에 보이는 같은 종 중 나에게 가까운 다섯(사람은 길이 나는 나무로 간다)
+  const me0 = await meL();
+  const more = RES.filter((r) => r.on && r.t === a.res && !unreach.has(r.id) && !cs.slice(0, 3).includes(r))
+    .sort((p, q) => Math.hypot(p.x - me0.x, p.y - me0.y) - Math.hypot(q.x - me0.x, q.y - me0.y)).slice(0, 5);
+  for (const r of cs.slice(0, 3).concat(more)) {
+    if (gatedOut(r)) {   // 맨손 — 그 개체를 한 번 눌러 본다(서버 거절 → 칸)
+      const w = await walkTo(standAround(r.x, r.y, STAND).filter((g) => !blockedCell(g.x, g.y)), 10);
+      if (!w.ok) { unreach.add(r.id); R.notes.push(`${tSec()}s [칸] 화살 끝 ${a.res} 곁에 못 섬 ${w.reason}`); continue; }
+      if (!R.milestones[`안내 자리(${a.res === 'tree' ? '나무' : '바위'})`]) mark(`안내 자리(${a.res === 'tree' ? '나무' : '바위'})`, { d: Math.round(Math.hypot(r.x - tl.x, r.y - tl.y)), alt: !cs.includes(r) });
+      await send({ type: 'gather', resId: r.id }); await sleep(1200);
+      return true;
+    }
+    const t0 = Date.now();
+    const g = await gatherRes(r, want);
+    R.legs.push({ t: tSec(), kind: 'guide-gather', item: a.item, res: r.t, ok: g.ok, d: g.d || null, reason: g.reason || null, hits: g.hits || 0, chip: g.chip || 0, sec: +((Date.now() - t0) / 1000).toFixed(1) });
+    if (!g.ok) continue;
+    arrowMem[a.res] = { x: r.x, y: r.y };
+    if (!R.milestones[`안내 자리(${a.res === 'tree' ? '나무' : '바위'})`]) mark(`안내 자리(${a.res === 'tree' ? '나무' : '바위'})`, { d: Math.round(Math.hypot(r.x - tl.x, r.y - tl.y)), alt: !cs.includes(r) });
+    guideTries.set(k, 0);
+    return true;
+  }
+  R.notes.push(`${tSec()}s [칸] 화살 끝 · 둘레 ${a.res} 다 못 닿음`); say(`  ▷ ${(tSec() / 60).toFixed(2)}분  화살 끝 · 둘레 ${a.res} 못 닿음`);
+  return true;
+}
+
 // ── 불·쉼·집 ─────────────────────────────────────────────────────────────────
 let fire = null;   // {x,y} 존 로컬
 async function makeFire() {
@@ -1058,7 +1151,7 @@ const PICK_COST = Object.assign({}, Z.RECIPES.pickaxe.cost), AXE_COST = Object.a
 const haveAll = (s, c) => Object.entries(c).every(([k, v]) => (s.inv[k] || 0) >= v);
 async function hutStep() {
   const s = await state();
-  if (!toolHas(s, 'pickaxe') && !site) {
+  if (!toolHas(s, 'pickaxe') && !site && !GUIDE) {   // ★[T1377] `--guide` 는 곡괭이를 미리 안 만든다(터파기 거절 → 칸)
     if (haveAll(s, PICK_COST)) { if (await craft('craft', 'pickaxe', (q) => toolHas(q, 'pickaxe'))) mark('곡괭이(손 제작)'); return true; }   // ★[T1186] 레시피 표 그대로(돌 규칙 켬 = 날 kg 을 담는 덩이 · 끔 = 종전 돌 5)
     return fetchMissing(PICK_COST);
   }
@@ -1066,19 +1159,26 @@ async function hutStep() {
     await look();
     const me = await meL(); const c0 = cellOf(me);
     let pick = null;
-    for (let r = 0; r <= 5 && !pick; r++) for (let dy = -r; dy <= r && !pick; dy++) for (let dx = -r; dx <= r && !pick; dx++) {
+    //   ★[T1377] `--guide` — 남의 땅(화면에 그려진 사유지 · 마을 땅)은 움집 자리에서 뺀다(서버 거절 "남의 땅에는 지을 수 없습니다" — 사람은 땅 테두리를 본다)
+    const others = GUIDE ? await ev(() => { const c = conns.get(window.__getPrimaryZoneId()); const me = myPlayerId || myUsername; const out = []; if (c && c.claims) for (const cl of c.claims.values()) if (cl.ownerPid !== me) out.push([cl.x, cl.y, cl.w, cl.h]); return out; }).catch(() => []) : [];
+    const onOthers = (px, py) => others.some(([x, y, w, h]) => px >= x && px < x + w && py >= y && py < y + h);
+    const RMAX = GUIDE ? 12 : 5, DMAX = GUIDE ? 400 : 180;   // ★[T1377] `--guide` — 터 곁 400px 안에서 고르고, 멀면 그 곁까지 걸어가 같은 수에 판다(터를 떠났다 칸에 끌려 되돌아오는 되풀이 0)
+    for (let r = 0; r <= RMAX && !pick; r++) for (let dy = -r; dy <= r && !pick; dy++) for (let dx = -r; dx <= r && !pick; dx++) {
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
       const cx = c0.x + dx, cy = c0.y + dy, cc = ctr(cx, cy);
-      if (Math.hypot(cc.x - me.x, cc.y - me.y) > 180 || keepHit(cc.x, cc.y)) continue;
+      if (Math.hypot(cc.x - me.x, cc.y - me.y) > DMAX || keepHit(cc.x, cc.y)) continue;
       let okk = true;
-      for (let x = cx - 4; x <= cx + 3 && okk; x++) for (let y = cy - 3; y <= cy + 2 && okk; y++) if (terrBlocked(x, y)) okk = false;
+      for (let x = cx - 4; x <= cx + 3 && okk; x++) for (let y = cy - 3; y <= cy + 2 && okk; y++) if (terrBlocked(x, y) || (others.length && onOthers(ctr(x, y).x, ctr(x, y).y)) || hutBad.has(ck(x, y))) okk = false;
       for (const b of BLDS) { const bc = cellOf(b); if (bc.x >= cx - 4 && bc.x <= cx + 3 && bc.y >= cy - 3 && bc.y <= cy + 2) okk = false; }
       if (okk) pick = { cx, cy, cc };
     }
-    if (!pick) { const w = await walkTo(standAround(me.x + 160, me.y + 96, 48), 20); void w; return true; }
+    if (!pick) { if (GUIDE) { hutMiss = (hutMiss | 0) + 1; R.notes.push(`${tSec()}s [움집] 터 곁에 움집 자리 없음(${hutMiss})`); }
+      const k = GUIDE ? (hutMiss % 4) : 0, dir = [[160, 96], [-160, 96], [-160, -96], [160, -96]][k];
+      const w = await walkTo(standAround(me.x + dir[0], me.y + dir[1], 48), 20); void w; return true; }
+    if (GUIDE && Math.hypot(pick.cc.x - me.x, pick.cc.y - me.y) > 180) { const w = await walkTo(standAround(pick.cc.x, pick.cc.y, 120).filter((g) => !blockedCell(g.x, g.y)), 16); if (!w.ok) { dyn.add(ck(pick.cx, pick.cy)); return true; } }
     await send({ type: 'hut_start', atX: pick.cc.x, atY: pick.cc.y });   // ★건축 모드 커서 배치가 보내는 그 한 줄(존 로컬)
     for (let i = 0; i < 10 && !site; i++) { await sleep(300); await look(); const b = BLDS.find((q) => q.type === 'hut_site' && Math.hypot(q.x - pick.cc.x, q.y - pick.cc.y) < 96); if (b) site = { id: b.id, x: b.x, y: b.y }; }
-    if (site) mark('움집터(① 굴착)'); else { R.notes.push(`${tSec()}s hut_start 실패`); dyn.add(ck(pick.cx, pick.cy)); }
+    if (site) mark('움집터(① 굴착)'); else { const pn = GUIDE ? await panelNow() : null; R.notes.push(`${tSec()}s hut_start 실패${pn && pn.stage === 'tool' ? ` — 칸 「${pn.item}」` : ''}`); if (!(pn && pn.stage === 'tool')) { dyn.add(ck(pick.cx, pick.cy)); if (GUIDE) for (let x = pick.cx - 4; x <= pick.cx + 3; x++) for (let y = pick.cy - 3; y <= pick.cy + 2; y++) hutBad.add(ck(x, y)); } }   // ★[T1377] 서버가 그 자리를 거절했다(밭 · 마당 등 자 거울 밖 막힘) — 그 발자국 전체를 다음 고르기에서 뺀다
     return true;
   }
   const b = BLDS.find((q) => q.id === site.id) || (await look(), BLDS.find((q) => q.id === site.id));
@@ -1118,6 +1218,8 @@ async function hutStep() {
 
 // ── 몸 표본(5초) · 1단계 넘김 ───────────────────────────────────────────────────
 let _sampling = false, _frPrev = null;
+let _pnLast = null, panelSig = '', hutMiss = 0;
+const hutBad = new Set();   // ★[T1377] 서버가 거절한 움집 발자국 칸   // ★[T1377] 칸이 마지막에 그린 것(본판 차례가 갱신)
 async function sampleOnce() {
   if (_sampling || !T0) return; _sampling = true;
   try {
@@ -1364,7 +1466,7 @@ async function sampleOnce() {
   //   ★순서는 사람의 판단 한 벌이다(자 안의 약속 · 보고에 적는다): 물(갈증 < 65 · 첫 물) > 먹기(첫 밥 · 허기 < 75) >
   //     불 곁 쬐기(추위 1단계 이상 · 불이 있으면) > 추우면 불부터 > 열매(첫 밥 전 · 허기 < 55 이고 먹을 게 없으면) >
   //     첫 도구 > 첫 불 > 첫 잠자리(보이는 공용 쉼터 · 문 밖이면) > 내 움집 사다리.
-  const NEEDS = [
+  const NEEDS0 = [
     { key: '물', when: (s) => !R.milestones['물'] || s.g.thirst < 65, run: () => goDrink(!R.milestones['물']) },
     { key: '먹기', when: (s, x) => x.foods.length && (!R.milestones['첫 밥'] || s.g.hunger < 75), run: async (s, x) => {
       const it = x.foods.sort((p, q) => (FOOD[q].hunger || 0) - (FOOD[p].hunger || 0))[0];
@@ -1387,13 +1489,23 @@ async function sampleOnce() {
     { key: '잠자리', when: () => !R.milestones['첫 잠자리'], run: () => sleepStep() },
     { key: '움집', when: () => !(site && site.done), run: () => hutStep() },   // 쉼터를 찾은 뒤에도 셋째 단(내 움집)이 어디까지 가나
   ];
+  // ★[T1377] `--guide` — 칸 한 벌이 차례를 정한다(몸 넷은 그대로 앞)
+  const NEEDS = !GUIDE ? NEEDS0 : [
+    ...NEEDS0.filter((n) => ['물', '먹기', '쬐기', '열매'].includes(n.key) || (n.key === '불' && NEEDS0.indexOf(n) < 5)),
+    { key: '칸', when: () => !!guideAct(_pn), run: () => guideStep(guideAct(_pn)) },
+    { key: '움집', when: () => !!site && !site.done, run: () => hutStep() },
+    { key: '잠자리', when: () => !R.milestones['첫 잠자리'] && !!(site && site.done), run: () => sleepStep() },
+    { key: '불', when: () => !R.milestones['첫 불'] && !!(site && site.done), run: () => makeFire() },
+  ];
   let _pn = null;   // ★[T1120] 이번 차례에 칸이 말한 것
   const panelFirst = new Set();
   while (!timeUp()) {
+    if (GUIDE && site && site.done) { R.notes.push(`${tSec()}s [칸] 움집 완공 — 판 끝(--guide · 온보딩의 끝까지 잰다)`); break; }   // ★[T1377] 온보딩 끝(움집 완공)에 닿으면 판을 닫는다(남은 분은 재는 것이 없다)
     let did = false;
     try {
       if (PANELBOT) {
-        _pn = await panelNow();
+        _pn = await panelNow(); _pnLast = _pn;
+        if (GUIDE) { const ps = _pn ? `${_pn.stage}:${_pn.item}${_pn.target ? '→' : ''}` : '없음'; if (ps !== panelSig) { panelSig = ps; say(`  ▣ ${(tSec() / 60).toFixed(2)}분  칸 ${ps}`); (R.panelSeq || (R.panelSeq = [])).push({ t: tSec(), ps }); } }
         if (_pn && _pn.stage === 'tool' && _pn.item && !panelFirst.has(_pn.item)) {   // 칸이 새 막힘 한 칸을 처음 말한 순간(분 · 사진)
           panelFirst.add(_pn.item);
           (R.panelFirst || (R.panelFirst = [])).push({ t: tSec(), item: _pn.item, guide: _pn.guide, step: _pn.step });
