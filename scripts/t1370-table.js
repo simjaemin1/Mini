@@ -5,14 +5,17 @@
 // 읽는 것: <dir>/knobs.tsv(차례) · <dir>/runs/<이름>-<시드>.json(t577 판 JSON — server-baseline-check 가 남긴 sbc-<시드>.json) · .done(rc · 초 · 까닭 · 끝 날)
 // 칸: 인구(끔 대비 %) · 굶어 죽음(몸 꼬리표 bodyExit.died.starve · 도적 굶음 bandit_starve) · 죽음 누계(deadTot) · 빈 마을 · 해체 ·
 //     무기Q · 도구Q · 게시 · 끝까지 돌았나 · 걸린 초 · 끔과 같은가(판 JSON 지문 `lib-run-hash` — env 칸 밖 · 같으면 "판에서 안 탐").
-// 쓰는 법: node scripts/t1370-table.js 계측/T1370_2026-11-18 [--seed 1020] [--off OFF] > 표.md
+// 쓰는 법: node scripts/t1370-table.js 계측/T1370_2026-11-18 [--seed 1020] [--off OFF] [--list 계측/T1370_2026-11-18/seed742-list.txt] > 표.md
 const fs = require('fs'), path = require('path');
 const RH = require('./lib-run-hash');
 const A = process.argv.slice(2);
 const dir = A.find((x) => !x.startsWith('--')) || '계측/T1370_2026-11-18';
 const opt = (k, d) => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : d; };
 const SEED = opt('--seed', '1020'), OFFN = opt('--off', 'OFF');
-const names = fs.readFileSync(path.join(dir, 'knobs.tsv'), 'utf8').split('\n').filter(Boolean).map((l) => l.split('\t'));
+let names = fs.readFileSync(path.join(dir, 'knobs.tsv'), 'utf8').split('\n').filter(Boolean).map((l) => l.split('\t'));
+// --list <파일>: 이 이름만(7 · 42 는 ±5% 넘은 손잡이 + 짝만 돈다 — 안 돈 줄을 표에 안 깐다)
+const LIST = opt('--list', null);
+if (LIST) { const keep = new Set(fs.readFileSync(LIST, 'utf8').split(/\s+/).filter(Boolean)); names = names.filter(([n]) => keep.has(n)); }
 const rd = (n) => { const b = path.join(dir, 'runs', `${n}-${SEED}`); let run = null, done = null;
   try { done = JSON.parse(fs.readFileSync(b + '.done', 'utf8')); } catch (e) {}
   try { run = JSON.parse(fs.readFileSync(b + '.json', 'utf8')); } catch (e) {}
