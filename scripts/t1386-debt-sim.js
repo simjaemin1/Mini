@@ -13,6 +13,7 @@
 //   걷기 한 칸 = 존 `BUILDING_SIZE ÷ MOVE_SPEED` 초 · 청크 사이 걷기 = 청크 한 변 · 넓히기 · 돌봄의 판단은 T1343 판(`t1305-care-sim.js`) 그대로.
 //
 //   node scripts/t1386-debt-sim.js [--days 120] [--json <파일>]
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] 판은 존을 안 띄우지만 존 소스를 읽는다 — 규약 머리 줄
 process.env.T1305_DEEDS = '1';
 const fs = require('fs');
 const path = require('path');

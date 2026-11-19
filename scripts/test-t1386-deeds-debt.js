@@ -178,15 +178,22 @@ ok(!!so && !!sb && !!sa && sa.live.length > so.live.length && so.live.length < 1
   so && sb && sa ? `끈 때 ${sa.live.length}칸 · 한 번에 ${so.live.length}칸 빚 ${so.debt.toFixed(2)} / 껐다 켬 ${sb.live.length}칸 빚 ${sb.debt.toFixed(2)}` : `${once && once.err || ''} ${ra && ra.err || ''} ${rb && rb.err || ''}`);
 // ★미끼 — deeds.js 사본(정본 무접촉 · /tmp · 판 끝에 지운다)
 const DS = fs.readFileSync(path.join(ROOT, 'server', 'deeds.js'), 'utf8');
-const BAITS = [
-  ['tail', '칸 풀 때 빚을 0 으로 만드는 사본(자투리 버림)', '    P.debt = Math.max(0, P.debt - PT); freed++;', '    P.debt = 0; freed++;', ['b_carry'], ['a_first', 'a_each', 'e_tail']],
-  ['recount', '풀린 뒤 그 청크 저축을 가득 채우는 사본(다시 세기)', '    ch.n--; ch.m = Math.min(ch.m, capOf(ch.n));', '    ch.n--; ch.m = capOf(ch.n);', ['a_each'], ['a_first', 'e_tail']],
-];
-for (const [tag, what, from, to, reds, greens] of BAITS) {
+const bait = (tag, from, to) => {   // 사본 하나를 쓰고 같은 아이 검사(셈만)로 띄운다 — 반환 [바꾼 자리 수, 결과]
   const n = DS.split(from).length - 1, f = `/tmp/t1386bait-${tag}-${process.pid}.js`;
   let RB = null;
   try { fs.writeFileSync(f, DS.split(from).join(to)); RB = run('deeds', { __T1386_DEEDS: f }); } finally { try { fs.unlinkSync(f); } catch (e) {} }
-  ok(n === 1 && !!RB && reds.every((k) => RB[k] === false) && greens.every((k) => RB[k] === true), `★미끼 — ${what} → ${reds.join(' · ')} 빨강(${greens.join(' · ')} 는 초록 그대로)`, `바꾼 자리 ${n} · ${reds.concat(greens).map((k) => `${k}=${RB ? RB[k] : '?'}`).join(' ')}`);
+  return [n, RB];
+};
+const kv = (RB, ks) => ks.map((k) => `${k}=${RB ? RB[k] : '?'}`).join(' ');
+{
+  const [n, RB] = bait('tail', '    P.debt = Math.max(0, P.debt - PT); freed++;', '    P.debt = 0; freed++;');
+  ok(n === 1 && !!RB && RB.b_carry === false && RB.a_first === true && RB.a_each === true && RB.e_tail === true,
+    '★미끼 ① — 칸 풀 때 빚을 0 으로 만드는 사본(자투리 버림) → ⓑ b_carry 빨강(a_first · a_each · e_tail 초록 그대로)', `바꾼 자리 ${n} · ${kv(RB, ['b_carry', 'a_first', 'a_each', 'e_tail'])}`);
+}
+{
+  const [n, RB] = bait('recount', '    ch.n--; ch.m = Math.min(ch.m, capOf(ch.n));', '    ch.n--; ch.m = capOf(ch.n);');
+  ok(n === 1 && !!RB && RB.a_each === false && RB.a_first === true && RB.e_tail === true,
+    '★미끼 ② — 풀린 뒤 그 청크 저축을 가득 채우는 사본(다시 세기) → ⓐ a_each 빨강(a_first · e_tail 초록 그대로)', `바꾼 자리 ${n} · ${kv(RB, ['a_each', 'a_first', 'e_tail'])}`);
 }
 for (const f of [dbR, dbR + '-wal', dbR + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 console.log(`\n=== T1386 사유지 빚: ${pass} 통과 / ${fail} 실패 ===`);
