@@ -126,6 +126,10 @@ const WAR_DEF_HYST = 2;            // 방어 태세(응전↔버티기) 전환 �
 const _clamp01 = v => v < 0 ? 0 : (v > 1 ? 1 : v);
 
 // ═══════════ 청동 자격(economy _bronzeCapable 판정 재현) ═══════════
+// ★[T1385 ㉯ 2026-11-19] 손잡이 `T1385_BRONZE_NOCAP` · `T1385_BRONZE_NOCAP_TINGATE`('1' — economy-sim `T1385` 머리) — 청동 상비 자격을 걷으면 이 사본도 같이 걷는다:
+//   편성의 청동 근접검 = 근접검 곳간 × 경제 장부의 청동 몫(`_t1344Q` — 그 손잡이가 켜면 economy-sim 이 날마다 섞는다) · 자격 · 무기 질 ramp 를 안 본다(끔 = 종전 두 줄 그대로).
+const _T1385_TIN = !!(typeof process !== 'undefined' && process.env && (process.env.T1385_BRONZE_NOCAP === '1' || process.env.T1385_BRONZE_NOCAP_TINGATE === '1'));
+function _t1385Q(e) { return _clamp01(e && e._t1344Q || 0); }
 function _warBronzeCapable(v) { if (((v.land && v.land.tin) || 0) > 0) return true; const N = v.npcs ? v.npcs.length : 1; return ((v.storage && v.storage.tin) || 0) >= Math.max(_warBRONZE_TIN_MIN_ABS, N * _warBRONZE_TIN_MIN_PC); }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -231,7 +235,8 @@ function _warConscriptIndividual(v, mode, opts) {
   const weapQavg = (e._weapQ != null ? e._weapQ : _warWEAP_Q_STONE);
   let swordStock = Math.floor(weapon * swordFrac), bowStock = Math.floor(weapon * (1 - swordFrac));
   let bronzeStock = 0;
-  if (_warBronzeCapable(e) && weapQavg > WAR_BRONZE_WEAPQ_TH) {
+  if (_T1385_TIN) bronzeStock = Math.min(swordStock, Math.round(swordStock * _t1385Q(e)));   // ★[T1385 ㉯] 켬 = 장부의 청동 몫(위 머리)
+  else if (_warBronzeCapable(e) && weapQavg > WAR_BRONZE_WEAPQ_TH) {
     const bf = _clamp01((weapQavg - WAR_BRONZE_WEAPQ_TH) / (WAR_BRONZE_WEAPQ_CAP - WAR_BRONZE_WEAPQ_TH));
     bronzeStock = Math.min(swordStock, Math.round(swordStock * bf));
   }
@@ -293,7 +298,8 @@ function _warConscriptAggregate(v, mode, opts) {
   let melee = force - archer;
   const weapQ = (e._weapQ != null ? e._weapQ : _warWEAP_Q_STONE);
   let champion = 0;
-  if (_warBronzeCapable(e) && weapQ > WAR_BRONZE_WEAPQ_TH) {
+  if (_T1385_TIN) { champion = Math.round(melee * _t1385Q(e)); champion = Math.min(champion, warrior); champion = Math.min(champion, melee); }   // ★[T1385 ㉯] 켬 = 장부의 청동 몫(위 머리)
+  else if (_warBronzeCapable(e) && weapQ > WAR_BRONZE_WEAPQ_TH) {
     const _bfrac = _clamp01((weapQ - WAR_BRONZE_WEAPQ_TH) / (WAR_BRONZE_WEAPQ_CAP - WAR_BRONZE_WEAPQ_TH));
     champion = Math.round(melee * _bfrac); champion = Math.min(champion, warrior); champion = Math.min(champion, melee);
   }
