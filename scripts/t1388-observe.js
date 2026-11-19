@@ -9,6 +9,7 @@
 // ★장부(마을마다 · 칸 = 출처): 들어온 몫은 그 출처 칸에 · 나간 몫(먹음 · 그 밖 줄어듦)은 칸 비례로 뺀다 · 먹은 몫도 칸 비례로 출처에 적는다.
 //   그 밖 줄어듦/늘어남 = 곳간 식량(`totalFoodEquivalent`) 차 − 든 몫 + 먹은 몫(썩음 · 갈무리 · 요리 · 나감 · 들어옴 — 칸 `잔차`).
 //   처음 곳간 = 칸 `start`(마을을 처음 본 날의 곳간). 단위 = 하루치(econ 식량 1 = `DAY_KCAL`).
+//   마을-달 칸에 농부-날(`fDays`) · 사람-날(`pDays`) · 달 끝 생활층 밭 칸(`cells`)도 적는다(농부 1인 하루 식량 · 사람당 밭 칸).
 //   출처 칸: farm(농부 주산출) · farmBy(농부 부산물 곡식) · harvest(앵커 수확 n × T100_K) · garden(텃밭 하한) · crop(밭 작물 낱개) ·
 //            fish · hunt · forage · <직업>(그 밖 직업 산출 — 요리사 · 나무꾼 …) · start · gain(잔차가 늘린 몫)
 const path = require('path');
@@ -65,7 +66,7 @@ function settle(v, day) {
   else if (x.eat > 0) eatBy.unknown = x.eat;
   const t = CAL.dateOf(day), ym = t.year * 100 + t.month, key = ym + '|' + v.name;
   let m = MON.get(key); if (!m) { m = { ym, name: v.name, pop: 0, tfe: 0, eat: 0, resid: 0, eatBy: {}, inBy: {} }; MON.set(key, m); }
-  m.pop = (v.npcs || []).length; m.tfe = S1; m.eat += x.eat; m.resid += resid;
+  m.pop = (v.npcs || []).length; m.tfe = S1; m.eat += x.eat; m.resid += resid; m.fDays = (m.fDays || 0) + ((v.counts && v.counts.farmer) || 0); m.pDays = (m.pDays || 0) + m.pop; m.cells = cellsOf(v.name);
   for (const [k, f] of Object.entries(eatBy)) m.eatBy[k] = (m.eatBy[k] || 0) + f;
   for (const [k, f] of Object.entries(x.inn)) m.inBy[k] = (m.inBy[k] || 0) + f;
   const T = rec.tot; T.eat += x.eat; T.resid += resid; if (resid > 0) T.gain += resid; else T.loss -= resid;
@@ -77,12 +78,16 @@ function settle(v, day) {
   if (close > T.closeMax) T.closeMax = close;
   x.s0 = S1; x.inn = {}; x.eat = 0;
 }
+let _B = null;
+function cellsOf(name) {   // 생활층 밭 칸(그 마을 `_farmSet` — 판 자 서버 · 한 프로세스 판 0)
+  try { if (!_B) { const V = require(path.join(ROOT, 'server', 'villages')); _B = V.__p3Bind ? V.__p3Bind({}) : null; } const vs = _B && _B.state && _B.state.villages; if (!vs) return 0; for (const vil of vs) if (vil.econ && vil.econ.name === name) return vil._farmSet ? vil._farmSet.size : 0; } catch (_) {} return 0;
+}
 function sumIn(x) { let a = 0; for (const f of Object.values(x.inn)) a += f; return a; }
 function dump() {
   rec.hooks = HOOKN.slice(0, HOOKS.length);
   const src = new Set(); for (const m of MON.values()) for (const k of Object.keys(m.eatBy)) src.add(k);
-  rec.src = [...src].sort(); rec.cols = ['ym', 'name', 'pop', 'tfe', 'eat', 'resid', ...rec.src.map((k) => 'e_' + k), ...rec.src.map((k) => 'i_' + k)];
-  rec.rows = [...MON.values()].map((m) => [m.ym, m.name, m.pop, +m.tfe.toFixed(2), +m.eat.toFixed(3), +m.resid.toFixed(3), ...rec.src.map((k) => +(m.eatBy[k] || 0).toFixed(3)), ...rec.src.map((k) => +(m.inBy[k] || 0).toFixed(3))]);
+  rec.src = [...src].sort(); rec.cols = ['ym', 'name', 'pop', 'tfe', 'eat', 'resid', 'fDays', 'pDays', 'cells', ...rec.src.map((k) => 'e_' + k), ...rec.src.map((k) => 'i_' + k)];
+  rec.rows = [...MON.values()].map((m) => [m.ym, m.name, m.pop, +m.tfe.toFixed(2), +m.eat.toFixed(3), +m.resid.toFixed(3), m.fDays || 0, m.pDays || 0, m.cells || 0, ...rec.src.map((k) => +(m.eatBy[k] || 0).toFixed(3)), ...rec.src.map((k) => +(m.inBy[k] || 0).toFixed(3))]);
   if (OUT) try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (_) {}
   return rec;
 }
