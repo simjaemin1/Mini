@@ -20,6 +20,7 @@
 //   ⑤ 별명 겹침 — 셋째 손님이 둘째의 별명을 치면 남의 계정 이름과 같은 거절(`username_taken`) · 이름칸을 비운 손님은 종전 그대로 `여행자XXXX`(T208).
 // 실행: node scripts/e2e-nametag-others.js [--headed]   (central 3010 · zone 3020 · Chromium · 1분 안팎)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

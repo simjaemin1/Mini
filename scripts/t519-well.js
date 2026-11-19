@@ -17,6 +17,7 @@
 // 한 장 = 2줄 × 3칸: 윗줄 ×3 확대(최근접 · 화소 그대로) · 아랫줄 같은 자리 1:1(게임에서 보는 크기 · 마을 둘레).
 // 실행: node scripts/t519-well.js <out.png>
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

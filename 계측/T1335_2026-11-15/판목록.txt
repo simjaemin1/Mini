@@ -1,0 +1,10 @@
+# T1335 — 묶음 켬 몸 세계 한 해 판(맥 본체) · 시드 1020 · 365날 · 두 판 나란히(동시 2)
+#   몸 판 정본 꼴 = 집 켬(T1315 · `T577_BODY=1` — 하루 24분 · 몸 상한 없음 · 캐러밴 끔 · 가상 시계 · 집 `T400_BUILD_ACT` 기본 켬) · 밭 끔(`T1243_FARM_ON` 없음)
+#   off    = main 끔 세계(견줌 기준)
+#   bundle = 묶음 손잡이 전부(T1319 §9 줄 그대로 · T1302 영토를 몸이 는 뺌): 나무꾼 · 영토 v2 · T1283 · 출생 곳간 문 · 이주 문 · 무리 · K 문 · 가을 문 mig
+#   마디 30날(T1308 체크포인트 — 멈추면 마지막 체크포인트에서 이어서 · 두 판 같은 마디 경계)
+CODE=code-21b207033.tgz
+EVERY=30
+OBS=scripts/t1243-observe.js scripts/t1263-observe.js scripts/t1230-observe.js 계측/T1275_2026-11-12/t1275hook.js 계측/T1312_2026-11-14/t1312hook.js 계측/T1319_2026-11-15/t1319hook.js
+off 365 1020 T577_BODY=1
+bundle 365 1020 T577_BODY=1 T325_WOOD_ACT=1 T1207_TERR_REAL=1 T1238_TERR_V2=1 T1283_WOOD_DEMAND=1 T1297_BIRTH_FOOD=1 T1306_MIGRATE_FOOD=1 T1312_HERD=1 T1319_RECV_K=1 T1319_AUTUMN_LOOK=mig T1259_WOOD_CAP=0

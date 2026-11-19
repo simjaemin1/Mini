@@ -16,7 +16,7 @@ const SEC = +(process.argv[2] || 120);
 const NS = String(process.argv[3] || '1,10,50').split(',').map(Number);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const JOUT = arg('--json', null);
-const CPORT = 3510, ZPORT = 3520;
+const CPORT = require('./lib-port').port(3510), ZPORT = require('./lib-port').port(3520);
 const CDB = `/tmp/t1000l-c-${process.pid}.db`, ZDB = `/tmp/t1000l-z-${process.pid}.db`, OUT = `/tmp/t1000l-${process.pid}.json`;
 const clean = () => { for (const f of [CDB, ZDB, OUT]) for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

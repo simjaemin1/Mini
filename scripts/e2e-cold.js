@@ -17,7 +17,9 @@
 //
 // 실행: node scripts/e2e-cold.js [--headed]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -257,10 +259,10 @@ async function waitHttp(url, tries = 600) {
   // 제작창을 거치지 않고 **정본 배치 경로**(`place_building`)로 놓는다 — 좌표를 안 주면 발밑이다.
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { item_campfire: 3 } }));
   await sleep(900);
-  await page.evaluate(() => { window.__notices = []; });
+  const tgFire = await NM.mark(page);
   await page.evaluate(() => window.__sendPrimary({ type: 'place_building', itemType: 'item_campfire', floor: 0, dir: 'N' }));
-  await sleep(2200);
-  const buildNotices = await page.evaluate(() => (window.__notices || []).slice(-4));
+  await sleep(2200);   // 없음을 잰다 — 종전 시간 그대로 · 읽는 것은 표지 뒤 전부(N줄 자름 0)
+  const buildNotices = await NM.since(page, tgFire);
   ok(!buildNotices.some((t) => /이미|너무 멉|없음|불가|막혀|알 수 없는/.test(t)),
     '★④ 모닥불이 **정본 배치 경로로** 실제로 놓였다(거절 알림 없음)', JSON.stringify(buildNotices));
   const withFire = await dropOver(9);
@@ -287,10 +289,11 @@ async function waitHttp(url, tries = 600) {
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { hemp: 9, leather: 9, fur: 9 } }));
   await sleep(900);
   const buyWear = async (mat) => {
-    await page.evaluate(() => { window.__notices = []; });
+    const tgBuy = await NM.mark(page);
     await page.evaluate((m) => window.__sendPrimary({ type: 'craft_buy', itemType: 'clothes', material: m }), mat);
     await sleep(1600);
-    const ns = await page.evaluate(() => (window.__notices || []).slice(-2));
+    //   [T1367] 종전 1.6초 뒤 마지막 두 줄 — 그 시간 뒤에도 장인의 답이 아직이면 하나라도 올 때까지(상한 15초 · 판정은 부른 쪽 그대로) · 읽는 것은 표지 뒤 전부
+    const ns = (await NM.waitSince(page, tgBuy, (l) => l.length > 0, { capMs: 15000 })).list;
     const id = await page.evaluate(() => {
       const st = window.__equipState && window.__equipState();
       const cl = ((st && st.equipment) || []).filter((e) => e.type === 'clothes');
@@ -459,10 +462,11 @@ async function waitHttp(url, tries = 600) {
       await sleep(900);
       const th0 = await page.evaluate(() => (window.__getGauges ? window.__getGauges().thirst : null));
       ok(th0 != null && th0 <= 41, '★⑦㉣ (상황) 목이 마른 채로 갯벌에 섰다 — 아니면 아래가 자명하다', `갈증 ${th0}`);
-      await page.evaluate(() => { window.__notices = []; });
+      const tgSalt = await NM.mark(page);
       await page.evaluate(() => window.__sendPrimary({ type: 'gather' }));
-      await sleep(1800);
-      const ns2 = await page.evaluate(() => (window.__notices || []).slice(-3));
+      await NM.waitSince(page, tgSalt, (l) => l.some((t) => /짠물/.test(t)), { capMs: 15000 });   // [T1367] 종전 1.8초 뒤 마지막 세 줄
+      await sleep(600);   // 뒤따르는 줄(있으면 "물 마심")까지 — 아래 없음 판정은 표지 뒤 전부를 본다
+      const ns2 = await NM.since(page, tgSalt);
       const th1 = await page.evaluate(() => (window.__getGauges ? window.__getGauges().thirst : null));
       ok(ns2.some((t) => /짠물/.test(t)),
         '★★⑦㉣ **바닷가에서 마시면 화면이 "짠물"이라고 말한다**(재민 실기 3)', JSON.stringify(ns2));

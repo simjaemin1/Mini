@@ -12,6 +12,7 @@
 //   ⑥ [T1007] 존 부팅 지문 로그 줄(`_t735Boot`)이 손잡이 선언(`!== '0'` 켬 기본)과 같은 글자로 선다(로그만 — 값 무변).
 // 실행: node scripts/test-vein-batch.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');

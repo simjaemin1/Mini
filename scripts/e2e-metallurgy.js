@@ -14,7 +14,9 @@
 //   중앙(central) + 존(zone) 을 임시 DB·임시 포트로 띄우고, 스크린샷을 /tmp/e2e-shots 에 남긴다.
 //   ★Chromium 은 /opt/pw-browsers/chromium (playwright install 금지 — 컨테이너 규약).
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -170,7 +172,7 @@ async function waitHttp(url, tries = 900) {
   ok(/숯가마/.test(btnTxt), '건축 패널에 "숯가마 터 잡기" 버튼이 렌더된다');
   ok(/움집/.test(btnTxt), '건축 패널에 "움집 터파기" 버튼이 렌더된다');
 
-  const notices = () => page.evaluate(() => (window.__notices || []).slice(-6));
+  const notices = () => page.evaluate(() => (window.__notices || []).slice(-6));   // @notice-ok 진단(판정 밖) — 사유지 알림 찍기
   // 사유지 — 키 바인딩(C)으로. 패널 밖 클릭은 패널을 닫으므로 키가 실제 플레이에 가깝다.
   await page.keyboard.press('c');
   await sleep(1200);
@@ -191,7 +193,7 @@ async function waitHttp(url, tries = 900) {
   await snap('05-furnace-ghost');   // ★2×2 고스트가 커서 자리에 그려진 화면
   const place = await page.evaluate(() => ({
     note: (window.__notices || []).some((t) => /자리를 고르십시오/.test(t)),
-    last: (window.__notices || []).slice(-3),
+    last: (window.__notices || []).slice(-3),   // @notice-ok 진단(판정 밖)
   }));
   console.log(`    배치 모드 알림: ${JSON.stringify(place.last)}`);
   ok(place.note, '노 배치 모드 진입 — "터 배치" 안내가 뜬다');
@@ -201,17 +203,15 @@ async function waitHttp(url, tries = 900) {
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await sleep(300);
   await snap('06-ghost-on-cursor');
+  const tgClick = await NM.mark(page);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await sleep(1500);
+  //   [T1367] 종전 1.5초 뒤 마지막 여섯 줄 — 클릭 뒤 서버 답(착공 · 거절 사유)이 올 때까지(상한 15초) · 읽는 것은 표지 뒤 전부
+  const nt = (await NM.waitSince(page, tgClick, (l) => l.some((t) => /노 터|터 다지기|사유지|재료|곡괭이|물·바위|바위|멀어서/.test(t)), { capMs: 15000 })).list;
   await snap('07-after-click');
-  const nt = await notices();
   console.log(`    배치 클릭 후 알림: ${JSON.stringify(nt)}`);
   ok(nt.length > 0, '클릭이 서버까지 도달해 응답(알림)이 돌아온다');
   // 서버가 노 터를 세웠거나, 세우지 못한 **이유를 한국어로** 돌려줘야 한다(영문 키·무응답 금지)
-  const built = await page.evaluate(() => {
-    const b = (window.__getAllWalls && []) || [];
-    return (window.__notices || []).some((t) => /노 터|터 다지기/.test(t));
-  });
+  const built = nt.some((t) => /노 터|터 다지기/.test(t));   // [T1367] 종전 고리 전부 — 클릭 표지 뒤로(앞 판 글자 0)
   const refusedKo = nt.some((t) => /사유지|재료|곡괭이|물·바위|바위|멀어서/.test(t));
   ok(built || refusedKo, `노 배치 응답이 한국어 계약 메시지다 ${built ? '(착공)' : '(거부 사유 명시)'}`);
   ok(!nt.some((t) => /[a-z_]{3,}\s*\d|undefined|NaN/.test(t)), '알림에 영문 키·undefined·NaN 이 안 샌다');

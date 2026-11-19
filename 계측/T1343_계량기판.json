@@ -1,0 +1,597 @@
+{
+ "stepS": 0.5,
+ "actS": 3,
+ "cheapS": 1,
+ "cfg": {
+  "D0": 15,
+  "N0": 40,
+  "PT": 100,
+  "CHUNK": 4,
+  "P_USE": 4,
+  "Q_WORK": 1,
+  "Q_IDLE": 0.25,
+  "DWELL_S": 20
+ },
+ "days": 120,
+ "rows": [
+  {
+   "pattern": "날마다 30분",
+   "score": "a",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.027083333333333334,
+    "lost": 0,
+    "gap": 1,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 80,
+    "careShare": 0.8869907407407409,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 115,
+    "careShare": 0.8816163435570922,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "날마다 30분",
+   "score": "b",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.03280864197530869,
+    "lost": 0,
+    "gap": 1,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 72,
+    "careShare": 0.8623092592592655,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 72,
+    "careShare": 0.8623092592592655,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "날마다 30분",
+   "score": "c",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.02953703703703704,
+    "lost": 0,
+    "gap": 1,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 76,
+    "careShare": 0.8692351851851858,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 98,
+    "careShare": 0.8719247530864218,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "날마다 1시간",
+   "score": "a",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.013541666666666667,
+    "lost": 0,
+    "gap": 1,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 101,
+    "careShare": 0.8907620008680441,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 145,
+    "careShare": 0.8802835045331883,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "날마다 1시간",
+   "score": "b",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.016404320987654344,
+    "lost": 0,
+    "gap": 1,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 91,
+    "careShare": 0.868225974151235,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 91,
+    "careShare": 0.868225974151235,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "날마다 1시간",
+   "score": "c",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.01476851851851852,
+    "lost": 0,
+    "gap": 1,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 96,
+    "careShare": 0.8737055555555616,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 124,
+    "careShare": 0.8797479012345768,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "날마다 3시간",
+   "score": "a",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.0045138888888888885,
+    "lost": 0,
+    "gap": 1,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 145,
+    "careShare": 0.8766106650270064,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 154,
+    "careShare": 0.35116401105966877,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "날마다 3시간",
+   "score": "b",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.005468106995884781,
+    "lost": 0,
+    "gap": 1,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 132,
+    "careShare": 0.8815916666666619,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 132,
+    "careShare": 0.8815916666666619,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "날마다 3시간",
+   "score": "c",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.00492283950617284,
+    "lost": 0,
+    "gap": 1,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 139,
+    "careShare": 0.8823534529320977,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 154,
+    "careShare": 0.5607605658436242,
+    "lost": 0,
+    "gap": 1,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "이틀에 한 번 1시간",
+   "score": "a",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.022083333333333337,
+    "lost": 0,
+    "gap": 2,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 80,
+    "careShare": 0.8768055555555557,
+    "lost": 0,
+    "gap": 2,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 109,
+    "careShare": 0.7407715181327176,
+    "lost": 0,
+    "gap": 2,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "이틀에 한 번 1시간",
+   "score": "b",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.02780864197530863,
+    "lost": 0,
+    "gap": 2,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 72,
+    "careShare": 0.8523314814814845,
+    "lost": 0,
+    "gap": 2,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 72,
+    "careShare": 0.8523314814814845,
+    "lost": 0,
+    "gap": 2,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "이틀에 한 번 1시간",
+   "score": "c",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.024537037037037038,
+    "lost": 0,
+    "gap": 2,
+    "kept": true,
+    "afterBreak": null
+   },
+   "grow": {
+    "cells": 76,
+    "careShare": 0.8591992063492057,
+    "lost": 0,
+    "gap": 2,
+    "afterBreak": null
+   },
+   "cheat": {
+    "cells": 98,
+    "careShare": 0.8607735802469212,
+    "lost": 0,
+    "gap": 2,
+    "afterBreak": null
+   }
+  },
+  {
+   "pattern": "주말만 3시간",
+   "score": "a",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.012173202614379085,
+    "lost": 0,
+    "gap": 6,
+    "kept": true,
+    "afterBreak": 40
+   },
+   "grow": {
+    "cells": 63,
+    "careShare": 0.24118150020424794,
+    "lost": 0,
+    "gap": 6,
+    "afterBreak": 63
+   },
+   "cheat": {
+    "cells": 63,
+    "careShare": 0.08087313623366027,
+    "lost": 0,
+    "gap": 6,
+    "afterBreak": 63
+   }
+  },
+  {
+   "pattern": "주말만 3시간",
+   "score": "b",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.01566811909949165,
+    "lost": 0,
+    "gap": 6,
+    "kept": true,
+    "afterBreak": 40
+   },
+   "grow": {
+    "cells": 63,
+    "careShare": 0.32133568218954306,
+    "lost": 0,
+    "gap": 6,
+    "afterBreak": 63
+   },
+   "cheat": {
+    "cells": 63,
+    "careShare": 0.32133568218954306,
+    "lost": 0,
+    "gap": 6,
+    "afterBreak": 63
+   }
+  },
+  {
+   "pattern": "주말만 3시간",
+   "score": "c",
+   "liver": {
+    "cells": 40,
+    "careShare": 0.013671023965141612,
+    "lost": 0,
+    "gap": 6,
+    "kept": true,
+    "afterBreak": 40
+   },
+   "grow": {
+    "cells": 63,
+    "careShare": 0.2755332924836606,
+    "lost": 0,
+    "gap": 6,
+    "afterBreak": 63
+   },
+   "cheat": {
+    "cells": 63,
+    "careShare": 0.1289656454248365,
+    "lost": 0,
+    "gap": 6,
+    "afterBreak": 63
+   }
+  },
+  {
+   "pattern": "날마다 1시간 · 60일째부터 보름 쉼",
+   "score": "a",
+   "liver": {
+    "cells": 0,
+    "careShare": 0.013912037037037037,
+    "lost": 40,
+    "gap": 16,
+    "kept": false,
+    "afterBreak": 0
+   },
+   "grow": {
+    "cells": 101,
+    "careShare": 0.881137921626974,
+    "lost": 101,
+    "gap": 16,
+    "afterBreak": 0
+   },
+   "cheat": {
+    "cells": 145,
+    "careShare": 0.8707726383377449,
+    "lost": 145,
+    "gap": 16,
+    "afterBreak": 0
+   }
+  },
+  {
+   "pattern": "날마다 1시간 · 60일째부터 보름 쉼",
+   "score": "b",
+   "liver": {
+    "cells": 0,
+    "careShare": 0.01709876543209876,
+    "lost": 40,
+    "gap": 16,
+    "kept": false,
+    "afterBreak": 0
+   },
+   "grow": {
+    "cells": 91,
+    "careShare": 0.8588453813933017,
+    "lost": 91,
+    "gap": 16,
+    "afterBreak": 0
+   },
+   "cheat": {
+    "cells": 91,
+    "careShare": 0.8588453813933017,
+    "lost": 91,
+    "gap": 16,
+    "afterBreak": 0
+   }
+  },
+  {
+   "pattern": "날마다 1시간 · 60일째부터 보름 쉼",
+   "score": "c",
+   "liver": {
+    "cells": 0,
+    "careShare": 0.015277777777777777,
+    "lost": 40,
+    "gap": 16,
+    "kept": false,
+    "afterBreak": 0
+   },
+   "grow": {
+    "cells": 96,
+    "careShare": 0.86426575963719,
+    "lost": 96,
+    "gap": 16,
+    "afterBreak": 0
+   },
+   "cheat": {
+    "cells": 124,
+    "careShare": 0.8702428218694963,
+    "lost": 124,
+    "gap": 16,
+    "afterBreak": 0
+   }
+  }
+ ],
+ "need": [
+  {
+   "N": 24,
+   "days": 41.66666666666667,
+   "need": 57.599999999999994,
+   "mins": [
+    0.72,
+    0.9599999999999999,
+    0.8228571428571428
+   ]
+  },
+  {
+   "N": 40,
+   "days": 15,
+   "need": 266.6666666666667,
+   "mins": [
+    3.333333333333334,
+    4.444444444444445,
+    3.80952380952381
+   ]
+  },
+  {
+   "N": 70,
+   "days": 4.897959183673469,
+   "need": 1429.166666666667,
+   "mins": [
+    17.864583333333336,
+    23.81944444444445,
+    20.416666666666675
+   ]
+  },
+  {
+   "N": 100,
+   "days": 2.4000000000000004,
+   "need": 4166.666666666666,
+   "mins": [
+    52.08333333333333,
+    69.44444444444443,
+    59.523809523809526
+   ]
+  },
+  {
+   "N": 155,
+   "days": 0.9989594172736732,
+   "need": 15516.145833333334,
+   "mins": [
+    193.95182291666669,
+    258.60243055555554,
+    221.65922619047623
+   ]
+  },
+  {
+   "N": 200,
+   "days": 0.6000000000000001,
+   "need": 33333.33333333333,
+   "mins": [
+    416.66666666666663,
+    555.5555555555554,
+    476.1904761904762
+   ]
+  }
+ ],
+ "breaks": [
+  {
+   "N": 24,
+   "d15": 24,
+   "d14": 24
+  },
+  {
+   "N": 30,
+   "d15": 30,
+   "d14": 30
+  },
+  {
+   "N": 38,
+   "d15": 38,
+   "d14": 38
+  },
+  {
+   "N": 40,
+   "d15": 0,
+   "d14": 40
+  },
+  {
+   "N": 41,
+   "d15": 0,
+   "d14": 41
+  },
+  {
+   "N": 70,
+   "d15": 0,
+   "d14": 0
+  },
+  {
+   "N": 100,
+   "d15": 0,
+   "d14": 0
+  }
+ ],
+ "village": [
+  {
+   "players": 10,
+   "cells": 400,
+   "pct": 0.043478260869565216
+  },
+  {
+   "players": 30,
+   "cells": 1200,
+   "pct": 0.13043478260869565
+  }
+ ]
+}

@@ -602,6 +602,9 @@ function _updateVillageAnchor() {
 //   잠행 히스테리시스)까지 랩 동형. 이동은 본체 소유(좌표 단일 작성자): moveTo 대신 목표 셀 기록(_hgx/_hgy) →
 //   tick()이 본체 npc.targetX/Y로 역전달(경로 스무딩·벽·물은 zone.js 이동층 담당). 치환: life→s · dGM→dt ·
 //   a._fgl(econ 식량 잉여 가중)=0 폴백(식 유지 — 미연결 시 무효과).
+// ★[T1326] 사냥꾼 몸의 판 시계 배율 — 생활층 정본(`villages.t1295S` — 직업 · 손잡이 · 시계 판정 하나)을 읽는다 · 없으면 1.
+let _t1326V = null;
+function _t1326S(rp) { if (!rp) return 1; if (_t1326V === null) { try { _t1326V = require('./villages'); } catch (e) { _t1326V = false; } } return (_t1326V && _t1326V.t1295S) ? _t1326V.t1295S(rp) : 1; }
 function _hunterBrain(a, s, dt) {
   const bMoveTo = (a2, cx, cy) => { a2._hgx = cx; a2._hgy = cy; a2._hgo = 1; return true; };   // 목표 기록(성공은 본체 경로층이 판정 — stuck·재경로 흡수)
   // ★★[T158 2026-09-07] **보이는 사냥은 장부의 연출이다.**
@@ -796,8 +799,56 @@ function _syncLab(lm, liveSet, list) {
   }
 }
 
+// ═══ [C] ★★[T1331 2026-11-16] 짐승 몸 보임 다리 — 손잡이 `T1331_BEAST_BODY`(끔 기본 · `'1'` 만 켬 · villages · zone 과 같은 글자) ═══
+//   켬: 블록(B)을 **안 돌린다** — 블록은 뷰에 든 서식 칸의 풍부도로 몹을 낳고(스폰 · 맹수 굴림) 뷰를 떠나면 지운다(디스폰 · 넘친 초식 이탈) = 없던 몸 · 사라진 몸이다.
+//   대신 몸 표(`beast-body.current` — 마을 하루가 쥔 그 몸들)에서 켜진 청크 칸에 선 몸을 **존 몹으로 세운다**(1초에 한 번 · `mid = 'b' + 몸 id` · DB 행 없음 — 몸 표가 정본).
+//   존 몹이 된 몸은 존 몹 고리(배회 · 도주)가 걷기고 · 사람 공격 · 화살 · NPC 의 죽음 길 셋이 죽인다(zone `respawnMobLater` 켬 갈래가 몸 표에 죽음으로 적는다 · 다시 낳기 0) ·
+//   먹이 길들이기(`tryFeed`)가 길들이면 몸 표에서 나가 길든 짐승(DB 행)이 된다 · 존 경계 띠는 T1321 문이 몸 칸을 실어 넘긴다(zone 켬 갈래).
+//   청크가 꺼지면 그 자리(px → 칸)를 몸 표에 적고 존 몹만 걷는다(몸은 그 칸에 그대로 — 사라짐 0). 사냥꾼 두뇌(블록 몹 표적)는 이 판에서 안 선다(회부 — 랩 블록 무수정).
+//   ⚠끔 = 이 절이 한 번도 안 불린다(`tick` 첫 줄 · 아래 `if (T1331)`).
+const T1331 = process.env.T1331_BEAST_BODY === '1';
+const _t1331Mat = new Map();   // 존 몹 mid → 몸
+let _t1331Tk = 0;
+const _t1331St = { show: 0, hide: 0, tame: 0, lost: 0, peak: 0 };
+function _t1331Show() {
+  const B = require('./beast-body').current; if (!B) return;
+  if ((++_t1331Tk) % ((H.TICK_HZ | 0) || 30)) return;
+  const act = H.getActiveChunkKeys(), cm = H.chunkManager, cs = cm.chunkSize;
+  const on = (x, y) => act.has(cm.keyOf(Math.floor(x / cs), Math.floor(y / cs)));
+  for (const [mid, b0] of _t1331Mat) {
+    const b = B.W.bodies.get(b0.id);
+    if (!b) { _t1331Mat.delete(mid); continue; }        // 죽음 · 넘어감 · 길듦 — 존 문이 이미 몸 표에 적었다
+    if (b.tr) continue;                                  // 넘는 중(T1321 문이 쥐고 있다 — 숨김 · 답 기다림)
+    const m = H.mobs.get(mid);
+    if (!m) { _t1331Mat.delete(mid); B.diedAt(b.id, 'seen'); _t1331St.lost++; continue; }   // 존 몹이 문 밖에서 빠졌다(다시 낳기 손잡이 끔 등) — 죽음으로 센다
+    if (m.tameOwner) {                                   // 길듦 — 몸 표에서 나가 길든 짐승(DB 행)으로
+      B.tameAt(b.id); delete m._t1331; _t1331Mat.delete(mid); _t1331St.tame++;
+      try { if (H.t1331Keep) H.t1331Keep(m); } catch (e) {}
+      continue;
+    }
+    if (!on(m.x, m.y)) {                                 // 청크가 꺼졌다 — 몸은 그 칸에 남는다
+      H.mobs.delete(mid); cm.removeMob(m); H.broadcast({ type: 'mob_removed', mid });
+      _t1331Mat.delete(mid); B.hideAt(b, m.x, m.y, m.hp); _t1331St.hide++;
+      continue;
+    }
+    B.follow(b, m.x, m.y);
+  }
+  for (const b of B.W.bodies.values()) {
+    if (b.mat || b.tr) continue;
+    const x = b.cx * 32 + 16, y = b.cy * 32 + 16;
+    if (!on(x, y)) continue;
+    const A = Animals.ANIMALS[b.sp] || {}, maxHp = A.hp || 10, hp = b.hp > 0 ? Math.min(b.hp, maxHp) : maxHp;
+    const m = { mid: 'b' + b.id, dbId: null, type: b.sp, x, y, z: 0, floor: 0, homeX: x, homeY: y, packId: null, vx: 0, vy: 0, hp, maxHp,
+      aggroTarget: null, lastAttackAt: 0, wanderUntil: 0, tameProgress: 0, tameOwner: null, tameOwnerName: null, dirty: false, _t1331: b.id };
+    H.mobs.set(m.mid, m); cm.insertMob(m);
+    H.broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: null, tameOwnerName: null } });
+    B.showAt(b, m.mid, hp); _t1331Mat.set(m.mid, b); _t1331St.show++;
+  }
+  if (_t1331Mat.size > _t1331St.peak) _t1331St.peak = _t1331Mat.size;
+}
 function tick(now) {
   if (!ENABLED || !_ready) return;
+  if (T1331) { _t1331Show(); return; }   // ★[T1331] 켬 = 블록 대신 몸 표 보임 다리 · 끔 = 무동작
   const t0 = Date.now();
   // 1) 시계: 본체 월드시계 → lifeGM(게임분). 낮(p<0.7)→랩 06~20시, 밤→랩 20~06시 피스와이즈(밤 경계 정렬,
   //    단조·연속). lifeGM 절대시각 타이머(경계기억 등)는 본체 하루 10분 압축만큼 짧아짐 — dt 물리(속도)는 불변.
@@ -899,7 +950,8 @@ function tick(now) {
   //     속도 배속 _huntSpd: 잠행 0.5×·추적/회수 2×(도주 표적·부패와 시간 싸움)·평시 속보 1.25×·정지(_hold)≈0 — 랩 moveNPC 동형.
   for (const pr of S.agents) {
     if (pr.state !== 'work' || !pr._real) continue;
-    try { _hunterBrain(pr, S, 1 / H.TICK_HZ); } catch (e) { if (!S._hbErr) { S._hbErr = 1; console.error('[wildlife] 사냥꾼 두뇌 오류:', e.message); } }
+    const _s95 = _t1326S(pr._real);   // ★[T1326] 켬(판 시계 · 밭 세계 · 사냥꾼 축) = 두뇌 시간도 게임 분 축(끔 · 운영 시계 = 1 — 종전 dt 그대로)
+    try { _hunterBrain(pr, S, _s95 > 1 ? _s95 / H.TICK_HZ : 1 / H.TICK_HZ); } catch (e) { if (!S._hbErr) { S._hbErr = 1; console.error('[wildlife] 사냥꾼 두뇌 오류:', e.message); } }
     const rp = pr._real;
     if (pr._hgo) { rp.behavior = 'wander'; rp.targetX = pr._hgx * 32 + 16; rp.targetY = pr._hgy * 32 + 16; rp.gatherTarget = null; pr._hgo = 0; }
     rp._huntSpd = pr._hold ? 0.02 : (pr.sneak ? 0.5 : ((pr.action === '추적' || pr.action === '회수') ? 2 : 1.25));
@@ -970,3 +1022,4 @@ module.exports = { init, tick, onMobHit, _debug: { S, stats: _stats, get lifeGM(
 Object.defineProperty(module.exports, 'enabled', { get() { return ENABLED; }, enumerable: true, configurable: true });
 // ★[T1195] 보이는 사냥의 먹잇감 섞음을 종 id 로(초식 스폰 가중치 `MOB_PREY` 그대로 · 사슴3 · 멧돼지1 · 토끼2) — 뷰 밖 사냥꾼이 든 마리의 종 차례(`villages._t1195HuntIn`).
 module.exports.preyIds = Object.freeze(MOB_PREY.map((t) => MAIN_TYPE[t]));
+if (T1331) { module.exports.t1331Stat = () => Object.assign({ mat: _t1331Mat.size }, _t1331St); module.exports.t1331Adopt = (m, b) => { _t1331Mat.set(m.mid, b); }; }   // ★[T1331] 켬만 — 보임 다리 셈(끔 = 칸 없음)

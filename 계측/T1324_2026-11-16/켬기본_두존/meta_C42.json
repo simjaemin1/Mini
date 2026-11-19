@@ -1,0 +1,31 @@
+{
+ "tag": "C42",
+ "seed": 42,
+ "DAYS": 30,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "vclock": true,
+ "env": {},
+ "envz": {},
+ "start": "2026-11-15T07:26:05.168Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "restart": null,
+ "bootS": 25,
+ "geoWaitS": 152,
+ "Y": 17840,
+ "end": "2026-11-15T07:31:25.126Z",
+ "wallS": 320,
+ "days": {
+  "hanbando": 33,
+  "nippon": 33
+ },
+ "bars": 200,
+ "H": 1767225700000,
+ "dead": [],
+ "botCross": 9,
+ "botFail": 0,
+ "done": true
+}

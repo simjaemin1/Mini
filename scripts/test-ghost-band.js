@@ -16,6 +16,7 @@
 //   이웃 존 판정은 정본 `server/zone-config.js` `findZoneAt` 그대로 · 보내기(`postJSON`)는 몸통만 받아 적고 끝나지 않는 약속을 돌려준다
 //   (T512 왕복 `ow` 가 0 으로 남아 두 판의 몸통이 시계에 안 묶인다).
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');

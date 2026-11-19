@@ -1,6 +1,10 @@
 #!/usr/bin/env node
-// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @nightly A   ← 야간 세 밤 분할(T238) · 지금 A 20 · B 21 · C 22 — 적은 쪽(실서버 셋을 띄운다 · 판당 7~9분)
+// (@regress 없음 — 러너 밖 · 판 자 본판) ★[T1310 ②] 종전 머리의 `@regress` · `@nightly A` 두 줄은 **한 번도 안 물렸다**:
+//   러너 자동 발견은 `test-*.js` · `e2e-*.js` 만 본다(`run-regress.sh _disc`) — 이 파일 이름은 그 밖이라 야간 목록 · 단위 목록 어디에도 없었다.
+//   본판(800일 × 시드 셋)은 러너 시한(2400초)보다 길다 — 혼자 돌린 판(T1310 · 4코어 · 동시 3) 2400초에 505 · 511 · 542일(800일 ≈ 3,600~4,000초).
+//   ⇒ 짧은 판은 이 자를 몇 날로 부르는 `@regress` 하네스들이 맡는다(`test-vil-fast` 6날 · `test-t1013-band-day` 20날 · `test-econ-fast` ·
+//     `test-t941-ruler` · `test-t969-shelter-day` · `test-t986-bandit-day` · `test-t1087-crew-cap` · `test-t1243-farm-on` · `test-t1241-des` · `test-gate-draft`).
+//     긴 판(본판)은 러너 밖 — 손으로 부른다(아래 '실행'). 러너가 안 보는 파일에 표지를 다시 달면 `test-harness-lint` ⑱ 이 잡는다.
 // === scripts/t577-server-run.js — **서버 판 자**: 실서버 호스트 · 새 세계 · 손님 0 · 800일 · 시드 셋 ===
 //
 // ★★[T577 2026-10-03 · 재민 "죽은 마을 왜 죽었는지 파악해야지"] 게이트(t17 · t176 3시드)는 **econ 만** 세운다.
@@ -10,7 +14,7 @@
 //     여덟 수(t17 ⓚ 와 같은 이름 · 같은 합) + 해체 수 + 빈 마을 수 + 첫 빈 날 + 도적 누계.
 //
 // ★판의 조건(T572 §2-1 이 잰 함정 — 바꾸면 다른 세계다):
-//   · 빠른 시계 `VILLAGE_DAY_MS=250` — 800일을 판당 7~9분에.
+//   · 빠른 시계 `VILLAGE_DAY_MS=250` — 800일을 판당 7~9분에(T577 때 · ★[T1310] 지금 세계는 판당 ≈ 60분 · 머리 둘째 줄).
 //   · `T315_MAPBEDS=0` — 빠른 시계에선 생활층 몸이 집을 못 지어, 켜면 침상이 시딩 12 에 묶이고 인구가 600(=50×12)에서 선다
 //     (도적을 꺼도 굶어 비운다 — 시계의 잡음). 끄면 econ 자기 주거(`housing`)로 큰다 = 라이브가 비던 8월의 세계.
 //     ★[T914] 집 행위가 선 판에선 `T315_MAPBEDS=1` + `T627_TRIP_DAY=1` 이 기본이다(아래 T914 줄) — 이 줄은 집 행위 끔 판(`T400_BUILD_ACT=0`)의 기본이다.
@@ -159,6 +163,8 @@ function kidEnv({ seed, port, db, out, days }) {
       T640_BOOT_SLICE: '0',
     });
     if (env.VILLAGE_NPC_CAP === 'Infinity') delete env.VILLAGE_NPC_CAP;   // ★[T864] 몸 상한 운영 기본(무제한)
+    //   ★[T1334] 묶음 손잡이(`T1334_BUNDLE`) — 아이 존은 econ 을 먼저 읽는 프리로드(`t577-server-hook` · 계측 훅)가 있어 존 맨 위로는 늦다 → 아이 env 에서 채운다(끔 = env 무변)
+    require(path.join(ROOT, 'server', 't1334-bundle')).fill(env);
   return env;
 }
 //   ★[T1162 K8] 빈 포트는 **운영체제에게 묻는다**(`listen(0)`) — 종전 `39100 + (pid + k·37) % 700` 은 같은 판 둘이 겹치거나 남의 포트를 밟았다.

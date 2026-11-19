@@ -23,10 +23,12 @@
 // 사용: node scripts/e2e-weather.js
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn, execSync } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
+const WD = require('./lib-wait-day');   // ★[T1339] 유보 줄 · RC(프레임 몫 — 같은 조건 잡음 안의 판정 · 계기 못 봄)
 const { PNG } = require('pngjs');
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
@@ -92,9 +94,14 @@ function seedHouse(dbPath, cells) {
 // ★게임 화면 상자 — HUD 제외. `e2e-nature`·`e2e-rooms` 가 쓰는 **같은 값**이다
 //   (위쪽 띠는 시계·숫자가 계속 바뀌어 한 쌍에 수천 화소씩 흔들린다 — 재는 층 격리).
 const GBOX = [40, 200, 1360, 880];
-const diffPx = (a, b) => { let c = 0;
+//   ★[T1310 ③] 몸 자리 가림(선택) — `ents` = `__entBoxes()` 의 [종류, 화면 x, y] · 상자 폭은 e2e-nature · e2e-rooms 와 같은 값
+const ENT_DX = 80, ENT_UP = 120, ENT_DN = 48;
+const inEnt = (ents, x, y) => { for (const [, sx, sy] of ents) if (x >= sx - ENT_DX && x < sx + ENT_DX && y >= sy - ENT_UP && y < sy + ENT_DN) return true; return false; };
+const entMasked = (ents) => { let m = 0; for (let y = GBOX[1]; y < GBOX[3]; y++) for (let x = GBOX[0]; x < GBOX[2]; x++) if (inEnt(ents, x, y)) m++; return m; };
+const diffPx = (a, b, ents) => { let c = 0;
   for (let y = GBOX[1]; y < Math.min(a.height, b.height, GBOX[3]); y++)
     for (let x = GBOX[0]; x < Math.min(a.width, b.width, GBOX[2]); x++) {
+      if (ents && ents.length && inEnt(ents, x, y)) continue;
       const i = (y * a.width + x) * 4;
       const d = Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]);
       if (d > 24) c++;
@@ -169,7 +176,7 @@ const diffPx = (a, b) => { let c = 0;
   await sleep(12000);
   // ★바람을 끈다 — 지면 풀 카펫이 프레임마다 흔들려 짝 비교의 잡음 바닥을 통째로 먹는다
   //   (T87 이 대조군 0px 을 얻으려고 격리한 그 층과 같다).
-  await page.evaluate(() => { if (window.__terrain19) window.__terrain19.windOff = true; });
+  await page.evaluate(() => { if (window.__terrain19) { window.__terrain19.windOff = true; window.__terrain19.entBoxes = true; } });
   await sleep(600);
 
   const rain = (o) => page.evaluate((f) => window.__rainForce(f), o);
@@ -206,12 +213,41 @@ const diffPx = (a, b) => { let c = 0;
   const dIn = await rdbg();
   ok(dIn.indoor === true && dIn.on === false && dIn.n === 0,
      '★★비를 최대로 켜도 실내면 **한 획도 안 그린다**', JSON.stringify(dIn));
-  const inA = await shot('01-in-rain'); const inB = await shot('02-in-rain2');
+  //   ★[T1310 ③] 몸(내 몸 · 남 · 짐승) 자리는 가리고 잰다 — 146px 의 뜻(T1299 6판 중 3판 · 보고/T1310 §3): 비 켬 · 끔 사이 400ms 동안
+  //     **내 몸 서기 동작 한 판**이 넘어가 몸 상자(22 × 34px · 화면 가운데)만 1px 옮겨 그려졌다 — 비도 지붕도 아니다(획 0 은 위 ★★ 가 본다).
+  //     자리는 클라가 제 변환으로 내준다(`__entBoxes` · e2e-nature · e2e-rooms 와 같은 문법 · 같은 상자 폭) — 스샷 앞 · 뒤 두 번 읽은 합집합.
+  const ents = () => page.evaluate(() => (window.__entBoxes ? window.__entBoxes() : [])).catch(() => []);
+  const shotE = async (n) => { const e0 = await ents(); const img = await shot(n); const e1 = await ents(); img._ents = [...e0, ...e1]; return img; };
+  const inA = await shotE('01-in-rain'); const inB = await shotE('02-in-rain2');
   await rain({ precip: 0 }); await sleep(400);
   const inC = await shot('03-in-clear');
-  const inNoise = diffPx(inA, inB), inSig = diffPx(inA, inC);
+  //   ★★[T1339 · T1328 회부 5] 혼자 20판 중 5판이 "효과 134 ~ 144px · 잡음 0px" 로 빨갰다 — 다른 화소는 판마다 **같은 자리 한 덩이**(약 22 × 34px · 화면 가운데
+  //     내 몸 그림)였고, 비와 무관하게 **맑음 ↔ 맑음(400ms 뒤)** · **비 ↔ 비(400ms 뒤)** 에서도 같은 수가 났다(계측/T1339_weather20) — 내 몸의 서 있는 몸짓(숨)이다.
+  //     종전 잡음은 붙여 찍은 두 장(A · B)뿐이라 시간을 두고 바뀌는 그림을 못 봤다. ⇒ **맑은 판끼리** 시간을 두고 넉 장 더 찍어(비는 그릴 수 없는 판) 그 사이
+  //     바뀐 화소를 "시간이 바꾼 자리"로 지우고(2px 넓혀) 남은 화소로 비 ↔ 맑음을 잰다. 비가 실내에 그려지면 비 켠 장에만 서므로 지움 밖에 남는다(문턱 · 식 무변).
+  //     잡음도 **맑은 판** 붙여 찍은 두 장(C · C')으로 잰다 — 종전 A · B(비 켠 두 장)는 비가 실내에 그려지면 빗줄기가 장마다 움직여 잡음이 커지고 그 잡음 ×3 이
+  //     효과를 덮었다(미끼 D8: 실내에 비를 그려도 효과 21,182px ≤ 잡음 42,134px × 3 — 이 줄은 초록이었다 · 계약 줄 하나만 빨갰다). 맑은 판엔 비가 없다.
+  const inC2 = await shot('03-in-clear-b');
+  const clr = [inC]; for (let k = 0; k < 4; k++) { await sleep(300); clr.push(await shot(`03-in-clear${k + 2}`)); }
+  const tmask = new Uint8Array((inA.width) * (inA.height));
+  for (let a = 0; a < clr.length; a++) for (let b = a + 1; b < clr.length; b++) {
+    const P = clr[a], Q = clr[b];
+    for (let y = GBOX[1]; y < Math.min(P.height, GBOX[3]); y++) for (let x = GBOX[0]; x < Math.min(P.width, GBOX[2]); x++) {
+      const i = (y * P.width + x) * 4; const d = Math.abs(P.data[i] - Q.data[i]) + Math.abs(P.data[i + 1] - Q.data[i + 1]) + Math.abs(P.data[i + 2] - Q.data[i + 2]);
+      if (d > 24) for (let yy = y - 2; yy <= y + 2; yy++) for (let xx = x - 2; xx <= x + 2; xx++) if (yy >= 0 && xx >= 0 && xx < P.width && yy < P.height) tmask[yy * P.width + xx] = 1;
+    }
+  }
+  let tN = 0; for (const v of tmask) tN += v;
+  const diffOut = (a, b) => { let c = 0;
+    for (let y = GBOX[1]; y < Math.min(a.height, b.height, GBOX[3]); y++) for (let x = GBOX[0]; x < Math.min(a.width, b.width, GBOX[2]); x++) {
+      if (tmask[y * a.width + x]) continue;
+      const i = (y * a.width + x) * 4; const d = Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]);
+      if (d > 24) c++; }
+    return c; };
+  const inNoise = diffPx(inC, inC2), inNoiseRain = diffPx(inA, inB), inSig = diffOut(inA, inC), inSigRaw = diffPx(inA, inC);
+  ok(tN < (GBOX[2] - GBOX[0]) * (GBOX[3] - GBOX[1]) * 0.05, '[상황] 시간이 바꾼 자리(맑은 판끼리 다섯 장)는 화면 상자의 5% 아래다(지움이 화면을 다 덮어 자명 통과가 되지 않는다)', `${tN}px`);
   ok(inSig <= Math.max(60, inNoise * 3), '★화면도 그대로다 — 비 켠 실내 vs 맑은 실내가 잡음 안',
-     `효과 ${inSig}px · 잡음 ${inNoise}px`);
+     `효과 ${inSig}px(시간이 바꾼 자리 ${tN}px 밖 · 지우기 전 ${inSigRaw}px) · 잡음(맑음 붙여 찍음) ${inNoise}px · 참고 비 켠 두 장 ${inNoiseRain}px`);
 
   // ══ 밖으로 나간다 ═══════════════════════════════════════════════════════════════
   say('\n[밖으로 — 집에서 40셀 떨어진 빈 땅으로 옮긴다]');
@@ -433,18 +469,35 @@ const diffPx = (a, b) => { let c = 0;
   //   못 보면 판정이 아니라 **유보**다("안 비쌌다"와 "못 쟀다"는 다른 말이다).
   const seen = addMs / Math.max(1e-6, snowMs);
   if (seen < 0.5) {
-    fail++; say(`  ✗ ★★유보 — 프레임 계기가 층을 못 본다(층 ${snowMs.toFixed(2)}ms 인데 프레임엔 ${addMs.toFixed(2)}ms).`
-      + ' 캔버스 미룸을 다 못 걷었다는 뜻이라 이 절의 어떤 값도 못 믿는다.');
+    //   ★[T1339] 종전엔 "유보"라 쓰고 빨강으로 셌다(fail++) — 이제 유보 줄 · RC 75(빨강 아님 · 러너 · 야간 보고가 따로 센다). 못 잰 판은 초록도 아니다.
+    WD.yubo('★★프레임 계기가 층을 본다(층 대비)', `층 ${snowMs.toFixed(2)}ms 인데 프레임엔 ${addMs.toFixed(2)}ms — 캔버스 미룸을 다 못 걷었다 · 이 절의 값을 못 믿는다(기계 의존)`);
   } else {
     ok(true, '★계기 신뢰 — 프레임이 층의 값을 실제로 본다(층 대비)', `${(seen * 100).toFixed(0)}%`);
     ok(addMs < nightMs, '★★날씨가 프레임에 더한 ms 가 밤 오버레이 한 판보다 작다(같은 판에서 잰 두 값)',
        `${addMs.toFixed(2)}ms < ${nightMs.toFixed(2)}ms`);
-    ok(addMs < frameMs * 0.25, '★프레임 한 장에서 날씨가 차지하는 몫이 1/4 아래',
-       `${(addMs / frameMs * 100).toFixed(0)}% · 같은 조건 잡음 폭 ±${(noiseMs / frameMs * 100).toFixed(0)}%`);
+    //   ★[T1339 · T1328 회부 5] 혼자 20판: 몫 중앙 21% · 빨강 셋(35 · 34 · 28%)은 셋 다 **넘은 몫이 같은 조건 잡음 폭 안**이었다(넘은 1.15 · 1.01 · 0.29ms ≤ 잡음 3.93 · 3.11 · 0.71ms).
+    //     ⇒ 넘었는데 잡음 안이면 같은 판에서 세 판 더 재어 여섯 판 가운데값으로 다시 본다(문턱 1/4 무변 · 표본만 늘림). 다시 봐도 넘고 그것도 잡음 안 = 기계 의존 유보 ·
+    //     잡음 밖으로 넘으면 빨강(날씨가 정말 무겁다).
+    let share = addMs / frameMs, nz = noiseMs, fms = frameMs, more = false;
+    if (!(addMs < frameMs * 0.25) && (addMs - frameMs * 0.25) <= noiseMs) {
+      more = true;
+      for (let i = 0; i < 3; i++) {
+        const A = await frame({ precip: 0 }); const N = await frame({ precip: 1, tempC: -5, wind: 0.3 }); const B = await frame({ precip: 0 });
+        FP.push({ a: A.all, rn: N.all, b: B.all, rW: N.all / A.all, rN: B.all / A.all });
+      }
+      await rain(null);
+      const rW2 = med(FP.map((x) => x.rW)); fms = med(FP.map((x) => x.a));
+      const add2 = (rW2 - 1) * fms; nz = Math.max(...FP.map((x) => Math.abs(x.rN - 1))) * fms; share = add2 / fms;
+      say(`    (다시 잼 — 여섯 판) 한 장 ${fms.toFixed(1)}ms · 날씨가 더한 값 ${add2.toFixed(2)}ms · 잡음 폭 ±${nz.toFixed(2)}ms`);
+    }
+    const m = '★프레임 한 장에서 날씨가 차지하는 몫이 1/4 아래', d = `${(share * 100).toFixed(0)}% · 같은 조건 잡음 폭 ±${(nz / fms * 100).toFixed(0)}%${more ? ' · 여섯 판 가운데값' : ''}`;
+    if (share < 0.25) ok(true, m, d);
+    else if ((share - 0.25) * fms <= nz) WD.yubo(m, `${d} — 넘은 몫이 같은 조건 잡음 안(기계 의존 · 빨강 아님)`);
+    else ok(false, m, d);
   }
 
   say(`\n=== PASS ${pass} / FAIL ${fail} ===`);
   if (errs.length) say(`  [pageerror] ${errs.slice(0, 3).join(' | ')}`);
   await browser.close();
-  process.exit(fail ? 1 : 0);
+  process.exit(WD.rc(fail));   // ★[T1339] 빨강 1 · 유보만 75 · 0
 })().catch((e) => { console.error('FATAL', e); process.exit(1); });

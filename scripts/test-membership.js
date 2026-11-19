@@ -24,6 +24,7 @@
 //
 // 실행: node scripts/test-membership.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/test-member-${process.pid}.db`;
 process.env.ONB_ENABLE = process.env.ONB_ENABLE || '1';

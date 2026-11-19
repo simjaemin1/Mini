@@ -13,13 +13,14 @@
 //
 // 실행: node scripts/test-t1243-farm-on.js   (존 안 띄움 · 몇 초)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };
-const KNOBS = ['T1316_BODY_CLOCK', 'T1316_SUBSTEP', 'T1295_FARM_CLOCK', 'T1295_GOURD', 'T1284_FARM_YIELD', 'T1276_FARM_K', 'T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
+const KNOBS = ['T1351_MINE_CLOCK', 'T1326_HUNT_CLOCK', 'T325_WOOD_ACT', 'T1195_HUNT_REAL', 'T1316_BODY_CLOCK', 'T1316_SUBSTEP', 'T1295_FARM_CLOCK', 'T1295_GOURD', 'T1284_FARM_YIELD', 'T1276_FARM_K', 'T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
 const sub = (env, code) => {
   const e = Object.assign({}, process.env); delete e.NODE_OPTIONS; for (const k of KNOBS) delete e[k]; Object.assign(e, env);
   return JSON.parse(execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: e, encoding: 'utf8', maxBuffer: 64 << 20 }).trim().split('\n').filter((l) => l.startsWith('{')).pop());
@@ -267,6 +268,41 @@ else {
   console.log('  · ⑪ [상황] 나무꾼 · 채집꾼은 이 세계(`T325_WOOD_ACT` · `T347_FORAGE_ACT` 끔 기본)에서 econ 식이 낸다 — 몸 일 라벨 없음(벌목 ' + L(R, 'lumberjack', ['벌목']) + ')');
   const Bm = run(60, 'bait', { T1295_PROBE_BAIT: 'mine' });
   ok(Bm && !Bm.err && R.mineKg > 0 && !(Bm.mineKg > R.mineKg * 0.1), '⑪ T1316 미끼 — 광부 한 타만 실 ms 축으로 되돌린 사본은 빨강(광부 몸 kg 이 켬 판의 10분의 1 아래)', Bm.err || `${Bm.mineKg} : ${R.mineKg} kg`);
+}
+// ── ⑫ T1326 — 다섯 직업 축(농부 · 나무꾼 · 어부 · 광부 · 사냥꾼)이 판 시계 몸 축 하나 · 몸 축 직업은 일괄 명부가 몸을 안 든다 ──
+const Q12 = `const V=require('./server/villages');const B=V.__p3Bind({});const J=(j)=>({simJob:j,simVillageId:1});
+const o={k:V.T1326_HUNT_CLOCK};B.state.deps=Object.assign({},B.state.deps||{},{zoneAwake:()=>true,moveSpeed:120,dayPhaseRatio:0.6});
+const run=()=>({f:V.t1295S(J('farmer')),l:V.t1295S(J('lumberjack')),fi:V.t1295S(J('fisher')),m:V.t1295S(J('miner')),h:V.t1295S(J('hunter')),cs0:V._t1202ClockShort(),csL:V._t1202ClockShort({dbId:1},'lumberjack'),csH:V._t1202ClockShort({dbId:1},'hunter')});
+B.state.dayMs=250;o.fast=run();B.state.dayMs=require('./server/zone-config').WORLD.dayLengthMs;o.live=run();console.log(JSON.stringify(o));`;
+const B12 = { T1243_FARM_ON: '1', T1316_BODY_CLOCK: '1', T1316_SUBSTEP: '1' };
+const w0 = sub(B12, Q12), w1 = sub(Object.assign({ T1326_HUNT_CLOCK: '1' }, B12), Q12), wF = sub({ T1243_FARM_ON: '1' }, Q12);
+ok(!w0.k && w0.fast.h === 1 && w0.fast.l === 5760, '⑫ T1326 — 끔 기본 = 사냥꾼 배율 1(T1316 그대로 · 나무꾼 5760)');
+ok(w1.k && [w1.fast.f, w1.fast.l, w1.fast.fi, w1.fast.m, w1.fast.h].every((x) => x === 5760) && [w1.live.f, w1.live.l, w1.live.h].every((x) => x === 1),
+  '⑫ T1326 — 켬 = 다섯 직업이 같은 배율(판 시계) · 운영 시계 1', `${w1.fast.h}`);
+ok(w1.fast.cs0 === true && w1.fast.csL === false && wF.fast.csL === true && w1.live.cs0 === false && w1.live.csL === false,
+  '⑫ T1326 ③ 일괄 명부 시계 문턱 — 몸 축에 든 직업(판 시계 · T1316 켬)은 왕복할 수 있다(명부가 그 몸을 안 든다) · 인자 없음 · 몸 축 끔 = 종전(판 시계 짧음)',
+  `${w1.fast.cs0}/${w1.fast.csL}/${wF.fast.csL}`);
+{ const WS12 = fs.readFileSync(path.join(ROOT, 'server', 'wildlife.js'), 'utf8'), ZS12 = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'), VS12 = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+  ok(WS12.includes('const _s95 = _t1326S(pr._real);') && WS12.includes('_hunterBrain(pr, S, _s95 > 1 ? _s95 / H.TICK_HZ : 1 / H.TICK_HZ);'),
+    '⑫ T1326 ② 사냥꾼 두뇌(추적 · 짐승 쫓기) dt = 같은 배율 × 틱(배율 1 = 종전 1/TICK_HZ) · 짐승 장부는 안 건드린다');
+  ok(ZS12.includes('(p._huntSpd > 0 ? p._huntSpd : 1)') && VS12.includes("(npc.simJob !== 'hunter' || T1326_HUNT_CLOCK)") && VS12.includes('const bodies = _t1202ClockShort(vil, job) ?'),
+    '⑫ T1326 — 걸음은 사냥꾼 뜀 배수를 그대로 곱한다 · 문은 사냥꾼을 켬일 때만 · 명부는 직업 인자로 문턱을 본다'); }
+if (process.env.T1295_SKIP_RUN === '1') console.log('  · ⑫ T1326 서버 판 건너뜀(T1295_SKIP_RUN=1) — 통과로 세지 않는다');
+else {
+  const os = require('os'), D = fs.mkdtempSync(path.join(os.tmpdir(), 't1326h-'));
+  const run = (days, out, extra) => { const e = Object.assign({}, process.env); for (const k of KNOBS) delete e[k]; delete e.NODE_OPTIONS;
+    Object.assign(e, { T1243_FARM_ON: '1', T325_WOOD_ACT: '1', T1195_HUNT_REAL: '1', T1316_BODY_CLOCK: '1', T1316_SUBSTEP: '1', T1326_HUNT_CLOCK: '1', VILLAGE_NPC_CAP: 'Infinity', VILLAGE_CARAVAN_MAX: '0', T745_VCLOCK: '1', T577_PAR: '1', T577_DIR: path.join(D, out), T577_TAG: out, T1295_PROBE_OUT: path.join(D, out + '.json'),
+      NODE_OPTIONS: `-r ${path.join(ROOT, 'scripts', 't745-vclock.js')} -r ${path.join(ROOT, 'scripts', 't1295-probe.js')}` }, extra || {});
+    try { execFileSync(process.execPath, [path.join(ROOT, 'scripts', 't577-server-run.js'), String(days), '1020'], { cwd: ROOT, env: e, stdio: 'ignore', timeout: 2400000 }); } catch (err) { /* 탐침 JSON 을 본다 */ }
+    try { return JSON.parse(fs.readFileSync(path.join(D, out + '.json'), 'utf8')); } catch (err) { return { err: 'no probe' }; } };
+  const L = (r, job, labs) => labs.reduce((a, l) => a + ((r.lab || {})[job + '|' + l] || 0), 0);
+  const R = run(40, 'on'), h = (r) => (r && r.hunt && r.hunt.reachN) || 0;
+  const wd = R.err ? null : { cut: L(R, 'lumberjack', ['벌목']), got: (R.got || {}).wood || 0, body: R.woodBody || 0, ros: R.t1202 ? R.t1202.roster.lumberjack : -1 };
+  ok(wd && h(R) > 0 && wd.cut > 0 && wd.body > 0 && Math.abs(wd.got - wd.body) < 1e-3 && wd.ros === 0 && L(R, 'fisher', ['낚시']) > 0 && R.mineKg > 0 && R.batchTasks === 0,
+    '⑫ T1326 — 판 시계 40날(밭 · 나무꾼 몸 · 사냥 몸 켬 · 몸 전부): 사냥꾼이 짐승에 닿고 · 나무꾼 몸이 베어 곳간에 든 통나무 = 몸이 든 몫(일괄 명부 0) · 어부 · 광부 몸 일',
+    R.err || `닿음 ${h(R)} · 벌목 ${wd.cut} · 통나무 ${wd.got.toFixed(1)}(몸 ${wd.body.toFixed(1)}) · 명부 ${wd.ros}`);
+  const Bh = run(40, 'bait', { T1295_PROBE_BAIT: 'hunt' });
+  ok(Bh && !Bh.err && h(R) > 0 && !(h(Bh) > h(R) * 0.1), '⑫ T1326 미끼 — 사냥꾼만 실 초 축으로 되돌린 사본은 빨강(닿음이 켬 판의 10분의 1 아래)', Bh.err || `${h(Bh)} : ${h(R)}`);
 }
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);

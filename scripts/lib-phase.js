@@ -38,8 +38,46 @@ function pin(hour) {
   global.__t1299Phase = { off, hour: +hour || 0, at: hourOf(rnow() + off) };
   return global.__t1299Phase;
 }
+//   ★[T1339 · T1328 회부 3] **한 순간 붙잡기** — `fn` 이 도는 동안 `Date.now()` 를 부른 그 순간 값 하나로 묶는다(동기 구간만 · 끝나면 되돌린다).
+//     왜: `test-t1118-rack-age` ⓔ 는 "넣은 신선도 = 화면 '나오면'"(허용 1e-4)을 잰다 — 하루 2초 판에선 화면을 본 순간과 넣은 순간 사이 **1ms** 가
+//     생선 · 과실 신선도 0.00017 이라(0.999833 · T1301 · T1328 전수 두 번) 그 사이에 벽시계 1ms 눈금만 넘어가도 빨갰다. 같은 순간에 일어난 일로 묶는다.
+//     흐름 · 간격은 그대로(묶은 동안만 0) · 세계 값 무변 · `pin` 과 겹쳐도 된다(옮긴 시계의 그 순간을 묶는다).
+function hold(fn) {
+  const D = global.Date, keep = Object.getOwnPropertyDescriptor(D, 'now'), t = D.now();
+  Object.defineProperty(D, 'now', { configurable: true, writable: true, value: () => t });
+  try { return fn(t); } finally { if (keep) Object.defineProperty(D, 'now', keep); else delete D.now; }
+}
 //   zone-config 가 실렸으면 하루 길이 · 기점이 이 자의 가정(하루 24분 · worldEpoch 0)과 맞나 — 안 맞으면 고정한 시각이 게임 시각이 아니다
 function phaseOk() { try { const z = require.cache[require('path').join(__dirname, '..', 'server', 'zone-config.js')]; return !!(z && z.exports.WORLD && z.exports.WORLD.dayLengthMs === DAY && !z.exports.WORLD.worldEpoch); } catch (e) { return false; } }
 //   ★[T1299 ①] 띄운 시각(게임 06시 · 18시 두 판)에 결과가 갈린 하네스 — 판 머리에서 `pin(h)` 로 고정한다(`test-harness-lint` ⑯a 가 이 표를 본다 · 보고/T1299 §1).
 const MUST = [];
-module.exports = { pin, phaseOk, hourOf, DAY, ENV, MUST };
+//   ★[T1310 ①] 브라우저 시계 어긋남 — `browserSkew(ms)` 는 Playwright `context.addInitScript` 에 넘길 글자를 준다(브라우저의 `Date.now` ·
+//   인수 없는 `new Date()` · `Date()` 를 ms 만큼 옮긴다 · 서버는 그대로 · `performance.now` · 타이머 무변). 플레이어 컴퓨터 시계가 틀린 판을 세운다.
+//   정본은 이 한 자리(`pin` 과 같은 옮김 꼴 — 사본 0 · lint ⑯b). 0 이면 빈 글자(아무것도 안 건다).
+function browserSkew(ms) {
+  const off = +ms || 0; if (!off) return '';
+  return `(() => { const RD = Date, rnow = RD.now.bind(RD), off = ${off};
+    const PDate = function (...a) { if (!new.target) return new RD(rnow() + off).toString(); return a.length ? new RD(...a) : new RD(rnow() + off); };
+    PDate.prototype = RD.prototype; Object.setPrototypeOf(PDate, RD); PDate.now = () => rnow() + off; PDate.parse = RD.parse; PDate.UTC = RD.UTC;
+    window.Date = PDate; window.__t1310Skew = off; })();`;
+}
+//   ★[T1356 · 재민 11-17 테스트 강화 ②] **시계를 통째로 민다** — `shift(ms)` 는 이 프로세스의 벽시계를 상수 `ms` 만큼 옮긴다(크기 제한 없음 ·
+//     `pin` 은 낮밤만 ±12분 안에서 고르지만 이것은 달력을 넘긴다). 야간 "+30일 판"(`nightly-run.sh` `NIGHT_CLOCK_DAYS=30`)이
+//     프리로드 `clock-shift.js` 로 하네스 · central · zone · 아이에 같은 상수를 건다 — 날짜를 박은 하네스 · 날 경계에 선 하네스가 여기서 빨개진다.
+//     30일 = 게임 하루(24분)의 정수배라 게임 낮밤(`worldPhase`)은 그대로다(달력만 넘어간다). 흐름 · 간격 · `performance.now` · 타이머 무변.
+//     `pin` 과 겹쳐도 된다(먼저 민 시계 위에서 낮밤을 고른다). 한 프로세스에 두 번 걸리면 두 번째는 아무것도 안 한다.
+const SHIFT_ENV = 'T1356_CLOCK_SHIFT_MS';
+function shift(ms) {
+  if (global.__t1356Shift) return global.__t1356Shift;
+  const off = +ms || 0;
+  if (!off) return null;
+  const RD = Date, rnow = RD.now.bind(RD);
+  process.env[SHIFT_ENV] = String(off);
+  const PDate = function (...a) { if (!new.target) return new RD(rnow() + off).toString(); return a.length ? new RD(...a) : new RD(rnow() + off); };
+  PDate.prototype = RD.prototype; Object.setPrototypeOf(PDate, RD);
+  PDate.now = () => rnow() + off; PDate.parse = RD.parse; PDate.UTC = RD.UTC;
+  global.Date = PDate;
+  global.__t1356Shift = { off, days: off / 86400000 };
+  return global.__t1356Shift;
+}
+module.exports = { pin, hold, shift, phaseOk, hourOf, browserSkew, DAY, ENV, SHIFT_ENV, MUST };

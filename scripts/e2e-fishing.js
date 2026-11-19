@@ -22,7 +22,9 @@
 //
 // 실행: node scripts/e2e-fishing.js [--headed]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -196,6 +198,7 @@ function pickRiverSpot() {
     await sleep(800);
   }
   const invBefore = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
+  const tgCast = await NM.mark(page);
   await page.keyboard.press('Shift+KeyF');
   let stWait = null, bit = null, tBite = 0, tPress = 0;
   for (let i = 0; i < 400; i++) {
@@ -213,7 +216,8 @@ function pickRiverSpot() {
   let caught = null;
   for (let i = 0; i < 40 && !caught; i++) { await sleep(120); caught = await page.evaluate(() => window.__fishLast || null); }
   const invAfter = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
-  const notes1 = await page.evaluate(() => (window.__notices || []).slice(-5));
+  //   [T1367] 종전 마지막 다섯 줄 — 던진 뒤 온 알림 전부 · 잡았으면 크기 줄(kg)이 올 때까지(상한 10초 · 판정 그대로)
+  const notes1 = (await NM.waitSince(page, tgCast, (l) => !caught || l.some((t) => /kg/.test(t)), { capMs: 10000 })).list;
   const stAfter = await page.evaluate(() => window.__fishState || null);
   await snap('fi-02-cast');
 
@@ -242,6 +246,7 @@ function pickRiverSpot() {
 
   // ── ⑤ 창 **밖** — 일부러 놓친다 ──────────────────────────────────────────
   await page.evaluate(() => { window.__notices = []; window.__fishLast = null; });
+  const tgMiss = await NM.mark(page);
   await page.keyboard.press('Shift+KeyF');
   let bit2 = null;
   for (let i = 0; i < 120 && !bit2; i++) {
@@ -250,8 +255,8 @@ function pickRiverSpot() {
     if (s3 && s3.state === 'bite') bit2 = s3;
   }
   ok(!!bit2, '★전제 — 두 번째 입질이 왔다(놓침을 재려면 물어야 한다)', bit2 ? `창 ${bit2.windowMs}ms` : 'X');
-  await sleep((bit2 ? bit2.windowMs : 3000) + 1600);   // 창을 **그냥 지나친다**
-  const notes3 = await page.evaluate(() => (window.__notices || []).slice(-4));
+  await sleep((bit2 ? bit2.windowMs : 3000) + 1600);   // 창을 **그냥 지나친다**(종전 그대로 — 아래 찌 · 물고기 판정이 이 시간에 기댄다)
+  const notes3 = (await NM.waitSince(page, tgMiss, (l) => l.some((t) => /놓쳤습니다/.test(t)), { capMs: 15000 })).list;   // [T1367] 종전 마지막 넉 줄 — 표지 뒤 "놓쳤습니다"가 올 때까지(상한 15초)
   const stMiss = await page.evaluate(() => window.__fishState || null);
   ok(notes3.some((t) => /놓쳤습니다/.test(t)), '★★⑤ 창을 지나치면 **놓친다**(서버가 알아서 거둔다)', JSON.stringify(notes3.slice(-1)));
   ok(stMiss === null, '★⑤ 놓치면 찌가 사라진다');
@@ -261,10 +266,9 @@ function pickRiverSpot() {
   // ── ⑥ 자리 이동 요구 — 물에서 멀면 못 던진다(서버가 판정) ────────────────
   await page.evaluate(() => window.__sendPrimary({ type: 'teleport_debug', x: 4000, y: 4000 }));
   await sleep(1200);
-  await page.evaluate(() => { window.__notices = []; });
+  const tgFar = await NM.mark(page);
   await page.keyboard.press('Shift+KeyF');
-  await sleep(1200);
-  const notes4 = await page.evaluate(() => (window.__notices || []).slice(-3));
+  const notes4 = (await NM.waitSince(page, tgFar, (l) => l.some((t) => /물에 닿지 않습니다|물가로/.test(t)), { capMs: 15000 })).list;   // [T1367] 종전 1.2초 뒤 마지막 세 줄
   ok(notes4.some((t) => /물에 닿지 않습니다|물가로/.test(t)), '★⑥ 물에서 멀면 **서버가 거절**한다', JSON.stringify(notes4.slice(-1)));
 
   // ── ⑦ **손맛은 눈으로 확인한다** — 찌가 화면에 실제로 그려지는가 ───────────

@@ -15,6 +15,7 @@
 //
 // 실행: node scripts/test-move-soa.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
@@ -537,28 +538,26 @@ console.log('\n⑦ T356_SOA 지형 막힘 비트 — 켬/끔이 같은 세계 [T
 //   ⇒ **네 조건 중 '경로 끝' 하나만 참이면 안 묻는다.** 5000ms 만료는 원래 있던 수다(새 수 0).
 console.log('\n⑧ T370_PATH_REUSE — 경로를 두 번 묻지 않는다 [T370]');
 {
+  //   ★★[T1339 · T1328 회부 2] **글자 핀 → 뜻 단언.** 종전 ⑧ 은 손잡이 선언 · `_skip` 첫 항 · 만료 5000 을 줄 글자 정규식으로 지키고, 조건 묶음을
+  //     정규식으로 떠 `new Function` 에 **손으로 적은 이름 목록**(T1294 · T1295 가 이름을 하나씩 더할 때마다 PM 이 손으로 더했다 — land1074)으로 돌렸다.
+  //     ⇒ `lib-cut-run`: 손잡이는 선언 식을 env 로 값으로 묻고 · 조건 묶음은 acorn 으로 `npcStep` 안 `needPath` … `_skip` 두 선언을 바이트 그대로 잘라 돌린다
+  //       (자유 이름은 끔 쪽 기본 — 새 손잡이가 끼어도 끔으로 돈다 · 그 이름은 참고 줄). 만료는 운영 시계 `_t1295Stale` 원문을 잘라 경계(5000 · 5001)로 잰다.
   const Z3 = codeOnly(Z);
-  ok(/const T370_PATH_REUSE = process\.env\.T370_PATH_REUSE === '1';/.test(Z3),
-     '⑧ 손잡이는 `T370_PATH_REUSE` 하나 · **기본 끔**');
-  ok(/const _skip = T370_PATH_REUSE && needPath/.test(Z3),
-     '⑧ ★`_skip` 의 **첫 항이 손잡이**다 — 끄면 단락되어 불리언 읽기 하나(종전과 비트 동일)');
-  //   ★[PM land1074 · T1295] 만료가 `_t1295Stale(npc)` 뒤로 갔다(판 시계 배율 s > 1 이면 5000 / s · 운영 시계 = 5000 그대로) — 그 함수 글자를 떠서 배율 1 = 5000 을 본다
-  const stM = Z3.match(/function _t1295Stale\(npc\) \{[^\n]*\}/);
-  const _stale = stM ? new Function('SimVillages', stM[0] + '\nreturn _t1295Stale;')({}) : null;
-  ok((/npc\._pathAt > 5000/.test(Z3) || (/npc\._pathAt > _t1295Stale\(npc\)/.test(Z3) && _stale && _stale({}) === 5000 && _stale({ simVillageId: 1 }) === 5000 && /return s > 1 \? 5000 \/ s : 5000;/.test(stM[0])))
-     && !/T370[^\n]*\b(?!5000)\d{3,}/.test(Z3.split('T370_PATH_REUSE')[1] || ''),
-     '⑧ ★새 수 0 — 만료는 **있던 5000ms** 그대로다(T1295 — 운영 시계 `_t1295Stale` = 5000)');
+  const CR = require('./lib-cut-run');
+  const zf = path.join(ROOT, 'server', 'zone.js');
+  ok(CR.decl(zf, 'T370_PATH_REUSE', {}) === false && CR.decl(zf, 'T370_PATH_REUSE', { T370_PATH_REUSE: '1' }) === true && CR.decl(zf, 'T370_PATH_REUSE', { T370_PATH_REUSE: '0' }) === false,
+     '⑧ 손잡이는 `T370_PATH_REUSE` 하나 · **기본 끔**(env 없음 = 끔 · `1` 만 켬 — 선언 식을 값으로 물음)');
   ok(!/pathfind|path-core/.test(Z3.slice(Z3.indexOf('const _skip'), Z3.indexOf('const _skip') + 400)),
      '⑧ A\\* 알고리즘 무접촉 — 고친 것은 **부르는 조건**뿐이다');
-  // ── 네 조건의 진리표를 그대로 복원해 켬/끔을 견준다(제품 글자를 뜬다) ──
-  const nb = body('npcStep');
-  const m = nb.match(/const needPath = [\s\S]*?const _skip = [\s\S]*?\n  if \(needPath && !_skip\) \{/);
-  ok(!!m, '⑧ [전제] 제품에서 조건 묶음 **그 글자**를 떴다', m ? `${m[0].length}자` : '못 찾음');
-  //   ★[T1294 ⓐ] `_skip` 끝에 손잡이 `T1294_ARRIVED_PATH` 항이 붙었다(끔 = 단락) — 그 두 이름을 매개로 둔다(넘기지 않으면 `undefined` = 끔)
-  const mkAsk = (on) => new Function('npc', 'now', 'targetKey', 'T370_PATH_REUSE', 'T1294_ARRIVED_PATH', '_t1294Arrived', '_t1295Stale',
-    m[0].replace('\n  if (needPath && !_skip) {', '') + '\nreturn needPath && !_skip;');
-  const _ask0 = mkAsk();
-  const ask = (npc, now, k, on) => _ask0(npc, now, k, on, undefined, undefined, _stale || (() => 5000));   // ★[PM land1074] 제품의 `_t1295Stale` 그 글자(운영 시계 = 5000)
+  // ── 네 조건의 진리표를 그대로 복원해 켬/끔을 견준다(제품 글자를 잘라 돌린다) ──
+  let snip = null; try { snip = CR.inner(zf, 'npcStep', 'needPath', '_skip'); } catch (e) { snip = null; }
+  ok(!!snip, '⑧ [전제] 제품 `npcStep` 에서 조건 묶음(`needPath` … `_skip`)을 그 글자대로 잘랐다', snip ? `${snip.length}자` : '못 찾음');
+  const stale0 = CR.cut(zf, '_t1295Stale');
+  const mkAsk = (on, extra) => { const R = CR.run('function __ask(npc, now, targetKey) {\n' + snip + '\nreturn needPath && !_skip;\n}\n' + stale0,
+    Object.assign({ T370_PATH_REUSE: on }, extra || {}), ['__ask', '_t1295Stale']); return R; };
+  const A0 = mkAsk(false), A1 = mkAsk(true);
+  console.log(`    (참고 · 판정 밖) 잘라 돌린 토막의 끔 쪽 기본 이름: ${A0.unknown.join(' · ') || '없음'}`);
+  const ask = (npc, now, k, on) => (on ? A1 : A0).__ask(npc, now, k);
   // 진리표 16칸 × 상황(경로 있음/없음)
   let rows = 0, offAsk = 0, onAsk = 0, diffWhenOff = 0;
   for (let bits = 0; bits < 16; bits++) {
@@ -574,6 +573,10 @@ console.log('\n⑧ T370_PATH_REUSE — 경로를 두 번 묻지 않는다 [T370]
   ok(rows === 16 && offAsk > 0 && offAsk < 16, '⑧ [상황] 진리표 16칸을 다 밟았고 묻는/안 묻는 칸이 둘 다 있다', `끔 묻는 칸 ${offAsk}/16`);
   ok(diffWhenOff === 0, '⑧ ★★★**끔 = 종전 식과 한 칸도 안 다르다**(비트 동일)', `다른 칸 ${diffWhenOff}/16`);
   ok(onAsk < offAsk, '⑧ ★켬은 **덜 묻는다**', `끔 ${offAsk} → 켬 ${onAsk} 칸`);
+  //   ★끔이면 `_skip` 의 켬 항은 단락된다 — 켬 항이 부르는 몸 술어(`_t1294Arrived`)를 세어 0 이어야 한다(T1294 손잡이도 끔 · 종전 글자 "첫 항이 손잡이")
+  { let calls = 0; const S = mkAsk(false, { _t1294Arrived: () => { calls++; return true; } });
+    for (let bits = 0; bits < 16; bits++) S.__ask({ path: [{ x: 0, y: 0 }], pathIndex: bits & 1, _pathFor: bits & 2 ? 'o' : 'K', _pathAt: bits & 4 ? 1 : 1000000 }, bits & 4 ? 1000000 : 1001, 'K');
+    ok(calls === 0, '⑧ ★끔이면 켬 항은 **안 돈다**(단락 — 켬 항이 부르는 몸 술어를 0 번 부름)', `부름 ${calls}`); }
   // ★켬이 줄이는 칸은 **'경로 끝'만 참인 칸 하나**여야 한다 — 목표가 바뀌거나 5초가 지나면 여전히 묻는다
   const onlyEnd = { path: [{ x: 0, y: 0 }], pathIndex: 1, _pathFor: 'K', _pathAt: 1000000 };
   ok(ask(onlyEnd, 1001, 'K', false) === true && ask(onlyEnd, 1001, 'K', true) === false,
@@ -582,11 +585,14 @@ console.log('\n⑧ T370_PATH_REUSE — 경로를 두 번 묻지 않는다 [T370]
   ok(ask(endAndKey, 1001, 'K', true) === true, '⑧ ★목표가 바뀌면 켬도 **여전히 묻는다**(끝+목표)');
   const endAndOld = { path: [{ x: 0, y: 0 }], pathIndex: 1, _pathFor: 'K', _pathAt: 1 };
   ok(ask(endAndOld, 1000000, 'K', true) === true, '⑧ ★★5초가 지나면 켬도 **묻는다** — 제자리에서 막힌 사람을 있는 만료가 깨운다');
-  // 자명 통과 금지 — 손잡이를 무시하는 식으로 바꾸면 위 둘이 갈린다
-  const _bad0 = new Function('npc', 'now', 'targetKey', 'T370_PATH_REUSE', 'T1294_ARRIVED_PATH', '_t1294Arrived', '_t1295Stale',
-    m[0].replace('const _skip = T370_PATH_REUSE &&', 'const _skip = true &&').replace('\n  if (needPath && !_skip) {', '') + '\nreturn needPath && !_skip;');
-  const bad = (npc, now, k, on) => _bad0(npc, now, k, on, undefined, undefined, _stale || (() => 5000));
-  ok(bad(onlyEnd, 1001, 'K', false) === false, '★⑧ 자명 통과 금지 — 손잡이를 `true` 로 비틀면 **끔 칸이 갈린다**(자가 손잡이를 실제로 본다)');
+  //   ★새 수 0 — 만료 경계를 값으로 잰다(운영 시계 `_t1295Stale` 원문 · 마을 몸이 아닌 판 = 배율 1): 5000ms 는 안 묻고 5001ms 는 묻는다
+  { const at = 1000000, e = (dt) => ask({ path: [{ x: 0, y: 0 }], pathIndex: 1, _pathFor: 'K', _pathAt: at }, at + dt, 'K', true);
+    ok(A1._t1295Stale({}) === 5000 && e(5000) === false && e(5001) === true,
+       '⑧ ★새 수 0 — 만료는 **있던 5000ms** 그대로다(운영 시계 `_t1295Stale` = 5000 · 경계 5000 안 묻고 5001 묻는다)', `stale ${A1._t1295Stale({})} · 5000 ${e(5000)} · 5001 ${e(5001)}`); }
+  // 자명 통과 금지 — 손잡이를 무시하는 식으로 바꾸면 위 둘이 갈린다(잘라 온 글자에서 첫 항만 `true` 로)
+  const B0 = CR.run('function __ask(npc, now, targetKey) {\n' + snip.replace('const _skip = T370_PATH_REUSE &&', 'const _skip = true &&') + '\nreturn needPath && !_skip;\n}\n' + stale0,
+    { T370_PATH_REUSE: false }, ['__ask']);
+  ok(snip.includes('const _skip = T370_PATH_REUSE &&') && B0.__ask(onlyEnd, 1001, 'K') === false, '★⑧ 자명 통과 금지 — 손잡이를 `true` 로 비틀면 **끔 칸이 갈린다**(자가 손잡이를 실제로 본다)');
   console.log('    접점: needPath · _pathFor · _pathAt · pathIndex · computeNpcPath · T370_PATH_REUSE');
 }
 
@@ -1964,8 +1970,13 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
   // 이동 문 — 정본 글자 · NPC 로만 부른다(입력 없음)
   const mkMove = (W) => new Function('isTerrainBlockedLocal', 'isBlockedByWall', 'isBlockedByTree', 'treeBlockerAt', 'isInIceBand', 'Roads', 'clamp', 'ZONE',
     'MOVE_SPEED', 'moveDt', '_walk', 'buildings', 'MoveModel', 'MOVE_PARAMS', 'findZoneAt', 'ZONE_ID', 'fireHandoff', 'HANDOFF_COMMIT', '_streamWalkMul',
+    //   ★[T1324 2026-11-16] 이동 문이 존 맨 위 이름 `T1324_BAND_TERRAIN` · `_t1324PBlk`(사람 겹침 띠 땅 — `'1'` 만 켬 · 끔 기본)를 읽는다 — 이 판에 그 이름이 없어
+    //     ReferenceError(전수 가지 머리 첫 판). 제품 기본 끔 갈래(끔 = 종전 술어 `isTerrainBlockedLocal` 그대로 · 이 판은 NPC 로만 부른다 — 켬이어도 NPC 는 종전 술어) ·
+    //     켬 판은 `e2e-zone-cross`(T1324_BAND_TERRAIN=1) · `scripts/t1324-band-check.js` 가 잰다(이 판 모의 세계엔 이웃 존 땅이 없다)
+    'T1324_BAND_TERRAIN', '_t1324PBlk',
     MV + '\nreturn movePlayerStep;')(terr, (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy), treeFast, null, iceBand, Roads, clamp, ZONE,
-    64, 1 / 30, W, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1);   // ★[T585] 개울 걸음 배율 — 이 판엔 개울이 없다(×1 · 커널 앞문과 같은 수)
+    64, 1 / 30, W, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1,   // ★[T585] 개울 걸음 배율 — 이 판엔 개울이 없다(×1 · 커널 앞문과 같은 수)
+    false, null);
   // 커널 — 제품 껍데기 · 제품 앞문/뒷문 글자
   const WW = require(path.join(ROOT, 'server', 'walk-wasm.js')).create({ zw: ZW, zh: ZH, iceN: true, iceS: true, iceBand: ICE, speed: 64,
     terrMiss: (x, y) => terr0(x, y), wallQ: (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy) });
@@ -2085,8 +2096,9 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
       const WA = mkWalk(), WB = mkWalk(), WC = mkWalk();
       const moveA = new Function('isTerrainBlockedLocal', 'isBlockedByWall', 'isBlockedByTree', 'treeBlockerAt', 'isInIceBand', 'Roads', 'clamp', 'ZONE',
         'MOVE_SPEED', 'moveDt', '_walk', 'buildings', 'MoveModel', 'MOVE_PARAMS', 'findZoneAt', 'ZONE_ID', 'fireHandoff', 'HANDOFF_COMMIT', '_streamWalkMul',
+        'T1324_BAND_TERRAIN', '_t1324PBlk',   // ★[T1324] 사람 겹침 띠 땅 — 제품 기본 끔 갈래(위 `mkMove` 와 같다)
         MV + '\nreturn movePlayerStep;')(terr, (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy), treeX, null, iceBand, Roads, clamp, ZONE,
-        64, 1 / 30, WA, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1);
+        64, 1 / 30, WA, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1, false, null);
       const A = mkNpcs(N, 999 + N), B = mkNpcs(N, 999 + N), C = mkNpcs(N, 999 + N);
       colOn(A, B, C);
       const fB = mkCut(new Map(B.map((p) => [p.pid, p])), WB, R, mkWW(), true, opt.still), fC = mkCut(new Map(C.map((p) => [p.pid, p])), WC, R, mkWW(), false);
@@ -2377,11 +2389,12 @@ console.log('\n㉓ T689 — 틱마다 짓던 쓰레기를 같은 값으로(빌�
   } else ok(false, '㉓ⓑ [전제] ⑨ 판을 다시 돌릴 손잡이가 없다');
   // ⓒ 계단 측면 술어 — 제품 글자 · 빌린 칸 끔·켬
   {
-    const SS = body('isBlockedByStairSide');
-    const mk = (gc) => new Function('BUILDING_SIZE', 'cellOf', 'findStairBuildingForCell', 'dirVecForCollider', 'T689_GC', '_t689SOC', '_t689SNC', SS + '\nreturn isBlockedByStairSide;')(
-      32, (x, y) => ({ cx: Math.floor(x / 32), cy: Math.floor(y / 32) }),
-      (cx, cy) => { const h = ((cx * 73856093) ^ (cy * 19349663)) >>> 0; if (h % 5) return null; return { stair: { id: 's' + (h % 7), floor: h % 2, data: { dir: ['N', 'S', 'E', 'W'][h % 4] } }, step: h % 3 }; },
-      (d) => (d === 'N' ? { x: 0, y: -1 } : d === 'S' ? { x: 0, y: 1 } : d === 'E' ? { x: 1, y: 0 } : { x: -1, y: 0 }), gc, { cx: 0, cy: 0 }, { cx: 0, cy: 0 });
+    //   ★[T1339] 손으로 적은 이름 목록(`new Function('BUILDING_SIZE', …)`) → `lib-cut-run`(원문 함수를 acorn 으로 잘라 · 자유 이름은 끔 쪽 기본 · 아래 넷만 준다)
+    const CR = require('./lib-cut-run'), SS = CR.cut(path.join(ROOT, 'server', 'zone.js'), 'isBlockedByStairSide');
+    const mk = (gc) => CR.run(SS, { BUILDING_SIZE: 32, cellOf: (x, y) => ({ cx: Math.floor(x / 32), cy: Math.floor(y / 32) }),
+      findStairBuildingForCell: (cx, cy) => { const h = ((cx * 73856093) ^ (cy * 19349663)) >>> 0; if (h % 5) return null; return { stair: { id: 's' + (h % 7), floor: h % 2, data: { dir: ['N', 'S', 'E', 'W'][h % 4] } }, step: h % 3 }; },
+      dirVecForCollider: (d) => (d === 'N' ? { x: 0, y: -1 } : d === 'S' ? { x: 0, y: 1 } : d === 'E' ? { x: 1, y: 0 } : { x: -1, y: 0 }), T689_GC: gc, _t689SOC: { cx: 0, cy: 0 }, _t689SNC: { cx: 0, cy: 0 } },
+      ['isBlockedByStairSide']).isBlockedByStairSide;
     const f0 = mk(false), f1 = mk(true);
     let d = 0, blk = 0;
     for (let i = 0; i < 60000; i++) { const ox = rq() * 4000, oy = rq() * 4000, nx = ox + (rq() - 0.5) * 70, ny = oy + (rq() - 0.5) * 70, fl = i % 3;
@@ -2390,19 +2403,41 @@ console.log('\n㉓ T689 — 틱마다 짓던 쓰레기를 같은 값으로(빌�
   }
   // ⓓ 글자 — 끔 갈래는 옛 꼴 그대로 · 켬 갈래는 같은 몸통을 부른다
   {
-    const fp = body('_fishPoll'), ps = body('_periodicSave'), pre = body('_wwPre'), wall = body('isBlockedByWall');
-    ok(/for \(const \[, p\] of players\) _fishPollOne\(p, now\);/.test(fp) && /players\.forEach\(_fishPollOne\)/.test(fp), '㉓ⓓ 어로 — 끔 `for (const [, p] of players)` · 켬 `players.forEach` · 같은 몸통(`_fishPollOne`)');
+    const ps = body('_periodicSave'), wall = body('isBlockedByWall');
+    //   ★★[T1339 · T1328 회부 2] 어로 · 걸음 커널 앞문 · 이동 문은 **글자 → 뜻**: 원문(acorn 으로 자름)을 끔 · 켬 둘로 돌려 몸통이 받은 몸의 **차례**를 견준다.
+    //     종전 글자 핀(`for (const [, p] of players)` · `continue` 여덟)은 이동 문에 갈래 하나가 끼자(T1295) 깨졌다 — PM 이 손으로 "여덟" 으로 고쳤다(land1074).
+    const CR = require('./lib-cut-run'), zf = path.join(ROOT, 'server', 'zone.js');
+    const mkPl = () => { const m = new Map(); for (const [k, v] of [['n1', { isNpc: true }], ['h', { isNpc: true, handingOff: true }], ['cv', { isNpc: true, simCaravan: true }],
+      ['pl', { isNpc: false, inputQueue: [{ vx: 1, vy: 0, seq: 1 }, { vx: 0, vy: 1, seq: 2 }] }], ['w', { isNpc: true, simWar: true }], ['pl0', { isNpc: false, inputQueue: [] }], ['n2', { isNpc: true }]])
+      m.set(k, Object.assign({ id: k, x: 0, y: 0, vx: 0, vy: 0 }, v)); return m; };
+    const order = (src, fnName, gc, one, call) => { const seen = []; const pl = mkPl();
+      const R = CR.run(src, Object.assign({ T689_GC: gc, players: pl, _wwList: [], _wwSeq: [], _wwCode: [], _wwStill: [], _wwStill0: [], _wwStat: {}, _wwTC: {} }, { [one]: (p) => { seen.push(p.id); } }), [fnName]);
+      call(R[fnName]); return seen; };
+    { const fsrc = CR.cut(zf, '_fishPoll'), a = order(fsrc, '_fishPoll', false, '_fishPollOne', (f) => f(5)), b = order(fsrc, '_fishPoll', true, '_fishPollOne', (f) => f(5));
+      ok(a.length === 7 && a.join() === b.join(), '㉓ⓓ 어로 — 끔 · 켬이 **같은 몸을 같은 차례로** 몸통(`_fishPollOne`)에 넘긴다(원문을 잘라 돌림)', `끔 ${a.join(',')} · 켬 ${b.join(',')}`); }
     ok(/T689_GC \? arr\.values\(\) : arr/.test(ps) && /const p = T689_GC \? _e : _e\[1\];/.test(ps), '㉓ⓓ 사람 저장 — 같은 차례(값만 · [키, 값]의 값) · 커서·조기 반환 그대로');
-    ok(/players\.forEach\(_wwPreOne\)/.test(pre) && /for \(const p of players\.values\(\)\) _wwPreOne\(p\);/.test(pre), '㉓ⓓ 걸음 커널 앞문 — 끔 `for…of` · 켬 `forEach` · 같은 몸통(`_wwPreOne`)');
+    { const wsrc = CR.cut(zf, '_wwPre'), a = order(wsrc, '_wwPre', false, '_wwPreOne', (f) => f(50)), b = order(wsrc, '_wwPre', true, '_wwPreOne', (f) => f(50));
+      ok(a.length === 7 && a.join() === b.join(), '㉓ⓓ 걸음 커널 앞문 — 끔 · 켬이 같은 몸을 같은 차례로 몸통(`_wwPreOne`)에(원문을 잘라 돌림)', `끔 ${a.join(',')} · 켬 ${b.join(',')}`); }
     ok(/else \{ oc = \{ cx: _ocx, cy: _ocy \}; nc = \{ cx: _ncx, cy: _ncy \}; \}/.test(wall) && /oc = _t689WOC; nc = _t689WNC;/.test(wall), '㉓ⓓ 벽 술어 — 끔 새 객체 · 켬 빌린 칸(같은 네 수)');
-    { const d1 = Z.slice(Z.indexOf('  const _decOne = (pid) => { do {'), Z.indexOf('  if (T689_GC) { let _decStop = false;'));
+    { const d1 = Z.slice(Z.indexOf('  const _decOne = (pid, _sL) => { do {'), Z.indexOf('  if (T1348_LOOP) {'));   // ★[T1348 ⓐ] 몸통이 거울 고리의 칸(`_sL`)을 받는다 · 순회 문 머리에 거울 갈래(같은 차례 — `test-t1348-loop` ⓐ ③)
       ok(d1.length > 500 && /\{ _stopAt = pid; break; \}/.test(d1) && /\} while \(false\); return _stopAt !== null; \};/.test(d1)
-         && /if \(T689_GC\) \{ let _decStop = false; npcs\.forEach\(\(pid\) => \{ if \(!_decStop && _decOne\(pid\)\) _decStop = true; \}\); \}\n  else for \(const pid of npcs\) if \(_decOne\(pid\)\) break;/.test(Z),
+         && /else if \(T689_GC\) \{ let _decStop = false; npcs\.forEach\(\(pid\) => \{ if \(!_decStop && _decOne\(pid\)\) _decStop = true; \}\); \}\n  else for \(const pid of npcs\) if \(_decOne\(pid\)\) break;/.test(Z)
+         && /for \(let i = 0; i < _P\.length; i\+\+\) \{ const pid = _P\[i\]; if \(pid === undefined\) continue;[^\n]*if \(_decOne\(pid, s\)\) break; \}/.test(Z),
          '㉓ⓓ 결정 문 — 몸통 글자 그대로(`do … while (false)` · `break` 가 `_stopAt` 을 세운다) · 끔 `for…of`+`break` · 켬 `forEach`+멈춤 깃발', `${d1.length}자`); }
-    { const mv1 = Z.slice(Z.indexOf('  const _moveOne = (p) => { do {'), Z.indexOf('  if (T689_GC) players.forEach(_moveOne);'));
-      ok(mv1.length > 1000 && (codeOnly(mv1).match(/\bcontinue;/g) || []).length === 8 && !/\breturn;/.test(codeOnly(mv1)) && /\} while \(false\); \};/.test(mv1)
-         && /if \(T689_GC\) players\.forEach\(_moveOne\);\n  else for \(const p of players\.values\(\)\) _moveOne\(p\);/.test(Z),
-         '㉓ⓓ 이동 문 — 몸통 글자 그대로(`do … while (false)` · `continue` 여덟 = 이 몸 끝 — ★[PM land1074] T1295 `_t1295Walk` 갈래 하나 더) · 끔 `for…of` · 켬 `forEach`', `${mv1.length}자`); }
+    { //   이동 문 — `_moveOne` 선언과 그 뒤 차례 문(끔 `for…of` · 켬 `forEach`)을 잘라 돌린다. 몸마다 걸음(`movePlayerStep`)이 몇 번 · 어떤 차례로 불렸나:
+      //     넘기는 중 · 캐러밴 · 전쟁 몸은 건너뛰고(그 몸에서 고리가 **안 끝난다** — 다음 몸이 걷는다) · 사람은 입력 수만큼 · 입력 없는 사람 0.
+      let mv = null; try { mv = CR.inner(zf, null, '_moveOne', 1); } catch (e) { mv = null; }
+      const walk = (gc, srcX) => { const seen = []; const pl = mkPl();
+        const R = CR.run('function __mv() {\n' + srcX + '\n}', { T689_GC: gc, players: pl, movePlayerStep: (p) => { seen.push(p.id); }, _t1295Walk: () => false, _wwOn: false,
+          _t316WalkAlways: () => true, isPositionActive: () => true, Body: { canSprint: () => false }, MoveModel: { stepMove: (v) => ({ vx: v.vx, vy: v.vy }) }, moveMultOf: () => 1,
+          _streamWalkMul: () => 1, moveDt: 50, MOVE_PARAMS: { model: 'legacy' }, T1241_DES: false }, ['__mv']);
+        R.__mv(); return seen; };
+      const a = mv ? walk(false, mv) : [], b = mv ? walk(true, mv) : [];
+      ok(!!mv && a.join() === 'n1,pl,pl,n2' && a.join() === b.join(),
+         '㉓ⓓ 이동 문 — 끔 · 켬이 같은 몸을 같은 차례 · 같은 수로 걷게 한다(건너뛴 몸에서 고리가 안 끝난다 · 사람은 입력 수만큼 — 원문을 잘라 돌림)', `끔 ${a.join(',')} · 켬 ${b.join(',')}`);
+      //   자명 통과 금지 — 켬 갈래가 차례를 뒤집으면(같은 몸 · 다른 차례) 문다
+      const bad = mv ? walk(true, mv.replace('if (T689_GC) players.forEach(_moveOne);', 'if (T689_GC) [...players.values()].reverse().forEach(_moveOne);')) : [];
+      ok(!!mv && bad.join() !== a.join(), '㉓ⓓ [자명 통과 금지] 켬 갈래 차례를 뒤집은 사본은 문다', bad.join(',')); }
     const nq = (Z.match(/qtColl \? \(T689_GC \? qtColl\.queryCircleScratch\(/g) || []).length;
     ok(nq === 4, '㉓ⓓ 빌린 배열 질의 자리 넷(벽 변 · 바닥 타일 · 울타리 · 받침) — 모두 받는 고리 안에서 다른 질의를 안 부른다', `${nq}자리`);
   }

@@ -25,6 +25,7 @@
 'use strict';
 // ★[T1216] T762_CARAVAN_BODY 켬 기본(T1182) 뒤로 T1034 몸 칸(`_t1034Saved`)이 날 길이(1판 3초 ↔ 2판 정본 하루)와 무관하게 되살아나 저장된 길로 몸을 세운다 → 걷는 길을 안 판다(② [상황] 0번).
 //   이 판은 "다시 뜨면 걷는 길을 전부 다시 판다"는 T1061 의 그 줄을 잰다 ⇒ T1034 몸 칸을 끈다(부르는 쪽이 주면 그 값).
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 if (process.env.T1034_CARAVAN_KEEP == null) process.env.T1034_CARAVAN_KEEP = '0';
 const path = require('path');
 const fs = require('fs');

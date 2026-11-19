@@ -17,6 +17,7 @@
 //   그래서 그 줄은 **몸 칸이 두 팔 같다**(도구 · 몸이 어느 팔에서도 안 샌다)로 적고, 켬 (가)의 행은 "시한 전과 비트 같다"(자리 · 몸 · `last_seen` 통째)로 더 세게 잰다. 자리 칸은 표로만 적는다.
 // 실행: node scripts/t498-ack-timeout.js
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

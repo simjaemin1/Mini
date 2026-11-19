@@ -190,7 +190,7 @@
     const _jobBar = (bld, cx, cy) => {
       const j = bld && bld.data && bld.data.job;
       if (!j || !j.until || !j.startedAt) return null;
-      const now = Date.now();
+      const now = srvNow();   // ★[T1310 ①] 서버가 찍은 startedAt · until 과 같은 축
       const p = Math.max(0, Math.min(1, (now - j.startedAt) / Math.max(1, j.until - j.startedAt)));
       const W = 34, H = 5;
       ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(cx - W / 2, cy - 44, W, H);
@@ -543,7 +543,7 @@
       // 만료까지 남은 시간 (작은 게이지)
       const exp = building?.data?.expiresAt;
       if (exp) {
-        const remain = Math.max(0, exp - Date.now());
+        const remain = Math.max(0, exp - srvNow());   // ★[T1310 ①] 서버 만료 시각 — 서버 시각 축
         const pct = Math.min(1, remain / (10 * 60 * 1000));
         ctx.fillStyle = '#222'; ctx.fillRect(x - 12, y + 8, 24, 2);
         ctx.fillStyle = pct > 0.3 ? '#9adb6e' : '#c83a3a'; ctx.fillRect(x - 12, y + 8, 24 * pct, 2);

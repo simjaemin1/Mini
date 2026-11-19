@@ -13,6 +13,7 @@
 //
 // 실행: node scripts/test-fish-act.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.T1192_FISH_SPECIES='0';
 // T1180: 기존 끔 대조를 명시한다. 새 기본값 계약은 test-t1180-produce-defaults가 잰다.
 process.env.T312_FISH_ACT='0';

@@ -21,6 +21,7 @@
 //
 // 실행: node scripts/test-forage-act.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.T449_BODY_DAY = '0';
 process.env.T491_BATCH_FROM_BODY = '0';
 // [T1183] 이 하네스의 옛 압축 시계·econ 명부 대조 판을 명시한다.

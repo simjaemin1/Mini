@@ -16,6 +16,7 @@
 // ★이 스크립트는 **아무것도 열지 않는다.** SCHEDULE 파일도, 라이브 DB 도 건드리지 않는다.
 //   시대를 실제로 여는 건 server/era.js 의 SCHEDULE 한 줄이고, 그건 재민만 쓴다.
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync, spawnSync } = require('child_process');
@@ -108,7 +109,7 @@ function bootProbe(env, label) {
     process.exit(0);
   `;
   const r = spawnSync(process.execPath, ['-e', code], {
-    env: { ...env, ZONE_ID: 'hanbando', PORT: String(37000 + (Math.abs(hash(label)) % 900)), DB_PATH: tmp,
+    env: { ...env, ZONE_ID: 'hanbando', PORT: String(require('./lib-port').port('37000:' + label)), DB_PATH: tmp,
            ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' },
     encoding: 'utf8', timeout: 120000,
   });

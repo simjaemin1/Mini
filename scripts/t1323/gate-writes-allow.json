@@ -1,7 +1,40 @@
 {
   "_": "T1323 — 걸음 판정 칸을 걸음 문 밖에서 쓰지만 첫 거름 표 내리기(_t1322Touch · _t1323Touch · deps t1322Touch)가 없는 함수. 까닭 갈래가 있어야 한다(test-body-fields ⑳ 린트). 새 함수가 문 밖에서 판정 칸을 쓰면 표 내리기를 달거나 여기에 까닭과 함께 올린다.",
-  "npcs 밖 몸(결정 문 고리가 안 돈다 — 돌아오면 빠진 틱이 표를 내린다)": ["villages.js:tickCaravanBodies", "villages.js:_caravanSyncOne", "villages.js:_t775Put", "villages.js:_t1136Turn", "villages.js:_t1080RoadDay", "villages.js:spawnCaravanBody", "villages.js:_caravanNpcs", "villages.js:tickBodyExits", "villages.js:_bxQuiet", "villages.js:_warSyncMeta", "villages.js:_t1104Release", "villages.js:_warReleasePid", "war-live.js:createWarLive"],
-  "새 몸(칸 받기 전 · 표 없음)": ["zone.js:_t671Shape", "villages.js:spawnOneNpc", "villages.js:_xzMakeBody", "bandits.js:syncBodies"],
-  "표 못 받는 몸(캐나디아 · 사람 · 마을 밖 도적 — 표 조건 `!canadiaVillage` · `_t316WalkAlways`)": ["zone.js:syncCanadiaCaravans", "zone.js:tickDowned", "zone.js:_inputTOStep", "bandits.js:_t1039Adopt"],
-  "손잡이 · 같은 값(첫 거름 무동작 판 · 표 받은 몸엔 같은 값)": ["zone.js:_desEnd", "zone.js:_t1295Walk"]
+  "npcs 밖 몸(결정 문 고리가 안 돈다 — 돌아오면 빠진 틱이 표를 내린다)": [
+    "villages.js:tickCaravanBodies",
+    "villages.js:_caravanSyncOne",
+    "villages.js:_t775Put",
+    "villages.js:_t1136Turn",
+    "villages.js:_t1080RoadDay",
+    "villages.js:spawnCaravanBody",
+    "villages.js:_caravanNpcs",
+    "villages.js:tickBodyExits",
+    "villages.js:_bxQuiet",
+    "villages.js:_warSyncMeta",
+    "villages.js:_t1104Release",
+    "villages.js:_warReleasePid",
+    "war-live.js:createWarLive"
+  ],
+  "새 몸(칸 받기 전 · 표 없음)": [
+    "zone.js:_t671Shape",
+    "villages.js:spawnOneNpc",
+    "villages.js:_xzMakeBody",
+    "bandits.js:syncBodies"
+  ],
+  "표 못 받는 몸(캐나디아 · 사람 · 마을 밖 도적 — 표 조건 `!canadiaVillage` · `_t316WalkAlways`)": [
+    "zone.js:syncCanadiaCaravans",
+    "zone.js:tickDowned",
+    "zone.js:_inputTOStep",
+    "bandits.js:_t1039Adopt"
+  ],
+  "손잡이 · 같은 값(첫 거름 무동작 판 · 표 받은 몸엔 같은 값)": [
+    "zone.js:_desEnd",
+    "zone.js:_t1295Walk"
+  ],
+  "미룬 도장(첫 거름 · 잠 깨움 — 그 몸이 건넌 걸음 문 · 결정 문에서 썼을 값을 몸을 다시 열 때 그대로 쓴다 · T1322 · T1337)": [
+    "zone.js:_t1322Wake"
+  ],
+  "걷는 몸 커널(T1348 ⓑ — 표 3 몸의 그 틱 걸음 문이 썼을 속도를 같은 식 · 같은 차례로 쓴다 · 길 번호 · 막힘 자리는 열에 두었다가 `_t1322Wake` 가 쓴다)": [
+    "zone.js:_t1348Walk"
+  ]
 }

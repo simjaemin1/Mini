@@ -17,6 +17,7 @@
 // ★그리고 이 하네스는 **자기가 실패할 줄 안다**: `--selftest` 로 계약 넷을 일부러 깨 본다.
 //
 // 실행: node scripts/test-props.js  [--selftest]
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 

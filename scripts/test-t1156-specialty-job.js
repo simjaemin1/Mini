@@ -15,3 +15,4 @@ w.day++;w.infoRange=1;
 assert.deepEqual(E._t1156Specialty(a,w),[],'unreachable market buys no food');
 assert.equal(V.T1156_SPECIALTY_JOB,process.env.T1156_SPECIALTY_JOB==='1');
 console.log('T1156: 6 assertions passed; '+JSON.stringify(q));
+console.log('=== 결과: 6 PASS / 0 FAIL ===');   // [T1367] 러너 결과 줄 꼴(단언은 그대로 — 하나라도 어긋나면 위에서 던져 RC 1 · 이 줄 없음)

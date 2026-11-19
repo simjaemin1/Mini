@@ -18,7 +18,9 @@
 //
 // 실행: node scripts/e2e-pick-top.js [--headed]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');            // ★T349 기동 기다리기 정본
@@ -97,7 +99,7 @@ const HALF = 18;   // 제품 `PICK_PLAYER_HALF`(46-h-verbs) — 상자 전제를
   ok(await inWorld(Y, 180), '[Y] 존 입장');
 
   const snap = async (n) => { await R.screenshot({ path: path.join(SHOTS, n + '.png') }); };
-  const notices = (pg) => pg.evaluate(() => (window.__notices || []).slice(-40));
+  const notices = (pg) => pg.evaluate(() => (window.__notices || []).slice(-40));   // @notice-ok 고리 전부(40칸 = 클라 상한 · 자름 0)
   const clearNotices = (pg) => pg.evaluate(() => { window.__notices = []; });
   const rawAbs = (pg) => pg.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : window.__getMyAbs()));
   const pidOf = (pg) => pg.evaluate(() => (typeof myPid !== 'undefined' ? myPid : null));
@@ -133,12 +135,13 @@ const HALF = 18;   // 제품 `PICK_PLAYER_HALF`(46-h-verbs) — 상자 전제를
   const V0 = rows[0], vx = V0.cx * 32 + 16, vy = V0.cy * 32 + 16;
   {
     await clearNotices(R);
+    const tgW = await NM.mark(R);
     await R.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [vx, vy]);
     let m = null, a0 = null;
     for (let i = 0; i < 15 && !a0; i++) {
       await sleep(i ? 900 : 1500);
       if (m) { a0 = await rawAbs(R); break; }
-      const nz = (await R.evaluate(() => (window.__notices || []).slice(-8))).filter((t) => /텔레포트/.test(t));
+      const nz = (await NM.since(R, tgW)).filter((t) => /텔레포트/.test(t));   // [T1367] 종전 마지막 여덟 줄 — 표지 뒤 전부
       m = nz.length ? String(nz[nz.length - 1]).match(/\((-?\d+),\s*(-?\d+)\)/) : null;
     }
     if (m && a0) OFF = { x: a0.x - (+m[1]), y: a0.y - (+m[2]) };

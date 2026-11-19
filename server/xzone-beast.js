@@ -88,7 +88,8 @@ function createBeastDoor(H) {
       wl: Math.max(0, (m.wanderUntil || 0) - now), hx: (m.homeX != null ? m.homeX : m.x) - m.x, hy: (m.homeY != null ? m.homeY : m.y) - m.y,
       pack: m.packId ? (String(m.packId).includes('@') ? String(m.packId) : `${m.packId}@${H.zone}`) : null,
       tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null, tameProgress: m.tameProgress || 0,
-      floor: m.floor || 0, src: m.dbId != null ? m.dbId : null };
+      floor: m.floor || 0, src: m.dbId != null ? m.dbId : null,
+      ...(m._t1331 != null && H.t1331Pack ? { t1331: H.t1331Pack(m) } : {}) };   // ★[T1331] 몸 표의 몸이면 몸 칸을 싣는다(끔 = 그런 몹이 없다 · 칸 없음)
   }
   // ── 보내기 — ① 숨김 → 숨김 줄 적기 → 글
   function send(m, go) {

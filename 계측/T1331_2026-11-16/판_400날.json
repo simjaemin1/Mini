@@ -1,0 +1,1443 @@
+{
+ "off-1020": {
+  "tag": "off-1020",
+  "on": false,
+  "days": 400,
+  "zone": "hanbando",
+  "start": 2997,
+  "end": 2653,
+  "min": 2653,
+  "max": 2997,
+  "byStart": {
+   "deer": 1498,
+   "wild_boar": 499,
+   "arctic_hare": 999
+  },
+  "byEnd": {
+   "deer": 1326,
+   "wild_boar": 442,
+   "arctic_hare": 884
+  },
+  "extinct": [],
+  "boom": [],
+  "mismatch": 0,
+  "meatKgDay": 919.9,
+  "meatKgEnd": 1162.3,
+  "popEnd": 3917,
+  "eight": {
+   "pop": 3917,
+   "dead": 0,
+   "ever": 51,
+   "weapQ": 240,
+   "expand": 853,
+   "board": 1865,
+   "toolQ": 4054.6,
+   "preserve": 0,
+   "grain": 12959.7
+  },
+  "empty": 0,
+  "huntPop": 615,
+  "huntVil": [
+   [
+    "광산3",
+    8,
+    25
+   ],
+   [
+    "광산5",
+    8,
+    39
+   ],
+   [
+    "임업1",
+    8,
+    156
+   ],
+   [
+    "임업3",
+    8,
+    197
+   ],
+   [
+    "농촌1",
+    8,
+    93
+   ],
+   [
+    "임업4",
+    8,
+    82
+   ],
+   [
+    "임업5",
+    8,
+    23
+   ]
+  ],
+  "cpuSecDay": 1.645,
+  "wallSec": 717.8,
+  "bodyCpuMsDay": null,
+  "saves": null,
+  "huntKill": null,
+  "st": null,
+  "show": null,
+  "traj": [
+   [
+    1,
+    2997,
+    {
+     "deer": 1498,
+     "wild_boar": 499,
+     "arctic_hare": 999
+    }
+   ],
+   [
+    50,
+    2973,
+    {
+     "deer": 1486,
+     "wild_boar": 495,
+     "arctic_hare": 991
+    }
+   ],
+   [
+    100,
+    2908,
+    {
+     "deer": 1454,
+     "wild_boar": 484,
+     "arctic_hare": 969
+    }
+   ],
+   [
+    150,
+    2830,
+    {
+     "deer": 1415,
+     "wild_boar": 471,
+     "arctic_hare": 943
+    }
+   ],
+   [
+    200,
+    2752,
+    {
+     "deer": 1376,
+     "wild_boar": 458,
+     "arctic_hare": 917
+    }
+   ],
+   [
+    250,
+    2693,
+    {
+     "deer": 1346,
+     "wild_boar": 448,
+     "arctic_hare": 897
+    }
+   ],
+   [
+    300,
+    2674,
+    {
+     "deer": 1337,
+     "wild_boar": 445,
+     "arctic_hare": 891
+    }
+   ],
+   [
+    350,
+    2662,
+    {
+     "deer": 1331,
+     "wild_boar": 443,
+     "arctic_hare": 887
+    }
+   ],
+   [
+    400,
+    2653,
+    {
+     "deer": 1326,
+     "wild_boar": 442,
+     "arctic_hare": 884
+    }
+   ]
+  ]
+ },
+ "on-1020": {
+  "tag": "on-1020",
+  "on": true,
+  "days": 400,
+  "zone": "hanbando",
+  "start": 2981,
+  "end": 2858,
+  "min": 2858,
+  "max": 2981,
+  "byStart": {
+   "deer": 1500,
+   "wild_boar": 494,
+   "arctic_hare": 987
+  },
+  "byEnd": {
+   "deer": 1440,
+   "wild_boar": 474,
+   "arctic_hare": 944
+  },
+  "extinct": [],
+  "boom": [],
+  "mismatch": 0,
+  "meatKgDay": 1076.9,
+  "meatKgEnd": 1615.7,
+  "popEnd": 3600,
+  "eight": {
+   "pop": 3600,
+   "dead": 3,
+   "ever": 51,
+   "weapQ": 313,
+   "expand": 611,
+   "board": 1964,
+   "toolQ": 3593.9,
+   "preserve": 0,
+   "grain": 10026
+  },
+  "empty": 3,
+  "huntPop": 703,
+  "huntVil": [
+   [
+    "광산3",
+    8,
+    7
+   ],
+   [
+    "광산5",
+    8,
+    100
+   ],
+   [
+    "임업1",
+    8,
+    177
+   ],
+   [
+    "임업3",
+    8,
+    226
+   ],
+   [
+    "농촌1",
+    8,
+    68
+   ],
+   [
+    "임업4",
+    8,
+    113
+   ],
+   [
+    "임업5",
+    8,
+    12
+   ]
+  ],
+  "cpuSecDay": 1.764,
+  "wallSec": 753.6,
+  "bodyCpuMsDay": 73.2,
+  "saves": 451,
+  "huntKill": 0,
+  "st": {
+   "start": 2981,
+   "born": 0,
+   "died": {
+    "hunt": 0,
+    "starve": 123,
+    "seen": 0,
+    "old": 0,
+    "pred": 0
+   },
+   "out": 0,
+   "in": 0,
+   "tame": 0,
+   "migRem": 18.500000000001332,
+   "migN": 51,
+   "steps": 14273927,
+   "stepBad": 0,
+   "bornFar": 0,
+   "bornNoMom": 0,
+   "walkers": 0,
+   "arrive": 0,
+   "abort": 0,
+   "mismatch": 0,
+   "audits": 400,
+   "huntAcc": 6.643066092631949,
+   "matN": 0,
+   "dematN": 0,
+   "shown": 0,
+   "saveN": 451,
+   "loadN": 0,
+   "cpuMs": 0,
+   "adjBuild": 60
+  },
+  "show": {
+   "mat": 0,
+   "show": 0,
+   "hide": 0,
+   "tame": 0,
+   "lost": 0,
+   "peak": 0
+  },
+  "traj": [
+   [
+    1,
+    2981,
+    {
+     "deer": 1500,
+     "wild_boar": 494,
+     "arctic_hare": 987
+    }
+   ],
+   [
+    50,
+    2980,
+    {
+     "deer": 1499,
+     "wild_boar": 494,
+     "arctic_hare": 987
+    }
+   ],
+   [
+    100,
+    2973,
+    {
+     "deer": 1495,
+     "wild_boar": 493,
+     "arctic_hare": 985
+    }
+   ],
+   [
+    150,
+    2960,
+    {
+     "deer": 1486,
+     "wild_boar": 490,
+     "arctic_hare": 984
+    }
+   ],
+   [
+    200,
+    2952,
+    {
+     "deer": 1486,
+     "wild_boar": 489,
+     "arctic_hare": 977
+    }
+   ],
+   [
+    250,
+    2934,
+    {
+     "deer": 1479,
+     "wild_boar": 485,
+     "arctic_hare": 970
+    }
+   ],
+   [
+    300,
+    2916,
+    {
+     "deer": 1471,
+     "wild_boar": 484,
+     "arctic_hare": 961
+    }
+   ],
+   [
+    350,
+    2884,
+    {
+     "deer": 1458,
+     "wild_boar": 478,
+     "arctic_hare": 948
+    }
+   ],
+   [
+    400,
+    2858,
+    {
+     "deer": 1440,
+     "wild_boar": 474,
+     "arctic_hare": 944
+    }
+   ]
+  ]
+ },
+ "off-7": {
+  "tag": "off-7",
+  "on": false,
+  "days": 400,
+  "zone": "hanbando",
+  "start": 2997,
+  "end": 2639,
+  "min": 2639,
+  "max": 2997,
+  "byStart": {
+   "deer": 1498,
+   "wild_boar": 499,
+   "arctic_hare": 999
+  },
+  "byEnd": {
+   "deer": 1319,
+   "wild_boar": 439,
+   "arctic_hare": 879
+  },
+  "extinct": [],
+  "boom": [],
+  "mismatch": 0,
+  "meatKgDay": 898.8,
+  "meatKgEnd": 1164.2,
+  "popEnd": 3707,
+  "eight": {
+   "pop": 3707,
+   "dead": 1,
+   "ever": 51,
+   "weapQ": 200,
+   "expand": 827,
+   "board": 2077,
+   "toolQ": 3935.3,
+   "preserve": 0,
+   "grain": 10065.1
+  },
+  "empty": 1,
+  "huntPop": 895,
+  "huntVil": [
+   [
+    "광산3",
+    8,
+    94
+   ],
+   [
+    "광산5",
+    8,
+    93
+   ],
+   [
+    "임업1",
+    8,
+    159
+   ],
+   [
+    "임업3",
+    8,
+    193
+   ],
+   [
+    "농촌1",
+    8,
+    190
+   ],
+   [
+    "임업4",
+    8,
+    94
+   ],
+   [
+    "임업5",
+    8,
+    72
+   ]
+  ],
+  "cpuSecDay": 1.538,
+  "wallSec": 660,
+  "bodyCpuMsDay": null,
+  "saves": null,
+  "huntKill": null,
+  "st": null,
+  "show": null,
+  "traj": [
+   [
+    1,
+    2997,
+    {
+     "deer": 1498,
+     "wild_boar": 499,
+     "arctic_hare": 999
+    }
+   ],
+   [
+    50,
+    2974,
+    {
+     "deer": 1487,
+     "wild_boar": 495,
+     "arctic_hare": 991
+    }
+   ],
+   [
+    100,
+    2906,
+    {
+     "deer": 1453,
+     "wild_boar": 484,
+     "arctic_hare": 968
+    }
+   ],
+   [
+    150,
+    2824,
+    {
+     "deer": 1412,
+     "wild_boar": 470,
+     "arctic_hare": 941
+    }
+   ],
+   [
+    200,
+    2735,
+    {
+     "deer": 1367,
+     "wild_boar": 455,
+     "arctic_hare": 911
+    }
+   ],
+   [
+    250,
+    2686,
+    {
+     "deer": 1343,
+     "wild_boar": 447,
+     "arctic_hare": 895
+    }
+   ],
+   [
+    300,
+    2668,
+    {
+     "deer": 1334,
+     "wild_boar": 444,
+     "arctic_hare": 889
+    }
+   ],
+   [
+    350,
+    2658,
+    {
+     "deer": 1329,
+     "wild_boar": 443,
+     "arctic_hare": 886
+    }
+   ],
+   [
+    400,
+    2639,
+    {
+     "deer": 1319,
+     "wild_boar": 439,
+     "arctic_hare": 879
+    }
+   ]
+  ]
+ },
+ "on-7": {
+  "tag": "on-7",
+  "on": true,
+  "days": 400,
+  "zone": "hanbando",
+  "start": 2981,
+  "end": 2869,
+  "min": 2869,
+  "max": 2981,
+  "byStart": {
+   "deer": 1500,
+   "wild_boar": 494,
+   "arctic_hare": 987
+  },
+  "byEnd": {
+   "deer": 1445,
+   "wild_boar": 476,
+   "arctic_hare": 948
+  },
+  "extinct": [],
+  "boom": [],
+  "mismatch": 0,
+  "meatKgDay": 1002.1,
+  "meatKgEnd": 1405.7,
+  "popEnd": 3057,
+  "eight": {
+   "pop": 3057,
+   "dead": 2,
+   "ever": 51,
+   "weapQ": 228,
+   "expand": 479,
+   "board": 1602,
+   "toolQ": 3064,
+   "preserve": 0,
+   "grain": 9926.8
+  },
+  "empty": 2,
+  "huntPop": 546,
+  "huntVil": [
+   [
+    "광산3",
+    8,
+    24
+   ],
+   [
+    "광산5",
+    8,
+    103
+   ],
+   [
+    "임업1",
+    8,
+    185
+   ],
+   [
+    "임업3",
+    8,
+    84
+   ],
+   [
+    "농촌1",
+    8,
+    44
+   ],
+   [
+    "임업4",
+    8,
+    80
+   ],
+   [
+    "임업5",
+    8,
+    26
+   ]
+  ],
+  "cpuSecDay": 1.511,
+  "wallSec": 656.6,
+  "bodyCpuMsDay": 73.4,
+  "saves": 451,
+  "huntKill": 0,
+  "st": {
+   "start": 2981,
+   "born": 0,
+   "died": {
+    "hunt": 0,
+    "starve": 112,
+    "seen": 0,
+    "old": 0,
+    "pred": 0
+   },
+   "out": 0,
+   "in": 0,
+   "tame": 0,
+   "migRem": 18.500000000001332,
+   "migN": 51,
+   "steps": 14715885,
+   "stepBad": 0,
+   "bornFar": 0,
+   "bornNoMom": 0,
+   "walkers": 0,
+   "arrive": 0,
+   "abort": 0,
+   "mismatch": 0,
+   "audits": 400,
+   "huntAcc": 6.277824121651445,
+   "matN": 0,
+   "dematN": 0,
+   "shown": 0,
+   "saveN": 451,
+   "loadN": 0,
+   "cpuMs": 0,
+   "adjBuild": 53
+  },
+  "show": {
+   "mat": 0,
+   "show": 0,
+   "hide": 0,
+   "tame": 0,
+   "lost": 0,
+   "peak": 0
+  },
+  "traj": [
+   [
+    1,
+    2981,
+    {
+     "deer": 1500,
+     "wild_boar": 494,
+     "arctic_hare": 987
+    }
+   ],
+   [
+    50,
+    2980,
+    {
+     "deer": 1499,
+     "wild_boar": 494,
+     "arctic_hare": 987
+    }
+   ],
+   [
+    100,
+    2972,
+    {
+     "deer": 1494,
+     "wild_boar": 493,
+     "arctic_hare": 985
+    }
+   ],
+   [
+    150,
+    2958,
+    {
+     "deer": 1485,
+     "wild_boar": 490,
+     "arctic_hare": 983
+    }
+   ],
+   [
+    200,
+    2944,
+    {
+     "deer": 1484,
+     "wild_boar": 487,
+     "arctic_hare": 973
+    }
+   ],
+   [
+    250,
+    2929,
+    {
+     "deer": 1478,
+     "wild_boar": 484,
+     "arctic_hare": 967
+    }
+   ],
+   [
+    300,
+    2918,
+    {
+     "deer": 1474,
+     "wild_boar": 482,
+     "arctic_hare": 962
+    }
+   ],
+   [
+    350,
+    2891,
+    {
+     "deer": 1461,
+     "wild_boar": 479,
+     "arctic_hare": 951
+    }
+   ],
+   [
+    400,
+    2869,
+    {
+     "deer": 1445,
+     "wild_boar": 476,
+     "arctic_hare": 948
+    }
+   ]
+  ]
+ },
+ "off-42": {
+  "tag": "off-42",
+  "on": false,
+  "days": 400,
+  "zone": "hanbando",
+  "start": 2997,
+  "end": 2687,
+  "min": 2687,
+  "max": 2997,
+  "byStart": {
+   "deer": 1498,
+   "wild_boar": 499,
+   "arctic_hare": 999
+  },
+  "byEnd": {
+   "deer": 1343,
+   "wild_boar": 447,
+   "arctic_hare": 895
+  },
+  "extinct": [],
+  "boom": [],
+  "mismatch": 0,
+  "meatKgDay": 871.9,
+  "meatKgEnd": 1175.3,
+  "popEnd": 3530,
+  "eight": {
+   "pop": 3530,
+   "dead": 1,
+   "ever": 51,
+   "weapQ": 202,
+   "expand": 613,
+   "board": 1952,
+   "toolQ": 3705,
+   "preserve": 0,
+   "grain": 12520.6
+  },
+  "empty": 1,
+  "huntPop": 700,
+  "huntVil": [
+   [
+    "광산3",
+    8,
+    26
+   ],
+   [
+    "광산5",
+    8,
+    75
+   ],
+   [
+    "임업1",
+    8,
+    158
+   ],
+   [
+    "임업3",
+    8,
+    197
+   ],
+   [
+    "농촌1",
+    8,
+    174
+   ],
+   [
+    "임업4",
+    8,
+    43
+   ],
+   [
+    "임업5",
+    8,
+    27
+   ]
+  ],
+  "cpuSecDay": 1.771,
+  "wallSec": 750.3,
+  "bodyCpuMsDay": null,
+  "saves": null,
+  "huntKill": null,
+  "st": null,
+  "show": null,
+  "traj": [
+   [
+    1,
+    2997,
+    {
+     "deer": 1498,
+     "wild_boar": 499,
+     "arctic_hare": 999
+    }
+   ],
+   [
+    50,
+    2972,
+    {
+     "deer": 1486,
+     "wild_boar": 495,
+     "arctic_hare": 990
+    }
+   ],
+   [
+    100,
+    2903,
+    {
+     "deer": 1451,
+     "wild_boar": 483,
+     "arctic_hare": 967
+    }
+   ],
+   [
+    150,
+    2842,
+    {
+     "deer": 1421,
+     "wild_boar": 473,
+     "arctic_hare": 947
+    }
+   ],
+   [
+    200,
+    2780,
+    {
+     "deer": 1390,
+     "wild_boar": 463,
+     "arctic_hare": 926
+    }
+   ],
+   [
+    250,
+    2739,
+    {
+     "deer": 1369,
+     "wild_boar": 456,
+     "arctic_hare": 913
+    }
+   ],
+   [
+    300,
+    2715,
+    {
+     "deer": 1357,
+     "wild_boar": 452,
+     "arctic_hare": 905
+    }
+   ],
+   [
+    350,
+    2702,
+    {
+     "deer": 1351,
+     "wild_boar": 450,
+     "arctic_hare": 900
+    }
+   ],
+   [
+    400,
+    2687,
+    {
+     "deer": 1343,
+     "wild_boar": 447,
+     "arctic_hare": 895
+    }
+   ]
+  ]
+ },
+ "on-42": {
+  "tag": "on-42",
+  "on": true,
+  "days": 372,
+  "zone": "hanbando",
+  "start": 2981,
+  "end": 2871,
+  "min": 2871,
+  "max": 2981,
+  "byStart": {
+   "deer": 1500,
+   "wild_boar": 494,
+   "arctic_hare": 987
+  },
+  "byEnd": {
+   "deer": 1446,
+   "wild_boar": 478,
+   "arctic_hare": 947
+  },
+  "extinct": [],
+  "boom": [],
+  "mismatch": 0,
+  "meatKgDay": 1034.5,
+  "meatKgEnd": 1486.4,
+  "popEnd": 3636,
+  "eight": null,
+  "empty": null,
+  "huntPop": null,
+  "huntVil": [],
+  "cpuSecDay": 1.637,
+  "wallSec": 1369.1,
+  "bodyCpuMsDay": 77.4,
+  "saves": 423,
+  "huntKill": 0,
+  "st": {
+   "start": 2981,
+   "born": 0,
+   "died": {
+    "hunt": 0,
+    "starve": 110,
+    "seen": 0,
+    "old": 0,
+    "pred": 0
+   },
+   "out": 0,
+   "in": 0,
+   "tame": 0,
+   "migRem": 18.500000000001332,
+   "migN": 51,
+   "steps": 13304434,
+   "stepBad": 0,
+   "bornFar": 0,
+   "bornNoMom": 0,
+   "walkers": 0,
+   "arrive": 0,
+   "abort": 0,
+   "mismatch": 0,
+   "audits": 372,
+   "huntAcc": 2.251161778683491,
+   "matN": 0,
+   "dematN": 0,
+   "shown": 0,
+   "saveN": 423,
+   "loadN": 0,
+   "cpuMs": 0,
+   "adjBuild": 55
+  },
+  "show": {
+   "mat": 0,
+   "show": 0,
+   "hide": 0,
+   "tame": 0,
+   "lost": 0,
+   "peak": 0
+  },
+  "traj": [
+   [
+    1,
+    2981,
+    {
+     "deer": 1500,
+     "wild_boar": 494,
+     "arctic_hare": 987
+    }
+   ],
+   [
+    50,
+    2981,
+    {
+     "deer": 1500,
+     "wild_boar": 494,
+     "arctic_hare": 987
+    }
+   ],
+   [
+    100,
+    2974,
+    {
+     "deer": 1496,
+     "wild_boar": 493,
+     "arctic_hare": 985
+    }
+   ],
+   [
+    150,
+    2963,
+    {
+     "deer": 1489,
+     "wild_boar": 491,
+     "arctic_hare": 983
+    }
+   ],
+   [
+    200,
+    2950,
+    {
+     "deer": 1487,
+     "wild_boar": 490,
+     "arctic_hare": 973
+    }
+   ],
+   [
+    250,
+    2929,
+    {
+     "deer": 1478,
+     "wild_boar": 485,
+     "arctic_hare": 966
+    }
+   ],
+   [
+    300,
+    2910,
+    {
+     "deer": 1467,
+     "wild_boar": 484,
+     "arctic_hare": 959
+    }
+   ],
+   [
+    350,
+    2883,
+    {
+     "deer": 1453,
+     "wild_boar": 480,
+     "arctic_hare": 950
+    }
+   ],
+   [
+    372,
+    2871,
+    {
+     "deer": 1446,
+     "wild_boar": 478,
+     "arctic_hare": 947
+    }
+   ]
+  ]
+ },
+ "cells-7": {
+  "tag": "cells-7",
+  "on": true,
+  "days": 400,
+  "zone": "hanbando",
+  "start": 2981,
+  "end": 2848,
+  "min": 2848,
+  "max": 2981,
+  "byStart": {
+   "deer": 1500,
+   "wild_boar": 494,
+   "arctic_hare": 987
+  },
+  "byEnd": {
+   "deer": 1433,
+   "wild_boar": 474,
+   "arctic_hare": 941
+  },
+  "extinct": [],
+  "boom": [],
+  "mismatch": 0,
+  "meatKgDay": 898.5,
+  "meatKgEnd": 1156.1,
+  "popEnd": 3818,
+  "eight": {
+   "pop": 3818,
+   "dead": 2,
+   "ever": 51,
+   "weapQ": 192,
+   "expand": 735,
+   "board": 2151,
+   "toolQ": 3790.7,
+   "preserve": 0,
+   "grain": 12460.9
+  },
+  "empty": 2,
+  "huntPop": 768,
+  "huntVil": [
+   [
+    "광산3",
+    8,
+    0
+   ],
+   [
+    "광산5",
+    8,
+    118
+   ],
+   [
+    "임업1",
+    8,
+    159
+   ],
+   [
+    "임업3",
+    8,
+    197
+   ],
+   [
+    "농촌1",
+    8,
+    185
+   ],
+   [
+    "임업4",
+    8,
+    82
+   ],
+   [
+    "임업5",
+    8,
+    27
+   ]
+  ],
+  "cpuSecDay": 1.817,
+  "wallSec": 767.5,
+  "bodyCpuMsDay": 76,
+  "saves": 451,
+  "huntKill": 0,
+  "st": {
+   "start": 2981,
+   "born": 0,
+   "died": {
+    "hunt": 0,
+    "starve": 133,
+    "seen": 0,
+    "old": 0,
+    "pred": 0
+   },
+   "out": 0,
+   "in": 0,
+   "tame": 0,
+   "migRem": 18.500000000001332,
+   "migN": 51,
+   "steps": 13983963,
+   "stepBad": 0,
+   "bornFar": 0,
+   "bornNoMom": 0,
+   "walkers": 0,
+   "arrive": 0,
+   "abort": 0,
+   "mismatch": 0,
+   "audits": 400,
+   "huntAcc": 5.8009840863802795,
+   "matN": 0,
+   "dematN": 0,
+   "shown": 0,
+   "saveN": 451,
+   "loadN": 0,
+   "cpuMs": 0,
+   "adjBuild": 65
+  },
+  "show": {
+   "mat": 0,
+   "show": 0,
+   "hide": 0,
+   "tame": 0,
+   "lost": 0,
+   "peak": 0
+  },
+  "traj": [
+   [
+    1,
+    2981,
+    {
+     "deer": 1500,
+     "wild_boar": 494,
+     "arctic_hare": 987
+    }
+   ],
+   [
+    50,
+    2980,
+    {
+     "deer": 1499,
+     "wild_boar": 494,
+     "arctic_hare": 987
+    }
+   ],
+   [
+    100,
+    2973,
+    {
+     "deer": 1495,
+     "wild_boar": 493,
+     "arctic_hare": 985
+    }
+   ],
+   [
+    150,
+    2961,
+    {
+     "deer": 1487,
+     "wild_boar": 491,
+     "arctic_hare": 983
+    }
+   ],
+   [
+    200,
+    2947,
+    {
+     "deer": 1485,
+     "wild_boar": 488,
+     "arctic_hare": 974
+    }
+   ],
+   [
+    250,
+    2928,
+    {
+     "deer": 1477,
+     "wild_boar": 483,
+     "arctic_hare": 968
+    }
+   ],
+   [
+    300,
+    2904,
+    {
+     "deer": 1466,
+     "wild_boar": 481,
+     "arctic_hare": 957
+    }
+   ],
+   [
+    350,
+    2873,
+    {
+     "deer": 1452,
+     "wild_boar": 476,
+     "arctic_hare": 945
+    }
+   ],
+   [
+    400,
+    2848,
+    {
+     "deer": 1433,
+     "wild_boar": 474,
+     "arctic_hare": 941
+    }
+   ]
+  ]
+ },
+ "k0-on-1020": {
+  "tag": "k0-on-1020",
+  "on": true,
+  "days": 400,
+  "zone": "hanbando",
+  "start": 2981,
+  "end": 2837,
+  "min": 2837,
+  "max": 2981,
+  "byStart": {
+   "deer": 1500,
+   "wild_boar": 494,
+   "arctic_hare": 987
+  },
+  "byEnd": {
+   "deer": 1424,
+   "wild_boar": 472,
+   "arctic_hare": 941
+  },
+  "extinct": [],
+  "boom": [],
+  "mismatch": 0,
+  "meatKgDay": 970.1,
+  "meatKgEnd": 1306.2,
+  "popEnd": 3478,
+  "eight": {
+   "pop": 3478,
+   "dead": 1,
+   "ever": 51,
+   "weapQ": 250,
+   "expand": 653,
+   "board": 1709,
+   "toolQ": 3242.9,
+   "preserve": 0,
+   "grain": 11957.6
+  },
+  "empty": 1,
+  "huntPop": 0,
+  "huntVil": [],
+  "cpuSecDay": 1.716,
+  "wallSec": 745.1,
+  "bodyCpuMsDay": 76.5,
+  "saves": 451,
+  "huntKill": 0,
+  "st": {
+   "start": 2981,
+   "born": 0,
+   "died": {
+    "hunt": 0,
+    "starve": 144,
+    "seen": 0,
+    "old": 0,
+    "pred": 0
+   },
+   "out": 0,
+   "in": 0,
+   "tame": 0,
+   "migRem": 18.500000000001332,
+   "migN": 51,
+   "steps": 13955971,
+   "stepBad": 0,
+   "bornFar": 0,
+   "bornNoMom": 0,
+   "walkers": 0,
+   "arrive": 0,
+   "abort": 0,
+   "mismatch": 0,
+   "audits": 400,
+   "huntAcc": 6.922317319871103,
+   "matN": 0,
+   "dematN": 0,
+   "shown": 0,
+   "saveN": 451,
+   "loadN": 0,
+   "cpuMs": 0,
+   "adjBuild": 68
+  },
+  "show": {
+   "mat": 0,
+   "show": 0,
+   "hide": 0,
+   "tame": 0,
+   "lost": 0,
+   "peak": 0
+  },
+  "traj": [
+   [
+    1,
+    2981,
+    {
+     "deer": 1500,
+     "wild_boar": 494,
+     "arctic_hare": 987
+    }
+   ],
+   [
+    50,
+    2980,
+    {
+     "deer": 1499,
+     "wild_boar": 494,
+     "arctic_hare": 987
+    }
+   ],
+   [
+    100,
+    2972,
+    {
+     "deer": 1494,
+     "wild_boar": 493,
+     "arctic_hare": 985
+    }
+   ],
+   [
+    150,
+    2956,
+    {
+     "deer": 1483,
+     "wild_boar": 490,
+     "arctic_hare": 983
+    }
+   ],
+   [
+    200,
+    2943,
+    {
+     "deer": 1480,
+     "wild_boar": 489,
+     "arctic_hare": 974
+    }
+   ],
+   [
+    250,
+    2920,
+    {
+     "deer": 1468,
+     "wild_boar": 484,
+     "arctic_hare": 968
+    }
+   ],
+   [
+    300,
+    2894,
+    {
+     "deer": 1456,
+     "wild_boar": 481,
+     "arctic_hare": 957
+    }
+   ],
+   [
+    350,
+    2862,
+    {
+     "deer": 1439,
+     "wild_boar": 477,
+     "arctic_hare": 946
+    }
+   ],
+   [
+    400,
+    2837,
+    {
+     "deer": 1424,
+     "wild_boar": 472,
+     "arctic_hare": 941
+    }
+   ]
+  ]
+ }
+}

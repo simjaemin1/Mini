@@ -158,10 +158,15 @@ function _t765Arrive(day) {   // 길 위 장부 — 닿은 사람을 받는 마�
     if ((T577_WALK || w.t1079 || w.t1075) && !(w.ppd > 0 && (day - w.d0) * w.ppd >= w.len - 0.5)) continue;   // 아직 길 위(걸음 장부 · `_t681Day` 의 그 닿음 식) · ★[T1079] 해산 몸의 주민 걷기도 이 식(끔 = `w.t1079` 없음)
     const to = S.host.villages.find((v) => v.dbId === w.to);
     if (!to || !to.econ) continue;
+    if (w.t1075 && !w.t1342Home && S.host.t1342Full && S.host.t1342Full(to)) {   // ★[T1342] 문 앞 — 받는 마을이 오늘 제 K 를 넘었다 → 떠난 마을로 걸어 돌아간다(호스트 `t1342Full` · 끔 = 언제나 false)
+      const rr = S.host.t1342Home(w, day);
+      if (rr) { w.t1342Home = 1; w.from = w.to; w.to = rr.to; w.d0 = day; w.len = rr.len; S.stats.t1342Back = (S.stats.t1342Back || 0) + 1; continue; }   // 집이 해체 · 빔이면 종전대로 든다
+    }
     if (w.lastDay != null && S.host.t1080Arrive) S.host.t1080Arrive(w, to);   // ★[T1080] 남은 제 짐은 받는 마을 곳간에
     if (w.t1079) { _t1079Arrive(w, to, day); S.WALK.splice(i--, 1); continue; }   // ★[T1079 ④] 해산한 도적이 마을에 닿았다(아래 종전 두 줄 · 붙기 문을 같이 쓴다)
     const npc = w.npc;
     if (w.lastDay == null && npc && Number.isFinite(npc.age) && day > w.d0) npc.age += (day - w.d0) / 365;   // ★[T1080] 길 위 칸이 선 줄은 날마다 늙었다(`_walkRoadDay` — 두 번 늙기 0)   // ★[T1049 ④] 길 위에서도 늙는다 — econ 하루 늙기(`economy-sim.js` `n.age += 1 / 365`)를 걸은 날 수만큼(장부 안은 econ 밖이라 종전엔 그 날들이 빠졌다 · 새 수 0)
+    if (w.t1342Seen && S.host.t1342Tell) S.host.t1342Tell(w, to);   // ★[T1342] 문 앞에서 돌아온 사람 — 본 것을 집 마을에 전한다(끔 = 칸 없음 · 안 불림)
     _econJoin(to, npc);
     if (to.econ._banditized) S.stats.t765IntoDis = (S.stats.t765IntoDis || 0) + 1;   // 걷는 사이 받는 마을도 해체됐다(그래도 그 마을에 붙는다 · 표에만)
     const joined = S.host.t765Join ? S.host.t765Join(w.pid, to, w.npc) : false;
@@ -232,6 +237,8 @@ function _t1075Leave(econV, npc, day) {   // econ 이 그날(`day`)을 준다
   //   ★[T1147] 받는 곳 = 둘레 여럿(교역로 4일 안) 중 더 행복하고 받을 자리가 있는 곳(호스트 `t1147Pick` · 없으면 아무도 안 떠난다)
   const dest = (T1134_HAPPY_TARGET && S.host.t1147Pick) ? S.host.t1147Pick(vil) : undefined;
   if (dest === null) return false;
+  //   ★[T1324] 받는 곳이 이웃 존 마을(호스트 고르기가 들은 줄로 골랐다 — 손잡이 `T1324_XZ_MIGRATE` 켬에서만 나온다)이면 경계 칸까지 걷는 이웃 존 이주 문(호스트 `t1324Depart`)
+  if (dest && dest._t1324) return !!(S.host.t1324Depart && S.host.t1324Depart(vil, npc, dest, day != null ? day | 0 : (S.host.world ? S.host.world.day | 0 : 0)));
   return walkToVillage(vil, [npc], day != null ? day | 0 : (S.host.world ? S.host.world.day | 0 : 0), 'unhappy', accept, dest) > 0;
 }
 //   people = 그 마을 econ 명부에 지금 있는 사람 객체들(받는 마을을 고른 뒤에만 명부에서 뺀다 — 갈 곳이 없으면 아무것도 안 바꾸고 0).
@@ -887,6 +894,8 @@ function _walkRow(w) {   // 길 위 장부 한 줄의 영속 칸 — 저장 · �
   const o = { npc: w.npc, from: w.from, to: w.to, d0: w.d0, len: w.len, ppd: w.ppd };
   if (w.t1079) o.t1079 = 1;
   if (w.t1075) o.t1075 = 1;   // ★[T1075 · T1109] 불행 이탈 표지(끔 = 칸 없음)
+  if (w.t1342Home) o.t1342Home = 1;
+  if (w.t1342Seen) o.t1342Seen = w.t1342Seen;   // ★[T1342] 문 앞에서 본 것(집에 닿으면 전한다 · 끔 = 칸 없음)   // ★[T1342] 문 앞에서 집으로 가는 길(한 길에 한 번 — 다시 떠도 집 문 앞에서 또 안 돌린다 · 끔 = 칸 없음)
   if (w.lastDay != null) Object.assign(o, { dep: w.dep, to0: w.to0, pack: w.pack || {}, h: w.h, hp: w.roadHp != null ? w.roadHp : w.hp, lastDay: w.lastDay, why: w.why, rr: w.rr || 0 });   // ★[T1203] 영속 칸 이름은 `hp` 그대로 — 장부 칸은 `roadHp`(저장 = 장부 줄 · 복원 = 저장 줄이 들어온다)
   return o;
 }

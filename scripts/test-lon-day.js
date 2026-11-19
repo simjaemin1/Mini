@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
+// @date-ok 순수 시각 함수에 넣는 기점 T0(결정론 표본) — 벽시계와 안 맞댄다 [T1356]
 // === scripts/test-lon-day.js — 경도 하루 1단계: 시각 한 식 (T720) ==================
 //
 // ★재민 10-13(T712 판정): 경도 = 원통(세계 폭 = 360°) · 시계 = 실제 UTC × 60 · 날짜선 = 태평양 이음매(x 0 ↔ W) · 해 뜸 06:00 그대로.
@@ -14,6 +15,7 @@
 //
 // 실행: node scripts/test-lon-day.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

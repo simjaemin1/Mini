@@ -11,6 +11,7 @@
 //   same <outdir> <표지1> <표지2> — 두 판의 존 줄(날마다 여덟 수 + 경계 셈)과 걸음 누계(두 판이 다 가진 마지막 날 낱장)가 같은가(결정성)
 //   routes <교역로 캐시 json> [존] — 정적: 캐시 교역로를 손잡이 끔 ↔ 켬(`_t1320Chain`)으로 짚어 막힌 칸 걸음 · 길이 비 · 잇기 실패
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');

@@ -14,6 +14,7 @@
 //          T622_PROBE=boot ZONE_ID=nippon [T622_ZONE_FAUNA=1] [T622_ROOT=<다른 트리>] node scripts/t622-fauna-table.js
 //            → 그 존 하나를 띄워 종별 마릿수 + 지문(sha256 · 종·자리·hp 정렬)을 한 줄 JSON 으로(끔 = main 바이트 대조용)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');

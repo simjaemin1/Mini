@@ -8,6 +8,7 @@
 //
 // 실행: node scripts/t565-map-pic.js [--out=산그림/T565_지도.png] [--rev=origin/main] [--vec=/tmp/t565/t565-vector.json] [--baked=/tmp/t565/t565-baked.json]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const net = require('net');
@@ -28,7 +29,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const portFree = (port) => new Promise((res) => { const s = net.createServer(); s.once('error', () => res(false)); s.once('listening', () => s.close(() => res(true))); s.listen(port, '127.0.0.1'); });
 function boot(id, port, db) {
   const p = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-    env: Object.assign({}, process.env, { PORT: String(port), ZONE_ID: id, DB_PATH: db, CENTRAL_HOST: 'localhost', CENTRAL_PORT: '3999', CENTRAL_URL: 'http://localhost:3999',
+    env: Object.assign({}, process.env, { PORT: String(port), ZONE_ID: id, DB_PATH: db, CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(require('./lib-port').port(3999)), CENTRAL_URL: `http://localhost:${require('./lib-port').port(3999)}`,
       ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', ENABLE_VILLAGES: '0' }) });
   procs.push(p); return p;
 }

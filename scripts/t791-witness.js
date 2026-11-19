@@ -9,6 +9,7 @@
 //   ⓕ 손잡이 한 자리 · 기본 끔 · 몸 칸 넷이 `_t671Shape` 목록에
 // 실행: node scripts/t791-witness.js [ref=02a62e66]
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

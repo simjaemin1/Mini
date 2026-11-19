@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // 결정론 진단 — 절단을 켠 채 **가만히 서서** 연속 프레임이 왜 달라지는지 가른다.
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs');
 const { spawn } = require('child_process');
 const { PNG } = require('pngjs');

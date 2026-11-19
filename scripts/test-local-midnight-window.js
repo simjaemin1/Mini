@@ -28,7 +28,7 @@ let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined ? `  ${x}` : '')); };
 const say = (m) => console.log(m);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const CPORT = 3171, ZPORT = 3172, DAY_MS = 60000, WINDOWS = 2;
+const CPORT = require('./lib-port').port(3171), ZPORT = require('./lib-port').port(3172), DAY_MS = 60000, WINDOWS = 2;
 
 // ── 계약(순수) — 창 증인 하나 → 어긴 것 목록 ─────────────────────────────────────
 const H_OK = new Set(['xzone', 'econ', 'econ:head', 'life', 'bandit', 'roads']);   // ★[PM 10-30 · T986 켬 기본(T990) · T990_ECON_DAY 켬 기본(T1001) — 길의 하루 'roads' 도 같은 자리] 도적 하루는 설계대로 '날을 올린 econ 머리 바로 뒤'(머리 조각 · 마을 정산 앞) — 계약 ②(머리 = 정산 0)는 그대로 문다

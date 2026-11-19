@@ -24,6 +24,7 @@
 // 사용: ZDB=/tmp/e2e-nature.db node scripts/e2e-nature.js
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn, execSync } = require('child_process');
@@ -108,6 +109,21 @@ function boot(name, file, env) {
   p.stderr.on('data', (d) => { const s = d.toString(); if (!/Warning/.test(s)) process.stdout.write(`  [${name}!] ` + s.slice(0, 120)); });
   procs.push(p); return p;
 }
+// ★[T1310 ①] 브라우저 시계 어긋남 판 — `T1310_E2E_SKEW_MS`(ms · 기본 0) 만큼 브라우저 시계만 옮긴다(서버는 그대로 · 정본 `lib-phase.browserSkew`).
+//   플레이어 컴퓨터 시계가 몇 분 틀린 판 — 클라가 서버 시각 축(`worldNow`)을 쓰면 결과가 같아야 한다.
+const SKEW_MS = +process.env.T1310_E2E_SKEW_MS || 0;
+//   ★[T1310 미끼] `T1310_BAIT=off0` — 받은 클라 글자에서 `worldNow()` 를 오프셋 0(클라 벽시계)으로 박은 사본으로 싣는다(파일 무변 · 이 판 브라우저만).
+//     어긋남 판(±5분)에서 빨강이어야 한다 — 낮밤 · 물 · 바람이 서버 시각 축을 실제로 쓴다는 반례(보정이 없으면 이 판이 무엇을 잡는지).
+let _baitHits = 0;   // 미끼 사본이 실제로 실린 횟수(미끼 판만 · 아래 판 끝 증인)
+async function _ctx(browser) { const c = await browser.newContext({ viewport: { width: 1400, height: 900 } }); const js = require('./lib-phase').browserSkew(SKEW_MS); if (js) await c.addInitScript(js);
+  if (process.env.T1310_BAIT === 'off0') await c.route('**/client/20-r2-visibility.js*', async (route) => {
+    const r = await route.fetch(); let t = await r.text(); const n = t.split('function worldNow() {').length - 1;
+    if (n !== 1) throw new Error('[T1310 미끼] worldNow 자리 ' + n + '곳');
+    t = t.replace('function worldNow() {', 'function worldNow() { return Date.now();');
+    _baitHits++;
+    await route.fulfill({ response: r, body: t, headers: Object.assign({}, r.headers(), { 'content-length': String(Buffer.byteLength(t)) }) });
+  });
+  return c; }
 async function waitHttp(url, tries = 900) {
   for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); }
   return false;
@@ -261,7 +277,7 @@ function diffCountNoEnts(a, b, ents) {
     ok(await (await _zp).ok, `zone 기동 (${tag})`);
     await sleep(4000);
     const browser = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
-    const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
+    const page = await (await _ctx(browser)).newPage();
     const cerr = [];
     page.on('console', (m) => { if (m.type() === 'error') cerr.push(m.text().slice(0, 100) + ' @' + JSON.stringify(m.location()).slice(0, 140)); });
     page.on('pageerror', (e) => cerr.push('PAGEERROR ' + String(e).slice(0, 160)));
@@ -487,7 +503,7 @@ function diffCountNoEnts(a, b, ents) {
     ok(await (await _zp2).ok, 'zone 기동 (논밭)');
     await sleep(4000);
     const browser = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
-    const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
+    const page = await (await _ctx(browser)).newPage();
     await page.goto(`http://localhost:${CPORT}/`); await sleep(2500);
     // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
     //   ⚠옛 사다리(`#startBtn`·"시작"·"입장"·게스트) 네 칸 중 실제로 문 것은 **"입장" 한 칸**이었다.
@@ -848,7 +864,7 @@ function diffCountNoEnts(a, b, ents) {
 
         // ── 화면 — 그 비트를 **그리는 함수**에 그대로 먹인다(T148-B 의 `__treeSpriteFor`) ──
         const browser = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
-        const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
+        const page = await (await _ctx(browser)).newPage();
         const GOT = new Set();   // ★[T178] 화면이 실제로 받아 간 것 — 소스 문자열이 아니라 네트워크가 증인
         page.on('request', (rq) => { try { GOT.add(rq.url()); } catch (e) {} });
         await page.goto(`http://localhost:${CPORT}/`); await sleep(2500);
@@ -1386,6 +1402,7 @@ function diffCountNoEnts(a, b, ents) {
   ok(R.cpDbgOff && R.cpDbgOff.strips === 0, `★★반례 — 손잡이를 끄면 띠가 0 이다 (${R.cpDbgOff ? R.cpDbgOff.strips : 'n/a'}) = 옛 경로로 정확히 돌아간다`);
 
   say(`\n스크린샷: ${SHOTS}/`);
+  if (process.env.T1310_BAIT === 'off0') ok(_baitHits > 0, `[T1310 미끼 증인] 오프셋 0 사본이 실제로 실렸다(${_baitHits}번) — 안 실렸으면 미끼 판 초록은 아무 뜻이 없다`);
   say(`\n=== 자연물 E2E: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
   for (const p of procs) { try { p.kill(); } catch (e) {} }
   process.exit(fail ? 1 : 0);

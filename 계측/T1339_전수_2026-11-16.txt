@@ -1,0 +1,55 @@
+# T1339 @regress 전수 한 번 — 가지 batch/e2e-gameday-1116(0b81bbeb · 하네스 고침 끝 글자) · 456개 · 순차 단독 · 2코어 상자 · 2026-11-16T18:14Z ~ 11-17T02:31Z
+# ⚠ 상자(클라우드 작업 상자)가 판 도중 세 번 재시작돼 러너가 끊겼다(18:14 → 120번째 · 20:06 → 77 · 20:50 → 118 · 22:00 → 끝). 끊긴 뒤엔 판정 안 난 하네스만 같은 러너로 이어 돌렸다(판정 난 판은 다시 안 돌림) — 네 로그 full · full2 · full3 · full4.
+
+## 하네스마다 판정(네 로그 합)
+초록 452 · 빨강 4 · 유보 0
+R e2e-nature.js
+R e2e-pick-top.js
+R test-lab-mining.js
+R test-route-persist.js
+
+## 빨강 줄
+### test-lab-mining.js
+  ✗ RC=1 · 결과줄 29개 → **실패로 센다**
+  ✗ 광맥 재고가 실제로 줄어든다
+  ✗ 광부가 광맥 셀에 배치됨
+결과: FAIL — 2건
+### test-route-persist.js
+  ✗ RC=1 · 결과줄 66개 → **실패로 센다**
+  ✗ ⑥ ★★선계산 뒤 경계에서 **거의 안 판다**  3일 동안 새로 판 길 7쌍
+### e2e-nature.js
+  ✗ RC=1 · 결과줄 157개 → **실패로 센다**
+  ✗ ★★반례 — 생물 자리의 변화는 가려지고, 안 가리면 잡힌다 (4220 → 181)
+  ✗ ★시각을 고정하면 두 프레임이 동일 — 자리 해시가 순수 함수다(Math.random 없음)
+### e2e-pick-top.js
+  ✗ RC=1 · 결과줄 13개 → **실패로 센다**
+  ✗ [상황] ★둘 다 **그렸고**(렌더 목록 · 위 사람 z 가 크다) · 둘 다 누를 점의 상자(±18 · 명부 자리) 안 · 위에 그려진 사람 ≠ 명부 첫 사람  {"ord":["p413","p414"],"dr":[{"pid":"p413","x":473904,"y":121744,"z":298324},{"pid":"p414","x":473904,"y":121744,"z":298324}],"P":null}
+  ✗ [상황] 끔 판 전제 — 같은 꼴(둘 다 상자 안 · 위 ≠ 첫)  {"ord":["p413","p414"]}
+  ✗ ★③ 누를 자리를 못 세웠다 — 위 전제가 빨갛다
+  ✗ ★④ 누를 자리를 못 세웠다 — 위 전제가 빨갛다
+=== 12건 중 PASS 8 · FAIL 4 ===
+
+## 단독 다시(같은 러너)
+##### test-route-persist.js #####
+  ✓ RC=0
+##### e2e-nature.js #####
+  ✓ RC=0
+##### e2e-pick-top.js #####
+  ✗ RC=1 · 결과줄 14개 → **실패로 센다**
+
+## 러너 요약(넷째 로그)
+=== 러너 요약 ===
+  통과 141: test-t1306-migrate-food.js test-t1308-resume.js test-t1314-cols.js test-t1315-war-corpse.js test-t1321-xz-beast.js test-t1321-xz-drain.js test-t1321-xz-keep.js test-t1322-prefilter.js test-t1322-verify-night.js test-t1325-one-rot.js test-t1328-ore-zero.js test-t1330-war-path.js test-t1
+  실패 2: e2e-nature.js(rc=1) e2e-pick-top.js(rc=1)
+  걸린 시간 상위(초): test-t1322-verify-night.js 2100 · e2e-zone-cross.js 810 · test-t969-shelter-day.js 586 · e2e-thirst.js 553 · test-t1308-resume.js 488 · e2e-respawn-choice.js 455 · e2e-downed.js 441 · e2e-cold.js 440 · e2e-nature.js 394 · test-terr-persist.js 360
+  걸린 시간 합: 하네스 15741초 · 러너 전체 16297초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 69번 × 8초 · 건넘 75번(앞 판이 남긴 아이 없음)
+FULL-DONE 2026-11-17T02:31:47Z
+
+## e2e-pick-top — 단독 넷 더(main a420ca57 사본 둘 · 이 가지 둘 · 번갈아)
+main1 RC=0
+branch1 RC=0
+main2 RC=0
+branch2 RC=0
+PICK-DONE
+→ 전수 · 단독 다시 둘 다 빨강(끔 판 전제 — 그린 몸이 하나 `ord [p410]` · 켬 판 두 몸 상자) · 그 뒤 넷 초록(main 둘 · 가지 둘) — 흔들림 · main 에도 같은 하네스 · 이 가지 무접촉 자리(회부)

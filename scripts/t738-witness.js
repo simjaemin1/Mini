@@ -7,6 +7,7 @@
 // ⓒ 쓰기 길 — 바꾼 몸에 `p.x += …` · `p.x = …` · 구조 분해 · `Object.assign` 이 열에 닿는가(열 값 = 몸 값).
 // 실행: T738_SOA_XY=1 node scripts/t738-witness.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path'), fs = require('fs');
 const ROOT = path.join(__dirname, '..');
 const T774 = process.env.T774_ACTIVE_COL === '1';   // ★[T774] 활성 열 증인 — `T774_ACTIVE_COL=1 node scripts/t738-witness.js`(x·y 접근자 판과 따로)

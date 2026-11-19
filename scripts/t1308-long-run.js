@@ -24,6 +24,7 @@
 //   ⇒ <폴더>/progress.json(날 · 체크포인트 · 마디 줄 · env) · progress.txt(한 줄 진행) · ck/(마지막 체크포인트) · seg-*.log · 묶은 <태그>-<시드>.*.json
 //   끝나면 종료 코드 0 · 끝 표지 `progress.done = true`. 마디가 체크포인트 없이 죽으면 종료 코드 3(감독 `t1308-guard.sh` 가 다시 부른다).
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -98,6 +99,7 @@ async function segment(from) {
   env.NODE_OPTIONS = preloads();
   env.T577_STATE = STATE;
   if (!last && P.crashAt === to && !P.crashDone) { env.T722_CRASH = '1'; P.crashDone = true; saveP(); }   // 하네스 — 이 마디는 저장 없이 죽는다(한 번)
+  if (!last && process.env.T1308_STOP_NOW !== '0') env.T722_STOP_NOW = '1';   // ★[T1340] 마디 끝 = 마감 끝난 그 틱에 내린다(저장 큐 드레인 동안 날을 얼리지 않는다 · 되돌림 `T1308_STOP_NOW=0`)
   if (!last) { env.T722_STOP_DAY = String(to); env.T722_DUMP = path.join(DIR, `stop-${to}.json`); if (VCLOCK) env.T745_PHASE_OUT = path.join(DIR, `phase-${to}.json`); env.T1308_KEEP_OUT = path.join(DIR, `keep-${to}.json`); }
   if (from > 0) {
     const S0 = JSON.parse(fs.readFileSync(path.join(DIR, 'ck', `stop-${from}.json`), 'utf8'));

@@ -1,0 +1,53 @@
+{
+ "tag": "C1020",
+ "meta": {
+  "seed": 1020,
+  "days": {
+   "hanbando": 34,
+   "nippon": 34
+  },
+  "Y": 17840,
+  "botCross": 11,
+  "restart": null,
+  "wallS": 365
+ },
+ "beasts": {
+  "keys": 31,
+  "crossed": 26,
+  "by": {
+   "wild": 12,
+   "tame": 14
+  },
+  "byType": {
+   "horse": 14,
+   "deer": 8,
+   "wild_boar": 2,
+   "ibex": 2
+  },
+  "dir": {
+   "hanbando→nippon": 14,
+   "nippon→hanbando": 12
+  },
+  "dupAnswered": 0,
+  "dupIn": 0,
+  "unhide": 5,
+  "unhideWhy": {
+   "fauna": 5
+  },
+  "keepN": 0,
+  "bootHide": 0
+ },
+ "canon": {
+  "twoIn": 0,
+  "inAndUnhide": 0,
+  "outNoIn": 0,
+  "hung": 0
+ },
+ "sum": {
+  "pairs": 1,
+  "base": 930,
+  "mismatch": 0,
+  "worst": 0,
+  "skippedNearEvent": 31
+ }
+}

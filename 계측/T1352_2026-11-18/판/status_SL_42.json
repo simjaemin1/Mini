@@ -1,0 +1,91 @@
+{
+ "wallS": 552,
+ "bars": 715,
+ "H": 1767225957500,
+ "zones": {
+  "hanbando": {
+   "started": true,
+   "at": false,
+   "st": {
+    "t": "at",
+    "zone": "hanbando",
+    "H": 1767225957000,
+    "V": 1767225957000,
+    "cnt": {
+     "reqSent": {
+      "nippon": 816
+     },
+     "reqRecv": {
+      "ext": 274,
+      "nippon": 841
+     },
+     "resSent": {
+      "ext": 274,
+      "nippon": 841
+     },
+     "resRecv": {
+      "nippon": 816
+     }
+    },
+    "outW": 0,
+    "inbox": 0,
+    "held": 10,
+    "heldK": [
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare"
+    ],
+    "inboxK": [],
+    "flushes": 714
+   }
+  },
+  "nippon": {
+   "started": true,
+   "at": false,
+   "st": {
+    "t": "upd",
+    "zone": "nippon",
+    "H": 1767225957000,
+    "V": 1767225957000,
+    "cnt": {
+     "reqSent": {
+      "hanbando": 841
+     },
+     "reqRecv": {
+      "ext": 274,
+      "hanbando": 816
+     },
+     "resSent": {
+      "ext": 273,
+      "hanbando": 816
+     },
+     "resRecv": {
+      "hanbando": 841
+     }
+    },
+    "outW": 0,
+    "inbox": 1,
+    "held": 8,
+    "heldK": [
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare"
+    ],
+    "inboxK": [],
+    "flushes": 714
+   }
+  }
+ }
+}

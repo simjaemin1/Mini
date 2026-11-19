@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @date-ok 가짜 스냅샷 목록 픽스처의 시각 글자 — 벽시계와 안 맞댄다 [T1356]
 // === scripts/test-update-snap.js — `update-live.sh` 의 갱신 앞 디스크 · 스냅샷(T919 · 2026-10-25)을 **진짜 스크립트로** 돌린다 ==============
 //
 // 판정 사본 0: 진짜 `update-live.sh` 를 돌리고, 호스트 쪽만 흉내 낸다 —
@@ -41,7 +42,7 @@ fs.writeFileSync(path.join(BIN, 'docker'), `#!/usr/bin/env node
 const fs = require('fs'); const S = JSON.parse(fs.readFileSync(process.env.FAKE_STATE, 'utf8')); const a = process.argv.slice(2);
 fs.appendFileSync(process.env.FAKE_LOG, process.env.FAKE_HOST + ' docker ' + a.join(' ') + '\\n');
 const fi = a.indexOf('--format'); const f = fi >= 0 ? a[fi + 1] : null;
-if (a[0] === 'inspect' && a[1] === 'durango-zone-hanbando' && /Config\\.Env/.test(f || '')) return console.log('PORT=3020\\nZONE_HOST_NIPPON=203.0.113.9');   // ★[PM land1036 · T1048] ⑧ 경계 줄이 한반도 env 키를 본다(값은 대역)
+if (a[0] === 'inspect' && a[1] === 'durango-zone-hanbando' && /Config\\.Env/.test(f || '')) return console.log('PORT=3020\\nZONE_HOST_NIPPON=203.0.113.9');   // ★[PM land1036 · T1048] ⑧ 경계 줄이 한반도 env 키를 본다(값은 대역) · lib-port: 묶지 않음(도커 env 픽스처 글자 — 이 판이 묶는 포트가 아니다)
 if (a[0] === 'inspect' && /Config\\.Env/.test(f || '')) return console.log('PLAYER_CAP=150\\nCENTRAL_HOST=10.9.9.9\\nZONE_SECRET=x');
 if (a[0] === 'ps' && a.includes('-a') && /Names/.test(f || '')) return console.log(process.env.FAKE_HOST === 'tokyo' ? 'durango-zone-nippon' : 'durango-central\\ndurango-zone-hanbando');   // ★[T1048] ⑧ 이 도쿄 존 이름을 읽는다
 if (a[0] === 'exec' && /publicZoneMap/.test(a[4] || '')) {   // ★[T1077] ⑧ host_of — 그 컨테이너 정본이 보는 존 주소(대역 표 · FAKE_ZHOSTS 가 칸을 갈음)

@@ -89,9 +89,9 @@
       ? '<div style="color:var(--dim-2);padding:14px;text-align:center">설치한 사유지가 없습니다</div>'
       : my.map(cl => {
           const k = cl.kind || 'personal';
-          // ★[T1305 → T1332] 켬(`uiCfg.deeds`) — 개인 칸의 낡음(서버가 준 `care` 그대로 · 그 칸이 든 청크의 단계 · 클라 재계산 0) · 손보기 단추 0(쓰거나 머물면 저절로)
+          // ★[T1305 → T1343] 켬(`uiCfg.deeds`) — 개인 칸의 단계(서버가 준 `care` 그대로 · 그 칸이 든 청크의 단계 · 클라 재계산 0)
           const _dd = (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.deeds) && k === 'personal';
-          const _st = _dd ? (cl.state === 'free' ? '풀림' : (cl.care === 'fade' ? '흐림' : '또렷')) : '';
+          const _st = _dd ? (cl.state === 'free' ? '풀림' : (cl.care === 'soon' ? '곧 풀림' : (cl.care === 'fade' ? '흐림' : '또렷'))) : '';
           return `<div class="sp-list-row">
             <span>${uiIcon(KIND_ICON[k] || 'claim', 14)} ${KIND_NAME[k]} @ (${cl.x},${cl.y})${_dd ? ` · ${_st}` : ''}</span>
             <button class="craft-btn" data-unclaim="${cl.id}" style="background:var(--hp);padding:3px 8px">해제</button>
@@ -99,21 +99,26 @@
         }).join('');
     const _dd = (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.deeds);   // ★[T1305] 켬 — 개인 칸은 숫자 상한이 없다(돌봄이 상한)
     const _fade = _dd ? my.filter(cl => (cl.kind || 'personal') === 'personal' && cl.state !== 'free' && cl.care === 'fade').length : 0;
-    // ★[T1332] 청크 수 · 안 쓰면 풀릴 때까지 접속일(안내 — 식은 서버 `deeds.daysToFree` 와 같다: 풀림 ÷ max(1, 청크 ÷ 기준))
-    let _chunks = 0, _left = 0;
-    if (_dd) {
-      const _K = uiCfg.deeds.chunk || 8, _set = new Set();
-      for (const cl of my) if ((cl.kind || 'personal') === 'personal' && cl.state !== 'free') _set.add(Math.floor(cl.x / CL_BUILDING_SIZE / _K) + ',' + Math.floor(cl.y / CL_BUILDING_SIZE / _K));
-      _chunks = _set.size; _left = Math.max(1, Math.ceil(uiCfg.deeds.free / Math.max(1, _chunks / (uiCfg.deeds.base || 1)) - 1e-9));
+    // ★[T1343] 계량기 — 서버 `deeds_meter`(청크마다 관리도 m · ms 당 줄어듦 r · 셈 시각 t) 를 지금으로 줄여 그린다(닫힌 식 · 새 셈 0)
+    const _M = _dd ? (window.__deedsMeter || null) : null;
+    const _now = _M ? _M.now + (Date.now() - _M.recvAt) : 0, _DAY = 86400000;   // [T1310 클라 시계] 받은 뒤 흐른 클라 간격만 — 축은 서버가 준 `now`(PM land1082)
+    const _fd = (d) => (d >= 10 ? Math.round(d) : Math.max(0, +d.toFixed(1)));
+    let _meterHtml = '';
+    if (_M) {
+      const rows = (_M.chunks || []).map((q) => { const m = Math.max(0, q.m - q.r * Math.max(0, _now - q.t)); return { q, m, f: q.cap > 0 ? m / q.cap : 0, left: q.r > 0 ? m / q.r / _DAY : Infinity }; }).sort((x, y) => x.left - y.left);
+      const minLeft = rows.length ? rows[0].left : Infinity;
+      _meterHtml = `<div class="hint">내 땅 합 ${_M.N}칸 · 다 돌본 땅이 안 돌보면 버티는 날 ${_fd(_M.days)}일${rows.length ? ` · 지금대로면 ${_fd(minLeft)}일 뒤 첫 풀림` : ''}<br/>한 칸 더 잡으면 ${_fd(_M.days)}일 → ${_fd(_M.daysNext)}일로 줄어듭니다.</div>`
+        + rows.map((x) => `<div class="sp-list-row" style="gap:6px"><span style="min-width:110px">땅덩이 (${x.q.cx},${x.q.cy}) ${x.q.n}칸</span><span style="flex:1;height:6px;border:1px solid var(--dim-2);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(x.f * 100)}%;background:var(--dim-2)"></span></span><span style="min-width:64px;text-align:right">${_fd(x.left)}일</span></div>`).join('');
     }
     body.innerHTML = `
-      <div class="hint">${_dd ? `개인 ${counts.personal}칸 · 땅덩이 ${_chunks}${_fade ? ` (흐린 칸 ${_fade})` : ''} · 임시 ${counts.temporary}/4 · 마을 땅 ${counts.guild}/50` : `슬롯 사용: 개인 ${counts.personal}/9 · 임시 ${counts.temporary}/4 · 마을 땅 ${counts.guild}/50`}</div>
+      <div class="hint">${_dd ? `개인 ${counts.personal}칸${_fade ? ` (흐린 칸 ${_fade})` : ''} · 임시 ${counts.temporary}/4 · 마을 땅 ${counts.guild}/50` : `슬롯 사용: 개인 ${counts.personal}/9 · 임시 ${counts.temporary}/4 · 마을 땅 ${counts.guild}/50`}</div>
       <div class="hint" style="font-size:11px;opacity:0.7;margin-bottom:10px">
         ${_dd ? `<b>C</b>=개인 사유지 (빈 들은 누구나 · 마을 영토 안은 그 마을 구성원) · <b>T</b>=임시 (어디든)<br/>
-        땅은 ${uiCfg.deeds.chunk}×${uiCfg.deeds.chunk}칸 땅덩이로 돌봐집니다 — 그 안에서 거두거나 심거나 만들거나 보관함을 쓰거나 지으면, 또는 ${uiCfg.deeds.dwellS}초 머물면 땅덩이 전체가 새것이 됩니다.<br/>
-        안 쓰면 접속한 날로 낡습니다 — 땅덩이가 ${uiCfg.deeds.base}개를 넘으면 넓을수록 빨리 낡습니다(지금은 ${_left}날 안 쓰면 풀림).<br/>` : `<b>C</b>=개인 사유지 (마을 땅 안만) · <b>T</b>=임시 (어디든) · <b>Shift+C</b>=마을 땅 (마을 사람만)<br/>`}
+        땅은 ${uiCfg.deeds.chunk}×${uiCfg.deeds.chunk}칸 땅덩이마다 관리도가 있습니다 — 그 땅덩이 안 어느 칸에서든 거두거나 심거나 만들거나 보관함을 쓰거나 지으면, 또는 머물면 오릅니다.<br/>
+        관리도는 실제 날짜로 줄어듭니다(접속하지 않아도) — 땅이 넓을수록 빨리 줄고, 다 줄면 그 땅덩이의 내 칸이 풀립니다<br/>` : `<b>C</b>=개인 사유지 (마을 땅 안만) · <b>T</b>=임시 (어디든) · <b>Shift+C</b>=마을 땅 (마을 사람만)<br/>`}
         땅을 내놓으면 칸은 돌아오지만 들인 것은 돌려받지 못합니다. 다른 곳에 가서 다시 정할 수 있습니다.
       </div>
+      ${_meterHtml}
       <div class="inv-col-head">내 사유지 목록 (${my.length}개)</div>
       ${list}
     `;

@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# === scripts/pm-old-code-red.sh — 옛 코드 빨강 [PM · 2026-11-17 · 재민 "테스트를 대폭 강화"] ==================
+# (@regress 없음 — 러너 밖 · PM 착지 게이트 · 세션도 올리기 전에 돈다)
+#
+# ★무엇: **새 하네스가 고침을 정말 재는가**를 세션 말 없이 본다. 지금 `scripts/`(하네스 · 픽스처 · lib) 를 그대로 두고
+#   제품 코드(`server sim public lab`)만 옛 ref 것으로 되돌린 사본 위에서 새 하네스를 돈다 — **빨강이어야 한다**.
+#   초록이면 그 하네스는 고침이 없어도 통과한다(자명 통과) = 실패.
+# ★왜: 미끼는 하네스를 짠 세션이 짠다(무조건 통과하는 가짜 미끼를 못 막는다). 이 자는 git 이 옛 코드를 꺼내므로
+#   세션이 쓴 글자를 한 줄도 안 믿는다. "고치기 전에는 실패하는 테스트" 그 확인이다.
+# ★판정: RC≠0 이고 ✗ 줄이 있다 = 빨강(단언) ○ · RC≠0 인데 결과 줄 0 = 빨강(크래시 — 약함 · 까닭을 읽어라) △ ·
+#   RC=0 = 초록 ✗ · 시한 = 모름(다시 재라).
+# ★한계: 하네스 **고침**(새 파일이 아닌 것)은 기본 목록에 안 든다 — 이름을 주면 돈다. e2e(브라우저)는 이름을 줄 때만.
+#   하네스 도구만 재는 하네스(`lib-*` 검사 · 러너 검사 — 제품을 안 부른다)는 옛 제품 위에서도 초록이 맞다 — 머리에 `// @harness-only` 를 달면
+#   건너뛴다("제품 무관" 줄 · `test-harness-lint` ⑲ 가 표지를 단 하네스는 제품 자리를 안 가리킴을 본다 · T1350).
+#   손잡이 끔 기본 고침은 하네스가 손잡이를 켜고 돈다 — 옛 제품엔 그 손잡이가 없으니 빨강이어야 한다(초록이면 손잡이를 안 잰다).
+#
+# 쓰는 법:
+#   bash scripts/pm-old-code-red.sh <옛 ref>                      # 옛 ref 에 없던 scripts/test-*.js 전부
+#   bash scripts/pm-old-code-red.sh <옛 ref> test-a.js test-b.js  # 이것만
+#   TIMEOUT_SEC=600 OUT=/tmp/ocr.txt bash scripts/pm-old-code-red.sh origin/main
+set -u
+OLD="${1:?옛 ref 를 줘라(예: origin/main)}"; shift || true
+ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT" || exit 2
+TIMEOUT_SEC="${TIMEOUT_SEC:-600}"
+OUT="${OUT:-/dev/stdout}"
+PROD="${PROD:-server sim public lab}"
+if [ $# -gt 0 ]; then LIST="$*"; else LIST="$(git diff --diff-filter=A --name-only "$OLD"..HEAD -- 'scripts/test-*.js' | sed 's#^scripts/##' | tr '\n' ' ')"; fi
+[ -z "${LIST// /}" ] && { echo "새 하네스 0 — 볼 것 없음"; exit 0; }
+TMP="$(mktemp -d /tmp/ocr.XXXXXX)"
+git worktree add -q --detach "$TMP/w" HEAD || exit 2
+trap 'git worktree remove --force "$TMP/w" >/dev/null 2>&1; rm -rf "$TMP"' EXIT
+# shellcheck disable=SC2086
+git -C "$TMP/w" checkout -q "$OLD" -- $PROD || exit 2
+[ -d "$ROOT/node_modules" ] && ln -s "$ROOT/node_modules" "$TMP/w/node_modules"
+red=0; weak=0; green=0; unk=0; skip=0
+{
+  echo "# 옛 코드 빨강 — 하네스 = $(git rev-parse --short HEAD) · 제품($PROD) = $(git rev-parse --short "$OLD") · 시한 ${TIMEOUT_SEC}초"
+  for t in $LIST; do
+    # ★[T1350] 머리 표지 `// @harness-only`(제품 부름 0 — `test-harness-lint` ⑲ 가 확인) = 옛 제품 위에서도 초록이 맞다 → 건너뛴다(셈 밖 · 줄은 남긴다)
+    if grep -qE '^// @harness-only([[:space:]]|$)' "scripts/$t" 2>/dev/null; then echo "제품 무관 | $t | @harness-only — 건너뜀"; skip=$((skip+1)); continue; fi
+    # ★[PM land1083] PM 예외 목록(`scripts/old-green-ok.txt` — 하네스 도구를 재지만 제품 글자를 쥐는 하네스 · PM 만 편집) = 건너뛴다(줄은 남긴다)
+    if [ -f scripts/old-green-ok.txt ] && grep -qE "^$(basename "$t" | sed 's/[.]/[.]/g')[[:space:]]*[|]" scripts/old-green-ok.txt; then echo "예외(PM 목록) | $t | $(grep -E "^$(basename "$t" | sed 's/[.]/[.]/g')[[:space:]]*[|]" scripts/old-green-ok.txt | cut -d'|' -f2- | cut -c1-120)"; skip=$((skip+1)); continue; fi
+    log="$TMP/$(basename "$t").log"
+    ( cd "$TMP/w" && timeout "$TIMEOUT_SEC" node "scripts/$t" >"$log" 2>&1 ); rc=$?
+    nf=$(grep -cE '^\s*(✗|❌|FAIL)' "$log"); np=$(grep -cE '^\s*(✓|✅|PASS)' "$log")
+    why="$(grep -m1 -E '^\s*(✗|❌|FAIL)' "$log" | cut -c1-160)"
+    [ -z "$why" ] && why="$(grep -m1 -E 'Error|Cannot find|is not defined|not a function' "$log" | cut -c1-160)"
+    if [ "$rc" = 124 ]; then v="모름(시한)"; unk=$((unk+1))
+    elif [ "$rc" = 0 ]; then v="초록 ✗"; green=$((green+1))
+    elif [ "$nf" -gt 0 ]; then v="빨강 ○"; red=$((red+1))
+    else v="빨강(크래시) △"; weak=$((weak+1)); fi
+    echo "$v | $t | RC=$rc · ✓ $np · ✗ $nf | $why"
+  done
+  echo "# 합: 빨강 $red · 크래시 $weak · 초록 $green · 모름 $unk · 제품 무관 $skip"
+} >"$OUT"
+[ "$green" -gt 0 ] && exit 1
+exit 0

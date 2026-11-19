@@ -827,7 +827,7 @@ console.log('\n⑭ 판정 글자 ↔ 제품 소스 [T1097]');
 console.log('\n⑮ 하네스 포트 = 공용 할당기 `lib-port` [T1281]');
 {
   const CO = require(path.join(SCRIPTS, 'code-only.js'));
-  const PID_MOD = new RegExp('process\\.pid\\s*' + '%');
+  const PID_MOD = new RegExp('process\\.pid\\s*' + '%|\\(\\s*process\\.pid\\b[^;\\n]*?\\)\\s*' + '%');   // ★[T1288] `(process.pid * 7 + …) %` 꼴도(T1281 이 놓친 열) · 정본 `lib-port.js` 제 흩음은 밖
   const MARK = 'lib-port: 포트 ' + '아님';
   const scan = (src) => {
     const code = CO(src).split('\n'), raw = src.split('\n'), hit = [], marked = [];
@@ -837,6 +837,7 @@ console.log('\n⑮ 하네스 포트 = 공용 할당기 `lib-port` [T1281]');
   const bad = [], marks = [];
   let users = 0;
   for (const f of fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js')).sort()) {
+    if (f === 'lib-port.js') continue;   // 정본 제 흩음(`(process.pid * 7919 + …) % span`)은 포트 고르기가 아니다
     const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
     if (src.includes("require('./lib-port')")) users++;
     const r = scan(src);
@@ -846,20 +847,80 @@ console.log('\n⑮ 하네스 포트 = 공용 할당기 `lib-port` [T1281]');
   ok(fs.existsSync(path.join(SCRIPTS, 'lib-port.js')) && users > 0, '⑮ [전제] 정본 `lib-port.js` 가 있고 그것을 부르는 하네스가 실제로 있다(0 이면 아래가 자명 통과다)', `부르는 파일 ${users}`);
   ok(bad.length === 0, '★★⑮a 포트를 pid 나머지(`pid` 를 `%` 로 자름)로 고르는 자리 0 — `lib-port` 의 `port(key)` · `ports(n, key)` 를 쓴다',
      bad.length ? `${bad.length}곳: ${bad.slice(0, 6).join(' · ')}` : '0');
-  const XOK = ['browser-driver.js(1)', 'e2e-browser.js(1)', 'e2e-t1160-promote-key.js(1)'];   // X 화면 번호 둘 · 계정 이름 하나
+  const XOK = ['e2e-t1160-promote-key.js(1)'];   // 계정 이름 하나 — ★[T1288] X 화면 번호 둘은 `lib-port.displays` 로 옮겨 표지가 사라졌다(새 화면 번호 표지 = 빨강)
   const extra = marks.filter((x) => !XOK.includes(x)), gone = XOK.filter((x) => !marks.includes(x));
-  ok(!extra.length && !gone.length, '★⑮b `lib-port: 포트 아님` 표지는 표에 적은 자리뿐(X 화면 번호 둘 · 계정 이름 하나)',
+  ok(!extra.length && !gone.length, '★⑮b `lib-port: 포트 아님` 표지는 표에 적은 자리뿐(계정 이름 하나 · X 화면 번호는 `displays`)',
      `표지 ${marks.join(' ')}${extra.length ? ' · ★표에 없는 것 ' + extra.join(' ') : ''}${gone.length ? ' · ★표에서 사라진 것 ' + gone.join(' ') : ''}`);
   // ★자명 통과 금지 — 같은 자로 미끼 넷을 재면 **각각 다르게** 답한다(글자를 조각내 자기 자신을 안 문다)
   const P = 'process.' + 'pid';
   const bait = {
     old: `process.env.PORT = String(37200 + (${P} % 190));`,
     marked: `const DISP = ':' + (90 + (${P} % 9)); // ${MARK}(X 화면 번호)`,
+    mul: `PORT: String(36000 + ((${P} * 7 + 1) % 1500))`,
     comment: `// 옛 꼴: 37200 + (${P} % 190)`,
     lib: "process.env.PORT = String(require('./lib-port').port(37200));",
   };
   const ans = Object.entries(bait).map(([k, v]) => { const r = scan(v); return k + '=' + (r.hit.length ? 'hit' : r.marked.length ? 'mark' : 'none'); }).join(',');
-  ok(ans === 'old=hit,marked=mark,comment=none,lib=none', '★⑮ 자명 통과 금지 — 옛 식 미끼는 **물고** · 표지 단 줄은 표지로 · 주석 안 · 정본 호출은 보낸다', ans);
+  ok(ans === 'old=hit,marked=mark,mul=hit,comment=none,lib=none', '★⑮ 자명 통과 금지 — 옛 식 미끼는 **물고** · 표지 단 줄은 표지로 · 주석 안 · 정본 호출은 보낸다', ans);
+}
+
+// ── ⑯ 고정 포트 리터럴 — 띄우는 파일은 **쥐거나 옮긴다** [T1288 2026-11-12 · T1281 회부 1 · 2] ──────────────
+//   서버를 띄우는 파일(central · zone 을 spawn/boot · zone 을 같은 프로세스로 require · listen)이 고정 포트를 쓰면 —
+//   · 제품이 박은 포트(존 설정 `zone-config` 의 존 포트 · central 기본 3010)는 머리 줄 `lib-port.hold(…)` 에 **그 수가 다 있어야** 한다(나란히 돌면 줄 선다).
+//     `ZONES.<id>` · `ZONES['<id>']` 로 읽는 존의 포트도 센다.
+//   · 그 밖의 고정 수(옛 `CPORT = 3310` 꼴)는 금지 — `lib-port.port/ports` 로 옮긴다.
+//   띄우지 않고 붙기만 하는 도구(남이 띄운 서버를 찍는 shot · probe)와 개발 띄우개 `launch-all.js` 는 이 자 밖이다(쥐면 개발 서버 뒤에서 영영 기다린다).
+console.log('\n⑯ 고정 포트 — 띄우는 파일은 `hold` 로 쥐거나 `port` 로 옮긴다 [T1288]');
+{
+  const { judge } = require(path.join(SCRIPTS, 'lib-fixed-ports.js'));   // 자 정본 하나(변환 판 · 이 린트가 같이 쓴다 — 사본 0)
+  const OUTSIDE = new Set(['launch-all.js', 'lib-fixed-ports.js', 'lib-port.js']);   // 개발 띄우개 · 자 정본 둘(제 정규식 글자가 자를 문다)
+  const bad = [], cust = [], loose = []; let booters = 0, holders = 0, guards = 0;
+  for (const f of fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js')).sort()) {
+    if (OUTSIDE.has(f) || f === 'test-harness-lint.js') continue;
+    const r = judge(fs.readFileSync(path.join(SCRIPTS, f), 'utf8'));
+    if (!r.boots) continue;
+    booters++; if (r.held.length) holders++;
+    if (r.need.length) bad.push(`${f}(${r.need.join(',')})`);
+    if (r.custom.length) cust.push(`${f}(${r.custom.join(',')})`);
+    if (r.centralLess && !r.guarded) loose.push(f);
+    if (r.guarded) guards++;
+  }
+  ok(booters > 0 && holders > 0, '⑯ [전제] 서버를 띄우는 파일이 있고 그중 `hold` 를 단 파일이 있다(0 이면 아래가 자명 통과다)', `띄우는 파일 ${booters} · hold ${holders}`);
+  ok(bad.length === 0, '★★⑯a 제품 고정 포트를 쓰며 띄우는 파일은 그 포트를 **다** `hold` 머리 줄에 둔다(나란히 돌면 남의 central 에 붙는다)',
+     bad.length ? `${bad.length}곳: ${bad.slice(0, 6).join(' · ')}` : '0');
+  ok(cust.length === 0, '★★⑯b 띄우는 파일에 제품 밖 고정 포트 리터럴 0 — `lib-port.port(key)` 로 옮긴다', cust.length ? `${cust.length}곳: ${cust.slice(0, 6).join(' · ')}` : '0');
+  ok(loose.length === 0, '★★⑯d central 없이 존을 띄우는 파일은 `lib-port.noCentral()` 머리 줄을 단다(존이 기본 3010 = 남의 central 에 등록하지 않게)',
+     loose.length ? `${loose.length}곳: ${loose.slice(0, 6).join(' · ')}` : `0 · 단 파일 ${guards}`);
+  // ★⑯c `lib-port: 묶지 않음` 표지(포트 글자가 묶는 자리가 아닌 줄 — 도커 env 픽스처)는 표에 적은 자리뿐(표지로 숨기기 금지)
+  {
+    const { UNBOUND } = require(path.join(SCRIPTS, 'lib-fixed-ports.js'));
+    const got = [];
+    for (const f of fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js')).sort()) {
+      if (f === 'lib-fixed-ports.js' || f === 'test-harness-lint.js') continue;
+      const n = fs.readFileSync(path.join(SCRIPTS, f), 'utf8').split('\n').filter((L) => L.includes(UNBOUND)).length;
+      if (n) got.push(`${f}(${n})`);
+    }
+    const UOK = ['test-redeploy.js(1)', 'test-reset-world.js(2)', 'test-update-snap.js(1)', 'test-xhost-env.js(3)'];   // 도커 env 픽스처 글자(PORT=3010 · 3020 · 3021)
+    const ex = got.filter((x) => !UOK.includes(x)), gone = UOK.filter((x) => !got.includes(x));
+    ok(!ex.length && !gone.length, '★⑯c `lib-port: 묶지 않음` 표지는 표에 적은 픽스처 줄뿐(도커 env 글자 일곱 줄)',
+       `표지 ${got.join(' ')}${ex.length ? ' · ★표에 없는 것 ' + ex.join(' ') : ''}${gone.length ? ' · ★표에서 사라진 것 ' + gone.join(' ') : ''}`);
+  }
+  // ★자명 통과 금지 — 같은 자로 미끼 여덟을 재면 **각각 다르게** 답한다(글자를 조각내 자기 자신을 안 문다)
+  const SP = "spawn(process.execPath, ['server/cen" + "tral.js']);\n";
+  const H = "require('./lib-port').ho" + "ld(";
+  const bait = {
+    noHold: SP + 'const CPORT = 30' + '10;',
+    hold: H + '3010);\n' + SP + 'const CPORT = 30' + '10;',
+    custom: H + '3010);\n' + SP + "env.PORT = '33" + "33';",
+    connectOnly: "const u = 'http://localhost:30" + "10/';",
+    zoneRef: H + '3010);\n' + SP + 'const Z = ZONES.nip' + 'pon; env.PORT = String(Z.po' + 'rt);',
+    loose: "require(path.join(ROOT, 'server', 'zo" + "ne.js'));",
+    guard: "require('./lib-port').noCen" + "tral();\nrequire(path.join(ROOT, 'server', 'zo" + "ne.js'));",
+    callArg: H + '3021);\n' + SP + 'await startNeighbor(30' + '20, host);',   // ★[T1288] 부르는 자리 인자의 제품 포트(test-xhost-env 가 3021 만 쥐고 3020 을 묶었다)
+  };
+  const ans = Object.entries(bait).map(([k, v]) => { const r = judge(v); return k + '=' + (!r.boots ? 'out' : r.need.length ? 'need' : r.custom.length ? 'custom' : r.centralLess && !r.guarded ? 'loose' : 'ok'); }).join(',');
+  ok(ans === 'noHold=need,hold=ok,custom=custom,connectOnly=out,zoneRef=need,loose=loose,guard=ok,callArg=need',
+     '★⑯ 자명 통과 금지 — 쥐지 않은 3010 은 **물고** · 쥐면 보내고 · 제품 밖 수는 물고 · 붙기만 하는 도구는 밖 · 존 설정을 읽은 존 포트도 문다 · central 없는 존은 가드가 있어야 · 부르는 자리 인자 포트도 문다', ans);
 }
 
 // ── ⑯ 벽시계 판의 **띄운 시각 낮밤**은 공용 자리 하나로 고정한다 [T1299 2026-11-13 · T1287 회부 2] ──────────────
@@ -890,6 +951,143 @@ console.log('\n⑯ 띄운 시각 낮밤 = 공용 고정 `lib-phase` [T1299]');
   };
   const ans = Object.entries(bait).map(([k, v]) => `${k}=${copy(v) ? 'copy' : pinned(v) ? 'pin' : 'none'}`).join(',');
   ok(ans === 'pin=pin,gone=none,comment=none,copy=copy', '★⑯ 자명 통과 금지 — 정본 호출은 고정 · 지운 판 · 주석 안 호출은 고정 없음 · 옮김 사본은 사본', ans);
+}
+
+// ── ⑰ 클라가 서버가 찍은 시각과 견주는 **지금**은 서버 시각 축(`srvNow` · `worldNow`) [T1310 2026-11-16 · T1299 회부 1] ──────────────
+//   T1310: 구조창 화살(`at + windowMs`) · 조업 게이지(`startedAt/until`) · 만료 게이지(`expiresAt`)가 클라 벽시계 `Date.now()` 로 서버 시각과 견줬다
+//   ⇒ 플레이어 컴퓨터 시계가 몇 분 틀리면 화살이 그리자마자 사라지고 게이지가 틀린다(e2e-downed · 브라우저 +5분 판).
+//   자: `public/client/*.js` 의 코드 속 `Date.now()` 는 **한 줄마다** 표지 `[T1310 클라 시계] <까닭>`(클라만의 간격 · 축을 세우는 자리)을 단다 —
+//   표지 없는 새 자리 = 빨강(서버 시각과 견주면 `srvNow()` 를 쓴다 · 클라만의 간격이면 표지와 까닭을 단다).
+console.log('\n⑰ 클라 `Date.now()` = 표지 단 클라 간격만 · 서버 시각은 `srvNow` [T1310]');
+{
+  const CO = require(path.join(SCRIPTS, 'code-only.js'));
+  const CDIR = path.join(ROOT, 'public', 'client');
+  const NOW = new RegExp('Date\\.' + 'now\\s*\\(\\s*\\)'), MARK = /\[T1310 클라 시계\] \S/;
+  const scan = (src) => { const c = CO(src).split('\n'), r = src.split('\n'); const hit = [], marked = [];
+    c.forEach((l, i) => { if (NOW.test(l)) (MARK.test(r[i]) ? marked : hit).push(i + 1); }); return { hit, marked }; };
+  const files = fs.readdirSync(CDIR).filter((x) => x.endsWith('.js'));
+  const bad = [], seen = []; let marks = 0;
+  for (const f of files) { const r = scan(fs.readFileSync(path.join(CDIR, f), 'utf8')); marks += r.marked.length; if (r.hit.length) bad.push(`${f}:${r.hit.join(',')}`); if (r.hit.length || r.marked.length) seen.push(f); }
+  const srv = fs.readFileSync(path.join(CDIR, '20-r2-visibility.js'), 'utf8');
+  ok(files.length > 20 && /function srvNow\(\)/.test(CO(srv)) && /uiCfg\.t1310 === false/.test(CO(srv)), '⑰ [전제] 클라 파일을 읽었고 정본 `srvNow()`(손잡이 `t1310` · 끔 = 클라 벽시계) 가 있다', `파일 ${files.length} · 표지 ${marks}`);
+  ok(bad.length === 0, '★★⑰ 클라 코드 속 `Date.now()` 는 표지 단 클라 간격뿐 — 표지 없는 자리 0(서버 시각과 견주면 `srvNow()`)', bad.join(' ') || `표지 ${marks}곳 · ${seen.length}파일`);
+  // ★자명 통과 금지 — 같은 자로 미끼 넷을 재면 각각 다르게 답한다(글자를 조각내 자기 자신을 안 문다)
+  const DN = 'Date.' + 'now()';
+  const bait = {
+    raw: `const remain = Math.max(0, exp - ${DN});`,
+    mark: `const t = (${DN} % 800) / 800;  // [T1310 클라 ` + '시계] 깜빡임',
+    comment: `// 옛 판: exp - ${DN}`,
+    srv: 'const remain = Math.max(0, exp - srvNow());',
+  };
+  const ans = Object.entries(bait).map(([k, v]) => { const r = scan(v); return k + '=' + (r.hit.length ? 'hit' : r.marked.length ? 'mark' : 'none'); }).join(',');
+  ok(ans === 'raw=hit,mark=mark,comment=none,srv=none', '★⑰ 자명 통과 금지 — 표지 없는 클라 시계는 물고 · 표지 단 줄은 표지로 · 주석 안 · 서버 축 호출은 보낸다', ans);
+}
+
+// ── ⑱ 러너 표지(`@regress` · `@nightly`)는 러너가 **찾는 이름**에만 [T1310 2026-11-17 · T1299 회부 3] ──────────────
+//   왜: `t577-server-run.js` 머리에 `@regress` · `@nightly A` 가 있었지만 러너 자동 발견(`run-regress.sh _disc`)은 `test-*.js` · `e2e-*.js` 만 본다 —
+//   표지가 거짓말을 했다(야간 목록에 없는데 "야간 A" 라고 적힘 · T1299 전수가 이름을 손으로 넘겨 돌리고 시한 2400초 빨강을 봤다).
+//   자: `scripts/*.js` 중 줄머리 `// @regress` · `// @nightly <글자>` 를 단 파일은 이름이 `test-` · `e2e-` 로 시작한다.
+console.log('\n⑱ 러너 표지는 러너가 찾는 이름(`test-*` · `e2e-*`)에만 [T1310]');
+{
+  const TAG = /^\/\/ @(regress|nightly)([\s]|$)/m, FOUND = /^(test|e2e)-.*\.js$/;
+  const inert = (name, src) => TAG.test(src) && !FOUND.test(name);
+  const all = fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js'));
+  const tagged = all.filter((f) => TAG.test(fs.readFileSync(path.join(SCRIPTS, f), 'utf8')));
+  const bad = tagged.filter((f) => !FOUND.test(f));
+  ok(tagged.length >= 100, '⑱ [전제] 러너 표지를 단 파일이 실제로 여럿이다(0 이면 아래가 자명 통과다)', `${tagged.length}개`);
+  ok(bad.length === 0, '★★⑱ 러너가 안 찾는 이름에 단 `@regress` · `@nightly` 표지 0(달려 있으면 안 도는데 도는 척한다)', bad.join(' ') || `표지 ${tagged.length}개 전부 test-/e2e-`);
+  const R = '// @' + 'regress', N = '// @' + 'nightly A';
+  const ans = [['t577-server-run.js', R + '\n'], ['t577-server-run.js', N + '\n'], ['test-x.js', R + '\n'], ['t577-server-run.js', '// (@' + 'regress 없음 — 러너 밖)\n'], ['t577-server-run.js', R + 'ion\n']]
+    .map(([n, s]) => (inert(n, s) ? 'hit' : 'none')).join(',');
+  ok(ans === 'hit,hit,none,none,none', '★⑱ 자명 통과 금지 — 밖 이름의 표지 둘은 물고 · 찾는 이름 · "없음" 설명 · 다른 낱말은 보낸다', ans);
+}
+
+// ── ⑲ 하네스에 박힌 날짜 0 · 새 하네스의 미끼는 파일 안에(표지 `@bait <n>`) [T1356 2026-11-17 · ★재민 테스트 강화 규약 ① · ②] ──────────────
+//   왜: 사유지 하네스에 `Date.UTC(2026, 10, 14, 12)` 가 박혀 다음 날 깨졌다(T1305 — 미끼 넷은 다 빨강이었다) · 미끼가 보고에만 적혀 PM 이 다시 못 도는 카드가 있었다 ·
+//   11-10 뒤 새 하네스 셋은 미끼가 없었다. 자는 `lib-harness-guard.js` 한 벌(전수 표 `harness-guard-table.js` 와 같은 자 — 사본 0).
+//   ⑲a `test-*` · `e2e-*` 코드(주석 뺌)의 박힌 날짜 · 연도는 머리 표지 `// @date-ok <까닭>` 이 있는 파일에만(주입 고정 시각 · 로그 픽스처 — 벽시계와 안 맞대는 자리).
+//   ⑲b 옛 목록(`harness-bait-old.txt` — 베이스에 있던 이름)에 없는 새 `@regress` 하네스는 머리에 `// @bait <n>`(n ≥ 1)을 달고, 미끼 판정 줄
+//       (판정 호출 글자에 `미끼` 와 `바꾼 자리` 가 같이 든 것)이 꼭 n 개다. 옛 하네스도 표지를 달았으면 수가 맞아야 한다.
+//   ⑲c 옛 목록은 늘지 않는다(새 하네스를 거기 넣으면 ⑲b 를 피한다).
+console.log('\n⑲ 박힌 날짜 0 · 새 하네스 미끼 표지 `@bait <n>` [T1356]');
+{
+  const G = require(path.join(SCRIPTS, 'lib-harness-guard.js'));
+  const OLD_N = 495;   // ★얼린 수 — 베이스 4ab5ab2b4 의 test-* · e2e-* 파일 수 485 + ★[PM land1083] 규칙과 같은 착지에 나란히 들어온 여섯(목록 파일 끝 주석) + ★[PM land1084] 규칙 앞 main 에서 딴 가지 넷(같은 주석)(이 수를 올리면 ⑲b 를 피한다 · 내리는 것은 된다)
+  const OLDF = path.join(SCRIPTS, 'harness-bait-old.txt');
+  const OLD = new Set(fs.existsSync(OLDF) ? fs.readFileSync(OLDF, 'utf8').split('\n').filter((l) => l && !l.startsWith('#')) : []);
+  const dateBad = (src) => G.dateLines(src).length > 0 && !G.dateOk(src);
+  const baitBad = (name, src) => {
+    const m = G.baitMark(src), isNew = !OLD.has(name) && G.regress(src);
+    if (m == null) return isNew ? 'no-mark' : '';
+    const n = (G.baitCalls(src) || []).length;
+    return m < 1 ? 'zero' : n !== m ? `count ${n}/${m}` : '';
+  };
+  const files = fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x));
+  const src = (f) => fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+  const dbad = [], bbad = []; let dlines = 0, marked = 0, unparsed = [];
+  for (const f of files) {
+    const s = src(f); const d = G.dateLines(s); dlines += d.length;
+    if (dateBad(s)) dbad.push(`${f}:${d.map((x) => x.line).join(',')}`);
+    if (G.calls(s) == null) unparsed.push(f);
+    if (G.baitMark(s) != null) marked++;
+    const b = baitBad(f, s); if (b) bbad.push(`${f}(${b})`);
+  }
+  ok(files.length >= 400 && OLD.size >= 400 && unparsed.length === 0, '⑲ [전제] 하네스를 다 읽었고(AST 못 읽은 파일 0) 옛 목록이 있다(0 이면 아래가 자명 통과다)', `하네스 ${files.length} · 옛 목록 ${OLD.size} · 박힌 날짜 ${dlines}줄 · 표지 \`@bait\` ${marked}${unparsed.length ? ' · 못 읽음 ' + unparsed.join(' ') : ''}`);
+  ok(dbad.length === 0, '★★⑲a 하네스 코드에 박힌 날짜 · 연도 0 — 있으면 머리 표지 `// @date-ok <까닭>`(주입 고정 시각 · 로그 픽스처)', dbad.join(' ') || `표지 없는 파일 0 (${dlines}줄은 표지 단 파일)`);
+  ok(bbad.length === 0, '★★⑲b 새 `@regress` 하네스는 `// @bait <n>` 표지 · 미끼 판정 줄(`미끼` + `바꾼 자리`)이 꼭 n 개 — 미끼는 파일 안에', bbad.join(' ') || `표지 ${marked}개 수 맞음 · 옛 목록 밖 새 @regress 0 빠짐`);
+  ok(OLD.size <= OLD_N, '★⑲c 옛 목록(`harness-bait-old.txt`)은 늘지 않는다 — 새 하네스를 거기 넣으면 ⑲b 를 피한다', `${OLD.size} ≤ ${OLD_N}`);
+  // ★자명 통과 금지 — 같은 자로 어기는 사본은 빨강 · 지키는 사본은 초록(글자를 조각내 자기 자신을 안 문다)
+  const Y = '20' + '26', HD = '// @' + 'date-ok 순수 함수에 넣는 고정 시각 — 벽시계와 안 맞댄다\n', BM = (n) => `// @${'bait'} ${n}\n`, RG = '// @' + 'regress\n';
+  const MK = '미' + '끼', CNT = '바꾼 ' + '자리';
+  const okCall = `ok(n === 1 && red, '${MK} — 문을 뺀 사본 → ③ 빨강', \`${CNT} \${n}\`);\n`;
+  const dbait = {
+    utc: `const T0 = Date.UTC(${Y}, 10, 14, 12);\n`,
+    str: `const day = '${Y}-11-14';\n`,
+    marked: HD + `const T0 = Date.UTC(${Y}, 10, 14, 12);\n`,
+    comment: `// 옛 판: Date.UTC(${Y}, 10, 14, 12)\nconst T0 = injected;\n`,
+    path: `const f = '계측/서버기준선_${Y}-11-16.json';\n`,
+  };
+  const da = Object.entries(dbait).map(([k, v]) => `${k}=${dateBad(v) ? 'bad' : 'ok'}`).join(',');
+  ok(da === 'utc=bad,str=bad,marked=ok,comment=ok,path=ok', '★⑲a 자명 통과 금지 — 박힌 `Date.UTC` · 날짜 글자는 물고 · 표지 단 파일 · 주석 · 파일 경로 속 날짜는 보낸다', da);
+  const bbait = {
+    good: ['test-new.js', RG + BM(1) + okCall],
+    nomark: ['test-new.js', RG + okCall],
+    many: ['test-new.js', RG + BM(2) + okCall],
+    nocount: ['test-new.js', RG + BM(1) + `ok(red, '${MK} — 문을 뺀 사본 → 빨강');\n`],
+    old: ['test-alloy.js', RG + okCall],
+    oldmarked: ['test-alloy.js', RG + BM(3) + okCall],
+    report: ['test-new.js', RG + BM(1) + `// ok(n === 1, '${MK} ${CNT} 1') — 보고에만 적은 미끼\n`],
+  };
+  const ba = Object.entries(bbait).map(([k, [n, v]]) => `${k}=${baitBad(n, v) ? 'bad' : 'ok'}`).join(',');
+  ok(ba === 'good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad', '★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다', ba);
+}
+
+// ── ⑳ `// @harness-only` = 제품을 안 부르는 하네스 [T1350 2026-11-17 · CI 옛 코드 빨강 단계] ──────────────
+//   왜: CI 의 옛 코드 빨강 단계(`pm-old-code-red.sh`)는 새 하네스를 옛 제품 위에서 돌려 **빨강**이어야 통과다. 하네스 도구만 재는 하네스(분류표 ·
+//   러너 · lib 자)는 옛 제품 위에서도 초록이 맞다 — 그런 하네스는 머리에 `// @harness-only` 를 달아 그 단계를 건너뛴다. 표지가 거짓말이면
+//   (제품을 부르는데 표지를 달면) 고침을 안 재는 하네스가 그 단계를 빠져나간다 ⇒ 이 자가 막는다.
+//   자: 표지를 단 파일과 그 파일이 부르는 `scripts/` 자(따라가며)의 코드(주석 뺀)에 제품 자리(`server` · `sim` · `public` · `lab` 디렉터리)를 가리키는 글자 0.
+console.log('\n⑳ `// @harness-only` = 제품 부름 0 [T1350]');
+{
+  const CO = require('./code-only.js');
+  const HO = /^\/\/ @harness-only([\s]|$)/m;
+  const PROD = /['"`](?:\.\.\/|\.\/)?(?:server|sim|public|lab)\/|['"`](?:server|sim|public|lab)['"`]\s*[,)]/;
+  const deps = (f, seen) => { seen = seen || new Set(); if (seen.has(f)) return seen; seen.add(f);
+    let src = ''; try { src = CO(fs.readFileSync(f, 'utf8')); } catch (e) {}
+    for (const m of src.matchAll(/require\(\s*['"](\.\/[^'"]+)['"]\s*\)/g)) { let q = path.join(path.dirname(f), m[1]); if (!/\.js$/.test(q)) q += '.js'; if (fs.existsSync(q)) deps(q, seen); }
+    return seen; };
+  const touches = (f) => [...deps(f)].filter((x) => PROD.test(CO(fs.readFileSync(x, 'utf8')))).map((x) => path.basename(x));
+  const all = fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js'));
+  const marked = all.filter((f) => HO.test(fs.readFileSync(path.join(SCRIPTS, f), 'utf8')));
+  const lie = marked.map((f) => [f, touches(path.join(SCRIPTS, f))]).filter(([, t]) => t.length);
+  const notTest = marked.filter((f) => !/^test-.*\.js$/.test(f));
+  ok(marked.length >= 1, '⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)', marked.join(' '));
+  ok(lie.length === 0, '★★⑳ `@harness-only` 하네스(와 그것이 부르는 scripts 자)는 제품 자리(server · sim · public · lab)를 안 가리킨다', lie.map(([f, t]) => `${f}←${t.join(',')}`).join(' ') || `${marked.length}/${marked.length}`);
+  ok(notTest.length === 0, '⑳ 표지는 `test-*.js` 에만(옛 코드 빨강 단계가 보는 이름)', notTest.join(' ') || '0');
+  //   미끼 — 같은 자(PROD 글자 자)가 제품 부름 셋을 물고(require · path.join · 상대 경로) 제품 아닌 글자 둘(주석 · 'scripts')은 보낸다
+  const bait = { req: "require('../server/zone.js')", join: "path.join(ROOT, 'server', 'zone.js')", rel: "'./sim/economy-sim.js'", cmt: "// require('../server/zone.js')", scr: "path.join(ROOT, 'scripts', 'x.js')" };
+  const ans = Object.entries(bait).map(([k, v]) => k + '=' + (PROD.test(CO(v)) ? 'hit' : 'none')).join(',');
+  ok(ans === 'req=hit,join=hit,rel=hit,cmt=none,scr=none', '★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다', ans);
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

@@ -22,7 +22,9 @@
 //
 // 실행: node scripts/e2e-tidal.js [--headed]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -294,7 +296,7 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
       ok((w2.water_bottle || 0) === (w1.water_bottle || 0) + 1 && (w2.fresh_water || 0) === (w1.fresh_water || 0) - 1,
         '★★★⑤ **마시니 빈 병이 돌아왔다** — 병은 그릇이지 소모품이 아니다(T3 캐논)',
         `병 ${w1.water_bottle || 0}→${w2.water_bottle || 0} · 물 ${w1.fresh_water || 0}→${w2.fresh_water || 0}`);
-      const notice = await page.evaluate(() => ((window.__notices || []).slice(-1)[0] || ''));
+      const notice = await page.evaluate(() => ((window.__notices || []).slice(-1)[0] || ''));   // @notice-ok 진단(판정 밖) — pre(true) 찍기
       pre(true, '마신 뒤 안내', String(notice || '').slice(0, 60));
       void g0;
       await snap('td-05-water');
@@ -337,12 +339,13 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
     // ★★그리고 **먹힌다**(표에 있는 것과 먹히는 것은 다른 명제 — 족보 (83))
     if (dried > 0) {
       const before = (await inv()).dried_oyster || 0;
+      const tgEat = await NM.mark(page);
       await send({ type: 'eat', item: 'dried_oyster', amount: 1 });
-      await sleep(1200);
+      await sleep(1200);   // 없음("먹을 수 없습니다")을 잰다 — 종전 시간 그대로
       const after = (await inv()).dried_oyster || 0;
       ok(after === before - 1, '★★★⑥ **건굴을 먹었다** — `PRESERVED_EFFECTS` 주입이 화면까지 닿았다',
         `건굴 ${before} → ${after}`);
-      const nt = await page.evaluate(() => ((window.__notices || []).slice(-1)[0] || ''));
+      const nt = (await NM.since(page, tgEat)).join(' | ');   // [T1367] 종전 마지막 한 줄 — 표지 뒤 전부(뒤따른 줄이 거절을 가리지 않게)
       ok(!/먹을 수 없습니다/.test(String(nt || '')), '★⑥ "먹을 수 없습니다"가 아니다(★T1190 ① 문장)', String(nt || '').slice(0, 60));
     }
     await snap('td-06-dried');

@@ -1,0 +1,151 @@
+{
+ "tag": "MB1020",
+ "counts": {
+  "keys": 0,
+  "depart": 0,
+  "crossed": 0,
+  "crossedDup": 0,
+  "unknownEv": 0,
+  "back": 0,
+  "home": 0,
+  "inRecv": 0,
+  "arrive": 0,
+  "deadOut": 0,
+  "deadBack": 0,
+  "deadIn": 0,
+  "transitOut": 0,
+  "transitBack": 0,
+  "transitIn": 0,
+  "byDir": {}
+ },
+ "balance": {
+  "depart": 0,
+  "sum": 0,
+  "ok": true
+ },
+ "bad": {
+  "twoIn": {
+   "n": 0,
+   "sample": []
+  },
+  "inNoDepart": {
+   "n": 0,
+   "sample": []
+  },
+  "crossedNoIn": {
+   "n": 0,
+   "sample": []
+  },
+  "homeAndArrive": {
+   "n": 0,
+   "sample": []
+  },
+  "backAndIn": {
+   "n": 0,
+   "sample": []
+  },
+  "noDepart": {
+   "n": 0,
+   "sample": []
+  }
+ },
+ "red": 0,
+ "gap": {
+  "n": 0,
+  "body": 0,
+  "noBody": 0,
+  "p50": null,
+  "max": null,
+  "over32": 0
+ },
+ "granary": [],
+ "heard": [],
+ "perfLast": {
+  "hanbando": {
+   "walk": {},
+   "knows": 84,
+   "knowVil": 18,
+   "t1147": {
+    "pick": 0,
+    "nearest": 0,
+    "other": 0,
+    "none": 0
+   },
+   "news": 305,
+   "heard": 347,
+   "cand": 0,
+   "candSeen": 0,
+   "pick": 0,
+   "depart": 0,
+   "bodied": 0,
+   "sent": 0,
+   "ok": 0,
+   "dup": 0,
+   "refused": 0,
+   "unknown": 0,
+   "back": 0,
+   "home": 0,
+   "in": 0,
+   "inRefuse": 0,
+   "inDup": 0,
+   "arrive": 0,
+   "joined": 0,
+   "roadDead": 0,
+   "reroute": 0,
+   "mark": 0,
+   "restored": 0,
+   "gapN": 0,
+   "gapOver": 0,
+   "gapMax": 0
+  },
+  "nippon": {
+   "walk": {},
+   "knows": 116,
+   "knowVil": 20,
+   "t1147": {
+    "pick": 0,
+    "nearest": 0,
+    "other": 0,
+    "none": 0
+   },
+   "news": 348,
+   "heard": 305,
+   "cand": 0,
+   "candSeen": 0,
+   "pick": 0,
+   "depart": 0,
+   "bodied": 0,
+   "sent": 0,
+   "ok": 0,
+   "dup": 0,
+   "refused": 0,
+   "unknown": 0,
+   "back": 0,
+   "home": 0,
+   "in": 0,
+   "inRefuse": 0,
+   "inDup": 0,
+   "arrive": 0,
+   "joined": 0,
+   "roadDead": 0,
+   "reroute": 0,
+   "mark": 0,
+   "restored": 0,
+   "gapN": 0,
+   "gapOver": 0,
+   "gapMax": 0
+  }
+ },
+ "final": {
+  "hanbando": {
+   "pop": 2174,
+   "deaths": 5,
+   "fdDeaths": 0
+  },
+  "nippon": {
+   "pop": 873,
+   "deaths": 3,
+   "fdDeaths": 0
+  }
+ }
+}

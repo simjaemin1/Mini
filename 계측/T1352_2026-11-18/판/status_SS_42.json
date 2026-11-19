@@ -1,0 +1,97 @@
+{
+ "wallS": 584,
+ "bars": 715,
+ "H": 1767225957500,
+ "zones": {
+  "hanbando": {
+   "started": true,
+   "at": false,
+   "st": {
+    "t": "upd",
+    "zone": "hanbando",
+    "H": 1767225957000,
+    "V": 1767225957000,
+    "cnt": {
+     "reqSent": {
+      "nippon": 814
+     },
+     "reqRecv": {
+      "ext": 284,
+      "nippon": 816
+     },
+     "resSent": {
+      "ext": 284,
+      "nippon": 816
+     },
+     "resRecv": {
+      "nippon": 814
+     }
+    },
+    "outW": 0,
+    "inbox": 0,
+    "held": 16,
+    "heldK": [
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare"
+    ],
+    "inboxK": [],
+    "flushes": 714
+   }
+  },
+  "nippon": {
+   "started": true,
+   "at": false,
+   "st": {
+    "t": "at",
+    "zone": "nippon",
+    "H": 1767225957000,
+    "V": 1767225957000,
+    "cnt": {
+     "reqSent": {
+      "hanbando": 816
+     },
+     "reqRecv": {
+      "ext": 286,
+      "hanbando": 814
+     },
+     "resSent": {
+      "ext": 285,
+      "hanbando": 814
+     },
+     "resRecv": {
+      "hanbando": 816
+     }
+    },
+    "outW": 0,
+    "inbox": 1,
+    "held": 8,
+    "heldK": [
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare",
+     "res:hanbando:200:/handoff_prepare"
+    ],
+    "inboxK": [],
+    "flushes": 714
+   }
+  }
+ }
+}

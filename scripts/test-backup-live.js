@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @date-ok 가짜 스냅샷 디렉터리 이름(고정 날에서 거슬러 센 픽스처 글자) — 벽시계와 안 맞댄다 [T1356]
 // === scripts/test-backup-live.js — `backup-live.sh` 를 **진짜로 돌린다**(T907 · 2026-10-24) ========================
 //
 // `test-disk-check` 문법 — 판정 사본 0: 가짜 `docker`(상태를 JSON 에 쥔다 · `run` 은 마운트를 임시 판 경로로 바꿔 **진짜 node:sqlite** 로 돈다 ·
@@ -14,6 +15,7 @@
 //     ⑧ [T1142] 단계 보관 — 날 14 · 주 12 · 달 영구 · BACKUP_KEEP 이면 종전
 //     ⑦ [T919] 갱신 앞 사본 — BACKUP_LABEL 이 meta · ✓ 줄에 · 글자 거름 · --dry 는 아무것도 안 쓴다(뗄 옛것은 찍는다) · --last 앞머리 · `bash -s`(서울 판을 흘림)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const fs = require('fs'), os = require('os'), path = require('path'), crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');

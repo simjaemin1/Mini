@@ -19,6 +19,7 @@
 //   ④ ★미끼 — 기억을 뺀 사본(`server/_t1330bait-villages.js` · 판 끝에 지움)은 선 틱마다 예산의 `N_BUDGET` 배를 넘는다(빨강)
 // 실행: node scripts/test-t1330-war-path.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

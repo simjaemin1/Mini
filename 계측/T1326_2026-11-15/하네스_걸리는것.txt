@@ -1,0 +1,17 @@
+test-farm-act rc=0 60s :: === 결과: 78 PASS / 0 FAIL ===
+test-forage-act rc=0 187s :: === 결과: 251 PASS / 0 FAIL ===
+test-granary-haul rc=0 0s :: 결과: PASS
+test-hunt-vis rc=1 224s :: === 34건 중 PASS 30 · FAIL 4 ===
+test-move-soa rc=0 294s :: === 결과: 286 PASS / 0 FAIL ===
+test-t1202-produce-live rc=1 11s :: PASS 15 / FAIL 1
+test-t1221-farm-labor rc=0 2s :: 13 통과 · 0 실패
+test-t1294-perf rc=0 13s :: === T1294 성능 자리 14 통과 · 0 실패 ===
+test-t1322-prefilter rc=0 97s :: === T1322 첫 거름 21 통과 · 0 실패 ===
+test-wood-act rc=0 23s :: === 결과: 159 PASS / 0 FAIL ===
+test-body-fields rc=0 0s :: === 10 통과 / 0 실패 ===
+test-coll-grid rc=0 41s :: === 결과: 20 PASS / 0 FAIL ===
+test-hp-src rc=0 4s :: === 54 통과 / 0 실패 ===
+test-lon-day rc=0 1s :: === 22건 중 PASS 22 · FAIL 0 ===
+test-harness-lint rc=1 168s :: === 77건 중 PASS 76 · FAIL 1 ===
+t1243-skip rc=0 :: 79 통과 · 0 실패
+DONE

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress
+// @regress-alone   ← [T1288] 러너 -j 판에서 맨 먼저 혼자 돈다(다른 하네스를 안 띄운다) · NPC 걸음 px/s 를 벽시계로 잰다 — 판 A -j4 에서 51.7 px/s(기준 64 ±10%) · 홀로 판 초록
 // @nightly B   ← 야간 세 밤 분할(T238) — 존을 두 번 띄운다(판당 4~5분)
 // =============================================================================
 // e2e — 마을 NPC 걸음 = 플레이어 걸음 (T888 · 재민 10-23 · ★PM "같다" — 랩이 목표 캐논)
@@ -27,6 +28,7 @@
 //   ★Chromium 은 /opt/pw-browsers/chromium(playwright install 금지 — 컨테이너 규약). 포트 3010/3020 공용 — E2E 동시 실행 금지.
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)

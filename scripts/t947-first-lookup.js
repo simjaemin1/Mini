@@ -20,6 +20,7 @@
 // 실행: [E2E_BROWSER=webkit] [손잡이 env] node scripts/t947-first-lookup.js [--n 3] [--tail 3] [--stack] [--pix [--spots] [--still]] [--out /tmp/t947] [--tag 이름]
 //       견줌: node scripts/t947-first-lookup.js --cmp 가.json 나.json [--cmp-out 견줌.json]   (`--pix` 판 재료끼리 · 아래 견줌 머리말)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

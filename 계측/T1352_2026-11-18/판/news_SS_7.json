@@ -1,0 +1,288 @@
+{
+ "tag": "SS_7",
+ "env": {
+  "T1324_XZ_MIGRATE": "1",
+  "T1352_NEWS_SEAM": "1"
+ },
+ "days": 120,
+ "stagePlan": [
+  30,
+  10,
+  3,
+  3
+ ],
+ "crossed": 2,
+ "depart": 2,
+ "arrive": 2,
+ "byDir": {
+  "nippon→hanbando": {
+   "depart": 1,
+   "crossed": 1,
+   "arrive": 1,
+   "home": 0,
+   "dead": 0
+  },
+  "hanbando→nippon": {
+   "depart": 1,
+   "crossed": 1,
+   "arrive": 1,
+   "home": 0,
+   "dead": 0
+  }
+ },
+ "conserve": {
+  "red": 0,
+  "balance": {
+   "depart": 2,
+   "sum": 2,
+   "ok": true
+  },
+  "bad": {
+   "twoIn": 0,
+   "inNoDepart": 0,
+   "crossedNoIn": 0,
+   "homeAndArrive": 0,
+   "backAndIn": 0,
+   "noDepart": 0
+  }
+ },
+ "perfConserve": {
+  "depart": 2,
+  "joined": 2,
+  "home": 0,
+  "dead": 0,
+  "onRoad": 0,
+  "ok": true,
+  "sentOk": 2,
+  "inRecv": 2,
+  "handOk": true,
+  "departLog": 2,
+  "departLogMuted": 0
+ },
+ "via": {
+  "seam": 2
+ },
+ "perHead": {
+  "n": 2,
+  "p50": 34.1,
+  "min": 6.3
+ },
+ "road": {
+  "dead": 0,
+  "deadBy": {},
+  "days": 4,
+  "hungry": 0
+ },
+ "herdMax": {
+  "vil": "hanbando|어촌9",
+  "n": 1,
+  "days": 1,
+  "sameLineMax": 1
+ },
+ "herd": [
+  {
+   "vil": "hanbando|어촌9",
+   "n": 1,
+   "days": 1,
+   "sameLineMax": 1,
+   "firstN": 35,
+   "lastN": 36,
+   "overK": 0,
+   "perHeadMin": 34.141666666666666,
+   "over": 10,
+   "line": [
+    [
+     42,
+     589075242,
+     "후카임업",
+     "seam",
+     1,
+     25,
+     36,
+     10,
+     93.7,
+     34.1
+    ]
+   ]
+  },
+  {
+   "vil": "nippon|쿠라마",
+   "n": 1,
+   "days": 1,
+   "sameLineMax": 1,
+   "firstN": 23,
+   "lastN": 24,
+   "overK": 0,
+   "perHeadMin": 6.25,
+   "over": 1,
+   "line": [
+    [
+     52,
+     589075252,
+     "광산1",
+     "seam",
+     1,
+     22,
+     24,
+     1,
+     55.2,
+     6.3
+    ]
+   ]
+  }
+ ],
+ "ageBands": [
+  {
+   "band": "0~1",
+   "n": 2,
+   "overMean": 5.5,
+   "overPos": 2,
+   "perHeadP50": 34.1,
+   "overK": 0
+  },
+  {
+   "band": "2~3",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "4~7",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "8~15",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "16+",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  }
+ ],
+ "ageAll": {
+  "n": 2,
+  "p50": 1,
+  "p90": 1,
+  "max": 1
+ },
+ "ageLogCheck": {
+  "n": 2,
+  "eq": 2
+ },
+ "staged": {
+  "hanbando": {
+   "rounds": 30,
+   "took": 13,
+   "tries": 90,
+   "own": 18
+  },
+  "nippon": {
+   "rounds": 30,
+   "took": 27,
+   "tries": 90,
+   "own": 26
+  }
+ },
+ "perf": {
+  "hanbando": {
+   "t1352": {
+    "localOn": false,
+    "seamOn": true,
+    "seamKeys": 20,
+    "hist": 0,
+    "histDrop": 0,
+    "seamOut": 3600,
+    "seamIn": 120,
+    "seamRows": 2400,
+    "calls": 39,
+    "own": 8,
+    "local": 0,
+    "seam": 772,
+    "notYet": 0,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 1,
+    "ageN": 1,
+    "ageSum": 1,
+    "ageMax": 1,
+    "stage": 10,
+    "staged": 13,
+    "roadDays": 2,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 576,
+    "split": 0,
+    "days": 0,
+    "h": 26,
+    "beds": 177,
+    "food": 0
+   },
+   "t1147": {
+    "pick": 13,
+    "nearest": 0,
+    "other": 13,
+    "none": 26
+   }
+  },
+  "nippon": {
+   "t1352": {
+    "localOn": false,
+    "seamOn": true,
+    "seamKeys": 30,
+    "hist": 0,
+    "histDrop": 0,
+    "seamOut": 2400,
+    "seamIn": 120,
+    "seamRows": 3600,
+    "calls": 76,
+    "own": 4,
+    "local": 0,
+    "seam": 2276,
+    "notYet": 0,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 1,
+    "ageN": 1,
+    "ageSum": 1,
+    "ageMax": 1,
+    "stage": 10,
+    "staged": 27,
+    "roadDays": 2,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 1856,
+    "split": 0,
+    "days": 0,
+    "h": 17,
+    "beds": 406,
+    "food": 0
+   },
+   "t1147": {
+    "pick": 28,
+    "nearest": 2,
+    "other": 26,
+    "none": 48
+   }
+  }
+ }
+}

@@ -11,6 +11,7 @@
 //     · 도착 시간 차 어림(문 길이 − A* 길이) ÷ 그 몸이 실제로 걸은 빠르기 · 그 몸의 그날(마을 하루) 합 · 직업 · 라벨.
 //   ⚠그림자 짓기는 그 틱 안에서 몰아 짓는다(견줌 판만 · 그 판의 틱 시간은 최악 표에 안 쓴다).
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
 

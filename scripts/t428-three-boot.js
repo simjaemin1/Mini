@@ -15,6 +15,7 @@
 //
 // 실행: node scripts/t428-three-boot.js [IDLE_S=60] [--json out.json]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3016, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const net = require('net');

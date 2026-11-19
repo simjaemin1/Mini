@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @regress-alone   ← [T1288] 러너 -j 판에서 맨 먼저 혼자 돈다(다른 하네스를 안 띄운다) · 확대 뒤 화면 흐름 화소 차를 잰다 — 판 A -j4 에서 1.572(기준 ≤ 1.141) · 홀로 판 초록
 // @nightly A   ← 야간 **세 밤** 분할(T238 · 소요로 균등) · `run-regress.sh --list "nightly A"`
 // @pixel    ← ★[T104] **프레임을 화소로 잰다**(`page.screenshot` → `PNG.sync.read`).
 //              렌더 층(`3x-r*`·`34-m-renderloop`·`37-r1-*`)을 만지는 카드는 이 표를 전수로 돌려라 —
@@ -24,7 +25,9 @@
 //
 // 실행: node scripts/e2e-zoom.js [--headed]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -141,11 +144,12 @@ function pxdiff(a, b) {
   //   ①~⑤ 를 도는 30초 사이 낮밤이 수십 번 돈다. 그러면 "같은 화면인가"는 배율이 아니라 **시각**을 잰다.
   //   ⇒ 세계를 세우고 잰다. 그리고 **얼었다는 말을 세계에서 듣고** 다음으로 간다(정해진 초를 안 잔다).
   const dayFroze = await (async () => {
+    const tgF = await NM.mark(page);   // [T1367] 앞 판이 남긴 "게임일 정지" 줄을 안 읽는다 — 표지 뒤만
     for (let i = 0; i < 40; i++) {                      // 40 × 0.25초 = 10초까지(안전망)
       await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
       for (let k = 0; k < 5; k++) {
         await sleep(250);
-        const t = await page.evaluate(() => (window.__notices || []).filter((x) => /게임일 정지/.test(x)).slice(-1)[0] || '');
+        const t = (await NM.since(page, tgF)).filter((x) => /게임일 정지/.test(x)).slice(-1)[0] || '';
         if (t) return t;
       }
     }

@@ -174,7 +174,7 @@ if (process.argv.includes('--angles-only')) {           // 관절각만(그림 �
   const R = { before: BEFORE, after: ROOT };
   const shots = {}, size = {};
   const browser = await chromium.launch({ headless: true });
-  let port = 3171;
+  let port = require('./lib-port').ports(3, 3171);   // [T1288] 뿌리 둘이 ++port 로 다음 두 자리를 쓴다
   for (const [nm, root] of Object.entries(R)) {
     size[nm] = CMP.sizes(root);
     await CMP.bootCentral(root, ++port);

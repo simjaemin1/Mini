@@ -24,6 +24,7 @@
 //   ⓕ 끔(기본) — 주소창에 손잡이가 없으면 three.js·glb·char3d.js 요청 0 · `window.__char3d` 없음 · 시트가 그린다
 // 실행: node scripts/e2e-char3d.js [그림.png] [--json 경로] [--fig=t604](그림을 T604 청동기 옷 절만)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

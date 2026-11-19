@@ -15,7 +15,9 @@
 //
 // 실행: node scripts/e2e-ui.js [--headed]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -319,12 +321,13 @@ async function waitHttp(url, tries = 600) {
     }
     // 마을 밖이라 Shift+N·Shift+G 는 메시지 대신 "너무 멀다" 를 띄운다 — 그것도 도달의 증거다
     await page.evaluate(() => { window.__t55clear(); window.__notices && (window.__notices.length = 0); });
+    const tgN = await NM.mark(page);
     await page.keyboard.press('Shift+n');
     await sleep(350);
-    const nOut = await page.evaluate(() => ({
-      sent: window.__t55sent.map((m) => m.type),
-      notice: (window.__notices || []).slice(-3).join(' | '),
-    }));
+    //   [T1367] 종전 0.35초 뒤 마지막 세 줄 — 보냄이 안 잡혔으면 표지 뒤 "너무 멉니다"가 올 때까지(상한 10초 · 판정 그대로)
+    const sentNow = () => page.evaluate(() => window.__t55sent.map((m) => m.type));
+    await NM.waitSince(page, tgN, (l) => /너무 멉니다/.test(l.join(' | ')), { capMs: (await sentNow()).includes('village_deliver') ? 0 : 10000 });
+    const nOut = { sent: await sentNow(), notice: (await NM.since(page, tgN)).join(' | ') };
     ok(nOut.sent.includes('village_deliver') || /너무 멉니다/.test(nOut.notice),
        '★⑦ `Shift+N`(납품)이 그대로 도달한다(마을 밖이면 "너무 멀다")', nOut.sent.join(' ') + ' | ' + nOut.notice);
 
@@ -612,7 +615,7 @@ async function waitHttp(url, tries = 600) {
         emoji: /\p{Extended_Pictographic}/u.test(el.textContent),
       };
     });
-    const nts = () => page.evaluate(() => (window.__notices || []).slice(-6));
+    const nts = () => page.evaluate(() => (window.__notices || []).slice(-6));   // @notice-ok 고리 칸 수를 잰다(규약 무변 — 표지를 넣으면 셈이 바뀐다)
 
     // ── 셋을 200ms 안에 — 옛 코드는 여기서 **하나만** 남았다
     await page.evaluate(() => { showNotice('', 1, null); window.__notices.length = 0; });

@@ -18,10 +18,12 @@
 //
 // 실행: node scripts/e2e-rumor.js [--headed]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
+const WD = require('./lib-wait-day');   // ★[T1339] 게임일 기다림 문 — 벽시계 N초 대신 "게임일이 D 에 닿을 때까지"(상한은 안전망 · 느린 판 = 유보)
 
 const ROOT = path.join(__dirname, '..');
 // ★★[T496 2026-09-28] 이 배선 검사는 소문 시계를 **종전 거울(500)** 에 박는다 — 이 프로세스(아래 하한 `minDays`)와 존(env 상속) 둘 다.
@@ -77,6 +79,10 @@ async function waitHttp(url, tries = 900) {
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
     E2E_GIVE: '1',
     T489_RUMOR_SPLIT: '0',   // ★[T496] 종전 소문 시계(위 머리 — 배선 검사 · 시계는 test-events ⑲)
+    //   ★[T1339] 게시판 소식 줄 수(`EV_BOARD_NEWS_N` · 운영 기본 8) — 부하 10판 중 2판이 ⑤ 를 못 봤다(사건일 + 120일 · 하루씩 걸어도 60일). 판은 새 소식 8줄만
+    //     보인다 — 붐빈 판에서 찾던 줄이 들어왔다가 다음 물음 전에 밀려났다고 보고(⑤ 뒤 참고 줄이 판마다 그 줄 자리를 찍는다 — 9 넘으면 8줄 판에선 안 보였을 판)
+    //     이 판의 물음("그 줄이 B 에 **들어왔나**")에 맞게 줄 수를 넉넉히 연다(있는 손잡이 · 소식 걸러 내기 무변 · ⑥ 은 브리핑 ⊆ 판 소식이라 뜻 같음).
+    EV_BOARD_NEWS_N: '64',
   });
   // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
   //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
@@ -195,7 +201,10 @@ async function waitHttp(url, tries = 900) {
     }
     return 0;
   };
-  const freeze = async (on) => { await page.evaluate((o) => window.__sendPrimary({ type: '__e2e_day_freeze', on: o }), on); await sleep(700); };
+  //   ★[T1339] 얼린 뒤엔 날이 가라앉기를 기다린다(`WD.settleDay` — 얼림 전에 연 하루 마감이 끝까지 돌아 하루가 더 갈 수 있다 · 단독 판 ④a `26 → 27`)
+  const freeze = async (on) => { await page.evaluate((o) => window.__sendPrimary({ type: '__e2e_day_freeze', on: o }), on); await sleep(700);
+    if (on) await WD.settleDay(() => page.evaluate(() => window.__evGameDay | 0), 1500, 15000); };
+
   // ★★키에 **출처 마을**을 넣는다. 안 넣으면 `CARAVAN_LATE|null|57` 같은 키가 두 마을에서
   //   같은 날 나서 "B 가 A 의 사건을 이미 안다"는 **가짜 실패**가 난다(1차 실패의 진범).
   //   자기 마을 사건은 `from` 이 null 이므로 보는 쪽 마을 이름으로 채운다.
@@ -261,13 +270,14 @@ async function waitHttp(url, tries = 900) {
   // ── ⑤ 날을 녹이고 기다리면 — **며칠 뒤에** 나타난다 ────────────────────────
   await freeze(false);
   let arrived = null, polls = 0;
-  for (; polls < 120 && !arrived; polls++) {
-    const b = await askBoard(B.id);
-    const hit = ((b && b.news) || []).find((r) => evA && keyOf(r, B.name) === keyOf(evA, A.name));
-    if (hit) arrived = hit;
-    else await sleep(400);
-  }
-  ok(!!arrived, '⑤ 며칠 뒤 그 사건이 **B 게시판에 나타난다**(캐러밴이 걸어온 뒤에 들린다)',
+  //   ★[T1339] 종전 "폴링 120번"(벽시계 · 0.5초/일이면 ≈ 120게임일) → **게임일 120일**(그 날까지 안 오면 빨강 · 그 전에 상한 300초면 유보).
+  //     판 줄 수는 위 존 env `EV_BOARD_NEWS_N` 64(붐빈 판 늦음 소식에 찾던 줄이 밀려나던 자리 — 부하 10판 중 2판).
+  const arrR = await WD.waitDay(() => gameDay(), (evA ? evA.day : frozenDay) + 120, { capMs: 300000, pollMs: 400, until: () => !!arrived,
+    body: async () => { polls++; const b = await askBoard(B.id); const hit = ((b && b.news) || []).find((r) => evA && keyOf(r, B.name) === keyOf(evA, A.name)); if (hit) arrived = hit; } });
+  { const bL = await askBoard(B.id), nw = (bL && bL.news) || [], ty = {}; for (const r of nw) ty[r.type] = (ty[r.type] || 0) + 1;
+    const rank = arrived ? nw.findIndex((r) => keyOf(r, B.name) === keyOf(arrived, A.name)) : -1;
+    console.log(`    (참고 · 판정 밖) B 판 소식 ${nw.length}줄(운영 판이면 8줄) · 찾던 줄 자리 ${rank < 0 ? '없음' : rank + 1} · 종류 ${JSON.stringify(ty)}`); }
+  WD.judge(ok, arrR, !!arrived, '⑤ 며칠 뒤 그 사건이 **B 게시판에 나타난다**(캐러밴이 걸어온 뒤에 들린다)',
     arrived ? `day${arrived.day} → heard${arrived.heard} (${arrived.heard - arrived.day}일) · 출처 ${arrived.from}` : `(${polls}회 폴링 뒤에도 미도착)`);
   if (arrived) {
     ok(arrived.from === A.name, '⑤b 출처 마을이 붙어 온다(어디서 온 소식인지 안다)', `from=${arrived.from}`);
@@ -318,14 +328,16 @@ async function waitHttp(url, tries = 900) {
   await page.close();
   await sleep(1200);
   // ★게임일이 흐르는 동안 사람이 없다. 이게 "자리를 비웠다" 의 정의다.
-  await sleep(6000);                                   // 0.5초/일 ⇒ 약 12게임일
+  //   ★[T1339] 종전 `sleep(6000)`(0.5초/일 ⇒ 약 12게임일) — 붐비는 상자에선 그 6초에 날이 덜 갔다. 몸이 없는 동안은 존 `/perf` 날로
+  //     "12게임일이 갈 때까지" 기다린다(상한 90초는 안전망 · 닿지 못하면 아래 ⑦a 는 유보).
+  const awayR = await WD.waitDay(() => WD.perfDay(ZPORT), beforeDay + 12, { capMs: 90000, pollMs: 400 });
   page = await ctx.newPage();
   wire(page);
   await enter();
   const afterDay = await gameDay();
   // ★재접속 직후 **날을 얼린다** — 이제부터 브리핑은 하루에 한 번이고, 첫 브리핑이 덮이지 않는다.
   await freeze(true);
-  ok(afterDay - beforeDay >= 2, '⑦a 전제: 자리를 비운 사이 게임일이 실제로 흘렀다',
+  WD.judge(ok, awayR, afterDay - beforeDay >= 2, '⑦a 전제: 자리를 비운 사이 게임일이 실제로 흘렀다',
     `day ${beforeDay} → ${afterDay} (${afterDay - beforeDay}일)`);
   const warped = await warpTo(B, 30);
   ok(warped, '⑦b 재접속 뒤 다시 마을에 다가갔다');
@@ -433,7 +445,8 @@ async function waitHttp(url, tries = 900) {
       const landed0 = await until(async () => { const v = savedOf(pid); return (v && Math.abs((v.x || 0) - MARK0B) < 2) ? v : null; });
       const d0 = landed0 ? landed0.day : null;
       // ★게임일을 흘린다 — 이게 "자리를 비웠다"의 정의다(0.5초/일)
-      await sleep(5000);
+      //   ★[T1339] 종전 `sleep(5000)`(약 10게임일) → "기준일 + 10 에 닿을 때까지"(존 `/perf` 날 · 상한 60초 안전망 · 기준일을 못 읽은 판은 종전 5초)
+      const away = d0 != null ? await WD.waitDay(() => WD.perfDay(ZPORT), d0 + 10, { capMs: 60000, pollMs: 300 }) : (await sleep(5000), null);
       // 갈아 끼우기 — 여기서만 두 팔이 갈린다
       const s1 = rawOpen(token); await s1.ready; await rawWel(s1);
       s1.send({ type: 'teleport_debug', x: MARK1, y: MARK1 }); await sleep(700);
@@ -454,7 +467,7 @@ async function waitHttp(url, tries = 900) {
       const br = s2.brief || null;
       s2.close();
       const day = br ? (br.day | 0) : null;
-      return { tag, branch, d0, day, elapsed: (day != null && d0 != null) ? day - d0 : null,
+      return { tag, branch, d0, day, away, elapsed: (day != null && d0 != null) ? day - d0 : null,
                absent: br && br.returned ? (br.absentDays | 0) : null, returned: !!(br && br.returned) };
     }
 
@@ -463,7 +476,9 @@ async function waitHttp(url, tries = 900) {
     const show = (r) => `기준일 ${r.d0} → 오늘 ${r.day}(실제 ${r.elapsed}일) · 보고 ${r.absent}일 · ${r.branch || '갈래 미확인'}`;
     ok(armC.branch === 'duplicate_login', '⑦d2-a 전제: connect 먼저 팔이 **겹침 갈래를 실제로 밟았다**(옛 세션이 중복으로 끊겼다)', String(armC.branch));
     ok(!!armX.branch, '⑦d2-b 전제: close 먼저 팔에서 **close 의 저장이 실제로 착지했다**(그 뒤에 둘째 소켓을 열었다)', String(armX.branch));
-    ok(armC.elapsed >= 4 && armX.elapsed >= 4, '⑦d2-c 전제: 두 팔 다 **게임일이 실제로 흘렀다**(자명 통과 방지)',
+    //   ★[T1339] 두 팔 중 느린 판(상한에 닿음)이 있으면 그 팔의 기다림으로 판정한다 — 느림 = 유보 · 멈춘 시계 = 빨강
+    const awayW = [armC.away, armX.away].find((r) => r && !r.reached) || armC.away || armX.away;
+    WD.judge(ok, awayW, armC.elapsed >= 4 && armX.elapsed >= 4, '⑦d2-c 전제: 두 팔 다 **게임일이 실제로 흘렀다**(자명 통과 방지)',
       `conn ${armC.elapsed}일 · close ${armX.elapsed}일`);
     ok(armC.returned && armX.returned, '⑦d2-d 전제: 두 팔 다 복귀 브리핑이 났다', `conn ${armC.returned} · close ${armX.returned}`);
     const defC = (armC.elapsed != null && armC.absent != null) ? armC.elapsed - armC.absent : null;
@@ -498,12 +513,10 @@ async function waitHttp(url, tries = 900) {
       ok(deedA.heard === deedA.day, '⑨c 자기 마을 일의 도달일 = 사건일');
       ok(await warpTo(B, 30), '⑨d B 로 건너간다');
       let deedB = null, polls2 = 0;
-      for (; polls2 < 150 && !deedB; polls2++) {
-        const b = await askBoard(B.id);
-        deedB = ((b && b.news) || []).find((r) => r.type === 'WEATHER' && r.from === A.name && r.day === deedA.day);
-        if (!deedB) await sleep(400);
-      }
-      ok(!!deedB, '⑨ ★새 유형도 **소문을 타고 걸어온다**(도달표를 유형별로 나누지 않았다)',
+      //   ★[T1339] 종전 "폴링 150번" → 게임일 150일(그 날까지 안 오면 빨강 · 그 전에 상한 300초면 유보)
+      const deedR = await WD.waitDay(() => gameDay(), deedA.day + 150, { capMs: 300000, pollMs: 400, until: () => !!deedB,
+        body: async () => { polls2++; const b = await askBoard(B.id); deedB = ((b && b.news) || []).find((r) => r.type === 'WEATHER' && r.from === A.name && r.day === deedA.day) || null; } });
+      WD.judge(ok, deedR, !!deedB, '⑨ ★새 유형도 **소문을 타고 걸어온다**(도달표를 유형별로 나누지 않았다)',
         deedB ? `day${deedB.day} → heard${deedB.heard} (${deedB.heard - deedB.day}일) · 출처 ${deedB.from}` : `(${polls2}회 폴링 뒤에도 미도착)`);
       if (deedB) {
         ok(deedB.heard - deedB.day >= minDays, '⑨e 지연이 캐러밴 시계 하한 이상이다(값 유형과 같은 표)',
@@ -549,5 +562,5 @@ async function waitHttp(url, tries = 900) {
   console.log(`\n  스크린샷: ${shots.join(' ')}`);
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-  process.exit(fail ? 1 : 0);
+  process.exit(WD.rc(fail));   // ★[T1339] 빨강 1 · 빨강 0 이고 유보만 75 · 둘 다 없으면 0
 })().catch((e) => { console.error('E2E 실패:', e); shutdown(); process.exit(1); });

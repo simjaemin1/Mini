@@ -28,6 +28,7 @@
 //
 // 쓰는 법: node scripts/t894-body-paths-probe.js [판=2] [길,길,...]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -55,8 +56,8 @@ const ZENV = { PORT: String(HPORT), ZONE_ID: 'hanbando', DB_PATH: `${DDIR}/w-han
 //   종료 flush(`_shutdownFlush`)가 fire-and-forget 뒤 200ms 에 내려가므로 central 이 먼 판에서 그 저장이 닿나를 잰다.
 let PX = null;
 if (process.env.T894_DELAY) {
-  PX = spawn(process.execPath, [path.join(__dirname, 't498-delay-proxy.js'), '3910', String(CPORT), String(+process.env.T894_DELAY)], { stdio: 'ignore' });
-  ZENV.CENTRAL_PORT = '3910';
+  PX = spawn(process.execPath, [path.join(__dirname, 't498-delay-proxy.js'), String(require('./lib-port').port(3910)), String(CPORT), String(+process.env.T894_DELAY)], { stdio: 'ignore' });
+  ZENV.CENTRAL_PORT = String(require('./lib-port').port(3910));
   process.on('exit', () => { try { PX.kill('SIGKILL'); } catch (e) {} });
 }
 async function upC() { C = boot('central.js', CENV, 'central'); if (!(await FB.waitUp(C, /central server up on/, { name: 'central' })).ok) throw new Error('central 기동 실패'); }

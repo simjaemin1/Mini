@@ -12,6 +12,7 @@
 // ⚠수를 여기서 다시 정하지 않는다. 지형·채집·도구 계수 전부 **정본이 낸 수**다.
 //   (서버를 안 띄운다 — terrain/forage 는 순수 모듈이고, 도구 계수는 `zone.__testBind` 에서 읽는다.)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 process.env.ZONE_ID = process.env.ZONE_ID || 'hanbando';

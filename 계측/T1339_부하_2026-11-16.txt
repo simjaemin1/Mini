@@ -1,0 +1,191 @@
+# T1339 부하 판 — 2코어를 바쁜 고리 둘(node -e 'for(;;){}')로 막은 채 고친 하네스마다 10판(순차 · e2e 는 같은 포트라 하나씩) · 2026-11-16
+# 판정: RC 0 초록 · RC 75 유보(느린 판 · 기계 의존 — 빨강 아님) · RC 1 빨강. 첫 바퀴가 드러낸 빨강은 그 자리를 고치고 그 하네스만 10판을 다시 돌렸다(둘째 · 셋째 · 넷째 바퀴).
+
+## load.txt
+hogs 29205 29206 · 2026-11-16T11:24:50Z
+test-t1118-rack-age #1 RC=0 20s  
+test-t1118-rack-age #2 RC=0 22s  
+test-t1118-rack-age #3 RC=0 21s  
+test-t1118-rack-age #4 RC=0 21s  
+test-t1118-rack-age #5 RC=0 21s  
+test-t1118-rack-age #6 RC=0 21s  
+test-t1118-rack-age #7 RC=0 20s  
+test-t1118-rack-age #8 RC=0 22s  
+test-t1118-rack-age #9 RC=0 20s  
+test-t1118-rack-age #10 RC=0 20s  
+e2e-weather #1 RC=75 64s    ⚠ 유보 — ★★프레임 계기가 층을 본다(층 대비)  층 2.78ms 인데 프레임엔 0.50ms — 캔버스 미룸을 다 못 걷었다 · 이 절
+e2e-weather #2 RC=0 62s  
+e2e-weather #3 RC=0 63s  
+e2e-weather #4 RC=75 78s    ⚠ 유보 — ★프레임 한 장에서 날씨가 차지하는 몫이 1/4 아래  33% · 같은 조건 잡음 폭 ±44% · 여섯 판 가운데값 — 넘�
+e2e-weather #5 RC=75 67s    ⚠ 유보 — ★★프레임 계기가 층을 본다(층 대비)  층 2.52ms 인데 프레임엔 1.00ms — 캔버스 미룸을 다 못 걷었다 · 이 절
+e2e-weather #6 RC=75 65s    ⚠ 유보 — ★★프레임 계기가 층을 본다(층 대비)  층 2.27ms 인데 프레임엔 0.70ms — 캔버스 미룸을 다 못 걷었다 · 이 절
+e2e-weather #7 RC=0 69s  
+e2e-weather #8 RC=0 78s  
+e2e-weather #9 RC=0 63s  
+e2e-weather #10 RC=0 64s  
+e2e-oseok-all #1 RC=0 74s  
+e2e-oseok-all #2 RC=0 74s  
+e2e-oseok-all #3 RC=0 82s  
+e2e-oseok-all #4 RC=75 89s    ⚠ 유보 — ② 가방을 연 동안 프레임 = 닫힘과 같은 띠(p50)  33.2 ↔ 16.7 · 다시 잰 판 열림 16.7 ↔ 닫힘 16.7 — 상자가 흔�
+e2e-oseok-all #5 RC=0 86s  
+e2e-oseok-all #6 RC=0 65s  
+e2e-oseok-all #7 RC=0 85s  
+e2e-oseok-all #8 RC=0 82s  
+e2e-oseok-all #9 RC=0 81s  
+e2e-oseok-all #10 RC=75 93s    ⚠ 유보 — ② 가방을 연 동안 프레임 = 닫힘과 같은 띠(p50)  66.7 ↔ 33.5 · 다시 잰 판 열림 50.1 ↔ 닫힘 50 — 상자가 흔들�
+e2e-events #1 RC=0 78s  
+e2e-events #2 RC=1 72s ✗   ✗ ★게임일 정지(상호작용 구간) — 여기부터 경제가 검사를 앞지르지 않는다  
+e2e-events #3 RC=0 84s  
+e2e-events #4 RC=0 78s  
+e2e-events #5 RC=0 78s  
+e2e-events #6 RC=0 82s  
+e2e-events #7 RC=0 67s  
+e2e-events #8 RC=1 108s ✗   ✗ ★★⑤-b **`Shift+G` 가 게시판 판을 연다** — T55 ④ 전엔 이 키가 화살을 쐈다  "농촌1 게시판"  
+e2e-events #9 RC=1 81s ✗   ✗ ★★⑤-b **`Shift+G` 가 게시판 판을 연다** — T55 ④ 전엔 이 키가 화살을 쐈다  "농촌1 게시판"  
+e2e-events #10 RC=0 67s  
+e2e-rumor #1 RC=0 179s  
+e2e-rumor #2 RC=0 170s  
+e2e-rumor #3 RC=0 159s  
+e2e-rumor #4 RC=0 152s  
+e2e-rumor #5 RC=1 465s ✗   ✗ ⑤ 며칠 뒤 그 사건이 **B 게시판에 나타난다**(캐러밴이 걸어온 뒤에 들린다)  (87회 폴링 뒤에도 미도�  
+e2e-rumor #6 RC=0 234s  
+e2e-rumor #7 RC=0 235s  
+e2e-rumor #8 RC=1 370s ✗   ✗ ⑤ 며칠 뒤 그 사건이 **B 게시판에 나타난다**(캐러밴이 걸어온 뒤에 들린다)  (27회 폴링 뒤에도 미도�  
+e2e-rumor #9 RC=0 188s  
+e2e-rumor #10 RC=1 407s ✗   ✗ ⑤ 며칠 뒤 그 사건이 **B 게시판에 나타난다**(캐러밴이 걸어온 뒤에 들린다)  (27회 폴링 뒤에도 미도�  
+e2e-winter #1 RC=75 656s    ⚠ 유보 — ③ 전제: 게임일이 가을 첫날(옛 공표일)과 겨울 첫날(옛 판정일)을 실제로 지났다(달력 정본)  day 37 → 224 · 
+e2e-winter #2 RC=0 396s  
+e2e-winter #3 RC=75 646s    ⚠ 유보 — ③ 전제: 게임일이 가을 첫날(옛 공표일)과 겨울 첫날(옛 판정일)을 실제로 지났다(달력 정본)  day 35 → 176 · 
+e2e-winter #4 RC=0 626s  
+e2e-winter #5 RC=0 509s  
+e2e-winter #6 RC=75 661s    ⚠ 유보 — ③ 전제: 게임일이 가을 첫날(옛 공표일)과 겨울 첫날(옛 판정일)을 실제로 지났다(달력 정본)  day 32 → 155 · 
+e2e-winter #7 RC=0 533s  
+e2e-winter #8 RC=0 653s  
+e2e-winter #9 RC=0 497s  
+e2e-winter #10 RC=75 658s    ⚠ 유보 — ③ 전제: 게임일이 가을 첫날(옛 공표일)과 겨울 첫날(옛 판정일)을 실제로 지났다(달력 정본)  day 40 → 178 · 
+e2e-chronicle #1 RC=0 148s  
+e2e-chronicle #2 RC=0 139s  
+e2e-chronicle #3 RC=0 133s  
+e2e-chronicle #4 RC=1 132s ✗   ✗ ⑤b2 전제: 얼린 순간이 사건 직후다(소문이 아직 걸어올 시간이 없었다)  얼린 날 6 − 사건일 2 = 4일  
+e2e-chronicle #5 RC=1 132s ✗   ✗ ⑤b2 전제: 얼린 순간이 사건 직후다(소문이 아직 걸어올 시간이 없었다)  얼린 날 6 − 사건일 2 = 4일  
+e2e-chronicle #6 RC=0 135s  
+e2e-chronicle #7 RC=0 125s  
+e2e-chronicle #8 RC=0 142s  
+e2e-chronicle #9 RC=0 146s  
+e2e-chronicle #10 RC=0 133s  
+e2e-village #1 RC=0 184s  
+e2e-village #2 RC=0 283s  
+e2e-village #3 RC=0 190s  
+e2e-village #4 RC=1 260s ✗   ✗ ★[T19] ⓔ 끄면 시작 지도에서 내려간다  
+e2e-village #5 RC=0 183s  
+e2e-village #6 RC=0 176s  
+e2e-village #7 RC=0 200s  
+e2e-village #8 RC=0 186s  
+e2e-village #9 RC=0 184s  
+e2e-village #10 RC=0 182s  
+LOAD-DONE 2026-11-16T15:33:26Z
+
+## load2.txt
+hogs 13388 13389 · 2026-11-16T15:33:29Z
+e2e-rumor #1 RC=0 154s  
+e2e-rumor #2 RC=0 186s  
+e2e-rumor #3 RC=0 172s  
+e2e-rumor #4 RC=0 179s  
+e2e-rumor #5 RC=0 180s  
+e2e-rumor #6 RC=0 218s  
+e2e-rumor #7 RC=0 247s  
+e2e-rumor #8 RC=0 167s  
+e2e-rumor #9 RC=0 220s  
+e2e-rumor #10 RC=0 175s  
+e2e-events #1 RC=0 83s  
+e2e-events #2 RC=0 94s  
+e2e-events #3 RC=0 66s  
+e2e-events #4 RC=0 84s  
+e2e-events #5 RC=0 78s  
+e2e-events #6 RC=0 78s  
+e2e-events #7 RC=1 96s ✗   ✗ 마을에서 멀어지면 근접 인식이 풀린다  __evNearVid=1  
+e2e-events #8 RC=1 85s ✗   ✗ ★④-c 판에서 **그 행의 납품 버튼**을 실제로 눌렀다  null   ✗ ★★④-c **내가 고른 그 행의 잔여만** 줄었다 — 버튼이 그 행의 품목을 실었다(서버 판정)  움직인 �  
+e2e-events #9 RC=0 59s  
+e2e-events #10 RC=0 74s  
+e2e-chronicle #1 RC=0 135s  
+e2e-chronicle #2 RC=0 133s  
+e2e-chronicle #3 RC=0 127s  
+e2e-chronicle #4 RC=0 124s  
+e2e-chronicle #5 RC=0 129s  
+e2e-chronicle #6 RC=0 138s  
+e2e-chronicle #7 RC=0 142s  
+e2e-chronicle #8 RC=1 136s ✗   ✗ ④ 사건이 나면 **그 마을 연표에 바로** 적힌다  7 → 7줄  
+e2e-chronicle #9 RC=0 140s  
+e2e-chronicle #10 RC=0 129s  
+e2e-village #1 RC=0 189s  
+e2e-village #2 RC=0 196s  
+e2e-village #3 RC=0 244s  
+e2e-village #4 RC=0 197s  
+e2e-village #5 RC=0 199s  
+e2e-village #6 RC=0 217s  
+e2e-village #7 RC=0 186s  
+e2e-village #8 RC=0 186s  
+e2e-village #9 RC=0 202s  
+e2e-village #10 RC=0 203s  
+LOAD2-DONE 2026-11-16T17:19:37Z
+
+## load3.txt
+hogs 22718 22719 · 2026-11-16T17:19:50Z
+e2e-events #1 RC=0 91s  
+e2e-events #2 RC=0 71s  
+e2e-events #3 RC=0 88s  
+e2e-events #4 RC=0 88s  
+e2e-events #5 RC=0 71s  
+e2e-events #6 RC=0 77s  
+e2e-events #7 RC=1 89s ✗   ✗ 접근만으로 촌장 브리핑이 왔다(별도 조작 없음)   ✗ 브리핑에 문장이 있다  
+e2e-events #8 RC=0 75s  
+e2e-events #9 RC=0 78s  
+e2e-events #10 RC=0 75s  
+e2e-chronicle #1 RC=0 125s  
+e2e-chronicle #2 RC=0 133s  
+e2e-chronicle #3 RC=0 133s  
+e2e-chronicle #4 RC=0 134s  
+e2e-chronicle #5 RC=0 134s  
+e2e-chronicle #6 RC=0 132s  
+e2e-chronicle #7 RC=0 162s  
+e2e-chronicle #8 RC=0 142s  
+e2e-chronicle #9 RC=0 135s  
+e2e-chronicle #10 RC=0 128s  
+LOAD3-DONE 2026-11-16T17:58:31Z
+
+## load4.txt
+hogs 27000 27001 · 2026-11-16T17:58:32Z
+e2e-events #1 RC=0 74s  
+e2e-events #2 RC=0 74s  
+e2e-events #3 RC=0 101s  
+e2e-events #4 RC=0 98s  
+e2e-events #5 RC=0 102s  
+e2e-events #6 RC=0 79s  
+e2e-events #7 RC=0 90s  
+e2e-events #8 RC=0 86s  
+e2e-events #9 RC=0 78s  
+e2e-events #10 RC=0 74s  
+LOAD4-DONE 2026-11-16T18:14:08Z
+
+## 셈 — 하네스마다 마지막 판(고친 글자 그대로) 10판
+test-t1118-rack-age 10 · 빨강 0 · 유보 0 (첫 바퀴)
+e2e-weather 10 · 빨강 0 · 유보 4(계기 못 봄 3 · 몫 잡음 안 1) (첫 바퀴)
+e2e-oseok-all 10 · 빨강 0 · 유보 2(가방 프레임 — 다시 잰 판 띠 안) (첫 바퀴)
+e2e-winter 10 · 빨강 0 · 유보 4(600초 상한 · 게임일 0.3일/초 안팎) (첫 바퀴)
+e2e-rumor 10 · 빨강 0 (둘째 바퀴 — 판 소식 64줄 뒤)
+e2e-village 10 · 빨강 0 (둘째 바퀴 — 시작 지도 내려감 기다림 뒤)
+e2e-chronicle 10 · 빨강 0 (셋째 바퀴 — 얼린 채 연표 · 게임일 둘 뒤)
+e2e-events 10 · 빨강 0 (넷째 바퀴 — 얼림 알림 · Shift+G · 날 가라앉힘 · 근접 풀림 · 브리핑 42초 뒤)
+합: 80판 · 빨강 0 · 유보 10 — 첫 바퀴 빨강 9(events 3 · rumor 3 · chronicle 2 · village 1) → 0
+
+## rumor 판 소식 자리(둘째 바퀴 참고 줄 — 운영 8줄 판이면 안 보였을 자리)
+(참고 · 판정 밖) B 판 소식 48줄(운영 판이면 8줄) · 찾던 줄 자리 10 · 종류 {"FIRST_GOODS":8,"STOCK_GLUT":24,"STOCK_SHORTAGE":11,"WEATHER":1,"BUILT":4}
+(참고 · 판정 밖) B 판 소식 35줄(운영 판이면 8줄) · 찾던 줄 자리 12 · 종류 {"FIRST_GOODS":6,"STOCK_SHORTAGE":5,"BUILT":4,"STOCK_GLUT":20}
+(참고 · 판정 밖) B 판 소식 51줄(운영 판이면 8줄) · 찾던 줄 자리 16 · 종류 {"FIRST_GOODS":8,"STOCK_GLUT":29,"BUILT":5,"STOCK_SHORTAGE":8,"WEATHER":1}
+(참고 · 판정 밖) B 판 소식 32줄(운영 판이면 8줄) · 찾던 줄 자리 12 · 종류 {"BUILT":4,"STOCK_GLUT":21,"STOCK_SHORTAGE":3,"FIRST_GOODS":4}
+(참고 · 판정 밖) B 판 소식 25줄(운영 판이면 8줄) · 찾던 줄 자리 2 · 종류 {"FIRST_GOODS":5,"STOCK_SHORTAGE":4,"BUILT":3,"STOCK_GLUT":13}
+(참고 · 판정 밖) B 판 소식 32줄(운영 판이면 8줄) · 찾던 줄 자리 12 · 종류 {"BUILT":4,"STOCK_GLUT":21,"STOCK_SHORTAGE":3,"FIRST_GOODS":4}
+(참고 · 판정 밖) B 판 소식 25줄(운영 판이면 8줄) · 찾던 줄 자리 2 · 종류 {"FIRST_GOODS":5,"STOCK_SHORTAGE":4,"BUILT":3,"STOCK_GLUT":13}
+(참고 · 판정 밖) B 판 소식 33줄(운영 판이면 8줄) · 찾던 줄 자리 13 · 종류 {"FIRST_GOODS":5,"BUILT":4,"STOCK_GLUT":21,"STOCK_SHORTAGE":3}
+(참고 · 판정 밖) B 판 소식 54줄(운영 판이면 8줄) · 찾던 줄 자리 16 · 종류 {"BUILT":5,"STOCK_GLUT":29,"FIRST_GOODS":8,"STOCK_SHORTAGE":11,"WEATHER":1}
+(참고 · 판정 밖) B 판 소식 49줄(운영 판이면 8줄) · 찾던 줄 자리 14 · 종류 {"BUILT":5,"STOCK_GLUT":28,"FIRST_GOODS":7,"STOCK_SHORTAGE":8,"WEATHER":1}

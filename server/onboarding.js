@@ -90,7 +90,31 @@ function _t1086Join(player) {
   if (!T1086 || !H || typeof H.joinOf !== 'function' || !player) return undefined;
   try { return H.joinOf(player) || null; } catch (e) { return null; }
 }
-function _t1086With(msg, player) { const j = _t1086Join(player); if (j !== undefined) msg.join = j; return msg; }
+function _t1086With(msg, player) { const j = _t1086Join(player); if (j !== undefined) msg.join = j; if (T1341 && msg.state) msg.state.own = _t1341Own(player); return msg; }   // ★[T1341] 켬 — 제 집 줄기 칸(아래)
+// ★★[T1341 2026-11-16 · ★재민 11-16 "스스로 집을 지을 수 있도록 유도 · 마을이 필요한 물건은 받아들임 수치만 오르고 보상 없음"]
+//   손잡이 `T1341_OWN_HOUSE`(끔 기본 · `=1` 켬 · 판정 재민 · 값은 `events.js` 한 자리 — 사본 0). 켬이면 대본이 두 줄기다:
+//     ⓐ 제 집 짓기(대본 앞) — 「지금 할 일」이 집터 값(존 정본 `CLAIM_COST.personal`)을 모으게 하고(가까운 나무 · 바위 자리 = 존 정본 술어 `_t1065ResKind` 로 고른 살아 있는 개체)
+//        → 영토 밖 빈 들에서 C → 움집 짓기. **갚음 0 · 선물 0** — 첫 의뢰가 빈터를 내주지 않는다(`lot_ok` 가 안 선다 · 의뢰 3건 문턱도 안 탄다).
+//     ⓑ 마을 의뢰 — 채우면 받아들임(계량기 하나 `contrib`)만 오른다(갚음 0 = `events.deliverToVillage` 켬 갈래). 받아들임이 여는 것은 있던 그대로
+//        (마을 사람 권함 T1086 · 영토 안 집터 = 인정 구성원 T1137 · 곳간 꺼내기 T779).
+//   빈터 예외(`vacantLotAllows`)의 뜻은 "받아들여진 뒤(시작 마을 인정 구성원) 어귀 빈터"로 옮긴다 — 영토 밖 빈 들은 이 예외 없이 누구나다(존 클레임 문 · `zone.js` 켬 갈래).
+const T1341 = !!require('./events').T1341_OWN_HOUSE;
+//   제 집 줄기 칸 — { cost:{wood,stone}, need: 인정 문턱, recog: 시작 마을 인정 구성원인가, tree:{x,y}|null, rock:{x,y}|null }(자리 = 존 로컬 px · 그 사람 선 자리에서 가까운 것)
+function _t1341Own(player) {
+  if (!T1341 || !H) return null;
+  const s = player ? stateOf(player.playerId) : _BLANK();
+  const at = (player && Number.isFinite(player.x)) ? { x: player.x, y: player.y } : null;
+  const near = (k) => { try { const r = (at && H.nearRes) ? H.nearRes(k, at.x, at.y) : null; return r ? { x: Math.round(r.x), y: Math.round(r.y) } : null; } catch (e) { return null; } };
+  let recog = false; try { recog = !!(player && s.start_vid != null && H.isRecognized && H.isRecognized(player, s.start_vid | 0)); } catch (e) { recog = false; }
+  return { cost: (H.claimCost && { wood: H.claimCost.wood | 0, stone: H.claimCost.stone | 0 }) || null, need: (H.memberNeed | 0) || null, recog,
+    tree: near('chop'), rock: near('quarry') };
+}
+//   촌장의 말(하게체) — 첫 의뢰를 다 채웠을 때(갚음 · 밥 · 빈터 대신). 다음에 열리는 것은 인정 문턱(`MEMBER_N`)에서 센다.
+const T1341_THANKS = '고맙네. 마을이 자네 손을 받아들였네.';
+function _t1341LeftLine(contrib) {
+  const n = Math.max(0, ((H && H.memberNeed) | 0) - (contrib | 0));
+  return n > 0 ? `부탁을 ${n}건 더 채우면 우리 마을 영토 안에도 터를 잡게 해 줌세.` : '이제 우리 마을 영토 안에도 터를 잡을 수 있네.';
+}
 function init(host) {
   if (!ENABLED) { console.log('[onboarding] ONB_ENABLE=0 — 온보딩 층 꺼짐(no-op)'); return false; }
   H = host || {};
@@ -758,10 +782,14 @@ function pickFirstQuest(vid) {
   const food = (H.foodItems instanceof Set) ? H.foodItems : new Set();
   const toItem = (res) => { try { return ledger.deliverable.toEcon.get(res) || null; } catch (e) { return null; } };
   const urg = (r) => r.remain / Math.max(1, r.qty);
-  const edible = rows.filter((r) => { const it = toItem(r.rewItem); return it && food.has(it); });
-  const pool = edible.length ? edible : rows;
+  //   ★[T1341] 켬 — 갚음이 없으니 "먹을 것으로 갚는 의뢰"를 앞세울 까닭이 없다: 가장 급한 것 하나 · 갚음 칸은 비운다(끔 = 종전 그대로).
+  const edible = T1341 ? [] : rows.filter((r) => { const it = toItem(r.rewItem); return it && food.has(it); });
+  //   ★[T1368 · Q19] 켬 — 새 사람이 맨손 · 조잡한 도구로 낼 수 있는 의뢰를 먼저(장부 정본 `newbieHas` · 없으면 종전 차례)
+  const newbie = (T1341 && typeof ledger.newbieHas === 'function') ? rows.filter((r) => ledger.newbieHas(r.item)) : [];
+  const pool = edible.length ? edible : newbie.length ? newbie : rows;
   pool.sort((a, b) => urg(b) - urg(a));
   const r = pool[0];
+  if (T1341) return { item: r.item, qty: r.qty, remain: r.remain, rewItem: null, rewQty: 0, rewPlayerItem: null, meal: false };
   return { item: r.item, qty: r.qty, remain: r.remain, rewItem: r.rewItem, rewQty: r.rewQty,
     rewPlayerItem: toItem(r.rewItem), meal: edible.length > 0 };
 }
@@ -800,7 +828,8 @@ function greetLines(vid, playerId, pos) {
   if (q) {
     const j = (n) => { const c = n.charCodeAt(n.length - 1); return (c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28) ? '이' : '가'; };
     const n = ko(q.item);
-    lines.push(`요즘 ${n}${j(n)} 달리네. ${q.remain}만 구해다 주면 ${ko(q.rewItem)}(으)로 갚음세.`);
+    lines.push(T1341 ? `요즘 ${n}${j(n)} 달리네. ${q.remain}만 구해다 주면 고맙겠네.`   // ★[T1341] 켬 — 갚는 말 0
+      : `요즘 ${n}${j(n)} 달리네. ${q.remain}만 구해다 주면 ${ko(q.rewItem)}(으)로 갚음세.`);
     if (a) {
       const where = a.kind === 'dock' ? `${_DIRWORD(-a.faceX, -a.faceY)} 강가로 가 보게` : `${_DIRWORD(-a.faceX, -a.faceY)} 들로 나가 보게`;
       lines.push(`${where}.`);
@@ -840,7 +869,7 @@ function onDeliver(player, r, vid) {
   // ★[T1086] 첫 의뢰 — 시작 마을 의뢰 하나를 다 채운 순간: 빈터 권리 + 마을 사람 권함(위 손잡이 주석 · 끔이면 셋 다 거짓)
   //   권함 자리는 `membership` 정본이 건다(`H.offerJoin` — 이미 마을 사람 · 이미 권함 · 초대제 마을이면 거짓). 말은 아래 촌장 한 통이 한다.
   const _fj = T1086 && done && s.start_vid != null && (vid | 0) === (s.start_vid | 0);
-  const _fjLot = _fj && !s.lot_ok;
+  const _fjLot = _fj && !s.lot_ok && !T1341;   // ★[T1341] 켬 — 첫 의뢰가 빈터를 내주지 않는다(선물 0 · 권함은 그대로)
   if (_fjLot) s.lot_ok = 1;
   const _fjOffer = _fj && typeof H.offerJoin === 'function' && H.offerJoin(player, vid | 0) === true;
   const _fjLines = [];
@@ -856,13 +885,14 @@ function onDeliver(player, r, vid) {
     //   여태 이 자리엔 **밥만 있고 쉼터가 없었다** — 쉼터가 세계에 없었기 때문이다(보고 T62 §0-ⓒ).
     //   ⚠대사 정본은 여기다. 좌표는 **정본 하나**(`SimVillages.shelterOf`)를 부른다 — 자리를 다시 고르지 않는다.
     //   ⚠화살표 UI 는 없다(§9.5) — 방향은 촌장의 **말**로 준다(`_DIRWORD` 재사용).
-    const _l = ['잘했네. 오늘은 밥이라도 들게.'];
+    const _l = [T1341 ? T1341_THANKS : '잘했네. 오늘은 밥이라도 들게.'];   // ★[T1341] 켬 — 갚음 · 밥 0 · 고맙다는 말
     let _sh = null; try { _sh = H.shelterOf ? H.shelterOf(vid) : null; } catch (e) { _sh = null; }
     if (_sh && a) _l.push(`잠자리는 마을 쉼터를 쓰게 — ${_DIRWORD(_sh.x - a.x, _sh.y - a.y)}에 지붕 하나 있네.`);
     else if (_sh) _l.push('잠자리는 마을 쉼터를 쓰게 — 지붕 하나 내어 두었네.');
     //   ★[T1086] 첫 의뢰가 시작 마을이면 "며칠 일손을 보태면 …"(K-2 3회) 대신 지금 서는 두 단계(권함 · 빈터)를 그 자리에서 말한다.
     if (_fjLines.length) _l.push(..._fjLines.splice(0));
-    else _l.push('며칠 일손을 보태면 마을 끝 빈터 하나 내어줌세.');
+    else if (!T1341) _l.push('며칠 일손을 보태면 마을 끝 빈터 하나 내어줌세.');
+    if (T1341) _l.push(_t1341LeftLine(s.contrib));   // ★[T1341] 켬 — 받아들임이 다음에 여는 것(인정 문턱 · 영토 안 집터)
     out.push(_t1086With({ type: 'onboarding_quest', vid: vid | 0, kind: 'hook', name: (a && a.name) || '', day, quest: null,
       lines: _l, state: publicState(pid) }, player));
   }
@@ -872,7 +902,7 @@ function onDeliver(player, r, vid) {
       lines: _fjLines.splice(0), state: publicState(pid) }, player));
   }
   let _stSent = false;
-  if (!s.lot_ok && (s.contrib | 0) >= CFG.LOT_AFTER) {
+  if (!T1341 && !s.lot_ok && (s.contrib | 0) >= CFG.LOT_AFTER) {   // ★[T1341] 켬 — 의뢰 n건이 빈터를 내주지 않는다(선물 0)
     s.lot_ok = 1;
     out.push({ type: 'onboarding_quest', vid: vid | 0, kind: 'lot', name: (a && a.name) || '', day, quest: null,
       lines: _LOT_LINES.slice(), state: publicState(pid) });
@@ -881,7 +911,7 @@ function onDeliver(player, r, vid) {
   }
   //   ★[T1086] 켬 — 의뢰를 다 채울 때마다(그리고 권함 · 빈터가 선 때) 대본 상태 한 통 — 칸이 다음 단계를, HUD 가 계량기를 바로 본다.
   //     빈터가 첫 의뢰에 서면 종전 빈터 한 통(의뢰 3건째)이 안 가서 클라 계량기가 1에 멎어 보였다(e2e-onboarding "누적 기여 1/3" 실측). 끔이면 종전 그대로.
-  if (T1086 && !_stSent && (done || _fjLot || _fjOffer)) out.push(_t1086With({ type: 'onboarding_state', state: publicState(pid) }, player));
+  if ((T1086 || T1341) && !_stSent && (done || _fjLot || _fjOffer)) out.push(_t1086With({ type: 'onboarding_state', state: publicState(pid) }, player));
   _save(pid, s);
   if (H.send && player.ws) for (const m of out) { try { H.send(player.ws, m); } catch (e) {} }
 }
@@ -893,7 +923,7 @@ function onSiteGive(player, done, vid) {
   const pid = player.playerId, s = stateOf(pid), out = [];
   s.contrib = (s.contrib | 0) + 1;
   const a = arrivalOf(vid);
-  if (!s.lot_ok && (s.contrib | 0) >= CFG.LOT_AFTER) {
+  if (!T1341 && !s.lot_ok && (s.contrib | 0) >= CFG.LOT_AFTER) {   // ★[T1341] 켬 — 빈터 선물 0(납품과 같은 줄)
     s.lot_ok = 1;
     out.push({ type: 'onboarding_quest', vid: vid | 0, kind: 'lot', name: (a && a.name) || '', day: (typeof H.gameDay === 'function') ? (H.gameDay() | 0) : -1, quest: null,
       lines: _LOT_LINES.slice(), state: publicState(pid) });
@@ -919,6 +949,12 @@ function vacantZoneOf(vid) {
 function vacantLotAllows(player, px, py) {
   if (!ready() || !player) return false;
   const s = stateOf(player.playerId);
+  //   ★[T1341] 켬 — 뜻을 옮긴다: 빈터 권리 = 시작 마을이 **받아들인 뒤**(인정 구성원 · T1137 정본 술어 그대로) · 기여로 선 `lot_ok` 는 안 본다.
+  if (T1341) {
+    if (s.start_vid == null || !H.isRecognized) return false;
+    let ok = false; try { ok = !!H.isRecognized(player, s.start_vid | 0); } catch (e) { ok = false; }
+    if (!ok) return false;
+  } else
   if (!s.lot_ok || s.start_vid == null) return false;
   const z = vacantZoneOf(s.start_vid);
   if (!z) return false;
@@ -930,7 +966,7 @@ function publicState(playerId) {
   const s = stateOf(playerId);
   const z = s.start_vid != null ? vacantZoneOf(s.start_vid) : null;
   return { vid: s.start_vid, firstItem: s.first_item, firstDone: !!s.first_done,
-    contrib: s.contrib | 0, need: CFG.LOT_AFTER, lotOk: !!s.lot_ok,
+    contrib: s.contrib | 0, need: (T1341 && H && (H.memberNeed | 0) > 0) ? (H.memberNeed | 0) : CFG.LOT_AFTER, lotOk: !!s.lot_ok,   // ★[T1341] 켬 — 다음 문턱 = 인정(빈터 3건 문턱은 안 탄다)
     lot: z ? { x: z.x, y: z.y, r: z.rPx } : null,
     day: { day: s.day, deliv: s.day_deliv | 0, fish: 0 },
     ...(T1204 ? { shelter: _t1204Shelter(s.start_vid) } : {}) };   // ★[T1204] 시작 마을 쉼터의 설 자리(존 로컬 px · 없으면 null · 끔 = 옛 바이트)
@@ -1017,7 +1053,8 @@ module.exports = {
   pickFirstQuest, greetLines, sendGreet, onDeliver, onSiteGive, handleMsg, daySummary, __isPlayerVillage: _isPlayerVillage,
   noteVillage,   // ★[T19] 마을이 하나 늘었을 때 그 곳만 굽는다
   dirWord: _DIRWORD,   // ★[T56] 방위말 정본 — 쓰러짐의 외침이 촌장과 **같은 어휘**를 쓴다
-  T1086, T1086_JOIN_LINE, T1086_LOT_LINE, pushState,   // ★[T1086] 첫 의뢰 = 빈터 + 마을 사람 권함 — 손잡이 · 촌장 말 두 줄(정본 · `membership.firstJoinChat` 이 부른다) · 칸 갱신
+  T1086, T1086_JOIN_LINE, T1086_LOT_LINE, pushState,
+  T1341, T1341_THANKS, _t1341Own, _t1341LeftLine,   // ★[T1341] 제 집 줄기 · 의뢰 갚음 0 — 손잡이 · 촌장 말 · 칸(하네스가 정본 그대로 부른다)   // ★[T1086] 첫 의뢰 = 빈터 + 마을 사람 권함 — 손잡이 · 촌장 말 두 줄(정본 · `membership.firstJoinChat` 이 부른다) · 칸 갱신
 
   vacantZoneOf, vacantLotAllows, publicState, stateOf,
   // ★하네스용 — **정본을 그대로 내준다**(하네스가 산출을 다시 짜면 사본이다)

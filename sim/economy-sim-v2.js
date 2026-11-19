@@ -425,7 +425,13 @@ function _t1030Hold(world, c) { return T1030_XZ_MARKET && !!(c && c._xzHome) && 
 //   경계에 선 채 하루씩 미룬다(T1030 미룸과 같은 꼴 — 팔 켬 · 장 손잡이와 무관). 종전: `_xzHandBack` 이 `world.xzone.zone` 을 읽다 예외 → 그날 캐러밴 고리가 통째로 멈췄다.
 //   이 존 캐러밴으로 저쪽에 가 있는 것('xzone')은 원래 갈래가 없다(돌아올 'return' 을 기다린다 — 예외 0). 팔이 다시 켜지면 그날부터 종전 그대로 간다.
 const T1321_XZ_DRAIN = (typeof process !== 'undefined' && process.env && process.env.T1321_XZ_DRAIN === '1');
-function _t1321Hold(world, c) { return T1321_XZ_DRAIN && !!(c && c._xzHome) && !_xzOn(world); }
+// ★★[T1352 2026-11-17 · 세션8 · T1324 회부 15] 손잡이 `T1352_XZ_HOLD`('1' 만 켬 · 끔 기본 · 끔 = 아래 줄 종전 글자 그대로 = 바이트 같음) — **위 안전망을 비우기 명령과 떼어 낸다.**
+//   다시 뜬 존(팔 켬)은 이웃 존 걸음표가 서기 전(`_xzOn` 거짓 — 이웃 명부가 와야 워커)에 첫 하루를 연다. 메타에서 되돌린 이웃 존 캐러밴의 'return' 날이 그 하루면
+//   `_xzHandBack` 이 `world.xzone.zone` 을 읽다 예외 → 서버 현지 자정 창(T731)이 안 닫혀 그 존 econ 이 멎는다(e2e-xzone-caravan ⓗ4 · ⓗ5 — 실시간 판은 걸음표 · 첫 창 경주라
+//   가끔 · 가상 시계 판은 매번 · land1077 한 판 · T1324 판 13). 위 안전망(`_t1321Hold`)은 비우기 env(`T1321_XZ_DRAIN` — 새 넘김 0 · 끄기 절차)와 한 글자라 평소 판엔 없다 ⇒
+//   이 손잡이는 미룸만 켠다(비우기 0 · 새 수 0 — 미룸은 T1321 그 꼴: 경계에 선 채 하루씩 · 걸음표가 서면 그날부터 종전 그대로).
+const T1352_XZ_HOLD = (typeof process !== 'undefined' && process.env && process.env.T1352_XZ_HOLD === '1');
+function _t1321Hold(world, c) { return (T1321_XZ_DRAIN || T1352_XZ_HOLD) && !!(c && c._xzHome) && !_xzOn(world); }
 // 거리 — 스텁이 끼면 호스트에 묻는다(걸음 · 존 경계 너머) · 아니면 종전 정본(`villageDist`) 그대로.
 function _xzDist(world, a, b) {
   if ((a && a._xz) || (b && b._xz)) {
@@ -914,7 +920,8 @@ function _targetV2(v, r, ctx) {
   //     기근 신호이고 교역을 부른다. 거기에 "구할 수 있는 만큼만 원해라"를 걸면 흉년에
   //     가격이 안 올라 캐러밴이 식량을 안 옮긴다(실측: 삼림 마을 식량가격이 1000 으로 튀며 기근).
   //     제한은 **없어도 죽지 않는 것들**(위신재·잡화 롱테일)에만 건다.
-  if (_ws && !SUBSISTENCE_PER_NPC[r] && CAP_TARGET[r] === undefined && !VARIETY_FOOD[r]) {
+  //   ★[T1333 ④ 실험 · 끔 기본] 생산 투입재(원석 · 합금 재료)는 인구 몫 상한 밖 — 수요가 사람 수가 아니라 노 · 주조 한 곳에 몰린다(판정 v1 `t1333WsFree` · 끔 = 이 항 거짓 = 종전).
+  if (_ws && !SUBSISTENCE_PER_NPC[r] && CAP_TARGET[r] === undefined && !VARIETY_FOOD[r] && !(v1.t1333WsFree && v1.t1333WsFree(r))) {
     target = Math.min(target, Math.max(0.2, _ws.stock * (N / _ws.pop) * EFFDEM_SHARE));
   }
   // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.
@@ -1383,6 +1390,67 @@ function _t1136CapKg() { return _t1136M().C.CFG.CAP_KG; }   // 짐 상한 = 몸 
 // ★[T1182 · 기본 켬 · =0 되돌림] `T1136_ESCORT_CARRY` — 사람 = 상인 + 호위: 호위 수 = 종전 만재(100 낱개) 호위 식(`_escortOfV2` · 그 길 위험 · 갱 · 전사 수 상한) ·
 //   짐 상한 = 몸 짐 × (1 + 호위). 끔 = 상인 하나(호위는 손을 비운다). 카드 "25 kg × 사람"의 사람이 누구인가는 판정(회부) — 두 읽기를 같은 자로 재려고 둔다(새 수 0).
 const T1136_ESCORT_CARRY = (typeof process !== 'undefined' && process.env && process.env.T1136_ESCORT_CARRY !== '0');
+// ★★[T1344 2026-11-16 · T1333 카드 밖 줄] 손잡이 `T1344_MIX_LOAD`('1' 만 켬 · 끔 기본 = 첫째 화물 고리의 `else if` 가 안 선다 = 종전 바이트 · 번들(랩)은 process.env 가 비어 구조적으로 끔)
+//   **섞어 싣기** — 캐러밴이 첫째 화물(종전 규칙 그대로 — 짐 몫 합 최대 다리 · 낱개 100 상한)을 고른 뒤, 그 수레의 **남는 무게**에 그 다리(같은 목적지 · 같은 길)에서
+//   짐 몫이 가장 큰 품목 하나를 얹는다. 둘째 화물 자리는 T206 의 것(`giveRes2` — 차감 · 도착 매도 `_gross2` · 습격 · 빈손 귀환 · 이웃 존 기록 그대로)을 쓴다(사본 0).
+//   ① 남는 무게 = 짐 상한 − 첫째 화물 무게. 짐 상한 = 몸 짐 정본(`carry.js CAP_KG` 25) × 사람(상인 + 그 다리 호위 — `_escortOfV2` 출발 자리와 같은 부름 ·
+//      T1182 `T1136_ESCORT_CARRY` 켬 기본 = 호위도 진다 · 끔 = 상인 하나) — 바구니(T1136)의 그 식. 낱개 무게 = `weights.kgOfOrDefault`(`_t1136Kg`).
+//      첫째 화물이 이미 상한을 넘으면(종전 낱개 100 상한은 무게를 안 본다 — 쌀 100 = 75 kg) 남는 무게 0 = 안 얹는다. 첫째 화물은 **한 낱개도 안 줄인다**.
+//   ② 후보 = 첫째 화물과 같은 내보낼 후보(`_exportCandidatesV2` — 비축 · 문턱 위 몫) 가운데 첫째 품목이 아닌 것 · 얹는 양 = ⌊min(내보낼 몫, 곳간, 남는 무게 ÷ 낱개 무게)⌋ ≥ 1 낱개.
+//   ③ 낱개 몫 = 첫째 화물과 같은 식(`_legProfitPerUnit` — 출발 값 · 도착 값 × 선도 할인 0.95 × 도착 신선도(T784) · 운반비(그 품목 — T1152 켬이면 품목 무게 식 · 끔이면
+//      종전 낱개 운반비 그대로) · 기대 손실(첫째 다리 그대로)) > 0 이어야 한다(T233 관문). 고르는 자 = 짐 몫(낱개 몫 × 얹는 양)이 가장 큰 하나 — 첫째 화물이 다리를 고르는 그 자.
+//      품목 특례 0(금속 · 식량 · 무엇이든 같은 규칙) · 동점 = 후보 차례.
+//   ★T206 둘째 화물(`L_CARGO_TWO` · 낱개 자리)이 켜져 있으면 그쪽이 먼저다(이 갈래는 `else if`).
+const T1344_MIX_LOAD = (typeof process !== 'undefined' && process.env && process.env.T1344_MIX_LOAD === '1');
+function _t1344MixPick(world, a, best, candidates, lp, day, fwd) {   // a = 마을 칸({ v · prices }) · best = 첫째 화물(다리 · 양 · 운반비 · 기대 손실) → { res, q, pFrom, pu, tot, kg, room } | null
+  const b = best.b, esc = _escortOfV2(world, a, b, best.N_units);
+  const cap = _t1136CapKg() * (1 + (T1136_ESCORT_CARRY ? (esc || 0) : 0));
+  const room = cap - best.N_units * _t1136Kg(best.cand.res);
+  if (!(room > 0)) return null;
+  const days = travelDaysForDistance(best.dist);
+  let pick = null;
+  for (const c2 of candidates) {
+    if (c2.res === best.cand.res) continue;
+    if (T1347_MIX_DEST && !_t1347Ordered(b.v, c2.res, day)) continue;   // ★[T1347 ⓑ] 켬 = 그 다리 목적지가 발주한 품목만(아래 `_t1347Orders` · 끔 = 이 줄 무동작)
+    const kg = _t1136Kg(c2.res); if (!(kg > 0)) continue;
+    const q = Math.floor(Math.min(c2.surplus, a.v.storage[c2.res] || 0, room / kg));
+    if (!(q >= 1)) continue;
+    const pFrom = a.prices[c2.res] || 0, pTo = ((b.prices && b.prices[c2.res]) || 0) * fwd;
+    const tc = T1152_TC ? _t1152Tc(lp.mv, best.dist, c2.res) : best.transportCostPerUnit;
+    const pu = _legProfitPerUnit(pFrom, T784_CARGO_AGE ? pTo * _t784F(c2.res, days, day, _elevKmOf(b.v)) : pTo, tc, best.expectedLossRatio);
+    if (!(pu > 0)) continue;
+    const tot = pu * q;
+    if (!pick || tot > pick.tot) pick = { res: c2.res, q, pFrom, pu, tot, kg: q * kg, room };
+  }
+  return pick;
+}
+// ★★[T1347 2026-11-17 · T1344 회부 3] **발주** = 생산 투입재의 파생수요(`v1.derivedInputTarget` — 합금 재료 · 숯 · 말뚝 통나무 · 석기 돌 …)가 곳간보다 큰 품목.
+//   그 마을이 일을 하려고 모자란 재료다 — 무엇이 발주인지는 정본 함수 하나가 정한다(품목 특례 0 · 새 수 0). 마을-날 한 번 센다(칸 `_t1347O` — 켬일 때만 선다).
+//   손잡이 둘(둘 다 `'1'` 만 켬 · 끔 기본 = 아래 줄들이 한 줄도 안 선다 = 종전 바이트 · 번들(랩)은 process.env 가 비어 구조적으로 끔):
+//   ⓐ `T1347_FETCH` **받아 올 짐 — 발주한 마을이 제 캐러밴으로 가서 사 온다.** 식량 pull 두 자리(P2 다리 · P1b 받아 올 짐)와 T173 돌 pull(랩 `L_STONE_TRADE`)의 문법 그대로:
+//      ① 다리 — 굶지 않는 발주 마을은 이익 관용범위(`FOOD_PULL_TOL` — P2 와 같은 수) 안에서 발주 품목을 파는 목적지 다리를 고른다(굶는 마을은 P2 가 먼저 — 생존 우선).
+//      ② 받아 올 짐 — 굶지 않는 발주 마을의 캐러밴은 그곳이 파는 발주 품목을 대금으로 사 온다(여럿이면 값 비 최대 — 종전 받아 올 짐의 자 · 굶는 마을은 P1b 가 먼저).
+//      파는 쪽 문은 종전 받아 올 짐 문 그대로(실물 = 비축 뺀 곳간 > 1 · 돌 바닥 아님 · 사는 쪽 글럿 아님)에 하나 — 파는 마을이 그 품목을 제가 발주했으면 안 판다.
+//   ⓑ `T1347_MIX_DEST` **섞어 싣기를 목적지 발주로 좁힌다** — 둘째 화물(`_t1344MixPick` · T1344)은 그 다리 목적지가 발주한 품목만(무게 · 짐 몫 · 나머지 무변).
+const T1347_FETCH = (typeof process !== 'undefined' && process.env && process.env.T1347_FETCH === '1');
+const T1347_MIX_DEST = (typeof process !== 'undefined' && process.env && process.env.T1347_MIX_DEST === '1');
+function _t1347Orders(v, day) {   // 발주 품목 열(파생수요 목표 > 곳간 · 원석 금지 품목 빼고 · TRADABLE 차례) — 이웃 존 스텁은 없다(목표를 모른다)
+  if (!v || v._xz || !v.storage || !v1.derivedInputTarget) return [];
+  const c = v._t1347O;
+  if (c && c.day === day) return c.list;
+  const list = [];
+  for (const r of TRADABLE) { if (_oreBanned(r)) continue; if (v1.derivedInputTarget(v, r) > (v.storage[r] || 0)) list.push(r); }
+  v._t1347O = { day, list };
+  return list;
+}
+function _t1347Ordered(v, r, day) { return _t1347Orders(v, day).includes(r); }
+function _t1347Sells(v, r, day) {   // 파는 쪽 문 — 종전 받아 올 짐 문(실물 · 돌 바닥) + 제가 발주한 품목은 안 판다
+  return !!v && !v._xz && !_t1049Floor(r, v) && v1.seedReserveAvail(v, r) > 1 && !_t1347Ordered(v, r, day);
+}
+function _t1347Buys(av, bv, give, day) {   // 다리 문 — 집(av)이 발주한 품목 가운데 그곳(bv)이 파는 것이 있나(판 짐 · 집 글럿은 빼고 — 받아 올 짐 문과 같은 셋)
+  for (const r of _t1347Orders(av, day)) if (r !== give && !_returnGluttedV2(av, r) && _t1347Sells(bv, r, day)) return true;
+  return false;
+}
 function _t1136Days(dist) { return Math.max(0, +dist || 0) / CARAVAN_DAY_SPEED; }   // 다리 날(소수 그대로)
 // 길 위 신선도(t0 → t1 · 소수 날) — T784 곡선 · T812 노출 정본(`_t812Exp` 의 누적 차) · T840 고도. 늙지 않는 품목 1.
 function _t1136F(res, t0, t1, elevKm) {
@@ -1952,6 +2020,7 @@ function* tickTradeV2Steps(world, day) {
       const _fsMemo = new Map();   // ★P2: 목적지 식량 잉여 여부(4류 중 1이라도 출발게이트 통과) 메모
       const _destHasFood = (bd) => { if (_fsMemo.has(bd)) return _fsMemo.get(bd); const bn = bd.v.npcs.length; let ok = false; for (const fr in FOOD_CLASSES) { const bs = bd.v.storage[fr] || 0; const bt = Math.max((SUBSISTENCE_PER_NPC[fr] || 0) * bn * 30, bn * 0.3); if (bs > bt) { ok = true; break; } } _fsMemo.set(bd, ok); return ok; };
       let best = null, bestF = null, bestArms = null;   // ★[T530] 무기·갑옷·도구 중 이익 최대 다리(끔이면 안 채운다)
+      let bestO = null;   // ★[T1347 ⓐ ①] 발주 품목을 파는 목적지 중 이익 최대 다리(끔이면 안 채운다)
       for (const cand of candidates) {
         for (const nb of _nbList) {   // ★모든 마을 → top-20 근처만 (★[T525] 켬이면 두 존을 합쳐 다시 가른 top-20)
           const b = evToData.get(nb);
@@ -2000,12 +2069,18 @@ function* tickTradeV2Steps(world, day) {
           if (_crisisA && _destHasFood(b) && (!bestF || totalProfit > bestF.profit)) {
             bestF = { profit: totalProfit, profitPerUnit, cand, b, dist, N_units, pFrom, pTo, transportCostPerUnit, expectedLossRatio, key };
           }
+          // ★[T1347 ⓐ ①] 받아 올 짐 다리 — 굶지 않는 발주 마을: 발주 품목을 파는 목적지 중 이익 최대 다리 병행 추적(P2 문법 · 끔 = 무동작)
+          if (T1347_FETCH && !_crisisA && (!bestO || totalProfit > bestO.profit) && _t1347Buys(a.v, b.v, cand.res, day)) {
+            bestO = { profit: totalProfit, profitPerUnit, cand, b, dist, N_units, pFrom, pTo, transportCostPerUnit, expectedLossRatio, key };
+          }
         }
       }
       if (!best) break;
       if (bestArms) best = bestArms;   // ★[T530] 잉여 무기·도구가 이익이 나면 그 다리가 첫째 화물(식량 끌기·기회비용 관문은 아래 그대로)
       // ★식량 pull(P2): 위기 마을은 이익 관용범위 내에서 '식량 잉여 목적지' 우선 — 175 전역가중(랭킹 곱)과 달리 크기 비왜곡, 게이트는 실이익.
       if (_crisisA && bestF && bestF !== best && bestF.profit >= best.profit * FOOD_PULL_TOL) best = bestF;
+      // ★[T1347 ⓐ ①] 굶지 않는 발주 마을은 이익 관용범위(P2 와 같은 수) 안에서 발주 품목을 파는 다리(굶는 마을은 위 P2 — bestO 를 안 채운다 · 끔 = 무동작)
+      if (T1347_FETCH && bestO && bestO !== best && bestO.profit >= best.profit * FOOD_PULL_TOL) { if (world.onT1347) { try { world.onT1347('leg', day, a.v, best, bestO); } catch (e) { /* 계측 */ } } best = bestO; }
       // ★남는 시간 판정: 원정 이익 > 유효원정일수 × 기회비용일 때만. 아니면 생산이 나으니 중단.
       //   ★유효일수 = 왕복일수 × (1 − 0.5×slack): 마을에 그날 여유(유휴 노동)가 많으면 기회비용↓ → 여유 있는 날 더 감(사용자 요청).
       //   slack은 공간층(lifeLoop)이 낮 유휴 비율로 채움. 빨리감기(텔레포트)엔 유휴 없어 slack=0 → 기존과 동일(회귀 무영향).
@@ -2075,6 +2150,9 @@ function* tickTradeV2Steps(world, day) {
           //     셋째는 여전히 0(고르는 건 하나뿐이다).
           if (world.cargoTwoBest && _bRes) { _res2 = _bRes; _n2 = _bN; _p2 = _bP; _pp2 = _bPP; }
         }
+      } else if (T1344_MIX_LOAD) {   // ★[T1344] 섞어 싣기 — 둘째 화물 자리(T206 · 그 차감 · 정산 · 귀환 갈래 그대로)에 **남는 무게**로 하나(`_t1344MixPick` · 끔 = 이 갈래가 안 선다 = 종전 바이트)
+        const _mx = _t1344MixPick(world, a, best, candidates, lp, day, FORWARD_PRICE_MARGIN);
+        if (_mx) { _res2 = _mx.res; _n2 = _mx.q; _p2 = _mx.pFrom; _pp2 = _mx.pu; }
       }
       let _lotG2 = null;   // ★[T732]
       if (_res2 && _n2 >= 1) {
@@ -2574,6 +2652,18 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
         if (_r && _r !== c.giveRes && !_t1049Floor(_r, c.to) && v1.seedReserveAvail(c.to, _r) > 1 && !_returnGlutted(_r)) returnRes = _r;   // ★[T1049] ⓑ   // ★[T692] 비축 뺀 곳간
       }
     }
+    // ★★[T1347 ⓐ ②] 받아 올 짐 — 굶지 않는 발주 마을의 캐러밴은 그곳이 파는 발주 품목을 대금으로 사 온다(여럿이면 값 비 최대 — 종전 자 ·
+    //   굶는 마을은 위 P1b 가 먼저 · 파는 쪽 · 사는 쪽 문은 위 셋 그대로 + 파는 마을 제 발주 · 모듈 머리 `T1347_FETCH` · 끔 = 이 블록 무동작)
+    if (T1347_FETCH && !(c.from.surplusEMA && c.from.surplusEMA.food < 0)) {
+      let _fR = null, _fRatio = 0;
+      for (const r of _t1347Orders(c.from, day)) {
+        if (r === c.giveRes || !_t1347Sells(c.to, r, day) || _returnGlutted(r)) continue;
+        if(T1188_ORE_SPLIT&&OreGoods.isOre(r)&&(!(pricesFrom[r]>0)||!(pricesTo[r]>0)))continue;
+        const ratio = _oreQuote(pricesFrom, r) / _oreQuote(pricesTo, r);
+        if (ratio > _fRatio) { _fRatio = ratio; _fR = r; }
+      }
+      if (_fR) { if (world.onT1347) { try { world.onT1347('ret', day, c, returnRes, _fR); } catch (e) { /* 계측 */ } } returnRes = _fR; }
+    }
     // ★pull 계측(#26 — 행동 무영향 카운터): 위기 발주촌 대금 구성(식량류 비율). 회귀 불변식이 pull 채널의 조용한 회귀를 감시.
     if (c.from.surplusEMA && c.from.surplusEMA.food < 0) {
       const _ps = world._pullStats || (world._pullStats = { crisisReturns: 0, crisisFoodReturns: 0 });
@@ -2610,6 +2700,7 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
       escort: c.escort,
       raided: outboundLoss > 0,
       travelDays: c.travelDays,
+      ...((c.giveRes2 && _delivered2 > 0) ? { sent2: { res: c.giveRes2, amt: +_delivered2.toFixed(2) } } : {}),   // ★[T1344] 둘째 화물(T206 · 섞어 싣기)도 장부에 — 둘째 화물이 없으면(두 손잡이 끔) 칸이 없다 = 종전 줄
     });
 }
 // ★★[T707] 떠날 때 정산 — 찍어 둔 장(`c._t707`)을 `world.caravans` 차례로 한 번에 정산한다(같은 마을 같은 날 둘째는 첫째 정산 뒤 곳간을 본다 = 종전 차례).
@@ -3216,6 +3307,14 @@ function netExportValue(world, from, res, room) {
 // =============================================================================
 // 7. main
 // =============================================================================
+//   ★[T1333 ⓐ] 그 마을이 오늘 내보낼 수 있는 재화(수출 후보 `_exportCandidatesV2` — 읽기만 · 마을-날마다 한 번 셈 · 마을 칸 0)
+const _t1333Exp = new WeakMap();
+function _t1333CanExport(v, res) {
+  const w = v && v._world; if (!w || !v.npcs) return true;
+  let C = _t1333Exp.get(v);
+  if (!C || C.day !== w.day) { C = { day: w.day, has: {} }; for (const c of _exportCandidatesV2({ v }, Math.max(1, v.npcs.length))) C.has[c.res] = true; _t1333Exp.set(v, C); }
+  return !!C.has[res];
+}
 function createWorldV2(opts = {}) {
   // v1 createWorld 그대로 사용 (인프라 공유)
   const world = v1.createWorld(opts);
@@ -3224,7 +3323,10 @@ function createWorldV2(opts = {}) {
   world.priceBase = BASE_VALUE_V2;   // ★생산 포만(satiation) 판정용 — v1 tickVillage가 adj=가격/기준값으로 글럿 측정
   // ★★[2026-08-02c 배합↔교역 한 단위 통합] 순수출가 주입 — priceFn 선례와 같은 계약(v1→v2 역참조 금지, world 로 주입).
   //   v1 의 주조 결정(_alloyMelt)이 "이 주석을 이웃이 얼마에 사 주는가"를 볼 수 있게 한다.
-  world.netExportFn = (v, res) => netExportValue(world, v, res);
+  //   ★[T1333 ⓐ] 합금 발주 켬 — 그 마을 수출 후보 밖(비축 · 문턱 밑 — `_exportCandidatesV2` 그 규칙 · 받아 올 짐도 같은 규칙)인 재화는 순수출가가 기회비용이 아니다.
+  //     발주가 이웃 값을 올리면 그 값이 쥔 마을의 주조 기회비용(v1 `_oppPrice`)을 올려 대장장이가 석공에 밀린다 — 문턱 밑 곳간은 실제로 나가지도 않는다
+  //     (랩 날 30: 쥔 마을 셋 대장장이 주조비 0.05 ~ 0.38 → 1.9 ~ 2.8 · 석공 0.3 ~ 0.8). 끔 = 앞 항 거짓 = 종전 함수 그대로.
+  world.netExportFn = (v, res) => ((v1.T1333_ALLOY_ORDER && !_t1333CanExport(v, res)) ? 0 : netExportValue(world, v, res));
   // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑. (30일로 늘리니 반응 느려 기근↑→crisis-mode↑ 역효과 확인, 21 유지)
   world.autoSwitchInterval = 21;
   return world;
@@ -3493,6 +3595,8 @@ module.exports = {
   T784_CARGO_AGE, _t784Probe: { F: _t784F, arrive: _t784Arrive },
   T1049_FLOOR_STONE,   // ★[T1049] 돌 바닥 마을은 제 돌을 안 판다(하네스 `test-floor-stone` 가 읽는다)
   T812_CARGO_TEMP, _t812Probe: { exp: _t812Exp },
+  T1344_MIX_LOAD, _t1344MixPick,
+  T1347_FETCH, T1347_MIX_DEST, _t1347Orders, _t1347Sells, _t1347Buys,   // ★[T1347] 받아 올 짐 · 섞어 싣기 목적지 발주(끔 기본) · 하네스가 정본 함수를 그대로 부른다(사본 0)   // ★[T1344] 섞어 싣기(끔 기본) · 하네스가 정본 함수를 그대로 부른다(사본 0)
   T1136_BASKET, T1136_ESCORT_CARRY, basketFlush, basketBounce,   // ★[T1136] 바구니 교역 손잡이(끔 기본) · 사건 처리기(서버 호스트가 몸 시계로 부른다 · 헤드리스는 날 머리) · 몸이 막혀 되돌아섬(서버 §5.5b)
   _lowestProducer: lowestProducer,   // ★[T1152] 계측기가 상인 하루 몫을 같은 함수로 잰다(사본 0)
   T1152_MARKET, _t1152Probe: { cal: _t1152Cal, lean: _t1152Lean, rho: _t1152Rho, half: _t1152Half, food: _t1152Food, own: _t1152Own, keepHalf: _t1152KeepHalf, params: _t1152CalParams, tc: _t1152Tc, tcD: _t1152TcD, rvCal: _t1152RvCal, foodPer: _t825FoodPer,

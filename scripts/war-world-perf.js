@@ -33,7 +33,7 @@ const say = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
 function boot(tag, zenv) {
   const SECRET = 'wwp-' + tag;
-  const CP = 3610, ZP = 3620;
+  const CP = require('./lib-port').port(3610), ZP = require('./lib-port').port(3620);
   const logf = fs.openSync(`/tmp/wwp-${tag}.log`, 'w');
   const c = spawn(process.execPath, [path.join(ROOT, 'server/central.js')], { cwd: ROOT, stdio: 'ignore',
     env: Object.assign({}, process.env, { PORT: String(CP), DB_PATH: `/tmp/wwp-c-${tag}.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });

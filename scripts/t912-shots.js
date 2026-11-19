@@ -11,6 +11,7 @@
 //   존은 기본 env 로 띄운다(★T912 켬 기본 — welcome 두 칸 true). 페이지에서 칸을 바꿔 재므로 서버 env 와 무관하다.
 // 실행: [E2E_BROWSER=webkit] node scripts/t912-shots.js [--out /tmp/t912/shots] [--spots 어촌1,어촌2,산1@1750:74,산2@2150:1959]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

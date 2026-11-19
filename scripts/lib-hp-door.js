@@ -17,7 +17,7 @@ function cut(src, head, tail) {
   return src.slice(a, b + tail.length);
 }
 //   ★[T1322 2026-11-15] 문 글자에 첫 거름 표 내리기 줄(`if (T1322_PF && …) _t1322Touch(p);`)이 들었다 — 목 세계엔 첫 거름이 없다(끔 · 무동작 이름 둘을 같이 세운다).
-const T1322_STUB = 'const T1322_PF = false; function _t1322Touch() {}';
+const T1322_STUB = 'const T1322_PF = false; function _t1322Touch() {} function _t1322HpTouch() {}';   // ★[T1337] 체력 문 표 내리기 함수 이름도
 function doorText(src) {
   const s = src || fs.readFileSync(ZONE, 'utf8');
   return [cut(s, 'const PLAYER_MAX_HP = ', ';'), cut(s, 'const HP_PEER = new Set([', ']);'), cut(s, 'const HP_QUIET = new Set([', ']);'),

@@ -77,11 +77,14 @@ function _computeVillageStats(v, N) {
     if (!contributes) continue;
     const per_npc = qty / pop;
     const sat = Math.min(1.0, per_npc / 2.0);
+    const _f09 = T1309_HEALTH_EATEN && _t1309Group(id) != null;   // ★[T1309] 켬 = 식량 품목의 건강은 곳간이 아니라 먹은 것으로(아래) · 끔 = false
     for (const [stat, w] of Object.entries(contributes)) {
+      if (_f09 && stat === 'health') continue;
       if (stats[stat] !== undefined) stats[stat] += w * sat;
     }
-    if (T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;   // ★[T1298 ②] 켬 = 조리식 · 보존식이 이은 재료 건강 몫(한 단위당 · 끔 = 무동작)
+    if (!_f09 && T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;   // ★[T1298 ②] 켬 = 조리식 · 보존식이 이은 재료 건강 몫(한 단위당 · 끔 = 무동작)
   }
+  if (T1309_HEALTH_EATEN) stats.health += _t1309EatenHealth(v, pop);   // ★[T1309] 먹은 것의 건강 몫(끔 = 이 줄 무동작)
   if(T1188_ORE_SPLIT){const qty=OreGoods.total(v.storage)+Math.max(0,v.storage?.ore||0),sat=Math.min(1,qty/pop/2);for(const[k,n]of Object.entries(LEGACY_CONTRIBUTES.ore))stats[k]+=n*sat;}
   // ★S3 무기 품질(_weapQ) → defense·prestige 배수: 고품질(청동·명장) 무기가 방어·위세↑, 저품질(막석검) 무기는 낮음.
   //   기본 defense 기여(1.0×sat)에 (1 + SPAN×(_weapQ−0.5)) 추가분. _weapQ 0.5(석검)=중립, 1.0(명장청동)=+SPAN×0.5.
@@ -99,6 +102,7 @@ function _computeVillageStats(v, N) {
   for (const id in FOOD_GROUP) {
     if ((_eaten[id] || 0) / pop > 0.03) _fg.add(FOOD_GROUP[id]);
   }
+  if (T1309_DIVERSITY_EATEN) for (const id in _eaten) { if (FOOD_GROUP[id] || id === 'cooked_food') continue; const g = _t1309Group(id); if (g && (_eaten[id] || 0) / pop > 0.03) _fg.add(g); }   // ★[T1309 · 손잡이 `T1309_DIVERSITY_EATEN`] 켬 = 다양성도 건강과 같은 군 표(보존식은 원물 군 · 생곡 · 어종도 그 군) · 끔 = 무동작(다양성은 종전 `FOOD_GROUP` 여섯 품목)
   if ((_eaten.cooked_food || 0) / pop > 0.03) _fg.add('grain');   // 조리식 = 곡물군
   // ★★[T86] **행복은 "몇 군 먹었나"가 아니라 "예산대로 먹었나"** 다.
   //   종전 `_fg.size / DIVERSITY_FULL` 은 **문턱 계단**이라 3% 를 한 톨 넘기면 만점이 붙었다.
@@ -520,9 +524,9 @@ function _preserveSurplus(v, from, budget, addProduce, cap, unit) {
       const _take = Math.min(_sur, _pBudget);
       if(T1192_FISH_SPECIES&&(_fr==='fish'||FishGoods.species().includes(_fr))){_t1192Preserve(v,_fr,_take,addProduce);_pBudget-=_take;continue;}
       const _h98 = T1298_HEALTH ? [_take * _t1298Hw(v, _fr), v.storage[from[_fr]] || 0] : null;   // ★[T1298 ②] 든 재료 건강 · 낸 전 곳간(끔 = null)
-      v.storage[_fr] -= _take; _cons(v, _fr, _take);   // ★flow-EMA — 보존도 수요다
+      v.storage[_fr] -= _take; if (!T1309_MOVE_CONS) _cons(v, _fr, _take);   // ★flow-EMA — 보존도 수요다   // ★[T1309 ①] 켬 = 갈무리는 옮김이라 흐름 소비로 안 적는다
       addProduce(from[_fr], unit ? _take * PRESERVE_YIELD * unit(_fr) : _take * PRESERVE_YIELD);
-      if (_h98) _t1298Carry(v, from[_fr], _h98[0], (v.storage[from[_fr]] || 0) - _h98[1], _h98[1]);
+      if (_h98) { const _o98 = (v.storage[from[_fr]] || 0) - _h98[1]; _t1298Carry(v, from[_fr], _h98[0], _o98, _h98[1]); _t1309Tag(v, from[_fr], _o98, _h98[0]); }   // ★[T1309] 서버 로트에도
       _pBudget -= _take;
     }
   }
@@ -559,7 +563,7 @@ function fishPreserveReserve(v,id){return FishGoods.reserve(v,id,RESERVE_PC.drie
 function _t1192Preserve(v,from,take,addProduce){
   const G=require('../server/granary-lots'),FP=require('../server/fish-preserve'),K=require('../server/kcal');
   const active=G.ON&&G.attached(v),captured=active&&G.capBegin(v,from);
-  v.storage[from]-=take;_cons(v,from,take);
+  v.storage[from]-=take;if(!T1309_MOVE_CONS)_cons(v,from,take);
   const recs=captured?G.capEnd(v,from):[],out=[];let accounted=0;
   for(const r of recs){const src=FishGoods.species().includes(r.it)?r.it:(FishGoods.species().includes(from)?from:null);if(!src)continue;
     const n=G.countOf(r,src,K.kcalOf,K.DAY_KCAL);if(!(n>0))continue;
@@ -575,7 +579,7 @@ function _t1192Preserve(v,from,take,addProduce){
   for(const x of out)if(x.src&&saltPer>0&&saltLeft+1e-9>=x.n*saltPer){const cost=x.n*saltPer;saltLeft-=cost;saltUsed+=cost;x.id=FP.pickledId(x.src);if(x.r0)x.row=G.preserveRecord(x.r0,x.src,x.id,x.n);}
   if(saltUsed>0){v.storage.salt-=saltUsed;_cons(v,'salt',saltUsed);}
   const _h98=T1298_HEALTH?take*_t1298Hw(v,from):0,_n98=T1298_HEALTH?out.reduce((a,x)=>a+x.n,0):0;   // ★[T1298 ②] 든 원물 건강 → 낸 칸들에 낸 수 비례로(끔 = 0)
-  for(const x of out){const _b98=T1298_HEALTH?(v.storage[x.id]||0):0;if(x.row)G.pushIn(v,x.id,[x.row]);addProduce(x.id,x.n,true);if(x.row)G.clearIn(v,x.id);if(T1298_HEALTH&&_n98>0)_t1298Carry(v,x.id,_h98*x.n/_n98,(v.storage[x.id]||0)-_b98,_b98);}
+  for(const x of out){const _b98=T1298_HEALTH?(v.storage[x.id]||0):0;if(x.row&&T1298_HEALTH&&T1309_HEALTH_EATEN&&_n98>0)x.row.h=_h98/_n98;if(x.row)G.pushIn(v,x.id,[x.row]);addProduce(x.id,x.n,true);if(x.row)G.clearIn(v,x.id);if(T1298_HEALTH&&_n98>0)_t1298Carry(v,x.id,_h98*x.n/_n98,(v.storage[x.id]||0)-_b98,_b98);}
 }
 function _t860Begin(v, from, potA, actA) {
   const st = {}; for (const r in from) st[r] = v.storage[r] || 0;
@@ -610,6 +614,7 @@ function _t1286Cook(v, npc, b, potA, actA, dailyProduction) {
   if (T1298_HEALTH) _t1298Carry(v, 'cooked_food', ck ? s * _t1298Hw(v, ck[0]) / ck[1] : s * _t1298Hw(v, 'food'), cooked, v.storage.cooked_food || 0);   // ★[T1298 ②] 곡식 한 단의 건강 몫(곡식 0 이면 묽어진다)
   if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;
   v.storage.cooked_food = (v.storage.cooked_food || 0) + cooked;
+  if (T1298_HEALTH) _t1309Tag(v, 'cooked_food', cooked, ck ? s * _t1298Hw(v, ck[0]) / ck[1] : s * _t1298Hw(v, 'food'));   // ★[T1309] 서버 로트에도(곡식 건강)
   dailyProduction.cooked_food = (dailyProduction.cooked_food || 0) + cooked;
   const C = v._t1286C || (v._t1286C = { n: 0, s: 0, cooked: 0, days: 0, lastD: -1 }); C.n++; C.s += s; C.cooked += cooked; if (C.lastD !== day) { C.days++; C.lastD = day; }
 }
@@ -741,6 +746,7 @@ function t1157Food(v, need) {
   }
 }
 function consumeFood(v, need) {
+  const _e09 = T1309_HEALTH_EATEN ? _g09(v) : null; if (_e09) _e09.eatBegin(v);   // ★[T1309] 서버 로트 — 이번 끼니에 나간 로트의 건강 몫(끔 = null)
   if (T1157_EAT_VAULT) t1157Food(v, need);
   let remaining = need;
   // ★소비량 군별 기록(_foodEaten) — 이게 진짜 식단(자체생산+수입, 신선히 먹은 것 포함). 다양성 판정에 씀.
@@ -896,6 +902,7 @@ function consumeFood(v, need) {
   //     값은 그 품목의 **곳간 단위**(열량이 아니다) — 다른 `_cons` 호출부 24곳과 같은 단위다.
   //   ★새 수 0(소비량은 사다리가 적은 값 그대로) · 정본 재구현 0 · **기본 끔**(미설정 = 위 판정 그대로 = 비트 동일).
   if (foodConsOn()) for (const r in eaten) _cons(v, r, eaten[r]);
+  if (T1309_HEALTH_EATEN) v._t1309LotH = _e09 ? _e09.eatEnd(v) : null;   // ★[T1309] 이번 끼니의 로트 건강(`_foodEaten` 과 같은 끼니 · 끔 = 무동작)
   return remaining;
 }
 
@@ -929,7 +936,7 @@ function storageFoodPer(v, r) {
   const f = _t368FoodPer(v, r);
   return f > 0 ? f : Math.max(0, K.econUnitsOf(r, 1));
 }
-const T1325_ONE_ROT = (typeof process !== 'undefined' && process.env && process.env.T1325_ONE_ROT === '1');
+const T1325_ONE_ROT = !(typeof process !== 'undefined' && process.env && process.env.T1325_ONE_ROT === '0');   // ★[T1336] 켬 기본 · `=0` 만 끔(되돌림 · T1325 판 바이트)
 const T1325_LOT_DISCARD = (typeof process !== 'undefined' && process.env && process.env.T789_DISCARD === '1');   // 장부 버림 판(서버 `granary-lots` T789 와 같은 손잡이 글자)
 function storageFoodEquivalent(v, storage = v.storage, fresh = true) {
   let total = 0;
@@ -939,7 +946,7 @@ function storageFoodEquivalent(v, storage = v.storage, fresh = true) {
     const f = storageFoodPer(v, r);
     if (!(f > 0)) continue;
     // 호스트 로트가 있으면 썩은 몫만 제외. 숫자 랩은 로트가 없고 일일 부패로 재고가 준다.
-    // ★[T1325] 손잡이 `T1325_ONE_ROT`('1' 만 켬 · 끔 = 이 줄 무동작 = main 바이트) — 썩음은 한 길로만 센다(T803 '부패는 한 길'과 같은 뜻).
+    // ★[T1325 · T1336 켬 기본] 손잡이 `T1325_ONE_ROT`(켬 기본 · `=0` 만 끔 = 종전 두 번 빼기) — 썩음은 한 길로만 센다(T803 '부패는 한 길'과 같은 뜻 · PM 11-16 랩 글 정본).
     //   장부가 상한 레코드를 버리지 않는 판(`T789_DISCARD` 끔)은 econ 일일 부패(`tickDecay`)가 이미 재고를 줄였다 — 랩과 같은 길.
     //   거기서 상한 몫을 합계에서 또 빼면 곳간에 남아 먹히는 식량이 0 으로 읽힌다(T1325 ① — 몸 날 72 시작 재고 레코드가 한꺼번에 상해
     //   기근 문(`tickVillage` 7절 · 사람 × 10) 마을이 17 → 43 · 나무꾼이 농부로 빠진다). 켜면 그 판에선 상한 몫을 빼지 않는다(랩 글 = 정본).
@@ -1082,6 +1089,36 @@ const MELEE_ARMORY_SECF = 0.45;        // 병기고(비긴급 비축) 축적 최
 //   청동/명 ≈ (청동마을 인구비중) × MELEE_ARMORY_PC × 이 값. 튜닝 주 레버 중 하나.
 const BRONZE_ARMORY_FRAC = 0.45;       // 청동 자격 마을 병기고 중 청동 최대 비중(나머지 ≥55%는 석기). 청동마을도 석기 다수 — 청동 위세 엘리트 표지, 석기 다수 보장. (병기고 총량 MELEE_ARMORY_PC와 독립 — 생존 무관, 청동:석기 비율만 결정. 청동/명 미세조정 레버.)
 const DECAY_MELEE_MAINT = 0.0004;      // 병기고 유지보수 계수(노동목표 마모항) — 무기 부패(DECAY_V2.weapon 0.0002)의 ~2배(사용마모 포함). 병기고 규모 유지에 필요한 지속 노동.
+// ★★[T1344 2026-11-16 · T1333 회부 3] 손잡이 `T1344_BRONZE_STOCK`('1' 만 켬 · 끔 기본 = 아래 갈래가 한 줄도 안 선다 = 종전 글자) — **청동 몫(위 45 %)의 곳간은 청동 근접검이다.**
+//   위 정본 글: "병기고 중 청동 최대 비중(나머지 ≥55%는 석기)" · `_smithBeatsMason` 머리 "BRONZE_ARMORY_FRAC 이 청동을 병기고의 일부까지만 허용하므로, 청동이 싸도 나머지는
+//   석공의 마제석검이 채운다" · 석공 갈래 "청동 우선권 + 비중 상한". 셋 다 **청동의 몫**을 말한다. 그런데 세 문(대장장이 주조 `_smSwordStock` · 석공 `_bronzeNow` ·
+//   — 둘 다 같은 이 엔진이 랩 두 장에 인라인된다)은 근접검 **전부**(석검 포함 — `weapon × _swordFrac`)를 청동 몫 한도와 견준다 → 석검이 병기고를 먼저 채우면
+//   (시드 무기 · 주석이 늦게 든 날 · 석공이 먼저 선 날) 청동 몫이 비어 있어도 대장장이가 안 붓는다(T1313 안 닿은 판 광산5 병기고 찬 날 64 ~ 85/91).
+//   켬 — 잘 먹는 마을(`_secF > MELEE_ARMORY_SECF` · 청동 몫 한도가 서는 그 갈래)에서만 두 문의 곳간을 **청동 근접검**으로 센다:
+//     청동 근접검 = 근접검 곳간 × 청동 몫 `_t1344Q`. 청동 몫은 **곳간 가중 섞음**이다 — 하루 끝(근접검 비중 EMA 자리)에 어제 근접검 곳간 `m0` 와 오늘 만든 근접검 `sw`
+//     (그 가운데 청동 `bz` = 주조 산출 × `bronzeness` — `_bronzeWeaponMade` 와 같은 셈)를 섞는다: q = (q0 × m0 + bz) ÷ (m0 + sw).
+//     내보냄 · 부패 · 씀은 근접검 전부에 비례한다는 가정(`_swordFrac` 머리 "교역·부패는 양쪽 비례라 비중 근사 유지" — 같은 가정 · 새 수 0) · 들여온 무기는 곳간 몫 그대로 ·
+//     켜는 날의 몫 0(곳간에 청동을 셀 근거가 없다 — 시드 무기는 석기).
+//     (왜 `_swordFrac` 꼴의 EMA(0.04)가 아닌가: 그 꼴은 **만든 몫**의 평균이라, 석검으로 찬 곳간(14)에 청동을 하루 0.17 씩 더하면 보름 만에 몫 0.45 로 읽혀
+//      실제 청동 2.5 자루(15 %)에서 문이 닫힌다 — 청동 근접검 곳간이 아니다.)
+//   대장장이 자리(`smithTarget`)도 같은 몫이 비면 선다 — 종전 목표(근접검 전부 · 병기고 전체)와 **큰 쪽**(석검이 병기고를 채운 마을에서 자리가 0 이 되는 것만 막는다).
+//   취약 마을(`_secF` ≤ 문턱)은 종전대로 근접검 전부(전사 커버리지 — 그 갈래는 청동 몫이 아니다).
+const T1344_BRONZE_STOCK = (typeof process !== 'undefined' && process.env && process.env.T1344_BRONZE_STOCK === '1');
+function _t1344BronzeStock(v) {   // 청동 근접검 곳간 ≈ 근접검 곳간(`weapon × _swordFrac` — 종전 근접검 셈 그대로) × 청동 몫
+  return (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT) * Math.max(0, Math.min(1, v._t1344Q || 0));
+}
+function _t1344Mix(v) {   // 하루 끝 — 청동 몫 곳간 가중 섞음(근접검 비중 EMA 바로 뒤 · 오늘 칸을 0 으로 돌리기 앞)
+  const sw = v._swordMadeToday || 0, bz = Math.min(sw, v._t1344BzT || 0);
+  const m = (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT);
+  const m0 = v._t1344M != null ? v._t1344M : Math.max(0, m - sw);   // 어제 이 자리의 근접검 곳간(켜는 날 = 오늘 곳간에서 오늘 만든 몫을 뺀 것)
+  if (sw > 0) v._t1344Q = ((v._t1344Q || 0) * m0 + bz) / (m0 + sw);
+  else if (v._t1344Q == null) v._t1344Q = 0;
+  v._t1344M = m; v._t1344BzT = 0;
+}
+function _foodSecF(v) {   // 식량 안보 ramp(40 → 80 일치) — `masonTarget` 의 두 줄을 이름만 올렸다(값 무변 · ★[T1344] `smithTarget` 의 청동 몫 자리가 같은 함수를 부른다)
+  const _foodDays = totalFoodEquivalent(v) / (v.npcs.length || 1);
+  return Math.max(0, Math.min(1, (_foodDays - 40) / 40));
+}
 // ★청동 위세품화 — 청동검은 방어뿐 아니라 *위세*(엘리트 표지). 종전에도 _weapQ>0.7 위세 기여가 있었으나(약함) 청동 희소화로
 //   청동검 보유 마을=소수 엘리트가 되도록 위세 가중을 명시 상수화(주석 희소 반영: 청동검은 귀한 위세재).
 const WEAP_BRONZE_PRESTIGE_W = 0.5;    // 청동검(_weapQ>0.7 고품질) 위세 기여 계수 — 종전 하드코딩 0.3 → 0.5(주석 희소 프리미엄)
@@ -1303,6 +1340,44 @@ const T1286_PRODK = T1279_COOK && ((typeof process !== 'undefined' && process.en
 //     (열로 사라지는 몫은 고증 출처가 없어 0 — PM 판정).
 const T1298_LEDGER = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1298_LEDGER === '1' : false);
 const T1298_HEALTH = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1298_HEALTH === '1' : false);
+// ★★[T1309 2026-11-16 · T1298 회부 2 · PM 판정 "건강은 먹은 것으로 센다 — 사람 몸이 실제로 먹은 것이 건강이다"(캐논 797)] 손잡이 `T1309_HEALTH_EATEN`
+//   (끔 기본 · `'1'` 만 · `T1260_FOOD_READS` 켠 판 안에서만 · 끔 = 종전 바이트): 마을 건강의 **식량 몫**을 곳간 재고가 아니라 그날 먹은 것(`_foodEaten`)으로 센다.
+//   식단 군(`T86_GROUP` — 보존식은 원물의 군 · 조리식은 곡물군)마다:
+//     먹은 식량 환산 x_g(1인당) ÷ 이상 몫 x̄_g = `DAILY_FOOD_CONSUMPTION × T86_W[g]`(T86 예산 그 자 · 새 수 0) → 포화 `min(1, x_g / x̄_g)`
+//     × 그 군에서 먹은 것의 식량 환산 1 당 건강(= Σ 먹은 양 × 한 단위 건강 ÷ Σ 먹은 식량 환산 — 생선 0.4 · 건어물 1.0 ÷ 2.5 = 0.4 · 조리식은 T1298 이은 칸)
+//   식량 품목의 곳간 건강 몫(`contributes.health` · T1298 칸)은 켜면 안 센다(먹은 것과 두 번 0). 식량 밖 품목(약재 · 옷 …)과 다른 칸(생존 · 행복)은 그대로다.
+//   서버 곳간 로트가 붙은 마을은 먹은 로트가 진 건강 몫(`granary-lots` 레코드 `h` · `eatenHealth`)을 그 단위만큼 그대로 쓴다.
+const T1309_HEALTH_EATEN = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1309_HEALTH_EATEN === '1' : false);
+//   `T1309_DIVERSITY_EATEN`(끔 기본 · `'1'` 만 · `T1309_HEALTH_EATEN` 켠 판 안에서만) — 다양성(먹은 군 수)도 같은 군 표로 센다. 종전 다양성은 `FOOD_GROUP` 여섯 품목(`food` · 생선 · 고기 · 과일 · 남새 · 버섯)만
+//     세어 생곡 · 보존식 · 어종을 먹어도 그 군이 안 든다(같은 열량을 건어물로 먹으면 생선군이 빠진다). 건강과 따로 재려고 손잡이를 갈랐다(T1309 §2).
+//   `T1309_MOVE_CONS`(끔 기본 · `'1'` 만 · `T1260_FOOD_READS` 켠 판 안에서만 · T1309 ①) — 갈무리(`_preserveSurplus` · 어종 갈무리)가 뗀 원물을 **흐름 소비**(`_cons` → `_consEMA` — 값의 흐름 수요 칸)로 적지 않는다.
+//     갈무리는 곳간 안의 옮김이다(T1298 장부 규약의 수요 쪽 짝). 요리사를 다시 세운 판에서 이 줄만 끊으면 열 시드 +4.1%(6/4) · 농부 날 +7.7%(8/10) — 갈무리를 통째로 뺀 몫(+9.1% · 농부 +18.5%)의 절반쯤(T1309 §1).
+const T1309_MOVE_CONS = T1260_FOOD_READS && ((typeof process !== 'undefined' && process.env) ? process.env.T1309_MOVE_CONS === '1' : false);
+const T1309_DIVERSITY_EATEN = T1309_HEALTH_EATEN && ((typeof process !== 'undefined' && process.env) ? process.env.T1309_DIVERSITY_EATEN === '1' : false);
+const _T1309_SRC = (() => { const o = {}; for (const k in PRESERVE_FROM) o[PRESERVE_FROM[k]] = k; return o; })();   // 보존식 → 원물
+function _t1309Group(id) {
+  if (T86_GROUP[id]) return T86_GROUP[id];
+  const src = _T1309_SRC[id]; if (src && T86_GROUP[src]) return T86_GROUP[src];
+  if (PRESERVED_FOODS.indexOf(id) >= 0) return 'fish';   // 어종 보존식(건 · 절임 어종) = 생선군
+  return null;
+}
+let _G09 = null;   // 서버 곳간 로트(붙은 마을만 · 랩은 늘 null)
+function _g09(v) { if (!(T1309_HEALTH_EATEN && T1298_HEALTH)) return null; if (_G09 === null) { try { _G09 = require('../server/granary-lots'); } catch (e) { _G09 = false; } } return (_G09 && _G09.ON && _G09.attached(v)) ? _G09 : null; }
+function _t1309Tag(v, P, out, H) { const G = _g09(v); if (G && out > 0) G.tagH(v, P, out, Math.max(0, H) / out); }   // 막 낸 몫의 로트에 한 단위 건강
+function _t1309EatenHealth(v, pop) {   // 먹은 것의 건강 몫(마을 · 그날)
+  const E = v._foodEaten || {}, LH = v._t1309LotH || null;   // LH = { 품목: [로트 건강 합, 로트 단위 수] }(서버 로트 · 없으면 null)
+  const X = {}, H = {};
+  for (const id in E) {
+    const q = +E[id] || 0; if (!(q > 0)) continue;
+    const g = _t1309Group(id); if (!g) continue;
+    const fe = storageFoodPer(v, id) || _t86Factor(id) || 0; if (!(fe > 0)) continue;
+    const L = LH && LH[id]; const lu = L ? Math.min(q, L[1]) : 0, lh = L && L[1] > 0 ? L[0] * lu / L[1] : 0;
+    X[g] = (X[g] || 0) + q * fe; H[g] = (H[g] || 0) + lh + (q - lu) * _t1298Hw(v, id);
+  }
+  let h = 0;
+  for (const g in X) { const xb = DAILY_FOOD_CONSUMPTION * (T86_W[g] || 0); if (!(xb > 0) || !(X[g] > 0)) continue; h += (H[g] / X[g]) * Math.min(1, (X[g] / pop) / xb); }
+  return h;
+}
 function _t1298Moved(prod) { const o = Object.assign({}, prod, { cooked_food: 0 }); for (const r of PRESERVED_FOODS) o[r] = 0; return o; }   // 옮김 칸(조리식 · 보존식) 0
 function _t1298Hw(v, id) { const SP = _getSpecialty(); const c = (SP && SP[id] && SP[id].contributes) || LEGACY_CONTRIBUTES[id] || null; return ((c && c.health) || 0) + ((v._t1298H && v._t1298H[id]) || 0); }
 function _t1298Carry(v, P, H, out, before) {   // 품목 P 를 out 만큼 냈고 든 재료 건강 값 합이 H · 낸 전 곳간 before
@@ -2395,7 +2470,7 @@ function _t1319InAutumn(day) {   // 가을 안인가 — 달력 정본(9 · 10 �
   return m >= 9 && m <= 11;
 }
 function t1319AutumnLeft(day) { return _t1319InAutumn(day) ? t1149LeanDays(day) : 0; }   // 가을이면 다가오는 겨울 끝까지 남은 날(가을 밖 0)
-function t1297NeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day), T1319_AUTUMN_LOOK ? t1319AutumnLeft(day) : 0); }   // 출생 문턱 날 수 · ★[T1319] `'1'` = 가을도 겨울 끝까지
+function t1297NeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day), T1319_AUTUMN_LOOK ? t1319AutumnLeft(day) : 0, T1346_BIRTH_FLOW ? t1319AutumnLeft(day) : 0); }   // 출생 문턱 날 수 · ★[T1319] `'1'` = 가을도 겨울 끝까지 · ★[T1346 ⓐ] 켬 = 같은 가을 항(아래 머리말)
 function t1319MigNeedDays(day) { return Math.max(T1297_FAMINE_DAYS, t1297WinterLeft(day), T1319_AUTUMN_MIG ? t1319AutumnLeft(day) : 0); }   // ★[T1319] 이주 문 날 수 — `'1'` · `'mig'` = 가을도 겨울 끝까지 · 끔 = 출생 문 날 수와 같다
 // ★★★[T1306 2026-11-14 · T1297 회부 1 · 2] 손잡이 `T1306_BIRTH_GRADE`(T1297 켬 안 · `'1'` 만 켬 · 끔 = T1297 그대로 · 세계 갈래 0) — **출생 문을 단계로.**
 //   T1297 은 둘 중 하나였다 — 곳간 < (사람 + 1) × 하루치 × 문턱 날 수이면 그날 늘림 0. 판을 열면 곳간이 47일치에서 보름 만에 30일치 밑으로 내려오고
@@ -2415,6 +2490,19 @@ function t1306GradeDP(v, dP, homeN, day) {   // ★[T1306] 단계 문 — 표지
   v._t1306R = r; v._t1297Gate = 1;
   return dP * r;
 }
+// ★★★[T1346 2026-11-17 · T1342 회부 1 · 지시 T1346] 손잡이 `T1346_BIRTH_FLOW`(T1297 켬 안 · `'1'` 만 켬 · 끔 = 종전 바이트 · 세계 갈래 0) — **2년째 봄 굶음: 출생 문이 겨울 끝과 흐름을 본다.**
+//   T1342 두 해 판(묶음 · 가을 문 `mig`)의 2년째 굶어 죽음 150 · 136 · 169(끔 66 · 30 · 28)는 모두 첫 겨울 끝 꼬리(1년 2월 ~ 2년 5월 · 날 334 ~ 456)였고
+//     81 ~ 98% 가 가을에 사람이 10% 넘게 난 마을이었다(보고 T1346 §1). 가을 아이를 반만 줄여도(가름 판 · 단계 몫) 첫 겨울 굶음은 거의 그대로였고(206 → 161),
+//     가을 아이를 다 막으면(`T1319_AUTUMN_LOOK='1'`) 첫 겨울은 0 이지만 1 ~ 2월 · 봄에 곳간 문이 다시 열려 2년째 여름 · 둘째 겨울에 232명이 굶었다(T1342 ⓒ).
+//   켬 —
+//   ⓐ 가을 출생 문 = T1319 `'1'` 의 출생 몫(가을이면 다가오는 겨울 끝 — 다음 3월 1일 — 까지 남은 날 · `t1319AutumnLeft` 그대로). 이주 문은 묶음의 `mig` 그대로(`t1319MigNeedDays`).
+//   ⓑ 흐름 문 — 그날 늘림은 그 마을 식량 흐름이 한 사람 더 먹일 때만 선다: 흐름 장부(`surplusEMA.food` — 생산 − 하루 수요 · econ 정본 칸) + 들여온 식량(`_importEMA` —
+//      prodK 가 이미 읽는 100날 평균) ≥ 하루 소비(`DAILY_FOOD_CONSUMPTION` — 그 한 사람 몫). 곳간 문(T1297 · 위 ⓐ)이 열려도 흐름이 모자라면 그날 늘림 0(표지 `_t1346Gate`).
+//      근거: 곳간은 늦게 마른다 — 곳간 문만 보면 흐름이 이미 모자란 마을도 곳간이 문턱을 넘는 동안 사람을 늘렸다가(가을 문 `'1'` 뒤 1 ~ 5월 늘림 2,083명) 다음 철에 굶었다.
+//   새 수 0 — 날 수는 달력(T1149 · T1319) · 흐름은 econ 장부 둘 · 문턱은 한 사람 하루치.
+//   ⚠K · 로지스틱 · 주거 문 · 죽음 · 이주 줄은 한 글자도 안 바뀐다 — 그날 늘림만 0 이다(누적 `_dPAccum` 의 1 밑 몫은 종전처럼 남는다).
+const T1346_BIRTH_FLOW = T1297_BIRTH_FOOD && (typeof process !== 'undefined' && process.env && process.env.T1346_BIRTH_FLOW === '1');
+function t1346FlowShort(v) { return !!(v && v.surplusEMA) && (v.surplusEMA.food + (v._importEMA || 0)) < DAILY_FOOD_CONSUMPTION; }   // ★[T1346 ⓑ] 흐름이 한 사람 하루치에 못 미치나
 // ★★[T1179 2026-11-05 · ★재민 11-05 "겨울에 식량 수확이 있어? 작물별로 수확 기간이 다 다르고 겨울에는 아예 작물이 없지 않아?"] **작물 철** — 손잡이 `T1179_CROP_SEASON`
 //   (끔 기본 · `=1` 켬 · 끔 = 아래 갈래를 아무도 안 탄다 = 종전 바이트).
 //   농부의 하루 일(식 무변 — `JOBS.farmer.base` × 비옥도 × 철 배수 × 숙련 · 도구 …)은 그대로 하고, 그 식량(`food` · 생곡 셋)을
@@ -4171,7 +4259,7 @@ function _meltSearch(st, price) {
     }
   }
   if (!best) return null;
-  return { take: best.take, mix: best.mix, grade: best.grade, castF: best.castF, bronzeness: Math.min(1, (best.mix.tin || 0) / 0.12) };
+  return { take: best.take, mix: best.mix, grade: best.grade, castF: best.castF, bronzeness: Math.min(1, (best.mix.tin || 0) / 0.12), score: best.score };   // ★[T1333 ⓑ] score = 그 배합 하루 이윤(읽는 자리는 수출 주조 하나 · 끔 = 안 읽힘)
 }
 function _alloyMelt(v) {
   const st = v.storage || {};
@@ -4754,7 +4842,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
         if (_ck) v.storage[_ck[0]] -= 1 / _ck[1]; else v.storage.food -= 1;
         for (const r of usedSides) v.storage[r] -= 0.5;
         addProduce('cooked_food', cooked);
-        if (_h98) _t1298Carry(v, 'cooked_food', _h98[0], (v.storage.cooked_food || 0) - _h98[1], _h98[1]);
+        if (_h98) { const _o98 = (v.storage.cooked_food || 0) - _h98[1]; _t1298Carry(v, 'cooked_food', _h98[0], _o98, _h98[1]); _t1309Tag(v, 'cooked_food', _o98, _h98[0]); }   // ★[T1309] 서버 로트에도
         workNPC(npc);
       }
       // ★★[T17 ② 2026-09-02 · 재민 확정] **요리사가 잉여를 갈무리한다** — 보존식 생산.
@@ -4790,7 +4878,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       const _meleeUrgent = _bladeUsers > 0 && _swordStock < _bladeUsers * MELEE_COV_BUFFER;   // 전사 무장 결손(긴급)
       // ★청동 우선권 + 비중 상한: 대장장이 청동검은 병기고의 BRONZE_ARMORY_FRAC까지. 그 한도 도달 또는 tin 고갈이면 석공이 *나머지*를 마제석검으로.
       //   → 청동마을도 석기 다수(청동은 한도까지만). 무산지 마을은 항상 석공 마제석검(청동 불가).
-      const _bronzeNow = _bronzeCapable(v) && _swordStock < _bronzeArmoryCap && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12;   // 지금 청동 제작 몫 남음(한도·tin)
+      const _bronzeNow = _bronzeCapable(v) && ((T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF) ? _t1344BronzeStock(v) : _swordStock) < _bronzeArmoryCap && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12;   // 지금 청동 제작 몫 남음(한도·tin) · ★[T1344] 켬 · 잘 먹는 마을 = 청동 몫은 청동 근접검으로 센다(석검 빼고 — 모듈 머리 `T1344_BRONZE_STOCK` · 끔 = 종전 `_swordStock`)
       const _needStoneSword = _meleeUrgent && !_bronzeNow && (v.storage.stone || 0) >= _swCost;   // 긴급 무장인데 청동 몫 없음 → 마제석검(방어 최우선, 식량무관)
       // ★병기고(비긴급 비축)는 *식량 안보(secF 충분)일 때만* — 척박·기근 마을이 병기고 비축에 노동을 돌려 식량생산이 밀려 쇠퇴하는 것 방지(랩 취약 시드 인구 유지).
       const _armoryShort = _secF > MELEE_ARMORY_SECF && _swordStock < _armoryTarget * MELEE_ARMORY_HYST && !_bronzeNow && (v.storage.stone || 0) >= _swCost;   // 병기고 결손 + 청동 몫 없음(한도·tin 고갈) + 식량안보 → 석기 backfill
@@ -4848,7 +4936,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       const _qSkill = 1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (skillLvl / 10);   // 스킬 기여(0.4~1.0)
       // ★청동 병기고 비중 상한 — 청동은 병기고의 BRONZE_ARMORY_FRAC까지만(나머지 석기). swordStock이 그 한도 미만일 때만 청동 제작 → 청동마을도 석기 다수·청동 소수(엘리트).
       //   ★식량 안보 게이트: 잘 먹는 마을만 병기고까지 청동 확충, 취약 마을은 전사 실수요(BUFFER)까지만(식량·생존 우선).
-      const _smSwordStock = (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT);
+      let _smSwordStock = (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT);   // ★[T1344] `let` — 켬 · 잘 먹는 마을 · 오늘 배합이 청동이면 아래(`_melt` 뒤)에서 청동 근접검으로 선다(값은 종전 식 그대로)
       const _bronzeArmoryCap = (_secF > MELEE_ARMORY_SECF)
         ? (v.npcs.length || 0) * MELEE_ARMORY_PC * BRONZE_ARMORY_FRAC
         : Math.max(2, (v.counts.warrior || 0) * MELEE_COV_BUFFER);   // 취약 마을 = 전사 커버리지만
@@ -4880,10 +4968,16 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
 
       const _melt = _alloyMelt(v);
       if (_melt && _melt.castF > 0) amt *= _melt.castF;   // ★주조성이 산출량을 정한다(위 _alloyMelt 주석)
-      if (_melt && _smSwordStock < _bronzeArmoryCap) {
+      // ★[T1344] 켬 · 잘 먹는 마을(청동 몫 한도 갈래) · **오늘 배합이 청동(주석 몫 > 0)일 때만** 주조 문 곳간 = 청동 근접검(석검 빼고 — 모듈 머리 `T1344_BRONZE_STOCK`).
+      //   청동이 아닌 배합(순동 · 구리 + 은 — 청동도 0)은 청동 몫을 채우지 못하므로 종전 곳간(근접검 전부)으로 잰다 — 안 그러면 주석 없는 잘 먹는 구리 마을에서
+      //   청동 몫이 영영 0 으로 남아 문이 닫히지 않고 순동 · 구리 + 은 검을 끝없이 붓는다(미끼 `anyrecipe`). 끔 = 이 줄 무동작.
+      if (T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF && _melt && _melt.bronzeness > 0) _smSwordStock = _t1344BronzeStock(v);
+      if (_melt && (_smSwordStock < _bronzeArmoryCap || (T1333_EXPORT_CAST && _t1333ExportCast(v)))) {   // ★[T1333 ⓑ] 끔 = 종전 문 그대로(뒤 항이 안 선다)
         for (const m in _melt.take) { v.storage[m] -= _melt.take[m]; _cons(v, m, _melt.take[m]); }
         v._cuWeapUsed = (v._cuWeapUsed || 0) + (_melt.take.copper || 0);   // (계측 전용)
         v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt * _melt.bronzeness;
+        if (T1344_BRONZE_STOCK) v._t1344BzT = (v._t1344BzT || 0) + amt * _melt.bronzeness;   // ★[T1344] 오늘 부은 청동(같은 셈) — 하루 끝 청동 몫 섞음(`_t1344Mix`)이 읽는다(끔 = 이 줄 무동작)
+        if (v._world && v._world.onCast) { try { v._world.onCast(v, _melt, amt); } catch (e) { /* 계측 */ } }   // ★[T1344 ⑥] 읽기만 하는 훅(관찰기가 줄 때만 · 서버 · 랩 · 자는 안 준다 = 종전 그대로) — 이 주조의 배합 · 등급 · 산출
         v._alloyGrade = _melt.grade;                       // (계측) 이 마을이 만든 합금의 등급
         v._swordMadeToday = (v._swordMadeToday || 0) + amt;
         const wq = Math.min(1.2, _melt.grade) * WEAP_Q_BRONZE * _qSkill;   // ★배합이 품질을 정한다
@@ -5423,6 +5517,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     } else if (v._swordFrac == null) {
       v._swordFrac = SWORD_FRAC_INIT;
     }
+    if (T1344_BRONZE_STOCK) _t1344Mix(v);   // ★[T1344] 청동 몫 곳간 가중 섞음(EMA 갱신 뒤 · 오늘 칸을 돌리기 앞 · 끔 = 이 줄 무동작)
     v._swordMadeToday = 0; v._bowMadeToday = 0;
   }
   v._toolQnum = 0; v._toolQden = 0; v._weapQnum = 0; v._weapQden = 0; v._clothQnum = 0; v._clothQden = 0;
@@ -5691,6 +5786,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   // ★[T1149 ⓑ] 출생에 곳간 문 — 곳간이 다가오는 겨울을 한 사람 더 먹일 만큼일 때만(위 `T1149` 주석) · 막힌 날 표지 `_t1149Gate`(표 기계가 센다)
   if (T1149.birth) { v._t1149Gate = 0; if (dP > 0 && totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1149WinterDays(day)) { dP = 0; v._t1149Gate = 1; } }
   if (T1297_BIRTH_FOOD) { v._t1297Gate = 0; if (T1306_BIRTH_GRADE) dP = t1306GradeDP(v, dP, _homeN, day); else if (dP > 0 && totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)) { dP = 0; v._t1297Gate = 1; } }   // ★[T1297] 출생 곳간 문(위 머리말 · 끔 = 이 줄 무동작 · 칸 0)
+  if (T1346_BIRTH_FLOW) { v._t1346Gate = 0; if (dP > 0 && t1346FlowShort(v)) { dP = 0; v._t1346Gate = 1; } }   // ★[T1346 ⓑ] 흐름 문(위 머리말 · 끔 = 이 줄 무동작)
   v._dpDebug = { K: +K.toFixed(1), logi: +_logiTerm.toFixed(3), hunger: +_hungerTerm.toFixed(3), health: +_healthTerm.toFixed(3), happy: +_happyTerm.toFixed(3), prestige: +_prestigeTerm.toFixed(3), housing: (v.housing !== undefined ? +(+v.housing).toFixed(1) : null), gated: _gated, dP: +dP.toFixed(3) };
   // ΔP 상한
   const maxDelta = _homeN * POP_MAX_DELTA_PCT;
@@ -6030,8 +6126,7 @@ function masonTarget(v) {
     // ★근접검 재고 = weapon × 근접검비중(_swordFrac) → 활이 채운 재고에 가려 석검 노동목표가 0이 되지 않게.
     const _swordStock = (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT);
     // ★식량 안보 게이트(produceSpecial 병기고 게이트와 정합): 잘 먹는 마을만 병기고 노동목표, 취약 마을은 전사 실수요만(석공 과충원→식량노동 잠식 방지).
-    const _foodDays = totalFoodEquivalent(v) / N;
-    const _secF = Math.max(0, Math.min(1, (_foodDays - 40) / 40));
+    const _secF = _foodSecF(v);   // ★[T1344] 두 줄(`_foodDays` · ramp)을 이름만 올렸다(`_foodSecF` — 같은 식 · N = v.npcs.length || 1 · 값 무변)
     const _armoryTarget = (_secF > MELEE_ARMORY_SECF) ? N * MELEE_ARMORY_PC : Math.max(2, (v.counts.warrior || 0) * MELEE_COV_BUFFER);
     const wDeficit = Math.max(0, _armoryTarget - _swordStock);
     need += wDeficit / (perWeapOut * 50) + _armoryTarget * 0.5 * DECAY_MELEE_MAINT / perWeapOut;   // 병기고 결손 catchup(50일) + 재고 마모 보충
@@ -6141,6 +6236,40 @@ const SMELT_LABOR_CAP_PC = (typeof process !== 'undefined' && process.env && pro
 const COPPER_DERIV_ON = (typeof process !== 'undefined' && process.env && process.env.COPPER_DERIV === '1');
 const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && process.env.COPPER_DERIV_DAYS != null)
   ? Number(process.env.COPPER_DERIV_DAYS) : 30;
+// ══ ★★[T1333 2026-11-15 · T1313 회부 1 · PM 고른 갈래] 청동 길 — 구리가 주석 마을에 닿게 ══
+//   T1313 판 열: 청동은 광부 값이 아니라 **구리 짐이 주석 마을(광산5 — 세계에서 주석이 나는 한 곳)에 닿았나**가 가른다(닿은 판 광산5 청동 4.7 ~ 9.6 ↔ 2.1 ~ 3.3).
+//   닿지 않는 고리는 위 구리 파생 주석 그대로다 — 구리를 안 쓰는 마을 → 흐름 0 → 목표 0 → 값 바닥 → 캐러밴이 안 싣는다(첫 구리가 안 온다).
+//   ⓐ `T1333_ALLOY_ORDER`(끔 기본 · `'1'` 만 켬) **합금 발주** — 대장장이가 모자란 합금 재료를 값표 목표에 올린다(파생수요).
+//     구리 파생의 세 문(무기 노동 · 품질 · 채산)과 "있다면" 가정을 그대로 쓰고 재료만 구리 하나에서 청동 조리법의 둘(기지 구리 · 청동 몫의 주석 — `bronzeness` 정의)로 넓힌다:
+//     그 재료를 "있다면"으로 두고 그 마을이 지금 짤 수 있는 최선의 배합(`_meltSearch` — 주조와 같은 목적함수)을 찾아 그 배합이 청동(주석 몫 > 0)이면 발주한다 —
+//     주석을 든 마을은 구리를, 구리를 든 마을은 주석을. 은 · 금(위신재) · 납(주조성 첨가)은 발주하지 않고 그 배합(구리 + 은 · 구리 + 납)을 보고 구리를 부르지도 않는다.
+//     양 = 그 배합의 그 재료 × `COPPER_DERIV_DAYS`(대장장이 한 명의 한 달 조업 재고 · 새 수 0).
+//     v2 목표엔 종전 파생수요 자리(`derivT` — 흐름 목표와 **큰 쪽**)로 든다 — 합금 재료는 주조 흐름과 같은 쓰임이라 T1213 의 더하는 항(짓기 · 다른 쓰임)이 아니다
+//     (T1213 머리 주석 "석기 · 구리 · 숯 자체의 파생수요는 그 재화의 흐름과 같은 쓰임이라 종전 max 그대로"). 더하면 주조가 돌기 시작한 날부터 두 번 센다.
+//     캐러밴은 종전 규칙 그대로 그 값 차를 보고 실제로 나른다(짐 · 길 · 몸 무변).
+//   ⓑ `T1333_EXPORT_CAST`(끔 기본) **수출 주조** — 청동 병기고 몫(`_bronzeArmoryCap`)이 찬 대장장이도, 이웃이 그 무기를 사 줄 값(순수출가 `netExportFn`)으로
+//     한 번 주조의 이윤(같은 탐색 · 재료는 기회비용 `_oppPrice`)이 양수이고 곳간 무기가 얇으면(인구 × 0.8 밑 — 종전 수출 대장장이 문의 과잉 방지 `_weaponThin`) 주조한다 —
+//     주석을 든 구리 마을이 무기를 만들어 내보내는 쪽(PM 카드 ⓑ · 랩 날 100 과잉 방지 없는 판: 청동 10.06 → 43.97 · 어촌1 무기 곳간 24.5 — 못 판 무기가 쌓였다).
+//     무기장 자리(`smithTarget` 의 수출 대장장이)도 같은 판정이 서면 선다(종전 문 구리 > 3N 은 판에서 안 섰다) — 주조가 돌면 그 마을 주석 흐름 목표가 서서
+//     주석이 구리 마을로 온다(캐러밴 무변 — 값 차만).
+//   ④ `T1333_WS_INPUT`(끔 기본 · 실험 — T1313 회부 2) **생산 투입재는 인구 몫 상한 밖** — 원석(광종마다)과 합금 재료(`_MELT_METALS`)의 값표 목표를
+//     v2 세계 몫 상한(세계 공급 × 내 인구 몫 × 1.5 · 바닥 0.2)에서 뺀다(생존재 · 자본재 · 다양성 식품이 빠지는 그 줄에 한 항).
+//     상한은 "없어도 죽지 않는 것들(위신재 · 잡화 롱테일)"을 인구 비례로 묶으려던 줄인데, 녹이는 원석 · 붓는 금속의 수요는 사람 수가 아니라
+//     노 · 주조 한 곳에 몰린다 — 주석은 녹이는 마을-날 96 · 78 % 가 바닥이었고(T1313 §1), 합금 발주(ⓐ)의 구리도 3.42 → 0.2 ~ 0.6 으로 깎였다(T1333 서버 자 판).
+const T1333_ALLOY_ORDER = (typeof process !== 'undefined' && process.env && process.env.T1333_ALLOY_ORDER === '1');
+const T1333_EXPORT_CAST = (typeof process !== 'undefined' && process.env && process.env.T1333_EXPORT_CAST === '1');
+const T1333_WS_INPUT = (typeof process !== 'undefined' && process.env && process.env.T1333_WS_INPUT === '1');
+function t1333WsFree(r) { return !!(T1333_WS_INPUT && (r === 'ore' || OreGoods.isOre(r) || _MELT_METALS.includes(r))); }   // v2 상한 줄이 부른다(판정은 여기 하나)
+function _t1333ExportCast(v) {
+  const nef = (v && v._world && typeof v._world.netExportFn === 'function') ? v._world.netExportFn : null;
+  if (!nef) return false;
+  if (!_weaponThin(v)) return false;   // 곳간에 무기가 쌓였으면(인구 × 0.8 위) 수출로 빠져나가야 다시 붓는다 — 종전 수출 대장장이 문의 과잉 방지 그대로(같은 함수)
+  const pw = nef(v, 'weapon') || 0;
+  if (!(pw > 0)) return false;
+  const p = _oppPrice(v);
+  const best = _meltSearch(v.storage || {}, (k) => (k === 'weapon' ? pw : p(k)));
+  return !!(best && best.score > 0);
+}
 function derivedInputTarget(v, r) {
   // 재료가 없어 작업을 못 해도 도구 결손의 실제 레시피 투입은 수요다(숯 파생수요와 같은 문).
   if (r === 'stone' && stoneRealOn() && v && v.storage) {
@@ -6174,8 +6303,20 @@ function derivedInputTarget(v, r) {
     if (!(((v.counts && v.counts.miner) || 0) > 0 || oreTotal(v) >= SMELT_MIN_ORE)) return 0;
     return furnaceCharcoalTarget(v);
   }
+  // ★★[T1333 ⓐ] 합금 발주 — **청동 조리법**의 두 재료만 발주한다: 기지 구리 · 청동 몫을 정하는 주석(`_meltSearch` 의 `bronzeness` 그 정의 — 청동 = 구리 + 주석).
+  //   "있다면" 배합이 청동(주석 몫 > 0)일 때만 선다(`_alloyDeriv` 셋째 인자) — 은 · 납을 든 마을이 구리 + 은 · 구리 + 납 배합을 보고 구리를 부르지 않는다
+  //   (랩 날 30 · 합금 재료 표 다섯 판: 은 든 마을 구리 값 22 ~ 24 → 그 순수출가가 구리 쥔 마을의 기회비용을 올려 대장장이 10 → 5 · 청동 7.42 → 6.03).
+  //   은 · 금은 위신재(v2 `ORNAMENTAL`) · 납은 주조성 첨가 — 청동을 가르지 않는다(조리법 밖 0 · 끔 = 이 갈래가 안 선다).
+  if (T1333_ALLOY_ORDER && (r === 'copper' || r === 'tin') && v && v.storage) {
+    if (_ERA_METAL(r) && !_eraKnows(r)) return 0;
+    return _alloyDeriv(v, r, true);
+  }
   if (!COPPER_DERIV_ON || r !== 'copper' || !v || !v.storage) return 0;
   if (_ERA_METAL('copper') && !_eraKnows('copper')) return 0;   // 시대가 모르는 금속은 파생수요도 없다
+  return _alloyDeriv(v, 'copper');
+}
+// ★[T1333] 구리 파생 몸통을 함수로 올렸다(재료만 인자 · 구리 파생은 종전 글자 그대로 — 문 셋 · 양 · 기준가) — 합금 발주가 같은 함수를 부른다(사본 0).
+function _alloyDeriv(v, r, bronze) {   // bronze = 청동 배합(주석 몫 > 0)일 때만(★[T1333 ⓐ] · 옛 구리 파생은 false — 종전 글자)
   // ★★[1차 실측으로 뒤집은 게이트] 처음엔 "무기 커버리지(v2 CAP_TARGET.weapon)가 미달일 때만"으로 짰다.
   //   3시드 800일 결과가 **기준선과 비트 동일**했다 — 한 번도 안 걸린 것이다. 이유는 명확하다:
   //   마을은 무기가 **모자라지 않는다**(19마을 2,017자루). 모자란 건 **좋은** 무기다. 커버리지는
@@ -6194,10 +6335,11 @@ function derivedInputTarget(v, r) {
   //   ★탐색은 `_meltSearch` 공용 헬퍼 — 주조 결정과 **같은 목적함수**다(사본 금지).
   //     가격만 **기준가**로 준다: 시장가를 쓰면 수요가 값을 올리고 그 값이 게이트를 닫는다(자기 꼬리 물기).
   const stHypo = Object.assign({}, v.storage);
-  stHypo.copper = Math.max(stHypo.copper || 0, _MELT_TOTAL);   // "구리가 있다면" — 딱 1회 주조분만 가정
-  const basePrice = (r) => (BASE_VALUE[r] > 0 ? BASE_VALUE[r] : 1);
+  stHypo[r] = Math.max(stHypo[r] || 0, _MELT_TOTAL);   // "그 재료가 있다면" — 딱 1회 주조분만 가정(구리 파생 = 구리 · ★[T1333 ⓐ] 합금 재료 다 같은 줄)
+  const basePrice = (k) => (BASE_VALUE[k] > 0 ? BASE_VALUE[k] : 1);
   const best = _meltSearch(stHypo, basePrice);
   if (!best) return 0;
+  if (bronze && !(best.bronzeness > 0)) return 0;   // ★[T1333 ⓐ] 청동 배합만(구리 + 은 · 구리 + 납은 발주 0)
   // 게이트② **품질이 나아지는가** — 이 마을 무기 스톡 품질(_weapQ EMA)보다 나아야 산다.
   const qNew = Math.min(1.2, best.grade) * WEAP_Q_BRONZE;
   const qNow = v._weapQ != null ? v._weapQ : WEAP_Q_STONE;
@@ -6207,7 +6349,7 @@ function derivedInputTarget(v, r) {
   let cost = 0; for (const k in best.take) cost += best.take[k] * basePrice(k);
   const gain = amtPerCast * best.castF * (BASE_VALUE.weapon || 1) * Math.min(1.2, best.grade);
   if (!(gain - cost > 0)) return 0;
-  return (best.take.copper || _MELT_TOTAL) * COPPER_DERIV_DAYS;
+  return (best.take[r] || (r === 'copper' ? _MELT_TOTAL : 0)) * COPPER_DERIV_DAYS;
 }
 function smeltTarget(v) {
   if (_t1249NoSmelt(v)) { migrateOre(v); return 0; }   // ★[T1249] 켬 = 조성 모르는 마을은 안 녹인다(위 머리 주석)
@@ -6247,6 +6389,7 @@ function smeltTarget(v) {
   const need = Math.max(1, Math.round(ore / (per * 30)));    // 한 달 안에 재고를 소화할 인원
   return Math.min(Math.max(1, Math.ceil((v.npcs.length || 1) * SMELT_LABOR_CAP_PC)), need);
 }
+function _weaponThin(v) { return (v.storage.weapon || 0) < (v.npcs.length || 1) * 0.8; }   // 무기 곳간이 얇다(인구 × 0.8 밑 — 수출로 빠져나가야 다시 만든다 · 종전 `smithTarget` 의 그 식)
 function smithTarget(v) {
   // ★청동 희소성: 청동은 *청동 자격* 마을만(주석 산지·교역 허브). 트레이스 주석뿐인 마을은 청동 생산 안 함(석공이 마제석검).
   const hasBronze = _smithBeatsMason(v) && (v.storage.copper || 0) >= 0.3;
@@ -6263,14 +6406,22 @@ function smithTarget(v) {
   //   과잉 방지: 무기 재고가 얇을 때만(수출로 빠져나가야 재개) + 인구 3% 상한. 청동검은 희소 위세 교역재로 유지.
   const N = v.npcs.length || 1;
   const cuRich = (v.storage.copper || 0) > N * 3;
-  const weapThin = (v.storage.weapon || 0) < N * 0.8;   // 무기 재고 얇음(수출로 소진) → 특산 제작 재개
-  const exportSmiths = (hasBronze && cuRich && weapThin) ? Math.max(1, Math.floor(N * 0.03)) : 0;
+  const weapThin = _weaponThin(v);   // 무기 재고 얇음(수출로 소진) → 특산 제작 재개(★[T1333] 식을 함수로 올렸다 — 수출 주조 문이 같은 함수를 부른다 · 값 무변)
+  // ★[T1333 ⓑ] 수출 주조 켬이면 무기장 자리가 서는 조건에 "이웃이 사 줄 값으로 한 번 주조가 남는다"(`_t1333ExportCast` — 주조 문과 같은 함수)를 더한다
+  //   (구리 > 3N 문은 T1313 몸 세계 판 열(10판 · 100날 · 51 마을)에서 한 번도 안 섰다 — 구리 ÷ 3N 가장 큰 날 0.453 · 어촌1 날 83 구리 39.4 · 사람 29).
+  //   자리 수(3 % · 최소 1)는 종전 그대로 · 끔 = 종전 글자.
+  const exportSmiths = (hasBronze && ((cuRich && weapThin) || (T1333_EXPORT_CAST && _t1333ExportCast(v)))) ? Math.max(1, Math.floor(N * 0.03)) : 0;
   // ★★제련과 주조는 **다른 일**이다 — max 가 아니라 **합**이다.
   //   max 로 두면 제련하는 날 무기를 못 만든다(실측: 무기 551 → 255, 그러자 전사·호위가 무너지고
   //   교역이 줄어 인구가 1,804 → 1,045 로 급감했다). 정원을 합으로 두면 대장장이가 늘고,
   //   개별 대장장이는 "원석이 있으면 제련, 없으면 주조"로 **자연히 분담**된다
   //   (첫 사람이 원석을 다 소화하면 나머지는 주조로 넘어간다).
-  return Math.max(local, exportSmiths) + smeltTarget(v);
+  // ★[T1344] 켬 · 잘 먹는 청동 마을 — 청동 몫(병기고 × 45 %)이 청동 근접검으로 비면 대장장이 자리가 선다(종전 목표와 큰 쪽 · 같은 노동 식 · 같은 두 수).
+  //   석검이 병기고를 채워 종전 목표(근접검 전부)가 0 인 마을에서만 갈린다(모듈 머리 `T1344_BRONZE_STOCK`). 끔 = 0(큰 쪽에 0 — 앞 두 항은 0 이상이라 종전 값).
+  //   청동을 부을 주석이 있는 마을만(석공 청동 우선권 `_bronzeNow` 의 그 문턱 0.12 — 주석 없는 구리 마을은 청동 몫을 못 채운다 · 주조 문도 그 배합은 종전 곳간으로 잰다)
+  const _t1344L = (T1344_BRONZE_STOCK && hasBronze && (v.storage.tin || 0) >= 0.12 && _foodSecF(v) > MELEE_ARMORY_SECF)
+    ? craftLaborTarget(_t1344BronzeStock(v), N0 * MELEE_ARMORY_PC * BRONZE_ARMORY_FRAC, 0.5 * WEAPON_LABOR_MULT, { buffer: 1.0, catchup: 40, decay: DECAY_MELEE_MAINT, minStock: 2 }) : 0;
+  return Math.max(local, exportSmiths, _t1344L) + smeltTarget(v);
 }
 // ★전사 readiness 목표 — *정원 아님*. 교역 캐러밴 수 × 약탈위협으로 호위 수요 파생.
 //   위협 없으면 0(평시 전사 불필요), 위협 클수록 ↑. 글럿 마을의 전사 과잉(19%) 방지 + 평시 자연 동원해제.
@@ -7735,7 +7886,7 @@ module.exports = {
   T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
   T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
-  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays,   // ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
+  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays, T1346_BIRTH_FLOW, t1346FlowShort,   // ★[T1346] 흐름 문(하네스가 정본 함수를 그대로 부른다) · ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
@@ -7789,7 +7940,7 @@ module.exports = {
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
-  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, T1309_HEALTH_EATEN, T1309_DIVERSITY_EATEN, T1309_MOVE_CONS, t1309Group: _t1309Group, t1309EatenHealth: _t1309EatenHealth, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   T1159_HOME_N, t1159HomeN,
@@ -7811,6 +7962,9 @@ module.exports = {
   //   _trySmelt·smeltTarget 은 하네스(scripts/test-oremix.js)가 실제 제련을 돌려 보려고 노출한다.
   oreMixOf, foldOreMix, _trySmelt, smeltTarget,
   derivedInputTarget,   // ★[2026-08-02f ①-2] 구리 파생 투입수요 — v2 가 가격 target 에 얹는다(단일 진실)
+  T1333_ALLOY_ORDER, T1333_EXPORT_CAST, COPPER_DERIV_ON, _t1333ExportCast,   // ★[T1333] 합금 발주 · 수출 주조 손잡이(끔 기본) · 구리 파생 손잡이(읽기) · 수출 주조 판정(하네스가 정본을 직접 부른다)
+  T1333_WS_INPUT, t1333WsFree,   // ★[T1333 ④] 생산 투입재 인구 몫 상한 밖(실험 · 끔 기본) — v2 상한 줄이 부른다
+  T1344_BRONZE_STOCK, _t1344BronzeStock, _t1344Mix, _foodSecF, _meltSearch, _oppPrice,   // ★[T1344] 청동 몫 곳간(끔 기본) · 하네스 · 관찰기가 정본 함수를 직접 부른다(읽기 · ⑥ 은 뺀 배합)
   // ★[2026-08-03a ⑰] 국고 현금 배선 — 하네스가 **산술을 직접 재게** 노출한다(상수 복제 금지).
   //   `_treasuryTopUp` 은 실제 함수 그대로여야 검사가 그 코드를 밟는다(모형을 검사하면 의미가 없다).
   _treasuryTopUp, RESERVE_PC, _matPrice, expandCost,

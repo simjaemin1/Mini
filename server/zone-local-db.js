@@ -261,11 +261,16 @@ function deleteMob(id) { stmtDeleteMob.run(id); }
   if (!_cc.includes('state'))    db.exec("ALTER TABLE claims ADD COLUMN state TEXT NOT NULL DEFAULT 'active'");
   if (!_cc.includes('held_by'))  db.exec('ALTER TABLE claims ADD COLUMN held_by TEXT');
   if (!_cc.includes('state_at')) db.exec('ALTER TABLE claims ADD COLUMN state_at INTEGER NOT NULL DEFAULT 0');
-  // ★[T1305 → ★T1332] 돌봄 = **청크 줄**(주인 · 청크 좌표 → 낡음 `w` · 마지막으로 잰 접속일 `n0`). **켬 판에서만** 만든다(끔 = 스키마 그대로 · 바이트 같음).
-  //   T1305 의 칸마다 두 열(`care_n` · `care_w`)은 안 쓴다 — 그 열을 쓰던 켬 판 DB 는 없다(라이브 끔 · 카드 T1332 ①).
-  //   청크 줄이 없는 내 칸(켜기 앞의 옛 칸)은 첫 날 셈이 그날을 돌본 날로 잡는다(`deeds.wear` · 켜는 순간 줄지 않는다).
+  // ★[T1305 → T1332 → ★T1343] 돌봄 = **청크 계량기 줄**(주인 · 청크 좌표 → 관리도 `m` · 마지막 셈 시각 `t` ms) · 다른 존 칸 기억(`deed_owners`).
+  //   **켬 판에서만** 만든다(끔 = 스키마 그대로 · 바이트 같음). T1305 의 칸마다 두 열(`care_n` · `care_w`)은 안 쓴다(켬 판 DB 없음 — 라이브 끔).
+  //   줄이 없는 내 칸(켜기 앞의 옛 칸)은 첫 셈이 가득으로 잡는다(`deeds.init` · 켜는 순간 줄지 않는다).
   if (process.env.T1305_DEEDS === '1') {
-    db.exec('CREATE TABLE IF NOT EXISTS deed_chunks (owner_id TEXT NOT NULL, cx INTEGER NOT NULL, cy INTEGER NOT NULL, w REAL NOT NULL DEFAULT 0, n0 INTEGER, PRIMARY KEY (owner_id, cx, cy))');
+    db.exec('CREATE TABLE IF NOT EXISTS deed_chunks (owner_id TEXT NOT NULL, cx INTEGER NOT NULL, cy INTEGER NOT NULL, m REAL, t INTEGER, PRIMARY KEY (owner_id, cx, cy))');
+    // ★[T1343] 계량기 꼴(관리도 `m` · 마지막 셈 시각 `t` ms) — T1332 꼴(`w` · `n0`)로 선 표는 두 열을 붙인다(옛 줄은 NULL → 첫 셈이 가득으로 잡는다)
+    const _dc = db.prepare('PRAGMA table_info(deed_chunks)').all().map((c) => c.name);
+    if (!_dc.includes('m')) db.exec('ALTER TABLE deed_chunks ADD COLUMN m REAL');
+    if (!_dc.includes('t')) db.exec('ALTER TABLE deed_chunks ADD COLUMN t INTEGER');
+    db.exec('CREATE TABLE IF NOT EXISTS deed_owners (owner_id TEXT PRIMARY KEY, others INTEGER NOT NULL DEFAULT 0)');   // ★[T1343] 다른 존의 내 칸(마지막으로 본 몸 칸)
   }
 }
 const stmtGetClaims = db.prepare('SELECT * FROM claims');
@@ -304,10 +309,13 @@ function updateClaimOwner(dbId, ownerId, ownerName, kind, state, heldBy, stateAt
 // ★[T1332] 돌봄 청크 줄(켬 판에서만 불린다 — 표가 있을 때만 준비한다)
 let _stmtDcAll = null, _stmtDcPut = null, _stmtDcDel = null;
 function getDeedChunks() { try { if (!_stmtDcAll) _stmtDcAll = db.prepare('SELECT * FROM deed_chunks'); return _stmtDcAll.all(); } catch (e) { return []; } }
-function saveDeedChunk(ownerId, cx, cy, w, n0) {
-  try { if (!_stmtDcPut) _stmtDcPut = db.prepare('INSERT INTO deed_chunks (owner_id, cx, cy, w, n0) VALUES (?, ?, ?, ?, ?) ON CONFLICT(owner_id, cx, cy) DO UPDATE SET w = excluded.w, n0 = excluded.n0');
-    _stmtDcPut.run(String(ownerId), cx | 0, cy | 0, +w || 0, n0 == null ? null : n0 | 0); return true; } catch (e) { return false; }
+function saveDeedChunk(ownerId, cx, cy, m, t) {
+  try { if (!_stmtDcPut) _stmtDcPut = db.prepare('INSERT INTO deed_chunks (owner_id, cx, cy, m, t) VALUES (?, ?, ?, ?, ?) ON CONFLICT(owner_id, cx, cy) DO UPDATE SET m = excluded.m, t = excluded.t');
+    _stmtDcPut.run(String(ownerId), cx | 0, cy | 0, Number.isFinite(+m) ? +m : null, Number.isFinite(+t) ? Math.round(+t) : null); return true; } catch (e) { return false; }
 }
+let _stmtDoAll = null, _stmtDoPut = null;
+function getDeedOwners() { try { if (!_stmtDoAll) _stmtDoAll = db.prepare('SELECT * FROM deed_owners'); return _stmtDoAll.all(); } catch (e) { return []; } }
+function saveDeedOwner(ownerId, others) { try { if (!_stmtDoPut) _stmtDoPut = db.prepare('INSERT INTO deed_owners (owner_id, others) VALUES (?, ?) ON CONFLICT(owner_id) DO UPDATE SET others = excluded.others'); _stmtDoPut.run(String(ownerId), others | 0); return true; } catch (e) { return false; } }
 function deleteDeedChunk(ownerId, cx, cy) { try { if (!_stmtDcDel) _stmtDcDel = db.prepare('DELETE FROM deed_chunks WHERE owner_id = ? AND cx = ? AND cy = ?'); _stmtDcDel.run(String(ownerId), cx | 0, cy | 0); return true; } catch (e) { return false; } }
 function deleteClaim(dbId) { if (!dbId) return false; try { stmtDeleteClaim.run(dbId); return true; } catch (e) { return false; } }
 
@@ -720,7 +728,7 @@ function pruneVillageEvents(zone, beforeDay) { stmtPruneVillageEvents.run(zone, 
 const stmtUpsertVillageRequest = db.prepare('INSERT INTO village_requests (zone, vid, item, qty, filled, rew_item, rew_qty, day) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(zone, vid, item) DO UPDATE SET qty = excluded.qty, filled = excluded.filled, rew_item = excluded.rew_item, rew_qty = excluded.rew_qty, day = excluded.day');
 const stmtDeleteVillageRequest = db.prepare('DELETE FROM village_requests WHERE zone = ? AND vid = ? AND item = ?');
 const stmtGetVillageRequests = db.prepare('SELECT vid, item, qty, filled, rew_item, rew_qty, day FROM village_requests WHERE zone = ?');
-function upsertVillageRequest(zone, r) { stmtUpsertVillageRequest.run(zone, r.vid | 0, String(r.item), +r.qty || 0, +r.filled || 0, String(r.rewItem), +r.rewQty || 0, r.day | 0); }
+function upsertVillageRequest(zone, r) { stmtUpsertVillageRequest.run(zone, r.vid | 0, String(r.item), +r.qty || 0, +r.filled || 0, String(r.rewItem == null ? '' : r.rewItem), +r.rewQty || 0, r.day | 0); }   // ★[T1353] 켬(T1341)의 의뢰는 약속 칸이 비었다(null → '' — 'null' 글자로 안 남긴다 · 끔은 늘 품목이라 바이트 같음)
 function deleteVillageRequest(zone, vid, item) { stmtDeleteVillageRequest.run(zone, vid | 0, String(item)); }
 function getVillageRequests(zone) { return stmtGetVillageRequests.all(zone); }
 
@@ -838,6 +846,41 @@ function t1321Tx(fn) {
   try { const r = fn(); db.exec('RELEASE t1321'); return r; }
   catch (e) { try { db.exec('ROLLBACK TO t1321'); db.exec('RELEASE t1321'); } catch (x) {} throw e; }
 }
+// ★★[T1331 2026-11-16] 짐승 몸 표 셋 — **처음 부를 때** 세운다(손잡이 `T1331_BEAST_BODY` 켬에서만 불린다 · 끔 = 표 0 · 문장 0 · main 바이트 · T1238 · T1321 꼴).
+//   `t1331_body` — 몸 한 행(종 · 암수 · 난 날 · 어미 · 무리터 · 칸 · 옮겨 가는 곳 · hp) · 날마다 통째로 다시 적는다(몸 수천 행 · 한 거래)
+//   `t1331_hab`  — 무리터(마을)마다 서식 칸 열쇠 · 처음 K · 부존 기준 — 바뀐 날만(이행 · 벌채)
+//   `t1331_meta` — 다음 몸 id · 보존 셈 칸 · 날 줄 끝 60
+let _t1331Ready = false, _t1331Ins = null;
+function _t1331Tables() {
+  if (_t1331Ready) return;
+  db.exec('CREATE TABLE IF NOT EXISTS t1331_body (zone TEXT NOT NULL, id INTEGER NOT NULL, sp TEXT NOT NULL, sex INTEGER NOT NULL, born INTEGER NOT NULL, mom INTEGER NOT NULL, home TEXT NOT NULL, cx INTEGER NOT NULL, cy INTEGER NOT NULL, wto TEXT, wat INTEGER, hp INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (zone, id))');
+  db.exec('CREATE TABLE IF NOT EXISTS t1331_hab (zone TEXT NOT NULL, vid TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (zone, vid))');
+  db.exec('CREATE TABLE IF NOT EXISTS t1331_meta (zone TEXT PRIMARY KEY, data TEXT NOT NULL)');
+  _t1331Ins = db.prepare('INSERT INTO t1331_body (zone, id, sp, sex, born, mom, home, cx, cy, wto, wat, hp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  _t1331Ready = true;
+}
+//   rows = [[id, 종, 암수, 난 날, 어미, 무리터, cx, cy, 옮길 무리터|null, 옮길 칸|null, hp]] · hab = [[무리터, JSON]] | null(안 바뀜) · meta = JSON
+function t1331Save(zone, rows, hab, meta) {
+  _t1331Tables();
+  db.exec('SAVEPOINT t1331');
+  try {
+    db.prepare('DELETE FROM t1331_body WHERE zone = ?').run(zone);
+    for (const r of rows) _t1331Ins.run(zone, r[0] | 0, String(r[1]), r[2] | 0, r[3] | 0, r[4] | 0, String(r[5]), r[6] | 0, r[7] | 0, r[8] == null ? null : String(r[8]), r[9] == null ? null : (r[9] | 0), r[10] | 0);
+    if (hab) { db.prepare('DELETE FROM t1331_hab WHERE zone = ?').run(zone); const ins = db.prepare('INSERT INTO t1331_hab (zone, vid, data) VALUES (?, ?, ?)'); for (const h of hab) ins.run(zone, String(h[0]), String(h[1])); }
+    db.prepare('INSERT INTO t1331_meta (zone, data) VALUES (?, ?) ON CONFLICT(zone) DO UPDATE SET data = excluded.data').run(zone, String(meta));
+    db.exec('RELEASE t1331');
+  } catch (e) { try { db.exec('ROLLBACK TO t1331'); db.exec('RELEASE t1331'); } catch (x) {} throw e; }
+  return rows.length;
+}
+function t1331Load(zone) {
+  _t1331Tables();
+  const num = (v) => (v != null && /^-?\d+$/.test(String(v)) ? +v : v);   // 무리터 = 마을 dbId(수) · 하네스 마을은 이름(글자)
+  const bodies = db.prepare('SELECT id, sp, sex, born, mom, home, cx, cy, wto, wat, hp FROM t1331_body WHERE zone = ? ORDER BY id').all(zone)
+    .map((r) => [r.id, r.sp, r.sex, r.born, r.mom, num(r.home), r.cx, r.cy, r.wto == null ? null : num(r.wto), r.wat, r.hp]);
+  const hab = db.prepare('SELECT vid, data FROM t1331_hab WHERE zone = ? ORDER BY rowid').all(zone).map((r) => [num(r.vid), r.data]);
+  const m = db.prepare('SELECT data FROM t1331_meta WHERE zone = ?').get(zone);
+  return { bodies, hab, meta: m ? m.data : null };
+}
 function getVillageFarthest(villageId, ccx, ccy) { return stmtVbFar.all(villageId, ccx, ccx, ccy, ccy, ccx, ccx, ccy, ccy, villageId); }   // [T1176] 순번 인자 — 질의 속 `?` 순서대로
 function getVillageFarmInCellRect(cx0, cx1, cy0, cy1) { return stmtGetVillageFarmInCellRect.all(cx0, cx1, cy0, cy1); }
 
@@ -849,7 +892,7 @@ module.exports = {
   getResources, insertResource, updateResourceHp, deleteResource,
   getBuildings, getBuildingsInRect, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
-  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim, getDeedChunks, saveDeedChunk, deleteDeedChunk,   // ★[T45] 사유지 v2 — 종류·상태기 영속
+  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim, getDeedChunks, saveDeedChunk, deleteDeedChunk, getDeedOwners, saveDeedOwner,   // ★[T45] 사유지 v2 — 종류·상태기 영속
   insertHarvestedSeed, getAllHarvestedSeeds, promoteHarvestedDays, deleteHarvestedSeed,   // ★[T341] 재생 — 벤 기록을 지우는 문
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   upsertFishCell, getAllFishCells, deleteFishCell,
@@ -857,6 +900,7 @@ module.exports = {
   upsertPickedSeed, getAllPickedSeeds, deletePickedSeed,   // ★[T495] 부분 수확 — 개체에 남은 단위(켠 팔만 · 표는 처음 쓸 때)
   // §4-4 마을 시뮬 (villages.js)
   getWorldMeta, upsertWorldMeta, saveVillagesAndMeta,   // ★[T728]
+  t1331Save, t1331Load,   // ★[T1331] 짐승 몸 표(켬만 부른다 · 표는 처음 부를 때)
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings, updateVillageBuildingData,
   getVillageFarmInCellRect, getVillageStructRows,
   eachVillageCell, getVillageStructAll, getVillageFarthest, getTerrContestOwners,   // ★[T538] 경계 있는 부팅 로드

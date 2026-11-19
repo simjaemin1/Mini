@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @regress-alone   ← [T1288] 러너 -j 판에서 맨 먼저 혼자 돈다(다른 하네스를 안 띄운다) · 끊고 곧바로 다시 든 몸 자리(미저장 걸음)를 본다 — 판 A·B -j4 둘 다 ✗(254px) · 홀로 · CPU 꽉 찬 부하 · 남의 존 3020 곁에서는 초록 → 나란히 판의 저장 경합으로 본다(부하에서만 빨간 갈래 = T1339 쪽 회부)
 // === scripts/test-guest-rejoin.js — 게스트 재접속이 몸을 잃는가 (B-6) ============
 //
 // ★왜 [재민 확정 2026-08-25 · 회부 B-6]
@@ -56,7 +57,7 @@ function portFree(port) {
   });
 }
 async function pickPorts() {
-  const base = 34000 + ((process.pid * 2) % 8000);   // 같은 순간 두 하네스가 겹칠 확률을 낮춘다
+  const base = require('./lib-port').ports(2, 34000);   // [T1288] 장부가 쌍을 쥔다(옛 pid 나머지 · '겹칠 확률을 낮춘다' → 겹침 0)
   for (let i = 0; i < 500; i++) {
     const c = base + i * 2, z = c + 1;
     if (await portFree(c) && await portFree(z)) return [c, z];

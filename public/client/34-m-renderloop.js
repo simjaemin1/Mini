@@ -1307,7 +1307,7 @@
         else if (cl.state === 'pref') { fill = 'rgba(120,200,140,0.16)'; stroke = 'rgba(140,220,160,0.75)'; label = `${cl.ownerName}`; }
         else if (cl.state === 'free') { fill = 'rgba(120,120,120,0.12)'; stroke = 'rgba(160,160,160,0.55)'; label = `빈 자리`; }
         // ★[T1305] 돌봄 — 오래 안 손본 개인 칸(서버가 준 `care === 'fade'` 그대로)은 경계가 바랜다(같은 색 · 옅은 칠 · 옅은 먹선).
-        else if (cl.care === 'fade') { fill = 'rgba(240,198,116,0.07)'; stroke = 'rgba(240,198,116,0.32)'; }
+        else if (cl.care === 'fade' || cl.care === 'soon') { fill = 'rgba(240,198,116,0.07)'; stroke = 'rgba(240,198,116,0.32)'; }
 
         // ★★[T57 2026-09-03 · 안개 게이트 **세 번째 층**] 사유지도 **셀마다** 안개를 본다.
         //   결함 기전은 배치 21(자연물)·08-30(마을 영토 띠)과 **같은 족**이다:
@@ -1413,7 +1413,7 @@
             ctx.strokeRect(Math.round(cs.x - 9) + 0.5, Math.round(cs.y - 9) + 0.5, 18, 18);
             ctx.restore();
             // Phase 4d-16-d: forge 가끔 연기 파티클 (시각 동작 — client only, deterministic by time)
-            if (cl.facilityType === 'forge' && Math.sin((Date.now() + (cl.x + cl.y) * 13) * 0.001) > 0.8) {
+            if (cl.facilityType === 'forge' && Math.sin((Date.now() + (cl.x + cl.y) * 13) * 0.001) > 0.8) {  // [T1310 클라 시계] 대장간 불꽃 깜빡임
               ctx.fillStyle = 'rgba(160, 80, 40, 0.5)';
               ctx.beginPath();
               ctx.arc(cs.x, cs.y - 8, 3, 0, Math.PI * 2);
@@ -2546,7 +2546,7 @@
   function drawDownedArrows() {
     const M = window.__downedCries;
     if (!M || !M.size) return 0;
-    const now = Date.now();
+    const now = srvNow();   // ★[T1310 ①] `at` 은 서버 벽시계 — 서버 시각 축으로 견준다(클라 시계가 3분 넘게 앞서면 화살이 그리자마자 사라졌다)
     let n = 0;
     for (const [pid, c] of [...M]) {
       // 창이 닫혔으면 스스로 사라진다 — 지우는 자리가 여기와 `player_down_state` 둘뿐이다

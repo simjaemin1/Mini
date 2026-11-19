@@ -1,0 +1,20 @@
+test-t1337-wake | === T1337 잠 깨움 11 통과 · 0 실패 ===
+test-t1322-prefilter | === T1322 첫 거름 21 통과 · 0 실패 ===
+test-body-fields | === 14 통과 / 0 실패 ===
+test-move-soa |   ✓ ㉓ⓐ [자명 통과 금지] 차례만 뒤집은 가짜는 문다(같은 집합이어도)  길이 2
+test-body-exit | 
+test-npc-hp-door | ② 자명 통과 금지
+test-harness-lint |   ✓ ★⑯ 자명 통과 금지 — 정본 호출은 고정 · 지운 판 · 주석 안 호출은 고정 없음 · 옮김 사본은 사본  pin=pin,gone=none,comment=none,copy=copy
+test-fish-act |   ✓ ⑨ ★★걸린 뒤에도 **셀 예산을 통과해야** 곳간에 든다(창이 예산을 못 늘린다)
+test-farm-act |   ✓ ⑫ [전제 · 자명 통과 금지] 판이 실제로 벤다(일괄이 **나무를 쓰러뜨린다**) · 관측자를 세운 판은 새 술어로 **관측 마을**이다  일괄 36그루
+test-move-soa ✓286 ✗0 
+test-body-exit ✓49 ✗0 
+test-npc-hp-door ✓19 ✗0 
+test-harness-lint ✓77 ✗0 
+test-fish-act ✓86 ✗0 
+test-farm-act ✓78 ✗0 
+test-coll-grid rc? ✓20 ✗0  | === 결과: 20 PASS / 0 FAIL ===
+test-hp-src rc? ✓54 ✗0  | === 54 통과 / 0 실패 ===
+test-lon-day rc? ✓22 ✗0  | === 22건 중 PASS 22 · FAIL 0 ===
+test-handoff-body rc? ✓94 ✗0  | === 94 통과 / 0 실패 ===
+test-wood-act rc? ✓159 ✗0  | === 결과: 159 PASS / 0 FAIL ===

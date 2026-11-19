@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
+// @date-ok 순수 시각 함수에 넣는 기점 T0(결정론 표본) — 벽시계와 안 맞댄다 [T1356]
 // === scripts/test-local-clocks.js — 남은 세계 시계 셋을 현지로: 날씨 굴림 · 몹 밤 · 기온 일교차 (T761) ==================
 //
 // ★캐논: 경도 하루(UTC × 60 · 원통 경도) · 물리 일관성 · 새 수 0 · 결정론. 정본 식은 `server/zone-config.js localPhase` 하나다.
@@ -20,6 +21,7 @@
 //
 // 실행: node scripts/test-local-clocks.js   (존 안 띄움 · 약 20초)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

@@ -12,6 +12,7 @@
 //          맨손 줍기 · 덤불은 된다 · 숲에서 맨손 E = 나무가 아니라 잔가지 줍기 · NPC 는 문 밖.
 //   ③ 끔 — 맨손으로 다 된다(종전 · 자명 통과 금지 대조) · 낚싯대 레시피 없음.
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { spawnSync } = require('child_process');

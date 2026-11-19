@@ -18,6 +18,7 @@
 //   거리 항(`_wakeDelayMs` = 기본 + 거리 ÷ 이속)은 그대로다. `--live` 면 **라이브 시계 그대로**(120 게임분 = 2분 + 거리).
 // 실행: node scripts/e2e-respawn-choice.js [--live] [--headed]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -87,7 +88,7 @@ process.on('exit', shutdown);
   await sleep(1800);
   ok(await A.evaluate(() => !!(window.__inWorld && window.__inWorld())), '[A] 존 입장');
 
-  const notices = () => A.evaluate(() => (window.__notices || []).slice(-40));
+  const notices = () => A.evaluate(() => (window.__notices || []).slice(-40));   // @notice-ok 고리 전부(40칸 = 클라 상한 · 자름 0)
   const clearNotices = () => A.evaluate(() => { window.__notices = []; });
   const panelOpen = () => A.evaluate(() => { const el = document.getElementById('downPanel'); return !!(el && !el.classList.contains('hidden')); });
   const buttons = () => A.evaluate(() => [...document.querySelectorAll('#downOptions button')].map((b) => ({ text: b.textContent.trim(), disabled: !!b.disabled })));

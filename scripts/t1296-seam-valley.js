@@ -4,6 +4,7 @@
 //   node scripts/t1296-seam-valley.js pic <out.png> [--variant cur|A|B|C] [--half 3000] [--px 4]
 //   안(variant)은 `t1296Variants()` — 닛폰 `passes` 를 빼고 `valleys` 에 더한 판(한반도 손 0 · 이음매 `_seamOf` 그대로).
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

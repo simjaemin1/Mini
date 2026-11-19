@@ -1,0 +1,46 @@
+ (13712,65040) (집 없음)
+[hanbando] 🤖 NPC 스폰: 호위·전사 @ (13712,65040) (집 없음)
+[hanbando] 🐂 캐러밴#8505 출발: 농촌17→어촌5 wheat×45 호위1(실체 1) — 경로 76정점 9017px 1게임일(econ d372→d373)
+[hanbando] 🤖 NPC 스폰: 상단·rice @ (13712,99984) (집 없음)
+[hanbando] 🤖 NPC 스폰: 호위·전사 @ (13712,99984) (집 없음)
+[hanbando] 🤖 NPC 스폰: 호위·전사 @ (13712,99984) (집 없음)
+[hanbando] 🐂 캐러밴#8506 출발: 농촌19→농촌2 rice×59 호위2(실체 2) — 경로 441정점 18500px 1게임일(econ d372→d373)
+[hanbando] 📜 사건 23건(누적 13516 · 게시판 112건 게시 중) · 0ms
+[hanbando] 🕛 [T731] 창 7068902772 닫음 — 마을 51(미니 마감 2) · 동 광산1 00:01:32.929 00:01:32.933 → 서 어촌8 00:01:32.956 00:01:32.966 · 자정 퍼짐 0.027초 · 돈 퍼짐 0.033초 · 늦음 2~33ms · 동→서 어김 0
+[hanbando] 🏘️ 마을 econ day 372: 인구 3636 · 스폰 NPC 429 · 캐러밴 실체 61/61(+17 도착27 회수31) · 저장큐 51행 분산 · 조각 746개 · 일 0ms(최대 조각 0ms ) · 마감 33.333251953125ms
+[hanbando] ⚔️ 전쟁 day 372: 선포 2[교역0·영토1·위신1·응징0] 전투 1(공승0/방승1) 사상 46 노획 0 · 활성 1 조공 0 · 실체 몸 1 교전 1
+[hanbando] 🐂 캐러밴#8446 귀환 출발: 광산7→광산5 food×8 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8447 귀환 출발: 농촌11→광산6 charcoal×2 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8448 귀환 출발: 어촌5→농촌1 food×0 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8449 귀환 출발: 어촌4→임업4 herb×81 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8451 귀환 출발: 어촌9→임업5 ramie×5 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8452 귀환 출발: 어촌9→임업6 leather×84 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8454 귀환 출발: 광산1→농촌3 feather×7 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8455 귀환 출발: 어촌4→어촌9 ramie×7 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8456 귀환 출발: 어촌4→어촌10 leather×277 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8457 귀환 출발: 광산2→어촌14 stone×2 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8458 귀환 출발: 농촌8→농촌6 hide×18 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8459 귀환 출발: 어촌4→어촌16 pebble×3 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8460 귀환 출발: 어촌9→농촌13 leather×0 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8461 귀환 출발: 농촌16→농촌17 fur×10 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8462 귀환 출발: 농촌21→농촌19 leather×52 — econ d372 도착 예정
+
+<--- Last few GCs --->
+
+[1776:0x2c4b1000]   650927 ms: Mark-Compact 2043.4 (2067.6) -> 2041.5 (2067.8) MB, pooled: 0 MB, 823.65 / 0.00 ms  (average mu = 0.120, current mu = 0.034) allocation failure; scavenge might not succeed
+[1776:0x2c4b1000]   651827 ms: Mark-Compact 2043.5 (2067.8) -> 2041.6 (2068.1) MB, pooled: 0 MB, 885.46 / 0.00 ms  (average mu = 0.071, current mu = 0.017) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 0xe48bbe node::OOMErrorHandler(char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 2: 0x1248d00 v8::Utils::ReportOOMFailure(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 3: 0x1248fd7 v8::internal::V8::FatalProcessOutOfMemory(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 4: 0x1477ee5  [/opt/node22/bin/node]
+ 5: 0x1477f13  [/opt/node22/bin/node]
+ 6: 0x1490fea  [/opt/node22/bin/node]
+ 7: 0x14941b8  [/opt/node22/bin/node]
+ 8: 0x1cfcc61  [/opt/node22/bin/node]

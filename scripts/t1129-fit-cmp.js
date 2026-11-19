@@ -64,7 +64,7 @@ function sheetStrip(root) {
   for (const sex of SEX) for (const d of [1, 3]) jobs8.push({ id: `${sex}|hemp|${d}|rest|0`, sex, kind: 'hemp', d, clip: null, f: 0 });
   const R = { before: BEFORE, after: ROOT }, shots = {};
   const browser = await chromium.launch({ headless: true });
-  let port = 3271;
+  let port = require('./lib-port').ports(3, 3271);   // [T1288] 뿌리 둘이 ++port 로 다음 두 자리를 쓴다
   for (const [nm, root] of Object.entries(R)) {
     await CMP.bootCentral(root, ++port);
     const p1 = await CMP.openRoot(browser, port, root, 1, null), s1 = await CMP.snapAll(p1, jobs1);

@@ -375,7 +375,8 @@ function onbHudLine() {
   if (!el) return '';
   const bits = [];
   if (onbDayText) bits.push(onbDayText);
-  if (onbState && !onbState.lotOk && onbState.need) bits.push(`의뢰 ${onbState.contrib}/${onbState.need}`);
+  if (onbState && onbState.own) bits.push(`받아들임 ${onbState.contrib | 0}`);   // ★[T1341] 켬 — 계량기 하나(빈터 문턱 0)
+  else if (onbState && !onbState.lotOk && onbState.need) bits.push(`의뢰 ${onbState.contrib}/${onbState.need}`);
   else if (onbState && onbState.lotOk) bits.push('빈터를 받았습니다');
   el.textContent = bits.join('  ·  ');
   el.style.display = bits.length ? '' : 'none';
@@ -432,6 +433,55 @@ function onbJoinPlan(I, s, lot, inLot, K) {
   }
   return { stage: 'claim', item: '사유지 터 잡기', target: null,
     guide: [`여기가 빈터입니다. 터를 잡으려면 나무 ${cost.wood}개와 돌 ${cost.stone}개가 있어야 합니다. 지금 나무 ${w}개와 돌 ${st}개가 있습니다.`] };
+}
+// ══ ★★[T1341 2026-11-16 · ★재민 11-16 "스스로 집을 지을 수 있도록 유도 · 의뢰는 받아들임만 · 보상 없음"] 제 집 줄기 ═══════════════════
+//   켬(서버 손잡이 `T1341_OWN_HOUSE` → 온보딩 상태의 `own` 칸)일 때만 고른다 — 아니면 null(끔 = 종전 칸 그대로).
+//     ⓐ 집터 재료 모으기 — 집터 값(서버 `own.cost` = 존 정본 `CLAIM_COST.personal`)이 짐에 없으면 무엇이 몇 개 · 지금 몇 개 · 가까운 나무 · 바위(서버가 정본 술어로 고른 자리 `own.tree` · `own.rock`)
+//     ⓑ 집터 잡기 — 재료가 되면 영토 밖 빈 들에서 단추 · C 키(서버 문이 영토 안 · 밖을 가른다 — 칸은 지레 판정하지 않는다)
+//     ⓒ 움집 짓기 — 내 개인 사유지가 섰으면 그 터에서 건축 판(움집 터파기 · 있는 건축 흐름 그대로)
+//     움집(터 · 완공)이 서면 null — 종전 차례(촌장 · 의뢰)가 선다(의뢰 칸의 글은 받아들임 · `onbNextPlan` 의 'more').
+//   ★갚음 · 선물 0 — 모은 것이 곧 집이다. 새 수 0(값은 전부 서버 칸 · 짐 · 받은 사유지 · 받은 건물).
+//   ★순수 함수 — `onbNextPlan` 이 부른다. 하네스(`test-t1341-own-house`)가 제품 글자 그대로 부른다.
+function onbOwnPlan(I, s, K) {
+  const O = s && s.own;
+  if (!O || !O.cost) return null;
+  if (I.myHome) return null;
+  const off = I.off || { x: 0, y: 0 };
+  const mine = I.myClaim || null;
+  if (mine) {
+    return { stage: 'build', item: '움집 짓기', target: mine.inside ? null : { x: mine.x, y: mine.y },
+      guide: ['내 터가 생겼습니다. 터 안에서 건축 판 ', K('Shift B'), ' 에서 움집 터파기를 고르십시오.'] };
+  }
+  const inv = I.inv || {};
+  const w = inv.wood | 0, st = inv.stone | 0, cw = O.cost.wood | 0, cs = O.cost.stone | 0;
+  if (w >= cw && st >= cs) {
+    return { stage: 'claim', item: '집터 잡기', btn: 'claim', target: null,
+      guide: ['재료가 다 모였습니다. 마을 영토 밖 빈 들에서 집터 잡기 단추를 누르거나 ', K('C'), ' 키로 선 자리에 터를 잡으십시오. 영토 안은 그 마을이 받아들인 사람만 잡을 수 있습니다.'] };
+  }
+  const wood = w < cw, R = wood ? O.tree : O.rock;
+  return { stage: 'gather', item: '집터 재료 모으기', noun: wood ? '나무' : '바위',
+    target: R ? { x: R.x + off.x, y: R.y + off.y } : null,
+    guide: [`집터를 잡으려면 나무 ${cw}개와 돌 ${cs}개가 있어야 합니다. 지금 나무 ${w}개와 돌 ${st}개가 있습니다. ${wood ? '나무 곁에서 ' : '바위 곁에서 '}`, K('E'), wood ? ' 키로 나무를 베십시오.' : ' 키로 돌을 캐십시오.'] };
+}
+// ★[T1341] 내 개인 사유지(아무 데나 · 가장 가까운 것) · 내 움집(터 · 완공) — 클라가 이미 받은 사유지 · 건물을 읽기만 한다
+function onbMyClaim(c, off, me) {
+  if (!c || !c.claims || !me) return null;
+  const who = (typeof myPlayerId !== 'undefined' && myPlayerId) || (typeof myUsername !== 'undefined' && myUsername) || null;
+  if (!who) return null;
+  let best = null, bd = Infinity;
+  for (const cl of c.claims.values()) {
+    if (!cl || cl.ownerPid !== who || cl.kind !== 'personal') continue;
+    const x0 = cl.x + off.x, y0 = cl.y + off.y, cx = x0 + cl.w / 2, cy = y0 + cl.h / 2, d = Math.hypot(cx - me.x, cy - me.y);
+    if (d < bd) { bd = d; best = { x: cx, y: cy, inside: me.x >= x0 && me.x < x0 + cl.w && me.y >= y0 && me.y < y0 + cl.h }; }
+  }
+  return best;
+}
+function onbMyHome(c) {
+  if (!c || !c.buildings) return false;
+  const who = (typeof myPlayerId !== 'undefined' && myPlayerId) || (typeof myUsername !== 'undefined' && myUsername) || null;
+  if (!who) return false;
+  for (const b of c.buildings.values()) if (b && (b.type === 'hut_site' || b.type === 'hut') && (((b.data && b.data.owner) || b.ownerId) === who)) return true;
+  return false;
 }
 // ★[T1086] 빈터 안 제 개인 사유지(첫 칸) — 클라가 이미 받은 사유지(`claim_added` · 존 로컬)를 읽기만 한다. { x, y 절대 중심, inside } | null
 function onbMyLot(c, off, me) {
@@ -583,13 +633,20 @@ function onbNextPlan(I) {
   if (here) place = `${here.name} 마을 안`;
   else if (inLot && homeName) place = `${homeName} ${arr && arr.kind === 'dock' ? '나루터' : '어귀'}`;
   else if (homeName) place = `${homeName} 마을 밖`;
-  let p = onbToolPlan(I) || onbJoinPlan(I, s, lot, inLot, K);   // ★[T1120] 서버가 거절한 막힘이 안 풀렸으면 그것이 맨 먼저(끔 · 막힘 없음 = null) · ★[T1086] 켬이면 가입 · 터 잡기 · 집 짓기가 먼저 선다(끔 · 해당 없음 = null)
+  let p = onbToolPlan(I) || onbJoinPlan(I, s, lot, inLot, K) || onbOwnPlan(I, s, K);   // ★[T1341] 켬이면 제 집 줄기가 대본 앞(끔 · 움집이 섰음 = null)   // ★[T1120] 서버가 거절한 막힘이 안 풀렸으면 그것이 맨 먼저(끔 · 막힘 없음 = null) · ★[T1086] 켬이면 가입 · 터 잡기 · 집 짓기가 먼저 선다(끔 · 해당 없음 = null)
   if (p) {
     // ★[T1086] 위에서 골랐다 — 종전 차례를 안 탄다
   } else if (s.lotOk) {
     p = inLot
       ? { stage: 'build', item: '내 집 짓기', guide: ['여기가 빈터입니다. ', K('C'), ' 키로 땅을 걸고 건축 판 ', K('Shift B'), ' 에서 움집 터파기를 고르십시오.'], target: null }
       : { stage: 'lot', item: '빈터로 가기', guide: ['촌장이 어귀 빈터를 내어 주었습니다. 화살표 쪽으로 가면 빈터입니다.'], target: lot };
+  } else if (s.own && (s.firstDone || s.own.recog)) {
+    //   ★[T1341] 켬 — 의뢰는 받아들임만 올린다(갚음 0). 문턱 = 서버 인정 문턱(`own.need`) · 다음에 열리는 것 = 영토 안 집터(인정 구성원)
+    const left = Math.max(0, (s.own.need | 0) - (s.contrib | 0));
+    p = { stage: 'more', item: '마을 부탁 들어주기',
+      guide: [s.own.recog ? `받아들임 ${s.contrib | 0}. 이 마을이 구성원으로 인정했습니다. 영토 안에도 집터를 잡을 수 있습니다. 게시판은 마을 한복판에서 `
+        : `받아들임 ${s.contrib | 0}. 부탁을 ${left}건 더 채우면 구성원으로 인정되어 영토 안에도 집터를 잡을 수 있습니다. 부탁을 들어주어도 갚는 것은 없습니다. 게시판은 마을 한복판에서 `, K('Shift G'), ' 키로 봅니다.'],
+      target: home, gate: s.vid };
   } else if (s.firstDone) {
     const left = Math.max(0, (s.need | 0) - (s.contrib | 0));
     p = { stage: 'more', item: '게시판 의뢰 하기',
@@ -651,6 +708,7 @@ function onbWordsApply(I, p, s, arr, homeName, off) {
   if (p.stage === 'rest') noun = '쉼터';
   else if (p.stage === 'lot' || p.stage === 'claim') noun = '빈터';
   else if (p.stage === 'build') noun = '내 터';
+  else if (p.stage === 'gather' && p.noun) noun = p.noun;   // ★[T1341] 집터 재료 — 나무 · 바위
   else { const n = (p.gate != null ? vname(p.gate) : '') || homeName; noun = n ? `${n} 마을` : '마을'; }
   const w = onbWordsWhere(I, noun, p.target);
   p.where = w;
@@ -686,6 +744,11 @@ function onbNextInputs() {
     inv: (typeof inventory !== 'undefined' && inventory) ? { wood: inventory.wood | 0, stone: inventory.stone | 0 } : null,
     myLot: onbMyLot(c, { x: (c && c.meta && c.meta.worldOffsetX) || 0, y: (c && c.meta && c.meta.worldOffsetY) || 0 },
       (typeof myAbsPredicted !== 'undefined' && myAbsPredicted) ? myAbsPredicted : null),
+    // ★[T1341] 켬(온보딩 상태 `own` 칸)일 때만 — 내 개인 사유지(아무 데나) · 내 움집(터 · 완공)
+    ...((onbState && onbState.own) ? {
+      myClaim: onbMyClaim(c, { x: (c && c.meta && c.meta.worldOffsetX) || 0, y: (c && c.meta && c.meta.worldOffsetY) || 0 },
+        (typeof myAbsPredicted !== 'undefined' && myAbsPredicted) ? myAbsPredicted : null),
+      myHome: onbMyHome(c) } : {}),
     // ★[T1120] 다음 막힘 — 도구 문 표(welcome) · 레시피 · 짐 · 손 도구(가진 것 · 든 것) · 작업대 장비 칸 · 자연물 동사 이름(전부 이미 받은 것 · 읽기만)
     toolCfg: (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.nextTool) || null,
     recipes: (typeof recipes !== 'undefined' && recipes) || null,

@@ -10,6 +10,7 @@
 //   ⓓ 새로고침 재접속(게스트 열쇠) — 다시 지형 0(켬)
 // 실행: node scripts/e2e-t1163-welcome-sig.js [--off] [--shots <dir>]   (--off = 손잡이 끔 대조판)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

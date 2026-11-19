@@ -1,0 +1,93 @@
+== D1-winter-frozen (e2e-winter.js) RC=1
+  ✗ ③ 전제: 게임일이 가을 첫날(옛 공표일)과 겨울 첫날(옛 판정일)을 실제로 지났다(달력 정본)  day 49 → 187 · 가을 첫날 184 · 겨울 첫날 275 · 게시판 220회 · 게임일 49 → 187(목표 277) · 158.9초(본�
+  ✗ ④ ★가을 한복판에 연 게시판 **판**의 머리 자리가 비어 있다(`.bp-head` 0 — 그린 화면)  null · ★멈춘 시계 — 게임일 49 → 187(목표 277) · 158.9초(본문 98.7초) · 2.294일/초 · stalled
+=== 17건 중 PASS 15 · FAIL 2 ===
+1
+== D2-winter-slow (_bait_winter_cap.js) RC=75
+  ⚠ 유보 — ③ 전제: 게임일이 가을 첫날(옛 공표일)과 겨울 첫날(옛 판정일)을 실제로 지났다(달력 정본)  day 41 → 58 · 가을 첫날 184 · 겨울 첫날 275 · 게시판 16회 · 게임일 41 → 57(목표 277) · 20.2�
+  ⚠ 유보 — ④ ★가을 한복판에 연 게시판 **판**의 머리 자리가 비어 있다(`.bp-head` 0 — 그린 화면)  null · 판이 느림(빨강 아님) — 게임일 41 → 57(목표 277) · 20.2초(본문 15.7초) · 3.572일/초 · slow
+  ⚠ 유보 — ⑤ 전제: 가을에 성한 곡식을 손에 쥐고 냈다(거절 까닭이 "상했다"가 아니다 — 겨울 갈래를 잰다)  null · 판이 느림(빨강 아님) — 게임일 41 → 57(목표 277) · 20.2초(본문 15.7초) · 3.572일
+  ⚠ 유보 — ⑤b ★곡식 의뢰가 없으면 납품으로 안 받는다("그런 의뢰가 없다" — 장부 정본) — 겨울 몫 갈래 0(손의 곡식 그대로)  null · 판이 느림(빨강 아님) — 게임일 41 → 57(목표 277) · 20.2초(�
+=== 13건 중 PASS 13 · FAIL 0 ===
+D3old-in
+D3new-in
+== D3-rack-old (_bait_rack_old.js) RC=1
+  ✗ ⓔ 끔·순간 — 끔: 화면 "나오면" = 넣은 신선도(종전)  0.999917
+=== 결과: 49 PASS / 1 FAIL ===
+== D3-rack-new (_bait_rack_new.js) RC=0
+=== 결과: 50 PASS / 0 FAIL ===
+== D4-oseok-lowcon (e2e-oseok-all.js) RC=1
+  ✗ ② 가방 판 안 글자 18px 아래 0  19마디 · 가장 작은 10px「0」
+  ✗ ② 알림 판 글자 대비 ≥ 4.5(AA) — 사진  1.46
+=== 결과: 49 통과 / 2 실패 ===
+== D5-oseok-late-old (_bait_oseok_old.js) RC=1
+  ✗ ② 로비 판 안 글자 18px 아래 0  45마디 · 가장 작은 10px「2곳 · 이방인 환영 2곳」
+  ✗ ② 가방 판 안 글자 18px 아래 0  19마디 · 가장 작은 10px「0」
+  ✗ ② 제작 판 안 글자 18px 아래 0  68마디 · 가장 작은 11px「자갈 0/2」
+=== 결과: 48 통과 / 3 실패 ===
+== D5-oseok-late-new (e2e-oseok-all.js) RC=75
+  ⚠ 유보 — ② 가방을 연 동안 프레임 = 닫힘과 같은 띠(p50)  33.3 ↔ 16.7 · 다시 잰 판 열림 16.7 ↔ 닫힘 33.3 — 상자가 흔들렸다(기계 의존 · 빨강 아님)
+=== 결과: 50 통과 / 0 실패 ===
+== D6-oseok-nofloor (e2e-oseok-all.js) RC=1
+  ✗ ② 로비 판 안 글자 18px 아래 0  45마디 · 가장 작은 10px「처음 오셨거나 손님이면 골라 주십」
+  ✗ ② HUD 위쪽 줄 판 안 글자 18px 아래 0  6마디 · 가장 작은 12px「새벌」
+  ✗ ② 가방 판 안 글자 18px 아래 0  19마디 · 가장 작은 10px「I」
+  ✗ ② 제작 판 안 글자 18px 아래 0  68마디 · 가장 작은 11px「자갈 0/2」
+  ✗ ② 게시판 판 안 글자 18px 아래 0  20마디 · 가장 작은 10px「Esc」
+=== 결과: 46 통과 / 5 실패 ===
+== D7-oseok-heavy (e2e-oseok-all.js) RC=1
+  ✗ ② 가방을 연 동안 프레임 = 닫힘과 같은 띠(p50)  50 ↔ 16.7 · 다시 잰 판도 넘음(열림 50 ↔ 닫힘 16.7) — 가방이 무겁다
+=== 결과: 50 통과 / 1 실패 ===
+== D8-weather-indoor (e2e-weather.js) RC=1
+  ✗ ★★비를 최대로 켜도 실내면 **한 획도 안 그린다**  {"on":true,"kind":"rain","n":1230,"tilt":0.42,"indoor":false,"precip":1,"blizzard":false}
+=== PASS 31 / FAIL 1 ===
+== D10-events-nofar (e2e-events.js) RC=1
+  ✓ 납품 결과가 화면 알림으로 돌아왔다
+  ✗ 멀리서 게시판을 요청하면 서버가 거절한다(거리 게이트는 서버가 판정)  "마을이 하루 장부를 닫는 중입니다. 곧 처리됩니다."
+=== 60건 중 PASS 59 · FAIL 1 ===
+== P11-soa-old (_bait_soa_old.js) RC=0
+⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동일 [T421]
+=== 결과: 286 PASS / 0 FAIL ===
+== P11-soa-new (test-move-soa.js) RC=0
+⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동일 [T421]
+=== 결과: 287 PASS / 0 FAIL ===
+== D11-soa-stale (test-move-soa.js) RC=1
+  ✗ ⑧ ★새 수 0 — 만료는 **있던 5000ms** 그대로다(운영 시계 `_t1295Stale` = 5000 · 경계 5000 안 묻고 5001 묻는다)  stale 5001 · 5000 false · 5001 false
+⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동일 [T421]
+=== 결과: 286 PASS / 1 FAIL ===
+== P12-t1180-old (_bait_t1180_old.js) RC=1
+PASS 22 / FAIL 1
+== P12-t1180-new (test-t1180-produce-defaults.js) RC=0
+PASS 23 / FAIL 0
+== D12-t1180-null (test-t1180-produce-defaults.js) RC=1
+PASS 22 / FAIL 1
+ M scripts/e2e-weather.js
+BAIT-DONE
+
+## 둘째 판(P11 닻 고침 · D8 맑은 잡음 뒤 · 하네스 고친 뒤 평판)
+P11-in
+== P11-soa-old (_bait_soa_old.js) RC=1
+⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동일 [T421]
+  ✗ ㉓ⓓ 이동 문 — 몸통 글자 그대로(`do … while (false)` · `continue` 여덟 = 이 몸 끝 — ★[PM land1074] T1295 `_t1295Walk` 갈래 하나 더) · 끔 `for…of` · 켬 `forEach`  3675자
+=== 결과: 285 PASS / 1 FAIL ===
+== P11-soa-new (test-move-soa.js) RC=0
+⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동일 [T421]
+=== 결과: 287 PASS / 0 FAIL ===
+D8-in
+== D8b-weather-indoor (e2e-weather.js) RC=1
+  ✗ ★★비를 최대로 켜도 실내면 **한 획도 안 그린다**  {"on":true,"kind":"rain","n":1230,"tilt":0.42,"indoor":false,"precip":1,"blizzard":false}
+  ✗ ★화면도 그대로다 — 비 켠 실내 vs 맑은 실내가 잡음 안  효과 21971px(시간이 바꾼 자리 625px 밖 · 지우기 전 21982px) · 잡음(맑음 붙여 찍음) 0px · 참고 비 켠 두 장 42937px
+  ✗ ★프레임 한 장에서 날씨가 차지하는 몫이 1/4 아래  43% · 같은 조건 잡음 폭 ±13%
+=== PASS 29 / FAIL 3 ===
+== W-normal (e2e-weather.js) RC=0
+  ✓ ★화면도 그대로다 — 비 켠 실내 vs 맑은 실내가 잡음 안  효과 2px(시간이 바꾼 자리 625px 밖 · 지우기 전 134px) · 잡음(맑음 붙여 찍음) 0px · 참고 비 켠 두 장 0px
+=== PASS 32 / FAIL 0 ===
+== O-normal-1 (e2e-oseok-all.js) RC=0
+=== 결과: 51 통과 / 0 실패 ===
+== O-normal-2 (e2e-oseok-all.js) RC=0
+=== 결과: 51 통과 / 0 실패 ===
+== O-normal-3 (e2e-oseok-all.js) RC=0
+=== 결과: 51 통과 / 0 실패 ===
+ M scripts/e2e-oseok-all.js
+ M scripts/e2e-weather.js
+BAIT2-DONE

@@ -19,6 +19,7 @@
 'use strict';
 // ★[T1208-K1 2026-11-07] 이 자는 나무꾼 행위(T325)를 잰다 — land1049 가 켠 `T1197_MEAL_BODY`(몸 끼니)는 이 자의 몸 판(`__labProbe` · 세계 시계 없음 — `state.world` null)에서
 //   `npcLifeTick` → `_t1197BodyMeal` → `_t1197Ix` 가 `state.world.day` 를 읽다 죽었다(TypeError · `=0` 이면 초록 · main 초록 — 제품 쪽 가드 비대칭은 보고 T1208-K1). 부르는 쪽이 값을 주면 그 값이 먼저.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 if (process.env.T1197_MEAL_BODY == null) process.env.T1197_MEAL_BODY = '0';
 process.env.T449_BODY_DAY = '0';
 process.env.T491_BATCH_FROM_BODY = '0';
@@ -399,7 +400,9 @@ console.log('\n⑩ [T398] 나무꾼의 숲 = 영토 밖 고리');
   ok(/const _needK = \(vil\._t341K == null\) \|\| \(vil\._t341KAt !== C\.key\);/.test(scan)
      && /vil\._t341KAt = C\.key;/.test(scan),
     'ⓑ ★`K` 는 **그 셀 집합의 수**다 — 셀 집합(키)이 바뀐 날에만 다시 잰다(네모는 종전 그대로 첫날 한 번)');
-  ok(!/_t398/.test(VC.replace(/function _t398Box\([\s\S]*?\n\}/, '').replace(/function _t398Cells\([\s\S]*?\n\}/, '').replace(scan, '').replace(/_t398Cells,/, '')),
+  //   ★[PM land1083 · 야간 11-18 빨강] T1340(종료 저장에서 안 싣는 마을 칸 이름 목록)이 `'_t398Box'` · `'_t398C'` 를 **글자열**로 적었다 — 부르는 자리가 아니다.
+  //     칸 이름 글자열 둘만 걷고 잰다(그 밖의 `_t398` — 부름 · 읽기 · 쓰기 — 은 종전대로 문다).
+  ok(!/_t398/.test(VC.replace(/function _t398Box\([\s\S]*?\n\}/, '').replace(/function _t398Cells\([\s\S]*?\n\}/, '').replace(scan, '').replace(/_t398Cells,/, '').replace(/'_t398(?:Box|C)'/g, '')),
     'ⓑ ★`villages.js` 에서 고리를 부르는 자리는 `_t325Scan` **하나**다(다른 자리 무접촉)');
 
   // 정의로 센 답 — 영토에서 체비쇼프 ≤ R · 내 영토 아님 · 남의 영토 아님 · 행 우선

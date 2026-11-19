@@ -18,6 +18,7 @@
 //   ⑩ [T601] 지문 = 해안 꼴 손잡이·띠 배수까지 · 두 자 deps 개울 술어(`T601_RULER_STREAMS`) · 굽기 한 줄 차례·부르기만
 // 실행: node scripts/test-streams.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');

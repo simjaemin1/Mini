@@ -12,6 +12,7 @@
 //     · B 몸 단계가 바뀔 때: `body.stages`(축마다 1~3단계 · 히스테리시스 포함 · 사람이 보는 그 단계)가 바뀐 틱에 저장 · 새 수 0
 //     · C 자리만 10초: 짐승 저장 간격(`saveDirtyMobs` 10초 — 이미 있는 "움직이는 몸의 저장 간격")으로 자리 칸만 — 비교용(새 수는 아니지만 다른 몸의 수를 빌린다)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

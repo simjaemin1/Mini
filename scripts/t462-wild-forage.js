@@ -215,7 +215,7 @@ if (MODE === '--march-real') {
   const END = parseInt(process.argv[6] || '5', 10);
   const DAY = parseInt(process.env.T462_DAY_MS || '480000', 10);
   const DIR = '/tmp/t462'; fs.mkdirSync(DIR, { recursive: true });
-  const SECRET = 't462-' + TAG, CP = 3930 + OFF, ZP = 3940 + OFF;
+  const SECRET = 't462-' + TAG, CP = require('./lib-port').port(3930) + OFF, ZP = require('./lib-port').port(3940) + OFF;
   for (const f of [`${DIR}/m-c-${TAG}.db`, `${DIR}/m-z-${TAG}.db`]) for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} }
   const logf = `${DIR}/m-${TAG}.log`, fd = fs.openSync(logf, 'w');
   const c = spawn(process.execPath, [path.join(SR, 'server/central.js')], { cwd: SR, stdio: 'ignore',

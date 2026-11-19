@@ -60,12 +60,12 @@ async function live(tag, { secs, bait, port }) {
   const res = { at: new Date().toISOString(), tpl: TPL, secs: SECS, baitSecs: BSECS };
   if (!TPL || !fs.existsSync(TPL)) { ok(false, '틀 DB 가 없다', TPL); console.log(`\nt1144-witness ${pass}/${fail}`); process.exit(1); }
   console.log('ⓐ 산 판 — verify(사건 셋 · 지난 답 ↔ 다시 낸 답)');
-  { const S = await live('ver', { secs: SECS, port: 4150 }); res.ver = S;
+  { const S = await live('ver', { secs: SECS, port: require('./lib-port').port(4150) }); res.ver = S;
     ok(!!S && S.vq > 0 && S.vbad === 0, '① 밭 칸 훑기 — 견줌 > 0 · 어긋남 0', S ? `견줌 ${S.vq} · 어긋남 ${S.vbad} · 물음 ${S.ask} · 0 건너뜀 ${S.skip}` : 'null');
     ok(!!S && S.fvq > 0 && S.fvbad === 0, '② 어부 던짐 종 — 지난 답이 있던 던짐 > 0 · 다시 뽑은 종과 다름 0', S ? `던짐 ${S.fq} · 지난 답 ${S.fhit}(${(100 * S.fhit / Math.max(1, S.fq)).toFixed(1)} %) · 견줌 ${S.fvq} · 다름 ${S.fvbad}` : 'null');
     ok(!!S && S.uvq > 0 && S.uvbad === 0, '③ 물린 한 마리 낱값 — 지난 값이 있던 부름 > 0 · 다시 잰 값과 다름 0', S ? `부름 ${S.uq} · 견줌 ${S.uvq} · 다름 ${S.uvbad}` : 'null'); }
   console.log('ⓑ 미끼 — 종 기억이 칸 사건을 빠뜨리면(`T1144_VERIFY_BAIT=sp`) verify 가 문다');
-  { const S = await live('bait-sp', { secs: BSECS, bait: 'sp', port: 4160 }); res.baitSp = S;
+  { const S = await live('bait-sp', { secs: BSECS, bait: 'sp', port: require('./lib-port').port(4160) }); res.baitSp = S;
     ok(!!S && S.fvq > 0 && S.fvbad > 0, '미끼 sp — 다름이 난다', S ? `견줌 ${S.fvq} · 다름 ${S.fvbad}` : 'null'); }
   res.pass = pass; res.fail = fail;
   if (OUT) fs.writeFileSync(OUT, JSON.stringify(res, null, 1));

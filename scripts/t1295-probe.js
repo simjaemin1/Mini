@@ -16,6 +16,8 @@ const ROOT = path.join(__dirname, '..');
     if (f === VS) {
       if (BAIT === 'batch') c = c.replace('const _cut = _t1243On() && _t1243Live();', 'const _cut = false;');
       if (BAIT === 'mine') c = c.replace('const _SW = S.MINE_SWING_MS / t1295S(npc);   // ★[T1316] 한 타', 'const _SW = S.MINE_SWING_MS;   // 미끼 한 타');
+      //   ★[T1326] `T1295_PROBE_BAIT=hunt` = 미끼 — 사냥꾼만 실 초 축으로 되돌린 사본(문에서 사냥꾼을 다시 뺀다 · 걸음 · 두뇌 둘 다 배율 1)
+      if (BAIT === 'hunt') c = c.replace("(npc.simJob !== 'hunter' || T1326_HUNT_CLOCK)", "(npc.simJob !== 'hunter')");
       c += '\nmodule.exports.__t1295ProbeT724 = () => (typeof _probe !== "undefined" && _probe.t724) || null;\n';
     }
     if (f === ZS) { const H = 'function npcStep(npc, dt, now) {'; const i = c.indexOf(H);
@@ -24,6 +26,13 @@ const ROOT = path.join(__dirname, '..');
   };
 }
 const LAB = {};
+//   ★[T1326] 곳간 입구가 받은 몫(재화별) — econ 정본 입구 함수를 감싼 계측(회계 아님) · 몸 몫은 마을 `_t325Deliv`
+const GOT = {};
+try { const E = require(path.join(ROOT, 'sim', 'economy-sim'));
+  for (const [fn, k] of [['woodToGranary', 'wood'], ['fishToGranary', 'fish'], ['forageToGranary', 'forage'], ['huntToGranary', 'hunt']]) {
+    const o = E[fn]; if (typeof o !== 'function') continue;
+    E[fn] = function () { const g = o.apply(this, arguments); if (typeof g === 'number' && g > 0) GOT[k] = +((GOT[k] || 0) + g).toFixed(6); return g; };
+  } } catch (e) {}
 global.__t1295Lab = (npc) => { if (!npc || !npc.simVillageId) return; const k = (npc.simJob || '?') + '|' + (npc._lifeAct || ''); LAB[k] = (LAB[k] || 0) + 1; };
 function dump() {
   try {
@@ -33,6 +42,10 @@ function dump() {
     const o = { day: B.state.world && B.state.world.day, harvN, pop, vils, empty, pick: (B._t1243PStat || {}).pick || 0, reaped: (B._t1243PStat || {}).reaped || 0,
       batchTasks: (B._t1212Rest || {}).batchTasks || 0, batchClear: (B._t1212Rest || {}).batchClear || 0, ghostBatch: (B._t1224Stat || {}).batch || 0,
       cutDays: (B._t1243Stat || {}).cutDays || 0, bodyCells: (B._t1243CStat || {}).bodyCells || 0, walks: (V._t1295Stat || {}).walks || 0, walkPx: Math.round((V._t1295Stat || {}).walkPx || 0),
+      wl: (() => { try { const W = require(path.join(ROOT, 'server', 'wildlife')); const st = W._debug && W._debug.stats; return st ? { deaths: st.deaths, hits: st.hits, spawned: st.spawned } : null; } catch (e) { return null; } })(),
+      hunt: (() => { try { return V.t1195Stat ? V.t1195Stat() : null; } catch (e) { return null; } })(),
+      got: GOT, woodBody: (() => { let w = 0; for (const v of (B.state.villages || [])) w += v._t325Deliv || 0; return +w.toFixed(3); })(),
+      t1202: (() => { const S = V.t1202Stat ? V.t1202Stat() : null; return S ? { roster: S.roster, bodies: S.bodies, wood: S.wood, fish: S.fish, forage: S.forage } : null; })(),
       lab: LAB, mineKg: (() => { const P = V.__t1295ProbeT724 && V.__t1295ProbeT724(); return P ? +P.kg.toFixed(3) : null; })() };
     fs.writeFileSync(OUT, JSON.stringify(o));
   } catch (e) { try { fs.writeFileSync(OUT, JSON.stringify({ err: String(e && e.stack || e).slice(0, 400) })); } catch (_) {} }

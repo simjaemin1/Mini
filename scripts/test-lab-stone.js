@@ -23,6 +23,7 @@
 //   ⑨ 끝 줄 · ㉓ 은 픽스처를 켬 세계에 맞췄다(⑨ 돌 남는 판을 픽스처가 세운다 · ㉓ 인구 120 — 보고 T1222).
 // ★[T1127 2026-11-04] 이 하네스가 재는 것은 굶주림 길(식량 빚 · 보호막) 밖이다 — 판 세계를 T1127 앞(`T1074_FOOD_DEBT=0 T858_NO_SHIELD=0` = 종전 바이트)으로 묶는다.
 //   T1127 이 두 손잡이를 켬 기본으로 바꾼 뒤 이 하네스의 작은 판 세계(인구 · 곳간 · 교역)가 갈려 단언이 빨개졌다(main 에선 초록 · 보고 T1127 §4). 켬 기본 세계에서 같은 단언을 다시 세우는 일은 회부. 부르는 쪽이 값을 주면 그 값이 먼저다.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 if (process.env.T1074_FOOD_DEBT == null) process.env.T1074_FOOD_DEBT = '0';
 if (process.env.T858_NO_SHIELD == null) process.env.T858_NO_SHIELD = '0';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
@@ -451,7 +452,9 @@ console.log('\n㉑ 둘째 화물(T206) — 문 두 자리 · 용량·후보 규�
   //     `_res2` 는 `_picked` 로 잠겨 한 번만 쓰이고, 적재 자리도 `_res2` 하나뿐이다.
   //     기전이 아니라 **불변식**을 잠근다(런타임 `third` 검사는 ㉒·㉕ 에 있다).
   {
-    const seg = V2C.slice(V2C.indexOf('for (const c2 of candidates)'), V2C.indexOf('for (const c2 of candidates)') + 1400);
+    //   ★[T1344] 섞어 싣기 함수(`_t1344MixPick` — 모듈 위쪽)도 같은 후보 고리 글자를 가진다 → 둘째 화물(T206) 고리는 `cargoTwoOn` 갈래 안의 그것으로 찾는다.
+    const _i206 = V2C.indexOf('for (const c2 of candidates)', V2C.indexOf('if (cargoTwoOn(world))'));
+    const seg = V2C.slice(_i206, _i206 + 1400);
     ok(/if \(!_picked\) \{/.test(seg) && (seg.match(/_res2 = c2\.res/g) || []).length === 1,
       '㉑ ★★★**셋째 이상 0** — 둘째 지정이 `_picked` 로 잠긴 **한 자리**뿐이다');
     ok(!/_res3|giveRes3|_n3\b/.test(V2C), '㉑ ★셋째 화물 변수 자체가 **코드에 없다**');

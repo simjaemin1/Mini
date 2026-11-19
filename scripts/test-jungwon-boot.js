@@ -39,7 +39,7 @@ function portFree(port) {
   });
 }
 async function pickPorts() {
-  const base = 36000 + ((process.pid * 2) % 6000);
+  const base = require('./lib-port').ports(2, 36000);   // [T1288] 장부가 쌍을 쥔다
   for (let i = 0; i < 500; i++) {
     const c = base + i * 2, z = c + 1;
     if (await portFree(c) && await portFree(z)) return [c, z];

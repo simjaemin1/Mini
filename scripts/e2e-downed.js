@@ -20,7 +20,9 @@
 //
 // 실행: node scripts/e2e-downed.js [--headed]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -34,6 +36,9 @@ const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-downed-shots';
 fs.mkdirSync(SHOTS, { recursive: true });
 const HEADED = process.argv.includes('--headed');
+// ★[T1310 ①] `T1310_E2E_SKEW_MS`(ms · 기본 0) — 브라우저 시계만 옮긴다(플레이어 컴퓨터 시계가 틀린 판 · 정본 `lib-phase.browserSkew`).
+//   구조창 화살의 수명(`at + windowMs`)은 서버가 찍은 시각이라 클라가 서버 시각 축으로 봐야 한다 — 클라 시계가 3분 넘게 앞서면 종전엔 그리자마자 사라졌다.
+const SKEW_MS = +process.env.T1310_E2E_SKEW_MS || 0;
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2e-downed-central-${process.pid}.db`, ZDB = `/tmp/e2e-downed-zone-${process.pid}.db`;
 for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
@@ -101,6 +106,15 @@ async function waitHttp(url, tries = 600) {
   async function newClient(tag) {
     // ★각자 **다른 신원**이어야 한다 — 같은 컨텍스트를 쓰면 게스트 토큰을 공유해 한 몸이 된다.
     const ctx = await browser.newContext({ viewport: { width: 1100, height: 720 } });
+    { const js = require('./lib-phase').browserSkew(SKEW_MS); if (js) await ctx.addInitScript(js); }   // ★[T1310 ①] 브라우저 시계 어긋남 판(선택)
+    //   ★[T1310 미끼] `T1310_BAIT=off0` — 받은 클라 글자에서 `srvNow()` 를 오프셋 0(클라 벽시계)으로 박은 사본으로 바꿔 싣는다(파일 무변 · 이 판의 브라우저만).
+    //     어긋남 판(+5분)에서 화살 절이 빨강이어야 한다 — 시계 보정이 실제로 일한다는 반례.
+    if (process.env.T1310_BAIT === 'off0') await ctx.route('**/client/20-r2-visibility.js*', async (route) => {
+      const r = await route.fetch(); let t = await r.text(); const n = t.split('function srvNow() {').length - 1;
+      if (n !== 1) throw new Error('[T1310 미끼] srvNow 자리 ' + n + '곳');
+      t = t.replace('function srvNow() {', 'function srvNow() { return Date.now();');
+      await route.fulfill({ response: r, body: t, headers: Object.assign({}, r.headers(), { 'content-length': String(Buffer.byteLength(t)) }) });
+    });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => allErrs.push(`[${tag}] ` + String(e.message).slice(0, 160)));
     await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
@@ -149,8 +163,8 @@ async function waitHttp(url, tries = 600) {
   // ★못 간 이유는 **게임이 말해 준다**(`teleport_debug` 는 도착·거절을 공지로 답한다).
   //   추측으로 좌표를 흔드는 대신 그 공지를 찍는다.
   const warpWhy = async (pg) => (await pg.evaluate(
-    () => (window.__notices || []).filter((t) => /텔레포트|강·바다/.test(t)).slice(-2)));
-  const notices = (pg) => pg.evaluate(() => (window.__notices || []).slice(-40));
+    () => (window.__notices || []).filter((t) => /텔레포트|강·바다/.test(t)).slice(-2)));   // @notice-ok 진단(판정 밖) — 못 간 까닭을 찍는다
+  const notices = (pg) => pg.evaluate(() => (window.__notices || []).slice(-40));   // @notice-ok 고리 전부(40칸 = 클라 상한 · 자름 0)
   // ★채팅 명령 — **이미 있는 통로**로 보낸다(새 창구 0 · 서버가 `/` 를 보고 가른다)
   const chat = (pg, text) => pg.evaluate((t) => window.__sendPrimary({ type: 'chat', text: t }), text);
   const clearNotices = (pg) => pg.evaluate(() => { window.__notices = []; });
@@ -170,9 +184,10 @@ async function waitHttp(url, tries = 600) {
   const V = rows[0], vx = V.cx * 32 + 16, vy = V.cy * 32 + 16;
   {
     await clearNotices(A);
+    const tgW = await NM.mark(A);
     await A.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [vx, vy]);
-    await sleep(1500);
-    const nz = (await A.evaluate(() => (window.__notices || []).slice(-8))).filter((t) => /텔레포트/.test(t));   // ★[T78] 접두 이모지는 경계가 걷는다 — 말로 찾는다
+    const nz = (await NM.waitSince(A, tgW, (l) => l.some((t) => /텔레포트/.test(t)), { capMs: 15000 })).list.filter((t) => /텔레포트/.test(t));   // [T1367] 종전 1.5초 뒤 마지막 여덟 줄
+    await sleep(300);   // 좌표가 판에 앉을 틈(종전 1.5초 안에 들던 몫)   // ★[T78] 접두 이모지는 경계가 걷는다 — 말로 찾는다
     const m = nz.length ? String(nz[nz.length - 1]).match(/\((-?\d+),\s*(-?\d+)\)/) : null;
     const a0 = await rawAbs(A);
     if (m && a0) OFF = { x: a0.x - (+m[1]), y: a0.y - (+m[2]) };

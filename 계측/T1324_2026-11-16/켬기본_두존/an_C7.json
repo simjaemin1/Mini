@@ -1,0 +1,52 @@
+{
+ "tag": "C7",
+ "meta": {
+  "seed": 7,
+  "days": {
+   "hanbando": 31,
+   "nippon": 31
+  },
+  "Y": 17840,
+  "botCross": 9,
+  "restart": null,
+  "wallS": 314
+ },
+ "beasts": {
+  "keys": 22,
+  "crossed": 18,
+  "by": {
+   "wild": 6,
+   "tame": 12
+  },
+  "byType": {
+   "horse": 12,
+   "deer": 5,
+   "wild_boar": 1
+  },
+  "dir": {
+   "hanbando→nippon": 11,
+   "nippon→hanbando": 7
+  },
+  "dupAnswered": 0,
+  "dupIn": 0,
+  "unhide": 4,
+  "unhideWhy": {
+   "fauna": 4
+  },
+  "keepN": 0,
+  "bootHide": 0
+ },
+ "canon": {
+  "twoIn": 0,
+  "inAndUnhide": 0,
+  "outNoIn": 0,
+  "hung": 0
+ },
+ "sum": {
+  "pairs": 6,
+  "base": 930,
+  "mismatch": 0,
+  "worst": 0,
+  "skippedNearEvent": 28
+ }
+}

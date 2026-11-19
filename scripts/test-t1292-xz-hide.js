@@ -18,6 +18,7 @@
 //   ③ 미끼(아이 안 · 파일 무변) — 숨김을 뺀 사본 → ① 보내는 순간 빨강 · 답 없음에 숨긴 채 다시 밀기를 뺀 사본 → ⓑ 빨강(답 없음에 드러난다) ·
 //      확실한 실패 가름을 뺀 사본 → ⓒ 빨강(드러나지 않고 숨은 채 다시 민다)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path'), fs = require('fs'), Module = require('module');
 const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');

@@ -255,12 +255,12 @@ async function captiveSheet(pg, pal) {
 
 (async () => {
   const { chromium } = require('playwright');
-  await new Promise((r) => srv.listen(3099, r));
+  await new Promise((r) => srv.listen(require('./lib-port').port(3099), r));
   const br = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
   const pg = await br.newPage();
   pg.on('pageerror', (e) => console.error('PAGEERR', e.message));
   await pg.route('**/__contact', (r) => r.fulfill({ contentType: 'text/html', body: PAGE }));
-  await pg.goto('http://127.0.0.1:3099/__contact');
+  await pg.goto(`http://127.0.0.1:${require('./lib-port').port(3099)}/__contact`);
   await pg.waitForFunction('window.__ready === true || window.__err', null, { timeout: 60000 });
   const err = await pg.evaluate('window.__err || null');
   if (err) throw new Error(err);

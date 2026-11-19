@@ -11,6 +11,7 @@
 //   자리 넷(광산2 가운데 · 산 하네스 자리 둘 · 어촌1 가운데) × 판 둘(끔 = 주소 없음 · 켬 = `?T1193_HIDPI=1`) — 화면 배율 2(1100×720 CSS).
 // 실행: [E2E_BROWSER=webkit] node scripts/t1193-blur-table.js [--out /tmp/t1193/blur] [--sec 15] [--headed(WebKit = GTK · xvfb-run 밑에서)]
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

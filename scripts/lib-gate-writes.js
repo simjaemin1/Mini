@@ -9,7 +9,7 @@ const fs = require('fs'), path = require('path');
 const FIELDS = ['canadiaVillage', 'nextDecisionAt', 'simEvacUntil', 'behavior', 'npcHomeX', 'npcHomeY', 'npcBedX', 'npcBedY', 'simLonOff', '_t720', 'targetX', 'targetY', 'gatherTarget', 'harvestTarget',
   'canadiaTask', 'path', '_t791P', '_t791Pn', '_t791Px', '_t791Py', 'pathIndex', 'x', 'y', '_t670TkX', '_t670TkY', '_t670Tk', '_pathFor', '_stuckN', 'vx', 'vy', 'hp', '_stuckPos', 'simVillageId', 'simJob', 'floor', 'onStairId'];
 const STEP_ROOTS = new Set(['npcStep', 'decideNpcBehavior', 'npcLifeTick', 'detectStuck', 'unstuckNpc', 'followNpcPath', 'computeNpcPath', '_t1145Detect', '_t1145Follow', '_t1140Detect', '_t670Stuck', '_t1145Stuck', '_t791Mir', '_desTimed']);
-const TOUCH = /\b(_t1322Touch|_t1323Touch|t1322Touch)\b/;
+const TOUCH = /\b(_t1322Touch|_t1323Touch|t1322Touch|_t1322HpTouch)\b/;
 const W = new RegExp(`\\b(npc|p|b|body|pp|ep|bd|nb|q2)\\.(${FIELDS.join('|')})\\s*(=(?!=)|\\+\\+|--|\\+=|-=)`, 'g');
 const FN = /^(?:async\s+)?function\s+([\w$]+)\s*\(/;
 const NC = (t) => t.replace(/(?<![:'"\\])\/\/[^\n]*/g, '');

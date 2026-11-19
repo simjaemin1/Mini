@@ -460,7 +460,7 @@
 // @@moved-end:13719
 // @@moved-begin:14155
   setInterval(() => {
-    const now = Date.now();
+    const now = Date.now();  // [T1310 클라 시계] 패널 다시 그리기 간격
     // 인벤: 1초에 한 번 (item 변경 자주)
     if (invOpen) renderInvPanel(document.getElementById('invBody'));
     // 사이드 패널: 5초에 한 번만 (사용자 input fetch에 의존하니까)

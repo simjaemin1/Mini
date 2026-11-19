@@ -11,6 +11,7 @@
 //   ⓔ 미끼 — 켬 갈래의 x↔y 칸을 바꾸면 · 타이머 문턱을 1501 로 바꾸면 문다
 // 실행: node scripts/t1140-witness.js [ref=2ddf789a]
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

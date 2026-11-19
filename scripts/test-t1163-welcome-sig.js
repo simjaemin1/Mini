@@ -15,6 +15,7 @@
 //   ⓢ 소스: 99-main 이 setHardcoded **앞**에 센다 · 30-n-net 주소 `hf` · hfHit 갈래 · index.html 이 terrain-sig.js 를 싣는다 · zone.js 가 같은 파일을 require
 // 실행: node scripts/test-t1163-welcome-sig.js   (존 기동 둘 · 약 1 ~ 2분)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

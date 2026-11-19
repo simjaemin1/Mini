@@ -16,7 +16,7 @@ const ROOT = path.join(__dirname, '..');
 const [SRC, ZONE, WORK] = process.argv.slice(2);
 if (!SRC || !ZONE || !WORK) { console.error('쓰는 법: <db> <zone> <work>'); process.exit(2); }
 fs.mkdirSync(WORK, { recursive: true });
-const CPORT = 3810, ZPORT = 3820;
+const CPORT = require('./lib-port').port(3810), ZPORT = require('./lib-port').port(3820);   // [T1288] 장부에서(종전 3810 · 3820 고정)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
 function boot(file, env, tag) {

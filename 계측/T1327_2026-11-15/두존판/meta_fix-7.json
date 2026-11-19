@@ -1,0 +1,32 @@
+{
+ "tag": "fix-7",
+ "seed": 7,
+ "DAYS": 30,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "zones": [
+  "hanbando",
+  "nippon"
+ ],
+ "env": {
+  "T1311_ALL": "1",
+  "T1320_ROCK_PATH": "1",
+  "T1327_ROUTE_FIX": "1",
+  "T699_ROUTE_CACHE": "/tmp/t1327/rc"
+ },
+ "start": "2026-11-15T16:49:47.024Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "end": "2026-11-15T17:15:22.276Z",
+ "wallS": 1535,
+ "days": {
+  "hanbando": 30,
+  "nippon": 30
+ },
+ "bars": 184,
+ "H": 1767225692000,
+ "done": true,
+ "dead": []
+}

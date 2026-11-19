@@ -381,6 +381,14 @@ function pricesFresh(econV2, v) { return econV2.computeShadowPrices(v); }
 //   정본에 그 함수가 없으면(옛 엔진 · 모의 econ) 전 표 — 값은 같다. 여기서도 가격을 계산하지 않는다.
 //   손잡이 `T1161_TWO_PRICES=0` = 종전(전 표 · 같은 값 대조용).
 const T1161_TWO_PRICES = !(typeof process !== 'undefined' && process.env && process.env.T1161_TWO_PRICES === '0');
+// ★★[T1341 2026-11-16 · ★재민 11-16 "마을이 정말 필요한 물건은 구해오면 그냥 받아들임 수치가 오르는 것뿐이고 보상 없음"]
+//   손잡이 `T1341_OWN_HOUSE`(끔 기본 · `=1` 켬 · 판정 재민). 켬이면 **마을 의뢰(부탁) 전부** 갚음이 0 이다 — 마을이 그냥 받는다.
+//   ⓐ 납품(`deliverToVillage`) — 몫 확정 · 실물 이동(짐 → 곳간)은 그대로 · 갚음 확인(①b) · 갚음 지급(③)만 건너뛴다(곳간에서 나가는 것 0 · 짐에 들어오는 것 0).
+//   ⓑ 게시판 한 줄(`boardLine`) — "…개를 구해다 주면 고맙겠습니다."(갚는 말 0).
+//   ⚠의뢰를 **거는 문**(`makeRequest` — 갚을 잉여가 있어야 건다 · B-1)과 하루 재검증(`revalidate`)은 그대로다 — 그 값이 거래소의 "보상으로 잠긴 품목"(`trade.js` ·
+//     `villages.js` 시세 조정)에 같은 줄로 걸려 있어 여기서 흔들면 교역이 바뀐다(카드 ③ "교역은 무접촉"). 사람 0 판이면 켬 · 끔이 같은 까닭이 이것이다.
+//     걸린 약속 값(`rewItem` · `rewQty`)은 장부 안에만 남고 화면 · 납품 어디에도 안 나간다(`villages.js villageBoard` 가 켬이면 비운다) — 뜻을 옮길지는 회부.
+const T1341_OWN_HOUSE = !!(typeof process !== 'undefined' && process.env && process.env.T1341_OWN_HOUSE === '1');
 function pricesFreshOf(econV2, v, keys) {
   return (T1161_TWO_PRICES && typeof econV2.shadowPricesOf === 'function') ? econV2.shadowPricesOf(v, keys) : econV2.computeShadowPrices(v);
 }
@@ -458,6 +466,10 @@ function createLedger(opts) {
   const _sg = (econV2 && typeof econV2.subsGuard === 'function') ? econV2.subsGuard : null;
   const _boardEma = (r, e) => ((_sg && _sg(r, 'board')) ? 0 : (+e[r] || 0));
   const DEL = buildDeliverable(o.depositMap);
+  //   ★★[T1368 · 검사 카드 T1354 Q19] 켬(`T1341_OWN_HOUSE`) — 새 사람이 맨손 · 조잡한 도구로 낼 수 있는 econ 품목(플레이어 품목 → econ 대응 정본 `DEL.items`).
+  //     품목 목록은 존이 넘긴다(`o.newbieItems` — 자연물 전리품 정본 `lootOfResource` × 맨손 · 조잡한 도구 거리 + 줍기 차례). 없으면(랩 · 끔) 빈 집합 = 아래 갈래 무동작.
+  const NEWBIE = new Set();
+  if (T1341_OWN_HOUSE && o.newbieItems) { const nb = new Set(o.newbieItems); for (const [econ, items] of DEL.items) if ((items || []).some((it) => nb.has(it))) NEWBIE.add(econ); }
   const onEvent = o.onEvent || null;          // (ev) => void — 영속화 훅(서버가 DB 에 꽂는다)
   const onRequest = o.onRequest || null;      // (req, 'open'|'close') => void
   // ★★[T18] 연대기 영속화 훅 — **사건 링버퍼는 90일이면 잘린다**(`KEEP_DAYS`). 연표는 해를 넘겨 읽는
@@ -935,6 +947,8 @@ function createLedger(opts) {
       for (const [item, req] of [...s.reqs]) {
         const d = s.det.get(item);
         const filled = req.filled >= req.qty;
+        //   ★[T1368] 켬의 "날마다 쓰는 것" 의뢰(`fit: 'daily'` — 아래 ② 끝)는 부족 래치와 무관하다 — 다 채워지거나 그 품목이 남아돌 때(`glut`)만 거둔다(날마다 거두고 다시 거는 되풀이 0 · 끔엔 이 의뢰가 없다).
+        if (req.fit === 'daily' && !filled && !(d && d.glut)) continue;
         if (!d || !d.short || filled) {
           s.reqs.delete(item);
           stats.reqClosed++;
@@ -966,6 +980,32 @@ function createLedger(opts) {
         stats.reqOpened++;
         if (onRequest) { try { onRequest(req, 'open'); } catch (e) {} }
       }
+      //   ★★[T1368 · Q19] 켬 — 새 사람이 낼 수 있는 의뢰가 하나도 안 걸렸으면, 그 마을이 **날마다 실제로 쓰는**(소비EMA > 0) 새 사람 품목 하나를 건다.
+      //     "정말 필요한 것" 안에서만 — 남아도는 품목(`glut` 래치)은 안 건다 · 쉬는 기간(REQ_COOLDOWN)도 그대로 · 양 = 소비EMA × REQ_DAYS(위 거는 문 그대로).
+      //     고르는 차례 = 소비가 가장 큰 것(그 마을이 가장 많이 쓰는 것). 쓰는 것이 없으면 안 건다(지어내지 않는다 — 그때 판은 비고 안내는 "지금은 부탁할 것이 없다").
+      if (NEWBIE.size && ![...s.reqs.keys()].some((k) => NEWBIE.has(k))) {
+        let best = null, be = 0;
+        for (const item of NEWBIE) {
+          if (!DEL.fromEcon.has(item)) continue;
+          const e = +((v._consEMA || {})[item]) || 0;
+          if (!(e > be)) continue;
+          const d = s.det.get(item);
+          if (d && d.glut) continue;
+          if (d && d.reqClosedDay != null && (day - d.reqClosedDay) < cfg.REQ_COOLDOWN) continue;
+          best = item; be = e;
+        }
+        if (best) {
+          if (!prices) prices = priceView(v, day);
+          const req = makeRequest(s, v, best, prices, day);
+          if (req) {
+            req.fit = 'daily';   // 부족 래치가 아니라 날마다 쓰는 것(장부 · 하네스가 가른다)
+            s.reqs.set(best, req);
+            stats.reqOpened++;
+            stats.reqDaily = (stats.reqDaily | 0) + 1;
+            if (onRequest) { try { onRequest(req, 'open'); } catch (e) {} }
+          }
+        }
+      }
     });
   }
 
@@ -981,6 +1021,11 @@ function createLedger(opts) {
     const wantQty = Math.max(1, Math.round(ema * cfg.REQ_DAYS));
     const pWant = +prices[item] || 0;
     if (!(pWant > 0)) return null;
+    //   ★★[T1353 · T1341 회부 2] 켬(`T1341_OWN_HOUSE`) — 갚음이 0 이니 갚을 잉여를 보지 않는다: **마을이 정말 필요한 것이면 건다**
+    //     (부족이 서 있고 · 플레이어가 낼 수 있고 · 쉬는 기간이 지났다 — 위 게시 줄의 문 그대로 · 양 = 소비EMA × REQ_DAYS 그대로).
+    //     약속 칸은 비운다(`rewItem` null · `rewQty` 0) — 그래서 거래소 "보상으로 잠긴 품목"(`trade.js lockedRewards` · 걸린 의뢰의 `rewItem`)이 켬에서 서지 않는다(교역 글자 무접촉).
+    //     하루 재검증(`revalidate`)은 갚을 몫이 0 이라 거두지 않는다. 끔 = 아래 B-1 그대로(바이트 같음).
+    if (T1341_OWN_HOUSE) return { vid: s.vid, item, qty: wantQty, filled: 0, rewItem: null, rewQty: 0, day, fit: 'need' };
     const sto = v.storage || {};
 
     // 후보 잉여 — 플레이어가 **받을 수 있고** 재고·시세가 있는 품목만.
@@ -1337,6 +1382,7 @@ function createLedger(opts) {
 
   return {
     cfg, stats, TYPES,
+    newbieHas: (item) => NEWBIE.has(item),   // ★[T1368] 켬 — 새 사람이 낼 수 있는 econ 품목인가(끔 · 랩 = 늘 거짓)
     prime, scanDay, scanSteps: (world, day, extra) => _scanSteps(world, day, extra), recent, board, claim, unclaim, ringOf, detOf, loadRing, loadRequest,
     // ★[T7] 소문 물리 전파 — 가시성 술어와 그 부속. 사본 금지: 사건을 보는 문은 이것뿐이다.
     visibleEvents, visibleTo, heardDayOf, delayTo, returnBrief,
@@ -1474,6 +1520,7 @@ function newsLine(ev) {
 // 게시판 한 줄 — "무엇을 얼마 가져오면 무엇으로 갚는다"
 function boardLine(req) {
   const remain = (req.remain != null ? req.remain : (req.qty - req.filled));
+  if (T1341_OWN_HOUSE) return `${koRes(req.item)} ${remain}개를 구해다 주면 고맙겠습니다.`;   // ★[T1341] 켬 — 갚는 말 0(머리 손잡이 주석)
   return `${koRes(req.item)} ${remain}개를 가져오면 ${koRes(req.rewItem)} ${req.rewQty}개로 갚습니다.`;
 }
 
@@ -1507,8 +1554,9 @@ function deliverToVillage(a) {
 
   // ①b ★**갚을 수 있는지 먼저 본다.** 물건을 받아 놓고 못 갚으면 그게 사기다.
   //   (게시 시점엔 갚을 수 있었어도 그 사이 마을 재고가 줄 수 있다 — 하루 경계 재검증과 이 줄이 짝이다.)
+  //   ★[T1341] 켬 — 갚음이 없으니 갚을 수 있나도 안 본다(머리 손잡이 주석 · 끔 = 이 줄 그대로).
   const _rewRes = c.rewItem, _rewItem0 = D.toEcon.get(_rewRes);
-  if (c.rew > 0) {
+  if (c.rew > 0 && !T1341_OWN_HOUSE) {
     const have = Math.floor(+((v.storage || {})[_rewRes] || 0));
     if (!_rewItem0 || have < c.rew) {
       ledger.unclaim(vid, item, c.take);
@@ -1531,6 +1579,11 @@ function deliverToVillage(a) {
 
   // ③ 보상 — 마을 잉여를 실제로 덜어 준다(물물. `_cash` 는 쓰지 않는다 — 재민 세금 캐논).
   //   ★**전액 아니면 0**. 위 ①b 가 이미 보장하므로 여기서 깎이는 일은 없다.
+  //   ★[T1341] 켬 — 갚음 0: 곳간에서 덜지 않고 짐에 안 넣는다(마을이 그냥 받는다). 돌려주는 칸도 비운다(받은 것 없음).
+  if (T1341_OWN_HOUSE) {
+    return { ok: true, take: c.take, refused: c.refused, taken: dep.taken, moved: dep.moved,
+      rew: 0, rewRes: null, rewItem: null, done: c.done, req: c.req, noRepay: true };
+  }
   const rewRes = _rewRes, rewPlayerItem = _rewItem0;
   let rewPaid = 0;
   if (rewPlayerItem && c.rew > 0) {
@@ -1554,4 +1607,5 @@ function deliverToVillage(a) {
 module.exports = { createLedger, CFG, TYPES, DEED_TYPES, DEED_FOREIGN, briefLine, boardLine, newsLine, LINE_TYPES: Object.keys(LINES), NEWS_LINE_TYPES: Object.keys(NEWS_LINES), koRes, josa, seasonOf, KO_SEASON,
   blurMag,   // ★[T127] 뭉갬 정본 — 하네스·계측기가 **이 함수**를 부른다(사본 금지)
   yearDaysOf, seasonStartOf, calendarOf, yearOf, yearSpanOf, springYearOf,
-  buildDeliverable, deliverToVillage, pricesOf, pricesFresh, pricesFreshOf, T1161_TWO_PRICES, payableQty };
+  buildDeliverable, deliverToVillage, pricesOf, pricesFresh, pricesFreshOf, T1161_TWO_PRICES, payableQty,
+  T1341_OWN_HOUSE };   // ★[T1341] 의뢰 갚음 0 손잡이(끔 기본) — 온보딩 · 게시판 · 존이 같은 값을 읽는다(사본 0)

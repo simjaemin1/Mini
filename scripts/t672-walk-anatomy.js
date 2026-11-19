@@ -166,7 +166,7 @@ async function run(tag, probe, cut) {
   if (fs.existsSync(out)) { console.log('있음', out); return; }
   const dir = `/tmp/wt-t672-${tag}`;
   const n = makeTree(dir, probe);
-  const CP = 4030, ZP = 4031, SECRET = 't672';
+  const CP = require('./lib-port').port(4030), ZP = require('./lib-port').port(4031), SECRET = 't672';
   const DB = `/tmp/t672-z-${tag}.db`, CDB = `/tmp/t672-c-${tag}.db`;
   rmdb(DB); rmdb(CDB);
   for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(TPL + s, DB + s); } catch (e) {} }

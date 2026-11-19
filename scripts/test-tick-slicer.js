@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @regress-alone   ← [T1288] 러너 -j 판에서 맨 먼저 혼자 돈다(다른 하네스를 안 띄운다) · 하루 총 일감을 대조군과 벽시계로 맞댄다 — 판 C -j4 에서 ×2.17(기준 0.5~2.0) · 홀로 초록(263초)
 // === scripts/test-tick-slicer.js — 일틱 **조각내기** 구조 검사 =====================
 //
 // ★왜 [재민 확정 2026-09-01 · T1]
@@ -20,6 +21,7 @@
 //
 // 실행: node scripts/test-tick-slicer.js
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn, execSync } = require('child_process');

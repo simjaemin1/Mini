@@ -15,11 +15,12 @@
 //   손잡이: T1321 둘은 **안 준다**(켬 기본을 잰다) — 끔 판은 `--env T1321_XZ_BEAST=0,T1321_XZ_KEEP=0`.
 //   팔 = T1292 판 'on'(`T525_CROSS_ZONE` · `T952_XZ_STAY` · `T622_ZONE_FAUNA` · `T1139_XZ_LAZY`) + `E2E_GIVE`(판 꾸밈 문).
 //
-//   run <outdir> <표지> <씨> [날=30] [하루ms=3000] [--q 500] [--env K=V,…] [--envz <존>:K=V,…] [--nobeast]
+//   run <outdir> <표지> <씨> [날=30] [하루ms=3000] [--q 500] [--env K=V,…] [--envz <존>:K=V,…] [--nobeast] [--stage-emig d0,every,k,n] [--stage-replay <beast_<표지>.jsonl>] [--stage-plan d0,every,k,n](T1352)
 //   분석: 짐승 `node scripts/t1321-beast-run.js analyze <outdir> <표지>` · 캐러밴 · 몸 보존 `node scripts/t1292-xzone-live.js analyze <outdir> <표지>`
 //   ⚠존 포트가 고정이라 두 판을 같이 못 돈다(T1320 과 같다) · e2e 와도 같이 못 돈다.
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -60,8 +61,10 @@ if (MODE !== 'run') { console.error('쓰는 법: run <outdir> <표지> <씨> [�
     //   ★`T1139_XZ_LAZY` 켬(e2e · T1292 판과 같다 — 한 벌은 2km 안 쌍만 · 1분) — 늦게 파는 일꾼은 발맞춤 일꾼 셈 밖(`t1320-lockstep.js` ⓒ T1324 고침:
     //     그 일꾼은 `postMessage` 없이 포트 · 공유 버퍼로 동기 답만 해 셈이 영영 안 줄어 가로대가 0.5초에서 멎었다) · 걸음표 자리는 판마다 새로(`geo_<표지>` — 묵은 자물쇠 0).
     for (const k of ['T1321_XZ_BEAST', 'T1321_XZ_KEEP']) if (!(k in EXTRA) && !(EXTZ[z] && k in EXTZ[z])) delete env[k];   // ★켬 기본을 잰다(물려받은 손잡이 0)
+    require(path.join(ROOT, 'server', 't1334-bundle')).fill(env);   // ★[T1352] 묶음(`T1334_BUNDLE=1`)은 존 env 에 미리 채운다 — 프리로드(T1292 훅)가 econ 을 존 맨 위보다 먼저 읽는다(t577-server-run 그 자리와 같은 까닭 · 끔 = 무동작)
     const logf = fs.openSync(o.log, 'w');
     o.p = spawn(process.execPath, pre.flatMap((f) => ['-r', f]).concat([path.join(ROOT, 'server', 'zone.js')]), { cwd: ROOT, stdio: ['ignore', logf, logf, 'ipc'], env });
+    o.p.on('error', () => {});   // 판 끝 내리는 사이 늦은 'go' 가 닫힌 통로에 닿는 일(ERR_IPC_CHANNEL_CLOSED) — 판 셈과 무관
     o.p.on('message', (m) => { if (!m || !m.zone) return; const q = Z[m.zone]; if (m.t === 'start') q.started = true; q.st = m; q.at = (m.t === 'at' || (m.t === 'upd' && q.at)); tryGo(); });
   }
   // ── 발맞춤(T1320 러너 `t1320-xz-vclock.js run` 글자 그대로) ───────────────────────
@@ -101,6 +104,16 @@ if (MODE !== 'run') { console.error('쓰는 법: run <outdir> <표지> <씨> [�
   const BF = path.join(OUTD, `beast_${TAG}.jsonl`); try { fs.unlinkSync(BF); } catch (e) {}
   const out = (o) => { try { fs.appendFileSync(BF, JSON.stringify(Object.assign({ t: Date.now() }, o)) + '\n'); } catch (e) {} };
   const perf = async (z) => { try { return await (await fetch(`http://localhost:${ZONES[z].port}/perf`, { signal: AbortSignal.timeout(60000) })).json(); } catch (e) { return null; } };
+  const postZ = async (z, b) => { try { return await (await fetch(`http://localhost:${ZONES[z].port}/handoff_prepare`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b), signal: AbortSignal.timeout(60000) })).json(); } catch (e) { return { err: String(e.message || e) }; } };
+  //   `--stage-emig d0,every,k,n`(꾸미기 · `--nobeast` 판) — 자연 판에선 불행 이탈이 소식 듣는 마을에 안 선다(T1324 §4) — 그 마을에 이탈을 세워 이음매 이주 길을 실서버로 잰다
+  const STG = opt('--stage-emig', '') ? opt('--stage-emig', '').split(',').map(Number) : null; let stgNext = STG ? STG[0] : Infinity; if (STG) meta.stageEmig = STG;
+  //   `--stage-replay <beast_<표지>.jsonl>` — 그 판의 꾸밈 줄(op 'stage')을 같은 날에 그대로 다시 민다(끈 판 견줌)
+  const RPL = opt('--stage-replay', '') ? fs.readFileSync(opt('--stage-replay', ''), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter((j) => j.op === 'stage')
+    .map((j) => ({ day: j.day, z: j.z, vid: j.vid, name: j.name, n: (meta.stageEmig ? meta.stageEmig[3] : 3) })).sort((a, b) => a.day - b.day) : null; if (RPL) meta.stageReplay = opt('--stage-replay', '');
+  //   ★[T1352] `--stage-plan d0,every,k,n`(`--nobeast` 판) — 꾸밈을 **존 하루 경계에서**(`kind 'e2e_stage'` — 존 날 d0 부터 every 날마다 경계 마을(이웃 존 마을과 걸어 2km 안) 중
+  //     행복 낮은 k 곳에서 n 사람 · 판 시계 · 벽시계 0 · 같은 씨면 같은 날 같은 마을 — 손잡이 꼴끼리 견준다). 걸음표가 선 뒤(가로대 넷) 한 번 민다.
+  const SPL = opt('--stage-plan', '') ? opt('--stage-plan', '').split(',').map(Number) : null;
+  if (SPL) { meta.stagePlan = SPL; for (const z of ZS) { const res = await postZ(z, { kind: 'e2e_stage', plan: SPL }); out({ z, op: 'plan', plan: SPL, res }); } saveMeta(); }
   const WebSocket = require('ws');
   const socks = [];
   const open = (url, onMsg) => new Promise((res) => {
@@ -181,7 +194,27 @@ if (MODE !== 'run') { console.error('쓰는 법: run <outdir> <표지> <씨> [�
     dead = ZS.filter((z) => Z[z].p.exitCode != null);
     const dd = Object.fromEntries(ZS.map((z) => [z, lastDay(Z[z].rows)]));
     if (dead.length || ZS.every((z) => dd[z] >= DAYS) || Date.now() - t0 > LIMIT) break;
-    if (!setupOk) continue;
+    if (!setupOk && !NOBEAST) continue;
+    if (NOBEAST && RPL) {   // ★[T1324] 같은 꾸밈 다시 — 켬 판이 꾸민 (날 · 존 · 마을 · n) 그대로(끈 판은 들은 줄이 없어 고를 수 없다 — 같은 자리 · 같은 날에 같은 떠남 결정)
+      const dh = dd.hanbando;
+      while (RPL.length && RPL[0].day <= dh) { const e = RPL.shift(); const res = await postZ(e.z, { kind: 'e2e_emigrate', vid: e.vid, n: e.n }); out({ z: e.z, op: 'stage', day: dh, vid: e.vid, name: e.name, replay: e.day, res }); }
+    }
+    if (NOBEAST && STG) {   // ★[T1324 할 일 4] 이탈 꾸밈 — 한반도 날 d0 부터 every 날마다 존마다 들은 줄 있는 마을 중 행복 낮은 k 곳에 이탈 압력 n(안 문 · 발맞춤 가로대에 든다)
+      const dh = dd.hanbando;
+      if (dh >= stgNext) {
+        stgNext += STG[1];
+        for (const z of ZS) {
+          const P = await perf(z), L = (P && P.xzone && P.xzone.t1324 && P.xzone.t1324.knowList) || [];
+          const pick = L.filter((r) => r[3] != null).sort((a, b) => a[3] - b[3] || a[0] - b[0]).slice(0, STG[2]);
+          for (const r of pick) { const res = await postZ(z, { kind: 'e2e_emigrate', vid: r[0], n: STG[3] }); out({ z, op: 'stage', day: dh, vid: r[0], name: r[1], heard: r[2], h: r[3], pop: r[4], res }); }
+        }
+      }
+    }
+    if (NOBEAST) {   // 꾸밈 없는 판(이주 판 등) — 경계 셈 · 이주 줄만 2초(벽시계)마다
+      if (Date.now() - (meta._lastXz || 0) < 2000) continue; meta._lastXz = Date.now();
+      for (const z of ZS) { const P = await perf(z); if (!P || !P.xzone) continue; out({ z, op: 'xz', t: P.now, wall: Date.now(), day: P.xzone.day, st: P.xzone.st, t1324: P.xzone.t1324 || null, t1321: P.xzone.t1321 ? { pend: (P.xzone.t1321.pend || []).length } : null }); }
+      continue;
+    }
     for (const z of ZS) {
       const P = await perf(z); if (!P || !P.t1321) continue;
       const Tq = P.t1321;
@@ -198,6 +231,9 @@ if (MODE !== 'run') { console.error('쓰는 법: run <outdir> <표지> <씨> [�
   }
   if (crossing) await Promise.race([crossing, sleep(30000)]);
   clearInterval(pinger); clearInterval(stIv);
+  //   판 끝 관측(죽이기 전) — 두 존 경계 셈 · 이주 셈 · 짐승 셈
+  meta.perfEnd = {}; for (const z of ZS) { const P = await perf(z); meta.perfEnd[z] = P ? { day: P.xzone ? P.xzone.day : null, st: P.xzone ? P.xzone.st : null, t1324: P.xzone ? P.xzone.t1324 || null : null, t1321: P.t1321 ? { stat: P.t1321.stat, mobs: P.t1321.mobs, hidden: (P.t1321.hidden || []).length } : null } : null; }
+  delete meta._lastXz;
   Object.assign(meta, { end: new Date().toISOString(), wallS: Math.round((Date.now() - t0) / 1000), days: Object.fromEntries(ZS.map((z) => [z, lastDay(Z[z].rows)])), bars, H, dead, botCross: bot.crossN, botFail: bot.fail });
   meta.done = ZS.every((z) => meta.days[z] >= DAYS);
   saveMeta();

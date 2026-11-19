@@ -660,7 +660,7 @@ async function serverPart() {
   say('\n[ⓖ] 서버 — 존 틱 위의 실체 전쟁(WAR_FIXTURE=assault · 관측자 하나)');
   const { spawn } = require('child_process');
   const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
-  const CPORT = 3410, ZPORT = 3420;
+  const CPORT = require('./lib-port').port(3410), ZPORT = require('./lib-port').port(3420);
   const CDB = `${require('os').tmpdir()}/warw-c-${process.pid}.db`, ZDB = `${require('os').tmpdir()}/warw-z-${process.pid}.db`;
   for (const f of [CDB, ZDB]) for (const sfx of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + sfx); } catch (e) {} }
   const SECRET = 't284-' + Math.random().toString(36).slice(2);

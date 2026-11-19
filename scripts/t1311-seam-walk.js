@@ -54,6 +54,12 @@ if (MODE === null && (process.env.T1311_OUT || process.env.T1311_OUT_DIR) && pro
     // ★[T1320] 막힌 칸 = 존 걸음 정본 술어(`deps.isTerrainBlockedLocal` — 칸 단위: 바위 · 물(다리 예외) · 해안 띠). 종전(T1311)은 걸음 점 자체를 지형 술어에 물어
     //   칸 경계 근처 점(점은 능선 다각형 안 · 칸 중심은 열림)을 바위로 셌다 — 칸 정본과 다른 셈. 바위 칸만(`rockC`)은 칸 중심을 `isRockCellLocal` 로.
     const blkC = (x, y) => { try { return ST0 && ST0.deps && ST0.deps.isTerrainBlockedLocal ? !!ST0.deps.isTerrainBlockedLocal(x, y) : false; } catch (e) { return false; } };
+    // ★[T1327] 도랑 칸(마을 `_ditch` — 존 `refreshDitchCells` 의 원천) · 해안 띠(존 물 칸인데 강 · 호수가 아님 = `deps.isWaterTileLocal`)
+    let _dSet = null, _dN = -1;
+    const ditchC = (x, y) => { try { const VS = ST0 && ST0.villages; if (!VS) return false; let n = 0; for (const v of VS) n += (v._ditch || []).length;
+      if (n !== _dN) { _dN = n; _dSet = new Set(); for (const v of VS) for (const c of (v._ditch || [])) _dSet.add(c.cx * 65536 + c.cy); }
+      return _dSet.has(Math.floor(x / 32) * 65536 + Math.floor(y / 32)); } catch (e) { return false; } };
+    const coastC = (x, y) => { try { return !!(ST0 && ST0.deps && ST0.deps.isWaterTileLocal && ST0.deps.isWaterTileLocal(x, y)); } catch (e) { return false; } };
     const rockC = (x, y) => { try { return T.isRockCellLocal(ZID, Math.floor(x / 32) * 32 + 16, Math.floor(y / 32) * 32 + 16); } catch (e) { return false; } };
     const wrap = (st) => {
       if (wrapped || !st.roads || typeof st.roads.stampEntityPx !== 'function') return; wrapped = true; ST0 = st;
@@ -62,7 +68,7 @@ if (MODE === null && (process.env.T1311_OUT || process.env.T1311_OUT_DIR) && pro
         if (ALL) try { allAgg.n++; { const pr = p && p.pid != null ? p.pid : null, rr = (roleOf.get(pr) || ((p && p.isNPC) ? 'npc' : '?')).split('#')[0], NB = allAgg.nBy || (allAgg.nBy = {}); NB[rr] = (NB[rr] || 0) + 1; } if (blkC(x, y)) { allAgg.rock++; if (rockC(x, y)) allAgg.rockC = (allAgg.rockC || 0) + 1;
           { // ★[T1320] 전수 가름(표본 400 이 아니라 막힌 걸음 하나하나) — 칸: 바위 · 물(다리 아님) · 그 밖(해안 띠 · 판 중 생긴 막힘 — 환호 도랑) / 꼴: 길 꼭짓점이 막힌 칸 · 마디가 막힌 칸을 깎음 · 길 밖(다시 붙기 · 호위 잇기) · 몸 모름
             const cx = Math.floor(x / 32) * 32 + 16, cy = Math.floor(y / 32) * 32 + 16, K = allAgg.k || (allAgg.k = {});
-            const cell = rockC(x, y) ? 'rock' : (T.isWaterCellLocal(ZID, cx, cy) ? 'water' : 'other');
+            const cell = rockC(x, y) ? 'rock' : (T.isWaterCellLocal(ZID, cx, cy) ? 'water' : (ditchC(x, y) ? 'ditch' : (coastC(x, y) ? 'coast' : 'other')));   // ★[T1327] 그 밖 = 도랑(환호) · 해안 띠(존 물 칸) · 그 밖
             const pid0 = p && p.pid != null ? p.pid : null, b0 = bodyOf.get(pid0); let geo = 'unk';
             if (b0) { const dd = distTo(b0.pts, x, y), sg = segAt(b0.pts, x, y); geo = dd > 2 ? 'off' : (sg && (sg[4] || sg[5]) ? 'vertex' : 'cut'); }
             const key = cell + '/' + geo; K[key] = (K[key] || 0) + 1; } const pid = p && p.pid != null ? p.pid : null, role = roleOf.get(pid) || ((p && p.isNPC) ? 'npc' : '?');

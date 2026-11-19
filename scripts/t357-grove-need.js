@@ -39,7 +39,7 @@ fs.mkdirSync(path.dirname(OUT), { recursive: true });
 
 function boot(tag, zenv) {
   const SECRET = 't357-' + tag;
-  const CP = 3870, ZP = 3880;
+  const CP = require('./lib-port').port(3870), ZP = require('./lib-port').port(3880);
   const logf = fs.openSync(`/tmp/t357/${tag}.log`, 'w');
   const c = spawn(process.execPath, [path.join(ROOT, 'server/central.js')], { cwd: ROOT, stdio: 'ignore',
     env: Object.assign({}, process.env, { PORT: String(CP), DB_PATH: `/tmp/t357/c-${tag}.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });

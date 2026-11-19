@@ -16,6 +16,7 @@
 //
 // 실행: node scripts/test-body-fields.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
@@ -32,7 +33,8 @@ const FROZEN = {
   // `server/villages.js` 의 `npc` 가 econ 사람(장부)이거나 생활층 드문 갈래인 자리 — 존 몸 모양과 무관하거나 드물다
   econ: ['_carryOn', '_granD', '_rest', '_t325Ei', '_t325Site', '_t325U', '_t368H', '_t368N', '_t529Since', '_t529StepAt', '_t529X', '_t529Y',
     '_t561Hall', '_t561Wd', 'currentJob',
-    'age'],   // ★[PM land1044] econ 사람 나이 — 도적 길 위 늙기(T1049 ④ · T1080 `_t1080RoadDay` · bandits 걷기 장부)가 쓰는 `npc` 는 존 몸이 아니라 econ 사람(장부 줄) · land1041 부터 main 빨강
+    'age',   // ★[PM land1044] econ 사람 나이 — 도적 길 위 늙기(T1049 ④ · T1080 `_t1080RoadDay` · bandits 걷기 장부)가 쓰는 `npc` 는 존 몸이 아니라 econ 사람(장부 줄) · land1041 부터 main 빨강
+    '_t1324From', 'id'],   // ★[T1324] 이웃 존에서 넘어온 econ 사람(장부 줄 — 기록 `migrant` 의 `r.npc`)을 받는 존이 받는 마을 계수기로 다시 매긴다(`villages.js` `_t1324In` — 새 번호 `id` · 옛 번호 `_t1324From`) · 존 몸이 아니다(몸은 `spawnNpc` 가 따로 세운다) · 끔 기본(`T1324_XZ_MIGRATE`)
 };
 
 // ★[T1140 ③-가] 켬 리터럴 머리 줄 — `T1140_HOT_ORDER ? _t1140Lit(…) : ` 가 앞에 붙을 수 있다(같은 칸 · 차례만 — 아래 ⑤ 가 잰다)

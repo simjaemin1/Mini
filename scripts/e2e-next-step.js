@@ -29,7 +29,9 @@
 //
 // 실행: node scripts/e2e-next-step.js [--headed]   (E2E_BROWSER=webkit 이면 WebKit)
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');            // ★T349 기동 기다리기 정본
@@ -38,6 +40,10 @@ const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-next-step-shots';
 fs.mkdirSync(SHOTS, { recursive: true });
 const HEADED = process.argv.includes('--headed');
+// ★★[T1353 · T1341 회부 7] 손잡이 따라 두 대본 — `T1341_OWN_HOUSE=1`(또는 `--own`)이면 켬 대본(아래 `ownFlow` — 제 집 줄기 → 의뢰 · 받아들임), 아니면 종전 ①~⑨ 그대로.
+//   켬 대본(화살 판 · T1204 끔 그대로): Ⓐ 도착 칸 "집터 재료 모으기" · 화살 = 서버가 고른 나무 쪽 Ⓑ 나무가 차면 바위 쪽 · 다 차면 "집터 잡기" 단추를 진짜로 눌러 터
+//   Ⓒ 움집 터파기가 서면 마을 줄기 Ⓓ 손잡이(칸 걷기 · 되돌리기) Ⓔ 첫 의뢰(진짜 Shift N) = 받아들임 +1 · 빈터 0 · 짐 = 낸 것만 Ⓕ 가입 단추 → "받아들임 n" 칸 Ⓖ 누른 곳 · 페이지 오류 0.
+const OWN = process.env.T1341_OWN_HOUSE === '1' || process.argv.includes('--own');
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2e-next-step-central-${process.pid}.db`, ZDB = `/tmp/e2e-next-step-zone-${process.pid}.db`;
 for (const f of [CDB, ZDB]) for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} }
@@ -55,6 +61,130 @@ function boot(name, file, env) {
 }
 function shutdown() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } }
 process.on('exit', shutdown);
+// ══ ★★[T1353] 켬 대본 — 제 집 줄기 → 의뢰(받아들임만) · 판정은 서버가 돌려준 것(상태 · 짐 · claim_added · building_added)으로만 ══════
+async function ownFlow({ page, V, OFF, nx, box, snap, errs }) {
+  const onbS = () => page.evaluate(() => window.__onbState || null);
+  const inv = () => page.evaluate(() => Object.assign({}, (window.__getInv && window.__getInv()) || {}));
+  const tp = (x, y) => page.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [x, y]);
+  const give = (items, tools) => page.evaluate(([it, tl]) => window.__sendPrimary({ type: '__e2e_give', items: it, tools: tl || [] }), [items, tools || []]);
+  const waitNext = async (pred, ms) => { let n = null; for (let i = 0; i < (ms || 15000) / 300; i++) { n = await nx(); if (n && pred(n)) return n; await sleep(300); } return n; };
+  const arrowTo = async (t) => {   // 화살 돌림 = 화면에서 목표 쪽인가(종전 ① 과 같은 자)
+    const b = await box();
+    const ang = await page.evaluate((q) => { const me = myAbsPredicted, a = window.__w2s(q.x, q.y), c = window.__w2s(me.x, me.y); return Math.atan2(a.py - c.py, a.px - c.px); }, t);
+    const xf = /rotate\((-?[\d.]+)rad\)/.exec(b.arrowXf || '');
+    return { shown: b.arrowShown, ok: !!(b.arrowShown && xf && Math.abs(+xf[1] - ang) < 0.05), got: xf ? +xf[1] : null, want: +ang.toFixed(3) };
+  };
+  const presses = [];
+  console.log('\nⒶ 도착 — 칸이 제 집 재료부터(켬)');
+  const n1 = await waitNext((n) => n.stage === 'gather', 20000);
+  const s1 = await onbS(), O = s1 && s1.own;
+  pre(!!O && !!O.cost && !!O.tree && !!O.rock, '서버 대본 상태에 own 칸(집터 값 · 가까운 나무 · 바위)', JSON.stringify(O && { cost: O.cost, need: O.need }));
+  ok(!!n1 && n1.stage === 'gather' && n1.item === '집터 재료 모으기', '★칸이 선다 — "집터 재료 모으기"(촌장 앞 · 의뢰 앞)', JSON.stringify(n1 && [n1.stage, n1.item]));
+  const tree = O && O.tree ? { x: O.tree.x + OFF.x, y: O.tree.y + OFF.y } : null;
+  ok(!!(n1 && n1.target && tree && n1.target.x === tree.x && n1.target.y === tree.y), '목표 = 서버가 고른 나무 + 존 오프셋', JSON.stringify([n1 && n1.target, tree]));
+  ok(!!n1 && n1.guide.indexOf(`집터를 잡으려면 나무 ${O.cost.wood}개와 돌 ${O.cost.stone}개가 있어야 합니다. 지금 나무 0개와 돌 0개가 있습니다.`) >= 0, '글 — 무엇이 몇 개 · 지금 몇 개', n1 && n1.guide);
+  const a1 = tree ? await arrowTo(tree) : { ok: false };
+  ok(a1.ok || (!a1.shown && Math.hypot(tree.x - (await page.evaluate(() => myAbsPredicted.x)), tree.y - (await page.evaluate(() => myAbsPredicted.y))) < 48), '★화살이 보이고 돌림 = 화면에서 그 나무 쪽(바로 곁이면 화살 없음)', JSON.stringify(a1));
+  const b1 = await box();
+  ok(!!b1.next && b1.next.left >= 0 && b1.next.top >= 0 && b1.next.right <= b1.vw && b1.next.bottom <= b1.vh && !overlap(b1.next, b1.minimap) && !overlap(b1.next, b1.hud), '칸이 화면 안 · 지도 판 · 왼쪽 HUD 와 안 겹친다');
+  await snap('own-01-arrive');
+  console.log('\nⒷ 재료 → 집터 — 단추를 진짜로 누른다');
+  await give({ wood: O.cost.wood });
+  const n2 = await waitNext((n) => n.stage === 'gather' && /바위 곁에서/.test(n.guide));
+  const rock = { x: O.rock.x + OFF.x, y: O.rock.y + OFF.y };
+  ok(!!(n2 && n2.target && n2.target.x === rock.x && n2.target.y === rock.y), '★나무가 차면 목표가 바위로(돌이 모자란다)', JSON.stringify(n2 && n2.target));
+  await give({ stone: O.cost.stone });
+  const n3 = await waitNext((n) => n.btn === 'claim');
+  ok(!!n3 && n3.stage === 'claim' && n3.item === '집터 잡기' && !n3.target && n3.guide.indexOf('[C] 키로 선 자리에 터를 잡으십시오') >= 0, '★다 차면 "집터 잡기" 단추 · C 키 · 화살 없음', n3 && n3.guide);
+  const myC = () => page.evaluate(() => { const c = conns.get(primaryZoneId); const me = myPlayerId || myUsername; let n = 0; if (c && c.claims) for (const cl of c.claims.values()) if (cl.ownerPid === me && cl.kind === 'personal') n++; return n; });
+  const k0 = await myC(), iv0 = await inv();
+  await page.click('#onbNextBtn'); presses.push('단추 집터 잡기');
+  let k1 = k0; for (let i = 0; i < 20 && k1 === k0; i++) { await sleep(300); k1 = await myC(); }
+  const iv1 = await inv();
+  ok(k1 === k0 + 1 && (iv1.wood | 0) === (iv0.wood | 0) - O.cost.wood && (iv1.stone | 0) === (iv0.stone | 0) - O.cost.stone, '★단추 한 번에 집터(서버 claim_added · 미가입 · 영토 밖 도착 지점) · 짐 = 나무 −3 · 돌 −2', `${k0} → ${k1}`);
+  const n4 = await waitNext((n) => n.stage === 'build');
+  ok(!!n4 && n4.item === '움집 짓기' && n4.guide.indexOf('[Shift B] 에서 움집 터파기를 고르십시오') >= 0, '★칸 — "움집 짓기"', n4 && n4.guide);
+  await snap('own-02-build');
+  console.log('\nⒸ 움집 터파기 → 마을 줄기');
+  await give({}, ['pickaxe']); await sleep(600);
+  const me5 = await page.evaluate(() => { const a = window.__getSrvAbs(); const c = conns.get(primaryZoneId); return { x: a.x - ((c.meta && c.meta.worldOffsetX) || 0), y: a.y - ((c.meta && c.meta.worldOffsetY) || 0) }; });
+  let hut = false;
+  for (const [dx, dy] of [[0, -96], [0, 96], [96, 0], [-96, 0], [0, -160], [160, 0], [-160, 0], [0, 160]]) {
+    await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'hut_start', atX: x, atY: y }), [me5.x + dx, me5.y + dy]);
+    for (let i = 0; i < 8 && !hut; i++) { await sleep(300); hut = await page.evaluate(() => { const c = conns.get(primaryZoneId); const me = myPlayerId || myUsername; for (const b of c.buildings.values()) if (b.type === 'hut_site' && ((b.data && b.data.owner) || b.ownerId) === me) return true; return false; }); }
+    if (hut) break;
+  }
+  pre(hut, '움집터가 섰다(서버 building_added · 내 것)');
+  const n5 = await waitNext((n) => n.stage !== 'build');
+  ok(!!n5 && n5.stage === 'enter' && !!V && n5.place.indexOf(V.name) === 0, '★칸이 마을 줄기로 — "마을로 들어가기"', JSON.stringify(n5 && [n5.stage, n5.item, n5.place]));
+  console.log('\nⒹ 손잡이 — 걷으면 숨고 되돌리면 선다');
+  await page.evaluate(() => { uiCfg.nextStep = false; }); await sleep(500);
+  const hid = await page.evaluate(() => { const el = document.getElementById('onbNext'); return !el || el.classList.contains('hidden'); });
+  await page.evaluate(() => { uiCfg.nextStep = true; }); await sleep(500);
+  const back = await page.evaluate(() => { const el = document.getElementById('onbNext'); return !!el && !el.classList.contains('hidden'); });
+  ok(hid && back, '`uiCfg.nextStep` 을 걷으면 칸이 숨고 · 되돌리면 다시 선다', JSON.stringify([hid, back]));
+  console.log('\nⒺ 첫 의뢰 — 받아들임만(갚음 0 · 빈터 0)');
+  await tp(V.cx * 32 + 16, V.cy * 32 + 16);
+  for (let i = 0; i < 20 && (await page.evaluate(() => window.__evNearVid)) !== V.vid; i++) await sleep(500);
+  const OnbSrv = require(path.join(ROOT, 'server', 'onboarding'));
+  async function ensureBoard(vid, tries) {
+    const skip = []; let lastItem = null, same = 0;
+    for (let i = 0; i < (tries || 25); i++) {
+      await page.evaluate((v) => window.__sendPrimary({ type: 'village_board', vid: v }), vid);
+      await sleep(400);
+      const b0 = await page.evaluate(() => window.__evLastBoard || null);
+      if (b0 && b0.rows && b0.rows.length) return b0;
+      const tgS = await NM.mark(page);
+      await page.evaluate(([v, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid: v, skip: sk }), [vid, skip.slice()]);
+      //   [T1367] 종전 0.9초 뒤 고리의 마지막 "(문턱" 줄 — 앞 판이 남긴 줄을 읽을 수 있었다 · 표지 뒤 픽스처 답이 올 때까지(상한 5초)
+      const nl = (await NM.waitLine(page, tgS, /\(문턱 |소비 품목이 없다|그런 마을/, { capMs: 5000 })).list.filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '';
+      const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl);
+      const it = m ? m[1] : null;
+      if (it && it === lastItem) same++; else { lastItem = it; same = 1; }
+      if (it && same >= 2 && !skip.includes(it)) { skip.push(it); lastItem = null; same = 0; }
+    }
+    return await page.evaluate(() => window.__evLastBoard || null);
+  }
+  const s0 = await onbS();
+  pre(!!s0 && !s0.firstDone && (s0.contrib | 0) === 0 && !s0.lotOk, '의뢰 전 — 받아들임 0 · 빈터 없음', JSON.stringify(s0 && [s0.contrib, s0.lotOk]));
+  let st5 = s0, diff = {};
+  for (let round = 0; round < 5 && !(st5 && st5.firstDone); round++) {
+    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false })); await sleep(300);
+    await ensureBoard(V.vid, 25);
+    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true })); await sleep(500);
+    const b5 = await ensureBoard(V.vid, 2);
+    const row = b5 && b5.rows && b5.rows[0], it = row && (row.give || [])[0];
+    if (!it) continue;
+    await give({ [it]: Math.max(1, Math.ceil(row.remain)) }); await sleep(900);
+    const ivA = await inv(), c0 = ((await onbS()) || {}).contrib | 0;
+    await page.keyboard.down('Shift'); await page.keyboard.press('KeyN'); await page.keyboard.up('Shift'); presses.push('Shift N');
+    for (let i = 0; i < 12; i++) { await sleep(300); st5 = await onbS(); if (st5 && (st5.contrib | 0) > c0) break; }
+    if (!(st5 && (st5.contrib | 0) > c0)) { await page.evaluate((v) => window.__sendPrimary({ type: 'village_deliver', vid: v }), V.vid); for (let i = 0; i < 12; i++) { await sleep(300); st5 = await onbS(); if (st5 && (st5.contrib | 0) > c0) break; } }
+    const ivB = await inv();
+    diff = {}; for (const k of new Set([...Object.keys(ivA), ...Object.keys(ivB)])) { const d = (ivB[k] || 0) - (ivA[k] || 0); if (Math.abs(d) > 1e-9) diff[k] = d; }
+  }
+  pre(!!st5 && st5.firstDone, '시작 마을 의뢰 하나를 다 채웠다(서버)', JSON.stringify(st5 && { c: st5.contrib }));
+  ok(!!st5 && (st5.contrib | 0) === 1 && st5.lotOk === false, '★받아들임 +1 · 빈터 선물 0(종전은 첫 의뢰에 빈터)', JSON.stringify(st5 && [st5.contrib, st5.lotOk]));
+  ok(Object.keys(diff).length >= 1 && Object.values(diff).every((d) => d < 0), '★짐 변화 = 낸 것만(늘어난 칸 0 = 갚음 0)', JSON.stringify(diff));
+  const g5 = await page.evaluate(() => window.__onbGreet || null);
+  ok(!!g5 && g5.lines[0] === OnbSrv.T1341_THANKS && g5.lines.indexOf(OnbSrv.T1086_JOIN_LINE) >= 0 && g5.lines.indexOf(OnbSrv.T1086_LOT_LINE) < 0 && !g5.lines.some((l) => /밥/.test(l)),
+    '★촌장 한 통 — 고맙다 · 권함(서버 정본 문장) · 빈터 · 밥 0', JSON.stringify(g5 && g5.lines));
+  console.log('\nⒻ 마을 가입 → 받아들임 칸');
+  const n6 = await waitNext((n) => n.stage === 'join');
+  ok(!!n6 && n6.btn === 'join', '★칸이 "마을 가입" · 단추', JSON.stringify(n6 && [n6.stage, n6.btn]));
+  await page.click('#onbNextBtn'); presses.push('단추 마을 가입');
+  let j6 = null; for (let i = 0; i < 30; i++) { await sleep(300); j6 = await page.evaluate(() => window.__onbGreet || null); if (j6 && j6.kind === 'joined') break; }
+  ok(!!j6 && j6.kind === 'joined' && j6.lines[0] === '오늘부터 자네는 우리 마을 사람일세.' && j6.lines[1] === `부탁을 ${((O && O.need) | 0) - 1}건 더 채우면 우리 마을 영토 안에도 터를 잡게 해 줌세.` && j6.lines.length === 2,
+    '★받아들인 말 — "오늘부터 …" + 다음에 열리는 것(빈터 줄 0)', JSON.stringify(j6 && j6.lines));
+  const n7 = await waitNext((n) => n.stage === 'more');
+  const need = (O && O.need) | 0;
+  ok(!!n7 && n7.item === '마을 부탁 들어주기' && n7.guide.indexOf(`받아들임 1. 부탁을 ${need - 1}건 더 채우면 구성원으로 인정되어 영토 안에도 집터를 잡을 수 있습니다.`) >= 0 && !/빈터/.test(n7.guide),
+    '★칸 — "받아들임 n" · 다음에 열리는 것 · 빈터 말 0', n7 && n7.guide);
+  await snap('own-03-more');
+  console.log('\nⒼ 누른 곳 · 오류');
+  ok(presses[0] === '단추 집터 잡기' && presses[presses.length - 1] === '단추 마을 가입' && presses.slice(1, -1).every((x) => x === 'Shift N'), '누른 곳 — 집터 단추 → 납품(Shift N) → 가입 단추', presses.join(' → '));
+  ok(errs.length === 0, '페이지 오류 0', JSON.stringify(errs.slice(0, 3)));
+}
 const overlap = (a, b) => !!(a && b && Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0);
 
 (async () => {
@@ -66,7 +196,8 @@ const overlap = (a, b) => !!(a && b && Math.min(a.right, b.right) - Math.max(a.l
     // ★[T1086] 첫 의뢰를 실제로 채운다 — 의뢰를 세우는 픽스처(`E2E_GIVE` · `e2e-onboarding` 과 같은 꼴) · 마을 4곳 · 하루 0.5초(의뢰가 빨리 선다)
     VILLAGE_MAX: '4', VILLAGE_DAY_MS: '500', E2E_GIVE: '1',
     // ★[T1204] 이 하네스는 화살 판(종전 · `T1204_NOW_WORDS=0`)을 잰다 — 켬 기본(글로 방위 · 걸음)은 `e2e-t1204-now-words` 가 잰다(단언 무변)
-    T1204_NOW_WORDS: '0' });
+    T1204_NOW_WORDS: '0',
+    T1341_OWN_HOUSE: OWN ? '1' : '' });   // ★[T1353] 손잡이는 하네스가 정한다(끔 판에 밖 env 가 새지 않게)
   const zu = FB.waitUp(zon, /zone server up on/, { name: 'zone', capMs: 300000 });
   const c0 = await cu; ok(c0.ok, 'central 기동', c0.ok ? `${c0.ms}ms` : c0.why);
   const z0 = await zu; ok(z0.ok, 'zone 기동');
@@ -97,6 +228,7 @@ const overlap = (a, b) => !!(a && b && Math.min(a.right, b.right) - Math.max(a.l
   for (let i = 0; i < 240 && !inWorld; i++) { inWorld = await page.evaluate(() => !!(window.__getSrvAbs && window.__getSrvAbs())); if (!inWorld) await sleep(500); }
   ok(inWorld, '존 입장(서버 권위 좌표)');
   const OFF = await page.evaluate(() => { const c = conns.get(primaryZoneId); return { x: (c && c.meta && c.meta.worldOffsetX) || 0, y: (c && c.meta && c.meta.worldOffsetY) || 0 }; });
+  if (OWN) { await ownFlow({ page, V, OFF, nx, box, snap, errs }); console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`); await browser.close(); shutdown(); process.exit(fail ? 1 : 0); }
 
   // ── ① 도착 ─────────────────────────────────────────────────────────────────────
   console.log('\n① 도착 — 마을 앞');
@@ -178,9 +310,10 @@ const overlap = (a, b) => !!(a && b && Math.min(a.right, b.right) - Math.max(a.l
       await sleep(400);
       const b0 = await page.evaluate(() => window.__evLastBoard || null);
       if (b0 && b0.rows && b0.rows.length) return b0;
+      const tgS = await NM.mark(page);
       await page.evaluate(([v, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid: v, skip: sk }), [vid, skip.slice()]);
-      await sleep(900);
-      const nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '');
+      //   [T1367] 종전 0.9초 뒤 고리의 마지막 "(문턱" 줄 — 앞 판이 남긴 줄을 읽을 수 있었다 · 표지 뒤 픽스처 답이 올 때까지(상한 5초)
+      const nl = (await NM.waitLine(page, tgS, /\(문턱 |소비 품목이 없다|그런 마을/, { capMs: 5000 })).list.filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '';
       const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl);
       const it = m ? m[1] : null;
       if (it && it === lastItem) same++; else { lastItem = it; same = 1; }

@@ -18,6 +18,7 @@
 // 실행: node scripts/test-stone-real.js
 'use strict';
 // T1181: 기존 되돌림 계약. 새 기본값·실제 몸은 test-t1181-build-defaults에서 검사.
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 for(const k of ['T435_GRANARY_ACT', 'T527_BRIDGE_ACT', 'T517_HUT_STONE', 'T419_STONE_REAL']) process.env[k]='0';
 // This regression tests the pre-split ore/fish contract.
 process.env.T1188_ORE_SPLIT='0'; process.env.T1192_FISH_SPECIES='0';

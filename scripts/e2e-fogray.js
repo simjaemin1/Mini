@@ -21,6 +21,7 @@
 //   (서버가 이미 3010/3020 에 떠 있으면 그 서버를 쓴다 — 개발 중 빠른 반복용)
 // =============================================================================
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T344 기동 기다리기 정본(사본 0)

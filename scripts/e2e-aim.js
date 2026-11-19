@@ -15,6 +15,7 @@
 //   ⚠조준 여부는 층의 읽기 훅(`window.__aimDbg`)이 답한다(사본 0).
 // ══════════════════════════════════════════════════════════════════════════════
 'use strict';
+if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

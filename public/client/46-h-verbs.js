@@ -360,7 +360,7 @@
   //     여기 `let` 하나를 두고, 받는 쪽은 `npcAskTake(vid)` 로 **가져가며 지운다**(대입은 이 파일 하나).
   let _npcAsk = null;   // { pid, name, vid, at }
   function npcAskTake(vid) {
-    if (!_npcAsk || _npcAsk.vid !== vid || Date.now() - _npcAsk.at > 6000) return null;
+    if (!_npcAsk || _npcAsk.vid !== vid || Date.now() - _npcAsk.at > 6000) return null;  // [T1310 클라 시계] 클라가 찍은 되묻기 시각과 견줌
     const a = _npcAsk; _npcAsk = null; return a;
   }
   function talkToNpc(t) {
@@ -374,7 +374,7 @@
       }
     }
     if (vid == null) return;                       // 마을을 모르는 사람 — 물을 데가 없다(메뉴는 떴다)
-    _npcAsk = { pid: t.id, name: (t.obj && t.obj.name) || '', vid, at: Date.now() };
+    _npcAsk = { pid: t.id, name: (t.obj && t.obj.name) || '', vid, at: Date.now() };  // [T1310 클라 시계] 클라가 찍는 되묻기 시각
     sendPrimary({ type: 'village_brief', vid });
   }
 
