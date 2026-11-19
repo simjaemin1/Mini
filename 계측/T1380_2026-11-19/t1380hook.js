@@ -15,7 +15,7 @@
 //      말뚝 통나무 · 개간 분 · 넓힌 칸(T1207 `_t1207` 날 차) · 일괄 줄 길이(`_t1238Pend`) · 땔감 충당률(`_fuelCov`) · 곳간 통나무 · 말뚝 모자람(`_t1207Need`) ·
 //      주거 문 · 집터 단계 · 그날 부름 · 찾음 · T1380 손잡이 셈(`vil._t1380` 날 차 — 켬 판만: 앞세운 날 · 앞세운 칸 · 그 자리 잡은 집 부지 · 그 칸 · 통나무 · 안 치른 개간 분 · 거절 stake)
 //   ③ 넓힌 칸의 쓰임(`use` · `ucols`) — 날 30 · 90 · 150 · 365 · 730 · 끝: 첫 줄(날 1) 뒤 영토에 든 칸을 지금 쓰임으로 —
-//      집 부지(집 · 집터 · 쉼터 · 의뢰 집 원판) > 밭(`_farmSet`) > 논 존닝(`_potSet`) > 일터(곳간 5×3 · 환호 · 쓴 날 표 `_t1238Use` — 나무 · 채집 · 채굴) > 그 밖 · 영토에서 빠진 칸
+//      집 부지(집 · 집터 · 쉼터 · 의뢰 집 원판) > 밭(`_farmSet`) > 논 존닝(`_potSet`) > 일터(곳간 5×3 · 환호 · 넣은 날 뒤에 쓴 날 표 `_t1238Use` — 나무 · 채집 · 채굴) > 그 밖 · 영토에서 빠진 칸
 //   쓰는 곳: `T577_OUT` 곁 `<판>.t1380.json`(10날마다 · 끝에 한 번 더). 값 함수 · 캐시를 세우는 함수는 안 부른다(다시 훑기의 판정 함수 하나 — 위 ⚠).
 'use strict';
 if (process.env.T577_OUT) {
@@ -134,7 +134,7 @@ if (process.env.T577_OUT) {
         if (lot.has(k)) o.house++;
         else if (vil._farmSet && vil._farmSet.has(k)) o.field++;
         else if (vil._potSet && vil._potSet.has(k)) o.pot++;
-        else if (work.has(k) || (vil._t1238Use && vil._t1238Use.has(k))) o.work++;
+        else if (work.has(k) || (vil._t1238Use && (vil._t1238Use.get(k) | 0) > (g.get(k) | 0))) o.work++;   // 쓴 날 표는 넣은 날에도 찍힌다(`_t1238Added`) — 넣은 뒤에 쓴 칸만
         else o.other++;
       }
       use.push([day, vi(vil.name), o.grown, o.house, o.field, o.pot, o.work, o.other, o.gone]);
