@@ -14453,6 +14453,51 @@
     "execFileSync node"
    ]
   },
+  "test-t1385-bronze-nocap.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 3.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.3,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "나",
+   "maxSec": 3.6,
+   "same5": true,
+   "core": true,
+   "why": "core"
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -16797,5 +16842,5 @@
    "srv": true
   }
  },
- "at": "2026-11-18"
+ "at": "2026-11-19"
 }
