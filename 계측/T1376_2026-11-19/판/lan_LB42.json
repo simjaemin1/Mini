@@ -1,0 +1,150 @@
+[
+ {
+  "tag": "LB42",
+  "days": {
+   "hanbando": 300,
+   "nippon": 300
+  },
+  "crossed": {
+   "arriveOut": 1544,
+   "returnOut": 1528,
+   "soldOk": 1382,
+   "deposited": 1517,
+   "lost": 0,
+   "bodyOut": 3072,
+   "bodyIn": 3072,
+   "bodyInSkip": 0,
+   "sentFail": 0,
+   "bounced": 0,
+   "retried": 0,
+   "dup": 0
+  },
+  "rec": {
+   "hanbando→nippon": {
+    "arriveOut": 797,
+    "arriveIn": 797,
+    "returnOut": 788,
+    "returnIn": 788,
+    "pend": 0
+   },
+   "nippon→hanbando": {
+    "arriveOut": 747,
+    "arriveIn": 747,
+    "returnOut": 740,
+    "returnIn": 740,
+    "pend": 0
+   }
+  },
+  "bodies": {
+   "logical": 1562,
+   "handoffs": 3086,
+   "both": 0,
+   "vanished": 0,
+   "mapGap": 1,
+   "hiddenLeft": 0,
+   "escMore": 0,
+   "wayDied": 0
+  },
+  "stuck": {
+   "hanbando": {
+    "day": 299,
+    "foreign": 2,
+    "foreignInbound": 1,
+    "overdue": 0,
+    "overdueAge": {},
+    "homeOut": 12
+   },
+   "nippon": {
+    "day": 300,
+    "foreign": 6,
+    "foreignInbound": 2,
+    "overdue": 0,
+    "overdueAge": {},
+    "homeOut": 14
+   }
+  },
+  "final": {
+   "hanbando": {
+    "pop": 3732,
+    "dead": 0,
+    "ever": 51,
+    "deaths": 163,
+    "fdDeaths": 0,
+    "trades": 5013,
+    "skip": 0
+   },
+   "nippon": {
+    "pop": 1320,
+    "dead": 0,
+    "ever": 36,
+    "deaths": 36,
+    "fdDeaths": 22,
+    "trades": 5012,
+    "skip": 0
+   }
+  },
+  "lag": {
+   "dueMinusSend": {
+    "1": 3072
+   },
+   "recvNowMinusSend": {
+    "0": 3086
+   },
+   "late": {
+    "lateArrival": 0,
+    "noDayInAtNext": 0,
+    "unexplained": 0
+   }
+  },
+  "lingerRows": {
+   "hanbando": [
+    0,
+    0,
+    301
+   ],
+   "nippon": [
+    0,
+    0,
+    301
+   ]
+  },
+  "st": {
+   "hanbando": {
+    "crossArrive": 797,
+    "crossReturn": 740,
+    "soldOk": 699,
+    "deposited": 783,
+    "lost": 0,
+    "sentFail": 0,
+    "bounced": 0,
+    "retried": 0,
+    "dup": 0,
+    "bodyOut": 1537,
+    "bodyIn": 1535
+   },
+   "nippon": {
+    "crossArrive": 747,
+    "crossReturn": 788,
+    "soldOk": 683,
+    "deposited": 734,
+    "lost": 0,
+    "sentFail": 0,
+    "bounced": 0,
+    "retried": 0,
+    "dup": 0,
+    "bodyOut": 1535,
+    "bodyIn": 1537
+   }
+  },
+  "t952": {
+   "hanbando": {
+    "stays": 0,
+    "joined": 0
+   },
+   "nippon": {
+    "stays": 0,
+    "joined": 0
+   }
+  }
+ }
+]
