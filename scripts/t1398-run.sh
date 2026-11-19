@@ -10,9 +10,9 @@ git hash-object sim/economy-sim.js sim/economy-sim-v2.js scripts/t1398-observe.j
 unset NODE_OPTIONS T1385_BRONZE_NOCAP T1385_BRONZE_NOCAP_ARMORY T1385_BRONZE_NOCAP_TINGATE T1385_BRONZE_NOCAP_WS T1385_BRONZE_NOCAP_POOR T1398_BRONZE_BAND T1333_EXPORT_CAST
 export T1385_BRONZE_NOCAP=1 T1333_EXPORT_CAST=1
 if [ "$ARM" = on ]; then export T1398_BRONZE_BAND=1; fi
-export TMPDIR=$DEST/tmp
+export TMPDIR=$DEST/tmp T699_ROUTE_CACHE=/tmp/durango-route-cache
 if [ "$KIND" = lab ]; then
-  T1398_OUT=$DEST/band.json T1385_LAB_OUT=$DEST/probe.json T17_JSON=$DEST/world.json T176_JSON=$DEST/farm.json LAB_SEEDCACHE=$DEST/seedcache.json \
+  T1398_OUT=$DEST/band.json T1385_LAB_OUT=$DEST/probe.json T17_JSON=$DEST/world.json T176_JSON=$DEST/farm.json LAB_SEEDCACHE=$(dirname "$DEST")/lab-seeds-$SEED.json \
     node -r "$ROOT/scripts/t1398-observe.js" -r "$ROOT/scripts/t1385-lab-probe.js" scripts/t176-ab.js "$DAYS" "$SEED" > "$DEST/run.log" 2>&1
 elif [ "$KIND" = server ]; then
   export T577_DIR=$DEST T577_TAG=$ARM VILLAGE_CARAVAN_MAX=0 T400_BUILD_ACT=0 T745_VCLOCK=1 T1256_BODY_MS=0

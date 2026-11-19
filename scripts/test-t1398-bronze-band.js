@@ -17,9 +17,9 @@ const BAITS = {
 if (process.env.T1398_CHILD) {
   const [arm, mut] = process.env.T1398_CHILD.split(':');
   for (const k of ['T1385_BRONZE_NOCAP', 'T1398_BRONZE_BAND', 'T1333_EXPORT_CAST']) delete process.env[k];
-  if (arm !== 'orphan') process.env.T1385_BRONZE_NOCAP = '1';
-  if (arm !== 'off') process.env.T1398_BRONZE_BAND = arm === 'true' ? 'true' : '1';
-  process.env.T1333_EXPORT_CAST = '1'; process.env.ENABLE_VILLAGES = '0';
+  if (arm !== 'orphan') process.env.T1385_BRONZE_NOCAP = arm === 'parentzero' ? '0' : '1';
+  if (arm !== 'off') process.env.T1398_BRONZE_BAND = arm === 'true' ? 'true' : arm === 'zero' ? '0' : '1';
+  if (arm !== 'auto') process.env.T1333_EXPORT_CAST = '1'; process.env.ENABLE_VILLAGES = '0';
   if (mut) {
     const M = require('module'), old = M._extensions['.js'], [file, before, after] = BAITS[mut];
     M._extensions['.js'] = function(mod, name) {
@@ -80,18 +80,26 @@ let pass = 0, fail = 0;
 function ok(x, msg, detail) { console.log(`${x ? '✓' : '✗'} ${msg}${detail == null ? '' : ' ' + JSON.stringify(detail)}`); x ? pass++ : fail++; }
 try {
   const on = child('on'), off = child('off'), orphan = child('orphan'), truth = child('true');
+  ok(JSON.stringify(child('auto')) === JSON.stringify(on), 'auto: T1398 켬은 수출 주조도 켠다');
+  ok(JSON.stringify(child('zero')) === JSON.stringify(off) && JSON.stringify(child('parentzero')) === JSON.stringify(off), 'zero: 0과 상위 0은 끔');
   ok(on.on && !off.on && !orphan.on && !truth.on, 'knob: 전체 T1385 켬 안에서 1만 켬');
   for (const [k, x] of Object.entries(checks(on))) ok(x, k, on);
   ok(!off.band && off.low && off.back && off.tin < on.tin, 'off: 종전 띠 · 유보 · 되실음', off);
   ok(JSON.stringify(off) === JSON.stringify(orphan) && JSON.stringify(off) === JSON.stringify(truth), 'orphan/true: 기본 동작');
   ok(on.liveFlat > 0, 'liveFlat: 정량 상수는 기본 원석 나눔에서도 살아 있다', on.liveFlat);
-  for (const [mut, [file, before, , key]] of Object.entries(BAITS)) {
-    const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    const n = src.split(before).length - 1;
-    if (n !== 1) { ok(false, `미끼 ${mut}: 자리 수`, n); continue; }
-    const p = child('on', mut);
-    ok(checks(p)[key] === false, `미끼 ${mut}: ${key} 빨강`);
+  function bait(mut) {
+    const [file, before, , key] = BAITS[mut];
+    const src = fs.readFileSync(path.join(ROOT, file), 'utf8'), n = src.split(before).length - 1;
+    if (n !== 1) return false;
+    return checks(child('on', mut))[key] === false;
   }
+  ok(bait('band'), '미끼 band: band 빨강 · 바꾼 자리 1');
+  ok(bait('tin'), '미끼 tin: tin 빨강 · 바꾼 자리 1');
+  ok(bait('back'), '미끼 back: back 빨강 · 바꾼 자리 1');
+  ok(bait('hands'), '미끼 hands: hands 빨강 · 바꾼 자리 1');
+  ok(bait('labor'), '미끼 labor: band 빨강 · 바꾼 자리 1');
+  ok(bait('dead'), '미끼 dead: dead 빨강 · 바꾼 자리 1');
+
 } catch (e) { ok(false, '실행 오류', e.stack); }
 console.log(`T1398 ${pass}/${pass + fail} ${fail ? 'FAIL' : 'PASS'} · 미끼 6`);
 process.exitCode = fail ? 1 : 0;

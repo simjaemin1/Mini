@@ -6266,7 +6266,7 @@ const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && proc
 //     상한은 "없어도 죽지 않는 것들(위신재 · 잡화 롱테일)"을 인구 비례로 묶으려던 줄인데, 녹이는 원석 · 붓는 금속의 수요는 사람 수가 아니라
 //     노 · 주조 한 곳에 몰린다 — 주석은 녹이는 마을-날 96 · 78 % 가 바닥이었고(T1313 §1), 합금 발주(ⓐ)의 구리도 3.42 → 0.2 ~ 0.6 으로 깎였다(T1333 서버 자 판).
 const T1333_ALLOY_ORDER = (typeof process !== 'undefined' && process.env && process.env.T1333_ALLOY_ORDER === '1');
-const T1333_EXPORT_CAST = (typeof process !== 'undefined' && process.env && process.env.T1333_EXPORT_CAST === '1');
+const T1333_EXPORT_CAST = (typeof process !== 'undefined' && process.env && process.env.T1333_EXPORT_CAST === '1') || T1398_BRONZE_BAND;   // T1398 켬은 수출 주조를 포함한다.
 const T1333_WS_INPUT = (typeof process !== 'undefined' && process.env && process.env.T1333_WS_INPUT === '1') || T1385_WS;   // ★[T1385 ㉰] 켬이 같이 켠다(모듈 머리 `T1385`)
 function t1333WsFree(r) { return !!(T1333_WS_INPUT && (r === 'ore' || OreGoods.isOre(r) || _MELT_METALS.includes(r))); }   // v2 상한 줄이 부른다(판정은 여기 하나)
 function _t1333ExportCast(v) {

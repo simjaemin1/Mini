@@ -8,6 +8,7 @@ if (!out) return;
 const E = require('../sim/economy-sim');
 const gates = {}, days = [], casts = [], trades = [], seenTrades = new WeakSet();
 let world, lastDay, hooked;
+let deposits;
 function gate(k, v, day, buyer) {
   const a = gates[k] || (gates[k] = { days: 0, cu: 0, tin: 0, hands: 0, buyer: 0, noBuyer: 0, unknown: 0, readyBuyer: 0, villages: {} });
   a.days++; a.cu += v.storage.copper || 0; a.tin += v.storage.tin || 0; a.hands += v.counts.smith || 0;
@@ -18,6 +19,7 @@ function gate(k, v, day, buyer) {
 function snapshot(w, d) {
   if (!w || !w.villages || lastDay === d) return;
   lastDay = d; world = w;
+  if (!deposits) deposits = w.villages.filter(v => (v.land?.oreMix?.tin || v.land?.tin || 0) > 0).map(v => ({ name: v.name, tin: v.land?.tin, mix: v.land?.oreMix?.tin }));
   let pop = 0, empty = 0, production = 0;
   for (const v of w.villages) {
     const n = v.npcs.length; pop += n; if (!n) { empty++; continue; }
@@ -45,5 +47,5 @@ function hook(w) {
 }
 const tick = E.tickVillage;
 E.tickVillage = function(v, d) { const w = v?._world; snapshot(w, d); hook(w); return tick.apply(this, arguments); };
-function write() { fs.writeFileSync(out, JSON.stringify({ knob: !!E.T1398_BRONZE_BAND, gates, days, casts, trades, buyerMeaning: '기존 순수출가 캐시만 읽음. unknown은 미관측이며 0이 아님' })); }
+function write() { fs.writeFileSync(out, JSON.stringify({ knob: !!E.T1398_BRONZE_BAND, deposits, gates, days, casts, trades, buyerMeaning: '기존 순수출가 캐시만 읽음. unknown은 미관측이며 0이 아님' })); }
 process.on('exit', () => { if (world) { lastDay = null; snapshot(world, (days.at(-1)?.day || 0) + 1); } write(); });
