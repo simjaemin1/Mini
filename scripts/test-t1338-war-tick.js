@@ -17,6 +17,7 @@
 //   ⑤ 손잡이 `T1338_WALK_BUDGET=1` — 성벽 안 진을 바깥 다섯 몸이 묻는다: 이어 미는 먼 탐색 ≤ 1(끔이면 다섯) · 그 하나가 끝나면 자리가 풀린다
 // 실행: node scripts/test-t1338-war-tick.js
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288 · PM land1085] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
