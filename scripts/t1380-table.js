@@ -104,6 +104,47 @@ function digest(R) {
   const ux = Object.fromEntries((T.ucols || []).map((c, i) => [c, i]));
   const ud = (T.use || []).map((u) => u[0]).filter((d) => d <= o.last); const uD = ud.length ? Math.max(...ud) : null;
   if (uD != null) { const U = {}; for (const u of T.use) if (u[0] === uD) for (const k of ['grown', 'house', 'field', 'pot', 'work', 'other', 'gone']) U[k] = (U[k] || 0) + (u[ux[k]] || 0); o.use = Object.assign({ day: uD }, U); }
+  //   ★[덧붙임 셋] ⑩ 진단 — 넓히기 몸-분 · 기근 문(econ 곳간 식량 등가 < 사람 × 30) · 일괄 몸의 본업 · (몸 세계) 영토 일감을 쥔 몸
+  if (vx.hgr != null) {
+    let lab = 0, labH = 0, cells = 0, cellsH = 0, vd = 0, vdH = 0, spare = 0, tbn = 0, tb = 0, tbF = 0, tbH = 0, tbHF = 0, vdHt = 0; const job = {}, jobH = {};
+    for (const r of V) {
+      if (!(r[vx.N] > 0)) continue; vd++; const h = r[vx.hgr] === 1; if (h) vdH++;
+      const m = r[vx.laborMin] || 0, c = r[vx.cellsT] || 0; lab += m; cells += c; if (h) { labH += m; cellsH += c; }
+      const j = r[vx.bJob] || '—'; job[j] = (job[j] || 0) + m; if (h) jobH[j] = (jobH[j] || 0) + m;
+      spare += r[vx.spare] || 0;
+      if (r[vx.tBody] != null) { tbn++; tb += r[vx.tBody]; tbF += r[vx.tFood] || 0; if (h) { vdHt++; tbH += r[vx.tBody]; tbHF += r[vx.tFood] || 0; } }
+    }
+    const top = (q, tot) => Object.entries(q).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => `${k} ${tot ? (100 * v / tot).toFixed(0) : 0}%`).join(' · ') || '—';
+    o.diag = { vd, vdH, lab, labH, cells, cellsH, spare, jobs: top(job, lab), jobsH: top(jobH, labH), tb: tbn ? { n: tbn, tb, tbF, nH: vdHt, tbH, tbHF } : null };
+  }
+  //   ★[덧붙임 셋] ⑪ 인구가 선 마을-날 — N(d) ≤ N(d − 30) 인 마을-날(사람 > 0 · 날 > 30)을 까닭으로 가른다(겹쳐 셈 + 차례로 한 칸)
+  {
+    const byV = new Map(); for (const r of H.rows) { if (r[0] > o.last) continue; const nm = H.names[r[hx.v]]; let m = byV.get(nm); if (!m) { m = new Map(); byV.set(nm, m); } m.set(r[0], r); }
+    const fe = new Map(); if (vx.feRaw != null) for (const r of V) fe.set(r[0] + '|' + T.names[r[vx.v]], r[vx.feRaw]);
+    const C = { n: 0, food: 0, desp: 0, unh: 0, gate: 0, K: 0, none: 0 }, Q = { food: 0, desp: 0, unh: 0, gate: 0, K: 0, none: 0 };
+    for (const [nm, m] of byV) for (const [d, r] of m) {
+      if (d <= 30 || !(r[hx.N] > 0)) continue; const p = m.get(d - 30); if (!p || r[hx.N] > p[hx.N]) continue;
+      C.n++;
+      const h = r[hx.h], fr = fe.get(d + '|' + nm);
+      const f = (r[hx.fd] || 0) > 0 || r[hx.bGate] === 1, de = h != null && fr != null && h < 0.32 && fr < 10, un = h != null && h < 0.25, ga = r[hx.gated] === 1, k = r[hx.K] != null && r[hx.N] >= r[hx.K];
+      if (f) C.food++; if (de) C.desp++; if (un) C.unh++; if (ga) C.gate++; if (k) C.K++; if (!f && !de && !un && !ga && !k) C.none++;
+      Q[f ? 'food' : de ? 'desp' : un ? 'unh' : ga ? 'gate' : k ? 'K' : 'none']++;
+    }
+    o.stall = { C, Q, desp: vx.feRaw != null };
+  }
+  //   ★[덧붙임 셋] ⑫ K 세 항(econ `_kDbg` — 식량 자리 · 식량 흐름 · 땔감 · K = 셋 중 작은 것 · T1373_HOME_CAP 켬 = 식량 자리 빠짐) — 끝 날 마을마다
+  if (vx.kS != null) {
+    const Hl = new Map(lastRows.map((r) => [H.names[r[hx.v]], r])), hc = !!(T.env && T.env.HC === '1');
+    const rows = V.filter((r) => r[0] === o.last && r[vx.N] > 0).map((r) => {
+      const nm = T.names[r[vx.v]], h = Hl.get(nm) || [], ks = r[vx.kS], kp = r[vx.kP], kf = r[vx.kF];
+      const terms = hc ? [['식량 흐름', kp], ['땔감', kf]] : [['식량 자리', ks], ['식량 흐름', kp], ['땔감', kf]];
+      let by = null; for (const [n, v] of terms) if (v != null && (by == null || v < by[1])) by = [n, v];
+      const K = h[hx.K], N = r[vx.N], beds = h[hx.beds];
+      return { v: nm, N, K, by: by ? by[0] : '—', ks, kp, kf, nk: K ? N / K : null, h: h[hx.h], vac: beds != null ? beds - N : null, tr: r[vx.terrN] / capF(N), gated: h[hx.gated] };
+    }).sort((a, b) => b.N - a.N);
+    const cnt = {}; for (const x of rows) cnt[x.by] = (cnt[x.by] || 0) + 1;
+    o.kterm = { top: rows.slice(0, 10), cnt, n: rows.length, hc };
+  }
   return o;
 }
 const D = RUNS.map(digest);
@@ -152,7 +193,7 @@ for (const o of D) {
   P(`| ${o.k} | ${o.seed} | **${f3(o.ratioEnd)}** | ${o.off ? '—' : f3(fo)} | ${o.off ? '—' : ox(o.pass)} | ${w ? `${w.v} ${f3(w.r)}(${w.N}명 · ${n0(w.terr)}칸)` : '—'} | ${n0(o.below)} / ${n0(o.vdays)} | ${[30, 90, 150, 240].map((d) => f2(o.ratioBy[d])).join(' · ')} | ${f3(o.labEnd)} |`);
 }
 P('\n## ③ 넓히기 까닭 — 마을-날(사람 > 0 · 끝 날까지)\n');
-const WHY = [['grow', '늘었다'], ['target', '목표 닿음'], ['wood', '통나무 없음'], ['body', '몸 없음'], ['labor', '개간 중'], ['none', '그 밖']];
+const WHY = [['grow', '늘었다'], ['target', '목표 닿음'], ['wood', '통나무 없음'], ['body', '몸 없음'], ['food', '기근 문(덧붙임 셋)'], ['labor', '개간 중'], ['none', '그 밖']];
 P('| 판 | 시드 | ' + WHY.map((w) => w[1]).join(' | ') + ' |');
 P('|---|---|' + WHY.map(() => '---').join('|') + '|');
 for (const o of D) if (o.ok && o.why) P(`| ${o.k} | ${o.seed} | ` + WHY.map((w) => n0(o.why[w[0]] || 0)).join(' | ') + ' |');
@@ -185,6 +226,30 @@ P('\n## ⑨ 덧붙임 둘 칸 — 마을 크기 · 큰 마을 행복 · 불행 �
 P('| 판 | 시드 | 사람(끝) | 빈 마을 | 마을 크기 가운데 · 200명 넘는 마을 | 가장 큰 다섯 | 큰 다섯 행복(끝 30날) | h < 0.25 · < 0.32 마을-날 | 주거 문 닫힌 마을-날 | 떠남(불행 이탈) | 굶는 마을(굶어 죽음 · 영토 비 · 밭 칸 · h) |');
 P('|---|---|---|---|---|---|---|---|---|---|---|');
 for (const o of D) if (o.ok && o.size) { const t = o.trap; P(`| ${o.k} | ${o.seed} | ${n0(o.pop.get(o.last))} | ${n0(o.empty)} | ${n0(o.size.med)} · ${n0(o.size.over200)} | ${o.size.top.map((x) => `${x.v} ${x.N}`).join(' · ')} | ${f3(o.topH)} | ${n0(o.lt25)} · ${n0(o.lt32)} | ${n0(o.gated)} | ${n0(o.emig)} | ${t ? `${t.vils}곳(${n0(t.fd)}${t.ratio != null ? ` · ${f3(t.ratio)} · ${n0(t.farm)} · ${f3(t.h)}` : ''})` : '—'} |`); }
+if (D.some((o) => o.diag)) {
+  P('\n## ⑩ 덧붙임 셋 진단 — 넓히기 몸-분과 기근 문(econ 곳간 식량 등가 < 사람 × `T1297_FAMINE_DAYS` 30) · 일괄 몸의 본업\n');
+  P('| 판 | 시드 | 기근 문 닫힌 마을-날 / 마을-날 | 넓히기 몸-분 · 그중 기근 문 날 | 넓힌 칸(일괄) · 그중 기근 문 날 | 일괄 몸의 본업(몸-분 몫) | 그중 기근 문 날 | 문이 막은 마을-날(SPARE) | (몸 세계) 영토 일감을 쥔 몸 / 마을-날 · 그중 식량 일꾼 · 기근 문 날 |');
+  P('|---|---|---|---|---|---|---|---|---|');
+  for (const o of D) if (o.diag) { const g = o.diag, t = g.tb; P(`| ${o.k} | ${o.seed} | ${pc(g.vdH, g.vd)} | ${n0(g.lab)} · ${g.lab ? (100 * g.labH / g.lab).toFixed(1) : '—'}% | ${n0(g.cells)} · ${g.cells ? (100 * g.cellsH / g.cells).toFixed(1) : '—'}% | ${g.jobs} | ${g.jobsH} | ${n0(g.spare)} | ${t ? `${(t.tb / t.n).toFixed(2)} · ${t.tb ? (100 * t.tbF / t.tb).toFixed(0) : '—'}% · ${t.nH ? (t.tbH / t.nH).toFixed(2) : '—'}(식량 일꾼 ${t.tbH ? (100 * t.tbHF / t.tbH).toFixed(0) : '—'}%)` : '—'} |`); }
+}
+if (D.some((o) => o.stall)) {
+  P('\n## ⑪ 인구가 선 마을-날(N(날) ≤ N(날 − 30) · 사람 > 0) — 무엇에 막혀 섰나(겹쳐 셈 · 끝 칸 = 차례로 한 칸: 식량 > 절망 > 불행 > 주거 문 > K > 그 밖)\n');
+  P('| 판 | 시드 | 선 마을-날 | 식량(굶어 죽음 · 출생 곳간 문) | 절망 이탈 선(h < 0.32 · 날것 곳간 < 사람 × 10) | 불행 이탈(h < 0.25) | 주거 문(집 없음) | K 에 닿음(N ≥ K) | 넷 · K 다 아님 | 차례로 한 칸 |');
+  P('|---|---|---|---|---|---|---|---|---|---|');
+  for (const o of D) if (o.stall) { const { C, Q } = o.stall, pp = (x) => C.n ? `${n0(x)}(${(100 * x / C.n).toFixed(0)}%)` : '—'; P(`| ${o.k} | ${o.seed} | ${n0(C.n)} | ${pp(C.food)} | ${o.stall.desp ? pp(C.desp) : '—'} | ${pp(C.unh)} | ${pp(C.gate)} | ${pp(C.K)} | ${pp(C.none)} | 식 ${n0(Q.food)} · 절 ${o.stall.desp ? n0(Q.desp) : '—'} · 불 ${n0(Q.unh)} · 주 ${n0(Q.gate)} · K ${n0(Q.K)} · 밖 ${n0(Q.none)} |`); }
+  P('\n절망 이탈 문은 정착 보호기(`bandits.js` `BDT_MIN_DAY` 365날) 뒤에 열린다 — 첫 해 칸은 위기 선(그 문이 보는 줄)에 선 날이지 떠난 날이 아니다.');
+}
+if (D.some((o) => o.kterm)) {
+  P('\n## ⑫ 인구 상한 K 의 세 항(econ `_kDbg` · K = 식량 자리 · 식량 흐름 · 땔감 흐름 중 작은 것 · `T1373_HOME_CAP=1` 이면 식량 자리가 빠진다) — 끝 날\n');
+  for (const o of D) if (o.kterm) {
+    const q = o.kterm, b = q.top[0];
+    P(`**${o.k} · 시드 ${o.seed}${q.hc ? ' · HOME_CAP' : ''}** — 가장 큰 마을 ${b ? `${b.v} ${b.N}명 · K 를 정한 항 ${b.by}(N ÷ K ${f2(b.nk)} · 행복 ${f2(b.h)} · 집 빈자리 ${n0(b.vac)} · 영토 ÷ 목표 ${f2(b.tr)})` : '—'} · 항별 마을 수(${q.n}곳): ${Object.entries(q.cnt).sort((a, c) => c[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ')}\n`);
+    P('| 마을 | 사람 | K | K 를 정한 항 | 식량 자리 · 식량 흐름 · 땔감 | N ÷ K | 행복 | 집 빈자리 | 영토 ÷ 목표 | 주거 문 |');
+    P('|---|---|---|---|---|---|---|---|---|---|');
+    for (const x of q.top) P(`| ${x.v} | ${x.N} | ${n0(x.K)} | ${x.by} | ${n0(x.ks)} · ${n0(x.kp)} · ${n0(x.kf)} | ${f2(x.nk)} | ${f2(x.h)} | ${n0(x.vac)} | ${f2(x.tr)} | ${x.gated ? '닫힘' : '—'} |`);
+    P('');
+  }
+}
 P('\n## ⑥ 집터 찾기 부름 — 그 부름이 새로 판정한 후보의 거부 까닭(부름 합 · 끝 날까지) · 다시 훑기(빈손 부름 전수 · 부름당)\n');
 const RG = [['house', '집과 너무 가까움'], ['terr', '영토 밖'], ['field', '개간 밭 위'], ['shelter', '쉼터'], ['stake', 'stake'], ['other', '그 밖']];
 P('| 판 | 시드 | 부름 | 찾음 | 쉼터 선 마을의 부름 | ' + RG.map((g) => g[1]).join(' | ') + ' |');

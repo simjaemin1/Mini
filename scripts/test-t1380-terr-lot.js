@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh)
-// @bait 3   ← [T1356] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
+// @bait 4   ← [T1356] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
 // === scripts/test-t1380-terr-lot.js — 영토 v2 를 랩 넓이에(T1380 · ★재민 11-19 · T1345 회부 2 · 3) ============================
 //
 // ★무엇: 영토 v2(묶음이 켜는 `T1207_TERR_REAL` · `T1238_TERR_V2`) 위의 손잡이 셋 — 다 끔 기본 · 영토 v2 켬 안에서만 뜻:
@@ -8,6 +8,7 @@
 //   (나) `T1380_LOT_CLAIM` — 집 부지 후보가 영토 가장자리를 넘으면 넘는 칸을 같은 말뚝 값으로 그 자리에서 영토에 넣고 집터를 잡는다(통나무 모자람 = 까닭 `stake`)
 //   (라) `T1380_START_FULL` — 처음 땅 1,500 상한을 안 건다(시딩 · 백필 — 판으로 잰다 · 여기선 글자만)
 //   (덧붙임 둘) `T1380_HAPPY_EXPAND` — 영토 넓히기에 나서는 정도 = 행복 h: 'rate' 그날 넓히는 칸 · 몸의 낮 × h · 'lot' (나) 의 그 자리 넣기만 h 를 탄다(날마다 h 씩 · 1 이면 넣는다)
+//   (덧붙임 셋) `T1380_SPARE_EXPAND` — 식량이 모자란(econ 기근 문 — 곳간 식량 등가 < 사람 × `T1297_FAMINE_DAYS`) 마을은 그날 영토 넓히기에 몸을 안 낸다
 // ★판정 사본 0: 진짜 `server/villages.js` 를 아이 프로세스에서 손잡이 env 를 달리해 싣고(손잡이는 글을 읽을 때 정해진다) `__labProbe` 주입구로 마을을 꽂아
 //   정본 집터 찾기(`_lifeAddHouseSite`) · 영토 넓히기(`_terrGrow` — 일괄 `_t1238Batch`)를 그대로 부른다.
 // 꾸민 마을 A — 중심 (1000, 1000) · 영토 = 33 × 33 네모(1,089칸 — 부지 원판(오프셋 −6 ~ +5)이 다 드는 자리는 중심 거리 14.1 까지라 회관 마당 원(16.5) 밖 부지가 하나도 안 든다 = 영토가 쓰는 땅에 딱 맞음) ·
@@ -19,10 +20,12 @@
 //   ⓒ 남의 영토 · 물 칸은 안 넣는다 — 부지 후보의 영토 밖 칸에 이웃 마을 B 영토가 들면 · 물이 들면 넣을 칸 계획이 없다 · (나) 가 잡은 뒤 A ∩ B = ∅ · A 에 물 칸 0
 //   ⓓ 묶음(영토 v2) 끔 = 종전 — T1380 손잡이를 '1' 로 줘도 꺼진다 · 같은 판(찾기 · 넓히기 · 다시 찾기)의 지문이 손잡이 없는 판과 같다 · 영토 v2 켬 + 손잡이 '0' = 손잡이 없음
 //   ⓔ 미끼(파일 안 · 바꾼 자리 정확히 1곳씩) — 말뚝 값을 안 치르게 바꾼 사본 → ⓐ 의 통나무 단언 빨강 · 부지 술어(집터 판정 · 넣을 칸 술어)를 안 거친 사본 → ⓒ 빨강 ·
-//      'lot' 이 h 를 안 타게 바꾼 사본 → ⓕ 빨강
+//      'lot' 이 h 를 안 타게 바꾼 사본 → ⓕ 빨강 · 일괄의 기근 문을 끈 사본 → ⓖ 빨강
 //   ⓕ (덧붙임 둘) 'rate' — 하루 넓힌 칸 = 60 × h(h 1 · 0.5 · 0.25 → 60 · 30 · 15) · 'lot' — 날마다 h 씩 쌓아 1 이 차는 날에만 그 자리 넣기(h 0.6 → 셋째 찾기 · h 1 → 둘째 찾기) · 그 전 찾기는 까닭 happy
+//   ⓖ (덧붙임 셋) 기근 문 — 일괄: 굶는 마을(곳간 식량 0)은 그날 넓힌 칸 0 · 까닭 'food' · 문 셈 1 / 넉넉한 마을은 60 / 손잡이 없으면 굶어도 60 ·
+//      몸 세계(T1302): 굶는 마을의 몸은 영토 일감이 없다 / 넉넉하면 영토 일감 / 손잡이 없으면 굶어도 영토 일감
 //
-// 실행: node scripts/test-t1380-terr-lot.js   (아이 아홉 · 몇 초)
+// 실행: node scripts/test-t1380-terr-lot.js   (아이 열여섯 · 몇 초)
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -37,7 +40,7 @@ function child() {
   const V = require(process.env.T1380_VPATH || path.join(ROOT, 'server/villages.js'));
   const E = require(path.join(ROOT, 'sim/economy-sim.js'));
   const P = V.__labProbe;
-  const out = { mode: MODE, on: { v2: !!V.T1238_TERR_V2, full: !!V.T1380_START_FULL, lot: !!V.T1380_TERR_LOT_FIRST, claim: !!V.T1380_LOT_CLAIM, happy: V.T1380_HAPPY_EXPAND || '' } };
+  const out = { mode: MODE, on: { v2: !!V.T1238_TERR_V2, full: !!V.T1380_START_FULL, lot: !!V.T1380_TERR_LOT_FIRST, claim: !!V.T1380_LOT_CLAIM, happy: V.T1380_HAPPY_EXPAND || '', spare: !!V.T1380_SPARE_EXPAND } };
   if (!P || !P._t1380Probe) { out.missing = true; return out; }
   const blocked = new Set(), water = new Set();
   const ta = { isBlocked: (x, y) => blocked.has(x + ',' + y) || water.has(x + ',' + y), isWater: (x, y) => water.has(x + ',' + y), isRock: () => false, fert: () => 0.5, forestMult: () => 1 };
@@ -106,6 +109,18 @@ function child() {
     const r0 = reasons(); out.sites = [];
     for (let d = 100; d < 104 && !A._site; d++) { set([A], d); quiet(() => R.site(A)); out.sites.push(A._site ? [A._site.cx, A._site.cy] : null); if (!A._site) quiet(() => R.grow(A)); }
     const r1 = reasons(); out.happy = (r1.happy || 0) - (r0.happy || 0); out.acc = A._t1380Ha;
+  } else if (MODE === 'g') {
+    //   ⓖ (덧붙임 셋) 기근 문 — 곳간 식량 0(굶음) · 넉넉(사람 × 기근 문 날 수 × 2) · 일괄 넓히기 한 번 · (T1302 판) 그 몸의 일감
+    const A = mk(1, 'A', 1000, 1000, sq(), 40, 5000);
+    for (const k of Object.keys(A.econ.storage)) if (k !== 'wood' && k !== 'stone' && typeof A.econ.storage[k] === 'number') A.econ.storage[k] = 0;
+    if (process.env.T1380_TEST_FOOD === '1') A.econ.storage.food = A.econ.npcs.length * E.T1297_FAMINE_DAYS * 2;
+    set([A], 100);
+    out.hungry = R.hungryNow(A); out.famineDays = E.T1297_FAMINE_DAYS;
+    const t0 = new Set(A._terrSet);
+    quiet(() => R.grow(A));
+    out.grown = [...A._terrSet].filter((k) => !t0.has(k)).length; out.why = A._t1207Wait ? A._t1207Wait.why : null; out.spare = (A._t1380 && A._t1380.spare) || 0;
+    out.pend = (A._t1207Pend || []).length;
+    if (process.env.T1302_TERR_BODY === '1') { const W = {}; E.bindProductionActs(W); A.econ._world = W; const t = R.task(A, players.get(101)); out.task = t ? t.kind : null; R.task(A, players.get(101)); out.spareT = (A._t1380 && A._t1380.spare) || 0; }   // 두 번 물어도 문 셈은 그날 한 번
   } else if (MODE === 'c') {
     //   ⓒ — 이웃 마을 B(북서 모퉁이 부지의 북쪽 칸) · 물(북동 모퉁이 부지의 북쪽 칸)
     const A = mk(1, 'A', 1000, 1000, sq(), 40, 5000), B = mk(2, 'B', 987, 970, rect(975, 960, 1000, 982), 20, 100);
@@ -133,7 +148,7 @@ const ok = (c, name, detail) => { if (c) pass++; else fail++; console.log(`${c ?
 const V2 = { T1207_TERR_REAL: '1', T1238_TERR_V2: '1' };
 const run = (mode, env, vpath) => {
   const e = Object.assign({}, process.env, { T1380_CHILD: mode }, env || {});
-  for (const k of ['T1207_TERR_REAL', 'T1238_TERR_V2', 'T1380_TERR_LOT_FIRST', 'T1380_LOT_CLAIM', 'T1380_START_FULL', 'T1380_HAPPY_EXPAND', 'T1380_TEST_H', 'T1334_BUNDLE', 'T1302_TERR_BODY']) if (!(env && k in env)) delete e[k];
+  for (const k of ['T1207_TERR_REAL', 'T1238_TERR_V2', 'T1380_TERR_LOT_FIRST', 'T1380_LOT_CLAIM', 'T1380_START_FULL', 'T1380_HAPPY_EXPAND', 'T1380_SPARE_EXPAND', 'T1380_TEST_H', 'T1380_TEST_FOOD', 'T1334_BUNDLE', 'T1302_TERR_BODY', 'T1329_TERR_CREW']) if (!(env && k in env)) delete e[k];
   if (vpath) e.T1380_VPATH = vpath; else delete e.T1380_VPATH;
   const r = spawnSync(process.execPath, [__filename], { env: e, encoding: 'utf8', maxBuffer: 64 << 20, timeout: 120000 });
   const m = /@@T1380 (.*)/.exec(r.stdout || '');
@@ -168,9 +183,9 @@ ok(nc.nw === null && nc.ne === null && nc.se && !nc.se.b && !nc.se.w, 'ⓒ 부�
 ok(nc.site && J(nc.site) !== J([988, 988]) && J(nc.site) !== J([1012, 988]) && nc.overlap === 0 && nc.wet === 0, 'ⓒ (나) 가 잡은 뒤 A ∩ B = ∅ · A 영토에 물 칸 0 · 집터는 다른 모퉁이', `집터 ${J(nc.site)} · 겹침 ${nc.overlap} · 물 ${nc.wet}`);
 // ⓓ
 console.log('\nⓓ 묶음(영토 v2) 끔 = 종전');
-const ALL = { T1380_TERR_LOT_FIRST: '1', T1380_LOT_CLAIM: '1', T1380_START_FULL: '1', T1380_HAPPY_EXPAND: 'rate' };
-const d0 = run('a', {}), d1 = run('a', ALL), d2 = run('a', Object.assign({ T1380_TERR_LOT_FIRST: '0', T1380_LOT_CLAIM: '0', T1380_START_FULL: '0', T1380_HAPPY_EXPAND: '0' }, V2));
-ok(d1.on && !d1.on.v2 && !d1.on.full && !d1.on.lot && !d1.on.claim && !d1.on.happy, 'ⓓ 영토 v2 끔이면 T1380 손잡이를 "1"(행복 넓히기는 "rate")로 줘도 꺼진다', J(d1.on));
+const ALL = { T1380_TERR_LOT_FIRST: '1', T1380_LOT_CLAIM: '1', T1380_START_FULL: '1', T1380_HAPPY_EXPAND: 'rate', T1380_SPARE_EXPAND: '1' };
+const d0 = run('a', {}), d1 = run('a', ALL), d2 = run('a', Object.assign({ T1380_TERR_LOT_FIRST: '0', T1380_LOT_CLAIM: '0', T1380_START_FULL: '0', T1380_HAPPY_EXPAND: '0', T1380_SPARE_EXPAND: '0' }, V2));
+ok(d1.on && !d1.on.v2 && !d1.on.full && !d1.on.lot && !d1.on.claim && !d1.on.happy && !d1.on.spare, 'ⓓ 영토 v2 끔이면 T1380 손잡이를 "1"(행복 넓히기는 "rate")로 줘도 꺼진다', J(d1.on));
 ok(d0.fp && J(d0.fp) === J(d1.fp), 'ⓓ 묶음 끔 — 같은 판(찾기 · 넓히기 · 다시 찾기)의 지문이 손잡이 없는 판과 같다', `${J(d0.fp)}${J(d0.fp) === J(d1.fp) ? '' : ' : ' + J(d1.fp)}`);
 ok(off.fp && J(off.fp) === J(d2.fp), 'ⓓ 영토 v2 켬 · 손잡이 "0" = 손잡이 없음(같은 지문)', `${J(off.fp)}${J(off.fp) === J(d2.fp) ? '' : ' : ' + J(d2.fp)}`);
 // ⓕ 덧붙임 둘 — 행복 넓히기
@@ -185,6 +200,19 @@ const fl6 = LT(0.6), fl1 = LT(1);
 for (const o of [fl6, fl1]) if (o.err || o.missing) console.log(`  (아이 ${o.mode} ${o.err ? '오류: ' + o.err.split('\n')[0] : 'T1380 주입구 없음'})`);
 ok(J(fl6.sites) === J([null, null, [988, 988]]) && J(fl1.sites) === J([null, [988, 988]]) && fl6.happy > 0 && fl1.happy > 0,
   "ⓕ 'lot' — 날마다 h 씩 쌓여 1 이 차는 날에만 그 자리 넣기(h 0.6 → 셋째 찾기 · h 1 → 둘째 찾기) · 그 전 찾기는 까닭 happy", `h 0.6 ${J(fl6.sites)} · h 1 ${J(fl1.sites)} · happy ${fl6.happy} · ${fl1.happy}`);
+// ⓖ 덧붙임 셋 — 기근 문
+console.log('\nⓖ 기근 문(덧붙임 셋 · `T1380_SPARE_EXPAND`)');
+const GS = (food, extra, vp) => run('g', Object.assign({ T1380_START_FULL: '1', T1380_TEST_FOOD: food }, extra || {}, V2), vp);
+const gH = GS('0', { T1380_SPARE_EXPAND: '1' }), gF = GS('1', { T1380_SPARE_EXPAND: '1' }), g0 = GS('0', {});
+for (const o of [gH, gF, g0]) if (o.err || o.missing) console.log(`  (아이 ${o.mode} ${o.err ? '오류: ' + o.err.split('\n')[0] : 'T1380 주입구 없음'})`);
+ok(gH.on && gH.on.spare && gH.hungry === true && gF.hungry === false && g0.hungry === true && gH.famineDays === 30, 'ⓖ [전제] 기근 문 = econ 곳간 식량 등가 < 사람 × T1297_FAMINE_DAYS(30) — 식량 0 이면 굶음 · 사람 × 60일치면 아님', `굶음 ${gH.hungry} · 넉넉 ${gF.hungry} · 날 수 ${gH.famineDays}`);
+ok(gH.grown === 0 && gH.why === 'food' && gH.spare === 1 && gF.grown === 60 && gF.spare === 0 && g0.grown === 60 && !g0.on.spare,
+  'ⓖ 일괄 — 굶는 마을은 그날 넓힌 칸 0(까닭 food · 문 셈 1) · 넉넉하면 60 · 손잡이 없으면 굶어도 60', `굶음 ${gH.grown}(${gH.why} · ${gH.spare}) · 넉넉 ${gF.grown} · 끔 ${g0.grown}`);
+const TB = { T1302_TERR_BODY: '1' };
+const bH = GS('0', Object.assign({ T1380_SPARE_EXPAND: '1' }, TB)), bF = GS('1', Object.assign({ T1380_SPARE_EXPAND: '1' }, TB)), b0 = GS('0', TB);
+for (const o of [bH, bF, b0]) if (o.err || o.missing) console.log(`  (아이 ${o.mode} ${o.err ? '오류: ' + o.err.split('\n')[0] : 'T1380 주입구 없음'})`);
+ok(bH.pend > 0 && bH.task === null && bH.spareT === 1 && bF.task === 'terr' && bF.spareT === 0 && b0.task === 'terr',
+  'ⓖ 몸 세계(T1302) — 굶는 마을의 몸은 영토 일감이 없다(제 일로) · 넉넉하면 영토 일감 · 손잡이 없으면 굶어도 영토 일감', `굶음 ${J(bH.task)}(줄 ${bH.pend} · 문 셈 ${bH.spareT}) · 넉넉 ${J(bF.task)} · 끔 ${J(b0.task)}`);
 // ⓔ 미끼 — 정본 사본(바꾼 자리 정확히 1곳) · 같은 server/ 자리(상대 require 그대로)
 console.log('\nⓔ 미끼(파일 안)');
 const SRC = path.join(ROOT, 'server', 'villages.js');
@@ -215,6 +243,13 @@ const bait = (tag, from, to) => {
   if (b.p) try { fs.unlinkSync(b.p); } catch (e) {}
   const red = !!(o && !o.err && J(o.sites) !== J([null, null, [988, 988]]));
   ok(b.n === 1 && red, "ⓔ 미끼 — 'lot' 이 h 를 안 타게 바꾼 사본은 첫 찾기에 그 자리를 넣는다 → ⓕ 'lot' 단언 빨강", `바꾼 자리 ${b.n} · ${J(o && o.sites)}`);
+}
+{
+  const b = bait('spare', "  if (T1380_SPARE_EXPAND && _t1380Hungry(vil)) { _t1380SpareMark(vil);", "  if (false) { _t1380SpareMark(vil);");
+  const o = b.p ? GS('0', { T1380_SPARE_EXPAND: '1' }, b.p) : null;
+  if (b.p) try { fs.unlinkSync(b.p); } catch (e) {}
+  const red = !!(o && !o.err && o.hungry === true && o.grown > 0);
+  ok(b.n === 1 && red, 'ⓔ 미끼 — 일괄의 기근 문을 끈 사본은 굶는 마을도 넓힌다 → ⓖ 일괄 단언 빨강', `바꾼 자리 ${b.n} · 굶음 ${o && o.hungry} · 넓힘 ${o && o.grown}`);
 }
 console.log(`\n${fail ? '✗' : '✓'} T1380 영토 v2 를 랩 넓이에 — ${pass}/${pass + fail}`);
 process.exit(fail ? 1 : 0);

@@ -7983,14 +7983,18 @@ function _t1238GoOk(vil, x, y, extra, nearIn) {
 //     모자람(수요 장부)만 T1207 처럼 "앞 칸을 치렀다 치고"(`plus`) 잰다 — 내일 실제로 치를 값에 가깝게.
 //     말뚝은 영토(+ 오늘 된 칸)와 맞닿은 칸에만 박는다 — 값(경계 증가)이 그때 정해진다. 개간은 줄의 어느 칸이든 한다.
 //     하루에 영토가 되는 칸 수는 오늘 고른 몫(`cap` — `_terrGrowCore` 의 목표 − 지금 · 하루 상한)을 안 넘는다.
+function _t1238Body(vil) {   // 그날 나설 수 있는 몸 하나(T561 문턱 · 명부 차례) — 일괄과 ★[T1380 덧붙임 셋] 진단 주입구가 같은 몸을 묻는다
+  const pl = state.deps && state.deps.players;
+  for (const pid of (vil.npcPids || [])) { const p = pl && pl.get(pid); if (p && _t561Fit(p)) return p; }
+  return null;
+}
 function _t1238Batch(vil, picked, cap) {
   const E = _lifeEcon(), e = vil.econ, T = _t1207Stat(vil), out = [];
   if (!e || !e.storage) return out;
   const pend = vil._t1238Pend || (vil._t1238Pend = []);
   if (pend.length < TERR_GROW_MAX_PER_DAY) { const have = new Set(pend); for (const k of picked) { if (pend.length >= TERR_GROW_MAX_PER_DAY) break; if (!have.has(k)) { pend.push(k); have.add(k); } } }
-  const pl = state.deps && state.deps.players;
-  let body = null;
-  for (const pid of (vil.npcPids || [])) { const p = pl && pl.get(pid); if (p && _t561Fit(p)) { body = p; break; } }
+  if (T1380_SPARE_EXPAND && _t1380Hungry(vil)) { _t1380SpareMark(vil); vil._t1207Wait = { day: _t1238Today(), why: 'food' }; e._t1207Need = 0; return out; }   // ★[T1380 덧붙임 셋] 켬 = 굶는 날은 몸을 안 낸다(줄은 그대로 · 한 일은 땅에 남는다 · 끔 = 이 줄 없음)
+  const body = _t1238Body(vil);
   let budget = body ? (T1380_HAPPY_EXPAND === 'rate' ? _t1207DayMin() * _t1380H(vil) : _t1207DayMin()) : 0;   // ★[T1380 덧붙임 둘 'rate'] 켬 = 나서는 몸의 낮 × 행복(끔 = 종전 값)
   if (!(budget > 0)) { T.stallBody++; vil._t1207Wait = { day: _t1238Today(), why: 'body' }; e._t1207Need = 0; return out; }
   const sp = (state.deps && state.deps.moveSpeed) || 0, from = _t1207From(vil), perLoad = _t400PerLoad('wood');
@@ -8365,9 +8369,28 @@ const T1380_LOT_CLAIM = T1238_TERR_V2 && process.env.T1380_LOT_CLAIM === '1';
 //   'lot'  — 집 부지를 영토에 넣는 일((나) `T1380_LOT_CLAIM`)만 h 를 탄다: 마을 칸 `_t1380Ha` 에 날마다 h 를 쌓고(한 번 넣을 몫 1 까지 — 미룬 몫을 쌓아 두지 않는다)
 //            넣을 때 1 을 쓴다 · 모자라면 까닭 `happy`(거부 기억 안 함 · 다음 날 다시) · 밭 · 일터 넓히기(`_terrGrowCore`)는 그대로(굶음 → 불행 → 못 넓힘의 덫을 피하는 꼴).
 const T1380_HAPPY_EXPAND = (T1238_TERR_V2 && ['rate', 'lot'].includes(process.env.T1380_HAPPY_EXPAND)) ? process.env.T1380_HAPPY_EXPAND : '';
-const _t1380St = { plans: 0, lfDays: 0, lfCells: 0, claims: 0, claimCells: 0, claimWood: 0, claimLabor: 0, stake: 0, happy: 0, rateCut: 0 };
-function _t1380Stat(vil) { return vil._t1380 || (vil._t1380 = { lfDays: 0, lfCells: 0, claims: 0, claimCells: 0, claimWood: 0, claimLabor: 0, stake: 0, happy: 0, rateCut: 0 }); }
-function t1380Stat() { return Object.assign({ full: T1380_START_FULL, lotFirst: T1380_TERR_LOT_FIRST, claim: T1380_LOT_CLAIM, happyExpand: T1380_HAPPY_EXPAND }, _t1380St); }
+// ★★[T1380 덧붙임 셋 · ★재민 11-19 "굶으면 애초에 식량 일을 더 해야 하는 거 아냐? 그러면 당연히 땅 넓히는데 일손을 쓰는 게 불가능한 거고, 식량이 충분해야 잉여시간에 땅도 넓히면서 인구가 늘지"]
+//   손잡이 `T1380_SPARE_EXPAND`(끔 기본 · `'1'` 만 켬 · 영토 v2 켬 안에서만 · 카드는 (라) 위에서 잰다 · 판정 재료 — 켬 후보 아님)
+//   식량이 모자란 마을은 그날 영토 넓히기에 몸을 안 낸다 — 그 몸은 제 일(식량 일)을 한다.
+//   "모자란" 선 = econ 기근 문(이미 있는 선 · 새 수 0): 곳간 식량 등가(`totalFoodEquivalent`) < 사람 × `T1297_FAMINE_DAYS`(= 피커 기근 블록 `foodEquiv < N * 30` 의 그 30 —
+//     econ `_t1085Hungry` "굶을 때"와 같은 줄). 그 문 아래서 econ 피커는 식량 일만 고르고 자율 전환도 식량 쪽이 앞선다(T1085) — 영토 넓히기도 같은 문을 본다.
+//     (후보였던 둘 — 절망 이탈 `BDT_CRI_FOOD` 사람 × 10일치는 행복 0.32 밑과 함께 서는 위기 선 · 개간 문 120일치는 "넘치면 개간을 멈춘다"는 넘침 쪽 선 — 보고 §덧붙임 셋)
+//   하루 한 번 정한다(그 마을 그날 첫 물음 — 일괄은 하루 끝 넓히기 · 몸 세계는 그날 첫 영토 일감 물음) · 마을 칸 `_t1380Hd`(저장 안 함 — 곳간에서 다시 잰다).
+//   일괄(`_t1238Batch`): 그날 몸의 낮을 안 낸다 — 까닭 'food'(줄은 그대로 · 한 일은 땅에 남는다). ⚠일괄은 몸의 낮을 셈으로만 쓴다(그 몸을 제 일에서 빼지 않는다) — 이 문이 식량 일을 돌려주지는 않는다(보고).
+//   몸 세계(`_t1181Task` 영토 일감 — T1302 · T1329 · 관측 마을): 그날 영토 일감 없음(쥔 일감은 `terr-body` 취소 길 — 든 짐은 곳간에 내리고 놓는다 · 한 일은 일감에 남는다).
+//   (나) 그 자리 넣기는 몸을 안 쓴다(개간 품 0 · 회부) — 이 문을 안 탄다.
+const T1380_SPARE_EXPAND = T1238_TERR_V2 && process.env.T1380_SPARE_EXPAND === '1';
+function _t1380HungryNow(e) { const E = _lifeEcon(); return E.totalFoodEquivalent(e) < ((e.npcs && e.npcs.length) || 1) * E.T1297_FAMINE_DAYS; }   // econ `_t1085Hungry` 그 줄(읽기만)
+function _t1380Hungry(vil) {
+  const e = vil && vil.econ; if (!e || !e.storage) return false;
+  const day = _t1238Today(); let c = vil._t1380Hd;
+  if (!c || c.day !== day) c = vil._t1380Hd = { day, v: _t1380HungryNow(e), m: false };
+  return c.v;
+}
+function _t1380SpareMark(vil) { const c = vil._t1380Hd; if (c && !c.m) { c.m = true; _t1380Stat(vil).spare++; _t1380St.spare++; } }   // 문이 몸을 막은 마을-날(하루 한 번)
+const _t1380St = { plans: 0, lfDays: 0, lfCells: 0, claims: 0, claimCells: 0, claimWood: 0, claimLabor: 0, stake: 0, happy: 0, rateCut: 0, spare: 0 };
+function _t1380Stat(vil) { return vil._t1380 || (vil._t1380 = { lfDays: 0, lfCells: 0, claims: 0, claimCells: 0, claimWood: 0, claimLabor: 0, stake: 0, happy: 0, rateCut: 0, spare: 0 }); }
+function t1380Stat() { return Object.assign({ full: T1380_START_FULL, lotFirst: T1380_TERR_LOT_FIRST, claim: T1380_LOT_CLAIM, happyExpand: T1380_HAPPY_EXPAND, spareOn: T1380_SPARE_EXPAND }, _t1380St); }
 function _t1380H(vil) { const s = vil && vil.econ && vil.econ.lastStats; return (s && typeof s.happiness === 'number') ? Math.max(0, Math.min(1, s.happiness)) : 1; }
 //   'rate' — 오늘 넓힐 칸 = want × h(끝수 이월)
 function _t1380Rate(vil, want) {
@@ -17138,6 +17161,7 @@ function _t1181Task(vil,npc,bound) {
       if(candidates.length)return {kind:'bridge',key:'b/'+p.i+'/'+_t527Sig(p),site:p,target:candidates[0],need:()=>_t527EconNeed(p,p.stage)||{}};
     }
   }
+  if(T1380_SPARE_EXPAND && vil._t1207Pend && vil._t1207Pend.length && _t1380Hungry(vil)) { _t1380SpareMark(vil); return null; }   // ★[T1380 덧붙임 셋] 켬 = 굶는 날은 영토 일감 없음 — 몸은 제 일(식량 일) · 쥔 일감은 `terr-body` 취소 길로 놓는다(든 짐은 곳간에 · 끔 = 이 줄 없음)
   if(T1329_TERR_CREW) {   // ★[T1329 ①] 켬 = 여유 크루마다 제 칸 하나(한 칸 한 몸) · 끔 = 아래 종전 줄(첫 몸 하나 · 줄 머리)
     const j=vil._t1207Pend&&vil._t1207Pend.length?_t1329Job(vil,npc):null;
     if(j&&_t1329Short(vil,npc,j))return null;   // ★[T1329 ④] 말뚝만 남았는데 곳간에 꺼낼 잉여가 없다 — 몸은 제 일로(일감은 그 몸이 쥔 채 · 잉여가 서면 다시)
@@ -20693,7 +20717,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,
   t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
-  T1380_START_FULL, T1380_TERR_LOT_FIRST, T1380_LOT_CLAIM, T1380_HAPPY_EXPAND, t1380Stat, _t1380Claim, _t1380Pay, _t1380LotFront,   // ★[T1380] 영토 v2 를 랩 넓이에 — 손잡이 셋 · 셈 · 하네스가 같은 함수를 부른다
+  T1380_START_FULL, T1380_TERR_LOT_FIRST, T1380_LOT_CLAIM, T1380_HAPPY_EXPAND, T1380_SPARE_EXPAND, t1380Stat, _t1380Claim, _t1380Pay, _t1380LotFront,   // ★[T1380] 영토 v2 를 랩 넓이에 — 손잡이 셋 · 셈 · 하네스가 같은 함수를 부른다
   T1238_TERR_V2, T1302_TERR_BODY, T1329_TERR_CREW, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,
   _t1238Batch, _t1238DayPre, _t1238DayPost, _t1238GoOk, _t1238Use, _t1238Remove, _t1238Boot, _t1238JobToLand, _t1238JobFromLand, _t1238JobsOf, landSizeOfCells, _t1238Struct, _t1238Land, _t1238St,
@@ -20912,6 +20936,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
       structOf: (vil) => _t1238StructOf(vil), clearLand: () => { _t1238Land.clear(); _t1238Struct.clear(); }, get on() { return T1238_TERR_V2; } },
     // ★[T1380] 영토 v2 를 랩 넓이에 — 하네스가 마을을 꽂고(위 `_t569Probe` · `_t400Probe` · `_t1238Probe`) 정본 집터 찾기 · 영토 넓히기를 그대로 부른다(사본 0)
     _t1380Probe: { site: (vil) => _lifeAddHouseSite(vil), grow: (vil) => _terrGrow(vil), reason: () => _probe.siteReason, st: () => _t1380St,
+      hungryNow: (vil) => (vil && vil.econ && vil.econ.storage) ? _t1380HungryNow(vil.econ) : null, body: (vil) => _t1238Body(vil), task: (vil, npc) => _t1181Task(vil, npc, true),   // ★[T1380 덧붙임 셋] 읽기만(기근 문 · 일괄 몸) · 몸 세계 일감
       claim: (vil, x, y, strict) => _t1380Claim(vil, _lifeSiteFilters(vil), x, y, !!strict, T569_OVERLAP ? _t569Near(vil) : null) },
     _t569Probe: { setup: (o) => { const k = { ta: state.ta, villages: state.villages, db: state.db };
         if (o) { if ('ta' in o) state.ta = o.ta; if ('villages' in o) state.villages = o.villages; if ('db' in o) state.db = o.db; } return k; },
