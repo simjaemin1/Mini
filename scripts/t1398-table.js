@@ -33,17 +33,29 @@ for (const dir of fs.readdirSync(root).sort()) {
     if (item.pAtTo != null) a.prices.push(item.pAtTo); aggregate.set(key, a);
   }
   for (const t of b.trades) {
-    if (!t.abandoned) { add(t, t.sent, t.from, t.to); add(t, t.sent2, t.from, t.to); for (const i of t.basket || []) add(t,i,t.from,t.to); }
+    if (!t.abandoned) {
+      if (t.basket) for (const i of t.basket) add(t, i.res === t.sent?.res ? { ...i, pAtTo:t.sent.pAtTo } : i, t.from, t.to);
+      else { add(t, t.sent, t.from, t.to); add(t, t.sent2, t.from, t.to); }
+    }
     if (t.retBasket) for (const i of t.retBasket) add(t,i,t.to,t.from); else add(t,t.bought,t.to,t.from);
   }
   for (const a of aggregate.values()) routes.push([dir, a.from, a.to, a.n, a.amount, a.distances.length ? a.distances.reduce((x,y) => x+y,0)/a.distances.length : null,
     a.prices.length ? a.prices.reduce((x,y) => x+y,0)/a.prices.length : null]);
 }
 function table(headers, records) { console.log('| '+headers.join(' | ')+' |\n|'+headers.map(() => '---').join('|')+'|'); for (const row of records) console.log('| '+row.map(v => typeof v === 'number' ? fmt(v) : v).join(' | ')+' |'); }
+const pairs = [];
+for (const a of rows.filter(r => r[0].includes('-off-'))) {
+  const b = rows.find(r => r[0] === a[0].replace('-off-', '-on-') && r[1] === a[1]);
+  if (b) pairs.push([a[0].replace('-off-', '-'), a[1], a[2], b[2], a[2] ? b[2]/a[2] : null,
+    `${a[3]} → ${b[3]}`, `${a[4]} → ${b[4]}`, `${fmt(a[5])} → ${fmt(b[5])}`, `${fmt(a[6])} → ${fmt(b[6])}`,
+    `${a[7]} → ${b[7]}`, `${a[8]} → ${b[8]}`]);
+}
+console.log('# 끔/켬 짝 비교\n');
+table(['판','날','끔 청동','켬 청동','끔비','쥔 마을 /51','병기고 절반 초과','상위 다섯 %','묵은 주석 %','빈 마을','인구'],pairs);
 console.log('# 판 결과\n');
 table(['판','날','청동 생산 누계','쥔 마을 /51','병기고 절반 초과','상위 다섯 %','묵은 주석 %','빈 마을','인구'],rows);
 console.log('\n# 닫힌 조건 마을-날(구매자는 기존 값 캐시에 한함)\n');
 table(['판','문','마을-날','구리 평균','주석 평균','손 평균','구매자 양수','구매자 미관측','재료+손+구매자'],diag);
 console.log('\n# 무기 이동(청동만의 거래는 아님: 장부 품목이 weapon으로 합쳐져 있음)\n');
 table(['판','보낸 마을','산 마을','줄 수','양','거리 평균','도착값 평균'],routes);
-fs.writeFileSync(path.join(root,'summary.json'),JSON.stringify({ rows, diag, routes },null,2));
+fs.writeFileSync(path.join(root,'summary.json'),JSON.stringify({ pairs, rows, diag, routes },null,2));

@@ -46,7 +46,7 @@ function observeVillage(v, d) {
 function collectTrades(w) {
   for (const t of w.tradeLog || []) {
     if (!t || seenTrades.has(t)) continue; seenTrades.add(t);
-    if (t.sent?.res === 'weapon' || t.bought?.res === 'weapon' || [...(t.basket || []), ...(t.retBasket || [])].some(x => x.res === 'weapon')) trades.push(JSON.parse(JSON.stringify(t)));
+    if (t.sent?.res === 'weapon' || t.sent2?.res === 'weapon' || t.bought?.res === 'weapon' || [...(t.basket || []), ...(t.retBasket || [])].some(x => x.res === 'weapon')) trades.push(JSON.parse(JSON.stringify(t)));
   }
 }
 function hook(w) {
