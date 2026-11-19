@@ -382,13 +382,15 @@ function pricesFresh(econV2, v) { return econV2.computeShadowPrices(v); }
 //   손잡이 `T1161_TWO_PRICES=0` = 종전(전 표 · 같은 값 대조용).
 const T1161_TWO_PRICES = !(typeof process !== 'undefined' && process.env && process.env.T1161_TWO_PRICES === '0');
 // ★★[T1341 2026-11-16 · ★재민 11-16 "마을이 정말 필요한 물건은 구해오면 그냥 받아들임 수치가 오르는 것뿐이고 보상 없음"]
-//   손잡이 `T1341_OWN_HOUSE`(끔 기본 · `=1` 켬 · 판정 재민). 켬이면 **마을 의뢰(부탁) 전부** 갚음이 0 이다 — 마을이 그냥 받는다.
+//   손잡이 `T1341_OWN_HOUSE`(★T1377 -on: 켬 기본 · `=0` 끔 · 판정 재민). 켬이면 **마을 의뢰(부탁) 전부** 갚음이 0 이다 — 마을이 그냥 받는다.
 //   ⓐ 납품(`deliverToVillage`) — 몫 확정 · 실물 이동(짐 → 곳간)은 그대로 · 갚음 확인(①b) · 갚음 지급(③)만 건너뛴다(곳간에서 나가는 것 0 · 짐에 들어오는 것 0).
 //   ⓑ 게시판 한 줄(`boardLine`) — "…개를 구해다 주면 고맙겠습니다."(갚는 말 0).
 //   ⚠의뢰를 **거는 문**(`makeRequest` — 갚을 잉여가 있어야 건다 · B-1)과 하루 재검증(`revalidate`)은 그대로다 — 그 값이 거래소의 "보상으로 잠긴 품목"(`trade.js` ·
 //     `villages.js` 시세 조정)에 같은 줄로 걸려 있어 여기서 흔들면 교역이 바뀐다(카드 ③ "교역은 무접촉"). 사람 0 판이면 켬 · 끔이 같은 까닭이 이것이다.
 //     걸린 약속 값(`rewItem` · `rewQty`)은 장부 안에만 남고 화면 · 납품 어디에도 안 나간다(`villages.js villageBoard` 가 켬이면 비운다) — 뜻을 옮길지는 회부.
-const T1341_OWN_HOUSE = !!(typeof process !== 'undefined' && process.env && process.env.T1341_OWN_HOUSE === '1');
+//   ★★[T1377 -on 후보 · 켬 기본 — 채택은 재민] 기본이 켬이다. 끄려면 `T1341_OWN_HOUSE=0`(빈 값 `T1341_OWN_HOUSE=` 도 끔 — 종전 하네스의 끔 판 꼴 그대로).
+//     브라우저 랩(`process` 없음)은 종전대로 끔이다(랩엔 사람이 없다 — 이 손잡이가 바꾸는 것은 사람 손 · 게시판 글뿐).
+const T1341_OWN_HOUSE = !!(typeof process !== 'undefined' && process.env && !(process.env.T1341_OWN_HOUSE === '0' || process.env.T1341_OWN_HOUSE === ''));
 function pricesFreshOf(econV2, v, keys) {
   return (T1161_TWO_PRICES && typeof econV2.shadowPricesOf === 'function') ? econV2.shadowPricesOf(v, keys) : econV2.computeShadowPrices(v);
 }

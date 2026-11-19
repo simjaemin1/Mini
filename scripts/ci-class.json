@@ -14507,6 +14507,51 @@
    "core": false,
    "why": "안 잼"
   },
+  "test-t1377-onb-default.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 0.8,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.5,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
+   ]
+  },
   "test-t1377-onb-guide.js": {
    "cls0": "가",
    "why0": "",
