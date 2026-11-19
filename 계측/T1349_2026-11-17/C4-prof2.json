@@ -1,0 +1,257 @@
+{
+ "pid": 5256,
+ "at": "2026-11-18T00:14:32.976Z",
+ "stacks": [
+  [
+   "_t804Nearest :9038",
+   "_t804Road :8973",
+   "_t804Way :8917",
+   "det.walk :9151",
+   "_muStepFollow :270",
+   "_muDefHold :305",
+   "_warHoldCtlSides :10751",
+   "_warTickOne :10622",
+   "_t681Flush :10513",
+   "(anon) :11072",
+   "g :11067",
+   "_drainTickJobs :11627",
+   "_t731Tick :11053",
+   "onGameTick :10935",
+   "V.onGameTick :23",
+   "(anon) :17147",
+   "pump :110",
+   "processImmediate :484"
+  ],
+  [
+   "_standCellNear :15822",
+   "_warStandNear :8821",
+   "det.target :9152",
+   "_muStepFollow :262",
+   "_muDefHold :305",
+   "_warHoldCtlSides :10751",
+   "_warTickOne :10622",
+   "_t681Flush :10513",
+   "(anon) :11072",
+   "g :11067",
+   "_drainTickJobs :11627",
+   "_t731Tick :11053",
+   "onGameTick :10935",
+   "V.onGameTick :23",
+   "(anon) :17147",
+   "pump :110",
+   "processImmediate :484"
+  ],
+  [
+   "require :147",
+   "_warWalkCap :8603",
+   "_warAdvanceMarch :10724",
+   "_warTickOne :10622",
+   "_t681Flush :10513",
+   "(anon) :11072",
+   "g :11067",
+   "_drainTickJobs :11627",
+   "_t731Tick :11053",
+   "onGameTick :10935",
+   "V.onGameTick :23",
+   "(anon) :17147",
+   "pump :110",
+   "processImmediate :484"
+  ]
+ ],
+ "profile": {
+  "samples": 34706,
+  "top": [
+   [
+    "(garbage collector) :0",
+    16.8
+   ],
+   [
+    "_muSeparate server/war-live.js:217",
+    9
+   ],
+   [
+    "_t804Nearest server/villages.js:9035",
+    8
+   ],
+   [
+    "_muStepFollow server/war-live.js:252",
+    6.4
+   ],
+   [
+    "gGet sim/path-core.js:196",
+    5.2
+   ],
+   [
+    "updateMorale sim/battle-core.js:426",
+    4.2
+   ],
+   [
+    "_warStandNear server/villages.js:8815",
+    3.4
+   ],
+   [
+    "get server/war-live.js:78",
+    3.3
+   ],
+   [
+    "_warTickOne server/villages.js:10609",
+    2.8
+   ],
+   [
+    "_searchStep sim/path-core.js:325",
+    2.7
+   ],
+   [
+    "blockedStep server/villages.js:8952",
+    2.6
+   ],
+   [
+    "get server/war-live.js:79",
+    2.5
+   ],
+   [
+    "internalModuleStat :0",
+    2.5
+   ],
+   [
+    "_warSyncMeta server/villages.js:9056",
+    2.4
+   ],
+   [
+    "cameSet sim/path-core.js:199",
+    2.1
+   ],
+   [
+    "_t804Road server/villages.js:8971",
+    2.1
+   ],
+   [
+    "canon scripts/t740-side-hook.js:102",
+    1.9
+   ],
+   [
+    "blockedCell server/villages.js:8459",
+    1.5
+   ],
+   [
+    "buildGrid sim/battle-core.js:205",
+    1.5
+   ],
+   [
+    "_t1044Arrive server/villages.js:9388",
+    1.1
+   ],
+   [
+    "stepFight server/war-live.js:431",
+    1
+   ],
+   [
+    "stepBattle sim/battle-core.js:281",
+    0.9
+   ],
+   [
+    "_muDefHold server/war-live.js:295",
+    0.9
+   ],
+   [
+    "_warClearLine server/villages.js:9181",
+    0.9
+   ],
+   [
+    "_t804Local server/villages.js:8922",
+    0.8
+   ],
+   [
+    "_t804Way server/villages.js:8915",
+    0.7
+   ],
+   [
+    "sideSnap scripts/t740-side-hook.js:120",
+    0.7
+   ],
+   [
+    "_mkHeap sim/path-core.js:56",
+    0.6
+   ],
+   [
+    "_warAdvanceMarch server/villages.js:10705",
+    0.6
+   ],
+   [
+    "(anon) server/war-live.js:438",
+    0.6
+   ],
+   [
+    "(anon) server/war-live.js:292",
+    0.6
+   ],
+   [
+    "trackVel sim/battle-core.js:451",
+    0.6
+   ],
+   [
+    "_warHoldCtlSides server/villages.js:10748",
+    0.5
+   ],
+   [
+    "_bcKnob sim/battle-core.js:421",
+    0.4
+   ],
+   [
+    "_warWalkGroupTo server/villages.js:9565",
+    0.4
+   ],
+   [
+    "(anon) server/war-live.js:257",
+    0.3
+   ],
+   [
+    "_t790Place server/villages.js:8782",
+    0.3
+   ],
+   [
+    "pathStep sim/path-core.js:447",
+    0.3
+   ],
+   [
+    "_huntHuntersSteps server/villages.js:16900",
+    0.3
+   ],
+   [
+    "det.walk server/villages.js:9151",
+    0.3
+   ]
+  ]
+ },
+ "heap": {
+  "usedSize": 1235434528,
+  "totalSize": 1330159616
+ },
+ "eval": {
+  "groups": 8,
+  "units": 495,
+  "searching": 0,
+  "roadSearching": 0,
+  "failMem": 77,
+  "roadFailMem": 77,
+  "following": 5,
+  "popsTop": [],
+  "popsSum": 0,
+  "distinctTargets": 0,
+  "topTargets": [],
+  "wars": [
+   [
+    2,
+    "battle",
+    null,
+    "농촌19"
+   ],
+   [
+    4,
+    "battle",
+    null,
+    "어촌6"
+   ]
+  ]
+ }
+}

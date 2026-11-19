@@ -1,0 +1,365 @@
+{
+ "pid": 4764,
+ "at": "2026-11-17T22:30:27.151Z",
+ "stacks": [
+  [
+   "get :78",
+   "(anon) :292",
+   "_muStepFollow :292",
+   "_warWalkGroupTo :9576",
+   "_warHoldCtlSides :10752",
+   "_warTickOne :10622",
+   "_t681Flush :10513",
+   "(anon) :11072",
+   "g :11067",
+   "_drainTickJobs :11627",
+   "_t731Tick :11053",
+   "onGameTick :10935",
+   "V.onGameTick :23",
+   "(anon) :17147",
+   "pump :110",
+   "processImmediate :484"
+  ]
+ ],
+ "profile": {
+  "samples": 911,
+  "top": [
+   [
+    "gGet sim/path-core.js:196",
+    23.9
+   ],
+   [
+    "blockedStep server/villages.js:8952",
+    13
+   ],
+   [
+    "_searchStep sim/path-core.js:325",
+    8.7
+   ],
+   [
+    "cameSet sim/path-core.js:199",
+    8.7
+   ],
+   [
+    "(garbage collector) :0",
+    7.2
+   ],
+   [
+    "_muSeparate server/war-live.js:217",
+    4.6
+   ],
+   [
+    "(anon) server/war-live.js:438",
+    4
+   ],
+   [
+    "_muStepFollow server/war-live.js:252",
+    3.8
+   ],
+   [
+    "_warStandNear server/villages.js:8815",
+    3.2
+   ],
+   [
+    "stepFight server/war-live.js:431",
+    2.2
+   ],
+   [
+    "_t804Nearest server/villages.js:9035",
+    2.1
+   ],
+   [
+    "pathStep sim/path-core.js:447",
+    2.1
+   ],
+   [
+    "_warAdvanceMarch server/villages.js:10705",
+    2
+   ],
+   [
+    "gSet sim/path-core.js:197",
+    1.9
+   ],
+   [
+    "updateMorale sim/battle-core.js:426",
+    1.9
+   ],
+   [
+    "get server/war-live.js:78",
+    1.4
+   ],
+   [
+    "get server/war-live.js:79",
+    1
+   ],
+   [
+    "(anon) server/villages.js:10703",
+    0.9
+   ],
+   [
+    "_warSyncMeta server/villages.js:9056",
+    0.9
+   ],
+   [
+    "key sim/path-core.js:195",
+    0.9
+   ],
+   [
+    "(anon) server/war-live.js:292",
+    0.8
+   ],
+   [
+    "_warTickOne server/villages.js:10609",
+    0.5
+   ],
+   [
+    "_t790Place server/villages.js:8782",
+    0.4
+   ],
+   [
+    "internalModuleStat :0",
+    0.4
+   ],
+   [
+    "(anon) server/war-live.js:241",
+    0.3
+   ],
+   [
+    "_warHoldCtlSides server/villages.js:10748",
+    0.3
+   ],
+   [
+    "trackVel sim/battle-core.js:451",
+    0.3
+   ],
+   [
+    "_t804Local server/villages.js:8922",
+    0.3
+   ],
+   [
+    "_bcKnob sim/battle-core.js:421",
+    0.3
+   ],
+   [
+    "_warBlockedCell server/villages.js:9113",
+    0.3
+   ],
+   [
+    "(anon) server/war-live.js:27",
+    0.2
+   ],
+   [
+    "_warClearLine server/villages.js:9181",
+    0.2
+   ],
+   [
+    "_warWalkGroupTo server/villages.js:9565",
+    0.2
+   ],
+   [
+    "_t804Way server/villages.js:8915",
+    0.2
+   ],
+   [
+    "stepBattle sim/battle-core.js:281",
+    0.1
+   ],
+   [
+    "buildGrid sim/battle-core.js:205",
+    0.1
+   ],
+   [
+    "get size sim/path-core.js:89",
+    0.1
+   ],
+   [
+    "H sim/path-core.js:184",
+    0.1
+   ],
+   [
+    "(anon) server/war-live.js:257",
+    0.1
+   ],
+   [
+    "enc sim/path-core.js:201",
+    0.1
+   ]
+  ]
+ },
+ "heap": {
+  "usedSize": 2105516984,
+  "totalSize": 2575503360
+ },
+ "eval": [
+  {
+   "g": [
+    515,
+    2559
+   ],
+   "kind": "srch",
+   "units": 5,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     576,
+     2610
+    ],
+    [
+     542,
+     2579
+    ],
+    [
+     576,
+     2613
+    ]
+   ]
+  },
+  {
+   "g": [
+    514,
+    2554
+   ],
+   "kind": "fail",
+   "units": 5,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     542,
+     2579
+    ],
+    [
+     544,
+     2559
+    ],
+    [
+     577,
+     2611
+    ]
+   ]
+  },
+  {
+   "g": [
+    514,
+    2556
+   ],
+   "kind": "srch",
+   "units": 5,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     576,
+     2613
+    ],
+    [
+     543,
+     2576
+    ],
+    [
+     576,
+     2615
+    ]
+   ]
+  },
+  {
+   "g": [
+    514,
+    2555
+   ],
+   "kind": "srch",
+   "units": 4,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     576,
+     2614
+    ],
+    [
+     542,
+     2579
+    ],
+    [
+     544,
+     2559
+    ]
+   ]
+  },
+  {
+   "g": [
+    515,
+    2561
+   ],
+   "kind": "srch",
+   "units": 3,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     576,
+     2612
+    ],
+    [
+     544,
+     2561
+    ],
+    [
+     576,
+     2609
+    ]
+   ]
+  },
+  {
+   "g": [
+    515,
+    2560
+   ],
+   "kind": "fail",
+   "units": 2,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     542,
+     2579
+    ],
+    [
+     577,
+     2613
+    ]
+   ]
+  },
+  {
+   "g": [
+    513,
+    2549
+   ],
+   "kind": "srch",
+   "units": 1,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     577,
+     2612
+    ]
+   ]
+  }
+ ]
+}

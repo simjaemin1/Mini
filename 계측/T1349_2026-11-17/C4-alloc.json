@@ -1,0 +1,308 @@
+{
+ "pid": 5256,
+ "at": "2026-11-18T00:23:53.183Z",
+ "stacks": [
+  [
+   "gSet :197",
+   "_searchStep :356",
+   "_search :381",
+   "localPath :407",
+   "findPath :56",
+   "_t1320Link :5836",
+   "_t1320Chain :5889",
+   "_t1320ChainOf :5883",
+   "setBodyPts :5182",
+   "_bxWalk :2271",
+   "_t765Depart :2350",
+   "walkToVillage :263",
+   "_t1075Leave :242",
+   "tickVillage :5905",
+   "_villageBody :3093",
+   "village :3080",
+   "(anon) :11096",
+   "mute :11069",
+   "(anon) :11096",
+   "g :11067",
+   "_drainTickJobs :11627",
+   "_t731Tick :11053",
+   "onGameTick :10935",
+   "V.onGameTick :23",
+   "(anon) :17147",
+   "pump :110",
+   "processImmediate :484"
+  ]
+ ],
+ "profile": {
+  "samples": 887,
+  "top": [
+   [
+    "gGet sim/path-core.js:196",
+    44.9
+   ],
+   [
+    "_searchStep sim/path-core.js:325",
+    16.3
+   ],
+   [
+    "cameSet sim/path-core.js:199",
+    14.8
+   ],
+   [
+    "(garbage collector) :0",
+    7.2
+   ],
+   [
+    "blockedStep0 server/pathfind.js:42",
+    2.5
+   ],
+   [
+    "key sim/path-core.js:195",
+    2.5
+   ],
+   [
+    "_search sim/path-core.js:380",
+    2.5
+   ],
+   [
+    "isTerrainBlockedLocal server/zone.js:2357",
+    2.3
+   ],
+   [
+    "nodeBlocked0 server/pathfind.js:40",
+    2.1
+   ],
+   [
+    "isBlockedByWall server/zone.js:16871",
+    1.2
+   ],
+   [
+    "edgeBlockedStep server/zone.js:16859",
+    0.8
+   ],
+   [
+    "findCellFence server/zone.js:16457",
+    0.8
+   ],
+   [
+    "_edgeScan server/zone.js:16348",
+    0.8
+   ],
+   [
+    "findStairBuildingForCell server/zone.js:16496",
+    0.3
+   ],
+   [
+    "gSet sim/path-core.js:197",
+    0.3
+   ],
+   [
+    "H sim/path-core.js:184",
+    0.2
+   ],
+   [
+    "enc sim/path-core.js:201",
+    0.2
+   ],
+   [
+    "pop sim/path-core.js:72",
+    0.1
+   ],
+   [
+    "get size sim/path-core.js:89",
+    0.1
+   ]
+  ]
+ },
+ "heap": {
+  "usedSize": 777364848,
+  "totalSize": 1375285248
+ },
+ "heapSample": {
+  "sec": 30,
+  "totMB": 11806.4,
+  "sites": [
+   [
+    "_searchStep sim/path-core.js:325",
+    2313.9
+   ],
+   [
+    "findCellFence server/zone.js:16457",
+    1634.3
+   ],
+   [
+    "_edgeScan server/zone.js:16348",
+    1632.3
+   ],
+   [
+    "next :0",
+    1146.6
+   ],
+   [
+    "set :0",
+    959.8
+   ],
+   [
+    "isTerrainBlockedLocal server/zone.js:2357",
+    824
+   ],
+   [
+    "from :0",
+    650.8
+   ],
+   [
+    "isBlockedByWall server/zone.js:16871",
+    406.3
+   ],
+   [
+    "sort :0",
+    328.6
+   ],
+   [
+    "_muSeparate server/war-live.js:217",
+    294.5
+   ],
+   [
+    "hypot :0",
+    217.5
+   ],
+   [
+    "stepFight server/war-live.js:431",
+    179.2
+   ],
+   [
+    "H sim/path-core.js:184",
+    144.3
+   ],
+   [
+    "_muStepFollow server/war-live.js:252",
+    138.7
+   ],
+   [
+    "canon scripts/t740-side-hook.js:102",
+    125.1
+   ],
+   [
+    "buildGrid sim/battle-core.js:205",
+    86.7
+   ],
+   [
+    "sideSnap scripts/t740-side-hook.js:120",
+    75.1
+   ],
+   [
+    "get server/war-live.js:78",
+    49.6
+   ],
+   [
+    "_warSyncMeta server/villages.js:9056",
+    47.8
+   ],
+   [
+    "get server/war-live.js:79",
+    47.4
+   ],
+   [
+    "_t1182Walk server/villages.js:5890",
+    45.9
+   ],
+   [
+    "_t804Road server/villages.js:8971",
+    35.4
+   ],
+   [
+    "_warStandNear server/villages.js:8815",
+    30
+   ],
+   [
+    "_terrGrowCore server/villages.js:8068",
+    29.3
+   ],
+   [
+    "(anon) scripts/t740-side-hook.js:110",
+    29
+   ],
+   [
+    "generateChunkResources server/chunk.js:659",
+    21
+   ],
+   [
+    "updateMorale sim/battle-core.js:426",
+    18.8
+   ],
+   [
+    "trackVel sim/battle-core.js:451",
+    17.8
+   ],
+   [
+    "_warClearLine server/villages.js:9181",
+    16.6
+   ],
+   [
+    "mixAt server/region-profiles.js:266",
+    16
+   ]
+  ],
+  "stems": [
+   [
+    "_searchStep sim/path-core.js:325 < localPath sim/path-core.js:398 < findPath server/pathfind.js:18 < _t1320Chain server/villages.js:5889",
+    2313.9
+   ],
+   [
+    "findCellFence server/zone.js:16457 < isBlockedByWall server/zone.js:16871 < blockedStep0 server/pathfind.js:42 < _searchStep sim/path-core.js:325",
+    1615.4
+   ],
+   [
+    "_edgeScan server/zone.js:16348 < edgeBlockedStep server/zone.js:16859 < isBlockedByWall server/zone.js:16871 < blockedStep0 server/pathfind.js:42",
+    1610.9
+   ],
+   [
+    "next :0 < from :0 < canon scripts/t740-side-hook.js:102 < canon scripts/t740-side-hook.js:102",
+    1093
+   ],
+   [
+    "set :0 < _searchStep sim/path-core.js:325 < localPath sim/path-core.js:398 < findPath server/pathfind.js:18",
+    896.1
+   ],
+   [
+    "isTerrainBlockedLocal server/zone.js:2357 < blockedStep0 server/pathfind.js:42 < _searchStep sim/path-core.js:325 < localPath sim/path-core.js:398",
+    808.5
+   ],
+   [
+    "from :0 < canon scripts/t740-side-hook.js:102 < canon scripts/t740-side-hook.js:102 < canon scripts/t740-side-hook.js:102",
+    650.5
+   ],
+   [
+    "isBlockedByWall server/zone.js:16871 < blockedStep0 server/pathfind.js:42 < _searchStep sim/path-core.js:325 < localPath sim/path-core.js:398",
+    402.3
+   ],
+   [
+    "sort :0 < _muSeparate server/war-live.js:217 < _muStepFollow server/war-live.js:252 < _warAdvanceMarch server/villages.js:10705",
+    328.1
+   ],
+   [
+    "_muSeparate server/war-live.js:217 < _muStepFollow server/war-live.js:252 < _warAdvanceMarch server/villages.js:10705 < _warTickOne server/villages.js:10609",
+    285.1
+   ],
+   [
+    "stepFight server/war-live.js:431 < _warTickOne server/villages.js:10609 < _t681Flush server/villages.js:10502 < (anon) server/villages.js:11072",
+    178.9
+   ],
+   [
+    "H sim/path-core.js:184 < _searchStep sim/path-core.js:325 < localPath sim/path-core.js:398 < findPath server/pathfind.js:18",
+    144.3
+   ],
+   [
+    "_muStepFollow server/war-live.js:252 < _warAdvanceMarch server/villages.js:10705 < _warTickOne server/villages.js:10609 < _t681Flush server/villages.js:10502",
+    122.6
+   ],
+   [
+    "hypot :0 < stepFight server/war-live.js:431 < _warTickOne server/villages.js:10609 < _t681Flush server/villages.js:10502",
+    122.2
+   ],
+   [
+    "buildGrid sim/battle-core.js:205 < stepBattle sim/battle-core.js:281 < stepFight server/war-live.js:431 < _warTickOne server/villages.js:10609",
+    86.7
+   ]
+  ]
+ }
+}
