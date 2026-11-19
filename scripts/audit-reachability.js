@@ -11,7 +11,7 @@ const terrain = require(path.join(__dirname, '..', 'server', 'terrain'));
 const { ZONES, findZoneAt } = require(path.join(__dirname, '..', 'server', 'zone-config'));
 if (terrain.setZonesMeta) terrain.setZonesMeta(ZONES);
 
-const ZID = process.argv[2] || 'hanbando';
+const ZID = (process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : null) || 'hanbando';
 const Z = ZONES[ZID], SZ = 32;
 const NX = Math.floor(Z.zoneWidth / SZ), NY = Math.floor(Z.zoneHeight / SZ);
 const N = NX * NY;
@@ -43,6 +43,13 @@ const blocked = (cx, cy, useBridge) => {
   if (k === 2) return !(useBridge && BRIDGE.has(cx + '_' + cy));
   return false;
 };
+
+// ★[T1401] `--walk` — 걸음 지도 감사 둘째(마을 쌍 걸음 거리 · 남의 영토 막힘 · 교역로 · 조각난 영토 · 다리 후보) = `audit-walk-map.js`. 이 자의 물 · 바위 · 다리 술어를 그대로 넘긴다.
+//   (`--walk` 없으면 아래 종전 출력 그대로)
+if (process.argv.includes('--walk')) {
+  require(path.join(__dirname, 'audit-walk-map.js'))({ ZID, NX, NY, N, SZ, kind, BRIDGE, terrain, argv: process.argv });
+  process.exit(0);
+}
 
 function flood(sx, sy, useBridge) {
   const seen = new Uint8Array(N);
