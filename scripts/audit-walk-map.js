@@ -89,21 +89,24 @@ module.exports = function walkAudit(ctx) {
     const db = new DatabaseSync(file, { readOnly: true });
     const byName = new Map(vs.map((v) => [v.name, v]));
     const vid = new Map(db.prepare('SELECT id, name FROM villages').all().map((r) => [r.id, r.name]));
-    const own = new Int16Array(N); let nCells = 0, clash = 0;
+    const own = new Int16Array(N), ditch = []; let nCells = 0, clash = 0;
     const kinds = new Map();
-    for (const r of db.prepare("SELECT village_id, type, cx, cy FROM village_buildings WHERE type IN ('terr','hall','granary','house','farmland','dryfield') ORDER BY id").iterate()) {
+    for (const r of db.prepare("SELECT village_id, type, cx, cy FROM village_buildings WHERE type IN ('terr','hall','granary','house','farmland','dryfield','ditch') ORDER BY id").iterate()) {
       const v = byName.get(vid.get(r.village_id)); if (!v || r.cx < 0 || r.cy < 0 || r.cx >= NX || r.cy >= NY) continue;
       const i = r.cy * NX + r.cx;
+      if (r.type === 'ditch') { ditch.push(i); continue; }
       if (r.type === 'terr') { if (own[i] && own[i] !== v.i + 1) { clash++; continue; } if (!own[i]) nCells++; own[i] = v.i + 1; }
       else { const L = kinds.get(v.i) || kinds.set(v.i, []).get(v.i); L.push([r.type, i]); }
     }
     let routes = null; try { routes = db.prepare('SELECT pair, pts FROM trade_routes').all(); } catch (e) { routes = null; }
     db.close();
-    terrSets.push({ label, file, own, nCells, clash, kinds, routes });
+    terrSets.push({ label, file, own, nCells, clash, kinds, routes, ditch });
   }
   const bOut = [];
   for (const T of terrSets) {
     const tB = Date.now();
+    //   환호(도랑) 칸 = 서버 걸음 막힘(`isDitchTileLocal`) — 이 판의 두 셈(지형만 · 남의 땅 막힘)에 같이 건다(영토 몫만 가르도록) · 판 끝에 되돌린다
+    const dSaved = T.ditch.filter((i) => !blk[i]); for (const i of dSaved) blk[i] = 1;
     const free = Array.from({ length: V }, () => new Float64Array(V).fill(Infinity)), fence = Array.from({ length: V }, () => new Float64Array(V).fill(Infinity));
     const touch = new Float64Array(V);
     for (const a of vs) {
@@ -172,7 +175,8 @@ module.exports = function walkAudit(ctx) {
       for (const s of mine) comp[s] = 0;
     }
     const sig = split.filter((s) => s.sizes[1] >= 20);
-    bOut.push({ label: T.label, cells: T.nCells, clash: T.clash, cutPairs: cut.length, cutAll, longerPairs: longer.length,
+    for (const i of dSaved) blk[i] = 0;
+    bOut.push({ label: T.label, cells: T.nCells, clash: T.clash, ditch: dSaved.length, cutPairs: cut.length, cutAll, longerPairs: longer.length,
       cutEx: cut.slice(0, 12).map((r) => ({ a: r.a, b: r.b, free: r.free, through: r.through })), longerTop: longer.slice(0, 15).map((r) => ({ a: r.a, b: r.b, free: r.free, fence: r.fence, x: r.x, through: r.through })),
       chokes: [...chokes].sort((x, y) => y[1] - x[1]).slice(0, 10), routes: rc, split: { villages: split.length, real: sig.length, list: split.sort((x, y) => (y.sizes[1] || 0) - (x.sizes[1] || 0)).slice(0, 12) }, ms: Date.now() - tB });
   }
