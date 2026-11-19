@@ -1,0 +1,209 @@
+{
+ "tag": "N0_1020",
+ "env": {
+  "T1324_XZ_MIGRATE": "1"
+ },
+ "days": 300,
+ "stagePlan": null,
+ "crossed": 0,
+ "depart": 0,
+ "arrive": 0,
+ "byDir": {},
+ "conserve": {
+  "red": 0,
+  "balance": {
+   "depart": 0,
+   "sum": 0,
+   "ok": true
+  },
+  "bad": {
+   "twoIn": 0,
+   "inNoDepart": 0,
+   "crossedNoIn": 0,
+   "homeAndArrive": 0,
+   "backAndIn": 0,
+   "noDepart": 0
+  }
+ },
+ "perfConserve": {
+  "depart": 0,
+  "joined": 0,
+  "home": 0,
+  "dead": 0,
+  "onRoad": 0,
+  "ok": true,
+  "sentOk": 0,
+  "inRecv": 0,
+  "handOk": true,
+  "departLog": 0,
+  "departLogMuted": 0
+ },
+ "via": {},
+ "perHead": {
+  "n": 0,
+  "p50": null,
+  "min": null
+ },
+ "road": {
+  "dead": 0,
+  "deadBy": {},
+  "days": 0,
+  "hungry": 0
+ },
+ "herdMax": null,
+ "herd": [],
+ "ageBands": [
+  {
+   "band": "0~1",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "2~3",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "4~7",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "8~15",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "16+",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  }
+ ],
+ "ageAll": {
+  "n": 0,
+  "p50": null,
+  "p90": null,
+  "max": null
+ },
+ "ageLogCheck": {
+  "n": 0,
+  "eq": 0
+ },
+ "staged": {
+  "hanbando": {
+   "rounds": 0,
+   "took": 0,
+   "tries": 0,
+   "own": 0
+  },
+  "nippon": {
+   "rounds": 0,
+   "took": 0,
+   "tries": 0,
+   "own": 0
+  }
+ },
+ "perf": {
+  "hanbando": {
+   "t1352": {
+    "localOn": false,
+    "seamOn": false,
+    "seamKeys": 0,
+    "hist": 0,
+    "histDrop": 0,
+    "seamOut": 0,
+    "seamIn": 0,
+    "seamRows": 0,
+    "calls": 0,
+    "own": 0,
+    "local": 0,
+    "seam": 0,
+    "notYet": 0,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 0,
+    "ageN": 0,
+    "ageSum": 0,
+    "ageMax": 0,
+    "stage": 0,
+    "staged": 0,
+    "roadDays": 0,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 40,
+    "split": 0,
+    "days": 0,
+    "h": 0,
+    "beds": 32,
+    "food": 0
+   },
+   "t1147": {
+    "pick": 8,
+    "nearest": 0,
+    "other": 8,
+    "none": 0
+   }
+  },
+  "nippon": {
+   "t1352": {
+    "localOn": false,
+    "seamOn": false,
+    "seamKeys": 0,
+    "hist": 0,
+    "histDrop": 0,
+    "seamOut": 0,
+    "seamIn": 0,
+    "seamRows": 0,
+    "calls": 0,
+    "own": 0,
+    "local": 0,
+    "seam": 0,
+    "notYet": 0,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 0,
+    "ageN": 0,
+    "ageSum": 0,
+    "ageMax": 0,
+    "stage": 0,
+    "staged": 0,
+    "roadDays": 0,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 0,
+    "split": 0,
+    "days": 0,
+    "h": 0,
+    "beds": 0,
+    "food": 0
+   },
+   "t1147": {
+    "pick": 2,
+    "nearest": 0,
+    "other": 2,
+    "none": 46
+   }
+  }
+ }
+}

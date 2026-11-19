@@ -20,6 +20,7 @@
 'use strict';
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -342,9 +343,9 @@ async function waitHttp(url, tries = 900) {
     const [bx, by] = px(B);
     await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x: x + 5000, y: y + 5000 }), [bx, by]);
     await sleep(2500);
+    const tg = await NM.mark(page);
     await page.evaluate((vid) => window.__sendPrimary({ type: 'village_chronicle', vid }), B.id);
-    await sleep(1200);
-    const note = await page.evaluate(() => (window.__notices || []).slice(-2).join(' | '));
+    const note = (await NM.waitSince(page, tg, (l) => /너무 (멀|멉)/.test(l.join(' | ')), { capMs: 15000 })).list.join(' | ');   // [T1367] 종전 1.2초 뒤 마지막 두 줄
     ok(/너무 (멀|멉)/.test(note), '⑧ 멀리서 연표를 청하면 서버가 거절한다(260px 게이트 — 게시판과 같은 술어)', JSON.stringify(note));
   }
 

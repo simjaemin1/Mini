@@ -1,0 +1,628 @@
+{
+ "tag": "SB0_1020",
+ "env": {
+  "T1324_XZ_MIGRATE": "1",
+  "T1334_BUNDLE": "1"
+ },
+ "days": 120,
+ "stagePlan": [
+  30,
+  10,
+  3,
+  3
+ ],
+ "crossed": 26,
+ "depart": 30,
+ "arrive": 26,
+ "byDir": {
+  "hanbando→nippon": {
+   "depart": 5,
+   "crossed": 3,
+   "arrive": 3,
+   "home": 0,
+   "dead": 0
+  },
+  "nippon→hanbando": {
+   "depart": 25,
+   "crossed": 23,
+   "arrive": 23,
+   "home": 0,
+   "dead": 0
+  }
+ },
+ "conserve": {
+  "red": 0,
+  "balance": {
+   "depart": 30,
+   "sum": 30,
+   "ok": true
+  },
+  "bad": {
+   "twoIn": 0,
+   "inNoDepart": 0,
+   "crossedNoIn": 0,
+   "homeAndArrive": 0,
+   "backAndIn": 0,
+   "noDepart": 0
+  }
+ },
+ "perfConserve": {
+  "depart": 30,
+  "joined": 26,
+  "home": 0,
+  "dead": 0,
+  "onRoad": 4,
+  "ok": true,
+  "sentOk": 26,
+  "inRecv": 26,
+  "handOk": true,
+  "departLog": 30,
+  "departLogMuted": 0
+ },
+ "via": {
+  "own": 30
+ },
+ "perHead": {
+  "n": 26,
+  "p50": 28.9,
+  "min": 5.3
+ },
+ "road": {
+  "dead": 0,
+  "deadBy": {},
+  "days": 52,
+  "hungry": 0
+ },
+ "herdMax": {
+  "vil": "hanbando|어촌6",
+  "n": 10,
+  "days": 3,
+  "sameLineMax": 7
+ },
+ "herd": [
+  {
+   "vil": "hanbando|어촌6",
+   "n": 10,
+   "days": 3,
+   "sameLineMax": 7,
+   "firstN": 15,
+   "lastN": 16,
+   "overK": 0,
+   "perHeadMin": 30.404761904761905,
+   "over": 49,
+   "line": [
+    [
+     62,
+     589075262,
+     "타카노",
+     "own",
+     13,
+     12,
+     16,
+     3,
+     42.4,
+     57.5
+    ],
+    [
+     62,
+     589075262,
+     "타카노",
+     "own",
+     13,
+     12,
+     17,
+     3,
+     42.4,
+     56
+    ],
+    [
+     62,
+     589075262,
+     "새후보21",
+     "own",
+     7,
+     15,
+     18,
+     2,
+     42.4,
+     54.7
+    ],
+    [
+     62,
+     589075262,
+     "네코로",
+     "own",
+     7,
+     15,
+     19,
+     3,
+     42.4,
+     53.6
+    ],
+    [
+     72,
+     589075272,
+     "새후보21",
+     "own",
+     17,
+     15,
+     24,
+     8,
+     47.7,
+     30.7
+    ],
+    [
+     72,
+     589075272,
+     "타카노",
+     "own",
+     23,
+     12,
+     21,
+     8,
+     47.7,
+     30.4
+    ],
+    [
+     72,
+     589075272,
+     "타카노",
+     "own",
+     23,
+     12,
+     22,
+     8,
+     47.7,
+     30.5
+    ],
+    [
+     72,
+     589075272,
+     "키요어촌",
+     "own",
+     23,
+     12,
+     23,
+     10,
+     47.7,
+     30.6
+    ],
+    [
+     112,
+     589075312,
+     "타카노",
+     "own",
+     63,
+     12,
+     15,
+     2,
+     62.9,
+     43.6
+    ],
+    [
+     112,
+     589075312,
+     "타카노",
+     "own",
+     63,
+     12,
+     16,
+     2,
+     62.9,
+     42.8
+    ]
+   ]
+  },
+  {
+   "vil": "hanbando|광산5",
+   "n": 5,
+   "days": 2,
+   "sameLineMax": 5,
+   "firstN": 32,
+   "lastN": 37,
+   "overK": 0,
+   "perHeadMin": 24.68857142857143,
+   "over": 91,
+   "line": [
+    [
+     52,
+     589075252,
+     "아오어촌",
+     "own",
+     27,
+     15,
+     33,
+     17,
+     72.7,
+     26.8
+    ],
+    [
+     52,
+     589075252,
+     "아오어촌",
+     "own",
+     27,
+     15,
+     34,
+     17,
+     72.7,
+     27
+    ],
+    [
+     82,
+     589075282,
+     "아오어촌",
+     "own",
+     57,
+     15,
+     35,
+     19,
+     85.9,
+     24.7
+    ],
+    [
+     82,
+     589075282,
+     "아오어촌",
+     "own",
+     57,
+     15,
+     36,
+     19,
+     85.9,
+     24.9
+    ],
+    [
+     82,
+     589075282,
+     "아오어촌",
+     "own",
+     57,
+     15,
+     37,
+     19,
+     85.9,
+     25.1
+    ]
+   ]
+  },
+  {
+   "vil": "hanbando|광산2",
+   "n": 5,
+   "days": 4,
+   "sameLineMax": 4,
+   "firstN": 17,
+   "lastN": 22,
+   "overK": 0,
+   "perHeadMin": 5.286363636363636,
+   "over": 19,
+   "line": [
+    [
+     82,
+     589075282,
+     "미도리광산",
+     "own",
+     44,
+     16,
+     18,
+     1,
+     74.3,
+     20.4
+    ],
+    [
+     92,
+     589075292,
+     "미도리광산",
+     "own",
+     54,
+     16,
+     19,
+     2,
+     78.9,
+     16.7
+    ],
+    [
+     102,
+     589075302,
+     "미도리광산",
+     "own",
+     64,
+     16,
+     20,
+     3,
+     84.4,
+     6.3
+    ],
+    [
+     102,
+     589075302,
+     "오오임업",
+     "own",
+     78,
+     12,
+     21,
+     8,
+     84.4,
+     7.6
+    ],
+    [
+     112,
+     589075312,
+     "미도리광산",
+     "own",
+     74,
+     16,
+     22,
+     5,
+     83.3,
+     5.3
+    ]
+   ]
+  },
+  {
+   "vil": "hanbando|어촌7",
+   "n": 3,
+   "days": 1,
+   "sameLineMax": 2,
+   "firstN": 31,
+   "lastN": 34,
+   "overK": 0,
+   "perHeadMin": 28.7625,
+   "over": 29,
+   "line": [
+    [
+     102,
+     589075302,
+     "쿠라마",
+     "own",
+     1,
+     26,
+     32,
+     5,
+     115.4,
+     28.8
+    ],
+    [
+     102,
+     589075302,
+     "오오임업",
+     "own",
+     37,
+     20,
+     33,
+     12,
+     115.4,
+     28.9
+    ],
+    [
+     102,
+     589075302,
+     "오오임업",
+     "own",
+     37,
+     20,
+     34,
+     12,
+     115.4,
+     29.1
+    ]
+   ]
+  },
+  {
+   "vil": "nippon|쿠라마",
+   "n": 2,
+   "days": 1,
+   "sameLineMax": 2,
+   "firstN": 20,
+   "lastN": 22,
+   "overK": 0,
+   "perHeadMin": 28.261904761904763,
+   "over": 14,
+   "line": [
+    [
+     92,
+     589075292,
+     "광산1",
+     "own",
+     4,
+     13,
+     21,
+     7,
+     45.5,
+     28.3
+    ],
+    [
+     92,
+     589075292,
+     "광산1",
+     "own",
+     4,
+     13,
+     22,
+     7,
+     45.5,
+     28.5
+    ]
+   ]
+  },
+  {
+   "vil": "nippon|쿠라다",
+   "n": 1,
+   "days": 1,
+   "sameLineMax": 1,
+   "firstN": 25,
+   "lastN": 26,
+   "overK": 0,
+   "perHeadMin": 33.41153846153846,
+   "over": 5,
+   "line": [
+    [
+     42,
+     589075242,
+     "광산7",
+     "own",
+     6,
+     20,
+     26,
+     5,
+     40.4,
+     33.4
+    ]
+   ]
+  }
+ ],
+ "ageBands": [
+  {
+   "band": "0~1",
+   "n": 1,
+   "overMean": 5,
+   "overPos": 1,
+   "perHeadP50": 28.8,
+   "overK": 0
+  },
+  {
+   "band": "2~3",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "4~7",
+   "n": 5,
+   "overMean": 4.8,
+   "overPos": 5,
+   "perHeadP50": 33.4,
+   "overK": 0
+  },
+  {
+   "band": "8~15",
+   "n": 2,
+   "overMean": 3,
+   "overPos": 2,
+   "perHeadP50": 57.5,
+   "overK": 0
+  },
+  {
+   "band": "16+",
+   "n": 18,
+   "overMean": 9.56,
+   "overPos": 18,
+   "perHeadP50": 27,
+   "overK": 0
+  }
+ ],
+ "ageAll": {
+  "n": 30,
+  "p50": 27,
+  "p90": 78,
+  "max": 97
+ },
+ "ageLogCheck": {
+  "n": 0,
+  "eq": 0
+ },
+ "staged": {
+  "hanbando": {
+   "rounds": 30,
+   "took": 85,
+   "tries": 90,
+   "own": 11
+  },
+  "nippon": {
+   "rounds": 30,
+   "took": 78,
+   "tries": 90,
+   "own": 30
+  }
+ },
+ "perf": {
+  "hanbando": {
+   "t1352": {
+    "localOn": false,
+    "seamOn": false,
+    "seamKeys": 0,
+    "hist": 0,
+    "histDrop": 0,
+    "seamOut": 0,
+    "seamIn": 0,
+    "seamRows": 0,
+    "calls": 0,
+    "own": 0,
+    "local": 0,
+    "seam": 0,
+    "notYet": 0,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 0,
+    "ageN": 0,
+    "ageSum": 0,
+    "ageMax": 0,
+    "stage": 10,
+    "staged": 85,
+    "roadDays": 26,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 0,
+    "split": 0,
+    "days": 0,
+    "h": 15,
+    "beds": 31,
+    "food": 151
+   },
+   "t1147": {
+    "pick": 85,
+    "nearest": 2,
+    "other": 83,
+    "none": 5
+   }
+  },
+  "nippon": {
+   "t1352": {
+    "localOn": false,
+    "seamOn": false,
+    "seamKeys": 0,
+    "hist": 0,
+    "histDrop": 0,
+    "seamOut": 0,
+    "seamIn": 0,
+    "seamRows": 0,
+    "calls": 0,
+    "own": 0,
+    "local": 0,
+    "seam": 0,
+    "notYet": 0,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 0,
+    "ageN": 0,
+    "ageSum": 0,
+    "ageMax": 0,
+    "stage": 10,
+    "staged": 78,
+    "roadDays": 26,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 95,
+    "split": 0,
+    "days": 0,
+    "h": 19,
+    "beds": 52,
+    "food": 189
+   },
+   "t1147": {
+    "pick": 78,
+    "nearest": 2,
+    "other": 76,
+    "none": 7
+   }
+  }
+ }
+}

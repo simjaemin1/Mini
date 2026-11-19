@@ -28,6 +28,7 @@
 //   뜻은 그대로다: "게시판이 화면에 실제로 그려졌다". 자리만 옮겼다(족보 (116)).
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -164,7 +165,7 @@ async function waitHttp(url, tries = 900) {
   //   ⚠이건 라이브에도 있는 성질이다 — 시딩 중 접속한 플레이어는 재접속 전까지 마을 목록이 빈다. 회부.
   let dbg = null;
   for (let i = 0; i < 45; i++) {
-    dbg = await page.evaluate(() => ({ near: window.__evNearVid, dbg: window.__evDbg || null, err: window.__evTickErr || null, abs: window.__getMyAbs && window.__getMyAbs(), notes: (window.__notices || []).slice(-4) }));
+    dbg = await page.evaluate(() => ({ near: window.__evNearVid, dbg: window.__evDbg || null, err: window.__evTickErr || null, abs: window.__getMyAbs && window.__getMyAbs(), notes: (window.__notices || []).slice(-4) }));   // @notice-ok 진단(판정 밖)
     if (dbg.dbg && dbg.dbg.seen > 0 && dbg.near != null) break;
     await sleep(1000);
   }
@@ -302,7 +303,7 @@ async function waitHttp(url, tries = 900) {
   await sleep(800);
   let frozeNote = false;
   for (let j = 0; j < 72 && !frozeNote; j++) {
-    frozeNote = await page.evaluate(() => { const a = window.__notices || []; const i = a.lastIndexOf('__t1339_freeze_mark'); return (i >= 0 ? a.slice(i + 1) : a.slice(-4)).join(' | ').includes('게임일 정지'); });
+    frozeNote = await page.evaluate(() => { const a = window.__notices || []; const i = a.lastIndexOf('__t1339_freeze_mark'); return (i >= 0 ? a.slice(i + 1) : a.slice(-4)).join(' | ').includes('게임일 정지'); });   // @notice-ok 표지 뒤(T1339)
     if (!frozeNote) await sleep(200);
   }
   ok(frozeNote, '★게임일 정지(상호작용 구간) — 여기부터 경제가 검사를 앞지르지 않는다');
@@ -417,11 +418,13 @@ async function waitHttp(url, tries = 900) {
     ok((invBefore[giveItem] || 0) >= need, '납품할 물건을 손에 넣었다', `${giveItem} ${invBefore[giveItem] || 0}`);
 
     // 품목을 **안 보낸다** — 서버가 낼 수 있는 의뢰를 고른다(권위는 서버에 있다).
+    const tgDel = await NM.mark(page);
     await page.evaluate((vid) => window.__sendPrimary({ type: 'village_deliver', vid }), V.id);
-    await sleep(1500);
+    await sleep(1500);   // 없음("갚을 것이 없습니다")을 잰다 — 종전 시간 그대로 · 아래는 표지 뒤 알림이 하나라도 올 때까지(상한 15초)
+    await NM.waitSince(page, tgDel, (l) => l.length > 0, { capMs: 15000 });
     await snap('ev-05-delivered');
     const invAfter = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
-    const notes = await page.evaluate(() => (window.__notices || []).slice(-6));
+    const notes = await NM.since(page, tgDel);   // [T1367] 종전 마지막 여섯 줄 — 표지 뒤 전부
     console.log(`    납품 후 알림: ${JSON.stringify(notes)}`);
     // ★이 한 줄이 2026-08-26 의 회귀를 이름으로 잡는다 —
     //   아래 세 개(인벤 차감·보상 수령·잔여 감소)는 **이것 하나가 무너지면 같이** 무너져서,
@@ -490,7 +493,7 @@ async function waitHttp(url, tries = 900) {
       let nl = '';
       for (let j = 0; j < 12 && !nl; j++) {
         await sleep(200);
-        nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 |소비 품목이 없다/.test(t)).slice(-1)[0] || '');
+        nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 |소비 품목이 없다/.test(t)).slice(-1)[0] || '');   // @notice-ok 비운 뒤 조건 기다림(T794)
       }
       shortN++;
       const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl);
@@ -654,7 +657,7 @@ async function waitHttp(url, tries = 900) {
   await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
   let farNote = '';
   for (let j = 0; j < 100; j++) {
-    farNote = await page.evaluate(() => { const a = window.__notices || []; const i = a.lastIndexOf('__t1339_far_mark'); return (i >= 0 ? a.slice(i + 1) : a.slice(-2)).join(' | '); });
+    farNote = await page.evaluate(() => { const a = window.__notices || []; const i = a.lastIndexOf('__t1339_far_mark'); return (i >= 0 ? a.slice(i + 1) : a.slice(-2)).join(' | '); });   // @notice-ok 표지 뒤(T1339)
     if (/너무 (멀|멉)/.test(farNote)) break;
     await sleep(200);
   }

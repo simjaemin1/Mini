@@ -1012,7 +1012,7 @@ console.log('\n⑱ 러너 표지는 러너가 찾는 이름(`test-*` · `e2e-*`)
 console.log('\n⑲ 박힌 날짜 0 · 새 하네스 미끼 표지 `@bait <n>` [T1356]');
 {
   const G = require(path.join(SCRIPTS, 'lib-harness-guard.js'));
-  const OLD_N = 491;   // ★얼린 수 — 베이스 4ab5ab2b4 의 test-* · e2e-* 파일 수 485 + ★[PM land1083] 규칙과 같은 착지에 나란히 들어온 여섯(목록 파일 끝 주석)(이 수를 올리면 ⑲b 를 피한다 · 내리는 것은 된다)
+  const OLD_N = 495;   // ★얼린 수 — 베이스 4ab5ab2b4 의 test-* · e2e-* 파일 수 485 + ★[PM land1083] 규칙과 같은 착지에 나란히 들어온 여섯(목록 파일 끝 주석) + ★[PM land1084] 규칙 앞 main 에서 딴 가지 넷(같은 주석)(이 수를 올리면 ⑲b 를 피한다 · 내리는 것은 된다)
   const OLDF = path.join(SCRIPTS, 'harness-bait-old.txt');
   const OLD = new Set(fs.existsSync(OLDF) ? fs.readFileSync(OLDF, 'utf8').split('\n').filter((l) => l && !l.startsWith('#')) : []);
   const dateBad = (src) => G.dateLines(src).length > 0 && !G.dateOk(src);

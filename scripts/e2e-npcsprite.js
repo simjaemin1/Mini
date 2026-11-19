@@ -22,6 +22,7 @@
 'use strict';
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path'), fs = require('fs');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 const ROOT = path.join(__dirname, '..');
@@ -276,11 +277,12 @@ const ZENV = {
     //   ⇒ 곳간을 세우고 잰다. 손잡이는 이미 있다(`__e2e_day_freeze` · E2E_GIVE 게이트 · 새 손잡이 0).
     //   그리고 **얼었다는 말을 세계에서 듣고** 창을 연다(정해진 초를 안 잔다 · T214 문법).
     const _froze = await (async () => {
+      const tgF = await NM.mark(page);   // [T1367] 앞 판이 남긴 "게임일 정지" 줄을 안 읽는다 — 표지 뒤만
       for (let i = 0; i < 40; i++) {
         await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
         for (let k = 0; k < 5; k++) {
           await sleep(250);
-          const t = await page.evaluate(() => (window.__notices || []).filter((x) => /게임일 정지/.test(x)).slice(-1)[0] || '');
+          const t = (await NM.since(page, tgF)).filter((x) => /게임일 정지/.test(x)).slice(-1)[0] || '';
           if (t) return t;
         }
       }
