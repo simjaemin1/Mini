@@ -13,6 +13,8 @@
 #     목록은 `node scripts/ci-class.js --write-yml` 이 아래 표지 사이에 쓴다 · `test-ci-list` 가 표와 같은지 본다(한 줄 빠져도 빨강).
 #   · old-code-red — 가지 · PR 에서만: 새 하네스(`scripts/test-*.js` 새 파일)를 **옛 제품**(가지가 갈라진 main 판) 위에서 돌려 빨강이어야 통과
 #     (`scripts/pm-old-code-red.sh <merge-base>` · `// @harness-only` 하네스는 건너뜀 — `test-harness-lint` ⑲).
+#   · server — ★[T1367] 서버를 띄우는 하네스(다) 가운데 다섯 판 다 초록 · 가장 긴 판 60초 이하 — 고정 포트라 잡 안에서 차례로 · 잡 둘(다른 러너 기계)(목록은 표에서).
+#   · gate — ★[T1367] 위 잡들의 결과를 모은 하나(main 보호 규칙의 필수 체크 이름 — 문서/CI_main보호_안.md).
 #   · watch — 알면서 기다리는 것(배지 안 깸 · 로그엔 남음).
 # ★TIDE_FREEZE_MS=372603 — test-body ⑯㉧ 은 물때에 따라 갈린다(T52 가 심었다 · 공통 상시 목록). 만조로 못 박는다.
 # ★DRAIN_SEC=1 — 서버를 안 띄우는 하네스뿐이라 하네스 사이 8초 대기가 필요 없다.
@@ -20,12 +22,13 @@ name: regress-unit
 
 # ★[PM 2026-11-17 · 재민 "테스트 강화" · 공통 규약 ⑧] 문서만 바뀐 커밋(카드 · 보고 · 인계 · 회부)은 건너뛴다 — 카드만 올리는 PM 커밋마다
 #   하네스 전부가 돌던 낭비. 코드 · 하네스 · 계측이 한 줄이라도 섞이면 돈다. 착지 가지는 `batch/land<번호>` 로 먼저 올려 여기 초록을 보고 main 을 옮긴다.
+# ★[T1375 · main 보호 규칙 앞] 그 거름을 워크플로 머리(`paths-ignore`)에서 **안**(`changes` 잡 + 잡마다 `if:`)으로 옮겼다 — 머리 거름은 워크플로를 아예 안 돌려
+#   필수 체크(`CI 문`)가 Pending 으로 남는다(카드만 커밋이 보호된 main 에 못 오른다). 이제 문서만 커밋은 `changes` 만 돌고 무거운 잡은 조건으로 건너뛰며
+#   (조건으로 건너뛴 잡 = Success) `CI 문` 이 초록이 된다. 문서 자리 글자는 종전 그대로(`scripts/ci-changes.sh` · 하네스 `test-ci-changes`).
 on:
   push:
     branches: ['main', 'batch/**', 'claude/**', 'land/**']   # ★[T1350] 클라우드 세션 가지 · PM 착지 가지(main 앞에 먼저 올려 초록을 본다)
-    paths-ignore: ['지시/**', '보고/**', '인계/**', '회부/**']
   pull_request:
-    paths-ignore: ['지시/**', '보고/**', '인계/**', '회부/**']
   workflow_dispatch:
 
 concurrency:
@@ -33,8 +36,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: 바뀐 자리 (문서만이면 아래 잡 건너뜀)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.d.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: d
+        name: 코드가 바뀌었나(지시 · 보고 · 인계 · 회부 밖)
+        run: bash scripts/ci-changes.sh "${{ github.event_name }}" "${{ github.event.before }}" "${{ github.event.pull_request.base.sha }}" | tee -a "$GITHUB_OUTPUT"
+
   gates:
     name: 러너 자가 검사 · 게이트 셋 · 하네스 규약
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -64,318 +83,333 @@ jobs:
 
   core:
     name: 단위 회귀 ${{ matrix.shard }} (반드시 초록)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         # <ci-class core — scripts/ci-class.js --write-yml 이 쓴다 · 손으로 고치지 않는다>
-        # 분류표 2026-11-18 · core 294종 · 잡 5개(합 초 314 · 314 · 314 · 314 · 314)
+        # 분류표 2026-11-18 · core 307종 · 잡 5개(합 초 325 · 325 · 325 · 325 · 325)
         include:
           - shard: '1/5'
             list: >-
-              test-assault-miss.js
               test-assets-audit.js
+              test-audio.js
               test-backup-live.js
-              test-bgm-phrase.js
+              test-bandit-walk.js
+              test-body-exit.js
               test-body-fields.js
-              test-body.js
-              test-chron-icons.js
-              test-chunk-gates.js
-              test-crop-memo.js
-              test-draft-famine.js
-              test-dusk-stamp.js
-              test-guild-treasury.js
-              test-hp-src.js
-              test-ledger.js
-              test-mining.js
-              test-msy.js
-              test-nightly.js
-              test-no-shield.js
-              test-notice.js
-              test-npc-hp-door.js
-              test-npc-wild-sync.js
-              test-physical-forage-plan.js
+              test-bridge-sprite.js
+              test-carrier.js
+              test-charsheet.js
+              test-client-globals.js
+              test-clothes-tiers.js
+              test-clothes.js
+              test-coll-grid.js
+              test-craft.js
+              test-disk-check.js
+              test-econ-diet.js
+              test-furnace.js
+              test-happy-converge.js
+              test-headless-parity.js
+              test-hist.js
+              test-index-named.js
+              test-inv-ground.js
+              test-loot-body.js
+              test-mob-hp-restart.js
+              test-picker-tables.js
+              test-relic.js
               test-segindex.js
-              test-stone-consumption-flow.js
+              test-smelt-return.js
+              test-stone-planning.js
               test-t1001-econ-day.js
-              test-t1044-scram-walk.js
-              test-t1046-wood-share.js
+              test-t1054-decay-wood.js
+              test-t1060-scram-hold.js
               test-t1080-road-life.js
               test-t1087-crew-cap.js
-              test-t1094-arms-trip.js
-              test-t1113-low-happy.js
-              test-t1135-fuel-eq.js
-              test-t1143-no-dissolve.js
-              test-t1167-war-persist.js
-              test-t1168-sortie-ammo.js
-              test-t1179-crop-season.js
-              test-t1180-produce-defaults.js
+              test-t1166-npc-lot-persist.js
+              test-t1182-caravan-body.js
               test-t1183-surrender-loss.js
-              test-t1188-ore-split.js
-              test-t1196-artisan.js
-              test-t1221-farm-labor.js
-              test-t1225-fish-capital.js
+              test-t1192-fish-species.js
+              test-t1205-happy.js
+              test-t1212-farm-clock.js
+              test-t1217-margin.js
+              test-t1219-step-fast.js
               test-t1226-job-flex.js
-              test-t1240-kill-once.js
+              test-t1237-water-deer.js
               test-t1241-des.js
               test-t1245-lot-clock.js
-              test-t1245-seeds.js
-              test-t1257-seed-handoff.js
-              test-t1268-econ-clock.js
+              test-t1266-ore-body.js
               test-t1273-clock-rest.js
-              test-t1339-wait-day.js
-              test-t742-zone.js
-              test-terr-backfill.js
-              test-terrain-memo.js
+              test-t1278-perf.js
+              test-t1290-perf.js
+              test-t1292-xz-esc.js
+              test-t1314-cols.js
+              test-t1321-xz-beast.js
+              test-t1322-prefilter.js
+              test-t1353-onb-on-prep.js
+              test-t721-apply.js
+              test-terr-overlap.js
               test-tidal.js
-              test-valuechain.js
-              test-village-view.js
-              test-winter.js
+              test-vern-num.js
+              test-war-nosnap.js
+              test-wood-act.js
           - shard: '2/5'
             list: >-
-              test-alloy.js
-              test-armor-cap.js
-              test-bandit-all.js
-              test-bandit-walk.js
-              test-battle-fast.js
-              test-body-seed-restart.js
+              test-arms-body.js
+              test-assay.js
+              test-body-seed-other.js
               test-bridge-path.js
-              test-charsheet.js
-              test-ci-list.js
-              test-clothes-tiers.js
+              test-clock-shift.js
+              test-floor-stone.js
+              test-food-keep.js
+              test-gap-ruler.js
+              test-ghost-tree.js
+              test-harness-bite.js
+              test-hunt-port.js
+              test-indoor-on.js
+              test-itemlabel.js
+              test-ledger.js
+              test-live-lag-net.js
+              test-local-clocks.js
+              test-local-midnight.js
+              test-membership.js
+              test-move.js
+              test-msy.js
+              test-notice.js
+              test-one-target.js
+              test-psite-server.js
+              test-reanchor.js
+              test-regrow-block.js
+              test-rock-los.js
+              test-t1046-wood-share.js
+              test-t1059-pick-top.js
+              test-t1094-arms-trip.js
+              test-t1143-no-dissolve.js
+              test-t1147-emig-pick.js
+              test-t1148-fuel-job.js
+              test-t1149-winter.js
+              test-t1168-sortie-ammo.js
+              test-t1170-lab-clock.js
+              test-t1180-produce-defaults.js
+              test-t1195-hunt-real.js
+              test-t1198-birth-body.js
+              test-t1201-bronze-crops.js
+              test-t1207-terr-real.js
+              test-t1221-farm-labor.js
+              test-t1229-field-grow.js
+              test-t1245-seeds.js
+              test-t1257-seed-handoff.js
+              test-t1292-xz-hide.js
+              test-t1294-perf.js
+              test-t1321-xz-keep.js
+              test-t1325-one-rot.js
+              test-t1330-war-path.js
+              test-t1333-alloy-order.js
+              test-t740-side.js
+              test-t772-leg.js
+              test-t807-quote-exec.js
+              test-t877-dry-fix.js
+              test-t931-slotk-ema.js
+              test-terr-backfill.js
+              test-touched-harness.js
+              test-valuechain.js
+              test-village-found.js
+              test-winter-fx.js
+              test-wood-step1.js
+          - shard: '3/5'
+            list: >-
+              test-armor-cap.js
+              test-army-morale.js
+              test-bandit-camp.js
+              test-body-seed-restart.js
+              test-build-act.js
+              test-building-anchor.js
+              test-cell-memo.js
+              test-ci-changes.js
+              test-crop-cal.js
+              test-crop-memo.js
+              test-crops-world.js
+              test-crops.js
+              test-draft-famine.js
+              test-e2e-src.js
+              test-fish-act.js
+              test-granary-haul.js
+              test-hunt-vis.js
+              test-icons.js
+              test-lab-hunt.js
+              test-land-elev.js
+              test-mining.js
+              test-nightly.js
+              test-npc-clothes.js
+              test-npc-hp-door.js
+              test-npc-label.js
+              test-one-decay.js
+              test-reap-scope.js
+              test-render-common.js
+              test-salt.js
+              test-server-market.js
+              test-stone-real.js
+              test-t1019-untrap.js
+              test-t1063-terr-draw.js
+              test-t1064-next-step.js
+              test-t1095-mine-demand.js
+              test-t1107-regrow.js
+              test-t1157-pay-power.js
+              test-t1159-home-n.js
+              test-t1161-two-prices.js
+              test-t1170-route-audit.js
+              test-t1197-meal-body.js
+              test-t1200-kg-fast.js
+              test-t1202-produce-live.js
+              test-t1209-meal-triage.js
+              test-t1213-terr-supply.js
+              test-t1214-step-fast.js
+              test-t1235-nearest.js
+              test-t1249-ore-fix.js
+              test-t1315-war-corpse.js
+              test-t1328-ore-zero.js
+              test-t1344-bronze-mix.js
+              test-t1346-birth-flow.js
+              test-t742-zone.js
+              test-t766-dissolve.js
+              test-t924-debt-cap.js
+              test-t988-trade-words.js
+              test-t999-trade-cap.js
+              test-terrain-memo.js
+              test-trade.js
+              test-vein-batch.js
+              test-weather.js
+              test-well-art.js
+          - shard: '4/5'
+            list: >-
+              test-arms-keep.js
+              test-assault-miss.js
+              test-bandit-body.js
+              test-battle-fast.js
+              test-body-chunks.js
+              test-chron-icons.js
+              test-chunk-gates.js
               test-deforest-game.js
               test-ditch.js
               test-econ-rawgrain.js
               test-farm-act.js
-              test-food-hunger.js
-              test-furnace.js
-              test-hall-door-path.js
-              test-hunt-vis.js
-              test-index-named.js
-              test-lint-harness-words.js
-              test-mob-hp-restart.js
-              test-npc-clothes.js
-              test-physical-stone-return.js
-              test-props.js
-              test-region-profiles.js
-              test-regrow-block.js
-              test-salt.js
-              test-seed-reserve.js
-              test-stone-independent-budget.js
-              test-t1060-scram-hold.js
-              test-t1147-emig-pick.js
-              test-t1149-winter.js
-              test-t1160-promote-key.js
-              test-t1170-route-audit.js
-              test-t1181-build-defaults.js
-              test-t1183-physical-war.js
-              test-t1184-war-owner.js
-              test-t1192-fish-species.js
-              test-t1207-terr-real.js
-              test-t1213-terr-supply.js
-              test-t1217-margin.js
-              test-t1260-food-reads.js
-              test-t1292-t952-axis.js
-              test-t1292-xz-esc.js
-              test-t1321-xz-beast.js
-              test-t1341-own-house.js
-              test-t1344-bronze-mix.js
-              test-t807-quote-exec.js
-              test-t835-quote-weight.js
-              test-t941-ruler.js
-              test-t965-want-start.js
-              test-t988-trade-words.js
-              test-t995-dry-dance.js
-              test-trade.js
-              test-vern-num.js
-              test-well-art.js
-              test-winter-fx.js
-              test-wood-flow.js
-              test-wood-step1.js
-          - shard: '3/5'
-            list: >-
-              test-arms-keep.js
-              test-assay.js
-              test-bandit-camp.js
-              test-body-chunks.js
-              test-body-seed-other.js
-              test-build-act.js
-              test-cell-memo.js
-              test-client-globals.js
-              test-clothes.js
-              test-coll-grid.js
-              test-day-deaths.js
-              test-farm-life.js
-              test-fish-act.js
               test-food-floor.js
+              test-frontier-iron.js
               test-gate-draft.js
-              test-ghost-tree.js
-              test-headless-parity.js
-              test-icons.js
-              test-live-lag-net.js
-              test-local-clocks.js
-              test-one-decay.js
-              test-one-target.js
+              test-guild-treasury.js
+              test-imsu.js
+              test-lab-happywork.js
+              test-lint-harness-words.js
+              test-mob-respawn.js
+              test-newcomers.js
+              test-no-shield.js
+              test-notice-mark.js
+              test-npc-wild-sync.js
               test-oremix.js
-              test-picker-tables.js
-              test-redeploy-light.js
-              test-stone-planning.js
-              test-stone-real.js
-              test-t1019-untrap.js
+              test-physical-forage-plan.js
+              test-props.js
+              test-redeploy.js
+              test-region-profiles.js
+              test-resource-index.js
+              test-road-day.js
+              test-road-tail.js
+              test-seam.js
+              test-seed-reserve.js
+              test-stone-consumption-flow.js
+              test-t1044-scram-walk.js
               test-t1074-food-debt.js
               test-t1075-happy-eq.js
-              test-t1089-ret-walk.js
-              test-t1094-carry-cap.js
-              test-t1095-mine-demand.js
+              test-t1085-assign-job.js
+              test-t1113-low-happy.js
               test-t1133-bag-persist.js
-              test-t1148-fuel-job.js
-              test-t1161-two-prices.js
-              test-t1170-lab-clock.js
-              test-t1197-meal-body.js
-              test-t1198-birth-body.js
-              test-t1201-bronze-crops.js
+              test-t1136-basket.js
+              test-t1156-specialty-job.js
+              test-t1181-build-defaults.js
+              test-t1183-physical-war.js
               test-t1204-now-words.js
-              test-t1218-fish-canon.js
-              test-t1259-wood-cap.js
-              test-t1266-ore-body.js
-              test-t1278-perf.js
-              test-t1292-xz-hide.js
-              test-t1314-cols.js
-              test-t1315-war-corpse.js
-              test-t1321-xz-keep.js
-              test-t1322-prefilter.js
-              test-t1324-xz-migrate.js
-              test-t1333-alloy-order.js
-              test-t762-sync.js
-              test-t766-dissolve.js
-              test-t772-leg.js
-              test-t877-dry-fix.js
-              test-t976-want-capped.js
-              test-t999-trade-cap.js
-              test-weather.js
-          - shard: '4/5'
-            list: >-
-              test-arms-body.js
-              test-bandit-body.js
-              test-building-anchor.js
-              test-calendar.js
-              test-cand-walk.js
-              test-craft.js
-              test-crop-cal.js
-              test-e2e-src.js
-              test-fell-loot.js
-              test-floor-stone.js
-              test-food-keep.js
-              test-ghost-band.js
-              test-granary-add.js
-              test-granary-haul.js
-              test-hunt-port.js
-              test-imsu.js
-              test-indoor-on.js
-              test-inv-ground.js
-              test-lab-happywork.js
-              test-lab-wood.js
-              test-lon-day.js
-              test-membership.js
-              test-mob-respawn.js
-              test-model-intake.js
-              test-newcomers.js
-              test-npc-label.js
-              test-redeploy.js
-              test-render-common.js
-              test-road-day.js
-              test-rock-los.js
-              test-snow.js
-              test-sortie-miss.js
-              test-t1063-terr-draw.js
-              test-t1064-next-step.js
-              test-t1086-first-join.js
-              test-t1159-home-n.js
-              test-t1182-caravan-body.js
-              test-t1187-names.js
-              test-t1195-hunt-real.js
-              test-t1200-kg-fast.js
-              test-t1202-produce-live.js
-              test-t1206-natural-death.js
-              test-t1212-farm-clock.js
-              test-t1214-step-fast.js
               test-t1215-field-area.js
-              test-t1235-nearest.js
-              test-t1328-ore-zero.js
-              test-t1330-war-path.js
+              test-t1224-econ-farm.js
+              test-t1259-wood-cap.js
+              test-t1260-food-reads.js
+              test-t1268-econ-clock.js
+              test-t1292-t952-axis.js
+              test-t1324-xz-migrate.js
               test-t1331-beast-body.js
-              test-t1336-crop-eq.js
-              test-t740-side.js
-              test-t924-debt-cap.js
-              test-t931-slotk-ema.js
-              test-t958-house-real.js
-              test-tame.js
-              test-trees.js
+              test-t1341-own-house.js
+              test-t762-sync.js
+              test-t860-catch-dry.js
+              test-t941-ruler.js
+              test-t995-dry-dance.js
+              test-village-view.js
               test-villager-stuck.js
-              test-war-nosnap.js
               test-wild-door.js
+              test-wood-flow.js
           - shard: '5/5'
             list: >-
-              test-army-morale.js
-              test-audio.js
-              test-body-exit.js
-              test-bridge-sprite.js
-              test-carrier.js
-              test-crops-world.js
-              test-crops.js
-              test-disk-check.js
-              test-econ-diet.js
+              test-alloy.js
+              test-bandit-all.js
+              test-bgm-phrase.js
+              test-body.js
+              test-calendar.js
+              test-cand-walk.js
+              test-ci-list.js
+              test-day-deaths.js
+              test-dusk-stamp.js
               test-econ-fieldyield.js
-              test-frontier-iron.js
-              test-gap-ruler.js
-              test-happy-converge.js
-              test-hist.js
-              test-itemlabel.js
+              test-farm-life.js
+              test-fell-loot.js
+              test-food-hunger.js
+              test-ghost-band.js
+              test-granary-add.js
+              test-hall-door-path.js
+              test-hp-src.js
               test-kcal.js
               test-lab-army-morale.js
-              test-land-elev.js
-              test-local-midnight.js
-              test-loot-body.js
-              test-move.js
+              test-lab-wood.js
+              test-lon-day.js
+              test-model-intake.js
               test-one-clock.js
               test-path-core.js
-              test-psite-server.js
-              test-reanchor.js
-              test-reap-scope.js
-              test-relic.js
-              test-resource-index.js
-              test-road-tail.js
+              test-physical-stone-return.js
+              test-redeploy-light.js
               test-rooms.js
               test-seam-walk.js
-              test-seam.js
-              test-server-market.js
-              test-smelt-return.js
+              test-snow.js
+              test-sortie-miss.js
+              test-stone-independent-budget.js
               test-streams.js
-              test-t1054-decay-wood.js
-              test-t1059-pick-top.js
-              test-t1085-assign-job.js
-              test-t1107-regrow.js
-              test-t1136-basket.js
-              test-t1166-npc-lot-persist.js
-              test-t1205-happy.js
-              test-t1209-meal-triage.js
-              test-t1219-step-fast.js
-              test-t1224-econ-farm.js
-              test-t1229-field-grow.js
-              test-t1237-water-deer.js
-              test-t1249-ore-fix.js
-              test-t1290-perf.js
-              test-t1294-perf.js
+              test-t1086-first-join.js
+              test-t1089-ret-walk.js
+              test-t1094-carry-cap.js
+              test-t1135-fuel-eq.js
+              test-t1152-market.js
+              test-t1160-promote-key.js
+              test-t1167-war-persist.js
+              test-t1179-crop-season.js
+              test-t1184-war-owner.js
+              test-t1187-names.js
+              test-t1188-ore-split.js
+              test-t1196-artisan.js
+              test-t1206-natural-death.js
+              test-t1218-fish-canon.js
+              test-t1225-fish-capital.js
+              test-t1240-kill-once.js
+              test-t1246-food-price.js
               test-t1321-xz-drain.js
-              test-t1325-one-rot.js
+              test-t1336-crop-eq.js
               test-t1337-wake.js
-              test-t721-apply.js
-              test-t860-catch-dry.js
-              test-terr-overlap.js
+              test-t1339-wait-day.js
+              test-t835-quote-weight.js
+              test-t958-house-real.js
+              test-t965-want-start.js
+              test-t976-want-capped.js
+              test-tame.js
+              test-trees.js
               test-update-snap.js
-              test-vein-batch.js
-              test-village-found.js
+              test-winter.js
         # </ci-class core>
     env:
       TIDE_FREEZE_MS: '372603'
@@ -403,9 +437,96 @@ jobs:
       - name: 분류표 하네스 (${{ matrix.shard }})
         run: bash scripts/run-regress.sh ${{ matrix.list }}
 
+  server:
+    name: 서버 하네스 ${{ matrix.srv }} (차례로 · 반드시 초록)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    # ★[T1367] 분류표 (다) — 자식 프로세스가 존 · central · http 를 듣는다. 고정 포트를 쥐므로 **잡 안에서는 차례로**(러너 -j 1 · 나란히 0).
+    #   올림 규칙은 core 와 같은 문턱(다섯 판 다 초록 · 가장 긴 판 60초 이하) — 목록은 `ci-class.js --write-yml --srv-shards K` 가 아래 표지 사이에 쓴다.
+    #   잡이 여럿이면 잡마다 다른 러너 기계다(포트를 안 나눈다) — 같은 기계에서 나란히 도는 일은 없다.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # <ci-class srv — scripts/ci-class.js --write-yml 이 쓴다 · 손으로 고치지 않는다>
+        # 분류표 2026-11-18 · 서버 46종 · 잡 2개(합 초 353 · 354 — 가장 긴 판 · 이 상자)
+        include:
+          - srv: '1/2'
+            list: >-
+              test-bridge-act.js
+              test-claim-v2.js
+              test-donate.js
+              test-emptystart.js
+              test-fixture-reap.js
+              test-food-sick.js
+              test-granary-age.js
+              test-granary-item.js
+              test-hall-units.js
+              test-jungwon-boot.js
+              test-mob-hp-door.js
+              test-preserve-carry.js
+              test-preserve.js
+              test-reset-world.js
+              test-spoil2.js
+              test-t1118-rack-age.js
+              test-t1128-kcal-tidy.js
+              test-t1163-welcome-sig.js
+              test-t1186-blade-wear.js
+              test-t1238-terr-v2.js
+              test-t989-chunk-save.js
+              test-terraincache.js
+              test-zone-fauna.js
+          - srv: '2/2'
+            list: >-
+              test-doors.js
+              test-drop-kg.js
+              test-fishing.js
+              test-forage-act.js
+              test-game-meat.js
+              test-granary-rot.js
+              test-guest-identity.js
+              test-guest-rejoin.js
+              test-member-open.js
+              test-physical-stone-cycle.js
+              test-regrow.js
+              test-shelter.js
+              test-t1065-tool-gate.js
+              test-t1066-village-fire.js
+              test-t1093-shelter-roof.js
+              test-t1120-next-tool.js
+              test-t1125-welcome.js
+              test-t1126-rock-yield.js
+              test-t1132-hall-view.js
+              test-t1146-stone-rule.js
+              test-weight.js
+              test-well.js
+              test-xhost-env.js
+        # </ci-class srv>
+    env:
+      TIDE_FREEZE_MS: '372603'
+      DRAIN_SEC: '3'      # 앞 판이 남긴 아이가 있을 때만 쉰다(T1161) — 포트를 놓을 틈
+      TIMEOUT_SEC: '180'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # ★[T1367] 배포 스크립트 하네스(`test-xhost-env` — 가짜 docker 로 `recreate … /srv/durango/central`)는 `/srv/durango` 를 쓴다 — core 잡의 같은 걸음(T1350)과 같다.
+      #   이 잡 첫 판에 러너 일반 사용자라 Ⓐ①~⑥ 다섯이 빨갰다(분류 상자는 root). 쓰기 자리만 미리 연다(스크립트 · 하네스 글자 무변).
+      - name: /srv/durango 쓰기 자리 (배포 스크립트 하네스)
+        run: sudo mkdir -p /srv/durango && sudo chown "$(id -u):$(id -g)" /srv/durango
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - name: 서버 하네스 차례로 (${{ matrix.srv }})
+        run: bash scripts/run-regress.sh ${{ matrix.list }}
+
   old-code-red:
     name: 옛 코드 빨강 (새 하네스는 옛 제품 위에서 빨강)
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -428,8 +549,40 @@ jobs:
           echo "옛 판 = $BASE"
           bash scripts/pm-old-code-red.sh "$BASE"
 
+  gate:
+    name: CI 문 (필수 체크 하나)
+    # ★[T1367] main 보호 규칙의 **필수 체크는 이 이름 하나**(문서/CI_main보호_안.md). 잡 이름이 바뀌어도(core 잡 수 `--shards` · 서버 잡 더함)
+    #   GitHub 설정을 다시 안 고친다. gates · core(모든 잡) · server 가 다 success, old-code-red 는 success 또는 skipped(main push) 여야 초록.
+    #   watch 는 안 본다(배지 안 깸 그대로).
+    #   ★[T1375] 문서만 판(`changes` 가 code=false)이면 무거운 잡은 다 skipped 여야 초록 — `changes` 잡이 빨강이면 늘 빨강.
+    if: always()
+    needs: [changes, gates, core, server, old-code-red]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 잡 결과 모으기
+        env:
+          R_GATES: ${{ needs.gates.result }}
+          R_CORE: ${{ needs.core.result }}
+          R_SERVER: ${{ needs.server.result }}
+          R_OLD: ${{ needs['old-code-red'].result }}
+          R_CH: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+        run: |
+          echo "changes=$R_CH code=$CODE gates=$R_GATES core=$R_CORE server=$R_SERVER old-code-red=$R_OLD"
+          [ "$R_CH" = success ] || { echo "빨강 — 바뀐 자리 잡 = $R_CH"; exit 1; }
+          if [ "$CODE" = false ]; then
+            [ "$R_GATES" = skipped ] && [ "$R_CORE" = skipped ] && [ "$R_SERVER" = skipped ] && [ "$R_OLD" = skipped ] || { echo "빨강 — 문서만 판인데 무거운 잡이 돌았다(조건 어긋남)"; exit 1; }
+            echo "초록 — CI 문(문서만 · 하네스 잡 건너뜀)"; exit 0
+          fi
+          [ "$R_GATES" = success ] && [ "$R_CORE" = success ] && [ "$R_SERVER" = success ] || { echo "빨강 — 반드시 초록인 잡이 초록이 아니다"; exit 1; }
+          case "$R_OLD" in success|skipped) ;; *) echo "빨강 — 옛 코드 빨강 잡 = $R_OLD"; exit 1 ;; esac
+          echo "초록 — CI 문"
+
   watch:
     name: 지켜보는 하나 (배지 안 깸)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     continue-on-error: true

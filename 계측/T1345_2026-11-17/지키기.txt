@@ -1,0 +1,32 @@
+# 끈 판 — node --experimental-sqlite scripts/server-baseline-check.js 계측/서버기준선_2026-11-16.json --vclock --plan 1020:400
+  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 3917) · 마을 칸 지문 400일 같음 · 칸별 날 수: 경제 400/400 · 생활층(마을 칸) 400/400
+
+=== 같음 1/1 · 경제 400/400 · 생활층 400/400 · 판 766초 ===
+RC 0 766s
+
+# 랩 t17 — node scripts/t17-metrics.js 800 1020
+42:  여덟 수   인구 5929 · 소멸 0/51 · 무기Q 1045 · 확장셀 3480 · 게시 2955 · 도구Q 10610.7 · 보존식 168.8 · 생곡 39490.9
+
+# 게이트 셋
+  🌈풍요 Day 381: 가 (7일)
+[check] 회귀검증 16 일치 / 0 불일치 ✅
+RC 0
+[inline] 마을실험실.html: 최신 ✅
+[inline] 전쟁실험실.html: 최신 ✅
+RC 0
+
+=== 배선 검사: 실패 0 · 경고 1 ===
+RC 0
+
+# 규약 다섯
+test-harness-lint: === 89건 중 PASS 89 · FAIL 0 ===
+test-hp-src: === 54 통과 / 0 실패 ===
+test-lon-day: === 22건 중 PASS 22 · FAIL 0 ===
+test-body-fields: === 14 통과 / 0 실패 ===
+test-coll-grid: === 결과: 20 PASS / 0 FAIL ===
+
+# 손댄 판 자(server-baseline-check)를 무는 하네스
+test-t1315-war-corpse: === T1315: 통과 25 · 실패 0 ===
+test-t1334-bundle: === T1334 묶음 손잡이: 통과 19 · 실패 0 === · RC 0 113s
+test-sbc-blind: === 5건 중 PASS 5 · FAIL 0 === · RC 0 218s
+test-t1043-gate-house: === PASS 11 / FAIL 0 === · RC 0 811s (④ 클라우드 판 둘을 SIGSTOP 으로 세운 채 혼자)

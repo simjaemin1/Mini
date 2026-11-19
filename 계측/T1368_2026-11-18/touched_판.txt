@@ -1,0 +1,261 @@
+  [나란히] -j 2 · 42개 · 혼자 돌 것 0개 먼저 차례로 · 고정 포트 쥔 하네스는 같은 포트끼리 차례로
+##### test-body-exit.js #####
+=== 49건 중 PASS 49 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:19735 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 454 · 걸음 문 안 256 · 문 밖 198(표 내림 73 · 까닭 125)
+=== 14 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 26초
+  ✓ RC=0
+##### e2e-emptystart.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✗ ★★⑤ **마을 장인에게서 정품 도구를 살 수 있다** — 빈손이 닿을 둘째 단이 실재한다  0→0
+  ✗ ★⑤ 그리고 **자작보다 오래 간다** — 두 단 사다리가 실제로 층을 이룬다  없음
+=== 19건 중 PASS 17 · FAIL 2 ===
+=== 19건 중 PASS 17 · FAIL 2 ===
+  [소요] 68초
+  ✗ RC=1 · 결과줄 20개 → **실패로 센다**
+##### test-donate.js #####
+  ✓ 대조 — 게시판 납품 훅(`Onboarding.onDeliver`)은 같은 계량기를 1 올린다(자명 통과 금지)  1
+  ✓ [켬] ★`server/winter.js` 가 없다(불러도 못 찾는다)  false · MODULE_NOT_FOUND
+  ✓ [끔] ★`server/winter.js` 가 없다(불러도 못 찾는다)  false · MODULE_NOT_FOUND
+=== 42건 중 PASS 42 · FAIL 0 ===
+  [소요] 54초
+  ✓ RC=0
+##### e2e-forage-village.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★전제 — 도구 문 술어를 서버 정본에서 읽었다(나무 = 벌목 · 덤불 = 맨손 · ★[T1240] 자명 통과 금지 — 술어가 실제로 가른다)
+=== 13건 중 PASS 13 · FAIL 0 ===
+  [소요] 101초
+  ✓ RC=0
+##### test-emptystart.js #####
+  ✓ ★★⓪ 자명 통과 금지 — 대체 경로(맨손 채집·조잡 석기)는 **살아 있다**
+=== 41건 중 PASS 41 · FAIL 0 ===
+  [소요] 18초
+  ✓ RC=0
+##### test-events.js #####
+  ✓ ㊻3b 전제: 하역 전 값이면 **문턱을 넘는다**(안 넘으면 아래 대조가 자명 통과다)  ×54.50 > ×1.90
+  ✓ ㊽a 전제: `consumeFood` 소스를 실제로 읽었고 머리 넷이 그 안에 글자로 있다(못 읽으면 아래가 자명 통과다)  본문 8119자
+  ✓ ㊽d ★자명 통과 금지ⓐ — **열셋째 이름을 넣으면 문다**: `mushroom` 은 사다리엔 있고 표엔 없다(13/13 이 되면 이 절이 거짓말이다)  표 12/13 · fromEcon 12/13
+=== 305건 중 PASS 305 · FAIL 0 ===
+  [소요] 470초
+  ✓ RC=0
+##### test-granary-age.js #####
+=== 31건 중 PASS 31 · FAIL 0 ===
+  [소요] 57초
+  ✓ RC=0
+##### test-granary-item.js #####
+  ✓ ★⑤ 되돌림(교환 실패) — 장부 · 품목 셈 둘 다 그 순간으로(든 · 난 단위 무변)
+=== 42건 중 PASS 42 · FAIL 0 ===
+  [소요] 21초
+  ✓ RC=0
+##### test-granary-rot.js #####
+=== 28건 중 PASS 28 · FAIL 0 ===
+  [소요] 18초
+  ✓ RC=0
+##### test-hall-units.js #####
+=== 23건 중 PASS 23 · FAIL 0 ===
+  [소요] 28초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✗ ★★⑯d central 없이 존을 띄우는 파일은 `lib-port.noCentral()` 머리 줄을 단다(존이 기본 3010 = 남의 central 에 등록하지 않게)  1곳: test-t1368-onb-newbie.js
+=== 99건 중 PASS 98 · FAIL 1 ===
+  ✓ ★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다  good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-list.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+=== 99건 중 PASS 98 · FAIL 1 ===
+  [소요] 54초
+  ✗ RC=1 · 결과줄 138개 → **실패로 센다**
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1193219 · net 108838 · wildlife 96104
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1444526
+=== 54 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-lab-stone.js #####
+  · [상황] 문이 실제로 호출된다(자명 통과 금지)  1800회
+  · [상황] 켠 판에서 둘째가 실제로 실린다(자명 통과 금지)  231건 · 8750 단위
+  ✓ ㉖ ★★끈 판과 켠 판은 **다른 세계**다(문이 죽어 있지 않다 · 자명 통과 금지)
+=== T299 둘째 화물 기본 끔(정정) 포함: 통과 133 · 실패 0 ===
+  [소요] 402초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-member-open.js #####
+  ✓ 부탁 11 = 아직(문턱 바로 아래 — 자명 통과 금지)  {"rec":false,"contrib":11} · 영토 안 집터는 구성원으로 인정된 사람만 잡을 수 있습니다. 마을 부탁을 1건 더 채우십시오.
+  ✓ [상황] 한 개를 내도 한 개 이상 받는 짝이 있다(자명 통과 금지)  {"it":"berry","res":"fruit","take":"food"}
+  [소요] 38초
+  ✓ RC=0
+##### test-membership.js #####
+⑩ ★이 하네스가 실패할 줄 아는가 — 일부러 틀린 것을 넣는다
+  ✓ 대조 — 같은 사람이 촌장이면 같은 `/인출 2` 가 곳간을 연다(자명 통과 금지)  2998 → 2996
+  ✓ 꺼낸 것이 로트 품목이다(아니면 아래는 자명 통과다)  food
+  ✓ ★⑪d5 자명 통과 금지 — 모르는 말은 **null** 이다(아무거나 안 준다)
+=== PASS 90 / FAIL 0 ===
+  [소요] 7초
+  ✓ RC=0
+##### test-moment-lot.js #####
+  ✓ ★⑤ 교환 실패 되돌림 — 장부도 그 순간으로(새 로트 0)
+  ✓ ★⑤ 실패한 문 — 장부가 문 앞으로(되돌린 곳간 값과 맞는다 · 새 로트 0)
+  ✓ ★⑨② 맞대기 — 길을 다 막았으니 어긋남 0 · 줄 밖에서 짐 칸을 바꾸면 센다(자명 통과 금지)  [0,0,1]
+  ✓ ⑨⑥ 저장 → 복원 같은 줄 · 줄 합 = 비축 · 줄 밖에서 비축을 바꾸면 센다(자명 통과 금지)  [0,0,1]
+=== 107건 중 PASS 107 · FAIL 0 ===
+  [소요] 231초
+  ✓ RC=0
+##### test-newcomers.js #####
+⑦ ★이 하네스가 실패할 줄 아는가
+  ✓ ③ⓒ′ 문턱 바로 아래는 통과한다
+  ✓ ③ⓓ central 이 안 뜨면 **모른 채로 통과** — 잠깐 못 물어본 것을 마을의 죄로 삼지 않는다
+  ✓ ⑧e4 (자명 통과 방지) 그 파일을 실제로 읽었다
+=== PASS 56 / FAIL 0 ===
+  [소요] 3초
+  ✓ RC=0
+##### test-onboarding.js #####
+⑧ ★이 하네스가 실패할 줄 아는가 — 일부러 나쁜 도착 지점을 넣는다
+=== PASS 38 / FAIL 0 ===  (총 169초)
+  [소요] 169초
+  ✓ RC=0
+##### test-salt.js #####
+=== 결과: 73 PASS / 0 FAIL ===
+  · [상황] ★자명 통과 금지 — 재료는 있다(재료 부족으로 막히는 게 아니다)
+  · [상황] ★자명 통과 금지 — 주석을 걷어내도 코드가 남아 있다  2729자
+  · [상황] ★자명 통과 금지 — dry 창은 **비어 있지 않다**(그래서 "없다"가 공짜가 아니다)  4줄
+=== 결과: 73 PASS / 0 FAIL ===
+  [소요] 4초
+  ✓ RC=0
+##### test-t1065-tool-gate.js #####
+  ✓ ★[자명 통과 금지] 끔 — 맨손 낚시가 던져진다(종전)  낚싯줄을 던졌습니다. 찌가 흔들리면 Shift+F를 누르십시오.
+  ✓ ★★[자명 통과 금지] 끔 — 같은 자리 맨손 E 는 그 나무를 벤다(나무가 손 닿는 곳에 있다 — 켬의 잔가지 줍기가 건너뛴 결과다)  나무 3→2 · {}
+  ✓ ★★[자명 통과 금지] 끔 — 같은 자리 맨손 E 는 바위를 캔다(자갈 줍기 ③′ 는 켬 판에만)  바위 232→231 · 깎인 0 kg · {"stone":1}
+=== T1065: 통과 43 · 실패 0 ===
+  [소요] 7초
+  ✓ RC=0
+##### test-t1120-next-tool.js #####
+  ✓ ② 한 번 = 문이 열릴 때까지(`_t1065Gate` 통과 갈래가 비운다)
+  ✓ ★★[자명 통과 금지] 끔 — 바위 곁 맨손 E 는 줍기 한 줄뿐(종전 · 이유 0) · 자갈은 같다  1통 · 자갈 1/2
+⑨ 돌연변이 — 고침의 뼈를 걷어 낸 글자면 위 판정이 빨갛다(자명 통과 금지)
+=== T1120: 85건 중 PASS 85 · FAIL 0 ===
+  [소요] 12초
+  ✓ RC=0
+##### test-t1128-kcal-tidy.js #####
+  ✓ 전제 — 낚시 어종이 스물 넘게 있다(아래가 자명 통과가 아니다)  21
+=== 24건 중 PASS 24 · FAIL 0 ===
+  [소요] 10초
+  ✓ RC=0
+##### test-t1132-hall-view.js #####
+⓪ 끔 — 종전 문(자명 통과 막기)
+=== 18건 중 PASS 18 · FAIL 0 ===
+  [소요] 26초
+  ✓ RC=0
+##### test-t1161-two-prices.js #####
+  ✓ ①-2 판이 원석 상한 · 값표 밖 이름을 지났다(자명 통과 금지)  {"oreSeen":60,"outside":150}
+  ✓ ④-2 판이 서는 실행 · 넘침 딱지를 지났다(자명 통과 금지)  {"rows":605,"deals":15,"gluts":320}
+10/10 통과
+  [소요] 74초
+  ✓ RC=0
+##### test-econ-fast.js #####
+=== 19 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — 끔 판은 부팅 복원 직후 econ 객체가 전부 사전 모드(종전)  51/51
+  ✓ ★자명 통과 금지 — 끔 판 econ 객체는 전쟁 뒤 사전 모드로 내려간다(종전)  최대 13/51 · 끝 날 13
+=== 19 통과 / 0 실패 ===
+  [소요] 1748초
+  ✓ RC=0
+##### test-t1188-ore-split.js #####
+PASS mutant site is caught
+PASS mutant bulk is caught
+PASS mutant smelt is caught
+PASS 29 / FAIL 0
+  [소요] 3초
+  ✓ RC=0
+##### test-t1341-own-house.js #####
+=== 62건 중 PASS 62 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1192-fish-species.js #####
+PASS observer mass sampling cannot create or normalize the real body ledgers
+PASS mutant mass is caught
+PASS mutant species is caught
+PASS 32 / FAIL 0
+  [소요] 2초
+  ✓ RC=0
+##### test-t1368-onb-newbie.js #####
+=== 15건 중 PASS 15 · FAIL 0 ===
+  [소요] 19초
+  ✓ RC=0
+##### test-t1353-onb-on-prep.js #####
+=== 15건 중 PASS 15 · FAIL 0 ===
+  [소요] 43초
+  ✓ RC=0
+##### test-t835-quote-weight.js #####
+  ✓ ③ 전제 — 바뀐 판이 넉넉하다(자명 통과 금지)  1440 판 · 됨 294
+=== 16건 중 PASS 16 · FAIL 0 ===
+  [소요] 30초
+  ✓ RC=0
+##### test-t965-want-start.js #####
+  ✓ ③ 전제 — 받을 양에 닿은 실행이 넉넉하다(자명 통과 금지)  82/180
+=== 15건 중 PASS 15 · FAIL 0 ===
+  [소요] 11초
+  ✓ RC=0
+##### test-t807-quote-exec.js #####
+  ✓ ⓒ 상한에 닿은 판이 실제로 있다(자명 통과 금지) · 그중 낱개를 깎아 바꾼 판  802 · 깎음 220
+  ✓ ⓒ 상한에 닿은 판이 실제로 있다(자명 통과 금지) · 그중 낱개를 깎아 바꾼 판  802 · 깎음 250
+=== 24건 중 PASS 24 · FAIL 0 ===
+  [소요] 68초
+  ✓ RC=0
+##### test-t976-want-capped.js #####
+  ✓ ③ 전제 — 무거운 짐은 전부 절삭 0 판이다(넉넉하다 · 자명 통과 금지)  30 판
+  ✓ ③ 전제 — 무거운 짐은 전부 절삭 0 판이다(넉넉하다 · 자명 통과 금지)  30 판
+=== 27건 중 PASS 27 · FAIL 0 ===
+  [소요] 8초
+  ✓ RC=0
+##### test-t999-trade-cap.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 81초
+  ✓ RC=0
+##### test-tidal.js #####
+  ✓ ★★자명 통과 금지 — **닫히는 때가 실제로 있다**  1399/4000
+  ✓ (전제) 대조군도 **간조**다 — 물이 차서 통과하는 게 아니다
+=== 123건 중 PASS 123 · FAIL 0 ===
+  [소요] 8초
+  ✓ RC=0
+##### test-t988-trade-words.js #####
+  ✓ ③ 전제 — 거절 판이 두 축에 넉넉하다(자명 통과 금지) · 받을 양이 절삭돼 못 닿는 판은 0(T999 ① — `wantShort` 갈래는 되돌림 짝이 잰다)  거절 받을 양 715 · 낼 양 736 · 못 닿음 0
+  ✓ ③ 전제 — 거절 판이 두 축에 넉넉하고 받을 양이 절삭돼 못 닿는 판도 있다(자명 통과 금지)  거절 받을 양 715 · 낼 양 760 · 못 닿음 7
+=== 35건 중 PASS 35 · FAIL 0 ===
+  [소요] 118초
+  ✓ RC=0
+##### test-winter.js #####
+  ✓ ⑤c (자명 통과 방지) 같은 낱말 검사가 옛 판정 줄에선 **걸린다**
+  ✓ ⑦ 전제: 곡식 칸은 **비어 있다**(아래가 자명 통과가 아니다)  food 0
+  ✓ ⑦e ★자명 통과 금지 — 돌은 식량이 아니다
+=== 46건 중 PASS 46 · FAIL 0 ===
+  [소요] 47초
+  ✓ RC=0
+##### test-vil-fast.js #####
+=== 10 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — 끔 판 마을 객체는 사전 모드다(종전)  [0,51]
+=== 10 통과 / 0 실패 ===
+  [소요] 647초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 40: test-body-exit.js test-body-fields.js test-coll-grid.js test-donate.js e2e-forage-village.js test-emptystart.js test-events.js test-granary-age.js test-granary-item.js test-granary-rot.js test-hall-units.js test-hp-src.js test-lab-stone.js test-lon-day.js test-member-open.js test-membership.js test-moment-lot.js test-newcomers.js test-onboarding.js test-salt.js test-t1065-tool-gate.js test-t1120-next-tool.js test-t1128-kcal-tidy.js test-t1132-hall-view.js test-t1161-two-prices.js test-econ-fast.js test-t1188-ore-split.js test-t1341-own-house.js test-t1192-fish-species.js test-t1368-onb-newbie.js test-t1353-onb-on-prep.js test-t835-quote-weight.js test-t965-want-start.js test-t807-quote-exec.js test-t976-want-capped.js test-t999-trade-cap.js test-tidal.js test-t988-trade-words.js test-winter.js test-vil-fast.js
+  실패 2: e2e-emptystart.js(rc=1) test-harness-lint.js(rc=1)
+  걸린 시간 상위(초): test-econ-fast.js 1748 · test-vil-fast.js 647 · test-events.js 470 · test-lab-stone.js 402 · test-moment-lot.js 231 · test-onboarding.js 169 · test-t988-trade-words.js 118 · e2e-forage-village.js 101 · test-t999-trade-cap.js 81 · test-t1161-two-prices.js 74
+  걸린 시간 합: 하네스 4738초 · 러너 전체 2666초(그 사이 = 배수 · 정리 기다림 · 머리)
+  나란히(T1288): -j 2 · 배수 쉼 없음(남은 포트는 lib-port 가 피한다)
+  배수(T1161): 쉼 0번 × 8초 · 건넘 0번(앞 판이 남긴 아이 없음)

@@ -1,0 +1,122 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 07b429e77)
+· 바뀐 코드 파일 12 · 이름 23(물린 것 16 · 흔한 이름 뺌 0) · 바뀐 하네스 4 · 규약 다섯 · **돌릴 하네스 39**(@regress 아님 1: test-t721-apply.js)
+  scripts/server-baseline-check.js: COND
+  scripts/t1351-observe.js: t1351-observe
+  scripts/t1374-observe.js: t1374-observe
+  server/villages.js: T1351_MINE_CLOCK _T1374_RD _lifeHeadlessDay _t1276Stand _t1351MineOn _t1374Fb _t1374Next _t1374NextHarv _t724BodyStep _t724Deliver
+  sim/economy-engine.browser.js: T1374_BIRTH_HARV T1374_NO_BYGRAIN _t1374FieldCrop t1374NeedDays
+  sim/economy-sim.js: T1374_BIRTH_HARV T1374_FAMINE_HARV T1374_NO_BYGRAIN _t1374FieldCrop pickDeficitJob_rational t1374NeedDays
+  계측/T1351_2026-11-18/광산걸이/mv.js: (이름 없음)
+  계측/T1351_2026-11-18/잣대/cmp.js: (이름 없음)
+  계측/T1351_2026-11-18/잣대/house.js: house
+  계측/T1351_2026-11-18/잣대/kgcum.js: kgcum
+  계측/T1351_2026-11-18/잣대/mwin.js: mwin
+  계측/T1351_2026-11-18/잣대/summ.js: summ
+· 이름 → 하네스 수: COND 1 · T1351_MINE_CLOCK 3 · T1374_BIRTH_HARV 1 · T1374_FAMINE_HARV 1 · T1374_NO_BYGRAIN 1 · _lifeHeadlessDay 9 · _t1276Stand 1 · _t1351MineOn 1 · _t1374FieldCrop 1 · _t1374Next 1 · _t724BodyStep 2 · house 15 · pickDeficitJob_rational 5 · t1351-observe 1 · t1374-observe 1 · t1374NeedDays 1
+· 바뀐 하네스: test-t1243-farm-on.js test-t1266-ore-body.js test-t1351-mine-clock.js test-t1374-farm-winter.js
+· 돌릴 하네스: e2e-rooms.js e2e-village-view.js test-body-fields.js test-build-act.js test-bundle-blackbox.js test-coll-grid.js test-crops.js test-deforest-game.js test-econ-fieldyield.js test-events.js test-farm-act.js test-fish-act.js test-harness-lint.js test-headless-parity.js test-hp-src.js test-lon-day.js test-onb-blackbox.js test-picker-tables.js test-psite-server.js test-shelter.js test-t1044-scram-walk.js test-t1046-wood-share.js test-t1095-mine-demand.js test-t1126-rock-yield.js test-t1198-birth-body.js test-t1212-farm-clock.js test-t1224-econ-farm.js test-t1238-terr-v2.js test-t1243-farm-on.js test-t1266-ore-body.js test-t1325-one-rot.js test-t1351-mine-clock.js test-t1374-farm-winter.js test-t721-apply.js test-terr-persist.js test-village-boot-mem.js test-village-view.js test-war-world.js test-wood-step1.js
+##### e2e-rooms.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★ㄱ자 팔 끝(101,105)도 같은 방 — 직사각형 가정이면 실패한다
+=== 방 판정 실클라 E2E: 66 통과 / 0 실패 ✅ ===
+  ✓ ★자명 통과 금지 — 지붕이 있을 때 그 상자에 이엉이 실제로 있다 (22.6% > 20%)
+=== 방 판정 실클라 E2E: 66 통과 / 0 실패 ✅ ===
+  [소요] 143초
+  ✓ RC=0
+##### e2e-village-view.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 결과: 58 통과 / 0 실패 ===
+  ✓ [자명 통과 금지] 서버 자료에 부탁 · 소식이 실제로 있다  부탁 1 · 소식 8 · 곳간 12 · 공사 0 · 사람 24
+=== 결과: 58 통과 / 0 실패 ===
+  [소요] 79초
+  ✓ RC=0
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:19730 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 454 · 걸음 문 안 256 · 문 밖 198(표 내림 73 · 까닭 125)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-build-act.js #####
+  ✓ ④ [전제] 판 안에서 집이 실제로 선다(0 이면 아래가 자명 통과다)  집 3·0·6
+  [소요] 4초
+  ✓ RC=0
+##### test-bundle-blackbox.js #####
+  ✗ ① 기본 세계가 묶음 세계(켬 판 결과 ≠ 끔 판)  갈린 날 · 마을 0
+✗ test-bundle-blackbox 17/1
+  [소요] 761초
+  ✗ RC=1 · 결과줄 21개 → **실패로 센다**
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 14초
+  ✓ RC=0
+##### test-crops.js #####
+=== 결과: 170 PASS / 0 FAIL ===
+  · [상황] T91 이 내던 마늘 수확일은 겨울 문턱(11월 말)이었다(자명 통과 금지)  게임일 285 · 12월
+  ✓ ★⑬ⓑ 그리고 하루 뒤엔 안 익어 있다(자명 통과 금지)
+  ✓ ★⑬ⓒ 중간은 1~2 (자명 통과 금지)  단계 1
+=== 결과: 170 PASS / 0 FAIL ===
+  [소요] 3초
+  ✓ RC=0
+##### test-deforest-game.js #####
+  ✓ [상황] 장부를 다 지었다 · 끔 판 개발 자리 둘레에 장부 셀이 있다(집 · 집터 · 곳간 · 곳간 착공 · 밭 셋) — 아래가 자명 통과가 아니다  끔 {"house":65,"site":65,"gran":9,"granPend":9} · 밭 true/true/true
+=== 17건 중 PASS 17 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-econ-fieldyield.js #####
+⑦ ★이 하네스가 실패할 줄 아는가
+=== 결과: 206 PASS / 0 FAIL ===
+  · [상황] 심을 수 없는 날(겨울)이 실제로 있다 — 자명 통과 금지  90일
+  ✓ ⑩ 그 날 수가 실제 달력 위에 앉는다(휴면 T99 를 통과한 값)
+  ✓ ㉑ [자명 통과 금지] 이 입력은 종전이라면 **실제로 버렸을** 입력이다  버림 145.0
+=== 결과: 206 PASS / 0 FAIL ===
+  [소요] 40초
+  ✓ RC=0
+##### test-events.js #####
+  ✓ ㊻3b 전제: 하역 전 값이면 **문턱을 넘는다**(안 넘으면 아래 대조가 자명 통과다)  ×54.50 > ×1.90
+  ✓ ㊽a 전제: `consumeFood` 소스를 실제로 읽었고 머리 넷이 그 안에 글자로 있다(못 읽으면 아래가 자명 통과다)  본문 8119자
+  ✓ ㊽d ★자명 통과 금지ⓐ — **열셋째 이름을 넣으면 문다**: `mushroom` 은 사다리엔 있고 표엔 없다(13/13 이 되면 이 절이 거짓말이다)  표 12/13 · fromEcon 12/13
+=== 305건 중 PASS 305 · FAIL 0 ===
+  [소요] 267초
+  ✓ RC=0
+##### test-farm-act.js #####
+=== 결과: 78 PASS / 0 FAIL ===
+  ✓ ② [자명 통과 금지] 작물 표 ↔ 앵커 비가 **1 이 아니다**(같은 수로 만든 항등이 아니다 — 그 차가 보고의 발견이다)  0.4484
+  ✓ ⑤ [자명 통과 금지] 끈 판은 헤드리스가 **밭을 실제로 돈다**(파종 30) · 존 술어에 **안 닿는다**(끈 팔 무변)  30건 · 술어 0회
+  ✓ ⑫ [전제 · 자명 통과 금지] 판이 실제로 벤다(일괄이 **나무를 쓰러뜨린다**) · 관측자를 세운 판은 새 술어로 **관측 마을**이다  일괄 36그루
+=== 결과: 78 PASS / 0 FAIL ===
+  [소요] 16초
+  ✓ RC=0
+##### test-fish-act.js #####
+=== 결과: 86 PASS / 0 FAIL ===
+  ✓ ⑨ ★★걸린 뒤에도 **셀 예산을 통과해야** 곳간에 든다(창이 예산을 못 늘린다)
+=== 결과: 86 PASS / 0 FAIL ===
+  [소요] 1초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다  good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-list.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+=== 99건 중 PASS 99 · FAIL 0 ===
+  [소요] 130초
+  ✓ RC=0
+##### test-headless-parity.js #####
+결과: PASS
+  [소요] 0초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1192392 · net 108838 · wildlife 96104
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1447880
+=== 54 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-onb-blackbox.js #####

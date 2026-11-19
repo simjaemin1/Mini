@@ -1,0 +1,11 @@
+
+=== 서버 판 자(T577) — 400일 · 시드 42 · 판 SA · 동시 2 · /root/t1347runs/SA-42 ===
+  조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=0 · T627_TRIP_DAY=(없음) · 집 행위 끔 · 가상 시계 켬 · T696_WAL=0 · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=1 · 도적 켬
+  ✓ 시드 42 — 존이 떴다
+  ✗ 시드 42 — **400일을 끝까지 돌았다**(판 JSON)  JSON 없음 — 로그 /root/t1347runs/SA-42/SA-42.log
+
+  판 JSON · 로그: /root/t1347runs/SA-42  (표만 다시: node scripts/t577-server-run.js --table /root/t1347runs/SA-42)
+
+=== 2건 중 PASS 1 · FAIL 1 ===
+
+벽 3780초 · 작업 트리 7c6e9466a 0 고친 파일

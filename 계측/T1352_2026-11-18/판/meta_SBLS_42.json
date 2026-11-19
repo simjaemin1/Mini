@@ -1,0 +1,622 @@
+{
+ "tag": "SBLS_42",
+ "seed": 42,
+ "DAYS": 120,
+ "DAY_MS": 3000,
+ "Q": 500,
+ "vclock": true,
+ "env": {
+  "T1324_XZ_MIGRATE": "1",
+  "T1334_BUNDLE": "1",
+  "T1352_NEWS_LOCAL": "1",
+  "T1352_NEWS_SEAM": "1"
+ },
+ "envz": {},
+ "start": "2026-11-18T06:21:52.826Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.23.4"
+ },
+ "restart": null,
+ "bootS": 20,
+ "geoWaitS": 130,
+ "stagePlan": [
+  30,
+  10,
+  3,
+  3
+ ],
+ "perfEnd": {
+  "hanbando": {
+   "day": 120,
+   "st": {
+    "sent": 706,
+    "sentOk": 702,
+    "sentFail": 0,
+    "bounced": 0,
+    "retried": 0,
+    "dup": 0,
+    "bodyOut": 702,
+    "bodyIn": 696,
+    "bodyInSkip": 0,
+    "walkWait": 0,
+    "walkWaitLate": 0,
+    "crossArrive": 335,
+    "crossReturn": 367,
+    "soldOk": 365,
+    "deposited": 321,
+    "lost": 0
+   },
+   "t1324": {
+    "walk": {},
+    "rows": [],
+    "knows": 95,
+    "knowVil": 18,
+    "t1147": {
+     "pick": 90,
+     "nearest": 6,
+     "other": 84,
+     "none": 0
+    },
+    "why": {
+     "at": 0,
+     "geo": 0,
+     "far": 1497,
+     "split": 0,
+     "days": 0,
+     "h": 72,
+     "beds": 57,
+     "food": 310
+    },
+    "none": [],
+    "knowList": [
+     [
+      1,
+      "광산1",
+      8,
+      0.674,
+      3
+     ],
+     [
+      2,
+      "광산2",
+      11,
+      1,
+      24
+     ],
+     [
+      3,
+      "광산3",
+      4,
+      0.819,
+      16
+     ],
+     [
+      5,
+      "어촌1",
+      4,
+      1,
+      29
+     ],
+     [
+      6,
+      "광산5",
+      2,
+      0.901,
+      40
+     ],
+     [
+      8,
+      "광산7",
+      9,
+      0.687,
+      8
+     ],
+     [
+      9,
+      "어촌2",
+      5,
+      1,
+      69
+     ],
+     [
+      11,
+      "임업2",
+      2,
+      0.968,
+      65
+     ],
+     [
+      12,
+      "임업3",
+      6,
+      1,
+      90
+     ],
+     [
+      15,
+      "임업5",
+      1,
+      1,
+      36
+     ],
+     [
+      17,
+      "임업6",
+      3,
+      0.828,
+      24
+     ],
+     [
+      19,
+      "농촌3",
+      11,
+      0.686,
+      39
+     ],
+     [
+      22,
+      "농촌5",
+      5,
+      0.951,
+      30
+     ],
+     [
+      24,
+      "어촌6",
+      8,
+      0.691,
+      18
+     ],
+     [
+      25,
+      "어촌7",
+      4,
+      0.823,
+      27
+     ],
+     [
+      29,
+      "어촌11",
+      4,
+      1,
+      23
+     ],
+     [
+      32,
+      "어촌14",
+      6,
+      0.757,
+      23
+     ],
+     [
+      51,
+      "농촌22",
+      2,
+      0.846,
+      28
+     ]
+    ],
+    "t1352": {
+     "localOn": true,
+     "seamOn": true,
+     "none": [],
+     "seamKeys": 20,
+     "hist": 323,
+     "histDrop": 173,
+     "seamOut": 3600,
+     "seamIn": 119,
+     "seamRows": 2380,
+     "calls": 90,
+     "own": 12,
+     "local": 342,
+     "seam": 1608,
+     "notYet": 21,
+     "pickOwn": 0,
+     "pickLocal": 3,
+     "pickSeam": 7,
+     "ageN": 10,
+     "ageSum": 10,
+     "ageMax": 1,
+     "stage": 10,
+     "staged": 90,
+     "roadDays": 24,
+     "roadHungry": 1
+    },
+    "news": 367,
+    "heard": 323,
+    "cand": 26,
+    "candSeen": 1962,
+    "pick": 10,
+    "depart": 10,
+    "bodied": 10,
+    "sent": 10,
+    "ok": 10,
+    "dup": 0,
+    "refused": 0,
+    "unknown": 0,
+    "back": 0,
+    "home": 0,
+    "in": 14,
+    "inRefuse": 0,
+    "inDup": 0,
+    "arrive": 14,
+    "joined": 14,
+    "roadDead": 0,
+    "reroute": 0,
+    "mark": 58,
+    "restored": 0,
+    "gapN": 10,
+    "gapOver": 10,
+    "gapMax": 56609
+   },
+   "t1321": {
+    "stat": {
+     "died": 0,
+     "born": 0,
+     "follow": 0,
+     "gone": 0,
+     "goneClear": 0
+    },
+    "mobs": 449,
+    "hidden": 0
+   }
+  },
+  "nippon": {
+   "day": 120,
+   "st": {
+    "sent": 702,
+    "sentOk": 696,
+    "sentFail": 0,
+    "bounced": 0,
+    "retried": 0,
+    "dup": 0,
+    "bodyOut": 696,
+    "bodyIn": 706,
+    "bodyInSkip": 0,
+    "walkWait": 0,
+    "walkWaitLate": 0,
+    "crossArrive": 373,
+    "crossReturn": 323,
+    "soldOk": 319,
+    "deposited": 366,
+    "lost": 0
+   },
+   "t1324": {
+    "walk": {
+     "out": 4
+    },
+    "rows": [
+     {
+      "key": "nippon:mjuohs00:15",
+      "ph": "out",
+      "d0": 120,
+      "len": 39913,
+      "unsure": false,
+      "h": 100
+     },
+     {
+      "key": "nippon:mjuohs00:16",
+      "ph": "out",
+      "d0": 120,
+      "len": 39913,
+      "unsure": false,
+      "h": 100
+     },
+     {
+      "key": "nippon:mjuohs00:17",
+      "ph": "out",
+      "d0": 120,
+      "len": 4667,
+      "unsure": false,
+      "h": 100
+     },
+     {
+      "key": "nippon:mjuohs00:18",
+      "ph": "out",
+      "d0": 120,
+      "len": 34495,
+      "unsure": false,
+      "h": 100
+     }
+    ],
+    "knows": 127,
+    "knowVil": 18,
+    "t1147": {
+     "pick": 86,
+     "nearest": 1,
+     "other": 85,
+     "none": 4
+    },
+    "why": {
+     "at": 0,
+     "geo": 0,
+     "far": 2853,
+     "split": 0,
+     "days": 0,
+     "h": 3,
+     "beds": 121,
+     "food": 218
+    },
+    "none": [
+     [
+      60,
+      "미도리광산",
+      0,
+      0.699
+     ],
+     [
+      60,
+      "타카노",
+      3,
+      0.714
+     ],
+     [
+      70,
+      "미도리광산",
+      0,
+      0.694
+     ],
+     [
+      120,
+      "새후보16",
+      3,
+      0.684
+     ]
+    ],
+    "knowList": [
+     [
+      1,
+      "타카쿠",
+      1,
+      1,
+      28
+     ],
+     [
+      3,
+      "마트노",
+      2,
+      0.998,
+      30
+     ],
+     [
+      4,
+      "카토쿠",
+      3,
+      1,
+      24
+     ],
+     [
+      6,
+      "네코로",
+      8,
+      0.73,
+      20
+     ],
+     [
+      7,
+      "사키농촌",
+      14,
+      0.995,
+      24
+     ],
+     [
+      8,
+      "타카노",
+      3,
+      0.768,
+      15
+     ],
+     [
+      13,
+      "새후보16",
+      3,
+      0.684,
+      22
+     ],
+     [
+      14,
+      "토오광산",
+      7,
+      0.706,
+      14
+     ],
+     [
+      16,
+      "후카임업",
+      11,
+      0.753,
+      33
+     ],
+     [
+      21,
+      "쿠라마",
+      10,
+      0.68,
+      16
+     ],
+     [
+      23,
+      "노라마",
+      16,
+      1,
+      36
+     ],
+     [
+      25,
+      "쿠라다",
+      8,
+      0.873,
+      30
+     ],
+     [
+      26,
+      "새후보21",
+      9,
+      0.758,
+      23
+     ],
+     [
+      28,
+      "아오어촌",
+      7,
+      0.891,
+      14
+     ],
+     [
+      30,
+      "키요어촌",
+      5,
+      0.681,
+      2
+     ],
+     [
+      31,
+      "오오임업",
+      4,
+      0.69,
+      16
+     ],
+     [
+      32,
+      "히로농촌",
+      6,
+      0.814,
+      15
+     ],
+     [
+      34,
+      "시로농촌",
+      10,
+      0.695,
+      11
+     ]
+    ],
+    "t1352": {
+     "localOn": true,
+     "seamOn": true,
+     "none": [
+      [
+       60,
+       "미도리광산",
+       0,
+       9,
+       26,
+       0.699,
+       {
+        "far": 34,
+        "food": 1
+       }
+      ],
+      [
+       60,
+       "타카노",
+       0,
+       10,
+       25,
+       0.714,
+       {
+        "far": 33,
+        "beds": 2
+       }
+      ],
+      [
+       70,
+       "미도리광산",
+       0,
+       6,
+       29,
+       0.694,
+       {
+        "far": 34,
+        "food": 1
+       }
+      ],
+      [
+       120,
+       "새후보16",
+       1,
+       9,
+       29,
+       0.684,
+       {
+        "far": 37,
+        "food": 2
+       }
+      ]
+     ],
+     "seamKeys": 30,
+     "hist": 367,
+     "histDrop": 176,
+     "seamOut": 2400,
+     "seamIn": 120,
+     "seamRows": 3600,
+     "calls": 90,
+     "own": 36,
+     "local": 750,
+     "seam": 2454,
+     "notYet": 36,
+     "pickOwn": 0,
+     "pickLocal": 9,
+     "pickSeam": 9,
+     "ageN": 18,
+     "ageSum": 18,
+     "ageMax": 1,
+     "stage": 10,
+     "staged": 86,
+     "roadDays": 24,
+     "roadHungry": 1
+    },
+    "news": 328,
+    "heard": 367,
+    "cand": 45,
+    "candSeen": 3240,
+    "pick": 18,
+    "depart": 18,
+    "bodied": 18,
+    "sent": 14,
+    "ok": 14,
+    "dup": 0,
+    "refused": 0,
+    "unknown": 0,
+    "back": 0,
+    "home": 0,
+    "in": 10,
+    "inRefuse": 0,
+    "inDup": 0,
+    "arrive": 10,
+    "joined": 10,
+    "roadDead": 0,
+    "reroute": 0,
+    "mark": 66,
+    "restored": 0,
+    "gapN": 14,
+    "gapOver": 14,
+    "gapMax": 40130
+   },
+   "t1321": {
+    "stat": {
+     "died": 0,
+     "born": 0,
+     "follow": 0,
+     "gone": 0,
+     "goneClear": 0
+    },
+    "mobs": 450,
+    "hidden": 0
+   }
+  }
+ },
+ "end": "2026-11-18T06:37:02.508Z",
+ "wallS": 910,
+ "days": {
+  "hanbando": 120,
+  "nippon": 120
+ },
+ "bars": 721,
+ "H": 1767225960500,
+ "dead": [],
+ "botCross": 0,
+ "botFail": 0,
+ "done": true
+}

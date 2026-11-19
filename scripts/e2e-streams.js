@@ -12,6 +12,7 @@
 'use strict';
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');
@@ -78,7 +79,7 @@ process.on('exit', shutdown);
   const send = (m) => page.evaluate((mm) => { window.__sendPrimary(mm); return true; }, m);
   const srv = () => page.evaluate(() => { const a = window.__getSrvAbs ? window.__getSrvAbs() : null; return a ? { x: a.x, y: a.y } : null; });
   const pred = () => page.evaluate(() => { const a = window.__getMyAbs(); return { x: a.x, y: a.y }; });
-  const notices = () => page.evaluate(() => (window.__notices || []).slice(-3).join(' / '));
+  const notices = () => page.evaluate(() => (window.__notices || []).slice(-3).join(' / '));   // @notice-ok 진단(판정 밖 — 실패 줄에 찍기)
   const toScreen = (wx, wy) => page.evaluate(([x, y]) => { const s = window.__w2s(x, y); const cv = document.getElementById('canvas'); const r = cv.getBoundingClientRect(); return { x: r.left + s.px * (r.width / cv.width), y: r.top + s.py * (r.height / cv.height) }; }, [wx, wy]);
 
   // ── ① 래스터 ──
@@ -140,9 +141,10 @@ process.on('exit', shutdown);
     await page.mouse.move(p.x, p.y); await page.mouse.down({ button: 'right' }); await page.mouse.up({ button: 'right' });
     for (let i = 0; i < 12 && !menu; i++) { await sleep(250); menu = await page.evaluate(() => { const m = document.getElementById('ctxMenu'); return m && m.children.length ? [...m.children].map((e) => (e.textContent || '').trim()) : null; }); } }
   ok(!!menu && menu.includes('마시기'), '★④ 개울 칸 우클릭 = 물 메뉴("마시기") — 서버 `look` 이 "개울 — 민물"', JSON.stringify(menu));
+  const tgDr = await NM.mark(page);   // [T1367] 마시기 누름 뒤에 온 알림만
   if (menu && menu.includes('마시기')) await page.evaluate(() => { const m = document.getElementById('ctxMenu'); for (const e of m.children) if ((e.textContent || '').trim() === '마시기') { e.click(); break; } });
   let drank = false;
-  for (let i = 0; i < 40 && !drank; i++) { await sleep(400); if (/물을 마셨습니다/.test(await notices())) drank = true; }
+  for (let i = 0; i < 40 && !drank; i++) { await sleep(400); if ((await NM.since(page, tgDr)).some((t) => /물을 마셨습니다/.test(t))) drank = true; }   // [T1367] 종전 마지막 세 줄
   ok(drank, '★④ "마시기" — 개울가에서 마셨다', `알림: ${await notices()}`);
   await snap('03-drink');
 

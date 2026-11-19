@@ -1,0 +1,2309 @@
+{
+ "tag": "S0_42",
+ "counts": {
+  "keys": 96,
+  "depart": 96,
+  "crossed": 87,
+  "crossedDup": 0,
+  "unknownEv": 0,
+  "back": 0,
+  "home": 0,
+  "inRecv": 87,
+  "arrive": 87,
+  "deadOut": 0,
+  "deadBack": 0,
+  "deadIn": 0,
+  "transitOut": 9,
+  "transitBack": 0,
+  "transitIn": 0,
+  "byDir": {
+   "nippon→hanbando": {
+    "depart": 75,
+    "crossed": 66,
+    "arrive": 66,
+    "home": 0,
+    "dead": 0
+   },
+   "hanbando→nippon": {
+    "depart": 21,
+    "crossed": 21,
+    "arrive": 21,
+    "home": 0,
+    "dead": 0
+   }
+  },
+  "reroute": 0
+ },
+ "balance": {
+  "depart": 96,
+  "sum": 96,
+  "ok": true
+ },
+ "bad": {
+  "twoIn": {
+   "n": 0,
+   "sample": []
+  },
+  "inNoDepart": {
+   "n": 0,
+   "sample": []
+  },
+  "crossedNoIn": {
+   "n": 0,
+   "sample": []
+  },
+  "homeAndArrive": {
+   "n": 0,
+   "sample": []
+  },
+  "backAndIn": {
+   "n": 0,
+   "sample": []
+  },
+  "noDepart": {
+   "n": 0,
+   "sample": []
+  }
+ },
+ "red": 0,
+ "gap": {
+  "n": 87,
+  "body": 87,
+  "noBody": 0,
+  "p50": 2513,
+  "max": 132168,
+  "over32": 87
+ },
+ "granary": [
+  {
+   "key": "nippon:mjuohs00:1",
+   "zone": "hanbando",
+   "vil": "광산3",
+   "n": 23,
+   "fe": 340.9,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:2",
+   "zone": "hanbando",
+   "vil": "광산3",
+   "n": 24,
+   "fe": 374,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:3",
+   "zone": "hanbando",
+   "vil": "광산3",
+   "n": 25,
+   "fe": 407.1,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:4",
+   "zone": "hanbando",
+   "vil": "어촌11",
+   "n": 27,
+   "fe": 796.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:5",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 30,
+   "fe": 870.3,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:6",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 31,
+   "fe": 902.9,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:7",
+   "zone": "hanbando",
+   "vil": "광산3",
+   "n": 26,
+   "fe": 391.9,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:8",
+   "zone": "hanbando",
+   "vil": "광산3",
+   "n": 27,
+   "fe": 424.8,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:9",
+   "zone": "hanbando",
+   "vil": "광산3",
+   "n": 28,
+   "fe": 457.6,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:10",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 37,
+   "fe": 791.6,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:11",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 38,
+   "fe": 824.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:12",
+   "zone": "hanbando",
+   "vil": "광산5",
+   "n": 25,
+   "fe": 638.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:13",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 34,
+   "fe": 1172.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:14",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 35,
+   "fe": 1202.1,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:15",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 36,
+   "fe": 1219.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:16",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 43,
+   "fe": 1097.7,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:17",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 44,
+   "fe": 1129.2,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:18",
+   "zone": "hanbando",
+   "vil": "광산5",
+   "n": 26,
+   "fe": 877.7,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:19",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 43,
+   "fe": 1463.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:20",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 44,
+   "fe": 1466.8,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:21",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 45,
+   "fe": 1466.8,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:22",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 45,
+   "fe": 1448.8,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:23",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 46,
+   "fe": 1481.1,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:24",
+   "zone": "hanbando",
+   "vil": "광산5",
+   "n": 27,
+   "fe": 833.8,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:25",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 52,
+   "fe": 1766.2,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:26",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 53,
+   "fe": 1790.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:27",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 54,
+   "fe": 1814.7,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:28",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 47,
+   "fe": 1823.7,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:29",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 48,
+   "fe": 1856.4,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:30",
+   "zone": "hanbando",
+   "vil": "광산5",
+   "n": 27,
+   "fe": 1329.4,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:31",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 63,
+   "fe": 1943.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:32",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 64,
+   "fe": 1970.4,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:33",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 65,
+   "fe": 1997.4,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:34",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 49,
+   "fe": 2320.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:35",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 50,
+   "fe": 2353.2,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:36",
+   "zone": "hanbando",
+   "vil": "광산5",
+   "n": 28,
+   "fe": 1325.8,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:37",
+   "zone": "hanbando",
+   "vil": "어촌11",
+   "n": 49,
+   "fe": 1874.9,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:38",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 51,
+   "fe": 2385.4,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:39",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 52,
+   "fe": 2417.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:40",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 73,
+   "fe": 2169.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:41",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 74,
+   "fe": 2201.2,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:42",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 75,
+   "fe": 2232.8,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:43",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 53,
+   "fe": 2698.7,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:44",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 54,
+   "fe": 2731.2,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:45",
+   "zone": "hanbando",
+   "vil": "광산5",
+   "n": 29,
+   "fe": 1228.9,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:46",
+   "zone": "hanbando",
+   "vil": "어촌11",
+   "n": 50,
+   "fe": 2149.6,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:47",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 55,
+   "fe": 2763.8,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:48",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 56,
+   "fe": 2796.4,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:49",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 81,
+   "fe": 1898.4,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:50",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 82,
+   "fe": 1930.1,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:51",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 83,
+   "fe": 1961.7,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:52",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 57,
+   "fe": 2930.1,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:53",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 58,
+   "fe": 2962.6,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:54",
+   "zone": "hanbando",
+   "vil": "광산5",
+   "n": 30,
+   "fe": 1348.8,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:55",
+   "zone": "hanbando",
+   "vil": "어촌11",
+   "n": 51,
+   "fe": 2420.7,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:56",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 59,
+   "fe": 2995.4,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:57",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 60,
+   "fe": 3028.2,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:58",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 85,
+   "fe": 1702.4,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:59",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 86,
+   "fe": 1733.6,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:60",
+   "zone": "hanbando",
+   "vil": "임업6",
+   "n": 87,
+   "fe": 1764.9,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:61",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 61,
+   "fe": 3120.4,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:62",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 62,
+   "fe": 3152.9,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:63",
+   "zone": "hanbando",
+   "vil": "광산5",
+   "n": 31,
+   "fe": 936.4,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:64",
+   "zone": "hanbando",
+   "vil": "광산5",
+   "n": 32,
+   "fe": 969.7,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:65",
+   "zone": "hanbando",
+   "vil": "광산5",
+   "n": 33,
+   "fe": 1003.1,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:66",
+   "zone": "hanbando",
+   "vil": "광산5",
+   "n": 34,
+   "fe": 1036.5,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:1",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 25,
+   "fe": 670,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:2",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 26,
+   "fe": 670,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:3",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 27,
+   "fe": 670,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:4",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 28,
+   "fe": 781.8,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:5",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 29,
+   "fe": 812.7,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:6",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 30,
+   "fe": 843.7,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:7",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 31,
+   "fe": 1059.9,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:8",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 32,
+   "fe": 1091.9,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:9",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 33,
+   "fe": 1123.9,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:10",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 34,
+   "fe": 408,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:11",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 35,
+   "fe": 437.2,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:12",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 36,
+   "fe": 466.3,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:13",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 37,
+   "fe": 676,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:14",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 38,
+   "fe": 708.3,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:15",
+   "zone": "nippon",
+   "vil": "사키농촌",
+   "n": 39,
+   "fe": 740.6,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:16",
+   "zone": "nippon",
+   "vil": "네코로",
+   "n": 25,
+   "fe": 1122.5,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:17",
+   "zone": "nippon",
+   "vil": "네코로",
+   "n": 26,
+   "fe": 1154.6,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:18",
+   "zone": "nippon",
+   "vil": "네코로",
+   "n": 27,
+   "fe": 1186.8,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:19",
+   "zone": "nippon",
+   "vil": "네코로",
+   "n": 28,
+   "fe": 1398.5,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:20",
+   "zone": "nippon",
+   "vil": "네코로",
+   "n": 29,
+   "fe": 1429.5,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:21",
+   "zone": "nippon",
+   "vil": "네코로",
+   "n": 30,
+   "fe": 1460.6,
+   "days": 2
+  }
+ ],
+ "heard": [
+  {
+   "key": "hanbando:mjuohs00:1",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:2",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:3",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:4",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:5",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:6",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:7",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:8",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:9",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:10",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:11",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:12",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:13",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:14",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:15",
+   "from": "광산1",
+   "to": "사키농촌",
+   "toZone": "nippon",
+   "d": 13,
+   "fe": 478.122,
+   "n": 13,
+   "h": 0.758379046778387
+  },
+  {
+   "key": "hanbando:mjuohs00:16",
+   "from": "광산1",
+   "to": "네코로",
+   "toZone": "nippon",
+   "d": 9,
+   "fe": 480.512,
+   "n": 11,
+   "h": 0.7510252680138851
+  },
+  {
+   "key": "hanbando:mjuohs00:17",
+   "from": "광산1",
+   "to": "네코로",
+   "toZone": "nippon",
+   "d": 9,
+   "fe": 480.512,
+   "n": 11,
+   "h": 0.7510252680138851
+  },
+  {
+   "key": "hanbando:mjuohs00:18",
+   "from": "광산1",
+   "to": "네코로",
+   "toZone": "nippon",
+   "d": 9,
+   "fe": 480.512,
+   "n": 11,
+   "h": 0.7510252680138851
+  },
+  {
+   "key": "hanbando:mjuohs00:19",
+   "from": "광산1",
+   "to": "네코로",
+   "toZone": "nippon",
+   "d": 9,
+   "fe": 480.512,
+   "n": 11,
+   "h": 0.7510252680138851
+  },
+  {
+   "key": "hanbando:mjuohs00:20",
+   "from": "광산1",
+   "to": "네코로",
+   "toZone": "nippon",
+   "d": 9,
+   "fe": 480.512,
+   "n": 11,
+   "h": 0.7510252680138851
+  },
+  {
+   "key": "hanbando:mjuohs00:21",
+   "from": "광산1",
+   "to": "네코로",
+   "toZone": "nippon",
+   "d": 9,
+   "fe": 480.512,
+   "n": 11,
+   "h": 0.7510252680138851
+  },
+  {
+   "key": "nippon:mjuohs00:1",
+   "from": "후카임업",
+   "to": "광산3",
+   "toZone": "hanbando",
+   "d": 9,
+   "fe": 495.336,
+   "n": 12,
+   "h": 0.8762025536675162
+  },
+  {
+   "key": "nippon:mjuohs00:2",
+   "from": "후카임업",
+   "to": "광산3",
+   "toZone": "hanbando",
+   "d": 9,
+   "fe": 495.336,
+   "n": 12,
+   "h": 0.8762025536675162
+  },
+  {
+   "key": "nippon:mjuohs00:3",
+   "from": "후카임업",
+   "to": "광산3",
+   "toZone": "hanbando",
+   "d": 9,
+   "fe": 495.336,
+   "n": 12,
+   "h": 0.8762025536675162
+  },
+  {
+   "key": "nippon:mjuohs00:4",
+   "from": "새후보21",
+   "to": "어촌11",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 399.901,
+   "n": 19,
+   "h": 0.9477758226204562
+  },
+  {
+   "key": "nippon:mjuohs00:5",
+   "from": "새후보21",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 408.374,
+   "n": 13,
+   "h": 0.9201734060253939
+  },
+  {
+   "key": "nippon:mjuohs00:6",
+   "from": "새후보21",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 408.374,
+   "n": 13,
+   "h": 0.9201734060253939
+  },
+  {
+   "key": "nippon:mjuohs00:7",
+   "from": "후카임업",
+   "to": "광산3",
+   "toZone": "hanbando",
+   "d": 9,
+   "fe": 495.336,
+   "n": 12,
+   "h": 0.8762025536675162
+  },
+  {
+   "key": "nippon:mjuohs00:8",
+   "from": "후카임업",
+   "to": "광산3",
+   "toZone": "hanbando",
+   "d": 9,
+   "fe": 495.336,
+   "n": 12,
+   "h": 0.8762025536675162
+  },
+  {
+   "key": "nippon:mjuohs00:9",
+   "from": "후카임업",
+   "to": "광산3",
+   "toZone": "hanbando",
+   "d": 9,
+   "fe": 495.336,
+   "n": 12,
+   "h": 0.8762025536675162
+  },
+  {
+   "key": "nippon:mjuohs00:10",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:11",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:12",
+   "from": "아오어촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:13",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:14",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:15",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:16",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:17",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:18",
+   "from": "아오어촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:19",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:20",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:21",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:22",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:23",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:24",
+   "from": "아오어촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:25",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:26",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:27",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:28",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:29",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:30",
+   "from": "아오어촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:31",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:32",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:33",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:34",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:35",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:36",
+   "from": "아오어촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:37",
+   "from": "새후보21",
+   "to": "어촌11",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 399.901,
+   "n": 19,
+   "h": 0.9477758226204562
+  },
+  {
+   "key": "nippon:mjuohs00:38",
+   "from": "새후보21",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 408.374,
+   "n": 13,
+   "h": 0.9201734060253939
+  },
+  {
+   "key": "nippon:mjuohs00:39",
+   "from": "새후보21",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 408.374,
+   "n": 13,
+   "h": 0.9201734060253939
+  },
+  {
+   "key": "nippon:mjuohs00:40",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:41",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:42",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:43",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:44",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:45",
+   "from": "아오어촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:46",
+   "from": "새후보21",
+   "to": "어촌11",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 399.901,
+   "n": 19,
+   "h": 0.9477758226204562
+  },
+  {
+   "key": "nippon:mjuohs00:47",
+   "from": "새후보21",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 408.374,
+   "n": 13,
+   "h": 0.9201734060253939
+  },
+  {
+   "key": "nippon:mjuohs00:48",
+   "from": "새후보21",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 408.374,
+   "n": 13,
+   "h": 0.9201734060253939
+  },
+  {
+   "key": "nippon:mjuohs00:49",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:50",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:51",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:52",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:53",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:54",
+   "from": "아오어촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:55",
+   "from": "새후보21",
+   "to": "어촌11",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 399.901,
+   "n": 19,
+   "h": 0.9477758226204562
+  },
+  {
+   "key": "nippon:mjuohs00:56",
+   "from": "새후보21",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 408.374,
+   "n": 13,
+   "h": 0.9201734060253939
+  },
+  {
+   "key": "nippon:mjuohs00:57",
+   "from": "새후보21",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 408.374,
+   "n": 13,
+   "h": 0.9201734060253939
+  },
+  {
+   "key": "nippon:mjuohs00:58",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:59",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:60",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:61",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:62",
+   "from": "아오어촌",
+   "to": "농촌3",
+   "toZone": "hanbando",
+   "d": 17,
+   "fe": 458.527,
+   "n": 18,
+   "h": 0.9607541464933107
+  },
+  {
+   "key": "nippon:mjuohs00:63",
+   "from": "아오어촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:64",
+   "from": "시로농촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:65",
+   "from": "시로농촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:66",
+   "from": "시로농촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:67",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:68",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:69",
+   "from": "후카임업",
+   "to": "임업6",
+   "toZone": "hanbando",
+   "d": 11,
+   "fe": 550.491,
+   "n": 12,
+   "h": 0.7618637761761723
+  },
+  {
+   "key": "nippon:mjuohs00:70",
+   "from": "아오어촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:71",
+   "from": "아오어촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:72",
+   "from": "아오어촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:73",
+   "from": "시로농촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:74",
+   "from": "시로농촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  },
+  {
+   "key": "nippon:mjuohs00:75",
+   "from": "시로농촌",
+   "to": "광산5",
+   "toZone": "hanbando",
+   "d": 19,
+   "fe": 388.171,
+   "n": 17,
+   "h": 0.8091716709227457
+  }
+ ],
+ "perfLast": {
+  "hanbando": {
+   "walk": {},
+   "knows": 68,
+   "knowVil": 17,
+   "t1147": {
+    "pick": 48,
+    "nearest": 0,
+    "other": 48,
+    "none": 14
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 30,
+    "split": 0,
+    "days": 0,
+    "h": 2,
+    "beds": 120,
+    "food": 0
+   },
+   "none": [
+    [
+     50,
+     "농촌21",
+     0,
+     0.669
+    ],
+    [
+     50,
+     "광산7",
+     1,
+     0.706
+    ],
+    [
+     60,
+     "농촌21",
+     0,
+     0.662
+    ],
+    [
+     60,
+     "광산7",
+     2,
+     0.686
+    ],
+    [
+     70,
+     "광산7",
+     2,
+     0.665
+    ],
+    [
+     70,
+     "농촌21",
+     0,
+     0.667
+    ],
+    [
+     80,
+     "농촌21",
+     0,
+     0.652
+    ],
+    [
+     80,
+     "광산7",
+     2,
+     0.657
+    ],
+    [
+     90,
+     "농촌14",
+     0,
+     0.642
+    ],
+    [
+     90,
+     "광산7",
+     2,
+     0.646
+    ],
+    [
+     100,
+     "광산7",
+     3,
+     0.638
+    ],
+    [
+     100,
+     "어촌6",
+     5,
+     0.645
+    ],
+    [
+     110,
+     "임업2",
+     3,
+     0.589
+    ],
+    [
+     110,
+     "광산7",
+     3,
+     0.632
+    ]
+   ],
+   "knowList": [
+    [
+     1,
+     "광산1",
+     6,
+     0.555,
+     21
+    ],
+    [
+     2,
+     "광산2",
+     9,
+     0.952,
+     42
+    ],
+    [
+     3,
+     "광산3",
+     2,
+     0.668,
+     28
+    ],
+    [
+     5,
+     "어촌1",
+     1,
+     1,
+     30
+    ],
+    [
+     6,
+     "광산5",
+     1,
+     0.888,
+     34
+    ],
+    [
+     8,
+     "광산7",
+     3,
+     0.634,
+     21
+    ],
+    [
+     9,
+     "어촌2",
+     5,
+     0.68,
+     132
+    ],
+    [
+     11,
+     "임업2",
+     3,
+     0.465,
+     135
+    ],
+    [
+     12,
+     "임업3",
+     5,
+     0.983,
+     48
+    ],
+    [
+     15,
+     "임업5",
+     2,
+     0.89,
+     30
+    ],
+    [
+     17,
+     "임업6",
+     5,
+     0.735,
+     89
+    ],
+    [
+     19,
+     "농촌3",
+     5,
+     0.743,
+     62
+    ],
+    [
+     22,
+     "농촌5",
+     1,
+     0.897,
+     36
+    ],
+    [
+     24,
+     "어촌6",
+     5,
+     0.648,
+     31
+    ],
+    [
+     25,
+     "어촌7",
+     7,
+     0.754,
+     24
+    ],
+    [
+     29,
+     "어촌11",
+     3,
+     0.96,
+     57
+    ],
+    [
+     32,
+     "어촌14",
+     5,
+     0.82,
+     24
+    ]
+   ],
+   "t1352": {
+    "localOn": false,
+    "seamOn": false,
+    "none": [],
+    "seamKeys": 0,
+    "hist": 0,
+    "histDrop": 0,
+    "seamOut": 0,
+    "seamIn": 0,
+    "seamRows": 0,
+    "calls": 0,
+    "own": 0,
+    "local": 0,
+    "seam": 0,
+    "notYet": 0,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 0,
+    "ageN": 0,
+    "ageSum": 0,
+    "ageMax": 0,
+    "stage": 10,
+    "staged": 48,
+    "roadDays": 87,
+    "roadHungry": 2
+   },
+   "news": 358,
+   "heard": 330,
+   "cand": 51,
+   "candSeen": 203,
+   "pick": 21,
+   "depart": 21,
+   "bodied": 21,
+   "sent": 21,
+   "ok": 21,
+   "dup": 0,
+   "refused": 0,
+   "unknown": 0,
+   "back": 0,
+   "home": 0,
+   "in": 66,
+   "inRefuse": 0,
+   "inDup": 0,
+   "arrive": 66,
+   "joined": 66,
+   "roadDead": 0,
+   "reroute": 0,
+   "mark": 195,
+   "restored": 0,
+   "gapN": 21,
+   "gapOver": 21,
+   "gapMax": 8494
+  },
+  "nippon": {
+   "walk": {
+    "out": 9
+   },
+   "knows": 84,
+   "knowVil": 19,
+   "t1147": {
+    "pick": 83,
+    "nearest": 0,
+    "other": 83,
+    "none": 11
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 23,
+    "split": 0,
+    "days": 0,
+    "h": 23,
+    "beds": 185,
+    "food": 3
+   },
+   "none": [
+    [
+     40,
+     "미도리광산",
+     0,
+     0.719
+    ],
+    [
+     50,
+     "미도리광산",
+     0,
+     0.706
+    ],
+    [
+     60,
+     "쿠라마",
+     5,
+     0.689
+    ],
+    [
+     70,
+     "쿠라마",
+     6,
+     0.677
+    ],
+    [
+     88,
+     "새후보5",
+     0,
+     0.145
+    ],
+    [
+     89,
+     "새후보5",
+     0,
+     0.133
+    ],
+    [
+     90,
+     "새후보5",
+     0,
+     0.122
+    ],
+    [
+     99,
+     "새후보5",
+     0,
+     0.033
+    ],
+    [
+     100,
+     "새후보5",
+     0,
+     0.024
+    ],
+    [
+     106,
+     "새후보5",
+     0,
+     0
+    ],
+    [
+     107,
+     "새후보5",
+     0,
+     0
+    ]
+   ],
+   "knowList": [
+    [
+     1,
+     "타카쿠",
+     1,
+     0.896,
+     30
+    ],
+    [
+     2,
+     "이즈이",
+     1,
+     0.819,
+     66
+    ],
+    [
+     3,
+     "마트노",
+     2,
+     0.937,
+     30
+    ],
+    [
+     4,
+     "카토쿠",
+     1,
+     0.887,
+     42
+    ],
+    [
+     6,
+     "네코로",
+     6,
+     0.855,
+     30
+    ],
+    [
+     7,
+     "사키농촌",
+     10,
+     0.662,
+     39
+    ],
+    [
+     8,
+     "타카노",
+     1,
+     0.796,
+     30
+    ],
+    [
+     13,
+     "새후보16",
+     2,
+     0.945,
+     30
+    ],
+    [
+     14,
+     "토오광산",
+     4,
+     0.737,
+     29
+    ],
+    [
+     16,
+     "후카임업",
+     4,
+     0.582,
+     21
+    ],
+    [
+     21,
+     "쿠라마",
+     7,
+     0.641,
+     24
+    ],
+    [
+     23,
+     "노라마",
+     8,
+     0.742,
+     87
+    ],
+    [
+     25,
+     "쿠라다",
+     5,
+     0.89,
+     24
+    ],
+    [
+     26,
+     "새후보21",
+     7,
+     0.645,
+     37
+    ],
+    [
+     28,
+     "아오어촌",
+     5,
+     0.613,
+     21
+    ],
+    [
+     30,
+     "키요어촌",
+     6,
+     0.672,
+     42
+    ],
+    [
+     31,
+     "오오임업",
+     3,
+     0.699,
+     24
+    ],
+    [
+     32,
+     "히로농촌",
+     3,
+     0.716,
+     30
+    ],
+    [
+     34,
+     "시로농촌",
+     8,
+     0.637,
+     22
+    ]
+   ],
+   "t1352": {
+    "localOn": false,
+    "seamOn": false,
+    "none": [],
+    "seamKeys": 0,
+    "hist": 0,
+    "histDrop": 0,
+    "seamOut": 0,
+    "seamIn": 0,
+    "seamRows": 0,
+    "calls": 0,
+    "own": 0,
+    "local": 0,
+    "seam": 0,
+    "notYet": 0,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 0,
+    "ageN": 0,
+    "ageSum": 0,
+    "ageMax": 0,
+    "stage": 10,
+    "staged": 78,
+    "roadDays": 87,
+    "roadHungry": 3
+   },
+   "news": 333,
+   "heard": 358,
+   "cand": 116,
+   "candSeen": 350,
+   "pick": 75,
+   "depart": 75,
+   "bodied": 75,
+   "sent": 66,
+   "ok": 66,
+   "dup": 0,
+   "refused": 0,
+   "unknown": 0,
+   "back": 0,
+   "home": 0,
+   "in": 21,
+   "inRefuse": 0,
+   "inDup": 0,
+   "arrive": 21,
+   "joined": 21,
+   "roadDead": 0,
+   "reroute": 0,
+   "mark": 249,
+   "restored": 0,
+   "gapN": 66,
+   "gapOver": 66,
+   "gapMax": 132168
+  }
+ },
+ "final": {
+  "hanbando": {
+   "pop": 2033,
+   "deaths": 5,
+   "fdDeaths": 0
+  },
+  "nippon": {
+   "pop": 1141,
+   "deaths": 36,
+   "fdDeaths": 32
+  }
+ }
+}

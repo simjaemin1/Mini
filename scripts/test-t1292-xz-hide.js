@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1375] 미끼 판정 줄에 바꾼 자리 수(이미 있던 자리 셈을 그 줄로 옮김 · lint ⑲b)
 // === scripts/test-t1292-xz-hide.js — 넘기는 캐러밴 몸은 보내기 직전에 숨는다 · 답에 따라 지우거나 드러낸다 (T1292 · 2026-11-13) ==========
 //
 // ★왜(캐논 797 — 몸은 경계에서 둘이 되면 안 된다): 종전 넘김은 받는 존이 몸을 세운 **뒤** 보낸 존이 답(OK)을 듣고서야 지웠다 ⇒ 넘길 때마다
@@ -159,8 +160,8 @@ for (const [k, chk, msg] of [
   ['nokeep', (o) => o.cases.timeout.seq[1][1] === 0 && !o.cases.timeout.trace.includes('unhide'), '답 없음에 숨긴 채 다시 밀기를 뺀 사본 → ⓑ 답 없음에 드러난다'],
   ['nosure', (o) => o.cases.refused.seq[1][1] === 3 && o.cases.refused.trace.includes('unhide'), '확실한 실패 가름을 뺀 사본 → ⓒ 숨은 채 다시 민다(드러나지 않는다)'],
 ]) {
-  const o = child({}, k);
-  ok(!o.err && !chk(o), `③ 미끼 ${k} → 빨강 — ${msg}`, o.err ? o.err.slice(0, 160) : seqTxt(k === 'nohide' ? o.cases.ok : k === 'nokeep' ? o.cases.timeout : o.cases.refused));
+  const o = child({}, k), nk = VSRC.split(BAITS[k][0]).length - 1;   // [T1375] 바꾼 자리 — ⓪ 이 세던 그 셈
+  ok(nk === 1 && !o.err && !chk(o), `③ 미끼 ${k} → 빨강 — ${msg} · 바꾼 자리 ${nk}`, o.err ? o.err.slice(0, 160) : seqTxt(k === 'nohide' ? o.cases.ok : k === 'nokeep' ? o.cases.timeout : o.cases.refused));
 }
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

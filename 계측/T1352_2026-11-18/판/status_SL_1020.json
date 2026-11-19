@@ -1,0 +1,71 @@
+{
+ "wallS": 534,
+ "bars": 716,
+ "H": 1767225958000,
+ "zones": {
+  "hanbando": {
+   "started": true,
+   "at": false,
+   "st": {
+    "t": "at",
+    "zone": "hanbando",
+    "H": 1767225957500,
+    "V": 1767225957500,
+    "cnt": {
+     "reqSent": {
+      "nippon": 848
+     },
+     "reqRecv": {
+      "ext": 268,
+      "nippon": 833
+     },
+     "resSent": {
+      "ext": 268,
+      "nippon": 833
+     },
+     "resRecv": {
+      "nippon": 848
+     }
+    },
+    "outW": 0,
+    "inbox": 0,
+    "held": 0,
+    "heldK": [],
+    "inboxK": [],
+    "flushes": 715
+   }
+  },
+  "nippon": {
+   "started": true,
+   "at": false,
+   "st": {
+    "t": "upd",
+    "zone": "nippon",
+    "H": 1767225957500,
+    "V": 1767225957500,
+    "cnt": {
+     "reqSent": {
+      "hanbando": 833
+     },
+     "reqRecv": {
+      "ext": 268,
+      "hanbando": 848
+     },
+     "resSent": {
+      "ext": 267,
+      "hanbando": 848
+     },
+     "resRecv": {
+      "hanbando": 833
+     }
+    },
+    "outW": 0,
+    "inbox": 1,
+    "held": 0,
+    "heldK": [],
+    "inboxK": [],
+    "flushes": 715
+   }
+  }
+ }
+}

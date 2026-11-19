@@ -1,0 +1,20 @@
+test-granary-haul rc=0 0s :: 결과: PASS
+test-move-soa rc=0 107s :: === 결과: 287 PASS / 0 FAIL ===
+test-sbc-blind rc=0 330s :: === 5건 중 PASS 5 · FAIL 0 ===
+test-t1043-gate-house rc=0 1526s :: === PASS 11 / FAIL 0 ===
+test-t1095-mine-demand rc=0 1s :: === 15건 중 PASS 15 · FAIL 0 ===
+test-t1126-rock-yield rc=0 13s :: === T1126: 52건 중 PASS 52 · FAIL 0 ===
+test-t1221-farm-labor rc=0 0s :: 13 통과 · 0 실패
+test-t1266-ore-body rc=1 8s :: === 62 통과 / 1 실패 ===
+test-t1294-perf rc=0 4s :: === T1294 성능 자리 14 통과 · 0 실패 ===
+test-t1315-war-corpse rc=0 1s :: === T1315: 통과 25 · 실패 0 ===
+test-t1322-prefilter rc=0 33s :: === T1322 첫 거름 21 통과 · 0 실패 ===
+test-t1334-bundle rc=0 153s :: === T1334 묶음 손잡이: 통과 19 · 실패 0 ===
+test-t1337-wake rc=0 46s :: === T1337 잠 깨움 11 통과 · 0 실패 ===
+test-body-fields rc=0 1s :: === 14 통과 / 0 실패 ===
+test-coll-grid rc=0 17s :: === 결과: 20 PASS / 0 FAIL ===
+test-hp-src rc=0 2s :: === 54 통과 / 0 실패 ===
+test-lon-day rc=0 0s :: === 22건 중 PASS 22 · FAIL 0 ===
+test-harness-lint rc=0 106s :: === 89건 중 PASS 89 · FAIL 0 ===
+t1243-skip rc=0 :: 79 통과 · 0 실패
+DONE

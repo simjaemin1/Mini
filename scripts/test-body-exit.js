@@ -18,6 +18,7 @@ const ROOT = path.join(__dirname, '..');
 const R = (p) => require(path.join(ROOT, p));
 
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
+process.env.T1373_HOME_CAP = process.env.T1373_HOME_CAP || '0';   // ★[T1373 켬 기본 · 2026-11-18] ⑮ 판(곳간 0 사람 마을)의 "굶는 마을에 출생 0" 전제는 종전 땅 K(slotK)가 세웠다 — 켬 세계는 식량 흐름 K 가 출생을 열어 같은 날 출생 · 빚 죽음이 겹치고 따라가기(T590 · 차 셈)가 그 하나를 못 센다(종전 한계 · 보고 T1373 회부) · 이 하네스는 종전 세계에서 꼬리표를 잰다
 process.env.T1198_BIRTH_BODY = process.env.T1198_BIRTH_BODY || '0';   // ★[T1198] 이 하네스는 종전 따라가기(하루 ±2 · 까닭 줄 차례 몸 — T590)를 잰다 · 켬(명부 ↔ 몸 1:1)은 `test-t1198-birth-body`
 const econ = R('sim/economy-sim');
 const V = R('server/villages');

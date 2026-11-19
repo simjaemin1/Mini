@@ -1,0 +1,20 @@
+test-t1087-crew-cap.js	제품차0	T1087	T1087	—	못찾음	-	-	-	0	카드 T1087 의 제품 커밋 0(--grep · 제품 경로)
+test-gate-draft.js	제품차0	T1082	T1082	—	못찾음	-	-	-	0	카드 T1082 의 제품 커밋 0(--grep · 제품 경로)
+test-gap-ruler.js	제품차0	T1101	T1101	—	못찾음	-	-	-	0	카드 T1101 의 제품 커밋 0(--grep · 제품 경로)
+test-lint-harness-words.js	제품차0	T1097	T1097	dcb4ebd01	초록 ✗	0	9	0	11	
+test-t1149-winter.js	제품차0	T1149	T1149	71718bd77	빨강(크래시) △	1	0	0	10	TypeError: E.t1149LeanDays is not a function
+test-t1160-promote-key.js	제품차0	T1160	T1160	5cc01b6f3	빨강 ○	1	8	6	9	✗ ⓐ ★승격 welcome(이 소켓에 승격을 보냈다) — 게스트 열쇠가 그대로(브라우저 · 메모리)  브라우저 없음 · 메모리 ""
+test-stone-planning.js	제품차0	T1181	T419	fddf767d1	빨강(크래시) △	1	0	0	10	throw new AssertionError(obj);
+test-physical-forage-plan.js	의심	T1180	T312	ba933e5de	빨강(크래시) △	1	0	0	9	TypeError: E.bindProductionActs is not a function
+test-t1249-ore-fix.js	제품차0	T1249	T1188	7e12692e9	빨강 ○	1	4	3	12	✗ 고침 켬 직업 수 = 쪼개기 끔 판(곳간 목재가 산다)  {"farmer":39,"fisher":2,"hunter":2,"lumberjack":4,"mason":2,"smith":7,"tailor":1,"warr
+test-t1268-econ-clock.js	제품차0	T1268	T1268	—	못찾음	-	-	-	0	카드 T1268 의 제품 커밋 0(--grep · 제품 경로)
+test-sbc-blind.js	제품차0	T1280	T1280	—	못찾음	-	-	-	0	카드 T1280 의 제품 커밋 0(--grep · 제품 경로)
+test-lib-port.js	제품차0	T1281	T1281	—	못찾음	-	-	-	0	카드 T1281 의 제품 커밋 0(--grep · 제품 경로)
+test-live-lag-net.js	의심	T1292	T1292	811489dd8	초록 ✗	0	12	0	64	
+test-t1292-t952-axis.js	의심	T1292	T952	811489dd8	초록 ✗	0	12	0	10	
+test-t1308-resume.js	제품차0	T1308	T1308	—	못찾음	-	-	-	0	카드 T1308 의 제품 커밋 0(--grep · 제품 경로)
+test-seam-walk.js	의심	T1311	T1311	7ef67bfcc	빨강 ○	1	15	16	17	✗ ⑤a [T1320] 손잡이 켬 — 교역로 마디가 바위를 깎는 자리에서 몸 걸음 바위 0 · 끝에 닿는다  {"steps":60,"rock":30,"end":[575
+test-t1328-ore-zero.js	제품차0	T1328	T1356	—	못찾음	-	-	-	0	카드 T1328 의 제품 커밋 0(--grep · 제품 경로)
+test-t1333-alloy-order.js	제품차0	T1333	T1333	e5ffeb3af	빨강 ○	1	0	15	10	✗ T1333_ALLOY_ORDER=(없음) → null
+test-t1344-bronze-mix.js	의심	T1344	T1344	f5b1a1685	빨강(크래시) △	1	0	0	10	throw new AssertionError(obj);
+test-t1339-wait-day.js	제품차0	T1339	T1356	—	못찾음	-	-	-	0	카드 T1339 의 제품 커밋 0(--grep · 제품 경로)

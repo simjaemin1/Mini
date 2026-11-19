@@ -22,6 +22,7 @@
 'use strict';
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -162,8 +163,8 @@ async function waitHttp(url, tries = 600) {
   // ★못 간 이유는 **게임이 말해 준다**(`teleport_debug` 는 도착·거절을 공지로 답한다).
   //   추측으로 좌표를 흔드는 대신 그 공지를 찍는다.
   const warpWhy = async (pg) => (await pg.evaluate(
-    () => (window.__notices || []).filter((t) => /텔레포트|강·바다/.test(t)).slice(-2)));
-  const notices = (pg) => pg.evaluate(() => (window.__notices || []).slice(-40));
+    () => (window.__notices || []).filter((t) => /텔레포트|강·바다/.test(t)).slice(-2)));   // @notice-ok 진단(판정 밖) — 못 간 까닭을 찍는다
+  const notices = (pg) => pg.evaluate(() => (window.__notices || []).slice(-40));   // @notice-ok 고리 전부(40칸 = 클라 상한 · 자름 0)
   // ★채팅 명령 — **이미 있는 통로**로 보낸다(새 창구 0 · 서버가 `/` 를 보고 가른다)
   const chat = (pg, text) => pg.evaluate((t) => window.__sendPrimary({ type: 'chat', text: t }), text);
   const clearNotices = (pg) => pg.evaluate(() => { window.__notices = []; });
@@ -183,9 +184,10 @@ async function waitHttp(url, tries = 600) {
   const V = rows[0], vx = V.cx * 32 + 16, vy = V.cy * 32 + 16;
   {
     await clearNotices(A);
+    const tgW = await NM.mark(A);
     await A.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [vx, vy]);
-    await sleep(1500);
-    const nz = (await A.evaluate(() => (window.__notices || []).slice(-8))).filter((t) => /텔레포트/.test(t));   // ★[T78] 접두 이모지는 경계가 걷는다 — 말로 찾는다
+    const nz = (await NM.waitSince(A, tgW, (l) => l.some((t) => /텔레포트/.test(t)), { capMs: 15000 })).list.filter((t) => /텔레포트/.test(t));   // [T1367] 종전 1.5초 뒤 마지막 여덟 줄
+    await sleep(300);   // 좌표가 판에 앉을 틈(종전 1.5초 안에 들던 몫)   // ★[T78] 접두 이모지는 경계가 걷는다 — 말로 찾는다
     const m = nz.length ? String(nz[nz.length - 1]).match(/\((-?\d+),\s*(-?\d+)\)/) : null;
     const a0 = await rawAbs(A);
     if (m && a0) OFF = { x: a0.x - (+m[1]), y: a0.y - (+m[2]) };

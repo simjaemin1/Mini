@@ -1,0 +1,14 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 e96fb3455)
+· 바뀐 코드 파일 9 · 이름 16(물린 것 9 · 흔한 이름 뺌 0) · 바뀐 하네스 2 · 규약 다섯 · **돌릴 하네스 12**
+  scripts/t1347-card.js: t1347-card
+  scripts/t1347-foodtime.js: t1347-foodtime
+  scripts/t1347-k5.js: t1347-k5
+  scripts/t1347-lab.js: t1347-lab
+  scripts/t1347-labtab.js: t1347-labtab
+  scripts/t1347-observe.js: t1347-observe
+  scripts/t1347-segmerge.js: t1347-segmerge
+  sim/economy-engine.browser.js: T1347_FETCH T1347_MIX_DEST _caravanTrade _t1344MixPick _t1347Buys _t1347Ordered _t1347Orders _t1347Sells tickTradeV2Steps
+  sim/economy-sim-v2.js: T1347_FETCH T1347_MIX_DEST _caravanTrade _t1344MixPick _t1347Buys _t1347Ordered _t1347Orders _t1347Sells tickTradeV2Steps
+· 이름 → 하네스 수: T1347_FETCH 2 · T1347_MIX_DEST 1 · _caravanTrade 1 · _t1344MixPick 4 · _t1347Buys 1 · _t1347Ordered 2 · _t1347Orders 1 · _t1347Sells 2 · tickTradeV2Steps 2
+· 바뀐 하네스: test-seed-reserve.js test-t1347-fetch.js
+· 돌릴 하네스: test-body-fields.js test-cargo-age.js test-coll-grid.js test-floor-stone.js test-harness-lint.js test-hp-src.js test-lab-stone.js test-lon-day.js test-one-target.js test-seed-reserve.js test-t1344-bronze-mix.js test-t1347-fetch.js
