@@ -1,0 +1,38 @@
+{
+ "base": "계측/서버기준선_2026-11-18.json",
+ "plan": {
+  "1020": 400
+ },
+ "seeds": [
+  1020
+ ],
+ "sec": 725,
+ "per": {
+  "1020": {
+   "seed": 1020,
+   "code": 0,
+   "sec": 725
+  }
+ },
+ "res": {
+  "1020": {
+   "same": false,
+   "sideDay": 1,
+   "sideFields": [
+    "_oreCells"
+   ],
+   "econDay": 226,
+   "cov": {
+    "econ": [
+     400,
+     400
+    ],
+    "side": [
+     400,
+     400
+    ],
+    "short": false
+   }
+  }
+ }
+}

@@ -5,7 +5,7 @@
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const [base, actualDir] = process.argv.slice(2);
 if (!base || !actualDir) throw Error('베이스 지문 JSON, 변경후 sbc 폴더 필요');
-const R = p => JSON.parse(fs.readFileSync(p,'utf8'));
+const R = p => { const f = fs.existsSync(p) ? p : p + '.gz'; const data = fs.readFileSync(f); return JSON.parse(f.endsWith('.gz') ? require('zlib').gunzipSync(data).toString('utf8') : data.toString('utf8')); };
 const H = (s,n) => crypto.createHash('sha1').update(s).digest('hex').slice(0,n);
 const source = fs.readFileSync(path.join(__dirname,'server-baseline-check.js'),'utf8');
 const body = source.match(/function sideCondense\(S\) \{[\s\S]*?\n\}/);
