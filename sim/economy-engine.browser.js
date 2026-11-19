@@ -14200,14 +14200,31 @@ function _t1197Want(p, k) {
 function _t1197Eat(v, need, body) {
   const fe = v._foodEaten, before = {};
   if (fe) for (const r in fe) before[r] = fe[r];
+  const lh0 = T1309_HEALTH_EATEN ? v._t1309LotH : null;   // ★[T1355] 그날 칸의 로트 건강(이 끼니 앞 · 끔 = null)
   const gap = consumeFood(v, need);
   const now = v._foodEaten;
   if (body) {
     const b = v._t1197Body || (v._t1197Body = {});
     for (const r in now) { b[r] = (b[r] || 0) + now[r]; now[r] = 0; }
     for (const r in before) now[r] = before[r];
-  } else for (const r in before) now[r] = (now[r] || 0) + before[r];
+    if (T1309_HEALTH_EATEN) { v._t1197BodyLot = _t1355LotAdd(v._t1197BodyLot, v._t1309LotH); v._t1309LotH = lh0 || null; }   // ★[T1355] 몸 끼니의 로트 건강도 다음 날 경계로(식단 칸과 같은 길)
+  } else {
+    for (const r in before) now[r] = (now[r] || 0) + before[r];
+    if (T1309_HEALTH_EATEN) v._t1309LotH = _t1355LotAdd(lh0, v._t1309LotH);   // ★[T1355] 그날 칸에 이 끼니를 더한다(식단 칸과 같은 길)
+  }
   return gap;
+}
+// ★★[T1355 2026-11-18 · T1309 고침 — `T1309_HEALTH_EATEN` 켬 안 · 끔 = 무동작(종전 바이트)] **로트 건강 칸은 식단 칸과 같은 끼니를 모은다.**
+//   `consumeFood` 는 부를 때마다 식단 칸(`_foodEaten`)과 로트 건강 칸(`_t1309LotH` — 그 끼니에 나간 로트의 [건강 합, 단위])을 그 끼니로 새로 쓴다.
+//   T1197 몸 끼니(하루 여러 번)는 위 `_t1197Eat` 가 식단 칸만 모았다(몸 끼니 → `_t1197Body` → 다음 날 경계 · 마을 끼니 → 그날 칸에 더함) —
+//   로트 건강 칸은 마지막 한 끼만 남아, 몸 끼니로 나간 로트의 `h` 는 그날 먹은 것 건강(`_t1309EatenHealth`)에서 빠지고 그 단위는 평균 칸(`_t1298Hw`)으로 셌다(보고 T1355 §2).
+//   ⇒ 같은 길로 모은다: 몸 끼니 → `_t1197BodyLot` → 날 경계(`t1197Day`)에 그날 칸 · 마을 끼니 → 그날 칸에 더함. 새 수 0 · 몸 끼니가 없으면(T1197 끔) 하루 한 끼라 종전과 같다.
+function _t1355LotAdd(A, B) {   // 로트 건강 칸 둘을 품목마다 더한 새 칸(B 없으면 A 그대로)
+  if (!B) return A || null;
+  const o = {};
+  if (A) for (const k in A) o[k] = [A[k][0], A[k][1]];
+  for (const k in B) { const x = o[k] || (o[k] = [0, 0]); x[0] += B[k][0]; x[1] += B[k][1]; }
+  return o;
 }
 // ★★[T1209 2026-11-07 · ★재민 11-07 "몸이 꺼내 먹어도 마을이 비지 않는다"] **모자란 솥은 가장 위태로운 사람부터** — 손잡이 `T1209_MEAL_TRIAGE`(끔 기본 · `=1` 켬 · 끔 = T1197 한 솥 같은 비율 그대로 · T1197 끔이면 이 줄을 안 탄다).
 //   까닭(계측 · 보고 T1209 §1): 켬 판 · 끔 판의 곳간은 **같이** 빈다(보릿고개 — 여름 · 늦여름 생산 ≈ 제 몫 · 두 판의 못 먹은 몫 비율이 같다). 갈린 것은 나눔이다 —
@@ -14275,7 +14292,8 @@ function t1197Kill(v, p, body) {
 function t1197Day(v, day) {
   const M = _t1197(); const d0 = day - 1, d1 = day;
   v._t1197Dead = null; v._t1198Gone = null;   // 그날 빠진 사람 목록(호스트가 날 경계 뒤 읽는다)
-  { const fe = v._foodEaten || (v._foodEaten = {}), b = v._t1197Body; for (const r in fe) fe[r] = 0; if (b) for (const r in b) fe[r] = (fe[r] || 0) + b[r]; v._t1197Body = null; }   // 몸 끼니가 그날 식단의 앞 몫
+  { const fe = v._foodEaten || (v._foodEaten = {}), b = v._t1197Body; for (const r in fe) fe[r] = 0; if (b) for (const r in b) fe[r] = (fe[r] || 0) + b[r]; v._t1197Body = null;   // 몸 끼니가 그날 식단의 앞 몫
+    if (T1309_HEALTH_EATEN) { v._t1309LotH = v._t1197BodyLot || null; v._t1197BodyLot = null; } }   // ★[T1355] 로트 건강 칸도 같이(몸 끼니 몫이 그날 칸의 앞 몫 · 끔 = 무동작)
   const E = _fdEaters(v), eat = new Set(E);
   for (const p of v.npcs) { _t1197Init(p, d0); if (!eat.has(p) && p._mD < d1) p._mD = d1; }   // 원정 팩 병사 — 시간은 흐르되 게이지는 제 짐(T906)이 정한다
   for (const p of E) p._fdS = 0;
