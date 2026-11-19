@@ -263,17 +263,22 @@ ok("끔 = 종전 — 판 K '0' · 'true' = 없음", WH('wk0') && WH('wk0') === W
   ok('글자 — 받는 값 곱 한 자리 · 길 위 셈 한 줄(마을 차례 머리) · 예약 열은 바구니 함수 그대로(사본 0)', cnt('_t1384Disc(_r84,') === 1 && cnt('const _r84 = T1384_FOOD_ROUTE ? _t1384Resv(world) : null;') === 1 && cnt('_t1384Resv(') === 2
     && cnt('function _t1136Rv(') === 1 && cnt('function _t1136RvAdd(') === 1 && /function _t1384Resv\(world\) \{[^}]*_t1136RvAdd\(/.test(s) && /function _t1384Disc\([^)]*\) \{\n  const q = _t1136Rv\(/.test(s));
 }
-// ⑧ 미끼
-{
-  const s = fs.readFileSync(path.join(ROOT, V2F), 'utf8');
-  for (const [name, B] of Object.entries(BAITS)) {
-    const n = s.split(B[1]).length - 1;
-    if (n !== 1) { ok(`미끼 ${name} 자리 1곳`, false, `(${n})`); continue; }
-    const RB = Object.assign({}, R);
-    for (const a of B[3]) RB[a] = run(a, name);
-    const AB = judge(RB);
-    ok(`미끼 ${name} → ${B[4].join(' · ')} 빨강`, B[4].every((k) => AB[k] === false) && B[3].every((a) => !RB[a].loadErr));
-  }
-}
+// ⑧ 미끼 — 바꾼 자리 1곳 · 정한 단언이 빨강(아이 판 싣기 실패 0)이면 초록
+const V2SRC = fs.readFileSync(path.join(ROOT, V2F), 'utf8');
+const baitRun = (name) => {
+  const B = BAITS[name], sites = V2SRC.split(B[1]).length - 1;
+  if (sites !== 1) return { sites, good: false, why: '자리 수' };
+  const RB = Object.assign({}, R);
+  for (const a of B[3]) RB[a] = run(a, name);
+  const AB = judge(RB), dead = B[3].filter((a) => RB[a].loadErr);
+  return { sites, good: !dead.length && B[4].every((k) => AB[k] === false), why: dead.length ? '아이 판 죽음 ' + dead.join(' ') : B[4].map((k) => `${k} ${AB[k]}`).join(' · ') };
+};
+let b;
+b = baitRun('noroom');     ok(b.sites === 1 && b.good, '미끼 noroom — 36일치 몫 상한(`_room84`)을 뺀 사본 → K1 빨강(36일치 밑 굶는 마을도 생곡을 낸다)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('keepall');    ok(b.sites === 1 && b.good, '미끼 keepall — 굶는 마을 거름(흐름 EMA < 0)을 뺀 사본 → K3 빨강(굶지 않는 마을 후보도 바뀐다)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('discall');    ok(b.sites === 1 && b.good, '미끼 discall — 길 위 셈의 먹을 것 거름을 뺀 사본 → D3 빨강(가죽 짐도 센다)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('disclate');   ok(b.sites === 1 && b.good, '미끼 disclate — 닿는 날 문(`<= tBy`)을 뺀 사본 → D2 빨강(늦게 닿을 짐도 센다)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('noroute');    ok(b.sites === 1 && b.good, '미끼 noroute — 받는 값 곱(`_t1384Disc`)을 뺀 사본 → W2 빨강(광산으로 줄이 안 선다)', `바꾼 자리 ${b.sites} · ${b.why}`);
+b = baitRun('sellerkeep'); ok(b.sites === 1 && b.good, '미끼 sellerkeep — 파는 쪽 식량류 하한(keep · thresh)을 뺀 사본 → W4 빨강(남는 농촌이 제 하한 밑으로 판다)', `바꾼 자리 ${b.sites} · ${b.why}`);
 console.log(`\n${fail ? '실패' : '통과'} ${pass}/${pass + fail}${failed.length ? ' — ' + failed.join(' · ') : ''}`);
 process.exit(fail ? 1 : 0);
